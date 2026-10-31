@@ -1262,9 +1262,28 @@ const notificationId = z
 	.regex(/^(?:n_[a-z2-7]{4,32}|ask:[A-Za-z0-9_-]+:[A-Za-z0-9_-]+)$/);
 
 /* The one-of-three target a read/dismiss write names (contract § 5.2). */
+// A selection token freezes the filtered result on core, not just the loaded
+// page. Exclusions can only narrow that snapshot. Existing observed-id callers
+// retain their original request shape and revision safeguards.
+const notificationSelectionTarget = z
+	.object({
+		selectionToken: z.string().min(1).max(512),
+		reconcileIds: z.array(notificationId).max(500).optional(),
+		excludedIds: z.array(notificationId).max(500).optional(),
+	})
+	.strict();
+const notificationUndoTarget = z
+	.object({
+		operationToken: z.string().min(1).max(512),
+		reconcileIds: z.array(notificationId).max(500).optional(),
+	})
+	.strict();
 const notificationsTarget = z.union([
 	z
 		.object({
+			throughSeq: z.number().int().min(0).optional(),
+			receipt: z.literal(true).optional(),
+			reconcileIds: z.array(notificationId).max(500).optional(),
 			items: z
 				.array(
 					z
@@ -3795,6 +3814,38 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			tenant_id: id.optional(),
 		})
 		.strict(),
+	// Owner audit is a separate human-only read plane. No endpoint selector or
+	// write op is admitted here; the runtime derives the caller's own agent.
+	z
+		.object({
+			op: z.literal("team_bridge.owner_audit.conversations"),
+			expected_account_id: id,
+			tenant_id: id,
+			limit: z.number().int().min(1).max(100).optional(),
+			cursor: z.string().min(1).optional(),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("team_bridge.owner_audit.messages"),
+			expected_account_id: id,
+			tenant_id: id,
+			conversation_id: id,
+			limit: z.number().int().min(1).max(100).optional(),
+			before_seq: z.number().int().nonnegative().optional(),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("team_bridge.owner_audit.replies"),
+			expected_account_id: id,
+			tenant_id: id,
+			conversation_id: id,
+			message_id: id,
+			limit: z.number().int().min(1).max(100).optional(),
+			after_seq: z.number().int().nonnegative().optional(),
+		})
+		.strict(),
 	z
 		.object({
 			op: z.literal("team_bridge.messages.list"),
@@ -3805,12 +3856,15 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			endpoint_id: id.optional(),
 		})
 		.strict(),
+	/* Reactions have no receipt-less legacy caller: the captured account and
+	 * target tenant are required before main may dispatch either verb. */
 	z
 		.object({
 			op: z.literal("team_bridge.reactions.toggle"),
 			conversation_id: id,
 			message_id: id,
-			tenant_id: id.optional(),
+			expected_account_id: id,
+			tenant_id: id,
 			emoji: z.string().min(1),
 			active: z.boolean(),
 		})
@@ -3833,13 +3887,15 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 	/*
 	 * One thread (root + replies, oldest-first) under the history gate. Paging
 	 * runs FORWARD with an inclusive `after_seq`, because a thread reads top-down.
+	 * The captured account binds this read to the bearer main dispatches with.
 	 */
 	z
 		.object({
 			op: z.literal("team_bridge.messages.replies"),
 			conversation_id: id,
 			message_id: id,
-			tenant_id: id.optional(),
+			expected_account_id: id,
+			tenant_id: id,
 			limit: z.number().int().min(1).max(100).optional(),
 			after_seq: z.number().int().nonnegative().optional(),
 		})
@@ -4530,6 +4586,14 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 	z
 		.object({
 			op: z.literal("notifications.list"),
+			preview: z.literal(true).optional(),
+			includeAskReads: z.boolean().optional(),
+			// No selection_token/excluded_ids here: core's recount WITH exclusions
+			// is the PATCH body form ({op:"preview"}); 500 IDs in a GET URL exceed
+			// h11's request-line limit. The page recounts exclusions locally.
+			countSessionIds: z.array(sessionId).max(50).optional(),
+			kind: z.enum(["all", "asks", "updates"]).optional(),
+			bulkPriority: z.enum(["any", "high", "normal_up"]).optional(),
 			state: z.enum(["unread", "all", "dismissed"]).optional(),
 			source: z.enum(["notify", "ask"]).optional(),
 			priority: z.enum(["high", "normal", "low"]).optional(),
@@ -4559,15 +4623,20 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 	z
 		.object({
 			op: z.literal("notifications.read"),
-			verb: z.enum(["read", "unread"]),
-			target: notificationsTarget,
+			// Guard Undo like a read: the journal may restore a prior read mark.
+			verb: z.enum(["read", "unread", "undo"]),
+			target: z.union([
+				notificationsTarget,
+				notificationSelectionTarget,
+				notificationUndoTarget,
+			]),
 		})
 		.strict(),
 	z
 		.object({
 			op: z.literal("notifications.dismiss"),
 			verb: z.enum(["dismiss", "undismiss"]),
-			target: notificationsTarget,
+			target: z.union([notificationsTarget, notificationSelectionTarget]),
 		})
 		.strict(),
 	/*
@@ -4628,6 +4697,29 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
  */
 export const desktopRequestSchema = desktopRequestUnion.superRefine(
 	(request, ctx) => {
+		if (
+			(request.op === "notifications.read" ||
+				request.op === "notifications.dismiss") &&
+			"items" in request.target &&
+			Boolean(request.target.receipt) !==
+				(request.target.throughSeq !== undefined)
+		) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message: "Receipt writes require a sequence boundary", // i18n: ignore wire validation diagnostic
+				path: ["target"],
+			});
+		}
+		if (
+			request.op === "notifications.read" &&
+			(request.verb === "undo") !== "operationToken" in request.target
+		) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message: "Undo requires an operation token, and only undo accepts one", // i18n: ignore wire validation diagnostic
+				path: ["target"],
+			});
+		}
 		/*
 		 * Image-only messages: an empty body is legal only when images carry the
 		 * message (contract §3, "body may be empty iff attachment_ids non-empty").
@@ -4664,6 +4756,22 @@ export const desktopRequestSchema = desktopRequestUnion.superRefine(
 				code: z.ZodIssueCode.custom,
 				path: ["tenant_id"],
 				message: "Guarded conversation writes require an explicit tenant",
+			});
+			return;
+		}
+		/* A threaded send has no receipt-less compatibility path. Keep this on
+		 * the union: a member-level refine would make the discriminated union
+		 * invalid, while an optional field alone would let a caller forget the
+		 * account receipt and dispatch a reply as whoever signs in next. */
+		if (
+			request.op === "team_bridge.messages.send" &&
+			request.thread_root_id !== undefined &&
+			!request.expected_account_id
+		) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				path: ["expected_account_id"],
+				message: "Thread replies require the captured account", // i18n: ignore request-schema diagnostic
 			});
 			return;
 		}
@@ -6582,6 +6690,9 @@ const READ_ONLY_OPS: ReadonlySet<string> = new Set([
 	"team_bridge.conversations.get",
 	"team_bridge.messages.list",
 	"team_bridge.messages.replies",
+	"team_bridge.owner_audit.conversations",
+	"team_bridge.owner_audit.messages",
+	"team_bridge.owner_audit.replies",
 	"team_bridge.unread",
 	"team_bridge.directory",
 	"team_bridge.status",
@@ -7519,6 +7630,18 @@ export type BackendSetting = {
 	 * `retention-duration.ts`).
 	 */
 	unit?: string | null;
+	/**
+	 * A SEVENTH additive field: the other words a reader might type for this row
+	 * (`"dark mode"` for the theme row, `"retries"` for a failover key). It is
+	 * the registry's vocabulary, not the renderer's — the settings search folds
+	 * these into its index so a synonym the backend owns is found without this
+	 * app inventing a second, drifting list of its own (issue #1492).
+	 *
+	 * OPTIONAL and read with `?? []`, exactly like the six above: an older server
+	 * sends nothing, and the search then matches on label, help, key, section and
+	 * choice labels — the behaviour it had before the field existed.
+	 */
+	synonyms?: string[];
 };
 /**
  * The one-time "delegated sessions were cleaned up" notice, as
@@ -9494,6 +9617,31 @@ export function desktopEndpoint(request: DesktopRequest): {
 					consent_version: request.consent_version,
 				},
 			};
+		case "team_bridge.owner_audit.conversations":
+		case "team_bridge.owner_audit.messages":
+		case "team_bridge.owner_audit.replies": {
+			const query = new URLSearchParams({
+				expected_account_id: request.expected_account_id,
+				tenant_id: request.tenant_id,
+			});
+			if (request.limit !== undefined)
+				query.set("limit", String(request.limit));
+			let path = "/v1/desktop/team-bridge/owner-audit/conversations";
+			if (request.op === "team_bridge.owner_audit.conversations") {
+				if (request.cursor !== undefined) query.set("cursor", request.cursor);
+			} else {
+				path += `/${encodeURIComponent(request.conversation_id)}/messages`;
+				if (request.op === "team_bridge.owner_audit.messages") {
+					if (request.before_seq !== undefined)
+						query.set("before_seq", String(request.before_seq));
+				} else {
+					path += `/${encodeURIComponent(request.message_id)}/replies`;
+					if (request.after_seq !== undefined)
+						query.set("after_seq", String(request.after_seq));
+				}
+			}
+			return { path: `${path}?${query}`, method: "GET" };
+		}
 		case "team_bridge.messages.list": {
 			const query = new URLSearchParams();
 			if (request.tenant_id) query.set("tenant_id", request.tenant_id);
@@ -9514,10 +9662,13 @@ export function desktopEndpoint(request: DesktopRequest): {
 				? {
 						path,
 						method: "PUT",
-						body: request.tenant_id ? { tenant_id: request.tenant_id } : {},
+						body: {
+							expected_account_id: request.expected_account_id,
+							tenant_id: request.tenant_id,
+						},
 					}
 				: {
-						path: `${path}${tenantQuery(request.tenant_id)}`,
+						path: `${path}${conversationOwnerQuery(request)}`,
 						method: "DELETE",
 					};
 		}
@@ -9593,8 +9744,10 @@ export function desktopEndpoint(request: DesktopRequest): {
 				method: "DELETE",
 			};
 		case "team_bridge.messages.replies": {
-			const query = new URLSearchParams();
-			if (request.tenant_id) query.set("tenant_id", request.tenant_id);
+			const query = new URLSearchParams({
+				expected_account_id: request.expected_account_id,
+				tenant_id: request.tenant_id,
+			});
 			if (request.limit !== undefined)
 				query.set("limit", String(request.limit));
 			if (request.after_seq !== undefined)
@@ -9998,6 +10151,13 @@ export function desktopEndpoint(request: DesktopRequest): {
 		 */
 		case "notifications.list": {
 			const query = new URLSearchParams();
+			if (request.preview) query.set("preview", "true");
+			if (request.includeAskReads) query.set("include_ask_reads", "true");
+			for (const id of request.countSessionIds ?? [])
+				query.append("count_session_ids", id);
+			if (request.kind) query.set("kind", request.kind);
+			if (request.bulkPriority)
+				query.set("bulk_priority", request.bulkPriority);
 			if (request.state) query.set("state", request.state);
 			if (request.source) query.set("source", request.source);
 			if (request.priority) query.set("priority", request.priority);
@@ -10059,10 +10219,33 @@ export function desktopEndpoint(request: DesktopRequest): {
 
 /** The PATCH body's target half, in the route's snake_case (contract § 5.2). */
 function notificationsTargetBody(
-	target: z.infer<typeof notificationsTarget>,
+	target:
+		| z.infer<typeof notificationsTarget>
+		| z.infer<typeof notificationSelectionTarget>
+		| z.infer<typeof notificationUndoTarget>,
 ): Record<string, unknown> {
+	if ("selectionToken" in target)
+		return {
+			selection_token: target.selectionToken,
+			...(target.reconcileIds ? { reconcile_ids: target.reconcileIds } : {}),
+			...(target.excludedIds ? { excluded_ids: target.excludedIds } : {}),
+		};
+	if ("operationToken" in target)
+		return {
+			operation_token: target.operationToken,
+			...(target.reconcileIds ? { reconcile_ids: target.reconcileIds } : {}),
+		};
 	if ("items" in target) {
 		return {
+			...(target.receipt
+				? {
+						receipt: true,
+						through_seq: target.throughSeq,
+						...(target.reconcileIds
+							? { reconcile_ids: target.reconcileIds }
+							: {}),
+					}
+				: {}),
 			ids: target.items.map((item) => ({
 				id: item.id,
 				revision: item.revision,

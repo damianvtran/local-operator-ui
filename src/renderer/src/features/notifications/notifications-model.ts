@@ -86,6 +86,44 @@ export function filterItems(
  */
 export const UNDO_WINDOW_MS = 6_000;
 
+/**
+ * How long a receipt that reports a refusal, a skip or an unresolved count stands.
+ *
+ * THE UNDO WINDOW IS THE WRONG LIFETIME FOR A PARTIAL RESULT (design round 1,
+ * D2). `UNDO_WINDOW_MS` is how long the offer to take an action BACK stands; a
+ * receipt that says some of the work did not happen is not an offer, it is an
+ * exception report, and the operator has to read it, find the row it left
+ * behind and decide what to do with it. Giving it the Undo window made the
+ * report vanish while its subject was still on screen - and it vanished on the
+ * one path where the page has something to explain.
+ *
+ * SO THE RECEIPT'S LIFETIME IS A FUNCTION OF WHAT IT SAYS, not a container
+ * default: the all-succeeded receipt keeps the Undo window (it is an offer, and
+ * it has nothing to explain), and a receipt carrying a skip, a refusal or a
+ * count that never resolved is held here until the operator closes it. The
+ * container ships `closeButton: true`, so a held receipt is always retirable by
+ * hand - `Infinity` would otherwise be a toast that can only be waited out.
+ *
+ * THE UNDO THE HELD RECEIPT CARRIES IS VALID FOR THE SAME PERIOD, because a
+ * receipt that holds while its own Undo has silently expired is a dead control:
+ * pressing it would do nothing and say nothing. Both call sites read their
+ * window from `receiptDuration` below so the button and the toast cannot drift
+ * apart, and `lastUndo` / `lastBulkUndo` identity still invalidates the offer the
+ * moment a newer press supersedes it.
+ */
+export const HELD_RECEIPT_MS = Number.POSITIVE_INFINITY;
+
+/**
+ * A receipt's lifetime, from whether it has anything to report beyond success.
+ *
+ * The single decision both notification receipt paths make, in one place: a
+ * partial receipt is held, a clean one keeps the Undo window. Taking this as a
+ * predicate rather than letting each call site pick a number is what stops one
+ * of them drifting back to the Undo window the way it started (D2).
+ */
+export const receiptDuration = (reportsException: boolean): number =>
+	reportsException ? HELD_RECEIPT_MS : UNDO_WINDOW_MS;
+
 export type TimeBucket = "today" | "yesterday" | "week" | "older";
 
 /** Local midnight of the day `ms` falls in. */
@@ -315,6 +353,14 @@ export const coveredByWrite = (
  * the pill offers them. It counts only ids the window does not hold, so it cannot grow
  * with rows that were already there.
  */
+/** Read/dismiss mutations advance seq without advancing the content revision. */
+export const isNewerNotification = (
+	candidate: DesktopNotificationItem,
+	previous: DesktopNotificationItem,
+): boolean =>
+	candidate.revision > previous.revision ||
+	(candidate.revision === previous.revision && candidate.seq >= previous.seq);
+
 export function mergeWindowForReel(
 	facts: DesktopNotificationsList | undefined,
 	windowAnswer: DesktopNotificationsList | undefined,
@@ -341,7 +387,7 @@ export function mergeWindowForReel(
 	for (const item of windowAnswer.items) items.set(item.id, item);
 	for (const item of facts.items) {
 		const previous = items.get(item.id);
-		if (!previous || item.revision >= previous.revision)
+		if (!previous || isNewerNotification(item, previous))
 			items.set(item.id, item);
 	}
 	return {
@@ -415,6 +461,25 @@ export function applyConfirmedToWindow<
 		return { ...item, dismissed: false };
 	};
 	return pages.map((page) => ({ ...page, items: page.items.map(flipped) }));
+}
+
+/**
+ * Apply a write to a page-one FACTS answer: the rows, and the unread figure by
+ * the flips' delta. Facts are a plain list answer, not an infinite query, so
+ * they need their own edit (`applyConfirmedToWindow` takes pages).
+ */
+export function editFactsForWrite(
+	data: DesktopNotificationsList | undefined,
+	ids: readonly string[],
+	verb: NotificationVerb,
+	unreadDelta = 0,
+): DesktopNotificationsList | undefined {
+	if (!data || !Array.isArray(data.items)) return data;
+	const [page] = applyConfirmedToWindow([data], ids, verb);
+	return {
+		...page,
+		unread_count: Math.max(0, data.unread_count + unreadDelta),
+	};
 }
 
 export const scopeCountBoundary = (

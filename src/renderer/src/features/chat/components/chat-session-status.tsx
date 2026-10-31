@@ -15,6 +15,7 @@ import {
 	MessageCircleQuestion,
 	MessageSquare,
 	Pause,
+	Timer,
 	WifiOff,
 } from "lucide-react";
 import {
@@ -22,6 +23,7 @@ import {
 	peerUncertainLabel,
 } from "../../mesh/peer-presence";
 import { asksOutstandingLabel } from "../ask-queue";
+import { hasWork, subagentMarks } from "../chat-session-subagents";
 
 /** Resting codes that legitimately render as a plain ring. */
 const KNOWN_RESTING = new Set(["idle", "recent"]);
@@ -266,7 +268,7 @@ export function SubagentRunningMark({
 	 * type says so rather than leaving the next call site to discover an invisible mark at runtime.
 	 */
 	className: string;
-	/** The rig/test hook (`data-subagent-mark`). Passed only where the mark stands for the ROW's own running subagents - the `delegating` rung shares the component but not the hook. */
+	/** The rig/test hook (`data-subagent-mark`): "this mark stands for the ROW's own running children". The one call site that draws the mark - the row's status cell - passes it, which is what its readers (`scripts/session-switch.tsx`, the sidebar rigs) count. */
 	mark?: string;
 }) {
 	return (
@@ -314,6 +316,55 @@ export function ChatSessionStatus({
 	const uncertainLabel = peerUncertainLabel(row);
 	const delegating = !uncertainLabel && !linkDown && code === "delegating";
 	/*
+	 * THE ROW'S OWN CHILDREN, DRAWN IN THIS CELL RATHER THAN BESIDE THE TITLE
+	 * (first-paint completeness, 2026-10-30).
+	 *
+	 * WHY THEY MOVED HERE AT ALL. Both counts are optional on the wire and absent
+	 * means UNKNOWN, not zero, so a row can paint without them and gain them on the
+	 * next read. The trailing glyphs were `shrink-0` and the title is the row's only
+	 * `flex-1`, so a mark arriving late took its width out of the title and re-cut
+	 * the ellipsis under the reader: measured at a 264px panel, the title's clip went
+	 * 152 -> 130px and its cut column 24 -> 21 characters 1.6 s after the first
+	 * contentful frame. This box is `size-4` and drawn on every row whether or not it
+	 * holds a glyph, so a fact that arrives later changes what is IN the row and
+	 * never how much of the title is cut. Two alternatives were measured and refused:
+	 * a trailing lane reserved on every row cost 36px of every title (two titles that
+	 * had rendered whole went into ellipsis at 264), and a lane reserved only while
+	 * the counts were unknown merely turned the shrink into a regrow.
+	 *
+	 * WHICH GLYPH, AND WHY ONLY ONE CODE QUALIFIES (design round 1, D1 - BLOCKER).
+	 * The runtime already orders the facts a row can carry, and it puts child
+	 * activity near the BOTTOM: `catalog.py` ranks wedged, a parked gate, a busy or
+	 * silent runtime and an unread outcome all above `delegating`, in its own words
+	 * "the rungs above it are all LOUDER facts about the row rather than about its
+	 * children". `resume.SessionRow.delegating` is non-None whenever any child runs or
+	 * queues, so a live count only ever coexists with a LOUDER code - and a first cut
+	 * of this change asked the counts first, which meant it never ADDED a mark, it
+	 * only HID the louder one: an approval row lost its parked-gate bubble, an error
+	 * row lost its alert, an unread completion lost its check (while the bulk control
+	 * still counted it as unread), and the one animated busy row stopped animating.
+	 *
+	 * So the cell asks the CODE, not the counts: `delegating` is the one rung where
+	 * child activity IS the row's top fact, and it is the rung that already drew this
+	 * mark before the change. Every louder code keeps its own glyph, and the counts it
+	 * carries stay in the name channel (below). Under that rule the trio also stops
+	 * being ambiguous between `delegating` and "children running under another code"
+	 * (D3): only `delegating` can draw it.
+	 *
+	 * THE QUEUED STATE HAS ITS OWN SILHOUETTE (D2). It used to be an `Hourglass`,
+	 * which is the glyph of `waiting` in this same cell and was told apart by ink
+	 * alone - two states, one picture. It is a `Timer` now: still "not started yet",
+	 * and a silhouette nothing else in this cell wears.
+	 */
+	const subagents = subagentMarks(row);
+	/*
+	 * THE RAW FACT, through the same `hasWork` the marks themselves use: `subagents_running`
+	 * is read directly rather than through `subagentMarks`, because that predicate blanks
+	 * the running half on `delegating` (this cell IS that fact there) and would report
+	 * "nothing is running" for the one row whose children are.
+	 */
+	const queuedOnly = subagents.queued && !hasWork(row.subagents_running);
+	/*
 	 * WHAT THIS ROW IS DRAWING, asked of the ONE predicate (`unreadMarkKind`) the
 	 * accessible name below, the sidebar row's tooltip and the bulk control's
 	 * count all ask. It reads `status.code`, which is the runtime's own
@@ -334,54 +385,57 @@ export function ChatSessionStatus({
 				? Hourglass
 				: code === "busy"
 					? LoaderCircle
-					: code === "approval" || code === "answer" || code === "error"
-						? CircleAlert
-						: /*
-							 * `wedged` WEARS A MARK OF ITS OWN, and that is the fix rather than a
-							 * flourish. It used to share `CircleAlert` with `error`, so an owner that
-							 * had merely stopped reporting and a turn that had actually broken drew
-							 * byte-identical output — and the two ask opposite things of a reader
-							 * (reopen the failed one; do not expect a message to land in the silent
-							 * one). Colour cannot carry the difference either: this app and the TUI
-							 * share one brand ramp, and the measurement recorded for the same
-							 * `warning`/`danger` pair collapses the two inks under deuteranopia
-							 * (`session_picker.py:563-569`). SHAPE IS THE SIGNAL, so the state gets
-							 * a silhouette that shares no stroke with the alert ring — two
-							 * horizontal waves, which is this app's `EqualApproximately` and the
-							 * TUI's `≈` for the same state.
-							 *
-							 * WHY NOT THE NEAR MISSES: `WifiOff` is reserved for a lost link
-							 * (to the daemon or a remote owner), not a wedged session on a
-							 * reachable device; `HelpCircle` already means "a code
-							 * this build does not know" two branches below; and
-							 * `CircleDashed`/`CircleDotDashed` would put a second RING in the amber
-							 * class beside `approval`/`answer`, which is the grouping failure the
-							 * TUI's marker register warns about.
-							 *
-							 * IT STAYS STATIC while `busy` spins. Nothing about this state is
-							 * turning: the runtime's beat stopped landing, and an animation here
-							 * would both borrow the busy reading and assert an activity the stale
-							 * heartbeat cannot support.
-							 */
-							code === "wedged"
-							? EqualApproximately
-							: code === "interrupted" || code === "dormant"
-								? Pause
-								: code === "complete"
-									? unseenCompletion
-										? Check
-										: Circle
-									: code === "scheduled"
-										? Clock
-										: code === "attached"
-											? MessageSquare
-											: // A `delegating` row never reads this chain: its glyph slot draws
-												// the RUNNING MARK instead (`SubagentRunningMark` below), because the
-												// share glyph read as an action on a row whose mark is a state
-												// (issue #840).
-												KNOWN_RESTING.has(code ?? "recent")
-												? Circle
-												: HelpCircle;
+					: code === "approval" || code === "answer"
+						? /* Needs input must not share failure's alert ring: warning and danger can converge for colour-blind readers, so the question silhouette carries the distinction. */
+							MessageCircleQuestion
+						: code === "error"
+							? CircleAlert
+							: /*
+								 * `wedged` WEARS A MARK OF ITS OWN, and that is the fix rather than a
+								 * flourish. It used to share `CircleAlert` with `error`, so an owner that
+								 * had merely stopped reporting and a turn that had actually broken drew
+								 * byte-identical output — and the two ask opposite things of a reader
+								 * (reopen the failed one; do not expect a message to land in the silent
+								 * one). Colour cannot carry the difference either: this app and the TUI
+								 * share one brand ramp, and the measurement recorded for the same
+								 * `warning`/`danger` pair collapses the two inks under deuteranopia
+								 * (`session_picker.py:563-569`). SHAPE IS THE SIGNAL, so the state gets
+								 * a silhouette that shares no stroke with the alert ring — two
+								 * horizontal waves, which is this app's `EqualApproximately` and the
+								 * TUI's `≈` for the same state.
+								 *
+								 * WHY NOT THE NEAR MISSES: `WifiOff` is reserved for a lost link
+								 * (to the daemon or a remote owner), not a wedged session on a
+								 * reachable device; `HelpCircle` already means "a code
+								 * this build does not know" two branches below; and
+								 * `CircleDashed`/`CircleDotDashed` would put a second RING in the amber
+								 * class beside `approval`/`answer`, which is the grouping failure the
+								 * TUI's marker register warns about.
+								 *
+								 * IT STAYS STATIC while `busy` spins. Nothing about this state is
+								 * turning: the runtime's beat stopped landing, and an animation here
+								 * would both borrow the busy reading and assert an activity the stale
+								 * heartbeat cannot support.
+								 */
+								code === "wedged"
+								? EqualApproximately
+								: code === "interrupted" || code === "dormant"
+									? Pause
+									: code === "complete"
+										? unseenCompletion
+											? Check
+											: Circle
+										: code === "scheduled"
+											? Clock
+											: code === "attached"
+												? MessageSquare
+												: // A `delegating` row never reads this chain: its glyph slot draws
+													// the RUNNING MARK instead (`SubagentRunningMark` below), because the
+													// share glyph read as an action on a row whose mark is a state
+													// (issue #840).
+													KNOWN_RESTING.has(code ?? "recent")
+													? Circle
+													: HelpCircle;
 	const ink = uncertainLabel
 		? "text-ink-dim"
 		: linkDown
@@ -446,8 +500,41 @@ export function ChatSessionStatus({
 		 */
 		<span className="flex size-4 shrink-0">
 			{delegating ? (
-				<SubagentRunningMark className={cn("size-4", ink)} />
+				queuedOnly ? (
+					/*
+					 * A QUEUE WITH NOTHING RUNNING is the one child fact the trio cannot
+					 * carry, so it takes the cell - and it takes it by the same rule as the
+					 * trio: only on the rung whose top fact is what its children are doing.
+					 */
+					<Timer
+						aria-hidden="true"
+						data-subagent-mark="queued"
+						className="size-4 text-ink-muted"
+					/>
+				) : (
+					<SubagentRunningMark
+						className={cn("size-4", ink)}
+						/*
+						 * THE HOOK IS PASSED HERE (agent review round 1, R1-1). Its own rule used to
+						 * withhold it on this rung, because the rung shared the component with the
+						 * row's trailing indicator and the hook had to mean "the ROW's own running
+						 * children" rather than "this row's status rung". The fusion leaves ONE place
+						 * the mark can be drawn, and there it always means exactly that, so the
+						 * attribute belongs on it - `scripts/session-switch.tsx` counts the cue by
+						 * it, and a hook the product never renders is a reader that reports zero.
+						 */
+						mark="running"
+					/>
+				)
 			) : (
+				/*
+				 * EVERY OTHER CODE KEEPS ITS OWN GLYPH (D1). A row can carry a live child
+				 * count under an approval, an error, an unread completion or a spinner, and
+				 * in every one of those the child count is the quieter fact: the runtime
+				 * ranks it below them, the row's own sentence still carries it, and hiding
+				 * the louder glyph to show it turns "waiting for you" into "work in
+				 * progress".
+				 */
 				<Icon className={cn("size-4", ink)} aria-hidden="true" />
 			)}
 			<span className="sr-only">

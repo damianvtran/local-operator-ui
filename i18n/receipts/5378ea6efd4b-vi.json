@@ -1,0 +1,132 @@
+{
+	"schema": 1,
+	"receipt_kind": "locale-audit (one-key delta, PR #1489)",
+	"date": "2026-10-30",
+	"auditor": "i18n-auditor",
+	"agent": "i18n-auditor",
+	"model": "radient/auto",
+	"status": "passed",
+	"namespace": "ui.teamBridge",
+	"integration": {
+		"pr": 1489,
+		"branch": "fix/tb-instant-open",
+		"reviewed_head": "548b9b1010d7a9cf034f1187e5dec75e5ab0922c",
+		"english_change_commit": "548b9b1010d7a9cf034f1187e5dec75e5ab0922c",
+		"origin_main_at_audit": "830d2b65e07",
+		"worktree": "~/local-operator-ui/.worktrees/tbd-1489-i18n"
+	},
+	"model_provenance": "Session 5378ea6efd4b opened as anthropic/claude-opus-5-5 and was moved by provider-quota fallbacks to anthropic/claude-sonnet-5-5, openai/gpt-6-astra and kimi/k3.1-pro; the harness announced radient/auto as serving for the final judgements and this receipt. The four announcements are the only model record this session has (the harness exposes no queryable model field). Recorded as served, not as pinned.",
+	"model_fallback": {
+		"announced": true,
+		"observed": true,
+		"chain": [
+			"anthropic/claude-opus-5-5",
+			"anthropic/claude-sonnet-5-5",
+			"openai/gpt-6-astra",
+			"kimi/k3.1-pro",
+			"radient/auto"
+		],
+		"reason": "provider failure: quota"
+	},
+	"independence": "Independent auditor: a separate Local Operator session (5378ea6efd4b) that authored none of the audited strings. The English sentence and all seven translations were added by commit 548b9b1010d (PR authoring session, agent `translator` lineage per the existing rows); this session read them and wrote only this receipt, its evidence record and the ledger row via ledger-assemble.mjs. The corpus comparisons below were read from the shipped catalogues, not from a translation memory or an MT service.",
+	"scope": {
+		"delta_kind": "One-key delta. Against origin/main's recorded ledger bytes (en 1570269761, per row) the English catalogue gained exactly one key, ui.teamBridge.list.error_stale, in 548b9b1010d; every other English value is byte-identical. Verified with `git diff d5d68e8049f0:...en/ui.teamBridge.json HEAD:...` (one added line, no removals).",
+		"keys_audited_linguistically": [
+			"ui.teamBridge.list.error_stale"
+		],
+		"keys_read_for_consistency": [
+			"ui.teamBridge.list.error",
+			"ui.teamBridge.list.loading",
+			"ui.teamBridge.list.retry",
+			"ui.teamBridge.list.empty.title",
+			"ui.teamBridge.list.empty.body",
+			"ui.teamBridge.list.error_pane",
+			"ui.notifications.error.refresh.title",
+			"ui.canvas.use_file_freshness.could_not_be_re_read_showing_the_version_we_last_read",
+			"ui.chat.thread_search.stale",
+			"ui.chat.pickers.context_panel.last_cache_read",
+			"ui.chat.session_status.last_reading",
+			"ui.chat.device.sentence.remote_did_not_answer",
+			"ui.schedules.fallback.list_below_is_the_last_one_that_loaded"
+		],
+		"not_audited": "The other 254 English keys and their translations: unchanged by this delta and covered by the row's earlier audits (kept under `superseded`). This receipt is not a re-audit of them."
+	},
+	"context_sha256": "b623a3c1a05c22485fc1bd8d8b2aa3f8f71cdc067ec0a7f1204f12155ab7558a",
+	"english": {
+		"ui.teamBridge.list.error_stale": {
+			"value": "Couldn't refresh. Showing your last read.",
+			"clause_1": "Couldn't refresh - the read failed. Names no cause, because the client cannot prove one.",
+			"clause_2": "Showing your last read - the rows painted below are the reader's own last read, so the notice never contradicts what is visible.",
+			"context_role": "stale-list notice",
+			"context_tone": "factual, reassuring, no blame",
+			"context_length": "Two short clauses.",
+			"placeholders": []
+		}
+	},
+	"checks": {
+		"placeholders": "No interpolation arguments in the English source; every locale carries none. No dropped, renamed or reordered placeholder is possible here, and none was found.",
+		"key_sets": "Each locale file is key-complete against English (255 keys); ledger-assemble.mjs re-checks this before writing a row.",
+		"unicode": "NFC verified for all eight values; no bidi control characters in the ur value (the render layer applies FSI/PDI); no leading, trailing or double spaces anywhere.",
+		"width": "The English sidecar sets no numeric maxCells for this key ('Two short clauses'). Measurements are stated per locale; no rendered-fit claim is made.",
+		"method": "Each translation was read against the English value, the English context note, the namespace's sibling list.* strings, and the shipped corpus of the same locale for the two concepts in play (the refresh action and 'the last read'). Corpus counts quoted below are value counts in that locale's catalogues.",
+		"meaning": "Accurate. 'lần đọc gần nhất' is the exact shipped phrase for 'the last read' (ui.chat.device x3), so the noun choice is inherited, not invented.",
+		"register": "bạn (của bạn), matching the vi guide.",
+		"terminology": "làm mới is the shipped vi refresh verb (ui.chat.analytics 'Đang làm mới', ui.chat.pickers); 'đang hiển thị' is the shipped progressive (ui.canvas).",
+		"punctuation": "No space before punctuation; two sentences; sentence case.",
+		"length": "59 code points vs 43 English — vi runs long by the guide's own note and this stays inside the rail's two-clause shape.",
+		"consistent_with": "ui.chat.device.sentence.remote_did_not_answer '… không phản hồi lần đọc gần nhất.', ui.canvas.use_file_freshness.no_longer_on_disk 'Tệp không còn trên đĩa — đang hiển thị phiên bản đã đọc gần nhất.', ui.teamBridge.list.error 'Không tải được danh sách cuộc trò chuyện.'"
+	},
+	"audit_notes_not_execution_log": "The notes and findings are this auditor's linguistic judgement, not command output. Corpus counts were read from the catalogue files on disk.",
+	"audit_id": "teambridge-pr1489-error-stale-audit-5378ea6efd4b-vi",
+	"instance": "5378ea6efd4b-vi",
+	"instance_note": "Auditor session 5378ea6efd4b with a per-locale suffix; one audit run per locale, the same session auditing all seven (precedent: c6f6f47ef39d-r2-<locale>).",
+	"locale": "vi",
+	"result": "clean",
+	"translator": {
+		"agent": "translator",
+		"session": "not recorded by the commit",
+		"model": "not supplied by the commit",
+		"commit": "548b9b1010d7a9cf034f1187e5dec75e5ab0922c",
+		"method": "LLM reasoning in the PR authoring session; no MT service or translation API (no such dependency in the tree)"
+	},
+	"sha256": {
+		"en": "5e61b022598522252e7917780fb4490e9595161d2f1599f1c991d0a921a807ea",
+		"vi": "ac67baab1655099c92d7d55d3893c23441a373259b9f7a4943622e017132841a"
+	},
+	"translation": {
+		"value": "Không làm mới được. Đang hiển thị lần đọc gần nhất của bạn.",
+		"clause_map": "Clause 1 = failure with 'được'. Clause 2 = progressive 'Đang hiển thị' + 'lần đọc gần nhất của bạn' ('your most recent read')."
+	},
+	"findings": [
+		{
+			"severity": "info",
+			"id": "VI-I1",
+			"detail": "The canvas sibling keeps an explicit noun ('phiên bản đã đọc gần nhất'); this key drops it because the English does ('your last read'). Both readings are correct; the shorter form matches the English more closely, so no change is proposed."
+		}
+	],
+	"prior_findings_rechecked": "The row's earlier audits stay under `superseded`; this run re-read only the one-key delta and the sibling strings it must agree with, per the round rule that a delta audit does not re-audit unchanged bytes.",
+	"references": {
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+		},
+		"style_guide": {
+			"path": "~/local-operator/i18n/style-guides/vi.md",
+			"sha256": "e4901497ed553e2b2ae4a2660bf776adb787b89e11d7eb0f8d08f3da4b227888"
+		},
+		"docs_I18N": {
+			"path": "docs/I18N.md",
+			"sha256": "9a4bde8d1c161286160be4a4ae1c7655615dbf39047052550b725a3da2eb00e2"
+		},
+		"ledger_rules": {
+			"path": "scripts/i18n/ledger-rules.mjs",
+			"sha256": "199816433c5a2ce0b0c0d107f8bca2afef13c329b18051a84c1f824824c91aa6"
+		},
+		"ledger_assemble": {
+			"path": "scripts/i18n/ledger-assemble.mjs",
+			"sha256": "66ec03de791b515424b8d9a93094315111c179c149b35a5323d80c9c38644657"
+		}
+	},
+	"evidence_record": "i18n/audits/evidence/vi/ui.teamBridge/teambridge-pr1489-error-stale-audit-5378ea6efd4b-vi/record.json",
+	"limitations": "Auditor competence: limited (A2-B1 reading). Verdict confidence: medium on meaning, terminology and structure; LOW on native idiom. This audit can assert that the value carries the shipped phrase 'lần đọc gần nhất' and the right progressive, but a native vi reader should confirm register before release claims."
+}

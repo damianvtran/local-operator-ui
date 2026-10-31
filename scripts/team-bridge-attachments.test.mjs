@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { createServer } from "node:http";
 import Module from "node:module";
-import { test } from "node:test";
+import { beforeEach, test } from "node:test";
 import { build } from "esbuild";
 import { JSDOM } from "jsdom";
 import React, { act } from "react";
@@ -24,7 +24,24 @@ const dom = new JSDOM("<!doctype html><div id='root'></div>", {
 	url: "http://localhost/",
 });
 globalThis.window = dom.window;
+
+/*
+ * THE DESKTOP BRIDGE, INERT. The page mounts the shared composer, whose mount
+ * registers the global dictation chord (`use-speech-to-text-manager.ts` reads
+ * `window.electron.ipcRenderer`), so a DOM probe needs the preload surface to
+ * exist. A call that answers nothing is the honest stand-in for a bridge this rig
+ * does not have - `agents-composer-mount.test.mjs` states the same stub.
+ */
+dom.window.electron = {
+	ipcRenderer: {
+		on: () => () => {},
+		removeListener: () => {},
+		send: () => {},
+		invoke: async () => ({}),
+	},
+};
 globalThis.document = dom.window.document;
+
 globalThis.localStorage = dom.window.localStorage;
 for (const name of [
 	"HTMLElement",
@@ -37,9 +54,27 @@ for (const name of [
 	"HTMLInputElement",
 	"HTMLButtonElement",
 	"HTMLTextAreaElement",
+	"MouseEvent",
+	"KeyboardEvent",
+	"FocusEvent",
+	"FileReader",
 ])
 	globalThis[name] = dom.window[name];
+// JSDOM has no layout observers; the shared composer's @mention overlay needs
+// the browser API to mount, but these tests assert its state rather than layout.
+globalThis.ResizeObserver ??= class {
+	observe() {}
+	unobserve() {}
+	disconnect() {}
+};
 globalThis.getComputedStyle = dom.window.getComputedStyle;
+globalThis.requestAnimationFrame = (callback) =>
+	setTimeout(() => callback(0), 0);
+globalThis.cancelAnimationFrame = clearTimeout;
+Object.defineProperty(dom.window.document, "visibilityState", {
+	value: "hidden",
+});
+Object.defineProperty(dom.window.document, "hidden", { value: true });
 // JSDOM has no object URLs; the blob cache needs a create/revoke pair it can count.
 let urlSeq = 0;
 const liveUrls = new Set();
@@ -96,15 +131,41 @@ const bundle = await build({
  export {TeamBridgeAttachmentChip} from "./src/renderer/src/features/team-bridge/team-bridge-attachments";
  export {t} from "./src/renderer/src/shared/i18n";
  export {browserDraftStorage} from "./src/renderer/src/shared/store/team-bridge-draft-account";
- export {TeamBridgeApi} from "./src/renderer/src/shared/api/local-operator/team-bridge-api";`,
+ export {TeamBridgeApi} from "./src/renderer/src/shared/api/local-operator/team-bridge-api";
+ export {useConversationInputStore} from "./src/renderer/src/shared/store/conversation-input-store";`,
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
 	format: "cjs",
 	platform: "node",
-	external: ["react", "react-dom"],
+	external: ["@tanstack/react-query", "react", "react-dom"],
 	plugins: [sidebarStub],
-	loader: { ".css": "empty" },
+	// Vite's `import.meta.env` is read at IMPORT time by the app's config loader,
+	// which the shared composer's chain pulls in (`load-config.ts`): bundling for
+	// node leaves it undefined and the module throws before a single assertion runs
+	// (`browser-chrome.test.mjs` records the same trap). The URL is dead on purpose.
+	define: { "import.meta.env": "__viteEnv" },
+	/*
+	 * BOTH SHIMS THE APP'S BUNDLER GIVES THE SAME MODULES. `__viteEnv` is Vite's
+	 * `import.meta.env`; `require` is what a CJS dependency inside an ESM bundle
+	 * needs (the composer's graph keeps one), resolved from THIS file the way the
+	 * app resolves it. `agents-composer-mount.test.mjs` states the same recipe.
+	 */
+	// CJS output: `require` is already there, so only Vite's env needs defining.
+	banner: { js: "const __viteEnv = {};" },
+	// The page mounts the SHARED composer now, which pulls the brand mark (.png).
+	// Bundling it keeps these DOM/state probes on the real component tree; a
+	// `dataurl` rather than a file keeps the harness asset-free.
+	loader: {
+		".css": "empty",
+		".svg": "text",
+		".png": "dataurl",
+		".webp": "dataurl",
+		".ttf": "empty",
+		".woff": "empty",
+		".woff2": "empty",
+		".eot": "empty",
+	},
 	tsconfig: "tsconfig.app.json",
 	write: false,
 });
@@ -114,6 +175,22 @@ compiled.filename = compiledPath;
 compiled.paths = Module._nodeModulePaths(process.cwd());
 compiled._compile(bundle.outputFiles[0].text, compiled.filename);
 const m = compiled.exports;
+// The suite deliberately changes locale in one case; pin the source language
+// here so each later page reads the same English control labels.
+m.setLocale("en");
+/*
+ * A CLEAN COMPOSER BETWEEN CASES. The box's text and chips live in
+ * `conversation-input-store`, which is module-global and keyed by the bridge
+ * composer key - and several page cases mount the same account/scope/target, so a
+ * chip staged by one case was still on the box in the next (`localStorage.clear()`
+ * empties the persisted copy, never the live store). Resetting the rows here keeps
+ * each case's staged set its own; without it a "one chip" assertion reads the
+ * leftovers of its predecessor.
+ */
+beforeEach(() => {
+	droppedSeq = 0;
+	m.useConversationInputStore.setState({ inputByConversation: {} });
+});
 
 /* A 1x1 PNG and a 1x1 JPEG header: real magic numbers, no fixture files. */
 const PNG = Uint8Array.from(
@@ -509,8 +586,27 @@ test("first-send scheduling stages held images into the new conversation BEFORE 
 
 let mediaCalls = [];
 let requestCalls = [];
+/*
+ * ONE PATH PER DROPPED FILE. A real Finder drop of two files yields two paths, and
+ * the schedule success path removes "the paths this schedule carried" by matching
+ * them - so a fixture handing every file one path made that removal eat a chip the
+ * request never carried. The counter keeps the fixture shaped like the desktop
+ * preload it stands in for.
+ */
+let droppedSeq = 0;
 let mediaAnswer = () => ({ status: 404, kind: "error", detail: "no" });
+/*
+ * THE DESKTOP PRELOAD'S TWO FILE CALLS, which the shared composer's drop path and
+ * the bridge's staged upload both use. A real Finder drop carries a PATH
+ * (`getPathForFile`), and the bridge reads those bytes only when a send binds them
+ * (`readFile`); a fixture without them sends the composer down its "dragged out of
+ * another page" data-URL route and cannot answer the upload at all.
+ */
+const PNG_BASE64 =
+	"iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
 window.api = {
+	getPathForFile: () => `/fixtures/dropped-${++droppedSeq}.png`,
+	readFile: async () => ({ success: true, data: PNG_BASE64 }),
 	desktop: {
 		media: async (request, bytes) => {
 			mediaCalls.push({ request, size: bytes?.byteLength ?? 0 });
@@ -1324,10 +1420,20 @@ for (const [label, body] of [
 		const app = await mountPage(
 			pageProps({
 				target: { type: "person", accountId: "acct_b" },
+				/*
+				 * THE CONTAINER'S JOB, not the composer's: `sendBody` in production is
+				 * what turns the staged paths into hub ids (`stagedForSend`), so a fake
+				 * that never calls `stageHeld` proves nothing about the picture reaching
+				 * the hub. This is the same sequence R1-02 states for a draft that creates
+				 * its conversation first.
+				 */
 				onSend: async (sent, _clientRef, attachments) => {
+					const ids = attachments?.stageHeld
+						? await attachments.stageHeld("bcv_dm", "org_page")
+						: [];
 					sends.push({
 						body: sent,
-						ids: [...(attachments?.ids ?? [])],
+						ids: [...ids],
 						held: Boolean(attachments?.stageHeld),
 					});
 				},
@@ -1335,16 +1441,43 @@ for (const [label, body] of [
 		);
 		if (body) await typeBody(app.element, body);
 		await dropImage(app.element);
+		/*
+		 * WHAT THE OLD ASSERTION PINNED: the drop uploaded immediately, so `mediaCalls`
+		 * named the DM before any send - true while the bridge drew its own chip strip
+		 * and its hook owned the upload.
+		 *
+		 * THE NEW TRUTH: the chips are the SHARED composer's, and a chip is a local file
+		 * until a request binds it - the page's `stagedForSend` uploads INSIDE the send
+		 * (`team-bridge-page.tsx`: "EVERY request uploads inside itself"). So the drop
+		 * stages and nothing reaches the relay yet; the send is what uploads into
+		 * `bcv_dm`. A bespoke textarea has no staging store and would upload at drop,
+		 * failing this pair.
+		 */
 		assert.deepEqual(
-			mediaCalls.map((call) => call.request.conversationId),
-			["bcv_dm"],
-			"the drop uploads straight into the existing DM",
+			mediaCalls,
+			[],
+			"the drop stages the picture; nothing is uploaded yet",
+		);
+		assert.equal(
+			app.element.querySelectorAll("[data-attachment-id]").length,
+			1,
+			"the staged picture is the composer's own chip",
 		);
 		const send = sendButton(app.element);
 		assert.ok(send && !send.disabled, "send is enabled with a staged image");
 		await act(async () => send.click());
 		await settle();
-		assert.deepEqual(sends, [{ body, ids: ["batt_p1"], held: false }]);
+		assert.deepEqual(
+			mediaCalls.map((call) => call.request.conversationId),
+			["bcv_dm"],
+			"the send uploads into the existing DM",
+		);
+		assert.deepEqual(sends, [{ body, ids: ["batt_p1"], held: true }]);
+		assert.equal(
+			app.element.querySelectorAll("[data-attachment-id]").length,
+			0,
+			"a bound chip leaves the composer with the message",
+		);
 		await app.close();
 	});
 }
@@ -1413,8 +1546,11 @@ test("page R2-01: an image dropped DURING a send stays in the composer and the d
 	const app = await mountPage(
 		pageProps({
 			target,
-			onSend: (sent, _clientRef, attachments) => {
-				sends.push({ body: sent, ids: [...(attachments?.ids ?? [])] });
+			onSend: async (sent, _clientRef, attachments) => {
+				// The container's own sequence: stage the paths into the conversation the
+				// request addresses, then post - and stay in flight until the test settles it.
+				const ids = await attachments.stageHeld("bcv_dm", "org_page");
+				sends.push({ body: sent, ids: [...ids] });
 				return new Promise((resolve) => {
 					release = resolve;
 				});
@@ -1426,27 +1562,50 @@ test("page R2-01: an image dropped DURING a send stays in the composer and the d
 	await act(async () => sendButton(app.element).click());
 	await settle();
 	assert.deepEqual(sends, [{ body: "first", ids: ["batt_d1"] }]);
+	assert.equal(
+		mediaCalls.length,
+		1,
+		"the send uploaded the picture it carried",
+	);
 	// The author keeps working while the POST is in flight.
 	await dropImage(app.element);
-	assert.equal(mediaCalls.length, 2, "the mid-send drop uploads at once");
+	/*
+	 * WHAT THE OLD ASSERTIONS PINNED: a mid-flight drop uploaded at once (`mediaCalls`
+	 * grew) and left a `ready` chip in the bridge's own strip, with the hub's
+	 * descriptor in the journal's `attachments` array.
+	 *
+	 * THE NEW TRUTH: the composer's chips are local files until a request binds them,
+	 * so a drop during an in-flight send STAGES and uploads nothing - the next send is
+	 * what would bind it. What must survive is the staged picture itself: one chip on
+	 * the box, and that path persisted in `conversation-input-store` (the one owner of
+	 * composer content), which is what a remount reads back.
+	 */
+	assert.equal(
+		mediaCalls.length,
+		1,
+		"the mid-send drop stages; nothing uploads until a send carries it",
+	);
 	await act(async () => release());
 	for (let i = 0; i < 5; i += 1) await settle();
-	const chips = [...app.element.querySelectorAll("[data-attachment-chip]")].map(
-		(chip) => chip.dataset.attachmentChip,
+	assert.equal(
+		app.element.querySelectorAll("[data-attachment-id]").length,
+		1,
+		"only the sent image left the composer; the mid-send drop stayed",
 	);
-	assert.deepEqual(chips, ["ready"], "only the sent image left the strip");
-	const entry = Object.keys(localStorage)
-		.filter((key) => key.includes("org_page"))
-		.map(
-			(key) => JSON.parse(localStorage.getItem(key))[m.draftTargetKey(target)],
-		)
-		.find(Boolean);
+	const stagedRow = Object.values(
+		JSON.parse(localStorage.getItem("conversation-input-store") ?? "{}").state
+			?.inputByConversation ?? {},
+	).find((row) => row?.attachments?.length);
 	assert.deepEqual(
-		entry?.attachments?.map((row) => row.id),
-		["batt_d2"],
-		"the unsent image survives in the draft",
+		stagedRow?.attachments?.map((attachment) => attachment.path) ?? [],
+		["/fixtures/dropped-2.png"],
+		"the unsent image survives in the composer's durable row",
 	);
-	assert.equal(entry?.body ?? "", "", "the sent text does not come back");
+	assert.equal(
+		stagedRow?.currentInput ?? "",
+		"",
+		"the sent text does not come back",
+	);
 	await app.close();
 });
 
@@ -1466,8 +1625,17 @@ test("page R3-01: an image dropped DURING a schedule stays in the composer and t
 		pageProps({
 			target,
 			onSend: async () => {},
-			onSchedule: (_body, _clientRef, _sendAt, _cid, _ack, attachments) => {
-				schedules.push([...(attachments?.ids ?? [])]);
+			onSchedule: async (
+				_body,
+				_clientRef,
+				_sendAt,
+				_cid,
+				_ack,
+				attachments,
+			) => {
+				// `scheduleBody` stages inside the schedule the same way a send does.
+				const ids = await attachments.stageHeld("bcv_dm", "org_page");
+				schedules.push([...ids]);
 				return new Promise((resolve) => {
 					release = resolve;
 				});
@@ -1501,53 +1669,51 @@ test("page R3-01: an image dropped DURING a schedule stays in the composer and t
 	await act(async () => action().click());
 	await settle();
 	assert.deepEqual(schedules, [["batt_s1"]]);
+	assert.equal(
+		mediaCalls.length,
+		1,
+		"the schedule uploaded the image it carried",
+	);
 	await dropImage(app.element);
-	assert.equal(mediaCalls.length, 2, "the mid-schedule drop uploads at once");
+	/*
+	 * WHAT THE OLD ASSERTIONS PINNED: a mid-flight drop uploaded at once (`mediaCalls`
+	 * grew) and left a `ready` chip in the bridge's own strip, with the hub's
+	 * descriptor in the journal's `attachments` array.
+	 *
+	 * THE NEW TRUTH: the composer's chips are local files until a request binds them,
+	 * so a drop during an in-flight send STAGES and uploads nothing - the next send is
+	 * what would bind it. What must survive is the staged picture itself: one chip on
+	 * the box, and that path persisted in `conversation-input-store` (the one owner of
+	 * composer content), which is what a remount reads back.
+	 */
+	assert.equal(
+		mediaCalls.length,
+		1,
+		"the mid-schedule drop stages; nothing uploads until a schedule carries it",
+	);
 	await act(async () => release());
 	for (let i = 0; i < 5; i += 1) await settle();
-	const chips = [...app.element.querySelectorAll("[data-attachment-chip]")].map(
-		(chip) => chip.dataset.attachmentChip,
+	assert.equal(
+		app.element.querySelectorAll("[data-attachment-id]").length,
+		1,
+		"only the scheduled image left the composer",
 	);
-	assert.deepEqual(chips, ["ready"], "only the reserved image left the strip");
-	const entry = Object.keys(localStorage)
-		.filter((key) => key.includes("org_page"))
-		.map(
-			(key) => JSON.parse(localStorage.getItem(key))[m.draftTargetKey(target)],
-		)
-		.find(Boolean);
+	const stagedRow = Object.values(
+		JSON.parse(localStorage.getItem("conversation-input-store") ?? "{}").state
+			?.inputByConversation ?? {},
+	).find((row) => row?.attachments?.length);
 	assert.deepEqual(
-		entry?.attachments?.map((row) => row.id),
-		["batt_s2"],
-		"the unscheduled image survives in the draft",
+		stagedRow?.attachments?.map((attachment) => attachment.path) ?? [],
+		["/fixtures/dropped-2.png"],
+		"the unscheduled image survives in the composer's durable row",
 	);
 	await app.close();
 });
 
-test("page R3-01: with no hub capability, restored chips block the send with the strip note only", async () => {
+test("page R3-01: with no hub capability, a staged picture blocks the send with the strip note only", async () => {
 	localStorage.clear();
 	mediaCalls = [];
 	const target = { type: "person", accountId: "acct_b" };
-	localStorage.setItem(
-		m.draftStorageKey("acct_a", "org_page"),
-		JSON.stringify({
-			[m.draftTargetKey(target)]: {
-				target,
-				body: "hello",
-				clientRef: "restored-ref",
-				attachments: [
-					{
-						id: "batt_restored1",
-						conversationId: "bcv_dm",
-						mime: "image/png",
-						size: 70,
-						width: 1,
-						height: 1,
-						expiresAt: "2099-01-01T00:00:00Z",
-					},
-				],
-			},
-		}),
-	);
 	const sends = [];
 	const app = await mountPage(
 		pageProps({
@@ -1559,12 +1725,27 @@ test("page R3-01: with no hub capability, restored chips block the send with the
 		}),
 	);
 	await settle();
-	assert.equal(
-		app.element.querySelectorAll("[data-attachment-chip]").length,
-		1,
-	);
+	/*
+	 * WHAT THE OLD CASE PINNED: chips RESTORED from the bridge's own descriptor
+	 * journal, because the bespoke composer drew hub descriptors it had persisted.
+	 *
+	 * THE NEW TRUTH: a composer chip is a local PATH in `conversation-input-store`;
+	 * hub descriptors are the message surface's business, not the box's. The claim
+	 * that survives - and the reason this case exists - is that a staged picture
+	 * against a hub without the capability cannot be sent, is refused in the strip's
+	 * own words, and raises no "marked with an error" alert. A staged path is the only
+	 * shape the box has now, so it is what the case stages.
+	 */
 	const field = app.element.querySelector("textarea");
-	// Enter submits; the blocked path raises `imagesBlocked`.
+	assert.ok(field, "the composer renders");
+	await typeBody(app.element, "hello");
+	await dropImage(app.element);
+	assert.equal(
+		app.element.querySelectorAll("[data-attachment-id]").length,
+		1,
+		"the picture is staged on the box",
+	);
+	// Enter submits; the page's capability guard refuses the whole payload.
 	await act(async () =>
 		field.dispatchEvent(
 			new window.KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
@@ -1576,16 +1757,32 @@ test("page R3-01: with no hub capability, restored chips block the send with the
 		[],
 		"nothing is sent to a hub that cannot take images",
 	);
-	const alerts = [...app.element.querySelectorAll('[role="alert"]')].map(
-		(node) => node.textContent,
-	);
 	assert.deepEqual(
-		alerts,
+		mediaCalls,
 		[],
-		"no 'marked with an error' alert without errors",
+		"and nothing is uploaded either: the refusal precedes staging",
 	);
-	const status = app.element.querySelector('[role="status"]')?.textContent;
-	assert.equal(status, "Images can’t be sent in this organization yet.");
+	/*
+	 * WHAT THE OLD ASSERTION PINNED: no alert at all, because the bespoke strip
+	 * carried the note in a `role="status"` line of its own.
+	 *
+	 * THE NEW TRUTH: the sentence is the PAGE's refusal (`sendRefusal.kind ===
+	 * "capability"`), drawn in the composer's error paragraph, and it is the one
+	 * sentence this state may say - not the generic "marked with an error" copy, and
+	 * not a second sentence stacked beside it. Asserting the exact set is what keeps
+	 * a future generic banner from slipping in as "still one alert".
+	 */
+	assert.deepEqual(
+		[...app.element.querySelectorAll('[role="alert"]')].map(
+			(node) => node.textContent,
+		),
+		["Images can’t be sent in this organization yet."],
+	);
+	assert.equal(
+		app.element.querySelectorAll("[data-attachment-id]").length,
+		1,
+		"a refused send leaves the picture staged for a hub that later allows it",
+	);
 	await app.close();
 });
 
@@ -1684,11 +1881,6 @@ test(
 	"page R4-02: opening Drafts or Scheduled closes an open thread",
 	{
 		timeout: 30_000,
-		// HELD IN THIS BUILD: main gates the thread surface at the view's front
-		// door (`TEAM_BRIDGE_THREADS_SHIPPED_IN_THIS_BUILD = false`), so this
-		// export renders null and the pane's scroll behaviour is unreachable.
-		// Re-enable with the thread surface; nothing here is attachment-specific.
-		skip: "thread surface is held in this build (TEAM_BRIDGE_THREADS_SHIPPED_IN_THIS_BUILD)",
 	},
 	async () => {
 		for (const label of ["Drafts", "Scheduled"]) {
@@ -1700,6 +1892,10 @@ test(
 			const app = await mountPage(
 				pageProps({
 					target: { type: "conversation", id: "bcv_dm" },
+					/* The thread lane is capability-gated; this fixture exercises the
+					   page's own close-on-quick-view wiring, so it states the enabled
+					   capability rather than relying on a default. */
+					threadsCapabilityState: "enabled",
 					threadLink: {
 						tenantId: "org_page",
 						conversationId: "bcv_dm",
@@ -1820,11 +2016,25 @@ test("denied browser storage: attachment draft and descriptor paths render, read
 		await settle();
 		assert.ok(app.element.querySelector("textarea"), "the composer renders");
 		await dropImage(app.element);
-		assert.equal(mediaCalls.length, 1, "the image still uploads");
-		const chips = [
-			...app.element.querySelectorAll("[data-attachment-chip]"),
-		].map((chip) => chip.dataset.attachmentChip);
-		assert.deepEqual(chips, ["ready"], "the chip is usable in memory");
+		/*
+		 * WHAT THE OLD ASSERTION PINNED: the drop uploaded at once and left a `ready`
+		 * hub-descriptor chip in the bridge's strip.
+		 *
+		 * THE NEW TRUTH: the drop stages a local path on the composer, and the upload
+		 * happens when a send carries it. With storage denied the store still holds the
+		 * chip IN MEMORY - the thing this case is about - so the assertion is the
+		 * composer's own chip, not a relay call.
+		 */
+		assert.equal(
+			mediaCalls.length,
+			0,
+			"nothing uploads until a send carries it",
+		);
+		assert.equal(
+			app.element.querySelectorAll("[data-attachment-id]").length,
+			1,
+			"the chip is usable in memory",
+		);
 		list = await renderList([
 			message({
 				body: "",
@@ -1866,7 +2076,31 @@ test("denied browser storage: attachment draft and descriptor paths render, read
 			Object.defineProperty(globalThis, "localStorage", globalDescriptor);
 		else Reflect.deleteProperty(globalThis, "localStorage");
 	}
-	assert.equal(localStorage.length, 0, "nothing was persisted");
+	/*
+	 * WHAT THE OLD ASSERTION PINNED: an empty `localStorage`, because the bridge wrote
+	 * its attachment descriptors itself.
+	 *
+	 * THE NEW TRUTH: the shared composer's store persists its OWN row (an empty one
+	 * after the box clears), and that row is not attachment data. The claim this case
+	 * exists for is narrower and still exact: no PICTURE was persisted - no row holds
+	 * an attachment, in the composer's store or in the bridge's draft journal.
+	 */
+	for (const key of ["conversation-input-store"]) {
+		const stored = JSON.parse(localStorage.getItem(key) ?? "{}");
+		for (const row of Object.values(stored.state?.inputByConversation ?? {}))
+			assert.deepEqual(
+				row?.attachments ?? [],
+				[],
+				`${key} persisted no staged picture`,
+			);
+	}
+	assert.deepEqual(
+		Object.keys(localStorage).filter((key) =>
+			key.startsWith("teamBridge.drafts."),
+		),
+		[],
+		"no bridge draft row (the descriptor path) was written",
+	);
 
 	// SSR: no `window` at all.
 	const savedWindow = globalThis.window;
@@ -2074,11 +2308,6 @@ test(
 	"F9 thread pane: opens at the newest reply, follows when pinned, never yanks a reader who scrolled up",
 	{
 		timeout: 30_000,
-		// HELD IN THIS BUILD: main gates the thread surface at the view's front
-		// door (`TEAM_BRIDGE_THREADS_SHIPPED_IN_THIS_BUILD = false`), so this
-		// export renders null and the pane's scroll behaviour is unreachable.
-		// Re-enable with the thread surface; nothing here is attachment-specific.
-		skip: "thread surface is held in this build (TEAM_BRIDGE_THREADS_SHIPPED_IN_THIS_BUILD)",
 	},
 	() =>
 		withScrollGeometry(async () => {
@@ -2312,11 +2541,6 @@ test(
 	"r8 m2: Load more replies keeps the reader's place instead of jumping past the new page",
 	{
 		timeout: 30_000,
-		// HELD IN THIS BUILD: main gates the thread surface at the view's front
-		// door (`TEAM_BRIDGE_THREADS_SHIPPED_IN_THIS_BUILD = false`), so this
-		// export renders null and the pane's scroll behaviour is unreachable.
-		// Re-enable with the thread surface; nothing here is attachment-specific.
-		skip: "thread surface is held in this build (TEAM_BRIDGE_THREADS_SHIPPED_IN_THIS_BUILD)",
 	},
 	() =>
 		withScrollGeometry(async () => {

@@ -1,0 +1,144 @@
+{
+	"schema": 1,
+	"receipt_kind": "locale-audit (namespace-wide delta at a merge)",
+	"audit_id": "tb1482-merge-delta-audit-2026-10-29-zh-CN",
+	"date": "2026-10-29",
+	"instance": "tb1482mg-zh-cn-6eeefd82",
+	"instance_note": "One auditor run (2026-10-29) covering this merge's whole copy delta in zh-CN: the 30-key ui.ownerAudit namespace plus the single added ui.teamBridge.thread.not_available key and its context sidecar entry. The instance carries a per-locale suffix so every ledger row holds a distinct instance; the same receipt bytes back both rows of this locale, which is one run auditing two namespaces, not two audits.",
+	"auditor": "i18n-auditor",
+	"agent": "i18n-auditor",
+	"model": "kimi/k3.1-pro",
+	"model_provenance": "Harness preamble for this session read 'Model: anthropic/claude-opus-5-5'. Three sequential provider-quota fallbacks were then announced in-session (anthropic/claude-sonnet-5-5, openai/gpt-6-astra, kimi/k3.1-pro; reason each time 'provider failure: quota'), and kimi/k3.1-pro is the last model the harness announced, so that is the name recorded here rather than a guess. `lop config list` on this host still shows hosting=anthropic, model_name=claude-sonnet-5-5 as the configured default: the fallback chain, not the config, decided what executed these turns. No further switch notice was seen before these receipts were written, and the judgement here spans the whole chain.",
+	"independence": "Independent auditor: agent role i18n-auditor, a different agent from the translator (i18n-translator, per the translation records read here). None of the 31 audited strings was authored by this run. Five of them were FIXED by this run after the audit recorded them, at the operator's direction: es ui.ownerAudit.read_only (plural agreement), hi ui.ownerAudit.viewers_label and ui.ownerAudit.disclosure (label form and legal register), vi and zh-CN ui.teamBridge.thread.not_available (open vs access). Each fix is recorded in resolved_findings with before and after text, and every sha256 in this receipt names the POST-fix bytes now in the tree, so the receipt audits what ships rather than what preceded the fix. The ledger rows were written by scripts/i18n/ledger-assemble.mjs, never by hand. Every sha256 was recomputed from the files in this worktree.",
+	"status": "passed",
+	"locale": "zh-CN",
+	"integration": {
+		"repo": "damianvtran/local-operator-ui",
+		"branch": "feat/team-bridge-owner-audit-ui",
+		"worktree": "~/local-operator-ui/.worktrees/tb-1482-merge",
+		"head": "deec129a81282dbdacf5f14490cc94029fb1165d",
+		"merge_head": "2d13419f2257f89f944a6077f40918b1c70de528",
+		"merge_state": "merge of origin/main into the branch, uncommitted at audit time: conflicts already resolved, nothing staged by this run",
+		"note": "audited bytes are this working tree after this run's five copy fixes (listed in resolved_findings); this run wrote the catalogue fixes, its receipts, its evidence records and the ledger rows - it did not commit, push or merge"
+	},
+	"translator": {
+		"agent": "i18n-translator",
+		"model": "radient/auto",
+		"date": "2026-10-29",
+		"source": "per-locale translation records under i18n/audits/evidence/<locale>/ui.ownerAudit/teambridge-owner-audit-r2-* and .../ui.teamBridge/notavail-*"
+	},
+	"namespaces": {
+		"ui.ownerAudit": {
+			"namespace": "ui.ownerAudit",
+			"status": "passed",
+			"sha256": {
+				"en": "147de29a88573f22b144c09b6f94c8c5310e2e1d773d597a3ff44b2a2214efe1",
+				"zh-CN": "31b220b56fb05d78dd2edd399fee6ca8c2c7806c2c83cc24ceebbe7bddee7c19"
+			},
+			"context_sha256": "508f8a06ff1a6101fe8b25f658eda4c905bd583df35ac509883aa42b065ea10e",
+			"keys_audited": 30,
+			"findings": [
+				{
+					"severity": "NIT",
+					"key": "ui.ownerAudit.disclosure",
+					"current": "其他成员会被告知，智能体所有者可以审计此对话。",
+					"proposed": "其他成员被告知，智能体所有者可以审计此对话。",
+					"reason": "会 leans future ('will be told') where the source states a standing present fact and the other six locales render it in the present. 会被告知 is idiomatic habitual Chinese and the fact holds either way, so this is a preference; dropping 会 would track the English tense exactly."
+				},
+				{
+					"severity": "NIT",
+					"key": "ui.ownerAudit.viewers_label",
+					"current": "也可查看者",
+					"proposed": "也可查看的成员",
+					"reason": "Satisfies every hard requirement (label, 也 for 'also', no colon, no placeholder, reader excluded) and is compact, but 者 leaves the referent implicit, so the label can be read as 'viewable items' rather than the people whose names are listed below it; it also uses 查看 where the disclosure directly above says 阅读. Recorded, not churned."
+				},
+				{
+					"severity": "NIT",
+					"key": "ui.ownerAudit.left",
+					"current": "因此之后的消息不包含在内。",
+					"proposed": "因此之后的消息不在此审计内。",
+					"reason": "The shared second half (identical in ui.ownerAudit.removed, as the sidecar requires) leaves the container implicit where English says 'not in it' (the audit). 不包含在内 carries no antecedent binding the way a pronoun does; this is not the ru 'в нём' defect class because nothing asserts the conversation ended, so it is a clarity preference."
+				}
+			]
+		},
+		"ui.teamBridge": {
+			"namespace": "ui.teamBridge",
+			"status": "passed",
+			"sha256": {
+				"en": "5be0c55997d0a97f363ea54652eba52fbe908ae36dd94c5e48129ebf9ae4e470",
+				"zh-CN": "ea8f615203816e4f4c7fa0fc27bbc3bca290b980b4deb1cb3241ef87a11426a6"
+			},
+			"context_sha256": "9f939b02dd8e6433b57c0aa6a7e7c51334869f7490278c2538ce989e54b40b5f",
+			"keys_audited": 1,
+			"findings": [],
+			"scope": "only the one key this merge adds (ui.teamBridge.thread.not_available) and its context sidecar entry; the rest of ui.teamBridge is inherited byte-identically from origin/main, whose row this receipt does not re-audit"
+		}
+	},
+	"checks": {
+		"placeholders": "every ui.ownerAudit sidecar entry declares placeholders {}; the teamBridge key declares {}; no target string in this delta contains { } or < >",
+		"plurals": "no ICU plural in this delta (all 31 keys are plain strings), so no locale plural category is exercised here",
+		"mechanical": "key sets equal to English in both namespaces; NFC; no bidi controls; no NBSP, double space or leading/trailing space; no Latin run in hi/ru/ur/zh-CN; no Devanagari in ur and no Arabic script in hi",
+		"terms": "product term for the chief of staff identical in title, agent and own, and consistent with the locale's ui.teamBridge ('chief.fallback', 'section.chiefs', 'thread.intro_chief'); member and archive terms in the teamBridge key match that locale's ui.teamBridge.member.count and ui.teamBridge.archive.list",
+		"sidecar": "the en context sidecar for thread.not_available was read in full: role, tone ('never accusatory'), length (two short sentences), placeholders {} and the note requiring both reasons without revealing which and forbidding any implication that the conversation does not exist - each target was checked against those four requirements individually, not against the English wording"
+	},
+	"scope": "Merged copy delta in zh-CN: the whole ui.ownerAudit namespace (30 keys) and the one added ui.teamBridge key. Strings unchanged by this merge were checked for consistency with the delta (register, product terms) and are covered by their own prior receipts, which this one does not re-derive.",
+	"references": {
+		"previous_receipts_this_workspace": {
+			"ui.ownerAudit": "i18n/audits/evidence/zh-CN/ui.ownerAudit/teambridge-owner-audit-r2-*",
+			"ui.teamBridge": "i18n/audits/evidence/zh-CN/ui.teamBridge/tbm-notavail-merge-20261029-zh-CN",
+			"note": "their target and English hashes were re-derived here and match these bytes; this receipt supersedes neither, it re-audits the same bytes at whole-namespace scope"
+		},
+		"style_guide": "~/local-operator/i18n/style-guides/zh-CN.md",
+		"glossary": "~/local-operator/i18n/glossary.md"
+	},
+	"findings": [
+		{
+			"severity": "NIT",
+			"key": "ui.ownerAudit.disclosure",
+			"current": "其他成员会被告知，智能体所有者可以审计此对话。",
+			"proposed": "其他成员被告知，智能体所有者可以审计此对话。",
+			"reason": "会 leans future ('will be told') where the source states a standing present fact and the other six locales render it in the present. 会被告知 is idiomatic habitual Chinese and the fact holds either way, so this is a preference; dropping 会 would track the English tense exactly."
+		},
+		{
+			"severity": "NIT",
+			"key": "ui.ownerAudit.viewers_label",
+			"current": "也可查看者",
+			"proposed": "也可查看的成员",
+			"reason": "Satisfies every hard requirement (label, 也 for 'also', no colon, no placeholder, reader excluded) and is compact, but 者 leaves the referent implicit, so the label can be read as 'viewable items' rather than the people whose names are listed below it; it also uses 查看 where the disclosure directly above says 阅读. Recorded, not churned."
+		},
+		{
+			"severity": "NIT",
+			"key": "ui.ownerAudit.left",
+			"current": "因此之后的消息不包含在内。",
+			"proposed": "因此之后的消息不在此审计内。",
+			"reason": "The shared second half (identical in ui.ownerAudit.removed, as the sidecar requires) leaves the container implicit where English says 'not in it' (the audit). 不包含在内 carries no antecedent binding the way a pronoun does; this is not the ru 'в нём' defect class because nothing asserts the conversation ended, so it is a clarity preference."
+		}
+	],
+	"resolved_findings": [
+		{
+			"severity": "MINOR",
+			"key": "ui.teamBridge.thread.not_available",
+			"fixed": true,
+			"fixed_from": "你无法打开此对话。你可能不是对话成员，也可能该对话已归档。",
+			"current": "你无法访问此对话。你可能不是该对话的成员，也可能该对话已归档。",
+			"proposed": "你无法访问此对话。你可能不是该对话的成员，也可能该对话已归档。",
+			"fix": "Applied in this round: '无法打开' (cannot open) -> '无法访问' (cannot access), and the bare compound 对话成员 -> 该对话的成员 in the same line. Only that value changed; the zh-CN context sidecar and every other zh-CN key were untouched.",
+			"reason": "'无法打开' rendered 'open' as the interface action and read as a load failure, where this locale's failure strings use '无法加载' (ui.teamBridge.thread.error, ui.teamBridge.archive.list.error); the source asserts a permission state. '访问' is this locale's access verb and matches the access framing of the other six locales."
+		},
+		{
+			"severity": "NIT",
+			"key": "ui.teamBridge.thread.not_available",
+			"fixed": true,
+			"fixed_from": "你可能不是对话成员",
+			"current": "你可能不是该对话的成员",
+			"proposed": "你可能不是该对话的成员",
+			"fix": "Applied in the same edit as the MINOR above: both findings sit in one changed line.",
+			"reason": "'对话成员' was a bare compound where the source says 'a member of it'; 该…的 pins the referent to the conversation just named and settles the 此/该 mixing inside one string (此对话 … 该对话)."
+		}
+	],
+	"limitations": [
+		"No rendered frame: this role has no browser tool and the host is source-only, so fit is judged from character counts and the sidecars' length fields (no maxCells is declared for these keys).",
+		"No second independent audit of this delta at whole-namespace scope.",
+		"Neither the translator nor this auditor is a native speaker of these locales; the judgement is documented key by key so a native reviewer can check the reasoning rather than trust a verdict."
+	]
+}

@@ -35,6 +35,10 @@
  * one that speaks to the reader.
  */
 
+import {
+	JUMP_HIGHLIGHT_ATTR,
+	paintJumpHighlight,
+} from "@shared/lib/jump-highlight";
 import { scrollRegionToTop } from "@shared/lib/scroll";
 import { TRANSCRIPT_TOP_FADE_PX } from "@shared/lib/transcript-fade";
 import { revealRecord } from "./failed-row-jump";
@@ -44,11 +48,18 @@ import {
 	nextFrame,
 } from "./transcript-loader";
 
-/** The attribute the landing highlight paints on the revealed row. */
-export const JUMP_HIGHLIGHT_ATTR = "data-jump-highlight";
-
-/** How long the landing highlight stays (§D7: ~1.4 s, removed by timer). */
-export const JUMP_HIGHLIGHT_MS = 1400;
+/*
+ * The landing wash moved to `@shared/lib/jump-highlight` when Settings search
+ * needed the same cue; re-exported here because this module's own callers and
+ * `scripts/reveal-record.test.mjs` / `scripts/thread-search-overlay.test.mjs`
+ * import the names from the module that used to own them, and a rename with no
+ * behavioural change must not also be an import churn across five files.
+ */
+export {
+	JUMP_HIGHLIGHT_ATTR,
+	JUMP_HIGHLIGHT_MS,
+	paintJumpHighlight,
+} from "@shared/lib/jump-highlight";
 
 /** D7's MAX_AUTO_PAGES: how many pages the near path may fetch. */
 export const JUMP_MAX_PAGES = 12;
@@ -456,39 +467,4 @@ export function jumpToEntry(
 			},
 		});
 	});
-}
-
-/**
- * Timers already running per element, so a second jump to the same row
- * restarts the flash instead of letting the first jump's timer clear it early.
- */
-const highlightTimers = new WeakMap<HTMLElement, number>();
-
-/**
- * Flash the landed row: the attribute `styles/index.css` animates, removed
- * again after `JUMP_HIGHLIGHT_MS`.
- *
- * Reduced motion does not cancel the highlight — the stylesheet holds the wash
- * still for the same window instead (only the animation is gated on
- * `prefers-reduced-motion: no-preference`; the `[data-jump-highlight]` ground
- * sits outside it), because the flash is information before it is motion:
- * without it a reduced-motion reader arrives somewhere with no cue at all.
- */
-export function paintJumpHighlight(target: HTMLElement): void {
-	const running = highlightTimers.get(target);
-	if (running !== undefined) window.clearTimeout(running);
-	const alreadyLit = target.hasAttribute(JUMP_HIGHLIGHT_ATTR);
-	target.removeAttribute(JUMP_HIGHLIGHT_ATTR);
-	// One forced reflow, and only on a repeat: removing and re-adding the
-	// attribute inside one task is invisible to the style engine otherwise, and
-	// the animation would not restart.
-	if (alreadyLit) void target.offsetHeight;
-	target.setAttribute(JUMP_HIGHLIGHT_ATTR, "");
-	highlightTimers.set(
-		target,
-		window.setTimeout(() => {
-			highlightTimers.delete(target);
-			target.removeAttribute(JUMP_HIGHLIGHT_ATTR);
-		}, JUMP_HIGHLIGHT_MS),
-	);
 }

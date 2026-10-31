@@ -37,7 +37,14 @@ import {
 	useMutation,
 	useQuery,
 } from "@tanstack/react-query";
-import { useEffect, useSyncExternalStore } from "react";
+import {
+	useCallback,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+	useSyncExternalStore,
+} from "react";
 import type {
 	DesktopNotificationDetail,
 	DesktopNotificationItem,
@@ -46,7 +53,17 @@ import type {
 	DesktopNotificationsWriteResult,
 } from "../../../../shared/desktop-control-contract";
 import {
+	type FrozenNotificationSelection,
+	type NotificationSelectionPreview,
+	inverseNotificationVerb,
+	notificationSelectionScope,
+	selectedBySnapshot,
+} from "./notification-operations";
+import {
 	applyConfirmedToWindow,
+	dismissPlan,
+	editFactsForWrite,
+	isNewerNotification,
 	mergeWindowForReel,
 	prependSeenToWindow,
 } from "./notifications-model";
@@ -78,6 +95,14 @@ export const notificationKeys = {
 	factsRoot: ["desktop", "notifications", "facts"] as const,
 	/** The per-conversation reads (the drawer, the flag lines). */
 	sessionsRoot: ["desktop", "notifications", "session"] as const,
+	/**
+	 * One conversation's server-walked unread count (the drawer tab and the rail
+	 * door). Spelled here rather than at its one reader so an optimistic write can
+	 * move it with the rows: a key spelled in two places is the drift this module
+	 * exists to prevent.
+	 */
+	sessionUnread: (sessionId: string | null) =>
+		["desktop", "notifications", "session-unread", sessionId] as const,
 };
 
 /** Whether this backend serves the reel. One spelling for every surface. */
@@ -203,6 +228,7 @@ export function useNotificationsList(
 	useNotificationsFeedInvalidation();
 	const { client } = useOptionalQueryClient();
 	const facts = useNotificationsFacts(state, enabled);
+	const [windowResetAt, setWindowResetAt] = useState(0);
 	const answer = useInfiniteQuery({
 		queryKey: notificationKeys.list(state),
 		enabled,
@@ -227,7 +253,7 @@ export function useNotificationsList(
 			for (const page of answer.pages)
 				for (const item of page.items) {
 					const previous = items.get(item.id);
-					if (!previous || item.revision > previous.revision)
+					if (!previous || isNewerNotification(item, previous))
 						items.set(item.id, item);
 				}
 			return {
@@ -262,6 +288,9 @@ export function useNotificationsList(
 			facts.dataUpdatedAt as number,
 		),
 		newerCount: merged?.newerCount ?? 0,
+		// Only an explicit page-one reset moves the viewport; pagination and facts
+		// updates keep the operator's deep scroll position.
+		windowResetAt,
 		/** Back to top: page one again, with fresh facts, so the pill clears. */
 		/*
 		 * BACK TO TOP RESETS PAGE ONE (code round 8, Q13). Invalidating the window key
@@ -269,6 +298,7 @@ export function useNotificationsList(
 		 * one with fresh facts - and the pill's count is cleared with them.
 		 */
 		resetToTop: () => {
+			setWindowResetAt((at) => at + 1);
 			void client?.resetQueries({ queryKey: notificationKeys.list(state) });
 			return facts.refetch();
 		},
@@ -325,7 +355,7 @@ export function useSessionNotifications(
 			for (const page of answer.pages)
 				for (const item of page.items) {
 					const previous = items.get(item.id);
-					if (!previous || item.revision > previous.revision)
+					if (!previous || isNewerNotification(item, previous))
 						items.set(item.id, item);
 				}
 			return {
@@ -580,6 +610,17 @@ export function writeNotifications(
 export function useNotificationsWrite() {
 	const { client } = useOptionalQueryClient();
 	return useMutation({
+		/*
+		 * OPTIMISTIC, FROM THE SHARED CACHE (the drawer's "click twice" defect). The
+		 * row, the counts and the sidebar badge move on the click; the rollback is
+		 * removal of this gesture's intent. Remaining intents are projected over the
+		 * latest authoritative rows/counts, so refusal never undoes another write.
+		 */
+		onMutate: ({ verb, target }) =>
+			"items" in target
+				? beginOptimisticWrite(client, verb, target.items)
+				: undefined,
+		onError: (_error, _variables, rollback) => rollback?.(),
 		mutationFn: ({
 			verb,
 			target,
@@ -588,10 +629,64 @@ export function useNotificationsWrite() {
 			target: NotificationsTarget;
 		}) => writeNotifications(verb, target),
 		retry: retryDesktopMutation,
-		onSuccess: (result, variables) => {
-			applyConfirmedWrite(client, variables.verb, result.changed);
+		onSuccess: (result, variables, optimistic) => {
+			if (optimistic) {
+				optimistic.settle(result);
+				// The ledger has already applied revision-bound accepted rows. A second
+				// id-only edit here would clear a newer revision the server skipped.
+				void client?.invalidateQueries({
+					queryKey: notificationKeys.factsRoot,
+				});
+				void client?.invalidateQueries({
+					queryKey: notificationKeys.sessionFactsAll,
+				});
+				void client?.invalidateQueries({ queryKey: notificationKeys.count });
+			} else applyConfirmedWrite(client, variables.verb, result.changed);
 		},
 	});
+}
+
+/**
+ * THE SHARED READ-STATE API: the one door any surface uses to change read or
+ * dismissed state, so every list, count and the sidebar badge agree on the click.
+ *
+ *     const readState = useNotificationReadState();
+ *     readState.markRead(rows);   readState.markUnread(rows);
+ *     readState.dismiss(rows);    readState.restore(rows);
+ *
+ * Each takes the rows AS RENDERED (id + revision: core refuses a write naming an
+ * older revision, so a row revised since the render is never cleared by it) and
+ * returns the mutation's promise of the server's receipt, whose `changed` ids are
+ * what an Undo should invert. Behaviour, all inherited from `useNotificationsWrite`:
+ *
+ *  - OPTIMISTIC: rows, page-one facts, the per-conversation unread count and the
+ *    badge move before the server answers (`beginOptimisticWrite`);
+ *  - OWNED INTENTS: refusal/skipped receipts retire only that gesture; counts are
+ *    recomputed from authoritative baselines and remaining intents, not inverses;
+ *  - CONFIRMED RECONCILIATION: the receipt's `changed` ids are written into every
+ *    cached window and facts answer by the revision-bound intent ledger; later
+ *    fetches are reconciled by revision AND seq (read changes don't bump revision).
+ *
+ * This hook takes explicit rows. Frozen compact selections use beginOptimisticWrite
+ * with scope totals and settleCompact; that shared ledger never infers changed IDs
+ * from an aggregate count. Ask rows are authoritative-only; waitingUnreadDelta may
+ * project their badge, never waiting_count or a pending ask's actual decision.
+ */
+export function useNotificationReadState() {
+	const write = useNotificationsWrite();
+	return useMemo(() => {
+		const run =
+			(verb: NotificationsVerb) =>
+			(rows: readonly Pick<DesktopNotificationItem, "id" | "revision">[]) =>
+				write.mutateAsync({ verb, target: { items: tokensOf(rows) } });
+		return {
+			markRead: run("read"),
+			markUnread: run("unread"),
+			dismiss: run("dismiss"),
+			restore: run("undismiss"),
+			isPending: write.isPending,
+		};
+	}, [write.mutateAsync, write.isPending]);
 }
 
 /**
@@ -605,12 +700,614 @@ export function useNotificationsWrite() {
  * Only the facts, the detail and the count are invalidated: they are small reads that
  * the server answers authoritatively.
  */
+const editFacts = (
+	data: DesktopNotificationsList | undefined,
+	changed: readonly string[],
+	verb: NotificationsVerb,
+) => editFactsForWrite(data, changed, verb);
+
+/**
+ * Every row the cache holds, newest revision per id: the facts and the windows.
+ * The optimistic write decides from these what the click changes.
+ */
+function cachedRows(client: QueryClient): Map<string, DesktopNotificationItem> {
+	const rows = new Map<string, DesktopNotificationItem>();
+	const keep = (item: DesktopNotificationItem) => {
+		const previous = rows.get(item.id);
+		if (!previous || isNewerNotification(item, previous))
+			rows.set(item.id, item);
+	};
+	for (const root of [
+		notificationKeys.factsRoot,
+		notificationKeys.sessionFactsAll,
+		notificationKeys.listRoot,
+		notificationKeys.sessionsRoot,
+	])
+		for (const [, data] of client.getQueriesData<{
+			items?: DesktopNotificationItem[];
+			waiting?: DesktopNotificationItem[];
+			pages?: {
+				items?: DesktopNotificationItem[];
+				waiting?: DesktopNotificationItem[];
+			}[];
+		}>({ queryKey: root })) {
+			for (const item of [...(data?.items ?? []), ...(data?.waiting ?? [])])
+				keep(item);
+			for (const page of data?.pages ?? [])
+				for (const item of [...(page?.items ?? []), ...(page?.waiting ?? [])])
+					keep(item);
+		}
+	return rows;
+}
+
+type ReadOperation = {
+	owner: symbol;
+	verb: NotificationsVerb;
+	revision: number;
+	confirmedAt?: number;
+};
+type ReadLedgerRow = {
+	base: DesktopNotificationItem;
+	/** Retain the row at older count fences until those count reads catch up. */
+	history: DesktopNotificationItem[];
+	operations: ReadOperation[];
+};
+type CountBaseline = { count: number; seq: number };
+/** Frozen TOTAL selection deltas, not a second copy of the loaded-row delta. */
+export type NotificationOptimisticScope = {
+	throughSeq: number;
+	unreadDelta: number;
+	/** Ask unread is a badge contribution, never actionable waiting_count. */
+	waitingUnreadDelta?: number;
+	sessionUnreadDeltas: Readonly<Record<string, number>>;
+};
+type PendingScope = NotificationOptimisticScope & {
+	knownDelta: number;
+	knownSessionDeltas: Map<string, number>;
+};
+type NotificationLedger = {
+	rows: Map<string, ReadLedgerRow>;
+	global?: CountBaseline;
+	waiting?: CountBaseline;
+	sessions: Map<string, CountBaseline>;
+	scopes: Map<symbol, PendingScope>;
+	/** Keep absent metadata fenced against older fetches completing afterwards. */
+	absent: Map<string, number>;
+	publishing: boolean;
+};
+const readLedgers = new WeakMap<QueryClient, NotificationLedger>();
+const isUnread = (row: DesktopNotificationItem) =>
+	Number(!row.read && !row.dismissed);
+
+/** At a count watermark only confirmed intents at/below that watermark are included. */
+function projectReadRow(
+	entry: ReadLedgerRow,
+	at?: number,
+): DesktopNotificationItem {
+	let row =
+		at === undefined
+			? entry.base
+			: ([...entry.history, entry.base]
+					.filter((candidate) => candidate.seq <= at)
+					.at(-1) ??
+				entry.history[0] ??
+				entry.base);
+	for (const operation of entry.operations) {
+		if (
+			operation.revision !== row.revision ||
+			(at !== undefined &&
+				(operation.confirmedAt === undefined || operation.confirmedAt > at)) ||
+			(operation.confirmedAt !== undefined && row.seq >= operation.confirmedAt)
+		)
+			continue;
+		row = applyConfirmedToWindow(
+			[{ items: [row] }],
+			[row.id],
+			operation.verb,
+		)[0].items[0];
+	}
+	return row;
+}
+
+function acceptCount(
+	previous: CountBaseline | undefined,
+	count: number,
+	seq: number,
+): CountBaseline {
+	return !previous || seq >= previous.seq ? { count, seq } : previous;
+}
+
+/** All list facts carry GLOBAL unread_count, including session-filtered answers. */
+function ingestNotificationAnswer(
+	ledger: NotificationLedger,
+	key: readonly unknown[],
+	data: unknown,
+): void {
+	if (!data || key[0] !== "desktop" || key[1] !== "notifications") return;
+	if (key[2] === "session-unread" && typeof data === "number") {
+		const session = String(key[3]);
+		ledger.sessions.set(
+			session,
+			acceptCount(ledger.sessions.get(session), data, Number(key[4]) || 0),
+		);
+		return;
+	}
+	const answer = data as Partial<DesktopNotificationsList> & {
+		pages?: DesktopNotificationsList[];
+	};
+	if (
+		["facts", "session-facts", "count"].includes(String(key[2])) &&
+		typeof answer.unread_count === "number"
+	)
+		ledger.global = acceptCount(
+			ledger.global,
+			answer.unread_count,
+			answer.high_water ?? 0,
+		);
+	if (
+		["facts", "session-facts", "count"].includes(String(key[2])) &&
+		typeof answer.waiting_unread_count === "number"
+	)
+		ledger.waiting = acceptCount(
+			ledger.waiting,
+			answer.waiting_unread_count,
+			answer.high_water ?? 0,
+		);
+	for (const row of [
+		...(answer.items ?? []),
+		...(answer.pages ?? []).flatMap((page) => page.items),
+	]) {
+		const entry = ledger.rows.get(row.id);
+		if (
+			entry &&
+			(row.revision > entry.base.revision || row.seq > entry.base.seq)
+		) {
+			entry.history.push(entry.base);
+			entry.base = row;
+		}
+	}
+}
+
+/** Recompute projections, not inverse arithmetic against whichever answer arrived last. */
+function publishNotificationLedger(
+	client: QueryClient,
+	ledger: NotificationLedger,
+): void {
+	if (ledger.publishing) return;
+	ledger.publishing = true;
+	try {
+		const countAt = (baseline: CountBaseline, session?: string) => {
+			let delta = 0;
+			for (const entry of ledger.rows.values()) {
+				if (session && entry.base.session.id !== session) continue;
+				delta +=
+					isUnread(projectReadRow(entry)) -
+					isUnread(projectReadRow(entry, baseline.seq));
+			}
+			for (const scope of ledger.scopes.values())
+				delta += session
+					? (scope.sessionUnreadDeltas[session] ?? 0) -
+						(scope.knownSessionDeltas.get(session) ?? 0)
+					: scope.unreadDelta - scope.knownDelta;
+			return Math.max(0, baseline.count + delta);
+		};
+		const waitingUnread = ledger.waiting
+			? Math.max(
+					0,
+					ledger.waiting.count +
+						[...ledger.scopes.values()].reduce(
+							(sum, scope) => sum + (scope.waitingUnreadDelta ?? 0),
+							0,
+						),
+				)
+			: undefined;
+		const updateRows = (rows: DesktopNotificationItem[]) =>
+			rows
+				.filter((row) => row.seq > (ledger.absent.get(row.id) ?? -1))
+				.map((row) => {
+					const entry = ledger.rows.get(row.id);
+					if (!entry) return row;
+					const next = projectReadRow(entry);
+					return isNewerNotification(next, row)
+						? {
+								...row,
+								read: next.read,
+								read_via: next.read_via,
+								dismissed: next.dismissed,
+							}
+						: row;
+				});
+		for (const root of [
+			notificationKeys.listRoot,
+			notificationKeys.sessionsRoot,
+		])
+			client.setQueriesData<{ pages: DesktopNotificationsList[] }>(
+				{ queryKey: root },
+				(data) =>
+					data?.pages
+						? {
+								...data,
+								pages: data.pages.map((page) => ({
+									...page,
+									items: updateRows(page.items),
+									...(page.waiting
+										? { waiting: updateRows(page.waiting) }
+										: {}),
+								})),
+							}
+						: data,
+			);
+		for (const root of [
+			notificationKeys.factsRoot,
+			notificationKeys.sessionFactsAll,
+		])
+			client.setQueriesData<DesktopNotificationsList>(
+				{ queryKey: root },
+				(data) =>
+					data?.items
+						? {
+								...data,
+								items: updateRows(data.items),
+								...(data.waiting ? { waiting: updateRows(data.waiting) } : {}),
+								waiting_unread_count:
+									waitingUnread ?? data.waiting_unread_count,
+								unread_count: ledger.global
+									? countAt(ledger.global)
+									: data.unread_count,
+							}
+						: data,
+			);
+		client.setQueryData<DesktopNotificationsCount>(
+			notificationKeys.count,
+			(data) =>
+				data && ledger.global
+					? {
+							...data,
+							unread_count: countAt(ledger.global),
+							waiting_unread_count: waitingUnread ?? data.waiting_unread_count,
+						}
+					: data,
+		);
+		for (const [session, baseline] of ledger.sessions)
+			client.setQueriesData<number>(
+				{ queryKey: notificationKeys.sessionUnread(session) },
+				(data) =>
+					typeof data === "number" ? countAt(baseline, session) : data,
+			);
+	} finally {
+		ledger.publishing = false;
+	}
+}
+
+function notificationLedger(client: QueryClient): NotificationLedger {
+	const existing = readLedgers.get(client);
+	if (existing) return existing;
+	const ledger: NotificationLedger = {
+		rows: new Map(),
+		sessions: new Map(),
+		scopes: new Map(),
+		absent: new Map(),
+		publishing: false,
+	};
+	readLedgers.set(client, ledger);
+	for (const [key, data] of client.getQueriesData({
+		queryKey: notificationKeys.all,
+	}))
+		ingestNotificationAnswer(ledger, key, data);
+	// A pre-click request is cancelled, but a feed-triggered request can start later.
+	// Rebase its authoritative answer then replay still-pending intents immediately;
+	// an older count/row never erases the visible click. Self-published projections
+	// are excluded so they cannot become authoritative baselines.
+	client.getQueryCache().subscribe((event) => {
+		if (
+			ledger.publishing ||
+			event.type !== "updated" ||
+			event.action.type !== "success" ||
+			event.query.queryKey[0] !== "desktop" ||
+			event.query.queryKey[1] !== "notifications"
+		)
+			return;
+		ingestNotificationAnswer(
+			ledger,
+			event.query.queryKey,
+			event.query.state.data,
+		);
+		publishNotificationLedger(client, ledger);
+	});
+	return ledger;
+}
+
+/**
+ * A reversible intent, not an inverse verb. rollback() retires this intent;
+ * settle(fullReceipt) commits changed IDs and retires skipped IDs. Bulk callers
+ * must settle the FULL receipt, never applyConfirmedWrite(changed) afterwards.
+ */
+/** V2 metadata consumed by the shared store; mutation counts are never row IDs. */
+export type CompactNotificationReceipt = Pick<
+	DesktopNotificationsWriteResult,
+	"unread_count" | "waiting_count" | "waiting_unread_count" | "high_water"
+> & {
+	selection_version?: 2;
+	counts_high_water?: number;
+	session_counts?: Record<string, { unread_count?: number }>;
+
+	reconciliation?: {
+		items: DesktopNotificationItem[];
+		absent_ids: string[];
+		high_water: number;
+	};
+};
+
+export type OptimisticNotificationWrite = (() => void) & {
+	settle: (receipt: DesktopNotificationsWriteResult) => void;
+	settleCompact: (receipt: CompactNotificationReceipt) => void;
+};
+
+/**
+ * Shared revision-bound transaction. Tokens are preferred; IDs retain compatibility
+ * for callers whose frozen rows are already loaded. Frozen scope deltas are TOTALS,
+ * including known rows; only their off-page remainder supplements row projections.
+ * Rollback derives from the newest authoritative count baseline plus remaining
+ * intents, never by negating the originally captured delta after a concurrent read.
+ * The scalar scope is NOT proof of any individual success: compact settlement must
+ * retire it and use authoritative response aggregates and bounded reconciliation.
+ */
+export async function beginOptimisticWrite(
+	client: ReturnType<typeof useOptionalQueryClient>["client"],
+	verb: NotificationsVerb,
+	tokens: readonly (
+		| string
+		| Pick<DesktopNotificationItem, "id" | "revision">
+	)[],
+	scope?: NotificationOptimisticScope,
+): Promise<OptimisticNotificationWrite | undefined> {
+	if (!client || (!tokens.length && !scope)) return undefined;
+	await client.cancelQueries({ queryKey: notificationKeys.all });
+	const ledger = notificationLedger(client);
+	const known = cachedRows(client);
+	const owner = Symbol("notification-write");
+	const ids: string[] = [];
+	let knownDelta = 0;
+	const knownSessionDeltas = new Map<string, number>();
+	for (const token of tokens) {
+		const id = typeof token === "string" ? token : token.id;
+		const row = known.get(id);
+		if (!row || row.source !== "notify" || ids.includes(id)) continue;
+		let entry = ledger.rows.get(id);
+		if (
+			!entry ||
+			row.revision > entry.base.revision ||
+			row.seq > entry.base.seq
+		) {
+			entry = {
+				base: row,
+				history: entry ? [...entry.history, entry.base] : [],
+				operations: entry?.operations ?? [],
+			};
+			ledger.rows.set(id, entry);
+		}
+		const before = projectReadRow(entry);
+		entry.operations.push({
+			owner,
+			verb,
+			revision: typeof token === "string" ? row.revision : token.revision,
+		});
+		const delta = isUnread(projectReadRow(entry)) - isUnread(before);
+		knownDelta += delta;
+		knownSessionDeltas.set(
+			row.session.id,
+			(knownSessionDeltas.get(row.session.id) ?? 0) + delta,
+		);
+		ids.push(id);
+	}
+	if (scope)
+		ledger.scopes.set(owner, {
+			...scope,
+			sessionUnreadDeltas: { ...scope.sessionUnreadDeltas },
+			knownDelta,
+			knownSessionDeltas,
+		});
+	publishNotificationLedger(client, ledger);
+	let settled = false;
+	const finish = (receipt?: DesktopNotificationsWriteResult) => {
+		if (settled) return;
+		settled = true;
+		ledger.scopes.delete(owner);
+		const changed = new Set(receipt?.changed ?? []);
+		for (const id of ids) {
+			const entry = ledger.rows.get(id);
+			if (!entry) continue;
+			entry.operations = entry.operations.flatMap((operation) => {
+				if (operation.owner !== owner) return [operation];
+				return changed.has(id)
+					? [
+							{
+								...operation,
+								confirmedAt: receipt?.high_water ?? Number.POSITIVE_INFINITY,
+							},
+						]
+					: [];
+			});
+		}
+		if (receipt) {
+			ledger.global = acceptCount(
+				ledger.global,
+				receipt.unread_count,
+				receipt.high_water,
+			);
+			ledger.waiting = acceptCount(
+				ledger.waiting,
+				receipt.waiting_unread_count,
+				receipt.high_water,
+			);
+			// V1 has no authoritative per-session aggregate. Its accepted known rows
+			// remain overlays until the session count walk supplies a newer watermark.
+		}
+		publishNotificationLedger(client, ledger);
+	};
+	return Object.assign(() => finish(), {
+		settle: (receipt: DesktopNotificationsWriteResult) => finish(receipt),
+		settleCompact: (receipt: CompactNotificationReceipt) => {
+			if (settled) return;
+			// Compact changed_count cannot identify skipped rows. Retire this intent,
+			// then adopt separately fenced authoritative metadata (including replays).
+			finish();
+			ledger.global = acceptCount(
+				ledger.global,
+				receipt.unread_count,
+				receipt.high_water,
+			);
+			ledger.waiting = acceptCount(
+				ledger.waiting,
+				receipt.waiting_unread_count,
+				receipt.high_water,
+			);
+			for (const [session, counts] of Object.entries(
+				receipt.session_counts ?? {},
+			))
+				if (
+					typeof receipt.counts_high_water === "number" &&
+					typeof counts.unread_count === "number"
+				)
+					ledger.sessions.set(
+						session,
+						acceptCount(
+							ledger.sessions.get(session),
+							counts.unread_count,
+							receipt.counts_high_water,
+						),
+					);
+			const reconciliation = receipt.reconciliation;
+			if (reconciliation) {
+				const current = cachedRows(client);
+				const fresh = new Map(
+					reconciliation.items
+						.filter((row) => {
+							const previous = current.get(row.id);
+							return !previous || isNewerNotification(row, previous);
+						})
+						.map((row) => [row.id, row]),
+				);
+				const absent = new Set(
+					reconciliation.absent_ids.filter(
+						(id) => (current.get(id)?.seq ?? 0) <= reconciliation.high_water,
+					),
+				);
+				for (const [id, row] of fresh) {
+					const entry = ledger.rows.get(id);
+					if (entry) {
+						entry.history.push(entry.base);
+						entry.base = row;
+					}
+				}
+				for (const id of absent) {
+					ledger.rows.delete(id);
+					ledger.absent.set(id, reconciliation.high_water);
+				}
+				const reconcileRows = (rows: DesktopNotificationItem[]) =>
+					rows
+						.filter((row) => !absent.has(row.id))
+						.map((row) => fresh.get(row.id) ?? row);
+				ledger.publishing = true;
+				try {
+					for (const root of [
+						notificationKeys.factsRoot,
+						notificationKeys.sessionFactsAll,
+					])
+						client.setQueriesData<DesktopNotificationsList>(
+							{ queryKey: root },
+							(data) =>
+								data?.items
+									? {
+											...data,
+											items: reconcileRows(data.items),
+											...(data.waiting
+												? { waiting: reconcileRows(data.waiting) }
+												: {}),
+										}
+									: data,
+						);
+					for (const root of [
+						notificationKeys.listRoot,
+						notificationKeys.sessionsRoot,
+					])
+						client.setQueriesData<{ pages: DesktopNotificationsList[] }>(
+							{ queryKey: root },
+							(data) =>
+								data?.pages
+									? {
+											...data,
+											pages: data.pages.map((page) => ({
+												...page,
+												items: reconcileRows(page.items),
+												...(page.waiting
+													? { waiting: reconcileRows(page.waiting) }
+													: {}),
+											})),
+										}
+									: data,
+						);
+				} finally {
+					ledger.publishing = false;
+				}
+			} else {
+				// Older servers: refresh active page-one facts only, never an infinite
+				// window's whole history. V2 callers request <=500 visible/cached IDs so
+				// deep windows ordinarily settle from SAME-response metadata above.
+				void client.refetchQueries({
+					queryKey: notificationKeys.factsRoot,
+					type: "active",
+				});
+				void client.refetchQueries({
+					queryKey: notificationKeys.sessionFactsAll,
+					type: "active",
+				});
+			}
+			if (
+				reconciliation &&
+				(receipt.counts_high_water === undefined ||
+					Object.values(receipt.session_counts ?? {}).some(
+						(counts) => counts.unread_count === undefined,
+					))
+			)
+				void client.refetchQueries({
+					queryKey: notificationKeys.sessionFactsAll,
+					type: "active",
+				});
+			publishNotificationLedger(client, ledger);
+		},
+	});
+}
+
 export function applyConfirmedWrite(
 	client: ReturnType<typeof useOptionalQueryClient>["client"],
 	verb: NotificationsVerb,
 	changed: readonly string[],
 ): void {
 	if (!client || changed.length === 0) return;
+	const ledger = readLedgers.get(client);
+	if (ledger) {
+		for (const id of changed) {
+			const entry = ledger.rows.get(id);
+			if (entry) {
+				const pending = [...entry.operations]
+					.reverse()
+					.find(
+						(operation) =>
+							operation.verb === verb && operation.confirmedAt === undefined,
+					);
+				if (pending) pending.confirmedAt = entry.base.seq + 1;
+				else
+					entry.operations.push({
+						owner: Symbol("external-receipt"),
+						verb,
+						revision: entry.base.revision,
+						confirmedAt: entry.base.seq + 1,
+					});
+			}
+		}
+		ledger.publishing = true;
+	}
 	/*
 	 * ONLY INFINITE QUERIES CARRY PAGES (code round 8, R8-1). This updater used to run
 	 * over `sessionFactsAll` too, whose entries are plain page-one answers with no
@@ -636,6 +1333,26 @@ export function applyConfirmedWrite(
 		{ queryKey: notificationKeys.sessionsRoot },
 		editWindow,
 	);
+	/*
+	 * THE FACTS ARE EDITED TOO, not only invalidated (the drawer's "click twice"
+	 * defect). At the top of a list `mergeWindowForReel` lets page one's facts win
+	 * over the window on an EQUAL revision, and core's read/unread moves `seq`, not
+	 * `revision` - so until the facts refetch landed, the stale facts row
+	 * (`read: false`) was what the drawer and the reel drew, hiding the confirmed
+	 * flip. The edit is idempotent, so it is safe after an optimistic one.
+	 */
+	client.setQueriesData<DesktopNotificationsList>(
+		{ queryKey: notificationKeys.factsRoot },
+		(data) => editFacts(data, changed, verb),
+	);
+	client.setQueriesData<DesktopNotificationsList>(
+		{ queryKey: notificationKeys.sessionFactsAll },
+		(data) => editFacts(data, changed, verb),
+	);
+	if (ledger) {
+		ledger.publishing = false;
+		publishNotificationLedger(client, ledger);
+	}
 	void client.invalidateQueries({ queryKey: notificationKeys.factsRoot });
 	void client.invalidateQueries({ queryKey: notificationKeys.sessionFactsAll });
 	void client.invalidateQueries({ queryKey: notificationKeys.count });
@@ -744,4 +1461,285 @@ export async function readSessionDismissCounts(
 		seen.add(next);
 		cursor = next;
 	}
+}
+
+/** Compact receipts keep a select-all over a large result one HTTP write. */
+export type NotificationBulkReceipt = {
+	changed_count: number;
+	skipped_count: number;
+	skipped_ask_count: number;
+	operation_token: string;
+	through_seq: number;
+	high_water: number;
+	counts_high_water?: number;
+	// V1 servers omit the field; the shared facade only recognizes version 2.
+	selection_version?: 2;
+	changed_update_count?: number;
+	changed_ask_count?: number;
+	waiting_unread_delta?: number;
+	reconciliation?: {
+		items: DesktopNotificationItem[];
+		absent_ids: string[];
+		high_water: number;
+	};
+	unread_delta: number;
+	// `unread_count` is the v2 per-session total, fenced by `counts_high_water`;
+	// v1 omits it, and the facade then keeps the session overlay until a walk lands.
+	session_counts: Record<
+		string,
+		{ changed_count: number; unread_delta: number; unread_count?: number }
+	>;
+	unread_count: number;
+	waiting_count: number;
+	waiting_unread_count: number;
+};
+
+export async function previewNotificationSelection(
+	filters: FrozenNotificationSelection["filters"],
+	state: "unread" | "all",
+	countSessionIds: string[] = [],
+	includeAskReads = false,
+): Promise<NotificationSelectionPreview> {
+	const result = await desktopResult<{
+		selection: NotificationSelectionPreview;
+	}>({
+		op: "notifications.list",
+		preview: true,
+		state,
+		kind: filters.kind,
+		bulkPriority: filters.priority,
+		countSessionIds,
+		...(includeAskReads ? { includeAskReads: true } : {}),
+		...(filters.from ? { sessionId: filters.from } : {}),
+	});
+	return result.selection;
+}
+
+/**
+ * The same optimistic cache edit as individual writes. A frozen scope is a
+ * server token rather than a client-side page walk; the adapter only projects
+ * the rows already cached, never manufactures off-page notification bodies.
+ * On a partial receipt the projection is withdrawn and authoritative facts are
+ * fetched: compact counts cannot identify which individual revisions skipped.
+ */
+
+export function useNotificationBulkState(onResetWindows?: () => void) {
+	const { client } = useOptionalQueryClient();
+	const operations = useRef(
+		new Map<
+			string,
+			{
+				verb: "read" | "unread" | "dismiss";
+				receipt: NotificationBulkReceipt;
+				reconcileIds: string[];
+				canReconcile: boolean;
+			}
+		>(),
+	);
+	const activeSessionIds = useCallback(
+		() =>
+			client
+				? client
+						.getQueryCache()
+						.findAll({
+							queryKey: notificationKeys.sessionUnread(null).slice(0, -1),
+						})
+						.filter((query) => query.isActive())
+						.map((query) => String(query.queryKey[3]))
+						.slice(0, 50)
+				: [],
+		[client],
+	);
+	const reconcileIds = useCallback(
+		(visible: string[]) => {
+			const cached = client ? [...cachedRows(client).keys()] : [];
+			// The explicit viewport IDs come first: a deep-scroll row must not be
+			// crowded out by hundreds of cached rows above it. Never send all IDs in
+			// the server result; these are bounded READ metadata, not selection.
+			return [...new Set([...visible, ...cached])].slice(0, 500);
+		},
+		[client],
+	);
+	/*
+	 * V1 RECEIPTS CARRY NO ROWS. Without `reconciliation`, the shared facade can only
+	 * refetch page-one facts, and `mergeWindowForReel` keeps every row the loaded
+	 * infinite window already holds, so a select-all dismiss left up to a page of
+	 * dismissed rows drawn (and an Undo left them missing). Compact receipts never say
+	 * WHICH rows changed, so guessing per-row flips is ruled out. Resetting drops the
+	 * loaded pages and refetches page one, the same move as "back to top"
+	 * (`resetToTop`). Only v1 settles this way; v2 rows come back in the response.
+	 */
+	const resetWindows = useCallback(() => {
+		if (!client) return;
+		if (onResetWindows) onResetWindows();
+		else void client.resetQueries({ queryKey: notificationKeys.listRoot });
+		void client.resetQueries({ queryKey: notificationKeys.sessionsRoot });
+	}, [client, onResetWindows]);
+	const apply = useCallback(
+		async (
+			verb: "read" | "unread" | "dismiss",
+			selection: FrozenNotificationSelection,
+			visibleIds: string[] = [],
+		): Promise<NotificationBulkReceipt> => {
+			operations.current.clear();
+			const rows = client
+				? [...cachedRows(client).values()].filter((item) =>
+						selectedBySnapshot(item, selection),
+					)
+				: [];
+			const intent = await beginOptimisticWrite(
+				client,
+				verb,
+				tokensOf(rows),
+				notificationSelectionScope(selection, verb),
+			);
+			const reconciliation = reconcileIds(visibleIds);
+			try {
+				const target = {
+					selectionToken: selection.preview.token,
+					excludedIds: [...selection.excluded.keys()],
+					...(selection.preview.selection_version === 2
+						? { reconcileIds: reconciliation }
+						: {}),
+				};
+				const receipt = await desktopResult<NotificationBulkReceipt>(
+					verb === "dismiss"
+						? { op: "notifications.dismiss", verb, target }
+						: { op: "notifications.read", verb, target },
+				);
+				intent?.settleCompact(receipt);
+				if (selection.preview.selection_version !== 2) resetWindows();
+				operations.current.set(receipt.operation_token, {
+					verb,
+					receipt,
+					reconcileIds: reconciliation,
+					canReconcile: selection.preview.selection_version === 2,
+				});
+				return receipt;
+			} catch (error) {
+				intent?.();
+				throw error;
+			}
+		},
+		[client, reconcileIds, resetWindows],
+	);
+	const applyItems = useCallback(
+		async (
+			verb: "read" | "unread" | "dismiss",
+			items: DesktopNotificationItem[],
+			throughSeq: number,
+			v2 = false,
+			visibleIds: string[] = [],
+		): Promise<{
+			receipts: NotificationBulkReceipt[];
+			pending: number;
+			skippedAsks: number;
+			error?: unknown;
+		}> => {
+			operations.current.clear();
+			/*
+			 * The caller's button check belongs to an earlier render. Filter the actual
+			 * frozen array at this last client boundary too, so an ask that arrived after
+			 * that check can never be sent to notifications.dismiss. Keep the caller's
+			 * requested 500-item batch boundaries; removing asks only shrinks a batch.
+			 */
+			const plan = verb === "dismiss" ? dismissPlan(items) : null;
+			const targets = plan?.dismissable ?? items;
+			const skippedAsks = plan?.asksStaying ?? 0;
+			const receipts: NotificationBulkReceipt[] = [];
+			const reconciliation = reconcileIds(visibleIds);
+			for (let offset = 0; offset < targets.length; offset += 500) {
+				const batch = targets.slice(offset, offset + 500);
+				const intent = await beginOptimisticWrite(
+					client,
+					verb,
+					tokensOf(batch),
+				);
+				try {
+					const target = {
+						items: tokensOf(batch),
+						throughSeq,
+						receipt: true as const,
+						...(v2 ? { reconcileIds: reconciliation } : {}),
+					};
+					const receipt = await desktopResult<NotificationBulkReceipt>(
+						verb === "dismiss"
+							? { op: "notifications.dismiss", verb, target }
+							: { op: "notifications.read", verb, target },
+					);
+					intent?.settleCompact(receipt);
+					if (!v2) resetWindows();
+					operations.current.set(receipt.operation_token, {
+						verb,
+						receipt,
+						reconcileIds: reconciliation,
+						canReconcile: v2,
+					});
+					receipts.push(receipt);
+				} catch (error) {
+					intent?.();
+					return {
+						receipts,
+						pending: targets.length - offset,
+						skippedAsks,
+						error,
+					};
+				}
+			}
+			return { receipts, pending: 0, skippedAsks };
+		},
+		[client, reconcileIds, resetWindows],
+	);
+	const undo = useCallback(
+		async (operationToken: string) => {
+			const original = operations.current.get(operationToken);
+			if (!original) throw new Error("No retained notification operation");
+			const { receipt: before } = original;
+			const sessionUnreadDeltas = Object.fromEntries(
+				Object.entries(before.session_counts).map(([id, counts]) => [
+					id,
+					-counts.unread_delta,
+				]),
+			);
+			// Compact counts do not prove which individual rows the journal changed.
+			// A NEW aggregate intent is safe; guessed per-row inverses are not. Rows
+			// return from authoritative reconciliation in the same Undo response.
+			const intent = await beginOptimisticWrite(
+				client,
+				inverseNotificationVerb(original.verb),
+				[],
+				{
+					throughSeq: before.counts_high_water ?? before.high_water,
+					unreadDelta:
+						before.counts_high_water === undefined ? 0 : -before.unread_delta,
+					waitingUnreadDelta:
+						before.counts_high_water === undefined
+							? 0
+							: -(before.waiting_unread_delta ?? 0),
+					sessionUnreadDeltas:
+						before.counts_high_water === undefined ? {} : sessionUnreadDeltas,
+				},
+			);
+			try {
+				const receipt = await desktopResult<NotificationBulkReceipt>({
+					op: "notifications.read",
+					verb: "undo",
+					target: {
+						operationToken,
+						...(original.canReconcile
+							? { reconcileIds: original.reconcileIds }
+							: {}),
+					},
+				});
+				intent?.settleCompact(receipt);
+				if (!original.canReconcile) resetWindows();
+				return receipt;
+			} catch (error) {
+				intent?.();
+				throw error;
+			}
+		},
+		[client, resetWindows],
+	);
+	return { apply, applyItems, undo, activeSessionIds };
 }

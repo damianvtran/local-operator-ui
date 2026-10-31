@@ -18,6 +18,22 @@ const dom = new JSDOM("<!doctype html><body></body>", {
 	url: "http://localhost/",
 });
 globalThis.window = dom.window;
+
+/*
+ * THE DESKTOP BRIDGE, INERT. The page mounts the shared composer, whose mount
+ * registers the global dictation chord (`use-speech-to-text-manager.ts` reads
+ * `window.electron.ipcRenderer`), so a DOM probe needs the preload surface to
+ * exist. A call that answers nothing is the honest stand-in for a bridge this rig
+ * does not have - `agents-composer-mount.test.mjs` states the same stub.
+ */
+dom.window.electron = {
+	ipcRenderer: {
+		on: () => () => {},
+		removeListener: () => {},
+		send: () => {},
+		invoke: async () => ({}),
+	},
+};
 globalThis.document = dom.window.document;
 globalThis.localStorage = dom.window.localStorage;
 for (const name of [
@@ -80,8 +96,32 @@ const bundle = await build({
 	bundle: true,
 	format: "cjs",
 	platform: "node",
-	external: ["react", "react-dom"],
-	loader: { ".css": "empty" },
+	external: ["@tanstack/react-query", "react", "react-dom"],
+	// Vite's `import.meta.env` is read at IMPORT time by the app's config loader,
+	// which the shared composer's chain pulls in (`load-config.ts`): bundling for
+	// node leaves it undefined and the module throws before a single assertion runs
+	// (`browser-chrome.test.mjs` records the same trap). The URL is dead on purpose.
+	define: { "import.meta.env": "__viteEnv" },
+	/*
+	 * CJS output supplies `require` itself and Module._compile wraps this text as
+	 * CJS. An ESM `import` banner therefore makes Node 24 classify the whole
+	 * generated file as ESM, so `module.exports` throws before any assertions run.
+	 * Only Vite's env shim belongs here.
+	 */
+	banner: { js: "const __viteEnv = {};" },
+	// The page mounts the SHARED composer now, which pulls the brand mark (.png).
+	// Bundling it keeps this container probe on the real component tree; a `dataurl`
+	// rather than a file keeps the fixture asset-free.
+	loader: {
+		".css": "empty",
+		".svg": "text",
+		".png": "dataurl",
+		".webp": "dataurl",
+		".ttf": "empty",
+		".woff": "empty",
+		".woff2": "empty",
+		".eot": "empty",
+	},
 	tsconfig: "tsconfig.app.json",
 	write: false,
 	plugins: [
@@ -215,11 +255,41 @@ function deferred() {
 	});
 	return { promise, resolve };
 }
-async function mount({ empty = false, lifecycle = null } = {}) {
+/* INSTANT-OPEN OPTIONS (tb-instant-open). Every one of them defaults to the
+ * behaviour the existing suites already rely on, so this fixture keeps proving
+ * the same things for them:
+ *   path        - the route the page mounts at; the default deep link is the
+ *                 `?tenant=&conversation=` one, and a cold open omits both.
+ *   tenants     - the hub's own tenant list. Two orgs by default; ONE is the
+ *                 single-organization cold open the scope decision is about.
+ *   surfaceState- the hub's surface class, so an ineligible account can be
+ *                 modelled (`A` is plan_required).
+ *   seed        - runs after the shipped client is cleared and BEFORE the first
+ *                 render, i.e. it primes exactly the cache a previously mounted
+ *                 shell watcher would have left behind.
+ *   waitReady   - false when the scenario holds the gate open on purpose.
+ *   statusGate  - replaces the fixture's own null status gate, so a caller can
+ *                 hold the eligibility verdict open from before the first render.
+ * The remaining holds are installed on the returned fixture by the scenario that
+ * needs them: `fixture.listGate` (the conversation list) and `fixture.unreadGate`
+ * (the account unread aggregate).
+ */
+async function mount({
+	empty = false,
+	lifecycle = null,
+	path = null,
+	tenants = null,
+	surfaceState = "D",
+	seed = null,
+	waitReady = true,
+	statusGate = null,
+} = {}) {
 	localStorage.clear();
 	const fixture = {
 		account: "acct_a",
 		tenant: "org_shared",
+		surfaceState,
+		tenants,
 		refuse: true,
 		calls: [],
 		messages: new Map(),
@@ -231,8 +301,11 @@ async function mount({ empty = false, lifecycle = null } = {}) {
 		readOnly: false,
 		ownerGuard: 1,
 		authGate: null,
-		statusGate: null,
+		statusGate,
+		listGate: null,
 		historyGate: null,
+		// Holds the account unread read so a test can observe the refreshing state.
+		unreadGate: null,
 		refuseHistory: new Set(),
 		/* ARCHIVE SCENARIO (review round 1, U1). `lifecycle` rows, when set, REPLACE the
 		   single group the other suites use: the live list answers the open ones and
@@ -295,7 +368,7 @@ async function mount({ empty = false, lifecycle = null } = {}) {
 							read_only: fixture.readOnly,
 							account_id: owner,
 							tenant_id: tenant,
-							surface_state: "D",
+							surface_state: fixture.surfaceState,
 							visibility: {
 								settings: true,
 								inbox: true,
@@ -309,7 +382,7 @@ async function mount({ empty = false, lifecycle = null } = {}) {
 								session: "present",
 							},
 							status: {
-								tenants: [
+								tenants: fixture.tenants ?? [
 									{
 										tenant_id: "org_shared",
 										tenant_name: "Shared",
@@ -328,6 +401,7 @@ async function mount({ empty = false, lifecycle = null } = {}) {
 							error: null,
 						});
 					case "team_bridge.conversations.list":
+						if (fixture.listGate) await fixture.listGate.promise;
 						if (fixture.lifecycle) {
 							const wanted = request.status ?? "open";
 							return reply({
@@ -374,6 +448,7 @@ async function mount({ empty = false, lifecycle = null } = {}) {
 							})),
 						});
 					case "team_bridge.unread":
+						if (fixture.unreadGate) await fixture.unreadGate.promise;
 						return reply({
 							total: owner === "acct_a" ? 7 : 2,
 							organizations: [],
@@ -447,6 +522,7 @@ async function mount({ empty = false, lifecycle = null } = {}) {
 	const root = createRoot(host);
 	const client = ui.queryClient;
 	client.clear();
+	seed?.({ client, ui });
 	const ownedQueries = new Set();
 	const stopTracking = client
 		.getQueryCache()
@@ -461,9 +537,10 @@ async function mount({ empty = false, lifecycle = null } = {}) {
 					ui.MemoryRouter,
 					{
 						initialEntries: [
-							empty || lifecycle
-								? "/team-bridge?tenant=org_shared"
-								: "/team-bridge?tenant=org_shared&conversation=bcv_shared",
+							path ??
+								(empty || lifecycle
+									? "/team-bridge?tenant=org_shared"
+									: "/team-bridge?tenant=org_shared&conversation=bcv_shared"),
 						],
 					},
 					React.createElement(
@@ -503,13 +580,14 @@ async function mount({ empty = false, lifecycle = null } = {}) {
 			),
 		);
 	await act(async () => render());
-	await until(
-		() =>
-			empty || lifecycle
-				? host.textContent.includes("Peer")
-				: host.querySelector("textarea"),
-		"production container ready",
-	);
+	if (waitReady)
+		await until(
+			() =>
+				empty || lifecycle
+					? host.textContent.includes("Peer")
+					: host.querySelector("textarea"),
+			"production container ready",
+		);
 	return {
 		host,
 		fixture,
@@ -529,7 +607,9 @@ async function mount({ empty = false, lifecycle = null } = {}) {
 			await act(async () => root.unmount());
 			fixture.authGate?.resolve();
 			fixture.statusGate?.resolve();
+			fixture.listGate?.resolve();
 			fixture.historyGate?.resolve();
+			fixture.unreadGate?.resolve();
 			fixture.createGate?.resolve();
 			fixture.postGate?.resolve();
 			await act(async () => client.cancelQueries());

@@ -1,0 +1,23 @@
+{
+	"auditor": "i18n-auditor",
+	"agent": "i18n-auditor",
+	"model": "kimi/k3.1-pro",
+	"instance": "tb-invite-r2-20261029-ru",
+	"date": "2026-10-29",
+	"status": "passed",
+	"locale": "ru",
+	"namespace": "ui.teamBridge",
+	"sha256": {
+		"en": "1516974c44681940753862f9735f0b3c19c7815ca4e68eab7fd343f1f1ed53f3",
+		"ru": "86a4ee86c5efeb97c613608298d0f3ea79a1557b41dbecc402f519cb91aac5a2"
+	},
+	"findings": [],
+	"checks": {
+		"key_parity": "PASS: 281 English keys and 281 Russian keys; en-ru=set(), ru-en=set(). Both removed invitation keys are absent from English and Russian.",
+		"bidi": "PASS: no U+200E/U+200F/U+202A-U+202E bidi controls or zero-width characters (U+200B/U+200C/U+200D/U+FEFF) in the Russian catalogue.",
+		"apostrophes": "PASS: no ASCII apostrophes (U+0027) in any Russian catalogue value.",
+		"diff": "PASS: git diff shows only the read_only and empty replacements plus the agent_invitation and human_invitation deletions; no unrelated key changed or reordered."
+	},
+	"scope": "Re-audited only the Russian review-round delta: the changed members.read_only and members.empty strings, removal of members.agent_invitation and members.human_invitation, and the requested mechanical whole-file checks. The Russian read_only string states only what the reader cannot do, without administrator or blame claims; empty says nobody can be invited rather than that the organization has no people. Deliberately did not re-audit other keys already passed by the earlier namespace audit; no new issue was apparent in the unchanged plural line shown by the diff.",
+	"independence": "Auditor wrote none of the audited strings; the translator was a separate subagent. No catalogue or ledger edit by the auditor."
+}

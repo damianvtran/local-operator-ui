@@ -72,15 +72,35 @@ import {
 	settingsRefusalSentence,
 } from "@features/agent-messages/agent-messages-settings-model";
 import { useAgentMessages } from "@features/agent-messages/use-agent-messages";
+import { pressLandsOnOverlay } from "@features/chat/keyboard-scopes";
+import { desktopResult } from "@shared/api/local-operator/desktop-api";
+import {
+	desktopFeatureEnabled,
+	useDesktopCapabilities,
+} from "@shared/api/local-operator/desktop-hooks";
 import { LANGUAGE_SETTING_KEY } from "@shared/i18n";
+import { useQuery } from "@tanstack/react-query";
 import type { AgentMessagesStatus } from "../../../../../shared/agent-messages-contract";
+import type { BackendSettings } from "../../../../../shared/desktop-contract";
 import {
 	MODEL_EFFORT_SETTING_KEY,
 	TEAM_BRIDGE_ENABLED_SETTING_KEY,
 	sectionForSettingKey,
 } from "../promoted-setting-sections";
+import {
+	type SettingSearchEntry,
+	buildRenderedEntries,
+} from "../search/settings-search-index";
+import {
+	type SearchJumpOutcome,
+	jumpToSearchRow,
+	jumpToSearchSection,
+} from "../search/settings-search-jump";
 import { AppUpdatesSection } from "./app-updates-section";
-import { BackendSettingsSection } from "./backend-settings-section";
+import {
+	BackendSettingsSection,
+	backendSettingsKeys,
+} from "./backend-settings-section";
 import { DefaultEffortSelect } from "./default-effort-select";
 import { ImportSettingsSection } from "./import-settings-section";
 import { GeneralLanguageSetting } from "./language-dialog";
@@ -88,6 +108,11 @@ import { GeneralLanguageSetting } from "./language-dialog";
 import { KeyboardShortcutsSection } from "./keyboard-shortcuts-section";
 import { McpManagementSection } from "./mcp-management-section";
 import { RadientAccountSection } from "./radient-account-section";
+import {
+	SettingsSearch,
+	type SettingsSearchHandle,
+	useSettingsSearchIndex,
+} from "./settings-search";
 import { InfoGrid, InfoItem, SettingsSection } from "./settings-section";
 import { DEFAULT_SETTINGS_SECTIONS, SettingsSidebar } from "./settings-sidebar";
 import { SettingsUsageChart } from "./settings-usage-chart";
@@ -490,6 +515,7 @@ export const SettingsPage: FC = () => {
 	const [isScrolling, setIsScrolling] = useState(false);
 	const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 	const contentContainerRef = useRef<HTMLDivElement>(null);
+
 	const { startTour: startOnboardingTour } = useOnboardingTour();
 	const location = useLocation();
 	const navigate = useNavigate();
@@ -655,6 +681,127 @@ export const SettingsPage: FC = () => {
 		[sectionRefs],
 	);
 
+	/*
+	 * SETTINGS SEARCH (issue #1492): the page's OWN field, in the header's
+	 * action slot.
+	 *
+	 * It shares the Backend section's `settings.list` cache entry — same query
+	 * key, same op — so the registry half of the index costs no request. The
+	 * index itself is memoised on that payload's identity and the locale; a
+	 * keystroke changes state inside `SettingsSearch` only, which is what keeps
+	 * a query from re-rendering the eleven sections below.
+	 */
+	const searchRef = useRef<SettingsSearchHandle>(null);
+	/*
+	 * WHAT THE READER WAS LOOKING AT, before ⌘F moved them.
+	 *
+	 * Focusing the header's field scrolls the content container to bring it into
+	 * view, so a press from 2000px down threw the page to the top and nothing put
+	 * it back (UX round 1, U5). The position is remembered when the shortcut
+	 * fires and restored when the panel closes WITHOUT a jump; a jump clears it,
+	 * because a landing is the scroll the reader asked for.
+	 */
+	const savedSearchScrollRef = useRef<number | null>(null);
+	const capabilities = useDesktopCapabilities();
+	const settingsFeatureEnabled = desktopFeatureEnabled(
+		capabilities.data,
+		"settings",
+	);
+	const settingsRegistryQuery = useQuery({
+		queryKey: backendSettingsKeys.all,
+		queryFn: () => desktopResult<BackendSettings>({ op: "settings.list" }),
+		enabled: settingsFeatureEnabled,
+		staleTime: 10_000,
+	});
+	const searchIndex = useSettingsSearchIndex({
+		registry: settingsRegistryQuery.data,
+		sections: settingsSections,
+	});
+	const readRenderedSearchRows = useCallback(
+		() =>
+			contentContainerRef.current
+				? buildRenderedEntries(contentContainerRef.current)
+				: [],
+		[],
+	);
+	/*
+	 * A search jump names a key the URL does not: the panel jumps at runtime,
+	 * and the deep-link path above owns the URL. `seq` is a MONOTONIC NONCE —
+	 * the Backend section's reveal is idempotent per key (`revealedFocusKey`),
+	 * so a second Enter on the same result would otherwise be a silent no-op
+	 * rather than a second landing and a second flash.
+	 */
+	const [searchJump, setSearchJump] = useState<{
+		key: string;
+		nonce: number;
+	} | null>(null);
+	/*
+	 * Every path ANSWERS. `"missing"` is a sentence the panel speaks
+	 * (`ui.settings.search.jump.missing`) rather than an outcome this function
+	 * drops on the floor — a result the reader pressed Enter on that moves
+	 * nothing and says nothing is the dead end review round 1 named (B1/m5).
+	 */
+	const jumpToSearchEntry = useCallback(
+		async (entry: SettingSearchEntry): Promise<SearchJumpOutcome> => {
+			// A jump moves the reader on purpose; nothing is restored afterwards.
+			savedSearchScrollRef.current = null;
+			const root = contentContainerRef.current ?? document;
+			if (entry.source === "page") {
+				// `page:<row id>` -> the DOM contract's own id.
+				return jumpToSearchRow(root, entry.id.slice(5));
+			}
+			if (entry.source === "section") {
+				return jumpToSearchSection(root, entry.sectionId);
+			}
+			const key = entry.settingKey;
+			if (!key) return "missing";
+			const section = sectionForSettingKey(key, "backend");
+			/*
+			 * A registry key the payload no longer serves has no row to land on;
+			 * say so instead of scrolling the Backend section and stopping.
+			 */
+			if (
+				settingsRegistryQuery.data &&
+				!settingsRegistryQuery.data.settings.some((row) => row.key === key)
+			) {
+				return "missing";
+			}
+			handleSelectSection(section);
+			setSearchJump({ key, nonce: Date.now() });
+			return root.querySelector(`[data-search-section="${section}"]`)
+				? "landed"
+				: "missing";
+		},
+		[handleSelectSection, settingsRegistryQuery.data],
+	);
+	/*
+	 * A URL deep link outranks a search jump that is still on the books: the
+	 * reader navigated somewhere with a keyed link, and the section must follow
+	 * THAT key rather than the last result they pressed Enter on.
+	 */
+	// biome-ignore lint/correctness/useExhaustiveDependencies: `location.search` is the trigger; the setter is stable.
+	useEffect(() => {
+		setSearchJump(null);
+	}, [location.search]);
+	/*
+	 * Cmd/Ctrl+F is this page's, not the command palette's (that chord is
+	 * Cmd/Ctrl+K and is owned globally). A press that landed on an overlay —
+	 * a dialog, a menu — belongs to it, which is the rule the canvas binder
+	 * documents in `keyboard-scopes.ts`.
+	 */
+	useEffect(() => {
+		const onKeyDown = (event: KeyboardEvent) => {
+			if (!(event.metaKey || event.ctrlKey) || event.altKey) return;
+			if (event.key.toLowerCase() !== "f") return;
+			if (pressLandsOnOverlay(event.target)) return;
+			event.preventDefault();
+			savedSearchScrollRef.current =
+				contentContainerRef.current?.scrollTop ?? null;
+			searchRef.current?.focus();
+		};
+		document.addEventListener("keydown", onKeyDown);
+		return () => document.removeEventListener("keydown", onKeyDown);
+	}, []);
 	// Update active section based on scroll position
 	useEffect(() => {
 		// Use a small delay to ensure DOM is ready
@@ -1135,11 +1282,65 @@ export const SettingsPage: FC = () => {
 				 * Settings all cap the detail pane and none of them column it.
 				 */}
 				<div className="mx-auto flex w-full max-w-4xl flex-col gap-8 pb-8">
-					<PageHeader title={t("ui.settings.page.title")} icon={Settings} />
+					{/*
+					 * TITLE AND SEARCH ARE ONE BLOCK, gap-4 inside and the column's
+					 * gap-8 outside (design round 3, D22). At gap-8 either side the
+					 * field sat exactly as far from the title as from the first section
+					 * below it, so nothing said whether it belonged to the header or was
+					 * the first control of "Interface language".
+					 */}
+					<div className="flex flex-col gap-4">
+						<PageHeader title={t("ui.settings.page.title")} icon={Settings} />
+						{/*
+						 * THE SEARCH ROW, NOT A HEADER WIDGET. It sits under the title and
+						 * spans the content column, so it shares BOTH edges with every
+						 * control beneath it. In the header's action slot it floated at an
+						 * arbitrary x - the column is centred in the window, so at a wide
+						 * size the field landed right of the middle with nothing to align
+						 * to, which is the "centred everything" tell rather than a grid
+						 * decision. Column-wide is also what makes it read as the page's
+						 * first control rather than a badge beside the title.
+						 *
+						 * It is still the page's search and not a section filter: this one
+						 * JUMPS, the Backend section's own box filters its list in place.
+						 */}
+						<SettingsSearch
+							onDismiss={() => {
+								const saved = savedSearchScrollRef.current;
+								savedSearchScrollRef.current = null;
+								if (saved === null) return;
+								contentContainerRef.current?.scrollTo({ top: saved });
+							}}
+							ref={searchRef}
+							index={searchIndex}
+							readRendered={readRenderedSearchRows}
+							onJump={jumpToSearchEntry}
+						/>
+					</div>
 					<div className="flex flex-col gap-8">
-						<div ref={sectionRefs.general} className="flex flex-col gap-8">
+						<div
+							ref={sectionRefs.general}
+							/*
+							 * The sidebar destination this group belongs to, with its
+							 * rail label: the `h2`s inside name sub-groups ("User
+							 * profile"), while a jump lands in General settings.
+							 */
+							data-search-section="general"
+							data-search-section-label={t(
+								"ui.settings.navigation.settings_sidebar.general_settings",
+							)}
+							className="flex flex-col gap-8"
+						>
 							<GeneralLanguageSetting
-								focus={settingFocusKey === LANGUAGE_SETTING_KEY}
+								focus={
+									settingFocusKey === LANGUAGE_SETTING_KEY ||
+									searchJump?.key === LANGUAGE_SETTING_KEY
+								}
+								focusNonce={
+									searchJump?.key === LANGUAGE_SETTING_KEY
+										? searchJump.nonce
+										: undefined
+								}
 							/>
 							<SettingsSection
 								title={t("ui.settings.profile.title")}
@@ -1287,6 +1488,7 @@ export const SettingsPage: FC = () => {
 								 */}
 								<div className="flex flex-col gap-4">
 									<EditableField
+										searchRow="general.profile.name"
 										value={userStore.profile.name}
 										label={t("ui.settings.profile.display_name.label")}
 										placeholder={t(
@@ -1304,6 +1506,7 @@ export const SettingsPage: FC = () => {
 										readOnly={profileFieldsAreReadOnly}
 									/>
 									<EditableField
+										searchRow="general.profile.email"
 										value={userStore.profile.email}
 										label={t("ui.settings.profile.email.label")}
 										placeholder={t("ui.settings.profile.email.placeholder")}
@@ -1327,6 +1530,8 @@ export const SettingsPage: FC = () => {
 							>
 								<Button
 									variant="secondary"
+									data-search-row="general.tour"
+									data-search-control
 									onClick={() => {
 										startOnboardingTour({ forceModalCompleted: true });
 									}}
@@ -1347,7 +1552,44 @@ export const SettingsPage: FC = () => {
 									"ui.settings.model.settings_page.configure_the_default_ai_model_and_hosting_providers_used_for_gen",
 								)}
 							>
-								<div className="flex flex-col gap-4">
+								<div
+									/* The hosting/model/effort trio is ONE row: they are
+									   three controls choosing one thing (which model runs
+									   new conversations), and a reader searching "model"
+									   should land on the group, not on three near-identical
+									   results. */
+									data-search-row="general.model"
+									data-search-control
+									/*
+									 * This row is THREE controls and no title of its own: the
+									 * section's h2 is the only name it prints, so a reader
+									 * typing "model" was competing against twelve registry rows
+									 * whose labels are exactly that word while this row's label
+									 * was the concatenated text of its three selects (QA round
+									 * 2b, Q6b). The label is the heading's own string, so the
+									 * word on screen is the word that finds it; the row's text
+									 * (hosting provider, the model's name) stays searchable as
+									 * its description.
+									 */
+									data-search-label={t(
+										"ui.settings.model.settings_page.model_settings",
+									)}
+									/*
+									 * The words the three controls PRINT, as terms: making the
+									 * label the heading's string moved the trio's own captions
+									 * out of the label tier, so "hosting provider" — which a
+									 * reader reads off the `Hosting provider` caption and used to
+									 * find this row first — would fall to the description tier and
+									 * be outranked by registry names. Terms keep the reader's
+									 * vocabulary at the tier the captions had.
+									 */
+									data-search-terms={[
+										t("ui.common.models.hosting_select.hosting_provider"),
+										t("ui.common.models.model_select.model"),
+										t("ui.settings.model.default_effort.label"),
+									].join(" ")}
+									className="flex flex-col gap-4"
+								>
 									<HostingSelect
 										value={config.values.hosting}
 										isSaving={savingField === "hosting"}
@@ -1384,7 +1626,15 @@ export const SettingsPage: FC = () => {
 										 * out of the backend registry, so the section's `focusKey` is
 										 * suppressed for it and the row has to focus itself.
 										 */
-										focus={settingFocusKey === MODEL_EFFORT_SETTING_KEY}
+										focus={
+											settingFocusKey === MODEL_EFFORT_SETTING_KEY ||
+											searchJump?.key === MODEL_EFFORT_SETTING_KEY
+										}
+										focusNonce={
+											searchJump?.key === MODEL_EFFORT_SETTING_KEY
+												? searchJump.nonce
+												: undefined
+										}
 									/>
 									{/*
 									 * ONLY WHEN NO PROVIDER IS CONNECTED. Leading with "sign in"
@@ -1482,6 +1732,10 @@ export const SettingsPage: FC = () => {
 							)}
 							sectionRef={sectionRefs.appearance}
 							dataTourTag="settings-appearance-section"
+							searchSection="appearance"
+							searchSectionLabel={t(
+								"ui.settings.navigation.settings_sidebar.appearance",
+							)}
 						>
 							<div className="flex flex-col gap-4">
 								<ThemeSelector />
@@ -1505,6 +1759,7 @@ export const SettingsPage: FC = () => {
 								 * the row got written twice.
 								 */}
 								<ToggleSetting
+									searchRow="appearance.reasoning"
 									value={showAgentReasoning}
 									label={t(
 										"ui.settings.appearance.settings_page.show_agent_reasoning",
@@ -1524,6 +1779,7 @@ export const SettingsPage: FC = () => {
 								 * it is looking at the transcript rather than at this page.
 								 */}
 								<TranscriptDisplayModeSetting
+									searchRow="appearance.transcript"
 									value={parseTranscriptDisplayMode(transcriptDisplayMode)}
 									onChange={(next) => setTranscriptDisplayMode(next)}
 								/>
@@ -1534,7 +1790,11 @@ export const SettingsPage: FC = () => {
 								 * Absent outside the desktop app; replaced by its reason where the
 								 * platform cannot do it. See `window-glass-setting.tsx`.
 								 */}
-								<WindowGlassSetting state={glass.state} onChange={glass.set} />
+								<WindowGlassSetting
+									searchRow="appearance.glass"
+									state={glass.state}
+									onChange={glass.set}
+								/>
 							</div>
 						</SettingsSection>
 
@@ -1548,7 +1808,10 @@ export const SettingsPage: FC = () => {
 						 * why it carries no credential field.
 						 */}
 						<SpeechSection sectionRef={sectionRefs.speech} />
-						<KeyboardShortcutsSection sectionRef={sectionRefs.keyboard} />
+						<KeyboardShortcutsSection
+							sectionRef={sectionRefs.keyboard}
+							focusKey={settingFocusKey}
+						/>
 
 						{/*
 						 * The provider grid is the same component onboarding uses: one
@@ -1562,6 +1825,10 @@ export const SettingsPage: FC = () => {
 								"ui.settings.navigation.settings_page.sign_in_to_the_services_your_agents_think_with_new_chats_use_your",
 							)}
 							sectionRef={sectionRefs.providers}
+							searchSection="providers"
+							searchSectionLabel={t(
+								"ui.settings.navigation.settings_sidebar.model_providers",
+							)}
 							/*
 							 * An anchor for the callout's jump: `id` makes the container a
 							 * `tabIndex={-1}` focus target, so activation can move focus INTO
@@ -1611,6 +1878,11 @@ export const SettingsPage: FC = () => {
 							)}
 							sectionRef={sectionRefs.radient}
 							dataTourTag="settings-radient-account-section"
+							searchSection="radient"
+							searchSectionLabel={t(
+								"ui.settings.navigation.settings_sidebar.radient_account",
+							)}
+							searchIgnore="account, billing and usage are read-only or remote"
 						>
 							{/*
 							 * Account, billing and usage were separated by `Divider`s. They are
@@ -1642,6 +1914,13 @@ export const SettingsPage: FC = () => {
 								description={t("ui.agentMessages.settings.description")}
 								sectionRef={sectionRefs["agent-messages"]}
 								id="agent-messages"
+								searchSection="agent-messages"
+								searchSectionLabel={t("ui.agentMessages.settings.section")}
+								/* The controls inside are a consent state machine's, not
+								   a list of rows; the two registry-backed preferences it
+								   owns are searchable through the registry index and land
+								   here through `sectionForSettingKey`. */
+								searchIgnore="agent messages is a consent state machine; its registry rows are searchable"
 								/* A peer section, not a subsection of Backend settings
 								   (design round 1, D1): one decorative rule plus the
 								   page's section gap, no card. */
@@ -1655,7 +1934,15 @@ export const SettingsPage: FC = () => {
 										refusal={agentMessagesSnapshot.refusal}
 										onRefreshStatus={refreshAgentMessages}
 										sessions={canonicalSessions}
-										focus={settingFocusKey === TEAM_BRIDGE_ENABLED_SETTING_KEY}
+										focus={
+											settingFocusKey === TEAM_BRIDGE_ENABLED_SETTING_KEY ||
+											searchJump?.key === TEAM_BRIDGE_ENABLED_SETTING_KEY
+										}
+										focusNonce={
+											searchJump?.key === TEAM_BRIDGE_ENABLED_SETTING_KEY
+												? searchJump.nonce
+												: undefined
+										}
 										/* The chief-of-staff hold's button goes through the
 										   one shared switch rule, so the URL moves with the
 										   store commit like every other entrance; the chat
@@ -1716,26 +2003,60 @@ export const SettingsPage: FC = () => {
 								"ui.settings.navigation.settings_page.every_setting_the_backend_registry_owns_searchable_with_typed_edi",
 							)}
 							sectionRef={sectionRefs.backend}
+							searchSection="backend"
+							searchSectionLabel={t(
+								"ui.settings.navigation.settings_sidebar.backend_settings",
+							)}
+							/* Registry rows are the Backend section's own surface: its
+							   filter searches them in place, and this page's search reads
+							   the same payload directly (`settings.list`), so its rendered
+							   rows are not rows of THIS mechanism. */
+							searchIgnore="registry rows are searched by the Backend section's own filter"
 						>
 							<BackendSettingsSection
 								hideInterfaceLanguage
 								hideModelEffort
 								hideAgentMessages
+								hideSpeechShortcuts
 								focusKey={
-									settingFocusKey &&
-									sectionForSettingKey(settingFocusKey, "backend") === "backend"
-										? settingFocusKey
-										: null
+									/*
+									 * A search jump outranks a URL deep link: it is the most recent
+									 * intent, and both resolve to the same keyed row. The nonce is
+									 * what makes a SECOND Enter on the same result land again.
+									 */
+									searchJump
+										? searchJump.key
+										: settingFocusKey &&
+												sectionForSettingKey(settingFocusKey, "backend") ===
+													"backend"
+											? settingFocusKey
+											: null
 								}
+								focusNonce={searchJump?.nonce}
 								initialFilter={settingsSearchFilter}
 							/>
 						</SettingsSection>
 
-						<div ref={sectionRefs.imports}>
+						<div
+							ref={sectionRefs.imports}
+							/* A DESTINATION, even though its controls are ignored: the
+							   sidebar indexes this section, and a section result that
+							   cannot land is a dead result (review round 1, B1). */
+							data-search-section="imports"
+							data-search-section-label={t("ui.settings.imports.title")}
+							data-search-ignore="imports are a one-off task list, not a setting"
+						>
 							<ImportSettingsSection />
 						</div>
 
-						<div ref={sectionRefs.updates}>
+						<div
+							ref={sectionRefs.updates}
+							data-search-section="updates"
+							data-search-section-label={t(
+								"ui.settings.navigation.settings_sidebar.application_updates",
+							)}
+							data-search-ignore="application updates are an action surface, not a setting"
+						>
 							<AppUpdatesSection />
 						</div>
 					</div>

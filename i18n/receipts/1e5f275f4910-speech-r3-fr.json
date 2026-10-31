@@ -1,0 +1,29 @@
+{
+  "auditor": "reviewer",
+  "model": "anthropic/claude-sonnet-5-5",
+  "instance": "1e5f275f4910-speech-r3-fr",
+  "locale": "fr",
+  "namespace": "ui.settings.shortcuts",
+  "status": "passed",
+  "sha256": {
+    "fr": "23d4e180069e1f2d1591881844b177590d0e307c1e44686ff6c11452572f46c5",
+    "en": "4f378e78f842f053f680f113e0279bafe0e4ac1e3e2cac479ae51fa912c6834b"
+  },
+  "context_sha256": "cdea72cdb4506ae5b89b5751a5b6e1613baeb6c9bf21c900a4fa3907ee104ec5",
+  "scope": "Round 3 delta audit at PR #1515 head e95173f6df: ui.settings.shortcuts.speech.push_to_talk_overlap (CHANGED: takes {modifier}, {example}, {alternative} with an ICU select incl. none), push_to_talk_letter_pointer (NEW; round 3 changed only its quote characters), start_recording_needs_key (NEW). Diffed against dfe497849a (the bytes of the previous ledger audit): exactly 2 keys added, 1 changed, 0 removed, no other speech.* string touched; key set equals English's (77/77). Diffed against 3c4f49349e: only push_to_talk_letter_pointer differs, quote characters only. The remaining 74 keys are byte-identical to the previously audited bytes.",
+  "findings": [],
+  "checks": [
+    "English, context and target SHA-256 recomputed from the bytes on disk at head e95173f6df; this receipt names exactly those bytes.",
+    "Delta isolation: `git diff dfe497849a..e95173f6df` on the locale file is 3 insertions / 1 deletion, all in speech.push_to_talk_overlap, speech.push_to_talk_letter_pointer, speech.start_recording_needs_key; `git diff 3c4f49349e..e95173f6df` is 1 line (push_to_talk_letter_pointer), differing only in the quote characters.",
+    "ICU parity: all 77 messages parsed with the project's own @formatjs/icu-messageformat-parser; argument names, types and select arms equal English's (push_to_talk_overlap: modifier, example, alternative select {none, other}; push_to_talk_refused: platform select {darwin, win32, other}); NFC on every message; no bidi control characters.",
+    "Quoted action name: the text between the quote marks in push_to_talk_letter_pointer is byte-identical to this locale's ui.chat.composer.start_recording.",
+    "Semantic read of each of the 3 messages against English and the en context file (every shortcut using the key briefly starts a recording; optional 'choose X to avoid this'; letter shortcuts belong to the Start recording box above; a shortcut needs a letter or number besides a modifier).",
+    "Vocabulary and punctuation read against this locale's own strings and style guide: vous-imperative (Choisissez, utilisez); « Démarrer l’enregistrement » with U+202F after « and before » per the guide (“« … » (U+202F inside)”) and the 105 identical pairs already in the locale, regular space outside; the quoted name is byte-identical to ui.chat.composer.start_recording; touche de modification matches push_to_talk_hint; U+2019 apostrophes; raccourci/lettre/chiffre match the sibling strings.",
+    "Glossary and this locale's style guide read as binding; their bytes (local-operator origin/main 02e0bcb7f) are hashed in `references`.",
+    "Length fit was judged from character counts only; no rendered frame was produced or reviewed in this audit."
+  ],
+  "references": {
+    "glossary_sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+    "style_guide_sha256": "5315e1ac10c2ce57aac631ba653d08de680ee70c9a022ed3a8345ce2f9902ee7"
+  }
+}

@@ -112,24 +112,48 @@ export const PANEL_RAIL_WIDTH_PX = 44;
 export const CANVAS_PANE_MIN_PX = 400;
 
 /**
- * The widest the canvas may DOCK at, in pixels: §I's other number, the ceiling on
- * `min(560, available - 480)`.
+ * The widest any right-slot pane may be DRAGGED to, in pixels: one ceiling for the
+ * whole slot rather than one per pane.
  *
- * 560 rather than the dock's own 1200 drag ceiling: the draggable range is how wide
- * the user may make the document pane WHEN THERE IS ROOM, while this is what the
- * layout offers it by itself. A dock that took its 1200 preference in a 1120px row
- * would leave the chat column its floor and nothing else, which is the sqeeze §I's
- * floor exists to forbid.
+ * WHY ONE NUMBER. Until it, the panes announced three ceilings - the canvas and
+ * the asks drawer were capped at 560 by the dock (`canvasDockWidth`), the run
+ * panel and the code review pane at 640, the browser and the console at 1200 - so
+ * "the slot's one width" (#677) held for a DRAGGED value only up to the
+ * narrowest pane's cap: one 1000px drag drew 1000 in the browser and 560 in the
+ * canvas, and the separators offered 400..560 on the canvas, 320..640 on the run
+ * pane and the code review pane, and 480..1200 on the browser and the console.
+ * The operator's rule is one column, so the band is one band.
+ *
+ * WHY 1200 AS THE CEILING. It is the largest ceiling that existed (the browser's
+ * and console's own, since their dividers existed), so no pane loses a width it
+ * could already reach while the narrower panes gain the range their siblings had.
+ * It is still bounded by the ROW, which is what keeps `min(ceiling, ...)` from
+ * being a promise the layout cannot keep: every pane's capacity subtracts the
+ * conversation's `CHAT_PANE_MIN_PX`, so at a 1600px window the row leaves 816 and
+ * no pane draws its 1200 there.
+ *
+ * THE FLOORS STAY PER PANE (`CANVAS_PANE_MIN_PX` here, the run/browser/console
+ * floors in the store): a minimum is a property of what a pane holds, a maximum
+ * is a property of the slot.
  */
-export const CANVAS_PANE_MAX_PX = 560;
+export const RIGHT_SLOT_MAX_PX = 1200;
 
 /**
  * The width the canvas docks at, given the row it shares with the chat column.
  *
- * `min(560, available - 480)` (§I), and it is a function rather than a constant
- * because the second term is the one that moves: the row is the work area after the
- * sidebar has taken its own width, and §B1's 480 is subtracted from it so the chat
- * column keeps its floor whatever the canvas asks for.
+ * `min(RIGHT_SLOT_MAX_PX, available - 480)`, and it is a function rather than a
+ * constant because the second term is the one that moves: the row is the work
+ * area after the sidebar has taken its own width, and §B1's 480 is subtracted
+ * from it so the chat column keeps its floor whatever the canvas asks for.
+ *
+ * THE SAME LEFTOVER EVERY OTHER PANE GETS. This used to cap the dock at 560 - "the
+ * width the layout offers it by itself" rather than the drag ceiling - which is
+ * what made an unset canvas open at 560 while an unset run panel opened at 640,
+ * the mismatch `RIGHT_SLOT_MAX_PX` removes. The cap here is the slot's one ceiling,
+ * so the canvas's offering and a sibling pane's capacity are the same subtraction
+ * with the same number over it. The MODE is still decided by the floor alone
+ * (`canvasPaneMode`): 400 is far below 1200, so the ceiling never decides
+ * docked-versus-overlay.
  *
  * `Math.max(0, ...)` because the subtraction must not go negative on a window
  * narrower than the floor itself - the caller's mode decides what to do there
@@ -137,7 +161,7 @@ export const CANVAS_PANE_MAX_PX = 560;
  * its divider still drawn.
  */
 export function canvasDockWidth(rowWidth: number): number {
-	return Math.max(0, Math.min(CANVAS_PANE_MAX_PX, rowWidth - CHAT_PANE_MIN_PX));
+	return Math.max(0, Math.min(RIGHT_SLOT_MAX_PX, rowWidth - CHAT_PANE_MIN_PX));
 }
 
 /**
@@ -191,12 +215,14 @@ export function canvasPaneMode(rowWidth: number): "docked" | "overlay" {
  * call sites refuse the write so a stored preference survives intact for a
  * window that can honour it.
  *
- * `value` CAN LEGITIMATELY EXCEED `maxWidth`: a stored shared width wider than
- * the pane's own ceiling is still drawn (the run panel at a 1600px window with a
- * stored 1000 draws 816 against its 640 ceiling), and clamping either number
- * would lie about the other. That case is measured in
- * `docs/evidence/right-slot-one-default/` and recorded on the PR as
- * found-not-fixed, not silently reshaped here.
+ * `value` IS NOT CLAMPED TO `maxWidth`, and that is deliberate: clamping it would
+ * announce a width the pane is not drawn at. It was reachable once - the run
+ * panel at a 1600px window drew 816 against its own 640 ceiling - and the
+ * slot's one ceiling (`RIGHT_SLOT_MAX_PX`) closed that class, because every
+ * caller now hands in a width held to the same ceiling the separator announces.
+ * The function still refuses to reshape `value`, so a caller that ever hands it a
+ * wider drawing pane gets the truthful pair rather than a second lie; the
+ * property is pinned in `scripts/chat-pane-floors.test.mjs`.
  */
 export function rightSlotDividerContract({
 	capacity,
@@ -235,10 +261,11 @@ export function rightSlotDividerContract({
  * automatic collapse; the viewport no longer overrides the preference by itself.
  *
  * The arithmetic at 1024 is the whole argument: the docked row is
- * `1024 - 260 = 764`, and `canvasDockWidth(764)` is `min(560, 764 - 480) = 284`,
- * below the pane's own 400px floor, so the canvas stops docking. Had the sidebar
- * taken step 1 the row would be `1024 - 56 = 968` and the canvas would dock at
- * 488 with the chat keeping its 480 beside it.
+ * `1024 - 260 - 44 = 720`, and `canvasDockWidth(720)` is
+ * `min(1200, 720 - 480) = 240`, below the pane's own 400px floor, so the canvas
+ * stops docking. Had the sidebar taken step 1 the row would be
+ * `1024 - 56 - 44 = 924` and the canvas would dock at 444 with the chat keeping
+ * its 480 beside it.
  *
  * ONE ROW ARITHMETIC, NOT THE MEASURED ROW, and that is deliberate: the yield
  * decides the sidebar's width, so deciding it from a measurement of the row the

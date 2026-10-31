@@ -35,6 +35,10 @@ import type {
 	MiniViewSummonedPayload,
 } from "../shared/mini-view";
 import type {
+	ChordClaim,
+	RecordingShortcutState,
+} from "../shared/recording-shortcut";
+import type {
 	WindowChromeColors,
 	WindowChromeFacts,
 	WindowChromeState,
@@ -115,6 +119,14 @@ declare global {
 			 * main, the preload and this file all import, so a channel or a payload
 			 * shape cannot drift between them.
 			 */
+			recordingShortcut: {
+				get: () => Promise<RecordingShortcutState>;
+				markPending: (value?: string) => void;
+				onChange: (
+					callback: (state: RecordingShortcutState) => void,
+				) => () => void;
+				syncClaims: (rev: number, claims: ChordClaim[]) => void;
+			};
 			miniView: {
 				onSummoned: (
 					callback: (payload: MiniViewSummonedPayload) => void,

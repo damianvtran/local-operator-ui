@@ -9,6 +9,7 @@ import type { AskScope } from "@features/chat/ask-queue";
 import {
 	CANVAS_PANE_MIN_PX,
 	CHAT_PANE_MIN_PX,
+	RIGHT_SLOT_MAX_PX,
 	SIDEBAR_DEFAULT_WIDTH,
 	SIDEBAR_MAX_WIDTH,
 	SIDEBAR_MIN_WIDTH,
@@ -317,7 +318,10 @@ type UiPreferencesState = {
 	 *
 	 * THE FLOORS STAY PER PANE, at the divider that drags them: a page stops
 	 * being a page below ~480 and the canvas below its 400, and those minimums
-	 * are properties of what each pane holds, not of the slot.
+	 * are properties of what each pane holds, not of the slot. THE CEILING DOES
+	 * NOT: `RIGHT_SLOT_MAX_PX` is one number for the slot, so every separator
+	 * offers the same range and a width dragged in one pane is a width every pane
+	 * can draw.
 	 */
 	rightSlotWidth: number;
 
@@ -397,7 +401,11 @@ type UiPreferencesState = {
 	 * action's default); a chord capture refuses, or one the canonical grammar
 	 * cannot spell, is not written at all.
 	 */
-	setShortcutBinding: (actionId: ActionId, chord: string | null) => void;
+	setShortcutBinding: (
+		actionId: ActionId,
+		chord: string | null,
+		externalClaims?: ReadonlyMap<string, string>,
+	) => void;
 
 	/**
 	 * Store the explicit no-chord state for one action (UX round 1's U4): the
@@ -1556,24 +1564,27 @@ export const EMPTY_RIGHT_SLOT_MEMORY: RightSlotMemory = Object.freeze([]);
  * measurement rather than to agree by convention.
  *
  * WHY IT IS A NUMBER AND NOT "WHICH PANE IS OPEN": the panes differ in their
- * floors and maxima (the canvas holds documents and is capped at 560 docked, the
- * run panel prose and rosters and stops at 640, the browser and console stop at
- * 1200), and any union of pane ids would carry those with it, i.e. a second place
- * deciding which width belongs to an open pane. The caller asks "how wide is the
- * slot" and gets the one answer that is true for the pane actually open.
+ * FLOORS (the canvas holds documents and stops at 400 docked, the run pane's
+ * roster fits at 320, a page and a terminal grid need 480), and any union of pane
+ * ids would carry those with it, i.e. a second place deciding which width belongs
+ * to an open pane. The ceilings do not differ: `RIGHT_SLOT_MAX_PX` is one number
+ * for the slot, which is why this function answers one width and the pane only
+ * supplies a floor. The caller asks "how wide is the slot" and gets the one answer
+ * that is true for the pane actually open.
  *
  * THE ARITHMETIC IS THE ROW'S OWN FLEX, restated once: the row is the work area
  * beside the sidebar, the conversation's floor is CHAT_PANE_MIN_PX of it, and the
  * pane takes what is left. That is why the canvas resolves through
- * `canvasDockWidth` — §I's `min(560, row - 480)`, which IS the same leftover
- * capped at the pane's dock maximum — and why the other three are
- * `min(preference, leftover)`. A preference of 0 is the store's "unset" and
- * resolves to `DEFAULT_RIGHT_SLOT_WIDTH` for EVERY pane (#872 follow-up; it used
- * to be one seed per pane, which is what re-sized the slot on a switch even
- * before anyone had dragged); since #677 a non-zero preference is the ONE shared
- * `rightSlotWidth`. And since the #677 review (D2) every branch holds the pane's
- * own floor as well: a shared width below it lifts to it here, where all three
- * writers of the value are covered at once — see the floor constants below.
+ * `canvasDockWidth` - the same leftover under the slot's one ceiling - and why
+ * the other panes are `min(preference, leftover)`; the two spellings are one
+ * subtraction. A preference of 0 is the store's "unset" and resolves to
+ * `DEFAULT_RIGHT_SLOT_WIDTH` for EVERY pane (#872 follow-up; it used to be one
+ * seed per pane, which is what re-sized the slot on a switch even before anyone
+ * had dragged); since #677 a non-zero preference is the ONE shared
+ * `rightSlotWidth`. Every branch holds the pane's own floor and the slot's ONE
+ * ceiling (`RIGHT_SLOT_MAX_PX`) through `rightSlotPaneWidth`: a shared width
+ * below a pane's floor lifts to it here, where all three writers of the value
+ * are covered at once - see the floor constants below.
  *
  * THE CANVAS'S `overlay` MODE IS THE CASE TO STATE EXPLICITLY, because it is the
  * one where the mode and the arithmetic are easiest to get out of step: when the
@@ -1617,57 +1628,50 @@ export function resolveRightSlotWidth(
 	 */
 	if (pane === null || !rightSlotPaneDrawable(pane, state)) return 0;
 
-	// THE SHARED WIDTH OR THE ONE DEFAULT, HELD UP TO THIS PANE'S FLOOR: one
-	// read, one default + four floors, which is the whole of #677 at the
-	// resolving end (see `rightSlotWidth` and the floor constants).
+	// THE SHARED WIDTH OR THE ONE DEFAULT, HELD TO THIS PANE'S FLOOR AND THE
+	// SLOT'S ONE CEILING: one read, one default + four floors + one ceiling,
+	// which is the whole of #677 at the resolving end (see `rightSlotWidth`,
+	// `RIGHT_SLOT_MAX_PX` and the floor constants).
 	let preferred: number;
 	switch (pane) {
 		/*
 		 * THE ASKS DRAWER WEARS THE CANVAS'S GEOMETRY, deliberately and not by
 		 * oversight (design note §2: the drawer "must be a member of the existing canvas
-		 * family", 400-560px by the family's arithmetic). Reusing the default, the floor
-		 * and the dock cap is what makes the card "never again the widest thing on the
-		 * screen": its width is the family's, so it needs no rule of its own - which is
-		 * the mistake the note names ("do not patch the width separately"). The default
-		 * (640) is wider than the dock cap (560) at every row, so for these two it
-		 * never draws: the cap is what an unset canvas opens at.
+		 * family"). Reusing the floor and the band is what makes the card "never again
+		 * the widest thing on the screen": its width is the family's, so it needs no rule
+		 * of its own - which is the mistake the note names ("do not patch the width
+		 * separately"). Since the slot has one ceiling, this is simply the width every
+		 * pane opens at; the canvas dock's arithmetic (`canvasDockWidth`) bounds it by the
+		 * row below.
 		 */
 		case "canvas":
 		case "ask":
-			preferred = Math.max(
-				CANVAS_PANE_MIN_PX,
-				state.rightSlotWidth || DEFAULT_RIGHT_SLOT_WIDTH,
-			);
+			preferred = rightSlotPaneWidth(CANVAS_PANE_MIN_PX, state.rightSlotWidth);
 			break;
 		case "run":
-			preferred = Math.max(
-				RUN_PANEL_MIN_PX,
-				state.rightSlotWidth || DEFAULT_RIGHT_SLOT_WIDTH,
-			);
+			preferred = rightSlotPaneWidth(RUN_PANEL_MIN_PX, state.rightSlotWidth);
 			break;
 		case "browser":
-			preferred = Math.max(
+			preferred = rightSlotPaneWidth(
 				BROWSER_PANEL_MIN_PX,
-				state.rightSlotWidth || DEFAULT_RIGHT_SLOT_WIDTH,
+				state.rightSlotWidth,
 			);
 			break;
 		case "console":
-			preferred = Math.max(
+			preferred = rightSlotPaneWidth(
 				CONSOLE_PANEL_MIN_PX,
-				state.rightSlotWidth || DEFAULT_RIGHT_SLOT_WIDTH,
+				state.rightSlotWidth,
 			);
 			break;
 		/*
-		 * THE CODE REVIEW PANE WEARS THE RUN PANEL'S LADDER, deliberately (design
-		 * §9: "the run pane's ladder (min 320, max 640)"): its rows are the same
-		 * kind of prose-and-figures content the run panel draws, so one floor for
-		 * the two is one number to keep true rather than two that can drift.
+		 * THE CODE REVIEW PANE WEARS THE RUN PANEL'S FLOOR, deliberately (design
+		 * §9 gave the two one ladder): its rows are the same kind of
+		 * prose-and-figures content the run panel draws, so one floor for the two is
+		 * one number to keep true rather than two that can drift. There is no
+		 * per-pane ceiling left to carry - `RIGHT_SLOT_MAX_PX` is the slot's.
 		 */
 		case "code":
-			preferred = Math.max(
-				RUN_PANEL_MIN_PX,
-				state.rightSlotWidth || DEFAULT_RIGHT_SLOT_WIDTH,
-			);
+			preferred = rightSlotPaneWidth(RUN_PANEL_MIN_PX, state.rightSlotWidth);
 			break;
 	}
 	if (rowWidth <= 0) return preferred;
@@ -1676,6 +1680,30 @@ export function resolveRightSlotWidth(
 		return Math.min(preferred, canvasDockWidth(rowWidth));
 	}
 	return Math.min(preferred, Math.max(0, rowWidth - CHAT_PANE_MIN_PX));
+}
+
+/**
+ * The width ONE pane asks for, before the row has a say: the shared preference
+ * (or the slot's one default while it is unset), held to that pane's own floor
+ * and the slot's one ceiling.
+ *
+ * ONE ARITHMETIC, EVERY READER. `resolveRightSlotWidth` uses it for all six panes'
+ * preference, and `chat-content.tsx` uses it for the four `effective*PanelWidth`
+ * values it hands its `PaneSlot`s and separators - so a drag, a pane switch and
+ * the drawn column cannot disagree about the band. The floor is the pane's (what
+ * its own content needs); the ceiling is the slot's (`RIGHT_SLOT_MAX_PX`). That
+ * split is what makes one shared width possible at all: below a pane's floor the
+ * shared value lifts to that floor, and above it the width is one width for
+ * everybody, up to one number none of them exceeds.
+ */
+export function rightSlotPaneWidth(
+	floor: number,
+	rightSlotWidth: number,
+): number {
+	return Math.min(
+		RIGHT_SLOT_MAX_PX,
+		Math.max(floor, rightSlotWidth || DEFAULT_RIGHT_SLOT_WIDTH),
+	);
 }
 
 /**
@@ -1789,10 +1817,9 @@ export type RunPanelReveal = {
  */
 /**
  * THE ONE WIDTH THE RIGHT SLOT OPENS AT while the shared `rightSlotWidth` is
- * unset (0) - the experience of anyone who has never dragged a divider - for the
- * run panel, the browser and the console, and the number the canvas and the asks
- * drawer start from before their dock cap (`canvasDockWidth`, 560 at every row
- * that matters) takes over.
+ * unset (0) - the experience of anyone who has never dragged a divider - for
+ * every pane that can occupy the slot: the run panel, the browser, the console,
+ * the code review pane, and the canvas and asks drawer with them.
  *
  * WHY ONE NUMBER (#872 follow-up). Until it, an unset slot resolved to a seed per
  * pane - run 420, browser 640, console 796 (100 columns), canvas 800 - so
@@ -1800,6 +1827,13 @@ export type RunPanelReveal = {
  * transcript on every switch (measured at 1280: 551px with the run panel open,
  * 474px with the browser or console). #677 made the DRAGGED width shared; this
  * makes the width nobody dragged shared too.
+ *
+ * IT IS ALSO THE CANVAS'S AND THE ASKS DRAWER'S OPENING WIDTH, which took a
+ * second step: their resolvers used to clamp to the canvas dock's own 560 cap, so
+ * the drawer and the canvas opened 80px narrower than the panes beside them even
+ * with the one default in place. With one ceiling for the slot
+ * (`RIGHT_SLOT_MAX_PX`) the only thing that can make a pane narrower than 640 is
+ * the row itself, and that bound is the same subtraction for all six.
  *
  * WHY 640 AND NOT A ROUNDER 600. It is the number the browser already shipped
  * (a page's room), and it is exactly 80 terminal columns at the shipped face:
@@ -1811,10 +1845,11 @@ export type RunPanelReveal = {
  * it was already undelivered below ~1580px windows, where the row's leftover
  * capped it, and the user can still drag to 100 columns.
  *
- * WHAT IT DOES NOT TOUCH: the per-pane FLOORS and MAXIMA (run 320..640, browser
- * and console 480..1200, canvas 400..the dock cap), the meaning of 0 as "unset",
- * and every stored width - nothing persisted changes meaning, which is why this
- * rides without a persist-version step.
+ * WHAT IT DOES NOT TOUCH: the per-pane FLOORS (run 320, browser and console 480,
+ * canvas 400), the slot's one ceiling (`RIGHT_SLOT_MAX_PX`, 1200, in
+ * `chat-sidebar-layout.ts`), the meaning of 0 as "unset", and every stored width
+ * - nothing persisted changes meaning, which is why this rides without a
+ * persist-version step.
  */
 export const DEFAULT_RIGHT_SLOT_WIDTH = 640;
 /*
@@ -1822,7 +1857,8 @@ export const DEFAULT_RIGHT_SLOT_WIDTH = 640;
  * preference used to read as 450 for the canvas alone - a number nothing
  * persisted, since the canvas divider's own floor keeps every drag above it.
  * One unset meaning one thing makes 450 unreachable: an unset canvas starts from
- * `DEFAULT_RIGHT_SLOT_WIDTH` like every other pane, then its dock cap applies.
+ * `DEFAULT_RIGHT_SLOT_WIDTH` like every other pane, and the row's leftover bounds
+ * it exactly as it bounds theirs.
  */
 const DEFAULT_CHAT_SIDEBAR_WIDTH = SIDEBAR_DEFAULT_WIDTH;
 /**
@@ -2479,7 +2515,7 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 				set({ rightSlotRoute: { ...route } });
 			},
 
-			setShortcutBinding: (actionId, chord) => {
+			setShortcutBinding: (actionId, chord, externalClaims) => {
 				/*
 				 * NO-OP WRITES ARE REAL ANSWERS: a chord capture refuses, or one the
 				 * canonical grammar cannot spell, is not stored. The refusal is the
@@ -2499,7 +2535,13 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 				const normalized = normalizeChord(chord);
 				if (normalized === null) return;
 				if (
-					captureRefusal(normalized, actionId, get().shortcutBindings) !== null
+					captureRefusal(
+						normalized,
+						actionId,
+						get().shortcutBindings,
+						"linux",
+						externalClaims,
+					) !== null
 				) {
 					return;
 				}

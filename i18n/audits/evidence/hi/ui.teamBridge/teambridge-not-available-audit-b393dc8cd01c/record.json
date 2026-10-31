@@ -1,0 +1,87 @@
+{
+	"audit_id": "teambridge-not-available-audit-b393dc8cd01c",
+	"date": "2026-10-28",
+	"locale": "hi",
+	"namespace": "ui.teamBridge",
+	"source_commit": "a975a0b4ec82c0cd6b6541d68b1d3501f683328d",
+	"translator": {
+		"agent": "i18n-translator",
+		"job": "64be94d56ced",
+		"model": "not supplied",
+		"date": "2026-10-28",
+		"method": "LLM translator subagent; no MT service referenced"
+	},
+	"auditors": [
+		{
+			"agent": "i18n-auditor",
+			"model": "anthropic/claude-opus-5-5",
+			"date": "2026-10-28",
+			"result": "clean",
+			"instance": "b393dc8cd01c-notavail-hi",
+			"findings": {
+				"blocker": 0,
+				"major": 0,
+				"minor": 0,
+				"nit": 0
+			},
+			"receipt": "i18n/receipts/b393dc8cd01c-notavail-hi.json",
+			"receipt_sha256": "cab134f5a7204202d177119f0dfe07d5836435916e2ff12a04b7d6b595330f66"
+		}
+	],
+	"ledger_status": "audited",
+	"independence": "Independent auditor (reviewer role, session b393dc8cd01c). It authored none of the translated strings as delivered by i18n-translator job 64be94d56ced. Per the audit brief it then FIXED blocker/major strings itself; those replaced values (listed in resolved_findings with before/after) are auditor-authored and were not re-audited by a second agent. This run wrote only catalogue fixes, receipts, evidence records and ledger rows; it did not commit.",
+	"files": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.json",
+			"sha256": "1a011fa4637cf70544162f4257b8bd24f7f11b1785c9a5a633d5b05328b3fbe4"
+		},
+		"target": {
+			"path": "src/i18n/catalogues/hi/ui.teamBridge.json",
+			"sha256": "b852b2d1e4948eb8197576ce067b261da46fd3aa026ed75a2c8b552f1bd42ec4"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+			"sha256": "cc89c0d9a5392c195e6f26a997b269f7db50c3741840adb05a2d73ac14c3f03b"
+		}
+	},
+	"audited": {
+		"ui.teamBridge.thread.not_available": {
+			"en": "This conversation is not open to you. You may not be a member of it, or it may have been archived.",
+			"target": "यह बातचीत आपके लिए उपलब्ध नहीं है। हो सकता है आप इसके सदस्य न हों, या इसे आर्काइव कर दिया गया हो।"
+		}
+	},
+	"scope": {
+		"keys_audited_linguistically": [
+			"ui.teamBridge.thread.not_available"
+		],
+		"inherited_byte_identical": {
+			"previous_receipt": "i18n/receipts/6d269032fdc7-r3-hi.json",
+			"previous_receipt_sha256": "783da201c8fd41e61871f9bfdae39591152bb557f63187fdf934de3cbc6bd233",
+			"previous_target_sha256": "6fc8d10b0ec69f1897b7594afc2b2d99558a474da62e111fe2464224b433ff73",
+			"note": "target at a975a0b4ec with the single ui.teamBridge.thread.not_available line removed hashes to the previously audited target bytes (base e6320fbd33); git numstat e6320fbd33..a975a0b4ec = 1 added, 0 removed."
+		},
+		"english_change": "en adds only thread.not_available (value + context note); no other en key changed."
+	},
+	"notes": "आप; 'बातचीत', 'सदस्य', 'आर्काइव' match shipped hi; danda ।; 'उपलब्ध नहीं' access-only; 'हो सकता है ... या ...' undisclosed.",
+	"findings": [],
+	"resolved_findings": [],
+	"references": {
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"revision": "e433b2c54afb412de69eaeae10e1be9f2b21cba5",
+			"sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+		},
+		"style_guide_hi": {
+			"path": "~/local-operator/i18n/style-guides/hi.md",
+			"revision": "14f73c4dcce62d858508fb6313b7f0416999a63b",
+			"sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+		}
+	},
+	"artifacts": {
+		"receipt": {
+			"path": "i18n/receipts/b393dc8cd01c-notavail-hi.json",
+			"sha256": "cab134f5a7204202d177119f0dfe07d5836435916e2ff12a04b7d6b595330f66"
+		}
+	},
+	"limitations": "No rendered-fit, screenshot, pseudo-localization or FriBidi evidence: this role has no browser tool and the host is source-only (builds/tests paused). Fit for not_available judged by character count only (en 104; longest fr 117)."
+}

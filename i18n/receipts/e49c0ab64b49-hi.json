@@ -1,0 +1,95 @@
+{
+	"schema": 1,
+	"receipt_kind": "locale-audit, SECOND independent audit (docs/I18N.md high-visibility copy): members-dialog polish consent note",
+	"date": "2026-10-30",
+	"auditor": "translation-auditor",
+	"agent": "translation-auditor",
+	"model": "anthropic/claude-opus-5-5",
+	"model_provenance": "Session e49c0ab64b49 ran as anthropic/claude-opus-5-5 (the model named in this session's system prompt); no fallback announced or observed.",
+	"session": "e49c0ab64b49",
+	"instance": "e49c0ab64b49-hi",
+	"audit_id": "teambridge-members-polish-audit2-e49c0ab64b49-hi",
+	"status": "passed",
+	"result": "clean-with-findings",
+	"locale": "hi",
+	"namespace": "ui.teamBridge",
+	"independence": "Second independent auditor: session e49c0ab64b49 (team lopdev, role translation-auditor), distinct from translator (translator / anthropic/claude-opus-5-5) and from first auditor session b5610aecd5f2. Verdicts were formed from the catalogues, context sidecar, glossary and style guides BEFORE reading the first auditor's receipts; comparison recorded below. No catalogue edited.",
+	"integration": {
+		"branch": "fix/team-bridge-members-dialog-polish",
+		"head_at_audit": "f1fd25bf33926c9b427fbc9fbdc2ff4a08e17500",
+		"worktree": "~/local-operator-ui/.worktrees/members-dialog-polish"
+	},
+	"scope": {
+		"primary": [
+			"ui.teamBridge.members.invitation_note_v2"
+		],
+		"quick_pass": [
+			"ui.teamBridge.members.invite_count",
+			"ui.teamBridge.members.remove_label"
+		],
+		"keys_read_for_consistency": [
+			"ui.teamBridge.members.role.owner",
+			"ui.teamBridge.notify.mute",
+			"ui.teamBridge.notify.mention",
+			"ui.teamBridge.menu.mute",
+			"ui.teamBridge.invitations.consent.bridge_agent_participation_v1",
+			"ui.teamBridge.invitations.accepted_unnamed",
+			"ui.teamBridge.builtin.agents_topic",
+			"ui.teamBridge.members.remove",
+			"ui.teamBridge.members.remove_tooltip",
+			"ui.teamBridge.members.invite",
+			"ui.teamBridge.members.title",
+			"ui.teamBridge.members.state.invited_short"
+		],
+		"call_site": "src/renderer/src/features/team-bridge/team-bridge-add-members.tsx:759 (footer <p className=\"max-w-sm text-meta-sm\">), :782 invite button, :404 remove aria-label",
+		"references": [
+			"~/local-operator/i18n/glossary.md (agent row)",
+			"~/local-operator/i18n/style-guides/hi.md"
+		]
+	},
+	"sha256": {
+		"hi": "6f968790b4e22d2590a99d802af0ffb786c822b8452828fc85644c938265cd1b",
+		"en": "20a8960b411dbff3dc7a8b6e029a4a17091e95980bd1bab946445597aff3277f"
+	},
+	"files": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.json",
+			"sha256": "20a8960b411dbff3dc7a8b6e029a4a17091e95980bd1bab946445597aff3277f"
+		},
+		"target": {
+			"path": "src/i18n/catalogues/hi/ui.teamBridge.json",
+			"sha256": "6f968790b4e22d2590a99d802af0ffb786c822b8452828fc85644c938265cd1b"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+			"sha256": "abbf67496bc6fecdd4d5795e2fb6b15d4d6a1cefad59ba69b303656b88c8b4cd"
+		}
+	},
+	"translator": {
+		"agent": "translator",
+		"model": "anthropic/claude-opus-5-5 (as stated in the audit brief)"
+	},
+	"invitation_note_v2_fidelity": "Clauses checked: (1) no access until accepted; (2) joins only after owner consents; (3) then reads every message here; (4) decides whether to reply; (5) always replies when @-mentioned; (6) owner can limit to @-mentions or mute. All six clauses present; स्वामी matches role.owner, म्यूट matches notify.mute; danda used; nukta forms intact.",
+	"quick_pass": {
+		"invite_count": "Placeholder {count} in every non-=0 arm, none in =0 (as en); arms valid for CLDR (fr/es one/many/other, ru one/few/many/other, zh-CN/vi other, ur/hi one/other); exact-zero arm kept; verb matches members.invite.",
+		"remove_label": "Placeholder {name} preserved once; verb and conversation noun match remove/remove_tooltip and members.title in every locale."
+	},
+	"mechanical_checks": {
+		"placeholders": "invitation_note_v2 has no placeholders in en or target; invite_count/remove_label placeholder sets equal en (regex over {name} tokens).",
+		"nfc": "target value NFC-normalized",
+		"bidi_controls": "none present (Cf scan)"
+	},
+	"findings": [
+		{
+			"severity": "nit",
+			"id": "A2-HI-N1",
+			"key": "ui.teamBridge.members.invitation_note_v2",
+			"current": "उसे केवल @ वाले उल्लेखों तक सीमित कर सकता है",
+			"proposed": "उसे केवल @ से होने वाले उल्लेखों तक सीमित कर सकता है",
+			"reason": "Earlier in the same string and in the consent copy the term is \"@ से उल्लेख\"; \"@ वाले उल्लेख\" is a second phrasing of one glossary term."
+		}
+	],
+	"verdict": "clean-with-findings: 0 blocker, 0 major, 0 minor, 1 nit",
+	"evidence_record": "i18n/audits/evidence/hi/ui.teamBridge/teambridge-members-polish-audit2-e49c0ab64b49-hi/record.json",
+	"audit_notes_not_execution_log": true
+}

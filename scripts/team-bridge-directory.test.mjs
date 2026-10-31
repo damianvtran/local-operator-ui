@@ -97,13 +97,58 @@ const componentBundle = await build({
 	bundle: true,
 	format: "esm",
 	platform: "node",
-	packages: "external",
+	/*
+	 * ONLY THE PACKAGES THE SUITE ITSELF IMPORTS STAY EXTERNAL. `packages:
+	 * "external"` left the whole bare-import graph to node's ESM resolver, and the
+	 * shared composer's chain reaches `@mui/material/styles` - a DIRECTORY import,
+	 * which Node refuses ("Cannot find module .../styles"). Bundling everything the
+	 * suite does not itself import keeps one React (the real identity check) while
+	 * letting the app's own dependency graph resolve the way the app's bundler does.
+	 */
+	external: [
+		"@tanstack/react-query",
+		"react",
+		"react-dom",
+		"react-dom/server",
+		"react-router-dom",
+		"react/jsx-runtime",
+	],
 	jsx: "automatic",
-	loader: { ".css": "empty" },
+	// Vite's `import.meta.env` is read at IMPORT time by the app's config loader,
+	// which the shared composer's chain pulls in (`load-config.ts`): bundling for
+	// node leaves it undefined and the module throws before a single assertion runs
+	// (`browser-chrome.test.mjs` records the same trap). The URL is dead on purpose.
+	define: { "import.meta.env": "__viteEnv" },
+	/*
+	 * BOTH SHIMS THE APP'S BUNDLER GIVES THE SAME MODULES. `__viteEnv` is Vite's
+	 * `import.meta.env`; `require` is what a CJS dependency inside an ESM bundle
+	 * needs (the composer's graph keeps one), resolved from THIS file the way the
+	 * app resolves it. `agents-composer-mount.test.mjs` states the same recipe.
+	 */
+	banner: {
+		js: 'const __viteEnv = {}; import { createRequire as __loCreateRequire } from "node:module"; const require = __loCreateRequire(import.meta.url);',
+	},
+	// The page mounts the SHARED composer now, which pulls the brand mark (.png).
+	// Bundling it keeps these DOM/state probes on the real component tree; a
+	// `dataurl` rather than a file keeps the harness asset-free.
+	loader: {
+		".css": "empty",
+		".svg": "text",
+		".png": "dataurl",
+		".webp": "dataurl",
+		".ttf": "empty",
+		".woff": "empty",
+		".woff2": "empty",
+		".eot": "empty",
+	},
 	plugins: [chatSidebarStub],
 	alias: {
 		"@shared": `${ROOT}/src/renderer/src/shared`,
 		"@features": `${ROOT}/src/renderer/src/features`,
+		// The shared composer imports the brand mark through this alias; it stayed
+		// external under `packages: "external"`, so the first suite to bundle the
+		// composer is the first to need it resolved.
+		"@assets": `${ROOT}/src/renderer/src/assets`,
 	},
 	write: false,
 });
@@ -538,16 +583,10 @@ test("machine-only off names this machine, claims no consent step, and links to 
  * compiled and rendered every pane sender as "Unknown person"; the page now
  * passes `(sender) => labelFor(sender, thread.tenantId)`.
  *
- * THAT RENDER PATH IS HELD IN THIS BUILD. `teamBridgeThreadsAvailable` is false
- * whatever the runtime advertises (`team-bridge-thread-gate.ts`), so the page
- * with a `threadLink` renders NO pane and NO reply affordance - even with the
- * capability answering `enabled`, which is the case this test uses. What is
- * left to pin is the hold at the real view plus the tenant-scoped wiring in
- * source, which is what the feature returns on. The pane's own sender naming is
- * unreachable until the constant flips; asserting it here would be an assertion
- * about a surface no build mounts.
+ * The real page proves the capability half: enabled mounts the thread and
+ * reply affordance, while every unresolved or unsupported answer hides them.
  */
-test("the held page mounts no thread pane or reply affordance, and keeps the tenant-scoped label wiring", async () => {
+test("the page mounts its thread only for the enabled capability, with tenant-scoped labels", async () => {
 	const { QueryClient, QueryClientProvider } = await import(
 		"@tanstack/react-query"
 	);
@@ -587,8 +626,7 @@ test("the held page mounts no thread pane or reply affordance, and keeps the ten
 				),
 			),
 		);
-	// EVERY capability answer is held, `enabled` included: an absent prop is the
-	// "no capabilities read" mount and must behave like `unknown`.
+	// An absent prop is the "no capabilities read" mount and behaves as unknown.
 	for (const state of [
 		undefined,
 		"unknown",
@@ -598,10 +636,17 @@ test("the held page mounts no thread pane or reply affordance, and keeps the ten
 	]) {
 		const html = render(state);
 		const label = state ?? "absent";
-		// The timeline itself still renders; only the thread lane is withheld.
 		assert.match(html, /Thread root body/, `${label}: timeline`);
-		assert.doesNotMatch(html, /aria-label="Thread"/, `${label}: pane`);
-		assert.doesNotMatch(html, /Reply in thread/, `${label}: reply`);
+		assert.equal(
+			html.includes('aria-label="Thread"'),
+			state === "enabled",
+			`${label}: pane`,
+		);
+		assert.equal(
+			html.includes("Reply in thread"),
+			state === "enabled",
+			`${label}: reply`,
+		);
 	}
 	const pageSource = readFileSync(
 		"src/renderer/src/features/team-bridge/team-bridge-page.tsx",

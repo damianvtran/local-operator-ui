@@ -1,0 +1,28 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "kimi/k3.1-pro",
+  "instance": "ff24e557ff85-hi",
+  "locale": "hi",
+  "namespace": "ui.settings.shortcuts",
+  "status": "passed",
+  "sha256": {
+    "hi": "2c247d0edc5ea28860201d9b7cf1a416091e21f6dcc2ccfec319e6d4a17a73ab",
+    "en": "cdc8d66af4e558046072d06df97e638feab4b7579b6f3abba097c30949d7835c"
+  },
+  "context_sha256": "7873c3c486821688257a22f7b13d1c28f36017d7865fd3a6a72a7740861f64d9",
+  "scope": "The three keys added for recording shortcuts; pre-existing catalogue bytes checked only for matching control terminology.",
+  "findings": [],
+  "checks": [
+    "Current-byte SHA-256 matches the supplied English, context and Hindi hashes.",
+    "Exact full-catalogue key parity; the diff adds exactly the three scoped keys.",
+    "Placeholder parity (none in scoped keys), JSON validity and NFC normalization.",
+    "Hindi glossary/style, polite imperative, everyday vocabulary, nukta and danda punctuation.",
+    "बोलकर लिखना denotes dictation/speech input, not spoken assistant output.",
+    "Esc and रीसेट करें match existing controls; immediate save, cue-only clearing and visible last-working fallback are preserved.",
+    "Wrapping-paragraph and one/two-line semantic fit reviewed against context; no bidi controls present."
+  ],
+  "references": {
+    "glossary_sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+    "style_guide_sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+  }
+}

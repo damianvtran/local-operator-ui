@@ -43,6 +43,15 @@ type SettingsSectionProps = {
 	className?: string;
 	/** An anchor for a jump that must land on this section (see its `tabIndex`). */
 	id?: string;
+	/**
+	 * The sidebar section this group is part of, for settings search. The root
+	 * carries `data-search-section` and its own label, because the `h2` inside
+	 * names the GROUP ("User profile"), not the destination the jump lands in.
+	 */
+	searchSection?: string;
+	searchSectionLabel?: string;
+	/** Why this group's controls are deliberately out of the search's scope. */
+	searchIgnore?: string;
 };
 
 export const SettingsSection: FC<SettingsSectionProps> = ({
@@ -55,10 +64,16 @@ export const SettingsSection: FC<SettingsSectionProps> = ({
 	dataTourTag,
 	className,
 	id,
+	searchSection,
+	searchSectionLabel,
+	searchIgnore,
 }) => (
 	<div
 		ref={sectionRef}
 		id={id}
+		data-search-section={searchSection}
+		data-search-section-label={searchSectionLabel}
+		data-search-ignore={searchIgnore}
 		// Focusable so a jump can LAND here without adding a tab stop to the page.
 		tabIndex={id ? -1 : undefined}
 		data-tour-tag={dataTourTag}

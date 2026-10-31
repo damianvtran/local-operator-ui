@@ -69,7 +69,7 @@ import {
  * every colour is a token role, so no section draws its own frame.
  */
 
-const ROW =
+export const RAIL_ROW =
 	"group/row relative flex h-[30px] w-full items-center gap-2 rounded-md px-2 text-start text-[13px] transition-colors duration-fast ease-out-quart";
 
 /**
@@ -215,6 +215,16 @@ export const RailSection: FC<{
 	);
 };
 
+/**
+ * Every conversation list, including read-only owner audit, uses these marks.
+ * Unknown additive kinds stay channels rather than gaining a second visual
+ * vocabulary; the rail's existing conservative fallback already made that call.
+ */
+export const ConversationKindIcon: FC<{ kind: string }> = ({ kind }) => {
+	const Icon = kind === "group" ? Users : kind === "dm" ? AtSign : Hash;
+	return <Icon size={15} aria-hidden="true" className="shrink-0" />;
+};
+
 /** A channel or group row (and an orphaned DM under Direct messages). */
 export const ConversationRailRow: FC<{
 	hasDraft?: boolean;
@@ -245,12 +255,6 @@ export const ConversationRailRow: FC<{
 	onArchive,
 }) => {
 	const locale = useI18nLocale();
-	const Icon =
-		conversation.kind === "group"
-			? Users
-			: conversation.kind === "dm"
-				? AtSign
-				: Hash;
 	const name =
 		title ??
 		conversationTitle(conversation, selfAccountId) ??
@@ -270,7 +274,7 @@ export const ConversationRailRow: FC<{
 				data-conversation-id={conversation.id}
 				data-conversation-builtin={conversation.builtin}
 				className={cn(
-					ROW,
+					RAIL_ROW,
 					organizationName && "h-auto min-h-[38px] py-1",
 					selected
 						? rowCurrent
@@ -279,7 +283,7 @@ export const ConversationRailRow: FC<{
 							: "text-ink-muted hover:bg-row-hover hover:text-ink",
 				)}
 			>
-				<Icon size={15} aria-hidden="true" className="shrink-0" />
+				<ConversationKindIcon kind={conversation.kind} />
 				<span className="flex min-w-0 flex-1 flex-col">
 					<span className="truncate">{name}</span>
 					{organizationName && (
@@ -445,7 +449,7 @@ export const PersonRailRow: FC<{
 				>
 					<button
 						type="button"
-						className={cn(ROW, "cursor-default text-ink-muted")}
+						className={cn(RAIL_ROW, "cursor-default text-ink-muted")}
 					>
 						{avatar}
 						<span className="min-w-0 flex-1 truncate">
@@ -493,7 +497,7 @@ export const PersonRailRow: FC<{
 						 * same visible text so both readers get one sentence.
 						 */
 						className={cn(
-							ROW,
+							RAIL_ROW,
 							"h-auto min-h-[30px] cursor-default py-1 text-ink-muted",
 						)}
 					>
@@ -532,7 +536,7 @@ export const PersonRailRow: FC<{
 					data-team-bridge-person={member.account_id}
 					aria-label={t("ui.teamBridge.people.message", { name: label })}
 					className={cn(
-						ROW,
+						RAIL_ROW,
 						selected
 							? rowCurrent
 							: unread > 0
@@ -612,7 +616,7 @@ export const ChiefRailRow: FC<{
 					data-team-bridge-chief={chief.person.account_id}
 					aria-label={t("ui.teamBridge.people.message", { name: label })}
 					className={cn(
-						ROW,
+						RAIL_ROW,
 						selected
 							? rowCurrent
 							: unread > 0

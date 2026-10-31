@@ -119,8 +119,8 @@ for (const [code, icon, ink] of [
 	 */
 	["wedged", "equal-approximately", "warning"],
 	["busy", "loader-circle", "accent"],
-	["answer", "circle-alert", "warning"],
-	["approval", "circle-alert", "warning"],
+	["answer", "message-circle-question", "warning"],
+	["approval", "message-circle-question", "warning"],
 	["scheduled", "clock", "ink-dim"],
 	["attached", "message-square", "ink-dim"],
 	/*
@@ -604,6 +604,109 @@ test("remote glyph and sidebar age copy share the supplied list clock", () => {
 	assert.equal(peerLinkDownVisibleLabel(row, 340), "Link down · 4m ago");
 	// A date far from the real clock proves the glyph is not consulting Date.now().
 	assert.doesNotMatch(html, /Idle|d ago/);
+});
+
+const renderRow = (row) =>
+	renderToStaticMarkup(
+		createElement(ChatSessionStatus, {
+			row: { session_id: "fixture", ...row },
+		}),
+	);
+
+/*
+ * THE PRECEDENCE RULE, pinned (agent review round 1, R1-2; this is design round
+ * 1's D1, which was a BLOCKER). The runtime publishes `delegating` only when no
+ * louder code applies (`catalog.py:268-330`), so a live child count ALWAYS rides
+ * beside a louder fact - and the count may never replace it. A cell that asked
+ * the counts first would pass every other test in this file, which is why each
+ * louder code gets its own case here rather than one representative: the trio is
+ * `delegating`'s alone, and a queued glyph is never drawn over a louder glyph.
+ */
+for (const [code, icon] of [
+	["approval", "lucide-message-circle-question"],
+	["answer", "lucide-message-circle-question"],
+	["wedged", "lucide-equal-approximately"],
+	["busy", "lucide-loader-circle"],
+	["waiting", "lucide-hourglass"],
+	["interrupted", "lucide-pause"],
+	["scheduled", "lucide-clock"],
+	["idle", "lucide-circle "],
+]) {
+	test(`${code} keeps its own glyph while children run and queue`, () => {
+		const html = renderRow({
+			status: { code, label: code },
+			subagents_running: 2,
+			subagents_queued: 1,
+		});
+		assert.match(html, new RegExp(icon), `${code} must keep its own glyph`);
+		assert.equal(
+			(html.match(/fill="currentColor"/g) ?? []).length,
+			0,
+			`${code}: the three-bead trio belongs to delegating alone`,
+		);
+		assert.doesNotMatch(html, /data-subagent-mark/);
+	});
+}
+
+test("an unread completion keeps its check while children run", () => {
+	const html = renderRow({
+		status: { code: "complete", label: "complete, unread" },
+		attention: { unseen: true },
+		subagents_running: 2,
+	});
+	assert.match(html, /lucide-check/);
+	assert.match(html, /text-success/);
+	assert.equal(
+		(html.match(/fill="currentColor"/g) ?? []).length,
+		0,
+		"the bulk control counted this row as unread: the check cannot be the trio",
+	);
+});
+
+test("a running child draws the trio in the cell and carries the hook", () => {
+	const html = renderRow({
+		status: { code: "delegating", label: "2 subagents running" },
+		subagents_running: 2,
+	});
+	assert.equal((html.match(/fill="currentColor"/g) ?? []).length, 3);
+	/*
+	 * THE HOOK IS THE READER'S ANCHOR (agent review round 1, R1-1): the evidence
+	 * rigs and `scripts/session-switch.tsx` count the row's children by
+	 * `[data-subagent-mark="running"]`, so a build that draws the mark without it
+	 * reads as zero everywhere.
+	 */
+	assert.match(html, /data-subagent-mark="running"/);
+	assert.doesNotMatch(html, /lucide-/);
+});
+
+test("a queue with nothing running takes the cell in a shape of its own", () => {
+	const html = renderRow({
+		status: { code: "delegating", label: "1 subagent queued" },
+		subagents_queued: 1,
+	});
+	assert.match(html, /lucide-timer/);
+	assert.match(html, /data-subagent-mark="queued"/);
+	/*
+	 * NOT `waiting`'s SILHOUETTE (design round 1, D2): the shape has to carry the
+	 * difference on its own, because the ink alone separates two states that read
+	 * alike in a 16px box.
+	 */
+	assert.doesNotMatch(html, /lucide-hourglass/);
+	assert.equal((html.match(/fill="currentColor"/g) ?? []).length, 0);
+});
+
+test("running children win the cell over a queue", () => {
+	const html = renderRow({
+		status: {
+			code: "delegating",
+			label: "2 subagents running \u00b7 1 queued",
+		},
+		subagents_running: 2,
+		subagents_queued: 1,
+	});
+	assert.equal((html.match(/fill="currentColor"/g) ?? []).length, 3);
+	assert.doesNotMatch(html, /lucide-timer/);
+	assert.match(html, /data-subagent-mark="running"/);
 });
 
 test("a remote delegating row renders the same three-bead primary mark", () => {

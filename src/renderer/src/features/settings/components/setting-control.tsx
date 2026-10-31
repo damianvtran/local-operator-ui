@@ -56,6 +56,7 @@ import {
 	formatQuickSendDisplay,
 	isFunctionKeyToken,
 } from "../../../../../shared/mini-view";
+import { physicalKey } from "../../../../../shared/recording-shortcut";
 import {
 	alternatesCopy,
 	desktopHotkeyNeedsModifierCopy,
@@ -120,9 +121,14 @@ export function hotkeyFromEvent(
 	if (MODIFIER_ONLY_KEYS.has(event.key) || event.nativeEvent.isComposing) {
 		return "";
 	}
+	const key = physicalKey({
+		key: event.key,
+		code: event.code,
+		alt: event.altKey,
+	});
 	return composeCapturedChord(
 		captureModifierTokens(event),
-		CAPTURE_KEY_NAMES[event.key] ?? event.key.toLowerCase(),
+		CAPTURE_KEY_NAMES[key] ?? key.toLowerCase(),
 	);
 }
 

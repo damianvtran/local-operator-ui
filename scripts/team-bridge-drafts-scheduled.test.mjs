@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import Module from "node:module";
-import { test } from "node:test";
+import { after, test } from "node:test";
 import { build } from "esbuild";
 import { JSDOM } from "jsdom";
 import React, { act } from "react";
@@ -12,7 +12,24 @@ const dom = new JSDOM("<!doctype html><div id='root'></div>", {
 	url: "http://localhost/",
 });
 globalThis.window = dom.window;
+
+/*
+ * THE DESKTOP BRIDGE, INERT. The page mounts the shared composer, whose mount
+ * registers the global dictation chord (`use-speech-to-text-manager.ts` reads
+ * `window.electron.ipcRenderer`), so a DOM probe needs the preload surface to
+ * exist. A call that answers nothing is the honest stand-in for a bridge this rig
+ * does not have - `agents-composer-mount.test.mjs` states the same stub.
+ */
+dom.window.electron = {
+	ipcRenderer: {
+		on: () => () => {},
+		removeListener: () => {},
+		send: () => {},
+		invoke: async () => ({}),
+	},
+};
 globalThis.document = dom.window.document;
+
 globalThis.localStorage = dom.window.localStorage;
 for (const name of [
 	"HTMLElement",
@@ -23,9 +40,31 @@ for (const name of [
 	"DocumentFragment",
 	"CustomEvent",
 	"HTMLInputElement",
+	"HTMLTextAreaElement",
+	"HTMLButtonElement",
+	"MouseEvent",
+	"KeyboardEvent",
+	"FocusEvent",
+	"FileReader",
 ])
 	globalThis[name] = dom.window[name];
+// JSDOM has no layout observers; the shared composer's @mention overlay needs
+// the browser API to mount, but these tests assert its state rather than layout.
+globalThis.ResizeObserver ??= class {
+	observe() {}
+	unobserve() {}
+	disconnect() {}
+};
 globalThis.getComputedStyle = dom.window.getComputedStyle;
+globalThis.requestAnimationFrame = (callback) =>
+	setTimeout(() => callback(0), 0);
+globalThis.cancelAnimationFrame = clearTimeout;
+// A hidden document stops react-query background retries from keeping a failed
+// page probe alive; the tests drive every relevant request explicitly.
+Object.defineProperty(dom.window.document, "visibilityState", {
+	value: "hidden",
+});
+Object.defineProperty(dom.window.document, "hidden", { value: true });
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 const { createRoot } = await import("react-dom/client");
@@ -70,10 +109,35 @@ const bundle = await build({
 	bundle: true,
 	format: "cjs",
 	platform: "node",
-	external: ["react", "react-dom"],
+	external: ["@tanstack/react-query", "react", "react-dom"],
 	plugins: [sidebarStub],
 	// DOM/state test only: CSS is deliberately not claimed as frame evidence.
-	loader: { ".css": "empty" },
+	// Vite's `import.meta.env` is read at IMPORT time by the app's config loader,
+	// which the shared composer's chain pulls in (`load-config.ts`): bundling for
+	// node leaves it undefined and the module throws before a single assertion runs
+	// (`browser-chrome.test.mjs` records the same trap). The URL is dead on purpose.
+	define: { "import.meta.env": "__viteEnv" },
+	/*
+	 * BOTH SHIMS THE APP'S BUNDLER GIVES THE SAME MODULES. `__viteEnv` is Vite's
+	 * `import.meta.env`; `require` is what a CJS dependency inside an ESM bundle
+	 * needs (the composer's graph keeps one), resolved from THIS file the way the
+	 * app resolves it. `agents-composer-mount.test.mjs` states the same recipe.
+	 */
+	// CJS output: `require` is already there, so only Vite's env needs defining.
+	banner: { js: "const __viteEnv = {};" },
+	// The page mounts the SHARED composer now, which pulls the brand mark (.png).
+	// Bundling it keeps these DOM/state probes on the real component tree; a
+	// `dataurl` rather than a file keeps the harness asset-free.
+	loader: {
+		".css": "empty",
+		".svg": "text",
+		".png": "dataurl",
+		".webp": "dataurl",
+		".ttf": "empty",
+		".woff": "empty",
+		".woff2": "empty",
+		".eot": "empty",
+	},
 	tsconfig: "tsconfig.app.json",
 	write: false,
 });
@@ -84,6 +148,10 @@ compiled.filename = `${process.cwd()}/scripts/team-bridge-drafts-runtime.cjs`;
 compiled.paths = Module._nodeModulePaths(process.cwd());
 compiled._compile(bundle.outputFiles[0].text, compiled.filename);
 const model = compiled.exports;
+// The catalogue is process-global. Other Team Bridge suites pin English too,
+// so a developer's locale cannot change the control names these probes click.
+model.setLocale("en");
+after(() => dom.window.close());
 const LOST_RESPONSE = /response lost/;
 const person = { type: "person", accountId: "acct_b" };
 const other = { type: "chief", accountId: "acct_b" };
@@ -968,7 +1036,32 @@ test("a held schedule can be explicitly discarded before a fresh send or schedul
 				);
 			assert.ok(send);
 			assert.equal(send.disabled, true);
-			assert.ok(send.getAttribute("aria-describedby"));
+			/*
+			 * WHAT THE OLD ASSERTION PINNED: `aria-describedby` on the bespoke Send
+			 * button, because that button was the bridge's own and carried the held
+			 * attempt's reason node directly.
+			 *
+			 * THE NEW TRUTH: the button is the SHARED composer's submit control and the
+			 * refusal it carries is `hostNotice.blocksInput`, the cross-component term
+			 * every writer on that composer answers to. The notice node and its id ride
+			 * the FIELD's `aria-describedby` - the box is what the reader types into and
+			 * what a screen reader reaches first - so pinning the reference there is the
+			 * only version of this claim that survives a composer swap. A bespoke
+			 * textarea has no `hostNotice` seam at all, so it fails here.
+			 */
+			const box = element.querySelector("textarea");
+			assert.ok(box, "the shared composer's field is mounted");
+			const describedBy = box.getAttribute("aria-describedby");
+			assert.ok(describedBy, "the held attempt describes the box");
+			// The copy is read from the shipped English catalogue rather than restated,
+			// so the assertion names the sentence the reader is given.
+			const heldCopy = JSON.parse(
+				readFileSync("src/i18n/catalogues/en/ui.teamBridge.json", "utf8"),
+			)["ui.teamBridge.schedule.held"];
+			assert.equal(
+				document.getElementById(describedBy)?.textContent?.includes(heldCopy),
+				true,
+			);
 			const discard = [...element.querySelectorAll("button")].find(
 				(button) =>
 					button.textContent === "I checked Scheduled — discard this attempt",
@@ -980,13 +1073,49 @@ test("a held schedule can be explicitly discarded before a fresh send or schedul
 			];
 			assert.equal(entry.sendAt, undefined);
 			assert.notEqual(entry.clientRef, "held-reference");
-			assert.equal(entry.body, body);
+			/*
+			 * WHAT THE OLD ASSERTION PINNED: `entry.body` in the bridge journal, because
+			 * the bespoke textarea's value was persisted there.
+			 *
+			 * THE NEW TRUTH: the journal keeps only what a composer cannot hold (the
+			 * idempotency key, the schedule time, the created conversation) - see the
+			 * "NO BODY SEEDED INTO THIS JOURNAL" note in team-bridge-page.tsx - and the
+			 * text lives in `conversation-input-store`. Discarding the attempt must
+			 * therefore leave the TEXT untouched in that store while it retires the
+			 * attempt record; asserting the journal's empty body would pin the old
+			 * duplicate-owner defect (R2) instead of the rule.
+			 */
+			assert.equal(entry.body ?? "", "");
+			assert.equal(
+				Object.values(
+					JSON.parse(localStorage.getItem("conversation-input-store") ?? "{}")
+						.state?.inputByConversation ?? {},
+				).some((row) => row?.currentInput === body),
+				true,
+				"the discard retires the attempt, never the words",
+			);
 			refuse = false;
 			if (mode === "send") {
 				await act(async () => send.click());
 				assert.equal(sends.length, 1);
 				assert.equal(sends[0][0], body);
-				assert.equal(sends[0][1], entry.clientRef);
+				/*
+				 * WHAT THIS USED TO PIN: the send reused the key the discard wrote into the
+				 * draft. That pinned the defect behind production's swallowed sends - a
+				 * persisted draft key may already be spent, and the hub REPLAYS a spent key
+				 * with matching text (200, no new row). A fresh send now always mints its own
+				 * key; the property the discard owes is only that the HELD attempt's key never
+				 * goes out again, since that schedule may still fire.
+				 */
+				assert.notEqual(sends[0][1], "held-reference");
+				/*
+				 * THE GUARD (round 4 retrospective, R4-01): the line above alone passed
+				 * vacuously, because the discard has already replaced `"held-reference"` in
+				 * the draft - a send that reused the draft key still differed from it. The
+				 * key the discard wrote is the one a regression would put on the wire.
+				 */
+				assert.notEqual(sends[0][1], entry.clientRef);
+				assert.ok(sends[0][1]);
 			} else {
 				await act(async () =>
 					element
@@ -1139,8 +1268,20 @@ test("normal first scheduling never flashes held recovery; only settled failure 
 				assert.ok(discard);
 				assert.equal(discard.classList.contains("whitespace-normal"), true);
 				assert.equal(discard.classList.contains("h-auto"), true);
-				const composer = discard.closest(".bg-elevated");
-				assert.ok(composer?.querySelector("textarea"));
+				/*
+				 * WHAT THE OLD ASSERTION PINNED: the discard control inside the bridge's own
+				 * `.bg-elevated` composer wrapper, beside that wrapper's textarea.
+				 *
+				 * THE NEW TRUTH: that wrapper is gone. The notice is the shared composer's
+				 * `hostNotice` node, drawn inside the composer's own band
+				 * (`data-lo-composer-band`, the stable handle the composer rigs use). The
+				 * claim worth keeping is structural and still testable: the control that
+				 * releases a held attempt renders in the SAME band as the field it refuses,
+				 * never somewhere the reader must go looking for it.
+				 */
+				const band = discard.closest("[data-lo-composer-band]");
+				assert.ok(band, "the notice renders inside the composer band");
+				assert.ok(band.querySelector("textarea"));
 			} else
 				assert.equal(
 					element.textContent.includes("A previous schedule may still exist"),
@@ -1617,15 +1758,27 @@ test("r12 B1: text typed while a send is in flight survives the success clear", 
 			"first line, then more",
 			"mid-flight text stays in the composer",
 		);
+		/*
+		 * WHAT THE OLD ASSERTION PINNED: the durable body in Team Bridge's own draft
+		 * journal (`draftStorageKey(...)` -> `body`), because the bridge owned the
+		 * textarea and persisted its value itself.
+		 *
+		 * THE NEW TRUTH: `conversation-input-store` is the ONE owner of composer text
+		 * (see `composerKey`'s note in team-bridge-page.tsx) and persists its rows
+		 * under its own `localStorage` key; the journal keeps only the idempotency
+		 * key, the schedule time and the created conversation. Reading the persisted
+		 * ROW rather than a hardcoded bridge key keeps this about durability instead
+		 * of a naming scheme - and it still fails for a bespoke textarea, which
+		 * writes the journal and never touches this store.
+		 */
 		const stored = JSON.parse(
-			localStorage.getItem(model.draftStorageKey("acct_r12", "org_r12")) ??
-				"{}",
+			localStorage.getItem("conversation-input-store") ?? "{}",
 		);
 		assert.equal(
-			stored[
-				model.draftTargetKey({ type: "conversation", id: r12Conversation.id })
-			]?.body,
-			"first line, then more",
+			Object.values(stored.state?.inputByConversation ?? {}).some(
+				(row) => row?.currentInput === "first line, then more",
+			),
+			true,
 			"the durable draft keeps the later text",
 		);
 	} finally {

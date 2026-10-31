@@ -432,10 +432,11 @@ test("a focused window is quiet only for the conversation on screen", async () =
 	}
 });
 
-test("the thread hook stays off the held open path", async () => {
-	// Main still parks the id it was handed (the click target is a fact), but
-	// this build does not route a thread - see
-	// `TEAM_BRIDGE_THREADS_SHIPPED_IN_THIS_BUILD` in `team-bridge-notify.ts`.
+test("the thread hook routes the parked target in the shipped build", async () => {
+	// ASYNC because main made the notify path asynchronous; the assertion is this
+	// branch's, because the hold is flipped here so the parked thread target is
+	// routed rather than dropped. Taking either side whole would be wrong: the
+	// branch's version did not await, and main's asserts the held (unrouted) path.
 	const h = harness();
 	try {
 		await h.notifier.notify(request({ threadId: "bms_root1" }));
@@ -449,7 +450,7 @@ test("the thread hook stays off the held open path", async () => {
 		});
 		assert.equal(
 			contract.teamBridgeOpenPath(target),
-			"/team-bridge?tenant=tnt_1&conversation=bcv_abc123",
+			"/team-bridge?tenant=tnt_1&conversation=bcv_abc123&thread=bms_root1",
 		);
 		assert.equal(h.signals.length, 1);
 	} finally {

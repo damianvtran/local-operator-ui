@@ -740,6 +740,21 @@ const CONTROLS = [
 		ink: "danger",
 	},
 	{
+		/*
+		 * The members dialog's inline "Remove {name}" confirm: the outline `danger`
+		 * button (no fill of its own, so its fill IS the ground) on the dialog's
+		 * `elevated` ground. Design review round 1, D2 measured the same button on
+		 * `rowSelected` below both floors in the operator's tokyoNight (label
+		 * 4.23:1, edge 2.85:1) and in 6/12 themes, so the armed row stopped painting
+		 * that ground; this row keeps the ground it moved to measured, in all 59.
+		 */
+		name: "members dialog remove confirm (danger sm)",
+		on: ["elevated"],
+		fill: "elevated",
+		border: "dangerBorder",
+		ink: "danger",
+	},
+	{
 		name: "info callout",
 		on: ["canvas", "surface"],
 		fill: "infoWash",
@@ -2906,6 +2921,26 @@ const PERCEPTIBLE = [
 const STRUCTURAL_CALL_SITES = [
 	{
 		/*
+		 * THE BORDERLESS ADD-REACTION CONTROL'S ONLY EXTENT IS ITS FILL.
+		 *
+		 * Design round 1 (D5) measured it at 30x28 with `border-width: 0px` and a
+		 * 1.06:1 fill against `canvas` - a control that reads as absent, not as
+		 * quiet - while its sibling chips stayed visible through their
+		 * `border-control` edge. The fix is a fill step, not a line: borderless
+		 * chrome is a standing operator requirement. The `mediaSurface` palette row
+		 * ("team bridge borderless person and agent plates") proves the VALUE clears
+		 * `canvas`, `surface`, `elevated` and `rowHover` on every palette; only this
+		 * pin can see the edit that returns the button to `sunken` or to a ground
+		 * role, which leaves every ratio above green while the control loses the
+		 * only boundary a borderless control has.
+		 */
+		what: "team bridge add-reaction control extent is its fill",
+		file: "src/renderer/src/features/team-bridge/team-bridge-reactions.tsx",
+		must: '"inline-flex min-h-7 items-center gap-1 rounded-full bg-media-surface px-2 text-ink-muted",\n\t\t\t\t\t\t\t"hover:bg-sunken hover:text-ink disabled:text-ink-dim",',
+		why: "a borderless control's only resting boundary is its fill; `sunken` sits ΔL* 2.4 off `canvas` (1.06:1) and reads as no control at all, and no palette assertion can see which class the button wears, so a green matrix would outlive the regression",
+	},
+	{
+		/*
 		 * WHY THIS PIN EXISTS ALONGSIDE THE PALETTE ROW. The row
 		 * "primary button on the danger wash" proves a filled control is legal on the
 		 * wash the failure alert is painted on; only this pin can see the edit that
@@ -3278,6 +3313,20 @@ const STRUCTURAL_CALL_SITES = [
 		file: "src/renderer/src/shared/components/ui/searchable-select.tsx",
 		must: '"bg-accent-wash outline-solid outline-1 -outline-offset-1 outline-control"',
 		why: "the active row must be perceivable in every theme, which a wash-based mark is not: the role it needs is asserted as `combobox option active mark` above, and this pin is what proves the row renders it",
+	},
+	{
+		/*
+		 * The SETTINGS SEARCH panel's active row, the same role and the same
+		 * ground. Round 1 shipped `bg-action-hover` — a token no palette defines
+		 * — so the row Enter would take was invisible in every theme, and a
+		 * palette assertion could not see it because the class resolved to
+		 * nothing (design round 1, D1). This pin is what makes a dropped class
+		 * fail the gate instead of the frame.
+		 */
+		what: "settings search option active mark",
+		file: "src/renderer/src/features/settings/components/settings-search.tsx",
+		must: '"bg-accent-wash outline-solid outline-1 -outline-offset-1 outline-control"',
+		why: "the active row must be perceivable in every theme; the role is `combobox option active mark`, and this pin proves the panel paints it",
 	},
 	{
 		/*

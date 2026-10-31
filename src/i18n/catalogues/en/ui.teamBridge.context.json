@@ -1,4 +1,111 @@
 {
+	"ui.teamBridge.members.menu": {
+		"role": "menu item label that opens the member dialog",
+		"tone": "imperative",
+		"length": "2-3 words, one line; keep the trailing ellipsis",
+		"placeholders": {},
+		"note": "The ellipsis is the platform signal that a dialog opens next; do not drop or replace it. It is an action on the current conversation, not a new-conversation command."
+	},
+	"ui.teamBridge.members.current": {
+		"role": "section heading inside the member dialog",
+		"tone": "neutral",
+		"length": "2-3 words",
+		"placeholders": {},
+		"note": "Names the list of people and agents already in this conversation. Not 'participants online' and not organization membership."
+	},
+	"ui.teamBridge.members.current_empty": {
+		"role": "empty state for the current-members section",
+		"tone": "factual",
+		"length": "One short sentence",
+		"placeholders": {},
+		"note": "Rare: every conversation has at least its creator, so this appears only in a transient or repaired state. Say there is nobody active or invited; do not suggest the conversation is broken."
+	},
+	"ui.teamBridge.members.invite": {
+		"role": "section heading over the candidate picker",
+		"tone": "neutral",
+		"length": "3-5 words",
+		"placeholders": {},
+		"note": "The section lists the organization's people and its agents so they can be invited. It creates invitations, not active membership."
+	},
+	"ui.teamBridge.members.search": {
+		"role": "placeholder and accessible name of a filter field",
+		"tone": "neutral, noun phrase",
+		"length": "2-4 words",
+		"placeholders": {},
+		"note": "Filters the candidate list by name. Do not add a trailing colon or an ellipsis."
+	},
+	"ui.teamBridge.members.empty": {
+		"role": "empty state for the invite list",
+		"tone": "factual, non-accusatory",
+		"length": "One short sentence",
+		"placeholders": {},
+		"note": "The directory returned nobody this reader may invite. It must NOT say the organization has no people: the Current-members pane beside it can list several. Say that nobody can be invited. Distinct from no_matches, which is a filter result."
+	},
+	"ui.teamBridge.members.no_matches": {
+		"role": "empty state for a filtered candidate list",
+		"tone": "factual",
+		"length": "One short sentence",
+		"placeholders": {},
+		"note": "The search text matched nobody. Implies clearing or changing the search, not that the organization is empty."
+	},
+	"ui.teamBridge.members.load_error": {
+		"role": "error state for the directory read inside the dialog",
+		"tone": "calm, factual",
+		"length": "One short sentence",
+		"placeholders": {},
+		"note": "The roster could not be loaded; a retry control sits below. Do not claim the conversation or the members are gone."
+	},
+	"ui.teamBridge.members.read_only": {
+		"role": "inline notice beside the picker's heading, shown when the reader cannot invite",
+		"tone": "factual, about the reader's own ability; never a rule about who else may",
+		"length": "One short sentence",
+		"placeholders": {},
+		"note": "Any active human member may invite and only the conversation owner may remove, so this must NOT say 'only an administrator can add'. It states that this conversation cannot take invitations from the reader: a direct message, an archived or built-in channel, or a reader who is not an active member. Sentence case, no ellipsis."
+	},
+	"ui.teamBridge.members.role.owner": {
+		"role": "member role label",
+		"tone": "neutral noun",
+		"length": "one word",
+		"placeholders": {},
+		"note": "The CONVERSATION's owner, which is not the same as an organization owner. Must stay distinct from the organization-owner term used elsewhere in this namespace."
+	},
+	"ui.teamBridge.members.mutation_error": {
+		"role": "alert after an add or remove was refused or failed",
+		"tone": "calm, factual",
+		"length": "One short sentence",
+		"placeholders": {},
+		"note": "The member list keeps its previous state. Say the change was not saved and that the person may try again; do not blame the member or claim a specific server reason."
+	},
+	"ui.teamBridge.members.title": {
+		"role": "member administration dialog heading",
+		"tone": "neutral, sentence case",
+		"length": "2-4 words; one line",
+		"placeholders": {},
+		"note": "Administer an existing group or channel. This is not a new-conversation form."
+	},
+	"ui.teamBridge.members.loading": {
+		"role": "loading state",
+		"tone": "neutral",
+		"length": "2-4 words",
+		"placeholders": {},
+		"note": "Announced while the organization directory loads inside the member dialog; also the spinner's accessible label."
+	},
+	"ui.teamBridge.members.description": {
+		"role": "dialog explanatory text",
+		"tone": "plain and factual",
+		"length": "One sentence; at most two lines at desktop width",
+		"placeholders": {},
+		"note": "Roles are conversation owner/member. Participation state is active/invited/left, not online presence."
+	},
+	"ui.teamBridge.members.remove": {
+		"role": "icon-button accessible name and tooltip",
+		"tone": "imperative",
+		"length": "Short verb plus member name",
+		"placeholders": {
+			"name": "Current display name of the member or agent"
+		},
+		"note": "Removes this member from the conversation, not from the organization."
+	},
 	"ui.teamBridge.notify.unavailable": {
 		"role": "toast",
 		"tone": "neutral, factual, non-accusatory",
@@ -40,6 +147,13 @@
 		"length": "One sentence.",
 		"placeholders": {},
 		"note": "Shown when the list read fails (backend down, signed out or an upstream refusal). Do not name a cause the client cannot prove."
+	},
+	"ui.teamBridge.list.error_stale": {
+		"role": "stale-list notice",
+		"tone": "factual, reassuring, no blame",
+		"length": "Two short clauses.",
+		"placeholders": {},
+		"note": "Shown INSTEAD of list.error when the list read failed but rows from the cached snapshot are still painted below it. The first clause states the failed refresh; the second says the rows on screen are the reader's last read, so the sentence never contradicts what is visible. Do not name a cause the client cannot prove."
 	},
 	"ui.teamBridge.list.retry": {
 		"role": "error-state action",
@@ -1870,5 +1984,126 @@
 			"count": "number of members whose membership is invited (not yet joined); a nonnegative integer"
 		},
 		"note": "Shown beneath ui.teamBridge.member.active_count, e.g. '1 active member' over '3 invited'. Invited members (people or agents) have been added but have not joined, so they are not counted as active. Use idiomatic agreement and every required plural category."
+	},
+	"ui.teamBridge.thread.not_available": {
+		"role": "thread placeholder when the addressed conversation is not in the reader's list",
+		"tone": "plain, factual, never accusatory",
+		"length": "Two short sentences.",
+		"placeholders": {},
+		"note": "Shown for an addressed conversation id the caller cannot open: the list only carries conversations the caller participates in, so this covers both \"not a member\" and \"archived\" without revealing which. It replaces the draft intro, which wrongly told a reader their history was empty when the conversation actually held messages (2026-10-28). Do not imply the conversation does not exist."
+	},
+	"ui.teamBridge.members.group.people": {
+		"role": "group heading inside the invite picker",
+		"tone": "neutral",
+		"length": "One or two words",
+		"placeholders": {},
+		"note": "Names the group of human colleagues offered for invitation. Sentence case, no colon, no count. It is a heading over rows, not a button."
+	},
+	"ui.teamBridge.members.group.agents_v2": {
+		"role": "group heading in both member-dialog columns",
+		"tone": "neutral",
+		"length": "One word",
+		"placeholders": {},
+		"note": "Heads the agents (chiefs of staff) group, beside a 'People' heading. Replaces the longer 'Agents and chiefs of staff'."
+	},
+	"ui.teamBridge.members.you": {
+		"role": "suffix after the reader's own name in the current-members list",
+		"tone": "neutral",
+		"length": "Very short, parenthesized",
+		"placeholders": {},
+		"note": "Marks the signed-in reader's own row. Rendered after the name with a space; keep the parentheses or the locale's equivalent."
+	},
+	"ui.teamBridge.members.state.invited_short": {
+		"role": "member state badge",
+		"tone": "neutral, never implying active access",
+		"length": "One word; fits a small pill",
+		"placeholders": {},
+		"note": "The member has been invited but has not joined yet. An invited agent cannot read or post until its owner consents."
+	},
+	"ui.teamBridge.members.removing_v2": {
+		"role": "inline progress status on a member row",
+		"tone": "neutral",
+		"length": "One word with ellipsis",
+		"placeholders": {},
+		"note": "Shown while the remove request is in flight for that member."
+	},
+	"ui.teamBridge.members.remove_label": {
+		"role": "accessible name of the per-row remove icon button",
+		"tone": "imperative",
+		"length": "Short verb phrase plus member name",
+		"placeholders": {
+			"name": "Current display name of the member"
+		},
+		"note": "Removes this member from the conversation, not from the organization."
+	},
+	"ui.teamBridge.members.remove_tooltip": {
+		"role": "tooltip on the per-row remove icon button",
+		"tone": "imperative",
+		"length": "Short verb phrase",
+		"placeholders": {},
+		"note": "Removes the member from this conversation only, not from the organization."
+	},
+	"ui.teamBridge.members.current_no_matches": {
+		"role": "no-results state of the current-members list while searching",
+		"tone": "neutral",
+		"length": "One short sentence",
+		"placeholders": {},
+		"note": "The search narrowed the current-members list to nothing. A filter result, not an empty conversation."
+	},
+	"ui.teamBridge.members.no_invitable_matches": {
+		"role": "no-results state of the invite list when the search only matches current members",
+		"tone": "neutral, explanatory",
+		"length": "Two short sentences",
+		"placeholders": {
+			"query": "The search text the reader typed"
+		},
+		"note": "Current members are deliberately left out of the invite list; this explains why the person they searched for is not offered. Use the locale's quotation marks around the query."
+	},
+	"ui.teamBridge.members.reason_short.bridge_unavailable": {
+		"role": "short trailing reason on an ineligible person row",
+		"tone": "neutral, a state rather than a fault",
+		"length": "Two to four words; shares a line with the name",
+		"placeholders": {},
+		"note": "The person's Team Bridge is not enabled. Keep the product name Team Bridge unchanged and do not blame the person."
+	},
+	"ui.teamBridge.members.reason_short.agent_unavailable": {
+		"role": "short trailing reason on an ineligible agent row",
+		"tone": "neutral",
+		"length": "One or two words",
+		"placeholders": {},
+		"note": "The agent is disabled or otherwise unavailable to invite."
+	},
+	"ui.teamBridge.members.reason_short.agent_not_permitted": {
+		"role": "short trailing reason on an ineligible agent row",
+		"tone": "neutral",
+		"length": "One or two words",
+		"placeholders": {},
+		"note": "This conversation does not allow agents (a conversation rule, not an account permission)."
+	},
+	"ui.teamBridge.members.ineligible_label": {
+		"role": "accessible name of an ineligible candidate row (screen readers only)",
+		"tone": "neutral",
+		"length": "Name plus reason",
+		"placeholders": {
+			"name": "Display name of the person or agent",
+			"reason": "The short reason the row cannot be invited"
+		},
+		"note": "Read aloud as one phrase; join the two with the locale's natural list punctuation."
+	},
+	"ui.teamBridge.members.invite_count": {
+		"role": "primary dialog button that sends the selected invitations",
+		"tone": "imperative",
+		"length": "Short; button label",
+		"placeholders": {
+			"count": "Number of selected people and agents; nonnegative integer"
+		},
+		"note": "ICU plural. The =0 arm is the bare verb (the button is disabled then); every other arm shows the count. It creates invitations only; never imply immediate active membership."
+	},
+	"ui.teamBridge.members.invitation_note_v2": {
+		"role": "dialog footer clarification",
+		"tone": "concise, consent-preserving",
+		"length": "Three short sentences",
+		"placeholders": {},
+		"note": "Invitations grant no access until accepted. An agent joins only after its owner consents, then reads every message and decides whether to reply; it always replies when @-mentioned. Keep '@-mention' recognizable. The owner can limit it to @-mentions or mute it."
 	}
 }

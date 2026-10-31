@@ -42,6 +42,10 @@
  */
 
 import { LANGUAGE_SETTING_KEY } from "@shared/i18n";
+import {
+	PUSH_TO_TALK_SETTING_KEY,
+	START_RECORDING_SETTING_KEY,
+} from "../../../../shared/recording-shortcut";
 
 /** The sidebar section the interface-language control now lives in. */
 export const GENERAL_SECTION = "general";
@@ -57,6 +61,7 @@ export const MODEL_EFFORT_SETTING_KEY = "model_effort";
 
 /** The sidebar section the agent-messages controls now live in. */
 export const AGENT_MESSAGES_SECTION = "agent-messages";
+export const KEYBOARD_SHORTCUTS_SECTION = "keyboard";
 
 /**
  * The two local preferences the Agent messages section owns.
@@ -87,6 +92,8 @@ export const PROMOTED_SETTING_SECTIONS: Readonly<Record<string, string>> = {
 	[MODEL_EFFORT_SETTING_KEY]: GENERAL_SECTION,
 	[TEAM_BRIDGE_ENABLED_SETTING_KEY]: AGENT_MESSAGES_SECTION,
 	[TEAM_BRIDGE_SESSION_SETTING_KEY]: AGENT_MESSAGES_SECTION,
+	[START_RECORDING_SETTING_KEY]: KEYBOARD_SHORTCUTS_SECTION,
+	[PUSH_TO_TALK_SETTING_KEY]: KEYBOARD_SHORTCUTS_SECTION,
 };
 
 /**

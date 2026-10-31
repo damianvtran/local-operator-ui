@@ -63,6 +63,12 @@ const SCROLLBARS =
 
 const read = (file) => readFileSync(file, "utf8");
 
+/*
+ * A pane clamping the shared width ITSELF, outside `rightSlotPaneWidth` (review
+ * round 1, MINOR-2). Top-level so the pattern is compiled once for the file.
+ */
+const HAND_ROLLED_CLAMP = /Math\.max\([^)]*rightSlotWidth/;
+
 const bundle = await build({
 	stdin: {
 		contents:
@@ -88,7 +94,7 @@ const {
 	SIDEBAR_DEFAULT_WIDTH,
 	PANEL_RAIL_WIDTH_PX,
 	CANVAS_PANE_MIN_PX,
-	CANVAS_PANE_MAX_PX,
+	RIGHT_SLOT_MAX_PX,
 	canvasDockWidth,
 	canvasPaneMode,
 	rightSlotDividerContract,
@@ -190,8 +196,8 @@ test("the right pane's capacity is the row minus the column's floor, measured", 
 	/*
 	 * The measurement itself, pinned as a SHAPE: the floor is read back from the
 	 * element's computed style (with the constant as the unparseable fallback), and
-	 * the capacity is the row's width minus it. §I's `min(560, available - 480)` is
-	 * this subtraction with the floor at its spec value.
+	 * the capacity is the row's width minus it. `canvasDockWidth`, and every pane's
+	 * capacity, is this subtraction under the slot's one ceiling.
 	 */
 	assert.match(
 		source,
@@ -289,28 +295,42 @@ test("the run panel's contract is unchanged by the extraction (U6's numbers)", (
 		}),
 		{ resizable: false, value: 44, minWidth: 44, maxWidth: 44 },
 	);
-	// A row that can host it: 320..min(640, capacity), value the drawn width.
+	// A row that can host it: 320..min(RIGHT_SLOT_MAX_PX, capacity), value the
+	// drawn width.
 	assert.deepEqual(
 		rightSlotDividerContract({
 			capacity: 596,
 			min: 320,
-			max: 640,
+			max: RIGHT_SLOT_MAX_PX,
 			drawn: 320,
 		}),
 		{ resizable: true, value: 320, minWidth: 320, maxWidth: 596 },
 	);
 });
 
-test("the run divider can announce a value above its ceiling when a wider shared width is drawn - measured, recorded, not fixed here (D4)", () => {
+test("one ceiling means the run pane's 1600px/stored-1000 case announces value === max (D4's found-not-fixed class, closed)", () => {
 	/*
-	 * Found while implementing D4, left as measured rather than reshaped: at a
-	 * 1600px window with a stored 1000 the run pane draws 816 (row 1296 minus the
-	 * conversation's 480 floor) while its own ceiling is 640, so the contract's
-	 * value sits above its maxWidth. Either clamp lies about the drawn width or
-	 * lifting the ceiling lets a run-panel drag store past its 640 contract
-	 * maximum - a design call, so the numbers are recorded in
-	 * docs/evidence/right-slot-one-default/readings.json and on the PR. This cell
-	 * pins the CURRENT shape so a fix fails visibly rather than silently.
+	 * It used to be: at a 1600px window with a stored 1000 the run pane drew 816
+	 * (row 1296 minus the conversation's 480 floor) while its own ceiling was 640,
+	 * so the contract's value sat above its maxWidth and the PR recorded it as
+	 * found-not-fixed. With the slot's ONE ceiling the announced maximum is 1200
+	 * held to the same capacity, so value and max are one number.
+	 */
+	assert.deepEqual(
+		rightSlotDividerContract({
+			capacity: 816,
+			min: 320,
+			max: RIGHT_SLOT_MAX_PX,
+			drawn: 816,
+		}),
+		{ resizable: true, value: 816, minWidth: 320, maxWidth: 816 },
+	);
+	/*
+	 * THE FUNCTION STILL REFUSES TO CLAMP A DRAWN VALUE ABOVE `max`: called
+	 * directly with a narrower ceiling, value stays the drawn width (clamping it
+	 * would announce a width the pane is not drawn at) and maxWidth stays the
+	 * ceiling. That is a property of the contract, not a state the app produces -
+	 * `rightSlotPaneWidth` holds every caller's width to the one ceiling.
 	 */
 	assert.deepEqual(
 		rightSlotDividerContract({
@@ -353,9 +373,48 @@ test("the browser and console separators read the contract, and a write the row 
 	);
 });
 
-test("the canvas docks at min(560, available - 480), or stops docking below 400 (§I)", () => {
+test("every effective*PanelWidth in the slot is the shared width held by rightSlotPaneWidth", () => {
+	const content = read(CONTENT);
+	/*
+	 * THE WIRING HALF OF THE ONE-BAND RULE (review round 1, MINOR-2). The resolver
+	 * tests drive `resolveRightSlotWidth`, and this file greps `chat-content.tsx`
+	 * elsewhere, but nothing pinned that the four panes this component DRAWS take
+	 * their width from `rightSlotPaneWidth`. Reverting one of them to a hand-rolled
+	 * clamp (`Math.max(floor, rightSlotWidth || DEFAULT)`) leaves the slot's
+	 * separator announcing one width and that pane drawing another - the exact drift
+	 * the one band removes - and every other assertion here still passes.
+	 */
+	for (const [name, floor] of [
+		["effectiveRunPanelWidth", "RUN_PANEL_MIN_PX"],
+		["effectiveBrowserPanelWidth", "BROWSER_PANEL_MIN_PX"],
+		["effectiveConsolePanelWidth", "CONSOLE_PANEL_MIN_PX"],
+		["effectiveCodePanelWidth", "RUN_PANEL_MIN_PX"],
+	])
+		assert.match(
+			content,
+			new RegExp(
+				`const ${name} = rightSlotPaneWidth\\(\\s*${floor},\\s*rightSlotWidth,?\\s*\\);`,
+			),
+			`\`${name}\` no longer comes from \`rightSlotPaneWidth(${floor}, rightSlotWidth)\`: the pane would draw a width the slot's separator does not announce`,
+		);
+	/*
+	 * Exactly four, and no pane clamped beside them: a fifth call or a bare
+	 * `Math.max(...rightSlotWidth...)` is the second way this file exists to stop.
+	 */
+	assert.equal(
+		content.split("rightSlotPaneWidth(").length - 1,
+		4,
+		"the slot draws from exactly the four `rightSlotPaneWidth` calls above",
+	);
+	assert.ok(
+		!HAND_ROLLED_CLAMP.test(content),
+		"a pane clamps `rightSlotWidth` itself again; the slot's floor and ceiling belong to `rightSlotPaneWidth`",
+	);
+});
+
+test("the canvas docks at min(RIGHT_SLOT_MAX_PX, available - 480), or stops docking below 400 (§I)", () => {
 	assert.equal(CANVAS_PANE_MIN_PX, 400);
-	assert.equal(CANVAS_PANE_MAX_PX, 560);
+	assert.equal(RIGHT_SLOT_MAX_PX, 1200);
 	/*
 	 * THE FOUR ROWS THE SCENE IS RUN AT, as arithmetic instead of a frame: the dock
 	 * threshold's row (a 260px sidebar in a 1024 window), the strip's rows at 960 and
@@ -365,9 +424,9 @@ test("the canvas docks at min(560, available - 480), or stops docking below 400 
 	const cases = [
 		{
 			row: 1120,
-			dock: 560,
+			dock: 640,
 			mode: "docked",
-			why: "1380 with the sidebar docked: capped at §I's 560",
+			why: "1380 with the sidebar docked: the row leaves 640, under both the default and the ceiling",
 		},
 		{
 			row: 764,
@@ -393,14 +452,22 @@ test("the canvas docks at min(560, available - 480), or stops docking below 400 
 		assert.equal(canvasPaneMode(row), mode, `${why}: canvasPaneMode(${row})`);
 	}
 	/*
-	 * THE TWO EDGES. Exactly 560 is still docked (the ceiling is a width the pane may
-	 * hold, not one it may not exceed), exactly 400 is still docked (the floor is
-	 * inclusive), and a row narrower than the chat floor itself gives a ZERO dock
-	 * width rather than a negative one - the caller reads the mode, and a negative
-	 * width would render a pane with a divider and no pixels.
+	 * THE THREE EDGES. A row wide enough to leave the slot its whole ceiling docks
+	 * at the ceiling, not above it (one cap for every pane); exactly 400 is still
+	 * docked (the floor is inclusive); and a row narrower than the chat floor itself
+	 * gives a ZERO dock width rather than a negative one - the caller reads the
+	 * mode, and a negative width would render a pane with a divider and no pixels.
 	 */
 	assert.equal(
-		canvasPaneMode(CHAT_PANE_MIN_PX + CANVAS_PANE_MIN_PX + CANVAS_PANE_MAX_PX),
+		canvasDockWidth(CHAT_PANE_MIN_PX + RIGHT_SLOT_MAX_PX),
+		RIGHT_SLOT_MAX_PX,
+	);
+	assert.equal(
+		canvasDockWidth(CHAT_PANE_MIN_PX + RIGHT_SLOT_MAX_PX + 400),
+		RIGHT_SLOT_MAX_PX,
+	);
+	assert.equal(
+		canvasPaneMode(CHAT_PANE_MIN_PX + CANVAS_PANE_MIN_PX + RIGHT_SLOT_MAX_PX),
 		"docked",
 	);
 	assert.equal(canvasPaneMode(CHAT_PANE_MIN_PX + CANVAS_PANE_MIN_PX), "docked");
@@ -428,7 +495,7 @@ test("the layout module owns the bands the shell reads", () => {
 	for (const name of [
 		"CHAT_PANE_MIN_PX",
 		"CANVAS_PANE_MIN_PX",
-		"CANVAS_PANE_MAX_PX",
+		"RIGHT_SLOT_MAX_PX",
 		"CHAT_PANE_WITH_DOCK_MIN_PX",
 		"SIDEBAR_COLLAPSED_WIDTH",
 		"SIDEBAR_DEFAULT_WIDTH",

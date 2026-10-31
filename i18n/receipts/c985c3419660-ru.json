@@ -1,0 +1,39 @@
+{
+ "schema": 1,
+ "auditor": "reviewer",
+ "role": "independent translation auditor (team lopdev reviewer); did not translate these files and edited no translated string",
+ "model": "radient/auto",
+ "model_provenance": "session banner: four consecutive provider fallbacks under a quota failure — anthropic/claude-opus-5-5 -> anthropic/claude-sonnet-5-5 -> openai/gpt-6-astra -> kimi/k3.1-pro -> radient/auto. Fallback used, disclosed rather than implied.",
+ "fallback": true,
+ "instance": "c985c3419660-ru",
+ "locale": "ru",
+ "namespace": "ui.settings.search",
+ "date": "2026-10-29",
+ "head": "574a23d5678e4dd0de75ca63b1e93a1a90b6af5a",
+ "status": "passed",
+ "result": "clean-with-findings",
+ "independence": "The translator was a separate LLM translator subagent (i18n-translator) whose work landed in 574a23d5678e. This auditor authored no catalogue, keys.gen.ts, ledger or receipt for this namespace before this run and edited no translated string; it writes only these seven receipts and the seven ledger rows derived from them.",
+ "translator": {
+  "agent": "i18n-translator",
+  "model": "radient/auto",
+  "note": "session model as reported, with provider fallbacks; recorded from the task brief and the translation commit, not observed serving by this auditor"
+ },
+ "sha256": {
+  "ru": "7437ad51dbe5700f253b746e50064bceacb064ba08530e60d57e453ca98ba183",
+  "en": "b7d1a506f2224ac92a275ab062b4b4a77485831abb2bfca00d1494dc12316282"
+ },
+ "context_sha256": "01e4d8a04ee3081a64da2c8b018bb349930e60dc1360bad1e40ce4ca1d63fc02",
+ "findings": [
+  {
+   "id": "RU-1",
+   "severity": "nit",
+   "key": "ui.settings.search.row.section_hint",
+   "english": "In {section}",
+   "target": "В разделе {section}",
+   "issue": "A named section is quoted with «ёлочки» throughout the ru catalogue — 15+ instances, including this same settings surface: 'в разделе «Провайдеры»' (5), '«Уведомления»', '«Обновления приложения»', '«Настройки → Сообщения агентов»' (3), '«Подробности»', '«Одобрения»'. Unquoted, the two-word section name in 'В разделе Внешний вид' is an adjective+noun pair a reader can mis-scan before reaching the ' · ' separator. Counter-precedent, weaker: ui.chat.sidebar_view.move_up/move_down substitute a localized section label unquoted, but there the name is a verb's object rather than a title mentioned in prose.",
+   "corrected": "В разделе «{section}»"
+  }
+ ],
+ "scope": "ui.settings.search for ru: all 18 keys at head 574a23d5678e4dd0de75ca63b1e93a1a90b6af5a (the translation commit), read against src/i18n/catalogues/en/ui.settings.search.json, its context sidecar, i18n/glossary.md and i18n/style-guides/ru.md, with ru/ui.settings.json, ui.settings.configuration.json (the settings filter bar), ui.settings.navigation.json and ui.command_palette.json as the established-voice corpus for the same surface. No other namespace is in scope.",
+ "notes": "Candidate the translator flagged: row.section_hint quotation marks — reported as RU-1, nit, with the corrected text. Otherwise: field.label/placeholder and no_results.clear are byte-identical to ui.settings.configuration's 'Поиск настроек' and 'Очистить поиск'; reason.label/description/key reuse that surface's названию/описанию/ключу; no_results.title reproduces the palette's 'Нет совпадений по запросу «{terms}»' construction with unspaced ёлочки. All four CLDR arms present and correct (1 результат / 2 результата / 5 и 0 результатов / дробные результата); the few and many arms take the genitive the ru guide demands. Mechanical, re-derived from the files by this auditor: key set == English (18/18, same order, no added/dropped/renamed key); every file parses as JSON; @formatjs/icu-messageformat-parser accepts all 18 messages with no stray braces; argument names and types match English; plural arms equal exactly the locale's Intl.PluralRules category set plus `other`; intl-messageformat renders every argument-bearing message at 0, 1, 2, 5 and 1 000 000 without error; no hand-written digit grouping; no manual bidi control characters (ur); NFC-clean (vi). NOT verified by this audit: native-speaker naturalness (this is an agent semantic read, no native reader), rendered fit inside the panel, RTL layout proof, screenshots. Auditor identity: team lopdev reviewer running as an independent translation auditor for this namespace; the auditor did not translate these files and edited no translated string. Auditor model: radient/auto — the session banner recorded four consecutive provider fallbacks under a quota failure (anthropic/claude-opus-5-5 -> anthropic/claude-sonnet-5-5 -> openai/gpt-6-astra -> kimi/k3.1-pro -> radient/auto), recorded here rather than implied. The translator's served model was not observed by this auditor; the translator is recorded from the task brief and the translation commit."
+}

@@ -1,0 +1,119 @@
+{
+	"audit_id": "teambridge-owner-audit-r2-tb1482r2-vi-168d2d",
+	"date": "2026-10-29",
+	"locale": "vi",
+	"namespace": "ui.ownerAudit",
+	"source_commit": "475476c2104a400fa6f4bc39bee98e4e82541d40",
+	"tree_state": "the audited bytes are this commit's; the auditor ran on the working tree that became 475476c2104a plus the auditor's own target-catalogue fixes",
+	"translator": {
+		"agent": "i18n-translator",
+		"model": "radient/auto",
+		"date": "2026-10-29",
+		"method": "LLM translator subagent per locale, reading the English catalogue and its context sidecar and the locale's own existing namespace for terminology; no MT service referenced. Session began on anthropic/claude-opus-5-5 and was moved to radient/auto by provider-quota fallbacks before the translation was written."
+	},
+	"auditors": [
+		{
+			"agent": "i18n-auditor",
+			"model": "radient/auto",
+			"date": "2026-10-29",
+			"result": "clean-with-findings",
+			"instance": "tb1482r2-vi-168d2d",
+			"findings": {
+				"blocker": 0,
+				"major": 0,
+				"minor": 0,
+				"nit": 2
+			},
+			"receipt": "i18n/receipts/tb1482r2-vi-168d2d.json",
+			"receipt_sha256": "037c426e925eb6a349379ee5225e9b45c0e30d7049505b0c3243732d38e7eb3c",
+			"scope": "Round 2: six changed keys (copy gate for design D2/D3); earlier round out of scope."
+		}
+	],
+	"ledger_status": "audited",
+	"independence": "Independent auditor: a separate subagent run from the translator's, which authored none of the strings as delivered and wrote its receipts before the ledger row was assembled. The findings/resolved_findings split in this receipt was applied at assembly: the auditor's own `resolved: true` entries were moved into `resolved_findings` unchanged, because `findings` carries only what is still open in this repository's convention. No severity, key or detail was altered. Neither translator nor auditor was a native speaker of the locale; that limitation is recorded below.",
+	"files": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.ownerAudit.json",
+			"sha256": "147de29a88573f22b144c09b6f94c8c5310e2e1d773d597a3ff44b2a2214efe1"
+		},
+		"target": {
+			"path": "src/i18n/catalogues/vi/ui.ownerAudit.json",
+			"sha256": "2c1973082305830137de0577d4704c6549ee6943a6b5d3f204a3d52042e686b4"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.ownerAudit.context.json",
+			"sha256": "508f8a06ff1a6101fe8b25f658eda4c905bd583df35ac509883aa42b065ea10e"
+		}
+	},
+	"audited": {
+		"ui.ownerAudit.disclosure": {
+			"en": "You can read this audit because you own the chief of staff it covers. The other members are told that agent owners can audit the conversation.",
+			"target": "Bạn có thể đọc lịch sử kiểm tra này vì bạn sở hữu chánh văn phòng mà lịch sử này bao quát. Các thành viên khác được thông báo rằng chủ sở hữu tác nhân có thể kiểm tra cuộc trò chuyện."
+		},
+		"ui.ownerAudit.viewers_label": {
+			"en": "Also readable by",
+			"target": "Cũng được đọc bởi"
+		},
+		"ui.ownerAudit.left": {
+			"en": "The audit ends here. Your chief of staff left this conversation, so later messages are not in it.",
+			"target": "Lịch sử kiểm tra kết thúc ở đây. Chánh văn phòng của bạn đã rời cuộc trò chuyện này, nên các tin nhắn sau đó không nằm trong lịch sử kiểm tra này."
+		},
+		"ui.ownerAudit.removed": {
+			"en": "The audit ends here. Your chief of staff was removed from this conversation, so later messages are not in it.",
+			"target": "Lịch sử kiểm tra kết thúc ở đây. Chánh văn phòng của bạn đã bị xóa khỏi cuộc trò chuyện này, nên các tin nhắn sau đó không nằm trong lịch sử kiểm tra này."
+		},
+		"ui.ownerAudit.window_unconfirmed": {
+			"en": "The end of this audit is unknown. Your chief of staff’s membership in this conversation could not be confirmed.",
+			"target": "Không rõ lịch sử kiểm tra này kết thúc ở đâu. Không thể xác nhận tư cách thành viên của chánh văn phòng của bạn trong cuộc trò chuyện này."
+		},
+		"ui.ownerAudit.page_cutoff": {
+			"en": "Older messages are not shown yet. Load older messages to read what came before.",
+			"target": "Các tin nhắn cũ hơn chưa được hiển thị. Tải tin nhắn cũ hơn để đọc phần trước đó."
+		}
+	},
+	"scope": "Round 2: the six keys changed by the D2/D3 copy round. The rest of the namespace was audited in an earlier round and is out of scope here.",
+	"notes": "ui.ownerAudit.viewer is retired in every catalogue; the removal is part of this round and was checked by the auditor.",
+	"findings": [
+		{
+			"severity": "NIT",
+			"key": "ui.ownerAudit.viewers_label",
+			"resolved": false,
+			"detail": "'Cũng được đọc bởi' is four tokens against the sidecar's 'three words at most', and bare 'được đọc' can read as habitual passive ('is also read by') rather than the permission sense of 'Also readable by'. Left as written: it is a correct label, keeps the required 'also', carries no colon, placeholder or sentence, and no shorter form carries 'also' plus the readable sense in Vietnamese ('Cũng có thể đọc bởi' is no shorter)."
+		},
+		{
+			"severity": "NIT",
+			"key": "ui.ownerAudit.removed",
+			"resolved": false,
+			"detail": "'bị xóa khỏi' for membership removal; this repo's own vi usage reserves 'xóa' for deleting data from disk (ui.agents.dialogs.json clear.warning) and uses 'gỡ khỏi' for removal from a container/membership (ui.mesh.json:246 'thiết bị đã bị gỡ khỏi mạng'). 'bị xóa khỏi cuộc trò chuyện' is nevertheless idiomatic Vietnamese chat UI and correctly passive/blameless, so this is a preference, not a defect; not changed."
+		}
+	],
+	"resolved_findings": [
+		{
+			"severity": "MINOR",
+			"key": "ui.ownerAudit.left",
+			"resolved": true,
+			"detail": "Second sentence ended with the pronoun 'trong đó', whose nearest antecedent is 'cuộc trò chuyện này' (the conversation), not the audit; a reader could take it as 'later messages are not in this conversation', which is false and edges toward the archived/deleted reading the context note forbids. Named the audit explicitly: 'nên các tin nhắn sau đó không nằm trong lịch sử kiểm tra này.'"
+		},
+		{
+			"severity": "MINOR",
+			"key": "ui.ownerAudit.removed",
+			"resolved": true,
+			"detail": "Same ambiguous 'trong đó' referent as ui.ownerAudit.left, and the context note requires the two keys to share that half's wording. Same fix applied so the pair stays identical: 'nên các tin nhắn sau đó không nằm trong lịch sử kiểm tra này.'"
+		}
+	],
+	"references": {
+		"ledger_entry": "i18n/ledger.json -> vi/ui.ownerAudit",
+		"receipt": "i18n/receipts/tb1482r2-vi-168d2d.json",
+		"context_sidecar": "src/i18n/catalogues/en/ui.ownerAudit.context.json"
+	},
+	"artifacts": {
+		"receipt": "i18n/receipts/tb1482r2-vi-168d2d.json",
+		"receipt_sha256": "037c426e925eb6a349379ee5225e9b45c0e30d7049505b0c3243732d38e7eb3c",
+		"ledger_entry": "i18n/ledger.json -> vi/ui.ownerAudit"
+	},
+	"limitations": [
+		"No native-speaker review: translation and audit were both LLM agents.",
+		"The audit ran on radient/auto after provider-quota fallbacks from anthropic/claude-opus-5-5.",
+		"No rendered frame in any of the seven locales was reviewed; only the English surface was captured."
+	]
+}

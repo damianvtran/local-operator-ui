@@ -11,11 +11,11 @@ import {
 } from "@features/chat/canonical/transcript-reducer";
 import {
 	CHAT_PANE_MIN_PX,
+	RIGHT_SLOT_MAX_PX,
 	rightSlotDividerContract,
 } from "@features/chat/chat-sidebar-layout";
 import { AskDrawer } from "@features/chat/components/asks/ask-drawer";
 import { Canvas } from "@features/chat/components/canvas";
-import { RUN_PANEL_MAX_PX } from "@features/chat/components/chat-content";
 import { ChatHeader } from "@features/chat/components/chat-header";
 import {
 	deriveMcpServers,
@@ -1479,13 +1479,15 @@ export const ChatDockRunPanel: Story = {
 					 * THE PANE'S OWN SEPARATOR, through the app's shared contract. The run
 					 * pane's divider exists whenever the pane is open (the app renders it
 					 * unconditionally), and its range collapses where the row cannot host
-					 * the pane's own 320px floor; the 320/640 are the range `chat-content.tsx`
-					 * declares for this pane.
+					 * the pane's own 320px floor; `RUN_PANEL_MIN_PX` and the slot's one
+					 * `RIGHT_SLOT_MAX_PX` are the range `chat-content.tsx` declares for this
+					 * pane, read here rather than restated (a literal is the drift the
+					 * constant exists to prevent).
 					 */
 					const divider = rightSlotDividerContract({
 						capacity: Math.max(0, rowWidth - CHAT_PANE_MIN_PX),
-						min: 320,
-						max: 640,
+						min: RUN_PANEL_MIN_PX,
+						max: RIGHT_SLOT_MAX_PX,
 						drawn: slotWidth,
 					});
 					return (
@@ -1690,8 +1692,9 @@ export const ChatMeasureEdgesRunPanel: Story = {
 						{/*
 						 * The pair chat-content.tsx mounts, with ITS bounds rather than a
 						 * literal: `RUN_PANEL_MIN_PX` is the range's floor (420 is the pane's
-						 * DEFAULT width, and restating it as a floor announced a contract the
-						 * app does not have), `RUN_PANEL_MAX_PX` its ceiling, and both writes go
+						 * old DEFAULT width, and restating it as a floor announced a contract the
+						 * app does not have), `RIGHT_SLOT_MAX_PX` its ceiling - the slot's ONE
+						 * ceiling, which every pane shares - and both writes go
 						 * through the store's own setter exactly as the app's
 						 * `handleRunPanelWidthChange` / `handleRunPanelWidthReset` do - a reset
 						 * being a drag to UNSET rather than to a stored number (design review
@@ -1702,7 +1705,7 @@ export const ChatMeasureEdgesRunPanel: Story = {
 						 * so a drag to the floor the divider now announces rendered 420 anyway -
 						 * a promise the range could not keep (`RUN_PANEL_MIN_PX`'s own note states
 						 * the rule). The ceiling is stated raw here; the app narrows it by the
-						 * row's capacity (`Math.min(RUN_PANEL_MAX_PX, runPanelCapacity)`), and at
+						 * row's capacity (`Math.min(RIGHT_SLOT_MAX_PX, runPanelCapacity)`), and at
 						 * this frame's 1512px row the capacity is 728, so 640 is the value both
 						 * mounts use.
 						 */}
@@ -1710,7 +1713,7 @@ export const ChatMeasureEdgesRunPanel: Story = {
 							sidebarWidth={slotWidth}
 							onSidebarWidthChange={setRightSlotWidth}
 							minWidth={RUN_PANEL_MIN_PX}
-							maxWidth={RUN_PANEL_MAX_PX}
+							maxWidth={RIGHT_SLOT_MAX_PX}
 							side="left"
 							onDoubleClick={() => setRightSlotWidth(0)}
 							label="Resize run details. Double-click resets the shared pane width."

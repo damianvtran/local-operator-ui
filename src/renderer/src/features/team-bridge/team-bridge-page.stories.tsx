@@ -23,9 +23,24 @@ import type {
 	TeamBridgeConversation,
 	TeamBridgeMessage,
 } from "../../../../shared/team-bridge-contract";
+/*
+ * WHY THIS SIDE-EFFECT IMPORT IS HERE, ABOVE THE COMPONENTS. Since the page
+ * mounts the shared `MessageInput`, the composer reaches
+ * `window.electron.ipcRenderer` from a passive effect on mount (the platform it
+ * renders the send chord for, and the native dialog behind attach). Storybook's
+ * preview mocks `window.api` and not `window.electron`, so without this stand-in
+ * every story in this file dies in `commitHookEffectListMount` with "Cannot read
+ * properties of undefined (reading 'ipcRenderer')" - measured here after the
+ * composer adoption, and the same failure `story-electron-shim.ts` already
+ * documents for the chat composer's stories. It is imported for its side effect,
+ * so the install has to happen before anything in this module renders.
+ */
+import "../chat/components/story-electron-shim";
+import { useConversationInputStore } from "@shared/store/conversation-input-store";
+import { teamBridgeComposerKey } from "@shared/store/team-bridge-composer-rows";
 import profileImage from "../../assets/radient-icon-1024x1024.png";
 import { ChatLayout } from "../../shared/components/common/chat-layout";
-import { draftStorageKey } from "./team-bridge-drafts";
+import { draftStorageKey, draftTargetKey } from "./team-bridge-drafts";
 import {
 	TEAM_BRIDGE_ALL_SCOPE,
 	type TeamBridgeOrganization,
@@ -377,16 +392,28 @@ const beaDm: TeamBridgeConversation = {
 	],
 };
 
+/**
+ * An invited member wears the quiet "Invited" pill (members dialog polish,
+ * 2026-10-30); the old "Member · Invited; not active yet" line is gone.
+ * Top-level so the regex is not rebuilt on every call.
+ */
+const INVITED_NOT_ACTIVE = /^Invited$/;
+
 const meta = {
 	title: "Team Bridge/Page",
 	component: TeamBridgePageView,
 	parameters: { layout: "fullscreen" },
 	// Storybook's root has no height of its own; the app's shell gives the page
 	// `flex-1 min-h-0`. The board supplies the same constraint so the capture
-	// shows the real composition rather than a page collapsed to its content.
+	// shows the real composition rather than a page collapsed to its content -
+	// WHICH IS WHY THIS IS A FLEX COLUMN AND NOT A BARE `h-dvh`. `flex-1` on the
+	// page is inert in a block parent, so every frame taken from here showed the
+	// page at its content height (measured 2026-10-30: 565px in a 720px frame,
+	// a 155px band of empty canvas under the composer): the board claimed the
+	// shell's constraint in the comment above and did not deliver it.
 	decorators: [
 		(Story) => (
-			<div className="h-dvh">
+			<div className="flex h-dvh flex-col">
 				<Story />
 			</div>
 		),
@@ -394,6 +421,18 @@ const meta = {
 	args: {
 		selfAccountId: self,
 		conversations: [dm, channel, group],
+		/*
+		 * THE HUB TAKES IMAGES, which is what offers the bar's attach control at
+		 * all (`canAttach`): without it the composer draws a field and a send arrow
+		 * and every frame here would photograph a control set the shipping app does
+		 * not have.
+		 */
+		attachmentCapability: {
+			enabled: true,
+			max_count: 10,
+			max_bytes: 10 * 1024 * 1024,
+			mime_types: ["image/png", "image/jpeg", "image/webp"],
+		},
 		target: { type: "conversation", id: dm.id },
 		messages,
 		organizations: [minervaOrganization, northwindOrganization],
@@ -416,6 +455,53 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const PopulatedDirectMessage: Story = {};
+
+/*
+ * A STAGED CHIP, WHICH IS A HEIGHT THE BAR CANNOT REFUSE.
+ *
+ * The chip row sits ABOVE the bar and is content, so a composer holding one is
+ * taller than an empty one and that is correct (the operator's criterion 7,
+ * 2026-10-30). The frame exists because the attach control opens an OS file
+ * dialog that no capture can drive, and a review should not have to take the
+ * chip's geometry on trust: the row is seeded into the very store row the box
+ * reads its draft from, so what renders is the shipping attachment card, not a
+ * mock of it.
+ */
+export const ComposerWithAttachment: Story = {
+	decorators: [
+		(Story) => {
+			useEffect(() => {
+				/*
+				 * THE CHIP IS SET, NOT ADDED. The input store outlives a reload, so a
+				 * fixture that only appends grows a chip on every mount - measured,
+				 * six of them in one frame. Removing what the row already holds and
+				 * adding one is the whole public API this needs.
+				 */
+				const store = useConversationInputStore.getState();
+				const key = teamBridgeComposerKey(
+					self,
+					minervaOrganization.tenantId,
+					draftTargetKey({ type: "conversation", id: dm.id }),
+				);
+				for (const chip of store.inputByConversation[key]?.attachments ?? [])
+					store.removeAttachment(key, chip.id);
+				store.addAttachment(key, {
+					/*
+					 * A DATA URL, WITH THE NAME THE CARD PRINTS. A filesystem path is what
+					 * a real chip holds, but a frame cannot read one: the renderer has no
+					 * bytes behind a path it was only told about, so the card would paint
+					 * a broken thumbnail. `;name=` is where `AttachmentsPreview` reads a
+					 * chip's label from, so the frame shows the real card - thumbnail,
+					 * name, remove control - and the geometry it exists to show.
+					 */
+					id: "frame-staged-chip",
+					path: "data:image/png;name=launch-checklist.png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAIAAADYYG7QAAAAQklEQVR4nO3OQQ0AIAwAsclBBP6DLFxwPJpUQOfs9ZXJB0JCQkL1QEhISKgeCAkJCdUDISEhoXogJCQkVA+EhIQeu0KTjJdXODqoAAAAAElFTkSuQmCC",
+				});
+			}, []);
+			return <Story />;
+		},
+	],
+};
 
 /*
  * The rail's Invitations entry (D5) beside the unread counts: the reader's own
@@ -652,6 +738,31 @@ export const ErrorState: Story = {
 		messages: [],
 		messageState: "idle",
 	},
+};
+
+/**
+ * THE D1 PAIR (design round 1). A failed list read over rows the watcher's cache
+ * already painted: the rail keeps the rows and says the refresh is what failed.
+ * This is reachable in production - `list.isError` after any good read lands
+ * here - and the sentence used to claim the conversations could not be loaded
+ * while they sat visible underneath it.
+ */
+export const ErrorWithCachedRows: Story = {
+	args: { listState: "error" },
+};
+
+/**
+ * The list behind painted rows is being re-read. The dot names the read in
+ * `data-rail-refreshing`; it wears `ink-dim`, never the attention hue green
+ * (D2) - that hue is the unread count on the rows below it.
+ */
+export const RefreshingRows: Story = {
+	args: { refreshingRows: true },
+};
+
+/** The unread read is in flight behind painted rows - same ink, different read. */
+export const RefreshingUnread: Story = {
+	args: { refreshingUnread: true },
 };
 
 export const ThreadError: Story = {
@@ -1041,6 +1152,102 @@ const slackRail = {
 	people: rosterWithChiefs,
 	organizations: [minervaOrganization],
 	scope: minervaOrganization.tenantId,
+};
+
+/**
+ * The operator's report, reproduced: a group they OWN, where the header shows
+ * no way to bring their own chief of staff in. Membership is explicit here so
+ * the frame is the reported case rather than a lucky fixture.
+ */
+const ownedGroup: TeamBridgeConversation = {
+	...group,
+	kind: "group",
+	agent_capable: true,
+	can_administer: true,
+	members: [
+		{
+			account_id: self,
+			kind: "human",
+			display_label: "Damian Tran",
+			role: "owner",
+			state: "active",
+		},
+		{
+			account_id: "acct_ben",
+			kind: "human",
+			display_label: "Ben Tran",
+			role: "member",
+			state: "active",
+		},
+		{
+			account_id: "acct_sherman",
+			kind: "agent",
+			display_label: "Juno",
+			role: "member",
+			state: "invited",
+			joined_seq: 0,
+		},
+	],
+};
+
+const ownedGroupArgs = {
+	...slackRail,
+	conversations: [ownedGroup, ...slackRail.conversations],
+	// `as const` keeps the target's discriminant a literal: an args bundle built
+	// outside `args` widens `type` to `string` and stops matching TeamBridgeTarget.
+	target: { type: "conversation" as const, id: ownedGroup.id },
+	onAddMembers: () => Promise.resolve(),
+	onRemoveMember: () => Promise.resolve(),
+};
+
+/** The header's person-plus control, beside the ellipsis menu. */
+export const AddMembersHeaderControl: Story = {
+	args: ownedGroupArgs,
+};
+
+/** The same action in the ellipsis menu, where the operator looked for it. */
+export const AddMembersMenuEntry: Story = {
+	args: { ...ownedGroupArgs, defaultMenuOpen: true },
+};
+
+/** The picker: current members with roles, plus the org roster and its agents. */
+export const AddMembersDialog: Story = {
+	args: { ...ownedGroupArgs, initialMembersOpen: true },
+	play: async ({ canvasElement }) => {
+		const body = within(canvasElement.ownerDocument.body);
+		// The reader's OWN chief of staff is offered, under its current name.
+		await expect(body.getByText("Aida (Damian Tran)")).toBeInTheDocument();
+		// An invited agent is never painted as active.
+		await expect(body.getByText(INVITED_NOT_ACTIVE)).toBeInTheDocument();
+		await expect(
+			body.getByRole("button", { name: "Remove Ben Tran from conversation" }),
+		).toBeInTheDocument();
+	},
+};
+
+/** A plain member may still invite (the hub permits it), but never remove. */
+export const AddMembersPlainMember: Story = {
+	args: {
+		...ownedGroupArgs,
+		conversations: [
+			{
+				...ownedGroup,
+				members: ownedGroup.members.map((member) =>
+					member.account_id === self && member.kind === "human"
+						? { ...member, role: "member" as const }
+						: member,
+				),
+			},
+			...slackRail.conversations,
+		],
+		initialMembersOpen: true,
+	},
+	play: async ({ canvasElement }) => {
+		const body = within(canvasElement.ownerDocument.body);
+		await expect(
+			body.queryByRole("button", { name: "Remove Ben Tran from conversation" }),
+		).not.toBeInTheDocument();
+	},
 };
 
 /** Ben's row is selected and IS the DM: no "@ Ben" row exists above People. */
