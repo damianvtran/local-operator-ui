@@ -478,7 +478,14 @@ export const TeamBridgeComposer: FC<TeamBridgeComposerProps> = ({
 						aria-describedby={disabledReasonId}
 						placeholder={placeholder}
 						onChange={(event) => setInputValue(event.target.value)}
-						{...mentions.bindField({ onKeyDown: handleKeyDown })}
+						{...(dictation.isRecording || dictation.isPreparing
+							? {
+									// A live take owns Enter/Escape via the window listener.
+									// Do not let mention selection or normal submission prevent
+									// the event first (R1); outside a take both retain their order.
+									onKeyDown: () => {},
+								}
+							: mentions.bindField({ onKeyDown: handleKeyDown }))}
 						/*
 						 * THE FIELD GROWS AND SHRINKS FROM ITS OWN CONTENT, which is the half of
 						 * the shared composer this bar keeps (operator: the old box "didn't

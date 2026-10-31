@@ -68,3 +68,34 @@ which no frame can show either way.
 The `before` frame is the one committed with #1508, of the same story at the same
 viewport, because main's storyboard no longer renders a bar this branch has
 replaced. It is the surface this PR changes, one commit earlier.
+
+## Round 1 remediation — keyboard ownership (2026-10-31)
+
+The focused field used to send its existing draft on Enter during a
+microphone-button recording, before the dictation listener could confirm the
+take (R1). While recording or preparing, the field now leaves keyboard actions
+to dictation rather than mention selection or ordinary submission. Outside a
+take the mention-first handler is unchanged. The dictation listener ignores IME
+confirmation (`isComposing` / key code 229).
+
+Executed regression evidence: current-head RED reproduced a send of
+`["typed draft"]` on recording Enter. After remediation, the dictation cases
+pass 9/9, including empty/nonempty drafts, zero sends on confirmation, retained
+typed text, finished recording, IME Enter, idle Enter/Shift+Enter, and PTT
+release. Mention regressions pass 13/13 and composer-ring checks 7/7. Commands
+use `NODE_OPTIONS=--max-old-space-size=2048`, serial execution, and
+`run_bounded.py --timeout 240 --memory-mb 4096`.
+
+These are scripted microphone/relay tests, **not native microphone evidence**.
+The frames above were captured before this keyboard-only remediation; no new
+Storybook, native build or capture was run under the disk constraint. Independent
+design round 1 inspected the restored full-width/two-row shape, growth,
+recording controls, ring and five contrast pairs. Its scope was bounded by
+ENOSPC: disabled, send-in-flight, loading/error, narrow, notice-producing
+mentions, remaining themes/accent/display axes and consecutive animation frames
+are **not visually signed off**. The old frames are not fresh proof of those
+states. D1's circular Send is deliberately retained: it was already present in
+the intervening bar and observed in that bounded review; it does not change the
+requested field width, rounding, line arrangement, growth or dictation. Restoring
+a different button silhouette without fresh rendered evidence is outside this
+keyboard-only round. No claim of complete historical pixel fidelity is made.

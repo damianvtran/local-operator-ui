@@ -380,7 +380,9 @@ export function useTeamBridgeDictation(args: {
 	useEffect(() => {
 		if (!isRecording && !isPreparing) return undefined;
 		const onKeyDown = (event: KeyboardEvent) => {
-			if (event.defaultPrevented) return;
+			// An IME owns its confirmation key, even while the microphone is live.
+			if (event.defaultPrevented || event.isComposing || event.keyCode === 229)
+				return;
 			if (isRecording && event.key === "Enter") {
 				event.preventDefault();
 				confirm();

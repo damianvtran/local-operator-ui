@@ -160,7 +160,7 @@ let container;
 let root;
 let restore = () => {};
 
-const mount = async (outcome) => {
+const mount = async (outcome, onSendMessage = () => true) => {
 	restore = m.installDictationFixture(outcome);
 	service = new m.QueryClient({
 		defaultOptions: { queries: { retry: false } },
@@ -181,7 +181,7 @@ const mount = async (outcome) => {
 						canUseRadientSpeech: true,
 						speechBlock: "checking",
 					},
-					onSendMessage: () => true,
+					onSendMessage,
 				}),
 			),
 		);
@@ -354,4 +354,120 @@ test("the push-to-talk chord starts a take in the control row and its release en
 		"Held and spoken.",
 		"the held take is transcribed into the field",
 	);
+});
+
+// A live microphone take owns Enter even when the user left a typed draft in
+// the focused field. Otherwise useMessageInput sends before the window-level
+// dictation handler sees the already-prevented event (review R1).
+for (const draft of ["", "typed draft"]) {
+	test(`Enter confirms microphone dictation without sending (${draft || "empty draft"})`, async () => {
+		const sent = [];
+		m.useConversationInputStore.getState().setComposerText(CONVERSATION, draft);
+		await mount({ kind: "text", text: "spoken words" }, (text) => {
+			sent.push(text);
+			return true;
+		});
+		await pressMic();
+		const field = container.querySelector("textarea");
+		field.focus();
+		await act(async () => {
+			await new Promise((resolve) => setTimeout(resolve, 300));
+		});
+		await act(async () => {
+			field.dispatchEvent(
+				new dom.window.KeyboardEvent("keydown", {
+					key: "Enter",
+					bubbles: true,
+					cancelable: true,
+				}),
+			);
+		});
+		await act(async () => {
+			await new Promise((resolve) => setTimeout(resolve, 120));
+		});
+		assert.deepEqual(
+			sent,
+			[],
+			"dictation Enter must never submit the typed draft",
+		);
+		assert.equal(strip(), null, "the confirmed take is no longer recording");
+		assert.match(
+			field.value,
+			/spoken words/,
+			"the confirmed transcript reaches the draft",
+		);
+		if (draft)
+			assert.ok(
+				field.value.includes(draft),
+				"the typed draft survives confirmation",
+			);
+	});
+}
+
+test("idle Enter still submits while Shift+Enter remains a newline", async () => {
+	const sent = [];
+	m.useConversationInputStore
+		.getState()
+		.setComposerText(CONVERSATION, "ordinary draft");
+	await mount({ kind: "text", text: "" }, (text) => {
+		sent.push(text);
+		return true;
+	});
+	const field = container.querySelector("textarea");
+	field.focus();
+	const newline = new dom.window.KeyboardEvent("keydown", {
+		key: "Enter",
+		shiftKey: true,
+		bubbles: true,
+		cancelable: true,
+	});
+	await act(async () => {
+		field.dispatchEvent(newline);
+	});
+	assert.equal(
+		newline.defaultPrevented,
+		false,
+		"the browser may insert a newline (JSDOM has no editing default)",
+	);
+	assert.deepEqual(sent, []);
+	await act(async () => {
+		field.dispatchEvent(
+			new dom.window.KeyboardEvent("keydown", {
+				key: "Enter",
+				bubbles: true,
+				cancelable: true,
+			}),
+		);
+	});
+	assert.deepEqual(sent, ["ordinary draft"]);
+});
+
+test("IME Enter does not confirm a microphone take or submit its draft", async () => {
+	const sent = [];
+	m.useConversationInputStore
+		.getState()
+		.setComposerText(CONVERSATION, "IME draft");
+	await mount({ kind: "text", text: "spoken words" }, (text) => {
+		sent.push(text);
+		return true;
+	});
+	await pressMic();
+	const field = container.querySelector("textarea");
+	field.focus();
+	await act(async () => {
+		await new Promise((resolve) => setTimeout(resolve, 300));
+	});
+	await act(async () => {
+		field.dispatchEvent(
+			new dom.window.KeyboardEvent("keydown", {
+				key: "Enter",
+				bubbles: true,
+				cancelable: true,
+				isComposing: true,
+			}),
+		);
+	});
+	assert.ok(strip(), "IME confirmation leaves recording active");
+	assert.deepEqual(sent, [], "IME confirmation sends nothing");
+	await click(container.querySelector('button[aria-label="Cancel recording"]'));
 });
