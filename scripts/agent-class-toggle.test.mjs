@@ -752,6 +752,12 @@ const installBridge = (
 	return calls;
 };
 
+/* Each mounted provider owns a cache. Unmounting its React root removes the
+ * observers but schedules the queries' ten-minute GC timers; closing JSDOM
+ * cannot cancel those Node timers. Keep the owners for explicit suite teardown,
+ * as the Team Bridge container fixture does, rather than forcing test exit. */
+const ownedClients = new Set();
+
 /** Mount the page at a route, with a client per mount (so a remount re-reads). */
 const mount = async (path, rows, options) => {
 	const calls = installBridge(rows, options);
@@ -760,6 +766,7 @@ const mount = async (path, rows, options) => {
 	const client = new QueryClient({
 		defaultOptions: { queries: { retry: false } },
 	});
+	ownedClients.add(client);
 	const root = createRoot(container);
 	await act(async () => {
 		root.render(
@@ -1535,7 +1542,16 @@ test("the pane's own Cancel withdraws the page's bar instead of stacking a secon
 	});
 });
 
-after(() => {
+after(async () => {
+	for (const client of ownedClients) {
+		// Let cancellation settle before destroying caches: a late query finally
+		// must not recreate a GC timer after we have removed its owner.
+		await client.cancelQueries();
+		for (const mutation of client.getMutationCache().getAll())
+			mutation.destroy();
+		client.clear();
+	}
+	ownedClients.clear();
 	window.close();
 	for (const [key, descriptor] of originals) {
 		if (descriptor) Object.defineProperty(globalThis, key, descriptor);
