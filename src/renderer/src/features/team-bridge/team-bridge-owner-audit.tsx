@@ -13,6 +13,7 @@ import type {
 	OwnerAuditConversation,
 	OwnerAuditMessage,
 } from "../../../../shared/team-bridge-owner-audit-contract";
+import { InlineDataBody } from "./inline-data-receipt";
 import { TeamBridgeMessageList } from "./team-bridge-message-list";
 import type { ChiefLabels } from "./team-bridge-model";
 import {
@@ -240,16 +241,36 @@ const VERDICT = {
  * `decorate` hook: the verdict chip, the audit's own null-body sentence, the
  * attachment notes and thread replies.
  *
- * THE OLD "NEVER INVOKE MARKDOWN" RULE is still met in substance: the list's
- * body renderer (`TeamBridgeMarkdown`) emits no raw HTML, draws images as text
- * and links only http(s)/mailto, which is the same guarantee a member's channel
- * relies on for the same bodies. What this surface must never do — load an
+ * Unadmitted and unknown bodies are disclosed as inert plaintext only after an
+ * explicit press. Admitted and own bodies use the shared no-image Markdown.
+ * What this surface must never do — load an
  * attachment's bytes, offer a reaction, a reply or a "Message" action — is
  * withheld by omission: the adapter drops `attachments`, and none of
  * `reactionContext` / `onReply` / `onMessagePerson` is passed, so the toolbar
  * (which renders nothing without one of the first two) and the profile card's
  * Message button do not exist here.
  */
+function WithheldAuditBody({ body }: { body: string }) {
+	const [open, setOpen] = useState(false);
+	return (
+		<details onToggle={(event) => setOpen(event.currentTarget.open)}>
+			<summary className={cn("cursor-pointer text-sm text-ink-muted")}>
+				{t("ui.ownerAudit.inspect_body")}
+			</summary>
+			{open && (
+				<InlineDataBody
+					body={body}
+					renderText={(text) => (
+						<p className={cn("whitespace-pre-wrap break-words text-sm")}>
+							{text}
+						</p>
+					)}
+				/>
+			)}
+		</details>
+	);
+}
+
 function AuditTranscript({
 	conversation,
 	messages,
@@ -293,15 +314,12 @@ function AuditTranscript({
 					badge: verdict && (
 						<Badge variant={verdict.variant}>{t(verdict.copy)}</Badge>
 					),
-					/* Every body reads inline, unadmitted ones included: the chip above
-					   is what says the agent refused or never saw the text. The hub
-					   contract's "collapsed by default" (v2 m4) was a presentation
-					   choice, not the isolation guard. The human-only boundary is the
-					   runtime's (local-operator scopes audit reads and refuses unscoped
-					   ones in team_bridge/client.py, and the agent tool has no audit
-					   op), and here the audit reads sit under their own
-					   ["team-bridge", "owner-audit", ...] query keys and write nothing:
-					   no read markers, drafts or agent feed. */
+					/* Unadmitted and unknown bodies are untrusted; a human can inspect
+					   plaintext deliberately, without Markdown or fetching attachments. */
+					bodyOverride:
+						delivery !== "own" && delivery !== "admitted" && message.body ? (
+							<WithheldAuditBody body={message.body} />
+						) : undefined,
 					withheldCopy: t("ui.ownerAudit.body_unavailable"),
 					attachments:
 						attachmentCount > 0 ? (

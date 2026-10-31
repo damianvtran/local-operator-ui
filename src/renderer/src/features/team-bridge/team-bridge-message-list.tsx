@@ -15,6 +15,7 @@ import type {
 	TeamBridgeEvent,
 	TeamBridgeMessage,
 } from "../../../../shared/team-bridge-contract";
+import { InlineDataBody, inlineImageSpans } from "./inline-data-receipt";
 import { useMessageMentions } from "./mentions/use-message-mentions";
 import {
 	type TeamBridgeArrivalIdentity,
@@ -188,13 +189,12 @@ export type TeamBridgeRowDecoration = {
 	 * (agent review round 1, R1-2). Unset, a blank body keeps the channel
 	 * behaviour byte for byte.
 	 *
-	 * Every body WITH text renders inline. The audit once collapsed unadmitted
-	 * text behind a disclosure here; that was a presentation choice taken from
-	 * the hub contract (v2 m4), not an isolation guard, and it was dropped at the
-	 * owner's request. The verdict chip (`badge`) is what tells the owner the
-	 * agent refused or never saw that text.
+	 * An audit can additionally withhold unadmitted text with `bodyOverride`;
+	 * this absence copy does not itself grant permission to inspect the body.
 	 */
 	withheldCopy?: string;
+	/** Audit callers can withhold unadmitted text without changing the wire body. */
+	bodyOverride?: ReactNode;
 	/*
 	 * Replaces the attachment component for this row. The shared component
 	 * FETCHES BYTES; a caller that must never load a private attachment (the
@@ -799,6 +799,8 @@ const MessageRowView: FC<MessageRowProps> = ({
 					<p className="text-[14px] text-ink-dim italic">
 						{decoration?.withheldCopy ?? t("ui.teamBridge.thread.withheld")}
 					</p>
+				) : decoration?.bodyOverride !== undefined ? (
+					decoration.bodyOverride
 				) : message.body.trim() === "" &&
 					((message.attachments?.length ?? 0) > 0 ||
 						decoration?.attachments !== undefined) ? null : (
@@ -821,22 +823,31 @@ const MessageRowView: FC<MessageRowProps> = ({
 					 * invisible. The value is driven on the row instead, scoped to it: the
 					 * stylesheet keeps styling every other markdown surface in the app.
 					 */
-					<TeamBridgeMarkdown
-						/* `transition-colors` is restored rather than the comment rewritten: the
+					<InlineDataBody
+						body={message.body}
+						renderText={(text) => (
+							<TeamBridgeMarkdown
+								/* `transition-colors` is restored rather than the comment rewritten: the
 						   comment describes a settle, and no rule on `.lo-markdown` competes with a
 						   TRANSITION (only its `color` is unlayered). Design round 3 measured the
 						   step at 1.19:1 light / 1.63:1 dark - quiet enough that the settle must
 						   not read as motion, which is what a 150 ms colour fade gives. */
-						className="team-bridge-message-body text-[14px] transition-colors duration-fast"
-						style={{
-							...(delivery?.status === "pending"
-								? { "--md-ink": "var(--lo-ink-muted)" }
-								: {}),
-						}}
-						mentions={mentionRuns}
-					>
-						{message.body}
-					</TeamBridgeMarkdown>
+								className="team-bridge-message-body text-[14px] transition-colors duration-fast"
+								style={{
+									...(delivery?.status === "pending"
+										? { "--md-ink": "var(--lo-ink-muted)" }
+										: {}),
+								}}
+								mentions={
+									inlineImageSpans(message.body ?? "").length
+										? undefined
+										: mentionRuns
+								}
+							>
+								{text}
+							</TeamBridgeMarkdown>
+						)}
+					/>
 				)}
 				{/* THE STATE IN WORDS, for a reader who cannot see the ink: the row is
 				    otherwise only quieter, and a screen reader announces status changes when

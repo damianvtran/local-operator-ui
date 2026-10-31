@@ -194,5 +194,46 @@
 		"length": "Three words at most.",
 		"placeholders": {},
 		"note": "The <details> summary that fetches and shows the replies under a thread root. Reads are audited like any other message, and replies carry the same verdict chips. Keep it an action phrase (\"read …\") rather than a count: the count is already visible in the message row."
+	},
+	"ui.ownerAudit.inspect_body": {
+		"role": "Disclosure summary",
+		"tone": "Short, neutral imperative",
+		"length": "Short action label",
+		"placeholders": {},
+		"note": "Opens a rejected, unscreened, or unknown audit message as inert plaintext; it does not download or preview attachments."
+	},
+	"ui.ownerAudit.inline_image_receipt": {
+		"role": "Collapsed disclosure summary for a legacy inline image data URI",
+		"tone": "Factual and compact",
+		"length": "One line where possible",
+		"placeholders": {
+			"mime": "MIME type, such as image/jpeg; preserve literally.",
+			"count": "Number of characters in the encoded URI, not decoded bytes."
+		},
+		"note": "This is data embedded in the message body, not a verified attachment or a preview. Activating it reveals a bounded plaintext segment, never an image."
+	},
+	"ui.ownerAudit.previous_chunk": {
+		"role": "Pagination button for inspecting encoded text",
+		"tone": "Neutral imperative",
+		"length": "Short button label",
+		"placeholders": {},
+		"note": "Moves to the preceding plaintext segment of a legacy image URI; disabled at the first segment."
+	},
+	"ui.ownerAudit.next_chunk": {
+		"role": "Pagination button for inspecting encoded text",
+		"tone": "Neutral imperative",
+		"length": "Short button label",
+		"placeholders": {},
+		"note": "Moves to the next plaintext segment of a legacy image URI; disabled at the last segment."
+	},
+	"ui.ownerAudit.chunk_number": {
+		"role": "Pagination status for encoded text",
+		"tone": "Factual",
+		"length": "Short inline status",
+		"placeholders": {
+			"page": "One-based current segment number.",
+			"count": "Total number of segments."
+		},
+		"note": "Reports the current segment and total while inspecting a data URI. Neither number is a byte count."
 	}
 }

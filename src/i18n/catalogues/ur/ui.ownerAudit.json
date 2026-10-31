@@ -26,5 +26,10 @@
 	"ui.ownerAudit.window_unconfirmed": "اس آڈٹ کا اختتام نامعلوم ہے۔ اس گفتگو میں آپ کے چیف آف اسٹاف کی رکنیت کی تصدیق نہیں ہو سکی۔",
 	"ui.ownerAudit.disclosure": "آپ یہ آڈٹ پڑھ سکتے ہیں کیونکہ جس چیف آف اسٹاف کا یہ آڈٹ ہے، اس کے مالک آپ ہیں۔ دیگر ارکان کو بتایا جاتا ہے کہ ایجنٹ کے مالکان اس گفتگو کا آڈٹ کر سکتے ہیں۔",
 	"ui.ownerAudit.viewers_label": "یہ افراد بھی پڑھ سکتے ہیں",
-	"ui.ownerAudit.replies": "تھریڈ کے جوابات پڑھیں"
+	"ui.ownerAudit.replies": "تھریڈ کے جوابات پڑھیں",
+	"ui.ownerAudit.inspect_body": "پیغام کا متن دیکھیں",
+	"ui.ownerAudit.inline_image_receipt": "درونِ متن تصویر کا ڈیٹا · {mime} · {count} حروف",
+	"ui.ownerAudit.previous_chunk": "پچھلا",
+	"ui.ownerAudit.next_chunk": "اگلا",
+	"ui.ownerAudit.chunk_number": "حصہ {page} از {count}"
 }

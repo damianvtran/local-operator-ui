@@ -397,6 +397,22 @@ type Story = StoryObj<typeof meta>;
  * absent body, and the agent's own message. */
 export const Populated: Story = {};
 
+/** Synthetic legacy receipt, never bytes from a real operator message. */
+export const LegacyInlineImage: Story = {
+	args: {
+		messages: [
+			{
+				...messages[0],
+				body: `[image 1/1: example.jpg; jpeg 489x71; 7488 bytes]\ndata:image/jpeg;base64,${"A".repeat(10000)}`,
+			},
+			{
+				...messages[1],
+				body: `Forwarded message:\n[image 1/1: example.jpg; jpeg 489x71; 7488 bytes]\ndata:image/jpeg;base64,${"A".repeat(10000)}`,
+			},
+		],
+	},
+};
+
 /** Nothing to audit in this organization yet — and therefore no panel: the slot
  * only opens one for a row the reader has selected. */
 export const Empty: Story = {

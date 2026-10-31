@@ -330,7 +330,7 @@ const admitted = {
 	agent_verdict_at: "2026-10-23T10:58:01Z",
 };
 
-/* REJECTED: full text is served (it is the owner's audit) and read inline. */
+/* REJECTED: full text is served but requires explicit plaintext inspection. */
 const rejected = {
 	id: "msg_42",
 	conversation_id: direct.id,
@@ -882,16 +882,15 @@ test("panel: loading, error, empty history, populated", async () => {
 			hasMore: true,
 		}),
 	);
-	/* Rows are the shared list's (`li[data-message-id]`), not the bespoke
-	 * `<article>` the audit used to draw. Rejected text reads inline, which is
-	 * what the body loop below reads. */
+	/* Rows are the shared list's (`li[data-message-id]`); rejected text is
+	 * withheld while admitted and own bodies remain visible. */
 	assert.equal(
 		populated.host.querySelectorAll("li[data-message-id]").length,
 		4,
 	);
 	/* Newest-first from the server, oldest-first on screen: the caller's
 	 * chronology helper owns that, so this asserts the rows it is given. */
-	for (const body of [admitted.body, rejected.body, own.body]) {
+	for (const body of [admitted.body, own.body]) {
 		assert.ok(populated.text().includes(body));
 	}
 	assert.ok(populated.text().includes(m.t("ui.ownerAudit.older")));
@@ -918,7 +917,7 @@ test("a null body renders the unavailable text, never an empty string", async ()
 	await view.close();
 });
 
-test("unadmitted bodies read inline like every other message", async () => {
+test("unadmitted bodies are hidden and verdicts remain visible", async () => {
 	const view = await renderView(
 		panel({ messages: [admitted, rejected, unscreenedEmpty, own] }),
 	);
@@ -927,17 +926,19 @@ test("unadmitted bodies read inline like every other message", async () => {
 		articles.find((article) => (article.textContent ?? "").includes(needle));
 
 	const admittedRow = byText(admitted.body);
-	const rejectedRow = byText(rejected.body);
+	const rejectedRow = articles.find(
+		(row) => row.getAttribute("data-message-id") === rejected.id,
+	);
 	const emptyRow = byText(m.t("ui.ownerAudit.body_unavailable"));
 	const ownRow = byText(own.body);
 
-	/* No expand step on any row: the owner asked to read refused and unscreened
-	 * text without opening it. The verdict chip, not a disclosure, is what tells
-	 * them the agent refused or never saw it. */
-	assert.ok(rejectedRow, "the refused text is on screen without a press");
-	for (const row of [admittedRow, rejectedRow, emptyRow, ownRow]) {
-		assert.ok(row.querySelector("details") === null, "no disclosure");
-		assert.ok(row.querySelector("summary") === null, "no reveal summary");
+	assert.ok(
+		rejectedRow.querySelector("details"),
+		"rejected text requires disclosure",
+	);
+	assert.equal(rejectedRow.textContent.includes(rejected.body), false);
+	for (const row of [admittedRow, emptyRow, ownRow]) {
+		assert.equal(row.querySelector("details"), null);
 	}
 	assert.ok(
 		emptyRow.textContent.includes(m.t("ui.ownerAudit.body_unavailable")),
@@ -1964,7 +1965,33 @@ test("a null body is the audit's placeholder, not the member view's", async () =
 	await view.close();
 });
 
-test("unadmitted bodies are markdown inline, each under its verdict", async () => {
+test("legacy image data stays bounded and inert until inspected", async () => {
+	const data = `data:image/jpeg;base64,${"A".repeat(10000)}`;
+	const body = `Before\n[image 1/1: example.jpg]\n${data}\nAfter`;
+	const view = await renderView(
+		panel({ messages: [auditRow({ id: "legacy_image", body })] }),
+	);
+	const row = rowOf(view.host, "legacy_image");
+	assert.ok(row.textContent.includes("Before"));
+	assert.ok(row.textContent.includes("After"));
+	assert.ok(row.textContent.includes("image/jpeg"));
+	assert.equal(row.textContent.includes("A".repeat(64)), false);
+	assert.equal(row.querySelector("img"), null);
+	const details = row.querySelector("details");
+	await act(async () => {
+		details.open = true;
+		details.dispatchEvent(new dom.window.Event("toggle"));
+	});
+	assert.equal(row.querySelector("pre").textContent.length, 2048);
+	assert.ok(
+		row.querySelector("pre").textContent.startsWith("data:image/jpeg;base64,"),
+	);
+	await click(BUTTON_TEXT(row, m.t("ui.ownerAudit.next_chunk")));
+	assert.equal(row.querySelector("pre").textContent, "A".repeat(2048));
+	await view.close();
+});
+
+test("unadmitted bodies disclose inert plaintext, never Markdown", async () => {
 	const rows = [
 		["msg_rej_md", "rejected", "ui.ownerAudit.rejected"],
 		["msg_ns_md", "not_screened", "ui.ownerAudit.not_screened"],
@@ -1972,69 +1999,31 @@ test("unadmitted bodies are markdown inline, each under its verdict", async () =
 	];
 	const view = await renderView(
 		panel({
-			messages: [
-				...rows.map(([id, agent_delivery_status], index) =>
-					auditRow({
-						id,
-						seq: 70 + index,
-						body: MARKDOWN_BODY,
-						agent_delivery_status,
-					}),
-				),
-				/* The agent's own message: inline too, and carrying no chip. */
-				{ ...own, id: "msg_own_md", seq: 73, body: MARKDOWN_BODY },
-			],
+			messages: rows.map(([id, agent_delivery_status], index) =>
+				auditRow({
+					id,
+					seq: 70 + index,
+					body: MARKDOWN_BODY,
+					agent_delivery_status,
+				}),
+			),
 		}),
 	);
 	for (const [id, , copy] of rows) {
 		const row = rowOf(view.host, id);
-		assert.ok(row, id);
-		assert.ok(row.querySelector("details") === null, `${id}: no disclosure`);
-		assert.ok(row.querySelector("summary") === null, `${id}: no summary`);
-		const body = row.querySelector(".team-bridge-message-body");
-		assert.ok(body, `${id}: the body renders without a press`);
-		assert.ok(body.querySelector("strong"), `${id}: markdown inline`);
-		assert.ok(body.querySelector("table"), `${id}: tables inline`);
-		assert.ok(row.textContent.includes(m.t(copy)), `${id}: keeps its verdict`);
+		assert.ok(row.textContent.includes(m.t(copy)));
+		assert.equal(row.textContent.includes(MARKDOWN_BODY), false);
+		const details = row.querySelector("details");
+		assert.ok(details);
+		await act(async () => {
+			details.open = true;
+			details.dispatchEvent(new dom.window.Event("toggle"));
+		});
+		assert.ok(row.textContent.includes(MARKDOWN_BODY));
+		assert.equal(row.querySelector("strong"), null);
+		assert.equal(row.querySelector("table"), null);
+		assert.equal(row.querySelector("img"), null);
 	}
-	const ownRow = rowOf(view.host, "msg_own_md");
-	assert.ok(ownRow.querySelector(".team-bridge-message-body strong"));
-	for (const [, , copy] of rows)
-		assert.equal(ownRow.textContent.includes(m.t(copy)), false, "own: no chip");
-	await view.close();
-});
-
-/*
- * The owner reads refused and unscreened text as plainly as admitted text: the
- * collapse, its chevron (design review round 1, D3) and the quoted inset that
- * marked opened text (D4/D10) are gone with it. The verdict chip is the one
- * difference, so an unadmitted body wears the SAME body treatment as an
- * admitted one — a lingering start rule would be a half-removed quote.
- */
-test("an unadmitted body wears the same body treatment as an admitted one", async () => {
-	const view = await renderView(
-		panel({
-			messages: [
-				auditRow({ id: "msg_ok", body: "Fine." }),
-				auditRow({
-					id: "msg_rej",
-					seq: 46,
-					body: "Refused text.",
-					agent_delivery_status: "rejected",
-				}),
-			],
-		}),
-	);
-	const bodyOf = (id) =>
-		rowOf(view.host, id).querySelector(".team-bridge-message-body");
-	const refused = bodyOf("msg_rej");
-	assert.ok(refused, "the refused body is on screen");
-	assert.ok(refused.closest("details") === null, "not inside a disclosure");
-	assert.equal(
-		refused.getAttribute("class"),
-		bodyOf("msg_ok").getAttribute("class"),
-		"no quoted inset: the chip, not the body, carries the verdict",
-	);
 	await view.close();
 });
 
@@ -2042,7 +2031,7 @@ test("an unadmitted body wears the same body treatment as an admitted one", asyn
  * Agent review round 1, R1-2. The wire allows `""` (`z.string().nullish()`); an
  * audit row with a blank body and nothing attached must say the text is
  * unavailable, as a null body does, never draw an empty prose block. It held
- * for the collapsed verdicts first; with the collapse gone it holds for every
+ * for the collapsed verdicts first; it continues to hold for every
  * audit row, the agent's own included.
  */
 test("a blank audit body is the unavailable placeholder, not an empty block", async () => {
