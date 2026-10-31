@@ -1,0 +1,80 @@
+{
+	"auditor": "reviewer",
+	"model": "radient/auto",
+	"model_disclosure": "Disclosed fallback: the session's primary model anthropic/claude-opus-5-5 was unavailable (provider quota) and the harness routed this run through openai/gpt-6-astra and kimi/k3.1-pro before settling on radient/auto; the audit was completed on radient/auto.",
+	"instance": "7d20c9116360-zh-cn",
+	"locale": "zh-CN",
+	"namespace": "ui.agents.avatar",
+	"date": "2026-10-30",
+	"status": "passed",
+	"result": "clean-with-findings",
+	"sha256": {
+		"en": "35ac09523862b19fb4c5c942d57f42d2dd8007f926ead27b306febbc2c830847",
+		"zh-CN": "57d75fc643e0b01ee4b33b83c778c86865e3576960836a8076594cf66ff59377"
+	},
+	"source_sha256": "35ac09523862b19fb4c5c942d57f42d2dd8007f926ead27b306febbc2c830847",
+	"target_sha256": "57d75fc643e0b01ee4b33b83c778c86865e3576960836a8076594cf66ff59377",
+	"counts": {
+		"blocker": 0,
+		"major": 0,
+		"minor": 1,
+		"nit": 2
+	},
+	"findings": [
+		{
+			"id": "A-zh-term",
+			"severity": "minor",
+			"key": "ui.agents.avatar.edit_link",
+			"keys": [
+				"ui.agents.avatar.edit_link",
+				"ui.agents.avatar.editor.save",
+				"ui.agents.avatar.editor.replace",
+				"ui.agents.avatar.editor.recenter",
+				"ui.agents.avatar.editor.error_save",
+				"ui.agents.avatar.editor.error_remove"
+			],
+			"detail": "The editor names the agent's picture 照片 in six keys. #1517's ui.agents.settings.general.profile_picture — the only established term for this object in the shipped zh-CN catalogue — is 头像, and its actions use 图片. Three words (头像 / 图片 / 照片) now name one object inside one feature, which is what the cross-namespace agreement rule exists to prevent.",
+			"recommend": "Use 头像 in the editor's user-facing keys (更改 {name} 的头像, 保存头像, 替换头像, 头像居中), or record 照片 as the settled word and align the settings label in #1517. One term, one object."
+		},
+		{
+			"id": "A-zh-space",
+			"severity": "nit",
+			"key": "ui.agents.avatar.edit_link",
+			"keys": [
+				"ui.agents.avatar.edit_link",
+				"ui.agents.avatar.editor.error_size",
+				"ui.agents.avatar.editor.error_type",
+				"ui.agents.avatar.editor.hint",
+				"ui.agents.avatar.editor.instructions"
+			],
+			"detail": "Five keys insert a space between Chinese text and a Latin/digit run (支持 JPEG、PNG…; 该图片大于 {size} MB; 原图 {width}×{height} 像素). The zh-CN style guide says \"No space inserted between Chinese text and Latin/digit runs\"; the shipped corpus agrees 1079 values to 31, and #1517's same refusal reads 请选择JPEG、PNG、WebP、GIF或AVIF文件。 with no space.",
+			"recommend": "Drop the spaces around Latin and digit runs, or amend the guide if spacing is now the house style."
+		},
+		{
+			"id": "A-zh-ellipsis",
+			"severity": "nit",
+			"key": "ui.agents.avatar.editor.saving",
+			"keys": [
+				"ui.agents.avatar.editor.saving"
+			],
+			"detail": "editor.saving uses a single «…». The zh-CN guide says the ellipsis is …… (two marks); only four shipped zh-CN values carry a single … and two of those are Latin token abbreviations (bep_…, acc_…), so the double form is the house default.",
+			"recommend": "正在保存……"
+		}
+	],
+	"scope": "ui.agents.avatar (25 keys) — full-namespace read of zh-CN against English, the core glossary and zh-CN's style guide, on PR #1537 head 478b7889387. Whole-file hashes bound.",
+	"passed_checks": [
+		"key set identical to English (25/25)",
+		"ICU placeholder parity: {name}, {size}, {width}, {height}, {value} present and unaltered in every key that carries them",
+		"no ICU plural/select arms in this namespace; {size} is a whole-megabyte digit with no inflecting noun",
+		"no manual bidi control characters (RLM/LRM/FSI/PDI/LRI/RLI) in ur; Latin format names left to the render layer's isolation",
+		"format list JPEG/PNG/WebP/GIF matches AGENT_AVATAR_MIME_TYPES in src/renderer/src/shared/agent-avatar/avatar-image.ts",
+		"no key left in English except the es/fr loanword Zoom and the numeric {value}×",
+		"punctuation conventions per locale (ur ۔ ،, hi ।, zh-CN ，。、, fr ’)"
+	],
+	"limitations": [
+		"Browser and rendered-frame capture are not in this auditor's tool set: no screenshot, pseudo-localization or measured-overflow evidence is claimed.",
+		"Overflow was reasoned from the call sites, not measured: the editor's buttons are w-fit and the settings row wraps (flex-wrap), the preview labels are image aria-labels, and no truncate/whitespace-nowrap is applied anywhere in the avatar surfaces.",
+		"Agent semantic read; no native-speaker review."
+	],
+	"independence": "Auditor did not translate, write or edit any catalogue, context or key file; it formed its own read of the strings before opening the translator's commit message."
+}

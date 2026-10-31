@@ -60828,6 +60828,223 @@
 				}
 			],
 			"status": "audited"
+		},
+		{
+			"locale": "es",
+			"namespace": "ui.agents.avatar",
+			"source_sha256": "35ac09523862b19fb4c5c942d57f42d2dd8007f926ead27b306febbc2c830847",
+			"target_sha256": "e961485942bc13ffd7f0e269200c6efc926427a708df72606a2b5a17d4817625",
+			"translator": {
+				"agent": "coder",
+				"model": "radient/auto",
+				"date": "2026-10-31"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "radient/auto",
+					"date": "2026-10-31",
+					"result": "clean",
+					"instance": "7d20c9116360-es",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/7d20c9116360-es.json",
+					"receipt_sha256": "fa64b55c400cb43cc0738b5e33eb43f241d2cf81d2d2aeeeb16c21da9b7eb144",
+					"scope": "ui.agents.avatar: all 25 keys read against English, the core glossary and the es style guide; glossary/style-guide hashes cited in the retention record.",
+					"note": "Independent full-namespace audit of the 25 ui.agents.avatar keys on PR #1537 head 478b7889387; placeholders, key parity and ur bidi checked mechanically. No rendered-fit or native-reader claim."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "vi",
+			"namespace": "ui.agents.avatar",
+			"source_sha256": "35ac09523862b19fb4c5c942d57f42d2dd8007f926ead27b306febbc2c830847",
+			"target_sha256": "b6d4018306c133438a0e048bc3bbbcbafb7247e69e067f282b02c96b854d1666",
+			"translator": {
+				"agent": "coder",
+				"model": "radient/auto",
+				"date": "2026-10-31"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "radient/auto",
+					"date": "2026-10-31",
+					"result": "clean",
+					"instance": "7d20c9116360-vi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/7d20c9116360-vi.json",
+					"receipt_sha256": "3a84499e38249ffa82186e514e1efdddad0884401639b21cec5b094498a2a970",
+					"scope": "ui.agents.avatar: all 25 keys read against English, the core glossary and the vi style guide; glossary/style-guide hashes cited in the retention record.",
+					"note": "Independent full-namespace audit of the 25 ui.agents.avatar keys on PR #1537 head 478b7889387; placeholders, key parity and ur bidi checked mechanically. No rendered-fit or native-reader claim."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.agents.avatar",
+			"source_sha256": "35ac09523862b19fb4c5c942d57f42d2dd8007f926ead27b306febbc2c830847",
+			"target_sha256": "f9b105fe06d24e96d7aa036cbbf19f0fa036f25a6546753b028560e76c269336",
+			"translator": {
+				"agent": "coder",
+				"model": "radient/auto",
+				"date": "2026-10-31"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "radient/auto",
+					"date": "2026-10-31",
+					"result": "clean-with-findings",
+					"instance": "7d20c9116360-fr",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/7d20c9116360-fr.json",
+					"receipt_sha256": "0419530da50efd95490120fcf9f8bc1f38363f9bb5d4490647cf730c4c3851a3",
+					"scope": "ui.agents.avatar: all 25 keys read against English, the core glossary and the fr style guide; glossary/style-guide hashes cited in the retention record.",
+					"note": "Independent full-namespace audit of the 25 ui.agents.avatar keys on PR #1537 head 478b7889387; placeholders, key parity and ur bidi checked mechanically. No rendered-fit or native-reader claim."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.agents.avatar",
+			"source_sha256": "35ac09523862b19fb4c5c942d57f42d2dd8007f926ead27b306febbc2c830847",
+			"target_sha256": "0972624b5914652eeb94ab44d4f93342256a3f94f902f96cb38c3188b80bb22f",
+			"translator": {
+				"agent": "coder",
+				"model": "radient/auto",
+				"date": "2026-10-31"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "radient/auto",
+					"date": "2026-10-31",
+					"result": "clean-with-findings",
+					"instance": "7d20c9116360-hi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 2
+					},
+					"receipt": "i18n/receipts/7d20c9116360-hi.json",
+					"receipt_sha256": "683e478066ec62ca9cdfd1148588a662714c5e864e0bf834683c44e888cc6bc7",
+					"scope": "ui.agents.avatar: all 25 keys read against English, the core glossary and the hi style guide; glossary/style-guide hashes cited in the retention record.",
+					"note": "Independent full-namespace audit of the 25 ui.agents.avatar keys on PR #1537 head 478b7889387; placeholders, key parity and ur bidi checked mechanically. No rendered-fit or native-reader claim."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ru",
+			"namespace": "ui.agents.avatar",
+			"source_sha256": "35ac09523862b19fb4c5c942d57f42d2dd8007f926ead27b306febbc2c830847",
+			"target_sha256": "76c5e4366fa04727e96d453e146f7cc264929d2d294c5f25b0ca388ff408488e",
+			"translator": {
+				"agent": "coder",
+				"model": "radient/auto",
+				"date": "2026-10-31"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "radient/auto",
+					"date": "2026-10-31",
+					"result": "clean-with-findings",
+					"instance": "7d20c9116360-ru",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 2,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/7d20c9116360-ru.json",
+					"receipt_sha256": "eaa3251e57f40c23615177c81edbea63db52b13bf5a46e750b383370eb2193d1",
+					"scope": "ui.agents.avatar: all 25 keys read against English, the core glossary and the ru style guide; glossary/style-guide hashes cited in the retention record.",
+					"note": "Independent full-namespace audit of the 25 ui.agents.avatar keys on PR #1537 head 478b7889387; placeholders, key parity and ur bidi checked mechanically. No rendered-fit or native-reader claim."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.agents.avatar",
+			"source_sha256": "35ac09523862b19fb4c5c942d57f42d2dd8007f926ead27b306febbc2c830847",
+			"target_sha256": "bb299cd394595714b5316cf7cb605351247218b7d6bf678a4ab740ff6f1049f5",
+			"translator": {
+				"agent": "coder",
+				"model": "radient/auto",
+				"date": "2026-10-31"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "radient/auto",
+					"date": "2026-10-31",
+					"result": "clean-with-findings",
+					"instance": "7d20c9116360-ur",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 2,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/7d20c9116360-ur.json",
+					"receipt_sha256": "2b44b6abbe1eeea80eafb41586a26a7a5ff8807e0f4e6ec3efa1720c0d0ef1d3",
+					"scope": "ui.agents.avatar: all 25 keys read against English, the core glossary and the ur style guide; glossary/style-guide hashes cited in the retention record.",
+					"note": "Independent full-namespace audit of the 25 ui.agents.avatar keys on PR #1537 head 478b7889387; placeholders, key parity and ur bidi checked mechanically. No rendered-fit or native-reader claim."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.agents.avatar",
+			"source_sha256": "35ac09523862b19fb4c5c942d57f42d2dd8007f926ead27b306febbc2c830847",
+			"target_sha256": "57d75fc643e0b01ee4b33b83c778c86865e3576960836a8076594cf66ff59377",
+			"translator": {
+				"agent": "coder",
+				"model": "radient/auto",
+				"date": "2026-10-31"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "radient/auto",
+					"date": "2026-10-31",
+					"result": "clean-with-findings",
+					"instance": "7d20c9116360-zh-cn",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 2
+					},
+					"receipt": "i18n/receipts/7d20c9116360-zh-cn.json",
+					"receipt_sha256": "bbd1af13bcd77652e1c7bbd0e9dc168434a98feece8f2ce5079c1cadbec147e4",
+					"scope": "ui.agents.avatar: all 25 keys read against English, the core glossary and the zh-CN style guide; glossary/style-guide hashes cited in the retention record.",
+					"note": "Independent full-namespace audit of the 25 ui.agents.avatar keys on PR #1537 head 478b7889387; placeholders, key parity and ur bidi checked mechanically. No rendered-fit or native-reader claim."
+				}
+			],
+			"status": "audited"
 		}
 	]
 }
