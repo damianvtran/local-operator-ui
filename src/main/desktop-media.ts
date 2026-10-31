@@ -190,6 +190,20 @@ const mediaRequestSchema = z.discriminatedUnion("op", [
 			size: z.union([z.literal(64), z.literal(256)]),
 		})
 		.strict(),
+	/*
+	 * An agent's own picture, by endpoint (core's closed endpoint relay). The id
+	 * is the transport-safe subset the resolver and core both enforce, so a
+	 * renderer value can never reshape the path.
+	 */
+	z
+		.object({
+			op: z.literal("team_bridge.endpoint_avatar"),
+			expectedAccountId: id,
+			endpointId: z.string().regex(/^[A-Za-z0-9_-]{1,128}$/),
+			hash: z.string().regex(/^[0-9a-f]{16}$/),
+			size: z.union([z.literal(64), z.literal(256)]),
+		})
+		.strict(),
 	// Sender composites stay on the private avatar authority: never a URL.
 	z
 		.object({
@@ -206,6 +220,18 @@ const mediaRequestSchema = z.discriminatedUnion("op", [
 				.refine((value) => /^[\p{L}\p{N}]{0,2}$/u.test(value.normalize("NFC"))),
 			avatar: z
 				.object({ account_id: id, hash: z.string().regex(/^[0-9a-f]{16}$/) })
+				.strict()
+				.optional(),
+			/*
+			 * A `person_agent`'s OWN picture (core capability
+			 * `team_bridge_endpoint_avatar`). Never alongside `avatar`, and never
+			 * for a person: refused below before anything is sent.
+			 */
+			endpointAvatar: z
+				.object({
+					endpoint_id: z.string().regex(/^[A-Za-z0-9_-]{1,128}$/),
+					hash: z.string().regex(/^[0-9a-f]{16}$/),
+				})
 				.strict()
 				.optional(),
 		})
@@ -355,12 +381,20 @@ function endpoint(request: DesktopMediaRequest): {
 			if (request.avatar) {
 				query.set("v", request.avatar.hash);
 				query.set("avatar_account_id", request.avatar.account_id);
+			} else if (request.endpointAvatar) {
+				query.set("v", request.endpointAvatar.hash);
+				query.set("avatar_endpoint_id", request.endpointAvatar.endpoint_id);
 			}
 			return {
 				path: `/v1/desktop/team-bridge/accounts/${request.accountId}/notification-avatar?${query}`,
 				method: "GET",
 			};
 		}
+		case "team_bridge.endpoint_avatar":
+			return {
+				path: `/v1/desktop/team-bridge/endpoints/${request.endpointId}/avatar?${new URLSearchParams({ v: request.hash, size: String(request.size), expected_account_id: request.expectedAccountId })}`,
+				method: "GET",
+			};
 		case "team_bridge.avatar":
 			return {
 				path: `/v1/desktop/team-bridge/accounts/${request.accountId}/avatar?${new URLSearchParams({ v: request.hash, size: String(request.size), expected_account_id: request.expectedAccountId })}`,
@@ -395,8 +429,12 @@ export async function requestDesktopMediaOutcome(
 	if (
 		!parsed.success ||
 		(parsed.data.op === "team_bridge.notification_avatar" &&
-			parsed.data.avatar &&
-			parsed.data.avatar.account_id !== parsed.data.accountId)
+			((parsed.data.avatar &&
+				parsed.data.avatar.account_id !== parsed.data.accountId) ||
+				// An agent's picture is never drawn on a person, and one banner
+				// never names both pictures (core refuses either; so do we, first).
+				(parsed.data.endpointAvatar &&
+					(parsed.data.kind !== "person_agent" || parsed.data.avatar))))
 	) {
 		// Never sent.
 		return {
@@ -463,6 +501,7 @@ export async function requestDesktopMediaOutcome(
 		request.op === "library.waveform" ||
 		request.op === "team_bridge.attachment" ||
 		request.op === "team_bridge.avatar" ||
+		request.op === "team_bridge.endpoint_avatar" ||
 		request.op === "team_bridge.notification_avatar"
 	) {
 		// A GET carries no body; `fetch` rejects one outright.
@@ -520,6 +559,7 @@ export async function requestDesktopMediaOutcome(
 			// Private avatars are cached only as authority-scoped renderer blobs.
 			// Neither Electron nor an intermediary may persist them across login.
 			...(request.op === "team_bridge.avatar" ||
+			request.op === "team_bridge.endpoint_avatar" ||
 			request.op === "team_bridge.notification_avatar"
 				? { cache: "no-store" as const }
 				: {}),
@@ -532,6 +572,7 @@ export async function requestDesktopMediaOutcome(
 		const responseType = response.headers.get("content-type") ?? "";
 		if (
 			request.op === "team_bridge.avatar" ||
+			request.op === "team_bridge.endpoint_avatar" ||
 			request.op === "team_bridge.notification_avatar"
 		) {
 			const composite = request.op === "team_bridge.notification_avatar";

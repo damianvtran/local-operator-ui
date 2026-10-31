@@ -2613,8 +2613,10 @@ app
 		 * the new renderer to pull on mount.
 		 */
 		let notificationAvatarAvailable = false;
+		let notificationEndpointAvatarAvailable = false;
 		const notificationImages = new TeamBridgeNotificationImages({
 			enabled: () => notificationAvatarAvailable,
+			endpointAvatars: () => notificationEndpointAvatarAvailable,
 			request: (input) => backendService.requestDesktopMedia(input, null),
 			theme: () => (nativeTheme.shouldUseDarkColors ? "dark" : "light"),
 			decode: (data) => {
@@ -2668,6 +2670,7 @@ app
 			// Negotiate outside delivery. A restarted/older core drops all image
 			// eligibility until its own capability answers; never 404-probe per event.
 			notificationAvatarAvailable = false;
+			notificationEndpointAvatarAvailable = false;
 			notificationImages.clear();
 			void backendService
 				.requestDesktop({ op: "capabilities" })
@@ -2679,6 +2682,11 @@ app
 						Number(
 							body?.result?.features?.team_bridge_notification_avatar ?? 0,
 						) >= 1;
+					// An agent's own picture on a banner needs core's endpoint relay;
+					// without it the agent keeps the glyph composite.
+					notificationEndpointAvatarAvailable =
+						Number(body?.result?.features?.team_bridge_endpoint_avatar ?? 0) >=
+						1;
 					// Gated on the capability reading TRUE after any backend-ready, not on a
 					// false -> true flip: this event cleared the cache just above, so the
 					// replay only refills what it emptied, and no path runs from cache

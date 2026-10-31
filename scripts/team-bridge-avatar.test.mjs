@@ -450,3 +450,155 @@ test("composite relay carries only the coded renderer_busy refusal, never the ba
 		await new Promise((resolve) => server.close(resolve));
 	}
 });
+
+test("endpoint avatar relay: closed endpoint route, same bounds, never an account path", async () => {
+	let calls = 0;
+	let status = 200;
+	let mime = "image/png";
+	let data = Buffer.from("png");
+	let path;
+	let auth;
+	let cacheHeader;
+	const server = createServer((req, res) => {
+		calls++;
+		path = req.url;
+		auth = req.headers.authorization;
+		cacheHeader = req.headers["cache-control"];
+		res.writeHead(status, { "Content-Type": mime });
+		res.end(data);
+	});
+	await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+	const origin = `http://127.0.0.1:${server.address().port}`;
+	const send = (request) =>
+		m.requestDesktopMediaOutcome(request, null, origin, "local-secret");
+	try {
+		const request = {
+			op: "team_bridge.endpoint_avatar",
+			endpointId: "bep_0123abcd",
+			hash: "0123456789abcdef",
+			size: 64,
+			expectedAccountId: "A",
+		};
+		const out = await send(request);
+		assert.equal(out.response.kind, "bytes");
+		assert.equal(
+			path,
+			"/v1/desktop/team-bridge/endpoints/bep_0123abcd/avatar?v=0123456789abcdef&size=64&expected_account_id=A",
+		);
+		assert.equal(auth, "Bearer local-secret");
+		assert.equal(cacheHeader, "no-cache");
+		for (const refusal of [401, 404, 409]) {
+			status = refusal;
+			assert.equal((await send(request)).response.status, refusal);
+		}
+		status = 200;
+		mime = "image/svg+xml";
+		assert.equal((await send(request)).response.status, 502);
+		mime = "image/png";
+		data = Buffer.alloc(1024 * 1024 + 1);
+		assert.equal((await send(request)).response.status, 502);
+		calls = 0;
+		for (const invalid of [
+			{ ...request, endpointId: "bep/../accounts/x" },
+			{ ...request, endpointId: "bep%2F.." },
+			{ ...request, endpointId: "b".repeat(129) },
+			{ ...request, hash: "0123456789ABCDEF" },
+			{ ...request, size: 128 },
+			{ ...request, accountId: "acc_owner" },
+			{ ...request, url: "https://evil.test" },
+		]) {
+			assert.equal((await send(invalid)).response.status, 422);
+		}
+		// A notification composite may carry an endpoint picture only for an
+		// agent, and never alongside an account picture.
+		const banner = {
+			op: "team_bridge.notification_avatar",
+			expectedAccountId: "A",
+			tenantId: "T",
+			accountId: "acc_owner",
+			kind: "person_agent",
+			theme: "light",
+			size: 64,
+			initials: "DT",
+			endpointAvatar: { endpoint_id: "bep_0123abcd", hash: "fedcba9876543210" },
+		};
+		for (const invalid of [
+			{ ...banner, kind: "person" },
+			{
+				...banner,
+				avatar: { account_id: "acc_owner", hash: "0123456789abcdef" },
+			},
+		]) {
+			assert.equal((await send(invalid)).response.status, 422);
+		}
+		assert.equal(calls, 0);
+		await send(banner);
+		assert.equal(
+			path,
+			"/v1/desktop/team-bridge/accounts/acc_owner/notification-avatar?tenant_id=T&expected_account_id=A&kind=person_agent&theme=light&size=64&initials=DT&v=fedcba9876543210&avatar_endpoint_id=bep_0123abcd",
+		);
+	} finally {
+		await new Promise((resolve) => server.close(resolve));
+	}
+});
+
+test("an endpoint picture and an account picture never share a cache entry", async () => {
+	const f = fixture();
+	const reads = [];
+	m.TeamBridgeApi.avatarBytes = async (request) => {
+		reads.push(["account", request.accountId]);
+		return image;
+	};
+	m.TeamBridgeApi.endpointAvatarBytes = async (request) => {
+		reads.push(["endpoint", request.endpointId]);
+		return image;
+	};
+	function Plate({ identity }) {
+		const url = m.useIdentityAvatar(identity, 64);
+		return React.createElement("img", { src: url, "data-url": url });
+	}
+	try {
+		// The same id string as an account and as an endpoint: two reads, two URLs.
+		const twin = "acc_twin";
+		const hash = "0123456789abcdef";
+		await act(async () =>
+			f.client.setQueryData(m.radientUserKeys.user(), { account: { id: "A" } }),
+		);
+		const host = document.createElement("div");
+		document.body.append(host);
+		const root = createRoot(host);
+		await act(async () =>
+			root.render(
+				React.createElement(m.QueryClientProvider, { client: f.client }, [
+					React.createElement(Plate, {
+						key: "h",
+						identity: {
+							kind: "human",
+							account_id: twin,
+							avatar_url: `/v1/accounts/${twin}/avatar?v=${hash}`,
+						},
+					}),
+					React.createElement(Plate, {
+						key: "a",
+						identity: {
+							kind: "agent",
+							account_id: "acc_owner",
+							endpoint_id: twin,
+							avatar_url: `/v1/messaging/endpoints/${twin}/avatar?v=${hash}`,
+						},
+					}),
+				]),
+			),
+		);
+		assert.deepEqual(reads.sort(), [
+			["account", twin],
+			["endpoint", twin],
+		]);
+		const [a, b] = [...host.querySelectorAll("img")].map((n) => n.dataset.url);
+		assert.ok(a && b && a !== b);
+		await act(async () => root.unmount());
+		host.remove();
+	} finally {
+		await f.close();
+	}
+});

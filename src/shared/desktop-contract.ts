@@ -7193,6 +7193,21 @@ export type DesktopMediaRequest =
 			size: 64 | 256;
 	  }
 	/*
+	 * An AGENT's own published picture, by ENDPOINT (never by its owner's
+	 * account, which is how an owner's face reached an agent on 2026-10-30).
+	 * Same closure as the account op: typed id/hash/size, never a URL; core's
+	 * `/v1/desktop/team-bridge/endpoints/{id}/avatar` relay holds the hub
+	 * credential and fences the read to `expectedAccountId`. An older core
+	 * answers 404 and the plate keeps the agent glyph.
+	 */
+	| {
+			op: "team_bridge.endpoint_avatar";
+			expectedAccountId: string;
+			endpointId: string;
+			hash: string;
+			size: 64 | 256;
+	  }
+	/*
 	 * A Library audio asset's PRE-RENDER peaks, as the same `{version, bars,
 	 * peaks}` JSON a generated sound's attachment waveform route serves. Audio
 	 * assets that came from a session carry the sidecar the producer wrote; a

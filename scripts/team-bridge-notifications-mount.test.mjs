@@ -2348,3 +2348,50 @@ test("a person_agent sender resolves through the agent identity, never the owner
 		hash,
 	});
 });
+
+/*
+ * THE BANNER AND THE PLATE AGREE (2026-10-31). Both read the one resolver, so
+ * an agent whose hub directory publishes its own picture carries exactly that
+ * endpoint and version on the banner descriptor, and nothing of its owner's.
+ */
+test("a person_agent banner carries the agent's own endpoint picture, the same one the plate resolves", () => {
+	const owner = "2fc3a222-9e22-4c85-8b94-0b11c81972f7";
+	const ownerHash = "0123456789abcdef";
+	const agentHash = "fedcba9876543210";
+	const row = {
+		account_id: owner,
+		display_label: "Damian Tran",
+		role: "owner",
+		bridge_enabled: true,
+		bridge_state: "active",
+		avatar_url: `/v1/accounts/${owner}/avatar?v=${ownerHash}`,
+		profile: {
+			display_name: "Damian Tran",
+			avatar: { source: "uploaded", hash: ownerHash, updated_at: "2026-10-01" },
+		},
+		agent: {
+			endpoint_id: "bep_aida",
+			name: "Aida",
+			state: "active",
+			avatar_url: `/v1/messaging/endpoints/bep_aida/avatar?v=${agentHash}`,
+		},
+	};
+	const plate = api.resolveIdentityAvatar(
+		api.senderIdentity(row, "person_agent"),
+	).src;
+	assert.deepEqual(plate, {
+		type: "endpoint",
+		endpointId: "bep_aida",
+		hash: agentHash,
+	});
+	const banner = api.notificationSender(row, "person_agent");
+	assert.deepEqual(banner?.endpoint_avatar, {
+		endpoint_id: plate.endpointId,
+		hash: plate.hash,
+	});
+	assert.equal(banner?.avatar, undefined, "never the owner's photo");
+	// The person banner on the same row: the owner's photo, no endpoint picture.
+	const person = api.notificationSender(row, "person");
+	assert.deepEqual(person?.avatar, { account_id: owner, hash: ownerHash });
+	assert.equal(person?.endpoint_avatar, undefined);
+});

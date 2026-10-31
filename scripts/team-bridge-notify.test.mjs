@@ -1795,7 +1795,9 @@ const tagOf = (data) =>
 const coreTag = (input) =>
 	input.avatar
 		? `photo/${input.kind}/${input.accountId}/${input.avatar.hash}`
-		: `initials/${input.kind}/${input.accountId}/${input.initials}`;
+		: input.endpointAvatar
+			? `endpoint/${input.endpointAvatar.endpoint_id}/${input.endpointAvatar.hash}`
+			: `initials/${input.kind}/${input.accountId}/${input.initials}`;
 const coreBytes = (input) => ({
 	kind: "bytes",
 	status: 200,
@@ -3417,4 +3419,111 @@ test("m5 a roster sent while a known account is settling is refused", async () =
 	} finally {
 		rmSync(dir, { recursive: true, force: true });
 	}
+});
+
+/*
+ * AN AGENT BANNER WEARS THE AGENT'S OWN PICTURE (2026-10-31): the parser admits
+ * an endpoint picture for a `person_agent` only, and main asks core for the
+ * composite by endpoint — gated on core's `team_bridge_endpoint_avatar`.
+ */
+test("the sender parser admits an endpoint picture for person_agent only, endpoint shape only", () => {
+	const own = { endpoint_id: "bep_aida", hash: "fedcba9876543210" };
+	const agent = limits.parseTeamBridgeNotifyRequest(
+		request({
+			sender: personSender({
+				kind: "person_agent",
+				agent_name: "Aida",
+				endpoint_avatar: own,
+			}),
+		}),
+	).sender;
+	assert.deepEqual(agent.endpoint_avatar, own);
+	assert.equal(agent.avatar, undefined);
+	// A person never carries one.
+	assert.equal(
+		limits.parseTeamBridgeNotifyRequest(
+			request({ sender: personSender({ endpoint_avatar: own }) }),
+		).sender.endpoint_avatar,
+		undefined,
+	);
+	// Only the endpoint shape: an account-shaped or malformed picture is dropped,
+	// and the banner (name, delivery) survives.
+	for (const bad of [
+		{ account_id: "acc_ben", hash: "fedcba9876543210" },
+		{ endpoint_id: "bep/../x", hash: "fedcba9876543210" },
+		{ endpoint_id: "bep_aida", hash: "FEDCBA9876543210" },
+		{ endpoint_id: "bep_aida" },
+		"bep_aida",
+	]) {
+		const parsed = limits.parseTeamBridgeNotifyRequest(
+			request({
+				sender: personSender({
+					kind: "person_agent",
+					agent_name: "Aida",
+					endpoint_avatar: bad,
+				}),
+			}),
+		);
+		assert.equal(parsed.sender.agent_name, "Aida");
+		assert.equal(parsed.sender.endpoint_avatar, undefined, JSON.stringify(bad));
+	}
+});
+
+test("an agent banner asks core for its own endpoint picture, keyed apart from the owner's photo", async () => {
+	const core = fakeCore();
+	const cache = imageCache({
+		request: core.request,
+		endpointAvatars: () => true,
+	});
+	const owner = { accountId: "acct_a", epoch: 1 };
+	const own = { endpoint_id: "bep_aida", hash: "fedcba9876543210" };
+	const agent = personSender({
+		kind: "person_agent",
+		agent_name: "Aida",
+		endpoint_avatar: own,
+	});
+	const person = personSender({
+		avatar: photoOf("acc_ben", "0123456789abcdef"),
+	});
+	cache.syncDirectory({ owner, tenantId: "tnt_1", members: [person, agent] });
+	await settle();
+	const before = core.calls.length;
+	assert.equal(
+		await cache.read(request({ sender: agent }), 250),
+		"composite:endpoint/bep_aida/fedcba9876543210",
+	);
+	assert.equal(
+		await cache.read(request({ sender: person }), 250),
+		"composite:photo/person/acc_ben/0123456789abcdef",
+	);
+	assert.equal(core.calls.length, before, "both warmed, separate entries");
+	const agentCalls = core.calls.filter((c) => c.kind === "person_agent");
+	assert.ok(agentCalls.length >= 1);
+	for (const call of agentCalls) assert.equal(call.avatar, undefined);
+	assert.deepEqual(
+		agentCalls.find((c) => c.endpointAvatar)?.endpointAvatar,
+		own,
+	);
+});
+
+test("an older core (no endpoint capability) keeps the agent glyph and is never sent the new shape", async () => {
+	const core = fakeCore();
+	const cache = imageCache({ request: core.request });
+	const agent = personSender({
+		kind: "person_agent",
+		agent_name: "Aida",
+		endpoint_avatar: { endpoint_id: "bep_aida", hash: "fedcba9876543210" },
+	});
+	cache.syncDirectory({
+		owner: { accountId: "acct_a", epoch: 1 },
+		tenantId: "tnt_1",
+		members: [agent],
+	});
+	await settle();
+	assert.equal(
+		await cache.read(request({ sender: agent }), 250),
+		"composite:initials/person_agent/acc_ben/BT",
+	);
+	assert.ok(core.calls.length >= 1);
+	for (const call of core.calls) assert.equal(call.endpointAvatar, undefined);
 });

@@ -489,6 +489,29 @@ export const TeamBridgeApi = {
 		return { data: answer.data, mimeType: answer.mimeType };
 	},
 
+	/**
+	 * An agent's own picture through core's closed ENDPOINT relay. A separate
+	 * method (not an `accountId` that happens to be an endpoint) so an agent
+	 * picture and an account picture can never be requested through one shape.
+	 */
+	async endpointAvatarBytes(input: {
+		expectedAccountId: string;
+		endpointId: string;
+		hash: string;
+		size: 64 | 256;
+	}): Promise<{ data: Uint8Array; mimeType: string }> {
+		const answer = await desktopMedia(
+			{ op: "team_bridge.endpoint_avatar", ...input },
+			null,
+		);
+		if (answer.kind !== "bytes")
+			throw new TeamBridgeAttachmentError(
+				answer.kind === "error" ? answer.status : null,
+				answer.kind === "error" ? answer.code : undefined,
+			);
+		return { data: answer.data, mimeType: answer.mimeType };
+	},
+
 	async markRead(
 		conversationId: string,
 		input: {
