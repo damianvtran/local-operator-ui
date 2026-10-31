@@ -30,6 +30,20 @@ import type { TeamBridgeDirectoryMember } from "../../../../shared/team-bridge-c
 import { personDisplayLabel, personInitial } from "./team-bridge-model";
 
 /*
+ * THE AGENT MARK'S SHAPE, in one string so the call-site pin has one thing to
+ * hold (design review round 3, D1/D2).
+ *
+ * A dog-ear in the plate's reading-END corner, drawn as a right triangle by
+ * `clip-path`. Logical (`end-0`, `rounded-ee-xs`) rather than physical, with
+ * the clip mirrored under `rtl:`: the app really does set `dir`
+ * (`shared/i18n/locale-direction.tsx`) and its corner affordances already use
+ * end-anchored utilities, so a mark pinned to the physical right would sit
+ * opposite every other one in Urdu.
+ */
+const AGENT_MARK_SHAPE =
+	"[clip-path:polygon(100%_100%,0_100%,100%_0)] rtl:[clip-path:polygon(0_100%,100%_100%,0_0)]";
+
+/*
  * The Bot glyph's size per plate, matching what each surface drew by hand
  * before the glyph moved in here (20 -> 12 ... 64 -> 28), so moving it changes
  * no pixel.
@@ -88,29 +102,52 @@ export function TeamBridgeAvatar({
 			(fallback ?? personInitial(label))
 		);
 	/*
-	 * THE AGENT MARK THAT SURVIVES A PICTURE (design review rounds 1-2, D1/D2).
+	 * THE AGENT MARK THAT SURVIVES A PICTURE (design review rounds 1-3,
+	 * D1/D2/D4).
+	 *
 	 * An agent's plate differs from a person's only by its CONTENTS, so the day
 	 * `useIdentityAvatar` can resolve an endpoint picture the plate becomes "a
 	 * picture" again and says nothing about kind — the visual half of
 	 * 2026-10-30's defect, with no glyph to carry it. So the mark is a SHAPE
-	 * drawn above the contents: a notched corner in the plate's own accent.
+	 * painted after the contents: a dog-ear in the plate's reading-end corner.
 	 *
-	 * WHY NOT A RING, WHICH WAS THE FIRST ATTEMPT (design round 2, D1, MAJOR):
-	 * accent is this app's keyboard-focus colour (`styles/index.css`
+	 * WHY NOT A RING, WHICH WAS THE FIRST ATTEMPT (round 2, D1, MAJOR): accent
+	 * is this app's keyboard-focus colour (`styles/index.css`
 	 * `:focus-visible { outline: 2px solid var(--color-accent) }`), and every
 	 * message avatar is a button, so a ringed agent plate under focus wore two
-	 * identical green rings — the designer's frame measured both, and a focused
-	 * field one row away said "focus" in the same green. The perimeter channel
-	 * is therefore focus's, and an identity mark may not borrow it. A corner
-	 * notch is not a ring at any width, so it cannot be read as focus, and it
-	 * leaves the global focus rule untouched.
+	 * identical green rings. The perimeter channel is focus's; an identity mark
+	 * may not borrow it. A corner dog-ear is not a ring at any width.
 	 *
-	 * WHY THE CORNER AND WHY THIS SIZE. It is drawn inside the plate box, last,
-	 * so it survives any picture the plate holds; `max(6px, 30%)` keeps it
-	 * legible at the smallest plate the app renders (20 px -> 6 px) without
-	 * swallowing a large one (64 px -> 19.2 px). The pair is accent on
-	 * `mediaSurface`, already floored by the palette rows and pinned with its
-	 * measured worst case by `scripts/contrast-contract.mjs`.
+	 * WHY THE PLATE'S OWN CORNER IS SQUARED FOR AGENTS (round 3, D1, MAJOR):
+	 * the plate is `overflow-hidden` with a rounded corner, and that arc ate the
+	 * triangle's tip — the corner radius (10 px at `rounded-md`) is larger than
+	 * the notch's side at 24 px, so the mark measured a 5-7 % diagonal hairline
+	 * there and a 45 % crescent at 20 px, i.e. a rendering artefact rather than
+	 * a shape. `rounded-ee-xs` is declared AFTER the host `className` on
+	 * purpose: hosts pass `rounded-md` / `rounded-xl` / `rounded-[5px]`, and the
+	 * corner longhand has to outrank the shorthand for the tip to survive (the
+	 * designer's probe measured 78-94 % solid at every size with it). It also
+	 * gives agents a different silhouette from people at a glance.
+	 *
+	 * WHY THERE IS A KEYLINE BEHIND THE WEDGE (round 3, D2): over a picture the
+	 * accent wedge has no luminance separation from whatever happens to be under
+	 * it (2.8:1 light / 1.08:1 dark on the review's stub portrait), so today it
+	 * is only distinguishable by hue. The outer triangle is painted in the
+	 * plate's OWN fill and the accent wedge sits 1 px inside it, which leaves
+	 * accent always bounded by a known fill — the pair the contract measures.
+	 *
+	 * SIZES: `max(8px, 32%)` for the keyline triangle, the wedge 1 px inside it
+	 * — 8 px at the smallest plate the app mounts (20 px), 20.5 px at the
+	 * largest (64 px). The pair (accent on `mediaSurface` and on `surface` when
+	 * `selected`) is pinned by `scripts/contrast-contract.mjs`, and
+	 * `AGENT_MARK_SHAPE` itself by its `STRUCTURAL_CALL_SITES` row.
+	 *
+	 * THE BOTTOM-END SLOT IS THE MARK'S (round 3, D4). This app puts corner
+	 * badges at bottom-end (`hub-link-sidebar-mark.tsx`,
+	 * `sidebar-navigation.tsx`), and one mounted there would cover the dog-ear
+	 * and leave fragments of it peeking out. A future badge on an agent plate
+	 * goes at TOP-end, or as a row-level pill the way Owner is today — never
+	 * bottom-end.
 	 */
 	return (
 		<span
@@ -124,14 +161,11 @@ export function TeamBridgeAvatar({
 				kind === "agent" ? "text-accent" : "text-ink-muted",
 				selected ? "bg-surface" : "bg-media-surface",
 				className,
+				/* AFTER `className`: the host's radius shorthand must not clip the
+				   dog-ear's tip (round 3, D1). */
+				kind === "agent" && "rounded-ee-xs",
 			)}
 		>
-			{kind === "agent" && (
-				<span
-					data-agent-mark=""
-					className="pointer-events-none absolute right-0 bottom-0 size-[max(6px,30%)] bg-accent [clip-path:polygon(100%_100%,0_100%,100%_0)]"
-				/>
-			)}
 			{image && image !== failedImage ? (
 				<img
 					alt=""
@@ -141,6 +175,27 @@ export function TeamBridgeAvatar({
 				/>
 			) : (
 				placeholder
+			)}
+			{/* LAST IN THE PLATE, so the mark paints over any picture the plate holds
+			   rather than relying on positioned-over-static paint order (round 3,
+			   F8): an `<img>` that later gains `relative` would cover it while the
+			   call-site pin stayed green. */}
+			{kind === "agent" && (
+				<span
+					data-agent-mark=""
+					className={cn(
+						"pointer-events-none absolute end-0 bottom-0 size-[max(8px,32%)]",
+						selected ? "bg-surface" : "bg-media-surface",
+						AGENT_MARK_SHAPE,
+					)}
+				>
+					<span
+						className={cn(
+							"absolute end-0 bottom-0 block size-[calc(100%-1px)] bg-accent",
+							AGENT_MARK_SHAPE,
+						)}
+					/>
+				</span>
 			)}
 		</span>
 	);

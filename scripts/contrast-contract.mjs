@@ -2177,7 +2177,11 @@ const GRAPHICS = [
 		 * the row above.
 		 */
 		name: "team bridge agent mark (corner notch)",
-		on: ["mediaSurface"],
+		/* `surface` as well as `mediaSurface`: a SELECTED rail plate paints
+		   `bg-surface` and still carries the mark (round 3, D3/F9). Worst on
+		   `surface` today is 4.98:1, so the row was a coverage gap rather than a
+		   failure. */
+		on: ["mediaSurface", "surface"],
 		fg: "accent",
 		floor: 4.0,
 	},
@@ -3206,7 +3210,12 @@ const STRUCTURAL_CALL_SITES = [
 		 */
 		what: "team bridge agent mark corner notch",
 		file: "src/renderer/src/features/team-bridge/team-bridge-profile-card.tsx",
-		must: "size-[max(6px,30%)] bg-accent [clip-path:polygon(100%_100%,0_100%,100%_0)]",
+		must: "const AGENT_MARK_SHAPE =",
+		/* Pin the shape's VALUE too, not only that the constant exists: the
+		   dog-ear, its mirror and its logical anchoring are the mark. */
+		also: [
+			"[clip-path:polygon(100%_100%,0_100%,100%_0)] rtl:[clip-path:polygon(0_100%,100%_100%,0_0)]",
+		],
 		why: "the notch is the only agent signal that survives a picture; `data-agent-mark` plus the accent fill and the shape are what make it one, and no palette row can see a plate that stops drawing it",
 	},
 	{
@@ -8458,12 +8467,17 @@ if (failures > 0) {
 let callSiteFailures = 0;
 for (const site of STRUCTURAL_CALL_SITES) {
 	const source = readFileSync(join(ROOT, site.file), "utf8");
-	assertions += 1;
-	if (!source.includes(site.must)) {
-		callSiteFailures += 1;
-		console.error(
-			`FAIL  ${site.what}: ${site.file} no longer contains \`${site.must}\`\n      ${site.why}`,
-		);
+	/* `also` pins the VALUE of a constant the site names, for the cases where the
+	   name surviving is not the claim - a flipped direction or a dropped mirror
+	   keeps `const NAME =` intact (design review round 3, D1). */
+	for (const fragment of [site.must, ...(site.also ?? [])]) {
+		assertions += 1;
+		if (!source.includes(fragment)) {
+			callSiteFailures += 1;
+			console.error(
+				`FAIL  ${site.what}: ${site.file} no longer contains \`${fragment}\`\n      ${site.why}`,
+			);
+		}
 	}
 }
 if (callSiteFailures > 0) {
