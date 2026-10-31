@@ -1750,6 +1750,12 @@ export async function sendFirstMessage(args: {
 		conversationId: string,
 		message: { clientRef: string; body: string; tenantId: string | undefined },
 	) => Promise<unknown>;
+	/*
+	 * The conversation exists, before the post goes out. An optimistic first
+	 * message moves its view onto the real conversation HERE rather than after the
+	 * post, so the rail row and the thread do not wait on a second round trip.
+	 */
+	onCreated?: (created: { id: string; tenantId: string | undefined }) => void;
 }): Promise<{ id: string; tenantId: string | undefined }> {
 	let created = args.remembered.get(args.draftKey);
 	if (created === undefined) {
@@ -1761,6 +1767,7 @@ export async function sendFirstMessage(args: {
 		};
 		args.remembered.set(args.draftKey, created);
 	}
+	args.onCreated?.(created);
 	await args.post(created.id, {
 		clientRef: args.clientRef,
 		body: args.body,
