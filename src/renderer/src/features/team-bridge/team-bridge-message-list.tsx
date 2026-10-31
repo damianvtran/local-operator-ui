@@ -1,7 +1,7 @@
 import { formatDate, formatTime, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
-import { Bot, ChevronDown, ChevronRight, UserRound } from "lucide-react";
+import { Bot, UserRound } from "lucide-react";
 import { useCallback, useEffect, useLayoutEffect, useState } from "react";
 import type { FC, ReactNode } from "react";
 import type {
@@ -168,17 +168,20 @@ export type TeamBridgeRowDecoration = {
 	/*
 	 * Copy for a null body. The default ("Waiting for the agent to admit this
 	 * message") is the MEMBER view's truth; an audit has no admission to wait
-	 * for, only text the hub did not send, so it says that instead.
+	 * for, only text the hub did not send, so it says that instead. Setting it
+	 * also covers a BLANK body with nothing attached: a caller that names its own
+	 * absence copy is reading stored history, where `""` means no text reached
+	 * the reader, and an empty prose block there reads as a rendering fault
+	 * (agent review round 1, R1-2). Unset, a blank body keeps the channel
+	 * behaviour byte for byte.
+	 *
+	 * Every body WITH text renders inline. The audit once collapsed unadmitted
+	 * text behind a disclosure here; that was a presentation choice taken from
+	 * the hub contract (v2 m4), not an isolation guard, and it was dropped at the
+	 * owner's request. The verdict chip (`badge`) is what tells the owner the
+	 * agent refused or never saw that text.
 	 */
 	withheldCopy?: string;
-	/*
-	 * When set, a body WITH text renders collapsed behind a disclosure whose
-	 * summary is this copy. The audit collapses unadmitted text by contract
-	 * (plaintext-equivalent, closed by default). A null or empty body is never
-	 * collapsed: a disclosure must not promise text it does not have (design
-	 * review round 1, D5).
-	 */
-	collapsedSummary?: string;
 	/*
 	 * Replaces the attachment component for this row. The shared component
 	 * FETCHES BYTES; a caller that must never load a private attachment (the
@@ -608,13 +611,11 @@ const MessageRowView: FC<MessageRowProps> = ({
 					<div className="flex pb-0.5">{decoration.badge}</div>
 				)}
 				{/* A null body is an agent member's unadmitted message: say so
-				    rather than rendering an empty row. A caller that collapses this
-				    row (the audit's unadmitted verdicts) gets the same placeholder for
-				    a BLANK body with nothing attached: the wire allows "", and an
-				    empty prose block there reads as a rendering fault, not as "no
-				    text was sent" (agent review round 1, R1-2). */}
+				    rather than rendering an empty row. A caller with its own absence
+				    copy (the audit) gets the same placeholder for a BLANK body with
+				    nothing attached; see `withheldCopy`. */}
 				{message.body === null ||
-				(decoration?.collapsedSummary !== undefined &&
+				(decoration?.withheldCopy !== undefined &&
 					message.body.trim() === "" &&
 					(message.attachments?.length ?? 0) === 0 &&
 					decoration.attachments === undefined) ? (
@@ -623,49 +624,7 @@ const MessageRowView: FC<MessageRowProps> = ({
 					</p>
 				) : message.body.trim() === "" &&
 					((message.attachments?.length ?? 0) > 0 ||
-						decoration?.attachments !==
-							undefined) ? null : decoration?.collapsedSummary &&
-					message.body.trim() !== "" ? (
-					<details className="group/reveal">
-						{/* The target is the LABEL and its own box, not the full row
-						    width: a click far to the right of the words used to open a
-						    message (design review round 1, D9). 24px of vertical room
-						    clears the WCAG 2.5.8 floor the browser's 20px marker missed.
-						    `inline-flex` suppresses the native marker, so the chevron IS
-						    the disclosure cue (design review round 1, D3). It swaps glyph
-						    instantly on open, as the shared `Disclosure` does (no
-						    rotate-on-toggle motion; a rotated mirrored glyph would also
-						    point up in RTL). `<details>` is uncontrolled, so the open state
-						    drives the swap through CSS; the group is named so a nested or
-						    ancestor `<details>` (whose own `open` state would match a bare
-						    `group-open:`) cannot drive this chevron. */}
-						<summary className="inline-flex min-h-[24px] w-fit cursor-pointer items-center gap-1 text-[14px] text-ink-muted">
-							<ChevronRight
-								aria-hidden="true"
-								className="size-3.5 shrink-0 group-open/reveal:hidden rtl:-scale-x-100"
-							/>
-							<ChevronDown
-								aria-hidden="true"
-								className="hidden size-3.5 shrink-0 group-open/reveal:block"
-							/>
-							{decoration.collapsedSummary}
-						</summary>
-						{/* Opened unadmitted text sits in a quoted inset, a start rule
-						    rather than a box (panels stay borderless), so it cannot be
-						    mistaken for text the screening let through once the verdict
-						    chip has scrolled away (design review round 1, D4). The rule is
-						    the only cue that marks the text as quoted, so it is a
-						    meaningful graphic under WCAG 1.4.11 and needs 3:1: `hairline`
-						    measured 1.33-1.34:1 against the surface, `control` 3.65:1
-						    light / 3.58:1 dark (design review round 2, D10). */}
-						<TeamBridgeMarkdown
-							className="team-bridge-message-body mt-1 border-control border-s-2 ps-3 text-[14px] text-ink"
-							mentions={mentionRuns}
-						>
-							{message.body}
-						</TeamBridgeMarkdown>
-					</details>
-				) : (
+						decoration?.attachments !== undefined) ? null : (
 					/* An image-only message has an empty body: no empty prose block. */
 					<TeamBridgeMarkdown
 						className="team-bridge-message-body text-[14px] text-ink"

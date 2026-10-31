@@ -1,5 +1,6 @@
 import { cn } from "@shared/lib/utils";
 import { type HTMLAttributes, type ReactNode, forwardRef } from "react";
+import { PanelEdge } from "./panel-edge";
 
 type PaneSlotProps = HTMLAttributes<HTMLDivElement> & {
 	/**
@@ -69,9 +70,20 @@ type PaneSlotProps = HTMLAttributes<HTMLDivElement> & {
  *     go of the divider (the same reason `chat-layout.tsx` states for the sidebar);
  *   - the WIDTH TRANSITION belongs to the slot rather than to any pane, because it
  *     is the drawer opening and closing that moves it;
- *   - NO SEAM. The pane's boundary is the tonal step between its ground and the
- *     column beside it (`canvas/index.tsx` states which ground and why), and the
- *     app draws no rule here. A rule on this element is the defect above;
+ *   - ONE SEAM, AND IT IS `PanelEdge` (2026-10-30). The pane's boundary is the
+ *     tonal step between its ground and the column beside it (`canvas/index.tsx`
+ *     states which ground and why), and on top of that step this component draws
+ *     ONE 1px `hairline` seam on its leading edge. The comment here used to say
+ *     "NO SEAM": the operator asked for the borders to go, and a `border-l` on
+ *     this box (plus a copy of it in three story arms) was the second way of
+ *     drawing the boundary that round removed. That was right for a border and
+ *     wrong as a rule - the tone step measures ΔE00 2.32 in
+ *     `localOperatorLight`, and the operator's 2026-10-30 report is that the
+ *     panels therefore have no readable edge in light themes. The seam is drawn
+ *     from the theme's `hairline` at 75%, on a positioned child rather than as a
+ *     border, so it costs no layout and cannot be clipped;
+ *     `panel-edge.tsx` carries the full argument and its measurements. One
+ *     spelling, so the app and the story arms cannot disagree again;
  *   - no ground of its own either: the occupant paints its surface, so the slot
  *     stays a box;
  *   - the WIDTH stays a preference and the FLOOR is always an explicit `0`,
@@ -113,6 +125,9 @@ export const PaneSlot = forwardRef<HTMLDivElement, PaneSlotProps>(
 			{...rest}
 		>
 			{children}
+			{/* The seam sits LAST so it paints above the occupant's own ground and any
+			 * sticky bar inside it; `z-20` keeps a positioned toolbar from covering it. */}
+			<PanelEdge side="start" />
 		</div>
 	),
 );

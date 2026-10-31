@@ -22,6 +22,7 @@ import {
 	forgetBridgeComposerRows,
 	teamBridgeComposerKey,
 } from "@shared/store/team-bridge-composer-rows";
+import { onDraftRevocation } from "@shared/store/team-bridge-draft-account";
 import { showErrorToast } from "@shared/utils/toast-manager";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -211,6 +212,28 @@ type SendRefusal =
 	| { kind: "capability" }
 	| { kind: "expired" }
 	| { kind: "upload"; failure: StagedUploadFailure };
+
+/*
+ * THE FAILED-SEND RECORD LIVES AT MODULE SCOPE (round 4 retrospective, R4-02).
+ *
+ * A send whose answer never arrived may still have landed, so pressing Send on the
+ * same text must reuse its `client_ref` or the hub posts it twice. That record used
+ * to sit in a `useRef` (and the container's `drafts` map), both of which die when
+ * `/team-bridge` unmounts - so leaving Team Bridge and coming back turned the retry
+ * into a new key and a visible duplicate. A module map survives the route change and
+ * still dies with the renderer: a restart is the one remaining case, accepted on
+ * purpose because the only key a restart could recover is the persisted draft key,
+ * and that one may already be spent (see `submit`).
+ *
+ * Keyed by `teamBridgeComposerKey` - account, authored scope and target - the same
+ * name the composer's text lives under, so a record is only ever read by the draft
+ * that wrote it. It is account-owned in-memory state, so it registers with the same
+ * fence that erases the draft journal and the composer rows: sign-out and account
+ * switch drop every record.
+ */
+type SendAttempt = { body: string; clientRef: string };
+const sendAttempts = new Map<string, SendAttempt>();
+onDraftRevocation(() => sendAttempts.clear());
 
 /**
  * The catalogue's own sentence for each upload refusal this send can produce, so
@@ -479,7 +502,6 @@ export function relative(iso: string, locale: string): string {
 
 type OwnedDraft = {
 	body: string;
-	pending: { body: string; clientRef: string } | null;
 };
 
 export type TeamBridgePageViewProps = {
@@ -1283,12 +1305,6 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 		resetKey: `${shown?.tenant_id ?? ""}:${shown?.id ?? ""}:${messageState}:${quickView ?? ""}`,
 		contentKey: `${messages.length}:${messages.at(-1)?.id ?? ""}`,
 	});
-	// The retry's idempotency key: a failed send is retried with the SAME
-	// `client_ref`, so an ambiguous failure (request landed, answer lost) cannot
-	// post the message twice. A genuinely different draft gets a fresh key.
-	const pendingSend = useRef<{ body: string; clientRef: string } | null>(
-		draftJournal?.pending ?? null,
-	);
 	/*
 	 * ONE AUTO-RETRY PER ATTEMPT, never one per reader gesture. A manual retry of an
 	 * attempt that already spent its automatic retry keeps the key that retry minted (so
@@ -1351,11 +1367,11 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 		 *
 		 * The rule now: a RETRY of the attempt that just failed reuses that attempt's key (the
 		 * ambiguous-failure protection this ref exists for - request landed, answer lost - must
-		 * never post twice), and ANY other send mints a fresh one. `pendingSend` is the attempt
+		 * never post twice), and ANY other send mints a fresh one. `sendAttempts` holds the attempt
 		 * record, and the body comparison is what keeps a retry a retry: edit the text and it is
 		 * a different message, so it gets a different key.
 		 */
-		const attempt = pendingSend.current;
+		const attempt = sendAttempts.get(composerKey);
 		/*
 		 * ONLY A LIVE FAILED ATTEMPT IS A RETRY. Its key is reused so an ambiguous failure
 		 * (request landed, answer lost) cannot post twice; every other send is a new
@@ -1372,7 +1388,10 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 		 * The cost, accepted on purpose: if the app restarts between a send landing and
 		 * its answer arriving, and the reader then presses Send on the same text, the hub
 		 * sees a new key and posts a visible duplicate. A visible, deletable duplicate in
-		 * that rare case beats an invisible swallow in the common one.
+		 * that rare case beats an invisible swallow in the common one. Leaving Team Bridge
+		 * and coming back does NOT pay this cost: the attempt record is module-scoped.
+		 * Signing out or switching account does, because the record is erased with the
+		 * drafts.
 		 */
 		const clientRef =
 			attempt && attempt.body === body
@@ -1382,12 +1401,8 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 		// whatever the auto-retry below already spent on it.
 		if (attempt?.body !== body) autoRetried.current = false;
 		if (!draftState.update({ clientRef })) return false;
-		// ONE attempt, named in both stores: main's optimistic-row journal and
-		// this branch's durable row must carry the same `client_ref`, or a retry
-		// after a remount could post the message twice.
 		const entry = { body, clientRef };
-		pendingSend.current = entry;
-		if (draftJournal) draftJournal.pending = entry;
+		sendAttempts.set(composerKey, entry);
 		// Fenced BEFORE the call: the upload inside it stages into a conversation
 		// this request may be creating (R1-02).
 		writing.current = true;
@@ -1402,9 +1417,17 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 			 * render was the tautology of round 12's B1; all this side retires is its own
 			 * attempt record, which names a request that is over.
 			 */
-			if (isDraftCurrent() && pendingSend.current === entry) {
-				pendingSend.current = null;
-				if (draftJournal) draftJournal.pending = null;
+			/*
+			 * RETIRED BY IDENTITY, NOT BY CURRENCY (PR #1528 review round 1, R1-01). The
+			 * record is module-scoped and outlives this page, while `isDraftCurrent()` is
+			 * false once the reader has left: fencing the delete on it left a LANDED key
+			 * behind, and the next identical message reused it and was replayed into
+			 * nothing. Only the draft write below needs the page; the identity check alone
+			 * keeps a newer attempt on the same draft from being retired by this one.
+			 */
+			const ownRecord = sendAttempts.get(composerKey) === entry;
+			if (ownRecord) sendAttempts.delete(composerKey);
+			if (ownRecord && isDraftCurrent()) {
 				// THE SPENT KEY IS RETIRED WITH THE ATTEMPT. This is the actual fix: the
 				// draft outlives a successful send, so without this the next message reads
 				// the key this one just used and the hub refuses it with 409.
@@ -1432,16 +1455,15 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 				autoRetried.current = true;
 				const freshRef = crypto.randomUUID();
 				const retryEntry = { body, clientRef: freshRef };
-				pendingSend.current = retryEntry;
-				if (draftJournal) draftJournal.pending = retryEntry;
+				sendAttempts.set(composerKey, retryEntry);
 				if (draftState.update({ clientRef: freshRef })) {
 					try {
 						await onSend(body, freshRef, stagedForSend(attachments));
-						if (isDraftCurrent() && pendingSend.current === retryEntry) {
-							pendingSend.current = null;
-							if (draftJournal) draftJournal.pending = null;
+						// Same rule as the first arm: retire by identity, rotate only if current.
+						const ownRetry = sendAttempts.get(composerKey) === retryEntry;
+						if (ownRetry) sendAttempts.delete(composerKey);
+						if (ownRetry && isDraftCurrent())
 							draftState.update({ clientRef: crypto.randomUUID() });
-						}
 						return true;
 					} catch (retryError) {
 						if (isAttachmentNotFound(retryError))
@@ -3697,7 +3719,7 @@ const TeamBridgeOwnedPage: FC<{
 		selected?.tenant_id ?? scope,
 		target,
 	]);
-	const draftJournal = drafts.get(draftKey) ?? { body: "", pending: null };
+	const draftJournal = drafts.get(draftKey) ?? { body: "" };
 	drafts.set(draftKey, draftJournal);
 	return (
 		<>

@@ -233,8 +233,8 @@ const VERDICT = {
  * avatar, day dividers, clock times, runs and the "Aida (Person)" names all
  * differed between the two doors to the same conversation. The rows now come
  * from the list, and the audit's additions travel through its read-only
- * `decorate` hook: the verdict chip, the collapse of unadmitted text, the
- * audit's own null-body sentence, the attachment notes and thread replies.
+ * `decorate` hook: the verdict chip, the audit's own null-body sentence, the
+ * attachment notes and thread replies.
  *
  * THE OLD "NEVER INVOKE MARKDOWN" RULE is still met in substance: the list's
  * body renderer (`TeamBridgeMarkdown`) emits no raw HTML, draws images as text
@@ -289,13 +289,16 @@ function AuditTranscript({
 					badge: verdict && (
 						<Badge variant={verdict.variant}>{t(verdict.copy)}</Badge>
 					),
+					/* Every body reads inline, unadmitted ones included: the chip above
+					   is what says the agent refused or never saw the text. The hub
+					   contract's "collapsed by default" (v2 m4) was a presentation
+					   choice, not the isolation guard. The human-only boundary is the
+					   runtime's (local-operator scopes audit reads and refuses unscoped
+					   ones in team_bridge/client.py, and the agent tool has no audit
+					   op), and here the audit reads sit under their own
+					   ["team-bridge", "owner-audit", ...] query keys and write nothing:
+					   no read markers, drafts or agent feed. */
 					withheldCopy: t("ui.ownerAudit.body_unavailable"),
-					/* Unadmitted text is plaintext-equivalent and closed by default: the
-					   owner opens it deliberately. Admitted and own text read open. */
-					collapsedSummary:
-						delivery === "admitted" || delivery === "own"
-							? undefined
-							: t("ui.ownerAudit.reveal"),
 					attachments:
 						attachmentCount > 0 ? (
 							<ul className="mt-1 space-y-0.5 text-[12px] text-ink-muted">
