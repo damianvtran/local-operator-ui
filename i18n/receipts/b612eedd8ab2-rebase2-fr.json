@@ -1,0 +1,146 @@
+{
+	"schema": 1,
+	"receipt_kind": "locale-audit (post-rebase identity re-audit, no value changed)",
+	"date": "2026-10-31",
+	"auditor": "i18n-auditor",
+	"agent": "i18n-auditor",
+	"model": "anthropic/claude-opus-5-5",
+	"model_provenance": "Served model as announced by the harness for session b612eedd8ab2 (anthropic/claude-opus-5-5); no fallback announced or observed.",
+	"model_fallback": {
+		"announced": false,
+		"observed": false
+	},
+	"status": "passed",
+	"result": "clean",
+	"namespace": "ui.teamBridge",
+	"locale": "fr",
+	"audit_id": "teambridge-delivery-rebase2-audit-b612eedd8ab2-rebase2-fr",
+	"instance": "b612eedd8ab2-rebase2-fr",
+	"session": "b612eedd8ab2",
+	"integration": {
+		"pr": 1521,
+		"branch": "feat/team-bridge-delivery-annotation",
+		"base": "669cd41d11b17fa859dc0d0df434e5996514b3a1",
+		"branch_head_at_audit": "75f9f442a51062f3a349a24083d60796040cd95b"
+	},
+	"independence": "Independent auditor: lopdev team task agent, session b612eedd8ab2; authored none of the audited strings and none of PR #1521; edited no catalogue; wrote only receipts/evidence and rows via ledger-assemble.mjs. Distinct run from the prior branch auditors (4c572bf830c8, 681c3f6ceb10, 7c9c46abac54) and main's (b20548e9b2d9, 95c4798301e2, 2810e9866efc).",
+	"sha256": {
+		"fr": "5db5213241c750066a3a20ffb68ae9c262e6fb544c9d80bad3ad17ee3183810c",
+		"en": "4b1426633f480ff8fca946b64a2f8a1e9d2703dacc52762b697f42d38daff3d0"
+	},
+	"context_sha256": "62ba47a61a45c4b5541a5f5b714f62fc20233d08286d865396a359f288b383f7",
+	"scope": {
+		"delta_kind": "Second rebase of PR #1521 onto origin/main 669cd41d11b (#1529 bridge tool row, #1539 member events). Mechanical: removing the 13 ui.teamBridge.delivery.* lines and the comma they force from src/i18n/catalogues/fr/ui.teamBridge.json yields bytes identical to origin/main's file; the same holds for en. JSON key diff vs main: 13 added, 0 removed, 0 changed. The 13 delivery lines are byte-identical to the previously audited branch head 03ca948.",
+		"base_target_sha256": "e55e8a04a1dbe2e4b4b826c03ee420441c5f313e430071c884b85f74c40da80b",
+		"base_en_sha256": "124d9c3a342342fd4c67635e95210262f96d28c14260bdfac40ad70665936633",
+		"base_bytes_audited_by": [
+			"95c4798301e2-union-a-fr",
+			"2810e9866efc-union-b-fr"
+		],
+		"prior_branch_audit": {
+			"commit": "03ca948fefe",
+			"target_sha256": "7fb9cf92e3f544a5fa38d2b833b4eb3eeac9f9ad9a1cdab8b592d7059c50b9c8",
+			"en_sha256": "df45d40a3124cb58fcb82638d02b22d474ecc5c47b6e8b8d780df0ace538b6cf",
+			"instances": [
+				"7c9c46abac54-rebase-fr"
+			],
+			"delivery_values_byte_identical": true,
+			"delivery_en_byte_identical": true,
+			"delivery_context_entries_identical": true
+		},
+		"keys_identity_checked": [
+			"ui.teamBridge.delivery.refused",
+			"ui.teamBridge.delivery.refused_manipulation",
+			"ui.teamBridge.delivery.refused_personal_info",
+			"ui.teamBridge.delivery.refused_abusive",
+			"ui.teamBridge.delivery.refused_unsafe_content",
+			"ui.teamBridge.delivery.refused_out_of_scope",
+			"ui.teamBridge.delivery.held",
+			"ui.teamBridge.delivery.held_screening_unavailable",
+			"ui.teamBridge.delivery.held_awaiting_review",
+			"ui.teamBridge.delivery.pending",
+			"ui.teamBridge.delivery.info_refused",
+			"ui.teamBridge.delivery.info_held",
+			"ui.teamBridge.delivery.info_label"
+		],
+		"keys_audited_linguistically": [],
+		"whole_file_review": "Read all 312 values: main-side keys (incl. #1539 events.* and members.invitation_note_v3, #1529 tool-row copy) are byte-identical to origin/main and covered by main's audited row; delivery.* values re-read against main's new events.* copy — agent/owner terms consistent, no clash in moderation/screening/held/refused wording.",
+		"not_audited": "No new linguistic audit of main-side keys beyond consistency re-read: their bytes are main's, audited by base_bytes_audited_by."
+	},
+	"audited": {
+		"ui.teamBridge.delivery.refused": {
+			"en": "Not delivered to {agent} ({owner}): refused by their moderation",
+			"translation": "Non remis à {agent} ({owner}) : refusé par sa modération"
+		},
+		"ui.teamBridge.delivery.refused_manipulation": {
+			"en": "Not delivered to {agent} ({owner}): refused by their moderation (looked like an attempt to manipulate the agent)",
+			"translation": "Non remis à {agent} ({owner}) : refusé par sa modération (ressemblait à une tentative de manipuler l’agent)"
+		},
+		"ui.teamBridge.delivery.refused_personal_info": {
+			"en": "Not delivered to {agent} ({owner}): refused by their moderation (looked like a request for personal information)",
+			"translation": "Non remis à {agent} ({owner}) : refusé par sa modération (ressemblait à une demande d’informations personnelles)"
+		},
+		"ui.teamBridge.delivery.refused_abusive": {
+			"en": "Not delivered to {agent} ({owner}): refused by their moderation (looked like abusive content)",
+			"translation": "Non remis à {agent} ({owner}) : refusé par sa modération (ressemblait à un contenu abusif)"
+		},
+		"ui.teamBridge.delivery.refused_unsafe_content": {
+			"en": "Not delivered to {agent} ({owner}): refused by their moderation (looked like unsafe content or links)",
+			"translation": "Non remis à {agent} ({owner}) : refusé par sa modération (ressemblait à un contenu ou des liens à risque)"
+		},
+		"ui.teamBridge.delivery.refused_out_of_scope": {
+			"en": "Not delivered to {agent} ({owner}): refused by their moderation (looked like a request outside what this agent handles)",
+			"translation": "Non remis à {agent} ({owner}) : refusé par sa modération (ressemblait à une demande hors du champ de cet agent)"
+		},
+		"ui.teamBridge.delivery.held": {
+			"en": "Waiting to be screened by {agent} ({owner})…",
+			"translation": "En attente de vérification par {agent} ({owner})…"
+		},
+		"ui.teamBridge.delivery.held_screening_unavailable": {
+			"en": "Waiting to be screened by {agent} ({owner}) — screening is temporarily unavailable",
+			"translation": "En attente de vérification par {agent} ({owner}) — la vérification est temporairement indisponible"
+		},
+		"ui.teamBridge.delivery.held_awaiting_review": {
+			"en": "Waiting to be screened by {agent} ({owner}) — awaiting review",
+			"translation": "En attente de vérification par {agent} ({owner}) — en attente d’examen"
+		},
+		"ui.teamBridge.delivery.pending": {
+			"en": "Screened; delivery to {agent} is pending",
+			"translation": "Vérifié ; la remise à {agent} est en attente"
+		},
+		"ui.teamBridge.delivery.info_refused": {
+			"en": "Each agent screens incoming messages with its owner's moderation. A refused message wasn't passed to the agent. Rephrasing the request usually helps.",
+			"translation": "Chaque agent vérifie les messages entrants avec la modération de son propriétaire. Un message refusé n’a pas été transmis à l’agent. Reformuler la demande aide généralement."
+		},
+		"ui.teamBridge.delivery.info_held": {
+			"en": "Each agent screens incoming messages with its owner's moderation before passing them on. This one hasn't been screened yet; it will be delivered or refused automatically.",
+			"translation": "Chaque agent vérifie les messages entrants avec la modération de son propriétaire avant de les transmettre. Celui-ci n’a pas encore été vérifié ; il sera remis ou refusé automatiquement."
+		},
+		"ui.teamBridge.delivery.info_label": {
+			"en": "About message screening",
+			"translation": "À propos de la vérification des messages"
+		}
+	},
+	"checks": {
+		"placeholders": "@formatjs/icu-messageformat-parser over all 312 values: argument sets equal English per key; all parse.",
+		"key_set": "312 keys, equal to English.",
+		"unicode": "All values NFC; no bidi controls (U+200E/F, U+061C, U+202A-E, U+2066-9).",
+		"rendered_command": "node $LOCAL_OPERATOR_SCRATCHPAD/mech.mjs plus byte-restore/identity diff in the session eval kernel (repo node_modules parser; Node v24.22.1)",
+		"rendered": [
+			"fr sha 5db5213241c750066a3a20ffb68ae9c262e6fb544c9d80bad3ad17ee3183810c bytesMinusDeliveryEqMain True deliveryLinesEq03ca948 True 13 keys 312 issues []"
+		]
+	},
+	"findings": [],
+	"references": {
+		"docs_I18N": {
+			"path": "docs/I18N.md",
+			"sha256": "9a4bde8d1c161286160be4a4ae1c7655615dbf39047052550b725a3da2eb00e2"
+		},
+		"ledger_assemble": {
+			"path": "scripts/i18n/ledger-assemble.mjs",
+			"sha256": "66ec03de791b515424b8d9a93094315111c179c149b35a5323d80c9c38644657"
+		}
+	},
+	"audit_notes_not_execution_log": "findings and linguistic judgement are auditor notes; checks.rendered is verbatim command output.",
+	"limitations": "No rendered app frame; no native-speaker sign-off."
+}

@@ -124,6 +124,9 @@ export function ownerAuditToBridgeMessage(
 		agent_label: message.agent_label ?? undefined,
 		created_at: message.created_at,
 		thread_root_id: message.thread_root_id ?? undefined,
+		// Carried so the owner sees why their agent refused or is holding a
+		// message (`TeamBridgeDeliveryAnnotation`); the hub scopes the entries.
+		delivery_states: message.delivery_states ?? undefined,
 	};
 }
 

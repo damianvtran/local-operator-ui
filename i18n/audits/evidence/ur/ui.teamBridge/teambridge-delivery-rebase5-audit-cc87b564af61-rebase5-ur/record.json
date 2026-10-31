@@ -1,0 +1,115 @@
+{
+	"audit_id": "teambridge-delivery-rebase5-audit-cc87b564af61-rebase5-ur",
+	"date": "2026-10-31",
+	"locale": "ur",
+	"namespace": "ui.teamBridge",
+	"branch": "feat/team-bridge-delivery-annotation",
+	"source_commit": "PR #1521 head 56a436f7f5e0b56db292e2eb9060ccf18ac81c07, replayed onto 589c8780124e461bbbe45ec3f5352c004825e1e3 as 21ac24b9d080df553db3d9a200ea01b2dbf0a3a7",
+	"translator": {
+		"agent": "translator",
+		"model": "anthropic/claude-opus-5-5",
+		"date": "2026-10-21",
+		"session": "8e5edb2e9750",
+		"job": "39c1864c0110",
+		"added_key_source": {
+			"key": "ui.teamBridge.notify.unavailable",
+			"job": "job8d4e6d78c133",
+			"model": "not supplied"
+		}
+	},
+	"auditors": [
+		{
+			"agent": "i18n-auditor",
+			"model": "anthropic/claude-opus-5-5",
+			"session": "cc87b564af61",
+			"instance": "cc87b564af61-rebase5-ur",
+			"date": "2026-10-31",
+			"result": "clean",
+			"findings": {
+				"blocker": 0,
+				"major": 0,
+				"minor": 0,
+				"nit": 0
+			},
+			"model_fallback": {
+				"announced": false,
+				"observed": false
+			}
+		}
+	],
+	"independence": "lopdev team coder session cc87b564af61 performing the replay; authored none of PR #1521's strings, none of its translations and none of the prior audits (87206376c1d7 and earlier) nor main's (28d10489945e-rebind-ur). Edited no catalogue value.",
+	"files": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.json",
+			"sha256": "bc5a2fac50ce0d9670c4eb914b8d5bc75a03903774ba3816f7e9e53944cb14f9"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+			"sha256": "8b0ed0961320527e553b56b3c5769633ecaf6c32996175ffaa2e640433093b5e"
+		},
+		"target": {
+			"path": "src/i18n/catalogues/ur/ui.teamBridge.json",
+			"sha256": "89104c5e6ce443307e923a9b929dff915b05f6b26f8371d2024ca9c391198298"
+		}
+	},
+	"style_guide": {
+		"path": "~/local-operator i18n/style-guides/ur.md",
+		"sha256": "c0eecf7f7b5e89956b7de9ab7a9eb647ff1a7ef701ccf2a7f0264d5eea15ca60",
+		"glossary_sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+		"core_commit": "b42471d3935"
+	},
+	"scope": {
+		"delta_kind": "Fifth rebase of PR #1521 onto origin/main 589c8780124 (brings #1522 agent-wake copy: 5 agentNotify.* + consent v2 added, builtin.agents_topic and invitations.accepted[_unnamed] reworded). Removing the 13 ui.teamBridge.delivery.* keys from this file yields a map equal to origin/main's; the 13 delivery values are byte-identical to PR head 56a436f7f5e (same for en and the 13 en context entries).",
+		"base_target_sha256": "2853c4d28da108190dc780db7ce9eb1d9ac59a78fc1f235e95fec23a7004de98",
+		"base_en_sha256": "abbda676cb90f41321f22f732d2a5b8a6507cae441a73dc0b6399e26d12221cd",
+		"base_bytes_audited_by": [
+			"28d10489945e-rebind-ur"
+		],
+		"prior_branch_audit": {
+			"commit": "56a436f7f5e",
+			"instances": [
+				"87206376c1d7-rebase4-ur"
+			],
+			"delivery_values_byte_identical": true,
+			"delivery_en_byte_identical": true,
+			"delivery_context_entries_identical": true
+		},
+		"keys_audited_linguistically": [
+			"ui.teamBridge.delivery.refused",
+			"ui.teamBridge.delivery.refused_manipulation",
+			"ui.teamBridge.delivery.refused_personal_info",
+			"ui.teamBridge.delivery.refused_abusive",
+			"ui.teamBridge.delivery.refused_unsafe_content",
+			"ui.teamBridge.delivery.refused_out_of_scope",
+			"ui.teamBridge.delivery.held",
+			"ui.teamBridge.delivery.held_screening_unavailable",
+			"ui.teamBridge.delivery.held_awaiting_review",
+			"ui.teamBridge.delivery.pending",
+			"ui.teamBridge.delivery.info_refused",
+			"ui.teamBridge.delivery.info_held",
+			"ui.teamBridge.delivery.info_label"
+		],
+		"whole_file_review": "Main-side keys are main's bytes (audited by base_bytes_audited_by). The 13 delivery values were re-read against English, their context entries and against #1522's new copy in the same file for terminology clashes.",
+		"not_audited": "No fresh linguistic audit of main-side keys; their bytes are main's."
+	},
+	"linguistic_review": "RTL: placeholders lead, no manual bidi controls (checked); 'جانچ' for screening; 'ماڈریشن' loanword consistent. Agrees with #1522's 'اپنے ایجنٹ کو جگائیں', 'ہر پیغام', '@ ذکر' (ایجنٹ/پیغام).",
+	"checks": {
+		"placeholders": "@formatjs/icu-messageformat-parser over all 333 values: argument sets equal English per key; all parse.",
+		"key_set": "333 keys, equal to English.",
+		"unicode": "All values NFC; no bidi controls (U+200E/F, U+061C, U+202A-E, U+2066-9).",
+		"rendered_command": "node $LOCAL_OPERATOR_SCRATCHPAD/1521/mech.mjs <worktree> (Node v24.22.1; parser resolved from the worktree's node_modules)",
+		"rendered": [
+			"en sha bc5a2fac50ce0d9670c4eb914b8d5bc75a03903774ba3816f7e9e53944cb14f9 keys 333 delivery 13 minusDeliveryEqMain true deliveryEqPrHead true issues []",
+			"ur sha 89104c5e6ce443307e923a9b929dff915b05f6b26f8371d2024ca9c391198298 keys 333 delivery 13 minusDeliveryEqMain true deliveryEqPrHead true issues []"
+		]
+	},
+	"findings": [],
+	"status": "passed",
+	"artifacts": {
+		"receipt": {
+			"path": "i18n/receipts/cc87b564af61-rebase5-ur.json",
+			"sha256": "a6d3b6b982c6380ab27b2aee7dbf5ea1652cfb2fecca28fad45ae85dd4139e57"
+		}
+	},
+	"notes_not_execution_log": "scope/linguistic_review are auditor notes; checks.rendered is verbatim command output."
+}

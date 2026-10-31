@@ -24,6 +24,7 @@ import {
 	teamBridgeSuspendArrivals,
 } from "./team-bridge-arrival-model";
 import { TeamBridgeMessageAttachments } from "./team-bridge-attachments";
+import { TeamBridgeDeliveryAnnotation } from "./team-bridge-delivery-annotation";
 import { EMOJI_ENTRIES } from "./team-bridge-emoji-model";
 import { warmEmojiProbeCache } from "./team-bridge-emoji-support";
 import { TeamBridgeMarkdown } from "./team-bridge-markdown";
@@ -848,6 +849,7 @@ const MessageRowView: FC<MessageRowProps> = ({
 							: t("ui.agents.config.state.sending")}
 					</p>
 				)}
+				<TeamBridgeDeliveryAnnotation message={message} />
 				{/* Images come ONLY from the structured list, never from the body. */}
 				{(message.attachments?.length ?? 0) > 0 && (
 					<TeamBridgeMessageAttachments

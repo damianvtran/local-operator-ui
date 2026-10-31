@@ -318,5 +318,18 @@
 	"ui.teamBridge.mentions.notice.invite": "Пригласить",
 	"ui.teamBridge.mentions.notice.silent": "Упомянуть без уведомления",
 	"ui.teamBridge.mentions.notice.pending": "Приглашение для {name} ещё не принято, поэтому уведомление не придёт.",
-	"ui.teamBridge.mentions.notice.invited": "Приглашение для {name} отправлено. Пока его не примут, уведомление не придёт."
+	"ui.teamBridge.mentions.notice.invited": "Приглашение для {name} отправлено. Пока его не примут, уведомление не придёт.",
+	"ui.teamBridge.delivery.refused": "Не доставлено агенту {agent} ({owner}): отклонено его модерацией",
+	"ui.teamBridge.delivery.refused_manipulation": "Не доставлено агенту {agent} ({owner}): отклонено его модерацией (похоже на попытку манипулировать агентом)",
+	"ui.teamBridge.delivery.refused_personal_info": "Не доставлено агенту {agent} ({owner}): отклонено его модерацией (похоже на запрос личной информации)",
+	"ui.teamBridge.delivery.refused_abusive": "Не доставлено агенту {agent} ({owner}): отклонено его модерацией (похоже на оскорбительный контент)",
+	"ui.teamBridge.delivery.refused_unsafe_content": "Не доставлено агенту {agent} ({owner}): отклонено его модерацией (похоже на небезопасный контент или ссылки)",
+	"ui.teamBridge.delivery.refused_out_of_scope": "Не доставлено агенту {agent} ({owner}): отклонено его модерацией (похоже на запрос вне задач этого агента)",
+	"ui.teamBridge.delivery.held": "Ожидает проверки агентом {agent} ({owner})…",
+	"ui.teamBridge.delivery.held_screening_unavailable": "Ожидает проверки агентом {agent} ({owner}) — проверка временно недоступна",
+	"ui.teamBridge.delivery.held_awaiting_review": "Ожидает проверки агентом {agent} ({owner}) — ожидает рассмотрения",
+	"ui.teamBridge.delivery.pending": "Проверено; ожидается доставка агенту {agent}",
+	"ui.teamBridge.delivery.info_refused": "Каждый агент проверяет входящие сообщения с помощью модерации своего владельца. Отклонённое сообщение не было передано агенту. Обычно помогает переформулировать запрос.",
+	"ui.teamBridge.delivery.info_held": "Каждый агент проверяет входящие сообщения с помощью модерации своего владельца, прежде чем передать их дальше. Это сообщение ещё не проверено; оно будет доставлено или отклонено автоматически.",
+	"ui.teamBridge.delivery.info_label": "О проверке сообщений"
 }

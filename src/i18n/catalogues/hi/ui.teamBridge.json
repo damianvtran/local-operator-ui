@@ -318,5 +318,18 @@
 	"ui.teamBridge.mentions.notice.invite": "आमंत्रित करें",
 	"ui.teamBridge.mentions.notice.silent": "सूचना दिए बिना उल्लेख करें",
 	"ui.teamBridge.mentions.notice.pending": "{name} को आमंत्रित किया गया है, लेकिन वे अभी शामिल नहीं हुए हैं, इसलिए उन्हें सूचना नहीं मिलेगी।",
-	"ui.teamBridge.mentions.notice.invited": "{name} को आमंत्रित कर दिया गया है। शामिल होने तक उन्हें सूचना नहीं मिलेगी।"
+	"ui.teamBridge.mentions.notice.invited": "{name} को आमंत्रित कर दिया गया है। शामिल होने तक उन्हें सूचना नहीं मिलेगी।",
+	"ui.teamBridge.delivery.refused": "{agent} ({owner}) तक नहीं पहुँचा: उनके मॉडरेशन ने अस्वीकार कर दिया",
+	"ui.teamBridge.delivery.refused_manipulation": "{agent} ({owner}) तक नहीं पहुँचा: उनके मॉडरेशन ने अस्वीकार कर दिया (एजेंट को बहकाने की कोशिश जैसा लगा)",
+	"ui.teamBridge.delivery.refused_personal_info": "{agent} ({owner}) तक नहीं पहुँचा: उनके मॉडरेशन ने अस्वीकार कर दिया (निजी जानकारी के अनुरोध जैसा लगा)",
+	"ui.teamBridge.delivery.refused_abusive": "{agent} ({owner}) तक नहीं पहुँचा: उनके मॉडरेशन ने अस्वीकार कर दिया (अपमानजनक सामग्री जैसा लगा)",
+	"ui.teamBridge.delivery.refused_unsafe_content": "{agent} ({owner}) तक नहीं पहुँचा: उनके मॉडरेशन ने अस्वीकार कर दिया (असुरक्षित सामग्री या लिंक जैसा लगा)",
+	"ui.teamBridge.delivery.refused_out_of_scope": "{agent} ({owner}) तक नहीं पहुँचा: उनके मॉडरेशन ने अस्वीकार कर दिया (इस एजेंट के दायरे से बाहर के अनुरोध जैसा लगा)",
+	"ui.teamBridge.delivery.held": "{agent} ({owner}) द्वारा जाँच का इंतज़ार है…",
+	"ui.teamBridge.delivery.held_screening_unavailable": "{agent} ({owner}) द्वारा जाँच का इंतज़ार है — जाँच अस्थायी रूप से उपलब्ध नहीं है",
+	"ui.teamBridge.delivery.held_awaiting_review": "{agent} ({owner}) द्वारा जाँच का इंतज़ार है — समीक्षा का इंतज़ार है",
+	"ui.teamBridge.delivery.pending": "जाँच हो गई; {agent} तक डिलीवरी बाकी है",
+	"ui.teamBridge.delivery.info_refused": "हर एजेंट आने वाले संदेशों को अपने मालिक के मॉडरेशन से जाँचता है। अस्वीकार किया गया संदेश एजेंट तक नहीं पहुँचाया गया। अनुरोध को दोबारा लिखना आमतौर पर मदद करता है।",
+	"ui.teamBridge.delivery.info_held": "हर एजेंट आने वाले संदेशों को आगे पहुँचाने से पहले अपने मालिक के मॉडरेशन से जाँचता है। इस संदेश की जाँच अभी नहीं हुई है; यह अपने-आप पहुँचा दिया जाएगा या अस्वीकार कर दिया जाएगा।",
+	"ui.teamBridge.delivery.info_label": "संदेश जाँच के बारे में"
 }

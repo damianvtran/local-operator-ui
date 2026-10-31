@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { teamBridgeDeliveryStateSchema } from "./team-bridge-contract";
 
 /** Human-only wire shapes from core's desktop_team_bridge_owner_audit models.
  * Keep these separate from member history: auditing never produces read state,
@@ -107,6 +108,15 @@ export const ownerAuditMessageSchema = z
 		attachment_count: nullableSeq,
 		agent_delivery_status: nullableText,
 		agent_verdict_at: nullableText,
+		/* The audited agent's endpoint entry of the delivery-state contract v1
+		 * (the owner owns that recipient, so it may carry `hold_class` and
+		 * `refusal_class`). Same entry shape as a member read; `.catch` so a
+		 * malformed annotation costs the annotation, never the audit row. */
+		delivery_states: z
+			.array(teamBridgeDeliveryStateSchema)
+			.max(64)
+			.nullish()
+			.catch(undefined),
 	})
 	.passthrough();
 export type OwnerAuditMessage = z.infer<typeof ownerAuditMessageSchema>;

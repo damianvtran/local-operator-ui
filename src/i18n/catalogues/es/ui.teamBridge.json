@@ -318,5 +318,18 @@
 	"ui.teamBridge.mentions.notice.invite": "Invitar",
 	"ui.teamBridge.mentions.notice.silent": "Mencionar sin notificar",
 	"ui.teamBridge.mentions.notice.pending": "{name} recibió una invitación pero aún no se ha unido, así que no recibirá ninguna notificación.",
-	"ui.teamBridge.mentions.notice.invited": "Se invitó a {name}. No recibirá notificaciones hasta que se una."
+	"ui.teamBridge.mentions.notice.invited": "Se invitó a {name}. No recibirá notificaciones hasta que se una.",
+	"ui.teamBridge.delivery.refused": "No entregado a {agent} ({owner}): rechazado por su moderación",
+	"ui.teamBridge.delivery.refused_manipulation": "No entregado a {agent} ({owner}): rechazado por su moderación (parecía un intento de manipular al agente)",
+	"ui.teamBridge.delivery.refused_personal_info": "No entregado a {agent} ({owner}): rechazado por su moderación (parecía una solicitud de información personal)",
+	"ui.teamBridge.delivery.refused_abusive": "No entregado a {agent} ({owner}): rechazado por su moderación (parecía contenido abusivo)",
+	"ui.teamBridge.delivery.refused_unsafe_content": "No entregado a {agent} ({owner}): rechazado por su moderación (parecía contenido o enlaces no seguros)",
+	"ui.teamBridge.delivery.refused_out_of_scope": "No entregado a {agent} ({owner}): rechazado por su moderación (parecía una solicitud fuera de lo que gestiona este agente)",
+	"ui.teamBridge.delivery.held": "Esperando a que {agent} ({owner}) lo analice…",
+	"ui.teamBridge.delivery.held_screening_unavailable": "Esperando a que {agent} ({owner}) lo analice — el análisis no está disponible temporalmente",
+	"ui.teamBridge.delivery.held_awaiting_review": "Esperando a que {agent} ({owner}) lo analice — pendiente de revisión",
+	"ui.teamBridge.delivery.pending": "Analizado; la entrega a {agent} está pendiente",
+	"ui.teamBridge.delivery.info_refused": "Cada agente analiza los mensajes entrantes con la moderación de su propietario. Un mensaje rechazado no se pasó al agente. Reformular la solicitud suele ayudar.",
+	"ui.teamBridge.delivery.info_held": "Cada agente analiza los mensajes entrantes con la moderación de su propietario antes de entregarlos. Este mensaje aún no se ha analizado; se entregará o se rechazará automáticamente.",
+	"ui.teamBridge.delivery.info_label": "Acerca del análisis de mensajes"
 }

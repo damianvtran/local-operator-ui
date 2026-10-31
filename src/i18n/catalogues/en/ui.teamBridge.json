@@ -318,5 +318,18 @@
 	"ui.teamBridge.mentions.notice.invite": "Invite them",
 	"ui.teamBridge.mentions.notice.silent": "Mention without notifying",
 	"ui.teamBridge.mentions.notice.pending": "{name} is invited but hasn’t joined yet, so they won’t be notified.",
-	"ui.teamBridge.mentions.notice.invited": "{name} has been invited. They won’t be notified until they join."
+	"ui.teamBridge.mentions.notice.invited": "{name} has been invited. They won’t be notified until they join.",
+	"ui.teamBridge.delivery.refused": "Not delivered to {agent} ({owner}): refused by their moderation",
+	"ui.teamBridge.delivery.refused_manipulation": "Not delivered to {agent} ({owner}): refused by their moderation (looked like an attempt to manipulate the agent)",
+	"ui.teamBridge.delivery.refused_personal_info": "Not delivered to {agent} ({owner}): refused by their moderation (looked like a request for personal information)",
+	"ui.teamBridge.delivery.refused_abusive": "Not delivered to {agent} ({owner}): refused by their moderation (looked like abusive content)",
+	"ui.teamBridge.delivery.refused_unsafe_content": "Not delivered to {agent} ({owner}): refused by their moderation (looked like unsafe content or links)",
+	"ui.teamBridge.delivery.refused_out_of_scope": "Not delivered to {agent} ({owner}): refused by their moderation (looked like a request outside what this agent handles)",
+	"ui.teamBridge.delivery.held": "Waiting to be screened by {agent} ({owner})…",
+	"ui.teamBridge.delivery.held_screening_unavailable": "Waiting to be screened by {agent} ({owner}) — screening is temporarily unavailable",
+	"ui.teamBridge.delivery.held_awaiting_review": "Waiting to be screened by {agent} ({owner}) — awaiting review",
+	"ui.teamBridge.delivery.pending": "Screened; delivery to {agent} is pending",
+	"ui.teamBridge.delivery.info_refused": "Each agent screens incoming messages with its owner's moderation. A refused message wasn't passed to the agent. Rephrasing the request usually helps.",
+	"ui.teamBridge.delivery.info_held": "Each agent screens incoming messages with its owner's moderation before passing them on. This one hasn't been screened yet; it will be delivered or refused automatically.",
+	"ui.teamBridge.delivery.info_label": "About message screening"
 }

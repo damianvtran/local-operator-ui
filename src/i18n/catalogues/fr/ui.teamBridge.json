@@ -318,5 +318,18 @@
 	"ui.teamBridge.mentions.notice.invite": "L’inviter",
 	"ui.teamBridge.mentions.notice.silent": "Mentionner sans notifier",
 	"ui.teamBridge.mentions.notice.pending": "{name} a reçu une invitation mais n’a pas encore rejoint la conversation, et ne recevra donc pas de notification.",
-	"ui.teamBridge.mentions.notice.invited": "Invitation envoyée à {name}, qui ne recevra pas de notification avant d’avoir rejoint la conversation."
+	"ui.teamBridge.mentions.notice.invited": "Invitation envoyée à {name}, qui ne recevra pas de notification avant d’avoir rejoint la conversation.",
+	"ui.teamBridge.delivery.refused": "Non remis à {agent} ({owner}) : refusé par sa modération",
+	"ui.teamBridge.delivery.refused_manipulation": "Non remis à {agent} ({owner}) : refusé par sa modération (ressemblait à une tentative de manipuler l’agent)",
+	"ui.teamBridge.delivery.refused_personal_info": "Non remis à {agent} ({owner}) : refusé par sa modération (ressemblait à une demande d’informations personnelles)",
+	"ui.teamBridge.delivery.refused_abusive": "Non remis à {agent} ({owner}) : refusé par sa modération (ressemblait à un contenu abusif)",
+	"ui.teamBridge.delivery.refused_unsafe_content": "Non remis à {agent} ({owner}) : refusé par sa modération (ressemblait à un contenu ou des liens à risque)",
+	"ui.teamBridge.delivery.refused_out_of_scope": "Non remis à {agent} ({owner}) : refusé par sa modération (ressemblait à une demande hors du champ de cet agent)",
+	"ui.teamBridge.delivery.held": "En attente de vérification par {agent} ({owner})…",
+	"ui.teamBridge.delivery.held_screening_unavailable": "En attente de vérification par {agent} ({owner}) — la vérification est temporairement indisponible",
+	"ui.teamBridge.delivery.held_awaiting_review": "En attente de vérification par {agent} ({owner}) — en attente d’examen",
+	"ui.teamBridge.delivery.pending": "Vérifié ; la remise à {agent} est en attente",
+	"ui.teamBridge.delivery.info_refused": "Chaque agent vérifie les messages entrants avec la modération de son propriétaire. Un message refusé n’a pas été transmis à l’agent. Reformuler la demande aide généralement.",
+	"ui.teamBridge.delivery.info_held": "Chaque agent vérifie les messages entrants avec la modération de son propriétaire avant de les transmettre. Celui-ci n’a pas encore été vérifié ; il sera remis ou refusé automatiquement.",
+	"ui.teamBridge.delivery.info_label": "À propos de la vérification des messages"
 }
