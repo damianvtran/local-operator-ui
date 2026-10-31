@@ -4070,6 +4070,10 @@ const TeamBridgeOwnedPage: FC<{
 	const readOnly = status.data?.read_only === true || !ownerGuard;
 	const owner = useBridgeOwner(accountId);
 	const isCurrentOwner = () => owner.isCurrent() && ownerGuard;
+	/* The same fence minus "this page is still mounted": for the first-message post
+	   only, which must finish after the reader leaves (see `sendBody`). */
+	const isWriteAuthorityCurrent = () =>
+		owner.isAuthorityCurrent() && ownerGuard;
 	/*
 	 * THE THREAD CAPABILITY, ASKED AND THEN HELD. The key is read here so the
 	 * plumbing the feature returns on exists and is exercised; the build's own
@@ -4639,8 +4643,18 @@ const TeamBridgeOwnedPage: FC<{
 				// RENDER time, which a just-created row is not yet. Held images are
 				// staged INTO the new conversation first; a failed upload throws so
 				// the message is never posted text-only behind the author's back.
+				/*
+				 * THE POST OUTLIVES THE PAGE; THE ACCOUNT FENCE DOES NOT BEND (QA Q1 on
+				 * #1531). A first message is created and then posted. Checking
+				 * `isCurrentOwner` here also asked "is this page still mounted", so a reader
+				 * who left Team Bridge while the create was in flight got a conversation
+				 * with nothing in it and a failed row on return. A send into an existing
+				 * conversation already finishes in the background; this one now does too.
+				 * An account switch or sign-out still refuses the post: that is the part
+				 * that keeps one account's words out of another's conversations.
+				 */
 				post: async (id, message) => {
-					if (!isCurrentOwner())
+					if (!isWriteAuthorityCurrent())
 						throw new Error("Team Bridge write authority changed");
 					posted = await TeamBridgeApi.send(id, {
 						...message,
@@ -4654,7 +4668,16 @@ const TeamBridgeOwnedPage: FC<{
 					return posted;
 				},
 			});
-			if (!isCurrentOwner()) return;
+			/*
+			 * A page that is gone has no view to move or refresh, but the post DID land:
+			 * answer with the stored message so the optimistic row settles as `sent`
+			 * rather than waiting on a refetch to claim it. Only an account change
+			 * answers nothing.
+			 */
+			if (!isCurrentOwner())
+				return isWriteAuthorityCurrent()
+					? (posted ?? { id: conversationId })
+					: undefined;
 			moveToCreated(conversationId);
 			await list.refetch();
 			/* The thread's own read: the optimistic row's server copy is reconciled by
