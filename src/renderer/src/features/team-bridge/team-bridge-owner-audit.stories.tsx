@@ -413,6 +413,19 @@ export const LegacyInlineImage: Story = {
 	},
 };
 
+/** Locale alone does not change Storybook's document direction; exercise the
+ * same fixture under an explicit RTL ancestor to see bidirectional controls. */
+export const LegacyInlineImageRtl: Story = {
+	...LegacyInlineImage,
+	decorators: [
+		(Story) => (
+			<div dir="rtl">
+				<Story />
+			</div>
+		),
+	],
+};
+
 /** Nothing to audit in this organization yet — and therefore no panel: the slot
  * only opens one for a row the reader has selected. */
 export const Empty: Story = {
