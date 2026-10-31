@@ -805,7 +805,9 @@ const MessageRowView: FC<MessageRowProps> = ({
 					<TeamBridgeMarkdown
 						className={cn(
 							"team-bridge-message-body text-[14px] transition-colors duration-fast",
-							delivery ? "text-ink-muted" : "text-ink",
+							/* Pending only: a FAILED message is not in flight, and its state is
+							   already said in danger ink under the body. */
+							delivery?.status === "pending" ? "text-ink-muted" : "text-ink",
 						)}
 						mentions={mentionRuns}
 					>
@@ -854,7 +856,7 @@ const MessageRowView: FC<MessageRowProps> = ({
 								/* -mx-1 px-1 py-1: a 24px-tall target around a 12px glyph, with the
 								   ink where it was (design round 1, D4). These are the only recovery
 								   controls for a lost message. */
-								className="-mx-1 rounded-sm px-1 py-0.5 font-medium text-accent hover:bg-row-hover hover:underline"
+								className="-mx-1 rounded-sm px-1 py-1 font-medium text-accent hover:bg-row-hover hover:underline"
 							>
 								{t("ui.common.actions.retry")}
 							</button>
@@ -863,7 +865,7 @@ const MessageRowView: FC<MessageRowProps> = ({
 							<button
 								type="button"
 								onClick={delivery.onEdit}
-								className="-mx-1 rounded-sm px-1 py-0.5 font-medium text-ink-muted hover:bg-row-hover hover:text-ink hover:underline"
+								className="-mx-1 rounded-sm px-1 py-1 font-medium text-ink-muted hover:bg-row-hover hover:text-ink hover:underline"
 							>
 								{t("ui.chat.canonical.transcript.edit")}
 							</button>

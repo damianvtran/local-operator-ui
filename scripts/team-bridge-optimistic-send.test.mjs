@@ -809,7 +809,9 @@ test("a pending row announces that it is sending, and stops when confirmed", asy
 	try {
 		await typeBody(app.element, "still going");
 		await act(async () => sendButton(app.element).click());
-		const status = app.element.querySelector('[data-row-key] [aria-live="polite"]');
+		const status = app.element.querySelector(
+			'[data-row-key] [aria-live="polite"]',
+		);
 		assert.ok(status, "the row carries a status while in flight");
 		assert.ok(status.textContent.trim().length > 0, "with words in it");
 		gate.resolve(message({ id: "msg_done", seq: 1, body: "still going" }));

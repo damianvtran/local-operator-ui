@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import type {
 	TeamBridgeConversation,
 	TeamBridgeMessage,
@@ -213,4 +213,73 @@ export const ChiefFirstMessageReconciled: Story = {
 		onSend: () =>
 			Promise.resolve(stored("Can you take the launch checklist today?")),
 	},
+};
+
+/*
+ * THE MOVE ONTO THE CREATED CONVERSATION (design review round 1, D1).
+ *
+ * The stories above render a VIEW, where nothing is ever created. This one walks
+ * the prop sequence the container produces for a first message - the person lane,
+ * then the new DM with its thread read still in flight, then the DM with its
+ * answer - on a timer, so the row can be photographed THROUGH the sequence that
+ * used to swallow it behind a spinner. `onSend` reports its conversation the way
+ * the container does, on the same press.
+ */
+const createdDm: TeamBridgeConversation = {
+	...personDm,
+	id: "bcv_created_dm",
+	latest_seq: 0,
+	last_message_at: new Date().toISOString(),
+};
+
+const MoveSequenceStory = () => {
+	const [step, setStep] = useState(0);
+	useEffect(() => {
+		const timers = [
+			setTimeout(() => setStep(1), 12000),
+			setTimeout(() => setStep(2), 24000),
+		];
+		return () => {
+			for (const timer of timers) clearTimeout(timer);
+		};
+	}, []);
+	const created = createdDm;
+	if (step === 0)
+		return <TeamBridgePageView {...base} onSend={reportingSend} />;
+	if (step === 1)
+		return (
+			<TeamBridgePageView
+				{...base}
+				onSend={reportingSend}
+				target={{ type: "conversation", id: created.id }}
+				conversations={[personDm, created]}
+				messageState="loading"
+			/>
+		);
+	return (
+		<TeamBridgePageView
+			{...base}
+			onSend={reportingSend}
+			target={{ type: "conversation", id: created.id }}
+			conversations={[personDm, created]}
+			messageState="ready"
+			messages={[stored("Can you take the launch checklist today?")]}
+		/>
+	);
+};
+
+/** The container's part: report the created conversation, then keep the post open. */
+const reportingSend = (
+	_body: string,
+	_clientRef: string,
+	_attachments?: unknown,
+	delivery?: { onCreated?: (id: string, tenantId?: string) => void },
+) => {
+	delivery?.onCreated?.(createdDm.id, createdDm.tenant_id);
+	return new Promise<unknown>(() => {});
+};
+
+export const ChiefFirstMessageMove: Story = {
+	render: () => <MoveSequenceStory />,
+	args: { ...base, onSend: reportingSend },
 };

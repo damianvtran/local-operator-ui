@@ -37,3 +37,25 @@ the RED DOM probe in `scripts/team-bridge-optimistic-send.test.mjs` — run agai
 `origin/main` it fails with `AssertionError: one row, at the press` (zero rows),
 and the operator's own screenshot shows the cleared composer over the empty
 thread. Stated rather than papered over.
+
+## Round 1 remediation (second capture set)
+
+| file | state |
+| --- | --- |
+| `r2-pending-light.png`, `r2-pending-dark.png` | pending, after D3: the **body** is in `ink-muted` (8.67:1 light / 7.85:1 dark) and the clock is full `ink-dim`. No opacity, no spinner. |
+| `r2-failed-light.png`, `r2-failed-dark.png` | failed, with Retry/Edit on 26.6px-tall targets (measured `styles`: Retry 38.95×26.59, Edit 30.45×26.59 CSS px) |
+| `r2-move-1-light.png` | the press, in the person/chief lane, before any conversation exists |
+| `r2-move-2-light.png`, `r2-move-2-dark.png` | **after the move onto the created conversation, with its thread read in flight**: the row is still drawn (the state that used to be a spinner), body muted, no "not open to you" |
+| `r2-move-3-light.png` | the thread read landed |
+
+The move frames come from `Team Bridge/Optimistic send → ChiefFirstMessageMove`, a story
+that walks the container's prop sequence (person lane → created DM with `messageState:
+"loading"` → created DM with its answer) on a timer, because `TeamBridgePageView` never
+creates anything on its own.
+
+**Not captured — D5 (keyboard focus on Retry/Edit).** The harness browser cannot move
+keyboard focus into the preview iframe (`type` refuses non-editables), so there is no
+focused frame from this session; the designer reported the same limitation in round 1.
+Nothing between the `li` and the scroll viewport clips, the actions line sits above the
+list's bottom padding, and the global ring (`2px accent at 2px offset`) is unchanged by
+this PR.
