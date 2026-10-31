@@ -203,13 +203,13 @@ export function notificationSender(
 ): TeamBridgeNotificationSender | undefined {
 	// Directory identity, not a message's possibly stale composed label. The
 	// picture comes from the one identity resolver, which honours source=none
-	// and NEVER gives an agent its owner's photo: a `person_agent` banner is
-	// drawn as the agent glyph (core), not the owner's face (2026-10-30).
+	// and NEVER gives an agent its owner's photo: a `person_agent` banner shows
+	// the agent's OWN picture when the hub publishes one, else the glyph (core),
+	// never the owner's face (2026-10-30). The plate reads the same resolver, so
+	// a banner and a message row cannot disagree about an agent's picture.
 	const resolved = resolveIdentityAvatar(senderIdentity(member, kind)).src;
-	// Only an account photo has a banner relay today; an endpoint picture (the
-	// seam in `identity-avatar.ts`) needs its own closed route before it can
-	// ride here.
 	const photo = resolved?.type === "account" ? resolved : null;
+	const own = resolved?.type === "endpoint" ? resolved : null;
 	return parseTeamBridgeNotificationSender({
 		v: 1,
 		kind,
@@ -224,6 +224,9 @@ export function notificationSender(
 		),
 		...(photo
 			? { avatar: { account_id: photo.accountId, hash: photo.hash } }
+			: {}),
+		...(own
+			? { endpoint_avatar: { endpoint_id: own.endpointId, hash: own.hash } }
 			: {}),
 	});
 }

@@ -23,28 +23,25 @@
  * whose owner has a photo, or whose `avatar_url` names an account, resolves an
  * agent to an account picture.
  *
- * THE ENDPOINT SEAM (absent today, and WIDER THAN THIS FILE). Agents cannot
- * publish a picture yet. When they can, the hub publishes it on the
- * directory's agent object as a relative, hash-pinned `avatar_url` of the form
- * `/v1/messaging/endpoints/<endpoint_id>/avatar?v=<16 hex>` — the route
- * agent-server already serves (`BridgeEndpointAvatarPointer.AvatarURL`), the
- * same shape and closure as the account route. This file parses that shape and
- * refuses one whose endpoint differs from the identity's.
- *
- * LANDING IT IS NOT A ONE-LINE CHANGE, and this note exists so the next reader
- * does not plan it as one:
- *   1. the directory must send `agent.avatar_url` (validated at the boundary by
- *      `teamBridgeDirectoryAgentSchema` in `team-bridge-contract.ts`);
- *   2. an ENDPOINT-scoped byte relay must exist in main and core — today the
- *      only one is account-scoped (`desktop-media.ts` `team_bridge.avatar` →
- *      `TeamBridgeApi.avatarBytes`, keyed by `accountId` + `expectedAccountId`),
- *      and `useIdentityAvatar` draws an endpoint `src` as the glyph because
- *      there is nothing to fetch it with;
- *   3. the notification sender parser drops any `avatar` on a `person_agent`
- *      (`team-bridge-notify.ts`), so a banner needs an endpoint source admitted
- *      there before an agent picture can reach an OS notification at all.
- * Until all three land, an agent keeps the glyph — and it must never fall back
- * to the owner's account picture in the meantime.
+ * THE ENDPOINT SEAM (landed 2026-10-31). The hub publishes an agent's own
+ * picture on the directory's agent object as a relative, hash-pinned
+ * `avatar_url` of the form `/v1/messaging/endpoints/<endpoint_id>/avatar?v=<16
+ * hex>` — the route agent-server serves (`BridgeEndpointAvatarPointer.AvatarURL`),
+ * the same shape and closure as the account route. This file parses that shape
+ * and refuses one whose endpoint differs from the identity's. The three pieces
+ * that carry it, so none is mistaken for the whole:
+ *   1. the directory's `agent.avatar_url`, validated at the boundary by
+ *      `teamBridgeDirectoryAgentSchema` (`team-bridge-contract.ts`);
+ *   2. the ENDPOINT-scoped byte relay — renderer `TeamBridgeApi.endpointAvatarBytes`
+ *      → main `desktop-media.ts` `team_bridge.endpoint_avatar` → core
+ *      `/v1/desktop/team-bridge/endpoints/{id}/avatar` — read by
+ *      `useIdentityAvatar`; an older core 404s and the plate keeps the glyph;
+ *   3. the notification sender's `endpoint_avatar` (`team-bridge-notify.ts`),
+ *      admitted for a `person_agent` only, which core composites under the
+ *      badge and agent marker (capability `team_bridge_endpoint_avatar`).
+ * A TEAMMATE's agent picture comes from the hub directory and nothing else; no
+ * local-file path feeds this resolver for someone else's agent. An agent never
+ * falls back to its owner's account picture.
  *
  * Shared by the renderer (plates, profile card) and the notification sender
  * descriptor, so a desktop banner and a message row cannot disagree.
@@ -98,8 +95,8 @@ export type AvatarIdentity =
 			/** The agent's endpoint; null when the directory has not named it. */
 			endpoint_id: string | null;
 			/**
-			 * SEAM: the agent's OWN published picture (endpoint-scoped). Absent
-			 * today; see the module comment. Never the owner's `avatar_url`.
+			 * The agent's OWN published picture (endpoint-scoped), from the hub
+			 * directory; see the module comment. Never the owner's `avatar_url`.
 			 */
 			avatar_url?: string;
 	  };

@@ -38,6 +38,7 @@ const bundle = await build({
 export * from './src/shared/identity-avatar';
 export { TeamBridgeAvatar } from './src/renderer/src/features/team-bridge/team-bridge-profile-card';
 export { radientUserKeys } from './src/renderer/src/shared/hooks/radient-account-authority';
+export { desktopKeys } from './src/renderer/src/shared/api/local-operator/desktop-hooks';
 export { TeamBridgeApi } from './src/renderer/src/shared/api/local-operator/team-bridge-api';
 export { QueryClient, QueryClientProvider } from '@tanstack/react-query';`,
 		resolveDir: process.cwd(),
@@ -60,6 +61,8 @@ const m = compiled.exports;
 
 const OWNER = "2fc3a222-9e22-4c85-8b94-0b11c81972f7";
 const HASH = "0123456789abcdef";
+const HASH_2 = "fedcba9876543210";
+const SQUARED_CORNER = /rounded-ee-xs/;
 /** The owner's directory row: a real photo, and an agent riding on it. */
 const ownerRow = {
 	account_id: OWNER,
@@ -258,5 +261,241 @@ test("the shipped plate draws the Bot glyph for an agent and never fetches the o
 		await act(async () => root.unmount());
 		host.remove();
 		client.clear();
+	}
+});
+
+/*
+ * AN AGENT WEARS ITS OWN PICTURE (2026-10-31). The endpoint relay now exists,
+ * so an agent whose hub directory publishes `agent.avatar_url` renders that
+ * picture — read by ENDPOINT, never by the owner's account — with the agent
+ * mark painted over it. An agent without one keeps the glyph.
+ */
+test("an agent with a hub avatar_url renders its own picture, by endpoint, under the agent mark", async () => {
+	const accountReads = [];
+	const endpointReads = [];
+	m.TeamBridgeApi.avatarBytes = async (request) => {
+		accountReads.push(request);
+		return { data: new Uint8Array([1]), mimeType: "image/png" };
+	};
+	m.TeamBridgeApi.endpointAvatarBytes = async (request) => {
+		endpointReads.push(request);
+		return { data: new Uint8Array([2]), mimeType: "image/png" };
+	};
+	URL.createObjectURL = (blob) => `blob:test/${blob.size}`;
+	URL.revokeObjectURL = () => {};
+	const client = new m.QueryClient();
+	client.setQueryData(m.radientUserKeys.user(), {
+		account: { id: "acc_viewer" },
+	});
+	// F2: endpoint pictures are read only from a core that advertises them.
+	client.setQueryData(m.desktopKeys.capabilities, {
+		desktop_available: true,
+		features: { team_bridge_endpoint_avatar: 1 },
+	});
+	const host = document.createElement("div");
+	document.body.append(host);
+	const root = createRoot(host);
+	const withPicture = {
+		...ownerRow,
+		agent: {
+			...ownerRow.agent,
+			avatar_url: `/v1/messaging/endpoints/ep_aida/avatar?v=${HASH}`,
+		},
+	};
+	const plate = (member) =>
+		React.createElement(m.TeamBridgeAvatar, {
+			member,
+			kind: "agent",
+			label: "Aida (Damian Tran)",
+			size: 36,
+		});
+	const mount = async (member) => {
+		await act(async () =>
+			root.render(
+				React.createElement(m.QueryClientProvider, { client }, plate(member)),
+			),
+		);
+		await act(async () => new Promise((resolve) => setTimeout(resolve, 0)));
+	};
+	try {
+		await mount(withPicture);
+		assert.deepEqual(endpointReads, [
+			{
+				expectedAccountId: "acc_viewer",
+				endpointId: "ep_aida",
+				hash: HASH,
+				size: 64,
+			},
+		]);
+		assert.equal(accountReads.length, 0, "an agent read an account picture");
+		const img = host.querySelector("img");
+		assert.equal(img?.getAttribute("src"), "blob:test/1");
+		assert.equal(
+			host.querySelector("svg.lucide-bot") === null,
+			true,
+			"glyph drawn",
+		);
+		// The mark is the plate's LAST child, after the picture, so it paints over it.
+		const plateEl = host.querySelector("[data-team-bridge-avatar]");
+		assert.equal(
+			plateEl.lastElementChild?.hasAttribute("data-agent-mark"),
+			true,
+		);
+		assert.ok(
+			img.compareDocumentPosition(plateEl.lastElementChild) &
+				dom.window.Node.DOCUMENT_POSITION_FOLLOWING,
+		);
+		assert.match(plateEl.className, SQUARED_CORNER);
+
+		// An older core (no capability): the same published picture is NOT
+		// requested; the plate keeps the glyph (code review round 1, F2).
+		endpointReads.length = 0;
+		client.setQueryData(m.desktopKeys.capabilities, {
+			desktop_available: true,
+			features: {},
+		});
+		// A NEW version, so the private cache cannot answer for the gate: with
+		// the gate dropped this is exactly one read, counted, never timed.
+		await mount({
+			...withPicture,
+			agent: {
+				...withPicture.agent,
+				avatar_url: `/v1/messaging/endpoints/ep_aida/avatar?v=${HASH_2}`,
+			},
+		});
+		assert.equal(
+			endpointReads.length,
+			0,
+			"older core asked for an endpoint picture",
+		);
+		// Booleans only: a failed assert on a React-rendered element makes node
+		// inspect its fiber links (the whole tree + QueryClient), which is how
+		// the gate mutation ran this file out of memory instead of failing it.
+		assert.equal(host.querySelector("img") === null, true, "picture drawn");
+		assert.equal(Boolean(host.querySelector("svg.lucide-bot")), true);
+
+		// No published picture: the glyph, and no read at all.
+		endpointReads.length = 0;
+		await mount(ownerRow);
+		assert.equal(endpointReads.length + accountReads.length, 0);
+		assert.equal(host.querySelector("img") === null, true, "picture drawn");
+		assert.ok(host.querySelector("svg.lucide-bot"));
+		assert.ok(host.querySelector("[data-agent-mark]"));
+	} finally {
+		await act(async () => root.unmount());
+		host.remove();
+		client.clear();
+	}
+});
+
+test("a plate mounted before the capabilities answer picks the picture up when it arrives, once", async () => {
+	/*
+	 * THE PRODUCTION ORDER (code review round 2, F5). A plate mounts on the first
+	 * paint; the capabilities poll answers later. A subscription filter that
+	 * misses the cache event, or a snapshot that never changes, leaves every
+	 * agent on a permanent glyph with a green suite — every other fixture in this
+	 * file seeds the answer BEFORE mount, so none of them can see it.
+	 *
+	 * Counts and booleans only: never an assertion on a DOM node (F4).
+	 */
+	const endpointReads = [];
+	m.TeamBridgeApi.endpointAvatarBytes = async (request) => {
+		endpointReads.push(request);
+		return { data: new Uint8Array([2]), mimeType: "image/png" };
+	};
+	URL.createObjectURL = (blob) => `blob:test/${blob.size}`;
+	URL.revokeObjectURL = () => {};
+	const client = new m.QueryClient();
+	client.setQueryData(m.radientUserKeys.user(), {
+		account: { id: "acc_viewer" },
+	});
+	const host = document.createElement("div");
+	document.body.append(host);
+	const root = createRoot(host);
+	const member = {
+		...ownerRow,
+		agent: {
+			...ownerRow.agent,
+			avatar_url: `/v1/messaging/endpoints/ep_aida/avatar?v=${HASH}`,
+		},
+	};
+	const answer = (features) =>
+		client.setQueryData(m.desktopKeys.capabilities, {
+			desktop_available: true,
+			features,
+		});
+	const flush = () =>
+		act(async () => new Promise((resolve) => setTimeout(resolve, 0)));
+	try {
+		await act(async () =>
+			root.render(
+				React.createElement(
+					m.QueryClientProvider,
+					{ client },
+					React.createElement(m.TeamBridgeAvatar, {
+						member,
+						kind: "agent",
+						label: "Aida (Damian Tran)",
+						size: 36,
+					}),
+				),
+			),
+		);
+		await flush();
+		assert.equal(endpointReads.length, 0, "read before any answer");
+		assert.equal(host.querySelector("img") === null, true, "picture drawn");
+
+		// An older core's answer, then the same answer again (every poll rewrites
+		// it): still nothing, and nothing per poll.
+		await act(async () => answer({}));
+		await flush();
+		assert.equal(endpointReads.length, 0, "an older core was asked");
+		await act(async () => answer({}));
+		assert.equal(endpointReads.length, 0, "a repeat answer read");
+
+		// The advertising answer: exactly one read, with no prop change.
+		await act(async () => answer({ team_bridge_endpoint_avatar: 1 }));
+		await flush();
+		assert.equal(endpointReads.length, 1, "the arriving answer did not read");
+		assert.equal(host.querySelector("img")?.getAttribute("src"), "blob:test/1");
+
+		// Three further identical polls are one answer, not four reads.
+		for (let poll = 0; poll < 3; poll += 1)
+			await act(async () => answer({ team_bridge_endpoint_avatar: 1 }));
+		await flush();
+		assert.equal(endpointReads.length, 1, "a repeated poll read again");
+
+		// Withdrawal: back to the glyph, and no further read.
+		await act(async () => answer({}));
+		await flush();
+		assert.equal(endpointReads.length, 1, "withdrawal read");
+		assert.equal(host.querySelector("img") === null, true, "picture drawn");
+	} finally {
+		await act(async () => root.unmount());
+		host.remove();
+		client.clear();
+	}
+});
+
+test("a teammate's agent picture comes only from the hub directory, never a local path", () => {
+	// Anything that is not the hub's endpoint route — a local file, a file://
+	// URL, a desktop route, a blob — resolves to the glyph, never a picture.
+	for (const local of [
+		"/Users/sherman/.local-operator/agents/aida/avatar.png",
+		"file:///Users/sherman/.local-operator/agents/aida/avatar.png",
+		`/v1/agents/aida/avatar?v=${HASH}`,
+		`/v1/desktop/team-bridge/endpoints/ep_aida/avatar?v=${HASH}`,
+		"blob:http://localhost/abc",
+		`https://api.radienthq.com/v1/messaging/endpoints/ep_aida/avatar?v=${HASH}`,
+	]) {
+		const row = {
+			...ownerRow,
+			agent: { ...ownerRow.agent, avatar_url: local },
+		};
+		assert.equal(
+			m.resolveIdentityAvatar(m.directoryIdentity(row, "agent")).src,
+			null,
+			`non-hub picture source accepted: ${local}`,
+		);
 	}
 });

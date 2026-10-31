@@ -59,6 +59,8 @@ const MAX_SEQ = Number.MAX_SAFE_INTEGER;
 /** An id safe to put on the channel, in a URL query, and in a file key. */
 const SAFE_ID = /^[A-Za-z0-9_.:-]{1,128}$/;
 const AVATAR_HASH = /^[0-9a-f]{16}$/;
+/** Core's endpoint-relay id grammar (`_ENDPOINT_ID`); the hub mints `bep_<hex>`. */
+const ENDPOINT_ID = /^[A-Za-z0-9_-]{1,128}$/;
 
 /**
  * One unsafe-character policy for every banner line, at BOTH ends of IPC.
@@ -194,7 +196,11 @@ export function teamBridgeNotifyOwnerMatches(
  * Unknown versions/kinds degrade to today's title/icon without losing delivery.
  * `avatar` is a PERSON's photo only: a `person_agent` never carries one, because
  * the owner's face on an agent banner was the 2026-10-30 production defect
- * (core draws the agent glyph instead; see `src/shared/identity-avatar.ts`). */
+ * (core draws the agent glyph instead; see `src/shared/identity-avatar.ts`).
+ * `endpoint_avatar` is the reverse: an AGENT's own published picture, keyed by
+ * its endpoint, accepted only on a `person_agent` and never on a person. Two
+ * fields rather than one tagged union so no older parser can read an
+ * endpoint picture as an account one. */
 export type TeamBridgeNotificationSender = {
 	v: 1;
 	kind: "person" | "person_agent";
@@ -202,6 +208,7 @@ export type TeamBridgeNotificationSender = {
 	display_name: string;
 	agent_name?: string;
 	avatar?: { account_id: string; hash: string };
+	endpoint_avatar?: { endpoint_id: string; hash: string };
 };
 
 export function parseTeamBridgeNotificationSender(
@@ -239,6 +246,19 @@ export function parseTeamBridgeNotificationSender(
 		AVATAR_HASH.test(ref.hash)
 			? { account_id: accountId, hash: ref.hash }
 			: undefined;
+	const own = input.endpoint_avatar as Record<string, unknown> | undefined;
+	// The agent's OWN picture: endpoint shape only, person_agent only. Bad
+	// optional metadata drops the picture, never the banner.
+	const endpointAvatar =
+		input.kind === "person_agent" &&
+		own &&
+		typeof own === "object" &&
+		typeof own.endpoint_id === "string" &&
+		ENDPOINT_ID.test(own.endpoint_id) &&
+		typeof own.hash === "string" &&
+		AVATAR_HASH.test(own.hash)
+			? { endpoint_id: own.endpoint_id, hash: own.hash }
+			: undefined;
 	return {
 		v: 1,
 		kind: input.kind,
@@ -248,6 +268,7 @@ export function parseTeamBridgeNotificationSender(
 			? { agent_name: agentName as string }
 			: {}),
 		...(avatar ? { avatar } : {}),
+		...(endpointAvatar ? { endpoint_avatar: endpointAvatar } : {}),
 	};
 }
 

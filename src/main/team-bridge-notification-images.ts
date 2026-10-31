@@ -117,6 +117,24 @@ export type TeamBridgeNotificationDirectory = {
 	members: TeamBridgeNotificationSender[];
 };
 
+/**
+ * The picture version a sender's "photo" variant is keyed and warmed by: a
+ * person's account hash, or an agent's own endpoint picture. The endpoint id is
+ * in the version, so a picture moved to another endpoint is a different key.
+ * The kind is checked again here (the parser already enforces it) because this
+ * is the line that decides which bytes a banner may show.
+ */
+function photoVersion(
+	sender: TeamBridgeNotificationSender,
+	endpointAvatars: boolean,
+): string | null {
+	if (sender.kind === "person") return sender.avatar?.hash ?? null;
+	const own = sender.endpoint_avatar;
+	return own && endpointAvatars
+		? `endpoint:${own.endpoint_id}:${own.hash}`
+		: null;
+}
+
 const WORD_SEPARATOR = /\s+/u;
 const INITIAL_CHARACTER = /^[\p{L}\p{N}]$/u;
 
@@ -170,12 +188,22 @@ export class TeamBridgeNotificationImages
 	constructor(
 		private readonly options: {
 			enabled: () => boolean;
+			/**
+			 * Core advertises `team_bridge_endpoint_avatar`. Without it an agent has
+			 * no "photo" variant at all (the glyph IS its placeholder), so an older
+			 * core is never sent a query shape it would refuse with 422.
+			 */
+			endpointAvatars?: () => boolean;
 			request: (input: DesktopMediaRequest) => Promise<DesktopMediaResponse>;
 			decode: (data: Uint8Array) => NativeImage | string | undefined;
 			theme: () => "light" | "dark";
 			now?: () => number;
 		},
 	) {}
+
+	private endpointAvatars(): boolean {
+		return this.options.endpointAvatars?.() === true;
+	}
 
 	private stamp(key: string): number {
 		return this.stamps.get(key) ?? 0;
@@ -210,7 +238,7 @@ export class TeamBridgeNotificationImages
 			sender.kind,
 			variant,
 			variant === "photo"
-				? (sender.avatar?.hash ?? null)
+				? photoVersion(sender, this.endpointAvatars())
 				: teamBridgeSenderInitials(sender.display_name),
 			TEAM_BRIDGE_IMAGE_SIZE,
 			this.options.theme(),
@@ -241,7 +269,7 @@ export class TeamBridgeNotificationImages
 		sender: TeamBridgeNotificationSender,
 	): { primary: Job; fallback?: Job } {
 		const initials = this.job(owner, tenantId, sender, "initials");
-		return sender.avatar
+		return photoVersion(sender, this.endpointAvatars())
 			? {
 					primary: this.job(owner, tenantId, sender, "photo"),
 					fallback: initials,
@@ -325,6 +353,14 @@ export class TeamBridgeNotificationImages
 			...(variant === "photo" && sender.avatar
 				? { avatar: sender.avatar }
 				: {}),
+			// An agent's own picture: core reads it by endpoint and falls back to
+			// the glyph itself when the read fails.
+			...(variant === "photo" &&
+			sender.kind === "person_agent" &&
+			sender.endpoint_avatar &&
+			this.endpointAvatars()
+				? { endpointAvatar: sender.endpoint_avatar }
+				: {}),
 		};
 		const current = () =>
 			generation === this.generation && stamp === this.stamp(key);
@@ -366,10 +402,18 @@ export class TeamBridgeNotificationImages
 				this.entries.set(key, {
 					icon,
 					bytes,
+					/*
+					 * A "photo" that core answered with the glyph (the agent's own
+					 * picture could not be read) is shown, but kept only for the failure
+					 * TTL: a hub blip must not pin the glyph on that agent's banners
+					 * for the whole photo lease (code review round 1, F1).
+					 */
 					expires:
 						now +
 						(variant === "photo"
-							? TEAM_BRIDGE_IMAGE_TTL_MS
+							? result.fallback
+								? TEAM_BRIDGE_IMAGE_NEGATIVE_TTL_MS
+								: TEAM_BRIDGE_IMAGE_TTL_MS
 							: TEAM_BRIDGE_INITIALS_TTL_MS),
 				});
 				this.bytes += bytes;
@@ -434,7 +478,7 @@ export class TeamBridgeNotificationImages
 			const member = members.get(`${String(parts[3])}\n${String(parts[4])}`);
 			if (!member) return true;
 			return parts[5] === "photo"
-				? (member.avatar?.hash ?? null) !== parts[6]
+				? photoVersion(member, this.endpointAvatars()) !== parts[6]
 				: teamBridgeSenderInitials(member.display_name) !== parts[6];
 		};
 		// Cached entries, flights AND queued warms: a member who was removed or
@@ -471,7 +515,7 @@ export class TeamBridgeNotificationImages
 				this.job(directory.owner, directory.tenantId, sender, "initials"),
 			);
 		for (const sender of ordered)
-			if (sender.avatar)
+			if (photoVersion(sender, this.endpointAvatars()))
 				wanted.push(
 					this.job(directory.owner, directory.tenantId, sender, "photo"),
 				);

@@ -1,3 +1,8 @@
+import type { DesktopCapabilities } from "@shared/api/local-operator/desktop-api";
+import {
+	desktopFeatureEnabled,
+	desktopKeys,
+} from "@shared/api/local-operator/desktop-hooks";
 import { TeamBridgeApi } from "@shared/api/local-operator/team-bridge-api";
 import {
 	observedRadientAuthority,
@@ -7,7 +12,14 @@ import {
 } from "@shared/hooks/radient-account-authority";
 import { createBlobUrl, revokeBlobUrl } from "@shared/lib/blob-url-cache";
 import { type QueryClient, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+	useCallback,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+	useSyncExternalStore,
+} from "react";
 import {
 	ACCOUNT_AVATAR_URL,
 	type AvatarIdentity,
@@ -20,14 +32,15 @@ import {
  * every surface, so there is one cache, one revocation rule and one fetch.
  * Team Bridge plates reach it through `useIdentityAvatar`, which asks the one
  * identity resolver which version (if any) an identity may show, then hands
- * that version (account + content hash) to `useAccountAvatar`.
+ * that version (account or agent endpoint + content hash) to the shared cache.
  *
  * Private avatar bytes cannot be loaded with <img src>: the bearer lives in
  * main, not the renderer. This cache holds the resulting object URLs only for
  * the current signed-in account. Its key includes the credential epoch as well
- * as account + content hash + size, so even A -> B -> A cannot resurrect an
- * earlier private read. In-flight reads share one promise per key; unmounting
- * only detaches a listener, it never cancels another avatar's read.
+ * as picture kind + account/endpoint + content hash + size, so even
+ * A -> B -> A cannot resurrect an earlier private read. In-flight reads share
+ * one promise per key; unmounting only detaches a listener, it never cancels
+ * another avatar's read.
  */
 type Entry = {
 	url?: string;
@@ -104,31 +117,97 @@ const AVATAR_PATTERN = ACCOUNT_AVATAR_URL;
 /**
  * The picture for one Team Bridge identity, through the ONE resolver.
  *
- * Returns an object URL for a human's own account photo, or undefined, which
- * the plate draws as the identity's placeholder: the Bot glyph for an agent,
- * the initial for a person. An agent never yields an account photo here (see
- * `resolveIdentityAvatar`). Its own endpoint picture is a documented seam with
- * no relay yet, so it also renders as the glyph today.
+ * Returns an object URL, or undefined, which the plate draws as the identity's
+ * placeholder: the Bot glyph for an agent, the initial for a person.
+ *
+ * A human gets their own account photo. An agent gets ITS OWN published
+ * picture, fetched by endpoint through core's closed endpoint relay
+ * (`team_bridge.endpoint_avatar`), and never an account photo: the resolver
+ * cannot express one for an agent. A teammate's agent picture comes ONLY from
+ * the hub directory's `agent.avatar_url` (parsed and endpoint-matched by
+ * `resolveIdentityAvatar`); this hook has no local-file path, by design.
  */
 export function useIdentityAvatar(
 	identity: AvatarIdentity | undefined,
 	size: 64 | 256,
 ): string | undefined {
+	/*
+	 * THE SAME GATE AS THE BANNER (code review round 1, F2). An endpoint picture
+	 * is requested only from a core that advertises `team_bridge_endpoint_avatar`
+	 * (main reads the same key before compositing an agent banner), so an older
+	 * core is never asked for a route it does not serve and a plate and a banner
+	 * cannot disagree about whether a picture exists. Unknown/absent → glyph.
+	 *
+	 * A PASSIVE read of the capability cache, not `useDesktopCapabilities()`:
+	 * the app root already owns that poll, and a plate is mounted on every
+	 * message row, so each one adding a query observer would add a refetch
+	 * interval (or, disabled, create and gc-time an empty query) per row for an
+	 * answer that is already in the cache. Same shape as
+	 * `useObservedRadientAuthority`: subscribe to the cache, read a boolean.
+	 */
+	const endpointPictures = useEndpointPicturesAdvertised();
 	const resolved = identity ? resolveIdentityAvatar(identity) : null;
-	const src = resolved?.src;
+	const src =
+		resolved?.src?.type === "endpoint" && !endpointPictures
+			? null
+			: resolved?.src;
 	// Keyed on primitives: a directory refetch returns new objects every time,
 	// and the version is a dependency of the fetch effect.
-	const accountId = src?.type === "account" ? src.accountId : undefined;
-	const hash = src?.type === "account" ? src.hash : undefined;
-	const version = useMemo(
-		() => (accountId && hash ? { accountId, hash } : null),
-		[accountId, hash],
+	const type = src?.type;
+	const id =
+		src?.type === "account"
+			? src.accountId
+			: src?.type === "endpoint"
+				? src.endpointId
+				: undefined;
+	const hash = src?.hash;
+	const version = useMemo<AvatarVersion | null>(
+		() =>
+			type === "account" && id && hash
+				? { type: "account", accountId: id, hash }
+				: type === "endpoint" && id && hash
+					? { type: "endpoint", endpointId: id, hash }
+					: null,
+		[type, id, hash],
 	);
-	return useAccountAvatar(version, size);
+	return usePrivateAvatar(version, size);
+}
+
+function useEndpointPicturesAdvertised(): boolean {
+	const client = useQueryClient();
+	const subscribe = useCallback(
+		(listener: () => void) =>
+			client.getQueryCache().subscribe((event) => {
+				if (
+					(event.type === "updated" || event.type === "removed") &&
+					event.query.queryKey[0] === desktopKeys.capabilities[0] &&
+					event.query.queryKey[1] === desktopKeys.capabilities[1]
+				)
+					listener();
+			}),
+		[client],
+	);
+	const snapshot = useCallback(
+		() =>
+			desktopFeatureEnabled(
+				client.getQueryData<DesktopCapabilities>(desktopKeys.capabilities),
+				"team_bridge_endpoint_avatar",
+			),
+		[client],
+	);
+	return useSyncExternalStore(subscribe, snapshot, snapshot);
 }
 
 /** One hash-pinned avatar: whose, and which content version. */
 export type AccountAvatarVersion = { accountId: string; hash: string };
+/**
+ * Either picture the private relay can read. The `type` is part of the cache
+ * key, so an endpoint whose id happens to equal an account id can never be
+ * answered from that account's entry (or the reverse).
+ */
+type AvatarVersion =
+	| ({ type: "account" } & AccountAvatarVersion)
+	| { type: "endpoint"; endpointId: string; hash: string };
 
 /** The Radient account read's own avatar fields (`GET /me`, forwarded verbatim). */
 export type RadientAccountAvatarFields = {
@@ -213,11 +292,29 @@ export function useAccountAvatar(
 	size: 64 | 256,
 	options: { retryOnce?: boolean } = {},
 ): string | undefined {
+	const typed = useMemo<AvatarVersion | null>(
+		() => (version ? { type: "account", ...version } : null),
+		[version],
+	);
+	return usePrivateAvatar(typed, size, options);
+}
+
+/*
+ * The one private-avatar cache for both pictures. Account and endpoint reads
+ * share the epoch fence, the byte/type bound and the revocation rule; only the
+ * relay op differs, so a second copy of this effect would be the place the two
+ * drift apart.
+ */
+function usePrivateAvatar(
+	version: AvatarVersion | null,
+	size: 64 | 256,
+	options: { retryOnce?: boolean } = {},
+): string | undefined {
 	const retryOnce = options.retryOnce === true;
 	const queryClient = useQueryClient();
 	const authority = useObservedRadientAuthority();
 	const key = version
-		? `${authority.epoch}:${authority.accountId ?? "none"}:${version.accountId}:${version.hash}:${size}`
+		? `${authority.epoch}:${authority.accountId ?? "none"}:${version.type}:${version.type === "account" ? version.accountId : version.endpointId}:${version.hash}:${size}`
 		: null;
 	const [, render] = useState(0);
 	const alive = useRef(true);
@@ -241,12 +338,21 @@ export function useAccountAvatar(
 		const commissionedAccount = authority.accountId;
 		const commission = () => {
 			entry.failed = false;
-			entry.promise = TeamBridgeApi.avatarBytes({
-				expectedAccountId: commissionedAccount,
-				accountId: version.accountId,
-				hash: version.hash,
-				size,
-			})
+			entry.promise = (
+				version.type === "endpoint"
+					? TeamBridgeApi.endpointAvatarBytes({
+							expectedAccountId: commissionedAccount,
+							endpointId: version.endpointId,
+							hash: version.hash,
+							size,
+						})
+					: TeamBridgeApi.avatarBytes({
+							expectedAccountId: commissionedAccount,
+							accountId: version.accountId,
+							hash: version.hash,
+							size,
+						})
+			)
 				.then(({ data, mimeType }) => {
 					// Query removal/restoration can replace this key without changing
 					// the auth epoch. A stale read owns only its captured entry, never
