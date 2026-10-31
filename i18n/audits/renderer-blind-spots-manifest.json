@@ -1,0 +1,99 @@
+{
+  "schema": 1,
+  "date": "2026-10-31",
+  "kind": "renderer blind-spot audit retention manifest",
+  "namespace_mapping_note": "The slice-group renderer-blind-spots retains one original multi-namespace verdict per auditor; namespaces maps these slice directories to their canonical namespaces without splitting or rewriting original evidence.",
+  "records": [
+    {
+      "locale": "es",
+      "namespaces": [
+        "ui.chat",
+        "ui.chat.sidebar_view"
+      ],
+      "auditor_instance": "afac94e81fb9",
+      "evidence_root": "i18n/audits/evidence/es/renderer-blind-spots/afac94e81fb9",
+      "receipt": "i18n/audits/evidence/es/renderer-blind-spots/afac94e81fb9/receipt.json"
+    },
+    {
+      "locale": "ru",
+      "namespaces": [
+        "ui.chat",
+        "ui.chat.sidebar_view"
+      ],
+      "auditor_instance": "7f5f82909017",
+      "evidence_root": "i18n/audits/evidence/ru/renderer-blind-spots/7f5f82909017",
+      "receipt": "i18n/audits/evidence/ru/renderer-blind-spots/7f5f82909017/receipt.json"
+    },
+    {
+      "locale": "zh-CN",
+      "namespaces": [
+        "ui.chat",
+        "ui.chat.sidebar_view"
+      ],
+      "auditor_instance": "8ad4f86282d7",
+      "evidence_root": "i18n/audits/evidence/zh-CN/renderer-blind-spots/8ad4f86282d7",
+      "receipt": "i18n/audits/evidence/zh-CN/renderer-blind-spots/8ad4f86282d7/receipt.json"
+    },
+    {
+      "locale": "hi",
+      "namespaces": [
+        "ui.chat",
+        "ui.chat.sidebar_view"
+      ],
+      "auditor_instance": "98feeac58b5b",
+      "evidence_root": "i18n/audits/evidence/hi/renderer-blind-spots/98feeac58b5b",
+      "receipt": "i18n/audits/evidence/hi/renderer-blind-spots/98feeac58b5b/receipt.json"
+    },
+    {
+      "locale": "vi",
+      "namespaces": [
+        "ui.chat",
+        "ui.chat.sidebar_view"
+      ],
+      "auditor_instance": "69748efb2ac9",
+      "evidence_root": "i18n/audits/evidence/vi/renderer-blind-spots/69748efb2ac9",
+      "receipt": "i18n/audits/evidence/vi/renderer-blind-spots/69748efb2ac9/receipt.json"
+    },
+    {
+      "locale": "ur",
+      "namespaces": [
+        "ui.chat",
+        "ui.chat.sidebar_view"
+      ],
+      "auditor_instance": "bb046f370680",
+      "evidence_root": "i18n/audits/evidence/ur/renderer-blind-spots/bb046f370680",
+      "receipt": "i18n/audits/evidence/ur/renderer-blind-spots/bb046f370680/receipt.json"
+    },
+    {
+      "locale": "fr",
+      "namespaces": [
+        "ui.chat",
+        "ui.chat.sidebar_view"
+      ],
+      "auditor_instance": "f784ef749360",
+      "evidence_root": "i18n/audits/evidence/fr/renderer-blind-spots/f784ef749360",
+      "receipt": "i18n/audits/evidence/fr/renderer-blind-spots/f784ef749360/receipt.json"
+    },
+    {
+      "locale": "fr",
+      "namespaces": [
+        "ui.chat.sidebar_view"
+      ],
+      "auditor_instance": "cbd8252fdd97",
+      "evidence_root": "i18n/audits/evidence/fr/renderer-blind-spots/cbd8252fdd97",
+      "scope": "three fixed keys only"
+    }
+  ],
+  "binder": {
+    "session": "0f06252e2f28",
+    "actual_model": "openai/gpt-6.1-sol",
+    "fallback": "quota after anthropic/claude-sonnet-5-5 and anthropic/claude-opus-5-5"
+  },
+  "limits": [
+    "Audit verdicts review new keys, not the full namespace.",
+    "Russian original verdict did not emit hashes; normalized receipt discloses binder-computed hashes.",
+    "Original French sidebar receipt describes pre-fix bytes; only cbd8252fdd97 binds current bytes.",
+    "hi/vi/ur compactness MINORs accepted per manager-provided designer evidence, not independently rendered by binder.",
+    "No rendered sign-off for new labels; installed app build predates branch."
+  ]
+}

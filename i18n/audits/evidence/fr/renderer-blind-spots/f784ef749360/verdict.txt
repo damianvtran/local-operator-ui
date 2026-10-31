@@ -1,0 +1,18 @@
+PASS
+BLOCKER=0 MAJOR=0 MINOR=3 NIT=0
+Auditor: i18n-auditor/fr; session=f784ef749360; ACTUAL model=openai/gpt-6.1-sol (temporary provider-quota fallback; configured anthropic/claude-sonnet-5-5; intervening announced anthropic/claude-opus-5-5 fallback did not perform this semantic audit).
+Compact time: ui.chat.sidebar_view.relative_short now/other = à l’instant; rich.cells.cell_len=11; declared maxCells=6 (advisory). Suggested 0 min=5 cells; 12 min=6; 12 sem=6. MINOR, not a proved clip/wrap defect.
+Scope: every one of the 35 new keys (32 ui.chat; 3 ui.chat.sidebar_view), derived against origin/main. Existing Teams/Agents keys unchanged and outside delta.
+Mechanical: node --test scripts/i18n/locale-parity.test.mjs: 44 passed, 0 failed. Independently parsed all 35 changed messages with @formatjs/icu-messageformat-parser; exact catalogue key parity; placeholder names/types; preserved select labels; all French one/many/other plural arms present. Rendered all three relative messages for every unit and counts 0,1,2,1000000 via IntlMessageFormat.
+Probe correction disclosure: first custom ICU probe accidentally required French many arms on English source and failed; corrected locale-specific assertion then passed all 35 keys. This was a probe error, not a catalogue failure.
+Typography: new prose uses U+2019 apostrophes, U+2026 ellipses, U+202F before both semicolons. No newly translated guillemet-bearing source strings. All non-select template strings fit declared maxCells (measured with rich.cells.cell_len; runtime identifiers/titles may naturally be wider).
+Sources: ~/local-operator/i18n/style-guides/fr.md and i18n/glossary.md (absent from UI worktree); English catalogue + matching context sidecars, then French values. No MT/translation service used.
+Layout verification: chat-sidebar.tsx:5130-5138 shows shrink-0 compact-time span, no six-cell fixed width; chat-list-sections.ts:288-303 establishes elapsed-unit selection. No browser/rendered clipping verification performed.
+No repository files edited; no ledger recorded because this task explicitly forbids repository writes. Findings retained in requested scratch output for coordinator ingestion.
+Input SHA-256:
+src/i18n/catalogues/en/ui.chat.json fee31965fc3e93d600333d686af34957fa6467bc3b2ba116b69a0ca5df369dcd
+src/i18n/catalogues/en/ui.chat.context.json 0edd5927d13dc3d4b30832a351d1a876aab9a396f78ba794ef4f968592c30e7a
+src/i18n/catalogues/en/ui.chat.sidebar_view.json 0873abf83115e1dd479213706a401258369f58a3d9606ebbc12610a64348512e
+src/i18n/catalogues/en/ui.chat.sidebar_view.context.json 0683c8236d899d43091742a5a097f2afddf22238e49c387b7116f281a9902ac8
+src/i18n/catalogues/fr/ui.chat.json aa5784f3dd5323c0cf56d0cbc1a44bbe63f76357ad932608a303044baccd3e60
+src/i18n/catalogues/fr/ui.chat.sidebar_view.json c542cb444b827f26539b713026e1b2d4b3dc90eb891cc3ab4e26bf8115782e65

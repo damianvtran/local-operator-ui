@@ -1,0 +1,67 @@
+{
+  "auditor": "i18n-auditor-hi",
+  "instance": "98feeac58b5b",
+  "model": "openai/gpt-6.1-sol",
+  "status": "passed",
+  "date": "2026-10-31",
+  "provenance": {
+    "kind": "binding of independent verdict; not a new linguistic audit",
+    "verdict": "i18n/audits/evidence/hi/renderer-blind-spots/98feeac58b5b/verdict.txt",
+    "verdict_sha256": "67b41cc79e860f42014f859d0076e7fa8abcc380ef47a1a7227a2e593164867a",
+    "findings": "i18n/audits/evidence/hi/renderer-blind-spots/98feeac58b5b/findings.jsonl",
+    "findings_sha256": "5cc9015725b6519c2babcc954ef2bf654e3287498aaa45f6074cb5d371abda74",
+    "fallback": "provider quota: anthropic/claude-sonnet-5-5 -> anthropic/claude-opus-5-5 -> openai/gpt-6.1-sol",
+    "scope": "35 added keys (32 ui.chat, 3 ui.chat.sidebar_view); existing namespace audit retained as superseded history"
+  },
+  "namespaces": {
+    "ui.chat": {
+      "status": "passed",
+      "sha256": {
+        "en": "fee31965fc3e93d600333d686af34957fa6467bc3b2ba116b69a0ca5df369dcd",
+        "hi": "e1fff70dd4cb10c02eba69141c91b8591c5b341562a9a7621977937d773f42aa"
+      },
+      "findings": []
+    },
+    "ui.chat.sidebar_view": {
+      "status": "passed",
+      "sha256": {
+        "en": "0873abf83115e1dd479213706a401258369f58a3d9606ebbc12610a64348512e",
+        "hi": "7cc183f109dca3c916040ba544c1268eae4af42ec928abbe34eaa50ef37277aa"
+      },
+      "findings": [
+        {
+          "id": "HI-01",
+          "severity": "MINOR",
+          "locale": "hi",
+          "namespace": "ui.chat.sidebar_view",
+          "key": "ui.chat.sidebar_view.relative_short",
+          "file": "src/i18n/catalogues/hi/ui.chat.sidebar_view.json",
+          "current_text": "week {{count, number, ::group-off} सप्ताह}",
+          "problem": "Two-digit week counts exceed the advisory maxCells: 6 budget. Independently measured with rich.cells.cell_len: सप्ताह = 4; 1 सप्ताह = 6; 12 सप्ताह = 7; 52 सप्ताह = 7. The runtime uses weeks through 364 days, so two-digit counts occur. A natural shorter Hindi wording exists. This is MINOR rather than MAJOR: the sidecar explicitly makes width advisory, and the actual data-session-time span is content-sized with shrink-0 and has no fixed six-cell width or truncation; no visible clipping/wrapping was demonstrated.",
+          "suggested_wording": "Prefer हफ़्ता (singular) / हफ़्ते (plural): 1 हफ़्ता is 5 cells; 10 हफ़्ते through 52 हफ़्ते are 6 cells. Express grammatical agreement with Hindi one/other plural arms while retaining the numeric count parameter, unit select tokens, and every other select arm. Hindi one includes 0 per the style guide.",
+          "measurement": {
+            "method": "rich.cells.cell_len",
+            "declared_maxCells": 6,
+            "current_examples": {
+              "1 सप्ताह": 6,
+              "12 सप्ताह": 7,
+              "52 सप्ताह": 7
+            },
+            "suggested_examples": {
+              "1 हफ़्ता": 5,
+              "9 हफ़्ते": 5,
+              "10 हफ़्ते": 6,
+              "52 हफ़्ते": 6
+            }
+          },
+          "evidence": [
+            "src/i18n/catalogues/en/ui.chat.sidebar_view.context.json: ui.chat.sidebar_view.relative_short",
+            "src/renderer/src/features/chat/chat-list-sections.ts: relativeTimeValue",
+            "src/renderer/src/features/chat/components/chat-sidebar.tsx: data-session-time span around lines 5133-5137"
+          ],
+          "unverified": "No rendered browser frame was captured; no claim of pixel-level fit is made."
+        }
+      ]
+    }
+  }
+}

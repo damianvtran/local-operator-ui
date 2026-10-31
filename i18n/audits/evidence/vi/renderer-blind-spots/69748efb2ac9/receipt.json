@@ -1,0 +1,59 @@
+{
+  "auditor": "i18n-auditor-vi",
+  "instance": "69748efb2ac9",
+  "model": "openai/gpt-6.1-sol",
+  "status": "passed",
+  "date": "2026-10-31",
+  "provenance": {
+    "kind": "binding of independent verdict; not a new linguistic audit",
+    "verdict": "i18n/audits/evidence/vi/renderer-blind-spots/69748efb2ac9/verdict.txt",
+    "verdict_sha256": "0be5a82c6ae1372426bfc0342fe1d07b01b5fc78dcc3df24ae9b8b418441581b",
+    "findings": "i18n/audits/evidence/vi/renderer-blind-spots/69748efb2ac9/findings.jsonl",
+    "findings_sha256": "e0be8d00a0f41a86aff49e8beca47c0353a76311c27851b705f8451c927872e1",
+    "fallback": "provider quota: anthropic/claude-sonnet-5-5 -> anthropic/claude-opus-5-5 -> openai/gpt-6.1-sol",
+    "scope": "35 added keys (32 ui.chat, 3 ui.chat.sidebar_view); existing namespace audit retained as superseded history"
+  },
+  "namespaces": {
+    "ui.chat": {
+      "status": "passed",
+      "sha256": {
+        "en": "fee31965fc3e93d600333d686af34957fa6467bc3b2ba116b69a0ca5df369dcd",
+        "vi": "dc8ada40267172d33ac6499aaa2b3a295d4984ac8e91eba5a40dd840ff0f2059"
+      },
+      "findings": []
+    },
+    "ui.chat.sidebar_view": {
+      "status": "passed",
+      "sha256": {
+        "en": "0873abf83115e1dd479213706a401258369f58a3d9606ebbc12610a64348512e",
+        "vi": "83acd2f23baf017f81cda4ece6c45a2d6933c3593f3990c233d9f83292ead7d6"
+      },
+      "findings": [
+        {
+          "id": "VI-01",
+          "severity": "MINOR",
+          "key": "ui.chat.sidebar_view.relative_short",
+          "file": "src/i18n/catalogues/vi/ui.chat.sidebar_view.json",
+          "current_text": "{unit, select, now {vừa xong} minute {{count, number, ::group-off} phút} hour {{count, number, ::group-off} giờ} day {{count, number, ::group-off} ngày} week {{count, number, ::group-off} tuần} year {{count, number, ::group-off} năm} other {vừa xong}}",
+          "problem": "Advisory maxCells=6 is exceeded by natural full-word Vietnamese: vừa xong=8, 59 phút=7, 52 tuần=7. This is sidebar ROW metadata, not a section header. Its span uses shrink-0 and no text truncation; source evidence supports loss of title space, not a proven clipped/wrapped time label. No browser visual verification performed.",
+          "suggested_wording": "Retain the current full-word Vietnamese with an explicit compact-width exception in the audit record. If tighter copy is essential, the conventional informal minute abbreviation renders 59ph (4 cells); keep the accessible sentence unabbreviated. Do not force ambiguous single-letter week abbreviations or translate now as hôm nay.",
+          "declared_maxCells": 6,
+          "measurements": {
+            "vừa xong": 8,
+            "1 phút": 6,
+            "59 phút": 7,
+            "23 giờ": 6,
+            "6 ngày": 6,
+            "52 tuần": 7,
+            "1 năm": 5,
+            "10 năm": 6,
+            "59ph": 4
+          },
+          "measurement_method": "intl-messageformat actual vi message output; rich.cells.cell_len for terminal cells (not browser pixel widths)",
+          "layout_evidence": "src/renderer/src/features/chat/components/chat-sidebar.tsx:5130-5142; src/renderer/src/features/chat/chat-list-sections.ts:277-303",
+          "disposition": "Non-blocking advisory-width exception; natural complete units are preferable to obscure abbreviations. No observed clipping is claimed."
+        }
+      ]
+    }
+  }
+}

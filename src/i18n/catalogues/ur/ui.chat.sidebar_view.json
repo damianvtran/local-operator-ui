@@ -20,5 +20,8 @@
 	"ui.chat.sidebar_view.section.week": "اس ہفتے",
 	"ui.chat.sidebar_view.section.older": "پرانے",
 	"ui.chat.sidebar_view.section.agents": "ایجنٹ",
-	"ui.chat.sidebar_view.section.teams": "ٹیمیں"
+	"ui.chat.sidebar_view.section.teams": "ٹیمیں",
+	"ui.chat.sidebar_view.relative_short": "{unit, select, now {ابھی} minute {{count, number, ::group-off} منٹ قبل} hour {{count, number, ::group-off} گھنٹے قبل} day {{count, number, ::group-off} دن قبل} week {{count, number, ::group-off} ہفتے قبل} year {{count, number, ::group-off} سال قبل} other {ابھی}}",
+	"ui.chat.sidebar_view.relative_created": "{unit, select, now {ابھی بنائی گئی} minute {{count, plural, one {# منٹ پہلے بنائی گئی} other {# منٹ پہلے بنائی گئی}}} hour {{count, plural, one {# گھنٹہ پہلے بنائی گئی} other {# گھنٹے پہلے بنائی گئی}}} day {{count, plural, one {# دن پہلے بنائی گئی} other {# دن پہلے بنائی گئی}}} week {{count, plural, one {# ہفتہ پہلے بنائی گئی} other {# ہفتے پہلے بنائی گئی}}} year {{count, plural, one {# سال پہلے بنائی گئی} other {# سال پہلے بنائی گئی}}} other {ابھی بنائی گئی}}",
+	"ui.chat.sidebar_view.relative_active": "{unit, select, now {ابھی فعال تھی} minute {{count, plural, one {# منٹ پہلے آخری بار فعال تھی} other {# منٹ پہلے آخری بار فعال تھی}}} hour {{count, plural, one {# گھنٹہ پہلے آخری بار فعال تھی} other {# گھنٹے پہلے آخری بار فعال تھی}}} day {{count, plural, one {# دن پہلے آخری بار فعال تھی} other {# دن پہلے آخری بار فعال تھی}}} week {{count, plural, one {# ہفتہ پہلے آخری بار فعال تھی} other {# ہفتے پہلے آخری بار فعال تھی}}} year {{count, plural, one {# سال پہلے آخری بار فعال تھی} other {# سال پہلے آخری بار فعال تھی}}} other {ابھی فعال تھی}}"
 }
