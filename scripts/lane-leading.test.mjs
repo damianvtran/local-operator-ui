@@ -77,7 +77,7 @@ const PANEL_COLUMNS = [
 	},
 	{
 		path: "src/renderer/src/shared/components/common/chat-layout.tsx",
-		classes: ['className="panel-top-pad h-full shrink-0 bg-surface"'],
+		classes: ['className="panel-top-pad relative h-full shrink-0 bg-surface"'],
 	},
 	{
 		/*

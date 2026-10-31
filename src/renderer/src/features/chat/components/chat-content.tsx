@@ -2331,10 +2331,11 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 					 * right as CHROME and then the thing you are working on: the icon
 					 * rail and the list panel beside it are both `surface`, and the
 					 * working surface is `canvas`. The rail used to be the recessed
-					 * `sunken` step; it is `surface` with a `border-r border-hairline`
-					 * now, which is where the boundary its tonal step used to carry is
-					 * DRAWN (`sidebar-navigation.tsx` states the model, and why the rail
-					 * moved off the rung). This column was the one main area in the app
+					 * `sunken` step; it stands on `surface` now, and its boundary is the
+					 * tonal step plus one 1px `PanelEdge` seam on the edge it shares with
+					 * this column (`panel-edge.tsx`, 2026-10-30; the seam is the
+					 * `hairline` role at 75%, asserted in `scripts/contrast-contract.mjs`).
+					 * This column was the one main area in the app
 					 * painted `surface`, and `surface` is exactly what the list panel
 					 * next to it uses - measured in the running app, the boundary
 					 * between them was ΔE00 0 in every sampled theme, so the two read as
@@ -2343,25 +2344,12 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 					 * main area at `canvas`; chat was contradicting the model, not
 					 * extending it.
 					 *
-					 * The step this creates is deliberately the SLIGHT one of the two,
-					 * and it is the only boundary between list panel and working
-					 * surface - no rule, no border, no shadow, because elevation in
-					 * this system is a lightness step (branding § 2). `check-themes`
-					 * already asserts `canvas`/`surface` and `surface`/`sunken` as
-					 * adjacent ground pairs: across every palette `surface`→`canvas`
-					 * measures ΔE00 2.05 (`sage`, the fleet's tightest) to 6.76
-					 * (`radient`), against 3.96 (`iceberg`) to 14.88 (`synth`) for
-					 * `surface`→`sunken`. The second of those is no longer a
-					 * separation anything in the shell uses, because `sunken` is no
-					 * longer a chrome ground: what separates chrome from WORK is the
-					 * first, and the rail's own separation from the list panel beside
-					 * it is the 1px rule it draws - `hairline` against the rail's
-					 * `surface` measures ΔE00 7.13 on `localOperatorLight` and 5.37 at
-					 * the fleet's tightest (`autumn`), a much stronger edge than this
-					 * column's step. `hairline` owes perceptibility rather than a
-					 * contrast floor (branding § 2), so that pair is measured here and
-					 * read back from the frames in the row-states evidence README
-					 * rather than asserted in `check-themes`.
+					 * The step this creates is the SLIGHT one of the two, and it is the
+					 * boundary between list panel and working surface together with the
+					 * seam above it - the tone step alone is ΔE00 2.0-3, which is why the
+					 * seam exists at all. `check-themes` asserts `canvas`/`surface` as an
+					 * adjacent ground pair: across every palette it measures ΔE00 2.05
+					 * (`sage`, the fleet's tightest) to 6.76 (`radient`).
 					 *
 					 * Everything inside this column that paints a ground of its own was
 					 * sized against a `surface` column; the composer band and the legacy
