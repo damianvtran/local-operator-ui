@@ -270,11 +270,99 @@ export const teamBridgeThreadPageSchema = z
 	.passthrough();
 export type TeamBridgeThreadPage = z.infer<typeof teamBridgeThreadPageSchema>;
 
+/*
+ * MEMBERSHIP EVENTS (agent-server feat/bridge-owner-consent-events): who was
+ * invited, joined, left, was removed, consented, declined or withdrew.
+ *
+ * EVENTS ARE NOT MESSAGES. They carry no `seq` of their own (`event_seq` is a
+ * separate per-conversation counter that must never be compared with a message
+ * seq); `after_seq` names the message they render after. Nothing that counts,
+ * notifies, marks read or searches messages may read this array.
+ *
+ * NEVER FAIL THE PAGE ON AN EVENT. Every field the renderer can live without is
+ * optional, `kind` and `implicit_reason` are open strings (a newer hub's new
+ * kind renders as a generic line, see `teamBridgeEventKind`), and the array
+ * itself is optional: a hub before this feature omits it, and so does a current
+ * hub when no event falls inside the page's window. A malformed event is a
+ * hub bug, but it would otherwise blank the whole conversation, so the array
+ * parses element-wise and drops what it cannot read (`teamBridgeEventsSchema`).
+ */
+export const TEAM_BRIDGE_EVENT_KINDS = [
+	"invited",
+	"joined",
+	"left",
+	"removed",
+	"consented",
+	"declined",
+	"withdrawn",
+] as const;
+export type TeamBridgeEventKind = (typeof TEAM_BRIDGE_EVENT_KINDS)[number];
+export const TEAM_BRIDGE_IMPLICIT_REASONS = [
+	"owner_invite",
+	"dm_receive_policy",
+] as const;
+export type TeamBridgeImplicitReason =
+	(typeof TEAM_BRIDGE_IMPLICIT_REASONS)[number];
+
+/** A known kind, or null for one this build does not know (render inertly). */
+export function teamBridgeEventKind(kind: string): TeamBridgeEventKind | null {
+	return (TEAM_BRIDGE_EVENT_KINDS as readonly string[]).includes(kind)
+		? (kind as TeamBridgeEventKind)
+		: null;
+}
+/** A known implicit reason, or null (absent or unknown). */
+export function teamBridgeImplicitReason(
+	reason: string | undefined,
+): TeamBridgeImplicitReason | null {
+	return reason !== undefined &&
+		(TEAM_BRIDGE_IMPLICIT_REASONS as readonly string[]).includes(reason)
+		? (reason as TeamBridgeImplicitReason)
+		: null;
+}
+
+export const teamBridgeEventPartySchema = z
+	.object({
+		kind: z.enum(["human", "agent"]),
+		account_id: z.string(),
+		endpoint_id: z.string().optional(),
+		/* "" for a deleted account: the renderer names it, never the wire. */
+		display_label: z.string(),
+	})
+	.passthrough();
+export type TeamBridgeEventParty = z.infer<typeof teamBridgeEventPartySchema>;
+
+export const teamBridgeEventSchema = z
+	.object({
+		id,
+		event_seq: z.number().int().nonnegative(),
+		kind: z.string(),
+		implicit: z.boolean().optional(),
+		implicit_reason: z.string().optional(),
+		actor: teamBridgeEventPartySchema,
+		targets: z.array(teamBridgeEventPartySchema),
+		request_id: z.string().optional(),
+		after_seq: z.number().int().nonnegative(),
+		at: z.string(),
+	})
+	.passthrough();
+export type TeamBridgeEvent = z.infer<typeof teamBridgeEventSchema>;
+
+/* Element-wise: one unreadable event is dropped, the rest (and the page) stay. */
+export const teamBridgeEventsSchema = z.array(z.unknown()).transform((raw) =>
+	raw.flatMap((entry) => {
+		const parsed = teamBridgeEventSchema.safeParse(entry);
+		return parsed.success ? [parsed.data] : [];
+	}),
+);
+
 export const teamBridgeMessagePageSchema = z
 	.object({
 		messages: z.array(teamBridgeMessageSchema),
 		next_before_seq: z.number().int().nonnegative().optional(),
 		has_more: z.boolean().optional(),
+		events: teamBridgeEventsSchema.optional(),
+		/* The hub caps events per page (newest kept); absent means false. */
+		events_truncated: z.boolean().optional(),
 	})
 	.passthrough();
 export type TeamBridgeMessagePage = z.infer<typeof teamBridgeMessagePageSchema>;

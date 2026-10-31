@@ -2108,11 +2108,114 @@
 		},
 		"note": "ICU plural. The =0 arm is the bare verb (the button is disabled then); every other arm shows the count. It creates invitations only; never imply immediate active membership."
 	},
-	"ui.teamBridge.members.invitation_note_v2": {
-		"role": "dialog footer clarification",
+	"ui.teamBridge.members.invitation_note_v3": {
+		"role": "dialog footer clarification (consent copy, high visibility)",
 		"tone": "concise, consent-preserving",
-		"length": "Three short sentences",
+		"length": "Four short sentences",
 		"placeholders": {},
-		"note": "Invitations grant no access until accepted. An agent joins only after its owner consents, then reads every message and decides whether to reply; it always replies when @-mentioned. Keep '@-mention' recognizable. The owner can limit it to @-mentions or mute it."
+		"note": "Replaces invitation_note_v2. Wording agreed with the agent wake-policy work; translate meaning exactly, do not soften or strengthen. (1) Invitations grant no access until accepted. (2) The reader's OWN agents join immediately; another person's agent joins only after ITS owner consents. (3) A member agent reads every message and decides whether to reply; it is EXPECTED to reply when @-mentioned (an expectation, not a guarantee: do not translate as 'always'). (4) The agent's owner can restrict it to @-mentions plus threads it is in, or mute it. Keep '@-mention' recognizable."
+	},
+	"ui.teamBridge.events.invited": {
+		"role": "timeline system line: someone invited people or agents",
+		"tone": "neutral, factual",
+		"length": "One short line",
+		"placeholders": {
+			"actor": "Display name of the person or agent who made the change; never inflected",
+			"targets": "Display names already joined into one list by Intl.ListFormat (conjunction); never inflected or split"
+		},
+		"note": "Past tense, a completed fact. Not a message; shown as a small grey line between messages. An invitation is not membership: never imply they joined."
+	},
+	"ui.teamBridge.events.joined": {
+		"role": "timeline system line: one or more members joined",
+		"tone": "neutral, factual",
+		"length": "One short line",
+		"placeholders": {
+			"targets": "Display names already joined into one list by Intl.ListFormat (conjunction); never inflected or split"
+		},
+		"note": "Past tense. They joined themselves (accepted an invitation or joined an open channel)."
+	},
+	"ui.teamBridge.events.owner_added_agent": {
+		"role": "timeline system line: a person added their own agent, which joined at once",
+		"tone": "neutral, factual",
+		"length": "One short line",
+		"placeholders": {
+			"actor": "Display name of the person or agent who made the change; never inflected",
+			"targets": "Display names already joined into one list by Intl.ListFormat (conjunction); never inflected or split"
+		},
+		"note": "'their' = the actor's own agent(s); no consent step was needed because the actor owns it. Use the gender-neutral possessive natural in the locale."
+	},
+	"ui.teamBridge.events.left": {
+		"role": "timeline system line: one or more members left",
+		"tone": "neutral, factual",
+		"length": "One short line",
+		"placeholders": {
+			"targets": "Display names already joined into one list by Intl.ListFormat (conjunction); never inflected or split"
+		},
+		"note": "Past tense; they left on their own (contrast with removed)."
+	},
+	"ui.teamBridge.events.removed": {
+		"role": "timeline system line: someone removed members",
+		"tone": "neutral, factual",
+		"length": "One short line",
+		"placeholders": {
+			"actor": "Display name of the person or agent who made the change; never inflected",
+			"targets": "Display names already joined into one list by Intl.ListFormat (conjunction); never inflected or split"
+		},
+		"note": "Past tense; neutral, not punitive."
+	},
+	"ui.teamBridge.events.consented": {
+		"role": "timeline system line: an agent's owner approved the agent joining",
+		"tone": "neutral, factual",
+		"length": "One short line",
+		"placeholders": {
+			"actor": "Display name of the person or agent who made the change; never inflected",
+			"targets": "Display names already joined into one list by Intl.ListFormat (conjunction); never inflected or split"
+		},
+		"note": "The owner gave consent for their agent to join this conversation. Reads 'X approved Y joining'."
+	},
+	"ui.teamBridge.events.declined_self": {
+		"role": "timeline system line: a person declined their own invitation",
+		"tone": "neutral, factual",
+		"length": "One short line",
+		"placeholders": {
+			"actor": "Display name of the person or agent who made the change; never inflected"
+		},
+		"note": "Past tense; neutral."
+	},
+	"ui.teamBridge.events.declined": {
+		"role": "timeline system line: someone declined an invitation on behalf of others (typically an owner for their agent)",
+		"tone": "neutral, factual",
+		"length": "One short line",
+		"placeholders": {
+			"actor": "Display name of the person or agent who made the change; never inflected",
+			"targets": "Display names already joined into one list by Intl.ListFormat (conjunction); never inflected or split"
+		},
+		"note": "Past tense; neutral."
+	},
+	"ui.teamBridge.events.withdrawn": {
+		"role": "timeline system line: the inviter withdrew (cancelled) a pending invitation",
+		"tone": "neutral, factual",
+		"length": "One short line",
+		"placeholders": {
+			"actor": "Display name of the person or agent who made the change; never inflected",
+			"targets": "Display names already joined into one list by Intl.ListFormat (conjunction); never inflected or split"
+		},
+		"note": "Past tense; the invitation is cancelled before it was answered."
+	},
+	"ui.teamBridge.events.unknown": {
+		"role": "timeline system line for a membership change this app version does not recognise",
+		"tone": "neutral, factual",
+		"length": "One short line",
+		"placeholders": {},
+		"note": "Generic and calm; it must fit any membership change. No subject, no blame."
+	},
+	"ui.teamBridge.events.others": {
+		"role": "the trailing item of a shortened name list, e.g. the '2 others' in 'Ben, Sana and 2 others'",
+		"tone": "neutral, factual",
+		"length": "Two or three words",
+		"placeholders": {
+			"count": "How many further names are hidden; integer >= 1"
+		},
+		"note": "ICU plural. It becomes the LAST item of a locale-formatted list (the platform adds the 'and'), so do not include a conjunction here. The full list shows in a tooltip."
 	}
 }
