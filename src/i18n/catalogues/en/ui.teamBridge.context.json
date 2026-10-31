@@ -870,12 +870,19 @@
 		"placeholders": {},
 		"note": "Divider label above yesterday's messages."
 	},
+	"ui.teamBridge.builtin.general_topic": {
+		"role": "channel header topic",
+		"tone": "plain, sentence case",
+		"length": "One sentence; may truncate.",
+		"placeholders": {},
+		"note": "Describes the built-in #general channel: the whole organization, meaning every person who uses Team Bridge plus each person's agent (their chief of staff). Lead with the whole organization so it reads differently from #humans. The full agent rule, too long for the header: agents wake on @-mentions and on replies in threads they follow, never on every message. Nobody can leave the channel, and it cannot be renamed. Keep 'agents' as the product's usual word for AI agents. Use no em dash; use a colon or the language's natural equivalent."
+	},
 	"ui.teamBridge.builtin.humans_topic": {
 		"role": "channel header topic",
 		"tone": "plain, sentence case",
 		"length": "One sentence; may truncate.",
 		"placeholders": {},
-		"note": "Describes the built-in #humans channel, which always contains every person in the organization."
+		"note": "Describes the built-in #humans channel: every person in the organization and no agents. The header leads with \"people only\" so it reads differently from #general. Use no em dash."
 	},
 	"ui.teamBridge.builtin.agents_topic": {
 		"role": "channel header topic",

@@ -19,10 +19,11 @@ import { ImportAgentDialog } from "@shared/components/common/import-agent-dialog
 import { SidebarHeader } from "@shared/components/common/sidebar-header";
 import { Spinner } from "@shared/components/common/spinner";
 import {
+	AgentAvatar,
 	Alert,
 	AlertDescription,
-	Avatar,
 	AvatarFallback,
+	AvatarImage,
 	Button,
 	Tooltip,
 	TooltipProvider,
@@ -38,6 +39,7 @@ import { useDebouncedValue } from "@shared/hooks/use-debounced-value";
 import { useRadientAuth } from "@shared/hooks/use-radient-auth";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
+import { useAgentAvatar } from "@shared/store/agent-avatar-store";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { Bot } from "lucide-react";
@@ -117,7 +119,12 @@ type AgentsSidebarItemProps = {
  * something inside it takes focus, so keyboard users can reach it by tabbing
  * (`pointer-events` gates the mouse, never the tab order).
  */
-const AgentsSidebarItem: FC<AgentsSidebarItemProps> = ({
+/**
+ * One row, exported for the avatar story: `./agent-avatar.stories.tsx` renders
+ * the real row rather than a copy of its markup, which is the only way the
+ * frame it captures is evidence about this file.
+ */
+export const AgentsSidebarItem: FC<AgentsSidebarItemProps> = ({
 	agent,
 	isSelected,
 	onSelectAgent,
@@ -128,6 +135,13 @@ const AgentsSidebarItem: FC<AgentsSidebarItemProps> = ({
 }) => {
 	// Refresh translated copy without resetting the current selection or action.
 	useI18nLocale();
+	/*
+	 * Read inside the row rather than passed down: the store is keyed by agent id,
+	 * so this subscription repaints one row when its picture changes, and the
+	 * `memo` comparison above stays about the agent's identity instead of growing
+	 * a byte-comparing field.
+	 */
+	const avatar = useAgentAvatar(agent.id);
 	const description =
 		agent.description || t("ui.agents.navigation.sidebar.no_description");
 
@@ -148,21 +162,32 @@ const AgentsSidebarItem: FC<AgentsSidebarItemProps> = ({
 					isSelected ? rowCurrent : "hover:bg-row-hover",
 				)}
 			>
-				<Avatar className="size-8 shrink-0">
+				<AgentAvatar className="size-8 shrink-0">
+					{/*
+					 * THE PICTURE TAKES NO EDGE OF ITS OWN (design review round 1, D1).
+					 * The row's height is the two-line block beside this disc, and the
+					 * `size-8` root is what reserves it in both states, so a picture, a
+					 * missing picture and an undecodable one are the same 32px box. The
+					 * edge belongs to that root (`AgentAvatar`), because a border on the
+					 * square image is clipped by the circle and survives as four arcs.
+					 */}
+					{avatar ? (
+						<AvatarImage src={avatar} alt="" className="lo-avatar-arrival" />
+					) : null}
 					{/*
 					 * THE AVATAR IS AN OBJECT INSIDE A ROW STATE, SO IT KEEPS ITS OWN EDGE.
 					 * The row above paints `rowCurrent` when this agent is the open one and
-					 * `hover:bg-row-hover` under the pointer, and the fallback's ground is
-					 * `sunken` — a rung of the ladder, so on some palette the row's own state
+					 * `hover:bg-row-hover` under the pointer, and the plate's ground is
+					 * `sunken` - a rung of the ladder, so on some palette the row's own state
 					 * lands on it. Measured on the shipped values: `sunken` against
-					 * `rowSelected` is inside the file's ΔE00 2.0 field floor on seven
+					 * `rowSelected` is inside the file's delta-E00 2.0 field floor on seven
 					 * palettes (`alucard` 0.44, `localOperatorLight` 1.19, `paper` 1.24, `sage`
 					 * 1.63, `rosePineDawn` 1.66, `catppuccinLatte` 1.73, `solarizedLight`
-					 * 1.78) and against `rowHover` on one (`iceberg` 1.86) — open an agent, or
+					 * 1.78) and against `rowHover` on one (`iceberg` 1.86) - open an agent, or
 					 * point at one, and the disc is the row's own fill.
 					 *
 					 * No fill role escapes that, because a row state IS a step of the panel it
-					 * sits on — `elevated` against `rowHover` is byte-identical on `arcade` — so
+					 * sits on - `elevated` against `rowHover` is byte-identical on `arcade` - so
 					 * the edge is the carrier, exactly as it is on the rail's account plate
 					 * (`./user-profile-sidebar.tsx`, which this reason is now shared with).
 					 * `border-control` is this system's role for an edge that IS the boundary of
@@ -170,18 +195,21 @@ const AgentsSidebarItem: FC<AgentsSidebarItemProps> = ({
 					 * alone misses the non-text floor on 12 palettes against the selection
 					 * (`vaporwave` 2.77) and 5 against the hover (`catppuccinMocha` 2.92), where
 					 * the FILL carries it instead, and the fill alone misses the field floor on
-					 * the eight above, where the edge clears (4.66 `alucard` … 3.02
+					 * the eight above, where the edge clears (4.66 `alucard` ... 3.02
 					 * `rosePineDawn` against the selection, 3.35 `iceberg` against the hover).
 					 * Neither arm clears the fleet by itself and no palette fails both, which is
 					 * what the pair in `scripts/contrast-contract.mjs` asserts per palette; the
-					 * class half — that this element still wears the edge, and that no new object
-					 * inside a row state is added without one — is in
+					 * class half - that this element still wears the edge, and that no new object
+					 * inside a row state is added without one - is in
 					 * `scripts/chat-sidebar-selection.test.mjs`.
+					 *
+					 * BOTH CLASSES LIVE ON THE ROOT NOW (design review round 1, D2): the fill
+					 * sits behind a transparent PNG too, and the fallback is just its glyph.
 					 */}
-					<AvatarFallback className="border border-control bg-sunken">
+					<AvatarFallback>
 						<Bot size={16} aria-hidden={true} />
 					</AvatarFallback>
-				</Avatar>
+				</AgentAvatar>
 				<span className="min-w-0 flex-1">
 					<Tooltip content={agent.name} side="top" align="start">
 						<span className="block truncate font-medium text-body-sm text-ink">

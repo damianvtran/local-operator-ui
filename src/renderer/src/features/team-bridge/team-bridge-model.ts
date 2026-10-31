@@ -351,8 +351,8 @@ export function isNotAMemberRefusal(error: unknown): boolean {
  * Archiving or deleting removes the row the page was showing; leaving the target
  * on it painted "Untitled conversation" with a dead composer. The landing is the
  * NEXT channel in the order the rail draws (the one now under the cursor), else
- * the one before it, else the default the page lands on at first load (#humans,
- * then the first remaining row), else nothing (the empty state).
+ * the one before it, else the default the page lands on at first load
+ * (`defaultLandingConversation`), else nothing (the empty state).
  *
  * `rows` are the sidebar rows (open conversations only) and may still contain the
  * removed one: the optimistic cache write and this call are not ordered, so the
@@ -361,18 +361,19 @@ export function isNotAMemberRefusal(error: unknown): boolean {
 export function landingAfterRemoval(
 	rows: readonly TeamBridgeConversation[],
 	removedId: string,
+	organizationOrder: readonly string[] = [],
 ): TeamBridgeTarget | null {
-	const channels = railSections(rows).channels;
+	const channels = railSections(rows, organizationOrder).channels;
 	const at = channels.findIndex((row) => row.id === removedId);
 	const neighbour =
 		at >= 0
 			? (channels[at + 1] ?? channels[at - 1])
-			: (channels.find((row) => row.builtin === "humans") ?? channels[0]);
+			: defaultLandingConversation(channels, organizationOrder);
 	const remaining = rows.filter((row) => row.id !== removedId);
 	const next =
 		neighbour && neighbour.id !== removedId
 			? neighbour
-			: (remaining.find((row) => row.builtin === "humans") ?? remaining[0]);
+			: defaultLandingConversation(remaining, organizationOrder);
 	return next ? { type: "conversation", id: next.id } : null;
 }
 
@@ -1038,22 +1039,124 @@ export function dmWithAgent(
 	return mergedConversationOrder(candidates)[0] ?? null;
 }
 
-/** Built-in channels first, in this order; everything else after. */
-const BUILTIN_ORDER = ["humans", "agents"];
+/**
+ * Built-in channels first, in this order; everything else after.
+ *
+ * #general LEADS (agent-server feat/bridge-builtin-general). It is the whole
+ * organization - every person with Team Bridge enabled plus every consent-bound
+ * chief of staff - so it is the broadest room and the natural landing. An older
+ * server never returns a `general` row, and the order of the other two is then
+ * exactly what it was.
+ *
+ * Kept as a list of known names, not a type: the contract's `builtin` is a plain
+ * string on purpose (a built-in this client does not know yet must still parse),
+ * and such a row sorts with the ordinary channels.
+ */
+const BUILTIN_ORDER: readonly string[] = ["general", "humans", "agents"];
+
+/**
+ * Orders two built-in rows: by built-in name, then by organization.
+ *
+ * WHY AN ORGANIZATION KEY (design review round 1, D1). In All organizations each
+ * org has its own #general, #humans and #agents. Sorting by name alone left the
+ * org order inside each group to the incoming activity order, so "general ·
+ * Minerva" and "general · Northwind" swapped places whenever the other org got
+ * newer traffic, and the rail's top row moved under the reader. The org key is
+ * its position in the switcher (`organizationOrder`, the same list the scope
+ * menu draws), so the rail reads in the order the reader already sees there. An
+ * org the switcher does not list yet (its memberships still loading) falls back
+ * to tenant id, so the order is still total and never depends on activity.
+ */
+function compareBuiltins(
+	a: Pick<TeamBridgeConversation, "builtin" | "tenant_id">,
+	b: Pick<TeamBridgeConversation, "builtin" | "tenant_id">,
+	organizationOrder: readonly string[],
+): number {
+	const byName =
+		BUILTIN_ORDER.indexOf(a.builtin as string) -
+		BUILTIN_ORDER.indexOf(b.builtin as string);
+	if (byName !== 0) return byName;
+	const rank = (tenant: string) => {
+		const at = organizationOrder.indexOf(tenant);
+		return at < 0 ? Number.POSITIVE_INFINITY : at;
+	};
+	const byOrg = rank(a.tenant_id) - rank(b.tenant_id);
+	// Infinity - Infinity is NaN: two unlisted orgs fall through to tenant id.
+	if (byOrg !== 0 && !Number.isNaN(byOrg)) return byOrg;
+	return a.tenant_id.localeCompare(b.tenant_id);
+}
+
+/**
+ * The conversation the page lands on when nothing is selected: #general, else
+ * #humans (a server that predates #general), else the first row, else nothing.
+ *
+ * One function for the first load and for the landing after a channel leaves the
+ * rail, so the two can never disagree about what "the default" is. In All
+ * organizations there is one #general per org; the landing takes the one the
+ * rail draws on top (`compareBuiltins`, the switcher order), so the selected row
+ * is the first row rather than whichever org happened to be busiest.
+ */
+export function defaultLandingConversation<
+	Row extends Pick<TeamBridgeConversation, "builtin" | "tenant_id">,
+>(
+	rows: readonly Row[],
+	organizationOrder: readonly string[] = [],
+): Row | undefined {
+	const first = (builtin: string) =>
+		rows
+			.filter((row) => row.builtin === builtin)
+			.sort((a, b) => compareBuiltins(a, b, organizationOrder))[0];
+	return first("general") ?? first("humans") ?? rows[0];
+}
+
+/**
+ * The header line that explains a built-in channel, or null for a row that is
+ * not one this client knows. An unknown built-in renders as an ordinary channel
+ * (see the contract), so it gets no explanation rather than a borrowed one.
+ */
+export function builtinTopicKey(
+	builtin: string | undefined,
+):
+	| "ui.teamBridge.builtin.general_topic"
+	| "ui.teamBridge.builtin.humans_topic"
+	| "ui.teamBridge.builtin.agents_topic"
+	| null {
+	switch (builtin) {
+		case "general":
+			return "ui.teamBridge.builtin.general_topic";
+		case "humans":
+			return "ui.teamBridge.builtin.humans_topic";
+		case "agents":
+			return "ui.teamBridge.builtin.agents_topic";
+		default:
+			return null;
+	}
+}
 
 /**
  * The rail's sections, Slack-style: channels, groups and direct messages.
  *
- * BUILT-INS LEAD THE CHANNELS. #humans and #agents exist in every organization
- * and are the rail's fixed landmarks, so they sit above user channels in a
- * stable order rather than moving with activity. Every other row keeps the
- * order the caller passed in (the server's / merged activity order).
+ * BUILT-INS LEAD THE CHANNELS. #general, #humans and #agents exist in every
+ * organization and are the rail's fixed landmarks, so they sit above user
+ * channels in a stable order rather than moving with activity. Every other row
+ * keeps the order the caller passed in (the server's / merged activity order).
+ *
+ * IN THE MERGED (all organizations) VIEW each organization has its own three
+ * built-ins. They sort by built-in name, then by the org's position in
+ * `organizationOrder` (the switcher's order), then by tenant id: every org's
+ * #general, then every #humans, then every #agents, each group in the same org
+ * order whatever the activity (`compareBuiltins`). Each row keeps its own
+ * `tenant_id`, which is what the rail's per-row organization caption is drawn
+ * from. A single-org rail has one row per built-in, so the org key never acts.
  *
  * DMs are returned separately: a single-org rail folds them into the People
  * and Chiefs of staff rows (the person IS the DM), while the merged view, which
  * has no directory, lists them under their own header.
  */
-export function railSections(rows: readonly TeamBridgeConversation[]): {
+export function railSections(
+	rows: readonly TeamBridgeConversation[],
+	organizationOrder: readonly string[] = [],
+): {
 	channels: TeamBridgeConversation[];
 	groups: TeamBridgeConversation[];
 	directs: TeamBridgeConversation[];
@@ -1070,11 +1173,7 @@ export function railSections(rows: readonly TeamBridgeConversation[]): {
 		} else if (row.kind === "group") groups.push(row);
 		else directs.push(row);
 	}
-	builtins.sort(
-		(a, b) =>
-			BUILTIN_ORDER.indexOf(a.builtin as string) -
-			BUILTIN_ORDER.indexOf(b.builtin as string),
-	);
+	builtins.sort((a, b) => compareBuiltins(a, b, organizationOrder));
 	return { channels: [...builtins, ...channels], groups, directs };
 }
 

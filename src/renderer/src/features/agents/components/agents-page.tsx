@@ -62,6 +62,11 @@ import {
 	AlertDescription,
 	AlertTitle,
 } from "@shared/components/ui/alert";
+import {
+	AgentAvatar,
+	AvatarFallback,
+	AvatarImage,
+} from "@shared/components/ui/avatar";
 import { Badge } from "@shared/components/ui/badge";
 import { Button } from "@shared/components/ui/button";
 import { Input } from "@shared/components/ui/input";
@@ -72,6 +77,7 @@ import { t } from "@shared/i18n";
 import type { MessageKey } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
+import { useAgentAvatar } from "@shared/store/agent-avatar-store";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Bot, Plus, Search, Sparkles, Users } from "lucide-react";
 import {
@@ -1802,6 +1808,44 @@ export function AskPaneCopy({ teamMode }: { teamMode: boolean }) {
 }
 
 /**
+ * The roster row's mark, on the same box and fallback the chat sidebar's rows use.
+ *
+ * WHY A COMPONENT AND NOT A HOOK CALL IN THE MAP. `useAgentAvatar` is a hook and
+ * the rows are built by `.map()` inside `Roster`'s render, so calling it there
+ * would subscribe the whole list: one picture would repaint every row. Read
+ * inside this component, the subscription is per row.
+ *
+ * THE BOX IS 16 PX, INSIDE LINE ONE, and both halves of that are deliberate. The
+ * roster's height is set by its two text lines (`min-h-12`), so a mark that grew
+ * a line would move every row on the page; a 16px box fits inside the name's own
+ * line box. It is the size the chat sidebar's Agents rows draw, and the glyph is
+ * that row's fallback, so the one list that names every agent and the list the
+ * user reads beside it show the same mark. It also reserves its own width in
+ * every agent row, so no name moves when a picture arrives.
+ */
+const RosterMark = ({ agentId }: { agentId: string | null }) => {
+	const avatar = useAgentAvatar(agentId);
+	if (avatar === null) {
+		return <Bot aria-hidden="true" className="size-4 shrink-0 text-ink-dim" />;
+	}
+	return (
+		/*
+		 * THE FALLBACK IS NOT DECORATION HERE (review round 2, R2-4). A stored
+		 * value can pass the data-URL gate and still fail to decode, and Radix
+		 * renders the image arm only after a load: without a fallback that agent's
+		 * 16px slot is simply blank. The same Bot the sidebar's rows draw keeps the
+		 * mark legible, inside the same shared plate every agent surface wears.
+		 */
+		<AgentAvatar className="size-4 shrink-0">
+			<AvatarImage src={avatar} alt="" />
+			<AvatarFallback>
+				<Bot className="size-3" aria-hidden="true" />
+			</AvatarFallback>
+		</AgentAvatar>
+	);
+};
+
+/**
  * The roster, as a list with roving focus.
  *
  * WHY NOT A TREE OF TABS (U12). Every row used to be its own Tab stop and arrow
@@ -1929,6 +1973,7 @@ function Roster({
 							 * made row heights ragged (44 / 51 / 57 px) when a Badge wrapped.
 							 */}
 							<span className="flex w-full items-center gap-2">
+								{isProfile ? <RosterMark agentId={row.agent_id} /> : null}
 								<span className="min-w-0 truncate text-body-sm text-ink">
 									{rowLabel(row)}
 								</span>
