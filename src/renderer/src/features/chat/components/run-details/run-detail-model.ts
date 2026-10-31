@@ -3316,18 +3316,19 @@ export const tallyFitsInline = (paneWidth: number): boolean => {
 };
 
 /**
- * The fallback for a pane width that is not a usable number at all: 420, one of
- * the three widths the record measures (320/420/640).
+ * The fallback for a pane width that is not a usable number at all: 420, the
+ * rung the record's default state measured (the pane is resizable over a
+ * continuous 320..1200 range, `§ 8`).
  *
  * It USED to mirror the store's run-panel default, which was 420; the slot's one
  * default is 640 now (`DEFAULT_RIGHT_SLOT_WIDTH`, #872 follow-up) and this is
  * deliberately NOT moved with it: a fallback decides how much a pane that has no
- * width sheds, and 420 is the middle rung of the record, whereas a width nobody
- * could measure is not evidence the pane is wide. Duplicated rather than
- * imported for the reason it always was: importing the store here would drag
- * zustand into a module that is otherwise pure arithmetic — the module the model
- * test bundles and runs without a DOM. The real width is passed in by the pane
- * (`chat-content.tsx`).
+ * width sheds, and 420 is the middle of the three widths the record does
+ * measure, whereas a width nobody could measure is not evidence the pane is
+ * wide. Duplicated rather than imported for the reason it always was: importing
+ * the store here would drag zustand into a module that is otherwise pure
+ * arithmetic — the module the model test bundles and runs without a DOM. The
+ * real width is passed in by the pane (`chat-content.tsx`).
  */
 const FALLBACK_PANE_PX = 420;
 
@@ -3335,11 +3336,11 @@ const FALLBACK_PANE_PX = 420;
  * How many characters a section's trailing tally may occupy, from the PANE's own
  * width.
  *
- * The pane is resizable (320/420/640, `§ 8`), so a budget pinned to the default
- * was wrong at the pane's own floor: `subagentTally`'s 48 characters fit 420px
- * and burst 320px, where the CSS `truncate` then cut the value mid-word
- * (`… 1 interr…`) — the failure clause shedding exists to prevent, arriving
- * through the one path shedding does not cover.
+ * The pane is resizable over a continuous 320..1200 range (`§ 8`), so a budget
+ * pinned to the default was wrong at the pane's own floor: `subagentTally`'s 48
+ * characters fit 420px and burst 320px, where the CSS `truncate` then cut the
+ * value mid-word (`… 1 interr…`) — the failure clause shedding exists to
+ * prevent, arriving through the one path shedding does not cover.
  *
  * A width that is not a finite positive number falls back to the design's
  * default rather than propagating: `Math.max(1, NaN)` is `NaN`, and a `NaN`
@@ -4109,8 +4110,9 @@ const CHILD_COUNT_LABEL_FLOOR_PX = 92;
  * numbers rule, one element along: a value is dropped whole, never cut) and the
  * label takes all 66px back, reaching 92-118px. At the 420px default the same
  * arithmetic leaves the label 134px, so the mark stays, and 640px is wider
- * still. The pane has exactly three sizes — 320/420/640 (`§ 8`) — so this shed is
- * the floor's state and no other width's.
+ * still. The pane is resizable over a continuous 320..1200 range (`§ 8`), not
+ * three sizes: the mark is drawn from 378px, so the shed above is what every
+ * width under 378 does, and no other width's.
  *
  * A mark that is not drawn also cannot be clipped at the pane's edge: at the app's
  * window floor with the rail expanded (79px pane) the line overflows for other
