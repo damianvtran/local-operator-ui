@@ -35,6 +35,11 @@ import {
 	epochMsFromSeconds,
 } from "../../../../../shared/desktop-session-contract";
 import {
+	type BridgeResultFacts,
+	preferBridgeFacts,
+	preferBridgeLabel,
+} from "../components/trace/bridge-row-model";
+import {
 	type HubReceipt,
 	type PeerSender,
 	hubFields,
@@ -551,6 +556,25 @@ type TranscriptPayloadRecord =
 			 * stories) need not state it; absent reads exactly as `null`.
 			 */
 			delivery?: SendDeliveryState | null;
+			/**
+			 * A Team Bridge (`bridge`) call's display name for its destination, read
+			 * from the RESULT (`bridgeLabelFromDetails`): the DM receipt's `direct
+			 * message to <label> in bcv_…`, `channel_create`'s returned `name`, or a
+			 * future core's `conversation_label`. Without it the row could only name
+			 * the conversation by its opaque `bcv_` id, the defect the bridge row
+			 * replaces. `null`/absent on every other tool and whenever the result
+			 * names nothing; the row then falls back to the call's own `name`, the
+			 * Team Bridge cache, and finally a kind word.
+			 */
+			bridgeLabel?: string | null;
+			/**
+			 * The `bridge` result's own fields (`ToolResult.details`: the receipt's
+			 * `conversation_id`, `message_id`, `seq`, `destination_type`, `code`,
+			 * `content`, …), which the row's tokens and its expansion read. The
+			 * progress carrier below cannot hold them: it admits only the imagegen
+			 * contract's shape. `null`/absent on every other tool.
+			 */
+			bridge?: BridgeResultFacts | null;
 			/**
 			 * The canonical progress payload the call's frames carried last, raw -
 			 * the imagegen lane's `progress_details` shape on harness PR #2089
@@ -3690,6 +3714,19 @@ function durableRecord(
 			delivery: preferDeliveryState(
 				providerPayload.details,
 				previous?.kind === "tool" ? previous.delivery : null,
+				String(payload.tool_name ?? ""),
+			),
+			// The bridge pair rides the same absent-vs-stated rule, so a reloaded
+			// transcript names the destination the live row named.
+			bridge: preferBridgeFacts(
+				String(payload.tool_name ?? ""),
+				providerPayload.details,
+				previous?.kind === "tool" ? previous.bridge : null,
+			),
+			bridgeLabel: preferBridgeLabel(
+				String(payload.tool_name ?? ""),
+				providerPayload.details,
+				previous?.kind === "tool" ? previous.bridgeLabel : null,
 			),
 			// The durable half of the same carrier (`preferProgressDetails`): a
 			// reloaded transcript reads the cancelled/conflict/refusal states from
@@ -6587,7 +6624,19 @@ export function applyEvent(
 				// Same absent-vs-stated guard as the diff above: a seed end whose
 				// `details` the live-event budget stripped must not blank a state the
 				// durable row already carried.
-				delivery: preferDeliveryState(result.details, base.delivery),
+				delivery: preferDeliveryState(
+					result.details,
+					base.delivery,
+					base.toolName,
+				),
+				// The live half of the bridge pair (the durable half reads the same
+				// helpers): a budget-stripped frame keeps what the row held.
+				bridge: preferBridgeFacts(base.toolName, result.details, base.bridge),
+				bridgeLabel: preferBridgeLabel(
+					base.toolName,
+					result.details,
+					base.bridgeLabel,
+				),
 				// The settling frame's canonical progress payload, under the same
 				// absent-vs-stated rule as `delivery` beside it: the cancel and
 				// unable-to-generate results carry it (the conflict pair included),
