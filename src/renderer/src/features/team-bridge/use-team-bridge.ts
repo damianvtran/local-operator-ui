@@ -94,6 +94,12 @@ import {
 	useBridgeOwner,
 	useTeamBridgeAccount,
 } from "./team-bridge-owner";
+import {
+	type TeamBridgeUnreadSnapshot,
+	applyTeamBridgeReadCursor,
+	cancelTeamBridgeUnreadReads,
+	restoreTeamBridgeUnreadSnapshot,
+} from "./team-bridge-unread-sync";
 export { teamBridgeKeys } from "./team-bridge-keys";
 import {
 	type CapturedBridgeMutation,
@@ -213,14 +219,25 @@ export function useLoadMoreArchivedTeamBridgeConversations(
 	});
 }
 
-export function useTeamBridgeMessages(
+/**
+ * The timeline read's key and reader, shared by the page's observer and the
+ * shell's notification watcher.
+ *
+ * WHY SHARED. A banner used to read the newest message straight through the
+ * API, so the page's cached page for that conversation stayed whatever it was
+ * when the reader last looked. Clicking the banner then painted that stale page
+ * and the message appeared seconds later, on the next poll (operator report,
+ * 2026-10-30). The watcher now reads through THIS key and reader, so the page
+ * it writes is exactly the page the timeline renders. Two literals for one key
+ * would drift the first time either side changed, silently reopening the gap.
+ */
+export function teamBridgeMessagesQueryOptions(
+	client: QueryClient,
 	conversationId: string | null,
 	tenantId?: string,
-	enabled = true,
 	accountId?: string,
-): UseQueryResult<TeamBridgeMessagePage> {
-	const client = useQueryClient();
-	return useQuery({
+) {
+	return {
 		queryKey: teamBridgeKeys.messages(
 			conversationId ?? "none",
 			tenantId,
@@ -229,15 +246,35 @@ export function useTeamBridgeMessages(
 		/* Membership events ride the same page: carry the previous read's events
 		   forward and dedupe by id (`withCarriedTeamBridgeEvents`), so a poll
 		   whose window omits a line the reader already saw does not drop it.
-		   Messages are untouched. Moves into `teamBridgeMessagesQueryOptions`
-		   when that factory lands, so every cache writer dedupes the same way. */
-		queryFn: async ({ queryKey }) =>
+		   Messages are untouched. It lives in this shared factory so every cache
+		   writer - the timeline hook and the notification watcher's write-before-
+		   notify read alike - dedupes the same way. */
+		// Typed explicitly: a plain object returned from a factory has no
+		// `useQuery` call site to infer the context from.
+		queryFn: async ({ queryKey }: { queryKey: QueryKey }) =>
 			withCarriedTeamBridgeEvents(
 				client.getQueryData<TeamBridgeMessagePage>(queryKey),
 				await readForBridgeOwner(client, accountId, () =>
 					TeamBridgeApi.listMessages(conversationId as string, { tenantId }),
 				),
 			),
+	} as const;
+}
+
+export function useTeamBridgeMessages(
+	conversationId: string | null,
+	tenantId?: string,
+	enabled = true,
+	accountId?: string,
+): UseQueryResult<TeamBridgeMessagePage> {
+	const client = useQueryClient();
+	return useQuery({
+		...teamBridgeMessagesQueryOptions(
+			client,
+			conversationId,
+			tenantId,
+			accountId,
+		),
 		enabled: enabled && Boolean(accountId) && Boolean(conversationId),
 		staleTime: 5_000,
 		/* `not_a_member` is a definite answer (an administrator opening an archived
@@ -831,7 +868,8 @@ export function useMarkTeamBridgeRead(
 	const mutation = useMutation<
 		TeamBridgeReadState,
 		Error,
-		CapturedBridgeMutation<{ seq: number }, BridgeWriteTarget>
+		CapturedBridgeMutation<{ seq: number }, BridgeWriteTarget>,
+		TeamBridgeUnreadSnapshot
 	>({
 		mutationFn: ({ input, target }) => {
 			target.assertCurrent();
@@ -841,8 +879,61 @@ export function useMarkTeamBridgeRead(
 				expectedAccountId: target.accountId,
 			});
 		},
+		/*
+		 * READ CLEARS THE ROW AND THE BADGE IN ONE UPDATE. The row's count and the
+		 * nav badge used to wait for two separate refetches with different
+		 * cadences, so one could still claim unread after the other cleared. The
+		 * optimistic patch writes every cache that renders this conversation's
+		 * unread in the same synchronous pass; the invalidations below still
+		 * reconcile with the server, and a refusal restores the exact snapshots.
+		 */
+		onMutate: ({ input, target }) => {
+			if (!target.isCurrent() || !target.accountId || !target.tenantId)
+				return undefined;
+			/*
+			 * CANCEL FIRST, IN THIS SAME PASS (review round 1, m1). A read dispatched
+			 * before this click - the unread poll, a list refetch - answers with a
+			 * count computed before the clear and carries a later timestamp than the
+			 * patches below keep, so it would win the merge and bounce the row and
+			 * the badge back. Cancelling here means nothing is left in flight to
+			 * land on top of the patch.
+			 */
+			cancelTeamBridgeUnreadReads(client, target.accountId);
+			return applyTeamBridgeReadCursor(client, target.accountId, {
+				tenantId: target.tenantId,
+				conversationId: target.conversationId,
+				seq: input.seq,
+			});
+		},
+		onError: async (_error, { target }, snapshot) => {
+			if (!target.isCurrent() || !snapshot) return;
+			restoreTeamBridgeUnreadSnapshot(client, snapshot);
+			/*
+			 * THEN ASK THE SERVER (review round 1, m2). A refusal means the cached
+			 * numbers were never ours to rewind: with no success invalidation, a
+			 * restored count could stand for up to the next poll. The refetch is the
+			 * one answer that cannot be stale.
+			 */
+			await client.invalidateQueries({
+				queryKey: teamBridgeKeys.conversationsPrefix,
+			});
+			if (!target.isCurrent()) return;
+			await client.invalidateQueries({ queryKey: teamBridgeKeys.unreadPrefix });
+		},
 		onSuccess: async (_data, { target }) => {
 			if (!target.isCurrent()) return;
+			// Same guard as `onMutate`, so neither caller has to invent an owner.
+			if (!target.accountId) return;
+			/*
+			 * CANCEL AGAIN AT SETTLEMENT (agent review round 2, R2-m1). The
+			 * click-time cancel only covers reads dispatched BEFORE the click; a
+			 * poll dispatched after it answers with a count computed before the
+			 * server recorded the clear, and would land with a newer timestamp than
+			 * the patch and bounce row and badge back to the old count. Cancelling
+			 * at the head of the success path closes that window, before the
+			 * invalidations below dispatch their own, post-clear reads.
+			 */
+			cancelTeamBridgeUnreadReads(client, target.accountId);
 			await client.invalidateQueries({
 				queryKey: teamBridgeKeys.conversationsPrefix,
 			});
