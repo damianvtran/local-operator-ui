@@ -69,6 +69,15 @@ const desktopShardRefusal = {
 		/Desktop shard proof failed: Expected explicit plan \(metadata-only\), run, receipt or verify mode/,
 };
 
+/** `pnpm test:desktop`'s derived-inventory entry: a bad mode must refuse aloud. */
+const desktopInventoryRefusal = {
+	script: "desktop-test-inventory.mjs",
+	args: ["invalid-mode"],
+	status: 1,
+	stdout: /^$/,
+	stderr: /Desktop test inventory failed: Expected `list` or `run/,
+};
+
 /** A `package.json` shaped like this repository's: tab-indented, one version line. */
 const packageJson = (version) =>
 	`{\n\t"name": "local-operator-ui",\n\t"version": "${version}",\n\t"private": true\n}\n`;
@@ -202,6 +211,7 @@ function cases(root) {
 	);
 	return [
 		{ ...desktopShardRefusal, cwd: plain, env: {} },
+		{ ...desktopInventoryRefusal, cwd: plain, env: {} },
 		{
 			// Reject the SHA before any Linux/compiler/dependency control can start.
 			// This is the diagnostic's own CLI verdict, not a blanket exemption.

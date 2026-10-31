@@ -2909,9 +2909,17 @@ write access is silently ignored by an approval rule. Tagging a person in a
 
 ### Desktop CI capacity partitions
 
-The `test` job uses four deterministic file-count partitions of the explicit
-`package.json` `test:desktop` inventory. Local `pnpm test:desktop` still runs the
-whole inventory once through the existing guarded runner. CI delegates each
+The `test` job uses four deterministic file-count partitions of the desktop
+inventory, which is DERIVED rather than listed: every `*.test.mjs` under
+`scripts/` (recursively) minus the explained `EXEMPT` table in
+`scripts/desktop-test-inventory.mjs` (`node scripts/desktop-test-inventory.mjs
+list` prints it). Adding a test file edits nothing shared; a suite that must not
+run in the shared lanes (display-bound, its own CI step, too heavy) is exempted
+in the PR that adds it, with its reason. The old literal `test:desktop` line was
+rewritten by every PR that added a test, so any two conflicted - #1466 was
+re-conflicted seven times in about five hours on 2026-10-31. Local
+`pnpm test:desktop` still runs the whole inventory once through the existing
+guarded runner. CI delegates each
 partition to that same runner with the same concurrency, memory and lane caps;
 four workers are extra capacity and per-shard memory headroom, not measured
 runtime balancing, a hung-lane cure, or a memory-leak fix. The fourth shard was

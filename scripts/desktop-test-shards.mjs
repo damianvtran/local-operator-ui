@@ -2,7 +2,10 @@
 /**
  * Capacity partitioning, not a runtime-balancing or memory-fault cure.
  *
- * package.json's literal test:desktop command is the only inventory. Keep local
+ * The inventory is DERIVED from the tree by `desktop-test-inventory.mjs` (every
+ * `.test.mjs` file under `scripts/`, recursively, minus its explained `EXEMPT`
+ * table), not read off a hand-kept list in package.json; that module's header
+ * says why. Keep local
  * full-suite use unchanged; CI selects one deterministic partition and delegates
  * to the existing runner with argv, never a shell or a second test manifest.
  * Importing this module performs no test import, process launch or file writes.
@@ -17,9 +20,15 @@ import {
 	realpathSync,
 	writeFileSync,
 } from "node:fs";
-import { constants } from "node:os";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+	DESKTOP_COMMAND,
+	TEST_ROOT,
+	discoverDesktopTests,
+	runNode,
+	selectDesktopTests,
+} from "./desktop-test-inventory.mjs";
 import { isEntryPoint } from "./entry-point.mjs";
 
 // FOUR, NOT THREE, on measured memory headroom rather than balance: at
@@ -33,28 +42,27 @@ const RUNNER = "scripts/run-desktop-tests.mjs";
 const SHA = /^[a-f0-9]{40}$/;
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
-export function inventory(command) {
+/**
+ * The desktop inventory of `root`, after checking `scripts.test:desktop` is the
+ * derived entry point and nothing else.
+ *
+ * A branch that still carries the old literal file list (or any other command)
+ * is refused rather than half-honoured: its paths would be ignored by the walk,
+ * and a CI plan that silently disagreed with what `pnpm test:desktop` runs is
+ * the drift this planner exists to rule out.
+ */
+export function inventory(command, root = ROOT) {
+	assertDesktopCommand(command);
+	return discoverDesktopTests(root);
+}
+
+export function assertDesktopCommand(command) {
 	if (typeof command !== "string" || !command.trim())
 		throw new Error("Missing scripts.test:desktop command");
-	const words = command.trim().split(/\s+/);
-	if (words.shift() !== "node" || words.shift() !== RUNNER || !words.length) {
+	if (command !== DESKTOP_COMMAND)
 		throw new Error(
-			`Unsupported test:desktop grammar; expected node ${RUNNER} <literal .test.mjs paths>`,
+			`Unsupported test:desktop grammar; expected exactly ${JSON.stringify(DESKTOP_COMMAND)} (the inventory is derived, not listed)`,
 		);
-	}
-	for (const file of words) {
-		if (
-			!/^(?:[A-Za-z0-9_-]+\/)*[A-Za-z0-9_.-]+\.test\.mjs$/.test(file) ||
-			file.split("/").some((p) => p === "." || p === "..")
-		) {
-			throw new Error(
-				`Unsafe/unsupported test path ${JSON.stringify(file)}: no flags, quotes, glob, shell operators or traversal`,
-			);
-		}
-	}
-	if (new Set(words).size !== words.length)
-		throw new Error("Duplicate test:desktop path");
-	return words.sort();
 }
 
 export function partition(files, count = SHARD_COUNT) {
@@ -100,23 +108,33 @@ export function plan(root, head, checkout, metadataPackage, metadataGitTree) {
 	const pkg = JSON.parse(
 		readFileSync(metadataPackage ?? join(root, "package.json"), "utf8"),
 	);
-	const files = inventory(pkg.scripts?.["test:desktop"]);
+	assertDesktopCommand(pkg.scripts?.["test:desktop"]);
+	let files;
 	if (metadataGitTree) {
-		// Explicit metadata mode accepts an immutable git-ls-tree export, not
-		// execution proof. Real CI run/receipt/verify must lstat actual files.
-		const entries = new Set();
+		// Explicit metadata mode derives the SAME inventory from an immutable
+		// git-ls-tree export, not execution proof. Real CI run/receipt/verify must
+		// walk and lstat actual files. A link under the test root fails closed,
+		// exactly as the real walk does.
+		const candidates = [];
 		for (const line of readFileSync(metadataGitTree, "utf8")
 			.trimEnd()
 			.split("\n")) {
-			const match = /^(100644|100755) blob [a-f0-9]{40}\t(.+)$/.exec(line);
-			if (match) entries.add(match[2]);
-		}
-		for (const file of files)
-			if (!entries.has(file))
+			const match = /^([0-9]{6}) (blob|tree|commit) [a-f0-9]{40}\t(.+)$/.exec(
+				line,
+			);
+			if (!match || !match[3].startsWith(`${TEST_ROOT}/`)) continue;
+			if (match[1] === "120000" || match[2] === "commit")
 				throw new Error(
-					`Inventory file absent or unsafe in pinned Git tree: ${file}`,
+					`Inventory path absent or unsafe in pinned Git tree: ${match[3]}`,
 				);
-	} else validateFiles(root, files);
+			if (/^(100644|100755)$/.test(match[1]) && match[3].endsWith(".test.mjs"))
+				candidates.push(match[3]);
+		}
+		files = selectDesktopTests(candidates.sort());
+	} else {
+		files = discoverDesktopTests(root);
+		validateFiles(root, files);
+	}
 	const digest = createHash("sha256")
 		.update(`${files.join("\n")}\n`)
 		.digest("hex");
@@ -447,27 +465,7 @@ export async function main(args) {
 	}
 	// This is the ONLY execution path. Builtin-only plan/verify never reaches it.
 	// The existing runner owns concurrency, memory, lane and hardlink protections.
-	const { spawn } = await import("node:child_process");
-	const child = spawn(process.execPath, [RUNNER, ...expected.shards[index]], {
-		cwd: o.root ?? ROOT,
-		stdio: "inherit",
-	});
-	const forward = (signal) => child.kill(signal);
-	const interrupt = () => forward("SIGINT");
-	const terminate = () => forward("SIGTERM");
-	process.on("SIGINT", interrupt);
-	process.on("SIGTERM", terminate);
-	try {
-		return await new Promise((resolveExit, reject) => {
-			child.once("error", reject);
-			child.once("exit", (code, signal) =>
-				resolveExit(code ?? 128 + (constants.signals[signal] ?? 1)),
-			);
-		});
-	} finally {
-		process.off("SIGINT", interrupt);
-		process.off("SIGTERM", terminate);
-	}
+	return runNode([RUNNER, ...expected.shards[index]], o.root ?? ROOT);
 }
 
 if (isEntryPoint(import.meta.url)) {
