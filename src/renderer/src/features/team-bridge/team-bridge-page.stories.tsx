@@ -1,3 +1,4 @@
+import { desktopKeys } from "@shared/api/local-operator/desktop-hooks";
 import {
 	beginRadientAuthorityTransition,
 	radientUserKeys,
@@ -2327,6 +2328,12 @@ function ProfileDirectoryStory({
 			defaultOptions: { queries: { retry: false } },
 		});
 		value.setQueryData(radientUserKeys.user(), { account: { id: self } });
+		// A core serving agent pictures: plates read them only when advertised.
+		if (agentPicture)
+			value.setQueryData(desktopKeys.capabilities, {
+				desktop_available: true,
+				features: { team_bridge_endpoint_avatar: 1 },
+			});
 		return value;
 	});
 	const [target, setTarget] = useState(args.target);

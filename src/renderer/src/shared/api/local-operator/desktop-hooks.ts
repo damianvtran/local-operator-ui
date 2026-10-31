@@ -312,6 +312,13 @@ export type DesktopFeature =
 	 * `server/features.py` with the route.
 	 */
 	| "team_bridge_agent_notify"
+	/**
+	 * An agent's OWN published picture through core's closed endpoint relay
+	 * (local-operator #3228). Absent: agent plates keep the glyph and send no
+	 * `team_bridge.endpoint_avatar` read. Main gates the banner composite on the
+	 * same key, so a plate and a banner agree.
+	 */
+	| "team_bridge_endpoint_avatar"
 	| "auth"
 	| "settings"
 	| "commands"

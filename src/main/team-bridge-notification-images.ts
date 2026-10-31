@@ -402,10 +402,18 @@ export class TeamBridgeNotificationImages
 				this.entries.set(key, {
 					icon,
 					bytes,
+					/*
+					 * A "photo" that core answered with the glyph (the agent's own
+					 * picture could not be read) is shown, but kept only for the failure
+					 * TTL: a hub blip must not pin the glyph on that agent's banners
+					 * for the whole photo lease (code review round 1, F1).
+					 */
 					expires:
 						now +
 						(variant === "photo"
-							? TEAM_BRIDGE_IMAGE_TTL_MS
+							? result.fallback
+								? TEAM_BRIDGE_IMAGE_NEGATIVE_TTL_MS
+								: TEAM_BRIDGE_IMAGE_TTL_MS
 							: TEAM_BRIDGE_INITIALS_TTL_MS),
 				});
 				this.bytes += bytes;

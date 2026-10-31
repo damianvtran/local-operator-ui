@@ -18,6 +18,7 @@ const bundle = await build({
 export * from './src/renderer/src/shared/hooks/use-account-avatar';
 export * from './src/shared/identity-avatar';
 export * from './src/renderer/src/shared/hooks/radient-account-authority';
+export {desktopKeys} from './src/renderer/src/shared/api/local-operator/desktop-hooks';
 export {TeamBridgeApi} from './src/renderer/src/shared/api/local-operator/team-bridge-api';
 export {requestDesktopMediaOutcome} from './src/main/desktop-media';
 export {QueryClient, QueryClientProvider} from '@tanstack/react-query';`,
@@ -51,6 +52,12 @@ const image = { data: new Uint8Array([1, 2, 3]), mimeType: "image/png" };
 function fixture() {
 	const client = new m.QueryClient();
 	client.setQueryData(m.radientUserKeys.user(), { account: { id: "A" } });
+	/* A core that serves endpoint pictures (F2 gates the plate on it). Seeded so
+	   the capability query never fetches - this rig has no desktop bridge. */
+	client.setQueryData(m.desktopKeys.capabilities, {
+		desktop_available: true,
+		features: { team_bridge_endpoint_avatar: 1 },
+	});
 	const host = document.createElement("div");
 	document.body.append(host);
 	const root = createRoot(host);
@@ -600,5 +607,44 @@ test("an endpoint picture and an account picture never share a cache entry", asy
 		host.remove();
 	} finally {
 		await f.close();
+	}
+});
+
+test("the composite's X-Avatar-Fallback header reaches main as `fallback`, and only that header", async () => {
+	let header = null;
+	const png = Buffer.from([
+		0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2,
+	]);
+	const server = createServer((_req, res) => {
+		res.writeHead(200, {
+			"Content-Type": "image/png",
+			...(header ? { "X-Avatar-Fallback": header } : {}),
+		});
+		res.end(png);
+	});
+	await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+	const origin = `http://127.0.0.1:${server.address().port}`;
+	const banner = {
+		op: "team_bridge.notification_avatar",
+		expectedAccountId: "A",
+		tenantId: "T",
+		accountId: "acc_owner",
+		kind: "person_agent",
+		theme: "light",
+		size: 64,
+		initials: "DT",
+		endpointAvatar: { endpoint_id: "bep_1", hash: "fedcba9876543210" },
+	};
+	const send = async () =>
+		(await m.requestDesktopMediaOutcome(banner, null, origin, "local-secret"))
+			.response;
+	try {
+		assert.equal((await send()).fallback, undefined);
+		header = "glyph";
+		assert.equal((await send()).fallback, true);
+		header = "something-else";
+		assert.equal((await send()).fallback, undefined);
+	} finally {
+		await new Promise((resolve) => server.close(resolve));
 	}
 });

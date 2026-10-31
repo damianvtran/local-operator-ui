@@ -1,3 +1,8 @@
+import type { DesktopCapabilities } from "@shared/api/local-operator/desktop-api";
+import {
+	desktopFeatureEnabled,
+	desktopKeys,
+} from "@shared/api/local-operator/desktop-hooks";
 import { TeamBridgeApi } from "@shared/api/local-operator/team-bridge-api";
 import {
 	observedRadientAuthority,
@@ -7,7 +12,14 @@ import {
 } from "@shared/hooks/radient-account-authority";
 import { createBlobUrl, revokeBlobUrl } from "@shared/lib/blob-url-cache";
 import { type QueryClient, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+	useCallback,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+	useSyncExternalStore,
+} from "react";
 import {
 	ACCOUNT_AVATAR_URL,
 	type AvatarIdentity,
@@ -25,9 +37,10 @@ import {
  * Private avatar bytes cannot be loaded with <img src>: the bearer lives in
  * main, not the renderer. This cache holds the resulting object URLs only for
  * the current signed-in account. Its key includes the credential epoch as well
- * as picture kind + account/endpoint + content hash + size, so even A -> B -> A cannot resurrect an
- * earlier private read. In-flight reads share one promise per key; unmounting
- * only detaches a listener, it never cancels another avatar's read.
+ * as picture kind + account/endpoint + content hash + size, so even
+ * A -> B -> A cannot resurrect an earlier private read. In-flight reads share
+ * one promise per key; unmounting only detaches a listener, it never cancels
+ * another avatar's read.
  */
 type Entry = {
 	url?: string;
@@ -118,8 +131,26 @@ export function useIdentityAvatar(
 	identity: AvatarIdentity | undefined,
 	size: 64 | 256,
 ): string | undefined {
+	/*
+	 * THE SAME GATE AS THE BANNER (code review round 1, F2). An endpoint picture
+	 * is requested only from a core that advertises `team_bridge_endpoint_avatar`
+	 * (main reads the same key before compositing an agent banner), so an older
+	 * core is never asked for a route it does not serve and a plate and a banner
+	 * cannot disagree about whether a picture exists. Unknown/absent → glyph.
+	 *
+	 * A PASSIVE read of the capability cache, not `useDesktopCapabilities()`:
+	 * the app root already owns that poll, and a plate is mounted on every
+	 * message row, so each one adding a query observer would add a refetch
+	 * interval (or, disabled, create and gc-time an empty query) per row for an
+	 * answer that is already in the cache. Same shape as
+	 * `useObservedRadientAuthority`: subscribe to the cache, read a boolean.
+	 */
+	const endpointPictures = useEndpointPicturesAdvertised();
 	const resolved = identity ? resolveIdentityAvatar(identity) : null;
-	const src = resolved?.src;
+	const src =
+		resolved?.src?.type === "endpoint" && !endpointPictures
+			? null
+			: resolved?.src;
 	// Keyed on primitives: a directory refetch returns new objects every time,
 	// and the version is a dependency of the fetch effect.
 	const type = src?.type;
@@ -140,6 +171,31 @@ export function useIdentityAvatar(
 		[type, id, hash],
 	);
 	return usePrivateAvatar(version, size);
+}
+
+function useEndpointPicturesAdvertised(): boolean {
+	const client = useQueryClient();
+	const subscribe = useCallback(
+		(listener: () => void) =>
+			client.getQueryCache().subscribe((event) => {
+				if (
+					(event.type === "updated" || event.type === "removed") &&
+					event.query.queryKey[0] === desktopKeys.capabilities[0] &&
+					event.query.queryKey[1] === desktopKeys.capabilities[1]
+				)
+					listener();
+			}),
+		[client],
+	);
+	const snapshot = useCallback(
+		() =>
+			desktopFeatureEnabled(
+				client.getQueryData<DesktopCapabilities>(desktopKeys.capabilities),
+				"team_bridge_endpoint_avatar",
+			),
+		[client],
+	);
+	return useSyncExternalStore(subscribe, snapshot, snapshot);
 }
 
 /** One hash-pinned avatar: whose, and which content version. */

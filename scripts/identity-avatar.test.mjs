@@ -38,6 +38,7 @@ const bundle = await build({
 export * from './src/shared/identity-avatar';
 export { TeamBridgeAvatar } from './src/renderer/src/features/team-bridge/team-bridge-profile-card';
 export { radientUserKeys } from './src/renderer/src/shared/hooks/radient-account-authority';
+export { desktopKeys } from './src/renderer/src/shared/api/local-operator/desktop-hooks';
 export { TeamBridgeApi } from './src/renderer/src/shared/api/local-operator/team-bridge-api';
 export { QueryClient, QueryClientProvider } from '@tanstack/react-query';`,
 		resolveDir: process.cwd(),
@@ -60,6 +61,7 @@ const m = compiled.exports;
 
 const OWNER = "2fc3a222-9e22-4c85-8b94-0b11c81972f7";
 const HASH = "0123456789abcdef";
+const HASH_2 = "fedcba9876543210";
 const SQUARED_CORNER = /rounded-ee-xs/;
 /** The owner's directory row: a real photo, and an agent riding on it. */
 const ownerRow = {
@@ -285,6 +287,11 @@ test("an agent with a hub avatar_url renders its own picture, by endpoint, under
 	client.setQueryData(m.radientUserKeys.user(), {
 		account: { id: "acc_viewer" },
 	});
+	// F2: endpoint pictures are read only from a core that advertises them.
+	client.setQueryData(m.desktopKeys.capabilities, {
+		desktop_available: true,
+		features: { team_bridge_endpoint_avatar: 1 },
+	});
 	const host = document.createElement("div");
 	document.body.append(host);
 	const root = createRoot(host);
@@ -336,11 +343,38 @@ test("an agent with a hub avatar_url renders its own picture, by endpoint, under
 		);
 		assert.match(plateEl.className, SQUARED_CORNER);
 
+		// An older core (no capability): the same published picture is NOT
+		// requested; the plate keeps the glyph (code review round 1, F2).
+		endpointReads.length = 0;
+		client.setQueryData(m.desktopKeys.capabilities, {
+			desktop_available: true,
+			features: {},
+		});
+		// A NEW version, so the private cache cannot answer for the gate: with
+		// the gate dropped this is exactly one read, counted, never timed.
+		await mount({
+			...withPicture,
+			agent: {
+				...withPicture.agent,
+				avatar_url: `/v1/messaging/endpoints/ep_aida/avatar?v=${HASH_2}`,
+			},
+		});
+		assert.equal(
+			endpointReads.length,
+			0,
+			"older core asked for an endpoint picture",
+		);
+		// Booleans only: a failed assert on a React-rendered element makes node
+		// inspect its fiber links (the whole tree + QueryClient), which is how
+		// the gate mutation ran this file out of memory instead of failing it.
+		assert.equal(host.querySelector("img") === null, true, "picture drawn");
+		assert.equal(Boolean(host.querySelector("svg.lucide-bot")), true);
+
 		// No published picture: the glyph, and no read at all.
 		endpointReads.length = 0;
 		await mount(ownerRow);
 		assert.equal(endpointReads.length + accountReads.length, 0);
-		assert.equal(host.querySelector("img"), null);
+		assert.equal(host.querySelector("img") === null, true, "picture drawn");
 		assert.ok(host.querySelector("svg.lucide-bot"));
 		assert.ok(host.querySelector("[data-agent-mark]"));
 	} finally {

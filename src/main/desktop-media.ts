@@ -285,6 +285,12 @@ export type DesktopMediaResponse =
 			mimeType: string;
 			data: Uint8Array;
 			cacheControl?: string;
+			/**
+			 * Core drew the agent glyph where the agent's own picture was asked for
+			 * (`X-Avatar-Fallback: glyph`, local-operator #3228). Main keeps such a
+			 * composite only for its failure TTL (code review round 1, F1).
+			 */
+			fallback?: true;
 	  }
 	| { status: number; kind: "json"; body: unknown }
 	| {
@@ -675,6 +681,9 @@ export async function requestDesktopMediaOutcome(
 					status: response.status,
 					mimeType: mime,
 					data,
+					...(composite && response.headers.get("x-avatar-fallback") === "glyph"
+						? { fallback: true as const }
+						: {}),
 				},
 				answered: true,
 			};

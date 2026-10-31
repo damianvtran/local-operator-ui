@@ -3527,3 +3527,52 @@ test("an older core (no endpoint capability) keeps the agent glyph and is never 
 	assert.ok(core.calls.length >= 1);
 	for (const call of core.calls) assert.equal(call.endpointAvatar, undefined);
 });
+
+/*
+ * CODE REVIEW ROUND 1, F1. When core draws the glyph where the agent's own
+ * picture was asked for (`X-Avatar-Fallback: glyph` → `fallback: true`), main
+ * shows it but keeps it only for the 30 s failure TTL, so a hub blip does not
+ * pin the glyph on that agent's banners for the 15-minute photo lease. A real
+ * picture keeps the full lease.
+ */
+for (const fallback of [true, false]) {
+	test(`an agent picture composite ${fallback ? "core fell back on" : "core drew"} expires after ${fallback ? "the failure TTL" : "the photo lease"}`, async () => {
+		let now = 0;
+		const calls = [];
+		const cache = imageCache({
+			now: () => now,
+			endpointAvatars: () => true,
+			request: async (input) => {
+				calls.push(input);
+				return {
+					...coreBytes(input),
+					...(fallback && input.endpointAvatar ? { fallback: true } : {}),
+				};
+			},
+		});
+		const agent = personSender({
+			kind: "person_agent",
+			agent_name: "Aida",
+			endpoint_avatar: { endpoint_id: "bep_aida", hash: "fedcba9876543210" },
+		});
+		const banner = request({ sender: agent });
+		assert.equal(
+			await cache.read(banner, 250),
+			"composite:endpoint/bep_aida/fedcba9876543210",
+		);
+		const photoCalls = () => calls.filter((c) => c.endpointAvatar).length;
+		assert.equal(photoCalls(), 1);
+		now = notifierModule.TEAM_BRIDGE_IMAGE_NEGATIVE_TTL_MS + 1;
+		await cache.read(banner, 250);
+		assert.equal(
+			photoCalls(),
+			fallback ? 2 : 1,
+			fallback
+				? "a fallback glyph must be re-asked after the failure TTL"
+				: "a real picture is served from its lease",
+		);
+		now = notifierModule.TEAM_BRIDGE_IMAGE_TTL_MS - 1;
+		await cache.read(banner, 250);
+		assert.equal(photoCalls(), fallback ? 3 : 1);
+	});
+}
