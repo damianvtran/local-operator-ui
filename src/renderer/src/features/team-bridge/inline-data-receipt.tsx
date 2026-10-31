@@ -73,6 +73,12 @@ export function inlineImageSpans(body: string): Span[] {
 					break;
 				}
 			} else {
+				// Every delimiter in this non-whitespace run shares one end. Scan it
+				// once: rescanning 257 characters at each delimiter makes attacker-
+				// supplied punctuation multiply the work on the renderer thread.
+				let tokenEnd = cursor;
+				while (tokenEnd < body.length && !HARD_END.test(body[tokenEnd]))
+					tokenEnd++;
 				let depth = 0;
 				while (cursor < body.length && !HARD_END.test(body[cursor])) {
 					const char = body[cursor];
@@ -84,14 +90,7 @@ export function inlineImageSpans(body: string): Span[] {
 					if (boundary) {
 						// A short suffix can be adjacent prose; a long one might be the
 						// data itself, so it must not escape into an unbounded text node.
-						let end = cursor;
-						while (
-							end < body.length &&
-							!HARD_END.test(body[end]) &&
-							end - cursor <= ADJACENT_PROSE_LIMIT
-						)
-							end++;
-						if (end - cursor <= ADJACENT_PROSE_LIMIT) break;
+						if (tokenEnd - cursor <= ADJACENT_PROSE_LIMIT) break;
 					}
 					if (char === "(") depth++;
 					if (char === ")" && depth) depth--;

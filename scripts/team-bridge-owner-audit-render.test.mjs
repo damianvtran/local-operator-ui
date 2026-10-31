@@ -157,6 +157,7 @@ const bundle = await build({
 			export { teamBridgeKeys } from "./src/renderer/src/features/team-bridge/team-bridge-keys";
 			export { t, formatDate, formatDateTime } from "./src/renderer/src/shared/i18n";
 			export { TeamBridgeMessageList } from "./src/renderer/src/features/team-bridge/team-bridge-message-list";
+			export { inlineImageSpans } from "./src/renderer/src/features/team-bridge/inline-data-receipt";
 		`,
 		resolveDir: process.cwd(),
 	},
@@ -1988,6 +1989,55 @@ test("legacy image data stays bounded and inert until inspected", async () => {
 	);
 	await click(BUTTON_TEXT(row, m.t("ui.ownerAudit.next_chunk")));
 	assert.equal(row.querySelector("pre").textContent, "A".repeat(2048));
+	await view.close();
+});
+
+test("delimiter-heavy image data uses linearly bounded character checks", () => {
+	// Count the actual scanner's regex tests rather than timing a shared host.
+	// The former 257-character lookahead per delimiter exceeds this bound by
+	// orders of magnitude, so the test must fail if that loop is restored.
+	for (const [unit, count] of [
+		["]", 1000000],
+		["**", 50000],
+		[")", 100000],
+	]) {
+		const body = `data:image/svg+xml,%3Csvg%3E${unit.repeat(count)}\nAfter`;
+		const original = RegExp.prototype.test;
+		let checks = 0;
+		let spans;
+		try {
+			RegExp.prototype.test = function (value) {
+				checks++;
+				return original.call(this, value);
+			};
+			spans = m.inlineImageSpans(body);
+		} finally {
+			RegExp.prototype.test = original;
+		}
+		assert.equal(spans.length, 1);
+		// The scanner leaves at most the short, ambiguous suffix as prose.
+		assert.ok(spans[0].end >= body.indexOf("\n") - 260);
+		assert.ok(
+			checks <= 3 * body.length + 100,
+			`${unit}: ${checks} checks for ${body.length} characters`,
+		);
+	}
+});
+
+test("a million image data delimiters remain bounded in the rendered audit", async () => {
+	const body = `Before\ndata:image/svg+xml,%3Csvg%3E${"]".repeat(1000000)}\nAfter`;
+	const view = await renderView(
+		panel({ messages: [auditRow({ id: "million_delimiters", body })] }),
+	);
+	const row = rowOf(view.host, "million_delimiters");
+	assert.ok(row.textContent.includes("Before"));
+	assert.ok(row.textContent.includes("After"));
+	assert.ok(
+		row.textContent.length < 1000,
+		`rendered ${row.textContent.length} characters`,
+	);
+	assert.equal(row.querySelectorAll("details").length, 1);
+	assert.equal(row.querySelector("img"), null);
 	await view.close();
 });
 
