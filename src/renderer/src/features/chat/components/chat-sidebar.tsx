@@ -527,8 +527,8 @@ const CLEAR_ALL_WHY_ID = "drafts-clear-all-why";
  * old `sunken` ground it measured 9.6 — which is why this is a call-site ground
  * and NOT a wash: strengthening `accentWash` for the panels that draw it on
  * `surface` would make every hover tint in the app louder. (The rail no longer
- * paints a ground of its own at all: it is `surface` with a `border-r
- * border-hairline` rule, so nothing on it is drawn on the rung that used to make
+ * paints a ground of its own at all: it is `surface` with the 1px `PanelEdge`
+ * seam on its leading edge, so nothing on it is drawn on the rung that used to make
  * the wash work there. The SETTINGS rail
  * was the other `surface` panel and takes this same role — it imports
  * `rowCurrent` from this file rather than restating it, see the note at the

@@ -7283,7 +7283,6 @@ export type MessageParams = {
 	"ui.ownerAudit.more": undefined;
 	"ui.ownerAudit.not_screened": undefined;
 	"ui.ownerAudit.older": undefined;
-	"ui.ownerAudit.own": undefined;
 	"ui.ownerAudit.page_cutoff": undefined;
 	"ui.ownerAudit.read_only": undefined;
 	"ui.ownerAudit.refresh": undefined;
@@ -7291,7 +7290,6 @@ export type MessageParams = {
 	"ui.ownerAudit.removed": undefined;
 	"ui.ownerAudit.replies": undefined;
 	"ui.ownerAudit.retry": undefined;
-	"ui.ownerAudit.reveal": undefined;
 	"ui.ownerAudit.title": undefined;
 	"ui.ownerAudit.unknown_sender": undefined;
 	"ui.ownerAudit.unknown_status": undefined;
@@ -9569,6 +9567,7 @@ export type MessageParams = {
 	"ui.teamBridge.reactions.failed": undefined;
 	"ui.teamBridge.reactions.frequent": undefined;
 	"ui.teamBridge.reactions.noResults": undefined;
+	"ui.teamBridge.reactions.others": { others: number };
 	"ui.teamBridge.reactions.search": undefined;
 	"ui.teamBridge.reactions.tone": undefined;
 	"ui.teamBridge.reactions.toneDefault": undefined;

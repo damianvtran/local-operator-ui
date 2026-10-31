@@ -119,6 +119,54 @@ const ratio = (a, b) => {
 const HEX = /^#[0-9a-fA-F]{3,8}$/;
 const isHex = (v) => typeof v === "string" && HEX.test(v);
 
+/**
+ * A translucent colour over an opaque ground, as the flat hex the eye receives.
+ *
+ * The panel seam is `hairline` at an alpha, so the colour it actually paints is
+ * not a palette value and none of the assertions above can read it without this.
+ * Compositing is done in sRGB bytes, the same way the browser composites a
+ * background colour, rather than in Lab: the measurement is of the pixel that
+ * lands on screen.
+ */
+const over = (fg, bg, alpha) => {
+	const channels = (hex) => {
+		const body = hex.replace("#", "").trim();
+		const full =
+			body.length === 3
+				? body
+						.split("")
+						.map((c) => c + c)
+						.join("")
+				: body;
+		return [0, 2, 4].map((i) => Number.parseInt(full.slice(i, i + 2), 16));
+	};
+	const [r, g, b] = channels(fg);
+	const [R, G, B] = channels(bg);
+	const mix = (x, y) => Math.round(x * alpha + y * (1 - alpha));
+	return `#${[mix(r, R), mix(g, G), mix(b, B)]
+		.map((v) => v.toString(16).padStart(2, "0"))
+		.join("")}`;
+};
+
+/*
+ * `color-mix(in srgb, a share%, b)` as the browser computes it: a straight
+ * interpolation of the sRGB-ENCODED channels (CSS Color 5 "in srgb"), rounded
+ * to the 8-bit value the compositor paints. Used for fills a component derives
+ * from two roles rather than naming one, so the contract measures the colour
+ * on screen instead of a role it does not wear.
+ */
+const srgbMix = (a, b, share) => {
+	if (!isHex(a) || !isHex(b) || a.length !== 7 || b.length !== 7) return null;
+	const ch = (h, i) => Number.parseInt(h.slice(i, i + 2), 16);
+	return `#${[1, 3, 5]
+		.map((i) =>
+			Math.round(ch(a, i) * share + ch(b, i) * (1 - share))
+				.toString(16)
+				.padStart(2, "0"),
+		)
+		.join("")}`;
+};
+
 /* ---- 3. loading the palettes ------------------------------------------- */
 
 /* Palette loading lives in palette-source.mjs so this gate and the CSS
@@ -557,6 +605,58 @@ const CONTROLS = [
 		fill: "mediaSurface",
 		border: null,
 		ink: "inkMuted",
+		edge: false,
+	},
+	/*
+	 * TEAM BRIDGE REACTION PILLS (operator polish round, 2026-10-30): borderless,
+	 * "subtly contrasted fill like the sidebar counts", the reader's own reaction
+	 * "clearly brighter" (`team-bridge-reactions.tsx`).
+	 *
+	 * THE THREE HOSTS are the grounds a message row is painted on: the thread
+	 * column's `surface` (`team-bridge-page.tsx`), the thread pane's `canvas`
+	 * (`team-bridge-thread-pane.tsx`) and `rowHover`, which the row takes under
+	 * the pointer - exactly when a reader is about to press a pill.
+	 *
+	 * WHY `edge: false` ON THE ROLE ROWS. The pill is a COUNT MARK in the sidebar's
+	 * quiet-count family (`attentionQuiet`: `elevated`, no ring), and that family
+	 * already declares that its fill is a grouping whisper, not a boundary: the
+	 * `elevated` fill is ΔE00 0.00 off `rowHover` in arcade, so no quiet
+	 * fill-only design can promise 3:1 there, and a border is what the operator asked to remove. What keeps a
+	 * pill legible and operable is the INK on its own fill - the emoji and the
+	 * count are the content and the target - which these rows assert at 4.5:1 on
+	 * every palette, at rest and in the hover step.
+	 */
+	{
+		name: "team bridge reaction pill",
+		on: ["surface", "canvas", "rowHover"],
+		fill: "elevated",
+		border: null,
+		ink: "inkMuted",
+		edge: false,
+	},
+	{
+		name: "team bridge reaction pill (hover)",
+		on: ["surface", "canvas", "rowHover"],
+		fill: "sunken",
+		border: null,
+		ink: "ink",
+		edge: false,
+	},
+	/* The reader's OWN pill is not a role but a derived fill (accent mixed over
+	   surface), so it cannot be a CONTROLS row: it is asserted by
+	   `REACTION_OWN_PILL` below, which mixes the fill per palette. */
+	{
+		/*
+		 * The pills' `+`: a transparent `inkDim` glyph at rest (asserted on the
+		 * three grounds by the ground ink loop) that takes the resting pill's
+		 * `elevated` fill and full `ink` under the pointer. Same `edge: false`
+		 * reasoning as the pills above.
+		 */
+		name: "team bridge reaction add (hover)",
+		on: ["surface", "canvas", "rowHover"],
+		fill: "elevated",
+		border: null,
+		ink: "ink",
 		edge: false,
 	},
 	{
@@ -2237,10 +2337,11 @@ const GRAPHICS = [
 		 * ring, which puts its outer edge against the PANE's ground: `elevated`
 		 * (the browser, console, run and asks slots) or `canvas` (when no pane is
 		 * open, the conversation column). Those two are listed so a palette whose
-		 * `accent` sits close to either fails here and not on screen. There is no
-		 * hairline left between the rail and the pane - the edge is the tone
-		 * step, and `scripts/pane-slot-ground.test.mjs` pins the rail root's
-		 * no-rule - so the bar's own 2px column is the whole mark at that edge.
+		 * `accent` sits close to either fails here and not on screen. A `PanelEdge`
+		 * seam sits between the rail and the pane again (2026-10-30), and the bar
+		 * paints above it (`before:z-25` over the seam's `z-20`), so the bar's outer
+		 * pixel is `accent` against the pane's ground - the pair listed here - and
+		 * not the seam's 75% blend (design review round 1, D2).
 		 */
 		name: "panel rail lit glyph and bar",
 		on: ["rowSelected", "rowHover", "surface", "elevated", "canvas"],
@@ -2918,26 +3019,81 @@ const PERCEPTIBLE = [
  *     let a merged slab through - which is why it is acceptable rather than
  *     worth a parser.
  */
+/*
+ * The own reaction pill's derived fills (`team-bridge-reactions.tsx`), asserted
+ * in the palette loop. The shares are the call site's `color-mix` percentages;
+ * the pin "team bridge own reaction pill fill" below holds the call site to
+ * them.
+ *
+ * THE REST FLOOR IS 8.0 ΔE00 OFF THE OTHERS' PILL (design review round 2, D6).
+ * "Clearly brighter" is the operator's headline ask, and the round-1 mix (20%,
+ * floor 5.0) measured 5.83 in tokyoNight - the operator's own theme - which is
+ * the thinnest margin in the fleet, not a clear one. 26% measures >= 8.50
+ * (tokyoNight again) with `ink` >= 4.72:1 (ayuMirage); 22% and 24% still sit
+ * under 8 (6.90 / 7.68), so 26% is the smallest share that clears it on all 59.
+ *
+ * WHY THE HOVER ROW KEEPS 5.0 AND DOES NOT TAKE 8.0. The hover fill goes DOWN to
+ * 20% - darker, the direction the others' pills take to `sunken` (D5, restated
+ * by D6) - so it necessarily steps TOWARD the others' resting `elevated` pill:
+ * at 20% it is 5.83 from it, and NO share clears 8.0 while still being a step
+ * down from the 26% rest (clearing 8.0 needs the same 26%). The two states are
+ * never compared side by side anyway; what the hover must keep is its own
+ * legibility (`ink` >= 5.44:1) and its separation from the grounds it is
+ * painted on, and those are asserted here. The step itself measures ΔE00 2.44
+ * worst (sage).
+ */
+const REACTION_OWN_PILL = [
+	{
+		name: "team bridge own reaction pill",
+		accentShare: 0.26,
+		apartFrom: {
+			elevated: 8.0,
+			sunken: 3.0,
+			surface: 3.0,
+			canvas: 3.0,
+			rowHover: 3.0,
+		},
+	},
+	{
+		name: "team bridge own reaction pill (hover)",
+		accentShare: 0.2,
+		apartFrom: { elevated: 5.0, surface: 3.0, rowHover: 3.0 },
+	},
+];
+
 const STRUCTURAL_CALL_SITES = [
 	{
 		/*
-		 * THE BORDERLESS ADD-REACTION CONTROL'S ONLY EXTENT IS ITS FILL.
+		 * THE REACTION PILLS WEAR THE FILLS THEIR CONTRACT ROWS MEASURE.
 		 *
-		 * Design round 1 (D5) measured it at 30x28 with `border-width: 0px` and a
-		 * 1.06:1 fill against `canvas` - a control that reads as absent, not as
-		 * quiet - while its sibling chips stayed visible through their
-		 * `border-control` edge. The fix is a fill step, not a line: borderless
-		 * chrome is a standing operator requirement. The `mediaSurface` palette row
-		 * ("team bridge borderless person and agent plates") proves the VALUE clears
-		 * `canvas`, `surface`, `elevated` and `rowHover` on every palette; only this
-		 * pin can see the edit that returns the button to `sunken` or to a ground
-		 * role, which leaves every ratio above green while the control loses the
-		 * only boundary a borderless control has.
+		 * The CONTROLS rows "team bridge reaction pill" (+ hover) and
+		 * `REACTION_OWN_PILL` prove the VALUES on every palette; only this pin can
+		 * see the edit that moves a pill to another role or another mix share,
+		 * which would leave every ratio above green. (The ring the operator asked
+		 * to remove is held by the base-class pin below.)
+		 *
+		 * This REPLACES design round 1's D5 pin ("add-reaction control extent is
+		 * its fill", `bg-media-surface` at rest). The operator reversed that design
+		 * in the same round: the `+` is now a ghost revealed with its message row,
+		 * so its rest state has no fill by decision, and the pin below holds its
+		 * hover fill instead.
 		 */
-		what: "team bridge add-reaction control extent is its fill",
+		what: "team bridge reaction pills wear their measured fills",
 		file: "src/renderer/src/features/team-bridge/team-bridge-reactions.tsx",
-		must: '"inline-flex min-h-7 items-center gap-1 rounded-full bg-media-surface px-2 text-ink-muted",\n\t\t\t\t\t\t\t"hover:bg-sunken hover:text-ink disabled:text-ink-dim",',
-		why: "a borderless control's only resting boundary is its fill; `sunken` sits ΔL* 2.4 off `canvas` (1.06:1) and reads as no control at all, and no palette assertion can see which class the button wears, so a green matrix would outlive the regression",
+		must: '? "bg-[color-mix(in_srgb,var(--color-accent)_26%,var(--color-surface))] font-medium text-ink hover:bg-[color-mix(in_srgb,var(--color-accent)_20%,var(--color-surface))]"\n\t\t\t\t\t\t\t\t: "bg-elevated text-ink-muted hover:bg-sunken hover:text-ink",',
+		why: "the pill rows assert `elevated`/`sunken` and the own pill's 26% rest / 20% hover accent-over-surface mixes with their inks; a pill moved to another role or share would leave those rows green about a component that no longer wears them",
+	},
+	{
+		what: "team bridge reaction pills stay borderless",
+		file: "src/renderer/src/features/team-bridge/team-bridge-reactions.tsx",
+		must: '"inline-flex h-6 shrink-0 items-center gap-1 rounded-full px-2 text-[12px] leading-none transition-colors duration-fast ease-out-quart disabled:text-ink-dim",',
+		why: "the operator asked for the `border-control` ring to go (polish round, 2026-10-30); the pill rows declare `edge: false` on that basis, so a ring added back would be a boundary no row measures (agent review round 1, R3)",
+	},
+	{
+		what: "team bridge reaction add takes the pill fill on hover",
+		file: "src/renderer/src/features/team-bridge/team-bridge-reactions.tsx",
+		must: '"hover:bg-elevated hover:text-ink disabled:text-ink-dim",',
+		why: 'the ghost `+` has no fill at rest by design; its hover is the one state with an extent, and the row "team bridge reaction add (hover)" measures `ink` on `elevated` only while the button still names that fill',
 	},
 	{
 		/*
@@ -4779,6 +4935,38 @@ const INK_STEP_FLOOR = SYNTAX_COMMENT_FLOOR;
 const FIELD_SEPARATION_FLOOR = 2.0;
 const LINE_SEPARATION_FLOOR = 4.0;
 /*
+ * THE PANEL SEAM, and why it is measured with the FIELD floor on both sides.
+ *
+ * `shared/components/common/panel-edge.tsx` draws one 1px `hairline` at 75% on the
+ * edge where a full-height panel meets the plane beside it - the operator's
+ * 2026-10-30 report that neither sidebar has a readable edge in light themes.
+ *
+ * The seam is the EDGE OF A FIELD, not a rule across one. That is why it does not
+ * take `LINE_SEPARATION_FLOOR`: the mark the reader reads is the boundary, and the
+ * eye receives it as two stacked steps (panel to seam, seam to neighbour), each of
+ * which has to be perceptible on its own. The seam is also deliberately quieter
+ * than a section rule - that is what the alpha is for - while `hairline`'s own
+ * 4.0 against every ground is asserted separately above and is untouched by a
+ * composited copy at 75%. So both sides use `FIELD_SEPARATION_FLOOR` (2.0), the
+ * same floor the ladder's adjacent steps answer to.
+ *
+ * MEASURED over the 59 palettes at 75%: the tightest own-ground pair is 2.92
+ * (`ocean`, seam over `elevated`) and the tightest facing pair 2.29 (`gruvbox`'s
+ * rail against an open pane). 70% failed the facing floor (`gruvbox`, 1.96), and
+ * 75% is the lowest tenth that clears both. The alpha is pinned here, and the
+ * shipped class is read back from `panel-edge.tsx` after the palette loop: this
+ * file is the authority for the number, and the class must carry it (QA round 1,
+ * Q-3).
+ */
+const PANEL_SEAM_ALPHA = 0.75;
+
+/** The (drawn-on, faces) pair each panel seam can produce, per palette. */
+const SEAM_PAIRS = [
+	["surface", "canvas"],
+	["surface", "elevated"],
+	["elevated", "canvas"],
+];
+/*
  * THE REGION FLOOR, for two planes of the same kind meeting with no rule between
  * them. Declared separately from the two above for the reason the pair above is:
  * they move for different measurements, and a change to either is a change to one
@@ -5932,6 +6120,41 @@ for (const { id, palette: p } of palettes) {
 	}
 
 	/*
+	 * TEAM BRIDGE OWN REACTION PILL (design review round 1, D1 on #1524). The
+	 * fill is `color-mix(in srgb, accent N%, surface)`, mixed here per palette
+	 * exactly as the browser mixes it (sRGB-encoded channels), and asserted three
+	 * ways on every palette:
+	 *   1. SEPARATION from the others' pill (`elevated`) and from their hover
+	 *      (`sunken`): the operator asked for "clearly brighter", and the first
+	 *      cut (`accentWash`) measured ΔE00 2.04 / 1.01:1 off `elevated` in
+	 *      tokyoNight, the operator's own theme, and was DARKER in 54 of 59.
+	 *   2. A visible step off the grounds the row is painted on, including the
+	 *      hovered row (`rowHover`), where `accentWash` hit 1.00:1 on dracula.
+	 *   3. `ink` on the fill at 4.5:1, at rest and on the hover step.
+	 * Separation is ΔE00, the file's perceptual instrument; a luminance ratio
+	 * cannot see a hue step, and hue IS the accent tint's job.
+	 */
+	for (const row of REACTION_OWN_PILL) {
+		const fill = srgbMix(p.accent, p.surface, row.accentShare);
+		if (!fill) continue;
+		assertions++;
+		const inkOn = ratio(p.ink, fill);
+		if (inkOn < FLOOR.text)
+			fail(
+				`${id}: ${row.name} — ink ${p.ink} on fill ${fill} = ${r2(inkOn)}:1, need ${FLOOR.text}:1`,
+			);
+		for (const [other, min] of Object.entries(row.apartFrom)) {
+			if (!isHex(p[other])) continue;
+			assertions++;
+			const got = deltaE(fill, p[other]);
+			if (got < min)
+				fail(
+					`${id}: ${row.name} — fill ${fill} is ΔE00 ${r2(got)} from \`${other}\` ${p[other]}, need ${min}`,
+				);
+		}
+	}
+
+	/*
 	 * The console terminal's own pair (§9.3), after the component triples because
 	 * it is a pair between two ROLES rather than a control's boundary: the block
 	 * cursor's ink on the block cursor.
@@ -6781,6 +7004,70 @@ for (const { id, palette: p } of palettes) {
 				`${id}: \`hairline\` on \`${ground}\` is ${r2(luminance)}:1 (max ${HAIRLINE_RATIO_CEILING}) — past this it is drawing a border, and the system already has one of those`,
 			);
 		}
+	}
+
+	/*
+	 * The panel seam, in both places it is drawn: `hairline` at
+	 * `PANEL_SEAM_ALPHA` over a `surface` panel (the sidebar and the rail) and over
+	 * an `elevated` pane. Each is measured against the ground it composites onto AND
+	 * against the plane it faces, because a seam invisible from either side is a
+	 * seam that only reads along part of its length.
+	 *
+	 * The three facing pairs are the shell's adjacencies: chrome beside the
+	 * conversation (`surface`/`canvas`), chrome beside an open pane
+	 * (`surface`/`elevated`), and a pane beside the conversation
+	 * (`elevated`/`canvas`). The second is the tightest in the shipped fleet because
+	 * the seam is composited on `surface` while it faces `elevated` - which is
+	 * exactly the pair a marker drawn on one side is easy to forget.
+	 */
+	for (const [ground, facing] of SEAM_PAIRS) {
+		if (!isHex(p.hairline) || !isHex(p[ground]) || !isHex(p[facing])) continue;
+		const seam = over(p.hairline, p[ground], PANEL_SEAM_ALPHA);
+		assertions++;
+		const fromGround = deltaE(seam, p[ground]);
+		if (fromGround < FIELD_SEPARATION_FLOOR) {
+			fail(
+				`${id}: the panel seam over \`${ground}\` is ΔE00 ${r2(fromGround)} from that ground (need ${FIELD_SEPARATION_FLOOR}) — the seam is half the boundary, and half a boundary the reader cannot see is a panel edge that disappears`,
+			);
+		}
+		assertions++;
+		const fromFacing = deltaE(seam, p[facing]);
+		if (fromFacing < FIELD_SEPARATION_FLOOR) {
+			fail(
+				`${id}: the panel seam over \`${ground}\` is ΔE00 ${r2(fromFacing)} from \`${facing}\` (need ${FIELD_SEPARATION_FLOOR}) — the seam has to read from the plane it faces as well as the one it sits on`,
+			);
+		}
+	}
+}
+
+/*
+ * THE ALPHA THE GATE MEASURES MUST BE THE ALPHA THE PRODUCT PAINTS (QA round 1,
+ * Q-3). `PANEL_SEAM_ALPHA` above is what every assertion in the palette loop used,
+ * but the shipped colour is the class string in `panel-edge.tsx`. While the two
+ * were separate literals, a class edit to `bg-hairline/40` left all of these
+ * assertions green (measured by QA: the full 187,924, no failure). Reading the
+ * class back here makes the gate measure the pixel that ships; exactly one
+ * `bg-hairline/<number>` in that file, carrying this percentage, or the gate
+ * fails.
+ */
+{
+	const source = readFileSync(
+		join(ROOT, "src/renderer/src/shared/components/common/panel-edge.tsx"),
+		"utf8",
+	);
+	const alphas = [...source.matchAll(/\bbg-hairline\/(\d+)\b/g)].map((m) =>
+		Number(m[1]),
+	);
+	assertions++;
+	const shipped = alphas.length === 1 ? alphas[0] : null;
+	if (shipped !== Math.round(PANEL_SEAM_ALPHA * 100)) {
+		fail(
+			`panel-edge.tsx paints ${
+				alphas.length === 0
+					? "no `bg-hairline/<alpha>` class"
+					: `\`bg-hairline/${alphas.join(", ")}\``
+			} but this gate measures \`PANEL_SEAM_ALPHA ${PANEL_SEAM_ALPHA}\` - the class that ships and the number every seam assertion used must be one value`,
+		);
 	}
 }
 

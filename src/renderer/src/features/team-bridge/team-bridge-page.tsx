@@ -22,6 +22,7 @@ import {
 	forgetBridgeComposerRows,
 	teamBridgeComposerKey,
 } from "@shared/store/team-bridge-composer-rows";
+import { onDraftRevocation } from "@shared/store/team-bridge-draft-account";
 import { showErrorToast } from "@shared/utils/toast-manager";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -37,6 +38,7 @@ import {
 } from "lucide-react";
 import type { FC, ReactNode } from "react";
 import {
+	Fragment,
 	useEffect,
 	useId,
 	useLayoutEffect,
@@ -54,6 +56,7 @@ import type {
 	TeamBridgeMessage,
 	TeamBridgeNotify,
 } from "../../../../shared/team-bridge-contract";
+import { browserDraftStorage } from "../../shared/store/team-bridge-draft-account";
 import { rowCurrent } from "../chat/components/chat-sidebar";
 import { TeamBridgeAddMembersView } from "./team-bridge-add-members";
 import {
@@ -123,7 +126,6 @@ import {
 	organizationsReadState,
 	participantLabel,
 	personDisplayLabel,
-	preferredScope,
 	railSections,
 	recipientCandidates,
 	recipientKey,
@@ -134,6 +136,13 @@ import {
 	unmatchedDirects,
 	visibleConversationRows,
 } from "./team-bridge-model";
+import {
+	looseDirectsFor,
+	orgGroupHeadingId,
+	orgGroupsVisible,
+	orgRosters,
+	orgRowKey,
+} from "./team-bridge-org-rosters";
 import { TeamBridgeOrgSwitcher } from "./team-bridge-org-switcher";
 import { useBridgeOwner, useTeamBridgeAccount } from "./team-bridge-owner";
 import {
@@ -148,7 +157,9 @@ import {
 	ChiefRailRow,
 	ConversationRailRow,
 	PersonRailRow,
+	RailGroupHeader,
 	RailLoading,
+	RailQuietLine,
 	RailSection,
 	isTargetRow,
 } from "./team-bridge-rail";
@@ -162,6 +173,12 @@ import {
 	scheduleTeamBridgeDraft,
 	scheduledTargetAfterSuccess,
 } from "./team-bridge-scheduling";
+import {
+	readScopePreference,
+	resolveOpeningScope,
+	snapshotForScope,
+	writeScopePreference,
+} from "./team-bridge-scope-preference";
 import { uploadStagedImages } from "./team-bridge-staged-upload";
 import type { StagedUploadFailure } from "./team-bridge-staged-upload";
 import {
@@ -210,6 +227,28 @@ type SendRefusal =
 	| { kind: "capability" }
 	| { kind: "expired" }
 	| { kind: "upload"; failure: StagedUploadFailure };
+
+/*
+ * THE FAILED-SEND RECORD LIVES AT MODULE SCOPE (round 4 retrospective, R4-02).
+ *
+ * A send whose answer never arrived may still have landed, so pressing Send on the
+ * same text must reuse its `client_ref` or the hub posts it twice. That record used
+ * to sit in a `useRef` (and the container's `drafts` map), both of which die when
+ * `/team-bridge` unmounts - so leaving Team Bridge and coming back turned the retry
+ * into a new key and a visible duplicate. A module map survives the route change and
+ * still dies with the renderer: a restart is the one remaining case, accepted on
+ * purpose because the only key a restart could recover is the persisted draft key,
+ * and that one may already be spent (see `submit`).
+ *
+ * Keyed by `teamBridgeComposerKey` - account, authored scope and target - the same
+ * name the composer's text lives under, so a record is only ever read by the draft
+ * that wrote it. It is account-owned in-memory state, so it registers with the same
+ * fence that erases the draft journal and the composer rows: sign-out and account
+ * switch drop every record.
+ */
+type SendAttempt = { body: string; clientRef: string };
+const sendAttempts = new Map<string, SendAttempt>();
+onDraftRevocation(() => sendAttempts.clear());
 
 /**
  * The catalogue's own sentence for each upload refusal this send can produce, so
@@ -478,7 +517,6 @@ export function relative(iso: string, locale: string): string {
 
 type OwnedDraft = {
 	body: string;
-	pending: { body: string; clientRef: string } | null;
 };
 
 export type TeamBridgePageViewProps = {
@@ -599,6 +637,12 @@ export type TeamBridgePageViewProps = {
 	directories?: Readonly<Record<string, readonly TeamBridgeDirectoryMember[]>>;
 	/** Each organization's directory read state, for the merged view's picker. */
 	directoryStates?: Readonly<Record<string, "loading" | "error" | "ready">>;
+	/**
+	 * Each organization's directory error, so a failed roster in the union view
+	 * names its own cause (signed out, plan, transport) under its own header
+	 * instead of a generic line.
+	 */
+	directoryErrors?: Readonly<Record<string, unknown>>;
 	/** Re-run one organization's directory read (the merged view's retry). */
 	onRetryMembers?: (tenantId: string) => void;
 	/**
@@ -661,6 +705,14 @@ export type TeamBridgePageViewProps = {
 	onNewChannel: () => void;
 	onRetry?: () => void;
 	onScopeChange: (scope: TeamBridgeScope) => void;
+	/**
+	 * The reader's EXPLICIT switcher pick, kept distinct from `onScopeChange`
+	 * because this is the one choice that is persisted and the one that counts as
+	 * "the reader chose" (`team-bridge-scope-preference`). A scope adopted at
+	 * opening, and the implicit switch a union row makes to reach its own
+	 * organization, are consequences and must not rewrite the stored default.
+	 */
+	onChooseOrganization?: (scope: TeamBridgeScope) => void;
 	onRetryMemberships?: () => void;
 };
 
@@ -714,6 +766,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	people = [],
 	directories,
 	directoryStates,
+	directoryErrors,
 	selfName,
 	peopleState = "ready",
 	peopleError,
@@ -733,6 +786,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	onNewChannel,
 	onRetry,
 	onScopeChange,
+	onChooseOrganization,
 	onRetryMemberships,
 }) => {
 	const locale = useI18nLocale();
@@ -984,6 +1038,39 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 		() => (mergedView ? [] : chiefsOfStaff(people, selfAccountId)),
 		[mergedView, people, selfAccountId],
 	);
+	/*
+	 * THE UNION VIEW'S ROSTERS (operator ask: every single-org capability works in
+	 * "All organizations"). One slice per organization, in the switcher's order,
+	 * built from the per-organization reads `useTeamBridgeDirectories` already
+	 * runs - no read is added here, and the shell's cached answers paint at once.
+	 *
+	 * The single-org view does not use this: `people` is its one roster, and the
+	 * shipped sections below stay exactly as they were.
+	 */
+	const orgGroups = useMemo(
+		() =>
+			mergedView
+				? orgRosters({
+						organizations,
+						directories,
+						directoryStates,
+						directs: sections.directs,
+						selfAccountId,
+					})
+				: [],
+		[
+			mergedView,
+			organizations,
+			directories,
+			directoryStates,
+			sections,
+			selfAccountId,
+		],
+	);
+	/* One predicate for subheaders, shared with the audit rail (see
+	 * `orgGroupsVisible`): several organizations to disambiguate, or the shipped
+	 * flat list. */
+	const groupedUnion = orgGroupsVisible(mergedView, organizations.length);
 	const chiefLabels = chiefLabelCopy();
 	const self = useMemo(
 		() =>
@@ -1057,10 +1144,11 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 			? t("ui.teamBridge.sender.unknown_agent")
 			: t("ui.teamBridge.sender.unknown_person"));
 	// The single-org rail paints DMs on People / Chiefs rows; only a DM no row
-	// owns is listed on its own. The merged view has no directory, so every DM
-	// is listed there.
+	// owns is listed on its own. The union view folds them the same way, one
+	// organization at a time, so a person who is in two organizations cannot
+	// produce two rows for one DM (the single-org invariant, kept here).
 	const looseDirects = mergedView
-		? sections.directs
+		? looseDirectsFor(orgGroups)
 		: unmatchedDirects(sections.directs, people, chiefs, selfAccountId);
 
 	const selected = targetConversation(target, selectable, selfAccountId);
@@ -1275,12 +1363,6 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 		resetKey: `${shown?.tenant_id ?? ""}:${shown?.id ?? ""}:${messageState}:${quickView ?? ""}`,
 		contentKey: `${messages.length}:${messages.at(-1)?.id ?? ""}`,
 	});
-	// The retry's idempotency key: a failed send is retried with the SAME
-	// `client_ref`, so an ambiguous failure (request landed, answer lost) cannot
-	// post the message twice. A genuinely different draft gets a fresh key.
-	const pendingSend = useRef<{ body: string; clientRef: string } | null>(
-		draftJournal?.pending ?? null,
-	);
 	/*
 	 * ONE AUTO-RETRY PER ATTEMPT, never one per reader gesture. A manual retry of an
 	 * attempt that already spent its automatic retry keeps the key that retry minted (so
@@ -1343,11 +1425,11 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 		 *
 		 * The rule now: a RETRY of the attempt that just failed reuses that attempt's key (the
 		 * ambiguous-failure protection this ref exists for - request landed, answer lost - must
-		 * never post twice), and ANY other send mints a fresh one. `pendingSend` is the attempt
+		 * never post twice), and ANY other send mints a fresh one. `sendAttempts` holds the attempt
 		 * record, and the body comparison is what keeps a retry a retry: edit the text and it is
 		 * a different message, so it gets a different key.
 		 */
-		const attempt = pendingSend.current;
+		const attempt = sendAttempts.get(composerKey);
 		/*
 		 * ONLY A LIVE FAILED ATTEMPT IS A RETRY. Its key is reused so an ambiguous failure
 		 * (request landed, answer lost) cannot post twice; every other send is a new
@@ -1364,7 +1446,10 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 		 * The cost, accepted on purpose: if the app restarts between a send landing and
 		 * its answer arriving, and the reader then presses Send on the same text, the hub
 		 * sees a new key and posts a visible duplicate. A visible, deletable duplicate in
-		 * that rare case beats an invisible swallow in the common one.
+		 * that rare case beats an invisible swallow in the common one. Leaving Team Bridge
+		 * and coming back does NOT pay this cost: the attempt record is module-scoped.
+		 * Signing out or switching account does, because the record is erased with the
+		 * drafts.
 		 */
 		const clientRef =
 			attempt && attempt.body === body
@@ -1374,12 +1459,8 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 		// whatever the auto-retry below already spent on it.
 		if (attempt?.body !== body) autoRetried.current = false;
 		if (!draftState.update({ clientRef })) return false;
-		// ONE attempt, named in both stores: main's optimistic-row journal and
-		// this branch's durable row must carry the same `client_ref`, or a retry
-		// after a remount could post the message twice.
 		const entry = { body, clientRef };
-		pendingSend.current = entry;
-		if (draftJournal) draftJournal.pending = entry;
+		sendAttempts.set(composerKey, entry);
 		// Fenced BEFORE the call: the upload inside it stages into a conversation
 		// this request may be creating (R1-02).
 		writing.current = true;
@@ -1394,9 +1475,17 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 			 * render was the tautology of round 12's B1; all this side retires is its own
 			 * attempt record, which names a request that is over.
 			 */
-			if (isDraftCurrent() && pendingSend.current === entry) {
-				pendingSend.current = null;
-				if (draftJournal) draftJournal.pending = null;
+			/*
+			 * RETIRED BY IDENTITY, NOT BY CURRENCY (PR #1528 review round 1, R1-01). The
+			 * record is module-scoped and outlives this page, while `isDraftCurrent()` is
+			 * false once the reader has left: fencing the delete on it left a LANDED key
+			 * behind, and the next identical message reused it and was replayed into
+			 * nothing. Only the draft write below needs the page; the identity check alone
+			 * keeps a newer attempt on the same draft from being retired by this one.
+			 */
+			const ownRecord = sendAttempts.get(composerKey) === entry;
+			if (ownRecord) sendAttempts.delete(composerKey);
+			if (ownRecord && isDraftCurrent()) {
 				// THE SPENT KEY IS RETIRED WITH THE ATTEMPT. This is the actual fix: the
 				// draft outlives a successful send, so without this the next message reads
 				// the key this one just used and the hub refuses it with 409.
@@ -1424,16 +1513,15 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 				autoRetried.current = true;
 				const freshRef = crypto.randomUUID();
 				const retryEntry = { body, clientRef: freshRef };
-				pendingSend.current = retryEntry;
-				if (draftJournal) draftJournal.pending = retryEntry;
+				sendAttempts.set(composerKey, retryEntry);
 				if (draftState.update({ clientRef: freshRef })) {
 					try {
 						await onSend(body, freshRef, stagedForSend(attachments));
-						if (isDraftCurrent() && pendingSend.current === retryEntry) {
-							pendingSend.current = null;
-							if (draftJournal) draftJournal.pending = null;
+						// Same rule as the first arm: retire by identity, rotate only if current.
+						const ownRetry = sendAttempts.get(composerKey) === retryEntry;
+						if (ownRetry) sendAttempts.delete(composerKey);
+						if (ownRetry && isDraftCurrent())
 							draftState.update({ clientRef: crypto.randomUUID() });
-						}
 						return true;
 					} catch (retryError) {
 						if (isAttachmentNotFound(retryError))
@@ -1579,6 +1667,48 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	const createHint = readOnly
 		? t("ui.teamBridge.read_only.note")
 		: t("ui.teamBridge.scope.create_needs_org");
+	/*
+	 * THE ORGANIZATION LIST'S OWN STATES, shared by the union view's People and
+	 * Chiefs sections, and drawn BEFORE any organization header: until the list
+	 * answers there is nothing to name, so a header would be an invention. One
+	 * line each, and a failing list never replaces a roster that did answer.
+	 *
+	 * CHIEFS GETS THE QUIET COPY (design round 1, D1). Both sections read the same
+	 * organization list, so two "Organizations could not be loaded." blocks with
+	 * two Try again buttons would retry one read and read as two different
+	 * failures. People owns the statement and the button; Chiefs states the same
+	 * fact in the section's quiet line and offers no action of its own.
+	 */
+	const unionSectionNotice = membershipsLoading ? (
+		<RailLoading label={t("ui.teamBridge.scope.loading")} />
+	) : organizationsFailed ? (
+		<div className="flex flex-col items-start gap-2 px-2 py-1">
+			<p className="text-[12px] leading-snug text-ink-muted">
+				{t("ui.teamBridge.scope.error")}
+			</p>
+			{onRetryMemberships && (
+				<Button
+					type="button"
+					size="sm"
+					variant="outline"
+					onClick={onRetryMemberships}
+				>
+					{t("ui.teamBridge.list.retry")}
+				</Button>
+			)}
+		</div>
+	) : null;
+	// An account with no organizations at all: the section's own quiet line, in
+	// the shipped `RailSection.empty` style, rather than N empty headers.
+	const unionSectionNoticeQuiet = membershipsLoading ? (
+		<RailLoading label={t("ui.teamBridge.scope.loading")} />
+	) : organizationsFailed ? (
+		<RailQuietLine>{t("ui.teamBridge.scope.error")}</RailQuietLine>
+	) : null;
+	const unionSectionEmpty =
+		unionSectionNotice || organizations.length > 0
+			? undefined
+			: { text: t("ui.teamBridge.scope.empty") };
 
 	const draftLabel = (draftTarget: TeamBridgeTarget): string => {
 		if (draftTarget.type === "compose")
@@ -1691,7 +1821,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 					<TeamBridgeOrgSwitcher
 						organizations={organizations}
 						scope={scope}
-						onScopeChange={onScopeChange}
+						onScopeChange={onChooseOrganization ?? onScopeChange}
 						totalUnread={totalUnread}
 						membershipsLoading={membershipsLoading}
 						organizationsFailed={organizationsFailed}
@@ -1970,11 +2100,204 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 						</RailSection>
 					)}
 					{mergedView ? (
-						<RailSection
-							id="team-bridge-people-heading"
-							title={t("ui.teamBridge.people.title")}
-							empty={{ text: t("ui.teamBridge.people.all_scope") }}
-						/>
+						<>
+							{/*
+							 * THE UNION'S PEOPLE AND CHIEFS-OF-STAFF SECTIONS.
+							 *
+							 * One body per organization, in the switcher's order. The organization is
+							 * named ONCE - by the subheader - so its rows carry no caption, and a
+							 * failing roster keeps its header: knowing WHICH organization failed is
+							 * the point of the header here. No account-wide error path may replace the
+							 * section: one organization's failure never blanks another's rows.
+							 */}
+							<RailSection
+								id="team-bridge-people-heading"
+								title={t("ui.teamBridge.people.title")}
+								empty={unionSectionEmpty}
+							>
+								{unionSectionNotice ??
+									orgGroups.map((group, index) => {
+										const headingId = orgGroupHeadingId(
+											"people",
+											group.tenantId,
+										);
+										return (
+											<Fragment key={group.tenantId}>
+												{groupedUnion && (
+													<RailGroupHeader
+														id={headingId}
+														name={group.name}
+														first={index === 0}
+													/>
+												)}
+												{group.state === "loading" ? (
+													<RailLoading
+														label={t("ui.teamBridge.people.loading")}
+													/>
+												) : group.state === "error" ? (
+													<PeopleFailure
+														error={directoryErrors?.[group.tenantId]}
+														onRetry={() => onRetryMembers?.(group.tenantId)}
+													/>
+												) : group.members.length === 0 ? (
+													/* An organization that draws an empty line is an
+													   organization that was CHECKED. */
+													<RailQuietLine>
+														{t("ui.teamBridge.people.empty")}
+													</RailQuietLine>
+												) : (
+													<ul
+														className="flex flex-col"
+														aria-labelledby={
+															groupedUnion ? headingId : undefined
+														}
+													>
+														{group.members.map((member) => (
+															<PersonRailRow
+																hasDraft={Boolean(
+																	draftTextAt(
+																		group.tenantId,
+																		`person:${member.account_id}`,
+																	).trim(),
+																)}
+																key={orgRowKey(
+																	group.tenantId,
+																	member.account_id,
+																)}
+																member={member}
+																selfAccountId={selfAccountId}
+																identityKnown={identityKnown}
+																selected={false}
+																dm={dmWithPerson(
+																	group.directs,
+																	member.account_id,
+																	selfAccountId,
+																)}
+																readOnly={readOnly}
+																onSelect={() => {
+																	/*
+																	 * A SELECTION NEVER CO-EXISTS WITH THE UNION, which is why the row
+																	 * is always unselected here: reaching a person moves the rail into
+																	 * their organization, where their row resolves as shipped.
+																	 *
+																	 * THE SCOPE SWITCH IS MANDATORY, as on a thread's message row:
+																	 * `draftTenant` and the send payload both read the scope, so a
+																	 * person selected in the union without the switch would compose
+																	 * against no organization at all.
+																	 */
+																	onScopeChange(
+																		asTeamBridgeTenantId(group.tenantId),
+																	);
+																	selectTarget({
+																		type: "person",
+																		accountId: member.account_id,
+																	});
+																}}
+																onStartGroup={(recipient) => {
+																	onScopeChange(
+																		asTeamBridgeTenantId(group.tenantId),
+																	);
+																	startGroup(recipient);
+																}}
+															/>
+														))}
+													</ul>
+												)}
+											</Fragment>
+										);
+									})}
+							</RailSection>
+							<RailSection
+								id="team-bridge-chiefs-heading"
+								title={t("ui.teamBridge.section.chiefs")}
+								empty={unionSectionEmpty}
+							>
+								{unionSectionNoticeQuiet ??
+									orgGroups.map((group, index) => {
+										const headingId = orgGroupHeadingId(
+											"chiefs",
+											group.tenantId,
+										);
+										return (
+											<Fragment key={group.tenantId}>
+												{groupedUnion && (
+													<RailGroupHeader
+														id={headingId}
+														name={group.name}
+														first={index === 0}
+													/>
+												)}
+												{group.state === "loading" ? (
+													<RailLoading
+														label={t("ui.teamBridge.people.loading")}
+													/>
+												) : group.state === "error" ? (
+													/* CHIEFS DERIVES FROM PEOPLE'S READ, so it states the
+													   failure once, without a reason or a second retry
+													   (design D1): People's Try again repaints both. */
+													<RailQuietLine>
+														{t("ui.teamBridge.people.error")}
+													</RailQuietLine>
+												) : group.chiefs.length === 0 ? (
+													<RailQuietLine>
+														{t("ui.teamBridge.section.chiefs_empty")}
+													</RailQuietLine>
+												) : (
+													<ul
+														className="flex flex-col"
+														aria-labelledby={
+															groupedUnion ? headingId : undefined
+														}
+													>
+														{group.chiefs.map((chief) => (
+															<ChiefRailRow
+																hasDraft={Boolean(
+																	draftTextAt(
+																		group.tenantId,
+																		`chief:${chief.person.account_id}`,
+																	).trim(),
+																)}
+																key={orgRowKey(
+																	group.tenantId,
+																	chief.person.account_id,
+																)}
+																chief={chief}
+																label={composeChiefLabel(
+																	chief.agentName,
+																	personDisplayLabel(chief.person),
+																	chiefLabels,
+																)}
+																selected={false}
+																dm={dmWithAgent(
+																	group.directs,
+																	chief.person.account_id,
+																	selfAccountId,
+																)}
+																readOnly={readOnly}
+																onSelect={() => {
+																	onScopeChange(
+																		asTeamBridgeTenantId(group.tenantId),
+																	);
+																	selectTarget({
+																		type: "chief",
+																		accountId: chief.person.account_id,
+																	});
+																}}
+																onStartGroup={(recipient) => {
+																	onScopeChange(
+																		asTeamBridgeTenantId(group.tenantId),
+																	);
+																	startGroup(recipient);
+																}}
+															/>
+														))}
+													</ul>
+												)}
+											</Fragment>
+										);
+									})}
+							</RailSection>
+						</>
 					) : (
 						<>
 							<RailSection
@@ -3093,10 +3416,23 @@ const TeamBridgeOwnedPage: FC<{
 			? threadTargetFromSearch(searchParams)
 			: null,
 	);
+	/*
+	 * THE READER'S LAST SWITCHER PICK seeds the first paint, synchronously, so a
+	 * multi-organization account lands where it left off rather than on the union
+	 * and then correcting. The stored value only decides this page's START:
+	 * `resolveOpeningScope` still validates it against the memberships once they
+	 * answer, and only an explicit switcher pick writes it.
+	 */
+	const storedScope = useMemo(() => {
+		const storage = browserDraftStorage();
+		return storage && accountId
+			? readScopePreference(storage, accountId)
+			: undefined;
+	}, [accountId]);
 	const [scope, setScope] = useState<TeamBridgeScope>(() =>
 		requestedTenant
 			? asTeamBridgeTenantId(requestedTenant)
-			: TEAM_BRIDGE_ALL_SCOPE,
+			: (storedScope ?? TEAM_BRIDGE_ALL_SCOPE),
 	);
 	const scopeChosen = useRef(Boolean(requestedTenant));
 	/*
@@ -3109,9 +3445,10 @@ const TeamBridgeOwnedPage: FC<{
 	 *
 	 * It is used ONLY while the scope this page reads has no data of its own: an
 	 * answer that has landed always wins, so a snapshot can never shadow a current
-	 * read. Every row still passes through `visibleConversationRows`, so a snapshot
-	 * taken at account scope cannot show one organization's rows under another's
-	 * title. The watcher carries no message bodies, so the selected thread's history
+	 * read. `snapshotForScope` then narrows it to the scope being painted, because
+	 * the watcher's entry is ACCOUNT-scoped: it carries every organization's rows
+	 * (review round 1, M1). The watcher carries no message bodies, so the selected
+	 * thread's history
 	 * is still its own read and its own loading state - nothing here implies it was
 	 * already fetched.
 	 */
@@ -3196,8 +3533,14 @@ const TeamBridgeOwnedPage: FC<{
 	 * that would have been discarded.
 	 */
 	const scopeSettled =
-		preferredScope(organizations, scope, scopeChosen.current, openingRows) ===
-		scope;
+		resolveOpeningScope({
+			organizations,
+			stored: storedScope,
+			requestedTenant,
+			chosen: scopeChosen.current,
+			current: scope,
+			snapshotRows: openingRows,
+		}) === scope;
 	// `organizationsPending` is the same rule one step earlier: the answer that
 	// decides the scope is still in flight, so a read now would be a read this
 	// page is about to replace.
@@ -3227,7 +3570,21 @@ const TeamBridgeOwnedPage: FC<{
 	// The reader's own name for their own messages; `user` is null until the
 	// account read answers, never the user store's placeholder name.
 	const selfName = auth.user?.name ?? undefined;
-	const conversations = list.data?.conversations ?? openingRows ?? [];
+	/*
+	 * A SCOPE MAY ONLY PAINT ITS OWN ORGANIZATION'S SNAPSHOT (review M1).
+	 * `openingRows` is the shell watcher's account-scoped cache entry, and
+	 * `visibleConversationRows` hands a single-organization list back unchanged -
+	 * so before this, a stored single-org scope painted the OTHER organizations'
+	 * channels and DMs under its own switcher title, and the one-shot landing
+	 * effect below could select a conversation this page never reads (which in
+	 * turn made `selectionOutsideLive` spend an archived read on open). Filtering
+	 * at the source keeps the rule one place: a scope stands in only its own rows.
+	 */
+	const openingSnapshot = useMemo(
+		() => snapshotForScope(openingRows ?? [], scope),
+		[openingRows, scope],
+	);
+	const conversations = list.data?.conversations ?? openingSnapshot;
 	/*
 	 * PAINT BEFORE THE VERDICT (tb-instant-open, mechanism 2). The status answer
 	 * decides whether this surface exists for the account at all, so the gate used
@@ -3333,6 +3690,19 @@ const TeamBridgeOwnedPage: FC<{
 		setChannelFormOpen(false);
 	};
 
+	/*
+	 * THE ONE WRITE (spec 4.3). The switcher's pick is the only place a scope
+	 * becomes a stored preference: a deep link, the automatic one-organization
+	 * resolution and the implicit switch a union row makes are consequences, and
+	 * deriving a default from them would make the landing unpredictable from
+	 * anything the reader selected.
+	 */
+	const chooseOrganization = (next: TeamBridgeScope) => {
+		const storage = browserDraftStorage();
+		if (storage && accountId) writeScopePreference(storage, accountId, next);
+		changeScope(next);
+	};
+
 	// The organization list (hub tenants, or memberships without them) resolves
 	// after the first paint; adopt the only one unless
 	// the reader has already picked a scope. A later unread poll re-renders the
@@ -3341,9 +3711,16 @@ const TeamBridgeOwnedPage: FC<{
 	// supersedes it the moment it answers (tb-instant-open).
 	useEffect(() => {
 		setScope((current) =>
-			preferredScope(organizations, current, scopeChosen.current, openingRows),
+			resolveOpeningScope({
+				organizations,
+				stored: storedScope,
+				requestedTenant,
+				chosen: scopeChosen.current,
+				current,
+				snapshotRows: openingRows,
+			}),
 		);
-	}, [organizations, openingRows]);
+	}, [organizations, openingRows, storedScope, requestedTenant]);
 
 	const visibleConversations = useMemo(
 		() => visibleConversationRows(conversations, scope, organizations),
@@ -3675,7 +4052,7 @@ const TeamBridgeOwnedPage: FC<{
 		selected?.tenant_id ?? scope,
 		target,
 	]);
-	const draftJournal = drafts.get(draftKey) ?? { body: "", pending: null };
+	const draftJournal = drafts.get(draftKey) ?? { body: "" };
 	drafts.set(draftKey, draftJournal);
 	return (
 		<>
@@ -3854,6 +4231,7 @@ const TeamBridgeOwnedPage: FC<{
 				people={people}
 				directories={directoriesRead.members}
 				directoryStates={directoriesRead.state}
+				directoryErrors={directoriesRead.errors}
 				onRetryMembers={(tenantId) => {
 					// The merged view mounts one read per organization; the single-scope
 					// read is the one the rest of the page already shows and retries.
@@ -3882,6 +4260,7 @@ const TeamBridgeOwnedPage: FC<{
 					if (memberships.isError) void memberships.refetch();
 				}}
 				onScopeChange={changeScope}
+				onChooseOrganization={chooseOrganization}
 				onRetryMemberships={() => {
 					void memberships.refetch();
 				}}

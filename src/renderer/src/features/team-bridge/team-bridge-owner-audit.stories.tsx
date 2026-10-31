@@ -18,8 +18,8 @@ import {
  * screening verdict to a human, that carries a disclosure line about who can
  * read the conversation, and that deliberately has no composer. Those three are
  * design claims, so they have to be looked at rather than asserted: whether the
- * verdict chips read as status and not as actions, whether the collapsed
- * rejected body is obviously expandable, whether the disclosure line reads as
+ * verdict chips read as status and not as actions, whether a rejected body
+ * read inline is still unmistakably marked by its chip, whether the disclosure line reads as
  * information rather than a warning, and whether the panel holds up in dark.
  *
  * The fixtures are the shapes the routes send (`docs/team-bridge-owner-audit.md`
@@ -393,8 +393,8 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** The ordinary case: verdicts, a collapsed rejection, an absent body, and the
- * agent's own message open. */
+/** The ordinary case: verdicts, a rejection read inline under its chip, an
+ * absent body, and the agent's own message. */
 export const Populated: Story = {};
 
 /** Nothing to audit in this organization yet — and therefore no panel: the slot
@@ -430,14 +430,14 @@ export const OlderPageAvailable: Story = {
 
 /** The before/after frame for the shared renderer: a long agent write-up with
  * a list, a table and a code block, then two chiefs of staff named Aida told
- * apart by their people, then the ordinary verdicts — a rejection collapsed,
+ * apart by their people, then the ordinary verdicts — a rejection inline,
  * a body the hub never sent. */
 export const MarkdownAndTwoAidas: Story = {
 	args: { messages: markdownMessages },
 };
 
 /** Every body unavailable: the audit's own sentence on each row, never an
- * empty prose block and never a disclosure that promises text. */
+ * empty prose block. */
 export const BodiesUnavailable: Story = {
 	args: { messages: unavailableMessages },
 };

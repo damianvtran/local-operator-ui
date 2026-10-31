@@ -236,6 +236,7 @@
 	"ui.teamBridge.reactions.toneDefault": "默认肤色",
 	"ui.teamBridge.reactions.empty": "未找到表情",
 	"ui.teamBridge.reactions.failed": "表情回应未保存。请重试。",
+	"ui.teamBridge.reactions.others": "{others, plural, other {其他#人}}",
 	"ui.teamBridge.reactions.category0": "笑脸和情感",
 	"ui.teamBridge.reactions.category1": "人物和身体",
 	"ui.teamBridge.reactions.category2": "动物和自然",

@@ -23,6 +23,7 @@ import type {
 	TeamBridgeConversation,
 	TeamBridgeMessage,
 } from "../../../../shared/team-bridge-contract";
+import type { OwnerAuditConversation } from "../../../../shared/team-bridge-owner-audit-contract";
 /*
  * WHY THIS SIDE-EFFECT IMPORT IS HERE, ABOVE THE COMPONENTS. Since the page
  * mounts the shared `MessageInput`, the composer reaches
@@ -49,7 +50,13 @@ import {
 	draftCreateInput,
 	organizationOptions,
 } from "./team-bridge-model";
+import {
+	OwnerAuditRailView,
+	OwnerAuditSectionHeader,
+	type OwnerAuditSlot,
+} from "./team-bridge-owner-audit";
 import { TeamBridgePageView } from "./team-bridge-page";
+import { RailGroupHeader } from "./team-bridge-rail";
 import { scheduledLocalInput } from "./team-bridge-scheduling";
 import { TeamBridgeThreadPaneView } from "./team-bridge-thread-pane";
 import { threadTargetFromSearch } from "./team-bridge-thread-read";
@@ -369,6 +376,97 @@ const directoryPeople = [
 		bridge_state: "disabled" as const,
 	},
 ];
+
+/**
+ * The SECOND organization's roster, for the union view's frames.
+ *
+ * Different names on purpose: the union's whole claim is that two organizations
+ * read apart under their own headers, and the reader's real switcher lists
+ * sibling organizations whose members share first names. This roster therefore
+ * carries its own chief (Juno's owner, Ben) rather than reusing the first
+ * organization's, and the reader is a member here too - so "you" appears under
+ * both headers, which is correct and must not read as a duplicated row.
+ */
+const northwindPeople = [
+	{
+		account_id: self,
+		display_label: "Damian",
+		role: "member",
+		bridge_enabled: true,
+		bridge_state: "active" as const,
+	},
+	{
+		account_id: "acct_ines",
+		display_label: "Ines Rocha",
+		role: "member",
+		bridge_enabled: true,
+		bridge_state: "active" as const,
+	},
+	{
+		account_id: "acct_tomas",
+		display_label: "Tomas Vidal",
+		role: "admin",
+		bridge_enabled: true,
+		bridge_state: "active" as const,
+		/* A chief of staff in THIS organization: the union's Chiefs section has
+		   one row per organization, not one for the account. */
+		agent: { endpoint_id: "bep_otto", name: "Otto", state: "active" },
+	},
+];
+
+/**
+ * A SECOND organization whose name is long enough to truncate in the 288px rail
+ * (design round 1, D3): "Northwind Collective" fits, so no earlier frame could
+ * show what a truncated header looks like, and a truncated name is not
+ * recoverable by sight without the header's `title`.
+ */
+const longNameOrganization: TeamBridgeOrganization = {
+	tenantId: asTeamBridgeTenantId("tnt_2"),
+	name: "Northwind Collective - Field Operations, Europe & Middle East",
+	role: "member",
+	unread: 4,
+};
+
+/**
+ * THE EVIDENCE STORIES HOLD ONE CONVERSATION, so the sections under test - the
+ * organization groups, and the audit rail after them - are ON SCREEN at the
+ * 1280x720 the frames are taken at. Nothing is hidden by a scroll: the harness
+ * browser's scroll action moves the window, and this page is `overflow: hidden`
+ * with the rail as its own scroll container, so a below-the-fold group could not
+ * be captured at all. The row set is the only thing these stories narrow; the
+ * organization fixtures, rosters and read states are the general ones.
+ */
+const compactConversations: TeamBridgeConversation[] = [];
+
+/** The roster minus the two bridge-off rows, so three organization groups fit. */
+const compactRoster = directoryPeople.slice(0, 3);
+
+/*
+ * THE AUDIT FRAMES PUT THE ROSTERS AWAY. The audit section is the last one on the
+ * rail, so at 720px every row above it is space it does not have; the audit
+ * stories therefore answer both rosters empty (never unread - that would be
+ * D4's spinner) and spend the height on the section under review. The roster
+ * states have their own frames.
+ */
+
+/** ONE row in a third organization, so the grouped rail's height is exercised. */
+const acmePeople = [
+	{
+		account_id: "acct_wren",
+		display_label: "Wren Achebe",
+		role: "member",
+		bridge_enabled: true,
+		bridge_state: "active" as const,
+	},
+];
+
+/** A third organization, named and sized like a real customer's sibling tenant. */
+const acmeOrganization: TeamBridgeOrganization = {
+	tenantId: asTeamBridgeTenantId("tnt_3"),
+	name: "Field Operations (EMEA)",
+	role: "admin",
+	unread: 0,
+};
 
 /** A DM with one of the roster's people, so that row's DM already exists. */
 const beaDm: TeamBridgeConversation = {
@@ -785,16 +883,127 @@ export const SingleOrganization: Story = {
 	},
 };
 
+/**
+ * ONE organization with a full roster: the shipped single-organization rail, with
+ * no subheaders and no captions. The union predicate in `team-bridge-org-rosters`
+ * is `mergedView && organizations.length > 1`, so this frame must look exactly
+ * like `People` above.
+ */
+export const SingleOrganizationRoster: Story = {
+	args: {
+		organizations: [minervaOrganization],
+		conversations: [dm, beaDm, channel, group],
+		target: { type: "conversation", id: dm.id },
+		people: directoryPeople,
+	},
+};
+
 /** Several organizations, one selected: the menu holds the others. */
 export const MultipleOrganizations: Story = {};
 
-/** The account-wide view: merged, newest first, every row labelled with its org. */
+/**
+ * THE UNION VIEW WITH ROSTERS - the operator's own shape, and the frame the
+ * design review renders.
+ *
+ * Channels, Groups and Direct messages stay flat and carry the organization on
+ * each row; People and Chiefs of staff group under one organization subheader
+ * each, because a person's row has nowhere else to say which organization it
+ * would act in. `dm` belongs to Minerva, so Minerva's own People row paints it
+ * and it must not appear again under Direct messages.
+ */
 export const AllOrganizations: Story = {
 	args: {
 		scope: TEAM_BRIDGE_ALL_SCOPE,
-		conversations: [dm, channel, group, northwindChannel],
+		conversations: [dm, beaDm, channel, group, northwindChannel],
 		target: { type: "conversation", id: dm.id },
 		messageState: "ready",
+		directories: { tnt_1: directoryPeople, tnt_2: northwindPeople },
+		directoryStates: { tnt_1: "ready", tnt_2: "ready" },
+	},
+};
+
+/**
+ * ONE organization's roster answered empty: its own header and an honest empty
+ * line, while the other organization's rows are untouched. An organization that
+ * draws an empty line is an organization that was CHECKED.
+ */
+export const AllOrganizationsEmptyRoster: Story = {
+	args: {
+		scope: TEAM_BRIDGE_ALL_SCOPE,
+		conversations: compactConversations,
+		target: null,
+		directories: { tnt_1: compactRoster, tnt_2: [] },
+		directoryStates: { tnt_1: "ready", tnt_2: "ready" },
+	},
+};
+
+/**
+ * ONE organization's roster read failed: an inline failure and its retry under
+ * that organization's header, and the failing organization never blanks the
+ * other's rows.
+ */
+export const AllOrganizationsRosterFailed: Story = {
+	args: {
+		scope: TEAM_BRIDGE_ALL_SCOPE,
+		conversations: compactConversations,
+		target: null,
+		directories: { tnt_1: compactRoster },
+		directoryStates: { tnt_1: "ready", tnt_2: "error" },
+		directoryErrors: {
+			tnt_2: { status: 503, message: "The directory is unavailable." },
+		},
+	},
+};
+
+/** Both rosters still in flight: each header carries its own read's spinner. */
+export const AllOrganizationsRostersLoading: Story = {
+	args: {
+		scope: TEAM_BRIDGE_ALL_SCOPE,
+		conversations: [dm, beaDm, channel, group, northwindChannel],
+		target: { type: "conversation", id: dm.id },
+		directories: {},
+		directoryStates: { tnt_1: "loading", tnt_2: "loading" },
+	},
+};
+
+/**
+ * A LONG ORGANIZATION NAME (design round 1, D3): the subheader truncates in the
+ * 288px rail instead of wrapping, and `title` recovers the full name on hover.
+ * Flat rows keep their 11px caption, so both name treatments are in one frame.
+ */
+export const AllOrganizationsLongOrgName: Story = {
+	args: {
+		organizations: [minervaOrganization, longNameOrganization],
+		scope: TEAM_BRIDGE_ALL_SCOPE,
+		// ONE flat row and ONE roster row per organization: the long header and a
+		// flat row's 11px caption have to be in the same frame (design D3).
+		conversations: [northwindChannel],
+		target: null,
+		directories: { tnt_1: compactRoster, tnt_2: northwindPeople },
+		directoryStates: { tnt_1: "ready", tnt_2: "ready" },
+	},
+};
+
+/**
+ * Three organizations, one of them holding a single row: the rail scrolls and
+ * the subheaders stay reachable rather than the groups running out of height.
+ */
+export const ThreeOrganizations: Story = {
+	args: {
+		organizations: [
+			minervaOrganization,
+			northwindOrganization,
+			acmeOrganization,
+		],
+		scope: TEAM_BRIDGE_ALL_SCOPE,
+		conversations: [dm, beaDm, channel, group, northwindChannel],
+		target: { type: "conversation", id: dm.id },
+		directories: {
+			tnt_1: directoryPeople,
+			tnt_2: northwindPeople,
+			tnt_3: acmePeople,
+		},
+		directoryStates: { tnt_1: "ready", tnt_2: "ready", tnt_3: "ready" },
 	},
 };
 
@@ -863,6 +1072,14 @@ export const LoadingAllOrganizations: Story = {
 		target: null,
 		messages: [],
 		messageState: "idle",
+		/*
+		 * THE ROSTERS ARE PENDING TOO (design round 1, D4). Without these the
+		 * groups fell back to "ready" with zero members and claimed "No one else
+		 * has joined this organization yet." for a read that had never answered;
+		 * the code now reports `loading` for that case as well, so this story
+		 * states what production states.
+		 */
+		directoryStates: { tnt_1: "loading", tnt_2: "loading" },
 	},
 };
 
@@ -874,6 +1091,10 @@ export const EmptyAllOrganizations: Story = {
 		target: null,
 		messages: [],
 		messageState: "idle",
+		// AN ANSWERED EMPTY, not an unread roster: the two now render differently
+		// (design D4), and this story is about the create hint.
+		directories: { tnt_1: [], tnt_2: [] },
+		directoryStates: { tnt_1: "ready", tnt_2: "ready" },
 	},
 };
 
@@ -959,12 +1180,188 @@ export const PeopleDisabled: Story = {
 	},
 };
 
-/** The merged scope has no single roster, and says so instead of guessing. */
+/**
+ * The union view's People section with every roster answered: one organization
+ * subheader per group, the reader's own row under each - correct, they are a
+ * member of both - and no organization caption inside a group.
+ */
 export const PeopleAllOrganizations: Story = {
 	args: {
 		scope: TEAM_BRIDGE_ALL_SCOPE,
 		conversations: [dm, beaDm, channel, group, northwindChannel],
-		people: directoryPeople,
+		directories: { tnt_1: directoryPeople, tnt_2: northwindPeople },
+		directoryStates: { tnt_1: "ready", tnt_2: "ready" },
+	},
+};
+
+/*
+ * THE CHIEF-OF-STAFF AUDIT IN BOTH VIEWS.
+ *
+ * WHY A STATIC SLOT. The page takes the audit as an `OwnerAuditSlot`, which the
+ * container builds with `useOwnerAuditSurface` - a hook that reads the audit
+ * routes through the query cache and the desktop transport. Neither exists
+ * here, so these stories hand the page a slot built from the SAME exported
+ * pieces the hook composes (`OwnerAuditSectionHeader` + one `OwnerAuditRailView`
+ * per organization) with each organization's read state fixed. What that buys:
+ * the frames show where the audit sits in the union rail - after Chiefs of
+ * staff, grouped per organization - and how its loading line reads beside the
+ * rosters. What it does NOT buy: any claim that the routes answer, or that the
+ * selection moves (the panel is never opened here); the hook's behaviour is
+ * pinned by `scripts/team-bridge-owner-audit-render.test.mjs`.
+ *
+ * The organization subheader is the shared `RailGroupHeader` with the `bare`
+ * inset, because the audit section carries no `RailSection` padding of its own;
+ * with several organizations that is the union rail's one subheader treatment,
+ * and with ONE organization there is no subheader at all, exactly as the hook
+ * omits it when `organizations.length === 1`. The hook file belongs to the audit
+ * lane (#1513), so this mirrors its structure rather than changing it.
+ */
+const auditConversation = (
+	organization: TeamBridgeOrganization,
+	overrides: Pick<OwnerAuditConversation, "id" | "kind" | "name"> &
+		Partial<OwnerAuditConversation>,
+): OwnerAuditConversation => ({
+	tenant_id: organization.tenantId,
+	visibility: "private",
+	status: "active",
+	last_message_at: "2026-10-29T15:20:00Z",
+	latest_seq: 12,
+	members: [],
+	member_count: 2,
+	viewers: [],
+	agent: {
+		account_id: "acct_aida",
+		display_label: "Aida",
+		state: "active",
+		joined_seq: 1,
+	},
+	...overrides,
+});
+
+const auditRows: Record<string, OwnerAuditConversation[]> = {
+	[minervaOrganization.tenantId]: [
+		auditConversation(minervaOrganization, {
+			id: "bconv_audit_ben",
+			kind: "dm",
+			name: null,
+			members: [
+				{
+					account_id: "acct_ben",
+					kind: "human",
+					display_label: "Ben Okafor",
+					role: "member",
+					state: "active",
+				},
+				{
+					account_id: "acct_aida",
+					kind: "agent",
+					display_label: "Aida",
+					role: "member",
+					state: "active",
+				},
+			],
+		}),
+		auditConversation(minervaOrganization, {
+			id: "bconv_audit_deploys",
+			kind: "channel",
+			name: "deployments",
+		}),
+	],
+	[northwindOrganization.tenantId]: [
+		auditConversation(northwindOrganization, {
+			id: "bconv_audit_launch",
+			kind: "channel",
+			name: "launch-room",
+		}),
+	],
+};
+
+function staticOwnerAudit(
+	organizations: TeamBridgeOrganization[],
+	state: "loading" | "ready",
+): OwnerAuditSlot {
+	return {
+		active: false,
+		clear: () => {},
+		panel: null,
+		rail: () => (
+			<section className="mt-4" aria-label={t("ui.ownerAudit.title")}>
+				<OwnerAuditSectionHeader />
+				{organizations.map((organization, index) => (
+					<div key={organization.tenantId}>
+						{/* Mirrors `useOwnerAuditSurface` exactly, D2's first-group rule
+						    included - a story that drifts from production cannot evidence
+						    production's pixels. */}
+						{organizations.length > 1 && (
+							<RailGroupHeader
+								id={`owner-audit-${organization.tenantId}`}
+								name={organization.name}
+								inset="bare"
+								first={index === 0}
+							/>
+						)}
+						<OwnerAuditRailView
+							conversations={auditRows[organization.tenantId] ?? []}
+							state={state}
+							onSelect={() => {}}
+							retry={() => {}}
+						/>
+					</div>
+				))}
+			</section>
+		),
+	};
+}
+
+/** The union rail while every organization's audit list is still being read. */
+export const AllOrganizationsAuditLoading: Story = {
+	args: {
+		...AllOrganizations.args,
+		// The audit rail must be on screen with its headers (see above).
+		conversations: compactConversations,
+		// Inherited from AllOrganizations.args; that conversation is not in this
+		// story's list, and a pane saying "not open to you" is not what is under
+		// review here.
+		target: null,
+		directories: { tnt_1: [], tnt_2: [] },
+		ownerAudit: staticOwnerAudit(
+			[minervaOrganization, northwindOrganization],
+			"loading",
+		),
+	},
+};
+
+/** The union rail with each organization's audited conversations listed. */
+export const AllOrganizationsAuditPopulated: Story = {
+	args: {
+		...AllOrganizations.args,
+		// The audit rail must be on screen with its headers (see above).
+		conversations: compactConversations,
+		// Inherited from AllOrganizations.args; that conversation is not in this
+		// story's list, and a pane saying "not open to you" is not what is under
+		// review here.
+		target: null,
+		directories: { tnt_1: [], tnt_2: [] },
+		ownerAudit: staticOwnerAudit(
+			[minervaOrganization, northwindOrganization],
+			"ready",
+		),
+	},
+};
+
+/** One organization, audit still loading: no organization subheader anywhere. */
+export const SingleOrganizationAuditLoading: Story = {
+	args: {
+		...SingleOrganizationRoster.args,
+		ownerAudit: staticOwnerAudit([minervaOrganization], "loading"),
+	},
+};
+
+/** One organization, audit listed: the shipped single-organization rail. */
+export const SingleOrganizationAuditPopulated: Story = {
+	args: {
+		...SingleOrganizationRoster.args,
+		ownerAudit: staticOwnerAudit([minervaOrganization], "ready"),
 	},
 };
 
