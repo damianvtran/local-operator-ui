@@ -7076,8 +7076,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "83a4a8fe8d9c7a548fbdbd07997708bda9c91d9226c629896c77d61c42b31993",
-			"target_sha256": "9f9325480c8b814517a9ee9584d034fcebad479ec77cf1a1b68d3156f94d012a",
+			"source_sha256": "906b4ad78c98a497c0a8e9757936d8ce767aa2e72a03dfc439b58d2ae0ef3ffe",
+			"target_sha256": "80d0e215d770423ea8622e92a817b894dce9d0be96e5b3e98ec56b00c0dcb90f",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -7092,20 +7092,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "reviewer",
+					"agent": "task",
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-31",
 					"result": "clean",
-					"instance": "64e850ffd480-rebase-es",
+					"instance": "171d0b58c96a-rebase3-es",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/64e850ffd480-rebase-es.json",
-					"receipt_sha256": "eec7319df82977bee63de7e6f82dcf7c4b9a3447837dea90814a8163ab336540",
-					"scope": "Post-merge delta onto main 8fe807c157f: builtin.general_topic + builtin.humans_topic only; rest byte-identical to main's audited bytes."
+					"receipt": "i18n/receipts/171d0b58c96a-rebase3-es.json",
+					"receipt_sha256": "c3a28f4f5ca3f502ac7fdbce66434f9d5b513886000af0ed7465c992cbc3f48a",
+					"scope": "Post-merge mechanical union round 3 (main 98afe56 into ui#1532 f1c4bc0): 14 mentions.* = ours, 300 others = main; all values byte-identical to prior audits",
+					"note": "Union re-audit (session 171d0b58c96a); mentions.* = 0b49d8d07426-rebase2/98545305d697-rebase/4ad83913bb2a, others = 64e850ffd480-rebase. No value changed."
 				}
 			],
 			"status": "audited",
@@ -8267,6 +8268,29 @@
 							"receipt_sha256": "03242fc632bab04a6f71dd29c1a597b00b8412a46aa2bcac39f6da6978bfe833",
 							"scope": "Post-merge mechanical union round 2 (main 669cd41 into ui#1532 e660e71): 14 mentions.* = ours, 299 others = main; all values byte-identical to prior audits",
 							"note": "Union re-audit (session 0b49d8d07426); mentions.* = 98545305d697-rebase/4ad83913bb2a, others = 95c4798301e2-union-a/2810e9866efc-union-b. No value changed."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "83a4a8fe8d9c7a548fbdbd07997708bda9c91d9226c629896c77d61c42b31993",
+					"target_sha256": "9f9325480c8b814517a9ee9584d034fcebad479ec77cf1a1b68d3156f94d012a",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-31",
+							"result": "clean",
+							"instance": "64e850ffd480-rebase-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/64e850ffd480-rebase-es.json",
+							"receipt_sha256": "eec7319df82977bee63de7e6f82dcf7c4b9a3447837dea90814a8163ab336540",
+							"scope": "Post-merge delta onto main 8fe807c157f: builtin.general_topic + builtin.humans_topic only; rest byte-identical to main's audited bytes."
 						}
 					],
 					"status": "audited"
@@ -15858,8 +15882,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "83a4a8fe8d9c7a548fbdbd07997708bda9c91d9226c629896c77d61c42b31993",
-			"target_sha256": "8b650cd95fa756f530e49f752ff55d8980f01efbce6c9de6780a1cc01901927d",
+			"source_sha256": "906b4ad78c98a497c0a8e9757936d8ce767aa2e72a03dfc439b58d2ae0ef3ffe",
+			"target_sha256": "6358693897aa36b3db128f170101963165f83f480630ef405a674ce310b0c4e6",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -15875,20 +15899,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "reviewer",
+					"agent": "task",
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-31",
 					"result": "clean",
-					"instance": "64e850ffd480-rebase-fr",
+					"instance": "171d0b58c96a-rebase3-fr",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/64e850ffd480-rebase-fr.json",
-					"receipt_sha256": "d968e1777d6e515513721f98bcbcff56de8de9b15f7b180fe84e30a5b3f5b15d",
-					"scope": "Post-merge delta onto main 8fe807c157f: builtin.general_topic + builtin.humans_topic only; rest byte-identical to main's audited bytes."
+					"receipt": "i18n/receipts/171d0b58c96a-rebase3-fr.json",
+					"receipt_sha256": "11664be7d964701a967648953ab3ba17e0c53e00ef1b07afeda7ca951e2891b9",
+					"scope": "Post-merge mechanical union round 3 (main 98afe56 into ui#1532 f1c4bc0): 14 mentions.* = ours, 300 others = main; all values byte-identical to prior audits",
+					"note": "Union re-audit (session 171d0b58c96a); mentions.* = 0b49d8d07426-rebase2/98545305d697-rebase/4ad83913bb2a, others = 64e850ffd480-rebase. No value changed."
 				}
 			],
 			"status": "audited",
@@ -17074,6 +17099,29 @@
 							"receipt_sha256": "2cfbdc95a0b7736359582bcedd15dc77efcc78d415d9c7cf66dd5b1249c4c92e",
 							"scope": "Post-merge mechanical union round 2 (main 669cd41 into ui#1532 e660e71): 14 mentions.* = ours, 299 others = main; all values byte-identical to prior audits",
 							"note": "Union re-audit (session 0b49d8d07426); mentions.* = 98545305d697-rebase/4ad83913bb2a, others = 95c4798301e2-union-a/2810e9866efc-union-b. No value changed."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "83a4a8fe8d9c7a548fbdbd07997708bda9c91d9226c629896c77d61c42b31993",
+					"target_sha256": "8b650cd95fa756f530e49f752ff55d8980f01efbce6c9de6780a1cc01901927d",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-31",
+							"result": "clean",
+							"instance": "64e850ffd480-rebase-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/64e850ffd480-rebase-fr.json",
+							"receipt_sha256": "d968e1777d6e515513721f98bcbcff56de8de9b15f7b180fe84e30a5b3f5b15d",
+							"scope": "Post-merge delta onto main 8fe807c157f: builtin.general_topic + builtin.humans_topic only; rest byte-identical to main's audited bytes."
 						}
 					],
 					"status": "audited"
@@ -24520,8 +24568,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "83a4a8fe8d9c7a548fbdbd07997708bda9c91d9226c629896c77d61c42b31993",
-			"target_sha256": "c978537a92f3c2a4402e38765215bef4dc76f52258ec38b767165a22a7b33777",
+			"source_sha256": "906b4ad78c98a497c0a8e9757936d8ce767aa2e72a03dfc439b58d2ae0ef3ffe",
+			"target_sha256": "abad641d29fbe0f5fba5157b4c365db30cdec63357add3969fec04080e321a56",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -24536,20 +24584,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "reviewer",
+					"agent": "task",
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-31",
 					"result": "clean",
-					"instance": "64e850ffd480-rebase-hi",
+					"instance": "171d0b58c96a-rebase3-hi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/64e850ffd480-rebase-hi.json",
-					"receipt_sha256": "15066228c23050f61cd9b88f63ae309c973648955c62d901b883ba672b5b2308",
-					"scope": "Post-merge delta onto main 8fe807c157f: builtin.general_topic + builtin.humans_topic only; rest byte-identical to main's audited bytes."
+					"receipt": "i18n/receipts/171d0b58c96a-rebase3-hi.json",
+					"receipt_sha256": "ae25a267470a4b12919c5684773cc10c9edc751c278ef30622ce39db560d12c2",
+					"scope": "Post-merge mechanical union round 3 (main 98afe56 into ui#1532 f1c4bc0): 14 mentions.* = ours, 300 others = main; all values byte-identical to prior audits",
+					"note": "Union re-audit (session 171d0b58c96a); mentions.* = 0b49d8d07426-rebase2/98545305d697-rebase/4ad83913bb2a, others = 64e850ffd480-rebase. No value changed."
 				}
 			],
 			"status": "audited",
@@ -25641,6 +25690,29 @@
 							"receipt_sha256": "68fc949dc8249fda4ef9b7dadf5b3062e50bf90ce6321909ac9ac8f414047e25",
 							"scope": "Post-merge mechanical union round 2 (main 669cd41 into ui#1532 e660e71): 14 mentions.* = ours, 299 others = main; all values byte-identical to prior audits",
 							"note": "Union re-audit (session 0b49d8d07426); mentions.* = 98545305d697-rebase/4ad83913bb2a, others = 95c4798301e2-union-a/2810e9866efc-union-b. No value changed."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "83a4a8fe8d9c7a548fbdbd07997708bda9c91d9226c629896c77d61c42b31993",
+					"target_sha256": "c978537a92f3c2a4402e38765215bef4dc76f52258ec38b767165a22a7b33777",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-31",
+							"result": "clean",
+							"instance": "64e850ffd480-rebase-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/64e850ffd480-rebase-hi.json",
+							"receipt_sha256": "15066228c23050f61cd9b88f63ae309c973648955c62d901b883ba672b5b2308",
+							"scope": "Post-merge delta onto main 8fe807c157f: builtin.general_topic + builtin.humans_topic only; rest byte-identical to main's audited bytes."
 						}
 					],
 					"status": "audited"
@@ -32886,8 +32958,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "83a4a8fe8d9c7a548fbdbd07997708bda9c91d9226c629896c77d61c42b31993",
-			"target_sha256": "b56bbac3473339f17bdba94c06d673f1a69bbaa4e7fc67dba424f6f0f1748cfd",
+			"source_sha256": "906b4ad78c98a497c0a8e9757936d8ce767aa2e72a03dfc439b58d2ae0ef3ffe",
+			"target_sha256": "766b6b25f11ecc38f5276cbc861db23bea93e04c285a718c60c98a9a012f563d",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -32903,20 +32975,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "reviewer",
+					"agent": "task",
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-31",
 					"result": "clean",
-					"instance": "64e850ffd480-rebase-ru",
+					"instance": "171d0b58c96a-rebase3-ru",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/64e850ffd480-rebase-ru.json",
-					"receipt_sha256": "43fba946cf7a239812b91d06da9f2dcf8502b1e23333cfe104a1e7bba3cbc7ae",
-					"scope": "Post-merge delta onto main 8fe807c157f: builtin.general_topic + builtin.humans_topic only; rest byte-identical to main's audited bytes."
+					"receipt": "i18n/receipts/171d0b58c96a-rebase3-ru.json",
+					"receipt_sha256": "fb6550d35afd0df060b87b1e23d2f0df3df123f4f474d46db19d1c0afc6206db",
+					"scope": "Post-merge mechanical union round 3 (main 98afe56 into ui#1532 f1c4bc0): 14 mentions.* = ours, 300 others = main; all values byte-identical to prior audits",
+					"note": "Union re-audit (session 171d0b58c96a); mentions.* = 0b49d8d07426-rebase2/98545305d697-rebase/4ad83913bb2a, others = 64e850ffd480-rebase. No value changed."
 				}
 			],
 			"status": "audited",
@@ -34097,6 +34170,29 @@
 							"receipt_sha256": "e7852b357272fd7b9e2ae6f57c7ff69b540c114b9726c32d965b7ce38ba44af7",
 							"scope": "Post-merge mechanical union round 2 (main 669cd41 into ui#1532 e660e71): 14 mentions.* = ours, 299 others = main; all values byte-identical to prior audits",
 							"note": "Union re-audit (session 0b49d8d07426); mentions.* = 98545305d697-rebase/4ad83913bb2a, others = 95c4798301e2-union-a/2810e9866efc-union-b. No value changed."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "83a4a8fe8d9c7a548fbdbd07997708bda9c91d9226c629896c77d61c42b31993",
+					"target_sha256": "b56bbac3473339f17bdba94c06d673f1a69bbaa4e7fc67dba424f6f0f1748cfd",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-31",
+							"result": "clean",
+							"instance": "64e850ffd480-rebase-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/64e850ffd480-rebase-ru.json",
+							"receipt_sha256": "43fba946cf7a239812b91d06da9f2dcf8502b1e23333cfe104a1e7bba3cbc7ae",
+							"scope": "Post-merge delta onto main 8fe807c157f: builtin.general_topic + builtin.humans_topic only; rest byte-identical to main's audited bytes."
 						}
 					],
 					"status": "audited"
@@ -41401,8 +41497,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "83a4a8fe8d9c7a548fbdbd07997708bda9c91d9226c629896c77d61c42b31993",
-			"target_sha256": "76476637e426048894ffa0061186ac3af089033084621db12f0782e01a0ace60",
+			"source_sha256": "906b4ad78c98a497c0a8e9757936d8ce767aa2e72a03dfc439b58d2ae0ef3ffe",
+			"target_sha256": "6960c821870cf1dbb2154540a0f26966afe33d97da294066e9bab212c08f49e6",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -41417,20 +41513,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "reviewer",
+					"agent": "task",
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-31",
 					"result": "clean",
-					"instance": "64e850ffd480-rebase-ur",
+					"instance": "171d0b58c96a-rebase3-ur",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/64e850ffd480-rebase-ur.json",
-					"receipt_sha256": "8a1c2c63156492280dd8b33575aeab893d6058d2ce340c88810424fc175cd53f",
-					"scope": "Post-merge delta onto main 8fe807c157f: builtin.general_topic + builtin.humans_topic only; rest byte-identical to main's audited bytes."
+					"receipt": "i18n/receipts/171d0b58c96a-rebase3-ur.json",
+					"receipt_sha256": "268d210d19be82b21a0e2674585d27ff19d65c61060290dcc56123cefd65615e",
+					"scope": "Post-merge mechanical union round 3 (main 98afe56 into ui#1532 f1c4bc0): 14 mentions.* = ours, 300 others = main; all values byte-identical to prior audits",
+					"note": "Union re-audit (session 171d0b58c96a); mentions.* = 0b49d8d07426-rebase2/98545305d697-rebase/4ad83913bb2a, others = 64e850ffd480-rebase. No value changed."
 				}
 			],
 			"status": "audited",
@@ -42522,6 +42619,29 @@
 							"receipt_sha256": "fae3ecad426131121d19c56de754e303029870beff8409ba74495e0783ddf756",
 							"scope": "Post-merge mechanical union round 2 (main 669cd41 into ui#1532 e660e71): 14 mentions.* = ours, 299 others = main; all values byte-identical to prior audits",
 							"note": "Union re-audit (session 0b49d8d07426); mentions.* = 98545305d697-rebase/4ad83913bb2a, others = 95c4798301e2-union-a/2810e9866efc-union-b. No value changed."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "83a4a8fe8d9c7a548fbdbd07997708bda9c91d9226c629896c77d61c42b31993",
+					"target_sha256": "76476637e426048894ffa0061186ac3af089033084621db12f0782e01a0ace60",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-31",
+							"result": "clean",
+							"instance": "64e850ffd480-rebase-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/64e850ffd480-rebase-ur.json",
+							"receipt_sha256": "8a1c2c63156492280dd8b33575aeab893d6058d2ce340c88810424fc175cd53f",
+							"scope": "Post-merge delta onto main 8fe807c157f: builtin.general_topic + builtin.humans_topic only; rest byte-identical to main's audited bytes."
 						}
 					],
 					"status": "audited"
@@ -50249,8 +50369,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "83a4a8fe8d9c7a548fbdbd07997708bda9c91d9226c629896c77d61c42b31993",
-			"target_sha256": "7f4c0a1f59d38210bd42ebaa4119127ecc42c233b01e7c5dac38da588500ef0a",
+			"source_sha256": "906b4ad78c98a497c0a8e9757936d8ce767aa2e72a03dfc439b58d2ae0ef3ffe",
+			"target_sha256": "178814205a900edd940b81ba8f0411d19b3d874d6ba6a7f8fa634fa39d0834a5",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -50265,20 +50385,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "reviewer",
+					"agent": "task",
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-31",
 					"result": "clean",
-					"instance": "64e850ffd480-rebase-vi",
+					"instance": "171d0b58c96a-rebase3-vi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/64e850ffd480-rebase-vi.json",
-					"receipt_sha256": "07e018ca0e1bf930f05f815c3811f37f41f1470b65e0a956ce89ce50c84c61fe",
-					"scope": "Post-merge delta onto main 8fe807c157f: builtin.general_topic + builtin.humans_topic only; rest byte-identical to main's audited bytes."
+					"receipt": "i18n/receipts/171d0b58c96a-rebase3-vi.json",
+					"receipt_sha256": "e0456bfb8fcf9f058dba811ab019d8392c2375017d0413d5982c7aa89328842d",
+					"scope": "Post-merge mechanical union round 3 (main 98afe56 into ui#1532 f1c4bc0): 14 mentions.* = ours, 300 others = main; all values byte-identical to prior audits",
+					"note": "Union re-audit (session 171d0b58c96a); mentions.* = 0b49d8d07426-rebase2/98545305d697-rebase/4ad83913bb2a, others = 64e850ffd480-rebase. No value changed."
 				}
 			],
 			"status": "audited",
@@ -51401,6 +51522,29 @@
 							"receipt_sha256": "dd0b2e53af873ec50d7eaaa16314f2019489c38fbc1c69aa8781deddf3887cbc",
 							"scope": "Post-merge mechanical union round 2 (main 669cd41 into ui#1532 e660e71): 14 mentions.* = ours, 299 others = main; all values byte-identical to prior audits",
 							"note": "Union re-audit (session 0b49d8d07426); mentions.* = 98545305d697-rebase/4ad83913bb2a, others = 95c4798301e2-union-a/2810e9866efc-union-b. No value changed."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "83a4a8fe8d9c7a548fbdbd07997708bda9c91d9226c629896c77d61c42b31993",
+					"target_sha256": "7f4c0a1f59d38210bd42ebaa4119127ecc42c233b01e7c5dac38da588500ef0a",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-31",
+							"result": "clean",
+							"instance": "64e850ffd480-rebase-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/64e850ffd480-rebase-vi.json",
+							"receipt_sha256": "07e018ca0e1bf930f05f815c3811f37f41f1470b65e0a956ce89ce50c84c61fe",
+							"scope": "Post-merge delta onto main 8fe807c157f: builtin.general_topic + builtin.humans_topic only; rest byte-identical to main's audited bytes."
 						}
 					],
 					"status": "audited"
@@ -59699,8 +59843,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "83a4a8fe8d9c7a548fbdbd07997708bda9c91d9226c629896c77d61c42b31993",
-			"target_sha256": "607c71b4f025513a997272fa04f0fcc14bb23706b1629a8d699b3b91032a7163",
+			"source_sha256": "906b4ad78c98a497c0a8e9757936d8ce767aa2e72a03dfc439b58d2ae0ef3ffe",
+			"target_sha256": "c9f150b173d21c021e5232b929341d8a18b5dc5f1919a2c1092c8c5cf78f9e8c",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -59715,20 +59859,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "reviewer",
+					"agent": "task",
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-31",
 					"result": "clean",
-					"instance": "64e850ffd480-rebase-zh-cn",
+					"instance": "171d0b58c96a-rebase3-zh-cn",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/64e850ffd480-rebase-zh-cn.json",
-					"receipt_sha256": "ffe5a64e79b6413e5be6ea308eb4447a63da7c62f302d0564862939fa162f821",
-					"scope": "Post-merge delta onto main 8fe807c157f: builtin.general_topic + builtin.humans_topic only; rest byte-identical to main's audited bytes."
+					"receipt": "i18n/receipts/171d0b58c96a-rebase3-zh-cn.json",
+					"receipt_sha256": "2686b710c10109c6bef551d0ae7256a1ad7274e0819c34b56e78259509cd1b4c",
+					"scope": "Post-merge mechanical union round 3 (main 98afe56 into ui#1532 f1c4bc0): 14 mentions.* = ours, 300 others = main; all values byte-identical to prior audits",
+					"note": "Union re-audit (session 171d0b58c96a); mentions.* = 0b49d8d07426-rebase2/98545305d697-rebase/4ad83913bb2a, others = 64e850ffd480-rebase. No value changed."
 				}
 			],
 			"status": "audited",
@@ -60873,6 +61018,29 @@
 							"receipt_sha256": "7e75906fac79ea25b4fbc7240d4d1227d9c6f64b24770a060badb6522b39c65b",
 							"scope": "Post-merge mechanical union round 2 (main 669cd41 into ui#1532 e660e71): 14 mentions.* = ours, 299 others = main; all values byte-identical to prior audits",
 							"note": "Union re-audit (session 0b49d8d07426); mentions.* = 98545305d697-rebase/4ad83913bb2a, others = 95c4798301e2-union-a/2810e9866efc-union-b. No value changed."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "83a4a8fe8d9c7a548fbdbd07997708bda9c91d9226c629896c77d61c42b31993",
+					"target_sha256": "607c71b4f025513a997272fa04f0fcc14bb23706b1629a8d699b3b91032a7163",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-31",
+							"result": "clean",
+							"instance": "64e850ffd480-rebase-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/64e850ffd480-rebase-zh-cn.json",
+							"receipt_sha256": "ffe5a64e79b6413e5be6ea308eb4447a63da7c62f302d0564862939fa162f821",
+							"scope": "Post-merge delta onto main 8fe807c157f: builtin.general_topic + builtin.humans_topic only; rest byte-identical to main's audited bytes."
 						}
 					],
 					"status": "audited"
