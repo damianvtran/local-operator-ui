@@ -391,3 +391,168 @@ test("an unusable avatar record reads as no picture, never as a broken one", () 
 		updated_at: "",
 	});
 });
+
+/* ------------------------------------------------------------------ *
+ * THE RELAY'S ROUTE MAPPING
+ *
+ * `agent.avatar`, `agent.avatar.put` and `agent.avatar.delete` are the only
+ * place the renderer can reach the frozen core routes, because the bearer lives
+ * in main. What this section proves without a backend: the exact path, method
+ * and body main builds for each op, the bearer it attaches, and the two
+ * refusals main makes locally (an operation the schema does not know, and a
+ * picture type core never writes). `fetch` is a stub - the caller here is
+ * `requestDesktopMediaOutcome`, which is production's own code.
+ * ------------------------------------------------------------------ */
+
+const relayUrl = await bundle(
+	join(BUNDLE_DIR, `${RUN}-relay.mjs`),
+	`export { requestDesktopMediaOutcome } from "./src/main/desktop-media";`,
+);
+const { requestDesktopMediaOutcome } = await import(relayUrl);
+
+/** Run one op against a stubbed fetch and answer what main asked for. */
+const drive = async (request, bytes = null, respond = null) => {
+	const calls = [];
+	const original = globalThis.fetch;
+	globalThis.fetch = async (url, init) => {
+		calls.push({ url: String(url), init });
+		if (respond) return respond(String(url), init);
+		return new Response(new Uint8Array([137, 80, 78, 71]), {
+			status: 200,
+			headers: { "Content-Type": "image/png" },
+		});
+	};
+	try {
+		const outcome = await requestDesktopMediaOutcome(
+			request,
+			bytes,
+			"http://127.0.0.1:1111",
+			"test-bearer",
+		);
+		return { ...outcome, calls };
+	} finally {
+		globalThis.fetch = original;
+	}
+};
+
+const SHA = "e".repeat(64);
+
+test("a read addresses the frozen route and carries the bearer", async () => {
+	const { response, calls } = await drive({
+		op: "agent.avatar",
+		agentId: "agent-coder",
+		sha256: SHA,
+	});
+	assert.equal(calls.length, 1);
+	assert.equal(
+		calls[0].url,
+		`http://127.0.0.1:1111/v1/agents/agent-coder/avatar?v=${SHA}`,
+		"the path is the contract's, versioned by the digest",
+	);
+	assert.equal(calls[0].init.method, "GET");
+	assert.equal(calls[0].init.headers.Authorization, "Bearer test-bearer");
+	assert.equal(calls[0].init.body, undefined, "a GET carries no body");
+	assert.equal(response.kind, "bytes");
+	assert.equal(response.mimeType, "image/png");
+});
+
+test("a replace PUTs the raw bytes, and a clear DELETEs", async () => {
+	const png = new Uint8Array([137, 80, 78, 71, 1, 2, 3]);
+	const put = await drive(
+		{ op: "agent.avatar.put", agentId: "agent-coder" },
+		png,
+	);
+	assert.equal(put.calls.length, 1);
+	assert.equal(
+		put.calls[0].url,
+		"http://127.0.0.1:1111/v1/agents/agent-coder/avatar",
+	);
+	assert.equal(put.calls[0].init.method, "PUT");
+	assert.equal(
+		put.calls[0].init.headers["Content-Type"],
+		"application/octet-stream",
+		"the receiver sniffs the bytes, so no type is claimed",
+	);
+	const sent = new Uint8Array(await put.calls[0].init.body.arrayBuffer());
+	assert.deepEqual([...sent], [...png], "the crop travels unchanged");
+
+	const del = await drive({
+		op: "agent.avatar.delete",
+		agentId: "agent-coder",
+	});
+	assert.equal(del.calls[0].init.method, "DELETE");
+	assert.equal(
+		del.calls[0].url,
+		"http://127.0.0.1:1111/v1/agents/agent-coder/avatar",
+	);
+});
+
+test("main refuses a malformed digest before any request", async () => {
+	for (const sha256 of ["", "abc", "E".repeat(64), "e".repeat(63)]) {
+		const { response, calls } = await drive({
+			op: "agent.avatar",
+			agentId: "agent-coder",
+			sha256,
+		});
+		assert.equal(calls.length, 0, `${sha256} never reached the socket`);
+		assert.equal(response.kind, "error");
+		assert.equal(response.status, 422);
+	}
+});
+
+test("an id that is not a path segment is refused locally", async () => {
+	const { response, calls } = await drive({
+		op: "agent.avatar",
+		agentId: "../etc/passwd",
+		sha256: SHA,
+	});
+	assert.equal(calls.length, 0);
+	assert.equal(response.status, 422);
+});
+
+test("a picture route answering something else is refused, not painted", async () => {
+	/*
+	 * Core stores PNG or JPEG. An answer of any other type - an SVG above all,
+	 * which is script-capable - must not reach the renderer as bytes.
+	 */
+	const { response } = await drive(
+		{ op: "agent.avatar", agentId: "agent-coder", sha256: SHA },
+		null,
+		() =>
+			new Response("<svg xmlns='http://www.w3.org/2000/svg'/>", {
+				status: 200,
+				headers: { "Content-Type": "image/svg+xml" },
+			}),
+	);
+	assert.equal(response.kind, "error");
+	assert.equal(response.status, 502);
+	assert.deepEqual(
+		Object.keys(response).includes("data"),
+		false,
+		"no bytes cross to the renderer",
+	);
+});
+
+test("a clear that finds nothing is the state the caller asked for", async () => {
+	const { response } = await drive(
+		{ op: "agent.avatar.delete", agentId: "agent-coder" },
+		null,
+		() =>
+			new Response(JSON.stringify({ detail: "not_found" }), {
+				status: 404,
+				headers: { "Content-Type": "application/json" },
+			}),
+	);
+	/*
+	 * A refused status arrives as the relay's `error` arm - that is the shape
+	 * every non-2xx takes here - and `clearAgentAvatar` treats a 404 as the state
+	 * the person asked for rather than as a failure, so the status is the fact the
+	 * seam reads.
+	 */
+	assert.equal(response.status, 404);
+	assert.equal(response.kind, "error");
+});
+
+after(async () => {
+	await unlink(join(BUNDLE_DIR, `${RUN}-relay.mjs`)).catch(() => {});
+});
