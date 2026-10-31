@@ -617,7 +617,15 @@ test("the drawer wears the canvas family's width in either scope", () => {
 		rightSlotRoute: drawable,
 	});
 	assert.equal(fleet, session);
-	assert.equal(fleet, 560);
+	/*
+	 * 640, the slot's ONE opening width - not the 560 this used to assert. The drawer
+	 * is a member of the canvas family and the family had no ceiling of its own until
+	 * #1525 gave every right-slot pane `RIGHT_SLOT_MAX_PX`: at a 1400 row the dock
+	 * arithmetic leaves 920, so what bounds the drawer is the default, not the row
+	 * (found on remediation round 1 - the stale expectation was left behind by the
+	 * width change, and this is the pane it silently covered).
+	 */
+	assert.equal(fleet, 640);
 });
 
 test("the query key is one document, so the badge and the list cannot diverge", () => {

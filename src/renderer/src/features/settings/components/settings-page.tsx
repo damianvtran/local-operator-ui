@@ -1221,9 +1221,11 @@ export const SettingsPage: FC = () => {
 			 * because extending would have the shell's lane paint a fence for a
 			 * boundary that already reads (the pass that took the dock's own
 			 * leading rule, #564, removed exactly this kind of mark). The lateral
-			 * boundary on the rail's other side is no boundary at all — the rail
-			 * and the app sidebar are both `surface`, the flat join the agents
-			 * roster makes beside it.
+			 * boundary on the rail's other side has no tone step — the rail and the
+			 * app sidebar are both `surface` — so the shell's 1px `PanelEdge` seam is
+			 * the only mark there (2026-10-30; it draws the app sidebar's edge on
+			 * every route, not a rule this page owns), and the agents roster makes the
+			 * same flat join beside the same seam.
 			 *
 			 * Two widths, and the `min-[1040px]:` step is paired with the
 			 * `(min-width: 1040px)` query inside `SettingsSidebar`, which is what
@@ -1808,7 +1810,10 @@ export const SettingsPage: FC = () => {
 						 * why it carries no credential field.
 						 */}
 						<SpeechSection sectionRef={sectionRefs.speech} />
-						<KeyboardShortcutsSection sectionRef={sectionRefs.keyboard} />
+						<KeyboardShortcutsSection
+							sectionRef={sectionRefs.keyboard}
+							focusKey={settingFocusKey}
+						/>
 
 						{/*
 						 * The provider grid is the same component onboarding uses: one
@@ -2014,7 +2019,7 @@ export const SettingsPage: FC = () => {
 								hideInterfaceLanguage
 								hideModelEffort
 								hideAgentMessages
-								hideStartRecording
+								hideSpeechShortcuts
 								focusKey={
 									/*
 									 * A search jump outranks a URL deep link: it is the most recent

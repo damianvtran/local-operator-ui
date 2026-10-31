@@ -27,7 +27,7 @@ after(() => {
 const bundle = await build({
 	stdin: {
 		contents:
-			'export { StartRecordingShortcutRow } from "./src/renderer/src/features/settings/components/start-recording-shortcut-row";',
+			'export { SpeechShortcutsGroup as StartRecordingShortcutRow } from "./src/renderer/src/features/settings/components/speech-shortcuts-group";',
 		resolveDir: ROOT,
 	},
 	bundle: true,
@@ -130,15 +130,13 @@ async function mount(
 	const pending = [];
 	dom.window.requestAnimationFrame = (callback) =>
 		dom.window.setTimeout(() => callback(dom.window.performance.now()), 0);
-	dom.window.electron = {
+	dom.window.api = {
 		recordingShortcut: {
 			get: async () => recordingState,
 			onChange: () => () => {},
 			markPending: (value) => pending.push(value),
 			syncClaims: () => {},
 		},
-	};
-	dom.window.api = {
 		windowChrome: { facts: () => ({ platform: "linux" }) },
 		desktop: {
 			request: async (request) => {
@@ -281,10 +279,21 @@ test("capture saves immediately and explicit reset restores the default and focu
 		);
 		assert.deepEqual(api.pending, ["primary+alt+r", undefined]);
 		const reset = api.$(
-			'button[aria-label="Reset Start recording to its default"]',
+			'button[aria-label="Reset Start recording (press) to its default"]',
 		);
 		assert.ok(reset);
 		await act(async () => reset.click());
+		// The field follows the re-read that closes the write: poll for the value
+		// instead of sleeping a fixed number of ticks (a slow host failed the sleep).
+		for (
+			let attempt = 0;
+			attempt < 200 && input.value !== "Ctrl+Shift+S";
+			attempt += 1
+		) {
+			await act(async () => {
+				await new Promise((resolve) => setTimeout(resolve, 5));
+			});
+		}
 		assert.deepEqual(
 			api.requests.filter((request) => request.op === "settings.reset"),
 			[{ op: "settings.reset", key: setting.key }],

@@ -44,6 +44,7 @@ import {
 } from "react";
 import { PanelRailHostContext } from "../navigation/panel-rail-host";
 import { PaneSlot } from "./pane-slot";
+import { PanelEdge } from "./panel-edge";
 import { ResizableDivider } from "./resizable-divider";
 
 /**
@@ -440,7 +441,10 @@ export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
 				className="absolute inset-x-0 top-0 z-30 h-[var(--chrome-strip-h)]"
 			/>
 			<div className="flex min-h-0 flex-1 overflow-hidden">
-				<div className={cn("h-full shrink-0")} style={{ width: columnWidth }}>
+				<div
+					className={cn("relative h-full shrink-0")}
+					style={{ width: columnWidth }}
+				>
 					<SidebarFrameContext.Provider
 						value={{
 							expanded: layout.mode === "docked",
@@ -449,6 +453,16 @@ export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
 					>
 						{sidebar}
 					</SidebarFrameContext.Provider>
+					{/*
+					 * THE SIDEBAR'S SEAM, drawn by the shell's column rather than by either
+					 * sidebar root. The column is the same box as the panel in both modes
+					 * (docked and the 56px strip), so one mount covers the two, and neither
+					 * root has to become a positioning context for it. `relative` here is a
+					 * no-op for every descendant: the column already has the panel's exact
+					 * box, so an absolute child resolves to the same pixels it did against the
+					 * shell.
+					 */}
+					<PanelEdge side="end" />
 				</div>
 				{layout.resizable && (
 					<ResizableDivider
@@ -577,8 +591,18 @@ export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
 				 * The CONTENT is the chat surface's (`InPanelRailHost`), portaled in: the
 				 * rail's inputs live below the shell. The host's own ground is `surface`
 				 * (chrome, the sidebar's rung) so the strip is never a hole while the
-				 * portal is empty; the rail draws no rule of its own - its leading edge is
-				 * the tone step, pinned by `scripts/pane-slot-ground.test.mjs`.
+				 * portal is empty.
+				 *
+				 * THE SEAM IS MOUNTED HERE, ON THE HOST, NOT ON THE RAIL'S ROOT (agent
+				 * review round 1, B1). `panel-top-pad` moves only the CONTENT inside the
+				 * box: the host still starts at y0 while the portal's root starts at the
+				 * pad (32px on macOS), so an `inset-y-0` child of the rail root began the
+				 * seam at y=32 - the mid-air line this change exists to remove. An
+				 * absolutely positioned child resolves against the PADDING box, so
+				 * `relative` here plus `<PanelEdge side="start" />` spans y0 to the floor
+				 * like the sidebar's and every pane's. `scripts/pane-slot-ground.test.mjs`
+				 * pins the ground, the `relative` and the mount; `panel-rail-frame.tsx`
+				 * mirrors the same two classes for the story harnesses.
 				 */}
 				<div
 					ref={setRailHost}
@@ -590,9 +614,11 @@ export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
 					 * clear the OS controls. The host's ground is the panel; the pad
 					 * moves only what the portal puts inside it.
 					 */
-					className="panel-top-pad h-full shrink-0 bg-surface"
+					className="panel-top-pad relative h-full shrink-0 bg-surface"
 					style={{ width: railWidth }}
-				/>
+				>
+					<PanelEdge side="start" />
+				</div>
 			</div>
 			{/*
 			 * THE UNSOLICITED UPDATE NOTICE LIVES HERE (issue #672), at the bottom edge of

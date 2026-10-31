@@ -22,6 +22,7 @@ Frames of the shipped components, captured from the Storybook stories in
 | State | What it shows |
 | --- | --- |
 | `populated-*` | The ordinary window: admitted text open, a `rejected` body collapsed behind "Show message text", a `not_screened` row whose body the hub did not send ("Message text unavailable."), and the chief of staff's own message open with its "Sent by your chief of staff" chip. The header carries the read-only promise, the disclosure (who can read this, and on what basis) and, under the "Also readable by" label, the OTHER agent owners by name — the reader is not listed as a reader of their own audit. The list closes with the quiet "Your chief of staff is still a member." |
+| `populated-*` (superseded) | Historical: the `rejected` collapse behind "Show message text" and the own-row "Sent by your chief of staff" chip above were both superseded by #1533 — every body now reads inline, and the agent's own rows carry no verdict badge. |
 | `closed-window-*` | The audit window's cut-off: the agent was removed, so the message list ends with the boundary itself — a `hairline` rule and the reading ink, not the standing disclosure's grey — saying "The audit ends here. Your chief of staff was removed from this conversation, so later messages are not in it." A truncated history that reads as a complete one is the failure this state exists to disprove. |
 | `empty-*` | No audited conversations in this organization — and therefore **no panel**: the slot only opens one for a row the reader selects. |
 | `loading-*` | The list is still being read. |

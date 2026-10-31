@@ -54,6 +54,10 @@ const IDENTICAL_OK = new Map([
 		"French cognate: Conversation",
 	],
 	[
+		"fr:ui.teamBridge.members.group.agents_v2",
+		"French glossary plural « Agents » — same spelling as English; scoped to fr so other locales still translate it",
+	],
+	[
 		"fr:ui.teamBridge.profile.agent_badge",
 		"French glossary term for agent is « agent » — same spelling as English; scoped to fr so other locales still translate it",
 	],
@@ -101,6 +105,13 @@ const IDENTICAL_OK = new Map([
 		// there is nothing for a locale to translate, and a differing value would
 		// only invent punctuation per language.
 		"language-neutral format string: only placeholders and '·', no words",
+	],
+	[
+		// The screen-reader name of an ineligible invite row: "{name}, {reason}".
+		// Locales whose list comma is "," keep it byte-identical; zh-CN and ur
+		// own their punctuation, which is why this is not a locale-scoped row.
+		"ui.teamBridge.members.ineligible_label",
+		"language-neutral format string: only placeholders and ',', no words",
 	],
 	[
 		"ui.canvas.files.attachmentMeta",

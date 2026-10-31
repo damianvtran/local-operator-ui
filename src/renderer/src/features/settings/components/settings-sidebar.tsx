@@ -167,11 +167,13 @@ const SECTION_GROUPS: { label: string; ids: string[] }[] = [
  * stacked layout is gone (the rail has no `max-*` utilities any more) and the
  * boundary that remains is the tone step the rail's own ground makes against
  * the `canvas` content on its right (`surface` against `canvas`). On its left
- * there is no boundary at all: the rail and the app sidebar are both `surface`
- * (see the ground note below), the same flat join the agents roster makes
- * beside the sidebar. A drawn line over a tone step is the second mark this
- * app's doctrine removes (`chat-layout.tsx`, and the pass that took the dock's
- * `border-l`), and the one the wrapper drew was the one that stopped short.
+ * there is no tone step (the rail and the app sidebar are both `surface`; see
+ * the ground note below), the same flat join the agents roster makes beside the
+ * sidebar. The only boundary on that join is the shell's 1px `PanelEdge` seam
+ * (2026-10-30, `chat-layout.tsx`), which marks where the app sidebar ends on
+ * every route - it is not a line this page draws. A drawn edge here would be a
+ * second seam beside the shell's, and the one the old wrapper drew was the one
+ * that stopped at mid-height.
  *
  * ## Why it drops its labels below 1040px
  *

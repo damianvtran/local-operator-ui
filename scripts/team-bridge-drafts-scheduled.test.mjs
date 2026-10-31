@@ -1108,6 +1108,13 @@ test("a held schedule can be explicitly discarded before a fresh send or schedul
 				 * goes out again, since that schedule may still fire.
 				 */
 				assert.notEqual(sends[0][1], "held-reference");
+				/*
+				 * THE GUARD (round 4 retrospective, R4-01): the line above alone passed
+				 * vacuously, because the discard has already replaced `"held-reference"` in
+				 * the draft - a send that reused the draft key still differed from it. The
+				 * key the discard wrote is the one a regression would put on the wire.
+				 */
+				assert.notEqual(sends[0][1], entry.clientRef);
 				assert.ok(sends[0][1]);
 			} else {
 				await act(async () =>

@@ -10,7 +10,13 @@ import {
 } from "../../../../shared/recording-shortcut";
 import { rendererPlatform } from "../../mini-view/renderer-platform";
 
-const bridge = () => window.electron?.recordingShortcut;
+/*
+ * The bridge lives on `window.api` (preload `api.recordingShortcut`). It was
+ * read from `window.electron` until now, which the preload never populates, so
+ * in the built app `get`/`onChange` never ran: the state stayed on its default,
+ * `markPending` did nothing and the claim table was never published to main.
+ */
+const bridge = () => window.api?.recordingShortcut;
 
 /** Non-persisted projection of main's cache, shared by main and mini documents. */
 export const useRecordingShortcutStore = create<{

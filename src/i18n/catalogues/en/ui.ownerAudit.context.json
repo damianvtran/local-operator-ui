@@ -118,13 +118,6 @@
 		"placeholders": {},
 		"note": "Shown when the server reports a verdict (or an agent membership state) this build does not know. It is a deliberate conservative fallback — the vocabularies are documented rather than enforced so a newer server degrades instead of breaking the page. Keep it non-committal: it must not guess admitted, rejected or pending."
 	},
-	"ui.ownerAudit.own": {
-		"role": "per-message chip for a message the audited agent itself sent",
-		"tone": "neutral metadata naming authorship",
-		"length": "Very short chip.",
-		"placeholders": {},
-		"note": "The audited agent authored this message, so there is no meaningful delivery verdict for it — the chip names the author instead. Keep \"your chief of staff\" identical to ui.ownerAudit.agent and ui.ownerAudit.title. Do not phrase it as \"sent by you\" — the whole distinction of this surface is owner versus agent."
-	},
 	"ui.ownerAudit.body_unavailable": {
 		"role": "placeholder for a message whose text the server did not send",
 		"tone": "plain, factual, brief",
@@ -152,13 +145,6 @@
 		"length": "Two words.",
 		"placeholders": {},
 		"note": "Used where a person's display name would go. It is also the fallback inside ui.ownerAudit.viewer's {name} slot, so it must read sensibly inside that sentence (e.g. \"Also visible to <an unknown sender>, an agent owner\"). Neutral and short beats grammatical gymnastics."
-	},
-	"ui.ownerAudit.reveal": {
-		"role": "summary of the collapsed disclosure around an unadmitted message body",
-		"tone": "quiet invitation, not a warning",
-		"length": "Three to five words.",
-		"placeholders": {},
-		"note": "The summary of a <details> element that hides a rejected or unscreened body until the reader asks for it — collapsed by default so a reader is never surprised by text the agent's screening refused, and because such text must never render as rich content (no previews, no remote images). This is a reading affordance, so no warning vocabulary: no \"reveal unsafe content\", no \"view anyway\", no warning symbol."
 	},
 	"ui.ownerAudit.active": {
 		"role": "closing line at the end of the message list when the audit window is still open",

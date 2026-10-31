@@ -26,6 +26,7 @@ const bundle = await build({
 	stdin: {
 		contents: [
 			'export * from "./src/renderer/src/features/notifications/notification-operations";',
+			'export { desktopEndpoint, desktopRequestSchema } from "./src/shared/desktop-contract";',
 			'export { createNotificationFixture } from "./src/renderer/src/features/notifications/notifications-fixture";',
 			'export * from "./src/renderer/src/features/notifications/notifications-model";',
 			'export { readSessionDismissCounts, readSessionUnreadCount } from "./src/renderer/src/features/notifications/notifications-api";',
@@ -490,5 +491,387 @@ test("R4-6: the unread count comes from the server's walk, not the loaded page",
 	assert.ok(
 		100 < total,
 		"one page would have said 100, which is the badge this replaces",
+	);
+});
+
+/* Frozen result selection is not a loaded-page selection. This fixture tests
+ * client planning, not the SQLite route; core owns independent HTTP evidence. */
+test("filtered frozen selection spans 650 results, excludes one row and leaves asks", () => {
+	const rows = Array.from({ length: 650 }, (_, i) =>
+		item(`bulk-${i}`, {
+			seq: i + 1,
+			priority: i % 2 ? "high" : "normal",
+			read: i % 3 === 0,
+		}),
+	);
+	const ask = item("ask:aaaaaaaaaaa1:pending", {
+		source: "ask",
+		priority: "high",
+		ask: { status: "open" },
+	});
+	const fixture = ops.createNotificationFixture(rows, [ask]);
+	const preview = fixture.request({
+		op: "notifications.list",
+		preview: true,
+		state: "all",
+		kind: "all",
+		bulkPriority: "normal_up",
+		countSessionIds: [SESSION],
+	}).body.result.selection;
+	assert.equal(preview.eligible_count, 650);
+	assert.equal(preview.skipped_ask_count, 1);
+	assert.equal(preview.session_counts[SESSION].eligible_count, 650);
+	const excluded = structuredClone(rows[0]);
+	const selection = {
+		preview,
+		filters: { kind: "all", priority: "normal_up", from: null },
+		state: "all",
+		excluded: new Map([[excluded.id, excluded]]),
+		asks: [ask],
+	};
+	assert.equal(ops.frozenSelectionCounts(selection).count, 650);
+	assert.equal(ops.selectedBySnapshot(rows[0], selection), false);
+	assert.equal(ops.selectedBySnapshot(rows[600], selection), true);
+	fixture.arrive(item("after-snapshot", { seq: 651 }));
+	assert.equal(
+		ops.selectedBySnapshot(rows[0], selection),
+		false,
+		"new arrival never joins the frozen selection",
+	);
+	const request = {
+		op: "notifications.dismiss",
+		verb: "dismiss",
+		target: { selectionToken: preview.token, excludedIds: [excluded.id] },
+	};
+	const receipt = fixture.request(request).body.result;
+	assert.equal(receipt.changed_count, 649);
+	assert.equal(receipt.excluded_count, 1);
+	assert.equal(fixture.counts().waiting_count, 1);
+	assert.equal(rows.find((row) => row.id === excluded.id).dismissed, false);
+	assert.equal(
+		rows.find((row) => row.id === "after-snapshot").dismissed,
+		false,
+	);
+	assert.equal(
+		fixture.requests.filter((entry) => entry.op === "notifications.dismiss")
+			.length,
+		1,
+	);
+	const replay = fixture.request(request).body.result;
+	assert.equal(replay.replayed, true);
+	assert.equal(replay.operation_token, receipt.operation_token);
+	assert.throws(
+		() =>
+			fixture.request({
+				...request,
+				target: { selectionToken: preview.token, excludedIds: [] },
+			}),
+		/selection_operation_conflict/,
+	);
+	const restored = fixture.request({
+		op: "notifications.read",
+		verb: "undo",
+		target: { operationToken: receipt.operation_token },
+	}).body.result;
+	assert.equal(restored.changed_count, 649);
+	assert.equal(rows.filter((row) => row.dismissed).length, 0);
+});
+
+test("frozen selection obeys kind, priority, conversation and unread filters", () => {
+	const rows = [
+		item("high-unread", { priority: "high", seq: 1 }),
+		item("normal-read", { read: true, seq: 2 }),
+		item("low-unread", { priority: "low", seq: 3 }),
+		item("other", {
+			priority: "high",
+			seq: 4,
+			session: { id: OTHER, title: "Other" },
+		}),
+	];
+	const ask = item("ask:aaaaaaaaaaa1:pending", {
+		source: "ask",
+		read: true,
+		priority: "high",
+		ask: { status: "open" },
+	});
+	const fixture = ops.createNotificationFixture(rows, [ask]);
+	const request = {
+		op: "notifications.list",
+		preview: true,
+		state: "unread",
+		kind: "all",
+		bulkPriority: "normal_up",
+		sessionId: SESSION,
+	};
+	const preview = fixture.request(request).body.result.selection;
+	assert.equal(preview.eligible_count, 1);
+	assert.equal(preview.eligible_unread_count, 1);
+	assert.equal(
+		preview.skipped_ask_count,
+		1,
+		"read asks stay in Unread's waiting section",
+	);
+	assert.equal(
+		fixture.request({ ...request, kind: "updates" }).body.result.selection
+			.skipped_ask_count,
+		0,
+	);
+	assert.equal(
+		fixture.request({ ...request, kind: "asks" }).body.result.selection
+			.eligible_count,
+		0,
+	);
+	const selection = {
+		preview,
+		filters: { kind: "all", priority: "normal_up", from: SESSION },
+		state: "unread",
+		excluded: new Map(),
+		asks: [ask],
+	};
+	assert.deepEqual(
+		rows
+			.filter((row) => ops.selectedBySnapshot(row, selection))
+			.map((row) => row.id),
+		["high-unread"],
+	);
+	assert.equal(ops.selectedBySnapshot(ask, selection), true);
+});
+
+test("guarded bulk Undo skips a later update and never restores an ask", () => {
+	const rows = [item("one", { seq: 1 }), item("two", { seq: 2 })];
+	const fixture = ops.createNotificationFixture(rows, []);
+	const preview = fixture.request({
+		op: "notifications.list",
+		preview: true,
+		state: "all",
+	}).body.result.selection;
+	const result = fixture.request({
+		op: "notifications.dismiss",
+		verb: "dismiss",
+		target: { selectionToken: preview.token },
+	}).body.result;
+	fixture.revise("one");
+	const restored = fixture.request({
+		op: "notifications.read",
+		verb: "undo",
+		target: { operationToken: result.operation_token },
+	}).body.result;
+	assert.equal(restored.changed_count, 1);
+	assert.equal(restored.skipped_count, 1);
+	assert.equal(rows[0].dismissed, true);
+	assert.equal(rows[1].dismissed, false);
+});
+
+test("bulk transport reuses the existing route and preserves filters, fences and compact tokens", () => {
+	const preview = ops.desktopRequestSchema.parse({
+		op: "notifications.list",
+		preview: true,
+		state: "unread",
+		kind: "updates",
+		bulkPriority: "normal_up",
+		sessionId: SESSION,
+		countSessionIds: [SESSION, OTHER],
+	});
+	const endpoint = ops.desktopEndpoint(preview);
+	const query = new URL(endpoint.path, "http://example.test").searchParams;
+	assert.equal(query.get("bulk_priority"), "normal_up");
+	assert.deepEqual(query.getAll("count_session_ids"), [SESSION, OTHER]);
+	assert.equal(query.get("session_id"), SESSION);
+	assert.equal(query.get("preview"), "true");
+	const id = "n_abcdefghijklmnop";
+	// Core #3103: a recount with exclusions is the PATCH body form only; 500 IDs in
+	// a GET URL are refused by h11, so the list schema must not admit them at all.
+	assert.equal(
+		ops.desktopRequestSchema.safeParse({
+			op: "notifications.list",
+			preview: true,
+			selectionToken: "frozen-token",
+			excludedIds: [id],
+		}).success,
+		false,
+	);
+	const request = ops.desktopRequestSchema.parse({
+		op: "notifications.dismiss",
+		verb: "dismiss",
+		target: { selectionToken: "frozen-token", excludedIds: [id] },
+	});
+	assert.deepEqual(ops.desktopEndpoint(request), {
+		path: "/v1/desktop/notifications",
+		method: "PATCH",
+		body: {
+			op: "dismiss",
+			selection_token: "frozen-token",
+			excluded_ids: [id],
+		},
+	});
+	const partial = ops.desktopRequestSchema.parse({
+		op: "notifications.dismiss",
+		verb: "dismiss",
+		target: { items: [{ id, revision: 2 }], receipt: true, throughSeq: 70 },
+	});
+	assert.deepEqual(ops.desktopEndpoint(partial).body, {
+		op: "dismiss",
+		ids: [{ id, revision: 2 }],
+		receipt: true,
+		through_seq: 70,
+	});
+	const undo = ops.desktopRequestSchema.parse({
+		op: "notifications.read",
+		verb: "undo",
+		target: { operationToken: "journal-token" },
+	});
+	assert.deepEqual(ops.desktopEndpoint(undo).body, {
+		op: "undo",
+		operation_token: "journal-token",
+	});
+	for (const bad of [
+		{ ...partial, target: { items: [{ id, revision: 2 }], receipt: true } },
+		{ ...partial, target: { items: [{ id, revision: 2 }], throughSeq: 70 } },
+		{
+			...request,
+			target: { selectionToken: "frozen-token", items: [{ id, revision: 2 }] },
+		},
+		{
+			...request,
+			target: {
+				selectionToken: "frozen-token",
+				excludedIds: Array(501).fill(id),
+			},
+		},
+		{ ...undo, verb: "dismiss" },
+		{ ...request, verb: "undo" },
+	])
+		assert.equal(ops.desktopRequestSchema.safeParse(bad).success, false);
+});
+
+test("v2 frozen ask read is capability+version gated, never settles asks, and reconciles Undo", () => {
+	const rows = [item("v2-one", { seq: 1 }), item("v2-two", { seq: 2 })];
+	const ask = item("ask:aaaaaaaaaaa1:open", {
+		source: "ask",
+		priority: "high",
+		seq: 0,
+		ask: { status: "open" },
+	});
+	const fixture = ops.createNotificationFixture(rows, [ask]);
+	const preview = fixture.request({
+		op: "notifications.list",
+		preview: true,
+		includeAskReads: true,
+		state: "all",
+		kind: "all",
+		bulkPriority: "any",
+		countSessionIds: [SESSION],
+	}).body.result.selection;
+	assert.equal(preview.selection_version, 2);
+	assert.equal(preview.eligible_count, 3);
+	assert.equal(preview.operation_counts.dismiss.eligible_count, 2);
+	assert.equal(preview.operation_counts.dismiss.skipped_ask_count, 1);
+	const selection = {
+		preview,
+		filters: { kind: "all", priority: "any", from: null },
+		state: "all",
+		excluded: new Map(),
+		asks: [ask],
+		includeAskReads: true,
+	};
+	assert.equal(ops.frozenSelectionCounts(selection).count, 3);
+	assert.equal(ops.frozenSelectionCounts(selection).readable, 3);
+	assert.equal(
+		ops.frozenSelectionCounts({ ...selection, includeAskReads: false })
+			.readable,
+		2,
+	);
+	assert.deepEqual(ops.notificationSelectionScope(selection, "read"), {
+		throughSeq: 2,
+		unreadDelta: -2,
+		waitingUnreadDelta: -1,
+		sessionUnreadDeltas: { [SESSION]: -2 },
+	});
+	assert.equal(
+		ops.notificationSelectionScope(selection, "dismiss").waitingUnreadDelta,
+		0,
+	);
+	const receipt = fixture.request({
+		op: "notifications.read",
+		verb: "read",
+		target: {
+			selectionToken: preview.token,
+			reconcileIds: [rows[0].id, ask.id],
+		},
+	}).body.result;
+	assert.equal(receipt.changed_count, 3);
+	assert.equal(receipt.changed_update_count, 2);
+	assert.equal(receipt.changed_ask_count, 1);
+	assert.equal(receipt.waiting_unread_delta, -1);
+	assert.equal(receipt.waiting_count, 1);
+	assert.equal(receipt.session_counts[SESSION].unread_count, 0);
+	assert.equal(
+		receipt.reconciliation.items.find((row) => row.source === "ask").read,
+		true,
+	);
+	fixture.revise(rows[0].id);
+	const undo = fixture.request({
+		op: "notifications.read",
+		verb: "undo",
+		target: {
+			operationToken: receipt.operation_token,
+			reconcileIds: [rows[0].id, ask.id],
+		},
+	}).body.result;
+	assert.equal(undo.skipped_count, 1);
+	assert.equal(undo.changed_ask_count, 1);
+	assert.equal(undo.waiting_count, 1);
+	assert.equal(ask.read, false);
+	assert.equal(
+		undo.reconciliation.items.find((row) => row.id === rows[0].id).revision,
+		2,
+	);
+});
+
+test("reconciliation is bounded read metadata, never an expansion of filtered mutation", () => {
+	const rows = [
+		item("selected", { seq: 1, priority: "high" }),
+		item("unselected", { seq: 2, priority: "low" }),
+	];
+	const fixture = ops.createNotificationFixture(rows, []);
+	const preview = fixture.request({
+		op: "notifications.list",
+		preview: true,
+		includeAskReads: true,
+		state: "all",
+		kind: "updates",
+		bulkPriority: "high",
+	}).body.result.selection;
+	const request = {
+		op: "notifications.dismiss",
+		verb: "dismiss",
+		target: {
+			selectionToken: preview.token,
+			reconcileIds: rows.map((row) => row.id),
+		},
+	};
+	const first = fixture.request(request).body.result;
+	assert.equal(first.changed_count, 1);
+	assert.equal(rows[1].dismissed, false);
+	fixture.revise(rows[1].id);
+	const replay = fixture.request({
+		...request,
+		target: { ...request.target, reconcileIds: [rows[1].id, "missing"] },
+	}).body.result;
+	assert.equal(replay.replayed, true);
+	assert.equal(replay.counts_high_water, first.counts_high_water);
+	assert.equal(replay.reconciliation.items[0].revision, 2);
+	assert.ok(replay.reconciliation.high_water > replay.counts_high_water);
+	assert.deepEqual(replay.reconciliation.absent_ids, ["missing"]);
+	assert.equal(
+		ops.desktopRequestSchema.safeParse({
+			op: "notifications.read",
+			verb: "undo",
+			target: {
+				operationToken: "receipt",
+				reconcileIds: Array(501).fill("n_abcdefghijklmnop"),
+			},
+		}).success,
+		false,
 	);
 });

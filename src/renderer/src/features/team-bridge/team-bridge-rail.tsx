@@ -73,6 +73,77 @@ export const RAIL_ROW =
 	"group/row relative flex h-[30px] w-full items-center gap-2 rounded-md px-2 text-start text-[13px] transition-colors duration-fast ease-out-quart";
 
 /**
+ * THE ORGANIZATION SUBHEADER OF THE UNION RAIL.
+ *
+ * When one account spans several organizations, People, Chiefs of staff and the
+ * chief-of-staff audit group their rows under the organization each row would
+ * act in. The rows themselves carry NO organization caption in that case: the
+ * organization is stated ONCE, at the nearest enclosing level, and a caption
+ * under a header would repeat it and cost 8px of row height. The one invariant
+ * is therefore "caption iff no enclosing group header".
+ *
+ * TWO VOICES, ONE SIZE. The section header is chrome - `text-meta`, medium,
+ * `ink-dim`, tracked. This is a proper noun - `text-xs` (the same 12px),
+ * normal weight, `ink-muted`, untracked - so the eye reads a name inside a
+ * section rather than a second section. It is the treatment the auth/archive
+ * panels already ship for their grouped rows, which is why it is reused rather
+ * than retuned here.
+ *
+ * `inset` is the parent's horizontal inset, and it is the reason this is not a
+ * copied `px-3`: a `RailSection` already pads its children by `px-1` and its
+ * header by `ps-2`, so a group header inside it must use `ps-2` (12px from the
+ * rail edge, on the section header's axis) rather than `px-3` (16px, visibly
+ * indented). A section that carries no inset of its own passes `bare`.
+ *
+ * A GROUP THAT IS NOT FIRST GETS 8px OF AIR ABOVE IT (design round 1, D2).
+ * Measured from the frames, the header sat 29 device px below the previous
+ * group's last line and 30 device px above its own - proximity bound it to
+ * neither - and with the same ink height and a HIGHER contrast than the section
+ * header it read as its near-peer. `mt-2` alone fixes the binding without
+ * touching the type scale, which is the one thing the spec kept: 12px,
+ * `ink-muted`, normal weight, untracked. The first group needs none: it already
+ * answers to the section header directly above it.
+ *
+ * `title` RECOVERS A TRUNCATED NAME (design D3). The header truncates rather
+ * than wrapping, so a long organization name would otherwise be unrecoverable
+ * for a sighted reader; screen readers always get the full text.
+ */
+export const RailGroupHeader: FC<{
+	id: string;
+	name: string;
+	/** "rail" = inside a RailSection (which carries px-1); "bare" = no inset. */
+	inset?: "rail" | "bare";
+	/** The first group in a section sits directly under the section header. */
+	first?: boolean;
+}> = ({ id, name, inset = "rail", first = false }) => (
+	<h3
+		id={id}
+		title={name}
+		className={cn(
+			// Truncation, never wrapping: a wrapped name breaks the 4px rhythm.
+			"truncate py-1 text-xs font-normal text-ink-muted",
+			inset === "bare" ? "px-3" : "ps-2 pe-1",
+			!first && "mt-2",
+		)}
+	>
+		{name}
+	</h3>
+);
+
+/**
+ * One quiet line inside a group: an empty roster, an organization list that
+ * failed, or a roster failure in the section that merely derives from it.
+ *
+ * ONE PLACE, because the shipped empty-line style is `RailSection.empty`'s
+ * exact string and a per-site copy drifts the moment one of them is retuned.
+ * The style is the section's own quiet line (`ink-dim`, 12px, snug), not the
+ * brighter `ink-muted` a first-person failure uses.
+ */
+export const RailQuietLine: FC<{ children: ReactNode }> = ({ children }) => (
+	<p className="px-2 py-1 text-[12px] text-ink-dim leading-snug">{children}</p>
+);
+
+/**
  * How a rail row hosts its profile card (operator report 2026-10-26: clicking a
  * person showed the card instead of opening the conversation). A row's click is
  * its conversation, so the card never opens on click or focus. A pointer resting

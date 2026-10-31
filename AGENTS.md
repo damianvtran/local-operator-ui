@@ -97,11 +97,18 @@ why will get the next case right where a checklist would not name it.
   band this rule forbids; a content column inside a grounded, `panel-flush`
   ancestor needs no ground of its own, and adding one there is a second tone
   step where the panel already has one.
-- **Separate panels by ground value, never by a line.** A rule between two
-  panels is a second mark over a tone step; the tone step already tells the
-  eye where one ends. The operator has asked for the border's removal three
-  times, so a new `border-l`/`border-r` on a panel is a regression by
-  construction.
+- **Separate panels by ground value; a panel's edge may carry one `PanelEdge`
+  seam, never a border.** The tone step is what separates two planes, and the
+  old borders were removed three times, each time because the line started
+  below the titlebar strip and stopped in mid-air. On 2026-10-30 the other half
+  of that trade surfaced: between two full-height planes the step alone (ΔE00
+  2.32 in `localOperatorLight`) is a field-sized difference, so one sanctioned
+  mark was added — `PanelEdge`, a positioned 1px `hairline` at 75%, defined in
+  `panel-edge.tsx` and specified in `docs/branding.md` § Panels. A new
+  `border-l`/`border-r` on a panel is still a regression by construction: the
+  earlier removals were about a border in the wrong place, not about the idea
+  of an edge, and a border costs the panel a pixel while a scroll container
+  cannot spare one.
 - **A translucent panel must still occlude what scrolls beneath it.** A sticky
   header whose ground lets rows bleed through is not "glass"; it is a
   readability failure. Use the panel's ground (and its blur, where the theme

@@ -653,7 +653,8 @@ rule:
   claim: that the chord moves the app to `/chat` and stages a fresh draft, and
   that with no catalogue answering the press changes nothing at all.
 - **`floors`** — §I's pane floors, measured rather than argued: the chat column's
-  480px floor, the canvas docking at `min(560, available - 480)`, and the `overlay`
+  480px floor, the canvas docking at `min(1200, available - 480)` (the slot's one ceiling,
+  `RIGHT_SLOT_MAX_PX`; 640 is the width it opens at), and the `overlay`
   literal it falls back to where the row cannot give the pane its own 400px floor
   (a flex dock beside the column, not a cover: the mode's positioning was removed
   with the PaneSlot refactor - `canvasPaneMode` carries the note). It is run at
@@ -663,7 +664,8 @@ rule:
   instead of passing on a reading it could not take. It captures the frame BEFORE it
   reads the boxes, because the canvas's wrapper carries `transition-[width]` and a
   reading taken mid-transition describes a layout that was never on screen - measured:
-  chat 942 / canvas 179 at 1380 in one run against the settled 560/560 the frame shows.
+  chat 942 / canvas 179 at 1380 in one run against the settled 560/560 the frame showed (the
+  shape the pane drew before it took the slot's one 1200 ceiling).
 
 
 - **`route-tops`** — the top of every route the shell draws: `/chat` as the control

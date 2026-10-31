@@ -113,6 +113,7 @@ import {
 } from "./team-bridge-notify-policy";
 import {
 	bridgeOwnerCurrent,
+	captureBridgeStatusAuthority,
 	readForBridgeOwner,
 	useTeamBridgeAccount,
 } from "./team-bridge-owner";
@@ -789,9 +790,12 @@ export function useTeamBridgeNotifications(enabled: boolean): void {
 			if (!active || notificationsOff || !selfAccountId) continue;
 			const account = selfAccountId;
 			const authToken = radientAuthoritySnapshot(client);
-			const bridgeStatus = client.getQueryData(
-				teamBridgeKeys.statusFor(account),
-			);
+			/* The SAME authority projection the owner-read fence uses, never the
+			 * cached object's identity: a status refetch mid-delivery installs a
+			 * new object (checked_at/fetched_at move every time) for an unchanged
+			 * authority, and an identity compare silently dropped that banner.
+			 * Sharing the projection is what keeps the two fences from drifting. */
+			const bridgeStatusHolds = captureBridgeStatusAuthority(client, account);
 			for (const candidate of plan.candidates) {
 				void deliverTeamBridgeBanner(
 					client,
@@ -800,8 +804,7 @@ export function useTeamBridgeNotifications(enabled: boolean): void {
 					() =>
 						accountRef.current === account &&
 						radientAuthoritySnapshot(client) === authToken &&
-						client.getQueryData(teamBridgeKeys.statusFor(account)) ===
-							bridgeStatus &&
+						bridgeStatusHolds() &&
 						activeRef.current &&
 						!notificationsOffRef.current &&
 						bridgeOwnerCurrent(client, account),

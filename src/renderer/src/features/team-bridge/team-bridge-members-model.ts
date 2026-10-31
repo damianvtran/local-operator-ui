@@ -77,14 +77,54 @@ export function canRemoveMembers(
 
 export type TeamBridgeMemberCandidate = {
 	recipient: TeamBridgeRecipient;
-	/** A disabled row is visible with this reason instead of silently absent. */
+	/**
+	 * An ineligible row is visible with this reason instead of silently absent.
+	 * There is no "already a member" reason: current members are FILTERED out of
+	 * the invite list (design spec, 2026-10-30) because the left column already
+	 * lists them, and a disabled duplicate row was half the noise in the
+	 * operator's screenshot.
+	 */
 	disabledReason:
-		| "already_member"
 		| "bridge_unavailable"
 		| "agent_unavailable"
 		| "agent_not_permitted"
 		| null;
 };
+
+/*
+ * ONE COMPARATOR FOR BOTH COLUMNS. Rows read A-Z in the reader's locale
+ * (`localeCompare` with the UI tag, base sensitivity so "ada" and "Ada" do not
+ * split), never by account id: the id is opaque and the name is what the eye
+ * scans for. `locale` is optional so the pure model stays callable without the
+ * i18n runtime; undefined is the host default.
+ */
+function compareLabels(a: string, b: string, locale?: string): number {
+	return a.localeCompare(b, locale, { sensitivity: "base" });
+}
+
+/**
+ * The search both lists share: a case-insensitive substring of the row's label.
+ * Whitespace-only is "no query", so a stray space does not empty the lists.
+ */
+export function matchesMemberQuery(label: string, query: string): boolean {
+	const needle = query.trim().toLocaleLowerCase();
+	return needle === "" || label.toLocaleLowerCase().includes(needle);
+}
+
+/**
+ * Split rows into the People and Agents groups both columns render, in that
+ * order. Each group keeps the order it was handed, so the sort stays the
+ * caller's (owner-first for members, eligible-first for candidates).
+ */
+export function groupByKind<T>(
+	rows: readonly T[],
+	kindOf: (row: T) => "human" | "agent",
+): { people: T[]; agents: T[] } {
+	return {
+		people: rows.filter((row) => kindOf(row) === "human"),
+		agents: rows.filter((row) => kindOf(row) === "agent"),
+	};
+}
 
 function memberKey(kind: "human" | "agent", accountId: string): string {
 	return `${kind}:${accountId}`;
@@ -109,37 +149,44 @@ function currentMemberKeys(
  * excludes the reader's own agent for DMs; inviting it into a group is a valid,
  * distinct action, so this function includes it. The label is the directory's
  * CURRENT agent name ("Aida (Ben)"), never a stored add-time label.
+ *
+ * Active and invited members are left out entirely (see `disabledReason`); a
+ * departed or declined one stays, which is how they are re-invited. Order is
+ * eligible rows A-Z, then ineligible rows A-Z: what can be ticked comes first,
+ * and an unreachable peer is still findable at the bottom of its group.
  */
 export function memberCandidates(
 	conversation: TeamBridgeConversation,
 	people: readonly TeamBridgeDirectoryMember[],
 	selfAccountId: string | undefined,
 	chiefLabel: (agentName: string, ownerLabel: string) => string,
+	locale?: string,
 ): TeamBridgeMemberCandidate[] {
 	const current = currentMemberKeys(conversation.members);
 	const candidates: TeamBridgeMemberCandidate[] = [];
 	for (const person of people) {
 		const personLabel = personDisplayLabel(person);
 		const humanState = personRowState(person, selfAccountId);
-		candidates.push({
-			recipient: {
-				kind: "human",
-				accountId: person.account_id,
-				label: personLabel,
-			},
-			disabledReason: current.has(memberKey("human", person.account_id))
-				? "already_member"
-				: humanState === "openable" ||
-						humanState === "paused" ||
-						humanState === "self"
-					? null
-					: "bridge_unavailable",
-		});
+		if (!current.has(memberKey("human", person.account_id))) {
+			candidates.push({
+				recipient: {
+					kind: "human",
+					accountId: person.account_id,
+					label: personLabel,
+				},
+				disabledReason:
+					humanState === "openable" ||
+					humanState === "paused" ||
+					humanState === "self"
+						? null
+						: "bridge_unavailable",
+			});
+		}
 
 		// The reader's own chief is intentionally NOT skipped. Adding it creates
 		// an invitation only; owner consent remains a separate human action.
 		const agent = person.agent;
-		if (!agent) continue;
+		if (!agent || current.has(memberKey("agent", person.account_id))) continue;
 		candidates.push({
 			recipient: {
 				kind: "agent",
@@ -149,16 +196,18 @@ export function memberCandidates(
 				ownerLabel: personLabel,
 				label: chiefLabel(agent.name.trim(), personLabel),
 			},
-			disabledReason: current.has(memberKey("agent", person.account_id))
-				? "already_member"
-				: !conversation.agent_capable
-					? "agent_not_permitted"
-					: agent.state === "active" || agent.state === "paused"
-						? null
-						: "agent_unavailable",
+			disabledReason: !conversation.agent_capable
+				? "agent_not_permitted"
+				: agent.state === "active" || agent.state === "paused"
+					? null
+					: "agent_unavailable",
 		});
 	}
-	return candidates;
+	return candidates.sort(
+		(a, b) =>
+			Number(a.disabledReason !== null) - Number(b.disabledReason !== null) ||
+			compareLabels(a.recipient.label, b.recipient.label, locale),
+	);
 }
 
 /*
@@ -182,6 +231,8 @@ export type TeamBridgeCurrentMember = {
 	member: TeamBridgeParticipant;
 	label: string;
 	state: "active" | "invited";
+	/** The reader's own row, which reads "(you)" and is never removable. */
+	self: boolean;
 	/*
 	 * The remove route is human-keyed, so an agent row is never removable here:
 	 * DELETE .../members/{account} would resolve the OWNER's human row, not the
@@ -195,6 +246,10 @@ export type TeamBridgeCurrentMember = {
  * is rendered explicitly so an invited person/agent never appears active.
  * `canRemove` is the caller-level owner check; `selfAccountId` keeps the
  * owner's own "remove" out of the list (leaving is its own action).
+ *
+ * Order: the owner first (the one person whose role changes what the room can
+ * do), then A-Z. The view splits People from Agents with `groupByKind`, which
+ * keeps this order inside each group.
  */
 export function currentMembers(
 	conversation: TeamBridgeConversation,
@@ -202,6 +257,7 @@ export function currentMembers(
 	selfAccountId: string | undefined,
 	chiefLabel: (agentName: string, ownerLabel: string) => string,
 	canRemove: boolean,
+	locale?: string,
 ): TeamBridgeCurrentMember[] {
 	return conversation.members
 		.flatMap((member) =>
@@ -224,11 +280,17 @@ export function currentMembers(
 					null,
 				) ?? member.account_id,
 			state,
+			self: member.kind === "human" && member.account_id === selfAccountId,
 			// `state` is active or invited here, so the only removal the route can
 			// address is a human row that is not the reader's own.
 			removable:
 				canRemove &&
 				member.kind === "human" &&
 				member.account_id !== selfAccountId,
-		}));
+		}))
+		.sort(
+			(a, b) =>
+				Number(b.member.role === "owner") - Number(a.member.role === "owner") ||
+				compareLabels(a.label, b.label, locale),
+		);
 }

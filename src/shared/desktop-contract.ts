@@ -1262,9 +1262,28 @@ const notificationId = z
 	.regex(/^(?:n_[a-z2-7]{4,32}|ask:[A-Za-z0-9_-]+:[A-Za-z0-9_-]+)$/);
 
 /* The one-of-three target a read/dismiss write names (contract § 5.2). */
+// A selection token freezes the filtered result on core, not just the loaded
+// page. Exclusions can only narrow that snapshot. Existing observed-id callers
+// retain their original request shape and revision safeguards.
+const notificationSelectionTarget = z
+	.object({
+		selectionToken: z.string().min(1).max(512),
+		reconcileIds: z.array(notificationId).max(500).optional(),
+		excludedIds: z.array(notificationId).max(500).optional(),
+	})
+	.strict();
+const notificationUndoTarget = z
+	.object({
+		operationToken: z.string().min(1).max(512),
+		reconcileIds: z.array(notificationId).max(500).optional(),
+	})
+	.strict();
 const notificationsTarget = z.union([
 	z
 		.object({
+			throughSeq: z.number().int().min(0).optional(),
+			receipt: z.literal(true).optional(),
+			reconcileIds: z.array(notificationId).max(500).optional(),
 			items: z
 				.array(
 					z
@@ -4567,6 +4586,14 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 	z
 		.object({
 			op: z.literal("notifications.list"),
+			preview: z.literal(true).optional(),
+			includeAskReads: z.boolean().optional(),
+			// No selection_token/excluded_ids here: core's recount WITH exclusions
+			// is the PATCH body form ({op:"preview"}); 500 IDs in a GET URL exceed
+			// h11's request-line limit. The page recounts exclusions locally.
+			countSessionIds: z.array(sessionId).max(50).optional(),
+			kind: z.enum(["all", "asks", "updates"]).optional(),
+			bulkPriority: z.enum(["any", "high", "normal_up"]).optional(),
 			state: z.enum(["unread", "all", "dismissed"]).optional(),
 			source: z.enum(["notify", "ask"]).optional(),
 			priority: z.enum(["high", "normal", "low"]).optional(),
@@ -4596,15 +4623,20 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 	z
 		.object({
 			op: z.literal("notifications.read"),
-			verb: z.enum(["read", "unread"]),
-			target: notificationsTarget,
+			// Guard Undo like a read: the journal may restore a prior read mark.
+			verb: z.enum(["read", "unread", "undo"]),
+			target: z.union([
+				notificationsTarget,
+				notificationSelectionTarget,
+				notificationUndoTarget,
+			]),
 		})
 		.strict(),
 	z
 		.object({
 			op: z.literal("notifications.dismiss"),
 			verb: z.enum(["dismiss", "undismiss"]),
-			target: notificationsTarget,
+			target: z.union([notificationsTarget, notificationSelectionTarget]),
 		})
 		.strict(),
 	/*
@@ -4665,6 +4697,29 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
  */
 export const desktopRequestSchema = desktopRequestUnion.superRefine(
 	(request, ctx) => {
+		if (
+			(request.op === "notifications.read" ||
+				request.op === "notifications.dismiss") &&
+			"items" in request.target &&
+			Boolean(request.target.receipt) !==
+				(request.target.throughSeq !== undefined)
+		) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message: "Receipt writes require a sequence boundary", // i18n: ignore wire validation diagnostic
+				path: ["target"],
+			});
+		}
+		if (
+			request.op === "notifications.read" &&
+			(request.verb === "undo") !== "operationToken" in request.target
+		) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message: "Undo requires an operation token, and only undo accepts one", // i18n: ignore wire validation diagnostic
+				path: ["target"],
+			});
+		}
 		/*
 		 * Image-only messages: an empty body is legal only when images carry the
 		 * message (contract §3, "body may be empty iff attachment_ids non-empty").
@@ -10096,6 +10151,13 @@ export function desktopEndpoint(request: DesktopRequest): {
 		 */
 		case "notifications.list": {
 			const query = new URLSearchParams();
+			if (request.preview) query.set("preview", "true");
+			if (request.includeAskReads) query.set("include_ask_reads", "true");
+			for (const id of request.countSessionIds ?? [])
+				query.append("count_session_ids", id);
+			if (request.kind) query.set("kind", request.kind);
+			if (request.bulkPriority)
+				query.set("bulk_priority", request.bulkPriority);
 			if (request.state) query.set("state", request.state);
 			if (request.source) query.set("source", request.source);
 			if (request.priority) query.set("priority", request.priority);
@@ -10157,10 +10219,33 @@ export function desktopEndpoint(request: DesktopRequest): {
 
 /** The PATCH body's target half, in the route's snake_case (contract § 5.2). */
 function notificationsTargetBody(
-	target: z.infer<typeof notificationsTarget>,
+	target:
+		| z.infer<typeof notificationsTarget>
+		| z.infer<typeof notificationSelectionTarget>
+		| z.infer<typeof notificationUndoTarget>,
 ): Record<string, unknown> {
+	if ("selectionToken" in target)
+		return {
+			selection_token: target.selectionToken,
+			...(target.reconcileIds ? { reconcile_ids: target.reconcileIds } : {}),
+			...(target.excludedIds ? { excluded_ids: target.excludedIds } : {}),
+		};
+	if ("operationToken" in target)
+		return {
+			operation_token: target.operationToken,
+			...(target.reconcileIds ? { reconcile_ids: target.reconcileIds } : {}),
+		};
 	if ("items" in target) {
 		return {
+			...(target.receipt
+				? {
+						receipt: true,
+						through_seq: target.throughSeq,
+						...(target.reconcileIds
+							? { reconcile_ids: target.reconcileIds }
+							: {}),
+					}
+				: {}),
 			ids: target.items.map((item) => ({
 				id: item.id,
 				revision: item.revision,

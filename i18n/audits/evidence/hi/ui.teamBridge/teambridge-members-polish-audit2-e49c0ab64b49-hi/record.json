@@ -1,0 +1,46 @@
+{
+	"record_kind": "translation audit record (second independent auditor)",
+	"locale": "hi",
+	"namespace": "ui.teamBridge",
+	"date": "2026-10-30",
+	"auditor": {
+		"agent": "translation-auditor",
+		"session": "e49c0ab64b49",
+		"model": "anthropic/claude-opus-5-5",
+		"independence": "Second independent auditor: session e49c0ab64b49 (team lopdev, role translation-auditor), distinct from translator (translator / anthropic/claude-opus-5-5) and from first auditor session b5610aecd5f2. Verdicts were formed from the catalogues, context sidecar, glossary and style guides BEFORE reading the first auditor's receipts; comparison recorded below. No catalogue edited."
+	},
+	"paths": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.json",
+			"sha256": "20a8960b411dbff3dc7a8b6e029a4a17091e95980bd1bab946445597aff3277f"
+		},
+		"target": {
+			"path": "src/i18n/catalogues/hi/ui.teamBridge.json",
+			"sha256": "6f968790b4e22d2590a99d802af0ffb786c822b8452828fc85644c938265cd1b"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+			"sha256": "abbf67496bc6fecdd4d5795e2fb6b15d4d6a1cefad59ba69b303656b88c8b4cd"
+		}
+	},
+	"receipt": {
+		"path": "i18n/receipts/e49c0ab64b49-hi.json",
+		"sha256": "d3d67b7c2eaeda4b6d2d479851b318752eca58bfee802b43491f1b8ad3710201"
+	},
+	"findings": [
+		{
+			"severity": "nit",
+			"id": "A2-HI-N1",
+			"key": "ui.teamBridge.members.invitation_note_v2",
+			"current": "उसे केवल @ वाले उल्लेखों तक सीमित कर सकता है",
+			"proposed": "उसे केवल @ से होने वाले उल्लेखों तक सीमित कर सकता है",
+			"reason": "Earlier in the same string and in the consent copy the term is \"@ से उल्लेख\"; \"@ वाले उल्लेख\" is a second phrasing of one glossary term."
+		}
+	],
+	"status": "clean-with-findings: 0 blocker, 0 major, 0 minor, 1 nit",
+	"first_auditor": {
+		"session": "b5610aecd5f2",
+		"receipt": "i18n/receipts/b5610aecd5f2-hi.json"
+	},
+	"notes_not_execution_log": "Linguistic judgements; no command output is reproduced here."
+}
