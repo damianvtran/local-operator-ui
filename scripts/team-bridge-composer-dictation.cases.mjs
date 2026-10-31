@@ -481,6 +481,7 @@ test("width-only resize remeasures, widens back, caps, and disconnects on unmoun
 	const originalRect = proto.getBoundingClientRect;
 	let width = 1248;
 	let disconnected = false;
+	let observedNode;
 	let callback;
 	let measures = 0;
 	const rect = () => ({ width });
@@ -496,7 +497,9 @@ test("width-only resize remeasures, widens back, caps, and disconnects on unmoun
 		constructor(fn) {
 			callback = fn;
 		}
-		observe() {}
+		observe(node) {
+			observedNode = node;
+		}
 		disconnect() {
 			disconnected = true;
 		}
@@ -507,6 +510,10 @@ test("width-only resize remeasures, widens back, caps, and disconnects on unmoun
 			.setComposerText(CONVERSATION, "unchanged wrapping draft");
 		await mount({ kind: "text", text: "" });
 		const field = container.querySelector("textarea");
+		assert.ok(
+			observedNode === field,
+			"observe the mounted textarea, not its container",
+		);
 		assert.equal(field.style.height, "56px");
 		assert.equal(
 			typeof callback,
