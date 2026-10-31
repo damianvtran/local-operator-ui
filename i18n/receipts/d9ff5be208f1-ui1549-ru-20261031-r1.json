@@ -1,0 +1,33 @@
+{
+  "auditor": "independent-translation-auditor",
+  "model": "openai/gpt-6.1-sol",
+  "instance": "d9ff5be208f1-ui1549-ru-20261031-r1",
+  "status": "passed",
+  "namespace": "ui.chat.user_turn",
+  "sha256": {
+    "en": "7a40ae36b492576746124538551a2071010c5799795dfb303b8b99285b73ee3a",
+    "ru": "02c5dc79f47d1f66f2c4954b2a485266c55ffc116668111ddbb885cfb250f11e"
+  },
+  "findings": [],
+  "date": "2026-10-31",
+  "session": "d9ff5be208f1",
+  "independence": "Separate reviewer agent; did not author or edit catalogue translations.",
+  "provenance": {
+    "actual_model": "openai/gpt-6.1-sol",
+    "original_model": "anthropic/claude-opus-5-5",
+    "fallback_reason": "Provider quota failure; model switch occurred before substantive audit."
+  },
+  "context": {
+    "path": "src/i18n/catalogues/en/ui.chat.user_turn.context.json",
+    "sha256": "a006922ca6662dabc178992fb2975964e22f07ca788139891f1c8ca5bd0b7948"
+  },
+  "scope": {
+    "keys": [
+      "ui.chat.user_turn.show_more",
+      "ui.chat.user_turn.show_less"
+    ],
+    "placeholders": false,
+    "assessment": "Показать больше / Показать меньше are grammatical paired infinitive actions for showing more/less of the same message. Terse, sentence-case, impersonal register complies.",
+    "limitations": "LLM linguistic audit, not native-human certification; no rendered UI, font, geometry, or runtime RTL validation."
+  }
+}

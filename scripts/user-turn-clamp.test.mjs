@@ -59,6 +59,41 @@ class FakeResizeObserver {
 	disconnect() {}
 }
 
+/*
+ * Mounting CanonicalTranscript also mounts its speech-capable action rows.
+ * Never rely on jsdom's unimplemented media methods for silence: install the
+ * same fake Audio used by message-actions.test.mjs before importing the bundle.
+ * This is a real safety boundary, not a rename to evade the audio-suite guard.
+ */
+class FakeAudio {
+	constructor() {
+		this.src = null;
+		this.played = false;
+		this.paused = true;
+		this.currentTime = 0;
+		this.duration = 0;
+		this.volume = 1;
+		this.playbackRate = 1;
+		this.preload = "";
+		this.onended = null;
+		this.onerror = null;
+	}
+	play() {
+		this.played = true;
+		this.paused = false;
+		return Promise.resolve();
+	}
+	pause() {
+		this.paused = true;
+	}
+	removeAttribute(name) {
+		if (name === "src") this.src = null;
+	}
+	load() {}
+}
+const originalAudio = Object.getOwnPropertyDescriptor(globalThis, "Audio");
+globalThis.Audio = FakeAudio;
+
 const originals = new Map();
 const shims = {
 	window,
@@ -182,6 +217,8 @@ const { createRoot } = await import("react-dom/client");
 const { act } = await import("react");
 after(() => {
 	bootstrapDOM.window.close();
+	if (originalAudio) Object.defineProperty(globalThis, "Audio", originalAudio);
+	else Reflect.deleteProperty(globalThis, "Audio");
 	for (const [key, descriptor] of originals) {
 		if (descriptor) Object.defineProperty(globalThis, key, descriptor);
 		else delete globalThis[key];

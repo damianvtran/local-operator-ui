@@ -1514,7 +1514,9 @@ const UserRow = memo(function UserRow({
 									"hover:text-ink",
 								)}
 							>
-								{expanded ? "Show less" : "Show more"}
+								{expanded
+									? t("ui.chat.user_turn.show_less")
+									: t("ui.chat.user_turn.show_more")}
 							</button>
 						)}
 						{(record.documents?.length ?? 0) > 0 && (

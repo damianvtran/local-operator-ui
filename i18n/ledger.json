@@ -63388,6 +63388,216 @@
 					]
 				}
 			]
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.chat.user_turn",
+			"source_sha256": "7a40ae36b492576746124538551a2071010c5799795dfb303b8b99285b73ee3a",
+			"target_sha256": "06b109df58a8f1c4f93657c4aafae87a9645fdd5d0b2735e7f64f545c5e4139a",
+			"translator": {
+				"agent": "ui1549-coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-10-31"
+			},
+			"auditors": [
+				{
+					"agent": "independent-translation-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-31",
+					"result": "clean",
+					"instance": "d9ff5be208f1-ui1549-fr-20261031-r1",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/d9ff5be208f1-ui1549-fr-20261031-r1.json",
+					"receipt_sha256": "43c09e3ae8d8ac8e15e9591e6cb94b969dc43f1b0d0d081c36d3977749e3afac",
+					"scope": "Two user-turn disclosure labels; linguistic audit only, rendered fit pending"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "es",
+			"namespace": "ui.chat.user_turn",
+			"source_sha256": "7a40ae36b492576746124538551a2071010c5799795dfb303b8b99285b73ee3a",
+			"target_sha256": "a5d07dde40da6fbbc3dd0e0efd8ebd795293fdfa3ad80a371f00eb51673424e3",
+			"translator": {
+				"agent": "ui1549-coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-10-31"
+			},
+			"auditors": [
+				{
+					"agent": "independent-translation-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-31",
+					"result": "clean",
+					"instance": "d9ff5be208f1-ui1549-es-20261031-r1",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/d9ff5be208f1-ui1549-es-20261031-r1.json",
+					"receipt_sha256": "4fd3e4cf3c657db7dd3a7fa35fe6226c8422b4f0e7aec343180d132ef7ca0aed",
+					"scope": "Two user-turn disclosure labels; linguistic audit only, rendered fit pending"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.chat.user_turn",
+			"source_sha256": "7a40ae36b492576746124538551a2071010c5799795dfb303b8b99285b73ee3a",
+			"target_sha256": "c7f79e9b9961078884a0fa59898ec8f719661c681d486e7d575bc087bdb93404",
+			"translator": {
+				"agent": "ui1549-coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-10-31"
+			},
+			"auditors": [
+				{
+					"agent": "independent-translation-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-31",
+					"result": "clean",
+					"instance": "d9ff5be208f1-ui1549-zh-cn-20261031-r1",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/d9ff5be208f1-ui1549-zh-cn-20261031-r1.json",
+					"receipt_sha256": "6234734f1ac029c464f2bf8ea76489013a125cbb5aa3fe20b23d332cf428ba06",
+					"scope": "Two user-turn disclosure labels; linguistic audit only, rendered fit pending"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ru",
+			"namespace": "ui.chat.user_turn",
+			"source_sha256": "7a40ae36b492576746124538551a2071010c5799795dfb303b8b99285b73ee3a",
+			"target_sha256": "02c5dc79f47d1f66f2c4954b2a485266c55ffc116668111ddbb885cfb250f11e",
+			"translator": {
+				"agent": "ui1549-coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-10-31"
+			},
+			"auditors": [
+				{
+					"agent": "independent-translation-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-31",
+					"result": "clean",
+					"instance": "d9ff5be208f1-ui1549-ru-20261031-r1",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/d9ff5be208f1-ui1549-ru-20261031-r1.json",
+					"receipt_sha256": "d0dd13aa9b042dc5399ea9c4142d8f07f19e2e6e6e93d226a92707b293ea16ae",
+					"scope": "Two user-turn disclosure labels; linguistic audit only, rendered fit pending"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "vi",
+			"namespace": "ui.chat.user_turn",
+			"source_sha256": "7a40ae36b492576746124538551a2071010c5799795dfb303b8b99285b73ee3a",
+			"target_sha256": "bc3ab73d2b2b7ef82755c2dbe21f55c1325c6776bc70c3e706d398cbae92010b",
+			"translator": {
+				"agent": "ui1549-coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-10-31"
+			},
+			"auditors": [
+				{
+					"agent": "independent-translation-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-31",
+					"result": "clean",
+					"instance": "d9ff5be208f1-ui1549-vi-20261031-r1",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/d9ff5be208f1-ui1549-vi-20261031-r1.json",
+					"receipt_sha256": "dcf55713ccb2c4488e0a022a488ddfa521e0ba7ee086325cc526a1af53688add",
+					"scope": "Two user-turn disclosure labels; linguistic audit only, rendered fit pending"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.chat.user_turn",
+			"source_sha256": "7a40ae36b492576746124538551a2071010c5799795dfb303b8b99285b73ee3a",
+			"target_sha256": "b068de97e36c4940955e717bd513b2b45e9e9c9d34626b7d3cd33cec56fb5686",
+			"translator": {
+				"agent": "ui1549-coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-10-31"
+			},
+			"auditors": [
+				{
+					"agent": "independent-translation-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-31",
+					"result": "clean",
+					"instance": "d9ff5be208f1-ui1549-ur-20261031-r1",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/d9ff5be208f1-ui1549-ur-20261031-r1.json",
+					"receipt_sha256": "31439c2af75f4911ef384f339d4dc953c347c7f007afc696665dbd06cf5500e1",
+					"scope": "Two user-turn disclosure labels; linguistic audit only, rendered fit pending"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.chat.user_turn",
+			"source_sha256": "7a40ae36b492576746124538551a2071010c5799795dfb303b8b99285b73ee3a",
+			"target_sha256": "62601e81aec50ebd33dba34fe5ed9eb48a26ef3eb3d288a7730d5554404f197f",
+			"translator": {
+				"agent": "ui1549-coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-10-31"
+			},
+			"auditors": [
+				{
+					"agent": "independent-translation-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-31",
+					"result": "clean",
+					"instance": "d9ff5be208f1-ui1549-hi-20261031-r1",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/d9ff5be208f1-ui1549-hi-20261031-r1.json",
+					"receipt_sha256": "6689059fc7632337462af2e8df4c7ee8f03006d266072497a675a16a492979bd",
+					"scope": "Two user-turn disclosure labels; linguistic audit only, rendered fit pending"
+				}
+			],
+			"status": "audited"
 		}
 	]
 }
