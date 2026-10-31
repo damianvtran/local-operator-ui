@@ -3044,3 +3044,113 @@ export const LongContentRowsStayInColumn: Story = {
 		}
 	},
 };
+
+/*
+ * AN AGENT NEVER WEARS ITS OWNER'S FACE (2026-10-30). Bea has a real photo,
+ * and her chief of staff "Aida" rides on the same directory row. Before the
+ * fix every Aida surface showed Bea's photo, because the plate looked the
+ * picture up by the owner's account id. These boards show each surface with
+ * the photo READY, so a regression shows Bea's face where the Bot glyph
+ * belongs. Bea's own (human) plate is the control: it must still show her
+ * photo.
+ */
+const agentAvatarChannel: TeamBridgeConversation = {
+	...channel,
+	members: [
+		...channel.members.map((member) =>
+			member.account_id === "acct_bea"
+				? { ...member, account_id: "acc_bea" }
+				: member,
+		),
+		{
+			account_id: "acc_bea",
+			kind: "agent",
+			display_label: "Aida",
+			role: "member",
+			state: "active",
+		},
+	],
+};
+const agentAvatarArgs = {
+	...profileArgs,
+	conversations: [agentAvatarChannel, profileArgs.conversations[0]],
+	target: { type: "conversation" as const, id: agentAvatarChannel.id },
+	messages: [
+		{
+			...messages[0],
+			id: "agent-avatar-human",
+			conversation_id: agentAvatarChannel.id,
+			sender: {
+				account_id: "acc_bea",
+				kind: "human" as const,
+				display_label: "Bea",
+			},
+			body: "Aida, can you summarise the launch checklist?",
+		},
+		{
+			...messages[1],
+			id: "agent-avatar-agent",
+			conversation_id: agentAvatarChannel.id,
+			seq: 2,
+			sender: {
+				account_id: "acc_bea",
+				kind: "agent" as const,
+				display_label: "Aida",
+			},
+			body: "Two items remain open: the pricing copy and the status page.",
+		},
+	],
+};
+export const AgentAvatarMessages: Story = {
+	args: agentAvatarArgs,
+	render: (args) => <ProfileDirectoryStory {...args} avatarState="ready" />,
+};
+export const AgentAvatarProfileCard: Story = {
+	args: agentAvatarArgs,
+	render: (args) => <ProfileDirectoryStory {...args} avatarState="ready" />,
+	play: async ({ canvasElement }) => {
+		const row = canvasElement.querySelector(
+			'[data-message-id="agent-avatar-agent"]',
+		);
+		const trigger = row?.querySelector<HTMLButtonElement>("button");
+		if (!trigger) throw new Error("Agent message avatar missing");
+		trigger.focus();
+		await within(canvasElement.ownerDocument.body).findByRole("dialog");
+	},
+};
+export const AgentAvatarMembersDialog: Story = {
+	args: { ...agentAvatarArgs, initialMembersOpen: true },
+	render: (args) => <ProfileDirectoryStory {...args} avatarState="ready" />,
+};
+export const AgentAvatarChiefDraft: Story = {
+	args: {
+		...agentAvatarArgs,
+		target: { type: "chief" as const, accountId: "acc_bea" },
+		messages: [],
+		messageState: "idle" as const,
+	},
+	render: (args) => <ProfileDirectoryStory {...args} avatarState="ready" />,
+};
+export const AgentAvatarComposeChips: Story = {
+	args: {
+		...agentAvatarArgs,
+		target: {
+			type: "compose" as const,
+			recipients: [
+				{
+					kind: "agent" as const,
+					accountId: "acc_bea",
+					endpointId: "ep_bea",
+					label: "Aida (Bea)",
+				},
+			],
+		},
+		messages: [],
+		messageState: "idle" as const,
+	},
+	render: (args) => <ProfileDirectoryStory {...args} avatarState="ready" />,
+	play: async ({ canvasElement }) => {
+		const field = within(canvasElement).getByRole("combobox");
+		field.focus();
+	},
+};
