@@ -107,7 +107,8 @@ const bundle = await build({
  export {installDictationFixture} from "./src/renderer/src/features/team-bridge/team-bridge-dictation.fixtures";
  export {useConversationInputStore} from "./src/renderer/src/shared/store/conversation-input-store";
  export {QueryClient, QueryClientProvider} from "@tanstack/react-query";
- export {setLocale} from "./src/i18n";`,
+ export {setLocale} from "./src/i18n";
+ export {resolvePushToTalkBinding} from "./src/renderer/src/shared/hooks/use-speech-to-text-manager";`,
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -315,4 +316,42 @@ test("confirm transcribes the take and fills the field", async () => {
 	const field = container.querySelector("textarea");
 	assert.equal(field.value, "Ship it after the review.");
 	assert.equal(strip(), null, "the strip retires with the take");
+});
+
+/*
+ * PUSH-TO-TALK, through the chord and not the button. The operator asked for
+ * the mic, the strip AND push-to-talk; the cases above press the button only,
+ * so a composer that dropped its `useSpeechToTextManager` registration would
+ * still pass them. This one dispatches the RESOLVED binding (whatever the
+ * keymap registry answers, the platform default here) on the window the way
+ * the manager's capture-phase listener receives it: keydown starts a take and
+ * puts the strip in the control row, keyup ends it.
+ */
+test("the push-to-talk chord starts a take in the control row and its release ends it", async () => {
+	await mount({ kind: "text", text: "Held and spoken." });
+	const { code, key } = m.resolvePushToTalkBinding();
+	const press = async (type) => {
+		await act(async () => {
+			window.dispatchEvent(
+				new dom.window.KeyboardEvent(type, { bubbles: true, code, key }),
+			);
+		});
+	};
+	await press("keydown");
+	const live = strip();
+	assert.ok(live, "the chord opens the recording strip");
+	assert.equal(live.parentElement, controls(), "in the control row");
+	await act(async () => {
+		await new Promise((resolve) => setTimeout(resolve, 300));
+	});
+	await press("keyup");
+	await act(async () => {
+		await new Promise((resolve) => setTimeout(resolve, 120));
+	});
+	assert.equal(strip(), null, "the release retires the strip");
+	assert.equal(
+		container.querySelector("textarea").value,
+		"Held and spoken.",
+		"the held take is transcribed into the field",
+	);
 });

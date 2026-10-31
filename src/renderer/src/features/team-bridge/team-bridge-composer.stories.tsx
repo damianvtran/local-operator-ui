@@ -1,6 +1,6 @@
 import { useConversationInputStore } from "@shared/store/conversation-input-store";
 import type { Meta, StoryObj } from "@storybook/react";
-import { fireEvent, within } from "@storybook/test";
+import { fireEvent, userEvent, within } from "@storybook/test";
 /*
  * WHY THIS SIDE-EFFECT IMPORT IS FIRST. The composer registers itself with the
  * speech manager, which reads `window.electron.ipcRenderer`; Storybook's
@@ -279,4 +279,28 @@ export const WithMentions: Story = {
 			);
 		},
 	],
+};
+
+/*
+ * GROWTH FROM KEYSTROKES, not from a seeded draft. The operator's defect with
+ * the pre-#1483 bar was that it did not grow as they typed new lines, so the
+ * proof has to be typing: `userEvent` presses Shift+Enter through the field's
+ * own key handler and `onChange`, and the measure readout records the height
+ * the layout effect settled on. Three lines must fit with `overflow-y: hidden`
+ * (no scrollbar); the cap is `AtCap`'s job.
+ */
+export const TypingGrows: Story = {
+	decorators: [withDictation({ kind: "text", text: "" })],
+	play: async ({ canvasElement }) => {
+		// The draft store is persisted and keyed by this file's one conversation,
+		// so another story's seeded text would otherwise be the starting line.
+		seedDraft("");
+		const user = userEvent.setup();
+		const field = await within(canvasElement).findByLabelText("Message");
+		await user.click(field);
+		await user.type(
+			field,
+			"first line{Shift>}{Enter}{/Shift}second line{Shift>}{Enter}{/Shift}third line",
+		);
+	},
 };
