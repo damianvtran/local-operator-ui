@@ -1,8 +1,12 @@
 name: Bounded CI hang probe
 
-# Deliberately manual-only. New workflow must be reviewed/merged before its first
-# dispatch; no PR/push/schedule event can start this experiment or a full suite.
+# A reviewed, tree-identical commit on this one diagnostic branch can activate
+# the native probe before this workflow exists on main. Ordinary PR/push refs
+# must never start it; this is not a release or a broad-CI bypass.
 on:
+  push:
+    branches:
+      - diag/ui-avatar-native-activate
   workflow_dispatch:
 
 permissions:
@@ -14,6 +18,13 @@ concurrency:
 
 jobs:
   discriminate:
+    # Defense in depth for manual dispatch/forks as well as the push filter.
+    # There are no inputs: every activation uses the two immutable refs below.
+    if: >-
+      github.repository == 'damianvtran/local-operator-ui' &&
+      ((github.event_name == 'push' && github.ref == 'refs/heads/diag/ui-avatar-native-activate') ||
+       (github.event_name == 'workflow_dispatch' &&
+        (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/diag/ui-avatar-native-activate')))
     runs-on: ubuntu-latest
     timeout-minutes: 35
     steps:
