@@ -44,9 +44,11 @@ const pressTourAction = (action: string): void => {
  * 340 px in `onboarding-tour.css` with an 8 px arrow overhang, so
  *   640 + 2 x (340 + 8) = 1336
  * is the first viewport that can hold both with no overlap at all. 1340 is
- * that floor rounded up, which leaves 10 px between the panel and the window
- * edge at the threshold rather than the flush edge a 500 px panel had (design
- * round 1, D5). Narrower than this, the palette is not opened for step 7 at
+ * that floor rounded up, which leaves 2 px between the panel and the window
+ * edge at the threshold - the 8 px gutter D8 added is part of that 1336, so
+ * the margin the gutter spends is not still free here. Either way it is not the
+ * flush edge a 500 px panel had (design round 1, D5), and there is no overlap.
+ * Narrower than this, the palette is not opened for step 7 at
  * all: a 500 px panel cannot fit beside a 640 px palette at any size the
  * desktop window supports, and covering the field this step tells the user to
  * type into is worse than showing the same copy centred (D1).
