@@ -94,7 +94,7 @@ test("literal inventory includes nested names; count-balanced partition is compl
 	}
 	assert.deepEqual(
 		partition(files).map((p) => p.length),
-		[136, 136, 135, 135],
+		[68, 68, 68, 68, 68, 68, 67, 67],
 	);
 });
 
@@ -117,7 +117,9 @@ test("inventory rejects unsupported syntax instead of guessing shell semantics",
 			/Missing|Unsupported|Unsafe|Duplicate/,
 		);
 	}
-	assert.throws(() => partition(names, 5), /count/);
+	// Outside 2..SHARD_COUNT, and non-integers, are rejected by name.
+	for (const count of [1, SHARD_COUNT + 1, 2.5, "8"])
+		assert.throws(() => partition(names, count), /count must be/);
 	assert.throws(() => partition([], 3), /Empty/);
 });
 
@@ -152,10 +154,10 @@ test("TAP and receipt cannot be emitted after an error, cancellation, empty or t
 		);
 	}
 	assert.throws(() => receipt(p, 0, log, 137, 1), /rc=0/);
-	assert.throws(() => receipt(p, 4, log, 0, 1), /index/);
+	assert.throws(() => receipt(p, SHARD_COUNT, log, 0, 1), /index/);
 });
 
-test("exact four same-head success receipts prove disjoint complete inventory; every mutation fails for its own reason", () => {
+test("exact SHARD_COUNT same-head success receipts prove disjoint complete inventory; every mutation fails for its own reason", () => {
 	const p = expected();
 	assert.equal(verify(p, rows(p), "true", "success", "success"), "passed");
 	assert.equal(verify(p, [], "false", "success", "skipped"), "skipped");
@@ -170,8 +172,8 @@ test("exact four same-head success receipts prove disjoint complete inventory; e
 			/matrix/i,
 		);
 	for (const [mutate, message] of [
-		[(r) => r.pop(), /exactly 4/],
-		[(r) => r.push(r[0]), /exactly 4/],
+		[(r) => r.pop(), new RegExp(`exactly ${SHARD_COUNT} `)],
+		[(r) => r.push(r[0]), new RegExp(`exactly ${SHARD_COUNT} `)],
 		[
 			(r) => {
 				r[1].index = 0;

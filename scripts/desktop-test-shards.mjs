@@ -22,13 +22,22 @@ import { dirname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { isEntryPoint } from "./entry-point.mjs";
 
+// EIGHT, NOT FOUR (2026-10-31), on measured TIME headroom: shard 2/4 was
+// cancelled at the job's 55-minute timeout on run 41196583475 (job
+// 124531619988) while still progressing (`ok 1884` at 12:34 on a job started
+// ~11:45, largest log line 420 bytes - not a stall). A serial sweep of one
+// 166-file shard measured 47 minutes (~17 s/file) and CI lands in the same
+// order, so at four shards every lane sat at the 50-minute ceiling. Eight
+// halves each lane to ~82 files, ~23 minutes at that serial rate: more than 2x
+// headroom. ci.yml forbids raising the ceiling instead, so capacity is the fix.
+//
 // FOUR, NOT THREE, on measured memory headroom rather than balance: at
 // concurrency 3 the guarded runner's process group was killed by the 7.8 GB
 // budget at 7.9 GB (run 40992181176) and again at 8.2 GB (run 40996898976) on the
 // SAME 205-file shard inventory, both after `ok 1060` with zero failures. The ceiling therefore sits inside the run-to-run distribution,
 // so fewer files per process group is what buys headroom; the budget and the
 // concurrency guard are deliberately untouched.
-export const SHARD_COUNT = 4;
+export const SHARD_COUNT = 8;
 const RUNNER = "scripts/run-desktop-tests.mjs";
 const SHA = /^[a-f0-9]{40}$/;
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -59,10 +68,12 @@ export function inventory(command) {
 
 export function partition(files, count = SHARD_COUNT) {
 	// The floor of 2 keeps a single-shard "partition" from masquerading as
-	// capacity work; the ceiling is whatever the CI matrix advertises, so a count
-	// nobody runs cannot silently pass here.
-	if (![2, 3, 4].includes(count))
-		throw new Error("Partition count must be 2, 3 or 4");
+	// capacity work; the ceiling is SHARD_COUNT, the number the CI matrix
+	// advertises, so a count nobody runs cannot silently pass here.
+	if (!Number.isInteger(count) || count < 2 || count > SHARD_COUNT)
+		throw new Error(
+			`Partition count must be an integer from 2 to ${SHARD_COUNT}`,
+		);
 	if (!files.length || new Set(files).size !== files.length)
 		throw new Error("Empty or duplicate inventory");
 	const groups = Array.from({ length: count }, () => []);

@@ -573,8 +573,17 @@ jobs:
     # UNMEASURED and out of scope here. Nothing else changes: the job still runs
     # the suite once, fails on any red, and the whole-tree count assertions
     # stand.
-    # Four file-count partitions add capacity, not a guaranteed runtime balance.
+    # Eight file-count partitions add capacity, not a guaranteed runtime balance.
     # Every VM retains the existing concurrency/memory/lane protections.
+    #
+    # EIGHT RATHER THAN FOUR (2026-10-31), on measured time, not memory: shard
+    # 2/4 was cancelled at the 55-minute job timeout on run 41196583475 (job
+    # 124531619988) while still making progress - `ok 1884` at 12:34 on a job
+    # started ~11:45, largest log line 420 bytes, so not the payload stall below.
+    # A serial sweep of one 166-file shard took 47 minutes (~17 s/file) and CI's
+    # throughput lands in the same order, so four shards left no headroom under
+    # the 50-minute cap. Eight shards of ~82-83 files imply ~23 minutes at that
+    # serial rate. Per the rule below, the cap is NOT raised; the shard count is.
     #
     # FOUR RATHER THAN THREE (2026-10-30), on measured memory, not on runtime:
     # at concurrency 3 the guarded runner's process group was killed by the
@@ -584,7 +593,7 @@ jobs:
     # distribution, so a quarter fewer files per process group is what buys
     # headroom. Raising the budget or lowering concurrency was rejected: the
     # first hides a narrowing margin, the second lengthens every lane.
-    name: Desktop Tests shard (${{ matrix.shard }}/4)
+    name: Desktop Tests shard (${{ matrix.shard }}/8)
     needs: [changes]
     if: >-
       !cancelled() &&
@@ -618,7 +627,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [0, 1, 2, 3]
+        shard: [0, 1, 2, 3, 4, 5, 6, 7]
     env:
       DESKTOP_SHARD_INDEX: ${{ matrix.shard }}
       DESKTOP_REQUESTED_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
@@ -908,7 +917,7 @@ jobs:
           echo "Working tree clean after the desktop suite."
 
   # Keep the required check's display name stable while workers gain a matrix.
-  # A matrix aggregate status alone cannot prove every file ran: four exact,
+  # A matrix aggregate status alone cannot prove every file ran: eight exact,
   # same-head receipts must reconstruct the inventory without overlap or gaps.
   desktop-tests-result:
     name: Desktop Tests
