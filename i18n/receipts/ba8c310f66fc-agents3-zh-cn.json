@@ -1,0 +1,192 @@
+{
+  "schema": 1,
+  "instance": "ba8c310f66fc-agents3-zh-cn",
+  "locale": "zh-CN",
+  "audit_date": "2026-10-30",
+  "scope": "zh-CN ui.agents.routing, 12 values: the routing sentence an INSTALLED agent shows on its card and in the destination pickers (the seed's 'when to use' line, which ships because core serves this text for installed rows; the registry's single description field is the routing text search embeds). Independent audit of translation I did not write: key parity, placeholder/ICU/markup, token preservation, NFC, fit, native idiom and register, and cross-family consistency with ui.agents.descriptions (agent/team/run vocabulary). One pass; the manager did not request the second independent pass that onboarding/errors/settings groups take, and this group is none of those.",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "ba8c310f66fc",
+    "model": "radient/auto",
+    "actual_model_source": "fallback chain, not a pinned model. Primary anthropic/claude-sonnet-5-5 failed on provider quota; this run was served openai/gpt-6-astra, then kimi/k3.1-pro, then radient/auto while the byte reads, hashing, mechanical checks and finding drafts ran. The final wording and the receipt write happened under radient/auto; every finding was re-read against the bytes under it. Recorded as a chain so the record does not claim a model consistency the run did not have.",
+    "independent_from_translator_session": true,
+    "independence_basis": "Different agent instance and role from the translator that wrote these values (agents2-i18n/zh-CN/translator.log). I authored none of them and held the target file read-only: no edit was made to it. NOT model-independent: the translator ran the same degrading fallback chain on this harness, so independence here is agent-instance and role, not model diversity."
+  },
+  "verdict": "pass",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "verdict_note": "'pass' is the manager's requested verdict word; 'status'/'result' are the ledger's own vocabulary for the same finding - passed, with only minor/nit findings recorded (clean-with-findings), which is what scripts/i18n/ledger-rules.mjs derives from this file (proved by running deriveReceiptAudit against it: result clean-with-findings, counts 0/0/5/4, supportedStatus audited).",
+  "verdict_reason": "0 BLOCKER, 0 MAJOR across 12/12 values: key parity exact, valid JSON with no duplicate members, no placeholders/ICU/markup in either side (there are none in the source either), NFC throughout, full-width punctuation and —— for the source em dash, no value identical to English, and every value is materially SHORTER than its English counterpart in rendered width (0.46-0.68 of the English display width), so no card-line overflow risk relative to today's English. The five MINORs are one cross-family vocabulary slip, one lexical shift (ticket->需求), one narrowed never-list, one register dip and one collapsed disjunction; none reverses, weakens or unsafe-ifies a claim. MINORs and NITs are recorded, not churned.",
+  "counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 5,
+    "nit": 4
+  },
+  "counts_note": "Ledger severity counts: BLOCKER 0, MAJOR 0, MINOR 5, NIT 4. Root counts are documentation; a bind derives its own from the namespace block's findings array.",
+  "namespaces": {
+    "ui.agents.routing": {
+      "namespace": "ui.agents.routing",
+      "status": "passed",
+      "result": "clean-with-findings",
+      "keys_audited": 12,
+      "sha256": {
+        "en": "d7903758d28335a344ae7a67172859e2ed14103931d64fb0988802ebd1771c11",
+        "zh-CN": "ee5dbd097a94cc76b8b9c475f35a5a3c405debe394c86242d419872f126caaac"
+      },
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.agents.routing.json",
+        "zh-CN": "/Users/damian/.local-operator/sessions/3ef6295a5545/scratchpad/agents2-i18n/zh-CN/ui.agents.routing.json"
+      },
+      "destination_path": "src/i18n/catalogues/zh-CN/ui.agents.routing.json — must be byte-identical to the audited staging bytes above (same sha256), or this audit does not describe the shipped file",
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.agents.routing.json",
+          "sha256": "d7903758d28335a344ae7a67172859e2ed14103931d64fb0988802ebd1771c11"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.agents.routing.context.json",
+          "sha256": "c9c0c1183cd3ddc1d22e4b4cd41d2940daeda0dfe213ff4db51c627d0a48452f"
+        },
+        "zh-CN": {
+          "path": "/Users/damian/.local-operator/sessions/3ef6295a5545/scratchpad/agents2-i18n/zh-CN/ui.agents.routing.json",
+          "sha256": "ee5dbd097a94cc76b8b9c475f35a5a3c405debe394c86242d419872f126caaac"
+        }
+      },
+      "mechanical": {
+        "key_parity": "12/12, no key added or dropped",
+        "json": "valid; no duplicate member; tabs and trailing newline match the en source; no CRLF",
+        "placeholders_icu_markup": "none present in the English source, none invented in zh-CN; no Rich/backtick tags in this namespace",
+        "typography": "NFC; full-width 、，：（）“” and 、; —— for the source's em dash; no stray NBSP/ZWSP/bidi controls",
+        "tokens": "RFC, PR, MR, diff, bug, CLI, API, Unicode, LinkedIn, X, AI kept as written; no identifier or product name translated. Two generic nouns are rendered rather than kept: 'terminal UI' -> 终端界面, which follows the shipped catalogue (界面 13 uses, against the single 'UI' occurrence, an env-var identifier), and 'the UX of installers…' -> …的用户体验, the standard Chinese term - the only UX token in the shipped catalogue is the sibling designer card, so nothing there contradicts it and no term is invented.",
+        "latin_cjk_spacing": "no space between Latin runs and CJK, which is the shipped zh-CN convention (595 adjacent vs 10 spaced across src/i18n/catalogues/zh-CN)",
+        "width": {
+          "aida": 0.6,
+          "architect": 0.46,
+          "coder": 0.63,
+          "copy_reviewer": 0.67,
+          "designer": 0.68,
+          "librarian": 0.66,
+          "manager": 0.54,
+          "qa_tester": 0.52,
+          "reviewer": 0.55,
+          "scout": 0.53,
+          "tui_designer": 0.62,
+          "ux_reviewer": 0.53
+        },
+        "width_note": "ratio = zh-CN display width / en display width, counting a wide glyph as 2. No value is longer than its English counterpart, so nothing here is a new overflow risk; the card line truncates both.",
+        "identical_to_english": [],
+        "second_read": "I read all 12 twice against the source and the context sidecar while this single pass ran. That is my own re-read, not the second independent pass; do not cite it as one."
+      },
+      "consistency_check": {
+        "sibling": "src/i18n/catalogues/zh-CN/ui.agents.descriptions.json (shipped, 12 values)",
+        "agent": "智能体 in both families; 智能体 is the catalogue's term",
+        "team": "团队 in both families",
+        "run": "neither family names a run; nothing to reconcile. The catalogue's own term is 运行 (ui.agents.config.status.attached) and this namespace does not touch it",
+        "mismatches": "one: 'everything in flight' is 进行中的工作 in the sibling and 在办工作 here (ZC-01). No others.",
+        "role_names": "Aida's role is 首席助理 (sibling) and is not re-named here, so no role-name drift in this file"
+      },
+      "counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 5,
+        "nit": 4
+      },
+      "findings": [
+        {
+          "id": "ZC-01",
+          "severity": "minor",
+          "key": "ui.agents.routing.aida",
+          "en": "Handing a request to a team or specialist, starting parallel work across agents, or asking for a status roll-up of everything in flight.",
+          "zh-CN": "把请求交给团队或专家、在多个智能体间并行开工，或要一份当前所有在办工作的状态总结。",
+          "problem": "Cross-family vocabulary drift on one concept: 'everything in flight'. The sibling card family renders the same phrase as 进行中的工作 (ui.agents.descriptions.aida: 照看一切进行中的工作), and the shipped catalogue uses 进行中 exclusively (ui.projects.project_board.in_flight 进行中, ui.chat.run_details.nothing_in_flight 暂无进行中的活动); 在办 appears nowhere else in zh-CN and is officialese (在办事项). The routing claim itself survives - a status roll-up of current work is still what is promised - so this is consistency and register, not accuracy, hence MINOR.",
+          "suggestion": "…或要一份当前所有进行中工作的状态总结。 Keeps the one house phrase for work in flight across both card families."
+        },
+        {
+          "id": "ZC-02",
+          "severity": "minor",
+          "key": "ui.agents.routing.coder",
+          "en": "…implementing a ticket, building a feature, fixing a bug, adding a function — an independent, well-specified slice…",
+          "zh-CN": "…实现一个需求、开发一项功能、修复bug、新增一个函数——范围界定清楚、无需再决策、能独立推进的一块工作。",
+          "problem": "'ticket' is rendered 需求 (requirement). The context note puts ticket in ordinary developer vocabulary, i.e. the tracked work item; 需求 names the requirement behind it, so the artefact the operator points at changes from a ticket to a requirement. Nothing is reversed and the bounded-slice promise is intact, hence MINOR.",
+          "suggestion": "实现一张工单、开发一项功能、修复bug、新增一个函数… If 工单 reads too support-desk for this product's register, keep 需求 and record that call in the zh-CN style guide so a later wave does not re-litigate it."
+        },
+        {
+          "id": "ZC-03",
+          "severity": "minor",
+          "key": "ui.agents.routing.copy_reviewer",
+          "en": "Use on user-visible text, never on engineering prose or code comments.",
+          "zh-CN": "只用于面向用户的文字，绝不用于工程文档或代码注释。",
+          "problem": "'engineering prose' is prose written for engineers - RFCs, design notes, PR descriptions, commit messages - not only documents. 工程文档 narrows the exclusion to documents, so engineering prose that lives in a tracker or a commit message falls outside the never-list. The guard still holds for the case that matters most (docs), so MINOR rather than MAJOR.",
+          "suggestion": "绝不用于工程类文字或代码注释。"
+        },
+        {
+          "id": "ZC-04",
+          "severity": "minor",
+          "key": "ui.agents.routing.designer",
+          "en": "Checking how something LOOKS to the user: …",
+          "zh-CN": "检查东西在用户眼里“长什么样”：审查页面或终端界面…",
+          "problem": "东西 is spoken register ('stuff') at the head of a card line, where the English 'something' is deliberately vague but neutral. The rest of the sentence is product copy, so the opening clause drops a register the rest keeps. Comprehensible and not wrong, hence MINOR, not MAJOR.",
+          "suggestion": "检查某个界面在用户眼里“长什么样”：… — the sentence already says 审查页面或终端界面, so 界面 keeps the vagueness without the register dip."
+        },
+        {
+          "id": "ZC-05",
+          "severity": "minor",
+          "key": "ui.agents.routing.tui_designer",
+          "en": "…layout and information density in small/fixed terminals…",
+          "zh-CN": "…小尺寸固定终端里的布局与信息密度…",
+          "problem": "'small/fixed' is a disjunction - a terminal that is small, or one that is fixed-size (80x24, a pinned pane). 小尺寸固定终端 reads as 'small fixed terminals', so the fixed-size-only case (a large but fixed viewport) drops out of the density claim. Comprehension survives, the covered set narrows, hence MINOR.",
+          "suggestion": "小尺寸或固定终端里的布局与信息密度"
+        },
+        {
+          "id": "ZC-06",
+          "severity": "nit",
+          "key": "ui.agents.routing.manager",
+          "en": "Coordinating and tracking multi-part work across several agents or repositories, chasing what is blocked, or producing a status roll-up or progress report.",
+          "zh-CN": "协调并跟踪跨多个智能体或仓库的多环节工作、跟进卡住的环节，或产出状态汇总与进度报告。",
+          "problem": "环节 twice inside one clause (多环节工作 … 卡住的环节); the second instance is the one that can move.",
+          "suggestion": "协调并跟踪跨多个智能体或仓库的多环节工作、跟进卡住的部分，或产出状态汇总与进度报告。"
+        },
+        {
+          "id": "ZC-07",
+          "severity": "nit",
+          "key": "ui.agents.routing.ux_reviewer",
+          "en": "…and whether a task can actually be completed smoothly…",
+          "zh-CN": "…以及任务能否顺畅完成…",
+          "problem": "'actually' is dropped. The quoted 体验 and the closing 有别于…审查 carry most of the contrast, so the loss is small - a nuance, not a claim change.",
+          "suggestion": "以及任务能否真的顺畅完成"
+        },
+        {
+          "id": "ZC-08",
+          "severity": "nit",
+          "key": "ui.agents.routing.tui_designer",
+          "en": "…keyboard-first flows…",
+          "zh-CN": "…以键盘为先的操作流…",
+          "problem": "Calque rather than house idiom: idiomatic product Chinese is 键盘优先 for 'keyboard-first' and 交互流程 for 'flows' (操作流 is uncommon). It is comprehensible, and ui.agents.descriptions.tui_designer uses the identical phrase, which is why this is a NIT and not a MINOR - a fix has to move both card families or neither.",
+          "suggestion": "键盘优先的交互流程 — apply to ui.agents.descriptions.tui_designer in the same edit, not to this file alone."
+        },
+        {
+          "id": "ZC-09",
+          "severity": "nit",
+          "key": "ui.agents.routing.scout",
+          "en": "Answering a question about how something works, …",
+          "zh-CN": "回答某个东西是怎么运作的、定位代码…",
+          "problem": "Same 东西 register class as ZC-04, but mid-list and immediately echoed by 不改动任何东西 in the closing read-only promise, where 东西 is the natural word; low salience, so NIT.",
+          "suggestion": "回答某个功能或模块是怎么运作的 — or leave it, and let ZC-04's head-of-line position be the one that changes."
+        }
+      ]
+    }
+  },
+  "ledger_bind": {
+    "written": false,
+    "why": "No zh-CN catalogue bytes exist at src/i18n/catalogues/zh-CN/ui.agents.routing.json yet - the namespace is staged, not landed. A row now would point at a receipt whose target hash nothing on disk matches, and ledger-check re-derives both hashes from the files at check time, so it would fail closed rather than record anything. Bind after the file lands byte-identical (sha256 above) with: ledger-assemble (row auditor agent i18n-auditor, instance ba8c310f66fc-agents3-zh-cn, result clean-with-findings, findings 0/0/5/4, receipt_sha256 of this file)."
+  },
+  "evidence": {
+    "canonical_path": "i18n/audits/evidence/zh-CN/ui.agents.routing/ba8c310f66fc-agents3-zh-cn/ (record.json + verdict.txt) once the namespace lands; this receipt and verdict.txt are the staging copies at the manager's requested scratch path",
+    "audit_notes_not_execution_log": "This record states what I read and judged. It is not a captured command log; the mechanical claims above were produced by read-only Python/sha256 checks over the named files, not transcribed from a saved log.",
+    "execution_log": {
+      "path": "same directory as this record: auditor.log (scratch, not tracked)",
+      "kind": "harness-teed transcript of this audit run's tool calls and model requests, unedited. It is the execution log, distinct from this record's audit notes; *.log is git-ignored so it does not travel, and the record above is the artifact of record."
+    }
+  }
+}

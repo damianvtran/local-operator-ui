@@ -58,6 +58,132 @@
 	}
 }
 
+/* The message a Team Bridge notification click named: an accent wash on the row
+ * that fades back to the row's own ground over 1.4 s, so the eye finds the
+ * message it was told about and is then left alone. 1400 ms is
+ * `JUMP_HIGHLIGHT_MS` (`shared/lib/jump-highlight.ts`), the chat surface's
+ * checkpoint landing flash: one cue, one time, and the page's clear timer reads
+ * the same constant (design review round 1, D4). The row keeps its box, so
+ * nothing moves.
+ *
+ * WHY THE WASH IS AN OVERLAY, NOT THE ROW'S OWN BACKGROUND (design round 1,
+ * D3). Painting `background-color` on the row meant the animated value won over
+ * the row's `hover:bg-row-hover` for the whole life of the class - including
+ * the tail after the fade had finished, because `both` holds the end keyframe -
+ * so the exact second a reader reached for the row its hover feedback was gone,
+ * and any future hover or selection styling on a message row would inherit the
+ * hole. The wash now lives on an `::after` band: the row is its own stacking
+ * context (`isolation`), the band sits at `z-index: -1` so it paints ABOVE the
+ * row's background (hover, current) and BELOW its content, and it takes no
+ * pointer events. The row's own tints keep working underneath - a hovered row
+ * under the band measures 1.349:1 dark / 1.270:1 light against the pane, so the
+ * hover is still visible while the arrival is on screen.
+ *
+ * WHY 12% ACCENT OVER THE GROUND, NOT THE FLAT `accent-wash` TOKEN (design
+ * round 1, D2). `accent-wash` on this pane measured 1.044:1 dark and 1.061:1
+ * light - fainter than the row hover tint (1.084:1) and the rail's selected row
+ * (1.127:1 / 1.135:1), so the mark the reader was TOLD about was drawn more
+ * quietly than one their pointer merely rested on. 12% of the accent role
+ * composited over the pane is 1.237:1 dark and 1.176:1 light: above the hover
+ * tint and above the selected row in both themes, so the hierarchy reads
+ * arrival > current > hover. It is a role, mixed at paint time - no new raw
+ * colour - and 12% is the ceiling: at 14% the 12 px muted glyph inside the row
+ * drops to 4.39:1 in the dark theme, under the 4.5:1 AA floor the round-1
+ * design evidence measured on this surface. Reduced motion keeps the cue but
+ * drops the fade: the band holds at full strength for the same span and the
+ * page removes the class, which is a state change, not motion. */
+@keyframes lo-team-bridge-target {
+	from {
+		opacity: 1;
+	}
+	to {
+		opacity: 0;
+	}
+}
+.lo-team-bridge-target {
+	isolation: isolate;
+}
+.lo-team-bridge-target::after {
+	content: "";
+	position: absolute;
+	inset: 0;
+	/* Below the row's own content, above its own background. */
+	z-index: -1;
+	/* A ground, never a target: the row's menu and badges keep their hit area. */
+	pointer-events: none;
+	background-color: color-mix(in srgb, var(--color-accent) 12%, transparent);
+	animation: lo-team-bridge-target 1400ms var(--ease-out-quart) both;
+}
+@media (prefers-reduced-motion: reduce) {
+	.lo-team-bridge-target::after {
+		animation: none;
+	}
+}
+
+/*
+ * WHY THE WASHED ROW'S DIM INK LIFTS WHILE THE BAND IS UP (design review round
+ * 2, D6). The band paints under the row's content, so an 11-12 px `ink-dim`
+ * timestamp sits on it. Swept over the fifty-nine palettes, `ink-dim` on the
+ * 12 % mix is under 4.5:1 in ten of them - cyberpunk 4.05:1, from 5.59:1 on the
+ * plain pane - and no single mix fixes that: the mix that keeps the metadata at
+ * AA in every palette is 8.3 %, and at 8.3 % the arrival stops beating the
+ * selected row in 24 of 59 palettes. So the lever is the INK, not the mix:
+ * `ink-muted` on the same band clears 4.5:1 in all fifty-nine (floor 5.21:1,
+ * nightfox). Scoped to the band's lifetime and to the dim utilities inside it,
+ * so nothing else on the row changes and the lift ends with the class - the
+ * same shape as the covered-pane hover translation further down this file.
+ *
+ * AND IT FADES BACK OVER THE BAND'S OWN 1400 ms (design review round 3, D9).
+ * Removing the class alone returned the ink in ONE frame (7.855:1 -> 5.700:1), so
+ * the end of the arrival was a visible snap in the row's smallest type. The
+ * keyframe lands the ink on its resting role exactly when the band's own
+ * animation lands on `opacity: 0` and the class is removed, so there is nothing
+ * left to snap: same time, same easing, one cue. The faded path stays at or above
+ * 5.213:1 across all fifty-nine palettes (design's sweep), so no frame of the
+ * fade is less legible than the resting row. Reduced motion drops the fade and
+ * keeps the static lift for the class's lifetime, like the band itself.
+ */
+@keyframes lo-team-bridge-target-ink {
+	from {
+		color: var(--color-ink-muted);
+	}
+	to {
+		color: var(--color-ink-dim);
+	}
+}
+.lo-team-bridge-target [class~="text-ink-dim"] {
+	color: var(--color-ink-muted);
+	animation: lo-team-bridge-target-ink 1400ms var(--ease-out-quart) both;
+}
+@media (prefers-reduced-motion: reduce) {
+	.lo-team-bridge-target [class~="text-ink-dim"] {
+		animation: none;
+	}
+}
+
+/*
+ * THE PENDING INK REACHES MARKDOWN'S OWN EMPHASIS (design round 3, D7).
+ *
+ * `markdown.css` pins `strong`, `code` and the headings to `var(--lo-ink)` - full
+ * ink, on purpose, because a reasoning panel and a chat answer want emphasis to be
+ * emphasis. In a Team Bridge row that is sending, those elements were therefore the
+ * one part of the message that stayed confirmed-looking: an all-bold or all-code
+ * message had no pending cue at all, and bold stood out MORE while pending than
+ * after the hub took it.
+ *
+ * SCOPED ON PURPOSE. The rule reads `--md-ink`, which the pending row sets inline
+ * (`team-bridge-message-list.tsx`), so it follows that row's state and nothing else.
+ * Editing the rules in `markdown.css` instead would restyle every markdown surface
+ * in the app, the reasoning panel included - a decision well beyond a sending state.
+ * The attribute below is the row's own `data-delivery`, so the rule cannot reach an
+ * element outside a pending Team Bridge message.
+ */
+[data-delivery="pending"]
+	.team-bridge-message-body
+	:is(strong, b, em, code, pre, h1, h2, h3, h4, h5, h6) {
+	color: var(--md-ink, var(--lo-ink));
+}
+
 /* An avatar photo arriving over its initials (sidebar account row, design
  * review round 1, D5): the same opacity-only keyframe as the transcript, at
  * `--duration-fast` because the plate is 28px and the swap should read as

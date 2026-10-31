@@ -1,0 +1,163 @@
+{
+  "auditor": "translation-auditor",
+  "model": "anthropic/claude-sonnet-5-5",
+  "instance": "699cfe87308b-es-onboarding-tour",
+  "session": "699cfe87308b",
+  "date": "2026-10-25",
+  "locale": "es",
+  "namespace": "ui.onboarding.tour",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "keys_read": 123,
+  "keys_audited": 123,
+  "source_ref": "b3dd694c1702e36239cb7da94d636a02318d13ad",
+  "source_ref_provenance": "Frozen English source commit supplied by the manager. The auditor ran no git command; the es candidate is NOT attributed to that commit.",
+  "target_state": "UNCOMMITTED. src/i18n/catalogues/es/ui.onboarding.tour.json is an untracked working-tree file (21524 bytes); the recorded hash is of those bytes, not of any commit.",
+  "translator": {
+    "job": "f94bee7a94de",
+    "model": "radient/auto",
+    "model_provenance": "Requested route radient/auto confirmed by the parent's original task launch for translator f94bee7a94de; concrete translator backend unknown."
+  },
+  "independence": "Separate session (699cfe87308b) from translator job f94bee7a94de; every es value re-read from the working tree against the English value and its context entry, not from a translator summary.",
+  "model_provenance": "Requested selector: radient/auto. Initial reading and analysis ran under that selector; after quota failure (HTTP 402), host completion explicitly reports fallback anthropic/claude-sonnet-5-5, which completed the audit and authored its original receipt. The audit identity model is anthropic/claude-sonnet-5-5; the initial concrete backend is unknown. This provenance-only correction was finalized after a subsequent host-reported switch to openai/gpt-6.1-sol; no semantic re-audit was performed. The receipt parser requires consistent identity fields, not literal radient/auto.",
+  "sha256": {
+    "en": "81fc4e3b70850e6961092aeb42a9cc12160fe1bd064d47cb28ce548618bcb976",
+    "es": "01be2019914eac6288075ee34f988e6b4b04f6f20678c390305931255706b2af"
+  },
+  "context_sha256": "7131faf88213b943cfa7ee0b951a8e0d5fb512728b677c023beec11b677c0906",
+  "bytes": {
+    "en": 20065,
+    "context": 61441,
+    "es": 21524
+  },
+  "references": {
+    "glossary": "~/local-operator/i18n/glossary.md",
+    "style_guide": "~/local-operator/i18n/style-guides/es.md (tú; “ ” quotes; spaced em dash; no space before : ; ? !; ¿…? only on whole-question strings; sentence case)",
+    "docs": "docs/I18N.md; tour-copy.ts; tour-steps.ts"
+  },
+  "scope": "Full first independent audit of ui.onboarding.tour for es: 123 English, 123 context and 123 target values side by side; joined shortcut paragraphs rebuilt in caller order with the real paletteDoorLabel chords (⌘P/Ctrl+P, ⌘K/Ctrl+K, ⌘⇧P/Ctrl+Shift+P) and read as continuous Spanish; quoted control labels checked against the keyed es siblings and the real controls; wordless figure alts checked against the context; terminology checked against sibling es catalogues.",
+  "mechanical_checks": {
+    "keys_equal_and_ordered": true,
+    "duplicate_keys": 0,
+    "nfc": true,
+    "bom": false,
+    "trailing_newline": true,
+    "straight_quotes_in_es": 0,
+    "icu_or_braces_in_en_or_es": 0,
+    "markup_chars_in_es": 0,
+    "edge_whitespace_matches_en_for_all_fragments": true,
+    "cldr_plurals": "N/A — no ICU arguments or plural branches exist in the source; verified rather than fabricated",
+    "pseudo_localization": "not run: nothing parameterised; no production translation was pseudo-localised"
+  },
+  "verified_clean": [
+    "register: tú throughout, no usted/vosotros",
+    "quotes: “ ” with the closing period outside for quoted example requests (RAE-correct, es guide)",
+    "no accidental English instructions: only allowed tokens remain (Local Operator, Radient, Radient Pass, Radient Automatic, Canvas, Hub, Cmd/Ctrl+K, prompt, chatbots, GitHub Issues, “Automatic” as in sibling ui.common.models)",
+    "quoted labels match keyed es controls: “Ver los ajustes del agente”, “Recomendado”, “Hub de agentes”, “Buscar” (sidebar)",
+    "shortcut paragraphs: fragments join into grammatical Spanish; leading/trailing spaces preserved; connector “ en Mac y ” reused thrice reads correctly; ¿…? only in the whole-question fragment",
+    "figure alts describe the wordless figures and do not start with “Imagen de”",
+    "glossary: agente, herramienta, programación, coste, modelo, proveedor de alojamiento, espacio de trabajo all consistent with siblings"
+  ],
+  "verdict_by_namespace": {
+    "ui.onboarding.tour": "clean-with-findings"
+  },
+  "verdict": "clean-with-findings: 0 blocker, 0 major, 3 minor, 4 nit (+1 non-counted info observation).",
+  "findings_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 3,
+    "nit": 4
+  },
+  "findings": [
+    {
+      "id": "ES-T1",
+      "severity": "minor",
+      "keys": [
+        "ui.onboarding.tour.create_schedule.body.1"
+      ],
+      "current": "Haz clic en “Crear programación” para pedirle a un agente …",
+      "proposed": "Haz clic en “Nueva tarea programada” para pedirle a un agente …",
+      "reason": "The tour targets button[data-tour-tag=create-schedule-button], whose es label in schedules-page.tsx is ui.schedules.schedules_page.new_scheduled_task = “Nueva tarea programada”; “Crear programación” is only the dialog's submit label, and the context requires the quote to match the control the user clicks (the English source “Create schedule” is itself stale against “New scheduled task” — flag to the source owner)."
+    },
+    {
+      "id": "ES-T2",
+      "severity": "minor",
+      "keys": [
+        "ui.onboarding.tour.attachments.body.3",
+        "ui.onboarding.tour.canvas_feature.body.1"
+      ],
+      "current": "rutas de archivo de tu equipo / Todos los archivos que creen tus agentes en tu equipo",
+      "proposed": "rutas de archivo de tu dispositivo / … creen tus agentes en tu dispositivo",
+      "reason": "English says “your device” in these two keys and glossary §2 fixes device→dispositivo, while the same glossary/es guide reserve “equipo” for team; welcome.body.1 uses “un equipo de agentes” two sentences before welcome.body.2 uses “en tu equipo” for the computer. (“equipo” for “computer” in the other four keys and in ~90 sibling strings is settled usage; only the two literal “device” keys drift.)"
+    },
+    {
+      "id": "ES-T3",
+      "severity": "minor",
+      "keys": [
+        "ui.onboarding.tour.canvas_documents_view.body.4"
+      ],
+      "current": "usando sus memorias y el contexto",
+      "proposed": "usando lo que recuerda y el contexto",
+      "reason": "“sus memorias” is a calque of “its memories”; Spanish “memorias” reads as written memoirs/reports, and no sibling catalogue uses it for agent memory (agent_capabilities.body.1 correctly says “tienen memoria”)."
+    },
+    {
+      "id": "ES-N1",
+      "severity": "nit",
+      "keys": [
+        "ui.onboarding.tour.pre_command_palette_open_canvas.body.1.1"
+      ],
+      "current": "la Paleta de comandos",
+      "proposed": "la paleta de comandos",
+      "reason": "Sentence case per the es guide and sibling ui.settings.shortcuts strings (“abre la paleta de comandos…”); only the heading/title key is capitalised."
+    },
+    {
+      "id": "ES-N2",
+      "severity": "nit",
+      "keys": [
+        "ui.onboarding.tour.chat_input.body.2"
+      ],
+      "current": "Algunas solicitudes potentes que puedes probar:",
+      "proposed": "Algunas peticiones eficaces que puedes probar:",
+      "reason": "“solicitudes potentes” is a word-for-word render of “powerful requests”; “eficaces”/“útiles” reads more native. Same calque pattern in schedules_overview.body.1 (“muy potente”) is acceptable."
+    },
+    {
+      "id": "ES-N3",
+      "severity": "nit",
+      "keys": [
+        "ui.onboarding.tour.welcome.image.1.alt",
+        "ui.onboarding.tour.attachments.body.4"
+      ],
+      "current": "cuadro de redacción / campo de chat",
+      "proposed": "one term for the message box (e.g. “campo de redacción” in the alt and “campo de chat” in the body, or “cuadro de texto” in both)",
+      "reason": "The same on-screen object is named with two different nouns in one namespace; meaning is clear either way."
+    },
+    {
+      "id": "ES-N4",
+      "severity": "nit",
+      "keys": [
+        "ui.onboarding.tour.action.next",
+        "ui.onboarding.tour.welcome.title",
+        "ui.onboarding.tour.welcome.list.1.item.3"
+      ],
+      "current": "Siguiente (9 vs 4 chars, 2.25x) / Te damos la bienvenida a Local Operator (39 vs 25, 1.56x) / El espacio de trabajo de Canvas (31 vs 20, 1.55x)",
+      "proposed": "no text change proposed; rendered-width check required (shorter fallbacks if clipped: “Seguir”, “Bienvenida a Local Operator”, “El espacio Canvas”)",
+      "reason": "Each exceeds the 1.5x budget in its context sidecar (action.close at 1.9x is a screen-reader-only label, no visual budget). OVERFLOW RISK ONLY — no rendered proof exists or is claimed."
+    },
+    {
+      "id": "ES-I1",
+      "severity": "info",
+      "keys": [
+        "ui.onboarding.tour.download_agent.body.1"
+      ],
+      "current": "botón “Obtener”",
+      "proposed": "n/a",
+      "reason": "Observation, not a translation defect and not counted: the real control in agent-card.tsx is hard-coded English “Get” (not keyed), so an es user sees “Get” while the tour says “Obtener”. Translation faithfully follows the context; the hard-coded button is an application i18n gap for the owner."
+    }
+  ],
+  "limitations": [
+    "Catalogue-text audit only: no browser, build, rendered frame, font or geometry measurement; overflow is risk not proof.",
+    "No native-speaker sign-off.",
+    "Context-parity, ledger-check and type generation were not run (shared-resource hold); only narrow Python structural checks.",
+    "Real-control checks read source and catalogues, not a running app."
+  ]
+}

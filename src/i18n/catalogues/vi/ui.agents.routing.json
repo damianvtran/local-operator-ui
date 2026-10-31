@@ -1,0 +1,14 @@
+{
+	"ui.agents.routing.aida": "Giao yêu cầu cho nhóm hoặc chuyên gia, khởi động việc song song trên nhiều tác nhân, hoặc xin bản tổng hợp tình trạng mọi việc đang thực hiện.",
+	"ui.agents.routing.architect": "Quyết định xây thế nào trước khi viết mã: so sánh các hướng tiếp cận hay kiến trúc, cân nhắc đánh đổi, lên kế hoạch tái cấu trúc, hoặc viết RFC hay tài liệu thiết kế.",
+	"ui.agents.routing.coder": "Viết hoặc sửa mã: triển khai một ticket, xây một tính năng, sửa lỗi, thêm hàm — một phần việc độc lập, đặc tả rõ, chạy tiếp được mà không cần quyết định thêm.",
+	"ui.agents.routing.copy_reviewer": "Rà soát câu chữ trước khi phát hành: chữ sản phẩm người dùng thấy (chuỗi UI, email, thông báo, trợ giúp/tài liệu) và văn xuôi cho độc giả phổ thông (bài blog, bài đăng LinkedIn và X). Trải nghiệm người đọc, độ dễ hiểu, giọng điệu, ngôn ngữ giản dị, cơ sở cho khẳng định và loại bỏ AI-isms. Dùng cho chữ người dùng thấy, không bao giờ cho văn kỹ thuật hay chú thích mã.",
+	"ui.agents.routing.designer": "Kiểm tra vẻ ngoài của thay đổi trong mắt người dùng: rà soát màn hình hay giao diện terminal, xem bố cục, khoảng cách, màu sắc hay câu chữ có đọc tốt không, làm giao diện dễ chịu hơn — vòng thiết kế/UX trên thay đổi người dùng thấy.",
+	"ui.agents.routing.librarian": "Sắp xếp Thư viện — đặt tên và gắn thẻ cho tệp đã lưu, tìm thứ cần chú ý, hoặc hỏi xem Thư viện có gì.",
+	"ui.agents.routing.manager": "Điều phối và theo dõi công việc nhiều phần trên nhiều tác nhân hay kho mã, thúc đẩy việc đang bị chặn, hoặc tạo bản tổng hợp tình trạng hay báo cáo tiến độ.",
+	"ui.agents.routing.qa_tester": "Kiểm thử độc lập xem một pull request, bản vá hay tính năng có thật sự chạy được từ đầu đến cuối không; tái hiện lỗi, kiểm chứng tác dụng phụ, hoặc rà soát hồi quy sau khi khắc phục.",
+	"ui.agents.routing.reviewer": "Rà soát pull request, merge request, diff, loạt commit hay bản vá để tìm lỗi; kiểm tra hay phê bình mã do người khác (hoặc tác nhân khác) viết.",
+	"ui.agents.routing.scout": "Trả lời câu hỏi về cách một thứ hoạt động, định vị mã, tìm nơi khai báo hàm hay lớp, lần theo một luồng, hiểu hành vi hiện có, tra cứu thư viện hay API trên web, hoặc thu thập bằng chứng — chỉ đọc, không thay đổi gì.",
+	"ui.agents.routing.tui_designer": "Thiết kế hay rà soát giao diện terminal: luồng ưu tiên bàn phím, bố cục và mật độ thông tin trong terminal nhỏ/cố định, tương thích màu và unicode, hiển thị dần theo nhu cầu, và UX của trình cài đặt, daemon, bảng trạng thái cho ứng dụng CLI.",
+	"ui.agents.routing.ux_reviewer": "Rà soát trải nghiệm người dùng của một thay đổi — luồng tương tác, xử lý bàn phím/đầu vào, khả năng tìm thấy, phản hồi và thông báo lỗi, giọng điệu câu chữ, và liệu một tác vụ có thật sự hoàn thành trơn tru không — khác với vòng rà soát thiết kế/hình ảnh về vẻ ngoài."
+}

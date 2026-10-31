@@ -1,10 +1,12 @@
 import { cn } from "@shared/lib/utils";
-import type { FC } from "react";
-import { memo } from "react";
+import type { CSSProperties, FC } from "react";
+import { memo, useMemo } from "react";
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { MarkdownTable } from "../chat/components/markdown-table";
 import "../chat/components/markdown.css";
+import type { MessageMentionRun } from "./mentions/message-mentions";
+import { remarkTeamBridgeMentions } from "./mentions/remark-mentions";
 
 /**
  * Markdown for Team Bridge message bodies: text written by OTHER PEOPLE (and
@@ -44,12 +46,35 @@ const COMPONENTS: Components = {
 	table: MarkdownTable,
 };
 
-export const TeamBridgeMarkdown: FC<{ children: string; className?: string }> =
-	memo(({ children, className }) => (
-		<div className={cn("lo-markdown", className)}>
-			<ReactMarkdown remarkPlugins={[remarkGfm]} components={COMPONENTS}>
+export const TeamBridgeMarkdown: FC<{
+	children: string;
+	className?: string;
+	/** @-mention runs to highlight (`mentions/use-message-mentions.ts`). */
+	mentions?: readonly MessageMentionRun[];
+	/**
+	 * Inline style on the prose block: the one seam for the `--md-*` custom
+	 * properties `markdown.css` reads. WHY IT IS NEEDED AT ALL: that stylesheet is
+	 * UNLAYERED and Tailwind's utilities are not, so an unlayered `color` rule wins
+	 * over any `text-*` class on this element - a state carried by a utility class is
+	 * invisible here (design review round 2, D3, measured `rgb(56,58,66)` on a pending
+	 * row that asked for muted ink).
+	 */
+	/* Custom properties are legal in a style object but not in `CSSProperties`. */
+	style?: CSSProperties & Record<`--${string}`, string>;
+}> = memo(({ children, className, mentions, style }) => {
+	const plugins = useMemo(
+		() =>
+			mentions?.length
+				? [remarkGfm, remarkTeamBridgeMentions(mentions)]
+				: [remarkGfm],
+		[mentions],
+	);
+	return (
+		<div className={cn("lo-markdown", className)} style={style}>
+			<ReactMarkdown remarkPlugins={plugins} components={COMPONENTS}>
 				{children}
 			</ReactMarkdown>
 		</div>
-	));
+	);
+});
 TeamBridgeMarkdown.displayName = "TeamBridgeMarkdown";

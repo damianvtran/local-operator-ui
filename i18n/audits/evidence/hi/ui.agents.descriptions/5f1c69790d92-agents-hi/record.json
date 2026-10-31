@@ -1,0 +1,143 @@
+{
+	"audit_id": "5f1c69790d92-agents-hi",
+	"audit_date": "2026-10-30",
+	"date": "2026-10-30",
+	"locale": "hi",
+	"namespace": "ui.agents.descriptions",
+	"source_commit": "604ffbce4625a2c0e4d737ab1e219f00fb3fb4d2",
+	"translator": {
+		"agent": "i18n-translator (translation lane)",
+		"session": "bfeac33a273e",
+		"model": "radient/auto",
+		"model_source": "read from the translation lane's own translator.log model-switch lines; not observed live by this auditor",
+		"independence_disclosure": "the translator lane and this audit run ended on the same underlying model (radient/auto) through the same provider quota fallback; independence here is by agent and session, not by model, and is disclosed rather than claimed."
+	},
+	"auditor": {
+		"agent": "i18n-auditor",
+		"session": "5f1c69790d92",
+		"model": "radient/auto",
+		"actual_model_source": "harness session header (model-switch notices): primary anthropic/claude-sonnet-5-5 failed on quota and fell back openai/gpt-6-astra -> kimi/k3.1-pro -> radient/auto; what radient/auto resolves to upstream is not visible from this session",
+		"independent_from_translator_session": true,
+		"result": "clean-with-findings",
+		"receipt": "i18n/receipts/5f1c69790d92-agents-hi.json",
+		"receipt_sha256": "a7d5e5fe6ac07dc0c6b933aba7fbc6587d19d4859ccab65c752fdcaf2ee8d488"
+	},
+	"key_count": 12,
+	"input_hashes": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.agents.descriptions.json",
+			"sha256": "ec18513f0ebaa99be4c329a8ea5896631fd2b9e4f4d53febdc5c7acd049b5511"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.agents.descriptions.context.json",
+			"sha256": "6311128dc89d50d886f3066f9cea2c802482a7db9979d9c5cc4bd93cdd8a7398"
+		},
+		"target": {
+			"path": "src/i18n/catalogues/hi/ui.agents.descriptions.json",
+			"sha256": "16aaf542b53ebe7c1b9941c287cccaa3b692f4880b928044413acb84b3c53eb4"
+		}
+	},
+	"findings": [
+		{
+			"id": "H1",
+			"severity": "MINOR",
+			"namespace": "ui.agents.descriptions",
+			"key": "ui.agents.descriptions.librarian",
+			"current": "लाइब्रेरी का व्यवस्थापक एजेंट: …",
+			"problem": "'organizing agent' is rendered व्यवस्थापक (administrator/manager), which names a different function from organising the catalogue; the same roster also lists a Manager agent, so the two roles read closer than the source makes them.",
+			"suggestion": "लाइब्रेरी को व्यवस्थित करने वाला एजेंट: … (or लाइब्रेरी का संयोजक एजेंट), rest unchanged",
+			"class": "accuracy/terminology"
+		},
+		{
+			"id": "H2",
+			"severity": "MINOR",
+			"namespace": "ui.agents.descriptions",
+			"key": "ui.agents.descriptions.copy_reviewer",
+			"current": "…और AI जैसी बनावटी बातें",
+			"problem": "'AI-isms' means AI-flavoured writing tells; the Hindi says 'AI-like artificial things', dropping the writing object, while every other criterion in that list is a property of the text.",
+			"suggestion": "…और AI जैसी बनावटी भाषा (or …और AI की पहचान देने वाली घिसी-पिटी बातें)",
+			"class": "accuracy"
+		},
+		{
+			"id": "H3",
+			"severity": "MINOR",
+			"namespace": "ui.agents.descriptions",
+			"key": "ui.agents.descriptions.reviewer",
+			"current": "खामियाँ ढूँढता है",
+			"problem": "ड़ carries no nukta (ढूँढ़ता), against the hi style guide's binding nukta rule. The catalogue's only other use, ui.teamBridge.create.channel_description ('ढूँढकर'), has the same defect, so a fix should cover both.",
+			"suggestion": "खामियाँ ढूँढ़ता है — or the everyday खामियाँ खोजता है, which sidesteps the orthography",
+			"class": "orthography"
+		},
+		{
+			"id": "H5",
+			"severity": "NIT",
+			"namespace": "ui.agents.descriptions",
+			"key": "ui.agents.descriptions.aida",
+			"current": "आपकी ओर से एजेंट और टीमें चलाती हैं",
+			"problem": "The object has no को, so the clause can be read with एजेंट और टीमें as subject ('agents and teams run on your behalf') instead of the thing she runs; the following clauses resolve it, but a card is read at a glance.",
+			"suggestion": "आपकी ओर से एजेंटों और टीमों को चलाती हैं",
+			"class": "clarity"
+		},
+		{
+			"id": "H6",
+			"severity": "NIT",
+			"namespace": "ui.agents.descriptions",
+			"key": "ui.agents.descriptions.designer",
+			"current": "स्रोत के बजाय रेंडर किए गए फ़्रेम से",
+			"problem": "The English verb ('judged') has no Hindi counterpart, so the comparison hangs off the noun phrase and फ़्रेम से is a thin instrument.",
+			"suggestion": "स्रोत के बजाय रेंडर किए गए फ़्रेम के आधार पर",
+			"class": "idiom"
+		},
+		{
+			"id": "H7",
+			"severity": "NIT",
+			"namespace": "ui.agents.descriptions",
+			"key": "ui.agents.descriptions.tui_designer",
+			"current": "कीबोर्ड से चलने वाले फ़्लो",
+			"problem": "Flattens 'keyboard-first' to 'keyboard-driven'; the priority claim (the keyboard decides the design) is lost.",
+			"suggestion": "कीबोर्ड-प्रधान फ़्लो",
+			"class": "accuracy"
+		},
+		{
+			"id": "H8",
+			"severity": "NIT",
+			"namespace": "ui.agents.descriptions",
+			"key": "ui.agents.descriptions.aida",
+			"current": "चलाती हैं … नज़र रखती हैं … बताती हैं",
+			"problem": "Honorific plural, while every other agent in the same list is plain singular (करता है). It reads as deliberate persona warmth — the sidecar asks for a warm register — but it is a register split inside one roster.",
+			"suggestion": "No change required if deliberate; align to चलाती है … रखती है … बताती है if the roster should read uniformly",
+			"class": "register"
+		}
+	],
+	"namespace_status": "passed",
+	"artifacts": [
+		{
+			"path": "i18n/receipts/5f1c69790d92-agents-hi.json",
+			"sha256": "a7d5e5fe6ac07dc0c6b933aba7fbc6587d19d4859ccab65c752fdcaf2ee8d488"
+		},
+		{
+			"path": "i18n/audits/evidence/hi/ui.agents.descriptions/5f1c69790d92-agents-hi/record.json",
+			"sha256": "self (this file)"
+		},
+		{
+			"path": "i18n/audits/evidence/hi/ui.agents.descriptions/5f1c69790d92-agents-hi/receipt.json",
+			"sha256": "a7d5e5fe6ac07dc0c6b933aba7fbc6587d19d4859ccab65c752fdcaf2ee8d488"
+		},
+		{
+			"path": "i18n/audits/evidence/hi/ui.agents.descriptions/5f1c69790d92-agents-hi/verdict.txt",
+			"sha256": "d996b078155d2478b277ad5962f3fb2b4a55b3a02e090bb2578f3e9d5fef1a73"
+		},
+		{
+			"path": "i18n/audits/evidence/hi/ui.agents.descriptions/5f1c69790d92-agents-hi/findings.md",
+			"sha256": "53ebdce7675d85b760ade65248894ac71cce5966a9d73137d6d210c26eb33f20"
+		},
+		{
+			"path": "i18n/audits/evidence/hi/ui.agents.descriptions/5f1c69790d92-agents-hi/auditor.log",
+			"sha256": "6bd9d65407d43044b2f71e2d6243396c836d22f5e428873a45859f149cdfaf5c"
+		}
+	],
+	"retention": {
+		"record_of_truth": "i18n/receipts/5f1c69790d92-agents-hi.json (byte-identical copy of the auditor's receipt)",
+		"note": "record.json restates the receipt; the copied logs are the auditor's own execution output, not notes."
+	}
+}

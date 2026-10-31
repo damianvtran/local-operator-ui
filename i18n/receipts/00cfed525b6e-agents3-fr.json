@@ -1,0 +1,343 @@
+{
+	"instance": "00cfed525b6e-agents3-fr",
+	"locale": "fr",
+	"scope": [
+		"ui.agents.routing"
+	],
+	"audit_date": "2026-10-30",
+	"namespace": "ui.agents.routing",
+	"auditor": {
+		"agent": "i18n-auditor",
+		"session": "00cfed525b6e",
+		"model": "radient/auto",
+		"actual_model_source": "Session primary anthropic/claude-sonnet-5-5 failed on provider quota and fell back openai/gpt-6-astra -> kimi/k3.1-pro -> radient/auto; this audit's reads, checks and receipt were produced on that final radient/auto resolution. No model performed any translation or back-translation.",
+		"independent_from_translator_session": true,
+		"translator_session": "3ef6295a5545",
+		"independence_note": "This session authored and edited none of these 12 values. It read the English source, its context sidecar, the fr style guide, the glossary and the sibling fr descriptions family, and judged every key itself."
+	},
+	"source_hashes": {
+		"en": "d7903758d28335a344ae7a67172859e2ed14103931d64fb0988802ebd1771c11",
+		"context": "src/i18n/catalogues/en/ui.agents.routing.context.json",
+		"fr": "e11467ee78b4b0179c38288dc8be8980fa5a6ee352c4711c82d467c0f5832afb"
+	},
+	"namespaces": {
+		"ui.agents.routing": {
+			"status": "passed",
+			"result": "clean-with-findings",
+			"keys_audited": 12,
+			"sha256": {
+				"en": "d7903758d28335a344ae7a67172859e2ed14103931d64fb0988802ebd1771c11",
+				"fr": "e11467ee78b4b0179c38288dc8be8980fa5a6ee352c4711c82d467c0f5832afb"
+			},
+			"en_path": "src/i18n/catalogues/en/ui.agents.routing.json",
+			"fr_path": "scratchpad/agents2-i18n/fr/ui.agents.routing.json",
+			"findings": [
+				{
+					"id": "M1",
+					"severity": "MINOR",
+					"keys": [
+						"ui.agents.routing.aida"
+					],
+					"current": "« … lancer du travail en parallèle entre agents … »",
+					"problem": "Calque of EN 'starting parallel work across agents': « entre » belongs with répartir, not with lancer — on dispatche du travail sur des agents, on ne le lance pas entre eux. The three occasions and their order are otherwise exact.",
+					"suggested": "Confier une demande à une équipe ou à un spécialiste, lancer des travaux en parallèle sur plusieurs agents, ou demander un récapitulatif de tout ce qui est en cours."
+				},
+				{
+					"id": "M2",
+					"severity": "MINOR",
+					"keys": [
+						"ui.agents.routing.copy_reviewer"
+					],
+					"current": "(billets de blog, posts LinkedIn et X)",
+					"problem": "One parenthetical names the same concept twice in two languages: French « billets de blog » then English « posts ». The shipped fr corpus contains no form of 'post' at all (0 hits in 108 files), so the operator meets it only here, immediately beside the French word for the same object.",
+					"suggested": "(billets de blog, publications LinkedIn et X)"
+				},
+				{
+					"id": "M3",
+					"severity": "MINOR",
+					"keys": [
+						"ui.agents.routing.copy_reviewer"
+					],
+					"current": "Pour le texte visible, jamais la prose technique ni les commentaires de code.",
+					"problem": "EN is an imperative - 'Use on user-visible text, never on engineering prose or code comments'. FR drops verb and preposition, leaving a note fragment at the end of a card whose every other sentence is sentential: the prohibition survives, the instruction to use it does not read as one.",
+					"suggested": "À utiliser sur le texte visible, jamais sur la prose technique ni les commentaires de code."
+				},
+				{
+					"id": "M4",
+					"severity": "MINOR",
+					"keys": [
+						"ui.agents.routing.scout"
+					],
+					"current": "Répondre à une question sur un fonctionnement, …",
+					"problem": "« sur un fonctionnement » is a bare ellipsis with no antecedent on a card: it reads as 'about an operation' rather than EN 'about how something works'. Understandable, but vague where the English is concrete - and it is the first words of the value.",
+					"suggested": "Répondre à une question sur le fonctionnement de quelque chose, localiser du code, …"
+				},
+				{
+					"id": "M5",
+					"severity": "MINOR",
+					"keys": [
+						"ui.agents.routing.copy_reviewer",
+						"ui.agents.descriptions.copy_reviewer"
+					],
+					"cross_family": true,
+					"current": "routing: « … suppression des AI-isms. » | descriptions: « … étayage des affirmations, tics de l’IA ; signale des constats préfixés C. »",
+					"problem": "Cross-family mismatch on one house concept: routing keeps the English house term 'AI-isms' (as its sidecar instructs: 'the house term … stays untranslated'), the sibling description renders it « tics de l'IA ». Same agent, two surfaces the operator sees one after the other, two labels - and the descriptions sidecar says nothing about keeping it English. Routing conforms to its contract, so the deviation is sibling-side; the pair needs one label.",
+					"suggested": "Either leave routing and align ui.agents.descriptions.copy_reviewer back to 'AI-isms', or accept « tics de l'IA » and change routing to « suppression des tics de l'IA »."
+				},
+				{
+					"id": "N1",
+					"severity": "NIT",
+					"keys": [
+						"ui.agents.routing.designer"
+					],
+					"current": "… une passe design/UX sur un changement visible.",
+					"problem": "EN 'a user-visible change'; « changement visible » leaves the user implicit while the sibling description says « un changement visible par l'utilisateur ». No meaning lost at card level, and the added words would cost width.",
+					"suggested": "Leave if width matters; otherwise « sur un changement visible par l'utilisateur »."
+				},
+				{
+					"id": "N2",
+					"severity": "NIT",
+					"keys": [
+						"ui.agents.routing.ux_reviewer"
+					],
+					"current": "… par opposition à une revue visuelle ou de design sur l'apparence.",
+					"problem": "« une revue … sur l'apparence » is loose - the thing reviewed belongs in a 'de' complement. It reads fine and the contrast with the visual review survives intact.",
+					"suggested": "… par opposition à une revue visuelle ou de design de son apparence."
+				},
+				{
+					"id": "N3",
+					"severity": "NIT",
+					"keys": [
+						"ui.agents.routing.manager"
+					],
+					"current": "… un travail en plusieurs volets réparti entre agents ou dépôts, …",
+					"problem": "EN 'across several agents or repositories' loses « plusieurs ». The plural still carries the sense, so nothing is lost.",
+					"suggested": "… réparti entre plusieurs agents ou dépôts, …"
+				},
+				{
+					"id": "N4",
+					"severity": "NIT",
+					"keys": [
+						"ui.agents.routing.copy_reviewer"
+					],
+					"current": "(chaînes d'interface, e-mails, notifications, aide et documentation)",
+					"problem": "EN's '(UI strings, …)' token UI is translated. The fr guide's keep-English list pins TUI but not UI, and « chaînes d'interface » is the settled French term, so the rendering is permitted; flagged only because the audit brief lists UI among tokens to leave untouched.",
+					"suggested": "Keep as is; « chaînes UI » only if the manager requires literal token parity."
+				}
+			]
+		}
+	},
+	"counts": {
+		"BLOCKER": 0,
+		"MAJOR": 0,
+		"MINOR": 5,
+		"NIT": 4
+	},
+	"verdict": "pass",
+	"verdict_reason": "All 12 values carry the English claim - what the agent is for and when to reach for it - with no omission, addition, negation or polarity error, in idiomatic native fr, vous register, correct fr typography and untouched technical tokens. Mechanical pass is clean: valid JSON, 12/12 key parity in source order, NFC, LF, tab indent, no BOM or CR, every ':' and ';' preceded by U+202F (7/7), U+2019 apostrophes only, no ASCII quotes, no '...', and no placeholders, ICU, tags or backticks in either file - so placeholder and CLDR parity are vacuous here. Length sits inside the fr guide's 15-25% band on every key (max 1.1975 reviewer, total 1.128), so nothing is materially longer than its English counterpart. Five MINOR and four NIT polish items remain, none blocking.",
+	"findings": [
+		{
+			"id": "M1",
+			"severity": "MINOR",
+			"keys": [
+				"ui.agents.routing.aida"
+			],
+			"current": "« … lancer du travail en parallèle entre agents … »",
+			"problem": "Calque of EN 'starting parallel work across agents': « entre » belongs with répartir, not with lancer — on dispatche du travail sur des agents, on ne le lance pas entre eux. The three occasions and their order are otherwise exact.",
+			"suggested": "Confier une demande à une équipe ou à un spécialiste, lancer des travaux en parallèle sur plusieurs agents, ou demander un récapitulatif de tout ce qui est en cours."
+		},
+		{
+			"id": "M2",
+			"severity": "MINOR",
+			"keys": [
+				"ui.agents.routing.copy_reviewer"
+			],
+			"current": "(billets de blog, posts LinkedIn et X)",
+			"problem": "One parenthetical names the same concept twice in two languages: French « billets de blog » then English « posts ». The shipped fr corpus contains no form of 'post' at all (0 hits in 108 files), so the operator meets it only here, immediately beside the French word for the same object.",
+			"suggested": "(billets de blog, publications LinkedIn et X)"
+		},
+		{
+			"id": "M3",
+			"severity": "MINOR",
+			"keys": [
+				"ui.agents.routing.copy_reviewer"
+			],
+			"current": "Pour le texte visible, jamais la prose technique ni les commentaires de code.",
+			"problem": "EN is an imperative - 'Use on user-visible text, never on engineering prose or code comments'. FR drops verb and preposition, leaving a note fragment at the end of a card whose every other sentence is sentential: the prohibition survives, the instruction to use it does not read as one.",
+			"suggested": "À utiliser sur le texte visible, jamais sur la prose technique ni les commentaires de code."
+		},
+		{
+			"id": "M4",
+			"severity": "MINOR",
+			"keys": [
+				"ui.agents.routing.scout"
+			],
+			"current": "Répondre à une question sur un fonctionnement, …",
+			"problem": "« sur un fonctionnement » is a bare ellipsis with no antecedent on a card: it reads as 'about an operation' rather than EN 'about how something works'. Understandable, but vague where the English is concrete - and it is the first words of the value.",
+			"suggested": "Répondre à une question sur le fonctionnement de quelque chose, localiser du code, …"
+		},
+		{
+			"id": "M5",
+			"severity": "MINOR",
+			"keys": [
+				"ui.agents.routing.copy_reviewer",
+				"ui.agents.descriptions.copy_reviewer"
+			],
+			"cross_family": true,
+			"current": "routing: « … suppression des AI-isms. » | descriptions: « … étayage des affirmations, tics de l’IA ; signale des constats préfixés C. »",
+			"problem": "Cross-family mismatch on one house concept: routing keeps the English house term 'AI-isms' (as its sidecar instructs: 'the house term … stays untranslated'), the sibling description renders it « tics de l'IA ». Same agent, two surfaces the operator sees one after the other, two labels - and the descriptions sidecar says nothing about keeping it English. Routing conforms to its contract, so the deviation is sibling-side; the pair needs one label.",
+			"suggested": "Either leave routing and align ui.agents.descriptions.copy_reviewer back to 'AI-isms', or accept « tics de l'IA » and change routing to « suppression des tics de l'IA »."
+		},
+		{
+			"id": "N1",
+			"severity": "NIT",
+			"keys": [
+				"ui.agents.routing.designer"
+			],
+			"current": "… une passe design/UX sur un changement visible.",
+			"problem": "EN 'a user-visible change'; « changement visible » leaves the user implicit while the sibling description says « un changement visible par l'utilisateur ». No meaning lost at card level, and the added words would cost width.",
+			"suggested": "Leave if width matters; otherwise « sur un changement visible par l'utilisateur »."
+		},
+		{
+			"id": "N2",
+			"severity": "NIT",
+			"keys": [
+				"ui.agents.routing.ux_reviewer"
+			],
+			"current": "… par opposition à une revue visuelle ou de design sur l'apparence.",
+			"problem": "« une revue … sur l'apparence » is loose - the thing reviewed belongs in a 'de' complement. It reads fine and the contrast with the visual review survives intact.",
+			"suggested": "… par opposition à une revue visuelle ou de design de son apparence."
+		},
+		{
+			"id": "N3",
+			"severity": "NIT",
+			"keys": [
+				"ui.agents.routing.manager"
+			],
+			"current": "… un travail en plusieurs volets réparti entre agents ou dépôts, …",
+			"problem": "EN 'across several agents or repositories' loses « plusieurs ». The plural still carries the sense, so nothing is lost.",
+			"suggested": "… réparti entre plusieurs agents ou dépôts, …"
+		},
+		{
+			"id": "N4",
+			"severity": "NIT",
+			"keys": [
+				"ui.agents.routing.copy_reviewer"
+			],
+			"current": "(chaînes d'interface, e-mails, notifications, aide et documentation)",
+			"problem": "EN's '(UI strings, …)' token UI is translated. The fr guide's keep-English list pins TUI but not UI, and « chaînes d'interface » is the settled French term, so the rendering is permitted; flagged only because the audit brief lists UI among tokens to leave untouched.",
+			"suggested": "Keep as is; « chaînes UI » only if the manager requires literal token parity."
+		}
+	],
+	"checks_run": [
+		"python mechanical pass on both files: json.load; key parity 12/12 and identical order; NFC via unicodedata.is_normalized; no BOM, no CR, LF with trailing newline; 12/12 tab-indented lines",
+		"regex sweep for ICU braces, rich/markup tags, backticks and angle brackets across both files: zero constructs, so placeholder name/type parity and CLDR category coverage are vacuous for this namespace",
+		"typography: U+202F before every ':' (7) and ';' (1), no ASCII space before either; U+2019 only; no ASCII quotes; no three-dot ellipsis; em dash spaced on both sides",
+		"identical-to-English test: 0/12 values equal English",
+		"length: per-key fr/en character ratio - all 12 inside the guide's 15-25% band",
+		"corpus consistency: 108 shipped fr files / 6,801 values grepped for post, AI-isms, tics de l'IA, refonte, effets de bord, de bout en bout, UI, récapitulatif",
+		"sibling-family comparison against scratchpad/agents-i18n/fr/ui.agents.descriptions.json (12 values) for agent, équipe, travail, dépôt, changement, prose grand public, étayage des affirmations, Bibliothèque, éléments, UX, terminal, de bout en bout",
+		"repo gates at 98a9125f5cc: node scripts/i18n/check-strings.mjs ok (1,434 files, 0 at or below baseline); node scripts/i18n/context-parity.mjs ok (131 allowed gaps in 4 namespaces); node scripts/i18n/generate.mjs --check ok (keys.gen.ts byte-identical). None of these reads this file (it is not in the fr catalogue yet), so they are repo context, not evidence about this namespace."
+	],
+	"terminology": {
+		"glossary_held": {
+			"agent": "agent",
+			"team": "équipe",
+			"tool": "outil",
+			"skill": "compétence",
+			"library": "la Bibliothèque (capital kept - the product asset catalogue)",
+			"session": "session",
+			"job": "tâche"
+		},
+		"kept_english_verified": [
+			"PR",
+			"MR",
+			"diff",
+			"API",
+			"CLI",
+			"RFC",
+			"UX",
+			"Unicode",
+			"AI-isms",
+			"patch"
+		],
+		"translated_token_flagged": [
+			"UI -> chaînes d'interface (permitted by the fr guide, see N4)"
+		],
+		"sibling_agreement": "agent/agents, équipe(s), travail, dépôt(s), changement, prose grand public, étayage des affirmations, Bibliothèque capitalised, éléments for saved assets, UX, en terminal and de bout en bout all agree with ui.agents.descriptions. One divergence: AI-isms vs « tics de l'IA » (M5).",
+		"register_note": "Routing values are infinitive occasion phrases (Confier, Décider, Écrire, Relire, Vérifier, Organiser, Coordonner, Tester, Revoir, Répondre, Concevoir); the sibling descriptions are third-person noun summaries. That structural difference is the sidecars' design, not an inconsistency."
+	},
+	"fit": {
+		"ui.agents.routing.aida": {
+			"en_chars": 136,
+			"fr_chars": 156,
+			"ratio": 1.1471
+		},
+		"ui.agents.routing.architect": {
+			"en_chars": 169,
+			"fr_chars": 181,
+			"ratio": 1.071
+		},
+		"ui.agents.routing.coder": {
+			"en_chars": 183,
+			"fr_chars": 197,
+			"ratio": 1.0765
+		},
+		"ui.agents.routing.copy_reviewer": {
+			"en_chars": 354,
+			"fr_chars": 397,
+			"ratio": 1.1215
+		},
+		"ui.agents.routing.designer": {
+			"en_chars": 202,
+			"fr_chars": 230,
+			"ratio": 1.1386
+		},
+		"ui.agents.routing.librarian": {
+			"en_chars": 121,
+			"fr_chars": 137,
+			"ratio": 1.1322
+		},
+		"ui.agents.routing.manager": {
+			"en_chars": 155,
+			"fr_chars": 168,
+			"ratio": 1.0839
+		},
+		"ui.agents.routing.qa_tester": {
+			"en_chars": 170,
+			"fr_chars": 200,
+			"ratio": 1.1765
+		},
+		"ui.agents.routing.reviewer": {
+			"en_chars": 157,
+			"fr_chars": 188,
+			"ratio": 1.1975
+		},
+		"ui.agents.routing.scout": {
+			"en_chars": 258,
+			"fr_chars": 281,
+			"ratio": 1.0891
+		},
+		"ui.agents.routing.tui_designer": {
+			"en_chars": 260,
+			"fr_chars": 303,
+			"ratio": 1.1654
+		},
+		"ui.agents.routing.ux_reviewer": {
+			"en_chars": 257,
+			"fr_chars": 294,
+			"ratio": 1.144
+		}
+	},
+	"limits": [
+		"No rendered frame: the file is not in the fr catalogue, so the app cannot display it. The en sidecar's width note is one card line and one picker row at about 320 px, truncated with an ellipsis; both languages truncate, so fit is judged from the ratios rather than a screenshot.",
+		"Repo gates were green but do not read this file; they are context for the checkout, not evidence about the namespace.",
+		"This is one auditor's pass. No second independent auditor was run by me for this group."
+	],
+	"artifacts": {
+		"receipt": "scratchpad/agents2-audit/fr/receipt.json",
+		"verdict": "scratchpad/agents2-audit/fr/verdict.txt",
+		"findings": "scratchpad/agents2-audit/fr/findings.md",
+		"log": "scratchpad/agents2-audit/fr/audit.log"
+	}
+}

@@ -19,6 +19,7 @@ import type {
 } from "react";
 import { useCallback, useId, useLayoutEffect, useRef } from "react";
 import { v4 as uuidv4 } from "uuid";
+import { MentionField, MentionNotice, useComposerMentions } from "./mentions";
 import { imageFiles } from "./team-bridge-attachments-model";
 
 /**
@@ -126,6 +127,7 @@ export const TeamBridgeComposer: FC<TeamBridgeComposerProps> = ({
 		(state) => state.removeAttachment,
 	);
 	const chips = attachments ?? NO_ATTACHMENTS;
+	const stageMentionsRef = useRef<(body: string) => void>(() => {});
 
 	const {
 		inputValue,
@@ -140,16 +142,29 @@ export const TeamBridgeComposer: FC<TeamBridgeComposerProps> = ({
 		// accepted send retires it (`transcriptless`, U1). The chips travel beside
 		// the text because this host binds them into the request itself.
 		transcriptless: true,
-		onSubmit: (message) =>
-			onSendMessage(
+		onSubmit: (message) => {
+			// @-mentions: stage this text's `mentions[]` for its send (mentions/).
+			stageMentionsRef.current(message);
+			return onSendMessage(
 				message,
 				(
 					useConversationInputStore.getState().inputByConversation[
 						conversationId
 					]?.attachments ?? NO_ATTACHMENTS
 				).map((entry) => entry.path),
-			),
+			);
+		},
 	});
+	/* @-MENTIONS (features/team-bridge/mentions/). Inert with no mention source
+	   above this composer. `stageMentionsRef` because `useMessageInput` takes its
+	   submit callback before this hook exists. */
+	const mentions = useComposerMentions({
+		draftKey: conversationId,
+		text: inputValue,
+		setText: setInputValue,
+		fieldRef: textareaRef,
+	});
+	stageMentionsRef.current = mentions.stage;
 
 	/*
 	 * THE FIELD'S HEIGHT, ASKED OF ITS OWN CONTENT.
@@ -284,6 +299,7 @@ export const TeamBridgeComposer: FC<TeamBridgeComposerProps> = ({
 			 * inheritance rather than as this pane's oversight (design round 1, D1).
 			 */}
 			<div className={cn(CHAT_MEASURE, "flex w-full flex-col gap-1.5")}>
+				<MentionNotice mentions={mentions} />
 				{chips.length > 0 && (
 					// Chips are not part of the bar's one line (operator: an attachment
 					// may legitimately change the height). They sit ABOVE it so the bar
@@ -318,24 +334,30 @@ export const TeamBridgeComposer: FC<TeamBridgeComposerProps> = ({
 						"has-[textarea:focus-visible]:outline-2 has-[textarea:focus-visible]:outline-accent has-[textarea:focus-visible]:outline-offset-2 has-[textarea:focus-visible]:outline-solid",
 					)}
 				>
-					<textarea
-						ref={textareaRef}
-						id={fieldId}
-						rows={1}
-						value={inputValue}
-						disabled={blocked}
-						aria-label={placeholder}
-						aria-describedby={disabledReasonId}
-						placeholder={placeholder}
-						onChange={(event) => setInputValue(event.target.value)}
-						onKeyDown={handleKeyDown}
-						/*
-						 * `resize-none` because the growth is the field's own (above), and
-						 * the cap is `FIELD_MAX_HEIGHT` in the same place: a drag handle that
-						 * could exceed it would be a second opinion of the bar's height.
-						 */
-						className="min-w-0 flex-1 resize-none bg-transparent py-2 ps-3 pe-1 text-[14px] leading-5 text-ink outline-none placeholder:text-ink-dim disabled:cursor-not-allowed disabled:text-ink-dim"
-					/>
+					<MentionField
+						mentions={mentions}
+						fieldRef={textareaRef}
+						text={inputValue}
+					>
+						<textarea
+							ref={textareaRef}
+							id={fieldId}
+							rows={1}
+							value={inputValue}
+							disabled={blocked}
+							aria-label={placeholder}
+							aria-describedby={disabledReasonId}
+							placeholder={placeholder}
+							onChange={(event) => setInputValue(event.target.value)}
+							{...mentions.bindField({ onKeyDown: handleKeyDown })}
+							/*
+							 * `resize-none` because the growth is the field's own (above), and
+							 * the cap is `FIELD_MAX_HEIGHT` in the same place: a drag handle that
+							 * could exceed it would be a second opinion of the bar's height.
+							 */
+							className="relative min-w-0 flex-1 resize-none bg-transparent py-2 ps-3 pe-1 text-[14px] leading-5 text-ink outline-none placeholder:text-ink-dim disabled:cursor-not-allowed disabled:text-ink-dim"
+						/>
+					</MentionField>
 					{/* THE CHORD, AT THE POINT OF TYPING (UX round 1, U3) and inside the bar,
 					    so it reserves no row of its own. It never leaves the layout: `opacity`
 					    carries "there is nothing to send yet" so the field cannot reflow when

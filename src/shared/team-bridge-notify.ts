@@ -268,6 +268,15 @@ export type TeamBridgeNotifyRequest = {
 	 */
 	threadId?: string;
 	/**
+	 * THE MESSAGE THE BANNER IS ABOUT. Sent only once the renderer has written
+	 * that message into the timeline's (or thread's) query cache, so a click can
+	 * land on it in the first frame instead of on a stale page that fills in
+	 * seconds later. Optional and additive: a banner that degraded to metadata
+	 * (the history read failed) carries none, and the click still opens the
+	 * conversation. Validated with the same id vocabulary as every other id.
+	 */
+	messageId?: string;
+	/**
 	 * The renderer is showing THIS conversation right now. Main still owns
 	 * quiet (only it knows real focus); this tells it that a focused window is
 	 * on this conversation, so quiet applies. A banner for a DIFFERENT
@@ -287,6 +296,8 @@ export type TeamBridgeOpenTarget = {
 	tenantId: string;
 	/** See `TeamBridgeNotifyRequest.threadId`. Absent unless one was sent. */
 	threadId?: string;
+	/** See `TeamBridgeNotifyRequest.messageId`. Absent unless one was sent. */
+	messageId?: string;
 };
 
 function cleanId(value: unknown): string | null {
@@ -339,10 +350,13 @@ export function parseTeamBridgeNotifyRequest(
 			: cleanText(input.subtitle, TEAM_BRIDGE_NOTIFY_MAX_SUBTITLE);
 	const threadId =
 		input.threadId === undefined ? undefined : cleanId(input.threadId);
+	const messageId =
+		input.messageId === undefined ? undefined : cleanId(input.messageId);
 	const viewing = input.viewing;
 	if (
 		subtitle === null ||
 		threadId === null ||
+		messageId === null ||
 		(viewing !== undefined && typeof viewing !== "boolean")
 	) {
 		return null;
@@ -370,6 +384,7 @@ export function parseTeamBridgeNotifyRequest(
 		...(sender ? { sender } : {}),
 		...(subtitle === undefined ? {} : { subtitle }),
 		...(threadId === undefined ? {} : { threadId }),
+		...(messageId === undefined ? {} : { messageId }),
 		...(viewing === undefined ? {} : { viewing }),
 	};
 }
@@ -422,6 +437,8 @@ export function teamBridgeOpenPath(target: TeamBridgeOpenTarget): string {
 		...(TEAM_BRIDGE_THREADS_SHIPPED_IN_THIS_BUILD && target.threadId
 			? { thread: target.threadId }
 			: {}),
+		// The page scrolls to and briefly marks this row, then clears the param.
+		...(target.messageId ? { message: target.messageId } : {}),
 	});
 	return `/team-bridge?${query.toString()}`;
 }
