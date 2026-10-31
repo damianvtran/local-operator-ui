@@ -107,6 +107,7 @@ import enUiNotificationsBulkUpdates from "./catalogues/en/ui.notifications.bulk_
 import enUiNotifications from "./catalogues/en/ui.notifications.json";
 import enUiNotificationsOperation from "./catalogues/en/ui.notifications.operation.json";
 import enUiOnboarding from "./catalogues/en/ui.onboarding.json";
+import enUiOnboardingTour from "./catalogues/en/ui.onboarding.tour.json";
 import enUiOwnerAudit from "./catalogues/en/ui.ownerAudit.json";
 import enUiPresence from "./catalogues/en/ui.presence.json";
 import enUiProjects from "./catalogues/en/ui.projects.json";
@@ -220,6 +221,7 @@ import esUiNotificationsBulkUpdates from "./catalogues/es/ui.notifications.bulk_
 import esUiNotifications from "./catalogues/es/ui.notifications.json";
 import esUiNotificationsOperation from "./catalogues/es/ui.notifications.operation.json";
 import esUiOnboarding from "./catalogues/es/ui.onboarding.json";
+import esUiOnboardingTour from "./catalogues/es/ui.onboarding.tour.json";
 import esUiOwnerAudit from "./catalogues/es/ui.ownerAudit.json";
 import esUiPresence from "./catalogues/es/ui.presence.json";
 import esUiProjects from "./catalogues/es/ui.projects.json";
@@ -333,6 +335,7 @@ import frUiNotificationsBulkUpdates from "./catalogues/fr/ui.notifications.bulk_
 import frUiNotifications from "./catalogues/fr/ui.notifications.json";
 import frUiNotificationsOperation from "./catalogues/fr/ui.notifications.operation.json";
 import frUiOnboarding from "./catalogues/fr/ui.onboarding.json";
+import frUiOnboardingTour from "./catalogues/fr/ui.onboarding.tour.json";
 import frUiOwnerAudit from "./catalogues/fr/ui.ownerAudit.json";
 import frUiPresence from "./catalogues/fr/ui.presence.json";
 import frUiProjects from "./catalogues/fr/ui.projects.json";
@@ -446,6 +449,7 @@ import hiUiNotificationsBulkUpdates from "./catalogues/hi/ui.notifications.bulk_
 import hiUiNotifications from "./catalogues/hi/ui.notifications.json";
 import hiUiNotificationsOperation from "./catalogues/hi/ui.notifications.operation.json";
 import hiUiOnboarding from "./catalogues/hi/ui.onboarding.json";
+import hiUiOnboardingTour from "./catalogues/hi/ui.onboarding.tour.json";
 import hiUiOwnerAudit from "./catalogues/hi/ui.ownerAudit.json";
 import hiUiPresence from "./catalogues/hi/ui.presence.json";
 import hiUiProjects from "./catalogues/hi/ui.projects.json";
@@ -559,6 +563,7 @@ import ruUiNotificationsBulkUpdates from "./catalogues/ru/ui.notifications.bulk_
 import ruUiNotifications from "./catalogues/ru/ui.notifications.json";
 import ruUiNotificationsOperation from "./catalogues/ru/ui.notifications.operation.json";
 import ruUiOnboarding from "./catalogues/ru/ui.onboarding.json";
+import ruUiOnboardingTour from "./catalogues/ru/ui.onboarding.tour.json";
 import ruUiOwnerAudit from "./catalogues/ru/ui.ownerAudit.json";
 import ruUiPresence from "./catalogues/ru/ui.presence.json";
 import ruUiProjects from "./catalogues/ru/ui.projects.json";
@@ -672,6 +677,7 @@ import urUiNotificationsBulkUpdates from "./catalogues/ur/ui.notifications.bulk_
 import urUiNotifications from "./catalogues/ur/ui.notifications.json";
 import urUiNotificationsOperation from "./catalogues/ur/ui.notifications.operation.json";
 import urUiOnboarding from "./catalogues/ur/ui.onboarding.json";
+import urUiOnboardingTour from "./catalogues/ur/ui.onboarding.tour.json";
 import urUiOwnerAudit from "./catalogues/ur/ui.ownerAudit.json";
 import urUiPresence from "./catalogues/ur/ui.presence.json";
 import urUiProjects from "./catalogues/ur/ui.projects.json";
@@ -785,6 +791,7 @@ import viUiNotificationsBulkUpdates from "./catalogues/vi/ui.notifications.bulk_
 import viUiNotifications from "./catalogues/vi/ui.notifications.json";
 import viUiNotificationsOperation from "./catalogues/vi/ui.notifications.operation.json";
 import viUiOnboarding from "./catalogues/vi/ui.onboarding.json";
+import viUiOnboardingTour from "./catalogues/vi/ui.onboarding.tour.json";
 import viUiOwnerAudit from "./catalogues/vi/ui.ownerAudit.json";
 import viUiPresence from "./catalogues/vi/ui.presence.json";
 import viUiProjects from "./catalogues/vi/ui.projects.json";
@@ -898,6 +905,7 @@ import zhCNUiNotificationsBulkUpdates from "./catalogues/zh-CN/ui.notifications.
 import zhCNUiNotifications from "./catalogues/zh-CN/ui.notifications.json";
 import zhCNUiNotificationsOperation from "./catalogues/zh-CN/ui.notifications.operation.json";
 import zhCNUiOnboarding from "./catalogues/zh-CN/ui.onboarding.json";
+import zhCNUiOnboardingTour from "./catalogues/zh-CN/ui.onboarding.tour.json";
 import zhCNUiOwnerAudit from "./catalogues/zh-CN/ui.ownerAudit.json";
 import zhCNUiPresence from "./catalogues/zh-CN/ui.presence.json";
 import zhCNUiProjects from "./catalogues/zh-CN/ui.projects.json";
@@ -1014,6 +1022,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiNotifications,
 	...enUiNotificationsOperation,
 	...enUiOnboarding,
+	...enUiOnboardingTour,
 	...enUiOwnerAudit,
 	...enUiPresence,
 	...enUiProjects,
@@ -1135,6 +1144,7 @@ export const bundledCatalogues: Readonly<
 		...esUiNotifications,
 		...esUiNotificationsOperation,
 		...esUiOnboarding,
+		...esUiOnboardingTour,
 		...esUiOwnerAudit,
 		...esUiPresence,
 		...esUiProjects,
@@ -1250,6 +1260,7 @@ export const bundledCatalogues: Readonly<
 		...frUiNotifications,
 		...frUiNotificationsOperation,
 		...frUiOnboarding,
+		...frUiOnboardingTour,
 		...frUiOwnerAudit,
 		...frUiPresence,
 		...frUiProjects,
@@ -1365,6 +1376,7 @@ export const bundledCatalogues: Readonly<
 		...hiUiNotifications,
 		...hiUiNotificationsOperation,
 		...hiUiOnboarding,
+		...hiUiOnboardingTour,
 		...hiUiOwnerAudit,
 		...hiUiPresence,
 		...hiUiProjects,
@@ -1480,6 +1492,7 @@ export const bundledCatalogues: Readonly<
 		...ruUiNotifications,
 		...ruUiNotificationsOperation,
 		...ruUiOnboarding,
+		...ruUiOnboardingTour,
 		...ruUiOwnerAudit,
 		...ruUiPresence,
 		...ruUiProjects,
@@ -1595,6 +1608,7 @@ export const bundledCatalogues: Readonly<
 		...urUiNotifications,
 		...urUiNotificationsOperation,
 		...urUiOnboarding,
+		...urUiOnboardingTour,
 		...urUiOwnerAudit,
 		...urUiPresence,
 		...urUiProjects,
@@ -1710,6 +1724,7 @@ export const bundledCatalogues: Readonly<
 		...viUiNotifications,
 		...viUiNotificationsOperation,
 		...viUiOnboarding,
+		...viUiOnboardingTour,
 		...viUiOwnerAudit,
 		...viUiPresence,
 		...viUiProjects,
@@ -1825,6 +1840,7 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiNotifications,
 		...zhCNUiNotificationsOperation,
 		...zhCNUiOnboarding,
+		...zhCNUiOnboardingTour,
 		...zhCNUiOwnerAudit,
 		...zhCNUiPresence,
 		...zhCNUiProjects,
@@ -7378,6 +7394,129 @@ export type MessageParams = {
 	"ui.onboarding.search.row.save_failed": undefined;
 	"ui.onboarding.search.row.saved": undefined;
 	"ui.onboarding.search.row.saving": { name: string };
+	"ui.onboarding.tour.action.back": undefined;
+	"ui.onboarding.tour.action.close": undefined;
+	"ui.onboarding.tour.action.finish": undefined;
+	"ui.onboarding.tour.action.next": undefined;
+	"ui.onboarding.tour.agent_capabilities.body.1": undefined;
+	"ui.onboarding.tour.agent_capabilities.body.2": undefined;
+	"ui.onboarding.tour.agent_capabilities.image.1.alt": undefined;
+	"ui.onboarding.tour.agent_capabilities.title": undefined;
+	"ui.onboarding.tour.agent_hub_view.body.1": undefined;
+	"ui.onboarding.tour.agent_hub_view.title": undefined;
+	"ui.onboarding.tour.agent_list.body.1": undefined;
+	"ui.onboarding.tour.agent_list.body.2": undefined;
+	"ui.onboarding.tour.agent_list.title": undefined;
+	"ui.onboarding.tour.agent_naming_guidelines.body.1": undefined;
+	"ui.onboarding.tour.agent_naming_guidelines.body.2": undefined;
+	"ui.onboarding.tour.agent_naming_guidelines.title": undefined;
+	"ui.onboarding.tour.agent_options.body.1": undefined;
+	"ui.onboarding.tour.agent_options.title": undefined;
+	"ui.onboarding.tour.appearance_settings.body.1": undefined;
+	"ui.onboarding.tour.appearance_settings.title": undefined;
+	"ui.onboarding.tour.application_updates_settings.body.1": undefined;
+	"ui.onboarding.tour.application_updates_settings.title": undefined;
+	"ui.onboarding.tour.attachments.body.1": undefined;
+	"ui.onboarding.tour.attachments.body.2": undefined;
+	"ui.onboarding.tour.attachments.body.3": undefined;
+	"ui.onboarding.tour.attachments.body.4": undefined;
+	"ui.onboarding.tour.attachments.title": undefined;
+	"ui.onboarding.tour.canvas_documents_view.body.1": undefined;
+	"ui.onboarding.tour.canvas_documents_view.body.2": undefined;
+	"ui.onboarding.tour.canvas_documents_view.body.3": undefined;
+	"ui.onboarding.tour.canvas_documents_view.body.4": undefined;
+	"ui.onboarding.tour.canvas_documents_view.title": undefined;
+	"ui.onboarding.tour.canvas_feature.body.1": undefined;
+	"ui.onboarding.tour.canvas_feature.body.2": undefined;
+	"ui.onboarding.tour.canvas_feature.title": undefined;
+	"ui.onboarding.tour.canvas_files_view.body.1": undefined;
+	"ui.onboarding.tour.canvas_files_view.title": undefined;
+	"ui.onboarding.tour.canvas_open_button.body.1": undefined;
+	"ui.onboarding.tour.canvas_open_button.title": undefined;
+	"ui.onboarding.tour.canvas_variables_view.body.1": undefined;
+	"ui.onboarding.tour.canvas_variables_view.body.2": undefined;
+	"ui.onboarding.tour.canvas_variables_view.title": undefined;
+	"ui.onboarding.tour.chat_input.body.1": undefined;
+	"ui.onboarding.tour.chat_input.body.2": undefined;
+	"ui.onboarding.tour.chat_input.body.3": undefined;
+	"ui.onboarding.tour.chat_input.list.1.item.1": undefined;
+	"ui.onboarding.tour.chat_input.list.1.item.2": undefined;
+	"ui.onboarding.tour.chat_input.list.1.item.3": undefined;
+	"ui.onboarding.tour.chat_input.title": undefined;
+	"ui.onboarding.tour.click_view_settings_from_chat.body.1": undefined;
+	"ui.onboarding.tour.click_view_settings_from_chat.title": undefined;
+	"ui.onboarding.tour.create_new_agent.body.1": undefined;
+	"ui.onboarding.tour.create_new_agent.title": undefined;
+	"ui.onboarding.tour.create_schedule.body.1": undefined;
+	"ui.onboarding.tour.create_schedule.body.2": undefined;
+	"ui.onboarding.tour.create_schedule.title": undefined;
+	"ui.onboarding.tour.create_schedule_dialog.body.1": undefined;
+	"ui.onboarding.tour.create_schedule_dialog.body.2": undefined;
+	"ui.onboarding.tour.create_schedule_dialog.body.3": undefined;
+	"ui.onboarding.tour.create_schedule_dialog.title": undefined;
+	"ui.onboarding.tour.download_agent.body.1": undefined;
+	"ui.onboarding.tour.download_agent.title": undefined;
+	"ui.onboarding.tour.general_settings.body.1": undefined;
+	"ui.onboarding.tour.general_settings.title": undefined;
+	"ui.onboarding.tour.integrations_settings.body.1": undefined;
+	"ui.onboarding.tour.integrations_settings.body.2": undefined;
+	"ui.onboarding.tour.integrations_settings.title": undefined;
+	"ui.onboarding.tour.modify_agent_prompt.body.1": undefined;
+	"ui.onboarding.tour.modify_agent_prompt.title": undefined;
+	"ui.onboarding.tour.modify_security_prompt.body.1": undefined;
+	"ui.onboarding.tour.modify_security_prompt.title": undefined;
+	"ui.onboarding.tour.navigate_agent_hub.body.1": undefined;
+	"ui.onboarding.tour.navigate_agent_hub.title": undefined;
+	"ui.onboarding.tour.navigate_schedules.body.1": undefined;
+	"ui.onboarding.tour.navigate_schedules.title": undefined;
+	"ui.onboarding.tour.navigate_settings.body.1": undefined;
+	"ui.onboarding.tour.navigate_settings.title": undefined;
+	"ui.onboarding.tour.pre_command_palette_open_canvas.body.1.1": undefined;
+	"ui.onboarding.tour.pre_command_palette_open_canvas.body.1.3": undefined;
+	"ui.onboarding.tour.pre_command_palette_open_canvas.body.1.4": undefined;
+	"ui.onboarding.tour.pre_command_palette_open_canvas.body.1.5": undefined;
+	"ui.onboarding.tour.pre_command_palette_open_canvas.body.1.6": undefined;
+	"ui.onboarding.tour.pre_command_palette_open_canvas.body.1.7": undefined;
+	"ui.onboarding.tour.pre_command_palette_open_canvas.body.2.1": undefined;
+	"ui.onboarding.tour.pre_command_palette_open_canvas.body.2.3": undefined;
+	"ui.onboarding.tour.pre_command_palette_open_canvas.body.2.5": undefined;
+	"ui.onboarding.tour.pre_command_palette_open_canvas.connector.on_mac_and": undefined;
+	"ui.onboarding.tour.pre_command_palette_open_canvas.title": undefined;
+	"ui.onboarding.tour.radient_account_settings.body.1": undefined;
+	"ui.onboarding.tour.radient_account_settings.body.2": undefined;
+	"ui.onboarding.tour.radient_account_settings.title": undefined;
+	"ui.onboarding.tour.schedules_overview.body.1": undefined;
+	"ui.onboarding.tour.schedules_overview.body.2": undefined;
+	"ui.onboarding.tour.schedules_overview.body.3": undefined;
+	"ui.onboarding.tour.schedules_overview.title": undefined;
+	"ui.onboarding.tour.select_agent.body.1": undefined;
+	"ui.onboarding.tour.select_agent.title": undefined;
+	"ui.onboarding.tour.select_model.body.1": undefined;
+	"ui.onboarding.tour.select_model.title": undefined;
+	"ui.onboarding.tour.select_provider.body.1": undefined;
+	"ui.onboarding.tour.select_provider.title": undefined;
+	"ui.onboarding.tour.tour_complete.body.1": undefined;
+	"ui.onboarding.tour.tour_complete.title": undefined;
+	"ui.onboarding.tour.upload_agent_hub.body.1": undefined;
+	"ui.onboarding.tour.upload_agent_hub.title": undefined;
+	"ui.onboarding.tour.upload_agent_hub_dialog.body.1": undefined;
+	"ui.onboarding.tour.upload_agent_hub_dialog.title": undefined;
+	"ui.onboarding.tour.view_agent_settings.body.1": undefined;
+	"ui.onboarding.tour.view_agent_settings.body.2": undefined;
+	"ui.onboarding.tour.view_agent_settings.title": undefined;
+	"ui.onboarding.tour.welcome.body.1": undefined;
+	"ui.onboarding.tour.welcome.body.2": undefined;
+	"ui.onboarding.tour.welcome.body.3": undefined;
+	"ui.onboarding.tour.welcome.body.4": undefined;
+	"ui.onboarding.tour.welcome.image.1.alt": undefined;
+	"ui.onboarding.tour.welcome.list.1.item.1": undefined;
+	"ui.onboarding.tour.welcome.list.1.item.2": undefined;
+	"ui.onboarding.tour.welcome.list.1.item.3": undefined;
+	"ui.onboarding.tour.welcome.list.1.item.4": undefined;
+	"ui.onboarding.tour.welcome.list.1.item.5": undefined;
+	"ui.onboarding.tour.welcome.list.1.item.6": undefined;
+	"ui.onboarding.tour.welcome.list.1.item.7": undefined;
+	"ui.onboarding.tour.welcome.title": undefined;
 	"ui.ownerAudit.active": undefined;
 	"ui.ownerAudit.admitted": undefined;
 	"ui.ownerAudit.agent": undefined;
