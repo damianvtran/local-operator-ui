@@ -225,6 +225,11 @@ test("only a channel the server says the caller may administer offers archive", 
 		false,
 		"#humans and #agents can never be archived",
 	);
+	assert.equal(
+		ui.canArchiveConversation(conversation({ builtin: "general" })),
+		false,
+		"#general can never be archived either",
+	);
 	for (const kind of ["dm", "group"])
 		assert.equal(ui.canArchiveConversation(conversation({ kind })), false);
 	assert.equal(
@@ -589,4 +594,16 @@ test("isNotAMemberRefusal reads the typed code and nothing looser", () => {
 	);
 	assert.equal(ui.isNotAMemberRefusal(new Error("not_a_member")), false);
 	assert.equal(ui.isNotAMemberRefusal(null), false);
+});
+
+test("landingAfterRemoval falls back to #general before #humans", () => {
+	const rows = [
+		row("humans", { builtin: "humans" }),
+		row("general", { builtin: "general" }),
+		row("a"),
+	];
+	assert.deepEqual(ui.landingAfterRemoval(rows, "gone"), {
+		type: "conversation",
+		id: "general",
+	});
 });

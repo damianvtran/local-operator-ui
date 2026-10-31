@@ -341,7 +341,12 @@ test("no notification path reads thread replies while held", () => {
 		notifications,
 		/const threadId = TEAM_BRIDGE_THREADS_SHIPPED_IN_THIS_BUILD\s*\?\s*candidate\.threadId\s*:\s*undefined/,
 	);
-	assert.match(notifications, /const newest = threadId\s*\?/);
+	// A reply is read only on the `threadId` branch (the timeline read is the
+	// other branch, through the page's own query entry).
+	assert.match(
+		notifications,
+		/if \(threadId\) \{\s*newest = assertThreadPage\(/,
+	);
 	assert.match(
 		notifications,
 		/listReplies\(candidate\.conversationId, threadId/,

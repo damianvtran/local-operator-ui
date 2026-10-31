@@ -6,6 +6,7 @@ import { useCallback, useEffect, useLayoutEffect, useState } from "react";
 import type { FC, ReactNode } from "react";
 import type {
 	TeamBridgeDirectoryMember,
+	TeamBridgeEvent,
 	TeamBridgeMessage,
 } from "../../../../shared/team-bridge-contract";
 import {
@@ -18,6 +19,14 @@ import { TeamBridgeMessageAttachments } from "./team-bridge-attachments";
 import { EMOJI_ENTRIES } from "./team-bridge-emoji-model";
 import { warmEmojiProbeCache } from "./team-bridge-emoji-support";
 import { TeamBridgeMarkdown } from "./team-bridge-markdown";
+import {
+	type TeamBridgeEventLabel,
+	TeamBridgeMemberEvents,
+} from "./team-bridge-member-events";
+import {
+	TEAM_BRIDGE_EVENTS_LEADING,
+	teamBridgeEventAnchors,
+} from "./team-bridge-member-events-model";
 import { TeamBridgeMessageToolbar } from "./team-bridge-message-toolbar";
 import { type ThreadItem, threadItems } from "./team-bridge-model";
 import {
@@ -230,6 +239,22 @@ export const TeamBridgeMessageList: FC<{
 	decorate?: (
 		message: TeamBridgeMessage,
 	) => TeamBridgeRowDecoration | undefined;
+	/*
+	 * Membership events (invited / joined / left ...), drawn as quiet lines
+	 * between the rows by `after_seq`. A SIBLING SLOT, not a `decorate` field:
+	 * an event is not a property of the message it follows, and the owner-audit
+	 * and thread-pane callers must never receive it (they simply do not pass
+	 * this). Absent = no event lines, byte for byte.
+	 */
+	events?: readonly TeamBridgeEvent[];
+	/**
+	 * The message a notification click named. Its row (the existing
+	 * `data-message-id` root) wears a brief accent wash that fades out; see
+	 * `.lo-team-bridge-target` for the motion and its reduced-motion form. The
+	 * scroll to it belongs to the timeline's owner, which also owns the
+	 * stick-to-bottom pin it has to override. The caller clears it after the fade.
+	 */
+	highlightId?: string | null;
 }> = ({
 	messages,
 	labelFor,
@@ -248,10 +273,29 @@ export const TeamBridgeMessageList: FC<{
 	),
 	arrivalsEnabled = true,
 	decorate,
+	events,
+	highlightId = null,
 }) => {
 	const locale = useI18nLocale();
 	const arriving = useArrivingRows(arrivalKey, messages, arrivalsEnabled);
 	const items = threadItems(messages, new Date());
+	const eventLabel: TeamBridgeEventLabel = (party) =>
+		labelFor(party) ??
+		(party.kind === "agent"
+			? t("ui.teamBridge.sender.unknown_agent")
+			: t("ui.teamBridge.sender.unknown_person"));
+	const eventsAt = teamBridgeEventAnchors(messages, events);
+	const eventSlot = (anchor: string) => {
+		const at = eventsAt.get(anchor);
+		return at ? (
+			<TeamBridgeMemberEvents
+				key={`events:${anchor}`}
+				events={at}
+				labelFor={eventLabel}
+				locale={locale}
+			/>
+		) : null;
+	};
 	/* Warm the emoji font probe while the reader is reading, so opening the
 	   reaction picker is a cache lookup rather than canvas readbacks inside its
 	   click handler. GATED ON THE HOLD (agent review round 1, m1): while
@@ -277,34 +321,66 @@ export const TeamBridgeMessageList: FC<{
 		   Radix's content wrapper out as a block, not its default shrink-to-fit
 		   `display: table`; see their ScrollArea class names. */
 		<ol className="mt-auto flex w-full min-w-0 flex-col pt-4 pb-2">
-			{items.map((item) =>
-				item.type === "day" ? (
-					<DayDivider key={`day:${item.key}`} item={item} locale={locale} />
-				) : (
-					<MessageRow
-						key={item.message.id}
-						message={item.message}
-						continuation={item.continuation}
-						label={labelFor(item.message.sender)}
-						member={profileFor?.(item.message.sender)}
-						onMessagePerson={onMessagePerson}
-						canMessagePerson={canMessagePerson}
-						locale={locale}
-						reactionContext={reactionContext}
-						onReply={onReply}
-						forceToolbar={forceToolbar}
-						tenantId={tenantId}
-						accountId={accountId}
-						density={density}
-						arriving={arriving.has(item.message)}
-						onArrivalEnd={arriving.end}
-						decoration={decorate?.(item.message)}
-					/>
+			{eventSlot(TEAM_BRIDGE_EVENTS_LEADING)}
+			{withEventsAfterRows(
+				items,
+				eventSlot,
+				items.map((item) =>
+					item.type === "day" ? (
+						<DayDivider key={`day:${item.key}`} item={item} locale={locale} />
+					) : (
+						<MessageRow
+							key={item.message.id}
+							message={item.message}
+							continuation={item.continuation}
+							label={labelFor(item.message.sender)}
+							member={profileFor?.(item.message.sender)}
+							onMessagePerson={onMessagePerson}
+							canMessagePerson={canMessagePerson}
+							locale={locale}
+							reactionContext={reactionContext}
+							onReply={onReply}
+							forceToolbar={forceToolbar}
+							tenantId={tenantId}
+							accountId={accountId}
+							density={density}
+							arriving={arriving.has(item.message)}
+							highlighted={highlightId === item.message.id}
+							onArrivalEnd={arriving.end}
+							decoration={decorate?.(item.message)}
+						/>
+					),
 				),
 			)}
 		</ol>
 	);
 };
+
+/*
+ * The row map's output with each message's event lines placed right after it.
+ *
+ * WHY A WRAPPER RATHER THAN A FRAGMENT IN THE MAP: the row map (and its React
+ * keys) is shared with other in-flight changes; leaving it byte-identical keeps
+ * every rebase textual. `rows[i]` is `items[i]`'s element by construction.
+ * Event slots key in their own `events:` namespace (each line inside keys as
+ * `event:<id>`), so they can never collide with a message or day key.
+ */
+function withEventsAfterRows(
+	items: readonly ThreadItem[],
+	slot: (anchor: string) => ReactNode,
+	rows: ReactNode[],
+): ReactNode[] {
+	const out: ReactNode[] = [];
+	rows.forEach((row, index) => {
+		out.push(row);
+		const item = items[index];
+		if (item?.type === "message") {
+			const after = slot(item.message.id);
+			if (after) out.push(after);
+		}
+	});
+	return out;
+}
 
 /*
  * A full-width hairline-free divider: the label sits in the middle of a
@@ -364,6 +440,7 @@ const MessageRow: FC<{
 	arriving?: boolean;
 	onArrivalEnd?: () => void;
 	decoration?: TeamBridgeRowDecoration;
+	highlighted?: boolean;
 }> = ({ reactionContext, ...props }) =>
 	reactionContext && props.message.body !== null ? (
 		<ReactableMessageRow
@@ -404,6 +481,7 @@ type MessageRowProps = {
 	arriving?: boolean;
 	onArrivalEnd?: () => void;
 	decoration?: TeamBridgeRowDecoration;
+	highlighted?: boolean;
 };
 
 const MessageRowView: FC<MessageRowProps> = ({
@@ -423,6 +501,7 @@ const MessageRowView: FC<MessageRowProps> = ({
 	arriving = false,
 	onArrivalEnd,
 	decoration,
+	highlighted = false,
 }) => {
 	const summary = threadSummary(message);
 	/* One-level threads: only a timeline root can open a thread - and none can
@@ -490,12 +569,14 @@ const MessageRowView: FC<MessageRowProps> = ({
 	return (
 		<li
 			data-message-id={message.id}
+			data-message-target={highlighted || undefined}
 			onAnimationEnd={arriving ? onArrivalEnd : undefined}
 			className={cn(
 				"group/message relative flex w-full min-w-0 gap-3 px-5 transition-colors duration-fast ease-out-quart hover:bg-row-hover",
 				// Transform/opacity only: the row reserves its final layout box
 				// immediately, so arrival cannot move the scroll geometry.
 				arriving && "lo-team-bridge-arrival",
+				highlighted && "lo-team-bridge-target",
 				continuation ? "py-0.5" : "mt-2 pt-1.5 pb-0.5",
 			)}
 		>

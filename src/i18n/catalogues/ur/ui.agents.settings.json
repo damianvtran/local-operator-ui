@@ -61,5 +61,13 @@
 	"ui.agents.settings.security.security_instructions_that_guide_the_agent_s": "ایجنٹ کے رویے اور حدود کی رہنمائی کرنے والی سیکیورٹی ہدایات۔ یہ سیکیورٹی ایجنٹ کا “سسٹم پرامپٹ” ہے۔",
 	"ui.agents.settings.system_prompt.system_instructions_that_define_the_agent_s": "ایجنٹ کے رویے اور صلاحیتوں کو متعین کرنے والی سسٹم ہدایات۔ یہ ایجنٹ کا “سسٹم پرامپٹ” ہے۔",
 	"ui.agents.settings.chat.error.invalid_seed": "سیڈ درست عدد ہونا چاہیے",
-	"ui.agents.settings.general.error.empty_name": "ایجنٹ کا نام خالی نہیں ہو سکتا"
+	"ui.agents.settings.general.error.empty_name": "ایجنٹ کا نام خالی نہیں ہو سکتا",
+	"ui.agents.settings.general.profile_picture": "پروفائل تصویر",
+	"ui.agents.settings.general.profile_picture_hint": "صرف اس کمپیوٹر پر دکھائی جاتی ہے۔ دیگر ڈیوائسز پر ایجنٹ کا ڈیفالٹ آئیکن رہتا ہے۔",
+	"ui.agents.settings.general.profile_picture_upload": "تصویر اپ لوڈ کریں",
+	"ui.agents.settings.general.profile_picture_remove": "تصویر ہٹائیں",
+	"ui.agents.settings.general.profile_picture_error_type": "یہ فائل ایسی تصویر نہیں ہے جسے یہ ایپ پڑھ سکے۔ JPEG، PNG، WebP، GIF یا AVIF فائل منتخب کریں۔",
+	"ui.agents.settings.general.profile_picture_error_size": "یہ تصویر {size} MB سے بڑی ہے۔",
+	"ui.agents.settings.general.profile_picture_error_decode": "یہ تصویر پڑھی نہیں جا سکی۔ کوئی دوسری فائل آزمائیں۔",
+	"ui.agents.settings.general.profile_picture_error_save": "یہ تصویر اس کمپیوٹر پر محفوظ نہیں ہو سکی۔ کچھ جگہ خالی کریں، پھر دوبارہ کوشش کریں۔"
 }

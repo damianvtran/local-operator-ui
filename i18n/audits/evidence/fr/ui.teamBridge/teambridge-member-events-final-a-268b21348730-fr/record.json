@@ -1,0 +1,117 @@
+{
+	"schema": 1,
+	"receipt_kind": "locale-audit, FINAL round auditor A (independent): the whole 297-key ui.teamBridge namespace at the corrected bytes, with the fr correction re-proved by reverse-apply against the bytes the previous round recorded",
+	"date": "2026-10-30",
+	"auditor": "translation-auditor",
+	"agent": "translation-auditor",
+	"model": "radient/auto",
+	"model_provenance": "Session 268b21348730 was started on anthropic/claude-opus-5-5 and switched by the harness on provider-quota failures to openai/gpt-6-astra, then kimi/k3.1-pro, then radient/auto. Repository orientation happened under claude-opus-5-5; the delta verification, every value read, the renders, the bidi/NFC scan and every verdict in this receipt were produced under radient/auto.",
+	"session": "268b21348730",
+	"instance": "268b21348730-finala-fr",
+	"audit_id": "teambridge-member-events-final-a-268b21348730-fr",
+	"role": "auditor A of the final round (independent of auditor B)",
+	"status": "passed",
+	"result": "clean-with-findings",
+	"locale": "fr",
+	"namespace": "ui.teamBridge",
+	"translator": {
+		"agent": "translator",
+		"model": "anthropic/claude-opus-5-5"
+	},
+	"independence": "Independent of the translator and of auditor B: this audit read the bytes on disk and judged them on their own merits, including re-judging values earlier rounds proposed. No catalogue, ledger row or receipt was edited by this audit; only this evidence bundle and the receipt were written.",
+	"integration": {
+		"branch": "fix/team-bridge-member-events",
+		"head_at_audit": "1eeb46187ce",
+		"worktree": "~/local-operator-ui/.worktrees/member-events",
+		"catalogue_state": "the seven locale catalogues and i18n/ledger.json remain uncommitted working-tree modifications on top of 1eeb46187ce"
+	},
+	"sha256": {
+		"fr": "3c1497c8851344b60bfc303e84e267bafe700b7d759a12d60d79c6f443cd9f42",
+		"en": "56810571f7cfe24841940394b0579e28a13616c40da35fe93301f5b66fb7290c"
+	},
+	"files": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.json",
+			"sha256": "56810571f7cfe24841940394b0579e28a13616c40da35fe93301f5b66fb7290c"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+			"sha256": "adb76e0b6e40573f67398d6d260fbb738686f34f73077b593126cee6d2d0a77e"
+		},
+		"target": {
+			"path": "src/i18n/catalogues/fr/ui.teamBridge.json",
+			"sha256": "3c1497c8851344b60bfc303e84e267bafe700b7d759a12d60d79c6f443cd9f42"
+		}
+	},
+	"corrections_verified": [
+		"events.owner_added_agent: «a ajouté son agent {targets}» → «a ajouté son agent : {targets}» (U+202F espace fine insécable + ASCII colon, the fr.md rule)"
+	],
+	"delta_verification": {
+		"method": "reverse-applied this round's value edits to the file on disk by exact raw-text substitution (no JSON round-trip), then hashed; additionally checked that no other line moved",
+		"prior_round_sha256": "6d0d606ffff81eef741293c9c238833176c1019f410f7d59bce5583eff66a20b",
+		"prior_round_source": "round 1 and round 2 receipts 955e54c57ace-fr / 502568f2aefe-fr / 4ab583bbf0ca-fr",
+		"reverse_applied_sha256": "6d0d606ffff81eef741293c9c238833176c1019f410f7d59bce5583eff66a20b",
+		"matches": true,
+		"substitutions": [
+			{
+				"from": "\"{actor} a ajouté son agent : {targets}\"",
+				"to": "\"{actor} a ajouté son agent {targets}\""
+			}
+		],
+		"conclusion": "the file on disk is exactly the previously audited bytes plus this round's correction, so every unchanged value carries the earlier audit's coverage"
+	},
+	"keys_read": 297,
+	"keys_read_detail": {
+		"whole_namespace": 297,
+		"event_and_consent_block": 12,
+		"note": "all 297 key/value pairs read side by side against English and the en context sidecar; all 297 also parsed with the repo's ICU parser and compared value-by-value (arguments, arms, tags)"
+	},
+	"findings": [
+		{
+			"id": "FA-FR1",
+			"severity": "minor",
+			"key": "ui.teamBridge.attachments.failed_count",
+			"current": "{count, plural, one {# image ne peut pas être envoyée.} other {# images ne peuvent pas être envoyées.}}",
+			"proposed": "{count, plural, one {# image ne peut pas être envoyée.} many {# d’images ne peuvent pas être envoyées.} other {# images ne peuvent pas être envoyées.}}",
+			"reason": "fr.md «Plurals» binds one/many/other («few is not a French category — never use it») and this is the only one of this namespace's 16 fr plurals with no `many` arm (the other 15 have it), so at exact multiples of 10⁶ it renders «1 000 000 images ne peuvent pas être envoyées.» where French requires «1 000 000 d’images…».",
+			"evidence": "render-and-plurals.txt: plural-category probe (count 1/2/3/1000000 vs a probe message carrying the arm)"
+		},
+		{
+			"id": "FA-FR2",
+			"severity": "minor",
+			"key": "ui.teamBridge.section.chiefs",
+			"current": "Chefs de cabinet",
+			"proposed": "Cheffes de cabinet",
+			"related_keys": [
+				"ui.teamBridge.chief.fallback",
+				"ui.teamBridge.chief.unnamed",
+				"ui.teamBridge.thread.intro_chief"
+			],
+			"reason": "One term, two genders: this namespace feminises the role in three places — «Cheffe de cabinet» (chief.unnamed, chief.fallback) and «la cheffe de cabinet» (thread.intro_chief) — and then heads the section with the masculine plural «Chefs de cabinet». Aligning the plural to «Cheffes de cabinet» is the one-key fix; making the singular masculine instead would move three keys and lose the file's recorded feminisation.",
+			"evidence": "struct-audit.txt: term-consistency section"
+		}
+	],
+	"observations": [
+		"U+202F before the colon is not an isolated choice: every colon in this namespace already uses it — 13 occurrences across 11 keys (scope.trigger, notify.count_preview ×3 arms, compose.to, schedule.edit_gone, attachments.remove, attachments.retry, profile.local_time, invitations.failed.agent_unavailable, events.joined, events.left) — and fr.md makes it binding for prose. The one U+00A0 colon in the wider fr corpus is ui.chat.tags.header_actions, outside this namespace.",
+		"events.joined/events.left measure 2.50x/2.64x the English (40/37 chars vs 16/14); the nominal form is the number-neutral choice, measured and accepted in round 1 (FR-B1)."
+	],
+	"severity_counts": {
+		"blocker": 0,
+		"major": 0,
+		"minor": 2,
+		"nit": 0
+	},
+	"checks": [
+		"Key set: 297 keys on both sides, no missing or extra key (scripts/i18n/ledger-assemble.mjs refuses an incomplete locale, so this is also machine-checked at assembly).",
+		"ICU structure: all 297 values parsed with @formatjs/icu-messageformat-parser 3.5.21 (the parser intl-messageformat 12.1.3, the engine src/i18n/messages.ts calls, is built on) and their skeletons compared with English: argument names, plural/selectordinal arms, offsets, number/date skeletons and tag names. Every argument and arm matches English except the es/fr `many` additions (required by CLDR) and hi attachments.position/open, which legitimately put {count} before {index} for «कुल {count} में से …».",
+		"Placeholders: none dropped, renamed or added in any of the 297 keys; {actor}/{targets}/{count} survive literally.",
+		"CLDR arms: every plural carries the categories its locale needs (es/fr one+many+other, hi/ur one+other) except the single finding above.",
+		"NFC: every value is NFC-normalised (checked with Python unicodedata over all 297).",
+		"Bidi: no U+200E/200F/202A-202E/2066-2069/U+061C in any value of any of the four locales; the ur file carries no manual bidi controls, as ur.md requires (the render layer isolates).",
+		"Markup: no HTML-ish or <0>-style tags in any value, so no markup token could have been dropped.",
+		"Typography: fr uses U+202F before « : ; ? » and inside « » throughout (measured, 0 exceptions in this namespace) and U+2019 apostrophes; es uses ¿ … ? and no space before ':' (13/13 colons); hi uses the danda «।» (108 values) and «?» only for the question; ur uses «۔ ، ؟ » and «“ ”» and no ASCII '?'.",
+		"Register: es is tú throughout (0 usted forms), fr is vous throughout (0 tu/ton/tes), hi is आप, ur is آپ — one address form per locale, no screen-level mismatch.",
+		"Render: the 12-key event/consent block rendered with the repo's intl-messageformat at 1 and 3 targets, and events.others at counts 1/2/3/5/11/21 plus the real truncated composition (5 names, first 3 shown, the plural tail appended as the list's last element through Intl.ListFormat conjunction) into every sibling sentence.",
+		"Width: median growth 1.05x-1.23x of English; the widest line pair is events.joined/left in es/fr (2.3x-2.6x), recorded rather than churned because the nominal form is what makes it number-neutral."
+	]
+}

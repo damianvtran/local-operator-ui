@@ -1,0 +1,179 @@
+{
+	"schema": 1,
+	"receipt_kind": "locale-audit (post-rebase union re-audit: 12 added keys)",
+	"date": "2026-10-30",
+	"auditor": "translation-auditor",
+	"agent": "translation-auditor",
+	"model": "anthropic/claude-opus-5-5",
+	"model_provenance": "Served model as announced by the harness for session 95c4798301e2 (anthropic/claude-opus-5-5); no fallback announced or observed.",
+	"model_fallback": {
+		"announced": false,
+		"observed": false
+	},
+	"status": "passed",
+	"result": "clean",
+	"namespace": "ui.teamBridge",
+	"locale": "zh-CN",
+	"audit_id": "teambridge-member-events-union-audit-95c4798301e2-union-a-zh-cn",
+	"instance": "95c4798301e2-union-a-zh-cn",
+	"session": "95c4798301e2",
+	"role": "union-reaudit-a (auditor A; verdicts formed before reading any other receipt)",
+	"integration": {
+		"branch": "fix/team-bridge-member-events",
+		"base": "3b369d6341c7eeed159c3bcbb1b1f4db759265d4",
+		"head": "599309fdd9946546fee3138904bdd1f31722623d",
+		"state": "local head, not pushed",
+		"worktree": "~/local-operator-ui/.worktrees/member-events"
+	},
+	"independence": "Independent auditor: lopdev translation-auditor, session 95c4798301e2; authored none of the audited strings; edited no catalogue or code; wrote only receipts/evidence and rows via ledger-assemble.mjs. Distinct from b20548e9b2d9 and any union auditor B.",
+	"sha256": {
+		"zh-CN": "059b74bb008dd84e6f7376a4eb20e20f7d5521968ea1ad0c0a87ac17b884d569",
+		"en": "124d9c3a342342fd4c67635e95210262f96d28c14260bdfac40ad70665936633"
+	},
+	"context_sha256": "47f525ae908445904c507ac9e1386fdaa8181c6a5a6aca8b9f46d22180eea523",
+	"scope": {
+		"delta_kind": "Rebase/union onto origin/main 3b369d6341c7eeed159c3bcbb1b1f4db759265d4: JSON key diff vs base = 12 added, 0 removed, 0 changed; every base key/value line present verbatim; 299 keys.",
+		"mechanical": "zh-CN keys 299 base 287 added 12 removed 0 changed 0 NFC true baseLinesNotVerbatim 0",
+		"base_target_sha256": "6edc2ddfcb1c4deb129dca9d978cc04fe7cbbb7a157495c8f745ea7f0c7ddf67",
+		"base_en_sha256": "fa61d01336edd0355d0ce7befde7957ec60457ade37a02b11c0b31eb3b2f3a96",
+		"base_bytes_audited_by": [
+			{
+				"instance": "b20548e9b2d9-rebase-zh-cn",
+				"receipt": "i18n/receipts/b20548e9b2d9-rebase-zh-cn.json",
+				"receipt_sha256": "05f412f06d432f55a99742faae20250de5e71aac03ccf5c8a2b784a2195c0849",
+				"receipt_names_base_target": true,
+				"receipt_names_base_en": true,
+				"ledger_row_at_base": "status audited; source/target sha256 equal the base bytes"
+			}
+		],
+		"keys_audited_linguistically": [
+			"ui.teamBridge.members.invitation_note_v3",
+			"ui.teamBridge.events.invited",
+			"ui.teamBridge.events.joined",
+			"ui.teamBridge.events.owner_added_agent",
+			"ui.teamBridge.events.left",
+			"ui.teamBridge.events.removed",
+			"ui.teamBridge.events.consented",
+			"ui.teamBridge.events.declined_self",
+			"ui.teamBridge.events.declined",
+			"ui.teamBridge.events.withdrawn",
+			"ui.teamBridge.events.unknown",
+			"ui.teamBridge.events.others"
+		],
+		"delta_values_byte_identical_to_pre_rebase_head": "6ec9e2372e51fcf9c1bd6f8ac66e9ec18c20caaa (all 12 true; recorded, not relied on: the 12 were re-read here)",
+		"not_audited": "The 287 base keys: byte-identical to the base row audited by the instance above (moved to superseded by the assembler)."
+	},
+	"audited": {
+		"ui.teamBridge.members.invitation_note_v3": {
+			"en": "Invitations don’t grant access until accepted. Your own agents join right away; someone else’s agent joins once its owner consents. A member agent reads every message here and decides whether to reply, and is expected to reply when @-mentioned. Its owner can limit it to @-mentions and its threads, or mute it.",
+			"translation": "邀请在被接受前不会授予访问权限。你自己的智能体会立即加入；他人的智能体在其所有者同意后加入。成员智能体会阅读此处的每条消息并自行决定是否回复，被@提及时应当回复。其所有者可将它限制在@提及和它参与的讨论串内，或将其静音。"
+		},
+		"ui.teamBridge.events.invited": {
+			"en": "{actor} invited {targets}",
+			"translation": "{actor}邀请了{targets}"
+		},
+		"ui.teamBridge.events.joined": {
+			"en": "{targets} joined",
+			"translation": "{targets}已加入对话"
+		},
+		"ui.teamBridge.events.owner_added_agent": {
+			"en": "{actor} added their agent {targets}",
+			"translation": "{actor}添加了自己的智能体{targets}"
+		},
+		"ui.teamBridge.events.left": {
+			"en": "{targets} left",
+			"translation": "{targets}已离开对话"
+		},
+		"ui.teamBridge.events.removed": {
+			"en": "{actor} removed {targets}",
+			"translation": "{actor}移除了{targets}"
+		},
+		"ui.teamBridge.events.consented": {
+			"en": "{actor} approved {targets} joining",
+			"translation": "{actor}已同意{targets}加入"
+		},
+		"ui.teamBridge.events.declined_self": {
+			"en": "{actor} declined the invitation",
+			"translation": "{actor}拒绝了邀请"
+		},
+		"ui.teamBridge.events.declined": {
+			"en": "{actor} declined the invitation for {targets}",
+			"translation": "{actor}代{targets}拒绝了邀请"
+		},
+		"ui.teamBridge.events.withdrawn": {
+			"en": "{actor} withdrew the invitation for {targets}",
+			"translation": "{actor}撤回了对{targets}的邀请"
+		},
+		"ui.teamBridge.events.unknown": {
+			"en": "Membership changed",
+			"translation": "成员已变更"
+		},
+		"ui.teamBridge.events.others": {
+			"en": "{count, plural, one {# other} other {# others}}",
+			"translation": "{count, plural, other {其他#名成员}}"
+		}
+	},
+	"checks": {
+		"placeholders": "Placeholder name set per key equals en (actor/targets/count); no {/} leaks in any render.",
+		"icu": "events.others arms match Intl.PluralRules('zh-CN') categories: zh-CN arms other CLDR other",
+		"unicode": "NFC true; no bidi control characters (U+200E/F, U+202A-E, U+2066-9) in the 12 values.",
+		"typography": "Full-width punctuation; no ASCII ,;: in delta.",
+		"rendered": [
+			"zh-CN",
+			" 1 invited            Damian邀请了本",
+			" 1 joined             本已加入对话",
+			" 1 owner_added_agent  Damian添加了自己的智能体本",
+			" 1 left               本已离开对话",
+			" 1 removed            Damian移除了本",
+			" 1 consented          Damian已同意本加入",
+			" 1 declined_self      Damian拒绝了邀请",
+			" 1 declined           Damian代本拒绝了邀请",
+			" 1 withdrawn          Damian撤回了对本的邀请",
+			" 1 unknown            成员已变更",
+			" 3 invited            Damian邀请了本、莎娜和奥拉",
+			" 3 joined             本、莎娜和奥拉已加入对话",
+			" 3 owner_added_agent  Damian添加了自己的智能体本、莎娜和奥拉",
+			" 3 left               本、莎娜和奥拉已离开对话",
+			" 3 removed            Damian移除了本、莎娜和奥拉",
+			" 3 consented          Damian已同意本、莎娜和奥拉加入",
+			" 3 declined_self      Damian拒绝了邀请",
+			" 3 declined           Damian代本、莎娜和奥拉拒绝了邀请",
+			" 3 withdrawn          Damian撤回了对本、莎娜和奥拉的邀请",
+			" 3 unknown            成员已变更",
+			" others: 1→其他1名成员 | 2→其他2名成员 | 3→其他3名成员 | 5→其他5名成员 | 11→其他11名成员 | 21→其他21名成员",
+			" truncated: Damian邀请了本、莎娜和其他2名成员",
+			"en arms one/other CLDR one/other",
+			"es arms one/many/other CLDR one/many/other",
+			"fr arms one/many/other CLDR one/many/other",
+			"hi arms one/other CLDR one/other",
+			"ru arms one/few/many/other CLDR one/few/many/other",
+			"ur arms one/other CLDR one/other",
+			"vi arms other CLDR other",
+			"zh-CN arms other CLDR other",
+			"bad 0"
+		],
+		"rendered_command": "node $LOCAL_OPERATOR_SCRATCHPAD/union-a/render.mjs (repo node_modules intl-messageformat@12.1.3 + Intl.ListFormat long conjunction; targets at 1 and 3; others at 1/2/3/5/11/21; Node v24.22.1)"
+	},
+	"v3_consent_note": "Re-read against context's four constraints: (1) no access until accepted; (2) own agents immediate / another's after ITS owner consents; (3) reads all, decides, EXPECTED (not 'always') to reply on @-mention; (4) owner can restrict to @-mentions + its threads, or mute. All four preserved; expectation not rendered as 'always'; mute term matches this locale's notify.mute/v2.",
+	"findings": [],
+	"references": {
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+		},
+		"style_guide": {
+			"path": "~/local-operator/i18n/style-guides/zh-CN.md",
+			"sha256": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+		},
+		"docs_I18N": {
+			"path": "docs/I18N.md",
+			"sha256": "9a4bde8d1c161286160be4a4ae1c7655615dbf39047052550b725a3da2eb00e2"
+		},
+		"ledger_assemble": {
+			"path": "scripts/i18n/ledger-assemble.mjs",
+			"sha256": "66ec03de791b515424b8d9a93094315111c179c149b35a5323d80c9c38644657"
+		}
+	},
+	"audit_notes_not_execution_log": "findings and linguistic judgement are auditor notes; checks.rendered is verbatim command output.",
+	"limitations": "No rendered app frame (timeline line or dialog footer); no native-speaker sign-off."
+}

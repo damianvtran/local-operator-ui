@@ -1,0 +1,12 @@
+# mechanical checks - ru / ui.teamBridge.events.consented_owner @ 14d0b6781ac9
+value              : {actor}: одобрено присоединение собственного агента — {targets}
+graphemes          : 63 (sibling 43, event-family max 67 = events.others)
+placeholders       : ["actor","targets"] (source ["actor","targets"])
+sentinel render    : ⟦A⟧: одобрено присоединение собственного агента — ⟦T⟧
+sentinel counts    : actor 1, targets 1 (each must be 1)
+missing value      : actor -> MISSING_VALUE, targets -> MISSING_VALUE
+ICU node types     : [1,0]   plural/select: false
+leading/trailing   : false
+NFC                : true   bidi controls: 0   ZWNJ/ZWJ: 0
+sha256 en          : 4042a918bc64406c4c24ad5ea68fe3c3f3aaa7228917bc1678547cfb0c20285c
+sha256 target      : b0ee5d947dfbc0c5bd0f4a57aef63dd6fcd9a63e2d53afa90389842dd3e03c2c

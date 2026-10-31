@@ -14,7 +14,7 @@
 
 export { Alert, AlertDescription, AlertTitle, alertVariants } from "./alert";
 export type { AlertProps } from "./alert";
-export { Avatar, AvatarFallback, AvatarImage } from "./avatar";
+export { AgentAvatar, Avatar, AvatarFallback, AvatarImage } from "./avatar";
 export {
 	AttentionBadge,
 	ATTENTION_BADGE_CAP,

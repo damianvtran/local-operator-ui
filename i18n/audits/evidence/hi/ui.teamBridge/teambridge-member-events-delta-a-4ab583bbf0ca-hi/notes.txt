@@ -1,0 +1,17 @@
+AUDITOR A, DELTA ROUND — conditions, caveats and divergence (notes, distinct from the execution logs beside them)
+
+Locale: hi   Namespace: ui.teamBridge   Auditor: translation-auditor   Session: 4ab583bbf0ca   Model: radient/auto
+(harness fallbacks mid-session: anthropic/claude-opus-5-5 -> openai/gpt-6-astra -> kimi/k3.1-pro -> radient/auto; the delta verification and all verdicts were produced under radient/auto)
+
+1. What this audit claims
+   The 14 applied values were verified against the bytes on disk (reverse-apply proof: the pre-delta file reproduces the round-1 sha256 exactly), then re-read against the English source and its context sidecar, re-rendered through the app's own join path, and checked for placeholders, CLDR arms, NFC, bidi controls and quote conventions.
+   Verdict for this locale: ui.teamBridge (hi): NOT CLEAN — CHANGES REQUESTED — 0 blocker, 1 major, 0 minor, 0 nit across 12 keys read (1 of them changed by this delta).
+
+2. Recorded context not re-raised
+   events.owner_added_agent keeps a singular agent noun in every locale (the server proves one target: unique {tenant_id, account_id} on bridge endpoints, auto-consent only when the caller owns the invited endpoint). FR-A2's passé composé proposal stays rejected. Neither is reopened here.
+
+3. What this audit does NOT claim
+   Catalogue-level judgement only: no rendered-frame, font-fallback, geometry, activation or release evidence. Overflow flags raised as nits (where present) need a rendered width check on the one-line timeline row.
+
+4. Divergence
+   Written before any auditor-B receipt for the delta round was read. Where this audit disagrees with a round-1 verdict it says so with the bytes that changed, not with the earlier opinion.

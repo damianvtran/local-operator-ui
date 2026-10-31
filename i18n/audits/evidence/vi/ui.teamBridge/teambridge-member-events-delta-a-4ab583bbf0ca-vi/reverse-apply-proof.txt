@@ -1,0 +1,16 @@
+zh-CN  current_sha256=41bcf8f7cf9ec7547f61de55ee5a3d13e47d63a415655af982c14df3ca1fb590
+       reverse_applied=07b867bd4bc129030d9417ae31fb989f5ec35b2fe07f60d636a772c541749307
+       recorded_first_round=07b867bd4bc129030d9417ae31fb989f5ec35b2fe07f60d636a772c541749307  MATCH  edits=3
+ru     current_sha256=5fd9ee8f8e16ef773e7fb14e73e404297ea4a647fac55499d386c0c4168923f6
+       reverse_applied=64c7edfef83d508cbb1a021fa7b0881c1665d0fccfb6e1615b3af355977d07ee
+       recorded_first_round=64c7edfef83d508cbb1a021fa7b0881c1665d0fccfb6e1615b3af355977d07ee  MATCH  edits=3
+vi     current_sha256=29af5592799bef81b84f345a8e83b2e1f06c9b148622826d4cf597317643dfdb
+       reverse_applied=ca0a9c774c0bc67eebb8f199493cbd58ea0c5c5a1929d87deb9d7d446dda335a
+       recorded_first_round=ca0a9c774c0bc67eebb8f199493cbd58ea0c5c5a1929d87deb9d7d446dda335a  MATCH  edits=3
+ur     current_sha256=a2e6c102ee41badf587ea1afc4d0ca3d911f0f97979f0be2c3c60881694018a7
+       reverse_applied=60e3a2aaa4b063e3d0b60c9b37d1c33747343cd925f2c328738dd9792126bb98
+       recorded_first_round=60e3a2aaa4b063e3d0b60c9b37d1c33747343cd925f2c328738dd9792126bb98  MATCH  edits=4
+hi     current_sha256=57b7bc7207eba05879dada197dea46a8ed03f145d506c903521e64fa35e2411d
+       reverse_applied=c51c89590c7f0e00f01f6128fdc2acc05e32aa773ea7da36dd909103d35ecb60
+       recorded_first_round=c51c89590c7f0e00f01f6128fdc2acc05e32aa773ea7da36dd909103d35ecb60  MATCH  edits=1
+en     sha256=56810571f7cfe24841940394b0579e28a13616c40da35fe93301f5b66fb7290c  recorded=56810571f7cfe24841940394b0579e28a13616c40da35fe93301f5b66fb7290c  MATCH
