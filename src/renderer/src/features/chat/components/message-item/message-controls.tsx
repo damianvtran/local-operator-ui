@@ -26,6 +26,9 @@
  * from the other surfaces in spinner size and disabled copy.
  */
 
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
+
 import {
 	SpeakButton,
 	useSpeakControl,
@@ -61,6 +64,7 @@ export const MessageControls: FC<MessageControlsProps> = ({
 	inline = false,
 	timestamp,
 }) => {
+	useI18nLocale();
 	const [copied, setCopied] = useState(false);
 	const { playSpeech } = useSpeechStore();
 	/*
@@ -134,11 +138,22 @@ export const MessageControls: FC<MessageControlsProps> = ({
 			{timestamp && <MessageTimestamp timestamp={timestamp} className="px-1" />}
 			{showCopyButton && (
 				<div className="flex items-center">
-					<Tooltip content={copied ? "Copied" : "Copy message"} side="top">
+					<Tooltip
+						content={
+							copied
+								? t("ui.chat.message_controls.copied")
+								: t("ui.chat.message_controls.copy")
+						}
+						side="top"
+					>
 						<Button
 							variant="ghost"
 							size="icon-sm"
-							aria-label={copied ? "Copied" : "Copy message"}
+							aria-label={
+								copied
+									? t("ui.chat.message_controls.copied")
+									: t("ui.chat.message_controls.copy")
+							}
 							className={buttonClass}
 							onClick={handleCopy}
 						>

@@ -11,9 +11,11 @@
  * state). Deciding the notice is a pure question; drawing it is
  * `SlotPaneNotice`'s.
  *
- * The run pane's strings are literal English because the run pane's own are
- * (`run-panel.tsx`); the code review pane's likewise (`code-review-pane.tsx`).
+ * Frozen notices resolve copy through getters so their stable identity never
+ * pins the language that happened to be active when the module was imported.
  */
+
+import { t } from "@shared/i18n";
 
 import {
 	backendLoadErrorMessage,
@@ -50,19 +52,24 @@ export type SlotNotice = {
  * the three draft notices (and the console's own, `ui.console.json`) say it the
  * same way.
  */
-const START_CLAUSE = "Send a message to start this conversation";
 
 export const RUN_NOTICE_DRAFT: SlotNotice = Object.freeze({
 	kind: "run-draft",
 	tone: "empty",
-	title: "Run details need a conversation.",
-	detail: `${START_CLAUSE}; its subagents, plan and scheduled work appear here.`,
+	get title() {
+		return t("ui.chat.slot_notice.run_draft_title");
+	},
+	get detail() {
+		return t("ui.chat.slot_notice.run_draft_detail");
+	},
 });
 
 export const RUN_NOTICE_READING: SlotNotice = Object.freeze({
 	kind: "run-reading",
 	tone: "loading",
-	title: "Reading this conversation's run…",
+	get title() {
+		return t("ui.chat.slot_notice.run_reading_title");
+	},
 });
 
 /*
@@ -78,15 +85,23 @@ export const RUN_NOTICE_READING: SlotNotice = Object.freeze({
 export const RUN_NOTICE_UNREADABLE: SlotNotice = Object.freeze({
 	kind: "run-unreadable",
 	tone: "unavailable",
-	title: "Run details could not be read for this conversation.",
-	detail: "The conversation beside this pane says why and how to reconnect.",
+	get title() {
+		return t("ui.chat.slot_notice.run_unreadable_title");
+	},
+	get detail() {
+		return t("ui.chat.slot_notice.run_unreadable_detail");
+	},
 });
 
 export const RUN_NOTICE_MISSING: SlotNotice = Object.freeze({
 	kind: "run-unreadable",
 	tone: "unavailable",
-	title: "Run details could not be read for this conversation.",
-	detail: "This conversation is no longer on this machine.",
+	get title() {
+		return t("ui.chat.slot_notice.run_unreadable_title");
+	},
+	get detail() {
+		return t("ui.chat.slot_notice.run_missing_detail");
+	},
 });
 
 /**
@@ -129,8 +144,12 @@ export const SLOT_NOTICE_PROGRESS_DELAY_MS = 200;
 export const CODE_NOTICE_DRAFT: SlotNotice = Object.freeze({
 	kind: "code-draft",
 	tone: "empty",
-	title: "Code review needs a conversation.",
-	detail: `${START_CLAUSE}; the pull requests and merge requests it opens or mentions appear here.`,
+	get title() {
+		return t("ui.chat.slot_notice.code_draft_title");
+	},
+	get detail() {
+		return t("ui.chat.slot_notice.code_draft_detail");
+	},
 });
 
 /*
@@ -141,19 +160,26 @@ export const CODE_NOTICE_DRAFT: SlotNotice = Object.freeze({
 export const CODE_NOTICE_BELOW_VERSION: SlotNotice = Object.freeze({
 	kind: "code-below-version",
 	tone: "empty",
-	title: "The Local Operator server doesn't serve code review yet.",
-	detail:
-		"Update the server to see the pull requests and merge requests this conversation opens.",
+	get title() {
+		return t("ui.chat.slot_notice.code_below_version_title");
+	},
+	get detail() {
+		return t("ui.chat.slot_notice.code_below_version_detail");
+	},
 });
 
 export const CODE_NOTICE_CHECKING: SlotNotice = Object.freeze({
 	kind: "code-checking",
 	tone: "loading",
-	title: "Checking whether the server serves code review…",
+	get title() {
+		return t("ui.chat.slot_notice.code_checking_title");
+	},
 });
 
 /** The lead `backendLoadErrorMessage` composes a failed capabilities read with. */
-export const CODE_NOTICE_LOAD_LEAD = "Code review could not be loaded.";
+export function codeNoticeLoadLead(): string {
+	return t("ui.chat.slot_notice.code_load_lead");
+}
 
 /**
  * The code review pane's notice, or null when `CodeReviewPane` may mount.
@@ -220,7 +246,7 @@ function codeCapabilityNotice(input: {
 			return {
 				kind: "code-unpaired",
 				tone: "unavailable",
-				title: CODE_NOTICE_LOAD_LEAD,
+				title: codeNoticeLoadLead(),
 				detail: backendPairingSentence("unpaired", input.cause) ?? undefined,
 			};
 		case "unknown": {
@@ -229,7 +255,7 @@ function codeCapabilityNotice(input: {
 			return {
 				kind: "code-unreadable",
 				tone: "unavailable",
-				title: CODE_NOTICE_LOAD_LEAD,
+				title: codeNoticeLoadLead(),
 				...(rest ? { detail: rest } : {}),
 			};
 		}

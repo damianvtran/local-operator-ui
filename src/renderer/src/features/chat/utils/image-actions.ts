@@ -1,3 +1,4 @@
+import { t } from "@shared/i18n";
 import { blobAt } from "@shared/lib/blob-url-cache";
 import { isArtifactPath } from "./artifact-identity";
 import { mimeTypeForPath } from "./file-kind";
@@ -139,25 +140,54 @@ export type ImageActionsOptions = {
 	mediaKind?: "image" | "video" | "audio";
 };
 
-const OPEN_FILE: ImageAction = { id: "open-file", label: "Open file" };
+// Resolve labels when read: these shared action objects outlive locale changes.
+const OPEN_FILE: ImageAction = {
+	id: "open-file",
+	get label() {
+		return t("ui.common.file_actions.open_file");
+	},
+};
 const SHOW_IN_CANVAS: ImageAction = {
 	id: "show-in-canvas",
-	label: "Show in canvas",
+	get label() {
+		return t("ui.common.file_actions.show_in_canvas");
+	},
 };
-const SAVE_AS: ImageAction = { id: "save-as", label: "Save as\u2026" };
-const OPEN_FOLDER: ImageAction = { id: "open-folder", label: "Open folder" };
+const SAVE_AS: ImageAction = {
+	id: "save-as",
+	get label() {
+		return t("ui.chat.image_actions.save_as");
+	},
+};
+const OPEN_FOLDER: ImageAction = {
+	id: "open-folder",
+	get label() {
+		return t("ui.common.file_actions.open_folder");
+	},
+};
 const COPY_FILE_PATH: ImageAction = {
 	id: "copy-file-path",
-	label: "Copy file path",
+	get label() {
+		return t("ui.common.file_actions.copy_file_path");
+	},
 };
-const COPY_IMAGE: ImageAction = { id: "copy-image", label: "Copy image" };
+const COPY_IMAGE: ImageAction = {
+	id: "copy-image",
+	get label() {
+		return t("ui.chat.image_actions.copy_image");
+	},
+};
 const COPY_IMAGE_URL: ImageAction = {
 	id: "copy-image-url",
-	label: "Copy image URL",
+	get label() {
+		return t("ui.chat.image_actions.copy_image_url");
+	},
 };
 const OPEN_IN_BROWSER: ImageAction = {
 	id: "open-in-browser",
-	label: "Open in browser",
+	get label() {
+		return t("ui.chat.image_actions.open_in_browser");
+	},
 };
 
 /**
@@ -181,7 +211,14 @@ export function imageActions(
 	const canvas: ImageAction[] = [
 		...(canShowInCanvas ? [SHOW_IN_CANVAS] : []),
 		...(canExpand
-			? [{ id: "expand-image" as const, label: "Expand image" }]
+			? [
+					{
+						id: "expand-image" as const,
+						get label() {
+							return t("ui.chat.image_actions.expand_image");
+						},
+					},
+				]
 			: []),
 	];
 	switch (kind) {

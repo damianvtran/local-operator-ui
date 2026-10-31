@@ -169,7 +169,9 @@ export const AudioAttachment: FC<AudioAttachmentProps> = memo(
 					className={ICON_BUTTON_CLASS}
 					onClick={handlePlayPause}
 					disabled={loading || hasError}
-					aria-label={playing ? "Pause" : "Play"}
+					aria-label={
+						playing ? t("ui.chat.audio.pause") : t("ui.chat.audio.play")
+					}
 				>
 					{loading ? (
 						<Spinner size="sm" />
@@ -202,7 +204,9 @@ export const AudioAttachment: FC<AudioAttachmentProps> = memo(
 						className={ICON_BUTTON_CLASS}
 						onClick={toggleMute}
 						disabled={hasError}
-						aria-label={volume === 0 ? "Unmute" : "Mute"}
+						aria-label={
+							volume === 0 ? t("ui.chat.audio.unmute") : t("ui.chat.audio.mute")
+						}
 					>
 						<VolumeIcon size={20} />
 					</button>

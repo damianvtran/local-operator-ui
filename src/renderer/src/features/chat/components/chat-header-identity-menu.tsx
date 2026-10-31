@@ -655,7 +655,11 @@ export const IdentityMenu: FC<IdentityMenuProps> = ({
 							// biome-ignore lint/a11y/useSemanticElements: a type-to-filter combobox cannot be a native <select>.
 							// biome-ignore lint/a11y/noNoninteractiveElementToInteractiveRole: the listbox role is the WAI-ARIA combobox pattern for a popup driven from a text input.
 							role="listbox"
-							aria-label={kind === "team" ? "Teams" : "Agents"}
+							aria-label={
+								kind === "team"
+									? t("ui.agents.pages.tab.teams")
+									: t("ui.agents.pages.tab.agents")
+							}
 							/*
 							 * The rule the list enforces, programmatically associated (review
 							 * round 1, U4): a screen reader entering the listbox now hears the
