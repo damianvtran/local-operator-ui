@@ -1984,6 +1984,67 @@ test("the rendered nav badge equals the rendered row marks, and a muted row's co
 	}
 });
 
+test("a muted row keeps its quiet count when the aggregate reports its organization at zero (A/B)", async () => {
+	/*
+	 * THE AGGREGATE'S ZERO EXCLUDES MUTED ROWS BY CONTRACT, so it means "no
+	 * UNMUTED unread", never "no unread" (design review round 2, D5). The
+	 * zeroing rule still applies to un-muted rows - for them the org-level zero
+	 * is authoritative and stale rows have to stop claiming otherwise - but it
+	 * used to zero muted rows too, emptying the quiet numeral in exactly the state
+	 * the quiet register exists for. A mute is the reader saying "do not interrupt
+	 * me", so the muted conversation is very often the only thing waiting.
+	 *
+	 * A/B on ONE seed: identical cache shapes, only the `muted` flag differs. The
+	 * muted row keeps its count; its un-muted twin is cleared; neither count
+	 * reaches the badge.
+	 */
+	const owner = "acct_alice";
+	const seeded = (muted) => {
+		const client = new QueryClient();
+		client.setQueryData(
+			api.teamBridgeKeys.conversations("all", owner),
+			{
+				conversations: [
+					railRow(
+						"bcv_mute",
+						"tnt_a",
+						"channel",
+						3,
+						muted ? { muted: true, notify: "mute" } : {},
+					),
+				],
+			},
+			{ updatedAt: 100 },
+		);
+		client.setQueryData(
+			api.teamBridgeKeys.unread("all", owner),
+			{
+				total: 0,
+				organizations: [
+					{ tenant_id: "tnt_a", tenant_name: "A", unread: 0, eligible: true },
+				],
+			},
+			{ updatedAt: 200 },
+		);
+		return api.teamBridgeUnreadView(client, owner);
+	};
+	const key = "tnt_a\u0000bcv_mute";
+	const quiet = seeded(true);
+	assert.equal(
+		quiet.rows.get(key).unread,
+		3,
+		"the muted conversation's own count survives the aggregate's zero",
+	);
+	assert.equal(quiet.total, 0, "and it still does not raise the badge");
+	const unMuted = seeded(false);
+	assert.equal(
+		unMuted.rows.get(key).unread,
+		0,
+		"an un-muted row is still cleared by the newer org-level zero",
+	);
+	assert.equal(unMuted.total, 0);
+});
+
 test("mark-read decrements the row and the nav badge in the same render, and rolls back on refusal", async () => {
 	for (const outcome of ["success", "refused"]) {
 		resetFixture();

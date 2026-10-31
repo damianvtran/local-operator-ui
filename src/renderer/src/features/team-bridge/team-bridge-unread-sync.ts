@@ -187,13 +187,28 @@ function unreadViewOf(queries: UnreadQueries): TeamBridgeUnreadView {
 		(aggregate?.organizations ?? []).map((row) => [row.tenant_id, row.unread]),
 	);
 	/*
-	 * A NEWER "NOTHING WAITING" WINS OVER AN OLDER ROW. The watcher stops reading
-	 * an organization's rows once the aggregate reports it at zero, so a row read
-	 * before the reader caught up elsewhere would otherwise keep a stale count
-	 * forever beside a zero badge - the same disagreement, the other way round.
+	 * A NEWER "NOTHING WAITING" WINS OVER AN OLDER ROW, BUT ONLY FOR THE ROWS THE
+	 * AGGREGATE ACTUALLY COUNTED. The watcher stops reading an organization's rows
+	 * once the aggregate reports it at zero, so an unmuted row read before the
+	 * reader caught up elsewhere would otherwise keep a stale count forever beside
+	 * a zero badge - the same disagreement, the other way round.
+	 *
+	 * A MUTED ROW IS NEVER ZEROED BY IT (design review round 2, D5). The account
+	 * aggregate EXCLUDES muted conversations by contract, so its zero means "no
+	 * unmuted unread", never "no unread": zeroing them there made a muted row's
+	 * quiet numeral vanish in exactly the state the quiet register exists for -
+	 * and a mute is the reader saying "do not interrupt me", so the muted
+	 * conversation is very often the only thing waiting. The row's own read stays
+	 * authoritative for it, and it cannot make the badge disagree, because the
+	 * aggregate never counted it: a stale muted count can only be wrong on its own
+	 * row, which that conversation's own list read refreshes.
 	 */
 	for (const [key, entry] of rows)
-		if (organizations.get(entry.tenantId) === 0 && aggregateAt > entry.at)
+		if (
+			!entry.muted &&
+			organizations.get(entry.tenantId) === 0 &&
+			aggregateAt > entry.at
+		)
 			rows.set(key, { ...entry, unread: 0 });
 	const byTenant = new Map<string, number>();
 	for (const [tenantId, unread] of organizations) {

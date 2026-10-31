@@ -3449,8 +3449,11 @@ type TeamBridgeMessageLink = {
  * conversation this rail cannot resolve (archived, membership gone, deleted)
  * would otherwise hold the link, and the carry, for the life of the page. It is
  * a bound on the TARGET'S LIFE, not a timing for the highlight: one landing
- * costs one request, so a few seconds covers every real click and only an
- * unresolvable one ever reaches it.
+ * costs one request, so an ordinary click finishes well inside it. A click that
+ * does NOT finish inside it is released too - a first read slow enough to still
+ * be running at the bound, not only a conversation the rail can never resolve -
+ * which is the intended trade: a late highlight on a row the reader has moved on
+ * from is worse than none.
  */
 const MESSAGE_LINK_TIMEOUT_MS = 8_000;
 

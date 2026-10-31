@@ -201,6 +201,25 @@ const Unread: FC<{
 		/>
 	) : null;
 
+/**
+ * The quiet bell beside a muted row's count: the reason the numeral is quiet.
+ *
+ * ONE COMPONENT, EVERY ROW KIND (design review round 2, D7). The glyph used to
+ * live inside `ConversationRailRow` alone, so a muted DM - the place a mute is
+ * most often used - drew its quiet numeral with no explanation at all. The
+ * register and the glyph state the same fact ("this count is a total, not a
+ * request"), so they belong on the same row wherever that row can be muted.
+ */
+const MuteGlyph: FC = () => (
+	<span
+		className="shrink-0 text-ink-dim"
+		title={t("ui.teamBridge.notify.muted")}
+	>
+		<BellOff size={12} aria-hidden="true" />
+		<span className="sr-only">{t("ui.teamBridge.notify.muted")}</span>
+	</span>
+);
+
 export const RailSection: FC<{
 	id: string;
 	title: string;
@@ -381,15 +400,7 @@ export const ConversationRailRow: FC<{
 						{t("ui.teamBridge.preview.chip")}
 					</Badge>
 				)}
-				{showsMutedGlyph(conversation) && (
-					<span
-						className="shrink-0 text-ink-dim"
-						title={t("ui.teamBridge.notify.muted")}
-					>
-						<BellOff size={12} aria-hidden="true" />
-						<span className="sr-only">{t("ui.teamBridge.notify.muted")}</span>
-					</span>
-				)}
+				{showsMutedGlyph(conversation) && <MuteGlyph />}
 				{hasDraft && (
 					<span
 						title={t("ui.teamBridge.drafts.indicator")}
@@ -650,6 +661,7 @@ export const PersonRailRow: FC<{
 							</span>
 						</span>
 					)}
+					{Boolean(dm && showsMutedGlyph(dm)) && <MuteGlyph />}
 					<Unread
 						count={unread}
 						yieldsToMenu
@@ -741,6 +753,7 @@ export const ChiefRailRow: FC<{
 							</span>
 						</span>
 					)}
+					{Boolean(dm && showsMutedGlyph(dm)) && <MuteGlyph />}
 					<Unread
 						count={unread}
 						yieldsToMenu

@@ -231,6 +231,22 @@ test("every Team Bridge unread mark asks unreadRegister for its register", () =>
 	);
 	/* No host spells a register itself. */
 	assert.doesNotMatch(src, /register=\{?["'`](quiet|attention)/);
+	/*
+	 * AND EVERY ROW THAT CAN BE MUTED EXPLAINS ITS QUIET NUMERAL (design review
+	 * round 2, D7). The glyph used to live on conversation rows alone, so a muted
+	 * DM drew the quiet count with no reason beside it. One shared `MuteGlyph`,
+	 * three guarded call sites.
+	 */
+	assert.equal(
+		(src.match(/<MuteGlyph \/>/g) ?? []).length,
+		3,
+		"channel, person and chief rows each draw the mute glyph",
+	);
+	assert.equal(
+		(src.match(/showsMutedGlyph\(/g) ?? []).length,
+		3,
+		"one guard per row kind (the predicate itself lives in the model)",
+	);
 });
 
 test("the sidebar draws no <Badge> of its own at all", () => {

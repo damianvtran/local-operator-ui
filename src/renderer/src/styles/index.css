@@ -120,6 +120,23 @@
 	}
 }
 
+/*
+ * WHY THE WASHED ROW'S DIM INK LIFTS WHILE THE BAND IS UP (design review round
+ * 2, D6). The band paints under the row's content, so an 11-12 px `ink-dim`
+ * timestamp sits on it. Swept over the fifty-nine palettes, `ink-dim` on the
+ * 12 % mix is under 4.5:1 in ten of them - cyberpunk 4.05:1, from 5.59:1 on the
+ * plain pane - and no single mix fixes that: the mix that keeps the metadata at
+ * AA in every palette is 8.3 %, and at 8.3 % the arrival stops beating the
+ * selected row in 24 of 59 palettes. So the lever is the INK, not the mix:
+ * `ink-muted` on the same band clears 4.5:1 in all fifty-nine (floor 5.21:1,
+ * nightfox). Scoped to the band's lifetime and to the dim utilities inside it,
+ * so nothing else on the row changes and the lift ends with the class - the
+ * same shape as the covered-pane hover translation further down this file.
+ */
+.lo-team-bridge-target [class~="text-ink-dim"] {
+	color: var(--color-ink-muted);
+}
+
 /* An avatar photo arriving over its initials (sidebar account row, design
  * review round 1, D5): the same opacity-only keyframe as the transcript, at
  * `--duration-fast` because the plate is 28px and the swap should read as
