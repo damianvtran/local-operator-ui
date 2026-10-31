@@ -79,7 +79,7 @@
 	"ui.onboarding.tour.pre_command_palette_open_canvas.body.1.1": "Ещё одна мощная возможность — палитра команд. Её можно открыть в любом месте приложения, нажав ",
 	"ui.onboarding.tour.pre_command_palette_open_canvas.body.1.3": " в Windows или Linux. Это удобное окно, которое можно открыть из любого места приложения: в нём ваши чаты, агенты, настройки, страницы и действия, а также многое другое — всё с клавиатуры. Так часто быстрее перейти в нужный раздел, чем кликать по меню. Введите слово, чтобы искать сразу по всему, или начните с префикса, чтобы сузить область: ",
 	"ui.onboarding.tour.pre_command_palette_open_canvas.body.1.4": " для чатов, ",
-	"ui.onboarding.tour.pre_command_palette_open_canvas.body.1.5": " для агентов и команд; ",
+	"ui.onboarding.tour.pre_command_palette_open_canvas.body.1.5": " для агентов и команд ",
 	"ui.onboarding.tour.pre_command_palette_open_canvas.body.1.6": " для настроек и ",
 	"ui.onboarding.tour.pre_command_palette_open_canvas.body.1.7": " для команд и страниц.",
 	"ui.onboarding.tour.pre_command_palette_open_canvas.body.2.1": "Спешите начать разговор? Нажмите ",

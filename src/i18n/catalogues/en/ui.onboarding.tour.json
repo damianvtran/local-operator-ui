@@ -79,7 +79,7 @@
 	"ui.onboarding.tour.pre_command_palette_open_canvas.body.1.1": "Let's quickly look at another powerful feature: the Command Palette. You can open it anywhere in the app by pressing ",
 	"ui.onboarding.tour.pre_command_palette_open_canvas.body.1.3": " on Windows or Linux. This is a helpful window that you can open from anywhere in the app to be able to access your chats, agents, settings, pages and actions, and much more, using your keyboard. It can often be faster to access sections in the app this way instead of clicking through menus. Type a word to search everything at once, or start with a prefix to narrow it: ",
 	"ui.onboarding.tour.pre_command_palette_open_canvas.body.1.4": " for chats, ",
-	"ui.onboarding.tour.pre_command_palette_open_canvas.body.1.5": " for agents and teams, ",
+	"ui.onboarding.tour.pre_command_palette_open_canvas.body.1.5": " for agents and teams ",
 	"ui.onboarding.tour.pre_command_palette_open_canvas.body.1.6": " for settings, and ",
 	"ui.onboarding.tour.pre_command_palette_open_canvas.body.1.7": " for commands and pages.",
 	"ui.onboarding.tour.pre_command_palette_open_canvas.body.2.1": "In a hurry for a conversation? Press ",

@@ -1,4 +1,4 @@
-import { t } from "@shared/i18n";
+import { currentLocale, t, textDirectionFor } from "@shared/i18n";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import type { Step, StepOptions, Tour } from "shepherd.js";
 import { TOUR_BODIES, renderTourBody, tourLabel } from "./tour-copy";
@@ -69,6 +69,32 @@ export const STEP_BESIDE_PALETTE_CLASS = "tour-beside-palette";
 
 const STEP_SEVEN_ID = "pre-command-palette-open-canvas";
 
+/** The palette dialog step 7 sits beside; it is mounted only while open. */
+const STEP_SEVEN_ANCHOR = '[data-tour-tag="command-palette-dialog"]';
+
+/**
+ * The side a panel attaches on, mirrored when the window reads right-to-left.
+ *
+ * `attachTo.on` is PHYSICAL: Shepherd hands it to Floating UI as a placement, so
+ * `right` means the panel starts at the target's right edge on the SCREEN. The
+ * app's own layout is logical - in a right-to-left language the root carries
+ * `dir="rtl"`, the sidebar and its icon column move to the right, and the free
+ * side becomes the left one - so a panel pinned `right` lands on top of the
+ * mirrored chrome it is describing. Every attached step shipped that way in
+ * `ur` (design round 4, D6): the panel sat over the RTL sidebar's icon column.
+ *
+ * The direction is a property of the LANGUAGE, not of this file, so it is read
+ * from the shipped manifest through `textDirectionFor` (`i18n/direction.ts`)
+ * rather than from a list here: an Arabic, Hebrew or Persian catalogue added
+ * later mirrors without anyone remembering this function exists. It is resolved
+ * at build time because `startTour` rebuilds the steps in the language active
+ * at that moment, and again wherever the shape is rewritten mid-tour.
+ */
+const attachSide = (side: "left" | "right"): "left" | "right" => {
+	if (textDirectionFor(currentLocale()) !== "rtl") return side;
+	return side === "left" ? "right" : "left";
+};
+
 /** Is step 7 currently in its beside-the-palette shape? */
 const stepSevenSitsBesidePalette = (tour: Tour): boolean =>
 	(tour.getById(STEP_SEVEN_ID)?.options.classes ?? "")
@@ -89,26 +115,41 @@ const stepSevenSitsBesidePalette = (tour: Tour): boolean =>
  * Returns whether the shape is beside after the decision, which is what the hop
  * helpers need before they touch the palette.
  */
+/** Write step 7's shape onto the step, when it differs from the one it has. */
+const writeStepSevenShape = (tour: Tour, beside: boolean): void => {
+	const step = tour.getById(STEP_SEVEN_ID);
+	if (!step || stepSevenSitsBesidePalette(tour) === beside) return;
+	/*
+	 * Write both fields together: the class alone would cap a centred panel
+	 * at 340 px, and `attachTo` alone would pin a panel that cannot fit.
+	 */
+	step.updateStepOptions(
+		beside
+			? {
+					attachTo: { element: STEP_SEVEN_ANCHOR, on: attachSide("right") },
+					classes: STEP_BESIDE_PALETTE_CLASS,
+				}
+			: { attachTo: undefined, classes: undefined },
+	);
+};
+
+/**
+ * Re-decide step 7's shape from the live viewport, and apply it to the step.
+ *
+ * Called before every hop into or out of step 7 and from the tour's `show`
+ * listener (`syncStepSevenShapeOnShow`), so the panel a user is looking at
+ * always matches the window it renders in. Shepherd rebuilds a step's element
+ * and re-resolves `attachTo` on every `_show`, so writing the options just
+ * before a show is enough - no re-layout of a panel that is already on screen is
+ * attempted, which is the one resize case this deliberately does not chase
+ * (a resize while standing on step 7 is corrected by the next Back/Next).
+ *
+ * Returns whether the shape is beside after the decision, which is what the hop
+ * helpers need before they touch the palette.
+ */
 const applyStepSevenShape = (tour: Tour): boolean => {
 	const beside = window.innerWidth >= STEP_BESIDE_PALETTE_MIN_WIDTH;
-	const step = tour.getById(STEP_SEVEN_ID);
-	if (step && stepSevenSitsBesidePalette(tour) !== beside) {
-		/*
-		 * Write both fields together: the class alone would cap a centred panel
-		 * at 340 px, and `attachTo` alone would pin a panel that cannot fit.
-		 */
-		step.updateStepOptions(
-			beside
-				? {
-						attachTo: {
-							element: '[data-tour-tag="command-palette-dialog"]',
-							on: "right",
-						},
-						classes: STEP_BESIDE_PALETTE_CLASS,
-					}
-				: { attachTo: undefined, classes: undefined },
-		);
-	}
+	writeStepSevenShape(tour, beside);
 	return beside;
 };
 
@@ -246,10 +287,32 @@ export const syncStepSevenShapeOnShow = (event: { step?: Step }): void => {
 	if (step?.id !== STEP_SEVEN_ID) return;
 	const beside = applyStepSevenShape(step.tour);
 	/*
-	 * A shape that just became narrow cannot sit beside a palette; if this tour
-	 * opened one it is now an orphan over a centred panel, so hand it back.
+	 * A WIDE WINDOW IS NOT THE SAME FACT AS A PALETTE TO SIT BESIDE.
+	 *
+	 * Shepherd resolves `attachTo` when the step is shown, and a target that is
+	 * not in the DOM is not a placement: it warns (`The element for this Shepherd
+	 * step was not found`), drops the attachment and centres the panel. With this
+	 * class still on it that is a 340 px column in the middle of the window whose
+	 * arrow points at nothing - which is the shape design round 4 measured as D9
+	 * (520-860 in a 1380 window, `tour-beside-palette` AND `shepherd-centered`).
+	 *
+	 * The palette really can be absent here, and not only because a hop went
+	 * wrong: the hop opens it and waits a fixed 500 ms for the mount, so a Cmd+K
+	 * between the two (a window-level shortcut the tour does not intercept) leaves
+	 * the claim spent and nothing on screen, and any future caller of
+	 * `tour.show(STEP_SEVEN_ID)` reaches the step with no palette opened at all.
+	 * The shape therefore follows the ANCHOR, not the viewport alone: no dialog,
+	 * no beside shape - the copy and the footer are the same, only centred.
+	 *
+	 * The CLAIM is deliberately left alone here. It records who opened the palette,
+	 * which is a different fact from whether its dialog has painted yet: a palette
+	 * this tour opened one frame ago is still mounting, and releasing the claim on
+	 * a missing element would shut it (and skip the hop's own wait) on the
+	 * strength of a timing accident. Ending the tour still releases it.
 	 */
-	if (!beside) releaseTourCommandPalette(step.tour);
+	if (!beside || document.querySelector(STEP_SEVEN_ANCHOR) === null) {
+		writeStepSevenShape(step.tour, false);
+	}
 };
 
 /**
@@ -276,7 +339,7 @@ const commandPaletteStep = (): StepOptions => {
 			? {
 					attachTo: {
 						element: '[data-tour-tag="command-palette-dialog"]',
-						on: "right" as const,
+						on: attachSide("right"),
 					},
 					classes: STEP_BESIDE_PALETTE_CLASS,
 				}
@@ -332,7 +395,10 @@ export const createTourSteps = (): StepOptions[] => [
 	},
 	{
 		id: "agent-list",
-		attachTo: { element: '[data-tour-tag="agent-list-panel"]', on: "right" },
+		attachTo: {
+			element: '[data-tour-tag="agent-list-panel"]',
+			on: attachSide("right"),
+		},
 		title: tourLabel("ui.onboarding.tour.agent_list.title"),
 		text: renderTourBody(TOUR_BODIES.agent_list),
 		buttons: [
@@ -357,7 +423,7 @@ export const createTourSteps = (): StepOptions[] => [
 		// Targets the first AgentListItemButton within the AgentsList using the new data-tour-tag
 		attachTo: {
 			element: '[data-tour-tag="agent-list-item-button-0"]',
-			on: "right",
+			on: attachSide("right"),
 		},
 		title: tourLabel("ui.onboarding.tour.select_agent.title"),
 		text: renderTourBody(TOUR_BODIES.select_agent),
@@ -464,7 +530,7 @@ export const createTourSteps = (): StepOptions[] => [
 		id: "canvas-open-button",
 		attachTo: {
 			element: 'button[data-tour-tag="open-canvas-button"]',
-			on: "left",
+			on: attachSide("left"),
 		},
 		title: tourLabel("ui.onboarding.tour.canvas_open_button.title"),
 		text: renderTourBody(TOUR_BODIES.canvas_open_button),
@@ -495,7 +561,10 @@ export const createTourSteps = (): StepOptions[] => [
 	},
 	{
 		id: "canvas-feature",
-		attachTo: { element: '[data-tour-tag="canvas-container"]', on: "left" },
+		attachTo: {
+			element: '[data-tour-tag="canvas-container"]',
+			on: attachSide("left"),
+		},
 		title: tourLabel("ui.onboarding.tour.canvas_feature.title"),
 		text: renderTourBody(TOUR_BODIES.canvas_feature),
 		buttons: [
@@ -650,7 +719,7 @@ export const createTourSteps = (): StepOptions[] => [
 		id: "agent-options",
 		attachTo: {
 			element: 'button[data-tour-tag="agent-options-button"]',
-			on: "right",
+			on: attachSide("right"),
 		},
 		title: tourLabel("ui.onboarding.tour.agent_options.title"),
 		text: renderTourBody(TOUR_BODIES.agent_options),
@@ -694,7 +763,7 @@ export const createTourSteps = (): StepOptions[] => [
 		attachTo: {
 			element:
 				'[role="menuitem"][data-tour-tag="view-agent-settings-menu-item"]',
-			on: "right",
+			on: attachSide("right"),
 		},
 		title: tourLabel("ui.onboarding.tour.click_view_settings_from_chat.title"),
 		text: renderTourBody(TOUR_BODIES.click_view_settings_from_chat),
@@ -729,7 +798,7 @@ export const createTourSteps = (): StepOptions[] => [
 		// Targets the DetailsPaper component in AgentSettings
 		attachTo: {
 			element: 'div[data-tour-tag="agent-settings-details-paper"]',
-			on: "left",
+			on: attachSide("left"),
 		},
 		title: tourLabel("ui.onboarding.tour.view_agent_settings.title"),
 		text: renderTourBody(TOUR_BODIES.view_agent_settings),
@@ -773,7 +842,7 @@ export const createTourSteps = (): StepOptions[] => [
 		id: "select-provider",
 		attachTo: {
 			element: '[data-tour-tag="agent-settings-hosting-select"]',
-			on: "left",
+			on: attachSide("left"),
 		},
 		title: tourLabel("ui.onboarding.tour.select_provider.title"),
 		text: renderTourBody(TOUR_BODIES.select_provider),
@@ -798,7 +867,7 @@ export const createTourSteps = (): StepOptions[] => [
 		id: "select-model",
 		attachTo: {
 			element: '[data-tour-tag="agent-settings-model-select"]',
-			on: "left",
+			on: attachSide("left"),
 		},
 		title: tourLabel("ui.onboarding.tour.select_model.title"),
 		text: renderTourBody(TOUR_BODIES.select_model),
@@ -823,7 +892,7 @@ export const createTourSteps = (): StepOptions[] => [
 		id: "modify-security-prompt",
 		attachTo: {
 			element: '[data-tour-tag="agent-settings-security"]',
-			on: "left",
+			on: attachSide("left"),
 		}, // Attaching to the broader "Model Settings" card as a proxy
 		title: tourLabel("ui.onboarding.tour.modify_security_prompt.title"),
 		text: renderTourBody(TOUR_BODIES.modify_security_prompt),
@@ -848,7 +917,7 @@ export const createTourSteps = (): StepOptions[] => [
 		id: "modify-agent-prompt",
 		attachTo: {
 			element: '[data-tour-tag="agent-settings-system-prompt"]',
-			on: "left",
+			on: attachSide("left"),
 		},
 		title: tourLabel("ui.onboarding.tour.modify_agent_prompt.title"),
 		text: renderTourBody(TOUR_BODIES.modify_agent_prompt),
@@ -938,7 +1007,10 @@ export const createTourSteps = (): StepOptions[] => [
 	},
 	{
 		id: "agent-naming-guidelines",
-		attachTo: { element: '[data-tour-tag="create-agent-dialog"]', on: "right" },
+		attachTo: {
+			element: '[data-tour-tag="create-agent-dialog"]',
+			on: attachSide("right"),
+		},
 		title: tourLabel("ui.onboarding.tour.agent_naming_guidelines.title"),
 		text: renderTourBody(TOUR_BODIES.agent_naming_guidelines),
 		buttons: [
@@ -979,7 +1051,10 @@ export const createTourSteps = (): StepOptions[] => [
 	{
 		id: "navigate-agent-hub",
 		// Targets the NavItemButton for Agent Hub via its icon's aria-label
-		attachTo: { element: '[data-tour-tag="nav-item-agent-hub"]', on: "right" },
+		attachTo: {
+			element: '[data-tour-tag="nav-item-agent-hub"]',
+			on: attachSide("right"),
+		},
 		title: tourLabel("ui.onboarding.tour.navigate_agent_hub.title"),
 		text: renderTourBody(TOUR_BODIES.navigate_agent_hub),
 		buttons: [
@@ -1030,7 +1105,7 @@ export const createTourSteps = (): StepOptions[] => [
 		// Targets the SidebarContainer in AgentHubPage that wraps AgentCategoriesSidebar
 		attachTo: {
 			element: '[data-tour-tag="agent-hub-sidebar-container"]',
-			on: "right",
+			on: attachSide("right"),
 		},
 		title: tourLabel("ui.onboarding.tour.agent_hub_view.title"),
 		text: renderTourBody(TOUR_BODIES.agent_hub_view),
@@ -1125,7 +1200,10 @@ export const createTourSteps = (): StepOptions[] => [
 	{
 		id: "upload-agent-hub-dialog",
 		// Targets the UploadAgentDialog modal, which should be open after clicking "Upload to Hub"
-		attachTo: { element: '[data-tour-tag="upload-agent-dialog"]', on: "right" },
+		attachTo: {
+			element: '[data-tour-tag="upload-agent-dialog"]',
+			on: attachSide("right"),
+		},
 		title: tourLabel("ui.onboarding.tour.upload_agent_hub_dialog.title"),
 		/*
 		 * The same correction the dialog itself carries: this step used to
@@ -1174,7 +1252,10 @@ export const createTourSteps = (): StepOptions[] => [
 	},
 	{
 		id: "navigate-schedules",
-		attachTo: { element: '[data-tour-tag="nav-item-schedules"]', on: "right" },
+		attachTo: {
+			element: '[data-tour-tag="nav-item-schedules"]',
+			on: attachSide("right"),
+		},
 		title: tourLabel("ui.onboarding.tour.navigate_schedules.title"),
 		text: renderTourBody(TOUR_BODIES.navigate_schedules),
 		buttons: [
@@ -1273,7 +1354,7 @@ export const createTourSteps = (): StepOptions[] => [
 		id: "create-schedule-dialog",
 		attachTo: {
 			element: '[data-tour-tag="create-schedule-dialog"]',
-			on: "right",
+			on: attachSide("right"),
 		},
 		title: tourLabel("ui.onboarding.tour.create_schedule_dialog.title"),
 		text: renderTourBody(TOUR_BODIES.create_schedule_dialog),
@@ -1314,7 +1395,10 @@ export const createTourSteps = (): StepOptions[] => [
 	},
 	{
 		id: "navigate-settings",
-		attachTo: { element: '[data-tour-tag="nav-item-settings"]', on: "right" },
+		attachTo: {
+			element: '[data-tour-tag="nav-item-settings"]',
+			on: attachSide("right"),
+		},
 		title: tourLabel("ui.onboarding.tour.navigate_settings.title"),
 		text: renderTourBody(TOUR_BODIES.navigate_settings),
 		buttons: [
@@ -1365,7 +1449,7 @@ export const createTourSteps = (): StepOptions[] => [
 		// Targets the "General Settings" item in settings sidebar via its icon
 		attachTo: {
 			element: 'div[data-tour-tag="settings-general-section"]',
-			on: "right",
+			on: attachSide("right"),
 		},
 		title: tourLabel("ui.onboarding.tour.general_settings.title"),
 		text: renderTourBody(TOUR_BODIES.general_settings),
@@ -1390,7 +1474,7 @@ export const createTourSteps = (): StepOptions[] => [
 		id: "appearance-settings",
 		attachTo: {
 			element: '[data-tour-tag="settings-appearance-section"]',
-			on: "right",
+			on: attachSide("right"),
 		},
 		title: tourLabel("ui.onboarding.tour.appearance_settings.title"),
 		text: renderTourBody(TOUR_BODIES.appearance_settings),
@@ -1415,7 +1499,7 @@ export const createTourSteps = (): StepOptions[] => [
 		id: "radient-account-settings",
 		attachTo: {
 			element: '[data-tour-tag="settings-radient-account-section"]',
-			on: "right",
+			on: attachSide("right"),
 		},
 		title: tourLabel("ui.onboarding.tour.radient_account_settings.title"),
 		text: renderTourBody(TOUR_BODIES.radient_account_settings),
@@ -1440,7 +1524,7 @@ export const createTourSteps = (): StepOptions[] => [
 		id: "integrations-settings",
 		attachTo: {
 			element: '[data-tour-tag="settings-integrations-section"]',
-			on: "right",
+			on: attachSide("right"),
 		},
 		title: tourLabel("ui.onboarding.tour.integrations_settings.title"),
 		text: renderTourBody(TOUR_BODIES.integrations_settings),
@@ -1465,7 +1549,7 @@ export const createTourSteps = (): StepOptions[] => [
 		id: "application-updates-settings",
 		attachTo: {
 			element: '[data-tour-tag="settings-app-updates-section"]',
-			on: "right",
+			on: attachSide("right"),
 		},
 		title: tourLabel("ui.onboarding.tour.application_updates_settings.title"),
 		text: renderTourBody(TOUR_BODIES.application_updates_settings),

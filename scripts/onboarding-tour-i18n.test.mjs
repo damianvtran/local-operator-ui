@@ -684,6 +684,23 @@ const shownStepElement = () => {
 	return elements[elements.length - 1] ?? null;
 };
 
+/**
+ * Stand in for the command palette's dialog.
+ *
+ * Step 7's beside shape asserts "there is a palette to sit beside": the `show`
+ * listener demotes the shape when the anchor is missing, because Shepherd cannot
+ * resolve an `attachTo` whose element is not in the DOM and centres the step
+ * while the 340 px cap stays on it (design round 4, D9). This harness has no
+ * `CommandPalette` component, so the cases that expect the beside shape provide
+ * the anchor the app's own palette would, and remove it again.
+ */
+const paletteAnchorStub = () => {
+	const stub = document.createElement("div");
+	stub.setAttribute("data-tour-tag", "command-palette-dialog");
+	document.body.appendChild(stub);
+	return () => stub.remove();
+};
+
 const ruleBlockMatching = (pattern) => {
 	const match = pattern.exec(TOUR_CSS);
 	assert.ok(match, `no rule matching ${pattern}`);
@@ -1211,6 +1228,7 @@ test("a hop resized across the breakpoint takes the shape of the window it lands
 test("step 7's shape follows a resize even when the tour shows it directly", async () => {
 	const original = window.innerWidth;
 	const started = await startTourThroughHook(900);
+	const dropPalette = paletteAnchorStub();
 	try {
 		// No hop: `tour.show` bypasses the hop helpers, so only the hook's `show`
 		// listener can re-decide the shape for this window.
@@ -1229,7 +1247,106 @@ test("step 7's shape follows a resize even when the tour shows it directly", asy
 			"a direct show must still apply the shape of the window it renders in",
 		);
 	} finally {
+		dropPalette();
 		await started.stop();
+		window.innerWidth = original;
+	}
+});
+
+/*
+ * The shape is not a fact about the WINDOW alone (design round 4, D9).
+ *
+ * Shepherd resolves `attachTo` when the step is shown, and a target that is not
+ * in the DOM is not a placement: it warns, drops the attachment and centres the
+ * panel - with the 340 px cap still on it, so the result is a narrow column in
+ * the middle of the window whose arrow points at nothing. That is reachable in
+ * the shipped app too: the hop opens the palette and waits a fixed 500 ms, and a
+ * `Cmd+K` in between closes it again, so the step is shown with no palette up.
+ */
+test("step 7 drops the beside shape when no palette is on screen", async () => {
+	const original = window.innerWidth;
+	const started = await startTourThroughHook(
+		mod.STEP_BESIDE_PALETTE_MIN_WIDTH + 40,
+	);
+	try {
+		started.tour.show("pre-command-palette-open-canvas");
+		await sleep(80);
+
+		const step = stepSevenOf(started.tour.steps);
+		assert.equal(
+			started.tour.getCurrentStep()?.id,
+			"pre-command-palette-open-canvas",
+		);
+		assert.equal(
+			step.options.attachTo,
+			undefined,
+			"no palette, no attachment to make",
+		);
+		assert.equal(
+			step.options.classes,
+			undefined,
+			"no palette, no 340 px cap either",
+		);
+	} finally {
+		await started.stop();
+		window.innerWidth = original;
+	}
+});
+
+/*
+ * Attached sides are PHYSICAL in Shepherd (design round 4, D6).
+ *
+ * `attachTo.on` goes to Floating UI as a placement, so `right` means the right of
+ * the SCREEN - while the app's own layout is logical and mirrors under
+ * `dir="rtl"`. Without the mirror, every attached step in `ur` put its panel
+ * over the RTL sidebar's icon column instead of the free side. The direction is
+ * read from the shipped manifest (`textDirectionFor`), so this test changes the
+ * locale the way production does and reads the sides back off the built steps.
+ */
+test("a right-to-left language attaches its panels on the free side", async () => {
+	const original = window.innerWidth;
+	try {
+		window.innerWidth = 1380;
+		mod.applyCapabilities({ features: { i18n: 1 }, language: "en" });
+		const ltr = mod.createTourSteps();
+		assert.equal(
+			stepSevenOf(ltr)?.attachTo?.on,
+			"right",
+			"an LTR window keeps the palette's right side",
+		);
+
+		mod.applyCapabilities({ features: { i18n: 1 }, language: "ur" });
+		const rtl = mod.createTourSteps();
+		assert.equal(
+			stepSevenOf(rtl)?.attachTo?.on,
+			"left",
+			"an RTL window puts the palette's copy on its free left side",
+		);
+		/*
+		 * Both directions, not just step 7: a panel Shepherd placed on a target's
+		 * left mirrors the same way, and the vertical sides must not move at all.
+		 */
+		const mirrored = rtl.filter(
+			(step) => step.attachTo?.on === "left" || step.attachTo?.on === "right",
+		);
+		assert.ok(mirrored.length > 1, "more than one attached step must mirror");
+		const ltrSides = ltr
+			.filter((step) => step.attachTo?.on === "left")
+			.map((step) => step.id);
+		for (const id of ltrSides) {
+			assert.equal(
+				rtl.find((step) => step.id === id)?.attachTo?.on,
+				"right",
+				`${id}: a target's-left panel must take the right in RTL`,
+			);
+		}
+		assert.equal(
+			rtl.filter((step) => step.attachTo?.on === "top").length,
+			ltr.filter((step) => step.attachTo?.on === "top").length,
+			"the vertical sides are not the direction's business",
+		);
+	} finally {
+		mod.applyCapabilities({ features: { i18n: 1 }, language: "en" });
 		window.innerWidth = original;
 	}
 });

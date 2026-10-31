@@ -83,6 +83,55 @@
  */
 .shepherd-element.tour-beside-palette {
 	max-width: 340px;
+	/*
+	 * The arrow has to escape this panel, and only this panel: it is a rotated
+	 * 16 px box that Shepherd parks OUTSIDE the border box (Floating UI's arrow
+	 * middleware writes `left: -8px`), and a scroll container cannot paint its
+	 * own overflow, so `.shepherd-element`'s `overflow-x: clip` erased the one
+	 * mark that says which card the other one explains (design round 4, D8).
+	 * Every other step keeps the shipped behaviour, so this cannot move a panel
+	 * nobody complained about.
+	 */
+	overflow: visible;
+}
+
+/*
+ * Step 7's junction: an 8 px gutter, and the height cap moved one box in.
+ *
+ * WHY THE GUTTER IS 8. Shepherd places a panel FLUSH against its target (no
+ * `offset` middleware at all - its default set is flip, shift, arrow), so at
+ * 1380 the palette's right edge and this panel's left edge came back at 1010 and
+ * 1009: the two cards read as one column split by a hairline instead of as a
+ * context and the copy explaining it (design round 4, D8). 8 px is the arrow's
+ * own overhang and the same term the breakpoint's arithmetic already carries
+ * (`640 + 2 x (340 + 8)` in `tour/tour-steps.ts`), so the arrow bridges the
+ * gutter exactly rather than poking into either card.
+ *
+ * WHY A PHYSICAL MARGIN PER PLACEMENT. Floating UI positions the panel with an
+ * inline `left`/`top`, so a margin on the side the panel grows AWAY from adds to
+ * that coordinate (`left + 8`); a symmetric padding would push it INTO the
+ * palette instead. The mirrored case is not a second mechanism: `attachSide` in
+ * `tour/tour-steps.ts` is what makes an RTL window ask for the `left` placement,
+ * and this rule follows it.
+ *
+ * WHY THE SCROLLER MOVES. The height cap and `overflow-y` belong to the panel
+ * today (`overflow: visible` above would otherwise let a tall step run off the
+ * window). They move to `.shepherd-content`, which holds no arrow - the arrow is
+ * its sibling - so the RTL-only scrollbar the clip was added for (an arrow at
+ * `-8px` counting as scrollable overflow: see `.shepherd-element` above) cannot
+ * come back with it.
+ */
+.shepherd-element.tour-beside-palette .shepherd-content {
+	max-height: 95vh;
+	overflow-y: auto;
+}
+
+.shepherd-element.tour-beside-palette[data-popper-placement="right"] {
+	margin-left: 8px;
+}
+
+.shepherd-element.tour-beside-palette[data-popper-placement="left"] {
+	margin-right: 8px;
 }
 
 .shepherd-element .shepherd-content {
