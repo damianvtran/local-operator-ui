@@ -1909,7 +1909,14 @@ function Roster({
 	 * of buttons with roving `tabIndex` is exactly that.
 	 */
 	return (
-		<ul aria-label={teamMode ? "Teams" : "Agents"} className="space-y-0.5">
+		<ul
+			aria-label={
+				teamMode
+					? t("ui.agents.pages.tab.teams")
+					: t("ui.agents.pages.tab.agents")
+			}
+			className="space-y-0.5"
+		>
 			{rows.map((row) => {
 				const isProfile = "source" in row;
 				const mark = marked.get(`${teamMode ? "team" : "agent"}:${row.name}`);
