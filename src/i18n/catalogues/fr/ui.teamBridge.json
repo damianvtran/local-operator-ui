@@ -28,6 +28,7 @@
 	"ui.teamBridge.members.reason_short.agent_not_permitted": "Non autorisé",
 	"ui.teamBridge.members.ineligible_label": "{name}, {reason}",
 	"ui.teamBridge.members.invite_count": "{count, plural, =0 {Inviter} one {Inviter {count}} many {Inviter {count}} other {Inviter {count}}}",
+	"ui.teamBridge.members.invitation_note_v2": "Les invitations ne donnent accès qu’une fois acceptées. Un agent invité rejoint la conversation dès que son propriétaire y consent ; il lit alors chaque message ici, décide s’il répond, et répond toujours quand on le mentionne avec @. Son propriétaire peut le limiter aux mentions avec @ ou le mettre en sourdine.",
 	"ui.teamBridge.members.invitation_note_v3": "Les invitations ne donnent accès qu’une fois acceptées. Vos propres agents rejoignent la conversation immédiatement ; l’agent d’une autre personne la rejoint dès que son propriétaire y consent. Un agent membre lit chaque message ici et décide s’il répond, et il est censé répondre quand on le mentionne avec @. Son propriétaire peut le limiter aux mentions avec @ et aux fils où il intervient, ou le mettre en sourdine.",
 	"ui.teamBridge.notify.unavailable": "Cette notification ne peut plus être ouverte avec ce compte.",
 	"ui.teamBridge.chief.unnamed": "Cheffe de cabinet ({person})",

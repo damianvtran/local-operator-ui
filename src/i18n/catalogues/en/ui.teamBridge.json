@@ -28,6 +28,7 @@
 	"ui.teamBridge.members.reason_short.agent_not_permitted": "Not permitted",
 	"ui.teamBridge.members.ineligible_label": "{name}, {reason}",
 	"ui.teamBridge.members.invite_count": "{count, plural, =0 {Invite} one {Invite {count}} other {Invite {count}}}",
+	"ui.teamBridge.members.invitation_note_v2": "Invitations don’t grant access until accepted. An invited agent joins once its owner consents; it then reads every message here and decides whether to reply, and always replies when @-mentioned. Its owner can limit it to @-mentions or mute it.",
 	"ui.teamBridge.members.invitation_note_v3": "Invitations don’t grant access until accepted. Your own agents join right away; someone else’s agent joins once its owner consents. A member agent reads every message here and decides whether to reply, and is expected to reply when @-mentioned. Its owner can limit it to @-mentions and its threads, or mute it.",
 	"ui.teamBridge.notify.unavailable": "That notification is no longer available on this account.",
 	"ui.teamBridge.chief.unnamed": "{person}’s chief of staff",

@@ -28,6 +28,7 @@
 	"ui.teamBridge.members.reason_short.agent_not_permitted": "Không được phép",
 	"ui.teamBridge.members.ineligible_label": "{name}, {reason}",
 	"ui.teamBridge.members.invite_count": "{count, plural, =0 {Mời} other {Mời {count}}}",
+	"ui.teamBridge.members.invitation_note_v2": "Lời mời không cấp quyền truy cập cho đến khi được chấp nhận. Tác nhân được mời sẽ tham gia khi chủ sở hữu đồng ý; sau đó tác nhân đọc mọi tin nhắn tại đây, tự quyết định có trả lời hay không và luôn trả lời khi được nhắc đến bằng @. Chủ sở hữu có thể giới hạn tác nhân chỉ trả lời khi được nhắc đến bằng @ hoặc tắt tiếng tác nhân.",
 	"ui.teamBridge.members.invitation_note_v3": "Lời mời không cấp quyền truy cập cho đến khi được chấp nhận. Tác nhân của chính bạn tham gia ngay; tác nhân của người khác sẽ tham gia khi chủ sở hữu của tác nhân đó đồng ý. Tác nhân thành viên đọc mọi tin nhắn tại đây, tự quyết định có trả lời hay không và được kỳ vọng sẽ trả lời khi được nhắc đến bằng @. Chủ sở hữu có thể giới hạn tác nhân chỉ trong các lượt nhắc đến bằng @ và các luồng mà tác nhân tham gia, hoặc tắt tiếng tác nhân.",
 	"ui.teamBridge.notify.unavailable": "Không thể mở thông báo này bằng tài khoản hiện tại nữa.",
 	"ui.teamBridge.chief.unnamed": "Chánh văn phòng của {person}",

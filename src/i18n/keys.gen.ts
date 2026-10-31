@@ -9414,6 +9414,7 @@ export type MessageParams = {
 	"ui.teamBridge.members.group.agents_v2": undefined;
 	"ui.teamBridge.members.group.people": undefined;
 	"ui.teamBridge.members.ineligible_label": { name: string; reason: string };
+	"ui.teamBridge.members.invitation_note_v2": undefined;
 	"ui.teamBridge.members.invitation_note_v3": undefined;
 	"ui.teamBridge.members.invite": undefined;
 	"ui.teamBridge.members.invite_count": { count: number };

@@ -2108,6 +2108,13 @@
 		},
 		"note": "ICU plural. The =0 arm is the bare verb (the button is disabled then); every other arm shows the count. It creates invitations only; never imply immediate active membership."
 	},
+	"ui.teamBridge.members.invitation_note_v2": {
+		"role": "dialog footer clarification",
+		"tone": "concise, consent-preserving",
+		"length": "Three short sentences",
+		"placeholders": {},
+		"note": "Invitations grant no access until accepted. An agent joins only after its owner consents, then reads every message and decides whether to reply; it always replies when @-mentioned. Keep '@-mention' recognizable. The owner can limit it to @-mentions or mute it."
+	},
 	"ui.teamBridge.members.invitation_note_v3": {
 		"role": "dialog footer clarification (consent copy, high visibility)",
 		"tone": "concise, consent-preserving",
