@@ -5,13 +5,10 @@ import { type ReactNode, useState } from "react";
 /** A legacy image URI is untrusted text, not an attachment or permission to load it.
  * Keep offsets into the original body: neither the DOM nor a second store needs a
  * copy of the payload, and inspection remains possible one bounded page at a time. */
-// Data URI boundaries in prose are ambiguous. Base64 uses its own alphabet;
-// a run of wrapped continuation lines needs at least 64 encoded characters in
-// aggregate, so a short ordinary next line is not silently hidden. A long run
-// of alphabet-only prose is inherently indistinguishable from encoded data.
-// Non-base64 bodies retain balanced
-// parentheses, but stop at Markdown closers/formatting. Neither path decodes or
-// fetches content; unencoded whitespace/quotes are hard boundaries.
+// Wrapped alphabet-only prose is indistinguishable from wrapped base64. Leave
+// small runs in place; put only large uncertain runs behind their own explicitly
+// labelled plaintext inspection, never misrepresent them as image bytes. Neither
+// path decodes or fetches content. Whitespace/quotes are hard URI boundaries.
 const IMAGE_START = /data:image\//gi;
 const BASE64_CHAR = /[a-z0-9+/%=]/i;
 const BASE64_HEADER = /;base64$/i;
@@ -20,8 +17,10 @@ const MIME_END = /[;,]/;
 const TRAILING_PROSE = /[)\]}.!?]{1,4}$/;
 const MAX_MIME_LENGTH = 80;
 const PAGE_SIZE = 2048;
+const UNCERTAIN_LIMIT = 2048;
+const ADJACENT_PROSE_LIMIT = 256;
 
-type Span = { start: number; end: number; mime: string };
+type Span = { start: number; end: number; mime: string; uncertain?: boolean };
 export function inlineImageSpans(body: string): Span[] {
 	const spans: Span[] = [];
 	for (const match of body.matchAll(IMAGE_START)) {
@@ -38,6 +37,7 @@ export function inlineImageSpans(body: string): Span[] {
 		if (!comma && cursor - start <= 64) continue;
 		const header = body.slice(start, cursor);
 		const mimeEnd = header.search(MIME_END);
+		let uncertainEnd = cursor;
 		if (comma) {
 			cursor++;
 			if (BASE64_HEADER.test(header)) {
@@ -68,10 +68,7 @@ export function inlineImageSpans(body: string): Span[] {
 							}
 							encoded += next - lineStart;
 						}
-						if (encoded >= 64) {
-							cursor = next;
-							continue;
-						}
+						if (encoded >= UNCERTAIN_LIMIT) uncertainEnd = next;
 					}
 					break;
 				}
@@ -79,13 +76,25 @@ export function inlineImageSpans(body: string): Span[] {
 				let depth = 0;
 				while (cursor < body.length && !HARD_END.test(body[cursor])) {
 					const char = body[cursor];
-					if (body.startsWith("**", cursor) || char === "]" || char === "}")
-						break;
-					if (char === "(") depth++;
-					if (char === ")") {
-						if (!depth) break;
-						depth--;
+					const boundary =
+						body.startsWith("**", cursor) ||
+						char === "]" ||
+						char === "}" ||
+						(char === ")" && !depth);
+					if (boundary) {
+						// A short suffix can be adjacent prose; a long one might be the
+						// data itself, so it must not escape into an unbounded text node.
+						let end = cursor;
+						while (
+							end < body.length &&
+							!HARD_END.test(body[end]) &&
+							end - cursor <= ADJACENT_PROSE_LIMIT
+						)
+							end++;
+						if (end - cursor <= ADJACENT_PROSE_LIMIT) break;
 					}
+					if (char === "(") depth++;
+					if (char === ")" && depth) depth--;
 					cursor++;
 				}
 				cursor -=
@@ -102,6 +111,13 @@ export function inlineImageSpans(body: string): Span[] {
 				Math.min(mimeEnd < 0 ? header.length : mimeEnd, 5 + MAX_MIME_LENGTH),
 			),
 		});
+		if (uncertainEnd > cursor)
+			spans.push({
+				start: cursor,
+				end: uncertainEnd,
+				mime: "",
+				uncertain: true,
+			});
 	}
 	return spans;
 }
@@ -116,10 +132,12 @@ function Receipt({ body, span }: { body: string; span: Span }) {
 			onToggle={(event) => setOpen(event.currentTarget.open)}
 		>
 			<summary className={cn("cursor-pointer")}>
-				{t("ui.ownerAudit.inline_image_receipt", {
-					mime: span.mime,
-					count: String(span.end - span.start),
-				})}
+				{span.uncertain
+					? t("ui.ownerAudit.inspect_body")
+					: t("ui.ownerAudit.inline_image_receipt", {
+							mime: span.mime,
+							count: String(span.end - span.start),
+						})}
 			</summary>
 			{open && (
 				<>

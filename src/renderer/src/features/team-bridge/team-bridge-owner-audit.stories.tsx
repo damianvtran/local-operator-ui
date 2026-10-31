@@ -442,6 +442,30 @@ export const WrappedDataAndAdjacentProse: Story = {
 	},
 };
 
+/** Synthetic ambiguous continuations stay inspectable without claiming image provenance. */
+export const AmbiguousImageData: Story = {
+	args: {
+		messages: [
+			{
+				...messages[0],
+				body: `Before\ndata:image/png;base64,${"A".repeat(100)}\n${Array(400).fill("B".repeat(32)).join("\n")}\nordinary prose survives`,
+			},
+			{
+				...messages[0],
+				id: "synthetic-prose",
+				seq: 42,
+				body: `data:image/png;base64,${"A".repeat(100)}\nordinary\nneighbor\nfamilies\nmorningx\ntomorrow\npleasant\nresearch\ncomplete`,
+			},
+			{
+				...messages[0],
+				id: "synthetic-svg",
+				seq: 43,
+				body: `data:image/svg+xml,%3Csvg%3E]${"F".repeat(10000)}\nAfter`,
+			},
+		],
+	},
+};
+
 /** Locale alone does not change Storybook's document direction; exercise the
  * same fixture under an explicit RTL ancestor to see bidirectional controls. */
 export const LegacyInlineImageRtl: Story = {

@@ -1997,6 +1997,9 @@ test("parameterized and percent-encoded image URIs are bounded without swallowin
 		`data:image/svg+xml;charset=utf-8,%3Csvg%3E${"C".repeat(18000)}%3C%2Fsvg%3E`,
 		`data:image/${"x".repeat(9000)};name=${"y".repeat(9000)},${"D".repeat(9000)}`,
 		`data:image/svg+xml,begin(embedded)${"E".repeat(18000)}.`,
+		`data:image/svg+xml,%3Csvg%3E]${"F".repeat(10000)}`,
+		`data:image/svg+xml,%3Csvg%3E}${"G".repeat(10000)}`,
+		`data:image/svg+xml,%3Csvg%3E**${"H".repeat(10000)}`,
 	];
 	for (const [index, data] of variants.entries()) {
 		const body = `Before data:image/png is a type.\n${data}\nAfter`;
@@ -2029,7 +2032,8 @@ test("wrapped base64 is bounded while adjacent Markdown and prose survive", asyn
 	assert.ok(row.textContent.length < 1000);
 	assert.equal(row.textContent.includes("B".repeat(100)), false);
 	assert.equal(row.querySelector("strong")?.textContent, "important");
-	assert.equal(row.querySelectorAll("details").length, 1);
+	assert.equal(row.querySelectorAll("details").length, 2);
+	assert.ok(row.textContent.includes(m.t("ui.ownerAudit.inspect_body")));
 	await view.close();
 });
 
@@ -2060,6 +2064,51 @@ test("many short encoded continuation lines are bounded", async () => {
 	assert.ok(row.textContent.includes("ordinary prose survives"));
 	assert.ok(row.textContent.length < 1000);
 	assert.equal(row.textContent.includes("B".repeat(32)), false);
+	await view.close();
+});
+
+test("eight short alphabet-only prose lines remain visible", async () => {
+	const lines = [
+		"ordinary",
+		"neighbor",
+		"families",
+		"morningx",
+		"tomorrow",
+		"pleasant",
+		"research",
+		"complete",
+	];
+	const body = `data:image/png;base64,${"A".repeat(100)}\n${lines.join("\n")}`;
+	const view = await renderView(
+		panel({ messages: [auditRow({ id: "prose_lines", body })] }),
+	);
+	const row = rowOf(view.host, "prose_lines");
+	for (const line of lines) assert.ok(row.textContent.includes(line), line);
+	assert.equal(row.querySelectorAll("details").length, 1);
+	await view.close();
+});
+
+test("large ambiguous continuations disclose bounded plaintext, not an image", async () => {
+	const data = `data:image/png;base64,${"A".repeat(100)}\n${Array(400).fill("B".repeat(32)).join("\n")}`;
+	const view = await renderView(
+		panel({ messages: [auditRow({ id: "ambiguous_lines", body: data })] }),
+	);
+	const row = rowOf(view.host, "ambiguous_lines");
+	const details = row.querySelectorAll("details");
+	assert.equal(details.length, 2);
+	assert.equal(
+		details[1].querySelector("summary").textContent,
+		m.t("ui.ownerAudit.inspect_body"),
+	);
+	assert.equal(row.textContent.includes("B".repeat(32)), false);
+	await act(async () => {
+		details[1].open = true;
+		details[1].dispatchEvent(new dom.window.Event("toggle"));
+	});
+	assert.ok(
+		details[1].querySelector("pre").textContent.includes("B".repeat(32)),
+	);
+	assert.equal(details[1].querySelector("pre").textContent.length, 2048);
 	await view.close();
 });
 
