@@ -736,12 +736,13 @@ test("a person row is the DM: no separate conversation row, and selecting needs 
 			viewProps({ people: [bea], conversations: [dm], listState: "ready" }),
 		),
 	);
-	assert.match(
-		ready,
-		new RegExp(
-			`aria-label="${ui.t("ui.teamBridge.people.message", { name: "Bea" })}"`,
-		),
-	);
+	/*
+	 * The row's accessible name carries its unread count (design review round 3,
+	 * D10): a person row's `aria-label` replaces its visible text, so without the
+	 * count a screen reader heard only "Message Bea" on a row with 2 unread.
+	 */
+	const beaName = `${ui.t("ui.teamBridge.people.message", { name: "Bea" })} ${ui.t("ui.teamBridge.unread.count", { count: 2 })}`;
+	assert.match(ready, new RegExp(`aria-label="${beaName}"`));
 	assert.doesNotMatch(ready, new RegExp(`data-conversation-id="${dm.id}"`));
 	assert.match(ready, /aria-label="2 unread"/);
 	for (const listState of ["loading", "error"]) {
@@ -753,9 +754,7 @@ test("a person row is the DM: no separate conversation row, and selecting needs 
 		);
 		assert.match(
 			html,
-			new RegExp(
-				`aria-label="${ui.t("ui.teamBridge.people.message", { name: "Bea" })}"`,
-			),
+			new RegExp(`aria-label="${beaName}"`),
 			`${listState} list keeps the row`,
 		);
 	}
