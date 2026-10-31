@@ -1,0 +1,42 @@
+{
+  "surface": "Team Bridge — notification arrival band, unread registers, all-organizations rows",
+  "pr": "#1536 (damianvtran/local-operator-ui)",
+  "head": "d0c452142aa",
+  "theme_pairs": ["localOperatorDark", "localOperatorLight"],
+  "method": {
+    "capture": "harness browser tool, one tab, 1280x720 CSS viewport, screenshot op",
+    "colour": "the PNG carries Display P3 constants (a saturated pixel is up to 47/255 away from its CSS value); every ratio below is computed AFTER a P3 -> sRGB transform. The transform is checked against three values the page reports through computed styles: accent rgb(56,201,106) captured as (103,198,116) -> (56,201,106); surface #2b2721 captured as (42,39,34) -> (43,39,33); elevated #322D22 captured as (49,45,35) -> (50,45,34).",
+    "contrast": "WCAG 2.x relative luminance",
+    "sampling": "3x3 CSS-pixel mode at a point inside the row's left padding (x=456 CSS) against the same point on the row above it, so band and ground are measured in one image and the capture's transform cancels"
+  },
+  "measured": {
+    "arrival_band_peak_vs_pane": {"dark": 1.2446, "light": 1.1768, "implementer_claim": {"dark": 1.237, "light": 1.177}},
+    "band_over_hover_tint": {"dark": 1.3571, "light": 1.2704, "figure_claim": {"dark": 1.349, "light": 1.270}},
+    "hover_tint_alone": {"dark": 1.088, "light": 1.0837},
+    "rail_selected_row_vs_ground": {"dark": 1.127, "light": 1.1325},
+    "band_at_700ms_of_1400": {"dark": 1.0072},
+    "band_after_the_page_clears_the_link": {"dark": 1.0},
+    "reduced_motion_static_band_vs_peak_frame": {"sampled_px": 409920, "differing_px": 232, "row_pixel_identical": true},
+    "quiet_numeral_ink_dim_on_elevated": {"pixels_dark": 5.26, "pixels_light": 6.14, "token_dark": 5.25, "token_light": 6.14},
+    "accent_digit_on_accent_fill_dark": {"pixels": 8.76, "token": 8.58}
+  },
+  "palette_sweeps": {
+    "themes_swept": 59,
+    "arrival_above_hover": "59/59",
+    "arrival_above_selected": "59/59",
+    "worst_arrival_vs_surface": {"theme": "rosePineDawn", "ratio": 1.171},
+    "quiet_numeral_floor": {"theme": "palenight / catppuccinMacchiato", "ratio": 5.01},
+    "ink_dim_metadata_on_the_12pct_wash_below_4_5": {
+      "count": 10,
+      "worst": {"theme": "cyberpunk", "on_wash": 4.05, "on_plain_surface": 5.59},
+      "themes": ["cyberpunk", "obsidian", "rosePine", "arcade", "ocean", "catppuccinMacchiato", "neon", "matrix", "tron", "nord"]
+    },
+    "max_mix_keeping_metadata_aa_everywhere": 0.083,
+    "mix_at_which_arrival_stops_beating_the_selected_row": {"0.083": "24/59 palettes below selected", "0.10": "1/59", "0.12": "0/59"},
+    "ink_muted_on_the_12pct_wash_floor": {"worst": {"theme": "nightfox", "ratio": 5.21}, "below_4_5": 0}
+  },
+  "not_captured": {
+    "real_pointer_hover": "the harness browser's action set has no hover; a click leaves :hover matching nothing (control: 'button:hover' -> 0 matches after a click on a rail row). The hovered-row frames put the shipped bg-row-hover utility on the row instead of its hover: variant.",
+    "prefers_reduced_motion_media_query": "no CDP media emulation in the action set. Frame 19 reproduces only the shipped reduced-motion declaration (animation: none on the band) and is measured pixel-identical to the peak frame."
+  }
+}
