@@ -76,8 +76,8 @@ import {
 } from "node:fs";
 import { createRequire } from "node:module";
 import { resolve } from "node:path";
-import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
+import { isEntryPoint } from "./entry-point.mjs";
 
 const execFileAsync = promisify(execFile);
 
@@ -86,11 +86,9 @@ export const LANE_DIAGNOSTICS_ENV = "LOCAL_OPERATOR_UI_LANE_DIAGNOSTICS";
 
 // A post-install fact, not the version merely requested by a lockfile. Resolve
 // nwsapi from jsdom's context, as the actual test does under pnpm's layout.
-if (
-	process.argv[1] &&
-	resolve(process.argv[1]) === fileURLToPath(import.meta.url) &&
-	process.argv[2] === "--identity"
-) {
+// Use physical file identity: CI or a local checkout can be reached through a
+// symlink, where a lexical argv/module-URL comparison silently emits no report.
+if (isEntryPoint(import.meta.url) && process.argv[2] === "--identity") {
 	const fromTest = createRequire(resolve(process.argv[3]));
 	const jsdomPath = fromTest.resolve("jsdom");
 	const fromJsdom = createRequire(jsdomPath);
@@ -148,11 +146,10 @@ if (
 	// Node preloads the file workers, not the --test coordinator. Forks that
 	// inherit both the preload and environment must not look like new workers.
 	process.env[diagnosticWorkerEnv] = String(process.pid);
-	const identity = {
-		pid: process.pid,
-		ppid: process.ppid,
-		file: process.argv[1],
-	};
+	// Record the worker's argv spelling as evidence; it is not an entry-point
+	// comparison (that decision belongs exclusively to the shared helper).
+	const [, file] = process.argv;
+	const identity = { pid: process.pid, ppid: process.ppid, file };
 	writeLaneDiagnostic(process.env[LANE_DIAGNOSTICS_ENV], {
 		event: "worker-start",
 		...identity,
