@@ -375,7 +375,13 @@ const rowStyle =
  * 138.3 / 210.7 / 179.0 / 165.6px against main's 264px - and a literal written twice is
  * how the two paths drifted when main's row changed shape under this branch's fold.
  */
-const rowBoxStyle = "flex h-8 items-center gap-1 rounded-md";
+/*
+ * `group/row` and `relative` are the agent picture's pencil (agent profile
+ * pictures, 2026-10-30): the edit link is a SIBLING of the row button, laid over
+ * the picture, and only reachable while this wrapper is hovered or the link
+ * itself holds focus - which is why the class is here rather than on the button.
+ */
+const rowBoxStyle = "group/row relative flex h-8 items-center gap-1 rounded-md";
 
 /*
  * Where the bulk read receipt's label stops fitting, in the width of the header
@@ -745,7 +751,11 @@ import {
 	refreshFocusedInside,
 } from "../sidebar-focus-hold";
 
-import { ChatAsksOutstanding, ChatSessionStatus } from "./chat-session-status";
+import {
+	ChatSessionAvatar,
+	ChatSessionAvatarEdit,
+} from "./chat-session-avatar";
+import { ChatAsksOutstanding } from "./chat-session-status";
 
 /**
  * How often the catalogue polls when the machine-wide feed is NOT available.
@@ -4869,7 +4879,13 @@ export function ChatSidebar({
 						/>
 					)}
 				</span>
-				<ChatSessionStatus row={row} nowSeconds={listNow / 1000} />
+				{/*
+				 * THE ROW'S LEADING MARK: its agent's picture with the status on the
+				 * corner, or the status glyph alone (agent profile pictures, 2026-10-30).
+				 * One component so the two arms cannot disagree about the state, and so
+				 * a row without a picture is exactly the cell this file drew before.
+				 */}
+				<ChatSessionAvatar row={row} nowSeconds={listNow / 1000} />
 				{/*
 				 * THE OUTSTANDING-ASKS MARK, beside the status mark and BEFORE the title.
 				 * A leading fact rather than a trailing one, for the reason the archived
@@ -5384,6 +5400,13 @@ export function ChatSidebar({
 					className={cn(rowBoxStyle, current && rowCurrent)}
 				>
 					{rowButton}
+					{/*
+					 * THE PENCIL, AS A SIBLING OF THE ROW BUTTON (see
+					 * `ChatSessionAvatarEdit` for why it cannot be inside it). It draws
+					 * nothing at all unless the row's agent has a picture and this device
+					 * owns it.
+					 */}
+					<ChatSessionAvatarEdit row={row} />
 					{silentRemedy}
 					{readAckRemedy}
 				</div>,
@@ -6149,6 +6172,9 @@ export function ChatSidebar({
 				 */}
 				{(pinsEnabled || archiveEnabled) && <ChatRowHoverIntent />}
 				{rowButton}
+				{/* The picture's pencil - a sibling of the row button, as in the
+				    no-menu arm above; it draws nothing without a picture. */}
+				<ChatSessionAvatarEdit row={row} />
 				{silentRemedy}
 				{readAckRemedy}
 				{menuRemedy}

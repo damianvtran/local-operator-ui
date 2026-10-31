@@ -1131,6 +1131,28 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 				: false,
 		);
 		/*
+		 * THIS CONVERSATION'S AGENT PICTURE, for the header's mark (agent profile
+		 * pictures, 2026-10-30). Two primitive reads rather than one row read: the
+		 * row object is stable, but subscribing to the whole catalogue here would
+		 * repaint the header on every other conversation's status tick.
+		 *
+		 * `owned` is the row's own answer - a row this device lists is a local
+		 * agent, and a remote conversation's agent belongs to the device that owns
+		 * it, where this window cannot write.
+		 */
+		const avatarAgentId = useCanonicalSessionsStore((state) =>
+			sessionId
+				? (state.sessions.find((row) => row.session_id === sessionId)
+						?.agent_id ?? null)
+				: null,
+		);
+		const agentAvatarSha = useCanonicalSessionsStore((state) =>
+			sessionId
+				? (state.sessions.find((row) => row.session_id === sessionId)
+						?.avatar_sha256 ?? null)
+				: null,
+		);
+		/*
 		 * TWO PREDICATES, BECAUSE THE TWO CONSUMERS WANT DIFFERENT ONES (agent review
 		 * round 4, R4-2). The notice is about EXISTENCE and takes the catalogue's
 		 * membership with it. The composer's refusal is about the STREAM: it exists to
@@ -2420,6 +2442,15 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 						 */}
 						<ChatHeader
 							agentName={agentName}
+							agentAvatar={
+								avatarAgentId && agentAvatarSha
+									? {
+											agentId: avatarAgentId,
+											sha256: agentAvatarSha,
+											owned: true,
+										}
+									: null
+							}
 							description={description}
 							descriptionPending={descriptionPending}
 							identity={identity}

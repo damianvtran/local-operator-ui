@@ -1,3 +1,5 @@
+import { AgentAvatarEditLink } from "@shared/agent-avatar/agent-avatar-edit-link";
+import { AgentMark } from "@shared/agent-avatar/agent-mark";
 import {
 	desktopFeatureState,
 	useDesktopCapabilities,
@@ -77,6 +79,19 @@ import {
  */
 type ChatHeaderProps = {
 	agentName?: string;
+	/**
+	 * The local agent this conversation is bound to, for the picture left of the
+	 * name (agent profile pictures, 2026-10-30). All three are optional and
+	 * absent means the header draws exactly what it drew before: a backend that
+	 * does not publish them, a draft, and a Team Bridge identity that is not a
+	 * local agent all land here.
+	 */
+	agentAvatar?: {
+		agentId: string;
+		sha256: string | null;
+		/** Whether the viewer owns the agent, i.e. whether the pencil appears. */
+		owned: boolean;
+	} | null;
 	description?: string;
 	/**
 	 * The panel is mounted on a target whose identity is not known yet, and the
@@ -299,6 +314,7 @@ const PATH_CHIP_CHARS = 40;
 
 export const ChatHeader: FC<ChatHeaderProps> = ({
 	agentName = "Local Operator",
+	agentAvatar = null,
 	description = "Your on-device AI assistant",
 	descriptionPending = false,
 	identity,
@@ -874,28 +890,61 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 							spellCheck={false}
 						/>
 					) : (
-						<h2
-							ref={renameTitleRef}
-							data-header-title=""
-							onDoubleClick={renameSessionId ? startRename : undefined}
-							className={cn(
-								"min-w-0 max-w-full truncate font-medium text-body text-ink",
-								/*
-								 * Client-area now, so the two things such a text needs: no
-								 * native selection (a drag across a window title that
-								 * highlights like a document reads as broken, and a
-								 * double-click's word-select would race the select-all the
-								 * editor opens with), and the arrow cursor - a pointer
-								 * cursor would promise a single click the text does not act
-								 * on (the double-click and the pencil are the affordances).
-								 * `user-select: none` does not stop `dblclick`, which is the
-								 * event the editor opens on.
-								 */
-								"cursor-default select-none",
-							)}
-						>
-							{agentName}
-						</h2>
+						<>
+							{/*
+							 * THE PICTURE, LEFT OF THE NAME (the operator's ask). It is the one
+							 * mark in this row that is not a control, so it takes the plate's
+							 * 20px box - the same size the identity chips hold, which is what
+							 * keeps the baseline join and the one-line clip band unchanged.
+							 *
+							 * NOTHING WHEN THERE IS NO PICTURE: `AgentMark` renders the caller's
+							 * fallback, and here the fallback is `null` - the header's title
+							 * block never carried an agent glyph, so a conversation whose agent
+							 * has no picture keeps exactly the header main draws. The pencil
+							 * rides `AgentAvatarEditLink`, which draws nothing but the bare
+							 * picture for an agent the viewer does not own.
+							 */}
+							{agentAvatar ? (
+								<span className="me-1 flex shrink-0 items-center">
+									<AgentAvatarEditLink
+										agentName={agentName}
+										agentId={agentAvatar.agentId}
+										owned={agentAvatar.owned}
+										className="size-5"
+										pencilClassName="size-2.5"
+									>
+										<AgentMark
+											agentId={agentAvatar.agentId}
+											sha256={agentAvatar.sha256}
+											className="size-5"
+											fallback={null}
+										/>
+									</AgentAvatarEditLink>
+								</span>
+							) : null}
+							<h2
+								ref={renameTitleRef}
+								data-header-title=""
+								onDoubleClick={renameSessionId ? startRename : undefined}
+								className={cn(
+									"min-w-0 max-w-full truncate font-medium text-body text-ink",
+									/*
+									 * Client-area now, so the two things such a text needs: no
+									 * native selection (a drag across a window title that
+									 * highlights like a document reads as broken, and a
+									 * double-click's word-select would race the select-all the
+									 * editor opens with), and the arrow cursor - a pointer
+									 * cursor would promise a single click the text does not act
+									 * on (the double-click and the pencil are the affordances).
+									 * `user-select: none` does not stop `dblclick`, which is the
+									 * event the editor opens on.
+									 */
+									"cursor-default select-none",
+								)}
+							>
+								{agentName}
+							</h2>
+						</>
 					)}
 					{renameSessionId && (
 						<button

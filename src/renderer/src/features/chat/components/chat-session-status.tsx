@@ -300,79 +300,45 @@ export function SubagentRunningMark({
 	);
 }
 
-export function ChatSessionStatus({
-	row,
-	nowSeconds = Date.now() / 1000,
-}: { row: CanonicalSessionRow; nowSeconds?: number }) {
+/**
+ * The sentence the status contributes to the row's accessible name.
+ *
+ * ONE SPELLING, because the row now has two arms (the glyph, or a badge on a
+ * picture) and a reader must hear the same words in both. `unread` is a LEVEL
+ * the ink carries visually, so the name has to say it - and only where a mark
+ * is actually drawn (`unreadMark`), never on a quiet row.
+ */
+export function statusSpokenText(
+	row: CanonicalSessionRow,
+	nowSeconds: number,
+	mark: ReturnType<typeof sessionStatusMark>,
+): string {
+	const label = mark.linkDown
+		? peerLinkDownLabel(row, nowSeconds)
+		: (mark.uncertainLabel ?? row.status?.label ?? "Recent");
+	return `${label}${mark.unreadMark !== null ? ", unread" : ""}`;
+}
+
+/**
+ * What one row's status cell draws, as data.
+ *
+ * EXTRACTED SO TWO SURFACES CANNOT DISAGREE (agent profile pictures, 2026-10-30).
+ * The chat sidebar now has two arms for the same row - the status glyph alone
+ * when the agent has no picture, and a status badge on the corner of its
+ * picture when it has one - and a second copy of these chains would let the
+ * same conversation read "waiting" in one arm and "running" in the other. Every
+ * rule the chains state (the unread level, the louder-fact precedence, the
+ * `delegating` rung, the ink ladder) is unchanged and lives here once;
+ * `ChatSessionStatus` below renders it and `ChatSessionStatusBadge` shrinks it.
+ */
+export function sessionStatusMark(row: CanonicalSessionRow) {
 	const code = row.status?.code;
-	/*
-	 * `delegating`'s mark is the RUNNING MARK below rather than a Lucide icon:
-	 * the glyph slot renders one or the other, and the chain underneath is not
-	 * asked for an icon on this code (see `SubagentRunningMark`).
-	 */
 	const linkDown = row.locality === "remote" && row.link_down === true;
-	// Same shape (the link IS lost), quieter ink: amber is the escalation.
 	const reconnecting = linkDown && row.link_reconnecting === true;
 	const uncertainLabel = peerUncertainLabel(row);
 	const delegating = !uncertainLabel && !linkDown && code === "delegating";
-	/*
-	 * THE ROW'S OWN CHILDREN, DRAWN IN THIS CELL RATHER THAN BESIDE THE TITLE
-	 * (first-paint completeness, 2026-10-30).
-	 *
-	 * WHY THEY MOVED HERE AT ALL. Both counts are optional on the wire and absent
-	 * means UNKNOWN, not zero, so a row can paint without them and gain them on the
-	 * next read. The trailing glyphs were `shrink-0` and the title is the row's only
-	 * `flex-1`, so a mark arriving late took its width out of the title and re-cut
-	 * the ellipsis under the reader: measured at a 264px panel, the title's clip went
-	 * 152 -> 130px and its cut column 24 -> 21 characters 1.6 s after the first
-	 * contentful frame. This box is `size-4` and drawn on every row whether or not it
-	 * holds a glyph, so a fact that arrives later changes what is IN the row and
-	 * never how much of the title is cut. Two alternatives were measured and refused:
-	 * a trailing lane reserved on every row cost 36px of every title (two titles that
-	 * had rendered whole went into ellipsis at 264), and a lane reserved only while
-	 * the counts were unknown merely turned the shrink into a regrow.
-	 *
-	 * WHICH GLYPH, AND WHY ONLY ONE CODE QUALIFIES (design round 1, D1 - BLOCKER).
-	 * The runtime already orders the facts a row can carry, and it puts child
-	 * activity near the BOTTOM: `catalog.py` ranks wedged, a parked gate, a busy or
-	 * silent runtime and an unread outcome all above `delegating`, in its own words
-	 * "the rungs above it are all LOUDER facts about the row rather than about its
-	 * children". `resume.SessionRow.delegating` is non-None whenever any child runs or
-	 * queues, so a live count only ever coexists with a LOUDER code - and a first cut
-	 * of this change asked the counts first, which meant it never ADDED a mark, it
-	 * only HID the louder one: an approval row lost its parked-gate bubble, an error
-	 * row lost its alert, an unread completion lost its check (while the bulk control
-	 * still counted it as unread), and the one animated busy row stopped animating.
-	 *
-	 * So the cell asks the CODE, not the counts: `delegating` is the one rung where
-	 * child activity IS the row's top fact, and it is the rung that already drew this
-	 * mark before the change. Every louder code keeps its own glyph, and the counts it
-	 * carries stay in the name channel (below). Under that rule the trio also stops
-	 * being ambiguous between `delegating` and "children running under another code"
-	 * (D3): only `delegating` can draw it.
-	 *
-	 * THE QUEUED STATE HAS ITS OWN SILHOUETTE (D2). It used to be an `Hourglass`,
-	 * which is the glyph of `waiting` in this same cell and was told apart by ink
-	 * alone - two states, one picture. It is a `Timer` now: still "not started yet",
-	 * and a silhouette nothing else in this cell wears.
-	 */
 	const subagents = subagentMarks(row);
-	/*
-	 * THE RAW FACT, through the same `hasWork` the marks themselves use: `subagents_running`
-	 * is read directly rather than through `subagentMarks`, because that predicate blanks
-	 * the running half on `delegating` (this cell IS that fact there) and would report
-	 * "nothing is running" for the one row whose children are.
-	 */
 	const queuedOnly = subagents.queued && !hasWork(row.subagents_running);
-	/*
-	 * WHAT THIS ROW IS DRAWING, asked of the ONE predicate (`unreadMarkKind`) the
-	 * accessible name below, the sidebar row's tooltip and the bulk control's
-	 * count all ask. It reads `status.code`, which is the runtime's own
-	 * `shows_completion_mark` precedence over the wire; `unseen` alone cannot
-	 * answer it, because a session that finished a turn and then started another
-	 * still carries `unseen` — a LEVEL, cleared only by an acknowledgement — while
-	 * drawing a spinner, and that row must claim neither the check nor "unread".
-	 */
 	const unreadMark = unreadMarkKind(row);
 	// Completion is still the outcome after reading it; only its attention
 	// mark rests. Keep failures, work and pending gates independent of receipts.
@@ -486,6 +452,74 @@ export function ChatSessionStatus({
 										code === "delegating"
 										? "text-accent"
 										: "text-ink-dim";
+	return {
+		code,
+		linkDown,
+		reconnecting,
+		uncertainLabel,
+		delegating,
+		queuedOnly,
+		unreadMark,
+		Icon,
+		ink,
+	};
+}
+
+export function ChatSessionStatus({
+	row,
+	nowSeconds = Date.now() / 1000,
+}: { row: CanonicalSessionRow; nowSeconds?: number }) {
+	/*
+	 * THE ROW'S OWN CHILDREN, DRAWN IN THIS CELL RATHER THAN BESIDE THE TITLE
+	 * (first-paint completeness, 2026-10-30).
+	 *
+	 * WHY THEY MOVED HERE AT ALL. Both counts are optional on the wire and absent
+	 * means UNKNOWN, not zero, so a row can paint without them and gain them on the
+	 * next read. The trailing glyphs were `shrink-0` and the title is the row's only
+	 * `flex-1`, so a mark arriving late took its width out of the title and re-cut
+	 * the ellipsis under the reader: measured at a 264px panel, the title's clip went
+	 * 152 -> 130px and its cut column 24 -> 21 characters 1.6 s after the first
+	 * contentful frame. This box is `size-4` and drawn on every row whether or not it
+	 * holds a glyph, so a fact that arrives later changes what is IN the row and
+	 * never how much of the title is cut. Two alternatives were measured and refused:
+	 * a trailing lane reserved on every row cost 36px of every title (two titles that
+	 * had rendered whole went into ellipsis at 264), and a lane reserved only while
+	 * the counts were unknown merely turned the shrink into a regrow.
+	 *
+	 * WHICH GLYPH, AND WHY ONLY ONE CODE QUALIFIES (design round 1, D1 - BLOCKER).
+	 * The runtime already orders the facts a row can carry, and it puts child
+	 * activity near the BOTTOM: `catalog.py` ranks wedged, a parked gate, a busy or
+	 * silent runtime and an unread outcome all above `delegating`, in its own words
+	 * "the rungs above it are all LOUDER facts about the row rather than about its
+	 * children". `resume.SessionRow.delegating` is non-None whenever any child runs or
+	 * queues, so a live count only ever coexists with a LOUDER code - and a first cut
+	 * of this change asked the counts first, which meant it never ADDED a mark, it
+	 * only HID the louder one: an approval row lost its parked-gate bubble, an error
+	 * row lost its alert, an unread completion lost its check (while the bulk control
+	 * still counted it as unread), and the one animated busy row stopped animating.
+	 *
+	 * So the cell asks the CODE, not the counts: `delegating` is the one rung where
+	 * child activity IS the row's top fact, and it is the rung that already drew this
+	 * mark before the change. Every louder code keeps its own glyph, and the counts it
+	 * carries stay in the name channel (below). Under that rule the trio also stops
+	 * being ambiguous between `delegating` and "children running under another code"
+	 * (D3): only `delegating` can draw it.
+	 *
+	 * THE QUEUED STATE HAS ITS OWN SILHOUETTE (D2). It used to be an `Hourglass`,
+	 * which is the glyph of `waiting` in this same cell and was told apart by ink
+	 * alone - two states, one picture. It is a `Timer` now: still "not started yet",
+	 * and a silhouette nothing else in this cell wears.
+	 */
+	/*
+	 * THE CELL'S FACTS COME FROM THE ONE PREDICATE (see `sessionStatusMark`).
+	 * The long reasons for what each rung draws - the child counts' box, the
+	 * `delegating`-only trio, the queued silhouette, the unread level - live
+	 * there, beside the chains themselves, so this component cannot drift from
+	 * the badge that draws the same state at 10px.
+	 */
+	const mark = sessionStatusMark(row);
+	const { Icon, ink, delegating, queuedOnly } = mark;
+
 	return (
 		/*
 		 * NO `title` ON THIS SPAN (review round 1, MINOR 1). It used to carry
@@ -538,9 +572,7 @@ export function ChatSessionStatus({
 				<Icon className={cn("size-4", ink)} aria-hidden="true" />
 			)}
 			<span className="sr-only">
-				{linkDown
-					? peerLinkDownLabel(row, nowSeconds)
-					: (uncertainLabel ?? row.status?.label ?? "Recent")}
+				{statusSpokenText(row, nowSeconds, mark)}
 				{/*
 				 * THE UNREAD SEMANTIC IS AN INK STEP, so on its own it tells a screen
 				 * reader nothing — the arrival is visible only to someone looking at
@@ -571,8 +603,56 @@ export function ChatSessionStatus({
 				 * keeps the name true if that label is ever reworded for a code whose
 				 * ink does not step between read and unseen.
 				 */}
-				{unreadMark !== null ? ", unread" : ""}
+				{sessionStatusMark(row).unreadMark !== null ? ", unread" : ""}
 			</span>
+		</span>
+	);
+}
+
+/**
+ * The same status, shrunk to sit on the corner of a session's picture.
+ *
+ * WHY A CORNER BADGE (operator's ask: "the running/done/waiting/attention
+ * states must stay legible, so never hide status behind the avatar"). A row
+ * with a picture would otherwise spend the leading slot on the picture and lose
+ * the one mark that says what the conversation is doing. The badge keeps BOTH:
+ * the avatar takes the slot the status glyph had, and the glyph rides its
+ * bottom-trailing corner at 10px on a `sunken` plate with the ring the row's
+ * ground provides, so the shape and the ink are the ones `sessionStatusMark`
+ * decided for the full-size cell.
+ *
+ * THE PLATE IS NOT DECORATION. A 10px glyph directly on a photo is illegible on
+ * a busy image; the fill separates it from the pixels behind it, and the ink
+ * still carries the state (`text-accent` for running, `text-success` for a done
+ * turn, `text-warning` for waiting, `text-danger` for a failure) exactly as the
+ * full cell does.
+ *
+ * `data-session-status` survives on the badge: the rigs and the stylesheet read
+ * that hook, and a row that swapped its glyph for a picture must not disappear
+ * from their measurements.
+ */
+export function ChatSessionStatusBadge({
+	row,
+	className,
+}: {
+	row: CanonicalSessionRow;
+	className?: string;
+}) {
+	const { Icon, ink, delegating, queuedOnly } = sessionStatusMark(row);
+	return (
+		<span
+			aria-hidden="true"
+			data-session-status=""
+			className={cn(
+				"pointer-events-none absolute -end-0.5 -bottom-0.5 flex size-2.5 items-center justify-center rounded-full bg-sunken",
+				className,
+			)}
+		>
+			{delegating && !queuedOnly ? (
+				<SubagentRunningMark className="size-2" />
+			) : (
+				<Icon className={cn("size-2", ink)} />
+			)}
 		</span>
 	);
 }

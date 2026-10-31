@@ -83,6 +83,22 @@ const mediaRequestSchema = z.discriminatedUnion("op", [
 	z
 		.object({ op: z.literal("agent.export"), agentId: id })
 		.strict(),
+	/*
+	 * A local agent's profile picture: read, replace, clear (core
+	 * `/v1/agents/{id}/avatar`). The route needs the bearer, which only main
+	 * holds, so the renderer cannot point an `<img>` at it. `sha256` is the
+	 * content address `agent.yml` publishes - exactly 64 lowercase hex - and is
+	 * shape-checked because main builds the query from it.
+	 */
+	z
+		.object({
+			op: z.literal("agent.avatar"),
+			agentId: id,
+			sha256: z.string().regex(/^[0-9a-f]{64}$/),
+		})
+		.strict(),
+	z.object({ op: z.literal("agent.avatar.put"), agentId: id }).strict(),
+	z.object({ op: z.literal("agent.avatar.delete"), agentId: id }).strict(),
 	// A durable transcript row references an image by content digest with the
 	// payload stripped, so rendering a screenshot after a reload means fetching
 	// bytes. That cannot go through the JSON transport (its envelope has nowhere
@@ -285,7 +301,7 @@ export type DesktopMediaResponse =
 
 function endpoint(request: DesktopMediaRequest): {
 	path: string;
-	method: "POST" | "GET";
+	method: "POST" | "GET" | "PUT" | "DELETE";
 } {
 	switch (request.op) {
 		case "speech.create":
@@ -298,6 +314,15 @@ function endpoint(request: DesktopMediaRequest): {
 			return { path: "/v1/agents/import", method: "POST" };
 		case "agent.export":
 			return { path: `/v1/agents/${request.agentId}/export`, method: "GET" };
+		case "agent.avatar":
+			return {
+				path: `/v1/agents/${request.agentId}/avatar?${new URLSearchParams({ v: request.sha256 })}`,
+				method: "GET",
+			};
+		case "agent.avatar.put":
+			return { path: `/v1/agents/${request.agentId}/avatar`, method: "PUT" };
+		case "agent.avatar.delete":
+			return { path: `/v1/agents/${request.agentId}/avatar`, method: "DELETE" };
 		case "sessions.attachment":
 			return {
 				path: `/v1/desktop/sessions/${request.sessionId}/attachments/${request.digest}`,
@@ -454,6 +479,8 @@ export async function requestDesktopMediaOutcome(
 	let contentType: string | undefined;
 	if (
 		request.op === "agent.export" ||
+		request.op === "agent.avatar" ||
+		request.op === "agent.avatar.delete" ||
 		request.op === "sessions.attachment" ||
 		request.op === "subagents.attachment" ||
 		request.op === "sessions.attachment.waveform" ||
@@ -467,7 +494,15 @@ export async function requestDesktopMediaOutcome(
 	) {
 		// A GET carries no body; `fetch` rejects one outright.
 		body = undefined;
-	} else if (request.op === "team_bridge.attachment.upload") {
+	} else if (
+		request.op === "team_bridge.attachment.upload" ||
+		request.op === "agent.avatar.put"
+	) {
+		/*
+		 * Both are a raw image body with no filename or declared type: the receiver
+		 * sniffs the magic bytes (core's avatar gate refuses by content, never by
+		 * extension), so nothing the client claims can be trusted by mistake.
+		 */
 		if (!bytes || bytes.byteLength === 0) {
 			return {
 				response: {
@@ -709,13 +744,16 @@ export async function requestDesktopMediaOutcome(
 			};
 		}
 		if (
-			request.op === "team_bridge.attachment" &&
+			(request.op === "team_bridge.attachment" ||
+				request.op === "agent.avatar") &&
 			!TEAM_BRIDGE_ATTACHMENT_TYPES.has(
 				responseType.split(";")[0].trim().toLowerCase(),
 			)
 		) {
 			// A member-gated picture route answering a non-picture is not one of
 			// ours; refuse it before any byte reaches the renderer (see the set).
+			// The agent avatar shares the set because core stores exactly PNG or
+			// JPEG, so anything else (an SVG above all) is not a picture it wrote.
 			return {
 				response: {
 					status: 502,

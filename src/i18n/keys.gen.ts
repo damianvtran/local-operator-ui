@@ -23,6 +23,7 @@
 
 import enUiAgentMessages from "./catalogues/en/ui.agentMessages.json";
 import enUiAgentMessagesSettings from "./catalogues/en/ui.agentMessages.settings.json";
+import enUiAgentsAvatar from "./catalogues/en/ui.agents.avatar.json";
 import enUiAgentsConfig from "./catalogues/en/ui.agents.config.json";
 import enUiAgentsDetail from "./catalogues/en/ui.agents.detail.json";
 import enUiAgentsDialogs from "./catalogues/en/ui.agents.dialogs.json";
@@ -133,6 +134,7 @@ import enUiTeamBridge from "./catalogues/en/ui.teamBridge.json";
 import enUiUpdatesPanel from "./catalogues/en/ui.updates.panel.json";
 import esUiAgentMessages from "./catalogues/es/ui.agentMessages.json";
 import esUiAgentMessagesSettings from "./catalogues/es/ui.agentMessages.settings.json";
+import esUiAgentsAvatar from "./catalogues/es/ui.agents.avatar.json";
 import esUiAgentsConfig from "./catalogues/es/ui.agents.config.json";
 import esUiAgentsDetail from "./catalogues/es/ui.agents.detail.json";
 import esUiAgentsDialogs from "./catalogues/es/ui.agents.dialogs.json";
@@ -243,6 +245,7 @@ import esUiTeamBridge from "./catalogues/es/ui.teamBridge.json";
 import esUiUpdatesPanel from "./catalogues/es/ui.updates.panel.json";
 import frUiAgentMessages from "./catalogues/fr/ui.agentMessages.json";
 import frUiAgentMessagesSettings from "./catalogues/fr/ui.agentMessages.settings.json";
+import frUiAgentsAvatar from "./catalogues/fr/ui.agents.avatar.json";
 import frUiAgentsConfig from "./catalogues/fr/ui.agents.config.json";
 import frUiAgentsDetail from "./catalogues/fr/ui.agents.detail.json";
 import frUiAgentsDialogs from "./catalogues/fr/ui.agents.dialogs.json";
@@ -353,6 +356,7 @@ import frUiTeamBridge from "./catalogues/fr/ui.teamBridge.json";
 import frUiUpdatesPanel from "./catalogues/fr/ui.updates.panel.json";
 import hiUiAgentMessages from "./catalogues/hi/ui.agentMessages.json";
 import hiUiAgentMessagesSettings from "./catalogues/hi/ui.agentMessages.settings.json";
+import hiUiAgentsAvatar from "./catalogues/hi/ui.agents.avatar.json";
 import hiUiAgentsConfig from "./catalogues/hi/ui.agents.config.json";
 import hiUiAgentsDetail from "./catalogues/hi/ui.agents.detail.json";
 import hiUiAgentsDialogs from "./catalogues/hi/ui.agents.dialogs.json";
@@ -463,6 +467,7 @@ import hiUiTeamBridge from "./catalogues/hi/ui.teamBridge.json";
 import hiUiUpdatesPanel from "./catalogues/hi/ui.updates.panel.json";
 import ruUiAgentMessages from "./catalogues/ru/ui.agentMessages.json";
 import ruUiAgentMessagesSettings from "./catalogues/ru/ui.agentMessages.settings.json";
+import ruUiAgentsAvatar from "./catalogues/ru/ui.agents.avatar.json";
 import ruUiAgentsConfig from "./catalogues/ru/ui.agents.config.json";
 import ruUiAgentsDetail from "./catalogues/ru/ui.agents.detail.json";
 import ruUiAgentsDialogs from "./catalogues/ru/ui.agents.dialogs.json";
@@ -573,6 +578,7 @@ import ruUiTeamBridge from "./catalogues/ru/ui.teamBridge.json";
 import ruUiUpdatesPanel from "./catalogues/ru/ui.updates.panel.json";
 import urUiAgentMessages from "./catalogues/ur/ui.agentMessages.json";
 import urUiAgentMessagesSettings from "./catalogues/ur/ui.agentMessages.settings.json";
+import urUiAgentsAvatar from "./catalogues/ur/ui.agents.avatar.json";
 import urUiAgentsConfig from "./catalogues/ur/ui.agents.config.json";
 import urUiAgentsDetail from "./catalogues/ur/ui.agents.detail.json";
 import urUiAgentsDialogs from "./catalogues/ur/ui.agents.dialogs.json";
@@ -683,6 +689,7 @@ import urUiTeamBridge from "./catalogues/ur/ui.teamBridge.json";
 import urUiUpdatesPanel from "./catalogues/ur/ui.updates.panel.json";
 import viUiAgentMessages from "./catalogues/vi/ui.agentMessages.json";
 import viUiAgentMessagesSettings from "./catalogues/vi/ui.agentMessages.settings.json";
+import viUiAgentsAvatar from "./catalogues/vi/ui.agents.avatar.json";
 import viUiAgentsConfig from "./catalogues/vi/ui.agents.config.json";
 import viUiAgentsDetail from "./catalogues/vi/ui.agents.detail.json";
 import viUiAgentsDialogs from "./catalogues/vi/ui.agents.dialogs.json";
@@ -793,6 +800,7 @@ import viUiTeamBridge from "./catalogues/vi/ui.teamBridge.json";
 import viUiUpdatesPanel from "./catalogues/vi/ui.updates.panel.json";
 import zhCNUiAgentMessages from "./catalogues/zh-CN/ui.agentMessages.json";
 import zhCNUiAgentMessagesSettings from "./catalogues/zh-CN/ui.agentMessages.settings.json";
+import zhCNUiAgentsAvatar from "./catalogues/zh-CN/ui.agents.avatar.json";
 import zhCNUiAgentsConfig from "./catalogues/zh-CN/ui.agents.config.json";
 import zhCNUiAgentsDetail from "./catalogues/zh-CN/ui.agents.detail.json";
 import zhCNUiAgentsDialogs from "./catalogues/zh-CN/ui.agents.dialogs.json";
@@ -906,6 +914,7 @@ import zhCNUiUpdatesPanel from "./catalogues/zh-CN/ui.updates.panel.json";
 export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiAgentMessages,
 	...enUiAgentMessagesSettings,
+	...enUiAgentsAvatar,
 	...enUiAgentsConfig,
 	...enUiAgentsDetail,
 	...enUiAgentsDialogs,
@@ -1024,6 +1033,7 @@ export const bundledCatalogues: Readonly<
 	es: {
 		...esUiAgentMessages,
 		...esUiAgentMessagesSettings,
+		...esUiAgentsAvatar,
 		...esUiAgentsConfig,
 		...esUiAgentsDetail,
 		...esUiAgentsDialogs,
@@ -1136,6 +1146,7 @@ export const bundledCatalogues: Readonly<
 	fr: {
 		...frUiAgentMessages,
 		...frUiAgentMessagesSettings,
+		...frUiAgentsAvatar,
 		...frUiAgentsConfig,
 		...frUiAgentsDetail,
 		...frUiAgentsDialogs,
@@ -1248,6 +1259,7 @@ export const bundledCatalogues: Readonly<
 	hi: {
 		...hiUiAgentMessages,
 		...hiUiAgentMessagesSettings,
+		...hiUiAgentsAvatar,
 		...hiUiAgentsConfig,
 		...hiUiAgentsDetail,
 		...hiUiAgentsDialogs,
@@ -1360,6 +1372,7 @@ export const bundledCatalogues: Readonly<
 	ru: {
 		...ruUiAgentMessages,
 		...ruUiAgentMessagesSettings,
+		...ruUiAgentsAvatar,
 		...ruUiAgentsConfig,
 		...ruUiAgentsDetail,
 		...ruUiAgentsDialogs,
@@ -1472,6 +1485,7 @@ export const bundledCatalogues: Readonly<
 	ur: {
 		...urUiAgentMessages,
 		...urUiAgentMessagesSettings,
+		...urUiAgentsAvatar,
 		...urUiAgentsConfig,
 		...urUiAgentsDetail,
 		...urUiAgentsDialogs,
@@ -1584,6 +1598,7 @@ export const bundledCatalogues: Readonly<
 	vi: {
 		...viUiAgentMessages,
 		...viUiAgentMessagesSettings,
+		...viUiAgentsAvatar,
 		...viUiAgentsConfig,
 		...viUiAgentsDetail,
 		...viUiAgentsDialogs,
@@ -1696,6 +1711,7 @@ export const bundledCatalogues: Readonly<
 	"zh-CN": {
 		...zhCNUiAgentMessages,
 		...zhCNUiAgentMessagesSettings,
+		...zhCNUiAgentsAvatar,
 		...zhCNUiAgentsConfig,
 		...zhCNUiAgentsDetail,
 		...zhCNUiAgentsDialogs,
@@ -1933,6 +1949,31 @@ export type MessageParams = {
 	"ui.agentMessages.settings.state.read_only": undefined;
 	"ui.agentMessages.settings.state.turned_off_org": undefined;
 	"ui.agentMessages.settings.state.turned_off_title": undefined;
+	"ui.agents.avatar.edit_link": { name: string };
+	"ui.agents.avatar.editor.crop_area": undefined;
+	"ui.agents.avatar.editor.error_decode": undefined;
+	"ui.agents.avatar.editor.error_encode": undefined;
+	"ui.agents.avatar.editor.error_remove": undefined;
+	"ui.agents.avatar.editor.error_save": undefined;
+	"ui.agents.avatar.editor.error_size": { size: string };
+	"ui.agents.avatar.editor.error_type": undefined;
+	"ui.agents.avatar.editor.hint": undefined;
+	"ui.agents.avatar.editor.instructions": { width: string; height: string };
+	"ui.agents.avatar.editor.preview_header": undefined;
+	"ui.agents.avatar.editor.preview_header_caption": undefined;
+	"ui.agents.avatar.editor.preview_roster": undefined;
+	"ui.agents.avatar.editor.preview_roster_caption": undefined;
+	"ui.agents.avatar.editor.preview_sidebar": undefined;
+	"ui.agents.avatar.editor.preview_sidebar_caption": undefined;
+	"ui.agents.avatar.editor.previews": undefined;
+	"ui.agents.avatar.editor.recenter": undefined;
+	"ui.agents.avatar.editor.replace": undefined;
+	"ui.agents.avatar.editor.save": undefined;
+	"ui.agents.avatar.editor.saving": undefined;
+	"ui.agents.avatar.editor.zoom": undefined;
+	"ui.agents.avatar.editor.zoom_in": undefined;
+	"ui.agents.avatar.editor.zoom_out": undefined;
+	"ui.agents.avatar.editor.zoom_value": { value: string };
 	"ui.agents.config.about": { kind: string; name: string };
 	"ui.agents.config.action.clear": undefined;
 	"ui.agents.config.action.dismiss": undefined;
