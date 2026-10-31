@@ -293,7 +293,7 @@
 	"ui.teamBridge.mentions.section.org_agent": "दूसरे एजेंट",
 	"ui.teamBridge.mentions.tag.not_member": "इस बातचीत में नहीं",
 	"ui.teamBridge.mentions.tag.bridge_off": "Team Bridge बंद है",
-	"ui.teamBridge.mentions.notice.not_member": "{name} इस बातचीत में शामिल नहीं है, इसलिए उन्हें सूचना नहीं मिलेगी।",
+	"ui.teamBridge.mentions.notice.not_member": "{name} इस बातचीत में शामिल नहीं हैं, इसलिए उन्हें सूचना नहीं मिलेगी।",
 	"ui.teamBridge.mentions.notice.invite_failed": "{name} को आमंत्रित नहीं किया जा सका। आप फिर भी सूचना दिए बिना उल्लेख कर सकते हैं।",
 	"ui.teamBridge.mentions.notice.invite": "आमंत्रित करें",
 	"ui.teamBridge.mentions.notice.silent": "सूचना दिए बिना उल्लेख करें",

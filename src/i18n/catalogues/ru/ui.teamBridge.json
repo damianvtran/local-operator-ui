@@ -297,6 +297,6 @@
 	"ui.teamBridge.mentions.notice.invite_failed": "Не удалось пригласить: {name}. Можно упомянуть без уведомления.",
 	"ui.teamBridge.mentions.notice.invite": "Пригласить",
 	"ui.teamBridge.mentions.notice.silent": "Упомянуть без уведомления",
-	"ui.teamBridge.mentions.notice.pending": "{name} приглашён(а), но ещё не присоединился(ась), поэтому уведомление не придёт.",
-	"ui.teamBridge.mentions.notice.invited": "Приглашение для {name} отправлено. Уведомления начнут приходить после присоединения."
+	"ui.teamBridge.mentions.notice.pending": "Приглашение для {name} ещё не принято, поэтому уведомление не придёт.",
+	"ui.teamBridge.mentions.notice.invited": "Приглашение для {name} отправлено. Пока его не примут, уведомление не придёт."
 }
