@@ -1,4 +1,5 @@
 import { PANEL_RAIL_WIDTH_PX } from "@features/chat/chat-sidebar-layout";
+import { PanelEdge } from "@shared/components/common/panel-edge";
 import {
 	EMPTY_RIGHT_SLOT_ROUTE,
 	useUiPreferencesStore,
@@ -58,7 +59,14 @@ export const PanelRailFrame: FC<Partial<PanelRailProps>> = ({
 		<div
 			data-panel-rail-host=""
 			data-glass-region="sidebar"
-			className="h-full shrink-0 bg-surface"
+			/*
+			 * THE SEAM IS ON THE FRAME'S HOST, exactly as it is on the shell's (agent
+			 * review round 1, B1): the host is the full-height box that paints the
+			 * ground, so `inset-y-0` resolves to y0. `relative` is load-bearing -
+			 * without it the seam would resolve against the page and photograph a
+			 * different geometry from the app's.
+			 */
+			className="relative h-full shrink-0 bg-surface"
 			style={{ width: PANEL_RAIL_WIDTH_PX }}
 		>
 			<PanelRail
@@ -79,6 +87,7 @@ export const PanelRailFrame: FC<Partial<PanelRailProps>> = ({
 				codeMentioned={codeMentioned}
 				codeAttention={codeAttention}
 			/>
+			<PanelEdge side="start" />
 		</div>
 	);
 };

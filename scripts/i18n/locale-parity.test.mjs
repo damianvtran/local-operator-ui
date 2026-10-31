@@ -1353,6 +1353,21 @@ const IDENTICAL_OK = new Map([
 		"language-neutral format: only a {rate} placeholder and 'x', no words",
 	],
 	[
+		"ui.chat.canonical.tool_row.bridge.summary.count",
+		// `({count})`: a number in parentheses, after `Listed conversations`. No
+		// words to translate - the noun lives in the verb phrase - so identical in
+		// every locale is correct, the `playback_rate_option` rule.
+		"language-neutral format: only a {count} placeholder and parentheses, no words",
+	],
+	[
+		"ui.chat.canonical.tool_row.bridge.detail.headline.target",
+		// `{verb} {target}`: the expansion's labelled first line (`Posted in
+		// #release`). Both slots are already-translated phrases; the message
+		// exists so a locale can reorder them (ur does). Verb-then-object is the
+		// natural order in most shipped locales, where identical is correct.
+		"format string: two placeholders and a space, no words",
+	],
+	[
 		"fr:ui.chat.attachments.volume",
 		"French cognate: the French noun for this control is « Volume », same spelling; scoped to fr so other locales still translate it",
 	],

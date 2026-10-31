@@ -237,6 +237,7 @@
 	"ui.teamBridge.reactions.toneDefault": "Default skin tone",
 	"ui.teamBridge.reactions.empty": "No emoji found",
 	"ui.teamBridge.reactions.failed": "Reaction could not be saved. Try again.",
+	"ui.teamBridge.reactions.others": "{others, plural, one {# other} other {# others}}",
 	"ui.teamBridge.reactions.category0": "Smileys and emotion",
 	"ui.teamBridge.reactions.category1": "People and body",
 	"ui.teamBridge.reactions.category2": "Animals and nature",

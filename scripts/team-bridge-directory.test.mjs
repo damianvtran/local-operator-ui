@@ -1257,18 +1257,45 @@ test("people loading is announced without displacing the conversation list", () 
 	assert.match(html, /data-conversation-id="bcv_dm_bea"/);
 });
 
-test("the merged scope explains why it has no People list and queries none", () => {
+test("the merged scope lists each organization's roster under its own header", () => {
 	const html = renderToStaticMarkup(
 		createElement(
 			TeamBridgePageView,
 			viewProps({
 				scope: "all",
-				people: [person()],
+				/*
+				 * The single-organization roster prop is NOT the union's source: only
+				 * the per-organization reads are, so a stale `people` cannot colour it.
+				 */
+				people: [person({ display_label: "Stale Org" })],
+				organizations: [
+					{ tenantId: "tnt_1", name: "Minerva", role: "owner", unread: 0 },
+					{
+						tenantId: "tnt_2",
+						name: "Northwind Log",
+						role: "member",
+						unread: 0,
+					},
+				],
+				directories: {
+					tnt_1: [person()],
+					tnt_2: [person({ account_id: "acct_inez", display_label: "Inez" })],
+				},
+				directoryStates: { tnt_1: "ready", tnt_2: "ready" },
 			}),
 		),
 	);
-	assert.match(html, /Choose an organization to see its people/);
-	assert.doesNotMatch(html, /Message Bea/);
+	/*
+	 * THE OPERATOR'S REPORT, INVERTED. People used to say "Choose an organization
+	 * to see its people." and every union account read that as the end of the
+	 * road. Each organization's roster is now listed under a header naming it.
+	 */
+	assert.doesNotMatch(html, /Choose an organization to see its people/);
+	assert.match(html, /<h3[^>]*>Minerva</);
+	assert.match(html, /<h3[^>]*>Northwind Log</);
+	assert.match(html, /Message Bea/);
+	assert.match(html, /Message Inez/);
+	assert.doesNotMatch(html, /Stale Org/);
 });
 
 // ---------------------------------------------------------------------------
@@ -1350,8 +1377,16 @@ test("the merged view names senders from the conversation's own organization dir
 		),
 	);
 	assert.deepEqual(senderNames(html), ["Damian Tran", "Bea", "Unknown person"]);
-	// The rail's DM row is titled from the same directory, not "Member".
-	assert.match(html, /data-conversation-id="bcv_dm_bea"[\s\S]*?Bea/);
+	/*
+	 * ONE DM IS ONE ROW. Bea's People row IS her DM, so the union no longer lists
+	 * a second "@ Bea" conversation row beside it: the row that carries her name
+	 * is the person row, and it opens that DM.
+	 */
+	assert.doesNotMatch(html, /data-conversation-id="bcv_dm_bea"/);
+	assert.match(html, /data-team-bridge-person="acct_bea"/);
+	// AND IT IS NAMED FROM THAT ORGANIZATION'S DIRECTORY (review round 1, m2):
+	// the row's own accessible name carries the directory label, not "Member".
+	assert.match(html, /aria-label="Message Bea"/);
 	assert.doesNotMatch(visible(html), /\bMember\b/);
 });
 

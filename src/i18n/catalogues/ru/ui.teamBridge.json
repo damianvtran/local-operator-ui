@@ -237,6 +237,7 @@
 	"ui.teamBridge.reactions.toneDefault": "По умолчанию",
 	"ui.teamBridge.reactions.empty": "Эмодзи не найдены",
 	"ui.teamBridge.reactions.failed": "Не удалось сохранить реакцию. Повторите попытку.",
+	"ui.teamBridge.reactions.others": "{others, plural, one {ещё # человек} few {ещё # человека} many {ещё # человек} other {ещё # человека}}",
 	"ui.teamBridge.reactions.category0": "Смайлики и эмоции",
 	"ui.teamBridge.reactions.category1": "Люди и части тела",
 	"ui.teamBridge.reactions.category2": "Животные и природа",

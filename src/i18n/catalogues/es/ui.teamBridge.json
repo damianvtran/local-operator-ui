@@ -237,6 +237,7 @@
 	"ui.teamBridge.reactions.toneDefault": "Tono predeterminado",
 	"ui.teamBridge.reactions.empty": "No se encontraron emojis",
 	"ui.teamBridge.reactions.failed": "No se pudo guardar la reacción. Inténtalo de nuevo.",
+	"ui.teamBridge.reactions.others": "{others, plural, one {# más} other {# más}}",
 	"ui.teamBridge.reactions.category0": "Caras y emociones",
 	"ui.teamBridge.reactions.category1": "Personas y cuerpo",
 	"ui.teamBridge.reactions.category2": "Animales y naturaleza",

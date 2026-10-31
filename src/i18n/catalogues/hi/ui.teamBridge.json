@@ -237,6 +237,7 @@
 	"ui.teamBridge.reactions.toneDefault": "डिफ़ॉल्ट रंग",
 	"ui.teamBridge.reactions.empty": "कोई इमोजी नहीं मिला",
 	"ui.teamBridge.reactions.failed": "प्रतिक्रिया सहेजी नहीं गई। फिर कोशिश करें।",
+	"ui.teamBridge.reactions.others": "{others, plural, one {# अन्य व्यक्ति} other {# अन्य लोग}}",
 	"ui.teamBridge.reactions.category0": "स्माइली और भावनाएँ",
 	"ui.teamBridge.reactions.category1": "लोग और शरीर",
 	"ui.teamBridge.reactions.category2": "पशु और प्रकृति",

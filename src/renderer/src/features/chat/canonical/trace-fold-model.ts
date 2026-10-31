@@ -52,6 +52,8 @@
  * (`4 files · 3 agents`), which is the same fallback an unknown name takes.
  */
 
+import { t } from "@shared/i18n";
+import { BRIDGE_POST_OPS } from "../components/trace/bridge-row-model";
 import {
 	type InternalReceiptFamily,
 	receiptFamilyOf,
@@ -652,6 +654,26 @@ export const foldCountSegments = (
 					plural: "job cancellations",
 				});
 			else bump("kind:jobs", KIND_NOUNS.jobs);
+		} else if (n === "bridge") {
+			/*
+			 * Team Bridge splits like `jobs cancel`: a call that WROTE something a
+			 * person reads (a post, a DM, a pair-lane send or reply) is a `team
+			 * message`, and every other op (reads, lists, reactions, claims) is a
+			 * `team action`. One noun for both would count `3 team messages` over
+			 * a run that only read history - the false-claim species this split
+			 * exists to stop. The KEYS are the cross-surface contract the parity
+			 * fixture pins; the words are this app's own, through `t()`.
+			 */
+			if (BRIDGE_POST_OPS.has((action.op ?? "").toLowerCase()))
+				bump("kind:bridge:post", {
+					noun: t("ui.chat.canonical.fold.bridge_post.one"),
+					plural: t("ui.chat.canonical.fold.bridge_post.other"),
+				});
+			else
+				bump("kind:bridge", {
+					noun: t("ui.chat.canonical.fold.bridge.one"),
+					plural: t("ui.chat.canonical.fold.bridge.other"),
+				});
 		} else {
 			const noun = KIND_NOUNS[n];
 			if (noun) bump(`kind:${n}`, noun);

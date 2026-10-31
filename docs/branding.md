@@ -434,10 +434,12 @@ and must clear 3:1. If no, delete it rather than reaching for `hairline`.
 
 **The panel rail is chrome (#872, #896).** The 44px column at the window's right
 edge holds the right-slot doors - the four panel triggers since #872, and the asks
-drawer's door since #896 - and it stands on the sidebar's rung: `surface`,
-with **no drawn rule** at its leading edge - the boundary is the tone step alone,
-following the left sidebar's own edge (there is no line between it and the chat
-pane either). That is a choice to match the sidebar, not a sufficiency claim: the
+drawer's door since #896 - and it stands on the sidebar's rung: `surface`.
+Its leading edge carries the same 1px `hairline` seam as the sidebar's inner
+edge (`panel-edge.tsx`, § 2's panel section) and the tone step under it. The
+seam was added on 2026-10-30 because the step alone did not read in light
+themes; the paragraph here used to argue the absence, and what is still true of
+that argument is its measurement, which is the reason the seam exists. The
 ladder asserts these pairs at the 2.0 field floor, and
 `REGION_SEPARATION_FLOOR` (4.0) in `scripts/contrast-contract.mjs` is the
 stronger bar it sets for two full-height planes with no line between them.
@@ -449,10 +451,10 @@ dark, 2.50 light). Where a pane draws its own `surface` plane flush to the rail,
 the two chrome planes meet with no step by design: the canvas Files list
 scroller, the browser approvals dock, the canvas markdown viewer's root (via the
 `display: contents` tab panel) and the html/pdf preview iframe grounds are all
-`bg-surface`. `scripts/pane-slot-ground.test.mjs` pins the
-absence: the rail's root carries its ground and no border, divide or shadow, so
-the rule this paragraph used to describe cannot come back as a second way of
-drawing the edge. The lit item is the sidebar's selected-row pair, `rowSelected`
+`bg-surface`. `scripts/pane-slot-ground.test.mjs` pins the rail's root to its
+ground with no border, divide or shadow utility on it - the seam is a child
+element, so a rule cannot come back as a second way of drawing the edge. The lit
+item is the sidebar's selected-row pair, `rowSelected`
 ground and `accent` ink, plus a 2px `accent` bar flush with the rail's leading
 edge; the bar is there because an icon-only item has no weight to change (the
 sidebar's non-colour channel is `font-medium`), so it is the one mark that
@@ -476,17 +478,49 @@ an empty box, while the transcript sat at `canvas` with nothing pointing at it.
 The accent is spent on what the user acts on (the send control's fill) and on
 focus, not on the frame of an empty field.
 
-### Panels: borderless, edge-to-edge, fading at the top
+### Panels: one seam, edge-to-edge, fading at the top
 
-A panel is a region that owns a ground beside the canvas — the app sidebar, a
-route's leading rail, a roster, a detail/dock pane. It is not a card, an input,
-a menu or a popover.
+A full-height panel is a region that owns a ground at the window's edge — the app
+sidebar, the rail, the right pane slot. It is not a card, an input, a menu or a
+popover.
 
-- **No panel carries a border.** Separation is the ground ladder
-  (`canvas` → `surface` → `elevated`, or `sunken` for a well) plus spacing. A
-  1px rule over a tone step is a second, redundant mark. `border-control`
-  remains the boundary of an input, select, checkbox or outlined button, never
-  a panel edge.
+- **A full-height panel draws one seam, and still no border.** The tone step is
+  the panel's ground against its neighbour's; the seam is one 1px `hairline` at
+  75% along the edge the two share, painted by `panel-edge.tsx`. The tone step
+  alone is not enough between two full-height planes: `canvas` to `surface`
+  measures ΔE00 2.32 in `localOperatorLight` and 2.77 in `localOperatorDark`, a
+  ladder step sized for a small field. The seam is the app's decorative line at
+  three quarters strength — quieter than a section rule, and a real edge where
+  there was none. It is a positioned 1px element, not a `border`, because a
+  border takes a pixel from the panel and a panel is a scroll container; it is
+  full height (mounted on the full-height box that paints the ground, never on a
+  `panel-top-pad` content box, whose child would start at the pad) and paints
+  above sticky rows, so it cannot repeat the mid-height seam that made the old
+  border look broken. `border-control` is still the edge of a control, never of
+  a panel. Two marks are allowed to paint over it, because they are state rather
+  than decoration: the resize handle's 2px hover/drag line and the lit rail
+  item's 2px `accent` bar. The seam is asserted in § 3 and measured at ΔE00 2.92
+  or better from its own ground (`elevated`) and 2.29 or better from the plane it
+  faces (`gruvbox`'s rail against an open pane), across all fifty-nine palettes.
+  That assertion is an opaque-theme guarantee: under window glass the ground is
+  a translucent `surface` composited over the desktop, which the opaque-hex
+  contract does not measure.
+  - **Where it is drawn:** the shell's sidebar column along its inner edge, the
+    shell's rail host along the rail's inner edge, and each right-slot pane
+    along the edge it shares with the conversation. A panel that sits inside a
+    route rather than against the window edge (a card, an inspector inside a
+    page) has no seam: the tone step is the whole boundary there, because it is
+    one object on a page, not a column of the window.
+  - **The sidebar's seam is the shell column's edge, on every route.** It marks
+    where the app sidebar ends, so on a route whose own leading column is also
+    `surface` — the Settings nav, the Agents roster — it is the only boundary
+    between the two chrome planes, and those two keep the flat join *under* the
+    seam. The route column's own edge to its content keeps the tone step alone;
+    a seam inside a route's own layout is out of this change's scope.
+  - **The seam is placed logically.** `start-0`/`end-0` keep it on the side
+    facing the content in RTL; the class is pinned in
+    `scripts/pane-slot-ground.test.mjs`, but no rendered RTL frame was taken in
+    this change.
 - **Full-height panels extend through the titlebar strip; no top inset on the
   panel; the scroll region clips and fades under it.** A panel that owns its
   ground (the app sidebar, a route's leading rail, the Library filter rail, the
@@ -668,6 +702,7 @@ the weakest pair anywhere in the system is sage at 8.4.
 | The keycap's ground (`sunken`) against every ground it can be painted on | ΔE00 2.0 (the two row roles are withdrawn from this pair: a backdrop-relative fill IS a rung of the ladder, and the cap carries no fill of its own any more) |
 | `rowHover` and `rowSelected` against `surface` | ΔE00 2.0 each (the 4.0 band is withdrawn: with the hue and the cast held at the panel's own, it is reachable on 40 of 59 — see § 2) |
 | `rowSelected`'s `L*` step off `surface`: the direction, at least `1.5 L*`, and at most `5 L*` | 1.5–5.0 `L*` |
+| The panel seam: `hairline` at 75% composited on its panel, against that ground and against the plane it faces | ΔE00 2.0 both sides |
 | `rowHover`'s `L*` step off `surface`: the direction, and at least `1.5 L*` | 1.5 `L*` |
 | `rowHover`'s share of `rowSelected`'s step | at least 50% (the shipped hover spent 30% of its headroom) |
 | `rowHover`'s cast against the panel's: floor and ceiling | at least `max(2.5, 0.5 × C*(surface))`, at most `max(C*(surface), 2.5)` |

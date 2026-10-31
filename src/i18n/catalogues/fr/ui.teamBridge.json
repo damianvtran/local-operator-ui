@@ -237,6 +237,7 @@
 	"ui.teamBridge.reactions.toneDefault": "Teint par défaut",
 	"ui.teamBridge.reactions.empty": "Aucun émoji trouvé",
 	"ui.teamBridge.reactions.failed": "La réaction n’a pas été enregistrée. Réessayez.",
+	"ui.teamBridge.reactions.others": "{others, plural, one {# autre} other {# autres}}",
 	"ui.teamBridge.reactions.category0": "Smileys et émotions",
 	"ui.teamBridge.reactions.category1": "Personnes et corps",
 	"ui.teamBridge.reactions.category2": "Animaux et nature",

@@ -158,6 +158,10 @@ const SUITE_SHAPES = {
 		"Du Du Rd",
 		"U Rd Wr Sr Wb Mc Ag Td Py Ak A",
 		"U Fa Fa Fa Du Du Du A",
+		// Team Bridge's split noun: posts and actions join one run and count apart.
+		"Bp Bp Ba",
+		"Bp Ba Rd T",
+		"U Bp Ba Bp Ba A",
 	],
 };
 

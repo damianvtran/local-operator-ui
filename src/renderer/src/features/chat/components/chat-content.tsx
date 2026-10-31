@@ -60,11 +60,11 @@ import {
 	type AskDrawerCloseOptions,
 	BROWSER_PANEL_MIN_PX,
 	CONSOLE_PANEL_MIN_PX,
-	DEFAULT_RIGHT_SLOT_WIDTH,
 	EMPTY_RIGHT_SLOT_ROUTE,
 	RUN_PANEL_MIN_PX,
 	resolveRightSlotOccupied,
 	resolveRightSlotWidth,
+	rightSlotPaneWidth,
 	useUiPreferencesStore,
 } from "@shared/store/ui-preferences-store";
 import { isDevelopmentMode } from "@shared/utils/env-utils";
@@ -128,6 +128,7 @@ import {
 	CANVAS_PANE_MIN_PX,
 	CHAT_PANE_MIN_PX,
 	CHAT_SEAM_INSET_PX,
+	RIGHT_SLOT_MAX_PX,
 	canvasDockWidth,
 	canvasPaneMode,
 	rightSlotDividerContract,
@@ -826,8 +827,8 @@ const defaultCanvasState = {
 
 /**
  * The run pane's own contract floor, in pixels: the design's range
- * (`docs/run-sidebar.md` § 8) is 320..640 and starts at 320 (it used to carry a
- * 420 default between them; the slot's one default is 640 now).
+ * (`docs/run-sidebar.md` § 8) starts at 320 (it used to carry a 420 default
+ * between the floor and the ceiling; the slot's one default is 640 now).
  *
  * ONE home for that number, because it is the floor of THREE different things:
  * the width the divider lets the user DRAG the pane's preference down to, the
@@ -839,31 +840,12 @@ const defaultCanvasState = {
  * moment either moves, and the second thing above is the whole of the fix below:
  * a preference pinned as a floor is not a floor, it is a promise the row cannot
  * keep.
- */
-
-/**
- * The other end of that contract range: 640 is the widest the pane may ask for
- * (`docs/run-sidebar.md` § 8). Named here beside the floor because the divider's
- * range is now built from both, and because the ceiling is what a drag is
- * refused at once the row cannot host it.
  *
- * EXPORTED for the shell story that mounts this arm's own pair
- * (`shell.stories.tsx`'s `ChatMeasureEdgesRunPanel`): a frame of the divider has
- * to carry the range the app gives it, and a literal restated in the story is
- * the drift this constant exists to prevent - a bound moved here would leave the
- * arm's claim true only by accident.
+ * THE OTHER END OF THE RANGE IS NOT THIS PANE'S ANY MORE: every right-slot pane
+ * shares one ceiling (`RIGHT_SLOT_MAX_PX`, `chat-sidebar-layout.ts`), read at the
+ * separators below and in the resolver, so a drag stored in this pane is a width
+ * the browser, the console and the canvas can draw too.
  */
-export const RUN_PANEL_MAX_PX = 640;
-
-/**
- * The drag ceilings the browser and console separators share: 1200, the range the
- * two draw-only panes have had since their dividers existed. Named beside the run
- * pane's 640 because the separator contract builds each pane's announced maximum
- * from its own ceiling and the row's capacity, so the number is read here rather
- * than restated at the call site.
- */
-const BROWSER_PANEL_MAX_PX = 1200;
-const CONSOLE_PANEL_MAX_PX = 1200;
 
 /**
  * The chat column's own floor, in pixels, as a fallback for the measured one.
@@ -1285,10 +1267,12 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 
 		/*
 		 * THE RIGHT SLOT'S ONE WIDTH (#677), declared here because this is the
-		 * first of the four panes to read it and every later cluster below reads
+		 * first of the six panes to read it and every later cluster below reads
 		 * the same value: one column, one width, whichever pane is on screen.
 		 * `rightSlotWidth` in the store carries the rule (0 = unset, and unset opens
-		 * every pane at the one `DEFAULT_RIGHT_SLOT_WIDTH`).
+		 * every pane at the one `DEFAULT_RIGHT_SLOT_WIDTH`), and `rightSlotPaneWidth`
+		 * is what holds that width to each pane's floor and the slot's one ceiling
+		 * wherever this component draws it or hands it to a separator.
 		 */
 		const rightSlotWidth = useUiPreferencesStore((s) => s.rightSlotWidth);
 		const setRightSlotWidth = useUiPreferencesStore((s) => s.setRightSlotWidth);
@@ -1493,15 +1477,17 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 
 		// The slot's ONE default while nothing has been dragged
 		// (`DEFAULT_RIGHT_SLOT_WIDTH`, #872 follow-up): the run panel opens at the
-		// same width as the browser and the console, so switching panes does not
-		// re-size the slot. Once any pane has been dragged, the shared width is
-		// what every pane renders — that is #677 — held up to THIS pane's floor so
-		// a width dragged from a smaller pane can never draw this one under its own
-		// contract range (review round 1, D2). `resolveRightSlotWidth` reads the
-		// same two inputs for the canvas and for the lane above the row.
-		const effectiveRunPanelWidth = Math.max(
+		// same width as every other pane, so switching panes does not re-size the
+		// slot. Once any pane has been dragged, the shared width is what every
+		// pane renders — that is #677 — and `rightSlotPaneWidth` holds it to this
+		// pane's floor (a width dragged from a smaller pane can never draw this one
+		// under its own contract range, review round 1, D2) and to the slot's one
+		// ceiling, so the drawn width and the separator's maximum are the same
+		// band. `resolveRightSlotWidth` reads the same family for the canvas and
+		// for the lane above the row.
+		const effectiveRunPanelWidth = rightSlotPaneWidth(
 			RUN_PANEL_MIN_PX,
-			rightSlotWidth === 0 ? DEFAULT_RIGHT_SLOT_WIDTH : rightSlotWidth,
+			rightSlotWidth,
 		);
 
 		/*
@@ -1517,13 +1503,13 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		const setBrowserPaneOpen = useUiPreferencesStore(
 			(s) => s.setBrowserPaneOpen,
 		);
-		// Same shape as the run panel's above, and the same one default — held up
-		// to this pane's 480 floor: a shared width dragged down from the run pane's
+		// Same shape as the run panel's above, and the same one default — held to
+		// this pane's 480 floor: a shared width dragged down from the run pane's
 		// 320 must never draw a page as a mobile column again (review round 1, D2),
 		// and the separator below announces the same 480.
-		const effectiveBrowserPanelWidth = Math.max(
+		const effectiveBrowserPanelWidth = rightSlotPaneWidth(
 			BROWSER_PANEL_MIN_PX,
-			rightSlotWidth === 0 ? DEFAULT_RIGHT_SLOT_WIDTH : rightSlotWidth,
+			rightSlotWidth,
 		);
 
 		/*
@@ -1565,7 +1551,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		 * `sessionId` IS PART OF THE MOUNT, NOT ONLY OF THE SCOPE (remediation round 1,
 		 * U1). This mount is the CONVERSATION's own, and a draft has no conversation: with
 		 * the store flag alone the session pane followed the user onto `New chat` (\u2318N)
-		 * and parked there, painting a 560px slot over a page with no subject, naming a
+		 * and parked there, painting the slot over a page with no subject, naming a
 		 * scope it is not in and reading `Not read yet` forever - there is no frame on a
 		 * draft to resolve, so nothing ever clears it. The flag is deliberately left
 		 * alone: the drawer still follows the user back INTO a conversation, which is the
@@ -1804,24 +1790,25 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		const requestConsoleOpen = useUiPreferencesStore(
 			(s) => s.requestConsoleOpen,
 		);
-		const effectiveConsolePanelWidth = Math.max(
+		const effectiveConsolePanelWidth = rightSlotPaneWidth(
 			CONSOLE_PANEL_MIN_PX,
-			rightSlotWidth === 0 ? DEFAULT_RIGHT_SLOT_WIDTH : rightSlotWidth,
+			rightSlotWidth,
 		);
 		const setCodeReviewPaneOpen = useUiPreferencesStore(
 			(s) => s.setCodeReviewPaneOpen,
 		);
 		/*
-		 * THE CODE REVIEW PANE WEARS THE RUN PANEL'S LADDER (§9: "min 320, max
-		 * 640"), deliberately: the pane draws the same kind of prose-and-figures
-		 * rows the run panel does, so one pair of numbers is one thing to keep true
-		 * rather than two that can drift. `RUN_PANEL_MIN_PX` is the width the
-		 * resolver's own `case "code"` uses, so the divider's range and the drawn
-		 * width agree by construction.
+		 * THE CODE REVIEW PANE WEARS THE RUN PANEL'S FLOOR, deliberately (design §9
+		 * gave the two one ladder): the pane draws the same kind of prose-and-figures
+		 * rows the run panel does, so one floor is one number to keep true rather
+		 * than two that can drift. `RUN_PANEL_MIN_PX` is the width the resolver's own
+		 * `case "code"` uses, and the ceiling is the slot's one
+		 * (`RIGHT_SLOT_MAX_PX`), so the divider's range and the drawn width agree by
+		 * construction.
 		 */
-		const effectiveCodePanelWidth = Math.max(
+		const effectiveCodePanelWidth = rightSlotPaneWidth(
 			RUN_PANEL_MIN_PX,
-			rightSlotWidth === 0 ? DEFAULT_RIGHT_SLOT_WIDTH : rightSlotWidth,
+			rightSlotWidth,
 		);
 
 		/*
@@ -1905,8 +1892,8 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		 * shrinks it into the space the row actually has — the same rule the canvas
 		 * dock follows one slot up, where a floor pinned at the dock's preferred width
 		 * is what made the grid's fourth column unreachable. The pane's width-DERIVED
-		 * layout (`tallyBudget`, and the section grammar the record measures at
-		 * 320/420/640) has to be budgeted against the box it is drawn in: handed the
+		 * layout (`tallyBudget`, and the section grammar the record measures from 320
+		 * upward) has to be budgeted against the box it is drawn in: handed the
 		 * preference, a shrunk pane sheds for a width it does not have and truncates at
 		 * the width it does, which is the class of failure `tallyBudget`'s own docblock
 		 * exists to prevent.
@@ -2006,10 +1993,12 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 			return () => observer.disconnect();
 		}, []);
 		/*
-		 * §I's two canvas rules, from the one measured number: the pane DOCKED is
-		 * `min(560, available - 480)`, and where that leaves less than the pane's own
-		 * 400px floor it stops docking and draws at the leftover (`canvasPaneMode`
-		 * states what the `overlay` literal draws today). `canvasDocked`
+		 * §I's canvas rule, from the one measured number: the pane DOCKED takes the
+		 * row's leftover - `min(RIGHT_SLOT_MAX_PX, available - 480)`, the same
+		 * subtraction every pane's capacity is - and where that leaves less than the
+		 * pane's own 400px floor it stops docking and draws at the leftover
+		 * (`canvasPaneMode` states what the `overlay` literal draws today).
+		 * `canvasDocked`
 		 * is the mode (the divider and `data-canvas-mode` read it); the WIDTH is the
 		 * slot resolver's own answer (`resolveRightSlotWidth`, `ui-preferences-store`),
 		 * which is also what the chrome lane above the row calls — one number for the
@@ -2050,8 +2039,8 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		 *
 		 * `runDivider.resizable` is false when the row cannot host even the pane's own
 		 * 320px contract floor — at 1024x673 with the rail expanded the row is 524px
-		 * and the column's 480px floor leaves the pane 44px, so no preference the
-		 * control is allowed to store (320..640) could render as itself. Resizing is
+		 * and the column's 480px floor leaves the pane 44px, so no width in the
+		 * control's range (320..1200) could render as itself. Resizing is
 		 * then not a no-op that lies, it is not offered: the value is the drawn
 		 * width, the range collapses onto it, and a write is refused so the user's
 		 * stored preference survives intact for a window that can honour it.
@@ -2061,7 +2050,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		const runDivider = rightSlotDividerContract({
 			capacity: runPanelCapacity,
 			min: RUN_PANEL_MIN_PX,
-			max: RUN_PANEL_MAX_PX,
+			max: RIGHT_SLOT_MAX_PX,
 			drawn: renderedRunPanelWidth,
 		});
 		const handleRunPanelWidthChange = useCallback(
@@ -2114,7 +2103,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		const browserDivider = rightSlotDividerContract({
 			capacity: browserSlotCapacity,
 			min: BROWSER_PANEL_MIN_PX,
-			max: BROWSER_PANEL_MAX_PX,
+			max: RIGHT_SLOT_MAX_PX,
 			drawn: Math.min(effectiveBrowserPanelWidth, browserSlotCapacity),
 		});
 		const handleBrowserPanelWidthChange = useCallback(
@@ -2135,7 +2124,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		const consoleDivider = rightSlotDividerContract({
 			capacity: consoleSlotCapacity,
 			min: CONSOLE_PANEL_MIN_PX,
-			max: CONSOLE_PANEL_MAX_PX,
+			max: RIGHT_SLOT_MAX_PX,
 			drawn: Math.min(effectiveConsolePanelWidth, consoleSlotCapacity),
 		});
 		const handleConsolePanelWidthChange = useCallback(
@@ -2156,7 +2145,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		const codeDivider = rightSlotDividerContract({
 			capacity: codeSlotCapacity,
 			min: RUN_PANEL_MIN_PX,
-			max: RUN_PANEL_MAX_PX,
+			max: RIGHT_SLOT_MAX_PX,
 			drawn: Math.min(effectiveCodePanelWidth, codeSlotCapacity),
 		});
 		const handleCodePanelWidthChange = useCallback(
@@ -2342,10 +2331,11 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 					 * right as CHROME and then the thing you are working on: the icon
 					 * rail and the list panel beside it are both `surface`, and the
 					 * working surface is `canvas`. The rail used to be the recessed
-					 * `sunken` step; it is `surface` with a `border-r border-hairline`
-					 * now, which is where the boundary its tonal step used to carry is
-					 * DRAWN (`sidebar-navigation.tsx` states the model, and why the rail
-					 * moved off the rung). This column was the one main area in the app
+					 * `sunken` step; it stands on `surface` now, and its boundary is the
+					 * tonal step plus one 1px `PanelEdge` seam on the edge it shares with
+					 * this column (`panel-edge.tsx`, 2026-10-30; the seam is the
+					 * `hairline` role at 75%, asserted in `scripts/contrast-contract.mjs`).
+					 * This column was the one main area in the app
 					 * painted `surface`, and `surface` is exactly what the list panel
 					 * next to it uses - measured in the running app, the boundary
 					 * between them was ΔE00 0 in every sampled theme, so the two read as
@@ -2354,25 +2344,12 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 					 * main area at `canvas`; chat was contradicting the model, not
 					 * extending it.
 					 *
-					 * The step this creates is deliberately the SLIGHT one of the two,
-					 * and it is the only boundary between list panel and working
-					 * surface - no rule, no border, no shadow, because elevation in
-					 * this system is a lightness step (branding § 2). `check-themes`
-					 * already asserts `canvas`/`surface` and `surface`/`sunken` as
-					 * adjacent ground pairs: across every palette `surface`→`canvas`
-					 * measures ΔE00 2.05 (`sage`, the fleet's tightest) to 6.76
-					 * (`radient`), against 3.96 (`iceberg`) to 14.88 (`synth`) for
-					 * `surface`→`sunken`. The second of those is no longer a
-					 * separation anything in the shell uses, because `sunken` is no
-					 * longer a chrome ground: what separates chrome from WORK is the
-					 * first, and the rail's own separation from the list panel beside
-					 * it is the 1px rule it draws - `hairline` against the rail's
-					 * `surface` measures ΔE00 7.13 on `localOperatorLight` and 5.37 at
-					 * the fleet's tightest (`autumn`), a much stronger edge than this
-					 * column's step. `hairline` owes perceptibility rather than a
-					 * contrast floor (branding § 2), so that pair is measured here and
-					 * read back from the frames in the row-states evidence README
-					 * rather than asserted in `check-themes`.
+					 * The step this creates is the SLIGHT one of the two, and it is the
+					 * boundary between list panel and working surface together with the
+					 * seam above it - the tone step alone is ΔE00 2.0-3, which is why the
+					 * seam exists at all. `check-themes` asserts `canvas`/`surface` as an
+					 * adjacent ground pair: across every palette it measures ΔE00 2.05
+					 * (`sage`, the fleet's tightest) to 6.76 (`radient`).
 					 *
 					 * Everything inside this column that paints a ground of its own was
 					 * sized against a `surface` column; the composer band and the legacy
@@ -3243,13 +3220,16 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								minWidth={CANVAS_PANE_MIN_PX}
 								/*
 								 * THE RANGE IS WHAT THE PANE RENDERS (review round 1, U2): the
-								 * canvas draws `min(preference, dock cap)`, so a divider accepting up
-								 * to 1200 let one drag store 660/760/960/1200 while the canvas stayed
-								 * at its 560 cap — numbers the BROWSER pane then rendered, i.e. a drag
-								 * that moved a pane that was not on screen. Capped at the same
-								 * `canvasDockWidth` the resolver uses; before the row is measured the
-								 * range collapses onto the floor until a row exists, the run
-								 * divider's own shape.
+								 * canvas draws `min(preference, the row's leftover)`, so a divider
+								 * accepting up to 1200 used to let one drag store 660/760/960/1200
+								 * while the canvas stayed at its old 560 dock cap — numbers the
+								 * BROWSER pane then rendered, i.e. a drag that moved a pane that
+								 * was not on screen. The range is now the same function the pane's
+								 * own width is resolved by (`canvasDockWidth`, whose ceiling is the
+								 * slot's one `RIGHT_SLOT_MAX_PX`), so what the drag accepts and
+								 * what the pane draws are one number's two ends. Before the row is
+								 * measured the range collapses onto the floor until a row exists,
+								 * the run divider's own shape.
 								 */
 								maxWidth={Math.max(
 									CANVAS_PANE_MIN_PX,
@@ -3384,7 +3364,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 						 * capacity at that window is `sidebarDockCapacity(500, 44)`, i.e.
 						 * `max(0, min(320, 500 - 480 - 44))` = 0, and the strip is 56. Both are below
 						 * the conversation's own floor, so `canvasDockWidth(row)` is
-						 * `max(0, min(560, row - 480))` = 0 and this slot laid out at NO width at all:
+						 * `max(0, min(RIGHT_SLOT_MAX_PX, row - 480))` = 0 and this slot laid out at NO width at all:
 						 * the drawer's section measured clientWidth 0 with scrollWidth 144, and its
 						 * controls spilled past the pane's inline end. The Read segment's rect was
 						 * x -1.23..43.97 - inside the rail's 0..44 strip and under it, so
@@ -3514,12 +3494,12 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 				 * occupant's. The divider takes its own label: two separators named
 				 * "Resize canvas" 8px apart are indistinguishable to a screen reader.
 				 *
-				 * The width range is the design's (320..640, opening at the slot's one
-				 * default), narrower than the canvas's
-				 * because a roster and a prose transcript do not need a document pane's
-				 * room, and the pane does NOT auto-hide at narrow widths: the operator
-				 * asked for persistence, and a pane that disappears below a breakpoint is
-				 * the defect this replaces in a new costume.
+				 * The width range is the slot's (320..1200, opening at the slot's one
+				 * default, `RIGHT_SLOT_MAX_PX` over `RUN_PANEL_MIN_PX`), the same range
+				 * every pane offers — one column, so one band, and the pane does NOT
+				 * auto-hide at narrow widths: the operator asked for persistence, and a
+				 * pane that disappears below a breakpoint is the defect this replaces in a
+				 * new costume.
 				 */}
 				{/*
 				 * THE PANE OPENS WITH OR WITHOUT A MODEL (the always-visible rail, D1):
@@ -3624,9 +3604,9 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 				 * element — because the pane mechanics are the slot's rather than either
 				 * occupant's.
 				 *
-				 * THE DIVIDER'S FLOOR IS 480 AND NOTHING ELSE ENFORCES IT: `maxWidth` matches
-				 * the canvas's 1200 because a page is a document and wants a document's room,
-				 * and the floor is the DRAG limit rather than a `minWidth` on this wrapper —
+				 * THE DIVIDER'S FLOOR IS 480 AND NOTHING ELSE ENFORCES IT: `maxWidth` is the
+				 * slot's one ceiling (`RIGHT_SLOT_MAX_PX`), so the browser offers the same
+				 * range as every sibling, and the floor is the DRAG limit rather than a `minWidth` on this wrapper —
 				 * the canvas's own note records what a pinned floor costs (it made a column
 				 * unreachable at the app's default window, because a floor larger than the
 				 * space available is clipped by the row and no scroll container in between can

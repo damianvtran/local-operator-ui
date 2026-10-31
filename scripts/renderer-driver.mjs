@@ -11468,8 +11468,10 @@ async function sceneQuestionDock(cdp) {
  *
  * WHY THIS IS A SCENE OF ITS OWN, and why it needs no backend. §I is a set of
  * statements about BOXES: the chat pane keeps a 480px floor; the canvas docks at
- * `min(560, available - 480)`; where that leaves less than the canvas's own 400px
- * floor the canvas stops docking - the `overlay` literal, which draws a flex dock
+ * `min(1200, available - 480)` - `RIGHT_SLOT_MAX_PX`, the ONE ceiling every
+ * right-slot pane draws inside since #1525; where that leaves less than the
+ * canvas's own 400px floor the canvas stops docking - the `overlay` literal,
+ * which draws a flex dock
  * at the row's leftover rather than covering the chat (`canvasPaneMode` carries
  * the note); the sidebar yields to the 56px strip first. Nothing in that list is
  * about data, so the run does not
@@ -11485,7 +11487,8 @@ async function sceneQuestionDock(cdp) {
  *
  * A reader should run it at the four widths §I is written about:
  *
- *     --scene floors --window-size 1380x900   # docked: row 1120, canvas at its 560 cap
+ *     --scene floors --window-size 1380x900   # docked: row 1076 (1380 - 260 sidebar - 44 rail),
+ *                                             #          canvas at the 596 that row leaves
  *     --scene floors --window-size 1024x673   # canvas fit-yield: strip, canvas overlays
  *     --scene floors --window-size 960x673    # canvas fit-yield: strip, canvas docks
  *     --scene floors --window-size 800x600    # expanded dock capped to 276, canvas overlays
@@ -11569,10 +11572,10 @@ async function sceneFloors(cdp) {
 	 * byte-identical, so it is also the scene's proof that the layout has STOPPED MOVING -
 	 * and the canvas's own wrapper carries `transition-[width] duration-base`, which means a
 	 * reading taken before that ends describes a layout that never existed on screen.
-	 * Measured, 2026-09-24: reading first caught chat 942 / canvas 179 at 1380x900 and FAILED
-	 * the pane's 400px floor, while the settled frame shows the 560/560 shape. A false FAIL is
-	 * as bad as a false PASS: it costs a lane a hunt through the code for a defect that is in
-	 * the measurement.
+	 * Measured, 2026-09-24: reading first caught chat 942 / canvas 179 at 1380x900 and
+	 * FAILED the pane's 400px floor, while the settled frame showed the 560/560 shape
+	 * that tree drew. A false FAIL is as bad as a false PASS: it costs a lane a hunt
+	 * through the code for a defect that is in the measurement.
 	 */
 	const mode = paneMounted.last ?? null;
 	const frame = await captureSettled(
@@ -11652,10 +11655,21 @@ async function sceneFloors(cdp) {
 				canvas.width >= 400,
 				`canvas.width=${canvas.width} in a row of ${row.width}: below 400 the pane stops docking (the overlay literal)`,
 			);
+			/*
+			 * THE CEILING IS DERIVED FROM THE MEASURED ROW, not written as a literal
+			 * (review round 1, MAJOR-1). Every right-slot pane draws at most
+			 * `min(RIGHT_SLOT_MAX_PX, row - 480)` (`canvasDockWidth`), so that is the most
+			 * THIS row can give the canvas - and a scene run at a new window size keeps a
+			 * true bound without an edit. The check used to hard-code the canvas's retired
+			 * 560 cap and FAILED the correct 596 the row draws at the scene's own first
+			 * size (1380x900): a false FAIL in the live gate, which is the one place a
+			 * stale ceiling wears a verdict's clothes.
+			 */
+			const canvasCeiling = Math.min(1200, row.width - 480);
 			check(
-				"a docked canvas is no wider than §I's 560px ceiling",
-				canvas.width <= 560 + 1,
-				`canvas.width=${canvas.width}`,
+				"a docked canvas is no wider than the slot's one ceiling over this row",
+				canvas.width <= canvasCeiling + 1,
+				`canvas.width=${canvas.width} against min(1200, ${row.width} - 480) = ${canvasCeiling}`,
 			);
 			check(
 				"the two columns tile the row, the divider between them",

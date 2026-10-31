@@ -237,6 +237,7 @@
 	"ui.teamBridge.reactions.toneDefault": "ڈیفالٹ رنگت",
 	"ui.teamBridge.reactions.empty": "کوئی ایموجی نہیں ملا",
 	"ui.teamBridge.reactions.failed": "ردعمل محفوظ نہیں ہو سکا۔ دوبارہ کوشش کریں۔",
+	"ui.teamBridge.reactions.others": "{others, plural, one {# دیگر شخص} other {# دیگر افراد}}",
 	"ui.teamBridge.reactions.category0": "اسمائلیز اور جذبات",
 	"ui.teamBridge.reactions.category1": "لوگ اور جسم",
 	"ui.teamBridge.reactions.category2": "جانور اور فطرت",
