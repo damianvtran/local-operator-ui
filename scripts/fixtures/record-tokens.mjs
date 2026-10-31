@@ -124,6 +124,8 @@ export const RECORDS = {
 	}),
 	J: (id, i) => custom(id, i, "job_result"),
 	H: (id, i) => custom(id, i, "hub_message"),
+	// Incoming Bridge is distinct from Bp/Ba outgoing tool operations.
+	Bi: (id, i) => custom(id, i, "team_bridge_message"),
 	X: (id, i) => custom(id, i, "monitor_prompt"),
 	Q: (id, i) => custom(id, i, "session_mcp_unavailable"),
 	I: (id, i) => custom(id, i, "session_incident", "error"),

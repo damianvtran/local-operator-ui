@@ -25,6 +25,7 @@
 
 import type { Meta, StoryObj } from "@storybook/react";
 import { useEffect, useRef } from "react";
+import bridgeIncomingFixture from "../../../../../../scripts/fixtures/bridge-incoming.json";
 import type { CanonicalFrontendState } from "../../../../../shared/desktop-session-contract";
 import type { SessionFailureNotice } from "../../../../../shared/desktop-stream-notice";
 import { streamFailureNotice } from "./session-failure-notice";
@@ -4113,5 +4114,114 @@ export const BridgeRowsCondensedOpen: Story = {
 			keepClosed={Array.from({ length: 20 }, (_, index) => index + 1)}
 			records={bridgeCondensedRows()}
 		/>
+	),
+};
+
+/** Real reducer path, with synthetic producer-shaped metadata; no private body. */
+const incomingBridgeRecords = (
+	current = false,
+	longName = false,
+): TranscriptRecord[] =>
+	applyHistoryPage(EMPTY_TRANSCRIPT, {
+		entries: bridgeIncomingFixture.entries.map((entry) => ({
+			...entry,
+			payload: {
+				...entry.payload,
+				details: {
+					...entry.payload.details,
+					...(current
+						? {
+								bridge_receipt: {
+									v: 1,
+									sender: {
+										name: longName
+											? "Example organization member with a deliberately very long display name"
+											: "Example member",
+										kind: "human",
+									},
+									conversation: { kind: "dm" },
+									attachment_count: 1,
+								},
+							}
+						: {}),
+				},
+			},
+		})),
+		has_more: false,
+		cursor_missing: false,
+	}).records;
+
+/** Legacy metadata cannot establish either conversation kind or image admission. */
+export const BridgeIncomingLegacy: Story = {
+	render: () => (
+		<Frame
+			height={500}
+			openRows
+			records={incomingBridgeRecords().slice(0, 1)}
+		/>
+	),
+};
+
+export const BridgeIncomingMetadata: Story = {
+	render: () => (
+		<Frame
+			height={500}
+			openRows
+			records={incomingBridgeRecords(true).slice(0, 1)}
+		/>
+	),
+};
+
+/** An admitted history result keeps its own screenshot beside folded receipts. */
+export const BridgeIncomingWithHistory: Story = {
+	render: () => (
+		<Frame
+			height={650}
+			records={[
+				...incomingBridgeRecords(true),
+				tool({
+					id: "incoming:history",
+					toolName: "bridge",
+					args: { op: "channel_history", channel_id: "synthetic-conversation" },
+					output:
+						"Admitted history message: **Review the example screenshot.**",
+					bridge: { ok: true, state: "ok", count: 1 },
+					images: [image("incoming:history:0", SHOT_B64)],
+				}),
+				tool({
+					id: "incoming:post",
+					toolName: "bridge",
+					args: {
+						op: "channel_post",
+						channel_id: "synthetic-conversation",
+						text: "Acknowledged the example screenshot.",
+					},
+					bridge: { ok: true, conversation_seq: 2 },
+				}),
+				tool({
+					id: "incoming:send",
+					toolName: "send",
+					args: { target: "example-peer", message: "Screenshot received." },
+				}),
+				tool({
+					id: "incoming:wake",
+					toolName: "wake",
+					args: { message: "Follow up on the example." },
+				}),
+			]}
+		/>
+	),
+};
+
+export const BridgeIncomingNarrow: Story = {
+	render: () => (
+		<div style={{ width: 320 }}>
+			<Frame
+				height={500}
+				isSmallView
+				openRows
+				records={incomingBridgeRecords(true, true).slice(0, 1)}
+			/>
+		</div>
 	),
 };

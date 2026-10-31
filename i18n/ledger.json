@@ -63388,6 +63388,216 @@
 					]
 				}
 			]
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.chat.bridgeReceipt",
+			"source_sha256": "3c39044a4883aa8b3b8698dd44549432adcf52824fb594ee9f800d762d1b5f1d",
+			"target_sha256": "de12aa5e3f38c1dd5ba700ffedb1936a7a6792ab4a33bfac65e1a2ea54aaa8aa",
+			"translator": {
+				"agent": "coder-7676fcaa6d32",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-31"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-31",
+					"result": "clean-with-findings",
+					"instance": "ad24d2c43271",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 2
+					},
+					"receipt": "i18n/receipts/ad24d2c43271.json",
+					"receipt_sha256": "f60fd33c93c1ab22d084ad1b3b4b649aac1fd99e85ac625fb80d1fe48e97c817",
+					"scope": "Three incoming Bridge metadata keys; zh-CN optional spacing/punctuation nits retained"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "es",
+			"namespace": "ui.chat.bridgeReceipt",
+			"source_sha256": "3c39044a4883aa8b3b8698dd44549432adcf52824fb594ee9f800d762d1b5f1d",
+			"target_sha256": "467efeb27a20a853cfecab9a656af36fc7538d03152235c858a9ee74aaecfa15",
+			"translator": {
+				"agent": "coder-7676fcaa6d32",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-31"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-31",
+					"result": "clean-with-findings",
+					"instance": "ad24d2c43271",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 2
+					},
+					"receipt": "i18n/receipts/ad24d2c43271.json",
+					"receipt_sha256": "f60fd33c93c1ab22d084ad1b3b4b649aac1fd99e85ac625fb80d1fe48e97c817",
+					"scope": "Three incoming Bridge metadata keys; zh-CN optional spacing/punctuation nits retained"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.chat.bridgeReceipt",
+			"source_sha256": "3c39044a4883aa8b3b8698dd44549432adcf52824fb594ee9f800d762d1b5f1d",
+			"target_sha256": "a4e31f4a48834348e72c79a4b2ed928ed1eff05386ea8060ac2963b60a32eca0",
+			"translator": {
+				"agent": "coder-7676fcaa6d32",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-31"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-31",
+					"result": "clean-with-findings",
+					"instance": "ad24d2c43271",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 2
+					},
+					"receipt": "i18n/receipts/ad24d2c43271.json",
+					"receipt_sha256": "f60fd33c93c1ab22d084ad1b3b4b649aac1fd99e85ac625fb80d1fe48e97c817",
+					"scope": "Three incoming Bridge metadata keys; zh-CN optional spacing/punctuation nits retained"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ru",
+			"namespace": "ui.chat.bridgeReceipt",
+			"source_sha256": "3c39044a4883aa8b3b8698dd44549432adcf52824fb594ee9f800d762d1b5f1d",
+			"target_sha256": "65f20472c1b73752965b91118b789038fe0b14e9837439fa53293850514dc6a1",
+			"translator": {
+				"agent": "coder-7676fcaa6d32",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-31"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-31",
+					"result": "clean-with-findings",
+					"instance": "ad24d2c43271",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 2
+					},
+					"receipt": "i18n/receipts/ad24d2c43271.json",
+					"receipt_sha256": "f60fd33c93c1ab22d084ad1b3b4b649aac1fd99e85ac625fb80d1fe48e97c817",
+					"scope": "Three incoming Bridge metadata keys; zh-CN optional spacing/punctuation nits retained"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "vi",
+			"namespace": "ui.chat.bridgeReceipt",
+			"source_sha256": "3c39044a4883aa8b3b8698dd44549432adcf52824fb594ee9f800d762d1b5f1d",
+			"target_sha256": "67c3ff3dcc22ced968b00038137cfee89c6afd09fd7ba1ce199949ed69defa52",
+			"translator": {
+				"agent": "coder-7676fcaa6d32",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-31"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-31",
+					"result": "clean-with-findings",
+					"instance": "ad24d2c43271",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 2
+					},
+					"receipt": "i18n/receipts/ad24d2c43271.json",
+					"receipt_sha256": "f60fd33c93c1ab22d084ad1b3b4b649aac1fd99e85ac625fb80d1fe48e97c817",
+					"scope": "Three incoming Bridge metadata keys; zh-CN optional spacing/punctuation nits retained"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.chat.bridgeReceipt",
+			"source_sha256": "3c39044a4883aa8b3b8698dd44549432adcf52824fb594ee9f800d762d1b5f1d",
+			"target_sha256": "05ec602ea9b08a8e759945a41b20fc9e093d47136c14080b8cb1d6b40f82eeab",
+			"translator": {
+				"agent": "coder-7676fcaa6d32",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-31"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-31",
+					"result": "clean-with-findings",
+					"instance": "ad24d2c43271",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 2
+					},
+					"receipt": "i18n/receipts/ad24d2c43271.json",
+					"receipt_sha256": "f60fd33c93c1ab22d084ad1b3b4b649aac1fd99e85ac625fb80d1fe48e97c817",
+					"scope": "Three incoming Bridge metadata keys; zh-CN optional spacing/punctuation nits retained"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.chat.bridgeReceipt",
+			"source_sha256": "3c39044a4883aa8b3b8698dd44549432adcf52824fb594ee9f800d762d1b5f1d",
+			"target_sha256": "b03b58fe85fb0488ed7031a75c538cb40cf81b633b728f10fa8d510b203aeb40",
+			"translator": {
+				"agent": "coder-7676fcaa6d32",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-31"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-31",
+					"result": "clean-with-findings",
+					"instance": "ad24d2c43271",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 2
+					},
+					"receipt": "i18n/receipts/ad24d2c43271.json",
+					"receipt_sha256": "f60fd33c93c1ab22d084ad1b3b4b649aac1fd99e85ac625fb80d1fe48e97c817",
+					"scope": "Three incoming Bridge metadata keys; zh-CN optional spacing/punctuation nits retained"
+				}
+			],
+			"status": "audited"
 		}
 	]
 }

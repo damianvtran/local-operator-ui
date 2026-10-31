@@ -167,7 +167,7 @@ after(() => {
 const bundle = await build({
 	stdin: {
 		contents: [
-			'export { applyHistoryPage, EMPTY_TRANSCRIPT } from "./src/renderer/src/features/chat/canonical/transcript-reducer";',
+			'export { applyEvent, applyHistoryPage, EMPTY_TRANSCRIPT } from "./src/renderer/src/features/chat/canonical/transcript-reducer";',
 			'export { CanonicalTranscript } from "./src/renderer/src/features/chat/canonical/canonical-transcript";',
 			'export { __resetTurnCollapseOpen, writeRunExpanded, expandedRunsOf, forgetTurnCollapseOpen, __turnCollapseOpenStats } from "./src/renderer/src/shared/store/turn-collapse-open";',
 			/* The settle latch's store: the per-test reset the latch cases below owe, exactly as the expansions' is owed. */
@@ -228,6 +228,7 @@ const bundlePath = new URL(
 );
 await writeFile(bundlePath, bundle.outputFiles[0].text);
 const {
+	applyEvent,
 	applyHistoryPage,
 	EMPTY_TRANSCRIPT,
 	CanonicalTranscript,
@@ -4541,5 +4542,241 @@ test("a condensed Highlights adjustment closes when preparation settles", async 
 		Boolean(mounted.container.querySelector("[data-supplement-adjust-form]")),
 		false,
 		"a settled job exposes no live steer input",
+	);
+});
+
+/** A sanitized receipt shape from the inbound producer, never the private body. */
+test("Bridge incoming reducer rows condense across quiet cycles without hiding the operator boundaries", async (t) => {
+	__resetTurnCollapseOpen();
+	const fixture = JSON.parse(
+		await readFile(
+			new URL("./fixtures/bridge-incoming.json", import.meta.url),
+			"utf8",
+		),
+	);
+	const reduced = applyHistoryPage(EMPTY_TRANSCRIPT, {
+		entries: fixture.entries,
+		has_more: false,
+		cursor_missing: false,
+	}).records;
+	assert.equal(reduced.length, 2);
+	const records = [
+		userRecord("bridge-user"),
+		answerRecord("bridge-final", { stopReason: "stop" }),
+		reduced[0],
+		toolRecord("bridge-history", {
+			toolName: "bridge",
+			args: { op: "channel_history", channel_id: "synthetic-conversation" },
+		}),
+		toolRecord("bridge-post", {
+			toolName: "bridge",
+			args: {
+				op: "channel_post",
+				channel_id: "synthetic-conversation",
+				text: "Acknowledged.",
+			},
+		}),
+		toolRecord("bridge-quiet-1", { toolName: "no_reply" }),
+		reduced[1],
+		toolRecord("bridge-send", {
+			toolName: "send",
+			args: { target: "synthetic-peer", message: "Received." },
+		}),
+		toolRecord("bridge-quiet-2", { toolName: "no_reply" }),
+	];
+	const mounted = await mount(t, records);
+	assert.ok(rowBox(mounted, "bridge-user"), "true user remains visible");
+	assert.ok(rowBox(mounted, "bridge-final"), "true final remains visible");
+	assert.equal(
+		mounted.container.querySelectorAll("[data-turn-summary]").length,
+		1,
+		"one internal episode, not a separate top-level notice per Bridge receipt",
+	);
+	assert.equal(
+		rowBox(mounted, "bridge-receipt-1"),
+		null,
+		"receipt folds with the work",
+	);
+	await click(barTrigger(mounted));
+	assert.ok(rowBox(mounted, "bridge-receipt-1"));
+	assert.ok(rowBox(mounted, "bridge-receipt-2"));
+	assert.match(rowBox(mounted, "bridge-receipt-1").textContent, /Received/);
+	assert.doesNotMatch(
+		rowBox(mounted, "bridge-receipt-1").textContent,
+		/team bridge message:/,
+	);
+	assert.ok(!bar(mounted).contains(rowBox(mounted, "bridge-final")));
+});
+
+test("Bridge incoming action fold retains both receipts through live settle and the next activation", async (t) => {
+	__resetTurnCollapseOpen();
+	const fixture = JSON.parse(
+		await readFile(
+			new URL("./fixtures/bridge-incoming.json", import.meta.url),
+			"utf8",
+		),
+	);
+	const receipts = applyHistoryPage(EMPTY_TRANSCRIPT, {
+		entries: fixture.entries,
+		has_more: false,
+		cursor_missing: false,
+	}).records;
+	const records = [
+		userRecord("bridge-live-user"),
+		receipts[0],
+		toolRecord("bridge-live-history", {
+			toolName: "bridge",
+			args: { op: "channel_history" },
+		}),
+		receipts[1],
+		toolRecord("bridge-live-post", {
+			toolName: "bridge",
+			args: { op: "channel_post", text: "Acknowledged." },
+		}),
+		toolRecord("bridge-live-send", {
+			toolName: "send",
+			args: { target: "synthetic-peer", message: "Received." },
+		}),
+	];
+	const mounted = await mount(t, records, { waiting: true });
+	const fold = mounted.container.querySelector("[data-fold-ids]");
+	assert.ok(fold, "ordinary action aggregation exists while the turn is live");
+	assert.match(fold.dataset.foldIds, /bridge-receipt-1/);
+	assert.match(fold.dataset.foldIds, /bridge-receipt-2/);
+	assert.match(fold.textContent, /2 incoming messages/);
+	assert.equal(rowBox(mounted, "bridge-receipt-1"), null);
+	const settled = [
+		...records,
+		toolRecord("bridge-live-close", { toolName: "no_reply" }),
+	];
+	await mounted.render(settled, { waiting: false });
+	await mounted.render([...settled, { ...receipts[0], id: "bridge-next" }], {
+		waiting: true,
+	});
+	assert.ok(
+		rowBox(mounted, "bridge-live-user"),
+		"operator boundary survives activation",
+	);
+	assert.equal(
+		rowBox(mounted, "bridge-receipt-1"),
+		null,
+		"settled episode does not reopen on next activation",
+	);
+});
+
+test("Bridge current and legacy metadata agree across live delta, lazy history and reload without admitting a body", async (t) => {
+	__resetTurnCollapseOpen();
+	const fixture = JSON.parse(
+		await readFile(
+			new URL("./fixtures/bridge-incoming.json", import.meta.url),
+			"utf8",
+		),
+	);
+	const entries = structuredClone(fixture.entries);
+	entries[0].payload.details.bridge_receipt = {
+		v: 1,
+		sender: { name: "Example member", kind: "human" },
+		conversation: { kind: "dm" },
+		attachment_count: 1,
+		body: "Never admitted text",
+		admission: { state: "admitted" },
+	};
+	const live = applyEvent(EMPTY_TRANSCRIPT, {
+		type: "history_delta",
+		messages: entries.map((entry) => ({ id: entry.id, ...entry.payload })),
+	});
+	const tail = applyHistoryPage(EMPTY_TRANSCRIPT, {
+		entries: [entries[1]],
+		has_more: true,
+		cursor_missing: false,
+	});
+	const replay = applyHistoryPage(tail, {
+		entries: [entries[0]],
+		has_more: false,
+		cursor_missing: false,
+	});
+	assert.deepEqual(
+		live.records.map((r) => r.bridgeReceipt),
+		replay.records.map((r) => r.bridgeReceipt),
+	);
+	assert.equal(replay.records[0].bridgeReceipt.attachmentCount, 1);
+	const mounted = await mount(t, replay.records, {
+		frontend: { session_id: "synthetic-bridge-reload" },
+	});
+	for (
+		let depth = 0;
+		depth < 2 && !rowBox(mounted, "bridge-receipt-1");
+		depth += 1
+	) {
+		await click(
+			mounted.container.querySelector(
+				'[data-fold-ids] button[aria-expanded="false"], [data-turn-summary] button[aria-expanded="false"]',
+			),
+		);
+	}
+	const receipt = rowBox(mounted, "bridge-receipt-1");
+	assert.ok(
+		receipt,
+		"turn and action disclosures both reveal their original receipt row",
+	);
+	await click(receipt.querySelector("button"));
+	assert.match(receipt.textContent, /Received from Example member/);
+	assert.match(receipt.textContent, /Direct message/);
+	assert.match(receipt.textContent, /Message body unavailable/);
+	assert.doesNotMatch(receipt.textContent, /Never admitted text/);
+	assert.equal(
+		mounted.container.querySelectorAll("img").length,
+		0,
+		"attachment counts never manufacture an image ref",
+	);
+	const reload = await mount(t, replay.records, {
+		frontend: { session_id: "synthetic-bridge-reload" },
+	});
+	assert.equal(
+		reload.container.querySelectorAll("[data-turn-summary]").length,
+		1,
+		"reload preserves one receipt episode rather than splitting notices",
+	);
+	assert.equal(
+		reload.container.querySelectorAll("img").length,
+		0,
+		"reload does not invent admitted media",
+	);
+});
+
+test("Bridge admitted history media retains its own row while nearby incoming receipts fold", async (t) => {
+	__resetTurnCollapseOpen();
+	const fixture = JSON.parse(
+		await readFile(
+			new URL("./fixtures/bridge-incoming.json", import.meta.url),
+			"utf8",
+		),
+	);
+	const receipts = applyHistoryPage(EMPTY_TRANSCRIPT, {
+		entries: fixture.entries,
+		has_more: false,
+		cursor_missing: false,
+	}).records;
+	const history = toolRecord("bridge-media-history", {
+		toolName: "bridge",
+		args: { op: "channel_history", channel_id: "synthetic-conversation" },
+		images: [shotImage("bridge-media-history", 0)],
+	});
+	const mounted = await mount(t, [
+		userRecord("bridge-media-user"),
+		answerRecord("bridge-media-final", { stopReason: "stop" }),
+		receipts[0],
+		history,
+		receipts[1],
+		toolRecord("bridge-media-quiet", { toolName: "no_reply" }),
+	]);
+	assert.ok(
+		rowBox(mounted, "bridge-media-history"),
+		"admitted screenshot owner stays inline outside the collapsed episode",
+	);
+	assert.equal(mounted.container.querySelectorAll("img").length, 1);
+	assert.ok(
+		rowBox(mounted, "bridge-media-final"),
+		"real final answer remains outside receipt condensation",
 	);
 });

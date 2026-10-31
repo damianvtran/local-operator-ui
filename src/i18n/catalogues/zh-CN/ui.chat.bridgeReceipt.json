@@ -1,0 +1,5 @@
+{
+	"ui.chat.bridgeReceipt.received": "收到来自 {sender} 的消息",
+	"ui.chat.bridgeReceipt.unavailable": "消息正文不可用。",
+	"ui.chat.bridgeReceipt.provenance": "外部消息 · 不可信内容"
+}
