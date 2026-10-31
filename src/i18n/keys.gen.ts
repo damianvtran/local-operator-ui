@@ -24,6 +24,8 @@
 import enUiAgentMessages from "./catalogues/en/ui.agentMessages.json";
 import enUiAgentMessagesSettings from "./catalogues/en/ui.agentMessages.settings.json";
 import enUiAgentsConfig from "./catalogues/en/ui.agents.config.json";
+import enUiAgentsDescriptions from "./catalogues/en/ui.agents.descriptions.json";
+import enUiAgentsDetailInstall from "./catalogues/en/ui.agents.detail.install.json";
 import enUiAgentsDetail from "./catalogues/en/ui.agents.detail.json";
 import enUiAgentsDialogs from "./catalogues/en/ui.agents.dialogs.json";
 import enUiAgents from "./catalogues/en/ui.agents.json";
@@ -32,6 +34,7 @@ import enUiAgentsNavigation from "./catalogues/en/ui.agents.navigation.json";
 import enUiAgentsPages from "./catalogues/en/ui.agents.pages.json";
 import enUiAgentsPublication from "./catalogues/en/ui.agents.publication.json";
 import enUiAgentsRefusals from "./catalogues/en/ui.agents.refusals.json";
+import enUiAgentsRouting from "./catalogues/en/ui.agents.routing.json";
 import enUiAgentsSettings from "./catalogues/en/ui.agents.settings.json";
 import enUiAgentsSkills from "./catalogues/en/ui.agents.skills.json";
 import enUiAgentsStarters from "./catalogues/en/ui.agents.starters.json";
@@ -135,6 +138,8 @@ import enUiUpdatesPanel from "./catalogues/en/ui.updates.panel.json";
 import esUiAgentMessages from "./catalogues/es/ui.agentMessages.json";
 import esUiAgentMessagesSettings from "./catalogues/es/ui.agentMessages.settings.json";
 import esUiAgentsConfig from "./catalogues/es/ui.agents.config.json";
+import esUiAgentsDescriptions from "./catalogues/es/ui.agents.descriptions.json";
+import esUiAgentsDetailInstall from "./catalogues/es/ui.agents.detail.install.json";
 import esUiAgentsDetail from "./catalogues/es/ui.agents.detail.json";
 import esUiAgentsDialogs from "./catalogues/es/ui.agents.dialogs.json";
 import esUiAgents from "./catalogues/es/ui.agents.json";
@@ -143,6 +148,7 @@ import esUiAgentsNavigation from "./catalogues/es/ui.agents.navigation.json";
 import esUiAgentsPages from "./catalogues/es/ui.agents.pages.json";
 import esUiAgentsPublication from "./catalogues/es/ui.agents.publication.json";
 import esUiAgentsRefusals from "./catalogues/es/ui.agents.refusals.json";
+import esUiAgentsRouting from "./catalogues/es/ui.agents.routing.json";
 import esUiAgentsSettings from "./catalogues/es/ui.agents.settings.json";
 import esUiAgentsSkills from "./catalogues/es/ui.agents.skills.json";
 import esUiAgentsStarters from "./catalogues/es/ui.agents.starters.json";
@@ -246,6 +252,8 @@ import esUiUpdatesPanel from "./catalogues/es/ui.updates.panel.json";
 import frUiAgentMessages from "./catalogues/fr/ui.agentMessages.json";
 import frUiAgentMessagesSettings from "./catalogues/fr/ui.agentMessages.settings.json";
 import frUiAgentsConfig from "./catalogues/fr/ui.agents.config.json";
+import frUiAgentsDescriptions from "./catalogues/fr/ui.agents.descriptions.json";
+import frUiAgentsDetailInstall from "./catalogues/fr/ui.agents.detail.install.json";
 import frUiAgentsDetail from "./catalogues/fr/ui.agents.detail.json";
 import frUiAgentsDialogs from "./catalogues/fr/ui.agents.dialogs.json";
 import frUiAgents from "./catalogues/fr/ui.agents.json";
@@ -254,6 +262,7 @@ import frUiAgentsNavigation from "./catalogues/fr/ui.agents.navigation.json";
 import frUiAgentsPages from "./catalogues/fr/ui.agents.pages.json";
 import frUiAgentsPublication from "./catalogues/fr/ui.agents.publication.json";
 import frUiAgentsRefusals from "./catalogues/fr/ui.agents.refusals.json";
+import frUiAgentsRouting from "./catalogues/fr/ui.agents.routing.json";
 import frUiAgentsSettings from "./catalogues/fr/ui.agents.settings.json";
 import frUiAgentsSkills from "./catalogues/fr/ui.agents.skills.json";
 import frUiAgentsStarters from "./catalogues/fr/ui.agents.starters.json";
@@ -357,6 +366,8 @@ import frUiUpdatesPanel from "./catalogues/fr/ui.updates.panel.json";
 import hiUiAgentMessages from "./catalogues/hi/ui.agentMessages.json";
 import hiUiAgentMessagesSettings from "./catalogues/hi/ui.agentMessages.settings.json";
 import hiUiAgentsConfig from "./catalogues/hi/ui.agents.config.json";
+import hiUiAgentsDescriptions from "./catalogues/hi/ui.agents.descriptions.json";
+import hiUiAgentsDetailInstall from "./catalogues/hi/ui.agents.detail.install.json";
 import hiUiAgentsDetail from "./catalogues/hi/ui.agents.detail.json";
 import hiUiAgentsDialogs from "./catalogues/hi/ui.agents.dialogs.json";
 import hiUiAgents from "./catalogues/hi/ui.agents.json";
@@ -365,6 +376,7 @@ import hiUiAgentsNavigation from "./catalogues/hi/ui.agents.navigation.json";
 import hiUiAgentsPages from "./catalogues/hi/ui.agents.pages.json";
 import hiUiAgentsPublication from "./catalogues/hi/ui.agents.publication.json";
 import hiUiAgentsRefusals from "./catalogues/hi/ui.agents.refusals.json";
+import hiUiAgentsRouting from "./catalogues/hi/ui.agents.routing.json";
 import hiUiAgentsSettings from "./catalogues/hi/ui.agents.settings.json";
 import hiUiAgentsSkills from "./catalogues/hi/ui.agents.skills.json";
 import hiUiAgentsStarters from "./catalogues/hi/ui.agents.starters.json";
@@ -468,6 +480,8 @@ import hiUiUpdatesPanel from "./catalogues/hi/ui.updates.panel.json";
 import ruUiAgentMessages from "./catalogues/ru/ui.agentMessages.json";
 import ruUiAgentMessagesSettings from "./catalogues/ru/ui.agentMessages.settings.json";
 import ruUiAgentsConfig from "./catalogues/ru/ui.agents.config.json";
+import ruUiAgentsDescriptions from "./catalogues/ru/ui.agents.descriptions.json";
+import ruUiAgentsDetailInstall from "./catalogues/ru/ui.agents.detail.install.json";
 import ruUiAgentsDetail from "./catalogues/ru/ui.agents.detail.json";
 import ruUiAgentsDialogs from "./catalogues/ru/ui.agents.dialogs.json";
 import ruUiAgents from "./catalogues/ru/ui.agents.json";
@@ -476,6 +490,7 @@ import ruUiAgentsNavigation from "./catalogues/ru/ui.agents.navigation.json";
 import ruUiAgentsPages from "./catalogues/ru/ui.agents.pages.json";
 import ruUiAgentsPublication from "./catalogues/ru/ui.agents.publication.json";
 import ruUiAgentsRefusals from "./catalogues/ru/ui.agents.refusals.json";
+import ruUiAgentsRouting from "./catalogues/ru/ui.agents.routing.json";
 import ruUiAgentsSettings from "./catalogues/ru/ui.agents.settings.json";
 import ruUiAgentsSkills from "./catalogues/ru/ui.agents.skills.json";
 import ruUiAgentsStarters from "./catalogues/ru/ui.agents.starters.json";
@@ -579,6 +594,8 @@ import ruUiUpdatesPanel from "./catalogues/ru/ui.updates.panel.json";
 import urUiAgentMessages from "./catalogues/ur/ui.agentMessages.json";
 import urUiAgentMessagesSettings from "./catalogues/ur/ui.agentMessages.settings.json";
 import urUiAgentsConfig from "./catalogues/ur/ui.agents.config.json";
+import urUiAgentsDescriptions from "./catalogues/ur/ui.agents.descriptions.json";
+import urUiAgentsDetailInstall from "./catalogues/ur/ui.agents.detail.install.json";
 import urUiAgentsDetail from "./catalogues/ur/ui.agents.detail.json";
 import urUiAgentsDialogs from "./catalogues/ur/ui.agents.dialogs.json";
 import urUiAgents from "./catalogues/ur/ui.agents.json";
@@ -587,6 +604,7 @@ import urUiAgentsNavigation from "./catalogues/ur/ui.agents.navigation.json";
 import urUiAgentsPages from "./catalogues/ur/ui.agents.pages.json";
 import urUiAgentsPublication from "./catalogues/ur/ui.agents.publication.json";
 import urUiAgentsRefusals from "./catalogues/ur/ui.agents.refusals.json";
+import urUiAgentsRouting from "./catalogues/ur/ui.agents.routing.json";
 import urUiAgentsSettings from "./catalogues/ur/ui.agents.settings.json";
 import urUiAgentsSkills from "./catalogues/ur/ui.agents.skills.json";
 import urUiAgentsStarters from "./catalogues/ur/ui.agents.starters.json";
@@ -690,6 +708,8 @@ import urUiUpdatesPanel from "./catalogues/ur/ui.updates.panel.json";
 import viUiAgentMessages from "./catalogues/vi/ui.agentMessages.json";
 import viUiAgentMessagesSettings from "./catalogues/vi/ui.agentMessages.settings.json";
 import viUiAgentsConfig from "./catalogues/vi/ui.agents.config.json";
+import viUiAgentsDescriptions from "./catalogues/vi/ui.agents.descriptions.json";
+import viUiAgentsDetailInstall from "./catalogues/vi/ui.agents.detail.install.json";
 import viUiAgentsDetail from "./catalogues/vi/ui.agents.detail.json";
 import viUiAgentsDialogs from "./catalogues/vi/ui.agents.dialogs.json";
 import viUiAgents from "./catalogues/vi/ui.agents.json";
@@ -698,6 +718,7 @@ import viUiAgentsNavigation from "./catalogues/vi/ui.agents.navigation.json";
 import viUiAgentsPages from "./catalogues/vi/ui.agents.pages.json";
 import viUiAgentsPublication from "./catalogues/vi/ui.agents.publication.json";
 import viUiAgentsRefusals from "./catalogues/vi/ui.agents.refusals.json";
+import viUiAgentsRouting from "./catalogues/vi/ui.agents.routing.json";
 import viUiAgentsSettings from "./catalogues/vi/ui.agents.settings.json";
 import viUiAgentsSkills from "./catalogues/vi/ui.agents.skills.json";
 import viUiAgentsStarters from "./catalogues/vi/ui.agents.starters.json";
@@ -801,6 +822,8 @@ import viUiUpdatesPanel from "./catalogues/vi/ui.updates.panel.json";
 import zhCNUiAgentMessages from "./catalogues/zh-CN/ui.agentMessages.json";
 import zhCNUiAgentMessagesSettings from "./catalogues/zh-CN/ui.agentMessages.settings.json";
 import zhCNUiAgentsConfig from "./catalogues/zh-CN/ui.agents.config.json";
+import zhCNUiAgentsDescriptions from "./catalogues/zh-CN/ui.agents.descriptions.json";
+import zhCNUiAgentsDetailInstall from "./catalogues/zh-CN/ui.agents.detail.install.json";
 import zhCNUiAgentsDetail from "./catalogues/zh-CN/ui.agents.detail.json";
 import zhCNUiAgentsDialogs from "./catalogues/zh-CN/ui.agents.dialogs.json";
 import zhCNUiAgents from "./catalogues/zh-CN/ui.agents.json";
@@ -809,6 +832,7 @@ import zhCNUiAgentsNavigation from "./catalogues/zh-CN/ui.agents.navigation.json
 import zhCNUiAgentsPages from "./catalogues/zh-CN/ui.agents.pages.json";
 import zhCNUiAgentsPublication from "./catalogues/zh-CN/ui.agents.publication.json";
 import zhCNUiAgentsRefusals from "./catalogues/zh-CN/ui.agents.refusals.json";
+import zhCNUiAgentsRouting from "./catalogues/zh-CN/ui.agents.routing.json";
 import zhCNUiAgentsSettings from "./catalogues/zh-CN/ui.agents.settings.json";
 import zhCNUiAgentsSkills from "./catalogues/zh-CN/ui.agents.skills.json";
 import zhCNUiAgentsStarters from "./catalogues/zh-CN/ui.agents.starters.json";
@@ -915,6 +939,8 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiAgentMessages,
 	...enUiAgentMessagesSettings,
 	...enUiAgentsConfig,
+	...enUiAgentsDescriptions,
+	...enUiAgentsDetailInstall,
 	...enUiAgentsDetail,
 	...enUiAgentsDialogs,
 	...enUiAgents,
@@ -923,6 +949,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiAgentsPages,
 	...enUiAgentsPublication,
 	...enUiAgentsRefusals,
+	...enUiAgentsRouting,
 	...enUiAgentsSettings,
 	...enUiAgentsSkills,
 	...enUiAgentsStarters,
@@ -1034,6 +1061,8 @@ export const bundledCatalogues: Readonly<
 		...esUiAgentMessages,
 		...esUiAgentMessagesSettings,
 		...esUiAgentsConfig,
+		...esUiAgentsDescriptions,
+		...esUiAgentsDetailInstall,
 		...esUiAgentsDetail,
 		...esUiAgentsDialogs,
 		...esUiAgents,
@@ -1042,6 +1071,7 @@ export const bundledCatalogues: Readonly<
 		...esUiAgentsPages,
 		...esUiAgentsPublication,
 		...esUiAgentsRefusals,
+		...esUiAgentsRouting,
 		...esUiAgentsSettings,
 		...esUiAgentsSkills,
 		...esUiAgentsStarters,
@@ -1147,6 +1177,8 @@ export const bundledCatalogues: Readonly<
 		...frUiAgentMessages,
 		...frUiAgentMessagesSettings,
 		...frUiAgentsConfig,
+		...frUiAgentsDescriptions,
+		...frUiAgentsDetailInstall,
 		...frUiAgentsDetail,
 		...frUiAgentsDialogs,
 		...frUiAgents,
@@ -1155,6 +1187,7 @@ export const bundledCatalogues: Readonly<
 		...frUiAgentsPages,
 		...frUiAgentsPublication,
 		...frUiAgentsRefusals,
+		...frUiAgentsRouting,
 		...frUiAgentsSettings,
 		...frUiAgentsSkills,
 		...frUiAgentsStarters,
@@ -1260,6 +1293,8 @@ export const bundledCatalogues: Readonly<
 		...hiUiAgentMessages,
 		...hiUiAgentMessagesSettings,
 		...hiUiAgentsConfig,
+		...hiUiAgentsDescriptions,
+		...hiUiAgentsDetailInstall,
 		...hiUiAgentsDetail,
 		...hiUiAgentsDialogs,
 		...hiUiAgents,
@@ -1268,6 +1303,7 @@ export const bundledCatalogues: Readonly<
 		...hiUiAgentsPages,
 		...hiUiAgentsPublication,
 		...hiUiAgentsRefusals,
+		...hiUiAgentsRouting,
 		...hiUiAgentsSettings,
 		...hiUiAgentsSkills,
 		...hiUiAgentsStarters,
@@ -1373,6 +1409,8 @@ export const bundledCatalogues: Readonly<
 		...ruUiAgentMessages,
 		...ruUiAgentMessagesSettings,
 		...ruUiAgentsConfig,
+		...ruUiAgentsDescriptions,
+		...ruUiAgentsDetailInstall,
 		...ruUiAgentsDetail,
 		...ruUiAgentsDialogs,
 		...ruUiAgents,
@@ -1381,6 +1419,7 @@ export const bundledCatalogues: Readonly<
 		...ruUiAgentsPages,
 		...ruUiAgentsPublication,
 		...ruUiAgentsRefusals,
+		...ruUiAgentsRouting,
 		...ruUiAgentsSettings,
 		...ruUiAgentsSkills,
 		...ruUiAgentsStarters,
@@ -1486,6 +1525,8 @@ export const bundledCatalogues: Readonly<
 		...urUiAgentMessages,
 		...urUiAgentMessagesSettings,
 		...urUiAgentsConfig,
+		...urUiAgentsDescriptions,
+		...urUiAgentsDetailInstall,
 		...urUiAgentsDetail,
 		...urUiAgentsDialogs,
 		...urUiAgents,
@@ -1494,6 +1535,7 @@ export const bundledCatalogues: Readonly<
 		...urUiAgentsPages,
 		...urUiAgentsPublication,
 		...urUiAgentsRefusals,
+		...urUiAgentsRouting,
 		...urUiAgentsSettings,
 		...urUiAgentsSkills,
 		...urUiAgentsStarters,
@@ -1599,6 +1641,8 @@ export const bundledCatalogues: Readonly<
 		...viUiAgentMessages,
 		...viUiAgentMessagesSettings,
 		...viUiAgentsConfig,
+		...viUiAgentsDescriptions,
+		...viUiAgentsDetailInstall,
 		...viUiAgentsDetail,
 		...viUiAgentsDialogs,
 		...viUiAgents,
@@ -1607,6 +1651,7 @@ export const bundledCatalogues: Readonly<
 		...viUiAgentsPages,
 		...viUiAgentsPublication,
 		...viUiAgentsRefusals,
+		...viUiAgentsRouting,
 		...viUiAgentsSettings,
 		...viUiAgentsSkills,
 		...viUiAgentsStarters,
@@ -1712,6 +1757,8 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiAgentMessages,
 		...zhCNUiAgentMessagesSettings,
 		...zhCNUiAgentsConfig,
+		...zhCNUiAgentsDescriptions,
+		...zhCNUiAgentsDetailInstall,
 		...zhCNUiAgentsDetail,
 		...zhCNUiAgentsDialogs,
 		...zhCNUiAgents,
@@ -1720,6 +1767,7 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiAgentsPages,
 		...zhCNUiAgentsPublication,
 		...zhCNUiAgentsRefusals,
+		...zhCNUiAgentsRouting,
 		...zhCNUiAgentsSettings,
 		...zhCNUiAgentsSkills,
 		...zhCNUiAgentsStarters,
@@ -1987,6 +2035,20 @@ export type MessageParams = {
 	"ui.agents.config.summary.nothing_else": undefined;
 	"ui.agents.config.summary.updated": { name: string };
 	"ui.agents.config.summary.you_asked": { topic: string };
+	"ui.agents.descriptions.aida": undefined;
+	"ui.agents.descriptions.architect": undefined;
+	"ui.agents.descriptions.coder": undefined;
+	"ui.agents.descriptions.copy_reviewer": undefined;
+	"ui.agents.descriptions.designer": undefined;
+	"ui.agents.descriptions.librarian": undefined;
+	"ui.agents.descriptions.manager": undefined;
+	"ui.agents.descriptions.qa_tester": undefined;
+	"ui.agents.descriptions.reviewer": undefined;
+	"ui.agents.descriptions.scout": undefined;
+	"ui.agents.descriptions.tui_designer": undefined;
+	"ui.agents.descriptions.ux_reviewer": undefined;
+	"ui.agents.detail.install.action.install_to_edit": undefined;
+	"ui.agents.detail.install.action.installing": undefined;
 	"ui.agents.detail.action.ask_change": undefined;
 	"ui.agents.detail.action.discard_changes": undefined;
 	"ui.agents.detail.action.discard_question": undefined;
@@ -2302,6 +2364,18 @@ export type MessageParams = {
 	"ui.agents.refusals.name_taken": { name: string };
 	"ui.agents.refusals.team_name_bound": undefined;
 	"ui.agents.refusals.team_nesting": undefined;
+	"ui.agents.routing.aida": undefined;
+	"ui.agents.routing.architect": undefined;
+	"ui.agents.routing.coder": undefined;
+	"ui.agents.routing.copy_reviewer": undefined;
+	"ui.agents.routing.designer": undefined;
+	"ui.agents.routing.librarian": undefined;
+	"ui.agents.routing.manager": undefined;
+	"ui.agents.routing.qa_tester": undefined;
+	"ui.agents.routing.reviewer": undefined;
+	"ui.agents.routing.scout": undefined;
+	"ui.agents.routing.tui_designer": undefined;
+	"ui.agents.routing.ux_reviewer": undefined;
 	"ui.agents.settings.agent.no_agent_selected": undefined;
 	"ui.agents.settings.agent.select_an_agent_from_the_list_on": undefined;
 	"ui.agents.settings.chat.about_advanced_chat_settings": undefined;

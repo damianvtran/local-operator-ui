@@ -1,0 +1,14 @@
+{
+	"ui.agents.descriptions.aida": "Tu jefa de gabinete: orquesta agentes y equipos en tu nombre, vigila todo lo que está en curso y te informa.",
+	"ui.agents.descriptions.architect": "Explora una base de código y propone un diseño o una solución técnica con sus ventajas y desventajas; puede redactar documentos, pero nunca modifica el código existente.",
+	"ui.agents.descriptions.coder": "Implementa de principio a fin una porción acotada de trabajo con el conjunto completo de herramientas y después informa de qué cambió y cómo se verificó.",
+	"ui.agents.descriptions.copy_reviewer": "Revisión de la redacción antes de publicarla: textos de producto visibles para el usuario y prosa para un público general, sobre claridad, tono, respaldo de las afirmaciones y tics de IA; informa de hallazgos con prefijo C.",
+	"ui.agents.descriptions.designer": "Revisión de diseño y UX de un cambio visible para el usuario, a partir de la interfaz renderizada y no del código; informa de hallazgos con prefijo D.",
+	"ui.agents.descriptions.librarian": "El agente que organiza la Biblioteca: nombra, describe y etiqueta los recursos que guarda el operador, aprende su vocabulario y mantiene utilizable el catálogo global.",
+	"ui.agents.descriptions.manager": "Coordina el trabajo delegado e informa con honestidad del estado: qué está hecho, qué está en curso, qué está bloqueado y de quién depende.",
+	"ui.agents.descriptions.qa_tester": "Prueba independiente de que un cambio funciona: hace una comprobación previa del banco de pruebas, recorre rutas reales y casos negativos e informa de una matriz de QA acotada sin editar el repositorio.",
+	"ui.agents.descriptions.reviewer": "Revisión de código independiente de un diff, un MR o un PR: encuentra defectos, los clasifica por gravedad y nunca edita el código que revisa.",
+	"ui.agents.descriptions.scout": "Investigación de solo lectura: indaga una cuestión en el espacio de trabajo y en la web e informa de hallazgos con evidencia. No cambia nada.",
+	"ui.agents.descriptions.tui_designer": "Diseño y revisión de interfaces de terminal: flujos centrados en el teclado, densidad en pantallas pequeñas y fijas, alternativas de color y unicode, geometría medida; informa de hallazgos con prefijo T.",
+	"ui.agents.descriptions.ux_reviewer": "Recorre de principio a fin el flujo real de un cambio: descubrimiento, respuesta del sistema, recuperación de errores, rutas de teclado y textos; informa de hallazgos con prefijo U."
+}

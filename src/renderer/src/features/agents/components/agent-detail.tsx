@@ -80,6 +80,7 @@ import {
 	classSwitchFailure,
 	switchAgentClass,
 } from "../utils/agent-class";
+import { agentDescriptionText } from "../utils/agent-description";
 import {
 	type FieldTarget,
 	duplicateNameCandidates,
@@ -916,7 +917,9 @@ export function AgentDetail({
 									disabled={pending}
 								>
 									<LogIn className="size-4" />
-									{pending ? "Installing…" : "Install to edit"}
+									{pending
+										? t("ui.agents.detail.install.action.installing")
+										: t("ui.agents.detail.install.action.install_to_edit")}
 								</Button>
 							) : (
 								<Button
@@ -1146,7 +1149,7 @@ export function AgentDetail({
 					<>
 						<Section title={t("ui.agents.detail.section.when_to_use")}>
 							<ReadBlock
-								text={profile.description || ""}
+								text={agentDescriptionText(profile) || ""}
 								empty="No description yet — add one so a model knows when to pick this agent."
 							/>
 						</Section>
