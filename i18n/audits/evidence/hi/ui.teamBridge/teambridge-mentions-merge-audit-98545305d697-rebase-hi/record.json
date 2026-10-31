@@ -1,0 +1,203 @@
+{
+	"audit_id": "teambridge-mentions-merge-audit-98545305d697-rebase-hi",
+	"date": "2026-10-31",
+	"locale": "hi",
+	"namespace": "ui.teamBridge",
+	"branch": "feat/tb-mention-autocomplete",
+	"source_commit": "merge 3e987df1630fa067fa495ca393b406723484d820 of main 3b369d6341c7eeed159c3bcbb1b1f4db759265d4 into 3f60bbfca22dd274e881fe106cd9822601628fb9",
+	"translator": {
+		"agent": "translator",
+		"model": "anthropic/claude-opus-5-5",
+		"date": "2026-10-21",
+		"session": "632a8fd68227",
+		"job": "4ca9e8a81d54",
+		"added_key_source": {
+			"key": "ui.teamBridge.notify.unavailable",
+			"job": "job8d4e6d78c133",
+			"model": "not supplied"
+		}
+	},
+	"auditors": [
+		{
+			"agent": "task",
+			"model": "anthropic/claude-opus-5-5",
+			"instance": "98545305d697-rebase-hi",
+			"date": "2026-10-31",
+			"result": "clean",
+			"findings": {
+				"blocker": 0,
+				"major": 0,
+				"minor": 0,
+				"nit": 0
+			},
+			"session": "98545305d697",
+			"model_fallback": {
+				"announced": false,
+				"observed": false
+			}
+		}
+	],
+	"independence": "Independent translation auditor: lopdev task member, session 98545305d697; authored none of the audited strings (translator agent 'translator'; mentions delta self-translated by the feature coder), wrote none of the prior audits, edited no catalogue; wrote only receipts/evidence and rows via ledger-assemble.mjs.",
+	"files": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.json",
+			"sha256": "f0cf04791f4748e82d7e290cdaf1f1c534d65e416dcb0ab480c691d46972fa45"
+		},
+		"target": {
+			"path": "src/i18n/catalogues/hi/ui.teamBridge.json",
+			"sha256": "c6726b5bb78acfc8fb5566a7271236921f8c2dd3b16963aabaedad14565681c0"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+			"sha256": "0eb593dce5dc49c2c17c2033ab374a9cd97c65725266b9b9a659ddd3de5eaa28"
+		}
+	},
+	"scope": {
+		"delta_kind": "Merge of origin/main 3b369d6 into ui#1532 head 3f60bbf. Mechanical union: JSON key diff of the merged target vs ours (3f60bbf) = 1 key added (ui.teamBridge.reactions.others), 0 removed, 0 changed; vs theirs (3b369d6) = 14 ui.teamBridge.mentions.* keys added, 0 removed, 0 changed. Line-level: merged bytes with the reactions.others line removed are byte-identical to 3f60bbf's file. Same shape for en and en context.",
+		"ours_target_sha256": "c5b8869b6e1f78f4100050c90a081b96c3deaca718ce474c89f6a9ff3f564fdd",
+		"ours_en_sha256": "872abba111887ee71c0f4f079bdb3747f564b93abc85639b13b43d864a9372cb",
+		"theirs_target_sha256": "d729a6f2655bdb72faba93daaaa925cc109b514336366c8fa39bf35528e57fae",
+		"theirs_en_sha256": "fa61d01336edd0355d0ce7befde7957ec60457ade37a02b11c0b31eb3b2f3a96",
+		"key_diff_vs_ours": {
+			"added": [
+				"ui.teamBridge.reactions.others"
+			],
+			"removed": [],
+			"changed": []
+		},
+		"key_diff_vs_theirs": {
+			"added": [
+				"ui.teamBridge.mentions.empty",
+				"ui.teamBridge.mentions.listbox_label",
+				"ui.teamBridge.mentions.notice.invite",
+				"ui.teamBridge.mentions.notice.invite_failed",
+				"ui.teamBridge.mentions.notice.invited",
+				"ui.teamBridge.mentions.notice.not_member",
+				"ui.teamBridge.mentions.notice.pending",
+				"ui.teamBridge.mentions.notice.silent",
+				"ui.teamBridge.mentions.section.member_agent",
+				"ui.teamBridge.mentions.section.member_human",
+				"ui.teamBridge.mentions.section.org_agent",
+				"ui.teamBridge.mentions.section.org_human",
+				"ui.teamBridge.mentions.tag.bridge_off",
+				"ui.teamBridge.mentions.tag.not_member"
+			],
+			"removed": [],
+			"changed": []
+		},
+		"base_bytes_audited_by": [
+			"4ad83913bb2a-hi",
+			"f61a774e19eb-hi",
+			"b20548e9b2d9-rebase-hi"
+		],
+		"prior_audit_of_key": {
+			"ui.teamBridge.mentions.*": {
+				"instances": [
+					"4ad83913bb2a-hi",
+					"f61a774e19eb-hi"
+				],
+				"value_byte_identical": true
+			},
+			"ui.teamBridge.reactions.others": {
+				"instance": "b20548e9b2d9-rebase-hi",
+				"value_byte_identical": true
+			}
+		},
+		"keys_audited_linguistically": [],
+		"not_audited": "No value changed beyond the union, so no fresh linguistic audit was owed; every value is byte-identical to bytes audited by the instances in base_bytes_audited_by (moved to superseded by the assembler). Mechanical rechecks below cover the 15 union keys."
+	},
+	"audited": {
+		"ui.teamBridge.mentions.empty": {
+			"en": "No one matches “{query}”",
+			"translation": "“{query}” से कोई मेल नहीं खाता"
+		},
+		"ui.teamBridge.mentions.listbox_label": {
+			"en": "People and agents to mention",
+			"translation": "उल्लेख करने के लिए लोग और एजेंट"
+		},
+		"ui.teamBridge.mentions.notice.invite": {
+			"en": "Invite them",
+			"translation": "आमंत्रित करें"
+		},
+		"ui.teamBridge.mentions.notice.invite_failed": {
+			"en": "Couldn’t invite {name}. You can still mention them without notifying.",
+			"translation": "{name} को आमंत्रित नहीं किया जा सका। आप फिर भी सूचना दिए बिना उल्लेख कर सकते हैं।"
+		},
+		"ui.teamBridge.mentions.notice.invited": {
+			"en": "{name} has been invited. They won’t be notified until they join.",
+			"translation": "{name} को आमंत्रित कर दिया गया है। शामिल होने तक उन्हें सूचना नहीं मिलेगी।"
+		},
+		"ui.teamBridge.mentions.notice.not_member": {
+			"en": "{name} isn’t in this conversation, so they won’t be notified.",
+			"translation": "{name} इस बातचीत में शामिल नहीं हैं, इसलिए उन्हें सूचना नहीं मिलेगी।"
+		},
+		"ui.teamBridge.mentions.notice.pending": {
+			"en": "{name} is invited but hasn’t joined yet, so they won’t be notified.",
+			"translation": "{name} को आमंत्रित किया गया है, लेकिन वे अभी शामिल नहीं हुए हैं, इसलिए उन्हें सूचना नहीं मिलेगी।"
+		},
+		"ui.teamBridge.mentions.notice.silent": {
+			"en": "Mention without notifying",
+			"translation": "सूचना दिए बिना उल्लेख करें"
+		},
+		"ui.teamBridge.mentions.section.member_agent": {
+			"en": "Agents in this conversation",
+			"translation": "इस बातचीत में एजेंट"
+		},
+		"ui.teamBridge.mentions.section.member_human": {
+			"en": "People in this conversation",
+			"translation": "इस बातचीत में लोग"
+		},
+		"ui.teamBridge.mentions.section.org_agent": {
+			"en": "Other agents",
+			"translation": "दूसरे एजेंट"
+		},
+		"ui.teamBridge.mentions.section.org_human": {
+			"en": "Other people",
+			"translation": "दूसरे लोग"
+		},
+		"ui.teamBridge.mentions.tag.bridge_off": {
+			"en": "Team Bridge off",
+			"translation": "Team Bridge बंद है"
+		},
+		"ui.teamBridge.mentions.tag.not_member": {
+			"en": "not in this conversation",
+			"translation": "इस बातचीत में नहीं"
+		},
+		"ui.teamBridge.reactions.others": {
+			"en": "{others, plural, one {# other} other {# others}}",
+			"translation": "{others, plural, one {# अन्य व्यक्ति} other {# अन्य लोग}}"
+		}
+	},
+	"checks": {
+		"value_identity": "python json.load: every mentions.* value == 3f60bbf value; reactions.others == 3b369d6 value; all other keys == both parents.",
+		"placeholders": "@formatjs/icu-messageformat-parser argument sets (type:name) equal en for all 15 union keys: mismatch [].",
+		"unicode": "NFC; no LRM/RLM/FSI-PDI isolates, no NBSP in the 15 union values.",
+		"rendered": [
+			"hi 15 mismatch []"
+		],
+		"rendered_command": "node $LOCAL_OPERATOR_SCRATCHPAD/ph.mjs (repo node_modules @formatjs/icu-messageformat-parser)"
+	},
+	"findings": [],
+	"status": "passed",
+	"references": {
+		"docs_I18N": {
+			"path": "docs/I18N.md",
+			"sha256": "9a4bde8d1c161286160be4a4ae1c7655615dbf39047052550b725a3da2eb00e2"
+		},
+		"ledger_assemble": {
+			"path": "scripts/i18n/ledger-assemble.mjs",
+			"sha256": "66ec03de791b515424b8d9a93094315111c179c149b35a5323d80c9c38644657"
+		},
+		"precedent": "i18n/receipts/b20548e9b2d9-rebase-hi.json"
+	},
+	"artifacts": {
+		"receipt": {
+			"path": "i18n/receipts/98545305d697-rebase-hi.json",
+			"sha256": "bbbedd969cbc92d2fdacb7673802b5493968fc85ccd4f1b9613f23b8be2f44cc"
+		},
+		"ledger_row": "i18n/ledger.json#entries[locale=hi,namespace=ui.teamBridge]"
+	},
+	"ledger_history_note": "The merge commit 3e987df had dropped ours' a72fc22aa8e8/93e37e001a89 superseded record; it was restored verbatim from 3f60bbf ahead of the 4ad83913bb2a record so both parents' history is preserved.",
+	"limitations": "Mechanical union re-audit only: no rendered app frame, no native-speaker sign-off, no fresh linguistic pass (none owed: no value changed).",
+	"audit_notes_not_execution_log": "scope/independence are auditor notes; checks.rendered is verbatim command output."
+}
