@@ -7132,8 +7132,15 @@ const arrivalAlpha = () => {
 		);
 		return null;
 	}
+	/*
+	 * The lift is matched by its DECLARATION, not its selector (agent review round
+	 * 4, m1): the reduced-motion block repeats the same selector with only
+	 * `animation: none`, so a selector-only test kept passing with the lift itself
+	 * deleted. A rule body that sets `color: var(--color-ink-muted)` is the only
+	 * thing that actually puts `ink-muted` on the band.
+	 */
 	if (
-		!/\.lo-team-bridge-target \[class~="text-ink-dim"\]/.test(
+		!/\.lo-team-bridge-target \[class~="text-ink-dim"\]\s*\{[^}]*color:\s*var\(--color-ink-muted\)/.test(
 			ARRIVAL_ALPHA_SOURCE,
 		)
 	) {

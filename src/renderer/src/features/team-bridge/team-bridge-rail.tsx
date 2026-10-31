@@ -251,6 +251,10 @@ function personRowLabel(
 ): string {
 	const muted = Boolean(dm && showsMutedGlyph(dm));
 	const unread = dm?.unread_count ?? 0;
+	// Joined with spaces to match the channel row's accessible name ("general
+	// Muted 1 unread"), which comes from DOM text rather than a label. A comma
+	// join would read better (design review round 4, D11) but must change both
+	// row kinds together, so it is deliberately left for that one change.
 	return [
 		t("ui.teamBridge.people.message", { name }),
 		muted ? t("ui.teamBridge.notify.muted") : null,
