@@ -7071,6 +7071,118 @@ for (const { id, palette: p } of palettes) {
 	}
 }
 
+/* ---- 5a. the Team Bridge arrival band ----------------------------------- */
+
+/*
+ * THE BAND THE NOTIFICATION CLICK PAINTS (`styles/index.css`,
+ * `.lo-team-bridge-target::after`): the `accent` role at `ARRIVAL_BAND_ALPHA`
+ * over the surface, up for 1400 ms and then gone. It had no row here, which
+ * meant a palette edit could put an 11-12 px `ink-dim`/`ink-muted` timestamp
+ * under the AA floor, or invert the arrival against the row states it lands
+ * beside, with every suite green (design review round 2, D6).
+ *
+ * TWO PROPERTIES, both of them measured facts about this surface rather than
+ * taste:
+ *
+ *  - THE WASHED ROW'S INK. The row's metadata sits on the band, so it is
+ *    measured on the band. `inkDim` was the round-1 candidate and it is NOT
+ *    legal here: on the 12 % mix it is under 4.5:1 in ten of the fifty-nine
+ *    palettes (cyberpunk 4.05:1, from 5.59:1 on the plain pane) — which is why
+ *    the stylesheet lifts the washed row's dim utilities to `inkMuted` for the
+ *    band's lifetime. This row is what holds that lift: `inkMuted` on the band
+ *    clears the text floor in all fifty-nine (floor 5.21:1, nightfox).
+ *
+ *    BODY INK IS HELD AT THE TEXT FLOOR HERE, NOT THE STRONG-TEXT ONE, and that
+ *    is a decision rather than a relaxation: the band is up for 1400 ms and then
+ *    gone, while `ink`'s 7.0 ranking is written for the permanent grounds. On
+ *    the band, 7.0 fails in four palettes (ayuDark 6.58, ayuMirage 6.49,
+ *    catppuccinFrappe 6.58, solarizedDark 6.86) — all above AA, none of them a
+ *    legibility defect — so the honest floor for a transient tint is the one
+ *    that governs text at this size anywhere: 4.5. A palette that dropped body
+ *    ink under THAT would fail here.
+ *  - THE HIERARCHY. Arrival > the row the reader is ON > the row the pointer is
+ *    over, in every palette. The bar is a DESIGN rank, so it is an inequality
+ *    between two measured ratios, not a floor on one: a palette that raised
+ *    `rowSelected` past the band would fail here even though every one of its
+ *    own pairs still cleared its floor.
+ *
+ * THE ALPHA IS READ FROM THE STYLESHEET, NOT MIRRORED (agent review round 3,
+ * n1). A constant kept in step by a comment is a claim, not a gate: the mix could
+ * be retuned in `index.css` and this section would keep measuring last week's
+ * band. The rule below is parsed, and it FAILS CLOSED - an unreadable alpha means
+ * the band is unmeasured, which is the state this section exists to prevent.
+ * The lift rule is checked the same way, because the ink floor above is only true
+ * while the stylesheet actually lifts the washed row's dim utilities.
+ */
+const ARRIVAL_ALPHA_SOURCE = readFileSync(
+	join(ROOT, "src/renderer/src/styles/index.css"),
+	"utf8",
+);
+const arrivalAlpha = () => {
+	const rule =
+		ARRIVAL_ALPHA_SOURCE.match(
+			/\.lo-team-bridge-target::after\s*\{[^}]*\}/,
+		)?.[0] ?? "";
+	const mix = rule.match(
+		/color-mix\(in srgb, var\(--color-accent\)\s+([\d.]+)%, transparent\)/,
+	);
+	if (!mix) {
+		fail(
+			"the arrival band's mix could not be read from `.lo-team-bridge-target::after` in `src/renderer/src/styles/index.css`, so the band is unmeasured — keep the rule readable (`color-mix(in srgb, var(--color-accent) N%, transparent)`) or teach this section its new spelling",
+		);
+		return null;
+	}
+	/*
+	 * The lift is matched by its DECLARATION, not its selector (agent review round
+	 * 4, m1): the reduced-motion block repeats the same selector with only
+	 * `animation: none`, so a selector-only test kept passing with the lift itself
+	 * deleted. A rule body that sets `color: var(--color-ink-muted)` is the only
+	 * thing that actually puts `ink-muted` on the band.
+	 */
+	if (
+		!/\.lo-team-bridge-target \[class~="text-ink-dim"\]\s*\{[^}]*color:\s*var\(--color-ink-muted\)/.test(
+			ARRIVAL_ALPHA_SOURCE,
+		)
+	) {
+		fail(
+			'the washed row\'s ink lift is gone from `index.css` (`.lo-team-bridge-target [class~="text-ink-dim"]`), so `inkDim` would be read on the band at the floor below — restore the lift or re-measure this section',
+		);
+	}
+	return Number(mix[1]) / 100;
+};
+const ARRIVAL_BAND_ALPHA = arrivalAlpha();
+
+for (const { id, palette: p } of palettes) {
+	if (ARRIVAL_BAND_ALPHA === null) break;
+	const band = over(p.accent, p.surface, ARRIVAL_BAND_ALPHA);
+	for (const [role, floor, label] of [
+		["inkMuted", FLOOR.text, "washed row metadata ink"],
+		// Transient ground: see why this is not the strong-text floor above.
+		["ink", FLOOR.text, "washed row body ink"],
+	]) {
+		const ink = p[role];
+		if (!isHex(ink)) continue;
+		assertions++;
+		const got = r2(ratio(ink, band));
+		if (got >= floor) continue;
+		fail(
+			`${id}: ${label} — ${role} ${ink} on the arrival band ${band} (accent ${ARRIVAL_BAND_ALPHA} over surface) = ${got}:1, need ${floor}:1`,
+		);
+	}
+	const arrival = ratio(band, p.surface);
+	const hover = ratio(p.rowHover, p.surface);
+	const current = ratio(p.rowSelected, p.surface);
+	assertions += 2;
+	if (arrival <= hover)
+		fail(
+			`${id}: the arrival band is ${r2(arrival)}:1 over the pane and the row hover is ${r2(hover)}:1 — the mark the reader was TOLD about cannot be drawn more quietly than one their pointer rests on`,
+		);
+	if (arrival <= current)
+		fail(
+			`${id}: the arrival band is ${r2(arrival)}:1 over the pane and the selected row is ${r2(current)}:1 — the arrival must outrank the row the reader is already on, or the landing reads as a selection`,
+		);
+}
+
 /* ---- 5b. the fleet: the invariants that only exist BETWEEN palettes ------ */
 
 /*
