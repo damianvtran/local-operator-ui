@@ -1,0 +1,18 @@
+[
+	{
+		"id": "ES-A1",
+		"severity": "major",
+		"key": "ui.teamBridge.events.owner_added_agent",
+		"current": "{actor} añadió a su agente {targets}",
+		"proposed": "{actor} añadió a su agente: {targets}",
+		"reason": "The grouped line carries two or more agent names, so singular «su agente» heads a plural list; the colon keeps the agreement on the agent noun and reads for 1 and for 3 ('añadió a sus agentes: …' if several is the normal case)."
+	},
+	{
+		"id": "ES-A2",
+		"severity": "nit",
+		"key": "ui.teamBridge.events.unknown",
+		"current": "Cambio en los miembros",
+		"proposed": "Cambios en los miembros",
+		"reason": "The English is a deliberately generic, unspecified change; neutral Spanish uses the plural for that («Cambios en los miembros») while the singular reads like one named change."
+	}
+]

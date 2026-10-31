@@ -1,0 +1,170 @@
+{
+	"schema": 1,
+	"receipt_kind": "locale-audit (post-rebase union re-audit: 12 added keys)",
+	"date": "2026-10-30",
+	"auditor": "translation-auditor",
+	"agent": "translation-auditor",
+	"model": "anthropic/claude-opus-5-5",
+	"model_provenance": "Served model as announced by the harness for session 95c4798301e2 (anthropic/claude-opus-5-5); no fallback announced or observed.",
+	"model_fallback": {
+		"announced": false,
+		"observed": false
+	},
+	"status": "passed",
+	"result": "clean",
+	"namespace": "ui.teamBridge",
+	"locale": "fr",
+	"audit_id": "teambridge-member-events-union-audit-95c4798301e2-union-a-fr",
+	"instance": "95c4798301e2-union-a-fr",
+	"session": "95c4798301e2",
+	"role": "union-reaudit-a (auditor A; verdicts formed before reading any other receipt)",
+	"integration": {
+		"branch": "fix/team-bridge-member-events",
+		"base": "3b369d6341c7eeed159c3bcbb1b1f4db759265d4",
+		"head": "599309fdd9946546fee3138904bdd1f31722623d",
+		"state": "local head, not pushed",
+		"worktree": "~/local-operator-ui/.worktrees/member-events"
+	},
+	"independence": "Independent auditor: lopdev translation-auditor, session 95c4798301e2; authored none of the audited strings; edited no catalogue or code; wrote only receipts/evidence and rows via ledger-assemble.mjs. Distinct from b20548e9b2d9 and any union auditor B.",
+	"sha256": {
+		"fr": "e55e8a04a1dbe2e4b4b826c03ee420441c5f313e430071c884b85f74c40da80b",
+		"en": "124d9c3a342342fd4c67635e95210262f96d28c14260bdfac40ad70665936633"
+	},
+	"context_sha256": "47f525ae908445904c507ac9e1386fdaa8181c6a5a6aca8b9f46d22180eea523",
+	"scope": {
+		"delta_kind": "Rebase/union onto origin/main 3b369d6341c7eeed159c3bcbb1b1f4db759265d4: JSON key diff vs base = 12 added, 0 removed, 0 changed; every base key/value line present verbatim; 299 keys.",
+		"mechanical": "fr keys 299 base 287 added 12 removed 0 changed 0 NFC true baseLinesNotVerbatim 0",
+		"base_target_sha256": "7b17e110450440c7c0d59ca5d10fdcd2b487d7f93e626df630f240e117a42047",
+		"base_en_sha256": "fa61d01336edd0355d0ce7befde7957ec60457ade37a02b11c0b31eb3b2f3a96",
+		"base_bytes_audited_by": [
+			{
+				"instance": "b20548e9b2d9-rebase-fr",
+				"receipt": "i18n/receipts/b20548e9b2d9-rebase-fr.json",
+				"receipt_sha256": "6d782ec29fe5bac8f695ed3ee8a187097d766ca8b7a49a43a5b297d9e6fb5bcf",
+				"receipt_names_base_target": true,
+				"receipt_names_base_en": true,
+				"ledger_row_at_base": "status audited; source/target sha256 equal the base bytes"
+			}
+		],
+		"keys_audited_linguistically": [
+			"ui.teamBridge.members.invitation_note_v3",
+			"ui.teamBridge.events.invited",
+			"ui.teamBridge.events.joined",
+			"ui.teamBridge.events.owner_added_agent",
+			"ui.teamBridge.events.left",
+			"ui.teamBridge.events.removed",
+			"ui.teamBridge.events.consented",
+			"ui.teamBridge.events.declined_self",
+			"ui.teamBridge.events.declined",
+			"ui.teamBridge.events.withdrawn",
+			"ui.teamBridge.events.unknown",
+			"ui.teamBridge.events.others"
+		],
+		"delta_values_byte_identical_to_pre_rebase_head": "6ec9e2372e51fcf9c1bd6f8ac66e9ec18c20caaa (all 12 true; recorded, not relied on: the 12 were re-read here)",
+		"not_audited": "The 287 base keys: byte-identical to the base row audited by the instance above (moved to superseded by the assembler)."
+	},
+	"audited": {
+		"ui.teamBridge.members.invitation_note_v3": {
+			"en": "Invitations don’t grant access until accepted. Your own agents join right away; someone else’s agent joins once its owner consents. A member agent reads every message here and decides whether to reply, and is expected to reply when @-mentioned. Its owner can limit it to @-mentions and its threads, or mute it.",
+			"translation": "Les invitations ne donnent accès qu’une fois acceptées. Vos propres agents rejoignent la conversation immédiatement ; l’agent d’une autre personne la rejoint dès que son propriétaire y consent. Un agent membre lit chaque message ici et décide s’il répond, et il est censé répondre quand on le mentionne avec @. Son propriétaire peut le limiter aux mentions avec @ et aux fils où il intervient, ou le mettre en sourdine."
+		},
+		"ui.teamBridge.events.invited": {
+			"en": "{actor} invited {targets}",
+			"translation": "{actor} a invité {targets}"
+		},
+		"ui.teamBridge.events.joined": {
+			"en": "{targets} joined",
+			"translation": "Arrivée dans la conversation : {targets}"
+		},
+		"ui.teamBridge.events.owner_added_agent": {
+			"en": "{actor} added their agent {targets}",
+			"translation": "{actor} a ajouté son agent : {targets}"
+		},
+		"ui.teamBridge.events.left": {
+			"en": "{targets} left",
+			"translation": "Départ de la conversation : {targets}"
+		},
+		"ui.teamBridge.events.removed": {
+			"en": "{actor} removed {targets}",
+			"translation": "{actor} a retiré {targets}"
+		},
+		"ui.teamBridge.events.consented": {
+			"en": "{actor} approved {targets} joining",
+			"translation": "{actor} a autorisé {targets} à rejoindre la conversation"
+		},
+		"ui.teamBridge.events.declined_self": {
+			"en": "{actor} declined the invitation",
+			"translation": "{actor} a refusé l’invitation"
+		},
+		"ui.teamBridge.events.declined": {
+			"en": "{actor} declined the invitation for {targets}",
+			"translation": "{actor} a refusé l’invitation pour {targets}"
+		},
+		"ui.teamBridge.events.withdrawn": {
+			"en": "{actor} withdrew the invitation for {targets}",
+			"translation": "{actor} a annulé l’invitation pour {targets}"
+		},
+		"ui.teamBridge.events.unknown": {
+			"en": "Membership changed",
+			"translation": "Modification des membres"
+		},
+		"ui.teamBridge.events.others": {
+			"en": "{count, plural, one {# other} other {# others}}",
+			"translation": "{count, plural, one {# autre} many {# d’autres} other {# autres}}"
+		}
+	},
+	"checks": {
+		"placeholders": "Placeholder name set per key equals en (actor/targets/count); no {/} leaks in any render.",
+		"icu": "events.others arms match Intl.PluralRules('fr') categories: fr arms one/many/other CLDR one/many/other",
+		"unicode": "NFC true; no bidi control characters (U+200E/F, U+202A-E, U+2066-9) in the 12 values.",
+		"typography": "U+202F NNBSP before ; and : (4 occurrences in delta), matching the catalogue's 20/0/0 NNBSP/NBSP/space counts.",
+		"rendered": [
+			"fr",
+			" 1 invited            Damian a invité Ben",
+			" 1 joined             Arrivée dans la conversation : Ben",
+			" 1 owner_added_agent  Damian a ajouté son agent : Ben",
+			" 1 left               Départ de la conversation : Ben",
+			" 1 removed            Damian a retiré Ben",
+			" 1 consented          Damian a autorisé Ben à rejoindre la conversation",
+			" 1 declined_self      Damian a refusé l’invitation",
+			" 1 declined           Damian a refusé l’invitation pour Ben",
+			" 1 withdrawn          Damian a annulé l’invitation pour Ben",
+			" 1 unknown            Modification des membres",
+			" 3 invited            Damian a invité Ben, Sana et Ola",
+			" 3 joined             Arrivée dans la conversation : Ben, Sana et Ola",
+			" 3 owner_added_agent  Damian a ajouté son agent : Ben, Sana et Ola",
+			" 3 left               Départ de la conversation : Ben, Sana et Ola",
+			" 3 removed            Damian a retiré Ben, Sana et Ola",
+			" 3 consented          Damian a autorisé Ben, Sana et Ola à rejoindre la conversation",
+			" 3 declined_self      Damian a refusé l’invitation",
+			" 3 declined           Damian a refusé l’invitation pour Ben, Sana et Ola",
+			" 3 withdrawn          Damian a annulé l’invitation pour Ben, Sana et Ola",
+			" 3 unknown            Modification des membres",
+			" others: 1→1 autre | 2→2 autres | 3→3 autres | 5→5 autres | 11→11 autres | 21→21 autres",
+			" truncated: Damian a invité Ben, Sana et 2 autres"
+		],
+		"rendered_command": "node $LOCAL_OPERATOR_SCRATCHPAD/union-a/render.mjs (repo node_modules intl-messageformat@12.1.3 + Intl.ListFormat long conjunction; targets at 1 and 3; others at 1/2/3/5/11/21; Node v24.22.1)"
+	},
+	"v3_consent_note": "Re-read against context's four constraints: (1) no access until accepted; (2) own agents immediate / another's after ITS owner consents; (3) reads all, decides, EXPECTED (not 'always') to reply on @-mention; (4) owner can restrict to @-mentions + its threads, or mute. All four preserved; expectation not rendered as 'always'; mute term matches this locale's notify.mute/v2.",
+	"findings": [],
+	"references": {
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+		},
+		"style_guide": {
+			"path": "~/local-operator/i18n/style-guides/fr.md",
+			"sha256": "ae1519ab7617d19aa826918d607de1d018595094166edbc18aa58f6a8f0a4226"
+		},
+		"docs_I18N": {
+			"path": "docs/I18N.md",
+			"sha256": "9a4bde8d1c161286160be4a4ae1c7655615dbf39047052550b725a3da2eb00e2"
+		},
+		"ledger_assemble": {
+			"path": "scripts/i18n/ledger-assemble.mjs",
+			"sha256": "66ec03de791b515424b8d9a93094315111c179c149b35a5323d80c9c38644657"
+		}
+	},
+	"audit_notes_not_execution_log": "findings and linguistic judgement are auditor notes; checks.rendered is verbatim command output.",
+	"limitations": "No rendered app frame (timeline line or dialog footer); no native-speaker sign-off."
+}

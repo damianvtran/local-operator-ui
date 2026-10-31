@@ -1,0 +1,13 @@
+===== ru
+  events.others(3 hidden)      : ещё 3
+  invited      shown (5 names, 3 hidden): Dana: приглашение в разговор — Ava, Ben и ещё 3
+               full  (5 names)            : Dana: приглашение в разговор — Ava, Ben, Sana, Ravi и Cleo
+  joined       shown (5 names, 3 hidden): Присоединение к разговору: Ava, Ben и ещё 3
+               full  (5 names)            : Присоединение к разговору: Ava, Ben, Sana, Ravi и Cleo
+  declined     shown (5 names, 3 hidden): Dana: отклонение приглашения для Ava, Ben и ещё 3
+               full  (5 names)            : Dana: отклонение приглашения для Ava, Ben, Sana, Ravi и Cleo
+  withdrawn    shown (5 names, 3 hidden): Dana: отозвано приглашение — Ava, Ben и ещё 3
+               full  (5 names)            : Dana: отозвано приглашение — Ava, Ben, Sana, Ravi и Cleo
+  declined_self                : Dana: приглашение отклонено
+  owner_added_agent            : Dana: добавление собственного агента — Ava
+  unknown                      : Состав участников изменён

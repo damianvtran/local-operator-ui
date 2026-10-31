@@ -29,6 +29,7 @@
 	"ui.teamBridge.members.ineligible_label": "{name}, {reason}",
 	"ui.teamBridge.members.invite_count": "{count, plural, =0 {आमंत्रित करें} one {{count} को आमंत्रित करें} other {{count} को आमंत्रित करें}}",
 	"ui.teamBridge.members.invitation_note_v2": "आमंत्रण स्वीकार होने तक पहुँच नहीं देते। आमंत्रित एजेंट अपने स्वामी की सहमति के बाद जुड़ता है; फिर वह यहाँ का हर संदेश पढ़ता है और तय करता है कि जवाब दे या नहीं, और @ से उल्लेख होने पर हमेशा जवाब देता है। उसका स्वामी उसे केवल @ वाले उल्लेखों तक सीमित कर सकता है या म्यूट कर सकता है।",
+	"ui.teamBridge.members.invitation_note_v3": "आमंत्रण स्वीकार होने तक पहुँच नहीं देते। आपके अपने एजेंट तुरंत जुड़ जाते हैं; किसी और का एजेंट अपने स्वामी की सहमति के बाद जुड़ता है। सदस्य एजेंट यहाँ का हर संदेश पढ़ता है और तय करता है कि जवाब दे या नहीं, और @ से उल्लेख होने पर उससे जवाब देने की अपेक्षा की जाती है। उसका स्वामी उसे केवल @ वाले उल्लेखों और उन थ्रेड तक सीमित कर सकता है जिनमें वह शामिल है, या म्यूट कर सकता है।",
 	"ui.teamBridge.notify.unavailable": "इस खाते से अब यह सूचना नहीं खोली जा सकती।",
 	"ui.teamBridge.chief.unnamed": "{person} का चीफ़ ऑफ़ स्टाफ़",
 	"ui.teamBridge.page.title": "Team Bridge",
@@ -285,5 +286,16 @@
 	"ui.teamBridge.invitations.failed.sign_in": "आप साइन आउट हैं। साइन इन करें, फिर कोशिश करें।",
 	"ui.teamBridge.invitations.failed.unreachable": "ऐप Radient तक नहीं पहुँच सका। कुछ नहीं बदला गया। फिर कोशिश करें।",
 	"ui.teamBridge.invitations.read_only": "यह संगठन आपके लिए सिर्फ़ पढ़ने के लिए है, इसलिए यहाँ आमंत्रणों का जवाब नहीं दिया जा सकता।",
-	"ui.teamBridge.invitations.failed.unconfirmed": "आपके जवाब की पुष्टि नहीं हुई। फिर कोशिश करें।"
+	"ui.teamBridge.invitations.failed.unconfirmed": "आपके जवाब की पुष्टि नहीं हुई। फिर कोशिश करें।",
+	"ui.teamBridge.events.invited": "{actor} ने {targets} को आमंत्रित किया",
+	"ui.teamBridge.events.joined": "{targets} बातचीत में शामिल",
+	"ui.teamBridge.events.owner_added_agent": "{actor} ने अपना एजेंट {targets} जोड़ा",
+	"ui.teamBridge.events.left": "{targets} ने बातचीत छोड़ दी",
+	"ui.teamBridge.events.removed": "{actor} ने {targets} को हटा दिया",
+	"ui.teamBridge.events.consented": "{actor} ने {targets} को शामिल होने की मंज़ूरी दी",
+	"ui.teamBridge.events.declined_self": "{actor} ने आमंत्रण अस्वीकार कर दिया",
+	"ui.teamBridge.events.declined": "{actor} ने {targets} के लिए आमंत्रण अस्वीकार कर दिया",
+	"ui.teamBridge.events.withdrawn": "{actor} ने {targets} के लिए आमंत्रण वापस ले लिया",
+	"ui.teamBridge.events.unknown": "सदस्यों में बदलाव हुआ",
+	"ui.teamBridge.events.others": "{count, plural, one {# अन्य} other {# अन्य}}"
 }

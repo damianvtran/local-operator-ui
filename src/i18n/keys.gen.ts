@@ -9452,6 +9452,17 @@ export type MessageParams = {
 	"ui.teamBridge.drafts.navigation": undefined;
 	"ui.teamBridge.drafts.storage_failed": undefined;
 	"ui.teamBridge.drafts.title": undefined;
+	"ui.teamBridge.events.consented": { actor: string; targets: string };
+	"ui.teamBridge.events.declined": { actor: string; targets: string };
+	"ui.teamBridge.events.declined_self": { actor: string };
+	"ui.teamBridge.events.invited": { actor: string; targets: string };
+	"ui.teamBridge.events.joined": { targets: string };
+	"ui.teamBridge.events.left": { targets: string };
+	"ui.teamBridge.events.others": { count: number };
+	"ui.teamBridge.events.owner_added_agent": { actor: string; targets: string };
+	"ui.teamBridge.events.removed": { actor: string; targets: string };
+	"ui.teamBridge.events.unknown": undefined;
+	"ui.teamBridge.events.withdrawn": { actor: string; targets: string };
 	"ui.teamBridge.group.more": undefined;
 	"ui.teamBridge.invitations.accept": undefined;
 	"ui.teamBridge.invitations.accepted": { agent: string };
@@ -9506,6 +9517,7 @@ export type MessageParams = {
 	"ui.teamBridge.members.group.people": undefined;
 	"ui.teamBridge.members.ineligible_label": { name: string; reason: string };
 	"ui.teamBridge.members.invitation_note_v2": undefined;
+	"ui.teamBridge.members.invitation_note_v3": undefined;
 	"ui.teamBridge.members.invite": undefined;
 	"ui.teamBridge.members.invite_count": { count: number };
 	"ui.teamBridge.members.load_error": undefined;
