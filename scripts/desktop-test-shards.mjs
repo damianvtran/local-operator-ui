@@ -28,7 +28,12 @@ import { isEntryPoint } from "./entry-point.mjs";
 // SAME 205-file shard inventory, both after `ok 1060` with zero failures. The ceiling therefore sits inside the run-to-run distribution,
 // so fewer files per process group is what buys headroom; the budget and the
 // concurrency guard are deliberately untouched.
-export const SHARD_COUNT = 4;
+// FIVE, NOT FOUR (2026-10-31), for the same reason: shard 2/4 (164 files) was
+// killed past the since-raised 9.5 GB budget at 11.9 GB and 10.6 GB (run
+// 41193939272, jobs 124522211846 and 124543183135) with zero failures. Five
+// partitions cut each group to 131 files. Keep in step with ci.yml's matrix;
+// ci-scope.test.mjs derives the matrix it expects from this constant.
+export const SHARD_COUNT = 5;
 const RUNNER = "scripts/run-desktop-tests.mjs";
 const SHA = /^[a-f0-9]{40}$/;
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -61,8 +66,8 @@ export function partition(files, count = SHARD_COUNT) {
 	// The floor of 2 keeps a single-shard "partition" from masquerading as
 	// capacity work; the ceiling is whatever the CI matrix advertises, so a count
 	// nobody runs cannot silently pass here.
-	if (![2, 3, 4].includes(count))
-		throw new Error("Partition count must be 2, 3 or 4");
+	if (!Number.isInteger(count) || count < 2 || count > SHARD_COUNT)
+		throw new Error(`Partition count must be 2..${SHARD_COUNT}`);
 	if (!files.length || new Set(files).size !== files.length)
 		throw new Error("Empty or duplicate inventory");
 	const groups = Array.from({ length: count }, () => []);

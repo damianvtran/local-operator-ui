@@ -584,7 +584,18 @@ jobs:
     # distribution, so a quarter fewer files per process group is what buys
     # headroom. Raising the budget or lowering concurrency was rejected: the
     # first hides a narrowing margin, the second lengthens every lane.
-    name: Desktop Tests shard (${{ matrix.shard }}/4)
+    #
+    # FIVE RATHER THAN FOUR (2026-10-31), on the same reasoning and the same
+    # kind of measurement. The 9.5 GB floor in desktop-test-memory-guard.mjs was
+    # set 100 MB above the highest healthy peak it had seen; on PR #1538's head
+    # `4a45d3e02d7` shard 2/4 (164 of 654 files) was killed past it twice with
+    # zero failures: 11.9 GB (run 41193939272, job 124522211846) and 10.6 GB
+    # (attempt 2, job 124543183135), both rc=137. That PR adds one 342 MB file,
+    # which only re-deals which heavy files share a group, so the margin is back
+    # inside the run-to-run distribution for every PR. 654 files over five is
+    # 131 per group instead of 164 (-20%, as 3->4 cut 218 to 164). The cost is
+    # one more VM per run; the budget and concurrency stay untouched.
+    name: Desktop Tests shard (${{ matrix.shard }}/5)
     needs: [changes]
     if: >-
       !cancelled() &&
@@ -618,7 +629,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [0, 1, 2, 3]
+        shard: [0, 1, 2, 3, 4]
     env:
       DESKTOP_SHARD_INDEX: ${{ matrix.shard }}
       DESKTOP_REQUESTED_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
@@ -908,7 +919,7 @@ jobs:
           echo "Working tree clean after the desktop suite."
 
   # Keep the required check's display name stable while workers gain a matrix.
-  # A matrix aggregate status alone cannot prove every file ran: four exact,
+  # A matrix aggregate status alone cannot prove every file ran: five exact,
   # same-head receipts must reconstruct the inventory without overlap or gaps.
   desktop-tests-result:
     name: Desktop Tests
