@@ -6,6 +6,18 @@ on:
   schedule:
     - cron: '23 5 * * 1'
   workflow_dispatch:
+    inputs:
+      mode:
+        description: Existing rotating sample or the reviewed fixed shard-1 diagnostic
+        type: choice
+        options: [rotate, shard1-diagnostic]
+        default: rotate
+      base_sha:
+        description: Diagnostic only — full reviewed baseline commit SHA
+        type: string
+      candidate_sha:
+        description: Diagnostic only — full reviewed candidate commit SHA
+        type: string
 
 permissions:
   contents: read
@@ -16,6 +28,7 @@ concurrency:
 
 jobs:
   repeat:
+    if: github.event_name != 'workflow_dispatch' || inputs.mode == 'rotate'
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
@@ -59,3 +72,64 @@ jobs:
               fi
             done
           done
+
+  # This produces evidence, never a passing substitute for Desktop Tests. No PR
+  # trigger, write token, secrets, arbitrary test selector or shell-evaluated SHA.
+  shard1-diagnostic:
+    if: github.event_name == 'workflow_dispatch' && inputs.mode == 'shard1-diagnostic'
+    runs-on: ubuntu-26.04
+    timeout-minutes: 14
+    steps:
+      - name: Validate explicit commit inputs before checkout
+        env:
+          BASE_SHA: ${{ inputs.base_sha }}
+          CANDIDATE_SHA: ${{ inputs.candidate_sha }}
+        run: |
+          [[ "$BASE_SHA" =~ ^[a-f0-9]{40}$ ]] && [[ "$CANDIDATE_SHA" =~ ^[a-f0-9]{40}$ ]]
+      - uses: actions/checkout@v4
+        with:
+          path: tooling
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.candidate_sha }}
+          path: subject
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+        with:
+          version: '10.29.2'
+          package_json_file: tooling/package.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.23.4'
+          cache: pnpm
+          cache-dependency-path: subject/pnpm-lock.yaml
+      - name: Frozen public dependency setup — separately bounded 10 minutes and 3 GiB
+        timeout-minutes: 11
+        env:
+          BASE_SHA: ${{ inputs.base_sha }}
+          CANDIDATE_SHA: ${{ inputs.candidate_sha }}
+        run: |
+          set -euo pipefail
+          store=$(pnpm store path --silent)
+          node tooling/scripts/shard1-diagnostic.mjs --mode setup \
+            --root "$GITHUB_WORKSPACE/subject" --base "$BASE_SHA" --candidate "$CANDIDATE_SHA" \
+            --out "$RUNNER_TEMP/shard1-diagnostic" --store "$store"
+      - name: Instrumentation negatives then serial base and candidate — aggregate 90 seconds and 3 GiB
+        timeout-minutes: 2
+        env:
+          BASE_SHA: ${{ inputs.base_sha }}
+          CANDIDATE_SHA: ${{ inputs.candidate_sha }}
+        run: |
+          node tooling/scripts/shard1-diagnostic.mjs --mode run \
+            --root "$GITHUB_WORKSPACE/subject" --base "$BASE_SHA" --candidate "$CANDIDATE_SHA" \
+            --out "$RUNNER_TEMP/shard1-diagnostic"
+      - name: Retain partial evidence even after setup, bound or assertion failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: shard1-diagnostic-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/shard1-diagnostic/
+          if-no-files-found: error
+          retention-days: 3

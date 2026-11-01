@@ -1,0 +1,162 @@
+import assert from "node:assert/strict";
+import { mkdtempSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { test } from "node:test";
+import { fileURLToPath } from "node:url";
+import {
+	classify,
+	cleanEnv,
+	outputPath,
+	supervise,
+	traceEvents,
+	validSha,
+} from "./shard1-diagnostic.mjs";
+
+/*
+ * Small REAL child-process negative controls, not renderer/native evidence.
+ * Kept outside test:desktop's inventory: changing sorted modulo4 partitions
+ * while investigating their ordering would destroy the original workload.
+ * Diagnostic mode executes this file explicitly before either subject.
+ */
+const PASS_ONE_RE = /^# pass 1$/m;
+const parent = process.env.RUNNER_TEMP ?? process.env.LOCAL_OPERATOR_SCRATCHPAD;
+assert.ok(
+	parent,
+	"RUNNER_TEMP or session scratchpad must name an existing private root",
+);
+const root = mkdtempSync(join(parent, "shard1-contract-"));
+const self = fileURLToPath(new URL("./shard1-diagnostic.mjs", import.meta.url));
+
+async function fixture(name, source, wallMs) {
+	const path = join(root, `${name}.test.mjs`);
+	writeFileSync(path, source);
+	const out = join(root, name);
+	const env = cleanEnv(out);
+	env.RUNNER_TEMP = root;
+	env.LOCAL_OPERATOR_UI_SHARD1_TRACE = join(out, "trace");
+	env.LOCAL_OPERATOR_UI_SHARD1_ENTRIES = JSON.stringify([path]);
+	env.NODE_OPTIONS = `--max-old-space-size=96 --import=${self}`;
+	const result = await supervise({
+		command: [process.execPath, "--test", "--test-reporter=tap", path],
+		cwd: root,
+		out,
+		env,
+		wallMs,
+		memoryMb: 512,
+	});
+	const events = traceEvents(join(out, "trace")).filter(
+		(event) => event.worker,
+	);
+	assert.equal(
+		result.samplingFailed,
+		false,
+		"process accounting must remain observable",
+	);
+	assert.deepEqual(
+		result.survivors,
+		[],
+		"all owned process identities must be gone",
+	);
+	assert.ok(
+		events.some((e) => e.event === "FILE_LOAD"),
+		"actual physical worker entry was instrumented",
+	);
+	return { result, events, text: readFileSync(join(out, "tap.log"), "utf8") };
+}
+
+test("SHA/path validation rejects shell payloads and evidence symlink escapes", () => {
+	assert.equal(validSha("a".repeat(40)), "a".repeat(40));
+	for (const bad of [
+		"main",
+		"$(echo bad)",
+		`${"a".repeat(40)};exit 0`,
+		"A".repeat(40),
+		"",
+	])
+		assert.throws(() => validSha(bad));
+	assert.throws(() => outputPath("relative", root));
+	assert.throws(() => outputPath(join(root, "..", "escape"), root));
+	symlinkSync(parent, join(root, "escape"), "dir");
+	assert.throws(() => outputPath(join(root, "escape", "outside"), root));
+});
+
+test("natural worker completes assertions and drains without force-exit", async () => {
+	const { result, events, text } = await fixture(
+		"natural",
+		"import { test } from 'node:test'; test('body', () => {});",
+		1500,
+	);
+	assert.equal(result.code, 0);
+	assert.equal(result.timeout, false);
+	assert.equal(classify(result, events), "completed");
+	assert.ok(events.some((e) => e.event === "TESTS_START"));
+	assert.ok(events.some((e) => e.event === "TESTS_COMPLETE"));
+	assert.ok(events.some((e) => e.event === "BEFORE_EXIT"));
+	assert.match(text, PASS_ONE_RE);
+});
+
+test("completed test with retained resource is held-after-tests, not a body stall", async () => {
+	const { result, events } = await fixture(
+		"held",
+		"import { test } from 'node:test'; setInterval(() => {}, 100); test('body', () => {});",
+		900,
+	);
+	assert.equal(
+		result.timeout,
+		true,
+		"the injected leak must really hit the bound",
+	);
+	assert.equal(classify(result, events), "held-after-tests");
+	assert.ok(events.some((e) => e.event === "TESTS_COMPLETE"));
+	assert.ok(
+		events.some(
+			(e) => e.event === "RESOURCES" && e.resources.includes("Timeout"),
+		),
+	);
+	assert.equal(
+		events.some((e) => e.event === "BEFORE_EXIT"),
+		false,
+	);
+});
+
+test("pending render/body never completes and is not misreported as a resource-only hold", async () => {
+	const { result, events } = await fixture(
+		"stalled",
+		"import { test } from 'node:test'; setInterval(() => {}, 100); test('body', async () => { globalThis.__loShard1Trace('BEFORE_RENDER'); await new Promise(() => {}); });",
+		900,
+	);
+	assert.equal(result.timeout, true);
+	assert.equal(classify(result, events), "incomplete-body-or-import");
+	assert.ok(events.some((e) => e.event === "BEFORE_RENDER"));
+	assert.equal(
+		events.some((e) => e.event === "TESTS_COMPLETE"),
+		false,
+	);
+});
+
+test("classification fails closed on accounting, interruption, memory and missing lifecycle", () => {
+	const ok = { code: 0, survivors: [] };
+	assert.equal(
+		classify({ ...ok, samplingFailed: true }, []),
+		"instrumentation-or-cleanup-failure",
+	);
+	assert.equal(
+		classify({ ...ok, survivors: [123] }, []),
+		"instrumentation-or-cleanup-failure",
+	);
+	assert.equal(
+		classify({ ...ok, interrupted: true }, []),
+		"instrumentation-or-cleanup-failure",
+	);
+	assert.equal(classify({ ...ok, memory: true }, []), "memory-bound");
+	assert.equal(classify({ ...ok, code: 1 }, []), "assertion-or-launch-failure");
+	assert.equal(classify(ok, []), "missing-lifecycle");
+	assert.equal(
+		classify({ ...ok, timeout: true }, [
+			{ event: "TESTS_COMPLETE" },
+			{ event: "EXIT", code: 0 },
+		]),
+		"completed-before-cutoff",
+		"do not blame an exited neighbour for a different worker's hold",
+	);
+});
