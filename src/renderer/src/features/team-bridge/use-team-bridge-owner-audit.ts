@@ -116,8 +116,10 @@ export function auditFailureState(error: unknown): AuditFailureState {
 	return "error";
 }
 
-/** One extra attempt for a known server failure. A null status is NOT proof of
- * a transient network fault. In particular, a 401 may only commission a NEW
+/** One extra attempt for an HTTP server failure, regardless of body code. The
+ * transport can synthesize an unfamiliar code for an uncoded 503; that must not
+ * downgrade the numeric 5xx signal. A null status is NOT proof of a transient
+ * network fault. In particular, a 401 may only commission a NEW
  * epoch-qualified read after real credential settlement; retry never does that. */
 export function retryOwnerAuditRead(
 	failureCount: number,
@@ -128,10 +130,7 @@ export function retryOwnerAuditRead(
 		failureCount < 1 &&
 		failure.category === "desktop" &&
 		failure.status !== null &&
-		failure.status >= 500 &&
-		(failure.code === null ||
-			failure.code === "deadline_exceeded" ||
-			failure.code === "owner_audit_unavailable")
+		failure.status >= 500
 	);
 }
 

@@ -163,13 +163,55 @@ test("retry policy never retries unknown/network/null, 401, 403, 404 or authorit
 		error(401),
 		error(403),
 		error(404),
-		error(500, "unknown"),
+		error(422, "unknown"),
 		new Error("Account authority changed"),
 		new m.CancelledError(),
 	])
 		assert.equal(m.retryOwnerAuditRead(0, e), false);
+	for (const status of [500, 503, 599]) {
+		assert.equal(m.retryOwnerAuditRead(0, error(status, "unknown")), true);
+		assert.equal(m.retryOwnerAuditRead(1, error(status, "unknown")), false);
+	}
 	assert.equal(m.retryOwnerAuditRead(0, error(503)), true);
 	assert.equal(m.retryOwnerAuditRead(1, error(503)), false);
+});
+
+test("uncoded and unrecognised 503 responses recover on exactly one retry", async () => {
+	for (const body of [
+		{},
+		{ detail: { code: "unrecognised_service_failure" } },
+	]) {
+		const rig = await mount((_request, attempt) =>
+			attempt === 1 ? { status: 503, body } : ok,
+		);
+		try {
+			await until(() => rig.query().isSuccess || rig.query().isError);
+			assert.equal(
+				rig.requests.length,
+				2,
+				"HTTP 503 earns one retry regardless of body shape",
+			);
+			assert.equal(rig.query().isSuccess, true);
+			assert.equal(m.readState(rig.query()), "ready");
+		} finally {
+			await rig.close();
+		}
+	}
+});
+
+test("an unrecognised 4xx refusal never requests the succeeding response", async () => {
+	const rig = await mount((_request, attempt) =>
+		attempt === 1
+			? { status: 422, body: { detail: { code: "unrecognised_refusal" } } }
+			: ok,
+	);
+	try {
+		await until(() => rig.query().isError);
+		assert.equal(rig.requests.length, 1);
+		assert.equal(rig.query().error.status, 422);
+	} finally {
+		await rig.close();
+	}
 });
 
 test("four actionable states map from typed errors; permission/not-found have no retry", () => {
