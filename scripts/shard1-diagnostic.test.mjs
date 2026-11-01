@@ -1,5 +1,12 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
+import {
+	mkdtempSync,
+	readFileSync,
+	realpathSync,
+	symlinkSync,
+	writeFileSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
@@ -17,9 +24,10 @@ import {
 
 /*
  * Small REAL child-process negative controls, not renderer/native evidence.
- * Kept outside test:desktop's inventory: changing sorted modulo4 partitions
- * while investigating their ordering would destroy the original workload.
- * Diagnostic mode executes this file explicitly before either subject.
+ * Registered in test:desktop as well as the dedicated diagnostic preflight:
+ * neither registration guard may silently omit these real contracts. This does
+ * change the current sorted modulo4 partitions; historical neighbor positions
+ * apply ONLY to the pinned subject SHAs, not to this revised tooling inventory.
  */
 test("fixed cohort is exactly the reviewed predecessor trio in runner order", () => {
 	assert.ok(Object.isFrozen(FILES));
@@ -31,12 +39,14 @@ test("fixed cohort is exactly the reviewed predecessor trio in runner order", ()
 });
 
 const PASS_ONE_RE = /^# pass 1$/m;
-const parent = process.env.RUNNER_TEMP ?? process.env.LOCAL_OPERATOR_SCRATCHPAD;
-assert.ok(
-	parent,
-	"RUNNER_TEMP or session scratchpad must name an existing private root",
-);
-const root = mkdtempSync(join(parent, "shard1-contract-"));
+// Ordinary desktop callers need no agent-specific environment. Each fixture
+// still issues its own private RUNNER_TEMP; production output-path guards do
+// not change when the outer suite falls back to the standard test temp root.
+const parent =
+	process.env.RUNNER_TEMP ?? process.env.LOCAL_OPERATOR_SCRATCHPAD ?? tmpdir();
+// Darwin's standard temp root can be a /var -> /private/var alias. Canonicalize
+// our own freshly-created directory, not the production containment guard.
+const root = realpathSync(mkdtempSync(join(parent, "shard1-contract-")));
 const self = fileURLToPath(new URL("./shard1-diagnostic.mjs", import.meta.url));
 
 async function fixture(name, source, wallMs, { denyGroups = false } = {}) {

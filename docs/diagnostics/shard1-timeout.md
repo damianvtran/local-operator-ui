@@ -93,8 +93,15 @@ node scripts/run-desktop-tests.mjs --test-concurrency=3 --test-reporter=tap \
 ```
 
 It is executed through a real `2>&1 | tee` pipe with pipefail and positional argv.
-No full shard, test-inventory change, source overlay, timer-clearing or forced
-successful exit is hidden here. Each control gets isolated HOME/config/XDG/tmp;
+No full shard, source overlay, timer-clearing or forced successful exit is hidden
+here. The seven tiny synthetic contracts are genuinely registered in both
+`test:desktop` and `test:shard1-diagnostic`; the latter remains the explicit
+serial diagnostic preflight. Adding that file changes the tooling head's sorted
+modulo4 shard partitions. Historical neighbor positions above describe ONLY the
+pinned baseline/candidate inventories, not this revised tooling head or a fresh
+normal CI run. The diagnostic's fixed trio is unchanged. Any future whole-runner
+progress map must derive its file ordinals from the actual current runner argv,
+not reuse those historical positions. Each control gets isolated HOME/config/XDG/tmp;
 CMUX/LOP/XPC variables, credentials and ambient NODE_TEST_CONTEXT are not inherited.
 Original fixture cache semantics remain in the isolated subject worktree.
 

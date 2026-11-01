@@ -69,6 +69,17 @@ const desktopShardRefusal = {
 		/Desktop shard proof failed: Expected explicit plan \(metadata-only\), run, receipt or verify mode/,
 };
 
+// This diagnostic is also a workflow CLI, not an import-time script. Drive
+// its parser refusal BEFORE Linux/subject preflight; never dispatch a worker
+// just to prove entry-point spelling. Positional invalid-mode is malformed.
+const shardDiagnosticRefusal = {
+	script: "shard1-diagnostic.mjs",
+	args: ["invalid-mode"],
+	status: 1,
+	stdout: /^$/,
+	stderr: /shard1 diagnostic refused: Unknown\/repeated\/missing option/,
+};
+
 /** A `package.json` shaped like this repository's: tab-indented, one version line. */
 const packageJson = (version) =>
 	`{\n\t"name": "local-operator-ui",\n\t"version": "${version}",\n\t"private": true\n}\n`;
@@ -202,6 +213,7 @@ function cases(root) {
 	);
 	return [
 		{ ...desktopShardRefusal, cwd: plain, env: {} },
+		{ ...shardDiagnosticRefusal, cwd: plain, env: {} },
 		{
 			// Reject the SHA before any Linux/compiler/dependency control can start.
 			// This is the diagnostic's own CLI verdict, not a blanket exemption.
@@ -991,17 +1003,58 @@ test("every script a workflow invokes is driven here, or says why it needs no en
 	}
 });
 
-test("desktop shard invalid-mode CLI refuses through physical and symlink paths", () => {
-	const root = mkdtempSync(join(tmpdir(), "desktop-shard-entry-"));
-	try {
-		const link = join(root, "scripts-link");
-		symlinkSync(SCRIPTS, link);
-		for (const base of [SCRIPTS, link]) {
-			let result;
-			try {
-				execFileSync(
+for (const [label, refusal] of [
+	["desktop shard", desktopShardRefusal],
+	["shard1 diagnostic", shardDiagnosticRefusal],
+]) {
+	test(`${label} invalid-mode CLI refuses through physical and symlink paths`, () => {
+		const root = mkdtempSync(join(tmpdir(), "desktop-shard-entry-"));
+		try {
+			const link = join(root, "scripts-link");
+			symlinkSync(SCRIPTS, link);
+			for (const base of [SCRIPTS, link]) {
+				let result;
+				try {
+					execFileSync(
+						process.execPath,
+						[join(base, refusal.script), ...refusal.args],
+						{
+							encoding: "utf8",
+							timeout: 2000,
+							maxBuffer: 16384,
+							stdio: ["ignore", "pipe", "pipe"],
+						},
+					);
+					result = { status: 0, stdout: "", stderr: "" };
+				} catch (error) {
+					result = error;
+				}
+				assert.equal(
+					result.status,
+					refusal.status,
+					"invalid CLI must execute, not silently exit0",
+				);
+				assert.match(result.stdout, refusal.stdout);
+				assert.match(result.stderr, refusal.stderr);
+			}
+		} finally {
+			rmSync(root, { recursive: true, force: true });
+		}
+	});
+
+	test(`${label} import stays neutral through physical and symlink paths`, () => {
+		const root = mkdtempSync(join(tmpdir(), "desktop-shard-import-"));
+		try {
+			const link = join(root, "scripts-link");
+			symlinkSync(SCRIPTS, link);
+			for (const base of [SCRIPTS, link]) {
+				const output = spawnSync(
 					process.execPath,
-					[join(base, desktopShardRefusal.script), ...desktopShardRefusal.args],
+					[
+						"--input-type=module",
+						"-e",
+						`await import(${JSON.stringify(pathToFileURL(join(base, refusal.script)).href)})`,
+					],
 					{
 						encoding: "utf8",
 						timeout: 2000,
@@ -1009,52 +1062,16 @@ test("desktop shard invalid-mode CLI refuses through physical and symlink paths"
 						stdio: ["ignore", "pipe", "pipe"],
 					},
 				);
-				result = { status: 0, stdout: "", stderr: "" };
-			} catch (error) {
-				result = error;
+				assert.equal(output.status, 0, "import must settle successfully");
+				assert.equal(
+					output.stdout,
+					"",
+					"import must not emit execution proof or run a suite",
+				);
+				assert.equal(output.stderr, "", "import must remain silent");
 			}
-			assert.equal(
-				result.status,
-				desktopShardRefusal.status,
-				"invalid CLI must execute, not silently exit0",
-			);
-			assert.match(result.stdout, desktopShardRefusal.stdout);
-			assert.match(result.stderr, desktopShardRefusal.stderr);
+		} finally {
+			rmSync(root, { recursive: true, force: true });
 		}
-	} finally {
-		rmSync(root, { recursive: true, force: true });
-	}
-});
-
-test("desktop shard import stays neutral through physical and symlink paths", () => {
-	const root = mkdtempSync(join(tmpdir(), "desktop-shard-import-"));
-	try {
-		const link = join(root, "scripts-link");
-		symlinkSync(SCRIPTS, link);
-		for (const base of [SCRIPTS, link]) {
-			const output = spawnSync(
-				process.execPath,
-				[
-					"--input-type=module",
-					"-e",
-					`await import(${JSON.stringify(pathToFileURL(join(base, desktopShardRefusal.script)).href)})`,
-				],
-				{
-					encoding: "utf8",
-					timeout: 2000,
-					maxBuffer: 16384,
-					stdio: ["ignore", "pipe", "pipe"],
-				},
-			);
-			assert.equal(output.status, 0, "import must settle successfully");
-			assert.equal(
-				output.stdout,
-				"",
-				"import must not emit execution proof or run a suite",
-			);
-			assert.equal(output.stderr, "", "import must remain silent");
-		}
-	} finally {
-		rmSync(root, { recursive: true, force: true });
-	}
-});
+	});
+}
