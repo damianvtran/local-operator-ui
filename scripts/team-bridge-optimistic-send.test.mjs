@@ -677,9 +677,8 @@ test("the first message survives the move onto its conversation, through the thr
 		await settle();
 		const drawn = rows(app.element);
 		assert.equal(drawn.length, 1, "one row while the thread read is in flight");
-		assert.equal(
-			drawn[0],
-			atPress,
+		assert.ok(
+			drawn[0] === atPress,
 			"the same element: the row was not unmounted behind the spinner",
 		);
 		assert.ok(
@@ -695,9 +694,8 @@ test("the first message survives the move onto its conversation, through the thr
 			}),
 		);
 		await settle();
-		assert.equal(
-			rows(app.element)[0],
-			atPress,
+		assert.ok(
+			rows(app.element)[0] === atPress,
 			"and still the same element after it",
 		);
 	} finally {

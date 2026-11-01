@@ -25,8 +25,12 @@ const chiefLabels = (): ChiefLabels => ({
  *
  * Mounted only for an OPEN conversation: a new message has no members yet, so
  * every pick would be "not in this conversation" for a room that does not
- * exist. `conversation === null` therefore renders the children with no
- * provider, which is the composer's pre-mention behaviour.
+ * exist. `conversation === null` therefore supplies a null source, keeping the
+ * composer's pre-mention behaviour. The provider itself must remain mounted:
+ * swapping a Fragment for a Provider when the first create answers remounts
+ * the entire page beneath it, detaching the optimistic row during the thread
+ * read even though the row key is stable. Account/tenant/draft reset keys stay
+ * owned by the page; mention availability is not a subtree identity boundary.
  */
 export function TeamBridgeMentionProvider({
 	conversation,
@@ -100,7 +104,6 @@ export function TeamBridgeMentionProvider({
 				(row.kind === "human" || Boolean(row.endpointId)),
 		};
 	}, [conversation, people, selfAccountId, sendMentions, onAddMembers]);
-	if (!value) return <>{children}</>;
 	return (
 		<MentionSourceContext.Provider value={value}>
 			{children}
