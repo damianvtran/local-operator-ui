@@ -91,8 +91,18 @@ export function parity() {
 	return { platform: process.platform, node: process.version, release };
 }
 export function classify(result, events) {
-	if (result.interrupted || result.samplingFailed || result.survivors?.length)
+	if (
+		result.interrupted ||
+		result.samplingFailed ||
+		result.survivors?.length ||
+		result.cleanupErrors?.length
+	)
 		return "instrumentation-or-cleanup-failure";
+	return subjectClassification(result, events);
+}
+
+/** Keep the observed subject phase even when cleanup permission is uncertain. */
+export function subjectClassification(result, events) {
 	if (result.memory) return "memory-bound";
 	if (result.timeout) {
 		// A different worker or the dispatcher may hold the pipeline. Preserve
@@ -103,8 +113,10 @@ export function classify(result, events) {
 			events.some((e) => e.event === "EXIT" && e.code === 0)
 		)
 			return "completed-before-cutoff";
-		return events.some((e) => e.event === "TESTS_COMPLETE")
-			? "held-after-tests"
+		if (events.some((e) => e.event === "TESTS_COMPLETE"))
+			return "held-after-tests";
+		return events.some((e) => e.event === "SUBJECT_TEARDOWN_PENDING")
+			? "incomplete-subject-teardown"
 			: "incomplete-body-or-import";
 	}
 	if (result.code !== 0 || result.signal) return "assertion-or-launch-failure";
@@ -147,7 +159,11 @@ function preload() {
 			// wrappers. Assertions and production imports remain byte-for-byte.
 			return {
 				...got,
-				source: `import { before as __loBefore, after as __loAfter } from 'node:test';\n__loBefore(() => globalThis.__loShard1Trace('TESTS_START'));\n__loAfter(() => globalThis.__loShard1Trace('TESTS_COMPLETE'));\nglobalThis.__loShard1Trace('MODULE_START');\n${got.source}\n;globalThis.__loShard1Trace('MODULE_EVALUATED');\n`,
+				// The early root-after hook is only a phase boundary, NOT proof that
+				// subject after-hooks finished. Register completion after evaluating
+				// the subject's root hooks; a stalled teardown must never look like
+				// completed assertions/hooks with an unrelated retained resource.
+				source: `import { before as __loBefore, after as __loAfter } from 'node:test';\n__loBefore(() => globalThis.__loShard1Trace('TESTS_START'));\n__loAfter(() => globalThis.__loShard1Trace('SUBJECT_TEARDOWN_PENDING'));\nglobalThis.__loShard1Trace('MODULE_START');\n${got.source}\n;globalThis.__loShard1Trace('MODULE_EVALUATED');\n__loAfter(() => globalThis.__loShard1Trace('TESTS_COMPLETE'));\n`,
 			};
 		},
 	});
@@ -190,11 +206,21 @@ function table() {
 			return { pid, ppid, pgid, rssKb };
 		});
 }
-function signal(pid, sig) {
+export function signal(pid, sig, kill = process.kill.bind(process)) {
 	try {
-		process.kill(pid, sig);
-	} catch (e) {
-		if (e.code !== "ESRCH") throw e;
+		kill(pid, sig);
+		return { pid, signal: sig, status: "sent" };
+	} catch (error) {
+		// ESRCH is only a raced signal result; the final process-table query,
+		// not this exception, proves absence. EPERM is NOT absence and must not
+		// throw out of a watchdog callback before evidence can be retained.
+		return {
+			pid,
+			signal: sig,
+			status: error.code === "ESRCH" ? "gone" : "failed",
+			code: error.code ?? "UNKNOWN",
+			message: String(error.message),
+		};
 	}
 }
 export function cleanEnv(out) {
@@ -230,6 +256,8 @@ export async function supervise({
 	env,
 	wallMs,
 	memoryMb = MEMORY_MB,
+	// Test seam only; no CLI/environment option can replace signal authority.
+	sendSignal = signal,
 }) {
 	mkdirSync(out, { recursive: true });
 	const startedAt = Date.now();
@@ -253,6 +281,14 @@ export async function supervise({
 		},
 	);
 	const owned = new Map();
+	const cleanupErrors = [];
+	const recordSignal = (pid, sig) => {
+		const outcome = sendSignal(pid, sig);
+		if (outcome.status === "failed") {
+			cleanupErrors.push(outcome);
+			json(join(out, "cleanup-errors.json"), cleanupErrors);
+		}
+	};
 	let timeout = false;
 	let memory = false;
 	let samplingFailed = false;
@@ -308,9 +344,9 @@ export async function supervise({
 	const reap = (sig) => {
 		sample();
 		for (const [pid, row] of owned)
-			if (pid === row.pgid && identity(pid) === row.id) signal(-pid, sig);
+			if (pid === row.pgid && identity(pid) === row.id) recordSignal(-pid, sig);
 		for (const [pid, row] of owned)
-			if (identity(pid) === row.id) signal(pid, sig);
+			if (identity(pid) === row.id) recordSignal(pid, sig);
 	};
 	const stop = () => {
 		interrupted = true;
@@ -376,6 +412,9 @@ export async function supervise({
 		wallMs,
 		elapsedMs: Date.now() - startedAt,
 		peakRssMb,
+		cleanupErrors,
+		cleanupVerified:
+			!samplingFailed && cleanupErrors.length === 0 && survivors.length === 0,
 	};
 	json(join(out, "result.json"), record);
 	return record;
@@ -483,6 +522,7 @@ export async function main(args) {
 			!result.timeout &&
 			!result.memory &&
 			!result.samplingFailed &&
+			result.cleanupVerified &&
 			!result.survivors.length
 			? 0
 			: 1;
@@ -508,13 +548,14 @@ export async function main(args) {
 		cwd: dirname(dirname(SELF)),
 		out: join(out, "negative-controls"),
 		env: cleanEnv(join(out, "negative-controls")),
-		wallMs: 6000,
+		wallMs: 10_000,
 	});
 	if (
 		self.code !== 0 ||
 		self.timeout ||
 		self.memory ||
 		self.samplingFailed ||
+		!self.cleanupVerified ||
 		self.survivors.length
 	)
 		throw new Error(
@@ -562,13 +603,22 @@ export async function main(args) {
 							(e) => e.event === "FILE_LOAD" && e.file === basename(file),
 						)?.pid,
 			);
-			return { file, status: classify(result, own) };
+			return {
+				file,
+				status: classify(result, own),
+				subjectStatus: subjectClassification(result, own),
+			};
 		});
 		const tap = readFileSync(join(dir, "tap.log"), "utf8");
 		const summary = FAIL_ZERO_RE.test(tap) && TEST_COUNT_RE.test(tap);
 		results.push({ side, sha, ...result, workers, summary });
 		json(join(out, "controls.json"), results);
-		if (result.samplingFailed || result.survivors.length) break;
+		if (
+			result.samplingFailed ||
+			!result.cleanupVerified ||
+			result.survivors.length
+		)
+			break;
 	}
 	json(join(out, "controls.json"), results);
 	return results.length === 2 &&
@@ -580,6 +630,7 @@ export async function main(args) {
 				!r.memory &&
 				!r.interrupted &&
 				!r.samplingFailed &&
+				r.cleanupVerified &&
 				r.survivors.length === 0 &&
 				r.summary &&
 				r.workers.every((w) => w.status === "completed"),

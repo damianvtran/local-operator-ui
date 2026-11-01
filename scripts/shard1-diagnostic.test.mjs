@@ -7,6 +7,8 @@ import {
 	classify,
 	cleanEnv,
 	outputPath,
+	signal,
+	subjectClassification,
 	supervise,
 	traceEvents,
 	validSha,
@@ -27,7 +29,7 @@ assert.ok(
 const root = mkdtempSync(join(parent, "shard1-contract-"));
 const self = fileURLToPath(new URL("./shard1-diagnostic.mjs", import.meta.url));
 
-async function fixture(name, source, wallMs) {
+async function fixture(name, source, wallMs, { denyGroups = false } = {}) {
 	const path = join(root, `${name}.test.mjs`);
 	writeFileSync(path, source);
 	const out = join(root, name);
@@ -43,6 +45,19 @@ async function fixture(name, source, wallMs) {
 		env,
 		wallMs,
 		memoryMb: 512,
+		sendSignal: denyGroups
+			? (pid, sig) =>
+					signal(pid, sig, (target, action) => {
+						if (target < 0) {
+							const error = new Error(
+								"synthetic owned-group permission denied",
+							);
+							error.code = "EPERM";
+							throw error;
+						}
+						return process.kill(target, action);
+					})
+			: signal,
 	});
 	const events = traceEvents(join(out, "trace")).filter(
 		(event) => event.worker,
@@ -51,6 +66,11 @@ async function fixture(name, source, wallMs) {
 		result.samplingFailed,
 		false,
 		"process accounting must remain observable",
+	);
+	assert.equal(
+		result.cleanupVerified,
+		!denyGroups,
+		"permission uncertainty is never reported as verified cleanup",
 	);
 	assert.deepEqual(
 		result.survivors,
@@ -132,6 +152,36 @@ test("pending render/body never completes and is not misreported as a resource-o
 		events.some((e) => e.event === "TESTS_COMPLETE"),
 		false,
 	);
+});
+
+test("a stalled SUBJECT root after-hook is incomplete teardown, never held-after-tests", async () => {
+	const { result, events } = await fixture(
+		"stalled-after",
+		"import { test, after } from 'node:test'; test('body', () => {}); after(async () => { globalThis.__loShard1Trace('SUBJECT_AFTER_START'); setInterval(() => {}, 100); await new Promise(() => {}); });",
+		900,
+	);
+	assert.equal(result.timeout, true);
+	assert.ok(events.some((e) => e.event === "SUBJECT_AFTER_START"));
+	assert.ok(events.some((e) => e.event === "SUBJECT_TEARDOWN_PENDING"));
+	assert.equal(
+		events.some((e) => e.event === "TESTS_COMPLETE"),
+		false,
+	);
+	assert.equal(classify(result, events), "incomplete-subject-teardown");
+});
+
+test("owned-group EPERM retains subject phase, records uncertainty, and still reaps exact individual children", async () => {
+	const { result, events } = await fixture(
+		"permission",
+		"import { test } from 'node:test'; setInterval(() => {}, 100); test('body', () => {});",
+		900,
+		{ denyGroups: true },
+	);
+	assert.equal(result.timeout, true);
+	assert.ok(result.cleanupErrors.some((e) => e.code === "EPERM" && e.pid < 0));
+	assert.equal(result.cleanupVerified, false);
+	assert.equal(classify(result, events), "instrumentation-or-cleanup-failure");
+	assert.equal(subjectClassification(result, events), "held-after-tests");
 });
 
 test("classification fails closed on accounting, interruption, memory and missing lifecycle", () => {

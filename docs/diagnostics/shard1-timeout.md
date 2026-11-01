@@ -95,14 +95,20 @@ Original fixture cache semantics remain in the isolated subject worktree.
 
 The opt-in preload identifies the physical worker entry, not NODE_TEST_CONTEXT
 alone (wrappers and keepers inherit it too). Per-PID JSONL records file load,
-module body/evaluation, root test start/completion, unref resource-type samples,
-beforeExit and exit. A root completion marker proves completed tests/hooks, not a
-clean exit or that every assertion passed; the TAP summary and process status
-remain separate requirements. No environment values, handle URLs or socket
+module body/evaluation, root test phases, unref resource-type samples,
+beforeExit and exit. The early root-after callback records only
+`SUBJECT_TEARDOWN_PENDING`: the subject's own root after-hooks may still be
+running. `TESTS_COMPLETE` is registered at the end of subject module evaluation,
+after its root-hook registrations; it must not precede a stalled subject
+root-after hook. A cutoff after teardown starts but before that marker is
+`incomplete-subject-teardown`, never a completed-test resource-only hold.
+Neither marker proves a clean exit or passing assertions; TAP and process status
+remain separate requirements. Missing/ambiguous lifecycle evidence stays unknown. No environment values, handle URLs or socket
 payloads are logged. A sample timer is explicitly unref'ed; its Timeout resource
 may appear in snapshots and is not by itself a product leak.
 
-Before subjects, three actual subprocess controls prove distinctions:
+Before subjects, five actual subprocess controls (within a10s preflight slice of
+the unchanged90s aggregate budget) prove distinctions:
 
 - A natural passing test must complete and exit, with no owned survivors.
 - A passing test retaining an interval must actually hit its bound, emit
@@ -112,6 +118,15 @@ Before subjects, three actual subprocess controls prove distinctions:
   incomplete-body-or-import. This deliberately injected stall is not a real
   renderer failure. An unresponsive CPU loop might provide no last resource
   sample; absence is unknown, never an empty-resource proof.
+- A passing body with a stalled subject root-after hook must reach
+  SUBJECT_TEARDOWN_PENDING/SUBJECT_AFTER_START but NOT TESTS_COMPLETE, and classify
+  incomplete-subject-teardown. This catches an incorrectly prepended completion
+  hook that would misclassify incomplete teardown as held-after-tests.
+- An injected owned-group EPERM must not escape a watchdog callback. It retains
+  the original subject phase, reports cleanup as failed/unverified, records the
+  signal target/error, and still attempts exact identity-verified individual
+  reaping. The synthetic control denies only group signals and permits real
+  individual signals, so its own children are cleaned up without a broad kill.
 
 Raw negative-control nonzero/deadline evidence is retained; the verifier passes
 only when the expected injected fault was observed and reaped correctly. A
@@ -124,7 +139,15 @@ identity before every signal, and reaps detached groups/known escaped children.
 Darwin identity support exists only for tiny local synthetic tooling tests; real
 subject mode fails closed outside Linux parity. After cutoff the last private
 resource sample and process table survive even if ordered TAP never flushes.
-Artifacts describe unknown accounting honestly rather than assuming cleanup.
+Signal outcomes are not absence proof: ESRCH is a raced signal result; EPERM is
+permission uncertainty, not a missing process. Final process-table observations
+are retained separately. Any signal permission failure sets cleanupVerified=false
+and keeps the job red even if that subsequent table observes zero survivors.
+Workers keep a separate subjectStatus so cleanup failure cannot erase the
+original deadline/phase evidence. If accounting fails, an empty survivor list
+must not be described as verified absence. The Darwin EPERM seen by review/QA
+probes is not asserted to reproduce on Linux; fail-safe error reporting covers
+both platforms without that assumption.
 
 ## Results and limits
 
