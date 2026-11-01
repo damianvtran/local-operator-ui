@@ -231,7 +231,16 @@ try {
 		`(() => {
 		const E = process.mainModule.require('electron');
 		globalThis.__focusProof = { events: [], attachments: [] };
-		const arm = c => { for (const type of ['focus','blur']) c.on(type, () => globalThis.__focusProof.events.push({type, id:c.id, at:Date.now()})); };
+		const arm = c => {
+			for (const type of ['focus','blur','did-start-loading','did-finish-load']) c.on(type, () => globalThis.__focusProof.events.push({type, id:c.id, at:Date.now()}));
+			const attach=c.debugger.attach.bind(c.debugger);
+			c.debugger.attach=(...args)=>{point('before-debugger-attach',c);const result=attach(...args);point('after-debugger-attach',c);return result;};
+			const send=c.debugger.sendCommand.bind(c.debugger);
+			c.debugger.sendCommand=(...args)=>{
+				point('before-cdp:'+args[0],c);
+				return send(...args).then(result=>{point('after-cdp:'+args[0],c);return result;},error=>{point('error-cdp:'+args[0],c);throw error;});
+			};
+		};
 		E.webContents.getAllWebContents().forEach(arm);
 		E.app.on('web-contents-created', (_e,c) => arm(c));
 		const w = E.BrowserWindow.getAllWindows()[0];
@@ -427,6 +436,17 @@ try {
 	await sample("background-screenshot");
 	await rpc("goto", { tab: opened.tab, url: `${backgroundUrl}&navigation=1` });
 	await sample("background-navigation");
+	// Dispatch through Electron's ACTUAL focused-WebContents getter, not a
+	// hardcoded owner target. This proves the native receiver selection, not an
+	// OS/physical keyboard route; no accessibility permission is requested.
+	facts.routedKey = await evaluate(
+		main,
+		`(() => {const E=process.mainModule.require('electron');const c=E.webContents.getFocusedWebContents();if(c)c.sendInputEvent({type:'char',keyCode:'z'});return {receiver:c?.id??null,physicalOsKey:false};})()`,
+	);
+	facts.routedKey.ownerAfter = await evaluate(
+		owner,
+		"({active:document.activeElement?.id,value:document.activeElement?.value,selection:[document.activeElement?.selectionStart,document.activeElement?.selectionEnd]})",
+	);
 	await rpc("close", { tab: opened.tab });
 	// Record, don't fabricate success from a dormant instrument. A headless
 	// window may never acquire a native first responder; that is BLOCKED proof,
