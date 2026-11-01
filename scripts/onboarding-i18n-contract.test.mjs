@@ -33,6 +33,7 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import {
+	chmodSync,
 	mkdirSync,
 	mkdtempSync,
 	readFileSync,
@@ -381,103 +382,114 @@ const WIRED_SHARD_COMMAND =
 	'node scripts/desktop-test-shards.mjs run --head "$DESKTOP_REQUESTED_HEAD" --checkout "$CHECKOUT_SHA" --index "$DESKTOP_SHARD_INDEX" 2>&1 | tee /tmp/desktop-tests.log || SUITE_RC=$?';
 const DESKTOP_SUPERVISOR_STATE =
 	'"${{ runner.temp }}/desktop-supervisor-${{ matrix.shard }}"';
-const DESKTOP_AWAIT_COMMAND = `node scripts/desktop-suite-checkpoints.mjs await ${DESKTOP_SUPERVISOR_STATE}`;
-const DESKTOP_REAP_COMMAND = `node scripts/desktop-suite-checkpoints.mjs reap ${DESKTOP_SUPERVISOR_STATE}`;
+const DESKTOP_AWAIT_COMMAND =
+	'node scripts/desktop-suite-checkpoints.mjs await "$state"';
+const DESKTOP_REAP_COMMAND =
+	'node scripts/desktop-suite-checkpoints.mjs reap "$state"';
 
 /**
- * The final step must RETURN for the always() uploads behind it to run, so the
- * await is wrapped in an external wall-clock bound (`timeout -k <kill> <bound>`).
- * That changes the step's text, not its guarantees, so the guarantees are
- * asserted on the WRAPPED text and stay exactly as tight: one awaited supervisor
- * invocation and no second one hiding behind the wrapper, the bound around that
- * invocation only, the status read AFTER it (so 124 can only have come from the
- * wrapper), the status re-exited as the block's LAST statement (so a timeout
- * cannot be swallowed by a fallback), and the 124 arm annotated with the bound
- * that actually fired. The bound is read out of the command rather than pinned,
- * so moving it cannot silently leave a message that cites the old one.
+ * The suite step SUPERVISES the await instead of wrapping it, because a
+ * `timeout` around one `node ... await` did not end this step in run
+ * 124822720325: the job was cancelled at its cap with no 124 arm, no annotation
+ * and no census. So the step starts the await in the background, owns the wall
+ * clock in bash, forwards the await's bytes by offset (TAP exactly once), puts
+ * the census rows in the job log where a cancelled job still has them, reaps on
+ * expiry, and takes the verdict from the awaited process. Each clause below is
+ * one of those guarantees, and the mutants in the test prove none of them can be
+ * removed while every other clause still passes.
  */
-function assertDeadlineWrappedAwait(run, state = DESKTOP_SUPERVISOR_STATE) {
-	const awaitCommand = `node scripts/desktop-suite-checkpoints.mjs await ${state}`;
-	assert.equal(
-		run.split(awaitCommand).length - 1,
-		1,
-		"exactly one awaited supervisor invocation",
-	);
+function assertSupervisingAwait(run, state = DESKTOP_SUPERVISOR_STATE) {
+	const awaitCommand =
+		'node scripts/desktop-suite-checkpoints.mjs await "$state"';
+	const lines = run.split("\n").map((line) => line.trim());
+	const started = lines.filter((line) => line.includes(awaitCommand));
+	assert.equal(started.length, 1, "exactly one awaited supervisor invocation");
 	assert.equal(
 		run.split("desktop-suite-checkpoints.mjs await").length - 1,
 		1,
-		"no second await may hide outside the wrapper",
-	);
-	const bound = /timeout -k 10 (\d+) /u.exec(run)?.[1];
-	assert.ok(bound, "the await must sit inside `timeout -k 10 <bound>`");
-	assert.ok(
-		run.includes(`timeout -k 10 ${bound} ${awaitCommand}`),
-		"the bound must wrap the await command itself, not sit beside it",
+		"no second await may hide anywhere in the step",
 	);
 	assert.ok(
-		run.indexOf("status=$?") > run.indexOf(awaitCommand),
-		"the status must be read after the wrapped command, so only the wrapper produces 124",
+		started[0].endsWith("&"),
+		"the await must start in the background, or the step has no stdout to report with",
+	);
+	assert.ok(
+		run.includes(`state=${state}`),
+		"the step must name the supervisor's state directory",
+	);
+	const bound = /DESKTOP_SUITE_BOUND_S:-(\d+)\}/u.exec(run)?.[1];
+	assert.ok(bound, "the step must own a `DESKTOP_SUITE_BOUND_S` bound");
+	assert.ok(
+		/while kill -0 "\$await_pid"/u.test(run),
+		"the loop must watch the await rather than block on it",
+	);
+	assert.ok(
+		/\[ \$\(\(now - started\)\) -ge "\$bound" \]/u.test(run),
+		"the loop must measure the wall clock against its own bound",
+	);
+	assert.ok(
+		run.includes("tail -c +$((offset + 1))"),
+		"forwarded TAP must be byte-offset based, so nothing is emitted twice",
+	);
+	assert.ok(
+		run.includes("census: $row"),
+		"census rows must go into the job log, where a cancelled job still has them",
+	);
+	// Expiry: reap what the launch published, stop the await, fail closed. The
+	// slice ends at `exit 124` inclusive: a slice running to the end of the step
+	// would also contain the normal path's reap and could not tell them apart.
+	const expiry = run.indexOf('if [ -n "$bound_hit" ]');
+	assert.ok(expiry >= 0, "the bound must have its own branch");
+	const expiryBody = run.slice(
+		expiry,
+		run.indexOf("exit 124") + "exit 124".length,
+	);
+	assert.ok(
+		expiryBody.includes(DESKTOP_REAP_COMMAND),
+		"expiry must reap the recorded groups",
+	);
+	assert.ok(
+		expiryBody.includes('kill -9 "$await_pid"'),
+		"expiry must stop the await it gave up on",
+	);
+	assert.ok(
+		expiryBody.includes("exit 124"),
+		"expiry must fail the step closed",
+	);
+	// The verdict is the supervisor's, never the loop's.
+	assert.ok(
+		run.includes('wait "$await_pid"'),
+		"the verdict must come from the await, not from this loop",
+	);
+	assert.ok(
+		run.indexOf("status=$?") > run.indexOf('wait "$await_pid"'),
+		"the status must be captured after the await is waited on",
 	);
 	assert.equal(
 		run.trimEnd().split("\n").pop().trim(),
 		'exit "$status"',
 		"the captured status must be the block's last statement, with nothing appended",
 	);
-	const lines = run.split("\n").map((line) => line.trim());
-	const arm = lines.findIndex((line) =>
-		line.startsWith('if [ "$status" -eq 124 ]'),
+	assert.deepEqual(
+		lines.filter((line) => line.startsWith("exit ")),
+		["exit 124", 'exit "$status"'],
+		"the step may exit only at expiry (124) and with the verdict it was given",
 	);
-	assert.ok(arm >= 0, "exit 124 must be told apart from a red suite");
-	const annotation = lines
-		.slice(arm + 1)
-		.find((line) => line.startsWith('echo "::error::'));
+	const annotation = lines.find((line) => line.startsWith('echo "::error::'));
 	assert.ok(
 		annotation,
 		"a deadline must be annotated, so the hang names its reason",
 	);
 	assert.ok(
-		annotation.includes(bound) && /external bound/u.test(annotation),
-		"the 124 annotation must name the external bound that fired",
+		annotation.includes("${bound}s external bound"),
+		"the 124 annotation must name the external bound that fired, through the same variable, so moving the bound cannot leave a stale number",
 	);
-	for (const line of lines) {
-		if (!line.includes("desktop-suite-checkpoints.mjs await")) continue;
+	for (const line of started) {
 		assert.ok(
 			!/\|\||\btrue\b/u.test(line),
-			"the wrapped command must not carry a success fallback",
+			"the awaited command must not carry a success fallback",
 		);
 	}
-	/*
-	 * The failure arm must also END what it can no longer supervise before it
-	 * re-exits. The bound makes the step return; a wedged supervisor keeps its own
-	 * group alive, and a surviving holder can keep the runner from deciding the
-	 * step is finished, which is how the always() uploads carrying the census get
-	 * skipped. So the arm that catches a non-zero status reaps the recorded groups
-	 * first - and it must be THAT arm: an unconditional reap would also run on a
-	 * green suite, where the supervisor may still be exiting normally.
-	 */
-	assert.equal(
-		run.split(DESKTOP_REAP_COMMAND).length - 1,
-		1,
-		"exactly one reaping call in the failure arm",
-	);
-	const statusAt = run.indexOf("status=$?");
-	const reapAt = run.indexOf(DESKTOP_REAP_COMMAND);
-	assert.ok(
-		reapAt > statusAt,
-		"the reap must run on the captured status, after the await",
-	);
-	assert.ok(
-		reapAt < run.lastIndexOf('exit "$status"'),
-		"the reap must run before the status is re-exited",
-	);
-	const reapArm = lines.findIndex((line) =>
-		line.startsWith('if [ "$status" -ne 0 ]'),
-	);
-	assert.ok(reapArm >= 0, "the reap must be guarded by the non-zero arm");
-	assert.ok(
-		lines.indexOf(DESKTOP_REAP_COMMAND) > reapArm,
-		"the reap must sit inside the non-zero arm, not before it",
-	);
 	return run;
 }
 
@@ -500,13 +512,13 @@ function assertRetiredDesktopRoute(
 		`node scripts/desktop-suite-checkpoints.mjs launch ${state} scripts/desktop-suite-step.sh "$DESKTOP_SETUP_STARTED_MS"`,
 	);
 	/*
-	 * The await is wrapped in an external wall-clock bound so the step returns and
-	 * the always() uploads run. That is a change to the step's TEXT, not its
-	 * guarantees; `assertDeadlineWrappedAwait` asserts those on the wrapped text,
-	 * and the mutants below prove this contract still rejects the defects it was
-	 * written for rather than accepting anything that merely mentions the command.
+	 * A `timeout` around one `await` did not end this step (run 124822720325 was
+	 * cancelled at its cap with no 124 arm and no census), so the step now
+	 * supervises the await itself. That changes the step's TEXT, not its verdict:
+	 * `assertSupervisingAwait` asserts the new guarantees, and the mutants below
+	 * prove this contract still rejects the defects each clause exists for.
 	 */
-	assertDeadlineWrappedAwait(final[0].run);
+	assertSupervisingAwait(final[0].run);
 	assert.ok(job.steps.indexOf(launch[0]) < job.steps.indexOf(final[0]));
 	assert.equal(job["timeout-minutes"], 50);
 	assert.equal(final[0]["timeout-minutes"], 45);
@@ -633,14 +645,60 @@ test("diagnostic CI stays retired while the manual utility remains registered", 
 		(step) => step.id === "desktop_suite",
 	);
 	for (const [mutateRun, rejectedBy] of [
-		[(run) => run.replace("timeout -k 10 2400 ", ""), /timeout -k 10 <bound>/u],
+		// The step's own clock, and the bound it measures against.
+		[
+			(run) =>
+				run.replace('bound="${DESKTOP_SUITE_BOUND_S:-2400}"', 'bound=""'),
+			/`DESKTOP_SUITE_BOUND_S` bound/u,
+		],
+		[
+			(run) =>
+				run.replaceAll('[ $((now - started)) -ge "$bound" ]', "[ 0 -ge 1 ]"),
+			/wall clock against its own bound/u,
+		],
+		// One invocation, started in the background.
 		[
 			(run) =>
 				run.replace(
-					`${DESKTOP_AWAIT_COMMAND}\n`,
-					`${DESKTOP_AWAIT_COMMAND}\n${DESKTOP_AWAIT_COMMAND}\n`,
+					`${DESKTOP_AWAIT_COMMAND} >"$await_out" 2>&1 &`,
+					`${DESKTOP_AWAIT_COMMAND} >"$await_out" 2>&1 &\n${DESKTOP_AWAIT_COMMAND} >"$await_out" 2>&1 &`,
 				),
 			/exactly one awaited supervisor invocation/u,
+		],
+		[
+			(run) =>
+				run.replace(
+					`${DESKTOP_AWAIT_COMMAND} >"$await_out" 2>&1 &`,
+					`${DESKTOP_AWAIT_COMMAND} >"$await_out" 2>&1`,
+				),
+			/start in the background/u,
+		],
+		// TAP exactly once, and the census where a cancelled job can see it.
+		[
+			(run) => run.replaceAll("tail -c +$((offset + 1))", "cat"),
+			/byte-offset based/u,
+		],
+		[
+			(run) => run.replace("census: $row", "$row"),
+			/census rows must go into the job log/u,
+		],
+		// Expiry: reap, stop the await, and fail closed - and only at expiry.
+		[
+			(run) =>
+				run
+					.split("\n")
+					.filter((line) => !line.trim().startsWith(DESKTOP_REAP_COMMAND))
+					.join("\n"),
+			/expiry must reap/u,
+		],
+		[
+			(run) => run.replace('kill -9 "$await_pid"', "true"),
+			/stop the await it gave up on/u,
+		],
+		// The verdict is the supervisor's, not the loop's.
+		[
+			(run) => run.replace('wait "$await_pid"', ":"),
+			/verdict must come from the await/u,
 		],
 		[
 			(run) => run.replace('exit "$status"', "exit 0"),
@@ -655,46 +713,10 @@ test("diagnostic CI stays retired while the manual utility remains registered", 
 			/a deadline must be annotated/u,
 		],
 		[
-			(run) => run.replace("2400s external bound", "the deadline"),
+			(run) => run.replace("${bound}s external bound", "the deadline"),
 			/bound that fired/u,
 		],
 		[(run) => `${run}true\n`, /block's last statement/u],
-		// The reaping arm's own defects: no reap at all, a reap that runs
-		// unconditionally (so a green suite is reaped too), and a reap hoisted above
-		// the status capture (so it fires on a stale status).
-		[
-			(run) =>
-				run
-					.split("\n")
-					.filter((line) => !line.trim().startsWith(DESKTOP_REAP_COMMAND))
-					.join("\n"),
-			/exactly one reaping call/u,
-		],
-		[
-			(run) =>
-				run
-					.split("\n")
-					.filter(
-						(line) =>
-							!line.trim().startsWith('if [ "$status" -ne 0 ]') &&
-							line.trim() !== "fi",
-					)
-					.join("\n"),
-			/guarded by the non-zero arm/u,
-		],
-		[
-			(run) => {
-				const lines = run.split("\n");
-				const reap = lines.find((line) =>
-					line.trim().startsWith(DESKTOP_REAP_COMMAND),
-				);
-				const at = lines.findIndex((line) => line.includes("status=$?"));
-				lines.splice(lines.indexOf(reap), 1);
-				lines.splice(at, 0, reap);
-				return lines.join("\n");
-			},
-			/after the await/u,
-		],
 	]) {
 		const bad = structuredClone(workflow.jobs.test);
 		const step = bad.steps.find((s) => s.id === "desktop_suite");
@@ -702,12 +724,12 @@ test("diagnostic CI stays retired while the manual utility remains registered", 
 		assert.notEqual(
 			step.run,
 			finalStep.run,
-			"each wrapped-await mutant must actually change the step",
+			"each supervising-step mutant must actually change the step",
 		);
 		assert.throws(
 			() => assertRetiredDesktopRoute(bad, shell),
 			rejectedBy,
-			"a wrapped-await defect must fail the clause that exists for it",
+			"a supervising-step defect must fail the clause that exists for it",
 		);
 	}
 	for (const bad of [
@@ -1180,3 +1202,163 @@ test("parameters render as escaped text, never markup", () => {
 });
 
 test.after(() => client.clear());
+
+/**
+ * Drive the REAL desktop step body with a short injected bound, so the
+ * external-bound path is exercised in seconds instead of the shipped 2400. The
+ * stub `node` stands in for the supervisor: it writes what a run would write
+ * (TAP on stdout, a census row beside the state), then either returns a verdict
+ * or freezes, which is the shape the live hang had.
+ */
+function runSupervisingBody({
+	freeze = false,
+	rc = 0,
+	seconds = 1,
+	bound = 3,
+	censusEvery = 1,
+} = {}) {
+	const text = readFileSync(".github/workflows/ci.yml", "utf8");
+	const require = createRequire(import.meta.url);
+	const builder = createRequire(
+		require.resolve("electron-builder/package.json"),
+	);
+	const { load } = createRequire(builder.resolve("app-builder-lib"))("js-yaml");
+	const step = load(text).jobs.test.steps.find(
+		(entry) => entry.id === "desktop_suite",
+	);
+	const dir = mkdtempSync(join(tmpdir(), "supervising-step-"));
+	const bin = join(dir, "bin");
+	mkdirSync(bin, { recursive: true });
+	const state = join(dir, "desktop-supervisor-0");
+	mkdirSync(state, { recursive: true });
+	const stub = join(bin, "node");
+	writeFileSync(
+		stub,
+		[
+			"#!/usr/bin/env bash",
+			'case "$2" in',
+			"  await)",
+			"    printf '%s\\n' 'ok 1 - synthetic' '# pass 1'",
+			'    echo \'{"index":0}\' >> "$STUB_STATE/kernel-census-0.jsonl"',
+			'    echo \'{"index":1}\' >> "$STUB_STATE/kernel-census-0.jsonl"',
+			'    sleep "$STUB_SECONDS"',
+			'    exit "$STUB_RC"',
+			"    ;;",
+			"  reap)",
+			'    echo "reaped: $3"',
+			"    ;;",
+			"esac",
+			"exit 0",
+			"",
+		].join("\n"),
+	);
+	chmodSync(stub, 0o755);
+	const script = join(dir, "step.sh");
+	writeFileSync(
+		script,
+		step.run
+			.replaceAll("${{ runner.temp }}", dir)
+			.replaceAll("${{ matrix.shard }}", "0"),
+	);
+	const result = spawnSync("bash", ["-e", script], {
+		cwd: dir,
+		encoding: "utf8",
+		env: {
+			PATH: `${bin}:${process.env.PATH}`,
+			HOME: process.env.HOME,
+			STUB_STATE: state,
+			STUB_RC: String(rc),
+			STUB_SECONDS: freeze ? "120" : String(seconds),
+			DESKTOP_SUITE_BOUND_S: String(bound),
+			DESKTOP_SUITE_CENSUS_EVERY_S: String(censusEvery),
+		},
+	});
+	return { ...result, dir, state };
+}
+
+test("a frozen await is ended by the step's own bound, with the census in the log", () => {
+	// RED first: the await is frozen for two minutes and the bound is 3s, so this
+	// can only pass if the loop - not the subject - ends the step.
+	const run = runSupervisingBody({ freeze: true, bound: 3, censusEvery: 1 });
+	try {
+		assert.equal(
+			run.status,
+			124,
+			`the external bound must fail the step closed, got ${run.status}: ${run.stderr}`,
+		);
+		assert.match(
+			run.stdout,
+			/^census: \{"index":0\}$/mu,
+			"census rows must reach the job log while the subject is still hung",
+		);
+		assert.match(run.stdout, /^census: \{"index":1\}$/mu);
+		assert.match(
+			run.stdout,
+			/::error::desktop suite exceeded its 3s external bound/u,
+			"the bound must be annotated with the number that actually fired",
+		);
+		assert.match(
+			run.stdout,
+			/reaped: /u,
+			"expiry must reap the recorded groups",
+		);
+		assert.match(
+			run.stdout,
+			/ok 1 - synthetic/u,
+			"TAP already written must reach the log before the bound fires",
+		);
+	} finally {
+		rmSync(run.dir, { recursive: true, force: true });
+	}
+});
+
+test("a completed run keeps its verdict, its TAP exactly once, and is never reaped", () => {
+	const run = runSupervisingBody({
+		rc: 0,
+		seconds: 3,
+		bound: 30,
+		censusEvery: 1,
+	});
+	try {
+		assert.equal(run.status, 0, run.stderr);
+		assert.equal(
+			run.stdout.split("ok 1 - synthetic").length - 1,
+			1,
+			"forwarding must emit each TAP line exactly once",
+		);
+		assert.equal(
+			run.stdout.split("# pass 1").length - 1,
+			1,
+			"the offset must not re-emit a chunk it already forwarded",
+		);
+		assert.doesNotMatch(
+			run.stdout,
+			/reaped: /u,
+			"a completed run must not be reaped",
+		);
+		assert.doesNotMatch(run.stdout, /::error::/u);
+	} finally {
+		rmSync(run.dir, { recursive: true, force: true });
+	}
+});
+
+test("census rows are emitted at most once each, however often the loop drains", () => {
+	const run = runSupervisingBody({
+		rc: 0,
+		seconds: 3,
+		bound: 30,
+		censusEvery: 1,
+	});
+	try {
+		assert.equal(run.status, 0, run.stderr);
+		for (const row of ['{"index":0}', '{"index":1}']) {
+			assert.equal(
+				run.stdout.split(`census: ${row}`).length - 1,
+				1,
+				`${row} must be emitted exactly once across repeated drains`,
+			);
+		}
+	} finally {
+		rmSync(run.dir, { recursive: true, force: true });
+	}
+});

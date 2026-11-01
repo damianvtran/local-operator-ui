@@ -828,13 +828,97 @@ jobs:
         # the deadline reason and still fails the step closed.
         run: |
           set +e
-          timeout -k 10 2400 node scripts/desktop-suite-checkpoints.mjs await "${{ runner.temp }}/desktop-supervisor-${{ matrix.shard }}"
+          state="${{ runner.temp }}/desktop-supervisor-${{ matrix.shard }}"
+          # Test seams only, and the shipped numbers are the contract's pins: CI
+          # leaves them unset, so 2400s is what actually bounds this step while a
+          # control can prove the same path fires in seconds.
+          bound="${DESKTOP_SUITE_BOUND_S:-2400}"
+          census_every="${DESKTOP_SUITE_CENSUS_EVERY_S:-60}"
+          await_out="$state/await.out"
+          offset=0
+          # THE STEP OWNS THE CLOCK, not the await. `timeout` around a single
+          # `node ... await` did not end this step in run 124822720325: the job was
+          # cancelled at its cap with no annotation and no census. So the await is
+          # started here as a background writer, and this shell keeps its own
+          # stdin/stdout to report with while it runs. The verdict is still the
+          # supervisor's - this loop only forwards what it writes and adds the
+          # external-bound failure path.
+          node scripts/desktop-suite-checkpoints.mjs await "$state" >"$await_out" 2>&1 &
+          await_pid=$!
+          started=$(date +%s)
+          last_census=$started
+          bound_hit=""
+          # Byte-offset forwarding, so every chunk of TAP reaches the job log
+          # exactly once: a line emitted twice is worse than one emitted late.
+          drain_await() {
+            [ -f "$await_out" ] || return 0
+            local size
+            size=$(wc -c <"$await_out" | tr -d ' ')
+            [ "$size" -gt "$offset" ] || return 0
+            # The emitted window is CLAMPED to the size just measured. Reading
+            # tail-then-stat would re-emit whatever landed in between, and a line
+            # in the job log twice is worse than one that arrives late.
+            head -c "$size" "$await_out" | tail -c +$((offset + 1))
+            offset=$size
+          }
+          # Census rows outlive the job: once it is cancelled no artifact upload
+          # can run, so the samples are put in the log itself. Only complete rows
+          # are sent, and each one once.
+          drain_census() {
+            local file offset_file size rows emitted chunk seen
+            for file in "$state"/kernel-census-*.jsonl; do
+              [ -f "$file" ] || continue
+              offset_file="$state/.census-offset-$(basename "$file")"
+              # `seen` is NOT the await's `offset`: sharing one name reset the
+              # await's byte position on every census tick and re-sent its TAP.
+              seen=0
+              if [ -f "$offset_file" ]; then seen=$(cat "$offset_file"); fi
+              [ -n "$seen" ] || seen=0
+              size=$(wc -c <"$file" | tr -d ' ')
+              [ "$size" -gt "$seen" ] || continue
+              rows=$(tail -c +$((seen + 1)) "$file" | wc -l | tr -d ' ')
+              [ "$rows" -gt 0 ] || continue
+              # ONE snapshot for both the emitted rows and the bytes they cost: a
+              # second read could count a row the first read did not see, and the
+              # offset would then repeat it on the next tick.
+              chunk=$(tail -c +$((seen + 1)) "$file" | head -n "$rows")
+              [ -n "$chunk" ] || continue
+              printf '%s\n' "$chunk" |
+                while IFS= read -r row; do echo "census: $row"; done
+              emitted=$(printf '%s\n' "$chunk" | wc -c | tr -d ' ')
+              echo $((seen + emitted)) >"$offset_file"
+            done
+          }
+          while kill -0 "$await_pid" 2>/dev/null; do
+            sleep 1
+            drain_await
+            now=$(date +%s)
+            if [ $((now - started)) -ge "$bound" ]; then
+              bound_hit=yes
+              break
+            fi
+            if [ $((now - last_census)) -ge "$census_every" ]; then
+              drain_census
+              last_census=$now
+            fi
+          done
+          if [ -n "$bound_hit" ]; then
+            node scripts/desktop-suite-checkpoints.mjs reap "$state"
+            kill -9 "$await_pid" 2>/dev/null
+            drain_await
+            drain_census
+            echo "::error::desktop suite exceeded its ${bound}s external bound; the supervisor deadline did not end the step, so the bound did. Artifacts are still uploaded."
+            exit 124
+          fi
+          wait "$await_pid"
           status=$?
+          drain_await
+          drain_census
           if [ "$status" -ne 0 ]; then
-            node scripts/desktop-suite-checkpoints.mjs reap "${{ runner.temp }}/desktop-supervisor-${{ matrix.shard }}"
+            node scripts/desktop-suite-checkpoints.mjs reap "$state"
           fi
           if [ "$status" -eq 124 ]; then
-            echo "::error::desktop suite exceeded its 2400s external bound; the supervisor deadline did not end the step, so the bound did. Artifacts are still uploaded."
+            echo "::error::desktop suite exceeded its ${bound}s external bound; the supervisor deadline did not end the step, so the bound did. Artifacts are still uploaded."
           fi
           exit "$status"
 
