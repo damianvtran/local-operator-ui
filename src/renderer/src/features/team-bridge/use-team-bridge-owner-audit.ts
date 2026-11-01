@@ -11,6 +11,7 @@ import {
 } from "@shared/hooks/radient-account-authority";
 import {
 	CancelledError,
+	type InfiniteData,
 	isCancelledError,
 	useInfiniteQuery,
 	useQueryClient,
@@ -279,23 +280,46 @@ export function useOwnerAuditConversations(scope: OwnerAuditScope) {
 export function useOwnerAuditMessages(
 	scope: OwnerAuditScope,
 	conversationId: string,
+	canEvictPage?: (
+		page: Awaited<ReturnType<typeof TeamBridgeOwnerAuditApi.messages>>,
+	) => boolean,
 ) {
 	const { read, authorityToken, enabled } = useAuditRead(scope);
+	const client = useQueryClient();
+	const queryKey = [
+		"team-bridge",
+		"owner-audit",
+		scope.accountId,
+		scope.tenantId,
+		authorityToken,
+		conversationId,
+		"messages",
+	] as const;
 	const query = useInfiniteQuery({
-		queryKey: [
-			"team-bridge",
-			"owner-audit",
-			scope.accountId,
-			scope.tenantId,
-			authorityToken,
-			conversationId,
-			"messages",
-		],
+		queryKey,
+		// Six bounded pages cap private cache and DOM at 300 main-timeline rows.
+		// Further upward reads slide the window, never eagerly fetch all history.
+		maxPages: 6,
 		initialPageParam: undefined as number | undefined,
-		queryFn: ({ pageParam }) =>
-			read(() =>
+		queryFn: async ({ pageParam }) => {
+			const page = await read(() =>
 				TeamBridgeOwnerAuditApi.messages(scope, conversationId, pageParam),
-			),
+			);
+			const cached = client.getQueryData<InfiniteData<typeof page>>(queryKey);
+			// The user may return to the recent page while an older request is in
+			// flight. Never evict a visible row merely to admit that late result:
+			// cancel/revert this pagination attempt, keeping the six existing pages.
+			// A later explicit upward read can retry the same cursor; no auto retry.
+			if (
+				pageParam !== undefined &&
+				cached &&
+				cached.pages.length >= 6 &&
+				canEvictPage &&
+				!canEvictPage(cached.pages[0])
+			)
+				throw new CancelledError({ revert: true });
+			return page;
+		},
 		getNextPageParam: (last, _pages, previous) =>
 			last.has_more &&
 			last.next_before_seq != null &&
@@ -310,7 +334,14 @@ export function useOwnerAuditMessages(
 		refetchOnReconnect: false,
 		retryOnMount: false,
 	});
-	return { ...query, auditAuthRequired: !enabled };
+	return {
+		...query,
+		auditAuthRequired: !enabled,
+		// A slid window's oldest retained cursor is not the newest page. Refresh
+		// explicitly resets to the uncursored 50-row read, rather than refetching
+		// stale middle-history cursors. No bodies outlive this panel's gcTime:0.
+		refetchLatest: () => client.resetQueries({ queryKey, exact: true }),
+	};
 }
 
 export function useOwnerAuditReplies(
