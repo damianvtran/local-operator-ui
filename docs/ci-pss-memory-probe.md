@@ -66,6 +66,15 @@ Every 1000 ms (non-overlapping targets; overruns skip targets), one sample:
    numbers are not the same process. Out-of-group descendants are included.
 3. Reads each member's `smaps_rollup` **Pss** and **SwapPss**, and `status`
    **VmRSS**, in kernel kB (KiB), plus a sanitized/truncated `comm` name.
+   Additionally reads at most 4096 bytes of `/proc/<pid>/cmdline` only for pids
+   whose PSS in this tick is strictly above the requested numeric cutoff of
+   **524,288 kB**. The brief calls this “500 MiB”; in kernel KiB units that exact
+   cutoff is 512 MiB (500 MiB would be 512,000 kB). NUL-separated
+   arguments are joined with single spaces and truncated to 300 characters,
+   appending `…` if truncated. The resulting `argv` is in the same per-pid tick
+   row as RSS/PSS/SwapPss; below-threshold or failed reads record `argv: null`
+   without failing the memory tick. This can name a heavy worker's script, but
+   cannot by itself prove which assertion is holding memory.
    Rechecks pid/start-time and parent/group after those reads. A vanished,
    inaccessible or changed member makes the tick incomplete, never a zero.
 4. Emits a JSONL row with begin/end epoch milliseconds, the per-pid table,
@@ -110,6 +119,16 @@ separately reviewed guard instrumentation change, outside this arm.
 **This does not investigate the 50-minute wedge.** The 30-minute job cap is a
 safety bound, not evidence about whether that separate stall is fixed.
 
+## Measured finding so far
+
+The first activation's reported breach-tick measurements (recorded in the
+follow-up investigation brief) were ΣPss **9,234,523 kB** versus ΣVmRSS
+**9,503,172 kB**, with **SwapPss 0**, across nine pids. One worker grew from
+approximately **0.08 to 7.33 GiB in ~30 seconds**. Group size is therefore not
+the binding constraint: one worker dominates resident memory, rather than RSS
+merely multiplying shared pages. Its script was not named by the original
+`comm`-only rows; bounded `argv` capture is intended to identify it next.
+
 ## Bounded and sanitized artifacts
 
 `pss-probe-artifacts/` is uploaded even after failure (three-day retention).
@@ -124,11 +143,13 @@ prevent a final summary/upload, but completed tick writes have been fsynced.
 
 Both suite stdout and stderr pipes are continuously drained without waiting for
 artifact consumers. Arbitrary test payloads/TAP, environment, argv, paths and
-stack traces are not persisted: the suite-output file allowlists only numeric
-memory-breach fields, and the summary counts total drained bytes. This is
+stack traces from those pipes are not persisted: the suite-output file allowlists
+only numeric memory-breach fields, and the summary counts total drained bytes. This is
 intentionally not a raw suite log; ordinary Actions CI is a separate source for
 normal test results. Process command names allow only ASCII alphanumerics,
-underscore, dot and hyphen and are truncated to 24 characters. The carrier's
+underscore, dot and hyphen and are truncated to 24 characters. The sole additional
+argv capture is the bounded heavy-pid field described above; it may contain
+script paths or arguments and is not sanitized like `comm`. The carrier's
 own console output contains only numeric status and the composition digest.
 
 Local preparation is limited to source inspection/writing and dependency-free

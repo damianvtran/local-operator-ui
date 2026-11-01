@@ -5,7 +5,7 @@
  */
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
-import { readFile, access } from "node:fs/promises";
+import { readFile, access, open } from "node:fs/promises";
 import { openSync, writeSync, fsyncSync, closeSync, mkdirSync } from "node:fs";
 
 const composition = `scripts/agent-hub-queries.test.mjs
@@ -161,8 +161,8 @@ let guardLeader = null;
 let samples = 0;
 let skipped = 0;
 let observedBytes = 0;
-// Never persist arbitrary TAP, argv, environment, or test payloads. Only numeric
-// guard readings survive this allowlist. Both pipes are continuously drained.
+// Never persist arbitrary TAP, argv, environment, or test payloads from pipes.
+// Only numeric guard readings survive this allowlist; heavy-pid argv is separately bounded.
 function drain(stream) {
   let partial = "";
   stream.on("data", (chunk) => {
@@ -202,6 +202,26 @@ function metric(text, key) {
   const match = text.match(new RegExp(`^${key}:\\s+(\\d+) kB$`, "m"));
   if (!match) throw new Error("Missing proc metric");
   return Number(match[1]);
+}
+// Name only heavy workers: cap proc I/O and artifact text independently, and
+// tolerate exit/access races without losing an otherwise valid memory tick.
+async function readHeavyArgv(pid, pssKb) {
+  if (pssKb <= 524288) return null; // Use the explicitly requested kernel-kB cutoff.
+  try {
+    const handle = await open(`/proc/${pid}/cmdline`, "r");
+    let text;
+    try {
+      const buffer = Buffer.alloc(4096);
+      const { bytesRead } = await handle.read(buffer, 0, buffer.length, 0);
+      text = buffer.subarray(0, bytesRead).toString("utf8").split("\0").filter(Boolean).join(" ");
+    } finally {
+      await handle.close();
+    }
+    const characters = Array.from(text);
+    return characters.length > 300 ? `${characters.slice(0, 300).join("")}…` : text;
+  } catch {
+    return null;
+  }
 }
 function total(rows) {
   return { pidCount: rows.length, pssKb: rows.reduce((n, p) => n + p.pssKb, 0),
@@ -290,10 +310,12 @@ async function sample() {
         const [smaps, status, comm] = await Promise.all([
           readFile(`/proc/${pid}/smaps_rollup`, "utf8"), readFile(`/proc/${pid}/status`, "utf8"), readFile(`/proc/${pid}/comm`, "utf8"),
         ]);
+        const pssKb = metric(smaps, "Pss");
+        const argv = await readHeavyArgv(pid, pssKb);
         const after = await identity(pid);
         if (after.start !== id.start || after.ppid !== id.ppid || after.pgid !== id.pgid) throw new Error("Identity changed");
         rows.push({ ...id, inGuardTree: guardPids.has(pid), command: comm.trim().replace(/[^a-zA-Z0-9_.-]/g, "_").slice(0, 24),
-          pssKb: metric(smaps, "Pss"), swapPssKb: metric(smaps, "SwapPss"), rssKb: metric(status, "VmRSS") });
+          pssKb, swapPssKb: metric(smaps, "SwapPss"), rssKb: metric(status, "VmRSS"), argv });
       } catch { missingPids.push(pid); }
     }
     // A disappearing pid invalidates the pair; never silently sum a partial tree.
