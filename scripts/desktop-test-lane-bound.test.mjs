@@ -138,6 +138,16 @@ test("the startup line names the bound, where it came from, and how to change it
 	assert.match(off, BOUND_OFF);
 });
 
+test("the startup line promises the suite-child bound too", () => {
+	// The line is the only place a reader learns what IS bounded, so a suite child
+	// left out of it would be a guarantee nobody could see was missing - which is
+	// the shape of the gap that cost run 41248028640 its verdict.
+	assert.match(
+		formatLaneBoundLine(computeLaneBound({ override: null })),
+		/the suite child itself is held to the same bound/u,
+	);
+});
+
 test("the trip line names the lane, the bound, and what happened to the pid", () => {
 	const base = {
 		lane: "scripts/projects-board-focus.test.mjs",
@@ -272,6 +282,8 @@ function driver({ tables, boundMs = 1_000, tickMs = 0 }) {
 		killed: [],
 		trips: [],
 		blinds: [],
+		suiteStalls: [],
+		suiteKilled: [],
 		index: 0,
 		clock: 0,
 		timers: [],
@@ -295,9 +307,16 @@ function driver({ tables, boundMs = 1_000, tickMs = 0 }) {
 			state.killed.push(pid);
 			return true;
 		},
+		/** INJECTED, never the default: the default signals the real leader pid, and a
+		 * fixture that reached it would kill whatever holds that pid on the host. */
+		killSuitePid: (pid) => {
+			state.suiteKilled.push(pid);
+			return true;
+		},
 		now: () => state.clock,
 		onTrip: (trip) => state.trips.push(trip),
 		onBlind: (ticks) => state.blinds.push(ticks),
+		onSuiteStall: (stall) => state.suiteStalls.push(stall),
 		intervalMs: tickMs,
 		setTimer: (fn) => {
 			state.timers.push(fn);
@@ -472,4 +491,61 @@ test("stop() is authoritative even for a sample already in flight", async () => 
 	await inFlight;
 	assert.deepEqual(killed, [], "a stopped watchdog may not signal anything");
 	assert.deepEqual(trips, [], "and may not name a lane it no longer watches");
+});
+
+/*
+ * THE SUITE CHILD'S OWN BOUND, pinned on the three facts its line depends on.
+ *
+ * This is the mechanism the 54-minute silence needed (run 41248028640, job
+ * 124562057434: 616 passing subtests, no failure, no summary, and a lane list that
+ * named nothing): a stall that holds NO nameable lane process is invisible to a
+ * per-file bound, so the suite child is timed by the same number and reported with
+ * the last lanes seen.
+ */
+
+test("with no lane in sight the suite clock runs, and the suite is named at the bound", async () => {
+	const { watchdog, state } = driver({ tables: [laneA, "", ""] });
+	await watchdog._tick(); // A's first sighting: the clock starts here
+	state.clock = 500;
+	await watchdog._tick(); // between waves, well under the bound
+	assert.deepEqual(state.suiteStalls, [], "half a bound is not a stall");
+	state.clock = 1_000;
+	await watchdog._tick(); // the bound, with no lane to name
+	assert.deepEqual(state.suiteStalls, [
+		{ lanes: ["scripts/a.test.mjs"], elapsedMs: 1_000, killed: true },
+	]);
+	assert.deepEqual(
+		state.suiteKilled,
+		[100],
+		"the line's kill must reach the suite child and nothing else",
+	);
+});
+
+test("a lane in view holds the suite clock at zero, however wide its own bound", async () => {
+	const { watchdog, state } = driver({ tables: [laneA] });
+	await watchdog._tick();
+	state.clock = 60_000;
+	await watchdog._tick();
+	await watchdog._tick();
+	assert.deepEqual(
+		state.suiteStalls,
+		[],
+		"a suite with a live lane is making progress, not wedged",
+	);
+});
+
+test("a suite that recovers and wedges again earns a second line, not a latch", async () => {
+	const { watchdog, state } = driver({ tables: [laneA, "", laneA, ""] });
+	await watchdog._tick(); // t=0: lane seen
+	state.clock = 1_000;
+	await watchdog._tick(); // stalled
+	await watchdog._tick(); // the lane is back
+	state.clock = 3_000;
+	await watchdog._tick(); // and gone again for a full bound
+	assert.equal(
+		state.suiteStalls.length,
+		2,
+		"a recovery ends a stall: the next one is a new fact and earns its own line",
+	);
+	assert.deepEqual(state.suiteKilled, [100, 100]);
 });

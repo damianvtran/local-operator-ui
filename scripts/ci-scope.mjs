@@ -456,6 +456,12 @@ export const UNGATED_JOBS = {
 		"event condition here would collaterally skip the whole workflow on a push " +
 		"to `main` (D7). The event-conditional behaviour lives inside this module, " +
 		"which returns every flag true for anything that is not a `pull_request`.",
+	"desktop-wedge-confirm":
+		"dispatch-only diagnostic, and deliberately outside the matrix: it runs ONE " +
+		"file on Linux to confirm a stall that does not reproduce on macOS. Gating it " +
+		"on a scope flag would make it a job every matching pull request pays for, " +
+		"which is the opposite of why it exists, and its own `if:` narrows it to " +
+		"`workflow_dispatch` so no push or pull request can reach it.",
 };
 
 /**

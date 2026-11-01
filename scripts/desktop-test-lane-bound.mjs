@@ -28,6 +28,29 @@
  * DIRECT-child row (`ppid === leaderPid`, the file process node spawned) wins over a
  * deeper descendant that merely repeats the argument.
  *
+ * THE LANES ARE NOT THE WHOLE STORY, and CI proved it at the cost of 54 silent
+ * minutes. A bound over lane processes alone answers "which file is stuck" only
+ * while that file's process is VISIBLE to the sampler; a suite child that stops
+ * emitting while it holds no nameable lane is invisible to it, and the run then
+ * reads as a hung job with no line at all (run 41248028640, job 124562057434: 616
+ * passing subtests, no failure, no summary, cancelled at the 50-minute cap). So the
+ * same bound also measures the SUITE CHILD: if it is still alive and no lane process
+ * has been seen for the whole bound, that is a suite-level stall, and it is reported
+ * with the last lanes that were seen - which is the only attribution available at
+ * that point, and is what makes the failure actionable instead of a cap timeout.
+ *
+ * WHY THAT CANNOT FIRE ON A HEALTHY RUN: a suite with work left always has at least
+ * one file process alive, and the bound is far longer than the only gap that exists
+ * when there is none (the moment between a wave finishing and the suite child
+ * reporting). The two mechanisms cannot both fire for one stall: a live lane keeps
+ * resetting the suite clock, and a suite-level stall is only reachable once no lane
+ * has been seen for the full bound.
+ *
+ * WHAT IT DOES. The suite-level stall kills the suite child, because the alternative
+ * is waiting for the job's cap - which is the unreadable outcome this file exists to
+ * prevent - and the rest of the run has no verdict left to protect once its parent
+ * has stopped.
+ *
  * WHAT THE SUITE DOES THEN, MEASURED RATHER THAN ASSUMED: node's runner records the
  * killed file as a failed subtest and runs the REST to completion, so the verdict
  * still lands. Proven on a fixture pair (`hang.test.mjs` + `ok.test.mjs`, the hang
@@ -191,13 +214,13 @@ function human(ms) {
 /** The startup line: what the bound is, where it came from, and how to change it. */
 export function formatLaneBoundLine(decision) {
 	if (decision.arm === "off") {
-		return `desktop tests: WARNING — per-lane bound OFF (${LANE_BOUND_OVERRIDE_ENV}=off); a lane that never settles will NOT be killed and named, and the run can still be cancelled unreadably`;
+		return `desktop tests: WARNING — per-lane bound OFF (${LANE_BOUND_OVERRIDE_ENV}=off); a lane that never settles will NOT be killed and named, and the run can still be cancelled unreadably - and the suite child's own bound is off with it`;
 	}
 	const why =
 		decision.arm === "override"
 			? `explicit ${LANE_BOUND_OVERRIDE_ENV}`
 			: "default, above the 18.7-minute healthy CI suite that bounds every lane it runs — a stall in a lane first seen late can still outrun the job cap";
-	return `desktop tests: per-lane bound ${human(decision.boundMs)} (${why}); sampled every ${_TICK_INTERVAL_MS / 1000}s over the suite's process group`;
+	return `desktop tests: per-lane bound ${human(decision.boundMs)} (${why}); sampled every ${_TICK_INTERVAL_MS / 1000}s over the suite's process group, and the suite child itself is held to the same bound so a stall that leaves no lane to name is still reported`;
 }
 
 /**
@@ -210,6 +233,21 @@ export function formatLaneTripLine({ lane, pid, elapsedMs, boundMs, killed }) {
 		? `killed pid ${pid} and left the rest of the suite running, so its verdict still lands`
 		: `pid ${pid} was already gone when the bound fired, so nothing was signalled and the suite's own verdict stands`;
 	return `desktop tests: LANE BOUND EXCEEDED — ${lane} ran ${human(elapsedMs)} without finishing (bound ${human(boundMs)}); ${outcome} (raise or disable with ${LANE_BOUND_OVERRIDE_ENV})`;
+}
+
+/**
+ * The suite-child line: the counterpart of `formatLaneTripLine` for a stall the
+ * lane list cannot name, and it says so rather than implying a lane.
+ */
+export function formatSuiteTripLine({ lanes, elapsedMs, boundMs, killed }) {
+	const named =
+		lanes.length === 0
+			? "no test-file process was ever named"
+			: lanes.join(", ");
+	const outcome = killed
+		? "killed the suite child, which is the only step left once its run has no verdict to protect"
+		: "the suite child was already gone when the bound fired, so nothing was signalled and the suite's own verdict stands";
+	return `desktop tests: SUITE WEDGED — the suite child ran ${human(elapsedMs)} without a test-file process this runner could name (bound ${human(boundMs)}); last lanes seen: ${named}; ${outcome} (raise or disable with ${LANE_BOUND_OVERRIDE_ENV})`;
 }
 
 /**
@@ -309,6 +347,17 @@ export function createLaneBoundWatchdog({
 	now = () => Date.now(),
 	onTrip = () => {},
 	onBlind = () => {},
+	onSuiteStall = () => {},
+	killSuitePid = (pid) => {
+		try {
+			process.kill(pid, "SIGKILL");
+			return true;
+		} catch {
+			// Same contract as the lane kill: the OUTCOME is reported by the caller's
+			// line, so a suite child that had already exited reads as such.
+			return false;
+		}
+	},
 	intervalMs = _TICK_INTERVAL_MS,
 	setTimer = setTimeout,
 	clearTimer = clearTimeout,
@@ -320,6 +369,11 @@ export function createLaneBoundWatchdog({
 	let stopped = false;
 	let sampling = false;
 	let blindTicks = 0;
+	/** When a lane process was last SEEN, and which ones: the suite-level stall is
+	 * measured from here, and the names are all the attribution it can carry. */
+	let lastLaneSeenAt = null;
+	let lastLanesSeen = [];
+	let suiteTripped = false;
 
 	async function tick() {
 		if (stopped || sampling) return;
@@ -364,6 +418,31 @@ export function createLaneBoundWatchdog({
 			running.delete(lane);
 			const killed = kill(pid) === true;
 			onTrip({ lane, pid, elapsedMs, killed });
+		}
+		/*
+		 * THE SUITE CHILD'S OWN CLOCK, after the lanes: a live lane is progress, so it
+		 * resets both the clock and the once-only latch (a stall after a recovery is a
+		 * new stall and earns its own line). With no lane in view the suite child is
+		 * either between waves - which is seconds, against a bound measured in minutes -
+		 * or wedged, and a wedge there has nothing else to name it.
+		 */
+		const sampledAt = now();
+		if (seen.size > 0) {
+			lastLaneSeenAt = sampledAt;
+			lastLanesSeen = [...seen.keys()];
+			suiteTripped = false;
+		} else {
+			if (lastLaneSeenAt === null) lastLaneSeenAt = sampledAt;
+			const idleMs = sampledAt - lastLaneSeenAt;
+			if (idleMs >= boundMs && !suiteTripped) {
+				suiteTripped = true;
+				const killedSuite = killSuitePid(leaderPid) === true;
+				onSuiteStall({
+					lanes: lastLanesSeen,
+					elapsedMs: idleMs,
+					killed: killedSuite,
+				});
+			}
 		}
 		rearm();
 	}

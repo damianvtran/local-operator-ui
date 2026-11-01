@@ -70,6 +70,7 @@ import {
 	createLaneBoundWatchdog,
 	formatLaneBoundLine,
 	formatLaneTripLine,
+	formatSuiteTripLine,
 	resolveLaneBound,
 } from "./desktop-test-lane-bound.mjs";
 import {
@@ -391,6 +392,18 @@ const laneWatchdog =
 				onBlind: (ticks) =>
 					console.error(
 						`desktop tests: WARNING - the per-lane bound could not read the suite's process group for ${ticks} consecutive samples; a lane that never settles is NOT bounded while that lasts`,
+					),
+				// The suite child is bounded by the SAME number: it is the one process the
+				// lane list cannot name, and a wedge in it is what the 50-minute cap used
+				// to be the only reading of (run 41248028640, job 124562057434).
+				onSuiteStall: ({ lanes, elapsedMs, killed }) =>
+					console.error(
+						formatSuiteTripLine({
+							lanes,
+							elapsedMs,
+							boundMs: laneBound.boundMs,
+							killed,
+						}),
 					),
 			});
 laneWatchdog?.start();

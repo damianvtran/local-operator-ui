@@ -7,6 +7,7 @@ import { pathToFileURL } from "node:url";
 import { build } from "esbuild";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { boundBundleStep } from "./bundle-step-bound.mjs";
 
 /*
  * THE READER'S FOOT OVER ITS ABSENCE ARMS: rendered, not read off the source.
@@ -64,52 +65,86 @@ const SOURCE = "src/renderer/src/features/chat/components/run-details";
 const EXTERNAL = /^(react|react-dom|@tanstack\/react-query)(\/.*)?$/;
 /** Any bare specifier, so staying out of the bundle means being named above. */
 const BARE_SPECIFIER = /^[^./]/;
-const bundle = await build({
-	stdin: {
-		contents: `
+/*
+ * THE TWO MODULE-SCOPE STEPS ARE BOUNDED, and the bound is what turns this file's
+ * stall into a line a reader can act on. From 2026-10-31T09:50Z the shard that
+ * carried this file went silent for 54 minutes and was cancelled at the job's cap
+ * with no test line (run 41248028640 job 124562057434); the file's own last words
+ * were React SSR warnings and its subtest never reported, so a step of its module
+ * had stopped returning and nothing named it. `bundle-step-bound.mjs` carries the
+ * incident, the calibration of the bound, and why the timer is cleared rather than
+ * unref'd.
+ *
+ * THE BUILD AND THE IMPORT ARE BOUNDED SEPARATELY ON PURPOSE: the value of the
+ * line a red run prints is which of the two stopped, and a single bound around
+ * both could not say. Nothing else about either step changes - the same options,
+ * the same cache path, the same bundle - so a run that finishes inside the bound
+ * behaves exactly as it did before.
+ */
+const FILE = "scripts/child-reader-foot-react.test.mjs";
+/*
+ * THE RENDER IS BOUNDED TOO, and the CI evidence is why rather than symmetry: in
+ * the stalled run the last thing this file wrote was React SSR warnings, and React
+ * only renders inside the body below - so the build and the import had ALREADY
+ * completed and a ceiling on them alone would not have caught it. Node's own
+ * per-test `timeout` is the bound for that step; it fails the test by name instead
+ * of leaving the lane to the suite's per-lane bound, which took 25 minutes to say
+ * less. No assertion changes: a run that renders inside the bound is the same run.
+ */
+const RENDER_BOUND_MS = 60_000;
+const bundle = await boundBundleStep({
+	file: FILE,
+	step: "esbuild build of the pane bundle",
+	run: () =>
+		build({
+			stdin: {
+				contents: `
 			export { RunChildReader } from "./${SOURCE}/run-child-reader";
 			export { childrenOf, deriveRunDetails } from "./${SOURCE}/run-detail-model";
 			export * as fixtures from "./${SOURCE}/run-details.fixtures";
 		`,
-		loader: "tsx",
-		resolveDir: process.cwd(),
-	},
-	bundle: true,
-	format: "esm",
-	platform: "node",
-	/*
-	 * `module` FIRST: MUI ships both builds and its package `main` is the CJS one,
-	 * which calls `require("react")` at run time — a dynamic require that esbuild's
-	 * ESM output refuses to carry, so the bundle would load and then die on the
-	 * first MUI import.
-	 */
-	mainFields: ["module", "main"],
-	conditions: ["import", "module", "default"],
-	plugins: [
-		{
-			name: "react-stays-out",
-			setup(builder) {
-				builder.onResolve({ filter: BARE_SPECIFIER }, (args) =>
-					EXTERNAL.test(args.path) ? { path: args.path, external: true } : null,
-				);
+				loader: "tsx",
+				resolveDir: process.cwd(),
 			},
-		},
-	],
-	jsx: "automatic",
-	// The app stylesheet arrives through the stories' import graph; no rule in it
-	// can act on a DOM without layout.
-	loader: { ".css": "empty" },
-	define: { "import.meta.env": "__viteEnv" },
-	banner: {
-		js: 'const __viteEnv = { VITE_LOCAL_OPERATOR_API_URL: "http://127.0.0.1:45999" };',
-	},
-	alias: {
-		"@assets": `${process.cwd()}/src/renderer/src/assets`,
-		"@features": `${process.cwd()}/src/renderer/src/features`,
-		"@renderer": `${process.cwd()}/src/renderer/src`,
-		"@shared": `${process.cwd()}/src/renderer/src/shared`,
-	},
-	write: false,
+			bundle: true,
+			format: "esm",
+			platform: "node",
+			/*
+			 * `module` FIRST: MUI ships both builds and its package `main` is the CJS one,
+			 * which calls `require("react")` at run time — a dynamic require that esbuild's
+			 * ESM output refuses to carry, so the bundle would load and then die on the
+			 * first MUI import.
+			 */
+			mainFields: ["module", "main"],
+			conditions: ["import", "module", "default"],
+			plugins: [
+				{
+					name: "react-stays-out",
+					setup(builder) {
+						builder.onResolve({ filter: BARE_SPECIFIER }, (args) =>
+							EXTERNAL.test(args.path)
+								? { path: args.path, external: true }
+								: null,
+						);
+					},
+				},
+			],
+			jsx: "automatic",
+			// The app stylesheet arrives through the stories' import graph; no rule in it
+			// can act on a DOM without layout.
+			loader: { ".css": "empty" },
+			define: { "import.meta.env": "__viteEnv" },
+			banner: {
+				js: 'const __viteEnv = { VITE_LOCAL_OPERATOR_API_URL: "http://127.0.0.1:45999" };',
+			},
+			alias: {
+				"@assets": `${process.cwd()}/src/renderer/src/assets`,
+				"@features": `${process.cwd()}/src/renderer/src/features`,
+				"@renderer": `${process.cwd()}/src/renderer/src`,
+				"@shared": `${process.cwd()}/src/renderer/src/shared`,
+			},
+			write: false,
+		}),
 });
 /*
  * Under `node_modules/.cache/`, the home `run-panel-navigation.test.mjs` gives its
@@ -125,9 +160,12 @@ const CACHE = join(
 mkdirSync(CACHE, { recursive: true });
 const bundlePath = join(CACHE, "pane.mjs");
 await writeFile(bundlePath, bundle.outputFiles[0].text);
-const { RunChildReader, childrenOf, deriveRunDetails, fixtures } = await import(
-	pathToFileURL(bundlePath).href
-);
+const { RunChildReader, childrenOf, deriveRunDetails, fixtures } =
+	await boundBundleStep({
+		file: FILE,
+		step: "dynamic import of the pane bundle",
+		run: () => import(pathToFileURL(bundlePath).href),
+	});
 const { QueryClient, QueryClientProvider } = await import(
 	"@tanstack/react-query"
 );
@@ -204,55 +242,59 @@ const INTENT = /Auditing the pending ledger rows/;
  */
 const textOf = (html) => html.replaceAll("&#x27;", "'");
 
-test("no absence arm paints the foot line, and the same row does over a page with rows", () => {
-	/*
-	 * The three states the deferral names that the preview seam can reach, each
-	 * with the copy its arm owns (`§ 10.1`) — a line added above one of these arms
-	 * is what the follow-up will do, and it fails here.
-	 */
-	const empty = fixtures.childPage();
-	const arms = [
-		[
-			"pending",
-			fixtures.childPage({ state: "pending" }),
-			"This subagent has no transcript on disk yet.",
-		],
-		[
-			"gone",
-			fixtures.childPage({ state: "gone" }),
-			"This subagent's session directory is no longer on disk.",
-		],
-		[
-			"ready with no rows",
-			{ ...empty, entries: [] },
-			"This subagent has no conversation on record yet.",
-		],
-	];
-	for (const [name, page, copy] of arms) {
-		const html = render(readerEl(page));
-		assert.ok(
-			textOf(html).includes(copy),
-			`the ${name} arm's own copy must still be there`,
-		);
-		assert.ok(
-			!html.includes(LINE),
-			`a running child with an EMPTY page (${name}) must paint NO foot line — this is the deferral § 5.8 records, and the change that closes it has to change this assertion`,
-		);
-	}
+test(
+	"no absence arm paints the foot line, and the same row does over a page with rows",
+	{ timeout: RENDER_BOUND_MS },
+	() => {
+		/*
+		 * The three states the deferral names that the preview seam can reach, each
+		 * with the copy its arm owns (`§ 10.1`) — a line added above one of these arms
+		 * is what the follow-up will do, and it fails here.
+		 */
+		const empty = fixtures.childPage();
+		const arms = [
+			[
+				"pending",
+				fixtures.childPage({ state: "pending" }),
+				"This subagent has no transcript on disk yet.",
+			],
+			[
+				"gone",
+				fixtures.childPage({ state: "gone" }),
+				"This subagent's session directory is no longer on disk.",
+			],
+			[
+				"ready with no rows",
+				{ ...empty, entries: [] },
+				"This subagent has no conversation on record yet.",
+			],
+		];
+		for (const [name, page, copy] of arms) {
+			const html = render(readerEl(page));
+			assert.ok(
+				textOf(html).includes(copy),
+				`the ${name} arm's own copy must still be there`,
+			);
+			assert.ok(
+				!html.includes(LINE),
+				`a running child with an EMPTY page (${name}) must paint NO foot line — this is the deferral § 5.8 records, and the change that closes it has to change this assertion`,
+			);
+		}
 
-	/*
-	 * The CONTROL. The same row, the same pane, a page that carries rows: if this
-	 * cannot find a line, the absence assertions above are measuring a pane that
-	 * renders no reader, and the pin proves nothing.
-	 */
-	const control = render(readerEl(fixtures.childPage({ includeTool: true })));
-	assert.ok(
-		control.includes(LINE),
-		"the pane has no foot line at all to be absent",
-	);
-	assert.match(
-		control,
-		INTENT,
-		"the control's foot line must carry the row's own activity string",
-	);
-});
+		/*
+		 * The CONTROL. The same row, the same pane, a page that carries rows: if this
+		 * cannot find a line, the absence assertions above are measuring a pane that
+		 * renders no reader, and the pin proves nothing.
+		 */
+		const control = render(readerEl(fixtures.childPage({ includeTool: true })));
+		assert.ok(
+			control.includes(LINE),
+			"the pane has no foot line at all to be absent",
+		);
+		assert.match(
+			control,
+			INTENT,
+			"the control's foot line must carry the row's own activity string",
+		);
+	},
+);
