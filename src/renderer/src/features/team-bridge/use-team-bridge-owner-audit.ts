@@ -20,6 +20,7 @@ import { useCallback, useMemo, useRef, useSyncExternalStore } from "react";
 import type { AgentMessagesStatus } from "../../../../shared/agent-messages-contract";
 import { teamBridgeKeys } from "./team-bridge-keys";
 import { bridgeStatusAuthority, readForBridgeOwner } from "./team-bridge-owner";
+import { useThreadReplyWindow } from "./use-thread-reply-window";
 
 /** Classification only observes: recovery and presentation consume authored
  * metadata without echoing or replacing the original refusal. The durable
@@ -151,7 +152,6 @@ export function waitForAuditAuthoritySettlement(
 		check();
 	});
 }
-import { useThreadReplyWindow } from "./use-thread-reply-window";
 
 /** No member query keys, persistence, polling, unread counts or read markers.
  * gcTime zero releases private bodies when their human-only panel unmounts.

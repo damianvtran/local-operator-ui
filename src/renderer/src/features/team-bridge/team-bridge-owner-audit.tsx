@@ -693,11 +693,12 @@ function AuditReplies({
 		() => pinnedGetter.current(),
 	);
 	const state = readState(query);
-	const viewState = query.isPending
-		? "loading"
-		: failedState(state) && (!query.data || !query.keepWindowOnError)
-			? "error"
-			: "ready";
+	const viewState =
+		state === "loading"
+			? "loading"
+			: failedState(state) && (!query.data || !query.keepWindowOnError)
+				? "error"
+				: "ready";
 	const timeline = useStickToBottom({
 		resetKey: `${scope.accountId}:${scope.tenantId}:${conversation.id}:${root.id}:${query.mode}:${viewState}`,
 		contentKey: `${query.replies.length}:${query.replies.at(-1)?.id ?? ""}`,
@@ -733,7 +734,10 @@ function AuditReplies({
 				</Button>
 			)}
 			{query.keepWindowOnError && (
-				<AuditFailure state={state} retry={() => void query.fetchNextPage()} />
+				<AuditFailure
+					state={auditFailureState(query.error)}
+					retry={() => void query.fetchNextPage()}
+				/>
 			)}
 			<div
 				ref={combinedRef}
@@ -755,12 +759,15 @@ function AuditReplies({
 							{t("ui.ownerAudit.more")}
 						</Button>
 					)}
-				{query.isPending ? (
+				{viewState === "loading" ? (
 					<output className="block py-1 text-meta text-ink-muted">
 						{t("ui.ownerAudit.loading")}
 					</output>
 				) : viewState === "error" ? (
-					<AuditFailure state={state} retry={() => void query.resetLatest()} />
+					<AuditFailure
+						state={failedState(state) ? state : "error"}
+						retry={() => void query.resetLatest()}
+					/>
 				) : (
 					<AuditTranscript
 						conversation={conversation}

@@ -532,12 +532,62 @@ test("actual owner sign-out during a held read rejects the body instead of retry
 			h.client.setQueryData(m.radientUserKeys.user(), null),
 		);
 		release(page(9951));
-		await until(() => h.query.isError);
+		// Main's subscribed authority generation parks the new query on sign-out;
+		// cancellation is not an error/retry and must never admit the held body.
+		await until(() => h.query.auditAuthRequired && !h.query.isFetching);
 		assert.equal(h.query.data, undefined);
 		assert.equal(calls.length, 1);
 		assert.equal(h.query.mode, "desc");
 	} finally {
 		release(page(2, 0, { has_more: false }));
+		await h.close();
+	}
+});
+
+test("owner window retains main's one-retry 5xx recovery without automatic focus/reconnect retries", async () => {
+	let attempts = 0;
+	const calls = transport(() => {
+		if (++attempts === 1)
+			throw new m.DesktopControlError(503, "Synthetic unavailable");
+		return page(9951);
+	});
+	const h = await mount(() =>
+		m.useOwnerAuditReplies({ accountId: OWNER, tenantId: TENANT }, CID, ROOT),
+	);
+	try {
+		await until(() => h.query.isSuccess);
+		assert.equal(calls.length, 2);
+		const query = h.client
+			.getQueryCache()
+			.findAll()
+			.find((q) => q.queryKey.includes("replies"));
+		assert.equal(query.options.enabled, true);
+		assert.equal(query.options.retryDelay, 250);
+		assert.equal(
+			query.options.retry(
+				0,
+				new m.DesktopControlError(503, "Synthetic unavailable"),
+			),
+			true,
+		);
+		assert.equal(
+			query.options.retry(
+				1,
+				new m.DesktopControlError(503, "Synthetic unavailable"),
+			),
+			false,
+		);
+		assert.equal(
+			query.options.retry(
+				0,
+				new m.DesktopControlError(403, "Synthetic refusal"),
+			),
+			false,
+		);
+		assert.equal(query.options.refetchOnWindowFocus, false);
+		assert.equal(query.options.refetchOnReconnect, false);
+		assert.equal(query.options.retryOnMount, false);
+	} finally {
 		await h.close();
 	}
 });
@@ -658,11 +708,18 @@ for (const operation of ["refetch", "post-send invalidation", "poll"]) {
 		if (operation === "poll") t.mock.timers.enable({ apis: ["setInterval"] });
 		let latest = 10000;
 		let mayEvict = true;
+		let reads = 0;
 		const h = await mount(
-			generic(async (_mode, cursor) => page((cursor ?? latest + 1) - 50), {
-				canEvict: () => mayEvict,
-				poll: operation === "poll",
-			}),
+			generic(
+				async (_mode, cursor) => {
+					reads++;
+					return page((cursor ?? latest + 1) - 50);
+				},
+				{
+					canEvict: () => mayEvict,
+					poll: operation === "poll",
+				},
+			),
 		);
 		try {
 			await until(() => h.query.isSuccess);
@@ -670,8 +727,14 @@ for (const operation of ["refetch", "post-send invalidation", "poll"]) {
 				await act(async () => {
 					await h.query.fetchNextPage();
 				});
-				await until(() => !h.query.isFetching);
+				// A resolved fetch can precede the observer's committed page count.
+				// Wait before the next fetch so it cannot reuse a stale cursor.
+				await until(
+					() => h.query.data.pages.length === i + 2 && !h.query.isFetching,
+				);
 			}
+			await until(() => h.query.data.pages.length === 6);
+			assert.equal(reads, 6, "all six pages were read, not cancelled");
 			assert.equal(h.query.data.pages.length, 6);
 			assert.equal(h.query.replies.at(-1).seq, 10000);
 			mayEvict = false;
@@ -682,7 +745,10 @@ for (const operation of ["refetch", "post-send invalidation", "poll"]) {
 					await h.client.invalidateQueries({ queryKey: key });
 				else await h.query.refetch();
 			});
-			await until(() => h.query.replies.at(-1)?.seq === 10001);
+			await until(
+				() => h.query.replies.at(-1)?.seq === 10001 && !h.query.isFetching,
+			);
+			assert.equal(reads, 12, "refresh read all six cached pages");
 			assert.equal(h.query.data.pages.length, 6);
 			assert.equal(h.query.replies.length, 300);
 			assert.equal(h.query.isError, false);
