@@ -7,7 +7,7 @@ import { execFileSync, spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import electron from "electron";
 import { MOCK_KEYCHAIN_SWITCH } from "./chrome-keychain.mjs";
 import { selectTrustedRenderer } from "./focus-proof-main-identity.mjs";
@@ -17,6 +17,7 @@ import { withNotificationsOff } from "./notifications-off.mjs";
 import { withTelemetryOff } from "./telemetry-off.mjs";
 
 const INSPECTOR_PORT = /Debugger listening on ws:\/\/127\.0\.0\.1:(\d+)\//;
+const EXISTING_TEST_SHIM = /dom\.window\.electron\s*=\s*(\{[\s\S]*?\n\});/;
 const mode = focusProofWindowMode(process.argv, process.env);
 assert.equal(
 	mode,
@@ -188,7 +189,9 @@ const prefix = "team-bridge-optimistic-send--";
 async function story(name, args = "") {
 	// Separate story cases must not inherit the previous case's cleared draft.
 	// This touches only the disposable CI profile, never within either transition.
-	await js("localStorage.clear();sessionStorage.clear()");
+	await js(
+		"if(location.origin==='http://127.0.0.1:6006'){localStorage.clear();sessionStorage.clear();}",
+	);
 	const url = `http://127.0.0.1:6006/iframe.html?id=${prefix}${name}&viewMode=story${args ? `&args=${args}` : ""}`;
 	await native(`w=>w.loadURL(${JSON.stringify(url)})`);
 	const ready = await until(
@@ -290,9 +293,47 @@ try {
 	);
 	windowId = selected.windowId;
 	await until(() => native("w=>w.isVisible()"), "normal product presentation");
-	facts.native = await native(
-		"(w,E)=>({windowId:w.id,contentsId:w.webContents.id,bounds:w.getBounds(),contentBounds:w.getContentBounds(),visible:w.isVisible(),focused:w.isFocused(),electron:process.versions.electron})",
+	// Storybook deliberately owns window.api; the shipping preload freezes it.
+	// Keep that product guard intact and render only in this CI-native story host.
+	facts.shippingBootstrap = await native(
+		"w=>({windowId:w.id,contentsId:w.webContents.id,url:w.webContents.getURL(),bounds:w.getBounds()})",
 	);
+	const shim = readFileSync(
+		join(root, "scripts/team-bridge-optimistic-send.test.mjs"),
+		"utf8",
+	).match(EXISTING_TEST_SHIM)?.[1];
+	assert(
+		shim,
+		"existing test's exact Electron bridge shim must remain discoverable",
+	);
+	facts.source.testShimSha256 = createHash("sha256").update(shim).digest("hex");
+	const created = await native(`async (w,E)=>{
+	 if(!(process.env.CI==='true'&&process.env.GITHUB_ACTIONS==='true'&&process.env.RUNNER_OS==='macOS'&&process.env.LOCAL_OPERATOR_FOCUS_PROOF_CI==='1'))throw Error('native carrier visibility not authorized');
+	 const b=w.getBounds();w.hide();const c=new E.BrowserWindow({x:b.x,y:b.y,width:b.width,height:b.height,show:false,frame:false,webPreferences:{sandbox:true,contextIsolation:true,nodeIntegration:false}});
+	 c.webContents.debugger.attach('1.3');await c.webContents.debugger.sendCommand('Page.enable');
+	 await c.webContents.debugger.sendCommand('Page.addScriptToEvaluateOnNewDocument',{source:${JSON.stringify(`window.electron=${shim};`)}});
+	 await c.loadURL('about:blank');c.show();c.focus();return {windowId:c.id,contentsId:c.webContents.id};}`);
+	windowId = created.windowId;
+	facts.native = await native(
+		"w=>({windowId:w.id,contentsId:w.webContents.id,bounds:w.getBounds(),contentBounds:w.getContentBounds(),visible:w.isVisible(),focused:w.isFocused(),electron:process.versions.electron,host:'separate CI-native story window, no shipping preload; not the shipping main UI'})",
+	);
+	assert.equal(facts.native.contentsId, created.contentsId);
+	facts.source.compiledPayloadSha256 = createHash("sha256")
+		.update(readFileSync(join(root, "out/main/index.jsc")))
+		.digest("hex");
+	facts.source.carrierSha = execFileSync("git", ["rev-parse", "HEAD"], {
+		cwd: fileURLToPath(new URL("..", import.meta.url)),
+		encoding: "utf8",
+	}).trim();
+	facts.source.executedCarrierScriptSha256 = createHash("sha256")
+		.update(readFileSync(fileURLToPath(import.meta.url)))
+		.digest("hex");
+	facts.source.electronBinary = {
+		path: electron,
+		sha256: createHash("sha256").update(readFileSync(electron)).digest("hex"),
+	};
+	facts.source.executionScope =
+		"Shipping app bootstrap ran; separate inspector-created native story window hosts the frames. Compiled index.js/index.jsc digests are not a bytecode execution trace or live app-flow proof.";
 	facts.source.builtMainSha256 = createHash("sha256")
 		.update(readFileSync(join(root, "out/main/index.js")))
 		.digest("hex");
@@ -332,36 +373,60 @@ try {
 		assert(s.same && s.firstConnected);
 		assert.equal(s.spinner, false);
 	}
-	await story("chief-first-message-pending");
-	await send();
-	await capture("B-pending");
-	await js(
-		`(()=>{const p=window.__dependencyCapture;const root=document.querySelector('#storybook-root');p.observer=new MutationObserver(()=>p.commits.push(${SNAPSHOT}));p.observer.observe(root,{subtree:true,childList:true,characterData:true});const c=window.__STORYBOOK_ADDONS_CHANNEL__??window.__STORYBOOK_PREVIEW__.channel;c.emit('updateStoryArgs',{storyId:'${prefix}chief-first-message-pending',updatedArgs:{selfAccountId:'acct_other',selfName:'Other account',scope:'tnt_other',organizations:[{tenantId:'tnt_other',name:'Other tenant',role:'owner',unread:0}]}});})()`,
-	);
-	const commits = await until(async () => {
-		const c = await js("window.__dependencyCapture.commits");
-		return c.length ? c : null;
-	}, "first owner/tenant DOM commit");
-	facts.firstOwnerTenantCommit = commits[0];
-	assert.equal(
-		commits[0].rowCount,
-		0,
-		"no old row in FIRST committed DOM snapshot",
-	);
-	assert.equal(commits[0].firstConnected, false);
-	for (let i = 0; i < 3; i++) {
-		const s = await capture(`B-owner-tenant-${i}`);
-		assert.equal(s.rowCount, 0);
-		assert.equal(s.firstConnected, false);
-	}
-	assert(
+	const ownerArgs = { selfAccountId: "acct_other", selfName: "Other account" };
+	const tenantArgs = {
+		scope: "tnt_other",
+		organizations: [
+			{ tenantId: "tnt_other", name: "Other tenant", role: "owner", unread: 0 },
+		],
+	};
+	facts.privacy = [];
+	for (const [label, updatedArgs] of [
+		["combined", { ...ownerArgs, ...tenantArgs }],
+		["self-only", ownerArgs],
+		["tenant-only", tenantArgs],
+	]) {
+		await story("chief-first-message-pending");
+		await send();
+		await capture(`B-${label}-pending`);
 		await js(
-			"document.body.innerText.includes('Other tenant') && !!document.querySelector('textarea') && !!document.querySelector('button[aria-label=Send],button[aria-label=\"Send message\"]')",
-		),
-		"new tenant actually rendered a functioning view, not an error/blank page",
-	);
-	facts.ownerTenantCommits = await js("window.__dependencyCapture.commits");
-	assert(facts.ownerTenantCommits.every((c) => c.rowCount === 0));
+			`(()=>{const p=window.__dependencyCapture;const root=document.querySelector('#storybook-root');p.observer=new MutationObserver(()=>p.commits.push(${SNAPSHOT}));p.observer.observe(root,{subtree:true,childList:true,characterData:true});const c=window.__STORYBOOK_ADDONS_CHANNEL__??window.__STORYBOOK_PREVIEW__.channel;c.emit('updateStoryArgs',{storyId:'${prefix}chief-first-message-pending',updatedArgs:${JSON.stringify(updatedArgs)}});})()`,
+		);
+		const commits = await until(async () => {
+			const c = await js("window.__dependencyCapture.commits");
+			return c.length ? c : null;
+		}, `first ${label} DOM commit`);
+		assert.equal(
+			commits[0].rowCount,
+			0,
+			"no old row in FIRST committed DOM snapshot",
+		);
+		assert.equal(commits[0].firstConnected, false);
+		for (let i = 0; i < 3; i++) {
+			const state = await capture(`B-${label}-${i}`);
+			assert.equal(state.rowCount, 0);
+			assert.equal(state.firstConnected, false);
+		}
+		assert(
+			await js(
+				"!!document.querySelector('textarea') && !!document.querySelector('button[aria-label=Send],button[aria-label=\"Send message\"]')",
+			),
+			"privacy change did not render an error/blank page",
+		);
+		if (updatedArgs.scope)
+			assert(
+				await js("document.body.innerText.includes('Other tenant')"),
+				"new tenant really displayed",
+			);
+		const all = await js("window.__dependencyCapture.commits");
+		assert(all.every((c) => c.rowCount === 0));
+		facts.privacy.push({
+			label,
+			updatedArgs,
+			firstCommit: commits[0],
+			commits: all,
+		});
+	}
 	// Existing sibling stories supply failure/confirmed states; no transport shim.
 	await story("chief-first-message-failed");
 	await send();
