@@ -1,28 +1,30 @@
 /**
- * Records a wedge where a silenced stdout cannot lose it.
+ * Records a wedge where the job's own log cannot lose it.
  *
- * WHY THIS EXISTS, AND IT IS THE WHOLE LESSON OF 2026-11-01. Every bound in this
- * harness reports by printing a line, and every one of those lines goes out on the
- * same stream the wedge silences. Measured on run 41293657583 (this repository's
- * own fix branch): the shard's complete log - both `gh run view --log` and the API
- * route agree, 16,586 lines - ends at `09:37:13`, about 70 s into the suite, and
- * carries NOTHING afterwards for the ~54 minutes until the job was cancelled. The
- * blocked runner's own `per-lane bound 25 min` startup line IS in that log, so the
- * code ran; neither the lane trip nor the suite trip produced a line, although
- * both were due by ~10:02. A watchdog whose only channel is the stream the stall
- * blocks cannot name that stall.
+ * WHAT WAS MEASURED, AND WHAT WAS NOT. On run 41293657583 the shard's complete log
+ * - both `gh run view --log` and the API route agree, 16,586 lines - ends at
+ * `09:37:13`, about 70 s into the suite, and carries nothing for the ~54 minutes
+ * until the job was cancelled; the `per-lane bound 25 min` startup line IS in it,
+ * so the bound code ran. Review round 1 supplied the correction this header owed:
+ * the runner's stdout under CI is a PIPE to `tee`, and pipe writes queue rather
+ * than block, so a bound that had fired would very probably have been written. The
+ * economical reading is therefore that neither clock ever REACHED its bound - a
+ * lane that stayed in view held the suite clock at zero, and a lane whose sampled
+ * pid kept changing was re-timed - not that a fired bound was swallowed. Both are
+ * now covered: `desktop-test-lane-bound.mjs` resets the suite clock only on
+ * evidence of progress.
  *
- * SO A TRIP IS RECORDED TWICE, IN CHANNELS THE SUITE'S STDOUT CANNOT REACH:
+ * SO WHY THIS FILE STILL EXISTS. Because the two channels a cancelled job keeps are
+ * the ones a stream cannot take away:
  *
  *  1. a JSON file, appended to on every trip, whose path the workflow sets (so it
  *     lands under the run's artifact directory) and which is uploaded even on
- *     failure. It is the durable copy: it survives cancellation of the step, and a
- *     later reader can see the exact pids, argv and start times;
- *  2. GitHub `::error::` annotations, printed to this process's own stdout the
- *     moment the trip happens. They are written for the same reason the file is:
- *     if the step's log is truncated or lost, an annotation is a SEPARATE surface
- *     that crosses the cut (`gh run view --log` never reaches the end of a job log,
- *     and check-run annotations do not go through the log at all).
+ *     failure. It survives cancellation of the step, and a later reader sees the
+ *     exact pids, argv and start times;
+ *  2. GitHub `::error::` annotations, printed the moment the trip happens and
+ *     re-emitted from the file by an `always()` step. Annotations are the surface
+ *     that crosses the cut - `gh run view --log` never reaches the end of a job log,
+ *     and a cancelled job runs no further steps it is not told to run.
  *
  * WHAT THIS IS NOT: a substitute for the printed line. The line stays, because a
  * reader of a healthy-looking log should see it; this module is the copy that

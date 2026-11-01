@@ -30,9 +30,10 @@
  *
  * THE LANES ARE NOT THE WHOLE STORY, and CI proved it at the cost of 54 silent
  * minutes. A bound over lane processes alone answers "which file is stuck" only
- * while that file's process is VISIBLE to the sampler; a suite child that stops
- * emitting while it holds no nameable lane is invisible to it, and the run then
- * reads as a hung job with no line at all (run 41248028640, job 124562057434: 616
+ * while that file's process is VISIBLE to the sampler AND its pid is stable; a lane
+ * that stays in view without advancing, or a suite child holding no nameable lane,
+ * is invisible to it, and the run then reads as a hung job with no line at all (run
+ * 41248028640, job 124562057434: 616
  * passing subtests, no failure, no summary, cancelled at the 50-minute cap; it
  * reproduced on run 41288401978 as well, where the same shard was the only one of
  * four that did not finish). So the
@@ -218,7 +219,34 @@ export function parseDetailTable(text) {
  * than trusting either alone.
  */
 export function laneDescendants(rows, { lanePid, leaderPid }) {
-	return rows.filter((row) => row.ppid === lanePid && row.pgid === leaderPid);
+	const inGroup = rows.filter((row) => row.pgid === leaderPid);
+	const byParent = new Map();
+	for (const row of inGroup) {
+		if (!byParent.has(row.ppid)) byParent.set(row.ppid, []);
+		byParent.get(row.ppid).push(row);
+	}
+	/*
+	 * THE CLOSURE, not the first ring (review R1-2). SIGKILL does not propagate: a
+	 * lane that runs `sh -c node ...`, or esbuild's `--service` under an
+	 * intermediate, leaves a surviving process one or more levels down, and a
+	 * direct-children capture could not see it - so `onWedge` never fired for that
+	 * shape and the run went back to waiting for the job cap. Walking `ppid` to the
+	 * settled point widens the CANDIDATES only; each one still has to pass its own
+	 * `lstart` re-read before anything is signalled.
+	 */
+	const out = [];
+	const visited = new Set([lanePid]);
+	const queue = [lanePid];
+	while (queue.length > 0) {
+		const parent = queue.shift();
+		for (const child of byParent.get(parent) ?? []) {
+			if (visited.has(child.pid)) continue;
+			visited.add(child.pid);
+			out.push(child);
+			queue.push(child.pid);
+		}
+	}
+	return out;
 }
 
 /**
@@ -406,6 +434,7 @@ export async function sampleDetailProcesses(leaderPid) {
 export async function terminateLane({
 	lanePid,
 	leaderPid,
+	isStopped = () => false,
 	sampleDetail = () => sampleDetailProcesses(leaderPid),
 	kill = (pid) => {
 		try {
@@ -438,15 +467,48 @@ export async function terminateLane({
 		}
 	},
 } = {}) {
-	let descendants = [];
+	let table = [];
 	try {
-		descendants = laneDescendants(await sampleDetail(), { lanePid, leaderPid });
+		table = await sampleDetail();
 	} catch {
 		// A detail read that fails must not block the kill the bound already decided
 		// on; it only means nothing is proven, and nothing proven is nothing signalled.
-		descendants = [];
+		table = [];
 	}
-	const killed = kill(lanePid) === true;
+	const descendants = laneDescendants(table, { lanePid, leaderPid });
+	const laneRow = table.find((row) => row.pid === lanePid) ?? null;
+	/*
+	 * `stop()` IS AUTHORITATIVE ACROSS THIS AWAIT (review R1-4). The module promises
+	 * that a finished suite is never signalled on its behalf, and the detail read
+	 * above is a `ps` that can take seconds: without this re-check the guarantee
+	 * stopped at the new await.
+	 */
+	if (isStopped()) {
+		return {
+			killed: false,
+			descendants,
+			attempts: [],
+			survivors: [],
+			stopped: true,
+		};
+	}
+	/*
+	 * AND THE LANE PID GETS THE SAME IDENTITY CHECK AS ITS CHILDREN (review R1-4).
+	 * The `lstart` re-read applied only to the processes below the lane, which left
+	 * the process whose death the suite child has already been told about as the one
+	 * pid signalled without a re-check. A lane row the detail read did not carry
+	 * leaves nothing to compare, so the kill proceeds exactly as it did before.
+	 */
+	let killed = false;
+	if (laneRow === null) {
+		killed = kill(lanePid) === true;
+	} else {
+		const identity = await reverify(lanePid);
+		killed =
+			identity === laneRow.lstart && isStopped() === false
+				? kill(lanePid) === true
+				: false;
+	}
 	const attempts = [];
 	for (const descendant of descendants) {
 		const identity = await reverify(descendant.pid);
@@ -542,6 +604,8 @@ export function createLaneBoundWatchdog({
 	let lastLaneSeenAt = null;
 	let lastLanesSeen = [];
 	let suiteTripped = false;
+	/** The lane->pid set as last seen: only a CHANGE in it counts as progress. */
+	let lastProgress = null;
 
 	async function tick() {
 		if (stopped || sampling) return;
@@ -619,7 +683,24 @@ export function createLaneBoundWatchdog({
 		 * or wedged, and a wedge there has nothing else to name it.
 		 */
 		const sampledAt = now();
-		if (seen.size > 0) {
+		/*
+		 * PROGRESS, NOT PRESENCE (review R1-5). This used to reset the suite clock on
+		 * any sighting, which made the bound blind in exactly the shape the last head
+		 * showed: a lane process that stays in view while never advancing held the
+		 * clock at zero forever, and the suite child it wedged was never named. A
+		 * change in the lane->pid set - a lane first seen, a lane replaced, a lane
+		 * finished - is progress; the same set ticking over is not.
+		 */
+		const progress =
+			seen.size === 0
+				? null
+				: [...seen.entries()]
+						.map(([lane, { pid }]) => `${lane}:${pid}`)
+						.sort()
+						.join("|");
+		const previousProgress = lastProgress;
+		lastProgress = progress;
+		if (seen.size > 0 && progress !== previousProgress) {
 			lastLaneSeenAt = sampledAt;
 			lastLanesSeen = [...seen.keys()];
 			suiteTripped = false;

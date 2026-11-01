@@ -84,15 +84,22 @@ const BARE_SPECIFIER = /^[^./]/;
  */
 const FILE = "scripts/child-reader-foot-react.test.mjs";
 /*
- * THE RENDER IS BOUNDED TOO, and the CI evidence is why rather than symmetry: in
- * the stalled run the last thing this file wrote was React SSR warnings, and React
- * only renders inside the body below - so the build and the import had ALREADY
- * completed and a ceiling on them alone would not have caught it. Node's own
- * per-test `timeout` is the bound for that step; it fails the test by name instead
- * of leaving the lane to the suite's per-lane bound, which took 25 minutes to say
- * less. No assertion changes: a run that renders inside the bound is the same run.
+ * THE RENDER IS NOT BOUNDED IN-PROCESS, and saying so is the point of this comment.
+ * Node's per-test `timeout` was tried here and REVIEW ROUND 1 proved it inert for
+ * this test: the body below is synchronous, a timer cannot preempt a body that
+ * blocks the event loop, and the measurement is `{ timeout: 500 }` on a 2005 ms
+ * synchronous body reporting `pass`. The option bounded nothing, so it is gone
+ * rather than left as a claim a reader could mistake for coverage - and nothing is
+ * inferred here from its silence, because a bound that cannot fire carries no
+ * information about where a stall is.
+ *
+ * WHAT COVERS A SYNCHRONOUS HANG INSTEAD: nothing INSIDE this file can, and no
+ * in-process timer ever will - only a bound living in another process can preempt a
+ * blocked event loop. Those bounds are the suite's (`desktop-test-lane-bound.mjs`:
+ * the per-lane bound, and the suite child's own bound for a stall that leaves no
+ * lane to name), which is why the wedge that started this work is answered there
+ * rather than here.
  */
-const RENDER_BOUND_MS = 60_000;
 const bundle = await boundBundleStep({
 	file: FILE,
 	step: "esbuild build of the pane bundle",
@@ -243,59 +250,55 @@ const INTENT = /Auditing the pending ledger rows/;
  */
 const textOf = (html) => html.replaceAll("&#x27;", "'");
 
-test(
-	"no absence arm paints the foot line, and the same row does over a page with rows",
-	{ timeout: RENDER_BOUND_MS },
-	() => {
-		/*
-		 * The three states the deferral names that the preview seam can reach, each
-		 * with the copy its arm owns (`§ 10.1`) — a line added above one of these arms
-		 * is what the follow-up will do, and it fails here.
-		 */
-		const empty = fixtures.childPage();
-		const arms = [
-			[
-				"pending",
-				fixtures.childPage({ state: "pending" }),
-				"This subagent has no transcript on disk yet.",
-			],
-			[
-				"gone",
-				fixtures.childPage({ state: "gone" }),
-				"This subagent's session directory is no longer on disk.",
-			],
-			[
-				"ready with no rows",
-				{ ...empty, entries: [] },
-				"This subagent has no conversation on record yet.",
-			],
-		];
-		for (const [name, page, copy] of arms) {
-			const html = render(readerEl(page));
-			assert.ok(
-				textOf(html).includes(copy),
-				`the ${name} arm's own copy must still be there`,
-			);
-			assert.ok(
-				!html.includes(LINE),
-				`a running child with an EMPTY page (${name}) must paint NO foot line — this is the deferral § 5.8 records, and the change that closes it has to change this assertion`,
-			);
-		}
-
-		/*
-		 * The CONTROL. The same row, the same pane, a page that carries rows: if this
-		 * cannot find a line, the absence assertions above are measuring a pane that
-		 * renders no reader, and the pin proves nothing.
-		 */
-		const control = render(readerEl(fixtures.childPage({ includeTool: true })));
+test("no absence arm paints the foot line, and the same row does over a page with rows", () => {
+	/*
+	 * The three states the deferral names that the preview seam can reach, each
+	 * with the copy its arm owns (`§ 10.1`) — a line added above one of these arms
+	 * is what the follow-up will do, and it fails here.
+	 */
+	const empty = fixtures.childPage();
+	const arms = [
+		[
+			"pending",
+			fixtures.childPage({ state: "pending" }),
+			"This subagent has no transcript on disk yet.",
+		],
+		[
+			"gone",
+			fixtures.childPage({ state: "gone" }),
+			"This subagent's session directory is no longer on disk.",
+		],
+		[
+			"ready with no rows",
+			{ ...empty, entries: [] },
+			"This subagent has no conversation on record yet.",
+		],
+	];
+	for (const [name, page, copy] of arms) {
+		const html = render(readerEl(page));
 		assert.ok(
-			control.includes(LINE),
-			"the pane has no foot line at all to be absent",
+			textOf(html).includes(copy),
+			`the ${name} arm's own copy must still be there`,
 		);
-		assert.match(
-			control,
-			INTENT,
-			"the control's foot line must carry the row's own activity string",
+		assert.ok(
+			!html.includes(LINE),
+			`a running child with an EMPTY page (${name}) must paint NO foot line — this is the deferral § 5.8 records, and the change that closes it has to change this assertion`,
 		);
-	},
-);
+	}
+
+	/*
+	 * The CONTROL. The same row, the same pane, a page that carries rows: if this
+	 * cannot find a line, the absence assertions above are measuring a pane that
+	 * renders no reader, and the pin proves nothing.
+	 */
+	const control = render(readerEl(fixtures.childPage({ includeTool: true })));
+	assert.ok(
+		control.includes(LINE),
+		"the pane has no foot line at all to be absent",
+	);
+	assert.match(
+		control,
+		INTENT,
+		"the control's foot line must carry the row's own activity string",
+	);
+});

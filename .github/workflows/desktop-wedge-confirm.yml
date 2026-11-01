@@ -70,7 +70,10 @@ jobs:
           WEDGE_LOG="$RUNNER_TEMP/wedge.log"
           WEDGE_RC=0
           node --test scripts/child-reader-foot-react.test.mjs 2>&1 | tee "$WEDGE_LOG" || WEDGE_RC=$?
-          printf 'rc=%s\n' "$WEDGE_RC" | tee -a "$WEDGE_LOG"
+          # ANCHORED AND UNIQUE (review R1-7): the scan below must not read a
+          # `rc=` that some test's own output happened to print, which would turn a
+          # hang into "FAILED (not a hang)". The marker cannot appear by accident.
+          printf 'WEDGE_RC=%s\n' "$WEDGE_RC" | tee -a "$WEDGE_LOG"
           printf 'WEDGE_RC=%s\n' "$WEDGE_RC" >> "$GITHUB_OUTPUT"
           exit "$WEDGE_RC"
 
@@ -86,7 +89,7 @@ jobs:
             echo "::error title=Wedge confirmation did not run::no log at $WEDGE_LOG - the run never reached the file"
             exit 1
           fi
-          WEDGE_RC=$(grep -oE 'rc=[0-9]+' "$WEDGE_LOG" | tail -1 | cut -d= -f2 || true)
+          WEDGE_RC=$(grep -oE '^WEDGE_RC=[0-9]+$' "$WEDGE_LOG" | tail -1 | cut -d= -f2 || true)
           echo "--- counts, if the file reported any ---"
           grep -E '^# (tests|pass|fail|cancelled) ' "$WEDGE_LOG" || echo '(no TAP summary: the file never finished)'
           echo "--- last 60 lines ---"

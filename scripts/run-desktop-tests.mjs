@@ -420,15 +420,12 @@ const laneWatchdog =
 				lanes: laneArgs,
 				boundMs: laneBound.boundMs,
 				onTrip: ({ lane, pid, elapsedMs, killed, attempts = [] }) => {
-					console.error(
-						formatLaneTripLine({
-							lane,
-							pid,
-							elapsedMs,
-							boundMs: laneBound.boundMs,
-							killed,
-						}),
-					);
+					/*
+					 * THE RECORD COMES FIRST, the print second: `reportTrip` is the durable
+					 * channel, and a print that lands is a print a reader can lose. Under
+					 * `> /tmp/log 2>&1` the write is synchronous, so ordering the record after
+					 * the print puts it downstream of the very failure it exists to record.
+					 */
 					reportTrip("lane", {
 						lane,
 						pid,
@@ -443,6 +440,15 @@ const laneWatchdog =
 							outcome: row.outcome,
 						})),
 					});
+					console.error(
+						formatLaneTripLine({
+							lane,
+							pid,
+							elapsedMs,
+							boundMs: laneBound.boundMs,
+							killed,
+						}),
+					);
 				},
 				onBlind: (ticks) =>
 					console.error(
@@ -452,6 +458,13 @@ const laneWatchdog =
 				// lane list cannot name, and a wedge in it is what the 50-minute cap used
 				// to be the only reading of (run 41248028640, job 124562057434).
 				onSuiteStall: ({ lanes, elapsedMs, killed }) => {
+					// Record first, print second, for the reason `onTrip` carries.
+					reportTrip("suite", {
+						lanes,
+						elapsedMs,
+						boundMs: laneBound.boundMs,
+						killed,
+					});
 					console.error(
 						formatSuiteTripLine({
 							lanes,
@@ -460,12 +473,6 @@ const laneWatchdog =
 							killed,
 						}),
 					);
-					reportTrip("suite", {
-						lanes,
-						elapsedMs,
-						boundMs: laneBound.boundMs,
-						killed,
-					});
 				},
 				/*
 				 * The wedge the harness kept failing to name: a lane killed by the bound whose
@@ -486,8 +493,16 @@ const laneWatchdog =
 							outcome: row.outcome,
 						})),
 					});
+					// The exit claim is BRANCHED on what actually happened (review R1-6): when
+					// the suite child had already gone, its own exit handler may have set the
+					// status before this line, so saying "78" unconditionally would be a line
+					// claiming a code the run does not produce.
 					console.error(
-						`desktop tests: WEDGE - lane ${lane} (pid ${pid}) left ${survivors.length} process(es) behind after its kill; the suite child was ${killedSuite ? "killed" : "already gone"} and this run ends ${WEDGE_EXIT_CODE}, because a verdict it cannot produce must not be waited for`,
+						`desktop tests: WEDGE - lane ${lane} (pid ${pid}) left ${survivors.length} process(es) behind after its kill; ${
+							killedSuite
+								? `the suite child was killed, and this run ends ${WEDGE_EXIT_CODE} because a verdict it cannot produce must not be waited for`
+								: "the suite child had already gone, so this run ends on the status the suite itself reported"
+						}`,
 					);
 				},
 			});

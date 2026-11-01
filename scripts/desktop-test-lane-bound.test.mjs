@@ -534,17 +534,29 @@ test("with no lane in sight the suite clock runs, and the suite is named at the 
 	);
 });
 
-test("a lane in view holds the suite clock at zero, however wide its own bound", async () => {
+test("a lane that stays in view without advancing no longer holds the suite clock at zero", async () => {
+	// REVIEW R1-5: presence used to be progress, which made the suite bound blind in
+	// exactly the shape the last head showed - a lane in view, making no progress,
+	// holding the clock at zero forever while the suite child it wedged was never
+	// named. A static lane->pid set is NOT progress; the bound fires.
 	const { watchdog, state } = driver({ tables: [laneA] });
-	await watchdog._tick();
-	state.clock = 60_000;
-	await watchdog._tick();
-	await watchdog._tick();
-	assert.deepEqual(
-		state.suiteStalls,
-		[],
-		"a suite with a live lane is making progress, not wedged",
-	);
+	await watchdog._tick(); // first sighting: progress, the clock starts
+	state.clock = 1_000;
+	await watchdog._tick(); // same lane, same pid: no progress, the bound is reached
+	assert.equal(state.suiteStalls.length, 1);
+	assert.deepEqual(state.suiteStalls[0].lanes, ["scripts/a.test.mjs"]);
+});
+
+test("a changing lane set is progress, and keeps the suite clock at zero", async () => {
+	const { watchdog, state } = driver({
+		tables: [laneA, laneB, `${laneA}\n${laneB}`],
+	});
+	await watchdog._tick(); // A first seen
+	state.clock = 900;
+	await watchdog._tick(); // B arrives: progress
+	state.clock = 1_400;
+	await watchdog._tick(); // the set changed again: progress, still under a full bound
+	assert.deepEqual(state.suiteStalls, []);
 });
 
 test("a suite that recovers and wedges again earns a second line, not a latch", async () => {
@@ -677,8 +689,11 @@ test("a lane whose child survives is the wedge: the suite child is ended and the
 		[101],
 		"the survivor was already gone when re-checked",
 	);
+	// The lane trip and the suite clock can BOTH reach their bound in the same tick
+	// once presence is no longer progress (R1-5), and both name the same suite child:
+	// the assertion is about WHICH process was ended, not how many times it was named.
 	assert.deepEqual(
-		suiteKilled,
+		[...new Set(suiteKilled)],
 		[100],
 		"the suite child is ended, not waited for",
 	);
