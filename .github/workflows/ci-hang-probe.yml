@@ -6,7 +6,7 @@ name: Bounded CI hang probe
 on:
   push:
     branches:
-      - diag/ui-avatar-native-activate
+      - diag/ui-avatar-pristine-activate
   workflow_dispatch:
 
 permissions:
@@ -22,9 +22,9 @@ jobs:
     # There are no inputs: every activation uses the two immutable refs below.
     if: >-
       github.repository == 'damianvtran/local-operator-ui' &&
-      ((github.event_name == 'push' && github.ref == 'refs/heads/diag/ui-avatar-native-activate') ||
+      ((github.event_name == 'push' && github.ref == 'refs/heads/diag/ui-avatar-pristine-activate') ||
        (github.event_name == 'workflow_dispatch' &&
-        (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/diag/ui-avatar-native-activate')))
+        (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/diag/ui-avatar-pristine-activate')))
     runs-on: ubuntu-latest
     timeout-minutes: 35
     steps:
@@ -67,25 +67,9 @@ jobs:
         timeout-minutes: 5
         working-directory: telemetry
         run: pnpm install --frozen-lockfile
-      - name: Singles first on both immutable refs
-        shell: bash
+      - name: Pristine exact trio, matched reporter only after a timeout
         run: |
-          set +e
-          python3 probe/scripts/ci-hang-probe.py run --root avatar --label avatar --phase single --output "$RUNNER_TEMP/hang-probe/avatar-single"
-          avatar=$?
-          python3 probe/scripts/ci-hang-probe.py run --root telemetry --label telemetry --phase single --output "$RUNNER_TEMP/hang-probe/telemetry-single"
-          telemetry=$?
-          # Preserve both actual failures; neither a timeout nor assertion error
-          # can unlock the concurrency arm. No retries, no full-suite fallback.
-          test "$avatar" -eq 0 && test "$telemetry" -eq 0
-      - name: Only after both singles finish cleanly, concurrency three
-        run: |
-          set +e
-          python3 probe/scripts/ci-hang-probe.py run --root avatar --label avatar --phase trio --output "$RUNNER_TEMP/hang-probe/avatar-trio"
-          avatar=$?
-          python3 probe/scripts/ci-hang-probe.py run --root telemetry --label telemetry --phase trio --output "$RUNNER_TEMP/hang-probe/telemetry-trio"
-          telemetry=$?
-          test "$avatar" -eq 0 && test "$telemetry" -eq 0
+          python3 probe/scripts/ci-hang-probe.py compare --coordinator-root avatar --coordinator-root telemetry --output "$RUNNER_TEMP/hang-probe/comparison"
       - name: Preserve bounded sanitized evidence even on failure
         if: always()
         uses: actions/upload-artifact@v4
@@ -96,6 +80,9 @@ jobs:
           path: |
             ${{ runner.temp }}/hang-probe/probe-revision.txt
             ${{ runner.temp }}/hang-probe/*/result.json
+            ${{ runner.temp }}/hang-probe/comparison/comparison.json
+            ${{ runner.temp }}/hang-probe/comparison/*/result.json
+            ${{ runner.temp }}/hang-probe/comparison/*/node-*.jsonl
             ${{ runner.temp }}/hang-probe/*/node-*.jsonl
             ${{ runner.temp }}/hang-probe/control/*/result.json
             ${{ runner.temp }}/hang-probe/control/*/node-*.jsonl

@@ -8,25 +8,34 @@ are the observation and cleanup boundary.
 """
 
 import argparse
+from collections import deque
+from contextlib import redirect_stdout
 import ctypes
 import hashlib
+import io
 import json
 import os
 from pathlib import Path
+import re
 import signal
 import subprocess
 import sys
 import tempfile
 import time
+from types import SimpleNamespace
 from unittest.mock import patch
 
 REFS = {
     "avatar": "2c0f276d0ead12e6b8664f550468b8217bbe506d",
     "telemetry": "47cf454be2efe3a0c30e27063d57845ae5ba7171",
 }
-SINGLE = ["child-reader-foot-react"]
-TRIO = ["run-child-reader", "ci-scope", "code-review-model"]
+# This is the actual adjacent trio from the timed-out CI tail. The earlier
+# run-child-reader trio was different coverage, not a successful test of this set.
+TARGETS = ["child-reader-foot-react", "ci-scope", "code-review-model"]
 LIMIT = 300
+COORDINATOR_FILES = ['run-desktop-tests', 'desktop-test-keeper', 'no-hardlink-write-preload',
+                     'no-hardlink-write', 'desktop-test-concurrency', 'desktop-test-lane-bound',
+                     'desktop-test-memory-guard', 'notifications-off', 'telemetry-off']
 
 # Synchronous, bounded per-PID files avoid test-runner stdout buffering. No
 # timers are installed: observing retention must not itself retain the process.
@@ -90,6 +99,47 @@ export default async function* reporter(source) {
 
 def write_json(path, value):
     path.write_text(json.dumps(value, indent=2) + "\n")
+
+
+class TapSummary:
+    """Bounded structural spool: never retain test names/diagnostics/raw output."""
+
+    def __init__(self):
+        self.pending = b''
+        self.dropping = False
+        self.counts = {'tests': None, 'pass': None, 'fail': None}
+        self.records = deque(maxlen=128)
+        self.ok_events = self.not_ok_events = 0
+
+    def feed(self, data):
+        parts = data.split(b'\n')
+        for index, part in enumerate(parts):
+            if not self.dropping:
+                if len(self.pending) + len(part) > 4096:
+                    self.pending = b''
+                    self.dropping = True
+                else:
+                    self.pending += part
+            if index == len(parts) - 1:
+                continue
+            if not self.dropping:
+                line = self.pending.decode('ascii', errors='ignore').strip()
+                count = re.fullmatch(r'# (tests|pass|fail) ([0-9]{1,9})', line)
+                event = re.fullmatch(r'(not ok|ok) ([0-9]{1,9})(?: - .*|)', line)
+                if count:
+                    self.counts[count[1]] = int(count[2])
+                elif event:
+                    self.records.append({'kind': event[1], 'number': int(event[2])})
+                    if event[1] == 'ok':
+                        self.ok_events += 1
+                    else:
+                        self.not_ok_events += 1
+            self.pending = b''
+            self.dropping = False
+
+    def summary(self):
+        return {**self.counts, 'ok_events': self.ok_events,
+                'not_ok_events': self.not_ok_events, 'records': list(self.records)}
 
 
 def process_row(pid, include_zombie=False):
@@ -288,6 +338,22 @@ def supervise(command, cwd, output, seconds=LIMIT):
     pgid = proc.pid
     tree = OwnedTree(proc.pid, baseline, previous_subreaper is not None)
     samples, total_bytes = [], 0
+    tap = TapSummary()
+
+    def drain():
+        nonlocal total_bytes
+        # Bound each drain so noise cannot starve the deadline. Parse only TAP
+        # structure; a final drain must see summaries written during census.
+        for _ in range(32):
+            try:
+                block = os.read(read_fd, 65536)
+                if not block:
+                    break
+                total_bytes += len(block)
+                tap.feed(block)
+            except BlockingIOError:
+                break
+
     requested = terminated = killed = timed_out = False
     report_requests, term_requests, kill_requests = set(), set(), set()
     last_rows = None
@@ -295,15 +361,7 @@ def supervise(command, cwd, output, seconds=LIMIT):
     try:
         while True:
             elapsed = time.monotonic() - started
-            # Bound each drain iteration so noise cannot starve the deadline.
-            for _ in range(32):
-                try:
-                    block = os.read(read_fd, 65536)
-                    if not block:
-                        break
-                    total_bytes += len(block)
-                except BlockingIOError:
-                    break
+            drain()
             rows = observe(tree)
             last_rows = rows
             tree.reap()
@@ -367,6 +425,7 @@ def supervise(command, cwd, output, seconds=LIMIT):
         while proc.poll() is None and time.monotonic() < deadline - 0.1:
             time.sleep(0.005)
         tree.reap()
+        drain()
         os.close(read_fd)
         if previous_subreaper is not None:
             subreaper(previous_subreaper)
@@ -379,6 +438,7 @@ def supervise(command, cwd, output, seconds=LIMIT):
               'exit_code': 124 if timed_out else proc.returncode,
               'seconds': round(time.monotonic() - started, 3),
               'pgid': pgid, 'discarded_output_bytes': total_bytes,
+              'tap': tap.summary(),
               'survivors': survivors, 'samples': samples,
               'owned_groups': owned_groups,
               'owned_identities': list(tree.known.values()),
@@ -393,47 +453,6 @@ def supervise(command, cwd, output, seconds=LIMIT):
         result.update(status='deadline-failure', exit_code=127)
     write_json(output / 'result.json', result)
     return result
-
-
-def instrument(root, names):
-    """Fail closed if pinned fixtures no longer match the intended checkpoints."""
-    for name in names:
-        path = root / 'scripts' / f'{name}.test.mjs'
-        source = path.read_text()
-        prefix = f"globalThis.__probe('file-start', {{file: '{path.name}'}});\n"
-        if name in ('child-reader-foot-react', 'run-child-reader'):
-            old = 'import { renderToStaticMarkup } from "react-dom/server";'
-            if source.count(old) != 1 or source.count('const bundle = await build({') != 1:
-                raise RuntimeError('render/build checkpoint source mismatch')
-            source = source.replace(old, old.replace('renderToStaticMarkup }', 'renderToStaticMarkup as originalRender }') + '''
-function renderToStaticMarkup(...args) {
-  globalThis.__probe('render-start');
-  try { return originalRender(...args); }
-  finally { globalThis.__probe('render-end'); }
-}
-''')
-            source = source.replace('const bundle = await build({',
-                                    "globalThis.__probe('build-start');\nconst bundle = await build({")
-            anchor = 'const CACHE = join(' if name == 'child-reader-foot-react' else 'const bundlePath = new URL('
-            if source.count(anchor) != 1:
-                raise RuntimeError('build-end checkpoint source mismatch')
-            source = source.replace(anchor, "globalThis.__probe('build-end');\n" + anchor)
-            # Every dynamic import gets a start marker. A module-ready marker
-            # after the last import discriminates an import stall from rendering.
-            source = source.replace('await import(', "await (globalThis.__probe('import-start'), import(")
-            # Both pinned fixtures have exactly these closing forms.
-            if name == 'child-reader-foot-react':
-                source = source.replace('pathToFileURL(bundlePath).href\n);', 'pathToFileURL(bundlePath).href\n));')
-                source = source.replace('"@tanstack/react-query"\n);', '"@tanstack/react-query"\n));')
-                ready = 'const h = React.createElement;'
-            else:
-                source = source.replace('import(bundlePath.href));', 'import(bundlePath.href)));')
-                ready = 'const READ_ONLY_FOOTER ='
-            if source.count(ready) != 1:
-                raise RuntimeError('module-ready checkpoint source mismatch')
-            source = source.replace(ready, "globalThis.__probe('imports-end');\n" + ready)
-        path.write_text(prefix + source + "\nglobalThis.__probe('file-assertions-registered');\n")
-        subprocess.run(['node', '--check', str(path)], check=True, capture_output=True)
 
 
 def identity_controls(signal_fn=signal_identity):
@@ -478,13 +497,67 @@ def control_run(command, root, output, seconds):
     return result
 
 
+def plan_controls(output):
+    """Decision/redaction negatives only; these mocks never execute target files."""
+    output.mkdir(parents=True)
+    reporter = Path('/synthetic/reporter.mjs')
+    pristine = target_command('pristine', reporter)
+    custom = target_command('custom', reporter)
+    assert [arg for arg in custom if not arg.startswith('--test-reporter=')] == pristine
+    assert not any('--test-reporter' in arg for arg in pristine)
+    assert [arg for arg in pristine if arg.endswith('.test.mjs')] == [
+        'scripts/child-reader-foot-react.test.mjs', 'scripts/ci-scope.test.mjs',
+        'scripts/code-review-model.test.mjs']
+    scenarios = [('both-pass', [0, 0], ['pristine', 'pristine'], 0),
+                 ('timeout', [124, 0, 0, 0], ['pristine', 'pristine', 'custom', 'custom'], 124)]
+    scenarios += [(f'failure-{code}', [code], ['pristine'], code) for code in (1, 125, 126, 127)]
+    scenarios.append(('natural-124', [124], ['pristine'], 124))
+    for name, codes, expected_phases, expected_exit in scenarios:
+        calls = []
+        returns = iter(codes)
+
+        def fake(root, label, phase, out):
+            calls.append(phase)
+            code = next(returns)
+            return {'label': label, 'phase': phase, 'exit_code': code,
+                    'status': 'timeout' if code == 124 and name != 'natural-124' else 'completed'}
+
+        # Synthetic gate outcomes are not real target NOT_REPRODUCED results.
+        # Keep them out of native-job stdout; the parent proof labels them mocks.
+        with patch.dict(globals(), run=fake), redirect_stdout(io.StringIO()):
+            code = compare({'avatar': output, 'telemetry': output}, output / name)
+        assert calls == expected_phases and code == expected_exit
+        summary_path = output / name / 'comparison.json'
+        summary = json.loads(summary_path.read_text())
+        summary.update(synthetic_plan_control=True, target_execution=False)
+        write_json(summary_path, summary)
+    tap = TapSummary()
+    for _ in range(2000):
+        tap.feed(b'ok 1 - SYNTHETIC_SECRET_PAYLOAD\n')
+    tap.feed(b'x' * 1000000 + b'\n# tests 3\n# pass 3\n# fail 0\n')
+    summary = tap.summary()
+    assert summary['tests'] == 3 and summary['pass'] == 3 and summary['fail'] == 0
+    assert len(summary['records']) <= 128 and len(tap.pending) <= 4096
+    assert 'SYNTHETIC_SECRET' not in json.dumps(summary)
+    ticks = iter([0.0, 8.25])
+    rejected = False
+    # Mock only the boundary/clock object, never the real shared system clock.
+    # This negative must fail the exact caller-bound check without a child.
+    with patch.dict(globals(), time=SimpleNamespace(monotonic=lambda: next(ticks)),
+                    supervise=lambda *args: {'exit_code': 124}, write_json=lambda *args: None):
+        try:
+            control_run([], output, output / 'overrun', 8)
+        except AssertionError:
+            rejected = True
+    assert rejected
+    write_json(output / 'result.json', {'plan_negatives': 'PASS', 'tap_redaction': 'PASS',
+                                       'whole_call_overrun_refused': True,
+                                       'target_argv': pristine, 'target_execution': False})
+    print('PASS exact-trio / no-extra-arm / timeout-only gate / bounded redacted TAP spool', flush=True)
+
+
 def coordinator_controls(output, roots):
-    """Run the real frozen topology, not a lookalike direct-child substitute."""
-    # Built-in-only runtime closure, including the URL-based preloader/keeper
-    # imports that a static `from` import walker alone would incorrectly omit.
-    files = ['run-desktop-tests', 'desktop-test-keeper', 'no-hardlink-write-preload',
-             'no-hardlink-write', 'desktop-test-concurrency', 'desktop-test-lane-bound',
-             'desktop-test-memory-guard', 'notifications-off', 'telemetry-off']
+    """Actual frozen worker positive/negative controls for BOTH reporters first."""
     for source in roots:
         sha = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=source, text=True).strip()
         label = next((name for name, ref in REFS.items() if ref == sha), None)
@@ -493,35 +566,61 @@ def coordinator_controls(output, roots):
         root = output / f'coordinator-{label}'
         (root / 'scripts').mkdir(parents=True)
         hashes = {}
-        for name in files:
-            original = (source / 'scripts' / f'{name}.mjs').read_bytes()
-            (root / 'scripts' / f'{name}.mjs').write_bytes(original)
+        for name in COORDINATOR_FILES:
+            file = f'scripts/{name}.mjs'
+            original = (source / file).read_bytes()
+            if original != subprocess.check_output(['git', 'show', f'{sha}:{file}'], cwd=source):
+                raise RuntimeError('frozen coordinator source mismatch')
+            (root / file).write_bytes(original)
             hashes[name] = hashlib.sha256(original).hexdigest()
-        fixture = root / 'scripts' / 'retained-probe.test.mjs'
-        fixture.write_text("import {test} from 'node:test'; import assert from 'node:assert/strict';\n"
-                           "test('retained assertion',()=>{assert.equal(1,1);"
-                           "globalThis.__probe('retained-worker');setInterval(()=>{},1000);});\n")
         reporter = root / 'reporter.mjs'
         reporter.write_text(REPORTER)
-        evidence = output / f'retained-{label}'
-        result = control_run(['node', 'scripts/run-desktop-tests.mjs', '--test-concurrency=1',
-                            f'--test-reporter={reporter}', str(fixture)], root, evidence, 8)
-        events = [json.loads(line) for path in evidence.glob('node-*.jsonl')
-                  for line in path.read_text().splitlines()]
-        workers = {e['pid'] for e in events if e['stage'] == 'retained-worker'}
-        reported = {e['pid'] for e in events if e['stage'] == 'pre-reap-report'}
-        sampled = {r['pid'] for sample in result['samples'] for r in sample.get('members', [])}
-        passed = sum(e['stage'] == 'test:pass' for e in events)
-        result.update(source_sha=sha, coordinator_sha256=hashes,
-                      retained_worker_pids=sorted(workers), passed_assertions=passed,
-                      worker_sampled=bool(workers and workers <= sampled),
-                      worker_reported=bool(workers and workers <= reported))
-        write_json(evidence / 'result.json', result)
-        assert result['status'] == 'timeout' and result['exit_code'] == 124
-        assert result['seconds'] <= 8 and not result['survivors']
-        assert workers and workers <= reported and workers <= sampled and passed > 0
-        assert len(result['owned_groups']) >= 3
-        print(f'PASS frozen {label} retained assertion: worker sampled/reported, all owned groups reaped', flush=True)
+        for phase in ('pristine', 'custom'):
+            for case in ('retained', 'natural', 'failure'):
+                fixture = root / 'scripts' / f'{case}-probe.test.mjs'
+                # These are synthetic controls, NOT rewrites of target files.
+                assertion = ('assert.equal(1,1);globalThis.__probe("retained-worker");'
+                             'setInterval(()=>{},1000);' if case == 'retained' else
+                             'assert.equal(1,1);globalThis.__probe("natural-worker");' if case == 'natural' else
+                             'globalThis.__probe("failure-worker");assert.equal(1,2);')
+                fixture.write_text("import {test} from 'node:test'; import assert from 'node:assert/strict';\n"
+                                   f"test('SYNTHETIC_SECRET_PAYLOAD {case}',()=>{{{assertion}}});\n")
+                command = ['node', 'scripts/run-desktop-tests.mjs', '--test-concurrency=1']
+                if phase == 'custom':
+                    command.append(f'--test-reporter={reporter}')
+                command.append(str(fixture))
+                evidence = output / f'{label}-{phase}-{case}'
+                result = control_run(command, root, evidence, 8)
+                events = read_events(evidence)
+                assert 'SYNTHETIC_SECRET' not in json.dumps([result, events])
+                workers = {e['pid'] for e in events if e['stage'] == f'{case}-worker'}
+                reported = {e['pid'] for e in events if e['stage'] == 'pre-reap-report'}
+                sampled = {r['pid'] for sample in result['samples'] for r in sample.get('members', [])}
+                custom_pass = sum(e['stage'] == 'test:pass' for e in events)
+                custom_fail = sum(e['stage'] == 'test:fail' for e in events)
+                result.update(source_sha=sha, coordinator_sha256=hashes, reporter=phase,
+                              actual_worker_pids=sorted(workers),
+                              custom_passed_assertions=custom_pass, custom_failed_assertions=custom_fail,
+                              worker_sampled=bool(workers and workers <= sampled),
+                              worker_reported=bool(workers and workers <= reported))
+                write_json(evidence / 'result.json', result)
+                assert workers and not result['survivors']
+                if case == 'retained':
+                    assert result['status'] == 'timeout' and result['exit_code'] == 124
+                    assert workers <= reported and workers <= sampled
+                    assert len(result['owned_groups']) >= 3
+                    # TAP may buffer file completion. The worker's marker is
+                    # AFTER the real assertion; do not invent TAP progress.
+                    if phase == 'custom':
+                        assert custom_pass > 0
+                elif case == 'natural':
+                    assert result['exit_code'] == 0
+                    assert custom_pass > 0 if phase == 'custom' else (
+                        result['tap']['pass'] == 1 and result['tap']['fail'] == 0)
+                else:
+                    assert result['exit_code'] == 1
+                    assert custom_fail > 0 if phase == 'custom' else result['tap']['fail'] == 1
+                print(f'PASS frozen {label} {phase} actual-worker {case} control', flush=True)
 
 
 def controls(output):
@@ -529,6 +628,7 @@ def controls(output):
         raise RuntimeError('probe requires Linux procfs; local macOS is syntax-only')
     output.mkdir(parents=True)
     identity_controls()
+    plan_controls(output / 'plan-controls')
     with tempfile.TemporaryDirectory(dir=output) as temp:
         root = Path(temp)
         child = root / 'child.mjs'
@@ -582,64 +682,148 @@ def controls(output):
         print('PASS whole-call bounds / noisy descendants / reporter / late detached child report and reap', flush=True)
 
 
+def target_command(phase, reporter):
+    if phase not in ('pristine', 'custom'):
+        raise ValueError('only pristine/default-TAP and matched custom arms are supported')
+    command = ['node', 'scripts/run-desktop-tests.mjs', '--test-concurrency=3']
+    if phase == 'custom':
+        command.append(f'--test-reporter={reporter}')
+    return command + [f'scripts/{name}.test.mjs' for name in TARGETS]
+
+
+def source_manifest(root, sha):
+    # Target fixtures and their runtime coordinator stay byte-pristine. Also
+    # refuse any tracked app/script edits, not merely a matching HEAD label.
+    subprocess.run(['git', 'diff', '--exit-code', '--quiet', 'HEAD', '--', 'src', 'scripts'],
+                   cwd=root, check=True, capture_output=True)
+    files = [f'scripts/{name}.test.mjs' for name in TARGETS]
+    files += [f'scripts/{name}.mjs' for name in COORDINATOR_FILES]
+    hashes = {}
+    for file in files:
+        expected = subprocess.check_output(['git', 'show', f'{sha}:{file}'], cwd=root)
+        actual = (root / file).read_bytes()
+        if actual != expected:
+            raise RuntimeError(f'immutable source mismatch: {file}')
+        hashes[file] = hashlib.sha256(actual).hexdigest()
+    return hashes
+
+
+def read_events(output):
+    return [json.loads(line) for path in output.glob('node-*.jsonl')
+            for line in path.read_text().splitlines()]
+
+
 def run(root, label, phase, output):
     if not Path('/proc/self/stat').exists():
         raise RuntimeError('hosted experiment requires Linux procfs')
     version = subprocess.check_output(['node', '--version'], text=True).strip()
     if not version.startswith('v22.'):
         raise RuntimeError('hosted experiment requires Node 22')
-    expected = REFS[label]
     actual = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=root, text=True).strip()
-    if actual != expected:
+    if actual != REFS[label]:
         raise RuntimeError('immutable source identity mismatch')
-    names = SINGLE if phase == 'single' else TRIO
-    instrument(root, names)
+    before = source_manifest(root, actual)
     reporter = output.parent / 'reporter.mjs'
-    reporter.write_text(REPORTER)
-    command = ['node', 'scripts/run-desktop-tests.mjs',
-               f'--test-concurrency={1 if phase == "single" else 3}',
-               f'--test-reporter={reporter}', *[f'scripts/{name}.test.mjs' for name in names]]
+    if phase == 'custom':
+        reporter.write_text(REPORTER)
+    command = target_command(phase, reporter)
+    # Both arms use the SAME reviewed observer preload. Only this explicit
+    # reporter argument changes; no instrument() call or fixture writes occur.
     result = supervise(command, root, output)
-    events = [json.loads(line) for path in output.glob('node-*.jsonl')
-              for line in path.read_text().splitlines()]
+    after = source_manifest(root, actual)
+    if before != after:
+        raise RuntimeError('target source changed during arm')
+    events = read_events(output)
     coverage = {}
-    for name in names:
+    for name in TARGETS:
         file = f'{name}.test.mjs'
+        pids = {e['pid'] for e in events if e['stage'] == 'preload' and e.get('file') == file}
         coverage[file] = {
-            'started': any(e['stage'] == 'file-start' and e.get('file') == file for e in events),
-            'passed_assertions': sum(e['stage'] == 'test:pass' and e.get('file') == file
-                                     for e in events),
+            'worker_pids': sorted(pids),
+            'natural_zero_exit': any(e['stage'] == 'process-exit' and e['pid'] in pids
+                                     and e.get('code') == 0 for e in events),
+            'custom_passed_assertions': sum(e['stage'] == 'test:pass' and e.get('file') == file
+                                            for e in events),
         }
-    # Exit zero with no observed assertions is an instrument/setup failure,
-    # never evidence that either single completed its intended cases.
-    if result['exit_code'] == 0 and not all(
-            item['started'] and item['passed_assertions'] > 0 for item in coverage.values()):
+    if phase == 'pristine':
+        assertion_evidence = (result['tap']['tests'] is not None and result['tap']['tests'] > 0
+                              and result['tap']['pass'] is not None and result['tap']['pass'] > 0
+                              and result['tap']['fail'] == 0)
+    else:
+        assertion_evidence = all(item['custom_passed_assertions'] > 0 for item in coverage.values())
+    if result['exit_code'] == 0 and not (
+            assertion_evidence and all(item['worker_pids'] and item['natural_zero_exit']
+                                       for item in coverage.values())):
         result.update(status='observer-failure', exit_code=125)
     result.update({'coverage': coverage, 'label': label, 'phase': phase, 'source_sha': actual,
-                   'probe_sha256': hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
-                   'node': subprocess.check_output(['node', '--version'], text=True).strip()})
+                   'source_sha256_before': before, 'source_sha256_after': after,
+                   'fixture_instrumentation': False, 'argv': command,
+                   'reporter': 'default-TAP' if phase == 'pristine' else 'custom',
+                   'observer_preload_sha256': hashlib.sha256(HOOK.encode()).hexdigest(),
+                   'environment': {'PATH': '<runner PATH>', 'HOME': '<arm>/home', 'CI': '1',
+                       'TERM': 'xterm-256color', 'LOCAL_OPERATOR_CONFIG_DIR': '<arm>/home/.local-operator',
+                       'PROBE_EVIDENCE': '<arm>', 'NODE_OPTIONS': '--import=<arm>/preload.mjs'},
+                   'extra_node_report_flags': [],
+                   'probe_sha256': hashlib.sha256(Path(__file__).read_bytes()).hexdigest(), 'node': version})
     write_json(output / 'result.json', result)
-    print(json.dumps({k: v for k, v in result.items() if k not in ('samples', 'survivors')}), flush=True)
-    return result['exit_code']
+    print(json.dumps({key: result[key] for key in ('label', 'phase', 'status', 'exit_code', 'seconds')}), flush=True)
+    return result
+
+
+def compare(roots, output):
+    if set(roots) != set(REFS):
+        raise ValueError('exactly the two immutable roots are required')
+    output.mkdir(parents=True)
+    results = []
+
+    def finish(outcome, code):
+        summary = {'outcome': outcome, 'exit_code': code,
+                   'custom_ran': any(row['phase'] == 'custom' for row in results),
+                   'results': [{key: row[key] for key in ('label', 'phase', 'status', 'exit_code')} for row in results],
+                   'limitation': 'observer preload and pipe draining perturb scheduling; no full-CI equivalence'}
+        write_json(output / 'comparison.json', summary)
+        print(json.dumps(summary), flush=True)
+        return code
+
+    # No name-pattern filters, singles, alternative third file, instrumentation
+    # or speculative extra arm. A timeout is preserved, never reported green.
+    for label in REFS:
+        result = run(roots[label], label, 'pristine', output / f'{label}-pristine')
+        results.append(result)
+        if not ((result['exit_code'] == 0 and result['status'] == 'completed') or
+                (result['exit_code'] == 124 and result['status'] == 'timeout')):
+            # A child can naturally exit 124. That is not an observed deadline
+            # stall and must not authorize a speculative reporter arm.
+            return finish('PRISTINE_FAILURE', result['exit_code'] or 125)
+    if all(row['exit_code'] == 0 for row in results):
+        return finish('NOT_REPRODUCED', 0)
+    for label in REFS:
+        result = run(roots[label], label, 'custom', output / f'{label}-custom')
+        results.append(result)
+        if not ((result['exit_code'] == 0 and result['status'] == 'completed') or
+                (result['exit_code'] == 124 and result['status'] == 'timeout')):
+            return finish('CUSTOM_FAILURE', result['exit_code'] or 125)
+    return finish('TIMED_OUT_MATCHED_COMPARISON', 124)
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('mode', choices=['self-test', 'run'])
-    parser.add_argument('--root', type=Path)
-    parser.add_argument('--label', choices=REFS)
-    parser.add_argument('--phase', choices=['single', 'trio'])
+    parser.add_argument('mode', choices=['self-test', 'compare'])
     parser.add_argument('--output', required=True, type=Path)
     parser.add_argument('--coordinator-root', type=Path, action='append', default=[])
     args = parser.parse_args()
     args.output = args.output.resolve()
+    roots = {}
+    for root in args.coordinator_root:
+        sha = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=root, text=True).strip()
+        label = next((name for name, ref in REFS.items() if ref == sha), None)
+        if label is None or label in roots:
+            parser.error('requires exactly the two distinct immutable coordinator roots')
+        roots[label] = root.resolve()
+    if set(roots) != set(REFS):
+        parser.error('requires both immutable --coordinator-root checkouts')
     if args.mode == 'self-test':
         controls(args.output)
-        if {subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=root, text=True).strip()
-                for root in args.coordinator_root} != set(REFS.values()):
-            parser.error('self-test requires both immutable --coordinator-root checkouts')
-        coordinator_controls(args.output, [root.resolve() for root in args.coordinator_root])
+        coordinator_controls(args.output, list(roots.values()))
     else:
-        if not all((args.root, args.label, args.phase)):
-            parser.error('run requires root, label and phase')
-        raise SystemExit(run(args.root.resolve(), args.label, args.phase, args.output))
+        raise SystemExit(compare(roots, args.output))

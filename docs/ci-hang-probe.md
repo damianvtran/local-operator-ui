@@ -2,6 +2,53 @@
 
 Diagnostic only. No production behavior, suite budget, concurrency setting, dependency lock or version changes. Do not activate or dispatch before independent review of this workflow's trigger delta. Activation is a bounded diagnostic, not a release or permission to merge this PR. No full-suite retry.
 
+## Current coverage correction — pristine fixtures, matched reporters
+
+The public correction/test plan was posted **before execution** in PR #1551 comment `6551458299`. The old single plus `run-child-reader + ci-scope + code-review-model` custom-reporter trio is DIFFERENT coverage from the actual adjacent `child-reader-foot-react + ci-scope + code-review-model` set. Prior successful native artifacts remain valid only for their actual files, checkpoint rewrites, custom reporter and observer; they do not prove this adjacent trio or default-TAP behavior. They are not deleted or silently relabeled. Historical validation sections below retain their original scope; this section supersedes their old target/activation instructions.
+
+**No target arm has run in this implementation session.** The new exact one-shot branch is `diag/ui-avatar-pristine-activate`. The prior `diag/ui-avatar-native-activate` ref already exists: NEVER update, force-update or delete it. Its native artifact remains evidence for its original coverage only. Activation of the new branch remains blocked on independent approval of this complete delta; no main merge, full-suite retry, dependency installation or production fix is authorized here.
+
+### Exact bounded arm plan
+
+1. Native Linux/Node22 built-in preflight FIRST: existing ownership/start-identity/whole-call/exit negatives plus actual frozen-coordinator workers under BOTH reporters, with natural completion, retained assertion and deliberate assertion failure. Sentinel test names must not reach sanitized artifacts. Default TAP must show natural pass and real failure; custom events must do the same. Retained workers must be sampled/reported/reaped under both reporters. All setup failures stop before installs/targets.
+2. Install each immutable ref's own frozen pnpm 10.29.2 lock as already configured. Verify tracked src/scripts remain clean and compare twelve invoked source blobs (three actual fixtures plus nine coordinator modules) to immutable Git blobs; record SHA256 before AND after each arm.
+3. Run the exact actual three-file set together at concurrency 3, **default TAP**, first avatar then telemetry, each serial/300 seconds. No fixture rewriting, checkpoint instrumentation, name filters or alternative third file.
+4. Both default-TAP arms pass: STOP `NOT_REPRODUCED` under this observer, no extra arm. Only exit 124 with the supervisor's `status=timeout` (not a natural child exit 124), rather than a setup/assertion/cleanup/deadline-failure result, unlocks the matched custom reporter on the identical three files/both refs. Any other nonzero status stops. Retention remains exit 124 even after comparison; it is not turned green.
+
+The exact default argv template (recorded in each result, NOT a request to execute it locally) is:
+
+```text
+node scripts/run-desktop-tests.mjs --test-concurrency=3 scripts/child-reader-foot-react.test.mjs scripts/ci-scope.test.mjs scripts/code-review-model.test.mjs
+```
+
+The matched command differs only by inserting `--test-reporter=<comparison>/reporter.mjs` after the concurrency flag. The observer uses a clean environment containing only inherited runner PATH, fresh `<arm>/home`, `CI=1`, `TERM=xterm-256color`, `LOCAL_OPERATOR_CONFIG_DIR=<arm>/home/.local-operator`, `PROBE_EVIDENCE=<arm>`, and the SAME `NODE_OPTIONS=--import=<arm>/preload.mjs`. Preload SHA256 is recorded and held constant across both modes. No extra preload or Node diagnostic-report CLI flags are added; the reviewed observer's SIGUSR2 handler still collects the allowlisted pre-reap resources/reports. Thus “pristine” means byte-pristine fixtures/default reporter, NOT observer-free scheduling. The custom reporter's synchronous event writes, reporter realm and stdout volume differ by design; fresh HOME and sequential reuse of dependency/build caches are also limits on causal interpretation.
+
+Node22 sees a non-TTY drained pipe, like CI's TAP-to-tee boundary, but this is NOT proof of identical tee/coordinator scheduling. The nonblocking drain remains capped at 32 × 64KiB per iteration and drains once more before closure. Its sanitized TAP spool stores at most 128 numeric ok/not-ok records, nine-digit counters and 4096 pending bytes, never raw names/assertions/environment. Default success needs real aggregate tests/pass/fail counts AND each expected file worker's natural zero exit; it does not invent per-file TAP assertions. Custom success also needs per-file test:pass events. Missing evidence is failure 125. Before/after manifests, argv, reporter, environment template, preload hash, empty extra-report-flags list, bounded TAP structure and existing owned-process/report evidence are in result JSON. Comparison summary records exactly which arms ran.
+
+Only the observer/plan/synthetic controls have local validation; native Linux execution of this delta and real target arms remain UNVERIFIED until the approved one-shot activation. The matching dependency lender mentioned by the manager is not needed: no local target execution or dependency install is performed.
+
+### Current delta verification (synthetic/local, not target execution)
+
+Built-in-only unit checks passed: exact three files; both pristine passes stop without custom; only genuine observed timeout 124 unlocks the same pair; a natural 124 or 1/125/126/127 cannot unlock custom; source mutation rejected; missing TAP/worker-exit/custom-pass evidence fails 125; no fixture rewrites; bounded spool/redaction. Four disposable source mutations were rejected: wrong adjacent file, extra custom after both pass, raw TAP payload retention, target checkpoint write. Seven local contract methods passed; expected SHA256 receipts for twelve source blobs at each immutable ref were read without executing them.
+
+Actual Node **22.18.0** worker controls used the real unchanged nine-module frozen coordinators, on Darwin with the disclosed `ps`/identity-signal adapter (NOT Linux procfs/pidfd/subreaper proof). Both reporter modes ran all three controls on both refs: retained assertion → 124 with actual worker sampled/reported/reaped; natural assertion → 0; deliberate assertion failure → 1 (not masked). Final retained whole calls: avatar default TAP **3.385 s**, custom **3.428 s**; telemetry default TAP **3.392 s**, custom **3.394 s**, all within eight seconds. All twelve controller cases passed. Independent post-call census found no live known-PID/owned-group survivors. Sentinel names in actual TAP/custom failure output were absent from all stored result/events. Existing noisy, natural/nonzero, reporter and late-child controls also passed; fake plan outcomes are explicitly labeled and suppressed from native stdout so they cannot be confused with target NOT_REPRODUCED.
+
+The preserved `HOOK`, `REPORTER`, procfs row/table, pidfd delivery, subreaper, OwnedTree, identity controls and whole-call control wrapper are source-byte-identical to `fcc10c04ca0`. The supervisor drain now also produces bounded TAP structure and drains its final pipe tail; that changed surface needs independent delta review/QA. Python compile, actionlint and documented exact-branch guard tests passed. The old activation ref was read-only verified at `6dc56eb9e443106ffcfb8fbc5ee5f41e707e11d3`; the new pristine activation ref was absent. No activation, target execution, install or full suite was performed.
+
+Repro/evidence in this session's scratch: `test-pristine-plan.py`, `pristine-final-preflight/`, `pristine-final-plan-negatives/`, `pristine-expected-source-sha256.json`. Permanent decision/redaction/negative-clock tests are part of native self-test; they can also be run without Node or targets:
+
+```sh
+python3 - <<'PY'
+from pathlib import Path
+import os, types
+path = Path('scripts/ci-hang-probe.py')
+probe = types.ModuleType('probe')
+probe.__file__ = str(path.resolve())
+exec(compile(path.read_text(), str(path), 'exec'), probe.__dict__)
+probe.plan_controls(Path(os.environ['LOCAL_OPERATOR_SCRATCHPAD']) / 'pristine-plan-contract')
+PY
+```
+
 ## Source evidence (task brief, not independently reproduced here)
 
 - Avatar ref `2c0f276d0ead12e6b8664f550468b8217bbe506d` reportedly has the same tree as `4584412effd`; timed-out shard 3 job `124598293293` stopped emitting at about 80 seconds / 2.11 MB around check-runtime-deps and child-reader-foot SSR warnings, under its existing 50-minute cap.
@@ -13,8 +60,8 @@ Diagnostic only. No production behavior, suite budget, concurrency setting, depe
 
 1. GitHub-hosted Ubuntu, Node 22. Check out each immutable SHA separately; use pnpm 10.29.2 (verified in both refs' `.github/workflows/ci.yml`; neither declares `packageManager`) and each ref's own v9 frozen lock with the pnpm cache. No npm/yarn or copied node_modules. The diagnostic script comes from the reviewed workflow revision; its SHA and each target SHA are written to artifacts.
 2. A built-in-only synthetic slow/noisy child and grandchild must time out, preserve bounded markers/resource snapshots and reap their owned processes. A natural-completion control must return its real status. Additionally, copy the byte-identical built-in runtime closure of EACH frozen coordinator into disposable scratch, run a synthetic passing assertion that retains an interval through that real coordinator, and require actual test-worker CPU/RSS samples and a pre-reap report. Both detached test and keeper groups must be owned and have no live survivors. Synthetic ancestry/PID-reuse negatives must refuse signals to a recycled identity. Failure stops dispatch.
-3. Each ref FIRST runs only `scripts/child-reader-foot-react.test.mjs`, with the existing desktop coordinator, concurrency=1, 300-second process-group cap. If and ONLY if BOTH singles finish successfully, run `run-child-reader`, `ci-scope`, `code-review-model` together at concurrency=3 on each ref, same cap. No full suite.
-4. In each disposable checkout, insert build/import/render checkpoints into the selected tests, plus Node preload resource/report hooks. The original repo stays untouched. Node test reporter events provide file/test start and assertion-end markers without stdout buffering. Record checkpoint coverage, not merely intent; a missing checkpoint is unknown.
+3. FIRST run the actual adjacent set `child-reader-foot-react`, `ci-scope`, `code-review-model` together at concurrency 3 on BOTH immutable refs, serially, with default TAP and the unchanged 300-second whole-call observer. If both pass, STOP `NOT_REPRODUCED`. Only a pristine timeout (124), without setup/assertion/cleanup/deadline failure, unlocks the matched custom reporter on the SAME three pristine files and both refs. Other failures stop. No singles, alternative third file, extra arm, full suite or broad retry.
+4. Do NOT rewrite target fixtures or insert build/import/render checkpoints. Verify tracked src/scripts are clean, compare the three fixture files and nine coordinator runtime modules to their exact immutable Git blobs, and record before/after SHA256 manifests. Hold the reviewed observer's single `NODE_OPTIONS=--import=<arm>/preload.mjs` constant in BOTH arms, with no extra preloads or Node report flags. Default TAP uses aggregate assertion counts plus expected workers' natural exit-zero records; custom mode adds per-file reporter assertions. Missing evidence is failure 125, never a fabricated per-file TAP assertion count. The preload/pipe observer perturbs scheduling and is not pristine CI equivalence.
 5. Sample PID/PPID/PGID/CPU/RSS; before teardown request active-resource and sanitized Node diagnostic-report snapshots from every Node PID in the exact group. Never publish environment/headers, command arguments, raw reports or unbounded test output. Never force-exit Node or mask retained handles. Supervisor tracks descendant identities across detached groups and parent exits, then sends TERM/KILL only through identity-rechecked Linux pidfds. Linux subreaper adoption retains even orphaned detached descendants; pre-existing direct children are excluded. No process-name or blind group kill is used. The whole-call clock starts before setup/baseline census. Observation/signaling costs are measured. Cleanup reserve is `min(0.75 × cap, max(6 seconds, 12 × baseline census cost))`: reports begin at deadline minus reserve, TERM at deadline minus 0.8 × reserve, and KILL at deadline minus 0.55 × reserve. Native Linux's cheap census normally reserves six seconds of the unchanged 300-second envelope. A new census follows TERM before escalation; already-KILLed or confirmed-dead historical identities are not serially re-signaled. A fresh final all-owned-group census remains mandatory. There is no extra wait allowance; an observed deadline overrun fails with exit 127. This is a timeout, not a pass.
 6. Local validation uses only Python/Node built-ins, syntax checks and available targeted lint, no dependency install. Hosted real-path execution remains UNVERIFIED until the reviewed trigger is explicitly activated. The exact diagnostic push branch below avoids the new `workflow_dispatch` default-branch prerequisite: no merge to main or full-suite retry is needed to run this bounded diagnostic. Implementation stops before activation; the manager must first obtain independent approval of the trigger delta.
 
@@ -56,16 +103,16 @@ Reproducible same-matrix rig: `~/.local-operator/sessions/fbe888935752/scratchpa
 
 The manager authorized this exact diagnostic-only activation path because a newly added `workflow_dispatch` cannot be invoked before it exists on the default branch. An ordinary `push` workflow is loaded from the pushed ref, so a tree-identical post-review activation commit can run the reviewed probe without merging PR #1551, releasing anything, or retrying broad CI. The sibling core PR #3254 uses the same exact-branch mechanism (source/precedent, not evidence that this UI workflow has run).
 
-Only `push` to **`diag/ui-avatar-native-activate`** can activate this workflow; there is no wildcard, PR, schedule or repository-dispatch trigger. Defense-in-depth job guard requires repository `damianvtran/local-operator-ui` plus that exact push ref. Manual dispatch remains available only from `main` or the same activation ref once GitHub makes that dispatch surface reachable; inputs/untrusted refs/forks are refused. Read-only permissions, fixed immutable avatar/telemetry refs, existing pnpm cache policy and the complete job steps are unchanged.
+Only `push` to **`diag/ui-avatar-pristine-activate`** can activate this workflow; there is no wildcard, PR, schedule or repository-dispatch trigger. Defense-in-depth job guard requires repository `damianvtran/local-operator-ui` plus that exact push ref. Manual dispatch remains available only from `main` or the same activation ref once GitHub makes that dispatch surface reachable; inputs/untrusted refs/forks are refused. Read-only permissions, fixed immutable avatar/telemetry refs, existing pnpm cache policy, preflight-before-install ordering and job budget are unchanged. The target step now uses the corrected pristine-first comparison described above, rather than the earlier singles/alternative trio.
 
-The native Linux/Node22 built-in self-test is fail-closed BEFORE frozen dependency installs and target experiments. It verifies ownership/reports/reap, whole-call bounds, natural/nonzero exits and negative identity/deadline controls; failure prevents the target stages. Target singles remain serial at 300 seconds each; only both clean singles unlock the serial concurrency-three comparisons. The existing 35-minute outer job cap and one-run concurrency group are unchanged. No native result is claimed by these trigger tests.
+The native Linux/Node22 built-in self-test is fail-closed BEFORE frozen dependency installs and target experiments. It verifies ownership/reports/reap, whole-call bounds, natural/nonzero exits and negative identity/deadline controls; failure prevents the target stages. The exact three-file default-TAP arms run serially across refs at 300 seconds each; both pass means STOP NOT_REPRODUCED, and only a timeout unlocks matched custom arms on the identical set. The existing 35-minute outer job cap and one-run concurrency group are unchanged. No native result is claimed by these trigger tests.
 
 **STOP until independent trigger-delta code/QA review approves the exact PR head.** Then the manager may execute this procedure from this PR worktree. Do not use it for shipping, merge PR #1551, push main, force an existing activation ref, request a broad workflow, or change the tree after approval:
 
 ```sh
 set -euo pipefail
 REVIEWED='<full SHA independently approved on PR #1551>'
-BRANCH='diag/ui-avatar-native-activate'
+BRANCH='diag/ui-avatar-pristine-activate'
 test "$(gh repo view --json nameWithOwner --jq .nameWithOwner)" = 'damianvtran/local-operator-ui'
 test "$(git rev-parse HEAD)" = "$REVIEWED"
 test -z "$(git status --porcelain)"
@@ -87,7 +134,7 @@ Match the returned run's `headSha` to `ACTIVATION` and event to `push`; record b
 
 ### Executable activation-contract checks
 
-Trigger-only validation: before editing, two checks failed for the intended missing exact push trigger/job guard; afterwards all three contract methods passed (16 allowed/denied guard contexts). Four disposable mutations were rejected: wildcard push filter, removed repository guard, broadened manual-dispatch ref and `continue-on-error` on native preflight. `actionlint` passed. The reviewed Python driver is byte-identical to `a5bb9444091` (SHA256 `69a248e0be616ebbc7629f6afd4787865d0a38f9730b17bd75b708bbc126bf50`), as is the workflow from `runs-on` through all existing job steps. No native run, activation commit or activation push occurred during this validation.
+Historical trigger-only validation at `fcc10c04ca0` (before the current coverage delta): before editing, two checks failed for the intended missing exact push trigger/job guard; afterwards all three contract methods passed (16 allowed/denied guard contexts). Four disposable mutations were rejected: wildcard push filter, removed repository guard, broadened manual-dispatch ref and `continue-on-error` on native preflight. `actionlint` passed. The reviewed Python driver is byte-identical to `a5bb9444091` (SHA256 `69a248e0be616ebbc7629f6afd4787865d0a38f9730b17bd75b708bbc126bf50`), as is the workflow from `runs-on` through all existing job steps. No native run, activation commit or activation push occurred during this validation.
 
 The tests live here to preserve the already independently reviewed Python driver byte-for-byte and keep this diagnostic within three files. They inspect the ACTUAL trigger and compile the restricted actual job-guard expression (only boolean comparisons/context names; no unrestricted expression execution). `actionlint` supplies full YAML/GitHub syntax validation. Run locally with built-ins, no installs:
 
@@ -115,7 +162,7 @@ import sys
 import unittest
 
 workflow = Path(sys.argv.pop()).read_text()
-ACTIVATION = 'diag/ui-avatar-native-activate'
+ACTIVATION = 'diag/ui-avatar-pristine-activate'
 REPO = 'damianvtran/local-operator-ui'
 
 
@@ -156,6 +203,7 @@ class ActivationContract(unittest.TestCase):
             ('push', 'diag/ci-hang-probe-fbe888', REPO, False),
             ('push', ACTIVATION + '-other', REPO, False),
             ('push', 'diag/other', REPO, False),
+            ('push', 'diag/ui-avatar-native-activate', REPO, False),
             ('workflow_dispatch', 'feature/unreviewed', REPO, False),
             ('pull_request', ACTIVATION, REPO, False),
             ('pull_request_target', ACTIVATION, REPO, False),
@@ -184,8 +232,9 @@ class ActivationContract(unittest.TestCase):
         self.assertIn('2c0f276d0ead12e6b8664f550468b8217bbe506d', workflow)
         self.assertIn('47cf454be2efe3a0c30e27063d57845ae5ba7171', workflow)
         self.assertLess(workflow.index('ci-hang-probe.py self-test'), workflow.index('pnpm install'))
-        self.assertLess(workflow.index('pnpm install'), workflow.index('--phase single'))
-        self.assertLess(workflow.index('--phase single'), workflow.index('--phase trio'))
+        self.assertLess(workflow.index('pnpm install'), workflow.index('ci-hang-probe.py compare'))
+        self.assertNotIn('--phase single', workflow)
+        self.assertNotIn('--phase trio', workflow)
         self.assertIn('cancel-in-progress: false', workflow)
 
 
@@ -194,4 +243,4 @@ unittest.main(verbosity=2)
 
 ## Interpretation
 
-Avatar-only single retention supports an avatar-correlated effect, not yet a mechanism. Both singles retaining refutes an avatar-only explanation. Singles pass / concurrency arm retains supports concurrency/order. Per-file assertion completion followed by coordinator retention points at coordination/retained handles; build/import/render checkpoints narrow earlier stalls. If none reproduces, result is **inconclusive**; do not expand to a full suite or retry it. Read the generated summary together with PID/resource/checkpoint evidence before assigning cause.
+Both pristine/default-TAP exact-trio arms pass: STOP **NOT_REPRODUCED** under the observer; do not run custom arms or retry broadly. A pristine timeout with matched custom success is reporter-correlated evidence under this observer, not a production mechanism or avatar-only proof. Both reporter modes retaining weakens a reporter-only explanation. A ref-specific outcome may correlate with source changes but still needs a causal demonstration. Use the actual argv, before/after manifests, reporter mode, worker lifecycle, bounded TAP counts and owned-resource/report evidence; there are no target checkpoint rewrites in this plan. No report may extrapolate these three files to full-shard completion or claim equivalence to pristine CI scheduling.
