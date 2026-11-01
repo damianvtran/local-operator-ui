@@ -31,7 +31,7 @@
  */
 
 import assert from "node:assert/strict";
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import {
 	chmodSync,
 	mkdirSync,
@@ -40,6 +40,7 @@ import {
 	readdirSync,
 	realpathSync,
 	rmSync,
+	statSync,
 	writeFileSync,
 } from "node:fs";
 import { createRequire } from "node:module";
@@ -427,9 +428,35 @@ function assertSupervisingAwait(run, state = DESKTOP_SUPERVISOR_STATE) {
 		/\[ \$\(\(now - started\)\) -ge "\$bound" \]/u.test(run),
 		"the loop must measure the wall clock against its own bound",
 	);
+	// THE TRANSCRIPT IS NOT REPLAYED THROUGH THE STEP ANY MORE. A measured control
+	// (real supervisor, unchanged) withheld the step's stdout reader: the
+	// supervisor published `completed` in 406ms while the shell sat blocked in its
+	// own bulk forward of the TAP, then exited 124 against a receipt that said
+	// success. A finite byte count bounds quantity, not the wait for a consumer, so
+	// this clause is inverted - no synchronous replay of the await's output may
+	// exist on the lifecycle path, and the console keeps fixed-size receipts only.
+	for (const forbidden of ["tail -c +$((offset + 1))", "drain_await"])
+		assert.ok(
+			!run.includes(forbidden),
+			`the step must not replay the await's transcript (${forbidden}): a reader that stops consuming must not outlast the bound`,
+		);
 	assert.ok(
-		run.includes("tail -c +$((offset + 1))"),
-		"forwarded TAP must be byte-offset based, so nothing is emitted twice",
+		run.includes(
+			'echo "desktop suite: supervisor receipt status ${status} after',
+		),
+		"the console keeps one fixed-size receipt naming the verdict",
+	);
+	assert.ok(
+		run.includes(
+			"the full TAP transcript is in the desktop-suite-log artifact",
+		),
+		"the receipt must say where the transcript actually is",
+	);
+	assert.ok(
+		run.includes(
+			'census_file="${LOCAL_OPERATOR_UI_KERNEL_CENSUS:-$state/kernel-census.jsonl}"',
+		),
+		"census rows must be read from the path the writer was configured with, not a state-directory glob",
 	);
 	assert.ok(
 		run.includes("census: $row"),
@@ -673,10 +700,24 @@ test("diagnostic CI stays retired while the manual utility remains registered", 
 				),
 			/start in the background/u,
 		],
-		// TAP exactly once, and the census where a cancelled job can see it.
+		// No replay of the transcript on the lifecycle path, and the census read from
+		// the configured writer path. Re-adding the forward, or going back to the
+		// state-directory glob, are the two defects this step was just repaired for.
 		[
-			(run) => run.replaceAll("tail -c +$((offset + 1))", "cat"),
-			/byte-offset based/u,
+			(run) =>
+				run.replace(
+					'wait "$await_pid"',
+					'head -c "$size" "$await_out" | tail -c +$((offset + 1))\nwait "$await_pid"',
+				),
+			/must not replay the await's transcript/u,
+		],
+		[
+			(run) =>
+				run.replace(
+					'census_file="${LOCAL_OPERATOR_UI_KERNEL_CENSUS:-$state/kernel-census.jsonl}"',
+					'census_file="$state/desktop-census.jsonl"',
+				),
+			/writer was configured with, not a state-directory glob/u,
 		],
 		[
 			(run) => run.replace("census: $row", "$row"),
@@ -1231,6 +1272,9 @@ function runSupervisingBody({
 	mkdirSync(bin, { recursive: true });
 	const state = join(dir, "desktop-supervisor-0");
 	mkdirSync(state, { recursive: true });
+	// The writer's configured path, OUTSIDE the state directory - the shape the
+	// workflow now gives both the writer and this step.
+	const census = join(dir, "kernel-census-0.jsonl");
 	const stub = join(bin, "node");
 	writeFileSync(
 		stub,
@@ -1239,8 +1283,12 @@ function runSupervisingBody({
 			'case "$2" in',
 			"  await)",
 			"    printf '%s\\n' 'ok 1 - synthetic' '# pass 1'",
-			'    echo \'{"index":0}\' >> "$STUB_STATE/kernel-census-0.jsonl"',
-			'    echo \'{"index":1}\' >> "$STUB_STATE/kernel-census-0.jsonl"',
+			'    echo \'{"index":0}\' >> "$STUB_CENSUS"',
+			'    echo \'{"index":1}\' >> "$STUB_CENSUS"',
+			// A DECOY beside the state files: the old reader globbed THIS directory,
+			// which is why a healthy shard logged zero rows while its artifact held
+			// them. Nothing here may ever reach the log.
+			'    echo \'{"decoy":true}\' >> "$STUB_STATE/desktop-census.jsonl"',
 			'    sleep "$STUB_SECONDS"',
 			'    exit "$STUB_RC"',
 			"    ;;",
@@ -1267,13 +1315,17 @@ function runSupervisingBody({
 			PATH: `${bin}:${process.env.PATH}`,
 			HOME: process.env.HOME,
 			STUB_STATE: state,
+			STUB_CENSUS: census,
+			// The SAME shape the workflow now hands the step: the configured writer
+			// path, under the runner's temp root rather than inside the state dir.
+			LOCAL_OPERATOR_UI_KERNEL_CENSUS: census,
 			STUB_RC: String(rc),
 			STUB_SECONDS: freeze ? "120" : String(seconds),
 			DESKTOP_SUITE_BOUND_S: String(bound),
 			DESKTOP_SUITE_CENSUS_EVERY_S: String(censusEvery),
 		},
 	});
-	return { ...result, dir, state };
+	return { ...result, dir, state, census, awaitOut: join(state, "await.out") };
 }
 
 test("a frozen await is ended by the step's own bound, with the census in the log", () => {
@@ -1302,17 +1354,22 @@ test("a frozen await is ended by the step's own bound, with the census in the lo
 			/reaped: /u,
 			"expiry must reap the recorded groups",
 		);
-		assert.match(
+		assert.doesNotMatch(
 			run.stdout,
 			/ok 1 - synthetic/u,
-			"TAP already written must reach the log before the bound fires",
+			"the await's transcript must not be replayed through the step: nothing synchronous may sit between the bound and its reaping branch",
+		);
+		assert.match(
+			readFileSync(run.awaitOut, "utf8"),
+			/ok 1 - synthetic/u,
+			"the transcript must still be retained in the file the artifact ships",
 		);
 	} finally {
 		rmSync(run.dir, { recursive: true, force: true });
 	}
 });
 
-test("a completed run keeps its verdict, its TAP exactly once, and is never reaped", () => {
+test("a completed run keeps its verdict, never replays its transcript, and is never reaped", () => {
 	const run = runSupervisingBody({
 		rc: 0,
 		seconds: 3,
@@ -1321,15 +1378,18 @@ test("a completed run keeps its verdict, its TAP exactly once, and is never reap
 	});
 	try {
 		assert.equal(run.status, 0, run.stderr);
-		assert.equal(
-			run.stdout.split("ok 1 - synthetic").length - 1,
-			1,
-			"forwarding must emit each TAP line exactly once",
+		// The console carries a receipt, not a transcript; the transcript is the
+		// supervisor's own file, shipped by the artifact on every outcome.
+		assert.doesNotMatch(run.stdout, /ok 1 - synthetic/u);
+		assert.match(
+			run.stdout,
+			/desktop suite: supervisor receipt status 0 after \d+s/u,
+			"a completed run must say what it receipted and where the log is",
 		);
 		assert.equal(
-			run.stdout.split("# pass 1").length - 1,
+			readFileSync(run.awaitOut, "utf8").split("ok 1 - synthetic").length - 1,
 			1,
-			"the offset must not re-emit a chunk it already forwarded",
+			"the await's own file must hold the transcript exactly once",
 		);
 		assert.doesNotMatch(
 			run.stdout,
@@ -1358,7 +1418,229 @@ test("census rows are emitted at most once each, however often the loop drains",
 				`${row} must be emitted exactly once across repeated drains`,
 			);
 		}
+		// The decoy sits beside the state files, which is where the reader used to
+		// look. A healthy shard logged zero rows and an empty log was blamed on the
+		// subject; the path is the defect, so a decoy must never be emitted.
+		assert.doesNotMatch(
+			run.stdout,
+			/decoy/u,
+			"census discovery must follow the configured path, not a state-directory glob",
+		);
 	} finally {
 		rmSync(run.dir, { recursive: true, force: true });
+	}
+});
+
+/** Read a stream to its end, or give up after `ms` - a test must not be able to
+ * hang on the same class of defect it is there to catch.
+ *
+ * `close` counts as an end: a pipe whose writer has exited can be closed with its
+ * remaining bytes already queued, and that close is exactly the case here, since
+ * nothing was reading this stream while the child ran. */
+function collect(stream, ms) {
+	return new Promise((resolve) => {
+		let text = "";
+		let done = false;
+		const finish = (timedOut) => {
+			if (done) return;
+			done = true;
+			clearTimeout(timer);
+			resolve({ text, timedOut });
+		};
+		const timer = setTimeout(() => finish(true), ms);
+		stream.setEncoding("utf8");
+		stream.on("data", (chunk) => {
+			text += chunk;
+		});
+		stream.on("end", () => finish(false));
+		stream.on("close", () => finish(false));
+	});
+}
+
+/**
+ * Run the REAL supervisor and the REAL step body over a synthetic suite that
+ * writes 4 MiB and exits 0, and report what the step did.
+ *
+ * `withhold` is the whole experiment: with it, nothing ever reads the step's
+ * stdout, so any bulk forward of the transcript blocks on a full pipe - the
+ * shape that made a completed run report 124 in the measured control. Without
+ * it the reader drains continuously, which is the negative control: the same
+ * code must behave the same way when somebody is reading.
+ *
+ * The transcript size matters. 4 MiB is two orders of magnitude past a pipe
+ * buffer, so "it finished anyway" cannot be explained by the payload fitting in
+ * a kernel buffer nobody drained.
+ */
+function runRealSupervisingStep({ withhold }) {
+	const text = readFileSync(".github/workflows/ci.yml", "utf8");
+	const require = createRequire(import.meta.url);
+	const builder = createRequire(
+		require.resolve("electron-builder/package.json"),
+	);
+	const step = createRequire(builder.resolve("app-builder-lib"))("js-yaml")
+		.load(text)
+		.jobs.test.steps.find((entry) => entry.id === "desktop_suite");
+	const dir = mkdtempSync(join(tmpdir(), "supervising-real-"));
+	// `launch` creates the state directory itself (mkdir without `recursive`), so
+	// pre-creating it here would fail the launch with EEXIST.
+	const state = join(dir, "desktop-supervisor-0");
+	const census = join(dir, "kernel-census-0.jsonl");
+	const suite = join(dir, "synthetic-suite.sh");
+	writeFileSync(
+		suite,
+		"#!/usr/bin/env bash\nhead -c 4194304 /dev/zero | tr '\\0' 'x'\nprintf '\\n'\nexit 0\n",
+	);
+	chmodSync(suite, 0o755);
+	const script = join(dir, "step.sh");
+	writeFileSync(
+		script,
+		step.run
+			.replaceAll("${{ runner.temp }}", dir)
+			.replaceAll("${{ matrix.shard }}", "0"),
+	);
+	const env = {
+		PATH: process.env.PATH,
+		HOME: process.env.HOME,
+		LOCAL_OPERATOR_UI_KERNEL_CENSUS: census,
+		// Far above the suite's real duration, so a bound firing here is a defect,
+		// never the clock.
+		DESKTOP_SUITE_BOUND_S: "120",
+		DESKTOP_SUITE_CENSUS_EVERY_S: "1",
+	};
+	const cleanup = (child) => {
+		try {
+			spawnSync(
+				process.execPath,
+				["scripts/desktop-suite-checkpoints.mjs", "reap", state],
+				{ cwd: process.cwd(), encoding: "utf8", timeout: 20_000 },
+			);
+		} catch {
+			/* Best-effort: the point is to leave no group behind. */
+		}
+		if (child && child.exitCode === null && child.signalCode === null)
+			child.kill("SIGKILL");
+		rmSync(dir, { recursive: true, force: true });
+	};
+	const launched = spawnSync(
+		process.execPath,
+		[
+			"scripts/desktop-suite-checkpoints.mjs",
+			"launch",
+			state,
+			suite,
+			String(Date.now()),
+		],
+		{ cwd: process.cwd(), encoding: "utf8", env, timeout: 30_000 },
+	);
+	if (launched.status !== 0) {
+		cleanup(null);
+		throw new Error(`launch failed: ${launched.stderr}`);
+	}
+	const child = spawn("bash", ["-e", script], {
+		cwd: process.cwd(),
+		env,
+		stdio: ["ignore", "pipe", "pipe"],
+	});
+	return { child, state, dir, cleanup };
+}
+
+/** Wait for the child to exit, or give up after `ms`: the failure mode under
+ * test is a step that never returns, so this must not be able to hang with it. */
+function exitWithin(child, ms) {
+	return new Promise((resolve) => {
+		const timer = setTimeout(() => resolve({ timedOut: true }), ms);
+		child.on("exit", (code, signal) => {
+			clearTimeout(timer);
+			resolve({ code, signal });
+		});
+	});
+}
+
+test("the real supervisor's transcript reaches the console as a receipt, not a replay", async () => {
+	// THE DRAINING NEGATIVE CONTROL, against the real supervisor: every line
+	// executed here is production code except the synthetic suite. It proves the
+	// other half of the repair - with the bulk forward removed, the transcript is
+	// still retrievable as a file while the console stays fixed-size, so nothing
+	// was lost by taking it off the lifecycle path.
+	const run = runRealSupervisingStep({ withhold: false });
+	try {
+		const drained = collect(run.child.stdout, 60_000);
+		const errors = collect(run.child.stderr, 60_000);
+		const outcome = await exitWithin(run.child, 90_000);
+		assert.notEqual(outcome.timedOut, true, "the draining control must finish");
+		assert.equal(
+			outcome.code,
+			0,
+			`a draining reader must still see the receipted verdict: ${JSON.stringify(outcome)}`,
+		);
+		const captured = await drained;
+		const stderr = await errors;
+		assert.equal(stderr.text.trim(), "", "the step must not write to stderr");
+		// BOUNDED CONSOLE: 4 MiB of transcript exists, and none of it is here.
+		assert.ok(
+			captured.text.length < 65_536,
+			`the console must stay fixed-size, got ${captured.text.length} bytes`,
+		);
+		assert.match(
+			captured.text,
+			/desktop suite: supervisor receipt status 0 after \d+s/u,
+			"the console must name the receipted verdict and where the transcript is",
+		);
+		assert.ok(
+			!captured.text.includes("xxxx"),
+			"no transcript may be replayed through the step's console",
+		);
+		// AND IT IS ALL STILL THERE, in the files the transcript artifact ships.
+		assert.ok(
+			statSync(join(run.state, "console.log")).size >= 4_194_304,
+			"the supervisor's console file must hold the whole transcript",
+		);
+		assert.ok(
+			statSync(join(run.state, "await.out")).size >= 4_194_304,
+			"the forwarded copy must survive as a file the artifact collects",
+		);
+	} finally {
+		run.cleanup(run.child);
+	}
+});
+
+test("a withheld stdout reader cannot postpone or falsify a completed run", async () => {
+	// THE DISCRIMINATOR FOR THIS REPAIR. Nothing reads the step's stdout for the
+	// whole run, while 4 MiB of transcript exists - precisely the measured control
+	// in which the supervisor receipted `completed` in 406ms, the shell stayed
+	// alive past its bound and then exited 124. The step must now finish on its
+	// own verdict with the reader withheld; if a bulk forward returns to the
+	// lifecycle path, this test stops finishing rather than quietly passing.
+	const run = runRealSupervisingStep({ withhold: true });
+	try {
+		// NO data handler is attached, deliberately: that IS the treatment.
+		const outcome = await exitWithin(run.child, 90_000);
+		assert.notEqual(
+			outcome.timedOut,
+			true,
+			"the step did not finish while its stdout went unread: a bulk forward is back on the lifecycle path",
+		);
+		assert.equal(
+			outcome.signal,
+			null,
+			"the step must exit on its own, not be killed",
+		);
+		assert.equal(
+			outcome.code,
+			0,
+			`a completed run must exit with its receipted verdict, never a bound's 124: ${JSON.stringify(outcome)}`,
+		);
+		const terminal = JSON.parse(
+			readFileSync(join(run.state, "terminal.json"), "utf8"),
+		);
+		assert.equal(terminal.code, 0);
+		assert.equal(terminal.reason, "completed");
+		assert.deepEqual(
+			terminal.cleanup.remaining,
+			[],
+			"the supervisor must leave nothing behind",
+		);
+	} finally {
+		run.cleanup(run.child);
 	}
 });

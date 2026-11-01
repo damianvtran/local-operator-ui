@@ -1370,14 +1370,49 @@ function assertSupervisingStep(run, state) {
 		/\[ \$\(\(now - started\)\) -ge "\$bound" \]/u.test(run),
 		"the loop must measure the wall clock against its own bound",
 	);
-	// TAP reaches the log by byte offset, so it is forwarded exactly once.
+	// TAP NO LONGER REACHES THE LOG BY REPLAY. A measured control withheld the
+	// step's stdout reader and the supervisor still published `completed` in
+	// 406ms while the shell blocked inside this forward and then exited 124 - so
+	// the contract now forbids the forward rather than requiring it. A finite byte
+	// count bounds quantity, not the wait for a consumer. The transcript is a file
+	// the artifact step uploads; the job log carries receipts only.
+	for (const forbidden of [
+		"drain_await",
+		"tail -c +$((offset + 1))",
+		'head -c "$size" "$await_out"',
+	])
+		assert.ok(
+			!run.includes(forbidden),
+			`the step must not replay the await's transcript (${forbidden}): a reader that stops consuming must not be able to block the deadline check`,
+		);
 	assert.ok(
-		run.includes("tail -c +$((offset + 1))"),
-		"forwarded TAP must be byte-offset based, so nothing is emitted twice",
+		run.includes(
+			'echo "desktop suite: supervisor receipt status ${status} after',
+		),
+		"the console keeps one fixed-size receipt naming the verdict and where the transcript lives",
+	);
+	assert.ok(
+		run.includes(
+			'census_file="${LOCAL_OPERATOR_UI_KERNEL_CENSUS:-$state/kernel-census.jsonl}"',
+		),
+		"census discovery must use the path the writer was configured with: the state-directory glob found nothing, so healthy shards logged zero rows",
+	);
+	assert.ok(
+		!run.includes('"$state"/kernel-census-'),
+		"the obsolete state-directory census glob must be gone, not kept beside the real path",
 	);
 	assert.ok(
 		run.includes("census: $row"),
 		"census rows must go into the job log, where a cancelled job still has them",
+	);
+	// The receipt outranks the clock: expiry reaps and exits 124 only when the
+	// supervisor has NOT receipted, so a run that finished as the bound fired is
+	// not turned into a false failure.
+	const grace = run.indexOf("for _ in 1 2 3 4 5");
+	assert.ok(grace >= 0, "expiry must give the receipt a short bounded grace");
+	assert.ok(
+		run.indexOf('if kill -0 "$await_pid"') > grace,
+		"the reaping branch must be guarded by the receipt check, not taken unconditionally",
 	);
 	// Expiry: reap what the launch published, stop the await, fail closed. The
 	// slice ENDS at `exit 124`: a slice running to the end of the step would also
@@ -1462,6 +1497,21 @@ function assertCheckpointSteps(job) {
 		final[0].run.replace(
 			'node scripts/desktop-suite-checkpoints.mjs await "$state" >"$await_out" 2>&1 &',
 			'node scripts/desktop-suite-checkpoints.mjs await "$state" >"$await_out" 2>&1',
+		),
+		// Re-adding the replay, taking expiry unconditionally, and going back to the
+		// state-directory census glob are the three regressions this step was just
+		// repaired for; each must be rejected on its own.
+		final[0].run.replace(
+			'wait "$await_pid"',
+			'head -c "$size" "$await_out"\nwait "$await_pid"',
+		),
+		final[0].run.replace(
+			'if kill -0 "$await_pid" 2>/dev/null; then',
+			"if true; then",
+		),
+		final[0].run.replace(
+			'census_file="${LOCAL_OPERATOR_UI_KERNEL_CENSUS:-$state/kernel-census.jsonl}"',
+			'for file in "$state"/kernel-census-*.jsonl; do :; done',
 		),
 	]) {
 		assert.notEqual(
@@ -2001,6 +2051,22 @@ test("A17b: the desktop step is red, and names the red test, on every red shape"
  */
 const DESKTOP_LIFECYCLE_PATH =
 	"${{ runner.temp }}/desktop-lifecycle-${{ matrix.shard }}.jsonl";
+/**
+ * The supervisor's state directory, and the lifecycle files inside it that the
+ * transcript artifact must carry. The step no longer replays that transcript into
+ * the job console (the replay could block on a reader that stopped consuming and
+ * turn a completed run into a 124), so these files are the WHOLE of the evidence
+ * for what the supervisor saw - on a green run as much as a red one.
+ */
+/**
+ * The supervisor's state directory, and the lifecycle files inside it that the
+ * transcript artifact must carry. The step no longer replays that transcript into
+ * the job console (the replay could block on a reader that stopped consuming and
+ * turn a completed run into a 124), so these files are the WHOLE of the evidence
+ * for what the supervisor saw - on a green run as much as a red one.
+ */
+const DESKTOP_SUPERVISOR_DIR =
+	"${{ runner.temp }}/desktop-supervisor-${{ matrix.shard }}";
 /** The only value shapes `parseOverride` honours: a whole number above zero, with
  * no leading zero and nothing after it. Module scope so the contract below cannot
  * recompile it per case (biome's `useTopLevelRegex`). */
@@ -2083,23 +2149,35 @@ function assertDesktopDiagnosticArtifactPaths(path) {
 		.filter(Boolean);
 	assert.deepEqual(
 		paths.sort(),
-		["/tmp/desktop-tests.log", DESKTOP_LIFECYCLE_PATH].sort(),
+		[
+			"/tmp/desktop-tests.log",
+			DESKTOP_LIFECYCLE_PATH,
+			`${DESKTOP_SUPERVISOR_DIR}/console.log`,
+			`${DESKTOP_SUPERVISOR_DIR}/await.out`,
+			`${DESKTOP_SUPERVISOR_DIR}/terminal.json`,
+			`${DESKTOP_SUPERVISOR_DIR}/supervisor.log`,
+		].sort(),
 	);
 }
 
-test("A17d: a failed desktop run retains its full log as a failure artifact", () => {
+test("A17d: a desktop run keeps its full transcript as an artifact, green or red", () => {
 	const suite = jobs.test.steps.find((step) => step.id === "desktop_suite");
 	assert.ok(
 		suite,
 		"the artifact condition needs the actual suite step outcome",
 	);
 	const artifact = jobs.test.steps.find(
-		(step) => step.name === "Upload failed desktop suite log",
+		(step) => step.name === "Upload desktop suite transcript",
 	);
-	assert.ok(artifact, "a failed suite has no full-log artifact");
+	assert.ok(artifact, "the suite's transcript has no artifact");
+	// NOT failure-only any more: the step's console replay is gone, so a GREEN
+	// run's transcript exists only here - and a green run's transcript is the
+	// baseline a later hang is compared against. `skipped` still excludes it,
+	// because a suite that never launched has no transcript to upload and the
+	// step's `if-no-files-found: error` would redden the job for it.
 	assert.equal(
 		artifact.if,
-		"${{ always() && (steps.desktop_suite.outcome == 'failure' || steps.desktop_suite.outcome == 'cancelled') }}",
+		"${{ always() && steps.desktop_suite.outcome != 'skipped' }}",
 	);
 	assert.equal(artifact.uses, "actions/upload-artifact@v4");
 	assertDesktopDiagnosticArtifactPaths(artifact.with.path);
@@ -2107,17 +2185,34 @@ test("A17d: a failed desktop run retains its full log as a failure artifact", ()
 		suite.env.LOCAL_OPERATOR_UI_LANE_DIAGNOSTICS,
 		DESKTOP_LIFECYCLE_PATH,
 	);
-	// Mutants prove this is a two-file structural contract, not a substring
-	// check that accidentally accepts omission or a path in the wrong location.
+	// The census reader has to look where the writer was told to write, or the
+	// inline rows are empty on every healthy shard while the artifact holds them.
+	assert.equal(
+		suite.env.LOCAL_OPERATOR_UI_KERNEL_CENSUS,
+		"${{ runner.temp }}/kernel-census-${{ matrix.shard }}.jsonl",
+		"the step must be handed the same census path as the launch step",
+	);
+	assert.equal(
+		artifact.with.path.includes(suite.env.LOCAL_OPERATOR_UI_KERNEL_CENSUS),
+		false,
+		"the census is collected by its own always() upload, not silently added twice",
+	);
+	// Mutants prove this is a structural contract over the WHOLE list, not a
+	// substring check that accidentally accepts omission or a path elsewhere.
 	for (const bad of [
 		"/tmp/desktop-tests.log",
 		DESKTOP_LIFECYCLE_PATH,
 		`/tmp/wrong-desktop-tests.log\n${DESKTOP_LIFECYCLE_PATH}`,
-		"/tmp/desktop-tests.log\n/tmp/desktop-lifecycle-${{ matrix.shard }}.jsonl",
+		`/tmp/desktop-tests.log\n${DESKTOP_LIFECYCLE_PATH}`,
 		`/tmp/desktop-tests.log ${DESKTOP_LIFECYCLE_PATH}`,
 		`/tmp/desktop-tests.log\n${DESKTOP_LIFECYCLE_PATH}\n/tmp/desktop-tests.log`,
+		`/tmp/desktop-tests.log\n${DESKTOP_LIFECYCLE_PATH}\n${DESKTOP_SUPERVISOR_DIR}/console.log`,
+		artifact.with.path.replace(`${DESKTOP_SUPERVISOR_DIR}/terminal.json\n`, ""),
 	])
-		assert.throws(() => assertDesktopDiagnosticArtifactPaths(bad));
+		assert.throws(
+			() => assertDesktopDiagnosticArtifactPaths(bad),
+			`${JSON.stringify(bad)} must not satisfy the transcript contract`,
+		);
 	assert.equal(artifact.with["retention-days"], 7);
 	assert.equal(artifact.with["if-no-files-found"], "error");
 	assert.ok(jobs.test.steps.indexOf(artifact) > jobs.test.steps.indexOf(suite));

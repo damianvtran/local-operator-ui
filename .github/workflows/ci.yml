@@ -797,6 +797,10 @@ jobs:
           # Side ledger bypasses Node's ordered per-file TAP buffering. The
           # existing sampler adds 30s heartbeats; no cap/verdict/retry changes.
           LOCAL_OPERATOR_UI_LANE_DIAGNOSTICS: ${{ runner.temp }}/desktop-lifecycle-${{ matrix.shard }}.jsonl
+          # The SAME configured census path the launch step hands the writer, so
+          # the inline rows below read the file that exists instead of globbing a
+          # state directory the writer never used.
+          LOCAL_OPERATOR_UI_KERNEL_CENSUS: ${{ runner.temp }}/kernel-census-${{ matrix.shard }}.jsonl
         # A STEP ceiling below the job's, because a job cancelled at its own
         # `timeout-minutes` runs no further steps: without this, the payload
         # scan below is skipped in exactly the case it exists for. A step
@@ -857,63 +861,67 @@ jobs:
           bound="${DESKTOP_SUITE_BOUND_S:-2400}"
           census_every="${DESKTOP_SUITE_CENSUS_EVERY_S:-60}"
           await_out="$state/await.out"
-          offset=0
+          # THE CENSUS FILE THE SUPERVISOR WAS CONFIGURED WITH, not a glob of the
+          # state directory. The launch step hands the writer
+          # `LOCAL_OPERATOR_UI_KERNEL_CENSUS` under runner.temp, and that path is
+          # what the always() artifact glob collects - so a reader looking beside
+          # the state files found nothing, and every healthy shard logged zero
+          # `census:` rows while its artifact held them. Same expression, same
+          # default as the writer's own (`desktop-suite-checkpoints.mjs`), so the
+          # two cannot disagree.
+          census_file="${LOCAL_OPERATOR_UI_KERNEL_CENSUS:-$state/kernel-census.jsonl}"
           # THE STEP OWNS THE CLOCK, not the await. `timeout` around a single
           # `node ... await` did not end this step in run 124822720325: the job was
           # cancelled at its cap with no annotation and no census. So the await is
           # started here as a background writer, and this shell keeps its own
           # stdin/stdout to report with while it runs. The verdict is still the
-          # supervisor's - this loop only forwards what it writes and adds the
+          # supervisor's - this loop only watches it and adds the
           # external-bound failure path.
           node scripts/desktop-suite-checkpoints.mjs await "$state" >"$await_out" 2>&1 &
           await_pid=$!
           started=$(date +%s)
           last_census=$started
           bound_hit=""
-          # Byte-offset forwarding, so every chunk of TAP reaches the job log
-          # exactly once: a line emitted twice is worse than one emitted late.
-          drain_await() {
-            [ -f "$await_out" ] || return 0
-            local size
-            size=$(wc -c <"$await_out" | tr -d ' ')
-            [ "$size" -gt "$offset" ] || return 0
-            # The emitted window is CLAMPED to the size just measured. Reading
-            # tail-then-stat would re-emit whatever landed in between, and a line
-            # in the job log twice is worse than one that arrives late.
-            head -c "$size" "$await_out" | tail -c +$((offset + 1))
-            offset=$size
-          }
+          # THE TRANSCRIPT IS NOT REPLAYED THROUGH THIS SHELL, and this is the one
+          # behaviour change in the step. A measured control (real supervisor,
+          # unchanged) withheld the step's stdout reader for four seconds: the
+          # supervisor published `completed` in 406ms, and the shell sat blocked
+          # inside its own bulk forward of the TAP transcript, alive past its bound,
+          # then exited 124 against a receipt that said success. A finite byte
+          # count bounds QUANTITY, not the TIME spent waiting for a consumer, so the
+          # synchronously drained `head | tail` window could block this step for as
+          # long as the platform declined to read - before the deadline check below
+          # was ever reached. The full transcript is retained as a file by the
+          # supervisor and uploaded by the artifact step instead; what this shell
+          # writes to its own stdout is bounded and fixed-size.
+          #
           # Census rows outlive the job: once it is cancelled no artifact upload
           # can run, so the samples are put in the log itself. Only complete rows
-          # are sent, and each one once.
+          # are sent, each one once, and the census file is byte- and sample-capped
+          # by its writer - this is a bounded receipt stream, not a transcript.
           drain_census() {
-            local file offset_file size rows emitted chunk seen
-            for file in "$state"/kernel-census-*.jsonl; do
-              [ -f "$file" ] || continue
-              offset_file="$state/.census-offset-$(basename "$file")"
-              # `seen` is NOT the await's `offset`: sharing one name reset the
-              # await's byte position on every census tick and re-sent its TAP.
-              seen=0
-              if [ -f "$offset_file" ]; then seen=$(cat "$offset_file"); fi
-              [ -n "$seen" ] || seen=0
-              size=$(wc -c <"$file" | tr -d ' ')
-              [ "$size" -gt "$seen" ] || continue
-              rows=$(tail -c +$((seen + 1)) "$file" | wc -l | tr -d ' ')
-              [ "$rows" -gt 0 ] || continue
-              # ONE snapshot for both the emitted rows and the bytes they cost: a
-              # second read could count a row the first read did not see, and the
-              # offset would then repeat it on the next tick.
-              chunk=$(tail -c +$((seen + 1)) "$file" | head -n "$rows")
-              [ -n "$chunk" ] || continue
-              printf '%s\n' "$chunk" |
-                while IFS= read -r row; do echo "census: $row"; done
-              emitted=$(printf '%s\n' "$chunk" | wc -c | tr -d ' ')
-              echo $((seen + emitted)) >"$offset_file"
-            done
+            local offset_file size rows emitted chunk seen
+            [ -f "$census_file" ] || return 0
+            offset_file="$state/.census-offset-"$(basename "$census_file")
+            seen=0
+            if [ -f "$offset_file" ]; then seen=$(cat "$offset_file"); fi
+            [ -n "$seen" ] || seen=0
+            size=$(wc -c <"$census_file" | tr -d ' ')
+            [ "$size" -gt "$seen" ] || return 0
+            rows=$(tail -c +$((seen + 1)) "$census_file" | wc -l | tr -d ' ')
+            [ "$rows" -gt 0 ] || return 0
+            # ONE snapshot for both the emitted rows and the bytes they cost: a
+            # second read could count a row the first read did not see, and the
+            # offset would then repeat it on the next tick.
+            chunk=$(tail -c +$((seen + 1)) "$census_file" | head -n "$rows")
+            [ -n "$chunk" ] || return 0
+            printf '%s\n' "$chunk" |
+              while IFS= read -r row; do echo "census: $row"; done
+            emitted=$(printf '%s\n' "$chunk" | wc -c | tr -d ' ')
+            echo $((seen + emitted)) >"$offset_file"
           }
           while kill -0 "$await_pid" 2>/dev/null; do
             sleep 1
-            drain_await
             now=$(date +%s)
             if [ $((now - started)) -ge "$bound" ]; then
               bound_hit=yes
@@ -925,16 +933,25 @@ jobs:
             fi
           done
           if [ -n "$bound_hit" ]; then
-            node scripts/desktop-suite-checkpoints.mjs reap "$state"
-            kill -9 "$await_pid" 2>/dev/null
-            drain_await
-            drain_census
-            echo "::error::desktop suite exceeded its ${bound}s external bound; the supervisor deadline did not end the step, so the bound did. Artifacts are still uploaded."
-            exit 124
+            # THE RECEIPT OUTRANKS THE CLOCK. `await` exits with the supervisor's
+            # receipted code and nothing else, so a run that finished as the bound
+            # fired must not be turned into a 124 by reaping first. A short grace is
+            # enough because `await` polls for the receipt every 50ms; when the
+            # supervisor really is wedged the grace costs seconds, not minutes.
+            for _ in 1 2 3 4 5; do
+              kill -0 "$await_pid" 2>/dev/null || break
+              sleep 1
+            done
+            if kill -0 "$await_pid" 2>/dev/null; then
+              node scripts/desktop-suite-checkpoints.mjs reap "$state"
+              kill -9 "$await_pid" 2>/dev/null
+              drain_census
+              echo "::error::desktop suite exceeded its ${bound}s external bound; the supervisor deadline did not end the step, so the bound did. Artifacts are still uploaded."
+              exit 124
+            fi
           fi
           wait "$await_pid"
           status=$?
-          drain_await
           drain_census
           if [ "$status" -ne 0 ]; then
             node scripts/desktop-suite-checkpoints.mjs reap "$state"
@@ -942,6 +959,9 @@ jobs:
           if [ "$status" -eq 124 ]; then
             echo "::error::desktop suite exceeded its ${bound}s external bound; the supervisor deadline did not end the step, so the bound did. Artifacts are still uploaded."
           fi
+          # ONE fixed-size receipt is the whole of this step's transcript now: the
+          # verdict, the seconds it took, and where the real log is kept.
+          echo "desktop suite: supervisor receipt status ${status} after $(( $(date +%s) - started ))s; the full TAP transcript is in the desktop-suite-log artifact"
           exit "$status"
 
       # Never fails the job: a run with no census is the case this instrument
@@ -997,15 +1017,29 @@ jobs:
 
       # gh's rendered job log can omit the middle of a large run, including
       # its real assertions and TAP summary. Keep the exact single-run tee file
-      # independently retrievable on failure; no rerun or environment dump.
-      - name: Upload failed desktop suite log
-        if: ${{ always() && (steps.desktop_suite.outcome == 'failure' || steps.desktop_suite.outcome == 'cancelled') }}
+      # independently retrievable.
+      #
+      # ON SUCCESS TOO, and this is load-bearing rather than generous: the step no
+      # longer replays the supervisor's transcript into the job console (that
+      # replay could block on a reader that stopped consuming, and it made a
+      # completed run report 124). The console therefore carries only fixed-size
+      # receipts, so the artifact is the ONE place the transcript survives - and a
+      # green run's transcript is what a later hang is compared against. The
+      # supervisor's own console/await/terminal files ride along so the lifecycle
+      # is inspectable without re-running anything; `if-no-files-found: error`
+      # still holds because the tee file exists whenever this step ran at all.
+      - name: Upload desktop suite transcript
+        if: ${{ always() && steps.desktop_suite.outcome != 'skipped' }}
         uses: actions/upload-artifact@v4
         with:
           name: desktop-suite-log-${{ github.run_id }}-${{ github.run_attempt }}-shard-${{ matrix.shard }}
           path: |
             /tmp/desktop-tests.log
             ${{ runner.temp }}/desktop-lifecycle-${{ matrix.shard }}.jsonl
+            ${{ runner.temp }}/desktop-supervisor-${{ matrix.shard }}/console.log
+            ${{ runner.temp }}/desktop-supervisor-${{ matrix.shard }}/await.out
+            ${{ runner.temp }}/desktop-supervisor-${{ matrix.shard }}/terminal.json
+            ${{ runner.temp }}/desktop-supervisor-${{ matrix.shard }}/supervisor.log
           if-no-files-found: error
           retention-days: 7
 
