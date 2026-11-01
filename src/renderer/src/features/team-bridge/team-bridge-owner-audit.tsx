@@ -650,15 +650,18 @@ export function OwnerAuditPanelView({
 					)}
 				</div>
 			</div>
-			{!latestPageAvailable ? (
-				<Button className="absolute bottom-4 right-4" onClick={retry}>
-					{t("ui.ownerAudit.refresh")}
-				</Button>
-			) : timeline.newMessages > 0 ? (
-				<Button className="absolute bottom-4 right-4" onClick={timeline.pin}>
-					{t("ui.teamBridge.notify.count", { count: timeline.newMessages })}
-				</Button>
-			) : null}
+			{/* History controls belong to the ready transcript, not a retained
+			 * window behind a refusal or the failure UI's single retry. */}
+			{state === "ready" &&
+				(!latestPageAvailable ? (
+					<Button className="absolute bottom-4 right-4" onClick={retry}>
+						{t("ui.ownerAudit.refresh")}
+					</Button>
+				) : timeline.newMessages > 0 ? (
+					<Button className="absolute bottom-4 right-4" onClick={timeline.pin}>
+						{t("ui.teamBridge.notify.count", { count: timeline.newMessages })}
+					</Button>
+				) : null)}
 		</section>
 	);
 }

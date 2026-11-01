@@ -898,6 +898,31 @@ test("panel: loading, error, empty history, populated", async () => {
 	await populated.close();
 });
 
+/* A slid history window can outlive a failed read. Assert the whole panel's
+ * button set so a floating history action cannot bypass its refusal/retry UI. */
+for (const [state, expectedButtons] of [
+	["ready", ["Refresh", "Refresh"]],
+	["permission", []],
+	["not-found", []],
+	["auth", []],
+	["unavailable", ["Try again"]],
+]) {
+	test(`panel: evicted latest page button matrix — ${state}`, async (context) => {
+		const view = await renderView(
+			panel({ state, messages: [admitted], latestPageAvailable: false }),
+		);
+		try {
+			const buttons = [...view.host.querySelectorAll("button")].map((button) =>
+				button.textContent.trim(),
+			);
+			context.diagnostic(`${state}: buttons=${JSON.stringify(buttons)}`);
+			assert.deepEqual(buttons, expectedButtons);
+		} finally {
+			await view.close();
+		}
+	});
+}
+
 /* ------------------------------------------------------------------ *\
    3. The honest body, the verdict chips, the disclosure
 \* ------------------------------------------------------------------ */
