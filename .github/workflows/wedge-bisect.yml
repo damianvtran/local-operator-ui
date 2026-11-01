@@ -1,0 +1,133 @@
+# THE SHARD-CONTEXT EXPERIMENT, on a diagnostic branch that carries NOTHING else.
+#
+# WHY THIS EXISTS. `scripts/child-reader-foot-react.test.mjs` stalls the shard on the
+# Linux runners (runs 41274378090, 41277981038, 41286247024, 41248028640 job
+# 124562057434, and 41288401978 where it was the only shard of four that did not
+# finish), and the isolated single-file run PASSED on Ubuntu in 2.6 s
+# (`ok 1 - no absence arm paints the foot line…`, `# pass 1 / # fail 0`,
+# `# duration_ms 2585`, run 41300755410 on this repository's fix branch). So the file
+# does not wedge on its own: the trigger needs SHARD CONTEXT - concurrency 3, the file
+# processes that ran before it in the same job, shared esbuild/cache state, or runner
+# memory pressure.
+#
+# WHAT IT RUNS. Shard 1's own deal at the base commit, first N files (default 40,
+# `WEDGE_FILES`), at `--test-concurrency=3`, through the repository's own runner so
+# the memory watchdog and the per-lane bound are the real ones. At 05af4b91401 shard 1
+# holds 164 files and the foot file is its index 34 - the 35th - which is exactly the
+# `35 of 164 file processes started` the stalled runs show.
+#
+# THE SOURCE UNDER TEST IS MAIN'S. This branch is cut from 05af4b91401 and the ONLY
+# commit is this workflow: no product change and no runner change ride along, so a
+# wedge here is the stall as `main` has it, and a finish is evidence that 40 files at
+# concurrency 3 are not enough to reproduce it (widen `WEDGE_FILES`).
+#
+# THE PUSH TRIGGER IS BRANCH-SCOPED AND TEMPORARY. `workflow_dispatch` only registers
+# once a file is on the default branch, so the trigger has to be a push on this
+# diagnostic branch. It cannot fire on `main` or on any pull request.
+name: Wedge shard context (diagnostic)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [diag/wedge-shard-context]
+
+concurrency:
+  group: wedge-shard-context-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  shard-context:
+    name: Shard 1's deal, first N files, concurrency 3
+    runs-on: ubuntu-latest
+    # Above the step ceiling so the scan below still runs when the run wedges: a job
+    # cancelled at its own `timeout-minutes` runs no further steps.
+    timeout-minutes: 30
+    env:
+      WEDGE_FILES: "40"
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # The same pins the shard job uses.
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: '10.29.2'
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Shard 1's deal, computed from `package.json` with the shard script's own rule
+      # (sort, then `i % 4 === 1`), so the inventory is the suite's and not a copy.
+      - name: Name the files and the index that matters
+        id: files
+        run: |
+          node --input-type=module - <<'NODE'
+          import { readFileSync, writeFileSync } from 'node:fs';
+          const pkg = JSON.parse(readFileSync('package.json', 'utf8'));
+          const list = String(pkg.scripts['test:desktop'])
+            .split(/\s+/)
+            .filter((arg) => arg.endsWith('.test.mjs') && !arg.startsWith('-'))
+            .sort();
+          const shard = list.filter((_, index) => index % 4 === 1);
+          const wanted = Number(process.env.WEDGE_FILES ?? 40);
+          const chosen = shard.slice(0, wanted);
+          writeFileSync('/tmp/wedge-files.txt', `${chosen.join('\n')}\n`);
+          const foot = 'scripts/child-reader-foot-react.test.mjs';
+          console.log(`inventory ${list.length}; shard 1 ${shard.length}; running ${chosen.length}`);
+          console.log(`the foot file is shard 1 index ${shard.indexOf(foot)} and ${chosen.includes(foot) ? 'IS' : 'is NOT'} in this slice`);
+          console.log(chosen.map((file, index) => `  ${index}: ${file}`).join('\n'));
+          NODE
+          wc -l /tmp/wedge-files.txt >> "$GITHUB_OUTPUT" || true
+
+      # THE EXPERIMENT. 20 minutes is the ceiling the brief sets: a healthy 40-file
+      # slice at concurrency 3 runs in a few minutes, so a run still going at 20 is the
+      # stall rather than slowness.
+      - name: Run the slice at concurrency 3
+        id: wedge
+        timeout-minutes: 20
+        run: |
+          set -o pipefail
+          WEDGE_LOG=/tmp/wedge-shard.log
+          WEDGE_RC=0
+          node scripts/run-desktop-tests.mjs --test-concurrency=3 $(tr '\n' ' ' < /tmp/wedge-files.txt) 2>&1 | tee "$WEDGE_LOG" || WEDGE_RC=$?
+          printf 'WEDGE_RC=%s\n' "$WEDGE_RC" | tee -a "$WEDGE_LOG"
+
+      # THE VERDICT AND THE LOCALISATION. `no-hardlink-write: guarding` is printed once
+      # per file PROCESS by the guard preload (the stalled runs emit 163-165 of them for
+      # a full shard), so its count is how many file processes STARTED; the last
+      # completed subtest names the last work that finished. Together they say which
+      # index the run reached and which file never reported.
+      - name: Say what happened, and how far it got
+        if: always()
+        run: |
+          WEDGE_LOG=/tmp/wedge-shard.log
+          if [ ! -f "$WEDGE_LOG" ]; then
+            echo "::error title=Diagnostic did not run::no log at $WEDGE_LOG"
+            exit 1
+          fi
+          STARTED=$(grep -ac 'no-hardlink-write: guarding' "$WEDGE_LOG" || true)
+          SUBTESTS=$(grep -ac '^# Subtest: ' "$WEDGE_LOG" || true)
+          RC=$(grep -oE '^WEDGE_RC=[0-9]+$' "$WEDGE_LOG" | tail -1 | cut -d= -f2 || true)
+          echo "file processes started: $STARTED (of $(wc -l < /tmp/wedge-files.txt) in the slice)"
+          echo "subtests completed: $SUBTESTS"
+          echo "rc: ${RC:-<none: the step was killed by its ceiling>}"
+          echo "--- the last completed subtest ---"
+          grep -a '^# Subtest: ' "$WEDGE_LOG" | tail -1 || echo '(none)'
+          echo "--- last 30 lines ---"
+          tail -n 30 "$WEDGE_LOG"
+          if [ -z "$RC" ]; then
+            echo "::error title=WEDGE REPRODUCED (shard context)::the slice did not finish inside 20 minutes; $STARTED file processes started and $SUBTESTS subtests completed - the file that never reported is the one after the last completed subtest"
+            exit 1
+          fi
+          if [ "$RC" != "0" ]; then
+            echo "::warning title=Slice finished RED (not a wedge)::rc=$RC after $STARTED file processes and $SUBTESTS subtests - read the tail; a decidable failure is a different fact from a stall"
+            exit 0
+          fi
+          echo "::notice title=Slice FINISHED green::rc=0, $STARTED file processes, $SUBTESTS subtests - 40 files at concurrency 3 do not reproduce the stall; widen WEDGE_FILES"
