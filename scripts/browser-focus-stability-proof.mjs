@@ -13,13 +13,14 @@
  */
 import assert from "node:assert/strict";
 import { execFileSync, spawn } from "node:child_process";
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { createServer } from "node:http";
 import { dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import electron from "electron";
 import sharp from "sharp";
+import { selectTrustedRenderer } from "./focus-proof-main-identity.mjs";
 import { createFocusProofOwnedTree } from "./focus-proof-owned-tree.mjs";
 import { focusProofWindowMode } from "./focus-stability-ci-policy.mjs";
 import { withNotificationsOff } from "./notifications-off.mjs";
@@ -29,6 +30,9 @@ import { withTelemetryOff } from "./telemetry-off.mjs";
 const windowMode = focusProofWindowMode(process.argv, process.env);
 const nativeCi = windowMode === "normal";
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const expectedRendererUrl = pathToFileURL(
+	join(root, "out/renderer/index.html"),
+).href;
 const outArg = process.argv.indexOf("--out");
 assert(outArg >= 0 && process.argv[outArg + 1], "--out is required");
 const out = resolve(process.argv[outArg + 1]);
@@ -42,6 +46,8 @@ let fixtureChild;
 let fixtureTree;
 let fixtureLog = "";
 let owner;
+let mainWindowId;
+let mainContentsId;
 let ownedTree;
 let inventoryTimer;
 let cleanupPromise;
@@ -276,21 +282,62 @@ try {
 	main = await connect(
 		(await target(mainPort, (t) => t.type === "node")).webSocketDebuggerUrl,
 	);
+	const pinned = await until(async () => {
+		const candidates = await evaluate(
+			main,
+			"(()=>{try{const E=process.mainModule.require('electron');return E.BrowserWindow.getAllWindows().filter(w=>!w.isDestroyed()).map(w=>({windowId:w.id,webContentsId:w.webContents.id,url:w.webContents.getURL()}));}catch{return [];}})()",
+		);
+		return selectTrustedRenderer(candidates, expectedRendererUrl);
+	}, "unique exact built main window");
+	mainWindowId = pinned.windowId;
+	mainContentsId = pinned.webContentsId;
+	const nonce = randomUUID();
+	await evaluate(
+		main,
+		`process.mainModule.require('electron').webContents.fromId(${mainContentsId}).executeJavaScript(${JSON.stringify(`globalThis.__focusProofPinnedNonce=${JSON.stringify(nonce)};true`)})`,
+	);
+	const rendererTarget = await until(async () => {
+		let candidates;
+		try {
+			candidates = await (
+				await fetch(`http://127.0.0.1:${renderPort}/json/list`, {
+					signal: AbortSignal.timeout(5000),
+				})
+			).json();
+		} catch {
+			return null;
+		}
+		return selectTrustedRenderer(
+			candidates.filter((t) => t.type === "page"),
+			expectedRendererUrl,
+		);
+	}, "unique exact built renderer target");
+	owner = await connect(rendererTarget.webSocketDebuggerUrl);
+	assert.equal(
+		await evaluate(owner, "globalThis.__focusProofPinnedNonce"),
+		nonce,
+		"native and renderer observations must share the same pinned WebContents",
+	);
+	facts.mainIdentity = {
+		...pinned,
+		expectedRendererUrl,
+		rendererTargetId: rendererTarget.id,
+		nonceVerified: true,
+		windowMode,
+	};
+	identity.mainIdentity = facts.mainIdentity;
+	identity.electron = await evaluate(main, "process.versions.electron");
+	save("build-identity.json", identity);
+	// URL assignment precedes Electron ready-to-show. Wait for the product's
+	// normal presentation path; focusing a still-hidden window is not a valid
+	// native-owner precondition, and the probe must never force a substitute show.
 	await until(
 		() =>
 			evaluate(
 				main,
-				`(() => { try { const E = process.mainModule.require('electron'); return E.BrowserWindow.getAllWindows().some(w => /index.html/.test(w.webContents.getURL())); } catch { return false; } })()`,
+				`process.mainModule.require('electron').BrowserWindow.fromId(${mainWindowId}).isVisible()`,
 			),
-		"built main window",
-	);
-	owner = await connect(
-		(
-			await target(
-				renderPort,
-				(t) => t.type === "page" && /index.html/.test(t.url),
-			)
-		).webSocketDebuggerUrl,
+		"product normal window ready-to-show",
 	);
 	await evaluate(
 		main,
@@ -309,7 +356,7 @@ try {
 		};
 		E.webContents.getAllWebContents().forEach(arm);
 		E.app.on('web-contents-created', (_e,c) => arm(c));
-		const w = E.BrowserWindow.getAllWindows().find(w=>w.webContents.getURL().includes('/index.html'));
+		const w = E.BrowserWindow.fromId(${mainWindowId});
 		const point=(stage,c)=>globalThis.__focusProof.events.push({stage,id:c?.id,at:Date.now(),ownerFocused:w.webContents.isFocused(),focused:E.webContents.getFocusedWebContents()?.id??null});
 		const add=w.contentView.addChildView.bind(w.contentView);
 		w.contentView.addChildView=(v,...args)=>{
@@ -344,13 +391,27 @@ try {
 	const sample = async (label) => {
 		const native = await evaluate(
 			main,
-			`(() => { const E = process.mainModule.require('electron'); const w = E.BrowserWindow.getAllWindows().find(w=>w.webContents.getURL().includes('/index.html')); return { visible:w.isVisible(), focusable:w.isFocusable(), windowFocused:w.isFocused(), ownerId:w.webContents.id, ownerFocused:w.webContents.isFocused(), focused:E.webContents.getFocusedWebContents()?.id ?? null, views:w.contentView.children.map(v => ({id:v.webContents?.id, visible:v.getVisible(), focused:v.webContents?.isFocused()})), events:globalThis.__focusProof.events,ciActivationUsed:globalThis.__focusProof.ciActivationUsed??false }; })()`,
+			`(() => { const E = process.mainModule.require('electron'); const w = E.BrowserWindow.fromId(${mainWindowId}); return { visible:w.isVisible(), focusable:w.isFocusable(), windowFocused:w.isFocused(), windowId:w.id,url:w.webContents.getURL(),ownerId:w.webContents.id, ownerFocused:w.webContents.isFocused(), focused:E.webContents.getFocusedWebContents()?.id ?? null, views:w.contentView.children.map(v => ({id:v.webContents?.id, visible:v.getVisible(), focused:v.webContents?.isFocused()})), events:globalThis.__focusProof.events,ciActivationUsed:globalThis.__focusProof.ciActivationUsed??false }; })()`,
 		);
 		const dom = await evaluate(
 			owner,
 			"({ hash:location.hash, hasFocus:document.hasFocus(), active:document.activeElement?.outerHTML.slice(0,350), value:document.activeElement?.value, selection:[document.activeElement?.selectionStart,document.activeElement?.selectionEnd] })",
 		);
-		const result = { label, native, dom };
+		assert.equal(
+			native.ownerId,
+			mainContentsId,
+			"native owner identity must remain pinned",
+		);
+		assert.ok(
+			selectTrustedRenderer([native], expectedRendererUrl),
+			"pinned app URL may only change its hash route",
+		);
+		assert.equal(
+			await evaluate(owner, "globalThis.__focusProofPinnedNonce"),
+			nonce,
+			"renderer observation cannot drift to another target",
+		);
+		const result = { label, native, dom, at: Date.now() };
 		facts.samples.push(result);
 		assert.equal(
 			native.visible,
@@ -368,7 +429,7 @@ try {
 	const captureShell = async (label) => {
 		const data = await evaluate(
 			main,
-			"(async()=>{const E=process.mainModule.require('electron');return (await E.BrowserWindow.getAllWindows().find(w=>w.webContents.getURL().includes('/index.html')).webContents.capturePage()).toPNG().toString('base64');})()",
+			`(async()=>{const E=process.mainModule.require('electron');return (await E.BrowserWindow.fromId(${mainWindowId}).webContents.capturePage()).toPNG().toString('base64');})()`,
 		);
 		writeFileSync(join(out, `${label}.png`), Buffer.from(data, "base64"));
 	};
@@ -380,6 +441,7 @@ try {
 				"({id:document.activeElement?.id,value:document.activeElement?.value,start:document.activeElement?.selectionStart,end:document.activeElement?.selectionEnd,same:document.activeElement===globalThis.__focusAcceptanceField,connected:globalThis.__focusAcceptanceField?.isConnected})",
 			);
 		const before = await readCaret();
+		const startedAt = Date.now();
 		let permissionError = null;
 		try {
 			execFileSync(
@@ -398,6 +460,8 @@ try {
 				: null;
 		const result = {
 			label,
+			startedAt,
+			finishedAt: Date.now(),
 			before,
 			after,
 			expected,
@@ -495,7 +559,7 @@ try {
 		if (
 			!(await evaluate(
 				main,
-				"process.mainModule.require('electron').BrowserWindow.getAllWindows().find(w=>w.webContents.getURL().includes('/index.html')).webContents.isFocused()",
+				`process.mainModule.require('electron').BrowserWindow.fromId(${mainWindowId}).webContents.isFocused()`,
 			))
 		) {
 			// A real browser user's CmdL moves to the address row through the shipped
@@ -697,7 +761,7 @@ try {
 		() =>
 			evaluate(
 				main,
-				`process.mainModule.require('electron').BrowserWindow.getAllWindows().find(w=>w.webContents.getURL().includes('/index.html')).contentView.children.some(v=>v.webContents?.id===${paletteCase.page.id}&&v.getVisible())`,
+				`process.mainModule.require('electron').BrowserWindow.fromId(${mainWindowId}).contentView.children.some(v=>v.webContents?.id===${paletteCase.page.id}&&v.getVisible())`,
 			),
 		"user presents same view",
 	);
@@ -782,7 +846,7 @@ try {
 		() =>
 			evaluate(
 				main,
-				`!process.mainModule.require('electron').BrowserWindow.getAllWindows().find(w=>w.webContents.getURL().includes('/index.html')).contentView.children.some(v=>v.webContents?.id===${paletteCase.page.id})`,
+				`!process.mainModule.require('electron').BrowserWindow.fromId(${mainWindowId}).contentView.children.some(v=>v.webContents?.id===${paletteCase.page.id})`,
 			),
 		"route exit detaches browser page",
 	);
@@ -791,7 +855,7 @@ try {
 		() =>
 			evaluate(
 				main,
-				`process.mainModule.require('electron').BrowserWindow.getAllWindows().find(w=>w.webContents.getURL().includes('/index.html')).contentView.children.some(v=>v.webContents?.id===${paletteCase.page.id}&&v.getVisible())`,
+				`process.mainModule.require('electron').BrowserWindow.fromId(${mainWindowId}).contentView.children.some(v=>v.webContents?.id===${paletteCase.page.id}&&v.getVisible())`,
 			),
 		"route return presents same native view",
 	);
@@ -831,7 +895,7 @@ try {
 			);
 			const frame = await evaluate(
 				main,
-				"(async()=>{const E=process.mainModule.require('electron');return (await E.BrowserWindow.getAllWindows().find(w=>w.webContents.getURL().includes('/index.html')).webContents.capturePage()).toPNG().toString('base64');})()",
+				`(async()=>{const E=process.mainModule.require('electron');return (await E.BrowserWindow.fromId(${mainWindowId}).webContents.capturePage()).toPNG().toString('base64');})()`,
 			);
 			writeFileSync(
 				join(out, "failure-frame.png"),
