@@ -16,13 +16,7 @@ import {
 	useInfiniteQuery,
 	useQueryClient,
 } from "@tanstack/react-query";
-import {
-	useCallback,
-	useLayoutEffect,
-	useMemo,
-	useRef,
-	useSyncExternalStore,
-} from "react";
+import { useCallback, useMemo, useRef, useSyncExternalStore } from "react";
 import type { AgentMessagesStatus } from "../../../../shared/agent-messages-contract";
 import { teamBridgeKeys } from "./team-bridge-keys";
 import { bridgeStatusAuthority, readForBridgeOwner } from "./team-bridge-owner";
@@ -202,24 +196,27 @@ function useAuditRead(
 		}),
 		[scope.accountId, scope.tenantId, operation],
 	);
-	const mounted = useRef(true);
 	const unauthorized = useRef(0);
-	useLayoutEffect(() => {
-		mounted.current = true;
-		return () => {
-			mounted.current = false;
-		};
-	}, []);
-	const read = async <T>(request: () => Promise<T>): Promise<T> => {
+	const read = async <T>(
+		request: () => Promise<T>,
+		signal: AbortSignal,
+	): Promise<T> => {
 		const token = authority.token;
+		// Consume the query's signal so its last observer leaving cancels the
+		// retryer immediately. gcTime:0 alone cannot remove a fetching query:
+		// a remount would inherit this departed mount's promise, whose fence
+		// rejection reverts it to pending/idle with nothing left to settle it.
+		// Use the QUERY lifetime, not one observer's mounted ref: if two readers
+		// share a key, either can leave without invalidating the other's read.
+		// IPC invoke cannot be aborted; the signal abandons its result instead.
 		const isCurrent = () =>
-			mounted.current &&
+			!signal.aborted &&
 			radientAuthoritySnapshot(client) === token &&
 			observedRadientAuthority(client).accountId === scope.accountId &&
 			snapshot() === bridgeToken;
 		/* Capture READ authority per query generation, rather than once for the
 		 * component's lifetime: a real credential transition must commission a
-		 * fresh closure without reviving the old one. Mount/account/epoch fences
+		 * fresh closure without reviving the old one. Observer/account/epoch fences
 		 * remain, and readForBridgeOwner keeps its original admission/settlement
 		 * checks. Do not use the write fence's !read_only requirement here: state
 		 * F is deliberately readable (original agent review round 1, m1). */
@@ -300,8 +297,11 @@ export function useOwnerAuditConversations(scope: OwnerAuditScope) {
 			"conversations",
 		],
 		initialPageParam: undefined as string | undefined,
-		queryFn: ({ pageParam }) =>
-			read(() => TeamBridgeOwnerAuditApi.conversations(scope, pageParam)),
+		queryFn: ({ pageParam, signal }) =>
+			read(
+				() => TeamBridgeOwnerAuditApi.conversations(scope, pageParam),
+				signal,
+			),
 		getNextPageParam: (last, _pages, previous) =>
 			last.has_more && last.next_cursor && last.next_cursor !== previous
 				? last.next_cursor
@@ -341,9 +341,11 @@ export function useOwnerAuditMessages(
 		// Further upward reads slide the window, never eagerly fetch all history.
 		maxPages: 6,
 		initialPageParam: undefined as number | undefined,
-		queryFn: async ({ pageParam }) => {
-			const page = await read(() =>
-				TeamBridgeOwnerAuditApi.messages(scope, conversationId, pageParam),
+		queryFn: async ({ pageParam, signal }) => {
+			const page = await read(
+				() =>
+					TeamBridgeOwnerAuditApi.messages(scope, conversationId, pageParam),
+				signal,
 			);
 			const cached = client.getQueryData<InfiniteData<typeof page>>(queryKey);
 			// The user may return to the recent page while an older request is in
@@ -402,14 +404,16 @@ export function useOwnerAuditReplies(
 			rootId,
 		],
 		initialPageParam: undefined as number | undefined,
-		queryFn: ({ pageParam }) =>
-			read(() =>
-				TeamBridgeOwnerAuditApi.replies(
-					scope,
-					conversationId,
-					rootId,
-					pageParam,
-				),
+		queryFn: ({ pageParam, signal }) =>
+			read(
+				() =>
+					TeamBridgeOwnerAuditApi.replies(
+						scope,
+						conversationId,
+						rootId,
+						pageParam,
+					),
+				signal,
 			),
 		getNextPageParam: (last, _pages, previous) =>
 			last.has_more &&
