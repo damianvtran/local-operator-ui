@@ -1760,7 +1760,15 @@ export const PickerCheck: FC<{
 	onCheckedChange: (checked: boolean) => void;
 	children: ReactNode;
 	tone?: "muted" | "ink";
-}> = ({ checked, onCheckedChange, children, tone = "muted" }) => {
+	/** Keep a consent control inert while its authoritative target is unknown. */
+	disabled?: boolean;
+}> = ({
+	checked,
+	onCheckedChange,
+	children,
+	tone = "muted",
+	disabled = false,
+}) => {
 	const id = useId();
 	return (
 		<div className="flex items-start gap-2">
@@ -1768,13 +1776,18 @@ export const PickerCheck: FC<{
 				className="mt-0.5"
 				id={id}
 				checked={checked}
+				disabled={disabled}
 				onCheckedChange={(next) => onCheckedChange(next === true)}
 			/>
 			<Label
 				htmlFor={id}
 				className={cn(
 					"font-normal text-body-sm",
-					tone === "ink" ? "text-ink" : "text-ink-muted",
+					disabled
+						? "text-ink-disabled"
+						: tone === "ink"
+							? "text-ink"
+							: "text-ink-muted",
 				)}
 			>
 				{children}

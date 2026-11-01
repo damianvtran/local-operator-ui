@@ -878,6 +878,7 @@ export const ModelPicker: FC<PickerContext> = ({
 	// A lost ACK is not a refusal. Hold fresh model intents until a read-only
 	// authoritative snapshot answers; never replay the possibly accepted UUID.
 	const [unconfirmedModel, setUnconfirmedModel] = useState(false);
+	const unconfirmedModelRef = useRef(false);
 	/*
 	 * WHICH VIEW OF THE CATALOGUE THIS DIALOG SHOWS.
 	 *
@@ -1613,6 +1614,7 @@ export const ModelPicker: FC<PickerContext> = ({
 				// the authoritative model rather than keeping a paint that never landed.
 				canonical.clearPendingModel();
 				if (run.unconfirmed) {
+					unconfirmedModelRef.current = true;
 					setUnconfirmedModel(true);
 					note(failure.text);
 					if (persistDefaultRef.current) persist.setResult(failure);
@@ -1627,6 +1629,7 @@ export const ModelPicker: FC<PickerContext> = ({
 						const selector = modelSelector(state.selected_model);
 						if (snapshot.payload.cold === false && selector) {
 							setPickedCurrent(selector);
+							unconfirmedModelRef.current = false;
 							setUnconfirmedModel(false);
 						}
 					} catch {
@@ -1749,6 +1752,10 @@ export const ModelPicker: FC<PickerContext> = ({
 		),
 	] as const;
 	const onPersistDefaultChange = (checked: boolean) => {
+		// A missing receipt can follow an accepted switch. Until a LIVE read
+		// identifies the selection, even a queued/programmatic checkbox callback
+		// must not persist the last-known model or change the checkbox's intent.
+		if (unconfirmedModel || unconfirmedModelRef.current) return;
 		persistDefaultRef.current = checked;
 		setPersistDefault(checked);
 		if (!checked) {
@@ -2062,6 +2069,7 @@ export const ModelPicker: FC<PickerContext> = ({
 						{!draft && (
 							<PickerCheck
 								checked={persistDefault}
+								disabled={unconfirmedModel}
 								onCheckedChange={onPersistDefaultChange}
 								tone="muted"
 							>

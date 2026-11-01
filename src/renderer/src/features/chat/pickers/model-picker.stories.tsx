@@ -843,13 +843,22 @@ const UnconfirmedModelFrame: FC<{
 	disconnected?: boolean;
 	readFails?: boolean;
 	committed?: boolean;
-}> = ({ disconnected = false, readFails = false, committed = true }) => {
+	readPending?: boolean;
+	cold?: boolean;
+}> = ({
+	disconnected = false,
+	readFails = false,
+	committed = true,
+	readPending = false,
+	cold = false,
+}) => {
 	const authoritative = useRef(CURRENT);
 	const [selected, setSelected] = useState(CURRENT);
 	const [notes, setNotes] = useState<{ id: string; text: string }[]>([]);
 	const [open, setOpen] = useState(true);
 	const mutations = useRef(0);
 	const [reads, setReads] = useState(0);
+	const [preferencesWrites, setPreferencesWrites] = useState(0);
 	const note = useCallback(
 		(text: string) =>
 			setNotes((previous) => [...previous, { id: crypto.randomUUID(), text }]),
@@ -859,6 +868,10 @@ const UnconfirmedModelFrame: FC<{
 		async (request: BridgeRequest): Promise<DesktopResponse | undefined> => {
 			if (request.op === "models.catalogue")
 				return catalogueOnly(catalogue())(request);
+			if (request.op === "settings.edit") {
+				setPreferencesWrites((value) => value + 1);
+				return ok({});
+			}
 			if (request.op === "sessions.command") {
 				mutations.current += 1;
 				if (!disconnected && committed) {
@@ -887,10 +900,11 @@ const UnconfirmedModelFrame: FC<{
 			}
 			if (request.op === "sessions.get") {
 				setReads((value) => value + 1);
+				if (readPending) return new Promise<DesktopResponse>(() => {});
 				if (readFails) return refuse(503, "Synthetic snapshot unavailable");
 				return ok({
 					payload: {
-						cold: false,
+						cold,
 						frontend: {
 							snapshot: {
 								selected_model: authoritative.current,
@@ -902,7 +916,7 @@ const UnconfirmedModelFrame: FC<{
 			}
 			return undefined;
 		},
-		[disconnected, readFails, committed],
+		[disconnected, readFails, committed, readPending, cold],
 	);
 	return (
 		<>
@@ -920,6 +934,7 @@ const UnconfirmedModelFrame: FC<{
 			>
 				<output data-testid="authoritative-model">{`${selected.provider}/${selected.model_id}`}</output>
 				<div data-testid="model-operation-counts">{`mutations=${mutations.current}; snapshot reads=${reads}`}</div>
+				<div data-testid="model-preferences-count">{`preferences writes=${preferencesWrites}`}</div>
 				{notes.map((note) => (
 					<p key={note.id} data-testid="model-command-note">
 						{note.text}
@@ -994,6 +1009,57 @@ export const DisconnectedOwnerUnconfirmed: Story = {
 		expect(
 			document.querySelector("[data-picker-footer]")?.textContent,
 		).not.toContain("Enter picks");
+	},
+};
+
+const assertDefaultStaysLocked = async () => {
+	await pickRow(MATCH_ANTHROPIC_CLAUDE_HAIKU_4_5);
+	await waitFor(() =>
+		expect(screen.getByTestId("model-operation-counts").textContent).toBe(
+			"mutations=1; snapshot reads=1",
+		),
+	);
+	const checkbox = screen.getByRole("checkbox", { name: MODEL_DEFAULT_LABEL });
+	await waitFor(() => expect(checkbox.hasAttribute("disabled")).toBe(true));
+	await userEvent.click(checkbox);
+	expect(screen.getByTestId("model-preferences-count").textContent).toBe(
+		"preferences writes=0",
+	);
+	expect(checkbox.getAttribute("data-state")).toBe("unchecked");
+};
+
+/** Direct neighbors of the unconfirmed switch: none can save stale defaults. */
+export const UnconfirmedDefaultPending: Story = {
+	render: () => <UnconfirmedModelFrame readPending />,
+	play: assertDefaultStaysLocked,
+};
+export const UnconfirmedDefaultFailed: Story = {
+	render: () => <UnconfirmedModelFrame readFails />,
+	play: assertDefaultStaysLocked,
+};
+export const UnconfirmedDefaultCold: Story = {
+	render: () => <UnconfirmedModelFrame cold />,
+	play: assertDefaultStaysLocked,
+};
+export const UnconfirmedDefaultResolved: Story = {
+	render: () => <UnconfirmedModelFrame />,
+	play: async () => {
+		await pickRow(MATCH_ANTHROPIC_CLAUDE_HAIKU_4_5);
+		await waitFor(() =>
+			expect(screen.getByTestId("model-operation-counts").textContent).toBe(
+				"mutations=1; snapshot reads=1",
+			),
+		);
+		const checkbox = screen.getByRole("checkbox", {
+			name: MODEL_DEFAULT_LABEL,
+		});
+		await waitFor(() => expect(checkbox.hasAttribute("disabled")).toBe(false));
+		await userEvent.click(checkbox);
+		await waitFor(() =>
+			expect(screen.getByTestId("model-preferences-count").textContent).toBe(
+				"preferences writes=2",
+			),
+		);
 	},
 };
 
