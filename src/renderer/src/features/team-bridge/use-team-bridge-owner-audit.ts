@@ -394,6 +394,7 @@ export function useOwnerAuditReplies(
 	canEvict?: (
 		page: Awaited<ReturnType<typeof TeamBridgeOwnerAuditApi.replies>>,
 	) => boolean,
+	isAtLiveEdge?: () => boolean,
 ) {
 	const { read, authorityToken, enabled } = useAuditRead(scope, "replies");
 	const query = useThreadReplyWindow({
@@ -408,14 +409,14 @@ export function useOwnerAuditReplies(
 			rootId,
 		],
 		identity: { conversationId, rootId },
-		read: (mode, cursor) =>
+		read: (mode, cursor, limit = 50) =>
 			read(() =>
 				TeamBridgeOwnerAuditApi.replies(
 					scope,
 					conversationId,
 					rootId,
 					mode === "desc" ? undefined : (cursor ?? 0),
-					mode === "desc" ? { beforeSeq: cursor, order: "desc" } : undefined,
+					mode === "desc" ? { beforeSeq: cursor, order: "desc", limit } : undefined,
 				),
 			),
 		canEvict,
@@ -425,6 +426,7 @@ export function useOwnerAuditReplies(
 		refetchOnWindowFocus: false,
 		refetchOnReconnect: false,
 		retryOnMount: false,
+		isAtLiveEdge,
 	});
 	return { ...query, auditAuthRequired: !enabled };
 }

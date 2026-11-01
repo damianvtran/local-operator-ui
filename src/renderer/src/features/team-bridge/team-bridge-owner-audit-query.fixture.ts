@@ -66,8 +66,11 @@ export function createOwnerAuditQueryFixture(options: {
 	seedAuthority();
 	const records: TransportRecord[] = [];
 	const pending = new Set<() => void>();
+	const pendingReplies = new Set<() => void>();
 	let active = true;
 	let holdOlder = false;
+	let holdFirstReply = false;
+	let olderReplyFailure: "http503" | "transport" | null = null;
 	let mode: FixtureMode = "normal";
 	let latest = 10000;
 	let expanded = false;
@@ -128,30 +131,48 @@ export function createOwnerAuditQueryFixture(options: {
 			input.op === "team_bridge.messages.replies"
 		) {
 			if (mode === "denied") return envelope(null, 403);
-			if (input.limit !== undefined && input.limit !== 50)
+			if (input.limit !== undefined && input.limit !== 50 && input.limit !== 1)
 				return envelope(null, 422, "invalid_request");
 			if (
 				threadMode === "old-runtime" &&
 				(input.order !== undefined || input.before_seq !== undefined)
 			)
 				return envelope(null, 422, "invalid_request");
-			if (
-				holdOlder &&
-				(input.before_seq !== undefined ||
-					(input.after_seq !== undefined && input.after_seq > 0))
-			) {
-				holdOlder = false;
-				await new Promise<void>((resolve) => pending.add(resolve));
+			const olderReply = input.before_seq !== undefined ||
+				(input.after_seq !== undefined && input.after_seq > 0);
+			if ((holdOlder && olderReply) || (holdFirstReply && !olderReply)) {
+				if (olderReply) holdOlder = false;
+				else holdFirstReply = false;
+				// A held FIRST reply makes the actual query's pending state
+				// deterministic; never fake loading by replacing its component.
+				await new Promise<void>((resolve) => {
+					const finish = () => {
+						pending.delete(finish);
+						pendingReplies.delete(finish);
+						resolve();
+					};
+					pending.add(finish);
+					pendingReplies.add(finish);
+				});
 			}
 			if (!active) return envelope(null, 503);
+			if (olderReply && olderReplyFailure) {
+				const failure = olderReplyFailure;
+				olderReplyFailure = null;
+				// One-shot failures admit an actual manual Retry on the same
+				// cursor;403 remains the separate permanent-refusal control.
+				if (failure === "transport") throw new Error("Synthetic fixture transport failure");
+				return envelope(null, 503);
+			}
 			const backward =
 				threadMode === "backward" &&
 				(input.order === "desc" || input.before_seq !== undefined);
 			const rootSeq = 9999;
-			const count = mode === "empty" ? 0 : mode === "short" ? 3 : 50;
+			const lower = mode === "short" ? threadLatest - 2 : rootSeq + 1;
+			const count = mode === "empty" ? 0 : Math.min(input.limit ?? 50, mode === "short" ? 3 : 50);
 			const first = backward
-				? Math.max(rootSeq + 1, (input.before_seq ?? threadLatest + 1) - count)
-				: Math.max(rootSeq + 1, input.after_seq ?? rootSeq + 1);
+				? Math.max(lower, (input.before_seq ?? threadLatest + 1) - count)
+				: Math.max(lower, input.after_seq ?? lower);
 			const last = backward
 				? (input.before_seq ?? threadLatest + 1) - 1
 				: Math.min(threadLatest, first + count - 1);
@@ -204,10 +225,8 @@ export function createOwnerAuditQueryFixture(options: {
 					};
 				},
 			);
-			const hasMore =
-				(mode === "normal" || mode === "unavailable") &&
-				replies.length > 0 &&
-				(backward ? first > rootSeq + 1 : last < threadLatest);
+			const hasMore = replies.length > 0 &&
+				(backward ? first > lower : last < threadLatest);
 			return envelope({
 				root: replyRoot,
 				replies,
@@ -287,9 +306,25 @@ export function createOwnerAuditQueryFixture(options: {
 		holdNextOlder() {
 			holdOlder = true;
 		},
+		holdNextFirstReply() {
+			holdFirstReply = true;
+		},
+		failNextOlderReply(value: "http503" | "transport") {
+			olderReplyFailure = value;
+		},
+		resetReplyQueries() {
+			// Reset ONLY the mounted reply query. Resetting the parent messages
+			// unmounts AuditReplies and cannot prove its own loading/error UI.
+			return client.resetQueries({
+				predicate: (query) => query.queryKey[0] === "team-bridge" && query.queryKey.includes("replies"),
+			});
+		},
 		release() {
 			for (const resolve of pending) resolve();
 			pending.clear();
+		},
+		releaseReplies() {
+			for (const resolve of pendingReplies) resolve();
 		},
 		arrive() {
 			latest += 1;
@@ -318,8 +353,11 @@ export function createOwnerAuditQueryFixture(options: {
 				latest,
 				threadLatest,
 				threadMode,
+				holdFirstReply,
+				olderReplyFailure,
 				noFetchSentinel: OWNER_AUDIT_NOFETCH_SENTINEL,
 				held: pending.size,
+				heldReplies: pendingReplies.size,
 				records: [...records],
 				queries: client
 					.getQueryCache()

@@ -15,7 +15,7 @@ import {
 	useRef,
 	useState,
 } from "react";
-import type { RefObject } from "react";
+import type { MutableRefObject, RefObject } from "react";
 import type {
 	TeamBridgeAttachmentCapability,
 	TeamBridgeMessage,
@@ -95,6 +95,7 @@ export type ThreadPaneProps = {
 	latestPageAvailable?: boolean;
 	onLatest?: () => void;
 	scrollHostRef?: RefObject<HTMLDivElement>;
+	pinnedGetterRef?: MutableRefObject<(() => boolean) | null>;
 };
 
 /**
@@ -161,6 +162,7 @@ function TeamBridgeThreadPaneBody({
 	latestPageAvailable = true,
 	onLatest,
 	scrollHostRef,
+	pinnedGetterRef,
 }: ThreadPaneProps) {
 	useI18nLocale();
 	/*
@@ -244,6 +246,13 @@ function TeamBridgeThreadPaneBody({
 			: "[data-message-id]",
 		liveEdgeAvailable: windowMode ? latestPageAvailable : true,
 	});
+	useLayoutEffect(() => {
+		if (!pinnedGetterRef) return;
+		pinnedGetterRef.current = scroll.isPinned;
+		return () => {
+			if (pinnedGetterRef.current === scroll.isPinned) pinnedGetterRef.current = null;
+		};
+	}, [pinnedGetterRef, scroll.isPinned]);
 	const combinedScrollRef = useMemo(
 		() => composeRefs(scroll.rootRef, scrollHostRef),
 		[scroll.rootRef, scrollHostRef],
@@ -609,6 +618,7 @@ function TeamBridgeThreadPaneMount({
 		[read.mutateAsync],
 	);
 	const scrollHostRef = useRef<HTMLDivElement>(null);
+	const pinnedGetterRef = useRef<(() => boolean) | null>(null);
 	const key = [
 		...teamBridgeKeys.all,
 		"replies",
@@ -620,12 +630,12 @@ function TeamBridgeThreadPaneMount({
 	const query = useThreadReplyWindow({
 		queryKey: key,
 		identity: { conversationId, rootId },
-		read: (mode, cursor) =>
+		read: (mode, cursor, limit = 50) =>
 			loadThreadPage(
 				target,
 				accountId,
 				mode === "desc" ? undefined : (cursor ?? 0),
-				mode === "desc" ? { beforeSeq: cursor, order: "desc" } : undefined,
+				mode === "desc" ? { beforeSeq: cursor, order: "desc", limit } : undefined,
 			),
 		canEvict: (page) =>
 			replyPageOutsideViewport(
@@ -634,6 +644,7 @@ function TeamBridgeThreadPaneMount({
 					"[data-radix-scroll-area-viewport]",
 				) ?? null,
 			),
+		isAtLiveEdge: () => pinnedGetterRef.current?.() ?? true,
 		poll: true,
 	});
 	const replies = query.replies;
@@ -671,9 +682,15 @@ function TeamBridgeThreadPaneMount({
 			]);
 		},
 	});
+	// A permanent peek/page refusal must not keep painting the old root above its
+	// error panel; only the existing transient older-page retry keeps its window.
+	const rootForPane =
+		query.isError && !query.keepWindowOnError
+			? null
+			: (query.data?.pages[0]?.root ?? initialRoot ?? null);
 	return (
 		<TeamBridgeThreadPaneView
-			root={query.data?.pages[0]?.root ?? initialRoot ?? null}
+			root={rootForPane}
 			replies={replies}
 			state={
 				query.isPending
@@ -705,6 +722,7 @@ function TeamBridgeThreadPaneMount({
 			latestPageAvailable={query.latestPageAvailable}
 			onLatest={() => void query.resetLatest()}
 			scrollHostRef={scrollHostRef}
+			pinnedGetterRef={pinnedGetterRef}
 			reactionContext={reactionContext}
 		/>
 	);

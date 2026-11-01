@@ -684,8 +684,11 @@ function AuditReplies({
 	people: readonly TeamBridgeDirectoryMember[];
 }) {
 	const viewport = useRef<HTMLDivElement>(null);
-	const query = useOwnerAuditReplies(scope, conversation.id, root.id, (page) =>
-		replyPageOutsideViewport(page, viewport.current),
+	const pinnedGetter = useRef<() => boolean>(() => true);
+	const query = useOwnerAuditReplies(
+		scope, conversation.id, root.id,
+		(page) => replyPageOutsideViewport(page, viewport.current),
+		() => pinnedGetter.current(),
 	);
 	const state = readState(query);
 	const viewState = query.isPending
@@ -701,6 +704,7 @@ function AuditReplies({
 		rowIds: query.replies.map((row) => row.id),
 		liveEdgeAvailable: query.latestPageAvailable,
 	});
+	pinnedGetter.current = timeline.isPinned;
 	const combinedRef = useMemo(
 		() => composeRefs(timeline.rootRef, viewport),
 		[timeline.rootRef],

@@ -649,3 +649,68 @@ test("a reused message ID with a different sequence cannot corrupt the bounded g
 		await h.close();
 	}
 });
+
+// Independent review6554794746 reproduced both failures on b418. Keep the
+// non-evicting operations separate: post-send invalidation and polling must
+// refresh the same six-page cache even while its newest page is visible.
+for (const operation of ["refetch", "post-send invalidation", "poll"]) {
+	test(`six-page ${operation} admits arrivals without evicting the visible newest page`, async (t) => {
+		if (operation === "poll") t.mock.timers.enable({ apis: ["setInterval"] });
+		let latest = 10000;
+		let mayEvict = true;
+		const h = await mount(generic(async (_mode, cursor) => page((cursor ?? latest + 1) - 50), {
+			canEvict: () => mayEvict,
+			poll: operation === "poll",
+		}));
+		try {
+			await until(() => h.query.isSuccess);
+			for (let i = 0; i < 5; i++) {
+				await act(async () => { await h.query.fetchNextPage(); });
+				await until(() => !h.query.isFetching);
+			}
+			assert.equal(h.query.data.pages.length, 6);
+			assert.equal(h.query.replies.at(-1).seq, 10000);
+			mayEvict = false;
+			latest = 10001;
+			await act(async () => {
+				if (operation === "poll") t.mock.timers.tick(8000);
+				else if (operation === "post-send invalidation") await h.client.invalidateQueries({ queryKey: key });
+				else await h.query.refetch();
+			});
+			await until(() => h.query.replies.at(-1)?.seq === 10001);
+			assert.equal(h.query.data.pages.length, 6);
+			assert.equal(h.query.replies.length, 300);
+			assert.equal(h.query.isError, false);
+			// Same-code positive control: allowing eviction cannot be necessary
+			// for an ordinary refresh to admit the next arrival either.
+			mayEvict = true;
+			latest = 10002;
+			await act(async () => { await h.query.refetch(); });
+			await until(() => h.query.replies.at(-1)?.seq === 10002);
+		} finally {
+			await h.close();
+			if (operation === "poll") t.mock.timers.reset();
+		}
+	});
+}
+
+test("conflicting IDs inside the initial page are refused before private cache admission", async () => {
+	const invalid = page(9951);
+	invalid.replies[1] = { ...invalid.replies[1], id: invalid.replies[0].id };
+	let response = invalid;
+	const h = await mount(generic(async () => response));
+	try {
+		await until(() => h.query.isSuccess || h.query.isError);
+		assert.equal(h.query.isError, true);
+		assert.equal(h.query.data, undefined);
+		assert.equal(h.query.replies.length, 0);
+		assert.equal(h.client.getQueryData([...key, "desc"]), undefined);
+		response = page(9951);
+		await act(async () => { await h.query.refetch(); });
+		await until(() => h.query.isSuccess);
+		assert.equal(h.query.replies.length, 50);
+		assert.equal(h.query.data.pages[0].replies.length, 50);
+	} finally {
+		await h.close();
+	}
+});

@@ -731,7 +731,7 @@ function QueryMemberThreadSurface({ tenantId }: { tenantId: string }) {
 							rootId: `bmsg_query_${tenantId}_${dm.id}_9999`,
 						}}
 						readOnly={false}
-						labelFor={(id) => id}
+						labelFor={(sender) => sender.display_label}
 						onClose={() => setOpen(false)}
 					/>
 				)}
@@ -1038,15 +1038,35 @@ function QueryBackedHistoryExercise({
 						</button>
 					),
 				)}
+				<button type="button" onClick={() => {
+					fixture.holdNextFirstReply();
+					void fixture.resetReplyQueries();
+				}}>
+					Fixture hold first reply
+				</button>{" "}
+				<button type="button" onClick={() => fixture.releaseReplies()}>
+					Fixture release replies
+				</button>{" "}
+				{(["http503", "transport"] as const).map((failure) => (
+					<button type="button" key={failure} onClick={() => fixture.failNextOlderReply(failure)}>
+						Fixture fail next older reply {failure}
+					</button>
+				))}
+				{(["normal", "empty", "short", "denied", "unavailable"] as const).map((mode) => (
+					<button type="button" key={`reply-${mode}`} onClick={() => {
+						fixture.setMode(mode);
+						void fixture.resetReplyQueries();
+					}}>
+						Fixture reply backend {mode}
+					</button>
+				))}
 				{(["backward", "old-server", "old-runtime"] as const).map((value) => (
 					<button
 						type="button"
 						key={value}
 						onClick={() => {
 							fixture.setThreadMode(value);
-							void fixture.client.resetQueries({
-								predicate: (query) => query.queryKey.includes("replies"),
-							});
+							void fixture.resetReplyQueries();
 						}}
 					>
 						Fixture thread protocol {value}

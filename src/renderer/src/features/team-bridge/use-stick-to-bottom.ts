@@ -65,11 +65,14 @@ export function useStickToBottom<T extends HTMLElement = HTMLDivElement>({
 	rootRef: RefObject<T>;
 	pin: () => void;
 	hold: () => void;
+	/** Read the controller, not geometry: hold() unpins without scrolling. */
+	isPinned: () => boolean;
 	newMessages: number;
 } {
 	const rootRef = useRef<T>(null);
 	// A ref, not state: following the bottom must not re-render the timeline.
 	const pinned = useRef(true);
+	const previousLiveEdge = useRef(liveEdgeAvailable);
 	const anchor = useRef<{ id: string; offset: number } | null>(null);
 	const previousRows = useRef<readonly string[]>([]);
 	const [newMessages, setNewMessages] = useState(0);
@@ -134,19 +137,30 @@ export function useStickToBottom<T extends HTMLElement = HTMLDivElement>({
 		pinned.current = false;
 		captureAnchor();
 	}, [captureAnchor]);
+	const isPinned = useCallback(() => pinned.current && liveEdgeAvailable, [liveEdgeAvailable]);
 
 	// Layout effects: the jump happens before paint, so nothing flashes at the top.
 	// biome-ignore lint/correctness/useExhaustiveDependencies: resetKey IS the trigger.
 	useLayoutEffect(() => {
 		pinned.current = liveEdgeAvailable;
+		previousLiveEdge.current = liveEdgeAvailable;
 		anchor.current = null;
 		previousRows.current = rowIds ?? [];
 		if (preserveAnchor) setNewMessages(0);
 		toBottom();
 	}, [resetKey, toBottom]);
-	// biome-ignore lint/correctness/useExhaustiveDependencies: contentKey IS the trigger.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: contentKey and live-edge restoration are the triggers.
 	useLayoutEffect(() => {
+		const restoredLatest = liveEdgeAvailable && !previousLiveEdge.current;
+		previousLiveEdge.current = liveEdgeAvailable;
 		if (!liveEdgeAvailable) pinned.current = false;
+		else if (restoredLatest) {
+			// Explicit latest may return the same IDs: availability, not a row
+			// append, must release the held range and restore the live anchor.
+			pinned.current = true;
+			anchor.current = null;
+			if (preserveAnchor) setNewMessages(0);
+		}
 		if (pinned.current) toBottom();
 		else {
 			restoreAnchor();
@@ -158,7 +172,7 @@ export function useStickToBottom<T extends HTMLElement = HTMLDivElement>({
 			}
 		}
 		previousRows.current = rowIds ?? [];
-	}, [contentKey, toBottom]);
+	}, [contentKey, toBottom, liveEdgeAvailable]);
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: resetKey re-binds the listeners - a new conversation can mount a new viewport.
 	useEffect(() => {
@@ -227,5 +241,5 @@ export function useStickToBottom<T extends HTMLElement = HTMLDivElement>({
 		restoreAnchor,
 	]);
 
-	return { rootRef, pin, hold, newMessages };
+	return { rootRef, pin, hold, isPinned, newMessages };
 }

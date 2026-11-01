@@ -51,7 +51,7 @@ export async function loadThreadPage(
 	target: ThreadTarget,
 	accountId: string,
 	afterSeq?: number,
-	window?: { beforeSeq?: number; order?: "asc" | "desc" },
+	window?: { beforeSeq?: number; order?: "asc" | "desc"; limit?: 1 | 50 },
 ) {
 	return assertThreadPage(
 		await TeamBridgeApi.listReplies(target.conversationId, target.rootId, {
