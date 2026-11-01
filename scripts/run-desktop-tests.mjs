@@ -60,8 +60,13 @@
  */
 
 import { spawn } from "node:child_process";
+import { writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { publishCoordinator } from "./desktop-suite-checkpoints.mjs";
+import {
+	SUITE_STATE_ENV,
+	publishCoordinator,
+} from "./desktop-suite-checkpoints.mjs";
 import {
 	OVERRIDE_ENV,
 	formatDesktopTestConcurrencyLine,
@@ -69,6 +74,7 @@ import {
 } from "./desktop-test-concurrency.mjs";
 import {
 	LANE_DIAGNOSTICS_ENV,
+	STACK_REPORTS_ENV,
 	createLaneBoundWatchdog,
 	formatLaneBoundLine,
 	formatLaneTripLine,
@@ -165,6 +171,24 @@ const fileCount = fileArgs.length;
  */
 const laneArgs = fileArgs.filter((arg) => arg.endsWith(".test.mjs"));
 
+/**
+ * Anchor for the supervisor's kernel census: it must key off the suite's own
+ * first output, not the supervisor's launch, because setup and import cost
+ * minutes before the first test runs.
+ */
+function publishSuiteStart() {
+	const state = process.env[SUITE_STATE_ENV];
+	if (!state) return;
+	try {
+		writeFileSync(
+			join(state, "suite-start.json"),
+			JSON.stringify({ at: Date.now(), pid: process.pid, files: fileCount }),
+		);
+	} catch {
+		/* A marker that cannot be written must never fail a run. */
+	}
+}
+
 const nodeArgs = ["--test"];
 if (explicitFlag === undefined) {
 	const decision = resolveDesktopTestConcurrency();
@@ -175,6 +199,9 @@ if (explicitFlag === undefined) {
 		nodeArgs.push(`--test-concurrency=${decision.concurrency}`);
 	}
 	console.log(formatDesktopTestConcurrencyLine(decision, fileCount));
+	// The supervisor owns the census cadence but cannot see this stdout, so the
+	// cadence is anchored on a marker file written from this exact line.
+	publishSuiteStart();
 } else {
 	const value = explicitFlag.includes("=")
 		? explicitFlag.slice(explicitFlag.indexOf("=") + 1)
@@ -282,6 +309,15 @@ if (diagnosticPath)
 	nodeArgs.unshift(
 		"--import",
 		fileURLToPath(new URL("./desktop-test-lane-bound.mjs", import.meta.url)),
+	);
+// CI opts in to a stack report on SIGUSR2 so the supervisor can ask the
+// coordinator what it was doing at its deadline. Without the directory nothing
+// is added, so a local run behaves exactly as before.
+if (process.env[STACK_REPORTS_ENV])
+	nodeArgs.unshift(
+		"--report-on-signal",
+		"--report-signal=SIGUSR2",
+		`--report-directory=${process.env[STACK_REPORTS_ENV]}`,
 	);
 const child = spawn(process.execPath, nodeArgs, {
 	stdio: "inherit",

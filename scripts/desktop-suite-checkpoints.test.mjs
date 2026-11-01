@@ -5,6 +5,7 @@ import {
 	mkdirSync,
 	mkdtempSync,
 	readFileSync,
+	rmSync,
 	writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -555,6 +556,518 @@ test("A2: identity, publication and observer startup failures reap only the owne
 			await sentinelExit;
 		}
 	}
+});
+
+test("stack capture reports a waiting node process at the deadline", async () => {
+	const a = await api();
+	const reports = mkdtempSync(join(tmpdir(), "stack-reports-"));
+	const f = fixture(
+		`'${process.execPath}' --report-on-signal --report-signal=SIGUSR2 --report-directory='${reports}' -e 'setInterval(()=>{},1000)' & wait`,
+	);
+	process.env.LOCAL_OPERATOR_UI_STACK_REPORTS = reports;
+	try {
+		a.launch({
+			state: f.state,
+			shell: f.shell,
+			durationMs: 1500,
+			setupStarted: Date.now(),
+			witnessMs: 200,
+		});
+		const result = await a.awaitResult({ state: f.state });
+		assert.equal(
+			result.code,
+			124,
+			"capture must not change the deadline verdict",
+		);
+		assert.equal(result.reason, "absolute-deadline");
+		const capture = JSON.parse(
+			readFileSync(join(f.state, "stack-capture.json"), "utf8"),
+		);
+		assert.ok(
+			capture.sent.length >= 1,
+			"the still-live coordinator must be asked for a report",
+		);
+		assert.ok(
+			capture.written.length >= 1,
+			"an idle event loop answers SIGUSR2 with a report",
+		);
+		const report = JSON.parse(
+			readFileSync(join(reports, capture.written[0]), "utf8"),
+		);
+		assert.ok(
+			Array.isArray(report.javascriptStack?.stack) ||
+				typeof report.javascriptStack === "string" ||
+				report.javascriptStack,
+			"the report must carry a JS stack",
+		);
+	} finally {
+		Reflect.deleteProperty(process.env, "LOCAL_OPERATOR_UI_STACK_REPORTS");
+		rmSync(reports, { recursive: true, force: true });
+	}
+});
+
+test("stack capture reports the measured boundary for a hard-blocked loop", async () => {
+	const a = await api();
+	const reports = mkdtempSync(join(tmpdir(), "stack-busy-"));
+	const f = fixture(
+		`'${process.execPath}' --report-on-signal --report-signal=SIGUSR2 --report-directory='${reports}' -e 'process.on("SIGTERM",()=>{});while(true){}' & wait`,
+	);
+	process.env.LOCAL_OPERATOR_UI_STACK_REPORTS = reports;
+	try {
+		a.launch({
+			state: f.state,
+			shell: f.shell,
+			durationMs: 1500,
+			setupStarted: Date.now(),
+			witnessMs: 200,
+		});
+		const result = await a.awaitResult({ state: f.state });
+		assert.equal(result.code, 124);
+		const capture = JSON.parse(
+			readFileSync(join(f.state, "stack-capture.json"), "utf8"),
+		);
+		// MEASURED, not assumed: node services its report signal on the event
+		// loop, so a loop that never turns writes nothing. Pinned so the
+		// instrument is never credited with covering this class.
+		assert.deepEqual(
+			capture.written,
+			[],
+			"a hard-blocked loop cannot answer SIGUSR2 with a report",
+		);
+	} finally {
+		Reflect.deleteProperty(process.env, "LOCAL_OPERATOR_UI_STACK_REPORTS");
+		rmSync(reports, { recursive: true, force: true });
+	}
+});
+
+test("stack capture skips an already-gone pid without failing the run", async () => {
+	const a = await api();
+	const reports = mkdtempSync(join(tmpdir(), "stack-gone-"));
+	process.env.LOCAL_OPERATOR_UI_STACK_REPORTS = reports;
+	try {
+		const state = mkdtempSync(join(tmpdir(), "stack-gone-state-"));
+		writeFileSync(
+			join(state, "config.json"),
+			JSON.stringify({
+				state,
+				pipeline: { pid: 999999, pgid: 999999, start: "gone", pidGone: true },
+				launcher: a.identity(process.pid),
+			}),
+		);
+		const capture = await a.captureStacks(
+			state,
+			JSON.parse(readFileSync(join(state, "config.json"), "utf8")),
+			{ waitMs: 100 },
+		);
+		assert.deepEqual(capture.sent, [], "a vanished pid is never signalled");
+		assert.ok(
+			capture.skipped.length >= 1,
+			"the skip is recorded rather than thrown",
+		);
+		assert.deepEqual(capture.written, []);
+	} finally {
+		Reflect.deleteProperty(process.env, "LOCAL_OPERATOR_UI_STACK_REPORTS");
+		rmSync(reports, { recursive: true, force: true });
+	}
+});
+
+/**
+ * A synthetic /proc tree. The census is the same code with procRoot=/proc on a
+ * Linux runner; this fixture lets the parsing and the byte cap be exercised on
+ * this Darwin host, where /proc does not exist at all.
+ */
+const procFixture = (pids) => {
+	const root = mkdtempSync(join(tmpdir(), "proc-fixture-"));
+	for (const [pid, spec] of Object.entries(pids)) {
+		const dir = join(root, String(pid));
+		mkdirSync(dir, { recursive: true });
+		const fields = new Array(50).fill("0");
+		fields[0] = spec.state ?? "S";
+		fields[11] = String(spec.userTicks ?? 0);
+		fields[12] = String(spec.systemTicks ?? 0);
+		writeFileSync(join(dir, "stat"), `${pid} (node) ${fields.join(" ")}\n`);
+		writeFileSync(join(dir, "wchan"), `${spec.wchan ?? "0"}\n`);
+		writeFileSync(join(dir, "syscall"), `${spec.syscall ?? "running"}\n`);
+		writeFileSync(
+			join(dir, "status"),
+			`Name:\tnode\nvoluntary_ctxt_switches:\t${spec.voluntary ?? 3}\n`,
+		);
+		writeFileSync(
+			join(dir, "io"),
+			`rchar: ${spec.rchar ?? 100}\nwchar: ${spec.wchar ?? 100}\n`,
+		);
+	}
+	return root;
+};
+
+test("kernel census names a pipe-blocked process from the kernel alone", async () => {
+	const a = await api();
+	const state = mkdtempSync(join(tmpdir(), "census-pipe-state-"));
+	if (process.platform === "linux") {
+		// Real path: a writer with no reader blocks inside the kernel, where no
+		// JS loop can answer a signal. Linux-only because it needs a real /proc.
+		const dir = mkdtempSync(join(tmpdir(), "census-pipe-"));
+		const fifo = join(dir, "undrained");
+		execFileSync("mkfifo", [fifo]);
+		const child = spawn(
+			process.execPath,
+			[
+				"-e",
+				`const fs=require("node:fs"); const b=Buffer.alloc(4*1024*1024); const fd=fs.openSync(${JSON.stringify(fifo)}, "w"); fs.writeSync(fd, b);`,
+			],
+			{ detached: true, stdio: "ignore" },
+		);
+		try {
+			await pause(400);
+			const sample = await a.captureKernelCensus(
+				state,
+				{ targets: [a.identity(child.pid)] },
+				{ index: 0 },
+			);
+			const row = sample.rows.find((r) => r.pid === child.pid);
+			assert.ok(row, "the blocked child must appear in the census");
+			assert.notEqual(row.state, "Z");
+			assert.match(
+				`${row.wchan ?? ""} ${row.syscall?.name ?? ""}`,
+				/pipe|write|openat/i,
+				`expected a pipe/write wait, got ${JSON.stringify(row)}`,
+			);
+			assert.ok(Buffer.byteLength(JSON.stringify(sample)) <= 4096);
+		} finally {
+			child.kill("SIGKILL");
+			await new Promise((r) => child.once("exit", r));
+			rmSync(dir, { recursive: true, force: true });
+		}
+		return;
+	}
+	// Darwin: the kernel fields are injected, the reading and naming are not.
+	const root = procFixture({
+		4242: {
+			state: "S",
+			wchan: "pipe_wait",
+			syscall: "1 0x7f 0x55 0x1000 0 0 0",
+			userTicks: 11,
+		},
+	});
+	try {
+		const sample = await a.captureKernelCensus(
+			state,
+			{ targets: [{ pid: 4242 }] },
+			{ index: 0, procRoot: root },
+		);
+		const row = sample.rows[0];
+		assert.equal(row.state, "S");
+		assert.equal(row.wchan, "pipe_wait");
+		assert.equal(row.syscall.name, "write");
+		assert.equal(row.voluntarySwitches, 3);
+		assert.ok(Buffer.byteLength(JSON.stringify(sample)) <= 4096);
+	} finally {
+		rmSync(root, { recursive: true, force: true });
+	}
+});
+
+test("kernel census shows a spinning process in state R with advancing time", async () => {
+	const a = await api();
+	const state = mkdtempSync(join(tmpdir(), "census-spin-state-"));
+	if (process.platform === "linux") {
+		const child = spawn(process.execPath, ["-e", "while(true){}"], {
+			detached: true,
+			stdio: "ignore",
+		});
+		try {
+			await pause(300);
+			const first = await a.captureKernelCensus(
+				state,
+				{ targets: [a.identity(child.pid)] },
+				{ index: 0 },
+			);
+			await pause(600);
+			const second = await a.captureKernelCensus(
+				state,
+				{ targets: [a.identity(child.pid)] },
+				{ index: 1 },
+			);
+			const row = second.rows.find((r) => r.pid === child.pid);
+			assert.equal(row.state, "R");
+			const before = first.rows.find((r) => r.pid === child.pid);
+			assert.ok(
+				row.userTicks > before.userTicks,
+				"a spinning child must accrue user time",
+			);
+		} finally {
+			child.kill("SIGKILL");
+			await new Promise((r) => child.once("exit", r));
+		}
+		return;
+	}
+	const root = procFixture({
+		4343: { state: "R", syscall: "running", userTicks: 100, rchar: 10 },
+	});
+	try {
+		await a.captureKernelCensus(
+			state,
+			{ targets: [{ pid: 4343 }] },
+			{ index: 0, procRoot: root },
+		);
+		writeFileSync(
+			join(root, "4343", "stat"),
+			`4343 (node) ${["R", ...new Array(10).fill("0"), "160", "0", ...new Array(37).fill("0")].join(" ")}\n`,
+		);
+		writeFileSync(join(root, "4343", "io"), "rchar: 4100\nwchar: 100\n");
+		const second = await a.captureKernelCensus(
+			state,
+			{ targets: [{ pid: 4343 }] },
+			{ index: 1, procRoot: root },
+		);
+		const row = second.rows[0];
+		assert.equal(row.state, "R");
+		assert.equal(row.userTicks, 160);
+		assert.equal(
+			row.io.rcharDelta,
+			4090,
+			"io deltas are computed against the previous sample",
+		);
+	} finally {
+		rmSync(root, { recursive: true, force: true });
+	}
+});
+
+test("kernel census file stays within its byte and sample caps", async () => {
+	const a = await api();
+	const state = mkdtempSync(join(tmpdir(), "census-cap-state-"));
+	const pids = Object.fromEntries(
+		Array.from({ length: 14 }, (_, i) => [
+			5000 + i,
+			{
+				state: "S",
+				wchan: `wait_channel_${i}`,
+				syscall: "202 0x1 0x2 0x3 0x4 0x5 0x6",
+				userTicks: i,
+				rchar: 1000 + i,
+			},
+		]),
+	);
+	const root = procFixture(pids);
+	try {
+		const targets = Object.keys(pids).map((pid) => ({ pid: Number(pid) }));
+		for (let index = 0; index < 10; index++) {
+			const sample = await a.captureKernelCensus(
+				state,
+				{ targets },
+				{ index, procRoot: root },
+			);
+			if (index < 8)
+				assert.ok(
+					Buffer.byteLength(JSON.stringify(sample)) <= 4096,
+					`sample ${index} exceeded 4 KiB`,
+				);
+			else assert.equal(sample.skipped, "sample-cap");
+		}
+		const lines = readFileSync(join(state, "kernel-census.jsonl"), "utf8")
+			.trim()
+			.split("\n");
+		assert.equal(
+			lines.length,
+			8,
+			"the sample count is bounded; extra probes write nothing",
+		);
+		for (const line of lines)
+			assert.ok(
+				Buffer.byteLength(line) <= 4096,
+				"every sample line stays within 4 KiB",
+			);
+	} finally {
+		rmSync(root, { recursive: true, force: true });
+	}
+});
+
+test("kernel census skips cleanly with a recorded reason off Linux", async () => {
+	const a = await api();
+	const state = mkdtempSync(join(tmpdir(), "census-platform-state-"));
+	const sample = await a.captureKernelCensus(
+		state,
+		{ targets: [] },
+		{ index: 0 },
+	);
+	if (process.platform === "linux") assert.equal(sample.skipped, undefined);
+	else {
+		assert.match(sample.skipped, /linux/i);
+		assert.deepEqual(sample.rows, []);
+		assert.ok(
+			existsSync(join(state, "kernel-census.jsonl")),
+			"the skip is still recorded for a reader",
+		);
+	}
+});
+
+test("the supervisor emits census samples from suite start and stops at the deadline", async () => {
+	const a = await api();
+	const census = join(
+		mkdtempSync(join(tmpdir(), "census-wiring-")),
+		"kernel-census.jsonl",
+	);
+	const state = mkdtempSync(join(tmpdir(), "census-wiring-state-"));
+	// The marker the runner writes at its first output line. The fixture stands
+	// in for the runner's marker, not for the supervisor's polling, which is the
+	// production path under test here.
+	// Written where the production runner writes it: the supervisor passes its
+	// own state directory to the shell as LOCAL_OPERATOR_UI_SUITE_STATE.
+	const marker = `printf '{"at":1600000000000}' > "$LOCAL_OPERATOR_UI_SUITE_STATE/suite-start.json"; sleep 8`;
+	const f = fixture(marker);
+	process.env.LOCAL_OPERATOR_UI_KERNEL_CENSUS = census;
+	process.env.LOCAL_OPERATOR_UI_CENSUS_INTERVAL_MS = "120";
+	try {
+		a.launch({
+			state: f.state,
+			shell: f.shell,
+			durationMs: 3000,
+			setupStarted: Date.now(),
+			witnessMs: 200,
+		});
+		const result = await a.awaitResult({ state: f.state });
+		assert.equal(
+			result.code,
+			124,
+			"the census must not change the deadline verdict",
+		);
+		const lines = readFileSync(census, "utf8")
+			.trim()
+			.split("\n")
+			.filter(Boolean);
+		assert.ok(
+			lines.length >= 2,
+			`expected periodic samples, got ${lines.length}`,
+		);
+		const samples = lines.map((line) => JSON.parse(line));
+		assert.deepEqual(
+			samples.map((s) => s.index),
+			samples.map((_, i) => i),
+			"samples are sequentially indexed from the suite-start marker",
+		);
+		for (const line of lines)
+			assert.ok(
+				Buffer.byteLength(line) <= 4096,
+				"the real periodic writes stay within 4 KiB",
+			);
+		assert.ok(samples.length <= 8, "the sample count is bounded");
+		if (process.platform === "linux")
+			assert.ok(
+				samples.some((s) => (s.rows ?? []).length > 0),
+				"a linux run names at least one owned pid",
+			);
+		else
+			assert.equal(
+				samples[0].skipped,
+				"unsupported-platform: /proc census is linux-only",
+			);
+		// Nothing may be emitted after the deadline: the last index stays below
+		// the bound and no sample carries an `at` past the deadline plus a tick.
+		assert.ok(
+			samples.every((s) => s.at <= result.at + 50 || s.at <= Date.now()),
+		);
+	} finally {
+		Reflect.deleteProperty(process.env, "LOCAL_OPERATOR_UI_KERNEL_CENSUS");
+		Reflect.deleteProperty(process.env, "LOCAL_OPERATOR_UI_CENSUS_INTERVAL_MS");
+	}
+});
+
+test("census falls back to launch basis when the suite-start marker never arrives", async () => {
+	const a = await api();
+	const census = join(
+		mkdtempSync(join(tmpdir(), "census-nomarker-")),
+		"kernel-census.jsonl",
+	);
+	const f = fixture("sleep 8");
+	process.env.LOCAL_OPERATOR_UI_KERNEL_CENSUS = census;
+	process.env.LOCAL_OPERATOR_UI_CENSUS_INTERVAL_MS = "150";
+	try {
+		a.launch({
+			state: f.state,
+			shell: f.shell,
+			durationMs: 2500,
+			setupStarted: Date.now(),
+			witnessMs: 200,
+		});
+		// Mid-flight: a synthetic subject that never prints the runner's marker
+		// must not cause an early terminal on any consumer.
+		await pause(900);
+		assert.equal(
+			existsSync(join(f.state, "terminal.json")),
+			false,
+			"no terminal may be published before the launch-anchored bound",
+		);
+		const result = await a.awaitResult({ state: f.state });
+		assert.equal(result.code, 124, "the fallback never changes the verdict");
+		const samples = readFileSync(census, "utf8")
+			.trim()
+			.split("\n")
+			.filter(Boolean)
+			.map((line) => JSON.parse(line));
+		assert.ok(samples.length >= 2, "sampling continues without a marker");
+		assert.ok(
+			samples.every((s) => s.basis === "launch"),
+			"the absence is recorded on every sample rather than waited on silently",
+		);
+		assert.ok(
+			Buffer.byteLength(JSON.stringify(samples[samples.length - 1])) <= 4096,
+		);
+	} finally {
+		Reflect.deleteProperty(process.env, "LOCAL_OPERATOR_UI_KERNEL_CENSUS");
+		Reflect.deleteProperty(process.env, "LOCAL_OPERATOR_UI_CENSUS_INTERVAL_MS");
+	}
+});
+
+test("the transport-probe shape publishes no terminal before its own bound", async () => {
+	const a = await api();
+	// The probe's subject: blocks on an undrained fifo until a release file
+	// appears, and never prints a suite-start marker.
+	// Paths come from the supervisor-provided state directory, never the repo
+	// cwd, so the control cannot leave a fifo behind or trip on an old one.
+	const f = fixture(
+		'mkfifo "$LOCAL_OPERATOR_UI_SUITE_STATE/tick.fifo"; exec 9<> "$LOCAL_OPERATOR_UI_SUITE_STATE/tick.fifo"; while [[ ! -f "$LOCAL_OPERATOR_UI_SUITE_STATE/release" ]]; do read -r -t 0.2 <&9 || :; done',
+	);
+	a.launch({
+		state: f.state,
+		shell: f.shell,
+		durationMs: 3000,
+		setupStarted: Date.now(),
+		witnessMs: 200,
+	});
+	await pause(1200);
+	assert.equal(
+		existsSync(join(f.state, "terminal.json")),
+		false,
+		"the blocked subject must still be running at the compare step",
+	);
+	const witness = JSON.parse(
+		readFileSync(join(f.state, "witness.json"), "utf8"),
+	);
+	assert.ok(witness.sequence > 0, "the independent witness is alive meanwhile");
+	writeFileSync(join(f.state, "release"), "");
+	const result = await a.awaitResult({ state: f.state });
+	assert.notEqual(result.code, undefined);
+});
+
+test("no census file is created when the probe environment is unset", async () => {
+	const a = await api();
+	const state = mkdtempSync(join(tmpdir(), "census-unset-state-"));
+	const f = fixture("sleep 8");
+	Reflect.deleteProperty(process.env, "LOCAL_OPERATOR_UI_KERNEL_CENSUS");
+	a.launch({
+		state: f.state,
+		shell: f.shell,
+		durationMs: 900,
+		setupStarted: Date.now(),
+		witnessMs: 200,
+	});
+	const result = await a.awaitResult({ state: f.state });
+	assert.equal(result.code, 124);
+	assert.equal(
+		existsSync(join(state, "kernel-census.jsonl")),
+		false,
+		"no probe starts without the env",
+	);
+	assert.equal(existsSync(join(f.state, "kernel-census.jsonl")), false);
 });
 
 test("checkpoint: missing terminal receipt cannot pass", async () => {

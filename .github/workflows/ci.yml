@@ -737,6 +737,12 @@ jobs:
         timeout-minutes: 1
         env:
           LOCAL_OPERATOR_UI_LANE_DIAGNOSTICS: ${{ runner.temp }}/desktop-lifecycle-${{ matrix.shard }}.jsonl
+          # The supervisor asks the coordinator for a stack report at its own
+          # deadline; without this the runner adds no report flags at all.
+          LOCAL_OPERATOR_UI_STACK_REPORTS: ${{ runner.temp }}/stack-reports
+          # Linux-only /proc census: names a hard-blocked process that cannot
+          # answer the SIGUSR2 report above.
+          LOCAL_OPERATOR_UI_KERNEL_CENSUS: ${{ runner.temp }}/kernel-census-${{ matrix.shard }}.jsonl
         run: node scripts/desktop-suite-checkpoints.mjs launch "${{ runner.temp }}/desktop-supervisor-${{ matrix.shard }}" scripts/desktop-suite-step.sh "$DESKTOP_SETUP_STARTED_MS"
 
       - name: Freeze early desktop witness checkpoint
@@ -815,6 +821,28 @@ jobs:
         # so a red suite, a truncated run and a renamed script are all still red.
         # What changed is that they are red WITH a reason.
         run: node scripts/desktop-suite-checkpoints.mjs await "${{ runner.temp }}/desktop-supervisor-${{ matrix.shard }}"
+
+      # The frame that was blocking, captured at the supervisor's deadline. It
+      # must never fail the job: a run with no capture is exactly the case this
+      # instrument exists to improve, not one to turn red.
+      - name: Print captured stack reports
+        if: ${{ always() }}
+        run: |
+          echo "stack reports directory: $STACK_REPORTS"
+          ls -l "$STACK_REPORTS" 2>/dev/null || echo "no stack reports captured"
+        env:
+          STACK_REPORTS: ${{ runner.temp }}/stack-reports
+
+      - name: Upload deadline stack reports
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-stack-reports-${{ github.run_id }}-${{ github.run_attempt }}-shard-${{ matrix.shard }}
+          path: |
+            ${{ runner.temp }}/stack-reports
+            ${{ runner.temp }}/kernel-census-*.jsonl
+          if-no-files-found: warn
+          retention-days: 7
 
       # A CEILING CANNOT NAME A MULTI-MEGABYTE LINE, so this step does. It is
       # deliberately a SEPARATE step: the suite step's body is extracted and run

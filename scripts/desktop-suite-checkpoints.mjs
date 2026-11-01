@@ -11,6 +11,7 @@
  */
 import { execFileSync, spawn } from "node:child_process";
 import {
+	appendFileSync,
 	closeSync,
 	existsSync,
 	mkdirSync,
@@ -31,6 +32,19 @@ import { isEntryPoint } from "./entry-point.mjs";
 const SELF = fileURLToPath(import.meta.url);
 export const SUITE_MS = 45 * 60_000;
 export const JOB_MS = 50 * 60_000;
+/** Opt-in: node stack reports on SIGUSR2, written into this directory. */
+export const STACK_REPORTS_ENV = "LOCAL_OPERATOR_UI_STACK_REPORTS";
+export const STACK_REPORT_SIGNAL = "SIGUSR2";
+/** Opt-in: kernel census JSONL path. Unset means the probe never starts. */
+export const KERNEL_CENSUS_ENV = "LOCAL_OPERATOR_UI_KERNEL_CENSUS";
+export const KERNEL_CENSUS_SAMPLES = 8;
+export const KERNEL_CENSUS_BYTES = 4096;
+export const KERNEL_CENSUS_INTERVAL_MS = 5 * 60_000;
+/** Test-only override so a control can prove the cadence without waiting. */
+export const KERNEL_CENSUS_INTERVAL_ENV =
+	"LOCAL_OPERATOR_UI_CENSUS_INTERVAL_MS";
+/** Where the runner drops its anchored suite-start marker for the supervisor. */
+export const SUITE_STATE_ENV = "LOCAL_OPERATOR_UI_SUITE_STATE";
 const pause = (ms) => new Promise((r) => setTimeout(r, ms));
 const atomic = (path, value) => {
 	writeFileSync(`${path}.next`, `${JSON.stringify(value)}\n`);
@@ -49,7 +63,7 @@ const optional = (path) => {
 export function identity(pid) {
 	try {
 		if (process.platform === "linux") {
-			const text = readFileSync(`/proc/${pid}/stat`, "utf8");
+			const text = readFileSync(`${procRoot}/${pid}/stat`, "utf8");
 			const fields = text.slice(text.lastIndexOf(")") + 2).split(" ");
 			return {
 				pid,
@@ -130,7 +144,7 @@ export function snapshot(config) {
 			row.endpoints = [];
 			try {
 				try {
-					row.waitChannel = readFileSync(`/proc/${pid}/wchan`, "utf8")
+					row.waitChannel = readFileSync(`${procRoot}/${pid}/wchan`, "utf8")
 						.slice(0, 64)
 						.trim();
 				} catch {
@@ -366,6 +380,257 @@ export function launch({
 	return config;
 }
 
+/**
+ * Ask every owned, still-live process for a stack report at the deadline.
+ *
+ * WHY HERE. The shard logs that end mid-stream keep the per-lane bound armed
+ * and never name a lane, so the instrument that names a blocking frame must
+ * live outside the process that froze. Node writes a report on SIGUSR2 only
+ * while the target's own event loop is still turning, so this covers the
+ * WAITING class (for example a coordinator parked on a pipe it will never
+ * drain) and not a process whose loop is hard-blocked; that boundary is pinned
+ * by a control rather than papered over.
+ *
+ * It never decides a verdict and never fails a job: capture is best effort and
+ * the existing kill path runs unchanged afterwards.
+ */
+export async function captureStacks(
+	state,
+	config,
+	{ signal = STACK_REPORT_SIGNAL, waitMs = 2000 } = {},
+) {
+	const reportDirectory = process.env[STACK_REPORTS_ENV] ?? null;
+	const sent = [];
+	const skipped = [];
+	// Default off, deliberately: SIGUSR2 without --report-on-signal terminates a
+	// node process, and this instrument may not change how a suite dies outside
+	// the CI job that opts in.
+	if (reportDirectory) {
+		// Only node processes answer SIGUSR2 with a report; any other owned
+		// process would simply die of it, so the signal is scoped by command name
+		// as well as by ownership and liveness.
+		const rows = (snapshot(config).rows ?? []).filter(
+			(row) =>
+				row.pid > 1 &&
+				row.pid !== process.pid &&
+				!(row.state ?? "").startsWith("Z") &&
+				/(^|\/)(node|nodejs)$/u.test(commandName(row.pid)),
+		);
+		for (const row of rows) {
+			try {
+				process.kill(row.pid, signal);
+				sent.push(row.pid);
+			} catch {
+				skipped.push(row.pid);
+			}
+		}
+		if (rows.length === 0) skipped.push("no-owned-live-pid");
+	}
+	const entry = {
+		at: Date.now(),
+		signal,
+		reportDirectory,
+		sent,
+		skipped,
+	};
+	atomic(join(state, "stack-capture.json"), entry);
+	await pause(waitMs);
+	const written = reportDirectory ? reportNames(reportDirectory) : [];
+	atomic(join(state, "stack-capture.json"), { ...entry, written });
+	return { ...entry, written };
+}
+
+/**
+ * Linux-only kernel census of the owned processes.
+ *
+ * WHY THIS EXISTS. A process blocked inside the kernel (a write into a pipe no
+ * one drains) cannot answer SIGUSR2, because node services that report on its
+ * event loop. These rows come from plain /proc reads, so they need no
+ * cooperation from the target and name the wait: state char, wchan, syscall,
+ * context switches and io deltas. Identities and syscalls only - never argv,
+ * environment or command line. Off Linux the probe records why it skipped and
+ * local runs stay green.
+ */
+export async function captureKernelCensus(
+	state,
+	config,
+	{ index = 0, procRoot = "/proc", basis = "suite-start" } = {},
+) {
+	const file =
+		process.env[KERNEL_CENSUS_ENV] || join(state, "kernel-census.jsonl");
+	const base = { index, at: Date.now(), basis };
+	if (index >= KERNEL_CENSUS_SAMPLES)
+		return { ...base, rows: [], skipped: "sample-cap" };
+	if (process.platform !== "linux" && procRoot === "/proc") {
+		const skipped = {
+			...base,
+			rows: [],
+			skipped: "unsupported-platform: /proc census is linux-only",
+		};
+		appendLine(file, skipped);
+		return skipped;
+	}
+	const targets = config.targets ?? ownedTargets(config);
+	const previous = lastCensusRows(file);
+	const rows = [];
+	for (const target of targets) {
+		if (rows.length === 12) break;
+		const pid = target?.pid;
+		if (!(pid > 1)) continue;
+		const row = censusRow(pid, previous.get(pid), procRoot);
+		if (row) rows.push(row);
+	}
+	let sample = { ...base, rows };
+	// The cap is on the whole sample, not per row: drop trailing rows rather
+	// than emit a truncated JSON line a reader cannot parse.
+	while (
+		rows.length > 0 &&
+		Buffer.byteLength(JSON.stringify(sample)) > KERNEL_CENSUS_BYTES
+	)
+		sample = {
+			...base,
+			rows: rows.slice(0, sample.rows.length - 1),
+			truncated: true,
+		};
+	appendLine(file, sample);
+	return sample;
+}
+
+/** Owned, identity-matching, live pids only; zombies are recorded, not hidden. */
+function ownedTargets(config) {
+	try {
+		return (snapshot(config).rows ?? []).filter(
+			(row) => row.pid > 1 && row.pid !== process.pid,
+		);
+	} catch {
+		return [];
+	}
+}
+
+function censusRow(pid, before, procRoot = "/proc") {
+	const read = (path) => {
+		try {
+			return readFileSync(path, "utf8");
+		} catch {
+			return null;
+		}
+	};
+	const stat = read(`${procRoot}/${pid}/stat`);
+	if (!stat) return null;
+	// Field 3 is the state char; fields 14/15 are utime/stime in clock ticks.
+	const close = stat.lastIndexOf(")");
+	const fields = stat.slice(close + 2).split(" ");
+	const status = read(`${procRoot}/${pid}/status`) ?? "";
+	const counters = {};
+	for (const line of status.split("\n"))
+		if (line.startsWith("voluntary_ctxt_switches:"))
+			counters.voluntary = Number(line.split(":")[1]);
+	const io = read(`${procRoot}/${pid}/io`) ?? "";
+	const ioNow = {};
+	for (const line of io.split("\n")) {
+		const [key, value] = line.split(": ");
+		if (key === "rchar" || key === "wchar") ioNow[key] = Number(value);
+	}
+	const syscallRaw = (read(`${procRoot}/${pid}/syscall`) ?? "")
+		.trim()
+		.slice(0, 64);
+	const row = {
+		pid,
+		state: fields[0],
+		userTicks: Number(fields[11]),
+		systemTicks: Number(fields[12]),
+		wchan:
+			(read(`${procRoot}/${pid}/wchan`) ?? "").trim().slice(0, 32) || undefined,
+		syscall: syscallRaw ? describeSyscall(syscallRaw) : undefined,
+		voluntarySwitches: Number.isFinite(counters.voluntary)
+			? counters.voluntary
+			: undefined,
+		io: {
+			rchar: ioNow.rchar,
+			wchar: ioNow.wchar,
+			rcharDelta: delta(ioNow.rchar, before?.rchar),
+			wcharDelta: delta(ioNow.wchar, before?.wchar),
+		},
+	};
+	return row;
+}
+
+const delta = (now, before) =>
+	Number.isFinite(now) && Number.isFinite(before) ? now - before : undefined;
+
+const SYSCALL_NAMES = {
+	0: "read",
+	1: "write",
+	7: "poll",
+	23: "select",
+	35: "nanosleep",
+	61: "wait4",
+	202: "futex",
+	232: "epoll_wait",
+	257: "openat",
+	271: "ppoll",
+	281: "epoll_pwait",
+	288: "accept4",
+};
+
+/** Kernel line is "running" for a userspace process, else number + args. */
+function describeSyscall(raw) {
+	if (raw.startsWith("running")) return { name: "running" };
+	const [number] = raw.split(" ");
+	if (!/^\d+$/u.test(number ?? "")) return undefined;
+	return {
+		number: Number(number),
+		name: SYSCALL_NAMES[Number(number)] ?? "unknown",
+	};
+}
+
+/** Previous sample's counters, so io deltas survive across probes and restarts. */
+function lastCensusRows(file) {
+	const map = new Map();
+	try {
+		const lines = readFileSync(file, "utf8").trim().split("\n").filter(Boolean);
+		const last = JSON.parse(lines[lines.length - 1]);
+		for (const row of last.rows ?? []) map.set(row.pid, row.io ?? {});
+	} catch {
+		/* First probe, or an unreadable file: deltas simply start here. */
+	}
+	return map;
+}
+
+function appendLine(file, value) {
+	try {
+		appendFileSync(file, `${JSON.stringify(value)}\n`);
+	} catch {
+		/* A census that cannot be written must never fail a suite. */
+	}
+}
+
+/** The executable name only; never argv or environment. */
+function commandName(pid) {
+	try {
+		if (process.platform === "linux")
+			return readFileSync(`/proc/${pid}/comm`, "utf8").trim();
+		return execFileSync("ps", ["-p", String(pid), "-o", "comm="], {
+			encoding: "utf8",
+			timeout: 500,
+		}).trim();
+	} catch {
+		return "";
+	}
+}
+
+/** Report files a capture produced, bounded and sorted for a stable artifact. */
+export function reportNames(directory) {
+	try {
+		return readdirSync(directory)
+			.filter((name) => name.endsWith(".json"))
+			.sort()
+			.slice(0, 64);
+	} catch {
+		return [];
+	}
+}
+
 // Dependency injection only exercises startup-failure boundaries in synthetic
 // processes; production CLI always uses these exact defaults, with no env knob.
 export async function worker(
@@ -405,6 +670,9 @@ export async function worker(
 				...process.env,
 				GITHUB_OUTPUT: join(state, "outputs"),
 				LOCAL_OPERATOR_UI_COORDINATOR_IDENTITY: join(state, "coordinator.json"),
+				// The runner writes its first-output marker here: the supervisor
+				// owns the probe cadence and cannot see the suite's stdout.
+				LOCAL_OPERATOR_UI_SUITE_STATE: state,
 			},
 		},
 	);
@@ -470,8 +738,82 @@ export async function worker(
 	};
 	for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"])
 		process.on(signal, () => stop(signal, signal));
+	// Kernel census: a plain-file probe that needs nothing from the target, so it
+	// names the hard-blocked class a SIGUSR2 report cannot cover. It MUST run in
+	// this supervisor, never the coordinator, which is the process that freezes.
+	// Cadence is anchored to the runner's own first output: the runner drops
+	// suite-start.json here as it prints its cardinality line, so the first
+	// sample lands at suite start, the rest ride a fixed interval, the count is
+	// bounded and nothing is emitted past the deadline.
+	let censusIndex = 0;
+	let censusTimer = null;
+	let censusWatcher = null;
+	const censusInterval = Math.max(
+		1,
+		Number(
+			process.env[KERNEL_CENSUS_INTERVAL_ENV] ?? KERNEL_CENSUS_INTERVAL_MS,
+		) || KERNEL_CENSUS_INTERVAL_MS,
+	);
+	let censusBasis = "launch";
+	const emitCensus = () => {
+		try {
+			if (
+				censusIndex >= KERNEL_CENSUS_SAMPLES ||
+				Date.now() >= config.deadline
+			) {
+				if (censusTimer) clearInterval(censusTimer);
+				censusTimer = null;
+				return;
+			}
+			void captureKernelCensus(state, config, {
+				index: censusIndex++,
+				basis: censusBasis,
+			}).catch(() => undefined);
+		} catch {
+			/* A census probe may never take the deadline owner down with it. */
+		}
+	};
+	if (process.env[KERNEL_CENSUS_ENV]) {
+		// The marker may never arrive (a synthetic subject, a suite that dies
+		// during import). The census must still sample - launch-anchored - and
+		// say so, because a probe that waited silently for a marker would be the
+		// same blind spot it exists to remove. It never moves the deadline: that
+		// bound is fixed by launch() from the requested duration, and nothing
+		// here can create, shorten or publish around it.
+		const startWatch = setInterval(() => {
+			try {
+				if (!existsSync(join(state, "suite-start.json"))) return;
+				if (censusWatcher) clearInterval(censusWatcher);
+				censusWatcher = null;
+				censusBasis = "suite-start";
+				emitCensus();
+				censusTimer = setInterval(emitCensus, censusInterval);
+				censusTimer?.unref?.();
+			} catch {
+				/* Polling failures are not suite failures. */
+			}
+		}, 250);
+		censusWatcher = startWatch;
+		censusWatcher?.unref?.();
+		// First sample is launch-anchored unless the marker is already present.
+		emitCensus();
+		censusTimer = setInterval(emitCensus, censusInterval);
+		censusTimer?.unref?.();
+	}
+	let capturedStacks = false;
 	const deadline = setTimeout(
-		() => stop("absolute-deadline"),
+		() => {
+			// Capture BEFORE the kill path so a live-but-parked process still answers;
+			// the reap itself is unchanged, only delayed by the bounded wait. The
+			// reason is pinned first so a target that dies of the report signal can
+			// never turn the deadline verdict into an unattributed signal death.
+			if (capturedStacks) return stop("absolute-deadline");
+			capturedStacks = true;
+			reason = "absolute-deadline";
+			void captureStacks(state, config)
+				.catch(() => undefined)
+				.finally(() => stop("absolute-deadline"));
+		},
 		Math.max(0, config.deadline - Date.now()),
 	);
 	// Ownership is armed before any fallible startup lookup/publication. A
