@@ -1636,10 +1636,17 @@ export const askQueueView = (
 	/*
 	 * The local record corrects a frame that has not caught up with an act this surface
 	 * saw accepted (`askWithLocalSettle`). The wire's own `asks_open` predates that act
-	 * too, so every row the record moved out of `open` comes off it below.
+	 * too, so only an actual outstanding→settled transition comes off it below.
+	 * Object identity is not queue membership: a revision can replace the answer
+	 * map on an already-answered row, which the authoritative tally already excludes.
+	 * Subtracting that replacement would hide an unrelated outstanding decision.
 	 */
 	const settledLocally = asks.filter(
-		(ask) => askWithLocalSettle(ask, outcomes?.[ask.ask_id], sessionId) !== ask,
+		(ask) =>
+			OPEN_STATUSES.has(ask.status) &&
+			!OPEN_STATUSES.has(
+				askWithLocalSettle(ask, outcomes?.[ask.ask_id], sessionId).status,
+			),
 	).length;
 	const rows = asks
 		.map((ask) =>

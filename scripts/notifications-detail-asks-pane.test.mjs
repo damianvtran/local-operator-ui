@@ -30,7 +30,8 @@ const pageBundle = await build({
 		contents: [
 			'export { NotificationsPage } from "./src/renderer/src/features/notifications/components/notifications-page";',
 			'export { FleetAskDrawer } from "./src/renderer/src/features/chat/components/asks/fleet-ask-drawer";',
-			'export { askQueueView, ASK_STATUS_COPY, askStatusWord } from "./src/renderer/src/features/chat/ask-queue";',
+			'export { askQueueView, askRevisionEvidence, askAttentionCount, askChipClause, ASK_STATUS_COPY, askStatusWord } from "./src/renderer/src/features/chat/ask-queue";',
+			'export { useAskClock } from "./src/renderer/src/features/chat/use-ask-clock";',
 			'export { setLocale } from "./src/i18n";',
 		].join("\n"),
 		resolveDir: process.cwd(),
@@ -598,6 +599,147 @@ test("reel preserves visible row offset across refresh, then follows the next us
 		await page.unmount();
 	}
 });
+
+for (const surface of ["pane", "fleet"]) {
+	test(`R14 ${surface}: attention and real clock arming follow status transitions, not answer replacements`, async () => {
+		const sessionId = "146600000014";
+		const answered = {
+			ask_id: "a-14aa",
+			session_id: surface === "fleet" ? sessionId : undefined,
+			created_at: NOW,
+			expires_at: NOW + 3600000,
+			status: "answered",
+			delivered: false,
+			questions: [
+				{
+					id: "CHOICE",
+					question: "Count control",
+					options: [{ label: "A" }, { label: "B" }],
+				},
+			],
+			answers: { CHOICE: ["A"] },
+		};
+		const unrelated = {
+			...answered,
+			ask_id: "a-14bb",
+			status: "open",
+			answers: undefined,
+		};
+		const evidence = PAGE.askRevisionEvidence(
+			answered,
+			{ CHOICE: ["B"] },
+			sessionId,
+		);
+		const outcome = {
+			settled: {
+				status: "answered",
+				at: NOW,
+				answers: { CHOICE: ["B"] },
+				revision: {
+					identity: evidence.identity,
+					superseded: [evidence.before],
+					accepted: evidence.after,
+				},
+			},
+		};
+		const context = surface === "pane" ? sessionId : undefined;
+		const node = document.createElement("div");
+		document.body.appendChild(node);
+		const root = createRoot(node);
+		const setInterval = window.setInterval;
+		const clearInterval = window.clearInterval;
+		const armed = new Set();
+		let timerId = -1400;
+		// Observe the real hook's browser timer boundary; do not wait 30 seconds or mock the hook.
+		window.setInterval = (callback, ms, ...args) => {
+			if (ms !== 30000) return setInterval.call(window, callback, ms, ...args);
+			const id = timerId--;
+			armed.add(id);
+			return id;
+		};
+		window.clearInterval = (id) => {
+			if (!armed.delete(id)) clearInterval.call(window, id);
+		};
+		function Probe({ frontier, outcomes }) {
+			const view = PAGE.askQueueView(frontier, outcomes, context);
+			PAGE.useAskClock(view.open > 0);
+			return h(
+				"output",
+				null,
+				JSON.stringify({
+					open: view.open,
+					waiting: view.waiting,
+					attention: PAGE.askAttentionCount(view),
+					clause: PAGE.askChipClause(view, NOW),
+				}),
+			);
+		}
+		const show = async (asks, asks_open, outcomes) => {
+			await act(async () =>
+				root.render(
+					h(Probe, {
+						frontier: { asks, asks_open, asks_truncated: true },
+						outcomes,
+					}),
+				),
+			);
+			return JSON.parse(node.textContent);
+		};
+		try {
+			assert.equal((await show([answered, unrelated], 1)).open, 1);
+			assert.equal(armed.size, 1);
+			const overlay = await show([answered, unrelated], 1, {
+				[answered.ask_id]: outcome,
+			});
+			assert.deepEqual(overlay, {
+				open: 1,
+				waiting: 1,
+				attention: 1,
+				clause: "1 outstanding",
+			});
+			assert.equal(
+				armed.size,
+				1,
+				"answers-only overlay must not disarm the unrelated decision's clock",
+			);
+			const rawOpen = { ...answered, status: "open", answers: undefined };
+			assert.equal(
+				(await show([rawOpen, unrelated], 2, { [rawOpen.ask_id]: outcome }))
+					.open,
+				1,
+			);
+			assert.equal(
+				armed.size,
+				1,
+				"true first settlement decrements only one row",
+			);
+			const both = {
+				[rawOpen.ask_id]: outcome,
+				[unrelated.ask_id]: { settled: { status: "declined", at: NOW } },
+			};
+			assert.equal((await show([rawOpen, unrelated], 2, both)).open, 0);
+			assert.equal(
+				armed.size,
+				0,
+				"clock retires when the final actual outstanding row settles",
+			);
+			const authoritative = await show([answered, unrelated], 7, {
+				[answered.ask_id]: outcome,
+			});
+			assert.equal(
+				authoritative.attention,
+				7,
+				"truncated rows cannot replace the authoritative outstanding tally",
+			);
+			assert.equal(armed.size, 1);
+		} finally {
+			await act(async () => root.unmount());
+			node.remove();
+			window.setInterval = setInterval;
+			window.clearInterval = clearInterval;
+		}
+	});
+}
 
 for (const surface of ["pane", "fleet"]) {
 	for (const holdAggregate of [true, false]) {

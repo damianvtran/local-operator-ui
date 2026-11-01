@@ -2006,6 +2006,147 @@ const acknowledgedRevision = (row, current, predecessors, sessionId) => {
 	};
 };
 
+test("R14 actual production attention probe: answer-only overlay cannot settle the unrelated OPEN ask twice", () => {
+	const answered = revisionRow({ answers: { target: ["staging"] } });
+	const unrelated = single({
+		ask_id: "unrelated-open",
+		session_id: answered.session_id,
+	});
+	const frontier = {
+		asks: [answered, unrelated],
+		asks_open: 1,
+		asks_truncated: true,
+	};
+	const outcome = acknowledgedRevision(answered, { target: ["production"] }, [
+		{ target: ["staging"] },
+	]);
+	const control = queue.askQueueView(frontier);
+	assert.equal(control.open, 1);
+	assert.equal(queue.askAttentionCount(control), 1);
+	const result = queue.askQueueView(frontier, { [answered.ask_id]: outcome });
+	assert.deepEqual(
+		result.rows.find((row) => row.ask.ask_id === answered.ask_id).ask.answers
+			.target,
+		["production"],
+	);
+	assert.equal(
+		result.open,
+		1,
+		"answer-map replacement is not an outstanding→settled transition",
+	);
+	assert.equal(result.waiting, 1);
+	assert.equal(queue.askAttentionCount(result), 1);
+	assert.equal(queue.askChipClause(result, TS), "1 outstanding");
+	assert.equal(
+		result.open > 0,
+		true,
+		"AskDrawer's useAskClock input stays active for the unrelated OPEN ask",
+	);
+});
+
+test("R14 true OPEN/timed-out settlements decrement once, not once per answer or history entry", () => {
+	const open = single({ ask_id: "local-open" });
+	const timedOut = single({ ask_id: "local-lapsed", status: "timed_out" });
+	const dismissed = single({ ask_id: "local-dismissed" });
+	const ancestor = revisionRow({
+		ask_id: "answer-only",
+		answers: { target: ["staging"] },
+	});
+	const unrelated = single({ ask_id: "still-open" });
+	const accepted = (status) => ({
+		settled: { status, at: TS, answers: { target: ["production"] } },
+	});
+	const outcomes = {
+		[open.ask_id]: acknowledgedRevision(open, { target: ["production"] }, [
+			{ target: ["staging"] },
+			{ target: ["older"] },
+		]),
+		[timedOut.ask_id]: accepted("answered"),
+		[dismissed.ask_id]: accepted("dismissed"),
+		[ancestor.ask_id]: acknowledgedRevision(
+			ancestor,
+			{ target: ["production"] },
+			[{ target: ["staging"] }],
+		),
+	};
+	const result = queue.askQueueView(
+		{
+			asks: [open, timedOut, dismissed, ancestor, unrelated],
+			asks_open: 9,
+			asks_truncated: true,
+		},
+		outcomes,
+	);
+	assert.equal(
+		result.open,
+		6,
+		"only three original outstanding rows settled locally; backend retains unseen rows",
+	);
+	assert.equal(result.waiting, 1);
+	assert.equal(queue.askAttentionCount(result), 6);
+	assert.equal(queue.askChipClause(result, TS), "6 outstanding");
+	const once = queue.askQueueView(
+		{ asks: [open, unrelated], asks_open: 2 },
+		outcomes,
+	);
+	assert.equal(
+		once.open,
+		1,
+		"multiple acknowledged writes for one raw OPEN row subtract exactly once",
+	);
+	assert.equal(
+		queue.askQueueView({ asks: [open], asks_open: 0 }, outcomes).open,
+		0,
+		"preserve nonnegative authoritative clamp",
+	);
+});
+
+test("R14 terminal/no-overlay and truncated authoritative tallies retain their original meaning", () => {
+	const unrelated = single({ ask_id: "still-open" });
+	for (const status of [
+		"answered",
+		"declined",
+		"dismissed",
+		"withdrawn",
+		"expired",
+	]) {
+		const terminal = revisionRow({ status, delivered: true });
+		const local = acknowledgedRevision(terminal, { target: ["production"] }, [
+			{ target: ["staging"] },
+		]);
+		const view = queue.askQueueView(
+			{ asks: [terminal, unrelated], asks_open: 7, asks_truncated: true },
+			{ [terminal.ask_id]: local },
+		);
+		assert.equal(view.open, 7);
+		assert.equal(queue.askAttentionCount(view), 7);
+	}
+	const row = revisionRow({ answers: { target: ["staging"] } });
+	const local = acknowledgedRevision(row, { target: ["production"] }, [
+		{ target: ["staging"] },
+	]);
+	for (const asks_open of [1, 7]) {
+		const view = queue.askQueueView(
+			{ asks: [row, unrelated], asks_open, asks_truncated: true },
+			{ [row.ask_id]: local },
+		);
+		assert.equal(
+			view.open,
+			asks_open,
+			"published count wins over the bounded visible prefix",
+		);
+	}
+	const fallback = queue.askQueueView(
+		{ asks: [row, unrelated] },
+		{ [row.ask_id]: local },
+	);
+	assert.equal(
+		fallback.open,
+		1,
+		"older producers without a tally derive open from resolved rows",
+	);
+});
+
 test("R13 acknowledged A superseded by B preserves genuine unseen first-answer metadata", () => {
 	const original = revisionRow({
 		status: "open",
