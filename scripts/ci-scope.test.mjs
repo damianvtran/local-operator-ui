@@ -36,6 +36,7 @@ import {
 	jobPlan,
 	runJobs,
 } from "./ci-scope.mjs";
+import { SHARD_COUNT } from "./desktop-test-shards.mjs";
 
 /*
  * The contract of the change-scope classifier, in the form CI and
@@ -2314,13 +2315,23 @@ function runClassifier(args, cwd, module = join(repoRoot, MODULE)) {
 
 // A17e owns the one exception to A2/A4's dependency-success admission rule:
 // this job CONSUMES failures, rather than starting work that needs their artifacts.
-test("A17e: four protected workers feed one exact fail-closed Desktop Tests result", () => {
+test(`A17e: ${SHARD_COUNT} protected workers feed one exact fail-closed Desktop Tests result`, () => {
 	const worker = jobs.test;
 	const result = jobs["desktop-tests-result"];
+	// Derived from the planner's own count: the matrix and the module that deals
+	// the inventory have to agree, and a spelled-out list here would let them
+	// disagree greenly.
 	assert.deepEqual(worker.strategy, {
 		"fail-fast": false,
-		matrix: { shard: [0, 1, 2, 3] },
+		matrix: { shard: Array.from({ length: SHARD_COUNT }, (_, i) => i) },
 	});
+	// The job name says how many groups exist, so a reader can tell eight from
+	// four without counting the matrix; the denominator is taken from the matrix
+	// rather than spelled out a second time.
+	assert.equal(
+		worker.name,
+		"Desktop Tests shard (${{ matrix.shard }}/${{ strategy.job-total }})",
+	);
 	assert.equal(worker["timeout-minutes"], 50);
 	assert.equal(result.name, "Desktop Tests");
 	assert.deepEqual(result.needs, ["changes", "test"]);

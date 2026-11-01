@@ -22,13 +22,32 @@ import { dirname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { isEntryPoint } from "./entry-point.mjs";
 
-// FOUR, NOT THREE, on measured memory headroom rather than balance: at
-// concurrency 3 the guarded runner's process group was killed by the 7.8 GB
-// budget at 7.9 GB (run 40992181176) and again at 8.2 GB (run 40996898976) on the
-// SAME 205-file shard inventory, both after `ok 1060` with zero failures. The ceiling therefore sits inside the run-to-run distribution,
-// so fewer files per process group is what buys headroom; the budget and the
-// concurrency guard are deliberately untouched.
-export const SHARD_COUNT = 4;
+// EIGHT, NOT FOUR: what fails is a group's footprint, not any one test, and four
+// groups of this inventory are exactly the size measured to fail. Measured
+// 2026-10-31, on the `main` that had been red since 09:50Z:
+//   - a 164-file group at --test-concurrency=3 never reached a summary: 35
+//     `guarding` lines, 616 subtests, no TAP frame, cancelled at ~35-55 minutes;
+//   - the same group at --test-concurrency=2 was killed by the memory guard -
+//     `MEMORY LIMIT EXCEEDED - killed process group 2345 (5 processes): 10.9 GB
+//     owned (rss 10.9 GB) >= budget 9.5 GB`, 94 of its 164 files started, 1552
+//     subtests, rc 137 - and a separate group died the same way at 10.1 GB
+//     against that same 9.5 GB budget;
+//   - those same files dealt ~80 per group were GREEN: 1286 tests in 2m39s (and
+//     the first 40 files green in 57s), so the deal is the variable, the ceiling
+//     is not.
+// Eight groups deal today's 654-file inventory 81-82 files apiece, at that
+// measured-green size. The budget, the concurrency, the per-job timeout and the
+// log guards are deliberately untouched: raising any of them buys apparent
+// headroom without bounding what one process group carries, and no test is
+// skipped or weakened by dealing more groups.
+//
+// HISTORY, kept because its measurements still stand: FOUR rather than THREE
+// (2026-10-30) - at concurrency 3 the process group was killed by the 7.8 GB CI
+// budget at 7.9 GB (run 40992181176) and 8.2 GB (run 40996898976) on the same
+// 205-file inventory, both after `ok 1060` with zero failures. Four did not hold,
+// because the failing size is per group and 164 files per group is exactly it -
+// the measurement above, not a runtime balance question.
+export const SHARD_COUNT = 8;
 const RUNNER = "scripts/run-desktop-tests.mjs";
 const SHA = /^[a-f0-9]{40}$/;
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -60,9 +79,10 @@ export function inventory(command) {
 export function partition(files, count = SHARD_COUNT) {
 	// The floor of 2 keeps a single-shard "partition" from masquerading as
 	// capacity work; the ceiling is whatever the CI matrix advertises, so a count
-	// nobody runs cannot silently pass here.
-	if (![2, 3, 4].includes(count))
-		throw new Error("Partition count must be 2, 3 or 4");
+	// nobody runs cannot silently pass here. Derived from SHARD_COUNT rather than
+	// listed: a second literal is how this and the matrix drift apart.
+	if (!Number.isSafeInteger(count) || count < 2 || count > SHARD_COUNT)
+		throw new Error(`Partition count must be an integer in 2..${SHARD_COUNT}`);
 	if (!files.length || new Set(files).size !== files.length)
 		throw new Error("Empty or duplicate inventory");
 	const groups = Array.from({ length: count }, () => []);

@@ -2909,22 +2909,28 @@ write access is silently ignored by an approval rule. Tagging a person in a
 
 ### Desktop CI capacity partitions
 
-The `test` job uses four deterministic file-count partitions of the explicit
+The `test` job uses eight deterministic file-count partitions of the explicit
 `package.json` `test:desktop` inventory. Local `pnpm test:desktop` still runs the
 whole inventory once through the existing guarded runner. CI delegates each
 partition to that same runner with the same concurrency, memory and lane caps;
-four workers are extra capacity and per-shard memory headroom, not measured
+eight workers are per-shard memory headroom and extra capacity, not measured
 runtime balancing, a hung-lane cure, or a memory-leak fix. The fourth shard was
 added on 2026-10-30 because the 7.8 GB process-group budget sat inside the
 run-to-run distribution of a three-shard lane at concurrency 3 — 7.9 GB (run
 40992181176) and 8.2 GB (run 40996898976) on the same 205-file inventory, both dying
-at `ok 1060` with zero failures — so each partition now carries ~25% fewer files.
-The budget, the concurrency guard, the 50-minute cap and the cancellation policy
-do not change. Tag-dialog tests and the existing native QA bundle are owned by
-shard 0 only.
+at `ok 1060` with zero failures — so each partition then carried ~25% fewer files.
+Four did not hold: on 2026-10-31 a 164-file group — the size four groups of the
+inventory produce — ran at concurrency 3 for ~35–55 minutes without reaching a TAP
+summary (35 `guarding` lines, 616 subtests), and the same group at concurrency 2
+was killed by the memory guard at 10.9 GB against a 9.5 GB budget (94 of 164 files
+started, rc 137); a second group died the same way at 10.1 GB against that same
+budget. Those files dealt ~80 per group were green — 1286 tests in 2m39s — so
+eight partitions now carry 81–82 files each. The budget, the concurrency guard,
+the 50-minute cap and the cancellation policy do not change. Tag-dialog tests and
+the existing native QA bundle are owned by shard 0 only.
 
 The stable required result remains **Desktop Tests** (`desktop-tests-result`).
-It consumes all four same-head/checkout/inventory receipts, rejects missing,
+It consumes one same-head/checkout/inventory receipt per group, rejects missing,
 failed or cancelled work, and reconstructs the disjoint complete file inventory.
 An explicit false unit scope skips the workers/result; unknown classification or
 failed workers cannot become a green aggregate. The result is a CI-only local
