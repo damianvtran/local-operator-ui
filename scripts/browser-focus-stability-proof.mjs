@@ -763,10 +763,19 @@ try {
 	await navigate("browser");
 	const tabId = Number(paletteCase.opened.tab.split(":")[1]);
 	await focusShell('[data-tour-tag="browser-tab-strip"] [role="tab"]');
+	// Digit shortcuts follow the rendered session groups, not registry insertion
+	// order. The actual focused strip is the keyboard's owner (the ownership
+	// transfer above moves one tab into another group without changing API order).
 	const tabOrder = await evaluate(
 		owner,
-		"window.api.browser.state().then(s=>s.tabs.map(t=>t.tabId))",
+		"(()=>{const strip=document.activeElement.closest('[data-tour-tag=browser-tab-strip]');if(!strip)throw Error('keyboard is not in the live tab strip');return [...strip.querySelectorAll('[data-tab-id] [role=tab]')].map(e=>Number(e.closest('[data-tab-id]').dataset.tabId));})()",
 	);
+	assert.equal(
+		new Set(tabOrder).size,
+		tabOrder.length,
+		"rendered tab IDs must be unique",
+	);
+	facts.renderedTabOrder = tabOrder;
 	const targetOrdinal = tabOrder.indexOf(tabId) + 1;
 	assert.ok(targetOrdinal > 0 && targetOrdinal < 10);
 	os(`keystroke "${targetOrdinal}" using {command down}`);
