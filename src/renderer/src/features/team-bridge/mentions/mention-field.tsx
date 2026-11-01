@@ -152,16 +152,20 @@ export function MentionField({
 			observer?.disconnect();
 		};
 	}, [open, anchorIndex, fieldRef]);
-	if (!mentions.enabled) return <>{children}</>;
+	/* Mentions can arrive while the same target's draft is being typed. Keep
+	   the field's wrapper stable so enabling them does not replace the textarea
+	   and lose focus. Account/tenant/target remounts remain the owner's boundary. */
 	return (
 		<div className="relative flex min-w-0 flex-1">
-			<MentionHighlightOverlay
-				fieldRef={fieldRef}
-				text={text}
-				tokens={mentions.tokens}
-			/>
+			{mentions.enabled && (
+				<MentionHighlightOverlay
+					fieldRef={fieldRef}
+					text={text}
+					tokens={mentions.tokens}
+				/>
+			)}
 			{children}
-			{open && position && (
+			{mentions.enabled && open && position && (
 				<MentionPopover
 					listboxId={mentions.listboxId}
 					sections={mentions.sections}

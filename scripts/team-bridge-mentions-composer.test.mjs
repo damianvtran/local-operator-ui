@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { after, test } from "node:test";
 import { build } from "esbuild";
 import { JSDOM } from "jsdom";
@@ -15,6 +16,15 @@ import { JSDOM } from "jsdom";
  * back. jsdom has no layout, so nothing here claims position or pixels; the
  * popover's placement is the rendered capture's job.
  */
+// The page imports one sidebar class, not its chat runtime. Match the existing
+// optimistic-send harness's seam so boundary probes exercise the real PageView.
+const sidebarRole = readFileSync(
+	"src/renderer/src/features/chat/components/chat-sidebar.tsx",
+	"utf8",
+).match(/export const rowCurrent =\s*("[^"]+")/)?.[1];
+assert.ok(sidebarRole);
+const SIDEBAR_IMPORT = /chat\/components\/chat-sidebar$/;
+const ANY_PATH = /.*/;
 const bundle = await build({
 	stdin: {
 		contents: `
@@ -23,6 +33,9 @@ const bundle = await build({
 			export {renderToStaticMarkup} from 'react-dom/server';
 			export {MentionSourceContext} from './src/renderer/src/features/team-bridge/mentions/mention-context';
 			export {TeamBridgeMentionProvider} from './src/renderer/src/features/team-bridge/mentions/mention-source';
+			export {TeamBridgePageView} from './src/renderer/src/features/team-bridge/team-bridge-page';
+			export {QueryClient, QueryClientProvider} from '@tanstack/react-query';
+			export {teamBridgeComposerKey} from './src/renderer/src/shared/store/team-bridge-composer-rows';
 			export {stagedMentions} from './src/renderer/src/features/team-bridge/mentions/mention-outbox';
 			export {createRoot} from 'react-dom/client';
 			export {act, createElement} from 'react';
@@ -43,7 +56,34 @@ const bundle = await build({
 	],
 	packages: "external",
 	jsx: "automatic",
-	loader: { ".css": "empty" },
+	define: { "import.meta.env": "__viteEnv" },
+	banner: { js: "const __viteEnv = {};" },
+	tsconfig: "tsconfig.app.json",
+	plugins: [
+		{
+			name: "sidebar-role-only",
+			setup(build) {
+				build.onResolve({ filter: SIDEBAR_IMPORT }, () => ({
+					path: "sidebar-role",
+					namespace: "stub",
+				}));
+				build.onLoad({ filter: ANY_PATH, namespace: "stub" }, () => ({
+					contents: `export const rowCurrent = ${sidebarRole};`,
+					loader: "js",
+				}));
+			},
+		},
+	],
+	loader: {
+		".css": "empty",
+		".svg": "text",
+		".png": "dataurl",
+		".webp": "dataurl",
+		".ttf": "empty",
+		".woff": "empty",
+		".woff2": "empty",
+		".eot": "empty",
+	},
 });
 const { writeFile, unlink } = await import("node:fs/promises");
 const path = `${process.cwd()}/.mentions-test-${process.pid}.mjs`;
@@ -66,6 +106,9 @@ for (const key of [
 	"Element",
 	"NodeFilter",
 	"MutationObserver",
+	"DocumentFragment",
+	"FocusEvent",
+	"FileReader",
 	"navigator",
 	"getComputedStyle",
 	"localStorage",
@@ -76,6 +119,19 @@ for (const key of [
 		value: dom.window[key] ?? dom.window,
 	});
 }
+dom.window.electron = {
+	ipcRenderer: {
+		on: () => () => {},
+		removeListener() {},
+		send() {},
+		invoke: async () => ({}),
+	},
+};
+globalThis.ResizeObserver ??= class {
+	observe() {}
+	unobserve() {}
+	disconnect() {}
+};
 globalThis.CSS ??= { escape: (value) => value };
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 globalThis.requestAnimationFrame = (fn) => setTimeout(fn, 0);
@@ -88,7 +144,7 @@ try {
 	await unlink(path);
 }
 
-test("mention activation preserves the mounted draft subtree through conversation handoff", async () => {
+test("mention activation preserves row identity, composer draft and focus through conversation handoff", async () => {
 	const host = document.createElement("div");
 	document.body.append(host);
 	const root = mod.createRoot(host);
@@ -110,29 +166,231 @@ test("mention activation preserves the mounted draft subtree through conversatio
 						sendMentions: false,
 					},
 					mod.createElement(
-						"ol",
+						"div",
 						null,
-						mod.createElement("li", null, "Pending message"),
+						// The real thread composer's draft is component state, not an
+						// external fixture value that could conceal a subtree remount.
+						mod.createElement(mod.TeamBridgeThreadPaneView, {
+							root: {
+								id: "bcmsg_handoff_root",
+								conversation_id: conversation.id,
+								seq: 1,
+								sender: {
+									account_id: "acct_self",
+									kind: "human",
+									display_label: "Ada",
+								},
+								body: "Pending message",
+								origin: "human",
+								created_at: "2026-10-21T10:00:00Z",
+							},
+							replies: [],
+							state: "ready",
+							accountId: "acct_self",
+							tenantId: conversation.tenant_id,
+							conversationId: conversation.id,
+							labelFor: (sender) => sender.display_label,
+							onClose() {},
+							onRetry() {},
+							onSend: async () => {},
+						}),
 					),
 				),
 			);
 		});
 	try {
 		await render(null);
-		const atPress = host.querySelector("li");
+		const atPress = host.querySelector("[data-row-key]");
 		assert.ok(atPress);
+		const composer = host.querySelector("textarea");
+		assert.ok(composer);
+		await mod.act(async () => {
+			composer.focus();
+			setValue.call(composer, "Next message while the first is in flight");
+			composer.dispatchEvent(new dom.window.Event("input", { bubbles: true }));
+		});
+		assert.equal(composer.value, "Next message while the first is in flight");
+		assert.equal(document.activeElement === composer, true);
 		await render(conversation);
-		// Never pass React-backed DOM objects as assertion operands: on failure
-		// their diagnostic serialization can exhaust the entire worker's memory.
-		assert.equal(host.querySelector("li") === atPress, true);
-		assert.equal(host.querySelectorAll("li").length, 1);
+		// Only scalar diagnostics: React-backed DOM operands can exhaust the
+		// worker on failure. A still cannot establish any of these identities.
+		assert.deepEqual(
+			{
+				draft: host.querySelector("textarea")?.value,
+				focused: document.activeElement === composer,
+				sameComposer: host.querySelector("textarea") === composer,
+				sameRow: host.querySelector("[data-row-key]") === atPress,
+			},
+			{
+				draft: "Next message while the first is in flight",
+				focused: true,
+				sameComposer: true,
+				sameRow: true,
+			},
+		);
+		assert.equal(host.querySelectorAll("[data-row-key]").length, 1);
 		await render(null);
-		assert.equal(host.querySelector("li") === atPress, true);
+		assert.equal(host.querySelector("[data-row-key]") === atPress, true);
+		assert.equal(host.querySelector("textarea") === composer, true);
+		assert.equal(composer.value, "Next message while the first is in flight");
+		assert.equal(document.activeElement === composer, true);
 	} finally {
 		await mod.act(async () => root.unmount());
 		host.remove();
 	}
 });
+
+// Reproduce the production container's per-target key rather than demanding
+// continuity across navigation: a new destination must not inherit its draft.
+async function mountKeyedPage() {
+	const host = document.createElement("div");
+	document.body.append(host);
+	const root = mod.createRoot(host);
+	const client = new mod.QueryClient({
+		defaultOptions: { queries: { retry: false } },
+	});
+	const render = async (
+		{
+			owner = "acct_boundary_a",
+			tenant = "tnt_boundary_a",
+			target = "person:acct_peer_a",
+		} = {},
+		keyTarget = true,
+	) => {
+		const accountId = target.slice("person:".length);
+		const pageTarget = { type: "person", accountId };
+		const props = {
+			selfAccountId: owner,
+			accountId: owner,
+			scope: tenant,
+			target: pageTarget,
+			conversations: [],
+			messages: [],
+			people: [{ account_id: accountId, display_label: "Current recipient" }],
+			organizations: [
+				{ tenantId: tenant, name: "Boundary org", role: "owner", unread: 0 },
+			],
+			totalUnread: 0,
+			listState: "ready",
+			messageState: "idle",
+			onTarget() {},
+			onNewChannel() {},
+			onScopeChange() {},
+			onSend: async () => {},
+		};
+		await mod.act(async () =>
+			root.render(
+				mod.createElement(
+					mod.QueryClientProvider,
+					{ client },
+					mod.createElement(mod.TeamBridgePageView, {
+						...props,
+						...(keyTarget
+							? { key: JSON.stringify([owner, tenant, pageTarget]) }
+							: {}),
+					}),
+				),
+			),
+		);
+	};
+	const type = async (body) => {
+		const field = host.querySelector("textarea");
+		assert.ok(field);
+		await mod.act(async () => {
+			field.focus();
+			setValue.call(field, body);
+			field.dispatchEvent(new dom.window.Event("input", { bubbles: true }));
+		});
+		assert.equal(field.value, body);
+		return field;
+	};
+	return {
+		host,
+		render,
+		type,
+		close: async () => {
+			await mod.act(async () => root.unmount());
+			client.clear();
+			host.remove();
+		},
+	};
+}
+
+test("genuine target navigation retains main's fresh-draft and replaced-textarea contract", async () => {
+	const app = await mountKeyedPage();
+	try {
+		await app.render();
+		const first = await app.type("Draft for recipient A only");
+		const beforeKey = mod.teamBridgeComposerKey(
+			"acct_boundary_a",
+			"tnt_boundary_a",
+			"person:acct_peer_a",
+		);
+		const afterKey = mod.teamBridgeComposerKey(
+			"acct_boundary_a",
+			"tnt_boundary_a",
+			"person:acct_peer_b",
+		);
+		assert.notEqual(beforeKey, afterKey);
+		await app.render({ target: "person:acct_peer_b" });
+		assert.deepEqual(
+			{
+				draft: app.host.querySelector("textarea")?.value,
+				replaced: app.host.querySelector("textarea") !== first,
+				oldDisconnected: !first.isConnected,
+				oldBodyReadable: app.host.textContent.includes(
+					"Draft for recipient A only",
+				),
+			},
+			{
+				draft: "",
+				replaced: true,
+				oldDisconnected: true,
+				oldBodyReadable: false,
+			},
+		);
+	} finally {
+		await app.close();
+	}
+});
+
+for (const [boundary, next] of [
+	["account", { owner: "acct_boundary_b" }],
+	["tenant", { tenant: "tnt_boundary_b" }],
+]) {
+	test(`${boundary} switch hard-remounts the page subtree without retaining previous draft prose`, async () => {
+		const app = await mountKeyedPage();
+		try {
+			// Leave the outer PageView mounted: exercise its actual provider key,
+			// not a test-supplied remount that would conceal a missing privacy fence.
+			await app.render({}, false);
+			const first = await app.type(`Private ${boundary} draft`);
+			const page = app.host.querySelector('[data-glass-region="canvas"]');
+			assert.ok(page);
+			await app.render(next, false);
+			assert.deepEqual(
+				{
+					draft: app.host.querySelector("textarea")?.value,
+					replaced: app.host.querySelector("textarea") !== first,
+					oldDisconnected: !first.isConnected,
+					oldPageDisconnected: !page.isConnected,
+					oldBodyReadable: app.host.textContent.includes(
+						`Private ${boundary} draft`,
+					),
+				},
+				{
+					draft: "",
+					replaced: true,
+					oldDisconnected: true,
+					oldPageDisconnected: true,
+					oldBodyReadable: false,
+				},
+			);
+		} finally {
+			await app.close();
+		}
+	});
+}
 
 const CONVERSATION = "bcv_mentions01";
 const MENTION_OTHER = /data-mention="other"[^>]*>@Ben Tran</;

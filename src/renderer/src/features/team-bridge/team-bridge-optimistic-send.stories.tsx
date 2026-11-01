@@ -224,9 +224,12 @@ export const ChiefFirstMessageReconciled: Story = {
  * The stories above render a VIEW, where nothing is ever created. This one walks
  * the prop sequence the container produces for a first message - the person lane,
  * then the new DM with its thread read still in flight, then the DM with its
- * answer - on a timer, so the row can be photographed THROUGH the sequence that
- * used to swallow it behind a spinner. `onSend` reports its conversation the way
- * the container does, on the same press.
+ * answer - on a timer, so the loading state's presentation can be inspected.
+ * A local row suppresses the full-stage spinner in both versions. Stills do not
+ * prove element identity or a transient flash: the DOM regression establishes
+ * that the provider handoff preserves the row, composer draft and focus instead
+ * of remounting the whole page. `onSend` reports its conversation the way the
+ * container does, on the same press.
  */
 const createdDm: TeamBridgeConversation = {
 	...personDm,
@@ -287,8 +290,9 @@ export const ChiefFirstMessageMove: Story = {
 	args: { ...base, onSend: reportingSend },
 };
 
-/* Manual settlement keeps the loading handoff available for a frame capture:
-   a timer can advance while the reviewer is inspecting the preserved row. */
+/* Manual settlement holds the loading presentation for inspection. The local
+   row suppresses the full-stage spinner; DOM identity and component-state
+   preservation are tested directly, not inferred from a sampled still. */
 const PersonHandoffStory = (args: TeamBridgePageViewProps) => {
 	const [step, setStep] = useState(0);
 	const [body, setBody] = useState("");
