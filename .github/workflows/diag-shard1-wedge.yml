@@ -92,12 +92,19 @@ jobs:
           - arm: a-control
             args: ""
             guard: ""
+            mode: redirect
           - arm: b-no-hardlink-guard
             args: ""
             guard: "1"
+            mode: redirect
           - arm: c-concurrency-1
             args: "--test-concurrency=1"
             guard: ""
+            mode: redirect
+          - arm: d-tee-control
+            args: ""
+            guard: ""
+            mode: tee
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -110,6 +117,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
 
       - name: Run the shard 1/8 file list
+        if: ${{ matrix.mode != 'tee' }}
         env:
           LOCAL_OPERATOR_UI_NO_HARDLINK_GUARD: ${{ matrix.guard }}
         run: |
@@ -121,10 +129,10 @@ jobs:
               printf '%s elapsed=%ss bytes=%s guarding=%s oks=%s last_ok=%s\n' \
                 "$(date -u +%H:%M:%S)" \
                 "$(( $(date -u +%s) - $(cat "$RUNNER_TEMP/started_at.txt") ))" \
-                "$(wc -c < /tmp/diag-raw.log 2>/dev/null || echo 0)" \
-                "$(grep -c 'no-hardlink-write: guarding ' /tmp/diag-raw.log 2>/dev/null || true)" \
-                "$(grep -cE '^ok [0-9]+ - ' /tmp/diag-raw.log 2>/dev/null || true)" \
-                "$(grep -E '^ok [0-9]+ - ' /tmp/diag-raw.log 2>/dev/null | tail -1 | cut -c1-300)" \
+                "$(wc -c < "$LOG" 2>/dev/null || echo 0)" \
+                "$(grep -c 'no-hardlink-write: guarding ' "$LOG" 2>/dev/null || true)" \
+                "$(grep -cE '^ok [0-9]+ - ' "$LOG" 2>/dev/null || true)" \
+                "$(grep -E '^ok [0-9]+ - ' "$LOG" 2>/dev/null | tail -1 | cut -c1-300)" \
                 >> /tmp/diag-heartbeat.log
             done
           ) &
@@ -145,9 +153,45 @@ jobs:
           echo "suite rc=$RC"
           exit "$RC"
 
+
+      - name: Run the shard 1/8 file list (piped, as CI does it)
+        if: ${{ matrix.mode == 'tee' }}
+        env:
+          LOCAL_OPERATOR_UI_NO_HARDLINK_GUARD: ${{ matrix.guard }}
+        run: |
+          date -u +%s > "$RUNNER_TEMP/started_at.txt"
+          (
+            while sleep 30; do
+              printf '%s elapsed=%ss bytes=%s guarding=%s oks=%s last_ok=%s\n' \
+                "$(date -u +%H:%M:%S)" \
+                "$(( $(date -u +%s) - $(cat "$RUNNER_TEMP/started_at.txt") ))" \
+                "$(wc -c < /tmp/diag-tee.log 2>/dev/null || echo 0)" \
+                "$(grep -c 'no-hardlink-write: guarding ' /tmp/diag-tee.log 2>/dev/null || true)" \
+                "$(grep -cE '^ok [0-9]+ - ' /tmp/diag-tee.log 2>/dev/null || true)" \
+                "$(grep -E '^ok [0-9]+ - ' /tmp/diag-tee.log 2>/dev/null | tail -1 | cut -c1-300)" \
+                >> /tmp/diag-heartbeat.log
+            done
+          ) &
+          HEARTBEAT=$!
+          # THE CI SHAPE, verbatim in the part that matters: the suite's output is
+          # piped through `tee` so it also streams to the job log. `timeout` here
+          # wraps the whole PIPELINE, because bounding only the runner leaves a
+          # blocked `tee` holding the step open.
+          timeout -k 90 1800 bash -c 'node scripts/run-desktop-tests.mjs '"${{ matrix.args }}"' $DESKTOP_FILES 2>&1 | tee /tmp/diag-tee.log'
+          RC=$?
+          kill "$HEARTBEAT" 2>/dev/null || true
+          date -u +%s > "$RUNNER_TEMP/ended_at.txt"
+          echo "$RC" > "$RUNNER_TEMP/node_rc.txt"
+          echo "timeout_rc=$RC (124/137 means the 30-minute bound cut the pipeline)" >> /tmp/diag-tee.log
+          echo "pipeline rc=$RC"
+          exit "$RC"
+
       - name: Report what the arm did
         if: ${{ always() }}
         run: |
+          LOG=/tmp/diag-raw.log
+          [ -f /tmp/diag-tee.log ] && LOG=/tmp/diag-tee.log
+          echo "reading $LOG" >> "$GITHUB_STEP_SUMMARY"
           start="$(cat "$RUNNER_TEMP/started_at.txt" 2>/dev/null || true)"
           end="$(cat "$RUNNER_TEMP/ended_at.txt" 2>/dev/null || true)"
           {
@@ -157,14 +201,14 @@ jobs:
               echo "- wall_s: $((end - start))"
               echo "- node_rc: $(cat "$RUNNER_TEMP/node_rc.txt" 2>/dev/null || echo missing)"
             else
-              echo "- no completion marker: the suite step was cancelled at its own 27-minute cap"
+              echo "- no completion marker: the suite step never returned"
             fi
-            echo "- guarding_lines: $(grep -c 'no-hardlink-write: guarding ' /tmp/diag-raw.log 2>/dev/null || true)"
-            echo "- guard_standing_down: $(grep -c 'STANDING DOWN' /tmp/diag-raw.log 2>/dev/null || true)"
-            echo "- last_completed: $(grep -E '^ok [0-9]+ - ' /tmp/diag-raw.log 2>/dev/null | tail -1 || true)"
-            echo "- last_subtest_started: $(grep -E '^# Subtest: ' /tmp/diag-raw.log 2>/dev/null | tail -1 || true)"
-            echo "- tap_summary_lines: $(grep -cE '^# (tests|pass|fail|cancelled) ' /tmp/diag-raw.log 2>/dev/null || true)"
-            echo "- memory_limit_hits: $(grep -c 'MEMORY LIMIT EXCEEDED' /tmp/diag-raw.log 2>/dev/null || true)"
+            echo "- guarding_lines: $(grep -c 'no-hardlink-write: guarding ' "$LOG" 2>/dev/null || true)"
+            echo "- guard_standing_down: $(grep -c 'STANDING DOWN' "$LOG" 2>/dev/null || true)"
+            echo "- last_completed: $(grep -E '^ok [0-9]+ - ' "$LOG" 2>/dev/null | tail -1 || true)"
+            echo "- last_subtest_started: $(grep -E '^# Subtest: ' "$LOG" 2>/dev/null | tail -1 || true)"
+            echo "- tap_summary_lines: $(grep -cE '^# (tests|pass|fail|cancelled) ' "$LOG" 2>/dev/null || true)"
+            echo "- memory_limit_hits: $(grep -c 'MEMORY LIMIT EXCEEDED' "$LOG" 2>/dev/null || true)"
             echo ""
             echo '#### last heartbeat'
             echo '```'
@@ -172,7 +216,7 @@ jobs:
             echo '```'
             echo '#### tail of the suite log'
             echo '```'
-            tail -12 /tmp/diag-raw.log 2>/dev/null || echo "(none)"
+            tail -12 "$LOG" 2>/dev/null || echo "(none)"
             echo '```'
           } | tee -a "$GITHUB_STEP_SUMMARY"
 
@@ -183,6 +227,7 @@ jobs:
           name: diag-${{ matrix.arm }}
           path: |
             /tmp/diag-raw.log
+            /tmp/diag-tee.log
             /tmp/diag-heartbeat.log
-          if-no-files-found: error
+          if-no-files-found: warn
           retention-days: 7
