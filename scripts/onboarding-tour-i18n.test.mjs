@@ -45,9 +45,11 @@
  */
 
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, test } from "node:test";
+import { pathToFileURL } from "node:url";
 import { build } from "esbuild";
 import { JSDOM } from "jsdom";
 
@@ -192,9 +194,20 @@ const built = await build({
 		".webp": "empty",
 	},
 });
-const mod = await import(
-	`data:text/javascript;base64,${Buffer.from(built.outputFiles[0].text).toString("base64")}`
-);
+// The four-arm CI experiment (2026-11-01) isolated the stall to piped output,
+// not the hardlink guard or concurrency: React printed this bundle's data URI
+// in two 14.62 MiB stack frames. A file URL keeps the same bundle and assertions
+// while making diagnostics bounded. Remove the file even when import throws;
+// the fully bundled module has no later imports that need it to remain on disk.
+const bundleDir = mkdtempSync(join(tmpdir(), "onboarding-tour-i18n-"));
+let mod;
+try {
+	const bundlePath = join(bundleDir, "tour.mjs");
+	writeFileSync(bundlePath, built.outputFiles[0].text);
+	mod = await import(pathToFileURL(bundlePath).href);
+} finally {
+	rmSync(bundleDir, { recursive: true, force: true });
+}
 
 const CATALOGUE = JSON.parse(
 	readFileSync(
