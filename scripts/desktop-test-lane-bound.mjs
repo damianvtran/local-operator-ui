@@ -309,6 +309,7 @@ export function createLaneBoundWatchdog({
 	now = () => Date.now(),
 	onTrip = () => {},
 	onBlind = () => {},
+	onSample = () => {},
 	intervalMs = _TICK_INTERVAL_MS,
 	setTimer = setTimeout,
 	clearTimer = clearTimeout,
@@ -340,6 +341,12 @@ export function createLaneBoundWatchdog({
 		// has finished, so nothing may be signalled on its behalf by a tick that was
 		// mid-`ps` when the child exited.
 		if (stopped) return;
+		// Diagnostics must never interfere with the watchdog's own verdict.
+		try {
+			onSample(seen);
+		} catch (error) {
+			console.error(`desktop tests: lane observer failed: ${error.message}`);
+		}
 
 		for (const lane of [...running.keys()]) {
 			if (!seen.has(lane)) running.delete(lane);
