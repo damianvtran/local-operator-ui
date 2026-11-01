@@ -294,7 +294,7 @@ const APP_SPAWN_SITES = [
 	guarded(
 		"scripts/browser-focus-stability-proof.mjs",
 		"spawn",
-		1,
+		2,
 		/(?:\{|,)\s*env\s*,/,
 		"boots the real app for isolated native focus discrimination; launch suppression must accompany the scratch profile, including the explicitly armed CI-only native-owner mode",
 		/withTelemetryOff\(env\);/,

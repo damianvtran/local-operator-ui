@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { build } from "esbuild";
 
@@ -60,6 +61,74 @@ test("unpresented views leave the native parent, and repeated passes never reord
 		"explicit presentation reuses the same view",
 	);
 	assert.equal(parent.calls.length, 2);
+});
+
+test("the shipped window callback cannot interrupt multi-tab teardown after window destruction", async () => {
+	// Execute the REAL index.ts binding, not a copied callback that could stay
+	// green while the production closure still reads a destroyed native object.
+	const source = readFileSync("src/main/browser/index.ts", "utf8");
+	const registryStart = source.indexOf("const registry = new TabRegistry(");
+	const start = source.indexOf("\t\t\t(view, presented) => {", registryStart);
+	const end = source.indexOf("\n\t\t);", start);
+	assert.ok(
+		registryStart >= 0 && start > registryStart && end > start,
+		"native presentation binding exists",
+	);
+	const callback = source.slice(start, end).trim();
+	assert.equal(callback.at(-1), ",");
+	const binding = await build({
+		stdin: {
+			contents: `export const bind=(options,setBrowserViewPresented)=>(${callback.slice(0, -1)});`,
+			loader: "ts",
+			resolveDir: process.cwd(),
+		},
+		bundle: true,
+		platform: "node",
+		format: "esm",
+		write: false,
+	});
+	const { bind } = await import(
+		`data:text/javascript;base64,${Buffer.from(binding.outputFiles[0].text).toString("base64")}`
+	);
+	const parent = parentOf();
+	let destroyed = false;
+	let next = 1;
+	const released = [];
+	const window = {
+		isDestroyed: () => destroyed,
+		get contentView() {
+			if (destroyed) throw Error("Object has been destroyed");
+			return parent;
+		},
+	};
+	const registry = new TabRegistry(
+		() => ({
+			webContents: {
+				id: next++,
+				isDestroyed: () => false,
+				getURL: () => "about:blank",
+				getTitle: () => "",
+				close() {},
+			},
+			setBounds() {},
+			setVisible() {},
+		}),
+		(_id, wc) => released.push(wc),
+		() => {},
+		() => {},
+		bind({ window }, setBrowserViewPresented),
+	);
+	registry.create({ owner: "user" });
+	registry.create({ owner: "user" });
+	registry.setContentRect({ x: 0, y: 0, width: 800, height: 600 });
+	destroyed = true;
+	assert.doesNotThrow(() => registry.destroyAll());
+	assert.equal(registry.count(), 0);
+	assert.equal(
+		released.length,
+		2,
+		"every WebContents release survives a destroyed native window",
+	);
 });
 
 test("real registry presentation controls parent membership across tabs, overlays and route exit", () => {

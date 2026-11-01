@@ -1107,6 +1107,9 @@ async function initializeBrowserHost(
 				approvalsOverlay?.onLayout(snapshot);
 			},
 			(view, presented) => {
+				// Closing a window can start host teardown after its native object is
+				// gone. Skip only parenting: every remaining tab must still be released.
+				if (options.window.isDestroyed()) return;
 				setBrowserViewPresented(
 					options.window.contentView,
 					view as unknown as WebContentsView,

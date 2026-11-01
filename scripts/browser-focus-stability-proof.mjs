@@ -38,6 +38,10 @@ const save = (name, data) =>
 const sleep = (ms) => new Promise((done) => setTimeout(done, ms));
 const sockets = [];
 let child;
+let fixtureChild;
+let fixtureTree;
+let fixtureLog = "";
+let owner;
 let ownedTree;
 let inventoryTimer;
 let cleanupPromise;
@@ -174,6 +178,64 @@ try {
 	withTelemetryOff(env);
 	for (const key of Object.keys(env))
 		if (key.startsWith("CMUX_") || key.startsWith("LOP_")) delete env[key];
+	// The real chat route intentionally withholds its composer without
+	// session_catalogue >= 2. Reuse the repository's existing claim/capability
+	// fixture, rather than bypassing the UI gate or mounting a fake input.
+	const reservation = createServer();
+	await new Promise((done) => reservation.listen(0, "127.0.0.1", done));
+	const fixturePort = reservation.address().port;
+	await new Promise((done) => reservation.close(done));
+	const fixtureUrl = `http://127.0.0.1:${fixturePort}`;
+	fixtureChild = spawn(
+		process.execPath,
+		[
+			join(root, "docs/evidence/session-archive/harness/stub-daemon.mjs"),
+			"--port",
+			String(fixturePort),
+			"--records",
+			join(dirs.config, "run/serve"),
+		],
+		{ env, cwd: root, stdio: ["ignore", "pipe", "pipe"] },
+	);
+	fixtureChild.stdout.on("data", (chunk) => {
+		fixtureLog += chunk;
+	});
+	fixtureChild.stderr.on("data", (chunk) => {
+		fixtureLog += chunk;
+	});
+	fixtureTree = createFocusProofOwnedTree({
+		rootPid: fixtureChild.pid,
+		profile: join(out, "not-a-profile-fixture"),
+	});
+	await until(async () => {
+		try {
+			return (
+				await fetch(`${fixtureUrl}/health`, {
+					signal: AbortSignal.timeout(1000),
+				})
+			).ok;
+		} catch {
+			return false;
+		}
+	}, "existing daemon fixture health");
+	const capabilityResponse = await fetch(`${fixtureUrl}/v1/capabilities`);
+	const fixtureCapabilities = await capabilityResponse.json();
+	assert.equal(
+		fixtureCapabilities.result?.features?.session_catalogue,
+		2,
+		"real composer fixture must advertise catalogue v2",
+	);
+	facts.composerPrerequisite = {
+		fixture: "docs/evidence/session-archive/harness/stub-daemon.mjs",
+		url: fixtureUrl,
+		sessionCatalogue: fixtureCapabilities.result.features.session_catalogue,
+		liveSessionUpdates: false,
+	};
+	writeFileSync(
+		join(dirs.cwd, ".env"),
+		`VITE_LOCAL_OPERATOR_API_URL=${fixtureUrl}\nVITE_DISABLE_BACKEND_MANAGER=true\n`,
+	);
+	env.VITE_LOCAL_OPERATOR_API_URL = fixtureUrl;
 	child = spawn(
 		electron,
 		[
@@ -190,7 +252,10 @@ try {
 		rootPid: child.pid,
 		profile: dirs.profile,
 	});
-	inventoryTimer = setInterval(() => ownedTree.refresh(), 100);
+	inventoryTimer = setInterval(() => {
+		ownedTree.refresh();
+		fixtureTree.refresh();
+	}, 100);
 	child.on("exit", () => {
 		exited = true;
 	});
@@ -219,7 +284,7 @@ try {
 			),
 		"built main window",
 	);
-	const owner = await connect(
+	owner = await connect(
 		(
 			await target(
 				renderPort,
@@ -649,6 +714,29 @@ try {
 	facts.verdict = "PASS_SHIPPED_NATIVE_PARENT_BOUNDARY_AND_ACTUAL_OS_KEYS";
 	save("facts.json", facts);
 } catch (error) {
+	// Preserve the REAL failed prerequisite/route before teardown. A missing
+	// selector without a frame/DOM cannot distinguish a gate from a bad locator.
+	if (owner && main) {
+		try {
+			save(
+				"failure-dom.json",
+				await evaluate(
+					owner,
+					"({hash:location.hash,ready:document.readyState,text:document.body.innerText.slice(0,12000),inputs:[...document.querySelectorAll('input,textarea,button')].slice(0,100).map(e=>({html:e.outerHTML.slice(0,400),rect:e.getBoundingClientRect().toJSON()}))})",
+				),
+			);
+			const frame = await evaluate(
+				main,
+				"(async()=>{const E=process.mainModule.require('electron');return (await E.BrowserWindow.getAllWindows()[0].webContents.capturePage()).toPNG().toString('base64');})()",
+			);
+			writeFileSync(
+				join(out, "failure-frame.png"),
+				Buffer.from(frame, "base64"),
+			);
+		} catch (captureError) {
+			facts.failureCaptureError = String(captureError);
+		}
+	}
 	facts.failures.push(String(error));
 	save("facts.json", facts);
 	console.error(error);
@@ -673,9 +761,19 @@ function cleanup() {
 		const tree = ownedTree
 			? await ownedTree.stop()
 			: { clean: !child, owned: [], survivors: [] };
-		if (!tree.clean) process.exitCode = 1;
+		const fixture = fixtureTree
+			? await fixtureTree.stop()
+			: { clean: !fixtureChild, owned: [], survivors: [] };
+		if (!tree.clean || !fixture.clean) process.exitCode = 1;
 		writeFileSync(join(out, "app.log"), log);
-		save("teardown.json", { pid: child?.pid, exited, ...tree });
+		writeFileSync(join(out, "fixture.log"), fixtureLog);
+		save("teardown.json", {
+			pid: child?.pid,
+			exited,
+			...tree,
+			fixture,
+			clean: tree.clean && fixture.clean,
+		});
 		server.close();
 	})();
 	return cleanupPromise;
