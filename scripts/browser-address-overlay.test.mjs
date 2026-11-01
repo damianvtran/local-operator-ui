@@ -1152,7 +1152,19 @@ test("S5: a narrow anchor that precedes its page rect resizes the hidden reusabl
 	assert.equal(view.visible, false);
 
 	const narrowRect = { ...RECT, x: 0, width: 360 };
+	const resizeStart = host.calls.length;
 	controller.onLayout(layout({ contentRect: narrowRect, revision: 2 }));
+	assert.deepEqual(
+		host.calls
+			.slice(resizeStart)
+			.filter(
+				(call) =>
+					call[0] === "addChildView" ||
+					(call[0] === "visible" && call[2] === true),
+			),
+		[],
+		"hidden resize cannot transiently reparent or show the dismissed native list",
+	);
 	assert.equal(
 		view.bounds.x,
 		0,

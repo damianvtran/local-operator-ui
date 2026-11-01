@@ -1510,20 +1510,11 @@ export class AddressOverlayController {
 		const view = this.view;
 		if (bounds === null || !view || !this.viewUsable(view)) return;
 		try {
-			// Chromium does not deliver a resize to a hidden WebContentsView renderer.
-			// These synchronous calls yield no compositor frame: the child becomes
-			// measurable at the new bounds, then returns to the dismissal's hidden
-			// state in the same main-task turn rather than re-opening the list.
-			const wasVisible = view.getVisible();
-			if (!wasVisible) {
-				// A loaded child needs a native sizing turn for Chromium to consume
-				// the resize. Return it detached before this synchronous task ends;
-				// unlike an initial load, there is no navigation pending here.
-				this.raiseChild(view);
-				view.setVisible(true);
-			}
+			// Keep the next bounds current without reparenting a dismissed child.
+			// A detached renderer may defer its viewport resize; project() already
+			// shows BEFORE measuring and waits for the real viewport on presentation.
+			// Prewarming that resize must not briefly compete for native input.
 			view.setBounds(bounds);
-			if (!wasVisible) this.hideNativeChild(view);
 		} catch (error) {
 			this.releaseChild(`layout_error:${String(error)}`);
 		}
