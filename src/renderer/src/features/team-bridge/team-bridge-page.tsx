@@ -3816,10 +3816,12 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 		</div>
 	);
 	/* @-MENTIONS for both composers in this pane (channel and thread), from the
-	   cached directory and the open conversation (mentions/). Bound as a const
-	   above so mounting the provider does not re-indent the page. */
+	   cached directory and the open conversation (mentions/). The provider stays
+	   mounted through same-owner/tenant creation, but crossing either privacy
+	   boundary deliberately discards its subtree instead of preserving old state. */
 	return (
 		<TeamBridgeMentionProvider
+			key={JSON.stringify([selfAccountId, draftTenant])}
 			conversation={shown}
 			people={shown ? rosterFor(shown.tenant_id) : []}
 			selfAccountId={selfAccountId}

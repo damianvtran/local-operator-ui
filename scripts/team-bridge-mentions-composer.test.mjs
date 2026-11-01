@@ -22,6 +22,7 @@ const bundle = await build({
 			export {TeamBridgeMessageList} from './src/renderer/src/features/team-bridge/team-bridge-message-list';
 			export {renderToStaticMarkup} from 'react-dom/server';
 			export {MentionSourceContext} from './src/renderer/src/features/team-bridge/mentions/mention-context';
+			export {TeamBridgeMentionProvider} from './src/renderer/src/features/team-bridge/mentions/mention-source';
 			export {stagedMentions} from './src/renderer/src/features/team-bridge/mentions/mention-outbox';
 			export {createRoot} from 'react-dom/client';
 			export {QueryClient, QueryClientProvider} from '@tanstack/react-query';
@@ -96,6 +97,52 @@ try {
  */
 const queryClient = new mod.QueryClient({
 	defaultOptions: { queries: { retry: false } },
+});
+
+test("mention activation preserves the mounted draft subtree through conversation handoff", async () => {
+	const host = document.createElement("div");
+	document.body.append(host);
+	const root = mod.createRoot(host);
+	const conversation = {
+		id: "bcv_handoff",
+		tenant_id: "tnt_1",
+		kind: "dm",
+		members: [],
+	};
+	const render = (value) =>
+		mod.act(async () => {
+			root.render(
+				mod.createElement(
+					mod.TeamBridgeMentionProvider,
+					{
+						conversation: value,
+						people: [],
+						selfAccountId: "acct_self",
+						sendMentions: false,
+					},
+					mod.createElement(
+						"ol",
+						null,
+						mod.createElement("li", null, "Pending message"),
+					),
+				),
+			);
+		});
+	try {
+		await render(null);
+		const atPress = host.querySelector("li");
+		assert.ok(atPress);
+		await render(conversation);
+		// Never pass React-backed DOM objects as assertion operands: on failure
+		// their diagnostic serialization can exhaust the entire worker's memory.
+		assert.equal(host.querySelector("li") === atPress, true);
+		assert.equal(host.querySelectorAll("li").length, 1);
+		await render(null);
+		assert.equal(host.querySelector("li") === atPress, true);
+	} finally {
+		await mod.act(async () => root.unmount());
+		host.remove();
+	}
 });
 
 const CONVERSATION = "bcv_mentions01";
