@@ -152,8 +152,9 @@ const bundle = await build({
 			} from "./src/shared/team-bridge-owner-audit-contract";
 			export { TeamBridgeOwnerAuditApi } from "./src/renderer/src/shared/api/local-operator/team-bridge-owner-audit-api";
 			export { desktopRequestSchema, desktopEndpoint } from "./src/shared/desktop-contract";
-			export { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-			export { radientUserKeys } from "./src/renderer/src/shared/hooks/radient-account-authority";
+			export { QueryClient, QueryClientProvider, CancelledError } from "@tanstack/react-query";
+ export { useOwnerAuditConversations } from "./src/renderer/src/features/team-bridge/use-team-bridge-owner-audit";
+			export { radientUserKeys, beginRadientAuthoritySignOut } from "./src/renderer/src/shared/hooks/radient-account-authority";
 			export { teamBridgeKeys } from "./src/renderer/src/features/team-bridge/team-bridge-keys";
 			export { t, formatDate, formatDateTime } from "./src/renderer/src/shared/i18n";
 			export { TeamBridgeMessageList } from "./src/renderer/src/features/team-bridge/team-bridge-message-list";
@@ -2356,4 +2357,277 @@ test("a channel renders byte-identically with the audit props omitted", async ()
 		writeFileSync(PARITY_GOLDEN, `${markup}\n`);
 	}
 	assert.equal(`${markup}\n`, readFileSync(PARITY_GOLDEN, "utf8"));
+});
+
+/* The actual private-read hook must emit useful failure categories while never
+ * serializing the exception (Zod prose/stack can contain private input). The
+ * transport remains the same fixture as the rail tests, not a duplicate query
+ * implementation. These are diagnostics tests, NOT the production first-open
+ * reproduction: that renderer's original exception is still unknown. */
+test("diagnostics: actual audit query classifies rejection and redacts private exceptions", async (context) => {
+	const originalWarn = console.warn;
+	const originalRead = m.TeamBridgeOwnerAuditApi.conversations;
+	const forbidden =
+		"PRIVATE-TOKEN-https://private.invalid/org_secret/body-secret";
+	for (const scenario of [
+		"http",
+		"schema",
+		"before",
+		"bridge",
+		"post",
+		"cancel",
+		"unknown",
+		"success",
+		"logger",
+		"logger-rejected",
+		"credential",
+	]) {
+		await context.test(scenario, async () => {
+			const events = [];
+			let sinkCalls = 0;
+			console.warn = (...args) => {
+				sinkCalls += 1;
+				if (scenario.startsWith("logger")) throw new Error(forbidden);
+				if (args[0] === "[owner-audit-read]") events.push(JSON.parse(args[1]));
+			};
+			const host = document.createElement("div");
+			document.body.append(host);
+			const root = createRoot(host);
+			const client = new m.QueryClient({
+				defaultOptions: {
+					queries: { retry: false, gcTime: Number.POSITIVE_INFINITY },
+				},
+			});
+			client.setQueryData(m.radientUserKeys.user(), {
+				account: { id: scenario === "before" ? "acct_other" : OWNER },
+			});
+			client.setQueryData(m.teamBridgeKeys.statusFor(OWNER), {
+				account_id: OWNER,
+				state: "ready",
+				local: { enabled: true },
+			});
+			let query;
+			function Probe() {
+				query = m.useOwnerAuditConversations({
+					accountId: OWNER,
+					tenantId: TENANT,
+				});
+				return null;
+			}
+			let release;
+			const pending = new Promise((resolve) => {
+				release = resolve;
+			});
+			let calls = 0;
+			answer = () => {
+				calls += 1;
+				if (scenario === "credential") m.beginRadientAuthoritySignOut(client);
+				if (scenario === "http")
+					return refusal(403, { code: forbidden, message: forbidden });
+				if (scenario === "schema")
+					return json({ conversations: [{ agent: forbidden }] });
+				if (scenario === "bridge")
+					client.setQueryData(m.teamBridgeKeys.statusFor(OWNER), {
+						account_id: OWNER,
+						state: "unavailable",
+						local: { enabled: true },
+					});
+				if (scenario === "post")
+					return pending.then(() => json(conversationPage));
+				return json(conversationPage);
+			};
+			const deliberate =
+				scenario === "cancel" ? new m.CancelledError() : new Error(forbidden);
+			if (["cancel", "unknown", "logger-rejected"].includes(scenario)) {
+				m.TeamBridgeOwnerAuditApi.conversations = async () => {
+					throw deliberate;
+				};
+			}
+			let unmounted = false;
+			try {
+				await act(async () =>
+					root.render(h(m.QueryClientProvider, { client }, h(Probe))),
+				);
+				if (scenario === "post") {
+					await act(async () => root.unmount());
+					unmounted = true;
+					await act(async () => release());
+				}
+				await settleTimes();
+				if (scenario.startsWith("logger")) {
+					assert.equal(
+						sinkCalls,
+						2,
+						"sink failure must never recursively log itself",
+					);
+					if (scenario === "logger-rejected") {
+						assert.equal(
+							query.error,
+							deliberate,
+							"logger failure cannot replace rejection",
+						);
+						return;
+					}
+					assert.equal(
+						query.isSuccess,
+						true,
+						"a failing sink must not turn success into rejection",
+					);
+					return;
+				}
+				assert.equal(
+					events.length,
+					2,
+					"one start and exactly one terminal record per attempt",
+				);
+				assert.equal(events[0].event, "started");
+				assert.equal(events[0].generation, events[1].generation);
+				assert.equal(events[0].attempt, events[1].attempt);
+				assert.equal(
+					events[1].event,
+					scenario === "success" ? "fulfilled" : "rejected",
+				);
+				const categories = {
+					http: "desktop",
+					schema: "schema",
+					before: "audit-owner",
+					bridge: "bridge-authority",
+					post: "audit-owner",
+					cancel: "cancelled",
+					unknown: "other",
+					credential: "credential-authority",
+				};
+				if (scenario !== "success")
+					assert.equal(events[1].category, categories[scenario]);
+				if (scenario === "before") {
+					assert.equal(calls, 0);
+					assert.equal(events[1].phase, "before");
+				}
+				if (scenario === "post") assert.equal(events[1].phase, "after");
+				if (scenario === "credential") {
+					assert.equal(events[1].epochChanged, true);
+					assert.equal(events[1].readiness.authMatches, false);
+				}
+				if (scenario === "bridge") assert.equal(events[1].phase, "settlement");
+				if (["http", "schema", "cancel", "unknown"].includes(scenario))
+					assert.equal(events[1].phase, "request");
+				if (!["before", "cancel", "unknown"].includes(scenario))
+					assert.equal(
+						calls,
+						1,
+						"diagnostics never retry even a permanent refusal",
+					);
+				if (scenario === "http") {
+					assert.equal(events[1].status, 403);
+					assert.equal(events[1].code, "other");
+				}
+				if (scenario === "unknown")
+					assert.equal(
+						query.error,
+						deliberate,
+						"the original exception survives",
+					);
+				const serialized = JSON.stringify(events);
+				for (const secret of [
+					forbidden,
+					OWNER,
+					TENANT,
+					"stack",
+					"https://",
+					"body-secret",
+				])
+					assert.equal(
+						serialized.includes(secret),
+						false,
+						`diagnostics must not include ${secret}`,
+					);
+			} finally {
+				if (!unmounted) await act(async () => root.unmount());
+				client.clear();
+				host.remove();
+				m.TeamBridgeOwnerAuditApi.conversations = originalRead;
+				console.warn = originalWarn;
+			}
+		});
+	}
+});
+
+test("diagnostics: manual retry correlates locally, scope changes isolate, and logging is bounded", async () => {
+	const originalWarn = console.warn;
+	const events = [];
+	console.warn = (...args) => {
+		if (args[0] === "[owner-audit-read]") events.push(JSON.parse(args[1]));
+	};
+	const host = document.createElement("div");
+	document.body.append(host);
+	const root = createRoot(host);
+	const client = new m.QueryClient({
+		defaultOptions: {
+			queries: { retry: false, gcTime: Number.POSITIVE_INFINITY },
+		},
+	});
+	client.setQueryData(m.radientUserKeys.user(), { account: { id: OWNER } });
+	client.setQueryData(m.teamBridgeKeys.statusFor(OWNER), {
+		account_id: OWNER,
+		state: "ready",
+		local: { enabled: true },
+	});
+	let query;
+	function Probe({ tenantId }) {
+		query = m.useOwnerAuditConversations({ accountId: OWNER, tenantId });
+		return null;
+	}
+	const render = (tenantId) =>
+		act(async () =>
+			root.render(h(m.QueryClientProvider, { client }, h(Probe, { tenantId }))),
+		);
+	try {
+		answer = () => refusal(403, { code: "conversation_not_found" });
+		await render(TENANT);
+		await settleTimes();
+		assert.equal(query.isError, true);
+		assert.equal(
+			events.length,
+			2,
+			"permanent denial does not automatically retry",
+		);
+		const generation = events[0].generation;
+		assert.equal(events[1].code, "conversation_not_found");
+		answer = () => json(conversationPage);
+		await act(async () => {
+			await query.refetch();
+		});
+		await settleTimes();
+		assert.equal(query.isSuccess, true);
+		assert.equal(events.length, 4);
+		assert.equal(events[2].generation, generation);
+		assert.equal(events[2].attempt, 2);
+		assert.equal(events[3].event, "fulfilled");
+		for (let i = 0; i < 21; i += 1) {
+			await act(async () => {
+				await query.refetch();
+			});
+		}
+		assert.equal(
+			events.length,
+			40,
+			"at most two records for each of twenty attempts",
+		);
+		assert.equal(
+			query.isSuccess,
+			true,
+			"the limit only stops logging, never the request",
+		);
+		await render("org_other_synthetic");
+		await settleTimes();
+		assert.equal(events.length, 42);
+		assert.notEqual(events[40].generation, generation);
+		assert.equal(events[40].attempt, 1);
+		assert.equal(JSON.stringify(events).includes("org_other_synthetic"), false);
+	} finally {
+		await act(async () => root.unmount());
+		client.clear();
+		host.remove();
+		console.warn = originalWarn;
+	}
 });
