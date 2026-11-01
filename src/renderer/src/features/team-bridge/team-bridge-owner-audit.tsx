@@ -30,12 +30,16 @@ import {
 } from "./team-bridge-rail";
 import { useTeamBridgeDirectory } from "./use-team-bridge";
 import {
+	type AuditFailureState,
+	auditFailureState,
 	useOwnerAuditConversations,
 	useOwnerAuditMessages,
 	useOwnerAuditReplies,
 } from "./use-team-bridge-owner-audit";
 
-type ReadState = "loading" | "error" | "ready";
+export type ReadState = "loading" | "ready" | AuditFailureState;
+const failedState = (state: ReadState): state is AuditFailureState =>
+	state !== "loading" && state !== "ready";
 
 /**
  * A FAILED LATER PAGE MUST NOT ERASE WHAT IS ALREADY SHOWN.
@@ -49,13 +53,27 @@ type ReadState = "loading" | "error" | "ready";
  * has nothing to show. A failed later page keeps the rows and offers the retry
  * that failed-page affordance already carries.
  */
-function readState(query: {
+export function readState(query: {
 	isPending: boolean;
 	isError: boolean;
 	data: unknown;
+	error?: unknown;
+	auditAuthRequired?: boolean;
 }): ReadState {
+	if (query.auditAuthRequired) return "auth";
 	if (query.isPending) return "loading";
-	if (query.isError && !query.data) return "error";
+	if (query.isError) {
+		const failure = auditFailureState(query.error);
+		// Retaining earlier pages is useful for a server failure, not for a
+		// refusal. A 403 must not leave Refresh/Load more offering a retry loop.
+		if (
+			!query.data ||
+			failure === "auth" ||
+			failure === "permission" ||
+			failure === "not-found"
+		)
+			return failure;
+	}
 	return "ready";
 }
 const title = (conversation: OwnerAuditConversation) =>
@@ -71,10 +89,12 @@ const title = (conversation: OwnerAuditConversation) =>
  * in its scope — the panel header drops its Refresh while this is what the
  * reader is looking at, so one refetch does not appear twice (D7).
  */
-function AuditFailure({
+export function AuditFailure({
+	state = "error",
 	retry,
 	inset = "px-3",
 }: {
+	state?: AuditFailureState;
 	retry: () => void;
 	/*
 	 * The section's own inline inset. The rail's rows sit at `px-3`; the panel's
@@ -86,10 +106,29 @@ function AuditFailure({
 }) {
 	return (
 		<div role="alert" className={cn("space-y-2 text-sm text-danger", inset)}>
-			<p>{t("ui.ownerAudit.error")}</p>
-			<Button variant="ghost" onClick={retry}>
-				{t("ui.ownerAudit.retry")}
-			</Button>
+			<p>
+				{t(
+					state === "auth"
+						? "ui.ownerAudit.auth_required"
+						: state === "permission"
+							? "ui.ownerAudit.permission_refused"
+							: state === "not-found"
+								? "ui.ownerAudit.not_found"
+								: state === "unavailable"
+									? "ui.ownerAudit.unavailable"
+									: "ui.ownerAudit.error",
+				)}
+			</p>
+			{state === "auth" && (
+				<Button variant="ghost" asChild>
+					<a href="#/settings?section=radient">{t("ui.ownerAudit.sign_in")}</a>
+				</Button>
+			)}
+			{(state === "error" || state === "unavailable") && (
+				<Button variant="ghost" onClick={retry}>
+					{t("ui.ownerAudit.retry")}
+				</Button>
+			)}
 		</div>
 	);
 }
@@ -120,7 +159,7 @@ export function OwnerAuditRailView({
 				{t("ui.ownerAudit.loading")}
 			</output>
 		);
-	if (state === "error") return <AuditFailure retry={retry} />;
+	if (failedState(state)) return <AuditFailure state={state} retry={retry} />;
 	return (
 		<>
 			{conversations.length === 0 && (
@@ -500,7 +539,7 @@ export function OwnerAuditPanelView({
 					</h2>
 					{/* One retry per scope: while the body shows AuditFailure, the
 					 * header's Refresh would be a second control for the same refetch. */}
-					{state !== "error" && (
+					{!failedState(state) && (
 						<Button variant="ghost" size="sm" onClick={retry}>
 							<RefreshCw aria-hidden="true" />
 							{t("ui.ownerAudit.refresh")}
@@ -544,9 +583,9 @@ export function OwnerAuditPanelView({
 					<output className="block px-5 py-8 text-[13px] text-ink-muted">
 						{t("ui.ownerAudit.loading")}
 					</output>
-				) : state === "error" ? (
+				) : failedState(state) ? (
 					<div className="py-4">
-						<AuditFailure retry={retry} inset="px-5" />
+						<AuditFailure state={state} retry={retry} inset="px-5" />
 					</div>
 				) : (
 					<>
@@ -605,8 +644,9 @@ function AuditReplies({
 				{t("ui.ownerAudit.loading")}
 			</output>
 		);
-	if (readState(query) === "error")
-		return <AuditFailure retry={() => void query.refetch()} />;
+	const state = readState(query);
+	if (failedState(state))
+		return <AuditFailure state={state} retry={() => void query.refetch()} />;
 	return (
 		<div>
 			{/* The thread pane's own density: replies are the same rows, narrower. */}

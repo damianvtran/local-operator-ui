@@ -26,5 +26,10 @@
 	"ui.ownerAudit.window_unconfirmed": "La fin de cet audit est inconnue. L’appartenance de votre cheffe de cabinet à cette conversation n’a pas pu être confirmée.",
 	"ui.ownerAudit.disclosure": "Vous pouvez lire cet audit parce que vous êtes propriétaire de la cheffe de cabinet qu’il couvre. Les autres membres sont informés que les propriétaires d’agents peuvent auditer la conversation.",
 	"ui.ownerAudit.viewers_label": "Également lisible par",
-	"ui.ownerAudit.replies": "Lire les réponses du fil"
+	"ui.ownerAudit.replies": "Lire les réponses du fil",
+	"ui.ownerAudit.auth_required": "Connectez-vous pour lire les messages audités. Votre session a peut-être expiré.",
+	"ui.ownerAudit.permission_refused": "Vous n’avez pas accès à cet historique audité.",
+	"ui.ownerAudit.not_found": "Cette conversation auditée est introuvable.",
+	"ui.ownerAudit.unavailable": "Le service d’audit n’a pas pu charger ces messages. Réessayez.",
+	"ui.ownerAudit.sign_in": "Se connecter"
 }
