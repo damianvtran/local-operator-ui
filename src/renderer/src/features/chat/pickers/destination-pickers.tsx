@@ -878,7 +878,6 @@ export const ModelPicker: FC<PickerContext> = ({
 	// A lost ACK is not a refusal. Hold fresh model intents until a read-only
 	// authoritative snapshot answers; never replay the possibly accepted UUID.
 	const [unconfirmedModel, setUnconfirmedModel] = useState(false);
-	const [checkingModel, setCheckingModel] = useState(false);
 	/*
 	 * WHICH VIEW OF THE CATALOGUE THIS DIALOG SHOWS.
 	 *
@@ -1615,7 +1614,6 @@ export const ModelPicker: FC<PickerContext> = ({
 				canonical.clearPendingModel();
 				if (run.unconfirmed) {
 					setUnconfirmedModel(true);
-					setCheckingModel(true);
 					note(failure.text);
 					if (persistDefaultRef.current) persist.setResult(failure);
 					try {
@@ -1635,7 +1633,6 @@ export const ModelPicker: FC<PickerContext> = ({
 						// Keep the neutral uncertainty and disabled choices, not a
 						// fabricated unchanged model or a second command request.
 					} finally {
-						setCheckingModel(false);
 						resyncCanonicalSession(sessionId);
 					}
 					return;
@@ -1985,9 +1982,7 @@ export const ModelPicker: FC<PickerContext> = ({
 				) : undefined
 			}
 			onPick={onPick}
-			busy={
-				draft ? draftPick.busy : command.busy || persist.busy || checkingModel
-			}
+			busy={draft ? draftPick.busy : command.busy || persist.busy}
 			/*
 			 * The in-flight copy names the change, not the machinery: the user asked
 			 * whether their pick registered, and "the backend" is the
@@ -2002,30 +1997,25 @@ export const ModelPicker: FC<PickerContext> = ({
 			 * (UX round 1, U3).
 			 */
 			busyText={
-				checkingModel
-					? t(
-							"ui.projects.use_request_update.the_request_could_not_be_confirmed",
-						)
-					: draft
-						? t("ui.chat.pickers.destination_pickers.resolving_the_model")
-						: command.busy
-							? t("ui.chat.pickers.destination_pickers.switching_the_model")
-							: t("ui.chat.pickers.destination_pickers.saving_the_default")
+				draft
+					? t("ui.chat.pickers.destination_pickers.resolving_the_model")
+					: command.busy
+						? t("ui.chat.pickers.destination_pickers.switching_the_model")
+						: t("ui.chat.pickers.destination_pickers.saving_the_default")
 			}
 			busyLabel={
-				checkingModel
+				draft
+					? t("ui.chat.pickers.destination_pickers.resolving_the_model24577b")
+					: command.busy
+						? t("ui.chat.pickers.destination_pickers.switching_the_model8e7138")
+						: t("ui.chat.pickers.destination_pickers.saving_the_default9573f2")
+			}
+			blockedHint={
+				unconfirmedModel
 					? t(
 							"ui.projects.use_request_update.the_request_could_not_be_confirmed",
 						)
-					: draft
-						? t("ui.chat.pickers.destination_pickers.resolving_the_model24577b")
-						: command.busy
-							? t(
-									"ui.chat.pickers.destination_pickers.switching_the_model8e7138",
-								)
-							: t(
-									"ui.chat.pickers.destination_pickers.saving_the_default9573f2",
-								)
+					: undefined
 			}
 			result={draft ? draftPick.result : pickResult}
 			toolbar={

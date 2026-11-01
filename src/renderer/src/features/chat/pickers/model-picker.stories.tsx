@@ -98,6 +98,31 @@ import {
 	type PickerContext,
 } from "./destination-pickers";
 
+// Story matchers are shared constants: the changed-file pre-push lint gate
+// covers legacy stories too, without changing any matching semantics.
+const MATCH_OPUS_5_5 = /opus-5[.-]5/;
+const MATCH_GPT_5_4 = /GPT-5\.4/;
+const MATCH_ENTER_PICKS_CLAUDE_OPUS_5 = /Enter picks Claude Opus 5/;
+const MATCH_ANTHROPIC_CLAUDE_HAIKU_4_5 = /Anthropic: Claude Haiku 4\.5/;
+const MATCH_NOT_CHANGED_DID_NOT_RUN_RECONNECT =
+	/not changed|did not run|Reconnect/;
+const MATCH_NOT_CHANGED_DID_NOT_RUN = /not changed|did not run/;
+const MATCH_MAX = /^Max/;
+const MATCH_HIGH = /^High/;
+const MATCH_MODEL_ANTHROPIC_CLAUDE_OPUS_5 = /model: anthropic\/claude-opus-5 →/;
+const MATCH_OPUS_5_5_9 = /Opus 5\.5/;
+const MATCH_CLAUDE_OPUS_5_5 = /Claude Opus 5\.5/;
+const MATCH_THE_PROVIDER_LISTING_FAILED = /The provider listing failed/;
+const MATCH_CHECKING = /Checking…/;
+const MATCH_PROVIDER_LISTING_IS_UNAVAILABLE =
+	/Provider listing is unavailable\./;
+const MATCH_THE_LAST_LISTING_THAT_ANSWERED = /the last listing that answered/;
+const MATCH_THE_SHIPPED_MODELS = /the shipped models/;
+const MATCH_SOME_PROVIDERS_DID_NOT_ANSWER = /Some providers did not answer/;
+const MATCH_GLM_5_2 = /GLM-5\.2/;
+const MATCH_MAGISTRAL_MEDIUM = /Magistral Medium/;
+const MATCH_ENTER_CONNECTS_ZAI = /Enter connects zai/;
+
 const noop = () => {};
 
 /**
@@ -480,7 +505,7 @@ const catalogue = (
  * longer fixture.
  */
 const REGISTRY_ROWS = CATALOGUE.filter(
-	(single) => !/opus-5[.-]5/.test(single.model_id),
+	(single) => !MATCH_OPUS_5_5.test(single.model_id),
 );
 const registryCatalogue = (): DesktopModelCatalogue =>
 	catalogue({ models: REGISTRY_ROWS });
@@ -787,11 +812,11 @@ export const Populated: Story = {
 export const Hovered: Story = {
 	render: () => <Frame bridge={catalogueOnly(catalogue())} />,
 	play: async () => {
-		await hoverRow(/GPT-5\.4/);
+		await hoverRow(MATCH_GPT_5_4);
 		// U1: the pointer's row is not the pick target, and the footer says which
 		// row is (`aria-selected` confirms the keyboard did not move).
 		await waitFor(() =>
-			expect(screen.getByText(/Enter picks Claude Opus 5/)).toBeTruthy(),
+			expect(screen.getByText(MATCH_ENTER_PICKS_CLAUDE_OPUS_5)).toBeTruthy(),
 		);
 		expect(
 			document
@@ -821,12 +846,13 @@ const UnconfirmedModelFrame: FC<{
 }> = ({ disconnected = false, readFails = false, committed = true }) => {
 	const authoritative = useRef(CURRENT);
 	const [selected, setSelected] = useState(CURRENT);
-	const [notes, setNotes] = useState<string[]>([]);
+	const [notes, setNotes] = useState<{ id: string; text: string }[]>([]);
 	const [open, setOpen] = useState(true);
 	const mutations = useRef(0);
 	const [reads, setReads] = useState(0);
 	const note = useCallback(
-		(text: string) => setNotes((previous) => [...previous, text]),
+		(text: string) =>
+			setNotes((previous) => [...previous, { id: crypto.randomUUID(), text }]),
 		[],
 	);
 	const backend = useCallback(
@@ -894,9 +920,9 @@ const UnconfirmedModelFrame: FC<{
 			>
 				<output data-testid="authoritative-model">{`${selected.provider}/${selected.model_id}`}</output>
 				<div data-testid="model-operation-counts">{`mutations=${mutations.current}; snapshot reads=${reads}`}</div>
-				{notes.map((text, index) => (
-					<p key={index} data-testid="model-command-note">
-						{text}
+				{notes.map((note) => (
+					<p key={note.id} data-testid="model-command-note">
+						{note.text}
 					</p>
 				))}
 			</section>
@@ -908,7 +934,7 @@ const UnconfirmedModelFrame: FC<{
 export const AckTimeoutIndeterminate: Story = {
 	render: () => <UnconfirmedModelFrame />,
 	play: async () => {
-		await pickRow(/Anthropic: Claude Haiku 4\.5/);
+		await pickRow(MATCH_ANTHROPIC_CLAUDE_HAIKU_4_5);
 		await waitFor(() =>
 			expect(screen.getByTestId("model-operation-counts").textContent).toBe(
 				"mutations=1; snapshot reads=1",
@@ -919,14 +945,14 @@ export const AckTimeoutIndeterminate: Story = {
 		);
 		const text = screen.getByTestId("model-command-note").textContent ?? "";
 		expect(text).toContain("The request could not be confirmed.");
-		expect(text).not.toMatch(/not changed|did not run|Reconnect/);
+		expect(text).not.toMatch(MATCH_NOT_CHANGED_DID_NOT_RUN_RECONNECT);
 	},
 };
 
 export const AckTimeoutNotApplied: Story = {
 	render: () => <UnconfirmedModelFrame committed={false} />,
 	play: async () => {
-		await pickRow(/Anthropic: Claude Haiku 4\.5/);
+		await pickRow(MATCH_ANTHROPIC_CLAUDE_HAIKU_4_5);
 		await waitFor(() =>
 			expect(screen.getByTestId("model-operation-counts").textContent).toBe(
 				"mutations=1; snapshot reads=1",
@@ -944,7 +970,7 @@ export const AckTimeoutNotApplied: Story = {
 export const DisconnectedOwnerUnconfirmed: Story = {
 	render: () => <UnconfirmedModelFrame disconnected readFails />,
 	play: async () => {
-		await pickRow(/Anthropic: Claude Haiku 4\.5/);
+		await pickRow(MATCH_ANTHROPIC_CLAUDE_HAIKU_4_5);
 		await waitFor(() =>
 			expect(screen.getByTestId("model-operation-counts").textContent).toBe(
 				"mutations=1; snapshot reads=1",
@@ -957,11 +983,17 @@ export const DisconnectedOwnerUnconfirmed: Story = {
 			"Reconnect and reconcile",
 		);
 		expect(screen.getByTestId("model-command-note").textContent).not.toMatch(
-			/not changed|did not run/,
+			MATCH_NOT_CHANGED_DID_NOT_RUN,
 		);
 		expect(
 			document.querySelectorAll('[role="option"][aria-disabled="true"]').length,
 		).toBeGreaterThan(0);
+		expect(
+			document.querySelector("[data-picker-footer]")?.textContent,
+		).toContain("The request could not be confirmed.");
+		expect(
+			document.querySelector("[data-picker-footer]")?.textContent,
+		).not.toContain("Enter picks");
 	},
 };
 
@@ -989,7 +1021,7 @@ export const ModelResolutionRefused: Story = {
 	play: async () => {
 		painted.length = 0;
 		cleared.length = 0;
-		await pickRow(/Anthropic: Claude Haiku 4\.5/);
+		await pickRow(MATCH_ANTHROPIC_CLAUDE_HAIKU_4_5);
 		await waitFor(() =>
 			expect(
 				screen.getByText("cannot switch model: Timed out", { exact: true }),
@@ -1012,7 +1044,7 @@ export const Busy: Story = {
 	play: async () => {
 		painted.length = 0;
 		cleared.length = 0;
-		await pickRow(/Anthropic: Claude Haiku 4\.5/);
+		await pickRow(MATCH_ANTHROPIC_CLAUDE_HAIKU_4_5);
 		// The picked row is MARKED, and the mark is in the meta slot the machine
 		// detail used to occupy, so the row cannot change height while the answer
 		// is pending.
@@ -1177,9 +1209,9 @@ const effortChoiceLabel = (value: string) =>
 export const EffortDisplacedMarksChoice: Story = {
 	render: () => <DisplacedChoiceFrame />,
 	play: async () => {
-		const max = await screen.findByRole("option", { name: /^Max/ });
+		const max = await screen.findByRole("option", { name: MATCH_MAX });
 		await waitFor(() => expect(max.getAttribute("data-current")).toBe("true"));
-		const high = await screen.findByRole("option", { name: /^High/ });
+		const high = await screen.findByRole("option", { name: MATCH_HIGH });
 		expect(high.getAttribute("data-current")).toBeNull();
 	},
 };
@@ -1190,12 +1222,14 @@ export const EffortDisplacedChangeAndReadBack: Story = {
 	play: async () => {
 		await waitFor(async () =>
 			expect(
-				(await screen.findByRole("option", { name: /^Max/ })).getAttribute(
+				(await screen.findByRole("option", { name: MATCH_MAX })).getAttribute(
 					"data-current",
 				),
 			).toBe("true"),
 		);
-		await userEvent.click(await screen.findByRole("option", { name: /^High/ }));
+		await userEvent.click(
+			await screen.findByRole("option", { name: MATCH_HIGH }),
+		);
 		await waitFor(() =>
 			expect(screen.getByTestId("effort-choice-readback").textContent).toBe(
 				"Selected: High; in force: High",
@@ -1207,13 +1241,13 @@ export const EffortDisplacedChangeAndReadBack: Story = {
 		);
 		await waitFor(async () =>
 			expect(
-				(await screen.findByRole("option", { name: /^High/ })).getAttribute(
+				(await screen.findByRole("option", { name: MATCH_HIGH })).getAttribute(
 					"data-current",
 				),
 			).toBe("true"),
 		);
 		expect(
-			(await screen.findByRole("option", { name: /^Max/ })).getAttribute(
+			(await screen.findByRole("option", { name: MATCH_MAX })).getAttribute(
 				"data-current",
 			),
 		).toBeNull();
@@ -1409,10 +1443,10 @@ export const Result: Story = {
 		/>
 	),
 	play: async () => {
-		await pickRow(/Anthropic: Claude Haiku 4\.5/);
+		await pickRow(MATCH_ANTHROPIC_CLAUDE_HAIKU_4_5);
 		await waitFor(() =>
 			expect(
-				screen.getByText(/model: anthropic\/claude-opus-5 →/),
+				screen.getByText(MATCH_MODEL_ANTHROPIC_CLAUDE_OPUS_5),
 			).toBeTruthy(),
 		);
 	},
@@ -1498,7 +1532,7 @@ export const RegistryOnlyOpus: Story = {
 			.map((option) => option.textContent ?? "");
 		expect(rows).toHaveLength(1);
 		expect(rows[0]).toContain("Claude Opus 5");
-		expect(screen.queryByRole("option", { name: /Opus 5\.5/ })).toBeNull();
+		expect(screen.queryByRole("option", { name: MATCH_OPUS_5_5_9 })).toBeNull();
 	},
 };
 
@@ -1537,7 +1571,7 @@ export const ProviderListingOpus: Story = {
 		await waitFor(
 			() =>
 				expect(
-					screen.getByRole("option", { name: /Claude Opus 5\.5/ }),
+					screen.getByRole("option", { name: MATCH_CLAUDE_OPUS_5_5 }),
 				).toBeTruthy(),
 			SLOW,
 		);
@@ -1586,7 +1620,9 @@ export const LiveListingFailed: Story = {
 		await typeQuerySlowly("opus");
 		await waitFor(
 			() =>
-				expect(screen.getByText(/The provider listing failed/)).toBeTruthy(),
+				expect(
+					screen.getByText(MATCH_THE_PROVIDER_LISTING_FAILED),
+				).toBeTruthy(),
 			SLOW,
 		);
 		/*
@@ -1603,7 +1639,7 @@ export const LiveListingFailed: Story = {
 		 * the state the file names, without touching the retry policy the app ships.
 		 */
 		await waitFor(
-			() => expect(screen.queryByText(/Checking…/)).toBeNull(),
+			() => expect(screen.queryByText(MATCH_CHECKING)).toBeNull(),
 			SLOW,
 		);
 		await waitFor(
@@ -1616,7 +1652,9 @@ export const LiveListingFailed: Story = {
 		 * notice's own detail (the tooltip), which is where a message about a
 		 * transport belongs when the user has rows to work with.
 		 */
-		expect(screen.queryByText(/Provider listing is unavailable\./)).toBeNull();
+		expect(
+			screen.queryByText(MATCH_PROVIDER_LISTING_IS_UNAVAILABLE),
+		).toBeNull();
 	},
 };
 
@@ -1655,13 +1693,15 @@ export const RefetchFailedOverLiveRows: Story = {
 		);
 		await waitFor(
 			() =>
-				expect(screen.getByText(/The provider listing failed/)).toBeTruthy(),
+				expect(
+					screen.getByText(MATCH_THE_PROVIDER_LISTING_FAILED),
+				).toBeTruthy(),
 			SLOW,
 		);
 		// The clause is the live one, and the registry's clause is absent - this is
 		// the assertion the whole story exists for.
-		expect(screen.getByText(/the last listing that answered/)).toBeTruthy();
-		expect(screen.queryByText(/the shipped models/)).toBeNull();
+		expect(screen.getByText(MATCH_THE_LAST_LISTING_THAT_ANSWERED)).toBeTruthy();
+		expect(screen.queryByText(MATCH_THE_SHIPPED_MODELS)).toBeNull();
 		// And the rows it is drawn over are the provider listing's, not deleted.
 		expect(screen.getAllByRole("option").length).toBeGreaterThan(3);
 	},
@@ -1830,7 +1870,9 @@ export const PartialError: Story = {
 	),
 	play: async () => {
 		await waitFor(() =>
-			expect(screen.getByText(/Some providers did not answer/)).toBeTruthy(),
+			expect(
+				screen.getByText(MATCH_SOME_PROVIDERS_DID_NOT_ANSWER),
+			).toBeTruthy(),
 		);
 		expect(screen.getAllByRole("option").length).toBeGreaterThan(0);
 	},
@@ -1914,7 +1956,7 @@ export const ShowAllWire: Story = {
 	),
 	play: async () => {
 		await screen.findAllByRole("option", undefined, SLOW);
-		expect(screen.queryByText(/GLM-5\.2/)).toBeNull();
+		expect(screen.queryByText(MATCH_GLM_5_2)).toBeNull();
 		const control = await screen.findByRole(
 			"checkbox",
 			{ name: "Show all supported models (2 need sign-in)" },
@@ -1922,9 +1964,9 @@ export const ShowAllWire: Story = {
 		);
 		await userEvent.click(control);
 		await waitFor(() => expect(screen.getByText("Needs sign-in")).toBeTruthy());
-		await waitFor(() => expect(screen.getByText(/GLM-5\.2/)).toBeTruthy());
+		await waitFor(() => expect(screen.getByText(MATCH_GLM_5_2)).toBeTruthy());
 		await waitFor(() =>
-			expect(screen.getByText(/Magistral Medium/)).toBeTruthy(),
+			expect(screen.getByText(MATCH_MAGISTRAL_MEDIUM)).toBeTruthy(),
 		);
 		/*
 		 * Park the list on the rows the press just revealed. The group sits at the
@@ -1955,14 +1997,14 @@ export const ShowAllFallback: Story = {
 	),
 	play: async () => {
 		await screen.findAllByRole("option", undefined, SLOW);
-		expect(screen.queryByText(/GLM-5\.2/)).toBeNull();
+		expect(screen.queryByText(MATCH_GLM_5_2)).toBeNull();
 		const control = await screen.findByRole(
 			"checkbox",
 			{ name: "Show all supported models" },
 			SLOW,
 		);
 		await userEvent.click(control);
-		await waitFor(() => expect(screen.getByText(/GLM-5\.2/)).toBeTruthy());
+		await waitFor(() => expect(screen.getByText(MATCH_GLM_5_2)).toBeTruthy());
 		/* Parked on the revealed row, for the reason `ShowAllWire` states. */
 		const list = screen.getByRole("listbox");
 		list.scrollTop = list.scrollHeight;
@@ -2065,14 +2107,14 @@ export const ShowAllConnectFooter: Story = {
 			SLOW,
 		);
 		await userEvent.click(control);
-		await waitFor(() => expect(screen.getByText(/GLM-5\.2/)).toBeTruthy());
+		await waitFor(() => expect(screen.getByText(MATCH_GLM_5_2)).toBeTruthy());
 		/*
 		 * Narrow to the one hidden row so the keyboard's row — and therefore the
 		 * footer — is the needs-sign-in row this frame exists to show.
 		 */
 		await typeQuery("glm");
 		await waitFor(() =>
-			expect(screen.getByText(/Enter connects zai/)).toBeTruthy(),
+			expect(screen.getByText(MATCH_ENTER_CONNECTS_ZAI)).toBeTruthy(),
 		);
 		delete document.documentElement.dataset.capturePending;
 	},

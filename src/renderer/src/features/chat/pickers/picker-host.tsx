@@ -166,6 +166,8 @@ export type PickerHostProps = {
 	result?: PickerResult | null;
 	/** An operation is in flight; the footer shows it and disables submit. */
 	busy?: boolean;
+	/** A blocked choice must not advertise an Enter action it cannot perform. */
+	blockedHint?: string;
 	/**
 	 * What the in-flight footer says, in the user's terms.
 	 *
@@ -863,6 +865,7 @@ export const PickerHost: FC<PickerHostProps> = ({
 	actions,
 	result = null,
 	busy = false,
+	blockedHint,
 	busyText,
 	busyLabel = t("ui.chat.pickers.picker_host.applying_the_changea9b670"),
 	wide = false,
@@ -1648,7 +1651,9 @@ export const PickerHost: FC<PickerHostProps> = ({
 					 * dialog that is not already bounded by a column.
 					 */}
 					<span className="min-w-0 truncate text-ink-dim text-meta">
-						{busy ? (
+						{blockedHint ? (
+							blockedHint
+						) : busy ? (
 							/*
 							 * `Working` was the whole of the feedback while a pick was in flight,
 							 * and a cold backend bind measures 1.1-4.2 s — long enough that the

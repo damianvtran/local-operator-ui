@@ -1314,17 +1314,15 @@ test("the adapter wires the decisions the tests above pin", () => {
 	/*
 	 * A third, session-only state: a default save that is not a switch says so
 	 * rather than "Switching the model…" (PR #1108 UX round 1, U3). The switch
-	 * copy is still the one shown while the owner command is in flight. A
-	 * read-only reconciliation after a missing ACK is a fourth distinct state:
-	 * it must not claim another switch or a default write is in progress.
+	 * copy is still the one shown while the owner command is in flight.
 	 */
 	assert.match(
 		picker,
-		/busyText=\{\s*checkingModel\s*\?\s*t\(\s*"ui\.projects\.use_request_update\.the_request_could_not_be_confirmed"\s*,?\s*\)\s*:\s*draft\s*\?\s*t\("ui\.chat\.pickers\.destination_pickers\.resolving_the_model"\)\s*:\s*command\.busy\s*\?\s*t\("ui\.chat\.pickers\.destination_pickers\.switching_the_model"\)\s*:\s*t\("ui\.chat\.pickers\.destination_pickers\.saving_the_default"\)\s*\}/,
+		/busyText=\{\s*draft\s*\?\s*t\("ui\.chat\.pickers\.destination_pickers\.resolving_the_model"\)\s*:\s*command\.busy\s*\?\s*t\("ui\.chat\.pickers\.destination_pickers\.switching_the_model"\)\s*:\s*t\("ui\.chat\.pickers\.destination_pickers\.saving_the_default"\)\s*\}/,
 	);
 	assert.match(
 		picker,
-		/busyLabel=\{\s*checkingModel\s*\?\s*t\(\s*"ui\.projects\.use_request_update\.the_request_could_not_be_confirmed"\s*,?\s*\)\s*:\s*draft\s*\?\s*t\(\s*"ui\.chat\.pickers\.destination_pickers\.resolving_the_model24577b"\s*,?\s*\)\s*:\s*command\.busy\s*\?\s*t\(\s*"ui\.chat\.pickers\.destination_pickers\.switching_the_model8e7138"\s*,?\s*\)\s*:\s*t\(\s*"ui\.chat\.pickers\.destination_pickers\.saving_the_default9573f2"\s*,?\s*\)\s*\}/,
+		/busyLabel=\{\s*draft\s*\?\s*t\("ui\.chat\.pickers\.destination_pickers\.resolving_the_model24577b"\)\s*:\s*command\.busy\s*\?\s*t\("ui\.chat\.pickers\.destination_pickers\.switching_the_model8e7138"\)\s*:\s*t\("ui\.chat\.pickers\.destination_pickers\.saving_the_default9573f2"\)\s*\}/,
 	);
 	for (const [key, copy] of Object.entries({
 		resolving_the_model: "Resolving the model…",
