@@ -599,6 +599,24 @@ export function OwnerAuditPanelView({
 					)}
 				</Alert>
 			</header>
+			{/* Window scope belongs outside the scrolling transcript: the reader
+			 * opens at the newest row, but must see the cutoff at every position.
+			 * A reserved flex row cannot cover messages or membership notices. */}
+			{state === "ready" && hasMore && (
+				<aside className="flex shrink-0 flex-wrap items-center gap-x-2 border-b border-hairline px-5 py-2">
+					<p className="text-meta text-ink-dim">
+						{t("ui.ownerAudit.page_cutoff")}
+					</p>
+					<Button
+						variant="ghost"
+						size="sm"
+						onClick={loadMore}
+						disabled={loadingMore}
+					>
+						{t("ui.ownerAudit.older")}
+					</Button>
+				</aside>
+			)}
 			{/* No horizontal padding here: the shared list's rows carry the column's
 			 * own 20px gutter (and their hover band runs edge to edge), so every
 			 * other child takes the same `px-5` itself. */}
@@ -618,21 +636,6 @@ export function OwnerAuditPanelView({
 						</div>
 					) : (
 						<>
-							{hasMore && (
-								<div className="flex flex-wrap items-center gap-x-2 px-5 pt-3">
-									<p className="text-meta text-ink-dim">
-										{t("ui.ownerAudit.page_cutoff")}
-									</p>
-									<Button
-										variant="ghost"
-										size="sm"
-										onClick={loadMore}
-										disabled={loadingMore}
-									>
-										{t("ui.ownerAudit.older")}
-									</Button>
-								</div>
-							)}
 							{messages.length === 0 ? (
 								<p className="px-5 py-8 text-[13px] text-ink-muted">
 									{t("ui.ownerAudit.empty_history")}

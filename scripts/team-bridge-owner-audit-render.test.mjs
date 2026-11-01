@@ -1195,6 +1195,108 @@ test("a bounded page says what is missing and how to load it", async () => {
 	await whole.close();
 });
 
+test("panel: cutoff and older action remain visible at newest, middle and top", async (context) => {
+	/* JSDOM has no layout. Model the native viewport's geometry, as the anchor
+	 * suite does, while the SHIPPED panel/hook performs the initial scroll.
+	 * The structural assertions bind that model to a reserved flex row, not an
+	 * overlay. This is a scroll regression, not browser-frame evidence. */
+	let viewport;
+	let scrollTop = 0;
+	let olderReads = 0;
+	const viewportTop = 160;
+	const viewportHeight = 300;
+	const contentHeight = 2400;
+	const view = await renderView(
+		panel({
+			messages: Array.from({ length: 50 }, (_, index) => ({
+				...admitted,
+				id: `cutoff-${index}`,
+			})),
+			hasMore: true,
+			loadMore: () => olderReads++,
+			scrollHostRef: (node) => {
+				if (!node) return;
+				viewport = node;
+				Object.defineProperties(node, {
+					scrollHeight: { configurable: true, get: () => contentHeight },
+					clientHeight: { configurable: true, get: () => viewportHeight },
+					scrollTop: {
+						configurable: true,
+						get: () => scrollTop,
+						set: (value) => {
+							scrollTop = Math.max(
+								0,
+								Math.min(contentHeight - viewportHeight, value),
+							);
+						},
+					},
+				});
+			},
+		}),
+	);
+	try {
+		assert.equal(scrollTop, 2100, "the actual panel hook opens at newest");
+		const section = view.host.querySelector("section");
+		const band = section.querySelector(":scope > aside");
+		assert.ok(band, "cutoff reserves space outside the scrolling transcript");
+		assert.equal(band.nextElementSibling, viewport);
+		assert.ok(section.classList.contains("flex-col"));
+		assert.ok(band.classList.contains("shrink-0"));
+		assert.equal(
+			band.textContent.includes(m.t("ui.ownerAudit.page_cutoff")),
+			true,
+		);
+		assert.equal(
+			viewport.textContent.includes(m.t("ui.ownerAudit.page_cutoff")),
+			false,
+		);
+		for (const overlay of ["absolute", "fixed", "sticky", "overflow-auto"]) {
+			assert.equal(band.classList.contains(overlay), false);
+		}
+		/* The band ends where the scrollport begins. Moving it into the first
+		 * content row (the original defect) must fail the same visibility check. */
+		const visible = () => {
+			const top = viewport.contains(band)
+				? viewportTop - scrollTop
+				: viewportTop - 40;
+			const bottom = top + 40;
+			return top >= 0 && bottom <= viewportTop + viewportHeight;
+		};
+		const older = BUTTON_TEXT(band, m.t("ui.ownerAudit.older"));
+		assert.ok(older, "the advertised action is in the reserved visible band");
+		for (const [position, offset] of [
+			["newest", 2100],
+			["middle", 1050],
+			["top", 0],
+		]) {
+			viewport.scrollTop = offset;
+			await act(async () => viewport.dispatchEvent(new window.Event("scroll")));
+			assert.equal(visible(), true, `${position}: cutoff/action are in view`);
+			context.diagnostic(
+				`${position}: scrollTop=${scrollTop}; reserved cutoff/action y=120–160; viewport y=160–460`,
+			);
+		}
+		await act(async () => older.click());
+		assert.equal(
+			olderReads,
+			1,
+			"the pinned action still requests older history",
+		);
+		viewport.firstElementChild.prepend(band);
+		for (const offset of [2100, 1050]) {
+			viewport.scrollTop = offset;
+			assert.equal(
+				visible(),
+				false,
+				"negative control: top-only disclosure is offscreen",
+			);
+		}
+		section.insertBefore(band, viewport);
+	} finally {
+		await view.close();
+	}
+});
+
 test("the surface offers no way to write: no composer, no reaction, no admit", async () => {
 	const view = await renderView(panel({ messages: [admitted, rejected, own] }));
 	assert.equal(view.host.querySelectorAll("textarea").length, 0);
