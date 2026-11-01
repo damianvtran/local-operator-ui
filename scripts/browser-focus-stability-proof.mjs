@@ -27,7 +27,7 @@ import { withTelemetryOff } from "./telemetry-off.mjs";
 
 // Resolve the authorization before side effects; headless remains the default.
 const windowMode = focusProofWindowMode(process.argv, process.env);
-const nativeCi = windowMode === "inactive";
+const nativeCi = windowMode === "normal";
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const outArg = process.argv.indexOf("--out");
 assert(outArg >= 0 && process.argv[outArg + 1], "--out is required");
@@ -332,7 +332,6 @@ try {
 		// armed and rechecked INSIDE Electron, on disposable macOS CI only.
 		if (${nativeCi}) {
 			if (process.env.GITHUB_ACTIONS !== 'true' || process.env.RUNNER_OS !== 'macOS' || process.env.CI !== 'true' || process.env.LOCAL_OPERATOR_FOCUS_PROOF_CI !== '1') throw Error('CI native owner authorization missing inside Electron');
-			w.showInactive();
 			if (!w.isFocused()) {
 				E.app.focus({steal:true});
 				w.focus();
@@ -460,34 +459,84 @@ try {
 			["-e", `tell application "System Events" to ${body}`],
 			{ encoding: "utf8", timeout: 5000 },
 		);
+	// Use the product's real keyboard doors. System Events `click at` can
+	// perform an AX action without delivering a Chromium pointer event; a native
+	// keyboard focus walk is observable and needs no additional mouse carrier.
 	const visiblePoint = async (selector) =>
 		evaluate(
 			owner,
-			`(() => {const el=[...document.querySelectorAll(${JSON.stringify(selector)})].find(e=>{const r=e.getBoundingClientRect();return r.width>0&&r.height>0;});if(!el)return null;el.scrollIntoView({block:'nearest'});const r=el.getBoundingClientRect();return {x:r.x+r.width/2,y:r.y+r.height/2};})()`,
+			`(()=>{const e=document.querySelector(${JSON.stringify(selector)});if(!e)return null;const r=e.getBoundingClientRect();return r.width>0&&r.height>0?{x:r.x,y:r.y}:null;})()`,
 		);
-	const clickShell = async (selector) => {
-		const point = await until(
-			() => visiblePoint(selector),
-			`visible ${selector}`,
+	const focusShell = async (selector) => {
+		await until(() => visiblePoint(selector), `visible ${selector}`);
+		for (let step = 0; step < 80; step++) {
+			if (
+				await evaluate(
+					owner,
+					`!!document.activeElement?.matches(${JSON.stringify(selector)})`,
+				)
+			)
+				return;
+			os("key code 48");
+			await sleep(75);
+		}
+		throw Error(`real Tab traversal did not reach ${selector}`);
+	};
+	const openPalette = async () => {
+		os('keystroke "p" using {command down}');
+		await until(
+			() =>
+				evaluate(owner, "document.activeElement?.id==='command-palette-input'"),
+			"actual CmdP opens and focuses palette",
 		);
-		const bounds = await evaluate(
-			main,
-			"process.mainModule.require('electron').BrowserWindow.getAllWindows()[0].getContentBounds()",
-		);
-		os(
-			`click at {${Math.round(bounds.x + point.x)},${Math.round(bounds.y + point.y)}}`,
-		);
-		await sleep(200);
 	};
 	const navigate = async (route) => {
 		if ((await evaluate(owner, "location.hash")) === `#/${route}`) return;
-		const selector = `[data-tour-tag="nav-item-${route}"]`;
-		if (!(await visiblePoint(selector)))
-			await clickShell('[data-tour-tag="nav-item-more"]');
-		await clickShell(selector);
+		if (
+			!(await evaluate(
+				main,
+				"process.mainModule.require('electron').BrowserWindow.getAllWindows()[0].webContents.isFocused()",
+			))
+		) {
+			// A real browser user's CmdL moves to the address row through the shipped
+			// native chord route; never request owner.focus from the inspector.
+			os('keystroke "l" using {command down}');
+			await sleep(200);
+		}
+		await openPalette();
+		os('keystroke "a" using {command down}');
+		os(`keystroke "${route}"`);
 		await until(
-			() => evaluate(owner, `location.hash===${JSON.stringify(`#/${route}`)}`),
-			`user navigation ${route}`,
+			() => evaluate(owner, `!!document.getElementById('page-${route}')`),
+			`palette route ${route}`,
+		);
+		for (let step = 0; step < 40; step++) {
+			const options = await evaluate(
+				owner,
+				"[...document.querySelectorAll('#command-palette-results [role=option]')].map(e=>({id:e.id,selected:e.getAttribute('aria-selected')==='true'}))",
+			);
+			const target = options.findIndex((e) => e.id === `page-${route}`);
+			const active = options.findIndex((e) => e.selected);
+			assert.ok(target >= 0, `route option disappeared: ${route}`);
+			if (active === target) break;
+			os(`key code ${active > target ? 126 : 125}`);
+			await sleep(75);
+		}
+		assert.equal(
+			await evaluate(
+				owner,
+				`document.querySelector('#command-palette-results [aria-selected=true]')?.id`,
+			),
+			`page-${route}`,
+		);
+		os("key code 36");
+		await until(
+			() =>
+				evaluate(
+					owner,
+					`location.hash.split('?')[0]===${JSON.stringify(`#/${route}`)}&&!document.querySelector('#command-palette-input')`,
+				),
+			`actual palette navigates ${route}`,
 		);
 	};
 	const caret = () =>
@@ -496,7 +545,7 @@ try {
 			"({same:document.activeElement===globalThis.__focusAcceptanceField,connected:globalThis.__focusAcceptanceField?.isConnected,value:document.activeElement?.value,start:document.activeElement?.selectionStart,end:document.activeElement?.selectionEnd})",
 		);
 	const fieldCase = async (name, selector) => {
-		await clickShell(selector);
+		await focusShell(selector);
 		await evaluate(
 			owner,
 			`globalThis.__focusAcceptanceField=document.querySelector(${JSON.stringify(selector)});true`,
@@ -597,7 +646,7 @@ try {
 
 	await navigate("chat");
 	await fieldCase("composer", '[data-tour-tag="chat-input-textarea"] textarea');
-	await clickShell("[data-command-palette-trigger]");
+	await openPalette();
 	await until(() => visiblePoint("#command-palette-input"), "palette open");
 	const paletteCase = await fieldCase("palette", "#command-palette-input");
 	os("key code 53");
@@ -636,7 +685,14 @@ try {
 
 	await navigate("browser");
 	const tabId = Number(paletteCase.opened.tab.split(":")[1]);
-	await clickShell(`[data-tab-id="${tabId}"] [role="tab"]`);
+	await focusShell('[data-tour-tag="browser-tab-strip"] [role="tab"]');
+	const tabOrder = await evaluate(
+		owner,
+		"window.api.browser.state().then(s=>s.tabs.map(t=>t.tabId))",
+	);
+	const targetOrdinal = tabOrder.indexOf(tabId) + 1;
+	assert.ok(targetOrdinal > 0 && targetOrdinal < 10);
+	os(`keystroke "${targetOrdinal}" using {command down}`);
 	await until(
 		() =>
 			evaluate(
@@ -650,12 +706,44 @@ try {
 			main,
 			`process.mainModule.require('electron').webContents.fromId(${paletteCase.page.id}).executeJavaScript('({value:document.querySelector("#field").value,start:document.querySelector("#field").selectionStart,end:document.querySelector("#field").selectionEnd})')`,
 		);
-	const point = await evaluate(
-		main,
-		`(async()=>{const E=process.mainModule.require('electron');const w=E.BrowserWindow.getAllWindows()[0];const v=w.contentView.children.find(v=>v.webContents?.id===${paletteCase.page.id});const r=await v.webContents.executeJavaScript('(()=>{const r=document.querySelector("#field").getBoundingClientRect();return {x:r.x+r.width/2,y:r.y+r.height/2}})()');return {window:w.getContentBounds(),view:v.getBounds(),point:r};})()`,
+	// The shipped keyboard door returns native ownership to the page. It is
+	// intentionally available only under the real user's normal launch policy.
+	os('keystroke "l" using {command down}');
+	await until(
+		() =>
+			evaluate(
+				owner,
+				"document.activeElement?.matches('[data-tour-tag=browser-address]')",
+			),
+		"actual CmdL focuses address row",
 	);
-	os(
-		`click at {${Math.round(point.window.x + point.view.x + point.point.x)},${Math.round(point.window.y + point.view.y + point.point.y)}}`,
+	os("key code 53");
+	await until(
+		() =>
+			evaluate(
+				main,
+				`process.mainModule.require('electron').webContents.fromId(${paletteCase.page.id}).isFocused()`,
+			),
+		"actual Escape returns native browser focus",
+	);
+	for (let step = 0; step < 6; step++) {
+		if (
+			await evaluate(
+				main,
+				`process.mainModule.require('electron').webContents.fromId(${paletteCase.page.id}).executeJavaScript('document.activeElement?.id===\"field\"')`,
+			)
+		)
+			break;
+		os("key code 48");
+		await sleep(100);
+	}
+	assert.equal(
+		await evaluate(
+			main,
+			`process.mainModule.require('electron').webContents.fromId(${paletteCase.page.id}).executeJavaScript('document.activeElement?.id===\"field\"')`,
+		),
+		true,
+		"real Tab traversal reaches the presented page input",
 	);
 	os('keystroke "human"');
 	await sleep(200);
@@ -669,8 +757,25 @@ try {
 	// Switch away and back through actual tab controls; the same page state is
 	// retained, and no inspector addChildView/focus restoration participates.
 	const otherId = facts.cases[0].tabId;
-	await clickShell(`[data-tab-id="${otherId}"] [role="tab"]`);
-	await clickShell(`[data-tab-id="${tabId}"] [role="tab"]`);
+	const otherOrdinal = tabOrder.indexOf(otherId) + 1;
+	os(`keystroke "${otherOrdinal}" using {command down}`);
+	await until(
+		() =>
+			evaluate(
+				owner,
+				`window.api.browser.state().then(s=>s.activeTabId===${otherId})`,
+			),
+		"actual browser tab switch",
+	);
+	os(`keystroke "${targetOrdinal}" using {command down}`);
+	await until(
+		() =>
+			evaluate(
+				owner,
+				`window.api.browser.state().then(s=>s.activeTabId===${tabId})`,
+			),
+		"actual browser tab return",
+	);
 	assert.equal((await pageCaret()).value, "human");
 	await navigate("chat");
 	await until(
@@ -682,7 +787,6 @@ try {
 		"route exit detaches browser page",
 	);
 	await navigate("browser");
-	await clickShell(`[data-tab-id="${tabId}"] [role="tab"]`);
 	await until(
 		() =>
 			evaluate(

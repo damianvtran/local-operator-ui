@@ -13,7 +13,7 @@ test("native first-responder probing is confined to explicitly armed macOS CI", 
 		CI: "true",
 		LOCAL_OPERATOR_FOCUS_PROOF_CI: "1",
 	};
-	assert.equal(focusProofWindowMode(["--ci-native-owner"], env), "inactive");
+	assert.equal(focusProofWindowMode(["--ci-native-owner"], env), "normal");
 	for (const key of Object.keys(env)) {
 		assert.throws(
 			() =>

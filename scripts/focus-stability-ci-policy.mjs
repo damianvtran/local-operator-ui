@@ -17,5 +17,7 @@ export function focusProofWindowMode(args, env) {
 			"native focus probing requires explicitly armed disposable macOS CI",
 		);
 	}
-	return "inactive";
+	// Product browser focus handoffs intentionally refuse non-normal launch plans.
+	// CI must exercise that real user path, not an activated-inactive approximation.
+	return "normal";
 }
