@@ -57,10 +57,22 @@ const HOOK = join(REPO, ".githooks", "pre-push");
  */
 function ownedTypecheckCache(source, expected) {
 	const entries = [...source.matchAll(/"tsBuildInfoFile"\s*:\s*"([^"]+)"/g)];
-	assert.equal(entries.length, 1, "each project must declare exactly one cache path");
+	assert.equal(
+		entries.length,
+		1,
+		"each project must declare exactly one cache path",
+	);
 	const configured = entries[0][1];
-	assert.equal(isAbsolute(configured), false, "cache must be worktree-relative");
-	assert.equal(configured, expected, "cache destination must stay explicitly owned");
+	assert.equal(
+		isAbsolute(configured),
+		false,
+		"cache must be worktree-relative",
+	);
+	assert.equal(
+		configured,
+		expected,
+		"cache destination must stay explicitly owned",
+	);
 	const destination = resolve(REPO, configured);
 	const insideCache = relative(resolve(REPO, ".cache/typecheck"), destination);
 	assert.equal(isAbsolute(insideCache), false);
@@ -76,9 +88,16 @@ test("typecheck build-info stays in distinct ignored worktree-owned caches", () 
 			`./.cache/typecheck/${project}.tsbuildinfo`,
 		),
 	);
-	assert.equal(new Set(destinations).size, 2, "projects must not overwrite each other");
+	assert.equal(
+		new Set(destinations).size,
+		2,
+		"projects must not overwrite each other",
+	);
 	const ignored = readFileSync(join(REPO, ".gitignore"), "utf8").split(/\r?\n/);
-	assert.ok(ignored.includes("/.cache/typecheck/"), "owned metadata must stay untracked");
+	assert.ok(
+		ignored.includes("/.cache/typecheck/"),
+		"owned metadata must stay untracked",
+	);
 });
 
 test("typecheck build-info rejects borrowed, escaping and ambiguous destinations", () => {
@@ -89,11 +108,19 @@ test("typecheck build-info rejects borrowed, escaping and ambiguous destinations
 		"/foreign/node.tsbuildinfo",
 		"./.cache/typecheck/app.tsbuildinfo",
 	]) {
-		assert.throws(() => ownedTypecheckCache(JSON.stringify({ tsBuildInfoFile: unsafe }), expected));
+		assert.throws(() =>
+			ownedTypecheckCache(
+				JSON.stringify({ tsBuildInfoFile: unsafe }),
+				expected,
+			),
+		);
 	}
 	assert.throws(() => ownedTypecheckCache("{}", expected));
 	assert.throws(() =>
-		ownedTypecheckCache(`{"tsBuildInfoFile":"${expected}","tsBuildInfoFile":"${expected}"}`, expected),
+		ownedTypecheckCache(
+			`{"tsBuildInfoFile":"${expected}","tsBuildInfoFile":"${expected}"}`,
+			expected,
+		),
 	);
 });
 
