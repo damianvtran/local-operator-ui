@@ -12,7 +12,10 @@ import {
 	OwnerAuditSectionHeader,
 	useOwnerAuditSurface,
 } from "./team-bridge-owner-audit";
-import { createOwnerAuditQueryFixture } from "./team-bridge-owner-audit-query.fixture";
+import {
+	createOwnerAuditQueryFixture,
+	queryHistoryViewport,
+} from "./team-bridge-owner-audit-query.fixture";
 
 /**
  * The owner-audit section — "{chief of staff}'s messages" — in the four states
@@ -713,14 +716,19 @@ function QueryHistorySurface({ tenantId }: { tenantId: string }) {
 		onSelect: () => {},
 	});
 	return (
-		<div className="grid h-screen grid-cols-[300px_minmax(0,1fr)] overflow-hidden bg-canvas text-ink">
-			<aside className="overflow-auto bg-panel">
+		<div className="flex h-screen min-h-0 overflow-hidden bg-canvas text-ink">
+			<aside className="min-h-0 w-[300px] shrink-0 overflow-auto bg-panel">
 				{slot?.rail(() => {})}
 				<button type="button" onClick={() => slot?.clear()}>
 					Fixture close panel
 				</button>
 			</aside>
-			<div className="min-h-0 min-w-0">
+			{/* Match the app's bounded flex column: the real panel is flex-1,
+			   so a plain auto-height div lets its transcript grow to content. */}
+			<div
+				data-query-history-panel
+				className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
+			>
 				{slot?.panel ?? (
 					<p>Select a synthetic conversation in the real rail.</p>
 				)}
@@ -778,9 +786,7 @@ function QueryBackedHistoryExercise() {
 	}, [fixture]);
 	useEffect(() => {
 		const timer = window.setInterval(() => {
-			const host = root.current?.querySelector<HTMLElement>(
-				"main .overflow-auto",
-			);
+			const host = queryHistoryViewport(root.current);
 			const box = host?.getBoundingClientRect();
 			const visible =
 				host && box
@@ -796,13 +802,28 @@ function QueryBackedHistoryExercise() {
 				tenantId,
 				...fixture.inspect(),
 				mountedPanel: Boolean(host),
+				storyViewportHeight: window.innerHeight,
+				viewportRect: box
+					? { top: box.top, bottom: box.bottom, height: box.height }
+					: null,
+				viewportBoundsOk: Boolean(
+					host &&
+						box &&
+						host.clientHeight > 0 &&
+						host.clientHeight <= window.innerHeight &&
+						box.height > 0 &&
+						box.height <= window.innerHeight &&
+						box.top >= 0 &&
+						box.bottom <= window.innerHeight + 1,
+				),
+				scrollable: Boolean(host && host.scrollHeight > host.clientHeight),
 				scrollTop: host?.scrollTop,
 				scrollHeight: host?.scrollHeight,
 				clientHeight: host?.clientHeight,
 				firstVisible: first?.dataset.messageId,
 				lastVisible: visible.at(-1)?.dataset.messageId,
 				instrumentedImages: [
-					...(root.current?.querySelectorAll<HTMLImageElement>(
+					...(host?.querySelectorAll<HTMLImageElement>(
 						"img[data-fixture-height]",
 					) ?? []),
 				].map((image) => ({
@@ -821,9 +842,7 @@ function QueryBackedHistoryExercise() {
 		return () => window.clearInterval(timer);
 	}, [fixture, tenantId]);
 	const scroll = (edge: "up" | "top" | "end") => {
-		const host = root.current?.querySelector<HTMLElement>(
-			"main .overflow-auto",
-		);
+		const host = queryHistoryViewport(root.current);
 		if (host)
 			host.scrollTop =
 				edge === "up"
@@ -833,8 +852,8 @@ function QueryBackedHistoryExercise() {
 						: host.scrollHeight;
 	};
 	const decodeControlledImage = () => {
-		const row = root.current?.querySelector<HTMLElement>(
-			"main [data-message-id]",
+		const row = queryHistoryViewport(root.current)?.querySelector<HTMLElement>(
+			"[data-message-id]",
 		);
 		if (!row || row.querySelector("[data-fixture-height]")) return;
 		// A fixed story-only image instruments the real scroll host. It tests

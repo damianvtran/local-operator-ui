@@ -10,6 +10,18 @@ import { teamBridgeKeys } from "./team-bridge-keys";
 export const OWNER_AUDIT_NOFETCH_SENTINEL =
 	"https://query-history-fixture.invalid/unadmitted-preview.png";
 
+// The fixture owns the outer marker; the shipped panel owns its direct scroll
+// child. Avoid a semantic-tag assumption (the real panel root is a section)
+// and do not accidentally measure a nested markdown/code overflow element.
+export const QUERY_HISTORY_VIEWPORT_SELECTOR =
+	"[data-query-history-panel] > :only-child > .overflow-auto";
+
+export function queryHistoryViewport(root: ParentNode | null) {
+	return (
+		root?.querySelector<HTMLElement>(QUERY_HISTORY_VIEWPORT_SELECTOR) ?? null
+	);
+}
+
 type FixtureMode = "normal" | "empty" | "short" | "denied" | "unavailable";
 type TransportRecord = {
 	op: string;

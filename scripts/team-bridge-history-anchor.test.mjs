@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { createServer } from "node:http";
 import Module from "node:module";
 import { test } from "node:test";
@@ -19,7 +20,7 @@ const bundle = await build({
  export {radientUserKeys} from "./src/renderer/src/shared/hooks/radient-account-authority";
  export {teamBridgeKeys} from "./src/renderer/src/features/team-bridge/team-bridge-keys";
  export {desktopEndpoint} from "./src/shared/desktop-contract";
- export {createOwnerAuditQueryFixture} from "./src/renderer/src/features/team-bridge/team-bridge-owner-audit-query.fixture";
+ export {createOwnerAuditQueryFixture, queryHistoryViewport} from "./src/renderer/src/features/team-bridge/team-bridge-owner-audit-query.fixture";
  export {TeamBridgeOwnerAuditApi} from "./src/renderer/src/shared/api/local-operator/team-bridge-owner-audit-api";
  `,
 		resolveDir: process.cwd(),
@@ -635,4 +636,73 @@ test("query-backed story fixture uses current desktop protocol/real decoder, hel
 		fixture.dispose();
 		window.api = previous;
 	}
+});
+
+const fixtureRootClassesPattern = /<div className="([^"]+)"/;
+const fixturePanelClassesPattern =
+	/data-query-history-panel\s+className="([^"]+)"/;
+const fixtureClassTokensPattern = /\s+/;
+const fixtureTagCoupledViewportPattern =
+	/main (?:\.overflow-auto|\[data-message-id\])/;
+const fixtureViewportCallsPattern = /queryHistoryViewport\(root.current\)/g;
+
+test("query-backed fixture has a bounded flex panel and resolves its real timeline without a main tag", () => {
+	const story = readFileSync(
+		"src/renderer/src/features/team-bridge/team-bridge-owner-audit.stories.tsx",
+		"utf8",
+	);
+	const surface = story.slice(
+		story.indexOf("function QueryHistorySurface("),
+		story.indexOf("function QueryBackedHistoryExercise("),
+	);
+	const rootClasses =
+		surface
+			.match(fixtureRootClassesPattern)?.[1]
+			.split(fixtureClassTokensPattern) ?? [];
+	const panelClasses =
+		surface
+			.match(fixturePanelClassesPattern)?.[1]
+			.split(fixtureClassTokensPattern) ?? [];
+	for (const token of ["flex", "h-screen", "min-h-0", "overflow-hidden"])
+		assert.ok(rootClasses.includes(token), `fixture root lacks ${token}`);
+	for (const token of [
+		"flex",
+		"min-h-0",
+		"min-w-0",
+		"flex-1",
+		"flex-col",
+		"overflow-hidden",
+	])
+		assert.ok(
+			panelClasses.includes(token),
+			`fixture panel parent lacks ${token}`,
+		);
+	const exercise = story.slice(
+		story.indexOf("function QueryBackedHistoryExercise("),
+	);
+	assert.doesNotMatch(exercise, fixtureTagCoupledViewportPattern);
+	assert.equal(
+		exercise.match(fixtureViewportCallsPattern)?.length,
+		3,
+		"metrics, scroll controls and image probe must use the same scoped viewport lookup",
+	);
+	assert.ok(
+		exercise.includes("viewportBoundsOk:"),
+		"browser admission must report actual bounded geometry rather than only host existence",
+	);
+	const fixtureDom = document.createElement("div");
+	// Deliberately no main tag, plus decoy sidebar and nested code scrollers.
+	// This is a DOM/layout-contract test, NOT a CSS/native-height measurement.
+	fixtureDom.innerHTML = `<aside class="overflow-auto"></aside><div data-query-history-panel><article><header></header><div id="actual-timeline" class="min-h-0 flex-1 overflow-auto"><ul><li data-message-id="actual-row"><pre class="overflow-auto"></pre></li></ul></div></article></div>`;
+	const host = m.queryHistoryViewport(fixtureDom);
+	assert.equal(host?.id, "actual-timeline");
+	assert.equal(
+		host.querySelector("[data-message-id]")?.dataset.messageId,
+		"actual-row",
+	);
+	assert.equal(
+		m.queryHistoryViewport(document.createElement("div")),
+		null,
+		"missing panel must not fall back to another scroller",
+	);
 });
