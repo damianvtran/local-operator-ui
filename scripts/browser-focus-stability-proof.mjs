@@ -841,10 +841,17 @@ try {
 			true,
 			"native main WC owns keyboard before seed",
 		);
-		assert.equal(
-			pre.native.focused,
+		// Detached/emulated WCs can also report focus: the accepted 9/9 OS-key
+		// run already returned WC4 here. Keep the getter as an observation; the
+		// all-WC before-input trace, not this non-unique getter, shows routing.
+		facts.seedGlobalFocusGetter = {
+			observed: pre.native.focused,
 			mainContentsId,
-			"global native owner is pinned main WC",
+		};
+		assert.equal(
+			pre.native.windowFocused,
+			true,
+			"native window focused before seed",
 		);
 		assert.equal(
 			await evaluate(owner, "document.hasFocus()"),
