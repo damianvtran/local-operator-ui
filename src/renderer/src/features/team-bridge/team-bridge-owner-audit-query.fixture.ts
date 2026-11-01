@@ -74,7 +74,12 @@ export function createOwnerAuditQueryFixture(options: {
 		body:
 			status === 200
 				? { status, result }
-				: { status, error: { message: "Synthetic fixture refusal" } },
+				: {
+						status,
+						error: {
+							message: "Synthetic fixture refusal", // i18n: ignore synthetic IPC fixture error, not product copy
+						},
+					},
 	});
 	const request: typeof window.api.desktop.request = async (input) => {
 		if (!active) return envelope(null, 503);
@@ -85,7 +90,13 @@ export function createOwnerAuditQueryFixture(options: {
 		if ("limit" in input) record.limit = input.limit;
 		records.push(record);
 		if (records.length > 128) records.shift();
-		if (!("tenant_id" in input) || !options.tenantIds.includes(input.tenant_id))
+		// Some operations have an optional tenant field: property presence does
+		// not prove a string. Refuse those inputs instead of asserting them safe.
+		if (
+			!("tenant_id" in input) ||
+			typeof input.tenant_id !== "string" ||
+			!options.tenantIds.includes(input.tenant_id)
+		)
 			return envelope(null, 403);
 		if (input.op === "team_bridge.directory")
 			return envelope({ members: options.members });

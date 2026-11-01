@@ -584,6 +584,20 @@ test("query-backed story fixture uses current desktop protocol/real decoder, hel
 			),
 			(error) => error.status === 403,
 		);
+		for (const tenant of [undefined, null, 0, ""]) {
+			const response = await fixture.request({
+				op: "team_bridge.owner_audit.messages",
+				expected_account_id: "acct_fixture",
+				tenant_id: tenant,
+				conversation_id: "bcv_fixture",
+				limit: 50,
+			});
+			assert.equal(
+				response.status,
+				403,
+				"malformed tenant values stay on the refusal path without coercion",
+			);
+		}
 		fixture.holdNextOlder();
 		const older = m.TeamBridgeOwnerAuditApi.messages(
 			scope,
