@@ -898,6 +898,31 @@ test("panel: loading, error, empty history, populated", async () => {
 	await populated.close();
 });
 
+/* A slid history window can outlive a failed read. Assert the whole panel's
+ * button set so a floating history action cannot bypass its refusal/retry UI. */
+for (const [state, expectedButtons] of [
+	["ready", ["Refresh", "Refresh"]],
+	["permission", []],
+	["not-found", []],
+	["auth", []],
+	["unavailable", ["Try again"]],
+]) {
+	test(`panel: evicted latest page button matrix — ${state}`, async (context) => {
+		const view = await renderView(
+			panel({ state, messages: [admitted], latestPageAvailable: false }),
+		);
+		try {
+			const buttons = [...view.host.querySelectorAll("button")].map((button) =>
+				button.textContent.trim(),
+			);
+			context.diagnostic(`${state}: buttons=${JSON.stringify(buttons)}`);
+			assert.deepEqual(buttons, expectedButtons);
+		} finally {
+			await view.close();
+		}
+	});
+}
+
 /* ------------------------------------------------------------------ *\
    3. The honest body, the verdict chips, the disclosure
 \* ------------------------------------------------------------------ */
@@ -1097,8 +1122,20 @@ test("a truncated audit window says so where the reader is looking", async () =>
 		false,
 		"the cut-off is not a header line",
 	);
-	const notice = closed.host.querySelector("section > div > p:last-of-type");
+	/* The scroll anchor owns an inner content wrapper now. Find the actual
+	 * membership statement within the viewport rather than pinning its nesting
+	 * depth, but still require it to close the transcript, not just exist. */
+	const viewport = closed.host.querySelector("section > div");
+	assert.ok(viewport);
+	const notice = [...viewport.querySelectorAll("p")].find(
+		(paragraph) => paragraph.textContent === m.t("ui.ownerAudit.removed"),
+	);
 	assert.ok(notice, "the list ends with the window's own statement");
+	assert.equal(notice.parentElement.lastElementChild, notice);
+	assert.ok(
+		viewport.textContent.endsWith(notice.textContent),
+		"the truncation statement follows all transcript content",
+	);
 	assert.ok(notice.textContent.includes(m.t("ui.ownerAudit.removed")));
 	/* Distinct treatment: the notice is not the disclosure's 12px quiet grey. */
 	assert.ok(notice.className.includes("text-sm"));
@@ -1156,6 +1193,108 @@ test("a bounded page says what is missing and how to load it", async () => {
 	const whole = await renderView(panel({ messages: [admitted] }));
 	assert.equal(whole.text().includes(m.t("ui.ownerAudit.page_cutoff")), false);
 	await whole.close();
+});
+
+test("panel: cutoff and older action remain visible at newest, middle and top", async (context) => {
+	/* JSDOM has no layout. Model the native viewport's geometry, as the anchor
+	 * suite does, while the SHIPPED panel/hook performs the initial scroll.
+	 * The structural assertions bind that model to a reserved flex row, not an
+	 * overlay. This is a scroll regression, not browser-frame evidence. */
+	let viewport;
+	let scrollTop = 0;
+	let olderReads = 0;
+	const viewportTop = 160;
+	const viewportHeight = 300;
+	const contentHeight = 2400;
+	const view = await renderView(
+		panel({
+			messages: Array.from({ length: 50 }, (_, index) => ({
+				...admitted,
+				id: `cutoff-${index}`,
+			})),
+			hasMore: true,
+			loadMore: () => olderReads++,
+			scrollHostRef: (node) => {
+				if (!node) return;
+				viewport = node;
+				Object.defineProperties(node, {
+					scrollHeight: { configurable: true, get: () => contentHeight },
+					clientHeight: { configurable: true, get: () => viewportHeight },
+					scrollTop: {
+						configurable: true,
+						get: () => scrollTop,
+						set: (value) => {
+							scrollTop = Math.max(
+								0,
+								Math.min(contentHeight - viewportHeight, value),
+							);
+						},
+					},
+				});
+			},
+		}),
+	);
+	try {
+		assert.equal(scrollTop, 2100, "the actual panel hook opens at newest");
+		const section = view.host.querySelector("section");
+		const band = section.querySelector(":scope > aside");
+		assert.ok(band, "cutoff reserves space outside the scrolling transcript");
+		assert.equal(band.nextElementSibling, viewport);
+		assert.ok(section.classList.contains("flex-col"));
+		assert.ok(band.classList.contains("shrink-0"));
+		assert.equal(
+			band.textContent.includes(m.t("ui.ownerAudit.page_cutoff")),
+			true,
+		);
+		assert.equal(
+			viewport.textContent.includes(m.t("ui.ownerAudit.page_cutoff")),
+			false,
+		);
+		for (const overlay of ["absolute", "fixed", "sticky", "overflow-auto"]) {
+			assert.equal(band.classList.contains(overlay), false);
+		}
+		/* The band ends where the scrollport begins. Moving it into the first
+		 * content row (the original defect) must fail the same visibility check. */
+		const visible = () => {
+			const top = viewport.contains(band)
+				? viewportTop - scrollTop
+				: viewportTop - 40;
+			const bottom = top + 40;
+			return top >= 0 && bottom <= viewportTop + viewportHeight;
+		};
+		const older = BUTTON_TEXT(band, m.t("ui.ownerAudit.older"));
+		assert.ok(older, "the advertised action is in the reserved visible band");
+		for (const [position, offset] of [
+			["newest", 2100],
+			["middle", 1050],
+			["top", 0],
+		]) {
+			viewport.scrollTop = offset;
+			await act(async () => viewport.dispatchEvent(new window.Event("scroll")));
+			assert.equal(visible(), true, `${position}: cutoff/action are in view`);
+			context.diagnostic(
+				`${position}: scrollTop=${scrollTop}; reserved cutoff/action y=120–160; viewport y=160–460`,
+			);
+		}
+		await act(async () => older.click());
+		assert.equal(
+			olderReads,
+			1,
+			"the pinned action still requests older history",
+		);
+		viewport.firstElementChild.prepend(band);
+		for (const offset of [2100, 1050]) {
+			viewport.scrollTop = offset;
+			assert.equal(
+				visible(),
+				false,
+				"negative control: top-only disclosure is offscreen",
+			);
+		}
+		section.insertBefore(band, viewport);
+	} finally {
+		await view.close();
+	}
 });
 
 test("the surface offers no way to write: no composer, no reaction, no admit", async () => {
@@ -1514,7 +1653,7 @@ test("rail: all organizations — a status refetch during both org reads renders
 	await app.close();
 });
 
-test("rail: a genuine authority change mid-read still renders the error", async () => {
+test("rail: a genuine authority change cancels the stale read and rebinds", async () => {
 	requests = [];
 	let client;
 	let swapped = false;
@@ -1528,8 +1667,11 @@ test("rail: a genuine authority change mid-read still renders the error", async 
 				...before,
 				state: "unavailable",
 			});
+			return json(conversationPage);
 		}
-		return json(conversationPage);
+		// The newly bound authority answers an empty page. The old page must
+		// neither render its rows nor become an error the human must retry.
+		return json({ ...conversationPage, conversations: [] });
 	};
 	const app = await mountSlot(
 		{
@@ -1548,8 +1690,14 @@ test("rail: a genuine authority change mid-read still renders the error", async 
 	);
 
 	assert.equal(swapped, true, "the authority change must land mid-read");
-	assert.equal(app.host.querySelector('[role="alert"]') !== null, true);
-	assert.ok(app.host.textContent.includes(m.t("ui.ownerAudit.error")));
+	assert.equal(
+		requests.filter(
+			(request) => request.op === "team_bridge.owner_audit.conversations",
+		).length,
+		2,
+	);
+	assert.equal(app.host.querySelector('[role="alert"]'), null);
+	assert.ok(app.host.textContent.includes(m.t("ui.ownerAudit.empty_list")));
 	assert.equal(
 		app.host.querySelectorAll("li > button").length,
 		0,

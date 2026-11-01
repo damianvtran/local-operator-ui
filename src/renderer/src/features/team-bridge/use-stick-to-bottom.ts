@@ -4,6 +4,7 @@ import {
 	useEffect,
 	useLayoutEffect,
 	useRef,
+	useState,
 } from "react";
 
 /**
@@ -42,25 +43,84 @@ const VIEWPORT = "[data-radix-scroll-area-viewport]";
 export function useStickToBottom<T extends HTMLElement = HTMLDivElement>({
 	resetKey,
 	contentKey,
+	scrollElement = "radix",
+	preserveAnchor = false,
+	rowIds,
+	liveEdgeAvailable = true,
 }: {
 	resetKey: string;
 	contentKey: string;
-}): { rootRef: RefObject<T>; pin: () => void; hold: () => void } {
+	/** Audit uses a native overflow host, while member/thread panes use Radix.
+	 * Opt in explicitly; never accidentally scroll a wrapper in existing panes. */
+	scrollElement?: "radix" | "root";
+	/** Opt-in history retention; member/thread policy is unchanged by default. */
+	preserveAnchor?: boolean;
+	rowIds?: readonly string[];
+	/** A bounded older-history window is never the live edge. */
+	liveEdgeAvailable?: boolean;
+}): {
+	rootRef: RefObject<T>;
+	pin: () => void;
+	hold: () => void;
+	newMessages: number;
+} {
 	const rootRef = useRef<T>(null);
 	// A ref, not state: following the bottom must not re-render the timeline.
 	const pinned = useRef(true);
+	const anchor = useRef<{ id: string; offset: number } | null>(null);
+	const previousRows = useRef<readonly string[]>([]);
+	const [newMessages, setNewMessages] = useState(0);
 	const viewport = useCallback(
-		() => rootRef.current?.querySelector<HTMLElement>(VIEWPORT) ?? null,
-		[],
+		() =>
+			scrollElement === "root"
+				? rootRef.current
+				: (rootRef.current?.querySelector<HTMLElement>(VIEWPORT) ?? null),
+		[scrollElement],
 	);
+	/* Keep a ROW and its viewport-relative pixel position, not scrollHeight:
+	 * prepends, changing disclosure height and late image loads can all move
+	 * content above a reader without changing which message they are reading. */
+	const captureAnchor = useCallback(() => {
+		if (!preserveAnchor) return;
+		const element = viewport();
+		if (!element) return;
+		const box = element.getBoundingClientRect();
+		const row = [
+			...element.querySelectorAll<HTMLElement>("[data-message-id]"),
+		].find((node) => {
+			const r = node.getBoundingClientRect();
+			return r.bottom > box.top && r.top < box.bottom;
+		});
+		anchor.current = row
+			? {
+					id: row.dataset.messageId ?? "",
+					offset: row.getBoundingClientRect().top - box.top,
+				}
+			: null;
+	}, [preserveAnchor, viewport]);
+	const restoreAnchor = useCallback(() => {
+		if (!preserveAnchor || !anchor.current) return;
+		const element = viewport();
+		if (!element) return;
+		const row = [
+			...element.querySelectorAll<HTMLElement>("[data-message-id]"),
+		].find((node) => node.dataset.messageId === anchor.current?.id);
+		if (row)
+			element.scrollTop +=
+				row.getBoundingClientRect().top -
+				element.getBoundingClientRect().top -
+				anchor.current.offset;
+	}, [preserveAnchor, viewport]);
 	const toBottom = useCallback(() => {
 		const element = viewport();
 		if (element) element.scrollTop = element.scrollHeight;
 	}, [viewport]);
 	const pin = useCallback(() => {
+		if (!liveEdgeAvailable) return;
 		pinned.current = true;
+		if (preserveAnchor) setNewMessages(0);
 		toBottom();
-	}, [toBottom]);
+	}, [toBottom, preserveAnchor, liveEdgeAvailable]);
 	/*
 	 * Unpin WITHOUT moving: for an action the reader takes at the bottom that
 	 * appends content they mean to read from where they are - the thread's
@@ -69,17 +129,32 @@ export function useStickToBottom<T extends HTMLElement = HTMLDivElement>({
 	 */
 	const hold = useCallback(() => {
 		pinned.current = false;
-	}, []);
+		captureAnchor();
+	}, [captureAnchor]);
 
 	// Layout effects: the jump happens before paint, so nothing flashes at the top.
 	// biome-ignore lint/correctness/useExhaustiveDependencies: resetKey IS the trigger.
 	useLayoutEffect(() => {
-		pinned.current = true;
+		pinned.current = liveEdgeAvailable;
+		anchor.current = null;
+		previousRows.current = rowIds ?? [];
+		if (preserveAnchor) setNewMessages(0);
 		toBottom();
 	}, [resetKey, toBottom]);
 	// biome-ignore lint/correctness/useExhaustiveDependencies: contentKey IS the trigger.
 	useLayoutEffect(() => {
+		if (!liveEdgeAvailable) pinned.current = false;
 		if (pinned.current) toBottom();
+		else {
+			restoreAnchor();
+			if (preserveAnchor && rowIds) {
+				const previousLast = previousRows.current.at(-1);
+				const index = previousLast ? rowIds.indexOf(previousLast) : -1;
+				if (index >= 0 && index < rowIds.length - 1)
+					setNewMessages((count) => count + rowIds.length - index - 1);
+			}
+		}
+		previousRows.current = rowIds ?? [];
 	}, [contentKey, toBottom]);
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: resetKey re-binds the listeners - a new conversation can mount a new viewport.
@@ -88,13 +163,20 @@ export function useStickToBottom<T extends HTMLElement = HTMLDivElement>({
 		if (!element) return;
 		const onScroll = () => {
 			pinned.current =
+				liveEdgeAvailable &&
 				element.scrollHeight - element.scrollTop - element.clientHeight <=
-				NEAR_BOTTOM_PX;
+					NEAR_BOTTOM_PX;
+			if (pinned.current) {
+				anchor.current = null;
+				if (preserveAnchor) setNewMessages(0);
+			} else captureAnchor();
 		};
 		// `load` does not bubble; capture sees every image inside the viewport.
 		const onLoad = (event: Event) => {
-			if (pinned.current && event.target instanceof HTMLImageElement)
-				toBottom();
+			if (event.target instanceof HTMLImageElement) {
+				if (pinned.current) toBottom();
+				else restoreAnchor();
+			}
 		};
 		element.addEventListener("scroll", onScroll, { passive: true });
 		element.addEventListener("load", onLoad, true);
@@ -111,6 +193,7 @@ export function useStickToBottom<T extends HTMLElement = HTMLDivElement>({
 			typeof ResizeObserver === "function" && content
 				? new ResizeObserver(() => {
 						if (pinned.current) toBottom();
+						else restoreAnchor();
 					})
 				: null;
 		if (resize && content) {
@@ -131,7 +214,15 @@ export function useStickToBottom<T extends HTMLElement = HTMLDivElement>({
 			element.removeEventListener("load", onLoad, true);
 			resize?.disconnect();
 		};
-	}, [viewport, toBottom, resetKey]);
+	}, [
+		viewport,
+		toBottom,
+		resetKey,
+		liveEdgeAvailable,
+		preserveAnchor,
+		captureAnchor,
+		restoreAnchor,
+	]);
 
-	return { rootRef, pin, hold };
+	return { rootRef, pin, hold, newMessages };
 }
