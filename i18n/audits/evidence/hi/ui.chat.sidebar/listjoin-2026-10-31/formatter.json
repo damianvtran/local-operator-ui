@@ -1,0 +1,15 @@
+{
+  "arms": {
+    "pair": "{head} और {tail}",
+    "middle": "{head}, {tail}",
+    "other": "{head} और {tail}"
+  },
+  "outputs": {
+    "pair": "Coder और Reviewer",
+    "middle": "Coder, Reviewer",
+    "other": "Coder, Reviewer और Planner",
+    "unknown_position": "Coder और Reviewer",
+    "devanagari_pair": "लेखक और समीक्षक"
+  },
+  "negative_missing_tail": "PASS: formatter throws"
+}
