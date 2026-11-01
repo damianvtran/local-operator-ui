@@ -871,6 +871,33 @@ test("an unchanged layout pass re-raises the child above a newly added page", as
 	controller.dispose("test");
 });
 
+test("an unchanged layout never re-attaches an already-topmost address child", async () => {
+	const { controller, window, views } = makeController();
+	controller.onLayout(layout());
+	const pending = controller.showOverlay();
+	await tick();
+	const view = views.at(-1);
+	view.webContents.emit("dom-ready");
+	view.webContents.emit("did-finish-load");
+	await pending;
+	assert.equal(window.contentView.children.at(-1), view);
+	const attachments = () =>
+		window.calls.filter(([name]) => name === "addChildView").length;
+	const before = attachments();
+	// Repeated background layout notifications are not user focus intent. Native
+	// reattachment can move the first responder even without an explicit focus call.
+	for (let revision = 2; revision <= 10; revision += 1) {
+		controller.onLayout(layout({ revision }));
+	}
+	assert.equal(
+		attachments(),
+		before,
+		"topmost child remains attached in place",
+	);
+	assert.equal(view.visible, true);
+	controller.dispose("test");
+});
+
 test("background creation (same key) never re-opens after a hide; null layout stays hidden", async () => {
 	const { controller, views } = makeController();
 	controller.onLayout(layout());

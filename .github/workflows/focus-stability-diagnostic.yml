@@ -1,0 +1,46 @@
+name: Focus stability diagnostic
+# Deliberately opt-in by branch. Native dispatch belongs on a disposable runner
+# while this machine's process-group safety hold prevents local Electron probes.
+on:
+  push:
+    branches: [fix/composer-focus-stability]
+permissions:
+  contents: read
+jobs:
+  native-focus:
+    runs-on: macos-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: '10.29.2'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Build exact checked-out source
+        env:
+          NODE_OPTIONS: '--max-old-space-size=4096'
+          VITE_LOCAL_OPERATOR_API_URL: 'http://127.0.0.1:9'
+          VITE_DISABLE_BACKEND_MANAGER: 'true'
+          VITE_GOOGLE_CLIENT_ID: ci-fixture.apps.googleusercontent.com
+          VITE_GOOGLE_CLIENT_SECRET: ci-fixture-not-a-secret
+          VITE_MICROSOFT_CLIENT_ID: 00000000-0000-4000-8000-000000000001
+          VITE_MICROSOFT_TENANT_ID: 00000000-0000-4000-8000-000000000002
+        run: pnpm run build
+      - name: Native focus diagnostic
+        env:
+          LOCAL_OPERATOR_SCRATCHPAD: ${{ runner.temp }}/focus-stability
+        run: node scripts/browser-focus-stability-proof.mjs --out "$LOCAL_OPERATOR_SCRATCHPAD"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: focus-stability-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/focus-stability/facts.json
+            ${{ runner.temp }}/focus-stability/build-identity.json
+            ${{ runner.temp }}/focus-stability/teardown.json
+            ${{ runner.temp }}/focus-stability/app.log
+          if-no-files-found: warn

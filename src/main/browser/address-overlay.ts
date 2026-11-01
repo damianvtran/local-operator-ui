@@ -2036,7 +2036,14 @@ export class AddressOverlayController {
 	}
 
 	private raiseChild(view: WebContentsView): void {
-		this.window.contentView.addChildView(view);
+		// Native reattachment can move the first responder even without focus().
+		// Background layout notifications must not touch the current input owner;
+		// only a newly appended sibling requires restoring this child's z-order.
+		// Keep the same guard as the approvals overlay's auto-present path.
+		const children = this.window.contentView.children;
+		if (children[children.length - 1] !== view) {
+			this.window.contentView.addChildView(view);
+		}
 	}
 
 	private viewUsable(view: WebContentsView): boolean {
