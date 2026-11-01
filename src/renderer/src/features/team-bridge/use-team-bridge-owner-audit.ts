@@ -3,8 +3,27 @@ import {
 	type OwnerAuditScope,
 	TeamBridgeOwnerAuditApi,
 } from "@shared/api/local-operator/team-bridge-owner-audit-api";
-import { isCancelledError, useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
-import { readForBridgeOwner, useBridgeOwner } from "./team-bridge-owner";
+import {
+	observedRadientAuthority,
+	radientAuthoritySnapshot,
+	subscribeRadientAuthority,
+	useObservedRadientAuthority,
+} from "@shared/hooks/radient-account-authority";
+import {
+	CancelledError,
+	isCancelledError,
+	useInfiniteQuery,
+	useQueryClient,
+} from "@tanstack/react-query";
+import {
+	useCallback,
+	useLayoutEffect,
+	useRef,
+	useSyncExternalStore,
+} from "react";
+import type { AgentMessagesStatus } from "../../../../shared/agent-messages-contract";
+import { teamBridgeKeys } from "./team-bridge-keys";
+import { bridgeStatusAuthority, readForBridgeOwner } from "./team-bridge-owner";
 
 /** Query rejections are consumed by React Query, so neither React nor the
  * packaged renderer console reports them. The durable diagnostic must explain
@@ -20,7 +39,7 @@ const AUDIT_ERROR_CODES = new Set([
 	"owner_audit_unavailable",
 ]);
 
-function auditFailureMetadata(error: unknown) {
+export function auditFailureMetadata(error: unknown) {
 	const message = error instanceof Error ? error.message : "";
 	const category = isCancelledError(error)
 		? "cancelled"
@@ -71,43 +90,172 @@ function auditFailureMetadata(error: unknown) {
 	};
 }
 
+export type AuditFailureState =
+	| "auth"
+	| "permission"
+	| "not-found"
+	| "unavailable"
+	| "error";
+
+/** Presentation consumes the shared diagnostic taxonomy, never error prose or
+ * an unvetted server code. Unknown transport/status/schema failures stay unknown. */
+export function auditFailureState(error: unknown): AuditFailureState {
+	const failure = auditFailureMetadata(error);
+	if (
+		failure.category === "credential-authority" ||
+		failure.status === 401 ||
+		failure.code === "account_mismatch" ||
+		failure.code === "expected_account_mismatch"
+	)
+		return "auth";
+	if (failure.status === 403) return "permission";
+	if (failure.status === 404 || failure.code === "conversation_not_found")
+		return "not-found";
+	if (failure.status !== null && failure.status >= 500) return "unavailable";
+	return "error";
+}
+
+/** One extra attempt for a known server failure. A null status is NOT proof of
+ * a transient network fault. In particular, a 401 may only commission a NEW
+ * epoch-qualified read after real credential settlement; retry never does that. */
+export function retryOwnerAuditRead(
+	failureCount: number,
+	error: unknown,
+): boolean {
+	const failure = auditFailureMetadata(error);
+	return (
+		failureCount < 1 &&
+		failure.category === "desktop" &&
+		failure.status !== null &&
+		failure.status >= 500 &&
+		(failure.code === null ||
+			failure.code === "deadline_exceeded" ||
+			failure.code === "owner_audit_unavailable")
+	);
+}
+
+export const AUDIT_RETRY_DELAY_MS = 250;
+export const AUDIT_AUTH_SETTLEMENT_MS = 1000;
+
+/** Observe, never manufacture, a credential transition. Time out without
+ * changing auth state or calling a renderer-owned refresh (none exists). */
+export function waitForAuditAuthoritySettlement(
+	client: ReturnType<typeof useQueryClient>,
+	epoch: number,
+): Promise<boolean> {
+	return new Promise((resolve) => {
+		let unsubscribe = () => {};
+		const finish = (settled: boolean) => {
+			clearTimeout(timeout);
+			unsubscribe();
+			resolve(settled);
+		};
+		const check = () => {
+			const current = observedRadientAuthority(client);
+			if (current.epoch > epoch && current.accountId) finish(true);
+		};
+		const timeout = setTimeout(() => finish(false), AUDIT_AUTH_SETTLEMENT_MS);
+		unsubscribe = subscribeRadientAuthority(client, check);
+		check();
+	});
+}
+
 /** No member query keys, persistence, polling, unread counts or read markers.
  * gcTime zero releases private bodies when their human-only panel unmounts.
  * The owner epoch fence rejects a late A→B→A settlement as well as a new account;
  * expected_account_id additionally binds the actual server request. */
 function useAuditRead(scope: OwnerAuditScope) {
 	const client = useQueryClient();
-	const owner = useBridgeOwner(scope.accountId);
-	return async <T>(read: () => Promise<T>): Promise<T> => {
-		/*
-		 * THE READ FENCE, NOT THE WRITE ONE. `isCurrent()` is `bridgeOwnerCurrent`,
-		 * which also demands `!status.read_only`: that flag governs WRITING to the
-		 * agent's surface, and surface state F is deliberately readable. Gating a
-		 * read on it rendered the section and then refused every read inside it
-		 * (agent review round 1, m1). `isReadCurrent()` keeps the part this read
-		 * actually needs — the captured account and the credential epoch.
-		 */
-		if (!owner.isReadCurrent())
-			throw new Error("Owner audit authority changed");
-		const answer = (await readForBridgeOwner(
-			client,
-			scope.accountId,
-			read,
-		)) as T;
-		if (!owner.isReadCurrent())
-			throw new Error("Owner audit authority changed");
-		return answer;
+	const authority = useObservedRadientAuthority();
+	const subscribe = useCallback(
+		(listener: () => void) => client.getQueryCache().subscribe(listener),
+		[client],
+	);
+	const snapshot = useCallback(
+		() =>
+			JSON.stringify(
+				bridgeStatusAuthority(
+					client.getQueryData<AgentMessagesStatus>(
+						teamBridgeKeys.statusFor(scope.accountId),
+					),
+				),
+			),
+		[client, scope.accountId],
+	);
+	const bridgeToken = useSyncExternalStore(subscribe, snapshot, snapshot);
+	const authorityToken = `${authority.token}:${bridgeToken}`;
+	const enabled =
+		authority.accountId === scope.accountId &&
+		Boolean(scope.tenantId) &&
+		client.getQueryData<AgentMessagesStatus>(
+			teamBridgeKeys.statusFor(scope.accountId),
+		)?.account_id === scope.accountId;
+	const mounted = useRef(true);
+	const unauthorized = useRef(0);
+	useLayoutEffect(() => {
+		mounted.current = true;
+		return () => {
+			mounted.current = false;
+		};
+	}, []);
+	const read = async <T>(request: () => Promise<T>): Promise<T> => {
+		const token = authority.token;
+		const isCurrent = () =>
+			mounted.current &&
+			radientAuthoritySnapshot(client) === token &&
+			observedRadientAuthority(client).accountId === scope.accountId &&
+			snapshot() === bridgeToken;
+		/* Capture READ authority per query generation, rather than once for the
+		 * component's lifetime: a real credential transition must commission a
+		 * fresh closure without reviving the old one. Mount/account/epoch fences
+		 * remain, and readForBridgeOwner keeps its original admission/settlement
+		 * checks. Do not use the write fence's !read_only requirement here: state
+		 * F is deliberately readable (original agent review round 1, m1). */
+		try {
+			if (!isCurrent()) throw new Error("Owner audit authority changed");
+			const answer = await readForBridgeOwner(client, scope.accountId, request);
+			if (!isCurrent()) throw new Error("Owner audit authority changed");
+			unauthorized.current = 0;
+			return answer;
+		} catch (error) {
+			// A rejection can arrive late too; it must not start a retry or an
+			// auth wait on behalf of credentials that no longer own the panel.
+			if (!isCurrent()) throw new CancelledError({ revert: true });
+			const failure = auditFailureMetadata(error);
+			// Cancellation is not a presentation error class: it is the action
+			// triggered by a rejected authority. The subscribed token changes the
+			// query key and commissions a fresh closure; NEVER retry the old one.
+			if (
+				[
+					"cancelled",
+					"audit-owner",
+					"bridge-owner",
+					"bridge-authority",
+					"credential-authority",
+				].includes(failure.category)
+			) {
+				throw new CancelledError({ revert: true });
+			}
+			if (failure.status === 401 && ++unauthorized.current === 1) {
+				if (await waitForAuditAuthoritySettlement(client, authority.epoch)) {
+					throw new CancelledError({ revert: true });
+				}
+			}
+			throw error;
+		}
 	};
+	return { read, authorityToken, enabled };
 }
 
 export function useOwnerAuditConversations(scope: OwnerAuditScope) {
-	const read = useAuditRead(scope);
-	return useInfiniteQuery({
+	const { read, authorityToken, enabled } = useAuditRead(scope);
+	const query = useInfiniteQuery({
 		queryKey: [
 			"team-bridge",
 			"owner-audit",
 			scope.accountId,
 			scope.tenantId,
+			authorityToken,
 			"conversations",
 		],
 		initialPageParam: undefined as string | undefined,
@@ -117,22 +265,29 @@ export function useOwnerAuditConversations(scope: OwnerAuditScope) {
 			last.has_more && last.next_cursor && last.next_cursor !== previous
 				? last.next_cursor
 				: undefined,
+		enabled,
 		gcTime: 0,
-		retry: false,
+		retry: retryOwnerAuditRead,
+		retryDelay: AUDIT_RETRY_DELAY_MS,
+		refetchOnWindowFocus: false,
+		refetchOnReconnect: false,
+		retryOnMount: false,
 	});
+	return { ...query, auditAuthRequired: !enabled };
 }
 
 export function useOwnerAuditMessages(
 	scope: OwnerAuditScope,
 	conversationId: string,
 ) {
-	const read = useAuditRead(scope);
-	return useInfiniteQuery({
+	const { read, authorityToken, enabled } = useAuditRead(scope);
+	const query = useInfiniteQuery({
 		queryKey: [
 			"team-bridge",
 			"owner-audit",
 			scope.accountId,
 			scope.tenantId,
+			authorityToken,
 			conversationId,
 			"messages",
 		],
@@ -147,9 +302,15 @@ export function useOwnerAuditMessages(
 			(previous === undefined || last.next_before_seq < previous)
 				? last.next_before_seq
 				: undefined,
+		enabled,
 		gcTime: 0,
-		retry: false,
+		retry: retryOwnerAuditRead,
+		retryDelay: AUDIT_RETRY_DELAY_MS,
+		refetchOnWindowFocus: false,
+		refetchOnReconnect: false,
+		retryOnMount: false,
 	});
+	return { ...query, auditAuthRequired: !enabled };
 }
 
 export function useOwnerAuditReplies(
@@ -157,13 +318,14 @@ export function useOwnerAuditReplies(
 	conversationId: string,
 	rootId: string,
 ) {
-	const read = useAuditRead(scope);
-	return useInfiniteQuery({
+	const { read, authorityToken, enabled } = useAuditRead(scope);
+	const query = useInfiniteQuery({
 		queryKey: [
 			"team-bridge",
 			"owner-audit",
 			scope.accountId,
 			scope.tenantId,
+			authorityToken,
 			conversationId,
 			"replies",
 			rootId,
@@ -184,7 +346,13 @@ export function useOwnerAuditReplies(
 			(previous === undefined || last.next_after_seq > previous)
 				? last.next_after_seq
 				: undefined,
+		enabled,
 		gcTime: 0,
-		retry: false,
+		retry: retryOwnerAuditRead,
+		retryDelay: AUDIT_RETRY_DELAY_MS,
+		refetchOnWindowFocus: false,
+		refetchOnReconnect: false,
+		retryOnMount: false,
 	});
+	return { ...query, auditAuthRequired: !enabled };
 }
