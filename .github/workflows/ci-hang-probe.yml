@@ -6,7 +6,7 @@ name: Bounded CI hang probe
 on:
   push:
     branches:
-      - diag/ui-avatar-pristine-activate
+      - diag/ui-avatar-history-activate
   workflow_dispatch:
 
 permissions:
@@ -19,14 +19,14 @@ concurrency:
 jobs:
   discriminate:
     # Defense in depth for manual dispatch/forks as well as the push filter.
-    # There are no inputs: every activation uses the two immutable refs below.
+    # No inputs or follow-up arms: only the fixed avatar partition below.
     if: >-
       github.repository == 'damianvtran/local-operator-ui' &&
-      ((github.event_name == 'push' && github.ref == 'refs/heads/diag/ui-avatar-pristine-activate') ||
+      ((github.event_name == 'push' && github.ref == 'refs/heads/diag/ui-avatar-history-activate') ||
        (github.event_name == 'workflow_dispatch' &&
-        (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/diag/ui-avatar-pristine-activate')))
+        (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/diag/ui-avatar-history-activate')))
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
         with:
@@ -37,13 +37,8 @@ jobs:
           ref: 2c0f276d0ead12e6b8664f550468b8217bbe506d
           path: avatar
           persist-credentials: false
-      - uses: actions/checkout@v4
-        with:
-          ref: 47cf454be2efe3a0c30e27063d57845ae5ba7171
-          path: telemetry
-          persist-credentials: false
-      # Both immutable CI workflows pin 10.29.2 and lockfile v9; neither target
-      # declares packageManager. Keep provenance explicit rather than infer it.
+      # The one immutable avatar workflow pins 10.29.2 and lockfile v9;
+      # it declares no packageManager. No control-ref install or follow-up arm.
       - uses: pnpm/action-setup@v4
         with:
           version: '10.29.2'
@@ -51,25 +46,20 @@ jobs:
         with:
           node-version: '22'
           cache: pnpm
-          cache-dependency-path: |
-            avatar/pnpm-lock.yaml
-            telemetry/pnpm-lock.yaml
-      - name: Record provenance and prove bounded observer
+          cache-dependency-path: avatar/pnpm-lock.yaml
+      - name: Record provenance and prove external native observer
+        timeout-minutes: 3
         run: |
           mkdir -p "$RUNNER_TEMP/hang-probe"
           git -C probe rev-parse HEAD > "$RUNNER_TEMP/hang-probe/probe-revision.txt"
-          python3 probe/scripts/ci-hang-probe.py self-test --output "$RUNNER_TEMP/hang-probe/control" --coordinator-root avatar --coordinator-root telemetry
+          python3 probe/scripts/ci-hang-probe.py history-self-test --root avatar --output "$RUNNER_TEMP/hang-probe/control"
       - name: Install avatar frozen dependencies
         timeout-minutes: 5
         working-directory: avatar
         run: pnpm install --frozen-lockfile
-      - name: Install telemetry frozen dependencies
-        timeout-minutes: 5
-        working-directory: telemetry
-        run: pnpm install --frozen-lockfile
-      - name: Pristine exact trio, matched reporter only after a timeout
+      - name: One pinned failed partition with external-only history
         run: |
-          python3 probe/scripts/ci-hang-probe.py compare --coordinator-root avatar --coordinator-root telemetry --output "$RUNNER_TEMP/hang-probe/comparison"
+          python3 probe/scripts/ci-hang-probe.py history --root avatar --output "$RUNNER_TEMP/hang-probe/history"
       - name: Preserve bounded sanitized evidence even on failure
         if: always()
         uses: actions/upload-artifact@v4
@@ -80,9 +70,13 @@ jobs:
           path: |
             ${{ runner.temp }}/hang-probe/probe-revision.txt
             ${{ runner.temp }}/hang-probe/*/result.json
-            ${{ runner.temp }}/hang-probe/comparison/comparison.json
-            ${{ runner.temp }}/hang-probe/comparison/*/result.json
-            ${{ runner.temp }}/hang-probe/comparison/*/node-*.jsonl
+            ${{ runner.temp }}/hang-probe/history/selection.json
+            ${{ runner.temp }}/hang-probe/history/source-before.json
+            ${{ runner.temp }}/hang-probe/history/source-after.json
+            ${{ runner.temp }}/hang-probe/history/*/result.json
+            ${{ runner.temp }}/hang-probe/history/*/worker-history.jsonl
+            ${{ runner.temp }}/hang-probe/control/preflight.json
+            ${{ runner.temp }}/hang-probe/control/*/worker-history.jsonl
             ${{ runner.temp }}/hang-probe/*/node-*.jsonl
             ${{ runner.temp }}/hang-probe/control/*/result.json
             ${{ runner.temp }}/hang-probe/control/*/node-*.jsonl

@@ -2,7 +2,45 @@
 
 Diagnostic only. No production behavior, suite budget, concurrency setting, dependency lock or version changes. Do not activate or dispatch before independent review of this workflow's trigger delta. Activation is a bounded diagnostic, not a release or permission to merge this PR. No full-suite retry.
 
-## Current coverage correction — pristine fixtures, matched reporters
+## Current authorization: one pinned failed-partition history
+
+Plan receipt **before execution**: PR #1551 comment `6554755552`. Manager/architect decision `9dd44cf73c1a` closes the isolated actual-three-file experiment as NOT_REPRODUCED for its actual scope. This next diagnostic changes **external observability of ONE historical partition**, not another full suite/matrix/retry, not production fixes or CI/release approval. Older sections below are historical and do not authorize repeating those arms.
+
+The pinned original planner was independently run in **metadata-only, executed=false** mode here: avatar `2c0f276d0ead12e6b8664f550468b8217bbe506d`, sorted modulo four, index **3**, total **656**, selected **164**, newline-terminated selected SHA256 **`67cb42902bb14a6328b7c43347e23f19870b3fe0362f23c408900c11945a46e6`**. Any count/order/ref/digest mismatch STOPs; no substituted diagnostic. Selection is not per-file execution/completion proof.
+
+The ONE target command is the existing pinned source command:
+
+```text
+node scripts/desktop-test-shards.mjs run --head 2c0f276d0ead12e6b8664f550468b8217bbe506d --checkout 2c0f276d0ead12e6b8664f550468b8217bbe506d --index 3
+```
+
+Clean target environment: runner PATH, fresh HOME/config, CI=1, TERM=xterm-256color, `LOCAL_OPERATOR_UI_TEST_CONCURRENCY=3`, `LOCAL_OPERATOR_UI_TEST_MEMORY_BUDGET_MB=9728`. **NO diagnostic NODE_OPTIONS, PROBE_EVIDENCE, custom reporter, Node report CLI flags or SIGUSR2.** Existing production runner/hardlink/lane/memory guards remain. Default TAP flows through the existing bounded nonblocking drain (not identical to CI's tee scheduling). There is no control ref or automatic follow-up. Configured memory budget is at most **9728 MiB**, conservatively sampling owned processes plus observer using max(RSS,PSS+SwapPSS); this is a sampled guard, not an instantaneous kernel/cgroup guarantee. A trip kills only identity-owned processes and is failure 137.
+
+**600 seconds WHOLE history call**, including source/inventory verification, observation and identity-safe cleanup. Setup validation is charged to that clock; eight seconds are reserved for post-validation, and the existing teardown reserve is inside the remainder. No extra wait allowance or cap raise on ordinary CI. Source before/after SHA256 manifests cover 164 fixtures + nine coordinator modules + planner/entry-point/package/lock (**177 paths**), with clean tracked src/scripts/package/lock checks and exact pinned planner inventory revalidation. Before-selection/source sidecars survive even if post-validation fails. A successful observed root exit alone does not establish a successful history: successful TAP and original runner cardinality **164 / width 3** are required. There is no per-file exit/pass inference.
+
+### External file-worker identity and bounded artifacts
+
+The existing native OwnedTree/pidfd/reparenting supervisor is extended, not replaced by a service. Read bounded NUL-delimited `/proc/PID/cmdline` only for owned Node processes. Match exact allowlisted relative/absolute file tokens and require the actual `node --test` direct parent; reject eval/print/argv decoys and the coordinator's list of files. Already identified PID/start identities retain attribution after reparenting. Descendant association is durable only when its ancestry was observed; unknown pre-reparent ancestry is not invented.
+
+One bounded `worker-history.jsonl` records FIRSTSEEN/LIVE/DISAPPEARED with monotonic time, file, PID/start identity, PPID/PGID, CPU delta/RSS and observed descendant aggregates. LIVE may describe remaining descendants (`worker_present=false`); **DISAPPEARED is not exit or pass**. Exact cleanup ownership is independent of record saturation. Default cap: 4096 records / 4 MiB; mapping/argv/checkpoint saturation and dropped records are explicit. Cmdline reads cap at 64 KiB; truncated input is unknown, never a partial-token match. Worker mapping/descendant-association caps, checkpoint write/census cost, sample gaps and potentially missed short workers are explicit. Generic external process snapshots cap at 256 frames × 128 rows and 4096 identity records, with dropped/truncated counters; this does not cap ownership/reaping.
+
+Capture live worker candidates and global TAP activity BEFORE observer termination, because final reaping necessarily makes them disappear. Candidates are NOT causes; CPU activity alone is not test progress. A still-progressing ceiling is NOT a hang. A clean successful selected partition is NOT_REPRODUCED for this history/observer, never a full-suite completion claim. A ceiling outcome never claims a root cause; raw transition evidence and sampling limitations remain in the artifact. No raw argv, environment, test names/assertions or Node report dumps are uploaded.
+
+### Native fail-closed preflight and activation stop
+
+Native Linux/actual Node22 SMALL controls run FIRST, before the one frozen pnpm install and target: real guarded coordinator vs actual worker/argv decoy, retained assertion with TAP deliberately withheld at an outer proxy, detached late child and reparented ownership, natural disappearance, deliberate assertion failure, noisy output, small real memory trip, whole-call deadline, missing-procfs prelaunch fault, checkpoint saturation and PID-reuse checks. Markers/handlers exist ONLY in synthetic control files, never in target fixtures. Missing native worker identity or any failed control STOPs before the target. Local Darwin PS/RSS/identity adapters are preparation, not procfs/pidfd/subreaper proof.
+
+**STOP for independent complete-delta code+QA approval. No activation now.** Fresh exact branch: `diag/ui-avatar-history-activate`. Preserve existing `diag/ui-avatar-native-activate` and `diag/ui-avatar-pristine-activate` refs forever unless separately authorized; never update/force/delete them. Only the ordinary PR branch is pushed here. After approval the manager may use the identical-tree one-shot recipe below, targeting ONLY the fresh history branch; this does not merge #1551/main, release, or bypass shipping CI. The outer workflow is reduced to 20 minutes for preflight/setup + one <=600s history, not a longer target timeout. No local dependencies, actual partition execution or broad retry is performed by implementation.
+
+### Implementation verification for this history delta
+
+Plan receipt `6554755552` preceded execution. Pinned original shard planner metadata independently proved 656 / index-3 164 / exact requested newline digest; no source test import occurred. Six built-in unit contracts pass: exact mapping/mismatch STOP, coordinator/nested-coordinator/argv decoy rejection, durable worker/descendant reparent attribution, explicit saturation, clean no-diagnostic environment, missing-procfs prelaunch refusal, and one exact target command/no follow-up with <=600s budget and cardinality proof. Unit fake history outcomes are NOT target results. Four mutants fail their intended assertions: coordinator-as-worker, last-argv-token decoy, hidden saturation, diagnostic preload reintroduced.
+
+Actual Node22 **Darwin preparation only**, with disclosed PS/argv/RSS/identity-signal adapter and separately verified metadata mapping (NOT native procfs/PSS/pidfd/subreaper): external buffered retained control **124 / 4.925s**, natural **0 / 0.941s**, deliberate assertion failure **1 / 0.338s**, noisy **124 / 1.760s**, real small-memory trip **137 / 0.726s**. Coordinator/decoy were excluded; retained worker was identified despite no TAP progress; its reparenting was observed; late detached child was identity-owned and reaped. Deliberately saturated checkpoint file stored one record and reported one drop. Independent post-call checks found no live known PID/start survivors. All controls recorded diagnostic preloads/report-signals false; no Node hook slots were expanded. Some short failure workers were missed and explicitly remain unseen rather than inferred passed/exited.
+
+Evidence in this session's scratch: `partition-mapping/plan.json`, `partition-mapping/selected.txt`, `test-history-observer.py`, `history-final-darwin-preparation/`. Native Linux validation of this delta and actual selected history remain UNVERIFIED; after independent approval the native SMALL preflight must pass before the one target. No dependency install, local partition, activation or full-suite retry was done.
+
+## Historical isolated-three coverage correction — closed for its actual scope
 
 The public correction/test plan was posted **before execution** in PR #1551 comment `6551458299`. The old single plus `run-child-reader + ci-scope + code-review-model` custom-reporter trio is DIFFERENT coverage from the actual adjacent `child-reader-foot-react + ci-scope + code-review-model` set. Prior successful native artifacts remain valid only for their actual files, checkpoint rewrites, custom reporter and observer; they do not prove this adjacent trio or default-TAP behavior. They are not deleted or silently relabeled. Historical validation sections below retain their original scope; this section supersedes their old target/activation instructions.
 
@@ -103,16 +141,16 @@ Reproducible same-matrix rig: `~/.local-operator/sessions/fbe888935752/scratchpa
 
 The manager authorized this exact diagnostic-only activation path because a newly added `workflow_dispatch` cannot be invoked before it exists on the default branch. An ordinary `push` workflow is loaded from the pushed ref, so a tree-identical post-review activation commit can run the reviewed probe without merging PR #1551, releasing anything, or retrying broad CI. The sibling core PR #3254 uses the same exact-branch mechanism (source/precedent, not evidence that this UI workflow has run).
 
-Only `push` to **`diag/ui-avatar-pristine-activate`** can activate this workflow; there is no wildcard, PR, schedule or repository-dispatch trigger. Defense-in-depth job guard requires repository `damianvtran/local-operator-ui` plus that exact push ref. Manual dispatch remains available only from `main` or the same activation ref once GitHub makes that dispatch surface reachable; inputs/untrusted refs/forks are refused. Read-only permissions, fixed immutable avatar/telemetry refs, existing pnpm cache policy, preflight-before-install ordering and job budget are unchanged. The target step now uses the corrected pristine-first comparison described above, rather than the earlier singles/alternative trio.
+Only `push` to **`diag/ui-avatar-history-activate`** can activate this workflow; there is no wildcard, PR, schedule or repository-dispatch trigger. Defense-in-depth job guard requires repository `damianvtran/local-operator-ui` plus that exact push ref. Manual dispatch remains available only from `main` or the same activation ref once GitHub makes that dispatch surface reachable; inputs/untrusted refs/forks are refused. Read-only permissions and avatar frozen-lock manager policy remain. Only the fixed avatar index-3 history runs after external-only native preflight; no control ref/custom follow-up. The outer job is reduced to 20 minutes for setup plus one <=600-second history.
 
-The native Linux/Node22 built-in self-test is fail-closed BEFORE frozen dependency installs and target experiments. It verifies ownership/reports/reap, whole-call bounds, natural/nonzero exits and negative identity/deadline controls; failure prevents the target stages. The exact three-file default-TAP arms run serially across refs at 300 seconds each; both pass means STOP NOT_REPRODUCED, and only a timeout unlocks matched custom arms on the identical set. The existing 35-minute outer job cap and one-run concurrency group are unchanged. No native result is claimed by these trigger tests.
+The external-only native Linux/Node22 SMALL self-test fails closed BEFORE the one frozen dependency install/history. It verifies coordinator/worker/argv-decoy separation, buffered retained worker, reparenting/late ownership, missing-procfs refusal, checkpoint saturation and real noisy/memory/deadline cases. Target has no diagnostic preload/custom reporter/SIGUSR2. Only one fixed partition runs; no automatic control or follow-up. Trigger tests are not native execution proof.
 
 **STOP until independent trigger-delta code/QA review approves the exact PR head.** Then the manager may execute this procedure from this PR worktree. Do not use it for shipping, merge PR #1551, push main, force an existing activation ref, request a broad workflow, or change the tree after approval:
 
 ```sh
 set -euo pipefail
 REVIEWED='<full SHA independently approved on PR #1551>'
-BRANCH='diag/ui-avatar-pristine-activate'
+BRANCH='diag/ui-avatar-history-activate'
 test "$(gh repo view --json nameWithOwner --jq .nameWithOwner)" = 'damianvtran/local-operator-ui'
 test "$(git rev-parse HEAD)" = "$REVIEWED"
 test -z "$(git status --porcelain)"
@@ -162,7 +200,7 @@ import sys
 import unittest
 
 workflow = Path(sys.argv.pop()).read_text()
-ACTIVATION = 'diag/ui-avatar-pristine-activate'
+ACTIVATION = 'diag/ui-avatar-history-activate'
 REPO = 'damianvtran/local-operator-ui'
 
 
@@ -204,6 +242,7 @@ class ActivationContract(unittest.TestCase):
             ('push', ACTIVATION + '-other', REPO, False),
             ('push', 'diag/other', REPO, False),
             ('push', 'diag/ui-avatar-native-activate', REPO, False),
+            ('push', 'diag/ui-avatar-pristine-activate', REPO, False),
             ('workflow_dispatch', 'feature/unreviewed', REPO, False),
             ('pull_request', ACTIVATION, REPO, False),
             ('pull_request_target', ACTIVATION, REPO, False),
@@ -230,9 +269,9 @@ class ActivationContract(unittest.TestCase):
         self.assertIn('runs-on: ubuntu-latest', workflow)
         self.assertIn("node-version: '22'", workflow)
         self.assertIn('2c0f276d0ead12e6b8664f550468b8217bbe506d', workflow)
-        self.assertIn('47cf454be2efe3a0c30e27063d57845ae5ba7171', workflow)
-        self.assertLess(workflow.index('ci-hang-probe.py self-test'), workflow.index('pnpm install'))
-        self.assertLess(workflow.index('pnpm install'), workflow.index('ci-hang-probe.py compare'))
+        self.assertNotIn('47cf454be2efe3a0c30e27063d57845ae5ba7171', workflow)
+        self.assertLess(workflow.index('ci-hang-probe.py history-self-test'), workflow.index('pnpm install'))
+        self.assertLess(workflow.index('pnpm install'), workflow.index('ci-hang-probe.py history --root'))
         self.assertNotIn('--phase single', workflow)
         self.assertNotIn('--phase trio', workflow)
         self.assertIn('cancel-in-progress: false', workflow)
@@ -241,6 +280,6 @@ class ActivationContract(unittest.TestCase):
 unittest.main(verbosity=2)
 ```
 
-## Interpretation
+## Historical isolated-three interpretation
 
 Both pristine/default-TAP exact-trio arms pass: STOP **NOT_REPRODUCED** under the observer; do not run custom arms or retry broadly. A pristine timeout with matched custom success is reporter-correlated evidence under this observer, not a production mechanism or avatar-only proof. Both reporter modes retaining weakens a reporter-only explanation. A ref-specific outcome may correlate with source changes but still needs a causal demonstration. Use the actual argv, before/after manifests, reporter mode, worker lifecycle, bounded TAP counts and owned-resource/report evidence; there are no target checkpoint rewrites in this plan. No report may extrapolate these three files to full-shard completion or claim equivalence to pristine CI scheduling.

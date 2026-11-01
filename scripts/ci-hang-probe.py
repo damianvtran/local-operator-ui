@@ -32,7 +32,14 @@ REFS = {
 # This is the actual adjacent trio from the timed-out CI tail. The earlier
 # run-child-reader trio was different coverage, not a successful test of this set.
 TARGETS = ["child-reader-foot-react", "ci-scope", "code-review-model"]
-LIMIT = 300
+LIMIT = 300  # Historical isolated-trio controls; not a full-suite budget.
+HISTORY_HEAD = REFS['avatar']
+HISTORY_INDEX = 3
+HISTORY_TOTAL = 656
+HISTORY_COUNT = 164
+HISTORY_DIGEST = '67cb42902bb14a6328b7c43347e23f19870b3fe0362f23c408900c11945a46e6'
+HISTORY_LIMIT = 600
+HISTORY_MEMORY_MB = 9728
 COORDINATOR_FILES = ['run-desktop-tests', 'desktop-test-keeper', 'no-hardlink-write-preload',
                      'no-hardlink-write', 'desktop-test-concurrency', 'desktop-test-lane-bound',
                      'desktop-test-memory-guard', 'notifications-off', 'telemetry-off']
@@ -107,9 +114,11 @@ class TapSummary:
     def __init__(self):
         self.pending = b''
         self.dropping = False
-        self.counts = {'tests': None, 'pass': None, 'fail': None}
+        self.counts = {'tests': None, 'pass': None, 'fail': None,
+                       'cancelled': None, 'skipped': None, 'todo': None}
         self.records = deque(maxlen=128)
         self.ok_events = self.not_ok_events = 0
+        self.runner_files, self.runner_widths = [], []
 
     def feed(self, data):
         parts = data.split(b'\n')
@@ -124,7 +133,11 @@ class TapSummary:
                 continue
             if not self.dropping:
                 line = self.pending.decode('ascii', errors='ignore').strip()
-                count = re.fullmatch(r'# (tests|pass|fail) ([0-9]{1,9})', line)
+                runner = re.match(r'^desktop tests: ([0-9]{1,6}) files?, concurrency ([0-9]{1,3})(?: |$)', line)
+                if runner and len(self.runner_files) < 4:
+                    self.runner_files.append(int(runner[1]))
+                    self.runner_widths.append(int(runner[2]))
+                count = re.fullmatch(r'# (tests|pass|fail|cancelled|skipped|todo) ([0-9]{1,9})', line)
                 event = re.fullmatch(r'(not ok|ok) ([0-9]{1,9})(?: - .*|)', line)
                 if count:
                     self.counts[count[1]] = int(count[2])
@@ -139,7 +152,8 @@ class TapSummary:
 
     def summary(self):
         return {**self.counts, 'ok_events': self.ok_events,
-                'not_ok_events': self.not_ok_events, 'records': list(self.records)}
+                'not_ok_events': self.not_ok_events, 'records': list(self.records),
+                'runner_files': self.runner_files, 'runner_widths': self.runner_widths}
 
 
 def process_row(pid, include_zombie=False):
@@ -262,18 +276,232 @@ class OwnedTree:
                 pass
 
 
-def supervise(command, cwd, output, seconds=LIMIT):
+def external_environment(home):
+    # Intentionally NO diagnostic NODE_OPTIONS, PROBE_EVIDENCE or report flags.
+    # The existing runner still supplies its production hardlink/lane/memory guards.
+    return {'PATH': os.environ['PATH'], 'HOME': str(home), 'CI': '1',
+            'TERM': 'xterm-256color', 'LOCAL_OPERATOR_CONFIG_DIR': str(home / '.local-operator'),
+            'LOCAL_OPERATOR_UI_TEST_CONCURRENCY': '3',
+            'LOCAL_OPERATOR_UI_TEST_MEMORY_BUDGET_MB': str(HISTORY_MEMORY_MB)}
+
+
+def cmdline_tokens(pid):
+    try:
+        with (Path('/proc') / str(pid) / 'cmdline').open('rb') as stream:
+            raw = stream.read(65537)
+    except (FileNotFoundError, ProcessLookupError):
+        return []
+    if len(raw) > 65536:
+        return None  # Unknown/truncated, never a partial-token file match.
+    return [part.decode('utf-8', errors='replace') for part in raw.split(b'\0') if part]
+
+
+def require_external_procfs():
+    if (sys.platform != 'linux' or not Path('/proc/self/stat').exists()
+            or process_row(os.getpid()) is None or not cmdline_tokens(os.getpid())):
+        raise RuntimeError('external observation requires live native Linux procfs')
+
+
+def memory_charge(row):
+    # RSS alone misses swapped ownership. Charge conservatively against both
+    # RSS and PSS+SwapPSS; never publish smaps text, paths or environment.
+    values = {}
+    try:
+        with (Path('/proc') / str(row['pid']) / 'smaps_rollup').open() as stream:
+            for line in stream:
+                name, _, value = line.partition(':')
+                if name in ('Pss', 'SwapPss'):
+                    values[name] = int(value.split()[0])
+    except (FileNotFoundError, ProcessLookupError):
+        return row['rss_kib']  # Process may disappear between the two reads.
+    if set(values) != {'Pss', 'SwapPss'}:
+        raise RuntimeError('owned process memory accounting unavailable')
+    return max(row['rss_kib'], values['Pss'] + values['SwapPss'])
+
+
+def charged_memory(rows):
+    observer = process_row(os.getpid())
+    measured = list(rows)
+    if observer and not any(row['pid'] == observer['pid'] for row in rows):
+        measured.append(observer)
+    return sum(memory_charge(row) for row in measured)
+
+
+class WorkerHistory:
+    """External observations, NOT exits/passes; ownership is kept by OwnedTree."""
+
+    def __init__(self, root, files, output, max_events=4096):
+        self.root, self.files, self.output = root, tuple(files), output
+        self.lookup = {token: file for file in files for token in (file, str(root / file))}
+        self.max_events = max_events
+        self.workers, self.coordinators, self.owner = {}, set(), {}
+        self.present, self.seen_files = set(), set()
+        self.events = self.bytes = self.dropped = 0
+        self.saturated = self.mapping_saturated = self.argv_saturated = False
+        self.last_scan = None
+        self.max_gap = self.scan_seconds = self.max_scan_seconds = self.write_seconds = 0.0
+        self.scans = self.unclassified_nodes = 0
+        self.before_stop = None
+
+    @staticmethod
+    def script_token(tokens):
+        if not tokens or Path(tokens[0]).name != 'node':
+            return None
+        skip = False
+        for token in tokens[1:]:
+            if skip:
+                skip = False
+                continue
+            if token in ('-e', '--eval', '-p', '--print', '-') or token.startswith(('--eval=', '--print=')):
+                return None
+            if token in ('--import', '--require', '-r', '--loader', '--conditions'):
+                skip = True
+            elif token == '--':
+                continue
+            elif not token.startswith('-'):
+                return token
+        return None
+
+    @staticmethod
+    def coordinator(tokens):
+        return ('--test' in tokens and not any(token in ('-e', '--eval', '-p', '--print')
+                or token.startswith(('--eval=', '--print=')) for token in tokens))
+
+    def emit(self, value):
+        line = json.dumps(value, separators=(',', ':')) + '\n'
+        size = len(line.encode())
+        if self.events >= self.max_events or self.bytes + size > 4 * 1024 * 1024:
+            self.saturated = True
+            self.dropped += 1
+            return
+        before = time.monotonic()
+        with (self.output / 'worker-history.jsonl').open('a') as stream:
+            stream.write(line)
+        self.write_seconds += time.monotonic() - before
+        self.events += 1
+        self.bytes += size
+
+    def scan(self, rows, elapsed):
+        before = time.monotonic()
+        if self.last_scan is not None:
+            self.max_gap = max(self.max_gap, elapsed - self.last_scan)
+        self.last_scan = elapsed
+        self.scans += 1
+        live = {row['pid']: row for row in rows}
+        tokens = {}
+        for row in rows:
+            key = (row['pid'], row['start_id'])
+            if row['node'] and key not in self.workers:
+                argv = cmdline_tokens(row['pid'])
+                if argv is None:
+                    self.argv_saturated = True
+                    argv = []
+                tokens[key] = argv
+                if self.coordinator(argv):
+                    if len(self.coordinators) < 4096:
+                        self.coordinators.add(key)
+                    else:
+                        self.mapping_saturated = True
+                else:
+                    self.coordinators.discard(key)
+        for row in rows:
+            key = (row['pid'], row['start_id'])
+            if key in self.workers:
+                continue
+            argv = tokens.get(key, [])
+            parent = live.get(row['ppid'])
+            parent_key = (parent['pid'], parent['start_id']) if parent else None
+            file = self.lookup.get(self.script_token(argv))
+            matches = {self.lookup[token] for token in argv if token in self.lookup}
+            if file and len(matches) == 1 and not self.coordinator(argv) and parent_key in self.coordinators:
+                if len(self.workers) >= 1024:
+                    self.mapping_saturated = True
+                    continue
+                self.workers[key] = {'file': file, 'row': row, 'last_emit': -2.0, 'cpu': 0.0}
+                self.owner[key] = key
+                self.seen_files.add(file)
+            elif row['node'] and key not in self.coordinators:
+                self.unclassified_nodes += 1
+        # Keep descendant association after reparenting; current ancestry is used
+        # only to admit a NEW identity, never to transfer a recycled PID.
+        changed = True
+        while changed:
+            changed = False
+            for row in rows:
+                key = (row['pid'], row['start_id'])
+                parent = live.get(row['ppid'])
+                parent_key = (parent['pid'], parent['start_id']) if parent else None
+                if key not in self.owner and parent_key in self.owner:
+                    if len(self.owner) >= 32768:
+                        self.mapping_saturated = True
+                        continue
+                    self.owner[key] = self.owner[parent_key]
+                    changed = True
+        present = {(row['pid'], row['start_id']) for row in rows}
+        for key, worker in self.workers.items():
+            current = next((row for row in rows if (row['pid'], row['start_id']) == key), None)
+            family = [row for row in rows if self.owner.get((row['pid'], row['start_id'])) == key]
+            disappeared = key in self.present and key not in present
+            first = worker['last_emit'] < 0
+            if not (first or disappeared or (family and elapsed - worker['last_emit'] >= 1)):
+                continue
+            row = current or worker['row']
+            cpu = sum(item['cpu_seconds'] for item in family)
+            self.emit({'event': 'FIRSTSEEN' if first else 'DISAPPEARED' if disappeared else 'LIVE',
+                       'monotonic_seconds': round(elapsed, 6), 'file': worker['file'],
+                       'pid': key[0], 'start_id': key[1], 'ppid': row['ppid'], 'pgid': row['pgid'],
+                       'worker_present': current is not None, 'descendants': len(family) - int(current is not None),
+                       'cpu_seconds': row['cpu_seconds'], 'family_cpu_seconds': cpu,
+                       'cpu_delta_seconds': 0 if first else max(0, cpu - worker['cpu']),
+                       'rss_kib': row['rss_kib'], 'family_rss_kib': sum(item['rss_kib'] for item in family),
+                       'disappearance_is_not_exit_or_pass': True})
+            worker.update(last_emit=elapsed, cpu=cpu, row=row)
+        self.present = present
+        duration = time.monotonic() - before
+        self.scan_seconds += duration
+        self.max_scan_seconds = max(self.max_scan_seconds, duration)
+
+    def capture_stop(self, reason, elapsed, tap):
+        if self.before_stop is None:
+            candidates = [{'file': worker['file'], 'pid': key[0], 'start_id': key[1],
+                           'last_checkpoint_age_seconds': max(0, elapsed - worker['last_emit'])}
+                          for key, worker in self.workers.items() if key in self.present]
+            self.before_stop = {'reason': reason, 'monotonic_seconds': elapsed,
+                                'live_worker_candidates': candidates[:128],
+                                'candidate_list_truncated': len(candidates) > 128,
+                                'tap_ok_events': tap.ok_events, 'candidates_are_not_causes': True}
+
+    def summary(self):
+        return {'files_seen': sorted(self.seen_files), 'selected_count': len(self.files),
+                'unseen_selected': sorted(set(self.files) - self.seen_files),
+                'short_workers_may_be_missed': True, 'disappearance_is_not_exit_or_pass': True,
+                'checkpoint_saturated': self.saturated, 'mapping_saturated': self.mapping_saturated,
+                'argv_observation_saturated': self.argv_saturated,
+                'checkpoints': self.events, 'dropped_checkpoints': self.dropped,
+                'checkpoint_bytes': self.bytes, 'observation_count': self.scans,
+                'max_sampling_gap_seconds': self.max_gap, 'unclassified_node_observations': self.unclassified_nodes,
+                'observer_scan_seconds': self.scan_seconds, 'max_observer_scan_seconds': self.max_scan_seconds,
+                'checkpoint_write_seconds': self.write_seconds, 'nonzero_observer_perturbation': True,
+                'before_observer_stop': self.before_stop,
+                'unseen_reparenting_ancestry_cannot_be_attributed': True}
+
+
+def supervise(command, cwd, output, seconds=LIMIT, history=None, memory_mb=None):
     """Return timeout distinctly; budget the WHOLE call, including observation."""
     started = time.monotonic()
     deadline = started + seconds
     output.mkdir(parents=True)
     home = output / 'home'
     home.mkdir()
-    hook = output / 'preload.mjs'
-    hook.write_text(HOOK)
-    env = {'PATH': os.environ['PATH'], 'HOME': str(home), 'CI': '1',
-           'TERM': 'xterm-256color', 'LOCAL_OPERATOR_CONFIG_DIR': str(home / '.local-operator'),
-           'PROBE_EVIDENCE': str(output), 'NODE_OPTIONS': f'--import={hook}'}
+    if history is not None:
+        require_external_procfs()  # Refuse before any child if observation is unavailable.
+        env = external_environment(home)
+    else:
+        hook = output / 'preload.mjs'
+        hook.write_text(HOOK)
+        env = {'PATH': os.environ['PATH'], 'HOME': str(home), 'CI': '1',
+               'TERM': 'xterm-256color', 'LOCAL_OPERATOR_CONFIG_DIR': str(home / '.local-operator'),
+               'PROBE_EVIDENCE': str(output), 'NODE_OPTIONS': f'--import={hook}'}
     # Fail before launch if Linux cannot provide identity-safe signaling.
     if sys.platform == 'linux' and not (
             hasattr(os, 'pidfd_open') and hasattr(signal, 'pidfd_send_signal')):
@@ -358,6 +586,9 @@ def supervise(command, cwd, output, seconds=LIMIT):
     report_requests, term_requests, kill_requests = set(), set(), set()
     last_rows = None
     last_sample = -2
+    peak_memory_kib = 0
+    memory_tripped = False
+    sample_frames_dropped = sample_rows_dropped = 0
     try:
         while True:
             elapsed = time.monotonic() - started
@@ -366,8 +597,24 @@ def supervise(command, cwd, output, seconds=LIMIT):
             last_rows = rows
             tree.reap()
             elapsed = time.monotonic() - started
+            if history is not None:
+                history.scan(rows, elapsed)
+            if memory_mb is not None:
+                peak_memory_kib = max(peak_memory_kib, charged_memory(rows))
+                if peak_memory_kib >= memory_mb * 1024:
+                    memory_tripped = True
+                    if history is not None:
+                        history.capture_stop('memory-limit', elapsed, tap)
+                    tree.signal(rows, signal.SIGKILL)
+                    break
             if elapsed - last_sample >= 1 or not rows:
-                samples.append({'seconds': round(elapsed, 3), 'members': rows})
+                sampled = rows if history is None else rows[:128]
+                samples.append({'seconds': round(elapsed, 3), 'members': sampled})
+                if history is not None:
+                    sample_rows_dropped += max(0, len(rows) - 128)
+                    if len(samples) > 256:
+                        samples.pop(0)
+                        sample_frames_dropped += 1
                 last_sample = elapsed
             rc = proc.poll()
             if rc is not None and not rows:
@@ -376,7 +623,7 @@ def supervise(command, cwd, output, seconds=LIMIT):
             # throughout teardown: a detached late child is still ours, not a
             # new independent group to ignore. Never depend on the keeper doing
             # our cleanup or on the outer coordinator's exit as proof of it.
-            if time.monotonic() >= report_at:
+            if history is None and time.monotonic() >= report_at:
                 if not requested:
                     requested = True
                     samples.append({'seconds': round(elapsed, 3), 'pre_reap': rows})
@@ -388,6 +635,8 @@ def supervise(command, cwd, output, seconds=LIMIT):
                             report_requests.add(identity)
             term_sent_this_scan = False
             if time.monotonic() >= term_at:
+                if history is not None:
+                    history.capture_stop('ceiling', elapsed, tap)
                 terminated = timed_out = True
                 for row in reversed(rows):
                     identity = (row['pid'], row['start_id'])
@@ -433,20 +682,32 @@ def supervise(command, cwd, output, seconds=LIMIT):
     # the reserve pays for it, rather than claiming an empty outer group is proof.
     survivors = observe(tree)
     tree.reap()
+    if history is not None:
+        history.scan(survivors, time.monotonic() - started)
     owned_groups = sorted(tree.groups)
     result = {'status': 'timeout' if timed_out else 'completed',
               'exit_code': 124 if timed_out else proc.returncode,
+              'root_process_returncode': proc.returncode,  # Never a per-file worker exit claim.
               'seconds': round(time.monotonic() - started, 3),
               'pgid': pgid, 'discarded_output_bytes': total_bytes,
               'tap': tap.summary(),
-              'survivors': survivors, 'samples': samples,
+              'survivors': survivors if history is None else survivors[:128], 'samples': samples,
               'owned_groups': owned_groups,
-              'owned_identities': list(tree.known.values()),
+              'owned_identities': list(tree.known.values()) if history is None else list(tree.known.values())[:4096],
               'report_requests': [{'pid': pid, 'start_id': start}
                                   for pid, start in sorted(report_requests)],
               'term_sent': terminated, 'kill_sent': killed,
               'deadline_seconds': seconds, 'cleanup_reserve': round(reserve, 3),
               'operation_costs': {key: round(value, 6) for key, value in costs.items()}}
+    if history is not None:
+        result.update(external_history=history.summary(), diagnostic_preloads=False,
+                      diagnostic_report_signals=False, peak_charged_memory_kib=peak_memory_kib,
+                      memory_limit_mb=memory_mb, sample_frames_dropped=sample_frames_dropped,
+                      sample_rows_dropped=sample_rows_dropped,
+                      owned_identity_records_truncated=max(0, len(tree.known) - 4096),
+                      survivors_count=len(survivors), survivor_records_truncated=max(0, len(survivors) - 128))
+    if memory_tripped:
+        result.update(status='memory-limit', exit_code=137)
     if survivors:
         result.update(status='cleanup-failure', exit_code=126)
     elif time.monotonic() >= deadline:
@@ -806,24 +1067,227 @@ def compare(roots, output):
     return finish('TIMED_OUT_MATCHED_COMPARISON', 124)
 
 
+def validate_history_plan(plan):
+    files = plan.get('files', [])
+    if (plan.get('head') != HISTORY_HEAD or plan.get('checkout') != HISTORY_HEAD
+            or plan.get('total') != HISTORY_TOTAL or plan.get('count') != 4
+            or len(files) != HISTORY_TOTAL or files != sorted(set(files))
+            or plan.get('shards') != [files[index::4] for index in range(4)]):
+        raise RuntimeError('pinned partition inventory mapping mismatch; STOP')
+    selected = plan['shards'][HISTORY_INDEX]
+    digest = hashlib.sha256(('\n'.join(selected) + '\n').encode()).hexdigest()
+    if len(selected) != HISTORY_COUNT or digest != HISTORY_DIGEST:
+        raise RuntimeError('pinned selected newline digest mismatch; STOP')
+    return selected
+
+
+def history_plan(root):
+    if subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=root, text=True).strip() != HISTORY_HEAD:
+        raise RuntimeError('history root is not the one authorized immutable avatar ref')
+    subprocess.run(['git', 'diff', '--no-ext-diff', '--exit-code', '--quiet', 'HEAD', '--',
+                    'src', 'scripts', 'package.json', 'pnpm-lock.yaml'],
+                   cwd=root, check=True, capture_output=True)
+    env = external_environment(root / '.unused-plan-home')
+    version = subprocess.check_output(['node', '--version'], env=env, text=True).strip()
+    if not version.startswith('v22.'):
+        raise RuntimeError('history requires actual Node22')
+    plan = json.loads(subprocess.check_output([
+        'node', 'scripts/desktop-test-shards.mjs', 'plan', '--head', HISTORY_HEAD,
+        '--checkout', HISTORY_HEAD], cwd=root, env=env, text=True))
+    return plan, validate_history_plan(plan)
+
+
+def history_manifest(root, files):
+    paths = sorted(set(files + [f'scripts/{name}.mjs' for name in COORDINATOR_FILES] + [
+        'scripts/desktop-test-shards.mjs', 'scripts/entry-point.mjs', 'package.json', 'pnpm-lock.yaml']))
+    subprocess.run(['git', 'diff', '--no-ext-diff', '--exit-code', '--quiet', 'HEAD', '--',
+                    'src', 'scripts', 'package.json', 'pnpm-lock.yaml'],
+                   cwd=root, check=True, capture_output=True)
+    return {file: hashlib.sha256((root / file).read_bytes()).hexdigest() for file in paths}
+
+
+def run_history(root, output):
+    began = time.monotonic()
+    plan, selected = history_plan(root)
+    before = history_manifest(root, selected)
+    output.mkdir(parents=True)
+    write_json(output / 'source-before.json', {'source_sha': HISTORY_HEAD, 'sha256': before})
+    write_json(output / 'selection.json', {**plan, 'selected_index': HISTORY_INDEX,
+               'selected_count': HISTORY_COUNT, 'selected_newline_sha256': HISTORY_DIGEST,
+               'selection_is_not_completion': True})
+    # Reserve post-validation/serialization time within the SAME 600s call.
+    remaining = HISTORY_LIMIT - (time.monotonic() - began) - 8
+    if remaining < 1:
+        raise RuntimeError('history setup consumed the bounded call; STOP')
+    arm = output / 'avatar-index3'
+    history = WorkerHistory(root, selected, arm)
+    command = ['node', 'scripts/desktop-test-shards.mjs', 'run', '--head', HISTORY_HEAD,
+               '--checkout', HISTORY_HEAD, '--index', str(HISTORY_INDEX)]
+    result = supervise(command, root, arm, remaining, history=history, memory_mb=HISTORY_MEMORY_MB)
+    try:
+        after_plan, after_selected = history_plan(root)
+        after = history_manifest(root, selected)
+        if before != after or selected != after_selected or plan != after_plan:
+            raise RuntimeError('pinned history inventory/source changed during call')
+        write_json(output / 'source-after.json', {'source_sha': HISTORY_HEAD, 'sha256': after})
+    except Exception:
+        result.update(source_sha256_before=before, source_after_verified=False,
+                      status='history-proof-failure', exit_code=125,
+                      outcome='POST_VALIDATION_FAILED_NO_COMPLETION_CLAIM')
+        write_json(arm / 'result.json', result)
+        raise
+    if result['exit_code'] == 0:
+        tap = result['tap']
+        if not (tap['pass'] is not None and tap['pass'] >= 60 and tap['fail'] == 0
+                and tap['tests'] is not None and tap['tests'] >= tap['pass']
+                and tap['cancelled'] == 0 and tap['not_ok_events'] == 0
+                and tap['runner_files'] == [HISTORY_COUNT] and tap['runner_widths'] == [3]):
+            result.update(status='history-proof-failure', exit_code=125)
+    result.update(source_sha=HISTORY_HEAD, argv=command, source_sha256_before=before,
+                  source_sha256_after=after, selected_count=HISTORY_COUNT,
+                  selected_newline_sha256=HISTORY_DIGEST,
+                  selection_is_not_completion=True, no_automatic_followup=True,
+                  whole_history_seconds=round(time.monotonic() - began, 6),
+                  outcome=('NOT_REPRODUCED_SELECTED_PARTITION' if result['exit_code'] == 0 else
+                           'CEILING_REACHED_NOT_A_HANG_PROOF' if result['status'] == 'timeout' else
+                           'PARTITION_OR_OBSERVER_FAILURE'),
+                  interpretation='worker candidates are not causes; disappearance is not exit/pass; no full-suite claim')
+    if time.monotonic() - began >= HISTORY_LIMIT:
+        result.update(status='deadline-failure', exit_code=127, outcome='PARTITION_OR_OBSERVER_FAILURE')
+    write_json(arm / 'result.json', result)
+    print(json.dumps({key: result[key] for key in ('source_sha', 'selected_count', 'status', 'exit_code',
+                     'outcome', 'whole_history_seconds')}), flush=True)
+    return result['exit_code']
+
+
+def history_controls(source, output):
+    """SMALL external-only controls, never the selected partition itself."""
+    require_external_procfs()
+    _, selected = history_plan(source)  # Selection validation only, before dependencies.
+    output.mkdir(parents=True)
+    root = output / 'fixture-root'
+    (root / 'scripts').mkdir(parents=True)
+    for name in COORDINATOR_FILES:
+        file = f'scripts/{name}.mjs'
+        data = (source / file).read_bytes()
+        if data != subprocess.check_output(['git', 'show', f'{HISTORY_HEAD}:{file}'], cwd=source):
+            raise RuntimeError('external preflight coordinator is not immutable')
+        (root / file).write_bytes(data)
+    (root / 'controls').mkdir()
+    file = 'controls/retained.test.mjs'
+    # These markers/handlers are synthetic controls ONLY. No target source or
+    # worker is instrumented. The outer proxy deliberately withholds default TAP.
+    (root / file).write_text("import {test} from 'node:test';import assert from 'node:assert/strict';"
+        "import {writeFileSync} from 'node:fs';import {spawn} from 'node:child_process';"
+        "spawn(process.execPath,['-e','setInterval(()=>{},1000)','controls/decoy.test.mjs'],"
+        "{detached:true,stdio:'ignore'});let spawned=false;"
+        "process.on('SIGTERM',()=>{if(!spawned){spawned=true;const c=spawn(process.execPath,"
+        "['-e','process.on(\"SIGTERM\",()=>{});setInterval(()=>{},1000)'],{detached:true,stdio:'ignore'});"
+        "writeFileSync('late.pid',String(c.pid));}});"
+        "test('SYNTHETIC_SECRET buffered',()=>{assert.equal(1,1);writeFileSync('assertion.marker','asserted');"
+        "setInterval(()=>{},1000);});")
+    proxy = ("const {spawn}=require('node:child_process');const c=spawn(process.execPath,"
+             "['scripts/run-desktop-tests.mjs',process.argv[1]],{stdio:['ignore','pipe','pipe']});"
+             "c.stdout.on('data',()=>{});c.stderr.on('data',()=>{});"
+             "c.on('exit',code=>{process.exitCode=code||0});")
+    arm = output / 'buffered-retained'
+    tracker = WorkerHistory(root, [file, 'controls/decoy.test.mjs'], arm)
+    began = time.monotonic()
+    result = supervise(['node', '-e', proxy, file], root, arm, 8, history=tracker,
+                       memory_mb=HISTORY_MEMORY_MB)
+    whole = time.monotonic() - began
+    events = [json.loads(line) for line in (arm / 'worker-history.jsonl').read_text().splitlines()]
+    assert whole <= 8 and result['exit_code'] == 124 and not result['survivors']
+    assert result['tap']['tests'] is None and result['tap']['ok_events'] == 0
+    assert not set(tracker.workers).intersection(tracker.coordinators)
+    assert (root / 'assertion.marker').read_text() == 'asserted'
+    assert tracker.summary()['files_seen'] == [file]  # Root/coordinator/decoy excluded.
+    first = next(event for event in events if event['event'] == 'FIRSTSEEN')
+    assert any(event['pid'] == first['pid'] and event['ppid'] != first['ppid'] for event in events)
+    saturation_dir = output / 'checkpoint-saturation'
+    saturation_dir.mkdir()
+    saturated = WorkerHistory(root, [file], saturation_dir, max_events=1)
+    saturated.emit(events[0])
+    saturated.emit(events[-1])
+    assert saturated.summary()['checkpoint_saturated'] and saturated.summary()['dropped_checkpoints'] == 1
+    write_json(saturation_dir / 'result.json', {'synthetic_fault_injection': True,
+               'actual_partition_execution': False, 'checkpoint_saturated': True,
+               'dropped_checkpoints': saturated.dropped})
+    assert result['report_requests'] == [] and not (arm / 'preload.mjs').exists()
+    assert not list(arm.glob('node-*.jsonl'))
+    assert 'SYNTHETIC_SECRET' not in json.dumps([result, events])
+    late = int((root / 'late.pid').read_text())
+    assert late in {row['pid'] for row in result['owned_identities']}
+    assert process_row(late) is None
+    result.update(synthetic_control=True, actual_partition_execution=False, whole_control_seconds=whole,
+                  late_child_owned_and_reaped=True, buffered_tap=True)
+    write_json(arm / 'result.json', result)
+    # A non-buffered ordinary worker proves disappearance has no pass/exit claim.
+    natural = 'controls/natural.test.mjs'
+    (root / natural).write_text("import {test} from 'node:test';test('natural',async()=>{"
+                               "await new Promise(r=>setTimeout(r,600));});")
+    arm = output / 'natural'
+    trace = WorkerHistory(root, [natural], arm)
+    result = supervise(['node','scripts/run-desktop-tests.mjs',natural],root,arm,8,
+                       history=trace,memory_mb=HISTORY_MEMORY_MB)
+    assert result['exit_code'] == 0 and result['tap']['pass'] == 1 and not result['survivors']
+    assert trace.summary()['files_seen'] == [natural]
+    events = [json.loads(line) for line in (arm / 'worker-history.jsonl').read_text().splitlines()]
+    assert any(event['event'] == 'DISAPPEARED' for event in events)
+    failure = 'controls/failure.test.mjs'
+    (root / failure).write_text("import {test} from 'node:test';import assert from 'node:assert/strict';"
+                               "test('SYNTHETIC_SECRET failure',()=>assert.equal(1,2));")
+    arm = output / 'assertion-failure'
+    result = supervise(['node','scripts/run-desktop-tests.mjs',failure],root,arm,8,
+                       history=WorkerHistory(root,[failure],arm),memory_mb=HISTORY_MEMORY_MB)
+    assert result['exit_code'] == 1 and result['tap']['fail'] == 1 and not result['survivors']
+    assert 'SYNTHETIC_SECRET' not in json.dumps(result)
+    # Real noisy child exercises bounded drain; memory allocation is <100MiB.
+    arm = output / 'noisy'
+    result = supervise(['node','-e',"setInterval(()=>process.stdout.write('x'.repeat(16384)),1)"],
+                       root,arm,4,history=WorkerHistory(root,[],arm),memory_mb=HISTORY_MEMORY_MB)
+    assert result['exit_code'] == 124 and result['discarded_output_bytes'] > 65536 and not result['survivors']
+    observer_mb = int(memory_charge(process_row(os.getpid())) / 1024)
+    arm = output / 'memory'
+    result = supervise(['node','-e',"setTimeout(()=>{globalThis.keep=Buffer.alloc(96*1024*1024,1)},500);setInterval(()=>{},1000)"],
+                       root,arm,8,history=WorkerHistory(root,[],arm),memory_mb=observer_mb + 80)
+    assert result['exit_code'] == 137 and not result['survivors']
+    # Missing procfs must stop BEFORE launch; this is an explicit fault injection.
+    def absent():
+        raise RuntimeError('synthetic procfs unavailable')
+    with patch.dict(globals(), require_external_procfs=absent), patch.object(subprocess,'Popen') as launch:
+        try:
+            supervise(['node','-e','0'],root,output/'missing-procfs',8,
+                      history=WorkerHistory(root,[],output/'missing-procfs'),memory_mb=HISTORY_MEMORY_MB)
+        except RuntimeError:
+            pass
+        else:
+            raise AssertionError('missing procfs did not fail closed')
+        launch.assert_not_called()
+    identity_controls()
+    for record in output.glob('*/result.json'):
+        data = json.loads(record.read_text())
+        data.update(synthetic_control=True, actual_partition_execution=False)
+        if 'report_requests' in data:
+            assert data['report_requests'] == [] and data['diagnostic_preloads'] is False
+            assert data['diagnostic_report_signals'] is False
+        write_json(record, data)
+    write_json(output / 'preflight.json', {'synthetic_only':True, 'native_linux':sys.platform=='linux',
+               'selected_mapping_count':len(selected), 'target_execution':False,
+               'cases':['buffered-retained-worker','coordinator-and-argv-decoy','late-detached-owned-reaped',
+                        'natural-worker-disappearance','real-assertion-failure','noisy-drain','memory-limit','missing-procfs',
+                        'checkpoint-saturation','pid-reuse-and-deadline'], 'result':'PASS'})
+    print('PASS SMALL external-only history preflight; target partition not executed',flush=True)
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('mode', choices=['self-test', 'compare'])
+    parser.add_argument('mode', choices=['history-self-test', 'history'])
+    parser.add_argument('--root', required=True, type=Path)
     parser.add_argument('--output', required=True, type=Path)
-    parser.add_argument('--coordinator-root', type=Path, action='append', default=[])
     args = parser.parse_args()
-    args.output = args.output.resolve()
-    roots = {}
-    for root in args.coordinator_root:
-        sha = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=root, text=True).strip()
-        label = next((name for name, ref in REFS.items() if ref == sha), None)
-        if label is None or label in roots:
-            parser.error('requires exactly the two distinct immutable coordinator roots')
-        roots[label] = root.resolve()
-    if set(roots) != set(REFS):
-        parser.error('requires both immutable --coordinator-root checkouts')
-    if args.mode == 'self-test':
-        controls(args.output)
-        coordinator_controls(args.output, list(roots.values()))
+    if args.mode == 'history-self-test':
+        history_controls(args.root.resolve(), args.output.resolve())
     else:
-        raise SystemExit(compare(roots, args.output))
+        require_external_procfs()
+        raise SystemExit(run_history(args.root.resolve(), args.output.resolve()))
