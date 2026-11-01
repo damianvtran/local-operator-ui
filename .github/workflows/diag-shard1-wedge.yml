@@ -21,9 +21,34 @@ name: Diag — shard 1/8 wedge
 # diagnostic branch. The step cap (27) sits below the job cap (30) so a wedged
 # arm still reaches its heartbeat and log upload instead of being cancelled with
 # everything else.
+# RESULTS (recorded 2026-11-01; two runs, 41323113977 and 41324381288, agree):
+#
+#   arm                  output    guard   concurrency  tests  fail  suite time
+#   a-control            file      ON      3            1611   0     372 s / 373 s
+#   b-no-hardlink-guard  file      OFF     3            1611   0     280 s / 388 s
+#   c-concurrency-1      file      ON      1            1611   0     782 s / 624 s
+#   d-tee-control        tee       ON      3            never returned, past its own
+#                                                       30-minute bound and the job cap
+#
+# So the group does NOT wedge. The guard is not the culprit (b) and concurrency is
+# not the culprit (c); every arm that writes its output to a file finishes green,
+# and 82 `no-hardlink-write: guarding` lines are emitted in arm a - more than the
+# 35 the stalled logs had reached. What separates d from a-c is the PIPE: it
+# streams 32.4 MB into the job's live log, two lines of which are 14.62 MB.
+#
+# Those two lines are stack frames that name a `data:text/javascript;base64,...`
+# module specifier, emitted by a React act() warning in
+# `scripts/onboarding-tour-i18n.test.mjs` - the same class as the 8,264,707-byte
+# line from `completion-view-ack.test.mjs` that `scripts/ci-log-guard.mjs` was
+# written for (#1407). ~29 MB of the 32.4 MB log is those two lines.
+#
+# A CI shard step pipes the suite through `tee`, so it is d, not a-c: the pipeline
+# stalls on the payload and the job is cancelled with no retrievable log - which
+# is exactly what shard 1/8 did in runs 41308244464 and 41313266408.
+#
+# THE TRIGGER IS NOW MANUAL ONLY: this evidence is recorded, so the arm set must
+# not fire again from a push and take four runners for half an hour.
 on:
-  push:
-    branches: [diag/shard1-wedge]
   workflow_dispatch:
 
 env:
