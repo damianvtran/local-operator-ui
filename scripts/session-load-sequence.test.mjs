@@ -1,10 +1,11 @@
 import assert from "node:assert/strict";
-import { unlink, writeFile } from "node:fs/promises";
+import { writeFile } from "node:fs/promises";
 import { after, test } from "node:test";
 import { build, stop } from "esbuild";
 import { JSDOM } from "jsdom";
 import { createElement as h } from "react";
 import { registerPOC1 } from "./poc1-transport.mjs";
+import { importScratchBundle } from "./scratch-esm-bundle.mjs";
 
 /*
  * Regex literals hoisted to the top level: `useTopLevelRegex` charges a literal
@@ -311,7 +312,7 @@ globalThis.window.api = {
 
 const REAL_DESKTOP_API = `${process.cwd()}/src/renderer/src/shared/api/local-operator/desktop-api.ts`;
 
-const bundle = await build({
+const bundleOptions = {
 	stdin: {
 		contents: `
 			import { createElement as h, useLayoutEffect } from "react";
@@ -530,12 +531,7 @@ const bundle = await build({
 			},
 		},
 	],
-});
-const bundlePath = new URL(
-	`./_session-load-sequence-${process.pid}.mjs`,
-	import.meta.url,
-);
-await writeFile(bundlePath, bundle.outputFiles[0].text);
+};
 const {
 	LoadPane,
 	__resetCheckpointManifestCache,
@@ -548,8 +544,9 @@ const {
 	EMPTY_TRANSCRIPT,
 	HIDE_CROSS_SESSION_KEY,
 	TURN_ANSWER_RAIL_KEY,
-} = await import(bundlePath.href);
-await unlink(bundlePath);
+} = await importScratchBundle(() => build(bundleOptions), {
+	repoRoot: process.cwd(),
+});
 const { QueryClient, QueryClientProvider } = await import(
 	"@tanstack/react-query"
 );
