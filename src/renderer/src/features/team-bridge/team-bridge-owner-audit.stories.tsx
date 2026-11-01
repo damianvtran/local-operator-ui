@@ -302,7 +302,7 @@ const unavailableMessages: OwnerAuditMessage[] = messages.map((message) => ({
 	attachment_count: 0,
 }));
 
-type State = "loading" | "error" | "ready";
+type State = import("./team-bridge-owner-audit").ReadState;
 
 /**
  * The section as the page composes it: rail on the left, panel on the right,
@@ -462,4 +462,15 @@ export const PanelReadFailed: Story = {
 /** A selected conversation with nothing in its audit window. */
 export const PanelEmpty: Story = {
 	args: { messages: [] },
+};
+
+/** Classified refusals are distinct from an empty history, and only a server
+ * failure offers the one in-scope retry. Loading/Empty above remain unchanged. */
+export const AuthRequired: Story = { args: { state: "auth", messages: [] } };
+export const PermissionRefused: Story = {
+	args: { state: "permission", messages: [] },
+};
+export const NotFound: Story = { args: { state: "not-found", messages: [] } };
+export const ServerUnavailable: Story = {
+	args: { state: "unavailable", messages: [] },
 };
