@@ -37,6 +37,7 @@ import {
 	jobPlan,
 	runJobs,
 } from "./ci-scope.mjs";
+import { OVERRIDE_ENV } from "./desktop-test-concurrency.mjs";
 
 /*
  * The contract of the change-scope classifier, in the form CI and
@@ -2000,6 +2001,77 @@ test("A17b: the desktop step is red, and names the red test, on every red shape"
  */
 const DESKTOP_LIFECYCLE_PATH =
 	"${{ runner.temp }}/desktop-lifecycle-${{ matrix.shard }}.jsonl";
+/** The only value shapes `parseOverride` honours: a whole number above zero, with
+ * no leading zero and nothing after it. Module scope so the contract below cannot
+ * recompile it per case (biome's `useTopLevelRegex`). */
+const POSITIVE_WORKERS = /^[1-9]\d*$/;
+const OVERRIDE_IGNORED = /positive whole number/;
+const OVERRIDE_OFF_THE_SUITE = /never reach the suite/;
+const GOVERNOR_BYPASSED = /bypasses the governor/;
+
+/**
+ * The desktop suite's worker width, and the one supported way to pin it.
+ *
+ * `LOCAL_OPERATOR_UI_TEST_CONCURRENCY` is the governor's OWN override, so a
+ * diagnostic run can pin the pool without adding a second knob; it is OPTIONAL,
+ * and absent it changes nothing. When the workflow does set one it has to be a
+ * value that actually lands, because a switch that reads as set while the suite
+ * runs at its default width is worse than no switch: the log looks like a
+ * controlled experiment and the run is not one.
+ *
+ * Three shapes lose the value silently, and all three are rejected here:
+ *
+ *   1. it is set on `desktop_suite`, the await step. The suite is spawned by the
+ *      supervisor that `desktop_launch` starts and inherits THAT step's
+ *      environment; the await step's env reaches nothing that runs a test.
+ *   2. the value is not a positive whole number in the spelling the governor
+ *      accepts - `parseOverride` refuses `0`, `01`, `1x` and warns, then takes
+ *      the governed path, so the run is uncapped by the value someone believes
+ *      they set.
+ *   3. the runner is handed an explicit `--test-concurrency`, in the step shell
+ *      or in the shard runner that calls it. That bypasses the governor, which
+ *      leaves the variable dead.
+ */
+function assertDesktopConcurrencyOverride(job, shell) {
+	const launch = job.steps.find((step) => step.id === "desktop_launch");
+	const suite = job.steps.find((step) => step.id === "desktop_suite");
+	const launchValue = launch.env?.[OVERRIDE_ENV];
+	// Job-level env is inherited by every step, so it is a legitimate carrier.
+	const raw = launchValue ?? job.env?.[OVERRIDE_ENV];
+	if (raw === undefined) {
+		assert.equal(
+			suite.env?.[OVERRIDE_ENV],
+			undefined,
+			`${OVERRIDE_ENV} on the desktop_suite step would never reach the suite, so a run that set it there would look pinned and not be`,
+		);
+		return;
+	}
+	// The governor trims and then requires the canonical spelling of a whole
+	// number, so the contract has to accept exactly what it accepts - no stricter
+	// (a trailing space is honoured) and no looser (a leading zero is ignored).
+	assert.match(
+		String(raw).trim(),
+		POSITIVE_WORKERS,
+		`${OVERRIDE_ENV}=${JSON.stringify(raw)} is not a positive whole number the governor honours; it is ignored rather than applied`,
+	);
+	assert.equal(
+		suite.env?.[OVERRIDE_ENV],
+		undefined,
+		`${OVERRIDE_ENV} on the desktop_suite step is a no-op: only the launch step's environment reaches the suite`,
+	);
+	for (const [where, text] of [
+		["the launch step", launch.run],
+		["scripts/desktop-suite-step.sh", shell],
+		[
+			"scripts/desktop-test-shards.mjs",
+			readFileSync(join(repoRoot, "scripts/desktop-test-shards.mjs"), "utf8"),
+		],
+	])
+		assert.ok(
+			!text.includes("--test-concurrency"),
+			`${where} passes --test-concurrency explicitly, which bypasses the governor and leaves ${OVERRIDE_ENV} ignored`,
+		);
+}
 function assertDesktopDiagnosticArtifactPaths(path) {
 	assert.equal(typeof path, "string");
 	// upload-artifact consumes newline-delimited paths, not substrings or a
@@ -2070,6 +2142,70 @@ test("A17d: a failed desktop run retains its full log as a failure artifact", ()
 	} finally {
 		rmSync(run.dir, { recursive: true, force: true });
 	}
+});
+
+test("the desktop concurrency switch is honoured where it is set, or absent", () => {
+	const shell = readFileSync(
+		join(repoRoot, "scripts/desktop-suite-step.sh"),
+		"utf8",
+	);
+	// The LIVE workflow is the subject first: whatever the diagnostic experiment
+	// does today has to pass its own gate.
+	assertDesktopConcurrencyOverride(jobs.test, shell);
+
+	const launchEnv = (job) =>
+		job.steps.find((step) => step.id === "desktop_launch").env;
+	const withLaunchValue = (value) => {
+		const job = structuredClone(jobs.test);
+		const env = launchEnv(job);
+		if (value === undefined) delete env[OVERRIDE_ENV];
+		else env[OVERRIDE_ENV] = value;
+		return job;
+	};
+
+	// OFF is a real shape and must stay legal: the switch exists for one
+	// experiment and the tree is expected to lose it again. The whitespace case is
+	// here because the governor TRIMS before parsing, so ` 1` is honoured rather
+	// than ignored and rejecting it would be a contract that disagrees with the
+	// code it guards.
+	for (const value of [undefined, "1", "3", "12", " 1"])
+		assertDesktopConcurrencyOverride(withLaunchValue(value), shell);
+
+	// Job-level env reaches the launch too, so it is a legal carrier.
+	const jobLevel = withLaunchValue(undefined);
+	jobLevel.env[OVERRIDE_ENV] = "1";
+	assertDesktopConcurrencyOverride(jobLevel, shell);
+
+	// Every shape whose value the governor would IGNORE, and which would
+	// therefore leave a log that looks like a controlled experiment while the pool
+	// ran at its default width.
+	for (const value of ["", "0", "01", "1x", "0x1"])
+		assert.throws(
+			() => assertDesktopConcurrencyOverride(withLaunchValue(value), shell),
+			OVERRIDE_IGNORED,
+			`${JSON.stringify(value)} is ignored by the governor, not honoured`,
+		);
+
+	// The step that READS as set but reaches nothing that runs tests.
+	const suiteOnly = withLaunchValue(undefined);
+	suiteOnly.steps.find((step) => step.id === "desktop_suite").env[
+		OVERRIDE_ENV
+	] = "1";
+	assert.throws(
+		() => assertDesktopConcurrencyOverride(suiteOnly, shell),
+		OVERRIDE_OFF_THE_SUITE,
+	);
+
+	// An explicit flag bypasses the governor outright, which makes the variable
+	// dead rather than wrong - the silent failure this whole assertion exists for.
+	for (const mutated of [
+		`${shell}\n# --test-concurrency=1\n`,
+		`${readFileSync(join(repoRoot, "scripts/desktop-test-shards.mjs"), "utf8")}\n// --test-concurrency=1\n`,
+	])
+		assert.throws(
+			() => assertDesktopConcurrencyOverride(withLaunchValue("1"), mutated),
+			GOVERNOR_BYPASSED,
+		);
 });
 
 test("A17c: every mutation that removes the guarantee changes the outcome", () => {

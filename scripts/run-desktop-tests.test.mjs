@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
+import { OVERRIDE_ENV } from "./desktop-test-concurrency.mjs";
 
 /*
  * `scripts/run-desktop-tests.mjs`'s own behaviour as a process: what it forwards
@@ -37,6 +38,18 @@ const RUNNER = join(process.cwd(), "scripts", "run-desktop-tests.mjs");
  * script tests (biome's `useTopLevelRegex`). */
 const BYPASS_LINE =
 	/^desktop tests: 2 files, concurrency 3 \(explicit --test-concurrency=3 in argv; governor bypassed\)$/;
+/*
+ * The diagnostic switch's own evidence line, pinned literally rather than built
+ * from `OVERRIDE_ENV`: the line a human greps out of a CI log IS the deliverable,
+ * so a rename or a rewording that still "passes" would defeat its purpose.
+ */
+const ONE_WORKER_LINE =
+	/^desktop tests: 1 file, concurrency 1 \(explicit LOCAL_OPERATOR_UI_TEST_CONCURRENCY; governor bypassed\)$/;
+/** The number in the evidence line, so a case can prove the line and the command
+ * agree instead of trusting either alone. */
+const CAPPED_LINE = /^desktop tests: 1 file, concurrency (\d+) /;
+/** What a rejected override says on stderr, so "ignored" can never be silent. */
+const TYPO_WARNING = /is not a positive whole number: 01\. Ignoring it\./;
 const ONE_FILE_LINE = /^desktop tests: 1 file, /;
 const USAGE_ERROR = /needs a positive whole number/;
 /*
@@ -69,6 +82,16 @@ const FAILS = join(scratch, "fails.test.mjs");
  * instead of just showing an empty line.
  */
 const REPORTS_ENV = join(scratch, "reports-env.test.mjs");
+/*
+ * Reports the flags ITS OWN process was started with, so the claim "the suite
+ * really ran at this width" is observed from inside the suite rather than read
+ * back out of the runner's source. A runner that resolves a number and then
+ * forgets to pass it - or that passes a different one than it prints - is
+ * exactly the silent failure this fixture exists to catch, and neither shows up
+ * in the runner's own source.
+ */
+const DUMPS_ARGV = join(scratch, "dumps-argv.test.mjs");
+const ARGV_OUT_ENV = "DESKTOP_RUNNER_ARGV_OUT";
 writeFileSync(
 	PASSES,
 	'import { test } from "node:test";\ntest("passes", () => {});\n',
@@ -80,6 +103,10 @@ writeFileSync(
 writeFileSync(
 	REPORTS_ENV,
 	'import { test } from "node:test";\ntest("reports the switch it received", () => {\n\tconst value = process.env.LOCAL_OPERATOR_NO_NOTIFICATIONS;\n\tconsole.log(`NOTIFICATIONS_ENV=${value === undefined ? "(unset)" : value}`);\n});\n',
+);
+writeFileSync(
+	DUMPS_ARGV,
+	'import { writeFileSync } from "node:fs";\nimport { test } from "node:test";\ntest("dumps the flags it was started with", () => {\n\twriteFileSync(process.env.DESKTOP_RUNNER_ARGV_OUT, JSON.stringify(process.execArgv));\n});\n',
 );
 process.on("exit", () => rmSync(scratch, { recursive: true, force: true }));
 
@@ -104,10 +131,17 @@ const ONE_FAILURE = /^(?:ℹ fail|# fail) 1\b/m;
  * used to do before the value check existed — would block the suite until CI's
  * job limit rather than reddening an assertion.
  */
-function runRunner(args, extraEnv = {}) {
+function runRunner(args, extraEnv = {}, dropEnv = []) {
+	// `dropEnv` exists because a case about the switch being ABSENT has to ask for
+	// absence: the diagnostic experiment exports `LOCAL_OPERATOR_UI_TEST_CONCURRENCY`
+	// into every step of its CI job, so a test that merely omitted the variable
+	// would inherit it and assert the opposite of what it claims. Inherited values
+	// are otherwise untouched, which is the point of the paragraph above.
+	const env = { ...process.env, ...extraEnv };
+	for (const key of dropEnv) delete env[key];
 	const result = spawnSync(process.execPath, [RUNNER, ...args], {
 		encoding: "utf8",
-		env: { ...process.env, ...extraEnv },
+		env,
 		timeout: 60000,
 	});
 	return {
@@ -115,6 +149,25 @@ function runRunner(args, extraEnv = {}) {
 		stdout: result.stdout,
 		stderr: result.stderr,
 	};
+}
+
+/**
+ * Run the runner over the argv-dumping fixture and hand back both what it
+ * printed and the flags the SUITE'S OWN process was started with.
+ *
+ * The file is read rather than parsed from stdout because the child's argv is
+ * the only witness to the command the runner actually built: node consumes
+ * `--test` in the parent, so nothing the child can print would show the whole
+ * command either way, but it does show the width the suite was given.
+ */
+function spawnedSuite(extraEnv, dropEnv = []) {
+	const out = join(scratch, `argv-${process.pid}-${Math.random()}.json`);
+	const run = runRunner(
+		[DUMPS_ARGV],
+		{ ...extraEnv, [ARGV_OUT_ENV]: out },
+		dropEnv,
+	);
+	return { run, args: JSON.parse(readFileSync(out, "utf8")) };
 }
 
 test("the runner forwards the child's exit code", () => {
@@ -135,6 +188,64 @@ test("an explicit --test-concurrency is forwarded and the governor stands aside"
 	// still decided the outcome.
 	assert.match(line, BYPASS_LINE);
 	assert.equal(status, 1, stdout);
+});
+
+test("the governor's switch pins the suite to one worker, and the suite is told", () => {
+	// `CI=1` is the arm this experiment runs in, so the switch has to outrank the
+	// CI stand-down rather than be quietly dropped for being on a hosted runner.
+	const { run, args } = spawnedSuite({ CI: "1", [OVERRIDE_ENV]: "1" });
+	const [line] = run.stdout.split("\n");
+	assert.equal(run.status, 0, run.stdout);
+	assert.match(line, ONE_WORKER_LINE);
+	// The line and the command have to agree, and both are checked: the line is
+	// the only evidence a reader of the CI log has that the experiment ran the
+	// mode it claimed, and the child's own argv is the only witness that the width
+	// reached the suite at all.
+	assert.ok(
+		args.includes("--test-concurrency=1"),
+		`the suite was not told to run one file at a time: ${JSON.stringify(args)}`,
+	);
+});
+
+test("with the switch absent the suite gets the governor's number, and no other", () => {
+	// DELETED, not merely omitted: the experiment exports the variable into every
+	// step of its job, so inheriting it here would make this case assert the
+	// opposite of what it claims.
+	const { run, args } = spawnedSuite({ CI: "1" }, [OVERRIDE_ENV]);
+	const [line] = run.stdout.split("\n");
+	assert.equal(run.status, 0, run.stdout);
+	assert.ok(!line.includes(OVERRIDE_ENV), line);
+	const printed = CAPPED_LINE.exec(line);
+	assert.ok(printed, `the governed run must still name its number: ${line}`);
+	// Which term binds depends on the host, so the NUMBER is not pinned - the
+	// invariant is. OFF adds no flag of its own, passes exactly the number it
+	// printed, and never widens the pool behind the governor's back.
+	assert.deepEqual(
+		args.filter((arg) => arg.startsWith("--test-concurrency=")),
+		[`--test-concurrency=${printed[1]}`],
+	);
+});
+
+test("a mistyped switch is ignored out loud, not applied quietly", () => {
+	// `01` is not the spelling `parseOverride` accepts, so the run is UNCAPPED by
+	// the value somebody believes they set. That degradation is allowed; what is
+	// not allowed is a line that reads as if the value had been applied, which is
+	// how a diagnostic run ends up claiming a mode it never ran.
+	const { run, args } = spawnedSuite({ CI: "1", [OVERRIDE_ENV]: "01" });
+	const [line] = run.stdout.split("\n");
+	assert.equal(run.status, 0, run.stdout);
+	assert.ok(!line.includes(OVERRIDE_ENV), line);
+	assert.match(
+		run.stderr,
+		TYPO_WARNING,
+		`a rejected override has to say so: ${run.stderr}`,
+	);
+	const printed = CAPPED_LINE.exec(line);
+	assert.ok(printed, line);
+	assert.deepEqual(
+		args.filter((arg) => arg.startsWith("--test-concurrency=")),
+		[`--test-concurrency=${printed[1]}`],
+	);
 });
 
 test("a single file is counted as one file, not one files", () => {

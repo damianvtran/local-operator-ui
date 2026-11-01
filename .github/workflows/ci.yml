@@ -740,6 +740,28 @@ jobs:
           # Linux-only /proc census: the instrument that names a hard-blocked
           # process without needing anything from it.
           LOCAL_OPERATOR_UI_KERNEL_CENSUS: ${{ runner.temp }}/kernel-census-${{ matrix.shard }}.jsonl
+          # DIAGNOSTIC EXPERIMENT - REVERT by deleting this one line once the
+          # question below is answered; nothing else changes with it.
+          #
+          # On run 41303745555, shard 1 froze ~2s into the suite and then made NO
+          # progress at all: the 2400s bash bound never fired, the GNU `timeout`
+          # never fired, the supervisor deadline never fired, and no `census:` row
+          # was ever emitted - while the other three shards finished in ~10
+          # minutes each. The suite's one piece of shared mutable state at that
+          # point is the FILE WORKER POOL (node's default here, i.e. 3 on a 4-core
+          # runner), so this run pins the pool to a single worker to test whether
+          # the freeze is concurrency-related.
+          #
+          # Set HERE, on the launch step, and NOT on `desktop_suite`: the suite is
+          # spawned by the supervisor this step starts and inherits THIS step's
+          # environment, so the same value on the await step would read as set and
+          # change nothing. `scripts/desktop-test-concurrency.mjs` owns the
+          # interpretation, and the runner prints
+          # `concurrency 1 (explicit LOCAL_OPERATOR_UI_TEST_CONCURRENCY; governor
+          # bypassed)` as the proof the switch took effect. Every cap, bound,
+          # verification and verdict path is untouched - this changes the width of
+          # the worker pool and nothing else.
+          LOCAL_OPERATOR_UI_TEST_CONCURRENCY: "1"
         run: node scripts/desktop-suite-checkpoints.mjs launch "${{ runner.temp }}/desktop-supervisor-${{ matrix.shard }}" scripts/desktop-suite-step.sh "$DESKTOP_SETUP_STARTED_MS"
 
       - name: Freeze early desktop witness checkpoint
