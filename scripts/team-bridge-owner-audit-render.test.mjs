@@ -154,6 +154,7 @@ const bundle = await build({
  export { TeamBridgeOwnerAuditApi } from "./src/renderer/src/shared/api/local-operator/team-bridge-owner-audit-api";
 			export { desktopRequestSchema, desktopEndpoint } from "./src/shared/desktop-contract";
 			export { QueryClient, QueryClientProvider, CancelledError } from "@tanstack/react-query";
+ export { useOwnerAuditStartupScene } from "./src/renderer/src/dev-driver/owner-audit-startup";
  export { useOwnerAuditConversations } from "./src/renderer/src/features/team-bridge/use-team-bridge-owner-audit";
 			export { radientUserKeys, beginRadientAuthoritySignOut } from "./src/renderer/src/shared/hooks/radient-account-authority";
 			export { teamBridgeKeys } from "./src/renderer/src/features/team-bridge/team-bridge-keys";
@@ -2801,5 +2802,76 @@ test("diagnostics: exact documented exporter rejects malformed rows and bounds i
 		assert.deepEqual(tail.trim().split("\n").map(JSON.parse), [good]);
 	} finally {
 		rmSync(home, { recursive: true, force: true });
+	}
+});
+
+test("startup scene waits for actual capability and settled account before navigating once", async () => {
+	const host = document.createElement("div");
+	document.body.append(host);
+	const root = createRoot(host);
+	const client = new m.QueryClient({
+		defaultOptions: { queries: { gcTime: Number.POSITIVE_INFINITY } },
+	});
+	const previous = window.__loDevDriver;
+	const paths = [];
+	const navigate = (path) => paths.push(path);
+	let enabled = false;
+	function Probe() {
+		m.useOwnerAuditStartupScene(enabled, navigate);
+		return null;
+	}
+	const render = () =>
+		act(async () =>
+			root.render(h(m.QueryClientProvider, { client }, h(Probe))),
+		);
+	try {
+		window.__loDevDriver = undefined;
+		await render();
+		assert.deepEqual(paths, []);
+		window.__loDevDriver = { armed: true, startupScene: "unknown" };
+		enabled = true;
+		await render();
+		assert.deepEqual(paths, []);
+		window.__loDevDriver = {
+			armed: true,
+			startupScene: "team-bridge-owner-audit",
+		};
+		enabled = false;
+		await render();
+		assert.deepEqual(paths, []);
+		enabled = true;
+		await render();
+		assert.deepEqual(
+			paths,
+			[],
+			"enabled capability alone cannot invent a settled account",
+		);
+		enabled = false;
+		await render();
+		await act(async () =>
+			client.setQueryData(m.radientUserKeys.user(), { account: { id: OWNER } }),
+		);
+		assert.deepEqual(
+			paths,
+			[],
+			"disabled capability must never navigate even with account ready",
+		);
+		enabled = true;
+		await render();
+		assert.deepEqual(paths, ["/team-bridge"]);
+		enabled = false;
+		await render();
+		enabled = true;
+		await render();
+		assert.deepEqual(
+			paths,
+			["/team-bridge"],
+			"never redirect the user again after the one scene admission",
+		);
+	} finally {
+		await act(async () => root.unmount());
+		client.clear();
+		host.remove();
+		window.__loDevDriver = previous;
 	}
 });

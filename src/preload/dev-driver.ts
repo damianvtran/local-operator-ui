@@ -37,6 +37,7 @@ import {
 	DEV_DRIVER_CAPTURE,
 	DEV_DRIVER_FACTS,
 	DEV_DRIVER_WORLD_KEY,
+	type OWNER_AUDIT_STARTUP_SCENE,
 	readDevDriverArgument,
 } from "../main/dev-driver";
 
@@ -48,6 +49,8 @@ export interface DevDriverBridge {
 	armed: true;
 	/** Where `capture()` writes its PNGs. */
 	outDir: string;
+	/** Fixed main-admitted isolated native-QA scene; never an arbitrary route. */
+	startupScene?: typeof OWNER_AUDIT_STARTUP_SCENE;
 	/** The verbs the renderer has registered so far. */
 	verbs(): string[];
 	/** Called by the renderer's install module; returns the full list after registering. */
@@ -81,11 +84,13 @@ export interface DevDriverBridge {
 	onAddressOverlayEvent(callback: (event: unknown) => void): () => void;
 }
 
-function armedArgument(): { armed: true; outDir: string } | null {
+function armedArgument():
+	| ({ armed: true } & NonNullable<ReturnType<typeof readDevDriverArgument>>)
+	| null {
 	// The renderer process's own argv: Electron appends the window's
 	// `additionalArguments` to it, and main only adds the entry when it armed.
 	const parsed = readDevDriverArgument(process.argv);
-	return parsed === null ? null : { armed: true, outDir: parsed.outDir };
+	return parsed === null ? null : { armed: true, ...parsed };
 }
 
 /**
@@ -103,6 +108,7 @@ export function installDevDriverBridge(): boolean {
 	const bridge: DevDriverBridge = {
 		armed: true,
 		outDir: armed.outDir,
+		...(armed.startupScene ? { startupScene: armed.startupScene } : {}),
 		verbs: () => [...scenes.keys()].sort(),
 		install: (verbs) => {
 			const registered: string[] = [];
