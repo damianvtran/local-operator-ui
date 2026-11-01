@@ -33,7 +33,8 @@ jobs:
       - name: Native focus diagnostic
         env:
           LOCAL_OPERATOR_SCRATCHPAD: ${{ runner.temp }}/focus-stability
-        run: node scripts/browser-focus-stability-proof.mjs --out "$LOCAL_OPERATOR_SCRATCHPAD"
+          LOCAL_OPERATOR_FOCUS_PROOF_CI: '1'
+        run: node scripts/browser-focus-stability-proof.mjs --out "$LOCAL_OPERATOR_SCRATCHPAD" --ci-native-owner
       - uses: actions/upload-artifact@v4
         if: always()
         with:

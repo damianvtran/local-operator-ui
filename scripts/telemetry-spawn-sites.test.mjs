@@ -292,6 +292,14 @@ function exempt(file, name, index, why, site, noEnv) {
 
 const APP_SPAWN_SITES = [
 	guarded(
+		"scripts/browser-focus-stability-proof.mjs",
+		"spawn",
+		1,
+		/(?:\{|,)\s*env\s*,/,
+		"boots the real app for isolated native focus discrimination; launch suppression must accompany the scratch profile, including the explicitly armed CI-only native-owner mode",
+		/withTelemetryOff\(env\);/,
+	),
+	guarded(
 		"scripts/browser-approvals-first-paint-probe.mjs",
 		"spawn",
 		1,

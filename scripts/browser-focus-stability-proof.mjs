@@ -4,7 +4,9 @@
  * Loads the BUILT app, not a replacement BrowserWindow. Main-inspector readings
  * distinguish a DOM caret from the native WebContents first responder; emulating
  * page focus would hide precisely the distinction under investigation, so this
- * run does not emulate focus. No window is ever shown or activated.
+ * run does not emulate focus. Default runs remain hidden. Explicitly armed
+ * disposable macOS CI may show/activate its OWN window to establish a native
+ * first responder; this mode fails closed before spawn anywhere else.
  *
  * Usage: node scripts/browser-focus-stability-proof.mjs --out /absolute/evidence
  * Local native runs remain subject to the repository's resource/safety holds.
@@ -17,9 +19,14 @@ import { createServer } from "node:http";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import electron from "electron";
+import { createFocusProofOwnedTree } from "./focus-proof-owned-tree.mjs";
+import { focusProofWindowMode } from "./focus-stability-ci-policy.mjs";
 import { withNotificationsOff } from "./notifications-off.mjs";
 import { withTelemetryOff } from "./telemetry-off.mjs";
 
+// Resolve the authorization before side effects; headless remains the default.
+const windowMode = focusProofWindowMode(process.argv, process.env);
+const nativeCi = windowMode === "inactive";
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const outArg = process.argv.indexOf("--out");
 assert(outArg >= 0 && process.argv[outArg + 1], "--out is required");
@@ -30,6 +37,9 @@ const save = (name, data) =>
 const sleep = (ms) => new Promise((done) => setTimeout(done, ms));
 const sockets = [];
 let child;
+let ownedTree;
+let inventoryTimer;
+let cleanupPromise;
 let exited = false;
 let log = "";
 const facts = { samples: [], events: [], failures: [] };
@@ -104,6 +114,14 @@ async function target(port, predicate) {
 	}, "debug target");
 }
 let main;
+for (const [name, code] of [
+	["SIGINT", 130],
+	["SIGTERM", 143],
+]) {
+	process.once(name, () => {
+		void cleanup().finally(() => process.exit(code));
+	});
+}
 try {
 	const identity = {
 		head: execFileSync("git", ["rev-parse", "HEAD"], {
@@ -149,7 +167,7 @@ try {
 		HOME: dirs.home,
 		LOCAL_OPERATOR_CONFIG_DIR: dirs.config,
 		LOCAL_OPERATOR_LOG_DIR: dirs.logs,
-		LOCAL_OPERATOR_UI_WINDOW_MODE: "headless",
+		LOCAL_OPERATOR_UI_WINDOW_MODE: windowMode,
 		VITE_DISABLE_BACKEND_MANAGER: "true",
 	});
 	withTelemetryOff(env);
@@ -161,12 +179,17 @@ try {
 			root,
 			"--inspect=0",
 			"--remote-debugging-port=0",
-			"--window-mode=headless",
+			`--window-mode=${windowMode}`,
 			`--user-data-dir=${dirs.profile}`,
 			"--use-mock-keychain",
 		],
 		{ env, cwd: dirs.cwd, stdio: ["ignore", "pipe", "pipe"] },
 	);
+	ownedTree = createFocusProofOwnedTree({
+		rootPid: child.pid,
+		profile: dirs.profile,
+	});
+	inventoryTimer = setInterval(() => ownedTree.refresh(), 100);
 	child.on("exit", () => {
 		exited = true;
 	});
@@ -227,7 +250,17 @@ try {
 			}
 			return result;
 		};
-		// WebContents focus stays inside this hidden window; no window activation.
+		// WebContents focus stays inside this window; activation is separately
+		// armed and rechecked INSIDE Electron, on disposable macOS CI only.
+		if (${nativeCi}) {
+			if (process.env.GITHUB_ACTIONS !== 'true' || process.env.RUNNER_OS !== 'macOS' || process.env.CI !== 'true' || process.env.LOCAL_OPERATOR_FOCUS_PROOF_CI !== '1') throw Error('CI native owner authorization missing inside Electron');
+			w.showInactive();
+			if (!w.isFocused()) {
+				E.app.focus({steal:true});
+				w.focus();
+				globalThis.__focusProof.ciActivationUsed=true;
+			}
+		}
 		w.webContents.focus();
 		return true;
 	})()`,
@@ -243,11 +276,15 @@ try {
 		);
 		const result = { label, native, dom };
 		facts.samples.push(result);
-		assert.equal(native.visible, false, "probe must never show its window");
+		assert.equal(
+			native.visible,
+			nativeCi,
+			"visibility must match explicitly authorized mode",
+		);
 		assert.equal(
 			native.focusable,
-			false,
-			"headless window must stay unfocusable",
+			nativeCi,
+			"focusability must match explicitly authorized mode",
 		);
 		console.log(JSON.stringify(result));
 		return result;
@@ -327,8 +364,35 @@ try {
 	});
 	await sleep(300);
 	await sample("palette-before-background");
+	await owner("Input.insertText", { text: "focusproof" });
+	await evaluate(
+		owner,
+		"document.querySelector('#command-palette-input').setSelectionRange(2,6); true",
+	);
 	await sleep(1000);
-	await sample("no-background-negative-control");
+	const negativeControl = await sample("no-background-negative-control");
+	if (nativeCi) {
+		assert.equal(
+			negativeControl.native.windowFocused,
+			true,
+			"negative control must establish native window focus",
+		);
+		assert.equal(
+			negativeControl.native.ownerFocused,
+			true,
+			"negative control must establish native owner focus",
+		);
+		assert.equal(
+			negativeControl.native.focused,
+			negativeControl.native.ownerId,
+			"native owner getter must agree before dispatch",
+		);
+		assert.match(
+			negativeControl.dom.active ?? "",
+			/command-palette-input/,
+			"real palette input must own the DOM caret",
+		);
+	}
 	const backgroundUrl = `${url}?background=1`;
 	const opened = await rpc("open", {
 		url: backgroundUrl,
@@ -354,9 +418,33 @@ try {
 	// window may never acquire a native first responder; that is BLOCKED proof,
 	// not a pass for user-visible caret stability.
 	facts.nativeOwnerObserved = facts.samples.some((s) => s.native.ownerFocused);
-	facts.verdict = facts.nativeOwnerObserved
-		? "OBSERVED_NATIVE_FOCUS_READINGS"
-		: "BLOCKED_NO_NATIVE_OWNER_IN_HEADLESS_WINDOW";
+	facts.backgroundChanges = facts.samples
+		.filter(
+			(s) =>
+				s.label.startsWith("background-") || s.label === "agent-open-and-load",
+		)
+		.map((s) => ({
+			stage: s.label,
+			nativeOwnerLost: !s.native.ownerFocused,
+			windowLost: !s.native.windowFocused,
+			domOwnerChanged: s.dom.active !== negativeControl.dom.active,
+			valueChanged: s.dom.value !== negativeControl.dom.value,
+			selectionChanged:
+				JSON.stringify(s.dom.selection) !==
+				JSON.stringify(negativeControl.dom.selection),
+		}));
+	facts.verdict = !facts.nativeOwnerObserved
+		? "BLOCKED_NO_NATIVE_OWNER_IN_HEADLESS_WINDOW"
+		: facts.backgroundChanges.some(
+					(s) =>
+						s.nativeOwnerLost ||
+						s.windowLost ||
+						s.domOwnerChanged ||
+						s.valueChanged ||
+						s.selectionChanged,
+				)
+			? "REPRO_FOCUS_OR_CARET_CHANGED_BY_BACKGROUND_ACTIVITY"
+			: "PALETTE_NATIVE_OWNER_PRESERVED_IN_THIS_RUN";
 	save("facts.json", facts);
 } catch (error) {
 	facts.failures.push(String(error));
@@ -364,33 +452,29 @@ try {
 	console.error(error);
 	process.exitCode = 1;
 } finally {
-	// Ask the exact app to quit while its inspector still exists, then disconnect
-	// the inspector (an attached inspector otherwise keeps Electron alive).
-	if (main && !exited)
-		await evaluate(
-			main,
-			`process.mainModule.require('electron').app.quit(); true`,
-		).catch(() => {});
-	for (const socket of sockets) socket.close();
-	if (child && !exited) {
-		await until(() => exited, "app quit", 5000).catch(() => {});
-		if (!exited) {
-			child.kill("SIGTERM");
-			await until(() => exited, "owned child termination", 5000).catch(
-				() => {},
-			);
-		}
-		if (!exited) {
-			child.kill("SIGKILL");
-			await until(() => exited, "owned child kill", 5000).catch(() => {});
-		}
-		if (!exited) process.exitCode = 1;
-	}
-	writeFileSync(join(out, "app.log"), log);
-	save("teardown.json", {
-		pid: child?.pid,
-		exited,
-		exactChildSignalOnly: true,
-	});
-	server.close();
+	await cleanup();
+}
+
+function cleanup() {
+	cleanupPromise ??= (async () => {
+		// The same cleanup runs after normal completion, failure and interruption,
+		// even when the root has exited. Inspector clients must disconnect first.
+		if (main && !exited)
+			await evaluate(
+				main,
+				"process.mainModule.require('electron').app.quit(); true",
+			).catch(() => {});
+		for (const socket of sockets) socket.close();
+		if (child && !exited)
+			await until(() => exited, "app quit", 3000).catch(() => {});
+		clearInterval(inventoryTimer);
+		const tree = ownedTree
+			? await ownedTree.stop()
+			: { clean: !child, owned: [], survivors: [] };
+		if (!tree.clean) process.exitCode = 1;
+		writeFileSync(join(out, "app.log"), log);
+		save("teardown.json", { pid: child?.pid, exited, ...tree });
+		server.close();
+	})();
+	return cleanupPromise;
 }
