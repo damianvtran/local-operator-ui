@@ -12,6 +12,7 @@ from collections import deque
 from contextlib import redirect_stdout
 import ctypes
 import hashlib
+import shlex
 import io
 import json
 import os
@@ -486,10 +487,14 @@ class WorkerHistory:
                 'unseen_reparenting_ancestry_cannot_be_attributed': True}
 
 
-def supervise(command, cwd, output, seconds=LIMIT, history=None, memory_mb=None):
+def supervise(command, cwd, output, seconds=LIMIT, history=None, memory_mb=None,
+              absolute_deadline=None, capture=None):
     """Return timeout distinctly; budget the WHOLE call, including observation."""
     started = time.monotonic()
-    deadline = started + seconds
+    deadline = min(started + seconds, absolute_deadline) if absolute_deadline is not None else started + seconds
+    seconds = deadline - started
+    if seconds < 0.3:
+        raise TimeoutError('insufficient bounded process/cleanup budget; STOP before launch')
     output.mkdir(parents=True)
     home = output / 'home'
     home.mkdir()
@@ -528,7 +533,8 @@ def supervise(command, cwd, output, seconds=LIMIT, history=None, memory_mb=None)
     kill_at = deadline - reserve * 0.55
     costs = {'census_count': 1, 'census_total': baseline_cost,
              'census_max': baseline_cost, 'signal_count': 0,
-             'signal_total': 0.0, 'signal_max': 0.0}
+             'signal_total': 0.0, 'signal_max': 0.0,
+             'memory_count': 0, 'memory_total': 0.0, 'memory_max': 0.0}
 
     def send(row, sig):
         before = time.monotonic()
@@ -578,6 +584,9 @@ def supervise(command, cwd, output, seconds=LIMIT, history=None, memory_mb=None)
                 if not block:
                     break
                 total_bytes += len(block)
+                if capture is not None:
+                    # Private return buffer for metadata only; NEVER serialized.
+                    capture.extend(block[:max(0, 1048576 - len(capture))])
                 tap.feed(block)
             except BlockingIOError:
                 break
@@ -600,12 +609,23 @@ def supervise(command, cwd, output, seconds=LIMIT, history=None, memory_mb=None)
             if history is not None:
                 history.scan(rows, elapsed)
             if memory_mb is not None:
-                peak_memory_kib = max(peak_memory_kib, charged_memory(rows))
+                memory_before = time.monotonic()
+                try:
+                    peak_memory_kib = max(peak_memory_kib, charged_memory(rows))
+                finally:
+                    memory_duration = time.monotonic() - memory_before
+                    costs['memory_count'] += 1
+                    costs['memory_total'] += memory_duration
+                    costs['memory_max'] = max(costs['memory_max'], memory_duration)
                 if peak_memory_kib >= memory_mb * 1024:
                     memory_tripped = True
                     if history is not None:
                         history.capture_stop('memory-limit', elapsed, tap)
-                    tree.signal(rows, signal.SIGKILL)
+                    for row in reversed(rows):
+                        identity = (row['pid'], row['start_id'])
+                        if identity not in kill_requests and send(row, signal.SIGKILL):
+                            killed = True
+                            kill_requests.add(identity)
                     break
             if elapsed - last_sample >= 1 or not rows:
                 sampled = rows if history is None else rows[:128]
@@ -1081,52 +1101,111 @@ def validate_history_plan(plan):
     return selected
 
 
-def history_plan(root):
-    if subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=root, text=True).strip() != HISTORY_HEAD:
+class ValidationBudget:
+    """One absolute caller clock; reuse the identity-owned process supervisor.
+
+    Metadata is not harmless setup: Git/Node/hash helpers can hang or fork too.
+    Captured bytes stay private and bounded; only sanitized supervisor receipts
+    are durable. No timeout fallback launches another diagnostic or target.
+    """
+    def __init__(self, deadline, output):
+        self.deadline, self.output, self.sequence = deadline, output, 0
+
+    def remaining(self):
+        left = self.deadline - time.monotonic()
+        if left < 0.4:
+            raise TimeoutError('whole-history validation deadline exhausted; STOP')
+        return left
+
+    def run(self, command, root):
+        left = self.remaining()
+        self.sequence += 1
+        output = self.output / f'{self.sequence:03d}-metadata'
+        captured = bytearray()
+        result = supervise(command, root, output, min(30, left - 0.1),
+                           history=WorkerHistory(root, [], output),
+                           memory_mb=HISTORY_MEMORY_MB, absolute_deadline=self.deadline,
+                           capture=captured)
+        self.remaining()
+        if result['exit_code'] != 0 or result['survivors']:
+            raise TimeoutError('bounded metadata failed or timed out; STOP')
+        if result['discarded_output_bytes'] > 1048576:
+            raise RuntimeError('metadata output exceeded private capture bound; STOP')
+        return bytes(captured)
+
+
+def history_plan(root, budget):
+    if budget.run(['git', 'rev-parse', 'HEAD'], root).decode().strip() != HISTORY_HEAD:
         raise RuntimeError('history root is not the one authorized immutable avatar ref')
-    subprocess.run(['git', 'diff', '--no-ext-diff', '--exit-code', '--quiet', 'HEAD', '--',
-                    'src', 'scripts', 'package.json', 'pnpm-lock.yaml'],
-                   cwd=root, check=True, capture_output=True)
-    env = external_environment(root / '.unused-plan-home')
-    version = subprocess.check_output(['node', '--version'], env=env, text=True).strip()
+    budget.run(['git', 'diff', '--no-ext-diff', '--exit-code', '--quiet', 'HEAD', '--',
+                'src', 'scripts', 'package.json', 'pnpm-lock.yaml'], root)
+    version = budget.run(['node', '--version'], root).decode().strip()
     if not version.startswith('v22.'):
         raise RuntimeError('history requires actual Node22')
-    plan = json.loads(subprocess.check_output([
+    plan = json.loads(budget.run([
         'node', 'scripts/desktop-test-shards.mjs', 'plan', '--head', HISTORY_HEAD,
-        '--checkout', HISTORY_HEAD], cwd=root, env=env, text=True))
+        '--checkout', HISTORY_HEAD], root))
+    budget.remaining()
     return plan, validate_history_plan(plan)
 
 
-def history_manifest(root, files):
+# Hashing also lives inside the same owned subprocess boundary: a stalled read
+# must not hold the parent beyond its deadline. Check the shared monotonic clock
+# between files/chunks as well; no source file is modified or imported.
+HASH_MANIFEST = r"""
+import hashlib,json,sys,time
+from pathlib import Path
+root=Path(sys.argv[1]); paths=json.loads(sys.argv[2]); deadline=float(sys.argv[3]); result={}
+for name in paths:
+    digest=hashlib.sha256()
+    with (root/name).open('rb') as stream:
+        while True:
+            if time.monotonic() >= deadline:
+                raise TimeoutError('manifest deadline')
+            chunk=stream.read(65536)
+            if not chunk: break
+            digest.update(chunk)
+    result[name]=digest.hexdigest()
+print(json.dumps(result),flush=True)
+"""
+
+
+def history_manifest(root, files, budget):
     paths = sorted(set(files + [f'scripts/{name}.mjs' for name in COORDINATOR_FILES] + [
         'scripts/desktop-test-shards.mjs', 'scripts/entry-point.mjs', 'package.json', 'pnpm-lock.yaml']))
-    subprocess.run(['git', 'diff', '--no-ext-diff', '--exit-code', '--quiet', 'HEAD', '--',
-                    'src', 'scripts', 'package.json', 'pnpm-lock.yaml'],
-                   cwd=root, check=True, capture_output=True)
-    return {file: hashlib.sha256((root / file).read_bytes()).hexdigest() for file in paths}
+    budget.run(['git', 'diff', '--no-ext-diff', '--exit-code', '--quiet', 'HEAD', '--',
+                'src', 'scripts', 'package.json', 'pnpm-lock.yaml'], root)
+    result = json.loads(budget.run([sys.executable, '-c', HASH_MANIFEST, str(root),
+                                   json.dumps(paths), str(budget.deadline)], root))
+    budget.remaining()
+    if sorted(result) != paths:
+        raise RuntimeError('incomplete bounded source manifest')
+    return result
 
 
 def run_history(root, output):
     began = time.monotonic()
-    plan, selected = history_plan(root)
-    before = history_manifest(root, selected)
-    output.mkdir(parents=True)
+    budget = ValidationBudget(began + HISTORY_LIMIT, output / 'validation')
+    plan, selected = history_plan(root, budget)
+    before = history_manifest(root, selected, budget)
+    output.mkdir(parents=True, exist_ok=True)
     write_json(output / 'source-before.json', {'source_sha': HISTORY_HEAD, 'sha256': before})
     write_json(output / 'selection.json', {**plan, 'selected_index': HISTORY_INDEX,
                'selected_count': HISTORY_COUNT, 'selected_newline_sha256': HISTORY_DIGEST,
                'selection_is_not_completion': True})
     # Reserve post-validation/serialization time within the SAME 600s call.
-    remaining = HISTORY_LIMIT - (time.monotonic() - began) - 8
+    remaining = budget.remaining() - min(8, HISTORY_LIMIT * 0.2)
     if remaining < 1:
         raise RuntimeError('history setup consumed the bounded call; STOP')
     arm = output / 'avatar-index3'
     history = WorkerHistory(root, selected, arm)
     command = ['node', 'scripts/desktop-test-shards.mjs', 'run', '--head', HISTORY_HEAD,
                '--checkout', HISTORY_HEAD, '--index', str(HISTORY_INDEX)]
-    result = supervise(command, root, arm, remaining, history=history, memory_mb=HISTORY_MEMORY_MB)
+    result = supervise(command, root, arm, remaining, history=history, memory_mb=HISTORY_MEMORY_MB,
+                       absolute_deadline=budget.deadline)
     try:
-        after_plan, after_selected = history_plan(root)
-        after = history_manifest(root, selected)
+        after_plan, after_selected = history_plan(root, budget)
+        after = history_manifest(root, selected, budget)
         if before != after or selected != after_selected or plan != after_plan:
             raise RuntimeError('pinned history inventory/source changed during call')
         write_json(output / 'source-after.json', {'source_sha': HISTORY_HEAD, 'sha256': after})
@@ -1160,17 +1239,134 @@ def run_history(root, output):
     return result['exit_code']
 
 
+def validation_controls(output, plan):
+    """Real slow/stuck metadata processes: no mocked subprocess timeouts.
+
+    Only the target call is a stand-in: no selected test fixture is imported.
+    The SAME Git/Node/manifest and owned-cleanup paths run under a scaled clock.
+    """
+    output.mkdir(parents=True)
+    root = output / 'metadata-fixture'
+    binary = root / 'bin'
+    binary.mkdir(parents=True)
+    (root / 'plan.json').write_text(json.dumps(plan))
+    helper = r"""
+import json,os,signal,subprocess,sys,time
+from pathlib import Path
+root=Path(__file__).resolve().parent.parent
+role=sys.argv.pop(1)
+if len(sys.argv)>1 and sys.argv[1] in ('child','grandchild'):
+    signal.signal(signal.SIGTERM,signal.SIG_IGN)
+    with (root/'pids').open('a') as stream: stream.write(str(os.getpid())+'\n')
+    if sys.argv[1]=='child': subprocess.Popen([sys.executable,__file__,'node','grandchild'],start_new_session=True)
+    while True: time.sleep(.02)
+if role=='git':
+    if sys.argv[1]=='rev-parse': print(json.loads((root/'plan.json').read_text())['head'])
+    sys.exit(0)
+config=json.loads((root/'config.json').read_text())
+blocked=config['phase']=='setup' or (root/'post-enabled').exists()
+if blocked and '--version' in sys.argv:
+    (root/'fault-entered').write_text('actual blocked metadata subprocess')
+    if config['kind']=='slow': time.sleep(5)
+    else:
+        signal.signal(signal.SIGTERM,signal.SIG_IGN)
+        with (root/'pids').open('a') as stream: stream.write(str(os.getpid())+'\n')
+        subprocess.Popen([sys.executable,__file__,'node','child'],start_new_session=True)
+        while True: time.sleep(.02)
+if '--version' in sys.argv: print('v22.18.0')
+else: print((root/'plan.json').read_text())
+"""
+    helper_path = binary / 'metadata-helper.py'
+    helper_path.write_text(helper)
+    for name in ('git', 'node'):
+        script = binary / name
+        # The desktop Python executable can contain spaces: a raw shebang
+        # splits it. Quote argv in a shell carrier, never weaken the test.
+        script.write_text('#!/bin/sh\nexec ' + shlex.quote(sys.executable) + ' ' +
+                          shlex.quote(str(helper_path)) + ' ' + name + ' "$@"\n')
+        script.chmod(0o755)
+    native_supervise, native_plan = supervise, history_plan
+    receipts = []
+    for phase in ('setup', 'post'):
+        for kind in ('slow', 'stuck'):
+            for name in ('post-enabled', 'pids', 'fault-entered'):
+                (root / name).unlink(missing_ok=True)
+            (root / 'config.json').write_text(json.dumps({'phase': phase, 'kind': kind}))
+            calls = []
+
+            def target_or_metadata(command, cwd, arm, seconds, **kwargs):
+                if command[:3] != ['node', 'scripts/desktop-test-shards.mjs', 'run']:
+                    return native_supervise(command, cwd, arm, seconds, **kwargs)
+                calls.append(command)
+                arm.mkdir(parents=True)
+                (root / 'post-enabled').write_text('synthetic post-validation fault')
+                return {'exit_code': 0, 'status': 'completed', 'tap': {
+                    'tests': 100, 'pass': 100, 'fail': 0, 'cancelled': 0, 'not_ok_events': 0,
+                    'runner_files': [164], 'runner_widths': [3]}}
+
+            def setup_or_post_plan(cwd, budget):
+                # Post faults start with a supplied known plan to leave the
+                # SAME two-second clock for the discriminating post process.
+                # Setup faults and ALL blocking post validation remain real.
+                if phase == 'post' and not (root / 'post-enabled').exists():
+                    return plan, validate_history_plan(plan)
+                return native_plan(cwd, budget)
+
+            # A real hash subprocess, not a mocked manifest, but only bounded
+            # synthetic files are hashed. Source verification does not import UI.
+            def synthetic_manifest(cwd, selected, budget):
+                return json.loads(budget.run([sys.executable, '-c', HASH_MANIFEST,
+                    str(root), json.dumps(['plan.json']), str(budget.deadline)], root))
+
+            began = time.monotonic()
+            rejected = False
+            with patch.dict(os.environ, PATH=str(binary) + os.pathsep + os.environ['PATH']), \
+                    patch.dict(globals(), HISTORY_LIMIT=2, supervise=target_or_metadata,
+                               history_plan=setup_or_post_plan, history_manifest=synthetic_manifest):
+                try:
+                    run_history(root, output / f'{phase}-{kind}')
+                except (TimeoutError, RuntimeError):
+                    rejected = True
+            elapsed = time.monotonic() - began
+            assert rejected and elapsed <= 2, (phase, kind, elapsed)
+            assert (root / 'fault-entered').exists(), ('wrong failure surface', phase, kind)
+            assert len(calls) == (1 if phase == 'post' else 0), calls
+            pids = [int(pid) for pid in (root / 'pids').read_text().splitlines()] if (root / 'pids').exists() else []
+            if kind == 'stuck':
+                assert len(pids) >= 3, ('did not exercise actual child/grandchild', pids)
+            assert not [pid for pid in pids if process_row(pid) is not None], pids
+            receipts.append({'phase': phase, 'kind': kind, 'whole_seconds': elapsed,
+                             'limit_seconds': 2, 'stand_in_target_calls': len(calls),
+                             'actual_partition_execution': False, 'pids': pids, 'survivors': []})
+    # Same tiny reviewer clock: refuse BEFORE any validator/target launch, not
+    # merely check elapsed after an unbounded subprocess has returned.
+    began = time.monotonic()
+    with patch.dict(globals(), HISTORY_LIMIT=.05):
+        try:
+            run_history(root, output / 'tiny-clock')
+        except TimeoutError:
+            pass
+        else:
+            raise AssertionError('tiny deadline did not stop setup')
+    assert time.monotonic() - began <= .05
+    write_json(output / 'result.json', {'synthetic_validation_controls': True,
+               'actual_partition_execution': False, 'cases': receipts,
+               'tiny_clock_seconds': time.monotonic() - began})
+    print('PASS actual slow/stuck setup+post metadata deadlines and owned descendant cleanup', flush=True)
+
+
 def history_controls(source, output):
     """SMALL external-only controls, never the selected partition itself."""
     require_external_procfs()
-    _, selected = history_plan(source)  # Selection validation only, before dependencies.
     output.mkdir(parents=True)
+    validation = ValidationBudget(time.monotonic() + 60, output / 'validation')
+    plan, selected = history_plan(source, validation)  # Metadata only, never target fixtures.
     root = output / 'fixture-root'
     (root / 'scripts').mkdir(parents=True)
     for name in COORDINATOR_FILES:
         file = f'scripts/{name}.mjs'
         data = (source / file).read_bytes()
-        if data != subprocess.check_output(['git', 'show', f'{HISTORY_HEAD}:{file}'], cwd=source):
+        if data != validation.run(['git', 'show', f'{HISTORY_HEAD}:{file}'], source):
             raise RuntimeError('external preflight coordinator is not immutable')
         (root / file).write_bytes(data)
     (root / 'controls').mkdir()
@@ -1252,6 +1448,8 @@ def history_controls(source, output):
     result = supervise(['node','-e',"setTimeout(()=>{globalThis.keep=Buffer.alloc(96*1024*1024,1)},500);setInterval(()=>{},1000)"],
                        root,arm,8,history=WorkerHistory(root,[],arm),memory_mb=observer_mb + 80)
     assert result['exit_code'] == 137 and not result['survivors']
+    assert result['kill_sent'] and result['operation_costs']['signal_count'] > 0
+    assert result['operation_costs']['memory_count'] > 0 and result['operation_costs']['memory_total'] > 0
     # Missing procfs must stop BEFORE launch; this is an explicit fault injection.
     def absent():
         raise RuntimeError('synthetic procfs unavailable')
@@ -1265,6 +1463,7 @@ def history_controls(source, output):
             raise AssertionError('missing procfs did not fail closed')
         launch.assert_not_called()
     identity_controls()
+    validation_controls(output / 'deadline-controls', plan)
     for record in output.glob('*/result.json'):
         data = json.loads(record.read_text())
         data.update(synthetic_control=True, actual_partition_execution=False)

@@ -75,6 +75,10 @@ jobs:
             ${{ runner.temp }}/hang-probe/history/source-after.json
             ${{ runner.temp }}/hang-probe/history/*/result.json
             ${{ runner.temp }}/hang-probe/history/*/worker-history.jsonl
+            ${{ runner.temp }}/hang-probe/history/validation/*/result.json
+            ${{ runner.temp }}/hang-probe/control/validation/*/result.json
+            ${{ runner.temp }}/hang-probe/control/deadline-controls/result.json
+            ${{ runner.temp }}/hang-probe/control/deadline-controls/*/validation/*/result.json
             ${{ runner.temp }}/hang-probe/control/preflight.json
             ${{ runner.temp }}/hang-probe/control/*/worker-history.jsonl
             ${{ runner.temp }}/hang-probe/*/node-*.jsonl
