@@ -150,7 +150,8 @@ const bundle = await build({
 				ownerAuditMessagePageSchema,
 				ownerAuditThreadSchema,
 			} from "./src/shared/team-bridge-owner-audit-contract";
-			export { TeamBridgeOwnerAuditApi } from "./src/renderer/src/shared/api/local-operator/team-bridge-owner-audit-api";
+			export { DesktopControlError } from "./src/renderer/src/shared/api/local-operator/desktop-api";
+ export { TeamBridgeOwnerAuditApi } from "./src/renderer/src/shared/api/local-operator/team-bridge-owner-audit-api";
 			export { desktopRequestSchema, desktopEndpoint } from "./src/shared/desktop-contract";
 			export { QueryClient, QueryClientProvider, CancelledError } from "@tanstack/react-query";
  export { useOwnerAuditConversations } from "./src/renderer/src/features/team-bridge/use-team-bridge-owner-audit";
@@ -2381,6 +2382,15 @@ test("diagnostics: actual audit query classifies rejection and redacts private e
 		"logger",
 		"logger-rejected",
 		"credential",
+		"status-object",
+		"status-string",
+		"status-array",
+		"status-nan",
+		"status-infinity",
+		"status-low",
+		"status-high",
+		"status-fraction",
+		"status-accessor",
 	]) {
 		await context.test(scenario, async () => {
 			const events = [];
@@ -2436,9 +2446,40 @@ test("diagnostics: actual audit query classifies rejection and redacts private e
 					return pending.then(() => json(conversationPage));
 				return json(conversationPage);
 			};
-			const deliberate =
-				scenario === "cancel" ? new m.CancelledError() : new Error(forbidden);
-			if (["cancel", "unknown", "logger-rejected"].includes(scenario)) {
+			let conversions = 0;
+			const statuses = {
+				"status-object": {
+					payload: forbidden,
+					url: forbidden,
+					toJSON() {
+						conversions += 1;
+						return forbidden;
+					},
+				},
+				"status-string": forbidden,
+				"status-array": [forbidden],
+				"status-nan": Number.NaN,
+				"status-infinity": Number.POSITIVE_INFINITY,
+				"status-low": 99,
+				"status-high": 600,
+				"status-fraction": 403.5,
+			};
+			const deliberate = scenario.startsWith("status-")
+				? new m.DesktopControlError(statuses[scenario], forbidden)
+				: scenario === "cancel"
+					? new m.CancelledError()
+					: new Error(forbidden);
+			if (scenario === "status-accessor")
+				Object.defineProperty(deliberate, "status", {
+					get() {
+						conversions += 1;
+						return { payload: forbidden };
+					},
+				});
+			if (
+				scenario.startsWith("status-") ||
+				["cancel", "unknown", "logger-rejected"].includes(scenario)
+			) {
 				m.TeamBridgeOwnerAuditApi.conversations = async () => {
 					throw deliberate;
 				};
@@ -2498,7 +2539,10 @@ test("diagnostics: actual audit query classifies rejection and redacts private e
 					credential: "credential-authority",
 				};
 				if (scenario !== "success")
-					assert.equal(events[1].category, categories[scenario]);
+					assert.equal(
+						events[1].category,
+						scenario.startsWith("status-") ? "desktop" : categories[scenario],
+					);
 				if (scenario === "before") {
 					assert.equal(calls, 0);
 					assert.equal(events[1].phase, "before");
@@ -2511,7 +2555,10 @@ test("diagnostics: actual audit query classifies rejection and redacts private e
 				if (scenario === "bridge") assert.equal(events[1].phase, "settlement");
 				if (["http", "schema", "cancel", "unknown"].includes(scenario))
 					assert.equal(events[1].phase, "request");
-				if (!["before", "cancel", "unknown"].includes(scenario))
+				if (
+					!scenario.startsWith("status-") &&
+					!["before", "cancel", "unknown"].includes(scenario)
+				)
 					assert.equal(
 						calls,
 						1,
@@ -2521,7 +2568,11 @@ test("diagnostics: actual audit query classifies rejection and redacts private e
 					assert.equal(events[1].status, 403);
 					assert.equal(events[1].code, "other");
 				}
-				if (scenario === "unknown")
+				if (scenario.startsWith("status-")) {
+					assert.equal(events[1].status, null);
+					assert.equal(conversions, 0, "no getter, coercion or toJSON may run");
+				}
+				if (scenario === "unknown" || scenario.startsWith("status-"))
 					assert.equal(
 						query.error,
 						deliberate,
@@ -2629,5 +2680,126 @@ test("diagnostics: manual retry correlates locally, scope changes isolate, and l
 		client.clear();
 		host.remove();
 		console.warn = originalWarn;
+	}
+});
+
+const DOCUMENTED_AUDIT_EXPORTER = /python3 - <<'PY'\n([\s\S]*?)\nPY\n/;
+test("diagnostics: exact documented exporter rejects malformed rows and bounds input/output", async () => {
+	const { mkdtempSync, mkdirSync, writeFileSync, rmSync } = await import(
+		"node:fs"
+	);
+	const { join } = await import("node:path");
+	const { tmpdir } = await import("node:os");
+	const { spawnSync } = await import("node:child_process");
+	const home = mkdtempSync(
+		join(
+			process.env.LOCAL_OPERATOR_SCRATCHPAD || tmpdir(),
+			"audit-export-test-",
+		),
+	);
+	const log = join(
+		home,
+		"Library/Application Support/Local Operator/logs/backend-service.log",
+	);
+	mkdirSync(join(home, "Library/Application Support/Local Operator/logs"), {
+		recursive: true,
+	});
+	const code = readFileSync(
+		"docs/owner-audit-read-diagnostics.md",
+		"utf8",
+	).match(DOCUMENTED_AUDIT_EXPORTER)?.[1];
+	assert.ok(
+		code,
+		"exercise the documented command verbatim, not a duplicate exporter",
+	);
+	const secret = "PRIVATE-https://private.invalid/token-payload";
+	const good = {
+		operation: "conversations",
+		event: "rejected",
+		phase: "request",
+		generation: 1,
+		attempt: 1,
+		elapsedMs: 1,
+		epochChanged: false,
+		readiness: {
+			authMatches: true,
+			statusPresent: true,
+			statusMatches: true,
+			ready: true,
+			localEnabled: true,
+			readOnly: false,
+		},
+		category: "desktop",
+		errorClass: "DesktopControlError",
+		status: 403,
+		code: "conversation_not_found",
+	};
+	const line = (row) =>
+		`[time] [renderer] [owner-audit-read] ${JSON.stringify(row)}\n`;
+	const run = (text) => {
+		writeFileSync(log, text);
+		const result = spawnSync("python3", ["-c", code], {
+			encoding: "utf8",
+			timeout: 10000,
+			maxBuffer: 1048576,
+			env: { ...process.env, HOME: home },
+		});
+		assert.equal(result.status, 0, result.stderr);
+		assert.equal(result.stdout.includes(secret), false);
+		return result.stdout;
+	};
+	try {
+		const invalid = [
+			{},
+			{ ...good, unknown: secret },
+			{ ...good, operation: secret },
+			{ ...good, attempt: 0 },
+			{ ...good, attempt: 21 },
+			{ ...good, generation: Number.MAX_SAFE_INTEGER + 1 },
+			{ ...good, generation: true },
+			{ ...good, elapsedMs: 86400001 },
+			{ ...good, status: secret },
+			{ ...good, status: { body: secret } },
+			{ ...good, status: 600 },
+			{ ...good, status: 403.5 },
+			{ ...good, readiness: {} },
+			{ ...good, readiness: { ...good.readiness, unknown: secret } },
+			{ ...good, code: secret },
+		];
+		const missing = Object.keys(good).map((key) => {
+			const row = { ...good };
+			delete row[key];
+			return row;
+		});
+		const hugeInteger = line(good).replace(
+			'"generation":1',
+			`"generation":${"9".repeat(501)}`,
+		);
+		const garbage = "[renderer] [owner-audit-read] not-json-private\n";
+		const duplicate = line(good).replace(
+			'"attempt":1',
+			'"attempt":1,"attempt":1',
+		);
+		const oversized = `[renderer] [owner-audit-read] ${" ".repeat(9000)}${JSON.stringify(good)}\n`;
+		const output = run(
+			invalid.map(line).join("") +
+				missing.map(line).join("") +
+				hugeInteger +
+				garbage +
+				duplicate +
+				oversized +
+				line(good),
+		);
+		assert.deepEqual(output.trim().split("\n").map(JSON.parse), [good]);
+		const bounded = run(
+			Array.from({ length: 1003 }, () => line(good)).join(""),
+		);
+		assert.ok(bounded.trim().split("\n").length <= 200);
+		assert.ok(Buffer.byteLength(bounded) <= 65536);
+		assert.ok(bounded.length > 0);
+		const tail = run(`${"x".repeat(1100000)}\n${line(good)}`);
+		assert.deepEqual(tail.trim().split("\n").map(JSON.parse), [good]);
+	} finally {
+		rmSync(home, { recursive: true, force: true });
 	}
 });
