@@ -10,7 +10,6 @@ jobs:
     runs-on: macos-latest
     timeout-minutes: 15
     env:
-      LOCAL_OPERATOR_SCRATCHPAD: ${{ runner.temp }}/dependency-native-story
       LOCAL_OPERATOR_FOCUS_PROOF_CI: '1'
       VITE_DISABLE_BACKEND_MANAGER: 'true'
       VITE_LOCAL_OPERATOR_API_URL: 'http://127.0.0.1:9'
@@ -51,6 +50,8 @@ jobs:
         working-directory: app
         run: pnpm run build
       - name: Capture existing stories through real native app window
+        env:
+          LOCAL_OPERATOR_SCRATCHPAD: ${{ runner.temp }}/dependency-native-story
         run: node carrier/scripts/dependency-native-story-capture.mjs --root "$GITHUB_WORKSPACE/app" --out "$LOCAL_OPERATOR_SCRATCHPAD" --ci-native-owner
       - uses: actions/upload-artifact@v4
         if: always()
