@@ -1,0 +1,11 @@
+PASS
+BLOCKER=0 MAJOR=0 MINOR=0 NIT=0
+Agent: i18n-auditor (hi); session: ecb19e36b835; actual model: openai/gpt-6.1-sol; temporary fallback after Anthropic quota failure (sonnet-5-5 → opus-5-5 → gpt-6.1-sol).
+pair: {head} और {tail}
+middle: {head}, {tail}
+other: {head} और {tail}
+Two names: Coder और Reviewer
+Three names: Coder, Reviewer और Planner
+Hindi naturally uses और without a preceding comma for a two-name list. Earlier list items use comma + space; no final serial comma is needed. No phonological conjunction alternation analogous to Spanish y/e.
+Verified: real IntlMessageFormat formatting for pair/middle/other; unknown select fallback; missing-tail negative control; repo context, catalogue freshness, duplicate and Hindi parity validators.
+Scope: one key only. No full test suite, package install, rebuild, repository edits or ledger write. Bundle is a temporary handoff; manager must retain it in the tracked canonical evidence root.

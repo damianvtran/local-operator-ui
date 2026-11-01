@@ -1,0 +1,12 @@
+{
+  "arms": {
+    "pair": "Coder et Reviewer",
+    "middle": "Coder, Reviewer",
+    "other": "Coder, Reviewer et Designer"
+  },
+  "two": "Coder et Reviewer",
+  "three": "Coder, Reviewer et Designer",
+  "vowel_initial": "Coder et Illustrateur",
+  "fallback": "Coder et Reviewer",
+  "missing_tail_negative_control": "PASS: formatter rejects missing tail"
+}
