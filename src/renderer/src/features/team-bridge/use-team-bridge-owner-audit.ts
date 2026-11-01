@@ -30,7 +30,8 @@ import { bridgeStatusAuthority, readForBridgeOwner } from "./team-bridge-owner";
  * an HTTP-200-then-error without copying any error prose, keys, stacks or data:
  * a Zod error's message/stack can contain the rejected private audit payload.
  * All non-numeric fields below are authored enums. Unknown codes stay unknown.
- * This is observation only: the original error is rethrown, never retried. */
+ * Classification only observes; the bounded recovery policy below consumes
+ * this metadata without echoing or replacing the original refusal. */
 const AUDIT_ERROR_CODES = new Set([
 	"conversation_not_found",
 	"account_mismatch",
