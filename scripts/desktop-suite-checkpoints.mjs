@@ -348,6 +348,7 @@ export function launch({
 	state = resolve(state);
 	mkdirSync(state, { recursive: false }); // Existing allocation must never be overwritten.
 	const launched = Date.now();
+	const supervisorLog = openSync(join(state, "supervisor.log"), "a");
 	const config = {
 		state,
 		shell: resolve(shell),
@@ -363,7 +364,12 @@ export function launch({
 	atomic(join(state, "config.json"), config);
 	const worker = spawn(process.execPath, [SELF, "worker", state], {
 		detached: true,
-		stdio: "ignore",
+		// Supervisor output goes to a FILE in its own state directory, never to the
+		// inheriting step's fds. `ignore` already gave it /dev/null, so this is not
+		// what keeps a step pipe from being pinned - it is what turns the
+		// supervisor's own failure messages from lost into readable evidence, and
+		// it keeps that true for any future spawn that forgets to ignore.
+		stdio: ["ignore", supervisorLog, supervisorLog],
 		// Like the real desktop runner, never let a node:test caller mark the
 		// separately owned CLI as a recursive test context (which exits 0 while
 		// skipping the actual files, including late registration/TLA controls).
@@ -379,7 +385,58 @@ export function launch({
 		launched,
 	});
 	worker.unref();
+	closeSync(supervisorLog);
 	return config;
+}
+
+/**
+ * End the groups a launch published, for the arm that catches a non-zero await.
+ *
+ * WHY. The external bound makes the STEP return, but a supervisor wedged inside
+ * the subject keeps its own process group alive, and a surviving holder can keep
+ * the runner from deciding the step is finished - which is how the always()
+ * uploads that carry the census end up skipped. So the failure arm ends what the
+ * launch step recorded, before it re-exits.
+ *
+ * EVERY guard here is load bearing rather than defensive dressing: a recorded
+ * identity is signalled only while the live process still matches it (pid AND
+ * start time), because a stale receipt names a pid that an unrelated process may
+ * since have been given; a recorded pgid is used only when pgid === pid, so a
+ * receipt can never be read as permission to signal a group somebody else owns;
+ * and pid <= 1 is refused outright, since `kill -KILL -1` is every process this
+ * user may signal and 1 is init. A refusal is a RECEIPT, not an exception: this
+ * runs in an arm whose exit status must survive to the step verdict.
+ */
+export function reap(
+	state,
+	{ kill = (pgid) => process.kill(-pgid, "SIGKILL") } = {},
+) {
+	const root = resolve(state);
+	const end = (role, recorded) => {
+		if (!recorded) return { role, killed: false, reason: "no-record" };
+		if (!Number.isInteger(recorded.pid) || recorded.pid <= 1)
+			return { role, killed: false, reason: "refused-unsafe-pid" };
+		if (recorded.pgid !== recorded.pid)
+			return { role, killed: false, reason: "refused-not-own-group" };
+		if (!recorded.start)
+			return { role, killed: false, reason: "refused-no-start-token" };
+		const current = identity(recorded.pid);
+		if (!current) return { role, killed: false, reason: "gone" };
+		if (!same(recorded, current))
+			return { role, killed: false, reason: "refused-identity-changed" };
+		try {
+			kill(recorded.pgid);
+			return { role, killed: true, pid: recorded.pid };
+		} catch {
+			return { role, killed: false, reason: "already-ended" };
+		}
+	};
+	const config = optional(join(root, "config.json"));
+	const receipts = [
+		end("supervisor", optional(join(root, "owner.json"))),
+		end("pipeline", config?.pipeline),
+	];
+	return { receipts };
 }
 
 /**
@@ -961,9 +1018,15 @@ export async function main(args) {
 	const [mode, state, ...rest] = args;
 	if (
 		!state ||
-		!["launch", "worker", "witness", "sample", "checkpoint", "await"].includes(
-			mode,
-		)
+		![
+			"launch",
+			"worker",
+			"witness",
+			"sample",
+			"checkpoint",
+			"await",
+			"reap",
+		].includes(mode)
 	)
 		throw Error(
 			"Usage: desktop-suite-checkpoints <launch|checkpoint|await> <state> ...",
@@ -982,6 +1045,12 @@ export async function main(args) {
 	}
 	if (mode === "launch") {
 		launch({ state, shell: rest[0], setupStarted: Number(rest[1]) });
+		return 0;
+	}
+	if (mode === "reap") {
+		// A receipt on stdout is the point: the step log must say whether the
+		// bound's cleanup killed a group, or why it declined to.
+		console.log(JSON.stringify(reap(state)));
 		return 0;
 	}
 	if (mode === "checkpoint") {

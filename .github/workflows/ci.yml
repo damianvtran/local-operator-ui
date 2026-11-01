@@ -830,6 +830,9 @@ jobs:
           set +e
           timeout -k 10 2400 node scripts/desktop-suite-checkpoints.mjs await "${{ runner.temp }}/desktop-supervisor-${{ matrix.shard }}"
           status=$?
+          if [ "$status" -ne 0 ]; then
+            node scripts/desktop-suite-checkpoints.mjs reap "${{ runner.temp }}/desktop-supervisor-${{ matrix.shard }}"
+          fi
           if [ "$status" -eq 124 ]; then
             echo "::error::desktop suite exceeded its 2400s external bound; the supervisor deadline did not end the step, so the bound did. Artifacts are still uploaded."
           fi

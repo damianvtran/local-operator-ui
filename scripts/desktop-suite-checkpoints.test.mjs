@@ -140,6 +140,138 @@ test("checkpoint: sampler timeout is bounded and the next sample can run", async
 	assert.equal((await control.done).event, "sample-end");
 });
 
+test("checkpoint: reaping a frozen holder releases the inherited pipe and keeps the evidence", async () => {
+	const a = await api();
+	const f = fixture("exit 0");
+	mkdirSync(f.state);
+	// A stand-in supervisor: detached, so it owns its group, and holding THIS
+	// process's pipe exactly as a step's supervisor would hold the runner's. It
+	// is stopped, because that is the state the real hang is in - a process that
+	// cannot run its own cleanup - and a stopped process still holds its fds.
+	const holder = spawn(process.execPath, ["-e", "setInterval(()=>{},1000)"], {
+		detached: true,
+		stdio: ["ignore", "pipe", "pipe"],
+	});
+	const released = new Promise((r) => holder.once("exit", () => r("released")));
+	try {
+		process.kill(holder.pid, "SIGSTOP");
+		writeFileSync(
+			join(f.state, "owner.json"),
+			JSON.stringify(a.identity(holder.pid)),
+		);
+		// The census is the artifact that must survive the bound.
+		writeFileSync(join(f.state, "kernel-census.jsonl"), '{"index":0}\n');
+		// RED: unreaped, the pipe stays held and the step could never end.
+		assert.equal(
+			await Promise.race([released, pause(400).then(() => "held")]),
+			"held",
+			"a frozen holder keeps an inherited pipe open, which is the hang",
+		);
+		// GREEN: the failure arm reaps the recorded group, and the pipe closes.
+		assert.equal(a.reap(f.state).receipts[0].killed, true);
+		assert.equal(
+			await Promise.race([released, pause(4000).then(() => "held")]),
+			"released",
+			"reaping the recorded group must release the inherited pipe",
+		);
+		assert.ok(
+			readFileSync(join(f.state, "kernel-census.jsonl"), "utf8").length > 0,
+			"the census must still be reachable after the bound",
+		);
+	} finally {
+		try {
+			process.kill(holder.pid, "SIGKILL");
+		} catch {
+			/* Already reaped. */
+		}
+	}
+});
+
+test("checkpoint: the reaper refuses an unsafe or mismatched record instead of signalling blind", async () => {
+	const a = await api();
+	const f = fixture("exit 0");
+	mkdirSync(f.state);
+	const live = spawn(process.execPath, ["-e", "setInterval(()=>{},1000)"], {
+		detached: true,
+		stdio: "ignore",
+	});
+	const signals = [];
+	const kill = (pgid) => signals.push(pgid);
+	const record = (value) =>
+		writeFileSync(join(f.state, "owner.json"), JSON.stringify(value));
+	try {
+		for (const [label, value, reason] of [
+			["init", { pid: 1, pgid: 1, start: "1" }, "refused-unsafe-pid"],
+			["zero", { pid: 0, pgid: 0, start: "1" }, "refused-unsafe-pid"],
+			[
+				"mismatched start",
+				{ ...a.identity(live.pid), start: "not-the-recorded-start" },
+				"refused-identity-changed",
+			],
+			[
+				"borrowed group",
+				{ ...a.identity(live.pid), pgid: 1 },
+				"refused-not-own-group",
+			],
+		]) {
+			record(value);
+			const receipt = a.reap(f.state, { kill });
+			assert.equal(receipt.receipts[0].reason, reason, label);
+			assert.equal(receipt.receipts[0].killed, false, label);
+		}
+		assert.deepEqual(
+			signals,
+			[],
+			"no refusal may reach a kill, and pid <= 1 is never signalled",
+		);
+		// The control that keeps the refusals honest: the SAME live process, with
+		// its own identity recorded, is killed.
+		record(a.identity(live.pid));
+		const receipt = a.reap(f.state, { kill });
+		assert.equal(receipt.receipts[0].killed, true);
+		assert.deepEqual(signals, [live.pid]);
+	} finally {
+		try {
+			process.kill(-live.pid, "SIGKILL");
+		} catch {
+			/* Already gone. */
+		}
+	}
+});
+
+test("checkpoint: a finished run leaves the reaper nothing to kill", async () => {
+	const a = await api();
+	const f = fixture('echo "tap: ok"');
+	a.launch({
+		state: f.state,
+		shell: f.shell,
+		durationMs: 5000,
+		setupStarted: Date.now(),
+		witnessMs: 50,
+	});
+	const result = await a.awaitResult({ state: f.state });
+	assert.equal(result.code, 0);
+	assert.equal(result.cleanup.remaining.length, 0);
+	assert.ok(
+		readFileSync(join(f.state, "console.log"), "utf8").includes("tap: ok"),
+	);
+	// The supervisor is still exiting when the verdict lands; wait for the exit
+	// rather than racing it, so "nothing to kill" is a fact and not a coin toss.
+	const owner = JSON.parse(readFileSync(join(f.state, "owner.json"), "utf8"));
+	const deadline = Date.now() + 10_000;
+	while (a.identity(owner.pid) && Date.now() < deadline) await pause(25);
+	const receipt = a.reap(f.state);
+	assert.deepEqual(
+		receipt.receipts.map((r) => r.killed),
+		[false, false],
+		"a completed run must leave no group to kill",
+	);
+	assert.ok(
+		readFileSync(join(f.state, "console.log"), "utf8").includes("tap: ok"),
+		"the verdict and the forwarded TAP must be untouched by the arm",
+	);
+});
+
 // A process census cannot separate the witness's sampler from the helper child
 // `identity()` forks on Darwin: that helper (and its pre-exec fork copy) shows up
 // in a `ps -axo` sweep of the observer's children, so counting children races the

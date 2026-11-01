@@ -382,6 +382,7 @@ const WIRED_SHARD_COMMAND =
 const DESKTOP_SUPERVISOR_STATE =
 	'"${{ runner.temp }}/desktop-supervisor-${{ matrix.shard }}"';
 const DESKTOP_AWAIT_COMMAND = `node scripts/desktop-suite-checkpoints.mjs await ${DESKTOP_SUPERVISOR_STATE}`;
+const DESKTOP_REAP_COMMAND = `node scripts/desktop-suite-checkpoints.mjs reap ${DESKTOP_SUPERVISOR_STATE}`;
 
 /**
  * The final step must RETURN for the always() uploads behind it to run, so the
@@ -445,6 +446,38 @@ function assertDeadlineWrappedAwait(run, state = DESKTOP_SUPERVISOR_STATE) {
 			"the wrapped command must not carry a success fallback",
 		);
 	}
+	/*
+	 * The failure arm must also END what it can no longer supervise before it
+	 * re-exits. The bound makes the step return; a wedged supervisor keeps its own
+	 * group alive, and a surviving holder can keep the runner from deciding the
+	 * step is finished, which is how the always() uploads carrying the census get
+	 * skipped. So the arm that catches a non-zero status reaps the recorded groups
+	 * first - and it must be THAT arm: an unconditional reap would also run on a
+	 * green suite, where the supervisor may still be exiting normally.
+	 */
+	assert.equal(
+		run.split(DESKTOP_REAP_COMMAND).length - 1,
+		1,
+		"exactly one reaping call in the failure arm",
+	);
+	const statusAt = run.indexOf("status=$?");
+	const reapAt = run.indexOf(DESKTOP_REAP_COMMAND);
+	assert.ok(
+		reapAt > statusAt,
+		"the reap must run on the captured status, after the await",
+	);
+	assert.ok(
+		reapAt < run.lastIndexOf('exit "$status"'),
+		"the reap must run before the status is re-exited",
+	);
+	const reapArm = lines.findIndex((line) =>
+		line.startsWith('if [ "$status" -ne 0 ]'),
+	);
+	assert.ok(reapArm >= 0, "the reap must be guarded by the non-zero arm");
+	assert.ok(
+		lines.indexOf(DESKTOP_REAP_COMMAND) > reapArm,
+		"the reap must sit inside the non-zero arm, not before it",
+	);
 	return run;
 }
 
@@ -626,6 +659,42 @@ test("diagnostic CI stays retired while the manual utility remains registered", 
 			/bound that fired/u,
 		],
 		[(run) => `${run}true\n`, /block's last statement/u],
+		// The reaping arm's own defects: no reap at all, a reap that runs
+		// unconditionally (so a green suite is reaped too), and a reap hoisted above
+		// the status capture (so it fires on a stale status).
+		[
+			(run) =>
+				run
+					.split("\n")
+					.filter((line) => !line.trim().startsWith(DESKTOP_REAP_COMMAND))
+					.join("\n"),
+			/exactly one reaping call/u,
+		],
+		[
+			(run) =>
+				run
+					.split("\n")
+					.filter(
+						(line) =>
+							!line.trim().startsWith('if [ "$status" -ne 0 ]') &&
+							line.trim() !== "fi",
+					)
+					.join("\n"),
+			/guarded by the non-zero arm/u,
+		],
+		[
+			(run) => {
+				const lines = run.split("\n");
+				const reap = lines.find((line) =>
+					line.trim().startsWith(DESKTOP_REAP_COMMAND),
+				);
+				const at = lines.findIndex((line) => line.includes("status=$?"));
+				lines.splice(lines.indexOf(reap), 1);
+				lines.splice(at, 0, reap);
+				return lines.join("\n");
+			},
+			/after the await/u,
+		],
 	]) {
 		const bad = structuredClone(workflow.jobs.test);
 		const step = bad.steps.find((s) => s.id === "desktop_suite");
