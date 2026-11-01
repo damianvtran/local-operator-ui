@@ -379,6 +379,75 @@ test("diagnostic inputs and result classifications fail closed", () => {
 
 const WIRED_SHARD_COMMAND =
 	'node scripts/desktop-test-shards.mjs run --head "$DESKTOP_REQUESTED_HEAD" --checkout "$CHECKOUT_SHA" --index "$DESKTOP_SHARD_INDEX" 2>&1 | tee /tmp/desktop-tests.log || SUITE_RC=$?';
+const DESKTOP_SUPERVISOR_STATE =
+	'"${{ runner.temp }}/desktop-supervisor-${{ matrix.shard }}"';
+const DESKTOP_AWAIT_COMMAND = `node scripts/desktop-suite-checkpoints.mjs await ${DESKTOP_SUPERVISOR_STATE}`;
+
+/**
+ * The final step must RETURN for the always() uploads behind it to run, so the
+ * await is wrapped in an external wall-clock bound (`timeout -k <kill> <bound>`).
+ * That changes the step's text, not its guarantees, so the guarantees are
+ * asserted on the WRAPPED text and stay exactly as tight: one awaited supervisor
+ * invocation and no second one hiding behind the wrapper, the bound around that
+ * invocation only, the status read AFTER it (so 124 can only have come from the
+ * wrapper), the status re-exited as the block's LAST statement (so a timeout
+ * cannot be swallowed by a fallback), and the 124 arm annotated with the bound
+ * that actually fired. The bound is read out of the command rather than pinned,
+ * so moving it cannot silently leave a message that cites the old one.
+ */
+function assertDeadlineWrappedAwait(run, state = DESKTOP_SUPERVISOR_STATE) {
+	const awaitCommand = `node scripts/desktop-suite-checkpoints.mjs await ${state}`;
+	assert.equal(
+		run.split(awaitCommand).length - 1,
+		1,
+		"exactly one awaited supervisor invocation",
+	);
+	assert.equal(
+		run.split("desktop-suite-checkpoints.mjs await").length - 1,
+		1,
+		"no second await may hide outside the wrapper",
+	);
+	const bound = /timeout -k 10 (\d+) /u.exec(run)?.[1];
+	assert.ok(bound, "the await must sit inside `timeout -k 10 <bound>`");
+	assert.ok(
+		run.includes(`timeout -k 10 ${bound} ${awaitCommand}`),
+		"the bound must wrap the await command itself, not sit beside it",
+	);
+	assert.ok(
+		run.indexOf("status=$?") > run.indexOf(awaitCommand),
+		"the status must be read after the wrapped command, so only the wrapper produces 124",
+	);
+	assert.equal(
+		run.trimEnd().split("\n").pop().trim(),
+		'exit "$status"',
+		"the captured status must be the block's last statement, with nothing appended",
+	);
+	const lines = run.split("\n").map((line) => line.trim());
+	const arm = lines.findIndex((line) =>
+		line.startsWith('if [ "$status" -eq 124 ]'),
+	);
+	assert.ok(arm >= 0, "exit 124 must be told apart from a red suite");
+	const annotation = lines
+		.slice(arm + 1)
+		.find((line) => line.startsWith('echo "::error::'));
+	assert.ok(
+		annotation,
+		"a deadline must be annotated, so the hang names its reason",
+	);
+	assert.ok(
+		annotation.includes(bound) && /external bound/u.test(annotation),
+		"the 124 annotation must name the external bound that fired",
+	);
+	for (const line of lines) {
+		if (!line.includes("desktop-suite-checkpoints.mjs await")) continue;
+		assert.ok(
+			!/\|\||\btrue\b/u.test(line),
+			"the wrapped command must not carry a success fallback",
+		);
+	}
+	return run;
+}
+
 function assertRetiredDesktopRoute(
 	job,
 	shell = readFileSync("scripts/desktop-suite-step.sh", "utf8"),
@@ -392,15 +461,19 @@ function assertRetiredDesktopRoute(
 		final[0].if,
 		"${{ always() && steps.desktop_launch.outcome == 'success' }}",
 	);
-	const state = '"${{ runner.temp }}/desktop-supervisor-${{ matrix.shard }}"';
+	const state = DESKTOP_SUPERVISOR_STATE;
 	assert.equal(
 		launch[0].run,
 		`node scripts/desktop-suite-checkpoints.mjs launch ${state} scripts/desktop-suite-step.sh "$DESKTOP_SETUP_STARTED_MS"`,
 	);
-	assert.equal(
-		final[0].run,
-		`node scripts/desktop-suite-checkpoints.mjs await ${state}`,
-	);
+	/*
+	 * The await is wrapped in an external wall-clock bound so the step returns and
+	 * the always() uploads run. That is a change to the step's TEXT, not its
+	 * guarantees; `assertDeadlineWrappedAwait` asserts those on the wrapped text,
+	 * and the mutants below prove this contract still rejects the defects it was
+	 * written for rather than accepting anything that merely mentions the command.
+	 */
+	assertDeadlineWrappedAwait(final[0].run);
 	assert.ok(job.steps.indexOf(launch[0]) < job.steps.indexOf(final[0]));
 	assert.equal(job["timeout-minutes"], 50);
 	assert.equal(final[0]["timeout-minutes"], 45);
@@ -516,6 +589,57 @@ test("diagnostic CI stays retired while the manual utility remains registered", 
 		const bad = structuredClone(workflow.jobs.test);
 		mutate(bad);
 		assert.throws(() => assertRetiredDesktopRoute(bad, shell));
+	}
+	// The wrapped await IS the step's guarantee surface, so the defects it exists
+	// for must fail THIS contract and not merely a helper: an unwrapped await (the
+	// shape before the external bound), a second await, a swallowed status, a 124
+	// arm that no longer names the bound, and a fallback appended after the exit.
+	// Each mutant is first proved to have changed the run, so a no-op replacement
+	// cannot pass itself off as evidence that the check still bites.
+	const finalStep = workflow.jobs.test.steps.find(
+		(step) => step.id === "desktop_suite",
+	);
+	for (const [mutateRun, rejectedBy] of [
+		[(run) => run.replace("timeout -k 10 2400 ", ""), /timeout -k 10 <bound>/u],
+		[
+			(run) =>
+				run.replace(
+					`${DESKTOP_AWAIT_COMMAND}\n`,
+					`${DESKTOP_AWAIT_COMMAND}\n${DESKTOP_AWAIT_COMMAND}\n`,
+				),
+			/exactly one awaited supervisor invocation/u,
+		],
+		[
+			(run) => run.replace('exit "$status"', "exit 0"),
+			/block's last statement/u,
+		],
+		[
+			(run) =>
+				run
+					.split("\n")
+					.filter((line) => !line.trim().startsWith('echo "::error::'))
+					.join("\n"),
+			/a deadline must be annotated/u,
+		],
+		[
+			(run) => run.replace("2400s external bound", "the deadline"),
+			/bound that fired/u,
+		],
+		[(run) => `${run}true\n`, /block's last statement/u],
+	]) {
+		const bad = structuredClone(workflow.jobs.test);
+		const step = bad.steps.find((s) => s.id === "desktop_suite");
+		step.run = mutateRun(finalStep.run);
+		assert.notEqual(
+			step.run,
+			finalStep.run,
+			"each wrapped-await mutant must actually change the step",
+		);
+		assert.throws(
+			() => assertRetiredDesktopRoute(bad, shell),
+			rejectedBy,
+			"a wrapped-await defect must fail the clause that exists for it",
+		);
 	}
 	for (const bad of [
 		shell.replace(WIRED_SHARD_COMMAND, ""),
