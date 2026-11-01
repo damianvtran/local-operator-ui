@@ -598,6 +598,13 @@ jobs:
     # budget, the concurrency and the timeout above are unchanged, and no test is
     # skipped or weakened by dealing more groups.
     #
+    # WHAT EIGHT MEASURED (run 41308244464, 2026-11-01): six groups green in
+    # 2.3-11.5 minutes, one killed by the memory guard at 10.1 GB with zero
+    # failures, one cancelled at this job's ceiling. Eight bounds most groups, not
+    # all of them: the peak is the sum of the lanes running at once, so a group
+    # whose lanes are all heavy still reaches the budget. Do not read this number
+    # as "fits".
+    #
     # THE NAME CARRIES THE DENOMINATOR so a reader can tell eight groups from
     # four, and it is `strategy.job-total` - the matrix's own size - rather than a
     # second literal that could drift from the matrix below.

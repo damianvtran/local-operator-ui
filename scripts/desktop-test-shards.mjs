@@ -41,6 +41,15 @@ import { isEntryPoint } from "./entry-point.mjs";
 // headroom without bounding what one process group carries, and no test is
 // skipped or weakened by dealing more groups.
 //
+// WHAT EIGHT GROUPS MEASURED, so this comment cannot overstate itself: the first
+// run at eight (2026-11-01, run 41308244464) finished six groups in 2.3-11.5
+// minutes, but one group was killed by the memory guard at 10.1 GB with 745 tests
+// passed and zero failures, and one was cancelled at the job's 50-minute ceiling.
+// So eight bounds most groups and not all of them: the peak is the sum of the
+// lanes running at once, and a group whose lanes are all heavy still reaches the
+// budget. Read this number as "smaller than the failing size on a normal group",
+// never as "fits".
+//
 // HISTORY, kept because its measurements still stand: FOUR rather than THREE
 // (2026-10-30) - at concurrency 3 the process group was killed by the 7.8 GB CI
 // budget at 7.9 GB (run 40992181176) and 8.2 GB (run 40996898976) on the same
