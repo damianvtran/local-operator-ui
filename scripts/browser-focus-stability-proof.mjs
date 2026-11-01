@@ -19,6 +19,7 @@ import { createServer } from "node:http";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import electron from "electron";
+import sharp from "sharp";
 import { createFocusProofOwnedTree } from "./focus-proof-owned-tree.mjs";
 import { focusProofWindowMode } from "./focus-stability-ci-policy.mjs";
 import { withNotificationsOff } from "./notifications-off.mjs";
@@ -46,7 +47,7 @@ const facts = { samples: [], events: [], failures: [] };
 const server = createServer((_req, response) => {
 	response.setHeader("content-type", "text/html");
 	response.end(
-		'<!doctype html><title>Focus fixture</title><input id="field"><button id="button">Action</button>',
+		`<!doctype html><title>Focus fixture</title><input id="field"><button id="button" onclick="document.body.dataset.clicked='yes'">Action</button>`,
 	);
 });
 
@@ -258,7 +259,16 @@ try {
 				v.__focusWrapped=true;
 				for(const name of ['setBounds','setVisible']){
 					const original=v[name].bind(v);
-					v[name]=(...values)=>{const r=original(...values);point(name+':'+JSON.stringify(values),v.webContents);return r;};
+					v[name]=(...values)=>{
+						const r=original(...values);point(name+':'+JSON.stringify(values),v.webContents);
+						if(globalThis.__focusProof.detachBackground && name==='setVisible' && values[0]===false && (!globalThis.__focusProof.detachTarget || globalThis.__focusProof.detachTarget===v.webContents.id)) {
+							globalThis.__focusProof.detachTarget=v.webContents.id;
+							globalThis.__focusProof.detachedView=v;
+							if(w.contentView.children.includes(v)) w.contentView.removeChildView(v);
+							point('CONTROL-detached-after-size',v.webContents);
+						}
+						return r;
+					};
 				}
 			}
 			return result;
@@ -281,7 +291,7 @@ try {
 	const sample = async (label) => {
 		const native = await evaluate(
 			main,
-			`(() => { const E = process.mainModule.require('electron'); const w = E.BrowserWindow.getAllWindows()[0]; return { visible:w.isVisible(), focusable:w.isFocusable(), windowFocused:w.isFocused(), ownerId:w.webContents.id, ownerFocused:w.webContents.isFocused(), focused:E.webContents.getFocusedWebContents()?.id ?? null, views:w.contentView.children.map(v => ({id:v.webContents?.id, visible:v.getVisible(), focused:v.webContents?.isFocused()})), ...globalThis.__focusProof }; })()`,
+			`(() => { const E = process.mainModule.require('electron'); const w = E.BrowserWindow.getAllWindows()[0]; return { visible:w.isVisible(), focusable:w.isFocusable(), windowFocused:w.isFocused(), ownerId:w.webContents.id, ownerFocused:w.webContents.isFocused(), focused:E.webContents.getFocusedWebContents()?.id ?? null, views:w.contentView.children.map(v => ({id:v.webContents?.id, visible:v.getVisible(), focused:v.webContents?.isFocused()})), events:globalThis.__focusProof.events,ciActivationUsed:globalThis.__focusProof.ciActivationUsed??false }; })()`,
 		);
 		const dom = await evaluate(
 			owner,
@@ -473,6 +483,102 @@ try {
 			focused: controlAfter.native.focused,
 		};
 		await rpc("close", { tab: controlTab.tab });
+		await evaluate(
+			main,
+			"globalThis.__focusProof.disableFocusEmulation=false; globalThis.__focusProof.detachBackground=true; process.mainModule.require('electron').BrowserWindow.getAllWindows()[0].webContents.focus(); true",
+		);
+		const detachedBefore = await sample("control-detached-baseline");
+		assert.equal(detachedBefore.native.ownerFocused, true);
+		const detachedTab = await rpc("open", {
+			url: `${url}?detached=1`,
+			requester: "session:focus-proof",
+		});
+		const detachedAfter = await sample("control-detached-open");
+		facts.detachedControl = {
+			beforeOwner: detachedBefore.native.ownerFocused,
+			afterOwner: detachedAfter.native.ownerFocused,
+		};
+		const geometry = () =>
+			evaluate(
+				main,
+				`(async()=>{const c=process.mainModule.require('electron').webContents.fromId(globalThis.__focusProof.detachTarget);return await c.executeJavaScript('({width:innerWidth,height:innerHeight,hits:document.elementsFromPoint(10,10).map(e=>e.id),value:document.querySelector("#field").value,clicked:document.body.dataset.clicked})');})()`,
+			);
+		facts.detachedControl.geometry = await geometry();
+		assert.equal(facts.detachedControl.geometry.width, 1280);
+		assert.equal(facts.detachedControl.geometry.height, 720);
+		assert.ok(facts.detachedControl.geometry.hits.includes("field"));
+		facts.detachedControl.type = await rpc("type", {
+			tab: detachedTab.tab,
+			selector: "#field",
+			text: "detached typing",
+		});
+		await rpc("click", { tab: detachedTab.tab, selector: "#button" });
+		facts.detachedControl.interacted = await geometry();
+		assert.equal(facts.detachedControl.interacted.value, "detached typing");
+		assert.equal(facts.detachedControl.interacted.clicked, "yes");
+		const detachedShot = await rpc("screenshot", { tab: detachedTab.tab });
+		const png = Buffer.from(detachedShot.data, "base64");
+		writeFileSync(join(out, "detached-control.png"), png);
+		const metadata = await sharp(png).metadata();
+		const stats = await sharp(png).stats();
+		facts.detachedControl.screenshot = {
+			width: metadata.width,
+			height: metadata.height,
+			nonblank: stats.channels.some((c) => c.max > c.min),
+		};
+		assert.equal(metadata.width, 1280);
+		assert.equal(metadata.height, 720);
+		assert.equal(facts.detachedControl.screenshot.nonblank, true);
+		await sample("control-detached-actions");
+		// Explicit user presentation, then route exit: migrate the SAME view, not
+		// a reload/replacement. This is a diagnostic proposed-parenting trial only.
+		await owner("Input.dispatchKeyEvent", {
+			type: "keyDown",
+			key: "Escape",
+			code: "Escape",
+		});
+		await owner("Input.dispatchKeyEvent", {
+			type: "keyUp",
+			key: "Escape",
+			code: "Escape",
+		});
+		await until(
+			() =>
+				evaluate(owner, "!document.querySelector('#command-palette-input')"),
+			"palette closes for intentional presentation",
+		);
+		await evaluate(
+			owner,
+			`window.api.browser.activateTab(${Number(detachedTab.tab.split(":")[1])})`,
+		);
+		await evaluate(
+			main,
+			"const proof=globalThis.__focusProof; const w=process.mainModule.require('electron').BrowserWindow.getAllWindows()[0];w.contentView.addChildView(proof.detachedView);true",
+		);
+		await until(
+			() => evaluate(main, "globalThis.__focusProof.detachedView.getVisible()"),
+			"explicit presentation shows same view",
+		);
+		await sample("control-detached-presented");
+		await evaluate(owner, "location.hash='#/chat'; true");
+		await until(
+			() =>
+				evaluate(
+					main,
+					"!process.mainModule.require('electron').BrowserWindow.getAllWindows()[0].contentView.children.includes(globalThis.__focusProof.detachedView)",
+				),
+			"route exit detaches view",
+		);
+		await evaluate(
+			main,
+			"process.mainModule.require('electron').BrowserWindow.getAllWindows()[0].webContents.focus();true",
+		);
+		await sample("control-detached-route-exit-baseline");
+		await rpc("goto", { tab: detachedTab.tab, url: `${url}?detached=2` });
+		const afterRoute = await sample("control-detached-route-exit-navigation");
+		facts.detachedControl.afterRouteOwner = afterRoute.native.ownerFocused;
+		facts.detachedControl.afterRouteGeometry = await geometry();
+		await rpc("close", { tab: detachedTab.tab });
 	}
 	// Record, don't fabricate success from a dormant instrument. A headless
 	// window may never acquire a native first responder; that is BLOCKED proof,

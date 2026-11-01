@@ -44,4 +44,5 @@ jobs:
             ${{ runner.temp }}/focus-stability/build-identity.json
             ${{ runner.temp }}/focus-stability/teardown.json
             ${{ runner.temp }}/focus-stability/app.log
+            ${{ runner.temp }}/focus-stability/*.png
           if-no-files-found: warn
