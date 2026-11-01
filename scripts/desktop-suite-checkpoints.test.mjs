@@ -140,6 +140,41 @@ test("checkpoint: sampler timeout is bounded and the next sample can run", async
 	assert.equal((await control.done).event, "sample-end");
 });
 
+// A process census cannot separate the witness's sampler from the helper child
+// `identity()` forks on Darwin: that helper (and its pre-exec fork copy) shows up
+// in a `ps -axo` sweep of the observer's children, so counting children races the
+// probe and reads the probe itself as a second sampler. The witness already
+// publishes both facts the assertions need — the ordered event stream and the
+// sampler it latched — so read those two files in one iteration instead.
+async function witnessWithLatch(state, predicate) {
+	const deadline = Date.now() + 5000;
+	while (Date.now() < deadline) {
+		let witness = null;
+		let owner = null;
+		try {
+			witness = JSON.parse(readFileSync(join(state, "witness.json"), "utf8"));
+		} catch {
+			/* Initial handoff not written yet. */
+		}
+		try {
+			owner = JSON.parse(
+				readFileSync(join(state, "sample-owner.json"), "utf8"),
+			);
+		} catch {
+			/* No sample is in flight. */
+		}
+		if (witness && predicate(witness, owner)) return { witness, owner };
+		await pause(10);
+	}
+	assert.fail("independent witness did not publish the required observation");
+}
+
+const SAMPLE_SETTLED = new Set([
+	"sample-timeout",
+	"sample-end",
+	"sample-error",
+]);
+
 test("checkpoint: witness advances while a hung detailed sampler times out without overlap", async () => {
 	const a = await api();
 	const f = fixture("exit 0");
@@ -163,33 +198,58 @@ test("checkpoint: witness advances while a hung detailed sampler times out witho
 	);
 	const exited = new Promise((r) => observer.once("exit", r));
 	try {
-		const first = await witnessReady(f.state, (w) =>
-			w.events.some((e) => e.event === "sample-begin"),
-		);
-		const later = await witnessReady(
+		// The event stream and the latch are read in one iteration, and the latch is
+		// only accepted while the first sample is the only one begun and none has
+		// settled, so `owner` is provably that sample's sampler rather than a
+		// successor's.
+		const hung = await witnessWithLatch(
 			f.state,
-			(w) => w.sequence > first.sequence,
+			(w, owner) =>
+				owner &&
+				w.events.filter((e) => e.event === "sample-begin").length === 1 &&
+				!w.events.some((e) => SAMPLE_SETTLED.has(e.event)),
 		);
-		assert.ok(!later.events.some((e) => e.event === "sample-timeout"));
-		const table = execFileSync("ps", ["-axo", "pid=,ppid="], {
-			encoding: "utf8",
-			timeout: 500,
-		});
-		const children = table
-			.trim()
-			.split("\n")
-			.map((l) => l.trim().split(/\s+/).map(Number))
-			.filter(([, ppid]) => ppid === observer.pid);
 		assert.equal(
-			children.length,
-			1,
+			hung.owner.ppid,
+			observer.pid,
+			"the sampler runs as the witness's own child",
+		);
+		assert.equal(
+			hung.owner.pgid,
+			hung.owner.pid,
+			"the sampler owns the group the witness kills",
+		);
+		const settled = await witnessWithLatch(f.state, (w) =>
+			w.events.some((e) => SAMPLE_SETTLED.has(e.event)),
+		);
+		assert.ok(
+			settled.witness.sequence > hung.witness.sequence,
+			"the witness keeps ticking while its sampler is hung",
+		);
+		const stream = settled.witness.events;
+		const begin = stream.findIndex((e) => e.event === "sample-begin");
+		const end = stream.findIndex((e) => SAMPLE_SETTLED.has(e.event));
+		assert.ok(
+			begin >= 0 && end > begin,
+			"the sample must open before it settles",
+		);
+		assert.equal(
+			stream[end].event,
+			"sample-timeout",
+			"a sampler that never resolves is bounded by its timeout",
+		);
+		const inFlight = stream.slice(begin + 1, end);
+		assert.equal(
+			inFlight.filter((e) => e.event === "sample-begin").length,
+			0,
 			"independent ticks must not accumulate overlapping samplers",
 		);
-		await witnessReady(f.state, (w) =>
-			w.events.some((e) => e.event === "sample-timeout"),
+		assert.ok(
+			inFlight.some((e) => e.event === "witness-alive"),
+			"the witness advances while the hung sampler is still in flight",
 		);
 		assert.equal(
-			a.identity(children[0][0]),
+			a.identity(hung.owner.pid),
 			null,
 			"timed-out sampler was reaped",
 		);
