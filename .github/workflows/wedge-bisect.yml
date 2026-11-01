@@ -84,7 +84,7 @@ jobs:
           console.log(`the foot file is shard 1 index ${shard.indexOf(foot)} and ${chosen.includes(foot) ? 'IS' : 'is NOT'} in this slice`);
           console.log(chosen.map((file, index) => `  ${index}: ${file}`).join('\n'));
           NODE
-          wc -l /tmp/wedge-files.txt >> "$GITHUB_OUTPUT" || true
+          echo "files=$(wc -l < /tmp/wedge-files.txt)" >> "$GITHUB_OUTPUT"
 
       # THE EXPERIMENT. 20 minutes is the ceiling the brief sets: a healthy 40-file
       # slice at concurrency 3 runs in a few minutes, so a run still going at 20 is the
