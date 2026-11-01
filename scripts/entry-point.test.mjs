@@ -910,6 +910,8 @@ function workflowInvokedScripts() {
  * asserted below to be exactly that, so this list cannot become a place to hide.
  */
 const NO_ENTRY_POINT_COMPARISON = {
+	"dependency-native-story-capture.mjs":
+		"`dependency-native-story-capture.yml`; runs unconditionally at import; authorization rejects before any native spawn; no entry-point comparison",
 	"browser-focus-stability-proof.mjs":
 		"`focus-stability-diagnostic.yml`; runs unconditionally at import and requires --out; no entry-point comparison (native mode separately fenced to explicitly armed disposable CI)",
 	"check-edit-diffs.mjs":

@@ -274,6 +274,14 @@ function exempt(file, name, index, why, site, noEnv) {
 
 const APP_SPAWN_SITES = [
 	guarded(
+		"scripts/dependency-native-story-capture.mjs",
+		"spawn",
+		2,
+		/(?:\{|,)\s*env\s*,/,
+		"CI-only native existing-story capture of exact unmerged dependency; suppress both app side effects on its isolated profile",
+		/const env = withNotificationsOff\(\{/,
+	),
+	guarded(
 		"scripts/browser-focus-stability-proof.mjs",
 		"spawn",
 		2,
