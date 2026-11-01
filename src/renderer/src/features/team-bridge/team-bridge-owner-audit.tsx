@@ -730,26 +730,6 @@ function AuditReplies({
 					{t("ui.teamBridge.replies.legacy_window")}
 				</p>
 			)}
-			{query.mode === "desc" && !query.latestPageAvailable && (
-				<Button
-					variant="ghost"
-					size="sm"
-					onClick={() => void query.resetLatest()}
-				>
-					{t("ui.ownerAudit.refresh")}
-				</Button>
-			)}
-			{query.latestPageAvailable && timeline.newMessages > 0 && (
-				<Button variant="ghost" size="sm" onClick={timeline.pin}>
-					{t("ui.teamBridge.notify.count", { count: timeline.newMessages })}
-				</Button>
-			)}
-			{query.keepWindowOnError && (
-				<AuditFailure
-					state={auditFailureState(query.error)}
-					retry={() => void query.fetchNextPage()}
-				/>
-			)}
 			<div
 				ref={combinedRef}
 				// Reserve the reading surface independently of reply arrivals. In
@@ -804,6 +784,30 @@ function AuditReplies({
 					</Button>
 				)}
 			</div>
+			{/* Arrival/recovery controls belong AFTER the reserved reader. The
+			 * first held-window arrival creates Refresh; putting it above would
+			 * move the whole viewport even with both scroll anchors held. Below,
+			 * controls remain in normal flow without an overlay or empty band. */}
+			{query.mode === "desc" && !query.latestPageAvailable && (
+				<Button
+					variant="ghost"
+					size="sm"
+					onClick={() => void query.resetLatest()}
+				>
+					{t("ui.ownerAudit.refresh")}
+				</Button>
+			)}
+			{query.latestPageAvailable && timeline.newMessages > 0 && (
+				<Button variant="ghost" size="sm" onClick={timeline.pin}>
+					{t("ui.teamBridge.notify.count", { count: timeline.newMessages })}
+				</Button>
+			)}
+			{query.keepWindowOnError && (
+				<AuditFailure
+					state={auditFailureState(query.error)}
+					retry={() => void query.fetchNextPage()}
+				/>
+			)}
 		</div>
 	);
 }

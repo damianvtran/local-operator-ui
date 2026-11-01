@@ -856,9 +856,20 @@ test("conflicting IDs inside the initial page are refused before private cache a
 // JSDOM has no layout engine: model only the outer transcript's block geometry
 // and native scroll clamping, then drive the REAL panel/disclosure/query hooks.
 // This is a deterministic scroll-policy regression, not browser pixel evidence.
-test("combined parent and reply arrival holds the OUTER inline viewport top", async () => {
+async function assertCombinedArrival(heldInner) {
 	let response = page(9951);
-	transport(() => response);
+	transport((input) => {
+		// A held inner reader refreshes at its fixed upper boundary and peeks
+		// LIMIT1 for new replies. Honor both to exercise the real transition
+		// from no Refresh action to a newly inserted Refresh action.
+		if (response.replies.length === 0) return response;
+		const end = Math.min(
+			response.replies.at(-1).seq,
+			(input.before_seq ?? Number.POSITIVE_INFINITY) - 1,
+		);
+		const count = Math.min(input.limit ?? 50, end - 1);
+		return page(end - count + 1, count);
+	});
 	const client = new m.QueryClient({
 		defaultOptions: {
 			queries: { retry: false, gcTime: Number.POSITIVE_INFINITY },
@@ -953,7 +964,53 @@ test("combined parent and reply arrival holds the OUTER inline viewport top", as
 					.length === 50,
 		);
 		const inline = host.querySelector("[data-audit-reply-window]");
-		inline.getBoundingClientRect = () => box(860 - scrollTop, 320);
+		// Model ordinary block flow, including controls inserted BEFORE the
+		// reader. The old constant-top model could never see this defect.
+		// 28px is a synthetic button height, not a rendered measurement.
+		inline.getBoundingClientRect = () => {
+			let precedingHeight = 0;
+			for (
+				let sibling = inline.previousElementSibling;
+				sibling;
+				sibling = sibling.previousElementSibling
+			) {
+				if (sibling.tagName === "BUTTON") precedingHeight += 28;
+			}
+			return box(860 - scrollTop + precedingHeight, 320);
+		};
+		const refreshControl = () =>
+			[...inline.parentElement.children].find(
+				(node) => node.tagName === "BUTTON" && node.textContent === "Refresh",
+			);
+		assert.equal(
+			refreshControl(),
+			undefined,
+			"Refresh must initially be absent",
+		);
+		let innerScrollTop = 800;
+		if (heldInner) {
+			Object.defineProperties(inline, {
+				clientHeight: { configurable: true, value: 320 },
+				scrollHeight: { configurable: true, value: 2000 },
+				scrollTop: {
+					configurable: true,
+					get: () => innerScrollTop,
+					set: (value) => {
+						innerScrollTop = value;
+					},
+				},
+			});
+			[...inline.querySelectorAll("[data-message-id]")].forEach(
+				(node, index) => {
+					node.getBoundingClientRect = () =>
+						box(
+							inline.getBoundingClientRect().top + index * 20 - innerScrollTop,
+							20,
+						);
+				},
+			);
+			await act(async () => inline.dispatchEvent(new window.Event("scroll")));
+		}
 		const before = inline.getBoundingClientRect().top;
 		// Both arrivals are committed together. The parent append used to call
 		// toBottom(), shifting this entire box upward by the parent's 52px.
@@ -969,13 +1026,26 @@ test("combined parent and reply arrival holds the OUTER inline viewport top", as
 			});
 			reactRoot.render(draw());
 		});
-		await until(() =>
-			inline.querySelector('[data-message-id="bcmsg_reply00010001"]'),
-		);
+		if (heldInner) {
+			await until(() => refreshControl());
+			assert.ok(
+				refreshControl(),
+				"first combined arrival must insert the real Refresh control",
+			);
+			assert.equal(
+				inline.querySelector('[data-message-id="bcmsg_reply00010001"]'),
+				null,
+				"a held reader retains its admitted upper boundary",
+			);
+		} else {
+			await until(() =>
+				inline.querySelector('[data-message-id="bcmsg_reply00010001"]'),
+			);
+		}
 		assert.equal(
 			inline.getBoundingClientRect().top,
 			before,
-			"parent live-edge following must not move the inline surface on combined arrival",
+			"combined arrival and inserted controls must not move the outer inline surface",
 		);
 		assert.equal(scrollTop, 600, "the parent's held offset is unchanged");
 		assert.ok(
@@ -1011,4 +1081,9 @@ test("combined parent and reply arrival holds the OUTER inline viewport top", as
 		client.clear();
 		host.remove();
 	}
-});
+}
+
+for (const heldInner of [false, true]) {
+	test(`combined parent and reply arrival holds the OUTER inline viewport top (${heldInner ? "first Refresh insertion" : "live newest"})`, () =>
+		assertCombinedArrival(heldInner));
+}
