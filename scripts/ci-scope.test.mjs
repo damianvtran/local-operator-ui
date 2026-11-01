@@ -698,6 +698,7 @@ test("A11: every job's local commands exist and match the workflow's own steps",
 			`'${job}' has no local command, so it must be in LOCAL_EXCLUSIONS with a reason`,
 		);
 		const blocks = runBlocks(job);
+		if (job === "check-types") assertCheckpointUnitParity(commands, blocks);
 		for (const command of commands) {
 			// The FIRST TWO TOKENS rather than the whole string: the local spelling
 			// of a step may carry a prefix CI does not (`pnpm lint:scripts` is run
@@ -707,11 +708,9 @@ test("A11: every job's local commands exist and match the workflow's own steps",
 			// strongest check that the prefix cannot defeat.
 			const [tool, argument] = command.split(/\s+/);
 			if (job === "test" && command === "pnpm test:desktop") {
-				assert.ok(
-					blocks.some((b) =>
-						b.includes("node scripts/desktop-test-shards.mjs run"),
-					),
-				);
+				// The real command moved intact, not out of CI: validate the
+				// supervisor's wired shell and final await before reading it.
+				desktopStepBody();
 				const planner = readFileSync(
 					join(repoRoot, "scripts/desktop-test-shards.mjs"),
 					"utf8",
@@ -755,6 +754,59 @@ test("A11: every job's local commands exist and match the workflow's own steps",
  * Mutation: add a flag to the module and not to the `changes` job's `outputs:`;
  * inline a job list in `package.json`.
  */
+test("A11 wiring mutants: extracted command remains reachable once with exact local coverage", () => {
+	const shell = desktopStepBody();
+	for (const mutate of [
+		(job) => {
+			job.steps = job.steps.filter((s) => s.id !== "desktop_launch");
+		},
+		(job) => {
+			job.steps.push(
+				structuredClone(job.steps.find((s) => s.id === "desktop_launch")),
+			);
+		},
+		(job) => {
+			job.steps.find((s) => s.id === "desktop_launch").run =
+				"echo scripts/desktop-suite-step.sh";
+		},
+		(job) => {
+			job.steps.find((s) => s.id === "desktop_launch").run = job.steps
+				.find((s) => s.id === "desktop_launch")
+				.run.replace("scripts/desktop-suite-step.sh", "scripts/unwired.sh");
+		},
+		(job) => {
+			job.steps = job.steps.filter((s) => s.id !== "desktop_suite");
+		},
+		(job) => {
+			job.steps.find((s) => s.id === "desktop_suite").run = "true";
+		},
+		(job) => {
+			job.env.DESKTOP_SHARD_INDEX = "0";
+		},
+	]) {
+		const bad = structuredClone(jobs.test);
+		mutate(bad);
+		assert.throws(() => desktopStepBody(bad, shell));
+	}
+	for (const bad of [
+		shell.replace(DESKTOP_SHARD_COMMAND, ""),
+		`${shell}\n${DESKTOP_SHARD_COMMAND}\n`,
+		shell.replace(DESKTOP_SHARD_COMMAND, `# ${DESKTOP_SHARD_COMMAND}`),
+		shell.replace(DESKTOP_SHARD_COMMAND, `echo '${DESKTOP_SHARD_COMMAND}'`),
+	])
+		assert.throws(() => desktopStepBody(jobs.test, bad));
+	const local = JOB_COMMANDS["check-types"];
+	assertCheckpointUnitParity(local, runBlocks("check-types"));
+	assert.throws(() =>
+		assertCheckpointUnitParity(
+			local.map((c) =>
+				c.replace(" scripts/desktop-suite-checkpoints.test.mjs", ""),
+			),
+			runBlocks("check-types"),
+		),
+	);
+});
+
 test("A12: one module is named by both entry points, and FLAGS is the outputs list", () => {
 	const outputs = Object.keys(jobs.changes.outputs).sort();
 	assert.deepEqual(
@@ -1208,17 +1260,72 @@ test("A17: exactly one desktop-suite invocation, behind a failing-closed step", 
  */
 
 /** The `test` job's desktop-suite step, exactly as the shell will read it. */
-function desktopStepBody() {
-	const launches = jobs.test.steps.filter(
-		(step) => step.id === "desktop_launch",
+const DESKTOP_SHARD_COMMAND =
+	'node scripts/desktop-test-shards.mjs run --head "$DESKTOP_REQUESTED_HEAD" --checkout "$CHECKOUT_SHA" --index "$DESKTOP_SHARD_INDEX" 2>&1 | tee /tmp/desktop-tests.log || SUITE_RC=$?';
+function desktopStepBody(
+	job = jobs.test,
+	shell = readFileSync(join(repoRoot, "scripts/desktop-suite-step.sh"), "utf8"),
+) {
+	assertCheckpointSteps(job);
+	assert.equal(
+		job.steps.find((step) => step.id === "desktop_launch").if,
+		undefined,
+		"the launch cannot become an unreachable ceremonial command",
+	);
+	const diagnosticPath =
+		"${{ runner.temp }}/desktop-lifecycle-${{ matrix.shard }}.jsonl";
+	for (const id of ["desktop_launch", "desktop_suite"])
+		assert.equal(
+			job.steps.find((step) => step.id === id).env
+				.LOCAL_OPERATOR_UI_LANE_DIAGNOSTICS,
+			diagnosticPath,
+		);
+	assert.equal(job.env.DESKTOP_SHARD_INDEX, "${{ matrix.shard }}");
+	assert.equal(
+		job.env.DESKTOP_REQUESTED_HEAD,
+		"${{ github.event.pull_request.head.sha || github.sha }}",
+	);
+	const lines = shell.split(/\r?\n/).map((line) => line.trim());
+	assert.deepEqual(
+		lines.filter((line) =>
+			/^node scripts\/desktop-test-shards\.mjs run\b/.test(line),
+		),
+		[DESKTOP_SHARD_COMMAND],
+	);
+	assert.deepEqual(
+		lines.filter((line) => line.startsWith("CHECKOUT_SHA=")),
+		["CHECKOUT_SHA=$(git rev-parse HEAD)"],
+	);
+	return shell;
+}
+
+function assertCheckpointUnitParity(commands, blocks) {
+	const unit = "scripts/desktop-suite-checkpoints.test.mjs";
+	const candidates = (values) =>
+		values
+			.flatMap((v) => v.split(/\r?\n/))
+			.map((v) => v.trim())
+			.filter(
+				(v) => v.startsWith("node --test ") && v.split(/\s+/).includes(unit),
+			);
+	const local = candidates(commands);
+	const actual = candidates(blocks);
+	assert.equal(
+		local.length,
+		1,
+		"checkpoint unit must occur in one local release-contract command",
 	);
 	assert.equal(
-		launches.length,
+		actual.length,
 		1,
-		"one supervisor launches the real shell exactly once",
+		"checkpoint unit must occur in one actual workflow command, not comments/echo",
 	);
-	assert.ok(launches[0].run.includes("scripts/desktop-suite-step.sh"));
-	return readFileSync(join(repoRoot, "scripts/desktop-suite-step.sh"), "utf8");
+	assert.equal(
+		local[0],
+		actual[0],
+		"local checkpoint coverage must be the actual workflow command",
+	);
+	assert.equal(local[0].split(/\s+/).filter((v) => v === unit).length, 1);
 }
 
 function assertCheckpointSteps(job) {

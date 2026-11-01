@@ -377,6 +377,58 @@ test("diagnostic inputs and result classifications fail closed", () => {
 	assert.equal(classify(0, null, false, "SIGTERM", true), "interrupted");
 });
 
+const WIRED_SHARD_COMMAND =
+	'node scripts/desktop-test-shards.mjs run --head "$DESKTOP_REQUESTED_HEAD" --checkout "$CHECKOUT_SHA" --index "$DESKTOP_SHARD_INDEX" 2>&1 | tee /tmp/desktop-tests.log || SUITE_RC=$?';
+function assertRetiredDesktopRoute(
+	job,
+	shell = readFileSync("scripts/desktop-suite-step.sh", "utf8"),
+) {
+	const launch = job.steps.filter((step) => step.id === "desktop_launch");
+	const final = job.steps.filter((step) => step.id === "desktop_suite");
+	assert.equal(launch.length, 1);
+	assert.equal(final.length, 1);
+	assert.equal(launch[0].if, undefined);
+	assert.equal(
+		final[0].if,
+		"${{ always() && steps.desktop_launch.outcome == 'success' }}",
+	);
+	const state = '"${{ runner.temp }}/desktop-supervisor-${{ matrix.shard }}"';
+	assert.equal(
+		launch[0].run,
+		`node scripts/desktop-suite-checkpoints.mjs launch ${state} scripts/desktop-suite-step.sh "$DESKTOP_SETUP_STARTED_MS"`,
+	);
+	assert.equal(
+		final[0].run,
+		`node scripts/desktop-suite-checkpoints.mjs await ${state}`,
+	);
+	assert.ok(job.steps.indexOf(launch[0]) < job.steps.indexOf(final[0]));
+	assert.equal(job["timeout-minutes"], 50);
+	assert.equal(final[0]["timeout-minutes"], 45);
+	assert.equal(job.env.DESKTOP_SHARD_INDEX, "${{ matrix.shard }}");
+	assert.equal(
+		job.env.DESKTOP_REQUESTED_HEAD,
+		"${{ github.event.pull_request.head.sha || github.sha }}",
+	);
+	for (const step of [launch[0], final[0]])
+		assert.equal(
+			step.env.LOCAL_OPERATOR_UI_LANE_DIAGNOSTICS,
+			"${{ runner.temp }}/desktop-lifecycle-${{ matrix.shard }}.jsonl",
+		);
+	const lines = shell.split(/\r?\n/).map((line) => line.trim());
+	// Comments and echoed command text are not reachable suite invocations.
+	assert.deepEqual(
+		lines.filter((line) =>
+			/^node scripts\/desktop-test-shards\.mjs run\b/.test(line),
+		),
+		[WIRED_SHARD_COMMAND],
+	);
+	assert.deepEqual(
+		lines.filter((line) => line.startsWith("CHECKOUT_SHA=")),
+		["CHECKOUT_SHA=$(git rev-parse HEAD)"],
+	);
+	return shell;
+}
+
 test("diagnostic CI stays retired while the manual utility remains registered", () => {
 	const text = readFileSync(".github/workflows/ci.yml", "utf8");
 	// Use the tree's existing YAML parser, as the canonical CI/entry-point
@@ -387,8 +439,9 @@ test("diagnostic CI stays retired while the manual utility remains registered", 
 	);
 	const appRequire = createRequire(builderRequire.resolve("app-builder-lib"));
 	const { load } = appRequire("js-yaml");
+	const workflow = load(text);
 	assert.ok(
-		!Object.hasOwn(load(text).jobs, "onboarding-desktop-diagnostic"),
+		!Object.hasOwn(workflow.jobs, "onboarding-desktop-diagnostic"),
 		"the temporary CI job must remain retired",
 	);
 	assert.ok(
@@ -432,16 +485,45 @@ test("diagnostic CI stays retired while the manual utility remains registered", 
 			/^# fail 0$/m.test(manual.stdout),
 		"exactly one registered manual CLI/import case must execute, not silently skip",
 	);
-	const desktop = text.slice(
-		text.indexOf("  test:\n"),
-		text.indexOf("  evidence:\n"),
-	);
-	assert.match(desktop, /timeout-minutes: 50/);
-	assert.equal(
-		(desktop.match(/node scripts\/desktop-test-shards\.mjs run /g) ?? [])
-			.length,
-		1,
-	);
+	// Extraction changed the location, not the retirement/inventory contract.
+	// Prove the real YAML route before counting the preserved shell's command.
+	const shell = assertRetiredDesktopRoute(workflow.jobs.test);
+	for (const mutate of [
+		(job) => {
+			job.steps = job.steps.filter((s) => s.id !== "desktop_launch");
+		},
+		(job) => {
+			job.steps.push(
+				structuredClone(job.steps.find((s) => s.id === "desktop_launch")),
+			);
+		},
+		(job) => {
+			job.steps.find((s) => s.id === "desktop_launch").run =
+				"echo scripts/desktop-suite-step.sh";
+		},
+		(job) => {
+			job.steps.find((s) => s.id === "desktop_launch").run = job.steps
+				.find((s) => s.id === "desktop_launch")
+				.run.replace("scripts/desktop-suite-step.sh", "scripts/unwired.sh");
+		},
+		(job) => {
+			job.steps = job.steps.filter((s) => s.id !== "desktop_suite");
+		},
+		(job) => {
+			job.steps.find((s) => s.id === "desktop_suite").run = "true";
+		},
+	]) {
+		const bad = structuredClone(workflow.jobs.test);
+		mutate(bad);
+		assert.throws(() => assertRetiredDesktopRoute(bad, shell));
+	}
+	for (const bad of [
+		shell.replace(WIRED_SHARD_COMMAND, ""),
+		`${shell}\n${WIRED_SHARD_COMMAND}\n`,
+		shell.replace(WIRED_SHARD_COMMAND, `# ${WIRED_SHARD_COMMAND}`),
+		shell.replace(WIRED_SHARD_COMMAND, `echo '${WIRED_SHARD_COMMAND}'`),
+	])
+		assert.throws(() => assertRetiredDesktopRoute(workflow.jobs.test, bad));
 	const shardSource = readFileSync("scripts/desktop-test-shards.mjs", "utf8");
 	assert.ok(shardSource.includes('pkg.scripts?.["test:desktop"]'));
 	assert.ok(shardSource.includes("[RUNNER, ...expected.shards[index]]"));
