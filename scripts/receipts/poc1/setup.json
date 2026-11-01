@@ -1,0 +1,22 @@
+{
+	"model": "coder / openai/gpt-6.1-sol; no fallback",
+	"sourceBase": "05af4b914015a6b60fbc311950718747d7713a6c",
+	"srcTree": "d87e66111fe655ca0119b106ba22b3488e873a35",
+	"scriptSHA256": {
+		"scripts/session-load-sequence.test.mjs": "a6874a4c02d3d6c1d3cfcbe3de89cd6179019f9fcb4429366cac468588436d4a",
+		"scripts/poc1-transport.mjs": "8b004e22193e937e6486c644ce716da4e44002f0e787d2b6c9fb695495ef1781",
+		"scripts/poc1-transport-fixtures.mjs": "4fe4ffab6d0c3f419fdddb6ee8e3b5f31a90627ac10dbef601afa2b66c672d01",
+		"scripts/run-poc1.py": "e0c22dcd448691f768ec17db5967c76e58cb6ecba2fc1b39da50884444c61627"
+	},
+	"wrapperSelftest": "PASS timeout=124; exact live child identity checked and reaped; no group signals",
+	"sameCodeOriginalControl": "PASS 1/1; paired diagnostic pending timers=[]",
+	"measurementCommand": "python3 scripts/run-poc1.py scripts/receipts/poc1",
+	"actualResult": "47 pass; 0 fail; 0 cancelled; duration_ms 75873.30525",
+	"discarded": "All stale 830d2b65 runs and all setup/fixture-development runs. Only poc1.json is final numeric evidence.",
+	"limits": [
+		"No process group signals in final wrapper. Descendant cleanup not guaranteed on timeout; normal esbuild.stop executed.",
+		"No native/browser/TUI/held runner, install, core edits, raw journal or live sessions.",
+		"Post-unmount window timers=0 and transport subscriptions=0 throughout. Queued synthetic RAF=1 in nonresident cells, 0 resident; no growth. Not an all-listeners/no-callback-leak claim.",
+		"Full local suite not run; full automated CI delegated to frozen-head PR."
+	]
+}

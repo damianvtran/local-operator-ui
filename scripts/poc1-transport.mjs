@@ -82,7 +82,7 @@ export function registerPOC1(rig) {
 		),
 		journal_missing_ids: [],
 	});
-	const rowsFor = (count, start = 2001) =>
+	const rowsFor = (count, start = 20001) =>
 		Array.from({ length: count }, (_, i) => ({
 			...entry(`poc-${start + i}`, S + start + i, {
 				kind: "message",
@@ -193,9 +193,15 @@ export function registerPOC1(rig) {
 				});
 				reset();
 				const entries = rowsFor(100);
+				// Keep the short tool row in EVERY cell, so giant-user/tool differ
+				// only in which same-length content receives the 512 KiB body.
+				Object.assign(entries[97].payload, {
+					role: "tool",
+					tool_call_id: "poc-tool",
+					tool_name: "synthetic",
+				});
 				if (cell.giant) {
-					const target = cell.giant === "user" ? 98 : 99;
-					entries[target].payload.role = cell.giant;
+					const target = cell.giant === "user" ? 98 : 97;
 					entries[target].payload.content[0].text = "x".repeat(512 * 1024);
 					if (cell.giant === "tool")
 						Object.assign(entries[target].payload, {
@@ -203,7 +209,7 @@ export function registerPOC1(rig) {
 							tool_name: "synthetic",
 						});
 				}
-				const page = pageFor(entries, Boolean(cell.resident));
+				const page = pageFor(entries, true);
 				const next = snapshot(page);
 				const manifest = {
 					session_id: SESSION,
@@ -211,7 +217,7 @@ export function registerPOC1(rig) {
 					checkpoints: Array.from(
 						{ length: cell.checkpoints ?? 0 },
 						(_, i) => ({
-							id: `checkpoint-${i}`,
+							id: `poc-${i + 1}`,
 							kind: "user",
 							turn: i + 1,
 							ts: S + i,
@@ -221,19 +227,33 @@ export function registerPOC1(rig) {
 						}),
 					),
 				};
-				const older = rowsFor(cell.resident ?? 0, 1);
+				const older = rowsFor(cell.resident ?? 0, 18001);
 				let pageIndex = 0;
 				let appliedInputEntries = 100;
+				const pendingHistory = [];
+				const settleHistory = async () => {
+					await act(async () => {
+						for (const { request, resolve } of pendingHistory.splice(0)) {
+							const start = Number(request.beforeId.slice(4)) - 100;
+							resolve(pageFor(rowsFor(100, start), start > 1));
+						}
+					});
+				};
 				const network = async (request) => {
 					if (request.op === "sessions.checkpoints") return manifest;
-					if (request.op === "sessions.history" && older.length) {
-						assert.equal(request.beforeId, `poc-${2001 - pageIndex * 100}`);
-						const end = older.length - pageIndex * 100;
-						if (end === 0) return pageFor([], false);
-						assert.ok(end > 0, "invalid older-page request");
-						pageIndex += 1;
-						appliedInputEntries += 100;
-						return pageFor(older.slice(end - 100, end), end > 100);
+					if (request.op === "sessions.history") {
+						if (older.length && pageIndex < 20) {
+							assert.equal(request.beforeId, `poc-${20001 - pageIndex * 100}`);
+							const end = older.length - pageIndex * 100;
+							pageIndex += 1;
+							appliedInputEntries += 100;
+							return pageFor(older.slice(end - 100, end), true);
+						}
+						// Legal earlier rows exist. Hold their scheduled responses until
+						// after unmount so an eager pager cannot change the chosen axis.
+						return new Promise((resolve) =>
+							pendingHistory.push({ request, resolve }),
+						);
 					}
 					return answerNetwork(request);
 				};
@@ -284,7 +304,7 @@ export function registerPOC1(rig) {
 					await prime.send(next);
 					await flushFrames();
 
-					while (globalThis.__loadDiag.hasMore) {
+					while (older.length && pageIndex < 20) {
 						await act(async () => {
 							const outcome =
 								await globalThis.__poc1.handle.loadOlderDetailed();
@@ -299,6 +319,7 @@ export function registerPOC1(rig) {
 					if (older.length) residentArm = prime;
 					else {
 						await prime.dispose();
+						await settleHistory();
 						await flushFrames();
 					}
 				}
@@ -329,6 +350,7 @@ export function registerPOC1(rig) {
 				assert.equal(subscription.args.openFrame, true);
 				assert.equal(subscription.args.journalOrder, true);
 				await arm.dispose();
+				await settleHistory();
 				await flushFrames();
 				assert.ok(globalThis.__loadNet.subscriptions.every((s) => s.disposed));
 				receipt.samples.push({
@@ -347,11 +369,19 @@ export function registerPOC1(rig) {
 					manifestBytes: Buffer.byteLength(JSON.stringify(manifest)),
 					checkpointInputCount: manifest.checkpoints.length,
 					inputEntries: appliedInputEntries,
+					measuredFrameInputEntries: entries.length,
 					historyPages: pageIndex,
 					residentRecords: sequence.at(-1).diag.records,
 					sequence,
 					commitSequence: globalThis.__poc1.commits.slice(commitStart),
 					outstandingWindowTimers: pendingTimers.length,
+					pendingWindowTimers: pendingTimers.map(
+						({ delay, origin, callback }) => ({
+							delay,
+							origin,
+							callback: String(callback).slice(0, 300),
+						}),
+					),
 					queuedRAFs: rafQueue.length,
 					activeSubscriptions: globalThis.__loadNet.subscriptions.filter(
 						(s) => !s.disposed,
@@ -374,14 +404,14 @@ export function registerPOC1(rig) {
 						wallMs,
 					}),
 				);
+				await writeFile(
+					`${process.env.LOP_POC1_OUTPUT}/poc1.partial.json`,
+					`${JSON.stringify({ ...receipt, complete: false }, null, 2)}\n`,
+				);
 				assert.equal(
 					pendingTimers.length,
 					0,
 					"window timer leak; stop dispatch",
-				);
-				await writeFile(
-					`${process.env.LOP_POC1_OUTPUT}/poc1.partial.json`,
-					`${JSON.stringify({ ...receipt, complete: false }, null, 2)}\n`,
 				);
 				completed = true;
 			});
@@ -400,7 +430,10 @@ export function registerPOC1(rig) {
 				const wallStart = performance.now();
 				const idleStart = process.cpuUsage();
 				const idleWallStart = performance.now();
-				if (delay) await new Promise((resolve) => setTimeout(resolve, delay));
+				if (delay)
+					await act(async () => {
+						await new Promise((resolve) => setTimeout(resolve, delay));
+					});
 				const idleCPU = process.cpuUsage(idleStart);
 				const idleWallMs = performance.now() - idleWallStart;
 				await arm.send(snapshot(pageFor(rowsFor(100))));
@@ -435,11 +468,11 @@ export function registerPOC1(rig) {
 				session_id: "b1b2c3d4e5f6",
 				epoch: "epoch-b1b2c3d4e5f6",
 			});
-			const b = rowsFor(100, 4001);
+			const b = rowsFor(100, 40001);
 			await arm.send(snapshot(pageFor(b), "b1b2c3d4e5f6"));
 			await flushFrames();
 			const before = view(arm);
-			assert.ok(arm.container.querySelector('[data-record-id="poc-4001"]'));
+			assert.ok(arm.container.querySelector('[data-record-id="poc-40001"]'));
 			await act(async () =>
 				old.onEvent({
 					kind: "data",

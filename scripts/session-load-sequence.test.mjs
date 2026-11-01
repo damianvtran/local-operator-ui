@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { unlink, writeFile } from "node:fs/promises";
 import { after, test } from "node:test";
-import { build } from "esbuild";
+import { build, stop } from "esbuild";
 import { JSDOM } from "jsdom";
 import { createElement as h } from "react";
 import { registerPOC1 } from "./poc1-transport.mjs";
@@ -66,6 +66,8 @@ const { window } = bootstrapDOM;
 const originals = new Map();
 /** Frames the app queued but the test has not run yet. */
 const rafQueue = [];
+let rafIdentity = 0;
+const pendingRAFs = new Map();
 const shims = {
 	window,
 	document: window.document,
@@ -82,10 +84,27 @@ const shims = {
 	navigator: window.navigator,
 	getComputedStyle: window.getComputedStyle.bind(window),
 	requestAnimationFrame: (callback) => {
-		rafQueue.push(callback);
-		return rafQueue.length;
+		if (!POC1 && !process.env.LOP_POC1_SETUP_AUDIT) {
+			rafQueue.push(callback);
+			return rafQueue.length;
+		}
+		const id = ++rafIdentity;
+		const queued = (time) => {
+			if (!pendingRAFs.delete(id)) return;
+			callback(time);
+		};
+		pendingRAFs.set(id, queued);
+		rafQueue.push(queued);
+		return id;
 	},
-	cancelAnimationFrame: () => {},
+	// Repeated measurements must honor browser cancellation: the old no-op
+	// retained a canceled scroll loop, not a live timer or production leak.
+	cancelAnimationFrame: (id) => {
+		const queued = pendingRAFs.get(id);
+		pendingRAFs.delete(id);
+		const index = rafQueue.indexOf(queued);
+		if (index >= 0) rafQueue.splice(index, 1);
+	},
 	IS_REACT_ACT_ENVIRONMENT: true,
 	ResizeObserver: class {
 		observe() {}
@@ -173,7 +192,7 @@ const stubWindowTimers = () => {
 		timerSeq += 1;
 		pendingTimers.push({
 			id: timerSeq,
-			...(POC1
+			...(POC1 || process.env.LOP_POC1_SETUP_AUDIT
 				? {
 						origin: new Error().stack
 							?.split("\n")
@@ -192,9 +211,40 @@ const stubWindowTimers = () => {
 	};
 };
 stubWindowTimers();
+// Browser global clearTimeout aliases window.clearTimeout. In Node it does
+// not: the real hook's window.setTimeout(flush,250) was cleared by Node's
+// native clearTimeout, leaving inert fixture callbacks in pendingTimers.
+// Mirror the browser pairing only for this diagnostic mode; preserve native
+// Node Timeout objects used by query scheduling and test deadlines.
+if (POC1 || process.env.LOP_POC1_SETUP_AUDIT) {
+	const nativeClear = globalThis.clearTimeout;
+	originals.set(
+		"clearTimeout",
+		Object.getOwnPropertyDescriptor(globalThis, "clearTimeout"),
+	);
+	globalThis.clearTimeout = (id) => {
+		if (typeof id === "number") window.clearTimeout(id);
+		else nativeClear(id);
+	};
+}
 const { createRoot } = await import("react-dom/client");
 const { act } = await import("react");
-after(() => {
+after(async () => {
+	if (process.env.LOP_POC1_SETUP_AUDIT) {
+		await writeFile(
+			process.env.LOP_POC1_SETUP_AUDIT,
+			JSON.stringify(
+				pendingTimers.map(({ delay, origin, callback }) => ({
+					delay,
+					origin,
+					callback: String(callback).slice(0, 300),
+				})),
+				null,
+				2,
+			),
+		);
+	}
+	stop();
 	bootstrapDOM.window.close();
 	for (const [key, descriptor] of originals) {
 		if (descriptor) Object.defineProperty(globalThis, key, descriptor);

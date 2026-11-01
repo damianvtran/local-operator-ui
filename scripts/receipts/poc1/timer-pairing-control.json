@@ -1,0 +1,86 @@
+{
+	"source": "05af4b914015a6b60fbc311950718747d7713a6c",
+	"test": "the load sequence, mid-cycle: what each commit paints",
+	"original_fixture_pending": [
+		{
+			"delay": 250,
+			"origin": [
+				"    at Object.onEvent (file://<repo>/scripts/_session-load-sequence-12829.mjs:289603:48)",
+				"    at file://<repo>/scripts/session-load-sequence.test.mjs:812:17",
+				"    at act (<deps>/.pnpm/react@18.3.1/node_modules/react/cjs/react.development.js:2512:16)",
+				"    at send (file://<repo>/scripts/session-load-sequence.test.mjs:811:9)",
+				"    at TestContext.<anonymous> (file://<repo>/scripts/session-load-sequence.test.mjs:837:8)"
+			],
+			"callback": "() => {\n      if (raf2) cancelAnimationFrame(raf2);\n      if (fallback2) clearTimeout(fallback2);\n      raf2 = 0;\n      fallback2 = 0;\n      if (generationRef.current !== generation) return;\n      const frames = pending.current;\n      pending.current = [];\n      if (frames.length === 0) return;\n    "
+		},
+		{
+			"delay": 250,
+			"origin": [
+				"    at Object.onEvent (file://<repo>/scripts/_session-load-sequence-12829.mjs:289603:48)",
+				"    at file://<repo>/scripts/session-load-sequence.test.mjs:812:17",
+				"    at act (<deps>/.pnpm/react@18.3.1/node_modules/react/cjs/react.development.js:2512:16)",
+				"    at send (file://<repo>/scripts/session-load-sequence.test.mjs:811:9)",
+				"    at TestContext.<anonymous> (file://<repo>/scripts/session-load-sequence.test.mjs:840:8)"
+			],
+			"callback": "() => {\n      if (raf2) cancelAnimationFrame(raf2);\n      if (fallback2) clearTimeout(fallback2);\n      raf2 = 0;\n      fallback2 = 0;\n      if (generationRef.current !== generation) return;\n      const frames = pending.current;\n      pending.current = [];\n      if (frames.length === 0) return;\n    "
+		},
+		{
+			"delay": 250,
+			"origin": [
+				"    at Object.onEvent (file://<repo>/scripts/_session-load-sequence-12829.mjs:289603:48)",
+				"    at file://<repo>/scripts/session-load-sequence.test.mjs:812:17",
+				"    at act (<deps>/.pnpm/react@18.3.1/node_modules/react/cjs/react.development.js:2512:16)",
+				"    at send (file://<repo>/scripts/session-load-sequence.test.mjs:811:9)",
+				"    at TestContext.<anonymous> (file://<repo>/scripts/session-load-sequence.test.mjs:844:8)"
+			],
+			"callback": "() => {\n      if (raf2) cancelAnimationFrame(raf2);\n      if (fallback2) clearTimeout(fallback2);\n      raf2 = 0;\n      fallback2 = 0;\n      if (generationRef.current !== generation) return;\n      const frames = pending.current;\n      pending.current = [];\n      if (frames.length === 0) return;\n    "
+		},
+		{
+			"delay": 250,
+			"origin": [
+				"    at Object.onEvent (file://<repo>/scripts/_session-load-sequence-12829.mjs:289603:48)",
+				"    at file://<repo>/scripts/session-load-sequence.test.mjs:812:17",
+				"    at act (<deps>/.pnpm/react@18.3.1/node_modules/react/cjs/react.development.js:2512:16)",
+				"    at send (file://<repo>/scripts/session-load-sequence.test.mjs:811:9)",
+				"    at TestContext.<anonymous> (file://<repo>/scripts/session-load-sequence.test.mjs:855:8)"
+			],
+			"callback": "() => {\n      if (raf2) cancelAnimationFrame(raf2);\n      if (fallback2) clearTimeout(fallback2);\n      raf2 = 0;\n      fallback2 = 0;\n      if (generationRef.current !== generation) return;\n      const frames = pending.current;\n      pending.current = [];\n      if (frames.length === 0) return;\n    "
+		},
+		{
+			"delay": 250,
+			"origin": [
+				"    at Object.onEvent (file://<repo>/scripts/_session-load-sequence-12829.mjs:289603:48)",
+				"    at file://<repo>/scripts/session-load-sequence.test.mjs:812:17",
+				"    at act (<deps>/.pnpm/react@18.3.1/node_modules/react/cjs/react.development.js:2512:16)",
+				"    at send (file://<repo>/scripts/session-load-sequence.test.mjs:811:9)",
+				"    at TestContext.<anonymous> (file://<repo>/scripts/session-load-sequence.test.mjs:866:8)"
+			],
+			"callback": "() => {\n      if (raf2) cancelAnimationFrame(raf2);\n      if (fallback2) clearTimeout(fallback2);\n      raf2 = 0;\n      fallback2 = 0;\n      if (generationRef.current !== generation) return;\n      const frames = pending.current;\n      pending.current = [];\n      if (frames.length === 0) return;\n    "
+		},
+		{
+			"delay": 250,
+			"origin": [
+				"    at Object.onEvent (file://<repo>/scripts/_session-load-sequence-12829.mjs:289603:48)",
+				"    at file://<repo>/scripts/session-load-sequence.test.mjs:812:17",
+				"    at act (<deps>/.pnpm/react@18.3.1/node_modules/react/cjs/react.development.js:2512:16)",
+				"    at send (file://<repo>/scripts/session-load-sequence.test.mjs:811:9)",
+				"    at TestContext.<anonymous> (file://<repo>/scripts/session-load-sequence.test.mjs:877:8)"
+			],
+			"callback": "() => {\n      if (raf2) cancelAnimationFrame(raf2);\n      if (fallback2) clearTimeout(fallback2);\n      raf2 = 0;\n      fallback2 = 0;\n      if (generationRef.current !== generation) return;\n      const frames = pending.current;\n      pending.current = [];\n      if (frames.length === 0) return;\n    "
+		},
+		{
+			"delay": 250,
+			"origin": [
+				"    at Object.onEvent (file://<repo>/scripts/_session-load-sequence-12829.mjs:289603:48)",
+				"    at file://<repo>/scripts/session-load-sequence.test.mjs:812:17",
+				"    at act (<deps>/.pnpm/react@18.3.1/node_modules/react/cjs/react.development.js:2512:16)",
+				"    at send (file://<repo>/scripts/session-load-sequence.test.mjs:811:9)",
+				"    at TestContext.<anonymous> (file://<repo>/scripts/session-load-sequence.test.mjs:902:8)"
+			],
+			"callback": "() => {\n      if (raf2) cancelAnimationFrame(raf2);\n      if (fallback2) clearTimeout(fallback2);\n      raf2 = 0;\n      fallback2 = 0;\n      if (generationRef.current !== generation) return;\n      const frames = pending.current;\n      pending.current = [];\n      if (frames.length === 0) return;\n    "
+		}
+	],
+	"paired_diagnostic_pending": [],
+	"classification": "Inert synthetic 250ms fallback callbacks: window.setTimeout stub and global native clearTimeout were not paired. Not a production timer leak.",
+	"paired_test_result": "PASS 1/1; [] pending window timers"
+}

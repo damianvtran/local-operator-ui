@@ -1,0 +1,4869 @@
+{
+	"model": "coder / openai/gpt-6.1-sol (no fallback)",
+	"kind": "synthetic source-rig; not native, layout, paint, sendability or user-visible latency",
+	"provenance": "QA active-cohort.md 2026-11-01: shape motivation only; no journal read",
+	"source": {
+		"head": "623e86e4ddccdbb7d8fc5e1e56094de27445e410",
+		"srcTree": "d87e66111fe655ca0119b106ba22b3488e873a35",
+		"core": "not loaded; synthetic transport only"
+	},
+	"samples": [
+		{
+			"cell": "cold-short",
+			"phase": "cold",
+			"wallMs": 476.5037500000003,
+			"cpu": {
+				"user": 858974,
+				"system": 34210
+			},
+			"mountWallMs": 62.56112499999972,
+			"mountCPU": {
+				"user": 68946,
+				"system": 1925
+			},
+			"parseCPU": {
+				"user": 190,
+				"system": 3
+			},
+			"frameBytes": 35941,
+			"maxRecordBytes": 267,
+			"manifestBytes": 72,
+			"checkpointInputCount": 0,
+			"inputEntries": 100,
+			"measuredFrameInputEntries": 100,
+			"historyPages": 0,
+			"residentRecords": 100,
+			"sequence": [
+				{
+					"rows": 0,
+					"bars": [],
+					"electedAnswers": 0,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": true,
+					"domNodes": 9,
+					"checkpointDOMCount": 0,
+					"checkpointManifestDOMCount": null,
+					"diag": {
+						"records": 0,
+						"hydrated": false,
+						"status": "connecting",
+						"stale": false,
+						"streaming": null,
+						"hasMore": false
+					},
+					"commit": 4
+				},
+				{
+					"rows": 99,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 49,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"domNodes": 2894,
+					"checkpointDOMCount": 0,
+					"checkpointManifestDOMCount": null,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 9
+				}
+			],
+			"commitSequence": [
+				{
+					"rows": 59,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 29,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 5
+				},
+				{
+					"rows": 99,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 49,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 9
+				}
+			],
+			"outstandingWindowTimers": 0,
+			"pendingWindowTimers": [],
+			"queuedRAFs": 1,
+			"activeSubscriptions": 0,
+			"limits": null
+		},
+		{
+			"cell": "cold-short",
+			"phase": "warmup",
+			"wallMs": 306.2862500000001,
+			"cpu": {
+				"user": 478890,
+				"system": 17387
+			},
+			"mountWallMs": 5.6675420000001395,
+			"mountCPU": {
+				"user": 7527,
+				"system": 223
+			},
+			"parseCPU": {
+				"user": 126,
+				"system": 2
+			},
+			"frameBytes": 35941,
+			"maxRecordBytes": 267,
+			"manifestBytes": 72,
+			"checkpointInputCount": 0,
+			"inputEntries": 100,
+			"measuredFrameInputEntries": 100,
+			"historyPages": 0,
+			"residentRecords": 100,
+			"sequence": [
+				{
+					"rows": 0,
+					"bars": [],
+					"electedAnswers": 0,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": true,
+					"domNodes": 9,
+					"checkpointDOMCount": 0,
+					"checkpointManifestDOMCount": null,
+					"diag": {
+						"records": 0,
+						"hydrated": false,
+						"status": "connecting",
+						"stale": false,
+						"streaming": null,
+						"hasMore": false
+					},
+					"commit": 13
+				},
+				{
+					"rows": 99,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 49,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"domNodes": 2894,
+					"checkpointDOMCount": 0,
+					"checkpointManifestDOMCount": null,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 18
+				}
+			],
+			"commitSequence": [
+				{
+					"rows": 59,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 29,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 14
+				},
+				{
+					"rows": 99,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 49,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 18
+				}
+			],
+			"outstandingWindowTimers": 0,
+			"pendingWindowTimers": [],
+			"queuedRAFs": 1,
+			"activeSubscriptions": 0,
+			"limits": null
+		},
+		{
+			"cell": "cold-short",
+			"phase": "measured-1",
+			"wallMs": 297.9105830000003,
+			"cpu": {
+				"user": 401856,
+				"system": 10508
+			},
+			"mountWallMs": 4.2563749999999345,
+			"mountCPU": {
+				"user": 5232,
+				"system": 169
+			},
+			"parseCPU": {
+				"user": 122,
+				"system": 0
+			},
+			"frameBytes": 35941,
+			"maxRecordBytes": 267,
+			"manifestBytes": 72,
+			"checkpointInputCount": 0,
+			"inputEntries": 100,
+			"measuredFrameInputEntries": 100,
+			"historyPages": 0,
+			"residentRecords": 100,
+			"sequence": [
+				{
+					"rows": 0,
+					"bars": [],
+					"electedAnswers": 0,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": true,
+					"domNodes": 9,
+					"checkpointDOMCount": 0,
+					"checkpointManifestDOMCount": null,
+					"diag": {
+						"records": 0,
+						"hydrated": false,
+						"status": "connecting",
+						"stale": false,
+						"streaming": null,
+						"hasMore": false
+					},
+					"commit": 22
+				},
+				{
+					"rows": 99,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 49,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"domNodes": 2894,
+					"checkpointDOMCount": 0,
+					"checkpointManifestDOMCount": null,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 27
+				}
+			],
+			"commitSequence": [
+				{
+					"rows": 59,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 29,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 23
+				},
+				{
+					"rows": 99,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 49,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 27
+				}
+			],
+			"outstandingWindowTimers": 0,
+			"pendingWindowTimers": [],
+			"queuedRAFs": 1,
+			"activeSubscriptions": 0,
+			"limits": null
+		},
+		{
+			"cell": "cold-short",
+			"phase": "measured-2",
+			"wallMs": 277.06845799999974,
+			"cpu": {
+				"user": 376490,
+				"system": 11359
+			},
+			"mountWallMs": 4.555041999999958,
+			"mountCPU": {
+				"user": 5295,
+				"system": 143
+			},
+			"parseCPU": {
+				"user": 126,
+				"system": 1
+			},
+			"frameBytes": 35941,
+			"maxRecordBytes": 267,
+			"manifestBytes": 72,
+			"checkpointInputCount": 0,
+			"inputEntries": 100,
+			"measuredFrameInputEntries": 100,
+			"historyPages": 0,
+			"residentRecords": 100,
+			"sequence": [
+				{
+					"rows": 0,
+					"bars": [],
+					"electedAnswers": 0,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": true,
+					"domNodes": 9,
+					"checkpointDOMCount": 0,
+					"checkpointManifestDOMCount": null,
+					"diag": {
+						"records": 0,
+						"hydrated": false,
+						"status": "connecting",
+						"stale": false,
+						"streaming": null,
+						"hasMore": false
+					},
+					"commit": 31
+				},
+				{
+					"rows": 99,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 49,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"domNodes": 2894,
+					"checkpointDOMCount": 0,
+					"checkpointManifestDOMCount": null,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 36
+				}
+			],
+			"commitSequence": [
+				{
+					"rows": 59,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 29,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 32
+				},
+				{
+					"rows": 99,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 49,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 36
+				}
+			],
+			"outstandingWindowTimers": 0,
+			"pendingWindowTimers": [],
+			"queuedRAFs": 1,
+			"activeSubscriptions": 0,
+			"limits": null
+		},
+		{
+			"cell": "cold-short",
+			"phase": "measured-3",
+			"wallMs": 277.0547080000006,
+			"cpu": {
+				"user": 359850,
+				"system": 12002
+			},
+			"mountWallMs": 4.049250000000029,
+			"mountCPU": {
+				"user": 5617,
+				"system": 266
+			},
+			"parseCPU": {
+				"user": 128,
+				"system": 0
+			},
+			"frameBytes": 35941,
+			"maxRecordBytes": 267,
+			"manifestBytes": 72,
+			"checkpointInputCount": 0,
+			"inputEntries": 100,
+			"measuredFrameInputEntries": 100,
+			"historyPages": 0,
+			"residentRecords": 100,
+			"sequence": [
+				{
+					"rows": 0,
+					"bars": [],
+					"electedAnswers": 0,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": true,
+					"domNodes": 9,
+					"checkpointDOMCount": 0,
+					"checkpointManifestDOMCount": null,
+					"diag": {
+						"records": 0,
+						"hydrated": false,
+						"status": "connecting",
+						"stale": false,
+						"streaming": null,
+						"hasMore": false
+					},
+					"commit": 39
+				},
+				{
+					"rows": 99,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 49,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"domNodes": 2894,
+					"checkpointDOMCount": 0,
+					"checkpointManifestDOMCount": null,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 44
+				}
+			],
+			"commitSequence": [
+				{
+					"rows": 59,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 29,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 40
+				},
+				{
+					"rows": 99,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 49,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 44
+				}
+			],
+			"outstandingWindowTimers": 0,
+			"pendingWindowTimers": [],
+			"queuedRAFs": 1,
+			"activeSubscriptions": 0,
+			"limits": null
+		},
+		{
+			"cell": "cold-short",
+			"phase": "measured-4",
+			"wallMs": 273.34229099999993,
+			"cpu": {
+				"user": 363107,
+				"system": 9749
+			},
+			"mountWallMs": 4.563791999999921,
+			"mountCPU": {
+				"user": 5940,
+				"system": 211
+			},
+			"parseCPU": {
+				"user": 559,
+				"system": 7
+			},
+			"frameBytes": 35941,
+			"maxRecordBytes": 267,
+			"manifestBytes": 72,
+			"checkpointInputCount": 0,
+			"inputEntries": 100,
+			"measuredFrameInputEntries": 100,
+			"historyPages": 0,
+			"residentRecords": 100,
+			"sequence": [
+				{
+					"rows": 0,
+					"bars": [],
+					"electedAnswers": 0,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": true,
+					"domNodes": 9,
+					"checkpointDOMCount": 0,
+					"checkpointManifestDOMCount": null,
+					"diag": {
+						"records": 0,
+						"hydrated": false,
+						"status": "connecting",
+						"stale": false,
+						"streaming": null,
+						"hasMore": false
+					},
+					"commit": 48
+				},
+				{
+					"rows": 99,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 49,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"domNodes": 2894,
+					"checkpointDOMCount": 0,
+					"checkpointManifestDOMCount": null,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 53
+				}
+			],
+			"commitSequence": [
+				{
+					"rows": 59,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 29,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 49
+				},
+				{
+					"rows": 99,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 49,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 53
+				}
+			],
+			"outstandingWindowTimers": 0,
+			"pendingWindowTimers": [],
+			"queuedRAFs": 1,
+			"activeSubscriptions": 0,
+			"limits": null
+		},
+		{
+			"cell": "cold-short",
+			"phase": "measured-5",
+			"wallMs": 291.9284170000001,
+			"cpu": {
+				"user": 397183,
+				"system": 4660
+			},
+			"mountWallMs": 5.265667000000576,
+			"mountCPU": {
+				"user": 9065,
+				"system": 144
+			},
+			"parseCPU": {
+				"user": 145,
+				"system": 0
+			},
+			"frameBytes": 35941,
+			"maxRecordBytes": 267,
+			"manifestBytes": 72,
+			"checkpointInputCount": 0,
+			"inputEntries": 100,
+			"measuredFrameInputEntries": 100,
+			"historyPages": 0,
+			"residentRecords": 100,
+			"sequence": [
+				{
+					"rows": 0,
+					"bars": [],
+					"electedAnswers": 0,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": true,
+					"domNodes": 9,
+					"checkpointDOMCount": 0,
+					"checkpointManifestDOMCount": null,
+					"diag": {
+						"records": 0,
+						"hydrated": false,
+						"status": "connecting",
+						"stale": false,
+						"streaming": null,
+						"hasMore": false
+					},
+					"commit": 57
+				},
+				{
+					"rows": 99,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 49,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"domNodes": 2894,
+					"checkpointDOMCount": 0,
+					"checkpointManifestDOMCount": null,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 62
+				}
+			],
+			"commitSequence": [
+				{
+					"rows": 59,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 29,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 58
+				},
+				{
+					"rows": 99,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 49,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 62
+				}
+			],
+			"outstandingWindowTimers": 0,
+			"pendingWindowTimers": [],
+			"queuedRAFs": 1,
+			"activeSubscriptions": 0,
+			"limits": null
+		},
+		{
+			"cell": "warm-short",
+			"phase": "cold",
+			"wallMs": 258.67204200000015,
+			"cpu": {
+				"user": 343826,
+				"system": 1898
+			},
+			"mountWallMs": 8.507792000000336,
+			"mountCPU": {
+				"user": 15568,
+				"system": 193
+			},
+			"parseCPU": {
+				"user": 130,
+				"system": 1
+			},
+			"frameBytes": 35941,
+			"maxRecordBytes": 267,
+			"manifestBytes": 72,
+			"checkpointInputCount": 0,
+			"inputEntries": 100,
+			"measuredFrameInputEntries": 100,
+			"historyPages": 0,
+			"residentRecords": 100,
+			"sequence": [
+				{
+					"rows": 0,
+					"bars": [],
+					"electedAnswers": 0,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": true,
+					"domNodes": 9,
+					"checkpointDOMCount": 0,
+					"checkpointManifestDOMCount": null,
+					"diag": {
+						"records": 100,
+						"hydrated": false,
+						"status": "connecting",
+						"stale": true,
+						"streaming": null,
+						"hasMore": false
+					},
+					"commit": 76
+				},
+				{
+					"rows": 99,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 49,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"domNodes": 2894,
+					"checkpointDOMCount": 0,
+					"checkpointManifestDOMCount": null,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 80
+				}
+			],
+			"commitSequence": [
+				{
+					"rows": 59,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 29,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 77
+				},
+				{
+					"rows": 99,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 49,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 80
+				}
+			],
+			"outstandingWindowTimers": 0,
+			"pendingWindowTimers": [],
+			"queuedRAFs": 1,
+			"activeSubscriptions": 0,
+			"limits": null
+		},
+		{
+			"cell": "warm-short",
+			"phase": "warmup",
+			"wallMs": 263.17404199999964,
+			"cpu": {
+				"user": 326903,
+				"system": 11368
+			},
+			"mountWallMs": 6.392084000000068,
+			"mountCPU": {
+				"user": 6455,
+				"system": 145
+			},
+			"parseCPU": {
+				"user": 143,
+				"system": 1
+			},
+			"frameBytes": 35941,
+			"maxRecordBytes": 267,
+			"manifestBytes": 72,
+			"checkpointInputCount": 0,
+			"inputEntries": 100,
+			"measuredFrameInputEntries": 100,
+			"historyPages": 0,
+			"residentRecords": 100,
+			"sequence": [
+				{
+					"rows": 0,
+					"bars": [],
+					"electedAnswers": 0,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": true,
+					"domNodes": 9,
+					"checkpointDOMCount": 0,
+					"checkpointManifestDOMCount": null,
+					"diag": {
+						"records": 100,
+						"hydrated": false,
+						"status": "connecting",
+						"stale": true,
+						"streaming": null,
+						"hasMore": false
+					},
+					"commit": 92
+				},
+				{
+					"rows": 99,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 49,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"domNodes": 2894,
+					"checkpointDOMCount": 0,
+					"checkpointManifestDOMCount": null,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 96
+				}
+			],
+			"commitSequence": [
+				{
+					"rows": 59,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 29,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 93
+				},
+				{
+					"rows": 99,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 49,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 96
+				}
+			],
+			"outstandingWindowTimers": 0,
+			"pendingWindowTimers": [],
+			"queuedRAFs": 1,
+			"activeSubscriptions": 0,
+			"limits": null
+		},
+		{
+			"cell": "warm-short",
+			"phase": "measured-1",
+			"wallMs": 252.9690410000003,
+			"cpu": {
+				"user": 321393,
+				"system": 8658
+			},
+			"mountWallMs": 5.584458000000268,
+			"mountCPU": {
+				"user": 6332,
+				"system": 87
+			},
+			"parseCPU": {
+				"user": 149,
+				"system": 1
+			},
+			"frameBytes": 35941,
+			"maxRecordBytes": 267,
+			"manifestBytes": 72,
+			"checkpointInputCount": 0,
+			"inputEntries": 100,
+			"measuredFrameInputEntries": 100,
+			"historyPages": 0,
+			"residentRecords": 100,
+			"sequence": [
+				{
+					"rows": 0,
+					"bars": [],
+					"electedAnswers": 0,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": true,
+					"domNodes": 9,
+					"checkpointDOMCount": 0,
+					"checkpointManifestDOMCount": null,
+					"diag": {
+						"records": 100,
+						"hydrated": false,
+						"status": "connecting",
+						"stale": true,
+						"streaming": null,
+						"hasMore": false
+					},
+					"commit": 109
+				},
+				{
+					"rows": 99,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 49,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"domNodes": 2894,
+					"checkpointDOMCount": 0,
+					"checkpointManifestDOMCount": null,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 113
+				}
+			],
+			"commitSequence": [
+				{
+					"rows": 59,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 29,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 110
+				},
+				{
+					"rows": 99,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 49,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 113
+				}
+			],
+			"outstandingWindowTimers": 0,
+			"pendingWindowTimers": [],
+			"queuedRAFs": 1,
+			"activeSubscriptions": 0,
+			"limits": null
+		},
+		{
+			"cell": "warm-short",
+			"phase": "measured-2",
+			"wallMs": 252.47308299999986,
+			"cpu": {
+				"user": 331961,
+				"system": 9781
+			},
+			"mountWallMs": 6.49633300000005,
+			"mountCPU": {
+				"user": 10064,
+				"system": 165
+			},
+			"parseCPU": {
+				"user": 383,
+				"system": 2
+			},
+			"frameBytes": 35941,
+			"maxRecordBytes": 267,
+			"manifestBytes": 72,
+			"checkpointInputCount": 0,
+			"inputEntries": 100,
+			"measuredFrameInputEntries": 100,
+			"historyPages": 0,
+			"residentRecords": 100,
+			"sequence": [
+				{
+					"rows": 0,
+					"bars": [],
+					"electedAnswers": 0,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": true,
+					"domNodes": 9,
+					"checkpointDOMCount": 0,
+					"checkpointManifestDOMCount": null,
+					"diag": {
+						"records": 100,
+						"hydrated": false,
+						"status": "connecting",
+						"stale": true,
+						"streaming": null,
+						"hasMore": false
+					},
+					"commit": 126
+				},
+				{
+					"rows": 99,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 49,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"domNodes": 2894,
+					"checkpointDOMCount": 0,
+					"checkpointManifestDOMCount": null,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 130
+				}
+			],
+			"commitSequence": [
+				{
+					"rows": 59,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 29,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 127
+				},
+				{
+					"rows": 99,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 49,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 130
+				}
+			],
+			"outstandingWindowTimers": 0,
+			"pendingWindowTimers": [],
+			"queuedRAFs": 1,
+			"activeSubscriptions": 0,
+			"limits": null
+		},
+		{
+			"cell": "warm-short",
+			"phase": "measured-3",
+			"wallMs": 253.99404099999992,
+			"cpu": {
+				"user": 342725,
+				"system": 10455
+			},
+			"mountWallMs": 6.192374999999629,
+			"mountCPU": {
+				"user": 9717,
+				"system": 105
+			},
+			"parseCPU": {
+				"user": 134,
+				"system": 0
+			},
+			"frameBytes": 35941,
+			"maxRecordBytes": 267,
+			"manifestBytes": 72,
+			"checkpointInputCount": 0,
+			"inputEntries": 100,
+			"measuredFrameInputEntries": 100,
+			"historyPages": 0,
+			"residentRecords": 100,
+			"sequence": [
+				{
+					"rows": 0,
+					"bars": [],
+					"electedAnswers": 0,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": true,
+					"domNodes": 9,
+					"checkpointDOMCount": 0,
+					"checkpointManifestDOMCount": null,
+					"diag": {
+						"records": 100,
+						"hydrated": false,
+						"status": "connecting",
+						"stale": true,
+						"streaming": null,
+						"hasMore": false
+					},
+					"commit": 143
+				},
+				{
+					"rows": 99,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 49,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"domNodes": 2894,
+					"checkpointDOMCount": 0,
+					"checkpointManifestDOMCount": null,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 147
+				}
+			],
+			"commitSequence": [
+				{
+					"rows": 59,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 29,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 144
+				},
+				{
+					"rows": 99,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 49,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 147
+				}
+			],
+			"outstandingWindowTimers": 0,
+			"pendingWindowTimers": [],
+			"queuedRAFs": 1,
+			"activeSubscriptions": 0,
+			"limits": null
+		},
+		{
+			"cell": "warm-short",
+			"phase": "measured-4",
+			"wallMs": 274.15837499999907,
+			"cpu": {
+				"user": 353521,
+				"system": 2155
+			},
+			"mountWallMs": 6.5761249999995925,
+			"mountCPU": {
+				"user": 8486,
+				"system": 158
+			},
+			"parseCPU": {
+				"user": 133,
+				"system": 0
+			},
+			"frameBytes": 35941,
+			"maxRecordBytes": 267,
+			"manifestBytes": 72,
+			"checkpointInputCount": 0,
+			"inputEntries": 100,
+			"measuredFrameInputEntries": 100,
+			"historyPages": 0,
+			"residentRecords": 100,
+			"sequence": [
+				{
+					"rows": 0,
+					"bars": [],
+					"electedAnswers": 0,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": true,
+					"domNodes": 9,
+					"checkpointDOMCount": 0,
+					"checkpointManifestDOMCount": null,
+					"diag": {
+						"records": 100,
+						"hydrated": false,
+						"status": "connecting",
+						"stale": true,
+						"streaming": null,
+						"hasMore": false
+					},
+					"commit": 160
+				},
+				{
+					"rows": 99,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 49,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"domNodes": 2894,
+					"checkpointDOMCount": 0,
+					"checkpointManifestDOMCount": null,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 164
+				}
+			],
+			"commitSequence": [
+				{
+					"rows": 59,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 29,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 161
+				},
+				{
+					"rows": 99,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 49,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 164
+				}
+			],
+			"outstandingWindowTimers": 0,
+			"pendingWindowTimers": [],
+			"queuedRAFs": 1,
+			"activeSubscriptions": 0,
+			"limits": null
+		},
+		{
+			"cell": "warm-short",
+			"phase": "measured-5",
+			"wallMs": 262.9844159999993,
+			"cpu": {
+				"user": 330253,
+				"system": 2198
+			},
+			"mountWallMs": 5.040291999999681,
+			"mountCPU": {
+				"user": 6498,
+				"system": 116
+			},
+			"parseCPU": {
+				"user": 131,
+				"system": 0
+			},
+			"frameBytes": 35941,
+			"maxRecordBytes": 267,
+			"manifestBytes": 72,
+			"checkpointInputCount": 0,
+			"inputEntries": 100,
+			"measuredFrameInputEntries": 100,
+			"historyPages": 0,
+			"residentRecords": 100,
+			"sequence": [
+				{
+					"rows": 0,
+					"bars": [],
+					"electedAnswers": 0,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": true,
+					"domNodes": 9,
+					"checkpointDOMCount": 0,
+					"checkpointManifestDOMCount": null,
+					"diag": {
+						"records": 100,
+						"hydrated": false,
+						"status": "connecting",
+						"stale": true,
+						"streaming": null,
+						"hasMore": false
+					},
+					"commit": 176
+				},
+				{
+					"rows": 99,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 49,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"domNodes": 2894,
+					"checkpointDOMCount": 0,
+					"checkpointManifestDOMCount": null,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 180
+				}
+			],
+			"commitSequence": [
+				{
+					"rows": 59,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 29,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 177
+				},
+				{
+					"rows": 99,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 49,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 180
+				}
+			],
+			"outstandingWindowTimers": 0,
+			"pendingWindowTimers": [],
+			"queuedRAFs": 1,
+			"activeSubscriptions": 0,
+			"limits": null
+		},
+		{
+			"cell": "resident-reapply-2000",
+			"phase": "cold",
+			"wallMs": 210.02241700000013,
+			"cpu": {
+				"user": 227375,
+				"system": 2571
+			},
+			"mountWallMs": 0.011167000000568805,
+			"mountCPU": {
+				"user": 15,
+				"system": 5
+			},
+			"paired100": {
+				"cpu": {
+					"user": 44548,
+					"system": 279
+				},
+				"wallMs": 33.65712499999972,
+				"view": {
+					"rows": 99,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 49,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"domNodes": 2894,
+					"checkpointDOMCount": 0,
+					"checkpointManifestDOMCount": null,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 189
+				},
+				"limitation": "same frame, has_more=true; follow-up history pages held in flight until unmount"
+			},
+			"parseCPU": {
+				"user": 173,
+				"system": 6
+			},
+			"frameBytes": 35941,
+			"maxRecordBytes": 267,
+			"manifestBytes": 72,
+			"checkpointInputCount": 0,
+			"inputEntries": 2100,
+			"measuredFrameInputEntries": 100,
+			"historyPages": 20,
+			"residentRecords": 2100,
+			"sequence": [
+				{
+					"rows": 499,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 249,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"domNodes": 14495,
+					"checkpointDOMCount": 0,
+					"checkpointManifestDOMCount": null,
+					"diag": {
+						"records": 2100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 228
+				},
+				{
+					"rows": 499,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 249,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"domNodes": 14495,
+					"checkpointDOMCount": 0,
+					"checkpointManifestDOMCount": null,
+					"diag": {
+						"records": 2100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 229
+				}
+			],
+			"commitSequence": [
+				{
+					"rows": 499,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 249,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"diag": {
+						"records": 2100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 229
+				}
+			],
+			"outstandingWindowTimers": 0,
+			"pendingWindowTimers": [],
+			"queuedRAFs": 0,
+			"activeSubscriptions": 0,
+			"limits": "Resident re-snapshot only; reopen with 2k BLOCKED by 200-row paint-cache cap"
+		},
+		{
+			"cell": "resident-reapply-2000",
+			"phase": "warmup",
+			"wallMs": 214.44700000000012,
+			"cpu": {
+				"user": 234520,
+				"system": 3438
+			},
+			"mountWallMs": 0.002750000003288733,
+			"mountCPU": {
+				"user": 5,
+				"system": 4
+			},
+			"paired100": {
+				"cpu": {
+					"user": 31586,
+					"system": 194
+				},
+				"wallMs": 31.908040999998775,
+				"view": {
+					"rows": 99,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 49,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"domNodes": 2894,
+					"checkpointDOMCount": 0,
+					"checkpointManifestDOMCount": null,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 237
+				},
+				"limitation": "same frame, has_more=true; follow-up history pages held in flight until unmount"
+			},
+			"parseCPU": {
+				"user": 139,
+				"system": 1
+			},
+			"frameBytes": 35941,
+			"maxRecordBytes": 267,
+			"manifestBytes": 72,
+			"checkpointInputCount": 0,
+			"inputEntries": 2100,
+			"measuredFrameInputEntries": 100,
+			"historyPages": 20,
+			"residentRecords": 2100,
+			"sequence": [
+				{
+					"rows": 499,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 249,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"domNodes": 14495,
+					"checkpointDOMCount": 0,
+					"checkpointManifestDOMCount": null,
+					"diag": {
+						"records": 2100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 275
+				},
+				{
+					"rows": 499,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 249,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"domNodes": 14495,
+					"checkpointDOMCount": 0,
+					"checkpointManifestDOMCount": null,
+					"diag": {
+						"records": 2100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 276
+				}
+			],
+			"commitSequence": [
+				{
+					"rows": 499,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 249,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"diag": {
+						"records": 2100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 276
+				}
+			],
+			"outstandingWindowTimers": 0,
+			"pendingWindowTimers": [],
+			"queuedRAFs": 0,
+			"activeSubscriptions": 0,
+			"limits": "Resident re-snapshot only; reopen with 2k BLOCKED by 200-row paint-cache cap"
+		},
+		{
+			"cell": "resident-reapply-2000",
+			"phase": "measured-1",
+			"wallMs": 217.15333299999838,
+			"cpu": {
+				"user": 249701,
+				"system": 698
+			},
+			"mountWallMs": 0.0062090000028547365,
+			"mountCPU": {
+				"user": 9,
+				"system": 4
+			},
+			"paired100": {
+				"cpu": {
+					"user": 43771,
+					"system": 1194
+				},
+				"wallMs": 34.320041000002675,
+				"view": {
+					"rows": 99,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 49,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"domNodes": 2894,
+					"checkpointDOMCount": 0,
+					"checkpointManifestDOMCount": null,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 284
+				},
+				"limitation": "same frame, has_more=true; follow-up history pages held in flight until unmount"
+			},
+			"parseCPU": {
+				"user": 143,
+				"system": 1
+			},
+			"frameBytes": 35941,
+			"maxRecordBytes": 267,
+			"manifestBytes": 72,
+			"checkpointInputCount": 0,
+			"inputEntries": 2100,
+			"measuredFrameInputEntries": 100,
+			"historyPages": 20,
+			"residentRecords": 2100,
+			"sequence": [
+				{
+					"rows": 499,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 249,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"domNodes": 14495,
+					"checkpointDOMCount": 0,
+					"checkpointManifestDOMCount": null,
+					"diag": {
+						"records": 2100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 323
+				},
+				{
+					"rows": 499,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 249,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"domNodes": 14495,
+					"checkpointDOMCount": 0,
+					"checkpointManifestDOMCount": null,
+					"diag": {
+						"records": 2100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 324
+				}
+			],
+			"commitSequence": [
+				{
+					"rows": 499,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 249,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"diag": {
+						"records": 2100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 324
+				}
+			],
+			"outstandingWindowTimers": 0,
+			"pendingWindowTimers": [],
+			"queuedRAFs": 0,
+			"activeSubscriptions": 0,
+			"limits": "Resident re-snapshot only; reopen with 2k BLOCKED by 200-row paint-cache cap"
+		},
+		{
+			"cell": "resident-reapply-2000",
+			"phase": "measured-2",
+			"wallMs": 257.32424999999785,
+			"cpu": {
+				"user": 265374,
+				"system": 7080
+			},
+			"mountWallMs": 0.011417000001529232,
+			"mountCPU": {
+				"user": 18,
+				"system": 5
+			},
+			"paired100": {
+				"cpu": {
+					"user": 58625,
+					"system": 918
+				},
+				"wallMs": 44.29400000000169,
+				"view": {
+					"rows": 99,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 49,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"domNodes": 2894,
+					"checkpointDOMCount": 0,
+					"checkpointManifestDOMCount": null,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 333
+				},
+				"limitation": "same frame, has_more=true; follow-up history pages held in flight until unmount"
+			},
+			"parseCPU": {
+				"user": 151,
+				"system": 1
+			},
+			"frameBytes": 35941,
+			"maxRecordBytes": 267,
+			"manifestBytes": 72,
+			"checkpointInputCount": 0,
+			"inputEntries": 2100,
+			"measuredFrameInputEntries": 100,
+			"historyPages": 20,
+			"residentRecords": 2100,
+			"sequence": [
+				{
+					"rows": 499,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 249,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"domNodes": 14495,
+					"checkpointDOMCount": 0,
+					"checkpointManifestDOMCount": null,
+					"diag": {
+						"records": 2100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 372
+				},
+				{
+					"rows": 499,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 249,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"domNodes": 14495,
+					"checkpointDOMCount": 0,
+					"checkpointManifestDOMCount": null,
+					"diag": {
+						"records": 2100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 373
+				}
+			],
+			"commitSequence": [
+				{
+					"rows": 499,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 249,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"diag": {
+						"records": 2100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 373
+				}
+			],
+			"outstandingWindowTimers": 0,
+			"pendingWindowTimers": [],
+			"queuedRAFs": 0,
+			"activeSubscriptions": 0,
+			"limits": "Resident re-snapshot only; reopen with 2k BLOCKED by 200-row paint-cache cap"
+		},
+		{
+			"cell": "resident-reapply-2000",
+			"phase": "measured-3",
+			"wallMs": 238.41141700000298,
+			"cpu": {
+				"user": 282129,
+				"system": 2072
+			},
+			"mountWallMs": 0.0034580000065034255,
+			"mountCPU": {
+				"user": 6,
+				"system": 3
+			},
+			"paired100": {
+				"cpu": {
+					"user": 55058,
+					"system": 3190
+				},
+				"wallMs": 58.5356249999968,
+				"view": {
+					"rows": 99,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 49,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"domNodes": 2894,
+					"checkpointDOMCount": 0,
+					"checkpointManifestDOMCount": null,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 382
+				},
+				"limitation": "same frame, has_more=true; follow-up history pages held in flight until unmount"
+			},
+			"parseCPU": {
+				"user": 147,
+				"system": 1
+			},
+			"frameBytes": 35941,
+			"maxRecordBytes": 267,
+			"manifestBytes": 72,
+			"checkpointInputCount": 0,
+			"inputEntries": 2100,
+			"measuredFrameInputEntries": 100,
+			"historyPages": 20,
+			"residentRecords": 2100,
+			"sequence": [
+				{
+					"rows": 499,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 249,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"domNodes": 14495,
+					"checkpointDOMCount": 0,
+					"checkpointManifestDOMCount": null,
+					"diag": {
+						"records": 2100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 421
+				},
+				{
+					"rows": 499,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 249,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"domNodes": 14495,
+					"checkpointDOMCount": 0,
+					"checkpointManifestDOMCount": null,
+					"diag": {
+						"records": 2100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 422
+				}
+			],
+			"commitSequence": [
+				{
+					"rows": 499,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 249,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"diag": {
+						"records": 2100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 422
+				}
+			],
+			"outstandingWindowTimers": 0,
+			"pendingWindowTimers": [],
+			"queuedRAFs": 0,
+			"activeSubscriptions": 0,
+			"limits": "Resident re-snapshot only; reopen with 2k BLOCKED by 200-row paint-cache cap"
+		},
+		{
+			"cell": "resident-reapply-2000",
+			"phase": "measured-4",
+			"wallMs": 217.442584000004,
+			"cpu": {
+				"user": 253558,
+				"system": 736
+			},
+			"mountWallMs": 0.006666000001132488,
+			"mountCPU": {
+				"user": 11,
+				"system": 3
+			},
+			"paired100": {
+				"cpu": {
+					"user": 47966,
+					"system": 589
+				},
+				"wallMs": 36.93899999999849,
+				"view": {
+					"rows": 99,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 49,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"domNodes": 2894,
+					"checkpointDOMCount": 0,
+					"checkpointManifestDOMCount": null,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 430
+				},
+				"limitation": "same frame, has_more=true; follow-up history pages held in flight until unmount"
+			},
+			"parseCPU": {
+				"user": 149,
+				"system": 2
+			},
+			"frameBytes": 35941,
+			"maxRecordBytes": 267,
+			"manifestBytes": 72,
+			"checkpointInputCount": 0,
+			"inputEntries": 2100,
+			"measuredFrameInputEntries": 100,
+			"historyPages": 20,
+			"residentRecords": 2100,
+			"sequence": [
+				{
+					"rows": 499,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 249,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"domNodes": 14495,
+					"checkpointDOMCount": 0,
+					"checkpointManifestDOMCount": null,
+					"diag": {
+						"records": 2100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 469
+				},
+				{
+					"rows": 499,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 249,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"domNodes": 14495,
+					"checkpointDOMCount": 0,
+					"checkpointManifestDOMCount": null,
+					"diag": {
+						"records": 2100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 470
+				}
+			],
+			"commitSequence": [
+				{
+					"rows": 499,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 249,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"diag": {
+						"records": 2100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 470
+				}
+			],
+			"outstandingWindowTimers": 0,
+			"pendingWindowTimers": [],
+			"queuedRAFs": 0,
+			"activeSubscriptions": 0,
+			"limits": "Resident re-snapshot only; reopen with 2k BLOCKED by 200-row paint-cache cap"
+		},
+		{
+			"cell": "resident-reapply-2000",
+			"phase": "measured-5",
+			"wallMs": 288.06612499999756,
+			"cpu": {
+				"user": 300097,
+				"system": 3489
+			},
+			"mountWallMs": 0.007417000000714324,
+			"mountCPU": {
+				"user": 13,
+				"system": 4
+			},
+			"paired100": {
+				"cpu": {
+					"user": 57857,
+					"system": 238
+				},
+				"wallMs": 44.82970799999748,
+				"view": {
+					"rows": 99,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 49,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"domNodes": 2894,
+					"checkpointDOMCount": 0,
+					"checkpointManifestDOMCount": null,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 478
+				},
+				"limitation": "same frame, has_more=true; follow-up history pages held in flight until unmount"
+			},
+			"parseCPU": {
+				"user": 189,
+				"system": 3
+			},
+			"frameBytes": 35941,
+			"maxRecordBytes": 267,
+			"manifestBytes": 72,
+			"checkpointInputCount": 0,
+			"inputEntries": 2100,
+			"measuredFrameInputEntries": 100,
+			"historyPages": 20,
+			"residentRecords": 2100,
+			"sequence": [
+				{
+					"rows": 499,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 249,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"domNodes": 14495,
+					"checkpointDOMCount": 0,
+					"checkpointManifestDOMCount": null,
+					"diag": {
+						"records": 2100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 516
+				},
+				{
+					"rows": 499,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 249,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"domNodes": 14495,
+					"checkpointDOMCount": 0,
+					"checkpointManifestDOMCount": null,
+					"diag": {
+						"records": 2100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 517
+				}
+			],
+			"commitSequence": [
+				{
+					"rows": 499,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 249,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"diag": {
+						"records": 2100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 517
+				}
+			],
+			"outstandingWindowTimers": 0,
+			"pendingWindowTimers": [],
+			"queuedRAFs": 0,
+			"activeSubscriptions": 0,
+			"limits": "Resident re-snapshot only; reopen with 2k BLOCKED by 200-row paint-cache cap"
+		},
+		{
+			"cell": "user-512k",
+			"phase": "cold",
+			"wallMs": 453.04483400000026,
+			"cpu": {
+				"user": 511288,
+				"system": 5293
+			},
+			"mountWallMs": 4.76295800000662,
+			"mountCPU": {
+				"user": 4824,
+				"system": 73
+			},
+			"parseCPU": {
+				"user": 358,
+				"system": 43
+			},
+			"frameBytes": 560205,
+			"maxRecordBytes": 524460,
+			"manifestBytes": 72,
+			"checkpointInputCount": 0,
+			"inputEntries": 100,
+			"measuredFrameInputEntries": 100,
+			"historyPages": 0,
+			"residentRecords": 100,
+			"sequence": [
+				{
+					"rows": 0,
+					"bars": [],
+					"electedAnswers": 0,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": true,
+					"domNodes": 9,
+					"checkpointDOMCount": 0,
+					"checkpointManifestDOMCount": null,
+					"diag": {
+						"records": 0,
+						"hydrated": false,
+						"status": "connecting",
+						"stale": false,
+						"streaming": null,
+						"hasMore": false
+					},
+					"commit": 521
+				},
+				{
+					"rows": 99,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 49,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"domNodes": 2894,
+					"checkpointDOMCount": 0,
+					"checkpointManifestDOMCount": null,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 526
+				}
+			],
+			"commitSequence": [
+				{
+					"rows": 59,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 29,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 522
+				},
+				{
+					"rows": 99,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 49,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 526
+				}
+			],
+			"outstandingWindowTimers": 0,
+			"pendingWindowTimers": [],
+			"queuedRAFs": 1,
+			"activeSubscriptions": 0,
+			"limits": "Oversize single-record exception; backend byte cap not exercised"
+		},
+		{
+			"cell": "user-512k",
+			"phase": "warmup",
+			"wallMs": 391.3263330000045,
+			"cpu": {
+				"user": 449682,
+				"system": 3816
+			},
+			"mountWallMs": 5.374583000011626,
+			"mountCPU": {
+				"user": 5882,
+				"system": 182
+			},
+			"parseCPU": {
+				"user": 383,
+				"system": 49
+			},
+			"frameBytes": 560205,
+			"maxRecordBytes": 524460,
+			"manifestBytes": 72,
+			"checkpointInputCount": 0,
+			"inputEntries": 100,
+			"measuredFrameInputEntries": 100,
+			"historyPages": 0,
+			"residentRecords": 100,
+			"sequence": [
+				{
+					"rows": 0,
+					"bars": [],
+					"electedAnswers": 0,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": true,
+					"domNodes": 9,
+					"checkpointDOMCount": 0,
+					"checkpointManifestDOMCount": null,
+					"diag": {
+						"records": 0,
+						"hydrated": false,
+						"status": "connecting",
+						"stale": false,
+						"streaming": null,
+						"hasMore": false
+					},
+					"commit": 530
+				},
+				{
+					"rows": 99,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 49,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"domNodes": 2894,
+					"checkpointDOMCount": 0,
+					"checkpointManifestDOMCount": null,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 535
+				}
+			],
+			"commitSequence": [
+				{
+					"rows": 59,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 29,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 531
+				},
+				{
+					"rows": 99,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 49,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 535
+				}
+			],
+			"outstandingWindowTimers": 0,
+			"pendingWindowTimers": [],
+			"queuedRAFs": 1,
+			"activeSubscriptions": 0,
+			"limits": "Oversize single-record exception; backend byte cap not exercised"
+		},
+		{
+			"cell": "user-512k",
+			"phase": "measured-1",
+			"wallMs": 376.8126670000056,
+			"cpu": {
+				"user": 440569,
+				"system": 1894
+			},
+			"mountWallMs": 4.558540999991237,
+			"mountCPU": {
+				"user": 4524,
+				"system": 90
+			},
+			"parseCPU": {
+				"user": 336,
+				"system": 38
+			},
+			"frameBytes": 560205,
+			"maxRecordBytes": 524460,
+			"manifestBytes": 72,
+			"checkpointInputCount": 0,
+			"inputEntries": 100,
+			"measuredFrameInputEntries": 100,
+			"historyPages": 0,
+			"residentRecords": 100,
+			"sequence": [
+				{
+					"rows": 0,
+					"bars": [],
+					"electedAnswers": 0,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": true,
+					"domNodes": 9,
+					"checkpointDOMCount": 0,
+					"checkpointManifestDOMCount": null,
+					"diag": {
+						"records": 0,
+						"hydrated": false,
+						"status": "connecting",
+						"stale": false,
+						"streaming": null,
+						"hasMore": false
+					},
+					"commit": 539
+				},
+				{
+					"rows": 99,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 49,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"domNodes": 2894,
+					"checkpointDOMCount": 0,
+					"checkpointManifestDOMCount": null,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 544
+				}
+			],
+			"commitSequence": [
+				{
+					"rows": 59,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 29,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 540
+				},
+				{
+					"rows": 99,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 49,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 544
+				}
+			],
+			"outstandingWindowTimers": 0,
+			"pendingWindowTimers": [],
+			"queuedRAFs": 1,
+			"activeSubscriptions": 0,
+			"limits": "Oversize single-record exception; backend byte cap not exercised"
+		},
+		{
+			"cell": "user-512k",
+			"phase": "measured-2",
+			"wallMs": 356.2672089999978,
+			"cpu": {
+				"user": 409329,
+				"system": 8876
+			},
+			"mountWallMs": 5.0871250000054715,
+			"mountCPU": {
+				"user": 6463,
+				"system": 74
+			},
+			"parseCPU": {
+				"user": 327,
+				"system": 32
+			},
+			"frameBytes": 560205,
+			"maxRecordBytes": 524460,
+			"manifestBytes": 72,
+			"checkpointInputCount": 0,
+			"inputEntries": 100,
+			"measuredFrameInputEntries": 100,
+			"historyPages": 0,
+			"residentRecords": 100,
+			"sequence": [
+				{
+					"rows": 0,
+					"bars": [],
+					"electedAnswers": 0,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": true,
+					"domNodes": 9,
+					"checkpointDOMCount": 0,
+					"checkpointManifestDOMCount": null,
+					"diag": {
+						"records": 0,
+						"hydrated": false,
+						"status": "connecting",
+						"stale": false,
+						"streaming": null,
+						"hasMore": false
+					},
+					"commit": 548
+				},
+				{
+					"rows": 99,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 49,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"domNodes": 2894,
+					"checkpointDOMCount": 0,
+					"checkpointManifestDOMCount": null,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 553
+				}
+			],
+			"commitSequence": [
+				{
+					"rows": 59,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 29,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 549
+				},
+				{
+					"rows": 99,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 49,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 553
+				}
+			],
+			"outstandingWindowTimers": 0,
+			"pendingWindowTimers": [],
+			"queuedRAFs": 1,
+			"activeSubscriptions": 0,
+			"limits": "Oversize single-record exception; backend byte cap not exercised"
+		},
+		{
+			"cell": "user-512k",
+			"phase": "measured-3",
+			"wallMs": 508.4939160000067,
+			"cpu": {
+				"user": 1526565,
+				"system": 21381
+			},
+			"mountWallMs": 3.8729999999923166,
+			"mountCPU": {
+				"user": 3976,
+				"system": 58
+			},
+			"parseCPU": {
+				"user": 299,
+				"system": 30
+			},
+			"frameBytes": 560205,
+			"maxRecordBytes": 524460,
+			"manifestBytes": 72,
+			"checkpointInputCount": 0,
+			"inputEntries": 100,
+			"measuredFrameInputEntries": 100,
+			"historyPages": 0,
+			"residentRecords": 100,
+			"sequence": [
+				{
+					"rows": 0,
+					"bars": [],
+					"electedAnswers": 0,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": true,
+					"domNodes": 9,
+					"checkpointDOMCount": 0,
+					"checkpointManifestDOMCount": null,
+					"diag": {
+						"records": 0,
+						"hydrated": false,
+						"status": "connecting",
+						"stale": false,
+						"streaming": null,
+						"hasMore": false
+					},
+					"commit": 556
+				},
+				{
+					"rows": 99,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 49,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"domNodes": 2894,
+					"checkpointDOMCount": 0,
+					"checkpointManifestDOMCount": null,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 561
+				}
+			],
+			"commitSequence": [
+				{
+					"rows": 59,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 29,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 557
+				},
+				{
+					"rows": 99,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 49,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 561
+				}
+			],
+			"outstandingWindowTimers": 0,
+			"pendingWindowTimers": [],
+			"queuedRAFs": 1,
+			"activeSubscriptions": 0,
+			"limits": "Oversize single-record exception; backend byte cap not exercised"
+		},
+		{
+			"cell": "user-512k",
+			"phase": "measured-4",
+			"wallMs": 390.8385830000043,
+			"cpu": {
+				"user": 510598,
+				"system": 2826
+			},
+			"mountWallMs": 4.93300000000454,
+			"mountCPU": {
+				"user": 4738,
+				"system": 56
+			},
+			"parseCPU": {
+				"user": 349,
+				"system": 41
+			},
+			"frameBytes": 560205,
+			"maxRecordBytes": 524460,
+			"manifestBytes": 72,
+			"checkpointInputCount": 0,
+			"inputEntries": 100,
+			"measuredFrameInputEntries": 100,
+			"historyPages": 0,
+			"residentRecords": 100,
+			"sequence": [
+				{
+					"rows": 0,
+					"bars": [],
+					"electedAnswers": 0,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": true,
+					"domNodes": 9,
+					"checkpointDOMCount": 0,
+					"checkpointManifestDOMCount": null,
+					"diag": {
+						"records": 0,
+						"hydrated": false,
+						"status": "connecting",
+						"stale": false,
+						"streaming": null,
+						"hasMore": false
+					},
+					"commit": 565
+				},
+				{
+					"rows": 99,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 49,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"domNodes": 2894,
+					"checkpointDOMCount": 0,
+					"checkpointManifestDOMCount": null,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 570
+				}
+			],
+			"commitSequence": [
+				{
+					"rows": 59,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 29,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 566
+				},
+				{
+					"rows": 99,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 49,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 570
+				}
+			],
+			"outstandingWindowTimers": 0,
+			"pendingWindowTimers": [],
+			"queuedRAFs": 1,
+			"activeSubscriptions": 0,
+			"limits": "Oversize single-record exception; backend byte cap not exercised"
+		},
+		{
+			"cell": "user-512k",
+			"phase": "measured-5",
+			"wallMs": 362.76874999998836,
+			"cpu": {
+				"user": 444003,
+				"system": 4954
+			},
+			"mountWallMs": 4.690374999991036,
+			"mountCPU": {
+				"user": 4604,
+				"system": 110
+			},
+			"parseCPU": {
+				"user": 334,
+				"system": 43
+			},
+			"frameBytes": 560205,
+			"maxRecordBytes": 524460,
+			"manifestBytes": 72,
+			"checkpointInputCount": 0,
+			"inputEntries": 100,
+			"measuredFrameInputEntries": 100,
+			"historyPages": 0,
+			"residentRecords": 100,
+			"sequence": [
+				{
+					"rows": 0,
+					"bars": [],
+					"electedAnswers": 0,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": true,
+					"domNodes": 9,
+					"checkpointDOMCount": 0,
+					"checkpointManifestDOMCount": null,
+					"diag": {
+						"records": 0,
+						"hydrated": false,
+						"status": "connecting",
+						"stale": false,
+						"streaming": null,
+						"hasMore": false
+					},
+					"commit": 574
+				},
+				{
+					"rows": 99,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 49,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"domNodes": 2894,
+					"checkpointDOMCount": 0,
+					"checkpointManifestDOMCount": null,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 579
+				}
+			],
+			"commitSequence": [
+				{
+					"rows": 59,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 29,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 575
+				},
+				{
+					"rows": 99,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 49,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 579
+				}
+			],
+			"outstandingWindowTimers": 0,
+			"pendingWindowTimers": [],
+			"queuedRAFs": 1,
+			"activeSubscriptions": 0,
+			"limits": "Oversize single-record exception; backend byte cap not exercised"
+		},
+		{
+			"cell": "tool-512k",
+			"phase": "cold",
+			"wallMs": 299.89158399999724,
+			"cpu": {
+				"user": 370143,
+				"system": 4494
+			},
+			"mountWallMs": 3.61445900000399,
+			"mountCPU": {
+				"user": 4223,
+				"system": 53
+			},
+			"parseCPU": {
+				"user": 282,
+				"system": 34
+			},
+			"frameBytes": 560205,
+			"maxRecordBytes": 524531,
+			"manifestBytes": 72,
+			"checkpointInputCount": 0,
+			"inputEntries": 100,
+			"measuredFrameInputEntries": 100,
+			"historyPages": 0,
+			"residentRecords": 100,
+			"sequence": [
+				{
+					"rows": 0,
+					"bars": [],
+					"electedAnswers": 0,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": true,
+					"domNodes": 9,
+					"checkpointDOMCount": 0,
+					"checkpointManifestDOMCount": null,
+					"diag": {
+						"records": 0,
+						"hydrated": false,
+						"status": "connecting",
+						"stale": false,
+						"streaming": null,
+						"hasMore": false
+					},
+					"commit": 583
+				},
+				{
+					"rows": 99,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 49,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"domNodes": 2894,
+					"checkpointDOMCount": 0,
+					"checkpointManifestDOMCount": null,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 588
+				}
+			],
+			"commitSequence": [
+				{
+					"rows": 59,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 29,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 584
+				},
+				{
+					"rows": 99,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 49,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 588
+				}
+			],
+			"outstandingWindowTimers": 0,
+			"pendingWindowTimers": [],
+			"queuedRAFs": 1,
+			"activeSubscriptions": 0,
+			"limits": "Oversize single-record exception; backend byte cap not exercised"
+		},
+		{
+			"cell": "tool-512k",
+			"phase": "warmup",
+			"wallMs": 297.8311670000112,
+			"cpu": {
+				"user": 370323,
+				"system": 3870
+			},
+			"mountWallMs": 4.230666999996174,
+			"mountCPU": {
+				"user": 4251,
+				"system": 47
+			},
+			"parseCPU": {
+				"user": 288,
+				"system": 30
+			},
+			"frameBytes": 560205,
+			"maxRecordBytes": 524531,
+			"manifestBytes": 72,
+			"checkpointInputCount": 0,
+			"inputEntries": 100,
+			"measuredFrameInputEntries": 100,
+			"historyPages": 0,
+			"residentRecords": 100,
+			"sequence": [
+				{
+					"rows": 0,
+					"bars": [],
+					"electedAnswers": 0,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": true,
+					"domNodes": 9,
+					"checkpointDOMCount": 0,
+					"checkpointManifestDOMCount": null,
+					"diag": {
+						"records": 0,
+						"hydrated": false,
+						"status": "connecting",
+						"stale": false,
+						"streaming": null,
+						"hasMore": false
+					},
+					"commit": 592
+				},
+				{
+					"rows": 99,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 49,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"domNodes": 2894,
+					"checkpointDOMCount": 0,
+					"checkpointManifestDOMCount": null,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 597
+				}
+			],
+			"commitSequence": [
+				{
+					"rows": 59,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 29,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 593
+				},
+				{
+					"rows": 99,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 49,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 597
+				}
+			],
+			"outstandingWindowTimers": 0,
+			"pendingWindowTimers": [],
+			"queuedRAFs": 1,
+			"activeSubscriptions": 0,
+			"limits": "Oversize single-record exception; backend byte cap not exercised"
+		},
+		{
+			"cell": "tool-512k",
+			"phase": "measured-1",
+			"wallMs": 297.10175000000163,
+			"cpu": {
+				"user": 362642,
+				"system": 4768
+			},
+			"mountWallMs": 4.075874999994994,
+			"mountCPU": {
+				"user": 4051,
+				"system": 80
+			},
+			"parseCPU": {
+				"user": 334,
+				"system": 58
+			},
+			"frameBytes": 560205,
+			"maxRecordBytes": 524531,
+			"manifestBytes": 72,
+			"checkpointInputCount": 0,
+			"inputEntries": 100,
+			"measuredFrameInputEntries": 100,
+			"historyPages": 0,
+			"residentRecords": 100,
+			"sequence": [
+				{
+					"rows": 0,
+					"bars": [],
+					"electedAnswers": 0,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": true,
+					"domNodes": 9,
+					"checkpointDOMCount": 0,
+					"checkpointManifestDOMCount": null,
+					"diag": {
+						"records": 0,
+						"hydrated": false,
+						"status": "connecting",
+						"stale": false,
+						"streaming": null,
+						"hasMore": false
+					},
+					"commit": 601
+				},
+				{
+					"rows": 99,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 49,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"domNodes": 2894,
+					"checkpointDOMCount": 0,
+					"checkpointManifestDOMCount": null,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 606
+				}
+			],
+			"commitSequence": [
+				{
+					"rows": 59,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 29,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 602
+				},
+				{
+					"rows": 99,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 49,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 606
+				}
+			],
+			"outstandingWindowTimers": 0,
+			"pendingWindowTimers": [],
+			"queuedRAFs": 1,
+			"activeSubscriptions": 0,
+			"limits": "Oversize single-record exception; backend byte cap not exercised"
+		},
+		{
+			"cell": "tool-512k",
+			"phase": "measured-2",
+			"wallMs": 296.56329199999163,
+			"cpu": {
+				"user": 360157,
+				"system": 5911
+			},
+			"mountWallMs": 5.204458000007435,
+			"mountCPU": {
+				"user": 5128,
+				"system": 204
+			},
+			"parseCPU": {
+				"user": 310,
+				"system": 38
+			},
+			"frameBytes": 560205,
+			"maxRecordBytes": 524531,
+			"manifestBytes": 72,
+			"checkpointInputCount": 0,
+			"inputEntries": 100,
+			"measuredFrameInputEntries": 100,
+			"historyPages": 0,
+			"residentRecords": 100,
+			"sequence": [
+				{
+					"rows": 0,
+					"bars": [],
+					"electedAnswers": 0,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": true,
+					"domNodes": 9,
+					"checkpointDOMCount": 0,
+					"checkpointManifestDOMCount": null,
+					"diag": {
+						"records": 0,
+						"hydrated": false,
+						"status": "connecting",
+						"stale": false,
+						"streaming": null,
+						"hasMore": false
+					},
+					"commit": 610
+				},
+				{
+					"rows": 99,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 49,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"domNodes": 2894,
+					"checkpointDOMCount": 0,
+					"checkpointManifestDOMCount": null,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 615
+				}
+			],
+			"commitSequence": [
+				{
+					"rows": 59,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 29,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 611
+				},
+				{
+					"rows": 99,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 49,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 615
+				}
+			],
+			"outstandingWindowTimers": 0,
+			"pendingWindowTimers": [],
+			"queuedRAFs": 1,
+			"activeSubscriptions": 0,
+			"limits": "Oversize single-record exception; backend byte cap not exercised"
+		},
+		{
+			"cell": "tool-512k",
+			"phase": "measured-3",
+			"wallMs": 298.36454200001026,
+			"cpu": {
+				"user": 365520,
+				"system": 3839
+			},
+			"mountWallMs": 4.633958000005805,
+			"mountCPU": {
+				"user": 5180,
+				"system": 115
+			},
+			"parseCPU": {
+				"user": 309,
+				"system": 51
+			},
+			"frameBytes": 560205,
+			"maxRecordBytes": 524531,
+			"manifestBytes": 72,
+			"checkpointInputCount": 0,
+			"inputEntries": 100,
+			"measuredFrameInputEntries": 100,
+			"historyPages": 0,
+			"residentRecords": 100,
+			"sequence": [
+				{
+					"rows": 0,
+					"bars": [],
+					"electedAnswers": 0,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": true,
+					"domNodes": 9,
+					"checkpointDOMCount": 0,
+					"checkpointManifestDOMCount": null,
+					"diag": {
+						"records": 0,
+						"hydrated": false,
+						"status": "connecting",
+						"stale": false,
+						"streaming": null,
+						"hasMore": false
+					},
+					"commit": 619
+				},
+				{
+					"rows": 99,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 49,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"domNodes": 2894,
+					"checkpointDOMCount": 0,
+					"checkpointManifestDOMCount": null,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 624
+				}
+			],
+			"commitSequence": [
+				{
+					"rows": 59,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 29,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 620
+				},
+				{
+					"rows": 99,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 49,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 624
+				}
+			],
+			"outstandingWindowTimers": 0,
+			"pendingWindowTimers": [],
+			"queuedRAFs": 1,
+			"activeSubscriptions": 0,
+			"limits": "Oversize single-record exception; backend byte cap not exercised"
+		},
+		{
+			"cell": "tool-512k",
+			"phase": "measured-4",
+			"wallMs": 340.0304999999935,
+			"cpu": {
+				"user": 408017,
+				"system": 4435
+			},
+			"mountWallMs": 5.117291999995359,
+			"mountCPU": {
+				"user": 4878,
+				"system": 71
+			},
+			"parseCPU": {
+				"user": 306,
+				"system": 28
+			},
+			"frameBytes": 560205,
+			"maxRecordBytes": 524531,
+			"manifestBytes": 72,
+			"checkpointInputCount": 0,
+			"inputEntries": 100,
+			"measuredFrameInputEntries": 100,
+			"historyPages": 0,
+			"residentRecords": 100,
+			"sequence": [
+				{
+					"rows": 0,
+					"bars": [],
+					"electedAnswers": 0,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": true,
+					"domNodes": 9,
+					"checkpointDOMCount": 0,
+					"checkpointManifestDOMCount": null,
+					"diag": {
+						"records": 0,
+						"hydrated": false,
+						"status": "connecting",
+						"stale": false,
+						"streaming": null,
+						"hasMore": false
+					},
+					"commit": 628
+				},
+				{
+					"rows": 99,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 49,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"domNodes": 2894,
+					"checkpointDOMCount": 0,
+					"checkpointManifestDOMCount": null,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 633
+				}
+			],
+			"commitSequence": [
+				{
+					"rows": 59,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 29,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 629
+				},
+				{
+					"rows": 99,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 49,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 633
+				}
+			],
+			"outstandingWindowTimers": 0,
+			"pendingWindowTimers": [],
+			"queuedRAFs": 1,
+			"activeSubscriptions": 0,
+			"limits": "Oversize single-record exception; backend byte cap not exercised"
+		},
+		{
+			"cell": "tool-512k",
+			"phase": "measured-5",
+			"wallMs": 310.5909580000007,
+			"cpu": {
+				"user": 376853,
+				"system": 2987
+			},
+			"mountWallMs": 3.9754159999865806,
+			"mountCPU": {
+				"user": 4130,
+				"system": 53
+			},
+			"parseCPU": {
+				"user": 341,
+				"system": 35
+			},
+			"frameBytes": 560205,
+			"maxRecordBytes": 524531,
+			"manifestBytes": 72,
+			"checkpointInputCount": 0,
+			"inputEntries": 100,
+			"measuredFrameInputEntries": 100,
+			"historyPages": 0,
+			"residentRecords": 100,
+			"sequence": [
+				{
+					"rows": 0,
+					"bars": [],
+					"electedAnswers": 0,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": true,
+					"domNodes": 9,
+					"checkpointDOMCount": 0,
+					"checkpointManifestDOMCount": null,
+					"diag": {
+						"records": 0,
+						"hydrated": false,
+						"status": "connecting",
+						"stale": false,
+						"streaming": null,
+						"hasMore": false
+					},
+					"commit": 637
+				},
+				{
+					"rows": 99,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 49,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"domNodes": 2894,
+					"checkpointDOMCount": 0,
+					"checkpointManifestDOMCount": null,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 642
+				}
+			],
+			"commitSequence": [
+				{
+					"rows": 59,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 29,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 638
+				},
+				{
+					"rows": 99,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 49,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 642
+				}
+			],
+			"outstandingWindowTimers": 0,
+			"pendingWindowTimers": [],
+			"queuedRAFs": 1,
+			"activeSubscriptions": 0,
+			"limits": "Oversize single-record exception; backend byte cap not exercised"
+		},
+		{
+			"cell": "manifest-16k",
+			"phase": "cold",
+			"wallMs": 305.38400000000547,
+			"cpu": {
+				"user": 387290,
+				"system": 3643
+			},
+			"mountWallMs": 4.851708999995026,
+			"mountCPU": {
+				"user": 5225,
+				"system": 143
+			},
+			"parseCPU": {
+				"user": 138,
+				"system": 0
+			},
+			"frameBytes": 35941,
+			"maxRecordBytes": 267,
+			"manifestBytes": 1966753,
+			"checkpointInputCount": 16000,
+			"inputEntries": 100,
+			"measuredFrameInputEntries": 100,
+			"historyPages": 0,
+			"residentRecords": 100,
+			"sequence": [
+				{
+					"rows": 0,
+					"bars": [],
+					"electedAnswers": 0,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": true,
+					"domNodes": 9,
+					"checkpointDOMCount": 0,
+					"checkpointManifestDOMCount": null,
+					"diag": {
+						"records": 0,
+						"hydrated": false,
+						"status": "connecting",
+						"stale": false,
+						"streaming": null,
+						"hasMore": false
+					},
+					"commit": 646
+				},
+				{
+					"rows": 99,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 49,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"domNodes": 2989,
+					"checkpointDOMCount": 46,
+					"checkpointManifestDOMCount": "16000",
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 651
+				}
+			],
+			"commitSequence": [
+				{
+					"rows": 59,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 29,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 647
+				},
+				{
+					"rows": 99,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 49,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 651
+				}
+			],
+			"outstandingWindowTimers": 0,
+			"pendingWindowTimers": [],
+			"queuedRAFs": 1,
+			"activeSubscriptions": 0,
+			"limits": null
+		},
+		{
+			"cell": "manifest-16k",
+			"phase": "warmup",
+			"wallMs": 334.6086249999935,
+			"cpu": {
+				"user": 402968,
+				"system": 4849
+			},
+			"mountWallMs": 3.999334000007366,
+			"mountCPU": {
+				"user": 4272,
+				"system": 78
+			},
+			"parseCPU": {
+				"user": 126,
+				"system": 1
+			},
+			"frameBytes": 35941,
+			"maxRecordBytes": 267,
+			"manifestBytes": 1966753,
+			"checkpointInputCount": 16000,
+			"inputEntries": 100,
+			"measuredFrameInputEntries": 100,
+			"historyPages": 0,
+			"residentRecords": 100,
+			"sequence": [
+				{
+					"rows": 0,
+					"bars": [],
+					"electedAnswers": 0,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": true,
+					"domNodes": 9,
+					"checkpointDOMCount": 0,
+					"checkpointManifestDOMCount": null,
+					"diag": {
+						"records": 0,
+						"hydrated": false,
+						"status": "connecting",
+						"stale": false,
+						"streaming": null,
+						"hasMore": false
+					},
+					"commit": 654
+				},
+				{
+					"rows": 99,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 49,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"domNodes": 2989,
+					"checkpointDOMCount": 46,
+					"checkpointManifestDOMCount": "16000",
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 659
+				}
+			],
+			"commitSequence": [
+				{
+					"rows": 59,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 29,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 655
+				},
+				{
+					"rows": 99,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 49,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 659
+				}
+			],
+			"outstandingWindowTimers": 0,
+			"pendingWindowTimers": [],
+			"queuedRAFs": 1,
+			"activeSubscriptions": 0,
+			"limits": null
+		},
+		{
+			"cell": "manifest-16k",
+			"phase": "measured-1",
+			"wallMs": 333.6556249999994,
+			"cpu": {
+				"user": 396375,
+				"system": 4158
+			},
+			"mountWallMs": 4.113000000012107,
+			"mountCPU": {
+				"user": 4144,
+				"system": 52
+			},
+			"parseCPU": {
+				"user": 134,
+				"system": 0
+			},
+			"frameBytes": 35941,
+			"maxRecordBytes": 267,
+			"manifestBytes": 1966753,
+			"checkpointInputCount": 16000,
+			"inputEntries": 100,
+			"measuredFrameInputEntries": 100,
+			"historyPages": 0,
+			"residentRecords": 100,
+			"sequence": [
+				{
+					"rows": 0,
+					"bars": [],
+					"electedAnswers": 0,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": true,
+					"domNodes": 9,
+					"checkpointDOMCount": 0,
+					"checkpointManifestDOMCount": null,
+					"diag": {
+						"records": 0,
+						"hydrated": false,
+						"status": "connecting",
+						"stale": false,
+						"streaming": null,
+						"hasMore": false
+					},
+					"commit": 663
+				},
+				{
+					"rows": 99,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 49,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"domNodes": 2989,
+					"checkpointDOMCount": 46,
+					"checkpointManifestDOMCount": "16000",
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 668
+				}
+			],
+			"commitSequence": [
+				{
+					"rows": 59,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 29,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 664
+				},
+				{
+					"rows": 99,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 49,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 668
+				}
+			],
+			"outstandingWindowTimers": 0,
+			"pendingWindowTimers": [],
+			"queuedRAFs": 1,
+			"activeSubscriptions": 0,
+			"limits": null
+		},
+		{
+			"cell": "manifest-16k",
+			"phase": "measured-2",
+			"wallMs": 299.1227079999953,
+			"cpu": {
+				"user": 363964,
+				"system": 2902
+			},
+			"mountWallMs": 4.163709000000381,
+			"mountCPU": {
+				"user": 4297,
+				"system": 48
+			},
+			"parseCPU": {
+				"user": 127,
+				"system": 1
+			},
+			"frameBytes": 35941,
+			"maxRecordBytes": 267,
+			"manifestBytes": 1966753,
+			"checkpointInputCount": 16000,
+			"inputEntries": 100,
+			"measuredFrameInputEntries": 100,
+			"historyPages": 0,
+			"residentRecords": 100,
+			"sequence": [
+				{
+					"rows": 0,
+					"bars": [],
+					"electedAnswers": 0,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": true,
+					"domNodes": 9,
+					"checkpointDOMCount": 0,
+					"checkpointManifestDOMCount": null,
+					"diag": {
+						"records": 0,
+						"hydrated": false,
+						"status": "connecting",
+						"stale": false,
+						"streaming": null,
+						"hasMore": false
+					},
+					"commit": 672
+				},
+				{
+					"rows": 99,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 49,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"domNodes": 2989,
+					"checkpointDOMCount": 46,
+					"checkpointManifestDOMCount": "16000",
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 677
+				}
+			],
+			"commitSequence": [
+				{
+					"rows": 59,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 29,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 673
+				},
+				{
+					"rows": 99,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 49,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 677
+				}
+			],
+			"outstandingWindowTimers": 0,
+			"pendingWindowTimers": [],
+			"queuedRAFs": 1,
+			"activeSubscriptions": 0,
+			"limits": null
+		},
+		{
+			"cell": "manifest-16k",
+			"phase": "measured-3",
+			"wallMs": 299.080375000005,
+			"cpu": {
+				"user": 365422,
+				"system": 2929
+			},
+			"mountWallMs": 3.9519579999905545,
+			"mountCPU": {
+				"user": 5570,
+				"system": 82
+			},
+			"parseCPU": {
+				"user": 126,
+				"system": 3
+			},
+			"frameBytes": 35941,
+			"maxRecordBytes": 267,
+			"manifestBytes": 1966753,
+			"checkpointInputCount": 16000,
+			"inputEntries": 100,
+			"measuredFrameInputEntries": 100,
+			"historyPages": 0,
+			"residentRecords": 100,
+			"sequence": [
+				{
+					"rows": 0,
+					"bars": [],
+					"electedAnswers": 0,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": true,
+					"domNodes": 9,
+					"checkpointDOMCount": 0,
+					"checkpointManifestDOMCount": null,
+					"diag": {
+						"records": 0,
+						"hydrated": false,
+						"status": "connecting",
+						"stale": false,
+						"streaming": null,
+						"hasMore": false
+					},
+					"commit": 681
+				},
+				{
+					"rows": 99,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 49,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"domNodes": 2989,
+					"checkpointDOMCount": 46,
+					"checkpointManifestDOMCount": "16000",
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 686
+				}
+			],
+			"commitSequence": [
+				{
+					"rows": 59,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 29,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 682
+				},
+				{
+					"rows": 99,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 49,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 686
+				}
+			],
+			"outstandingWindowTimers": 0,
+			"pendingWindowTimers": [],
+			"queuedRAFs": 1,
+			"activeSubscriptions": 0,
+			"limits": null
+		},
+		{
+			"cell": "manifest-16k",
+			"phase": "measured-4",
+			"wallMs": 296.5625829999917,
+			"cpu": {
+				"user": 357843,
+				"system": 3933
+			},
+			"mountWallMs": 4.142791999998735,
+			"mountCPU": {
+				"user": 4566,
+				"system": 66
+			},
+			"parseCPU": {
+				"user": 137,
+				"system": 1
+			},
+			"frameBytes": 35941,
+			"maxRecordBytes": 267,
+			"manifestBytes": 1966753,
+			"checkpointInputCount": 16000,
+			"inputEntries": 100,
+			"measuredFrameInputEntries": 100,
+			"historyPages": 0,
+			"residentRecords": 100,
+			"sequence": [
+				{
+					"rows": 0,
+					"bars": [],
+					"electedAnswers": 0,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": true,
+					"domNodes": 9,
+					"checkpointDOMCount": 0,
+					"checkpointManifestDOMCount": null,
+					"diag": {
+						"records": 0,
+						"hydrated": false,
+						"status": "connecting",
+						"stale": false,
+						"streaming": null,
+						"hasMore": false
+					},
+					"commit": 689
+				},
+				{
+					"rows": 99,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 49,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"domNodes": 2989,
+					"checkpointDOMCount": 46,
+					"checkpointManifestDOMCount": "16000",
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 694
+				}
+			],
+			"commitSequence": [
+				{
+					"rows": 59,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 29,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 690
+				},
+				{
+					"rows": 99,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 49,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 694
+				}
+			],
+			"outstandingWindowTimers": 0,
+			"pendingWindowTimers": [],
+			"queuedRAFs": 1,
+			"activeSubscriptions": 0,
+			"limits": null
+		},
+		{
+			"cell": "manifest-16k",
+			"phase": "measured-5",
+			"wallMs": 285.97758399999293,
+			"cpu": {
+				"user": 349111,
+				"system": 2435
+			},
+			"mountWallMs": 3.6662079999950947,
+			"mountCPU": {
+				"user": 3570,
+				"system": 30
+			},
+			"parseCPU": {
+				"user": 129,
+				"system": 1
+			},
+			"frameBytes": 35941,
+			"maxRecordBytes": 267,
+			"manifestBytes": 1966753,
+			"checkpointInputCount": 16000,
+			"inputEntries": 100,
+			"measuredFrameInputEntries": 100,
+			"historyPages": 0,
+			"residentRecords": 100,
+			"sequence": [
+				{
+					"rows": 0,
+					"bars": [],
+					"electedAnswers": 0,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": true,
+					"domNodes": 9,
+					"checkpointDOMCount": 0,
+					"checkpointManifestDOMCount": null,
+					"diag": {
+						"records": 0,
+						"hydrated": false,
+						"status": "connecting",
+						"stale": false,
+						"streaming": null,
+						"hasMore": false
+					},
+					"commit": 698
+				},
+				{
+					"rows": 99,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 49,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"domNodes": 2989,
+					"checkpointDOMCount": 46,
+					"checkpointManifestDOMCount": "16000",
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 703
+				}
+			],
+			"commitSequence": [
+				{
+					"rows": 59,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 29,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 699
+				},
+				{
+					"rows": 99,
+					"bars": ["1 action3:28 PM"],
+					"electedAnswers": 49,
+					"railMarks": 0,
+					"workingLine": null,
+					"placeholder": false,
+					"diag": {
+						"records": 100,
+						"hydrated": true,
+						"status": "live",
+						"stale": false,
+						"streaming": false,
+						"hasMore": true
+					},
+					"commit": 703
+				}
+			],
+			"outstandingWindowTimers": 0,
+			"pendingWindowTimers": [],
+			"queuedRAFs": 1,
+			"activeSubscriptions": 0,
+			"limits": null
+		}
+	],
+	"controls": {
+		"delayedSnapshot": [
+			{
+				"delay": 0,
+				"wallMs": 261.95737499999814,
+				"cpu": {
+					"user": 317883,
+					"system": 2028
+				},
+				"idleCPU": {
+					"user": 1,
+					"system": 0
+				},
+				"idleWallMs": 0.0020409999997355044
+			},
+			{
+				"delay": 200,
+				"wallMs": 466.007666000005,
+				"cpu": {
+					"user": 319986,
+					"system": 2041
+				},
+				"idleCPU": {
+					"user": 278,
+					"system": 22
+				},
+				"idleWallMs": 201.94829099999333
+			}
+		],
+		"lateA": {
+			"pass": true,
+			"before": {
+				"rows": 100,
+				"bars": [],
+				"electedAnswers": 50,
+				"railMarks": 0,
+				"workingLine": null,
+				"placeholder": false,
+				"domNodes": 2911,
+				"checkpointDOMCount": 0,
+				"checkpointManifestDOMCount": null,
+				"diag": {
+					"records": 100,
+					"hydrated": true,
+					"status": "live",
+					"stale": false,
+					"streaming": false,
+					"hasMore": false
+				},
+				"commit": 729
+			},
+			"after": {
+				"rows": 100,
+				"bars": [],
+				"electedAnswers": 50,
+				"railMarks": 0,
+				"workingLine": null,
+				"placeholder": false,
+				"domNodes": 2911,
+				"checkpointDOMCount": 0,
+				"checkpointManifestDOMCount": null,
+				"diag": {
+					"records": 100,
+					"hydrated": true,
+					"status": "live",
+					"stale": false,
+					"streaming": false,
+					"hasMore": false
+				},
+				"commit": 729
+			}
+		},
+		"cachedHold16": [
+			{
+				"status": "connecting",
+				"owed": true,
+				"admitted": false,
+				"hold": true
+			},
+			{
+				"status": "connecting",
+				"owed": true,
+				"admitted": true,
+				"hold": false
+			},
+			{
+				"status": "connecting",
+				"owed": false,
+				"admitted": false,
+				"hold": false
+			},
+			{
+				"status": "connecting",
+				"owed": false,
+				"admitted": true,
+				"hold": false
+			},
+			{
+				"status": "live",
+				"owed": true,
+				"admitted": false,
+				"hold": true
+			},
+			{
+				"status": "live",
+				"owed": true,
+				"admitted": true,
+				"hold": false
+			},
+			{
+				"status": "live",
+				"owed": false,
+				"admitted": false,
+				"hold": false
+			},
+			{
+				"status": "live",
+				"owed": false,
+				"admitted": true,
+				"hold": false
+			},
+			{
+				"status": "reconnecting",
+				"owed": true,
+				"admitted": false,
+				"hold": false
+			},
+			{
+				"status": "reconnecting",
+				"owed": true,
+				"admitted": true,
+				"hold": false
+			},
+			{
+				"status": "reconnecting",
+				"owed": false,
+				"admitted": false,
+				"hold": false
+			},
+			{
+				"status": "reconnecting",
+				"owed": false,
+				"admitted": true,
+				"hold": false
+			},
+			{
+				"status": "unavailable",
+				"owed": true,
+				"admitted": false,
+				"hold": true
+			},
+			{
+				"status": "unavailable",
+				"owed": true,
+				"admitted": true,
+				"hold": false
+			},
+			{
+				"status": "unavailable",
+				"owed": false,
+				"admitted": false,
+				"hold": false
+			},
+			{
+				"status": "unavailable",
+				"owed": false,
+				"admitted": true,
+				"hold": false
+			}
+		],
+		"readiness": {
+			"ready": "facts",
+			"missingRuns": "no facts (not blocked hydration)",
+			"building": "no facts (not blocked hydration)"
+		},
+		"unrelatedMetadata": [
+			{
+				"count": 1000,
+				"inputRecords": 100,
+				"journalOrdinals": 100,
+				"frameBytes": 35904,
+				"classification": "structural boundary only; no upstream metadata ingestion modeled"
+			},
+			{
+				"count": 10000,
+				"inputRecords": 100,
+				"journalOrdinals": 100,
+				"frameBytes": 35904,
+				"classification": "structural boundary only; no upstream metadata ingestion modeled"
+			}
+		],
+		"networkLeaks": 0
+	},
+	"unobserved": [
+		"applyHistoryPage/flush CPU",
+		"buildRows CPU",
+		"actual processed-row count",
+		"native sidebar click start",
+		"paint",
+		"sendability",
+		"real backend response caps"
+	]
+}
