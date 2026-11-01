@@ -15,11 +15,18 @@ reporter buffering can hide progress in other workers. The baseline predates the
 clamp; neither gate is waived. Isolated Darwin/Node24 and Node22.18/two-worker
 controls passed but did not match Ubuntu26.04/Node22.23.4/three workers.
 
-The fixed cohort is child-reader-foot-react, ci-scope and code-review-model,
-in that order. These are shard1 positions34–36 at both controls; the immediate
-preceding check-runtime-deps file owns the last published assertion. Dispatch
-order is known; the original simultaneous worker set is not. No automatic
-expansion to the164-file shard is allowed.
+The first fixed cohort (child-reader-foot-react, ci-scope, code-review-model)
+completed both Linux controls67/67 in run41272712702 on tooling06e85e2. This
+narrows the evidence; it neither reproduces nor clears the full-shard hang.
+
+The next fixed cohort is **check-runtime-deps, child-reader-foot-react, ci-scope**,
+in that order: replace the trailing model test with the immediate predecessor
+that owns the last published assertion (shard1 positions33–35). Three files and
+three workers remain fixed; only that cohort changes. Dispatch order is known;
+the original simultaneous worker set is not. This tests the missing predecessor,
+not a guessed teardown fix. No automatic expansion to the164-file shard or caller
+file selector is allowed. A second execution needs independent delta review/QA
+and its own explicit dispatch authorization; this source change does not run it.
 
 ## Authority, dispatch and cost
 
@@ -81,8 +88,8 @@ notifications/telemetry suppression and explicit workers3:
 
 ```sh
 node scripts/run-desktop-tests.mjs --test-concurrency=3 --test-reporter=tap \
-  scripts/child-reader-foot-react.test.mjs \
-  scripts/ci-scope.test.mjs scripts/code-review-model.test.mjs
+  scripts/check-runtime-deps.test.mjs \
+  scripts/child-reader-foot-react.test.mjs scripts/ci-scope.test.mjs
 ```
 
 It is executed through a real `2>&1 | tee` pipe with pipefail and positional argv.

@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import {
+	FILES,
 	classify,
 	cleanEnv,
 	outputPath,
@@ -20,6 +21,15 @@ import {
  * while investigating their ordering would destroy the original workload.
  * Diagnostic mode executes this file explicitly before either subject.
  */
+test("fixed cohort is exactly the reviewed predecessor trio in runner order", () => {
+	assert.ok(Object.isFrozen(FILES));
+	assert.deepEqual(FILES, [
+		"scripts/check-runtime-deps.test.mjs",
+		"scripts/child-reader-foot-react.test.mjs",
+		"scripts/ci-scope.test.mjs",
+	]);
+});
+
 const PASS_ONE_RE = /^# pass 1$/m;
 const parent = process.env.RUNNER_TEMP ?? process.env.LOCAL_OPERATOR_SCRATCHPAD;
 assert.ok(

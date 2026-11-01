@@ -36,10 +36,13 @@ import {
 import { fileURLToPath } from "node:url";
 import { isEntryPoint } from "./entry-point.mjs";
 
+// The first Linux cohort completed both controls. Replace its trailing model
+// test with the immediate predecessor of the buffered SSR output to test that
+// missing neighbour without widening the cohort or accepting caller selectors.
 export const FILES = Object.freeze([
+	"scripts/check-runtime-deps.test.mjs",
 	"scripts/child-reader-foot-react.test.mjs",
 	"scripts/ci-scope.test.mjs",
-	"scripts/code-review-model.test.mjs",
 ]);
 export const WALL_MS = 90_000;
 export const MEMORY_MB = 3072;
