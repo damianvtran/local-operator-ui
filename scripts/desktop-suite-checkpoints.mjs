@@ -32,9 +32,6 @@ import { isEntryPoint } from "./entry-point.mjs";
 const SELF = fileURLToPath(import.meta.url);
 export const SUITE_MS = 45 * 60_000;
 export const JOB_MS = 50 * 60_000;
-/** Opt-in: node stack reports on SIGUSR2, written into this directory. */
-export const STACK_REPORTS_ENV = "LOCAL_OPERATOR_UI_STACK_REPORTS";
-export const STACK_REPORT_SIGNAL = "SIGUSR2";
 /** Opt-in: kernel census JSONL path. Unset means the probe never starts. */
 export const KERNEL_CENSUS_ENV = "LOCAL_OPERATOR_UI_KERNEL_CENSUS";
 export const KERNEL_CENSUS_SAMPLES = 8;
@@ -386,78 +383,6 @@ export function launch({
 }
 
 /**
- * Ask every owned, still-live process for a stack report at the deadline.
- *
- * WHY HERE. The shard logs that end mid-stream keep the per-lane bound armed
- * and never name a lane, so the instrument that names a blocking frame must
- * live outside the process that froze. Node writes a report on SIGUSR2 only
- * while the target's own event loop is still turning, so this covers the
- * WAITING class (for example a coordinator parked on a pipe it will never
- * drain) and not a process whose loop is hard-blocked; that boundary is pinned
- * by a control rather than papered over.
- *
- * It never decides a verdict and never fails a job: capture is best effort and
- * the existing kill path runs unchanged afterwards.
- */
-export async function captureStacks(
-	state,
-	config,
-	{ signal = STACK_REPORT_SIGNAL, waitMs = 2000 } = {},
-) {
-	const reportDirectory = process.env[STACK_REPORTS_ENV] ?? null;
-	const sent = [];
-	const skipped = [];
-	const skippedDetail = [];
-	// Default off, deliberately: SIGUSR2 without --report-on-signal terminates a
-	// node process, and this instrument may not change how a suite dies outside
-	// the CI job that opts in.
-	if (reportDirectory) {
-		// Only node processes answer SIGUSR2 with a report; any other owned
-		// process would simply die of it, so the signal is scoped by command name
-		// as well as by ownership and liveness.
-		const rows = (config.targets ?? snapshot(config).rows ?? []).filter(
-			(row) =>
-				row.pid > 1 &&
-				row.pid !== process.pid &&
-				!(row.state ?? "").startsWith("Z") &&
-				/(^|\/)(node|nodejs)$/u.test(commandName(row.pid)),
-		);
-		for (const row of rows) {
-			// A process without the report flag dies of SIGUSR2 instead of writing
-			// a report, so capability is checked before any signal is sent.
-			if (!answersReportSignal(row.pid)) {
-				skipped.push(row.pid);
-				skippedDetail.push({ pid: row.pid, reason: "no-report-flag" });
-				continue;
-			}
-			try {
-				process.kill(row.pid, signal);
-				sent.push(row.pid);
-			} catch {
-				skipped.push(row.pid);
-				skippedDetail.push({ pid: row.pid, reason: "signal-failed" });
-			}
-		}
-		if (rows.length === 0) skipped.push("no-owned-live-pid");
-	}
-	const entry = {
-		at: Date.now(),
-		signal,
-		reportDirectory,
-		sent,
-		skipped,
-		skippedDetail,
-	};
-	atomic(join(state, "stack-capture.json"), entry);
-	// No report directory means nothing to wait for: the 2 s grace only exists
-	// to let an opted-in target write its file.
-	if (reportDirectory) await pause(waitMs);
-	const written = reportDirectory ? reportNames(reportDirectory) : [];
-	atomic(join(state, "stack-capture.json"), { ...entry, written });
-	return { ...entry, written };
-}
-
-/**
  * Linux-only kernel census of the owned processes.
  *
  * WHY THIS EXISTS. A process blocked inside the kernel (a write into a pipe no
@@ -639,41 +564,6 @@ function commandName(pid) {
 		return "";
 	}
 }
-
-/**
- * Does this process answer SIGUSR2 with a report? Only a node started with
- * --report-on-signal does; every other owned process would simply be killed by
- * the signal, so the census of candidates has to prove the flag first.
- */
-function answersReportSignal(pid, root = procRoot) {
-	try {
-		const cmdline =
-			process.platform === "linux"
-				? readFileSync(`${root}/${pid}/cmdline`, "utf8")
-				: execFileSync("ps", ["-p", String(pid), "-o", "command="], {
-						encoding: "utf8",
-						timeout: 500,
-					});
-		return cmdline.includes("--report-on-signal");
-	} catch {
-		return false;
-	}
-}
-
-/** Report files a capture produced, bounded and sorted for a stable artifact. */
-export function reportNames(directory) {
-	try {
-		return readdirSync(directory)
-			.filter((name) => name.endsWith(".json"))
-			.sort()
-			.slice(0, 64);
-	} catch {
-		return [];
-	}
-}
-
-// Dependency injection only exercises startup-failure boundaries in synthetic
-// processes; production CLI always uses these exact defaults, with no env knob.
 export async function worker(
 	state,
 	{
@@ -826,9 +716,9 @@ export async function worker(
 				if (censusWatcher) clearInterval(censusWatcher);
 				censusWatcher = null;
 				censusBasis = "suite-start";
+				// The interval is already running on the same timer; only the basis
+				// changes, so a second timer would double the sample cadence.
 				emitCensus();
-				censusTimer = setInterval(emitCensus, censusInterval);
-				censusTimer?.unref?.();
 			} catch {
 				/* Polling failures are not suite failures. */
 			}
@@ -840,19 +730,12 @@ export async function worker(
 		censusTimer = setInterval(emitCensus, censusInterval);
 		censusTimer?.unref?.();
 	}
-	let capturedStacks = false;
 	const deadline = setTimeout(
 		() => {
-			// Capture BEFORE the kill path so a live-but-parked process still answers;
-			// the reap itself is unchanged, only delayed by the bounded wait. The
-			// reason is pinned first so a target that dies of the report signal can
-			// never turn the deadline verdict into an unattributed signal death.
-			if (capturedStacks) return stop("absolute-deadline");
-			capturedStacks = true;
+			// The reason is pinned before any signal so nothing downstream can
+			// reattribute the deadline; the kill path itself is unchanged.
 			reason = "absolute-deadline";
-			void captureStacks(state, config)
-				.catch(() => undefined)
-				.finally(() => stop("absolute-deadline"));
+			stop("absolute-deadline");
 		},
 		Math.max(0, config.deadline - Date.now()),
 	);

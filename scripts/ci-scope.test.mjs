@@ -1328,6 +1328,57 @@ function assertCheckpointUnitParity(commands, blocks) {
 	assert.equal(local[0].split(/\s+/).filter((v) => v === unit).length, 1);
 }
 
+/**
+ * A wrapper-only change to the suite step: exactly one awaited invocation inside
+ * `timeout -k 10 2400`, its status captured and re-exited. A missing bound, a
+ * doubled command, a masked command or a swallowed status is a defect.
+ */
+function assertDeadlineWrappedStep(run, state) {
+	const awaitCommand = `node scripts/desktop-suite-checkpoints.mjs await ${state}`;
+	assert.equal(
+		run.split(awaitCommand).length - 1,
+		1,
+		"exactly one desktop-suite invocation",
+	);
+	assert.ok(
+		run.includes(`timeout -k 10 2400 ${awaitCommand}`),
+		"the await must sit inside the external wall-clock bound",
+	);
+	assert.ok(run.includes("status=$?"), "the exit status must be captured");
+	assert.ok(
+		run.indexOf("status=$?") > run.indexOf(awaitCommand),
+		"the status must be read after the wrapped command, so only the wrapper produces 124",
+	);
+	assert.ok(
+		run.includes('exit "$status"'),
+		"the captured status must be re-exited",
+	);
+	// The failure must be the step's LAST word: appending any fallback to the
+	// final `exit "$status"` swallows a timeout while every other clause passes.
+	assert.equal(
+		run.trimEnd().split("\n").pop().trim(),
+		'exit "$status"',
+		"the captured status must be the block's last statement, with nothing appended",
+	);
+	assert.ok(
+		run.includes("124"),
+		"exit 124 must be reported as the deadline reason",
+	);
+	for (const line of run.split("\n")) {
+		if (!line.includes("desktop-suite-checkpoints.mjs await")) continue;
+		assert.ok(
+			!/\|\||\btrue\b/u.test(line.replace(/\$status/u, "")),
+			"the wrapped command must not carry a success fallback",
+		);
+	}
+	assert.equal(
+		run.replace(awaitCommand, "").split("desktop-suite-checkpoints.mjs await")
+			.length - 1,
+		0,
+		"no second suite invocation may hide behind the wrapper",
+	);
+}
+
 function assertCheckpointSteps(job) {
 	assert.equal(job["timeout-minutes"], 50);
 	const steps = job.steps;
@@ -1341,10 +1392,29 @@ function assertCheckpointSteps(job) {
 		launch[0].run,
 		`node scripts/desktop-suite-checkpoints.mjs launch ${state} scripts/desktop-suite-step.sh "$DESKTOP_SETUP_STARTED_MS"`,
 	);
-	assert.equal(
-		final[0].run,
-		`node scripts/desktop-suite-checkpoints.mjs await ${state}`,
-	);
+	/*
+	 * The step must RETURN for the always() uploads to run, so the await is
+	 * wrapped in an external wall-clock bound. That changes the step's text, not
+	 * its guarantees, and those guarantees are asserted on the WRAPPED text:
+	 * one invocation, the bound around it only, the status captured and
+	 * re-exited so a timeout fails the step, and 124 named as the reason. The
+	 * mutants below prove the check still rejects the defects it was written
+	 * for rather than accepting anything that merely mentions the command.
+	 */
+	assertDeadlineWrappedStep(final[0].run, state);
+	for (const mutant of [
+		final[0].run.replace("timeout -k 10 2400 ", ""),
+		final[0].run.replace(
+			`node scripts/desktop-suite-checkpoints.mjs await ${state}`,
+			`node scripts/desktop-suite-checkpoints.mjs await ${state}\nnode scripts/desktop-suite-checkpoints.mjs await ${state}`,
+		),
+		final[0].run.replace('exit "$status"', "exit 0"),
+	]) {
+		assert.throws(
+			() => assertDeadlineWrappedStep(mutant, state),
+			"a step that drops the bound, doubles the command or swallows the status must fail",
+		);
+	}
 	const condition =
 		"${{ always() && steps.desktop_launch.outcome == 'success' }}";
 	assert.equal(final[0].if, condition);
@@ -2775,9 +2845,38 @@ test("A17e: four protected workers feed one exact fail-closed Desktop Tests resu
 	 * so without a step ceiling a stall is exactly the case the scan never sees.
 	 */
 	const suiteStep = worker.steps.find((step) => step.id === "desktop_suite");
+	/*
+	 * The step's ceiling only helps if the STEP returns: a job cancelled at its
+	 * own cap runs no further step, so the always() uploads after this one were
+	 * skipped in exactly the hangs they exist for. The await is therefore wrapped
+	 * in an external wall-clock bound, and that bound is the only addition here:
+	 * one invocation, still inside the wrapper, still failing closed, still
+	 * reporting the deadline as its reason.
+	 */
+	const awaitCommand =
+		'node scripts/desktop-suite-checkpoints.mjs await "${{ runner.temp }}/desktop-supervisor-${{ matrix.shard }}"';
 	assert.equal(
+		suiteStep.run.split(awaitCommand).length - 1,
+		1,
+		"exactly one desktop-suite invocation, and it is the wrapped await",
+	);
+	assert.match(
 		suiteStep.run,
-		'node scripts/desktop-suite-checkpoints.mjs await "${{ runner.temp }}/desktop-supervisor-${{ matrix.shard }}"',
+		new RegExp(
+			`timeout -k 10 2400 ${awaitCommand.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&")}`,
+			"u",
+		),
+		"the await must sit inside the external wall-clock bound",
+	);
+	assert.match(
+		suiteStep.run,
+		/status=\$\?[\s\S]*exit "\$status"/u,
+		"the wrapper must still fail closed with the inner status",
+	);
+	assert.match(
+		suiteStep.run,
+		/124/u,
+		"exit 124 must be recorded as the deadline reason",
 	);
 	assert.equal(suiteStep["timeout-minutes"], 45);
 	assert.ok(suiteStep["timeout-minutes"] < worker["timeout-minutes"]);

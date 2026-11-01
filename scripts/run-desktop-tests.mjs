@@ -64,7 +64,6 @@ import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
-	STACK_REPORTS_ENV,
 	SUITE_STATE_ENV,
 	publishCoordinator,
 } from "./desktop-suite-checkpoints.mjs";
@@ -309,15 +308,6 @@ if (diagnosticPath)
 	nodeArgs.unshift(
 		"--import",
 		fileURLToPath(new URL("./desktop-test-lane-bound.mjs", import.meta.url)),
-	);
-// CI opts in to a stack report on SIGUSR2 so the supervisor can ask the
-// coordinator what it was doing at its deadline. Without the directory nothing
-// is added, so a local run behaves exactly as before.
-if (process.env[STACK_REPORTS_ENV])
-	nodeArgs.unshift(
-		"--report-on-signal",
-		"--report-signal=SIGUSR2",
-		`--report-directory=${process.env[STACK_REPORTS_ENV]}`,
 	);
 const child = spawn(process.execPath, nodeArgs, {
 	stdio: "inherit",

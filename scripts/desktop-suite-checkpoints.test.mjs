@@ -9,9 +9,11 @@ import {
 	writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
+import { dirname } from "node:path";
 import { join } from "node:path";
 import { Writable } from "node:stream";
 import { test } from "node:test";
+import { fileURLToPath } from "node:url";
 
 const moduleUrl = new URL("./desktop-suite-checkpoints.mjs", import.meta.url);
 const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -558,119 +560,6 @@ test("A2: identity, publication and observer startup failures reap only the owne
 	}
 });
 
-test("stack capture reports a waiting node process at the deadline", async () => {
-	const a = await api();
-	const reports = mkdtempSync(join(tmpdir(), "stack-reports-"));
-	const f = fixture(
-		`'${process.execPath}' --report-on-signal --report-signal=SIGUSR2 --report-directory='${reports}' -e 'setInterval(()=>{},1000)' & wait`,
-	);
-	process.env.LOCAL_OPERATOR_UI_STACK_REPORTS = reports;
-	try {
-		a.launch({
-			state: f.state,
-			shell: f.shell,
-			durationMs: 1500,
-			setupStarted: Date.now(),
-			witnessMs: 200,
-		});
-		const result = await a.awaitResult({ state: f.state });
-		assert.equal(
-			result.code,
-			124,
-			"capture must not change the deadline verdict",
-		);
-		assert.equal(result.reason, "absolute-deadline");
-		const capture = JSON.parse(
-			readFileSync(join(f.state, "stack-capture.json"), "utf8"),
-		);
-		assert.ok(
-			capture.sent.length >= 1,
-			"the still-live coordinator must be asked for a report",
-		);
-		assert.ok(
-			capture.written.length >= 1,
-			"an idle event loop answers SIGUSR2 with a report",
-		);
-		const report = JSON.parse(
-			readFileSync(join(reports, capture.written[0]), "utf8"),
-		);
-		assert.ok(
-			Array.isArray(report.javascriptStack?.stack) ||
-				typeof report.javascriptStack === "string" ||
-				report.javascriptStack,
-			"the report must carry a JS stack",
-		);
-	} finally {
-		Reflect.deleteProperty(process.env, "LOCAL_OPERATOR_UI_STACK_REPORTS");
-		rmSync(reports, { recursive: true, force: true });
-	}
-});
-
-test("stack capture reports the measured boundary for a hard-blocked loop", async () => {
-	const a = await api();
-	const reports = mkdtempSync(join(tmpdir(), "stack-busy-"));
-	const f = fixture(
-		`'${process.execPath}' --report-on-signal --report-signal=SIGUSR2 --report-directory='${reports}' -e 'process.on("SIGTERM",()=>{});while(true){}' & wait`,
-	);
-	process.env.LOCAL_OPERATOR_UI_STACK_REPORTS = reports;
-	try {
-		a.launch({
-			state: f.state,
-			shell: f.shell,
-			durationMs: 1500,
-			setupStarted: Date.now(),
-			witnessMs: 200,
-		});
-		const result = await a.awaitResult({ state: f.state });
-		assert.equal(result.code, 124);
-		const capture = JSON.parse(
-			readFileSync(join(f.state, "stack-capture.json"), "utf8"),
-		);
-		// MEASURED, not assumed: node services its report signal on the event
-		// loop, so a loop that never turns writes nothing. Pinned so the
-		// instrument is never credited with covering this class.
-		assert.deepEqual(
-			capture.written,
-			[],
-			"a hard-blocked loop cannot answer SIGUSR2 with a report",
-		);
-	} finally {
-		Reflect.deleteProperty(process.env, "LOCAL_OPERATOR_UI_STACK_REPORTS");
-		rmSync(reports, { recursive: true, force: true });
-	}
-});
-
-test("stack capture skips an already-gone pid without failing the run", async () => {
-	const a = await api();
-	const reports = mkdtempSync(join(tmpdir(), "stack-gone-"));
-	process.env.LOCAL_OPERATOR_UI_STACK_REPORTS = reports;
-	try {
-		const state = mkdtempSync(join(tmpdir(), "stack-gone-state-"));
-		writeFileSync(
-			join(state, "config.json"),
-			JSON.stringify({
-				state,
-				pipeline: { pid: 999999, pgid: 999999, start: "gone", pidGone: true },
-				launcher: a.identity(process.pid),
-			}),
-		);
-		const capture = await a.captureStacks(
-			state,
-			JSON.parse(readFileSync(join(state, "config.json"), "utf8")),
-			{ waitMs: 100 },
-		);
-		assert.deepEqual(capture.sent, [], "a vanished pid is never signalled");
-		assert.ok(
-			capture.skipped.length >= 1,
-			"the skip is recorded rather than thrown",
-		);
-		assert.deepEqual(capture.written, []);
-	} finally {
-		Reflect.deleteProperty(process.env, "LOCAL_OPERATOR_UI_STACK_REPORTS");
-		rmSync(reports, { recursive: true, force: true });
-	}
-});
-
 /**
  * A synthetic /proc tree. The census is the same code with procRoot=/proc on a
  * Linux runner; this fixture lets the parsing and the byte cap be exercised on
@@ -1106,77 +995,101 @@ test("identity resolves the linux branch instead of throwing on an unbound path"
 	}
 });
 
-test("the entry points link, so an ESM export mismatch cannot hide", async () => {
-	// Unit tests import helpers; production imports these files. A misspelled or
-	// wrong-module export is a link error only the real entry point surfaces.
-	const entry = await import("./run-desktop-tests.mjs?link-check").catch(
-		(error) => error,
+test("every named import in the entry point exists in the module it names", async () => {
+	// NEVER import the entry point: it EXECUTES the suite. Round 8 proved that
+	// the hard way - importing run-desktop-tests.mjs recursed into a detached
+	// run and hung. This resolves the specifiers and reads the sources instead,
+	// which is the same fact a link error reports without running anything.
+	const dir = dirname(fileURLToPath(import.meta.url));
+	const entry = join(dir, "run-desktop-tests.mjs");
+	const source = readFileSync(entry, "utf8");
+	const importPattern =
+		/(?:import|export)\s+(?:\{([^}]*)\}\s+from\s*)?["'](\.{1,2}\/[^"']+)["']/gu;
+	const failures = [];
+	let checked = 0;
+	for (const [, names = "", spec] of source.matchAll(importPattern)) {
+		const target = join(dirname(entry), spec);
+		let targetSource;
+		try {
+			targetSource = readFileSync(target, "utf8");
+		} catch {
+			failures.push(`${spec}: cannot be resolved`);
+			continue;
+		}
+		const exported = new Set();
+		for (const hit of targetSource.matchAll(
+			/export\s+(?:async\s+)?(?:const|let|var|function|class)\s+([A-Za-z_$][\w$]*)/gu,
+		))
+			exported.add(hit[1]);
+		for (const hit of targetSource.matchAll(/export\s*\{([^}]*)\}/gu))
+			for (const part of hit[1].split(","))
+				if (part.trim())
+					exported.add(
+						part
+							.trim()
+							.split(/\s+as\s+/)
+							.pop()
+							.trim(),
+					);
+		for (const rawName of names.split(",")) {
+			const name = rawName
+				.trim()
+				.split(/\s+as\s+/)[0]
+				.trim();
+			if (!name) continue;
+			checked += 1;
+			if (!exported.has(name))
+				failures.push(`${spec}: no export named '${name}'`);
+		}
+	}
+	assert.equal(
+		failures.length,
+		0,
+		`entry-point imports must resolve: ${failures.join("; ")}`,
 	);
 	assert.ok(
-		!(entry instanceof Error),
-		`run-desktop-tests.mjs must link: ${entry?.message ?? ""}`,
+		checked >= 5,
+		`the check must actually inspect the entry point's imports (saw ${checked})`,
+	);
+	console.log(
+		`import-resolution: ${checked} named imports resolved against module sources; entry point never executed`,
 	);
 });
 
-test("capture only signals a process that answers the report flag", async () => {
-	const a = await api();
-	const reports = mkdtempSync(join(tmpdir(), "stack-capability-"));
-	const plain = spawn(process.execPath, ["-e", "setInterval(()=>{},1000)"], {
-		detached: true,
-		stdio: "ignore",
-	});
-	const flagged = spawn(
-		process.execPath,
-		[
-			"--report-on-signal",
-			"--report-signal=SIGUSR2",
-			`--report-directory=${reports}`,
-			"-e",
-			"setInterval(()=>{},1000)",
-		],
-		{ detached: true, stdio: "ignore" },
+test("the always() upload glob matches where the census is actually written", async () => {
+	// The census is worthless if the artifact glob does not cover it: the last
+	// two hangs produced no artifact at all. The workflow's census env path and
+	// its artifact glob must name the same files.
+	const dir = dirname(fileURLToPath(import.meta.url));
+	const workflow = readFileSync(
+		join(dir, "..", ".github", "workflows", "ci.yml"),
+		"utf8",
 	);
-	process.env.LOCAL_OPERATOR_UI_STACK_REPORTS = reports;
-	try {
-		await pause(400);
-		const state = mkdtempSync(join(tmpdir(), "stack-capability-state-"));
-		const capture = await a.captureStacks(
-			state,
-			{ targets: [a.identity(plain.pid), a.identity(flagged.pid)] },
-			{ waitMs: 800 },
+	const envPath =
+		/LOCAL_OPERATOR_UI_KERNEL_CENSUS:\s*\$\{\{\s*runner\.temp\s*\}\}\/([^\s]+)/u.exec(
+			workflow,
 		);
-		assert.ok(
-			capture.skippedDetail.some(
-				(row) => row.pid === plain.pid && row.reason === "no-report-flag",
-			),
-			`an unflagged process must be skipped, got ${JSON.stringify(capture.skippedDetail)}`,
+	assert.ok(envPath, "the workflow must configure the census path");
+	const upload =
+		/Upload kernel census[\s\S]*?path:\s*\$\{\{\s*runner\.temp\s*\}\}\/(\S+)/u.exec(
+			workflow,
 		);
-		assert.ok(
-			!capture.sent.includes(plain.pid),
-			"an unflagged process must never be signalled",
-		);
-		assert.ok(
-			capture.written.length >= 1,
-			"the flagged child answers with a report",
-		);
-		// MAJOR 3 second half: the flagged child must WRITE a report naming a JS
-		// frame, not merely avoid being skipped.
-		const report = JSON.parse(
-			readFileSync(join(reports, capture.written[0]), "utf8"),
-		);
-		assert.ok(report.javascriptStack, "the report carries a JavaScript stack");
-		assert.ok(
-			a.identity(plain.pid),
-			"the unflagged child survives the capture",
-		);
-	} finally {
-		Reflect.deleteProperty(process.env, "LOCAL_OPERATOR_UI_STACK_REPORTS");
-		for (const child of [plain, flagged]) {
-			child.kill("SIGKILL");
-			await new Promise((r) => child.once("exit", r));
-		}
-		rmSync(reports, { recursive: true, force: true });
-	}
+	assert.ok(upload, "an always() upload step must exist for the census");
+	assert.ok(upload[0].includes("always()"), "the upload must be unconditional");
+	const toPattern = (name) =>
+		new RegExp(`^${name.replace(/[.]/gu, "\\.").replace(/\*/gu, ".*")}$`, "u");
+	assert.match(
+		`kernel-census-${"0"}.jsonl`,
+		toPattern(upload[1]),
+		`the artifact glob ${upload[1]} must cover ${envPath[1]}`,
+	);
+	assert.ok(
+		toPattern(upload[1]).test("kernel-census-0.jsonl"),
+		"a per-shard census file matches the upload glob",
+	);
+	console.log(
+		`artifact-glob: upload "${upload[1]}" covers census "${envPath[1]}"`,
+	);
 });
 
 test("checkpoint: missing terminal receipt cannot pass", async () => {

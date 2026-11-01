@@ -737,11 +737,8 @@ jobs:
         timeout-minutes: 1
         env:
           LOCAL_OPERATOR_UI_LANE_DIAGNOSTICS: ${{ runner.temp }}/desktop-lifecycle-${{ matrix.shard }}.jsonl
-          # The supervisor asks the coordinator for a stack report at its own
-          # deadline; without this the runner adds no report flags at all.
-          LOCAL_OPERATOR_UI_STACK_REPORTS: ${{ runner.temp }}/stack-reports
-          # Linux-only /proc census: names a hard-blocked process that cannot
-          # answer the SIGUSR2 report above.
+          # Linux-only /proc census: the instrument that names a hard-blocked
+          # process without needing anything from it.
           LOCAL_OPERATOR_UI_KERNEL_CENSUS: ${{ runner.temp }}/kernel-census-${{ matrix.shard }}.jsonl
         run: node scripts/desktop-suite-checkpoints.mjs launch "${{ runner.temp }}/desktop-supervisor-${{ matrix.shard }}" scripts/desktop-suite-step.sh "$DESKTOP_SETUP_STARTED_MS"
 
@@ -820,27 +817,32 @@ jobs:
         # FAILS CLOSED, and that is unchanged: every arm below ends in `exit 1`,
         # so a red suite, a truncated run and a renamed script are all still red.
         # What changed is that they are red WITH a reason.
-        run: node scripts/desktop-suite-checkpoints.mjs await "${{ runner.temp }}/desktop-supervisor-${{ matrix.shard }}"
-
-      # The frame that was blocking, captured at the supervisor's deadline. It
-      # must never fail the job: a run with no capture is exactly the case this
-      # instrument exists to improve, not one to turn red.
-      - name: Print captured stack reports
-        if: ${{ always() }}
+        # THE ARTIFACT LEAVES THE RUNNER ONLY AFTER THIS STEP RETURNS. In the
+        # last two hangs the step never returned, the job was cancelled at its
+        # 50-minute cap, and every `if: always()` upload after it was skipped -
+        # so the census never left the machine. An external wall-clock bound
+        # makes the step return on its own, well inside the cap, and the
+        # existing always() uploads then actually run. The bound is a wrapper
+        # around the await only: the verdict, the annotation and the TAP
+        # handling below stay exactly as they were, and exit 124 is reported as
+        # the deadline reason and still fails the step closed.
         run: |
-          echo "stack reports directory: $STACK_REPORTS"
-          ls -l "$STACK_REPORTS" 2>/dev/null || echo "no stack reports captured"
-        env:
-          STACK_REPORTS: ${{ runner.temp }}/stack-reports
+          set +e
+          timeout -k 10 2400 node scripts/desktop-suite-checkpoints.mjs await "${{ runner.temp }}/desktop-supervisor-${{ matrix.shard }}"
+          status=$?
+          if [ "$status" -eq 124 ]; then
+            echo "::error::desktop suite exceeded its 2400s external bound; the supervisor deadline did not end the step, so the bound did. Artifacts are still uploaded."
+          fi
+          exit "$status"
 
-      - name: Upload deadline stack reports
+      # Never fails the job: a run with no census is the case this instrument
+      # exists to improve, not one to turn red.
+      - name: Upload kernel census
         if: ${{ always() }}
         uses: actions/upload-artifact@v4
         with:
-          name: desktop-stack-reports-${{ github.run_id }}-${{ github.run_attempt }}-shard-${{ matrix.shard }}
-          path: |
-            ${{ runner.temp }}/stack-reports
-            ${{ runner.temp }}/kernel-census-*.jsonl
+          name: desktop-kernel-census-${{ github.run_id }}-${{ github.run_attempt }}-shard-${{ matrix.shard }}
+          path: ${{ runner.temp }}/kernel-census-*.jsonl
           if-no-files-found: warn
           retention-days: 7
 
