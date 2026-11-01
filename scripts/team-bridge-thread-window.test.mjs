@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 import Module from "node:module";
 import { dirname } from "node:path";
 import { after, test } from "node:test";
@@ -20,11 +21,21 @@ for (const key of [
 	"Node",
 	"MutationObserver",
 	"navigator",
+	"NodeFilter",
+	"DocumentFragment",
+	"CustomEvent",
+	"HTMLInputElement",
+	"HTMLButtonElement",
+	"HTMLTextAreaElement",
 ])
 	Object.defineProperty(globalThis, key, {
 		configurable: true,
 		value: dom.window[key],
 	});
+// No canvas in JSDOM: report unsupported emoji rather than logging its
+// not-implemented diagnostic during the real list's capability warmup.
+dom.window.HTMLCanvasElement.prototype.getContext = () => null;
+globalThis.getComputedStyle = dom.window.getComputedStyle;
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 const { createRoot } = await import("react-dom/client");
 const control = process.env.THREAD_WINDOW_OWNER_CONTROL_REF;
@@ -39,9 +50,57 @@ const oldOwnerSource = control
 		)
 	: null;
 const OWNER_QUERY_MODULE = /\/use-team-bridge-owner-audit\.ts$/;
+const AUDIT_VIEW_MODULE = /\/team-bridge-owner-audit\.tsx$/;
+const viewControl = process.env.THREAD_WINDOW_VIEW_CONTROL_REF;
+const oldViewSource = viewControl
+	? execFileSync(
+			"git",
+			[
+				"show",
+				`${viewControl}:src/renderer/src/features/team-bridge/team-bridge-owner-audit.tsx`,
+			],
+			{ encoding: "utf8" },
+		)
+	: null;
+// Reuse the audit render suite's dependency boundary: the rail needs one
+// sidebar token, not the chat application. The panel and list stay real.
+const sidebarSource = readFileSync(
+	"src/renderer/src/features/chat/components/chat-sidebar.tsx",
+	"utf8",
+);
+const rowCurrentLiteral = sidebarSource.match(
+	/export const rowCurrent =\s*("[^"]+")/,
+)?.[1];
+assert.ok(rowCurrentLiteral);
+const CHAT_SIDEBAR_MODULE = /chat\/components\/chat-sidebar$/;
+const ANY_STUB_MODULE = /.*/;
+const viewPlugin = {
+	name: "audit-view-test-boundary",
+	setup(b) {
+		b.onResolve({ filter: CHAT_SIDEBAR_MODULE }, () => ({
+			path: "sidebar",
+			namespace: "thread-test-stub",
+		}));
+		b.onLoad(
+			{ filter: ANY_STUB_MODULE, namespace: "thread-test-stub" },
+			() => ({
+				contents: `export const rowCurrent = ${rowCurrentLiteral};`,
+				loader: "js",
+			}),
+		);
+		b.onLoad({ filter: AUDIT_VIEW_MODULE }, (args) => ({
+			// Test-only visibility into the real private inline component; no
+			// production export or alternate implementation of the reader.
+			contents: `${oldViewSource ?? readFileSync(args.path, "utf8")}\nexport {ReplyDisclosure};`,
+			loader: "tsx",
+			resolveDir: dirname(args.path),
+		}));
+	},
+};
 const bundle = await build({
 	stdin: {
 		contents: `
+		export {OwnerAuditPanelView, ReplyDisclosure} from './src/renderer/src/features/team-bridge/team-bridge-owner-audit';
 		export * from './src/renderer/src/features/team-bridge/use-thread-reply-window';
 		export {useOwnerAuditReplies} from './src/renderer/src/features/team-bridge/use-team-bridge-owner-audit';
 		export {loadThreadPage} from './src/renderer/src/features/team-bridge/team-bridge-thread-read';
@@ -59,24 +118,28 @@ const bundle = await build({
 	write: false,
 	format: "cjs",
 	platform: "node",
-	packages: "external",
+	external: ["react", "react-dom"],
+	tsconfig: "tsconfig.app.json",
 	alias: { "@shared": `${process.cwd()}/src/renderer/src/shared` },
 	jsx: "automatic",
 	loader: { ".css": "empty" },
-	plugins: oldOwnerSource
-		? [
-				{
-					name: "baseline-owner-query",
-					setup(b) {
-						b.onLoad({ filter: OWNER_QUERY_MODULE }, (args) => ({
-							contents: oldOwnerSource,
-							loader: "ts",
-							resolveDir: dirname(args.path),
-						}));
+	plugins: [
+		viewPlugin,
+		...(oldOwnerSource
+			? [
+					{
+						name: "baseline-owner-query",
+						setup(b) {
+							b.onLoad({ filter: OWNER_QUERY_MODULE }, (args) => ({
+								contents: oldOwnerSource,
+								loader: "ts",
+								resolveDir: dirname(args.path),
+							}));
+						},
 					},
-				},
-			]
-		: [],
+				]
+			: []),
+	],
 });
 const mod = new Module(`${process.cwd()}/.thread-window-test.cjs`);
 mod.filename = `${process.cwd()}/.thread-window-test.cjs`;
@@ -787,5 +850,165 @@ test("conflicting IDs inside the initial page are refused before private cache a
 		assert.equal(h.query.data.pages[0].replies.length, 50);
 	} finally {
 		await h.close();
+	}
+});
+
+// JSDOM has no layout engine: model only the outer transcript's block geometry
+// and native scroll clamping, then drive the REAL panel/disclosure/query hooks.
+// This is a deterministic scroll-policy regression, not browser pixel evidence.
+test("combined parent and reply arrival holds the OUTER inline viewport top", async () => {
+	let response = page(9951);
+	transport(() => response);
+	const client = new m.QueryClient({
+		defaultOptions: {
+			queries: { retry: false, gcTime: Number.POSITIVE_INFINITY },
+		},
+	});
+	client.setQueryData(m.radientUserKeys.user(), {
+		account: { id: OWNER, email: "fixture@example.invalid" },
+	});
+	client.setQueryData(m.teamBridgeKeys.statusFor(OWNER), {
+		account_id: OWNER,
+		state: "ready",
+		read_only: false,
+		local: { enabled: true },
+	});
+	const conversation = {
+		id: CID,
+		tenant_id: TENANT,
+		kind: "channel",
+		name: "Fixture",
+		members: [],
+		agent: {
+			account_id: "acct_agent_fixture",
+			display_label: "Agent",
+			state: "active",
+			joined_seq: 1,
+		},
+	};
+	const scope = { accountId: OWNER, tenantId: TENANT };
+	let parents = [{ ...rootMessage, reply_count: 10000 }];
+	const host = document.createElement("div");
+	document.body.append(host);
+	const reactRoot = createRoot(host);
+	const draw = () =>
+		React.createElement(
+			m.QueryClientProvider,
+			{ client },
+			React.createElement(m.OwnerAuditPanelView, {
+				conversation,
+				messages: parents,
+				state: "ready",
+				retry() {},
+				readerAccountId: OWNER,
+				renderReplies: (root) =>
+					React.createElement(m.ReplyDisclosure, {
+						scope,
+						conversation,
+						root,
+						people: [],
+					}),
+			}),
+		);
+	try {
+		await act(async () => reactRoot.render(draw()));
+		const disclosure = host.querySelector("details");
+		const outer = disclosure.closest(".overflow-auto");
+		assert.ok(outer);
+		let scrollTop = 600;
+		const outerWrites = [];
+		const height = () => 1200 + (parents.length - 1) * 52;
+		Object.defineProperties(outer, {
+			clientHeight: { configurable: true, get: () => 600 },
+			scrollHeight: { configurable: true, get: height },
+			scrollTop: {
+				configurable: true,
+				get: () => scrollTop,
+				set: (value) => {
+					outerWrites.push(value);
+					scrollTop = Math.max(0, Math.min(value, height() - 600));
+				},
+			},
+		});
+		const box = (top, h) => ({
+			top,
+			bottom: top + h,
+			height: h,
+			left: 0,
+			right: 600,
+			width: 600,
+		});
+		outer.getBoundingClientRect = () => box(100, 600);
+		const parentRow = disclosure.closest("[data-message-id]");
+		assert.ok(parentRow);
+		parentRow.getBoundingClientRect = () => box(760 - scrollTop, 400);
+		await act(async () => outer.dispatchEvent(new window.Event("scroll")));
+		await act(async () => {
+			disclosure.open = true;
+			disclosure.dispatchEvent(new window.Event("toggle"));
+		});
+		await until(
+			() =>
+				host.querySelectorAll("[data-audit-reply-window] [data-message-id]")
+					.length === 50,
+		);
+		const inline = host.querySelector("[data-audit-reply-window]");
+		inline.getBoundingClientRect = () => box(860 - scrollTop, 320);
+		const before = inline.getBoundingClientRect().top;
+		// Both arrivals are committed together. The parent append used to call
+		// toBottom(), shifting this entire box upward by the parent's 52px.
+		outerWrites.length = 0;
+		response = page(9952);
+		parents = [
+			...parents,
+			{ ...rootMessage, id: "bcmsg_parent_arrival", seq: 10002 },
+		];
+		await act(async () => {
+			await client.invalidateQueries({
+				queryKey: ["team-bridge", "owner-audit"],
+			});
+			reactRoot.render(draw());
+		});
+		await until(() =>
+			inline.querySelector('[data-message-id="bcmsg_reply00010001"]'),
+		);
+		assert.equal(
+			inline.getBoundingClientRect().top,
+			before,
+			"parent live-edge following must not move the inline surface on combined arrival",
+		);
+		assert.equal(scrollTop, 600, "the parent's held offset is unchanged");
+		assert.ok(
+			outerWrites.every((value) => value === 600),
+			"no intermediate jump-then-scroll correction in the outer transcript",
+		);
+		assert.equal(
+			inline.querySelectorAll("[data-message-id]").length,
+			50,
+			"combined arrival preserves the bounded newest window",
+		);
+		assert.ok(
+			inline.classList.contains("h-80"),
+			"reserve height even for short or empty reply results",
+		);
+		assert.ok(
+			inline.classList.contains("overflow-x-hidden"),
+			"ordinary replies must not reserve a horizontal scrollbar",
+		);
+		assert.ok(host.textContent.includes("Load older replies"));
+		response = page(2, 0, { has_more: false, next_before_seq: undefined });
+		await act(async () => {
+			await client.invalidateQueries({
+				queryKey: ["team-bridge", "owner-audit"],
+			});
+		});
+		await until(() =>
+			inline.textContent.includes("No replies in this audit window."),
+		);
+		assert.equal(inline.querySelectorAll("[data-message-id]").length, 0);
+	} finally {
+		await act(async () => reactRoot.unmount());
+		client.clear();
+		host.remove();
 	}
 });

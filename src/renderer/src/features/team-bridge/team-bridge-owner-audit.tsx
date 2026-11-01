@@ -624,6 +624,17 @@ export function OwnerAuditPanelView({
 			<div
 				ref={viewportRef}
 				className="min-h-0 flex-1 overflow-auto pb-5"
+				onToggleCapture={(event) => {
+					// An open inline reader owns the reading position. Stop the
+					// parent's live-edge following BEFORE arrivals can move its box;
+					// preserving only the nested scroll offset cannot prevent that.
+					const disclosure = event.target as HTMLDetailsElement;
+					if (
+						disclosure.open &&
+						disclosure.matches("[data-audit-reply-disclosure]")
+					)
+						timeline.hold();
+				}}
 				style={{ overflowAnchor: "none" }}
 			>
 				<div className="min-h-full">
@@ -741,7 +752,9 @@ function AuditReplies({
 			)}
 			<div
 				ref={combinedRef}
-				className="max-h-80 min-h-0 overflow-auto"
+				// Reserve the reading surface independently of reply arrivals. In
+				// particular, a short window must not grow under a held parent row.
+				className="h-80 min-h-0 w-full min-w-0 overflow-x-hidden overflow-y-auto"
 				data-audit-reply-window
 			>
 				{query.mode === "desc" &&
@@ -756,7 +769,7 @@ function AuditReplies({
 								void query.fetchNextPage();
 							}}
 						>
-							{t("ui.ownerAudit.more")}
+							{t("ui.ownerAudit.older_replies")}
 						</Button>
 					)}
 				{viewState === "loading" ? (
@@ -768,6 +781,10 @@ function AuditReplies({
 						state={failedState(state) ? state : "error"}
 						retry={() => void query.resetLatest()}
 					/>
+				) : query.replies.length === 0 ? (
+					<p className="py-2 text-meta text-ink-muted">
+						{t("ui.ownerAudit.empty_replies")}
+					</p>
 				) : (
 					<AuditTranscript
 						conversation={conversation}
@@ -806,6 +823,7 @@ function ReplyDisclosure({
 	return (
 		<details
 			className="mt-1"
+			data-audit-reply-disclosure
 			onToggle={(event) => setOpen(event.currentTarget.open)}
 		>
 			{/* The shared row's "N replies" summary wears the accent; this is the
