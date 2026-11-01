@@ -8,7 +8,15 @@ import { useI18nLocale } from "@shared/i18n/use-locale";
 import { composeRefs } from "@shared/lib/compose-refs";
 import { cn } from "@shared/lib/utils";
 import { Eye, RefreshCw } from "lucide-react";
-import { type ReactNode, type Ref, useMemo, useRef, useState } from "react";
+import {
+	type ReactNode,
+	type Ref,
+	createContext,
+	useContext,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import type { TeamBridgeDirectoryMember } from "../../../../shared/team-bridge-contract";
 import type {
 	OwnerAuditConversation,
@@ -43,6 +51,11 @@ import { replyPageOutsideViewport } from "./use-thread-reply-window";
 export type ReadState = "loading" | "ready" | AuditFailureState;
 const failedState = (state: ReadState): state is AuditFailureState =>
 	state !== "loading" && state !== "ready";
+
+// The disclosure owns its non-bubbling toggle event. Pass the parent scroll
+// controller through the transcript so opening it can hold BOTH reading surfaces
+// without delegating a details-only event to an unsupported div React prop.
+const AuditTimelineHoldContext = createContext<(() => void) | null>(null);
 
 /**
  * A FAILED LATER PAGE MUST NOT ERASE WHAT IS ALREADY SHOWN.
@@ -624,17 +637,6 @@ export function OwnerAuditPanelView({
 			<div
 				ref={viewportRef}
 				className="min-h-0 flex-1 overflow-auto pb-5"
-				onToggleCapture={(event) => {
-					// An open inline reader owns the reading position. Stop the
-					// parent's live-edge following BEFORE arrivals can move its box;
-					// preserving only the nested scroll offset cannot prevent that.
-					const disclosure = event.target as HTMLDetailsElement;
-					if (
-						disclosure.open &&
-						disclosure.matches("[data-audit-reply-disclosure]")
-					)
-						timeline.hold();
-				}}
 				style={{ overflowAnchor: "none" }}
 			>
 				<div className="min-h-full">
@@ -653,12 +655,14 @@ export function OwnerAuditPanelView({
 									{t("ui.ownerAudit.empty_history")}
 								</p>
 							) : (
-								<AuditTranscript
-									conversation={conversation}
-									messages={messages}
-									people={people}
-									renderReplies={renderReplies}
-								/>
+								<AuditTimelineHoldContext.Provider value={timeline.hold}>
+									<AuditTranscript
+										conversation={conversation}
+										messages={messages}
+										people={people}
+										renderReplies={renderReplies}
+									/>
+								</AuditTimelineHoldContext.Provider>
 							)}
 							<OwnerAuditWindowEnd conversation={conversation} />
 						</>
@@ -824,11 +828,17 @@ function ReplyDisclosure({
 	people: readonly TeamBridgeDirectoryMember[];
 }) {
 	const [open, setOpen] = useState(false);
+	const holdParentTimeline = useContext(AuditTimelineHoldContext);
 	return (
 		<details
 			className="mt-1"
 			data-audit-reply-disclosure
-			onToggle={(event) => setOpen(event.currentTarget.open)}
+			onToggle={(event) => {
+				// Stop parent live-edge following before mounting the inline reader;
+				// later arrivals must not move its box while its own anchor is held.
+				if (event.currentTarget.open) holdParentTimeline?.();
+				setOpen(event.currentTarget.open);
+			}}
 		>
 			{/* The shared row's "N replies" summary wears the accent; this is the
 			 * same door, read-only, so it wears the same ink at the same size. */}
