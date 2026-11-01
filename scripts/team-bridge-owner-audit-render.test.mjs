@@ -2361,12 +2361,12 @@ test("a channel renders byte-identically with the audit props omitted", async ()
 	assert.equal(`${markup}\n`, readFileSync(PARITY_GOLDEN, "utf8"));
 });
 
-/* The actual private-read hook must emit useful failure categories while never
+/* The actual private-read hook must emit only operation/status class while never
  * serializing the exception (Zod prose/stack can contain private input). The
  * transport remains the same fixture as the rail tests, not a duplicate query
  * implementation. These are diagnostics tests, NOT the production first-open
  * reproduction: that renderer's original exception is still unknown. */
-test("diagnostics: actual audit query classifies rejection and redacts private exceptions", async (context) => {
+test("diagnostics: actual audit query attributes rejection and redacts private exceptions", async (context) => {
 	const originalWarn = console.warn;
 	const originalRead = m.TeamBridgeOwnerAuditApi.conversations;
 	const forbidden =
@@ -2499,7 +2499,7 @@ test("diagnostics: actual audit query classifies rejection and redacts private e
 				if (scenario.startsWith("logger")) {
 					assert.equal(
 						sinkCalls,
-						2,
+						scenario === "logger-rejected" ? 1 : 0,
 						"sink failure must never recursively log itself",
 					);
 					if (scenario === "logger-rejected") {
@@ -2517,68 +2517,19 @@ test("diagnostics: actual audit query classifies rejection and redacts private e
 					);
 					return;
 				}
-				assert.equal(
-					events.length,
-					2,
-					"one start and exactly one terminal record per attempt",
-				);
-				assert.equal(events[0].event, "started");
-				assert.equal(events[0].generation, events[1].generation);
-				assert.equal(events[0].attempt, events[1].attempt);
-				assert.equal(
-					events[1].event,
-					scenario === "success" ? "fulfilled" : "rejected",
-				);
-				const categories = {
-					http: "desktop",
-					schema: "schema",
-					before: "audit-owner",
-					bridge: "bridge-authority",
-					post: "audit-owner",
-					cancel: "cancelled",
-					unknown: "other",
-					credential: "credential-authority",
-				};
-				if (scenario !== "success")
-					assert.equal(
-						events[1].category,
-						scenario.startsWith("status-") ? "desktop" : categories[scenario],
-					);
-				if (scenario === "before") {
-					assert.equal(calls, 0);
-					assert.equal(events[1].phase, "before");
-				}
-				if (scenario === "post") assert.equal(events[1].phase, "after");
-				if (scenario === "credential") {
-					assert.equal(events[1].epochChanged, true);
-					assert.equal(events[1].readiness.authMatches, false);
-				}
-				if (scenario === "bridge") assert.equal(events[1].phase, "settlement");
-				if (["http", "schema", "cancel", "unknown"].includes(scenario))
-					assert.equal(events[1].phase, "request");
-				if (
-					!scenario.startsWith("status-") &&
-					!["before", "cancel", "unknown"].includes(scenario)
-				)
-					assert.equal(
-						calls,
-						1,
-						"diagnostics never retry even a permanent refusal",
-					);
-				if (scenario === "http") {
-					assert.equal(events[1].status, 403);
-					assert.equal(events[1].code, "other");
-				}
-				if (scenario.startsWith("status-")) {
-					assert.equal(events[1].status, null);
-					assert.equal(conversions, 0, "no getter, coercion or toJSON may run");
-				}
+				const noRejection = ["before", "success"].includes(scenario);
+				assert.equal(events.length, noRejection ? 0 : 1);
+				if (!noRejection)
+					assert.deepEqual(events[0], {
+						operation: "conversations",
+						statusClass: scenario === "http" ? "4xx" : "unknown",
+					});
+				if (scenario === "http")
+					assert.equal(calls, 1, "permanent refusal never retries");
+				if (scenario.startsWith("status-"))
+					assert.equal(conversions, 0, "no getter/coercion/toJSON");
 				if (scenario === "unknown" || scenario.startsWith("status-"))
-					assert.equal(
-						query.error,
-						deliberate,
-						"the original exception survives",
-					);
+					assert.equal(query.error, deliberate);
 				const serialized = JSON.stringify(events);
 				for (const secret of [
 					forbidden,
@@ -2604,7 +2555,7 @@ test("diagnostics: actual audit query classifies rejection and redacts private e
 	}
 });
 
-test("diagnostics: manual retry correlates locally, scope changes isolate, and logging is bounded", async () => {
+test("diagnostics: manual retry preserves recovery, scope budgets isolate, and logging is bounded", async () => {
 	const originalWarn = console.warn;
 	const events = [];
 	console.warn = (...args) => {
@@ -2640,41 +2591,39 @@ test("diagnostics: manual retry correlates locally, scope changes isolate, and l
 		assert.equal(query.isError, true);
 		assert.equal(
 			events.length,
-			2,
+			1,
 			"permanent denial does not automatically retry",
 		);
-		const generation = events[0].generation;
-		assert.equal(events[1].code, "conversation_not_found");
+		assert.deepEqual(events[0], {
+			operation: "conversations",
+			statusClass: "4xx",
+		});
 		answer = () => json(conversationPage);
 		await act(async () => {
 			await query.refetch();
 		});
 		await settleTimes();
 		assert.equal(query.isSuccess, true);
-		assert.equal(events.length, 4);
-		assert.equal(events[2].generation, generation);
-		assert.equal(events[2].attempt, 2);
-		assert.equal(events[3].event, "fulfilled");
+		assert.equal(events.length, 1, "successful reads do not log");
+		answer = () => refusal(403, { code: "conversation_not_found" });
 		for (let i = 0; i < 21; i += 1) {
 			await act(async () => {
 				await query.refetch();
 			});
 		}
+		assert.equal(events.length, 20, "at most twenty refusal records per scope");
 		assert.equal(
-			events.length,
-			40,
-			"at most two records for each of twenty attempts",
-		);
-		assert.equal(
-			query.isSuccess,
+			query.isError,
 			true,
 			"the limit only stops logging, never the request",
 		);
 		await render("org_other_synthetic");
 		await settleTimes();
-		assert.equal(events.length, 42);
-		assert.notEqual(events[40].generation, generation);
-		assert.equal(events[40].attempt, 1);
+		assert.equal(events.length, 21);
+		assert.deepEqual(events[20], {
+			operation: "conversations",
+			statusClass: "4xx",
+		});
 		assert.equal(JSON.stringify(events).includes("org_other_synthetic"), false);
 	} finally {
 		await act(async () => root.unmount());
@@ -2714,27 +2663,7 @@ test("diagnostics: exact documented exporter rejects malformed rows and bounds i
 		"exercise the documented command verbatim, not a duplicate exporter",
 	);
 	const secret = "PRIVATE-https://private.invalid/token-payload";
-	const good = {
-		operation: "conversations",
-		event: "rejected",
-		phase: "request",
-		generation: 1,
-		attempt: 1,
-		elapsedMs: 1,
-		epochChanged: false,
-		readiness: {
-			authMatches: true,
-			statusPresent: true,
-			statusMatches: true,
-			ready: true,
-			localEnabled: true,
-			readOnly: false,
-		},
-		category: "desktop",
-		errorClass: "DesktopControlError",
-		status: 403,
-		code: "conversation_not_found",
-	};
+	const good = { operation: "conversations", statusClass: "4xx" };
 	const line = (row) =>
 		`[time] [renderer] [owner-audit-read] ${JSON.stringify(row)}\n`;
 	const run = (text) => {
@@ -2754,18 +2683,11 @@ test("diagnostics: exact documented exporter rejects malformed rows and bounds i
 			{},
 			{ ...good, unknown: secret },
 			{ ...good, operation: secret },
-			{ ...good, attempt: 0 },
-			{ ...good, attempt: 21 },
-			{ ...good, generation: Number.MAX_SAFE_INTEGER + 1 },
-			{ ...good, generation: true },
-			{ ...good, elapsedMs: 86400001 },
-			{ ...good, status: secret },
-			{ ...good, status: { body: secret } },
-			{ ...good, status: 600 },
-			{ ...good, status: 403.5 },
-			{ ...good, readiness: {} },
-			{ ...good, readiness: { ...good.readiness, unknown: secret } },
-			{ ...good, code: secret },
+			{ ...good, statusClass: secret },
+			{ ...good, statusClass: 403 },
+			{ ...good, statusClass: { body: secret } },
+			{ ...good, code: "conversation_not_found" },
+			{ ...good, status: 403 },
 		];
 		const missing = Object.keys(good).map((key) => {
 			const row = { ...good };
@@ -2773,13 +2695,13 @@ test("diagnostics: exact documented exporter rejects malformed rows and bounds i
 			return row;
 		});
 		const hugeInteger = line(good).replace(
-			'"generation":1',
-			`"generation":${"9".repeat(501)}`,
+			'"statusClass":"4xx"',
+			`"statusClass":${"9".repeat(501)}`,
 		);
 		const garbage = "[renderer] [owner-audit-read] not-json-private\n";
 		const duplicate = line(good).replace(
-			'"attempt":1',
-			'"attempt":1,"attempt":1',
+			'"statusClass":"4xx"',
+			'"statusClass":"4xx","statusClass":"4xx"',
 		);
 		const oversized = `[renderer] [owner-audit-read] ${" ".repeat(9000)}${JSON.stringify(good)}\n`;
 		const output = run(

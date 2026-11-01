@@ -194,7 +194,12 @@ function useAuditRead(
 	// Keep diagnostics bounded per scope and operation without logging scope IDs.
 	// Authority rebinds retain the budget, so recovery cannot amplify the log.
 	const diagnostic = useMemo(
-		() => ({ remaining: 20 }),
+		() => ({
+			accountId: scope.accountId,
+			tenantId: scope.tenantId,
+			operation,
+			remaining: 20,
+		}),
 		[scope.accountId, scope.tenantId, operation],
 	);
 	const mounted = useRef(true);
@@ -231,14 +236,25 @@ function useAuditRead(
 			 * accessors/coercion/toJSON; unknown failures stay unattributed. */
 			if (diagnostic.remaining > 0) {
 				diagnostic.remaining -= 1;
-				const status = error instanceof DesktopControlError
-					? Object.getOwnPropertyDescriptor(error, "status")?.value
-					: undefined;
-				const statusClass = typeof status === "number" && Number.isInteger(status)
-					&& status >= 100 && status <= 599
-					? `${Math.floor(status / 100)}xx`
-					: "unknown";
-				console.warn("[owner-audit-read]", JSON.stringify({ operation, statusClass }));
+				const status =
+					error instanceof DesktopControlError
+						? Object.getOwnPropertyDescriptor(error, "status")?.value
+						: undefined;
+				const statusClass =
+					typeof status === "number" &&
+					Number.isInteger(status) &&
+					status >= 100 &&
+					status <= 599
+						? `${Math.floor(status / 100)}xx`
+						: "unknown";
+				try {
+					console.warn(
+						"[owner-audit-read]",
+						JSON.stringify({ operation, statusClass }),
+					);
+				} catch {
+					// Observability must not replace a refusal or alter recovery.
+				}
 			}
 			// A rejection can arrive late too; it must not start a retry or an
 			// auth wait on behalf of credentials that no longer own the panel.
@@ -270,7 +286,10 @@ function useAuditRead(
 }
 
 export function useOwnerAuditConversations(scope: OwnerAuditScope) {
-	const { read, authorityToken, enabled } = useAuditRead(scope, "conversations");
+	const { read, authorityToken, enabled } = useAuditRead(
+		scope,
+		"conversations",
+	);
 	const query = useInfiniteQuery({
 		queryKey: [
 			"team-bridge",

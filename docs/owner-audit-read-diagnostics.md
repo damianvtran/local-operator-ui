@@ -1,9 +1,9 @@
 # Owner-audit read diagnostics (diagnostic only)
 
 This instrumentation does **not** fix the reported first-open error. The actual
-first rejected query exception has not yet been captured. Do not add automatic
-retries or change the privacy/authority fences on the strength of the controlled
-fixtures.
+first rejected query exception has not yet been captured. The merged bounded
+recovery policy remains unchanged; diagnostics must not add retries or change
+privacy/authority fences on the strength of controlled fixtures.
 
 ## Capture after installing a reviewed build containing this change
 
@@ -32,9 +32,8 @@ unknown/incomplete rows, arbitrary messages and unknown string values. It scans
 only the final 1 MiB (discarding a partial first line), skips lines over 8 KiB,
 and emits the first valid records in that tail until 200 records or 64 KiB,
 whichever comes first. Truncation is silent: no raw rejection prose is printed.
-Generation must be 1–2^53−1, attempt 1–20, elapsed time 0–24 hours, and the
-readiness object must contain exactly six booleans. Duplicate keys are rejected. It prints no raw
-input lines, request URLs, identifiers, query keys, payloads, causes or stacks:
+Only operation and status class are accepted; duplicate keys and all additional
+fields are rejected. No prose, stacks, codes, bodies, IDs or tokens are exported.
 
 ```sh
 python3 - <<'PY'
@@ -43,50 +42,14 @@ from pathlib import Path
 p = Path.home() / 'Library/Application Support/Local Operator/logs/backend-service.log'
 MAX_INPUT_BYTES, MAX_LINE_BYTES = 1048576, 8192
 MAX_RECORDS, MAX_OUTPUT_BYTES = 200, 65536
-MAX_SAFE_INT, MAX_ELAPSED_MS = 9007199254740991, 86400000
 enums = {
     'operation': {'conversations', 'messages', 'replies'},
-    'event': {'started', 'fulfilled', 'rejected'},
-    'phase': {'before', 'read', 'request', 'settlement', 'after'},
-    'category': {'cancelled', 'audit-owner', 'bridge-owner', 'bridge-authority',
-                 'credential-authority', 'schema', 'desktop', 'other'},
-    'errorClass': {'CancelledError', 'DesktopControlError', 'ZodError', 'Error', 'unknown'},
-    'code': {'conversation_not_found', 'account_mismatch', 'expected_account_mismatch',
-             'deadline_exceeded', 'owner_audit_unavailable', 'other'},
+    'statusClass': {'1xx', '2xx', '3xx', '4xx', '5xx', 'unknown'},
 }
-base = {'operation', 'event', 'phase', 'generation', 'attempt', 'elapsedMs',
-        'epochChanged', 'readiness'}
-failure = {'category', 'errorClass', 'status', 'code'}
-ready_keys = {'authMatches', 'statusPresent', 'statusMatches', 'ready', 'localEnabled', 'readOnly'}
-def integer(v, low, high):
-    return type(v) is int and low <= v <= high
 def valid(row):
-    if not isinstance(row, dict):
-        return False
-    rejected = row.get('event') == 'rejected'
-    if set(row) != (base | failure if rejected else base):
-        return False
-    for k in ('operation', 'event', 'phase'):
-        if type(row[k]) is not str or row[k] not in enums[k]:
-            return False
-    if not (integer(row['generation'], 1, MAX_SAFE_INT)
-            and integer(row['attempt'], 1, 20)
-            and integer(row['elapsedMs'], 0, MAX_ELAPSED_MS)
-            and type(row['epochChanged']) is bool):
-        return False
-    ready = row['readiness']
-    if not (isinstance(ready, dict) and set(ready) == ready_keys
-            and all(type(v) is bool for v in ready.values())):
-        return False
-    if rejected:
-        for k in ('category', 'errorClass'):
-            if type(row[k]) is not str or row[k] not in enums[k]:
-                return False
-        if row['code'] is not None and (type(row['code']) is not str or row['code'] not in enums['code']):
-            return False
-        if row['status'] is not None and not integer(row['status'], 100, 599):
-            return False
-    return True
+    return (isinstance(row, dict) and set(row) == set(enums)
+            and all(type(row[k]) is str and row[k] in values
+                    for k, values in enums.items()))
 def unique(pairs):
     result = {}
     for key, value in pairs:
@@ -134,26 +97,16 @@ PY
 
 ## Reading the records
 
-- `generation` is an opaque, process-local incrementing counter. It is **not** an
-  account/tenant hash, fingerprint or stable identifier. A scope change or remount
-  gets a new generation. Correlate records only within one running renderer.
-- `attempt` increments within a generation. The first read and manual Retry can
-  be distinguished without logging the query key. Each of the first 20 attempts
-  emits one `started` and one terminal `fulfilled` / `rejected` record. Later
-  attempts still run normally but emit nothing. This is bounded local diagnosis,
-  not a history of private-screen activity.
-- `phase=before` is the audit hook's owner check; `read` is the shared fence's
-  preflight; `request` is the API call (including its decoder); `settlement` is
-  the shared post-read authority/credential fence; `after` is the mounted audit
-  hook's final check. A cancellation is classified but rethrown unchanged.
-- `category` and `errorClass` are authored enums. Unknown errors/codes become
-  `other` / `unknown`, never arbitrary error prose. `status` is present only
-  when the original error is a `DesktopControlError`; `null` is **not** proof
-  that no HTTP request occurred (a post-200 schema/fence rejection also lacks a
-  transport status). Correlate with narrow backend HTTP route/status metadata.
-- `readiness` contains six booleans, never cached status data. `epochChanged`
-  reports only whether the credential epoch changed during this attempt.
-- No query retry, cache lifetime, request abort signal, authorization rule or
-  user-visible UI is changed. Logger failure cannot replace a successful result
-  or the original rejection. Do not interpret controlled schema/fence/cancel
-  tests as a reproduction of the installed app's first-open failure.
+- Each rejection emits only `operation` (`conversations`, `messages`, `replies`)
+  and `statusClass` (`1xx` through `5xx`, or `unknown`). Successful reads emit nothing.
+- `unknown` includes schema and authority-fence failures, not just transport errors;
+  it is not proof that no HTTP request occurred. No code or exact status is logged.
+- At most 20 refusals are logged per mounted scope/operation; authority rebinds
+  retain the budget. Scope IDs are never included, hashed, or fingerprinted.
+- The classifier remains internal. Its taxonomy, error class, codes, and status
+  do not cross the logging boundary. No error prose, stacks, bodies, IDs or tokens
+  can appear in the diagnostic record.
+- Logger failure cannot replace the original rejection or interfere with recovery.
+  Retry, authority rebind, cache lifetime and authorization remain main's policy.
+- These hook tests do not prove packaged log forwarding or reproduce the installed
+  app's original first-open exception. Independent candidate QA remains required.
