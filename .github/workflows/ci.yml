@@ -731,16 +731,16 @@ jobs:
         # `timeout-minutes` runs no further steps: without this, the payload
         # scan below is skipped in exactly the case it exists for. A step
         # timeout kills this step's process and the job continues, so a stall
-        # ends at 45 minutes and the scan reads the truncated tee file. 45 is
+        # ends at 45 minutes and the scan reads the truncated capture file. 45 is
         # ~1.9x the slowest measured shard (23.9 minutes, run 40182194704) and
         # leaves the job's last five minutes for the scan.
         timeout-minutes: 45
         # ONE run, not two. This job used to invoke `pnpm test:desktop` twice:
         # once for its exit status and again inside its own count assertions,
-        # which doubled the dominant cost of the job for no signal. `pipefail`
+        # which doubled the dominant cost of the job for no signal. SUITE_RC
         # gives the first half (a red suite fails the step) and the counts give
         # the second (a renamed script or a glob matching nothing still exits
-        # 0), so the suite runs once. `tee` keeps the log as evidence either
+        # 0), so the suite runs once. File redirection keeps evidence either
         # way. `scripts/ci-scope.test.mjs` asserts there is exactly one
         # invocation and that this step still fails closed.
         #
@@ -788,7 +788,12 @@ jobs:
           # Local pnpm test:desktop remains the full inventory; this wrapper
           # parses that exact command and forwards one partition to its runner.
           CHECKOUT_SHA=$(git rev-parse HEAD)
-          node scripts/desktop-test-shards.mjs run --head "$DESKTOP_REQUESTED_HEAD" --checkout "$CHECKOUT_SHA" --index "$DESKTOP_SHARD_INDEX" 2>&1 | tee /tmp/desktop-tests.log || SUITE_RC=$?
+          # The 2026-11-01 four-arm/two-run experiment completed shard 1/8
+          # unpiped (1611 tests, 372/373 s) but the tee arm outlived both its
+          # 30-minute timeout and 45-minute job cap: two 14.62 MiB React stack
+          # frames stalled streaming. Capture directly; the later log guard
+          # must name a payload failure without first streaming that payload.
+          node scripts/desktop-test-shards.mjs run --head "$DESKTOP_REQUESTED_HEAD" --checkout "$CHECKOUT_SHA" --index "$DESKTOP_SHARD_INDEX" > /tmp/desktop-tests.log 2>&1 || SUITE_RC=$?
           # `|| true` so a log with no counts still reaches the guards below
           # instead of tripping errexit on the way - the arms below are what name
           # that case, and they cannot name it from here if grep kills the step.
@@ -796,12 +801,11 @@ jobs:
           FAIL=$(grep -E '^# fail ' /tmp/desktop-tests.log | awk '{print $3}' || true)
           echo "desktop suite: rc=$SUITE_RC pass=$PASS fail=$FAIL"
           echo "elapsed=$((SECONDS - SUITE_STARTED))" >> "$GITHUB_OUTPUT"
-          # WHERE THIS ACTUALLY REACHES A READER, stated rather than implied:
-          # everything printed below is written AFTER the suite finishes, so it
-          # lands at the very END of the job log (measured: byte 37,747,599 of
-          # 37,750,309 - 99.99%) and a `gh run view --log` reader never gets it.
-          # ONLY the annotations cross that cut. Read them back - they are not in
-          # the log at all - with:
+          # Before direct capture, these diagnostics landed after the streamed
+          # suite at byte 37,747,599 of 37,750,309 (99.99%), beyond what a
+          # `gh run view --log` reader retrieved. Direct capture now keeps this
+          # summary small; retain annotations as an independent failure channel.
+          # Read the annotations back with:
           #   gh api repos/<owner>/<repo>/check-runs/<id>/annotations --jq '.[].message'
           # And do NOT "verify" this by grepping a truncated log for `::error::`:
           # the runner echoes this whole `run:` body into the log, so the first
@@ -887,7 +891,7 @@ jobs:
           retention-days: 7
 
       # gh's rendered job log can omit the middle of a large run, including
-      # its real assertions and TAP summary. Keep the exact single-run tee file
+      # its real assertions and TAP summary. Keep the exact single-run capture file
       # independently retrievable on failure; no rerun or environment dump.
       - name: Upload failed desktop suite log
         if: ${{ always() && (steps.desktop_suite.outcome == 'failure' || steps.desktop_suite.outcome == 'cancelled') }}
