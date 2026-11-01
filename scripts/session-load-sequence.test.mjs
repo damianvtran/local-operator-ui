@@ -4,6 +4,7 @@ import { after, test } from "node:test";
 import { build } from "esbuild";
 import { JSDOM } from "jsdom";
 import { createElement as h } from "react";
+import { registerPOC1 } from "./poc1-transport.mjs";
 
 /*
  * Regex literals hoisted to the top level: `useTopLevelRegex` charges a literal
@@ -11,6 +12,7 @@ import { createElement as h } from "react";
  * list, so this tree's own gate is the only thing that would say so (the same
  * note `session-load-recovery.test.mjs` carries).
  */
+const POC1 = process.env.LOP_POC1 === "1";
 const RE_DESKTOP_API = /desktop-api$/;
 const RE_TRANSPORT = /^transport$/;
 const RE_CONNECTIVITY_STATUS = /use-connectivity-status$/;
@@ -171,6 +173,14 @@ const stubWindowTimers = () => {
 		timerSeq += 1;
 		pendingTimers.push({
 			id: timerSeq,
+			...(POC1
+				? {
+						origin: new Error().stack
+							?.split("\n")
+							.slice(2, 7)
+							.map((line) => line.replaceAll(process.cwd(), "<repo>")),
+					}
+				: {}),
 			callback,
 			delay: typeof delay === "number" ? delay : 0,
 		});
@@ -254,7 +264,7 @@ const REAL_DESKTOP_API = `${process.cwd()}/src/renderer/src/shared/api/local-ope
 const bundle = await build({
 	stdin: {
 		contents: `
-			import { createElement as h } from "react";
+			import { createElement as h, useLayoutEffect } from "react";
 			import { useCanonicalSessionStream } from "./src/renderer/src/shared/hooks/use-canonical-session";
 			import { CanonicalTranscript } from "./src/renderer/src/features/chat/canonical/canonical-transcript";
 
@@ -268,6 +278,9 @@ const bundle = await build({
 			 */
 			export { HIDE_CROSS_SESSION_KEY } from "./src/renderer/src/features/chat/canonical/use-cross-session-hidden";
 			export { TURN_ANSWER_RAIL_KEY } from "./src/renderer/src/features/chat/canonical/turn-answer-rail";
+			export { __resetCheckpointManifestCache } from "./src/renderer/src/features/chat/canonical/checkpoint-manifest-cache";
+			export { transcriptPaneHoldsPlaceholder, transcriptPaneCollapses } from "./src/renderer/src/features/chat/canonical/transcript-pane";
+			export { openFrameFacts } from "./src/renderer/src/features/chat/canonical/open-frame";
 			export { applyHistoryPage, EMPTY_TRANSCRIPT } from "./src/renderer/src/features/chat/canonical/transcript-reducer";
 
 			/*
@@ -299,7 +312,8 @@ const bundle = await build({
 				 * SessionPanel's busy/starting latches are panel-owned, so a load with no
 				 * admitted send passes the values that latch would hold (false, null).
 				 */
-				const canonical = useCanonicalSessionStream(sessionId, true, true, sessionId);
+				const canonical = useCanonicalSessionStream(sessionId, true, true, sessionId, globalThis.__poc1 ? { openFrame: true, journalOrder: true } : {});
+				if (globalThis.__poc1) globalThis.__poc1.handle = canonical;
 				/*
 				 * The diagnostic half (read-only): what the handle holds each render, so
 				 * the sequence table can say WHY a commit paints what it paints rather
@@ -313,6 +327,10 @@ const bundle = await build({
 					streaming: canonical.frontend?.streaming ?? null,
 					hasMore: canonical.transcript.hasMore,
 				};
+				// Layout commits are observations, not browser paints or sendability.
+				useLayoutEffect(() => {
+					globalThis.__poc1?.observeCommit?.(containerRef.current);
+				});
 				return h(CanonicalTranscript, {
 					frontend: canonical.frontend,
 					transcript: canonical.transcript,
@@ -470,6 +488,10 @@ const bundlePath = new URL(
 await writeFile(bundlePath, bundle.outputFiles[0].text);
 const {
 	LoadPane,
+	__resetCheckpointManifestCache,
+	openFrameFacts,
+	transcriptPaneHoldsPlaceholder,
+	transcriptPaneCollapses,
 	writePaint,
 	__resetPaintCache,
 	applyHistoryPage,
@@ -728,13 +750,15 @@ const mountArm = async (t, label = "mount", network = answerNetwork) => {
 		},
 	});
 	let root;
-	t.after(async () => {
+	const dispose = async () => {
 		await act(async () => {
 			root?.unmount();
+			root = null;
 		});
 		client.clear();
 		container.remove();
-	});
+	};
+	t.after(dispose);
 	globalThis.__loadNet.network = network;
 	const records = [];
 	const record = async (step) => {
@@ -774,7 +798,21 @@ const mountArm = async (t, label = "mount", network = answerNetwork) => {
 			subscription.onEvent({ kind: "data", data: JSON.stringify(next) });
 		});
 	};
-	return { container, records, record, send };
+	const switchTo = async (sessionId) => {
+		await act(async () => {
+			root.render(
+				h(
+					QueryClientProvider,
+					{ client },
+					h(LoadPane, {
+						sessionId,
+						containerRef: { current: container },
+					}),
+				),
+			);
+		});
+	};
+	return { container, records, record, send, dispose, switchTo };
 };
 
 /* ------------------------------------------------------------------- the arm */
@@ -1761,3 +1799,33 @@ test("a registry read that fails releases the pane, and the retry never takes it
 		stubWindowTimers();
 	}
 });
+
+// Opt-in registration keeps the ordinary sequence suite and its fixtures unchanged.
+if (POC1) {
+	registerPOC1({
+		test,
+		after,
+		act,
+		mountArm,
+		answerNetwork,
+		entry,
+		frame,
+		frontendState,
+		openFrame,
+		SESSION,
+		S,
+		readView,
+		markCount,
+		flushFrames,
+		pendingTimers,
+		rafQueue,
+		writePaint,
+		__resetPaintCache,
+		applyHistoryPage,
+		EMPTY_TRANSCRIPT,
+		__resetCheckpointManifestCache,
+		openFrameFacts,
+		transcriptPaneHoldsPlaceholder,
+		transcriptPaneCollapses,
+	});
+}
