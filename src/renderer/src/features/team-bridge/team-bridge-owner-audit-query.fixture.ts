@@ -29,6 +29,9 @@ type TransportRecord = {
 	conversation?: string;
 	before?: number;
 	limit?: number;
+	root?: string;
+	order?: string;
+	after?: number;
 };
 
 /**
@@ -68,7 +71,9 @@ export function createOwnerAuditQueryFixture(options: {
 	let mode: FixtureMode = "normal";
 	let latest = 10000;
 	let expanded = false;
-	const envelope = (result: unknown, status = 200) => ({
+	let threadLatest = 20000;
+	let threadMode: "backward" | "old-server" | "old-runtime" = "backward";
+	const envelope = (result: unknown, status = 200, code?: string) => ({
 		status,
 		kind: "json" as const,
 		body:
@@ -76,7 +81,8 @@ export function createOwnerAuditQueryFixture(options: {
 				? { status, result }
 				: {
 						status,
-						error: {
+						detail: {
+							code,
 							message: "Synthetic fixture refusal", // i18n: ignore synthetic IPC fixture error, not product copy
 						},
 					},
@@ -88,6 +94,9 @@ export function createOwnerAuditQueryFixture(options: {
 		if ("conversation_id" in input) record.conversation = input.conversation_id;
 		if ("before_seq" in input) record.before = input.before_seq;
 		if ("limit" in input) record.limit = input.limit;
+		if ("message_id" in input) record.root = input.message_id;
+		if ("order" in input) record.order = input.order;
+		if ("after_seq" in input) record.after = input.after_seq;
 		records.push(record);
 		if (records.length > 128) records.shift();
 		// Some operations have an optional tenant field: property presence does
@@ -114,6 +123,104 @@ export function createOwnerAuditQueryFixture(options: {
 				has_more: false,
 				next_cursor: null,
 			});
+		if (
+			input.op === "team_bridge.owner_audit.replies" ||
+			input.op === "team_bridge.messages.replies"
+		) {
+			if (mode === "denied") return envelope(null, 403);
+			if (input.limit !== undefined && input.limit !== 50)
+				return envelope(null, 422, "invalid_request");
+			if (
+				threadMode === "old-runtime" &&
+				(input.order !== undefined || input.before_seq !== undefined)
+			)
+				return envelope(null, 422, "invalid_request");
+			if (
+				holdOlder &&
+				(input.before_seq !== undefined ||
+					(input.after_seq !== undefined && input.after_seq > 0))
+			) {
+				holdOlder = false;
+				await new Promise<void>((resolve) => pending.add(resolve));
+			}
+			if (!active) return envelope(null, 503);
+			const backward =
+				threadMode === "backward" &&
+				(input.order === "desc" || input.before_seq !== undefined);
+			const rootSeq = 9999;
+			const count = mode === "empty" ? 0 : mode === "short" ? 3 : 50;
+			const first = backward
+				? Math.max(rootSeq + 1, (input.before_seq ?? threadLatest + 1) - count)
+				: Math.max(rootSeq + 1, input.after_seq ?? rootSeq + 1);
+			const last = backward
+				? (input.before_seq ?? threadLatest + 1) - 1
+				: Math.min(threadLatest, first + count - 1);
+			const replyRoot = {
+				...options.message,
+				id: input.message_id,
+				conversation_id: input.conversation_id,
+				seq: rootSeq,
+				origin: options.message.sender.kind === "agent" ? "agent" : "human",
+				// The member DTO omits a root's parent (it is never a reply).
+				thread_root_id: undefined,
+				reply_count:
+					mode === "empty" ? 0 : mode === "short" ? 3 : threadLatest - rootSeq,
+				attachments: [],
+				attachment_count: 0,
+			};
+			const replies = Array.from(
+				{ length: Math.max(0, Math.min(count, last - first + 1)) },
+				(_, index) => {
+					const seq = first + index;
+					const base =
+						mode === "unavailable"
+							? options.unavailableMessage
+							: options.message;
+					return {
+						...base,
+						id: `bcmsg_query_reply_${input.tenant_id}_${input.conversation_id}_${seq}`,
+						conversation_id: input.conversation_id,
+						seq,
+						thread_root_id: input.message_id,
+						origin: base.sender.kind === "agent" ? "agent" : "human",
+						body:
+							mode === "unavailable"
+								? base.body
+								: `Synthetic reply ${seq}.${expanded && seq === 19995 ? `\n\n${"Controlled reply reflow.\n\n".repeat(15)}` : ""}`,
+						attachments:
+							mode === "unavailable"
+								? [
+										{
+											id: "bat_query_reply_unadmitted",
+											mime: "image/png",
+											size: 256,
+											state: "pending",
+											url: OWNER_AUDIT_NOFETCH_SENTINEL,
+											preview_url: OWNER_AUDIT_NOFETCH_SENTINEL,
+										},
+									]
+								: [],
+						attachment_count: mode === "unavailable" ? 1 : 0,
+					};
+				},
+			);
+			const hasMore =
+				(mode === "normal" || mode === "unavailable") &&
+				replies.length > 0 &&
+				(backward ? first > rootSeq + 1 : last < threadLatest);
+			return envelope({
+				root: replyRoot,
+				replies,
+				has_more: hasMore,
+				...(backward
+					? { next_before_seq: hasMore ? first : undefined }
+					: { next_after_seq: hasMore ? last + 1 : undefined }),
+				...(threadMode === "backward" &&
+				(input.order !== undefined || input.before_seq !== undefined)
+					? { order: backward ? "desc" : "asc" }
+					: {}),
+			});
+		}
 		if (input.op !== "team_bridge.owner_audit.messages")
 			return envelope(null, 503);
 		if (input.limit !== 50) return envelope(null, 400);
@@ -136,6 +243,7 @@ export function createOwnerAuditQueryFixture(options: {
 				id: `bmsg_query_${input.tenant_id}_${input.conversation_id}_${seq}`,
 				conversation_id: input.conversation_id,
 				seq,
+				reply_count: seq === 9999 ? threadLatest - 9999 : 0,
 				body:
 					mode === "unavailable"
 						? base.body
@@ -185,6 +293,10 @@ export function createOwnerAuditQueryFixture(options: {
 		},
 		arrive() {
 			latest += 1;
+			threadLatest += 1;
+		},
+		setThreadMode(value: "backward" | "old-server" | "old-runtime") {
+			threadMode = value;
 		},
 		expand() {
 			expanded = !expanded;
@@ -193,8 +305,10 @@ export function createOwnerAuditQueryFixture(options: {
 		refreshBackend() {
 			return client.refetchQueries({
 				predicate: (query) =>
-					query.queryKey[1] === "owner-audit" &&
-					query.queryKey.at(-1) === "messages",
+					query.queryKey[0] === "team-bridge" &&
+					((query.queryKey[1] === "owner-audit" &&
+						query.queryKey.at(-1) === "messages") ||
+						query.queryKey.includes("replies")),
 				type: "active",
 			});
 		},
@@ -202,17 +316,26 @@ export function createOwnerAuditQueryFixture(options: {
 			return {
 				mode,
 				latest,
+				threadLatest,
+				threadMode,
 				noFetchSentinel: OWNER_AUDIT_NOFETCH_SENTINEL,
 				held: pending.size,
 				records: [...records],
 				queries: client
 					.getQueryCache()
 					.findAll()
-					.filter((query) => query.queryKey[1] === "owner-audit")
+					.filter(
+						(query) =>
+							query.queryKey[1] === "owner-audit" ||
+							query.queryKey.includes("replies"),
+					)
 					.map((query) => {
 						const data = query.state.data as
 							| {
-									pages?: { messages?: OwnerAuditMessage[] }[];
+									pages?: {
+										messages?: OwnerAuditMessage[];
+										replies?: OwnerAuditMessage[];
+									}[];
 									pageParams?: unknown[];
 							  }
 							| undefined;
@@ -223,7 +346,8 @@ export function createOwnerAuditQueryFixture(options: {
 							pages: data?.pages?.length ?? 0,
 							rows:
 								data?.pages?.reduce(
-									(sum, page) => sum + (page.messages?.length ?? 0),
+									(sum, page) =>
+										sum + (page.messages?.length ?? page.replies?.length ?? 0),
 									0,
 								) ?? 0,
 							pageParams: data?.pageParams,

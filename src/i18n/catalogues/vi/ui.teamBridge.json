@@ -318,5 +318,6 @@
 	"ui.teamBridge.mentions.notice.invite": "Mời",
 	"ui.teamBridge.mentions.notice.silent": "Nhắc đến mà không thông báo",
 	"ui.teamBridge.mentions.notice.pending": "{name} đã được mời nhưng chưa tham gia nên sẽ không nhận được thông báo.",
-	"ui.teamBridge.mentions.notice.invited": "Đã mời {name}. Họ sẽ không nhận được thông báo cho đến khi tham gia."
+	"ui.teamBridge.mentions.notice.invited": "Đã mời {name}. Họ sẽ không nhận được thông báo cho đến khi tham gia.",
+	"ui.teamBridge.replies.legacy_window": "Máy chủ này chỉ hỗ trợ hiển thị phản hồi từ cũ đến mới. Tải thêm để tiếp tục."
 }

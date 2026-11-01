@@ -9951,6 +9951,7 @@ export type MessageParams = {
 	"ui.teamBridge.replies.count": { count: number };
 	"ui.teamBridge.replies.empty": undefined;
 	"ui.teamBridge.replies.last": { time: string };
+	"ui.teamBridge.replies.legacy_window": undefined;
 	"ui.teamBridge.replies.more": undefined;
 	"ui.teamBridge.replies.placeholder": undefined;
 	"ui.teamBridge.replies.title": undefined;

@@ -151,6 +151,7 @@ export function waitForAuditAuthoritySettlement(
 		check();
 	});
 }
+import { useThreadReplyWindow } from "./use-thread-reply-window";
 
 /** No member query keys, persistence, polling, unread counts or read markers.
  * gcTime zero releases private bodies when their human-only panel unmounts.
@@ -390,9 +391,12 @@ export function useOwnerAuditReplies(
 	scope: OwnerAuditScope,
 	conversationId: string,
 	rootId: string,
+	canEvict?: (
+		page: Awaited<ReturnType<typeof TeamBridgeOwnerAuditApi.replies>>,
+	) => boolean,
 ) {
 	const { read, authorityToken, enabled } = useAuditRead(scope, "replies");
-	const query = useInfiniteQuery({
+	const query = useThreadReplyWindow({
 		queryKey: [
 			"team-bridge",
 			"owner-audit",
@@ -403,26 +407,19 @@ export function useOwnerAuditReplies(
 			"replies",
 			rootId,
 		],
-		initialPageParam: undefined as number | undefined,
-		queryFn: ({ pageParam, signal }) =>
-			read(
-				() =>
-					TeamBridgeOwnerAuditApi.replies(
-						scope,
-						conversationId,
-						rootId,
-						pageParam,
-					),
-				signal,
+		identity: { conversationId, rootId },
+		read: (mode, cursor) =>
+			read(() =>
+				TeamBridgeOwnerAuditApi.replies(
+					scope,
+					conversationId,
+					rootId,
+					mode === "desc" ? undefined : (cursor ?? 0),
+					mode === "desc" ? { beforeSeq: cursor, order: "desc" } : undefined,
+				),
 			),
-		getNextPageParam: (last, _pages, previous) =>
-			last.has_more &&
-			last.next_after_seq != null &&
-			(previous === undefined || last.next_after_seq > previous)
-				? last.next_after_seq
-				: undefined,
+		canEvict,
 		enabled,
-		gcTime: 0,
 		retry: retryOwnerAuditRead,
 		retryDelay: AUDIT_RETRY_DELAY_MS,
 		refetchOnWindowFocus: false,

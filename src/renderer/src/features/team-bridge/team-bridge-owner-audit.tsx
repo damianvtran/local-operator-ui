@@ -38,6 +38,7 @@ import {
 	useOwnerAuditMessages,
 	useOwnerAuditReplies,
 } from "./use-team-bridge-owner-audit";
+import { replyPageOutsideViewport } from "./use-thread-reply-window";
 
 export type ReadState = "loading" | "ready" | AuditFailureState;
 const failedState = (state: ReadState): state is AuditFailureState =>
@@ -682,37 +683,97 @@ function AuditReplies({
 	root: OwnerAuditMessage;
 	people: readonly TeamBridgeDirectoryMember[];
 }) {
-	const query = useOwnerAuditReplies(scope, conversation.id, root.id);
-	if (query.isPending)
-		return (
-			<output className="block py-1 text-[12px] text-ink-muted">
-				{t("ui.ownerAudit.loading")}
-			</output>
-		);
+	const viewport = useRef<HTMLDivElement>(null);
+	const query = useOwnerAuditReplies(scope, conversation.id, root.id, (page) =>
+		replyPageOutsideViewport(page, viewport.current),
+	);
 	const state = readState(query);
-	if (failedState(state))
-		return <AuditFailure state={state} retry={() => void query.refetch()} />;
+	const viewState = query.isPending
+		? "loading"
+		: failedState(state) && (!query.data || !query.keepWindowOnError)
+			? "error"
+			: "ready";
+	const timeline = useStickToBottom({
+		resetKey: `${scope.accountId}:${scope.tenantId}:${conversation.id}:${root.id}:${query.mode}:${viewState}`,
+		contentKey: `${query.replies.length}:${query.replies.at(-1)?.id ?? ""}`,
+		scrollElement: "root",
+		preserveAnchor: true,
+		rowIds: query.replies.map((row) => row.id),
+		liveEdgeAvailable: query.latestPageAvailable,
+	});
+	const combinedRef = useMemo(
+		() => composeRefs(timeline.rootRef, viewport),
+		[timeline.rootRef],
+	);
 	return (
-		<div>
-			{/* The thread pane's own density: replies are the same rows, narrower. */}
-			<AuditTranscript
-				conversation={conversation}
-				messages={ownerAuditChronology(
-					query.data?.pages.map((page) => page.replies) ?? [],
-				)}
-				people={people}
-				density="compact"
-			/>
-			{query.hasNextPage && (
+		<div className="relative min-h-0">
+			{query.mode === "legacy" && (
+				<p className="py-1 text-meta text-ink-dim">
+					{t("ui.teamBridge.replies.legacy_window")}
+				</p>
+			)}
+			{query.mode === "desc" && !query.latestPageAvailable && (
 				<Button
 					variant="ghost"
 					size="sm"
-					disabled={query.isFetchingNextPage}
-					onClick={() => void query.fetchNextPage()}
+					onClick={() => void query.resetLatest()}
 				>
-					{t("ui.ownerAudit.more")}
+					{t("ui.ownerAudit.refresh")}
 				</Button>
 			)}
+			{query.latestPageAvailable && timeline.newMessages > 0 && (
+				<Button variant="ghost" size="sm" onClick={timeline.pin}>
+					{t("ui.teamBridge.notify.count", { count: timeline.newMessages })}
+				</Button>
+			)}
+			{query.keepWindowOnError && (
+				<AuditFailure state={state} retry={() => void query.fetchNextPage()} />
+			)}
+			<div
+				ref={combinedRef}
+				className="max-h-80 min-h-0 overflow-auto"
+				data-audit-reply-window
+			>
+				{query.mode === "desc" &&
+					viewState === "ready" &&
+					query.hasNextPage && (
+						<Button
+							variant="ghost"
+							size="sm"
+							disabled={query.isFetchingNextPage}
+							onClick={() => {
+								timeline.hold();
+								void query.fetchNextPage();
+							}}
+						>
+							{t("ui.ownerAudit.more")}
+						</Button>
+					)}
+				{query.isPending ? (
+					<output className="block py-1 text-meta text-ink-muted">
+						{t("ui.ownerAudit.loading")}
+					</output>
+				) : viewState === "error" ? (
+					<AuditFailure state={state} retry={() => void query.resetLatest()} />
+				) : (
+					<AuditTranscript
+						conversation={conversation}
+						messages={query.replies}
+						people={people}
+						density="compact"
+					/>
+				)}
+				{query.mode === "legacy" && query.hasNextPage && (
+					<Button
+						variant="ghost"
+						size="sm"
+						disabled={query.isFetchingNextPage}
+						onClick={() => void query.fetchNextPage()}
+					>
+						{t("ui.ownerAudit.more")}
+					</Button>
+				)}
+			</div>
 		</div>
 	);
 }

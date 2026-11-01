@@ -46,6 +46,7 @@ export function useStickToBottom<T extends HTMLElement = HTMLDivElement>({
 	scrollElement = "radix",
 	preserveAnchor = false,
 	rowIds,
+	rowSelector = "[data-message-id]",
 	liveEdgeAvailable = true,
 }: {
 	resetKey: string;
@@ -56,6 +57,8 @@ export function useStickToBottom<T extends HTMLElement = HTMLDivElement>({
 	/** Opt-in history retention; member/thread policy is unchanged by default. */
 	preserveAnchor?: boolean;
 	rowIds?: readonly string[];
+	/** A thread root is static context, not an anchor inside its moving reply window. */
+	rowSelector?: string;
 	/** A bounded older-history window is never the live edge. */
 	liveEdgeAvailable?: boolean;
 }): {
@@ -85,32 +88,32 @@ export function useStickToBottom<T extends HTMLElement = HTMLDivElement>({
 		const element = viewport();
 		if (!element) return;
 		const box = element.getBoundingClientRect();
-		const row = [
-			...element.querySelectorAll<HTMLElement>("[data-message-id]"),
-		].find((node) => {
-			const r = node.getBoundingClientRect();
-			return r.bottom > box.top && r.top < box.bottom;
-		});
+		const row = [...element.querySelectorAll<HTMLElement>(rowSelector)].find(
+			(node) => {
+				const r = node.getBoundingClientRect();
+				return r.bottom > box.top && r.top < box.bottom;
+			},
+		);
 		anchor.current = row
 			? {
 					id: row.dataset.messageId ?? "",
 					offset: row.getBoundingClientRect().top - box.top,
 				}
 			: null;
-	}, [preserveAnchor, viewport]);
+	}, [preserveAnchor, viewport, rowSelector]);
 	const restoreAnchor = useCallback(() => {
 		if (!preserveAnchor || !anchor.current) return;
 		const element = viewport();
 		if (!element) return;
-		const row = [
-			...element.querySelectorAll<HTMLElement>("[data-message-id]"),
-		].find((node) => node.dataset.messageId === anchor.current?.id);
+		const row = [...element.querySelectorAll<HTMLElement>(rowSelector)].find(
+			(node) => node.dataset.messageId === anchor.current?.id,
+		);
 		if (row)
 			element.scrollTop +=
 				row.getBoundingClientRect().top -
 				element.getBoundingClientRect().top -
 				anchor.current.offset;
-	}, [preserveAnchor, viewport]);
+	}, [preserveAnchor, viewport, rowSelector]);
 	const toBottom = useCallback(() => {
 		const element = viewport();
 		if (element) element.scrollTop = element.scrollHeight;
