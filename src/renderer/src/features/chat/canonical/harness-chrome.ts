@@ -66,6 +66,21 @@ const LOOP_PROMPT =
 	"the tools available, then briefly state what advanced and what remains. " +
 	"If the goal is already fully met, say so plainly and stop.";
 
+// Old journals carry this model-only instruction without a provenance stamp.
+// Exact equality preserves human warnings and other actionable recovery notices.
+const MISSING_ARGUMENTS_RECOVERY_PROMPT =
+	"Harness recovery notice: required tool arguments were omitted. " +
+	"No rejected call ran. Supply the named required fields " +
+	"inside each call's argument object, including each " +
+	"parallel child's parameters; " +
+	"do not resend empty objects or invent values. If the values are " +
+	"unavailable, explain the blocker. An unchanged retry will stop.";
+const REPEATED_TOOL_ERRORS_RECOVERY_PROMPT =
+	"Harness recovery notice: the last three tool batches repeated " +
+	"the same arguments and errors. Inspect the error and change approach; " +
+	"do not repeat the unchanged failing calls. If an external condition " +
+	"must change, use a supported wait operation or explain the blocker.";
+
 /**
  * Whether this text is one of the goal/loop chrome families, for a row with no
  * marker to read.
@@ -81,6 +96,8 @@ export function isHarnessChromeText(text: string): boolean {
 	const stripped = text.trim();
 	return (
 		stripped === LOOP_PROMPT ||
+		stripped === MISSING_ARGUMENTS_RECOVERY_PROMPT ||
+		stripped === REPEATED_TOOL_ERRORS_RECOVERY_PROMPT ||
 		(stripped.startsWith(GOAL_CONTINUATION_HEAD) &&
 			stripped.endsWith(GOAL_CONTINUATION_TAIL)) ||
 		(stripped.startsWith(LOOP_GOAL_HEAD.trim()) &&

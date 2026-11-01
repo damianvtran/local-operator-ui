@@ -58,5 +58,6 @@
 	"ui.chat.sidebar.row_menu.unarchive": "Désarchiver la conversation",
 	"ui.chat.sidebar.row_menu.unpin": "Désépingler la conversation",
 	"ui.chat.sidebar.pins.pin_label": "Épingler « {title} »",
-	"ui.chat.sidebar.pins.unpin_label": "Désépingler « {title} »"
+	"ui.chat.sidebar.pins.unpin_label": "Désépingler « {title} »",
+	"ui.chat.sidebar.agents.list_join": "{position, select, pair {{head} et {tail}} middle {{head}, {tail}} other {{head} et {tail}}}"
 }

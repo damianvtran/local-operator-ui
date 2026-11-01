@@ -11,6 +11,7 @@ import {
 } from "@shared/hooks/radient-account-authority";
 import {
 	CancelledError,
+	type InfiniteData,
 	isCancelledError,
 	useInfiniteQuery,
 	useQueryClient,
@@ -18,6 +19,7 @@ import {
 import {
 	useCallback,
 	useLayoutEffect,
+	useMemo,
 	useRef,
 	useSyncExternalStore,
 } from "react";
@@ -25,13 +27,9 @@ import type { AgentMessagesStatus } from "../../../../shared/agent-messages-cont
 import { teamBridgeKeys } from "./team-bridge-keys";
 import { bridgeStatusAuthority, readForBridgeOwner } from "./team-bridge-owner";
 
-/** Query rejections are consumed by React Query, so neither React nor the
- * packaged renderer console reports them. The durable diagnostic must explain
- * an HTTP-200-then-error without copying any error prose, keys, stacks or data:
- * a Zod error's message/stack can contain the rejected private audit payload.
- * All non-numeric fields below are authored enums. Unknown codes stay unknown.
- * Classification only observes; the bounded recovery policy below consumes
- * this metadata without echoing or replacing the original refusal. */
+/** Classification only observes: recovery and presentation consume authored
+ * metadata without echoing or replacing the original refusal. The durable
+ * diagnostic below deliberately does NOT serialize this richer classifier. */
 const AUDIT_ERROR_CODES = new Set([
 	"conversation_not_found",
 	"account_mismatch",
@@ -164,7 +162,10 @@ export function waitForAuditAuthoritySettlement(
  * gcTime zero releases private bodies when their human-only panel unmounts.
  * The owner epoch fence rejects a late A→B→A settlement as well as a new account;
  * expected_account_id additionally binds the actual server request. */
-function useAuditRead(scope: OwnerAuditScope) {
+function useAuditRead(
+	scope: OwnerAuditScope,
+	operation: "conversations" | "messages" | "replies",
+) {
 	const client = useQueryClient();
 	const authority = useObservedRadientAuthority();
 	const subscribe = useCallback(
@@ -190,6 +191,17 @@ function useAuditRead(scope: OwnerAuditScope) {
 		client.getQueryData<AgentMessagesStatus>(
 			teamBridgeKeys.statusFor(scope.accountId),
 		)?.account_id === scope.accountId;
+	// Keep diagnostics bounded per scope and operation without logging scope IDs.
+	// Authority rebinds retain the budget, so recovery cannot amplify the log.
+	const diagnostic = useMemo(
+		() => ({
+			accountId: scope.accountId,
+			tenantId: scope.tenantId,
+			operation,
+			remaining: 20,
+		}),
+		[scope.accountId, scope.tenantId, operation],
+	);
 	const mounted = useRef(true);
 	const unauthorized = useRef(0);
 	useLayoutEffect(() => {
@@ -218,6 +230,32 @@ function useAuditRead(scope: OwnerAuditScope) {
 			unauthorized.current = 0;
 			return answer;
 		} catch (error) {
+			/* The only durable fields are operation and statusClass. Never log
+			 * error prose, stacks, codes, message bodies, IDs, tokens, query keys,
+			 * or the classifier object. Read an own numeric status without invoking
+			 * accessors/coercion/toJSON; unknown failures stay unattributed. */
+			if (diagnostic.remaining > 0) {
+				diagnostic.remaining -= 1;
+				const status =
+					error instanceof DesktopControlError
+						? Object.getOwnPropertyDescriptor(error, "status")?.value
+						: undefined;
+				const statusClass =
+					typeof status === "number" &&
+					Number.isInteger(status) &&
+					status >= 100 &&
+					status <= 599
+						? `${Math.floor(status / 100)}xx`
+						: "unknown";
+				try {
+					console.warn(
+						"[owner-audit-read]",
+						JSON.stringify({ operation, statusClass }),
+					);
+				} catch {
+					// Observability must not replace a refusal or alter recovery.
+				}
+			}
 			// A rejection can arrive late too; it must not start a retry or an
 			// auth wait on behalf of credentials that no longer own the panel.
 			if (!isCurrent()) throw new CancelledError({ revert: true });
@@ -248,7 +286,10 @@ function useAuditRead(scope: OwnerAuditScope) {
 }
 
 export function useOwnerAuditConversations(scope: OwnerAuditScope) {
-	const { read, authorityToken, enabled } = useAuditRead(scope);
+	const { read, authorityToken, enabled } = useAuditRead(
+		scope,
+		"conversations",
+	);
 	const query = useInfiniteQuery({
 		queryKey: [
 			"team-bridge",
@@ -279,23 +320,46 @@ export function useOwnerAuditConversations(scope: OwnerAuditScope) {
 export function useOwnerAuditMessages(
 	scope: OwnerAuditScope,
 	conversationId: string,
+	canEvictPage?: (
+		page: Awaited<ReturnType<typeof TeamBridgeOwnerAuditApi.messages>>,
+	) => boolean,
 ) {
-	const { read, authorityToken, enabled } = useAuditRead(scope);
+	const { read, authorityToken, enabled } = useAuditRead(scope, "messages");
+	const client = useQueryClient();
+	const queryKey = [
+		"team-bridge",
+		"owner-audit",
+		scope.accountId,
+		scope.tenantId,
+		authorityToken,
+		conversationId,
+		"messages",
+	] as const;
 	const query = useInfiniteQuery({
-		queryKey: [
-			"team-bridge",
-			"owner-audit",
-			scope.accountId,
-			scope.tenantId,
-			authorityToken,
-			conversationId,
-			"messages",
-		],
+		queryKey,
+		// Six bounded pages cap private cache and DOM at 300 main-timeline rows.
+		// Further upward reads slide the window, never eagerly fetch all history.
+		maxPages: 6,
 		initialPageParam: undefined as number | undefined,
-		queryFn: ({ pageParam }) =>
-			read(() =>
+		queryFn: async ({ pageParam }) => {
+			const page = await read(() =>
 				TeamBridgeOwnerAuditApi.messages(scope, conversationId, pageParam),
-			),
+			);
+			const cached = client.getQueryData<InfiniteData<typeof page>>(queryKey);
+			// The user may return to the recent page while an older request is in
+			// flight. Never evict a visible row merely to admit that late result:
+			// cancel/revert this pagination attempt, keeping the six existing pages.
+			// A later explicit upward read can retry the same cursor; no auto retry.
+			if (
+				pageParam !== undefined &&
+				cached &&
+				cached.pages.length >= 6 &&
+				canEvictPage &&
+				!canEvictPage(cached.pages[0])
+			)
+				throw new CancelledError({ revert: true });
+			return page;
+		},
 		getNextPageParam: (last, _pages, previous) =>
 			last.has_more &&
 			last.next_before_seq != null &&
@@ -310,7 +374,14 @@ export function useOwnerAuditMessages(
 		refetchOnReconnect: false,
 		retryOnMount: false,
 	});
-	return { ...query, auditAuthRequired: !enabled };
+	return {
+		...query,
+		auditAuthRequired: !enabled,
+		// A slid window's oldest retained cursor is not the newest page. Refresh
+		// explicitly resets to the uncursored 50-row read, rather than refetching
+		// stale middle-history cursors. No bodies outlive this panel's gcTime:0.
+		refetchLatest: () => client.resetQueries({ queryKey, exact: true }),
+	};
 }
 
 export function useOwnerAuditReplies(
@@ -318,7 +389,7 @@ export function useOwnerAuditReplies(
 	conversationId: string,
 	rootId: string,
 ) {
-	const { read, authorityToken, enabled } = useAuditRead(scope);
+	const { read, authorityToken, enabled } = useAuditRead(scope, "replies");
 	const query = useInfiniteQuery({
 		queryKey: [
 			"team-bridge",

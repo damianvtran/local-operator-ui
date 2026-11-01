@@ -297,6 +297,7 @@ import {
 	tailArrivalAnnouncement,
 	tailExtendDue,
 } from "../sidebar-scope-paging";
+import { builtinOfferSentence } from "./builtin-offer-sentence";
 import { ChatRemoteMark } from "./chat-remote-mark";
 import { ChatRowHoverIntent } from "./chat-row-hover-intent";
 import { ChatRowTitle } from "./chat-row-title";
@@ -991,43 +992,6 @@ const pressRowAct = (sessionId: string, act: ChatRowAct) => {
 		.querySelector<HTMLElement>(`[data-session-row="${CSS.escape(sessionId)}"]`)
 		?.querySelector<HTMLElement>(`[${CHAT_ROW_ACT_ATTR[act]}]`)
 		?.click();
-};
-
-/**
- * The sentence that offers the built-ins, built from the names actually offered.
- *
- * It replaced copy that named activities rather than roles — "roles for coding,
- * review, design, research and coordination" — with no count at all: "research"
- * is not among the packaged profiles, architecture and testing went unnamed, and
- * the number only appeared once the batch had started ("Installing 1 of 6"), so
- * the sentence that sets the expectation for the whole flow was wrong about
- * both what is on offer and how much of it there is (UX round 1, U6). Derived
- * from the rows the backend sent rather than written by hand, because the
- * catalogue is the authority on what can be installed and a second list here
- * can disagree with it.
- */
-const builtinOfferSentence = (
-	builtins: readonly { name: string }[],
-): string => {
-	const names = builtins.map((builtin) => builtin.name);
-	/*
-	 * THE LIST IS JOINED HERE, deliberately: IntlMessageFormat has no list
-	 * formatter, and the English source joins with commas and a bare "and" (no
-	 * Oxford comma) - a shape ICU cannot express for a variable-length list. So the
-	 * count and the pre-joined names are parameters of ONE catalogue message (whose
-	 * arms carry the spelled numbers and the it/them pronoun), and a locale cannot
-	 * change the conjunction. That is a stated limit of keying this sentence, not
-	 * an oversight; moving the join into the catalogue would need a list-format
-	 * placeholder the runtime does not have.
-	 */
-	const list =
-		names.length === 1
-			? names[0]
-			: `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`;
-	return t("ui.chat.sidebar.agents.builtin_offer", {
-		count: names.length,
-		list,
-	});
 };
 
 /**

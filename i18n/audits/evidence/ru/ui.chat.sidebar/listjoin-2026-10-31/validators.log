@@ -1,0 +1,55 @@
+context-parity: ok — every English key is covered, apart from 131 allowed gap(s) in 4 namespace(s) (shrink-only; see i18n/context-allowance.json).
+/Users/damian/local-operator-ui/.worktrees/i18n-listjoin/src/i18n/keys.gen.ts is byte-identical to a fresh generation.
+check-duplicates: ok — 1031 file(s) scanned, 0 duplicate key(s)
+✔ the English source is non-empty (the guard would pass vacuously otherwise) (0.673125ms)
+✔ [es] ships at least one message (not an empty claim) (6.902209ms)
+✔ [es] defines each key in at most one namespace file (6.620667ms)
+✔ [es] carries EVERY key of each namespace file it ships (14.15975ms)
+✔ [es] names only keys the English source defines (6.639584ms)
+✔ [es] preserves every ICU placeholder from the English source (28.409125ms)
+✔ [es] is not an English stub (no value identical to the source) (7.9485ms)
+✔ [fr] ships at least one message (not an empty claim) (7.503083ms)
+✔ [fr] defines each key in at most one namespace file (7.008708ms)
+✔ [fr] carries EVERY key of each namespace file it ships (14.499791ms)
+✔ [fr] names only keys the English source defines (6.72375ms)
+✔ [fr] preserves every ICU placeholder from the English source (20.368958ms)
+✔ [fr] is not an English stub (no value identical to the source) (6.344542ms)
+✔ [hi] ships at least one message (not an empty claim) (7.882584ms)
+✔ [hi] defines each key in at most one namespace file (8.844792ms)
+✔ [hi] carries EVERY key of each namespace file it ships (17.232625ms)
+✔ [hi] names only keys the English source defines (9.048792ms)
+✔ [hi] preserves every ICU placeholder from the English source (21.924375ms)
+✔ [hi] is not an English stub (no value identical to the source) (9.505875ms)
+✔ [ru] ships at least one message (not an empty claim) (8.916792ms)
+✔ [ru] defines each key in at most one namespace file (8.93875ms)
+✔ [ru] carries EVERY key of each namespace file it ships (16.534958ms)
+✔ [ru] names only keys the English source defines (9.253875ms)
+✔ [ru] preserves every ICU placeholder from the English source (23.220792ms)
+✔ [ru] is not an English stub (no value identical to the source) (9.991166ms)
+✔ [ur] ships at least one message (not an empty claim) (8.905416ms)
+✔ [ur] defines each key in at most one namespace file (8.874667ms)
+✔ [ur] carries EVERY key of each namespace file it ships (18.637333ms)
+✔ [ur] names only keys the English source defines (18.100708ms)
+✔ [ur] preserves every ICU placeholder from the English source (34.5655ms)
+✔ [ur] is not an English stub (no value identical to the source) (18.038875ms)
+✔ [vi] ships at least one message (not an empty claim) (7.688ms)
+✔ [vi] defines each key in at most one namespace file (9.1405ms)
+✔ [vi] carries EVERY key of each namespace file it ships (17.031292ms)
+✔ [vi] names only keys the English source defines (8.144417ms)
+✔ [vi] preserves every ICU placeholder from the English source (21.679542ms)
+✔ [vi] is not an English stub (no value identical to the source) (8.1125ms)
+✔ [zh-CN] ships at least one message (not an empty claim) (7.157875ms)
+✔ [zh-CN] defines each key in at most one namespace file (39.027792ms)
+✔ [zh-CN] carries EVERY key of each namespace file it ships (43.797375ms)
+✔ [zh-CN] names only keys the English source defines (20.4675ms)
+✔ [zh-CN] preserves every ICU placeholder from the English source (21.671709ms)
+✔ [zh-CN] is not an English stub (no value identical to the source) (7.584292ms)
+✔ a locale-scoped identical-value exemption does not exempt another locale (0.116833ms)
+ℹ tests 44
+ℹ suites 0
+ℹ pass 44
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 668.659125

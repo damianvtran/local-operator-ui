@@ -911,3 +911,61 @@ The same position holds for `docs/evidence/projects-inline-edit/` (the
 `project-inline-edit` scene's frames, nine per palette) and for
 `docs/evidence/project-open-no-autofocus/` (the `project-open` pair, four frames
 per palette per tree).
+
+## Fixed owner-audit startup scene (isolated native QA only)
+
+`LOCAL_OPERATOR_UI_DEV_DRIVER_SCENE=team-bridge-owner-audit` selects exactly one
+startup scene through the existing armed dev-driver preload bridge. It is not a
+route/JS input, new IPC executor, synthetic notification or export-dialog driver.
+The scene waits for the **actual** Team Bridge capability and settled account
+journal before navigating once to `/team-bridge`. A startup hash alone is not
+sufficient: the route's catch-all can redirect it to chat before capability loads.
+
+Admission is main-process-only and uses the captured launch environment, not
+`.env`. It requires all of: existing driver armed; unpackaged checkout; resolved
+window mode `headless`; `LOCAL_OPERATOR_UI_DEV_DRIVER_ROOT` explicitly naming an
+isolated rig root; canonical HOME/config/requested userData/actual Electron
+userData all beneath that root; requested and actual userData equal; backend
+manager disabled in both launch controls and effective settings; explicitly
+configured HTTP loopback stub selected by discovery. Missing, noncanonical or
+escaping paths fail closed. Default port 1111, remote URLs, credentials in URLs,
+paths/query/hash, a different selected daemon and absent/unknown scenes refuse.
+Normal/inactive/packaged negative cases are pure tests, never visible launches.
+
+QA owns one bounded candidate build and native run. After the candidate is built
+and an isolated stub is listening, this is the startup portion of that bounded
+rig (the rig must supervise/reap the entire exact process tree on exit):
+
+```sh
+# RIG is an absolute session-scratch directory, STUB_PORT its isolated daemon's
+# non-default loopback port, REPO the absolute candidate worktree path.
+mkdir -p "$RIG/home" "$RIG/config" "$RIG/profile" "$RIG/frames" "$RIG/home/Library/Application Support/Local Operator/logs"
+env -u XPC_FLAGS \
+  HOME="$RIG/home" LOCAL_OPERATOR_CONFIG_DIR="$RIG/config" \
+  LOCAL_OPERATOR_LOG_DIR="$RIG/home/Library/Application Support/Local Operator/logs" LOCAL_OPERATOR_UI_TELEMETRY=off \
+  VITE_DISABLE_BACKEND_MANAGER=true \
+  VITE_LOCAL_OPERATOR_API_URL="http://127.0.0.1:$STUB_PORT" \
+  LOCAL_OPERATOR_UI_DEV_DRIVER=1 \
+  LOCAL_OPERATOR_UI_DEV_DRIVER_OUT="$RIG/frames" \
+  LOCAL_OPERATOR_UI_DEV_DRIVER_ROOT="$RIG" \
+  LOCAL_OPERATOR_UI_DEV_DRIVER_SCENE=team-bridge-owner-audit \
+  "$REPO/node_modules/.bin/electron" "$REPO/out/main/index.js" \
+  --window-mode=headless --user-data-dir="$RIG/profile" --use-mock-keychain
+```
+
+Strip inherited `CMUX_*` variables as well. No remote-debugging port or external
+browser is needed or permitted by this recipe. The absolute app entry must
+exist; never start Electron with switches alone. The stub supplies real daemon
+capability/account/status/audit protocol responses; no fake answers are installed
+in the application. Deliberately delay capability/account settlement and confirm
+ordinary Team Bridge requests arrive only after readiness. A disabled capability
+must produce no forced navigation or owner-audit requests.
+
+Verify actual selected daemon, hidden/unfocused state, source/compiled identity,
+real hook rejection, real durable Logger records, strict documented Python export
+and exact-process-tree reap. Export remains the strict metadata-only command in
+[owner-audit-read-diagnostics.md](owner-audit-read-diagnostics.md), reading the
+run's real log under the recipe's HOME. Execute that command unchanged with
+`HOME="$RIG/home"`; the explicit log override above uses its exact standard path. No export UI automation is added. Source and
+pure-hook tests do not replace this full-candidate native evidence; the original
+production first-open cause remains unknown until its real exception is captured.
