@@ -30,7 +30,21 @@ import { withTelemetryOff } from "./telemetry-off.mjs";
 // Resolve the authorization before side effects; headless remains the default.
 const windowMode = focusProofWindowMode(process.argv, process.env);
 const nativeCi = windowMode === "normal";
-const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+// The instrumented carrier is not the application under test. Pin that source.
+assert(nativeCi, "seed trace requires explicitly armed disposable native CI");
+const traceOnly = true;
+assert(
+	process.env.LOCAL_OPERATOR_FOCUS_PROOF_APP_ROOT,
+	"explicit app root required",
+);
+const root = resolve(process.env.LOCAL_OPERATOR_FOCUS_PROOF_APP_ROOT);
+assert.equal(
+	execFileSync("git", ["rev-parse", "HEAD"], {
+		cwd: root,
+		encoding: "utf8",
+	}).trim(),
+	"699486b673ec6fc08c51a16af8aa397db59d6b91",
+);
 const expectedRendererUrl = pathToFileURL(
 	join(root, "out/renderer/index.html"),
 ).href;
@@ -52,9 +66,201 @@ let mainContentsId;
 let ownedTree;
 let inventoryTimer;
 let cleanupPromise;
+let seedTraceActive = false;
 let exited = false;
 let log = "";
-const facts = { samples: [], events: [], failures: [] };
+const facts = { samples: [], events: [], failures: [], diagnosticOnly: true };
+facts.carrierIdentity = {
+	head: execFileSync("git", ["rev-parse", "HEAD"], {
+		cwd: resolve(dirname(fileURLToPath(import.meta.url)), ".."),
+		encoding: "utf8",
+	}).trim(),
+	scriptSha256: createHash("sha256")
+		.update(readFileSync(fileURLToPath(import.meta.url)))
+		.digest("hex"),
+	appRoot: root,
+	scope: "SEED TRACE ONLY, NOT FOCUS ACCEPTANCE",
+};
+
+// Observation only: no value/accessor/focus/selection mutation in either probe.
+// This CI-only carrier records synthetic seed keys, never an operator session.
+function rendererSeedProbe(selector) {
+	const pinned = globalThis.__focusAcceptanceField;
+	const ids = new WeakMap();
+	let serial = 0;
+	const id = (x) => {
+		if (!x) return null;
+		if (!ids.has(x)) ids.set(x, ++serial);
+		return ids.get(x);
+	};
+	const node = (x) =>
+		x
+			? {
+					objectId: id(x),
+					tag: x.tagName ?? x.nodeName,
+					value: x.value ?? null,
+					start: x.selectionStart ?? null,
+					end: x.selectionEnd ?? null,
+					connected: x.isConnected ?? null,
+				}
+			: null;
+	const state = () => ({
+		at: Date.now(),
+		performance: performance.now(),
+		hasFocus: document.hasFocus(),
+		visibility: document.visibilityState,
+		pinned: node(pinned),
+		current: node(document.querySelector(selector)),
+		active: node(document.activeElement),
+		same: document.activeElement === pinned,
+	});
+	const data = {
+		startedAt: Date.now(),
+		selector,
+		initial: state(),
+		events: [],
+		samples: [],
+	};
+	const add = (array, item) => {
+		if (array.length < 2000) array.push(item);
+	};
+	const types = [
+		"keydown",
+		"keyup",
+		"beforeinput",
+		"input",
+		"change",
+		"focusin",
+		"focusout",
+		"selectionchange",
+		"compositionstart",
+		"compositionend",
+	];
+	const listener = (e) => {
+		add(data.events, {
+			kind: e.type,
+			trusted: e.isTrusted,
+			key: e.key ?? null,
+			code: e.code ?? null,
+			data: e.data ?? null,
+			inputType: e.inputType ?? null,
+			defaultPrevented: e.defaultPrevented,
+			metaKey: e.metaKey ?? null,
+			ctrlKey: e.ctrlKey ?? null,
+			altKey: e.altKey ?? null,
+			shiftKey: e.shiftKey ?? null,
+			metaState: e.getModifierState?.("Meta") ?? null,
+			isComposing: e.isComposing ?? null,
+			target: node(e.target),
+			state: state(),
+		});
+		queueMicrotask(() =>
+			add(data.events, { kind: `after-${e.type}`, state: state() }),
+		);
+	};
+	for (const type of types) document.addEventListener(type, listener, true);
+	const timer = setInterval(
+		() => add(data.samples, { kind: "interval", ...state() }),
+		10,
+	);
+	let frame;
+	const tick = () => {
+		add(data.samples, { kind: "animation-frame", ...state() });
+		frame = requestAnimationFrame(tick);
+	};
+	frame = requestAnimationFrame(tick);
+	globalThis.__focusSeedDOM = {
+		state,
+		stop: () => {
+			clearInterval(timer);
+			cancelAnimationFrame(frame);
+			for (const type of types)
+				document.removeEventListener(type, listener, true);
+			data.final = state();
+			return data;
+		},
+	};
+	return data.initial;
+}
+function nativeSeedProbe(windowId) {
+	const E = process.mainModule.require("electron");
+	const w = E.BrowserWindow.fromId(windowId);
+	const data = { startedAt: Date.now(), windowId, events: [], samples: [] };
+	const listeners = [];
+	const add = (array, item) => {
+		if (array.length < 2000) array.push(item);
+	};
+	const listen = (target, type, fn) => {
+		target.on(type, fn);
+		listeners.push([target, type, fn]);
+	};
+	for (const c of E.webContents.getAllWebContents()) {
+		listen(c, "before-input-event", (_event, input) =>
+			add(data.events, {
+				at: Date.now(),
+				kind: "before-input-event",
+				contentsId: c.id,
+				input: {
+					type: input.type,
+					key: input.key,
+					code: input.code,
+					modifiers: input.modifiers,
+					control: input.control,
+					meta: input.meta,
+					alt: input.alt,
+					shift: input.shift,
+					isAutoRepeat: input.isAutoRepeat,
+				},
+			}),
+		);
+		for (const type of ["focus", "blur"])
+			listen(c, type, () =>
+				add(data.events, { at: Date.now(), kind: type, contentsId: c.id }),
+			);
+	}
+	for (const type of ["focus", "blur"])
+		listen(w, type, () =>
+			add(data.events, { at: Date.now(), kind: `window-${type}`, windowId }),
+		);
+	const snapshot = () => {
+		const focused = E.webContents.getFocusedWebContents();
+		return {
+			at: Date.now(),
+			focused: focused?.id ?? null,
+			windowGone: w.isDestroyed(),
+			windowFocused: !w.isDestroyed() && w.isFocused(),
+			ownerFocused: !w.isDestroyed() && w.webContents.isFocused(),
+			children: w.isDestroyed()
+				? null
+				: w.contentView.children.map((v) => ({
+						id: v.webContents?.id,
+						visible: v.getVisible(),
+					})),
+		};
+	};
+	data.initial = snapshot();
+	const timer = setInterval(() => add(data.samples, snapshot()), 10);
+	globalThis.__focusSeedNative = {
+		stop: () => {
+			clearInterval(timer);
+			for (const [target, type, fn] of listeners)
+				target.removeListener(type, fn);
+			data.final = snapshot();
+			return data;
+		},
+	};
+	return data.initial;
+}
+async function collectSeedTrace() {
+	if (!seedTraceActive) return;
+	seedTraceActive = false;
+	facts.seedTrace = {
+		dom: await evaluate(owner, "globalThis.__focusSeedDOM.stop()"),
+		native: await evaluate(main, "globalThis.__focusSeedNative.stop()"),
+	};
+	save("seed-trace.json", facts.seedTrace);
+}
+
 const server = createServer((_req, response) => {
 	response.setHeader("content-type", "text/html");
 	response.end(
@@ -620,9 +826,44 @@ try {
 			owner,
 			`globalThis.__focusAcceptanceField=document.querySelector(${JSON.stringify(selector)});true`,
 		);
+		seedTraceActive = true;
+		facts.seedDOMInitial = await evaluate(
+			owner,
+			`(${rendererSeedProbe.toString()})(${JSON.stringify(selector)})`,
+		);
+		facts.seedNativeInitial = await evaluate(
+			main,
+			`(${nativeSeedProbe.toString()})(${mainWindowId})`,
+		);
+		const pre = await sample(`${name}-seed-pre`);
+		assert.equal(
+			pre.native.ownerFocused,
+			true,
+			"native main WC owns keyboard before seed",
+		);
+		assert.equal(
+			pre.native.focused,
+			mainContentsId,
+			"global native owner is pinned main WC",
+		);
+		assert.equal(
+			await evaluate(owner, "document.hasFocus()"),
+			true,
+			"document focus before seed",
+		);
+		facts.seedCommandStartedAt = Date.now();
 		os('keystroke "a" using {command down}');
 		os('keystroke "focusproof"');
+		facts.seedCommandFinishedAt = Date.now();
+		facts.seedImmediate = await caret();
 		await sleep(200);
+		facts.seedExpected = "focusproof";
+		facts.seedActual = await caret();
+		assert.equal(
+			facts.seedActual.value,
+			facts.seedExpected,
+			"STRICT seed precondition before positive q",
+		);
 		await evaluate(
 			owner,
 			"globalThis.__focusAcceptanceField.setSelectionRange(2,6);true",
@@ -641,6 +882,12 @@ try {
 		assert.equal(before.same, true);
 		assert.equal(before.connected, true);
 		assert.deepEqual([before.start, before.end], [2, 6]);
+		if (traceOnly) {
+			await collectSeedTrace();
+			await captureShell("seed-trace-composer");
+			facts.seedCase = { name, before };
+			return null;
+		}
 		const baseline = await sample(`${name}-baseline`);
 		assert.equal(baseline.native.ownerFocused, true);
 		await captureShell(`${name}-before`);
@@ -716,325 +963,337 @@ try {
 
 	await navigate("chat");
 	await fieldCase("composer", '[data-tour-tag="chat-input-textarea"] textarea');
-	await openPalette();
-	await until(() => visiblePoint("#command-palette-input"), "palette open");
-	const paletteCase = await fieldCase("palette", "#command-palette-input");
-	os("key code 53");
-	await until(
-		() => evaluate(owner, "!document.querySelector('#command-palette-input')"),
-		"real Escape closes palette",
-	);
-	const escaped = await sample("palette-escape");
-	assert.equal(escaped.native.ownerFocused, true);
-	assert.equal(
+	if (traceOnly) {
+		facts.verdict = "DIAGNOSTIC_ONLY_COMPLETE_SEED_AND_POSITIVE_Q";
+		save("facts.json", facts);
+	} else {
+		await openPalette();
+		await until(() => visiblePoint("#command-palette-input"), "palette open");
+		const paletteCase = await fieldCase("palette", "#command-palette-input");
+		os("key code 53");
+		await until(
+			() =>
+				evaluate(owner, "!document.querySelector('#command-palette-input')"),
+			"real Escape closes palette",
+		);
+		const escaped = await sample("palette-escape");
+		assert.equal(escaped.native.ownerFocused, true);
+		assert.equal(
+			await evaluate(
+				owner,
+				"document.activeElement!==document.body&&document.activeElement?.isConnected",
+			),
+			true,
+			"Escape restores an intentional shell focus owner",
+		);
+		await captureShell("palette-escape");
+		// Settings is deliberately unavailable in this existing capability fixture.
+		// Use a different REAL input already present in the live sidebar instead of
+		// manufacturing settings data or substituting another composer/palette.
+		await navigate("chat");
+		await focusShell("[data-sidebar-search]");
+		os("key code 49");
+		await fieldCase(
+			"sidebar-filter",
+			'input[aria-label="Search chats and agents"]',
+		);
+
+		// Ownership transfer is a real renderer IPC on a still-unpresented page.
+		// Its controls use a synthetic session; no daemon/session state is fabricated.
+		const ownershipBefore = await sample("ownership-before");
 		await evaluate(
 			owner,
-			"document.activeElement!==document.body&&document.activeElement?.isConnected",
-		),
-		true,
-		"Escape restores an intentional shell focus owner",
-	);
-	await captureShell("palette-escape");
-	// Settings is deliberately unavailable in this existing capability fixture.
-	// Use a different REAL input already present in the live sidebar instead of
-	// manufacturing settings data or substituting another composer/palette.
-	await navigate("chat");
-	await focusShell("[data-sidebar-search]");
-	os("key code 49");
-	await fieldCase(
-		"sidebar-filter",
-		'input[aria-label="Search chats and agents"]',
-	);
+			`window.api.browser.handOver(${Number(paletteCase.opened.tab.split(":")[1])},'session:focus-proof-adopter')`,
+		);
+		const ownershipAfter = await sample("ownership-after");
+		assert.equal(
+			ownershipAfter.native.ownerFocused,
+			ownershipBefore.native.ownerFocused,
+		);
+		const ownershipKey = await osKey("ownership-transfer-key");
+		assert.equal(ownershipKey.deliveredToShell, true);
 
-	// Ownership transfer is a real renderer IPC on a still-unpresented page.
-	// Its controls use a synthetic session; no daemon/session state is fabricated.
-	const ownershipBefore = await sample("ownership-before");
-	await evaluate(
-		owner,
-		`window.api.browser.handOver(${Number(paletteCase.opened.tab.split(":")[1])},'session:focus-proof-adopter')`,
-	);
-	const ownershipAfter = await sample("ownership-after");
-	assert.equal(
-		ownershipAfter.native.ownerFocused,
-		ownershipBefore.native.ownerFocused,
-	);
-	const ownershipKey = await osKey("ownership-transfer-key");
-	assert.equal(ownershipKey.deliveredToShell, true);
-
-	await navigate("browser");
-	const tabId = Number(paletteCase.opened.tab.split(":")[1]);
-	await focusShell('[data-tour-tag="browser-tab-strip"] [role="tab"]');
-	// Digit shortcuts follow the rendered session groups, not registry insertion
-	// order. The actual focused strip is the keyboard's owner (the ownership
-	// transfer above moves one tab into another group without changing API order).
-	const tabOrder = await evaluate(
-		owner,
-		"(()=>{const strip=document.activeElement.closest('[data-tour-tag=browser-tab-strip]');if(!strip)throw Error('keyboard is not in the live tab strip');return [...strip.querySelectorAll('[data-tab-id] [role=tab]')].map(e=>Number(e.closest('[data-tab-id]').dataset.tabId));})()",
-	);
-	assert.equal(
-		new Set(tabOrder).size,
-		tabOrder.length,
-		"rendered tab IDs must be unique",
-	);
-	facts.renderedTabOrder = tabOrder;
-	const targetOrdinal = tabOrder.indexOf(tabId) + 1;
-	assert.ok(targetOrdinal > 0 && targetOrdinal < 10);
-	os(`keystroke "${targetOrdinal}" using {command down}`);
-	await until(
-		() =>
+		await navigate("browser");
+		const tabId = Number(paletteCase.opened.tab.split(":")[1]);
+		await focusShell('[data-tour-tag="browser-tab-strip"] [role="tab"]');
+		// Digit shortcuts follow the rendered session groups, not registry insertion
+		// order. The actual focused strip is the keyboard's owner (the ownership
+		// transfer above moves one tab into another group without changing API order).
+		const tabOrder = await evaluate(
+			owner,
+			"(()=>{const strip=document.activeElement.closest('[data-tour-tag=browser-tab-strip]');if(!strip)throw Error('keyboard is not in the live tab strip');return [...strip.querySelectorAll('[data-tab-id] [role=tab]')].map(e=>Number(e.closest('[data-tab-id]').dataset.tabId));})()",
+		);
+		assert.equal(
+			new Set(tabOrder).size,
+			tabOrder.length,
+			"rendered tab IDs must be unique",
+		);
+		facts.renderedTabOrder = tabOrder;
+		const targetOrdinal = tabOrder.indexOf(tabId) + 1;
+		assert.ok(targetOrdinal > 0 && targetOrdinal < 10);
+		os(`keystroke "${targetOrdinal}" using {command down}`);
+		await until(
+			() =>
+				evaluate(
+					main,
+					`process.mainModule.require('electron').BrowserWindow.fromId(${mainWindowId}).contentView.children.some(v=>v.webContents?.id===${paletteCase.page.id}&&v.getVisible())`,
+				),
+			"user presents same view",
+		);
+		const pageCaret = () =>
 			evaluate(
 				main,
-				`process.mainModule.require('electron').BrowserWindow.fromId(${mainWindowId}).contentView.children.some(v=>v.webContents?.id===${paletteCase.page.id}&&v.getVisible())`,
-			),
-		"user presents same view",
-	);
-	const pageCaret = () =>
-		evaluate(
-			main,
-			`process.mainModule.require('electron').webContents.fromId(${paletteCase.page.id}).executeJavaScript('({active:document.activeElement?.id,value:document.querySelector("#field").value,start:document.querySelector("#field").selectionStart,end:document.querySelector("#field").selectionEnd})')`,
-		);
-	const visibleNativeDocument = (filename) => {
-		const expected = pathToFileURL(join(root, "out/renderer", filename)).href;
-		return evaluate(
-			main,
-			`(()=>{const E=process.mainModule.require('electron');const views=E.BrowserWindow.fromId(${mainWindowId}).contentView.children.filter(v=>{if(!v.webContents||!v.getVisible())return false;const u=new URL(v.webContents.getURL());u.search='';u.hash='';return u.href===${JSON.stringify(expected)};});if(views.length>1)throw Error('ambiguous native overlay document');return views[0]?{id:views[0].webContents.id,url:views[0].webContents.getURL(),bounds:views[0].getBounds()}:null;})()`,
-		);
-	};
-	// The shipped keyboard door returns native ownership to the page. It is
-	// intentionally available only under the real user's normal launch policy.
-	os('keystroke "l" using {command down}');
-	await until(
-		() =>
-			evaluate(
-				owner,
-				"document.activeElement?.matches('[data-tour-tag=browser-address]')",
-			),
-		"actual CmdL focuses address row",
-	);
-	os('keystroke "a" using {command down}');
-	os('keystroke "localhost"');
-	const addressPopup = await until(
-		() => visibleNativeDocument("browser-address-overlay-list.html"),
-		"real native address suggestion presentation",
-	);
-	const addressBefore = await evaluate(owner, "document.activeElement.value");
-	assert.equal(addressBefore, "localhost");
-	os('keystroke "q"');
-	await sleep(200);
-	assert.equal(
-		await evaluate(owner, "document.activeElement.value"),
-		"localhostq",
-		"native address popout must not take actual OS typing from its field",
-	);
-	facts.addressPopup = addressPopup;
-	const addressPng = await evaluate(
-		main,
-		`(async()=>{return (await process.mainModule.require('electron').webContents.fromId(${addressPopup.id}).capturePage()).toPNG().toString('base64');})()`,
-	);
-	writeFileSync(
-		join(out, "intentional-native-address.png"),
-		Buffer.from(addressPng, "base64"),
-	);
-	await sample("native-address-typing");
-	os("key code 53");
-	await until(
-		() =>
-			evaluate(
+				`process.mainModule.require('electron').webContents.fromId(${paletteCase.page.id}).executeJavaScript('({active:document.activeElement?.id,value:document.querySelector("#field").value,start:document.querySelector("#field").selectionStart,end:document.querySelector("#field").selectionEnd})')`,
+			);
+		const visibleNativeDocument = (filename) => {
+			const expected = pathToFileURL(join(root, "out/renderer", filename)).href;
+			return evaluate(
 				main,
-				`process.mainModule.require('electron').webContents.fromId(${paletteCase.page.id}).isFocused()`,
-			),
-		"actual Escape returns native browser focus",
-	);
-	for (let step = 0; step < 6; step++) {
-		if (
+				`(()=>{const E=process.mainModule.require('electron');const views=E.BrowserWindow.fromId(${mainWindowId}).contentView.children.filter(v=>{if(!v.webContents||!v.getVisible())return false;const u=new URL(v.webContents.getURL());u.search='';u.hash='';return u.href===${JSON.stringify(expected)};});if(views.length>1)throw Error('ambiguous native overlay document');return views[0]?{id:views[0].webContents.id,url:views[0].webContents.getURL(),bounds:views[0].getBounds()}:null;})()`,
+			);
+		};
+		// The shipped keyboard door returns native ownership to the page. It is
+		// intentionally available only under the real user's normal launch policy.
+		os('keystroke "l" using {command down}');
+		await until(
+			() =>
+				evaluate(
+					owner,
+					"document.activeElement?.matches('[data-tour-tag=browser-address]')",
+				),
+			"actual CmdL focuses address row",
+		);
+		os('keystroke "a" using {command down}');
+		os('keystroke "localhost"');
+		const addressPopup = await until(
+			() => visibleNativeDocument("browser-address-overlay-list.html"),
+			"real native address suggestion presentation",
+		);
+		const addressBefore = await evaluate(owner, "document.activeElement.value");
+		assert.equal(addressBefore, "localhost");
+		os('keystroke "q"');
+		await sleep(200);
+		assert.equal(
+			await evaluate(owner, "document.activeElement.value"),
+			"localhostq",
+			"native address popout must not take actual OS typing from its field",
+		);
+		facts.addressPopup = addressPopup;
+		const addressPng = await evaluate(
+			main,
+			`(async()=>{return (await process.mainModule.require('electron').webContents.fromId(${addressPopup.id}).capturePage()).toPNG().toString('base64');})()`,
+		);
+		writeFileSync(
+			join(out, "intentional-native-address.png"),
+			Buffer.from(addressPng, "base64"),
+		);
+		await sample("native-address-typing");
+		os("key code 53");
+		await until(
+			() =>
+				evaluate(
+					main,
+					`process.mainModule.require('electron').webContents.fromId(${paletteCase.page.id}).isFocused()`,
+				),
+			"actual Escape returns native browser focus",
+		);
+		for (let step = 0; step < 6; step++) {
+			if (
+				await evaluate(
+					main,
+					`process.mainModule.require('electron').webContents.fromId(${paletteCase.page.id}).executeJavaScript('document.activeElement?.id===\"field\"')`,
+				)
+			)
+				break;
+			os("key code 48");
+			await sleep(100);
+		}
+		assert.equal(
 			await evaluate(
 				main,
 				`process.mainModule.require('electron').webContents.fromId(${paletteCase.page.id}).executeJavaScript('document.activeElement?.id===\"field\"')`,
-			)
-		)
-			break;
-		os("key code 48");
-		await sleep(100);
-	}
-	assert.equal(
-		await evaluate(
-			main,
-			`process.mainModule.require('electron').webContents.fromId(${paletteCase.page.id}).executeJavaScript('document.activeElement?.id===\"field\"')`,
-		),
-		true,
-		"real Tab traversal reaches the presented page input",
-	);
-	os('keystroke "human"');
-	await sleep(200);
-	assert.equal(
-		(await pageCaret()).value,
-		"human",
-		"actual OS typing reaches explicitly presented browser page",
-	);
-	await captureShell("intentional-browser-present");
-	await sample("intentional-browser-present");
-	const presentedPng = await evaluate(
-		main,
-		`(async()=>{const c=process.mainModule.require('electron').webContents.fromId(${paletteCase.page.id});return (await c.capturePage()).toPNG().toString('base64');})()`,
-	);
-	writeFileSync(
-		join(out, "intentional-browser-page.png"),
-		Buffer.from(presentedPng, "base64"),
-	);
-	const pageKey = async (label, text) => {
-		const before = await pageCaret();
-		const startedAt = Date.now();
-		const expected =
-			before.value.slice(0, before.start) +
-			text +
-			before.value.slice(before.end);
-		os(`keystroke "${text}"`);
+			),
+			true,
+			"real Tab traversal reaches the presented page input",
+		);
+		os('keystroke "human"');
 		await sleep(200);
-		const after = await pageCaret();
-		facts.pageKeys ??= [];
-		facts.pageKeys.push({
-			label,
-			startedAt,
-			finishedAt: Date.now(),
-			before,
-			after,
-			expected,
+		assert.equal(
+			(await pageCaret()).value,
+			"human",
+			"actual OS typing reaches explicitly presented browser page",
+		);
+		await captureShell("intentional-browser-present");
+		await sample("intentional-browser-present");
+		const presentedPng = await evaluate(
+			main,
+			`(async()=>{const c=process.mainModule.require('electron').webContents.fromId(${paletteCase.page.id});return (await c.capturePage()).toPNG().toString('base64');})()`,
+		);
+		writeFileSync(
+			join(out, "intentional-browser-page.png"),
+			Buffer.from(presentedPng, "base64"),
+		);
+		const pageKey = async (label, text) => {
+			const before = await pageCaret();
+			const startedAt = Date.now();
+			const expected =
+				before.value.slice(0, before.start) +
+				text +
+				before.value.slice(before.end);
+			os(`keystroke "${text}"`);
+			await sleep(200);
+			const after = await pageCaret();
+			facts.pageKeys ??= [];
+			facts.pageKeys.push({
+				label,
+				startedAt,
+				finishedAt: Date.now(),
+				before,
+				after,
+				expected,
+			});
+			assert.equal(
+				after.value,
+				expected,
+				`${label}: actual OS key must reach the original browser input`,
+			);
+			assert.equal(after.active, "field");
+		};
+		const approvalUrl = `http://localhost:${server.address().port}/?approval-native=1`;
+		const approval = await rpc("request_access", {
+			url: approvalUrl,
+			requester: "session:focus-proof",
 		});
 		assert.equal(
-			after.value,
-			expected,
-			`${label}: actual OS key must reach the original browser input`,
+			approval.state,
+			"pending",
+			"distinct fixture origin must exercise real native approval arrival",
 		);
-		assert.equal(after.active, "field");
-	};
-	const approvalUrl = `http://localhost:${server.address().port}/?approval-native=1`;
-	const approval = await rpc("request_access", {
-		url: approvalUrl,
-		requester: "session:focus-proof",
-	});
-	assert.equal(
-		approval.state,
-		"pending",
-		"distinct fixture origin must exercise real native approval arrival",
-	);
-	const card = () => visibleNativeDocument("browser-approvals-overlay.html");
-	await until(card, "ready native approval auto-presentation");
-	await pageKey("approval-auto-present-unfocused", "r");
-	await sample("approval-auto-present-unfocused");
-	os('keystroke "l" using {command down}');
-	await focusShell('[data-tour-tag="browser-approvals"]');
-	os("key code 49");
-	await until(
-		() =>
-			evaluate(
-				owner,
-				"window.api.browser.state().then(s=>s.approvalsCard.open)",
-			),
-		"user opens native approval via shield",
-	);
-	const focusedCard = await until(async () => {
-		const current = await card();
-		if (!current) return null;
-		return (await evaluate(
+		const card = () => visibleNativeDocument("browser-approvals-overlay.html");
+		await until(card, "ready native approval auto-presentation");
+		await pageKey("approval-auto-present-unfocused", "r");
+		await sample("approval-auto-present-unfocused");
+		os('keystroke "l" using {command down}');
+		await focusShell('[data-tour-tag="browser-approvals"]');
+		os("key code 49");
+		await until(
+			() =>
+				evaluate(
+					owner,
+					"window.api.browser.state().then(s=>s.approvalsCard.open)",
+				),
+			"user opens native approval via shield",
+		);
+		const focusedCard = await until(async () => {
+			const current = await card();
+			if (!current) return null;
+			return (await evaluate(
+				main,
+				`process.mainModule.require('electron').webContents.fromId(${current.id}).isFocused()`,
+			))
+				? current
+				: null;
+		}, "explicit native approval focus");
+		facts.approvalCard = focusedCard;
+		const cardPng = await evaluate(
 			main,
-			`process.mainModule.require('electron').webContents.fromId(${current.id}).isFocused()`,
-		))
-			? current
-			: null;
-	}, "explicit native approval focus");
-	facts.approvalCard = focusedCard;
-	const cardPng = await evaluate(
-		main,
-		`(async()=>{return (await process.mainModule.require('electron').webContents.fromId(${focusedCard.id}).capturePage()).toPNG().toString('base64');})()`,
-	);
-	writeFileSync(
-		join(out, "intentional-native-approval.png"),
-		Buffer.from(cardPng, "base64"),
-	);
-	os("key code 53");
-	await until(
-		() =>
-			evaluate(
-				owner,
-				"window.api.browser.state().then(s=>!s.approvalsCard.open)",
-			),
-		"actual Escape dismisses native approval",
-	);
-	await pageKey("approval-escape-restores-page", "s");
-	await sample("approval-escape-restores-page");
-	// Dispose only this synthetic request after the actual user dismissal. The
-	// decision IPC is fixture cleanup, not a focus operation or substitute gesture.
-	await evaluate(
-		owner,
-		`(async()=>{const state=await window.api.browser.state();const entry=state.pendingConsent.find(e=>e.origin===${JSON.stringify(new URL(approvalUrl).origin)});if(entry)await window.api.browser.respondToConsent(entry.entryId,'deny');return true;})()`,
-	);
-	const retainedPageValue = (await pageCaret()).value;
-	// Switch away and back through actual tab controls; the same page state is
-	// retained, and no inspector addChildView/focus restoration participates.
-	const otherId = facts.cases[0].tabId;
-	const otherOrdinal = tabOrder.indexOf(otherId) + 1;
-	os(`keystroke "${otherOrdinal}" using {command down}`);
-	await until(
-		() =>
-			evaluate(
-				owner,
-				`window.api.browser.state().then(s=>s.activeTabId===${otherId})`,
-			),
-		"actual browser tab switch",
-	);
-	os(`keystroke "${targetOrdinal}" using {command down}`);
-	await until(
-		() =>
-			evaluate(
-				owner,
-				`window.api.browser.state().then(s=>s.activeTabId===${tabId})`,
-			),
-		"actual browser tab return",
-	);
-	assert.equal((await pageCaret()).value, retainedPageValue);
-	await navigate("chat");
-	await until(
-		() =>
-			evaluate(
-				main,
-				`!process.mainModule.require('electron').BrowserWindow.fromId(${mainWindowId}).contentView.children.some(v=>v.webContents?.id===${paletteCase.page.id})`,
-			),
-		"route exit detaches browser page",
-	);
-	await navigate("browser");
-	await until(
-		() =>
-			evaluate(
-				main,
-				`process.mainModule.require('electron').BrowserWindow.fromId(${mainWindowId}).contentView.children.some(v=>v.webContents?.id===${paletteCase.page.id}&&v.getVisible())`,
-			),
-		"route return presents same native view",
-	);
-	assert.equal(
-		(await pageCaret()).value,
-		retainedPageValue,
-		"route return preserves same WebContents and document",
-	);
-	await navigate("chat");
-	await fieldCase(
-		"composer-after-route",
-		'[data-tour-tag="chat-input-textarea"] textarea',
-	);
-	facts.intentionalHandoffs = {
-		physicalBrowserTyping: true,
-		sameWebContentsId: paletteCase.page.id,
-		tabSwitchStatePreserved: true,
-		routeReturnStatePreserved: true,
-		modalEscape: true,
-		approvalAutoPresentPreservesTyping: true,
-		approvalShieldEscapeRestoresPage: true,
-		ownershipTransferWhileUnpresented: true,
-	};
-	facts.nativeCanonicalSessionUpdates =
-		"NOT_EXERCISED: no live daemon; session renderer sources unchanged; component rerender regression supplied separately";
-	facts.verdict = "PASS_SHIPPED_NATIVE_PARENT_BOUNDARY_AND_ACTUAL_OS_KEYS";
-	save("facts.json", facts);
+			`(async()=>{return (await process.mainModule.require('electron').webContents.fromId(${focusedCard.id}).capturePage()).toPNG().toString('base64');})()`,
+		);
+		writeFileSync(
+			join(out, "intentional-native-approval.png"),
+			Buffer.from(cardPng, "base64"),
+		);
+		os("key code 53");
+		await until(
+			() =>
+				evaluate(
+					owner,
+					"window.api.browser.state().then(s=>!s.approvalsCard.open)",
+				),
+			"actual Escape dismisses native approval",
+		);
+		await pageKey("approval-escape-restores-page", "s");
+		await sample("approval-escape-restores-page");
+		// Dispose only this synthetic request after the actual user dismissal. The
+		// decision IPC is fixture cleanup, not a focus operation or substitute gesture.
+		await evaluate(
+			owner,
+			`(async()=>{const state=await window.api.browser.state();const entry=state.pendingConsent.find(e=>e.origin===${JSON.stringify(new URL(approvalUrl).origin)});if(entry)await window.api.browser.respondToConsent(entry.entryId,'deny');return true;})()`,
+		);
+		const retainedPageValue = (await pageCaret()).value;
+		// Switch away and back through actual tab controls; the same page state is
+		// retained, and no inspector addChildView/focus restoration participates.
+		const otherId = facts.cases[0].tabId;
+		const otherOrdinal = tabOrder.indexOf(otherId) + 1;
+		os(`keystroke "${otherOrdinal}" using {command down}`);
+		await until(
+			() =>
+				evaluate(
+					owner,
+					`window.api.browser.state().then(s=>s.activeTabId===${otherId})`,
+				),
+			"actual browser tab switch",
+		);
+		os(`keystroke "${targetOrdinal}" using {command down}`);
+		await until(
+			() =>
+				evaluate(
+					owner,
+					`window.api.browser.state().then(s=>s.activeTabId===${tabId})`,
+				),
+			"actual browser tab return",
+		);
+		assert.equal((await pageCaret()).value, retainedPageValue);
+		await navigate("chat");
+		await until(
+			() =>
+				evaluate(
+					main,
+					`!process.mainModule.require('electron').BrowserWindow.fromId(${mainWindowId}).contentView.children.some(v=>v.webContents?.id===${paletteCase.page.id})`,
+				),
+			"route exit detaches browser page",
+		);
+		await navigate("browser");
+		await until(
+			() =>
+				evaluate(
+					main,
+					`process.mainModule.require('electron').BrowserWindow.fromId(${mainWindowId}).contentView.children.some(v=>v.webContents?.id===${paletteCase.page.id}&&v.getVisible())`,
+				),
+			"route return presents same native view",
+		);
+		assert.equal(
+			(await pageCaret()).value,
+			retainedPageValue,
+			"route return preserves same WebContents and document",
+		);
+		await navigate("chat");
+		await fieldCase(
+			"composer-after-route",
+			'[data-tour-tag="chat-input-textarea"] textarea',
+		);
+		facts.intentionalHandoffs = {
+			physicalBrowserTyping: true,
+			sameWebContentsId: paletteCase.page.id,
+			tabSwitchStatePreserved: true,
+			routeReturnStatePreserved: true,
+			modalEscape: true,
+			approvalAutoPresentPreservesTyping: true,
+			approvalShieldEscapeRestoresPage: true,
+			ownershipTransferWhileUnpresented: true,
+		};
+		facts.nativeCanonicalSessionUpdates =
+			"NOT_EXERCISED: no live daemon; session renderer sources unchanged; component rerender regression supplied separately";
+		facts.verdict = "PASS_SHIPPED_NATIVE_PARENT_BOUNDARY_AND_ACTUAL_OS_KEYS";
+		save("facts.json", facts);
+	}
 } catch (error) {
+	if (seedTraceActive)
+		try {
+			await collectSeedTrace();
+		} catch (traceError) {
+			facts.seedTraceCollectionError = String(traceError);
+		}
 	// Preserve the REAL failed prerequisite/route before teardown. A missing
 	// selector without a frame/DOM cannot distinguish a gate from a bad locator.
 	if (owner && main) {

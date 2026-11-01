@@ -1,0 +1,69 @@
+name: Native seed dispatch discrimination
+# Diagnostic carrier only. The application is checked out at the frozen PR head;
+# no full CI rerun, acceptance claim, or product modification is performed here.
+on:
+  push:
+    branches: [ci/focus-seed-trace-46b2]
+permissions:
+  contents: read
+jobs:
+  seed-trace:
+    runs-on: macos-latest
+    timeout-minutes: 20
+    env:
+      LOCAL_OPERATOR_FOCUS_PROOF_CI: '1'
+      VITE_DISABLE_BACKEND_MANAGER: 'true'
+      VITE_LOCAL_OPERATOR_API_URL: 'http://127.0.0.1:9'
+      VITE_GOOGLE_CLIENT_ID: ci-fixture.apps.googleusercontent.com
+      VITE_GOOGLE_CLIENT_SECRET: ci-fixture-not-a-secret
+      VITE_MICROSOFT_CLIENT_ID: 00000000-0000-4000-8000-000000000001
+      VITE_MICROSOFT_TENANT_ID: 00000000-0000-4000-8000-000000000002
+      NODE_OPTIONS: '--max-old-space-size=4096'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: carrier
+      - uses: actions/checkout@v4
+        with:
+          ref: 699486b673ec6fc08c51a16af8aa397db59d6b91
+          path: app
+      - uses: pnpm/action-setup@v4
+        with:
+          version: '10.29.2'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+          cache-dependency-path: app/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+        working-directory: app
+      - name: Check pinned source and native launch prerequisites
+        run: |
+          set -e
+          test "$(git -C app rev-parse HEAD)" = 699486b673ec6fc08c51a16af8aa397db59d6b91
+          git -C app diff --exit-code
+          ln -s ../app/node_modules carrier/node_modules
+          cd carrier
+          node --check scripts/browser-focus-stability-proof.mjs
+          node --test --test-timeout=30000 scripts/focus-stability-ci-policy.test.mjs scripts/focus-proof-owned-tree.test.mjs scripts/notification-spawn-sites.test.mjs scripts/telemetry-spawn-sites.test.mjs
+      - name: Build exact unchanged application source
+        working-directory: app
+        run: pnpm run build
+      - name: Observe original fast seed, never a focus acceptance run
+        env:
+          LOCAL_OPERATOR_SCRATCHPAD: ${{ runner.temp }}/focus-seed-trace
+          LOCAL_OPERATOR_FOCUS_PROOF_APP_ROOT: ${{ github.workspace }}/app
+        run: node carrier/scripts/browser-focus-stability-proof.mjs --out "$LOCAL_OPERATOR_SCRATCHPAD" --ci-native-owner
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: focus-seed-trace-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/focus-seed-trace/facts.json
+            ${{ runner.temp }}/focus-seed-trace/seed-trace.json
+            ${{ runner.temp }}/focus-seed-trace/build-identity.json
+            ${{ runner.temp }}/focus-seed-trace/teardown.json
+            ${{ runner.temp }}/focus-seed-trace/app.log
+            ${{ runner.temp }}/focus-seed-trace/fixture.log
+            ${{ runner.temp }}/focus-seed-trace/*.png
+          if-no-files-found: warn
