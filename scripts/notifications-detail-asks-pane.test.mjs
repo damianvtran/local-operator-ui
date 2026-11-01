@@ -600,6 +600,227 @@ test("reel preserves visible row offset across refresh, then follows the next us
 });
 
 for (const surface of ["pane", "fleet"]) {
+	for (const holdAggregate of [true, false]) {
+		test(
+			`R13 ${surface}: delayed genuine first acceptance after revision, held-open=${holdAggregate}`,
+			{ timeout: 30_000 },
+			async () => {
+				const page = await openOnA({
+					surface,
+					wide: true,
+					holdAggregate,
+					answer: (call) =>
+						call === 3
+							? {
+									status: 503,
+									detail: {
+										code: "transport.failed",
+										message: "Interrupted revision",
+									},
+								}
+							: { status: 200 },
+					seed: (asks) =>
+						asks[0].questions.push({
+							id: "SECRET",
+							question: "Synthetic ancestry marker",
+							secret: true,
+							persist: false,
+							options: [],
+						}),
+				});
+				const publish = async (rows) => {
+					await act(async () =>
+						page.client.setQueryData(
+							["desktop", "asks"],
+							structuredClone(rows),
+						),
+					);
+					await page.settle(); // Flush the query observer before inspecting the committed DOM.
+				};
+				try {
+					const open = structuredClone(page.asks);
+					await chooseFirstOption(page);
+					await typeSecret(page.card("a-1111"));
+					await page.press(page.buttonIn(page.card("a-1111"), "Send answer"));
+					assert.ok(
+						await page.settle(() =>
+							Boolean(page.buttonIn(page.card("a-1111"), "Change answer")),
+						),
+					);
+					const firstAccepted = structuredClone(page.asks);
+					await page.press(page.buttonIn(page.card("a-1111"), "Change answer"));
+					await page.press(
+						page.card("a-1111").querySelectorAll("[data-ask-option]")[1],
+					);
+					await typeSecret(page.card("a-1111"));
+					await page.press(page.buttonIn(page.card("a-1111"), "Update answer"));
+					assert.ok(
+						await page.settle(
+							() =>
+								page.posts.length === 2 &&
+								Boolean(page.buttonIn(page.card("a-1111"), "Change answer")),
+						),
+					);
+					const acceptedB = structuredClone(page.asks);
+					await publish(firstAccepted);
+					assert.equal(
+						page.card("a-1111").textContent.includes("No rotation"),
+						true,
+						"genuine delayed ANSWERED/A must not rewind accepted B",
+					);
+					await publish(acceptedB);
+					await publish(firstAccepted);
+					assert.equal(
+						page.card("a-1111").textContent.includes("No rotation"),
+						true,
+						"confirmation B must not erase A ancestry",
+					);
+					await publish(holdAggregate ? open : acceptedB);
+					await page.press(page.buttonIn(page.card("a-1111"), "Change answer"));
+					assert.equal(
+						page
+							.card("a-1111")
+							.querySelector('[data-ask-option][aria-checked="true"]')
+							?.textContent.includes("No rotation"),
+						true,
+						"fleet edits the effective B, not raw OPEN",
+					);
+					await page.press(
+						page.card("a-1111").querySelector("[data-ask-option-other]"),
+					);
+					await act(async () => {
+						const field = page
+							.card("a-1111")
+							.querySelector("textarea[data-ask-other]");
+						Object.getOwnPropertyDescriptor(
+							window.HTMLTextAreaElement.prototype,
+							"value",
+						).set.call(field, "Accepted ancestry C");
+						field.dispatchEvent(new window.Event("input", { bubbles: true }));
+					});
+					await typeSecret(page.card("a-1111"));
+					await page.press(page.buttonIn(page.card("a-1111"), "Update answer"));
+					assert.ok(
+						await page.settle(() =>
+							Boolean(page.buttonIn(page.card("a-1111"), "Retry")),
+						),
+					);
+					assert.deepEqual(
+						page.asks[0].answers.q1,
+						["No rotation"],
+						"failed C never reaches accepted ancestry",
+					);
+					await page.press(page.buttonIn(page.card("a-1111"), "Cancel"));
+					await publish(firstAccepted);
+					assert.equal(
+						page.card("a-1111").textContent.includes("No rotation"),
+						true,
+						"a failed attempt must not advance current B",
+					);
+					const attemptedC = structuredClone(acceptedB);
+					attemptedC[0].answers.q1 = ["Accepted ancestry C"];
+					await publish(attemptedC);
+					assert.equal(
+						page.card("a-1111").textContent.includes("Accepted ancestry C"),
+						true,
+						"unaccepted C is not an ancestor to overwrite",
+					);
+					await page.press(page.buttonIn(page.card("a-1111"), "Retry"));
+					assert.ok(
+						await page.settle(
+							() =>
+								page.posts.length === 4 &&
+								Boolean(page.buttonIn(page.card("a-1111"), "Change answer")),
+						),
+					);
+					for (const old of [firstAccepted, acceptedB]) {
+						await publish(old);
+						assert.equal(
+							page.card("a-1111").textContent.includes("Accepted ancestry C"),
+							true,
+							"both acknowledged predecessors remain superseded",
+						);
+					}
+					assert.deepEqual(page.filterText(), [
+						"All · 2",
+						"Pending · 1",
+						"Settled · 1",
+					]);
+					assert.equal(stateBlob(page.container).includes(SECRET_VALUE), false);
+					await page.press(page.buttonIn(page.card("a-1111"), "Change answer"));
+					assert.equal(
+						page.card("a-1111").querySelector("textarea[data-ask-other]")
+							?.value,
+						"Accepted ancestry C",
+					);
+					assert.equal(
+						page.card("a-1111").querySelector("input[data-ask-secret]")?.value,
+						"",
+					);
+					await page.press(page.buttonIn(page.card("a-1111"), "Cancel"));
+					const unfamiliar = structuredClone(page.asks);
+					unfamiliar[0].answers.q1 = ["Unfamiliar authoritative U"];
+					await publish(unfamiliar);
+					assert.equal(
+						page
+							.card("a-1111")
+							.textContent.includes("Unfamiliar authoritative U"),
+						true,
+					);
+					await page.press(page.buttonIn(page.card("a-1111"), "Change answer"));
+					await act(async () => {
+						const field = page
+							.card("a-1111")
+							.querySelector("textarea[data-ask-other]");
+						Object.getOwnPropertyDescriptor(
+							window.HTMLTextAreaElement.prototype,
+							"value",
+						).set.call(field, "New acknowledgement chain D");
+						field.dispatchEvent(new window.Event("input", { bubbles: true }));
+					});
+					await typeSecret(page.card("a-1111"));
+					await page.press(page.buttonIn(page.card("a-1111"), "Update answer"));
+					assert.ok(
+						await page.settle(
+							() =>
+								page.posts.length === 5 &&
+								Boolean(page.buttonIn(page.card("a-1111"), "Change answer")),
+						),
+					);
+					for (const obsolete of [firstAccepted, acceptedB]) {
+						await publish(obsolete);
+						assert.equal(
+							page
+								.card("a-1111")
+								.textContent.includes(obsolete[0].answers.q1[0]),
+							true,
+							"editing unfamiliar U discards old A/B ancestry",
+						);
+						assert.equal(
+							page
+								.card("a-1111")
+								.textContent.includes("New acknowledgement chain D"),
+							false,
+						);
+					}
+					await publish(unfamiliar);
+					assert.equal(
+						page
+							.card("a-1111")
+							.textContent.includes("New acknowledgement chain D"),
+						true,
+						"the newly edited exact U snapshot is superseded",
+					);
+					assert.equal(stateBlob(page.container).includes(SECRET_VALUE), false);
+				} finally {
+					await page.unmount();
+				}
+			},
+		);
+	}
+}
+
+for (const surface of ["pane", "fleet"]) {
 	for (const read of ["fresh", "open", "answered"]) {
 		test(
 			`R12 ${surface}: accepted revision and reopened seed survive ${read} aggregate`,

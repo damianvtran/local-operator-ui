@@ -1982,6 +1982,188 @@ test("R12 repeated known revisions retain only masked public snapshot evidence",
 	assert.deepEqual(second.settled.answers.private_marker, ["[PRIVATE_MARKER]"]);
 });
 
+const acknowledgedRevision = (row, current, predecessors, sessionId) => {
+	const evidence = queue.askRevisionEvidence(row, current, sessionId);
+	return {
+		settled: {
+			status: "answered",
+			at: TS + 999999,
+			answers: queue.askPaintableAnswers(row.questions, current),
+			revision: {
+				identity: evidence.identity,
+				superseded: [],
+				accepted: evidence.after,
+				acknowledged: {
+					current: evidence.afterAnswers,
+					predecessors: predecessors.map(
+						(answers) =>
+							queue.askRevisionEvidence(row, answers, sessionId).afterAnswers,
+					),
+					unmarked: !evidence.hasRevisionMarker,
+				},
+			},
+		},
+	};
+};
+
+test("R13 acknowledged A superseded by B preserves genuine unseen first-answer metadata", () => {
+	const original = revisionRow({
+		status: "open",
+		answers: undefined,
+		answered_at: undefined,
+		answered_by: undefined,
+	});
+	const a = { target: ["staging"] };
+	const b = { target: ["production"] };
+	const outcome = acknowledgedRevision(original, b, [a]);
+	const saved = JSON.stringify(outcome);
+	for (const status of ["answered", "late"]) {
+		const wire = {
+			...original,
+			status,
+			answers: a,
+			answered_at: TS + 99999999,
+			answered_by: { surface: "phone" },
+		};
+		const result = queue.askWithLocalSettle(wire, outcome);
+		assert.deepEqual(result.answers, b);
+		assert.equal(result.status, status);
+		assert.equal(
+			result.answered_at,
+			wire.answered_at,
+			"server's first-acceptance stamp is retained, not ranked against client time",
+		);
+		assert.equal(result.answered_by.surface, "phone");
+		assert.equal(result.delivered, false);
+		const confirmed = { ...wire, answers: b };
+		assert.equal(
+			queue.askWithLocalSettle(confirmed, outcome) === confirmed,
+			true,
+		);
+		assert.deepEqual(
+			queue.askWithLocalSettle(wire, outcome).answers,
+			b,
+			"confirmation must not erase A ancestry",
+		);
+	}
+	assert.equal(
+		JSON.stringify(outcome),
+		saved,
+		"reads do not mutate or retire causal evidence",
+	);
+});
+
+test("R13 delivered ancestor, terminal, identity/schema, unknown answer and revision-marker authority win", () => {
+	const original = revisionRow({ status: "open", answers: undefined });
+	const a = { target: ["staging"] };
+	const b = { target: ["production"] };
+	const outcome = acknowledgedRevision(original, b, [a]);
+	const ancestor = { ...original, status: "answered", answers: a };
+	for (const changes of [
+		{ delivered: true },
+		...["declined", "dismissed", "expired", "withdrawn", "future_terminal"].map(
+			(status) => ({ status }),
+		),
+		{ session_id: "foreign-session" },
+		{ ask_id: "foreign-ask" },
+		{ created_at: TS + 1 },
+		{
+			questions: original.questions.map((q) => ({
+				...q,
+				question: "Different schema",
+			})),
+		},
+		{ answers: { target: ["Unfamiliar authoritative U"] } },
+		{ revised_at: TS + 20 },
+	]) {
+		const wire = { ...ancestor, ...changes };
+		assert.equal(
+			queue.askWithLocalSettle(wire, outcome) === wire,
+			true,
+			`authoritative ${Object.keys(changes).join(",")} wins over an ancestor match`,
+		);
+	}
+});
+
+test("R13 implied detail session normalizes to explicit fleet session without crossing identity", () => {
+	const implied = revisionRow({
+		session_id: undefined,
+		status: "open",
+		answers: undefined,
+	});
+	const a = { target: ["staging"] };
+	const b = { target: ["production"] };
+	const outcome = acknowledgedRevision(implied, b, [a], "owned-session");
+	const first = { ...implied, status: "answered", answers: a };
+	const explicit = { ...first, session_id: "owned-session" };
+	assert.deepEqual(queue.askWithLocalSettle(explicit, outcome).answers, b);
+	assert.deepEqual(
+		queue.askWithLocalSettle(first, outcome, "owned-session").answers,
+		b,
+	);
+	assert.equal(
+		queue.askWithLocalSettle(first, outcome, "different-session") === first,
+		true,
+	);
+	assert.equal(
+		queue.askWithLocalSettle(
+			{ ...first, session_id: "foreign-session" },
+			outcome,
+			"owned-session",
+		).answers.target[0],
+		"staging",
+	);
+	const view = queue.askQueueView(
+		{ asks: [first], asks_open: 0 },
+		{ [first.ask_id]: outcome },
+		"owned-session",
+	);
+	assert.deepEqual(
+		view.rows[0].ask.answers,
+		b,
+		"presentation and form seeds share the normalized reader",
+	);
+});
+
+test("R13 secret changes with identical public key retain no raw marker or fictitious ordering", () => {
+	const row = revisionRow({
+		questions: [
+			...single().questions,
+			{ id: "private_marker", question: "Marker", secret: true },
+		],
+	});
+	const first = {
+		target: ["staging"],
+		private_marker: ["synthetic-first-marker"],
+	};
+	const changed = {
+		target: ["staging"],
+		private_marker: ["synthetic-second-marker"],
+	};
+	const outcome = acknowledgedRevision(row, changed, [first]);
+	const wire = {
+		...row,
+		answers: { target: ["staging"], private_marker: ["[PRIVATE_MARKER]"] },
+	};
+	assert.equal(
+		queue.askWithLocalSettle(wire, outcome) === wire,
+		true,
+		"same public map cannot order private secret values",
+	);
+	assert.equal(
+		JSON.stringify(outcome).includes(first.private_marker[0]),
+		false,
+	);
+	assert.equal(
+		JSON.stringify(outcome).includes(changed.private_marker[0]),
+		false,
+	);
+	assert.equal(
+		outcome.settled.revision.acknowledged.predecessors[0],
+		outcome.settled.revision.acknowledged.current,
+	);
+});
+
 test("R12 exact-snapshot fallback documents unversioned ABA, never overrides unknown facts", () => {
 	const baseline = revisionRow();
 	const outcome = revisionOutcome(baseline, { target: ["production"] });

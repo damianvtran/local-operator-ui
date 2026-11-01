@@ -59,8 +59,8 @@ export type AskAct = {
 	answers?: Record<string, string[]>;
 	/** The ask's questions, so the record can tell which cells are secret. */
 	questions?: readonly PendingAskQuestion[];
-	/** Exact public row superseded at revision dispatch; never submitted secret cells. */
-	revision?: AskRevisionEvidence;
+	/** First acceptance seeds future revision ancestry; all evidence is already masked. */
+	decision?: AskRevisionEvidence;
 	/** The reason a dismissal carried. */
 	reason?: AskDismissReason;
 };
@@ -162,24 +162,46 @@ export const useAskOutcomes = ({
 				}
 				setOutcomes((current) => {
 					const previous = current[act.askId]?.settled?.revision;
-					/* Continue only a chain this mount actually recognizes. A new baseline
-					 * from an unfamiliar writer starts a new chain, so old receipts cannot
-					 * later overwrite that authoritative answer. No client timestamps rank it. */
+					const evidence = act.decision;
+					const acknowledged = previous?.acknowledged;
+					/* This branch runs ONLY after successful acceptance: attempts/refusals
+					 * must not become predecessors. Keep A even if wire B later confirms;
+					 * the first ANSWERED/A read can arrive after either B or C. Editing an
+					 * unfamiliar authoritative U starts a new chain, never inherits A/B. */
 					const keepChain =
-						act.revision &&
-						previous?.identity === act.revision.identity &&
-						(previous.accepted === act.revision.before ||
-							previous.superseded.includes(act.revision.before));
-					const revision = act.revision
+						evidence &&
+						previous?.identity === evidence.identity &&
+						(previous.accepted === evidence.before ||
+							previous.superseded.includes(evidence.before) ||
+							(!evidence.hasRevisionMarker &&
+								acknowledged?.unmarked === true &&
+								(acknowledged.current === evidence.beforeAnswers ||
+									acknowledged.predecessors.includes(evidence.beforeAnswers))));
+					const revision = evidence
 						? {
-								identity: act.revision.identity,
+								identity: evidence.identity,
 								superseded: [
 									...new Set([
 										...(keepChain ? previous.superseded : []),
-										act.revision.before,
+										evidence.before,
 									]),
 								],
-								accepted: act.revision.after,
+								accepted: evidence.after,
+								acknowledged: {
+									current: evidence.afterAnswers,
+									predecessors:
+										keepChain && acknowledged
+											? [
+													...new Set([
+														...acknowledged.predecessors,
+														acknowledged.current,
+													]),
+												]
+											: [],
+									unmarked:
+										!evidence.hasRevisionMarker &&
+										(!keepChain || acknowledged?.unmarked !== false),
+								},
 							}
 						: undefined;
 					return {
@@ -212,6 +234,7 @@ export const useAskOutcomes = ({
 										settled: {
 											status: act.kind,
 											at: now(),
+											...(revision ? { revision } : {}),
 											/*
 											 * A SECRET'S TYPED VALUE NEVER REACHES STATE (agent review
 											 * round 1, R1-1). The overlay paints this map on the settled

@@ -1240,11 +1240,17 @@ export type AskOutcome = {
 		/** Client epoch ms the owner accepted the act: the card's stamp until the wire's. */
 		at: number;
 		answers?: Record<string, string[]>;
-		/** Accepted revision over exact snapshots this mount knows it superseded. */
+		/** Mount-local accepted decisions and exact snapshots, never attempted drafts. */
 		revision?: {
 			identity: string;
 			superseded: readonly string[];
 			accepted: string;
+			/** Only public maps this mount actually saw accepted, never attempted drafts. */
+			acknowledged?: {
+				current: string;
+				predecessors: readonly string[];
+				unmarked: boolean;
+			};
 		};
 		reason?: AskDismissReason;
 	};
@@ -1295,26 +1301,38 @@ export type AskRevisionEvidence = {
 	identity: string;
 	before: string;
 	after: string;
+	beforeAnswers: string;
+	afterAnswers: string;
+	hasRevisionMarker: boolean;
 };
 
 /**
- * Capture the exact row a revision will supersede. `answered_at` is the FIRST
- * acceptance's stamp, not a revision clock; neither browser time nor query-read
- * time can order server writes. These fingerprints carry only public/masked cells.
- * Identity includes question schema so an unrelated/reissued ask cannot inherit it.
+ * Capture a first-answer/revision decision at dispatch; only a successful send
+ * records it as acknowledged ancestry. Keep exact wire snapshots separate from
+ * public answer maps: the first server ANSWERED row's metadata may arrive only
+ * after revision B. `answered_at` is FIRST acceptance, never a revision clock;
+ * neither browser nor query-read time orders writes. Every cell is public/masked.
+ * Identity includes session and question schema to exclude unrelated/reissued asks.
  */
 export const askRevisionEvidence = (
 	ask: PendingAsk,
 	answers: Record<string, string[]>,
+	/** Detail rows may imply the target session; fleet rows publish it explicitly. */
+	sessionId?: string | null,
 ): AskRevisionEvidence => {
 	const identity = JSON.stringify([
-		ask.session_id ?? null,
+		ask.session_id ?? sessionId ?? null,
 		ask.ask_id,
 		ask.created_at ?? null,
 		ask.questions,
 	]);
-	const snapshot = (cells: Record<string, string[]> | null | undefined) => {
+	const publicMap = (cells: Record<string, string[]> | null | undefined) => {
 		const painted = askPaintableAnswers(ask.questions, cells ?? {});
+		return Object.keys(painted)
+			.sort()
+			.map((key) => [key, painted[key]]);
+	};
+	const snapshot = (cells: Record<string, string[]> | null | undefined) => {
 		return JSON.stringify([
 			identity,
 			ask.status,
@@ -1322,24 +1340,31 @@ export const askRevisionEvidence = (
 			ask.revised_at ?? null,
 			ask.delivered ?? null,
 			ask.answered_by ?? null,
-			Object.keys(painted)
-				.sort()
-				.map((key) => [key, painted[key]]),
+			publicMap(cells),
 		]);
 	};
-	return { identity, before: snapshot(ask.answers), after: snapshot(answers) };
+	return {
+		identity,
+		before: snapshot(ask.answers),
+		after: snapshot(answers),
+		beforeAnswers: JSON.stringify(publicMap(ask.answers)),
+		afterAnswers: JSON.stringify(publicMap(answers)),
+		hasRevisionMarker: ask.revised_at != null,
+	};
 };
 
 /**
  * The ask as the owner has accepted it, when this surface knows more than the frame.
  *
- * First-settlement lag and exact known revision lag share this reader. A revision
- * changes only the stale public answer map; any unfamiliar or delivered/terminal
- * frame remains untouched. There is no independent form-seeding reconciliation.
+ * First-settlement, exact-snapshot and acknowledged-predecessor lag share this
+ * reader. Only stale public answers change; unfamiliar decisions/write markers and
+ * delivered/terminal rows win. Server first-answer metadata is preserved verbatim.
+ * Presentation and form seeding must never grow separate reconciliation paths.
  */
 export const askWithLocalSettle = (
 	ask: PendingAsk,
 	outcome: AskOutcome | undefined,
+	sessionId?: string | null,
 ): PendingAsk => {
 	const settled = outcome?.settled;
 	/*
@@ -1349,16 +1374,26 @@ export const askWithLocalSettle = (
 	 */
 	if (settled === undefined || ask.delivered === true) return ask;
 	if (settled.revision) {
-		const observed = askRevisionEvidence(ask, ask.answers ?? {});
+		const observed = askRevisionEvidence(ask, ask.answers ?? {}, sessionId);
 		if (observed.identity !== settled.revision.identity) return ask;
 		if (ask.status === "answered" || ask.status === "late") {
-			/* Only the exact superseded snapshot (or a known older local revision)
-			 * may lag this accepted revision. An unfamiliar authoritative answer wins.
-			 * Preserve status, attribution, first answered_at and delivery verbatim.
-			 * This wire exposes no revision sequence: an indistinguishable cross-writer
-			 * ABA cannot be ordered here. Do NOT claim global ordering or use a timer. */
+			/* A first ANSWERED/A read can arrive only AFTER local revision B: its
+			 * authoritative first-answer metadata was never observed while OPEN.
+			 * The locally acknowledged public A is causal predecessor evidence even
+			 * then; an arbitrary matching draft is not. Keep the wire's metadata.
+			 * Confirmation of B does not erase A: older reads may still arrive.
+			 * A newly visible revision marker must defer to exact evidence/the wire,
+			 * never a timestamp rank. Unversioned cross-writer ABA remains impossible
+			 * to distinguish without a server-issued write identity, not just a date. */
+			const acknowledged = settled.revision.acknowledged;
+			if (acknowledged?.current === observed.beforeAnswers) return ask;
+			const ancestor =
+				acknowledged?.unmarked === true &&
+				!observed.hasRevisionMarker &&
+				acknowledged.current !== observed.beforeAnswers &&
+				acknowledged.predecessors.includes(observed.beforeAnswers);
 			return settled.answers &&
-				settled.revision.superseded.includes(observed.before)
+				(settled.revision.superseded.includes(observed.before) || ancestor)
 				? { ...ask, answers: settled.answers }
 				: ask;
 		}
@@ -1543,6 +1578,7 @@ export const askQueueView = (
 	 * known to be stale.
 	 */
 	outcomes?: Readonly<Record<string, AskOutcome | undefined>>,
+	sessionId?: string | null,
 ): AskQueueView => {
 	const asks = sessionAsks(frontend);
 	const published = askQueuePublished(frontend);
@@ -1603,10 +1639,12 @@ export const askQueueView = (
 	 * too, so every row the record moved out of `open` comes off it below.
 	 */
 	const settledLocally = asks.filter(
-		(ask) => askWithLocalSettle(ask, outcomes?.[ask.ask_id]) !== ask,
+		(ask) => askWithLocalSettle(ask, outcomes?.[ask.ask_id], sessionId) !== ask,
 	).length;
 	const rows = asks
-		.map((ask) => presentAsk(askWithLocalSettle(ask, outcomes?.[ask.ask_id])))
+		.map((ask) =>
+			presentAsk(askWithLocalSettle(ask, outcomes?.[ask.ask_id], sessionId)),
+		)
 		.sort(compareAsks);
 	const open = rows.filter((row) => row.open).length;
 	/*

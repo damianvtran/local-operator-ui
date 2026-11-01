@@ -578,8 +578,9 @@ const DetailAsks: FC<{
 					asks_truncated: false,
 				},
 				outcomes,
+				sessionId,
 			),
-		[rows, outcomes],
+		[rows, outcomes, sessionId],
 	);
 	return (
 		<AskPanel
@@ -596,6 +597,7 @@ const DetailAsks: FC<{
 					askId: ask.ask_id,
 					kind: "answered",
 					answers,
+					decision: askRevisionEvidence(ask, answers, sessionId),
 					questions: ask.questions,
 					send: () =>
 						answerQueuedAsk(
@@ -609,7 +611,7 @@ const DetailAsks: FC<{
 					askId: ask.ask_id,
 					kind: "changed",
 					answers,
-					revision: askRevisionEvidence(ask, answers),
+					decision: askRevisionEvidence(ask, answers, sessionId),
 					questions: ask.questions,
 					send: () =>
 						reviseQueuedAsk(

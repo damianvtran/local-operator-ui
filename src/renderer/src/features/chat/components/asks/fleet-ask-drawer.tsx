@@ -117,7 +117,7 @@ import {
 	dismissQueuedAsk,
 	reviseQueuedAsk,
 } from "../../ask-answer";
-import { askRevisionEvidence } from "../../ask-queue";
+import { askRevisionEvidence, askWithLocalSettle } from "../../ask-queue";
 import type {
 	AskDismissReason,
 	AskDraft,
@@ -294,12 +294,14 @@ export const FleetAskDrawer = ({
 	const onAnswer = useCallback(
 		(askId: string, answers: Record<string, string[]>) => {
 			const sessionId = fleetAskSessionFor(rows ?? [], askId);
-			if (!sessionId) return;
+			const ask = rows?.find((row) => row.ask_id === askId);
+			if (!sessionId || !ask) return;
 			run({
 				askId,
 				kind: "answered",
 				answers,
-				questions: (rows ?? []).find((row) => row.ask_id === askId)?.questions,
+				decision: askRevisionEvidence(ask, answers, sessionId),
+				questions: ask.questions,
 				send: () =>
 					answerQueuedAsk(
 						{ taskId: askId, answers, sessionId, lock },
@@ -320,13 +322,15 @@ export const FleetAskDrawer = ({
 	const onRevise = useCallback(
 		(askId: string, answers: Record<string, string[]>) => {
 			const sessionId = fleetAskSessionFor(rows ?? [], askId);
-			const ask = rows?.find((row) => row.ask_id === askId);
-			if (!sessionId || !ask) return;
+			const raw = rows?.find((row) => row.ask_id === askId);
+			if (!sessionId || !raw) return;
+			// Edit the SAME decision the card paints, not a still-OPEN aggregate row.
+			const ask = askWithLocalSettle(raw, outcomes[askId], sessionId);
 			run({
 				askId,
 				kind: "changed",
 				answers,
-				revision: askRevisionEvidence(ask, answers),
+				decision: askRevisionEvidence(ask, answers, sessionId),
 				questions: ask.questions,
 				send: () =>
 					reviseQueuedAsk(
@@ -335,7 +339,7 @@ export const FleetAskDrawer = ({
 					),
 			});
 		},
-		[lock, rows, run],
+		[lock, rows, run, outcomes],
 	);
 
 	const onDecline = useCallback(
