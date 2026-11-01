@@ -1546,7 +1546,15 @@ test("A17d: a failed desktop run retains its full log as a failure artifact", ()
 		"${{ always() && (steps.desktop_suite.outcome == 'failure' || steps.desktop_suite.outcome == 'cancelled') }}",
 	);
 	assert.equal(artifact.uses, "actions/upload-artifact@v4");
-	assert.equal(artifact.with.path, "/tmp/desktop-tests.log");
+	assert.deepEqual(artifact.with.path.trim().split("\n"), [
+		"/tmp/desktop-tests.log",
+		"/tmp/desktop-test-diagnostics.jsonl",
+	]);
+	assert.equal(String(suite.env.DESKTOP_TEST_DEADLINE_MS), "2400000");
+	assert.equal(
+		suite.env.DESKTOP_TEST_DIAGNOSTICS,
+		"/tmp/desktop-test-diagnostics.jsonl",
+	);
 	assert.equal(artifact.with["retention-days"], 7);
 	assert.equal(artifact.with["if-no-files-found"], "error");
 	assert.ok(jobs.test.steps.indexOf(artifact) > jobs.test.steps.indexOf(suite));
