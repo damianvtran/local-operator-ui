@@ -43,7 +43,7 @@ jobs:
     # cancelled at its own `timeout-minutes` runs no further steps.
     timeout-minutes: 30
     env:
-      WEDGE_FILES: "80"
+      WEDGE_FILES: "164"
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
