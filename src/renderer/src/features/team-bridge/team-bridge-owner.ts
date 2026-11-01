@@ -101,7 +101,7 @@ type BridgeStatusAuthority = {
 	localEnabled: boolean;
 };
 
-function bridgeStatusAuthority(
+export function bridgeStatusAuthority(
 	status: AgentMessagesStatus | undefined,
 ): BridgeStatusAuthority | null {
 	if (!status) return null;
