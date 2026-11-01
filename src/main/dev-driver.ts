@@ -283,3 +283,162 @@ export function describeDevDriverArming(
 	if (arming.problems.length === 0) return null;
 	return `[dev-driver] not armed: ${arming.problems.join("; ")}`;
 }
+
+/**
+ * Observation is a separate, main-issued startup mode. It grants no scene
+ * verbs: preload stays private and main accepts only this fixed numeric schema.
+ * Both halves validate the same bounds so an armed but compromised renderer
+ * cannot turn diagnostics into an unbounded transcript/file dump.
+ */
+export const TRANSCRIPT_OBSERVE_ENV =
+	"LOCAL_OPERATOR_UI_TRANSCRIPT_OBSERVATION";
+export const TRANSCRIPT_OBSERVE_ARG = "--lo-transcript-observation";
+export const TRANSCRIPT_OBSERVE_CHANNEL = "dev-driver-transcript-observation";
+export const TRANSCRIPT_OBSERVE_LIMITS = Object.freeze({
+	rows: 64,
+	samples: 180,
+	ttlMs: 10_000,
+	pngs: 3,
+	pixels: 8_000_000,
+	bytes: 131_072,
+});
+export type ObservationRect = [number, number, number, number];
+export type TranscriptObservationSample = {
+	seq: number;
+	/** This startup-only observer never re-arms a second document. */
+	documentGeneration: 0;
+	generation: number;
+	t: number;
+	phase:
+		| "preload-start"
+		| "observer-installed"
+		| "transcript-detected"
+		| "layout"
+		| "stopped";
+	late: boolean;
+	rootCount: number;
+	viewport: [number, number, number];
+	scroll: [number, number];
+	rows: Array<{
+		ordinal: number;
+		row: ObservationRect;
+		body: ObservationRect | null;
+		control: ObservationRect | null;
+		clientHeight: number;
+		scrollHeight: number;
+		maxHeight: number | null;
+		expanded: boolean | null;
+	}>;
+};
+const OBSERVATION_PHASES = new Set([
+	"preload-start",
+	"observer-installed",
+	"transcript-detected",
+	"layout",
+	"stopped",
+]);
+const SAMPLE_KEYS = [
+	"seq",
+	"documentGeneration",
+	"generation",
+	"t",
+	"phase",
+	"late",
+	"rootCount",
+	"viewport",
+	"scroll",
+	"rows",
+];
+const ROW_KEYS = [
+	"ordinal",
+	"row",
+	"body",
+	"control",
+	"clientHeight",
+	"scrollHeight",
+	"maxHeight",
+	"expanded",
+];
+const exactKeys = (value: object, keys: string[]) =>
+	Object.keys(value).length === keys.length &&
+	Object.keys(value).every((key) => keys.includes(key));
+const finiteGeometry = (value: unknown): value is number =>
+	typeof value === "number" &&
+	Number.isFinite(value) &&
+	Math.abs(value) <= 10_000_000;
+const integerIn = (value: unknown, max: number): value is number =>
+	Number.isInteger(value) && Number(value) >= 0 && Number(value) <= max;
+const rectValid = (value: unknown): value is ObservationRect =>
+	Array.isArray(value) &&
+	value.length === 4 &&
+	value.every(finiteGeometry) &&
+	value[2] >= 0 &&
+	value[3] >= 0;
+export function observationMode(
+	arming: DevDriverArming,
+	env: Record<string, string | undefined>,
+): boolean {
+	return arming.armed && env[TRANSCRIPT_OBSERVE_ENV] === "1";
+}
+export function validTranscriptObservation(
+	value: unknown,
+): value is TranscriptObservationSample {
+	if (!value || typeof value !== "object" || !exactKeys(value, SAMPLE_KEYS))
+		return false;
+	const s = value as TranscriptObservationSample;
+	if (
+		s.documentGeneration !== 0 ||
+		!integerIn(s.seq, TRANSCRIPT_OBSERVE_LIMITS.samples - 1) ||
+		!integerIn(s.generation, TRANSCRIPT_OBSERVE_LIMITS.samples) ||
+		typeof s.t !== "number" ||
+		!Number.isFinite(s.t) ||
+		s.t < 0 ||
+		!OBSERVATION_PHASES.has(s.phase) ||
+		typeof s.late !== "boolean" ||
+		!integerIn(s.rootCount, 64)
+	)
+		return false;
+	if (
+		!Array.isArray(s.viewport) ||
+		s.viewport.length !== 3 ||
+		!s.viewport.every(finiteGeometry) ||
+		s.viewport.some((n) => n <= 0) ||
+		s.viewport[2] > 8 ||
+		s.viewport[0] * s.viewport[1] * s.viewport[2] ** 2 >
+			TRANSCRIPT_OBSERVE_LIMITS.pixels ||
+		!Array.isArray(s.scroll) ||
+		s.scroll.length !== 2 ||
+		!s.scroll.every(finiteGeometry)
+	)
+		return false;
+	if (!Array.isArray(s.rows) || s.rows.length > TRANSCRIPT_OBSERVE_LIMITS.rows)
+		return false;
+	const ordinals = new Set<number>();
+	for (const row of s.rows) {
+		if (
+			!row ||
+			typeof row !== "object" ||
+			!exactKeys(row, ROW_KEYS) ||
+			!integerIn(row.ordinal, 65535) ||
+			ordinals.has(row.ordinal) ||
+			!rectValid(row.row) ||
+			!(row.body === null || rectValid(row.body)) ||
+			!(row.control === null || rectValid(row.control)) ||
+			!finiteGeometry(row.clientHeight) ||
+			row.clientHeight < 0 ||
+			!finiteGeometry(row.scrollHeight) ||
+			row.scrollHeight < 0 ||
+			!(
+				row.maxHeight === null ||
+				(finiteGeometry(row.maxHeight) && row.maxHeight >= 0)
+			) ||
+			!(row.expanded === null || typeof row.expanded === "boolean")
+		)
+			return false;
+		ordinals.add(row.ordinal);
+	}
+	return (
+		new TextEncoder().encode(JSON.stringify(s)).length <=
+		TRANSCRIPT_OBSERVE_LIMITS.bytes
+	);
+}

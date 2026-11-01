@@ -24,11 +24,17 @@
  * needs no Playwright, no Puppeteer and no downloaded Chromium.
  */
 
-import { mkdirSync, writeFileSync } from "node:fs";
+import { appendFileSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { type BrowserWindow, type IpcMainInvokeEvent, ipcMain } from "electron";
 import { trustedDesktopFrame } from "./desktop-transport";
-import { DEV_DRIVER_CAPTURE, DEV_DRIVER_FACTS } from "./dev-driver";
+import {
+	DEV_DRIVER_CAPTURE,
+	DEV_DRIVER_FACTS,
+	TRANSCRIPT_OBSERVE_CHANNEL,
+	TRANSCRIPT_OBSERVE_LIMITS,
+	validTranscriptObservation,
+} from "./dev-driver";
 
 /**
  * A frame label becomes a file name, so it is constrained rather than sanitized.
@@ -52,6 +58,8 @@ export function registerDevDriverIPC(options: {
 	expectedUrl: string;
 	outDir: string;
 	identity: DevDriverIPCIdentity;
+	/** Separate startup gate; never inferred from an IPC payload. */
+	observationOnly?: boolean;
 }): void {
 	const { window, expectedUrl, outDir, identity } = options;
 	mkdirSync(outDir, { recursive: true });
@@ -79,12 +87,9 @@ export function registerDevDriverIPC(options: {
 	 * hung the renderer in an unarmed launch. Nothing is registered here for the
 	 * preload to ask; the channels below are the whole surface.
 	 */
-	ipcMain.handle(DEV_DRIVER_FACTS, (event) => {
-		const owner = authorize(event);
+	function geometry(owner: BrowserWindow) {
 		const bounds = owner.getContentBounds();
 		return {
-			...identity,
-			title: owner.getTitle(),
 			windowSize: {
 				width: owner.getBounds().width,
 				height: owner.getBounds().height,
@@ -96,13 +101,24 @@ export function registerDevDriverIPC(options: {
 			visible: owner.isVisible(),
 			focused: owner.isFocused(),
 			minimized: owner.isMinimized(),
+		};
+	}
+	function facts(owner: BrowserWindow) {
+		return {
+			...identity,
+			title: owner.getTitle(),
+			...geometry(owner),
 			frames: [...frames],
 			outDir,
 		};
-	});
+	}
+	ipcMain.handle(DEV_DRIVER_FACTS, (event) => facts(authorize(event)));
 
-	ipcMain.handle(DEV_DRIVER_CAPTURE, async (event, label: unknown) => {
-		const owner = authorize(event);
+	async function capture(
+		owner: BrowserWindow,
+		label: unknown,
+		active?: () => boolean,
+	) {
 		if (typeof label !== "string" || !FRAME_LABEL.test(label)) {
 			throw new Error(
 				"Invalid frame label: lowercase letters, digits, dash and underscore only.",
@@ -111,12 +127,50 @@ export function registerDevDriverIPC(options: {
 		// `capturePage()` with no rect is the whole visible page, not the window:
 		// at devicePixelRatio 2 that is twice the CSS viewport in pixels, which is
 		// why the returned size is reported next to the frame rather than assumed.
+		if (active) {
+			const view = await owner.webContents.executeJavaScript(
+				"({ width: window.innerWidth, height: window.innerHeight, devicePixelRatio: window.devicePixelRatio })",
+				true,
+			);
+			if (
+				!active() ||
+				![view?.width, view?.height, view?.devicePixelRatio].every(
+					(n) => typeof n === "number" && Number.isFinite(n) && n > 0,
+				) ||
+				view.width * view.height * view.devicePixelRatio ** 2 >
+					TRANSCRIPT_OBSERVE_LIMITS.pixels
+			)
+				throw new Error("Observation pixel budget or lifetime refused capture");
+		}
 		const image = await owner.webContents.capturePage();
+		const pixels = image.getSize();
+		// Recheck after async capture: navigation/DPR can change between the
+		// preallocation guard and completion. Never write an oversized/stale PNG.
+		if (
+			active &&
+			(!active() ||
+				pixels.width * pixels.height > TRANSCRIPT_OBSERVE_LIMITS.pixels)
+		)
+			throw new Error("Observation capture became stale or oversized");
 		const png = image.toPNG();
+		if (active && !active())
+			throw new Error("Observation lifetime expired during encoding");
 		const file = join(outDir, `${label}.png`);
-		writeFileSync(file, png);
+		writeFileSync(file, png, active ? { flag: "wx" } : undefined);
 		frames.push(label);
 		const size = image.getSize();
+		const viewport = await owner.webContents.executeJavaScript(
+			"({ width: window.innerWidth, height: window.innerHeight, devicePixelRatio: window.devicePixelRatio })",
+			true,
+		);
+		if (
+			active &&
+			(!active() ||
+				![viewport?.width, viewport?.height, viewport?.devicePixelRatio].every(
+					(n) => typeof n === "number" && Number.isFinite(n) && n > 0,
+				))
+		)
+			throw new Error("Observation viewport completion refused");
 		return {
 			label,
 			path: file,
@@ -126,10 +180,175 @@ export function registerDevDriverIPC(options: {
 			// derived from the window: a `BrowserWindow` size includes the
 			// platform's window chrome, so 1380x900 is a 1380x872 viewport on
 			// macOS and a frame labelled from the window would overstate it.
-			viewport: await owner.webContents.executeJavaScript(
-				"({ width: window.innerWidth, height: window.innerHeight, devicePixelRatio: window.devicePixelRatio })",
-				true,
-			),
+			viewport,
 		};
-	});
+	}
+	ipcMain.handle(DEV_DRIVER_CAPTURE, (event, label: unknown) =>
+		capture(authorize(event), label),
+	);
+
+	if (options.observationOnly) installObservation();
+
+	function installObservation(): void {
+		// Automatic evidence must never overwrite or append to a prior launch's
+		// receipts. General user-labelled capture retains its established contract.
+		try {
+			writeFileSync(join(outDir, "transcript-observation.jsonl"), "", {
+				flag: "wx",
+			});
+		} catch {
+			console.warn(
+				"[transcript-observation] fresh evidence path unavailable; observation refused",
+			);
+			return;
+		}
+		const limits = TRANSCRIPT_OBSERVE_LIMITS;
+		let owner: BrowserWindow | null = null;
+		let revoked = false;
+		let seq = -1;
+		let generation = 0;
+		let lastT = Number.NEGATIVE_INFINITY;
+		let lastLayout = Number.NEGATIVE_INFINITY;
+		let captures = 0;
+		let inFlight = false;
+		let stage = 0;
+		let stopAt = 0;
+		let late: boolean | null = null;
+		let deadline: ReturnType<typeof setTimeout> | undefined;
+		let evidenceFailed = false;
+		const record = (value: object): boolean => {
+			try {
+				appendFileSync(
+					join(outDir, "transcript-observation.jsonl"),
+					`${JSON.stringify(value)}\n`,
+				);
+				return true;
+			} catch {
+				evidenceFailed = true;
+				console.warn(
+					"[transcript-observation] evidence write failed; observation refused",
+				);
+				return false;
+			}
+		};
+		const active = () =>
+			!revoked &&
+			performance.now() <= stopAt &&
+			owner !== null &&
+			window() === owner &&
+			!owner.isDestroyed() &&
+			!owner.webContents.isDestroyed();
+		const revoke = () => {
+			if (revoked) return;
+			revoked = true;
+			clearTimeout(deadline);
+			owner?.webContents.removeListener("did-start-navigation", navigation);
+			owner?.webContents.removeListener("destroyed", revoke);
+			if (!evidenceFailed)
+				record({ phase: "revoked", receivedAt: Date.now(), seq });
+		};
+		const navigation = (...args: unknown[]) => {
+			// Hash routing is the same trusted document; its root replacement is
+			// tracked by generation. A new document/main frame can never re-arm.
+			if (args[2] !== true && args[3] !== false) revoke();
+		};
+		ipcMain.handle(TRANSCRIPT_OBSERVE_CHANNEL, (event, input: unknown) => {
+			if (owner && window() !== owner) revoke();
+			const current = authorize(event);
+			if (!validTranscriptObservation(input))
+				throw new Error("Invalid observation schema/budget");
+			if (!owner) {
+				if (input.seq !== 0 || input.phase !== "preload-start")
+					throw new Error("Observation missed startup arming");
+				owner = current;
+				stopAt = performance.now() + limits.ttlMs;
+				late = input.late;
+				owner.webContents.on("did-start-navigation", navigation);
+				owner.webContents.once("destroyed", revoke);
+				deadline = setTimeout(revoke, limits.ttlMs);
+				deadline.unref();
+			}
+			if (current !== owner) revoke();
+			if (
+				!active() ||
+				current !== owner ||
+				input.late !== late ||
+				input.seq !== seq + 1 ||
+				input.generation < generation ||
+				input.generation > generation + 1 ||
+				input.t < lastT ||
+				(input.phase === "layout" && input.t - lastLayout < 8)
+			)
+				throw new Error("Stale, reordered or rate-exceeded observation");
+			if (
+				(input.phase === "preload-start" && seq !== -1) ||
+				(input.phase === "observer-installed" && seq !== 0) ||
+				(input.phase === "transcript-detected" && stage !== 1) ||
+				(input.phase === "layout" &&
+					(stage < 1 || (input.rows.length > 0 && stage < 2)))
+			)
+				throw new Error("Observation phase ordering refused");
+			if (input.phase === "observer-installed") stage = 1;
+			if (input.phase === "transcript-detected") stage = 2;
+			seq = input.seq;
+			generation = input.generation;
+			lastT = input.t;
+			if (input.phase === "layout") lastLayout = input.t;
+			if (
+				!record({
+					receivedAt: Date.now(),
+					sample: input,
+					lateArmed: input.late,
+					window: geometry(current),
+				})
+			) {
+				revoke();
+				throw new Error("Observation evidence unavailable");
+			}
+			if (
+				input.phase === "layout" &&
+				input.rootCount === 1 &&
+				input.rows.length > 0 &&
+				captures < limits.pngs &&
+				!inFlight
+			) {
+				const number = captures++;
+				const sampleSeq = seq;
+				const requestedAt = Date.now();
+				inFlight = true;
+				// Serial snapshots only, never a queue and never a first-compositor-
+				// paint claim. capturePage may return pixels from a later state.
+				void capture(current, `observation-${number}`, active)
+					.then((result) => {
+						if (
+							!record({
+								phase: "capture",
+								sampleSeq,
+								requestedAt,
+								completedAt: Date.now(),
+								bytes: result.bytes,
+								pixels: result.pixels,
+								viewport: result.viewport,
+								frameOrdinal: number,
+							})
+						)
+							revoke();
+					})
+					.catch(() => {
+						record({
+							phase: "capture-refused",
+							sampleSeq,
+							requestedAt,
+							completedAt: Date.now(),
+							code: "capture-rejected",
+						});
+						revoke();
+					})
+					.finally(() => {
+						inFlight = false;
+					});
+			}
+			return { accepted: seq, captures };
+		});
+	}
 }

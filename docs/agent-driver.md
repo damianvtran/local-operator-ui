@@ -911,3 +911,101 @@ The same position holds for `docs/evidence/projects-inline-edit/` (the
 `project-inline-edit` scene's frames, nine per palette) and for
 `docs/evidence/project-open-no-autofocus/` (the `project-open` pair, four frames
 per palette per tree).
+
+## Startup-only native transcript observation (not interaction authority)
+
+This mode is a separate capability from the renderer scene driver. It is for a
+single isolated, provenance-pinned app launch whose **existing** reviewed launcher
+already obeys window-mode, process-group reaping and artifact-identity rules.
+It does not introduce another launcher, browser, raw-CDP driver, fixture injector,
+or a general tool/capture framework. Do not use `renderer-driver.mjs` to drive
+this mode: there is intentionally no `window.__loDevDriver` in it.
+
+In that existing launch environment set `LOCAL_OPERATOR_UI_DEV_DRIVER=1`, its
+existing absolute `LOCAL_OPERATOR_UI_DEV_DRIVER_OUT` evidence directory, and
+**separately** `LOCAL_OPERATOR_UI_TRANSCRIPT_OBSERVATION=1`. The ordinary arming
+rules still apply: no directory or a normal/foreground launch does not arm.
+Main issues the observation argv entry before window creation; preload checks
+both main-issued entries and takes its private branch **before** creating the
+scene map or exposing a bridge. Observation also refuses the driver's attachment
+picker override. Existing general-mode facts/capture contracts are unchanged. Use a fresh evidence
+directory per launch: automatic observation refuses an existing receipt file and
+creates PNGs exclusively rather than overwriting prior evidence.
+
+### What crosses the boundary
+
+Only a fixed numeric/boolean schema: sequence, document generation (zero for the
+single initial document), document-local transcript-root generation, monotonic
+sample time, startup/observation phase, late flag, viewport/DPR, scroll offsets,
+local weak-map row ordinal, row/body/control rectangles, body client/scroll
+height, CSS max-height (null for none), and expansion boolean (null without a
+control). The capped body and following expansion button are fixed seats in the
+pinned transcript DOM; callers cannot supply selectors. No message text,
+selection, clipboard, session/record identifiers, URLs, snippets, scripts, input,
+navigation requests or store access cross this channel. Main adds receipt times
+and numeric window geometry; it does not record the window title. Capture logs
+use fixed frame ordinals and numeric sizes, not renderer-provided filenames.
+
+The legacy facts/capture handlers and observation handler share the SAME owner,
+webContents, main-frame and trusted-document authorization. Shared validation
+runs independently in preload and main. Main additionally validates startup
+phase order, increasing sequence/timestamp/root generation, unchanged late
+status, sample rate, lifetime and serial capture budget. Unknown keys, duplicate
+row ordinals, nonfinite geometry and oversized seats are refusals, not truncated
+full-coverage claims. A changed window, new main document or destroyed contents
+cannot re-arm this recording. Same-document hash routing does not change the
+trusted document; its transcript-root replacement increments the local root
+generation. The observer itself never navigates.
+
+### Bounds and provenance
+
+Hard bounds: **64 mounted user rows, 180 total messages, 10 seconds, three capture
+attempts, 8 million pixels per frame, 128KiB per sample**. Preload throttles layout
+sampling and permits only one geometry IPC in flight; main permits only one PNG
+capture in flight and never queues captures. An actual-viewport/DPR check happens
+before capture allocation where possible, then an actual-image-size check before
+PNG conversion/write. DPR/viewport can change across an async capture; this is
+why the post-check exists and why the preallocation guard is not an absolute
+allocator guarantee. Filesystem failure refuses further recording rather than
+silently claiming evidence. The observer/rAF/timer/listeners stop on their
+lifetime bound or document exit; main revokes independently on navigation,
+destruction, replacement or its own monotonic deadline.
+
+`transcript-observation.jsonl` records arm order (`preload-start`,
+`observer-installed`, `transcript-detected`) and layout samples. If content was
+already present at installation, every sample is explicitly `lateArmed: true`:
+that is a late snapshot, NOT proof of the missed transition. A run with no
+qualifying user rows is missing that evidence, not an empty-state pass. Row
+ordinals identify DOM seats only within the current recording, not semantic
+records across remount/reopen. Multiple transcript roots are recorded as
+ambiguous; no caller chooses a root to make an assertion pass.
+
+`observation-0.png` through `observation-2.png` are app-owned `capturePage`
+snapshots. Their records pair the requesting geometry sequence with request and
+completion times; the async image can show a LATER state. A qualifying layout
+sample is **not the first compositor paint**, three serial captures are **not
+necessarily consecutive compositor frames**, and these PNGs are not OS
+window-only or focus-proof captures. The numeric timeline can show sampled
+stability; it does not establish that nothing changed between samples. Keep
+artifact revision/lock/compiled-source manifests outside this numeric stream.
+
+### Verification matrix and explicit limits
+
+Focused source tests use an inert Electron stub to execute shipped handlers:
+normal/unarmed opt-in refusal; no general preload bridge; fixed schema;
+foreign/subframe/untrusted sender; missing/reordered/stale samples; rate/row and
+pixel ceilings; serial three-frame cap; deadline/destroy/replacement; preserved
+facts/capture response contracts. Stub buffers are deliberately NOT screenshots.
+They do not establish a native boot or real ordering of Electron/preload/paint.
+
+Before native QA, independently prove executable/artifact source identity and
+negative controls, obtain one bounded nonoverlapping allocation, and use the
+existing exact-process-group launcher/cleanup. No installs, duplicated dependency
+trees, full suite or native run is authorized by this documentation.
+
+**Still BLOCKED, not supplied by observations:** click/keyboard toggling, focus,
+selection/copy/quote/find hidden tails, attachment picker/send/live echo,
+resize gestures, scroll restoration, navigation/reopen interactions, and actual
+first-compositor-paint proof. These require separately reviewed interaction or
+capture authority and independent real-path evidence. No UI1549 gate is waived
+by this tooling or by a passing stub test.

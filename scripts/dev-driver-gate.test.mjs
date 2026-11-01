@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { EventEmitter } from "node:events";
+import { mkdtempSync, readFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 import { build } from "esbuild";
@@ -46,6 +48,10 @@ const {
 	headlessExerciserAllowed,
 	readDevDriverArgument,
 	resolveDevDriverArming,
+	observationMode,
+	validTranscriptObservation,
+	TRANSCRIPT_OBSERVE_ENV,
+	TRANSCRIPT_OBSERVE_LIMITS,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(
 		bundle.outputFiles[0].text,
@@ -265,12 +271,15 @@ test("nothing in main registers a dev-driver channel outside the armed branch", 
 		join(process.cwd(), "src/main/dev-driver-ipc.ts"),
 		"utf8",
 	);
-	// One `handle` per channel, and no third one appearing unnoticed.
+	// Two established channels plus the separately gated observation seat;
+	// any further channel still requires an explicit authority review.
 	assert.equal(
 		(ipc.match(/ipcMain\.handle\(/g) ?? []).length,
-		2,
+		3,
 		"dev-driver-ipc.ts registers a channel count this file does not expect",
 	);
+	assert.ok(ipc.includes("if (options.observationOnly) installObservation();"));
+	assert.ok(main.includes("observationOnly: devDriverObservation"));
 	const preload = readFileSync(
 		join(process.cwd(), "src/preload/index.ts"),
 		"utf8",
@@ -377,4 +386,371 @@ test("both launch facts are resolved from that snapshot, not the folded process.
 		/env: process\.env,/,
 		"a launch fact is resolved from process.env again, which is the folded one",
 	);
+});
+
+/* Numeric-only observer gate: no app boot, capture, input or page interaction. */
+const observationSample = () => ({
+	seq: 0,
+	documentGeneration: 0,
+	generation: 0,
+	t: 0,
+	phase: "preload-start",
+	late: false,
+	rootCount: 0,
+	viewport: [1280, 900, 1],
+	scroll: [0, 0],
+	rows: [],
+});
+test("transcript observation requires both main driver arming and its separate exact opt-in", () => {
+	for (const windowMode of ["normal", "headless", "inactive"]) {
+		const armed = resolveDevDriverArming({
+			env: { [DEV_DRIVER_ENV]: "1", [DEV_DRIVER_OUT_ENV]: OUT },
+			windowMode,
+		});
+		assert.equal(
+			observationMode(armed, { [TRANSCRIPT_OBSERVE_ENV]: "1" }),
+			windowMode !== "normal",
+		);
+		assert.equal(observationMode(armed, {}), false);
+		assert.equal(
+			observationMode(armed, { [TRANSCRIPT_OBSERVE_ENV]: "true" }),
+			false,
+		);
+	}
+	assert.equal(
+		observationMode(resolveDevDriverArming(normalLaunch), {
+			[TRANSCRIPT_OBSERVE_ENV]: "1",
+		}),
+		false,
+	);
+});
+test("observation DTO rejects text, selectors, unknown fields and excessive geometry", () => {
+	assert.equal(validTranscriptObservation(observationSample()), true);
+	for (const changed of [
+		{ text: "private" },
+		{ selector: "body" },
+		{ script: "1+1" },
+		{ url: "https://example.invalid" },
+		{ seq: TRANSCRIPT_OBSERVE_LIMITS.samples },
+		{ documentGeneration: 1 },
+		{ generation: -1 },
+		{ t: Number.POSITIVE_INFINITY },
+		{ phase: "click" },
+		{ viewport: [1280, 900, 9] },
+		{ rootCount: 65 },
+		{ scroll: [0, Number.NaN] },
+		{ rows: Array.from({ length: 65 }, () => ({})) },
+	])
+		assert.equal(
+			validTranscriptObservation({ ...observationSample(), ...changed }),
+			false,
+		);
+	const row = {
+		ordinal: 0,
+		row: [0, 0, 100, 200],
+		body: [0, 0, 100, 174],
+		control: null,
+		clientHeight: 174,
+		scrollHeight: 1200,
+		maxHeight: 174,
+		expanded: null,
+	};
+	assert.equal(
+		validTranscriptObservation({ ...observationSample(), rows: [row] }),
+		true,
+	);
+	assert.equal(
+		validTranscriptObservation({ ...observationSample(), rows: [row, row] }),
+		false,
+	);
+	assert.equal(
+		validTranscriptObservation({
+			...observationSample(),
+			rows: [{ ...row, text: "private" }],
+		}),
+		false,
+	);
+	assert.equal(
+		validTranscriptObservation({
+			...observationSample(),
+			rows: [{ ...row, row: [0, 0, -1, 10] }],
+		}),
+		false,
+	);
+});
+test("private preload branch precedes creation/exposure of the general scene bridge", () => {
+	const preload = readFileSync("src/preload/dev-driver.ts", "utf8");
+	const branch = preload.indexOf(
+		"if (process.argv.includes(TRANSCRIPT_OBSERVE_ARG))",
+	);
+	assert.ok(branch > preload.indexOf("if (!armed) return false"));
+	assert.ok(branch < preload.indexOf("const scenes = new Map"));
+	assert.ok(
+		preload
+			.slice(branch, preload.indexOf("const scenes = new Map"))
+			.includes("return true"),
+	);
+	assert.ok(
+		!preload
+			.slice(preload.indexOf("function installTranscriptObservation"))
+			.includes("exposeInMainWorld"),
+	);
+});
+
+/*
+ * Inert Electron stub, not an app boot. This executes the SHIPPED handlers;
+ * native pixels, initial paint and real preload ordering still require native QA.
+ * The trusted-document predicate's established tests remain authoritative; this
+ * seam makes URL/sender identity outcomes explicit without another Electron.
+ */
+const ELECTRON_FIXTURE_MODULE = /^electron$/;
+const TRANSPORT_FIXTURE_MODULE = /^\.\/desktop-transport$/;
+const ALL_FIXTURE_MODULES = /.*/;
+const ipcBundle = await build({
+	stdin: {
+		contents:
+			'export { registerDevDriverIPC } from "./src/main/dev-driver-ipc";',
+		resolveDir: process.cwd(),
+	},
+	bundle: true,
+	format: "esm",
+	platform: "node",
+	write: false,
+	plugins: [
+		{
+			name: "inert-observation-electron",
+			setup(builder) {
+				builder.onResolve({ filter: ELECTRON_FIXTURE_MODULE }, () => ({
+					path: "electron",
+					namespace: "observation-fixture",
+				}));
+				builder.onResolve({ filter: TRANSPORT_FIXTURE_MODULE }, () => ({
+					path: "transport",
+					namespace: "observation-fixture",
+				}));
+				builder.onLoad(
+					{ filter: ALL_FIXTURE_MODULES, namespace: "observation-fixture" },
+					(args) => ({
+						contents:
+							args.path === "electron"
+								? "export const ipcMain={handle:(name,fn)=>globalThis.__loObservationHandles.set(name,fn)};"
+								: "export const trustedDesktopFrame=(url,expected)=>url===expected;",
+					}),
+				);
+			},
+		},
+	],
+});
+const { registerDevDriverIPC } = await import(
+	`data:text/javascript;base64,${Buffer.from(ipcBundle.outputFiles[0].text).toString("base64")}`
+);
+const OBSERVATION_CHANNEL = "dev-driver-transcript-observation";
+const FIXTURE_URL = "file:///fixture/index.html";
+const tickObservation = () => new Promise((done) => setImmediate(done));
+function observationDriver(
+	t,
+	{
+		enabled = true,
+		viewport = { width: 400, height: 300, devicePixelRatio: 1 },
+	} = {},
+) {
+	const handles = new Map();
+	globalThis.__loObservationHandles = handles;
+	const out = mkdtempSync(
+		join(
+			process.env.LOCAL_OPERATOR_SCRATCHPAD ??
+				process.env.RUNNER_TEMP ??
+				tmpdir(),
+			"lo-observation-",
+		),
+	);
+	const contents = new EventEmitter();
+	let captureCount = 0;
+	Object.assign(contents, {
+		mainFrame: { url: FIXTURE_URL },
+		isDestroyed: () => false,
+		executeJavaScript: async () => viewport,
+		capturePage: async () => {
+			captureCount++;
+			return {
+				getSize: () => ({ width: 400, height: 300 }),
+				toPNG: () => Buffer.from("UNIT-FIXTURE-NOT-PNG"),
+			};
+		},
+	});
+	const owner = {
+		webContents: contents,
+		isDestroyed: () => false,
+		getTitle: () => "fixture-secret-title",
+		getContentBounds: () => ({ width: 400, height: 300 }),
+		getBounds: () => ({ width: 400, height: 328 }),
+		isVisible: () => false,
+		isFocused: () => false,
+		isMinimized: () => false,
+	};
+	let current = owner;
+	registerDevDriverIPC({
+		window: () => current,
+		expectedUrl: FIXTURE_URL,
+		outDir: out,
+		identity: {
+			windowMode: "headless",
+			appVersion: "fixture",
+			platform: "unit",
+		},
+		observationOnly: enabled,
+	});
+	t.after(() => {
+		contents.emit("destroyed");
+		handles.clear();
+	});
+	const event = { sender: contents, senderFrame: contents.mainFrame };
+	const send = (sample) => handles.get(OBSERVATION_CHANNEL)(event, sample);
+	const arm = () => {
+		send(observationSample());
+		send({ ...observationSample(), seq: 1, t: 1, phase: "observer-installed" });
+		send({
+			...observationSample(),
+			seq: 2,
+			t: 2,
+			phase: "transcript-detected",
+		});
+	};
+	const row = {
+		ordinal: 0,
+		row: [0, 0, 100, 264],
+		body: [0, 0, 100, 174],
+		control: [0, 174, 100, 30],
+		clientHeight: 174,
+		scrollHeight: 1200,
+		maxHeight: 174,
+		expanded: false,
+	};
+	const layout = (seq, time = seq * 16) => ({
+		...observationSample(),
+		seq,
+		t: time,
+		phase: "layout",
+		rootCount: 1,
+		rows: [row],
+	});
+	return {
+		handles,
+		event,
+		contents,
+		owner,
+		send,
+		arm,
+		layout,
+		out,
+		captures: () => captureCount,
+		replace: () => {
+			current = { ...owner, webContents: new EventEmitter() };
+		},
+	};
+}
+test("observation handler is absent outside explicit mode; shared facts/capture contracts remain", async (t) => {
+	const d = observationDriver(t, { enabled: false });
+	assert.equal(d.handles.has(OBSERVATION_CHANNEL), false);
+	const facts = d.handles.get(DEV_DRIVER_FACTS)(d.event);
+	assert.equal(facts.title, "fixture-secret-title");
+	assert.deepEqual(facts.contentBounds, { width: 400, height: 300 });
+	const result = await d.handles.get(DEV_DRIVER_CAPTURE)(d.event, "contract");
+	assert.deepEqual(
+		Object.keys(result).sort(),
+		["label", "path", "bytes", "pixels", "viewport"].sort(),
+	);
+	assert.equal(result.label, "contract");
+	await assert.rejects(d.handles.get(DEV_DRIVER_CAPTURE)(d.event, "../bad"));
+});
+test("observation repeats owner/main-frame/URL authorization and refuses missing startup", (t) => {
+	const d = observationDriver(t);
+	const handler = d.handles.get(OBSERVATION_CHANNEL);
+	for (const event of [
+		{ ...d.event, sender: {} },
+		{ ...d.event, senderFrame: { url: FIXTURE_URL } },
+	])
+		assert.throws(() => handler(event, observationSample()));
+	d.contents.mainFrame.url = "https://untrusted.invalid";
+	assert.throws(() => handler(d.event, observationSample()));
+	d.contents.mainFrame.url = FIXTURE_URL;
+	assert.throws(() =>
+		d.send({ ...observationSample(), seq: 1, phase: "layout" }),
+	);
+	d.arm();
+	assert.throws(() => d.send({ ...d.layout(3), text: "private" }));
+});
+test("stale generation/sequence, oversize and rate excess are refused without UI mutation", (t) => {
+	const d = observationDriver(t);
+	d.arm();
+	d.send(d.layout(3));
+	assert.throws(() => d.send(d.layout(3)));
+	assert.throws(() => d.send({ ...d.layout(4), generation: 2 }));
+	assert.throws(() => d.send(d.layout(4, 49)));
+	assert.throws(() =>
+		d.send({
+			...d.layout(4),
+			rows: Array.from({ length: 65 }, () => d.layout(4).rows[0]),
+		}),
+	);
+});
+test("serial capture attempts stop at three and receipts exclude title/text", async (t) => {
+	const d = observationDriver(t);
+	d.arm();
+	for (let seq = 3; seq < 9; seq++) {
+		d.send(d.layout(seq));
+		await tickObservation();
+	}
+	assert.equal(d.captures(), 3);
+	const evidence = readFileSync(
+		join(d.out, "transcript-observation.jsonl"),
+		"utf8",
+	);
+	assert.equal(evidence.includes("fixture-secret-title"), false);
+	assert.equal(evidence.includes("UNIT-FIXTURE-NOT-PNG"), false);
+	d.contents.emit("did-start-navigation", {}, "file:///next.html", false, true);
+	assert.throws(() => d.send(d.layout(9)));
+});
+test("preallocation pixel guard refuses a large viewport before capturePage", async (t) => {
+	const d = observationDriver(t, {
+		viewport: { width: 5000, height: 5000, devicePixelRatio: 1 },
+	});
+	d.arm();
+	d.send(d.layout(3));
+	await tickObservation();
+	assert.equal(d.captures(), 0);
+	assert.ok(
+		readFileSync(join(d.out, "transcript-observation.jsonl"), "utf8").includes(
+			"capture-refused",
+		),
+	);
+});
+
+test("document lifetime expiration refuses samples even before the timer callback runs", (t) => {
+	const original = globalThis.performance;
+	let now = 0;
+	Object.defineProperty(globalThis, "performance", {
+		configurable: true,
+		value: { now: () => now },
+	});
+	t.after(() =>
+		Object.defineProperty(globalThis, "performance", {
+			configurable: true,
+			value: original,
+		}),
+	);
+	const d = observationDriver(t);
+	d.arm();
+	now = TRANSCRIPT_OBSERVE_LIMITS.ttlMs + 1;
+	assert.throws(() => d.send(d.layout(3)));
+});
+test("destroy and replacement cannot re-arm an old observation document", (t) => {
+	const destroyed = observationDriver(t);
+	destroyed.arm();
+	destroyed.contents.emit("destroyed");
+	assert.throws(() => destroyed.send(destroyed.layout(3)));
+	const replaced = observationDriver(t);
+	replaced.arm();
+	replaced.replace();
+	assert.throws(() => replaced.send(replaced.layout(3)));
 });

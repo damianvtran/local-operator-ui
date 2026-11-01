@@ -37,7 +37,13 @@ import {
 	DEV_DRIVER_CAPTURE,
 	DEV_DRIVER_FACTS,
 	DEV_DRIVER_WORLD_KEY,
+	type ObservationRect,
+	TRANSCRIPT_OBSERVE_ARG,
+	TRANSCRIPT_OBSERVE_CHANNEL,
+	TRANSCRIPT_OBSERVE_LIMITS,
+	type TranscriptObservationSample,
 	readDevDriverArgument,
+	validTranscriptObservation,
 } from "../main/dev-driver";
 
 /** What a scene verb is: called with an optional payload, may answer with a promise. */
@@ -97,6 +103,12 @@ function armedArgument(): { armed: true; outDir: string } | null {
 export function installDevDriverBridge(): boolean {
 	const armed = armedArgument();
 	if (!armed) return false;
+	// Observation grants NO world bridge or general scene/call verbs. Main
+	// issued both argv entries; its independently gated IPC validates each sample.
+	if (process.argv.includes(TRANSCRIPT_OBSERVE_ARG)) {
+		installTranscriptObservation();
+		return true;
+	}
 
 	const scenes = new Map<string, DevDriverSceneVerb>();
 
@@ -142,4 +154,162 @@ export function installDevDriverBridge(): boolean {
 
 	contextBridge.exposeInMainWorld(DEV_DRIVER_WORLD_KEY, bridge);
 	return true;
+}
+
+/**
+ * Passive, fixed-seat geometry only. Install in preload, BEFORE app scripts,
+ * not from a later general driver call. Mutation callbacks detect content but
+ * leave layout reads to rAF; these are qualifying layout samples, NOT proof of
+ * the first compositor paint. No DOM writes, input, navigation or store access.
+ */
+function installTranscriptObservation(): void {
+	const limits = TRANSCRIPT_OBSERVE_LIMITS;
+	const started = performance.now();
+	let seq = 0;
+	let generation = 0;
+	let previousRoot: Element | null | undefined;
+	let nextOrdinal = 0;
+	let frame = 0;
+	let lastLayout = Number.NEGATIVE_INFINITY;
+	let stopped = false;
+	let sending = false;
+	const ordinals = new WeakMap<Element, number>();
+	const late =
+		document.querySelector(
+			'[data-chat-region="transcript"] [data-lo-transcript-content]',
+		) !== null;
+	const rectangle = (element: Element): ObservationRect => {
+		const r = element.getBoundingClientRect();
+		return [r.x, r.y, r.width, r.height];
+	};
+	const base = (
+		phase: TranscriptObservationSample["phase"],
+	): TranscriptObservationSample => ({
+		seq,
+		documentGeneration: 0,
+		generation,
+		t: performance.now(),
+		phase,
+		late,
+		rootCount: 0,
+		viewport: [window.innerWidth, window.innerHeight, window.devicePixelRatio],
+		scroll: [0, 0],
+		rows: [],
+	});
+	const emit = (sample: TranscriptObservationSample): void => {
+		if (
+			stopped ||
+			seq >= limits.samples ||
+			!validTranscriptObservation(sample)
+		) {
+			stop();
+			return;
+		}
+		seq++;
+		// Startup phase messages are small and ordered. Geometry is one in flight
+		// and never queued without bound behind a slow main process.
+		if (sample.phase === "layout") sending = true;
+		void ipcRenderer
+			.invoke(TRANSCRIPT_OBSERVE_CHANNEL, sample)
+			.catch(() => stop())
+			.finally(() => {
+				if (sample.phase === "layout") sending = false;
+			});
+	};
+	const mutation = new MutationObserver(() => {
+		if (stopped) return;
+		if (
+			!detected &&
+			document.querySelector(
+				'[data-chat-region="transcript"] [data-lo-transcript-content]',
+			)
+		) {
+			detected = true;
+			emit(base("transcript-detected"));
+		}
+	});
+	let detected = false;
+	const stop = (): void => {
+		if (stopped) return;
+		stopped = true;
+		mutation.disconnect();
+		cancelAnimationFrame(frame);
+		clearTimeout(deadline);
+		window.removeEventListener("pagehide", stop);
+	};
+	// Install before startup messages so every subsequent app commit is covered.
+	mutation.observe(document, { childList: true, subtree: true });
+	const deadline = setTimeout(stop, limits.ttlMs);
+	window.addEventListener("pagehide", stop, { once: true });
+	emit(base("preload-start"));
+	emit(base("observer-installed"));
+	if (
+		document.querySelector(
+			'[data-chat-region="transcript"] [data-lo-transcript-content]',
+		)
+	) {
+		detected = true;
+		emit(base("transcript-detected"));
+	}
+	const sampleFrame = (): void => {
+		if (stopped) return;
+		if (performance.now() - started >= limits.ttlMs || seq >= limits.samples) {
+			stop();
+			return;
+		}
+		if (!sending && performance.now() - lastLayout >= 16) {
+			lastLayout = performance.now();
+			const roots = document.querySelectorAll<HTMLElement>(
+				'[data-chat-region="transcript"]',
+			);
+			const root = roots.length === 1 ? roots[0] : null;
+			if (previousRoot !== undefined && previousRoot !== root) generation++;
+			previousRoot = root;
+			const sample = base("layout");
+			sample.rootCount = roots.length;
+			if (root) {
+				sample.scroll = [root.scrollLeft, root.scrollTop];
+				const rows = root.querySelectorAll<HTMLElement>(
+					'[data-lo-transcript-content] [data-record-kind="user"]',
+				);
+				// An oversized seat is a refusal, not a truncated full-coverage claim.
+				if (rows.length > limits.rows) {
+					stop();
+					return;
+				}
+				for (const row of rows) {
+					if (!ordinals.has(row)) ordinals.set(row, nextOrdinal++);
+					const intrinsic = row.querySelector<HTMLElement>(
+						"[data-lo-user-turn-intrinsic]",
+					);
+					const body =
+						intrinsic?.parentElement ??
+						(row.querySelector<HTMLElement>(".bg-message-surface")
+							?.firstElementChild as HTMLElement | null);
+					const sibling = body?.nextElementSibling;
+					const control = sibling?.matches("button[aria-expanded]")
+						? sibling
+						: null;
+					const cap = body
+						? Number.parseFloat(getComputedStyle(body).maxHeight)
+						: Number.NaN;
+					sample.rows.push({
+						ordinal: ordinals.get(row) ?? 0,
+						row: rectangle(row),
+						body: body ? rectangle(body) : null,
+						control: control ? rectangle(control) : null,
+						clientHeight: body?.clientHeight ?? 0,
+						scrollHeight: body?.scrollHeight ?? 0,
+						maxHeight: Number.isFinite(cap) ? cap : null,
+						expanded: control
+							? control.getAttribute("aria-expanded") === "true"
+							: null,
+					});
+				}
+			}
+			emit(sample);
+		}
+		if (!stopped) frame = requestAnimationFrame(sampleFrame);
+	};
+	frame = requestAnimationFrame(sampleFrame);
 }

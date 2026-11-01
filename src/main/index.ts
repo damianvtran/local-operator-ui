@@ -102,9 +102,11 @@ import {
 } from "./desktop-ipc";
 import { DesktopNotifier } from "./desktop-notifier";
 import {
+	TRANSCRIPT_OBSERVE_ARG,
 	describeDevDriverArming,
 	devDriverArgument,
 	headlessExerciserAllowed,
+	observationMode,
 	resolveDevDriverArming,
 } from "./dev-driver";
 import { readAttachArguments } from "./dev-driver-attach";
@@ -1512,6 +1514,9 @@ const devDriverArming = resolveDevDriverArming({
 	env: launchEnv,
 	windowMode: windowLaunch.mode,
 });
+// This separate startup mode is numeric observation only, never a general
+// renderer scene bridge. Resolve it before window creation/preload/navigation.
+const devDriverObservation = observationMode(devDriverArming, launchEnv);
 const devDriverLine = describeDevDriverArming(devDriverArming);
 if (devDriverLine) console.log(devDriverLine);
 
@@ -1522,9 +1527,10 @@ if (devDriverLine) console.log(devDriverLine);
  * again rather than replaying the first answer. Unarmed launches parse nothing:
  * an operator's own file dialog is never answered by a flag.
  */
-const attachQueue = devDriverArming.armed
-	? readAttachArguments(process.argv)
-	: { paths: [], problems: [] };
+const attachQueue =
+	devDriverArming.armed && !devDriverObservation
+		? readAttachArguments(process.argv)
+		: { paths: [], problems: [] };
 for (const problem of attachQueue.problems)
 	console.error(`[dev-driver] ${problem}`);
 if (devDriverArming.armed && attachQueue.paths.length > 0)
@@ -1591,7 +1597,12 @@ if (addressOverlayGate.asked) {
  */
 const devDriverWebPreferences =
 	devDriverArming.armed && devDriverArming.outDir
-		? { additionalArguments: [devDriverArgument(devDriverArming.outDir)] }
+		? {
+				additionalArguments: [
+					devDriverArgument(devDriverArming.outDir),
+					...(devDriverObservation ? [TRANSCRIPT_OBSERVE_ARG] : []),
+				],
+			}
 		: {};
 
 /*
@@ -3254,6 +3265,7 @@ app
 		 */
 		if (devDriverArming.armed && devDriverArming.outDir) {
 			registerDevDriverIPC({
+				observationOnly: devDriverObservation,
 				window: () => mainWindow,
 				expectedUrl: rendererUrl,
 				outDir: devDriverArming.outDir,
