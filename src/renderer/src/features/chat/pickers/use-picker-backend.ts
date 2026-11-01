@@ -10,7 +10,10 @@ import { t } from "@shared/i18n";
  * wording. Errors are the backend's `detail` text when it gave one.
  */
 
-import { desktopResult } from "@shared/api/local-operator/desktop-api";
+import {
+	DesktopControlError,
+	desktopResult,
+} from "@shared/api/local-operator/desktop-api";
 import { useCallback, useState } from "react";
 import { v4 as uuidv4 } from "uuid";
 import type {
@@ -35,6 +38,8 @@ export type SlashOutcome = DesktopCommandReceipt["result"];
 export type CommandRun = {
 	outcome: SlashOutcome | null;
 	result: PickerResult;
+	/** A missing acknowledgement is not proof that the mutation was refused. */
+	unconfirmed?: boolean;
 };
 
 export function isNativeAction(
@@ -138,12 +143,32 @@ export function useSessionCommand(sessionId: string) {
 				setResult(result);
 				return { outcome: receipt.result, result };
 			} catch (error) {
+				// A lost reply can follow an accepted mutation. Keep that disposition
+				// separate from an acknowledged rejection; never replay the command
+				// or turn the old backend's unavailable sentence into proof of failure.
+				const unconfirmed =
+					!(error instanceof DesktopControlError) ||
+					error.code === "runtime_busy" ||
+					error.status === null ||
+					error.status >= 500;
 				const result: PickerResult = {
-					tone: "error",
-					text: `${failure ?? t("ui.chat.pickers.use_picker_backend.did_not_run", { command: command })}: ${errorText(error)}`,
+					tone: unconfirmed ? "warning" : "error",
+					text: unconfirmed
+						? [
+								t(
+									"ui.projects.use_request_update.the_request_could_not_be_confirmed",
+								),
+								error instanceof DesktopControlError &&
+								error.code === "runtime_unreachable"
+									? errorText(error)
+									: null,
+							]
+								.filter(Boolean)
+								.join(" ")
+						: `${failure ?? t("ui.chat.pickers.use_picker_backend.did_not_run", { command: command })}: ${errorText(error)}`,
 				};
 				setResult(result);
-				return { outcome: null, result };
+				return { outcome: null, result, unconfirmed };
 			} finally {
 				setBusy(false);
 			}

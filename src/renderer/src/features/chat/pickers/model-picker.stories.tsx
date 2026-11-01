@@ -83,7 +83,7 @@ const EFFORT_DEFAULT_STAYS =
 /* Case-insensitive: ticked, the label opens with "Default for new sessions:". */
 const MODEL_DEFAULT_LABEL = /default for new sessions/i;
 import type { FC, ReactNode } from "react";
-import { useLayoutEffect, useState } from "react";
+import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import "../../../styles/index.css";
 import type { CanonicalSessionHandle } from "@shared/hooks/use-canonical-session";
 import type { DesktopResponse } from "../../../../../shared/desktop-contract";
@@ -511,6 +511,7 @@ type FrameProps = {
 	/** A whole frame in place of `{selected_model: selected}`, for states such as an effort displacement. */
 	frontend?: Record<string, unknown>;
 	onClose?: () => void;
+	note?: PickerContext["note"];
 };
 
 /**
@@ -527,6 +528,7 @@ const Frame: FC<FrameProps> = ({
 	picker = "model",
 	frontend,
 	onClose = noop,
+	note = noop,
 }) => {
 	installBridge(storyBridge, commandResponse);
 	const isEffort = picker === "effort";
@@ -547,7 +549,7 @@ const Frame: FC<FrameProps> = ({
 		} as unknown as CanonicalSessionHandle,
 		commands: [MODEL_SPEC],
 		onClose,
-		note: noop,
+		note,
 		dispatch: noop,
 		rebind: noop,
 	};
@@ -812,6 +814,172 @@ export const KeyboardHighlight: Story = {
  * still only elevated, and the footer's left slot is the single place that says
  * anything is happening.
  */
+const UnconfirmedModelFrame: FC<{
+	disconnected?: boolean;
+	readFails?: boolean;
+}> = ({ disconnected = false, readFails = false }) => {
+	const authoritative = useRef(CURRENT);
+	const [selected, setSelected] = useState(CURRENT);
+	const [notes, setNotes] = useState<string[]>([]);
+	const [open, setOpen] = useState(true);
+	const mutations = useRef(0);
+	const [reads, setReads] = useState(0);
+	const note = useCallback(
+		(text: string) => setNotes((previous) => [...previous, text]),
+		[],
+	);
+	const backend = useCallback(
+		async (request: BridgeRequest): Promise<DesktopResponse | undefined> => {
+			if (request.op === "models.catalogue")
+				return catalogueOnly(catalogue())(request);
+			if (request.op === "sessions.command") {
+				mutations.current += 1;
+				if (!disconnected) {
+					const value = request.args ?? "";
+					const slash = value.indexOf("/");
+					const model = {
+						provider: value.slice(0, slash),
+						model_id: value.slice(slash + 1),
+					};
+					authoritative.current = model;
+					setSelected(model);
+				}
+				// The authority changes BEFORE the missing receipt. This is not a
+				// static failed-response screenshot standing in for reconciliation.
+				return {
+					status: 503,
+					body: {
+						detail: {
+							code: disconnected ? "runtime_unreachable" : "runtime_busy",
+							text: "Session owner is unavailable. Reconnect and reconcile before retrying.",
+							retryable: !disconnected,
+							retry_after_ms: 2000,
+						},
+					},
+				};
+			}
+			if (request.op === "sessions.get") {
+				setReads((value) => value + 1);
+				if (readFails) return refuse(503, "Synthetic snapshot unavailable");
+				return ok({
+					payload: {
+						cold: false,
+						frontend: {
+							snapshot: {
+								selected_model: authoritative.current,
+								effective_model: authoritative.current,
+							},
+						},
+					},
+				});
+			}
+			return undefined;
+		},
+		[disconnected, readFails],
+	);
+	return (
+		<>
+			{open && (
+				<Frame
+					bridge={backend}
+					selected={selected}
+					note={note}
+					onClose={() => setOpen(false)}
+				/>
+			)}
+			<section
+				className="fixed bottom-4 left-4 z-[60] max-w-xl rounded border border-control bg-surface p-3 text-ink"
+				data-testid="model-outcome-fixture"
+			>
+				<output data-testid="authoritative-model">{`${selected.provider}/${selected.model_id}`}</output>
+				<div data-testid="model-operation-counts">{`mutations=${mutations.current}; snapshot reads=${reads}`}</div>
+				{notes.map((text, index) => (
+					<p key={index} data-testid="model-command-note">
+						{text}
+					</p>
+				))}
+			</section>
+		</>
+	);
+};
+
+/** Accepted mutation, lost ACK, and a read-only authoritative reconciliation. */
+export const AckTimeoutIndeterminate: Story = {
+	render: () => <UnconfirmedModelFrame />,
+	play: async () => {
+		await pickRow(/Anthropic: Claude Haiku 4\.5/);
+		await waitFor(() =>
+			expect(screen.getByTestId("model-operation-counts").textContent).toBe(
+				"mutations=1; snapshot reads=1",
+			),
+		);
+		expect(screen.getByTestId("authoritative-model").textContent).toBe(
+			`${PICKED.provider}/${PICKED.model_id}`,
+		);
+		const text = screen.getByTestId("model-command-note").textContent ?? "";
+		expect(text).toContain("The request could not be confirmed.");
+		expect(text).not.toMatch(/not changed|did not run|Reconnect/);
+	},
+};
+
+export const DisconnectedOwnerUnconfirmed: Story = {
+	render: () => <UnconfirmedModelFrame disconnected readFails />,
+	play: async () => {
+		await pickRow(/Anthropic: Claude Haiku 4\.5/);
+		await waitFor(() =>
+			expect(screen.getByTestId("model-operation-counts").textContent).toBe(
+				"mutations=1; snapshot reads=1",
+			),
+		);
+		expect(screen.getByTestId("authoritative-model").textContent).toBe(
+			CURRENT_SELECTOR,
+		);
+		expect(screen.getByTestId("model-command-note").textContent).toContain(
+			"Reconnect and reconcile",
+		);
+		expect(screen.getByTestId("model-command-note").textContent).not.toMatch(
+			/not changed|did not run/,
+		);
+		expect(
+			document.querySelectorAll('[role="option"][aria-disabled="true"]').length,
+		).toBeGreaterThan(0);
+	},
+};
+
+export const ModelResolutionRefused: Story = {
+	render: () => (
+		<Frame
+			bridge={(request) =>
+				request.op === "models.catalogue"
+					? catalogueOnly(catalogue())(request)
+					: request.op === "sessions.command"
+						? Promise.resolve(
+								ok({
+									result: {
+										kind: "notice",
+										style: "error",
+										text: "cannot switch model: Timed out",
+										data: {},
+									},
+								}),
+							)
+						: Promise.resolve(undefined)
+			}
+		/>
+	),
+	play: async () => {
+		painted.length = 0;
+		cleared.length = 0;
+		await pickRow(/Anthropic: Claude Haiku 4\.5/);
+		await waitFor(() =>
+			expect(
+				screen.getByText("cannot switch model: Timed out", { exact: true }),
+			).toBeTruthy(),
+		);
+		expect(cleared.length).toBe(1);
+	},
+};
+
 export const Busy: Story = {
 	render: () => (
 		<Frame

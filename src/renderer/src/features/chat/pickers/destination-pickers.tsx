@@ -38,7 +38,10 @@ import { Spinner } from "@shared/components/common/spinner";
 import { Button } from "@shared/components/ui/button";
 import { Input } from "@shared/components/ui/input";
 import { Textarea } from "@shared/components/ui/textarea";
-import type { CanonicalSessionHandle } from "@shared/hooks/use-canonical-session";
+import {
+	type CanonicalSessionHandle,
+	resyncCanonicalSession,
+} from "@shared/hooks/use-canonical-session";
 import { useOptionalQueryClient } from "@shared/hooks/use-optional-query-client";
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
@@ -872,6 +875,10 @@ export const ModelPicker: FC<PickerContext> = ({
 	 */
 	const [live, setLive] = useState(false);
 	const [pickedCurrent, setPickedCurrent] = useState<string | null>(null);
+	// A lost ACK is not a refusal. Hold fresh model intents until a read-only
+	// authoritative snapshot answers; never replay the possibly accepted UUID.
+	const [unconfirmedModel, setUnconfirmedModel] = useState(false);
+	const [checkingModel, setCheckingModel] = useState(false);
 	/*
 	 * WHICH VIEW OF THE CATALOGUE THIS DIALOG SHOWS.
 	 *
@@ -1597,10 +1604,42 @@ export const ModelPicker: FC<PickerContext> = ({
 				switching.current = false;
 			}
 			const { outcome, result: failure } = run;
-			if (!outcome || isNativeAction(outcome) || outcome.kind === "error") {
+			if (
+				!outcome ||
+				isNativeAction(outcome) ||
+				outcome.kind === "error" ||
+				failure.tone === "error"
+			) {
 				// The owner refused (or the call itself failed): the band goes back to
 				// the authoritative model rather than keeping a paint that never landed.
 				canonical.clearPendingModel();
+				if (run.unconfirmed) {
+					setUnconfirmedModel(true);
+					setCheckingModel(true);
+					note(failure.text);
+					if (persistDefaultRef.current) persist.setResult(failure);
+					try {
+						// Unlike the one-shot composer hook, this read must distinguish
+						// failure from success before enabling another mutation. A cold
+						// carried snapshot is not proof of the owner's current selection.
+						const snapshot = await desktopResult<{
+							payload: { frontend: CanonicalFrontendSync; cold: boolean };
+						}>({ op: "sessions.get", sessionId });
+						const state = snapshot.payload.frontend.snapshot;
+						const selector = modelSelector(state.selected_model);
+						if (snapshot.payload.cold === false && selector) {
+							setPickedCurrent(selector);
+							setUnconfirmedModel(false);
+						}
+					} catch {
+						// Keep the neutral uncertainty and disabled choices, not a
+						// fabricated unchanged model or a second command request.
+					} finally {
+						setCheckingModel(false);
+						resyncCanonicalSession(sessionId);
+					}
+					return;
+				}
 				/*
 				 * And the failure is reported WHEREVER it lands (UX U2).
 				 *
@@ -1651,6 +1690,7 @@ export const ModelPicker: FC<PickerContext> = ({
 			canonical,
 			command,
 			note,
+			sessionId,
 			rowAuth,
 			draft,
 			draftPick.pick,
@@ -1817,7 +1857,11 @@ export const ModelPicker: FC<PickerContext> = ({
 								"ui.chat.pickers.destination_pickers.choose_the_model_for_this_session",
 							)
 			}
-			options={options}
+			options={
+				unconfirmedModel
+					? options.map((option) => ({ ...option, disabled: true }))
+					: options
+			}
 			/*
 			 * The model picker's own search rule: the catalogue's ids are not strings
 			 * the user wrote, so the shared contiguous test is too narrow for them and
@@ -1941,7 +1985,9 @@ export const ModelPicker: FC<PickerContext> = ({
 				) : undefined
 			}
 			onPick={onPick}
-			busy={draft ? draftPick.busy : command.busy || persist.busy}
+			busy={
+				draft ? draftPick.busy : command.busy || persist.busy || checkingModel
+			}
 			/*
 			 * The in-flight copy names the change, not the machinery: the user asked
 			 * whether their pick registered, and "the backend" is the
@@ -1956,18 +2002,30 @@ export const ModelPicker: FC<PickerContext> = ({
 			 * (UX round 1, U3).
 			 */
 			busyText={
-				draft
-					? t("ui.chat.pickers.destination_pickers.resolving_the_model")
-					: command.busy
-						? t("ui.chat.pickers.destination_pickers.switching_the_model")
-						: t("ui.chat.pickers.destination_pickers.saving_the_default")
+				checkingModel
+					? t(
+							"ui.projects.use_request_update.the_request_could_not_be_confirmed",
+						)
+					: draft
+						? t("ui.chat.pickers.destination_pickers.resolving_the_model")
+						: command.busy
+							? t("ui.chat.pickers.destination_pickers.switching_the_model")
+							: t("ui.chat.pickers.destination_pickers.saving_the_default")
 			}
 			busyLabel={
-				draft
-					? t("ui.chat.pickers.destination_pickers.resolving_the_model24577b")
-					: command.busy
-						? t("ui.chat.pickers.destination_pickers.switching_the_model8e7138")
-						: t("ui.chat.pickers.destination_pickers.saving_the_default9573f2")
+				checkingModel
+					? t(
+							"ui.projects.use_request_update.the_request_could_not_be_confirmed",
+						)
+					: draft
+						? t("ui.chat.pickers.destination_pickers.resolving_the_model24577b")
+						: command.busy
+							? t(
+									"ui.chat.pickers.destination_pickers.switching_the_model8e7138",
+								)
+							: t(
+									"ui.chat.pickers.destination_pickers.saving_the_default9573f2",
+								)
 			}
 			result={draft ? draftPick.result : pickResult}
 			toolbar={
@@ -2042,7 +2100,12 @@ export const ModelPicker: FC<PickerContext> = ({
 								variant="ghost"
 								size="sm"
 								type="button"
-								disabled={!modelInForce || command.busy || persist.busy}
+								disabled={
+									!modelInForce ||
+									command.busy ||
+									persist.busy ||
+									unconfirmedModel
+								}
 								onClick={() => {
 									if (modelInForce) void saveModelDefault(modelInForce);
 								}}
