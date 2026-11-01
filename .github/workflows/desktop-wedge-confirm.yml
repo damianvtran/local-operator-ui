@@ -24,6 +24,16 @@ name: Desktop wedge confirmation
 
 on:
   workflow_dispatch:
+  # TEMPORARY, BRANCH-SCOPED, AND TO BE REMOVED. `workflow_dispatch` is only
+  # registered once a workflow file exists on the DEFAULT branch (GitHub answers
+  # HTTP 404 for `gh workflow run … --ref <branch>` otherwise, measured on this
+  # branch), so the one Linux answer that matters - does this file stall on its own,
+  # and in which of its two bounded steps - could not be obtained before merge. A
+  # `push` trigger needs no registration, so this arm runs the same job on every push
+  # to THIS branch only. It cannot fire on `main` or on any other pull request, and it
+  # comes off once `workflow_dispatch` resolves on the default branch after merge.
+  push:
+    branches: [fix/ci-shard-stall-bound]
 
 # One at a time per ref, and never shared with `ci.yml`: this workflow's group is
 # its own name, so a dispatch cannot queue behind or cancel a pull-request run.
