@@ -55,6 +55,7 @@ import { useI18nLocaleSync } from "@shared/i18n/locale-sync";
 import { useDocumentDirection } from "@shared/i18n/use-document-direction";
 import { useKeymapShortcuts } from "@shared/keymap/use-keymap-shortcuts";
 import { t } from "../../i18n/messages";
+import { useOwnerAuditStartupScene } from "./dev-driver/owner-audit-startup";
 
 import { ChatLayout } from "@shared/components/common/chat-layout";
 import { CreateAgentDialog } from "@shared/components/common/create-agent-dialog";
@@ -509,6 +510,7 @@ const App: FC = () => {
 	 * is one-shot, so a normal launch pays one cheap IPC call and nothing else.
 	 */
 	useTeamBridgeNotificationOpen(bridgeState === "enabled", navigate);
+	useOwnerAuditStartupScene(bridgeState === "enabled", navigate);
 
 	/*
 	 * AN AGENT'S `reveal`, handled in the shell because the shell is what knows
