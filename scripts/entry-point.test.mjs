@@ -203,6 +203,15 @@ function cases(root) {
 	return [
 		{ ...desktopShardRefusal, cwd: plain, env: {} },
 		{
+			script: "desktop-suite-checkpoints.mjs",
+			args: ["invalid-mode", "unused-state"],
+			cwd: plain,
+			env: {},
+			status: 1,
+			stdout: /^$/,
+			stderr: /Desktop checkpoint supervision failed: Usage:/,
+		},
+		{
 			// ci.yml consumes the real installed identity, not an import-only
 			// module. Drive its successful answer from this installed checkout so
 			// both spellings must resolve jsdom/nwsapi and hash the actual locks.
@@ -743,6 +752,32 @@ test("every release script runs when it is reached through a symlinked path", ()
 			// reason; only the paths inside it may differ, and none of these print one.
 			assert.equal(linked.stderr, physical.stderr, kase.script);
 		}
+	} finally {
+		rmSync(root, { recursive: true, force: true });
+	}
+});
+
+test("checkpoint supervisor CLI refuses through physical and symlinked paths", () => {
+	const root = mkdtempSync(
+		join(
+			process.env.LOCAL_OPERATOR_SCRATCHPAD ?? tmpdir(),
+			"checkpoint-entry-point-",
+		),
+	);
+	try {
+		const bin = stubBin(root);
+		const kase = cases(root).find(
+			(entry) => entry.script === "desktop-suite-checkpoints.mjs",
+		);
+		assert.ok(kase);
+		const alias = join(root, "linked-scripts");
+		symlinkSync(SCRIPTS, alias);
+		const direct = run(join(SCRIPTS, kase.script), kase, bin, root);
+		const linked = run(join(alias, kase.script), kase, bin, root);
+		assert.equal(direct.status, 1);
+		assert.match(direct.stderr, kase.stderr);
+		assert.equal(direct.stdout, "");
+		assert.deepEqual(linked, direct);
 	} finally {
 		rmSync(root, { recursive: true, force: true });
 	}

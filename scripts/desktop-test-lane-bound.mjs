@@ -478,6 +478,7 @@ export function createLaneBoundWatchdog({
 	now = () => Date.now(),
 	onTrip = () => {},
 	onBlind = () => {},
+	onProbe = () => {},
 	onSample = () => {},
 	onTimeout = () => {},
 	intervalMs = _TICK_INTERVAL_MS,
@@ -496,10 +497,13 @@ export function createLaneBoundWatchdog({
 		if (stopped || sampling) return;
 		sampling = true;
 		let seen;
+		onProbe("begin");
 		try {
 			seen = await sample();
+			onProbe("end");
 			blindTicks = 0;
 		} catch {
+			onProbe("error");
 			blindTicks += 1;
 			if (!stopped && blindTicks === _BLIND_TICKS_WARN) onBlind(blindTicks);
 			sampling = false;

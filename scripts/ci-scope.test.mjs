@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import {
 	chmodSync,
 	cpSync,
@@ -1121,7 +1122,7 @@ test("A16: docs/evidence/** keeps the suite and the evidence job, and nothing el
  * both). Neither is introduced here and neither is closed here.
  */
 test("A17: exactly one desktop-suite invocation, behind a failing-closed step", () => {
-	const invocations = runBlocks("test")
+	const invocations = [...runBlocks("test"), desktopStepBody()]
 		.join("\n")
 		.match(/node scripts\/desktop-test-shards\.mjs run\b/g);
 	assert.equal(
@@ -1130,9 +1131,7 @@ test("A17: exactly one desktop-suite invocation, behind a failing-closed step", 
 		`the 'test' job invokes \`pnpm test:desktop\` ${invocations?.length ?? 0} times; the suite is the job's dominant cost and one run plus the count assertions is the whole signal`,
 	);
 	const blocks = runBlocks("test");
-	const suite = blocks.find((block) =>
-		block.includes("node scripts/desktop-test-shards.mjs run"),
-	);
+	const suite = desktopStepBody();
 	assert.match(
 		suite,
 		/set -o pipefail/,
@@ -1210,14 +1209,225 @@ test("A17: exactly one desktop-suite invocation, behind a failing-closed step", 
 
 /** The `test` job's desktop-suite step, exactly as the shell will read it. */
 function desktopStepBody() {
-	const step = (jobs.test?.steps ?? []).find(
-		(candidate) =>
-			typeof candidate.run === "string" &&
-			candidate.run.includes("node scripts/desktop-test-shards.mjs run"),
+	const launches = jobs.test.steps.filter(
+		(step) => step.id === "desktop_launch",
 	);
-	assert.ok(step, "the `test` job has no step that runs `pnpm test:desktop`");
-	return step.run;
+	assert.equal(
+		launches.length,
+		1,
+		"one supervisor launches the real shell exactly once",
+	);
+	assert.ok(launches[0].run.includes("scripts/desktop-suite-step.sh"));
+	return readFileSync(join(repoRoot, "scripts/desktop-suite-step.sh"), "utf8");
 }
+
+function assertCheckpointSteps(job) {
+	assert.equal(job["timeout-minutes"], 50);
+	const steps = job.steps;
+	const state = '"${{ runner.temp }}/desktop-supervisor-${{ matrix.shard }}"';
+	const launch = steps.filter((s) => s.id === "desktop_launch");
+	const final = steps.filter((s) => s.id === "desktop_suite");
+	assert.equal(launch.length, 1);
+	assert.equal(final.length, 1);
+	assert.equal(final[0]["timeout-minutes"], 45);
+	assert.equal(
+		launch[0].run,
+		`node scripts/desktop-suite-checkpoints.mjs launch ${state} scripts/desktop-suite-step.sh "$DESKTOP_SETUP_STARTED_MS"`,
+	);
+	assert.equal(
+		final[0].run,
+		`node scripts/desktop-suite-checkpoints.mjs await ${state}`,
+	);
+	const condition =
+		"${{ always() && steps.desktop_launch.outcome == 'success' }}";
+	assert.equal(final[0].if, condition);
+	let previous = steps.indexOf(launch[0]);
+	const names = new Set();
+	for (const [label, ms] of [
+		["early", 30000],
+		["later", 180000],
+	]) {
+		const frozen = steps.filter(
+			(s) => s.name === `Freeze ${label} desktop witness checkpoint`,
+		);
+		const upload = steps.filter(
+			(s) => s.name === `Upload ${label} desktop witness checkpoint`,
+		);
+		assert.equal(frozen.length, 1);
+		assert.equal(upload.length, 1);
+		assert.equal(frozen[0].if, condition);
+		assert.equal(upload[0].if, condition);
+		const path = `\${{ runner.temp }}/desktop-checkpoint-${label}-\${{ matrix.shard }}.json`;
+		assert.equal(
+			frozen[0].run,
+			`node scripts/desktop-suite-checkpoints.mjs checkpoint ${state} ${ms} "${path}"`,
+		);
+		assert.equal(upload[0].uses, "actions/upload-artifact@v4");
+		assert.equal(upload[0].with.path, path);
+		assert.equal(
+			upload[0].with.name,
+			`desktop-witness-${label}-\${{ github.run_id }}-\${{ github.run_attempt }}-shard-\${{ matrix.shard }}`,
+		);
+		assert.equal(upload[0].with["if-no-files-found"], "error");
+		assert.ok(!names.has(upload[0].with.name));
+		names.add(upload[0].with.name);
+		assert.ok(steps.indexOf(frozen[0]) > previous);
+		assert.ok(steps.indexOf(upload[0]) > steps.indexOf(frozen[0]));
+		previous = steps.indexOf(upload[0]);
+	}
+	assert.ok(steps.indexOf(final[0]) > previous);
+}
+
+function assertProbeTransport(probe) {
+	assert.deepEqual(Object.keys(probe.on), ["pull_request"]);
+	assert.deepEqual(probe.permissions, { contents: "read" });
+	assert.deepEqual(probe.on.pull_request.paths, [
+		".github/workflows/desktop-checkpoint-probe.yml",
+		".github/workflows/ci.yml",
+		"scripts/desktop-suite-checkpoints*.mjs",
+		"scripts/desktop-suite-step.sh",
+		"scripts/desktop-test-lane-bound*.mjs",
+		"scripts/run-desktop-tests.mjs",
+	]);
+	const job = probe.jobs.checkpoint_transport;
+	assert.equal(job["timeout-minutes"], 3);
+	const steps = job.steps;
+	const launch = steps.find(
+		(s) =>
+			s.name === "Launch release-file subject with a hard original deadline",
+	);
+	assert.ok(launch.run.includes('while [[ ! -f "$SUBJECT_ROOT/release" ]]'));
+	assert.ok(launch.run.includes("SECONDS >= 105"));
+	assert.ok(launch.run.includes("durationMs: 105000"));
+	const release = steps.find(
+		(s) =>
+			s.name ===
+			"Release subject and await its verdict and exact-owned cleanup",
+	);
+	assert.equal(release.if, "${{ always() }}");
+	assert.equal(
+		release.run.trim(),
+		'touch "$RUNNER_TEMP/release"\nnode scripts/desktop-suite-checkpoints.mjs await "$RUNNER_TEMP/probe"',
+	);
+	const uploads = steps.filter((s) => s.uses === "actions/upload-artifact@v4");
+	const downloads = steps.filter(
+		(s) => s.uses === "actions/download-artifact@v4",
+	);
+	assert.equal(uploads.length, 2);
+	assert.equal(downloads.length, 2);
+	for (const [i, label] of ["early", "later"].entries()) {
+		const name = `witness-probe-${label}-\${{ github.run_id }}-\${{ github.run_attempt }}`;
+		assert.equal(uploads[i].with.name, name);
+		assert.equal(downloads[i].with.name, name);
+		assert.equal(
+			uploads[i].with.path,
+			`\${{ runner.temp }}/probe-${label}.json`,
+		);
+		assert.equal(
+			downloads[i].with.path,
+			`\${{ runner.temp }}/downloaded-${label}`,
+		);
+		const proof = steps[steps.indexOf(downloads[i]) + 1];
+		const lines = proof.run.trim().split("\n");
+		assert.equal(
+			lines[0],
+			`cmp "$RUNNER_TEMP/probe-${label}.json" "$RUNNER_TEMP/downloaded-${label}/probe-${label}.json"`,
+		);
+		assert.equal(lines[1], 'test ! -f "$RUNNER_TEMP/probe/terminal.json"');
+		assert.equal(lines[2], 'test ! -f "$RUNNER_TEMP/release"');
+		assert.ok(
+			proof.run.includes(
+				label === "early"
+					? "live.sequence"
+					: "later.witness.sequence <= early.witness.sequence",
+			),
+		);
+		assert.ok(steps.indexOf(downloads[i]) > steps.indexOf(uploads[i]));
+		assert.ok(steps.indexOf(proof) < steps.indexOf(release));
+	}
+}
+
+test("A17probe: PR transport proof downloads bytes while a watchdog-owned subject is blocked", () => {
+	const probe = load(
+		readFileSync(
+			join(repoRoot, ".github/workflows/desktop-checkpoint-probe.yml"),
+			"utf8",
+		),
+	);
+	assertProbeTransport(probe);
+	for (const mutate of [
+		(p) => {
+			p.on = { workflow_dispatch: {} };
+		},
+		(p) => {
+			p.jobs.checkpoint_transport.steps =
+				p.jobs.checkpoint_transport.steps.filter(
+					(s) => s.uses !== "actions/download-artifact@v4",
+				);
+		},
+		(p) => {
+			p.jobs.checkpoint_transport.steps.find(
+				(s) =>
+					s.name ===
+					"Compare transported early bytes and witness progress before release",
+			).run = "true";
+		},
+		(p) => {
+			p.jobs.checkpoint_transport["timeout-minutes"] = 4;
+		},
+		(p) => {
+			const steps = p.jobs.checkpoint_transport.steps;
+			const release = steps.pop();
+			steps.unshift(release);
+		},
+	]) {
+		const bad = structuredClone(probe);
+		mutate(bad);
+		assert.throws(() => assertProbeTransport(bad));
+	}
+});
+
+test("A17e: checkpoint orchestration preserves shell bytes and fail-closed ordering", () => {
+	assert.equal(
+		createHash("sha256").update(desktopStepBody()).digest("hex"),
+		"51e5cf6348313a801e9641d986756f91f387317d03690c4d3b8c2ccc24df171b",
+	);
+	assertCheckpointSteps(jobs.test);
+	for (const mutate of [
+		(j) => {
+			j.steps = j.steps.filter(
+				(s) => s.name !== "Upload early desktop witness checkpoint",
+			);
+		},
+		(j) => {
+			j.steps.push(
+				j.steps.find(
+					(s) => s.name === "Freeze later desktop witness checkpoint",
+				),
+			);
+		},
+		(j) => {
+			const i = j.steps.findIndex((s) => s.id === "desktop_suite");
+			const [s] = j.steps.splice(i, 1);
+			j.steps.unshift(s);
+		},
+		(j) => {
+			j["timeout-minutes"] = 55;
+		},
+		(j) => {
+			j.steps.find((s) => s.id === "desktop_suite").run += " || true";
+		},
+		(j) => {
+			j.steps.find(
+				(s) => s.name === "Upload early desktop witness checkpoint",
+			).with.path = "/tmp/desktop-tests.log";
+		},
+	]) {
+		const bad = structuredClone(jobs.test);
+		mutate(bad);
+		assert.throws(() => assertCheckpointSteps(bad));
+	}
+});
 
 /**
  * Run an extracted step body the way GitHub does - `bash -e` over the step's own
@@ -1592,7 +1802,7 @@ test("A17d: a failed desktop run retains its full log as a failure artifact", ()
 		stderr: "last stderr evidence\n",
 		suiteRc: 23,
 	};
-	const run = runDesktopStep(suite.run, scenario);
+	const run = runDesktopStep(desktopStepBody(), scenario);
 	try {
 		assert.equal(run.status, 1);
 		assert.equal(
@@ -2457,10 +2667,10 @@ test("A17e: four protected workers feed one exact fail-closed Desktop Tests resu
 	 * scan reachable: a job cancelled at `timeout-minutes` runs no further steps,
 	 * so without a step ceiling a stall is exactly the case the scan never sees.
 	 */
-	const suiteStep = worker.steps.find(
-		(step) =>
-			typeof step.run === "string" &&
-			step.run.includes("node scripts/desktop-test-shards.mjs run"),
+	const suiteStep = worker.steps.find((step) => step.id === "desktop_suite");
+	assert.equal(
+		suiteStep.run,
+		'node scripts/desktop-suite-checkpoints.mjs await "${{ runner.temp }}/desktop-supervisor-${{ matrix.shard }}"',
 	);
 	assert.equal(suiteStep["timeout-minutes"], 45);
 	assert.ok(suiteStep["timeout-minutes"] < worker["timeout-minutes"]);

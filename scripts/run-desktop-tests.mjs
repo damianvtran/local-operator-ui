@@ -61,6 +61,7 @@
 
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { publishCoordinator } from "./desktop-suite-checkpoints.mjs";
 import {
 	OVERRIDE_ENV,
 	formatDesktopTestConcurrencyLine,
@@ -287,6 +288,10 @@ const child = spawn(process.execPath, nodeArgs, {
 	env: childEnv,
 	detached: true,
 });
+publishCoordinator(
+	process.env.LOCAL_OPERATOR_UI_COORDINATOR_IDENTITY,
+	child.pid,
+);
 
 /*
  * The death-watch (R1 of the PR #733 review). `detached` takes the test tree out
@@ -422,6 +427,8 @@ const laneWatchdog =
 				leaderPid: child.pid,
 				lanes: laneArgs,
 				boundMs: laneBound.boundMs,
+				onProbe: (phase) =>
+					writeLaneDiagnostic(diagnosticPath, { event: "sampler", phase }),
 				onSample: diagnosticSample,
 				onTimeout: () => diagnosticSnapshot("lane-timeout"),
 				onTrip: ({ lane, pid, elapsedMs, killed }) =>
@@ -470,6 +477,12 @@ child.on("exit", (code, signal) => {
 			signal,
 		});
 	watchdog?.stop();
+	writeLaneDiagnostic(diagnosticPath, {
+		event: "watchdogs-stop",
+		reason: "coordinator-exit",
+		code,
+		signal,
+	});
 	laneWatchdog?.stop();
 	releaseKeeper();
 	if (breached) {

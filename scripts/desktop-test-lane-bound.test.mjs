@@ -286,6 +286,28 @@ test("diagnostic snapshot finds descendant after worker exits retaining stdout",
 const NOTHING_SIGNALLED = /nothing was signalled/;
 const CLAIMED_A_KILL = /killed pid/;
 
+test("diagnostic sampler breadcrumbs bracket a rejected and completed sample", async () => {
+	const phases = [];
+	let reject = true;
+	const watchdog = createLaneBoundWatchdog({
+		leaderPid: 4242,
+		lanes: ["scripts/fixture.test.mjs"],
+		boundMs: 100_000,
+		sample: async () => {
+			if (reject) throw new Error("synthetic ps timeout");
+			return new Map();
+		},
+		onProbe: (phase) => phases.push(phase),
+		setTimer: () => 1,
+		clearTimer: () => {},
+	});
+	await watchdog._tick();
+	reject = false;
+	await watchdog._tick();
+	watchdog.stop();
+	assert.deepEqual(phases, ["begin", "error", "begin", "end"]);
+});
+
 test("the default bound is a stall detector, not a ceiling on slow work", () => {
 	const { boundMs, arm } = computeLaneBound({ override: null });
 	assert.equal(arm, "default");
