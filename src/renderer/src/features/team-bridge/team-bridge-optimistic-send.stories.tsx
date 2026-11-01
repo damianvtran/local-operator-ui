@@ -8,7 +8,10 @@ import {
 	type TeamBridgeOrganization,
 	asTeamBridgeTenantId,
 } from "./team-bridge-model";
-import { TeamBridgePageView } from "./team-bridge-page";
+import {
+	TeamBridgePageView,
+	type TeamBridgePageViewProps,
+} from "./team-bridge-page";
 
 /*
  * THE OPTIMISTIC SEND, AS A FRAME (operator report, 2026-10-30).
@@ -286,7 +289,7 @@ export const ChiefFirstMessageMove: Story = {
 
 /* Manual settlement keeps the loading handoff available for a frame capture:
    a timer can advance while the reviewer is inspecting the preserved row. */
-const PersonHandoffStory = () => {
+const PersonHandoffStory = (args: TeamBridgePageViewProps) => {
 	const [step, setStep] = useState(0);
 	const [body, setBody] = useState("");
 	return (
@@ -295,13 +298,11 @@ const PersonHandoffStory = () => {
 				Finish thread read (story control)
 			</button>
 			<TeamBridgePageView
-				{...base}
+				{...args}
 				target={
-					step === 0
-						? { type: "person", accountId: peer }
-						: { type: "conversation", id: createdDm.id }
+					step === 0 ? args.target : { type: "conversation", id: createdDm.id }
 				}
-				conversations={step === 0 ? [] : [createdDm]}
+				conversations={step === 0 ? args.conversations : [createdDm]}
 				messageState={step === 0 ? "idle" : step === 1 ? "loading" : "ready"}
 				messages={
 					step === 2 ? [{ ...stored(body), conversation_id: createdDm.id }] : []
@@ -317,5 +318,11 @@ const PersonHandoffStory = () => {
 };
 
 export const PersonFirstMessageHandoff: Story = {
-	render: () => <PersonHandoffStory />,
+	render: (args) => <PersonHandoffStory {...args} />,
+	args: {
+		...base,
+		target: { type: "person", accountId: peer },
+		conversations: [],
+		onSend: reportingSend,
+	},
 };
