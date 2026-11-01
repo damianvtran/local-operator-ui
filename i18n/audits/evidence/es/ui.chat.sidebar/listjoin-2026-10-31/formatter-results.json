@@ -1,0 +1,30 @@
+{
+  "status": "passed",
+  "key": "ui.chat.sidebar.agents.list_join",
+  "arms": {
+    "pair": "{head} y {tail}",
+    "middle": "{head}, {tail}",
+    "other": "{head} y {tail}"
+  },
+  "outputs": {
+    "pair": "Coder y Reviewer",
+    "middle": "Coder, Reviewer",
+    "other": "Coder, Reviewer y Designer",
+    "explicit_other": "Coder, Reviewer y Designer",
+    "two_names": "Coder y Reviewer",
+    "three_names": "Coder, Reviewer y Designer",
+    "i_sound_limitation_pair": "Coder y Investigador",
+    "i_sound_limitation_final": "Coder, Reviewer y Investigador"
+  },
+  "checks": [
+    "JSON and namespace key parity",
+    "position/select and pair/middle/other preserved",
+    "head/tail argument names and types preserved in every arm",
+    "real intl-messageformat formatting for every arm",
+    "end and explicit other use the other arm",
+    "two/three-name fold matching caller",
+    "known i-sound limitation reproduced",
+    "malformed ICU and missing-tail negative controls rejected"
+  ],
+  "namespace_key_count": 61
+}

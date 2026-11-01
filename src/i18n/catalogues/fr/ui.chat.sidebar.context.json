@@ -1,0 +1,13 @@
+{
+	"ui.chat.sidebar.agents.list_join": {
+		"role": "joiner for the agent-name list inside the built-in installation offer",
+		"tone": "neutral inline enumeration; preserve names verbatim, no sentence punctuation",
+		"length": "Two placeholders plus four characters for pair/final joins, or two for middle joins; variable-width names, no fixed character budget.",
+		"note": "French uses et without a preceding comma for a pair and for the final item, and a comma followed by one ordinary space between middle items. No space precedes the comma; the French narrow no-break space before : ; ! ? does not apply here. Each arm owns its separator and spaces. Keep the select labels and agent display names unchanged.",
+		"placeholders": {
+			"position": "pair for a two-name list, middle for non-final joins, end (the other arm) for the final join of three or more names",
+			"head": "first name or the already joined preceding names; preserve verbatim",
+			"tail": "next agent display name; preserve verbatim"
+		}
+	}
+}

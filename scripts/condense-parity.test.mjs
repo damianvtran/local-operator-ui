@@ -404,7 +404,8 @@ test("the generator's entry point is resolved, not guessed", () => {
 		 * wrong reason, and unreadable exactly when it mattered.
 		 */
 		const run = spawnSync(
-			"node",
+			// PATH may select a different Node than the test runner.
+			process.execPath,
 			[join(link, "scripts/generate-condense-parity.mjs"), "--check"],
 			{
 				encoding: "utf8",
@@ -450,7 +451,7 @@ test("the pin and the emitted bytes are identical from any working directory", (
 	const digests = [];
 	const bodies = [];
 	for (const cwd of cwds) {
-		const check = spawnSync("node", [generator, "--check"], {
+		const check = spawnSync(process.execPath, [generator, "--check"], {
 			cwd,
 			encoding: "utf8",
 		});
@@ -464,7 +465,7 @@ test("the pin and the emitted bytes are identical from any working directory", (
 			/condense parity fixture is current/,
 			`--check from ${cwd}`,
 		);
-		const printed = spawnSync("node", [generator, "--print"], {
+		const printed = spawnSync(process.execPath, [generator, "--print"], {
 			cwd,
 			encoding: "utf8",
 		});

@@ -1,0 +1,99 @@
+{
+  "locale": "es",
+  "namespace": "ui.chat.sidebar",
+  "audit_id": "listjoin-es-ff18",
+  "audit_date": "2026-11-01T01:56:44.997483+00:00",
+  "key_count": 1,
+  "audited_keys": [
+    "ui.chat.sidebar.agents.list_join"
+  ],
+  "namespace_key_count_not_linguistic_scope": 61,
+  "auditor": {
+    "agent": "i18n-auditor-es",
+    "session": "ff18a0fd5ea9",
+    "model": "openai/gpt-6.1-sol",
+    "independent_from_translator_session": true,
+    "independence_source": "Delegation explicitly identifies auditor as independent and not author; translator session ID was not supplied.",
+    "actual_model_source": "Host model-switch notice: temporary fallback to openai/gpt-6.1-sol due provider quota failure",
+    "fallback": true,
+    "primary_model": "anthropic/claude-sonnet-5-5",
+    "intermediate_host_announced_model": "anthropic/claude-opus-5-5"
+  },
+  "input_hashes": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.chat.sidebar.json",
+      "sha256": "0928091b1241792f86f7fe2fafb9895d0c9d8f75341f59513f7d720a9acb477b"
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.chat.sidebar.context.json",
+      "sha256": "cf078e20bcf1e8e6070e8f5daf8d60c1676bd9f2c9c6671c3bbbc49777676925"
+    },
+    "es": {
+      "path": "src/i18n/catalogues/es/ui.chat.sidebar.json",
+      "sha256": "85c182a5d6df1deb61dfd205b5e57d86d3ba5e4bd2e93cc426c229f98a2baf0a"
+    },
+    "es_context": {
+      "path": "src/i18n/catalogues/es/ui.chat.sidebar.context.json",
+      "sha256": "474de2de15a5794ba5e75282b4f9dd6c6c7f496af81f381b492656cc3ecdc3de"
+    }
+  },
+  "policy_inputs": [
+    {
+      "path": "/Users/damian/local-operator/i18n/style-guides/es.md",
+      "sha256": "77b9227213802d14c74d4298d6b346ad842bbf2a5ca3b9d46fc6144430d26c3e"
+    },
+    {
+      "path": "/Users/damian/local-operator/i18n/glossary.md",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+    }
+  ],
+  "worktree_head": "1e28ba901ab0c1499d317420060162981bdc8708",
+  "input_state": "Working-tree catalogues, not HEAD blobs; locale file modified and locale context untracked at initial inspection.",
+  "current_report_verdict": {
+    "status": "passed",
+    "unresolved_blocker_major_count": 0,
+    "finding_ids": []
+  },
+  "known_limitations": [
+    {
+      "id": "ES-Y-E",
+      "finding": false,
+      "explanation": "Spanish changes y to e before a following /i/ sound (e.g. Investigador, Historiador), but not before a /je/ glide (e.g. Hierro). The position-only ICU select cannot inspect tail pronunciation. The submitted y is the correct default and is not a mistranslation or repairable by substituting e unconditionally. This is a documented formatter/caller limitation, not an unresolved BLOCKER/MAJOR on this single-key translation audit. For arbitrary names, Coder y Investigador is nonstandard; the native wording is Coder e Investigador. A general solution needs phonetic-aware list handling/caller support, not a guessed catalogue-only change.",
+      "already_recorded_in": "src/i18n/catalogues/es/ui.chat.sidebar.context.json"
+    }
+  ],
+  "artifacts": [
+    {
+      "path": "audit.log",
+      "sha256": "e35b31b51faa8296e00af58206abfce2c9c434151530f59792c822c1f3484b2a"
+    },
+    {
+      "path": "findings.jsonl",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "format-probe.mjs",
+      "sha256": "48e1f52f95c00699e96c4668160d6f20662dd8c30372aa25c9e29468c67db7db"
+    },
+    {
+      "path": "formatter-results.json",
+      "sha256": "cd5b232a9b104a259fa618b4cbdbfca33801086f91940b65c124c6efab65e1a0"
+    },
+    {
+      "path": "validator-results.json",
+      "sha256": "025a09fea678ac260d31487342b7873ea71d0426e8f8a6e44e6228c25d3e457c"
+    },
+    {
+      "path": "verdict.txt",
+      "sha256": "99298f25bba6b7b49e24c7974c0248bd00835c3bf5c6d5bc088f28f5d19a21c8"
+    }
+  ],
+  "execution_log": "audit.log",
+  "audit_notes_not_execution_log": [
+    "verdict.txt"
+  ],
+  "retention_state": "Requested scratch handoff only; no repository edits allowed; not tracked or on main.",
+  "proposed_canonical_root": "i18n/audits/evidence/es/ui.chat.sidebar/listjoin-es-ff18/",
+  "ledger_recorded": false,
+  "ledger_reason": "Task explicitly forbids editing the read-only worktree; UI ledger also differs from core RFC CLI. Manager must ingest and record."
+}

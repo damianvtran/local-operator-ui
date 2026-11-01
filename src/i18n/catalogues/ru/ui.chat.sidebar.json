@@ -58,5 +58,6 @@
 	"ui.chat.sidebar.row_menu.unarchive": "Восстановить разговор",
 	"ui.chat.sidebar.row_menu.unpin": "Открепить разговор",
 	"ui.chat.sidebar.pins.pin_label": "Закрепить «{title}»",
-	"ui.chat.sidebar.pins.unpin_label": "Открепить «{title}»"
+	"ui.chat.sidebar.pins.unpin_label": "Открепить «{title}»",
+	"ui.chat.sidebar.agents.list_join": "{position, select, pair {{head} и {tail}} middle {{head}, {tail}} other {{head} и {tail}}}"
 }
