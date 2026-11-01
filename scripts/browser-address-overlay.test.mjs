@@ -337,6 +337,52 @@ function layout(overrides = {}) {
 	};
 }
 
+test("hidden native address load detaches before navigation and hide/suspend/reshow retains the same view", async () => {
+	const { controller, window, calls, views } = makeController({
+		visible: true,
+		product: true,
+	});
+	let showing;
+	try {
+		controller.onLayout(layout());
+		showing = controller.showOverlay();
+		await tick();
+		const view = views[0];
+		assert.ok(view);
+		assert.deepEqual(
+			window.children,
+			[],
+			"warming address document must not remain a native child",
+		);
+		assert.equal(view.visible, false);
+		const detached = calls.findIndex((call) => call[0] === "removeChildView");
+		const load = calls.findIndex((call) => call[0] === "loadURL");
+		assert.ok(
+			detached >= 0 && detached < load,
+			"initial sizing precedes detach, which precedes navigation",
+		);
+		view.emit("dom-ready");
+		view.emit("did-finish-load");
+		assert.equal((await showing).shown, true);
+		assert.equal(window.children.at(-1), view);
+		assert.equal(view.visible, true);
+		controller.onLayout(layout({ presented: false, revision: 2 }));
+		assert.deepEqual(window.children, []);
+		assert.equal(view.visible, false);
+		controller.onLayout(layout({ revision: 3 }));
+		assert.equal(window.children.at(-1), view);
+		controller.hide("test");
+		assert.deepEqual(window.children, []);
+		assert.equal((await controller.showOverlay()).shown, true);
+		assert.equal(window.children.at(-1), view);
+		assert.equal(views.length, 1);
+	} finally {
+		controller.dispose("test");
+		if (showing) await showing;
+		assert.deepEqual(window.children, []);
+	}
+});
+
 // ---- gate and document URL ------------------------------------------------
 
 test("gate: exact opt-in, armed driver and headless are all required", () => {
@@ -1243,6 +1289,10 @@ test("dispose is idempotent, closes before detaching and refuses later shows", a
 	view.webContents.emit("did-finish-load");
 	await pending;
 	const listenersBefore = view.listenerCount("dom-ready");
+	const detachesBefore = calls.filter(
+		(call) => call[0] === "removeChildView",
+	).length;
+	const teardownStart = calls.length;
 	controller.dispose("stop");
 	controller.dispose("stop-again");
 	assert.equal(view.webContents.isDestroyed(), true);
@@ -1254,8 +1304,14 @@ test("dispose is idempotent, closes before detaching and refuses later shows", a
 	);
 	assert.equal(
 		calls.filter((call) => call[0] === "removeChildView").length,
-		1,
-		"detach exactly once",
+		detachesBefore + 1,
+		"teardown detaches exactly once in addition to the warm-load fence",
+	);
+	const teardown = calls.slice(teardownStart);
+	assert.ok(
+		teardown.findIndex((call) => call[0] === "close") <
+			teardown.findIndex((call) => call[0] === "removeChildView"),
+		"final disposal closes before removing its native parent",
 	);
 	assert.equal(view.listenerCount("dom-ready"), 0, "listeners removed");
 	assert.ok(listenersBefore > 0);

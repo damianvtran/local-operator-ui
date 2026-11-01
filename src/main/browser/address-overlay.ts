@@ -63,6 +63,7 @@ import {
 	addressListViewModel,
 	sanitizeProjection,
 } from "./address-overlay-list";
+import { setBrowserViewPresented } from "./view-presentation";
 
 /** The exact opt-in. Absent or anything other than `1` is off. */
 export const ADDRESS_OVERLAY_S1_ENV =
@@ -930,7 +931,7 @@ export class AddressOverlayController {
 		const view = this.view;
 		if (!view || this.viewUsable(view) === false) return;
 		try {
-			view.setVisible(false);
+			this.hideNativeChild(view);
 		} catch {
 			// The window is closing; the visibility claim is moot.
 		}
@@ -1083,7 +1084,7 @@ export class AddressOverlayController {
 		const view = this.view;
 		if (view && this.viewUsable(view)) {
 			try {
-				view.setVisible(false);
+				this.hideNativeChild(view);
 			} catch {
 				// The window is going away; the child is disposed below anyway.
 			}
@@ -1514,9 +1515,15 @@ export class AddressOverlayController {
 			// measurable at the new bounds, then returns to the dismissal's hidden
 			// state in the same main-task turn rather than re-opening the list.
 			const wasVisible = view.getVisible();
-			if (!wasVisible) view.setVisible(true);
+			if (!wasVisible) {
+				// A loaded child needs a native sizing turn for Chromium to consume
+				// the resize. Return it detached before this synchronous task ends;
+				// unlike an initial load, there is no navigation pending here.
+				this.raiseChild(view);
+				view.setVisible(true);
+			}
 			view.setBounds(bounds);
-			if (!wasVisible) view.setVisible(false);
+			if (!wasVisible) this.hideNativeChild(view);
 		} catch (error) {
 			this.releaseChild(`layout_error:${String(error)}`);
 		}
@@ -1767,6 +1774,14 @@ export class AddressOverlayController {
 		}
 	}
 
+	/** Hidden native siblings can take first responder at navigation commit. */
+	private hideNativeChild(view: WebContentsView): void {
+		view.setVisible(false);
+		if (!this.window.isDestroyed()) {
+			setBrowserViewPresented(this.window.contentView, view, false);
+		}
+	}
+
 	private createChild(bounds: OverlayRect): boolean {
 		let view: WebContentsView;
 		try {
@@ -1783,11 +1798,12 @@ export class AddressOverlayController {
 		this.loadMs = null;
 		this.loadStartedAt = null;
 		try {
-			// Attach, size, hide, then load — the documented initialization order
-			// (a view hidden before it is sized keeps a 0x0 layout viewport).
+			// First attach/size preserves Chromium's nonzero viewport. Hide AND
+			// detach before loading: hidden attachment is not a native focus fence.
+			// A ready document is reattached only by the presentation path.
 			this.window.contentView.addChildView(view);
 			view.setBounds(bounds);
-			view.setVisible(false);
+			this.hideNativeChild(view);
 		} catch (error) {
 			this.failChild(`child_attach_failed:${String(error)}`);
 			return false;
@@ -2036,6 +2052,7 @@ export class AddressOverlayController {
 	}
 
 	private raiseChild(view: WebContentsView): void {
+		if (this.window.isDestroyed()) return;
 		// Native reattachment can move the first responder even without focus().
 		// Background layout notifications must not touch the current input owner;
 		// only a newly appended sibling requires restoring this child's z-order.

@@ -331,14 +331,15 @@ try {
 	// URL assignment precedes Electron ready-to-show. Wait for the product's
 	// normal presentation path; focusing a still-hidden window is not a valid
 	// native-owner precondition, and the probe must never force a substitute show.
-	await until(
-		() =>
-			evaluate(
-				main,
-				`process.mainModule.require('electron').BrowserWindow.fromId(${mainWindowId}).isVisible()`,
-			),
-		"product normal window ready-to-show",
-	);
+	if (nativeCi)
+		await until(
+			() =>
+				evaluate(
+					main,
+					`process.mainModule.require('electron').BrowserWindow.fromId(${mainWindowId}).isVisible()`,
+				),
+			"product normal window ready-to-show",
+		);
 	await evaluate(
 		main,
 		`(() => {
@@ -391,11 +392,15 @@ try {
 	const sample = async (label) => {
 		const native = await evaluate(
 			main,
-			`(() => { const E = process.mainModule.require('electron'); const w = E.BrowserWindow.fromId(${mainWindowId}); return { visible:w.isVisible(), focusable:w.isFocusable(), windowFocused:w.isFocused(), windowId:w.id,url:w.webContents.getURL(),ownerId:w.webContents.id, ownerFocused:w.webContents.isFocused(), focused:E.webContents.getFocusedWebContents()?.id ?? null, views:w.contentView.children.map(v => ({id:v.webContents?.id, visible:v.getVisible(), focused:v.webContents?.isFocused()})), events:globalThis.__focusProof.events,ciActivationUsed:globalThis.__focusProof.ciActivationUsed??false }; })()`,
+			`(() => { const E = process.mainModule.require('electron'); const w = E.BrowserWindow.fromId(${mainWindowId}); return { visible:w.isVisible(), focusable:w.isFocusable(), windowFocused:w.isFocused(), windowId:w.id,url:w.webContents.getURL(),ownerId:w.webContents.id, ownerFocused:w.webContents.isFocused(), focused:E.webContents.getFocusedWebContents()?.id ?? null, views:w.contentView.children.map(v => ({id:v.webContents?.id,url:v.webContents?.getURL(),visible:v.getVisible(),focused:v.webContents?.isFocused()})), inventory:E.webContents.getAllWebContents().map(c=>({id:c.id,url:c.getURL(),type:c.getType(),parents:E.BrowserWindow.getAllWindows().filter(owner=>owner.contentView.children.some(v=>v.webContents?.id===c.id)).map(owner=>owner.id)})), events:globalThis.__focusProof.events,ciActivationUsed:globalThis.__focusProof.ciActivationUsed??false }; })()`,
 		);
 		const dom = await evaluate(
 			owner,
 			"({ hash:location.hash, hasFocus:document.hasFocus(), active:document.activeElement?.outerHTML.slice(0,350), value:document.activeElement?.value, selection:[document.activeElement?.selectionStart,document.activeElement?.selectionEnd] })",
+		);
+		assert.ok(
+			native.views.every((view) => view.visible),
+			`unpresented native browser children cannot remain attached: ${JSON.stringify(native.views)}`,
 		);
 		assert.equal(
 			native.ownerId,
@@ -768,8 +773,15 @@ try {
 	const pageCaret = () =>
 		evaluate(
 			main,
-			`process.mainModule.require('electron').webContents.fromId(${paletteCase.page.id}).executeJavaScript('({value:document.querySelector("#field").value,start:document.querySelector("#field").selectionStart,end:document.querySelector("#field").selectionEnd})')`,
+			`process.mainModule.require('electron').webContents.fromId(${paletteCase.page.id}).executeJavaScript('({active:document.activeElement?.id,value:document.querySelector("#field").value,start:document.querySelector("#field").selectionStart,end:document.querySelector("#field").selectionEnd})')`,
 		);
+	const visibleNativeDocument = (filename) => {
+		const expected = pathToFileURL(join(root, "out/renderer", filename)).href;
+		return evaluate(
+			main,
+			`(()=>{const E=process.mainModule.require('electron');const views=E.BrowserWindow.fromId(${mainWindowId}).contentView.children.filter(v=>{if(!v.webContents||!v.getVisible())return false;const u=new URL(v.webContents.getURL());u.search='';u.hash='';return u.href===${JSON.stringify(expected)};});if(views.length>1)throw Error('ambiguous native overlay document');return views[0]?{id:views[0].webContents.id,url:views[0].webContents.getURL(),bounds:views[0].getBounds()}:null;})()`,
+		);
+	};
 	// The shipped keyboard door returns native ownership to the page. It is
 	// intentionally available only under the real user's normal launch policy.
 	os('keystroke "l" using {command down}');
@@ -781,6 +793,31 @@ try {
 			),
 		"actual CmdL focuses address row",
 	);
+	os('keystroke "a" using {command down}');
+	os('keystroke "localhost"');
+	const addressPopup = await until(
+		() => visibleNativeDocument("browser-address-overlay-list.html"),
+		"real native address suggestion presentation",
+	);
+	const addressBefore = await evaluate(owner, "document.activeElement.value");
+	assert.equal(addressBefore, "localhost");
+	os('keystroke "q"');
+	await sleep(200);
+	assert.equal(
+		await evaluate(owner, "document.activeElement.value"),
+		"localhostq",
+		"native address popout must not take actual OS typing from its field",
+	);
+	facts.addressPopup = addressPopup;
+	const addressPng = await evaluate(
+		main,
+		`(async()=>{return (await process.mainModule.require('electron').webContents.fromId(${addressPopup.id}).capturePage()).toPNG().toString('base64');})()`,
+	);
+	writeFileSync(
+		join(out, "intentional-native-address.png"),
+		Buffer.from(addressPng, "base64"),
+	);
+	await sample("native-address-typing");
 	os("key code 53");
 	await until(
 		() =>
@@ -818,6 +855,102 @@ try {
 	);
 	await captureShell("intentional-browser-present");
 	await sample("intentional-browser-present");
+	const presentedPng = await evaluate(
+		main,
+		`(async()=>{const c=process.mainModule.require('electron').webContents.fromId(${paletteCase.page.id});return (await c.capturePage()).toPNG().toString('base64');})()`,
+	);
+	writeFileSync(
+		join(out, "intentional-browser-page.png"),
+		Buffer.from(presentedPng, "base64"),
+	);
+	const pageKey = async (label, text) => {
+		const before = await pageCaret();
+		const startedAt = Date.now();
+		const expected =
+			before.value.slice(0, before.start) +
+			text +
+			before.value.slice(before.end);
+		os(`keystroke "${text}"`);
+		await sleep(200);
+		const after = await pageCaret();
+		facts.pageKeys ??= [];
+		facts.pageKeys.push({
+			label,
+			startedAt,
+			finishedAt: Date.now(),
+			before,
+			after,
+			expected,
+		});
+		assert.equal(
+			after.value,
+			expected,
+			`${label}: actual OS key must reach the original browser input`,
+		);
+		assert.equal(after.active, "field");
+	};
+	const approvalUrl = `http://localhost:${server.address().port}/?approval-native=1`;
+	const approval = await rpc("request_access", {
+		url: approvalUrl,
+		requester: "session:focus-proof",
+	});
+	assert.equal(
+		approval.state,
+		"pending",
+		"distinct fixture origin must exercise real native approval arrival",
+	);
+	const card = () => visibleNativeDocument("browser-approvals-overlay.html");
+	await until(card, "ready native approval auto-presentation");
+	await pageKey("approval-auto-present-unfocused", "r");
+	await sample("approval-auto-present-unfocused");
+	os('keystroke "l" using {command down}');
+	await focusShell('[data-tour-tag="browser-approvals"]');
+	os("key code 49");
+	await until(
+		() =>
+			evaluate(
+				owner,
+				"window.api.browser.state().then(s=>s.approvalsCard.open)",
+			),
+		"user opens native approval via shield",
+	);
+	const focusedCard = await until(async () => {
+		const current = await card();
+		if (!current) return null;
+		return (await evaluate(
+			main,
+			`process.mainModule.require('electron').webContents.fromId(${current.id}).isFocused()`,
+		))
+			? current
+			: null;
+	}, "explicit native approval focus");
+	facts.approvalCard = focusedCard;
+	const cardPng = await evaluate(
+		main,
+		`(async()=>{return (await process.mainModule.require('electron').webContents.fromId(${focusedCard.id}).capturePage()).toPNG().toString('base64');})()`,
+	);
+	writeFileSync(
+		join(out, "intentional-native-approval.png"),
+		Buffer.from(cardPng, "base64"),
+	);
+	os("key code 53");
+	await until(
+		() =>
+			evaluate(
+				owner,
+				"window.api.browser.state().then(s=>!s.approvalsCard.open)",
+			),
+		"actual Escape dismisses native approval",
+	);
+	await pageKey("approval-escape-restores-page", "s");
+	await sample("approval-escape-restores-page");
+	// Dispose only this synthetic request after the actual user dismissal. The
+	// decision IPC is fixture cleanup, not a focus operation or substitute gesture.
+	await evaluate(
+		owner,
+		`(async()=>{const state=await window.api.browser.state();const entry=state.pendingConsent.find(e=>e.origin===${JSON.stringify(new URL(approvalUrl).origin)});if(entry)await window.api.browser.respondToConsent(entry.entryId,'deny');return true;})()`,
+	);
+	const retainedPageValue = (await pageCaret()).value;
 	// Switch away and back through actual tab controls; the same page state is
 	// retained, and no inspector addChildView/focus restoration participates.
 	const otherId = facts.cases[0].tabId;
@@ -840,7 +973,7 @@ try {
 			),
 		"actual browser tab return",
 	);
-	assert.equal((await pageCaret()).value, "human");
+	assert.equal((await pageCaret()).value, retainedPageValue);
 	await navigate("chat");
 	await until(
 		() =>
@@ -861,7 +994,7 @@ try {
 	);
 	assert.equal(
 		(await pageCaret()).value,
-		"human",
+		retainedPageValue,
 		"route return preserves same WebContents and document",
 	);
 	await navigate("chat");
@@ -875,6 +1008,8 @@ try {
 		tabSwitchStatePreserved: true,
 		routeReturnStatePreserved: true,
 		modalEscape: true,
+		approvalAutoPresentPreservesTyping: true,
+		approvalShieldEscapeRestoresPage: true,
 		ownershipTransferWhileUnpresented: true,
 	};
 	facts.nativeCanonicalSessionUpdates =
