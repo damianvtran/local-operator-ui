@@ -534,7 +534,7 @@ try {
 	const visiblePoint = async (selector) =>
 		evaluate(
 			owner,
-			`(()=>{const e=document.querySelector(${JSON.stringify(selector)});if(!e)return null;const r=e.getBoundingClientRect();return r.width>0&&r.height>0?{x:r.x,y:r.y}:null;})()`,
+			`(()=>{const e=document.querySelector(${JSON.stringify(selector)});if(!e||e.disabled||e.readOnly)return null;const r=e.getBoundingClientRect();return r.width>0&&r.height>0?{x:r.x,y:r.y}:null;})()`,
 		);
 	const focusShell = async (selector) => {
 		await until(() => visiblePoint(selector), `visible ${selector}`);
@@ -734,8 +734,16 @@ try {
 		"Escape restores an intentional shell focus owner",
 	);
 	await captureShell("palette-escape");
-	await navigate("settings");
-	await fieldCase("settings-search", 'input[role="combobox"]');
+	// Settings is deliberately unavailable in this existing capability fixture.
+	// Use a different REAL input already present in the live sidebar instead of
+	// manufacturing settings data or substituting another composer/palette.
+	await navigate("chat");
+	await focusShell("[data-sidebar-search]");
+	os("key code 49");
+	await fieldCase(
+		"sidebar-filter",
+		'input[aria-label="Search chats and agents"]',
+	);
 
 	// Ownership transfer is a real renderer IPC on a still-unpresented page.
 	// Its controls use a synthetic session; no daemon/session state is fabricated.
