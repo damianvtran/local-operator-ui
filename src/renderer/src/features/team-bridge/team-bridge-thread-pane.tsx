@@ -250,7 +250,8 @@ function TeamBridgeThreadPaneBody({
 		if (!pinnedGetterRef) return;
 		pinnedGetterRef.current = scroll.isPinned;
 		return () => {
-			if (pinnedGetterRef.current === scroll.isPinned) pinnedGetterRef.current = null;
+			if (pinnedGetterRef.current === scroll.isPinned)
+				pinnedGetterRef.current = null;
 		};
 	}, [pinnedGetterRef, scroll.isPinned]);
 	const combinedScrollRef = useMemo(
@@ -635,7 +636,9 @@ function TeamBridgeThreadPaneMount({
 				target,
 				accountId,
 				mode === "desc" ? undefined : (cursor ?? 0),
-				mode === "desc" ? { beforeSeq: cursor, order: "desc", limit } : undefined,
+				mode === "desc"
+					? { beforeSeq: cursor, order: "desc", limit }
+					: undefined,
 			),
 		canEvict: (page) =>
 			replyPageOutsideViewport(

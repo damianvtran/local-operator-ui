@@ -138,7 +138,8 @@ export function createOwnerAuditQueryFixture(options: {
 				(input.order !== undefined || input.before_seq !== undefined)
 			)
 				return envelope(null, 422, "invalid_request");
-			const olderReply = input.before_seq !== undefined ||
+			const olderReply =
+				input.before_seq !== undefined ||
 				(input.after_seq !== undefined && input.after_seq > 0);
 			if ((holdOlder && olderReply) || (holdFirstReply && !olderReply)) {
 				if (olderReply) holdOlder = false;
@@ -161,7 +162,8 @@ export function createOwnerAuditQueryFixture(options: {
 				olderReplyFailure = null;
 				// One-shot failures admit an actual manual Retry on the same
 				// cursor;403 remains the separate permanent-refusal control.
-				if (failure === "transport") throw new Error("Synthetic fixture transport failure");
+				if (failure === "transport")
+					throw new Error("Synthetic fixture transport failure");
 				return envelope(null, 503);
 			}
 			const backward =
@@ -169,7 +171,10 @@ export function createOwnerAuditQueryFixture(options: {
 				(input.order === "desc" || input.before_seq !== undefined);
 			const rootSeq = 9999;
 			const lower = mode === "short" ? threadLatest - 2 : rootSeq + 1;
-			const count = mode === "empty" ? 0 : Math.min(input.limit ?? 50, mode === "short" ? 3 : 50);
+			const count =
+				mode === "empty"
+					? 0
+					: Math.min(input.limit ?? 50, mode === "short" ? 3 : 50);
 			const first = backward
 				? Math.max(lower, (input.before_seq ?? threadLatest + 1) - count)
 				: Math.max(lower, input.after_seq ?? lower);
@@ -225,8 +230,8 @@ export function createOwnerAuditQueryFixture(options: {
 					};
 				},
 			);
-			const hasMore = replies.length > 0 &&
-				(backward ? first > lower : last < threadLatest);
+			const hasMore =
+				replies.length > 0 && (backward ? first > lower : last < threadLatest);
 			return envelope({
 				root: replyRoot,
 				replies,
@@ -316,7 +321,9 @@ export function createOwnerAuditQueryFixture(options: {
 			// Reset ONLY the mounted reply query. Resetting the parent messages
 			// unmounts AuditReplies and cannot prove its own loading/error UI.
 			return client.resetQueries({
-				predicate: (query) => query.queryKey[0] === "team-bridge" && query.queryKey.includes("replies"),
+				predicate: (query) =>
+					query.queryKey[0] === "team-bridge" &&
+					query.queryKey.includes("replies"),
 			});
 		},
 		release() {

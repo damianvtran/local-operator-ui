@@ -416,7 +416,9 @@ export function useOwnerAuditReplies(
 					conversationId,
 					rootId,
 					mode === "desc" ? undefined : (cursor ?? 0),
-					mode === "desc" ? { beforeSeq: cursor, order: "desc", limit } : undefined,
+					mode === "desc"
+						? { beforeSeq: cursor, order: "desc", limit }
+						: undefined,
 				),
 			),
 		canEvict,

@@ -1038,28 +1038,41 @@ function QueryBackedHistoryExercise({
 						</button>
 					),
 				)}
-				<button type="button" onClick={() => {
-					fixture.holdNextFirstReply();
-					void fixture.resetReplyQueries();
-				}}>
+				<button
+					type="button"
+					onClick={() => {
+						fixture.holdNextFirstReply();
+						void fixture.resetReplyQueries();
+					}}
+				>
 					Fixture hold first reply
 				</button>{" "}
 				<button type="button" onClick={() => fixture.releaseReplies()}>
 					Fixture release replies
 				</button>{" "}
 				{(["http503", "transport"] as const).map((failure) => (
-					<button type="button" key={failure} onClick={() => fixture.failNextOlderReply(failure)}>
+					<button
+						type="button"
+						key={failure}
+						onClick={() => fixture.failNextOlderReply(failure)}
+					>
 						Fixture fail next older reply {failure}
 					</button>
 				))}
-				{(["normal", "empty", "short", "denied", "unavailable"] as const).map((mode) => (
-					<button type="button" key={`reply-${mode}`} onClick={() => {
-						fixture.setMode(mode);
-						void fixture.resetReplyQueries();
-					}}>
-						Fixture reply backend {mode}
-					</button>
-				))}
+				{(["normal", "empty", "short", "denied", "unavailable"] as const).map(
+					(mode) => (
+						<button
+							type="button"
+							key={`reply-${mode}`}
+							onClick={() => {
+								fixture.setMode(mode);
+								void fixture.resetReplyQueries();
+							}}
+						>
+							Fixture reply backend {mode}
+						</button>
+					),
+				)}
 				{(["backward", "old-server", "old-runtime"] as const).map((value) => (
 					<button
 						type="button"

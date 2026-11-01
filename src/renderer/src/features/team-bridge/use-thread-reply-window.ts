@@ -80,23 +80,56 @@ function validateReplyPage<P extends ReplyWindowPage>(
 	cursor: number | undefined,
 	limit: 1 | 50,
 ): P {
-	if (page.root.id !== identity.rootId || page.root.conversation_id !== identity.conversationId || page.root.thread_root_id ||
-		page.replies.some((row) => row.id === identity.rootId || row.conversation_id !== identity.conversationId || row.thread_root_id !== identity.rootId))
+	if (
+		page.root.id !== identity.rootId ||
+		page.root.conversation_id !== identity.conversationId ||
+		page.root.thread_root_id ||
+		page.replies.some(
+			(row) =>
+				row.id === identity.rootId ||
+				row.conversation_id !== identity.conversationId ||
+				row.thread_root_id !== identity.rootId,
+		)
+	)
 		throw new Error("Thread response identity mismatch");
 	if (mode === "desc") admitReplyWindow(page);
 	// Tuple ordering cannot detect one ID reused at two different sequences.
 	// Bound the response before constructing the identity set.
-	if (page.replies.length > limit || new Set(page.replies.map((row) => row.id)).size !== page.replies.length ||
+	if (
+		page.replies.length > limit ||
+		new Set(page.replies.map((row) => row.id)).size !== page.replies.length ||
 		page.replies.some((row, index) => {
 			const prior = page.replies[index - 1];
-			return !Number.isSafeInteger(row.seq) || row.seq <= 0 || (prior && (prior.seq > row.seq || (prior.seq === row.seq && prior.id >= row.id)));
-		})) throw new Error("Thread response page ordering mismatch");
-	if (cursor !== undefined && page.replies.some((row) => mode === "desc" ? row.seq >= cursor : row.seq < cursor))
+			return (
+				!Number.isSafeInteger(row.seq) ||
+				row.seq <= 0 ||
+				(prior &&
+					(prior.seq > row.seq ||
+						(prior.seq === row.seq && prior.id >= row.id)))
+			);
+		})
+	)
+		throw new Error("Thread response page ordering mismatch");
+	if (
+		cursor !== undefined &&
+		page.replies.some((row) =>
+			mode === "desc" ? row.seq >= cursor : row.seq < cursor,
+		)
+	)
 		throw new Error("Thread response cursor boundary mismatch");
 	if (page.has_more) {
-		const expected = mode === "desc" ? page.replies[0]?.seq : (page.replies.at(-1)?.seq ?? -1) + 1;
-		const returned = mode === "desc" ? page.next_before_seq : page.next_after_seq;
-		if (expected === undefined || !Number.isSafeInteger(expected) || expected <= 0 || returned !== expected)
+		const expected =
+			mode === "desc"
+				? page.replies[0]?.seq
+				: (page.replies.at(-1)?.seq ?? -1) + 1;
+		const returned =
+			mode === "desc" ? page.next_before_seq : page.next_after_seq;
+		if (
+			expected === undefined ||
+			!Number.isSafeInteger(expected) ||
+			expected <= 0 ||
+			returned !== expected
+		)
 			throw new Error("Thread response cursor mismatch");
 	}
 	return page;
@@ -147,8 +180,12 @@ export function useThreadReplyWindow<P extends ReplyWindowPage>({
 	const keyScope = JSON.stringify(key);
 	// O(1) control metadata only. No second message store, old-body merge,
 	// snapshot-retention structuralSharing hook, or extra query subscription.
-	const windowRef = useRef<ReplyWindowState>({ key: keyScope, pendingNewer: false });
-	if (windowRef.current.key !== keyScope) windowRef.current = { key: keyScope, pendingNewer: false };
+	const windowRef = useRef<ReplyWindowState>({
+		key: keyScope,
+		pendingNewer: false,
+	});
+	if (windowRef.current.key !== keyScope)
+		windowRef.current = { key: keyScope, pendingNewer: false };
 	const query = useInfiniteQuery({
 		queryKey: key,
 		initialPageParam: undefined as number | undefined,
@@ -163,64 +200,124 @@ export function useThreadReplyWindow<P extends ReplyWindowPage>({
 		queryFn: async ({ pageParam, signal }) => {
 			const state = windowRef.current;
 			const ensureCurrent = () => {
-				if (signal.aborted || windowRef.current !== state || state.key !== keyScope)
+				if (
+					signal.aborted ||
+					windowRef.current !== state ||
+					state.key !== keyScope
+				)
 					throw new CancelledError({ revert: true });
 			};
 			ensureCurrent();
 			const cached = client.getQueryData<InfiniteData<P>>(key);
-			const cachedMax = cached?.pages.reduce((max, page) => Math.max(max, page.replies.at(-1)?.seq ?? 0), 0) ?? 0;
+			const cachedMax =
+				cached?.pages.reduce(
+					(max, page) => Math.max(max, page.replies.at(-1)?.seq ?? 0),
+					0,
+				) ?? 0;
 			// The window TOP, never pageParams[0]: after maxPages eviction that entry
 			// is the oldest retained page's BEFORE cursor, so using it would fetch
 			// rows BELOW the newest admitted row and slide the boundary again.
 			const fixedBoundary = () => {
 				const bound = state.upperBound ?? cachedMax + 1;
-				if (!Number.isSafeInteger(bound) || bound <= 0) throw new Error("Thread upper boundary is not representable");
+				if (!Number.isSafeInteger(bound) || bound <= 0)
+					throw new Error("Thread upper boundary is not representable");
 				return bound;
 			};
 			// One signal identifies an entire infinite-query fetch attempt. Capture
 			// fetchMore at its start: direction/pageParam also occur during ordinary
 			// polling and invalidation, neither of which inserts/evicts a page.
 			if (state.attempt?.signal !== signal) {
-				const older = client.getQueryState(key)?.fetchMeta?.fetchMore?.direction === "forward" && pageParam !== undefined;
-				if (mode === "desc" && !older && cachedMax > 0 &&
-					(!(isAtLiveEdge?.() ?? true) || typeof cached?.pageParams[0] === "number" || state.upperBound !== undefined))
+				const older =
+					client.getQueryState(key)?.fetchMeta?.fetchMore?.direction ===
+						"forward" && pageParam !== undefined;
+				if (
+					mode === "desc" &&
+					!older &&
+					cachedMax > 0 &&
+					(!(isAtLiveEdge?.() ?? true) ||
+						typeof cached?.pageParams[0] === "number" ||
+						state.upperBound !== undefined)
+				)
 					state.upperBound = fixedBoundary();
-				state.attempt = { signal, older, first: true, live: mode === "desc" && state.upperBound === undefined, hadRows: cachedMax > 0 };
+				state.attempt = {
+					signal,
+					older,
+					first: true,
+					live: mode === "desc" && state.upperBound === undefined,
+					hadRows: cachedMax > 0,
+				};
 			}
 			const attempt = state.attempt;
 			const first = attempt.first;
 			attempt.first = false;
-			const actualCursor = first && !attempt.older && mode === "desc" ? state.upperBound ?? pageParam : pageParam;
+			const actualCursor =
+				first && !attempt.older && mode === "desc"
+					? (state.upperBound ?? pageParam)
+					: pageParam;
 			const validateStableIDs = (page: P) => {
 				const current = client.getQueryData<InfiniteData<P>>(key);
-				const known = new Map(current?.pages.flatMap((prior) => prior.replies.map((row) => [row.id, row.seq] as const)) ?? []);
-				if (page.replies.some((row) => known.has(row.id) && known.get(row.id) !== row.seq))
+				const known = new Map(
+					current?.pages.flatMap((prior) =>
+						prior.replies.map((row) => [row.id, row.seq] as const),
+					) ?? [],
+				);
+				if (
+					page.replies.some(
+						(row) => known.has(row.id) && known.get(row.id) !== row.seq,
+					)
+				)
 					throw new Error("Thread response sequence identity mismatch");
 			};
 			let page: P;
 			try {
-				if (first && !attempt.older && mode === "desc" && actualCursor !== undefined) {
+				if (
+					first &&
+					!attempt.older &&
+					mode === "desc" &&
+					actualCursor !== undefined
+				) {
 					// Same authority/read path, LIMIT1, no mark-read mutation. Keep
 					// only id/seq; the peek's body/root/attachments never enter cache.
-					const peek = validateReplyPage(await read(mode, undefined, 1), identity, mode, undefined, 1);
+					const peek = validateReplyPage(
+						await read(mode, undefined, 1),
+						identity,
+						mode,
+						undefined,
+						1,
+					);
 					ensureCurrent();
 					validateStableIDs(peek);
 					const latest = peek.replies.at(-1);
-					state.latest = latest ? { id: latest.id, seq: latest.seq } : undefined;
+					state.latest = latest
+						? { id: latest.id, seq: latest.seq }
+						: undefined;
 					state.pendingNewer = Boolean(latest && latest.seq > cachedMax);
 				}
 				// Rebuild every loaded page from fresh projections at a FIXED upper
 				// bound. Never resurrect an omitted body/root/admission field from
 				// oldData. Six loaded pages cost at most6*50+1 replies per refresh;
 				// this is bounded fresh coverage, NOT a transaction/snapshot claim.
-				page = validateReplyPage(await read(mode, actualCursor, 50), identity, mode, actualCursor, 50);
+				page = validateReplyPage(
+					await read(mode, actualCursor, 50),
+					identity,
+					mode,
+					actualCursor,
+					50,
+				);
 				ensureCurrent();
 				validateStableIDs(page);
 			} catch (error) {
 				// Only an initial unsupported query can negotiate a legacy key.
 				// Peek/page auth/epoch/root/permanent errors always win; never turn
 				// them into a retained-success transcript or a silent retry.
-				if (mode === "desc" && first && !cached?.pages.length && actualCursor === undefined && !signal.aborted && unsupportedReplyWindow(error)) {
+				if (
+					mode === "desc" &&
+					first &&
+					!cached?.pages.length &&
+					actualCursor === undefined &&
+					!signal.aborted &&
+					unsupportedReplyWindow(error)
+				) {
 					setNegotiated({ scope, mode: "legacy" });
 					throw new CancelledError({ revert: true });
 				}
@@ -230,22 +327,40 @@ export function useThreadReplyWindow<P extends ReplyWindowPage>({
 				const latest = page.replies.at(-1);
 				state.latest = latest ? { id: latest.id, seq: latest.seq } : undefined;
 			}
-			if (!attempt.older && attempt.live && attempt.hadRows && !(isAtLiveEdge?.() ?? true)) {
+			if (
+				!attempt.older &&
+				attempt.live &&
+				attempt.hadRows &&
+				!(isAtLiveEdge?.() ?? true)
+			) {
 				// The reader held/moved away while an uncursored refresh was in
 				// flight. Revert that attempt, then immediately restart bounded;
 				// waiting for the next poll would silently poison an owner (no poll).
 				state.upperBound = fixedBoundary();
-				state.pendingNewer = Boolean(state.latest && state.latest.seq > cachedMax);
+				state.pendingNewer = Boolean(
+					state.latest && state.latest.seq > cachedMax,
+				);
 				queueMicrotask(() => {
 					if (windowRef.current !== state || signal.aborted) return;
-					const active = client.getQueryCache().find({ queryKey: key, exact: true });
+					const active = client
+						.getQueryCache()
+						.find({ queryKey: key, exact: true });
 					if (active && active.getObserversCount() > 0)
-						void client.refetchQueries({ queryKey: key, exact: true }, { cancelRefetch: true });
+						void client.refetchQueries(
+							{ queryKey: key, exact: true },
+							{ cancelRefetch: true },
+						);
 				});
 				throw new CancelledError({ revert: true });
 			}
 			const current = client.getQueryData<InfiniteData<P>>(key);
-			if (attempt.older && current && current.pages.length >= 6 && canEvict && !canEvict(current.pages[0]))
+			if (
+				attempt.older &&
+				current &&
+				current.pages.length >= 6 &&
+				canEvict &&
+				!canEvict(current.pages[0])
+			)
 				throw new CancelledError({ revert: true });
 			return page;
 		},
@@ -285,7 +400,11 @@ export function useThreadReplyWindow<P extends ReplyWindowPage>({
 			mode,
 		),
 		pendingNewer: windowRef.current.pendingNewer,
-		latestPageAvailable: mode === "desc" && windowRef.current.upperBound === undefined && !windowRef.current.pendingNewer && query.data?.pageParams[0] === undefined,
+		latestPageAvailable:
+			mode === "desc" &&
+			windowRef.current.upperBound === undefined &&
+			!windowRef.current.pendingNewer &&
+			query.data?.pageParams[0] === undefined,
 		resetLatest: () => {
 			if (windowRef.current.key !== keyScope) return Promise.resolve();
 			windowRef.current = { key: keyScope, pendingNewer: false };

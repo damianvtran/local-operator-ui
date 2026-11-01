@@ -686,7 +686,9 @@ function AuditReplies({
 	const viewport = useRef<HTMLDivElement>(null);
 	const pinnedGetter = useRef<() => boolean>(() => true);
 	const query = useOwnerAuditReplies(
-		scope, conversation.id, root.id,
+		scope,
+		conversation.id,
+		root.id,
 		(page) => replyPageOutsideViewport(page, viewport.current),
 		() => pinnedGetter.current(),
 	);

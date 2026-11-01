@@ -137,7 +137,10 @@ export function useStickToBottom<T extends HTMLElement = HTMLDivElement>({
 		pinned.current = false;
 		captureAnchor();
 	}, [captureAnchor]);
-	const isPinned = useCallback(() => pinned.current && liveEdgeAvailable, [liveEdgeAvailable]);
+	const isPinned = useCallback(
+		() => pinned.current && liveEdgeAvailable,
+		[liveEdgeAvailable],
+	);
 
 	// Layout effects: the jump happens before paint, so nothing flashes at the top.
 	// biome-ignore lint/correctness/useExhaustiveDependencies: resetKey IS the trigger.
