@@ -1,0 +1,102 @@
+# The Linux-only wedge confirmation, dispatchable by hand and by nothing else.
+#
+# WHY THIS IS ITS OWN WORKFLOW RATHER THAN A JOB IN `ci.yml`. The question it
+# answers is one file's behaviour on Linux, and in `ci.yml` a workflow_dispatch
+# would have started the WHOLE job graph - `scripts/ci-scope.mjs` returns every
+# flag true for anything that is not a `pull_request`, which is deliberate (main's
+# push run is the safety net for a narrowed pull-request matrix) but means a
+# diagnostic dispatch there would also re-run all four Desktop Tests shards. A
+# separate workflow has no graph to drag in, no `needs:` to inherit, and its own
+# concurrency group keyed on the ref, so it cannot queue behind, evict or cancel a
+# pull-request run of `ci.yml` (whose group is `<workflow>-<ref>-shared` and whose
+# ref is `refs/pull/<n>/merge`).
+#
+# WHY IT EXISTS AT ALL. `scripts/child-reader-foot-react.test.mjs` stalls the
+# `Desktop Tests` shard on the Linux runners - 616 passing subtests, no failure, no
+# summary, cancelled at the job's 50-minute cap (run 41248028640 job 124562057434;
+# the same signature on runs 41274378090, 41277981038 and 41286247024) - and it
+# does NOT reproduce on a developer's macOS host: 6-8 s and exit 0 on Node 24.22.1
+# and 22.18.0, both directly and through `scripts/run-desktop-tests.mjs`. A trigger
+# that exists on one platform cannot be confirmed from a laptop, so this runs THAT
+# ONE FILE on the same Ubuntu image, Node and pnpm as the shard job and prints the
+# two readings that tell "passes there too" from "reproduced".
+name: Desktop wedge confirmation
+
+on:
+  workflow_dispatch:
+
+# One at a time per ref, and never shared with `ci.yml`: this workflow's group is
+# its own name, so a dispatch cannot queue behind or cancel a pull-request run.
+concurrency:
+  group: desktop-wedge-confirm-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  confirm:
+    name: One file, Linux, dispatch only
+    runs-on: ubuntu-latest
+    # Above the step's own ceiling so the scan below still runs when the file
+    # wedges: a job cancelled at its own `timeout-minutes` runs no further steps,
+    # which is exactly how the shard job lost its log scan on four heads.
+    timeout-minutes: 15
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # The same two pins the shard job uses, so a green here is evidence about
+      # THAT environment rather than about an approximation of it.
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: '10.29.2'
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # ONE file, its own ceiling, and the log kept either way. The step's
+      # `timeout-minutes` is what turns "still hanging" into "the step was killed",
+      # which the scan below reads as the wedge reproducing.
+      - name: Run the one file
+        id: wedge
+        timeout-minutes: 10
+        run: |
+          set -o pipefail
+          WEDGE_LOG="$RUNNER_TEMP/wedge.log"
+          WEDGE_RC=0
+          node --test scripts/child-reader-foot-react.test.mjs 2>&1 | tee "$WEDGE_LOG" || WEDGE_RC=$?
+          printf 'rc=%s\n' "$WEDGE_RC" | tee -a "$WEDGE_LOG"
+          printf 'WEDGE_RC=%s\n' "$WEDGE_RC" >> "$GITHUB_OUTPUT"
+          exit "$WEDGE_RC"
+
+      # THE VERDICT IS THIS STEP, not the one above: a step killed by its ceiling
+      # has no `rc=` line, and that ABSENCE is the reproduction. Everything printed
+      # here is an annotation as well, because a `gh run view --log` reader never
+      # reaches the end of a job log and only annotations cross that cut.
+      - name: Name the outcome as pass, wedge or failure
+        if: always()
+        run: |
+          WEDGE_LOG="$RUNNER_TEMP/wedge.log"
+          if [ ! -f "$WEDGE_LOG" ]; then
+            echo "::error title=Wedge confirmation did not run::no log at $WEDGE_LOG - the run never reached the file"
+            exit 1
+          fi
+          WEDGE_RC=$(grep -oE 'rc=[0-9]+' "$WEDGE_LOG" | tail -1 | cut -d= -f2 || true)
+          echo "--- counts, if the file reported any ---"
+          grep -E '^# (tests|pass|fail|cancelled) ' "$WEDGE_LOG" || echo '(no TAP summary: the file never finished)'
+          echo "--- last 60 lines ---"
+          tail -n 60 "$WEDGE_LOG"
+          if [ -z "$WEDGE_RC" ]; then
+            echo "::error title=Wedge REPRODUCED on Linux::the file did not finish inside the step's 10-minute ceiling and wrote no summary, so the Linux-only stall is confirmed on this head - the in-file bounds and the suite-child bound are what has to stop it"
+            exit 1
+          fi
+          if [ "$WEDGE_RC" != "0" ]; then
+            echo "::error title=Wedge FAILED (not a hang)::the file exited $WEDGE_RC with a decidable failure - read the tail above; that is a real result rather than the stall, and it names its own step"
+            exit 1
+          fi
+          echo "::notice title=Wedge PASSED on Linux::the file exited 0 here, so this head does not carry the stall - the confirmation needs a head that does"

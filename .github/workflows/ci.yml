@@ -498,6 +498,20 @@ jobs:
           # download, `7z` and `zsyncmake` are exercised by the Linux build
           # job's own steps in publish.yml.
           node --test scripts/appimage-update-info.test.mjs
+          # The harness contract behind the in-file bound in
+          # `scripts/child-reader-foot-react.test.mjs`: a step that never returns
+          # is rejected by name within the bound, a step that settles leaves no
+          # timer behind, and a step that throws synchronously throws where it
+          # always did.
+          #
+          # IT RUNS HERE RATHER THAN IN `test:desktop`, and the reason is durable
+          # rather than this diff's arithmetic: `test:desktop` is a hand-kept
+          # inventory that DEALS the shards by sorted position, so adding one file
+          # there re-deals every file after it - which is how a single Linux-only
+          # stall took the whole repository red on 2026-10-31. A harness contract
+          # that needs no app fixture and no shard slot belongs in a step that runs
+          # it on every pull request instead.
+          node --test scripts/bundle-step-bound.test.mjs
           node --test scripts/release-baseline.test.mjs scripts/release-candidate.test.mjs scripts/entry-point.test.mjs scripts/require-report.test.mjs
           # The attach path's recovery branches, against a local stub upload endpoint: a
           # stalled attempt retried, a `starter` record repaired, a same-size asset
@@ -906,102 +920,6 @@ jobs:
             exit 1
           fi
           echo "Working tree clean after the desktop suite."
-
-  # THE LINUX-ONLY CONFIRMATION, dispatchable by hand and by nothing else.
-  #
-  # WHY IT EXISTS. `scripts/child-reader-foot-react.test.mjs` stalls the whole
-  # `Desktop Tests` shard on the Linux runners - 616 passing subtests, no failure,
-  # no summary, cancelled at the job's 50-minute cap (run 41248028640 job
-  # 124562057434; the same signature on runs 41274378090, 41277981038 and
-  # 41286247024) - and it does NOT reproduce on a developer's macOS host: 6-8 s and
-  # exit 0 on Node 24.22.1 and 22.18.0, both directly and through
-  # `scripts/run-desktop-tests.mjs`. A trigger that only exists on one platform
-  # cannot be confirmed from a laptop, so this job runs THAT ONE FILE on the same
-  # Ubuntu image, Node and pnpm as the shard job, and prints the verdict plus the
-  # log tail - the two readings that tell "passes there too" from "reproduced".
-  #
-  # WHY `workflow_dispatch` ONLY. It is diagnostic, so it must never join the
-  # matrix a pull request pays for: on `push` and `pull_request` this job does not
-  # run at all. It also cannot delay a normal PR run - the workflow-level
-  # concurrency group keys on `github.ref`, and a dispatch run's ref is
-  # `refs/heads/<branch>` while every PR run's is `refs/pull/<n>/merge`, so the two
-  # never share a group; `cancel-in-progress` is false for anything that is not a
-  # `push` or a `pull_request` synchronize.
-  #
-  # IT RUNS THE FILE DIRECTLY, not `pnpm test:desktop` and not the shard wrapper,
-  # because the question is one file's behaviour and nothing else: a shard inventory
-  # would re-deal every other lane into the answer. `scripts/desktop-test-shards.mjs`
-  # stays the ONLY execution path for the suite itself, which is what
-  # `desktop-test-shards.test.mjs` pins.
-  desktop-wedge-confirm:
-    name: Desktop wedge confirmation (one file, dispatch only)
-    if: github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
-    # Above the step's own ceiling so the scan below still runs when the file
-    # wedges: a job cancelled at its own `timeout-minutes` runs no further steps,
-    # which is exactly how the shard job lost its log scan on four heads.
-    timeout-minutes: 15
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      # The same two pins the shard job uses, so a green here is evidence about
-      # THAT environment rather than about an approximation of it.
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: '10.29.2'
-
-      - name: Setup Node.js 22
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: 'pnpm'
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      # ONE file, its own ceiling, and the log kept either way. `timeout-minutes`
-      # on the step is what turns "still hanging" into "the step was killed", which
-      # the scan below reads as the wedge reproducing.
-      - name: Run the one file
-        id: wedge
-        timeout-minutes: 10
-        run: |
-          set -o pipefail
-          WEDGE_LOG="$RUNNER_TEMP/wedge.log"
-          WEDGE_RC=0
-          node --test scripts/child-reader-foot-react.test.mjs 2>&1 | tee "$WEDGE_LOG" || WEDGE_RC=$?
-          printf 'rc=%s\n' "$WEDGE_RC" | tee -a "$WEDGE_LOG"
-          printf 'WEDGE_RC=%s\n' "$WEDGE_RC" >> "$GITHUB_OUTPUT"
-          exit "$WEDGE_RC"
-
-      # THE VERDICT IS THIS STEP, not the one above: a step killed by its ceiling
-      # has no `rc=` line, and that ABSENCE is the reproduction. Everything printed
-      # here is an annotation as well, because a `gh run view --log` reader never
-      # reaches the end of a job log and only annotations cross that cut.
-      - name: Name the outcome as pass, wedge or failure
-        if: always()
-        run: |
-          WEDGE_LOG="$RUNNER_TEMP/wedge.log"
-          WEDGE_RC=$(grep -oE 'rc=[0-9]+' "$WEDGE_LOG" 2>/dev/null | tail -1 | cut -d= -f2 || true)
-          if [ ! -f "$WEDGE_LOG" ]; then
-            echo "::error title=Wedge confirmation did not run::no log at $WEDGE_LOG - the run never reached the file"
-            exit 1
-          fi
-          echo "--- counts, if the file reported any ---"
-          grep -E '^# (tests|pass|fail|cancelled) ' "$WEDGE_LOG" || echo '(no TAP summary: the file never finished)'
-          echo "--- last 60 lines ---"
-          tail -n 60 "$WEDGE_LOG"
-          if [ -z "$WEDGE_RC" ]; then
-            echo "::error title=Wedge REPRODUCED on Linux::the file did not finish inside the step's 10-minute ceiling and wrote no summary, so the Linux-only stall is confirmed on this head - the in-file bounds and the suite-child bound are what has to stop it"
-            exit 1
-          fi
-          if [ "$WEDGE_RC" != "0" ]; then
-            echo "::error title=Wedge FAILED (not a hang)::the file exited $WEDGE_RC with a decidable failure - read the tail above; that is a real result rather than the stall, and it names its own step"
-            exit 1
-          fi
-          echo "::notice title=Wedge PASSED on Linux::the file exited 0 here, so this head does not carry the stall - the confirmation needs a head that does"
 
   # Keep the required check's display name stable while workers gain a matrix.
   # A matrix aggregate status alone cannot prove every file ran: four exact,

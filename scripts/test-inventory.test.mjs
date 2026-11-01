@@ -43,6 +43,8 @@ const EXEMPT = {
 		"the release-contracts step in ci.yml, its own node --test invocation: it is a contract over .github/workflows rather than over the app, and it reads them with electron-builder's js-yaml the way test-publish-workflow.mjs does.",
 	"scripts/appimage-update-info.test.mjs":
 		"the release-contracts step in ci.yml, its own node --test invocation: the ELF64 `.upd_info` patch/readback, the `.zsync` header checks and the `latest-linux.yml` entry check, over synthetic fixtures. The real download, `7z` and `zsyncmake` run in the linux build job itself, which no local suite can stand up.",
+	"scripts/bundle-step-bound.test.mjs":
+		"the release-contracts step in ci.yml, its own node --test invocation: the bound `scripts/child-reader-foot-react.test.mjs` puts around its esbuild build and its dynamic import, asserted on the helper alone. It is kept out of `test:desktop` deliberately - that list is dealt into shards by sorted position, so one added file re-deals every file after it, which is the mechanism that spread a Linux-only stall across a shard.",
 	"scripts/window-guards-electron.test.mjs":
 		"`pnpm test:window-guards` - boots the REAL Electron (hidden window, own userData) against a hostile document; like the session-cookie suite it needs a display, so no CI step runs it.",
 	"scripts/window-glass-cdp.test.mjs":

@@ -456,12 +456,6 @@ export const UNGATED_JOBS = {
 		"event condition here would collaterally skip the whole workflow on a push " +
 		"to `main` (D7). The event-conditional behaviour lives inside this module, " +
 		"which returns every flag true for anything that is not a `pull_request`.",
-	"desktop-wedge-confirm":
-		"dispatch-only diagnostic, and deliberately outside the matrix: it runs ONE " +
-		"file on Linux to confirm a stall that does not reproduce on macOS. Gating it " +
-		"on a scope flag would make it a job every matching pull request pays for, " +
-		"which is the opposite of why it exists, and its own `if:` narrows it to " +
-		"`workflow_dispatch` so no push or pull request can reach it.",
 };
 
 /**
@@ -529,6 +523,7 @@ export const JOB_COMMANDS = {
 		"node scripts/test-validate-release.mjs",
 		"node --test scripts/test-release-safety.mjs scripts/test-publish-workflow.mjs scripts/test-version-bump-guard.mjs scripts/ci-scope.test.mjs",
 		"node --test scripts/appimage-update-info.test.mjs",
+		"node --test scripts/bundle-step-bound.test.mjs",
 		"node --test scripts/release-baseline.test.mjs scripts/release-candidate.test.mjs scripts/entry-point.test.mjs scripts/require-report.test.mjs",
 		'bash scripts/require-report.sh "Build environment contracts" node scripts/check-build-env.mjs',
 	],
