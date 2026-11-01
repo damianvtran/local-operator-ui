@@ -658,14 +658,18 @@ for (const operation of ["refetch", "post-send invalidation", "poll"]) {
 		if (operation === "poll") t.mock.timers.enable({ apis: ["setInterval"] });
 		let latest = 10000;
 		let mayEvict = true;
-		const h = await mount(generic(async (_mode, cursor) => page((cursor ?? latest + 1) - 50), {
-			canEvict: () => mayEvict,
-			poll: operation === "poll",
-		}));
+		const h = await mount(
+			generic(async (_mode, cursor) => page((cursor ?? latest + 1) - 50), {
+				canEvict: () => mayEvict,
+				poll: operation === "poll",
+			}),
+		);
 		try {
 			await until(() => h.query.isSuccess);
 			for (let i = 0; i < 5; i++) {
-				await act(async () => { await h.query.fetchNextPage(); });
+				await act(async () => {
+					await h.query.fetchNextPage();
+				});
 				await until(() => !h.query.isFetching);
 			}
 			assert.equal(h.query.data.pages.length, 6);
@@ -674,7 +678,8 @@ for (const operation of ["refetch", "post-send invalidation", "poll"]) {
 			latest = 10001;
 			await act(async () => {
 				if (operation === "poll") t.mock.timers.tick(8000);
-				else if (operation === "post-send invalidation") await h.client.invalidateQueries({ queryKey: key });
+				else if (operation === "post-send invalidation")
+					await h.client.invalidateQueries({ queryKey: key });
 				else await h.query.refetch();
 			});
 			await until(() => h.query.replies.at(-1)?.seq === 10001);
@@ -685,7 +690,9 @@ for (const operation of ["refetch", "post-send invalidation", "poll"]) {
 			// for an ordinary refresh to admit the next arrival either.
 			mayEvict = true;
 			latest = 10002;
-			await act(async () => { await h.query.refetch(); });
+			await act(async () => {
+				await h.query.refetch();
+			});
 			await until(() => h.query.replies.at(-1)?.seq === 10002);
 		} finally {
 			await h.close();
@@ -706,7 +713,9 @@ test("conflicting IDs inside the initial page are refused before private cache a
 		assert.equal(h.query.replies.length, 0);
 		assert.equal(h.client.getQueryData([...key, "desc"]), undefined);
 		response = page(9951);
-		await act(async () => { await h.query.refetch(); });
+		await act(async () => {
+			await h.query.refetch();
+		});
 		await until(() => h.query.isSuccess);
 		assert.equal(h.query.replies.length, 50);
 		assert.equal(h.query.data.pages[0].replies.length, 50);
