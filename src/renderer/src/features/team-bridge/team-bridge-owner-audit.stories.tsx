@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react";
+import { useEffect, useRef, useState } from "react";
 import type { TeamBridgeDirectoryMember } from "../../../../shared/team-bridge-contract";
 import type {
 	OwnerAuditConversation,
@@ -318,6 +319,10 @@ function Section({
 	hasMore,
 	people: directory,
 	panelState,
+	loadMore,
+	loadingMore,
+	onRefresh,
+	latestPageAvailable,
 }: {
 	state: State;
 	conversations: OwnerAuditConversation[];
@@ -331,6 +336,10 @@ function Section({
 	people?: TeamBridgeDirectoryMember[];
 	/** The panel's own read, separate from the rail's. */
 	panelState?: State;
+	loadMore?: () => void;
+	loadingMore?: boolean;
+	onRefresh?: () => void;
+	latestPageAvailable?: boolean;
 }) {
 	const noop = () => {};
 	return (
@@ -365,8 +374,11 @@ function Section({
 						conversation={selected}
 						messages={rows}
 						state={panelState ?? state}
-						retry={noop}
+						retry={onRefresh ?? noop}
 						hasMore={hasMore}
+						loadMore={loadMore}
+						loadingMore={loadingMore}
+						latestPageAvailable={latestPageAvailable}
 						readerAccountId={readerAccountId}
 						people={directory}
 					/>
@@ -396,6 +408,22 @@ type Story = StoryObj<typeof meta>;
 /** The ordinary case: verdicts, a rejection read inline under its chip, an
  * absent body, and the agent's own message. */
 export const Populated: Story = {};
+
+/** One bounded newest page, not a fetched full history. Large sequence values
+ * make the distinction visible: the first row is older within the latest page,
+ * while opening must anchor its newest row without asking for older pages. */
+export const LatestPageLongHistory: Story = {
+	args: {
+		hasMore: true,
+		messages: Array.from({ length: 50 }, (_, index) => ({
+			...messages[0],
+			id: `bmsg_history_${9951 + index}`,
+			seq: 9951 + index,
+			body: `History fixture message ${9951 + index}. The newest bounded page opens at its end, not at its oldest row.`,
+			agent_delivery_status: "admitted" as const,
+		})),
+	},
+};
 
 /** Nothing to audit in this organization yet — and therefore no panel: the slot
  * only opens one for a row the reader has selected. */
@@ -473,4 +501,197 @@ export const PermissionRefused: Story = {
 export const NotFound: Story = { args: { state: "not-found", messages: [] } };
 export const ServerUnavailable: Story = {
 	args: { state: "unavailable", messages: [] },
+};
+
+/* Browser-only measurement surface. Controls change props of the SHIPPED panel;
+ * counters are fixture operations, NOT backend HTTP evidence (the real HTTP
+ * pagination regression is in team-bridge-history-anchor.test.mjs). Geometry is
+ * read from the rendered DOM, never supplied as expected numbers. */
+function HistoryAnchorExercise() {
+	const makePage = (last: number) =>
+		Array.from({ length: 50 }, (_, index) => ({
+			...messages[0],
+			id: `bmsg_history_${last - 49 + index}`,
+			seq: last - 49 + index,
+			body: `History fixture message ${last - 49 + index}. Bounded chronological page.`,
+			attachments: [],
+			attachment_count: 0,
+			agent_delivery_status: "admitted" as const,
+		}));
+	const [rows, setRows] = useState(() => makePage(10000));
+	const [conversation, setConversation] = useState(dm);
+	const [state, setState] = useState<State>("ready");
+	const [loadingMore, setLoadingMore] = useState(false);
+	const [geometry, setGeometry] = useState("");
+	const [generation, setGeneration] = useState(1);
+	const rootRef = useRef<HTMLDivElement>(null);
+	const latestAvailable = rows.some((row) => row.seq >= 10000);
+	useEffect(() => {
+		const host = rootRef.current?.querySelector<HTMLElement>(
+			"main .overflow-auto",
+		);
+		if (!host) return;
+		const measure = () => {
+			const box = host.getBoundingClientRect();
+			const visible = [
+				...host.querySelectorAll<HTMLElement>("[data-message-id]"),
+			].filter((node) => {
+				const r = node.getBoundingClientRect();
+				return r.bottom > box.top && r.top < box.bottom;
+			});
+			const first = visible[0];
+			const text = JSON.stringify({
+				generation,
+				state,
+				rows: rows.length,
+				scrollTop: Math.round(host.scrollTop * 100) / 100,
+				scrollHeight: host.scrollHeight,
+				clientHeight: host.clientHeight,
+				firstVisible: first?.dataset.messageId ?? null,
+				offset: first
+					? Math.round((first.getBoundingClientRect().top - box.top) * 100) /
+						100
+					: null,
+				lastVisible: visible.at(-1)?.dataset.messageId ?? null,
+				latestAvailable,
+			});
+			setGeometry((old) => (old === text ? old : text));
+		};
+		const observer = new ResizeObserver(measure);
+		observer.observe(host);
+		if (host.firstElementChild) observer.observe(host.firstElementChild);
+		host.addEventListener("scroll", measure, { passive: true });
+		measure();
+		return () => {
+			observer.disconnect();
+			host.removeEventListener("scroll", measure);
+		};
+	}, [rows, generation, latestAvailable, state]);
+	const latest = () => {
+		setState("loading");
+		setTimeout(() => {
+			setRows(makePage(10000));
+			setState("ready");
+		}, 200);
+	};
+	return (
+		<div ref={rootRef}>
+			<Section
+				state="ready"
+				conversations={[channel, conversation]}
+				selected={conversation}
+				messages={rows}
+				readerAccountId={OWNER}
+				people={people}
+				panelState={state}
+				hasMore
+				loadingMore={loadingMore}
+				latestPageAvailable={latestAvailable}
+				onRefresh={latest}
+				loadMore={() => {
+					if (loadingMore) return;
+					setLoadingMore(true);
+					const first = rows[0]?.seq ?? 9951;
+					setTimeout(() => {
+						setRows((old) => [...makePage(first - 1), ...old].slice(0, 300));
+						setLoadingMore(false);
+					}, 200);
+				}}
+			/>
+			<div className="fixed bottom-0 left-0 z-50 max-w-[290px] bg-canvas text-ink">
+				<button
+					type="button"
+					onClick={() => {
+						const host = rootRef.current?.querySelector<HTMLElement>(
+							"main .overflow-auto",
+						);
+						if (host) host.scrollTop -= 300;
+					}}
+				>
+					Fixture up
+				</button>{" "}
+				<button
+					type="button"
+					onClick={() => {
+						const host = rootRef.current?.querySelector<HTMLElement>(
+							"main .overflow-auto",
+						);
+						if (host) host.scrollTop = 0;
+					}}
+				>
+					Fixture top
+				</button>{" "}
+				<button
+					type="button"
+					onClick={() =>
+						setRows((old) => {
+							const last = old.at(-1);
+							return latestAvailable && last
+								? [
+										...old,
+										{
+											...last,
+											id: `bmsg_history_${last.seq + 1}`,
+											seq: last.seq + 1,
+											body: "Incoming fixture message",
+										},
+									]
+								: old;
+						})
+					}
+				>
+					Fixture incoming
+				</button>{" "}
+				<button
+					type="button"
+					onClick={() =>
+						setRows((old) =>
+							old.map((row, index) =>
+								index === 0
+									? {
+											...row,
+											body: `${row.body}\n\n${"Dynamic fixture height.\n\n".repeat(15)}`,
+										}
+									: row,
+							),
+						)
+					}
+				>
+					Fixture reflow
+				</button>{" "}
+				<button type="button" onClick={latest}>
+					Fixture reopen
+				</button>{" "}
+				<button
+					type="button"
+					onClick={() => {
+						setGeneration((value) => value + 1);
+						setConversation({
+							...dm,
+							tenant_id: "org_other",
+							id: "bconv_other",
+						});
+						setRows(
+							makePage(10000).map((row) => ({
+								...row,
+								id: `other_${row.id}`,
+								conversation_id: "bconv_other",
+							})),
+						);
+					}}
+				>
+					Fixture org switch
+				</button>{" "}
+				<button type="button" onClick={() => setState("error")}>
+					Fixture error
+				</button>
+				<output data-history-geometry className="block break-all text-[10px]">
+					{geometry}
+				</output>
+			</div>
+		</div>
+	);
+}
+export const HistoryAnchorExerciseStates: Story = {
+	render: () => <HistoryAnchorExercise />,
 };
