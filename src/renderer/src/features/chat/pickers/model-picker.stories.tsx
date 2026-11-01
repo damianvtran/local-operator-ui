@@ -817,7 +817,8 @@ export const KeyboardHighlight: Story = {
 const UnconfirmedModelFrame: FC<{
 	disconnected?: boolean;
 	readFails?: boolean;
-}> = ({ disconnected = false, readFails = false }) => {
+	committed?: boolean;
+}> = ({ disconnected = false, readFails = false, committed = true }) => {
 	const authoritative = useRef(CURRENT);
 	const [selected, setSelected] = useState(CURRENT);
 	const [notes, setNotes] = useState<string[]>([]);
@@ -834,7 +835,7 @@ const UnconfirmedModelFrame: FC<{
 				return catalogueOnly(catalogue())(request);
 			if (request.op === "sessions.command") {
 				mutations.current += 1;
-				if (!disconnected) {
+				if (!disconnected && committed) {
 					const value = request.args ?? "";
 					const slash = value.indexOf("/");
 					const model = {
@@ -875,7 +876,7 @@ const UnconfirmedModelFrame: FC<{
 			}
 			return undefined;
 		},
-		[disconnected, readFails],
+		[disconnected, readFails, committed],
 	);
 	return (
 		<>
@@ -919,6 +920,24 @@ export const AckTimeoutIndeterminate: Story = {
 		const text = screen.getByTestId("model-command-note").textContent ?? "";
 		expect(text).toContain("The request could not be confirmed.");
 		expect(text).not.toMatch(/not changed|did not run|Reconnect/);
+	},
+};
+
+export const AckTimeoutNotApplied: Story = {
+	render: () => <UnconfirmedModelFrame committed={false} />,
+	play: async () => {
+		await pickRow(/Anthropic: Claude Haiku 4\.5/);
+		await waitFor(() =>
+			expect(screen.getByTestId("model-operation-counts").textContent).toBe(
+				"mutations=1; snapshot reads=1",
+			),
+		);
+		expect(screen.getByTestId("authoritative-model").textContent).toBe(
+			CURRENT_SELECTOR,
+		);
+		expect(screen.getByTestId("model-command-note").textContent).toBe(
+			"The request could not be confirmed.",
+		);
 	},
 };
 
