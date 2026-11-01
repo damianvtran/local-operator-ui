@@ -144,6 +144,7 @@ import {
 	domainScopeAvailable,
 } from "./vendor/driver/origin-policy";
 import { PSL_RULES } from "./vendor/driver/psl.gen";
+import { setBrowserViewPresented } from "./view-presentation";
 
 /**
  * The browser host: wiring, lifecycle, and the per-view security handlers.
@@ -1105,6 +1106,13 @@ async function initializeBrowserHost(
 				addressOverlay?.onLayout(snapshot);
 				approvalsOverlay?.onLayout(snapshot);
 			},
+			(view, presented) => {
+				setBrowserViewPresented(
+					options.window.contentView,
+					view as unknown as WebContentsView,
+					presented,
+				);
+			},
 		);
 		registryForDownloads = registry;
 		rollback.add(async () => {
@@ -1792,6 +1800,10 @@ async function initializeBrowserHost(
 			// tab occupies the content rect, so a tab created in the background paints
 			// nothing over the app's own UI while it loads.
 			view.setVisible(false);
+			// Size while attached FIRST, preserving the background viewport. Hiding
+			// alone still lets a navigation commit take native input from any UI
+			// field; only an explicitly presented page belongs in this window.
+			setBrowserViewPresented(window.contentView, view, false);
 			return view;
 		}
 

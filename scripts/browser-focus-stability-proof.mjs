@@ -238,10 +238,6 @@ try {
 			c.debugger.attach=(...args)=>{point('before-debugger-attach',c);const result=attach(...args);point('after-debugger-attach',c);return result;};
 			const send=c.debugger.sendCommand.bind(c.debugger);
 			c.debugger.sendCommand=(...args)=>{
-				if(globalThis.__focusProof.disableFocusEmulation && args[0]==='Emulation.setFocusEmulationEnabled') {
-					args[1]={...args[1],enabled:false};
-					point('CONTROL-disable-focus-emulation',c);
-				}
 				point('before-cdp:'+args[0],c);
 				return send(...args).then(result=>{point('after-cdp:'+args[0],c);return result;},error=>{point('error-cdp:'+args[0],c);throw error;});
 			};
@@ -261,12 +257,6 @@ try {
 					const original=v[name].bind(v);
 					v[name]=(...values)=>{
 						const r=original(...values);point(name+':'+JSON.stringify(values),v.webContents);
-						if(globalThis.__focusProof.detachBackground && name==='setVisible' && values[0]===false && (!globalThis.__focusProof.detachTarget || globalThis.__focusProof.detachTarget===v.webContents.id)) {
-							globalThis.__focusProof.detachTarget=v.webContents.id;
-							globalThis.__focusProof.detachedView=v;
-							if(w.contentView.children.includes(v)) w.contentView.removeChildView(v);
-							point('CONTROL-detached-after-size',v.webContents);
-						}
 						return r;
 					};
 				}
@@ -284,7 +274,6 @@ try {
 				globalThis.__focusProof.ciActivationUsed=true;
 			}
 		}
-		w.webContents.focus();
 		return true;
 	})()`,
 	);
@@ -324,7 +313,7 @@ try {
 		const readCaret = () =>
 			evaluate(
 				owner,
-				"({id:document.activeElement?.id,value:document.activeElement?.value,start:document.activeElement?.selectionStart,end:document.activeElement?.selectionEnd})",
+				"({id:document.activeElement?.id,value:document.activeElement?.value,start:document.activeElement?.selectionStart,end:document.activeElement?.selectionEnd,same:document.activeElement===globalThis.__focusAcceptanceField,connected:globalThis.__focusAcceptanceField?.isConnected})",
 			);
 		const before = await readCaret();
 		let permissionError = null;
@@ -352,7 +341,9 @@ try {
 			deliveredToShell:
 				permissionError === null &&
 				after.value === expected &&
-				after.id === before.id,
+				after.id === before.id &&
+				after.same === true &&
+				after.connected === true,
 		};
 		facts.osKeys ??= [];
 		facts.osKeys.push(result);
@@ -382,309 +373,280 @@ try {
 		assert.equal(result.ok, true, `${method}: ${JSON.stringify(result)}`);
 		return result.result;
 	};
-	await evaluate(owner, `location.hash='#/browser'`);
-	await until(
-		() =>
-			evaluate(
-				owner,
-				`!!document.querySelector('[data-tour-tag="browser-tab-strip"]') && !!window.api?.browser`,
-			),
-		"browser route",
-	);
 	await new Promise((done) => server.listen(0, "127.0.0.1", done));
 	const url = `http://127.0.0.1:${server.address().port}/`;
 	const access = await rpc("request_access", {
 		url,
 		requester: "session:focus-proof",
 	});
-	if (access.state !== "allowed") {
+	if (access.state !== "allowed")
 		await evaluate(
 			owner,
-			`(async () => { const s=await window.api.browser.state(); const e=s.pendingConsent.find(e=>e.origin===${JSON.stringify(new URL(url).origin)}); if(!e) throw Error('missing consent'); await window.api.browser.respondToConsent(e.entryId,'site'); return true; })()`,
+			`(async()=>{const s=await window.api.browser.state();const e=s.pendingConsent.find(e=>e.origin===${JSON.stringify(new URL(url).origin)});if(!e)throw Error('missing consent');await window.api.browser.respondToConsent(e.entryId,'site');return true;})()`,
 		);
-	}
-	// Establish an intentional presented page, then later create a second tab via
-	// the AGENT RPC while an unrelated UI input holds the caret.
-	await evaluate(
-		owner,
-		`(async () => { await window.api.browser.newTab(null); const s=await window.api.browser.state(); await window.api.browser.navigate(${JSON.stringify(url)},s.activeTabId); return true; })()`,
+	assert.equal(
+		nativeCi,
+		true,
+		"final acceptance requires explicitly authorized disposable macOS CI",
 	);
-	await target(renderPort, (t) => t.url === url);
-	// The address row is a real product input. Opening it exercises the native
-	// overlay lifecycle before repeated no-op layout passes, the known RED seam.
-	await evaluate(
-		owner,
-		`document.querySelector('[data-tour-tag="browser-address"]')?.focus()`,
-	);
-	await sleep(600);
-	await sample("address-open");
-	// Focus the renderer's real command palette with its keyboard shortcut.
-	await owner("Input.dispatchKeyEvent", {
-		type: "keyDown",
-		key: "k",
-		code: "KeyK",
-		modifiers: 4,
-	});
-	await owner("Input.dispatchKeyEvent", {
-		type: "keyUp",
-		key: "k",
-		code: "KeyK",
-		modifiers: 4,
-	});
-	await sleep(300);
-	await sample("palette-before-background");
-	if (nativeCi) {
-		// Simulate the user's deliberate return to the shell input after opening
-		// the palette. Hiding a previously focused native page can leave Electron's
-		// focused-WebContents getter null even while the palette has a DOM caret.
-		// This is SETUP ONLY: never restore native focus during background actions.
-		await evaluate(
+	const os = (body) =>
+		execFileSync(
+			"/usr/bin/osascript",
+			["-e", `tell application "System Events" to ${body}`],
+			{ encoding: "utf8", timeout: 5000 },
+		);
+	const visiblePoint = async (selector) =>
+		evaluate(
+			owner,
+			`(() => {const el=[...document.querySelectorAll(${JSON.stringify(selector)})].find(e=>{const r=e.getBoundingClientRect();return r.width>0&&r.height>0;});if(!el)return null;el.scrollIntoView({block:'nearest'});const r=el.getBoundingClientRect();return {x:r.x+r.width/2,y:r.y+r.height/2};})()`,
+		);
+	const clickShell = async (selector) => {
+		const point = await until(
+			() => visiblePoint(selector),
+			`visible ${selector}`,
+		);
+		const bounds = await evaluate(
 			main,
-			"process.mainModule.require('electron').BrowserWindow.getAllWindows()[0].webContents.focus(); true",
+			"process.mainModule.require('electron').BrowserWindow.getAllWindows()[0].getContentBounds()",
+		);
+		os(
+			`click at {${Math.round(bounds.x + point.x)},${Math.round(bounds.y + point.y)}}`,
+		);
+		await sleep(200);
+	};
+	const navigate = async (route) => {
+		if ((await evaluate(owner, "location.hash")) === `#/${route}`) return;
+		const selector = `[data-tour-tag="nav-item-${route}"]`;
+		if (!(await visiblePoint(selector)))
+			await clickShell('[data-tour-tag="nav-item-more"]');
+		await clickShell(selector);
+		await until(
+			() => evaluate(owner, `location.hash===${JSON.stringify(`#/${route}`)}`),
+			`user navigation ${route}`,
+		);
+	};
+	const caret = () =>
+		evaluate(
+			owner,
+			"({same:document.activeElement===globalThis.__focusAcceptanceField,connected:globalThis.__focusAcceptanceField?.isConnected,value:document.activeElement?.value,start:document.activeElement?.selectionStart,end:document.activeElement?.selectionEnd})",
+		);
+	const fieldCase = async (name, selector) => {
+		await clickShell(selector);
+		await evaluate(
+			owner,
+			`globalThis.__focusAcceptanceField=document.querySelector(${JSON.stringify(selector)});true`,
+		);
+		os('keystroke "a" using {command down}');
+		os('keystroke "focusproof"');
+		await sleep(200);
+		await evaluate(
+			owner,
+			"globalThis.__focusAcceptanceField.setSelectionRange(2,6);true",
+		);
+		const positive = await osKey(`${name}-positive-baseline`);
+		assert.equal(
+			positive.deliveredToShell,
+			true,
+			`actual OS key baseline failed: ${JSON.stringify(positive)}`,
 		);
 		await evaluate(
 			owner,
-			"document.querySelector('#command-palette-input').focus(); true",
+			"globalThis.__focusAcceptanceField.setSelectionRange(2,6);true",
 		);
-	}
-	await owner("Input.insertText", { text: "focusproof" });
-	await evaluate(
-		owner,
-		"document.querySelector('#command-palette-input').setSelectionRange(2,6); true",
-	);
-	await sleep(1000);
-	const osBaseline = await osKey("positive-baseline");
-	if (nativeCi)
-		assert.equal(
-			osBaseline.deliveredToShell,
-			true,
-			`BLOCKED_OS_KEY_INSTRUMENT: ${JSON.stringify(osBaseline)}`,
-		);
-	await evaluate(
-		owner,
-		"document.querySelector('#command-palette-input').setSelectionRange(2,6);true",
-	);
-	const negativeControl = await sample("no-background-negative-control");
-	if (nativeCi) {
-		assert.equal(
-			negativeControl.native.windowFocused,
-			true,
-			"negative control must establish native window focus",
-		);
-		assert.equal(
-			negativeControl.native.ownerFocused,
-			true,
-			"negative control must establish native owner focus",
-		);
-		assert.equal(
-			negativeControl.native.focused,
-			negativeControl.native.ownerId,
-			"native owner getter must agree before dispatch",
-		);
-		assert.match(
-			negativeControl.dom.active ?? "",
-			/command-palette-input/,
-			"real palette input must own the DOM caret",
-		);
-	}
-	await captureShell("attached-before");
-	const backgroundUrl = `${url}?background=1`;
-	const opened = await rpc("open", {
-		url: backgroundUrl,
-		requester: "session:focus-proof",
-	});
-	await sample("agent-open-and-load");
-	await rpc("read", { tab: opened.tab });
-	await sample("background-first-read-attach");
-	await rpc("type", {
-		tab: opened.tab,
-		selector: "#field",
-		text: "background typing",
-	});
-	await sample("background-type");
-	await rpc("click", { tab: opened.tab, selector: "#button" });
-	await sample("background-click");
-	await rpc("screenshot", { tab: opened.tab });
-	await sample("background-screenshot");
-	await rpc("goto", { tab: opened.tab, url: `${backgroundUrl}&navigation=1` });
-	await sample("background-navigation");
-	// Dispatch through Electron's ACTUAL focused-WebContents getter, not a
-	// hardcoded owner target. This proves the native receiver selection, not an
-	// OS/physical keyboard route; no accessibility permission is requested.
-	await captureShell("attached-after");
-	await osKey("after-original-background-actions");
-	facts.routedKey = await evaluate(
-		main,
-		`(() => {const E=process.mainModule.require('electron');const c=E.webContents.getFocusedWebContents();if(c)c.sendInputEvent({type:'char',keyCode:'z'});return {receiver:c?.id??null,physicalOsKey:false};})()`,
-	);
-	facts.routedKey.ownerAfter = await evaluate(
-		owner,
-		"({active:document.activeElement?.id,value:document.activeElement?.value,selection:[document.activeElement?.selectionStart,document.activeElement?.selectionEnd]})",
-	);
-	await rpc("close", { tab: opened.tab });
-	if (nativeCi) {
-		// Independent hypothesis trial on the SAME app: the only variable for the
-		// fresh background target is focus emulation. Establish its owner once,
-		// before dispatch, never as a reaction to the background page's events.
-		await evaluate(
-			main,
-			"globalThis.__focusProof.disableFocusEmulation=true; process.mainModule.require('electron').BrowserWindow.getAllWindows()[0].webContents.focus(); true",
-		);
-		const controlBefore = await sample("control-no-emulation-baseline");
-		assert.equal(controlBefore.native.ownerFocused, true);
-		const controlTab = await rpc("open", {
-			url: `${url}?no-emulation=1`,
-			requester: "session:focus-proof",
-		});
-		const controlAfter = await sample("control-no-emulation-open");
-		facts.noEmulationControl = {
-			beforeOwner: controlBefore.native.ownerFocused,
-			afterOwner: controlAfter.native.ownerFocused,
-			focused: controlAfter.native.focused,
-		};
-		await rpc("close", { tab: controlTab.tab });
-		await evaluate(
-			main,
-			"globalThis.__focusProof.disableFocusEmulation=false; globalThis.__focusProof.detachBackground=true; process.mainModule.require('electron').BrowserWindow.getAllWindows()[0].webContents.focus(); true",
-		);
-		const detachedOsBaseline = await osKey("detached-positive-baseline");
-		assert.equal(
-			detachedOsBaseline.deliveredToShell,
-			true,
-			`BLOCKED_DETACHED_OS_BASELINE: ${JSON.stringify(detachedOsBaseline)}`,
-		);
-		const detachedBefore = await sample("control-detached-baseline");
-		await captureShell("detached-before");
-		assert.equal(detachedBefore.native.ownerFocused, true);
-		const detachedTab = await rpc("open", {
-			url: `${url}?detached=1`,
-			requester: "session:focus-proof",
-		});
-		const detachedAfter = await sample("control-detached-open");
-		facts.detachedControl = {
-			beforeOwner: detachedBefore.native.ownerFocused,
-			afterOwner: detachedAfter.native.ownerFocused,
-		};
-		const geometry = () =>
-			evaluate(
-				main,
-				`(async()=>{const c=process.mainModule.require('electron').webContents.fromId(globalThis.__focusProof.detachTarget);return await c.executeJavaScript('({width:innerWidth,height:innerHeight,hits:document.elementsFromPoint(10,10).map(e=>e.id),value:document.querySelector("#field").value,clicked:document.body.dataset.clicked})');})()`,
+		const before = await caret();
+		assert.equal(before.same, true);
+		assert.equal(before.connected, true);
+		assert.deepEqual([before.start, before.end], [2, 6]);
+		const baseline = await sample(`${name}-baseline`);
+		assert.equal(baseline.native.ownerFocused, true);
+		await captureShell(`${name}-before`);
+		const check = async (stage) => {
+			const after = await caret();
+			const reading = await sample(`${name}-${stage}`);
+			assert.deepEqual(after, before, `${name} caret changed during ${stage}`);
+			assert.equal(
+				reading.native.ownerFocused,
+				true,
+				`${name} native owner lost during ${stage}`,
 			);
-		facts.detachedControl.geometry = await geometry();
-		assert.equal(facts.detachedControl.geometry.width, 1280);
-		assert.equal(facts.detachedControl.geometry.height, 720);
-		assert.ok(facts.detachedControl.geometry.hits.includes("field"));
-		facts.detachedControl.type = await rpc("type", {
-			tab: detachedTab.tab,
-			selector: "#field",
-			text: "detached typing",
+		};
+		const caseUrl = `${url}?case=${name}`;
+		const opened = await rpc("open", {
+			url: caseUrl,
+			requester: "session:focus-proof",
 		});
-		await rpc("click", { tab: detachedTab.tab, selector: "#button" });
-		facts.detachedControl.interacted = await geometry();
-		assert.equal(facts.detachedControl.interacted.value, "detached typing");
-		assert.equal(facts.detachedControl.interacted.clicked, "yes");
-		const detachedShot = await rpc("screenshot", { tab: detachedTab.tab });
-		const png = Buffer.from(detachedShot.data, "base64");
-		writeFileSync(join(out, "detached-control.png"), png);
+		await check("agent-open");
+		await rpc("read", { tab: opened.tab });
+		await check("read");
+		await rpc("type", {
+			tab: opened.tab,
+			selector: "#field",
+			text: "background typing",
+		});
+		await check("type");
+		await rpc("click", { tab: opened.tab, selector: "#button" });
+		await check("click");
+		const shot = await rpc("screenshot", { tab: opened.tab });
+		await check("capture");
+		const png = Buffer.from(shot.data, "base64");
 		const metadata = await sharp(png).metadata();
 		const stats = await sharp(png).stats();
-		facts.detachedControl.screenshot = {
-			width: metadata.width,
-			height: metadata.height,
-			nonblank: stats.channels.some((c) => c.max > c.min),
-		};
 		assert.equal(metadata.width, 1280);
 		assert.equal(metadata.height, 720);
-		assert.equal(facts.detachedControl.screenshot.nonblank, true);
-		await sample("control-detached-actions");
-		await captureShell("detached-after");
-		const detachedOsAfter = await osKey("after-detached-background-actions");
+		assert.ok(stats.channels.some((c) => c.max > c.min));
+		writeFileSync(join(out, `${name}-background.png`), png);
+		await rpc("goto", { tab: opened.tab, url: `${caseUrl}&nav=1` });
+		await check("navigation");
+		// More real host layout/broadcast churn, without claiming live canonical
+		// session-daemon coverage: that renderer path is unchanged by this fix.
+		for (let tick = 0; tick < 3; tick++) {
+			await rpc("open", { tab: opened.tab, requester: "session:focus-proof" });
+			await check(`broadcast-${tick}`);
+		}
+		await captureShell(`${name}-after`);
+		const actual = await osKey(`${name}-after-background`);
 		assert.equal(
-			detachedOsAfter.deliveredToShell,
+			actual.deliveredToShell,
 			true,
-			`detached boundary did not preserve actual OS key route: ${JSON.stringify(detachedOsAfter)}`,
+			`actual OS key lost after background activity: ${JSON.stringify(actual)}`,
 		);
-		// Explicit user presentation, then route exit: migrate the SAME view, not
-		// a reload/replacement. This is a diagnostic proposed-parenting trial only.
-		await owner("Input.dispatchKeyEvent", {
-			type: "keyDown",
-			key: "Escape",
-			code: "Escape",
-		});
-		await owner("Input.dispatchKeyEvent", {
-			type: "keyUp",
-			key: "Escape",
-			code: "Escape",
-		});
-		await until(
-			() =>
-				evaluate(owner, "!document.querySelector('#command-palette-input')"),
-			"palette closes for intentional presentation",
+		const page = await evaluate(
+			main,
+			`(async()=>{const E=process.mainModule.require('electron');const c=E.webContents.getAllWebContents().find(c=>c.getURL()===${JSON.stringify(`${caseUrl}&nav=1`)});return {id:c.id,geometry:await c.executeJavaScript('({width:innerWidth,height:innerHeight,hits:document.elementsFromPoint(10,10).map(e=>e.id)})')};})()`,
 		);
+		assert.equal(page.geometry.width, 1280);
+		assert.equal(page.geometry.height, 720);
+		assert.ok(page.geometry.hits.includes("field"));
+		facts.cases ??= [];
+		facts.cases.push({
+			name,
+			before,
+			after: actual.after,
+			tabId: Number(opened.tab.split(":")[1]),
+			webContentsId: page.id,
+			geometry: page.geometry,
+			osKeyDelivered: true,
+		});
+		return { opened, page };
+	};
+
+	await navigate("chat");
+	await fieldCase("composer", '[data-tour-tag="chat-input-textarea"] textarea');
+	await clickShell("[data-command-palette-trigger]");
+	await until(() => visiblePoint("#command-palette-input"), "palette open");
+	const paletteCase = await fieldCase("palette", "#command-palette-input");
+	os("key code 53");
+	await until(
+		() => evaluate(owner, "!document.querySelector('#command-palette-input')"),
+		"real Escape closes palette",
+	);
+	const escaped = await sample("palette-escape");
+	assert.equal(escaped.native.ownerFocused, true);
+	assert.equal(
 		await evaluate(
 			owner,
-			`window.api.browser.activateTab(${Number(detachedTab.tab.split(":")[1])})`,
-		);
-		await evaluate(
+			"document.activeElement!==document.body&&document.activeElement?.isConnected",
+		),
+		true,
+		"Escape restores an intentional shell focus owner",
+	);
+	await captureShell("palette-escape");
+	await navigate("settings");
+	await fieldCase("settings-search", 'input[role="combobox"]');
+
+	// Ownership transfer is a real renderer IPC on a still-unpresented page.
+	// Its controls use a synthetic session; no daemon/session state is fabricated.
+	const ownershipBefore = await sample("ownership-before");
+	await evaluate(
+		owner,
+		`window.api.browser.handOver(${Number(paletteCase.opened.tab.split(":")[1])},'session:focus-proof-adopter')`,
+	);
+	const ownershipAfter = await sample("ownership-after");
+	assert.equal(
+		ownershipAfter.native.ownerFocused,
+		ownershipBefore.native.ownerFocused,
+	);
+	const ownershipKey = await osKey("ownership-transfer-key");
+	assert.equal(ownershipKey.deliveredToShell, true);
+
+	await navigate("browser");
+	const tabId = Number(paletteCase.opened.tab.split(":")[1]);
+	await clickShell(`[data-tab-id="${tabId}"] [role="tab"]`);
+	await until(
+		() =>
+			evaluate(
+				main,
+				`process.mainModule.require('electron').BrowserWindow.getAllWindows()[0].contentView.children.some(v=>v.webContents?.id===${paletteCase.page.id}&&v.getVisible())`,
+			),
+		"user presents same view",
+	);
+	const pageCaret = () =>
+		evaluate(
 			main,
-			"const proof=globalThis.__focusProof; const w=process.mainModule.require('electron').BrowserWindow.getAllWindows()[0];w.contentView.addChildView(proof.detachedView);true",
+			`process.mainModule.require('electron').webContents.fromId(${paletteCase.page.id}).executeJavaScript('({value:document.querySelector("#field").value,start:document.querySelector("#field").selectionStart,end:document.querySelector("#field").selectionEnd})')`,
 		);
-		await until(
-			() => evaluate(main, "globalThis.__focusProof.detachedView.getVisible()"),
-			"explicit presentation shows same view",
-		);
-		await sample("control-detached-presented");
-		await evaluate(owner, "location.hash='#/chat'; true");
-		await until(
-			() =>
-				evaluate(
-					main,
-					"!process.mainModule.require('electron').BrowserWindow.getAllWindows()[0].contentView.children.includes(globalThis.__focusProof.detachedView)",
-				),
-			"route exit detaches view",
-		);
-		await evaluate(
-			main,
-			"process.mainModule.require('electron').BrowserWindow.getAllWindows()[0].webContents.focus();true",
-		);
-		await sample("control-detached-route-exit-baseline");
-		await rpc("goto", { tab: detachedTab.tab, url: `${url}?detached=2` });
-		const afterRoute = await sample("control-detached-route-exit-navigation");
-		facts.detachedControl.afterRouteOwner = afterRoute.native.ownerFocused;
-		facts.detachedControl.afterRouteGeometry = await geometry();
-		await rpc("close", { tab: detachedTab.tab });
-	}
-	// Record, don't fabricate success from a dormant instrument. A headless
-	// window may never acquire a native first responder; that is BLOCKED proof,
-	// not a pass for user-visible caret stability.
-	facts.nativeOwnerObserved = facts.samples.some((s) => s.native.ownerFocused);
-	facts.backgroundChanges = facts.samples
-		.filter(
-			(s) =>
-				s.label.startsWith("background-") || s.label === "agent-open-and-load",
-		)
-		.map((s) => ({
-			stage: s.label,
-			nativeOwnerLost: !s.native.ownerFocused,
-			windowLost: !s.native.windowFocused,
-			domOwnerChanged: s.dom.active !== negativeControl.dom.active,
-			valueChanged: s.dom.value !== negativeControl.dom.value,
-			selectionChanged:
-				JSON.stringify(s.dom.selection) !==
-				JSON.stringify(negativeControl.dom.selection),
-		}));
-	facts.verdict = !facts.nativeOwnerObserved
-		? "BLOCKED_NO_NATIVE_OWNER_IN_HEADLESS_WINDOW"
-		: facts.backgroundChanges.some(
-					(s) =>
-						s.nativeOwnerLost ||
-						s.windowLost ||
-						s.domOwnerChanged ||
-						s.valueChanged ||
-						s.selectionChanged,
-				)
-			? "REPRO_FOCUS_OR_CARET_CHANGED_BY_BACKGROUND_ACTIVITY"
-			: "PALETTE_NATIVE_OWNER_PRESERVED_IN_THIS_RUN";
+	const point = await evaluate(
+		main,
+		`(async()=>{const E=process.mainModule.require('electron');const w=E.BrowserWindow.getAllWindows()[0];const v=w.contentView.children.find(v=>v.webContents?.id===${paletteCase.page.id});const r=await v.webContents.executeJavaScript('(()=>{const r=document.querySelector("#field").getBoundingClientRect();return {x:r.x+r.width/2,y:r.y+r.height/2}})()');return {window:w.getContentBounds(),view:v.getBounds(),point:r};})()`,
+	);
+	os(
+		`click at {${Math.round(point.window.x + point.view.x + point.point.x)},${Math.round(point.window.y + point.view.y + point.point.y)}}`,
+	);
+	os('keystroke "human"');
+	await sleep(200);
+	assert.equal(
+		(await pageCaret()).value,
+		"human",
+		"actual OS typing reaches explicitly presented browser page",
+	);
+	await captureShell("intentional-browser-present");
+	await sample("intentional-browser-present");
+	// Switch away and back through actual tab controls; the same page state is
+	// retained, and no inspector addChildView/focus restoration participates.
+	const otherId = facts.cases[0].tabId;
+	await clickShell(`[data-tab-id="${otherId}"] [role="tab"]`);
+	await clickShell(`[data-tab-id="${tabId}"] [role="tab"]`);
+	assert.equal((await pageCaret()).value, "human");
+	await navigate("chat");
+	await until(
+		() =>
+			evaluate(
+				main,
+				`!process.mainModule.require('electron').BrowserWindow.getAllWindows()[0].contentView.children.some(v=>v.webContents?.id===${paletteCase.page.id})`,
+			),
+		"route exit detaches browser page",
+	);
+	await navigate("browser");
+	await clickShell(`[data-tab-id="${tabId}"] [role="tab"]`);
+	await until(
+		() =>
+			evaluate(
+				main,
+				`process.mainModule.require('electron').BrowserWindow.getAllWindows()[0].contentView.children.some(v=>v.webContents?.id===${paletteCase.page.id}&&v.getVisible())`,
+			),
+		"route return presents same native view",
+	);
+	assert.equal(
+		(await pageCaret()).value,
+		"human",
+		"route return preserves same WebContents and document",
+	);
+	await navigate("chat");
+	await fieldCase(
+		"composer-after-route",
+		'[data-tour-tag="chat-input-textarea"] textarea',
+	);
+	facts.intentionalHandoffs = {
+		physicalBrowserTyping: true,
+		sameWebContentsId: paletteCase.page.id,
+		tabSwitchStatePreserved: true,
+		routeReturnStatePreserved: true,
+		modalEscape: true,
+		ownershipTransferWhileUnpresented: true,
+	};
+	facts.nativeCanonicalSessionUpdates =
+		"NOT_EXERCISED: no live daemon; session renderer sources unchanged; component rerender regression supplied separately";
+	facts.verdict = "PASS_SHIPPED_NATIVE_PARENT_BOUNDARY_AND_ACTUAL_OS_KEYS";
 	save("facts.json", facts);
 } catch (error) {
 	facts.failures.push(String(error));

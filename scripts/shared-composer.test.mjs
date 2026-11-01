@@ -255,7 +255,7 @@ window.electron = {
  * 1, MINOR 1).
  */
 const transportOps = [];
-globalThis.fetch = async (url, init) => {
+globalThis.fetch = async (_url, init) => {
 	let request = {};
 	try {
 		request = JSON.parse(init?.body ?? "{}");
@@ -496,6 +496,43 @@ after(async () => {
 /* ------------------------------------------------------------------ */
 /* 1. The mount blocker: no QueryClient provider, no throw              */
 /* ------------------------------------------------------------------ */
+
+test("session metadata rerenders preserve the composer's existing draft caret", async () => {
+	try {
+		const frame = await mount({ autoFocus: false });
+		const field = frame.textarea();
+		assert.ok(field);
+		const setter = Object.getOwnPropertyDescriptor(
+			window.HTMLTextAreaElement.prototype,
+			"value",
+		).set;
+		await act(async () => {
+			setter.call(field, "focusproof");
+			field.dispatchEvent(new window.Event("input", { bubbles: true }));
+		});
+		field.focus();
+		field.setSelectionRange(2, 6);
+		for (let revision = 0; revision < 4; revision++) {
+			await frame.rerender({
+				messages: [],
+				sessionStatus: {
+					frontend: null,
+					servingLocality: revision % 2 ? "remote" : "local",
+				},
+			});
+			assert.equal(
+				frame.textarea(),
+				field,
+				"session metadata cannot replace the input node",
+			);
+			assert.equal(document.activeElement, field);
+			assert.equal(field.value, "focusproof");
+			assert.deepEqual([field.selectionStart, field.selectionEnd], [2, 6]);
+		}
+	} finally {
+		await act(async () => root?.unmount());
+	}
+});
 
 test("the composer mounts in a document with no QueryClient, on the props a standalone host passes", async () => {
 	/*
