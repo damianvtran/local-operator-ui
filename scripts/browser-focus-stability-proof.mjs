@@ -237,6 +237,10 @@ try {
 			c.debugger.attach=(...args)=>{point('before-debugger-attach',c);const result=attach(...args);point('after-debugger-attach',c);return result;};
 			const send=c.debugger.sendCommand.bind(c.debugger);
 			c.debugger.sendCommand=(...args)=>{
+				if(globalThis.__focusProof.disableFocusEmulation && args[0]==='Emulation.setFocusEmulationEnabled') {
+					args[1]={...args[1],enabled:false};
+					point('CONTROL-disable-focus-emulation',c);
+				}
 				point('before-cdp:'+args[0],c);
 				return send(...args).then(result=>{point('after-cdp:'+args[0],c);return result;},error=>{point('error-cdp:'+args[0],c);throw error;});
 			};
@@ -448,6 +452,28 @@ try {
 		"({active:document.activeElement?.id,value:document.activeElement?.value,selection:[document.activeElement?.selectionStart,document.activeElement?.selectionEnd]})",
 	);
 	await rpc("close", { tab: opened.tab });
+	if (nativeCi) {
+		// Independent hypothesis trial on the SAME app: the only variable for the
+		// fresh background target is focus emulation. Establish its owner once,
+		// before dispatch, never as a reaction to the background page's events.
+		await evaluate(
+			main,
+			"globalThis.__focusProof.disableFocusEmulation=true; process.mainModule.require('electron').BrowserWindow.getAllWindows()[0].webContents.focus(); true",
+		);
+		const controlBefore = await sample("control-no-emulation-baseline");
+		assert.equal(controlBefore.native.ownerFocused, true);
+		const controlTab = await rpc("open", {
+			url: `${url}?no-emulation=1`,
+			requester: "session:focus-proof",
+		});
+		const controlAfter = await sample("control-no-emulation-open");
+		facts.noEmulationControl = {
+			beforeOwner: controlBefore.native.ownerFocused,
+			afterOwner: controlAfter.native.ownerFocused,
+			focused: controlAfter.native.focused,
+		};
+		await rpc("close", { tab: controlTab.tab });
+	}
 	// Record, don't fabricate success from a dormant instrument. A headless
 	// window may never acquire a native first responder; that is BLOCKED proof,
 	// not a pass for user-visible caret stability.
