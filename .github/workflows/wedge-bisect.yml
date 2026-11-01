@@ -1,29 +1,29 @@
 # THE SHARD-CONTEXT EXPERIMENT, on a diagnostic branch that carries NOTHING else.
 #
 # WHY THIS EXISTS. `scripts/child-reader-foot-react.test.mjs` stalls the shard on the
-# Linux runners (runs 41274378090, 41277981038, 41286247024, 41248028640 job
-# 124562057434, and 41288401978 where it was the only shard of four that did not
-# finish), and the isolated single-file run PASSED on Ubuntu in 2.6 s
-# (`ok 1 - no absence arm paints the foot line…`, `# pass 1 / # fail 0`,
-# `# duration_ms 2585`, run 41300755410 on this repository's fix branch). So the file
-# does not wedge on its own: the trigger needs SHARD CONTEXT - concurrency 3, the file
-# processes that ran before it in the same job, shared esbuild/cache state, or runner
-# memory pressure.
+# Linux runners, and three earlier slices localised the trigger to accumulated shard
+# context rather than to the file or its neighbours:
 #
-# WHAT IT RUNS. Shard 1's own deal at the base commit, first N files (default 40,
-# `WEDGE_FILES`), at `--test-concurrency=3`, through the repository's own runner so
-# the memory watchdog and the per-lane bound are the real ones. At 05af4b91401 shard 1
-# holds 164 files and the foot file is its index 34 - the 35th - which is exactly the
-# `35 of 164 file processes started` the stalled runs show.
+#   single file, isolated           -> green, `# duration_ms 2585` (run 41300755410)
+#   shard 1, first 40 files, conc 3 → green, 734 tests, 40/40 processes (41301940361)
+#   shard 1, first 80 files, c=3    -> green, 1286 tests, 0 fail       (41302289959)
+#   shard 1, ALL 164 files, conc 3  | WEDGED after ~34m49s, 35 guarding lines, 616
+#                                   subtests, last subtest `the evidence tree's
+#                                   committed JSON declares no key twice` (41303139619)
 #
-# THE SOURCE UNDER TEST IS MAIN'S. This branch is cut from 05af4b91401 and the ONLY
-# commit is this workflow: no product change and no runner change ride along, so a
-# wedge here is the stall as `main` has it, and a finish is evidence that 40 files at
-# concurrency 3 are not enough to reproduce it (widen `WEDGE_FILES`).
+# SO THIS ARM IS DISCRIMINATING, NOT EXPLORATORY. The same 164 files at a lower
+# concurrency, with the slice's whole process tree sampled every 10 s: if a lower
+# concurrency passes, the trigger is concurrency/memory pressure and the fix is more
+# shards rather than anything in the test file; if it still wedges, the RSS series says
+# whether the tree was climbing into the budget, flat, or spiking at the stall.
+#
+# THE SOURCE UNDER TEST IS MAIN'S. This branch is cut from 05af4b91401 and its only
+# commits are this workflow: no product change and no runner change ride along.
 #
 # THE PUSH TRIGGER IS BRANCH-SCOPED AND TEMPORARY. `workflow_dispatch` only registers
 # once a file is on the default branch, so the trigger has to be a push on this
-# diagnostic branch. It cannot fire on `main` or on any pull request.
+# diagnostic branch. It cannot fire on `main` or on any pull request, and it comes off
+# when this experiment concludes.
 name: Wedge shard context (diagnostic)
 
 on:
@@ -37,18 +37,21 @@ concurrency:
 
 jobs:
   shard-context:
-    name: Shard 1's deal, first N files, concurrency 3
+    name: Shard 1, all files, concurrency ${{ vars.WEDGE_CONCURRENCY || '2' }}
     runs-on: ubuntu-latest
-    # Above the step ceiling so the scan below still runs when the run wedges: a job
-    # cancelled at its own `timeout-minutes` runs no further steps.
-    timeout-minutes: 30
+    # Above the step ceiling so the scan and the artifact upload still run when the
+    # run wedges: a job cancelled at its own `timeout-minutes` runs no further steps,
+    # which is how the earlier arms lost their tail.
+    timeout-minutes: 60
     env:
       WEDGE_FILES: "164"
+      WEDGE_CONCURRENCY: "2"
+      # The shard's own memory budget, sampled rather than enforced: this arm runs the
+      # repository's runner, which enforces its own (9.5 GB on a 16 GB runner).
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # The same pins the shard job uses.
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
@@ -66,7 +69,6 @@ jobs:
       # Shard 1's deal, computed from `package.json` with the shard script's own rule
       # (sort, then `i % 4 === 1`), so the inventory is the suite's and not a copy.
       - name: Name the files and the index that matters
-        id: files
         run: |
           node --input-type=module - <<'NODE'
           import { readFileSync, writeFileSync } from 'node:fs';
@@ -76,38 +78,94 @@ jobs:
             .filter((arg) => arg.endsWith('.test.mjs') && !arg.startsWith('-'))
             .sort();
           const shard = list.filter((_, index) => index % 4 === 1);
-          const wanted = Number(process.env.WEDGE_FILES ?? 40);
+          const wanted = Number(process.env.WEDGE_FILES ?? 164);
           const chosen = shard.slice(0, wanted);
           writeFileSync('/tmp/wedge-files.txt', `${chosen.join('\n')}\n`);
           const foot = 'scripts/child-reader-foot-react.test.mjs';
-          console.log(`inventory ${list.length}; shard 1 ${shard.length}; running ${chosen.length}`);
+          console.log(`inventory ${list.length}; shard 1 ${shard.length}; running ${chosen.length} at concurrency ${process.env.WEDGE_CONCURRENCY}`);
           console.log(`the foot file is shard 1 index ${shard.indexOf(foot)} and ${chosen.includes(foot) ? 'IS' : 'is NOT'} in this slice`);
-          console.log(chosen.map((file, index) => `  ${index}: ${file}`).join('\n'));
           NODE
-          echo "files=$(wc -l < /tmp/wedge-files.txt)" >> "$GITHUB_OUTPUT"
 
-      # THE EXPERIMENT. 20 minutes is the ceiling the brief sets: a healthy 40-file
-      # slice at concurrency 3 runs in a few minutes, so a run still going at 20 is the
-      # stall rather than slowness.
-      - name: Run the slice at concurrency 3
+      # THE EXPERIMENT. The suite runs in its OWN session so its whole tree can be
+      # summed by process group, and a sampler records that tree's RSS every 10 s: the
+      # suite child is `detached` inside the runner, so sampling the RUNNER's group
+      # would miss every file process and record almost nothing.
+      - name: Run the slice and sample its process tree
         id: wedge
-        timeout-minutes: 20
+        timeout-minutes: 45
         run: |
           set -o pipefail
           WEDGE_LOG=/tmp/wedge-shard.log
+          RSS_CSV=/tmp/wedge-rss.csv
+          echo "elapsed_s,rss_kb,procs" > "$RSS_CSV"
           WEDGE_RC=0
-          node scripts/run-desktop-tests.mjs --test-concurrency=3 $(tr '\n' ' ' < /tmp/wedge-files.txt) 2>&1 | tee "$WEDGE_LOG" || WEDGE_RC=$?
-          printf 'WEDGE_RC=%s\n' "$WEDGE_RC" | tee -a "$WEDGE_LOG"
+          START=$(date +%s)
 
-      # THE VERDICT AND THE LOCALISATION. `no-hardlink-write: guarding` is printed once
-      # per file PROCESS by the guard preload (the stalled runs emit 163-165 of them for
-      # a full shard), so its count is how many file processes STARTED; the last
-      # completed subtest names the last work that finished. Together they say which
-      # index the run reached and which file never reported.
+          setsid node scripts/run-desktop-tests.mjs --test-concurrency="${WEDGE_CONCURRENCY}" $(tr '\n' ' ' < /tmp/wedge-files.txt) > "$WEDGE_LOG" 2>&1 &
+          SUITE_ROOT=$!
+
+          # The suite child the runner spawns (`detached`), whose group holds the file
+          # processes, plus the runner itself and any descendant outside the group.
+          python3 - "$SUITE_ROOT" "$START" "$RSS_CSV" <<'PY' &
+          import os, subprocess, sys, time
+          root, start, csv_path = int(sys.argv[1]), int(sys.argv[2]), sys.argv[3]
+
+          def table():
+              out = subprocess.run(['ps', '-eo', 'pid=,ppid=,pgid=,rss='], capture_output=True, text=True).stdout
+              rows = []
+              for line in out.splitlines():
+                  parts = line.split()
+                  if len(parts) == 4:
+                      rows.append(tuple(int(p) for p in parts))
+              return rows
+
+          def alive(pid):
+              try:
+                  os.kill(pid, 0)
+                  return True
+              except OSError:
+                  return False
+
+          while alive(root):
+              rows = table()
+              by_pid = {pid: (ppid, pgid, rss) for pid, ppid, pgid, rss in rows}
+              # Every descendant of the runner, transitively, plus every process in the
+              # suite child's group - the file processes live in that group and nowhere
+              # else in the runner's ancestry.
+              wanted = set()
+              stack = [root]
+              while stack:
+                  pid = stack.pop()
+                  for other, (ppid, _pgid, _rss) in by_pid.items():
+                      if ppid == pid and other not in wanted:
+                          wanted.add(other)
+                          stack.append(other)
+              groups = {by_pid[pid][1] for pid in wanted if pid in by_pid}
+              for pid, (_ppid, pgid, _rss) in by_pid.items():
+                  if pgid in groups:
+                      wanted.add(pid)
+              total = sum(by_pid[pid][2] for pid in wanted if pid in by_pid)
+              with open(csv_path, 'a') as handle:
+                  handle.write(f"{int(time.time()) - start},{total},{len(wanted)}\n")
+              time.sleep(10)
+          PY
+          SAMPLER=$!
+
+          wait "$SUITE_ROOT" || WEDGE_RC=$?
+          kill "$SAMPLER" 2>/dev/null || true
+          printf 'WEDGE_RC=%s\n' "$WEDGE_RC" >> "$WEDGE_LOG"
+          echo "slice finished rc=$WEDGE_RC after $(( $(date +%s) - START ))s"
+
+      # THE VERDICT, THE LOCALISATION AND THE RSS NUMBERS. `guarding` is printed once
+      # per file PROCESS by the guard preload (a full shard emits 163-165), so its count
+      # is how many started; the last completed subtest names the last work that
+      # finished. The RSS series is printed raw and uploaded, because the shape at the
+      # stall - climbing, flat, or spiking - is what decides the fix.
       - name: Say what happened, and how far it got
         if: always()
         run: |
           WEDGE_LOG=/tmp/wedge-shard.log
+          RSS_CSV=/tmp/wedge-rss.csv
           if [ ! -f "$WEDGE_LOG" ]; then
             echo "::error title=Diagnostic did not run::no log at $WEDGE_LOG"
             exit 1
@@ -115,19 +173,35 @@ jobs:
           STARTED=$(grep -ac 'no-hardlink-write: guarding' "$WEDGE_LOG" || true)
           SUBTESTS=$(grep -ac '^# Subtest: ' "$WEDGE_LOG" || true)
           RC=$(grep -oE '^WEDGE_RC=[0-9]+$' "$WEDGE_LOG" | tail -1 | cut -d= -f2 || true)
-          echo "file processes started: $STARTED (of $(wc -l < /tmp/wedge-files.txt) in the slice)"
+          echo "concurrency: ${WEDGE_CONCURRENCY}; file processes started: $STARTED of $(wc -l < /tmp/wedge-files.txt)"
           echo "subtests completed: $SUBTESTS"
           echo "rc: ${RC:-<none: the step was killed by its ceiling>}"
           echo "--- the last completed subtest ---"
           grep -a '^# Subtest: ' "$WEDGE_LOG" | tail -1 || echo '(none)'
-          echo "--- last 30 lines ---"
-          tail -n 30 "$WEDGE_LOG"
+          if [ -f "$RSS_CSV" ]; then
+            echo "--- RSS series (elapsed_s,rss_kb,procs), every 10 s ---"
+            cat "$RSS_CSV"
+            awk -F, 'NR>1 {if ($2>peak) {peak=$2; at=$1}; n++} END {printf "peak_rss_kb=%d at_elapsed_s=%d samples=%d (%.2f GiB)\n", peak, at, n, peak/1048576}' "$RSS_CSV"
+          fi
+          echo "--- last 25 lines ---"
+          tail -n 25 "$WEDGE_LOG"
           if [ -z "$RC" ]; then
-            echo "::error title=WEDGE REPRODUCED (shard context)::the slice did not finish inside 20 minutes; $STARTED file processes started and $SUBTESTS subtests completed - the file that never reported is the one after the last completed subtest"
+            echo "::error title=WEDGE (concurrency ${WEDGE_CONCURRENCY})::the slice did not finish inside 45 minutes; $STARTED file processes started, $SUBTESTS subtests completed - see the RSS series above for the shape at the stall"
             exit 1
           fi
           if [ "$RC" != "0" ]; then
-            echo "::warning title=Slice finished RED (not a wedge)::rc=$RC after $STARTED file processes and $SUBTESTS subtests - read the tail; a decidable failure is a different fact from a stall"
+            echo "::warning title=Slice finished RED (not a wedge)::rc=$RC after $STARTED file processes and $SUBTESTS subtests"
             exit 0
           fi
-          echo "::notice title=Slice FINISHED green::rc=0, $STARTED file processes, $SUBTESTS subtests - 40 files at concurrency 3 do not reproduce the stall; widen WEDGE_FILES"
+          echo "::notice title=Slice FINISHED green at concurrency ${WEDGE_CONCURRENCY}::rc=0, $STARTED file processes, $SUBTESTS subtests - this concurrency does not reproduce the stall"
+
+      - name: Upload the RSS series and the suite log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: wedge-rss-concurrency-${{ env.WEDGE_CONCURRENCY }}-${{ github.run_id }}
+          path: |
+            /tmp/wedge-rss.csv
+            /tmp/wedge-shard.log
+          if-no-files-found: warn
+          retention-days: 7
