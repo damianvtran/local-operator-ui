@@ -1,9 +1,75 @@
+import { DesktopControlError } from "@shared/api/local-operator/desktop-api";
 import {
 	type OwnerAuditScope,
 	TeamBridgeOwnerAuditApi,
 } from "@shared/api/local-operator/team-bridge-owner-audit-api";
-import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
+import { isCancelledError, useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { readForBridgeOwner, useBridgeOwner } from "./team-bridge-owner";
+
+/** Query rejections are consumed by React Query, so neither React nor the
+ * packaged renderer console reports them. The durable diagnostic must explain
+ * an HTTP-200-then-error without copying any error prose, keys, stacks or data:
+ * a Zod error's message/stack can contain the rejected private audit payload.
+ * All non-numeric fields below are authored enums. Unknown codes stay unknown.
+ * This is observation only: the original error is rethrown, never retried. */
+const AUDIT_ERROR_CODES = new Set([
+	"conversation_not_found",
+	"account_mismatch",
+	"expected_account_mismatch",
+	"deadline_exceeded",
+	"owner_audit_unavailable",
+]);
+
+function auditFailureMetadata(error: unknown) {
+	const message = error instanceof Error ? error.message : "";
+	const category = isCancelledError(error)
+		? "cancelled"
+		: message === "Owner audit authority changed"
+			? "audit-owner"
+			: message === "Team Bridge read owner changed"
+				? "bridge-owner"
+				: message === "Team Bridge read authority changed"
+					? "bridge-authority"
+					: message === "Account authority changed" ||
+							message === "Account authority unresolved"
+						? "credential-authority"
+						: error instanceof Error && error.name === "ZodError"
+							? "schema"
+							: error instanceof DesktopControlError
+								? "desktop"
+								: "other";
+	// A TypeScript annotation is not a runtime privacy boundary. Read only an
+	// own data value: neither a status accessor nor coercion/toJSON may run.
+	const status =
+		error instanceof DesktopControlError
+			? Object.getOwnPropertyDescriptor(error, "status")?.value
+			: undefined;
+	return {
+		category,
+		errorClass: isCancelledError(error)
+			? "CancelledError"
+			: error instanceof DesktopControlError
+				? "DesktopControlError"
+				: error instanceof Error && error.name === "ZodError"
+					? "ZodError"
+					: error instanceof Error
+						? "Error"
+						: "unknown",
+		status:
+			typeof status === "number" &&
+			Number.isInteger(status) &&
+			status >= 100 &&
+			status <= 599
+				? status
+				: null,
+		code:
+			error instanceof DesktopControlError && error.code
+				? AUDIT_ERROR_CODES.has(error.code)
+					? error.code
+					: "other"
+				: null,
+	};
+}
 
 /** No member query keys, persistence, polling, unread counts or read markers.
  * gcTime zero releases private bodies when their human-only panel unmounts.
