@@ -722,6 +722,11 @@ jobs:
 
       - name: Run the desktop suite and assert it actually ran
         id: desktop_suite
+        env:
+          # Leave time for the suite tree to be reaped and diagnostics uploaded
+          # before the enclosing step and job ceilings cancel those steps.
+          DESKTOP_TEST_DEADLINE_MS: 2400000
+          DESKTOP_TEST_DIAGNOSTICS: /tmp/desktop-test-diagnostics.jsonl
         # A STEP ceiling below the job's, because a job cancelled at its own
         # `timeout-minutes` runs no further steps: without this, the payload
         # scan below is skipped in exactly the case it exists for. A step
@@ -893,7 +898,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: desktop-suite-log-${{ github.run_id }}-${{ github.run_attempt }}-shard-${{ matrix.shard }}
-          path: /tmp/desktop-tests.log
+          path: |
+            /tmp/desktop-tests.log
+            /tmp/desktop-test-diagnostics.jsonl
           if-no-files-found: error
           retention-days: 7
 

@@ -7565,6 +7565,7 @@ export type MessageParams = {
 	"ui.ownerAudit.agent": undefined;
 	"ui.ownerAudit.attachment_expired": undefined;
 	"ui.ownerAudit.attachment_unavailable": undefined;
+	"ui.ownerAudit.auth_required": undefined;
 	"ui.ownerAudit.body_unavailable": undefined;
 	"ui.ownerAudit.disclosure": undefined;
 	"ui.ownerAudit.empty_history": undefined;
@@ -7573,16 +7574,20 @@ export type MessageParams = {
 	"ui.ownerAudit.left": undefined;
 	"ui.ownerAudit.loading": undefined;
 	"ui.ownerAudit.more": undefined;
+	"ui.ownerAudit.not_found": undefined;
 	"ui.ownerAudit.not_screened": undefined;
 	"ui.ownerAudit.older": undefined;
 	"ui.ownerAudit.page_cutoff": undefined;
+	"ui.ownerAudit.permission_refused": undefined;
 	"ui.ownerAudit.read_only": undefined;
 	"ui.ownerAudit.refresh": undefined;
 	"ui.ownerAudit.rejected": undefined;
 	"ui.ownerAudit.removed": undefined;
 	"ui.ownerAudit.replies": undefined;
 	"ui.ownerAudit.retry": undefined;
+	"ui.ownerAudit.sign_in": undefined;
 	"ui.ownerAudit.title": undefined;
+	"ui.ownerAudit.unavailable": undefined;
 	"ui.ownerAudit.unknown_sender": undefined;
 	"ui.ownerAudit.unknown_status": undefined;
 	"ui.ownerAudit.unnamed": undefined;

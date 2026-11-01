@@ -60,6 +60,7 @@
  */
 
 import { spawn } from "node:child_process";
+import { appendFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import {
 	OVERRIDE_ENV,
@@ -77,7 +78,9 @@ import {
 	createMemoryWatchdog,
 	formatBreachLine,
 	formatMemoryBudgetLine,
+	killTree,
 	resolveMemoryBudget,
+	sampleGroup,
 } from "./desktop-test-memory-guard.mjs";
 import { withNotificationsOff } from "./notifications-off.mjs";
 import { withTelemetryOff } from "./telemetry-off.mjs";
@@ -256,7 +259,14 @@ if (process.env[STAND_DOWN_ENV] === "1") {
 const childEnv = withTelemetryOff(
 	withNotificationsOff(
 		Object.fromEntries(
-			Object.entries(process.env).filter(([key]) => key !== _TEST_CONTEXT_ENV),
+			// Nested fixture runners must not inherit the outer suite's deadline or
+			// truncate its shared sidecar while exercising their own process paths.
+			Object.entries(process.env).filter(
+				([key]) =>
+					key !== _TEST_CONTEXT_ENV &&
+					key !== "DESKTOP_TEST_DEADLINE_MS" &&
+					key !== "DESKTOP_TEST_DIAGNOSTICS",
+			),
 		),
 	),
 );
@@ -270,6 +280,44 @@ const childEnv = withTelemetryOff(
  * `detached` launches already carry. The child's stdin stays inherited; node's
  * test runner does not read it.
  */
+// CI opts in explicitly: local runs retain their existing unlimited wall time.
+// Reject malformed values before starting any child rather than silently losing the bound.
+const deadlineValue = process.env.DESKTOP_TEST_DEADLINE_MS;
+if (
+	deadlineValue !== undefined &&
+	(!/^[1-9]\d*$/.test(deadlineValue) || Number(deadlineValue) > 2147483647)
+) {
+	console.error(
+		"desktop tests: DESKTOP_TEST_DEADLINE_MS must be a positive timer-safe integer",
+	);
+	process.exit(9);
+}
+const diagnosticsPath = process.env.DESKTOP_TEST_DIAGNOSTICS;
+let lastSnapshot = 0;
+function diagnostic(event) {
+	if (!diagnosticsPath) return;
+	try {
+		appendFileSync(
+			diagnosticsPath,
+			`${JSON.stringify({ at: new Date().toISOString(), ...event })}\n`,
+		);
+	} catch (error) {
+		console.error(`desktop tests: diagnostic write failed: ${error.message}`);
+	}
+}
+if (diagnosticsPath) {
+	try {
+		writeFileSync(diagnosticsPath, "");
+	} catch (error) {
+		console.error(
+			`desktop tests: diagnostic initialization failed: ${error.message}`,
+		);
+	}
+	diagnostic({
+		event: "start",
+		deadlineMs: deadlineValue ? Number(deadlineValue) : null,
+	});
+}
 const child = spawn(process.execPath, nodeArgs, {
 	stdio: "inherit",
 	env: childEnv,
@@ -378,6 +426,15 @@ const laneWatchdog =
 				leaderPid: child.pid,
 				lanes: laneArgs,
 				boundMs: laneBound.boundMs,
+				onSample: (seen) => {
+					const now = Date.now();
+					if (now - lastSnapshot < 60000) return;
+					lastSnapshot = now;
+					diagnostic({
+						event: "lanes",
+						lanes: [...seen].map(([lane, process]) => ({ lane, ...process })),
+					});
+				},
 				onTrip: ({ lane, pid, elapsedMs, killed }) =>
 					console.error(
 						formatLaneTripLine({
@@ -394,6 +451,48 @@ const laneWatchdog =
 					),
 			});
 laneWatchdog?.start();
+
+// Latch before sampling: even if the child exits during the bounded probe, the
+// wall-clock breach remains a failure and the recorded descendants still get reaped.
+let deadlineBreached = false;
+let deadlineCleanup = null;
+const deadlineTimer =
+	deadlineValue && child.pid !== undefined
+		? setTimeout(() => {
+				deadlineBreached = true;
+				console.error(
+					`desktop tests: suite deadline exceeded (${deadlineValue} ms); reaping test tree`,
+				);
+				diagnostic({ event: "deadline", deadlineMs: Number(deadlineValue) });
+				deadlineCleanup = (async () => {
+					let reading = null;
+					try {
+						reading = await sampleGroup(child.pid);
+					} catch (error) {
+						console.error(
+							`desktop tests: deadline sample failed: ${error.message}`,
+						);
+					}
+					try {
+						const outcome = await killTree(child.pid, reading?.members ?? []);
+						diagnostic({
+							event: "cleanup",
+							signalled: outcome.signalled,
+							skipped: outcome.skipped,
+							errors: outcome.errors.map(String),
+						});
+						if (outcome.errors.length)
+							console.error(
+								`desktop tests: deadline cleanup errors: ${outcome.errors.map(String).join(", ")}`,
+							);
+					} catch (error) {
+						console.error(
+							`desktop tests: deadline cleanup failed: ${error.message}`,
+						);
+					}
+				})();
+			}, Number(deadlineValue))
+		: null;
 
 // Forward the signals a user or CI actually sends, so Ctrl-C interrupts the
 // suite rather than leaving it orphaned behind a killed wrapper. To the GROUP:
@@ -414,11 +513,14 @@ for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"]) {
 	});
 }
 
-child.on("exit", (code, signal) => {
+child.on("exit", async (code, signal) => {
+	if (deadlineTimer) clearTimeout(deadlineTimer);
+	if (deadlineCleanup) await deadlineCleanup;
+	diagnostic({ event: "exit", code, signal, deadlineBreached });
 	watchdog?.stop();
 	laneWatchdog?.stop();
 	releaseKeeper();
-	if (breached) {
+	if (breached || deadlineBreached) {
 		// The watchdog's SIGKILL is a deliberate, already-announced verdict: report
 		// it as an exit status rather than re-raising, so the loud line above is
 		// the last word and callers see a plain non-zero code.

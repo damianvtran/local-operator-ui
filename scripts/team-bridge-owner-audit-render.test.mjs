@@ -1514,7 +1514,7 @@ test("rail: all organizations — a status refetch during both org reads renders
 	await app.close();
 });
 
-test("rail: a genuine authority change mid-read still renders the error", async () => {
+test("rail: a genuine authority change cancels the stale read and rebinds", async () => {
 	requests = [];
 	let client;
 	let swapped = false;
@@ -1528,8 +1528,11 @@ test("rail: a genuine authority change mid-read still renders the error", async 
 				...before,
 				state: "unavailable",
 			});
+			return json(conversationPage);
 		}
-		return json(conversationPage);
+		// The newly bound authority answers an empty page. The old page must
+		// neither render its rows nor become an error the human must retry.
+		return json({ ...conversationPage, conversations: [] });
 	};
 	const app = await mountSlot(
 		{
@@ -1548,8 +1551,14 @@ test("rail: a genuine authority change mid-read still renders the error", async 
 	);
 
 	assert.equal(swapped, true, "the authority change must land mid-read");
-	assert.equal(app.host.querySelector('[role="alert"]') !== null, true);
-	assert.ok(app.host.textContent.includes(m.t("ui.ownerAudit.error")));
+	assert.equal(
+		requests.filter(
+			(request) => request.op === "team_bridge.owner_audit.conversations",
+		).length,
+		2,
+	);
+	assert.equal(app.host.querySelector('[role="alert"]'), null);
+	assert.ok(app.host.textContent.includes(m.t("ui.ownerAudit.empty_list")));
 	assert.equal(
 		app.host.querySelectorAll("li > button").length,
 		0,
