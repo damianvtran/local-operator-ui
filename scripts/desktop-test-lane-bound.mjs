@@ -313,7 +313,7 @@ export function formatLaneBoundLine(decision) {
  */
 export function formatLaneTripLine({ lane, pid, elapsedMs, boundMs, killed }) {
 	const outcome = killed
-		? `killed pid ${pid} and left the rest of the suite running, so its verdict still lands`
+		? `killed pid ${pid} and left the rest of the suite running; a suite whose other lanes are still making progress keeps its verdict, and one where no lane is making progress ends on the suite-child bound in the same tick`
 		: `pid ${pid} was already gone when the bound fired, so nothing was signalled and the suite's own verdict stands`;
 	return `desktop tests: LANE BOUND EXCEEDED — ${lane} ran ${human(elapsedMs)} without finishing (bound ${human(boundMs)}); ${outcome} (raise or disable with ${LANE_BOUND_OVERRIDE_ENV})`;
 }
@@ -330,7 +330,7 @@ export function formatSuiteTripLine({ lanes, elapsedMs, boundMs, killed }) {
 	const outcome = killed
 		? "killed the suite child, which is the only step left once its run has no verdict to protect"
 		: "the suite child was already gone when the bound fired, so nothing was signalled and the suite's own verdict stands";
-	return `desktop tests: SUITE WEDGED — the suite child ran ${human(elapsedMs)} without a test-file process this runner could name (bound ${human(boundMs)}); last lanes seen: ${named}; ${outcome} (raise or disable with ${LANE_BOUND_OVERRIDE_ENV})`;
+	return `desktop tests: SUITE WEDGED — no test-file process made progress for ${human(elapsedMs)} (bound ${human(boundMs)}) while the suite child stayed alive; last lanes in view: ${named}; ${outcome} (raise or disable with ${LANE_BOUND_OVERRIDE_ENV})`;
 }
 
 /**
@@ -499,19 +499,53 @@ export async function terminateLane({
 	 * pid signalled without a re-check. A lane row the detail read did not carry
 	 * leaves nothing to compare, so the kill proceeds exactly as it did before.
 	 */
-	let killed = false;
-	if (laneRow === null) {
-		killed = kill(lanePid) === true;
-	} else {
-		const identity = await reverify(lanePid);
-		killed =
-			identity === laneRow.lstart && isStopped() === false
-				? kill(lanePid) === true
-				: false;
+	/*
+	 * UNPROVEN IS REFUSED, AND REFUSED MEANS NOTHING IS SIGNALLED (review R2-5). The
+	 * detail read is the only thing that supplies the lane's start time, so a read
+	 * without the lane's own row leaves nothing to compare that pid against. Signalling
+	 * the lane anyway made this the one process end-run around the rule the rest of the
+	 * function keeps, and signalling its children while refusing the lane is worse: the
+	 * frame of reference - "pid P is the lane this runner sampled" - is exactly what is
+	 * unproven. One retry, then nothing.
+	 */
+	let proven = laneRow;
+	if (proven === null) {
+		try {
+			table = await sampleDetail();
+		} catch {
+			table = [];
+		}
+		proven = table.find((row) => row.pid === lanePid) ?? null;
 	}
+	if (proven === null || isStopped()) {
+		return {
+			killed: false,
+			descendants,
+			attempts: [],
+			survivors: [],
+			unproven: proven === null,
+			stopped: isStopped(),
+		};
+	}
+	const laneIdentity = await reverify(lanePid);
+	const killed =
+		laneIdentity === proven.lstart && isStopped() === false
+			? kill(lanePid) === true
+			: false;
 	const attempts = [];
 	for (const descendant of descendants) {
 		const identity = await reverify(descendant.pid);
+		if (isStopped()) {
+			// A finished suite is never signalled on its behalf, and `reverify` is an
+			// await like any other: the check has to sit after it, not only before the
+			// loop (review R2-1).
+			attempts.push({
+				...descendant,
+				outcome:
+					"REFUSED: the suite finished while this pid was being verified",
+			});
+			continue;
+		}
 		if (identity === null) {
 			attempts.push({ ...descendant, outcome: "gone before it was signalled" });
 			continue;
@@ -655,6 +689,10 @@ export function createLaneBoundWatchdog({
 			const ended = await terminateLane({
 				lanePid: pid,
 				leaderPid,
+				// WIRED, not merely defaulted (review R2-1): without this the `isStopped`
+				// parameter was inert and `stop()` lost its authority across the detail read,
+				// which is the invariant this module documents and a test claimed to pin.
+				isStopped: () => stopped,
 				sampleDetail,
 				reverify,
 				kill,

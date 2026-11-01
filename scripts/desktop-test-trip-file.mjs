@@ -10,9 +10,11 @@
  * than block, so a bound that had fired would very probably have been written. The
  * economical reading is therefore that neither clock ever REACHED its bound - a
  * lane that stayed in view held the suite clock at zero, and a lane whose sampled
- * pid kept changing was re-timed - not that a fired bound was swallowed. Both are
- * now covered: `desktop-test-lane-bound.mjs` resets the suite clock only on
- * evidence of progress.
+ * pid kept changing was re-timed - not that a fired bound was swallowed. The FIRST
+ * half is now covered: `desktop-test-lane-bound.mjs` resets the suite clock only on
+ * evidence of progress. The SECOND - a lane whose sampled pid changes and is re-timed
+ * forever - is NOT fixed (review round 2, R2-4: probe B showed six ticks and zero
+ * trips), and this header says so rather than implying coverage it does not have.
  *
  * SO WHY THIS FILE STILL EXISTS. Because the two channels a cancelled job keeps are
  * the ones a stream cannot take away:

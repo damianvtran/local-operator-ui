@@ -68,7 +68,7 @@ const CAP_CLAIM = /inside the .*job cap/;
 const BOUND_EXCEEDED = /LANE BOUND EXCEEDED/;
 const BOARD_FOCUS_LANE = /scripts\/projects-board-focus\.test\.mjs/;
 const TRIPPED_PID = /4242/;
-const STILL_LANDS = /still lands/;
+const STILL_LANDS = /keeps its verdict/;
 const ALREADY_GONE = /already gone/;
 const NOTHING_SIGNALLED = /nothing was signalled/;
 const CLAIMED_A_KILL = /killed pid/;
@@ -300,6 +300,7 @@ function driver({ tables, boundMs = 1_000, tickMs = 0 }) {
 		index: 0,
 		clock: 0,
 		timers: [],
+		lastTable: "",
 		armed: () => state.timers.length,
 	};
 	const watchdog = createLaneBoundWatchdog({
@@ -309,6 +310,7 @@ function driver({ tables, boundMs = 1_000, tickMs = 0 }) {
 		sample: async () => {
 			const table = tables[Math.min(state.index, tables.length - 1)];
 			state.index += 1;
+			state.lastTable = table;
 			if (table === null) throw new Error("ps unreadable");
 			// The same contract the default sampler has - a Map of lane path to the
 			// pid carrying it. Returning the raw rows would let a mismatch between
@@ -320,6 +322,17 @@ function driver({ tables, boundMs = 1_000, tickMs = 0 }) {
 			state.killed.push(pid);
 			return true;
 		},
+		/** The detail read and the identity re-check, both injected: the fake pids have
+		 * no real start time, and the refuse-unproven rule (R2-5) would otherwise decline
+		 * every kill these fixtures ask for. The detail rows are DERIVED from the table the
+		 * sample just read, so a fixture that changes the lane's pid gets a lane row for the
+		 * new pid rather than an unproven one. */
+		sampleDetail: async () =>
+			parseGroupTable(state.lastTable).map((row) => ({
+				...row,
+				lstart: STAMP,
+			})),
+		reverify: async () => STAMP,
 		/** INJECTED, never the default: the default signals the real leader pid, and a
 		 * fixture that reached it would kill whatever holds that pid on the host. */
 		killSuitePid: (pid) => {
@@ -622,6 +635,7 @@ test("terminateLane captures children BEFORE killing, and kills only proven ones
 		lanePid: 101,
 		leaderPid: 100,
 		sampleDetail: async () => [
+			descendantRow(101, 100, 100, "node scripts/a.test.mjs"),
 			descendantRow(102, 101, 100, "node esbuild --service"),
 		],
 		reverify: async () => STAMP,
@@ -641,9 +655,11 @@ test("a pid whose start time changed is recorded and REFUSED, never signalled", 
 		lanePid: 101,
 		leaderPid: 100,
 		sampleDetail: async () => [
+			descendantRow(101, 100, 100, "node scripts/a.test.mjs"),
 			descendantRow(102, 101, 100, "node esbuild --service"),
 		],
-		reverify: async () => "Mon Nov  1 10:30:00 2026",
+		// The LANE matches, so it is killed; only the DESCENDANT's identity changed.
+		reverify: async (pid) => (pid === 101 ? STAMP : "Mon Nov  1 10:30:00 2026"),
 		kill: (pid) => {
 			signals.push(pid);
 			return true;
@@ -665,9 +681,10 @@ test("a lane whose child survives is the wedge: the suite child is ended and the
 		sample: async () =>
 			new Map([["scripts/a.test.mjs", { pid: 101, ppid: 100 }]]),
 		sampleDetail: async () => [
+			descendantRow(101, 100, 100, "node scripts/a.test.mjs"),
 			descendantRow(102, 101, 100, "node -e setTimeout(() => {}, 45000)"),
 		],
-		reverify: async () => null,
+		reverify: async () => STAMP,
 		kill: (pid) => {
 			killed.push(pid);
 			return true;
@@ -686,8 +703,8 @@ test("a lane whose child survives is the wedge: the suite child is ended and the
 	await watchdog._tick(); // the bound, and the child outlives the kill
 	assert.deepEqual(
 		killed,
-		[101],
-		"the survivor was already gone when re-checked",
+		[101, 102],
+		"the lane, then the child it was proven to own",
 	);
 	// The lane trip and the suite clock can BOTH reach their bound in the same tick
 	// once presence is no longer progress (R1-5), and both name the same suite child:
@@ -760,4 +777,99 @@ test("the trip file's path is the workflow's, and a default is announced rather 
 		formatTripFileLine(fallback),
 		/a DEFAULT path that no workflow uploads/u,
 	);
+});
+
+/*
+ * THE TWO PATHS REVIEW ROUND 2 PROBED, pinned where production takes them.
+ *
+ * R2-1: `isStopped` was a parameter nobody passed, so the reviewer's probe - calling
+ * `stop()` inside the detail read's window - still killed the lane. The wiring is what
+ * has to be pinned, not the parameter, so the case below stops the watchdog from
+ * INSIDE the injected read the watchdog itself awaits.
+ *
+ * R2-5: a detail read that does not carry the lane's row leaves no start time to
+ * compare, and the function's own rule is that unproven is refused.
+ */
+
+test("stop() during the detail read's window still declines the kill (wiring, not a default)", async () => {
+	const killed = [];
+	let watchdog = null;
+	let clock = 0;
+	watchdog = createLaneBoundWatchdog({
+		leaderPid: 100,
+		lanes: ["scripts/a.test.mjs"],
+		boundMs: 1_000,
+		sample: async () =>
+			new Map([["scripts/a.test.mjs", { pid: 101, ppid: 100 }]]),
+		// The suite finishes WHILE this read is in flight: production passes
+		// `isStopped`, so nothing may be signalled on the finished suite's behalf.
+		sampleDetail: async () => {
+			watchdog.stop();
+			return [descendantRow(101, 100, 100, "node scripts/a.test.mjs")];
+		},
+		reverify: async () => STAMP,
+		kill: (pid) => {
+			killed.push(pid);
+			return true;
+		},
+		killSuitePid: () => true,
+		now: () => clock,
+		setTimer: () => 1,
+		clearTimer: () => {},
+	});
+	await watchdog._tick();
+	clock = 1_000;
+	await watchdog._tick();
+	assert.deepEqual(
+		killed,
+		[],
+		"a finished suite may not have a lane signalled for it",
+	);
+});
+
+test("a lane the detail read cannot prove is REFUSED, and killed once a retry carries it", async () => {
+	const killed = [];
+	const refuse = await terminateLane({
+		lanePid: 101,
+		leaderPid: 100,
+		// Neither read carries the lane's own row: nothing to compare a start time to.
+		sampleDetail: async () => [
+			descendantRow(102, 101, 100, "node esbuild --service"),
+		],
+		reverify: async () => STAMP,
+		kill: (pid) => {
+			killed.push(pid);
+			return true;
+		},
+	});
+	assert.deepEqual(killed, [], "unproven is refused, not signalled");
+	assert.equal(refuse.killed, false);
+
+	const second = [];
+	const retried = await terminateLane({
+		lanePid: 101,
+		leaderPid: 100,
+		sampleDetail: (() => {
+			let call = 0;
+			return async () => {
+				call += 1;
+				return call === 1
+					? [descendantRow(102, 101, 100, "node esbuild --service")]
+					: [descendantRow(101, 100, 100, "node scripts/a.test.mjs")];
+			};
+		})(),
+		reverify: async () => STAMP,
+		kill: (pid) => {
+			second.push(pid);
+			return true;
+		},
+	});
+	// The lane, then the child captured by the FIRST read: reaping a child is its own
+	// proof (identity + this group), and the retry only had to establish the lane.
+	assert.deepEqual(
+		second,
+		[101, 102],
+		"the retry carries the lane, so it is proven and killed",
+	);
+	assert.equal(retried.killed, true);
 });
