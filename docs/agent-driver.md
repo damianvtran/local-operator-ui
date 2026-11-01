@@ -928,7 +928,12 @@ rules still apply: no directory or a normal/foreground launch does not arm.
 Main issues the observation argv entry before window creation; preload checks
 both main-issued entries and takes its private branch **before** creating the
 scene map or exposing a bridge. Observation also refuses the driver's attachment
-picker override. Existing general-mode facts/capture contracts are unchanged. Use a fresh evidence
+picker override. Existing general-mode facts/capture contracts are unchanged, but those legacy
+channels are **not registered at all** in observation-only mode. The ordinary
+app preload's generic IPC invoke exists even without `__loDevDriver`; only
+main-side channel omission closes that route. This remains true after observation
+revocation or a refused receipt path. Internal automatic capture still uses the
+bounded helper, not a legacy IPC endpoint. Use a fresh evidence
 directory per launch: automatic observation refuses an existing receipt file and
 creates PNGs exclusively rather than overwriting prior evidence.
 
@@ -995,7 +1000,10 @@ Focused source tests use an inert Electron stub to execute shipped handlers:
 normal/unarmed opt-in refusal; no general preload bridge; fixed schema;
 foreign/subframe/untrusted sender; missing/reordered/stale samples; rate/row and
 pixel ceilings; serial three-frame cap; deadline/destroy/replacement; preserved
-facts/capture response contracts. Stub buffers are deliberately NOT screenshots.
+facts/capture response contracts in ordinary driver mode. Direct generic-invoke
+regressions prove observation mode refuses legacy metadata/capture calls before
+expiry, after revocation and after receipt-path refusal, without changing an
+automatic PNG or incrementing capture count. Stub buffers are deliberately NOT screenshots.
 They do not establish a native boot or real ordering of Electron/preload/paint.
 
 Before native QA, independently prove executable/artifact source identity and

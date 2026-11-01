@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { EventEmitter } from "node:events";
-import { mkdtempSync, readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
@@ -551,6 +551,7 @@ function observationDriver(
 	t,
 	{
 		enabled = true,
+		occupiedReceipt = false,
 		viewport = { width: 400, height: 300, devicePixelRatio: 1 },
 	} = {},
 ) {
@@ -564,6 +565,8 @@ function observationDriver(
 			"lo-observation-",
 		),
 	);
+	if (occupiedReceipt)
+		writeFileSync(join(out, "transcript-observation.jsonl"), "PRIOR-RECEIPT");
 	const contents = new EventEmitter();
 	let captureCount = 0;
 	Object.assign(contents, {
@@ -605,6 +608,13 @@ function observationDriver(
 		handles.clear();
 	});
 	const event = { sender: contents, senderFrame: contents.mainFrame };
+	// Equivalent to the existing generic preload invoke forwarding: channel
+	// names are not restricted by absence of the private __loDevDriver bridge.
+	const invoke = async (channel, ...args) => {
+		const handler = handles.get(channel);
+		if (!handler) throw new Error(`No handler registered for '${channel}'`);
+		return handler(event, ...args);
+	};
 	const send = (sample) => handles.get(OBSERVATION_CHANNEL)(event, sample);
 	const arm = () => {
 		send(observationSample());
@@ -640,6 +650,7 @@ function observationDriver(
 		contents,
 		owner,
 		send,
+		invoke,
 		arm,
 		layout,
 		out,
@@ -753,4 +764,61 @@ test("destroy and replacement cannot re-arm an old observation document", (t) =>
 	replaced.arm();
 	replaced.replace();
 	assert.throws(() => replaced.send(replaced.layout(3)));
+});
+
+const MISSING_LEGACY_HANDLER = /No handler registered/;
+test("legacy bypass regression: generic invoke cannot overwrite an automatic observation PNG before expiry or after revocation", async (t) => {
+	const d = observationDriver(t);
+	d.arm();
+	d.send(d.layout(3));
+	await tickObservation();
+	const png = join(d.out, "observation-0.png");
+	const before = readFileSync(png);
+	const count = d.captures();
+	await assert.rejects(
+		d.invoke(DEV_DRIVER_CAPTURE, "observation-0").then((result) => {
+			t.diagnostic(
+				`UNEXPECTED legacy capture completed; captures=${d.captures()}`,
+			);
+			return result;
+		}),
+		MISSING_LEGACY_HANDLER,
+	);
+	assert.deepEqual(readFileSync(png), before);
+	assert.equal(d.captures(), count);
+	d.contents.emit("did-start-navigation", {}, "file:///next.html", false, true);
+	await assert.rejects(
+		d.invoke(DEV_DRIVER_CAPTURE, "observation-0"),
+		MISSING_LEGACY_HANDLER,
+	);
+	await assert.rejects(d.invoke(DEV_DRIVER_FACTS), MISSING_LEGACY_HANDLER);
+	assert.deepEqual(readFileSync(png), before);
+	assert.equal(d.captures(), count);
+});
+test("legacy bypass regression: generic invoke cannot expose title/output metadata in observation mode", async (t) => {
+	const d = observationDriver(t);
+	await assert.rejects(
+		d.invoke(DEV_DRIVER_FACTS).then((result) => {
+			t.diagnostic(
+				`UNEXPECTED legacy facts exposed keys: ${Object.keys(result).join(",")}`,
+			);
+			return result;
+		}),
+		MISSING_LEGACY_HANDLER,
+	);
+	assert.equal(d.handles.has(DEV_DRIVER_CAPTURE), false);
+});
+test("legacy bypass regression: refused receipt path does not leave legacy capability behind", async (t) => {
+	const d = observationDriver(t, { occupiedReceipt: true });
+	assert.equal(d.handles.has(OBSERVATION_CHANNEL), false);
+	await assert.rejects(
+		d.invoke(DEV_DRIVER_CAPTURE, "observation-0"),
+		MISSING_LEGACY_HANDLER,
+	);
+	await assert.rejects(d.invoke(DEV_DRIVER_FACTS), MISSING_LEGACY_HANDLER);
+	assert.equal(d.captures(), 0);
+	assert.equal(
+		readFileSync(join(d.out, "transcript-observation.jsonl"), "utf8"),
+		"PRIOR-RECEIPT",
+	);
 });

@@ -112,7 +112,6 @@ export function registerDevDriverIPC(options: {
 			outDir,
 		};
 	}
-	ipcMain.handle(DEV_DRIVER_FACTS, (event) => facts(authorize(event)));
 
 	async function capture(
 		owner: BrowserWindow,
@@ -183,11 +182,19 @@ export function registerDevDriverIPC(options: {
 			viewport,
 		};
 	}
-	ipcMain.handle(DEV_DRIVER_CAPTURE, (event, label: unknown) =>
-		capture(authorize(event), label),
-	);
-
+	// The ordinary preload already exposes generic ipcRenderer.invoke. Hiding
+	// __loDevDriver is NOT a capability boundary: observation launches must omit
+	// legacy channels entirely, including when their receipt path refuses arming.
+	// Otherwise legacy capture could overwrite a bounded observer PNG and bypass
+	// its lifetime, pixel and serialization checks. General driver contracts stay
+	// unchanged in the mutually exclusive non-observation branch.
 	if (options.observationOnly) installObservation();
+	else {
+		ipcMain.handle(DEV_DRIVER_FACTS, (event) => facts(authorize(event)));
+		ipcMain.handle(DEV_DRIVER_CAPTURE, (event, label: unknown) =>
+			capture(authorize(event), label),
+		);
+	}
 
 	function installObservation(): void {
 		// Automatic evidence must never overwrite or append to a prior launch's
