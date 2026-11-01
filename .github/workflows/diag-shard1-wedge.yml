@@ -75,10 +75,16 @@ jobs:
     runs-on: ubuntu-latest
     # A BACKSTOP, not the arm's bound: the arm is bounded by coreutils `timeout`
     # inside its own step (30 min), which leaves the step able to finish, report
-    # and upload. The first attempt bounded the STEP instead, and GitHub cancels
-    # a job's remaining steps when the job cap fires - so all three arms were
-    # cancelled at 30 minutes having uploaded nothing at all.
-    timeout-minutes: 40
+    # and upload. TWICE THIS WENT WRONG, so both mistakes are named here:
+    #   1. bounding the STEP (timeout-minutes: 27) cancelled nothing and the
+    #      job cap then cancelled the whole job - a job cap runs no further
+    #      steps, so the report and upload never ran and every log was lost;
+    #   2. piping the runner through `tee` hung the step even after `timeout`
+    #      fired, because the suite's orphaned children still held the pipe open
+    #      and `tee` never saw EOF - so the step again ran to the job cap.
+    # The step now redirects to a file (no pipe to hold open) and the job cap
+    # sits 15 minutes above the bound, so there is room for report and upload.
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
@@ -107,7 +113,6 @@ jobs:
         env:
           LOCAL_OPERATOR_UI_NO_HARDLINK_GUARD: ${{ matrix.guard }}
         run: |
-          set -o pipefail
           date -u +%s > "$RUNNER_TEMP/started_at.txt"
           # A 30s heartbeat, because a wedged arm's log simply stops: the
           # heartbeat is what says WHEN it stopped and how far it had got.
@@ -128,8 +133,11 @@ jobs:
           # the step itself is never cancelled and the steps after it always run.
           # -k 90 escalates to SIGKILL for a child that ignores SIGTERM, which is
           # exactly what a process blocked inside a write may do.
-          timeout -k 90 1800 node scripts/run-desktop-tests.mjs ${{ matrix.args }} $DESKTOP_FILES 2>&1 | tee /tmp/diag-raw.log
-          RC=${PIPESTATUS[0]}
+          # REDIRECT, never `tee`: a pipe is held open by the suite's children
+          # even after `timeout` kills the runner, and the step then waits for an
+          # EOF that never comes. A file has no such owner.
+          timeout -k 90 1800 node scripts/run-desktop-tests.mjs ${{ matrix.args }} $DESKTOP_FILES > /tmp/diag-raw.log 2>&1
+          RC=$?
           echo "timeout_rc=$RC (124/137 means the 30-minute bound cut it)" >> /tmp/diag-raw.log
           kill "$HEARTBEAT" 2>/dev/null || true
           date -u +%s > "$RUNNER_TEMP/ended_at.txt"
