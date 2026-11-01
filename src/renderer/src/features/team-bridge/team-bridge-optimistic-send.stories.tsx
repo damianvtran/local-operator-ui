@@ -283,3 +283,39 @@ export const ChiefFirstMessageMove: Story = {
 	render: () => <MoveSequenceStory />,
 	args: { ...base, onSend: reportingSend },
 };
+
+/* Manual settlement keeps the loading handoff available for a frame capture:
+   a timer can advance while the reviewer is inspecting the preserved row. */
+const PersonHandoffStory = () => {
+	const [step, setStep] = useState(0);
+	const [body, setBody] = useState("");
+	return (
+		<>
+			<button type="button" onClick={() => setStep(2)} disabled={step !== 1}>
+				Finish thread read (story control)
+			</button>
+			<TeamBridgePageView
+				{...base}
+				target={
+					step === 0
+						? { type: "person", accountId: peer }
+						: { type: "conversation", id: createdDm.id }
+				}
+				conversations={step === 0 ? [] : [createdDm]}
+				messageState={step === 0 ? "idle" : step === 1 ? "loading" : "ready"}
+				messages={
+					step === 2 ? [{ ...stored(body), conversation_id: createdDm.id }] : []
+				}
+				onSend={async (text, _clientRef, _attachments, delivery) => {
+					setBody(text);
+					delivery?.onCreated?.(createdDm.id, createdDm.tenant_id);
+					setStep(1);
+				}}
+			/>
+		</>
+	);
+};
+
+export const PersonFirstMessageHandoff: Story = {
+	render: () => <PersonHandoffStory />,
+};
