@@ -364,6 +364,20 @@ try {
 	});
 	await sleep(300);
 	await sample("palette-before-background");
+	if (nativeCi) {
+		// Simulate the user's deliberate return to the shell input after opening
+		// the palette. Hiding a previously focused native page can leave Electron's
+		// focused-WebContents getter null even while the palette has a DOM caret.
+		// This is SETUP ONLY: never restore native focus during background actions.
+		await evaluate(
+			main,
+			"process.mainModule.require('electron').BrowserWindow.getAllWindows()[0].webContents.focus(); true",
+		);
+		await evaluate(
+			owner,
+			"document.querySelector('#command-palette-input').focus(); true",
+		);
+	}
 	await owner("Input.insertText", { text: "focusproof" });
 	await evaluate(
 		owner,
