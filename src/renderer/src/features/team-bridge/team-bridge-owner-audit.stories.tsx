@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react";
+import { QueryClientProvider } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import type { TeamBridgeDirectoryMember } from "../../../../shared/team-bridge-contract";
 import type {
@@ -9,7 +10,9 @@ import {
 	OwnerAuditPanelView,
 	OwnerAuditRailView,
 	OwnerAuditSectionHeader,
+	useOwnerAuditSurface,
 } from "./team-bridge-owner-audit";
+import { createOwnerAuditQueryFixture } from "./team-bridge-owner-audit-query.fixture";
 
 /**
  * The owner-audit section — "{chief of staff}'s messages" — in the four states
@@ -26,11 +29,15 @@ import {
  * The fixtures are the shapes the routes send (`docs/team-bridge-owner-audit.md`
  * in local-operator), including the two absences that carry meaning: no read
  * state on a row, and no `agent_delivery_status` on the agent's own messages.
- * Nothing here talks to a hub — the views are props-driven by design, which is
- * exactly why this story can exist at all.
+ * Nothing here talks to a hub. The presentation stories are props-driven;
+ * the query-backed history story instead mounts the real slot/rail/panel with
+ * a synthetic desktop transport so query retention and viewport admission are
+ * exercised together, without borrowing a live runtime or credentials.
  *
- * NOT A CLAIM ABOUT THE LIVE APP: the rail rows are the shipped ones, but the
- * selection never moves here (no query cache, no transport). The behaviour is
+ * NOT A CLAIM ABOUT THE LIVE APP: the presentation stories keep selection
+ * fixed. QueryBackedHistoryExercise uses only a synthetic IPC transport, never
+ * a live account/runtime; its real query/selection behavior is separately
+ * observable through bounded counters. The behavior is
  * pinned by `scripts/team-bridge-owner-audit-render.test.mjs`.
  */
 
@@ -694,4 +701,246 @@ function HistoryAnchorExercise() {
 }
 export const HistoryAnchorExerciseStates: Story = {
 	render: () => <HistoryAnchorExercise />,
+};
+
+/** The actual rail/selection/private panel, not the props-only Section wrapper. */
+function QueryHistorySurface({ tenantId }: { tenantId: string }) {
+	const slot = useOwnerAuditSurface({
+		accountId: OWNER,
+		enabled: true,
+		scopeKey: tenantId,
+		organizations: [{ tenantId, name: "Synthetic organization" }],
+		onSelect: () => {},
+	});
+	return (
+		<div className="grid h-screen grid-cols-[300px_minmax(0,1fr)] overflow-hidden bg-canvas text-ink">
+			<aside className="overflow-auto bg-panel">
+				{slot?.rail(() => {})}
+				<button type="button" onClick={() => slot?.clear()}>
+					Fixture close panel
+				</button>
+			</aside>
+			<div className="min-h-0 min-w-0">
+				{slot?.panel ?? (
+					<p>Select a synthetic conversation in the real rail.</p>
+				)}
+			</div>
+		</div>
+	);
+}
+
+function QueryBackedHistoryExercise() {
+	const [fixture] = useState(() =>
+		createOwnerAuditQueryFixture({
+			accountId: OWNER,
+			tenantIds: [TENANT, "org_query_other"],
+			conversations: [dm, channel],
+			members: people,
+			message: messages[0],
+			unavailableMessage: unavailableMessages[0],
+		}),
+	);
+	const [tenantId, setTenantId] = useState(TENANT);
+	const [ready, setReady] = useState(false);
+	const [setupError, setSetupError] = useState(false);
+	const [geometry, setGeometry] = useState("");
+	const root = useRef<HTMLDivElement>(null);
+	const imageTimer = useRef<number>();
+	const instrumentedImage = useRef<HTMLImageElement | null>(null);
+	useEffect(
+		() => () => {
+			window.clearTimeout(imageTimer.current);
+			if (instrumentedImage.current) instrumentedImage.current.onload = null;
+			instrumentedImage.current?.remove();
+		},
+		[],
+	);
+	useEffect(() => {
+		// A stale Storybook preload mock is a setup failure, never a spinner pass.
+		const desktop = window.api?.desktop;
+		if (
+			!desktop ||
+			typeof desktop.request !== "function" ||
+			Object.isFrozen(desktop)
+		) {
+			setSetupError(true);
+			return;
+		}
+		const previous = desktop.request;
+		fixture.activate();
+		Object.assign(desktop, { request: fixture.request });
+		setReady(true);
+		return () => {
+			if (desktop.request === fixture.request)
+				Object.assign(desktop, { request: previous });
+			fixture.dispose();
+		};
+	}, [fixture]);
+	useEffect(() => {
+		const timer = window.setInterval(() => {
+			const host = root.current?.querySelector<HTMLElement>(
+				"main .overflow-auto",
+			);
+			const box = host?.getBoundingClientRect();
+			const visible =
+				host && box
+					? [...host.querySelectorAll<HTMLElement>("[data-message-id]")].filter(
+							(row) => {
+								const rect = row.getBoundingClientRect();
+								return rect.bottom > box.top && rect.top < box.bottom;
+							},
+						)
+					: [];
+			const first = visible[0];
+			const text = JSON.stringify({
+				tenantId,
+				...fixture.inspect(),
+				mountedPanel: Boolean(host),
+				scrollTop: host?.scrollTop,
+				scrollHeight: host?.scrollHeight,
+				clientHeight: host?.clientHeight,
+				firstVisible: first?.dataset.messageId,
+				lastVisible: visible.at(-1)?.dataset.messageId,
+				instrumentedImages: [
+					...(root.current?.querySelectorAll<HTMLImageElement>(
+						"img[data-fixture-height]",
+					) ?? []),
+				].map((image) => ({
+					naturalHeight: image.naturalHeight,
+					height: image.height,
+					complete: image.complete,
+				})),
+				offset:
+					first && box
+						? Math.round((first.getBoundingClientRect().top - box.top) * 100) /
+							100
+						: null,
+			});
+			setGeometry((old) => (old === text ? old : text));
+		}, 100);
+		return () => window.clearInterval(timer);
+	}, [fixture, tenantId]);
+	const scroll = (edge: "up" | "top" | "end") => {
+		const host = root.current?.querySelector<HTMLElement>(
+			"main .overflow-auto",
+		);
+		if (host)
+			host.scrollTop =
+				edge === "up"
+					? host.scrollTop - 300
+					: edge === "top"
+						? 0
+						: host.scrollHeight;
+	};
+	const decodeControlledImage = () => {
+		const row = root.current?.querySelector<HTMLElement>(
+			"main [data-message-id]",
+		);
+		if (!row || row.querySelector("[data-fixture-height]")) return;
+		// A fixed story-only image instruments the real scroll host. It tests
+		// actual decode/height events, NOT production attachment admission.
+		window.clearTimeout(imageTimer.current);
+		if (instrumentedImage.current) instrumentedImage.current.onload = null;
+		instrumentedImage.current?.remove();
+		const image = document.createElement("img");
+		instrumentedImage.current = image;
+		image.dataset.fixtureHeight = "true";
+		image.alt = "Controlled fixture image height";
+		image.width = 240;
+		image.style.height = "1px";
+		image.onload = () => {
+			imageTimer.current = window.setTimeout(() => {
+				image.style.height = "256px";
+			}, 180);
+		};
+		image.src = `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="240" height="256"><rect width="240" height="256" fill="#ddd"/></svg>')}`;
+		row.append(image);
+	};
+	return (
+		<div ref={root}>
+			{setupError ? (
+				<p role="alert">
+					Fixture setup failed: supported mutable desktop request API is
+					required.
+				</p>
+			) : (
+				ready && (
+					<QueryClientProvider client={fixture.client}>
+						<QueryHistorySurface tenantId={tenantId} />
+					</QueryClientProvider>
+				)
+			)}
+			<div className="fixed bottom-0 left-0 z-50 max-h-[45vh] w-[290px] overflow-auto bg-canvas text-[10px] text-ink">
+				<button type="button" onClick={() => scroll("up")}>
+					Fixture query up
+				</button>{" "}
+				<button type="button" onClick={() => scroll("top")}>
+					Fixture query top
+				</button>{" "}
+				<button type="button" onClick={() => scroll("end")}>
+					Fixture query end
+				</button>{" "}
+				<button type="button" onClick={() => fixture.holdNextOlder()}>
+					Fixture hold next older
+				</button>{" "}
+				<button type="button" onClick={() => fixture.release()}>
+					Fixture release older
+				</button>{" "}
+				<button
+					type="button"
+					onClick={() => {
+						fixture.arrive();
+						void fixture.refreshBackend();
+					}}
+				>
+					Fixture transport arrival
+				</button>{" "}
+				<button
+					type="button"
+					onClick={() => {
+						fixture.expand();
+						void fixture.refreshBackend();
+					}}
+				>
+					Fixture transport reflow
+				</button>{" "}
+				<button type="button" onClick={decodeControlledImage}>
+					Fixture decoded image height
+				</button>{" "}
+				<button
+					type="button"
+					onClick={() =>
+						setTenantId((old) => (old === TENANT ? "org_query_other" : TENANT))
+					}
+				>
+					Fixture query org switch
+				</button>{" "}
+				{(["normal", "empty", "short", "denied", "unavailable"] as const).map(
+					(mode) => (
+						<button
+							type="button"
+							key={mode}
+							onClick={() => {
+								window.clearTimeout(imageTimer.current);
+								if (instrumentedImage.current)
+									instrumentedImage.current.onload = null;
+								instrumentedImage.current?.remove();
+								fixture.setMode(mode);
+							}}
+						>
+							Fixture backend {mode}
+						</button>
+					),
+				)}
+				<output data-query-history-geometry className="block break-all">
+					{geometry}
+				</output>
+			</div>
+		</div>
+	);
+}
+
+/** No live runtime: real API decoder/hooks/panel and cursor decisions, fake IPC only. */
+export const QueryBackedHistory: Story = {
+	render: () => <QueryBackedHistoryExercise />,
 };

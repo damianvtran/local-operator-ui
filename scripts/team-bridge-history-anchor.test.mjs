@@ -19,6 +19,8 @@ const bundle = await build({
  export {radientUserKeys} from "./src/renderer/src/shared/hooks/radient-account-authority";
  export {teamBridgeKeys} from "./src/renderer/src/features/team-bridge/team-bridge-keys";
  export {desktopEndpoint} from "./src/shared/desktop-contract";
+ export {createOwnerAuditQueryFixture} from "./src/renderer/src/features/team-bridge/team-bridge-owner-audit-query.fixture";
+ export {TeamBridgeOwnerAuditApi} from "./src/renderer/src/shared/api/local-operator/team-bridge-owner-audit-api";
  `,
 		resolveDir: process.cwd(),
 	},
@@ -519,5 +521,118 @@ test("actual HTTP pagination: one bounded newest page, older only on demand, sev
 		host.remove();
 		server.closeAllConnections();
 		await new Promise((resolve) => server.close(resolve));
+	}
+});
+
+test("query-backed story fixture uses current desktop protocol/real decoder, held responses and synthetic-only authority", async () => {
+	const fixture = m.createOwnerAuditQueryFixture({
+		accountId: "acct_fixture",
+		tenantIds: ["org_fixture"],
+		conversations: [],
+		members: [],
+		message: {
+			id: "m",
+			seq: 1,
+			conversation_id: "bcv_fixture",
+			sender: { account_id: "acct_agent", kind: "agent" },
+			body: "Synthetic fixture",
+			created_at: "2026-10-31T12:00:00Z",
+		},
+		unavailableMessage: {
+			id: "m",
+			seq: 1,
+			conversation_id: "bcv_fixture",
+			sender: { account_id: "acct_agent", kind: "agent" },
+			body: null,
+			created_at: "2026-10-31T12:00:00Z",
+		},
+	});
+	const previous = window.api;
+	window.api = { desktop: { request: fixture.request } };
+	const scope = { accountId: "acct_fixture", tenantId: "org_fixture" };
+	try {
+		const first = await m.TeamBridgeOwnerAuditApi.messages(
+			scope,
+			"bcv_fixture",
+		);
+		assert.equal(first.messages.length, 50);
+		assert.equal(first.messages[0].seq, 10000);
+		assert.equal(first.next_before_seq, 9951);
+		assert.equal(fixture.inspect().records[0].before, undefined);
+		window.api = { desktop: { legacyRequest: fixture.request } };
+		await assert.rejects(
+			m.TeamBridgeOwnerAuditApi.messages(scope, "bcv_fixture"),
+		);
+		assert.equal(
+			fixture.inspect().records.length,
+			1,
+			"a stale preload method cannot silently count as a successful query",
+		);
+		window.api = { desktop: { request: fixture.request } };
+		await assert.rejects(
+			m.TeamBridgeOwnerAuditApi.messages(
+				{ ...scope, accountId: "acct_other" },
+				"bcv_fixture",
+			),
+			(error) => error.status === 403,
+		);
+		await assert.rejects(
+			m.TeamBridgeOwnerAuditApi.messages(
+				{ ...scope, tenantId: "org_unknown" },
+				"bcv_fixture",
+			),
+			(error) => error.status === 403,
+		);
+		fixture.holdNextOlder();
+		const older = m.TeamBridgeOwnerAuditApi.messages(
+			scope,
+			"bcv_fixture",
+			9951,
+		);
+		assert.equal(fixture.inspect().held, 1);
+		fixture.release();
+		assert.equal((await older).messages[0].seq, 9950);
+		fixture.setMode("denied");
+		await assert.rejects(
+			m.TeamBridgeOwnerAuditApi.messages(scope, "bcv_fixture"),
+			(error) => error.status === 403,
+		);
+		fixture.setMode("unavailable");
+		assert.equal(
+			(
+				await m.TeamBridgeOwnerAuditApi.messages(scope, "bcv_fixture")
+			).messages.every((row) => row.body === null),
+			true,
+		);
+		assert.equal(
+			(
+				await fixture.request({
+					op: "fixture.unknown",
+					tenant_id: "org_fixture",
+					expected_account_id: "acct_fixture",
+				})
+			).status,
+			503,
+			"unknown operations never fall through to the real desktop",
+		);
+		fixture.dispose();
+		assert.equal(
+			(
+				await fixture.request({
+					op: "team_bridge.directory",
+					tenant_id: "org_fixture",
+				})
+			).status,
+			503,
+		);
+		fixture.activate();
+		assert.equal(
+			fixture.client.getQueryData(m.radientUserKeys.user()).account.id,
+			"acct_fixture",
+			"Strict Effects setup re-establishes synthetic authority after teardown",
+		);
+	} finally {
+		fixture.dispose();
+		window.api = previous;
 	}
 });

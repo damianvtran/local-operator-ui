@@ -60,6 +60,13 @@ if (typeof window !== "undefined") {
 	// Mock window.api for Storybook
 	// biome-ignore lint/suspicious/noExplicitAny: Necessary for mocking the window object
 	(window as any).api = {
+		// Query-backed stories install only this current-protocol method. An
+		// unconfigured story must refuse, never inherit a live daemon fallback.
+		desktop: {
+			request: async () => {
+				throw new Error("Storybook desktop request transport is unconfigured");
+			},
+		},
 		// Mock session storage methods with window variable
 		session: {
 			getSession: async () => {
