@@ -117,6 +117,7 @@ import {
 	dismissQueuedAsk,
 	reviseQueuedAsk,
 } from "../../ask-answer";
+import { askRevisionEvidence } from "../../ask-queue";
 import type {
 	AskDismissReason,
 	AskDraft,
@@ -319,12 +320,14 @@ export const FleetAskDrawer = ({
 	const onRevise = useCallback(
 		(askId: string, answers: Record<string, string[]>) => {
 			const sessionId = fleetAskSessionFor(rows ?? [], askId);
-			if (!sessionId) return;
+			const ask = rows?.find((row) => row.ask_id === askId);
+			if (!sessionId || !ask) return;
 			run({
 				askId,
 				kind: "changed",
 				answers,
-				questions: (rows ?? []).find((row) => row.ask_id === askId)?.questions,
+				revision: askRevisionEvidence(ask, answers),
+				questions: ask.questions,
 				send: () =>
 					reviseQueuedAsk(
 						{ taskId: askId, answers, sessionId, lock },

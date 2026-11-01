@@ -5,7 +5,7 @@ import {
 	reviseQueuedAsk,
 } from "@features/chat/ask-answer";
 import type { AskDismissReason, AskDraft } from "@features/chat/ask-queue";
-import { askQueueView } from "@features/chat/ask-queue";
+import { askQueueView, askRevisionEvidence } from "@features/chat/ask-queue";
 /**
  * The detail pane (design.md § 2 "Detail", contract § 5.2 `GET …/{id}`).
  *
@@ -609,6 +609,7 @@ const DetailAsks: FC<{
 					askId: ask.ask_id,
 					kind: "changed",
 					answers,
+					revision: askRevisionEvidence(ask, answers),
 					questions: ask.questions,
 					send: () =>
 						reviseQueuedAsk(

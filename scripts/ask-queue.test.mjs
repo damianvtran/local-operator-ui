@@ -1856,3 +1856,152 @@ test("a multi-secret ask is refused by the wiring, not guessed at", async () => 
 	);
 	assert.deepEqual(calls, []);
 });
+
+const revisionRow = (over = {}) =>
+	single({
+		session_id: "revision-session",
+		status: "answered",
+		answered_at: TS + 10,
+		answered_by: { surface: "phone" },
+		delivered: false,
+		answers: { target: ["staging"] },
+		...over,
+	});
+const revisionOutcome = (row, answers, older = []) => {
+	const evidence = queue.askRevisionEvidence(row, answers);
+	return {
+		settled: {
+			status: "answered",
+			at: TS + 999999,
+			answers: queue.askPaintableAnswers(row.questions, answers),
+			revision: {
+				identity: evidence.identity,
+				superseded: [...older, evidence.before],
+				accepted: evidence.after,
+			},
+		},
+	};
+};
+
+test("R12 exact superseded answered/late snapshots update answers, not server authority", () => {
+	for (const status of ["answered", "late"]) {
+		const row = revisionRow({ status });
+		const result = queue.askWithLocalSettle(
+			row,
+			revisionOutcome(row, { target: ["production"] }),
+		);
+		assert.deepEqual(result.answers, { target: ["production"] });
+		assert.equal(result.status, status);
+		assert.equal(
+			result.answered_at,
+			row.answered_at,
+			"first acceptance is not a revision clock",
+		);
+		assert.equal(result.answered_by.surface, "phone");
+		assert.equal(result.delivered, false);
+		assert.deepEqual(queue.askRevisionDraft(result), {
+			target: ["production"],
+		});
+	}
+});
+
+test("R12 delivered, terminal, identity/schema and unfamiliar authoritative facts win", () => {
+	const row = revisionRow();
+	const outcome = revisionOutcome(row, { target: ["production"] });
+	const variants = [
+		{ delivered: true },
+		{ status: "open", delivered: true },
+		...["declined", "dismissed", "withdrawn", "expired", "future_terminal"].map(
+			(status) => ({ status }),
+		),
+		{ ask_id: "other-ask" },
+		{ session_id: "other-session" },
+		{ created_at: TS + 1 },
+		{
+			questions: row.questions.map((q) => ({
+				...q,
+				question: "Different question",
+			})),
+		},
+		{ questions: row.questions.map((q) => ({ ...q, secret: true })) },
+		{ answers: { target: ["unfamiliar concurrent answer"] } },
+		{ answered_at: TS + 11 },
+		{ answered_by: { surface: "terminal" } },
+		// Optional future/additive ordering evidence is never discarded to match an old snapshot.
+		{ revised_at: TS + 20 },
+	];
+	for (const changes of variants) {
+		const authoritative = { ...row, ...changes };
+		assert.equal(
+			queue.askWithLocalSettle(authoritative, outcome) === authoritative,
+			true,
+			`must preserve authoritative fact ${Object.keys(changes).join(",")}`,
+		);
+	}
+	const firstAnswerOnly = {
+		settled: {
+			status: "answered",
+			at: TS + 999999,
+			answers: { target: ["production"] },
+		},
+	};
+	assert.equal(
+		queue.askWithLocalSettle(row, firstAnswerOnly) === row,
+		true,
+		"a generic local receipt is not revision evidence",
+	);
+});
+
+test("R12 repeated known revisions retain only masked public snapshot evidence", () => {
+	const row = revisionRow({
+		questions: [
+			...single().questions,
+			{ id: "private_marker", question: "Marker", secret: true },
+		],
+		answers: { target: ["staging"], private_marker: ["[PRIVATE_MARKER]"] },
+	});
+	const typed = "synthetic-secret-not-for-public-state";
+	const first = revisionOutcome(row, {
+		target: ["production"],
+		private_marker: [typed],
+	});
+	const nextRow = queue.askWithLocalSettle(row, first);
+	const second = revisionOutcome(
+		nextRow,
+		{ target: ["canary"], private_marker: [typed] },
+		first.settled.revision.superseded,
+	);
+	assert.deepEqual(queue.askWithLocalSettle(row, second).answers.target, [
+		"canary",
+	]);
+	assert.deepEqual(queue.askWithLocalSettle(nextRow, second).answers.target, [
+		"canary",
+	]);
+	assert.equal(JSON.stringify(first).includes(typed), false);
+	assert.equal(JSON.stringify(second).includes(typed), false);
+	assert.deepEqual(second.settled.answers.private_marker, ["[PRIVATE_MARKER]"]);
+});
+
+test("R12 exact-snapshot fallback documents unversioned ABA, never overrides unknown facts", () => {
+	const baseline = revisionRow();
+	const outcome = revisionOutcome(baseline, { target: ["production"] });
+	const unknown = { ...baseline, answers: { target: ["another writer"] } };
+	assert.equal(queue.askWithLocalSettle(unknown, outcome) === unknown, true);
+	const observedABA = { ...baseline, revised_at: TS + 30 };
+	assert.equal(
+		queue.askWithLocalSettle(observedABA, outcome) === observedABA,
+		true,
+		"any visible newer/different ordering fact wins, even when the answer returns to baseline",
+	);
+	// With no public revision sequence, identical A→B→A history cannot be inferred.
+	// This intentionally pins the APPROVED LIMITATION, not a global ordering claim.
+	const indistinguishable = structuredClone(baseline);
+	assert.equal(
+		queue.askRevisionEvidence(indistinguishable, {}).before,
+		queue.askRevisionEvidence(baseline, {}).before,
+	);
+	assert.deepEqual(
+		queue.askWithLocalSettle(indistinguishable, outcome).answers.target,
+		["production"],
+	);
+});

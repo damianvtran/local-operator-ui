@@ -277,6 +277,8 @@ async function mount({
 	 * aggregate poll has not landed yet. This is where a secret leaked (R1-1).
 	 */
 	holdAggregate = false,
+	/** A valid snapshot can include acceptance but still predate a later revision. */
+	holdAnsweredAggregate = false,
 } = {}) {
 	const previousMatchMedia = window.matchMedia;
 	if (wide)
@@ -287,6 +289,7 @@ async function mount({
 	const asks = [askRow("a-1111", QUESTION_A), askRow("a-2222", QUESTION_B)];
 	seed(asks);
 	let firstAggregate = null;
+	let firstAnsweredAggregate = null;
 	const reads = { aggregate: 0 };
 	const posts = [];
 	window.api = {
@@ -378,13 +381,18 @@ async function mount({
 					case "asks.list":
 						reads.aggregate += 1;
 						if (holdAggregate) firstAggregate ??= structuredClone(asks);
+						if (
+							holdAnsweredAggregate &&
+							asks.some((ask) => ask.status === "answered")
+						)
+							firstAnsweredAggregate ??= structuredClone(asks);
 						return {
 							status: 200,
 							body: {
 								result: {
 									asks: holdAggregate
 										? structuredClone(firstAggregate)
-										: structuredClone(asks),
+										: structuredClone(firstAnsweredAggregate ?? asks),
 								},
 							},
 						};
@@ -590,6 +598,166 @@ test("reel preserves visible row offset across refresh, then follows the next us
 		await page.unmount();
 	}
 });
+
+for (const surface of ["pane", "fleet"]) {
+	for (const read of ["fresh", "open", "answered"]) {
+		test(
+			`R12 ${surface}: accepted revision and reopened seed survive ${read} aggregate`,
+			{ timeout: 30_000 },
+			async () => {
+				const page = await openOnA({
+					surface,
+					wide: true,
+					holdAggregate: read === "open",
+					holdAnsweredAggregate: read === "answered",
+					answer: (call) =>
+						call === 3
+							? {
+									status: 503,
+									detail: {
+										code: "transport.failed",
+										message: "Synthetic interrupted revision",
+									},
+								}
+							: { status: 200 },
+					seed: (asks) =>
+						asks[0].questions.push({
+							id: "SECRET",
+							question: "Synthetic revision marker",
+							secret: true,
+							persist: false,
+							options: [],
+						}),
+				});
+				try {
+					await chooseFirstOption(page);
+					await typeSecret(page.card("a-1111"));
+					await page.press(page.buttonIn(page.card("a-1111"), "Send answer"));
+					assert.ok(
+						await page.settle(() =>
+							Boolean(page.buttonIn(page.card("a-1111"), "Change answer")),
+						),
+					);
+					if (read !== "open")
+						assert.ok(
+							await page.settle(() =>
+								page.client
+									.getQueryData(["desktop", "asks"])
+									?.some(
+										(ask) =>
+											ask.ask_id === "a-1111" && ask.status === "answered",
+									),
+							),
+						);
+					await page.press(page.buttonIn(page.card("a-1111"), "Change answer"));
+					await page.press(
+						page.card("a-1111").querySelectorAll("[data-ask-option]")[1],
+					);
+					await typeSecret(page.card("a-1111"));
+					await page.press(page.buttonIn(page.card("a-1111"), "Update answer"));
+					assert.ok(
+						await page.settle(
+							() =>
+								page.posts.length === 2 &&
+								Boolean(page.buttonIn(page.card("a-1111"), "Change answer")),
+						),
+					);
+					assert.equal(
+						page.card("a-1111").textContent.includes("No rotation"),
+						true,
+						"a successful revision must replace the superseded public answer",
+					);
+					assert.deepEqual(page.filterText(), [
+						"All · 2",
+						"Pending · 1",
+						"Settled · 1",
+					]);
+					assert.equal(stateBlob(page.container).includes(SECRET_VALUE), false);
+					await page.press(page.buttonIn(page.card("a-1111"), "Change answer"));
+					const selected = page
+						.card("a-1111")
+						.querySelector('[data-ask-option][aria-checked="true"]');
+					assert.equal(
+						selected?.textContent.includes("No rotation"),
+						true,
+						"reopened form seeds from the reconciled receipt",
+					);
+					await page.press(
+						page.card("a-1111").querySelector("[data-ask-option-other]"),
+					);
+					await act(async () => {
+						const field = page
+							.card("a-1111")
+							.querySelector("textarea[data-ask-other]");
+						Object.getOwnPropertyDescriptor(
+							window.HTMLTextAreaElement.prototype,
+							"value",
+						).set.call(field, "Third accepted choice");
+						field.dispatchEvent(new window.Event("input", { bubbles: true }));
+					});
+					await typeSecret(page.card("a-1111"));
+					await page.press(page.buttonIn(page.card("a-1111"), "Update answer"));
+					assert.ok(
+						await page.settle(() =>
+							Boolean(page.buttonIn(page.card("a-1111"), "Retry")),
+						),
+					);
+					assert.equal(page.card("a-1111").dataset.loAskStatus, "answered");
+					assert.deepEqual(page.filterText(), [
+						"All · 2",
+						"Pending · 1",
+						"Settled · 1",
+					]);
+					await page.press(page.buttonIn(page.card("a-1111"), "Retry"));
+					assert.ok(
+						await page.settle(
+							() =>
+								page.posts.length === 4 &&
+								Boolean(page.buttonIn(page.card("a-1111"), "Change answer")),
+						),
+					);
+					assert.equal(
+						page.card("a-1111").textContent.includes("Third accepted choice"),
+						true,
+						"repeated revisions supersede the known older chain",
+					);
+					assert.equal(stateBlob(page.container).includes(SECRET_VALUE), false);
+					await act(async () =>
+						page.client.setQueryData(
+							["desktop", "asks"],
+							page.asks.map((ask) =>
+								ask.ask_id === "a-1111"
+									? {
+											...ask,
+											answers: {
+												...ask.answers,
+												q1: ["Unfamiliar authoritative answer"],
+											},
+										}
+									: { ...ask },
+							),
+						),
+					);
+					assert.ok(
+						await page.settle(() =>
+							page
+								.card("a-1111")
+								.textContent.includes("Unfamiliar authoritative answer"),
+						),
+					);
+					assert.equal(
+						page.card("a-1111").textContent.includes("Third accepted choice"),
+						false,
+						"unrecognized authoritative answers are never blindly overwritten",
+					);
+					assert.equal(page.card("a-2222").dataset.loAskStatus, "open");
+				} finally {
+					await page.unmount();
+				}
+			},
+		);
+	}
+}
 
 for (const surface of ["pane", "fleet"]) {
 	for (const holdAggregate of [true, false]) {

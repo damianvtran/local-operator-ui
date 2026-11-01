@@ -36,6 +36,7 @@ import { type AnswerOutcome, createSendLock } from "./ask-answer";
 import {
 	type AskDismissReason,
 	type AskOutcome,
+	type AskRevisionEvidence,
 	askFailureEarnsRetry,
 	askPaintableAnswers,
 	askRefusalIsOwner,
@@ -58,6 +59,8 @@ export type AskAct = {
 	answers?: Record<string, string[]>;
 	/** The ask's questions, so the record can tell which cells are secret. */
 	questions?: readonly PendingAskQuestion[];
+	/** Exact public row superseded at revision dispatch; never submitted secret cells. */
+	revision?: AskRevisionEvidence;
 	/** The reason a dismissal carried. */
 	reason?: AskDismissReason;
 };
@@ -157,57 +160,82 @@ export const useAskOutcomes = ({
 					}));
 					return;
 				}
-				setOutcomes((current) => ({
-					...current,
-					[act.askId]:
-						act.kind === "changed"
-							? {
-									sending: false,
-									refused: null,
-									changed: true,
-									/* A revision has its own receipt even when the aggregate
-									 * still says open. Successful sends update only public/masked
-									 * answer cells; refusal and Retry retain the prior decision. */
-									settled: {
-										...current[act.askId]?.settled,
-										status: current[act.askId]?.settled?.status ?? "answered",
-										at: now(),
-										answers: askPaintableAnswers(
-											act.questions ?? [],
-											act.answers ?? {},
-										),
+				setOutcomes((current) => {
+					const previous = current[act.askId]?.settled?.revision;
+					/* Continue only a chain this mount actually recognizes. A new baseline
+					 * from an unfamiliar writer starts a new chain, so old receipts cannot
+					 * later overwrite that authoritative answer. No client timestamps rank it. */
+					const keepChain =
+						act.revision &&
+						previous?.identity === act.revision.identity &&
+						(previous.accepted === act.revision.before ||
+							previous.superseded.includes(act.revision.before));
+					const revision = act.revision
+						? {
+								identity: act.revision.identity,
+								superseded: [
+									...new Set([
+										...(keepChain ? previous.superseded : []),
+										act.revision.before,
+									]),
+								],
+								accepted: act.revision.after,
+							}
+						: undefined;
+					return {
+						...current,
+						[act.askId]:
+							act.kind === "changed"
+								? {
+										sending: false,
+										refused: null,
+										changed: true,
+										/* A revision has its own receipt even when the aggregate
+										 * still says open. Successful sends update only public/masked
+										 * answer cells; refusal and Retry retain the prior decision. */
+										settled: {
+											status: current[act.askId]?.settled?.status ?? "answered",
+											at: now(),
+											...(revision ? { revision } : {}),
+											answers: askPaintableAnswers(
+												act.questions ?? [],
+												act.answers ?? {},
+											),
+										},
+									}
+								: {
+										sending: false,
+										refused: null,
+										...(act.kind === "dismissed" && act.reason !== undefined
+											? { dismissed: act.reason }
+											: {}),
+										settled: {
+											status: act.kind,
+											at: now(),
+											/*
+											 * A SECRET'S TYPED VALUE NEVER REACHES STATE (agent review
+											 * round 1, R1-1). The overlay paints this map on the settled
+											 * card, and the first cut copied it verbatim, so the value a
+											 * user typed into a secret field was drawn in clear until the
+											 * next read replaced the row. The record keeps the masked key
+											 * form core itself returns; the typed value lived only in
+											 * `act.send`'s closure, which leaves state with `retry` below.
+											 */
+											...(act.answers === undefined
+												? {}
+												: {
+														answers: askPaintableAnswers(
+															act.questions ?? [],
+															act.answers,
+														),
+													}),
+											...(act.reason === undefined
+												? {}
+												: { reason: act.reason }),
+										},
 									},
-								}
-							: {
-									sending: false,
-									refused: null,
-									...(act.kind === "dismissed" && act.reason !== undefined
-										? { dismissed: act.reason }
-										: {}),
-									settled: {
-										status: act.kind,
-										at: now(),
-										/*
-										 * A SECRET'S TYPED VALUE NEVER REACHES STATE (agent review
-										 * round 1, R1-1). The overlay paints this map on the settled
-										 * card, and the first cut copied it verbatim, so the value a
-										 * user typed into a secret field was drawn in clear until the
-										 * next read replaced the row. The record keeps the masked key
-										 * form core itself returns; the typed value lived only in
-										 * `act.send`'s closure, which leaves state with `retry` below.
-										 */
-										...(act.answers === undefined
-											? {}
-											: {
-													answers: askPaintableAnswers(
-														act.questions ?? [],
-														act.answers,
-													),
-												}),
-										...(act.reason === undefined ? {} : { reason: act.reason }),
-									},
-								},
-				}));
+					};
+				});
 				accepted.current?.(act);
 			})();
 		},

@@ -1231,14 +1231,21 @@ export type AskOutcome = {
 	 * It states only what the owner ACCEPTED, never more: an answer is recorded but
 	 * not delivered (`delivered: false`), so the card reads `Answered — delivering`
 	 * exactly as the session drawer's live frame does in the same window. It applies
-	 * only while the wire still says `open`; the moment a frame carries any settled
-	 * status, the wire wins.
+	 * while the first-settlement frame still says `open`/`timed_out`. A revision
+	 * may instead supersede an exact known already-answered snapshot's answer map;
+	 * the wire's identity, terminal status and delivered facts remain authoritative.
 	 */
 	settled?: {
 		status: "answered" | "declined" | "dismissed";
 		/** Client epoch ms the owner accepted the act: the card's stamp until the wire's. */
 		at: number;
 		answers?: Record<string, string[]>;
+		/** Accepted revision over exact snapshots this mount knows it superseded. */
+		revision?: {
+			identity: string;
+			superseded: readonly string[];
+			accepted: string;
+		};
 		reason?: AskDismissReason;
 	};
 	/**
@@ -1283,12 +1290,52 @@ export const askPaintableAnswers = (
 	return out;
 };
 
+/** Public-only evidence captured at dispatch, never a client-clock freshness guess. */
+export type AskRevisionEvidence = {
+	identity: string;
+	before: string;
+	after: string;
+};
+
+/**
+ * Capture the exact row a revision will supersede. `answered_at` is the FIRST
+ * acceptance's stamp, not a revision clock; neither browser time nor query-read
+ * time can order server writes. These fingerprints carry only public/masked cells.
+ * Identity includes question schema so an unrelated/reissued ask cannot inherit it.
+ */
+export const askRevisionEvidence = (
+	ask: PendingAsk,
+	answers: Record<string, string[]>,
+): AskRevisionEvidence => {
+	const identity = JSON.stringify([
+		ask.session_id ?? null,
+		ask.ask_id,
+		ask.created_at ?? null,
+		ask.questions,
+	]);
+	const snapshot = (cells: Record<string, string[]> | null | undefined) => {
+		const painted = askPaintableAnswers(ask.questions, cells ?? {});
+		return JSON.stringify([
+			identity,
+			ask.status,
+			ask.answered_at ?? null,
+			ask.revised_at ?? null,
+			ask.delivered ?? null,
+			ask.answered_by ?? null,
+			Object.keys(painted)
+				.sort()
+				.map((key) => [key, painted[key]]),
+		]);
+	};
+	return { identity, before: snapshot(ask.answers), after: snapshot(answers) };
+};
+
 /**
  * The ask as the owner has accepted it, when this surface knows more than the frame.
  *
- * Returns the frame's own object untouched unless the wire still reads `open` and a
- * local `settled` record exists - so a frame that has caught up (or moved somewhere
- * else, e.g. `expired`) is always what is drawn.
+ * First-settlement lag and exact known revision lag share this reader. A revision
+ * changes only the stale public answer map; any unfamiliar or delivered/terminal
+ * frame remains untouched. There is no independent form-seeding reconciliation.
  */
 export const askWithLocalSettle = (
 	ask: PendingAsk,
@@ -1300,7 +1347,23 @@ export const askWithLocalSettle = (
 	 * R1-2): a `timed_out` ask takes a late answer, decline or dismissal too, and its
 	 * card went stale exactly the way an open one did.
 	 */
-	if (settled === undefined || !OPEN_STATUSES.has(ask.status)) return ask;
+	if (settled === undefined || ask.delivered === true) return ask;
+	if (settled.revision) {
+		const observed = askRevisionEvidence(ask, ask.answers ?? {});
+		if (observed.identity !== settled.revision.identity) return ask;
+		if (ask.status === "answered" || ask.status === "late") {
+			/* Only the exact superseded snapshot (or a known older local revision)
+			 * may lag this accepted revision. An unfamiliar authoritative answer wins.
+			 * Preserve status, attribution, first answered_at and delivery verbatim.
+			 * This wire exposes no revision sequence: an indistinguishable cross-writer
+			 * ABA cannot be ordered here. Do NOT claim global ordering or use a timer. */
+			return settled.answers &&
+				settled.revision.superseded.includes(observed.before)
+				? { ...ask, answers: settled.answers }
+				: ask;
+		}
+	}
+	if (!OPEN_STATUSES.has(ask.status)) return ask;
 	if (settled.status === "dismissed")
 		return {
 			...ask,
