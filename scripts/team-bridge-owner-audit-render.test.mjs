@@ -1097,8 +1097,20 @@ test("a truncated audit window says so where the reader is looking", async () =>
 		false,
 		"the cut-off is not a header line",
 	);
-	const notice = closed.host.querySelector("section > div > p:last-of-type");
+	/* The scroll anchor owns an inner content wrapper now. Find the actual
+	 * membership statement within the viewport rather than pinning its nesting
+	 * depth, but still require it to close the transcript, not just exist. */
+	const viewport = closed.host.querySelector("section > div");
+	assert.ok(viewport);
+	const notice = [...viewport.querySelectorAll("p")].find(
+		(paragraph) => paragraph.textContent === m.t("ui.ownerAudit.removed"),
+	);
 	assert.ok(notice, "the list ends with the window's own statement");
+	assert.equal(notice.parentElement.lastElementChild, notice);
+	assert.ok(
+		viewport.textContent.endsWith(notice.textContent),
+		"the truncation statement follows all transcript content",
+	);
 	assert.ok(notice.textContent.includes(m.t("ui.ownerAudit.removed")));
 	/* Distinct treatment: the notice is not the disclosure's 12px quiet grey. */
 	assert.ok(notice.className.includes("text-sm"));
