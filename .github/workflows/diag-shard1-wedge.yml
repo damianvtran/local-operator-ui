@@ -1,0 +1,168 @@
+name: Diag — shard 1/8 wedge
+
+# WHY THIS FILE EXISTS. main cannot merge because Desktop Tests never finishes,
+# and the survivors of the eight-group deal fail differently: one group is killed
+# by the memory guard at 82 files, and this group (shard 1/8) runs to the job
+# ceiling. The file list below is group index 1 of the eight-group deal at head
+# 8bbb57055c7 - the exact 82 files job 124853475477 was given - taken from
+# `desktop-test-shards.mjs plan` at that head, so the arms reproduce that group
+# rather than approximating it.
+#
+# The arms test one hypothesis: that the no-hardlink-write preload guard
+# accumulates something per file process (a lock, a cache, an fd) and a file
+# process blocks forever inside a write after ~35 of them.
+#
+#   a-control            unchanged, expected to wedge; the control
+#   b-no-hardlink-guard  the guard's own documented stand-down switch, with the
+#                        rest of the pipeline identical
+#   c-concurrency-1      one file at a time; the governor bypassed explicitly
+#
+# No test content is touched and nothing here is a candidate fix: this is a
+# diagnostic branch. The step cap (27) sits below the job cap (30) so a wedged
+# arm still reaches its heartbeat and log upload instead of being cancelled with
+# everything else.
+on:
+  push:
+    branches: [diag/shard1-wedge]
+  workflow_dispatch:
+
+env:
+  # group 1 of the eight-group deal at 8bbb57055c7, in the deal's own order.
+  DESKTOP_FILES: >-
+      scripts/agent-avatar.test.mjs scripts/agent-messages-dialog.test.mjs
+      scripts/agents-offer-dismiss.test.mjs scripts/analytics-rate-format.test.mjs
+      scripts/ask-dismiss.test.mjs scripts/asks-app-regression.test.mjs
+      scripts/audio-recording-levels.test.mjs scripts/backend-version-drift.test.mjs
+      scripts/browser-challenge-proof-passkey-servers.test.mjs scripts/browser-history-store.test.mjs
+      scripts/browser-start-page.test.mjs scripts/btw-aside.test.mjs scripts/capture-evidence.test.mjs
+      scripts/chat-link-affordances.test.mjs scripts/chat-sidebar-agents.test.mjs
+      scripts/chat-sidebar-scope-paging.test.mjs scripts/check-build-env.test.mjs
+      scripts/child-reader-foot-react.test.mjs scripts/code-review-model.test.mjs
+      scripts/composer-readings.test.mjs scripts/condense-parity.test.mjs
+      scripts/console-pack.test.mjs scripts/currency-math.test.mjs scripts/desktop-feed.test.mjs
+      scripts/desktop-test-shards.test.mjs scripts/draft-slash-identity.test.mjs
+      scripts/evidence-run-guard.test.mjs scripts/fold-open.test.mjs
+      scripts/hub-check-now-body.test.mjs scripts/hub-skill-alias.test.mjs
+      scripts/i18n/catalogue-locale.test.mjs scripts/i18n/es-activation.test.mjs
+      scripts/i18n/runtime.test.mjs scripts/image-actions.test.mjs scripts/integration-model.test.mjs
+      scripts/keymap-dispatch.test.mjs scripts/language-live-updates.test.mjs
+      scripts/link-actions.test.mjs scripts/main-locale.test.mjs scripts/mcp-catalog-parity.test.mjs
+      scripts/merge-update-feed.test.mjs scripts/model-select-store.test.mjs
+      scripts/new-chat-shortcut.test.mjs scripts/notifications-operations.test.mjs
+      scripts/onboarding-tour-i18n.test.mjs scripts/palette-main-door.test.mjs
+      scripts/panel-info-credentials.test.mjs scripts/path-utils.test.mjs
+      scripts/pre-push-gate.test.mjs scripts/projects-filters.test.mjs scripts/projects-sheet.test.mjs
+      scripts/provider-grid-error-copy.test.mjs scripts/push-to-talk-shortcut-row.test.mjs
+      scripts/reconnect-page-gap.test.mjs scripts/retention-duration.test.mjs
+      scripts/run-detail-model.test.mjs scripts/seed-label-gap.test.mjs
+      scripts/session-load-sequence.test.mjs scripts/settings-language-row.test.mjs
+      scripts/settings-time-to-error.test.mjs scripts/sidebar-own-avatar.test.mjs
+      scripts/skill-list.test.mjs scripts/slash-submit.test.mjs scripts/speech-clip.test.mjs
+      scripts/stale-agent.test.mjs scripts/streaming-markdown-parity.test.mjs
+      scripts/supplement-file-actions.test.mjs scripts/team-bridge-auth-owner-mount.test.mjs
+      scripts/team-bridge-first-send-background.test.mjs
+      scripts/team-bridge-notifications-mount.test.mjs scripts/team-bridge-owner-fence.test.mjs
+      scripts/team-bridge-thread-gate.test.mjs scripts/test-inventory.test.mjs
+      scripts/toast-close-placement.test.mjs scripts/transcript-cursor-continuity.test.mjs
+      scripts/transcript-journal-order.test.mjs scripts/transcription-failure-copy.test.mjs
+      scripts/typed-row-call-sites.test.mjs scripts/update-panel-copy.test.mjs
+      scripts/use-checkpoints.test.mjs scripts/wake-cancel-panel.test.mjs
+      scripts/window-glass.test.mjs
+
+jobs:
+  arm:
+    name: diag shard1/8 (${{ matrix.arm }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arm: a-control
+            args: ""
+            guard: ""
+          - arm: b-no-hardlink-guard
+            args: ""
+            guard: "1"
+          - arm: c-concurrency-1
+            args: "--test-concurrency=1"
+            guard: ""
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: '10.29.2'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile
+
+      - name: Run the shard 1/8 file list
+        timeout-minutes: 27
+        env:
+          LOCAL_OPERATOR_UI_NO_HARDLINK_GUARD: ${{ matrix.guard }}
+        run: |
+          set -o pipefail
+          date -u +%s > "$RUNNER_TEMP/started_at.txt"
+          # A 30s heartbeat, because a wedged arm's log simply stops: the
+          # heartbeat is what says WHEN it stopped and how far it had got.
+          (
+            while sleep 30; do
+              printf '%s guarding=%s last_ok=%s\n' \
+                "$(date -u +%H:%M:%S)" \
+                "$(grep -c 'no-hardlink-write: guarding ' /tmp/diag-raw.log 2>/dev/null || true)" \
+                "$(grep -E '^ok [0-9]+ - ' /tmp/diag-raw.log 2>/dev/null | tail -1 | cut -c1-64)" \
+                >> /tmp/diag-heartbeat.log
+            done
+          ) &
+          HEARTBEAT=$!
+          node scripts/run-desktop-tests.mjs ${{ matrix.args }} $DESKTOP_FILES 2>&1 | tee /tmp/diag-raw.log
+          RC=${PIPESTATUS[0]}
+          kill "$HEARTBEAT" 2>/dev/null || true
+          date -u +%s > "$RUNNER_TEMP/ended_at.txt"
+          echo "$RC" > "$RUNNER_TEMP/node_rc.txt"
+          echo "suite rc=$RC"
+          exit "$RC"
+
+      - name: Report what the arm did
+        if: ${{ always() }}
+        run: |
+          start="$(cat "$RUNNER_TEMP/started_at.txt" 2>/dev/null || true)"
+          end="$(cat "$RUNNER_TEMP/ended_at.txt" 2>/dev/null || true)"
+          {
+            echo "### arm ${{ matrix.arm }}"
+            echo ""
+            if [ -n "$start" ] && [ -n "$end" ]; then
+              echo "- wall_s: $((end - start))"
+              echo "- node_rc: $(cat "$RUNNER_TEMP/node_rc.txt" 2>/dev/null || echo missing)"
+            else
+              echo "- no completion marker: the suite step was cancelled at its own 27-minute cap"
+            fi
+            echo "- guarding_lines: $(grep -c 'no-hardlink-write: guarding ' /tmp/diag-raw.log 2>/dev/null || true)"
+            echo "- guard_standing_down: $(grep -c 'STANDING DOWN' /tmp/diag-raw.log 2>/dev/null || true)"
+            echo "- last_completed: $(grep -E '^ok [0-9]+ - ' /tmp/diag-raw.log 2>/dev/null | tail -1 || true)"
+            echo "- last_subtest_started: $(grep -E '^# Subtest: ' /tmp/diag-raw.log 2>/dev/null | tail -1 || true)"
+            echo "- tap_summary_lines: $(grep -cE '^# (tests|pass|fail|cancelled) ' /tmp/diag-raw.log 2>/dev/null || true)"
+            echo "- memory_limit_hits: $(grep -c 'MEMORY LIMIT EXCEEDED' /tmp/diag-raw.log 2>/dev/null || true)"
+            echo ""
+            echo '#### last heartbeat'
+            echo '```'
+            tail -4 /tmp/diag-heartbeat.log 2>/dev/null || echo "(none)"
+            echo '```'
+            echo '#### tail of the suite log'
+            echo '```'
+            tail -12 /tmp/diag-raw.log 2>/dev/null || echo "(none)"
+            echo '```'
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload the arm's log
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: diag-${{ matrix.arm }}
+          path: |
+            /tmp/diag-raw.log
+            /tmp/diag-heartbeat.log
+          if-no-files-found: error
+          retention-days: 7
