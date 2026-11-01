@@ -309,7 +309,7 @@ try {
 		};
 		E.webContents.getAllWebContents().forEach(arm);
 		E.app.on('web-contents-created', (_e,c) => arm(c));
-		const w = E.BrowserWindow.getAllWindows()[0];
+		const w = E.BrowserWindow.getAllWindows().find(w=>w.webContents.getURL().includes('/index.html'));
 		const point=(stage,c)=>globalThis.__focusProof.events.push({stage,id:c?.id,at:Date.now(),ownerFocused:w.webContents.isFocused(),focused:E.webContents.getFocusedWebContents()?.id??null});
 		const add=w.contentView.addChildView.bind(w.contentView);
 		w.contentView.addChildView=(v,...args)=>{
@@ -344,7 +344,7 @@ try {
 	const sample = async (label) => {
 		const native = await evaluate(
 			main,
-			`(() => { const E = process.mainModule.require('electron'); const w = E.BrowserWindow.getAllWindows()[0]; return { visible:w.isVisible(), focusable:w.isFocusable(), windowFocused:w.isFocused(), ownerId:w.webContents.id, ownerFocused:w.webContents.isFocused(), focused:E.webContents.getFocusedWebContents()?.id ?? null, views:w.contentView.children.map(v => ({id:v.webContents?.id, visible:v.getVisible(), focused:v.webContents?.isFocused()})), events:globalThis.__focusProof.events,ciActivationUsed:globalThis.__focusProof.ciActivationUsed??false }; })()`,
+			`(() => { const E = process.mainModule.require('electron'); const w = E.BrowserWindow.getAllWindows().find(w=>w.webContents.getURL().includes('/index.html')); return { visible:w.isVisible(), focusable:w.isFocusable(), windowFocused:w.isFocused(), ownerId:w.webContents.id, ownerFocused:w.webContents.isFocused(), focused:E.webContents.getFocusedWebContents()?.id ?? null, views:w.contentView.children.map(v => ({id:v.webContents?.id, visible:v.getVisible(), focused:v.webContents?.isFocused()})), events:globalThis.__focusProof.events,ciActivationUsed:globalThis.__focusProof.ciActivationUsed??false }; })()`,
 		);
 		const dom = await evaluate(
 			owner,
@@ -368,7 +368,7 @@ try {
 	const captureShell = async (label) => {
 		const data = await evaluate(
 			main,
-			"(async()=>{const E=process.mainModule.require('electron');return (await E.BrowserWindow.getAllWindows()[0].webContents.capturePage()).toPNG().toString('base64');})()",
+			"(async()=>{const E=process.mainModule.require('electron');return (await E.BrowserWindow.getAllWindows().find(w=>w.webContents.getURL().includes('/index.html')).webContents.capturePage()).toPNG().toString('base64');})()",
 		);
 		writeFileSync(join(out, `${label}.png`), Buffer.from(data, "base64"));
 	};
@@ -495,7 +495,7 @@ try {
 		if (
 			!(await evaluate(
 				main,
-				"process.mainModule.require('electron').BrowserWindow.getAllWindows()[0].webContents.isFocused()",
+				"process.mainModule.require('electron').BrowserWindow.getAllWindows().find(w=>w.webContents.getURL().includes('/index.html')).webContents.isFocused()",
 			))
 		) {
 			// A real browser user's CmdL moves to the address row through the shipped
@@ -697,7 +697,7 @@ try {
 		() =>
 			evaluate(
 				main,
-				`process.mainModule.require('electron').BrowserWindow.getAllWindows()[0].contentView.children.some(v=>v.webContents?.id===${paletteCase.page.id}&&v.getVisible())`,
+				`process.mainModule.require('electron').BrowserWindow.getAllWindows().find(w=>w.webContents.getURL().includes('/index.html')).contentView.children.some(v=>v.webContents?.id===${paletteCase.page.id}&&v.getVisible())`,
 			),
 		"user presents same view",
 	);
@@ -782,7 +782,7 @@ try {
 		() =>
 			evaluate(
 				main,
-				`!process.mainModule.require('electron').BrowserWindow.getAllWindows()[0].contentView.children.some(v=>v.webContents?.id===${paletteCase.page.id})`,
+				`!process.mainModule.require('electron').BrowserWindow.getAllWindows().find(w=>w.webContents.getURL().includes('/index.html')).contentView.children.some(v=>v.webContents?.id===${paletteCase.page.id})`,
 			),
 		"route exit detaches browser page",
 	);
@@ -791,7 +791,7 @@ try {
 		() =>
 			evaluate(
 				main,
-				`process.mainModule.require('electron').BrowserWindow.getAllWindows()[0].contentView.children.some(v=>v.webContents?.id===${paletteCase.page.id}&&v.getVisible())`,
+				`process.mainModule.require('electron').BrowserWindow.getAllWindows().find(w=>w.webContents.getURL().includes('/index.html')).contentView.children.some(v=>v.webContents?.id===${paletteCase.page.id}&&v.getVisible())`,
 			),
 		"route return presents same native view",
 	);
@@ -831,7 +831,7 @@ try {
 			);
 			const frame = await evaluate(
 				main,
-				"(async()=>{const E=process.mainModule.require('electron');return (await E.BrowserWindow.getAllWindows()[0].webContents.capturePage()).toPNG().toString('base64');})()",
+				"(async()=>{const E=process.mainModule.require('electron');return (await E.BrowserWindow.getAllWindows().find(w=>w.webContents.getURL().includes('/index.html')).webContents.capturePage()).toPNG().toString('base64');})()",
 			);
 			writeFileSync(
 				join(out, "failure-frame.png"),
