@@ -915,7 +915,6 @@ test("the supervisor emits census samples from suite start and stops at the dead
 	const marker = `printf '{"at":1600000000000}' > "$LOCAL_OPERATOR_UI_SUITE_STATE/suite-start.json"; sleep 8`;
 	const f = fixture(marker);
 	process.env.LOCAL_OPERATOR_UI_KERNEL_CENSUS = census;
-	process.env.LOCAL_OPERATOR_UI_CENSUS_INTERVAL_MS = "120";
 	try {
 		a.launch({
 			state: f.state,
@@ -923,6 +922,7 @@ test("the supervisor emits census samples from suite start and stops at the dead
 			durationMs: 3000,
 			setupStarted: Date.now(),
 			witnessMs: 200,
+			censusIntervalMs: 150,
 		});
 		const result = await a.awaitResult({ state: f.state });
 		assert.equal(
@@ -967,7 +967,6 @@ test("the supervisor emits census samples from suite start and stops at the dead
 		);
 	} finally {
 		Reflect.deleteProperty(process.env, "LOCAL_OPERATOR_UI_KERNEL_CENSUS");
-		Reflect.deleteProperty(process.env, "LOCAL_OPERATOR_UI_CENSUS_INTERVAL_MS");
 	}
 });
 
@@ -979,7 +978,6 @@ test("census falls back to launch basis when the suite-start marker never arrive
 	);
 	const f = fixture("sleep 8");
 	process.env.LOCAL_OPERATOR_UI_KERNEL_CENSUS = census;
-	process.env.LOCAL_OPERATOR_UI_CENSUS_INTERVAL_MS = "150";
 	try {
 		a.launch({
 			state: f.state,
@@ -987,6 +985,7 @@ test("census falls back to launch basis when the suite-start marker never arrive
 			durationMs: 2500,
 			setupStarted: Date.now(),
 			witnessMs: 200,
+			censusIntervalMs: 150,
 		});
 		// Mid-flight: a synthetic subject that never prints the runner's marker
 		// must not cause an early terminal on any consumer.
@@ -1013,7 +1012,6 @@ test("census falls back to launch basis when the suite-start marker never arrive
 		);
 	} finally {
 		Reflect.deleteProperty(process.env, "LOCAL_OPERATOR_UI_KERNEL_CENSUS");
-		Reflect.deleteProperty(process.env, "LOCAL_OPERATOR_UI_CENSUS_INTERVAL_MS");
 	}
 });
 
@@ -1068,6 +1066,117 @@ test("no census file is created when the probe environment is unset", async () =
 		"no probe starts without the env",
 	);
 	assert.equal(existsSync(join(f.state, "kernel-census.jsonl")), false);
+});
+
+test("identity resolves the linux branch instead of throwing on an unbound path", async () => {
+	const a = await api();
+	const root = mkdtempSync(join(tmpdir(), "proc-identity-"));
+	mkdirSync(join(root, "7373"), { recursive: true });
+	// Field 0 state, 1 ppid, 2 pgid, 11/12 cpu, 19 start - the shape identity()
+	// reads on Linux. Darwin never takes this branch, which is exactly how an
+	// unbound path reference shipped and broke every ubuntu run.
+	const fields = new Array(52).fill("0");
+	fields[0] = "S";
+	fields[1] = "1";
+	fields[2] = "7373";
+	fields[11] = "4";
+	fields[12] = "5";
+	fields[19] = "987654";
+	writeFileSync(
+		join(root, "7373", "stat"),
+		`7373 (node) ${fields.join(" ")}\n`,
+	);
+	const original = Object.getOwnPropertyDescriptor(process, "platform");
+	Object.defineProperty(process, "platform", {
+		value: "linux",
+		configurable: true,
+	});
+	try {
+		const id = a.identity(7373, root);
+		assert.ok(
+			id,
+			"the linux branch must return an identity, not null or a throw",
+		);
+		assert.equal(id.pid, 7373);
+		assert.equal(id.pgid, 7373);
+		assert.equal(id.start, "987654");
+		assert.deepEqual(id.cpu, ["4", "5"]);
+	} finally {
+		Object.defineProperty(process, "platform", original);
+	}
+});
+
+test("the entry points link, so an ESM export mismatch cannot hide", async () => {
+	// Unit tests import helpers; production imports these files. A misspelled or
+	// wrong-module export is a link error only the real entry point surfaces.
+	const entry = await import("./run-desktop-tests.mjs?link-check").catch(
+		(error) => error,
+	);
+	assert.ok(
+		!(entry instanceof Error),
+		`run-desktop-tests.mjs must link: ${entry?.message ?? ""}`,
+	);
+});
+
+test("capture only signals a process that answers the report flag", async () => {
+	const a = await api();
+	const reports = mkdtempSync(join(tmpdir(), "stack-capability-"));
+	const plain = spawn(process.execPath, ["-e", "setInterval(()=>{},1000)"], {
+		detached: true,
+		stdio: "ignore",
+	});
+	const flagged = spawn(
+		process.execPath,
+		[
+			"--report-on-signal",
+			"--report-signal=SIGUSR2",
+			`--report-directory=${reports}`,
+			"-e",
+			"setInterval(()=>{},1000)",
+		],
+		{ detached: true, stdio: "ignore" },
+	);
+	process.env.LOCAL_OPERATOR_UI_STACK_REPORTS = reports;
+	try {
+		await pause(400);
+		const state = mkdtempSync(join(tmpdir(), "stack-capability-state-"));
+		const capture = await a.captureStacks(
+			state,
+			{ targets: [a.identity(plain.pid), a.identity(flagged.pid)] },
+			{ waitMs: 800 },
+		);
+		assert.ok(
+			capture.skippedDetail.some(
+				(row) => row.pid === plain.pid && row.reason === "no-report-flag",
+			),
+			`an unflagged process must be skipped, got ${JSON.stringify(capture.skippedDetail)}`,
+		);
+		assert.ok(
+			!capture.sent.includes(plain.pid),
+			"an unflagged process must never be signalled",
+		);
+		assert.ok(
+			capture.written.length >= 1,
+			"the flagged child answers with a report",
+		);
+		// MAJOR 3 second half: the flagged child must WRITE a report naming a JS
+		// frame, not merely avoid being skipped.
+		const report = JSON.parse(
+			readFileSync(join(reports, capture.written[0]), "utf8"),
+		);
+		assert.ok(report.javascriptStack, "the report carries a JavaScript stack");
+		assert.ok(
+			a.identity(plain.pid),
+			"the unflagged child survives the capture",
+		);
+	} finally {
+		Reflect.deleteProperty(process.env, "LOCAL_OPERATOR_UI_STACK_REPORTS");
+		for (const child of [plain, flagged]) {
+			child.kill("SIGKILL");
+			await new Promise((r) => child.once("exit", r));
+		}
+		rmSync(reports, { recursive: true, force: true });
+	}
 });
 
 test("checkpoint: missing terminal receipt cannot pass", async () => {

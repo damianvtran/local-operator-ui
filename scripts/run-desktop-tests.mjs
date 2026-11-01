@@ -64,6 +64,7 @@ import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
+	STACK_REPORTS_ENV,
 	SUITE_STATE_ENV,
 	publishCoordinator,
 } from "./desktop-suite-checkpoints.mjs";
@@ -74,7 +75,6 @@ import {
 } from "./desktop-test-concurrency.mjs";
 import {
 	LANE_DIAGNOSTICS_ENV,
-	STACK_REPORTS_ENV,
 	createLaneBoundWatchdog,
 	formatLaneBoundLine,
 	formatLaneTripLine,
@@ -199,9 +199,6 @@ if (explicitFlag === undefined) {
 		nodeArgs.push(`--test-concurrency=${decision.concurrency}`);
 	}
 	console.log(formatDesktopTestConcurrencyLine(decision, fileCount));
-	// The supervisor owns the census cadence but cannot see this stdout, so the
-	// cadence is anchored on a marker file written from this exact line.
-	publishSuiteStart();
 } else {
 	const value = explicitFlag.includes("=")
 		? explicitFlag.slice(explicitFlag.indexOf("=") + 1)
@@ -232,6 +229,9 @@ if (explicitFlag === undefined) {
 		`desktop tests: ${fileCount} file${fileCount === 1 ? "" : "s"}, concurrency ${value} (explicit ${explicitFlag} in argv; governor bypassed)`,
 	);
 }
+// Both concurrency paths reach here, so the supervisor's census anchor is
+// published whichever way the width was decided.
+publishSuiteStart();
 nodeArgs.push(`--import=${GUARD_PRELOAD.href}`);
 /*
  * NEVER add `--test-force-exit` here. A test file can register tests after a

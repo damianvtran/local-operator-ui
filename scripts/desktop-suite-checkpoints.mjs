@@ -41,8 +41,11 @@ export const KERNEL_CENSUS_SAMPLES = 8;
 export const KERNEL_CENSUS_BYTES = 4096;
 export const KERNEL_CENSUS_INTERVAL_MS = 5 * 60_000;
 /** Test-only override so a control can prove the cadence without waiting. */
-export const KERNEL_CENSUS_INTERVAL_ENV =
-	"LOCAL_OPERATOR_UI_CENSUS_INTERVAL_MS";
+// Kernel metadata path shared by ownership checks and the census. It is a
+// module constant because the pre-existing /proc reads in identity() and
+// snapshot() must never resolve an unbound name on the Linux branch.
+const procRoot = "/proc";
+
 /** Where the runner drops its anchored suite-start marker for the supervisor. */
 export const SUITE_STATE_ENV = "LOCAL_OPERATOR_UI_SUITE_STATE";
 const pause = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -60,10 +63,10 @@ const optional = (path) => {
 };
 
 /** Linux start ticks disambiguate PID reuse; Darwin fallback carries lstart. */
-export function identity(pid) {
+export function identity(pid, root = procRoot) {
 	try {
 		if (process.platform === "linux") {
-			const text = readFileSync(`${procRoot}/${pid}/stat`, "utf8");
+			const text = readFileSync(`${root}/${pid}/stat`, "utf8");
 			const fields = text.slice(text.lastIndexOf(")") + 2).split(" ");
 			return {
 				pid,
@@ -330,6 +333,7 @@ export async function witness(
 
 /** launch is deliberately the only detached work; receipt identifies its owner. */
 export function launch({
+	censusIntervalMs,
 	state,
 	shell,
 	durationMs = SUITE_MS,
@@ -357,6 +361,7 @@ export function launch({
 		launcherPid: process.pid,
 		launcher: identity(process.pid),
 		witnessMs,
+		censusIntervalMs,
 	};
 	atomic(join(state, "config.json"), config);
 	const worker = spawn(process.execPath, [SELF, "worker", state], {
@@ -402,6 +407,7 @@ export async function captureStacks(
 	const reportDirectory = process.env[STACK_REPORTS_ENV] ?? null;
 	const sent = [];
 	const skipped = [];
+	const skippedDetail = [];
 	// Default off, deliberately: SIGUSR2 without --report-on-signal terminates a
 	// node process, and this instrument may not change how a suite dies outside
 	// the CI job that opts in.
@@ -409,7 +415,7 @@ export async function captureStacks(
 		// Only node processes answer SIGUSR2 with a report; any other owned
 		// process would simply die of it, so the signal is scoped by command name
 		// as well as by ownership and liveness.
-		const rows = (snapshot(config).rows ?? []).filter(
+		const rows = (config.targets ?? snapshot(config).rows ?? []).filter(
 			(row) =>
 				row.pid > 1 &&
 				row.pid !== process.pid &&
@@ -417,11 +423,19 @@ export async function captureStacks(
 				/(^|\/)(node|nodejs)$/u.test(commandName(row.pid)),
 		);
 		for (const row of rows) {
+			// A process without the report flag dies of SIGUSR2 instead of writing
+			// a report, so capability is checked before any signal is sent.
+			if (!answersReportSignal(row.pid)) {
+				skipped.push(row.pid);
+				skippedDetail.push({ pid: row.pid, reason: "no-report-flag" });
+				continue;
+			}
 			try {
 				process.kill(row.pid, signal);
 				sent.push(row.pid);
 			} catch {
 				skipped.push(row.pid);
+				skippedDetail.push({ pid: row.pid, reason: "signal-failed" });
 			}
 		}
 		if (rows.length === 0) skipped.push("no-owned-live-pid");
@@ -432,9 +446,12 @@ export async function captureStacks(
 		reportDirectory,
 		sent,
 		skipped,
+		skippedDetail,
 	};
 	atomic(join(state, "stack-capture.json"), entry);
-	await pause(waitMs);
+	// No report directory means nothing to wait for: the 2 s grace only exists
+	// to let an opted-in target write its file.
+	if (reportDirectory) await pause(waitMs);
 	const written = reportDirectory ? reportNames(reportDirectory) : [];
 	atomic(join(state, "stack-capture.json"), { ...entry, written });
 	return { ...entry, written };
@@ -534,9 +551,13 @@ function censusRow(pid, before, procRoot = "/proc") {
 	const syscallRaw = (read(`${procRoot}/${pid}/syscall`) ?? "")
 		.trim()
 		.slice(0, 64);
+	const unreadable = [];
+	if (!status) unreadable.push("status");
+	if (!io) unreadable.push("io");
 	const row = {
 		pid,
 		state: fields[0],
+		...(unreadable.length ? { unreadable } : {}),
 		userTicks: Number(fields[11]),
 		systemTicks: Number(fields[12]),
 		wchan:
@@ -616,6 +637,26 @@ function commandName(pid) {
 		}).trim();
 	} catch {
 		return "";
+	}
+}
+
+/**
+ * Does this process answer SIGUSR2 with a report? Only a node started with
+ * --report-on-signal does; every other owned process would simply be killed by
+ * the signal, so the census of candidates has to prove the flag first.
+ */
+function answersReportSignal(pid, root = procRoot) {
+	try {
+		const cmdline =
+			process.platform === "linux"
+				? readFileSync(`${root}/${pid}/cmdline`, "utf8")
+				: execFileSync("ps", ["-p", String(pid), "-o", "command="], {
+						encoding: "utf8",
+						timeout: 500,
+					});
+		return cmdline.includes("--report-on-signal");
+	} catch {
+		return false;
 	}
 }
 
@@ -750,9 +791,8 @@ export async function worker(
 	let censusWatcher = null;
 	const censusInterval = Math.max(
 		1,
-		Number(
-			process.env[KERNEL_CENSUS_INTERVAL_ENV] ?? KERNEL_CENSUS_INTERVAL_MS,
-		) || KERNEL_CENSUS_INTERVAL_MS,
+		Number(config.censusIntervalMs ?? KERNEL_CENSUS_INTERVAL_MS) ||
+			KERNEL_CENSUS_INTERVAL_MS,
 	);
 	let censusBasis = "launch";
 	const emitCensus = () => {
