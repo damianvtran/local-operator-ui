@@ -169,6 +169,59 @@ export const _PROBE_TIMEOUT_MS = 10_000;
 export const _BLIND_TICKS_WARN = 5;
 
 /**
+ * The exit status a run ends on when a wedge it cannot recover from is named.
+ *
+ * 78 is `EX_CONFIG` and is chosen for the same reason `BREACH_EXIT_CODE` is 137 in
+ * `desktop-test-memory-guard.mjs`: it is a status that cannot be produced by a
+ * test suite's own failure accounting, so a caller reading a status learns WHICH
+ * subsystem ended the run rather than inheriting the suite's `1`.
+ */
+export const WEDGE_EXIT_CODE = 78;
+
+/**
+ * The detail read: argv AND the start time a pid is re-checked against.
+ *
+ * ONE read carries both, which is why this is not the memory guard's
+ * `parseProcessTable`: that one never needs argv, and a wedge needs the command
+ * line as evidence for a human. `lstart=` is five fixed tokens, so the command is
+ * everything after the third number plus those five.
+ */
+const DETAIL_ROW =
+	/^\s*(\d+)\s+(\d+)\s+(\d+)\s+(\S+\s+\S+\s+\S+\s+\S+\s+\S+)\s+(.*)$/;
+
+/** PURE. `ps -axo pid=,ppid=,pgid=,lstart=,command=` text -> rows. */
+export function parseDetailTable(text) {
+	const rows = [];
+	for (const line of String(text).split("\n")) {
+		const match = DETAIL_ROW.exec(line);
+		if (match === null) continue;
+		rows.push({
+			pid: Number(match[1]),
+			ppid: Number(match[2]),
+			pgid: Number(match[3]),
+			lstart: match[4].replace(/\s+/gu, " "),
+			command: match[5],
+		});
+	}
+	return rows;
+}
+
+/**
+ * PURE. The lane's OWN children, from a detail read taken before the lane is
+ * killed.
+ *
+ * THIS IS THE OWNERSHIP PROOF, and it is deliberately narrow. A child of the lane
+ * process - in this runner's own process group - is a process the test file
+ * itself started; that is the only class this module will signal. A stranger that
+ * merely shares the group (the CI agent's own helpers, another session's rig) is
+ * never a candidate, which is why the filter reads BOTH `ppid` and `pgid` rather
+ * than trusting either alone.
+ */
+export function laneDescendants(rows, { lanePid, leaderPid }) {
+	return rows.filter((row) => row.ppid === lanePid && row.pgid === leaderPid);
+}
+
+/**
  * One `ps -axo pid=,ppid=,pgid=,command=` row: three numeric fields and the command.
  * At module scope because the sampler runs on a timer and would otherwise rebuild the
  * literal on every tick.
@@ -324,6 +377,115 @@ export async function sampleLaneProcesses(leaderPid, lanes) {
 	return laneProcesses(parseGroupTable(stdout), { leaderPid, lanes });
 }
 
+/** The detail read used on the wedge path only: argv plus identity, one `ps`. */
+export async function sampleDetailProcesses(leaderPid) {
+	const { stdout } = await execFileAsync(
+		"ps",
+		["-axo", "pid=,ppid=,pgid=,lstart=,command="],
+		{ timeout: _PROBE_TIMEOUT_MS, maxBuffer: 8 * 1024 * 1024 },
+	);
+	return parseDetailTable(stdout).filter((row) => row.pgid === leaderPid);
+}
+
+/**
+ * End one lane, and end ONLY what that lane provably owns.
+ *
+ * THE ORDER IS THE SAFETY PROPERTY. The detail read that proves ownership has to
+ * happen BEFORE the lane is killed: once it exits its children are re-parented, and
+ * a re-parented pid has no chain back to the lane we started - which is exactly the
+ * state that made a killed lane's surviving descendant invisible to every bound
+ * this harness had. The rows are captured first, the lane is signalled second, and
+ * each descendant is signalled third, ONLY after its start time is re-read and
+ * matched against the one it was captured with.
+ *
+ * A descendant whose identity no longer matches is RECORDED AND REFUSED: between
+ * the capture and the signal the pid could have been reused, and widening signal
+ * authority past "this pid, with this start time, was a child of a lane I started"
+ * is how a watchdog kills somebody else's process.
+ */
+export async function terminateLane({
+	lanePid,
+	leaderPid,
+	sampleDetail = () => sampleDetailProcesses(leaderPid),
+	kill = (pid) => {
+		try {
+			process.kill(pid, "SIGKILL");
+			return true;
+		} catch {
+			return false;
+		}
+	},
+	reverify = async (pid) => {
+		try {
+			// NO `-a` HERE, and that is the whole correctness of this read: on macOS
+			// `ps -axo ... -p <pid>` lets `-a` win and ignores `-p`, returning the WHOLE
+			// table (measured: 695 rows, the first being pid 1's start time), so the
+			// regex below matched a stranger and every owned descendant was refused. A
+			// false refusal is the safe direction, but it is still wrong.
+			const { stdout } = await execFileAsync(
+				"ps",
+				["-o", "lstart=", "-p", String(pid)],
+				{ timeout: _PROBE_TIMEOUT_MS, maxBuffer: 64 * 1024 },
+			);
+			// `lstart=` with no pid column: the value IS the whole line, so it is
+			// normalised rather than matched against a row shape. A line that is not the
+			// five tokens of a start time proves nothing and returns null - the refusal
+			// direction, never the signal one.
+			const value = stdout.trim().replace(/\s+/gu, " ");
+			return value.split(" ").length === 5 ? value : null;
+		} catch {
+			return null;
+		}
+	},
+} = {}) {
+	let descendants = [];
+	try {
+		descendants = laneDescendants(await sampleDetail(), { lanePid, leaderPid });
+	} catch {
+		// A detail read that fails must not block the kill the bound already decided
+		// on; it only means nothing is proven, and nothing proven is nothing signalled.
+		descendants = [];
+	}
+	const killed = kill(lanePid) === true;
+	const attempts = [];
+	for (const descendant of descendants) {
+		const identity = await reverify(descendant.pid);
+		if (identity === null) {
+			attempts.push({ ...descendant, outcome: "gone before it was signalled" });
+			continue;
+		}
+		if (identity !== descendant.lstart) {
+			attempts.push({
+				...descendant,
+				outcome: `REFUSED: pid ${descendant.pid} now has start time "${identity}" and not "${descendant.lstart}", so it may be a reused pid`,
+			});
+			continue;
+		}
+		const signalled = kill(descendant.pid) === true;
+		attempts.push({
+			...descendant,
+			outcome: signalled
+				? "killed by exact pid"
+				: "REFUSED: the signal did not reach it",
+		});
+	}
+	/*
+	 * OUTSTANDING IS MEASURED, NOT ASSUMED. A signal that landed is not a process
+	 * that is gone, so the same read is taken once more and what is still in the
+	 * group is what the suite child is still waiting on. A read that fails proves
+	 * nothing and therefore reports nothing: this module never claims a survivor it
+	 * did not see.
+	 */
+	let survivors = [];
+	try {
+		const stillThere = new Set((await sampleDetail()).map((row) => row.pid));
+		survivors = attempts.filter((attempt) => stillThere.has(attempt.pid));
+	} catch {
+		survivors = [];
+	}
+	return { killed, descendants, attempts, survivors };
+}
+
 /**
  * The watchdog. Every dependency a test needs to drive it deterministically is
  * injectable, exactly as the memory watchdog's are: the sample, the clock, the kill
@@ -350,6 +512,10 @@ export function createLaneBoundWatchdog({
 	onTrip = () => {},
 	onBlind = () => {},
 	onSuiteStall = () => {},
+	/** The wedge the lane list cannot name: a killed lane whose children survive. */
+	onWedge = () => {},
+	sampleDetail,
+	reverify,
 	killSuitePid = (pid) => {
 		try {
 			process.kill(pid, "SIGKILL");
@@ -418,8 +584,32 @@ export function createLaneBoundWatchdog({
 			// carries the OUTCOME, and it is this process's own stderr, so the child's
 			// death cannot swallow it.
 			running.delete(lane);
-			const killed = kill(pid) === true;
-			onTrip({ lane, pid, elapsedMs, killed });
+			// The lane is ended with its own children, and the outcome carries what was
+			// proven: `terminateLane` captures the children BEFORE the kill, re-checks each
+			// pid's start time before signalling it, and reports both what it refused to
+			// touch and what survived.
+			const ended = await terminateLane({
+				lanePid: pid,
+				leaderPid,
+				sampleDetail,
+				reverify,
+				kill,
+			});
+			onTrip({
+				lane,
+				pid,
+				elapsedMs,
+				killed: ended.killed,
+				attempts: ended.attempts,
+			});
+			if (ended.survivors.length > 0) {
+				// A survivor here IS the wedge: the lane is gone, its children still hold the
+				// suite child's stdio, and the `close` node waits for will never arrive. The
+				// suite child is ended too, because a run with no verdict left must not be
+				// left for the job's cap to describe.
+				const killedSuite = killSuitePid(leaderPid) === true;
+				onWedge({ lane, pid, survivors: ended.survivors, killedSuite });
+			}
 		}
 		/*
 		 * THE SUITE CHILD'S OWN CLOCK, after the lanes: a live lane is progress, so it

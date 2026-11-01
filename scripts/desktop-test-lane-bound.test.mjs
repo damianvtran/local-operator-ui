@@ -1,4 +1,7 @@
 import assert from "node:assert/strict";
+import { mkdtempSync, readFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { test } from "node:test";
 import {
 	LANE_BOUND_OVERRIDE_ENV,
@@ -8,9 +11,19 @@ import {
 	createLaneBoundWatchdog,
 	formatLaneBoundLine,
 	formatLaneTripLine,
+	laneDescendants,
 	laneProcesses,
+	parseDetailTable,
 	parseGroupTable,
+	terminateLane,
 } from "./desktop-test-lane-bound.mjs";
+import {
+	appendTrip,
+	formatTripFileLine,
+	resolveTripFile,
+	tripAnnotations,
+	tripRecord,
+} from "./desktop-test-trip-file.mjs";
 
 /*
  * The per-lane bound's arithmetic, its scoped pid selection, and the watchdog's
@@ -548,4 +561,188 @@ test("a suite that recovers and wedges again earns a second line, not a latch", 
 		"a recovery ends a stall: the next one is a new fact and earns its own line",
 	);
 	assert.deepEqual(state.suiteKilled, [100, 100]);
+});
+
+/*
+ * THE SURVIVING DESCENDANT, and the reason this half exists at all.
+ *
+ * Measured on run 41293657583 (2026-11-01): the shard's complete log ends 70 s into
+ * the suite and carries nothing for the ~54 minutes before cancellation, while the
+ * `per-lane bound 25 min` startup line proves the bound code ran. A killed lane whose
+ * children outlive it holds the suite child's stdio, so its `close` never arrives -
+ * and that wedge reports through the same stream it silences. These cases pin the
+ * ownership proof, the refusal, and the out-of-band record that replaced it.
+ */
+
+const STAMP = "Mon Nov 1 09:00:00 2026";
+const descendantRow = (pid, ppid, pgid, command) => ({
+	pid,
+	ppid,
+	pgid,
+	lstart: STAMP,
+	command,
+});
+
+test("the detail read keeps argv and start time, and only the lane's own children are descendants", () => {
+	const rows = parseDetailTable(
+		[
+			"  101   100   100 Mon Nov  1 09:00:00 2026 node scripts/a.test.mjs",
+			"  102   101   100 Mon Nov  1 09:00:01 2026 node -e setTimeout(() => {}, 45000)",
+			"  103     1   100 Mon Nov  1 09:00:01 2026 ffmpeg -i in.mp4 out.mov",
+		].join("\n"),
+	);
+	assert.equal(rows.length, 3);
+	assert.equal(rows[1].command, "node -e setTimeout(() => {}, 45000)");
+	assert.equal(rows[1].lstart, "Mon Nov 1 09:00:01 2026");
+	// 102 was started BY the lane (ppid 101) and is in the suite's group: owned.
+	// 103 shares the group but was never the lane's child: NOT owned, never signalled.
+	assert.deepEqual(
+		laneDescendants(rows, { lanePid: 101, leaderPid: 100 }).map(
+			(row) => row.pid,
+		),
+		[102],
+	);
+});
+
+test("terminateLane captures children BEFORE killing, and kills only proven ones", async () => {
+	const signals = [];
+	const ended = await terminateLane({
+		lanePid: 101,
+		leaderPid: 100,
+		sampleDetail: async () => [
+			descendantRow(102, 101, 100, "node esbuild --service"),
+		],
+		reverify: async () => STAMP,
+		kill: (pid) => {
+			signals.push(pid);
+			return true;
+		},
+	});
+	assert.deepEqual(signals, [101, 102], "the lane, then its proven child");
+	assert.equal(ended.killed, true);
+	assert.equal(ended.attempts[0].outcome, "killed by exact pid");
+});
+
+test("a pid whose start time changed is recorded and REFUSED, never signalled", async () => {
+	const signals = [];
+	const ended = await terminateLane({
+		lanePid: 101,
+		leaderPid: 100,
+		sampleDetail: async () => [
+			descendantRow(102, 101, 100, "node esbuild --service"),
+		],
+		reverify: async () => "Mon Nov  1 10:30:00 2026",
+		kill: (pid) => {
+			signals.push(pid);
+			return true;
+		},
+	});
+	assert.deepEqual(signals, [101], "a reused pid is not this runner's to kill");
+	assert.match(ended.attempts[0].outcome, /REFUSED/u);
+});
+
+test("a lane whose child survives is the wedge: the suite child is ended and the run says why", async () => {
+	const killed = [];
+	const suiteKilled = [];
+	const wedges = [];
+	let clock = 0;
+	const watchdog = createLaneBoundWatchdog({
+		leaderPid: 100,
+		lanes: ["scripts/a.test.mjs"],
+		boundMs: 1_000,
+		sample: async () =>
+			new Map([["scripts/a.test.mjs", { pid: 101, ppid: 100 }]]),
+		sampleDetail: async () => [
+			descendantRow(102, 101, 100, "node -e setTimeout(() => {}, 45000)"),
+		],
+		reverify: async () => null,
+		kill: (pid) => {
+			killed.push(pid);
+			return true;
+		},
+		killSuitePid: (pid) => {
+			suiteKilled.push(pid);
+			return true;
+		},
+		now: () => clock,
+		onWedge: (wedge) => wedges.push(wedge),
+		setTimer: () => 1,
+		clearTimer: () => {},
+	});
+	await watchdog._tick(); // the lane's first sighting
+	clock = 1_000;
+	await watchdog._tick(); // the bound, and the child outlives the kill
+	assert.deepEqual(
+		killed,
+		[101],
+		"the survivor was already gone when re-checked",
+	);
+	assert.deepEqual(
+		suiteKilled,
+		[100],
+		"the suite child is ended, not waited for",
+	);
+	assert.equal(wedges.length, 1);
+	assert.equal(wedges[0].survivors[0].pid, 102);
+	assert.equal(
+		wedges[0].survivors[0].command,
+		"node -e setTimeout(() => {}, 45000)",
+	);
+	assert.equal(wedges[0].survivors[0].lstart, STAMP);
+});
+
+test("the trip file survives the run: JSON on disk and annotations that name the pids", () => {
+	const dir = mkdtempSync(join(tmpdir(), "lo-trips-"));
+	const path = join(dir, "trips.json");
+	const record = tripRecord({
+		kind: "descendant",
+		detail: {
+			lane: "scripts/a.test.mjs",
+			lanePid: 101,
+			survivors: [
+				{
+					pid: 102,
+					command: "node -e setTimeout(() => {}, 45000)",
+					lstart: STAMP,
+					outcome: "killed by exact pid",
+				},
+			],
+		},
+	});
+	appendTrip({ path, record });
+	appendTrip({
+		path,
+		record: tripRecord({
+			kind: "lane",
+			detail: { lane: "scripts/b.test.mjs", pid: 201 },
+		}),
+	});
+	const written = JSON.parse(readFileSync(path, "utf8"));
+	assert.equal(written.trips.length, 2, "trips append rather than replace");
+	assert.equal(written.trips[0].kind, "descendant");
+	const annotations = tripAnnotations(written.trips[0]).join("\n");
+	assert.match(
+		annotations,
+		/::error title=Desktop suite wedged \(descendant\)::/u,
+	);
+	assert.match(annotations, /pid 102/u);
+	assert.match(annotations, /node -e setTimeout/u);
+	assert.match(annotations, new RegExp(STAMP.replace(/\s+/g, "\\s+"), "u"));
+});
+
+test("the trip file's path is the workflow's, and a default is announced rather than silent", () => {
+	const configured = resolveTripFile({
+		LOCAL_OPERATOR_UI_TRIP_FILE: "/tmp/x/trips.json",
+	});
+	assert.equal(configured.source, "env");
+	assert.match(
+		formatTripFileLine(configured),
+		/uploaded with the shard's artifacts/u,
+	);
+	const fallback = resolveTripFile({});
+	assert.equal(fallback.source, "default");
+	assert.match(
+		formatTripFileLine(fallback),
+		/a DEFAULT path that no workflow uploads/u,
+	);
 });

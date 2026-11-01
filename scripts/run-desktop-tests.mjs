@@ -67,6 +67,7 @@ import {
 	resolveDesktopTestConcurrency,
 } from "./desktop-test-concurrency.mjs";
 import {
+	WEDGE_EXIT_CODE,
 	createLaneBoundWatchdog,
 	formatLaneBoundLine,
 	formatLaneTripLine,
@@ -80,6 +81,14 @@ import {
 	formatMemoryBudgetLine,
 	resolveMemoryBudget,
 } from "./desktop-test-memory-guard.mjs";
+import {
+	appendTrip,
+	describeProcess,
+	formatTripFileLine,
+	resolveTripFile,
+	tripAnnotations,
+	tripRecord,
+} from "./desktop-test-trip-file.mjs";
 import { withNotificationsOff } from "./notifications-off.mjs";
 import { withTelemetryOff } from "./telemetry-off.mjs";
 
@@ -334,6 +343,37 @@ const memoryBudget = resolveMemoryBudget();
 console.log(formatMemoryBudgetLine(memoryBudget));
 const laneBound = resolveLaneBound();
 console.log(formatLaneBoundLine(laneBound));
+/*
+ * The out-of-band channel, armed before any bound can fire: from the 2026-11-01
+ * run (41293657583) a bound that reports only by printing had nothing to print
+ * with, because the wedge had already silenced the stream. See
+ * `desktop-test-trip-file.mjs` for the measurement and for what survives.
+ */
+const trip = resolveTripFile();
+console.log(formatTripFileLine(trip));
+let wedged = false;
+/** Record a trip in the file and in annotations, then print it. Never throws: the
+ * path runs when the run is already failing, so a trip that cannot be written is
+ * announced and the annotations carry on as the only copy. */
+function reportTrip(kind, detail) {
+	const record = tripRecord({
+		kind,
+		detail,
+		context: {
+			cwd: process.cwd(),
+			head: process.env.DESKTOP_REQUESTED_HEAD ?? null,
+		},
+	});
+	try {
+		appendTrip({ path: trip.path, record });
+	} catch (error) {
+		console.error(
+			`desktop tests: WARNING - the trip file at ${trip.path} could not be written (${error.message}); the annotations are the only copy of this trip`,
+		);
+	}
+	for (const line of tripAnnotations(record)) console.log(line);
+	return record;
+}
 let breached = false;
 const watchdog =
 	memoryBudget.budgetMb === null || child.pid === undefined
@@ -379,7 +419,7 @@ const laneWatchdog =
 				leaderPid: child.pid,
 				lanes: laneArgs,
 				boundMs: laneBound.boundMs,
-				onTrip: ({ lane, pid, elapsedMs, killed }) =>
+				onTrip: ({ lane, pid, elapsedMs, killed, attempts = [] }) => {
 					console.error(
 						formatLaneTripLine({
 							lane,
@@ -388,7 +428,22 @@ const laneWatchdog =
 							boundMs: laneBound.boundMs,
 							killed,
 						}),
-					),
+					);
+					reportTrip("lane", {
+						lane,
+						pid,
+						elapsedMs,
+						boundMs: laneBound.boundMs,
+						killed,
+						// The children the lane left, with the argv and start time each was
+						// proven against: without these the record says "a file stalled" and
+						// not what outlived it, which is the fact the 2026-11-01 runs needed.
+						attempts: attempts.map((row) => ({
+							...describeProcess(row),
+							outcome: row.outcome,
+						})),
+					});
+				},
 				onBlind: (ticks) =>
 					console.error(
 						`desktop tests: WARNING - the per-lane bound could not read the suite's process group for ${ticks} consecutive samples; a lane that never settles is NOT bounded while that lasts`,
@@ -396,7 +451,7 @@ const laneWatchdog =
 				// The suite child is bounded by the SAME number: it is the one process the
 				// lane list cannot name, and a wedge in it is what the 50-minute cap used
 				// to be the only reading of (run 41248028640, job 124562057434).
-				onSuiteStall: ({ lanes, elapsedMs, killed }) =>
+				onSuiteStall: ({ lanes, elapsedMs, killed }) => {
 					console.error(
 						formatSuiteTripLine({
 							lanes,
@@ -404,7 +459,37 @@ const laneWatchdog =
 							boundMs: laneBound.boundMs,
 							killed,
 						}),
-					),
+					);
+					reportTrip("suite", {
+						lanes,
+						elapsedMs,
+						boundMs: laneBound.boundMs,
+						killed,
+					});
+				},
+				/*
+				 * The wedge the harness kept failing to name: a lane killed by the bound whose
+				 * own children outlived it. They hold the suite child's stdio, so its `close`
+				 * never arrives, the suite never finishes, and (measured 2026-11-01) every
+				 * line any bound could print goes into the same stalled stream. This is the
+				 * one path that therefore ends the run on its own terms rather than waiting
+				 * for the job's cap.
+				 */
+				onWedge: ({ lane, pid, survivors, killedSuite }) => {
+					wedged = true;
+					reportTrip("descendant", {
+						lane,
+						lanePid: pid,
+						suiteKilled: killedSuite,
+						survivors: survivors.map((row) => ({
+							...describeProcess(row),
+							outcome: row.outcome,
+						})),
+					});
+					console.error(
+						`desktop tests: WEDGE - lane ${lane} (pid ${pid}) left ${survivors.length} process(es) behind after its kill; the suite child was ${killedSuite ? "killed" : "already gone"} and this run ends ${WEDGE_EXIT_CODE}, because a verdict it cannot produce must not be waited for`,
+					);
+				},
 			});
 laneWatchdog?.start();
 
@@ -436,6 +521,14 @@ child.on("exit", (code, signal) => {
 		// it as an exit status rather than re-raising, so the loud line above is
 		// the last word and callers see a plain non-zero code.
 		process.exitCode = BREACH_EXIT_CODE;
+		return;
+	}
+	if (wedged) {
+		// Same rule as a memory breach, and for the same reason: the wedge was
+		// announced (line, trip file, annotations) and the suite child was killed by
+		// the watchdog, so re-raising its death would flatten "a bound ended this run"
+		// into "the suite was interrupted" and lose which subsystem spoke.
+		process.exitCode = WEDGE_EXIT_CODE;
 		return;
 	}
 	if (signal !== null) {

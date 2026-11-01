@@ -736,6 +736,12 @@ jobs:
 
       - name: Run the desktop suite and assert it actually ran
         id: desktop_suite
+        env:
+          # WHERE A WEDGE IS RECORDED. A bound that only prints reports into the same
+          # stream the wedge silences (measured: run 41293657583, complete log, nothing
+          # after 70 s of a 55-minute job), so the runner appends a JSON trip file here
+          # and `$RUNNER_TEMP` is what the artifact uploads below can reach.
+          LOCAL_OPERATOR_UI_TRIP_FILE: ${{ runner.temp }}/desktop-test-trips.json
         # A STEP ceiling below the job's, because a job cancelled at its own
         # `timeout-minutes` runs no further steps: without this, the payload
         # scan below is skipped in exactly the case it exists for. A step
@@ -880,6 +886,52 @@ jobs:
       - name: Scan the suite log for payload lines
         if: ${{ always() && steps.desktop_suite.outcome != 'skipped' }}
         run: node scripts/ci-log-guard.mjs check /tmp/desktop-tests.log --max-line-bytes 1048576
+
+      # THE OUT-OF-BAND COPY, and the only surface that survives what happened on
+      # run 41293657583: the suite's complete log ends 70 s in, its last 55 minutes
+      # carry nothing, and a job cancelled at `timeout-minutes` runs no further
+      # steps. So the runner appends every trip to a JSON file AND writes an
+      # `::error::` annotation as it happens; this step re-emits from the file, which
+      # is what a reader sees when the stream was lost - annotations do not go
+      # through the job log at all.
+      #
+      # IT RUNS WHETHER OR NOT THE SUITE STEP FAILED, and it never fails the job on
+      # its own: a missing trip file is the healthy case, and a trip is already
+      # reported by the step that failed.
+      - name: Name any wedge from the trip file
+        if: ${{ always() && steps.desktop_suite.outcome != 'skipped' }}
+        run: |
+          TRIP_FILE="${{ runner.temp }}/desktop-test-trips.json"
+          if [ ! -f "$TRIP_FILE" ]; then
+            echo "no trip file at $TRIP_FILE: no bound fired on this shard"
+            exit 0
+          fi
+          echo "--- trip file ($TRIP_FILE) ---"
+          cat "$TRIP_FILE"
+          node --input-type=module - "$TRIP_FILE" <<'NODE'
+          import { readFileSync } from 'node:fs';
+          const trips = JSON.parse(readFileSync(process.argv[2], 'utf8')).trips ?? [];
+          for (const trip of trips) {
+            const who = trip.kind === 'lane' ? `lane ${trip.lane}` : trip.kind === 'descendant' ? `descendants of lane ${trip.lane}` : `suite (last lanes: ${(trip.lanes ?? []).join(', ') || 'none named'})`;
+            console.log(`::error title=Desktop suite wedged (${trip.kind})::${who} at ${trip.at}; pids/argv are in the trip artifact for this shard`);
+            for (const survivor of trip.survivors ?? []) {
+              console.log(`::error title=Surviving descendant (pid ${survivor.pid})::${survivor.command} (start ${survivor.lstart}) - ${survivor.outcome}`);
+            }
+          }
+          NODE
+
+      # Uploaded ALWAYS, with `if-no-files-found: ignore`, because a healthy shard
+      # has no trip file and `error` would turn every green run red. This is the
+      # durable copy: it survives a cancelled step, and a reader can reconstruct the
+      # exact pids, argv and start times from it.
+      - name: Upload the trip file when a bound fired
+        if: ${{ always() && steps.desktop_suite.outcome != 'skipped' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-suite-trips-${{ github.run_id }}-${{ github.run_attempt }}-shard-${{ matrix.shard }}
+          path: ${{ runner.temp }}/desktop-test-trips.json
+          if-no-files-found: ignore
+          retention-days: 7
 
       - name: Record successful shard coverage
         if: ${{ steps.desktop_suite.outcome == 'success' }}
