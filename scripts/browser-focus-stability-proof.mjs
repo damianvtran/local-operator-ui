@@ -20,6 +20,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import electron from "electron";
 import sharp from "sharp";
+import { MOCK_KEYCHAIN_SWITCH } from "./chrome-keychain.mjs";
 import { selectTrustedRenderer } from "./focus-proof-main-identity.mjs";
 import { createFocusProofOwnedTree } from "./focus-proof-owned-tree.mjs";
 import { focusProofWindowMode } from "./focus-stability-ci-policy.mjs";
@@ -250,7 +251,7 @@ try {
 			"--remote-debugging-port=0",
 			`--window-mode=${windowMode}`,
 			`--user-data-dir=${dirs.profile}`,
-			"--use-mock-keychain",
+			MOCK_KEYCHAIN_SWITCH,
 		],
 		{ env, cwd: dirs.cwd, stdio: ["ignore", "pipe", "pipe"] },
 	);

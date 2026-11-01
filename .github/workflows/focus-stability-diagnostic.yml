@@ -23,7 +23,7 @@ jobs:
       - name: Verify native parenting prerequisites before expensive dispatch
         run: |
           set -e
-          for testcase in scripts/approvals-overlay.test.mjs scripts/browser-address-overlay.test.mjs scripts/browser-view-presentation.test.mjs scripts/focus-proof-main-identity.test.mjs scripts/focus-stability-ci-policy.test.mjs; do
+          for testcase in scripts/approvals-overlay.test.mjs scripts/browser-address-overlay.test.mjs scripts/browser-view-presentation.test.mjs scripts/focus-proof-main-identity.test.mjs scripts/focus-proof-owned-tree.test.mjs scripts/focus-stability-ci-policy.test.mjs; do
             node --test --test-timeout=30000 "$testcase"
           done
       - name: Build exact checked-out source
