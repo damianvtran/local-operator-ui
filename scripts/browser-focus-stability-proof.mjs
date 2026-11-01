@@ -312,6 +312,52 @@ try {
 		console.log(JSON.stringify(result));
 		return result;
 	};
+	const captureShell = async (label) => {
+		const data = await evaluate(
+			main,
+			"(async()=>{const E=process.mainModule.require('electron');return (await E.BrowserWindow.getAllWindows()[0].webContents.capturePage()).toPNG().toString('base64');})()",
+		);
+		writeFileSync(join(out, `${label}.png`), Buffer.from(data, "base64"));
+	};
+	const osKey = async (label) => {
+		if (!nativeCi) return { label, status: "BLOCKED_NOT_DISPOSABLE_CI" };
+		const readCaret = () =>
+			evaluate(
+				owner,
+				"({id:document.activeElement?.id,value:document.activeElement?.value,start:document.activeElement?.selectionStart,end:document.activeElement?.selectionEnd})",
+			);
+		const before = await readCaret();
+		let permissionError = null;
+		try {
+			execFileSync(
+				"/usr/bin/osascript",
+				["-e", 'tell application "System Events" to keystroke "q"'],
+				{ encoding: "utf8", timeout: 5000 },
+			);
+		} catch (error) {
+			permissionError = String(error);
+		}
+		await sleep(250);
+		const after = await readCaret();
+		const expected =
+			typeof before.value === "string"
+				? `${before.value.slice(0, before.start)}q${before.value.slice(before.end)}`
+				: null;
+		const result = {
+			label,
+			before,
+			after,
+			expected,
+			permissionError,
+			deliveredToShell:
+				permissionError === null &&
+				after.value === expected &&
+				after.id === before.id,
+		};
+		facts.osKeys ??= [];
+		facts.osKeys.push(result);
+		return result;
+	};
 	await sample("startup");
 	const state = await until(() => {
 		try {
@@ -407,6 +453,17 @@ try {
 		"document.querySelector('#command-palette-input').setSelectionRange(2,6); true",
 	);
 	await sleep(1000);
+	const osBaseline = await osKey("positive-baseline");
+	if (nativeCi)
+		assert.equal(
+			osBaseline.deliveredToShell,
+			true,
+			`BLOCKED_OS_KEY_INSTRUMENT: ${JSON.stringify(osBaseline)}`,
+		);
+	await evaluate(
+		owner,
+		"document.querySelector('#command-palette-input').setSelectionRange(2,6);true",
+	);
 	const negativeControl = await sample("no-background-negative-control");
 	if (nativeCi) {
 		assert.equal(
@@ -430,6 +487,7 @@ try {
 			"real palette input must own the DOM caret",
 		);
 	}
+	await captureShell("attached-before");
 	const backgroundUrl = `${url}?background=1`;
 	const opened = await rpc("open", {
 		url: backgroundUrl,
@@ -453,6 +511,8 @@ try {
 	// Dispatch through Electron's ACTUAL focused-WebContents getter, not a
 	// hardcoded owner target. This proves the native receiver selection, not an
 	// OS/physical keyboard route; no accessibility permission is requested.
+	await captureShell("attached-after");
+	await osKey("after-original-background-actions");
 	facts.routedKey = await evaluate(
 		main,
 		`(() => {const E=process.mainModule.require('electron');const c=E.webContents.getFocusedWebContents();if(c)c.sendInputEvent({type:'char',keyCode:'z'});return {receiver:c?.id??null,physicalOsKey:false};})()`,
@@ -487,7 +547,14 @@ try {
 			main,
 			"globalThis.__focusProof.disableFocusEmulation=false; globalThis.__focusProof.detachBackground=true; process.mainModule.require('electron').BrowserWindow.getAllWindows()[0].webContents.focus(); true",
 		);
+		const detachedOsBaseline = await osKey("detached-positive-baseline");
+		assert.equal(
+			detachedOsBaseline.deliveredToShell,
+			true,
+			`BLOCKED_DETACHED_OS_BASELINE: ${JSON.stringify(detachedOsBaseline)}`,
+		);
 		const detachedBefore = await sample("control-detached-baseline");
+		await captureShell("detached-before");
 		assert.equal(detachedBefore.native.ownerFocused, true);
 		const detachedTab = await rpc("open", {
 			url: `${url}?detached=1`,
@@ -530,6 +597,13 @@ try {
 		assert.equal(metadata.height, 720);
 		assert.equal(facts.detachedControl.screenshot.nonblank, true);
 		await sample("control-detached-actions");
+		await captureShell("detached-after");
+		const detachedOsAfter = await osKey("after-detached-background-actions");
+		assert.equal(
+			detachedOsAfter.deliveredToShell,
+			true,
+			`detached boundary did not preserve actual OS key route: ${JSON.stringify(detachedOsAfter)}`,
+		);
 		// Explicit user presentation, then route exit: migrate the SAME view, not
 		// a reload/replacement. This is a diagnostic proposed-parenting trial only.
 		await owner("Input.dispatchKeyEvent", {
