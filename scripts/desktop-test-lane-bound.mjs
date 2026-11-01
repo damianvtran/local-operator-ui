@@ -33,7 +33,9 @@
  * while that file's process is VISIBLE to the sampler; a suite child that stops
  * emitting while it holds no nameable lane is invisible to it, and the run then
  * reads as a hung job with no line at all (run 41248028640, job 124562057434: 616
- * passing subtests, no failure, no summary, cancelled at the 50-minute cap). So the
+ * passing subtests, no failure, no summary, cancelled at the 50-minute cap; it
+ * reproduced on run 41288401978 as well, where the same shard was the only one of
+ * four that did not finish). So the
  * same bound also measures the SUITE CHILD: if it is still alive and no lane process
  * has been seen for the whole bound, that is a suite-level stall, and it is reported
  * with the last lanes that were seen - which is the only attribution available at

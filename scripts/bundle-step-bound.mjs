@@ -6,10 +6,13 @@
  * that carried `scripts/child-reader-foot-react.test.mjs` stopped emitting output
  * for 54 silent minutes and was cancelled at the job's 50-minute cap (run
  * 41248028640, job 124562057434; the same signature on runs 41274378090,
- * 41277981038 and 41286247024). The job carried no test line at all, so the
- * verdict over the rest of the shard was unreadable, and the file's own last
- * words were React SSR warnings with no failing subtest: a step of that file's
- * module had not returned.
+ * 41277981038 and 41286247024, and again on run 41288401978 - PR 1551's head,
+ * which is unrelated - where shards 0, 2 and 3 finished in 17, 10 and 8 minutes
+ * while shard 1 was cancelled at 54m37s with its suite step still in progress and
+ * its log scan never run). The job carried no test line at all, so the verdict
+ * over the rest of the shard was unreadable, and the file's own last words were
+ * React SSR warnings with no failing subtest: a step of that file's module had not
+ * returned.
  *
  * WHAT IS BOUNDED, AND WHY IT IS THE CALLER'S CHOICE. This module knows nothing
  * about esbuild or imports; it races whatever thunk it is handed against a timer.

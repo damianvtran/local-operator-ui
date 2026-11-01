@@ -69,7 +69,8 @@ const BARE_SPECIFIER = /^[^./]/;
  * THE TWO MODULE-SCOPE STEPS ARE BOUNDED, and the bound is what turns this file's
  * stall into a line a reader can act on. From 2026-10-31T09:50Z the shard that
  * carried this file went silent for 54 minutes and was cancelled at the job's cap
- * with no test line (run 41248028640 job 124562057434); the file's own last words
+ * with no test line (run 41248028640 job 124562057434, and again on run 41288401978
+ * where this shard was the only one of the four that did not finish); the file's own last words
  * were React SSR warnings and its subtest never reported, so a step of its module
  * had stopped returning and nothing named it. `bundle-step-bound.mjs` carries the
  * incident, the calibration of the bound, and why the timer is cleared rather than
