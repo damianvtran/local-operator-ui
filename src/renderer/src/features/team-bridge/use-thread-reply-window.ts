@@ -3,9 +3,10 @@ import {
 	CancelledError,
 	type InfiniteData,
 	useInfiniteQuery,
+	useQuery,
 	useQueryClient,
 } from "@tanstack/react-query";
-import { useRef, useState } from "react";
+import { useRef } from "react";
 
 export type ReplyWindowMode = "desc" | "legacy";
 export type ReplyWindowPage = {
@@ -178,16 +179,27 @@ export function useThreadReplyWindow<P extends ReplyWindowPage>({
 	retryOnMount?: boolean;
 }) {
 	const client = useQueryClient();
-	const scope = JSON.stringify(queryKey);
-	const [negotiated, setNegotiated] = useState({
-		scope,
-		mode: "desc" as ReplyWindowMode,
+	// The first observer may depart while another awaits the same DESC read.
+	// Publish negotiation through query-owned, body-free metadata so every
+	// survivor switches modes; a departed component's setter cannot do that.
+	// The separate namespace prevents cache-admission consumers from mistaking
+	// a protocol mode for private reply content. It expires with the last reader.
+	const negotiationKey = [
+		"team-bridge",
+		"reply-window-negotiation",
+		JSON.stringify(queryKey),
+	];
+	const { data: mode } = useQuery<ReplyWindowMode>({
+		queryKey: negotiationKey,
+		queryFn: () => "desc",
+		initialData: "desc",
+		enabled: false,
+		gcTime: 0,
 	});
-	const mode = negotiated.scope === scope ? negotiated.mode : "desc";
 	const key = [...queryKey, mode] as const;
 	const keyScope = JSON.stringify(key);
 	// O(1) control metadata only. No second message store, old-body merge,
-	// snapshot-retention structuralSharing hook, or extra query subscription.
+	// snapshot-retention structuralSharing hook, or duplicated reply bodies.
 	const windowRef = useRef<ReplyWindowState>({
 		key: keyScope,
 		pendingNewer: false,
@@ -326,7 +338,7 @@ export function useThreadReplyWindow<P extends ReplyWindowPage>({
 					!signal.aborted &&
 					unsupportedReplyWindow(error)
 				) {
-					setNegotiated({ scope, mode: "legacy" });
+					client.setQueryData<ReplyWindowMode>(negotiationKey, "legacy");
 					throw new CancelledError({ revert: true });
 				}
 				throw error;
