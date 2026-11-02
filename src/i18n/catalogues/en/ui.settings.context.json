@@ -124,5 +124,210 @@
 		"tone": "Concise and factual.",
 		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
 		"note": "English source: Delegated work: subagents and background sessions"
+	},
+	"ui.settings.personal_profile.heading": {
+		"role": "section heading",
+		"tone": "Concise, professional sentence case; follow the locale style guide.",
+		"note": "Personal cloud profile, distinct from local operator identity and agent profiles."
+	},
+	"ui.settings.personal_profile.display_name": {
+		"role": "field label",
+		"tone": "Concise, professional sentence case; follow the locale style guide.",
+		"note": "Human account presentation name; 64 Unicode code points. Empty clears to identity-name fallback."
+	},
+	"ui.settings.personal_profile.title": {
+		"role": "field label",
+		"tone": "Concise, professional sentence case; follow the locale style guide.",
+		"note": "Personal job/title field, not the section heading; at most 80 Unicode code points."
+	},
+	"ui.settings.personal_profile.description": {
+		"role": "multiline field label",
+		"tone": "Concise, professional sentence case; follow the locale style guide.",
+		"note": "Personal biography, at most 500 Unicode code points and 8 lines; not agent instructions."
+	},
+	"ui.settings.personal_profile.timezone": {
+		"role": "searchable field label",
+		"tone": "Concise, professional sentence case; follow the locale style guide.",
+		"note": "IANA timezone selection; no free text. Used for the person’s local time in profile cards."
+	},
+	"ui.settings.personal_profile.timezone_placeholder": {
+		"role": "search hint",
+		"tone": "Concise, professional sentence case; follow the locale style guide.",
+		"note": "Search the IANA zone options; typing is not a custom zone submission."
+	},
+	"ui.settings.personal_profile.timezone_clear": {
+		"role": "clear action label",
+		"tone": "Concise, professional sentence case; follow the locale style guide.",
+		"note": "Explicitly clears the optional timezone rather than changing it to the current device timezone."
+	},
+	"ui.settings.personal_profile.loading": {
+		"role": "live loading status",
+		"tone": "Concise, professional sentence case; follow the locale style guide.",
+		"note": "Cloud profile read unresolved. Must never be presented as an empty successful editor."
+	},
+	"ui.settings.personal_profile.load_error": {
+		"role": "alert",
+		"tone": "Concise, professional sentence case; follow the locale style guide.",
+		"note": "Cloud profile read failed; retry stays beside the explanation. No editable empty fallback."
+	},
+	"ui.settings.personal_profile.save": {
+		"role": "primary button",
+		"tone": "Concise, professional sentence case; follow the locale style guide.",
+		"note": "Saves dirty text fields only; photo is a separate transaction."
+	},
+	"ui.settings.personal_profile.saving": {
+		"role": "busy button label",
+		"tone": "Concise, professional sentence case; follow the locale style guide.",
+		"note": "In-flight text or photo save; terse status. Controls remain in place and framing is frozen."
+	},
+	"ui.settings.personal_profile.saved": {
+		"role": "live success status",
+		"tone": "Concise, professional sentence case; follow the locale style guide.",
+		"note": "Text save completed under the same captured account/view authority."
+	},
+	"ui.settings.personal_profile.save_error": {
+		"role": "alert",
+		"tone": "Concise, professional sentence case; follow the locale style guide.",
+		"note": "Text write failed; unsaved draft is retained and no success is claimed."
+	},
+	"ui.settings.personal_profile.validation": {
+		"role": "validation alert",
+		"tone": "Concise, professional sentence case; follow the locale style guide.",
+		"note": "Text code-point bounds and maximum eight description lines, not image validation."
+	},
+	"ui.settings.personal_profile.choose": {
+		"role": "photo button/accessibility label",
+		"tone": "Concise, professional sentence case; follow the locale style guide.",
+		"note": "Choose a local PNG/JPEG/WebP file; does not upload until explicit Save photo."
+	},
+	"ui.settings.personal_profile.replace": {
+		"role": "photo button",
+		"tone": "Concise, professional sentence case; follow the locale style guide.",
+		"note": "Choose a different photo, retaining the current cloud photo until successful explicit save."
+	},
+	"ui.settings.personal_profile.photo_help": {
+		"role": "photo constraints help",
+		"tone": "Concise, professional sentence case; follow the locale style guide.",
+		"note": "Fixed service limits: PNG/JPEG/WebP, 1 MiB bytes, maximum 4096 per edge, 16000000 total pixels. Preserve numeric meaning and unit."
+	},
+	"ui.settings.personal_profile.remove": {
+		"role": "destructive photo button",
+		"tone": "Concise, professional sentence case; follow the locale style guide.",
+		"note": "Opens explicit slot-removal confirmation. Never removes a photo automatically."
+	},
+	"ui.settings.personal_profile.remove_uploaded": {
+		"role": "confirmation question",
+		"tone": "Concise, professional sentence case; follow the locale style guide.",
+		"note": "Removing uploaded slot may reveal saved provider sign-in photo, otherwise initials; does not promise deleting both slots."
+	},
+	"ui.settings.personal_profile.remove_provider": {
+		"role": "confirmation question",
+		"tone": "Concise, professional sentence case; follow the locale style guide.",
+		"note": "Removing provider sign-in slot may reveal an existing upload, otherwise initials. Must preserve conditional consequence."
+	},
+	"ui.settings.personal_profile.photo_error": {
+		"role": "photo write alert",
+		"tone": "Concise, professional sentence case; follow the locale style guide.",
+		"note": "Failure to save/remove photo; unrelated text draft remains intact."
+	},
+	"ui.settings.personal_profile.photo_invalid": {
+		"role": "photo selection alert",
+		"tone": "Concise, professional sentence case; follow the locale style guide.",
+		"note": "Local file failed format/byte/dimension admission before cropping or upload."
+	},
+	"ui.settings.personal_profile.photo_saved": {
+		"role": "live success status",
+		"tone": "Concise, professional sentence case; follow the locale style guide.",
+		"note": "Explicit photo upload completed; not merely selection or canvas encoding."
+	},
+	"ui.settings.personal_profile.photo_removed": {
+		"role": "live success status",
+		"tone": "Concise, professional sentence case; follow the locale style guide.",
+		"note": "Explicit requested avatar slot removal completed; another saved slot may remain visible."
+	},
+	"ui.settings.personal_profile.crop_area": {
+		"role": "interactive canvas accessible name",
+		"tone": "Concise, professional sentence case; follow the locale style guide.",
+		"note": "Focusable human photo crop group; arrow keys pan and keyboard zoom works."
+	},
+	"ui.settings.personal_profile.crop_instructions": {
+		"role": "accessible crop help",
+		"tone": "Concise, professional sentence case; follow the locale style guide.",
+		"note": "Drag/arrows pan, plus/minus zoom, zero recenters. {width} and {height} are source pixel dimensions; preserve placeholders and key tokens."
+	},
+	"ui.settings.personal_profile.zoom": {
+		"role": "range accessible name/label",
+		"tone": "Concise, professional sentence case; follow the locale style guide.",
+		"note": "Photo crop magnification, not app-window zoom."
+	},
+	"ui.settings.personal_profile.zoom_in": {
+		"role": "icon button accessible name",
+		"tone": "Concise, professional sentence case; follow the locale style guide.",
+		"note": "Increases crop magnification; preserves the current focal point."
+	},
+	"ui.settings.personal_profile.zoom_out": {
+		"role": "icon button accessible name",
+		"tone": "Concise, professional sentence case; follow the locale style guide.",
+		"note": "Decreases crop magnification within the cropper bounds."
+	},
+	"ui.settings.personal_profile.zoom_value": {
+		"role": "range value text",
+		"tone": "Concise, professional sentence case; follow the locale style guide.",
+		"note": "{value} is a formatted magnification factor such as 1.25. Keep its placeholder and multiplication sign."
+	},
+	"ui.settings.personal_profile.recenter": {
+		"role": "crop button",
+		"tone": "Concise, professional sentence case; follow the locale style guide.",
+		"note": "Moves the photo back to centered framing; not removal/reset of text profile."
+	},
+	"ui.settings.personal_profile.previews": {
+		"role": "preview heading",
+		"tone": "Concise, professional sentence case; follow the locale style guide.",
+		"note": "The live preview is the same crop that will be saved."
+	},
+	"ui.settings.personal_profile.preview": {
+		"role": "preview canvas accessible name",
+		"tone": "Concise, professional sentence case; follow the locale style guide.",
+		"note": "Human profile photo preview, not an agent avatar."
+	},
+	"ui.settings.personal_profile.preview_caption": {
+		"role": "preview caption",
+		"tone": "Concise, professional sentence case; follow the locale style guide.",
+		"note": "Compact caption under the human circular photo preview."
+	},
+	"ui.settings.personal_profile.save_photo": {
+		"role": "primary crop button",
+		"tone": "Concise, professional sentence case; follow the locale style guide.",
+		"note": "Explicitly encodes/uploads the selected human crop; separate from Save profile."
+	},
+	"ui.settings.personal_profile.crop_error": {
+		"role": "encode alert",
+		"tone": "Concise, professional sentence case; follow the locale style guide.",
+		"note": "Canvas could not prepare photo bytes; no cloud upload has started."
+	},
+	"ui.settings.personal_profile.manage": {
+		"role": "secure browser handoff button",
+		"tone": "Concise, professional sentence case; follow the locale style guide.",
+		"note": "Only explicit user click opens canonical account console for email, identity and sign-in/password administration. Native fields never edit these."
+	},
+	"ui.settings.personal_profile.discard": {
+		"role": "text discard confirmation",
+		"tone": "Concise, professional sentence case; follow the locale style guide.",
+		"note": "Question before explicit Cancel discards unsaved text. Navigation instead retains text in memory; cancelling crop does not discard text."
+	},
+	"ui.settings.personal_profile.discard_action": {
+		"role": "confirmation button",
+		"tone": "Concise, professional sentence case; follow the locale style guide.",
+		"note": "Confirms discarding unsaved text and clears its memory-only retained draft."
+	},
+	"ui.settings.personal_profile.keep_editing": {
+		"role": "confirmation cancel button",
+		"tone": "Concise, professional sentence case; follow the locale style guide.",
+		"note": "Dismisses text-discard confirmation and retains current draft."
+	},
+	"ui.settings.personal_profile.edit": {
+		"role": "own-human card button",
+		"tone": "Concise, professional sentence case; follow the locale style guide.",
+		"note": "Only independently resolved active human self gets this action. Closes card, navigates to native Settings and transfers focus."
 	}
 }

@@ -17,7 +17,8 @@ const bundle = await build({
 export * from "./src/renderer/src/shared/api/radient/profile-image";
 export * from "./src/renderer/src/shared/hooks/radient-account-authority";
 export * from "./src/renderer/src/shared/hooks/use-account-profile";
-export * from "./src/renderer/src/shared/hooks/account-profile-draft";`,
+export * from "./src/renderer/src/shared/hooks/account-profile-draft";
+export * from "./src/renderer/src/shared/lib/mutation-lifetime";`,
 		resolveDir: process.cwd(),
 		loader: "tsx",
 	},
@@ -222,6 +223,66 @@ test("retained text returns within one scope, Cancel and A→B→A erase it", ()
 		undefined,
 	);
 	query.clear();
+});
+
+for (const preparation of ["canvas encode", "blob byte conversion"]) {
+	test(`unmount revokes deferred ${preparation} before any transport call`, async () => {
+		const lifetime = profile.createMutationLifetime();
+		lifetime.activate();
+		let resolve;
+		const prepared = new Promise((done) => {
+			resolve = done;
+		});
+		let transportCalls = 0;
+		const pending = profile.dispatchWhileCurrent(
+			lifetime,
+			lifetime.capture(),
+			() => prepared,
+			() => {
+				transportCalls++;
+			},
+		);
+		// This is the exact cleanup called synchronously by useLayoutEffect
+		// on editor/crop unmount. Resolving later must not dispatch a PUT.
+		lifetime.revoke();
+		resolve(new Uint8Array([1, 2, 3]));
+		assert.equal(await pending, false);
+		assert.equal(transportCalls, 0);
+	});
+}
+test("source replacement revokes old continuation but admits the new generation", async () => {
+	const lifetime = profile.createMutationLifetime();
+	lifetime.activate();
+	let resolve;
+	let calls = 0;
+	const pending = profile.dispatchWhileCurrent(
+		lifetime,
+		lifetime.capture(),
+		() =>
+			new Promise((done) => {
+				resolve = done;
+			}),
+		() => {
+			calls++;
+		},
+	);
+	lifetime.revoke();
+	lifetime.activate();
+	resolve("old source");
+	assert.equal(await pending, false);
+	assert.equal(calls, 0);
+	assert.equal(
+		await profile.dispatchWhileCurrent(
+			lifetime,
+			lifetime.capture(),
+			async () => "new source",
+			() => {
+				calls++;
+			},
+		),
+		true,
+	);
+	assert.equal(calls, 1);
 });
 
 test("PNG header rejects pixel bombs before the browser decoder", () => {

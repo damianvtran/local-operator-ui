@@ -6562,28 +6562,32 @@
 		{
 			"locale": "es",
 			"namespace": "ui.settings",
-			"source_sha256": "3a4316b07423741b3a5bb670a82cb07ae260ef247c40fd039f5ad74213efd625",
-			"target_sha256": "832f90038513ccb5934364174692526be2bea6966553ae4e8494616a045d094f",
+			"source_sha256": "867c7c09701d09d39abd4bf8fb5033689d69a32929c6222b6abae9307099b377",
+			"target_sha256": "3ee32c27c713225e1dc61a6da5a169c7eea1d609bac39f2d347d7a3e3e5560ee",
 			"translator": {
-				"agent": "i18n-translator",
+				"agent": "coder",
+				"instance": "6d6c12b793e0",
 				"model": "openai/gpt-6.1-sol",
-				"date": "2026-10-15"
+				"date": "2026-11-02",
+				"note": "PR1593 new41-key translation. fr/zh typography remediation model anthropic/claude-sonnet-5-5; older unchanged45-key translator/audit preserved in superseded provenance."
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "openrouter/moonshotai/kimi-k3.1-pro",
-					"date": "2026-10-24",
+					"agent": "independent reviewer",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-02",
 					"result": "clean",
-					"instance": "32818c8f857f",
+					"instance": "394f46fcc3fc",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/32818c8f857f.json",
-					"receipt_sha256": "dd9f3d21d37499ef78506d9998f3f37c71faa888b55c3402c8c078710ab0c3f9"
+					"receipt": "i18n/receipts/human-profile-1593-es-394f46fcc3fc.json",
+					"receipt_sha256": "d5fcfa4e5e096e04daf22bad71f3eb9447b443439c4ff9dcd6e4a8f830db4628",
+					"scope": "Only41 new keys plus context/typography delta; unchanged45 inherited on exact value compatibility with afb0f7de919. Not a whole-namespace re-audit.",
+					"note": "Historical NIT count 0 retained with fixed disposition. Evidence: i18n/audits/evidence/es/ui.settings/human-profile-1593-round1/record.json"
 				}
 			],
 			"status": "audited",
@@ -6625,6 +6629,33 @@
 							"receipt_sha256": "79f13a7cd7e80462027fa7a6945f556613fa7b75a1390a6b46343b46b5eecc6d",
 							"scope": "Full cumulative 143-key Spanish copy audit, including three #1073 delta keys",
 							"note": "Incremental i18n-translator/openai/gpt-6.1-sol contribution retains original 140-key translation and two independent audit histories; strict cumulative receipts cover final 143 keys including the three #1073 delta keys. Rendered QA/design remain separate."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "3a4316b07423741b3a5bb670a82cb07ae260ef247c40fd039f5ad74213efd625",
+					"target_sha256": "832f90038513ccb5934364174692526be2bea6966553ae4e8494616a045d094f",
+					"translator": {
+						"agent": "i18n-translator",
+						"model": "openai/gpt-6.1-sol",
+						"date": "2026-10-15"
+					},
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "openrouter/moonshotai/kimi-k3.1-pro",
+							"date": "2026-10-24",
+							"result": "clean",
+							"instance": "32818c8f857f",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/32818c8f857f.json",
+							"receipt_sha256": "dd9f3d21d37499ef78506d9998f3f37c71faa888b55c3402c8c078710ab0c3f9"
 						}
 					],
 					"status": "audited"
@@ -15442,29 +15473,32 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.settings",
-			"source_sha256": "3a4316b07423741b3a5bb670a82cb07ae260ef247c40fd039f5ad74213efd625",
-			"target_sha256": "5452293e28cbf1d77eb0979122425a0c1369767927c73acf7c6b29ef606a0353",
+			"source_sha256": "867c7c09701d09d39abd4bf8fb5033689d69a32929c6222b6abae9307099b377",
+			"target_sha256": "c19d9099562c5562853ccf9f4a66c56a4fbb6216bc28148082b3e1d7964d6e15",
 			"translator": {
-				"agent": "i18n-translator",
+				"agent": "coder",
+				"instance": "6d6c12b793e0",
 				"model": "openai/gpt-6.1-sol",
-				"date": "2026-10-13",
-				"note": "34 keys. 5 keys (ui.settings.profile.account_checking, account_read_failed_retry, account_read_failed_refused, retry, retrying) were authored by the implementing coder for PR #1017, not a translator; both passes below audited them in depth."
+				"date": "2026-11-02",
+				"note": "PR1593 new41-key translation. fr/zh typography remediation model anthropic/claude-sonnet-5-5; older unchanged45-key translator/audit preserved in superseded provenance."
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "radient/auto",
-					"date": "2026-10-24",
+					"agent": "independent reviewer",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-02",
 					"result": "clean-with-findings",
-					"instance": "d94011de0dc0",
+					"instance": "394f46fcc3fc",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 1
 					},
-					"receipt": "i18n/receipts/d94011de0dc0-surfaces.json",
-					"receipt_sha256": "cdab18d3bc3b8c91215c07a178c64af0c5a1b44bf181c0b6d31e4bad14be3e8f"
+					"receipt": "i18n/receipts/human-profile-1593-fr-394f46fcc3fc.json",
+					"receipt_sha256": "8f6d2f9b15f1df60ab2290c4f3ad0ddea99729522e65e26c2150243fbbe3a4f8",
+					"scope": "Only41 new keys plus context/typography delta; unchanged45 inherited on exact value compatibility with afb0f7de919. Not a whole-namespace re-audit.",
+					"note": "Historical NIT count 1 retained with fixed disposition. Evidence: i18n/audits/evidence/fr/ui.settings/human-profile-1593-round1/record.json"
 				}
 			],
 			"status": "audited",
@@ -15507,6 +15541,34 @@
 								"minor": 3,
 								"nit": 2
 							}
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "3a4316b07423741b3a5bb670a82cb07ae260ef247c40fd039f5ad74213efd625",
+					"target_sha256": "5452293e28cbf1d77eb0979122425a0c1369767927c73acf7c6b29ef606a0353",
+					"translator": {
+						"agent": "i18n-translator",
+						"model": "openai/gpt-6.1-sol",
+						"date": "2026-10-13",
+						"note": "34 keys. 5 keys (ui.settings.profile.account_checking, account_read_failed_retry, account_read_failed_refused, retry, retrying) were authored by the implementing coder for PR #1017, not a translator; both passes below audited them in depth."
+					},
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-24",
+							"result": "clean-with-findings",
+							"instance": "d94011de0dc0",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/d94011de0dc0-surfaces.json",
+							"receipt_sha256": "cdab18d3bc3b8c91215c07a178c64af0c5a1b44bf181c0b6d31e4bad14be3e8f"
 						}
 					],
 					"status": "audited"
@@ -24591,28 +24653,32 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.settings",
-			"source_sha256": "3a4316b07423741b3a5bb670a82cb07ae260ef247c40fd039f5ad74213efd625",
-			"target_sha256": "bcf2e5671eef2afcb1ecab6c16062f56ad5802dd4c52cadd4eb83870c8620ab9",
+			"source_sha256": "867c7c09701d09d39abd4bf8fb5033689d69a32929c6222b6abae9307099b377",
+			"target_sha256": "142a0ba4312d1a673ffb8f5b4a98822a036532bacc0bd89ab7bec7f093a38847",
 			"translator": {
-				"agent": "i18n-translator",
+				"agent": "coder",
+				"instance": "6d6c12b793e0",
 				"model": "openai/gpt-6.1-sol",
-				"date": "2026-10-15"
+				"date": "2026-11-02",
+				"note": "PR1593 new41-key translation. fr/zh typography remediation model anthropic/claude-sonnet-5-5; older unchanged45-key translator/audit preserved in superseded provenance."
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "radient/auto",
-					"date": "2026-10-24",
+					"agent": "independent reviewer",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-02",
 					"result": "clean",
-					"instance": "dab47dfc690a",
+					"instance": "394f46fcc3fc",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/dab47dfc690a-surfaces.json",
-					"receipt_sha256": "ef467c191feb9a91c8e4ada0c2814ec7a710506dcfd5fe0a8a4d964dc5738290"
+					"receipt": "i18n/receipts/human-profile-1593-hi-394f46fcc3fc.json",
+					"receipt_sha256": "f8ed00a299963894404fd03d1fa98217979a614ec28f57f9b3ad65a3d9e30102",
+					"scope": "Only41 new keys plus context/typography delta; unchanged45 inherited on exact value compatibility with afb0f7de919. Not a whole-namespace re-audit.",
+					"note": "Historical NIT count 0 retained with fixed disposition. Evidence: i18n/audits/evidence/hi/ui.settings/human-profile-1593-round1/record.json"
 				}
 			],
 			"status": "audited",
@@ -24654,6 +24720,33 @@
 							"receipt_sha256": "dd00588a83a42b589640bc5d38dc8d5900be029a717129432f3f9e86ba065382",
 							"scope": "Full cumulative 143-key copy audit including three #1073 delta keys",
 							"note": "Incremental i18n-translator/openai/gpt-6.1-sol retains original 140-key translation and two independent audit histories; cumulative receipts cover 143 final keys including three #1073 delta keys. Rendered QA/design remain separate. Minor last_known deferred, nonblocking."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "3a4316b07423741b3a5bb670a82cb07ae260ef247c40fd039f5ad74213efd625",
+					"target_sha256": "bcf2e5671eef2afcb1ecab6c16062f56ad5802dd4c52cadd4eb83870c8620ab9",
+					"translator": {
+						"agent": "i18n-translator",
+						"model": "openai/gpt-6.1-sol",
+						"date": "2026-10-15"
+					},
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-24",
+							"result": "clean",
+							"instance": "dab47dfc690a",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/dab47dfc690a-surfaces.json",
+							"receipt_sha256": "ef467c191feb9a91c8e4ada0c2814ec7a710506dcfd5fe0a8a4d964dc5738290"
 						}
 					],
 					"status": "audited"
@@ -33326,29 +33419,32 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.settings",
-			"source_sha256": "3a4316b07423741b3a5bb670a82cb07ae260ef247c40fd039f5ad74213efd625",
-			"target_sha256": "696b6cdcc4a21402f9320dbb774ff2e4e6a68a01c483972fb6f7185008dbe92a",
+			"source_sha256": "867c7c09701d09d39abd4bf8fb5033689d69a32929c6222b6abae9307099b377",
+			"target_sha256": "a87a7944ca244d1c137190928381d3b64feee48d8ff1cb6a5a2cd4f16db293ea",
 			"translator": {
-				"agent": "i18n-translator",
+				"agent": "coder",
+				"instance": "6d6c12b793e0",
 				"model": "openai/gpt-6.1-sol",
-				"date": "2026-10-15"
+				"date": "2026-11-02",
+				"note": "PR1593 new41-key translation. fr/zh typography remediation model anthropic/claude-sonnet-5-5; older unchanged45-key translator/audit preserved in superseded provenance."
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "radient/auto",
-					"date": "2026-10-24",
+					"agent": "independent reviewer",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-02",
 					"result": "clean",
-					"instance": "23463a773a32-surfaces",
+					"instance": "394f46fcc3fc",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/23463a773a32-surfaces.json",
-					"receipt_sha256": "ffb00483f5a5b874782f3512f5de45836a54200b23fad9579f69d5803171188b",
-					"scope": "Remediation delta only: every ru value this remediation changed in the audited namespaces, plus the round-1 findings themselves. Unchanged keys are not re-audited; their round-1 coverage stands on the byte-identical English/context hashes and the per-namespace target hashes recor"
+					"receipt": "i18n/receipts/human-profile-1593-ru-394f46fcc3fc.json",
+					"receipt_sha256": "ca21a158736c313c52b86168de285d69b43856516428917b849c9d82ef7444a6",
+					"scope": "Only41 new keys plus context/typography delta; unchanged45 inherited on exact value compatibility with afb0f7de919. Not a whole-namespace re-audit.",
+					"note": "Historical NIT count 0 retained with fixed disposition. Evidence: i18n/audits/evidence/ru/ui.settings/human-profile-1593-round1/record.json"
 				}
 			],
 			"status": "audited",
@@ -33390,6 +33486,34 @@
 							"receipt_sha256": "fa3f4ac2b18c587718bfd2c174365050d860441573ec58c07440092aaf7ad344",
 							"scope": "Full cumulative 143-key copy audit including three #1073 delta keys",
 							"note": "Incremental i18n-translator/openai/gpt-6.1-sol retains original 140-key translation and two independent audit histories; cumulative receipts cover 143 final keys including three #1073 delta keys. Rendered QA/design remain separate."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "3a4316b07423741b3a5bb670a82cb07ae260ef247c40fd039f5ad74213efd625",
+					"target_sha256": "696b6cdcc4a21402f9320dbb774ff2e4e6a68a01c483972fb6f7185008dbe92a",
+					"translator": {
+						"agent": "i18n-translator",
+						"model": "openai/gpt-6.1-sol",
+						"date": "2026-10-15"
+					},
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-24",
+							"result": "clean",
+							"instance": "23463a773a32-surfaces",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/23463a773a32-surfaces.json",
+							"receipt_sha256": "ffb00483f5a5b874782f3512f5de45836a54200b23fad9579f69d5803171188b",
+							"scope": "Remediation delta only: every ru value this remediation changed in the audited namespaces, plus the round-1 findings themselves. Unchanged keys are not re-audited; their round-1 coverage stands on the byte-identical English/context hashes and the per-namespace target hashes recor"
 						}
 					],
 					"status": "audited"
@@ -42187,29 +42311,32 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.settings",
-			"source_sha256": "3a4316b07423741b3a5bb670a82cb07ae260ef247c40fd039f5ad74213efd625",
-			"target_sha256": "ddd178d737e391d27eaeec96d8f95edbe93a1e7395d274ee0b96a298f009b596",
+			"source_sha256": "867c7c09701d09d39abd4bf8fb5033689d69a32929c6222b6abae9307099b377",
+			"target_sha256": "09be0ff6b97fadb52ad2943e0951d14016722c952d40ccacf4aa9486dd9905ef",
 			"translator": {
-				"agent": "i18n-translator",
+				"agent": "coder",
+				"instance": "6d6c12b793e0",
 				"model": "openai/gpt-6.1-sol",
-				"date": "2026-10-19"
+				"date": "2026-11-02",
+				"note": "PR1593 new41-key translation. fr/zh typography remediation model anthropic/claude-sonnet-5-5; older unchanged45-key translator/audit preserved in superseded provenance."
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "radient/auto",
-					"date": "2026-10-24",
+					"agent": "independent reviewer",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-02",
 					"result": "clean",
-					"instance": "21fe6c635cf3",
+					"instance": "394f46fcc3fc",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/21fe6c635cf3-surfaces.json",
-					"receipt_sha256": "c8a545503607c32407442b73c7b61ccb33fd68447cdf9c01d3a3415fcb578086",
-					"scope": "Remediation delta only: every value this remediation changed in the audited namespaces, plus the round-1 findings themselves. Unchanged keys are not re-audited; their round-1 coverage stands on the byte-identical hashes recorded below."
+					"receipt": "i18n/receipts/human-profile-1593-ur-394f46fcc3fc.json",
+					"receipt_sha256": "12fed0ea102457ea2d63bd8300ed4f33f273f288298202e37f6881c670fd6685",
+					"scope": "Only41 new keys plus context/typography delta; unchanged45 inherited on exact value compatibility with afb0f7de919. Not a whole-namespace re-audit.",
+					"note": "Historical NIT count 0 retained with fixed disposition. Evidence: i18n/audits/evidence/ur/ui.settings/human-profile-1593-round1/record.json"
 				}
 			],
 			"status": "audited",
@@ -42234,6 +42361,34 @@
 							"receipt_sha256": "7be92f4a2a4f9b5aff5a834d859d39e06e341caf831df08db9f9a64a75c306bf",
 							"scope": "Full independent copy audit of the namespace at the recorded bytes; zero findings.",
 							"note": "Independent auditor post-dates the translator; all findings remediated and re-audited to zero. Audit model fell back from anthropic/claude-sonnet-5-5 to openai/gpt-6.1-sol due to provider quota."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "3a4316b07423741b3a5bb670a82cb07ae260ef247c40fd039f5ad74213efd625",
+					"target_sha256": "ddd178d737e391d27eaeec96d8f95edbe93a1e7395d274ee0b96a298f009b596",
+					"translator": {
+						"agent": "i18n-translator",
+						"model": "openai/gpt-6.1-sol",
+						"date": "2026-10-19"
+					},
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-24",
+							"result": "clean",
+							"instance": "21fe6c635cf3",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/21fe6c635cf3-surfaces.json",
+							"receipt_sha256": "c8a545503607c32407442b73c7b61ccb33fd68447cdf9c01d3a3415fcb578086",
+							"scope": "Remediation delta only: every value this remediation changed in the audited namespaces, plus the round-1 findings themselves. Unchanged keys are not re-audited; their round-1 coverage stands on the byte-identical hashes recorded below."
 						}
 					],
 					"status": "audited"
@@ -51234,28 +51389,32 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.settings",
-			"source_sha256": "3a4316b07423741b3a5bb670a82cb07ae260ef247c40fd039f5ad74213efd625",
-			"target_sha256": "eeeb5f42b1cd22b3306e51fd62b324c7da8fb09a5cd65c7544660fbee47e7fd5",
+			"source_sha256": "867c7c09701d09d39abd4bf8fb5033689d69a32929c6222b6abae9307099b377",
+			"target_sha256": "ca476c264dbde7ce324b1b4c7d3a14e9d269c2d3eed09b8d6e8a5b6d4c6558e6",
 			"translator": {
-				"agent": "i18n-translator",
+				"agent": "coder",
+				"instance": "6d6c12b793e0",
 				"model": "openai/gpt-6.1-sol",
-				"date": "2026-10-15"
+				"date": "2026-11-02",
+				"note": "PR1593 new41-key translation. fr/zh typography remediation model anthropic/claude-sonnet-5-5; older unchanged45-key translator/audit preserved in superseded provenance."
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "radient/auto",
-					"date": "2026-10-24",
+					"agent": "independent reviewer",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-02",
 					"result": "clean",
-					"instance": "b928c7f0c96d",
+					"instance": "394f46fcc3fc",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/b928c7f0c96d-surfaces.json",
-					"receipt_sha256": "3f79234f1f321130c46e9a6532ee7b90826101c21da47314852c169711c070fe"
+					"receipt": "i18n/receipts/human-profile-1593-vi-394f46fcc3fc.json",
+					"receipt_sha256": "0891cf72dd571ea468ef5a6bd9c1eab531a3dc166684876ed5fec8a35c4a6020",
+					"scope": "Only41 new keys plus context/typography delta; unchanged45 inherited on exact value compatibility with afb0f7de919. Not a whole-namespace re-audit.",
+					"note": "Historical NIT count 0 retained with fixed disposition. Evidence: i18n/audits/evidence/vi/ui.settings/human-profile-1593-round1/record.json"
 				}
 			],
 			"status": "audited",
@@ -51297,6 +51456,33 @@
 							"receipt_sha256": "2b5b8630e5cdc90a1f09e878436a98ddb0d6a2fe1a1752673ca44cb02b43fc4a",
 							"scope": "Full cumulative 143-key copy audit including three #1073 delta keys",
 							"note": "Incremental i18n-translator/openai/gpt-6.1-sol retains original 140-key translation and two independent audit histories; cumulative receipts cover 143 final keys including three #1073 delta keys. Rendered QA/design remain separate."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "3a4316b07423741b3a5bb670a82cb07ae260ef247c40fd039f5ad74213efd625",
+					"target_sha256": "eeeb5f42b1cd22b3306e51fd62b324c7da8fb09a5cd65c7544660fbee47e7fd5",
+					"translator": {
+						"agent": "i18n-translator",
+						"model": "openai/gpt-6.1-sol",
+						"date": "2026-10-15"
+					},
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-24",
+							"result": "clean",
+							"instance": "b928c7f0c96d",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/b928c7f0c96d-surfaces.json",
+							"receipt_sha256": "3f79234f1f321130c46e9a6532ee7b90826101c21da47314852c169711c070fe"
 						}
 					],
 					"status": "audited"
@@ -60823,28 +61009,32 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.settings",
-			"source_sha256": "3a4316b07423741b3a5bb670a82cb07ae260ef247c40fd039f5ad74213efd625",
-			"target_sha256": "cd2b0e0249d9f3c64d28600bfd62833f666b6b9b46aba9165c3ff1ee773715b1",
+			"source_sha256": "867c7c09701d09d39abd4bf8fb5033689d69a32929c6222b6abae9307099b377",
+			"target_sha256": "969226746b71b6ae7e3429a164a137d59f33de6300f4ce34c86ee6154a55f855",
 			"translator": {
-				"agent": "i18n-translator",
+				"agent": "coder",
+				"instance": "6d6c12b793e0",
 				"model": "openai/gpt-6.1-sol",
-				"date": "2026-10-15"
+				"date": "2026-11-02",
+				"note": "PR1593 new41-key translation. fr/zh typography remediation model anthropic/claude-sonnet-5-5; older unchanged45-key translator/audit preserved in superseded provenance."
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "openrouter/moonshotai/kimi-k3.1-pro",
-					"date": "2026-10-24",
-					"result": "clean",
-					"instance": "5e4bc8838c01-surfaces-zh-cn-r1",
+					"agent": "independent reviewer",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-02",
+					"result": "clean-with-findings",
+					"instance": "394f46fcc3fc",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 0
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/5e4bc8838c01-surfaces-zh-cn-r1.json",
-					"receipt_sha256": "11f672f8fa16f25cea4e723052c6f80dadc42be4d9fc458158b32f208d42194a"
+					"receipt": "i18n/receipts/human-profile-1593-zh-CN-394f46fcc3fc.json",
+					"receipt_sha256": "c0b38c2757f2b067eab8335b4ed7d21aef9b48c31182ada40842dcad667d16fb",
+					"scope": "Only41 new keys plus context/typography delta; unchanged45 inherited on exact value compatibility with afb0f7de919. Not a whole-namespace re-audit.",
+					"note": "Historical NIT count 1 retained with fixed disposition. Evidence: i18n/audits/evidence/zh-CN/ui.settings/human-profile-1593-round1/record.json"
 				}
 			],
 			"status": "audited",
@@ -60927,6 +61117,33 @@
 							"receipt_sha256": "a3f8d3cd33ca10e38507f9c2953f47d0305d74cae1183561847b3dc380b19704",
 							"scope": "Serialization-only reattestation: identical ordered 143 key/value pairs; raw tab-indented targets",
 							"note": "Original two independent audit histories reattest tab-indented bytes; all 143 ordered key/value pairs unchanged. Prior target audits retained as superseded history. Rendered/font/native/backend QA and design remain owed."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "3a4316b07423741b3a5bb670a82cb07ae260ef247c40fd039f5ad74213efd625",
+					"target_sha256": "cd2b0e0249d9f3c64d28600bfd62833f666b6b9b46aba9165c3ff1ee773715b1",
+					"translator": {
+						"agent": "i18n-translator",
+						"model": "openai/gpt-6.1-sol",
+						"date": "2026-10-15"
+					},
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "openrouter/moonshotai/kimi-k3.1-pro",
+							"date": "2026-10-24",
+							"result": "clean",
+							"instance": "5e4bc8838c01-surfaces-zh-cn-r1",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/5e4bc8838c01-surfaces-zh-cn-r1.json",
+							"receipt_sha256": "11f672f8fa16f25cea4e723052c6f80dadc42be4d9fc458158b32f208d42194a"
 						}
 					],
 					"status": "audited"

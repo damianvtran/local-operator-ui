@@ -12,6 +12,10 @@ import { Button, Input, Label, Textarea } from "@shared/components/ui";
 import { SearchableSelect } from "@shared/components/ui/searchable-select";
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
+import {
+	dispatchWhileCurrent,
+	useMutationLifetime,
+} from "@shared/lib/mutation-lifetime";
 import { openConsolePage } from "@shared/utils/radient-account-copy";
 import { useEffect, useId, useRef, useState } from "react";
 
@@ -36,8 +40,8 @@ const textFields = (
 });
 const timezones = () =>
 	[...new Set(["UTC", ...Intl.supportedValuesOf("timeZone")])].map((value) => ({
-		value,
-		label: value.replaceAll("_", " "),
+		id: value,
+		name: value.split("_").join(" "),
 	}));
 
 export function AccountProfileEditor({
@@ -68,6 +72,7 @@ export function AccountProfileEditor({
 	const [discard, setDiscard] = useState(false);
 	const [remove, setRemove] = useState(false);
 	const [source, setSource] = useState<ImageBitmap>();
+	const photoLifetime = useMutationLifetime(source);
 	const picker = useRef<HTMLInputElement>(null);
 	const sourceRef = useRef<ImageBitmap | undefined>(undefined);
 	const alive = useRef(true);
@@ -134,7 +139,7 @@ export function AccountProfileEditor({
 		}
 	};
 	const save = async () => {
-		if (busy || !dirty) return;
+		if (!alive.current || busy || !dirty) return;
 		const fields = dirtyProfileFields(baseline, draft);
 		if (
 			(Object.entries(fields) as [keyof AccountProfileFields, string][]).some(
@@ -165,13 +170,24 @@ export function AccountProfileEditor({
 		}
 	};
 	const savePhoto = async (blob: Blob) => {
-		if (busy) return;
+		if (!alive.current || busy) return;
 		setPhotoBusy(true);
 		setPhotoError(undefined);
 		setNotice(undefined);
+		const sequence = pickSequence.current;
+		const ticket = photoLifetime.capture();
 		try {
 			if (blob.size > 1024 * 1024) throw new Error("Profile crop too large");
-			await onUpload(new Uint8Array(await blob.arrayBuffer()));
+			const dispatched = await dispatchWhileCurrent(
+				photoLifetime,
+				ticket,
+				() => blob.arrayBuffer(),
+				(bytes) => {
+					if (!alive.current || sequence !== pickSequence.current) return;
+					return onUpload(new Uint8Array(bytes));
+				},
+			);
+			if (!dispatched) return;
 			if (!alive.current) return;
 			clearCrop();
 			setNotice("photo_saved");
@@ -182,7 +198,7 @@ export function AccountProfileEditor({
 		}
 	};
 	const removePhoto = async () => {
-		if (busy) return;
+		if (!alive.current || busy) return;
 		setPhotoBusy(true);
 		setPhotoError(undefined);
 		setNotice(undefined);
@@ -394,12 +410,12 @@ export function AccountProfileEditor({
 					selected={
 						draft.timezone
 							? {
-									value: draft.timezone,
-									label: draft.timezone.replaceAll("_", " "),
+									id: draft.timezone,
+									name: draft.timezone.split("_").join(" "),
 								}
 							: null
 					}
-					onSelect={(option) => change("timezone", option.value)}
+					onSelect={(option) => change("timezone", option.id)}
 					onClear={() => change("timezone", "")}
 					disabled={saving}
 				/>

@@ -13,7 +13,11 @@ import { t } from "@shared/i18n";
 import type { Meta, StoryObj } from "@storybook/react";
 import { expect, userEvent, within } from "@storybook/test";
 import { QueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useRef, useState } from "react";
+import {
+	dispatchWhileCurrent,
+	useMutationLifetime,
+} from "@shared/lib/mutation-lifetime";
 import { AccountProfileEditor } from "./account-profile-editor";
 import {
 	AccountProfileLoading,
@@ -129,7 +133,6 @@ export const Saved: Story = {
 		await userEvent.click(
 			canvas.getByRole("button", {
 				name: t("ui.settings.personal_profile.save"),
-				exact: true,
 			}),
 		);
 		await expect(
@@ -144,7 +147,6 @@ export const SaveFailure: Story = {
 		await userEvent.click(
 			canvas.getByRole("button", {
 				name: t("ui.settings.personal_profile.save"),
-				exact: true,
 			}),
 		);
 		await expect(canvas.getByRole("alert")).toHaveTextContent(
@@ -159,7 +161,6 @@ export const Saving: Story = {
 		await userEvent.click(
 			canvas.getByRole("button", {
 				name: t("ui.settings.personal_profile.save"),
-				exact: true,
 			}),
 		);
 	},
@@ -170,7 +171,6 @@ export const DiscardConfirmation: Story = {
 		await userEvent.click(
 			canvas.getByRole("button", {
 				name: t("ui.common.actions.cancel"),
-				exact: true,
 			}),
 		);
 	},
@@ -181,7 +181,6 @@ export const ProviderRemoval: Story = {
 		await userEvent.click(
 			within(canvasElement).getByRole("button", {
 				name: t("ui.settings.personal_profile.remove"),
-				exact: true,
 			}),
 		);
 	},
@@ -284,13 +283,11 @@ export const RetainedNavigation: Story = {
 		await userEvent.click(
 			canvas.getByRole("button", {
 				name: t("ui.common.actions.cancel"),
-				exact: true,
 			}),
 		);
 		await userEvent.click(
 			canvas.getByRole("button", {
 				name: t("ui.settings.personal_profile.discard_action"),
-				exact: true,
 			}),
 		);
 		await userEvent.click(canvas.getByTestId("fixture-navigation"));
@@ -300,6 +297,72 @@ export const RetainedNavigation: Story = {
 		).toHaveValue(seed.profile.display_name);
 	},
 };
+function DeferredPhotoPreparation({
+	release,
+	onDispatch,
+}: { release: { current: (() => void) | undefined }; onDispatch: () => void }) {
+	const lifetime = useMutationLifetime("synthetic selected photo");
+	return (
+		<button
+			type="button"
+			data-testid="prepare-photo"
+			onClick={() => {
+				void dispatchWhileCurrent(
+					lifetime,
+					lifetime.capture(),
+					() =>
+						new Promise<ArrayBuffer>((resolve) => {
+							release.current = () => resolve(new ArrayBuffer(1));
+						}),
+					onDispatch,
+				);
+			}}
+		>
+			Prepare fixture photo
+		</button>
+	);
+}
+function DeferredUnmountFixture() {
+	const [mounted, setMounted] = useState(true);
+	const [calls, setCalls] = useState(0);
+	const release = useRef<(() => void) | undefined>(undefined);
+	return (
+		<div className="flex flex-col gap-4 bg-surface p-4 text-ink">
+			{/* i18n: ignore story-only deferred-promise/unmount controls, never product copy */}
+			{mounted && (
+				<DeferredPhotoPreparation
+					release={release}
+					onDispatch={() => setCalls((value) => value + 1)}
+				/>
+			)}
+			<button
+				type="button"
+				data-testid="unmount-photo"
+				onClick={() => setMounted(false)}
+			>
+				Leave fixture editor
+			</button>
+			<button
+				type="button"
+				data-testid="resolve-photo"
+				onClick={() => release.current?.()}
+			>
+				Complete deferred preparation
+			</button>
+			<output data-testid="transport-count">{calls}</output>
+		</div>
+	);
+}
+export const DeferredUnmountNoUpload: Story = {
+	render: () => <DeferredUnmountFixture />,
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await userEvent.click(canvas.getByTestId("prepare-photo"));
+		await userEvent.click(canvas.getByTestId("unmount-photo"));
+		await userEvent.click(canvas.getByTestId("resolve-photo"));
+		await expect(canvas.getByTestId("transport-count")).toHaveTextContent("0");
+	},
+};
 export const PhotoFailure: Story = {
 	args: { fail: true },
 	play: async ({ canvasElement }) => {
@@ -307,7 +370,6 @@ export const PhotoFailure: Story = {
 		await userEvent.click(
 			within(canvasElement).getByRole("button", {
 				name: t("ui.settings.personal_profile.save_photo"),
-				exact: true,
 			}),
 		);
 		await within(canvasElement).findByRole("alert");

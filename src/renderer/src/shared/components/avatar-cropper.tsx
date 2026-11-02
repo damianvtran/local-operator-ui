@@ -15,6 +15,10 @@ import {
 } from "@shared/agent-avatar/crop-geometry";
 import { Button } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
+import {
+	dispatchWhileCurrent,
+	useMutationLifetime,
+} from "@shared/lib/mutation-lifetime";
 import { Minus, Plus, RotateCcw } from "lucide-react";
 import {
 	type CSSProperties,
@@ -142,6 +146,7 @@ export function AvatarCropper({
 	),
 }: AvatarCropperProps) {
 	const instructionsId = useId();
+	const lifetime = useMutationLifetime(source);
 	const [zoom, setZoom] = useState(initialZoom);
 	const [offset, setOffset] = useState<CropOffset>(() =>
 		clampOffset(
@@ -210,6 +215,8 @@ export function AvatarCropper({
 	// biome-ignore lint/correctness/useExhaustiveDependencies: seeding, not reacting (see above).
 	useEffect(() => {
 		setZoom(initialZoom);
+		setEncoding(false);
+		setEncodeFailed(false);
 		setOffset(
 			clampOffset(
 				source,
@@ -337,15 +344,19 @@ export function AvatarCropper({
 		if (saving || encoding) return;
 		setEncoding(true);
 		setEncodeFailed(false);
+		const ticket = lifetime.capture();
 		try {
-			const blob = await renderAvatarCrop(source, zoom, offset, outputEdge);
-			if (!blob) {
-				setEncodeFailed(true);
-				return;
-			}
-			onSave(blob);
+			await dispatchWhileCurrent(
+				lifetime,
+				ticket,
+				() => renderAvatarCrop(source, zoom, offset, outputEdge),
+				(blob) => {
+					if (blob) onSave(blob);
+					else setEncodeFailed(true);
+				},
+			);
 		} finally {
-			setEncoding(false);
+			if (lifetime.isCurrent(ticket)) setEncoding(false);
 		}
 	};
 
