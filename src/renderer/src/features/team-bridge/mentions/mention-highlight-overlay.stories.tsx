@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { expect, userEvent, within } from "@storybook/test";
 import { useId, useRef, useState } from "react";
-import { caretRect } from "./caret-coordinates";
+import { caretRect, copyTextMetrics } from "./caret-coordinates";
 import { MentionSourceContext } from "./mention-context";
 import { useMentionDraftStore } from "./mention-draft-store";
 import { MentionField, useComposerMentions } from "./mention-field";
@@ -103,6 +103,7 @@ function WritableField({
 					/>
 				</MentionField>
 			</div>
+			<output className="block text-xs" data-editable-alignment-proof="" />
 			<output className="block text-xs" data-editable-proof="">
 				{mentions.tokens.filter((token) => token.notify).length} notifying;{" "}
 				{mentions.tokens.filter((token) => !token.notify).length} silent
@@ -260,6 +261,104 @@ export const WritableLight: Story = {
 		expect(
 			canvasElement.querySelectorAll('[data-mention-pill="silent"]').length,
 		).toBe(1);
+		// Measure the edited value, not the restored fixture. A full-text plain
+		// mirror is the reference: unlike a prefix-only caret mirror, it retains
+		// the word-wrap context for every glyph after the real edit.
+		await new Promise<void>((resolve) =>
+			requestAnimationFrame(() => resolve()),
+		);
+		const overlay = canvasElement.querySelector<HTMLElement>(
+			"[data-mention-overlay]",
+		);
+		if (!overlay) throw new Error("Editable draft has no mention overlay");
+		const reference = field.ownerDocument.createElement("div");
+		copyTextMetrics(field, reference);
+		reference.style.position = "absolute";
+		reference.style.visibility = "hidden";
+		reference.style.left = `${field.offsetLeft}px`;
+		reference.style.top = `${field.offsetTop}px`;
+		reference.textContent = field.value;
+		field.parentElement?.appendChild(reference);
+		reference.scrollTop = field.scrollTop;
+		try {
+			const visibility = overlay.style.visibility;
+			overlay.style.visibility = "hidden";
+			const without = caretRect(field, field.selectionStart);
+			overlay.style.visibility = visibility;
+			const withHighlight = caretRect(field, field.selectionStart);
+			expect(withHighlight.left).toBe(without.left);
+			const walker = field.ownerDocument.createTreeWalker(
+				overlay,
+				NodeFilter.SHOW_TEXT,
+			);
+			const actual = field.ownerDocument.createRange();
+			const expected = field.ownerDocument.createRange();
+			type Reading = { dx: number; dy: number; from: number; to: number };
+			const rows = new Map<number, Reading>();
+			const fragments = new Map<number, Reading>();
+			const longStart = field.value.indexOf(`@${longLabel}`);
+			let index = 0;
+			let maxX = 0;
+			let maxY = 0;
+			for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+				for (
+					let offset = 0;
+					offset < (node.textContent?.length ?? 0);
+					offset++, index++
+				) {
+					if (field.value[index] === "\n") continue;
+					actual.setStart(node, offset);
+					actual.setEnd(node, offset + 1);
+					expected.setStart(reference.firstChild as Node, index);
+					expected.setEnd(reference.firstChild as Node, index + 1);
+					const glyph = actual.getBoundingClientRect();
+					const plain = expected.getBoundingClientRect();
+					const dx = Math.abs(glyph.left - plain.left);
+					const dy = Math.abs(glyph.top - plain.top);
+					expect(dx).toBeLessThanOrEqual(1);
+					expect(dy).toBeLessThanOrEqual(1);
+					maxX = Math.max(maxX, dx);
+					maxY = Math.max(maxY, dy);
+					const line = Math.round(plain.top);
+					const row = rows.get(line) ?? {
+						dx: 0,
+						dy: 0,
+						from: plain.left,
+						to: glyph.left,
+					};
+					rows.set(line, {
+						...row,
+						dx: Math.max(row.dx, dx),
+						dy: Math.max(row.dy, dy),
+					});
+					if (index >= longStart && index < longStart + longLabel.length + 1) {
+						const fragment = fragments.get(line) ?? {
+							dx: 0,
+							dy: 0,
+							from: plain.left,
+							to: glyph.left,
+						};
+						fragments.set(line, {
+							...fragment,
+							dx: Math.max(fragment.dx, dx),
+							dy: Math.max(fragment.dy, dy),
+						});
+					}
+				}
+			}
+			expect(index).toBe(field.value.length);
+			expect(rows.size).toBeGreaterThan(1);
+			expect(fragments.size).toBeGreaterThan(1);
+			const readout = canvasElement.querySelector(
+				"[data-editable-alignment-proof]",
+			);
+			const format = ([y, delta]: [number, Reading]) =>
+				`y ${y}, glyph x ${delta.from.toFixed(3)} → ${delta.to.toFixed(3)}: Δx ${delta.dx.toFixed(3)}, Δy ${delta.dy.toFixed(3)}px`;
+			if (readout)
+				readout.textContent = `After inserting x, before restore: caret ${without.left} → ${withHighlight.left}; whole draft ${index} characters Δx ${maxX.toFixed(3)}, Δy ${maxY.toFixed(3)}px; multiline ${rows.size} rows [${[...rows].map(format).join("; ")}]; long-name ${fragments.size} fragments [${[...fragments].map(format).join("; ")}]`;
+		} finally {
+			reference.remove();
+		}
 		await userEvent.keyboard("{Backspace}");
 		expect(field.value).toBe(original);
 		expect(
