@@ -10,7 +10,8 @@ const bundle = await build({
 	stdin: {
 		contents: `
 			export {useComposerMentions, MentionField} from './src/renderer/src/features/team-bridge/mentions/mention-field';
-			export {MentionSourceContext} from './src/renderer/src/features/team-bridge/mentions/mention-context';
+			export {MentionSourceContext, useMentionSource} from './src/renderer/src/features/team-bridge/mentions/mention-context';
+			export {TeamBridgeMentionProvider} from './src/renderer/src/features/team-bridge/mentions/mention-source';
 			export {useMentionDraftStore} from './src/renderer/src/features/team-bridge/mentions/mention-draft-store';
 			export {stagedMentions} from './src/renderer/src/features/team-bridge/mentions/mention-outbox';
 			export {createRoot} from 'react-dom/client';
@@ -81,6 +82,11 @@ const agent = {
 	bridgeOff: false,
 };
 const draftKey = "thread|bcv_restore|bcmsg_root";
+const defaultOwner = { accountId: "acct_owner_A", tenantId: "tnt_restore" };
+const scopedKey = (key = draftKey, owner = defaultOwner) =>
+	owner
+		? JSON.stringify(["mention-draft-v2", owner.accountId, owner.tenantId, key])
+		: null;
 const setValue = Object.getOwnPropertyDescriptor(
 	dom.window.HTMLTextAreaElement.prototype,
 	"value",
@@ -91,7 +97,9 @@ async function mount({
 	text = "",
 	list = [human, agent],
 	failSend = false,
+	owner = defaultOwner,
 } = {}) {
+	const storageKey = scopedKey(key, owner);
 	const host = document.createElement("div");
 	document.body.append(host);
 	const root = m.createRoot(host);
@@ -102,7 +110,9 @@ async function mount({
 	function acceptText(next) {
 		textWrites.push({
 			text: next,
-			stored: structuredClone(m.useMentionDraftStore.getState().drafts[key]),
+			stored: structuredClone(
+				m.useMentionDraftStore.getState().drafts[storageKey],
+			),
 		});
 		render(next);
 	}
@@ -150,6 +160,10 @@ async function mount({
 				{
 					value: {
 						conversationId: "bcv_restore",
+						draftOwner: owner,
+						self: owner
+							? { accountId: owner.accountId, label: "Draft owner" }
+							: null,
 						candidates: list,
 						conversationKind: "group",
 						sendMentions: true,
@@ -174,10 +188,16 @@ async function mount({
 			return text;
 		},
 		get stored() {
-			return m.useMentionDraftStore.getState().drafts[key];
+			return m.useMentionDraftStore.getState().drafts[storageKey];
 		},
 		async restore(value) {
 			await m.act(async () => render(value));
+		},
+		async changeOwner(next) {
+			await m.act(async () => {
+				owner = next;
+				render(text);
+			});
 		},
 		async type(value, caret = value.length, inputType = "insertText") {
 			await m.act(async () => {
@@ -441,14 +461,25 @@ test("thread and page keys remain disjoint; mismatched ranges are rejected witho
 		const text = c.text;
 		const saved = structuredClone(c.stored);
 		await c.dispose();
-		c = await mount({ key: "bcv_restore", text });
+		c = await mount({
+			key: [
+				"bridge",
+				defaultOwner.accountId,
+				defaultOwner.tenantId,
+				"bcv_restore",
+			].join(":"),
+			text,
+		});
 		assertPills(c, []);
 		assert.equal(c.controller.open, false);
-		assert.deepEqual(m.useMentionDraftStore.getState().drafts[draftKey], saved);
+		assert.deepEqual(
+			m.useMentionDraftStore.getState().drafts[scopedKey()],
+			saved,
+		);
 		await c.dispose();
 		m.useMentionDraftStore.setState({
 			drafts: {
-				[draftKey]: {
+				[scopedKey()]: {
 					...saved,
 					tokens: saved.tokens.map((token) => ({
 						...token,
@@ -501,5 +532,146 @@ test("an actual user edit during hydration retires the snapshot and cannot resur
 		assert.equal(c.sent[0], undefined);
 	} finally {
 		await c.dispose();
+	}
+});
+
+// This is the shipped THREAD key through the hook host, with text explicitly
+// delivered by the harness. The real thread remount starts with empty local
+// state; this does not claim the shipped page has an unscoped draft-text leak.
+test("R1: thread-key tokens stay private across owners even when identical text is delivered", async () => {
+	m.useMentionDraftStore.setState({ drafts: {} });
+	let c = await mount();
+	try {
+		await pickPair(c);
+		const text = c.text;
+		assert.equal(c.controller.tokens.length, 2);
+		await c.dispose();
+		c = await mount({ owner: { ...defaultOwner, accountId: "acct_owner_B" } });
+		await c.restore(text);
+		assertPills(c, []);
+		await c.send();
+		assert.equal(
+			c.sent[0],
+			undefined,
+			"owner B must send no inherited mention rows",
+		);
+	} finally {
+		await c.dispose();
+	}
+});
+
+test("R1: tenant scope and unresolved ownership cannot read another draft's tokens", async () => {
+	m.useMentionDraftStore.setState({ drafts: {} });
+	let c = await mount();
+	try {
+		await pickPair(c);
+		const text = c.text;
+		await c.dispose();
+		c = await mount({
+			text,
+			owner: { ...defaultOwner, tenantId: "tnt_other" },
+		});
+		assertPills(c, []);
+		await c.send();
+		assert.equal(c.sent[0], undefined);
+		await c.dispose();
+		c = await mount({ text, owner: null });
+		assertPills(c, []);
+		await c.type("hello @");
+		await c.pick(human);
+		assert.equal(
+			c.stored,
+			undefined,
+			"unresolved ownership must not persist tokens",
+		);
+		assert.equal(
+			Object.keys(m.useMentionDraftStore.getState().drafts).length,
+			1,
+			"only the original owner's scoped sidecar remains",
+		);
+	} finally {
+		await c.dispose();
+	}
+});
+
+test("R1: legacy unscoped sidecars are never adopted and v1 persistence is discarded", async () => {
+	m.useMentionDraftStore.setState({ drafts: {} });
+	let c = await mount();
+	try {
+		await pickPair(c);
+		const text = c.text;
+		const saved = structuredClone(c.stored);
+		await c.dispose();
+		m.useMentionDraftStore.setState({ drafts: { [draftKey]: saved } });
+		c = await mount({ text });
+		assertPills(c, []);
+		await c.send();
+		assert.equal(c.sent[0], undefined);
+		await c.dispose();
+		localStorage.setItem(
+			"team-bridge-mention-drafts",
+			JSON.stringify({ version: 1, state: { drafts: { [draftKey]: saved } } }),
+		);
+		await m.act(async () => m.useMentionDraftStore.persist.rehydrate());
+		assert.deepEqual(m.useMentionDraftStore.getState().drafts, {});
+		c = await mount({ text });
+		assertPills(c, []);
+	} finally {
+		await c.dispose();
+	}
+});
+
+test("R1: an owner change without unmount retires in-memory tokens and restoration history", async () => {
+	m.useMentionDraftStore.setState({ drafts: {} });
+	const c = await mount();
+	try {
+		await pickPair(c);
+		const text = c.text;
+		await c.changeOwner({ ...defaultOwner, accountId: "acct_owner_B" });
+		assertPills(c, []);
+		await c.restore("");
+		await c.restore(text);
+		assertPills(c, []);
+		await c.send();
+		assert.equal(c.sent[0], undefined);
+	} finally {
+		await c.dispose();
+	}
+});
+
+test("R1: shipped provider derives ownership from IDs even before the directory self row loads", async () => {
+	const host = document.createElement("div");
+	document.body.append(host);
+	const root = m.createRoot(host);
+	let source;
+	function Reader() {
+		source = m.useMentionSource();
+		return null;
+	}
+	try {
+		await m.act(async () =>
+			root.render(
+				m.createElement(
+					m.TeamBridgeMentionProvider,
+					{
+						conversation: {
+							id: "bcv_restore",
+							tenant_id: defaultOwner.tenantId,
+							kind: "group",
+							members: [],
+						},
+						people: [],
+						selfAccountId: defaultOwner.accountId,
+						sendMentions: true,
+					},
+					m.createElement(Reader),
+				),
+			),
+		);
+		assert.equal(source.self, null);
+		assert.deepEqual(source.draftOwner, defaultOwner);
+	} finally {
+		await m.act(async () => root.unmount());
+		host.remove();
 	}
 });

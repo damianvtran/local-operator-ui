@@ -11,11 +11,14 @@ import { type MentionToken, rebaseTokens } from "./tokens";
  * pair before calling the text owner's setter; hydration never deletes a pair
  * merely because that owner's text has not arrived yet.
  *
- * Keys are opaque caller-owned draft keys, not display names or labels. The
- * page currently passes its conversation ID; replies pass
- * `thread|<conversationId>|<rootMessageId>`, a disjoint namespace. Any caller's
- * org/account/new-recipient scope must remain part of its supplied key: this
- * store must not collapse it to just a conversation or derive identity from it.
+ * Storage keys are JSON tuples ["mention-draft-v2", draftingAccountId,
+ * tenantId, callerDraftKey]. Account/tenant come from the mention provider,
+ * never display names. The caller key remains opaque: the page passes its
+ * existing `bridge:<account|anon>:<authoredScope>:<targetKey>` composer key;
+ * replies pass `thread|<conversationId>|<rootMessageId>`.
+ * Preserve that complete suffix so page/thread/new-recipient scopes cannot
+ * collapse. Unresolved ownership disables persistence. This isolates TOKENS;
+ * draft text belongs to a different store and is not owner-scoped here.
  * A restored draft gets its pills back. Correctness never
  * depends on this store agreeing with the text: every read re-checks that a
  * token's range still spells `@label` (`rebaseTokens`), so a sidecar from an
@@ -26,6 +29,20 @@ import { type MentionToken, rebaseTokens } from "./tokens";
  * limit. Losing a sidecar costs pills, not text.
  */
 const MAX_DRAFTS = 50;
+
+export function mentionDraftStorageKey(
+	owner: { accountId: string; tenantId: string } | null | undefined,
+	draftKey: string,
+): string | null {
+	return owner?.accountId && owner.tenantId
+		? JSON.stringify([
+				"mention-draft-v2",
+				owner.accountId,
+				owner.tenantId,
+				draftKey,
+			])
+		: null;
+}
 
 type Entry = { text: string; tokens: MentionToken[]; at: number };
 
@@ -58,7 +75,10 @@ export const useMentionDraftStore = create<State>()(
 		{
 			name: "team-bridge-mention-drafts",
 			storage: createJSONStorage(() => localStorage),
-			version: 1,
+			version: 2,
+			// V1 keys had no drafting owner. There is no safe owner to assign on
+			// upgrade: discard those tokens, never migrate by a display-name match.
+			migrate: () => ({ drafts: {} }),
 		},
 	),
 );

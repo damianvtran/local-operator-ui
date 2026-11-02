@@ -19,7 +19,10 @@ import {
 	rankMentionCandidates,
 } from "./matcher";
 import { useMentionSource } from "./mention-context";
-import { useMentionDraftStore } from "./mention-draft-store";
+import {
+	mentionDraftStorageKey,
+	useMentionDraftStore,
+} from "./mention-draft-store";
 import {
 	type MentionToken,
 	type MentionWireRow,
@@ -100,6 +103,10 @@ export function useMentionAutocomplete(input: {
 	const { draftKey, text, setText, fieldRef, listboxId } = input;
 	const source = useMentionSource();
 	const enabled = source !== null;
+	const storageKey = mentionDraftStorageKey(source?.draftOwner, draftKey);
+	// A scope change also retires in-memory tokens/history without requiring
+	// the parent to unmount us. Missing ownership must never reuse another map.
+	const tokenKey = storageKey ?? JSON.stringify(["unresolved", draftKey]);
 
 	/*
 	 * THE TOKEN MAP. Seeded from the persisted sidecar for this draft key (a
@@ -109,8 +116,17 @@ export function useMentionAutocomplete(input: {
 	// localStorage hydration is synchronous. Read the seed, not a subscription
 	// to our own writes: publishing tokens before the parent's text update must
 	// not synchronously re-render this hook against the previous text prop.
-	const stored = useMentionDraftStore.getState().drafts[draftKey];
+	// Never fall back to a legacy unscoped draftKey: its owner is unknowable.
+	const stored = storageKey
+		? useMentionDraftStore.getState().drafts[storageKey]
+		: undefined;
 	const writeStored = useMentionDraftStore((state) => state.write);
+	const persistDraft = useCallback(
+		(value: string, map: MentionToken[]) => {
+			if (storageKey) writeStored(storageKey, value, map);
+		},
+		[storageKey, writeStored],
+	);
 	const [tokens, setTokens] = useState<MentionToken[]>(() =>
 		stored ? rebaseTokens(stored.text, text, stored.tokens) : NO_TOKENS,
 	);
@@ -152,10 +168,10 @@ export function useMentionAutocomplete(input: {
 		},
 		[],
 	);
-	const keyRef = useRef(draftKey);
-	if (keyRef.current !== draftKey) {
+	const keyRef = useRef(tokenKey);
+	if (keyRef.current !== tokenKey) {
 		// A different draft: its own sidecar, never the previous draft's pills.
-		keyRef.current = draftKey;
+		keyRef.current = tokenKey;
 		pendingRestore.current = stored && stored.text !== text ? stored : null;
 		setInteractionText(null);
 		caretInteraction.current = false;
@@ -191,14 +207,14 @@ export function useMentionAutocomplete(input: {
 	}
 	useEffect(() => {
 		if (pendingRestore.current) return;
-		writeStored(draftKey, text, tokens);
+		persistDraft(text, tokens);
 		const history = spanHistory.current;
 		const newest = history.at(-1);
 		if (!newest || newest.text !== text || newest.tokens !== tokens) {
 			history.push({ text, tokens });
 			if (history.length > PILL_HISTORY_LIMIT) history.shift();
 		}
-	}, [draftKey, text, tokens, writeStored]);
+	}, [persistDraft, text, tokens]);
 
 	const [caret, setCaret] = useState<number | null>(null);
 	const [dismissedAt, setDismissedAt] = useState<number | null>(null);
@@ -315,7 +331,7 @@ export function useMentionAutocomplete(input: {
 			applyingEdit.current = next;
 			// Write the pair before the text setter/native input persists text.
 			// Otherwise a synchronous unmount can strand text without identities.
-			writeStored(draftKey, next.text, next.tokens);
+			persistDraft(next.text, next.tokens);
 			setInteractionText(next.text);
 			let native = false;
 			if (field && range) {
@@ -344,7 +360,7 @@ export function useMentionAutocomplete(input: {
 				current.setSelectionRange(next.caret, next.caret);
 			});
 		},
-		[draftKey, fieldRef, setText, writeStored],
+		[fieldRef, setText, persistDraft],
 	);
 
 	/** Back to the field with the caret where it was (design D4). */
@@ -512,7 +528,7 @@ export function useMentionAutocomplete(input: {
 					? applyingEdit.current.tokens
 					: ((jumped ? snapshotTokens(field.value) : undefined) ??
 						rebaseTokens(lastText.current, field.value, tokens));
-			writeStored(draftKey, field.value, next);
+			persistDraft(field.value, next);
 		};
 		const armCaret = () => {
 			caretInteraction.current = true;
@@ -529,15 +545,7 @@ export function useMentionAutocomplete(input: {
 			field.removeEventListener("pointerdown", armCaret);
 			field.removeEventListener("keydown", armCaret);
 		};
-	}, [
-		draftKey,
-		fieldRef,
-		enabled,
-		syncCaret,
-		snapshotTokens,
-		tokens,
-		writeStored,
-	]);
+	}, [fieldRef, enabled, syncCaret, snapshotTokens, tokens, persistDraft]);
 
 	const activeKeys = useMemo(
 		() =>
