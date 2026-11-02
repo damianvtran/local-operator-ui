@@ -6573,7 +6573,7 @@
 			},
 			"auditors": [
 				{
-					"agent": "independent reviewer",
+					"agent": "reviewer",
 					"model": "anthropic/claude-sonnet-5-5",
 					"date": "2026-11-02",
 					"result": "clean",
@@ -6585,7 +6585,7 @@
 						"nit": 0
 					},
 					"receipt": "i18n/receipts/human-profile-1593-es-394f46fcc3fc.json",
-					"receipt_sha256": "d5fcfa4e5e096e04daf22bad71f3eb9447b443439c4ff9dcd6e4a8f830db4628",
+					"receipt_sha256": "24f6e3ad15d05f3bc9a3f3053c55560b350aaab2ca5ec57f6f4412ab2acf100b",
 					"scope": "Only41 new keys plus context/typography delta; unchanged45 inherited on exact value compatibility with afb0f7de919. Not a whole-namespace re-audit.",
 					"note": "Historical NIT count 0 retained with fixed disposition. Evidence: i18n/audits/evidence/es/ui.settings/human-profile-1593-round1/record.json"
 				}
@@ -15484,7 +15484,7 @@
 			},
 			"auditors": [
 				{
-					"agent": "independent reviewer",
+					"agent": "reviewer",
 					"model": "anthropic/claude-sonnet-5-5",
 					"date": "2026-11-02",
 					"result": "clean-with-findings",
@@ -15496,7 +15496,7 @@
 						"nit": 1
 					},
 					"receipt": "i18n/receipts/human-profile-1593-fr-394f46fcc3fc.json",
-					"receipt_sha256": "8f6d2f9b15f1df60ab2290c4f3ad0ddea99729522e65e26c2150243fbbe3a4f8",
+					"receipt_sha256": "e9fd16abcd577d11fd7bb19bb9b98a3c3ac6ed5b358a5382e9fb336e4d28f6ff",
 					"scope": "Only41 new keys plus context/typography delta; unchanged45 inherited on exact value compatibility with afb0f7de919. Not a whole-namespace re-audit.",
 					"note": "Historical NIT count 1 retained with fixed disposition. Evidence: i18n/audits/evidence/fr/ui.settings/human-profile-1593-round1/record.json"
 				}
@@ -24664,7 +24664,7 @@
 			},
 			"auditors": [
 				{
-					"agent": "independent reviewer",
+					"agent": "reviewer",
 					"model": "anthropic/claude-sonnet-5-5",
 					"date": "2026-11-02",
 					"result": "clean",
@@ -24676,7 +24676,7 @@
 						"nit": 0
 					},
 					"receipt": "i18n/receipts/human-profile-1593-hi-394f46fcc3fc.json",
-					"receipt_sha256": "f8ed00a299963894404fd03d1fa98217979a614ec28f57f9b3ad65a3d9e30102",
+					"receipt_sha256": "437bed322e800e0dca9177d1ce8cafa95e089de3000646a3d8b5875b5e053fb1",
 					"scope": "Only41 new keys plus context/typography delta; unchanged45 inherited on exact value compatibility with afb0f7de919. Not a whole-namespace re-audit.",
 					"note": "Historical NIT count 0 retained with fixed disposition. Evidence: i18n/audits/evidence/hi/ui.settings/human-profile-1593-round1/record.json"
 				}
@@ -33430,7 +33430,7 @@
 			},
 			"auditors": [
 				{
-					"agent": "independent reviewer",
+					"agent": "reviewer",
 					"model": "anthropic/claude-sonnet-5-5",
 					"date": "2026-11-02",
 					"result": "clean",
@@ -33442,7 +33442,7 @@
 						"nit": 0
 					},
 					"receipt": "i18n/receipts/human-profile-1593-ru-394f46fcc3fc.json",
-					"receipt_sha256": "ca21a158736c313c52b86168de285d69b43856516428917b849c9d82ef7444a6",
+					"receipt_sha256": "21ed156144a9d00e648d23dcb35393eea52d963ecdbd4bbf0a1224f6c277c956",
 					"scope": "Only41 new keys plus context/typography delta; unchanged45 inherited on exact value compatibility with afb0f7de919. Not a whole-namespace re-audit.",
 					"note": "Historical NIT count 0 retained with fixed disposition. Evidence: i18n/audits/evidence/ru/ui.settings/human-profile-1593-round1/record.json"
 				}
@@ -42322,7 +42322,7 @@
 			},
 			"auditors": [
 				{
-					"agent": "independent reviewer",
+					"agent": "reviewer",
 					"model": "anthropic/claude-sonnet-5-5",
 					"date": "2026-11-02",
 					"result": "clean",
@@ -42334,7 +42334,7 @@
 						"nit": 0
 					},
 					"receipt": "i18n/receipts/human-profile-1593-ur-394f46fcc3fc.json",
-					"receipt_sha256": "12fed0ea102457ea2d63bd8300ed4f33f273f288298202e37f6881c670fd6685",
+					"receipt_sha256": "7dcc208a5721196e7d1ad5faaaf8916c7db4c3dace81b3f0887e26c1df305e5b",
 					"scope": "Only41 new keys plus context/typography delta; unchanged45 inherited on exact value compatibility with afb0f7de919. Not a whole-namespace re-audit.",
 					"note": "Historical NIT count 0 retained with fixed disposition. Evidence: i18n/audits/evidence/ur/ui.settings/human-profile-1593-round1/record.json"
 				}
@@ -51400,7 +51400,7 @@
 			},
 			"auditors": [
 				{
-					"agent": "independent reviewer",
+					"agent": "reviewer",
 					"model": "anthropic/claude-sonnet-5-5",
 					"date": "2026-11-02",
 					"result": "clean",
@@ -51412,7 +51412,7 @@
 						"nit": 0
 					},
 					"receipt": "i18n/receipts/human-profile-1593-vi-394f46fcc3fc.json",
-					"receipt_sha256": "0891cf72dd571ea468ef5a6bd9c1eab531a3dc166684876ed5fec8a35c4a6020",
+					"receipt_sha256": "88c7fa58634383fa3aa284be6a3f4cfbd104a36174a50f5eb19eb97db2879381",
 					"scope": "Only41 new keys plus context/typography delta; unchanged45 inherited on exact value compatibility with afb0f7de919. Not a whole-namespace re-audit.",
 					"note": "Historical NIT count 0 retained with fixed disposition. Evidence: i18n/audits/evidence/vi/ui.settings/human-profile-1593-round1/record.json"
 				}
@@ -61020,7 +61020,7 @@
 			},
 			"auditors": [
 				{
-					"agent": "independent reviewer",
+					"agent": "reviewer",
 					"model": "anthropic/claude-sonnet-5-5",
 					"date": "2026-11-02",
 					"result": "clean-with-findings",
@@ -61031,8 +61031,8 @@
 						"minor": 0,
 						"nit": 1
 					},
-					"receipt": "i18n/receipts/human-profile-1593-zh-CN-394f46fcc3fc.json",
-					"receipt_sha256": "c0b38c2757f2b067eab8335b4ed7d21aef9b48c31182ada40842dcad667d16fb",
+					"receipt": "i18n/receipts/human-profile-1593-zh-cn-394f46fcc3fc.json",
+					"receipt_sha256": "a73055b48682e7b1de794318e69688981f2d70bfb358280b3d9439a8a8f2cfc9",
 					"scope": "Only41 new keys plus context/typography delta; unchanged45 inherited on exact value compatibility with afb0f7de919. Not a whole-namespace re-audit.",
 					"note": "Historical NIT count 1 retained with fixed disposition. Evidence: i18n/audits/evidence/zh-CN/ui.settings/human-profile-1593-round1/record.json"
 				}

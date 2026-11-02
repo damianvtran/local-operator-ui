@@ -4,7 +4,7 @@
 	"date": "2026-11-02",
 	"locale": "fr",
 	"namespace": "ui.settings",
-	"auditor": "independent reviewer",
+	"auditor": "reviewer (independent reviewer agent, session 394f46fcc3fc; ledger agent id is its team role)",
 	"instance": "394f46fcc3fc",
 	"model": "anthropic/claude-sonnet-5-5",
 	"status": "passed",

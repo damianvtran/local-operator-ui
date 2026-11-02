@@ -13,7 +13,7 @@
 	"target_sha256": "09be0ff6b97fadb52ad2943e0951d14016722c952d40ccacf4aa9486dd9905ef",
 	"context_sha256": "ef772148ff0e66bf3110902885a4068c10aeec3d8ccedb79b43a96feefaad920",
 	"wrapper": "i18n/receipts/human-profile-1593-ur-394f46fcc3fc.json",
-	"wrapper_sha256": "12fed0ea102457ea2d63bd8300ed4f33f273f288298202e37f6881c670fd6685",
+	"wrapper_sha256": "7dcc208a5721196e7d1ad5faaaf8916c7db4c3dace81b3f0887e26c1df305e5b",
 	"independent_evidence": [
 		{
 			"path": "i18n/receipts/human-profile-1593-independent-source-audit.json",
