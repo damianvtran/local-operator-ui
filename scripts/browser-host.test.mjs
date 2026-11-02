@@ -7778,7 +7778,140 @@ test("/health carries the capabilities this build serves", async () => {
 		"network_stop",
 		"network_read",
 		"network_clear",
+		"record_start",
+		"record_stop",
 	]);
+});
+
+test("a record_start whose answer is refused aborts the capture it began", async () => {
+	// The result-side document assertion runs AFTER `record_start` has already
+	// registered a capture (review N5). If it refuses the answer, the footage the
+	// refusal is about must not keep recording into an approved path.
+	const { host, registry, cdp } = makeHost();
+	const dir = mkdtempSync(join(root, "record-refused-"));
+	const params = {
+		url: "https://approved.example/",
+		requester: "session:alice",
+	};
+	await host.dispatch("request_access", params, "request");
+	host.respondToConsent(host.chromeState().pendingConsent[0].entryId, "site");
+	const opened = await host.dispatch("open", params, "open");
+	const record = registry.requireSurface(opened.tab);
+	const originalSend = cdp.send;
+	cdp.send = async (contents, method, sendParams, options) => {
+		if (method === "Page.startScreenRecording") {
+			// The page leaves for an unapproved origin while the start is in flight,
+			// which is exactly what the result-side check discards the answer for.
+			record.view.webContents.url = "https://forbidden.example/";
+			registry.bumpEpoch(record.tabId);
+		}
+		if (method === "Page.stopScreenRecording") {
+			cdp.calls.push({ method, params: sendParams });
+			return { stream: "s-refused" };
+		}
+		return originalSend(contents, method, sendParams, options);
+	};
+	await assert.rejects(
+		() =>
+			host.dispatch(
+				"record_start",
+				{ ...params, tab: opened.tab, path: join(dir, "clip.mp4") },
+				"rec",
+			),
+		(error) => error.code === "origin_not_allowed",
+	);
+	cdp.send = originalSend;
+	// F1: dropping the bookkeeping is not enough — Chromium's recorder has to be
+	// stopped, or the next start on this tab is refused with "Screencast is
+	// already active". The stop and the stream close must both have been sent.
+	assert.ok(
+		cdp.calls.some((call) => call.method === "Page.stopScreenRecording"),
+		"the refused start's recorder was stopped",
+	);
+	assert.ok(
+		cdp.calls.some(
+			(call) =>
+				call.method === "IO.close" && call.params?.handle === "s-refused",
+		),
+		"and its stream was closed",
+	);
+	await assert.rejects(
+		() => host.dispatch("record_stop", { ...params, tab: opened.tab }, "stop"),
+		(error) => error.data?.reason === "record_not_active",
+	);
+	assert.equal(existsSync(join(dir, "clip.mp4")), false);
+});
+
+test("record_start and record_stop share the tab's command lane", async () => {
+	// Review round 1, MINOR 2: dropping both verbs from TAB_SCOPED left every test
+	// green, so "the two verbs serialise on one tab" was a comment, not a pin. The
+	// lane does not queue; it refuses the second command with `busy`. So while a
+	// start is in flight, an overlapping stop AND an overlapping second start on the
+	// same tab must both read `busy` (and send no CDP call), and the tab is usable
+	// again once the start lands.
+	const { host, cdp } = makeHost();
+	const dir = mkdtempSync(join(root, "record-lane-"));
+	const params = {
+		url: "https://approved.example/",
+		requester: "session:alice",
+	};
+	await host.dispatch("request_access", params, "request");
+	host.respondToConsent(host.chromeState().pendingConsent[0].entryId, "site");
+	const opened = await host.dispatch("open", params, "open");
+	const originalSend = cdp.send;
+	let releaseStart = () => {};
+	const startHeld = new Promise((resolve) => {
+		releaseStart = resolve;
+	});
+	let startEntered = () => {};
+	const startIsInFlight = new Promise((resolve) => {
+		startEntered = resolve;
+	});
+	cdp.send = async (contents, method, sendParams, options) => {
+		if (method === "Page.startScreenRecording") {
+			startEntered();
+			await startHeld;
+			return {};
+		}
+		if (method === "Page.stopScreenRecording") return { stream: "s-lane" };
+		return originalSend(contents, method, sendParams, options);
+	};
+	const start = host.dispatch(
+		"record_start",
+		{ ...params, tab: opened.tab, path: join(dir, "lane.mp4") },
+		"lane-start",
+	);
+	await startIsInFlight;
+	// If the lane were missing the overlapping calls could wait on the held start
+	// forever; releasing it on a timer makes that a failed assertion, not a hang.
+	const safety = setTimeout(releaseStart, 1500);
+	const before = cdp.calls.length;
+	await assert.rejects(
+		() => host.dispatch("record_stop", { ...params, tab: opened.tab }, "stop"),
+		(error) => error.code === "busy",
+		"a stop overlapping a start is refused by the tab lane",
+	);
+	await assert.rejects(
+		() =>
+			host.dispatch(
+				"record_start",
+				{ ...params, tab: opened.tab, path: join(dir, "second.mp4") },
+				"lane-second",
+			),
+		(error) => error.code === "busy",
+		"a second start overlapping the first is refused by the tab lane",
+	);
+	assert.equal(cdp.calls.length, before, "the refused calls reached no CDP");
+	clearTimeout(safety);
+	releaseStart();
+	await start;
+	// The lane is free again: the stop now finds the recording the start made.
+	await assert.rejects(
+		() => host.dispatch("record_stop", { ...params, tab: opened.tab }, "stop2"),
+		(error) => error.code !== "busy",
+	);
+	cdp.send = originalSend;
+	assert.equal(existsSync(join(dir, "second.mp4")), false);
 });
 
 test("the state file carries the same list, from the same constant", () => {
