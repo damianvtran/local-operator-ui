@@ -28,6 +28,7 @@ import enUiAgentsConfig from "./catalogues/en/ui.agents.config.json";
 import enUiAgentsDescriptions from "./catalogues/en/ui.agents.descriptions.json";
 import enUiAgentsDetailInstall from "./catalogues/en/ui.agents.detail.install.json";
 import enUiAgentsDetail from "./catalogues/en/ui.agents.detail.json";
+import enUiAgentsDetailReadState from "./catalogues/en/ui.agents.detail.read_state.json";
 import enUiAgentsDialogs from "./catalogues/en/ui.agents.dialogs.json";
 import enUiAgents from "./catalogues/en/ui.agents.json";
 import enUiAgentsModels from "./catalogues/en/ui.agents.models.json";
@@ -143,6 +144,7 @@ import esUiAgentsConfig from "./catalogues/es/ui.agents.config.json";
 import esUiAgentsDescriptions from "./catalogues/es/ui.agents.descriptions.json";
 import esUiAgentsDetailInstall from "./catalogues/es/ui.agents.detail.install.json";
 import esUiAgentsDetail from "./catalogues/es/ui.agents.detail.json";
+import esUiAgentsDetailReadState from "./catalogues/es/ui.agents.detail.read_state.json";
 import esUiAgentsDialogs from "./catalogues/es/ui.agents.dialogs.json";
 import esUiAgents from "./catalogues/es/ui.agents.json";
 import esUiAgentsModels from "./catalogues/es/ui.agents.models.json";
@@ -258,6 +260,7 @@ import frUiAgentsConfig from "./catalogues/fr/ui.agents.config.json";
 import frUiAgentsDescriptions from "./catalogues/fr/ui.agents.descriptions.json";
 import frUiAgentsDetailInstall from "./catalogues/fr/ui.agents.detail.install.json";
 import frUiAgentsDetail from "./catalogues/fr/ui.agents.detail.json";
+import frUiAgentsDetailReadState from "./catalogues/fr/ui.agents.detail.read_state.json";
 import frUiAgentsDialogs from "./catalogues/fr/ui.agents.dialogs.json";
 import frUiAgents from "./catalogues/fr/ui.agents.json";
 import frUiAgentsModels from "./catalogues/fr/ui.agents.models.json";
@@ -373,6 +376,7 @@ import hiUiAgentsConfig from "./catalogues/hi/ui.agents.config.json";
 import hiUiAgentsDescriptions from "./catalogues/hi/ui.agents.descriptions.json";
 import hiUiAgentsDetailInstall from "./catalogues/hi/ui.agents.detail.install.json";
 import hiUiAgentsDetail from "./catalogues/hi/ui.agents.detail.json";
+import hiUiAgentsDetailReadState from "./catalogues/hi/ui.agents.detail.read_state.json";
 import hiUiAgentsDialogs from "./catalogues/hi/ui.agents.dialogs.json";
 import hiUiAgents from "./catalogues/hi/ui.agents.json";
 import hiUiAgentsModels from "./catalogues/hi/ui.agents.models.json";
@@ -488,6 +492,7 @@ import ruUiAgentsConfig from "./catalogues/ru/ui.agents.config.json";
 import ruUiAgentsDescriptions from "./catalogues/ru/ui.agents.descriptions.json";
 import ruUiAgentsDetailInstall from "./catalogues/ru/ui.agents.detail.install.json";
 import ruUiAgentsDetail from "./catalogues/ru/ui.agents.detail.json";
+import ruUiAgentsDetailReadState from "./catalogues/ru/ui.agents.detail.read_state.json";
 import ruUiAgentsDialogs from "./catalogues/ru/ui.agents.dialogs.json";
 import ruUiAgents from "./catalogues/ru/ui.agents.json";
 import ruUiAgentsModels from "./catalogues/ru/ui.agents.models.json";
@@ -603,6 +608,7 @@ import urUiAgentsConfig from "./catalogues/ur/ui.agents.config.json";
 import urUiAgentsDescriptions from "./catalogues/ur/ui.agents.descriptions.json";
 import urUiAgentsDetailInstall from "./catalogues/ur/ui.agents.detail.install.json";
 import urUiAgentsDetail from "./catalogues/ur/ui.agents.detail.json";
+import urUiAgentsDetailReadState from "./catalogues/ur/ui.agents.detail.read_state.json";
 import urUiAgentsDialogs from "./catalogues/ur/ui.agents.dialogs.json";
 import urUiAgents from "./catalogues/ur/ui.agents.json";
 import urUiAgentsModels from "./catalogues/ur/ui.agents.models.json";
@@ -718,6 +724,7 @@ import viUiAgentsConfig from "./catalogues/vi/ui.agents.config.json";
 import viUiAgentsDescriptions from "./catalogues/vi/ui.agents.descriptions.json";
 import viUiAgentsDetailInstall from "./catalogues/vi/ui.agents.detail.install.json";
 import viUiAgentsDetail from "./catalogues/vi/ui.agents.detail.json";
+import viUiAgentsDetailReadState from "./catalogues/vi/ui.agents.detail.read_state.json";
 import viUiAgentsDialogs from "./catalogues/vi/ui.agents.dialogs.json";
 import viUiAgents from "./catalogues/vi/ui.agents.json";
 import viUiAgentsModels from "./catalogues/vi/ui.agents.models.json";
@@ -833,6 +840,7 @@ import zhCNUiAgentsConfig from "./catalogues/zh-CN/ui.agents.config.json";
 import zhCNUiAgentsDescriptions from "./catalogues/zh-CN/ui.agents.descriptions.json";
 import zhCNUiAgentsDetailInstall from "./catalogues/zh-CN/ui.agents.detail.install.json";
 import zhCNUiAgentsDetail from "./catalogues/zh-CN/ui.agents.detail.json";
+import zhCNUiAgentsDetailReadState from "./catalogues/zh-CN/ui.agents.detail.read_state.json";
 import zhCNUiAgentsDialogs from "./catalogues/zh-CN/ui.agents.dialogs.json";
 import zhCNUiAgents from "./catalogues/zh-CN/ui.agents.json";
 import zhCNUiAgentsModels from "./catalogues/zh-CN/ui.agents.models.json";
@@ -951,6 +959,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiAgentsDescriptions,
 	...enUiAgentsDetailInstall,
 	...enUiAgentsDetail,
+	...enUiAgentsDetailReadState,
 	...enUiAgentsDialogs,
 	...enUiAgents,
 	...enUiAgentsModels,
@@ -1074,6 +1083,7 @@ export const bundledCatalogues: Readonly<
 		...esUiAgentsDescriptions,
 		...esUiAgentsDetailInstall,
 		...esUiAgentsDetail,
+		...esUiAgentsDetailReadState,
 		...esUiAgentsDialogs,
 		...esUiAgents,
 		...esUiAgentsModels,
@@ -1191,6 +1201,7 @@ export const bundledCatalogues: Readonly<
 		...frUiAgentsDescriptions,
 		...frUiAgentsDetailInstall,
 		...frUiAgentsDetail,
+		...frUiAgentsDetailReadState,
 		...frUiAgentsDialogs,
 		...frUiAgents,
 		...frUiAgentsModels,
@@ -1308,6 +1319,7 @@ export const bundledCatalogues: Readonly<
 		...hiUiAgentsDescriptions,
 		...hiUiAgentsDetailInstall,
 		...hiUiAgentsDetail,
+		...hiUiAgentsDetailReadState,
 		...hiUiAgentsDialogs,
 		...hiUiAgents,
 		...hiUiAgentsModels,
@@ -1425,6 +1437,7 @@ export const bundledCatalogues: Readonly<
 		...ruUiAgentsDescriptions,
 		...ruUiAgentsDetailInstall,
 		...ruUiAgentsDetail,
+		...ruUiAgentsDetailReadState,
 		...ruUiAgentsDialogs,
 		...ruUiAgents,
 		...ruUiAgentsModels,
@@ -1542,6 +1555,7 @@ export const bundledCatalogues: Readonly<
 		...urUiAgentsDescriptions,
 		...urUiAgentsDetailInstall,
 		...urUiAgentsDetail,
+		...urUiAgentsDetailReadState,
 		...urUiAgentsDialogs,
 		...urUiAgents,
 		...urUiAgentsModels,
@@ -1659,6 +1673,7 @@ export const bundledCatalogues: Readonly<
 		...viUiAgentsDescriptions,
 		...viUiAgentsDetailInstall,
 		...viUiAgentsDetail,
+		...viUiAgentsDetailReadState,
 		...viUiAgentsDialogs,
 		...viUiAgents,
 		...viUiAgentsModels,
@@ -1776,6 +1791,7 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiAgentsDescriptions,
 		...zhCNUiAgentsDetailInstall,
 		...zhCNUiAgentsDetail,
+		...zhCNUiAgentsDetailReadState,
 		...zhCNUiAgentsDialogs,
 		...zhCNUiAgents,
 		...zhCNUiAgentsModels,
@@ -2142,6 +2158,20 @@ export type MessageParams = {
 	"ui.agents.detail.tools.every_tool_aria": undefined;
 	"ui.agents.detail.tools.may_use_any": undefined;
 	"ui.agents.detail.tools.placeholder": undefined;
+	"ui.agents.detail.read_state.class_description": undefined;
+	"ui.agents.detail.read_state.class_off": undefined;
+	"ui.agents.detail.read_state.class_on": undefined;
+	"ui.agents.detail.read_state.class_switching": undefined;
+	"ui.agents.detail.read_state.delegates": undefined;
+	"ui.agents.detail.read_state.effort_inherit": undefined;
+	"ui.agents.detail.read_state.failed_meaning": undefined;
+	"ui.agents.detail.read_state.failed_title": { name: string };
+	"ui.agents.detail.read_state.no_delegation": undefined;
+	"ui.agents.detail.read_state.not_found": undefined;
+	"ui.agents.detail.read_state.request_failed": undefined;
+	"ui.agents.detail.read_state.retry": undefined;
+	"ui.agents.detail.read_state.retrying": undefined;
+	"ui.agents.detail.read_state.used_by_description": undefined;
 	"ui.agents.dialogs.clear.cancel": undefined;
 	"ui.agents.dialogs.clear.confirm": undefined;
 	"ui.agents.dialogs.clear.title": undefined;

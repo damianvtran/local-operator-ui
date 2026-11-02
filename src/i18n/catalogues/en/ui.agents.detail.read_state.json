@@ -1,0 +1,16 @@
+{
+	"ui.agents.detail.read_state.failed_title": "“{name}” could not be read",
+	"ui.agents.detail.read_state.not_found": "Requested session, profile, team or subscription not found",
+	"ui.agents.detail.read_state.failed_meaning": "The definition may have been removed, or the backend refused the read.",
+	"ui.agents.detail.read_state.request_failed": "The request did not complete.",
+	"ui.agents.detail.read_state.retry": "Retry",
+	"ui.agents.detail.read_state.retrying": "Retrying…",
+	"ui.agents.detail.read_state.delegates": "May hand work to subagents.",
+	"ui.agents.detail.read_state.no_delegation": "Does its own work; it does not delegate.",
+	"ui.agents.detail.read_state.class_description": "Reactive agents only reply. Proactive agents may also message you first.",
+	"ui.agents.detail.read_state.used_by_description": "Teams that name this agent as a manager or a member.",
+	"ui.agents.detail.read_state.class_on": "On",
+	"ui.agents.detail.read_state.class_off": "Off",
+	"ui.agents.detail.read_state.class_switching": "Switching…",
+	"ui.agents.detail.read_state.effort_inherit": "Use session effort"
+}

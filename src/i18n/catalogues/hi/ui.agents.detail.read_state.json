@@ -1,0 +1,16 @@
+{
+	"ui.agents.detail.read_state.failed_title": "“{name}” को पढ़ा नहीं जा सका",
+	"ui.agents.detail.read_state.not_found": "अनुरोध किया गया सत्र, प्रोफ़ाइल, टीम या सदस्यता नहीं मिली।",
+	"ui.agents.detail.read_state.failed_meaning": "हो सकता है कि परिभाषा हटा दी गई हो, या बैकएंड ने उसे पढ़ने की अनुमति न दी हो।",
+	"ui.agents.detail.read_state.request_failed": "अनुरोध पूरा नहीं हुआ।",
+	"ui.agents.detail.read_state.retry": "फिर कोशिश करें",
+	"ui.agents.detail.read_state.retrying": "फिर कोशिश की जा रही है…",
+	"ui.agents.detail.read_state.delegates": "उप-एजेंटों को काम सौंप सकता है।",
+	"ui.agents.detail.read_state.no_delegation": "अपना काम खुद करता है; दूसरों को नहीं सौंपता।",
+	"ui.agents.detail.read_state.class_description": "जवाब देने वाले एजेंट सिर्फ़ जवाब देते हैं। पहल करने वाले एजेंट अपनी ओर से भी आपको संदेश भेज सकते हैं।",
+	"ui.agents.detail.read_state.used_by_description": "वे टीमें जिनमें यह एजेंट मैनेजर या सदस्य के रूप में शामिल है।",
+	"ui.agents.detail.read_state.class_on": "चालू",
+	"ui.agents.detail.read_state.class_off": "बंद",
+	"ui.agents.detail.read_state.class_switching": "बदला जा रहा है…",
+	"ui.agents.detail.read_state.effort_inherit": "सत्र की प्रयास श्रेणी इस्तेमाल करें"
+}

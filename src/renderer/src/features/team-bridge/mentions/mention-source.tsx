@@ -87,6 +87,11 @@ export function TeamBridgeMentionProvider({
 			: undefined;
 		return {
 			conversationId: conversation.id,
+			// Ownership cannot depend on the directory having loaded a self row:
+			// the authenticated account and conversation tenant are the boundary.
+			draftOwner: selfAccountId
+				? { accountId: selfAccountId, tenantId: conversation.tenant_id }
+				: null,
 			self:
 				selfAccountId && selfRow
 					? { accountId: selfAccountId, label: personDisplayLabel(selfRow) }
