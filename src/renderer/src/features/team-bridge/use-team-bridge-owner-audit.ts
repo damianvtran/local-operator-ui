@@ -20,6 +20,7 @@ import { useCallback, useMemo, useRef, useSyncExternalStore } from "react";
 import type { AgentMessagesStatus } from "../../../../shared/agent-messages-contract";
 import { teamBridgeKeys } from "./team-bridge-keys";
 import { bridgeStatusAuthority, readForBridgeOwner } from "./team-bridge-owner";
+import { useThreadReplyWindow } from "./use-thread-reply-window";
 
 /** Classification only observes: recovery and presentation consume authored
  * metadata without echoing or replacing the original refusal. The durable
@@ -390,9 +391,13 @@ export function useOwnerAuditReplies(
 	scope: OwnerAuditScope,
 	conversationId: string,
 	rootId: string,
+	canEvict?: (
+		page: Awaited<ReturnType<typeof TeamBridgeOwnerAuditApi.replies>>,
+	) => boolean,
+	isAtLiveEdge?: () => boolean,
 ) {
 	const { read, authorityToken, enabled } = useAuditRead(scope, "replies");
-	const query = useInfiniteQuery({
+	const query = useThreadReplyWindow({
 		queryKey: [
 			"team-bridge",
 			"owner-audit",
@@ -403,31 +408,29 @@ export function useOwnerAuditReplies(
 			"replies",
 			rootId,
 		],
-		initialPageParam: undefined as number | undefined,
-		queryFn: ({ pageParam, signal }) =>
+		identity: { conversationId, rootId },
+		read: (mode, cursor, limit, signal) =>
 			read(
 				() =>
 					TeamBridgeOwnerAuditApi.replies(
 						scope,
 						conversationId,
 						rootId,
-						pageParam,
+						mode === "desc" ? undefined : (cursor ?? 0),
+						mode === "desc"
+							? { beforeSeq: cursor, order: "desc", limit }
+							: undefined,
 					),
 				signal,
 			),
-		getNextPageParam: (last, _pages, previous) =>
-			last.has_more &&
-			last.next_after_seq != null &&
-			(previous === undefined || last.next_after_seq > previous)
-				? last.next_after_seq
-				: undefined,
+		canEvict,
 		enabled,
-		gcTime: 0,
 		retry: retryOwnerAuditRead,
 		retryDelay: AUDIT_RETRY_DELAY_MS,
 		refetchOnWindowFocus: false,
 		refetchOnReconnect: false,
 		retryOnMount: false,
+		isAtLiveEdge,
 	});
 	return { ...query, auditAuthRequired: !enabled };
 }

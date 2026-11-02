@@ -325,8 +325,10 @@ export const AgentAvatarField: FC<AgentAvatarFieldProps> = ({
 };
 
 /**
- * The current picture at the roster's 40px, reporting whether one is shown so
- * the field can label its door Upload or Replace and offer Remove.
+ * The editor uses an 80px preview, not the roster's compact mark: a person
+ * needs enough detail to judge the saved crop before replacing it. The shared
+ * mark still owns the picture, chrome and loading; only this surface's size
+ * changes. Presence keeps Upload/Replace and Remove in sync with the picture.
  */
 function PictureProbe({
 	agentId,
@@ -341,9 +343,9 @@ function PictureProbe({
 		<AgentMark
 			agentId={agentId}
 			src={src}
-			className="size-10"
+			className="size-20"
 			fallback={
-				<span className="flex size-10 shrink-0 items-center justify-center rounded-full border border-control bg-sunken text-ink-dim">
+				<span className="flex size-20 shrink-0 items-center justify-center rounded-full border border-control bg-sunken text-ink-dim">
 					<Bot size={18} aria-hidden="true" />
 				</span>
 			}

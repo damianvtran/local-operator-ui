@@ -11,6 +11,8 @@
 	"ui.ownerAudit.agent": "Chief of staff",
 	"ui.ownerAudit.more": "Load more",
 	"ui.ownerAudit.older": "Load older messages",
+	"ui.ownerAudit.older_replies": "Load older replies",
+	"ui.ownerAudit.empty_replies": "No replies in this audit window.",
 	"ui.ownerAudit.page_cutoff": "Older messages are not shown yet. Load older messages to read what came before.",
 	"ui.ownerAudit.admitted": "Admitted to your chief of staff",
 	"ui.ownerAudit.rejected": "Rejected by your chief of staff’s screening",

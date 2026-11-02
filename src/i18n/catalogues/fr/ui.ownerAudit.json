@@ -11,6 +11,8 @@
 	"ui.ownerAudit.agent": "Cheffe de cabinet",
 	"ui.ownerAudit.more": "Charger plus",
 	"ui.ownerAudit.older": "Charger les messages précédents",
+	"ui.ownerAudit.older_replies": "Charger les réponses précédentes",
+	"ui.ownerAudit.empty_replies": "Aucune réponse dans cette fenêtre d’audit.",
 	"ui.ownerAudit.page_cutoff": "Les messages précédents ne sont pas encore affichés. Chargez les messages précédents pour lire ce qui précède.",
 	"ui.ownerAudit.admitted": "Admis par votre cheffe de cabinet",
 	"ui.ownerAudit.rejected": "Rejeté par le filtrage de votre cheffe de cabinet",

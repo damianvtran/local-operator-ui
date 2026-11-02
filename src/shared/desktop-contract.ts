@@ -3893,6 +3893,8 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			message_id: id,
 			limit: z.number().int().min(1).max(100).optional(),
 			after_seq: z.number().int().nonnegative().optional(),
+			before_seq: z.number().int().positive().optional(),
+			order: z.enum(["asc", "desc"]).optional(),
 		})
 		.strict(),
 	z
@@ -3948,6 +3950,8 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			tenant_id: id,
 			limit: z.number().int().min(1).max(100).optional(),
 			after_seq: z.number().int().nonnegative().optional(),
+			before_seq: z.number().int().positive().optional(),
+			order: z.enum(["asc", "desc"]).optional(),
 		})
 		.strict(),
 	z
@@ -9732,6 +9736,9 @@ export function desktopEndpoint(request: DesktopRequest): {
 					path += `/${encodeURIComponent(request.message_id)}/replies`;
 					if (request.after_seq !== undefined)
 						query.set("after_seq", String(request.after_seq));
+					if (request.before_seq !== undefined)
+						query.set("before_seq", String(request.before_seq));
+					if (request.order !== undefined) query.set("order", request.order);
 				}
 			}
 			return { path: `${path}?${query}`, method: "GET" };
@@ -9848,6 +9855,9 @@ export function desktopEndpoint(request: DesktopRequest): {
 				query.set("limit", String(request.limit));
 			if (request.after_seq !== undefined)
 				query.set("after_seq", String(request.after_seq));
+			if (request.before_seq !== undefined)
+				query.set("before_seq", String(request.before_seq));
+			if (request.order !== undefined) query.set("order", request.order);
 			const suffix = query.size > 0 ? `?${query.toString()}` : "";
 			return {
 				path: `/v1/desktop/team-bridge/conversations/${encodeURIComponent(request.conversation_id)}/messages/${encodeURIComponent(request.message_id)}/replies${suffix}`,

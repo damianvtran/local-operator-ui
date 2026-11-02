@@ -11,6 +11,8 @@
 	"ui.ownerAudit.agent": "चीफ़ ऑफ़ स्टाफ़",
 	"ui.ownerAudit.more": "और लोड करें",
 	"ui.ownerAudit.older": "पुराने संदेश लोड करें",
+	"ui.ownerAudit.older_replies": "पुराने जवाब लोड करें",
+	"ui.ownerAudit.empty_replies": "इस ऑडिट अवधि में कोई जवाब नहीं है।",
 	"ui.ownerAudit.page_cutoff": "पुराने संदेश अभी नहीं दिखाए गए हैं। इससे पहले के संदेश पढ़ने के लिए पुराने संदेश लोड करें।",
 	"ui.ownerAudit.admitted": "आपके चीफ़ ऑफ़ स्टाफ़ ने स्वीकार किया",
 	"ui.ownerAudit.rejected": "आपके चीफ़ ऑफ़ स्टाफ़ की जाँच ने अस्वीकार किया",

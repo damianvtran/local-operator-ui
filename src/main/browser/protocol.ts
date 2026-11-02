@@ -73,6 +73,9 @@ export const METHODS = [
 	"screenshot",
 	"click",
 	"type",
+	// Trusted desktop key input; the core mirror must add this at the same
+	// position because this list is the closed admission gate, not discovery.
+	"press",
 	"close",
 	"status",
 	"tabs",
@@ -115,6 +118,11 @@ export const METHODS = [
 	"network_stop",
 	"network_read",
 	"network_clear",
+	// Desktop-only video recording. Appended after the network family in the order
+	// `protocol.py`'s METHODS tuple carries them, so the hand-kept mirror stays
+	// comparable by eye (D8).
+	"record_start",
+	"record_stop",
 ] as const;
 
 export type Method = (typeof METHODS)[number];
@@ -143,6 +151,7 @@ export const COMMAND_TIMEOUTS_S: Record<Method, number> = {
 	goto: 30.0,
 	click: 25.0,
 	type: 25.0,
+	press: 25.0,
 	read: 20.0,
 	snapshot: 20.0,
 	screenshot: 20.0,
@@ -175,6 +184,12 @@ export const COMMAND_TIMEOUTS_S: Record<Method, number> = {
 	network_stop: 20.0,
 	network_read: 20.0,
 	network_clear: 20.0,
+	// `record_start` covers the attach plus the encoder utility process launch.
+	// `record_stop` is the host's 45 s stop budget with the answer's room on top
+	// (D8): the client timeout derives from this table, so this is the only place
+	// the nesting lives.
+	record_start: 20.0,
+	record_stop: 60.0,
 };
 
 /**
@@ -212,6 +227,8 @@ export const ERROR_CODES = [
 	// direction (daemon -> session), a browser host is not, which is exactly why a
 	// policy refusal travels as an `ok: true` result here.
 	"capability_unsupported",
+	// Paired with the core press follow-up before callers use this new method.
+	"unsupported_key",
 	"internal",
 	// The console namespace's own additions (design 10.6). Spread rather than copied
 	// for the same reason METHODS is: this list is what `rpc.ts` narrows a raised
@@ -294,7 +311,10 @@ export interface UploadResult {
  * typed, actionable refusal instead.
  *
  * ONE constant, three writers: a second list beside this one is how a host starts
- * advertising something it does not serve.
+ * advertising something it does not serve. The list is a constant of THIS build, so
+ * it is not a runtime probe: a build that lists `record_*` can still be running an
+ * engine without `Page.startScreenRecording` (Chromium below 153), and that case is
+ * refused at `record_start` with `record_unsupported`, not by the capability list.
  */
 export const HOST_CAPABILITIES: readonly Method[] = [
 	"console_resources",
@@ -305,6 +325,9 @@ export const HOST_CAPABILITIES: readonly Method[] = [
 	"query",
 	"download",
 	"upload",
+	// Desktop-only trusted keys. Core must capability-gate extension/cmux and
+	// older desktop hosts instead of sending them an unknown method.
+	"press",
 	// Session-scoped network capture. DESKTOP-ONLY: the extension's debugger is
 	// attached only for the duration of an action, so it holds no standing session
 	// to keep a `Network` subscription on. The backend therefore gates these four
@@ -313,6 +336,12 @@ export const HOST_CAPABILITIES: readonly Method[] = [
 	"network_stop",
 	"network_read",
 	"network_clear",
+	// Video recording is served by this host build because it ships on a runtime
+	// with `Page.startScreenRecording` (D8): the Electron bump is the ordering
+	// PR-A owns, so a build that predates the bump advertises nothing it cannot
+	// do.
+	"record_start",
+	"record_stop",
 ];
 
 export interface Request {

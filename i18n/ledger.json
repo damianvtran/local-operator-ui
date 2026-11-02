@@ -6114,29 +6114,31 @@
 		{
 			"locale": "es",
 			"namespace": "ui.ownerAudit",
-			"source_sha256": "19aa80671ba18c584410232fa035db0841a09d72ddb0faae98bc3c2bc4ca604f",
-			"target_sha256": "dd4484be9426011ae136fa384bfba57c4b32e9826c82306e7b953cda7c235fdc",
+			"source_sha256": "1be9b36e0201411304198a33f426ee66b41bdd6e2f96372b1c325fb5a1a848ef",
+			"target_sha256": "ad384109f9a8881d3db13338d55b39480e714487334a55f3b7dc9285641eb03e",
 			"translator": {
-				"agent": "i18n-translator",
-				"model": "radient/auto",
-				"date": "2026-10-29"
+				"agent": "coder-baa670dd72df",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-11-01",
+				"scope": "Two-key addition only: older_replies and empty_replies; existing values retained unchanged. Fallback model per runtime model-switch notice."
 			},
 			"auditors": [
 				{
-					"agent": "independent-i18n-reviewer",
+					"agent": "independent-translation-auditor",
 					"model": "anthropic/claude-sonnet-5-5",
 					"date": "2026-11-01",
 					"result": "clean",
-					"instance": "c0864aa17805-owner-audit-es",
+					"instance": "75830dea2957-owner-audit-reply-delta",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/c0864aa17805-owner-audit-es.json",
-					"receipt_sha256": "c79568010eeaf85ed1a05ff49dd0d0a0babd66b01e4b005f1481745d9da9269f",
-					"scope": "owner-audit bounded recovery copy"
+					"receipt": "i18n/receipts/75830dea2957-owner-audit-reply-delta.json",
+					"receipt_sha256": "a40a1310e10ee075fe8cb56706bd2bad96ffe0284b637c7a0113c7b4be414a41",
+					"scope": "Two-key textual delta: older_replies and empty_replies; hash-verified working-tree files, not staged; sole auditor, no rendered RTL validation",
+					"note": "Sole audit, not a second independent pass. Receipt withdraws unsupported earlier model claim; records terminology observations and confidence limits."
 				}
 			],
 			"status": "audited",
@@ -6186,6 +6188,34 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "19aa80671ba18c584410232fa035db0841a09d72ddb0faae98bc3c2bc4ca604f",
+					"target_sha256": "dd4484be9426011ae136fa384bfba57c4b32e9826c82306e7b953cda7c235fdc",
+					"auditors": [
+						{
+							"agent": "independent-i18n-reviewer",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-01",
+							"result": "clean",
+							"instance": "c0864aa17805-owner-audit-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/c0864aa17805-owner-audit-es.json",
+							"receipt_sha256": "c79568010eeaf85ed1a05ff49dd0d0a0babd66b01e4b005f1481745d9da9269f",
+							"scope": "owner-audit bounded recovery copy"
+						}
+					],
+					"status": "audited",
+					"translator": {
+						"agent": "i18n-translator",
+						"model": "radient/auto",
+						"date": "2026-10-29"
+					}
 				}
 			]
 		},
@@ -7172,8 +7202,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "abbda676cb90f41321f22f732d2a5b8a6507cae441a73dc0b6399e26d12221cd",
-			"target_sha256": "4ae62738114ca2e359001d9d39abdbacb4b3e3fcbc3bb79a23c647b63f2a628f",
+			"source_sha256": "8886c3944d34a1107b050b06f9b4f4a95aea24e10d59ad8bc5b1c4e2a8749f40",
+			"target_sha256": "dc8897569c6ae68205b3a9466e37f975188074ecc618ec93167c131013a540f7",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -7188,21 +7218,20 @@
 			},
 			"auditors": [
 				{
-					"agent": "task",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-10-31",
+					"agent": "independent-i18n-reviewer",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-01",
 					"result": "clean",
-					"instance": "28d10489945e-rebind-es",
+					"instance": "5b9e7ac29d2a",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/28d10489945e-rebind-es.json",
-					"receipt_sha256": "5bd95cfdf62f5febd63b9942a29ff6798a62359f38bff94bffcb9f59c33ae7b2",
-					"scope": "PR #1522 re-bind after rebase onto main f455cec6: nine keys (agentNotify.* x5, consent v2, accepted[_unnamed], builtin.agents_topic) against English abbda676; byte-identical to round 4's audited bytes; other keys byte-identical to main. No string reworded.",
-					"note": "Re-binds ledger evidence to current main's English; copy unchanged. Receipt i18n/receipts/28d10489945e-rebind-es.json."
+					"receipt": "i18n/receipts/5b9e7ac29d2a.json",
+					"receipt_sha256": "57c9172cb3cc5308e587f4b28e9e880a4fc219dbb3cd15f5cecc1122fdfdf106",
+					"scope": "Delta: ui.teamBridge.replies.legacy_window; prior namespace values unchanged"
 				}
 			],
 			"status": "audited",
@@ -8435,6 +8464,30 @@
 							"receipt_sha256": "6ecf99bc1ac9cc6db66e400700a06e799a4599221b472908b32acab0daeb5f81",
 							"scope": "Post-merge mechanical union round 4 (main 7492ec26bb8 into ui#1532 0e2fdf0): 14 mentions.* = ours, 300 others = main; merged bytes == ours, main touched no catalogue",
 							"note": "Union re-audit (session d2ccd70111ca); mentions.* = 171d0b58c96a-rebase3/0b49d8d07426-rebase2/98545305d697-rebase/4ad83913bb2a, others = 64e850ffd480-rebase/171d0b58c96a-rebase3. No value changed."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "abbda676cb90f41321f22f732d2a5b8a6507cae441a73dc0b6399e26d12221cd",
+					"target_sha256": "4ae62738114ca2e359001d9d39abdbacb4b3e3fcbc3bb79a23c647b63f2a628f",
+					"auditors": [
+						{
+							"agent": "task",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-31",
+							"result": "clean",
+							"instance": "28d10489945e-rebind-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/28d10489945e-rebind-es.json",
+							"receipt_sha256": "5bd95cfdf62f5febd63b9942a29ff6798a62359f38bff94bffcb9f59c33ae7b2",
+							"scope": "PR #1522 re-bind after rebase onto main f455cec6: nine keys (agentNotify.* x5, consent v2, accepted[_unnamed], builtin.agents_topic) against English abbda676; byte-identical to round 4's audited bytes; other keys byte-identical to main. No string reworded.",
+							"note": "Re-binds ledger evidence to current main's English; copy unchanged. Receipt i18n/receipts/28d10489945e-rebind-es.json."
 						}
 					],
 					"status": "audited"
@@ -14826,29 +14879,31 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.ownerAudit",
-			"source_sha256": "19aa80671ba18c584410232fa035db0841a09d72ddb0faae98bc3c2bc4ca604f",
-			"target_sha256": "f18aa7a47bb19a7cd260232d2ee8b0a69898fbcf2be40c0d9e5401dd489fef68",
+			"source_sha256": "1be9b36e0201411304198a33f426ee66b41bdd6e2f96372b1c325fb5a1a848ef",
+			"target_sha256": "c499d49bb20b231d99425555e2b5556fc60cf7ecf0f2cdfee6cb4baf24b84655",
 			"translator": {
-				"agent": "i18n-translator",
-				"model": "radient/auto",
-				"date": "2026-10-29"
+				"agent": "coder-baa670dd72df",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-11-01",
+				"scope": "Two-key addition only: older_replies and empty_replies; existing values retained unchanged. Fallback model per runtime model-switch notice."
 			},
 			"auditors": [
 				{
-					"agent": "independent-i18n-reviewer",
+					"agent": "independent-translation-auditor",
 					"model": "anthropic/claude-sonnet-5-5",
 					"date": "2026-11-01",
 					"result": "clean",
-					"instance": "c0864aa17805-owner-audit-fr",
+					"instance": "75830dea2957-owner-audit-reply-delta",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/c0864aa17805-owner-audit-fr.json",
-					"receipt_sha256": "1576205e3eef3d99b7c259261864cd3564badbcc4ee154585baaada86e2f5066",
-					"scope": "owner-audit bounded recovery copy"
+					"receipt": "i18n/receipts/75830dea2957-owner-audit-reply-delta.json",
+					"receipt_sha256": "a40a1310e10ee075fe8cb56706bd2bad96ffe0284b637c7a0113c7b4be414a41",
+					"scope": "Two-key textual delta: older_replies and empty_replies; hash-verified working-tree files, not staged; sole auditor, no rendered RTL validation",
+					"note": "Sole audit, not a second independent pass. Receipt withdraws unsupported earlier model claim; records terminology observations and confidence limits."
 				}
 			],
 			"status": "audited",
@@ -14898,6 +14953,34 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "19aa80671ba18c584410232fa035db0841a09d72ddb0faae98bc3c2bc4ca604f",
+					"target_sha256": "f18aa7a47bb19a7cd260232d2ee8b0a69898fbcf2be40c0d9e5401dd489fef68",
+					"auditors": [
+						{
+							"agent": "independent-i18n-reviewer",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-01",
+							"result": "clean",
+							"instance": "c0864aa17805-owner-audit-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/c0864aa17805-owner-audit-fr.json",
+							"receipt_sha256": "1576205e3eef3d99b7c259261864cd3564badbcc4ee154585baaada86e2f5066",
+							"scope": "owner-audit bounded recovery copy"
+						}
+					],
+					"status": "audited",
+					"translator": {
+						"agent": "i18n-translator",
+						"model": "radient/auto",
+						"date": "2026-10-29"
+					}
 				}
 			]
 		},
@@ -16122,8 +16205,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "abbda676cb90f41321f22f732d2a5b8a6507cae441a73dc0b6399e26d12221cd",
-			"target_sha256": "d0425fd6cbd5f3b47503d3ca83f294495fbf977cab2fcb727146fa2ba88c9d72",
+			"source_sha256": "8886c3944d34a1107b050b06f9b4f4a95aea24e10d59ad8bc5b1c4e2a8749f40",
+			"target_sha256": "9929ce22f0855dbeb9130ffb5a6515e2922233b6c41cf1939020f69044c75b93",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -16139,21 +16222,20 @@
 			},
 			"auditors": [
 				{
-					"agent": "task",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-10-31",
-					"result": "clean-with-findings",
-					"instance": "28d10489945e-rebind-fr",
+					"agent": "independent-i18n-reviewer",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-01",
+					"result": "clean",
+					"instance": "5b9e7ac29d2a",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 2
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/28d10489945e-rebind-fr.json",
-					"receipt_sha256": "d0fb079c70b171671eddb6aeee0916da2fbea04ae839a42d0e33bd0e3401016f",
-					"scope": "PR #1522 re-bind after rebase onto main f455cec6: nine keys (agentNotify.* x5, consent v2, accepted[_unnamed], builtin.agents_topic) against English abbda676; byte-identical to round 4's audited bytes; other keys byte-identical to main. No string reworded.",
-					"note": "Re-binds ledger evidence to current main's English; copy unchanged. Receipt i18n/receipts/28d10489945e-rebind-fr.json."
+					"receipt": "i18n/receipts/5b9e7ac29d2a.json",
+					"receipt_sha256": "57c9172cb3cc5308e587f4b28e9e880a4fc219dbb3cd15f5cecc1122fdfdf106",
+					"scope": "Delta: ui.teamBridge.replies.legacy_window; prior namespace values unchanged"
 				}
 			],
 			"status": "audited",
@@ -17410,6 +17492,30 @@
 							"receipt_sha256": "e313f59b37a1e9ff07d9c404b488badcbd1b5c7bd188a70e6c5493a9f5bc111b",
 							"scope": "Post-merge mechanical union round 4 (main 7492ec26bb8 into ui#1532 0e2fdf0): 14 mentions.* = ours, 300 others = main; merged bytes == ours, main touched no catalogue",
 							"note": "Union re-audit (session d2ccd70111ca); mentions.* = 171d0b58c96a-rebase3/0b49d8d07426-rebase2/98545305d697-rebase/4ad83913bb2a, others = 64e850ffd480-rebase/171d0b58c96a-rebase3. No value changed."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "abbda676cb90f41321f22f732d2a5b8a6507cae441a73dc0b6399e26d12221cd",
+					"target_sha256": "d0425fd6cbd5f3b47503d3ca83f294495fbf977cab2fcb727146fa2ba88c9d72",
+					"auditors": [
+						{
+							"agent": "task",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-31",
+							"result": "clean-with-findings",
+							"instance": "28d10489945e-rebind-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 2
+							},
+							"receipt": "i18n/receipts/28d10489945e-rebind-fr.json",
+							"receipt_sha256": "d0fb079c70b171671eddb6aeee0916da2fbea04ae839a42d0e33bd0e3401016f",
+							"scope": "PR #1522 re-bind after rebase onto main f455cec6: nine keys (agentNotify.* x5, consent v2, accepted[_unnamed], builtin.agents_topic) against English abbda676; byte-identical to round 4's audited bytes; other keys byte-identical to main. No string reworded.",
+							"note": "Re-binds ledger evidence to current main's English; copy unchanged. Receipt i18n/receipts/28d10489945e-rebind-fr.json."
 						}
 					],
 					"status": "audited"
@@ -23788,29 +23894,31 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.ownerAudit",
-			"source_sha256": "19aa80671ba18c584410232fa035db0841a09d72ddb0faae98bc3c2bc4ca604f",
-			"target_sha256": "7f262dbbccb146624e3595b94e2bd790e0671a3acf2eb5e2ddc12f7a4891c2b4",
+			"source_sha256": "1be9b36e0201411304198a33f426ee66b41bdd6e2f96372b1c325fb5a1a848ef",
+			"target_sha256": "bd8b43142e5e8be93a12ffd30fa07e2353a03171c6ed101a37a04eab5f96590d",
 			"translator": {
-				"agent": "i18n-translator",
-				"model": "radient/auto",
-				"date": "2026-10-29"
+				"agent": "coder-baa670dd72df",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-11-01",
+				"scope": "Two-key addition only: older_replies and empty_replies; existing values retained unchanged. Fallback model per runtime model-switch notice."
 			},
 			"auditors": [
 				{
-					"agent": "independent-i18n-reviewer",
+					"agent": "independent-translation-auditor",
 					"model": "anthropic/claude-sonnet-5-5",
 					"date": "2026-11-01",
 					"result": "clean",
-					"instance": "c0864aa17805-owner-audit-hi",
+					"instance": "75830dea2957-owner-audit-reply-delta",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/c0864aa17805-owner-audit-hi.json",
-					"receipt_sha256": "ada51007e95add6aaa389b3aee65e45f19462ef1bf06155c1d8f850ac2287bda",
-					"scope": "owner-audit bounded recovery copy"
+					"receipt": "i18n/receipts/75830dea2957-owner-audit-reply-delta.json",
+					"receipt_sha256": "a40a1310e10ee075fe8cb56706bd2bad96ffe0284b637c7a0113c7b4be414a41",
+					"scope": "Two-key textual delta: older_replies and empty_replies; hash-verified working-tree files, not staged; sole auditor, no rendered RTL validation",
+					"note": "Sole audit, not a second independent pass. Receipt withdraws unsupported earlier model claim; records terminology observations and confidence limits."
 				}
 			],
 			"status": "audited",
@@ -23860,6 +23968,34 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "19aa80671ba18c584410232fa035db0841a09d72ddb0faae98bc3c2bc4ca604f",
+					"target_sha256": "7f262dbbccb146624e3595b94e2bd790e0671a3acf2eb5e2ddc12f7a4891c2b4",
+					"auditors": [
+						{
+							"agent": "independent-i18n-reviewer",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-01",
+							"result": "clean",
+							"instance": "c0864aa17805-owner-audit-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/c0864aa17805-owner-audit-hi.json",
+							"receipt_sha256": "ada51007e95add6aaa389b3aee65e45f19462ef1bf06155c1d8f850ac2287bda",
+							"scope": "owner-audit bounded recovery copy"
+						}
+					],
+					"status": "audited",
+					"translator": {
+						"agent": "i18n-translator",
+						"model": "radient/auto",
+						"date": "2026-10-29"
+					}
 				}
 			]
 		},
@@ -24952,8 +25088,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "abbda676cb90f41321f22f732d2a5b8a6507cae441a73dc0b6399e26d12221cd",
-			"target_sha256": "b778f2aa039daea68c1258f537f63fcd14d68fd4d405cbb2a7ee3ed673c389ff",
+			"source_sha256": "8886c3944d34a1107b050b06f9b4f4a95aea24e10d59ad8bc5b1c4e2a8749f40",
+			"target_sha256": "6a69a92480a92a74cae35c1d083152e7c7a66e643a3d277100cf059679df2907",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -24968,21 +25104,20 @@
 			},
 			"auditors": [
 				{
-					"agent": "task",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-10-31",
+					"agent": "independent-i18n-reviewer",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-01",
 					"result": "clean",
-					"instance": "28d10489945e-rebind-hi",
+					"instance": "5b9e7ac29d2a",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/28d10489945e-rebind-hi.json",
-					"receipt_sha256": "6120eb142a92425ebc87772a3971ff4db5ee1b4d2f9542a1ceaa27cf414795bc",
-					"scope": "PR #1522 re-bind after rebase onto main f455cec6: nine keys (agentNotify.* x5, consent v2, accepted[_unnamed], builtin.agents_topic) against English abbda676; byte-identical to round 4's audited bytes; other keys byte-identical to main. No string reworded.",
-					"note": "Re-binds ledger evidence to current main's English; copy unchanged. Receipt i18n/receipts/28d10489945e-rebind-hi.json."
+					"receipt": "i18n/receipts/5b9e7ac29d2a.json",
+					"receipt_sha256": "57c9172cb3cc5308e587f4b28e9e880a4fc219dbb3cd15f5cecc1122fdfdf106",
+					"scope": "Delta: ui.teamBridge.replies.legacy_window; prior namespace values unchanged"
 				}
 			],
 			"status": "audited",
@@ -26145,6 +26280,30 @@
 							"receipt_sha256": "e57e77cca1a512c705aa9791b3f5cc5daad48e1b4964d281db82cba17d6a52dd",
 							"scope": "Post-merge mechanical union round 4 (main 7492ec26bb8 into ui#1532 0e2fdf0): 14 mentions.* = ours, 300 others = main; merged bytes == ours, main touched no catalogue",
 							"note": "Union re-audit (session d2ccd70111ca); mentions.* = 171d0b58c96a-rebase3/0b49d8d07426-rebase2/98545305d697-rebase/4ad83913bb2a, others = 64e850ffd480-rebase/171d0b58c96a-rebase3. No value changed."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "abbda676cb90f41321f22f732d2a5b8a6507cae441a73dc0b6399e26d12221cd",
+					"target_sha256": "b778f2aa039daea68c1258f537f63fcd14d68fd4d405cbb2a7ee3ed673c389ff",
+					"auditors": [
+						{
+							"agent": "task",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-31",
+							"result": "clean",
+							"instance": "28d10489945e-rebind-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/28d10489945e-rebind-hi.json",
+							"receipt_sha256": "6120eb142a92425ebc87772a3971ff4db5ee1b4d2f9542a1ceaa27cf414795bc",
+							"scope": "PR #1522 re-bind after rebase onto main f455cec6: nine keys (agentNotify.* x5, consent v2, accepted[_unnamed], builtin.agents_topic) against English abbda676; byte-identical to round 4's audited bytes; other keys byte-identical to main. No string reworded.",
+							"note": "Re-binds ledger evidence to current main's English; copy unchanged. Receipt i18n/receipts/28d10489945e-rebind-hi.json."
 						}
 					],
 					"status": "audited"
@@ -32401,29 +32560,31 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.ownerAudit",
-			"source_sha256": "19aa80671ba18c584410232fa035db0841a09d72ddb0faae98bc3c2bc4ca604f",
-			"target_sha256": "62da7910e7cf4ebd84676e3c278a9f333dc9960955e4481a3415e0b25b1e23fe",
+			"source_sha256": "1be9b36e0201411304198a33f426ee66b41bdd6e2f96372b1c325fb5a1a848ef",
+			"target_sha256": "ec6a85175a359e1cc6a40ee40c882402028b19cc0b10cdd1d7729cbc6118d6b6",
 			"translator": {
-				"agent": "i18n-translator",
-				"model": "radient/auto",
-				"date": "2026-10-29"
+				"agent": "coder-baa670dd72df",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-11-01",
+				"scope": "Two-key addition only: older_replies and empty_replies; existing values retained unchanged. Fallback model per runtime model-switch notice."
 			},
 			"auditors": [
 				{
-					"agent": "independent-i18n-reviewer",
+					"agent": "independent-translation-auditor",
 					"model": "anthropic/claude-sonnet-5-5",
 					"date": "2026-11-01",
 					"result": "clean",
-					"instance": "c0864aa17805-owner-audit-ru",
+					"instance": "75830dea2957-owner-audit-reply-delta",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/c0864aa17805-owner-audit-ru.json",
-					"receipt_sha256": "5551637610c6a61a747dcc1072acd94e0c09a266d01006c7a1d3b1c8b796bd2f",
-					"scope": "owner-audit bounded recovery copy"
+					"receipt": "i18n/receipts/75830dea2957-owner-audit-reply-delta.json",
+					"receipt_sha256": "a40a1310e10ee075fe8cb56706bd2bad96ffe0284b637c7a0113c7b4be414a41",
+					"scope": "Two-key textual delta: older_replies and empty_replies; hash-verified working-tree files, not staged; sole auditor, no rendered RTL validation",
+					"note": "Sole audit, not a second independent pass. Receipt withdraws unsupported earlier model claim; records terminology observations and confidence limits."
 				}
 			],
 			"status": "audited",
@@ -32473,6 +32634,34 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "19aa80671ba18c584410232fa035db0841a09d72ddb0faae98bc3c2bc4ca604f",
+					"target_sha256": "62da7910e7cf4ebd84676e3c278a9f333dc9960955e4481a3415e0b25b1e23fe",
+					"auditors": [
+						{
+							"agent": "independent-i18n-reviewer",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-01",
+							"result": "clean",
+							"instance": "c0864aa17805-owner-audit-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/c0864aa17805-owner-audit-ru.json",
+							"receipt_sha256": "5551637610c6a61a747dcc1072acd94e0c09a266d01006c7a1d3b1c8b796bd2f",
+							"scope": "owner-audit bounded recovery copy"
+						}
+					],
+					"status": "audited",
+					"translator": {
+						"agent": "i18n-translator",
+						"model": "radient/auto",
+						"date": "2026-10-29"
+					}
 				}
 			]
 		},
@@ -33486,8 +33675,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "abbda676cb90f41321f22f732d2a5b8a6507cae441a73dc0b6399e26d12221cd",
-			"target_sha256": "b611278edeb413545ff8853a4e6cca644a39f3a71fec6e5beeef2c1203172381",
+			"source_sha256": "8886c3944d34a1107b050b06f9b4f4a95aea24e10d59ad8bc5b1c4e2a8749f40",
+			"target_sha256": "8daae2d40438ca7179ea38f10404bde6c887eea459630cf6a54a48153dba1ad5",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -33503,21 +33692,20 @@
 			},
 			"auditors": [
 				{
-					"agent": "task",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-10-31",
+					"agent": "independent-i18n-reviewer",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-01",
 					"result": "clean",
-					"instance": "28d10489945e-rebind-ru",
+					"instance": "5b9e7ac29d2a",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/28d10489945e-rebind-ru.json",
-					"receipt_sha256": "1ee4320954de14739def9d4ddd6198db3b2f874fcd0999488a102baba75173bc",
-					"scope": "PR #1522 re-bind after rebase onto main f455cec6: nine keys (agentNotify.* x5, consent v2, accepted[_unnamed], builtin.agents_topic) against English abbda676; byte-identical to round 4's audited bytes; other keys byte-identical to main. No string reworded.",
-					"note": "Re-binds ledger evidence to current main's English; copy unchanged. Receipt i18n/receipts/28d10489945e-rebind-ru.json."
+					"receipt": "i18n/receipts/5b9e7ac29d2a.json",
+					"receipt_sha256": "57c9172cb3cc5308e587f4b28e9e880a4fc219dbb3cd15f5cecc1122fdfdf106",
+					"scope": "Delta: ui.teamBridge.replies.legacy_window; prior namespace values unchanged"
 				}
 			],
 			"status": "audited",
@@ -34769,6 +34957,30 @@
 							"receipt_sha256": "30cf6ced1209a30742b2c7ecdeee7494ec3d1adfbce43fa400cc227a83e8e5e5",
 							"scope": "Post-merge mechanical union round 4 (main 7492ec26bb8 into ui#1532 0e2fdf0): 14 mentions.* = ours, 300 others = main; merged bytes == ours, main touched no catalogue",
 							"note": "Union re-audit (session d2ccd70111ca); mentions.* = 171d0b58c96a-rebase3/0b49d8d07426-rebase2/98545305d697-rebase/4ad83913bb2a, others = 64e850ffd480-rebase/171d0b58c96a-rebase3. No value changed."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "abbda676cb90f41321f22f732d2a5b8a6507cae441a73dc0b6399e26d12221cd",
+					"target_sha256": "b611278edeb413545ff8853a4e6cca644a39f3a71fec6e5beeef2c1203172381",
+					"auditors": [
+						{
+							"agent": "task",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-31",
+							"result": "clean",
+							"instance": "28d10489945e-rebind-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/28d10489945e-rebind-ru.json",
+							"receipt_sha256": "1ee4320954de14739def9d4ddd6198db3b2f874fcd0999488a102baba75173bc",
+							"scope": "PR #1522 re-bind after rebase onto main f455cec6: nine keys (agentNotify.* x5, consent v2, accepted[_unnamed], builtin.agents_topic) against English abbda676; byte-identical to round 4's audited bytes; other keys byte-identical to main. No string reworded.",
+							"note": "Re-binds ledger evidence to current main's English; copy unchanged. Receipt i18n/receipts/28d10489945e-rebind-ru.json."
 						}
 					],
 					"status": "audited"
@@ -41091,29 +41303,31 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.ownerAudit",
-			"source_sha256": "19aa80671ba18c584410232fa035db0841a09d72ddb0faae98bc3c2bc4ca604f",
-			"target_sha256": "b6857761f016307e0bf561d1cdf5af9410e13ac3ff666cf456ce35a08bf5f57b",
+			"source_sha256": "1be9b36e0201411304198a33f426ee66b41bdd6e2f96372b1c325fb5a1a848ef",
+			"target_sha256": "eed43be662a13236caeb73787b9f1a583f7134fb53162834c7543dea1286cb39",
 			"translator": {
-				"agent": "i18n-translator",
-				"model": "radient/auto",
-				"date": "2026-10-29"
+				"agent": "coder-baa670dd72df",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-11-01",
+				"scope": "Two-key addition only: older_replies and empty_replies; existing values retained unchanged. Fallback model per runtime model-switch notice."
 			},
 			"auditors": [
 				{
-					"agent": "independent-i18n-reviewer",
+					"agent": "independent-translation-auditor",
 					"model": "anthropic/claude-sonnet-5-5",
 					"date": "2026-11-01",
 					"result": "clean",
-					"instance": "c0864aa17805-owner-audit-ur",
+					"instance": "75830dea2957-owner-audit-reply-delta",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/c0864aa17805-owner-audit-ur.json",
-					"receipt_sha256": "e543bce38fd7be6ad0eff043a8ccaeee5adf82bce949e6c725aa5e2e91f17603",
-					"scope": "owner-audit bounded recovery copy"
+					"receipt": "i18n/receipts/75830dea2957-owner-audit-reply-delta.json",
+					"receipt_sha256": "a40a1310e10ee075fe8cb56706bd2bad96ffe0284b637c7a0113c7b4be414a41",
+					"scope": "Two-key textual delta: older_replies and empty_replies; hash-verified working-tree files, not staged; sole auditor, no rendered RTL validation",
+					"note": "Sole audit, not a second independent pass. Receipt withdraws unsupported earlier model claim; records terminology observations and confidence limits."
 				}
 			],
 			"status": "audited",
@@ -41163,6 +41377,34 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "19aa80671ba18c584410232fa035db0841a09d72ddb0faae98bc3c2bc4ca604f",
+					"target_sha256": "b6857761f016307e0bf561d1cdf5af9410e13ac3ff666cf456ce35a08bf5f57b",
+					"auditors": [
+						{
+							"agent": "independent-i18n-reviewer",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-01",
+							"result": "clean",
+							"instance": "c0864aa17805-owner-audit-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/c0864aa17805-owner-audit-ur.json",
+							"receipt_sha256": "e543bce38fd7be6ad0eff043a8ccaeee5adf82bce949e6c725aa5e2e91f17603",
+							"scope": "owner-audit bounded recovery copy"
+						}
+					],
+					"status": "audited",
+					"translator": {
+						"agent": "i18n-translator",
+						"model": "radient/auto",
+						"date": "2026-10-29"
+					}
 				}
 			]
 		},
@@ -42169,8 +42411,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "abbda676cb90f41321f22f732d2a5b8a6507cae441a73dc0b6399e26d12221cd",
-			"target_sha256": "2853c4d28da108190dc780db7ce9eb1d9ac59a78fc1f235e95fec23a7004de98",
+			"source_sha256": "8886c3944d34a1107b050b06f9b4f4a95aea24e10d59ad8bc5b1c4e2a8749f40",
+			"target_sha256": "d562135128ee5f135d2124e08c07dee38407060f08a23a6c6876120ed6c856d2",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -42185,21 +42427,20 @@
 			},
 			"auditors": [
 				{
-					"agent": "task",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-10-31",
+					"agent": "independent-i18n-reviewer",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-01",
 					"result": "clean",
-					"instance": "28d10489945e-rebind-ur",
+					"instance": "5b9e7ac29d2a",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/28d10489945e-rebind-ur.json",
-					"receipt_sha256": "23e8f57673a8e2bfec8021e84ade967d1366e4a74a50c667ba4541396f346d3e",
-					"scope": "PR #1522 re-bind after rebase onto main f455cec6: nine keys (agentNotify.* x5, consent v2, accepted[_unnamed], builtin.agents_topic) against English abbda676; byte-identical to round 4's audited bytes; other keys byte-identical to main. No string reworded.",
-					"note": "Re-binds ledger evidence to current main's English; copy unchanged. Receipt i18n/receipts/28d10489945e-rebind-ur.json."
+					"receipt": "i18n/receipts/5b9e7ac29d2a.json",
+					"receipt_sha256": "57c9172cb3cc5308e587f4b28e9e880a4fc219dbb3cd15f5cecc1122fdfdf106",
+					"scope": "Delta: ui.teamBridge.replies.legacy_window; prior namespace values unchanged"
 				}
 			],
 			"status": "audited",
@@ -43362,6 +43603,30 @@
 							"receipt_sha256": "ff649f37e4fb56bd10c58dd87dd6f654e0b6b74d55d2212c68bc6b90768ddab7",
 							"scope": "Post-merge mechanical union round 4 (main 7492ec26bb8 into ui#1532 0e2fdf0): 14 mentions.* = ours, 300 others = main; merged bytes == ours, main touched no catalogue",
 							"note": "Union re-audit (session d2ccd70111ca); mentions.* = 171d0b58c96a-rebase3/0b49d8d07426-rebase2/98545305d697-rebase/4ad83913bb2a, others = 64e850ffd480-rebase/171d0b58c96a-rebase3. No value changed."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "abbda676cb90f41321f22f732d2a5b8a6507cae441a73dc0b6399e26d12221cd",
+					"target_sha256": "2853c4d28da108190dc780db7ce9eb1d9ac59a78fc1f235e95fec23a7004de98",
+					"auditors": [
+						{
+							"agent": "task",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-31",
+							"result": "clean",
+							"instance": "28d10489945e-rebind-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/28d10489945e-rebind-ur.json",
+							"receipt_sha256": "23e8f57673a8e2bfec8021e84ade967d1366e4a74a50c667ba4541396f346d3e",
+							"scope": "PR #1522 re-bind after rebase onto main f455cec6: nine keys (agentNotify.* x5, consent v2, accepted[_unnamed], builtin.agents_topic) against English abbda676; byte-identical to round 4's audited bytes; other keys byte-identical to main. No string reworded.",
+							"note": "Re-binds ledger evidence to current main's English; copy unchanged. Receipt i18n/receipts/28d10489945e-rebind-ur.json."
 						}
 					],
 					"status": "audited"
@@ -49930,29 +50195,31 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.ownerAudit",
-			"source_sha256": "19aa80671ba18c584410232fa035db0841a09d72ddb0faae98bc3c2bc4ca604f",
-			"target_sha256": "041094dffd164a769fc1b8aa2589bc91beb744d0737e3b94337bbe900be9c01a",
+			"source_sha256": "1be9b36e0201411304198a33f426ee66b41bdd6e2f96372b1c325fb5a1a848ef",
+			"target_sha256": "b93efa8b94f16ef47bb20039d7ff23100d786a26446db98bc7373c3a6c1370ab",
 			"translator": {
-				"agent": "i18n-translator",
-				"model": "radient/auto",
-				"date": "2026-10-29"
+				"agent": "coder-baa670dd72df",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-11-01",
+				"scope": "Two-key addition only: older_replies and empty_replies; existing values retained unchanged. Fallback model per runtime model-switch notice."
 			},
 			"auditors": [
 				{
-					"agent": "independent-i18n-reviewer",
+					"agent": "independent-translation-auditor",
 					"model": "anthropic/claude-sonnet-5-5",
 					"date": "2026-11-01",
 					"result": "clean",
-					"instance": "c0864aa17805-owner-audit-vi",
+					"instance": "75830dea2957-owner-audit-reply-delta",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/c0864aa17805-owner-audit-vi.json",
-					"receipt_sha256": "8e6b65cd5a09b4ecd3d89856bce6cb0e841813a1e8e24fc26778d76ded14a4e2",
-					"scope": "owner-audit bounded recovery copy"
+					"receipt": "i18n/receipts/75830dea2957-owner-audit-reply-delta.json",
+					"receipt_sha256": "a40a1310e10ee075fe8cb56706bd2bad96ffe0284b637c7a0113c7b4be414a41",
+					"scope": "Two-key textual delta: older_replies and empty_replies; hash-verified working-tree files, not staged; sole auditor, no rendered RTL validation",
+					"note": "Sole audit, not a second independent pass. Receipt withdraws unsupported earlier model claim; records terminology observations and confidence limits."
 				}
 			],
 			"status": "audited",
@@ -50002,6 +50269,34 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "19aa80671ba18c584410232fa035db0841a09d72ddb0faae98bc3c2bc4ca604f",
+					"target_sha256": "041094dffd164a769fc1b8aa2589bc91beb744d0737e3b94337bbe900be9c01a",
+					"auditors": [
+						{
+							"agent": "independent-i18n-reviewer",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-01",
+							"result": "clean",
+							"instance": "c0864aa17805-owner-audit-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/c0864aa17805-owner-audit-vi.json",
+							"receipt_sha256": "8e6b65cd5a09b4ecd3d89856bce6cb0e841813a1e8e24fc26778d76ded14a4e2",
+							"scope": "owner-audit bounded recovery copy"
+						}
+					],
+					"status": "audited",
+					"translator": {
+						"agent": "i18n-translator",
+						"model": "radient/auto",
+						"date": "2026-10-29"
+					}
 				}
 			]
 		},
@@ -51185,8 +51480,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "abbda676cb90f41321f22f732d2a5b8a6507cae441a73dc0b6399e26d12221cd",
-			"target_sha256": "2e5b0038374cbf5cdec5c149dbb1153b4332defa0f4aa9aa1118f153c9adce2f",
+			"source_sha256": "8886c3944d34a1107b050b06f9b4f4a95aea24e10d59ad8bc5b1c4e2a8749f40",
+			"target_sha256": "279543e8357fe03ee8ce7ea369badbbb98adc7452bf6528e57f1a1b9507bb4b9",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -51201,21 +51496,20 @@
 			},
 			"auditors": [
 				{
-					"agent": "task",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-10-31",
-					"result": "clean-with-findings",
-					"instance": "28d10489945e-rebind-vi",
+					"agent": "independent-i18n-reviewer",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-01",
+					"result": "clean",
+					"instance": "5b9e7ac29d2a",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 2
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/28d10489945e-rebind-vi.json",
-					"receipt_sha256": "02253dc2194cb0b5dcdadd4a678fbeda041b3545b3c029bf4242762c2998ccac",
-					"scope": "PR #1522 re-bind after rebase onto main f455cec6: nine keys (agentNotify.* x5, consent v2, accepted[_unnamed], builtin.agents_topic) against English abbda676; byte-identical to round 4's audited bytes; other keys byte-identical to main. No string reworded.",
-					"note": "Re-binds ledger evidence to current main's English; copy unchanged. Receipt i18n/receipts/28d10489945e-rebind-vi.json."
+					"receipt": "i18n/receipts/5b9e7ac29d2a.json",
+					"receipt_sha256": "57c9172cb3cc5308e587f4b28e9e880a4fc219dbb3cd15f5cecc1122fdfdf106",
+					"scope": "Delta: ui.teamBridge.replies.legacy_window; prior namespace values unchanged"
 				}
 			],
 			"status": "audited",
@@ -52409,6 +52703,30 @@
 							"receipt_sha256": "3b4400b9d32772d96a248abcac086fa5b635984dcd804555852f5685d09640d3",
 							"scope": "Post-merge mechanical union round 4 (main 7492ec26bb8 into ui#1532 0e2fdf0): 14 mentions.* = ours, 300 others = main; merged bytes == ours, main touched no catalogue",
 							"note": "Union re-audit (session d2ccd70111ca); mentions.* = 171d0b58c96a-rebase3/0b49d8d07426-rebase2/98545305d697-rebase/4ad83913bb2a, others = 64e850ffd480-rebase/171d0b58c96a-rebase3. No value changed."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "abbda676cb90f41321f22f732d2a5b8a6507cae441a73dc0b6399e26d12221cd",
+					"target_sha256": "2e5b0038374cbf5cdec5c149dbb1153b4332defa0f4aa9aa1118f153c9adce2f",
+					"auditors": [
+						{
+							"agent": "task",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-31",
+							"result": "clean-with-findings",
+							"instance": "28d10489945e-rebind-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 2
+							},
+							"receipt": "i18n/receipts/28d10489945e-rebind-vi.json",
+							"receipt_sha256": "02253dc2194cb0b5dcdadd4a678fbeda041b3545b3c029bf4242762c2998ccac",
+							"scope": "PR #1522 re-bind after rebase onto main f455cec6: nine keys (agentNotify.* x5, consent v2, accepted[_unnamed], builtin.agents_topic) against English abbda676; byte-identical to round 4's audited bytes; other keys byte-identical to main. No string reworded.",
+							"note": "Re-binds ledger evidence to current main's English; copy unchanged. Receipt i18n/receipts/28d10489945e-rebind-vi.json."
 						}
 					],
 					"status": "audited"
@@ -59380,29 +59698,31 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.ownerAudit",
-			"source_sha256": "19aa80671ba18c584410232fa035db0841a09d72ddb0faae98bc3c2bc4ca604f",
-			"target_sha256": "27b3a3e34503603d239718afd96b902ff9d08864719e2c462b88e0fc57d21af7",
+			"source_sha256": "1be9b36e0201411304198a33f426ee66b41bdd6e2f96372b1c325fb5a1a848ef",
+			"target_sha256": "240847e1b6fb177418142c05de7d28c2ad3991809d26b97db61591877d23c568",
 			"translator": {
-				"agent": "i18n-translator",
-				"model": "radient/auto",
-				"date": "2026-10-29"
+				"agent": "coder-baa670dd72df",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-11-01",
+				"scope": "Two-key addition only: older_replies and empty_replies; existing values retained unchanged. Fallback model per runtime model-switch notice."
 			},
 			"auditors": [
 				{
-					"agent": "independent-i18n-reviewer",
+					"agent": "independent-translation-auditor",
 					"model": "anthropic/claude-sonnet-5-5",
 					"date": "2026-11-01",
 					"result": "clean",
-					"instance": "c0864aa17805-owner-audit-zh-cn",
+					"instance": "75830dea2957-owner-audit-reply-delta",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/c0864aa17805-owner-audit-zh-cn.json",
-					"receipt_sha256": "836fa92c635ef2838fa830ec7eead4869e40cd2f169c0f920f1b6d432ef6d54c",
-					"scope": "owner-audit bounded recovery copy"
+					"receipt": "i18n/receipts/75830dea2957-owner-audit-reply-delta.json",
+					"receipt_sha256": "a40a1310e10ee075fe8cb56706bd2bad96ffe0284b637c7a0113c7b4be414a41",
+					"scope": "Two-key textual delta: older_replies and empty_replies; hash-verified working-tree files, not staged; sole auditor, no rendered RTL validation",
+					"note": "Sole audit, not a second independent pass. Receipt withdraws unsupported earlier model claim; records terminology observations and confidence limits."
 				}
 			],
 			"status": "audited",
@@ -59452,6 +59772,34 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "19aa80671ba18c584410232fa035db0841a09d72ddb0faae98bc3c2bc4ca604f",
+					"target_sha256": "27b3a3e34503603d239718afd96b902ff9d08864719e2c462b88e0fc57d21af7",
+					"auditors": [
+						{
+							"agent": "independent-i18n-reviewer",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-01",
+							"result": "clean",
+							"instance": "c0864aa17805-owner-audit-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/c0864aa17805-owner-audit-zh-cn.json",
+							"receipt_sha256": "836fa92c635ef2838fa830ec7eead4869e40cd2f169c0f920f1b6d432ef6d54c",
+							"scope": "owner-audit bounded recovery copy"
+						}
+					],
+					"status": "audited",
+					"translator": {
+						"agent": "i18n-translator",
+						"model": "radient/auto",
+						"date": "2026-10-29"
+					}
 				}
 			]
 		},
@@ -60803,8 +61151,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "abbda676cb90f41321f22f732d2a5b8a6507cae441a73dc0b6399e26d12221cd",
-			"target_sha256": "12f53488c3f64a75ba8050a3367557dda244946979745279dda5c3c053a2cb26",
+			"source_sha256": "8886c3944d34a1107b050b06f9b4f4a95aea24e10d59ad8bc5b1c4e2a8749f40",
+			"target_sha256": "b7c07fdf1575b5af81b030e7593e51fe9ee39c10e3c97b67267cb6b8e6c5e873",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -60819,21 +61167,20 @@
 			},
 			"auditors": [
 				{
-					"agent": "task",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-10-31",
-					"result": "clean-with-findings",
-					"instance": "28d10489945e-rebind-zh-cn",
+					"agent": "independent-i18n-reviewer",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-01",
+					"result": "clean",
+					"instance": "5b9e7ac29d2a",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 2
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/28d10489945e-rebind-zh-cn.json",
-					"receipt_sha256": "9115eeceb276259e63db7ef8cc13ad919dcd28bd7621c87d7d13a8b5a31f3e00",
-					"scope": "PR #1522 re-bind after rebase onto main f455cec6: nine keys (agentNotify.* x5, consent v2, accepted[_unnamed], builtin.agents_topic) against English abbda676; byte-identical to round 4's audited bytes; other keys byte-identical to main. No string reworded.",
-					"note": "Re-binds ledger evidence to current main's English; copy unchanged. Receipt i18n/receipts/28d10489945e-rebind-zh-cn.json."
+					"receipt": "i18n/receipts/5b9e7ac29d2a.json",
+					"receipt_sha256": "57c9172cb3cc5308e587f4b28e9e880a4fc219dbb3cd15f5cecc1122fdfdf106",
+					"scope": "Delta: ui.teamBridge.replies.legacy_window; prior namespace values unchanged"
 				}
 			],
 			"status": "audited",
@@ -62049,6 +62396,30 @@
 							"receipt_sha256": "bab29f174bda3a681de9970cdef424cc93af16c5ce8783d47f6d404d0451a739",
 							"scope": "Post-merge mechanical union round 4 (main 7492ec26bb8 into ui#1532 0e2fdf0): 14 mentions.* = ours, 300 others = main; merged bytes == ours, main touched no catalogue",
 							"note": "Union re-audit (session d2ccd70111ca); mentions.* = 171d0b58c96a-rebase3/0b49d8d07426-rebase2/98545305d697-rebase/4ad83913bb2a, others = 64e850ffd480-rebase/171d0b58c96a-rebase3. No value changed."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "abbda676cb90f41321f22f732d2a5b8a6507cae441a73dc0b6399e26d12221cd",
+					"target_sha256": "12f53488c3f64a75ba8050a3367557dda244946979745279dda5c3c053a2cb26",
+					"auditors": [
+						{
+							"agent": "task",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-31",
+							"result": "clean-with-findings",
+							"instance": "28d10489945e-rebind-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 2
+							},
+							"receipt": "i18n/receipts/28d10489945e-rebind-zh-cn.json",
+							"receipt_sha256": "9115eeceb276259e63db7ef8cc13ad919dcd28bd7621c87d7d13a8b5a31f3e00",
+							"scope": "PR #1522 re-bind after rebase onto main f455cec6: nine keys (agentNotify.* x5, consent v2, accepted[_unnamed], builtin.agents_topic) against English abbda676; byte-identical to round 4's audited bytes; other keys byte-identical to main. No string reworded.",
+							"note": "Re-binds ledger evidence to current main's English; copy unchanged. Receipt i18n/receipts/28d10489945e-rebind-zh-cn.json."
 						}
 					],
 					"status": "audited"

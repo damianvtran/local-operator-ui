@@ -16,6 +16,7 @@ import {
 	createOwnerAuditQueryFixture,
 	queryHistoryViewport,
 } from "./team-bridge-owner-audit-query.fixture";
+import { TeamBridgeThreadPane } from "./team-bridge-thread-pane";
 
 /**
  * The owner-audit section — "{chief of staff}'s messages" — in the four states
@@ -706,6 +707,84 @@ export const HistoryAnchorExerciseStates: Story = {
 	render: () => <HistoryAnchorExercise />,
 };
 
+/** The member pane is the shipped consumer, not a props-only copy of its rows. */
+function QueryMemberThreadSurface({ tenantId }: { tenantId: string }) {
+	const [open, setOpen] = useState(true);
+	return (
+		<div className="flex h-screen min-h-0 overflow-hidden bg-canvas text-ink">
+			<aside className="w-[300px] shrink-0 bg-panel">
+				<button type="button" onClick={() => setOpen(true)}>
+					Fixture reopen member thread
+				</button>
+			</aside>
+			<div
+				data-query-member-thread
+				className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
+			>
+				{open && (
+					<TeamBridgeThreadPane
+						key={`${tenantId}:${dm.id}`}
+						accountId={OWNER}
+						target={{
+							tenantId,
+							conversationId: dm.id,
+							rootId: `bmsg_query_${tenantId}_${dm.id}_9999`,
+						}}
+						readOnly={false}
+						labelFor={(sender) => sender.display_label}
+						onClose={() => setOpen(false)}
+					/>
+				)}
+			</div>
+		</div>
+	);
+}
+function replyFixtureViewport(root: ParentNode | null) {
+	return (
+		root?.querySelector<HTMLElement>(
+			"[data-audit-reply-window], [data-query-member-thread] [data-radix-scroll-area-viewport]",
+		) ?? null
+	);
+}
+function measureReplyFixture(host: HTMLElement | null) {
+	const box = host?.getBoundingClientRect();
+	const selector = host?.closest("[data-query-member-thread]")
+		? "[data-thread-replies] [data-message-id]"
+		: "[data-message-id]";
+	const rows = host ? [...host.querySelectorAll<HTMLElement>(selector)] : [];
+	const visible = box
+		? rows.filter((row) => {
+				const r = row.getBoundingClientRect();
+				return r.bottom > box.top && r.top < box.bottom;
+			})
+		: [];
+	return {
+		mounted: Boolean(host),
+		viewportRect: box
+			? { top: box.top, bottom: box.bottom, height: box.height }
+			: null,
+		boundsOk: Boolean(
+			host &&
+				box &&
+				host.clientHeight > 0 &&
+				box.height <= window.innerHeight &&
+				box.top >= 0 &&
+				box.bottom <= window.innerHeight + 1,
+		),
+		clientHeight: host?.clientHeight,
+		scrollHeight: host?.scrollHeight,
+		scrollTop: host?.scrollTop,
+		rows: rows.length,
+		firstVisible: visible[0]?.dataset.messageId,
+		lastVisible: visible.at(-1)?.dataset.messageId,
+		offset:
+			visible[0] && box
+				? Math.round((visible[0].getBoundingClientRect().top - box.top) * 100) /
+					100
+				: null,
+	};
+}
+
 /** The actual rail/selection/private panel, not the props-only Section wrapper. */
 function QueryHistorySurface({ tenantId }: { tenantId: string }) {
 	const slot = useOwnerAuditSurface({
@@ -737,7 +816,9 @@ function QueryHistorySurface({ tenantId }: { tenantId: string }) {
 	);
 }
 
-function QueryBackedHistoryExercise() {
+function QueryBackedHistoryExercise({
+	memberThread = false,
+}: { memberThread?: boolean }) {
 	const [fixture] = useState(() =>
 		createOwnerAuditQueryFixture({
 			accountId: OWNER,
@@ -801,6 +882,7 @@ function QueryBackedHistoryExercise() {
 			const text = JSON.stringify({
 				tenantId,
 				...fixture.inspect(),
+				replyViewport: measureReplyFixture(replyFixtureViewport(root.current)),
 				mountedPanel: Boolean(host),
 				storyViewportHeight: window.innerHeight,
 				viewportRect: box
@@ -842,7 +924,8 @@ function QueryBackedHistoryExercise() {
 		return () => window.clearInterval(timer);
 	}, [fixture, tenantId]);
 	const scroll = (edge: "up" | "top" | "end") => {
-		const host = queryHistoryViewport(root.current);
+		const host =
+			replyFixtureViewport(root.current) ?? queryHistoryViewport(root.current);
 		if (host)
 			host.scrollTop =
 				edge === "up"
@@ -852,9 +935,9 @@ function QueryBackedHistoryExercise() {
 						: host.scrollHeight;
 	};
 	const decodeControlledImage = () => {
-		const row = queryHistoryViewport(root.current)?.querySelector<HTMLElement>(
-			"[data-message-id]",
-		);
+		const row = (
+			replyFixtureViewport(root.current) ?? queryHistoryViewport(root.current)
+		)?.querySelector<HTMLElement>("[data-message-id]");
 		if (!row || row.querySelector("[data-fixture-height]")) return;
 		// A fixed story-only image instruments the real scroll host. It tests
 		// actual decode/height events, NOT production attachment admission.
@@ -885,7 +968,11 @@ function QueryBackedHistoryExercise() {
 			) : (
 				ready && (
 					<QueryClientProvider client={fixture.client}>
-						<QueryHistorySurface tenantId={tenantId} />
+						{memberThread ? (
+							<QueryMemberThreadSurface tenantId={tenantId} />
+						) : (
+							<QueryHistorySurface tenantId={tenantId} />
+						)}
 					</QueryClientProvider>
 				)
 			)}
@@ -951,6 +1038,53 @@ function QueryBackedHistoryExercise() {
 						</button>
 					),
 				)}
+				<button
+					type="button"
+					onClick={() => {
+						fixture.holdNextFirstReply();
+						void fixture.resetReplyQueries();
+					}}
+				>
+					Fixture hold first reply
+				</button>{" "}
+				<button type="button" onClick={() => fixture.releaseReplies()}>
+					Fixture release replies
+				</button>{" "}
+				{(["http503", "transport"] as const).map((failure) => (
+					<button
+						type="button"
+						key={failure}
+						onClick={() => fixture.failNextOlderReply(failure)}
+					>
+						Fixture fail next older reply {failure}
+					</button>
+				))}
+				{(["normal", "empty", "short", "denied", "unavailable"] as const).map(
+					(mode) => (
+						<button
+							type="button"
+							key={`reply-${mode}`}
+							onClick={() => {
+								fixture.setMode(mode);
+								void fixture.resetReplyQueries();
+							}}
+						>
+							Fixture reply backend {mode}
+						</button>
+					),
+				)}
+				{(["backward", "old-server", "old-runtime"] as const).map((value) => (
+					<button
+						type="button"
+						key={value}
+						onClick={() => {
+							fixture.setThreadMode(value);
+							void fixture.resetReplyQueries();
+						}}
+					>
+						Fixture thread protocol {value}
+					</button>
+				))}
 				<output data-query-history-geometry className="block break-all">
 					{geometry}
 				</output>
@@ -962,4 +1096,9 @@ function QueryBackedHistoryExercise() {
 /** No live runtime: real API decoder/hooks/panel and cursor decisions, fake IPC only. */
 export const QueryBackedHistory: Story = {
 	render: () => <QueryBackedHistoryExercise />,
+};
+
+/** Same synthetic transport, actual member query/pane/anchor; no hub or Electron proof. */
+export const QueryBackedMemberThread: Story = {
+	render: () => <QueryBackedHistoryExercise memberThread />,
 };
