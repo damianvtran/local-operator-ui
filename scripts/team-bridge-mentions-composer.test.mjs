@@ -757,6 +757,24 @@ test("message bodies highlight mentions; the reader's own is the stronger token"
 	);
 	assert.match(html, MENTION_OTHER);
 	assert.match(html, MENTION_VIEWER);
+	// Freeze the shipped message classes independently of composer geometry.
+	const rendered = new JSDOM(html);
+	try {
+		assert.equal(
+			rendered.window.document
+				.querySelector('[data-mention="other"]')
+				.getAttribute("class"),
+			"team-bridge-mention rounded-sm px-0.5 font-medium bg-accent-wash text-accent",
+		);
+		assert.equal(
+			rendered.window.document
+				.querySelector('[data-mention="viewer"]')
+				.getAttribute("class"),
+			"team-bridge-mention rounded-sm px-0.5 font-medium bg-warning-wash text-warning",
+		);
+	} finally {
+		rendered.window.close();
+	}
 	assert.equal(
 		(html.match(MENTION_ANY) ?? []).length,
 		2,
