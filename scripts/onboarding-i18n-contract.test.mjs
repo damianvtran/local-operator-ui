@@ -380,7 +380,7 @@ test("diagnostic inputs and result classifications fail closed", () => {
 });
 
 const WIRED_SHARD_COMMAND =
-	'node scripts/desktop-test-shards.mjs run --head "$DESKTOP_REQUESTED_HEAD" --checkout "$CHECKOUT_SHA" --index "$DESKTOP_SHARD_INDEX" 2>&1 | tee /tmp/desktop-tests.log || SUITE_RC=$?';
+	'node scripts/desktop-test-shards.mjs run --head "$DESKTOP_REQUESTED_HEAD" --checkout "$CHECKOUT_SHA" --index "$DESKTOP_SHARD_INDEX" > /tmp/desktop-tests.log 2>&1 || SUITE_RC=$?';
 const DESKTOP_SUPERVISOR_STATE =
 	'"${{ runner.temp }}/desktop-supervisor-${{ matrix.shard }}"';
 const DESKTOP_AWAIT_COMMAND =
