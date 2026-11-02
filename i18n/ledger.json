@@ -65746,6 +65746,209 @@
 				}
 			],
 			"status": "audited"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.agents.detail.origin",
+			"source_sha256": "bbb0eeac68c5ccd14988bffab2502698cb14ff6871a0a2b2212dd779fd67efb4",
+			"target_sha256": "fe45663c6ee13e62c863417b03a1b991dca5ac54da7c4c42384742a10d60cb55",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-02"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-02",
+					"result": "clean-with-findings",
+					"instance": "e2bbb9eacb7c-origin-fr",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 2,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/e2bbb9eacb7c-origin-fr.json",
+					"receipt_sha256": "b8f341c9beee17b351083e36c2ff2565148bd1ef4954fe8e571863cf74cef41f"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "es",
+			"namespace": "ui.agents.detail.origin",
+			"source_sha256": "bbb0eeac68c5ccd14988bffab2502698cb14ff6871a0a2b2212dd779fd67efb4",
+			"target_sha256": "d09f61041a28cf757501ced32d343184b2d4b789054da9ba3d14cf32c0b49dd5",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-02"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-02",
+					"result": "clean-with-findings",
+					"instance": "6a8123bb6bad-origin-es",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/6a8123bb6bad-origin-es.json",
+					"receipt_sha256": "8a8999ab2567540d5ea7df009ad0ed7242d96876c8e28314d9181515ded9fd59"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.agents.detail.origin",
+			"source_sha256": "bbb0eeac68c5ccd14988bffab2502698cb14ff6871a0a2b2212dd779fd67efb4",
+			"target_sha256": "9466ded33c71a6dc71814482a1d3cb4242427aadbc14d7ad03bf2bc430bdd4d5",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-02"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-02",
+					"result": "clean-with-findings",
+					"instance": "2d43e41b1d89-origin-zh-cn",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 3,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/2d43e41b1d89-origin-zh-cn.json",
+					"receipt_sha256": "06959adf0f6b507129fe6c928420d52cd03c4018dbc190509d444708aba1b978"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ru",
+			"namespace": "ui.agents.detail.origin",
+			"source_sha256": "bbb0eeac68c5ccd14988bffab2502698cb14ff6871a0a2b2212dd779fd67efb4",
+			"target_sha256": "222025d8c076f621ca1cf650856d5571df184c698356ca20d1d8609b11df494f",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-02"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-02",
+					"result": "clean-with-findings",
+					"instance": "4efa9ff7ea90-origin-ru",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/4efa9ff7ea90-origin-ru.json",
+					"receipt_sha256": "5ecaf48d5d9eceed37425cace167cffb877d191f0f7f7d2faf59008a3e9ded6a"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "vi",
+			"namespace": "ui.agents.detail.origin",
+			"source_sha256": "bbb0eeac68c5ccd14988bffab2502698cb14ff6871a0a2b2212dd779fd67efb4",
+			"target_sha256": "1f42c83b90adb4489d64791a83bade84e96c9de9601bd13545f9c041c14f2bfa",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-02"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-02",
+					"result": "clean-with-findings",
+					"instance": "860c31908627-origin-vi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/860c31908627-origin-vi.json",
+					"receipt_sha256": "291355f3d8e4301611c0e868e5c83570d211fb73b38a93badb99c8ac6cb5cc43"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.agents.detail.origin",
+			"source_sha256": "bbb0eeac68c5ccd14988bffab2502698cb14ff6871a0a2b2212dd779fd67efb4",
+			"target_sha256": "d616dbcaf1782e8b8c5b4c1078033c84c94983dd3ece9faa1a643d42820d9530",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-02"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-02",
+					"result": "clean-with-findings",
+					"instance": "1fe83fe89d7e-origin-ur",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 2,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/1fe83fe89d7e-origin-ur.json",
+					"receipt_sha256": "f55ba6df01eb9b6b85baedd4398197d1b7e22a4e0c085a81364b358429824ab4"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.agents.detail.origin",
+			"source_sha256": "bbb0eeac68c5ccd14988bffab2502698cb14ff6871a0a2b2212dd779fd67efb4",
+			"target_sha256": "5c770aa2b03d0df8aa2ff9dbea01022c100bc5d5e6cfc7a39cf579c317e8bacd",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-02"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-02",
+					"result": "clean-with-findings",
+					"instance": "15d036c2b9e3-origin-hi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 2,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/15d036c2b9e3-origin-hi.json",
+					"receipt_sha256": "892e8d8a8f035cbd73e2f3dcc991417ead3076df8b011f18eef2a7bbd92ad5a7"
+				}
+			],
+			"status": "audited"
 		}
 	]
 }
