@@ -1,0 +1,85 @@
+{
+  "formatter": "intl-messageformat (the formatter imported by src/i18n/messages.ts)",
+  "key": "ui.chat.sidebar.agents.list_join",
+  "arms": {
+    "pair": "{head} và {tail}",
+    "middle": "{head}, {tail}",
+    "other": "{head} và {tail}"
+  },
+  "results": [
+    {
+      "name": "pair",
+      "args": {
+        "position": "pair",
+        "head": "Coder",
+        "tail": "Reviewer"
+      },
+      "actual": "Coder và Reviewer"
+    },
+    {
+      "name": "middle",
+      "args": {
+        "position": "middle",
+        "head": "Coder",
+        "tail": "Reviewer"
+      },
+      "actual": "Coder, Reviewer"
+    },
+    {
+      "name": "other via end",
+      "args": {
+        "position": "end",
+        "head": "Coder, Reviewer",
+        "tail": "Designer"
+      },
+      "actual": "Coder, Reviewer và Designer"
+    },
+    {
+      "name": "literal other",
+      "args": {
+        "position": "other",
+        "head": "Coder",
+        "tail": "Reviewer"
+      },
+      "actual": "Coder và Reviewer"
+    },
+    {
+      "name": "i-sound tail",
+      "args": {
+        "position": "pair",
+        "head": "Coder",
+        "tail": "Indexer"
+      },
+      "actual": "Coder và Indexer"
+    }
+  ],
+  "checks": {
+    "JSON_parse": true,
+    "namespace_key_parity": true,
+    "argument_names_and_types": [
+      [
+        "position",
+        "string"
+      ],
+      [
+        "head",
+        "string"
+      ],
+      [
+        "tail",
+        "string"
+      ]
+    ],
+    "position_select_labels": true,
+    "NFC": true,
+    "negative_missing_tail": "throws as expected"
+  },
+  "commands": [
+    "node scripts/i18n/context-parity.mjs",
+    "node --test scripts/i18n/locale-parity.test.mjs"
+  ],
+  "validator_exit_codes": {
+    "context_parity": 0,
+    "catalogue_validity": 0
+  }
+}

@@ -16,23 +16,14 @@ import {
 	useInfiniteQuery,
 	useQueryClient,
 } from "@tanstack/react-query";
-import {
-	useCallback,
-	useLayoutEffect,
-	useRef,
-	useSyncExternalStore,
-} from "react";
+import { useCallback, useMemo, useRef, useSyncExternalStore } from "react";
 import type { AgentMessagesStatus } from "../../../../shared/agent-messages-contract";
 import { teamBridgeKeys } from "./team-bridge-keys";
 import { bridgeStatusAuthority, readForBridgeOwner } from "./team-bridge-owner";
 
-/** Query rejections are consumed by React Query, so neither React nor the
- * packaged renderer console reports them. The durable diagnostic must explain
- * an HTTP-200-then-error without copying any error prose, keys, stacks or data:
- * a Zod error's message/stack can contain the rejected private audit payload.
- * All non-numeric fields below are authored enums. Unknown codes stay unknown.
- * Classification only observes; the bounded recovery policy below consumes
- * this metadata without echoing or replacing the original refusal. */
+/** Classification only observes: recovery and presentation consume authored
+ * metadata without echoing or replacing the original refusal. The durable
+ * diagnostic below deliberately does NOT serialize this richer classifier. */
 const AUDIT_ERROR_CODES = new Set([
 	"conversation_not_found",
 	"account_mismatch",
@@ -165,7 +156,10 @@ export function waitForAuditAuthoritySettlement(
  * gcTime zero releases private bodies when their human-only panel unmounts.
  * The owner epoch fence rejects a late A→B→A settlement as well as a new account;
  * expected_account_id additionally binds the actual server request. */
-function useAuditRead(scope: OwnerAuditScope) {
+function useAuditRead(
+	scope: OwnerAuditScope,
+	operation: "conversations" | "messages" | "replies",
+) {
 	const client = useQueryClient();
 	const authority = useObservedRadientAuthority();
 	const subscribe = useCallback(
@@ -191,24 +185,38 @@ function useAuditRead(scope: OwnerAuditScope) {
 		client.getQueryData<AgentMessagesStatus>(
 			teamBridgeKeys.statusFor(scope.accountId),
 		)?.account_id === scope.accountId;
-	const mounted = useRef(true);
+	// Keep diagnostics bounded per scope and operation without logging scope IDs.
+	// Authority rebinds retain the budget, so recovery cannot amplify the log.
+	const diagnostic = useMemo(
+		() => ({
+			accountId: scope.accountId,
+			tenantId: scope.tenantId,
+			operation,
+			remaining: 20,
+		}),
+		[scope.accountId, scope.tenantId, operation],
+	);
 	const unauthorized = useRef(0);
-	useLayoutEffect(() => {
-		mounted.current = true;
-		return () => {
-			mounted.current = false;
-		};
-	}, []);
-	const read = async <T>(request: () => Promise<T>): Promise<T> => {
+	const read = async <T>(
+		request: () => Promise<T>,
+		signal: AbortSignal,
+	): Promise<T> => {
 		const token = authority.token;
+		// Consume the query's signal so its last observer leaving cancels the
+		// retryer immediately. gcTime:0 alone cannot remove a fetching query:
+		// a remount would inherit this departed mount's promise, whose fence
+		// rejection reverts it to pending/idle with nothing left to settle it.
+		// Use the QUERY lifetime, not one observer's mounted ref: if two readers
+		// share a key, either can leave without invalidating the other's read.
+		// IPC invoke cannot be aborted; the signal abandons its result instead.
 		const isCurrent = () =>
-			mounted.current &&
+			!signal.aborted &&
 			radientAuthoritySnapshot(client) === token &&
 			observedRadientAuthority(client).accountId === scope.accountId &&
 			snapshot() === bridgeToken;
 		/* Capture READ authority per query generation, rather than once for the
 		 * component's lifetime: a real credential transition must commission a
-		 * fresh closure without reviving the old one. Mount/account/epoch fences
+		 * fresh closure without reviving the old one. Observer/account/epoch fences
 		 * remain, and readForBridgeOwner keeps its original admission/settlement
 		 * checks. Do not use the write fence's !read_only requirement here: state
 		 * F is deliberately readable (original agent review round 1, m1). */
@@ -219,6 +227,32 @@ function useAuditRead(scope: OwnerAuditScope) {
 			unauthorized.current = 0;
 			return answer;
 		} catch (error) {
+			/* The only durable fields are operation and statusClass. Never log
+			 * error prose, stacks, codes, message bodies, IDs, tokens, query keys,
+			 * or the classifier object. Read an own numeric status without invoking
+			 * accessors/coercion/toJSON; unknown failures stay unattributed. */
+			if (diagnostic.remaining > 0) {
+				diagnostic.remaining -= 1;
+				const status =
+					error instanceof DesktopControlError
+						? Object.getOwnPropertyDescriptor(error, "status")?.value
+						: undefined;
+				const statusClass =
+					typeof status === "number" &&
+					Number.isInteger(status) &&
+					status >= 100 &&
+					status <= 599
+						? `${Math.floor(status / 100)}xx`
+						: "unknown";
+				try {
+					console.warn(
+						"[owner-audit-read]",
+						JSON.stringify({ operation, statusClass }),
+					);
+				} catch {
+					// Observability must not replace a refusal or alter recovery.
+				}
+			}
 			// A rejection can arrive late too; it must not start a retry or an
 			// auth wait on behalf of credentials that no longer own the panel.
 			if (!isCurrent()) throw new CancelledError({ revert: true });
@@ -249,7 +283,10 @@ function useAuditRead(scope: OwnerAuditScope) {
 }
 
 export function useOwnerAuditConversations(scope: OwnerAuditScope) {
-	const { read, authorityToken, enabled } = useAuditRead(scope);
+	const { read, authorityToken, enabled } = useAuditRead(
+		scope,
+		"conversations",
+	);
 	const query = useInfiniteQuery({
 		queryKey: [
 			"team-bridge",
@@ -260,8 +297,11 @@ export function useOwnerAuditConversations(scope: OwnerAuditScope) {
 			"conversations",
 		],
 		initialPageParam: undefined as string | undefined,
-		queryFn: ({ pageParam }) =>
-			read(() => TeamBridgeOwnerAuditApi.conversations(scope, pageParam)),
+		queryFn: ({ pageParam, signal }) =>
+			read(
+				() => TeamBridgeOwnerAuditApi.conversations(scope, pageParam),
+				signal,
+			),
 		getNextPageParam: (last, _pages, previous) =>
 			last.has_more && last.next_cursor && last.next_cursor !== previous
 				? last.next_cursor
@@ -284,7 +324,7 @@ export function useOwnerAuditMessages(
 		page: Awaited<ReturnType<typeof TeamBridgeOwnerAuditApi.messages>>,
 	) => boolean,
 ) {
-	const { read, authorityToken, enabled } = useAuditRead(scope);
+	const { read, authorityToken, enabled } = useAuditRead(scope, "messages");
 	const client = useQueryClient();
 	const queryKey = [
 		"team-bridge",
@@ -301,9 +341,11 @@ export function useOwnerAuditMessages(
 		// Further upward reads slide the window, never eagerly fetch all history.
 		maxPages: 6,
 		initialPageParam: undefined as number | undefined,
-		queryFn: async ({ pageParam }) => {
-			const page = await read(() =>
-				TeamBridgeOwnerAuditApi.messages(scope, conversationId, pageParam),
+		queryFn: async ({ pageParam, signal }) => {
+			const page = await read(
+				() =>
+					TeamBridgeOwnerAuditApi.messages(scope, conversationId, pageParam),
+				signal,
 			);
 			const cached = client.getQueryData<InfiniteData<typeof page>>(queryKey);
 			// The user may return to the recent page while an older request is in
@@ -349,7 +391,7 @@ export function useOwnerAuditReplies(
 	conversationId: string,
 	rootId: string,
 ) {
-	const { read, authorityToken, enabled } = useAuditRead(scope);
+	const { read, authorityToken, enabled } = useAuditRead(scope, "replies");
 	const query = useInfiniteQuery({
 		queryKey: [
 			"team-bridge",
@@ -362,14 +404,16 @@ export function useOwnerAuditReplies(
 			rootId,
 		],
 		initialPageParam: undefined as number | undefined,
-		queryFn: ({ pageParam }) =>
-			read(() =>
-				TeamBridgeOwnerAuditApi.replies(
-					scope,
-					conversationId,
-					rootId,
-					pageParam,
-				),
+		queryFn: ({ pageParam, signal }) =>
+			read(
+				() =>
+					TeamBridgeOwnerAuditApi.replies(
+						scope,
+						conversationId,
+						rootId,
+						pageParam,
+					),
+				signal,
 			),
 		getNextPageParam: (last, _pages, previous) =>
 			last.has_more &&

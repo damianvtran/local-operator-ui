@@ -58,5 +58,6 @@
 	"ui.chat.sidebar.row_menu.archive": "Lưu trữ cuộc trò chuyện",
 	"ui.chat.sidebar.row_menu.pin": "Ghim cuộc trò chuyện",
 	"ui.chat.sidebar.row_menu.unarchive": "Khôi phục cuộc trò chuyện",
-	"ui.chat.sidebar.row_menu.unpin": "Bỏ ghim cuộc trò chuyện"
+	"ui.chat.sidebar.row_menu.unpin": "Bỏ ghim cuộc trò chuyện",
+	"ui.chat.sidebar.agents.list_join": "{position, select, pair {{head} và {tail}} middle {{head}, {tail}} other {{head} và {tail}}}"
 }

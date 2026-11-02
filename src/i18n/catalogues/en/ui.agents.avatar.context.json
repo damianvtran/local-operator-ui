@@ -1,0 +1,177 @@
+{
+	"ui.agents.avatar.edit_link": {
+		"length_hint": "One short label",
+		"note": "The link opens the agent's picture editor on the Agents page. Keep the possessive construction idiomatic; the name is user data and is not translated.",
+		"placeholders": {
+			"name": "The agent's display name."
+		},
+		"role": "Accessible name of the pencil link over an agent's picture",
+		"tone": "Action phrasing, name interpolated"
+	},
+	"ui.agents.avatar.editor.crop_area": {
+		"length_hint": "Two or three words",
+		"note": "Labels the focusable canvas that frames the picture.",
+		"role": "Accessible name of the square crop surface",
+		"tone": "Plain noun phrase"
+	},
+	"ui.agents.avatar.editor.error_decode": {
+		"length_hint": "One sentence",
+		"note": "The bytes may be truncated, corrupt, or absurdly large; the remedy is another file.",
+		"role": "Refusal for a file that cannot be decoded",
+		"tone": "Plain, actionable"
+	},
+	"ui.agents.avatar.editor.error_encode": {
+		"length_hint": "One sentence",
+		"note": "The file was fine but the export failed; retrying is the remedy.",
+		"role": "Failure notice when the browser cannot encode the crop",
+		"tone": "Plain, actionable"
+	},
+	"ui.agents.avatar.editor.error_remove": {
+		"length_hint": "One sentence",
+		"note": "Deleting the stored picture failed.",
+		"role": "Failure notice when removal is refused",
+		"tone": "Plain, actionable"
+	},
+	"ui.agents.avatar.editor.error_save": {
+		"length_hint": "One sentence",
+		"note": "The backend did not store the picture; retrying is the remedy.",
+		"role": "Failure notice when the upload is refused",
+		"tone": "Plain, actionable"
+	},
+	"ui.agents.avatar.editor.error_size": {
+		"length_hint": "One sentence",
+		"note": "The ceiling is 10 MiB; use the locale's megabyte abbreviation.",
+		"placeholders": {
+			"size": "The ceiling in whole megabytes, digits only."
+		},
+		"role": "Refusal for a file over the byte ceiling",
+		"tone": "Plain, factual"
+	},
+	"ui.agents.avatar.editor.error_type": {
+		"length_hint": "One sentence",
+		"note": "Names every format the picker accepts, in the gate's order (JPEG, PNG, WebP, GIF). Keep the format names untranslated.",
+		"role": "Refusal for a file whose bytes are not an accepted image",
+		"tone": "Plain, actionable"
+	},
+	"ui.agents.avatar.editor.hint": {
+		"length_hint": "One short sentence",
+		"note": "States that the picture belongs to the agent on this machine, and the accepted formats and size ceiling. Keep the format names and the unit symbol as in the locale's style guide.",
+		"role": "Helper text under the picture controls",
+		"tone": "Quiet, factual"
+	},
+	"ui.agents.avatar.editor.instructions": {
+		"length_hint": "One or two sentences",
+		"note": "Names the source pixel dimensions and the three gestures: drag to move, scroll to zoom, arrow keys to pan.",
+		"placeholders": {
+			"height": "Source height in pixels, digits only.",
+			"width": "Source width in pixels, digits only."
+		},
+		"role": "Helper text under the crop square",
+		"tone": "Instructional, second person or impersonal per locale style"
+	},
+	"ui.agents.avatar.editor.preview_header": {
+		"length_hint": "Three or four words",
+		"note": "A 20px preview of the picture as it appears beside a conversation's title.",
+		"role": "Accessible name of the chat-header preview image",
+		"tone": "Noun phrase"
+	},
+	"ui.agents.avatar.editor.preview_header_caption": {
+		"length_hint": "One word",
+		"note": "Names the surface, not the size.",
+		"role": "Caption under the chat-header preview",
+		"tone": "Single noun"
+	},
+	"ui.agents.avatar.editor.preview_roster": {
+		"length_hint": "Four words",
+		"note": "A 32px preview of the picture as it appears in the Agents page roster.",
+		"role": "Accessible name of the agents-list preview image",
+		"tone": "Noun phrase"
+	},
+	"ui.agents.avatar.editor.preview_roster_caption": {
+		"length_hint": "Two words",
+		"note": "Names the surface, not the size.",
+		"role": "Caption under the agents-list preview",
+		"tone": "Noun phrase"
+	},
+	"ui.agents.avatar.editor.preview_sidebar": {
+		"length_hint": "Four words",
+		"note": "A 16px preview of the picture as it appears in the conversation list.",
+		"role": "Accessible name of the sidebar-row preview image",
+		"tone": "Noun phrase"
+	},
+	"ui.agents.avatar.editor.preview_sidebar_caption": {
+		"length_hint": "Two words",
+		"note": "Names the surface, not the size.",
+		"role": "Caption under the sidebar-row preview",
+		"tone": "Noun phrase"
+	},
+	"ui.agents.avatar.editor.previews": {
+		"length_hint": "A few words",
+		"note": "Explains that the previews are drawn at the sizes the application really uses.",
+		"role": "Heading over the live preview thumbnails",
+		"tone": "Quiet caption"
+	},
+	"ui.agents.avatar.editor.recenter": {
+		"length_hint": "Two words",
+		"note": "Reset, not a crop removal; the picture stays where it was uploaded.",
+		"role": "Button that returns the picture to its centred framing",
+		"tone": "Imperative"
+	},
+	"ui.agents.avatar.editor.remove": {
+		"length_hint": "Two or three words",
+		"note": "The ghost button that clears the agent's stored picture. Same object and same word as editor.upload - the two sit side by side and must read as one vocabulary.",
+		"role": "Ghost button beside the picture's actions",
+		"tone": "Action phrasing"
+	},
+	"ui.agents.avatar.editor.replace": {
+		"length_hint": "Two words",
+		"note": "Opens the file picker to choose a different picture.",
+		"role": "Upload button label when a picture already exists",
+		"tone": "Imperative"
+	},
+	"ui.agents.avatar.editor.save": {
+		"length_hint": "Two words",
+		"note": "Writes the cropped picture to the agent.",
+		"role": "Primary button that uploads the crop",
+		"tone": "Imperative"
+	},
+	"ui.agents.avatar.editor.saving": {
+		"length_hint": "One word plus ellipsis",
+		"note": "Use the locale's own ellipsis convention.",
+		"role": "Same button while the upload is in flight",
+		"tone": "Progress"
+	},
+	"ui.agents.avatar.editor.upload": {
+		"length_hint": "Two or three words",
+		"note": "The button that opens the file picker when the agent has no picture yet. The object is the agent's profile picture, so keep this locale's word for PICTURE (the one ui.agents.avatar.editor.save and edit_link already use), not a second word for 'image'.",
+		"role": "Secondary button beside the picture's placeholder",
+		"tone": "Action phrasing"
+	},
+	"ui.agents.avatar.editor.zoom": {
+		"length_hint": "One word",
+		"note": "The magnification control, 1x to 4x.",
+		"role": "Label of the zoom slider and its slider aria-label",
+		"tone": "Single noun"
+	},
+	"ui.agents.avatar.editor.zoom_in": {
+		"length_hint": "Two words",
+		"note": "Increases magnification by one step.",
+		"role": "Accessible name of the zoom-in button",
+		"tone": "Imperative or noun"
+	},
+	"ui.agents.avatar.editor.zoom_out": {
+		"length_hint": "Two words",
+		"note": "Decreases magnification by one step.",
+		"role": "Accessible name of the zoom-out button",
+		"tone": "Imperative or noun"
+	},
+	"ui.agents.avatar.editor.zoom_value": {
+		"length_hint": "Number plus multiplication sign",
+		"note": "A number already formatted with two decimals, followed by a multiplication sign. Keep U+00D7.",
+		"placeholders": {
+			"value": "Zoom factor such as 1.25."
+		},
+		"role": "Formatted magnification value",
+		"tone": "Numeric, no sentence"
+	}
+}

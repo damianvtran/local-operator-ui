@@ -1,0 +1,64 @@
+{
+  "locale": "zh-CN",
+  "namespace": "ui.chat.sidebar",
+  "key": "ui.chat.sidebar.agents.list_join",
+  "audit_date": "2026-11-01T01:55:45.501Z",
+  "key_count": 1,
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "ffff115e084f",
+    "model": "openai/gpt-6.1-sol",
+    "independent_from_translator_session": true,
+    "actual_model_source": "Host model-switch notice: temporary fallback after provider quota failures; initial anthropic/claude-sonnet-5-5, intermediate anthropic/claude-opus-5-5, substantive audit executed with openai/gpt-6.1-sol"
+  },
+  "input_hashes": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.chat.sidebar.json",
+      "sha256": "0928091b1241792f86f7fe2fafb9895d0c9d8f75341f59513f7d720a9acb477b"
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.chat.sidebar.context.json",
+      "sha256": "cf078e20bcf1e8e6070e8f5daf8d60c1676bd9f2c9c6671c3bbbc49777676925"
+    },
+    "zh-CN": {
+      "path": "src/i18n/catalogues/zh-CN/ui.chat.sidebar.json",
+      "sha256": "c23d07d7373bf0ed1929d5fd79376d9a4897515f1ddd2054880701201b296624"
+    }
+  },
+  "source": "{position, select, pair {{head} and {tail}} middle {{head}, {tail}} other {{head} and {tail}}}",
+  "translation": "{position, select, pair {{head}和{tail}} middle {{head}、{tail}} other {{head}和{tail}}}",
+  "formatted": {
+    "arms": {
+      "pair": "Coder和Reviewer",
+      "middle": "Coder、Reviewer",
+      "other": "Coder和Reviewer"
+    },
+    "two": "Coder和Reviewer",
+    "three": "Coder、Reviewer和Designer"
+  },
+  "mechanical": {
+    "icu_select_and_placeholders": "PASS",
+    "missing_tail_negative_control": "PASS: formatter throws",
+    "unknown_position": "PASS: other fallback",
+    "validator_log": "validation.log"
+  },
+  "assessment": {
+    "accuracy": "Pair 和 expresses conjunction; earlier names separated with ideographic enumeration comma 、; final 和 attaches without a preceding comma, yielding idiomatic Coder、Reviewer和Designer. No Oxford comma is required or appropriate here.",
+    "typography": "No spaces around 、 or 和; consistent with mainland Chinese list punctuation and the locale style guide. Names remain verbatim.",
+    "conditional_conjunction": "No Spanish y/e-like sound-conditioned change is normally required for Chinese 和 before an agent name. position-only selection is sufficient for these lists.",
+    "fit": "No maxChars/maxCells numeric hint in sidecar; separators are single full-width characters (2 terminal cells each), no unnecessary spacing.",
+    "terminology": "No translatable glossary noun in this joiner; proper names remain unchanged."
+  },
+  "current_report_verdict": {
+    "status": "passed",
+    "unresolved_blocker_major_count": 0,
+    "finding_ids": []
+  },
+  "counts": {
+    "BLOCKER": 0,
+    "MAJOR": 0,
+    "MINOR": 0,
+    "NIT": 0
+  },
+  "scope_note": "One-key independent audit only. Repository kept read-only; no ledger or tracked-evidence writes under explicit task constraint. Requesting manager must retain bundle and record any ledger update."
+}

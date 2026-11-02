@@ -1,0 +1,57 @@
+{
+  "locale": "zh-CN",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "instance": "ffff115e084f",
+    "model": "openai/gpt-6.1-sol"
+  },
+  "scope": "ONLY ui.chat.sidebar.agents.list_join (one added key); NOT a fresh whole-namespace audit. Namespace hashes bind bytes, not linguistic scope.",
+  "adaptation": {
+    "by_session": "0c0f0786d917",
+    "model": "openai/gpt-6.1-sol",
+    "kind": "Mechanical receipt-shape adapter, not a new audit",
+    "record": "record.json",
+    "record_sha256": "116947a868b35b7e8d801b086cdf488f60f5c72f29c993673246da9f502b2921",
+    "original_verdict": "verdict.txt",
+    "independence": {
+      "agent": "i18n-auditor",
+      "session": "ffff115e084f",
+      "model": "openai/gpt-6.1-sol",
+      "independent_from_translator_session": true,
+      "actual_model_source": "Host model-switch notice: temporary fallback after provider quota failures; initial anthropic/claude-sonnet-5-5, intermediate anthropic/claude-opus-5-5, substantive audit executed with openai/gpt-6.1-sol"
+    }
+  },
+  "artifacts": [
+    {
+      "path": "SCOPE.md",
+      "sha256": "27658627b897825c275ce8eff5dd91087bda151f4d0c35d7f6b9b9ca9ffaad62"
+    },
+    {
+      "path": "findings.jsonl",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "record.json",
+      "sha256": "116947a868b35b7e8d801b086cdf488f60f5c72f29c993673246da9f502b2921"
+    },
+    {
+      "path": "validation.log",
+      "sha256": "994ddb48abcc51d2c8eacb54a8bb5b335573000a78a93ab696e57254e6c1d9d5"
+    },
+    {
+      "path": "verdict.txt",
+      "sha256": "636455a2fc80e7048e69ac7d5c7d7feee51edf42c2ec6dfa912b15d3546774d8"
+    }
+  ],
+  "namespaces": {
+    "ui.chat.sidebar": {
+      "status": "passed",
+      "sha256": {
+        "en": "0928091b1241792f86f7fe2fafb9895d0c9d8f75341f59513f7d720a9acb477b",
+        "zh-CN": "c23d07d7373bf0ed1929d5fd79376d9a4897515f1ddd2054880701201b296624"
+      },
+      "scope": "ONLY ui.chat.sidebar.agents.list_join (one added key); NOT a fresh whole-namespace audit. Namespace hashes bind bytes, not linguistic scope.",
+      "findings": []
+    }
+  }
+}

@@ -1,5 +1,5 @@
 import { readFileSync, writeFileSync } from "node:fs";
-import { existsSync, statSync } from "node:fs";
+import { existsSync, realpathSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { electronApp, is } from "@electron-toolkit/utils";
@@ -104,8 +104,10 @@ import { DesktopNotifier } from "./desktop-notifier";
 import {
 	describeDevDriverArming,
 	devDriverArgument,
+	devDriverSceneArgument,
 	headlessExerciserAllowed,
 	resolveDevDriverArming,
+	resolveDevDriverStartupScene,
 } from "./dev-driver";
 import { readAttachArguments } from "./dev-driver-attach";
 import { registerDevDriverIPC } from "./dev-driver-ipc";
@@ -1716,6 +1718,51 @@ function launchArgumentFlags(
 	return {};
 }
 
+/** Evaluate only after discovery, at actual window construction. launchEnv is
+ * captured before dotenv; a checkout file must never activate this test seam.
+ * realpath refuses missing directories and symlink escapes, including an argv
+ * profile that Electron did not actually select. No scene means no path reads. */
+function ownerAuditStartupArguments(): string[] {
+	if (!launchEnv.LOCAL_OPERATOR_UI_DEV_DRIVER_SCENE) return [];
+	let paths: Parameters<typeof resolveDevDriverStartupScene>[0]["paths"] = null;
+	try {
+		const requested = process.argv
+			.find((arg) => arg.startsWith("--user-data-dir="))
+			?.slice("--user-data-dir=".length);
+		if (
+			requested &&
+			launchEnv.LOCAL_OPERATOR_UI_DEV_DRIVER_ROOT &&
+			launchEnv.HOME &&
+			launchEnv.LOCAL_OPERATOR_CONFIG_DIR &&
+			process.env.HOME &&
+			process.env.LOCAL_OPERATOR_CONFIG_DIR &&
+			realpathSync(process.env.HOME) === realpathSync(launchEnv.HOME) &&
+			realpathSync(process.env.LOCAL_OPERATOR_CONFIG_DIR) ===
+				realpathSync(launchEnv.LOCAL_OPERATOR_CONFIG_DIR)
+		) {
+			paths = {
+				root: realpathSync(launchEnv.LOCAL_OPERATOR_UI_DEV_DRIVER_ROOT),
+				home: realpathSync(launchEnv.HOME),
+				config: realpathSync(launchEnv.LOCAL_OPERATOR_CONFIG_DIR),
+				requestedUserData: realpathSync(requested),
+				actualUserData: realpathSync(app.getPath("userData")),
+			};
+		}
+	} catch {
+		/* Missing isolation is refusal, never an alternate launch path. */
+	}
+	const scene = resolveDevDriverStartupScene({
+		env: launchEnv,
+		armed: devDriverArming.armed,
+		packaged: app.isPackaged,
+		windowMode: windowLaunch.mode,
+		backendManagerDisabled: process.env.VITE_DISABLE_BACKEND_MANAGER === "true",
+		selectedBackendUrl: backendService.getBackendUrl(),
+		paths,
+	});
+	return scene ? [devDriverSceneArgument(scene)] : [];
+}
+
 /**
  * Everything this app puts in a renderer process's argv, in one value.
  *
@@ -1757,6 +1804,7 @@ function rendererArgumentFlags(
 		...(launchArgumentFlags(initialSession, openCatalogue)
 			.additionalArguments ?? []),
 		...(devDriverWebPreferences.additionalArguments ?? []),
+		...ownerAuditStartupArguments(),
 		...(telemetryWebPreferences.additionalArguments ?? []),
 	];
 	return flags.length > 0 ? { additionalArguments: flags } : {};

@@ -1,28 +1,36 @@
 /**
- * The agent's profile picture, edited as one row of its General fields.
+ * An agent's profile picture editor, inline in its detail view on the Agents
+ * page.
  *
- * WHY IT IS HERE, ABOVE THE NAME. The picture is the one field on this pane
- * that is not the agent's definition: it is a mark this machine draws, keyed by
- * the agent's id. It sits first because that is where the sidebar shows it and
- * the row is answering "which agent am I editing".
+ * WHY INLINE, NOT A DIALOG (operator's ask, after the Radient console's
+ * `avatar-card.tsx`). The file pick, the crop and the live previews are one
+ * task; a modal would hide the "what will this look like" answer at the moment
+ * the person commits. The field swaps between three states in place - the
+ * current picture with Upload or Replace/Remove, the cropper, and the save in
+ * flight - and every other door to this editor (the pencil on a picture in the
+ * chat header or sidebar, `AgentAvatarEditLink`) is a plain link here, so this
+ * is the ONE place editing logic lives.
  *
- * WHAT IT DOES NOT CLAIM. The image is stored on this computer only (see
- * `shared/store/agent-avatar-store.ts` for the seam and its limits), so the
- * hint under the controls says so rather than leaving a user to discover it on
- * their second machine.
+ * WHERE THE PICTURE GOES. Core owns it (`PUT /v1/agents/{id}/avatar`, through
+ * `shared/agent-avatar/agent-avatar.ts`), so the hint says it follows the
+ * agent on this machine rather than #1517's "this computer only" caveat.
  *
- * THE TWO REFUSALS THE BRIEF ASKS FOR LIVE IN THE PICKER, not in a toast: a
- * file that is the wrong type, too large, or undecodable leaves the row exactly
- * where it was and states what happened beside the buttons. A toast for a file
- * the user just chose would also disappear before they re-pick.
+ * REFUSALS ARE STATED HERE, not in a toast. A file that is the wrong type, too
+ * large, too many pixels or undecodable leaves the field where it was and says
+ * which; a failed upload keeps the cropper open with its framing, so a retry is
+ * one press. A toast would vanish before the person re-picks.
  *
- * AND A THIRD ANSWER FOR A WRITE THE BROWSER REFUSED (review round 1, R1-1).
- * A full or blocked `localStorage` accepts nothing, while the picture itself is
- * already in memory: the file was read, so the read sentences are all false.
- * The store reports that separately and this row has its own sentence for it,
- * so what the user is told matches what happened and what to do next.
+ * THE DEEP LINK (`?edit=picture`). `focusRequest` changes when the page is
+ * opened with that parameter: the field scrolls itself into view and focuses
+ * its first control, so a pencil pressed in the chat sidebar lands on the
+ * control that answers it rather than at the top of a long pane.
  */
 
+import {
+	clearAgentAvatar,
+	setAgentAvatar,
+} from "@shared/agent-avatar/agent-avatar";
+import { AgentMark } from "@shared/agent-avatar/agent-mark";
 import {
 	AGENT_AVATAR_ACCEPT,
 	AGENT_AVATAR_MAX_BYTES,
@@ -30,199 +38,280 @@ import {
 } from "@shared/agent-avatar/avatar-image";
 import {
 	AgentAvatarError,
-	downscaleAgentAvatar,
-} from "@shared/agent-avatar/downscale-image";
-import {
-	AgentAvatar,
-	AvatarFallback,
-	AvatarImage,
-	Button,
-	Label,
-} from "@shared/components/ui";
+	decodeAgentAvatar,
+} from "@shared/agent-avatar/decode-image";
+import { Button, Label } from "@shared/components/ui";
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
+import { Bot, ImagePlus, Trash2 } from "lucide-react";
 import {
-	clearAgentAvatar,
-	setAgentAvatar,
-	useAgentAvatar,
-} from "@shared/store/agent-avatar-store";
-import { Bot, Upload } from "lucide-react";
-import { type ChangeEvent, type FC, useId, useRef, useState } from "react";
+	type ChangeEvent,
+	type FC,
+	useEffect,
+	useId,
+	useRef,
+	useState,
+} from "react";
+import { useSearchParams } from "react-router-dom";
+import { AgentAvatarCropper, type CropSource } from "./agent-avatar-cropper";
 
 type AgentAvatarFieldProps = {
 	/** The agent whose picture is being edited. */
 	agentId: string;
+	/**
+	 * Changes to ask the field to scroll into view and take focus (a test seam;
+	 * the shipped trigger is the `?edit=picture` deep link below).
+	 */
+	focusRequest?: number;
 	className?: string;
+	/**
+	 * Story seams: a source already decoded (the cropper state without a file
+	 * pick) and a picture URL (the uploaded state without a backend).
+	 */
+	initialSource?: CropSource | null;
+	pictureSrc?: string | null;
 };
+
+/** The DOM id the `?edit=picture` link scrolls to. */
+export const AGENT_AVATAR_FIELD_ANCHOR = "agent-picture";
 
 const MEGABYTES = Math.round(AGENT_AVATAR_MAX_BYTES / (1024 * 1024));
 
 const refusalCopy = (refusal: AgentAvatarRefusal): string => {
 	switch (refusal) {
 		case "type":
-			return t("ui.agents.settings.general.profile_picture_error_type");
+			return t("ui.agents.avatar.editor.error_type");
 		case "size":
-			return t("ui.agents.settings.general.profile_picture_error_size", {
+			return t("ui.agents.avatar.editor.error_size", {
 				size: String(MEGABYTES),
 			});
 		default:
-			return t("ui.agents.settings.general.profile_picture_error_decode");
+			return t("ui.agents.avatar.editor.error_decode");
 	}
 };
 
 export const AgentAvatarField: FC<AgentAvatarFieldProps> = ({
 	agentId,
+	focusRequest,
 	className,
+	initialSource = null,
+	pictureSrc,
 }) => {
-	// Refresh translated copy without discarding a pending picker or error.
+	// Refresh translated copy without discarding a pending crop or error.
 	useI18nLocale();
-	const avatar = useAgentAvatar(agentId);
+	const rootRef = useRef<HTMLDivElement>(null);
 	const inputRef = useRef<HTMLInputElement>(null);
 	const uploadRef = useRef<HTMLButtonElement>(null);
+	const cropRef = useRef<HTMLCanvasElement | null>(null);
 	const inputId = useId();
 	const labelId = useId();
 	const hintId = useId();
-	const [busy, setBusy] = useState(false);
+	const [source, setSource] = useState<CropSource | null>(initialSource);
+	const [decoding, setDecoding] = useState(false);
+	const [saving, setSaving] = useState(false);
+	const [removing, setRemoving] = useState(false);
 	const [refusal, setRefusal] = useState<AgentAvatarRefusal | null>(null);
-	const [saveFailed, setSaveFailed] = useState(false);
+	const [saveError, setSaveError] = useState<string | null>(null);
+	const [removeError, setRemoveError] = useState<string | null>(null);
+	// Whether a picture is on screen now: the mark answers `null` until loaded.
+	const [hasPicture, setHasPicture] = useState(Boolean(pictureSrc));
+
+	/*
+	 * A decoded bitmap holds the whole source in renderer memory; it is closed
+	 * as soon as the cropper lets go of it (saved, cancelled, replaced or the
+	 * field unmounted), never left for the collector.
+	 */
+	useEffect(
+		() => () => {
+			if (source && "close" in source && typeof source.close === "function")
+				source.close();
+		},
+		[source],
+	);
+
+	const [params, setParams] = useSearchParams();
+	/*
+	 * THE DEEP LINK (`?edit=picture`). The pencil on a picture in the chat header
+	 * or a sidebar row navigates here with it; this is the one place that knows
+	 * what the instruction means, and it is one-shot - the parameter is dropped
+	 * from the URL after the field takes focus, so a later visit (or a Back) does
+	 * not steal the reader's attention again.
+	 *
+	 * The parameter is only honoured for the agent whose pane is open, because
+	 * that is the agent whose field is mounted. The URL's `name` chooses the pane;
+	 * this component cannot re-point it.
+	 */
+	const requested = params.get("edit") === "picture";
+	useEffect(() => {
+		if (!requested) return;
+		rootRef.current?.scrollIntoView({ block: "center" });
+		(cropRef.current ?? uploadRef.current)?.focus({ preventScroll: true });
+		const next = new URLSearchParams(params);
+		next.delete("edit");
+		setParams(next, { replace: true });
+	}, [requested, params, setParams]);
+	useEffect(() => {
+		if (focusRequest === undefined) return;
+		rootRef.current?.scrollIntoView({ block: "center" });
+		(cropRef.current ?? uploadRef.current)?.focus({ preventScroll: true });
+	}, [focusRequest]);
+
+	const busy = decoding || saving || removing;
 
 	const onPick = async (event: ChangeEvent<HTMLInputElement>) => {
 		const file = event.target.files?.[0];
-		// The same file must be re-pickable after a refusal, so the input is
-		// cleared before anything can return early.
+		// The same file must be re-pickable after a refusal.
 		event.target.value = "";
 		if (!file) return;
-		setBusy(true);
+		setDecoding(true);
 		setRefusal(null);
-		setSaveFailed(false);
+		setSaveError(null);
+		setRemoveError(null);
 		try {
-			const dataUrl = await downscaleAgentAvatar(file);
-			/*
-			 * THE READ AND THE WRITE ARE DIFFERENT ANSWERS. The picture is already in
-			 * memory when a browser refuses the write, so calling that "could not be
-			 * read" would describe a file that decoded fine; `setAgentAvatar` answers
-			 * whether the bytes reached this machine's storage (review round 1, R1-1).
-			 */
-			setSaveFailed(!setAgentAvatar(agentId, dataUrl));
+			setSource(await decodeAgentAvatar(file));
 		} catch (error) {
 			setRefusal(error instanceof AgentAvatarError ? error.code : "decode");
 		} finally {
-			setBusy(false);
+			setDecoding(false);
+		}
+	};
+
+	const onSave = async (blob: Blob) => {
+		setSaving(true);
+		setSaveError(null);
+		try {
+			await setAgentAvatar(agentId, blob);
+			setSource(null);
+			setHasPicture(true);
+			// The cropper unmounts with the focused Save; land on the field's door.
+			requestAnimationFrame(() => uploadRef.current?.focus());
+		} catch (error) {
+			setSaveError(
+				error instanceof Error && error.message
+					? error.message
+					: t("ui.agents.avatar.editor.error_save"),
+			);
+		} finally {
+			setSaving(false);
+		}
+	};
+
+	const onRemove = async () => {
+		if (busy) return;
+		setRemoving(true);
+		setRemoveError(null);
+		setRefusal(null);
+		try {
+			await clearAgentAvatar(agentId);
+			setHasPicture(false);
+		} catch (error) {
+			setRemoveError(
+				error instanceof Error && error.message
+					? error.message
+					: t("ui.agents.avatar.editor.error_remove"),
+			);
+		} finally {
+			setRemoving(false);
+			/*
+			 * REMOVE TAKES ITSELF AWAY: it renders only while a picture exists, so
+			 * focus moves to the field's surviving door (#1517's R1-3).
+			 */
+			uploadRef.current?.focus();
 		}
 	};
 
 	return (
-		<div className={cn("flex flex-col gap-2", className)}>
+		<div
+			ref={rootRef}
+			id={AGENT_AVATAR_FIELD_ANCHOR}
+			className={cn("flex scroll-mt-4 flex-col gap-2", className)}
+			data-agent-avatar-field=""
+		>
 			<Label id={labelId} htmlFor={inputId}>
 				{t("ui.agents.settings.general.profile_picture")}
 			</Label>
-			{/*
-			 * A GROUP NAMED BY THE LABEL (UX round 1, U5). The label points at the file
-			 * input, which is `display: none` and absent from the accessibility tree, so
-			 * on its own it named nothing reachable and a forms-mode reader heard bare
-			 * "Upload image". The group says which field these two buttons belong to,
-			 * and the hint is attached to the same group so the storage limit is read
-			 * once with it.
-			 *
-			 * A `<fieldset>` rather than a `role="group"` div: it is the element the role
-			 * stands for (the a11y lint says so), and the reset classes take away the
-			 * browser's border and padding so it paints as the flex row it replaces.
-			 */}
-			<fieldset
-				aria-labelledby={labelId}
-				aria-describedby={hintId}
-				className="m-0 flex min-w-0 flex-wrap items-center gap-3 border-0 p-0"
-			>
-				{/*
-				 * The preview wears the same plate the sidebar row does - the `sunken`
-				 * fill and a `border-control` edge - because it is showing that row's
-				 * mark, and an edge that appears in one place and not the other reads as
-				 * two different objects. The pair lives on the ROOT (`AgentAvatar`), not
-				 * on the image or the fallback: a border on the square image is clipped
-				 * by the circle, and a plate on the fallback unmounts as soon as a
-				 * picture loads, which left a transparent PNG on the pane's own ground
-				 * (design review round 1, D1 + D2).
-				 */}
-				<AgentAvatar className="size-10 shrink-0">
-					{avatar ? (
-						<AvatarImage src={avatar} alt="" className="lo-avatar-arrival" />
-					) : null}
-					<AvatarFallback>
-						<Bot size={18} aria-hidden="true" />
-					</AvatarFallback>
-				</AgentAvatar>
-				<Button
-					ref={uploadRef}
-					type="button"
-					variant="secondary"
-					size="sm"
-					/*
-					 * `aria-disabled`, NOT `disabled` (review round 1, R1-3). The picker's
-					 * return starts a decode on the button the user pressed, and the disabled
-					 * attribute drops that focus to `<body>` mid-flow; the click guard below
-					 * is what makes the state real, so the affordance and the behaviour agree.
-					 */
-					aria-disabled={busy}
-					/*
-					 * THE DISABLED STATE HAS A FACE (review round 2, R2-5). The base
-					 * `:where(:disabled, [aria-disabled="true"])` rule changes only the
-					 * cursor, so a decode looked like any other moment; `ink-disabled` is
-					 * the role this app already uses for the same non-interactive label.
-					 * The `!` is the repo's existing spelling where a variant owns the
-					 * ink (see `chat-sidebar.tsx`'s menu items).
-					 */
-					className="aria-disabled:text-ink-disabled!"
-					onClick={() => {
-						if (busy) return;
-						inputRef.current?.click();
+			{source ? (
+				<AgentAvatarCropper
+					source={source}
+					onSave={(blob) => void onSave(blob)}
+					onCancel={() => {
+						setSource(null);
+						setSaveError(null);
+						requestAnimationFrame(() => uploadRef.current?.focus());
 					}}
+					saving={saving}
+					error={saveError}
+					viewportRef={cropRef}
+				/>
+			) : (
+				/*
+				 * A GROUP NAMED BY THE LABEL (#1517's UX round 1, U5): the label points
+				 * at a hidden file input, so the fieldset is what names the buttons.
+				 */
+				<fieldset
+					aria-labelledby={labelId}
+					aria-describedby={hintId}
+					className="m-0 flex min-w-0 flex-wrap items-center gap-3 border-0 p-0"
 				>
-					<Upload aria-hidden="true" />
-					{t("ui.agents.settings.general.profile_picture_upload")}
-				</Button>
-				{avatar ? (
+					<PictureProbe
+						agentId={agentId}
+						src={pictureSrc}
+						onPresence={setHasPicture}
+					/>
 					<Button
+						ref={uploadRef}
 						type="button"
-						variant="ghost"
+						variant="secondary"
 						size="sm"
+						// `aria-disabled`, not `disabled`, so focus survives a decode.
 						aria-disabled={busy}
 						className="aria-disabled:text-ink-disabled!"
+						data-agent-avatar-upload=""
 						onClick={() => {
 							if (busy) return;
-							setSaveFailed(!clearAgentAvatar(agentId));
-							setRefusal(null);
-							/*
-							 * REMOVE TAKES ITSELF AWAY: the button renders only while a picture
-							 * exists, so pressing it unmounts the focused control. Focus moves to
-							 * the Upload button, which is the same field's surviving door, rather
-							 * than falling back to `<body>` (review round 1, R1-3).
-							 */
-							uploadRef.current?.focus();
+							inputRef.current?.click();
 						}}
 					>
-						{t("ui.agents.settings.general.profile_picture_remove")}
+						<ImagePlus aria-hidden="true" />
+						{/* ONE VOCABULARY PER OBJECT (design review round 1, D5): this editor says
+						    "picture" everywhere - the field's label, Replace, Save, Recenter and
+						    the pencil's name - so Upload and Remove say it too, rather than
+						    borrowing the settings surface's "image" and leaving one glance with
+						    two names for one thing. */}
+						{hasPicture
+							? t("ui.agents.avatar.editor.replace")
+							: t("ui.agents.avatar.editor.upload")}
 					</Button>
-				) : null}
-			</fieldset>
+					{hasPicture ? (
+						<Button
+							type="button"
+							variant="ghost"
+							size="sm"
+							aria-disabled={busy}
+							className="aria-disabled:text-ink-disabled!"
+							onClick={() => void onRemove()}
+						>
+							<Trash2 aria-hidden="true" />
+							{t("ui.agents.avatar.editor.remove")}
+						</Button>
+					) : null}
+				</fieldset>
+			)}
 			<p id={hintId} className="text-ink-dim text-meta">
-				{t("ui.agents.settings.general.profile_picture_hint")}
+				{t("ui.agents.avatar.editor.hint")}
 			</p>
 			{refusal ? (
 				<p className="text-danger text-meta" role="alert">
 					{refusalCopy(refusal)}
 				</p>
 			) : null}
-			{saveFailed ? (
+			{removeError ? (
 				<p className="text-danger text-meta" role="alert">
-					{t("ui.agents.settings.general.profile_picture_error_save")}
+					{removeError}
 				</p>
 			) : null}
-			{/*
-			 * `hidden`, not `sr-only`: the visible door is the Upload button (and the
-			 * label, which a native label still forwards to this input), so the file
-			 * input must not also be a tab stop with nothing painted at it.
-			 */}
+			{/* `hidden`: the Upload button is the visible door, not this input. */}
 			<input
 				ref={inputRef}
 				id={inputId}
@@ -234,3 +323,31 @@ export const AgentAvatarField: FC<AgentAvatarFieldProps> = ({
 		</div>
 	);
 };
+
+/**
+ * The current picture at the roster's 40px, reporting whether one is shown so
+ * the field can label its door Upload or Replace and offer Remove.
+ */
+function PictureProbe({
+	agentId,
+	src,
+	onPresence,
+}: {
+	agentId: string;
+	src?: string | null;
+	onPresence: (present: boolean) => void;
+}) {
+	return (
+		<AgentMark
+			agentId={agentId}
+			src={src}
+			className="size-10"
+			fallback={
+				<span className="flex size-10 shrink-0 items-center justify-center rounded-full border border-control bg-sunken text-ink-dim">
+					<Bot size={18} aria-hidden="true" />
+				</span>
+			}
+			onPresence={onPresence}
+		/>
+	);
+}
