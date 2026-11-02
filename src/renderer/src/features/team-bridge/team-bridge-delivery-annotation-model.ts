@@ -93,6 +93,12 @@ export function teamBridgeDeliveryLines(
 	// agent/system/future origins stay generic even if a class was supplied.
 	// The audit mapper marks unrecognized sender kinds while normalizing their
 	// display shape to human, so that marker must also suppress disclosure.
+	// The gate keys on the SENDER's origin, not on who is viewing, so it is
+	// conservative for owner views: an owner auditing their agent's refusal of
+	// an agent-sent message sees the generic line even though the hub sent them
+	// the class. That is deliberate (anti-oracle default). Widening it for
+	// owners needs a viewer-scoped flag from the hub plus its own security
+	// review, never a renderer-side guess about who is looking.
 	const knownHuman =
 		source.origin === "human" &&
 		source.sender?.kind === "human" &&

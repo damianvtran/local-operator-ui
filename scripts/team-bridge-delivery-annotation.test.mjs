@@ -391,6 +391,10 @@ test("owner-audit rows with missing, empty or future origin stay generic", () =>
 		["missing", {}],
 		["empty", { origin: "" }],
 		["future", { origin: "relay" }],
+		// R3: origin is an exact, case-sensitive vocabulary; a differently cased
+		// value is unrecognised, not a person or an agent.
+		["cased human", { origin: "Human" }],
+		["cased agent", { origin: "AGENT" }],
 	]) {
 		const message = row(over);
 		assert.equal(

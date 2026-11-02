@@ -7273,8 +7273,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "dcedd81e4a50f9029c7f59511de7ff7a936bb83a38d4bb2af32901404109b5a6",
-			"target_sha256": "27805b3d9bb3a363a33d14fd7483de65f9cbb3ab209df7a1adfc5f271a8f11c3",
+			"source_sha256": "f5b404b727961f04be67c5340a6a597eed44f02fc10b126d93a5fb95ae4ebd73",
+			"target_sha256": "b6fe43075a57f1df282ed9a04dd0a9162078a194582e0329c0afe07ee9525620",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -7289,21 +7289,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "openai/gpt-6.1-sol",
+					"agent": "task",
+					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-02",
 					"result": "clean",
-					"instance": "87206376c1d7-composition93584-es",
+					"instance": "439bcc181f80",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/87206376c1d7-composition93584-es.json",
-					"receipt_sha256": "1b117fd7cf81ca692b99b06ad38847e8adc81fbe2025627407b2b303be94f3cb",
-					"scope": "Independent exact byte composition only: 13 R4/R5 delivery tokens + main reply-window delta; inherited semantic coverage, not a new full-namespace linguistic audit.",
-					"note": "Composition 3631033e; completed assessment model GPT-6.1-Sol per root-reported host job 808faef7981e/af67 resume. Historical findings/receipts retained."
+					"receipt": "i18n/receipts/439bcc181f80.json",
+					"receipt_sha256": "d0fd89319774cf7d40c49760876dc3b97c271908fab7d569f6b9422ac199468d",
+					"scope": "ui.teamBridge.delivery.{refused,refused_manipulation,refused_personal_info,refused_abusive,refused_unsafe_content,refused_out_of_scope,held,held_screening_unavailable,held_awaiting_review,pending,info_refused,info_held,info_label} (PR #1521 copy delta)",
+					"note": "Independent copy-delta audit of #1521's 13 delivery keys by session 439bcc181f80, clean 0/0/0/0. Evidence: i18n/receipts/439bcc181f80.json (sha256 d0fd8931...468d)."
 				}
 			],
 			"status": "audited",
@@ -8631,6 +8631,30 @@
 							"receipt_sha256": "c48b94c8da4cc87a0b5a57355fa3e4dbdbc002f46f38ba8ec1220bfa240c7e36",
 							"scope": "Fifth rebase onto origin/main 589c8780124 (#1522 agent-wake copy, #1506): main bytes preserved, 13 ui.teamBridge.delivery.* keys re-audited against English",
 							"note": "Fifth-rebase re-audit (session cc87b564af61): main-side bytes = origin/main 589c8780124; 13 delivery.* re-read vs English and #1522 copy. No value changed."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "dcedd81e4a50f9029c7f59511de7ff7a936bb83a38d4bb2af32901404109b5a6",
+					"target_sha256": "27805b3d9bb3a363a33d14fd7483de65f9cbb3ab209df7a1adfc5f271a8f11c3",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-02",
+							"result": "clean",
+							"instance": "87206376c1d7-composition93584-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/87206376c1d7-composition93584-es.json",
+							"receipt_sha256": "1b117fd7cf81ca692b99b06ad38847e8adc81fbe2025627407b2b303be94f3cb",
+							"scope": "Independent exact byte composition only: 13 R4/R5 delivery tokens + main reply-window delta; inherited semantic coverage, not a new full-namespace linguistic audit.",
+							"note": "Composition 3631033e; completed assessment model GPT-6.1-Sol per root-reported host job 808faef7981e/af67 resume. Historical findings/receipts retained."
 						}
 					],
 					"status": "audited"
@@ -16419,8 +16443,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "dcedd81e4a50f9029c7f59511de7ff7a936bb83a38d4bb2af32901404109b5a6",
-			"target_sha256": "5f5683aa377cc063f042a421d33907c112b20177be9f925b5f9f64162c0810df",
+			"source_sha256": "f5b404b727961f04be67c5340a6a597eed44f02fc10b126d93a5fb95ae4ebd73",
+			"target_sha256": "dbd81e5e998449e9c002c3b6d125d82cc17687ec275339f6f98d00b6a0fb66c3",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -16436,21 +16460,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "openai/gpt-6.1-sol",
+					"agent": "task",
+					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-02",
 					"result": "clean",
-					"instance": "87206376c1d7-composition93584-fr",
+					"instance": "439bcc181f80",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/87206376c1d7-composition93584-fr.json",
-					"receipt_sha256": "0d63810175da70f51b7babb615591c656fe178400ab1e8e22d0a8e2f898fa7c6",
-					"scope": "Independent exact byte composition only: 13 R4/R5 delivery tokens + main reply-window delta; inherited semantic coverage, not a new full-namespace linguistic audit.",
-					"note": "Composition 3631033e; completed assessment model GPT-6.1-Sol per root-reported host job 808faef7981e/af67 resume. Historical findings/receipts retained."
+					"receipt": "i18n/receipts/439bcc181f80.json",
+					"receipt_sha256": "d0fd89319774cf7d40c49760876dc3b97c271908fab7d569f6b9422ac199468d",
+					"scope": "ui.teamBridge.delivery.{refused,refused_manipulation,refused_personal_info,refused_abusive,refused_unsafe_content,refused_out_of_scope,held,held_screening_unavailable,held_awaiting_review,pending,info_refused,info_held,info_label} (PR #1521 copy delta)",
+					"note": "Independent copy-delta audit of #1521's 13 delivery keys by session 439bcc181f80, clean 0/0/0/0. Evidence: i18n/receipts/439bcc181f80.json (sha256 d0fd8931...468d)."
 				}
 			],
 			"status": "audited",
@@ -17802,6 +17826,30 @@
 							"receipt_sha256": "928fc593b950a385be3c42e3022a93c95ad0916042c859989969c70f3bcadcbe",
 							"scope": "Fifth rebase onto origin/main 589c8780124 (#1522 agent-wake copy, #1506): main bytes preserved, 13 ui.teamBridge.delivery.* keys re-audited against English",
 							"note": "Fifth-rebase re-audit (session cc87b564af61): main-side bytes = origin/main 589c8780124; 13 delivery.* re-read vs English and #1522 copy. No value changed."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "dcedd81e4a50f9029c7f59511de7ff7a936bb83a38d4bb2af32901404109b5a6",
+					"target_sha256": "5f5683aa377cc063f042a421d33907c112b20177be9f925b5f9f64162c0810df",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-02",
+							"result": "clean",
+							"instance": "87206376c1d7-composition93584-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/87206376c1d7-composition93584-fr.json",
+							"receipt_sha256": "0d63810175da70f51b7babb615591c656fe178400ab1e8e22d0a8e2f898fa7c6",
+							"scope": "Independent exact byte composition only: 13 R4/R5 delivery tokens + main reply-window delta; inherited semantic coverage, not a new full-namespace linguistic audit.",
+							"note": "Composition 3631033e; completed assessment model GPT-6.1-Sol per root-reported host job 808faef7981e/af67 resume. Historical findings/receipts retained."
 						}
 					],
 					"status": "audited"
@@ -25445,8 +25493,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "dcedd81e4a50f9029c7f59511de7ff7a936bb83a38d4bb2af32901404109b5a6",
-			"target_sha256": "06c9f56dd4fe9940702af39a783270525a6ff0e4560cf74b9239557fa5b0de35",
+			"source_sha256": "f5b404b727961f04be67c5340a6a597eed44f02fc10b126d93a5fb95ae4ebd73",
+			"target_sha256": "9c1b09f38ec15860f89863f1e0f7ef2535859b92ea81700305257809c234501a",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -25461,21 +25509,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "openai/gpt-6.1-sol",
+					"agent": "task",
+					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-02",
 					"result": "clean",
-					"instance": "87206376c1d7-composition93584-hi",
+					"instance": "439bcc181f80",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/87206376c1d7-composition93584-hi.json",
-					"receipt_sha256": "37f942e067f16aed67945a893e5bf11adec5753e5a1b8c0d7a2a944ce615249e",
-					"scope": "Independent exact byte composition only: 13 R4/R5 delivery tokens + main reply-window delta; inherited semantic coverage, not a new full-namespace linguistic audit.",
-					"note": "Composition 3631033e; completed assessment model GPT-6.1-Sol per root-reported host job 808faef7981e/af67 resume. Historical findings/receipts retained."
+					"receipt": "i18n/receipts/439bcc181f80.json",
+					"receipt_sha256": "d0fd89319774cf7d40c49760876dc3b97c271908fab7d569f6b9422ac199468d",
+					"scope": "ui.teamBridge.delivery.{refused,refused_manipulation,refused_personal_info,refused_abusive,refused_unsafe_content,refused_out_of_scope,held,held_screening_unavailable,held_awaiting_review,pending,info_refused,info_held,info_label} (PR #1521 copy delta)",
+					"note": "Independent copy-delta audit of #1521's 13 delivery keys by session 439bcc181f80, clean 0/0/0/0. Evidence: i18n/receipts/439bcc181f80.json (sha256 d0fd8931...468d)."
 				}
 			],
 			"status": "audited",
@@ -26733,6 +26781,30 @@
 							"receipt_sha256": "665960af6e97f269bb732642073ed3e00208a3484adc64946866b6b8845cc235",
 							"scope": "Fifth rebase onto origin/main 589c8780124 (#1522 agent-wake copy, #1506): main bytes preserved, 13 ui.teamBridge.delivery.* keys re-audited against English",
 							"note": "Fifth-rebase re-audit (session cc87b564af61): main-side bytes = origin/main 589c8780124; 13 delivery.* re-read vs English and #1522 copy. No value changed."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "dcedd81e4a50f9029c7f59511de7ff7a936bb83a38d4bb2af32901404109b5a6",
+					"target_sha256": "06c9f56dd4fe9940702af39a783270525a6ff0e4560cf74b9239557fa5b0de35",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-02",
+							"result": "clean",
+							"instance": "87206376c1d7-composition93584-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/87206376c1d7-composition93584-hi.json",
+							"receipt_sha256": "37f942e067f16aed67945a893e5bf11adec5753e5a1b8c0d7a2a944ce615249e",
+							"scope": "Independent exact byte composition only: 13 R4/R5 delivery tokens + main reply-window delta; inherited semantic coverage, not a new full-namespace linguistic audit.",
+							"note": "Composition 3631033e; completed assessment model GPT-6.1-Sol per root-reported host job 808faef7981e/af67 resume. Historical findings/receipts retained."
 						}
 					],
 					"status": "audited"
@@ -34152,8 +34224,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "dcedd81e4a50f9029c7f59511de7ff7a936bb83a38d4bb2af32901404109b5a6",
-			"target_sha256": "559f6461d1c01535d605a8f66dec6105510d67399d0b1e4c3d3b0464e0cc0e87",
+			"source_sha256": "f5b404b727961f04be67c5340a6a597eed44f02fc10b126d93a5fb95ae4ebd73",
+			"target_sha256": "00f364d625aee5e726481deb5d1c25322589885412d581c7ebb2105c52e070cd",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -34169,21 +34241,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "openai/gpt-6.1-sol",
+					"agent": "task",
+					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-02",
 					"result": "clean",
-					"instance": "87206376c1d7-composition93584-ru",
+					"instance": "439bcc181f80",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/87206376c1d7-composition93584-ru.json",
-					"receipt_sha256": "bada8411717437f6fe316cc095df7735879233515eaa9849eaac958a25be6f54",
-					"scope": "Independent exact byte composition only: 13 R4/R5 delivery tokens + main reply-window delta; inherited semantic coverage, not a new full-namespace linguistic audit.",
-					"note": "Composition 3631033e; completed assessment model GPT-6.1-Sol per root-reported host job 808faef7981e/af67 resume. Historical findings/receipts retained."
+					"receipt": "i18n/receipts/439bcc181f80.json",
+					"receipt_sha256": "d0fd89319774cf7d40c49760876dc3b97c271908fab7d569f6b9422ac199468d",
+					"scope": "ui.teamBridge.delivery.{refused,refused_manipulation,refused_personal_info,refused_abusive,refused_unsafe_content,refused_out_of_scope,held,held_screening_unavailable,held_awaiting_review,pending,info_refused,info_held,info_label} (PR #1521 copy delta)",
+					"note": "Independent copy-delta audit of #1521's 13 delivery keys by session 439bcc181f80, clean 0/0/0/0. Evidence: i18n/receipts/439bcc181f80.json (sha256 d0fd8931...468d)."
 				}
 			],
 			"status": "audited",
@@ -35530,6 +35602,30 @@
 							"receipt_sha256": "6da9c5a022ac46890b3a15215f0548d2dda9e897f195e6bd279ab46d9a6b6c65",
 							"scope": "Fifth rebase onto origin/main 589c8780124 (#1522 agent-wake copy, #1506): main bytes preserved, 13 ui.teamBridge.delivery.* keys re-audited against English",
 							"note": "Fifth-rebase re-audit (session cc87b564af61): main-side bytes = origin/main 589c8780124; 13 delivery.* re-read vs English and #1522 copy. No value changed."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "dcedd81e4a50f9029c7f59511de7ff7a936bb83a38d4bb2af32901404109b5a6",
+					"target_sha256": "559f6461d1c01535d605a8f66dec6105510d67399d0b1e4c3d3b0464e0cc0e87",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-02",
+							"result": "clean",
+							"instance": "87206376c1d7-composition93584-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/87206376c1d7-composition93584-ru.json",
+							"receipt_sha256": "bada8411717437f6fe316cc095df7735879233515eaa9849eaac958a25be6f54",
+							"scope": "Independent exact byte composition only: 13 R4/R5 delivery tokens + main reply-window delta; inherited semantic coverage, not a new full-namespace linguistic audit.",
+							"note": "Composition 3631033e; completed assessment model GPT-6.1-Sol per root-reported host job 808faef7981e/af67 resume. Historical findings/receipts retained."
 						}
 					],
 					"status": "audited"
@@ -43008,8 +43104,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "dcedd81e4a50f9029c7f59511de7ff7a936bb83a38d4bb2af32901404109b5a6",
-			"target_sha256": "c515f278b304c74507b2e856489ae4a8648cd315c3d12fbc4da30d85b1cedc6b",
+			"source_sha256": "f5b404b727961f04be67c5340a6a597eed44f02fc10b126d93a5fb95ae4ebd73",
+			"target_sha256": "48c5f84a76b6b3bdf7bc75090985ee3ede9644f35c8c06ebe7be90a5da8055e8",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -43024,21 +43120,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "openai/gpt-6.1-sol",
+					"agent": "task",
+					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-02",
 					"result": "clean",
-					"instance": "87206376c1d7-composition93584-ur",
+					"instance": "439bcc181f80",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/87206376c1d7-composition93584-ur.json",
-					"receipt_sha256": "6614d2c2dd7bbc7f43b41d3ea92569c4f15f6e1bcb8a8c69c357776a7976d5ee",
-					"scope": "Independent exact byte composition only: 13 R4/R5 delivery tokens + main reply-window delta; inherited semantic coverage, not a new full-namespace linguistic audit.",
-					"note": "Composition 3631033e; completed assessment model GPT-6.1-Sol per root-reported host job 808faef7981e/af67 resume. Historical findings/receipts retained."
+					"receipt": "i18n/receipts/439bcc181f80.json",
+					"receipt_sha256": "d0fd89319774cf7d40c49760876dc3b97c271908fab7d569f6b9422ac199468d",
+					"scope": "ui.teamBridge.delivery.{refused,refused_manipulation,refused_personal_info,refused_abusive,refused_unsafe_content,refused_out_of_scope,held,held_screening_unavailable,held_awaiting_review,pending,info_refused,info_held,info_label} (PR #1521 copy delta)",
+					"note": "Independent copy-delta audit of #1521's 13 delivery keys by session 439bcc181f80, clean 0/0/0/0. Evidence: i18n/receipts/439bcc181f80.json (sha256 d0fd8931...468d)."
 				}
 			],
 			"status": "audited",
@@ -44296,6 +44392,30 @@
 							"receipt_sha256": "a6d3b6b982c6380ab27b2aee7dbf5ea1652cfb2fecca28fad45ae85dd4139e57",
 							"scope": "Fifth rebase onto origin/main 589c8780124 (#1522 agent-wake copy, #1506): main bytes preserved, 13 ui.teamBridge.delivery.* keys re-audited against English",
 							"note": "Fifth-rebase re-audit (session cc87b564af61): main-side bytes = origin/main 589c8780124; 13 delivery.* re-read vs English and #1522 copy. No value changed."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "dcedd81e4a50f9029c7f59511de7ff7a936bb83a38d4bb2af32901404109b5a6",
+					"target_sha256": "c515f278b304c74507b2e856489ae4a8648cd315c3d12fbc4da30d85b1cedc6b",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-02",
+							"result": "clean",
+							"instance": "87206376c1d7-composition93584-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/87206376c1d7-composition93584-ur.json",
+							"receipt_sha256": "6614d2c2dd7bbc7f43b41d3ea92569c4f15f6e1bcb8a8c69c357776a7976d5ee",
+							"scope": "Independent exact byte composition only: 13 R4/R5 delivery tokens + main reply-window delta; inherited semantic coverage, not a new full-namespace linguistic audit.",
+							"note": "Composition 3631033e; completed assessment model GPT-6.1-Sol per root-reported host job 808faef7981e/af67 resume. Historical findings/receipts retained."
 						}
 					],
 					"status": "audited"
@@ -52197,8 +52317,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "dcedd81e4a50f9029c7f59511de7ff7a936bb83a38d4bb2af32901404109b5a6",
-			"target_sha256": "5c02f472877339605099f5c4d219065346014cf104a0edc3dc6f34237805c7ef",
+			"source_sha256": "f5b404b727961f04be67c5340a6a597eed44f02fc10b126d93a5fb95ae4ebd73",
+			"target_sha256": "039a530f0c8540ebf90ac689865423fb3b468193a4c3e7099e37c7cfb7268496",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -52213,21 +52333,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "openai/gpt-6.1-sol",
+					"agent": "task",
+					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-02",
 					"result": "clean",
-					"instance": "87206376c1d7-composition93584-vi",
+					"instance": "439bcc181f80",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/87206376c1d7-composition93584-vi.json",
-					"receipt_sha256": "e69843b662a4ee347f8c803091701bccb8f174872f3b842763d2121b93d864d9",
-					"scope": "Independent exact byte composition only: 13 R4/R5 delivery tokens + main reply-window delta; inherited semantic coverage, not a new full-namespace linguistic audit.",
-					"note": "Composition 3631033e; completed assessment model GPT-6.1-Sol per root-reported host job 808faef7981e/af67 resume. Historical findings/receipts retained."
+					"receipt": "i18n/receipts/439bcc181f80.json",
+					"receipt_sha256": "d0fd89319774cf7d40c49760876dc3b97c271908fab7d569f6b9422ac199468d",
+					"scope": "ui.teamBridge.delivery.{refused,refused_manipulation,refused_personal_info,refused_abusive,refused_unsafe_content,refused_out_of_scope,held,held_screening_unavailable,held_awaiting_review,pending,info_refused,info_held,info_label} (PR #1521 copy delta)",
+					"note": "Independent copy-delta audit of #1521's 13 delivery keys by session 439bcc181f80, clean 0/0/0/0. Evidence: i18n/receipts/439bcc181f80.json (sha256 d0fd8931...468d)."
 				}
 			],
 			"status": "audited",
@@ -53516,6 +53636,30 @@
 							"receipt_sha256": "7d96691990341926b57f92037cdb856aa711bf6da2fc2e34f8f087c8afa5d4eb",
 							"scope": "Fifth rebase onto origin/main 589c8780124 (#1522 agent-wake copy, #1506): main bytes preserved, 13 ui.teamBridge.delivery.* keys re-audited against English",
 							"note": "Fifth-rebase re-audit (session cc87b564af61): main-side bytes = origin/main 589c8780124; 13 delivery.* re-read vs English and #1522 copy. No value changed."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "dcedd81e4a50f9029c7f59511de7ff7a936bb83a38d4bb2af32901404109b5a6",
+					"target_sha256": "5c02f472877339605099f5c4d219065346014cf104a0edc3dc6f34237805c7ef",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-02",
+							"result": "clean",
+							"instance": "87206376c1d7-composition93584-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/87206376c1d7-composition93584-vi.json",
+							"receipt_sha256": "e69843b662a4ee347f8c803091701bccb8f174872f3b842763d2121b93d864d9",
+							"scope": "Independent exact byte composition only: 13 R4/R5 delivery tokens + main reply-window delta; inherited semantic coverage, not a new full-namespace linguistic audit.",
+							"note": "Composition 3631033e; completed assessment model GPT-6.1-Sol per root-reported host job 808faef7981e/af67 resume. Historical findings/receipts retained."
 						}
 					],
 					"status": "audited"
@@ -61988,8 +62132,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "dcedd81e4a50f9029c7f59511de7ff7a936bb83a38d4bb2af32901404109b5a6",
-			"target_sha256": "be9b12bd2f7e83662beaf84a700c650a90907b3e831f7be3341048c5c9aa070e",
+			"source_sha256": "f5b404b727961f04be67c5340a6a597eed44f02fc10b126d93a5fb95ae4ebd73",
+			"target_sha256": "795ecf8b2b2a6318e5ae11d7dc724b048769d66b9aabb3ad8a9d10c529417f3d",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -62004,21 +62148,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "openai/gpt-6.1-sol",
+					"agent": "task",
+					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-02",
 					"result": "clean",
-					"instance": "87206376c1d7-composition93584-zh-cn",
+					"instance": "439bcc181f80",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/87206376c1d7-composition93584-zh-cn.json",
-					"receipt_sha256": "22a493bf80478b369ab786157556b504169a049138eeb608b39be6fbb28d089e",
-					"scope": "Independent exact byte composition only: 13 R4/R5 delivery tokens + main reply-window delta; inherited semantic coverage, not a new full-namespace linguistic audit.",
-					"note": "Composition 3631033e; completed assessment model GPT-6.1-Sol per root-reported host job 808faef7981e/af67 resume. Historical findings/receipts retained."
+					"receipt": "i18n/receipts/439bcc181f80.json",
+					"receipt_sha256": "d0fd89319774cf7d40c49760876dc3b97c271908fab7d569f6b9422ac199468d",
+					"scope": "ui.teamBridge.delivery.{refused,refused_manipulation,refused_personal_info,refused_abusive,refused_unsafe_content,refused_out_of_scope,held,held_screening_unavailable,held_awaiting_review,pending,info_refused,info_held,info_label} (PR #1521 copy delta)",
+					"note": "Independent copy-delta audit of #1521's 13 delivery keys by session 439bcc181f80, clean 0/0/0/0. Evidence: i18n/receipts/439bcc181f80.json (sha256 d0fd8931...468d)."
 				}
 			],
 			"status": "audited",
@@ -63329,6 +63473,30 @@
 							"receipt_sha256": "d35271c343accd83b416feb5de7be05c208903240f3c82c1891160e80a18f433",
 							"scope": "Fifth rebase onto origin/main 589c8780124 (#1522 agent-wake copy, #1506): main bytes preserved, 13 ui.teamBridge.delivery.* keys re-audited against English",
 							"note": "Fifth-rebase re-audit (session cc87b564af61): main-side bytes = origin/main 589c8780124; 13 delivery.* re-read vs English and #1522 copy. No value changed."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "dcedd81e4a50f9029c7f59511de7ff7a936bb83a38d4bb2af32901404109b5a6",
+					"target_sha256": "be9b12bd2f7e83662beaf84a700c650a90907b3e831f7be3341048c5c9aa070e",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-02",
+							"result": "clean",
+							"instance": "87206376c1d7-composition93584-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/87206376c1d7-composition93584-zh-cn.json",
+							"receipt_sha256": "22a493bf80478b369ab786157556b504169a049138eeb608b39be6fbb28d089e",
+							"scope": "Independent exact byte composition only: 13 R4/R5 delivery tokens + main reply-window delta; inherited semantic coverage, not a new full-namespace linguistic audit.",
+							"note": "Composition 3631033e; completed assessment model GPT-6.1-Sol per root-reported host job 808faef7981e/af67 resume. Historical findings/receipts retained."
 						}
 					],
 					"status": "audited"
