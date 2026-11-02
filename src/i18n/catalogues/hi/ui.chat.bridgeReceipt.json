@@ -1,0 +1,5 @@
+{
+	"ui.chat.bridgeReceipt.received": "{sender} से प्राप्त",
+	"ui.chat.bridgeReceipt.unavailable": "संदेश का पाठ उपलब्ध नहीं है।",
+	"ui.chat.bridgeReceipt.provenance": "बाहरी संदेश · अविश्वसनीय सामग्री"
+}

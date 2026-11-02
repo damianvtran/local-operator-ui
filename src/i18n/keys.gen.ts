@@ -50,6 +50,7 @@ import enUiCanvas from "./catalogues/en/ui.canvas.json";
 import enUiChatAnalytics from "./catalogues/en/ui.chat.analytics.json";
 import enUiChatAsks from "./catalogues/en/ui.chat.asks.json";
 import enUiChatAttachments from "./catalogues/en/ui.chat.attachments.json";
+import enUiChatBridgeReceipt from "./catalogues/en/ui.chat.bridgeReceipt.json";
 import enUiChatCanonical from "./catalogues/en/ui.chat.canonical.json";
 import enUiChatCommentaryActions from "./catalogues/en/ui.chat.commentary_actions.json";
 import enUiChatComposer from "./catalogues/en/ui.chat.composer.json";
@@ -167,6 +168,7 @@ import esUiCanvas from "./catalogues/es/ui.canvas.json";
 import esUiChatAnalytics from "./catalogues/es/ui.chat.analytics.json";
 import esUiChatAsks from "./catalogues/es/ui.chat.asks.json";
 import esUiChatAttachments from "./catalogues/es/ui.chat.attachments.json";
+import esUiChatBridgeReceipt from "./catalogues/es/ui.chat.bridgeReceipt.json";
 import esUiChatCanonical from "./catalogues/es/ui.chat.canonical.json";
 import esUiChatCommentaryActions from "./catalogues/es/ui.chat.commentary_actions.json";
 import esUiChatComposer from "./catalogues/es/ui.chat.composer.json";
@@ -284,6 +286,7 @@ import frUiCanvas from "./catalogues/fr/ui.canvas.json";
 import frUiChatAnalytics from "./catalogues/fr/ui.chat.analytics.json";
 import frUiChatAsks from "./catalogues/fr/ui.chat.asks.json";
 import frUiChatAttachments from "./catalogues/fr/ui.chat.attachments.json";
+import frUiChatBridgeReceipt from "./catalogues/fr/ui.chat.bridgeReceipt.json";
 import frUiChatCanonical from "./catalogues/fr/ui.chat.canonical.json";
 import frUiChatCommentaryActions from "./catalogues/fr/ui.chat.commentary_actions.json";
 import frUiChatComposer from "./catalogues/fr/ui.chat.composer.json";
@@ -401,6 +404,7 @@ import hiUiCanvas from "./catalogues/hi/ui.canvas.json";
 import hiUiChatAnalytics from "./catalogues/hi/ui.chat.analytics.json";
 import hiUiChatAsks from "./catalogues/hi/ui.chat.asks.json";
 import hiUiChatAttachments from "./catalogues/hi/ui.chat.attachments.json";
+import hiUiChatBridgeReceipt from "./catalogues/hi/ui.chat.bridgeReceipt.json";
 import hiUiChatCanonical from "./catalogues/hi/ui.chat.canonical.json";
 import hiUiChatCommentaryActions from "./catalogues/hi/ui.chat.commentary_actions.json";
 import hiUiChatComposer from "./catalogues/hi/ui.chat.composer.json";
@@ -518,6 +522,7 @@ import ruUiCanvas from "./catalogues/ru/ui.canvas.json";
 import ruUiChatAnalytics from "./catalogues/ru/ui.chat.analytics.json";
 import ruUiChatAsks from "./catalogues/ru/ui.chat.asks.json";
 import ruUiChatAttachments from "./catalogues/ru/ui.chat.attachments.json";
+import ruUiChatBridgeReceipt from "./catalogues/ru/ui.chat.bridgeReceipt.json";
 import ruUiChatCanonical from "./catalogues/ru/ui.chat.canonical.json";
 import ruUiChatCommentaryActions from "./catalogues/ru/ui.chat.commentary_actions.json";
 import ruUiChatComposer from "./catalogues/ru/ui.chat.composer.json";
@@ -635,6 +640,7 @@ import urUiCanvas from "./catalogues/ur/ui.canvas.json";
 import urUiChatAnalytics from "./catalogues/ur/ui.chat.analytics.json";
 import urUiChatAsks from "./catalogues/ur/ui.chat.asks.json";
 import urUiChatAttachments from "./catalogues/ur/ui.chat.attachments.json";
+import urUiChatBridgeReceipt from "./catalogues/ur/ui.chat.bridgeReceipt.json";
 import urUiChatCanonical from "./catalogues/ur/ui.chat.canonical.json";
 import urUiChatCommentaryActions from "./catalogues/ur/ui.chat.commentary_actions.json";
 import urUiChatComposer from "./catalogues/ur/ui.chat.composer.json";
@@ -752,6 +758,7 @@ import viUiCanvas from "./catalogues/vi/ui.canvas.json";
 import viUiChatAnalytics from "./catalogues/vi/ui.chat.analytics.json";
 import viUiChatAsks from "./catalogues/vi/ui.chat.asks.json";
 import viUiChatAttachments from "./catalogues/vi/ui.chat.attachments.json";
+import viUiChatBridgeReceipt from "./catalogues/vi/ui.chat.bridgeReceipt.json";
 import viUiChatCanonical from "./catalogues/vi/ui.chat.canonical.json";
 import viUiChatCommentaryActions from "./catalogues/vi/ui.chat.commentary_actions.json";
 import viUiChatComposer from "./catalogues/vi/ui.chat.composer.json";
@@ -869,6 +876,7 @@ import zhCNUiCanvas from "./catalogues/zh-CN/ui.canvas.json";
 import zhCNUiChatAnalytics from "./catalogues/zh-CN/ui.chat.analytics.json";
 import zhCNUiChatAsks from "./catalogues/zh-CN/ui.chat.asks.json";
 import zhCNUiChatAttachments from "./catalogues/zh-CN/ui.chat.attachments.json";
+import zhCNUiChatBridgeReceipt from "./catalogues/zh-CN/ui.chat.bridgeReceipt.json";
 import zhCNUiChatCanonical from "./catalogues/zh-CN/ui.chat.canonical.json";
 import zhCNUiChatCommentaryActions from "./catalogues/zh-CN/ui.chat.commentary_actions.json";
 import zhCNUiChatComposer from "./catalogues/zh-CN/ui.chat.composer.json";
@@ -989,6 +997,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiChatAnalytics,
 	...enUiChatAsks,
 	...enUiChatAttachments,
+	...enUiChatBridgeReceipt,
 	...enUiChatCanonical,
 	...enUiChatCommentaryActions,
 	...enUiChatComposer,
@@ -1114,6 +1123,7 @@ export const bundledCatalogues: Readonly<
 		...esUiChatAnalytics,
 		...esUiChatAsks,
 		...esUiChatAttachments,
+		...esUiChatBridgeReceipt,
 		...esUiChatCanonical,
 		...esUiChatCommentaryActions,
 		...esUiChatComposer,
@@ -1233,6 +1243,7 @@ export const bundledCatalogues: Readonly<
 		...frUiChatAnalytics,
 		...frUiChatAsks,
 		...frUiChatAttachments,
+		...frUiChatBridgeReceipt,
 		...frUiChatCanonical,
 		...frUiChatCommentaryActions,
 		...frUiChatComposer,
@@ -1352,6 +1363,7 @@ export const bundledCatalogues: Readonly<
 		...hiUiChatAnalytics,
 		...hiUiChatAsks,
 		...hiUiChatAttachments,
+		...hiUiChatBridgeReceipt,
 		...hiUiChatCanonical,
 		...hiUiChatCommentaryActions,
 		...hiUiChatComposer,
@@ -1471,6 +1483,7 @@ export const bundledCatalogues: Readonly<
 		...ruUiChatAnalytics,
 		...ruUiChatAsks,
 		...ruUiChatAttachments,
+		...ruUiChatBridgeReceipt,
 		...ruUiChatCanonical,
 		...ruUiChatCommentaryActions,
 		...ruUiChatComposer,
@@ -1590,6 +1603,7 @@ export const bundledCatalogues: Readonly<
 		...urUiChatAnalytics,
 		...urUiChatAsks,
 		...urUiChatAttachments,
+		...urUiChatBridgeReceipt,
 		...urUiChatCanonical,
 		...urUiChatCommentaryActions,
 		...urUiChatComposer,
@@ -1709,6 +1723,7 @@ export const bundledCatalogues: Readonly<
 		...viUiChatAnalytics,
 		...viUiChatAsks,
 		...viUiChatAttachments,
+		...viUiChatBridgeReceipt,
 		...viUiChatCanonical,
 		...viUiChatCommentaryActions,
 		...viUiChatComposer,
@@ -1828,6 +1843,7 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiChatAnalytics,
 		...zhCNUiChatAsks,
 		...zhCNUiChatAttachments,
+		...zhCNUiChatBridgeReceipt,
 		...zhCNUiChatCanonical,
 		...zhCNUiChatCommentaryActions,
 		...zhCNUiChatComposer,
@@ -3455,6 +3471,9 @@ export type MessageParams = {
 	"ui.chat.attachments.saved_copy_label": undefined;
 	"ui.chat.attachments.saved_path_copied": undefined;
 	"ui.chat.attachments.volume": undefined;
+	"ui.chat.bridgeReceipt.provenance": undefined;
+	"ui.chat.bridgeReceipt.received": { sender: string };
+	"ui.chat.bridgeReceipt.unavailable": undefined;
 	"ui.chat.canonical.fold.bridge.one": undefined;
 	"ui.chat.canonical.fold.bridge.other": undefined;
 	"ui.chat.canonical.fold.bridge_post.one": undefined;
