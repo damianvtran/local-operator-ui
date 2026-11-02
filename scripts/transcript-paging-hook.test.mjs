@@ -11,7 +11,7 @@ const CACHE = join(ROOT, "node_modules", ".cache", "transcript-paging-hook");
 const bundle = await build({
 	stdin: {
 		contents:
-			'export { useScrollPaging, ANCHOR_HOLD_MS } from "./src/renderer/src/features/chat/canonical/use-scroll-paging";\nexport { MAX_ACT_ASKS, SETTLE_MS } from "./src/renderer/src/features/chat/canonical/scroll-paging";',
+			'export { useScrollPaging, ANCHOR_HOLD_MS } from "./src/renderer/src/features/chat/canonical/use-scroll-paging";\nexport { MAX_ACT_ASKS, MAX_CHAIN_FETCH, SETTLE_MS } from "./src/renderer/src/features/chat/canonical/scroll-paging";',
 		resolveDir: ROOT,
 	},
 	bundle: true,
@@ -28,8 +28,13 @@ const bundle = await build({
 mkdirSync(CACHE, { recursive: true });
 const bundlePath = join(CACHE, "use-scroll-paging.mjs");
 writeFileSync(bundlePath, bundle.outputFiles[0].text);
-const { useScrollPaging, ANCHOR_HOLD_MS, SETTLE_MS, MAX_ACT_ASKS } =
-	await import(new URL(`file://${bundlePath}`).href);
+const {
+	useScrollPaging,
+	ANCHOR_HOLD_MS,
+	SETTLE_MS,
+	MAX_ACT_ASKS,
+	MAX_CHAIN_FETCH,
+} = await import(new URL(`file://${bundlePath}`).href);
 const { createRoot } = await import("react-dom/client");
 
 after(() => {
@@ -45,7 +50,7 @@ after(() => {
  */
 function mountHook(options = {}) {
 	const dom = new JSDOM(
-		'<!doctype html><div id="root"></div><div id="transcript"><div data-lo-transcript-content><div data-record-id="held-row"></div></div></div>',
+		'<!doctype html><div id="root"></div><div id="transcript"><div data-lo-transcript-content><div data-lo-transcript-entries><div data-lo-entry-key="held-entry" data-record-id="held-row"></div></div></div></div>',
 		{ url: "http://localhost/", pretendToBeVisual: true },
 	);
 	const { window } = dom;
@@ -63,6 +68,9 @@ function mountHook(options = {}) {
 	let scrollTop = -50;
 	let scrollHeight = 1000;
 	let anchorTop = 120;
+	let renderedHeight = 30;
+	const entries = scroller.querySelector("[data-lo-transcript-entries]");
+	entries.getBoundingClientRect = () => ({ top: anchorTop });
 	Object.defineProperties(scroller, {
 		clientHeight: { configurable: true, value: 800 },
 		scrollHeight: {
@@ -80,7 +88,8 @@ function mountHook(options = {}) {
 	scroller.getBoundingClientRect = () => ({ top: 100, bottom: 900 });
 	row.getBoundingClientRect = () => ({
 		top: anchorTop,
-		bottom: anchorTop + 30,
+		bottom: anchorTop + renderedHeight,
+		height: renderedHeight,
 	});
 	window.CSS = { escape: (value) => String(value).replaceAll('"', '\\"') };
 	window.Element.prototype.scrollIntoView = () => {};
@@ -122,6 +131,8 @@ function mountHook(options = {}) {
 
 	const root = createRoot(window.document.querySelector("#root"));
 	let rowCount = 1;
+	let hasMore = options.hasMore ?? true;
+	let hydrationProven = options.hydrationProven ?? true;
 	let widenCalls = 0;
 	// Parameterised so a case can mount the reader in the state it is about
 	// (rows held back, a landing to drive) without a second harness beside
@@ -166,13 +177,13 @@ function mountHook(options = {}) {
 			containerRef: { current: scroller },
 			sessionKey,
 			hiddenRows,
-			hasMore: options.hasMore ?? true,
+			hasMore,
 			/*
 			 * The end claim's proof. Defaults true here for the cases written
 			 * before the fact existed (their arms are about paging, not about
 			 * the end statement); the two cases that are about it pass it.
 			 */
-			hydrationProven: options.hydrationProven ?? true,
+			hydrationProven,
 			historyReadPending,
 			onWiden: () => {
 				widenCalls++;
@@ -283,6 +294,12 @@ function mountHook(options = {}) {
 			return widenCalls;
 		},
 		/** Asks the pump dispatched, whichever loader form the case supplied. */
+		hydrate: (more = true) => {
+			hydrationProven = true;
+			hasMore = more;
+			rowCount++;
+			render();
+		},
 		get asked() {
 			return asked;
 		},
@@ -290,6 +307,16 @@ function mountHook(options = {}) {
 		mayAutoWalk: () => handle.mayAutoWalk(),
 		setScrollTop: (value) => {
 			scrollTop = value;
+		},
+		setRenderedHeight: (value) => {
+			renderedHeight = value;
+		},
+		addEstimatedSpacer: (height) => {
+			const spacer = window.document.createElement("div");
+			spacer.setAttribute("data-lo-transcript-spacer", "");
+			spacer.getBoundingClientRect = () => ({ height });
+			entries.prepend(spacer);
+			entries.getBoundingClientRect = () => ({ top: anchorTop - height });
 		},
 		setScrollHeight: (value) => {
 			scrollHeight = value;
@@ -1385,6 +1412,156 @@ test("a deliberate retry holds the reader's place on the landing's own frame", a
 			hook.scrollTop,
 			before + 24,
 			"the deliberate retry's landing is corrected on the frame it lands",
+		);
+	} finally {
+		hook.close();
+	}
+});
+
+test("startup fill survives an unhydrated frame and stays single-flight and bounded", async () => {
+	let resolveLoad;
+	const hook = mountHook({
+		hydrationProven: false,
+		hasMore: false,
+		hiddenRows: 0,
+		onLoadOlderOutcome: () =>
+			new Promise((resolve) => {
+				resolveLoad = resolve;
+			}),
+	});
+	try {
+		hook.setScrollTop(0);
+		hook.setScrollHeight(300);
+		hook.flushFrames(8);
+		assert.equal(hook.asked, 0, "no paging before hydration");
+		hook.hydrate();
+		hook.flushFrames(8);
+		assert.equal(hook.asked, 1, "hydration automatically fills without input");
+		hook.flushFrames(40);
+		assert.equal(hook.asked, 1, "an unresolved request is single-flight");
+		for (let i = 0; i < MAX_ACT_ASKS + 2; i++) {
+			await act(async () => {
+				resolveLoad({ kind: "applied", newRecords: 0, exhausted: false });
+			});
+			hook.flushFrames(40);
+		}
+		assert.ok(
+			hook.asked <= MAX_ACT_ASKS,
+			`bounded empty-page chain: ${hook.asked}`,
+		);
+		assert.equal(
+			hook.asked,
+			MAX_ACT_ASKS,
+			"invisible pages retain their existing twelve-ask allowance",
+		);
+		const stopped = hook.asked;
+		hook.flushFrames(80);
+		assert.equal(
+			hook.asked,
+			stopped,
+			"layout passes do not replenish the budget",
+		);
+		assert.equal(
+			hook.scrollTop,
+			0,
+			"empty-page continuation leaves the initial anchor offset alone",
+		);
+	} finally {
+		hook.close();
+	}
+});
+
+test("startup fill measures grouped entry boxes, not window estimates, and is evaluated only once", () => {
+	for (const tall of [false, true]) {
+		const hook = mountHook({
+			hydrationProven: false,
+			hasMore: false,
+			hiddenRows: 0,
+			onLoadOlderOutcome: () => new Promise(() => {}),
+		});
+		try {
+			hook.setScrollTop(0);
+			hook.setScrollHeight(300);
+			hook.setRenderedHeight(tall ? 900 : 40);
+			hook.addEstimatedSpacer(2000);
+			hook.hydrate();
+			hook.flushFrames(4);
+			assert.equal(
+				hook.asked,
+				tall ? 0 : 1,
+				"only real grouped content fulfils startup fill",
+			);
+			if (tall) {
+				hook.setRenderedHeight(40);
+				hook.hydrate();
+				hook.flushFrames(8);
+				assert.equal(
+					hook.asked,
+					0,
+					"later layout cannot re-arm fulfilled startup demand",
+				);
+			}
+		} finally {
+			hook.close();
+		}
+	}
+});
+
+test("startup fill disarms at an exhausted hydrated cursor", () => {
+	const hook = mountHook({
+		hydrationProven: false,
+		hasMore: false,
+		hiddenRows: 0,
+	});
+	try {
+		hook.setScrollTop(0);
+		hook.setScrollHeight(300);
+		hook.hydrate(false);
+		hook.flushFrames(8);
+		assert.equal(hook.asked, 0);
+		hook.hydrate(true);
+		hook.flushFrames(8);
+		assert.equal(
+			hook.asked,
+			0,
+			"a later cursor change cannot restart startup fill",
+		);
+	} finally {
+		hook.close();
+	}
+});
+
+test("startup fill retains the four-fetch bound for visible pages", async () => {
+	let resolveLoad;
+	const hook = mountHook({
+		hydrationProven: false,
+		hasMore: false,
+		hiddenRows: 0,
+		measuresPaint: true,
+		onLoadOlderOutcome: () =>
+			new Promise((resolve) => {
+				resolveLoad = resolve;
+			}),
+	});
+	try {
+		hook.setScrollTop(0);
+		hook.setScrollHeight(300);
+		hook.hydrate();
+		hook.flushFrames(8);
+		for (let i = 0; i < MAX_CHAIN_FETCH + 2; i++) {
+			hook.setPaintedRows((i + 1) * 8);
+			await act(async () => {
+				resolveLoad({ kind: "applied", newRecords: 8, exhausted: false });
+			});
+			hook.flushFrames(40);
+		}
+		assert.equal(hook.asked, MAX_CHAIN_FETCH);
+		hook.hydrate();
+		hook.flushFrames(80);
+		assert.equal(
+			hook.asked,
+			MAX_CHAIN_FETCH,
+			"repeated layouts cannot reset the chain bound",
 		);
 	} finally {
 		hook.close();

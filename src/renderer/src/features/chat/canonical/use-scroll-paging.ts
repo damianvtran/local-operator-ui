@@ -358,6 +358,10 @@ export function useScrollPaging({
 	const state = useRef<PagingState>(initialPagingState());
 	// Bumped by the session-change reset below; see the guard on the ask's outcome.
 	const sessionEpoch = useRef(0);
+	// Startup demand belongs to the first hydrated layout, not the empty frame
+	// that mounts the hook. Once handed to the policy it must never be re-armed
+	// by a resize: the existing chain counters remain the sole paging budget.
+	const initialFillPending = useRef(true);
 	// The slot's rendered state is the only thing this hook publishes, so it is
 	// the only thing that re-renders the transcript. Everything else lives in
 	// refs: a demand arming or a settle timer firing must not repaint a list
@@ -431,6 +435,7 @@ export function useScrollPaging({
 	const live = useRef({
 		hiddenRows,
 		hasMore,
+		hydrationProven,
 		onWiden,
 		onLoadOlder,
 		onLoadOlderOutcome,
@@ -439,6 +444,7 @@ export function useScrollPaging({
 	live.current = {
 		hiddenRows,
 		hasMore,
+		hydrationProven,
 		onWiden,
 		onLoadOlder,
 		onLoadOlderOutcome,
@@ -811,6 +817,33 @@ export function useScrollPaging({
 			pump.current = 0;
 			const geo = measure();
 			if (!geo) return;
+			if (initialFillPending.current) {
+				if (!live.current.hydrationProven) return;
+				initialFillPending.current = false;
+				const entries = containerRef.current?.querySelector<HTMLElement>(
+					"[data-lo-transcript-entries]",
+				);
+				// Slot boxes include collapsed bars and their gaps. Virtual spacers
+				// are estimates of unmounted history, not content that filled the pane.
+				// Measure through the last real entry, subtracting only those estimates.
+				const top = entries?.getBoundingClientRect().top ?? 0;
+				let spacers = 0;
+				let renderedHeight = 0;
+				for (const child of entries?.children ?? []) {
+					const rect = child.getBoundingClientRect();
+					if (child.hasAttribute("data-lo-transcript-spacer")) {
+						spacers += rect.height;
+					} else {
+						renderedHeight = rect.bottom - top - spacers;
+					}
+				}
+				state.current = {
+					...state.current,
+					continuation:
+						renderedHeight < geo.clientHeight &&
+						(geo.hiddenRows > 0 || geo.hasMore),
+				};
+			}
 			/*
 			 * ONE clock for the decision and for the paint it drives (agent review
 			 * round 1, R1-1). `decide` and `slotClaimsLoad` both read `now` against
@@ -1258,6 +1291,7 @@ export function useScrollPaging({
 		// history behind it, which is clause L's case and has no gesture to start
 		// it. `continuation` is the only demand kind `decide` will honour without
 		// input, and it honours it only while the scroller cannot scroll.
+		initialFillPending.current = true;
 		state.current = { ...state.current, continuation: true };
 		schedule();
 	}, [sessionKey]);
@@ -1478,7 +1512,7 @@ export function useScrollPaging({
 	// biome-ignore lint/correctness/useExhaustiveDependencies: values are read through a ref by design
 	useEffect(() => {
 		schedule();
-	}, [schedule, hiddenRows, hasMore]);
+	}, [schedule, hiddenRows, hasMore, hydrationProven]);
 
 	/*
 	 * Correct the anchor BEFORE the browser paints the rows that moved it.
