@@ -166,5 +166,15 @@
 	"ui.chat.canonical.tool_row.bridge.verb.take_up.settled": "已接手",
 	"ui.chat.canonical.tool_row.bridge.verb.unknown.failed": "无法使用Team Bridge",
 	"ui.chat.canonical.tool_row.bridge.verb.unknown.running": "正在使用Team Bridge",
-	"ui.chat.canonical.tool_row.bridge.verb.unknown.settled": "已使用Team Bridge"
+	"ui.chat.canonical.tool_row.bridge.verb.unknown.settled": "已使用Team Bridge",
+	"ui.chat.canonical.transcript.hub_from": "来自{name}",
+	"ui.chat.canonical.image_label": "图片",
+	"ui.chat.canonical.fold.images_aria": "{count, plural, other {本次运行的{count_display}张图片}}",
+	"ui.chat.canonical.fold.more_images": "{count, plural, other {+{count_display}张图片}}",
+	"ui.chat.canonical.image_gen.control.stop_hint_queued": "会在调用提供商之前停止。",
+	"ui.chat.canonical.image_gen.control.stop_hint_running": "请求停止；提供商仍可能执行完毕。",
+	"ui.chat.canonical.image_gen.batch_summary": "{count, plural, other {{count_display}项}}",
+	"ui.chat.canonical.lightbox.filmstrip_aria": "{count, plural, other {{count_display}张图片}}",
+	"ui.chat.canonical.lightbox.show_image": "显示第{index, number, ::group-off}张图片（共{count, number, ::group-off}张）",
+	"ui.chat.canonical.supplement.details.summary": "详情"
 }

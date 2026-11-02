@@ -21,5 +21,22 @@
 	"ui.agents.teams.section.members": "सदस्य",
 	"ui.agents.teams.section.members_aria": "सदस्य",
 	"ui.agents.teams.section.project_brief": "प्रोजेक्ट ब्रीफ़",
-	"ui.agents.teams.section.what_for": "यह किसके लिए है"
+	"ui.agents.teams.section.what_for": "यह किसके लिए है",
+	"ui.agents.teams.field.name_hint": "आप और आपकी चैट इस टीम को इसी नाम से पुकारेंगे।",
+	"ui.agents.teams.field.name_label": "टीम का नाम",
+	"ui.agents.teams.section.manager_hint": "वह एजेंट जो चैट का संचालन करता है और तय करता है कि किसे क्या काम मिलेगा।",
+	"ui.agents.teams.field.manager_label": "मैनेजर एजेंट",
+	"ui.agents.teams.field.manager_list_notice": "इस मशीन के एजेंट और टीमें",
+	"ui.agents.teams.section.members_hint": "मैनेजर किन्हें काम सौंप सकता है, हर एक के कितने, और हर एक किस मॉडल पर चलता है।",
+	"ui.agents.teams.field.loading_agents": "एजेंट लोड हो रहे हैं",
+	"ui.agents.teams.field.member_aria": "सदस्य {index, number, ::group-off}",
+	"ui.agents.teams.field.member_kind_aria": "सदस्य {index, number, ::group-off} का प्रकार",
+	"ui.agents.teams.action.fewer_aria": "{role} एक कम",
+	"ui.agents.teams.action.more_aria": "{role} एक और",
+	"ui.agents.teams.field.count_aria": "{role} की संख्या: {count, number, ::group-off}",
+	"ui.agents.teams.field.what_for_label": "यह टीम किसलिए है",
+	"ui.agents.teams.action.create": "टीम बनाएँ",
+	"ui.agents.teams.action.creating": "बनाई जा रही है…",
+	"ui.agents.teams.action.discard_question": "यह टीम छोड़ दें?",
+	"ui.agents.teams.empty.description": "अभी कोई विवरण नहीं।"
 }

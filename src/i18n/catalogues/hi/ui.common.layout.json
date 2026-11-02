@@ -7,5 +7,10 @@
 	"ui.common.layout.sidebar_header.import_agent": "एजेंट इम्पोर्ट करें",
 	"ui.common.layout.sidebar_header.new_agent": "नया एजेंट",
 	"ui.common.layout.toasts.dismiss": "सूचना बंद करें",
-	"ui.common.layout.toasts.notifications": "सूचनाएँ"
+	"ui.common.layout.toasts.notifications": "सूचनाएँ",
+	"ui.common.layout.chat_layout.resize_canvas_double_click_resets_the_shared_pane_width": "कैनवस पैन का आकार बदलें। साझा पैन की चौड़ाई रीसेट करने के लिए डबल-क्लिक करें।",
+	"ui.common.layout.chat_layout.resize_run_details_double_click_resets_the_shared_pane_width": "रन विवरण पैन का आकार बदलें। साझा पैन की चौड़ाई रीसेट करने के लिए डबल-क्लिक करें।",
+	"ui.common.layout.chat_layout.resize_browser_double_click_resets_the_shared_pane_width": "ब्राउज़र पैन का आकार बदलें। साझा पैन की चौड़ाई रीसेट करने के लिए डबल-क्लिक करें।",
+	"ui.common.layout.chat_layout.resize_console_double_click_resets_the_shared_pane_width": "कंसोल पैन का आकार बदलें। साझा पैन की चौड़ाई रीसेट करने के लिए डबल-क्लिक करें।",
+	"ui.common.layout.chat_layout.resize_code_review_double_click_resets_the_shared_pane_width": "कोड समीक्षा पैन का आकार बदलें। साझा पैन की चौड़ाई रीसेट करने के लिए डबल-क्लिक करें।"
 }

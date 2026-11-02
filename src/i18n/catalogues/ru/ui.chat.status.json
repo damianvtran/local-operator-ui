@@ -2,5 +2,6 @@
 	"ui.chat.status.credential_refused": "Запущенный сервер отклонил учётные данные этого приложения, поэтому вход, настройки и slash-команды недоступны.",
 	"ui.chat.status.degraded": "Сервер отвечает медленно. Ваши сообщения в очереди.",
 	"ui.chat.status.internet_offline": "Этот компьютер не в сети. Отправка подождёт.",
-	"ui.chat.status.unreachable": "Не удалось связаться с сервером Local Operator. Отправка подождёт."
+	"ui.chat.status.unreachable": "Не удалось связаться с сервером Local Operator. Отправка подождёт.",
+	"ui.chat.status.pill_aria": "Состояние подключения: {title}{hasOutcome, select, yes { {outcome}} other {}} Показать подробности"
 }

@@ -7,5 +7,10 @@
 	"ui.common.layout.sidebar_header.new_agent": "Новый агент",
 	"ui.common.layout.sidebar_header.search_agents": "Поиск агентов",
 	"ui.common.layout.toasts.dismiss": "Закрыть уведомление",
-	"ui.common.layout.toasts.notifications": "Уведомления"
+	"ui.common.layout.toasts.notifications": "Уведомления",
+	"ui.common.layout.chat_layout.resize_canvas_double_click_resets_the_shared_pane_width": "Изменить ширину холста. Двойной щелчок восстанавливает общую ширину панели.",
+	"ui.common.layout.chat_layout.resize_run_details_double_click_resets_the_shared_pane_width": "Изменить ширину сведений о запуске. Двойной щелчок восстанавливает общую ширину панели.",
+	"ui.common.layout.chat_layout.resize_browser_double_click_resets_the_shared_pane_width": "Изменить ширину браузера. Двойной щелчок восстанавливает общую ширину панели.",
+	"ui.common.layout.chat_layout.resize_console_double_click_resets_the_shared_pane_width": "Изменить ширину консоли. Двойной щелчок восстанавливает общую ширину панели.",
+	"ui.common.layout.chat_layout.resize_code_review_double_click_resets_the_shared_pane_width": "Изменить ширину ревью кода. Двойной щелчок восстанавливает общую ширину панели."
 }

@@ -737,5 +737,7 @@
 	"ui.chat.pickers.slash.click.stages": "کلک کرنے سے /{label} مسودے میں آ جائے گی۔",
 	"ui.chat.pickers.slash.enter_needs_a_pick": "Enter کے لیے قطار منتخب کرنی ہو گی: پہلے ↓ پھر Enter · Tab اس قطار کو مکمل کرتا ہے۔",
 	"ui.chat.pickers.slash.phase.arguments": "آرگیومنٹس",
-	"ui.chat.pickers.slash.region_label": "سلیش کمانڈز"
+	"ui.chat.pickers.slash.region_label": "سلیش کمانڈز",
+	"ui.chat.pickers.destination_pickers.no_agents_are_registered": "کوئی ایجنٹ رجسٹرڈ نہیں۔",
+	"ui.chat.pickers.destination_pickers.applies_to_the_conversation_this_chat_starts": "یہ اس گفتگو پر لاگو ہوتا ہے جو یہ چیٹ شروع کرتی ہے۔"
 }

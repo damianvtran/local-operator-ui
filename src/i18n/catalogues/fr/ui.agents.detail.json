@@ -49,5 +49,21 @@
 	"ui.agents.detail.tools.every_tool_aria": "Donner tous les outils à cet agent",
 	"ui.agents.detail.tools.may_use_any": "Cet agent peut utiliser tout ce que propose la session.",
 	"ui.agents.detail.tools.placeholder": "Nom d’outil",
-	"ui.agents.detail.origin.created_locally": "Créé sur cet ordinateur."
+	"ui.agents.detail.origin.created_locally": "Créé sur cet ordinateur.",
+	"ui.agents.detail.tools.remove_aria": "Retirer {tool}",
+	"ui.agents.detail.tools.add_label": "Ajouter un outil",
+	"ui.agents.detail.field.when_to_use": "Quand utiliser cet agent",
+	"ui.agents.detail.field.when_to_use_hint": "Une phrase que le modèle lit pour décider quand cet agent est le bon.",
+	"ui.agents.detail.field.instructions_hint": "Ce que l’agent doit faire. C’est tout son comportement.",
+	"ui.agents.detail.section.delegation_hint": "Si cet agent peut confier du travail à des sous-agents, et à quel niveau d’effort il s’exécute.",
+	"ui.agents.detail.field.effort_loading": "Chargement des niveaux d’effort",
+	"ui.agents.detail.field.effort_helper": "Les niveaux proviennent des paramètres de modèle des sous-agents du backend.",
+	"ui.agents.detail.field.effort_inherit_hint": "Utiliser l’effort propre à la session",
+	"ui.agents.detail.field.effort_configured_hint": "Un niveau défini dans les paramètres",
+	"ui.agents.detail.field.how_it_works": "Fonctionnement avec les autres",
+	"ui.agents.detail.empty.description": "Aucune description pour l’instant — ajoutez-en une pour qu’un modèle sache quand choisir cet agent.",
+	"ui.agents.detail.empty.instructions": "Aucune instruction pour l’instant.",
+	"ui.agents.detail.action.create_copy": "Créer la copie",
+	"ui.agents.detail.action.creating": "Création…",
+	"ui.agents.detail.action.discard_new_agent": "Abandonner ce nouvel agent ?"
 }

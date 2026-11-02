@@ -245,5 +245,6 @@
 	"ui.browser.webauthn_chooser.the_choice_did_not_name_a_passkey": "Lựa chọn không chỉ định khóa truy cập mà trang web này cung cấp nên yêu cầu đã bị hủy. Hãy thử lại từ trang web.",
 	"ui.browser.webauthn_chooser.the_site_stored_no_name_for_this": "Trang web không lưu tên cho khóa truy cập này.",
 	"ui.browser.webauthn_chooser.this_passkey_request_expired": "Yêu cầu khóa truy cập này đã hết hạn",
-	"ui.browser.webauthn_chooser.this_passkey_request_was_cancelled": "Yêu cầu khóa truy cập này đã bị hủy"
+	"ui.browser.webauthn_chooser.this_passkey_request_was_cancelled": "Yêu cầu khóa truy cập này đã bị hủy",
+	"ui.browser.browser_url_bar.reload_shortcut": "Tải lại ({shortcut})"
 }

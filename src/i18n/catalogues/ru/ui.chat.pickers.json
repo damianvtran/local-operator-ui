@@ -737,5 +737,7 @@
 	"ui.chat.pickers.slash.click.stages": "Нажатие готовит /{label} к запуску.",
 	"ui.chat.pickers.slash.enter_needs_a_pick": "Enter требует выбора строки: ↓, затем Enter · Tab дополняет эту строку.",
 	"ui.chat.pickers.slash.phase.arguments": "Аргументы",
-	"ui.chat.pickers.slash.region_label": "Slash-команды"
+	"ui.chat.pickers.slash.region_label": "Slash-команды",
+	"ui.chat.pickers.destination_pickers.no_agents_are_registered": "Нет зарегистрированных агентов.",
+	"ui.chat.pickers.destination_pickers.applies_to_the_conversation_this_chat_starts": "Применяется к разговору, который начинает этот чат."
 }

@@ -166,5 +166,15 @@
 	"ui.chat.canonical.tool_row.bridge.verb.take_up.settled": "سنبھال لیا",
 	"ui.chat.canonical.tool_row.bridge.verb.unknown.failed": "Team Bridge استعمال نہیں کر سکا",
 	"ui.chat.canonical.tool_row.bridge.verb.unknown.running": "Team Bridge استعمال کر رہا",
-	"ui.chat.canonical.tool_row.bridge.verb.unknown.settled": "Team Bridge استعمال کیا"
+	"ui.chat.canonical.tool_row.bridge.verb.unknown.settled": "Team Bridge استعمال کیا",
+	"ui.chat.canonical.transcript.hub_from": "{name} کی طرف سے",
+	"ui.chat.canonical.image_label": "تصویر",
+	"ui.chat.canonical.fold.images_aria": "{count, plural, =1 {اس رن کی {count_display} تصویر} other {اس رن کی {count_display} تصاویر}}",
+	"ui.chat.canonical.fold.more_images": "{count, plural, =1 {+{count_display} مزید تصویر} other {+{count_display} مزید تصاویر}}",
+	"ui.chat.canonical.image_gen.control.stop_hint_queued": "فراہم کنندہ کو کال کیے جانے سے پہلے رک جاتا ہے۔",
+	"ui.chat.canonical.image_gen.control.stop_hint_running": "روکنے کی درخواست بھیجتا ہے؛ فراہم کنندہ پھر بھی مکمل کر سکتا ہے۔",
+	"ui.chat.canonical.image_gen.batch_summary": "{count, plural, =1 {{count_display} آئٹم} other {{count_display} آئٹمز}}",
+	"ui.chat.canonical.lightbox.filmstrip_aria": "{count, plural, =1 {{count_display} تصویر} other {{count_display} تصاویر}}",
+	"ui.chat.canonical.lightbox.show_image": "تصویر {index, number, ::group-off} از {count, number, ::group-off} دکھائیں",
+	"ui.chat.canonical.supplement.details.summary": "تفصیلات"
 }

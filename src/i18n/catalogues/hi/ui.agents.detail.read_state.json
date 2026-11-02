@@ -12,5 +12,8 @@
 	"ui.agents.detail.read_state.class_on": "चालू",
 	"ui.agents.detail.read_state.class_off": "बंद",
 	"ui.agents.detail.read_state.class_switching": "बदला जा रहा है…",
-	"ui.agents.detail.read_state.effort_inherit": "सत्र की प्रयास श्रेणी इस्तेमाल करें"
+	"ui.agents.detail.read_state.effort_inherit": "सत्र की प्रयास श्रेणी इस्तेमाल करें",
+	"ui.agents.detail.read_state.list_failed_teams": "टीमें पढ़ी नहीं जा सकीं",
+	"ui.agents.detail.read_state.list_failed_agents": "एजेंट पढ़े नहीं जा सके",
+	"ui.agents.detail.read_state.list_failed_meaning": "कुछ भी खोया नहीं है। यह पढ़ने की विफलता है — बैकएंड ने त्रुटि के साथ जवाब दिया, जो बैकएंड के पुराने होने से अलग बात है।"
 }

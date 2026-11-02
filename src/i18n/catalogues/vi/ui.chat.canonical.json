@@ -166,5 +166,15 @@
 	"ui.chat.canonical.tool_row.bridge.verb.take_up.settled": "Đã mở",
 	"ui.chat.canonical.tool_row.bridge.verb.unknown.failed": "Không thể dùng Team Bridge",
 	"ui.chat.canonical.tool_row.bridge.verb.unknown.running": "Đang dùng Team Bridge",
-	"ui.chat.canonical.tool_row.bridge.verb.unknown.settled": "Đã dùng Team Bridge"
+	"ui.chat.canonical.tool_row.bridge.verb.unknown.settled": "Đã dùng Team Bridge",
+	"ui.chat.canonical.transcript.hub_from": "Từ {name}",
+	"ui.chat.canonical.image_label": "Hình ảnh",
+	"ui.chat.canonical.fold.images_aria": "{count, plural, other {{count_display} hình ảnh từ lượt chạy này}}",
+	"ui.chat.canonical.fold.more_images": "{count, plural, other {+{count_display} hình ảnh nữa}}",
+	"ui.chat.canonical.image_gen.control.stop_hint_queued": "Dừng trước khi gọi nhà cung cấp.",
+	"ui.chat.canonical.image_gen.control.stop_hint_running": "Gửi yêu cầu dừng; nhà cung cấp vẫn có thể hoàn tất.",
+	"ui.chat.canonical.image_gen.batch_summary": "{count, plural, other {{count_display} mục}}",
+	"ui.chat.canonical.lightbox.filmstrip_aria": "{count, plural, other {{count_display} hình ảnh}}",
+	"ui.chat.canonical.lightbox.show_image": "Hiện hình ảnh {index, number, ::group-off}/{count, number, ::group-off}",
+	"ui.chat.canonical.supplement.details.summary": "Chi tiết"
 }
