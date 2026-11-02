@@ -6574,7 +6574,7 @@
 			"auditors": [
 				{
 					"agent": "reviewer",
-					"model": "anthropic/claude-sonnet-5-5",
+					"model": "openai/gpt-6.1-sol",
 					"date": "2026-11-02",
 					"result": "clean",
 					"instance": "394f46fcc3fc",
@@ -6585,7 +6585,7 @@
 						"nit": 0
 					},
 					"receipt": "i18n/receipts/human-profile-1593-es-394f46fcc3fc.json",
-					"receipt_sha256": "24f6e3ad15d05f3bc9a3f3053c55560b350aaab2ca5ec57f6f4412ab2acf100b",
+					"receipt_sha256": "9b9cbc0a2477958574dc078ece59a5e6f206ee30a1b0c75ac2ea43cd7376621b",
 					"scope": "Only41 new keys plus context/typography delta; unchanged45 inherited on exact value compatibility with afb0f7de919. Not a whole-namespace re-audit.",
 					"note": "Historical NIT count 0 retained with fixed disposition. Evidence: i18n/audits/evidence/es/ui.settings/human-profile-1593-round1/record.json"
 				}
@@ -15485,7 +15485,7 @@
 			"auditors": [
 				{
 					"agent": "reviewer",
-					"model": "anthropic/claude-sonnet-5-5",
+					"model": "openai/gpt-6.1-sol",
 					"date": "2026-11-02",
 					"result": "clean-with-findings",
 					"instance": "394f46fcc3fc",
@@ -15496,7 +15496,7 @@
 						"nit": 1
 					},
 					"receipt": "i18n/receipts/human-profile-1593-fr-394f46fcc3fc.json",
-					"receipt_sha256": "e9fd16abcd577d11fd7bb19bb9b98a3c3ac6ed5b358a5382e9fb336e4d28f6ff",
+					"receipt_sha256": "e44218cb1e9efa098217fe7007ca4c4618f5f69d1d1e4712c63bafff29a44dd5",
 					"scope": "Only41 new keys plus context/typography delta; unchanged45 inherited on exact value compatibility with afb0f7de919. Not a whole-namespace re-audit.",
 					"note": "Historical NIT count 1 retained with fixed disposition. Evidence: i18n/audits/evidence/fr/ui.settings/human-profile-1593-round1/record.json"
 				}
@@ -24665,7 +24665,7 @@
 			"auditors": [
 				{
 					"agent": "reviewer",
-					"model": "anthropic/claude-sonnet-5-5",
+					"model": "openai/gpt-6.1-sol",
 					"date": "2026-11-02",
 					"result": "clean",
 					"instance": "394f46fcc3fc",
@@ -24676,7 +24676,7 @@
 						"nit": 0
 					},
 					"receipt": "i18n/receipts/human-profile-1593-hi-394f46fcc3fc.json",
-					"receipt_sha256": "437bed322e800e0dca9177d1ce8cafa95e089de3000646a3d8b5875b5e053fb1",
+					"receipt_sha256": "2457131faa61420e352706d618e1964424b26c7ee9980d373a6ad82beb068a73",
 					"scope": "Only41 new keys plus context/typography delta; unchanged45 inherited on exact value compatibility with afb0f7de919. Not a whole-namespace re-audit.",
 					"note": "Historical NIT count 0 retained with fixed disposition. Evidence: i18n/audits/evidence/hi/ui.settings/human-profile-1593-round1/record.json"
 				}
@@ -33431,7 +33431,7 @@
 			"auditors": [
 				{
 					"agent": "reviewer",
-					"model": "anthropic/claude-sonnet-5-5",
+					"model": "openai/gpt-6.1-sol",
 					"date": "2026-11-02",
 					"result": "clean",
 					"instance": "394f46fcc3fc",
@@ -33442,7 +33442,7 @@
 						"nit": 0
 					},
 					"receipt": "i18n/receipts/human-profile-1593-ru-394f46fcc3fc.json",
-					"receipt_sha256": "21ed156144a9d00e648d23dcb35393eea52d963ecdbd4bbf0a1224f6c277c956",
+					"receipt_sha256": "69e4631ead648b15c35a8e19cb0e8ef7265f0c4089c714b85b2a4eed6d9a5330",
 					"scope": "Only41 new keys plus context/typography delta; unchanged45 inherited on exact value compatibility with afb0f7de919. Not a whole-namespace re-audit.",
 					"note": "Historical NIT count 0 retained with fixed disposition. Evidence: i18n/audits/evidence/ru/ui.settings/human-profile-1593-round1/record.json"
 				}
@@ -42323,7 +42323,7 @@
 			"auditors": [
 				{
 					"agent": "reviewer",
-					"model": "anthropic/claude-sonnet-5-5",
+					"model": "openai/gpt-6.1-sol",
 					"date": "2026-11-02",
 					"result": "clean",
 					"instance": "394f46fcc3fc",
@@ -42334,7 +42334,7 @@
 						"nit": 0
 					},
 					"receipt": "i18n/receipts/human-profile-1593-ur-394f46fcc3fc.json",
-					"receipt_sha256": "7dcc208a5721196e7d1ad5faaaf8916c7db4c3dace81b3f0887e26c1df305e5b",
+					"receipt_sha256": "ae145bfd77c3454e2645cc26697b04722e08d0dc68f44aa9c4576d7593e1ab4b",
 					"scope": "Only41 new keys plus context/typography delta; unchanged45 inherited on exact value compatibility with afb0f7de919. Not a whole-namespace re-audit.",
 					"note": "Historical NIT count 0 retained with fixed disposition. Evidence: i18n/audits/evidence/ur/ui.settings/human-profile-1593-round1/record.json"
 				}
@@ -51401,7 +51401,7 @@
 			"auditors": [
 				{
 					"agent": "reviewer",
-					"model": "anthropic/claude-sonnet-5-5",
+					"model": "openai/gpt-6.1-sol",
 					"date": "2026-11-02",
 					"result": "clean",
 					"instance": "394f46fcc3fc",
@@ -51412,7 +51412,7 @@
 						"nit": 0
 					},
 					"receipt": "i18n/receipts/human-profile-1593-vi-394f46fcc3fc.json",
-					"receipt_sha256": "88c7fa58634383fa3aa284be6a3f4cfbd104a36174a50f5eb19eb97db2879381",
+					"receipt_sha256": "4c60f3bed8ef7cbd09d65dc23dec27c627efce76e1d1d02c2b599b0854827e6e",
 					"scope": "Only41 new keys plus context/typography delta; unchanged45 inherited on exact value compatibility with afb0f7de919. Not a whole-namespace re-audit.",
 					"note": "Historical NIT count 0 retained with fixed disposition. Evidence: i18n/audits/evidence/vi/ui.settings/human-profile-1593-round1/record.json"
 				}
@@ -61021,7 +61021,7 @@
 			"auditors": [
 				{
 					"agent": "reviewer",
-					"model": "anthropic/claude-sonnet-5-5",
+					"model": "openai/gpt-6.1-sol",
 					"date": "2026-11-02",
 					"result": "clean-with-findings",
 					"instance": "394f46fcc3fc",
@@ -61032,7 +61032,7 @@
 						"nit": 1
 					},
 					"receipt": "i18n/receipts/human-profile-1593-zh-cn-394f46fcc3fc.json",
-					"receipt_sha256": "a73055b48682e7b1de794318e69688981f2d70bfb358280b3d9439a8a8f2cfc9",
+					"receipt_sha256": "579e529d4309f0aa561cfc9025de54646b80816868c91848bc8c310dadaa27ee",
 					"scope": "Only41 new keys plus context/typography delta; unchanged45 inherited on exact value compatibility with afb0f7de919. Not a whole-namespace re-audit.",
 					"note": "Historical NIT count 1 retained with fixed disposition. Evidence: i18n/audits/evidence/zh-CN/ui.settings/human-profile-1593-round1/record.json"
 				}

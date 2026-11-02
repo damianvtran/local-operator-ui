@@ -6,7 +6,7 @@
 	"namespace": "ui.settings",
 	"auditor": "reviewer (independent reviewer agent, session 394f46fcc3fc; ledger agent id is its team role)",
 	"instance": "394f46fcc3fc",
-	"model": "anthropic/claude-sonnet-5-5",
+	"model": "openai/gpt-6.1-sol",
 	"status": "passed",
 	"result": "clean-with-findings",
 	"source_sha256": "867c7c09701d09d39abd4bf8fb5033689d69a32929c6222b6abae9307099b377",

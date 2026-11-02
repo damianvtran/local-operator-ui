@@ -6,14 +6,14 @@
 	"reviewer": {
 		"agent": "independent reviewer",
 		"instance": "394f46fcc3fc",
-		"model": "anthropic/claude-sonnet-5-5",
+		"model": "openai/gpt-6.1-sol",
 		"independent_of_implementer": "6d6c12b793e0"
 	},
 	"source_sha256": "867c7c09701d09d39abd4bf8fb5033689d69a32929c6222b6abae9307099b377",
 	"target_sha256": "09be0ff6b97fadb52ad2943e0951d14016722c952d40ccacf4aa9486dd9905ef",
 	"context_sha256": "ef772148ff0e66bf3110902885a4068c10aeec3d8ccedb79b43a96feefaad920",
 	"wrapper": "i18n/receipts/human-profile-1593-ur-394f46fcc3fc.json",
-	"wrapper_sha256": "7dcc208a5721196e7d1ad5faaaf8916c7db4c3dace81b3f0887e26c1df305e5b",
+	"wrapper_sha256": "ae145bfd77c3454e2645cc26697b04722e08d0dc68f44aa9c4576d7593e1ab4b",
 	"independent_evidence": [
 		{
 			"path": "i18n/receipts/human-profile-1593-independent-source-audit.json",
