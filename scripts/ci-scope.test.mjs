@@ -1679,9 +1679,12 @@ test("A17probe: PR transport proof downloads bytes while a watchdog-owned subjec
 });
 
 test("A17e: checkpoint orchestration preserves shell bytes and fail-closed ordering", () => {
+	// R13 reviewed the direct-capture convergence from main's #1572 lineage.
+	// Byte proof: git diff a002e2596ee6..0cde76f4073 -- scripts/desktop-suite-step.sh
+	// Only capture plus its explanatory comments changed; keep every guard pinned.
 	assert.equal(
 		createHash("sha256").update(desktopStepBody()).digest("hex"),
-		"51e5cf6348313a801e9641d986756f91f387317d03690c4d3b8c2ccc24df171b",
+		"64523231536a4f11fb28489571435f56f5c8cb8233ebe9f27cd7eeacfa06d2a6",
 	);
 	assertCheckpointSteps(jobs.test);
 	for (const mutate of [
