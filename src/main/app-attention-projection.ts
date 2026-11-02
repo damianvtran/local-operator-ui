@@ -132,10 +132,10 @@ export class AppAttentionProjection {
 			const old = previous.attention?.revision;
 			const next = frame.payload.revision;
 			if (old && (next[0] < old[0] || (next[0] === old[0] && next[1] < old[1]))) return;
-			if (frame.payload.kind === "retired") {
-				this.replaceSession(frame.session_id, {});
-				this.sessions.delete(frame.session_id);
-			} else this.replaceSession(frame.session_id, { ...previous, attention: frame.payload });
+			// Retire-for-build is a real completion receipt whose derived status
+			// is interrupted. Only the shared predicate decides acknowledgement;
+			// no completion kind is a session-removal signal.
+			this.replaceSession(frame.session_id, { ...previous, attention: frame.payload });
 			this.emit();
 		} else if (frame.type === "session_status") {
 			const previous = this.sessions.get(frame.session_id) ?? {};

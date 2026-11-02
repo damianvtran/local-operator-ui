@@ -102,6 +102,7 @@ export class AppAttentionService {
 			"notifications.seen", "attention.seen", "approvals.approve", "approvals.deny",
 			"team_bridge.read", "team_bridge.conversations.notify",
 			"team_bridge.conversations.join", "team_bridge.conversations.delete",
+			"team_bridge.conversations.lifecycle", "team_bridge.conversations.consent",
 			"team_bridge.messages.send",
 		]);
 		const authWrites = new Set(["auth.start", "auth.input", "auth.cancel", "auth.key", "auth.logout", "accounts.remove",
@@ -189,8 +190,14 @@ export class AppAttentionService {
 					if (!current()) continue;
 					// agentMessagesStatusSchema owns the flat account_id + state contract.
 					// Do not interpret a missing/error envelope as a verified sign-out.
-					if (!status || !["ready", "signed_out", "unavailable", "update_required"].includes(String(status.state))) continue;
-					const account = status.state === "ready" && typeof status.account_id === "string" ? status.account_id : null;
+					if (!status) continue;
+					// An outage/update requirement is not a principal transition. Keep
+					// the last authorized same-account total until verified authority
+					// returns; only ready/account or signed_out/null can replace it.
+					let account: string | null;
+					if (status.state === "ready" && typeof status.account_id === "string") account = status.account_id;
+					else if (status.state === "signed_out" && status.account_id === null) account = null;
+					else continue;
 					if (account !== this.account) {
 						this.account = account;
 						this.cursor = undefined;

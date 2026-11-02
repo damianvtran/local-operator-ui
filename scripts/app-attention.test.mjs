@@ -310,3 +310,59 @@ test("feed open replaces native level without an intermediate clear", () => {
 	assert.equal(clears, 0);
 	service.stop();
 });
+
+
+test("retired completion is acknowledgeable when canonical status is interrupted", () => {
+	let last;
+	const p = new AppAttentionProjection((snapshot) => { last = snapshot; });
+	const retired = { ...attention(true, "retire-for-build"), kind: "retired" };
+	p.observe(open({}));
+	p.observe(frame("attention", 2, retired));
+	p.observe(frame("session_status", 3, { code: "interrupted", revision: 1 }));
+	assert.equal(last.unreadCount, 1, "retired is a completion receipt, not session removal");
+	p.observe(open({ attention: { "session/synthetic": retired }, attention_status: { "session/synthetic": { code: "interrupted", revision: 1 } } }, "epoch-b"));
+	assert.equal(last.unreadCount, 1, "reconnect agrees with the live shared predicate");
+	p.observe(frame("attention", 2, { ...retired, unseen: false, revision: [1, 1] }, "synthetic", "epoch-b"));
+	assert.equal(last.unreadCount, 0);
+});
+
+test("transient Bridge status preserves the last authorized same-account total", async () => {
+	let state = "ready";
+	let last;
+	const service = new AppAttentionService({ request: async (input) => {
+		if (input.op === "team_bridge.status") return { status: 200, body: { result: { state, account_id: state === "signed_out" ? null : "synthetic-a" } } };
+		if (input.op === "team_bridge.unread") return { status: 200, body: { result: { total: 4 } } };
+		return { status: 200, body: { result: { features: {}, settings: [] } } };
+	}, publish: (snapshot) => { last = snapshot; }, clear: () => {} });
+	try {
+		service.invalidate();
+		await flush();
+		assert.equal(last.unreadCount, 4);
+		for (state of ["unavailable", "update_required"]) {
+			service.invalidate();
+			await flush();
+			assert.equal(last.unreadCount, 4, `${state} is unknown, not verified sign-out`);
+		}
+		state = "signed_out";
+		service.invalidate();
+		await flush();
+		assert.equal(last.unreadCount, 0, "verified sign-out still clears");
+	} finally { service.stop(); }
+});
+
+test("lifecycle and consent successful writes invalidate the account aggregate", async () => {
+	const requests = [];
+	const service = new AppAttentionService({ request: async (input) => { requests.push(input); return { status: 503 }; }, publish: () => {}, clear: () => {} });
+	try {
+		for (const op of ["team_bridge.conversations.lifecycle", "team_bridge.conversations.consent"]) {
+			requests.length = 0;
+			service.observeResponse({ op }, { status: 403 });
+			await flush();
+			assert.equal(requests.length, 0, "a refused write changes no authority");
+			service.observeResponse({ op }, { status: 200 });
+			await flush();
+			assert.ok(requests.some((input) => input.op === "team_bridge.status"), op);
+			assert.equal(requests.some((input) => input.op === "settings.list" || input.op === "capabilities"), false);
+		}
+	} finally { service.stop(); }
+});
