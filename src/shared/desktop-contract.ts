@@ -7116,6 +7116,28 @@ export type DesktopMediaRequest =
 	 * body (core sniffs and re-normalises it); the DELETE carries nothing.
 	 */
 	| { op: "agent.avatar"; agentId: string; sha256: string }
+	// Human profile operations are intentionally disjoint from local agents.
+	// The opaque scope binds writes to the login that commissioned the editor.
+	| { op: "account.profile"; expectedAccountId: string }
+	| {
+			op: "account.profile.update";
+			expectedAccountId: string;
+			scope: string;
+			fields: {
+				display_name?: string;
+				title?: string;
+				description?: string;
+				timezone?: string;
+			};
+	  }
+	| { op: "account.avatar.put"; expectedAccountId: string; scope: string }
+	| {
+			op: "account.avatar.delete";
+			expectedAccountId: string;
+			scope: string;
+			mode: "uploaded" | "provider";
+			confirmed: true;
+	  }
 	| { op: "agent.avatar.put"; agentId: string }
 	| { op: "agent.avatar.delete"; agentId: string }
 	// A durable transcript row references an image by content digest with the
