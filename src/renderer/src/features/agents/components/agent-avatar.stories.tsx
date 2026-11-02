@@ -1,3 +1,5 @@
+import { ChatHeader as GeometryChatHeader } from "../../chat/components/chat-header";
+import { ChatDeviceSlot as GeometryDeviceSlot } from "../../chat/device/chat-device-slot";
 /**
  * The agent profile picture, in every state the surfaces and the editor show.
  *
@@ -28,7 +30,14 @@ import { queryClient } from "@shared/api/query-client";
 import { TooltipProvider } from "@shared/components/ui";
 import type { CanonicalSessionRow } from "@shared/store/canonical-sessions-store";
 import type { Meta, StoryObj } from "@storybook/react";
-import { type FC, useEffect, useMemo, useState } from "react";
+import {
+	type FC,
+	useEffect,
+	useLayoutEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import {
 	ChatSessionAvatar,
 	ChatSessionAvatarEdit,
@@ -477,3 +486,151 @@ const RowPencil: FC = () => {
 export const ChatRowPencil: Story = {
 	render: () => <RowPencil />,
 };
+
+/** Geometry matrix: shipped header/controls, synthetic agent and loopback-free reads. */
+const HeaderGeometryFixture: FC = () => {
+	const rootRef = useRef<HTMLDivElement>(null);
+	useEffect(() => {
+		const element = rootRef.current;
+		if (!element) return;
+		let cancelled = false;
+		void assertHeaderGeometry(element)
+			.then((spread) => {
+				if (!cancelled)
+					element.setAttribute("data-centre-spread", String(spread));
+			})
+			.catch((error) => {
+				if (!cancelled)
+					element.setAttribute("data-geometry-error", String(error));
+			});
+		return () => {
+			cancelled = true;
+		};
+	}, []);
+	const params = new URLSearchParams(window.location.search);
+	const width = Number(params.get("band") || 1000);
+	const scale = Number(params.get("scale") || 1);
+	const missing = params.get("missing") === "1";
+	const wrap = params.get("wrap") === "1";
+	useSeedPictures([CODER.id]);
+	useLayoutEffect(() => {
+		document.documentElement.style.fontSize = `${16 * scale}px`;
+		const api = window as unknown as {
+			api: {
+				desktop: { request: (request: { op: string }) => Promise<unknown> };
+			};
+		};
+		api.api.desktop.request = async ({ op }) => {
+			const result =
+				op === "capabilities"
+					? {
+							desktop_available: true,
+							features: { peers: 1, session_transfer: 1 },
+						}
+					: op === "peers.list"
+						? { self_device_id: "d_fixture", peers: [] }
+						: op === "networks.list"
+							? { self_device_id: "d_fixture", networks: [] }
+							: op === "teams.list"
+								? { teams: [] }
+								: op === "commands.entities"
+									? { command: "", entities: [], current: null }
+									: { sessions: [] };
+			return { status: 200, body: { result } };
+		};
+		return () => {
+			document.documentElement.style.fontSize = "";
+		};
+	}, [scale]);
+	return (
+		<div
+			data-geometry-fixture=""
+			data-expected-elements={missing ? 4 : 5}
+			ref={rootRef}
+			style={{ width, marginTop: 40 }}
+			className="bg-surface"
+		>
+			{wrap ? (
+				<style>
+					{
+						"[data-geometry-fixture] [data-header-title] { white-space: normal; overflow: visible; max-width: 10ch; }"
+					}
+				</style>
+			) : null}
+			<GeometryChatHeader
+				agentName={
+					params.get("long")
+						? "A long agent conversation title that must yield gracefully"
+						: "Aida"
+				}
+				agentAvatar={{
+					agentId: CODER.id,
+					agentName: CODER.name,
+					sha256: SHA,
+					owned: true,
+				}}
+				identity={{
+					sessionId: "9f3ac1e0b7d2",
+					activeAgent: "aida",
+					activeTeam: null,
+				}}
+				deviceSlot={
+					missing ? undefined : <GeometryDeviceSlot sessionId="9f3ac1e0b7d2" />
+				}
+			/>
+		</div>
+	);
+};
+export const HeaderGeometry: Story = {
+	render: () => <HeaderGeometryFixture />,
+	// Assert real DOM boxes, not a mocked flex calculation. The synthetic wrap
+	// arm stress-tests multiline layout; shipped titles still truncate normally.
+	play: async ({ canvasElement }) => {
+		const element = canvasElement.querySelector<HTMLElement>(
+			"[data-geometry-fixture]",
+		);
+		if (!element) throw new Error("Missing header geometry fixture");
+		await assertHeaderGeometry(element);
+	},
+};
+
+/** Also run outside the interactions addon so a plain iframe cannot skip the regression. */
+async function assertHeaderGeometry(element: HTMLElement): Promise<number> {
+	const expected = Number(element.dataset.expectedElements || 5);
+	await document.fonts.ready;
+	const selectors = [
+		"[data-agent-mark]",
+		"[data-header-title]",
+		"[data-header-identity]",
+		"[data-device-chip]",
+	];
+	let elements: Element[] = [];
+	for (let attempt = 0; attempt < 100; attempt++) {
+		elements = selectors.flatMap((selector) =>
+			Array.from(element.querySelectorAll(selector)),
+		);
+		if (
+			element.querySelector("[data-agent-mark] img") &&
+			elements.length >= expected
+		)
+			break;
+		await new Promise((resolve) => setTimeout(resolve, 50));
+	}
+	await new Promise((resolve) =>
+		requestAnimationFrame(() => requestAnimationFrame(resolve)),
+	);
+	if (elements.length < expected)
+		throw new Error(
+			"Header geometry fixture did not load its picture and controls",
+		);
+	const centres = elements.map((element) => {
+		const box = element.getBoundingClientRect();
+		return box.y + box.height / 2;
+	});
+	const spread = Math.max(...centres) - Math.min(...centres);
+	if (spread > 0.05)
+		throw new Error(
+			`Header centres differ by ${spread}px: ${centres.join(", ")}`,
+		);
+	return spread;
+}

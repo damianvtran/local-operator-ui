@@ -46,6 +46,7 @@ export function useStickToBottom<T extends HTMLElement = HTMLDivElement>({
 	scrollElement = "radix",
 	preserveAnchor = false,
 	rowIds,
+	rowSelector = "[data-message-id]",
 	liveEdgeAvailable = true,
 }: {
 	resetKey: string;
@@ -56,17 +57,22 @@ export function useStickToBottom<T extends HTMLElement = HTMLDivElement>({
 	/** Opt-in history retention; member/thread policy is unchanged by default. */
 	preserveAnchor?: boolean;
 	rowIds?: readonly string[];
+	/** A thread root is static context, not an anchor inside its moving reply window. */
+	rowSelector?: string;
 	/** A bounded older-history window is never the live edge. */
 	liveEdgeAvailable?: boolean;
 }): {
 	rootRef: RefObject<T>;
 	pin: () => void;
 	hold: () => void;
+	/** Read the controller, not geometry: hold() unpins without scrolling. */
+	isPinned: () => boolean;
 	newMessages: number;
 } {
 	const rootRef = useRef<T>(null);
 	// A ref, not state: following the bottom must not re-render the timeline.
 	const pinned = useRef(true);
+	const previousLiveEdge = useRef(liveEdgeAvailable);
 	const anchor = useRef<{ id: string; offset: number } | null>(null);
 	const previousRows = useRef<readonly string[]>([]);
 	const [newMessages, setNewMessages] = useState(0);
@@ -85,32 +91,32 @@ export function useStickToBottom<T extends HTMLElement = HTMLDivElement>({
 		const element = viewport();
 		if (!element) return;
 		const box = element.getBoundingClientRect();
-		const row = [
-			...element.querySelectorAll<HTMLElement>("[data-message-id]"),
-		].find((node) => {
-			const r = node.getBoundingClientRect();
-			return r.bottom > box.top && r.top < box.bottom;
-		});
+		const row = [...element.querySelectorAll<HTMLElement>(rowSelector)].find(
+			(node) => {
+				const r = node.getBoundingClientRect();
+				return r.bottom > box.top && r.top < box.bottom;
+			},
+		);
 		anchor.current = row
 			? {
 					id: row.dataset.messageId ?? "",
 					offset: row.getBoundingClientRect().top - box.top,
 				}
 			: null;
-	}, [preserveAnchor, viewport]);
+	}, [preserveAnchor, viewport, rowSelector]);
 	const restoreAnchor = useCallback(() => {
 		if (!preserveAnchor || !anchor.current) return;
 		const element = viewport();
 		if (!element) return;
-		const row = [
-			...element.querySelectorAll<HTMLElement>("[data-message-id]"),
-		].find((node) => node.dataset.messageId === anchor.current?.id);
+		const row = [...element.querySelectorAll<HTMLElement>(rowSelector)].find(
+			(node) => node.dataset.messageId === anchor.current?.id,
+		);
 		if (row)
 			element.scrollTop +=
 				row.getBoundingClientRect().top -
 				element.getBoundingClientRect().top -
 				anchor.current.offset;
-	}, [preserveAnchor, viewport]);
+	}, [preserveAnchor, viewport, rowSelector]);
 	const toBottom = useCallback(() => {
 		const element = viewport();
 		if (element) element.scrollTop = element.scrollHeight;
@@ -131,19 +137,33 @@ export function useStickToBottom<T extends HTMLElement = HTMLDivElement>({
 		pinned.current = false;
 		captureAnchor();
 	}, [captureAnchor]);
+	const isPinned = useCallback(
+		() => pinned.current && liveEdgeAvailable,
+		[liveEdgeAvailable],
+	);
 
 	// Layout effects: the jump happens before paint, so nothing flashes at the top.
 	// biome-ignore lint/correctness/useExhaustiveDependencies: resetKey IS the trigger.
 	useLayoutEffect(() => {
 		pinned.current = liveEdgeAvailable;
+		previousLiveEdge.current = liveEdgeAvailable;
 		anchor.current = null;
 		previousRows.current = rowIds ?? [];
 		if (preserveAnchor) setNewMessages(0);
 		toBottom();
 	}, [resetKey, toBottom]);
-	// biome-ignore lint/correctness/useExhaustiveDependencies: contentKey IS the trigger.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: contentKey and live-edge restoration are the triggers.
 	useLayoutEffect(() => {
+		const restoredLatest = liveEdgeAvailable && !previousLiveEdge.current;
+		previousLiveEdge.current = liveEdgeAvailable;
 		if (!liveEdgeAvailable) pinned.current = false;
+		else if (restoredLatest) {
+			// Explicit latest may return the same IDs: availability, not a row
+			// append, must release the held range and restore the live anchor.
+			pinned.current = true;
+			anchor.current = null;
+			if (preserveAnchor) setNewMessages(0);
+		}
 		if (pinned.current) toBottom();
 		else {
 			restoreAnchor();
@@ -155,7 +175,7 @@ export function useStickToBottom<T extends HTMLElement = HTMLDivElement>({
 			}
 		}
 		previousRows.current = rowIds ?? [];
-	}, [contentKey, toBottom]);
+	}, [contentKey, toBottom, liveEdgeAvailable]);
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: resetKey re-binds the listeners - a new conversation can mount a new viewport.
 	useEffect(() => {
@@ -224,5 +244,5 @@ export function useStickToBottom<T extends HTMLElement = HTMLDivElement>({
 		restoreAnchor,
 	]);
 
-	return { rootRef, pin, hold, newMessages };
+	return { rootRef, pin, hold, isPinned, newMessages };
 }

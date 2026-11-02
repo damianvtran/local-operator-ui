@@ -7774,6 +7774,7 @@ test("/health carries the capabilities this build serves", async () => {
 		"query",
 		"download",
 		"upload",
+		"press",
 		"network_start",
 		"network_stop",
 		"network_read",

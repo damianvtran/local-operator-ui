@@ -11,6 +11,8 @@
 	"ui.ownerAudit.agent": "首席助理",
 	"ui.ownerAudit.more": "加载更多",
 	"ui.ownerAudit.older": "加载较早的消息",
+	"ui.ownerAudit.older_replies": "加载较早的回复",
+	"ui.ownerAudit.empty_replies": "此审计时段内没有回复。",
 	"ui.ownerAudit.page_cutoff": "较早的消息尚未显示。加载较早的消息即可阅读此前的内容。",
 	"ui.ownerAudit.admitted": "已被你的首席助理接收",
 	"ui.ownerAudit.rejected": "已被你的首席助理的筛选拒绝",

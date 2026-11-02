@@ -11,6 +11,8 @@
 	"ui.ownerAudit.agent": "چیف آف اسٹاف",
 	"ui.ownerAudit.more": "مزید لوڈ کریں",
 	"ui.ownerAudit.older": "پرانے پیغامات لوڈ کریں",
+	"ui.ownerAudit.older_replies": "پرانے جوابات لوڈ کریں",
+	"ui.ownerAudit.empty_replies": "اس آڈٹ کی مدت میں کوئی جواب نہیں ہے۔",
 	"ui.ownerAudit.page_cutoff": "پرانے پیغامات ابھی تک نہیں دکھائے گئے۔ پرانے پیغامات لوڈ کریں تاکہ آپ پڑھ سکیں کہ پہلے کیا تھا۔",
 	"ui.ownerAudit.admitted": "آپ کے چیف آف اسٹاف نے قبول کیا",
 	"ui.ownerAudit.rejected": "آپ کے چیف آف اسٹاف کی جانچ نے مسترد کیا",

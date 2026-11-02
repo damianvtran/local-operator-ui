@@ -11,6 +11,8 @@
 	"ui.ownerAudit.agent": "Jefe de gabinete",
 	"ui.ownerAudit.more": "Cargar más",
 	"ui.ownerAudit.older": "Cargar mensajes anteriores",
+	"ui.ownerAudit.older_replies": "Cargar respuestas anteriores",
+	"ui.ownerAudit.empty_replies": "No hay respuestas en esta ventana de auditoría.",
 	"ui.ownerAudit.page_cutoff": "Los mensajes anteriores aún no se muestran. Carga los mensajes anteriores para leer lo que vino antes.",
 	"ui.ownerAudit.admitted": "Admitido por tu jefe de gabinete",
 	"ui.ownerAudit.rejected": "Rechazado por el filtrado de tu jefe de gabinete",

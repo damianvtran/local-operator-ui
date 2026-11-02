@@ -318,5 +318,6 @@
 	"ui.teamBridge.mentions.notice.invite": "Пригласить",
 	"ui.teamBridge.mentions.notice.silent": "Упомянуть без уведомления",
 	"ui.teamBridge.mentions.notice.pending": "Приглашение для {name} ещё не принято, поэтому уведомление не придёт.",
-	"ui.teamBridge.mentions.notice.invited": "Приглашение для {name} отправлено. Пока его не примут, уведомление не придёт."
+	"ui.teamBridge.mentions.notice.invited": "Приглашение для {name} отправлено. Пока его не примут, уведомление не придёт.",
+	"ui.teamBridge.replies.legacy_window": "Этот сервер показывает ответы только от старых к новым. Загрузите ещё, чтобы продолжить."
 }

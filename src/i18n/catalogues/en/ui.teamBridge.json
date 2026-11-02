@@ -318,5 +318,6 @@
 	"ui.teamBridge.mentions.notice.invite": "Invite them",
 	"ui.teamBridge.mentions.notice.silent": "Mention without notifying",
 	"ui.teamBridge.mentions.notice.pending": "{name} is invited but hasn’t joined yet, so they won’t be notified.",
-	"ui.teamBridge.mentions.notice.invited": "{name} has been invited. They won’t be notified until they join."
+	"ui.teamBridge.mentions.notice.invited": "{name} has been invited. They won’t be notified until they join.",
+	"ui.teamBridge.replies.legacy_window": "This server only supports oldest-first replies. Load more to continue."
 }

@@ -318,5 +318,6 @@
 	"ui.teamBridge.mentions.notice.invite": "Invitar",
 	"ui.teamBridge.mentions.notice.silent": "Mencionar sin notificar",
 	"ui.teamBridge.mentions.notice.pending": "{name} recibió una invitación pero aún no se ha unido, así que no recibirá ninguna notificación.",
-	"ui.teamBridge.mentions.notice.invited": "Se invitó a {name}. No recibirá notificaciones hasta que se una."
+	"ui.teamBridge.mentions.notice.invited": "Se invitó a {name}. No recibirá notificaciones hasta que se una.",
+	"ui.teamBridge.replies.legacy_window": "Este servidor solo permite ver las respuestas de la más antigua a la más reciente. Carga más para continuar."
 }
