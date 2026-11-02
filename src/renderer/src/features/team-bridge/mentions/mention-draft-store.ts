@@ -1,13 +1,22 @@
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
-import type { MentionToken } from "./tokens";
+import { type MentionToken, rebaseTokens } from "./tokens";
 
 /**
  * The token SIDECAR of each composer draft.
  *
  * The draft text is persisted by `conversation-input-store`; the mention
  * tokens are not text, so they live here under the same draft key and are
- * persisted beside it. A restored draft gets its pills back. Correctness never
+ * persisted beside it as one {text, tokens} entry. Field edits publish that
+ * pair before calling the text owner's setter; hydration never deletes a pair
+ * merely because that owner's text has not arrived yet.
+ *
+ * Keys are opaque caller-owned draft keys, not display names or labels. The
+ * page currently passes its conversation ID; replies pass
+ * `thread|<conversationId>|<rootMessageId>`, a disjoint namespace. Any caller's
+ * org/account/new-recipient scope must remain part of its supplied key: this
+ * store must not collapse it to just a conversation or derive identity from it.
+ * A restored draft gets its pills back. Correctness never
  * depends on this store agreeing with the text: every read re-checks that a
  * token's range still spells `@label` (`rebaseTokens`), so a sidecar from an
  * older text simply yields no pill rather than a wrong one.
@@ -32,8 +41,11 @@ export const useMentionDraftStore = create<State>()(
 			write: (key, text, tokens) =>
 				set((state) => {
 					const drafts = { ...state.drafts };
-					if (tokens.length === 0) delete drafts[key];
-					else drafts[key] = { text, tokens, at: Date.now() };
+					// Persist only identities whose recorded ranges still spell the
+					// label. Validation cannot create identities for legacy text.
+					const valid = rebaseTokens(text, text, tokens);
+					if (valid.length === 0) delete drafts[key];
+					else drafts[key] = { text, tokens: valid, at: Date.now() };
 					const keys = Object.keys(drafts);
 					if (keys.length > MAX_DRAFTS)
 						for (const old of keys
