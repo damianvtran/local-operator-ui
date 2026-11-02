@@ -20,6 +20,9 @@ import {
 import { dirname, join, resolve } from "node:path";
 import { createInterface } from "node:readline";
 import { fileURLToPath } from "node:url";
+import { installedElectronBinary } from "./electron-runtime-path.mjs";
+import { isEntryPoint } from "./entry-point.mjs";
+import { pythonChildEnv } from "./python-child-env.mjs";
 
 export function verifyModelExitArtifacts(output) {
 	const core = JSON.parse(readFileSync(join(output, "owned-core-exit.json")));
@@ -163,14 +166,8 @@ export function verifyModelBuild(root, receiptPath) {
 		pkg.optionalDependencies.electron,
 		"wrong pinned Electron",
 	);
-	const binary = readFileSync(
-		join(root, "node_modules/electron/path.txt"),
-		"utf8",
-	).trim();
-	assert(
-		existsSync(join(root, "node_modules/electron/dist", binary)),
-		"native executable absent; do not bootstrap from this producer",
-	);
+	// This producer requires the real installed dist, not an ambient override.
+	installedElectronBinary(root, null);
 }
 
 /** Dedicated policy, never used to loosen the existing asks read-only policy. */
@@ -270,6 +267,33 @@ export function assertModelTraffic(attempts, sessionId, readTemplates = []) {
 	}
 }
 
+/** The real backend's Python boundary: never inherit an ambient installed-app
+ * bytecode prefix. PYTHONPATH is reintroduced ONLY for this run's owned guard.
+ * Exported so the hostile-prefix control executes this exact builder, not a copy.
+ */
+export function modelBackendPythonEnv({ scratch, token, observerToken }) {
+	const home = join(scratch, "home");
+	return pythonChildEnv({
+		base: {
+			MODEL_CASE_GUARD_LOG: join(scratch, "blocked-network.ndjson"),
+			MODEL_CASE_CHILD_PIDS: join(scratch, "owned-child-pids"),
+			PATH: process.env.PATH,
+			HOME: home,
+			TMPDIR: join(scratch, "tmp"),
+			LOCAL_OPERATOR_CONFIG_DIR: join(home, ".local-operator"),
+			LOCAL_OPERATOR_DESKTOP_TOKEN: token,
+			MODEL_CASE_OBSERVER_TOKEN: observerToken,
+			LOCAL_OPERATOR_NO_NOTIFICATIONS: "1",
+			LOCAL_OPERATOR_UI_TELEMETRY: "off",
+			GIT_CONFIG_SYSTEM: "/dev/null",
+			GIT_TERMINAL_PROMPT: "0",
+			LANG: "en_US.UTF-8",
+		},
+		prefix: join(scratch, "pycache"),
+		extra: { PYTHONPATH: `${join(scratch, "guards")}:${SCRIPT_ROOT}` },
+	});
+}
+
 export async function startModelBackend({ output }) {
 	const python = process.env.LOCAL_OPERATOR_CORE_PYTHON;
 	const bin = process.env.LOCAL_OPERATOR_CORE_BIN;
@@ -289,6 +313,7 @@ export async function startModelBackend({ output }) {
 	const home = join(scratch, "home");
 	const config = join(home, ".local-operator");
 	mkdirSync(config, { recursive: true });
+	mkdirSync(join(scratch, "tmp"), { recursive: true });
 	const token = randomBytes(32).toString("base64url");
 	const observerToken = randomBytes(32).toString("base64url");
 	const guards = join(scratch, "guards");
@@ -297,22 +322,7 @@ export async function startModelBackend({ output }) {
 		join(guards, "sitecustomize.py"),
 		"from model_uncertainty_backend import restrict_network\nrestrict_network()\n",
 	);
-	const env = {
-		MODEL_CASE_GUARD_LOG: join(scratch, "blocked-network.ndjson"),
-		MODEL_CASE_CHILD_PIDS: join(scratch, "owned-child-pids"),
-		PYTHONPATH: `${guards}:${SCRIPT_ROOT}`,
-		PATH: process.env.PATH,
-		HOME: home,
-		LOCAL_OPERATOR_CONFIG_DIR: config,
-		LOCAL_OPERATOR_DESKTOP_TOKEN: token,
-		MODEL_CASE_OBSERVER_TOKEN: observerToken,
-		LOCAL_OPERATOR_NO_NOTIFICATIONS: "1",
-		LOCAL_OPERATOR_UI_TELEMETRY: "off",
-		PYTHONDONTWRITEBYTECODE: "1",
-		GIT_CONFIG_SYSTEM: "/dev/null",
-		GIT_TERMINAL_PROMPT: "0",
-		LANG: "en_US.UTF-8",
-	};
+	const env = modelBackendPythonEnv({ scratch, token, observerToken });
 	writeFileSync(
 		join(config, "config.yml"),
 		"values:\n  hosting: test\n  model_name: mock-model\n  language: en\n",
@@ -906,9 +916,11 @@ export const modelUncertaintyCase = {
 	},
 };
 
-if (
-	process.argv[1] &&
-	resolve(process.argv[1]) === fileURLToPath(import.meta.url) &&
+if (isEntryPoint(import.meta.url) && process.argv.includes("--help")) {
+	// A safe workflow-table probe must not seal outputs or bootstrap any backend.
+	console.log("model-uncertainty-native: --write-build-receipt <path>");
+} else if (
+	isEntryPoint(import.meta.url) &&
 	process.argv.includes("--write-build-receipt")
 ) {
 	const root = process.cwd();

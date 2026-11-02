@@ -48,6 +48,7 @@ import {
 	utimesSync,
 	writeFileSync,
 } from "node:fs";
+import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { test } from "node:test";
@@ -64,6 +65,9 @@ const DRIVER = join(SCRIPTS, "renderer-driver.mjs");
 const FACADE_KEYS = [
 	"CdpClient",
 	"capture",
+	// The owned-core producer must join its backend AFTER app drain. The
+	// historical reapLiveBoots intentionally exits and cannot serve that caller.
+	"drainLiveBoots",
 	"launchApp",
 	"prepareDriverContext",
 	"reapLiveBoots",
@@ -487,4 +491,60 @@ test("a direct CLI run still reaches main(): the pre-spawn refusal, absent and p
 			rmSync(dir, { recursive: true, force: true });
 		}
 	}
+});
+
+test("missing-runtime import and helper help cannot execute the installer", () => {
+	// The historical 9df import expression is calibrated below against an
+	// isolated package index tripwire; no historical Git object is needed in CI.
+	const program = `import Module,{createRequire,syncBuiltinESMExports} from 'node:module';import {pathToFileURL}from'node:url';const req=createRequire(import.meta.url);const original=Module._load;let attempts=0;const fail=()=>{attempts++;throw Error('INSTALLER_OR_NETWORK_TRIPWIRE');};Module._load=function(name,...rest){if(name==='electron')return fail();return original.call(this,name,...rest);};const cp=req('node:child_process');for(const name of ['spawn','spawnSync','execFile','execFileSync','exec','execSync'])cp[name]=fail;for(const name of ['node:http','node:https'])req(name).request=fail;globalThis.fetch=fail;syncBuiltinESMExports();process.env.ELECTRON_OVERRIDE_DIST_PATH='/owned-missing-runtime/no-executable';await import(pathToFileURL(${JSON.stringify(DRIVER)}));process.argv=[process.execPath,${JSON.stringify(join(SCRIPTS, "model-uncertainty-native.mjs"))},'--help'];await import(pathToFileURL(process.argv[1]));if(attempts!==0)throw Error('unexpected installer/network attempt');console.log('SAFE_IMPORT_HELP_ZERO_ATTEMPTS');`;
+	const result = runChild(program);
+	assert.equal(result.status, 0, result.stderr);
+	assert.match(
+		result.stdout,
+		/model-uncertainty-native: --write-build-receipt <path>/,
+	);
+	assert.match(result.stdout, /SAFE_IMPORT_HELP_ZERO_ATTEMPTS/);
+	assert(!result.stdout.includes("Downloading Electron"));
+});
+
+test("missing installed runtime fails closed without running package index", async () => {
+	const root = mkdtempSync(join(tmpdir(), "no-download-electron-"));
+	const pkg = join(root, "node_modules", "electron");
+	mkdirSync(pkg, { recursive: true });
+	writeFileSync(join(root, "package.json"), "{}");
+	writeFileSync(
+		join(pkg, "package.json"),
+		JSON.stringify({ name: "electron", version: "45.1.0", main: "index.js" }),
+	);
+	const marker = join(root, "installer-touched");
+	writeFileSync(
+		join(pkg, "index.js"),
+		`require('node:fs').writeFileSync(${JSON.stringify(marker)},'bad');throw Error('INSTALLER_TRIPWIRE');`,
+	);
+	const { installedElectronBinary } = await import(
+		"./electron-runtime-path.mjs"
+	);
+	assert.throws(
+		() => installedElectronBinary(root, null),
+		/native executable absent/,
+	);
+	assert(!existsSync(marker));
+	const override = join(root, "unit-dist");
+	mkdirSync(override);
+	writeFileSync(
+		join(override, "electron"),
+		"not an executable; metadata-only unit fixture",
+	);
+	assert.equal(
+		installedElectronBinary(root, override),
+		join(override, "electron"),
+	);
+	assert(!existsSync(marker));
+	// This is the actual pre-fix operation, but the owned index refuses before
+	// any installer/network execution. It calibrates the zero-attempt oracle.
+	assert.throws(
+		() => createRequire(join(root, "package.json"))("electron"),
+		/INSTALLER_TRIPWIRE/,
+	);
+	assert.equal(readFileSync(marker, "utf8"), "bad");
 });

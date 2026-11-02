@@ -3,19 +3,27 @@ const MISSING_BUILD_PATTERN = /build receipt/;
 /** Pure producer/policy doors. No Electron, app build, backend or dependency install. */
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import {
+	mkdirSync,
+	mkdtempSync,
+	readFileSync,
+	readdirSync,
+	writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 import {
 	assertModelTraffic,
 	buildReceipt,
+	modelBackendPythonEnv,
 	modelUncertaintyCase,
 	runOwnedModelCase,
 	startModelBackend,
 	verifyModelBuild,
 	verifyModelExitArtifacts,
 } from "./model-uncertainty-native.mjs";
+import { pythonChildEnv } from "./python-child-env.mjs";
 
 const sid = "aaaaaaaaaaaa";
 
@@ -267,7 +275,7 @@ test("Python transport contracts preserve genuine bytes and never enforce the ca
 		[new URL("./model_uncertainty_backend_test.py", import.meta.url).pathname],
 		{
 			encoding: "utf8",
-			env: { ...process.env, PYTHONDONTWRITEBYTECODE: "1" },
+			env: pythonChildEnv(),
 			timeout: 20_000,
 		},
 	);
@@ -637,4 +645,70 @@ test("strict oracle context rejects unknown predicates/verbs rather than default
 	await assert.rejects(ctx.wait("unknown predicate"));
 	await assert.rejects(ctx.cdp.evaluate("unknown predicate"));
 	await assert.rejects(ctx.api.verb(null, "unknown"));
+});
+
+test("actual backend Python environment refuses hostile app cache inheritance", () => {
+	const root = mkdtempSync(join(tmpdir(), "model-python-boundary-"));
+	const fake = join(root, "OwnedFake.app", "Contents", "Resources", "pycache");
+	for (const path of [
+		fake,
+		join(root, "home"),
+		join(root, "tmp"),
+		join(root, "guards"),
+	])
+		mkdirSync(path, { recursive: true });
+	const marker = join(root, "owned_import.py");
+	writeFileSync(marker, "value = 'owned-import-executed'\n");
+	const names = [
+		"PYTHONPYCACHEPREFIX",
+		"PYTHONHOME",
+		"PYTHONPATH",
+		"PYTHONSTARTUP",
+		"PYTHONDONTWRITEBYTECODE",
+	];
+	const previous = Object.fromEntries(
+		names.map((key) => [key, process.env[key]]),
+	);
+	try {
+		Object.assign(process.env, {
+			PYTHONPYCACHEPREFIX: fake,
+			PYTHONHOME: join(root, "invalid-python-home"),
+			PYTHONPATH: join(root, "ambient-path"),
+			PYTHONSTARTUP: join(root, "ambient-startup"),
+			PYTHONDONTWRITEBYTECODE: "0",
+		});
+		const guarded = modelBackendPythonEnv({
+			scratch: root,
+			token: "synthetic",
+			observerToken: "synthetic-observer",
+		});
+		assert.equal(guarded.HOME, join(root, "home"));
+		assert.equal(guarded.TMPDIR, join(root, "tmp"));
+		assert.equal(guarded.PYTHONPYCACHEPREFIX, join(root, "pycache"));
+		assert.equal(guarded.PYTHONDONTWRITEBYTECODE, "1");
+		assert.equal(guarded.PYTHONHOME, undefined);
+		assert.equal(guarded.PYTHONSTARTUP, undefined);
+		assert(!guarded.PYTHONPATH.includes("ambient-path"));
+		const output = execFileSync(
+			"python3",
+			[
+				"-c",
+				"import importlib.util,sys; s=importlib.util.spec_from_file_location('owned_import',sys.argv[1]);m=importlib.util.module_from_spec(s);s.loader.exec_module(m);print(m.value)",
+				marker,
+			],
+			{ cwd: root, env: guarded, encoding: "utf8", timeout: 10000 },
+		);
+		assert.equal(output.trim(), "owned-import-executed");
+		assert.deepEqual(
+			readdirSync(fake),
+			[],
+			"no fake installed-app cache write",
+		);
+		assert.throws(() => pythonChildEnv({ prefix: fake }), /inside a bundle/);
+	} finally {
+		for (const [key, value] of Object.entries(previous)) {
+			if (value === undefined) Reflect.deleteProperty(process.env, key);
+			else process.env[key] = value;
+		}
+	}
 });

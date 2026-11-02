@@ -203,6 +203,17 @@ function cases(root) {
 	return [
 		{ ...desktopShardRefusal, cwd: plain, env: {} },
 		{
+			// Technical help exercises the real shared entry door without sealing
+			// outputs or loading Python/core/native/network/keychain prerequisites.
+			script: "model-uncertainty-native.mjs",
+			args: ["--help"],
+			cwd: plain,
+			env: {},
+			status: 0,
+			stdout: /^model-uncertainty-native: --write-build-receipt <path>\n$/,
+			stderr: /^$/,
+		},
+		{
 			// Reject the SHA before any Linux/compiler/dependency control can start.
 			// This is the diagnostic's own CLI verdict, not a blanket exemption.
 			script: "onboarding-desktop-diagnostic.mjs",
@@ -990,6 +1001,42 @@ test("every script a workflow invokes is driven here, or says why it needs no en
 			),
 			`${name} is exempt here as a script with nothing to resolve, but it compares process.argv[1] itself`,
 		);
+	}
+});
+
+test("model producer help is driven through physical/symlink paths and inert URL import", () => {
+	const root = mkdtempSync(join(tmpdir(), "model-help-entry-"));
+	try {
+		const kase = cases(root).find(
+			(row) => row.script === "model-uncertainty-native.mjs",
+		);
+		assert(kase);
+		const bin = stubBin(root);
+		const link = join(root, "linked-scripts");
+		symlinkSync(SCRIPTS, link);
+		for (const script of [
+			join(SCRIPTS, kase.script),
+			join(link, kase.script),
+		]) {
+			const cli = run(script, kase, bin, root);
+			assert.equal(cli.status, 0, cli.stderr);
+			assert.match(cli.stdout, kase.stdout);
+			assert.match(cli.stderr, kase.stderr);
+			const imported = spawnSync(
+				process.execPath,
+				[
+					"--input-type=module",
+					"-e",
+					`await import(${JSON.stringify(pathToFileURL(script).href)})`,
+				],
+				{ cwd: kase.cwd, env: caseEnv(bin), encoding: "utf8", timeout: 15000 },
+			);
+			assert.equal(imported.status, 0, imported.stderr);
+			assert.equal(imported.stdout, "");
+			assert.equal(imported.stderr, "");
+		}
+	} finally {
+		rmSync(root, { recursive: true, force: true });
 	}
 });
 

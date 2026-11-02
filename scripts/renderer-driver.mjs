@@ -24,7 +24,7 @@
  *   shim — in the documented `headless` window mode (`src/main/window-mode.ts` —
  *   a window that is never shown, so nothing can steal the operator's focus).
  *   The binary and not the shim is what makes the teardown reach the app; the
- *   comment on `ELECTRON_BIN` carries the measurement that decided it;
+ *   comment on `electronBinary` carries the measurement that decided it;
  * - the app's own gated dev-driver bridge (`src/main/dev-driver.ts`,
  *   `docs/agent-driver.md`) for the verbs, reached over CDP `Runtime.evaluate`
  *   on the app's OWN debugging port — the same channel AGENTS.md documents for
@@ -266,6 +266,7 @@ import { basename, isAbsolute, join, resolve, sep } from "node:path";
 import sharp from "sharp";
 import { sceneAgentMessages } from "./agent-messages-scene.mjs";
 import { MOCK_KEYCHAIN_SWITCH } from "./chrome-keychain.mjs";
+import { installedElectronBinary } from "./electron-runtime-path.mjs";
 import { isEntryPoint } from "./entry-point.mjs";
 import { EVIDENCE_TZ } from "./evidence-tz.mjs";
 import { isPaintedScrollBox } from "./hub-guard-geometry.mjs";
@@ -321,29 +322,15 @@ const ROOT = process.cwd();
  * the run had just deleted, one still answering `GET /json/version` on its
  * `--remote-debugging-port`.
  *
- * `require("electron")` is the same resolution `bin/local-operator-ui.js` uses,
- * so the harness drives the runtime the app ships against, and `child.pid` is
- * the app's own main process — which is what makes the exact-pid teardown below
- * reach it, and what lets the run say out loud which runtime a frame came from
- * (`electronRuntime()`).
+ * Installed package metadata gives the same executable without executing
+ * Electron45's installer-on-require index. Resolution is lazy and refuses a
+ * missing runtime. The app's own main PID, pin checks and exact-PID teardown
+ * remain unchanged; importing a proof script cannot install a runtime.
  */
-const ELECTRON_BIN = (() => {
-	const resolveFromRepo = createRequire(join(ROOT, "package.json"));
-	let binary;
-	try {
-		binary = resolveFromRepo("electron");
-	} catch (error) {
-		throw new Error(
-			`cannot resolve the Electron runtime from ${ROOT}: ${error?.message ?? error}\nInstall this branch's own dependencies first: pnpm install --frozen-lockfile`,
-		);
-	}
-	if (typeof binary !== "string" || !existsSync(binary)) {
-		throw new Error(
-			`the Electron runtime is not on disk at ${String(binary)}\npnpm install --frozen-lockfile (or \`npx install-electron --no\`) fetches it.`,
-		);
-	}
-	return binary;
-})();
+// Resolve only when a launch/main preflight needs it. Even require("electron")
+// is not inert on Electron45: it installs missing dist on import. The shared
+// metadata resolver never executes that package or bootstraps a dependency.
+const electronBinary = () => installedElectronBinary(ROOT);
 
 /**
  * The Electron version installed here, and the version this branch pins.
@@ -1141,7 +1128,7 @@ async function settledWithin(promise, ms) {
  * Kill by exact pid, never a pattern: a `pkill` would take the operator's app too.
  *
  * The signal goes to the app's OWN main process — the pid `spawn` returned once
- * the shim is gone (see `ELECTRON_BIN`) — and the escalation below targets that
+ * the shim is gone (see `electronBinary`) — and the escalation below targets that
  * same pid. That pairing is the whole fix: a SIGTERM the app does honour, and a
  * SIGKILL that lands on the app rather than on a shim that has already exited.
  * Helper processes (renderer, GPU, utility) are the app's own children and exit
@@ -1545,11 +1532,11 @@ async function launchApp({
 		throw new Error(`picked inspect port ${inspectPort} is in use`);
 
 	/*
-	 * The BINARY, not `node_modules/.bin/electron` — see `ELECTRON_BIN`. The shim
+	 * The BINARY, not `node_modules/.bin/electron` — see `electronBinary`. The shim
 	 * would make `child.pid` the shim's pid and orphan the app the shim starts.
 	 */
 	const child = spawn(
-		ELECTRON_BIN,
+		electronBinary(),
 		[
 			// The app directory as an argument rather than `.`: argv[1] is what
 			// Electron loads, so the cwd can be the scratch directory that the
@@ -50169,14 +50156,14 @@ async function main() {
 	 * `node_modules` symlink. So the version is printed AND asserted, not assumed.
 	 */
 	const runtime = electronRuntime();
-	say(`  electron      ${runtime.installed}   (${ELECTRON_BIN})`);
+	say(`  electron      ${runtime.installed}   (${electronBinary()})`);
 	say(
 		`  electron pin  ${runtime.pinned}   (package.json optionalDependencies)`,
 	);
 	const onThePinnedRuntime = check(
 		"the harness is driving the Electron this branch pins",
 		runtime.installed === runtime.pinned,
-		`installed ${runtime.installed} at ${ELECTRON_BIN}, pinned ${runtime.pinned}`,
+		`installed ${runtime.installed} at ${electronBinary()}, pinned ${runtime.pinned}`,
 	);
 	/*
 	 * AND IT STOPS HERE, before the first boot, when the answer is no.
