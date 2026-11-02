@@ -48,7 +48,7 @@
  * is that the arrangement may sort - this file's bucketing stays a filter.
  */
 
-import type { WithoutParams } from "@shared/i18n";
+import { type WithoutParams, t } from "@shared/i18n";
 import type { CanonicalSessionRow } from "@shared/store/canonical-sessions-store";
 
 export type ChatListSection = "running" | "today" | "week" | "older";
@@ -283,23 +283,33 @@ export function sectionRows(
  * A future time (a clock skewed ahead of the backend's) reads `now` rather than a
  * negative number. No time at all prints nothing.
  */
+// Keep the time facts separate from their copy: parsing a translated compact
+// label to build its accessible sentence would mistake localized units/digits.
+function relativeTimeValue(
+	row: CanonicalSessionRow,
+	now: number,
+	basis: SidebarBasis,
+) {
+	const at = rowTimeMs(row, basis);
+	if (at === null) return null;
+	const minutes = Math.floor(Math.max(0, now - at) / 60_000);
+	if (minutes < 1) return { unit: "now", count: 0 };
+	if (minutes < 60) return { unit: "minute", count: minutes };
+	const hours = Math.floor(minutes / 60);
+	if (hours < 24) return { unit: "hour", count: hours };
+	const days = Math.floor(hours / 24);
+	if (days < 7) return { unit: "day", count: days };
+	if (days < 365) return { unit: "week", count: Math.floor(days / 7) };
+	return { unit: "year", count: Math.floor(days / 365) };
+}
+
 export function relativeTime(
 	row: CanonicalSessionRow,
 	now: number,
 	basis: SidebarBasis,
 ): string {
-	const at = rowTimeMs(row, basis);
-	if (at === null) return "";
-	const minutes = Math.floor(Math.max(0, now - at) / 60_000);
-	if (minutes < 1) return "now";
-	if (minutes < 60) return `${minutes}m`;
-	const hours = Math.floor(minutes / 60);
-	if (hours < 24) return `${hours}h`;
-	const days = Math.floor(hours / 24);
-	if (days < 7) return `${days}d`;
-	const weeks = Math.floor(days / 7);
-	if (days < 365) return `${weeks}w`;
-	return `${Math.floor(days / 365)}y`;
+	const value = relativeTimeValue(row, now, basis);
+	return value ? t("ui.chat.sidebar_view.relative_short", value) : "";
 }
 
 /**
@@ -318,18 +328,9 @@ export function relativeTimeSentence(
 	now: number,
 	basis: SidebarBasis,
 ): string {
-	const short = relativeTime(row, now, basis);
-	if (!short) return "";
-	const prefix = basis === "created" ? "created" : "last active";
-	if (short === "now") return `${prefix} just now`;
-	const unit: Record<string, string> = {
-		m: "minute",
-		h: "hour",
-		d: "day",
-		w: "week",
-		y: "year",
-	};
-	const count = Number.parseInt(short, 10);
-	const word = unit[short.slice(-1)];
-	return `${prefix} ${count} ${word}${count === 1 ? "" : "s"} ago`;
+	const value = relativeTimeValue(row, now, basis);
+	if (!value) return "";
+	return basis === "created"
+		? t("ui.chat.sidebar_view.relative_created", value)
+		: t("ui.chat.sidebar_view.relative_active", value);
 }

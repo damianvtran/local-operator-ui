@@ -1,0 +1,13 @@
+{
+	"ui.chat.sidebar.agents.list_join": {
+		"role": "joiner for the agent-name list inside the built-in installation offer",
+		"tone": "neutral inline enumeration; preserve agent names verbatim, no sentence punctuation",
+		"length": "Two placeholders plus separators: three characters for pair/final joins, two for middle joins; width otherwise depends on the names.",
+		"note": "Spanish uses y without a preceding comma for pairs and final items, and comma-space between middle items, consistent with existing catalogue lists. Before a name beginning with the /i/ sound, Spanish requires e instead of y (not before the /je/ sound). The fixed position-only select cannot detect the following name's pronunciation; phonetic alternation requires caller support and is not encoded by this entry.",
+		"placeholders": {
+			"position": "pair for exactly two names, middle for intermediate joins, other for the final join in a longer list",
+			"head": "first agent name or already joined partial list; preserve verbatim",
+			"tail": "next agent name; preserve verbatim"
+		}
+	}
+}

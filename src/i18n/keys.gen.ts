@@ -23,6 +23,7 @@
 
 import enUiAgentMessages from "./catalogues/en/ui.agentMessages.json";
 import enUiAgentMessagesSettings from "./catalogues/en/ui.agentMessages.settings.json";
+import enUiAgentsAvatar from "./catalogues/en/ui.agents.avatar.json";
 import enUiAgentsConfig from "./catalogues/en/ui.agents.config.json";
 import enUiAgentsDescriptions from "./catalogues/en/ui.agents.descriptions.json";
 import enUiAgentsDetailInstall from "./catalogues/en/ui.agents.detail.install.json";
@@ -137,6 +138,7 @@ import enUiTeamBridge from "./catalogues/en/ui.teamBridge.json";
 import enUiUpdatesPanel from "./catalogues/en/ui.updates.panel.json";
 import esUiAgentMessages from "./catalogues/es/ui.agentMessages.json";
 import esUiAgentMessagesSettings from "./catalogues/es/ui.agentMessages.settings.json";
+import esUiAgentsAvatar from "./catalogues/es/ui.agents.avatar.json";
 import esUiAgentsConfig from "./catalogues/es/ui.agents.config.json";
 import esUiAgentsDescriptions from "./catalogues/es/ui.agents.descriptions.json";
 import esUiAgentsDetailInstall from "./catalogues/es/ui.agents.detail.install.json";
@@ -251,6 +253,7 @@ import esUiTeamBridge from "./catalogues/es/ui.teamBridge.json";
 import esUiUpdatesPanel from "./catalogues/es/ui.updates.panel.json";
 import frUiAgentMessages from "./catalogues/fr/ui.agentMessages.json";
 import frUiAgentMessagesSettings from "./catalogues/fr/ui.agentMessages.settings.json";
+import frUiAgentsAvatar from "./catalogues/fr/ui.agents.avatar.json";
 import frUiAgentsConfig from "./catalogues/fr/ui.agents.config.json";
 import frUiAgentsDescriptions from "./catalogues/fr/ui.agents.descriptions.json";
 import frUiAgentsDetailInstall from "./catalogues/fr/ui.agents.detail.install.json";
@@ -365,6 +368,7 @@ import frUiTeamBridge from "./catalogues/fr/ui.teamBridge.json";
 import frUiUpdatesPanel from "./catalogues/fr/ui.updates.panel.json";
 import hiUiAgentMessages from "./catalogues/hi/ui.agentMessages.json";
 import hiUiAgentMessagesSettings from "./catalogues/hi/ui.agentMessages.settings.json";
+import hiUiAgentsAvatar from "./catalogues/hi/ui.agents.avatar.json";
 import hiUiAgentsConfig from "./catalogues/hi/ui.agents.config.json";
 import hiUiAgentsDescriptions from "./catalogues/hi/ui.agents.descriptions.json";
 import hiUiAgentsDetailInstall from "./catalogues/hi/ui.agents.detail.install.json";
@@ -479,6 +483,7 @@ import hiUiTeamBridge from "./catalogues/hi/ui.teamBridge.json";
 import hiUiUpdatesPanel from "./catalogues/hi/ui.updates.panel.json";
 import ruUiAgentMessages from "./catalogues/ru/ui.agentMessages.json";
 import ruUiAgentMessagesSettings from "./catalogues/ru/ui.agentMessages.settings.json";
+import ruUiAgentsAvatar from "./catalogues/ru/ui.agents.avatar.json";
 import ruUiAgentsConfig from "./catalogues/ru/ui.agents.config.json";
 import ruUiAgentsDescriptions from "./catalogues/ru/ui.agents.descriptions.json";
 import ruUiAgentsDetailInstall from "./catalogues/ru/ui.agents.detail.install.json";
@@ -593,6 +598,7 @@ import ruUiTeamBridge from "./catalogues/ru/ui.teamBridge.json";
 import ruUiUpdatesPanel from "./catalogues/ru/ui.updates.panel.json";
 import urUiAgentMessages from "./catalogues/ur/ui.agentMessages.json";
 import urUiAgentMessagesSettings from "./catalogues/ur/ui.agentMessages.settings.json";
+import urUiAgentsAvatar from "./catalogues/ur/ui.agents.avatar.json";
 import urUiAgentsConfig from "./catalogues/ur/ui.agents.config.json";
 import urUiAgentsDescriptions from "./catalogues/ur/ui.agents.descriptions.json";
 import urUiAgentsDetailInstall from "./catalogues/ur/ui.agents.detail.install.json";
@@ -707,6 +713,7 @@ import urUiTeamBridge from "./catalogues/ur/ui.teamBridge.json";
 import urUiUpdatesPanel from "./catalogues/ur/ui.updates.panel.json";
 import viUiAgentMessages from "./catalogues/vi/ui.agentMessages.json";
 import viUiAgentMessagesSettings from "./catalogues/vi/ui.agentMessages.settings.json";
+import viUiAgentsAvatar from "./catalogues/vi/ui.agents.avatar.json";
 import viUiAgentsConfig from "./catalogues/vi/ui.agents.config.json";
 import viUiAgentsDescriptions from "./catalogues/vi/ui.agents.descriptions.json";
 import viUiAgentsDetailInstall from "./catalogues/vi/ui.agents.detail.install.json";
@@ -821,6 +828,7 @@ import viUiTeamBridge from "./catalogues/vi/ui.teamBridge.json";
 import viUiUpdatesPanel from "./catalogues/vi/ui.updates.panel.json";
 import zhCNUiAgentMessages from "./catalogues/zh-CN/ui.agentMessages.json";
 import zhCNUiAgentMessagesSettings from "./catalogues/zh-CN/ui.agentMessages.settings.json";
+import zhCNUiAgentsAvatar from "./catalogues/zh-CN/ui.agents.avatar.json";
 import zhCNUiAgentsConfig from "./catalogues/zh-CN/ui.agents.config.json";
 import zhCNUiAgentsDescriptions from "./catalogues/zh-CN/ui.agents.descriptions.json";
 import zhCNUiAgentsDetailInstall from "./catalogues/zh-CN/ui.agents.detail.install.json";
@@ -938,6 +946,7 @@ import zhCNUiUpdatesPanel from "./catalogues/zh-CN/ui.updates.panel.json";
 export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiAgentMessages,
 	...enUiAgentMessagesSettings,
+	...enUiAgentsAvatar,
 	...enUiAgentsConfig,
 	...enUiAgentsDescriptions,
 	...enUiAgentsDetailInstall,
@@ -1060,6 +1069,7 @@ export const bundledCatalogues: Readonly<
 	es: {
 		...esUiAgentMessages,
 		...esUiAgentMessagesSettings,
+		...esUiAgentsAvatar,
 		...esUiAgentsConfig,
 		...esUiAgentsDescriptions,
 		...esUiAgentsDetailInstall,
@@ -1176,6 +1186,7 @@ export const bundledCatalogues: Readonly<
 	fr: {
 		...frUiAgentMessages,
 		...frUiAgentMessagesSettings,
+		...frUiAgentsAvatar,
 		...frUiAgentsConfig,
 		...frUiAgentsDescriptions,
 		...frUiAgentsDetailInstall,
@@ -1292,6 +1303,7 @@ export const bundledCatalogues: Readonly<
 	hi: {
 		...hiUiAgentMessages,
 		...hiUiAgentMessagesSettings,
+		...hiUiAgentsAvatar,
 		...hiUiAgentsConfig,
 		...hiUiAgentsDescriptions,
 		...hiUiAgentsDetailInstall,
@@ -1408,6 +1420,7 @@ export const bundledCatalogues: Readonly<
 	ru: {
 		...ruUiAgentMessages,
 		...ruUiAgentMessagesSettings,
+		...ruUiAgentsAvatar,
 		...ruUiAgentsConfig,
 		...ruUiAgentsDescriptions,
 		...ruUiAgentsDetailInstall,
@@ -1524,6 +1537,7 @@ export const bundledCatalogues: Readonly<
 	ur: {
 		...urUiAgentMessages,
 		...urUiAgentMessagesSettings,
+		...urUiAgentsAvatar,
 		...urUiAgentsConfig,
 		...urUiAgentsDescriptions,
 		...urUiAgentsDetailInstall,
@@ -1640,6 +1654,7 @@ export const bundledCatalogues: Readonly<
 	vi: {
 		...viUiAgentMessages,
 		...viUiAgentMessagesSettings,
+		...viUiAgentsAvatar,
 		...viUiAgentsConfig,
 		...viUiAgentsDescriptions,
 		...viUiAgentsDetailInstall,
@@ -1756,6 +1771,7 @@ export const bundledCatalogues: Readonly<
 	"zh-CN": {
 		...zhCNUiAgentMessages,
 		...zhCNUiAgentMessagesSettings,
+		...zhCNUiAgentsAvatar,
 		...zhCNUiAgentsConfig,
 		...zhCNUiAgentsDescriptions,
 		...zhCNUiAgentsDetailInstall,
@@ -1997,6 +2013,33 @@ export type MessageParams = {
 	"ui.agentMessages.settings.state.read_only": undefined;
 	"ui.agentMessages.settings.state.turned_off_org": undefined;
 	"ui.agentMessages.settings.state.turned_off_title": undefined;
+	"ui.agents.avatar.edit_link": { name: string };
+	"ui.agents.avatar.editor.crop_area": undefined;
+	"ui.agents.avatar.editor.error_decode": undefined;
+	"ui.agents.avatar.editor.error_encode": undefined;
+	"ui.agents.avatar.editor.error_remove": undefined;
+	"ui.agents.avatar.editor.error_save": undefined;
+	"ui.agents.avatar.editor.error_size": { size: string };
+	"ui.agents.avatar.editor.error_type": undefined;
+	"ui.agents.avatar.editor.hint": undefined;
+	"ui.agents.avatar.editor.instructions": { width: string; height: string };
+	"ui.agents.avatar.editor.preview_header": undefined;
+	"ui.agents.avatar.editor.preview_header_caption": undefined;
+	"ui.agents.avatar.editor.preview_roster": undefined;
+	"ui.agents.avatar.editor.preview_roster_caption": undefined;
+	"ui.agents.avatar.editor.preview_sidebar": undefined;
+	"ui.agents.avatar.editor.preview_sidebar_caption": undefined;
+	"ui.agents.avatar.editor.previews": undefined;
+	"ui.agents.avatar.editor.recenter": undefined;
+	"ui.agents.avatar.editor.remove": undefined;
+	"ui.agents.avatar.editor.replace": undefined;
+	"ui.agents.avatar.editor.save": undefined;
+	"ui.agents.avatar.editor.saving": undefined;
+	"ui.agents.avatar.editor.upload": undefined;
+	"ui.agents.avatar.editor.zoom": undefined;
+	"ui.agents.avatar.editor.zoom_in": undefined;
+	"ui.agents.avatar.editor.zoom_out": undefined;
+	"ui.agents.avatar.editor.zoom_value": { value: string };
 	"ui.agents.config.about": { kind: string; name: string };
 	"ui.agents.config.action.clear": undefined;
 	"ui.agents.config.action.dismiss": undefined;
@@ -3731,6 +3774,12 @@ export type MessageParams = {
 	"ui.chat.aside.thinking": undefined;
 	"ui.chat.aside.title": undefined;
 	"ui.chat.aside.you_label": undefined;
+	"ui.chat.audio.mute": undefined;
+	"ui.chat.audio.pause": undefined;
+	"ui.chat.audio.pause_label": { label: string };
+	"ui.chat.audio.play": undefined;
+	"ui.chat.audio.play_label": { label: string };
+	"ui.chat.audio.unmute": undefined;
 	"ui.chat.checkpoint.generating_name": undefined;
 	"ui.chat.checkpoint.jump_agent": {
 		turn: number;
@@ -3745,6 +3794,7 @@ export type MessageParams = {
 	};
 	"ui.chat.checkpoint.jump_user_no_clock": { turn: number; total: number };
 	"ui.chat.checkpoint.turn": { turn: number; total: number };
+	"ui.chat.composer.connect_provider": undefined;
 	"ui.chat.composer.status.goal_collapse": undefined;
 	"ui.chat.composer.status.goal_dismiss": undefined;
 	"ui.chat.composer.status.goal_dismiss_keep": undefined;
@@ -3807,6 +3857,11 @@ export type MessageParams = {
 	"ui.chat.hub_update.update_all": { count: number };
 	"ui.chat.hub_update.update_all_label": { kind: string; count: number };
 	"ui.chat.hub_update.updating": undefined;
+	"ui.chat.image_actions.copy_image": undefined;
+	"ui.chat.image_actions.copy_image_url": undefined;
+	"ui.chat.image_actions.expand_image": undefined;
+	"ui.chat.image_actions.open_in_browser": undefined;
+	"ui.chat.image_actions.save_as": undefined;
 	"ui.chat.mermaid.chart_label": undefined;
 	"ui.chat.mermaid.close_fullscreen": undefined;
 	"ui.chat.mermaid.copied": undefined;
@@ -3826,6 +3881,8 @@ export type MessageParams = {
 	"ui.chat.mermaid.unexpected_error": undefined;
 	"ui.chat.mermaid.zoom_in": undefined;
 	"ui.chat.mermaid.zoom_out": undefined;
+	"ui.chat.message_controls.copied": undefined;
+	"ui.chat.message_controls.copy": undefined;
 	"ui.chat.provider_error.action.open_provider_settings": undefined;
 	"ui.chat.provider_error.action.open_radient_account": undefined;
 	"ui.chat.provider_error.action.sign_in_radient": undefined;
@@ -3871,6 +3928,27 @@ export type MessageParams = {
 	"ui.chat.session_status.temporarily_unavailable_description": undefined;
 	"ui.chat.skill_invocation.instructions_label": undefined;
 	"ui.chat.skill_invocation.trigger_label": { token: string };
+	"ui.chat.slash_arguments.model_default_click": undefined;
+	"ui.chat.slash_arguments.model_default_description": {
+		provider: string;
+		model: string;
+	};
+	"ui.chat.slash_arguments.model_default_required": undefined;
+	"ui.chat.slash_arguments.model_default_unavailable": undefined;
+	"ui.chat.slash_arguments.refresh_description": undefined;
+	"ui.chat.slash_arguments.refresh_detail": undefined;
+	"ui.chat.slot_notice.code_below_version_detail": undefined;
+	"ui.chat.slot_notice.code_below_version_title": undefined;
+	"ui.chat.slot_notice.code_checking_title": undefined;
+	"ui.chat.slot_notice.code_draft_detail": undefined;
+	"ui.chat.slot_notice.code_draft_title": undefined;
+	"ui.chat.slot_notice.code_load_lead": undefined;
+	"ui.chat.slot_notice.run_draft_detail": undefined;
+	"ui.chat.slot_notice.run_draft_title": undefined;
+	"ui.chat.slot_notice.run_missing_detail": undefined;
+	"ui.chat.slot_notice.run_reading_title": undefined;
+	"ui.chat.slot_notice.run_unreadable_detail": undefined;
+	"ui.chat.slot_notice.run_unreadable_title": undefined;
 	"ui.chat.status_strip.dismiss": undefined;
 	"ui.chat.tabs.chat": undefined;
 	"ui.chat.tabs.raw": undefined;
@@ -5015,6 +5093,11 @@ export type MessageParams = {
 	"ui.chat.sidebar.agents.dismiss_offer": undefined;
 	"ui.chat.sidebar.agents.empty": undefined;
 	"ui.chat.sidebar.agents.filter": undefined;
+	"ui.chat.sidebar.agents.list_join": {
+		position: string;
+		head: string;
+		tail: string;
+	};
 	"ui.chat.sidebar.agents.loading": undefined;
 	"ui.chat.sidebar.agents.no_match": undefined;
 	"ui.chat.sidebar.catalogue.total": { shown: number; total: number };
@@ -5084,6 +5167,9 @@ export type MessageParams = {
 	"ui.chat.sidebar_view.move_up": { section: string };
 	"ui.chat.sidebar_view.one_list": undefined;
 	"ui.chat.sidebar_view.order_by": undefined;
+	"ui.chat.sidebar_view.relative_active": { unit: string; count: number };
+	"ui.chat.sidebar_view.relative_created": { unit: string; count: number };
+	"ui.chat.sidebar_view.relative_short": { unit: string; count: number };
 	"ui.chat.sidebar_view.section.agents": undefined;
 	"ui.chat.sidebar_view.section.older": undefined;
 	"ui.chat.sidebar_view.section.pinned": undefined;
@@ -7522,6 +7608,7 @@ export type MessageParams = {
 	"ui.ownerAudit.agent": undefined;
 	"ui.ownerAudit.attachment_expired": undefined;
 	"ui.ownerAudit.attachment_unavailable": undefined;
+	"ui.ownerAudit.auth_required": undefined;
 	"ui.ownerAudit.body_unavailable": undefined;
 	"ui.ownerAudit.disclosure": undefined;
 	"ui.ownerAudit.empty_history": undefined;
@@ -7530,16 +7617,20 @@ export type MessageParams = {
 	"ui.ownerAudit.left": undefined;
 	"ui.ownerAudit.loading": undefined;
 	"ui.ownerAudit.more": undefined;
+	"ui.ownerAudit.not_found": undefined;
 	"ui.ownerAudit.not_screened": undefined;
 	"ui.ownerAudit.older": undefined;
 	"ui.ownerAudit.page_cutoff": undefined;
+	"ui.ownerAudit.permission_refused": undefined;
 	"ui.ownerAudit.read_only": undefined;
 	"ui.ownerAudit.refresh": undefined;
 	"ui.ownerAudit.rejected": undefined;
 	"ui.ownerAudit.removed": undefined;
 	"ui.ownerAudit.replies": undefined;
 	"ui.ownerAudit.retry": undefined;
+	"ui.ownerAudit.sign_in": undefined;
 	"ui.ownerAudit.title": undefined;
+	"ui.ownerAudit.unavailable": undefined;
 	"ui.ownerAudit.unknown_sender": undefined;
 	"ui.ownerAudit.unknown_status": undefined;
 	"ui.ownerAudit.unnamed": undefined;

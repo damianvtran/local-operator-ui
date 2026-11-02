@@ -1,0 +1,40 @@
+[
+  {
+    "command": [
+      "node",
+      "scripts/i18n/context-parity.mjs"
+    ],
+    "exit_code": 0,
+    "stdout": "context-parity: ok — every English key is covered, apart from 131 allowed gap(s) in 4 namespace(s) (shrink-only; see i18n/context-allowance.json).\n",
+    "stderr": ""
+  },
+  {
+    "command": [
+      "node",
+      "scripts/i18n/generate.mjs",
+      "--check"
+    ],
+    "exit_code": 0,
+    "stdout": "/Users/damian/local-operator-ui/.worktrees/i18n-listjoin/src/i18n/keys.gen.ts is byte-identical to a fresh generation.\n",
+    "stderr": ""
+  },
+  {
+    "command": [
+      "node",
+      "scripts/i18n/check-duplicates.mjs"
+    ],
+    "exit_code": 0,
+    "stdout": "check-duplicates: ok — 1031 file(s) scanned, 0 duplicate key(s)\n",
+    "stderr": ""
+  },
+  {
+    "command": [
+      "node",
+      "--test",
+      "scripts/i18n/locale-parity.test.mjs"
+    ],
+    "exit_code": 0,
+    "stdout": "✔ the English source is non-empty (the guard would pass vacuously otherwise) (0.556625ms)\n✔ [es] ships at least one message (not an empty claim) (6.539833ms)\n✔ [es] defines each key in at most one namespace file (8.036833ms)\n✔ [es] carries EVERY key of each namespace file it ships (15.269709ms)\n✔ [es] names only keys the English source defines (7.171875ms)\n✔ [es] preserves every ICU placeholder from the English source (28.457917ms)\n✔ [es] is not an English stub (no value identical to the source) (8.1845ms)\n✔ [fr] ships at least one message (not an empty claim) (6.467959ms)\n✔ [fr] defines each key in at most one namespace file (6.161417ms)\n✔ [fr] carries EVERY key of each namespace file it ships (15.383792ms)\n✔ [fr] names only keys the English source defines (6.391083ms)\n✔ [fr] preserves every ICU placeholder from the English source (20.7355ms)\n✔ [fr] is not an English stub (no value identical to the source) (7.108916ms)\n✔ [hi] ships at least one message (not an empty claim) (9.169583ms)\n✔ [hi] defines each key in at most one namespace file (8.649667ms)\n✔ [hi] carries EVERY key of each namespace file it ships (17.505917ms)\n✔ [hi] names only keys the English source defines (9.587459ms)\n✔ [hi] preserves every ICU placeholder from the English source (20.868875ms)\n✔ [hi] is not an English stub (no value identical to the source) (9.078875ms)\n✔ [ru] ships at least one message (not an empty claim) (8.512833ms)\n✔ [ru] defines each key in at most one namespace file (8.76175ms)\n✔ [ru] carries EVERY key of each namespace file it ships (17.386625ms)\n✔ [ru] names only keys the English source defines (9.371417ms)\n✔ [ru] preserves every ICU placeholder from the English source (22.247125ms)\n✔ [ru] is not an English stub (no value identical to the source) (9.431375ms)\n✔ [ur] ships at least one message (not an empty claim) (9.067625ms)\n✔ [ur] defines each key in at most one namespace file (8.419084ms)\n✔ [ur] carries EVERY key of each namespace file it ships (17.371583ms)\n✔ [ur] names only keys the English source defines (8.204166ms)\n✔ [ur] preserves every ICU placeholder from the English source (21.411333ms)\n✔ [ur] is not an English stub (no value identical to the source) (8.928917ms)\n✔ [vi] ships at least one message (not an empty claim) (8.453375ms)\n✔ [vi] defines each key in at most one namespace file (8.167333ms)\n✔ [vi] carries EVERY key of each namespace file it ships (16.497875ms)\n✔ [vi] names only keys the English source defines (8.319792ms)\n✔ [vi] preserves every ICU placeholder from the English source (21.00025ms)\n✔ [vi] is not an English stub (no value identical to the source) (8.498375ms)\n✔ [zh-CN] ships at least one message (not an empty claim) (6.460333ms)\n✔ [zh-CN] defines each key in at most one namespace file (7.376542ms)\n✔ [zh-CN] carries EVERY key of each namespace file it ships (15.790291ms)\n✔ [zh-CN] names only keys the English source defines (6.908666ms)\n✔ [zh-CN] preserves every ICU placeholder from the English source (18.369042ms)\n✔ [zh-CN] is not an English stub (no value identical to the source) (7.393ms)\n✔ a locale-scoped identical-value exemption does not exempt another locale (0.129208ms)\nℹ tests 44\nℹ suites 0\nℹ pass 44\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 564.912958\n",
+    "stderr": ""
+  }
+]
