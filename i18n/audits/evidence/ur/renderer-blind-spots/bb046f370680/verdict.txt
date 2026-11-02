@@ -1,0 +1,74 @@
+PASS
+BLOCKER=0 MAJOR=0 MINOR=1 NIT=0
+Agent: i18n-auditor; session: bb046f370680; ACTUAL model: openai/gpt-6.1-sol. Temporary quota fallback from anthropic/claude-sonnet-5-5, via announced anthropic/claude-opus-5-5; substantive audit performed with openai/gpt-6.1-sol.
+Compact-time measurement: ui.chat.sidebar_view.relative_short; declared maxCells=6 (expressly advisory); rich.cells.cell_len: ابھی=4, 1 منٹ قبل=9, 59 منٹ قبل=10, 1 گھنٹے قبل=11, 23 گھنٹے قبل=12, 1 دن قبل=8, 1 ہفتے قبل=10, 1 سال قبل=9. Natural shorter forms exist: 59 منٹ=6, 6 دن=4, 1 سال=5; 23 گھنٹے=8 / 52 ہفتے=7 warrant narrow advisory exceptions. Finding UR-M1 MINOR; no visual clipping claim.
+
+Audit date: 2026-10-31
+Scope: all 35 new keys, 32 ui.chat + 3 ui.chat.sidebar_view, derived against origin/main; existing Teams/Agents headings are unchanged and not part of these 35.
+Independence: audit session differs from translator per delegation; translator session ID not supplied. No translations edited, no MT/translation services used.
+Guidance: core i18n/style-guides/ur.md and i18n/glossary.md; English source and matching context sidecars read for all 35 keys; each Urdu value reviewed for meaning, respectful imperative/register, terminology, width and RTL logical order.
+
+Executed read-only validator results:
+node scripts/i18n/generate.mjs --check -> exit 0: keys.gen.ts byte-identical to fresh generation.
+node scripts/i18n/check-duplicates.mjs -> exit 0: 1024 files, 0 duplicate keys.
+node scripts/i18n/context-parity.mjs -> exit 0: all English keys covered apart from 131 pre-existing allowed gaps in 4 namespaces.
+node scripts/i18n/check-coverage.mjs -> exit 0: 7 gated languages / 114 namespaces, 0 allowed missing keys.
+Independent node probe using @formatjs/icu-messageformat-parser: valid JSON, English/Urdu key sets identical in both files, argument names/types and select/plural arms match source on every new key. Errors: 0. Intl.PluralRules(ur) categories one/other; every new plural includes both.
+IntlMessageFormat(ur) samples: each unit now/minute/hour/day/week/year/other with counts 1/2/23/59; ordinary placeholders label=clip-1, provider=openai, model=gpt-6.1-sol. Samples include branch robustness cases beyond the production unit ranges. No formatting errors. All noncompact sampled widths within declared budgets; dynamic label/model lengths remain user-controlled.
+Rich width probe: accessible relative_created maximum 23 / 64, relative_active maximum 31 / 64 among sampled cases.
+RTL: 0 manual bidi controls (U+061C, U+200E/F, U+202A-E, U+2066-69) across all 35 new values. URL, Local Operator, pull requests, merge requests remain Latin; {provider}/{model} logical ordering and slash preserved; user-supplied {label} preserved. Intl ur emitted Latin digits (sample 123 -> 123), consistent with v1 stance. No arrows or flags newly introduced. Embedded LTR token spellings/logical order are correct; visual bidi/shaping in a live renderer was not exercised.
+
+Limitations: linguistic/catalogue audit, not a rendered QA or design sign-off. No browser run, build or package manager. No repository changes, ledger writes or tracked evidence bundles: the explicit task restricted this worktree to read-only and requested the two output files here. The requesting session must retain/promote these outputs and record ledger evidence if needed.
+Execution statements above summarize actual tool executions; this verdict is audit notes, not a verbatim execution log.
+
+Input SHA-256 pins:
+src/i18n/catalogues/en/ui.chat.json fee31965fc3e93d600333d686af34957fa6467bc3b2ba116b69a0ca5df369dcd
+src/i18n/catalogues/ur/ui.chat.json 0c9f474f630e62df5c6132c213458ad59c32e3a638c60abdde21e570f01bcb26
+src/i18n/catalogues/en/ui.chat.context.json 0edd5927d13dc3d4b30832a351d1a876aab9a396f78ba794ef4f968592c30e7a
+src/i18n/catalogues/en/ui.chat.sidebar_view.json 0873abf83115e1dd479213706a401258369f58a3d9606ebbc12610a64348512e
+src/i18n/catalogues/ur/ui.chat.sidebar_view.json 7e828649004b711f4eb19b9291c4cfe9ea2887fd8d1a2a0aa1ffd95254c7ca43
+src/i18n/catalogues/en/ui.chat.sidebar_view.context.json 0683c8236d899d43091742a5a097f2afddf22238e49c387b7116f281a9902ac8
+
+Style/glossary SHA-256 pins:
+/Users/damian/local-operator/i18n/style-guides/ur.md c0eecf7f7b5e89956b7de9ab7a9eb647ff1a7ef701ccf2a7f0264d5eea15ca60
+/Users/damian/local-operator/i18n/glossary.md 0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8
+
+Every audited key (all reviewed; UR-M1 applies only to relative_short):
+ui.chat.audio.play
+ui.chat.audio.pause
+ui.chat.audio.play_label
+ui.chat.audio.pause_label
+ui.chat.audio.mute
+ui.chat.audio.unmute
+ui.chat.message_controls.copy
+ui.chat.message_controls.copied
+ui.chat.image_actions.save_as
+ui.chat.image_actions.copy_image
+ui.chat.image_actions.copy_image_url
+ui.chat.image_actions.open_in_browser
+ui.chat.image_actions.expand_image
+ui.chat.composer.connect_provider
+ui.chat.slot_notice.run_draft_title
+ui.chat.slot_notice.run_draft_detail
+ui.chat.slot_notice.run_reading_title
+ui.chat.slot_notice.run_unreadable_title
+ui.chat.slot_notice.run_unreadable_detail
+ui.chat.slot_notice.run_missing_detail
+ui.chat.slot_notice.code_draft_title
+ui.chat.slot_notice.code_draft_detail
+ui.chat.slot_notice.code_below_version_title
+ui.chat.slot_notice.code_below_version_detail
+ui.chat.slot_notice.code_checking_title
+ui.chat.slot_notice.code_load_lead
+ui.chat.slash_arguments.model_default_description
+ui.chat.slash_arguments.model_default_unavailable
+ui.chat.slash_arguments.model_default_click
+ui.chat.slash_arguments.model_default_required
+ui.chat.slash_arguments.refresh_description
+ui.chat.slash_arguments.refresh_detail
+ui.chat.sidebar_view.relative_short
+ui.chat.sidebar_view.relative_created
+ui.chat.sidebar_view.relative_active
+
+Current report verdict: passed; unresolved BLOCKER/MAJOR count: 0; finding IDs: UR-M1.
+Findings artifact: findings.jsonl SHA-256 4ae83158b33712eb302a77a860538b0d116d7f795f180a3a73c496fb525a5282

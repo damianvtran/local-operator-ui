@@ -1,0 +1,34 @@
+{
+  "auditor": "i18n-auditor-zh-CN",
+  "instance": "8ad4f86282d7",
+  "model": "openai/gpt-6.1-sol",
+  "status": "passed",
+  "date": "2026-10-31",
+  "provenance": {
+    "kind": "binding of independent verdict; not a new linguistic audit",
+    "verdict": "i18n/audits/evidence/zh-CN/renderer-blind-spots/8ad4f86282d7/verdict.txt",
+    "verdict_sha256": "1ef2f70c99032e863fb520f0fb68a0081960c77cf7d1f702946a5f9adebe1a0d",
+    "findings": "i18n/audits/evidence/zh-CN/renderer-blind-spots/8ad4f86282d7/findings.jsonl",
+    "findings_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "fallback": "provider quota: anthropic/claude-sonnet-5-5 -> anthropic/claude-opus-5-5 -> openai/gpt-6.1-sol",
+    "scope": "35 added keys (32 ui.chat, 3 ui.chat.sidebar_view); existing namespace audit retained as superseded history"
+  },
+  "namespaces": {
+    "ui.chat": {
+      "status": "passed",
+      "sha256": {
+        "en": "fee31965fc3e93d600333d686af34957fa6467bc3b2ba116b69a0ca5df369dcd",
+        "zh-CN": "2abdd477df6c35ff153542156491a865d796aff70a0ede469bddf4933622cae7"
+      },
+      "findings": []
+    },
+    "ui.chat.sidebar_view": {
+      "status": "passed",
+      "sha256": {
+        "en": "0873abf83115e1dd479213706a401258369f58a3d9606ebbc12610a64348512e",
+        "zh-CN": "9ee1c2423c20d335e38211cfdaa23c02c57a0670541de4991cf3c563aeecd6f4"
+      },
+      "findings": []
+    }
+  }
+}

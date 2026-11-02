@@ -493,6 +493,26 @@ after(async () => {
 	});
 });
 
+test("the composer notice renders the keyed connect-provider action", async () => {
+	/*
+	 * A source pin alone mistook the i18n getter for a missing action (#1552).
+	 * Read the shipped composer's notice, not the empty-chat connect card: an
+	 * action removed from the notice must fail even if that other door survives.
+	 */
+	const frame = await mount({
+		sendError: { message: "No model provider is configured yet" },
+	});
+	try {
+		const labels = Array.from(
+			frame.container.querySelectorAll("[data-composer-notice] button"),
+			(button) => button.textContent,
+		);
+		assert.deepEqual(labels, [t("ui.chat.composer.connect_provider")]);
+	} finally {
+		await act(async () => root.unmount());
+	}
+});
+
 /* ------------------------------------------------------------------ */
 /* 1. The mount blocker: no QueryClient provider, no throw              */
 /* ------------------------------------------------------------------ */

@@ -1,3 +1,5 @@
+import { AgentAvatarEditLink } from "@shared/agent-avatar/agent-avatar-edit-link";
+import { AgentMark, useHasAgentPicture } from "@shared/agent-avatar/agent-mark";
 import {
 	desktopFeatureState,
 	useDesktopCapabilities,
@@ -77,6 +79,25 @@ import {
  */
 type ChatHeaderProps = {
 	agentName?: string;
+	/**
+	 * The local agent this conversation is bound to, for the picture left of the
+	 * name (agent profile pictures, 2026-10-30). All three are optional and
+	 * absent means the header draws exactly what it drew before: a backend that
+	 * does not publish them, a draft, and a Team Bridge identity that is not a
+	 * local agent all land here.
+	 */
+	agentAvatar?: {
+		agentId: string;
+		/**
+		 * The BOUND AGENT's name - the editor link's address - never the chat
+		 * title this header shows (QA round 1, Q-1). Null when the row names no
+		 * bound agent; the picture still draws, but with no door (`owned` false).
+		 */
+		agentName: string | null;
+		sha256: string | null;
+		/** Whether the viewer owns the agent, i.e. whether the pencil appears. */
+		owned: boolean;
+	} | null;
 	description?: string;
 	/**
 	 * The panel is mounted on a target whose identity is not known yet, and the
@@ -297,8 +318,67 @@ type ChatHeaderProps = {
  */
 const PATH_CHIP_CHARS = 40;
 
+/**
+ * The header's picture and the pencil's door onto its editor.
+ *
+ * A COMPONENT RATHER THAN A CONDITIONAL INSIDE THE HEADER, because both things
+ * this decides come from hooks: presence (`useHasAgentPicture`, which reads the
+ * agents query) and the mark's own bytes. Mounted only when the header HAS an
+ * agent avatar, the hook surface is exactly what the mark already needed - a
+ * header for a draft, a Team Bridge identity or a backend that publishes no
+ * avatar still touches no query client.
+ *
+ * IS THERE A PICTURE TO SHOW - AND SO A PICTURE TO CHANGE (agent review round 1,
+ * m3)? The gate below used to be `agentAvatar` alone, which is the row's CLAIM
+ * (an agent id and a digest). A claim whose bytes do not resolve - a 404 from
+ * core, a file removed behind the row, a stale digest after a CLI write, a
+ * remote row (M2) - drew `AgentMark`'s `fallback`, which the header passes as
+ * `null`, and then wrapped that null in `AgentAvatarEditLink`: a bare 20px
+ * circle that revealed a pencil on hover with no picture in it. A door onto an
+ * empty plate.
+ *
+ * The header therefore asks the bytes rather than the row, and draws NOTHING
+ * when there are none - which is the same thing it draws for an agent with no
+ * picture at all, so the failed and the absent case cannot disagree. The hook
+ * retains the URL before `AgentMark` mounts, so the mark's own `peek` paints on
+ * its first frame rather than flashing an empty plate.
+ */
+const ChatHeaderAvatar: FC<{
+	agent: NonNullable<ChatHeaderProps["agentAvatar"]>;
+}> = ({ agent }) => {
+	const present = useHasAgentPicture(agent.agentId, agent.sha256);
+	/*
+	 * NO PICTURE, NO PLATE, NO DOOR - and that covers the digest whose bytes do not
+	 * resolve, not just the agent that never had one. `AgentMark` renders the
+	 * caller's `fallback` in that case, which this header passes as `null` (the
+	 * title block never carried an agent glyph), so drawing the wrapper anyway
+	 * would leave a bare 20px circle with a pencil on hover - a door onto an empty
+	 * plate, and a tab stop that leads nowhere.
+	 */
+	if (!present) return null;
+	return (
+		<span className="me-1 flex shrink-0 items-center">
+			<AgentAvatarEditLink
+				agentName={agent.agentName ?? ""}
+				agentId={agent.agentId}
+				owned={agent.owned && agent.agentName !== null}
+				className="size-5"
+				pencilClassName="size-2.5"
+			>
+				<AgentMark
+					agentId={agent.agentId}
+					sha256={agent.sha256}
+					className="size-5"
+					fallback={null}
+				/>
+			</AgentAvatarEditLink>
+		</span>
+	);
+};
+
 export const ChatHeader: FC<ChatHeaderProps> = ({
 	agentName = "Local Operator",
+	agentAvatar = null,
 	description = "Your on-device AI assistant",
 	descriptionPending = false,
 	identity,
@@ -874,28 +954,45 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 							spellCheck={false}
 						/>
 					) : (
-						<h2
-							ref={renameTitleRef}
-							data-header-title=""
-							onDoubleClick={renameSessionId ? startRename : undefined}
-							className={cn(
-								"min-w-0 max-w-full truncate font-medium text-body text-ink",
-								/*
-								 * Client-area now, so the two things such a text needs: no
-								 * native selection (a drag across a window title that
-								 * highlights like a document reads as broken, and a
-								 * double-click's word-select would race the select-all the
-								 * editor opens with), and the arrow cursor - a pointer
-								 * cursor would promise a single click the text does not act
-								 * on (the double-click and the pencil are the affordances).
-								 * `user-select: none` does not stop `dblclick`, which is the
-								 * event the editor opens on.
-								 */
-								"cursor-default select-none",
-							)}
-						>
-							{agentName}
-						</h2>
+						<>
+							{/*
+							 * THE PICTURE, LEFT OF THE NAME (the operator's ask). It is the one
+							 * mark in this row that is not a control, so it takes the plate's
+							 * 20px box - the same size the identity chips hold, which is what
+							 * keeps the baseline join and the one-line clip band unchanged.
+							 *
+							 * NOTHING WHEN THERE IS NO PICTURE, and nothing when the picture's
+							 * bytes do not resolve either: `ChatHeaderAvatar` asks the bytes
+							 * (agent review round 1, m3) and draws no plate, no pencil and no
+							 * tab stop for either, which keeps a conversation whose agent has
+							 * no picture exactly the header main draws. The pencil rides
+							 * `AgentAvatarEditLink`, which draws nothing but the bare picture
+							 * for an agent the viewer does not own.
+							 */}
+							{agentAvatar ? <ChatHeaderAvatar agent={agentAvatar} /> : null}
+							<h2
+								ref={renameTitleRef}
+								data-header-title=""
+								onDoubleClick={renameSessionId ? startRename : undefined}
+								className={cn(
+									"min-w-0 max-w-full truncate font-medium text-body text-ink",
+									/*
+									 * Client-area now, so the two things such a text needs: no
+									 * native selection (a drag across a window title that
+									 * highlights like a document reads as broken, and a
+									 * double-click's word-select would race the select-all the
+									 * editor opens with), and the arrow cursor - a pointer
+									 * cursor would promise a single click the text does not act
+									 * on (the double-click and the pencil are the affordances).
+									 * `user-select: none` does not stop `dblclick`, which is the
+									 * event the editor opens on.
+									 */
+									"cursor-default select-none",
+								)}
+							>
+								{agentName}
+							</h2>
+						</>
 					)}
 					{renameSessionId && (
 						<button
