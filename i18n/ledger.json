@@ -5831,7 +5831,7 @@
 			"locale": "es",
 			"namespace": "ui.mesh",
 			"source_sha256": "edf18f0d32404972428c4bfcc107f835d170df6e2f6c800d10681d1a1e6e4fd1",
-			"target_sha256": "c2cf87410dc8c3f4ab06ed6998d514d3e3e4b973453e27bfff51da59403e93d7",
+			"target_sha256": "7296820ce00ec1524f6141741705124733c88ffcfddd94b12c192682f9ff62f6",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -5842,18 +5842,18 @@
 					"agent": "i18n-auditor",
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-02",
-					"result": "clean-with-findings",
-					"instance": "f89f59f896f1-es",
+					"result": "clean",
+					"instance": "3b60dc9f25d1-es",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
+						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/f89f59f896f1-es.json",
-					"receipt_sha256": "afe6fe32796c10ae50f796618e853aa2898091b1b122e56ed75d231ec5c67e3a",
-					"scope": "PR #1604 delta f6a9144..fbbbdec; changed ui.mesh.approval values; audit A",
-					"note": "Delta audit A (session f89f59f896f1) of remediation fbbbdec: zero blocker/major; minor/nit IDs TA3A-* in receipt. Source-only; rendered/RTL fit unverified."
+					"receipt": "i18n/receipts/3b60dc9f25d1-es.json",
+					"receipt_sha256": "e257aff495355dc753f1f5e7b0018384fd945061152a5f65a2e4f51dda064750",
+					"scope": "PR #1604 translation delta round 2 f0c3a0e..7c76632; 1 changed ui.mesh.approval value(s)",
+					"note": "Delta round 2 audit (session 3b60dc9f25d1) of translation remediation 7c76632: clean, 0 findings; TA3A/TB es IDs verified fixed in receipt. Source-only; rendered fit unverified."
 				}
 			],
 			"status": "audited",
@@ -6027,6 +6027,30 @@
 							"receipt_sha256": "7a01f858901d90be17cd86d3fc095623436a57fdf8f0c4b08813282b24a74714",
 							"scope": "19 typed credential approval keys; one independent delta audit",
 							"note": "One independent security-consent delta audit; second high-visibility audit outstanding. No catalogue edits; see receipt findings and model fallback disclosure."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "edf18f0d32404972428c4bfcc107f835d170df6e2f6c800d10681d1a1e6e4fd1",
+					"target_sha256": "c2cf87410dc8c3f4ab06ed6998d514d3e3e4b973453e27bfff51da59403e93d7",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-02",
+							"result": "clean-with-findings",
+							"instance": "f89f59f896f1-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/f89f59f896f1-es.json",
+							"receipt_sha256": "afe6fe32796c10ae50f796618e853aa2898091b1b122e56ed75d231ec5c67e3a",
+							"scope": "PR #1604 delta f6a9144..fbbbdec; changed ui.mesh.approval values; audit A",
+							"note": "Delta audit A (session f89f59f896f1) of remediation fbbbdec: zero blocker/major; minor/nit IDs TA3A-* in receipt. Source-only; rendered/RTL fit unverified."
 						}
 					],
 					"status": "audited"
@@ -14719,7 +14743,7 @@
 			"locale": "fr",
 			"namespace": "ui.mesh",
 			"source_sha256": "edf18f0d32404972428c4bfcc107f835d170df6e2f6c800d10681d1a1e6e4fd1",
-			"target_sha256": "d8699315817a459b7fc559ccb54b0aae92dc27345741b2c0c504903d56a15afe",
+			"target_sha256": "1420691a03f466060e2f3d003777214ffc4e97b9880b3ebe769a376a86d0ef1f",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -14730,18 +14754,18 @@
 					"agent": "i18n-auditor",
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-02",
-					"result": "clean-with-findings",
-					"instance": "f89f59f896f1-fr",
+					"result": "clean",
+					"instance": "3b60dc9f25d1-fr",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
+						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/f89f59f896f1-fr.json",
-					"receipt_sha256": "6f3f5d32a72945e0364f1876c2e3df530be83094c16b1cd2404f4f0ba9d46228",
-					"scope": "PR #1604 delta f6a9144..fbbbdec; changed ui.mesh.approval values; audit A",
-					"note": "Delta audit A (session f89f59f896f1) of remediation fbbbdec: zero blocker/major; minor/nit IDs TA3A-* in receipt. Source-only; rendered/RTL fit unverified."
+					"receipt": "i18n/receipts/3b60dc9f25d1-fr.json",
+					"receipt_sha256": "f1d29d8b45e5cc6bbcd742344c6042b8b51ba31df1225696c1a6dcbe9e348db2",
+					"scope": "PR #1604 translation delta round 2 f0c3a0e..7c76632; 1 changed ui.mesh.approval value(s)",
+					"note": "Delta round 2 audit (session 3b60dc9f25d1) of translation remediation 7c76632: clean, 0 findings; TA3A/TB fr IDs verified fixed in receipt. Source-only; rendered fit unverified."
 				}
 			],
 			"status": "audited",
@@ -14915,6 +14939,30 @@
 							"receipt_sha256": "97da77fc7f2c43ad718916dc89888487546264b16883487182dd8ffa274ecf99",
 							"scope": "19 typed credential approval keys; one independent delta audit",
 							"note": "One independent security-consent delta audit; second high-visibility audit outstanding. No catalogue edits; see receipt findings and model fallback disclosure."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "edf18f0d32404972428c4bfcc107f835d170df6e2f6c800d10681d1a1e6e4fd1",
+					"target_sha256": "d8699315817a459b7fc559ccb54b0aae92dc27345741b2c0c504903d56a15afe",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-02",
+							"result": "clean-with-findings",
+							"instance": "f89f59f896f1-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/f89f59f896f1-fr.json",
+							"receipt_sha256": "6f3f5d32a72945e0364f1876c2e3df530be83094c16b1cd2404f4f0ba9d46228",
+							"scope": "PR #1604 delta f6a9144..fbbbdec; changed ui.mesh.approval values; audit A",
+							"note": "Delta audit A (session f89f59f896f1) of remediation fbbbdec: zero blocker/major; minor/nit IDs TA3A-* in receipt. Source-only; rendered/RTL fit unverified."
 						}
 					],
 					"status": "audited"
@@ -23913,7 +23961,7 @@
 			"locale": "hi",
 			"namespace": "ui.mesh",
 			"source_sha256": "edf18f0d32404972428c4bfcc107f835d170df6e2f6c800d10681d1a1e6e4fd1",
-			"target_sha256": "692e69a25f52c2deaa1cf3c23afe678c274168d857113a0c33d4e9f4f66ed99a",
+			"target_sha256": "9e06377a6acc6fd928f21ede8cd6e9820b2f1e3404f4b1be8634d95abae21014",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -23924,18 +23972,18 @@
 					"agent": "i18n-auditor",
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-02",
-					"result": "clean-with-findings",
-					"instance": "f89f59f896f1-hi",
+					"result": "clean",
+					"instance": "3b60dc9f25d1-hi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
-						"nit": 1
+						"minor": 0,
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/f89f59f896f1-hi.json",
-					"receipt_sha256": "58bf98850a190c46152cd357bd24fead6b9463ca94c20c44524a9d8a30141ff2",
-					"scope": "PR #1604 delta f6a9144..fbbbdec; changed ui.mesh.approval values; audit A",
-					"note": "Delta audit A (session f89f59f896f1) of remediation fbbbdec: zero blocker/major; minor/nit IDs TA3A-* in receipt. Source-only; rendered/RTL fit unverified."
+					"receipt": "i18n/receipts/3b60dc9f25d1-hi.json",
+					"receipt_sha256": "74ead9752bfe603ba93c9010fd0e3527719378629e794e1a050a422206036a17",
+					"scope": "PR #1604 translation delta round 2 f0c3a0e..7c76632; 2 changed ui.mesh.approval value(s)",
+					"note": "Delta round 2 audit (session 3b60dc9f25d1) of translation remediation 7c76632: clean, 0 findings; TA3A/TB hi IDs verified fixed in receipt. Source-only; rendered fit unverified."
 				}
 			],
 			"status": "audited",
@@ -24134,6 +24182,30 @@
 							"receipt_sha256": "5ad874f2c7a07ed08a685c7592ada89de1134407421aa8c523afd282812baaa2",
 							"scope": "19 typed credential approval keys; one independent delta audit",
 							"note": "One independent security-consent delta audit; second high-visibility audit outstanding. No catalogue edits; see receipt findings and model fallback disclosure."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "edf18f0d32404972428c4bfcc107f835d170df6e2f6c800d10681d1a1e6e4fd1",
+					"target_sha256": "692e69a25f52c2deaa1cf3c23afe678c274168d857113a0c33d4e9f4f66ed99a",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-02",
+							"result": "clean-with-findings",
+							"instance": "f89f59f896f1-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/f89f59f896f1-hi.json",
+							"receipt_sha256": "58bf98850a190c46152cd357bd24fead6b9463ca94c20c44524a9d8a30141ff2",
+							"scope": "PR #1604 delta f6a9144..fbbbdec; changed ui.mesh.approval values; audit A",
+							"note": "Delta audit A (session f89f59f896f1) of remediation fbbbdec: zero blocker/major; minor/nit IDs TA3A-* in receipt. Source-only; rendered/RTL fit unverified."
 						}
 					],
 					"status": "audited"
@@ -32743,7 +32815,7 @@
 			"locale": "ru",
 			"namespace": "ui.mesh",
 			"source_sha256": "edf18f0d32404972428c4bfcc107f835d170df6e2f6c800d10681d1a1e6e4fd1",
-			"target_sha256": "05807a7096b1873270b13291fa392ff64b77f1568dc72e06aec4c0cd50ec6098",
+			"target_sha256": "55a359112656f0458efb0f76edf5a073ea0fb962b43afbc9f4e58119b57f0f49",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -32754,18 +32826,18 @@
 					"agent": "i18n-auditor",
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-02",
-					"result": "clean-with-findings",
-					"instance": "f89f59f896f1-ru",
+					"result": "clean",
+					"instance": "3b60dc9f25d1-ru",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 2,
+						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/f89f59f896f1-ru.json",
-					"receipt_sha256": "ec5dc87c2682fd73817089abb8656fa09906e4e60b07d1f4c497617692e20455",
-					"scope": "PR #1604 delta f6a9144..fbbbdec; changed ui.mesh.approval values; audit A",
-					"note": "Delta audit A (session f89f59f896f1) of remediation fbbbdec: zero blocker/major; minor/nit IDs TA3A-* in receipt. Source-only; rendered/RTL fit unverified."
+					"receipt": "i18n/receipts/3b60dc9f25d1-ru.json",
+					"receipt_sha256": "9aca7a6107e271437aa879edc1b0b1c57d955d8f20626aaf5764138a1fc58c42",
+					"scope": "PR #1604 translation delta round 2 f0c3a0e..7c76632; 1 changed ui.mesh.approval value(s)",
+					"note": "Delta round 2 audit (session 3b60dc9f25d1) of translation remediation 7c76632: clean, 0 findings; TA3A/TB ru IDs verified fixed in receipt. Source-only; rendered fit unverified."
 				}
 			],
 			"status": "audited",
@@ -32939,6 +33011,30 @@
 							"receipt_sha256": "a928912701b7c0d24dd261863ce07ca67f55d8c3236f30288cd7b6647e2aad9a",
 							"scope": "19 typed credential approval keys; one independent delta audit",
 							"note": "One independent security-consent delta audit; second high-visibility audit outstanding. No catalogue edits; see receipt findings and model fallback disclosure."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "edf18f0d32404972428c4bfcc107f835d170df6e2f6c800d10681d1a1e6e4fd1",
+					"target_sha256": "05807a7096b1873270b13291fa392ff64b77f1568dc72e06aec4c0cd50ec6098",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-02",
+							"result": "clean-with-findings",
+							"instance": "f89f59f896f1-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 2,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/f89f59f896f1-ru.json",
+							"receipt_sha256": "ec5dc87c2682fd73817089abb8656fa09906e4e60b07d1f4c497617692e20455",
+							"scope": "PR #1604 delta f6a9144..fbbbdec; changed ui.mesh.approval values; audit A",
+							"note": "Delta audit A (session f89f59f896f1) of remediation fbbbdec: zero blocker/major; minor/nit IDs TA3A-* in receipt. Source-only; rendered/RTL fit unverified."
 						}
 					],
 					"status": "audited"
