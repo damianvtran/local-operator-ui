@@ -42,7 +42,7 @@ function Fixture({
 						bridge_state: "active",
 					}}
 					label={agent ? "Fixture agent" : "Alex Example"}
-					agentName={agent ? "Fixture agent" : undefined}
+					kind={agent ? "agent" : "human"}
 					canMessage={false}
 					onMessage={() => {}}
 					onEditOwnProfile={() => setEditing(true)}
