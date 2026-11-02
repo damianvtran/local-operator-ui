@@ -11,6 +11,8 @@
 	"ui.ownerAudit.agent": "Chánh văn phòng",
 	"ui.ownerAudit.more": "Tải thêm",
 	"ui.ownerAudit.older": "Tải tin nhắn cũ hơn",
+	"ui.ownerAudit.older_replies": "Tải phản hồi cũ hơn",
+	"ui.ownerAudit.empty_replies": "Không có phản hồi nào trong khoảng thời gian kiểm tra này.",
 	"ui.ownerAudit.page_cutoff": "Các tin nhắn cũ hơn chưa được hiển thị. Tải tin nhắn cũ hơn để đọc phần trước đó.",
 	"ui.ownerAudit.admitted": "Được chánh văn phòng của bạn tiếp nhận",
 	"ui.ownerAudit.rejected": "Bị bộ lọc của chánh văn phòng của bạn từ chối",

@@ -3807,8 +3807,25 @@ test("team_bridge threads: replies maps to the replies route and send carries th
 			new RegExp(`"${receipt}"`),
 		);
 	}
-	// The union is strict: a timeline cursor is not a thread cursor.
-	assert.throws(() => jobsCancelSchema.parse({ ...thread, before_seq: 3 }));
+	// Newest-first thread paging forwards its exclusive older cursor without
+	// inventing a forward cursor; strict validation still rejects invalid keys.
+	const older = jobsCancelEndpoint(
+		jobsCancelSchema.parse({ ...thread, before_seq: 3, order: "desc" }),
+	);
+	assert.equal(older.method, "GET");
+	assert.equal(
+		older.path,
+		"/v1/desktop/team-bridge/conversations/bcv_abc12345/messages/bcmsg_root0001/replies?expected_account_id=acct_1&tenant_id=tnt_2&before_seq=3&order=desc",
+	);
+	assert.equal(
+		new URL(older.path, "https://example.invalid").searchParams.has(
+			"after_seq",
+		),
+		false,
+	);
+	assert.throws(() => jobsCancelSchema.parse({ ...thread, before_seq: 0 }));
+	assert.throws(() => jobsCancelSchema.parse({ ...thread, after_seq: -1 }));
+	assert.throws(() => jobsCancelSchema.parse({ ...thread, unknown_key: true }));
 
 	const reply = jobsCancelEndpoint(
 		jobsCancelSchema.parse({

@@ -514,10 +514,13 @@ for (const hook of [
 					`${settlement}: settled-old=${m.readState(rig.query())}, fetch=${rig.query().fetchStatus}, requests=${rig.requests.length}, text=${rig.text()}`,
 				);
 				assert.equal(m.readState(rig.query()), "ready");
+				// Existing runtimes serve replies oldest-first: the departed read
+				// plus fresh DESC negotiation and its legacy read legitimately cost 3.
+				// Conversations/messages still require exactly 2 requests here.
 				assert.equal(
 					rig.requests.length,
-					2,
-					"the new mount owns a fresh request",
+					hook === m.useOwnerAuditReplies ? 3 : 2,
+					"the new mount owns a fresh request (plus replies negotiation)",
 				);
 				assert.equal(
 					rig.query().data.pages[0].messages[0].body,
@@ -553,7 +556,12 @@ for (const hook of [
 			await rig.show(false);
 			await rig.show(true);
 			await until(() => rig.query().isSuccess);
-			assert.equal(rig.requests.length, 2);
+			// Abandoned request + fresh DESC attempt + legacy read for replies;
+			// the conversations/messages cancellation proof remains 2 requests.
+			assert.equal(
+				rig.requests.length,
+				hook === m.useOwnerAuditReplies ? 3 : 2,
+			);
 			await act(async () => release(navigationOk));
 			assert.equal(m.readState(rig.query()), "ready");
 		} finally {
@@ -563,20 +571,47 @@ for (const hook of [
 
 	test(`${hook.name}: a shared read outlives its first observer, not its last`, async () => {
 		let release;
-		const rig = await mount(
-			() =>
-				new Promise((resolve) => {
-					release = resolve;
-				}),
-			hook,
-		);
+		const legacyReplies = hook === m.useOwnerAuditReplies;
+		const rig = await mount((request, n) => {
+			// Replies alone are oldest-first in existing runtimes: newest-first
+			// needs a DESC attempt, then a separate legacy read when unsupported.
+			// Complete that read rather than leaving its promise unresolved.
+			if (legacyReplies && n === 2) {
+				assert.equal(request.order, undefined);
+				assert.equal(request.after_seq, 0);
+				return navigationOk;
+			}
+			return new Promise((resolve) => {
+				release = resolve;
+			});
+		}, hook);
 		try {
 			await until(() => Boolean(release));
 			await rig.show(true, ["probe", "other"]);
 			await rig.show(true, ["other"]);
 			await act(async () => release(navigationOk));
 			await until(() => rig.query().isSuccess);
-			assert.equal(rig.requests.length, 1);
+			if (legacyReplies) {
+				assert.equal(rig.requests.length, 2);
+				assert.equal(rig.requests[0].order, "desc");
+				const surviving = rig.client
+					.getQueryCache()
+					.findAll()
+					.find(
+						(query) =>
+							query.queryKey.includes("replies") &&
+							query.queryKey.at(-1) === "legacy",
+					);
+				assert.ok(surviving);
+				assert.equal(surviving.getObserversCount(), 1);
+				assert.equal(surviving.state.status, "success");
+				assert.equal(surviving.state.fetchStatus, "idle");
+				console.log(
+					`replies survivor: requests=${rig.requests.length}, status=${surviving.state.status}, fetch=${surviving.state.fetchStatus}, observers=${surviving.getObserversCount()}`,
+				);
+			} else {
+				assert.equal(rig.requests.length, 1);
+			}
 			assert.equal(m.readState(rig.query()), "ready");
 		} finally {
 			await rig.close();
