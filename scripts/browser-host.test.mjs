@@ -12463,3 +12463,37 @@ test("hover retains missing-tab, owner proof, generation, foreign-owner and orig
 	);
 	assert.ok(!cdp.calls.some((call) => call.method.startsWith("Input.")));
 });
+
+test("a hover whose page handler navigates to an unapproved origin is refused with the origin named and the landing reverted (review R1-3)", async () => {
+	// `hover` cannot navigate by itself, but a page's own mouseenter handler can, and
+	// measured against the built app it was first refused as a bare `changed` while the
+	// tab STAYED on the unapproved page. Membership in NAVIGATING_ACTIONS is what names
+	// the origin and reverts; this pins it, and that no per-hop `Fetch` gate is armed.
+	const { host, cdp, registry } = makeHost();
+	const { owner, tab } = await openApprovedTab(host);
+	const record = registry.requireSurface(tab);
+	record.view.webContents.isolatedResult = { count: 1, elements: [] };
+	const perform = host.perform.bind(host);
+	host.perform = async (method, params, requestId) => {
+		const result = await perform(method, params, requestId);
+		record.view.webContents.url = "https://forbidden.example/landed";
+		registry.bumpEpoch(record.tabId);
+		return result;
+	};
+	cdp.calls.length = 0;
+	await assert.rejects(
+		() => host.dispatch("hover", { ...owner, tab, x: 10, y: 10 }, "hover"),
+		(error) =>
+			error.code === "origin_not_allowed" &&
+			error.data.reason === "unapproved" &&
+			error.data.origin === "https://forbidden.example",
+	);
+	assert.equal(record.view.webContents.url, "https://approved.example/");
+	assert.ok(
+		record.view.webContents.loaded.includes("https://approved.example/"),
+	);
+	assert.ok(
+		!cdp.calls.some((call) => call.method === "Fetch.enable"),
+		"hover arms no per-hop gate",
+	);
+});

@@ -124,10 +124,12 @@ export const METHODS = [
 	"record_start",
 	"record_stop",
 	// Pointer-move without a press (hover-revealed menus, row actions, tooltips).
-	// APPENDED rather than placed beside `press`, so no existing method's index
-	// moves: the Python mirror appends it after `record_stop` too. Hosts advertise
-	// it in HOST_CAPABILITIES (beside `press`), which is what lets the harness
-	// refuse it on an app that predates it instead of sending an unknown method.
+	// APPENDED here so no existing method's index moves on this host. The Python
+	// mirror (`protocol.py`, local-operator#3326) places it right after `press`
+	// instead: the lists are NOT byte-comparable at this entry, and the wire is by
+	// NAME, so `isMethod` admits it either way. Hosts advertise it in
+	// HOST_CAPABILITIES (beside `press`), which is what lets the harness refuse it
+	// on an app that predates it instead of sending an unknown method.
 	"hover",
 ] as const;
 

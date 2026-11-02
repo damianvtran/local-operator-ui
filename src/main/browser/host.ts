@@ -140,6 +140,15 @@ const NAVIGATING_ACTIONS: ReadonlySet<string> = new Set([
 	"click",
 	"type",
 	"press",
+	// `hover` cannot navigate by ITSELF, but the page's own `mouseenter`/`mouseover`
+	// handler can (menus and router links do exactly that), and measured against the
+	// built app (scripts/browser-hover-press-proof.mjs, `/navhover`) a hover whose
+	// handler sent the tab to an unapproved origin was refused with `origin_not_allowed`
+	// while the tab STAYED on the unapproved page. Membership here is what restores it
+	// to the entry document (and adopts an approved landing instead of reporting
+	// `changed`). It is deliberately NOT in NAVIGATION_ACTIONS: no per-hop `Fetch`
+	// gate, for the reason that set's comment gives.
+	"hover",
 	"download",
 	"upload",
 ]);
@@ -180,12 +189,12 @@ const NAVIGATING_ACTIONS: ReadonlySet<string> = new Set([
  * intercept that form's own POST and its subresources for no consent gain, which
  * is the side effect this set exists to avoid.
  *
- * `hover` IS IN NEITHER THIS SET NOR NAVIGATING_ACTIONS, deliberately: it sends one
+ * `hover` IS IN NAVIGATING_ACTIONS BUT NOT THIS SET, deliberately: it sends one
  * pointer move with no button, which cannot follow a link or submit a form, so there
  * is no agent-initiated hop for the per-hop gate to decide (and arming `Fetch.enable`
  * would fail the page's own subresource loads for no consent gain). A page whose own
- * hover handler navigates away is the "navigated while this action was running"
- * refusal in `authorizedPerform`, as for any autonomous navigation during a read.
+ * hover handler navigates away is judged and, if unapproved, reverted by the
+ * entry/result pair in `authorizedPerform` that NAVIGATING_ACTIONS selects.
  */
 const NAVIGATION_ACTIONS: ReadonlySet<string> = new Set([
 	"click",

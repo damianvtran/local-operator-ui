@@ -37,26 +37,27 @@ import { describeRefusedKey, parsePressChord } from "./press-chord";
  * Design: docs/design/ui-browser-tab.md 4 (`click`, `type` rows), 6.4.
  *
  * THE CONSTRAINT THAT SHAPES EVERY LINE HERE: an agent tab is intentionally NOT
- * the active tab, and the extension's real-Chrome testing showed Chromium dropping
- * synthetic compositor input on a view that is not visible: the press never
- * reached the page and no handler fired. So a `click` is dispatched ON THE RESOLVED NODE through
- * our own debugger session: a full pointer/mouse event sequence at the element,
- * which fires handlers and default actions (link navigation, form submit) without
- * the tab ever becoming visible, and therefore without touching the operator's
- * focus.
+ * the active tab, and the extension's real-Chrome testing showed that Chromium
+ * drops synthetic compositor input on a view that is not visible (the press never
+ * reached the page, no handler fired). So `click` is dispatched ON THE RESOLVED
+ * NODE through our own debugger session: a full pointer/mouse event sequence at the
+ * element, which fires handlers and default actions (link navigation, form
+ * submit) without the tab ever becoming visible, and therefore without touching
+ * the operator's focus. That path is shipped and is kept.
+ *
+ * WHAT WAS MEASURED ON THIS APP (scripts/browser-hover-press-proof.mjs --ladder,
+ * under `headless` and `inactive`): the premise does not hold for THESE views.
+ * They are detached from the window (`view-presentation.ts`) yet sized and
+ * composited, and report `visibilityState: "visible"`; a real
+ * `Input.dispatchMouseEvent` mouseMoved and `Input.dispatchKeyEvent` reach the
+ * page, with focus emulation on (`cdp.ts` enables it at attach) and off alike.
+ * So `hover` and `press` use the real input, which `:hover` and Chromium's native
+ * key defaults require, and neither activates the window or the tab. Delivery on a
+ * different Electron/Chromium build is a claim to re-measure with that ladder, and
+ * a failure must never be "fixed" by activating the operator's window.
  *
  * `press` deliberately has no DOM-event fallback: keyboard focus traversal and
  * activation must be Chromium defaults, not an imitation scripted in the page.
- * Delivery to a hidden view therefore needs native QA on the supported runtime;
- * it must never be "fixed" by activating the operator's window.
- *
- * `hover` and `press` were MEASURED instead of assumed, and the premise above did
- * not hold for THIS app's agent views: they are detached from the window yet sized
- * and composited, report `visibilityState: "visible"`, and a real
- * `Input.dispatchMouseEvent` mouseMoved / `Input.dispatchKeyEvent` reaches the page
- * (see each function's comment and `scripts/browser-hover-press-proof.mjs --ladder`).
- * `click` keeps its dispatched-event path: it is shipped, and a hover needs the
- * real move because `:hover` is not something page script can set.
  *
  * `type` is the one action where the design and the extension differ, and this
  * file follows the design while keeping the extension's fallback:
@@ -817,6 +818,11 @@ const HOVER_SETTLE_MS = 150;
  * `hover`: move the pointer to a target and leave it there, so `:hover` styles and
  * JS hover handlers (a row action revealed on hover, a menu opened on
  * `mouseenter`) take effect and become visible to the next `snapshot`/`click`.
+ *
+ * Result: `x`, `y`, `hit` (the `hit_test` result, `{count, elements}`, topmost
+ * first) and `hovered`. `hovered` is ADVISORY and optional for a caller: it is the
+ * host's own `:hover` verdict at the point, an additional signal and not part of
+ * the minimal contract a harness may rely on (an older host never sends it).
  *
  * Params: `tab`, and EITHER `selector` (CSS, snapshot ref or a11y locator,
  * resolved exactly as `click` resolves it; scrolled into view first, never

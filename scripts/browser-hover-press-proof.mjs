@@ -309,8 +309,24 @@ async function approve(state, origin) {
 // ---- the site --------------------------------------------------------------
 
 function startSite() {
-	const server = createServer((_req, res) => {
+	const server = createServer((req, res) => {
 		res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+		// `/navhover`: a page whose hover handler navigates the tab to an origin the
+		// user never approved. `localhost` and `127.0.0.1` are different origins that
+		// reach this same loopback server, so no second server is needed.
+		if (req.url?.startsWith("/navhover")) {
+			const port = req.headers.host?.split(":")[1] ?? "";
+			res.end(
+				`<!doctype html><title>nav on hover</title><div id="t" style="padding:40px">hover me</div><script>document.getElementById("t").addEventListener("mouseenter", () => { location.href = "http://localhost:${port}/landed"; });</script>`,
+			);
+			return;
+		}
+		if (req.url?.startsWith("/landed")) {
+			res.end(
+				"<!doctype html><title>landed</title><h1>unapproved landing</h1>",
+			);
+			return;
+		}
 		res.end(HOVER_PRESS_PAGE);
 	});
 	return new Promise((resolve) => {
@@ -726,6 +742,31 @@ async function shipped(siteOrigin) {
 	check(
 		"no refusal moved the pointer or fired a page event",
 		(await reading()).events.length === eventsBefore,
+	);
+
+	say("--- hover: a handler that navigates the tab to an UNAPPROVED origin");
+	const navTab = await callOk(state, "open", {
+		url: `${siteOrigin}/navhover`,
+		requester: "session:proof",
+	});
+	const navHover = await call(state, "hover", {
+		tab: navTab.tab,
+		selector: "#t",
+	});
+	show("hover #t (handler navigates to localhost) ->", navHover);
+	await sleep(1500);
+	const navTabs = await callOk(state, "tabs", { requester: "session:proof" });
+	const navUrl = navTabs.tabs.find((t) => t.tab === navTab.tab)?.url ?? "";
+	show("the tab's url afterwards", navUrl);
+	check(
+		"a hover that navigates to an unapproved origin is refused as origin_not_allowed",
+		!navHover.ok && navHover.error?.code === "origin_not_allowed",
+		JSON.stringify(navHover.ok ? navHover.result : navHover.error),
+	);
+	check(
+		"and the tab is put back on the approved document, not left on the unapproved one",
+		navUrl.startsWith(siteOrigin) && !navUrl.includes("localhost"),
+		navUrl,
 	);
 
 	say("--- press: a shortcut on a focused NON-editable element, and chords");
