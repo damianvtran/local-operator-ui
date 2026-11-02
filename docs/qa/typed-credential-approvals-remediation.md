@@ -93,3 +93,45 @@ Spanish/French/Russian session-borrowing terminology and Hindi terminology/verb
 agreement were corrected in this round. Existing audit A's receipts and ledger
 commit remain intact; changed target bytes require a fresh independent delta
 audit. No self-audit or stale receipt rebinding is claimed.
+
+## Unified QA/design/UX remediation
+
+The decision hook now uses an exported options factory with `retry: false`.
+A regression constructs a QueryClient with the production defaults (mutations
+retry once), executes those exact options against a signed-but-unapplied answer,
+and checks that the original apply outcome survives with only one request. A
+negative control removing the retry override failed that selected test (1 fail).
+The override was restored before the final runs.
+
+Signed approved/failed credential cards remain in the live list with a separate
+needs-attention count. Their outcome stays inside the card, while terminal
+records retain the closed settled section and a visible Shared count. Credential
+success reads Shared, not Connected. Consent-critical scope, lifetime and future
+sign-in facts are visible before Approve. Every card uses the same Answer within
+request-deadline wording, distinct from share lifetime.
+
+Exact signed JSON is inside a nested, initially collapsed technical disclosure,
+bounded to a scrolling area. Codes are inside Details only. Cancel sharing has a
+visible explanation (stops this request, does not revoke existing access). File
+key notes distinguish unsigned assurance facts from signed records. File-only
+pending copy says Signing and applying, not that a Touch ID prompt is open.
+
+Decision controls describe their card with aria-describedby. Focus handoff now
+covers Approve and Try again as well as Deny, waits for the invalidated row or
+refusal, and does not steal focus if the operator moved elsewhere. A semantic
+output with polite live updates announces success/attention counts and outcomes.
+These source paths still require the manager-scheduled real keyboard/browser
+and assistive-technology checks; source pins are not rendered or focus proof.
+
+Capture stories retain pending/inheritance summaries, Details with technical
+content closed and open, retryable/permanent failure outcomes in the live list,
+approve/retry success, and narrow Details. Fixture apply reasons/remedies use the
+backend approval_copy sentences, not invented stand-ins. A separate localized
+hint explicitly points to the Try again button without rewriting server copy.
+
+Final selected serial runs (2 GiB, timeout 120s, concurrency 1): mesh-tab tests
+113/pass 113/fail 0; locale-parity tests 44/pass 44/fail 0. No full suite, build or
+browser launched in this pass. Fifteen new catalogue keys and modified assurance/
+account copy are translated into all seven supported locales with English context;
+keys regenerated. Fresh independent semantic audits and ledger refresh are needed;
+no self-audit or historical receipt rebinding is claimed.

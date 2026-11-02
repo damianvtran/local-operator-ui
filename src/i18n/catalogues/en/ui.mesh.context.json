@@ -1227,7 +1227,7 @@
 	"ui.mesh.approval.head_inheritance": {
 		"role": "heading — mesh approval card, standing credential inheritance request",
 		"tone": "Plain and factual; calm, not alarming",
-		"note": "The card's one-line ask. `device` borrows the operator's `provider` account `account` (an account id, kept verbatim). The login is used through this device, not copied. Keep it one line where the language allows."
+		"note": "The card's one-line ask. `device` borrows the operator's `provider` account `account` (an account id, kept verbatim). The login is used through this device, not copied. Keep it one line where the language allows. Account id is set off in parentheses to distinguish it from prose."
 	},
 	"ui.mesh.approval.scope_device": {
 		"role": "consequence — mesh approval card details",
@@ -1297,7 +1297,7 @@
 	"ui.mesh.approval.file_key_disclosure": {
 		"role": "disclosure — mesh approval card, beside Approve",
 		"tone": "Plain and factual; calm, not alarming",
-		"note": "REQUIRED disclosure on a machine whose operator key is a file, not a hardware key: any program running as the user could sign, so the approval cannot prove a person made it. Quiet register (dim meta text); state the fact without alarm. Keep 'Touch ID' as the product name."
+		"note": "Assurance fact for unsigned waiting/refused records. Signing here uses a file key; such a signature cannot prove human approval. No claim the refused request was already signed."
 	},
 	"ui.mesh.approval.approved_not_applied": {
 		"role": "status text — mesh approval card, signed but not applied",
@@ -1318,5 +1318,80 @@
 		"note": "The next check after the handshake-refused headline: WHO should look at what. It names the two causes the protocol actually refuses for (removed membership, epoch disagreement) but says 'check', never 'this is why' - the wire closes the handshake with no reason, so the app may not assert a cause. Keep it one sentence; it sits under the headline in the device panel only, where there is room.",
 		"role": "recovery hint — device panel, under the handshake-refused headline",
 		"tone": "Plain, non-accusatory; a next check, never an asserted cause"
+	},
+	"ui.mesh.approval.technical_request": {
+		"role": "status or instruction — Mesh credential approval card",
+		"tone": "Plain, quiet and factual",
+		"note": "Nested disclosure inside Details, collapsed by default; exact complete signed facts are technical inspection material, not the plain explanation. The open content scrolls within a bounded area."
+	},
+	"ui.mesh.approval.needs_attention": {
+		"role": "status or instruction — Mesh credential approval card",
+		"tone": "Plain, quiet and factual",
+		"note": "Count of signed credential cards not yet applied (approved or failed). These stay live outside settled history, even when retry is permanently refused and cancellation is the remaining action."
+	},
+	"ui.mesh.approval.shared_count": {
+		"role": "status or instruction — Mesh credential approval card",
+		"tone": "Plain, quiet and factual",
+		"note": "Quiet success count on collapsed settled-history summary. Count names credential shares, not device connections."
+	},
+	"ui.mesh.approval.shared": {
+		"role": "status or instruction — Mesh credential approval card",
+		"tone": "Plain, quiet and factual",
+		"note": "Credential record successfully applied. Means shared, not a device connection."
+	},
+	"ui.mesh.approval.result_status": {
+		"role": "status or instruction — Mesh credential approval card",
+		"tone": "Plain, quiet and factual",
+		"note": "Polite screen-reader status: shared and attention counts after decisions. Preserve both numeric placeholders."
+	},
+	"ui.mesh.approval.duration_under_minute": {
+		"role": "status or instruction — Mesh credential approval card",
+		"tone": "Plain, quiet and factual",
+		"note": "Bare duration for the request-answer window, not share lifetime."
+	},
+	"ui.mesh.approval.duration_minutes": {
+		"role": "status or instruction — Mesh credential approval card",
+		"tone": "Plain, quiet and factual",
+		"note": "Compact bare minute duration, count is numeric. Request-answer window only."
+	},
+	"ui.mesh.approval.duration_hours": {
+		"role": "status or instruction — Mesh credential approval card",
+		"tone": "Plain, quiet and factual",
+		"note": "Compact bare hour duration, count is numeric. Request-answer window only."
+	},
+	"ui.mesh.approval.answer_window": {
+		"role": "status or instruction — Mesh credential approval card",
+		"tone": "Plain, quiet and factual",
+		"note": "How long the operator has to answer THIS request, not how long access lasts. duration is already localized bare duration; do not format it again."
+	},
+	"ui.mesh.approval.file_key_recorded": {
+		"role": "status or instruction — Mesh credential approval card",
+		"tone": "Plain, quiet and factual",
+		"note": "Past-tense assurance disclosure for signed approved/failed/connected records: no proof a person signed because the key is a file. Must stay visible."
+	},
+	"ui.mesh.approval.cancel_sharing": {
+		"role": "status or instruction — Mesh credential approval card",
+		"tone": "Plain, quiet and factual",
+		"note": "Button on signed but unapplied credential cards. Denies/stops this request; does not revoke already-shared access."
+	},
+	"ui.mesh.approval.cancel_hint": {
+		"role": "status or instruction — Mesh credential approval card",
+		"tone": "Plain, quiet and factual",
+		"note": "Visible explanation for Cancel sharing. It stops this pending request, not existing shared access."
+	},
+	"ui.mesh.approval.signing_applying": {
+		"role": "status or instruction — Mesh credential approval card",
+		"tone": "Plain, quiet and factual",
+		"note": "Neutral progress for file-key approve route (sign AND apply in a single call); no Touch ID prompt promised."
+	},
+	"ui.mesh.approval.retry_hint": {
+		"role": "status or instruction — Mesh credential approval card",
+		"tone": "Plain, quiet and factual",
+		"note": "Links the backend reason/remedy to the actual Try again button. Keep the button name consistent with ui.mesh.approval.try_again."
+	},
+	"ui.mesh.approval.named_refusal": {
+		"role": "warning explanation — Mesh approval outcome outside a visible card",
+		"tone": "Quiet and factual",
+		"note": "Attribution when the owning card is not visible. request is the already-localized request head, reason is the verbatim backend sentence. Keep both unchanged; colon separates them. No machine code."
 	}
 }

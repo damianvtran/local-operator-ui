@@ -409,12 +409,12 @@ function installBridge(fixture: Fixture) {
 						retryable: failure === "retryable",
 						reason:
 							failure === "retryable"
-								? "Another change was in progress."
-								: "The recipient key changed.",
+								? "Another change to who may use a credential was in progress at the same time."
+								: "The device, its key or the credential no longer match what was approved.",
 						remedy:
 							failure === "retryable"
-								? "Try the same approved card again."
-								: "Request a new card.",
+								? "Nothing was changed. Apply the same approved card again in a moment."
+								: "This card can't be used again; a new request is needed. Ask the agent or person who asked for this access to request it again, then approve the new card.",
 					}
 				: null;
 			row.state = failure ? "failed" : "connected";
@@ -3384,15 +3384,12 @@ export const TypedCredentialRetryFlow: Story = {
 			await screen.findByRole("button", { name: "Approve" }),
 		);
 		await screen.findByText(
-			"Another change was in progress. Try the same approved card again.",
-		);
-		await userEvent.click(
-			await screen.findByRole("button", { name: /^Settled approvals/ }),
+			"Another change to who may use a credential was in progress at the same time. Nothing was changed. Apply the same approved card again in a moment.",
 		);
 		await userEvent.click(
 			await screen.findByRole("button", { name: "Try again" }),
 		);
-		await screen.findByText("Connected");
+		await screen.findByText("Shared: 1");
 	},
 };
 export const TypedCredentialPermanentRefusal: Story = {
@@ -3401,7 +3398,9 @@ export const TypedCredentialPermanentRefusal: Story = {
 		await userEvent.click(
 			await screen.findByRole("button", { name: "Approve" }),
 		);
-		await screen.findByText("The recipient key changed. Request a new card.");
+		await screen.findByText(
+			"The device, its key or the credential no longer match what was approved. This card can't be used again; a new request is needed. Ask the agent or person who asked for this access to request it again, then approve the new card.",
+		);
 	},
 };
 
@@ -3409,8 +3408,10 @@ const failedTypedRecord = typedCredentialRecord("failed");
 failedTypedRecord.typed_approval.apply_outcome = {
 	code: "busy",
 	retryable: true,
-	reason: "Another change was in progress.",
-	remedy: "Try again.",
+	reason:
+		"Another change to who may use a credential was in progress at the same time.",
+	remedy:
+		"Nothing was changed. Apply the same approved card again in a moment.",
 };
 export const TypedCredentialFailed = typedStory([failedTypedRecord]);
 export const TypedCredentialApproved = typedStory([
@@ -3420,7 +3421,7 @@ export const TypedCredentialFailedOpen: Story = {
 	...TypedCredentialFailed,
 	play: async () => {
 		await userEvent.click(
-			await screen.findByRole("button", { name: /^Settled approvals/ }),
+			await screen.findByRole("button", { name: "Details" }),
 		);
 	},
 };
@@ -3428,7 +3429,56 @@ export const TypedCredentialApprovedOpen: Story = {
 	...TypedCredentialApproved,
 	play: async () => {
 		await userEvent.click(
-			await screen.findByRole("button", { name: /^Settled approvals/ }),
+			await screen.findByRole("button", { name: "Details" }),
 		);
+	},
+};
+
+/** Captures for the consent summary, technical disclosure, success and narrow fit. */
+export const TypedCredentialTechnicalOpen: Story = {
+	...TypedCredentialExpanded,
+	play: async () => {
+		await userEvent.click(
+			await screen.findByRole("button", { name: "Details" }),
+		);
+		await userEvent.click(
+			await screen.findByRole("button", {
+				name: "Exact signed request (technical)",
+			}),
+		);
+	},
+};
+export const TypedCredentialApproveFlow: Story = {
+	...TypedCredentialPending,
+	play: async () => {
+		await userEvent.click(
+			await screen.findByRole("button", { name: "Approve" }),
+		);
+		await screen.findByText("Shared: 1");
+	},
+};
+export const TypedCredentialNarrowDetails: Story = {
+	...TypedCredentialExpanded,
+	parameters: {
+		viewport: {
+			defaultViewport: "typedNarrow",
+			viewports: {
+				typedNarrow: {
+					name: "Typed credential narrow",
+					styles: { width: "800px", height: "600px" },
+					type: "desktop",
+				},
+			},
+		},
+	},
+};
+export const TypedCredentialRetryableOutcome: Story = {
+	...typedStory([typedCredentialRecord()], { typedApplyFailure: "retryable" }),
+	play: async () => {
+		await userEvent.click(
+			await screen.findByRole("button", { name: "Approve" }),
+		);
+		await screen.findByRole("button", { name: "Try again" });
+		await screen.findByText("Needs attention: 1");
 	},
 };

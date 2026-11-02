@@ -1135,6 +1135,51 @@ export function approvalRemainingLabel(
 	return t("ui.mesh.mesh_approvals.expires_hours", { count: hours });
 }
 
+/** A signed credential still needing a decision is live, not settled history. */
+export function isAttentionApproval(row: MeshApprovalRow): boolean {
+	return (
+		row.kind === "credential" &&
+		row.typed !== undefined &&
+		(row.state === "approved" || row.state === "failed")
+	);
+}
+
+/** Request-answer deadline, NOT the duration of the share. Shared by every card kind. */
+export function approvalAnswerWindowLabel(
+	expires: number | null,
+	now: number,
+): string | null {
+	if (expires === null || expires <= now || expires <= 0) return null;
+	const minutes = Math.ceil((expires - now) / 60);
+	const duration =
+		expires - now < 60
+			? t("ui.mesh.approval.duration_under_minute")
+			: minutes < 90
+				? t("ui.mesh.approval.duration_minutes", { count: minutes })
+				: t("ui.mesh.approval.duration_hours", {
+						count: Math.ceil(minutes / 60),
+					});
+	return t("ui.mesh.approval.answer_window", { duration });
+}
+
+/** The consent-critical facts remain visible before a person presses Approve. */
+export function credentialVisibleConsequences(row: MeshApprovalRow): string {
+	const facts = row.typed?.disclosure;
+	if (!facts) return "";
+	const lines = credentialConsequences(row);
+	const lifetime = t("ui.mesh.approval.until_revoked");
+	const future = t(
+		facts.futureLogins
+			? "ui.mesh.approval.future_logins_covered"
+			: "ui.mesh.approval.future_logins_not_shared",
+	);
+	return lines
+		.filter(
+			(line, index) => index === 0 || line === lifetime || line === future,
+		)
+		.join(" · ");
+}
+
 /* ---------------------------------------------------------------- hooks */
 
 /**
@@ -1174,9 +1219,14 @@ export function useMeshApprovals(
  * the 30 s mesh cadence is what picks the arrival up; this invalidation is what
  * makes the DECIDED cases immediate.
  */
-export function useMeshApprovalDecision() {
-	const client = useQueryClient();
-	return useMutation({
+/** Shared by the hook and production-defaults regression; no signing decision is replayed. */
+export function meshApprovalDecisionOptions() {
+	return {
+		// A 200 signed-but-unapplied answer is thrown to preserve its refusal.
+		// The app defaults retry mutations once; replaying Approve would sign twice
+		// or overwrite that outcome with a decision-conflict refusal. Only an
+		// explicit Try again may send applyCredential, never automatic retry.
+		retry: false as const,
 		mutationFn: async (ask: {
 			approvalId: string;
 			decision: ApprovalDecision;
@@ -1194,6 +1244,13 @@ export function useMeshApprovalDecision() {
 				if (unapplied) throw unapplied;
 			}
 		},
+	};
+}
+
+export function useMeshApprovalDecision() {
+	const client = useQueryClient();
+	return useMutation({
+		...meshApprovalDecisionOptions(),
 		onSettled: () => {
 			void client.invalidateQueries({ queryKey: meshApprovalKeys.approvals });
 			void client.invalidateQueries({ queryKey: meshKeys.networks });

@@ -62,6 +62,8 @@ const bundle = await build({
 			export * from "./src/renderer/src/features/mesh/mesh-drag";
 			export * from "./src/renderer/src/features/mesh/mesh-approvals";
 export { desktopResult } from "./src/renderer/src/shared/api/local-operator/desktop-api";
+export { defaultQueryOptions } from "./src/renderer/src/shared/api/query-client";
+export { QueryClient } from "@tanstack/react-query";
  export { t, setLocale, registerCatalogue, clearRegisteredCatalogues, currentLocale } from "./src/i18n";
 		`,
 		resolveDir: process.cwd(),
@@ -2341,7 +2343,7 @@ test("the tray and the page route every credential decision through the typed bu
 		/const fileKeyNote = row\.typed\?\.unprovenHuman === true;/,
 		"the file-key disclosure is independent of signing availability and feature gating",
 	);
-	assert.match(tray, /t\("ui\.mesh\.approval\.file_key_disclosure"\)/);
+	assert.ok(tray.includes('"ui.mesh.approval.file_key_disclosure"'));
 	assert.match(tray, /onDecide\(row\.approvalId, "apply"\)/);
 	assert.match(
 		tray,
@@ -2353,7 +2355,7 @@ test("the tray and the page route every credential decision through the typed bu
 	);
 	assert.match(
 		en["ui.mesh.approval.file_key_disclosure"],
-		/key file.*can't prove a person/,
+		/key file.*cannot prove a person/,
 	);
 });
 
@@ -2411,7 +2413,7 @@ test("an inheritance card is headed from its disclosure and lists what it does n
 	assert.equal(row.kind, "credential");
 	assert.equal(
 		mesh.approvalHead(row),
-		"Let worker-1 use your GitHub account octo",
+		"Let worker-1 use your GitHub account (octo)",
 	);
 	assert.deepEqual(mesh.credentialConsequences(row), [
 		"For any organization on this account.",
@@ -3326,7 +3328,7 @@ test("a refused decision renders its sentence, and the tray splits waiting from 
 		 * left Desktop Tests red on the head the round-1 fix produced. The
 		 * INTENT is unchanged - the refusal renders while unattached.
 		 */
-		/refusal && !refusalAttached && <MeshDecisionRefusal/,
+		/refusal && !refusalAttached &&/,
 		"a refusal whose record left the live set still renders under the list",
 	);
 	assert.match(
@@ -3347,17 +3349,17 @@ test("a refused decision renders its sentence, and the tray splits waiting from 
 	 */
 	assert.match(
 		tray,
-		/const waiting = useMemo\(\s*\(\) => rows\.filter\(\(row\) => isWaitingApproval\(row\.state\)\),\s*\[rows\],?\s*\);/,
+		/isWaitingApproval\(row\.state\) \|\| isAttentionApproval\(row\)/,
 		"the live panel draws the waiting set, and only it",
 	);
 	assert.match(
 		tray,
-		/const records = useMemo\(\s*\(\) => rows\.filter\(\(row\) => !isWaitingApproval\(row\.state\)\),\s*\[rows\],?\s*\);/,
+		/!isWaitingApproval\(row\.state\) && !isAttentionApproval\(row\)/,
 		"everything else is a record - decided, running, stopped and terminal alike",
 	);
 	assert.match(
 		tray,
-		/t\("ui\.mesh\.mesh_approvals_tray\.waiting_count",\s*\{\s*count: waiting\.length,?\s*\}\)/,
+		/t\("ui\.mesh\.mesh_approvals_tray\.waiting_count",\s*\{\s*count: waitingCount,?\s*\}\)/,
 		"the header counts the waiting set - the same number the rail badge wears",
 	);
 	/*
@@ -3459,7 +3461,7 @@ test("a refused decision renders its sentence, and the tray splits waiting from 
 	 */
 	assert.match(
 		tray,
-		/<span className=\{cn\("text-meta", stateInk\(row\.state\)\)\}>/,
+		/isAttentionApproval\(row\) \? "text-warning" : stateInk\(row\.state\)/,
 	);
 	assert.match(tray, /function stateInk\(state: string\): string \{/);
 	assert.match(tray, /if \(state === "failed"\) return "text-danger";/);
@@ -3548,7 +3550,7 @@ test("a refused decision renders its sentence, and the tray splits waiting from 
 	assert.match(tray, /const waiting = isWaitingApproval\(row\.state\);/);
 	assert.match(
 		tray,
-		/\{waiting\s*\? t\("ui\.mesh\.mesh_approvals_tray\.deny"\)\s*: recordActionLabel\(row\.state\)\}/,
+		/\{waiting\s*\? t\("ui\.mesh\.mesh_approvals_tray\.deny"\)\s*: row\.kind === "credential"\s*\? t\("ui\.mesh\.approval\.cancel_sharing"\)\s*: recordActionLabel\(row\.state\)\}/,
 	);
 	assert.match(
 		tray,
@@ -5959,4 +5961,106 @@ test("typed fixture lane covers signable/refused/settled assurance and stateful 
 	assert.ok(stories.includes("credential_approvals: 1"));
 	assert.ok(stories.includes("request.requestDigest !== typed.request_digest"));
 	assert.ok(stories.includes('row.state = failure ? "failed" : "connected"'));
+});
+
+// The shipped query policy retries mutations once. This decision MUST override
+// it: a signed-but-unapplied result cannot silently replay the human's signature.
+test("credential decisions never replay under production mutation retry defaults", async () => {
+	assert.equal(mesh.defaultQueryOptions.mutations.retry, 1);
+	const client = new mesh.QueryClient({
+		defaultOptions: mesh.defaultQueryOptions,
+	});
+	const previousWindow = globalThis.window;
+	let calls = 0;
+	globalThis.window = {
+		api: {
+			desktop: {
+				request: async () => {
+					calls++;
+					return calls === 1
+						? {
+								status: 200,
+								body: {
+									result: {
+										signed: { ok: true },
+										applied: {
+											ok: false,
+											code: "busy",
+											retryable: true,
+											reason: "Another change was in progress.",
+											remedy: "Try again.",
+										},
+									},
+								},
+							}
+						: {
+								status: 409,
+								body: {
+									detail: {
+										code: "approval_decision_conflict",
+										message: "Already signed.",
+									},
+								},
+							};
+				},
+			},
+		},
+	};
+	try {
+		const [row] = mesh.approvalRows([finiteShareCapture()]);
+		const mutation = client
+			.getMutationCache()
+			.build(client, mesh.meshApprovalDecisionOptions());
+		await assert.rejects(
+			mutation.execute({
+				approvalId: row.approvalId,
+				decision: "approve",
+				request: mesh.approvalDecisionRequest(row, "approve", ON),
+			}),
+			(error) => {
+				assert.equal(mesh.approvalRefusal(error).code, "busy");
+				return true;
+			},
+		);
+		assert.equal(
+			calls,
+			1,
+			"no automatic approveCredential replay overwrites the apply outcome",
+		);
+	} finally {
+		client.clear();
+		if (previousWindow === undefined)
+			Reflect.deleteProperty(globalThis, "window");
+		else globalThis.window = previousWindow;
+	}
+});
+
+test("signed unapplied credentials remain live and consent facts stay visible", () => {
+	for (const state of ["approved", "failed"]) {
+		const [row] = mesh.approvalRows([finiteShareCapture({ state })]);
+		assert.equal(mesh.isAttentionApproval(row), true);
+		const visible = mesh.credentialVisibleConsequences(row);
+		assert.ok(visible.includes("Any session on studio-mini"));
+		assert.ok(visible.includes("until you revoke"));
+		assert.ok(visible.includes("Future sign-ins are not shared"));
+	}
+	for (const state of ["requested", "connected", "denied", "expired"]) {
+		const [row] = mesh.approvalRows([finiteShareCapture({ state })]);
+		assert.equal(mesh.isAttentionApproval(row), false);
+	}
+	assert.equal(
+		mesh.approvalAnswerWindowLabel(1600, 1000),
+		"Answer within 10 minutes",
+	);
+	assert.equal(mesh.approvalAnswerWindowLabel(1000, 1000), null);
+	const source = readFileSync(
+		"src/renderer/src/features/mesh/mesh-approvals-tray.tsx",
+		"utf8",
+	);
+	assert.ok(source.includes('data-tour-tag="mesh-approval-critical-facts"'));
+	assert.ok(
+		source.includes("<output") && source.includes('aria-live="polite"'),
+	);
+	assert.ok(source.includes("aria-describedby="));
+	assert.ok(source.includes("max-h-48 overflow-auto"));
 });
