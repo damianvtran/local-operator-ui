@@ -1,0 +1,235 @@
+{
+  "schema": 1,
+  "auditor": "translation-auditor",
+  "role": "Independent reviewer; no translation or implementation edits",
+  "instance": "ad24d2c43271",
+  "model": "openai/gpt-6.1-sol",
+  "model_provenance": "Actual semantic review performed after host model-switch notices to openai/gpt-6.1-sol. Session initially deepseek/deepseek-flash; intermediate switch notice anthropic/claude-opus-5-5. Both fallback notices cite provider quota HTTP 402. No claimed primary-model audit.",
+  "fallback": true,
+  "translator": {
+    "agent": "coder",
+    "actual_model": "openai/gpt-6.1-sol",
+    "fallback": true,
+    "source": "Manager parent-message explicitly supplies translator actual model/fallback; not independently observed by auditor."
+  },
+  "independence": "Independent reviewer session ad24d2c43271 authored none of these catalogues or context/consumer files. Translator is separate coder agent, with actual openai/gpt-6.1-sol fallback reported by manager. Different agent instance; same served model does not imply same agent.",
+  "head": "05af4b914015a6b60fbc311950718747d7713a6c",
+  "reference_sha256": {
+    "core:i18n/glossary.md": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+    "core:i18n/style-guides/fr.md": "ae1519ab7617d19aa826918d607de1d018595094166edbc18aa58f6a8f0a4226",
+    "ui:docs/I18N.md": "9a4bde8d1c161286160be4a4ae1c7655615dbf39047052550b725a3da2eb00e2"
+  },
+  "scope": "All three final keys received/unavailable/provenance, English source and context, target locale. Final held-key removal observed; no admission/body/image review or activation. Untracked namespace bytes bound by hashes, not HEAD alone.",
+  "limitations": [
+    "Semantic/source and byte-level audit only; no tests/build/install/ledger assembly or activation.",
+    "No browser tool in this role: no rendered fit, pseudo-localized frame or live RTL visual proof; manager owns those gates.",
+    "No native-speaker certification.",
+    "Context still mentions missing admitted body; audited as unavailable/not moderation failure, not as an admission contract."
+  ],
+  "namespace": "ui.chat.bridgeReceipt",
+  "locales": [
+    "en",
+    "fr",
+    "es",
+    "zh-CN",
+    "ru",
+    "vi",
+    "ur",
+    "hi"
+  ],
+  "date": "2026-10-31T19:31:11.006022+00:00",
+  "status": "clean-with-findings",
+  "result": "clean-with-findings",
+  "sha256": {
+    "en": "3c39044a4883aa8b3b8698dd44549432adcf52824fb594ee9f800d762d1b5f1d",
+    "fr": "de12aa5e3f38c1dd5ba700ffedb1936a7a6792ab4a33bfac65e1a2ea54aaa8aa",
+    "es": "467efeb27a20a853cfecab9a656af36fc7538d03152235c858a9ee74aaecfa15",
+    "zh-CN": "a4e31f4a48834348e72c79a4b2ed928ed1eff05386ea8060ac2963b60a32eca0",
+    "ru": "65f20472c1b73752965b91118b789038fe0b14e9837439fa53293850514dc6a1",
+    "vi": "67c3ff3dcc22ced968b00038137cfee89c6afd09fd7ba1ce199949ed69defa52",
+    "ur": "05ec602ea9b08a8e759945a41b20fc9e093d47136c14080b8cb1d6b40f82eeab",
+    "hi": "b03b58fe85fb0488ed7031a75c538cb40cf81b633b728f10fa8d510b203aeb40"
+  },
+  "context_sha256": "394a562b3ce541303c22af82223eae6829d7703b1c6a116ebc2aafb49432b166",
+  "paths": {
+    "en": "src/i18n/catalogues/en/ui.chat.bridgeReceipt.json",
+    "context": "src/i18n/catalogues/en/ui.chat.bridgeReceipt.context.json",
+    "fr": "src/i18n/catalogues/fr/ui.chat.bridgeReceipt.json",
+    "es": "src/i18n/catalogues/es/ui.chat.bridgeReceipt.json",
+    "zh-CN": "src/i18n/catalogues/zh-CN/ui.chat.bridgeReceipt.json",
+    "ru": "src/i18n/catalogues/ru/ui.chat.bridgeReceipt.json",
+    "vi": "src/i18n/catalogues/vi/ui.chat.bridgeReceipt.json",
+    "ur": "src/i18n/catalogues/ur/ui.chat.bridgeReceipt.json",
+    "hi": "src/i18n/catalogues/hi/ui.chat.bridgeReceipt.json"
+  },
+  "findings": [
+    {
+      "id": "C-ZH-1",
+      "severity": "NIT",
+      "key": "ui.chat.bridgeReceipt.received",
+      "status": "open",
+      "current": "收到来自 {sender} 的消息",
+      "problem": "Literal spaces around {sender} conflict with the locale guide punctuation rule against inserted spaces between Chinese and Latin runs. Grammar and incoming direction remain correct.",
+      "suggestion": "Remove only the translator-inserted spaces around {sender}; preserve the placeholder.",
+      "locale": "zh-CN"
+    },
+    {
+      "id": "C-ZH-2",
+      "severity": "NIT",
+      "key": "ui.chat.bridgeReceipt.unavailable",
+      "status": "open",
+      "current": "消息正文不可用。",
+      "problem": "Sentence-final 。 on this short availability status differs from the zh-CN style guide instruction to omit it on short labels/statuses. Semantic meaning is correct.",
+      "suggestion": "Omit the terminal 。 for this compact status if enforcing the short-status convention.",
+      "locale": "zh-CN"
+    }
+  ],
+  "locale_reviews": {
+    "fr": {
+      "result": "clean",
+      "checks": {
+        "keys": 3,
+        "key_set_matches_en": true,
+        "placeholders_match_en": true,
+        "all_values_nfc": true,
+        "manual_bidi_controls": [],
+        "held_key_absent": true
+      },
+      "semantic_review": {
+        "incoming_vs_outgoing": "PASS: received-from names incoming sender, not a send/deliver confirmation.",
+        "human_agent_truth": "PASS: no sender-human or sender-agent identity asserted by copy; display sender remains unchanged.",
+        "provenance": "PASS: external/untrusted label; no moderation decision or safety guarantee added.",
+        "unavailable": "PASS: neutral unavailable body/text; no hold, rejection or moderation failure claim.",
+        "proper_names_interpolation": "PASS: no new product names; exactly {sender}, unchanged.",
+        "punctuation_bidi": "PASS: locale punctuation and logical storage; no manual bidi controls."
+      }
+    },
+    "es": {
+      "result": "clean",
+      "checks": {
+        "keys": 3,
+        "key_set_matches_en": true,
+        "placeholders_match_en": true,
+        "all_values_nfc": true,
+        "manual_bidi_controls": [],
+        "held_key_absent": true
+      },
+      "semantic_review": {
+        "incoming_vs_outgoing": "PASS: received-from names incoming sender, not a send/deliver confirmation.",
+        "human_agent_truth": "PASS: no sender-human or sender-agent identity asserted by copy; display sender remains unchanged.",
+        "provenance": "PASS: external/untrusted label; no moderation decision or safety guarantee added.",
+        "unavailable": "PASS: neutral unavailable body/text; no hold, rejection or moderation failure claim.",
+        "proper_names_interpolation": "PASS: no new product names; exactly {sender}, unchanged.",
+        "punctuation_bidi": "PASS: locale punctuation and logical storage; no manual bidi controls."
+      }
+    },
+    "zh-CN": {
+      "result": "clean-with-findings",
+      "checks": {
+        "keys": 3,
+        "key_set_matches_en": true,
+        "placeholders_match_en": true,
+        "all_values_nfc": true,
+        "manual_bidi_controls": [],
+        "held_key_absent": true
+      },
+      "semantic_review": {
+        "incoming_vs_outgoing": "PASS: received-from names incoming sender, not a send/deliver confirmation.",
+        "human_agent_truth": "PASS: no sender-human or sender-agent identity asserted by copy; display sender remains unchanged.",
+        "provenance": "PASS: external/untrusted label; no moderation decision or safety guarantee added.",
+        "unavailable": "PASS: neutral unavailable body/text; no hold, rejection or moderation failure claim.",
+        "proper_names_interpolation": "PASS: no new product names; exactly {sender}, unchanged.",
+        "punctuation_bidi": "NITs recorded"
+      }
+    },
+    "ru": {
+      "result": "clean",
+      "checks": {
+        "keys": 3,
+        "key_set_matches_en": true,
+        "placeholders_match_en": true,
+        "all_values_nfc": true,
+        "manual_bidi_controls": [],
+        "held_key_absent": true
+      },
+      "semantic_review": {
+        "incoming_vs_outgoing": "PASS: received-from names incoming sender, not a send/deliver confirmation.",
+        "human_agent_truth": "PASS: no sender-human or sender-agent identity asserted by copy; display sender remains unchanged.",
+        "provenance": "PASS: external/untrusted label; no moderation decision or safety guarantee added.",
+        "unavailable": "PASS: neutral unavailable body/text; no hold, rejection or moderation failure claim.",
+        "proper_names_interpolation": "PASS: no new product names; exactly {sender}, unchanged.",
+        "punctuation_bidi": "PASS: locale punctuation and logical storage; no manual bidi controls."
+      }
+    },
+    "vi": {
+      "result": "clean",
+      "checks": {
+        "keys": 3,
+        "key_set_matches_en": true,
+        "placeholders_match_en": true,
+        "all_values_nfc": true,
+        "manual_bidi_controls": [],
+        "held_key_absent": true
+      },
+      "semantic_review": {
+        "incoming_vs_outgoing": "PASS: received-from names incoming sender, not a send/deliver confirmation.",
+        "human_agent_truth": "PASS: no sender-human or sender-agent identity asserted by copy; display sender remains unchanged.",
+        "provenance": "PASS: external/untrusted label; no moderation decision or safety guarantee added.",
+        "unavailable": "PASS: Nội dung tin nhắn không khả dụng. states content unavailable, not absent/empty or held/rejected; correction verified by direct readback.",
+        "proper_names_interpolation": "PASS: no new product names; exactly {sender}, unchanged.",
+        "punctuation_bidi": "PASS: locale punctuation and logical storage; no manual bidi controls."
+      },
+      "remediated_findings": [
+        {
+          "id": "C-VI-1",
+          "severity": "MAJOR",
+          "status": "fixed-in-working-tree",
+          "before": "Không có nội dung tin nhắn.",
+          "after": "Nội dung tin nhắn không khả dụng.",
+          "verification": "Direct semantic readback of the corrected value; remaining two keys unchanged. Source hash bound below. No commit SHA yet: catalogue is untracked, manager/coder must record commit in PR remediation."
+        }
+      ]
+    },
+    "ur": {
+      "result": "clean",
+      "checks": {
+        "keys": 3,
+        "key_set_matches_en": true,
+        "placeholders_match_en": true,
+        "all_values_nfc": true,
+        "manual_bidi_controls": [],
+        "held_key_absent": true
+      },
+      "semantic_review": {
+        "incoming_vs_outgoing": "PASS: received-from names incoming sender, not a send/deliver confirmation.",
+        "human_agent_truth": "PASS: no sender-human or sender-agent identity asserted by copy; display sender remains unchanged.",
+        "provenance": "PASS: external/untrusted label; no moderation decision or safety guarantee added.",
+        "unavailable": "PASS: neutral unavailable body/text; no hold, rejection or moderation failure claim.",
+        "proper_names_interpolation": "PASS: no new product names; exactly {sender}, unchanged.",
+        "punctuation_bidi": "PASS: locale punctuation and logical storage; no manual bidi controls."
+      }
+    },
+    "hi": {
+      "result": "clean",
+      "checks": {
+        "keys": 3,
+        "key_set_matches_en": true,
+        "placeholders_match_en": true,
+        "all_values_nfc": true,
+        "manual_bidi_controls": [],
+        "held_key_absent": true
+      },
+      "semantic_review": {
+        "incoming_vs_outgoing": "PASS: received-from names incoming sender, not a send/deliver confirmation.",
+        "human_agent_truth": "PASS: no sender-human or sender-agent identity asserted by copy; display sender remains unchanged.",
+        "provenance": "PASS: external/untrusted label; no moderation decision or safety guarantee added.",
+        "unavailable": "PASS: neutral unavailable body/text; no hold, rejection or moderation failure claim.",
+        "proper_names_interpolation": "PASS: no new product names; exactly {sender}, unchanged.",
+        "punctuation_bidi": "PASS: locale punctuation and logical storage; no manual bidi controls."
+      }
+    }
+  },
+  "repair_note": "Packaging-only repair: one true auditor instance ad24d2c43271 now has one immutable combined receipt instead of differing per-locale receipt bytes. Actual semantic audit scope and catalogue/context bytes unchanged, verified against prior final receipt hashes. Supersedes all earlier per-locale receipts for this instance. No translation edits.",
+  "finding_count_note": "Receipt gate scopes findings by namespace, not locale. Both NIT findings are explicitly locale=zh-CN; derived namespace counts are {blocker:0,major:0,minor:0,nit:2} for each locale assembled from this identical combined receipt. Other locale semantic results remain clean in locale_reviews.",
+  "english_review": "Three English keys and context reviewed; source incoming wording does not assert human/agent identity or moderation outcome."
+}

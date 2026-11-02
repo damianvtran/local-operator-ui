@@ -1,3 +1,8 @@
+import {
+	type BridgeReceipt,
+	bridgeReceiptOf,
+} from "../components/trace/bridge-receipt-model";
+
 /**
  * Canonical transcript reducer.
  *
@@ -612,6 +617,8 @@ type TranscriptPayloadRecord =
 			customType: string;
 			/** Structured hub facts survive replay without becoming a human turn. */
 			receipt?: HubReceipt;
+			/** Display-only Bridge facts; never a model-context admission grant. */
+			bridgeReceipt?: BridgeReceipt;
 			images?: TranscriptImage[];
 			/** The row's rendered body, as persisted. */
 			text: string;
@@ -3449,6 +3456,11 @@ function durableRecord(
 			ts,
 			customType,
 			text,
+			...(customType === "team_bridge_message"
+				? {
+						bridgeReceipt: bridgeReceiptOf(details),
+					}
+				: {}),
 			attribution:
 				(payload.attribution as "user" | "agent" | "system") ?? "system",
 			...customRow(customType, text, details),

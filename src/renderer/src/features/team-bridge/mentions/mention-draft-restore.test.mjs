@@ -99,7 +99,7 @@ async function mount({
 	failSend = false,
 	owner = defaultOwner,
 } = {}) {
-	const storageKey = scopedKey(key, owner);
+	let storageKey = scopedKey(key, owner);
 	const host = document.createElement("div");
 	document.body.append(host);
 	const root = m.createRoot(host);
@@ -208,6 +208,57 @@ async function mount({
 				field.dispatchEvent(
 					new InputEvent("input", { bubbles: true, inputType }),
 				);
+			});
+		},
+		/*
+		 * Type the way a browser delivers a key, not the way jsdom does. A real
+		 * user-dispatched `input` gets a microtask checkpoint between listener
+		 * callbacks, and React 18 flushes a discrete (SyncLane) setState at that
+		 * checkpoint, so a setState from the field's own target-phase listener
+		 * committed the OLD controlled value back into the textarea before
+		 * React's delegated root `onChange` ran. jsdom has no such checkpoint,
+		 * which is how the #1590 regression ("only a repeated key lands") shipped
+		 * green. Modelled in ONE task, outside act() so React schedules its real
+		 * microtask flush: a non-bubbling input (only the target-phase listener
+		 * sees it), a microtask checkpoint, the check that the key is still in
+		 * the field, then the bubbling input React turns into onChange. act()
+		 * is not used there on purpose: its async flush yields a macrotask, which
+		 * lets unrelated timers re-render between the phases - a browser never
+		 * does that between two listeners of one event.
+		 */
+		async keystrokes(chars) {
+			const reverted = [];
+			for (const ch of chars) {
+				const field = host.querySelector("textarea");
+				const next = field.value + ch;
+				const init = { inputType: "insertText", data: ch };
+				globalThis.IS_REACT_ACT_ENVIRONMENT = false;
+				try {
+					field.focus();
+					setValue.call(field, next);
+					field.setSelectionRange(next.length, next.length);
+					field.dispatchEvent(
+						new InputEvent("input", { ...init, bubbles: false }),
+					);
+					for (let i = 0; i < 3; i += 1) await Promise.resolve();
+					if (field.value !== next)
+						reverted.push({ key: ch, expected: next, field: field.value });
+					field.dispatchEvent(
+						new InputEvent("input", { ...init, bubbles: true }),
+					);
+				} finally {
+					globalThis.IS_REACT_ACT_ENVIRONMENT = true;
+				}
+				// Settle effects/frames between keys, as a browser would.
+				await m.act(async () => {});
+			}
+			return reverted;
+		},
+		async switchDraft(nextKey, nextText = "") {
+			await m.act(async () => {
+				key = nextKey;
+				storageKey = scopedKey(nextKey, owner);
+				render(nextText);
 			});
 		},
 		async pick(candidate) {
@@ -673,5 +724,96 @@ test("R1: shipped provider derives ownership from IDs even before the directory 
 	} finally {
 		await m.act(async () => root.unmount());
 		host.remove();
+	}
+});
+
+/*
+ * THE #1590 KEYSTROKE REGRESSION. A setState in the field's native `input`
+ * listener re-rendered the composer with the previous `text` prop before
+ * onChange, so React wrote the old value back and the key was lost; only a key
+ * repeating the previous one survived (setState bailed out on an equal
+ * string), which is why "hello" came out as "l".
+ */
+for (const word of ["abc", "aab", "hello"])
+	test(`browser-ordered keystrokes land every key: ${JSON.stringify(word)}`, async () => {
+		m.useMentionDraftStore.setState({ drafts: {} });
+		const c = await mount();
+		try {
+			const reverted = await c.keystrokes(word);
+			assert.deepEqual(reverted, [], "no keystroke may be reverted");
+			assert.equal(c.text, word);
+			assert.equal(c.host.querySelector("textarea").value, word);
+		} finally {
+			await c.dispose();
+		}
+	});
+
+test("browser-ordered burst over a restored scoped draft keeps every key and the pills", async () => {
+	m.useMentionDraftStore.setState({ drafts: {} });
+	let c = await mount();
+	try {
+		await pickPair(c);
+		const text = c.text;
+		const tokens = structuredClone(c.controller.tokens);
+		assert.equal(tokens.length, 2);
+		await c.dispose();
+		c = await mount();
+		await c.restore(text);
+		assertPills(c, tokens);
+		const reverted = await c.keystrokes(" more");
+		assert.deepEqual(reverted, []);
+		assert.equal(c.text, `${text} more`);
+		assertPills(c, tokens);
+		assert.deepEqual(c.stored.tokens, tokens, "persisted pair keeps the pills");
+		assert.equal(c.stored.text, `${text} more`);
+	} finally {
+		await c.dispose();
+	}
+});
+
+test("browser-ordered typing across a draft switch keeps each draft's own text and tokens", async () => {
+	m.useMentionDraftStore.setState({ drafts: {} });
+	const other = "thread|bcv_restore|bcmsg_other";
+	const c = await mount();
+	try {
+		await c.type("hi @");
+		await c.pick(human);
+		assert.deepEqual(await c.keystrokes("ab"), []);
+		const textA = c.text;
+		const tokensA = structuredClone(c.controller.tokens);
+		assert.equal(tokensA.length, 1);
+		await c.switchDraft(other, "");
+		assertPills(c, []);
+		assert.deepEqual(await c.keystrokes("yz"), [], "no key lost after switch");
+		assert.equal(c.text, "yz");
+		assertPills(c, []);
+		// A token-free draft has no sidecar (the store drops empty maps), and
+		// it must not have inherited the other draft's pill.
+		assert.equal(c.stored, undefined);
+		await c.switchDraft(draftKey, textA);
+		assertPills(c, tokensA);
+		assert.deepEqual(await c.keystrokes("!"), []);
+		assert.equal(c.text, `${textA}!`);
+		assertPills(c, tokensA);
+	} finally {
+		await c.dispose();
+	}
+});
+
+test("browser-ordered '@' into an empty composer opens the popover on that keystroke", async () => {
+	m.useMentionDraftStore.setState({ drafts: {} });
+	const c = await mount();
+	try {
+		assert.deepEqual(await c.keystrokes("@"), []);
+		assert.equal(c.text, "@");
+		assert.equal(c.controller.open, true, "the very keystroke arms the query");
+		// The popover portals to the document body, not into the host.
+		assert.notEqual(document.querySelector('[role="listbox"]'), null);
+		assert.equal(
+			c.host.querySelector("textarea").getAttribute("aria-expanded"),
+			"true",
+		);
+	} finally {
+		await c.dispose();
 	}
 });

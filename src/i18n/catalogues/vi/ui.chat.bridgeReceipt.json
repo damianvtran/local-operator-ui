@@ -1,0 +1,5 @@
+{
+	"ui.chat.bridgeReceipt.received": "Nhận từ {sender}",
+	"ui.chat.bridgeReceipt.unavailable": "Nội dung tin nhắn không khả dụng.",
+	"ui.chat.bridgeReceipt.provenance": "Tin nhắn bên ngoài · nội dung không đáng tin cậy"
+}

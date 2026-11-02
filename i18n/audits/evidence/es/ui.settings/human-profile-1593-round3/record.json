@@ -1,0 +1,141 @@
+{
+	"schema": 1,
+	"locale": "es",
+	"namespace": "ui.settings",
+	"audit_id": "human-profile-1593-round3",
+	"reviewer": {
+		"agent": "reviewer (lopdev team, independent)",
+		"instance": "e0b336b013e3",
+		"model": "anthropic/claude-opus-5-5",
+		"independent_of_implementer": true,
+		"independent_of_prior_auditor": "394f46fcc3fc"
+	},
+	"source_sha256": "f52439681d9fe05f1ecdfa8145814ee62ef89888ec33bc4a2f87be1bd7ba9c20",
+	"target_sha256": "8b167d0ca69e5a8ba4716191c8d1a8af814c71a566b1021a27b9c05af53da1e1",
+	"context_sha256": "da92091b294d2ba6ec0159f066aca48bd0a2a18cd07cf968c93c60c49b792108",
+	"wrapper": "i18n/receipts/human-profile-1593-r3-es-e0b336b013e3.json",
+	"wrapper_sha256": "7efdc21c941592e94510a8b0c673e59b0f3468c83ff981f4aa4343edd048a4f0",
+	"independent_evidence": [
+		{
+			"path": "i18n/receipts/human-profile-1593-round3-e0b336b013e3-delta.json",
+			"sha256": "1d85b3c0a25a77fecf7c65d225a2c7723106022eecd21296b2319e4a4ad3ba13"
+		},
+		{
+			"path": "i18n/receipts/human-profile-1593-independent-source-audit.json",
+			"sha256": "659edeb2d60fcd278e750016c16c87e43ea12beb36b603a4c3105a9bec61611f"
+		},
+		{
+			"path": "i18n/receipts/human-profile-1593-independent-delta-addendum.json",
+			"sha256": "a3a18c6e5b4c92146348f9aaabd1eecda4db907c2661e8988708aef9f5dea0b0"
+		}
+	],
+	"scope": {
+		"keys_audited_this_round": [
+			"ui.settings.personal_profile.field_too_long",
+			"ui.settings.personal_profile.description_lines",
+			"ui.settings.personal_profile.photo_help",
+			"ui.settings.personal_profile.photo_invalid"
+		],
+		"added_keys": [
+			"ui.settings.personal_profile.field_too_long",
+			"ui.settings.personal_profile.description_lines"
+		],
+		"changed_target_keys": [
+			"ui.settings.personal_profile.photo_help",
+			"ui.settings.personal_profile.photo_invalid"
+		],
+		"removed_keys": [
+			"ui.settings.personal_profile.validation"
+		],
+		"current_profile_keys": [
+			"ui.settings.personal_profile.heading",
+			"ui.settings.personal_profile.display_name",
+			"ui.settings.personal_profile.title",
+			"ui.settings.personal_profile.description",
+			"ui.settings.personal_profile.timezone",
+			"ui.settings.personal_profile.timezone_placeholder",
+			"ui.settings.personal_profile.timezone_clear",
+			"ui.settings.personal_profile.loading",
+			"ui.settings.personal_profile.load_error",
+			"ui.settings.personal_profile.save",
+			"ui.settings.personal_profile.saving",
+			"ui.settings.personal_profile.saved",
+			"ui.settings.personal_profile.save_error",
+			"ui.settings.personal_profile.choose",
+			"ui.settings.personal_profile.replace",
+			"ui.settings.personal_profile.photo_help",
+			"ui.settings.personal_profile.remove",
+			"ui.settings.personal_profile.remove_uploaded",
+			"ui.settings.personal_profile.remove_provider",
+			"ui.settings.personal_profile.photo_error",
+			"ui.settings.personal_profile.photo_invalid",
+			"ui.settings.personal_profile.photo_saved",
+			"ui.settings.personal_profile.photo_removed",
+			"ui.settings.personal_profile.crop_area",
+			"ui.settings.personal_profile.crop_instructions",
+			"ui.settings.personal_profile.zoom",
+			"ui.settings.personal_profile.zoom_in",
+			"ui.settings.personal_profile.zoom_out",
+			"ui.settings.personal_profile.zoom_value",
+			"ui.settings.personal_profile.recenter",
+			"ui.settings.personal_profile.previews",
+			"ui.settings.personal_profile.preview",
+			"ui.settings.personal_profile.preview_caption",
+			"ui.settings.personal_profile.save_photo",
+			"ui.settings.personal_profile.crop_error",
+			"ui.settings.personal_profile.manage",
+			"ui.settings.personal_profile.discard",
+			"ui.settings.personal_profile.discard_action",
+			"ui.settings.personal_profile.keep_editing",
+			"ui.settings.personal_profile.edit",
+			"ui.settings.personal_profile.field_too_long",
+			"ui.settings.personal_profile.description_lines"
+		],
+		"base": "49c3661b2efa86d68dbff2f9a5edec9178a870f2",
+		"reviewed_commit": "bb4949bbc17635acae82f5564ca19bd81753b500",
+		"boundary": "Round-3 delta 49c3661b..bb4949bb only. The other 83 keys are byte-equal to 49c3661b and keep their round-1 audit (previous_provenance); `validation` left the catalogue and so leaves the current key list. No whole-namespace re-audit."
+	},
+	"findings": [
+		{
+			"id": "L3-1",
+			"severity": "nit",
+			"key_list": [
+				"ui.settings.personal_profile.field_too_long",
+				"ui.settings.personal_profile.description_lines"
+			],
+			"note": "Counted nouns with a bare {count} instead of ICU plural. Correct for the current fixed values in every locale; would mis-agree (e.g. ru 21 -> символа) if a limit changed. Not gating."
+		}
+	],
+	"previous_provenance": {
+		"source_sha256": "867c7c09701d09d39abd4bf8fb5033689d69a32929c6222b6abae9307099b377",
+		"target_sha256": "3ee32c27c713225e1dc61a6da5a169c7eea1d609bac39f2d347d7a3e3e5560ee",
+		"translator": {
+			"agent": "coder",
+			"instance": "6d6c12b793e0",
+			"model": "openai/gpt-6.1-sol",
+			"date": "2026-11-02",
+			"note": "PR1593 new41-key translation. fr/zh typography remediation model anthropic/claude-sonnet-5-5; older unchanged45-key translator/audit preserved in superseded provenance."
+		},
+		"auditors": [
+			{
+				"agent": "reviewer",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-11-02",
+				"result": "clean",
+				"instance": "394f46fcc3fc",
+				"findings": {
+					"blocker": 0,
+					"major": 0,
+					"minor": 0,
+					"nit": 0
+				},
+				"receipt": "i18n/receipts/human-profile-1593-es-394f46fcc3fc.json",
+				"receipt_sha256": "9b9cbc0a2477958574dc078ece59a5e6f206ee30a1b0c75ac2ea43cd7376621b",
+				"scope": "Only41 new keys plus context/typography delta; unchanged45 inherited on exact value compatibility with afb0f7de919. Not a whole-namespace re-audit.",
+				"note": "Historical NIT count 0 retained with fixed disposition. Evidence: i18n/audits/evidence/es/ui.settings/human-profile-1593-round1/record.json"
+			}
+		],
+		"status": "audited"
+	},
+	"limits": "Source/JSON/hash/diff audit plus stdlib NFC/control-char/placeholder checks. No rendering, RTL layout, width/clipping or pseudo-localization proof. Does not update i18n/ledger.json or tracked receipts; prior tracked receipts still list the removed key and need integration."
+}

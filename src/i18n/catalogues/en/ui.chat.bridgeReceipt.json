@@ -1,0 +1,5 @@
+{
+	"ui.chat.bridgeReceipt.received": "Received from {sender}",
+	"ui.chat.bridgeReceipt.unavailable": "Message body unavailable.",
+	"ui.chat.bridgeReceipt.provenance": "External message · untrusted content"
+}

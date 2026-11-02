@@ -165,17 +165,15 @@ export function tapSummary(text) {
 /** Actual guarded-runner argv cardinality, not the number of nested TAP cases. */
 export function observedRunnerFileCount(text) {
 	const lines = text.split(/\r?\n/).filter((line) => {
-		// The real runner shares this prefix across count, memory, lane and
-		// warning lines. Only cardinality candidates belong to uniqueness.
-		// Keep malformed counts as candidates so they cannot hide beside a
-		// good count; nested TAP comments and indentation are not evidence.
-		return (
-			!/^desktop tests: (?:memory bound\b|per-lane bound\b|WARNING\b)/u.test(
-				line,
-			) &&
-			/^desktop tests:\s*(?:[+-]?\d|.*\b(?:files?|concurrency|cap)\b)/.test(
-				line,
-			)
+		// Parent diagnostics use the same namespace, but their JSON `file`
+		// fields are not argv cardinality. Admit only the anchored count-record
+		// envelope, not arbitrary occurrences of "file" later in a log line.
+		// Keep malformed true records (bad number, comma or concurrency) in the
+		// candidate set so one cannot hide beside a good record. Nested TAP
+		// comments and indentation remain ineligible as execution evidence.
+		if (line.startsWith("desktop tests: diagnostic ")) return false;
+		return /^desktop tests:\s*(?:[+-]?\d|\S+\s+files?\b|files?\b|(?:no\s+)?concurrency\b|cap\b)/.test(
+			line,
 		);
 	});
 	if (lines.length !== 1)
