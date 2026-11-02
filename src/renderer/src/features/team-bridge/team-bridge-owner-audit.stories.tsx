@@ -420,6 +420,24 @@ type Story = StoryObj<typeof meta>;
  * absent body, and the agent's own message. */
 export const Populated: Story = {};
 
+/** The attachments lane's reproduction shape, synthetic bytes: a one-line
+ * `[image ...; jpeg ...; sha256 ...]` header followed on the SAME line by a
+ * ~600 KB `data:image/jpeg;base64,` URI. One admitted row and one rejected row,
+ * so the frame also shows the rejected text reading inline under its verdict
+ * chip (#1533) with the receipt standing in only for the data. */
+const OPERATOR_REPRO_BODY = `${"[image 1/1: photo.jpg; jpeg 1600x1200; 452118 bytes; sha256 3f1c9a0e5b7d2f4a6c8e0b1d3f5a7c9e1b3d5f7a9c0e2b4d6f8a0c2e4b6d8f0a]"} data:image/jpeg;base64,/9j/4AAQSkZJRgABAQ${"Qk+/x9Zp".repeat(75000)}AB==`;
+export const OperatorReproReceipt: Story = {
+	args: {
+		messages: [
+			{ ...messages[0], body: OPERATOR_REPRO_BODY },
+			{
+				...messages[1],
+				body: `Screening refused this upload: ${OPERATOR_REPRO_BODY}`,
+			},
+		],
+	},
+};
+
 /** Synthetic legacy receipt, never bytes from a real operator message. */
 export const LegacyInlineImage: Story = {
 	args: {

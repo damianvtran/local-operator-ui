@@ -315,6 +315,22 @@ export const BubbleOneImage: StoryObj<typeof Thread> = {
 	),
 };
 
+/** The attachments lane's reproduction in the conversation thread, synthetic
+ * bytes: a legacy body that inlined the image as text, `[image ...; jpeg ...;
+ * sha256 ...] data:image/jpeg;base64,<~600 KB>`. It must read as a bounded,
+ * inert receipt, never megabytes of base64 and never an image. */
+export const BubbleLegacyInlineDataReceipt: StoryObj<typeof Thread> = {
+	render: () => (
+		<Thread
+			messages={[
+				message({
+					body: `${"[image 1/1: photo.jpg; jpeg 1600x1200; 452118 bytes; sha256 3f1c9a0e5b7d2f4a6c8e0b1d3f5a7c9e1b3d5f7a9c0e2b4d6f8a0c2e4b6d8f0a]"} data:image/jpeg;base64,/9j/4AAQSkZJRgABAQ${"Qk+/x9Zp".repeat(75000)}AB==`,
+				}),
+			]}
+		/>
+	),
+};
+
 export const BubbleFourImages: StoryObj<typeof Thread> = {
 	render: () => (
 		<Thread
