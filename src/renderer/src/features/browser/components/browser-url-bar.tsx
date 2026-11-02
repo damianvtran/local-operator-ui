@@ -1573,7 +1573,11 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 					</Button>
 				</Tooltip>
 			) : (
-				<Tooltip content={`Reload (${reload.glyph})`}>
+				<Tooltip
+					content={t("ui.browser.browser_url_bar.reload_shortcut", {
+						shortcut: reload.glyph,
+					})}
+				>
 					<Button
 						variant="ghost"
 						size="icon-sm"

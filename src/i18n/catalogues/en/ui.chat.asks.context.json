@@ -123,5 +123,32 @@
 		"length": "One short status label",
 		"placeholders": {},
 		"note": "The agent withdrew its own question because it no longer needs an answer. This is terminal, not waiting, not user-declined, and not user-dismissed. The sentence and compact badge are separate keys: do not rely on English punctuation to extract the badge."
+	},
+	"ui.chat.asks.outstanding_count": {
+		"role": "Count of outstanding asks on a sidebar conversation row",
+		"tone": "Plain phrase, sentence case",
+		"length_hint": "Number plus a noun",
+		"note": "Number plus the noun 'ask' (a question the agent put to the person).",
+		"placeholders": {
+			"count": "Number of outstanding asks."
+		}
+	},
+	"ui.chat.asks.outstanding_aria": {
+		"role": "Accessible name of the outstanding-asks chip",
+		"tone": "Two short statements",
+		"length_hint": "Two short sentences",
+		"note": "Reassures that the agent keeps working while asks wait; the label is the count phrase above.",
+		"placeholders": {
+			"label": "The already-localised count phrase (for example '2 asks'); interpolate as-is."
+		}
+	},
+	"ui.chat.asks.answer_aria": {
+		"role": "Accessible name of the free-text answer field of an ask",
+		"tone": "Label plus the question",
+		"length_hint": "Four words plus the question",
+		"note": "The question is the agent's own text.",
+		"placeholders": {
+			"question": "The agent's question text; do not translate."
+		}
 	}
 }

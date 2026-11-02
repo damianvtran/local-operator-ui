@@ -47,6 +47,8 @@
  */
 
 import { ImageLightbox } from "@shared/components/common/image-lightbox";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import {
 	clampGroupIndex,
 	wrapGroupIndex,
@@ -161,6 +163,7 @@ export const ImageGroupLightbox: FC<ImageGroupLightboxProps> = ({
 	restoreFocusTo,
 	labelFor = defaultLabelFor,
 }) => {
+	useI18nLocale();
 	const count = images.length;
 	const [selected, setSelected] = useState(() => clampGroupIndex(index, count));
 	/*
@@ -360,7 +363,7 @@ export const ImageGroupLightbox: FC<ImageGroupLightboxProps> = ({
 				/* biome-ignore lint/a11y/useSemanticElements: the element already IS the one the rule suggests - the explicit role is the WebKit fix above, not a substitute for `ul`. */
 				role="list"
 				ref={attachStrip}
-				aria-label={`${count} images`}
+				aria-label={t("ui.chat.canonical.lightbox.filmstrip_aria", { count })}
 				data-image-filmstrip=""
 				/*
 				 * `px-2` rather than `p-1` (design round 1, D1-6): the focus ring needs
@@ -439,8 +442,14 @@ export const ImageGroupLightbox: FC<ImageGroupLightboxProps> = ({
 							) : (
 								<button
 									type="button"
-									aria-label={`Show image ${tileIndex + 1} of ${count}`}
-									title={`Show image ${tileIndex + 1} of ${count}`}
+									aria-label={t("ui.chat.canonical.lightbox.show_image", {
+										index: tileIndex + 1,
+										count,
+									})}
+									title={t("ui.chat.canonical.lightbox.show_image", {
+										index: tileIndex + 1,
+										count,
+									})}
 									className="group/tile inline-block max-w-full cursor-zoom-in rounded-sm leading-none"
 									onClick={() => {
 										admit([tileIndex]);

@@ -565,7 +565,9 @@ export const RunDetailWakes = ({
 					<li className={cn("pe-3")}>
 						<Disclosure
 							disabled={true}
-							summary={`${hidden} more wake${hidden === 1 ? "" : "s"}`}
+							summary={t("ui.chat.run_details.wake.more", {
+								count: hidden,
+							})}
 							className={cn("ps-9 text-meta")}
 						/>
 					</li>

@@ -3311,7 +3311,9 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								)}
 								side="left"
 								onDoubleClick={restoreDefaultRightSlotWidth}
-								label="Resize canvas. Double-click resets the shared pane width."
+								label={t(
+									"ui.common.layout.chat_layout.resize_canvas_double_click_resets_the_shared_pane_width",
+								)}
 							/>
 						)}
 						<PaneSlot
@@ -3421,7 +3423,9 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								)}
 								side="left"
 								onDoubleClick={restoreDefaultRightSlotWidth}
-								label="Resize asks. Double-click resets the shared pane width."
+								label={t(
+									"ui.common.layout.chat_layout.resize_asks_double_click_resets_the_shared_pane_width",
+								)}
 							/>
 						)}
 						{/*
@@ -3594,7 +3598,9 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 							maxWidth={runDivider.maxWidth}
 							side="left"
 							onDoubleClick={handleRunPanelWidthReset}
-							label="Resize run details. Double-click resets the shared pane width."
+							label={t(
+								"ui.common.layout.chat_layout.resize_run_details_double_click_resets_the_shared_pane_width",
+							)}
 						/>
 						<PaneSlot
 							ref={runPanelRef}
@@ -3652,8 +3658,8 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								/>
 							) : (
 								<SlotPaneNotice
-									label="Run details"
-									closeLabel="Close run details"
+									label={t("ui.chat.run_details.pane_label")}
+									closeLabel={t("ui.chat.run_details.close_label")}
 									onClose={() => setRunPanelOpen(false)}
 									labelInk="dim"
 									labelInset
@@ -3700,7 +3706,9 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 							maxWidth={browserDivider.maxWidth}
 							side="left"
 							onDoubleClick={handleBrowserPanelWidthReset}
-							label="Resize browser. Double-click resets the shared pane width."
+							label={t(
+								"ui.common.layout.chat_layout.resize_browser_double_click_resets_the_shared_pane_width",
+							)}
 						/>
 						<PaneSlot
 							width={effectiveBrowserPanelWidth}
@@ -3742,7 +3750,9 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 							maxWidth={consoleDivider.maxWidth}
 							side="left"
 							onDoubleClick={handleConsolePanelWidthReset}
-							label="Resize console. Double-click resets the shared pane width."
+							label={t(
+								"ui.common.layout.chat_layout.resize_console_double_click_resets_the_shared_pane_width",
+							)}
 						/>
 						<PaneSlot
 							width={effectiveConsolePanelWidth}
@@ -3773,7 +3783,9 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 							maxWidth={codeDivider.maxWidth}
 							side="left"
 							onDoubleClick={handleCodePanelWidthReset}
-							label="Resize code review. Double-click resets the shared pane width."
+							label={t(
+								"ui.common.layout.chat_layout.resize_code_review_double_click_resets_the_shared_pane_width",
+							)}
 						/>
 						<PaneSlot
 							width={effectiveCodePanelWidth}
@@ -3781,8 +3793,10 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 						>
 							{codeSlot.notice !== null ? (
 								<SlotPaneNotice
-									label="Code review"
-									closeLabel="Close code review"
+									label={t("ui.code_review.code_review_pane.code_review")}
+									closeLabel={t(
+										"ui.code_review.code_review_pane.close_code_review",
+									)}
 									onClose={() => setCodeReviewPaneOpen(false)}
 									labelInk="muted"
 									{...codeSlot.notice}

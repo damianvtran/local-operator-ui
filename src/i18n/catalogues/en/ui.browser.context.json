@@ -1233,5 +1233,14 @@
 		"role": "error text \u2014 browser toolbar toast",
 		"tone": "Plain explanatory language; preserve confidence and safety meaning",
 		"note": "Shown when handing the page to the system browser was refused or failed. {reason} is the app's own reason sentence, already in English or the user's language; keep it as the last sentence."
+	},
+	"ui.browser.browser_url_bar.reload_shortcut": {
+		"role": "Tooltip of the browser pane's reload button, with its keyboard shortcut",
+		"tone": "Imperative plus a shortcut in parentheses",
+		"length_hint": "One word plus a shortcut",
+		"note": "Mirrors the Back and Forward tooltips: the action, then the platform's shortcut glyphs in parentheses.",
+		"placeholders": {
+			"shortcut": "The platform's shortcut glyphs (for example ⌘R); do not translate."
+		}
 	}
 }

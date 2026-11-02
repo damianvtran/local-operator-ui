@@ -6949,14 +6949,18 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 					setIsPreparing(false);
 					console.error("Error accessing microphone:", err);
 					showErrorToast(
-						"Error accessing microphone. Please ensure microphone permissions are granted.",
+						t(
+							"ui.canvas.inline_edit.error_accessing_microphone_please_ensure_microphone_permissions_are_gran",
+						),
 					);
 				}
 			} else {
 				console.error("This runtime exposes no MediaRecorder");
 				/* Not "your browser": this is a desktop app, and the person reading
 				   this did not choose a browser and cannot change it. */
-				showErrorToast("Dictation is not available on this device.");
+				showErrorToast(
+					t("ui.canvas.inline_edit.dictation_is_not_available_on_this_device"),
+				);
 			}
 		}, [canEnableRecordingFeature, isInputDisabled]);
 

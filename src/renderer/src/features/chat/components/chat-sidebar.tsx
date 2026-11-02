@@ -7461,8 +7461,14 @@ export function ChatSidebar({
 									 * evidenced by read.
 									 */
 									data-entity-more={key}
-									aria-label={`${foot.aria} in ${displayName}`}
-									title={`${foot.aria} in ${displayName}`}
+									aria-label={t("ui.chat.sidebar.entity.more_in", {
+										label: foot.aria,
+										name: displayName,
+									})}
+									title={t("ui.chat.sidebar.entity.more_in", {
+										label: foot.aria,
+										name: displayName,
+									})}
 									className="block w-full py-1 ps-7 text-start text-meta text-ink-dim underline hover:text-ink"
 									onClick={pressEntityMore}
 								>
@@ -7498,7 +7504,10 @@ export function ChatSidebar({
 			className="text-meta tabular-nums"
 			title={
 				query
-					? `${clipped ? "At least " : ""}${count} ${count === 1 ? "chat matches" : "chats match"} this search${clipped ? "; the list stops there" : ""}`
+					? t("ui.chat.sidebar.search.count_tooltip", {
+							clipped: clipped ? "yes" : "no",
+							count,
+						})
 					: undefined
 			}
 		>
@@ -9282,7 +9291,9 @@ export function ChatSidebar({
 									type="button"
 									data-chat-row
 									data-draft-row={row.key}
-									aria-label={`Open ${row.label}`}
+									aria-label={t("ui.chat.sidebar.row.open_draft", {
+										label: row.label,
+									})}
 									title={row.label}
 									onClick={() => {
 										openDraft(row.key);
@@ -9505,7 +9516,7 @@ export function ChatSidebar({
 							title={
 								clearableDraftRows.length === 0
 									? CLEAR_ALL_WHY
-									: "Clear all drafts"
+									: t("ui.chat.sidebar.drafts.clear_all_label")
 							}
 							onClick={(event) => {
 								/*
@@ -10007,7 +10018,7 @@ export function ChatSidebar({
 						data-sidebar-band
 						className="mb-2 flex h-7 shrink-0 items-center justify-end gap-0.5"
 					>
-						<Tooltip content="Search chats and agents">
+						<Tooltip content={t("ui.chat.sidebar.header.search")}>
 							<Button
 								variant="ghost"
 								size="icon-sm"
@@ -10031,7 +10042,7 @@ export function ChatSidebar({
 							</Button>
 						</Tooltip>
 						<Popover open={viewOpen} onOpenChange={setViewOpen}>
-							<Tooltip content="View options">
+							<Tooltip content={t("ui.chat.sidebar.header.view_options")}>
 								<PopoverTrigger asChild>
 									<Button
 										variant="ghost"
@@ -10102,7 +10113,7 @@ export function ChatSidebar({
 							</PopoverContent>
 						</Popover>
 						<Popover open={createOpen} onOpenChange={setCreateOpen}>
-							<Tooltip content="New agent or team">
+							<Tooltip content={t("ui.chat.sidebar.header.create")}>
 								<PopoverTrigger asChild>
 									<Button
 										variant="ghost"
@@ -10159,7 +10170,7 @@ export function ChatSidebar({
 								</button>
 							</PopoverContent>
 						</Popover>
-						<Tooltip content="Open agent…">
+						<Tooltip content={t("ui.chat.sidebar.header.open_agent")}>
 							{/*
 							 * THE FOURTH BAND CONTROL (issue #663): the roster's jump. The
 							 * section filter above survives a cap-bound roster, but a reader

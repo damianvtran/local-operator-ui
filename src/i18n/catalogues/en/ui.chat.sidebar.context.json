@@ -464,5 +464,34 @@
 			"head": "first name or the already joined preceding names; preserve verbatim",
 			"tail": "next agent display name; preserve verbatim"
 		}
+	},
+	"ui.chat.sidebar.row.open_draft": {
+		"role": "Accessible name of a draft row's open button",
+		"tone": "Imperative plus a name",
+		"length_hint": "Two words plus a name",
+		"note": "Names the draft by its own label (an agent or team name, or the draft's first words).",
+		"placeholders": {
+			"label": "The draft row's display label; do not translate."
+		}
+	},
+	"ui.chat.sidebar.entity.more_in": {
+		"role": "Accessible name and tooltip of an entity group's show-more control",
+		"tone": "Sentence fragment joined by 'in'",
+		"length_hint": "Label plus a name",
+		"note": "The label is the already-localised show-more sentence the list helper builds; the name is the group (an agent or team).",
+		"placeholders": {
+			"label": "The show-more sentence (for example 'Show 15 more chats'); interpolate as-is.",
+			"name": "The agent or team name the group belongs to; do not translate."
+		}
+	},
+	"ui.chat.sidebar.search.count_tooltip": {
+		"role": "Tooltip of the match-count badge on a sidebar group while a search is active",
+		"tone": "Plain statement, sentence case, no final period",
+		"length_hint": "One clause",
+		"note": "One claim: how many chats match, with 'at least' and a stop note when the answer was clipped.",
+		"placeholders": {
+			"clipped": "'yes' when the result list was cut off, otherwise 'no'; a select selector, never translate.",
+			"count": "Number of matching chats."
+		}
 	}
 }

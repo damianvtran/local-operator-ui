@@ -96,7 +96,9 @@ const JobRow = ({
 					size="sm"
 					data-job-cancel={row.id}
 					/* The accessible name names the act and the row, the wakes' rule. */
-					aria-label={`Cancel ${row.label}`}
+					aria-label={t("ui.chat.run_details.job_cancel_aria", {
+						label: row.label,
+					})}
 					/* The danger wash on hover is the wake line's own cancel ink; nothing
 				   lifts, and the focus ring is the shared Button's own. `h-6` (24px)
 				   is the HIT floor rather than the row's own rhythm. */

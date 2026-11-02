@@ -276,7 +276,9 @@ const MonitorRowView = ({
 					aria-label={
 						cancelState?.kind === "cancelled"
 							? undefined
-							: `Cancel monitor ${row.name}`
+							: t("ui.chat.run_details.monitors.cancel_aria", {
+									name: row.name,
+								})
 					}
 					disabled={cancelState?.kind === "cancelled"}
 					onClick={() => cancel.request(row)}
@@ -373,7 +375,9 @@ export const RunDetailMonitors = ({
 					<li className={cn("pe-3")}>
 						<Disclosure
 							disabled={true}
-							summary={`${hidden} more monitor${hidden === 1 ? "" : "s"}`}
+							summary={t("ui.chat.run_details.monitors.more", {
+								count: hidden,
+							})}
 							className={cn("ps-9 text-meta")}
 						/>
 					</li>

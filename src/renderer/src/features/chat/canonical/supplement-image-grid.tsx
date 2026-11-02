@@ -56,6 +56,8 @@
  */
 
 import { useEverInView } from "@shared/hooks/use-ever-in-view";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { memo, useEffect, useMemo, useState } from "react";
 import { useFinderThumbnail } from "../components/canvas/finder-thumbnails";
@@ -88,6 +90,7 @@ const SupplementImageTile = memo(function SupplementImageTile({
 	cwd?: string | null;
 	pane: CanvasPane | null;
 }) {
+	useI18nLocale();
 	const { name, path } = fileRowParts(file);
 	const displayName = name || path || file.path;
 	const [anchorRef, near] = useEverInView();
@@ -181,7 +184,9 @@ const SupplementImageTile = memo(function SupplementImageTile({
 					 * both the reasons `image-attachment.tsx` spells on its own tile.
 					 */
 					className="group/tile block cursor-pointer rounded-sm"
-					aria-label={`Open ${displayName}`}
+					aria-label={t("ui.chat.attachments.open_named", {
+						name: displayName,
+					})}
 					title={file.path}
 					onClick={() => void press()}
 				>
@@ -247,28 +252,34 @@ export const SupplementImageGrid = ({
 	cwd,
 	pane,
 	className,
-}: SupplementImageGridProps) => (
-	/*
-	 * A LIST, because that is what it is — the same argument `fold-media.tsx`
-	 * makes for its strip: `role="list"` is not decoration, because Tailwind's
-	 * preflight sets `list-style: none` and WebKit drops list semantics for a
-	 * list without markers, so the role is what keeps the count in the name for
-	 * a VoiceOver reader. The count and its noun mirror the strip's sentence.
-	 */
-	<ul
-		/* biome-ignore lint/a11y/noRedundantRoles: WebKit drops the implicit list role when `list-style: none` is set, so the explicit one is what carries the count to VoiceOver. */
-		/* biome-ignore lint/a11y/useSemanticElements: the element already IS the one the rule suggests - the explicit role is the WebKit fix above, not a substitute for `ul`. */
-		role="list"
-		aria-label={
-			files.length === 1
-				? "1 image from this run"
-				: `${files.length} images from this run`
-		}
-		data-supplement-images=""
-		className={cn("grid grid-cols-[repeat(4,max-content)] gap-2", className)}
-	>
-		{files.map((file) => (
-			<SupplementImageTile key={file.path} file={file} cwd={cwd} pane={pane} />
-		))}
-	</ul>
-);
+}: SupplementImageGridProps) => {
+	useI18nLocale();
+	return (
+		/*
+		 * A LIST, because that is what it is — the same argument `fold-media.tsx`
+		 * makes for its strip: `role="list"` is not decoration, because Tailwind's
+		 * preflight sets `list-style: none` and WebKit drops list semantics for a
+		 * list without markers, so the role is what keeps the count in the name for
+		 * a VoiceOver reader. The count and its noun mirror the strip's sentence.
+		 */
+		<ul
+			/* biome-ignore lint/a11y/noRedundantRoles: WebKit drops the implicit list role when `list-style: none` is set, so the explicit one is what carries the count to VoiceOver. */
+			/* biome-ignore lint/a11y/useSemanticElements: the element already IS the one the rule suggests - the explicit role is the WebKit fix above, not a substitute for `ul`. */
+			role="list"
+			aria-label={t("ui.chat.canonical.fold.images_aria", {
+				count: files.length,
+			})}
+			data-supplement-images=""
+			className={cn("grid grid-cols-[repeat(4,max-content)] gap-2", className)}
+		>
+			{files.map((file) => (
+				<SupplementImageTile
+					key={file.path}
+					file={file}
+					cwd={cwd}
+					pane={pane}
+				/>
+			))}
+		</ul>
+	);
+};
