@@ -1,0 +1,299 @@
+{
+	"schema": 1,
+	"receipt_kind": "independent copy-delta audit, 7 target locales, one run",
+	"date": "2026-11-02",
+	"agent": "task (lopdev team member, acting as independent i18n auditor of record)",
+	"model": "anthropic/claude-opus-5-5",
+	"model_provenance": "Served model as announced by the harness system prompt for session 439bcc181f80 (anthropic/claude-opus-5-5); no fallback announced or observed.",
+	"model_fallback": {
+		"announced": false,
+		"observed": false
+	},
+	"instance": "439bcc181f80",
+	"session": "439bcc181f80",
+	"status": "passed",
+	"result": "clean",
+	"namespace": "ui.teamBridge",
+	"locales": [
+		"fr",
+		"es",
+		"zh-CN",
+		"ru",
+		"vi",
+		"ur",
+		"hi"
+	],
+	"integration": {
+		"pr": 1521,
+		"worktree_head": "a18b2b0c0aba4b7c9092cd023bd42e509c6c477d",
+		"merge_base_main": "7e3e1614871611dc69c8590598294b407f3e1c73"
+	},
+	"independence": "lopdev team 'task' session 439bcc181f80. Authored none of PR #1521's English strings, none of its translations (translator session 7f91449c7aa6 and later remediation commits), none of the catalogue commits on the branch and none of the prior receipts/audits; verified no branch artifact or commit message references 439bcc181f80. Edited no catalogue value and no repo file.",
+	"sha256": {
+		"en": "f5b404b727961f04be67c5340a6a597eed44f02fc10b126d93a5fb95ae4ebd73",
+		"fr": "dbd81e5e998449e9c002c3b6d125d82cc17687ec275339f6f98d00b6a0fb66c3",
+		"es": "b6fe43075a57f1df282ed9a04dd0a9162078a194582e0329c0afe07ee9525620",
+		"zh-CN": "795ecf8b2b2a6318e5ae11d7dc724b048769d66b9aabb3ad8a9d10c529417f3d",
+		"ru": "00f364d625aee5e726481deb5d1c25322589885412d581c7ebb2105c52e070cd",
+		"vi": "039a530f0c8540ebf90ac689865423fb3b468193a4c3e7099e37c7cfb7268496",
+		"ur": "48c5f84a76b6b3bdf7bc75090985ee3ede9644f35c8c06ebe7be90a5da8055e8",
+		"hi": "9c1b09f38ec15860f89863f1e0f7ef2535859b92ea81700305257809c234501a"
+	},
+	"context_sha256": "3545d3a8da3eb8e35b069e3f0d46940f977e851c6a8ae46d040e2a7b55e73cb6",
+	"style_guides": {
+		"fr": {
+			"path": "~/local-operator i18n/style-guides/fr.md",
+			"sha256": "ae1519ab7617d19aa826918d607de1d018595094166edbc18aa58f6a8f0a4226"
+		},
+		"es": {
+			"path": "~/local-operator i18n/style-guides/es.md",
+			"sha256": "77b9227213802d14c74d4298d6b346ad842bbf2a5ca3b9d46fc6144430d26c3e"
+		},
+		"zh-CN": {
+			"path": "~/local-operator i18n/style-guides/zh-CN.md",
+			"sha256": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+		},
+		"ru": {
+			"path": "~/local-operator i18n/style-guides/ru.md",
+			"sha256": "f20e1cafaf70578c17ce072c71725628808d228e4be5604329f8da30386f1fb5"
+		},
+		"vi": {
+			"path": "~/local-operator i18n/style-guides/vi.md",
+			"sha256": "e4901497ed553e2b2ae4a2660bf776adb787b89e11d7eb0f8d08f3da4b227888"
+		},
+		"ur": {
+			"path": "~/local-operator i18n/style-guides/ur.md",
+			"sha256": "c0eecf7f7b5e89956b7de9ab7a9eb647ff1a7ef701ccf2a7f0264d5eea15ca60"
+		},
+		"hi": {
+			"path": "~/local-operator i18n/style-guides/hi.md",
+			"sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+		}
+	},
+	"glossary_sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+	"core_commit": "e21f92fa4ee1a7a4095586e33453c19f54aca4f9",
+	"scope": {
+		"keys": [
+			"ui.teamBridge.delivery.refused",
+			"ui.teamBridge.delivery.refused_manipulation",
+			"ui.teamBridge.delivery.refused_personal_info",
+			"ui.teamBridge.delivery.refused_abusive",
+			"ui.teamBridge.delivery.refused_unsafe_content",
+			"ui.teamBridge.delivery.refused_out_of_scope",
+			"ui.teamBridge.delivery.held",
+			"ui.teamBridge.delivery.held_screening_unavailable",
+			"ui.teamBridge.delivery.held_awaiting_review",
+			"ui.teamBridge.delivery.pending",
+			"ui.teamBridge.delivery.info_refused",
+			"ui.teamBridge.delivery.info_held",
+			"ui.teamBridge.delivery.info_label"
+		],
+		"delta_rule": "Keys whose value differs or is new vs merge-base 7e3e1614871611dc69c8590598294b407f3e1c73; identical 13-key set in en and all 7 targets, no removals.",
+		"not_audited": "Keys unchanged vs merge-base (main's bytes) were not re-audited linguistically."
+	},
+	"checks": {
+		"placeholders": "Set of {..} placeholders equal to en for every key/locale (91/91); no ICU select/plural in scope.",
+		"ellipsis": "held keeps trailing ellipsis in all 7.",
+		"second_sentence": "held_screening_unavailable/held_awaiting_review use a full second sentence, no em dash/ellipsis join, all 7.",
+		"pending": "No locale says 'waiting to be screened' for pending.",
+		"non_accusatory": "No locale blames the sender; refusal categories keep the hedge; possessives refer to the recipient agent/owner.",
+		"bidi": "No manual bidi/format controls in any delta value; only U+202F in fr (required by fr style guide)."
+	},
+	"audited": {
+		"ui.teamBridge.delivery.refused": {
+			"en": "Not delivered to {agent} ({owner}). Refused by moderation.",
+			"fr": "Non remis à {agent} ({owner}). Refusé par la modération.",
+			"es": "No entregado a {agent} ({owner}). Rechazado por la moderación.",
+			"zh-CN": "未送达{agent}（{owner}）。已被审核拒绝。",
+			"ru": "Не доставлено агенту {agent} ({owner}). Отклонено модерацией.",
+			"vi": "Không được chuyển tới {agent} ({owner}). Bị bộ kiểm duyệt từ chối.",
+			"ur": "{agent} ({owner}) تک نہیں پہنچا۔ ماڈریشن نے مسترد کر دیا۔",
+			"hi": "{agent} ({owner}) तक नहीं पहुँचा। मॉडरेशन ने अस्वीकार कर दिया।"
+		},
+		"ui.teamBridge.delivery.refused_manipulation": {
+			"en": "Not delivered to {agent} ({owner}): refused by their moderation (looked like an attempt to manipulate the agent)",
+			"fr": "Non remis à {agent} ({owner}) : refusé par sa modération (ressemblait à une tentative de manipuler l’agent)",
+			"es": "No entregado a {agent} ({owner}): rechazado por su moderación (parecía un intento de manipular al agente)",
+			"zh-CN": "未送达{agent}（{owner}）：已被其审核拒绝（看起来像是试图操控该智能体）",
+			"ru": "Не доставлено агенту {agent} ({owner}): отклонено его модерацией (похоже на попытку манипулировать агентом)",
+			"vi": "Không được chuyển tới {agent} ({owner}): bị bộ kiểm duyệt của họ từ chối (có vẻ là một nỗ lực thao túng tác nhân)",
+			"ur": "{agent} ({owner}) تک نہیں پہنچا: ان کی ماڈریشن نے مسترد کر دیا (ایجنٹ کو ورغلانے کی کوشش جیسا لگا)",
+			"hi": "{agent} ({owner}) तक नहीं पहुँचा: उनके मॉडरेशन ने अस्वीकार कर दिया (एजेंट को बहकाने की कोशिश जैसा लगा)"
+		},
+		"ui.teamBridge.delivery.refused_personal_info": {
+			"en": "Not delivered to {agent} ({owner}): refused by their moderation (looked like a request for personal information)",
+			"fr": "Non remis à {agent} ({owner}) : refusé par sa modération (ressemblait à une demande d’informations personnelles)",
+			"es": "No entregado a {agent} ({owner}): rechazado por su moderación (parecía una solicitud de información personal)",
+			"zh-CN": "未送达{agent}（{owner}）：已被其审核拒绝（看起来像是索取个人信息）",
+			"ru": "Не доставлено агенту {agent} ({owner}): отклонено его модерацией (похоже на запрос личной информации)",
+			"vi": "Không được chuyển tới {agent} ({owner}): bị bộ kiểm duyệt của họ từ chối (có vẻ là một yêu cầu thông tin cá nhân)",
+			"ur": "{agent} ({owner}) تک نہیں پہنچا: ان کی ماڈریشن نے مسترد کر دیا (ذاتی معلومات کی درخواست جیسا لگا)",
+			"hi": "{agent} ({owner}) तक नहीं पहुँचा: उनके मॉडरेशन ने अस्वीकार कर दिया (निजी जानकारी के अनुरोध जैसा लगा)"
+		},
+		"ui.teamBridge.delivery.refused_abusive": {
+			"en": "Not delivered to {agent} ({owner}): refused by their moderation (looked like abusive content)",
+			"fr": "Non remis à {agent} ({owner}) : refusé par sa modération (ressemblait à un contenu abusif)",
+			"es": "No entregado a {agent} ({owner}): rechazado por su moderación (parecía contenido abusivo)",
+			"zh-CN": "未送达{agent}（{owner}）：已被其审核拒绝（看起来像是辱骂性内容）",
+			"ru": "Не доставлено агенту {agent} ({owner}): отклонено его модерацией (похоже на оскорбительный контент)",
+			"vi": "Không được chuyển tới {agent} ({owner}): bị bộ kiểm duyệt của họ từ chối (có vẻ là nội dung lăng mạ)",
+			"ur": "{agent} ({owner}) تک نہیں پہنچا: ان کی ماڈریشن نے مسترد کر دیا (توہین آمیز مواد جیسا لگا)",
+			"hi": "{agent} ({owner}) तक नहीं पहुँचा: उनके मॉडरेशन ने अस्वीकार कर दिया (अपमानजनक सामग्री जैसा लगा)"
+		},
+		"ui.teamBridge.delivery.refused_unsafe_content": {
+			"en": "Not delivered to {agent} ({owner}): refused by their moderation (looked like unsafe content or links)",
+			"fr": "Non remis à {agent} ({owner}) : refusé par sa modération (ressemblait à un contenu ou des liens à risque)",
+			"es": "No entregado a {agent} ({owner}): rechazado por su moderación (parecía contenido o enlaces no seguros)",
+			"zh-CN": "未送达{agent}（{owner}）：已被其审核拒绝（看起来像是不安全的内容或链接）",
+			"ru": "Не доставлено агенту {agent} ({owner}): отклонено его модерацией (похоже на небезопасный контент или ссылки)",
+			"vi": "Không được chuyển tới {agent} ({owner}): bị bộ kiểm duyệt của họ từ chối (có vẻ là nội dung hoặc liên kết không an toàn)",
+			"ur": "{agent} ({owner}) تک نہیں پہنچا: ان کی ماڈریشن نے مسترد کر دیا (غیر محفوظ مواد یا لنکس جیسا لگا)",
+			"hi": "{agent} ({owner}) तक नहीं पहुँचा: उनके मॉडरेशन ने अस्वीकार कर दिया (असुरक्षित सामग्री या लिंक जैसा लगा)"
+		},
+		"ui.teamBridge.delivery.refused_out_of_scope": {
+			"en": "Not delivered to {agent} ({owner}): refused by their moderation (looked like a request outside what this agent handles)",
+			"fr": "Non remis à {agent} ({owner}) : refusé par sa modération (ressemblait à une demande hors du champ de cet agent)",
+			"es": "No entregado a {agent} ({owner}): rechazado por su moderación (parecía una solicitud fuera de lo que gestiona este agente)",
+			"zh-CN": "未送达{agent}（{owner}）：已被其审核拒绝（看起来像是超出该智能体处理范围的请求）",
+			"ru": "Не доставлено агенту {agent} ({owner}): отклонено его модерацией (похоже на запрос вне задач этого агента)",
+			"vi": "Không được chuyển tới {agent} ({owner}): bị bộ kiểm duyệt của họ từ chối (có vẻ là một yêu cầu nằm ngoài phạm vi của tác nhân này)",
+			"ur": "{agent} ({owner}) تک نہیں پہنچا: ان کی ماڈریشن نے مسترد کر دیا (اس ایجنٹ کے دائرۂ کار سے باہر کی درخواست جیسا لگا)",
+			"hi": "{agent} ({owner}) तक नहीं पहुँचा: उनके मॉडरेशन ने अस्वीकार कर दिया (इस एजेंट के दायरे से बाहर के अनुरोध जैसा लगा)"
+		},
+		"ui.teamBridge.delivery.held": {
+			"en": "Waiting to be screened by {agent} ({owner})…",
+			"fr": "En attente de vérification par {agent} ({owner})…",
+			"es": "Esperando a que {agent} ({owner}) lo analice…",
+			"zh-CN": "正在等待{agent}（{owner}）检查……",
+			"ru": "Ожидает проверки агентом {agent} ({owner})…",
+			"vi": "Đang chờ {agent} ({owner}) sàng lọc…",
+			"ur": "{agent} ({owner}) کی جانب سے جانچ کا انتظار ہے…",
+			"hi": "{agent} ({owner}) द्वारा जाँच का इंतज़ार है…"
+		},
+		"ui.teamBridge.delivery.held_screening_unavailable": {
+			"en": "Waiting to be screened by {agent} ({owner}). Screening is temporarily unavailable.",
+			"fr": "En attente de vérification par {agent} ({owner}). La vérification est temporairement indisponible.",
+			"es": "Esperando a que {agent} ({owner}) lo analice. El análisis no está disponible temporalmente.",
+			"zh-CN": "正在等待{agent}（{owner}）检查。检查暂时不可用。",
+			"ru": "Ожидает проверки агентом {agent} ({owner}). Проверка временно недоступна.",
+			"vi": "Đang chờ {agent} ({owner}) sàng lọc. Tính năng sàng lọc tạm thời không khả dụng.",
+			"ur": "{agent} ({owner}) کی جانب سے جانچ کا انتظار ہے۔ جانچ عارضی طور پر دستیاب نہیں ہے۔",
+			"hi": "{agent} ({owner}) द्वारा जाँच का इंतज़ार है। जाँच अस्थायी रूप से उपलब्ध नहीं है।"
+		},
+		"ui.teamBridge.delivery.held_awaiting_review": {
+			"en": "Waiting to be screened by {agent} ({owner}). Awaiting review.",
+			"fr": "En attente de vérification par {agent} ({owner}). Le message est en attente d’examen.",
+			"es": "Esperando a que {agent} ({owner}) lo analice. El mensaje está pendiente de revisión.",
+			"zh-CN": "正在等待{agent}（{owner}）检查。消息正在等待审核。",
+			"ru": "Ожидает проверки агентом {agent} ({owner}). Сообщение ожидает рассмотрения.",
+			"vi": "Đang chờ {agent} ({owner}) sàng lọc. Tin nhắn đang chờ xem xét.",
+			"ur": "{agent} ({owner}) کی جانب سے جانچ کا انتظار ہے۔ پیغام جائزے کا منتظر ہے۔",
+			"hi": "{agent} ({owner}) द्वारा जाँच का इंतज़ार है। संदेश समीक्षा के इंतज़ार में है।"
+		},
+		"ui.teamBridge.delivery.pending": {
+			"en": "Screened; delivery to {agent} is pending",
+			"fr": "Vérifié ; la remise à {agent} est en attente",
+			"es": "Analizado; la entrega a {agent} está pendiente",
+			"zh-CN": "已检查；正在等待送达{agent}",
+			"ru": "Проверено; ожидается доставка агенту {agent}",
+			"vi": "Đã sàng lọc; đang chờ chuyển tới {agent}",
+			"ur": "جانچ ہو گئی؛ {agent} تک ترسیل باقی ہے",
+			"hi": "जाँच हो गई; {agent} तक डिलीवरी बाकी है"
+		},
+		"ui.teamBridge.delivery.info_refused": {
+			"en": "Each agent screens incoming messages with its owner's moderation. A refused message wasn't passed to the agent. Rephrasing the request usually helps.",
+			"fr": "Chaque agent vérifie les messages entrants avec la modération de son propriétaire. Un message refusé n’a pas été transmis à l’agent. Reformuler la demande aide généralement.",
+			"es": "Cada agente analiza los mensajes entrantes con la moderación de su propietario. Un mensaje rechazado no se pasó al agente. Reformular la solicitud suele ayudar.",
+			"zh-CN": "每个智能体都会使用其所有者的审核设置检查收到的消息。被拒绝的消息未传递给智能体。重新表述请求通常会有帮助。",
+			"ru": "Каждый агент проверяет входящие сообщения с помощью модерации своего владельца. Отклонённое сообщение не было передано агенту. Обычно помогает переформулировать запрос.",
+			"vi": "Mỗi tác nhân sàng lọc tin nhắn đến bằng bộ kiểm duyệt của chủ sở hữu. Tin nhắn bị từ chối không được chuyển tới tác nhân. Diễn đạt lại yêu cầu thường sẽ giúp ích.",
+			"ur": "ہر ایجنٹ آنے والے پیغامات کو اپنے مالک کی ماڈریشن سے جانچتا ہے۔ مسترد کیا گیا پیغام ایجنٹ تک نہیں پہنچایا گیا۔ درخواست کو دوبارہ لکھنا عموماً مددگار ہوتا ہے۔",
+			"hi": "हर एजेंट आने वाले संदेशों को अपने मालिक के मॉडरेशन से जाँचता है। अस्वीकार किया गया संदेश एजेंट तक नहीं पहुँचाया गया। अनुरोध को दोबारा लिखना आमतौर पर मदद करता है।"
+		},
+		"ui.teamBridge.delivery.info_held": {
+			"en": "Each agent screens incoming messages with its owner's moderation before passing them on. This one hasn't been screened yet; it will be delivered or refused automatically.",
+			"fr": "Chaque agent vérifie les messages entrants avec la modération de son propriétaire avant de les transmettre. Celui-ci n’a pas encore été vérifié ; il sera remis ou refusé automatiquement.",
+			"es": "Cada agente analiza los mensajes entrantes con la moderación de su propietario antes de entregarlos. Este mensaje aún no se ha analizado; se entregará o se rechazará automáticamente.",
+			"zh-CN": "每个智能体都会先使用其所有者的审核设置检查收到的消息，然后再传递。此消息尚未检查完成，之后会自动送达或被拒绝。",
+			"ru": "Каждый агент проверяет входящие сообщения с помощью модерации своего владельца, прежде чем передать их дальше. Это сообщение ещё не проверено; оно будет доставлено или отклонено автоматически.",
+			"vi": "Mỗi tác nhân sàng lọc tin nhắn đến bằng bộ kiểm duyệt của chủ sở hữu trước khi chuyển tiếp. Tin nhắn này chưa được sàng lọc; tin nhắn sẽ tự động được chuyển tới tác nhân hoặc bị từ chối.",
+			"ur": "ہر ایجنٹ آنے والے پیغامات کو آگے پہنچانے سے پہلے اپنے مالک کی ماڈریشن سے جانچتا ہے۔ اس پیغام کی جانچ ابھی نہیں ہوئی؛ یہ خود بخود پہنچا دیا جائے گا یا مسترد کر دیا جائے گا۔",
+			"hi": "हर एजेंट आने वाले संदेशों को आगे पहुँचाने से पहले अपने मालिक के मॉडरेशन से जाँचता है। इस संदेश की जाँच अभी नहीं हुई है; यह अपने-आप पहुँचा दिया जाएगा या अस्वीकार कर दिया जाएगा।"
+		},
+		"ui.teamBridge.delivery.info_label": {
+			"en": "About message screening",
+			"fr": "À propos de la vérification des messages",
+			"es": "Acerca del análisis de mensajes",
+			"zh-CN": "关于消息检查",
+			"ru": "О проверке сообщений",
+			"vi": "Giới thiệu về sàng lọc tin nhắn",
+			"ur": "پیغام کی جانچ کے بارے میں",
+			"hi": "संदेश जाँच के बारे में"
+		}
+	},
+	"findings": [
+		{
+			"id": "I-fr",
+			"severity": "INFO",
+			"key": "ui.teamBridge.delivery.*",
+			"locale": "fr",
+			"note": "U+202F before ':' and ';' per fr style guide; ’ apostrophes; 'vérification'/'vérifié' for screening, 'modération', 'propriétaire', 'remis/remise' for delivery consistent across all 13. 'sa modération' keeps recipient-side scope; base 'refused' variant drops the possessive, matching en."
+		},
+		{
+			"id": "I-es",
+			"severity": "INFO",
+			"key": "ui.teamBridge.delivery.*",
+			"locale": "es",
+			"note": "'analizar/análisis' for screening, 'moderación', 'propietario' (namespace-consistent, 28 uses), 'entregar' for delivery; hedge 'parecía' preserved; ellipsis kept on held."
+		},
+		{
+			"id": "I-zh-CN",
+			"severity": "INFO",
+			"key": "ui.teamBridge.delivery.*",
+			"locale": "zh-CN",
+			"note": "Full-width （） around {owner}, ：；。; '审核' for moderation, '检查' for screening, '所有者' (namespace-consistent), '智能体' per glossary; hedge '看起来像是' preserved; '……' on held."
+		},
+		{
+			"id": "I-ru",
+			"severity": "INFO",
+			"key": "ui.teamBridge.delivery.*",
+			"locale": "ru",
+			"note": "'модерация', 'проверка' for screening, 'владелец', 'агенту {agent}' dative keeps {agent} uninflected; 'отклонено его модерацией' recipient-side; hedge 'похоже на' preserved; ё in 'Отклонённое', 'ещё'."
+		},
+		{
+			"id": "I-vi",
+			"severity": "INFO",
+			"key": "ui.teamBridge.delivery.*",
+			"locale": "vi",
+			"note": "'bộ kiểm duyệt' (moderation), 'sàng lọc' (screening), 'chủ sở hữu', 'tác nhân' per glossary; 'của họ' = their (recipient side); hedge 'có vẻ là' preserved."
+		},
+		{
+			"id": "I-ur",
+			"severity": "INFO",
+			"key": "ui.teamBridge.delivery.*",
+			"locale": "ur",
+			"note": "RTL: logical-order storage, no manual bidi controls (verified: no Cf/Zs specials); Urdu punctuation ۔ and ؛ used, ellipsis … kept; Latin ( ) and ':' around placeholders are acceptable LTR-island neighbours under render FSI/PDI isolation. آپ-register not needed (no address); 'ماڈریشن', 'جانچ', 'مالک', 'ایجنٹ' per glossary; hedge 'جیسا لگا' preserved; 'ان کی ماڈریشن' recipient-side."
+		},
+		{
+			"id": "I-hi",
+			"severity": "INFO",
+			"key": "ui.teamBridge.delivery.*",
+			"locale": "hi",
+			"note": "'मॉडरेशन', 'जाँच', 'मालिक' (majority namespace term: 28 vs 3 'स्वामी' in pre-existing non-delta keys), 'एजेंट' per glossary; Hindi danda । full stops; hedge 'जैसा लगा' preserved; 'उनके मॉडरेशन' recipient-side."
+		},
+		{
+			"id": "I-hi-owner",
+			"severity": "INFO",
+			"key": "ui.teamBridge.members.invitation_note_v2",
+			"locale": "hi",
+			"note": "Observation outside the PR delta: pre-existing main keys use 'स्वामी' for owner (3 values) while the namespace majority and this delta use 'मालिक'. Not a defect of #1521; not counted."
+		},
+		{
+			"id": "I-L1",
+			"severity": "INFO",
+			"key": "ui.teamBridge.delivery.refused",
+			"locale": "en",
+			"note": "Prior audit 87206376c1d7 NIT L1 (stale 'keep their' context instruction) verified fixed at this head: the context note for delivery.refused no longer contains 'their'."
+		}
+	]
+}
