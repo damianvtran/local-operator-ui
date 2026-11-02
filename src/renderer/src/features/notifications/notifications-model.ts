@@ -365,11 +365,24 @@ export function mergeWindowForReel(
 	facts: DesktopNotificationsList | undefined,
 	windowAnswer: DesktopNotificationsList | undefined,
 	atTop: boolean,
-): (DesktopNotificationsList & { newerCount: number }) | undefined {
+):
+	| (DesktopNotificationsList & {
+			newerCount: number;
+			/** Display membership only; waiting/observed retain the authoritative write scope. */
+			reelWaiting?: DesktopNotificationItem[];
+	  })
+	| undefined {
 	if (!windowAnswer) return facts ? { ...facts, newerCount: 0 } : undefined;
 	if (!facts) return { ...windowAnswer, newerCount: 0 };
-	const known = new Set(windowAnswer.items.map((item) => item.id));
-	const newerCount = facts.items.filter((item) => !known.has(item.id)).length;
+	const known = new Set(
+		[...windowAnswer.items, ...(windowAnswer.waiting ?? [])].map(
+			(item) => item.id,
+		),
+	);
+	const newerCount = [...facts.items, ...(facts.waiting ?? [])].filter(
+		(item) => !known.has(item.id),
+	).length;
+	const revisions = new Map(facts.items.map((item) => [item.id, item]));
 	if (!atTop)
 		/*
 		 * THE WINDOW KEEPS ITS ROWS; THE FACTS KEEP THE FACTS (code round 8, R8-3). Deep
@@ -379,7 +392,16 @@ export function mergeWindowForReel(
 		 */
 		return {
 			...facts,
-			items: windowAnswer.items,
+			/* Freeze membership, not facts: an existing ID's revision is not news.
+			 * Keeping positions here lets the viewport preserve its visible anchor
+			 * even when that row's content or read state changes underneath it. */
+			items: windowAnswer.items.map((item) => {
+				const next = revisions.get(item.id);
+				return next && isNewerNotification(next, item) ? next : item;
+			}),
+			/* New asks must obey the same arrival door as updates. Settled asks
+			 * leave the authoritative waiting set; never resurrect them locally. */
+			reelWaiting: (facts.waiting ?? []).filter((item) => known.has(item.id)),
 			next_cursor: windowAnswer.next_cursor,
 			newerCount,
 		};
