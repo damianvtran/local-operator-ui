@@ -137,5 +137,6 @@
 	"ui.common.errors.agent_publish": "无法发布智能体。",
 	"ui.common.errors.conversation_messages_fetch": "获取对话消息失败",
 	"ui.common.errors.conversation_messages_fetch_unknown": "获取对话消息时发生未知错误",
-	"ui.common.errors.session_id_required": "读取代码记忆需要会话ID。"
+	"ui.common.errors.session_id_required": "读取代码记忆需要会话ID。",
+	"ui.common.errors.desktop_transport_failed": "后端无法完成此请求。请检查后端连接，然后重试。"
 }

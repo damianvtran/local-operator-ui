@@ -137,5 +137,6 @@
 	"ui.common.errors.agent_publish": "L’agent n’a pas pu être publié.",
 	"ui.common.errors.conversation_messages_fetch": "Échec de la récupération des messages de la conversation",
 	"ui.common.errors.conversation_messages_fetch_unknown": "Une erreur inconnue s’est produite lors de la récupération des messages de la conversation",
-	"ui.common.errors.session_id_required": "Un ID de session est requis pour lire la mémoire du code."
+	"ui.common.errors.session_id_required": "Un ID de session est requis pour lire la mémoire du code.",
+	"ui.common.errors.desktop_transport_failed": "Le backend n’a pas pu traiter cette requête. Vérifiez sa connexion, puis réessayez."
 }

@@ -48,5 +48,6 @@
 	"ui.agents.detail.tools.empty": "ابھی کوئی ٹول نہیں۔ نیچے سے ایک شامل کریں، یا تمام ٹولز آن کریں۔",
 	"ui.agents.detail.tools.every_tool_aria": "اس ایجنٹ کو ہر ٹول دیں",
 	"ui.agents.detail.tools.may_use_any": "یہ ایجنٹ جو بھی سیشن فراہم کرے، استعمال کر سکتا ہے۔",
-	"ui.agents.detail.tools.placeholder": "ٹول کا نام"
+	"ui.agents.detail.tools.placeholder": "ٹول کا نام",
+	"ui.agents.detail.origin.created_locally": "اس مشین پر بنایا گیا۔"
 }
