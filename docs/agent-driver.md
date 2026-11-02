@@ -847,14 +847,30 @@ discovery or bypassed in favour of the real upstream. Main/preload are unchanged
 
 Only initial cached A/B rows are seeded, with the production capture stamp and
 model serialization. Live discovery remains genuinely empty and its response is
-held. Original cold/read/SSE messages retain their real epoch/sequence and request
-causality; no old JSON is relabelled as a fresh read. The B command reaches the real
+held. Native chat's genuine pre-B SSE is released only after B, and its real
+POST-ACK ModelPicker reconciliation GET is then released with fresh B. The model
+picker cannot issue that GET before the awaited command: no pre-B native GET is
+invented. Cold HTTP remains separately labelled backend/component proof, **not a
+native cold-state caption or claim**. Original messages keep epoch/sequence and
+request causality; no old JSON becomes a fresh read. The B command reaches the real
 owner exactly once; independent live-owner and journal-B verification precedes
 loss of its success ACK through a 504 transport fault. All attempts are recorded
 before forwarding, and the backend does **not** enforce the candidate's default
 write fence. An explicit final save must send hosting then model_name and persist B
 in the real isolated YAML. A private parent pipe controls delivery, never an HTTP
 route available to the renderer; losing that pipe stops only its owned daemon.
+
+The existing armed driver exposes a bounded metadata-only observer, disabled in
+ordinary launches. Canonical receipts are emitted after the actual flush; model
+GET receipts after real interpretation/finally. Receipt cursors precede release,
+so a previously consumed duplicate epoch/seq cannot certify a new delivery. Only
+then does the driver observe React/CSS settlement, post-frame neutral/disabled
+controls and actual default gestures with zero invocations/attempts. Fresh B must
+appear in the dialog's rendered current-model description before unlock/save.
+The app drains without exiting, then the real backend and recorded descendants
+join. Both exit receipts and acceptance written AFTER cleanup are mandatory; CI
+rejects a zero process status without those artifacts. Old default-case reapers
+keep their existing standalone exit behavior.
 
 This case uses the asks producer's hit-tested CDP input and `capturePage`, including
 consecutive frames and geometry. It claims neither focused/foreground behaviour

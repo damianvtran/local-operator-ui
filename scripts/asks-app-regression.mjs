@@ -23,6 +23,7 @@ import { ASK_SESSION_IDS, startAsksAppFixture } from "./asks-app-fixture.mjs";
 import { isEntryPoint } from "./entry-point.mjs";
 import {
 	modelUncertaintyCase,
+	runOwnedModelCase,
 	startModelBackend,
 	verifyModelBuild,
 } from "./model-uncertainty-native.mjs";
@@ -829,11 +830,47 @@ async function runCase(
 	let rc = 1;
 	const frames = [];
 	const failures = [];
+	let appDrain;
+	const drainModelApp = (why) => {
+		if (!appDrain)
+			appDrain = (async () => {
+				const receipt = await api.drainLiveBoots({ why });
+				assert.equal(
+					receipt.clean,
+					true,
+					"owned app exit/descendants not settled",
+				);
+				writeFileSync(
+					join(output, "owned-app-exit.json"),
+					JSON.stringify(receipt),
+				);
+			})();
+		return appDrain;
+	};
 	for (const name of ["SIGTERM", "SIGINT"])
-		process.once(
-			name,
-			() => void api.reapLiveBoots({ code: 143, why: `CI ${name}` }),
-		);
+		process.once(name, () => {
+			if (!realBackend) {
+				void api.reapLiveBoots({ code: 143, why: `CI ${name}` });
+				return;
+			}
+			void (async () => {
+				try {
+					try {
+						try {
+							cdp?.close();
+						} finally {
+							await drainModelApp(`CI ${name}`);
+						}
+					} finally {
+						await realBackend.close();
+					}
+				} catch (error) {
+					console.error("owned model case interruption cleanup failed", error);
+				} finally {
+					process.exit(143);
+				}
+			})();
+		});
 	const save = () =>
 		writeFileSync(
 			join(output, "measurements.json"),
@@ -1020,6 +1057,12 @@ async function runCase(
 		session,
 	};
 	try {
+		if (realBackend)
+			assert.equal(
+				typeof api.drainLiveBoots,
+				"function",
+				"real-core case requires a non-exiting owned app drain",
+			);
 		api.prepareDriverContext({ apiUrl: "http://127.0.0.1:8080" });
 		const app = await api.launchApp({
 			armed: true,
@@ -1088,23 +1131,31 @@ async function runCase(
 				frames.some((entry) => entry.label === label),
 				`${scenarioName} ${kind}: promised frame ${JSON.stringify(label)} was not captured (have ${JSON.stringify(frames.map((entry) => entry.label))})`,
 			);
-		frames.push({
-			label: "acceptance",
-			verdict: "PASS",
-			coverage: scenario.coverage,
-		});
+		if (!realBackend)
+			frames.push({
+				label: "acceptance",
+				verdict: "PASS",
+				coverage: scenario.coverage,
+			});
 		save();
 		rc = 0;
 	} catch (error) {
 		failures.push(error.stack);
 		save();
 	} finally {
-		cdp?.close();
-		await api.reapLiveBoots({
-			code: rc,
-			why: `CI ${scenarioName} ${kind} case complete`,
-		});
+		const why = `CI ${scenarioName} ${kind} case complete`;
+		if (realBackend) {
+			try {
+				cdp?.close();
+			} finally {
+				await drainModelApp(why);
+			}
+		} else {
+			cdp?.close();
+			await api.reapLiveBoots({ code: rc, why });
+		}
 	}
+	return rc;
 }
 
 async function main() {
@@ -1131,34 +1182,60 @@ async function main() {
 			scratchParent: tmpdir(),
 		});
 		process.env.LOCAL_OPERATOR_DESKTOP_TOKEN = backend.token;
-		try {
-			writeFileSync(
-				join(output, "provenance.json"),
-				JSON.stringify(
-					{
-						build: JSON.parse(
-							readFileSync(process.env.MODEL_CASE_BUILD_RECEIPT),
-						),
-						core: (await backend.state()).identity,
-						expectedPublishedTarget: "a8c96c2ac1d71b776f40ed68ae5a2322bbe3c1ed",
-						coverage:
-							"candidate compiled app with published real core; no historical native control or WCV compositor claim",
-					},
-					null,
-					2,
-				),
-			);
-			return await runCase(
-				"model-uncertainty",
-				"candidate",
-				root,
-				output,
-				backend.records,
-				backend,
-			);
-		} finally {
-			await backend.close();
-		}
+		return runOwnedModelCase({
+			backend,
+			run: async () => {
+				writeFileSync(
+					join(output, "provenance.json"),
+					JSON.stringify(
+						{
+							build: JSON.parse(
+								readFileSync(process.env.MODEL_CASE_BUILD_RECEIPT),
+							),
+							core: (await backend.state()).identity,
+							expectedPublishedTarget:
+								"a8c96c2ac1d71b776f40ed68ae5a2322bbe3c1ed",
+							coverage:
+								"candidate compiled app with published real core; no historical native control or WCV compositor claim",
+						},
+						null,
+						2,
+					),
+				);
+				return await runCase(
+					"model-uncertainty",
+					"candidate",
+					root,
+					output,
+					backend.records,
+					backend,
+				);
+			},
+			accept: async () => {
+				const receipt = JSON.parse(
+					readFileSync(join(output, "owned-core-exit.json")),
+				);
+				assert.equal(
+					receipt.clean,
+					true,
+					"required joined backend exit receipt missing",
+				);
+				const appExit = JSON.parse(
+					readFileSync(join(output, "owned-app-exit.json")),
+				);
+				assert.equal(appExit.clean, true);
+				assert.equal(appExit.stopped, 1, "single native app was not joined");
+				const path = join(output, "measurements.json");
+				const measurement = JSON.parse(readFileSync(path));
+				measurement.frames.push({
+					label: "acceptance",
+					verdict: "PASS",
+					coverage: modelUncertaintyCase.coverage,
+					cleanup: receipt,
+				});
+				writeFileSync(path, JSON.stringify(measurement, null, 2));
+			},
+		});
 	}
 	if (process.argv.includes("--case")) {
 		const i = process.argv.indexOf("--case");

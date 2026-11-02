@@ -1239,9 +1239,10 @@ async function reapStrays({ graceMs = 5000 } = {}) {
 	}
 }
 
-async function reapLiveBoots({ code, why }) {
-	if (reaping.running) return;
-	reaping.running = true;
+async function drainLiveBoots({ why, strict = true }) {
+	// Imported producers can own additional resources. They must be able to
+	// join app teardown WITHOUT exiting before their own finally blocks run.
+	const errors = [];
 	const boots = [...liveBoots];
 	if (boots.length > 0) {
 		say(`\n[${why}] stopping ${boots.length} app(s) this run started`);
@@ -1251,8 +1252,41 @@ async function reapLiveBoots({ code, why }) {
 			await stopApp(handle);
 		} catch (error) {
 			say(`[${why}] teardown threw: ${error?.message ?? error}`);
+			errors.push(error);
 		}
 	}
+	if (strict) {
+		for (const handle of boots) {
+			if (handle.child.exitCode === null && handle.child.signalCode === null)
+				errors.push(new Error(`owned app ${handle.child.pid} has not exited`));
+		}
+		// Observe the existing run-specific profile witness; never kill an
+		// unidentified descendant merely to turn a failed cleanup green.
+		const deadline = Date.now() + 5000;
+		for (;;) {
+			const observed = thisRunsProcesses();
+			if (!observed.measured) {
+				errors.push(new Error("owned descendant observation unavailable"));
+				break;
+			}
+			if (observed.lines.length === 0) break;
+			if (Date.now() >= deadline) {
+				errors.push(new Error("owned app descendants have not settled"));
+				break;
+			}
+			await wait(100);
+		}
+	}
+	if (strict && errors.length)
+		throw new AggregateError(errors, "owned app drain failed");
+	return { stopped: boots.length, clean: errors.length === 0 };
+}
+
+async function reapLiveBoots({ code, why }) {
+	if (reaping.running) return;
+	reaping.running = true;
+	// Preserve the historical standalone reaper's logging/exit disposition.
+	await drainLiveBoots({ why, strict: false });
 	process.exit(code);
 }
 
@@ -2062,6 +2096,7 @@ export const rendererDriverApi = Object.freeze({
 	verb,
 	capture,
 	reapLiveBoots,
+	drainLiveBoots,
 });
 
 /** How many RPC envelopes this run has sent, for their ids. */

@@ -43,6 +43,10 @@ import {
 import { useCanvasStore } from "@shared/store/canvas-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { Query } from "@tanstack/react-query";
+import {
+	armModelAuthorityObserver,
+	readModelAuthorityObserver,
+} from "./model-authority-observer";
 import { soundDriverVerbs } from "./sounds";
 
 /** One animation frame, so a capture sees the paint the action caused. */
@@ -406,6 +410,26 @@ export function installDevDriver(): string[] {
 
 	return bridge.install({
 		...soundDriverVerbs,
+		/** Metadata-only causal witness; available ONLY behind this armed door. */
+		modelAuthority: async (request) => {
+			if (
+				request &&
+				typeof request === "object" &&
+				"start" in request &&
+				request.start === true
+			)
+				armModelAuthorityObserver();
+			const observed = readModelAuthorityObserver();
+			if (!observed.armed || observed.fault)
+				throw new Error("model authority observer unavailable");
+			// The witness already proves consumer completion. Now let its real
+			// state updates/paint settle; frames alone were never that proof.
+			await nextFrame();
+			const settled = await settleCssTransitions();
+			if (settled.timedOut)
+				throw new Error("model authority DOM did not settle");
+			return readModelAuthorityObserver();
+		},
 		/** Where the driver is, right now, in the app's own terms. */
 		hello: () => ({
 			armed: true,

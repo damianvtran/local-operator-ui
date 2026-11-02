@@ -1422,6 +1422,9 @@ jobs:
           ASKS_OUTPUT="$PWD/artifacts/model-uncertainty" \
           MODEL_CASE_BUILD_RECEIPT="$RUNNER_TEMP/model-case-build.json" \
           node scripts/asks-app-regression.mjs --case model-uncertainty --leg candidate
+          # An accidentally exiting helper must not make a zero status look like
+          # joined cleanup; require both receipts and post-cleanup acceptance.
+          node --input-type=module -e 'import { verifyModelExitArtifacts } from "./scripts/model-uncertainty-native.mjs"; verifyModelExitArtifacts("artifacts/model-uncertainty");'
 
       - name: Upload real model uncertainty evidence
         if: ${{ always() && steps.model_uncertainty_native.conclusion != 'skipped' }}

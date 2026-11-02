@@ -46,6 +46,7 @@ const bundle = await build({
 			export { desktopResult } from "./src/renderer/src/shared/api/local-operator/desktop-api";
 			export { desktopEndpoint } from "./src/shared/desktop-contract";
 			export { writeModelDefaultSettings } from "./src/renderer/src/features/chat/pickers/model-default-settings";
+			export { observeModelAuthority } from "./src/renderer/src/dev-driver/model-authority-observer";
 		`,
 		resolveDir: ROOT,
 	},
@@ -60,8 +61,12 @@ new Function("require", "module", "exports", bundle.outputFiles[0].text)(
 	compiled,
 	compiled.exports,
 );
-const { desktopResult, desktopEndpoint, writeModelDefaultSettings } =
-	compiled.exports;
+const {
+	desktopResult,
+	desktopEndpoint,
+	writeModelDefaultSettings,
+	observeModelAuthority,
+} = compiled.exports;
 
 test("unconfirmed defaults never PATCH; live resolution restores intended saving", async () => {
 	const requests = [];
@@ -127,6 +132,9 @@ test("unconfirmed defaults never PATCH; live resolution restores intended saving
 				defaultWrites: { current: Promise.resolve() },
 				persist: { perform: async (work) => work(), setResult: () => {} },
 				writeModelDefaultSettings,
+				// The extracted shipped closure now references its real default-off
+				// observer too: bind the module, never stub away the new call.
+				observeModelAuthority,
 				desktopResult,
 				note: () => {},
 				DEFAULT_SAVE_FAILURE: () => "",

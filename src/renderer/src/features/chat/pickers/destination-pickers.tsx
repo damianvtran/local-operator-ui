@@ -45,6 +45,10 @@ import {
 import { useOptionalQueryClient } from "@shared/hooks/use-optional-query-client";
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
+import {
+	type ModelAuthorityReceipt,
+	observeModelAuthority,
+} from "../../../dev-driver/model-authority-observer";
 
 /**
  * The model this session is RUNNING, for a dialog whose job is not to offer the
@@ -1414,6 +1418,13 @@ export const ModelPicker: FC<PickerContext> = ({
 	 */
 	const saveModelDefault = useCallback(
 		(model: { provider: string; model_id: string }) => {
+			observeModelAuthority({
+				carrier: "default-save",
+				sessionId: "",
+				epoch: null,
+				seq: null,
+				disposition: "invoked",
+			});
 			/*
 			 * Chained, as the effort dialog's are: the last write asked for is the
 			 * last write config.yml sees, whatever order the answers come back in
@@ -1618,11 +1629,22 @@ export const ModelPicker: FC<PickerContext> = ({
 					setUnconfirmedModel(true);
 					note(failure.text);
 					if (persistDefaultRef.current) persist.setResult(failure);
+					// Armed evidence observes this REAL consumer after interpretation;
+					// ordinary launches retain no metadata and change no control flow.
+					let authorityReceipt: ModelAuthorityReceipt = {
+						carrier: "model-get",
+						sessionId,
+						epoch: null,
+						seq: null,
+						disposition: "failed",
+					};
 					try {
 						// Unlike the one-shot composer hook, this read must distinguish
 						// failure from success before enabling another mutation. A cold
 						// carried snapshot is not proof of the owner's current selection.
 						const snapshot = await desktopResult<{
+							epoch?: string;
+							seq?: number;
 							payload: { frontend: CanonicalFrontendSync; cold: boolean };
 						}>({ op: "sessions.get", sessionId });
 						const state = snapshot.payload.frontend.snapshot;
@@ -1632,11 +1654,22 @@ export const ModelPicker: FC<PickerContext> = ({
 							unconfirmedModelRef.current = false;
 							setUnconfirmedModel(false);
 						}
+						authorityReceipt = {
+							carrier: "model-get",
+							sessionId,
+							epoch: snapshot.epoch ?? null,
+							seq: snapshot.seq ?? null,
+							disposition:
+								snapshot.payload.cold === false && selector
+									? "live"
+									: "cold-or-invalid",
+						};
 					} catch {
 						// Keep the neutral uncertainty and disabled choices, not a
 						// fabricated unchanged model or a second command request.
 					} finally {
 						resyncCanonicalSession(sessionId);
+						observeModelAuthority(authorityReceipt);
 					}
 					return;
 				}

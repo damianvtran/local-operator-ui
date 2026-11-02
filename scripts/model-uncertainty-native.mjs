@@ -7,7 +7,7 @@ const REQUEST_ID_PATTERN =
  * separate: model/default writes must reach real core, not a permissive mock.
  */
 import assert from "node:assert/strict";
-import { execFileSync, spawn } from "node:child_process";
+import { execFileSync, spawn, spawnSync } from "node:child_process";
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import {
 	existsSync,
@@ -20,6 +20,62 @@ import {
 import { dirname, join, resolve } from "node:path";
 import { createInterface } from "node:readline";
 import { fileURLToPath } from "node:url";
+
+export function verifyModelExitArtifacts(output) {
+	const core = JSON.parse(readFileSync(join(output, "owned-core-exit.json")));
+	const app = JSON.parse(readFileSync(join(output, "owned-app-exit.json")));
+	const measurement = JSON.parse(
+		readFileSync(join(output, "measurements.json")),
+	);
+	assert.equal(core.clean, true, "joined core exit receipt missing");
+	assert.equal(app.clean, true, "joined app exit receipt missing");
+	assert.equal(app.stopped, 1, "the single owned native app was not joined");
+	assert(
+		Number.isInteger(core.pid) &&
+			core.pid > 0 &&
+			typeof core.birth === "string",
+		"owned core PID/birth witness missing",
+	);
+	assert(
+		Array.isArray(core.descendants),
+		"owned descendant settlement witness missing",
+	);
+	assert(
+		measurement.frames.some(
+			(frame) => frame.label === "acceptance" && frame.verdict === "PASS",
+		),
+		"case acceptance absent after cleanup",
+	);
+	return { core, app };
+}
+
+/** A case cannot report PASS until both owned lifetimes have joined. */
+export async function runOwnedModelCase({ run, backend, accept }) {
+	let failure;
+	let code;
+	try {
+		code = await run();
+		if (code !== 0) throw new Error(`model case failed (${code})`);
+	} catch (error) {
+		failure = error;
+	}
+	let receipt;
+	try {
+		receipt = await backend.close();
+		assert.equal(
+			receipt?.clean,
+			true,
+			"owned backend exit/descendants not settled",
+		);
+	} catch (error) {
+		failure = failure
+			? new AggregateError([failure, error], "case and cleanup failed")
+			: error;
+	}
+	if (failure) throw failure;
+	await accept(receipt);
+	return code;
+}
 
 export const MODEL_CORE_VERSION = "0.94.15";
 export const MODEL_CORE_REF = "a8c96c2ac1d71b776f40ed68ae5a2322bbe3c1ed";
@@ -272,6 +328,12 @@ export async function startModelBackend({ output }) {
 		env,
 		stdio: ["pipe", "pipe", "pipe"],
 	});
+	const birthProbe = spawnSync(
+		"ps",
+		["-p", String(child.pid), "-o", "lstart="],
+		{ encoding: "utf8" },
+	);
+	const birth = birthProbe.status === 0 ? birthProbe.stdout.trim() : null;
 	const pending = new Map();
 	let counter = 0;
 	const logs = [];
@@ -343,9 +405,93 @@ export async function startModelBackend({ output }) {
 		}
 		return { status: response.status, data };
 	};
+	const performCloseOwnedCore = async () => {
+		const receipt = { pid: child.pid, birth, root: config, clean: false };
+		try {
+			try {
+				await control("release");
+			} catch (error) {
+				receipt.releaseError = String(error);
+			}
+			if (child.exitCode === null && child.signalCode === null) {
+				const now = spawnSync(
+					"ps",
+					["-p", String(child.pid), "-o", "lstart="],
+					{ encoding: "utf8" },
+				);
+				if (birth && now.status === 0 && now.stdout.trim() === birth)
+					child.kill("SIGTERM");
+				else child.stdin.end(); // no signal without a birth witness; join the private owner EOF path
+			}
+			let timer;
+			try {
+				Object.assign(
+					receipt,
+					await Promise.race([
+						closed,
+						new Promise((_, reject) => {
+							timer = setTimeout(
+								() => reject(Error("owned core exit deadline")),
+								15_000,
+							);
+						}),
+					]),
+				);
+			} finally {
+				clearTimeout(timer);
+			}
+			const ledger = join(scratch, "owned-child-pids");
+			const pids = existsSync(ledger)
+				? [
+						...new Set(
+							readFileSync(ledger, "utf8").trim().split(/\s+/).filter(Boolean),
+						),
+					]
+				: [];
+			assert(
+				pids.every((pid) => /^[1-9][0-9]*$/.test(pid)),
+				"invalid owned descendant ledger",
+			);
+			const until = Date.now() + 5000;
+			for (;;) {
+				if (pids.length === 0) break;
+				const probe = spawnSync("ps", ["-p", pids.join(","), "-o", "pid="], {
+					encoding: "utf8",
+				});
+				assert(
+					!probe.error && [0, 1].includes(probe.status) && !probe.stderr.trim(),
+					"owned descendant observation unavailable",
+				);
+				if (!probe.stdout.trim()) break;
+				assert(
+					Date.now() < until,
+					"owned descendants have not settled; no unknown-PID signal fallback",
+				);
+				await delay(100);
+			}
+			receipt.descendants = pids;
+			assert(!receipt.releaseError, receipt.releaseError);
+			receipt.clean = true;
+			return receipt;
+		} catch (error) {
+			receipt.error = String(error);
+			throw error;
+		} finally {
+			writeFileSync(
+				join(output, "owned-core-exit.json"),
+				JSON.stringify(receipt, null, 2),
+			);
+		}
+	};
+	let closePromise;
+	const closeOwnedCore = () => {
+		if (!closePromise) closePromise = performCloseOwnedCore();
+		return closePromise;
+	};
 	let sessionId;
 	let readTemplates = [];
 	try {
+		assert(birth, "owned core birth witness unavailable");
 		const deadline = Date.now() + 30_000;
 		for (;;) {
 			try {
@@ -387,12 +533,18 @@ export async function startModelBackend({ output }) {
 		assert.equal(cold.data.result.payload.cold, true);
 		await control("configure", {
 			session_id: sessionId,
-			hold_first_snapshot: true,
+			hold_first_snapshot: false,
 			hold_live_catalogue: true,
 		});
 	} catch (error) {
-		child.kill("SIGTERM");
-		await closed;
+		try {
+			await closeOwnedCore();
+		} catch (cleanup) {
+			throw new AggregateError(
+				[error, cleanup],
+				"core setup and cleanup failed",
+			);
+		}
 		throw error;
 	}
 	const state = () => control("state");
@@ -445,25 +597,7 @@ export async function startModelBackend({ output }) {
 				}),
 			);
 		},
-		async close() {
-			try {
-				await control("release");
-			} finally {
-				child.kill("SIGTERM");
-				const result = await Promise.race([
-					closed,
-					delay(15_000).then(() => {
-						throw Error(
-							`owned core ${child.pid} did not exit; no global kill fallback`,
-						);
-					}),
-				]);
-				writeFileSync(
-					join(output, "owned-core-exit.json"),
-					JSON.stringify(result),
-				);
-			}
-		},
+		close: closeOwnedCore,
 	};
 }
 
@@ -491,7 +625,15 @@ function selected(capture) {
 	for (const object of objects) {
 		const result = object.result?.payload || object.payload;
 		const found = find(object);
-		if (found) return { ...found, cold: result?.cold };
+		if (found) {
+			const envelope = object.result ?? object;
+			return {
+				...found,
+				cold: result?.cold,
+				epoch: envelope.epoch,
+				seq: envelope.seq,
+			};
+		}
 	}
 	return null;
 }
@@ -502,62 +644,151 @@ export const modelUncertaintyCase = {
 	legs: ["candidate"],
 	route: "/chat",
 	purpose:
-		"Real native model ACK loss, causal old authority, fenced defaults and durable explicit save against owned published core",
+		"Real native model ACK loss, causally consumed canonical SSE, fresh reconciliation GET and durable explicit default save against owned core",
 	frames: {
 		candidate: [
 			"model-before",
 			"model-unknown-1",
 			"model-unknown-2",
-			"model-cold",
-			"model-stale",
+			"model-stale-sse",
 			"model-settled-1",
 			"model-settled-2",
 			"model-default-saved",
 		],
 	},
 	coverage:
-		"native input/main/preload/renderer and actual core handlers; not external browser/WCV compositor",
+		"native input/main/preload/renderer with real core; no native pre-B ModelPicker GET or cold-state coverage, historical control, or WCV compositor claim",
 	async drive(ctx) {
-		const { cdp, press, wait, frame, stamp, realBackend: backend } = ctx;
+		const {
+			cdp,
+			api,
+			press,
+			wait,
+			waitFor,
+			frame,
+			stamp,
+			realBackend: backend,
+		} = ctx;
 		assert(backend);
+		const trace = async (start = false) => {
+			const result = await api.verb(
+				cdp,
+				"modelAuthority",
+				start ? { start: true } : {},
+			);
+			assert.equal(result.armed, true, "real consumer observer is not armed");
+			assert.equal(result.fault, false, "consumer witness failed/truncated");
+			return result;
+		};
+		await trace(true);
+		// Native chat opens on SSE, not a sessions.get. Warm A through owned
+		// setup; the genuine cold HTTP proof remains separately labelled.
+		assert.equal((await backend.commandA()).status, 200);
 		await wait(
 			'document.querySelectorAll("[data-tour-tag=chat-session-row]").length===1',
 		);
 		await press('[data-tour-tag="chat-session-row"]');
-		const cold = await backend.waitCapture(
-			(c) => selected(c)?.cold === true && c.before_b_request,
-		);
-		assert.equal((await backend.commandA()).status, 200);
 		const input = '[contenteditable="true"][role="textbox"]';
 		await press(input);
 		await cdp.send("Input.insertText", { text: "/model" });
-		await cdp.send("Input.dispatchKeyEvent", {
-			type: "keyDown",
-			key: "Enter",
-			code: "Enter",
-			windowsVirtualKeyCode: 13,
-		});
-		await cdp.send("Input.dispatchKeyEvent", {
-			type: "keyUp",
-			key: "Enter",
-			code: "Enter",
-			windowsVirtualKeyCode: 13,
-		});
+		for (const type of ["keyDown", "keyUp"])
+			await cdp.send("Input.dispatchKeyEvent", {
+				type,
+				key: "Enter",
+				code: "Enter",
+				windowsVirtualKeyCode: 13,
+			});
 		await wait(
 			'[...document.querySelectorAll("[cmdk-item]")].some(e=>e.textContent.includes("mock-model-b"))',
 		);
 		await cdp.evaluate(
-			`(()=>{const b=[...document.querySelectorAll('[cmdk-item]')].find(e=>e.textContent.includes('mock-model-b'));b.setAttribute('data-model-case-b','');const checks=[...document.querySelectorAll('[role=checkbox]')];const d=checks.find(e=>(e.closest('label')?.textContent||e.parentElement?.textContent||'').toLowerCase().includes('default'));if(!d)throw Error('real default checkbox missing');d.setAttribute('data-model-case-default','')})()`,
+			`/* model-case: mark-targets */ (()=>{const row=[...document.querySelectorAll('[cmdk-item]')].find(e=>e.textContent.includes('mock-model-b'));if(!row)throw Error('real B option absent');row.setAttribute('data-model-case-b','');const check=[...document.querySelectorAll('[role=dialog] [role=checkbox]')].find(e=>/default/i.test(e.parentElement?.textContent||''));if(!check)throw Error('real default checkbox absent');check.setAttribute('data-model-case-default','')})()`,
 		);
 		const geometry = async (label) => {
-			const x = await cdp.evaluate(
-				`(()=>{const e=document.querySelector('[data-model-case-default]'),d=document.querySelector('[role=dialog]');if(!e||!d)throw Error('real model dialog missing');const r=e.getBoundingClientRect(),b=d.getBoundingClientRect();return{disabled:e.disabled===true||e.getAttribute('aria-disabled')==='true',checked:e.getAttribute('aria-checked'),box:{x:r.x,y:r.y,w:r.width,h:r.height},dialog:{w:b.width,h:b.height},neutral:/could not be confirmed/i.test(document.body.innerText)}})()`,
+			const value = await cdp.evaluate(
+				`/* model-case: geometry */ (()=>{const e=document.querySelector('[data-model-case-default]'),d=document.querySelector('[role=dialog]');if(!e||!d)throw Error('real model dialog missing');const r=e.getBoundingClientRect(),b=d.getBoundingClientRect();const description=(d.getAttribute('aria-describedby')||'').split(/\\s+/).map(id=>document.getElementById(id)?.textContent||'').join(' ');return{disabled:e.disabled===true||e.getAttribute('aria-disabled')==='true',checked:e.getAttribute('aria-checked'),current:description.match(/test\\/mock-model-[ab]/)?.[0]||null,box:{x:r.x,y:r.y,w:r.width,h:r.height},dialog:{w:b.width,h:b.height},neutral:/could not be confirmed/i.test(document.body.innerText)}})()`,
 			);
-			stamp(label, x);
-			return x;
+			stamp(label, value);
+			return value;
 		};
-		assert.equal((await geometry("before-geometry")).checked, "false");
+		const before = await geometry("before-geometry");
+		assert.equal(
+			before.current,
+			"test/mock-model-a",
+			"rendered initial current model is not A",
+		);
+		assert.equal(before.checked, "false");
 		await frame("model-before");
+		const noWrites = async () => {
+			const observed = await trace();
+			assert.equal(
+				observed.receipts.filter((r) => r.carrier === "default-save").length,
+				0,
+				"default-save handler invoked before explicit allowed save",
+			);
+			const state = await backend.state();
+			assert.equal(
+				state.attempts.filter((r) => !r.observer && r.method === "PATCH")
+					.length,
+				0,
+				"late/early default PATCH observed",
+			);
+			assert.equal(state.commit?.durable, "mock-model-b");
+		};
+		const consumed = async (carrier, capture, disposition, after) => {
+			const authority = selected(capture);
+			assert.equal(
+				typeof authority?.epoch,
+				"string",
+				"original carrier has no epoch witness",
+			);
+			assert.equal(
+				typeof authority?.seq,
+				"number",
+				"original carrier has no seq witness",
+			);
+			let receipt;
+			await waitFor(async () => {
+				const observed = await trace();
+				receipt = observed.receipts
+					.slice(after)
+					.find(
+						(r) =>
+							r.carrier === carrier &&
+							r.sessionId === backend.sessionId &&
+							r.epoch === authority.epoch &&
+							r.seq === authority.seq &&
+							r.disposition === disposition,
+					);
+				return Boolean(receipt);
+			}, 15_000);
+			assert(
+				receipt,
+				`released ${carrier} was dropped/unconsumed; no frame substitutes for completion`,
+			);
+			stamp(`consumer-${carrier}`, receipt);
+		};
+		const fence = async (label) => {
+			await frame(label);
+			// Frame/capture itself can yield to a late consumer. Assert AFTER it,
+			// then use a real gesture and a driver settlement before counting.
+			const after = await geometry(`${label}-after-frame`);
+			assert.equal(after.disabled, true, `${label}: early unlock after frame`);
+			assert.equal(
+				after.neutral,
+				true,
+				`${label}: uncertainty feedback missing`,
+			);
+			await press("[data-model-case-default]");
+			await noWrites();
+			const afterInput = await geometry(`${label}-after-input`);
+			assert.equal(
+				afterInput.disabled,
+				true,
+				`${label}: early unlock after gesture`,
+			);
+			assert.equal(afterInput.neutral, true);
+		};
 		await backend.control("configure", {
 			session_id: backend.sessionId,
 			hold_reads: true,
@@ -566,34 +797,20 @@ export const modelUncertaintyCase = {
 		assert.equal((await backend.commandA()).status, 200);
 		const stale = await backend.waitCapture(
 			(c) =>
-				c.path.endsWith("/events") &&
+				c.path === `/v1/desktop/sessions/${backend.sessionId}/events` &&
 				selected(c)?.model === "mock-model-a" &&
 				c.before_b_request,
 		);
 		await press("[data-model-case-b]");
 		await wait("/could not be confirmed/i.test(document.body.innerText)");
-		for (const label of ["model-unknown-1", "model-unknown-2"]) {
-			assert.equal((await geometry(label)).disabled, true);
-			await frame(label);
-		}
-		const noWrites = async () => {
-			const x = await backend.state();
-			assert.equal(
-				x.attempts.filter((a) => !a.observer && a.method === "PATCH").length,
-				0,
-			);
-			assert.equal(x.commit?.durable, "mock-model-b");
-		};
-		await press("[data-model-case-default]");
-		await noWrites();
-		await backend.control("release", { indices: [cold.id] });
-		await noWrites();
-		assert.equal((await geometry("cold-geometry")).disabled, true);
-		await frame("model-cold");
+		await fence("model-unknown-1");
+		await fence("model-unknown-2");
+		const staleCursor = (await trace()).receipts.length;
 		await backend.control("release", { indices: [stale.id] });
-		await noWrites();
-		assert.equal((await geometry("stale-geometry")).disabled, true);
-		await frame("model-stale");
+		await consumed("canonical-sse", stale, "processed", staleCursor);
+		await fence("model-stale-sse");
+		// This is the REAL ModelPicker GET issued only AFTER unconfirmed command
+		// completion. Never replace it with a pre-B cached positive response.
 		const fresh = await backend.waitCapture(
 			(c) =>
 				c.path === `/v1/desktop/sessions/${backend.sessionId}` &&
@@ -601,33 +818,50 @@ export const modelUncertaintyCase = {
 				selected(c)?.model === "mock-model-b" &&
 				!c.before_b_request,
 		);
+		await noWrites();
+		const freshCursor = (await trace()).receipts.length;
 		await backend.control("release", { indices: [fresh.id] });
-		const pendingAuthority = await backend.state();
+		await consumed("model-get", fresh, "live", freshCursor);
+		const assertB = async (label) => {
+			const value = await geometry(label);
+			assert.equal(
+				value.current,
+				"test/mock-model-b",
+				"backend B is not rendered current B",
+			);
+			assert.equal(
+				value.disabled,
+				false,
+				"fresh real B consumer did not unlock",
+			);
+			await noWrites();
+		};
+		await assertB("fresh-consumed-geometry");
+		const pending = await backend.state();
 		await backend.control("configure", {
 			session_id: backend.sessionId,
 			hold_reads: false,
 			hold_live_catalogue: true,
 		});
 		await backend.control("release", {
-			indices: pendingAuthority.captures
+			indices: pending.captures
 				.filter((c) => c.path !== "/v1/desktop/models")
 				.map((c) => c.id),
 		});
-		await wait(
-			'document.querySelector("[data-model-case-default]")?.disabled===false',
-		);
 		for (const label of ["model-settled-1", "model-settled-2"]) {
-			assert.equal((await geometry(label)).disabled, false);
 			await frame(label);
+			await assertB(`${label}-after-frame`);
 		}
 		await cdp.evaluate(
-			`(()=>{const b=[...document.querySelectorAll('[role=dialog] button')].find(e=>/^set as default$/i.test(e.textContent.trim()));if(!b)throw Error('explicit default save missing');b.setAttribute('data-model-case-save','')})()`,
+			`/* model-case: mark-save */ (()=>{const b=[...document.querySelectorAll('[role=dialog] button')].find(e=>/^set as default$/i.test(e.textContent.trim()));if(!b)throw Error('explicit default save missing');b.setAttribute('data-model-case-save','')})()`,
 		);
+		await assertB("before-explicit-save");
 		await press("[data-model-case-save]");
 		const until = Date.now() + 10_000;
 		for (;;) {
-			const v = await backend.defaultValues();
-			if (v.hosting === "test" && v.model_name === "mock-model-b") break;
+			const values = await backend.defaultValues();
+			if (values.hosting === "test" && values.model_name === "mock-model-b")
+				break;
 			assert(Date.now() < until, "actual default YAML did not settle to B");
 			await delay(100);
 		}
@@ -637,19 +871,37 @@ export const modelUncertaintyCase = {
 			backend.sessionId,
 			backend.readTemplates,
 		);
-		const mutations = traffic.attempts.filter(
-			(a) => !a.observer && a.method === "POST" && a.path.endsWith("/commands"),
+		const modelB = traffic.attempts.filter(
+			(r) =>
+				!r.observer &&
+				r.method === "POST" &&
+				r.path.endsWith("/commands") &&
+				r.body?.args === "test/mock-model-b",
 		);
-		assert.equal(mutations.length, 1);
+		assert.equal(modelB.length, 1, "model B intent automatically replayed");
 		const patches = traffic.attempts.filter(
-			(a) => !a.observer && a.method === "PATCH",
+			(r) => !r.observer && r.method === "PATCH",
 		);
 		assert.deepEqual(
-			patches.map((a) => a.path),
+			patches.map((r) => r.path),
 			["/v1/settings/hosting", "/v1/settings/model_name"],
 		);
-		stamp("real-model-traffic", traffic);
+		assert.equal(
+			(await trace()).receipts.filter((r) => r.carrier === "default-save")
+				.length,
+			1,
+		);
 		await frame("model-default-saved");
+		const final = await geometry("saved-after-frame");
+		assert.equal(final.current, "test/mock-model-b");
+		const afterFrame = await backend.state();
+		assert.equal(
+			afterFrame.attempts.filter((r) => !r.observer && r.method === "PATCH")
+				.length,
+			2,
+			"late extra PATCH after saved frame",
+		);
+		stamp("real-model-traffic", afterFrame);
 		await backend.control("release");
 	},
 };
