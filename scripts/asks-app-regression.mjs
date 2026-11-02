@@ -21,6 +21,11 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 import { ASK_SESSION_IDS, startAsksAppFixture } from "./asks-app-fixture.mjs";
 import { isEntryPoint } from "./entry-point.mjs";
+import {
+	modelUncertaintyCase,
+	startModelBackend,
+	verifyModelBuild,
+} from "./model-uncertainty-native.mjs";
 const execute = promisify(execFile);
 // Hosted macOS arm64 has 7 GB RAM, but Node 22 defaults this isolated builder
 // to ~2 GB: run 39671897399 aborted in control-renderer chunk generation at
@@ -461,6 +466,7 @@ async function waitForDevtoolsPort(handle, api, timeoutMs = 60_000) {
  * binary is resolved.
  */
 export const CASES = {
+	"model-uncertainty": modelUncertaintyCase,
 	asks: {
 		purpose:
 			"The asks rail's open/close policy, driven through every door the user has (rail item, drawer X, Escape, header menu, composer chip) with the browser pane underneath it. The first case, and the one the 1107 rounds were reviewed against.",
@@ -793,7 +799,14 @@ export const CASES = {
  * onboarding-script reload, the readiness waits, the frame/measurement store, and
  * a finally that reaps exactly the app this run started.
  */
-async function runCase(scenarioName, kind, root, output, records) {
+async function runCase(
+	scenarioName,
+	kind,
+	root,
+	output,
+	records,
+	realBackend = null,
+) {
 	process.chdir(root);
 	process.argv.push(
 		"--backend",
@@ -992,6 +1005,7 @@ async function runCase(scenarioName, kind, root, output, records) {
 	const ctx = {
 		kind,
 		api,
+		realBackend,
 		get cdp() {
 			return cdp;
 		},
@@ -1094,6 +1108,58 @@ async function runCase(scenarioName, kind, root, output, records) {
 }
 
 async function main() {
+	// This explicit opt-in never starts/widens the read-only asks fixture.
+	if (
+		process.argv[process.argv.indexOf("--case") + 1] === "model-uncertainty"
+	) {
+		assert.equal(
+			process.argv[process.argv.indexOf("--leg") + 1],
+			"candidate",
+			"model case currently admits the reviewed candidate leg only",
+		);
+		assert(
+			process.env.CI && process.platform === "darwin",
+			"existing macOS native producer owns model-case execution",
+		);
+		const root = process.env.ASKS_APP_ROOT;
+		const output = process.env.ASKS_OUTPUT;
+		assert(root && output, "model case needs its frozen app root/output");
+		verifyModelBuild(root, process.env.MODEL_CASE_BUILD_RECEIPT);
+		mkdirSync(output, { recursive: true });
+		const backend = await startModelBackend({
+			output,
+			scratchParent: tmpdir(),
+		});
+		process.env.LOCAL_OPERATOR_DESKTOP_TOKEN = backend.token;
+		try {
+			writeFileSync(
+				join(output, "provenance.json"),
+				JSON.stringify(
+					{
+						build: JSON.parse(
+							readFileSync(process.env.MODEL_CASE_BUILD_RECEIPT),
+						),
+						core: (await backend.state()).identity,
+						expectedPublishedTarget: "a8c96c2ac1d71b776f40ed68ae5a2322bbe3c1ed",
+						coverage:
+							"candidate compiled app with published real core; no historical native control or WCV compositor claim",
+					},
+					null,
+					2,
+				),
+			);
+			return await runCase(
+				"model-uncertainty",
+				"candidate",
+				root,
+				output,
+				backend.records,
+				backend,
+			);
+		} finally {
+			await backend.close();
+		}
+	}
 	if (process.argv.includes("--case")) {
 		const i = process.argv.indexOf("--case");
 		const scenario = process.argv[i + 1];
@@ -1154,7 +1220,7 @@ async function main() {
 			]),
 		),
 		control: ASKS_CONTROL,
-		cases: Object.keys(CASES),
+		cases: Object.keys(CASES).filter((name) => !CASES[name].optInOnly),
 		captures: [],
 		physical1106:
 			"NOT COVERED: capturePage excludes sibling native WebContentsView/compositor",
@@ -1171,7 +1237,9 @@ async function main() {
 			path: "control-source.tar",
 			sha256: sha(readFileSync(controlArchive)),
 		};
-		for (const [scenarioName, scenario] of Object.entries(CASES)) {
+		for (const [scenarioName, scenario] of Object.entries(CASES).filter(
+			([, entry]) => !entry.optInOnly,
+		)) {
 			for (const kind of ["control", "candidate"]) {
 				fixture.setMode("loading");
 				const root =

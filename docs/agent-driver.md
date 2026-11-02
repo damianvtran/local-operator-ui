@@ -829,6 +829,40 @@ rule:
   change in a run that reported a settled frame), and a dark frame carrying the
   app's own `List agents request failed: 503` toast in one run out of two.
 
+## Opt-in real-core model uncertainty case
+
+`scripts/asks-app-regression.mjs --case model-uncertainty --leg candidate`
+adds one explicitly selected case to the existing macOS producer, not to its
+three default fixture-backed cases. The native CI job owns execution after source
+review; missing compiled outputs, build receipt, pinned Electron or published core
+refuse setup. Do not install/download a local Electron or substitute the operator's
+daemon. There is no historical native-control claim for this case.
+
+The canonical build seals input/output hashes, checkout, lock and runtime pin.
+Core is the published 0.94.15 native wheel; CI verifies its release target and
+wheel digest before reusing the now-idle core environment. The real CLI owns port
+8080, authentication, lifespan and its truthful serve record. A case-only ASGI
+wrapper sits **inside** that listener: an external proxy is rejected by production
+discovery or bypassed in favour of the real upstream. Main/preload are unchanged.
+
+Only initial cached A/B rows are seeded, with the production capture stamp and
+model serialization. Live discovery remains genuinely empty and its response is
+held. Original cold/read/SSE messages retain their real epoch/sequence and request
+causality; no old JSON is relabelled as a fresh read. The B command reaches the real
+owner exactly once; independent live-owner and journal-B verification precedes
+loss of its success ACK through a 504 transport fault. All attempts are recorded
+before forwarding, and the backend does **not** enforce the candidate's default
+write fence. An explicit final save must send hosting then model_name and persist B
+in the real isolated YAML. A private parent pipe controls delivery, never an HTTP
+route available to the renderer; losing that pipe stops only its owned daemon.
+
+This case uses the asks producer's hit-tested CDP input and `capturePage`, including
+consecutive frames and geometry. It claims neither focused/foreground behaviour
+nor WCV compositor pixels. Pure contract tests and backend-only loopback proofs
+are prerequisites, **not** evidence that the native flow passed. Failed setup
+stops dispatch; native evidence remains outstanding until the reviewed CI case
+actually runs.
+
 ## What it cannot prove, and what it is not for
 
 - **It is not a substitute for the `browser` tool.** This drives the app's own

@@ -1255,6 +1255,8 @@ jobs:
         run: |
           pnpm install --frozen-lockfile
           npm pack
+          # Seal this canonical build before any native scene can touch outputs.
+          node scripts/model-uncertainty-native.mjs --write-build-receipt "$RUNNER_TEMP/model-case-build.json"
 
       # Inspects the tarball only, so it is platform-independent and stays on
       # both legs even though only macOS launches the app.
@@ -1381,6 +1383,54 @@ jobs:
           LOCAL_OPERATOR_CORE_BIN="$CORE_VENV/bin/local-operator" \
           LOCAL_OPERATOR_CORE_PYTHON="$CORE_VENV/bin/python" \
           node scripts/notifications-app-scene.mjs
+
+      # Opt-in model case reuses this job's canonical app/Electron. It never
+      # expands the default asks fixture/matrix or downloads a local runtime.
+      - name: Prove model uncertainty against owned published core
+        id: model_uncertainty_native
+        if: runner.os == 'macOS' && github.event_name == 'pull_request'
+        timeout-minutes: 12
+        env:
+          LOCAL_OPERATOR_CORE_REF: a8c96c2ac1d71b776f40ed68ae5a2322bbe3c1ed
+          MODEL_CASE_EXPECTED_HEAD: ${{ github.sha }}
+          VITE_DISABLE_BACKEND_MANAGER: 'true'
+          LOCAL_OPERATOR_UI_NO_BYTECODE: 'true'
+          LOCAL_OPERATOR_UI_TELEMETRY: 'off'
+        run: |
+          set -euo pipefail
+          test "$(git ls-remote https://github.com/damianvtran/local-operator.git refs/tags/v0.94.15 | cut -f1)" = "$LOCAL_OPERATOR_CORE_REF"
+          CORE_VENV="$RUNNER_TEMP/notifications-core-venv"
+          # Reuse only after the preceding owned scene has reaped its workers.
+          CORE_VENV="$CORE_VENV" python3 - <<'PY'
+          import os, subprocess
+          root = os.environ['CORE_VENV']
+          rows = subprocess.check_output(['ps', '-axo', 'pid=,command='], text=True)
+          assert not any(root + '/bin/' in row for row in rows.splitlines()), 'prior core environment still in use'
+          PY
+          mkdir -p "$RUNNER_TEMP/model-core-wheel"
+          "$CORE_VENV/bin/pip" download --quiet --only-binary=:all: --no-deps --dest "$RUNNER_TEMP/model-core-wheel" local-operator==0.94.15
+          CORE_WHEEL="$RUNNER_TEMP/model-core-wheel/local_operator-0.94.15-py3-none-macosx_11_0_universal2.whl"
+          CORE_WHEEL="$CORE_WHEEL" python3 - <<'PY'
+          import hashlib, os
+          from pathlib import Path
+          assert hashlib.sha256(Path(os.environ['CORE_WHEEL']).read_bytes()).hexdigest() == '17b4fccdeb78fa0f14ab03aacb246de2acec34beb00264956497891de6e9d58b'
+          PY
+          "$CORE_VENV/bin/pip" install --quiet --upgrade "$CORE_WHEEL"
+          LOCAL_OPERATOR_CORE_BIN="$CORE_VENV/bin/local-operator" \
+          LOCAL_OPERATOR_CORE_PYTHON="$CORE_VENV/bin/python" \
+          ASKS_APP_ROOT="$PWD" \
+          ASKS_OUTPUT="$PWD/artifacts/model-uncertainty" \
+          MODEL_CASE_BUILD_RECEIPT="$RUNNER_TEMP/model-case-build.json" \
+          node scripts/asks-app-regression.mjs --case model-uncertainty --leg candidate
+
+      - name: Upload real model uncertainty evidence
+        if: ${{ always() && steps.model_uncertainty_native.conclusion != 'skipped' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: model-uncertainty-native-${{ github.event.pull_request.number }}-${{ github.run_id }}
+          path: artifacts/model-uncertainty/
+          if-no-files-found: error
+          retention-days: 7
 
       - name: Upload notifications native foreground evidence
         if: ${{ always() && steps.notifications_native.conclusion != 'skipped' }}
