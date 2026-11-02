@@ -48,5 +48,6 @@
 	"ui.agents.detail.tools.empty": "Инструментов пока нет. Добавьте инструмент ниже или включите «Все инструменты».",
 	"ui.agents.detail.tools.every_tool_aria": "Дать этому агенту все инструменты",
 	"ui.agents.detail.tools.may_use_any": "Этот агент может использовать всё, что предлагает сессия.",
-	"ui.agents.detail.tools.placeholder": "Имя инструмента"
+	"ui.agents.detail.tools.placeholder": "Имя инструмента",
+	"ui.agents.detail.origin.created_locally": "Создан на этом компьютере."
 }
