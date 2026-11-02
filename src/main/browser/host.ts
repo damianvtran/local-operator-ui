@@ -80,6 +80,7 @@ const DOCUMENT_SCOPED: ReadonlySet<string> = new Set([
 	"screenshot",
 	"click",
 	"type",
+	"press",
 	"scroll",
 	"logs",
 	// `download` names a control on the CURRENT document (the link or button that
@@ -135,6 +136,7 @@ const DOCUMENT_SCOPED: ReadonlySet<string> = new Set([
 const NAVIGATING_ACTIONS: ReadonlySet<string> = new Set([
 	"click",
 	"type",
+	"press",
 	"download",
 	"upload",
 ]);
@@ -144,9 +146,9 @@ const NAVIGATING_ACTIONS: ReadonlySet<string> = new Set([
  * need the per-hop Document gate armed around them.
  *
  * `open` and `goto` arm it from the navigation itself (`navigateView`), so what is
- * left is the pair that navigates because a PAGE decides to: a click follows a link
- * or submits a form, a type can submit one. Arming `Fetch.enable` around the rest
- * is not free and buys nothing: the rest cannot change which document is current,
+ * left is the input family that navigates because a PAGE decides to: a click follows
+ * a link or submits a form, and type/press can submit one. Arming `Fetch.enable`
+ * around the rest is not free and buys nothing: the rest cannot change which document is current,
  * so there is no agent-initiated hop for the gate to decide, while its
  * Document-stage interception also fails the PAGE's own subresource and
  * third-party-iframe loads with `BlockedByClient` — a side effect on the page the
@@ -175,7 +177,11 @@ const NAVIGATING_ACTIONS: ReadonlySet<string> = new Set([
  * intercept that form's own POST and its subresources for no consent gain, which
  * is the side effect this set exists to avoid.
  */
-const NAVIGATION_ACTIONS: ReadonlySet<string> = new Set(["click", "type"]);
+const NAVIGATION_ACTIONS: ReadonlySet<string> = new Set([
+	"click",
+	"type",
+	"press",
+]);
 
 /** The methods that address one tab and therefore take that tab's command lane. */
 const TAB_SCOPED: ReadonlySet<string> = new Set([
@@ -189,6 +195,7 @@ const TAB_SCOPED: ReadonlySet<string> = new Set([
 	"screenshot",
 	"click",
 	"type",
+	"press",
 	"scroll",
 	"logs",
 	"close",
@@ -746,6 +753,8 @@ export class BrowserHost implements BrowserActionContext {
 				return inputActions.click(this, params);
 			case "type":
 				return inputActions.type(this, params);
+			case "press":
+				return inputActions.press(this, params);
 			case "download":
 				return downloadActions.download(this, params);
 			case "upload":

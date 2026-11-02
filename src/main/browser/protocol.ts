@@ -73,6 +73,9 @@ export const METHODS = [
 	"screenshot",
 	"click",
 	"type",
+	// Trusted desktop key input; the core mirror must add this at the same
+	// position because this list is the closed admission gate, not discovery.
+	"press",
 	"close",
 	"status",
 	"tabs",
@@ -148,6 +151,7 @@ export const COMMAND_TIMEOUTS_S: Record<Method, number> = {
 	goto: 30.0,
 	click: 25.0,
 	type: 25.0,
+	press: 25.0,
 	read: 20.0,
 	snapshot: 20.0,
 	screenshot: 20.0,
@@ -223,6 +227,8 @@ export const ERROR_CODES = [
 	// direction (daemon -> session), a browser host is not, which is exactly why a
 	// policy refusal travels as an `ok: true` result here.
 	"capability_unsupported",
+	// Paired with the core press follow-up before callers use this new method.
+	"unsupported_key",
 	"internal",
 	// The console namespace's own additions (design 10.6). Spread rather than copied
 	// for the same reason METHODS is: this list is what `rpc.ts` narrows a raised
@@ -319,6 +325,9 @@ export const HOST_CAPABILITIES: readonly Method[] = [
 	"query",
 	"download",
 	"upload",
+	// Desktop-only trusted keys. Core must capability-gate extension/cmux and
+	// older desktop hosts instead of sending them an unknown method.
+	"press",
 	// Session-scoped network capture. DESKTOP-ONLY: the extension's debugger is
 	// attached only for the duration of an action, so it holds no standing session
 	// to keep a `Network` subscription on. The backend therefore gates these four
