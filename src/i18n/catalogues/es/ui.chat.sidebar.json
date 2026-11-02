@@ -58,5 +58,6 @@
 	"ui.chat.sidebar.row_menu.unarchive": "Desarchivar conversación",
 	"ui.chat.sidebar.row_menu.unpin": "Desfijar conversación",
 	"ui.chat.sidebar.pins.pin_label": "Fijar “{title}”",
-	"ui.chat.sidebar.pins.unpin_label": "Desfijar “{title}”"
+	"ui.chat.sidebar.pins.unpin_label": "Desfijar “{title}”",
+	"ui.chat.sidebar.agents.list_join": "{position, select, pair {{head} y {tail}} middle {{head}, {tail}} other {{head} y {tail}}}"
 }

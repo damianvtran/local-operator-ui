@@ -337,6 +337,52 @@ function layout(overrides = {}) {
 	};
 }
 
+test("hidden native address load detaches before navigation and hide/suspend/reshow retains the same view", async () => {
+	const { controller, window, calls, views } = makeController({
+		visible: true,
+		product: true,
+	});
+	let showing;
+	try {
+		controller.onLayout(layout());
+		showing = controller.showOverlay();
+		await tick();
+		const view = views[0];
+		assert.ok(view);
+		assert.deepEqual(
+			window.children,
+			[],
+			"warming address document must not remain a native child",
+		);
+		assert.equal(view.visible, false);
+		const detached = calls.findIndex((call) => call[0] === "removeChildView");
+		const load = calls.findIndex((call) => call[0] === "loadURL");
+		assert.ok(
+			detached >= 0 && detached < load,
+			"initial sizing precedes detach, which precedes navigation",
+		);
+		view.emit("dom-ready");
+		view.emit("did-finish-load");
+		assert.equal((await showing).shown, true);
+		assert.equal(window.children.at(-1), view);
+		assert.equal(view.visible, true);
+		controller.onLayout(layout({ presented: false, revision: 2 }));
+		assert.deepEqual(window.children, []);
+		assert.equal(view.visible, false);
+		controller.onLayout(layout({ revision: 3 }));
+		assert.equal(window.children.at(-1), view);
+		controller.hide("test");
+		assert.deepEqual(window.children, []);
+		assert.equal((await controller.showOverlay()).shown, true);
+		assert.equal(window.children.at(-1), view);
+		assert.equal(views.length, 1);
+	} finally {
+		controller.dispose("test");
+		if (showing) await showing;
+		assert.deepEqual(window.children, []);
+	}
+});
+
 // ---- gate and document URL ------------------------------------------------
 
 test("gate: exact opt-in, armed driver and headless are all required", () => {
@@ -871,6 +917,33 @@ test("an unchanged layout pass re-raises the child above a newly added page", as
 	controller.dispose("test");
 });
 
+test("an unchanged layout never re-attaches an already-topmost address child", async () => {
+	const { controller, window, views } = makeController();
+	controller.onLayout(layout());
+	const pending = controller.showOverlay();
+	await tick();
+	const view = views.at(-1);
+	view.webContents.emit("dom-ready");
+	view.webContents.emit("did-finish-load");
+	await pending;
+	assert.equal(window.contentView.children.at(-1), view);
+	const attachments = () =>
+		window.calls.filter(([name]) => name === "addChildView").length;
+	const before = attachments();
+	// Repeated background layout notifications are not user focus intent. Native
+	// reattachment can move the first responder even without an explicit focus call.
+	for (let revision = 2; revision <= 10; revision += 1) {
+		controller.onLayout(layout({ revision }));
+	}
+	assert.equal(
+		attachments(),
+		before,
+		"topmost child remains attached in place",
+	);
+	assert.equal(view.visible, true);
+	controller.dispose("test");
+});
+
 test("background creation (same key) never re-opens after a hide; null layout stays hidden", async () => {
 	const { controller, views } = makeController();
 	controller.onLayout(layout());
@@ -1079,7 +1152,19 @@ test("S5: a narrow anchor that precedes its page rect resizes the hidden reusabl
 	assert.equal(view.visible, false);
 
 	const narrowRect = { ...RECT, x: 0, width: 360 };
+	const resizeStart = host.calls.length;
 	controller.onLayout(layout({ contentRect: narrowRect, revision: 2 }));
+	assert.deepEqual(
+		host.calls
+			.slice(resizeStart)
+			.filter(
+				(call) =>
+					call[0] === "addChildView" ||
+					(call[0] === "visible" && call[2] === true),
+			),
+		[],
+		"hidden resize cannot transiently reparent or show the dismissed native list",
+	);
 	assert.equal(
 		view.bounds.x,
 		0,
@@ -1216,6 +1301,10 @@ test("dispose is idempotent, closes before detaching and refuses later shows", a
 	view.webContents.emit("did-finish-load");
 	await pending;
 	const listenersBefore = view.listenerCount("dom-ready");
+	const detachesBefore = calls.filter(
+		(call) => call[0] === "removeChildView",
+	).length;
+	const teardownStart = calls.length;
 	controller.dispose("stop");
 	controller.dispose("stop-again");
 	assert.equal(view.webContents.isDestroyed(), true);
@@ -1227,8 +1316,14 @@ test("dispose is idempotent, closes before detaching and refuses later shows", a
 	);
 	assert.equal(
 		calls.filter((call) => call[0] === "removeChildView").length,
-		1,
-		"detach exactly once",
+		detachesBefore + 1,
+		"teardown detaches exactly once in addition to the warm-load fence",
+	);
+	const teardown = calls.slice(teardownStart);
+	assert.ok(
+		teardown.findIndex((call) => call[0] === "close") <
+			teardown.findIndex((call) => call[0] === "removeChildView"),
+		"final disposal closes before removing its native parent",
 	);
 	assert.equal(view.listenerCount("dom-ready"), 0, "listeners removed");
 	assert.ok(listenersBefore > 0);

@@ -244,6 +244,78 @@ export function headlessExerciserAllowed(input: {
 	return input.arming.armed && input.windowMode === "headless";
 }
 
+export const OWNER_AUDIT_STARTUP_SCENE = "team-bridge-owner-audit" as const;
+const DEV_DRIVER_SCENE_ARG = "--lo-dev-driver-scene";
+
+/** One fixed native-QA scene, not a navigation or execution API. Paths are
+ * realpath-canonicalized by main against ACTUAL Electron userData after backend
+ * discovery. Missing isolation or a default/live daemon fails closed. Keeping
+ * this decision pure lets negative cases run without showing a window. */
+export function resolveDevDriverStartupScene(input: {
+	env: Record<string, string | undefined>;
+	armed: boolean;
+	packaged: boolean;
+	windowMode: WindowMode;
+	backendManagerDisabled: boolean;
+	selectedBackendUrl: string;
+	paths: {
+		root: string;
+		home: string;
+		config: string;
+		requestedUserData: string;
+		actualUserData: string;
+	} | null;
+}): typeof OWNER_AUDIT_STARTUP_SCENE | null {
+	if (
+		input.env.LOCAL_OPERATOR_UI_DEV_DRIVER_SCENE !==
+			OWNER_AUDIT_STARTUP_SCENE ||
+		!input.armed ||
+		input.packaged ||
+		input.windowMode !== "headless" ||
+		input.env.VITE_DISABLE_BACKEND_MANAGER !== "true" ||
+		!input.backendManagerDisabled ||
+		!input.paths
+	)
+		return null;
+	const p = input.paths;
+	if (
+		!p.root.startsWith("/") ||
+		p.root === "/" ||
+		p.root.endsWith("/") ||
+		![p.home, p.config, p.requestedUserData, p.actualUserData].every((v) =>
+			v.startsWith(`${p.root}/`),
+		) ||
+		p.actualUserData !== p.requestedUserData
+	)
+		return null;
+	try {
+		const asked = new URL(input.env.VITE_LOCAL_OPERATOR_API_URL ?? "");
+		const selected = new URL(input.selectedBackendUrl);
+		if (
+			asked.href !== selected.href ||
+			asked.protocol !== "http:" ||
+			!["127.0.0.1", "localhost", "[::1]"].includes(asked.hostname) ||
+			!asked.port ||
+			asked.port === "1111" ||
+			asked.username ||
+			asked.password ||
+			asked.pathname !== "/" ||
+			asked.search ||
+			asked.hash
+		)
+			return null;
+		return OWNER_AUDIT_STARTUP_SCENE;
+	} catch {
+		return null;
+	}
+}
+
+export function devDriverSceneArgument(
+	scene: typeof OWNER_AUDIT_STARTUP_SCENE,
+): string {
+	return `${DEV_DRIVER_SCENE_ARG}=${scene}`;
+}
+
 /**
  * The `additionalArguments` entry that carries the frames directory to a preload.
  *
@@ -264,13 +336,18 @@ export function devDriverArgument(outDir: string): string {
  */
 export function readDevDriverArgument(
 	argv: readonly string[],
-): { outDir: string } | null {
+): { outDir: string; startupScene?: typeof OWNER_AUDIT_STARTUP_SCENE } | null {
 	const prefix = `${DEV_DRIVER_ARG}=`;
 	const match = argv.find((entry) => entry.startsWith(prefix));
 	if (match === undefined) return null;
 	const outDir = match.slice(prefix.length);
 	if (outDir === "" || !outDir.startsWith("/")) return null;
-	return { outDir };
+	return {
+		outDir,
+		...(argv.includes(devDriverSceneArgument(OWNER_AUDIT_STARTUP_SCENE))
+			? { startupScene: OWNER_AUDIT_STARTUP_SCENE }
+			: {}),
+	};
 }
 
 /** The one line an armed (or refused) launch prints, and nothing at all when off. */

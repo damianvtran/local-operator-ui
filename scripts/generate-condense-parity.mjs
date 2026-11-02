@@ -295,8 +295,7 @@ async function bundleModel() {
 }
 
 /** The loaded model, for the generator's own use. */
-async function loadModel() {
-	const { code } = await bundleModel();
+async function loadModel(code) {
 	const url = `data:text/javascript;base64,${Buffer.from(code).toString("base64")}`;
 	return import(url);
 }
@@ -563,8 +562,7 @@ function latchFrames(model, tokens) {
  * metafile (`bundleModel().inputs`). Round 1 hand-listed seven of the twenty, so a
  * change to one of the other thirteen moved the fixture while this pin stood still.
  */
-export async function modelSourceHash() {
-	const { inputs } = await bundleModel();
+function hashSources(inputs) {
 	const digest = createHash("sha256");
 	for (const file of inputs) {
 		digest.update(file);
@@ -573,6 +571,10 @@ export async function modelSourceHash() {
 		digest.update("\u0000");
 	}
 	return digest.digest("hex");
+}
+
+export async function modelSourceHash() {
+	return hashSources((await bundleModel()).inputs);
 }
 
 /** The repository files the bundle reads, sorted: what the source pin covers. */
@@ -605,7 +607,10 @@ const labelToken = (kind) =>
 			: kind.kind;
 
 export async function generate() {
-	const model = await loadModel();
+	// One build supplies both decisions and provenance. Keep it invocation-local:
+	// caching across calls would hide source changes from the freshness checks.
+	const { code, inputs } = await bundleModel();
+	const model = await loadModel(code);
 	const cases = [];
 	const push = (tokens, permutation) =>
 		cases.push({
@@ -634,8 +639,8 @@ export async function generate() {
 			"see the generator's header for why. A client with its own record type maps the " +
 			"fixture's row vocabulary onto its own shape; the DERIVATION is the shared thing.",
 		desktop: {
-			sourceHash: await modelSourceHash(),
-			modelSources: await bundledSources(),
+			sourceHash: hashSources(inputs),
+			modelSources: inputs,
 			sources: SHAPE_SOURCES,
 			seed: SEED,
 			propertyCases: PROPERTY_CASES,

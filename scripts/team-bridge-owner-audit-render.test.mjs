@@ -150,10 +150,13 @@ const bundle = await build({
 				ownerAuditMessagePageSchema,
 				ownerAuditThreadSchema,
 			} from "./src/shared/team-bridge-owner-audit-contract";
-			export { TeamBridgeOwnerAuditApi } from "./src/renderer/src/shared/api/local-operator/team-bridge-owner-audit-api";
+			export { DesktopControlError } from "./src/renderer/src/shared/api/local-operator/desktop-api";
+ export { TeamBridgeOwnerAuditApi } from "./src/renderer/src/shared/api/local-operator/team-bridge-owner-audit-api";
 			export { desktopRequestSchema, desktopEndpoint } from "./src/shared/desktop-contract";
-			export { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-			export { radientUserKeys } from "./src/renderer/src/shared/hooks/radient-account-authority";
+			export { QueryClient, QueryClientProvider, CancelledError } from "@tanstack/react-query";
+ export { useOwnerAuditStartupScene } from "./src/renderer/src/dev-driver/owner-audit-startup";
+ export { useOwnerAuditConversations } from "./src/renderer/src/features/team-bridge/use-team-bridge-owner-audit";
+			export { radientUserKeys, beginRadientAuthoritySignOut } from "./src/renderer/src/shared/hooks/radient-account-authority";
 			export { teamBridgeKeys } from "./src/renderer/src/features/team-bridge/team-bridge-keys";
 			export { t, formatDate, formatDateTime } from "./src/renderer/src/shared/i18n";
 			export { TeamBridgeMessageList } from "./src/renderer/src/features/team-bridge/team-bridge-message-list";
@@ -898,6 +901,31 @@ test("panel: loading, error, empty history, populated", async () => {
 	await populated.close();
 });
 
+/* A slid history window can outlive a failed read. Assert the whole panel's
+ * button set so a floating history action cannot bypass its refusal/retry UI. */
+for (const [state, expectedButtons] of [
+	["ready", ["Refresh", "Refresh"]],
+	["permission", []],
+	["not-found", []],
+	["auth", []],
+	["unavailable", ["Try again"]],
+]) {
+	test(`panel: evicted latest page button matrix — ${state}`, async (context) => {
+		const view = await renderView(
+			panel({ state, messages: [admitted], latestPageAvailable: false }),
+		);
+		try {
+			const buttons = [...view.host.querySelectorAll("button")].map((button) =>
+				button.textContent.trim(),
+			);
+			context.diagnostic(`${state}: buttons=${JSON.stringify(buttons)}`);
+			assert.deepEqual(buttons, expectedButtons);
+		} finally {
+			await view.close();
+		}
+	});
+}
+
 /* ------------------------------------------------------------------ *\
    3. The honest body, the verdict chips, the disclosure
 \* ------------------------------------------------------------------ */
@@ -1097,8 +1125,20 @@ test("a truncated audit window says so where the reader is looking", async () =>
 		false,
 		"the cut-off is not a header line",
 	);
-	const notice = closed.host.querySelector("section > div > p:last-of-type");
+	/* The scroll anchor owns an inner content wrapper now. Find the actual
+	 * membership statement within the viewport rather than pinning its nesting
+	 * depth, but still require it to close the transcript, not just exist. */
+	const viewport = closed.host.querySelector("section > div");
+	assert.ok(viewport);
+	const notice = [...viewport.querySelectorAll("p")].find(
+		(paragraph) => paragraph.textContent === m.t("ui.ownerAudit.removed"),
+	);
 	assert.ok(notice, "the list ends with the window's own statement");
+	assert.equal(notice.parentElement.lastElementChild, notice);
+	assert.ok(
+		viewport.textContent.endsWith(notice.textContent),
+		"the truncation statement follows all transcript content",
+	);
 	assert.ok(notice.textContent.includes(m.t("ui.ownerAudit.removed")));
 	/* Distinct treatment: the notice is not the disclosure's 12px quiet grey. */
 	assert.ok(notice.className.includes("text-sm"));
@@ -1156,6 +1196,108 @@ test("a bounded page says what is missing and how to load it", async () => {
 	const whole = await renderView(panel({ messages: [admitted] }));
 	assert.equal(whole.text().includes(m.t("ui.ownerAudit.page_cutoff")), false);
 	await whole.close();
+});
+
+test("panel: cutoff and older action remain visible at newest, middle and top", async (context) => {
+	/* JSDOM has no layout. Model the native viewport's geometry, as the anchor
+	 * suite does, while the SHIPPED panel/hook performs the initial scroll.
+	 * The structural assertions bind that model to a reserved flex row, not an
+	 * overlay. This is a scroll regression, not browser-frame evidence. */
+	let viewport;
+	let scrollTop = 0;
+	let olderReads = 0;
+	const viewportTop = 160;
+	const viewportHeight = 300;
+	const contentHeight = 2400;
+	const view = await renderView(
+		panel({
+			messages: Array.from({ length: 50 }, (_, index) => ({
+				...admitted,
+				id: `cutoff-${index}`,
+			})),
+			hasMore: true,
+			loadMore: () => olderReads++,
+			scrollHostRef: (node) => {
+				if (!node) return;
+				viewport = node;
+				Object.defineProperties(node, {
+					scrollHeight: { configurable: true, get: () => contentHeight },
+					clientHeight: { configurable: true, get: () => viewportHeight },
+					scrollTop: {
+						configurable: true,
+						get: () => scrollTop,
+						set: (value) => {
+							scrollTop = Math.max(
+								0,
+								Math.min(contentHeight - viewportHeight, value),
+							);
+						},
+					},
+				});
+			},
+		}),
+	);
+	try {
+		assert.equal(scrollTop, 2100, "the actual panel hook opens at newest");
+		const section = view.host.querySelector("section");
+		const band = section.querySelector(":scope > aside");
+		assert.ok(band, "cutoff reserves space outside the scrolling transcript");
+		assert.equal(band.nextElementSibling, viewport);
+		assert.ok(section.classList.contains("flex-col"));
+		assert.ok(band.classList.contains("shrink-0"));
+		assert.equal(
+			band.textContent.includes(m.t("ui.ownerAudit.page_cutoff")),
+			true,
+		);
+		assert.equal(
+			viewport.textContent.includes(m.t("ui.ownerAudit.page_cutoff")),
+			false,
+		);
+		for (const overlay of ["absolute", "fixed", "sticky", "overflow-auto"]) {
+			assert.equal(band.classList.contains(overlay), false);
+		}
+		/* The band ends where the scrollport begins. Moving it into the first
+		 * content row (the original defect) must fail the same visibility check. */
+		const visible = () => {
+			const top = viewport.contains(band)
+				? viewportTop - scrollTop
+				: viewportTop - 40;
+			const bottom = top + 40;
+			return top >= 0 && bottom <= viewportTop + viewportHeight;
+		};
+		const older = BUTTON_TEXT(band, m.t("ui.ownerAudit.older"));
+		assert.ok(older, "the advertised action is in the reserved visible band");
+		for (const [position, offset] of [
+			["newest", 2100],
+			["middle", 1050],
+			["top", 0],
+		]) {
+			viewport.scrollTop = offset;
+			await act(async () => viewport.dispatchEvent(new window.Event("scroll")));
+			assert.equal(visible(), true, `${position}: cutoff/action are in view`);
+			context.diagnostic(
+				`${position}: scrollTop=${scrollTop}; reserved cutoff/action y=120–160; viewport y=160–460`,
+			);
+		}
+		await act(async () => older.click());
+		assert.equal(
+			olderReads,
+			1,
+			"the pinned action still requests older history",
+		);
+		viewport.firstElementChild.prepend(band);
+		for (const offset of [2100, 1050]) {
+			viewport.scrollTop = offset;
+			assert.equal(
+				visible(),
+				false,
+				"negative control: top-only disclosure is offscreen",
+			);
+		}
+		section.insertBefore(band, viewport);
+	} finally {
+		await view.close();
+	}
 });
 
 test("the surface offers no way to write: no composer, no reaction, no admit", async () => {
@@ -1514,7 +1656,7 @@ test("rail: all organizations — a status refetch during both org reads renders
 	await app.close();
 });
 
-test("rail: a genuine authority change mid-read still renders the error", async () => {
+test("rail: a genuine authority change cancels the stale read and rebinds", async () => {
 	requests = [];
 	let client;
 	let swapped = false;
@@ -1528,8 +1670,11 @@ test("rail: a genuine authority change mid-read still renders the error", async 
 				...before,
 				state: "unavailable",
 			});
+			return json(conversationPage);
 		}
-		return json(conversationPage);
+		// The newly bound authority answers an empty page. The old page must
+		// neither render its rows nor become an error the human must retry.
+		return json({ ...conversationPage, conversations: [] });
 	};
 	const app = await mountSlot(
 		{
@@ -1548,8 +1693,14 @@ test("rail: a genuine authority change mid-read still renders the error", async 
 	);
 
 	assert.equal(swapped, true, "the authority change must land mid-read");
-	assert.equal(app.host.querySelector('[role="alert"]') !== null, true);
-	assert.ok(app.host.textContent.includes(m.t("ui.ownerAudit.error")));
+	assert.equal(
+		requests.filter(
+			(request) => request.op === "team_bridge.owner_audit.conversations",
+		).length,
+		2,
+	);
+	assert.equal(app.host.querySelector('[role="alert"]'), null);
+	assert.ok(app.host.textContent.includes(m.t("ui.ownerAudit.empty_list")));
 	assert.equal(
 		app.host.querySelectorAll("li > button").length,
 		0,
@@ -2208,4 +2359,441 @@ test("a channel renders byte-identically with the audit props omitted", async ()
 		writeFileSync(PARITY_GOLDEN, `${markup}\n`);
 	}
 	assert.equal(`${markup}\n`, readFileSync(PARITY_GOLDEN, "utf8"));
+});
+
+/* The actual private-read hook must emit only operation/status class while never
+ * serializing the exception (Zod prose/stack can contain private input). The
+ * transport remains the same fixture as the rail tests, not a duplicate query
+ * implementation. These are diagnostics tests, NOT the production first-open
+ * reproduction: that renderer's original exception is still unknown. */
+test("diagnostics: actual audit query attributes rejection and redacts private exceptions", async (context) => {
+	const originalWarn = console.warn;
+	const originalRead = m.TeamBridgeOwnerAuditApi.conversations;
+	const forbidden =
+		"PRIVATE-TOKEN-https://private.invalid/org_secret/body-secret";
+	for (const scenario of [
+		"http",
+		"schema",
+		"before",
+		"bridge",
+		"post",
+		"cancel",
+		"unknown",
+		"success",
+		"logger",
+		"logger-rejected",
+		"credential",
+		"status-object",
+		"status-string",
+		"status-array",
+		"status-nan",
+		"status-infinity",
+		"status-low",
+		"status-high",
+		"status-fraction",
+		"status-accessor",
+	]) {
+		await context.test(scenario, async () => {
+			const events = [];
+			let sinkCalls = 0;
+			console.warn = (...args) => {
+				sinkCalls += 1;
+				if (scenario.startsWith("logger")) throw new Error(forbidden);
+				if (args[0] === "[owner-audit-read]") events.push(JSON.parse(args[1]));
+			};
+			const host = document.createElement("div");
+			document.body.append(host);
+			const root = createRoot(host);
+			const client = new m.QueryClient({
+				defaultOptions: {
+					queries: { retry: false, gcTime: Number.POSITIVE_INFINITY },
+				},
+			});
+			client.setQueryData(m.radientUserKeys.user(), {
+				account: { id: scenario === "before" ? "acct_other" : OWNER },
+			});
+			client.setQueryData(m.teamBridgeKeys.statusFor(OWNER), {
+				account_id: OWNER,
+				state: "ready",
+				local: { enabled: true },
+			});
+			let query;
+			function Probe() {
+				query = m.useOwnerAuditConversations({
+					accountId: OWNER,
+					tenantId: TENANT,
+				});
+				return null;
+			}
+			let release;
+			const pending = new Promise((resolve) => {
+				release = resolve;
+			});
+			let calls = 0;
+			answer = () => {
+				calls += 1;
+				if (scenario === "credential") m.beginRadientAuthoritySignOut(client);
+				if (scenario === "http")
+					return refusal(403, { code: forbidden, message: forbidden });
+				if (scenario === "schema")
+					return json({ conversations: [{ agent: forbidden }] });
+				if (scenario === "bridge")
+					client.setQueryData(m.teamBridgeKeys.statusFor(OWNER), {
+						account_id: OWNER,
+						state: "unavailable",
+						local: { enabled: true },
+					});
+				if (scenario === "post")
+					return pending.then(() => json(conversationPage));
+				return json(conversationPage);
+			};
+			let conversions = 0;
+			const statuses = {
+				"status-object": {
+					payload: forbidden,
+					url: forbidden,
+					toJSON() {
+						conversions += 1;
+						return forbidden;
+					},
+				},
+				"status-string": forbidden,
+				"status-array": [forbidden],
+				"status-nan": Number.NaN,
+				"status-infinity": Number.POSITIVE_INFINITY,
+				"status-low": 99,
+				"status-high": 600,
+				"status-fraction": 403.5,
+			};
+			const deliberate = scenario.startsWith("status-")
+				? new m.DesktopControlError(statuses[scenario], forbidden)
+				: scenario === "cancel"
+					? new m.CancelledError()
+					: new Error(forbidden);
+			if (scenario === "status-accessor")
+				Object.defineProperty(deliberate, "status", {
+					get() {
+						conversions += 1;
+						return { payload: forbidden };
+					},
+				});
+			if (
+				scenario.startsWith("status-") ||
+				["cancel", "unknown", "logger-rejected"].includes(scenario)
+			) {
+				m.TeamBridgeOwnerAuditApi.conversations = async () => {
+					throw deliberate;
+				};
+			}
+			let unmounted = false;
+			try {
+				await act(async () =>
+					root.render(h(m.QueryClientProvider, { client }, h(Probe))),
+				);
+				if (scenario === "post") {
+					await act(async () => root.unmount());
+					unmounted = true;
+					await act(async () => release());
+				}
+				await settleTimes();
+				if (scenario.startsWith("logger")) {
+					assert.equal(
+						sinkCalls,
+						scenario === "logger-rejected" ? 1 : 0,
+						"sink failure must never recursively log itself",
+					);
+					if (scenario === "logger-rejected") {
+						assert.equal(
+							query.error,
+							deliberate,
+							"logger failure cannot replace rejection",
+						);
+						return;
+					}
+					assert.equal(
+						query.isSuccess,
+						true,
+						"a failing sink must not turn success into rejection",
+					);
+					return;
+				}
+				const noRejection = ["before", "success"].includes(scenario);
+				assert.equal(events.length, noRejection ? 0 : 1);
+				if (!noRejection)
+					assert.deepEqual(events[0], {
+						operation: "conversations",
+						statusClass: scenario === "http" ? "4xx" : "unknown",
+					});
+				if (scenario === "http")
+					assert.equal(calls, 1, "permanent refusal never retries");
+				if (scenario.startsWith("status-"))
+					assert.equal(conversions, 0, "no getter/coercion/toJSON");
+				if (scenario === "unknown" || scenario.startsWith("status-"))
+					assert.equal(query.error, deliberate);
+				const serialized = JSON.stringify(events);
+				for (const secret of [
+					forbidden,
+					OWNER,
+					TENANT,
+					"stack",
+					"https://",
+					"body-secret",
+				])
+					assert.equal(
+						serialized.includes(secret),
+						false,
+						`diagnostics must not include ${secret}`,
+					);
+			} finally {
+				if (!unmounted) await act(async () => root.unmount());
+				client.clear();
+				host.remove();
+				m.TeamBridgeOwnerAuditApi.conversations = originalRead;
+				console.warn = originalWarn;
+			}
+		});
+	}
+});
+
+test("diagnostics: manual retry preserves recovery, scope budgets isolate, and logging is bounded", async () => {
+	const originalWarn = console.warn;
+	const events = [];
+	console.warn = (...args) => {
+		if (args[0] === "[owner-audit-read]") events.push(JSON.parse(args[1]));
+	};
+	const host = document.createElement("div");
+	document.body.append(host);
+	const root = createRoot(host);
+	const client = new m.QueryClient({
+		defaultOptions: {
+			queries: { retry: false, gcTime: Number.POSITIVE_INFINITY },
+		},
+	});
+	client.setQueryData(m.radientUserKeys.user(), { account: { id: OWNER } });
+	client.setQueryData(m.teamBridgeKeys.statusFor(OWNER), {
+		account_id: OWNER,
+		state: "ready",
+		local: { enabled: true },
+	});
+	let query;
+	function Probe({ tenantId }) {
+		query = m.useOwnerAuditConversations({ accountId: OWNER, tenantId });
+		return null;
+	}
+	const render = (tenantId) =>
+		act(async () =>
+			root.render(h(m.QueryClientProvider, { client }, h(Probe, { tenantId }))),
+		);
+	try {
+		answer = () => refusal(403, { code: "conversation_not_found" });
+		await render(TENANT);
+		await settleTimes();
+		assert.equal(query.isError, true);
+		assert.equal(
+			events.length,
+			1,
+			"permanent denial does not automatically retry",
+		);
+		assert.deepEqual(events[0], {
+			operation: "conversations",
+			statusClass: "4xx",
+		});
+		answer = () => json(conversationPage);
+		await act(async () => {
+			await query.refetch();
+		});
+		await settleTimes();
+		assert.equal(query.isSuccess, true);
+		assert.equal(events.length, 1, "successful reads do not log");
+		answer = () => refusal(403, { code: "conversation_not_found" });
+		for (let i = 0; i < 21; i += 1) {
+			await act(async () => {
+				await query.refetch();
+			});
+		}
+		assert.equal(events.length, 20, "at most twenty refusal records per scope");
+		assert.equal(
+			query.isError,
+			true,
+			"the limit only stops logging, never the request",
+		);
+		await render("org_other_synthetic");
+		await settleTimes();
+		assert.equal(events.length, 21);
+		assert.deepEqual(events[20], {
+			operation: "conversations",
+			statusClass: "4xx",
+		});
+		assert.equal(JSON.stringify(events).includes("org_other_synthetic"), false);
+	} finally {
+		await act(async () => root.unmount());
+		client.clear();
+		host.remove();
+		console.warn = originalWarn;
+	}
+});
+
+const DOCUMENTED_AUDIT_EXPORTER = /python3 - <<'PY'\n([\s\S]*?)\nPY\n/;
+test("diagnostics: exact documented exporter rejects malformed rows and bounds input/output", async () => {
+	const { mkdtempSync, mkdirSync, writeFileSync, rmSync } = await import(
+		"node:fs"
+	);
+	const { join } = await import("node:path");
+	const { tmpdir } = await import("node:os");
+	const { spawnSync } = await import("node:child_process");
+	const home = mkdtempSync(
+		join(
+			process.env.LOCAL_OPERATOR_SCRATCHPAD || tmpdir(),
+			"audit-export-test-",
+		),
+	);
+	const log = join(
+		home,
+		"Library/Application Support/Local Operator/logs/backend-service.log",
+	);
+	mkdirSync(join(home, "Library/Application Support/Local Operator/logs"), {
+		recursive: true,
+	});
+	const code = readFileSync(
+		"docs/owner-audit-read-diagnostics.md",
+		"utf8",
+	).match(DOCUMENTED_AUDIT_EXPORTER)?.[1];
+	assert.ok(
+		code,
+		"exercise the documented command verbatim, not a duplicate exporter",
+	);
+	const secret = "PRIVATE-https://private.invalid/token-payload";
+	const good = { operation: "conversations", statusClass: "4xx" };
+	const line = (row) =>
+		`[time] [renderer] [owner-audit-read] ${JSON.stringify(row)}\n`;
+	const run = (text) => {
+		writeFileSync(log, text);
+		const result = spawnSync("python3", ["-c", code], {
+			encoding: "utf8",
+			timeout: 10000,
+			maxBuffer: 1048576,
+			env: { ...process.env, HOME: home },
+		});
+		assert.equal(result.status, 0, result.stderr);
+		assert.equal(result.stdout.includes(secret), false);
+		return result.stdout;
+	};
+	try {
+		const invalid = [
+			{},
+			{ ...good, unknown: secret },
+			{ ...good, operation: secret },
+			{ ...good, statusClass: secret },
+			{ ...good, statusClass: 403 },
+			{ ...good, statusClass: { body: secret } },
+			{ ...good, code: "conversation_not_found" },
+			{ ...good, status: 403 },
+		];
+		const missing = Object.keys(good).map((key) => {
+			const row = { ...good };
+			delete row[key];
+			return row;
+		});
+		const hugeInteger = line(good).replace(
+			'"statusClass":"4xx"',
+			`"statusClass":${"9".repeat(501)}`,
+		);
+		const garbage = "[renderer] [owner-audit-read] not-json-private\n";
+		const duplicate = line(good).replace(
+			'"statusClass":"4xx"',
+			'"statusClass":"4xx","statusClass":"4xx"',
+		);
+		const oversized = `[renderer] [owner-audit-read] ${" ".repeat(9000)}${JSON.stringify(good)}\n`;
+		const output = run(
+			invalid.map(line).join("") +
+				missing.map(line).join("") +
+				hugeInteger +
+				garbage +
+				duplicate +
+				oversized +
+				line(good),
+		);
+		assert.deepEqual(output.trim().split("\n").map(JSON.parse), [good]);
+		const bounded = run(
+			Array.from({ length: 1003 }, () => line(good)).join(""),
+		);
+		assert.ok(bounded.trim().split("\n").length <= 200);
+		assert.ok(Buffer.byteLength(bounded) <= 65536);
+		assert.ok(bounded.length > 0);
+		const tail = run(`${"x".repeat(1100000)}\n${line(good)}`);
+		assert.deepEqual(tail.trim().split("\n").map(JSON.parse), [good]);
+	} finally {
+		rmSync(home, { recursive: true, force: true });
+	}
+});
+
+test("startup scene waits for actual capability and settled account before navigating once", async () => {
+	const host = document.createElement("div");
+	document.body.append(host);
+	const root = createRoot(host);
+	const client = new m.QueryClient({
+		defaultOptions: { queries: { gcTime: Number.POSITIVE_INFINITY } },
+	});
+	const previous = window.__loDevDriver;
+	const paths = [];
+	const navigate = (path) => paths.push(path);
+	let enabled = false;
+	function Probe() {
+		m.useOwnerAuditStartupScene(enabled, navigate);
+		return null;
+	}
+	const render = () =>
+		act(async () =>
+			root.render(h(m.QueryClientProvider, { client }, h(Probe))),
+		);
+	try {
+		window.__loDevDriver = undefined;
+		await render();
+		assert.deepEqual(paths, []);
+		window.__loDevDriver = { armed: true, startupScene: "unknown" };
+		enabled = true;
+		await render();
+		assert.deepEqual(paths, []);
+		window.__loDevDriver = {
+			armed: true,
+			startupScene: "team-bridge-owner-audit",
+		};
+		enabled = false;
+		await render();
+		assert.deepEqual(paths, []);
+		enabled = true;
+		await render();
+		assert.deepEqual(
+			paths,
+			[],
+			"enabled capability alone cannot invent a settled account",
+		);
+		enabled = false;
+		await render();
+		await act(async () =>
+			client.setQueryData(m.radientUserKeys.user(), { account: { id: OWNER } }),
+		);
+		assert.deepEqual(
+			paths,
+			[],
+			"disabled capability must never navigate even with account ready",
+		);
+		enabled = true;
+		await render();
+		assert.deepEqual(paths, ["/team-bridge"]);
+		enabled = false;
+		await render();
+		enabled = true;
+		await render();
+		assert.deepEqual(
+			paths,
+			["/team-bridge"],
+			"never redirect the user again after the one scene admission",
+		);
+	} finally {
+		await act(async () => root.unmount());
+		client.clear();
+		host.remove();
+		window.__loDevDriver = previous;
+	}
 });

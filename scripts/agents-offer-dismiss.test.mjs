@@ -221,13 +221,23 @@ const STUB_FILTERS = STUB_PATHS.map((path) => new RegExp(`^${path}$`));
 const ANY_PATH = /.*/;
 
 const STUB_CONTENTS = {
-	"@shared/api/local-operator/desktop-api": `export {DESKTOP_REFUSAL_PLACEHOLDER, DesktopControlError, UserFacingError, userFacingMessage, isRemoteReceiptDeferral} from ${JSON.stringify(
+	"@shared/api/local-operator/desktop-api": `export {DESKTOP_REFUSAL_PLACEHOLDER, DesktopControlError, UserFacingError, userFacingMessage, isRemoteReceiptDeferral, mediaError} from ${JSON.stringify(
 		`${process.cwd()}/src/renderer/src/shared/api/local-operator/desktop-api.ts`,
 	)}
 export {DESKTOP_FOREGROUND_REQUIRED_CODE, DESKTOP_FOREGROUND_REQUIRED_MESSAGE} from ${JSON.stringify(
 		`${process.cwd()}/src/shared/desktop-contract.ts`,
 	)}
-export const desktopResult = request => globalThis.__desktop(request);`,
+export const desktopResult = request => globalThis.__desktop(request);
+/*
+ * Agent pictures: the shipped sidebar/status graph now imports the avatar
+ * hooks, which read the roster through desktopControlResponse and picture
+ * bytes through desktopMedia. This fixture is not about pictures, so both
+ * answer without IO (an empty roster means no picture, so no byte read is
+ * attempted) and stay off the case's own request seam, which keeps the request
+ * log about the control under test. mediaError is the shipped, pure one.
+ */
+export const desktopControlResponse = async () => new Response(JSON.stringify({ result: { agents: [] } }), { status: 200, headers: { "Content-Type": "application/json" } });
+export const desktopMedia = async () => ({ status: 404, kind: "error", detail: "no media in this fixture" });`,
 	/*
 	 * Capabilities: the gate the section's own reads ride, so
 	 * `session_catalogue: 2` is present as it is in `mark-all-read`'s harness,

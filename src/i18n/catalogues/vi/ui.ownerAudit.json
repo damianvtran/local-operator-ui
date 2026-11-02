@@ -11,6 +11,8 @@
 	"ui.ownerAudit.agent": "Chánh văn phòng",
 	"ui.ownerAudit.more": "Tải thêm",
 	"ui.ownerAudit.older": "Tải tin nhắn cũ hơn",
+	"ui.ownerAudit.older_replies": "Tải phản hồi cũ hơn",
+	"ui.ownerAudit.empty_replies": "Không có phản hồi nào trong khoảng thời gian kiểm tra này.",
 	"ui.ownerAudit.page_cutoff": "Các tin nhắn cũ hơn chưa được hiển thị. Tải tin nhắn cũ hơn để đọc phần trước đó.",
 	"ui.ownerAudit.admitted": "Được chánh văn phòng của bạn tiếp nhận",
 	"ui.ownerAudit.rejected": "Bị bộ lọc của chánh văn phòng của bạn từ chối",
@@ -26,5 +28,10 @@
 	"ui.ownerAudit.window_unconfirmed": "Không rõ lịch sử kiểm tra này kết thúc ở đâu. Không thể xác nhận tư cách thành viên của chánh văn phòng của bạn trong cuộc trò chuyện này.",
 	"ui.ownerAudit.disclosure": "Bạn có thể đọc lịch sử kiểm tra này vì bạn sở hữu chánh văn phòng mà lịch sử này bao quát. Các thành viên khác được thông báo rằng chủ sở hữu tác nhân có thể kiểm tra cuộc trò chuyện.",
 	"ui.ownerAudit.viewers_label": "Cũng được đọc bởi",
-	"ui.ownerAudit.replies": "Đọc các câu trả lời trong luồng"
+	"ui.ownerAudit.replies": "Đọc các câu trả lời trong luồng",
+	"ui.ownerAudit.auth_required": "Đăng nhập để đọc tin nhắn được kiểm tra. Phiên đăng nhập của bạn có thể đã hết hạn.",
+	"ui.ownerAudit.permission_refused": "Bạn không có quyền truy cập lịch sử kiểm tra này.",
+	"ui.ownerAudit.not_found": "Không tìm thấy cuộc trò chuyện được kiểm tra này.",
+	"ui.ownerAudit.unavailable": "Dịch vụ kiểm tra không tải được những tin nhắn này. Hãy thử lại.",
+	"ui.ownerAudit.sign_in": "Đăng nhập"
 }

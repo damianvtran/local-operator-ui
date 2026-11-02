@@ -1,0 +1,52 @@
+{
+	"auditor": "reviewer",
+	"model": "radient/auto",
+	"model_disclosure": "Disclosed fallback: the session's primary model anthropic/claude-opus-5-5 was unavailable (provider quota) and the harness routed this run through openai/gpt-6-astra and kimi/k3.1-pro before settling on radient/auto; the audit was completed on radient/auto.",
+	"instance": "7d20c9116360-fr",
+	"locale": "fr",
+	"namespace": "ui.agents.avatar",
+	"date": "2026-10-30",
+	"status": "passed",
+	"result": "clean-with-findings",
+	"sha256": {
+		"en": "35ac09523862b19fb4c5c942d57f42d2dd8007f926ead27b306febbc2c830847",
+		"fr": "f9b105fe06d24e96d7aa036cbbf19f0fa036f25a6546753b028560e76c269336"
+	},
+	"source_sha256": "35ac09523862b19fb4c5c942d57f42d2dd8007f926ead27b306febbc2c830847",
+	"target_sha256": "f9b105fe06d24e96d7aa036cbbf19f0fa036f25a6546753b028560e76c269336",
+	"counts": {
+		"blocker": 0,
+		"major": 0,
+		"minor": 1,
+		"nit": 0
+	},
+	"findings": [
+		{
+			"id": "A-fr-unit",
+			"severity": "minor",
+			"key": "ui.agents.avatar.editor.error_size",
+			"keys": [
+				"ui.agents.avatar.editor.error_size",
+				"ui.agents.avatar.editor.hint"
+			],
+			"detail": "fr abbreviates the 10 MB ceiling as {size} Mo (error_size) and 10 Mo (hint). The shipped, audited sibling ui.agents.publication.payload_too_large.body_with_limit keeps the Latin unit in fr ({size} KiB), and #1517's ui.agents.settings commit 10ba38e62bd recorded \"keeps the Latin MB unit\" for this same ceiling. One feature now abbreviates one unit two ways.",
+			"recommend": "Decide once: keep MB/KiB everywhere (matching the corpus and the recorded settings decision), or localize Mo in ui.agents.settings and ui.agents.publication too. Do not leave the fork."
+		}
+	],
+	"scope": "ui.agents.avatar (25 keys) — full-namespace read of fr against English, the core glossary and fr's style guide, on PR #1537 head 478b7889387. Whole-file hashes bound.",
+	"passed_checks": [
+		"key set identical to English (25/25)",
+		"ICU placeholder parity: {name}, {size}, {width}, {height}, {value} present and unaltered in every key that carries them",
+		"no ICU plural/select arms in this namespace; {size} is a whole-megabyte digit with no inflecting noun",
+		"no manual bidi control characters (RLM/LRM/FSI/PDI/LRI/RLI) in ur; Latin format names left to the render layer's isolation",
+		"format list JPEG/PNG/WebP/GIF matches AGENT_AVATAR_MIME_TYPES in src/renderer/src/shared/agent-avatar/avatar-image.ts",
+		"no key left in English except the es/fr loanword Zoom and the numeric {value}×",
+		"punctuation conventions per locale (ur ۔ ،, hi ।, zh-CN ，。、, fr ’)"
+	],
+	"limitations": [
+		"Browser and rendered-frame capture are not in this auditor's tool set: no screenshot, pseudo-localization or measured-overflow evidence is claimed.",
+		"Overflow was reasoned from the call sites, not measured: the editor's buttons are w-fit and the settings row wraps (flex-wrap), the preview labels are image aria-labels, and no truncate/whitespace-nowrap is applied anywhere in the avatar surfaces.",
+		"Agent semantic read; no native-speaker review."
+	],
+	"independence": "Auditor did not translate, write or edit any catalogue, context or key file; it formed its own read of the strings before opening the translator's commit message."
+}
