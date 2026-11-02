@@ -15,6 +15,7 @@
  * with roving tabindex (design § 14); its buttons are reached with arrow keys
  * from the page's key handler, so the row stays one tab stop.
  */
+import { askStatusWord, isKnownAskStatus } from "@features/chat/ask-queue";
 import { Badge, Checkbox, countLabel } from "@shared/components/ui";
 import { Tooltip } from "@shared/components/ui/tooltip";
 import { formatDate, formatNumber, formatTime, t } from "@shared/i18n";
@@ -158,6 +159,11 @@ export const NotificationRow: FC<NotificationRowProps> = ({
 			}
 			return parts.length > 0 ? parts.join(" · ") : item.excerpt;
 		}
+		/* An accepted ask stays as a receipt in this reel, not a live countdown. */
+		if (item.source === "ask" && item.ask?.status)
+			return askStatusWord(
+				isKnownAskStatus(item.ask.status) ? item.ask.status : "unknown",
+			);
 		if (repeat > 0)
 			return `${t("ui.notifications.row.updated_ago", { age: time })} · ${item.excerpt}`;
 		return item.excerpt;

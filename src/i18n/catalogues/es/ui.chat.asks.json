@@ -26,5 +26,7 @@
 	"ui.chat.asks.settled_heading": "Atendidas",
 	"ui.chat.asks.close_asks": "Cerrar las consultas",
 	"ui.chat.asks.all_asks": "Todas las consultas",
-	"ui.chat.asks.conversation_asks": "Consultas de esta conversación"
+	"ui.chat.asks.conversation_asks": "Consultas de esta conversación",
+	"ui.chat.asks.status.withdrawn": "Retirada — el agente ya no necesita respuesta",
+	"ui.chat.asks.status.withdrawn_label": "Retirada"
 }
