@@ -25,6 +25,11 @@ import {
 	userFacingMessage,
 } from "@shared/api/local-operator/desktop-api";
 import type { ChatTarget } from "@shared/api/local-operator/profile-hooks";
+import {
+	type UnreadCompletionKind,
+	isUnreadAckableCompletion,
+	unreadCompletionKind,
+} from "../../../../shared/completion-attention";
 // The echo seam, not the hook itself: these are module-level functions over a
 // registry of mounted transcripts, so the store never touches React state and
 // the dependency stays one-way (the hook does not import this store).
@@ -4970,17 +4975,9 @@ function mergeRow(
  * no mark, and neither does an ABSENT status (a locally created row carries
  * none until the next catalogue read): unknown is not unread.
  */
-export type UnreadMarkKind = "complete" | "error" | "interrupted";
+export type UnreadMarkKind = UnreadCompletionKind;
 
-export const unreadMarkKind = (
-	row: CanonicalSessionRow,
-): UnreadMarkKind | null => {
-	if (row.attention?.unseen !== true) return null;
-	const code = row.status?.code;
-	return code === "complete" || code === "error" || code === "interrupted"
-		? code
-		: null;
-};
+export const unreadMarkKind = unreadCompletionKind;
 
 /**
  * The rows a bulk acknowledgement can NAME, in the store's own terms.
@@ -5006,11 +5003,7 @@ export const unreadMarkKind = (
 export const unreadAckableRows = (
 	rows: CanonicalSessionRow[],
 ): CanonicalSessionRow[] =>
-	rows.filter((row) => {
-		if (unreadMarkKind(row) === null) return false;
-		const token = row.attention?.completion_token;
-		return typeof token === "string" && token.length > 0;
-	});
+	rows.filter(isUnreadAckableCompletion);
 
 /** How many rows a click would name; zero hides the control entirely. */
 export const unreadAckableCount = (rows: CanonicalSessionRow[]): number =>

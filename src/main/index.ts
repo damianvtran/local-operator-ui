@@ -20,6 +20,10 @@ import {
 import { PostHog } from "posthog-node";
 import icon from "../../resources/icon.png?asset";
 import { LANGUAGE_SETTING_KEY, subscribeLocale } from "../i18n/locale";
+import { t } from "../i18n/index";
+import { AppAttentionService } from "./app-attention-service";
+import { createAppIconBadge } from "./app-icon-badge";
+import { appIconBadgeBitmap } from "./app-icon-badge-bitmap";
 import type {
 	AttachmentUploadResult,
 	AttachmentUploadSource,
@@ -30,6 +34,7 @@ import {
 	BACKEND_STATUS_EVENT,
 } from "../shared/backend-status";
 import {
+	desktopRequestSchema,
 	type DirectoryListing,
 	EXTERNAL_OPEN_REFUSED_CHANNEL,
 	type ExternalOpenOutcome,
@@ -1196,6 +1201,7 @@ function createWindow(
 	mainWindow.on("ready-to-show", () => {
 		if (presentHandled) return;
 		presentHandled = true;
+		refreshAppIconBadge();
 		/*
 		 * `normal` raises and focuses the window: the ordinary launch, which is a
 		 * person starting the app. `inactive` orders the window without
@@ -1359,6 +1365,7 @@ const backendInstaller = new BackendInstaller({
 	// (`./relaunch-pending` owns why scheduling happens only at the terminal).
 	onQuitCancelled: () => {
 		quitState.cancel();
+		resumeAppIconBadge();
 		/*
 		 * AND THE QUIT'S HARD DEADLINE IS RELEASED WITH IT, because this is the
 		 * quit's ONE cancellation: the process goes on running, and a deadline
@@ -1623,6 +1630,11 @@ const telemetryWebPreferences = {
 // Some APIs can only be used after this event occurs.
 // Define mainWindow at a higher scope to be accessible in event handlers
 let mainWindow: BrowserWindow | null = null;
+// A replacement Windows taskbar target needs a fresh native write, not a new
+// unread observer. This callback never creates, presents or retains a window.
+let refreshAppIconBadge = (): void => {};
+let stopAppIconBadge = (): void => {};
+let resumeAppIconBadge = (): void => {};
 
 // Kept outside the quick-send availability gate: recording has its own window door.
 const recordingShortcut = new RecordingShortcutCoordinator(
@@ -2594,9 +2606,51 @@ app
 		// requires a genuinely foreground window no matter which path emits it.
 		// The notifier holds its own reference to this sender, so guarding only
 		// the renderer IPC entry would leave that path ungated.
+		// LauncherEntry needs the installed desktop identity, not a made-up count
+		// or a promise that every Linux desktop supports this protocol.
+		const desktopName = process.env.CHROME_DESKTOP;
+		const desktopIdentity = process.platform === "linux" &&
+			typeof desktopName === "string" && /^[A-Za-z0-9_.-]+\.desktop$/.test(desktopName) &&
+			[process.env.XDG_DATA_HOME || join(app.getPath("home"), ".local/share"),
+				...(process.env.XDG_DATA_DIRS || "/usr/local/share:/usr/share").split(":").filter((root) => root.startsWith("/"))]
+				.some((root) => existsSync(join(root, "applications", desktopName)));
+		if (desktopIdentity && desktopName) app.setDesktopName(desktopName);
+		const nativeBadge = createAppIconBadge({
+			platform: process.platform,
+			setDockBadge: (label) => { if (!app.dock) throw new Error("Dock unavailable"); app.dock.setBadge(label); },
+			setOverlayIcon: (image, description) => {
+				if (!mainWindow || mainWindow.isDestroyed()) throw new Error("Taskbar target unavailable");
+				mainWindow.setOverlayIcon(image, description);
+			},
+			createOverlayImage: (label) => nativeImage.createFromBitmap(appIconBadgeBitmap(label), { width: 16, height: 16, scaleFactor: 1 }),
+			setBadgeCount: (count) => app.setBadgeCount(count),
+			linuxDesktopIdentity: desktopIdentity,
+			describe: ({ unreadCount, pending }) => pending
+				? unreadCount > 0 ? t("ui.nativeBadge.attentionPending", { count: unreadCount }) : t("ui.nativeBadge.pending")
+				: t("ui.nativeBadge.attention", { count: unreadCount }),
+		});
+		const appAttention = new AppAttentionService({
+			request: (input) => backendService.requestDesktop(input),
+			supportsUnreadEvents: desktopRequestSchema.safeParse({ op: "team_bridge.unread.events", after: "0", wait: 20 }).success,
+			publish: (snapshot, enabled) => { nativeBadge.update(snapshot, enabled); },
+			clear: () => { nativeBadge.reset(); },
+		});
+		refreshAppIconBadge = () => {
+			if (process.platform !== "win32") return;
+			nativeBadge.invalidateOverlayTarget();
+			appAttention.projection.refresh();
+		};
+		const stopBadgeLocale = subscribeLocale(() => appAttention.projection.refresh());
+		stopAppIconBadge = () => appAttention.stop();
+		resumeAppIconBadge = () => appAttention.resume();
+		app.once("will-quit", stopBadgeLocale);
 		const sendDesktop = guardForegroundReceipts(
 			() => mainWindow,
-			(input) => backendService.requestDesktop(input),
+			async (input) => {
+				const response = await backendService.requestDesktop(input);
+				appAttention.observeResponse(input, response);
+				return response;
+			},
 		);
 		const desktopNotifier = new DesktopNotifier(
 			() => mainWindow,
@@ -2713,6 +2767,7 @@ app
 		// defers the legacy toast until the read settles, so nothing can slip
 		// through the window in between.
 		backendService.onBackendReady(() => {
+			appAttention.reset();
 			// Negotiate outside delivery. A restarted/older core drops all image
 			// eligibility until its own capability answers; never 404-probe per event.
 			notificationAvatarAvailable = false;
@@ -2807,6 +2862,7 @@ app
 		 */
 		backendService.observeDesktopFeed(
 			(frame: DesktopFeedFrame) => {
+				appAttention.observe(frame);
 				if (frame.type === "notification") {
 					desktopNotifier.observe(frame.session_id, frame);
 					return;
@@ -2834,6 +2890,7 @@ app
 				window.webContents.send("desktop-feed-frame", frame);
 			},
 			(state: DesktopFeedState) => {
+				if (!state.connected) appAttention.reset();
 				const window = mainWindow;
 				if (!window || window.isDestroyed()) return;
 				window.webContents.send("desktop-feed-state", state);
@@ -4412,6 +4469,7 @@ app
 					window,
 					expectedUrl: rendererUrl,
 					appVersion: app.getVersion(),
+					onPendingConsentChanged: (pending) => appAttention.projection.setBrowserPending(pending),
 					userDataDir: app.getPath("userData"),
 					// The launch plan's own answer, forwarded rather than re-derived: the
 					// browser host uses it to suppress consent banners in a run with nobody at
@@ -5171,6 +5229,7 @@ app.on("before-quit", async (event) => {
 	 * its own cancellation (`./quit-state` owns why it is the only one).
 	 */
 	quitState.begin();
+	stopAppIconBadge();
 	/*
 	 * AND THE HARD DEADLINE IS ARMED HERE, IN THE SYNCHRONOUS PART - beside the
 	 * quit's record, BEFORE the session-cookie hold can wait (the hold can spend

@@ -2197,6 +2197,19 @@ export type DesktopFeedFrame =
 				 * that predates the `authoring` frame does not publish the frame either.
 				 */
 				authoring_revision: number;
+				/** Existing receipt baseline; no delivery or content history. */
+				attention?: Record<string, CompletionAttention>;
+				/** Same derived status baseline used by session_status deltas.
+				 * Absent on older cores: unknown status is never an unread mark. */
+				attention_status?: Record<string, { code: string; revision: number }>;
+				approvals_pending?: boolean | null;
+				/** Null means the inbox store was unreadable, not verified empty. */
+				notifications?: {
+					revision: number;
+					unread_count: number;
+					waiting_count: number;
+					waiting_unread_count: number;
+				} | null;
 			};
 	  }
 	| {
@@ -2299,6 +2312,13 @@ export type DesktopFeedFrame =
 			type: "code_requests";
 			session_id: CanonicalSessionId;
 			payload: { revision: number };
+	  }
+	/** Device-local requested approvals, expiry-folded by their existing store. */
+	| {
+			epoch: string;
+			seq: number;
+			type: "approvals";
+			payload: { pending: boolean };
 	  }
 	/**
 	 * THE NOTIFICATIONS REEL MOVED (notifications contract § 5.3): an item was
