@@ -450,7 +450,11 @@ export function AvatarCropper({
 								className={
 									/* The app's one slider look (`window-glass-setting.tsx`):
 									   accent to the fill, sunken past it, a round accent thumb. */
-									"h-4 w-full cursor-pointer appearance-none bg-transparent bg-center bg-no-repeat disabled:cursor-not-allowed " +
+									/* `h-6`: a 24px hit area (WCAG 2.5.8, design round 1 of
+									   #1593, D6). The visible track stays the 6px background
+									   band below and the thumb stays 16px, so only the
+									   draggable target grows, not the drawing. */
+									"h-6 w-full cursor-pointer appearance-none bg-transparent bg-center bg-no-repeat disabled:cursor-not-allowed " +
 									"bg-[length:100%_6px] " +
 									"bg-[linear-gradient(to_right,var(--color-accent)_0_var(--fill),var(--color-sunken)_var(--fill)_100%)] " +
 									"[&::-webkit-slider-thumb]:size-4 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-accent " +

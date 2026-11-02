@@ -9333,10 +9333,12 @@ export type MessageParams = {
 		height: string;
 	};
 	"ui.settings.personal_profile.description": undefined;
+	"ui.settings.personal_profile.description_lines": { count: string };
 	"ui.settings.personal_profile.discard": undefined;
 	"ui.settings.personal_profile.discard_action": undefined;
 	"ui.settings.personal_profile.display_name": undefined;
 	"ui.settings.personal_profile.edit": undefined;
+	"ui.settings.personal_profile.field_too_long": { count: string };
 	"ui.settings.personal_profile.heading": undefined;
 	"ui.settings.personal_profile.keep_editing": undefined;
 	"ui.settings.personal_profile.load_error": undefined;
@@ -9364,7 +9366,6 @@ export type MessageParams = {
 	"ui.settings.personal_profile.timezone_clear": undefined;
 	"ui.settings.personal_profile.timezone_placeholder": undefined;
 	"ui.settings.personal_profile.title": undefined;
-	"ui.settings.personal_profile.validation": undefined;
 	"ui.settings.personal_profile.zoom": undefined;
 	"ui.settings.personal_profile.zoom_in": undefined;
 	"ui.settings.personal_profile.zoom_out": undefined;

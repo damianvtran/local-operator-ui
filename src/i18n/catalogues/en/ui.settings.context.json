@@ -190,11 +190,6 @@
 		"tone": "Concise, professional sentence case; follow the locale style guide.",
 		"note": "Text write failed; unsaved draft is retained and no success is claimed."
 	},
-	"ui.settings.personal_profile.validation": {
-		"role": "validation alert",
-		"tone": "Concise, professional sentence case; follow the locale style guide.",
-		"note": "Text code-point bounds and maximum eight description lines, not image validation."
-	},
 	"ui.settings.personal_profile.choose": {
 		"role": "photo button/accessibility label",
 		"tone": "Concise, professional sentence case; follow the locale style guide.",
@@ -208,7 +203,7 @@
 	"ui.settings.personal_profile.photo_help": {
 		"role": "photo constraints help",
 		"tone": "Concise, professional sentence case; follow the locale style guide.",
-		"note": "Fixed service limits: PNG/JPEG/WebP, 1 MiB bytes, maximum 4096 per edge, 16000000 total pixels. Preserve numeric meaning and unit."
+		"note": "Shown under the photo controls before a file is picked: accepted formats and the 1 MiB byte limit only. The pixel limits moved to photo_invalid so the help stays short. Preserve the MiB unit."
 	},
 	"ui.settings.personal_profile.remove": {
 		"role": "destructive photo button",
@@ -231,9 +226,9 @@
 		"note": "Failure to save/remove photo; unrelated text draft remains intact."
 	},
 	"ui.settings.personal_profile.photo_invalid": {
-		"role": "photo selection alert",
+		"role": "photo validation alert",
 		"tone": "Concise, professional sentence case; follow the locale style guide.",
-		"note": "Local file failed format/byte/dimension admission before cropping or upload."
+		"note": "Shown beside the photo controls when the picked file is not a usable image. States every fixed service limit: PNG/JPEG/WebP, 1 MiB bytes, maximum 4096 pixels per edge, 16000000 pixels in total. Preserve numeric meaning and unit."
 	},
 	"ui.settings.personal_profile.photo_saved": {
 		"role": "live success status",
@@ -329,5 +324,15 @@
 		"role": "own-human card button",
 		"tone": "Concise, professional sentence case; follow the locale style guide.",
 		"note": "Only independently resolved active human self gets this action. Closes card, navigates to native Settings and transfers focus."
+	},
+	"ui.settings.personal_profile.description_lines": {
+		"role": "field validation message",
+		"tone": "One short imperative sentence; follow the locale style guide.",
+		"note": "Shown under the About you field when the draft has too many lines. {count} is the maximum number of lines (currently 8). The field label is already above it."
+	},
+	"ui.settings.personal_profile.field_too_long": {
+		"role": "field validation message",
+		"tone": "One short imperative sentence; follow the locale style guide.",
+		"note": "Shown under ONE profile text field (display name 64, title 80, About you 500) when its draft is too long for the service. {count} is that field's limit in characters (Unicode code points). The field label is already above it, so do not repeat the field name."
 	}
 }

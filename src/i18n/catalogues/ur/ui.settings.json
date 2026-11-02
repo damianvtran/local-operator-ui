@@ -57,15 +57,14 @@
 	"ui.settings.personal_profile.saving": "محفوظ ہو رہا ہے…",
 	"ui.settings.personal_profile.saved": "پروفائل محفوظ ہو گئی۔",
 	"ui.settings.personal_profile.save_error": "آپ کی تبدیلیاں محفوظ نہیں ہو سکیں۔ آپ کا مسودہ برقرار ہے۔",
-	"ui.settings.personal_profile.validation": "خانوں کی لمبائی چیک کریں اور آپ کے بارے میں والے خانے میں 8 سے زیادہ سطریں نہ لکھیں۔",
 	"ui.settings.personal_profile.choose": "تصویر منتخب کریں",
 	"ui.settings.personal_profile.replace": "تصویر بدلیں",
-	"ui.settings.personal_profile.photo_help": "PNG، JPEG یا WebP۔ زیادہ سے زیادہ 1 MiB، ہر جانب 4096 پکسل اور کل 16 ملین پکسل۔",
+	"ui.settings.personal_profile.photo_help": "PNG، JPEG یا WebP، زیادہ سے زیادہ 1 MiB۔",
 	"ui.settings.personal_profile.remove": "تصویر ہٹائیں",
 	"ui.settings.personal_profile.remove_uploaded": "اپ لوڈ کی گئی تصویر ہٹائیں؟ اگر سائن ان کی محفوظ تصویر دستیاب ہو تو وہ استعمال ہوگی، ورنہ آپ کے نام کے ابتدائی حروف دکھائے جائیں گے۔",
 	"ui.settings.personal_profile.remove_provider": "سائن ان کی تصویر ہٹائیں؟ اگر اپ لوڈ کی گئی تصویر دستیاب ہو تو وہ استعمال ہوگی، ورنہ آپ کے نام کے ابتدائی حروف دکھائے جائیں گے۔",
 	"ui.settings.personal_profile.photo_error": "یہ تصویر محفوظ نہیں ہو سکی۔ دوسری تصویر منتخب کریں یا دوبارہ کوشش کریں۔",
-	"ui.settings.personal_profile.photo_invalid": "درست PNG، JPEG یا WebP تصویر منتخب کریں جو حجم اور پکسل کی حدود کے اندر ہو۔",
+	"ui.settings.personal_profile.photo_invalid": "زیادہ سے زیادہ 1 MiB کی درست PNG، JPEG یا WebP تصویر منتخب کریں، جس کی ہر جانب 4096 پکسل اور کل 16 ملین پکسل سے زیادہ نہ ہوں۔",
 	"ui.settings.personal_profile.photo_saved": "تصویر محفوظ ہو گئی۔",
 	"ui.settings.personal_profile.photo_removed": "تصویر ہٹا دی گئی۔",
 	"ui.settings.personal_profile.crop_area": "اپنی پروفائل تصویر تراشیں",
@@ -84,5 +83,7 @@
 	"ui.settings.personal_profile.discard": "پروفائل کی غیر محفوظ شدہ تبدیلیاں ترک کریں؟",
 	"ui.settings.personal_profile.discard_action": "تبدیلیاں ترک کریں",
 	"ui.settings.personal_profile.keep_editing": "ترمیم جاری رکھیں",
-	"ui.settings.personal_profile.edit": "پروفائل میں ترمیم کریں"
+	"ui.settings.personal_profile.edit": "پروفائل میں ترمیم کریں",
+	"ui.settings.personal_profile.description_lines": "{count} سے زیادہ سطریں نہ لکھیں۔",
+	"ui.settings.personal_profile.field_too_long": "{count} سے زیادہ حروف نہ لکھیں۔"
 }

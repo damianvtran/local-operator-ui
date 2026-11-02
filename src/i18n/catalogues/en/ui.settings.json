@@ -57,15 +57,14 @@
 	"ui.settings.personal_profile.saving": "Saving…",
 	"ui.settings.personal_profile.saved": "Profile saved.",
 	"ui.settings.personal_profile.save_error": "Your changes could not be saved. Your draft is still here.",
-	"ui.settings.personal_profile.validation": "Check the field lengths and use no more than 8 lines for About you.",
 	"ui.settings.personal_profile.choose": "Choose photo",
 	"ui.settings.personal_profile.replace": "Replace photo",
-	"ui.settings.personal_profile.photo_help": "PNG, JPEG or WebP. Up to 1 MiB, 4096 pixels per edge and 16 million pixels.",
+	"ui.settings.personal_profile.photo_help": "PNG, JPEG or WebP, up to 1 MiB.",
 	"ui.settings.personal_profile.remove": "Remove photo",
 	"ui.settings.personal_profile.remove_uploaded": "Remove your uploaded photo? Your saved sign-in photo will be used if available; otherwise your initials will be shown.",
 	"ui.settings.personal_profile.remove_provider": "Remove your sign-in photo? Your uploaded photo will be used if available; otherwise your initials will be shown.",
 	"ui.settings.personal_profile.photo_error": "This photo could not be saved. Try another image or try again.",
-	"ui.settings.personal_profile.photo_invalid": "Choose a valid PNG, JPEG or WebP within the size and pixel limits.",
+	"ui.settings.personal_profile.photo_invalid": "Choose a valid PNG, JPEG or WebP up to 1 MiB, at most 4096 pixels per edge and 16 million pixels in total.",
 	"ui.settings.personal_profile.photo_saved": "Photo saved.",
 	"ui.settings.personal_profile.photo_removed": "Photo removed.",
 	"ui.settings.personal_profile.crop_area": "Crop your profile photo",
@@ -84,5 +83,7 @@
 	"ui.settings.personal_profile.discard": "Discard your unsaved profile changes?",
 	"ui.settings.personal_profile.discard_action": "Discard changes",
 	"ui.settings.personal_profile.keep_editing": "Keep editing",
-	"ui.settings.personal_profile.edit": "Edit profile"
+	"ui.settings.personal_profile.edit": "Edit profile",
+	"ui.settings.personal_profile.description_lines": "Use no more than {count} lines.",
+	"ui.settings.personal_profile.field_too_long": "Use no more than {count} characters."
 }

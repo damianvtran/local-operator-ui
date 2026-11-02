@@ -57,15 +57,14 @@
 	"ui.settings.personal_profile.saving": "Сохранение…",
 	"ui.settings.personal_profile.saved": "Профиль сохранён.",
 	"ui.settings.personal_profile.save_error": "Не удалось сохранить изменения. Ваш черновик сохранён.",
-	"ui.settings.personal_profile.validation": "Проверьте длину полей. В разделе «О себе» должно быть не более 8 строк.",
 	"ui.settings.personal_profile.choose": "Выбрать фото",
 	"ui.settings.personal_profile.replace": "Заменить фото",
-	"ui.settings.personal_profile.photo_help": "PNG, JPEG или WebP. До 1 MiB, не более 4096 пикселей по каждой стороне и 16 миллионов пикселей.",
+	"ui.settings.personal_profile.photo_help": "PNG, JPEG или WebP, до 1 MiB.",
 	"ui.settings.personal_profile.remove": "Удалить фото",
 	"ui.settings.personal_profile.remove_uploaded": "Удалить загруженное фото? Будет использовано сохранённое фото учётной записи для входа, если оно есть. Иначе будут показаны инициалы.",
 	"ui.settings.personal_profile.remove_provider": "Удалить фото учётной записи для входа? Будет использовано загруженное фото, если оно есть. Иначе будут показаны инициалы.",
 	"ui.settings.personal_profile.photo_error": "Не удалось сохранить фото. Выберите другое изображение или попробуйте ещё раз.",
-	"ui.settings.personal_profile.photo_invalid": "Выберите корректное изображение PNG, JPEG или WebP в пределах ограничений по размеру и числу пикселей.",
+	"ui.settings.personal_profile.photo_invalid": "Выберите корректное изображение PNG, JPEG или WebP размером до 1 MiB, не более 4096 пикселей по каждой стороне и не более 16 миллионов пикселей всего.",
 	"ui.settings.personal_profile.photo_saved": "Фото сохранено.",
 	"ui.settings.personal_profile.photo_removed": "Фото удалено.",
 	"ui.settings.personal_profile.crop_area": "Кадрирование фото профиля",
@@ -84,5 +83,7 @@
 	"ui.settings.personal_profile.discard": "Отменить несохранённые изменения профиля?",
 	"ui.settings.personal_profile.discard_action": "Отменить изменения",
 	"ui.settings.personal_profile.keep_editing": "Продолжить редактирование",
-	"ui.settings.personal_profile.edit": "Изменить профиль"
+	"ui.settings.personal_profile.edit": "Изменить профиль",
+	"ui.settings.personal_profile.description_lines": "Не более {count} строк.",
+	"ui.settings.personal_profile.field_too_long": "Не более {count} символов."
 }

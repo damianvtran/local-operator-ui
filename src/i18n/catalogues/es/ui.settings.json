@@ -57,15 +57,14 @@
 	"ui.settings.personal_profile.saving": "Guardando…",
 	"ui.settings.personal_profile.saved": "Perfil guardado.",
 	"ui.settings.personal_profile.save_error": "No se pudieron guardar tus cambios. Tu borrador sigue aquí.",
-	"ui.settings.personal_profile.validation": "Comprueba la longitud de los campos y no uses más de 8 líneas en Acerca de ti.",
 	"ui.settings.personal_profile.choose": "Elegir foto",
 	"ui.settings.personal_profile.replace": "Cambiar foto",
-	"ui.settings.personal_profile.photo_help": "PNG, JPEG o WebP. Hasta 1 MiB, 4096 píxeles por lado y 16 millones de píxeles.",
+	"ui.settings.personal_profile.photo_help": "PNG, JPEG o WebP, hasta 1 MiB.",
 	"ui.settings.personal_profile.remove": "Eliminar foto",
 	"ui.settings.personal_profile.remove_uploaded": "¿Eliminar la foto que subiste? Se usará tu foto de inicio de sesión guardada si está disponible; de lo contrario, se mostrarán tus iniciales.",
 	"ui.settings.personal_profile.remove_provider": "¿Eliminar tu foto de inicio de sesión? Se usará la foto que subiste si está disponible; de lo contrario, se mostrarán tus iniciales.",
 	"ui.settings.personal_profile.photo_error": "No se pudo guardar esta foto. Prueba con otra imagen o inténtalo de nuevo.",
-	"ui.settings.personal_profile.photo_invalid": "Elige una imagen PNG, JPEG o WebP válida que respete los límites de tamaño y píxeles.",
+	"ui.settings.personal_profile.photo_invalid": "Elige una imagen PNG, JPEG o WebP válida de hasta 1 MiB, con un máximo de 4096 píxeles por lado y 16 millones de píxeles en total.",
 	"ui.settings.personal_profile.photo_saved": "Foto guardada.",
 	"ui.settings.personal_profile.photo_removed": "Foto eliminada.",
 	"ui.settings.personal_profile.crop_area": "Recortar tu foto de perfil",
@@ -84,5 +83,7 @@
 	"ui.settings.personal_profile.discard": "¿Descartar los cambios de tu perfil sin guardar?",
 	"ui.settings.personal_profile.discard_action": "Descartar cambios",
 	"ui.settings.personal_profile.keep_editing": "Seguir editando",
-	"ui.settings.personal_profile.edit": "Editar perfil"
+	"ui.settings.personal_profile.edit": "Editar perfil",
+	"ui.settings.personal_profile.description_lines": "Usa como máximo {count} líneas.",
+	"ui.settings.personal_profile.field_too_long": "Usa como máximo {count} caracteres."
 }

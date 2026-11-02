@@ -57,15 +57,14 @@
 	"ui.settings.personal_profile.saving": "Enregistrement…",
 	"ui.settings.personal_profile.saved": "Profil enregistré.",
 	"ui.settings.personal_profile.save_error": "Impossible d’enregistrer vos modifications. Votre brouillon est conservé.",
-	"ui.settings.personal_profile.validation": "Vérifiez la longueur des champs et limitez la rubrique À propos de vous à 8 lignes.",
 	"ui.settings.personal_profile.choose": "Choisir une photo",
 	"ui.settings.personal_profile.replace": "Remplacer la photo",
-	"ui.settings.personal_profile.photo_help": "PNG, JPEG ou WebP. 1 MiB maximum, 4096 pixels par côté et 16 millions de pixels.",
+	"ui.settings.personal_profile.photo_help": "PNG, JPEG ou WebP, 1 MiB maximum.",
 	"ui.settings.personal_profile.remove": "Supprimer la photo",
 	"ui.settings.personal_profile.remove_uploaded": "Supprimer votre photo importée ? Votre photo de connexion enregistrée sera utilisée si elle est disponible ; sinon, vos initiales seront affichées.",
 	"ui.settings.personal_profile.remove_provider": "Supprimer votre photo de connexion ? Votre photo importée sera utilisée si elle est disponible ; sinon, vos initiales seront affichées.",
 	"ui.settings.personal_profile.photo_error": "Impossible d’enregistrer cette photo. Choisissez une autre image ou réessayez.",
-	"ui.settings.personal_profile.photo_invalid": "Choisissez une image PNG, JPEG ou WebP valide respectant les limites de taille et de pixels.",
+	"ui.settings.personal_profile.photo_invalid": "Choisissez une image PNG, JPEG ou WebP valide de 1 MiB maximum, avec au plus 4096 pixels par côté et 16 millions de pixels au total.",
 	"ui.settings.personal_profile.photo_saved": "Photo enregistrée.",
 	"ui.settings.personal_profile.photo_removed": "Photo supprimée.",
 	"ui.settings.personal_profile.crop_area": "Recadrer votre photo de profil",
@@ -84,5 +83,7 @@
 	"ui.settings.personal_profile.discard": "Abandonner les modifications non enregistrées de votre profil ?",
 	"ui.settings.personal_profile.discard_action": "Abandonner les modifications",
 	"ui.settings.personal_profile.keep_editing": "Continuer à modifier",
-	"ui.settings.personal_profile.edit": "Modifier le profil"
+	"ui.settings.personal_profile.edit": "Modifier le profil",
+	"ui.settings.personal_profile.description_lines": "Utilisez {count} lignes au maximum.",
+	"ui.settings.personal_profile.field_too_long": "Utilisez {count} caractères au maximum."
 }

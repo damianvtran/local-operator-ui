@@ -57,15 +57,14 @@
 	"ui.settings.personal_profile.saving": "सहेजा जा रहा है…",
 	"ui.settings.personal_profile.saved": "प्रोफ़ाइल सहेजी गई।",
 	"ui.settings.personal_profile.save_error": "आपके बदलाव सहेजे नहीं जा सके। आपका ड्राफ़्ट सुरक्षित है।",
-	"ui.settings.personal_profile.validation": "फ़ील्ड की लंबाई जाँचें और आपके बारे में वाले हिस्से में 8 से ज़्यादा पंक्तियाँ न लिखें।",
 	"ui.settings.personal_profile.choose": "फ़ोटो चुनें",
 	"ui.settings.personal_profile.replace": "फ़ोटो बदलें",
-	"ui.settings.personal_profile.photo_help": "PNG, JPEG या WebP। अधिकतम 1 MiB, हर किनारे पर 4096 पिक्सेल और कुल 1.6 करोड़ पिक्सेल।",
+	"ui.settings.personal_profile.photo_help": "PNG, JPEG या WebP, अधिकतम 1 MiB।",
 	"ui.settings.personal_profile.remove": "फ़ोटो हटाएँ",
 	"ui.settings.personal_profile.remove_uploaded": "अपलोड की गई फ़ोटो हटाएँ? अगर साइन इन की सहेजी गई फ़ोटो उपलब्ध है, तो उसका इस्तेमाल होगा; नहीं तो आपके नाम के शुरुआती अक्षर दिखेंगे।",
 	"ui.settings.personal_profile.remove_provider": "साइन इन की फ़ोटो हटाएँ? अगर आपकी अपलोड की गई फ़ोटो उपलब्ध है, तो उसका इस्तेमाल होगा; नहीं तो आपके नाम के शुरुआती अक्षर दिखेंगे।",
 	"ui.settings.personal_profile.photo_error": "यह फ़ोटो सहेजी नहीं जा सकी। कोई दूसरी तस्वीर चुनें या फिर से कोशिश करें।",
-	"ui.settings.personal_profile.photo_invalid": "आकार और पिक्सेल की सीमा के भीतर कोई मान्य PNG, JPEG या WebP तस्वीर चुनें।",
+	"ui.settings.personal_profile.photo_invalid": "अधिकतम 1 MiB की कोई मान्य PNG, JPEG या WebP तस्वीर चुनें, जिसके हर किनारे पर 4096 पिक्सेल और कुल 1.6 करोड़ पिक्सेल से ज़्यादा न हों।",
 	"ui.settings.personal_profile.photo_saved": "फ़ोटो सहेजी गई।",
 	"ui.settings.personal_profile.photo_removed": "फ़ोटो हटाई गई।",
 	"ui.settings.personal_profile.crop_area": "अपनी प्रोफ़ाइल फ़ोटो काटें",
@@ -84,5 +83,7 @@
 	"ui.settings.personal_profile.discard": "प्रोफ़ाइल के बिना सहेजे बदलाव छोड़ दें?",
 	"ui.settings.personal_profile.discard_action": "बदलाव छोड़ें",
 	"ui.settings.personal_profile.keep_editing": "संपादन जारी रखें",
-	"ui.settings.personal_profile.edit": "प्रोफ़ाइल संपादित करें"
+	"ui.settings.personal_profile.edit": "प्रोफ़ाइल संपादित करें",
+	"ui.settings.personal_profile.description_lines": "{count} से ज़्यादा पंक्तियाँ न लिखें।",
+	"ui.settings.personal_profile.field_too_long": "{count} से ज़्यादा वर्ण न लिखें।"
 }

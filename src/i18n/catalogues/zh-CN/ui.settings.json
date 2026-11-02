@@ -57,15 +57,14 @@
 	"ui.settings.personal_profile.saving": "正在保存……",
 	"ui.settings.personal_profile.saved": "资料已保存",
 	"ui.settings.personal_profile.save_error": "无法保存更改。草稿仍然保留。",
-	"ui.settings.personal_profile.validation": "检查各字段的长度，个人简介不要超过8行。",
 	"ui.settings.personal_profile.choose": "选择照片",
 	"ui.settings.personal_profile.replace": "更换照片",
-	"ui.settings.personal_profile.photo_help": "支持PNG、JPEG或WebP。大小不超过1MiB，单边不超过4096像素，总像素不超过16,000,000。",
+	"ui.settings.personal_profile.photo_help": "支持PNG、JPEG或WebP，大小不超过1MiB。",
 	"ui.settings.personal_profile.remove": "移除照片",
 	"ui.settings.personal_profile.remove_uploaded": "移除上传的照片？如果有已保存的登录照片，将改用该照片；否则显示姓名首字母。",
 	"ui.settings.personal_profile.remove_provider": "移除登录照片？如果有上传的照片，将改用该照片；否则显示姓名首字母。",
 	"ui.settings.personal_profile.photo_error": "无法保存此照片。请换一张图片或重试。",
-	"ui.settings.personal_profile.photo_invalid": "选择有效的PNG、JPEG或WebP图片，并确保大小和像素数未超出限制。",
+	"ui.settings.personal_profile.photo_invalid": "选择有效的PNG、JPEG或WebP图片：大小不超过1MiB，单边不超过4096像素，总像素不超过16,000,000。",
 	"ui.settings.personal_profile.photo_saved": "照片已保存",
 	"ui.settings.personal_profile.photo_removed": "照片已移除",
 	"ui.settings.personal_profile.crop_area": "裁剪个人资料照片",
@@ -84,5 +83,7 @@
 	"ui.settings.personal_profile.discard": "放弃尚未保存的个人资料更改？",
 	"ui.settings.personal_profile.discard_action": "放弃更改",
 	"ui.settings.personal_profile.keep_editing": "继续编辑",
-	"ui.settings.personal_profile.edit": "编辑资料"
+	"ui.settings.personal_profile.edit": "编辑资料",
+	"ui.settings.personal_profile.description_lines": "最多输入{count}行。",
+	"ui.settings.personal_profile.field_too_long": "最多输入{count}个字符。"
 }
