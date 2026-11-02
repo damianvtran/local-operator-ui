@@ -48,5 +48,6 @@
 	"ui.agents.detail.tools.empty": "No tools yet. Add one below, or turn on All tools.",
 	"ui.agents.detail.tools.every_tool_aria": "Give this agent every tool",
 	"ui.agents.detail.tools.may_use_any": "This agent may use whatever the session offers.",
-	"ui.agents.detail.tools.placeholder": "Tool name"
+	"ui.agents.detail.tools.placeholder": "Tool name",
+	"ui.agents.detail.origin.created_locally": "Created on this machine."
 }

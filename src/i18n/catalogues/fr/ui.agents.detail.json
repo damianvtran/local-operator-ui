@@ -48,5 +48,6 @@
 	"ui.agents.detail.tools.empty": "Aucun outil pour l’instant. Ajoutez-en un ci-dessous, ou activez Tous les outils.",
 	"ui.agents.detail.tools.every_tool_aria": "Donner tous les outils à cet agent",
 	"ui.agents.detail.tools.may_use_any": "Cet agent peut utiliser tout ce que propose la session.",
-	"ui.agents.detail.tools.placeholder": "Nom d’outil"
+	"ui.agents.detail.tools.placeholder": "Nom d’outil",
+	"ui.agents.detail.origin.created_locally": "Créé sur cet ordinateur."
 }
