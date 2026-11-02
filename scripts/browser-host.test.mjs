@@ -7783,6 +7783,7 @@ test("/health carries the capabilities this build serves", async () => {
 		"network_clear",
 		"record_start",
 		"record_stop",
+		"record_size",
 	]);
 });
 
