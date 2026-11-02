@@ -1,5 +1,5 @@
 {
 	"ui.agents.detail.origin.shipped_with_app": "Viene con la app.",
-	"ui.agents.detail.origin.installed_starter": "Instalado desde una plantilla inicial empaquetada.",
+	"ui.agents.detail.origin.installed_starter": "Instalado desde una plantilla incluida.",
 	"ui.agents.detail.origin.compare_packaged": "Comparar con las instrucciones empaquetadas"
 }
