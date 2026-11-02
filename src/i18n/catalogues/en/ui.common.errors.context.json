@@ -987,5 +987,11 @@
 		"tone": "Factual and actionable without blame.",
 		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
 		"note": "English source: A session id is required to read code memory."
+	},
+	"ui.common.errors.desktop_transport_failed": {
+		"role": "Generic transport-refusal diagnosis in an agent or team detail error pane",
+		"tone": "Calm, factual and actionable; two sentences",
+		"length": "Two short sentences; wraps within the detail error pane",
+		"note": "No placeholders. Display copy for main-authored transport_failed refusals; never translate or replace the stable machine sentinel or the requested_not_found backend fallback."
 	}
 }

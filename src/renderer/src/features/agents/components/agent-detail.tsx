@@ -1324,7 +1324,7 @@ export function AgentDetail({
 									? "Shipped with the app."
 									: profile.source === "installed"
 										? "Installed from a packaged starter."
-										: "Created on this machine."
+										: t("ui.agents.detail.origin.created_locally")
 							}
 						>
 							<dl className="space-y-1 text-body-sm">

@@ -194,6 +194,7 @@ const ROOT = process.cwd();
 
 /* English shapes the pre-fix code printed; hoisted for `useTopLevelRegex`. */
 const AGENTS_PAGE_SOURCE = /features\/agents\/components\/agents-page\.tsx$/;
+const AGENT_DETAIL_SOURCE = /features\/agents\/components\/agent-detail\.tsx$/;
 const MISSING_DEFINITION_SOURCE =
 	/features\/agents\/components\/missing-definition-error\.tsx$/;
 const ENGLISH_ASK_HEADING = /Ask for an agent/;
@@ -212,6 +213,17 @@ function seamPlugin(mutation) {
 			filter: AGENTS_PAGE_SOURCE,
 			call: 't("ui.agents.pages.ask.heading_agent")',
 			literal: '"Ask for an agent"',
+		},
+		"revert-origin": {
+			filter: AGENT_DETAIL_SOURCE,
+			call: 't("ui.agents.detail.origin.created_locally")',
+			literal: '"Created on this machine."',
+		},
+		"revert-transport": {
+			filter: MISSING_DEFINITION_SOURCE,
+			call: 't("ui.common.errors.desktop_transport_failed")',
+			literal:
+				'"The backend could not complete this request. Check its connection and try again."',
 		},
 		"revert-not-found": {
 			filter: MISSING_DEFINITION_SOURCE,
@@ -251,6 +263,7 @@ async function load(mutation) {
 				'export { AgentMeta, AgentDetail } from "../src/renderer/src/features/agents/components/agent-detail";',
 				'export { MissingDefinitionError } from "../src/renderer/src/features/agents/components/missing-definition-error";',
 				'export { DesktopControlError } from "../src/renderer/src/shared/api/local-operator/desktop-api";',
+				'export { DESKTOP_REFUSAL_CODE } from "../src/shared/desktop-contract";',
 				'export { ReadBlock } from "../src/renderer/src/features/agents/components/detail-parts";',
 				'export { ConfigComposer } from "../src/renderer/src/features/agents/config-run/config-composer";',
 				'export { publishDialogTitle } from "../src/renderer/src/features/agents/components/upload-agent-dialog";',
@@ -922,6 +935,12 @@ test("missing detail preserves unknown diagnostics and localizes pending retry",
 			"route_not_found",
 		),
 		new Error("Diagnostic fixture: network"),
+		new lib.DesktopControlError(
+			503,
+			"The backend could not complete this request. Check its connection and try again.",
+			undefined,
+			"other_category",
+		),
 		// A declared category must win even if the legacy prose happens to match.
 		new lib.DesktopControlError(
 			404,
@@ -1006,6 +1025,130 @@ test("negative control: English backend fallback defeats the visible-detail loca
 		assert.AssertionError,
 	);
 	await view.unmount();
+});
+
+/**
+ * The rendered census found two more English leaks. Exercise the production
+ * panes with unmistakable markers, not translations authored by this test. The
+ * English pass pins exact copy; mutations prove both locale assertions fail
+ * when the old literal is restored. Native layout remains the census's remit.
+ */
+async function censusCopyViews(lib) {
+	const h = lib.React.createElement;
+	const client = new lib.QueryClient({
+		defaultOptions: { queries: { retry: false } },
+	});
+	clients.push(client);
+	const origin = await mount(
+		lib,
+		h(
+			lib.QueryClientProvider,
+			{ client },
+			h(
+				lib.MemoryRouter,
+				null,
+				h(lib.AgentDetail, {
+					profile: PROFILE,
+					displayedName: PROFILE.name,
+					classNotice: null,
+					onClassNotice: () => {},
+					teams: [],
+					effortTiers: [],
+					onOpenTeam: () => {},
+					onAskAgent: () => {},
+				}),
+			),
+		),
+	);
+	return { origin, client };
+}
+
+const CENSUS_ORIGIN_KEY = "ui.agents.detail.origin.created_locally";
+const CENSUS_TRANSPORT_KEY = "ui.common.errors.desktop_transport_failed";
+const CENSUS_TRANSPORT_ENGLISH =
+	"The backend could not complete this request. Check its connection and try again.";
+
+async function assertCensusCopy(
+	lib,
+	locale,
+	expectedOrigin,
+	expectedTransport,
+) {
+	useLocale(lib, locale);
+	const { origin, client } = await censusCopyViews(lib);
+	try {
+		assert.ok(origin.text().includes(expectedOrigin), origin.text());
+	} finally {
+		await origin.unmount();
+		client.clear();
+	}
+	// Main's declared code and the legacy proxy's uncoded sentinel both carry
+	// the same display copy, while a foreign declared category must still win.
+	for (const code of [lib.DESKTOP_REFUSAL_CODE.transportFailed, undefined]) {
+		const error = new lib.DesktopControlError(
+			503,
+			CENSUS_TRANSPORT_ENGLISH,
+			undefined,
+			code,
+		);
+		const view = await mount(
+			lib,
+			lib.React.createElement(lib.MissingDefinitionError, {
+				name: PROFILE.name,
+				error,
+				retrying: false,
+				onRetry: () => {},
+			}),
+		);
+		try {
+			assert.ok(view.text().includes(expectedTransport), view.text());
+			assert.equal(
+				error.message,
+				CENSUS_TRANSPORT_ENGLISH,
+				"the machine sentinel must remain English even after presentation",
+			);
+		} finally {
+			await view.unmount();
+		}
+	}
+}
+
+test("census origin and generic transport refusal render keyed copy in seven locales, with identical English", async () => {
+	const lib = await load();
+	lib.i18n.clearRegisteredCatalogues();
+	await assertCensusCopy(
+		lib,
+		"en",
+		"Created on this machine.",
+		CENSUS_TRANSPORT_ENGLISH,
+	);
+	for (const locale of ["fr", "es", "ru", "vi", "hi", "zh-CN", "ur"]) {
+		const origin = `${locale} origin marker`;
+		const transport = `${locale} transport marker`;
+		lib.i18n.registerCatalogue(locale, {
+			[CENSUS_ORIGIN_KEY]: origin,
+			[CENSUS_TRANSPORT_KEY]: transport,
+		});
+		await assertCensusCopy(lib, locale, origin, transport);
+	}
+	lib.i18n.clearRegisteredCatalogues();
+	useLocale(lib, "en");
+});
+
+test("negative controls: restoring either census literal defeats keyed rendering", async () => {
+	for (const mutation of ["revert-origin", "revert-transport"]) {
+		const lib = await load(mutation);
+		lib.i18n.registerCatalogue("fr", {
+			[CENSUS_ORIGIN_KEY]: "FR origin marker",
+			[CENSUS_TRANSPORT_KEY]: "FR transport marker",
+		});
+		await assert.rejects(
+			assertCensusCopy(lib, "fr", "FR origin marker", "FR transport marker"),
+			assert.AssertionError,
+		);
+		lib.i18n.clearRegisteredCatalogues();
+		useLocale(lib, "en");
+	}
 });
 
 test("teardown: the store is back to English, and the suite closes what it opened", async () => {

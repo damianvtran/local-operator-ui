@@ -2140,6 +2140,7 @@ export type MessageParams = {
 	"ui.agents.detail.meta.delegates": undefined;
 	"ui.agents.detail.no_description": undefined;
 	"ui.agents.detail.origin.changed": undefined;
+	"ui.agents.detail.origin.created_locally": undefined;
 	"ui.agents.detail.origin.source": undefined;
 	"ui.agents.detail.read.effort_label": undefined;
 	"ui.agents.detail.read.show_all": undefined;
@@ -5706,6 +5707,7 @@ export type MessageParams = {
 	"ui.common.errors.desktop_refusal.refused": undefined;
 	"ui.common.errors.desktop_refusal.transport_failed": undefined;
 	"ui.common.errors.desktop_refusal_placeholder": undefined;
+	"ui.common.errors.desktop_transport_failed": undefined;
 	"ui.common.errors.dictation_account_credits": undefined;
 	"ui.common.errors.dictation_credits_destination": { destination: string };
 	"ui.common.errors.dictation_empty": undefined;
