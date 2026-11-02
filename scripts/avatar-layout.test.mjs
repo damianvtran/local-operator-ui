@@ -36,3 +36,45 @@ test("settings picture and empty fallback use the same comfortable preview size"
 	assert.ok(probe.includes("<AgentMark"));
 	assert.ok(probe.includes("onPresence={onPresence}"));
 });
+
+/* Source tripwires only; live geometry/keyboard assertions require fresh D2 admission. */
+test("selected agent summary binds only the existing local agent picture", () => {
+	const source = read("src/renderer/src/features/agents/components/agent-detail.tsx");
+	const start = source.indexOf('data-agent-summary-portrait=""');
+	const end = source.indexOf("<AgentMeta profile={profile} />", start);
+	assert.ok(start >= 0 && end > start);
+	const portrait = source.slice(start, end);
+	assert.ok(portrait.includes("<AgentMark"));
+	assert.ok(portrait.includes("agentId={profile.agent_id}"));
+	assert.ok(portrait.includes('className="size-full border-0 bg-transparent"'));
+	assert.equal(portrait.split('<Bot className="size-8" aria-hidden="true" />').length - 1, 2);
+	for (const accountSource of ["useAccountAvatar", "useRadientAuth", "avatar_url", "account_id"])
+		assert.ok(!source.includes(accountSource));
+	// No writes or crop-specific overrides belong in a read-only summary.
+	for (const mutation of ["setAgentAvatar(", "clearAgentAvatar(", "renderAgentAvatarCrop("])
+		assert.ok(!source.includes(mutation));
+});
+
+test("summary portrait reserves its box and actions wrap without title offsets", () => {
+	const source = read("src/renderer/src/features/agents/components/agent-detail.tsx");
+	assert.ok(source.includes('className="size-20 shrink-0"'));
+	assert.ok(source.includes("flex flex-wrap items-center justify-between gap-x-4 gap-y-3"));
+	assert.ok(source.includes("flex min-w-0 flex-wrap items-center gap-2"));
+	assert.ok(source.includes('data-agent-summary-actions=""'));
+	assert.ok(source.includes("flex min-w-0 flex-[1_1_16rem] items-center gap-4"));
+	assert.ok(source.includes('className="min-w-0 flex-1 space-y-1"'));
+	assert.ok(source.includes('className="truncate text-title focus:outline-none"'));
+	assert.ok(source.includes('aria-hidden="true"'));
+});
+
+test("summary keeps the existing Edit workflow and agent-keyed picture field", () => {
+	const source = read("src/renderer/src/features/agents/components/agent-detail.tsx");
+	assert.ok(source.includes('t("ui.agents.detail.action.edit")'));
+	assert.ok(source.includes("setEditing(true)"));
+	assert.ok(source.includes("baseRevisionRef.current = profile.definition_revision"));
+	assert.ok(source.includes("key={profile.agent_id}"));
+	assert.ok(source.includes("agentId={profile.agent_id}"));
+	assert.ok(source.includes("openPictureEditor = false"));
+	// Summary adds no competing picture link or alternative editor route.
+	assert.ok(!source.includes("AgentAvatarEditLink"));
+});

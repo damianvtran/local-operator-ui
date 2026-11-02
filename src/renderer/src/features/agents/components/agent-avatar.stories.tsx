@@ -28,6 +28,7 @@ import type { AgentAvatarMeta } from "@shared/api/local-operator/types";
 import type { AgentDetails } from "@shared/api/local-operator/types";
 import { queryClient } from "@shared/api/query-client";
 import { TooltipProvider } from "@shared/components/ui";
+import { t } from "@shared/i18n";
 import type { CanonicalSessionRow } from "@shared/store/canonical-sessions-store";
 import type { Meta, StoryObj } from "@storybook/react";
 import {
@@ -44,6 +45,8 @@ import {
 } from "../../chat/components/chat-session-avatar";
 import { AgentAvatarCropper } from "./agent-avatar-cropper";
 import { AgentAvatarField } from "./agent-avatar-field";
+import { makeProfile } from "./agent-class.stories";
+import { AgentDetail } from "./agent-detail";
 import { AgentsSidebarItem } from "./agents-sidebar";
 
 /* ------------------------------------------------------------------ *
@@ -90,7 +93,9 @@ const installMedia = () => {
 		...api.desktop,
 		media: async (request: { op?: string }) =>
 			request.op === "agent.avatar"
-				? { status: 200, kind: "bytes", mimeType: "image/png", data: PNG }
+				? { status: 200,
+				kind: "bytes",
+				mimeType: "image/png", data: PNG }
 				: { status: 404, kind: "error", detail: "Not in this story." },
 	};
 	// biome-ignore lint/suspicious/noExplicitAny: the preload bridge is a mock here.
@@ -634,3 +639,187 @@ async function assertHeaderGeometry(element: HTMLElement): Promise<number> {
 		);
 	return spread;
 }
+
+/**
+ * Summary portraits use the shipped detail pane and local media seam, never an
+ * account/Bridge photo. Distinct ids per state keep a prior successful cache
+ * entry from making the loading/error stories accidentally show a picture.
+ * These fixtures are authored under D2 NO START: no capture or pass is claimed.
+ */
+type SummaryPictureState = "populated" | "no-image" | "loading" | "error";
+const SummaryPortraitScene: FC<{
+	state: SummaryPictureState;
+	width?: number;
+	longName?: boolean;
+}> = ({ state, width = 960, longName = false }) => {
+	const id = `summary-portrait-${state}`;
+	const pictureIds = useMemo(
+		() => state === "no-image" ? [] : [id],
+		[state, id],
+	);
+	useSeedPictures(pictureIds);
+	useLayoutEffect(() => {
+		const api = window as unknown as {
+			api: {
+				desktop: {
+					media: (request: { op?: string; agentId?: string }) => Promise<unknown>;
+				};
+			};
+		};
+		const previous = api.api.desktop.media;
+		api.api.desktop.media = async (request) => {
+			if (request.op !== "agent.avatar") return previous(request);
+			if (request.agentId !== id)
+				throw new Error("Summary requested another identity's image");
+			if (state === "loading") {
+				// A held transport, not a timer-dependent screenshot of a fast read.
+				return new Promise<never>(() => {
+					/* Deliberately unresolved fixture read. */
+				});
+			}
+			return {
+				status: 200,
+				kind: "bytes",
+				mimeType: "image/png",
+				// Invalid image bytes exercise the shared image's decode-error glyph.
+				data: state === "error" ? new Uint8Array([0, 1, 2]) : PNG,
+			};
+		};
+		return () => {
+			api.api.desktop.media = previous;
+		};
+	}, [state, id]);
+	const profile = useMemo(() => makeProfile({
+		name: `summary-${state}`,
+		agent_id: id,
+		source: "custom",
+		description: "A local agent whose summary shows its own picture.",
+	}), [state, id]);
+	return (
+		<div
+			className="bg-surface p-6"
+			style={{ width, maxWidth: "100%" }}
+			data-summary-picture-state={state}
+		>
+			<AgentDetail
+				profile={profile}
+				displayedName={longName
+					? "An unusually long selected agent name that must not crowd its actions"
+					: "Local summary agent"}
+				classNotice={null}
+				onClassNotice={noop}
+				teams={[]}
+				effortTiers={[]}
+				askEnabled={false}
+				onSaved={noop}
+				onDuplicate={noop}
+				onOpenTeam={noop}
+				onAskAgent={noop}
+			/>
+		</div>
+	);
+};
+
+export const SummaryPortraitPopulated: Story = {
+	render: () => <SummaryPortraitScene state="populated" />,
+	play: async ({ canvasElement }) => {
+		await assertSummaryPortrait(canvasElement);
+	},
+};
+export const SummaryPortraitNoImage: Story = {
+	render: () => <SummaryPortraitScene state="no-image" />,
+	play: async ({ canvasElement }) => {
+		await assertSummaryPortrait(canvasElement);
+	},
+};
+export const SummaryPortraitLoading: Story = {
+	render: () => <SummaryPortraitScene state="loading" />,
+	play: async ({ canvasElement }) => {
+		await assertSummaryPortrait(canvasElement);
+	},
+};
+export const SummaryPortraitError: Story = {
+	render: () => <SummaryPortraitScene state="error" />,
+	play: async ({ canvasElement }) => {
+		await assertSummaryPortrait(canvasElement);
+	},
+};
+export const SummaryPortraitPopulatedNarrow: Story = {
+	render: () => <SummaryPortraitScene state="populated" width={360} longName />,
+	play: async ({ canvasElement }) => {
+		await assertSummaryPortrait(canvasElement);
+	},
+};
+export const SummaryPortraitNoImageNarrow: Story = {
+	render: () => <SummaryPortraitScene state="no-image" width={360} longName />,
+	play: async ({ canvasElement }) => {
+		await assertSummaryPortrait(canvasElement);
+	},
+};
+export const SummaryPortraitLoadingNarrow: Story = {
+	render: () => <SummaryPortraitScene state="loading" width={360} longName />,
+	play: async ({ canvasElement }) => {
+		await assertSummaryPortrait(canvasElement);
+	},
+};
+export const SummaryPortraitErrorNarrow: Story = {
+	render: () => <SummaryPortraitScene state="error" width={360} longName />,
+	play: async ({ canvasElement }) => {
+		await assertSummaryPortrait(canvasElement);
+	},
+};
+
+/** Authored but unexecuted during D2: these checks need a real admitted renderer. */
+async function assertSummaryPortrait(canvas: HTMLElement): Promise<void> {
+	await document.fonts.ready;
+	const portrait = canvas.querySelector<HTMLElement>("[data-agent-summary-portrait]");
+	const header = canvas.querySelector<HTMLElement>("[data-agent-summary-header]");
+	const state = canvas.querySelector<HTMLElement>("[data-summary-picture-state]")?.dataset.summaryPictureState;
+	if (!portrait || !header) throw new Error("Summary did not render its identity");
+	for (let attempt = 0; attempt < 100; attempt++) {
+		const image = portrait.querySelector("img");
+		if (state === "populated" ? image?.complete && image.naturalWidth > 0 : portrait.querySelector("svg")) break;
+		await new Promise((resolve) => setTimeout(resolve, 50));
+	}
+	await new Promise((resolve) =>
+		requestAnimationFrame(() => requestAnimationFrame(resolve)),
+	);
+	const image = portrait.querySelector("img");
+	if (state === "populated" && !(image?.complete && image.naturalWidth > 0))
+		throw new Error("Populated summary never painted its agent picture");
+	if (state !== "populated" && !portrait.querySelector("svg"))
+		throw new Error("Missing/loading/failed picture lost the local agent glyph");
+	const box = portrait.getBoundingClientRect();
+	const edge = Number.parseFloat(getComputedStyle(document.documentElement).fontSize) * 5;
+	if (Math.abs(box.width - edge) > 0.1 || Math.abs(box.height - edge) > 0.1)
+		throw new Error("Summary portrait no longer reserves its comfortable square");
+	const titleBlock = portrait.nextElementSibling?.getBoundingClientRect();
+	if (!titleBlock || Math.abs(box.y + box.height / 2 - titleBlock.y - titleBlock.height / 2) > 0.1)
+		throw new Error("Summary portrait and name/status lost shared centre alignment");
+	if (header.scrollWidth > header.clientWidth + 1) throw new Error("Summary header overflows the narrow pane");
+	const bounds = header.getBoundingClientRect();
+	for (const button of header.querySelectorAll("[data-agent-summary-actions] button")) {
+		const action = button.getBoundingClientRect();
+		if (action.left < bounds.left - 1 || action.right > bounds.right + 1)
+			throw new Error("Summary action escaped its responsive header");
+	}
+}
+
+/** The existing Edit button, not a new portrait-specific settings route. */
+export const SummaryPortraitExistingEdit: Story = {
+	render: () => <SummaryPortraitScene state="populated" width={360} longName />,
+	play: async ({ canvasElement }) => {
+		await assertSummaryPortrait(canvasElement);
+		const url = window.location.href;
+		const edit = Array.from(canvasElement.querySelectorAll<HTMLButtonElement>("[data-agent-summary-actions] button"))
+			.find((button) => button.textContent?.trim() === t("ui.agents.detail.action.edit"));
+		if (!edit) throw new Error("Existing Edit button is missing");
+		edit.click();
+		await new Promise((resolve) =>
+		requestAnimationFrame(() => requestAnimationFrame(resolve)),
+	);
+		if (!canvasElement.querySelector("#agent-picture") || canvasElement.querySelector("[data-agent-summary-portrait]"))
+			throw new Error("Edit did not open the existing agent picture field");
+		if (window.location.href !== url) throw new Error("Edit navigated to a redundant settings route");
+	},
+};

@@ -23,6 +23,7 @@
  * focuses the name, and suggests a name that cannot collide.
  */
 
+import { AgentMark } from "@shared/agent-avatar/agent-mark";
 import { desktopResult } from "@shared/api/local-operator/desktop-api";
 import type {
 	ReusableProfile,
@@ -58,7 +59,7 @@ import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
-import { LogIn, MoreHorizontal } from "lucide-react";
+import { Bot, LogIn, MoreHorizontal } from "lucide-react";
 import {
 	type FormEvent,
 	type ReactNode,
@@ -93,7 +94,6 @@ import {
 	LINK_HIT_AREA,
 	ReadBlock,
 	Section,
-	TITLE_LINE_HEIGHT,
 	consumeHeadingFocus,
 	requestHeadingFocus,
 	sourceLabel,
@@ -904,34 +904,64 @@ export function AgentDetail({
 		 */
 		<div className="space-y-8">
 			<header className="space-y-3">
-				<div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
-					<div className="min-w-0 flex-[1_1_16rem] space-y-1">
-						{/* The page's only h1 is the page title; a definition's name is a
-						    second-level heading (design D9). */}
-						<h2
-							ref={headingRef}
-							tabIndex={-1}
-							// A long name truncates instead of wrapping under the actions.
-							title={displayedName}
-							className="truncate text-title focus:outline-none"
-						>
-							{displayedName}
-						</h2>
-						{/*
-						 * THE DESCRIPTION IS SAID ONCE. It sat here AND in the "When to use it"
-						 * box ~130 px below, which is the same sentence twice on one screen
-						 * (design review round 1, D10). The box keeps it, because the box is
-						 * titled by the question the sentence answers.
-						 */}
-						<AgentMeta profile={profile} />
+				<div
+					className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3"
+					data-agent-summary-header=""
+				>
+					<div className="flex min-w-0 flex-[1_1_16rem] items-center gap-4">
+						{/* A summary must identify the selected AGENT, not the signed-in
+						    owner. Use the same local id as the existing picture editor;
+						    an uninstalled seed has no id and keeps the local Bot glyph.
+						    Reserve the same borderless 80px box through missing/loading/
+						    failed bytes so neither the title nor actions jump on arrival. */}
+						{editing ? null : (
+							<span
+								className="size-20 shrink-0"
+								data-agent-summary-portrait=""
+								aria-hidden="true"
+							>
+								<AgentMark
+									agentId={profile.agent_id}
+									className="size-full border-0 bg-transparent"
+									glyph={<Bot className="size-8" aria-hidden="true" />}
+									fallback={
+										<span className="flex size-full items-center justify-center rounded-full text-ink-muted">
+											<Bot className="size-8" aria-hidden="true" />
+										</span>
+									}
+								/>
+							</span>
+						)}
+						<div className="min-w-0 flex-1 space-y-1">
+							{/* The page's only h1 is the page title; a definition's name is a
+							    second-level heading (design D9). */}
+							<h2
+								ref={headingRef}
+								tabIndex={-1}
+								// A long name truncates instead of wrapping under the actions.
+								title={displayedName}
+								className="truncate text-title focus:outline-none"
+							>
+								{displayedName}
+							</h2>
+							{/*
+							 * THE DESCRIPTION IS SAID ONCE. It sat here AND in the "When to use it"
+							 * box ~130 px below, which is the same sentence twice on one screen
+							 * (design review round 1, D10). The box keeps it, because the box is
+							 * titled by the question the sentence answers.
+							 */}
+							<AgentMeta profile={profile} />
+						</div>
 					</div>
 					{/*
 					 * ONE PRIMARY, ONE SECONDARY, ONE QUIET - and none while the form is open
 					 * (design D5; spec D8). The primary while editing is Save changes in the
 					 * footer, and a second accent fill in the same frame split the decision.
-					 * `TITLE_LINE_HEIGHT` is the title's own line box (derived from the type
-					 * token, not copied), so the 32 px buttons centre on the TITLE line and
-					 * not on the title-plus-meta block.
+					 * The identity and actions are sibling flex items centred as whole boxes.
+					 * The identity may include an 80px portrait, or the actions may wrap
+					 * below it on a narrow pane; neither needs a title-specific offset.
+					 * The action cluster can wrap internally too: a narrow pane must not
+					 * turn its existing controls into an overflowing unbroken strip.
 					 *
 					 * THE TRAILING GLYPH SITS ON THE COLUMN EDGE (design review round 1 D1):
 					 * the last control is the ghost "More actions" icon button, 32 px wide
@@ -941,10 +971,8 @@ export function AgentDetail({
 					 */}
 					{editing ? null : (
 						<div
-							className={cn(
-								"flex shrink-0 items-center gap-2",
-								TITLE_LINE_HEIGHT,
-							)}
+							className="flex min-w-0 flex-wrap items-center gap-2"
+							data-agent-summary-actions=""
 						>
 							<Button
 								variant="primary"
