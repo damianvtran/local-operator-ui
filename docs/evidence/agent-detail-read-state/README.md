@@ -17,6 +17,21 @@ contains the whole app shell at 2760×1800; the after browser captures the page-
 story at 2560×1440. They compare copy and states, not pixel-identical geometry.
 No claim is made about other pages, languages' layouts, or the entire census.
 
+## Frame storage and regeneration
+
+Frames live locally in `docs/evidence-frames/agent-detail-read-state/`, the
+ignored rig-output tree. Only this README is tracked: committing PNGs under
+`docs/evidence/` violates the evidence-structure contract. The six original
+frames were relocated byte-for-byte, not discarded; their filenames are listed
+below rather than linked as if GitHub hosted them.
+
+To recover the historical before frames, copy `frames/fr-agent-detail.png` and
+`frames/fr-agent-populated.png` from the census session named above to
+`before-missing-fr.png` and `before-populated-fr.png` in that ignored directory.
+They record the old UI, so regenerating them from the fixed component would
+misrepresent the comparison. Recreate the after frames with the stories below,
+saving each screenshot under its listed filename in the same ignored directory.
+
 ## Reproduce after frames
 
 From the PR checkout, using its existing dependency tree:
@@ -46,8 +61,7 @@ teams. Storybook's existing `LocaleFrame` owns `args.locale=fr`.
 
 ### Missing definition
 
-![Before: missing definition](before-missing-fr.png)
-![After: missing definition](after-missing-fr.png)
+Local comparison: `before-missing-fr.png` → `after-missing-fr.png`.
 
 Observed after:
 - `Impossible de lire « census-agent »`
@@ -57,16 +71,15 @@ Observed after:
 
 ### Populated definition
 
-![Before: populated definition](before-populated-fr.png)
-![After: populated definition, top](after-populated-fr.png)
-![After: populated definition, lower](after-populated-used-by-fr.png)
+Local comparison: `before-populated-fr.png` → `after-populated-fr.png`
+(top) and `after-populated-used-by-fr.png` (lower detail content).
 
 Observed after: all three scoped explanatory sentences are French, and the
 reactive switch says `Désactivé`. `inherit` deliberately remains a raw backend
 tier token in the read view. Picker labels are human copy while submitted ids
 remain `inherit`.
 
-![After: effort picker label](after-effort-picker-fr.png)
+Local effort-picker frame: `after-effort-picker-fr.png`.
 
 To reproduce the picker frame, click `role=button[name="Modifier"]` in the
 populated story, then bring `text=Utiliser le niveau d’effort de la session`
