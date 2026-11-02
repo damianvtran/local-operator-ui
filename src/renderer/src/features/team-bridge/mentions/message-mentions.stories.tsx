@@ -3,12 +3,7 @@ import type { Meta, StoryObj } from "@storybook/react";
 import { TeamBridgeMessageList } from "../team-bridge-message-list";
 import { MentionSourceContext } from "./mention-context";
 
-/**
- * Mentions in received message bodies: another person's mention and the
- * READER's own (the stronger, Slack-yellow token), light and dark. The bodies
- * carry no `mentions` field, so this is the `@Name` fallback path every hub
- * serves today; a body in inline code stays unhighlighted.
- */
+/** Authoritative account IDs select viewer ink; fallback names never do. */
 const source = {
 	conversationId: "bcv_story",
 	candidates: [
@@ -27,6 +22,14 @@ const source = {
 			member: true,
 			bridgeOff: false,
 		},
+		{
+			kind: "agent" as const,
+			accountId: "acct_me",
+			endpointId: "bep_self",
+			label: "My agent",
+			member: true,
+			bridgeOff: false,
+		},
 	],
 	conversationKind: "group" as const,
 	sendMentions: true,
@@ -36,6 +39,12 @@ const message = (id: string, seq: number, body: string, name: string) => ({
 	id,
 	conversation_id: "bcv_story",
 	seq,
+	mentions: [
+		{ kind: "human" as const, account_id: "acct_ben" },
+		{ kind: "human" as const, account_id: "acct_me" },
+		{ kind: "agent" as const, account_id: "acct_ben", endpoint_id: "bep_aida" },
+		{ kind: "agent" as const, account_id: "acct_me", endpoint_id: "bep_self" },
+	],
 	sender: {
 		account_id: `acct_${seq}`,
 		kind: "human" as const,
@@ -56,7 +65,7 @@ function Harness() {
 						message(
 							"m1",
 							1,
-							"@Ben Tran can you and @Aida (Ben Tran) take the reindex?",
+							"@Ben Tran can you and @Aida (Ben Tran) and @My agent take the reindex?",
 							"Ada Lovelace",
 						),
 						message(
