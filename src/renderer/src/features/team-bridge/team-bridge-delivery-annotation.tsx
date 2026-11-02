@@ -37,9 +37,10 @@ import {
  * unconditionally.
  */
 export const TeamBridgeDeliveryAnnotation: FC<{
-	message: Pick<TeamBridgeMessage, "delivery_states">;
+	message: Pick<TeamBridgeMessage, "delivery_states"> &
+		Partial<Pick<TeamBridgeMessage, "origin" | "sender">>;
 }> = ({ message }) => {
-	const lines = teamBridgeDeliveryLines(message.delivery_states);
+	const lines = teamBridgeDeliveryLines(message.delivery_states, message);
 	if (lines.length === 0) return null;
 	return (
 		// `gap-1` between recipients against the 1.5 line height inside one: a

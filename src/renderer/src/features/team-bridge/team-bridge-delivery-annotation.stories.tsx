@@ -35,24 +35,26 @@ const state = (
 
 const message = (
 	delivery_states: TeamBridgeDeliveryState[] | undefined,
+	senderKind: "human" | "agent",
 ): TeamBridgeMessage => ({
 	id: "bcmsg_delivery01",
 	conversation_id: "bcv_delivery01",
 	seq: 1,
-	sender: { account_id: "acct_me", kind: "human", display_label: "Ada" },
+	sender: { account_id: "acct_me", kind: senderKind, display_label: "Ada" },
 	body: "Can you pull the customer list for the Q3 renewal and send it over?",
-	origin: "human",
+	origin: senderKind,
 	created_at: new Date().toISOString(),
 	delivery_states,
 });
 
-const Thread: FC<{ states: TeamBridgeDeliveryState[] | undefined }> = ({
-	states,
-}) => (
+const Thread: FC<{
+	states: TeamBridgeDeliveryState[] | undefined;
+	senderKind?: "human" | "agent";
+}> = ({ states, senderKind = "human" }) => (
 	// Top padding leaves room for the tooltip panel, which opens above.
 	<div className="flex w-[760px] flex-col bg-surface pt-24 text-ink">
 		<TeamBridgeMessageList
-			messages={[message(states)]}
+			messages={[message(states, senderKind)]}
 			labelFor={(sender) => sender.display_label}
 			tenantId="tnt_story"
 		/>
@@ -145,4 +147,32 @@ export const RefusedTooltipOpen: Story = {
 export const HeldTooltipOpen: Story = {
 	args: { states: [state({ state: "held" })] },
 	play: openInfo(() => t("ui.teamBridge.delivery.info_held")),
+};
+
+// Even deliberately over-disclosed wire fixtures must render generic agent
+// non-delivery. The same state still retains a coarse hint for known humans.
+export const AgentRefusalWithSuppliedClass: Story = {
+	args: {
+		senderKind: "agent",
+		states: [state({ refusal_class: "abusive" })],
+	},
+};
+
+export const AgentMixedPartialDelivery: Story = {
+	args: {
+		senderKind: "agent",
+		states: [
+			state({ refusal_class: "personal_info" }),
+			state({
+				endpoint_id: "bep_bo",
+				recipient_label: "Bo",
+				state: "delivered",
+			}),
+			state({
+				endpoint_id: "bep_cy",
+				recipient_label: "Cy",
+				state: "held",
+			}),
+		],
+	},
 };

@@ -82,8 +82,21 @@ const isHoldClass = (value: unknown): value is TeamBridgeHoldClass =>
  */
 export function teamBridgeDeliveryLines(
 	states: readonly TeamBridgeDeliveryState[] | undefined,
+	source: {
+		origin?: unknown;
+		sender?: { kind?: unknown; audit_unknown_kind?: unknown };
+	} = {},
 ): TeamBridgeDeliveryLine[] {
 	if (!states || states.length === 0) return [];
+	// Only a positively identified human-origin message may carry the hub's
+	// already-clamped coarse hint. Never infer humanity from a missing sender:
+	// agent/system/future origins stay generic even if a class was supplied.
+	// The audit mapper marks unrecognized sender kinds while normalizing their
+	// display shape to human, so that marker must also suppress disclosure.
+	const knownHuman =
+		source.origin === "human" &&
+		source.sender?.kind === "human" &&
+		source.sender.audit_unknown_kind !== true;
 	const lines: TeamBridgeDeliveryLine[] = [];
 	const seen = new Set<string>();
 	for (const entry of states) {
@@ -98,7 +111,7 @@ export function teamBridgeDeliveryLines(
 				key,
 				agent,
 				owner,
-				refusalClass: isRefusalClass(entry.refusal_class)
+				refusalClass: knownHuman && isRefusalClass(entry.refusal_class)
 					? entry.refusal_class
 					: null,
 			});

@@ -91,6 +91,10 @@ const {
 	ownerAuditMessageSchema,
 } = compiled.exports;
 const createElement = React.createElement;
+const MODERATION_LOCALES = [
+	"en", "fr", "es", "zh-CN", "ru", "vi", "ur", "hi",
+];
+const MODERATION_EM_DASH = /\u2014/u;
 const INFO_LABEL = /aria-label="About message screening"/;
 const UNREAD_FIELDS = /SECRET-REASON|harassment|0\.97/;
 const INFO_REFUSED_CONSTANT = /t\("ui\.teamBridge\.delivery\.info_refused"\)/;
@@ -105,10 +109,12 @@ const entry = (over = {}) => ({
 	state: "refused",
 	...over,
 });
-const render = (states) =>
+// A human classification is positive fixture input, never inferred by the model.
+const HUMAN_SOURCE = { origin: "human", sender: { kind: "human" } };
+const render = (states, source = HUMAN_SOURCE) =>
 	renderToStaticMarkup(
 		createElement(TeamBridgeDeliveryAnnotation, {
-			message: { delivery_states: states },
+			message: { ...source, delivery_states: states },
 		}),
 	);
 // The rendered sentence, entities decoded and tags stripped, one per <li>.
@@ -156,7 +162,7 @@ test("refused with each class names the agent, owner and the one phrase", () => 
 });
 
 test("refused without, or with an unknown, class drops the parenthetical", () => {
-	const generic = ["Not delivered to Aida (Sam): refused by their moderation"];
+	const generic = ["Not delivered to Aida (Sam). Refused by moderation."];
 	assert.deepEqual(lineTexts(render([entry()])), generic);
 	assert.deepEqual(
 		lineTexts(render([entry({ refusal_class: "prompt_injection" })])),
@@ -165,18 +171,18 @@ test("refused without, or with an unknown, class drops the parenthetical", () =>
 	);
 });
 
-test("held names its recipient; the owner's reason follows a dash, never an ellipsis", () => {
+test("held names its recipient; the owner reason is a complete second sentence", () => {
 	assert.deepEqual(lineTexts(render([entry({ state: "held" })])), [
 		"Waiting to be screened by Aida (Sam)…",
 	]);
 	const reasons = {
-		screening_unavailable: "screening is temporarily unavailable",
-		awaiting_review: "awaiting review",
+		screening_unavailable: "Screening is temporarily unavailable.",
+		awaiting_review: "Awaiting review.",
 	};
 	for (const [cls, reason] of Object.entries(reasons)) {
 		assert.deepEqual(
 			lineTexts(render([entry({ state: "held", hold_class: cls })])),
-			[`Waiting to be screened by Aida (Sam) — ${reason}`],
+			[`Waiting to be screened by Aida (Sam). ${reason}`],
 			cls,
 		);
 	}
@@ -201,7 +207,7 @@ test("a blank label falls back to the shared placeholders", () => {
 			render([entry({ recipient_label: "  ", recipient_owner_label: "" })]),
 		),
 		[
-			"Not delivered to Unknown agent (Unknown person): refused by their moderation",
+			"Not delivered to Unknown agent (Unknown person). Refused by moderation.",
 		],
 	);
 });
@@ -256,7 +262,7 @@ test("a press opens the panel instead of closing it (D3)", async () => {
 		await act(async () =>
 			root.render(
 				createElement(TeamBridgeDeliveryAnnotation, {
-					message: { delivery_states: [entry()] },
+					message: { ...HUMAN_SOURCE, delivery_states: [entry()] },
 				}),
 			),
 		);
@@ -345,8 +351,8 @@ test("the owner-audit view carries the audited agent's delivery state to the row
 		ownerAuditMessageSchema.parse({ ...wire, delivery_states: [held] }),
 	);
 	assert.deepEqual(row.delivery_states, [held]);
-	assert.deepEqual(lineTexts(render(row.delivery_states)), [
-		"Waiting to be screened by Aida (Sam) — awaiting review",
+	assert.deepEqual(lineTexts(render(row.delivery_states, row)), [
+		"Waiting to be screened by Aida (Sam). Awaiting review.",
 	]);
 	assert.equal(
 		ownerAuditToBridgeMessage(ownerAuditMessageSchema.parse(wire))
@@ -359,4 +365,83 @@ test("the owner-audit view carries the audited agent's delivery state to the row
 		undefined,
 		"a malformed annotation costs the annotation, never the audit row",
 	);
+});
+
+test("coarse refusal classes require positively known human origin and sender", () => {
+	const supplied = [entry({ refusal_class: "abusive" })];
+	assert.equal(
+		teamBridgeDeliveryLines(supplied, HUMAN_SOURCE)[0].refusalClass,
+		"abusive",
+	);
+	const sources = [
+		{},
+		{ origin: "agent", sender: { kind: "agent" } },
+		{ origin: "system", sender: { kind: "human" } },
+		{ origin: "future", sender: { kind: "human" } },
+		{ sender: { kind: "human" } },
+		{ origin: "human" },
+		{ origin: "human", sender: { kind: "agent" } },
+		{ origin: "human", sender: { kind: "future" } },
+		{ origin: "human", sender: { kind: "human", audit_unknown_kind: true } },
+	];
+	for (const source of sources) {
+		assert.equal(
+			teamBridgeDeliveryLines(supplied, source)[0].refusalClass,
+			null,
+		);
+		assert.deepEqual(lineTexts(render(supplied, source)), [
+			"Not delivered to Aida (Sam). Refused by moderation.",
+		]);
+	}
+	assert.equal(teamBridgeDeliveryLines(supplied)[0].refusalClass, null);
+});
+
+test("an agent refusal exposes no class through text or the info control", () => {
+	const source = { origin: "agent", sender: { kind: "agent" } };
+	const generic = render([entry()], source);
+	for (const refusal_class of [
+		"manipulation",
+		"personal_info",
+		"abusive",
+		"unsafe_content",
+		"out_of_scope",
+	]) {
+		assert.equal(render([entry({ refusal_class })], source), generic);
+	}
+	assert.match(generic, INFO_LABEL);
+});
+
+test("mixed partial delivery names only each affected recipient", () => {
+	const states = [
+		entry({ endpoint_id: "a", refusal_class: "abusive" }),
+		entry({ endpoint_id: "b", recipient_label: "Bo", state: "delivered" }),
+		entry({ endpoint_id: "c", recipient_label: "Cy", state: "held" }),
+		entry({ endpoint_id: "a", refusal_class: "abusive" }),
+	];
+	assert.deepEqual(lineTexts(render(states)), [
+		"Not delivered to Aida (Sam): refused by their moderation (looked like abusive content)",
+		"Waiting to be screened by Cy (Sam)…",
+	]);
+	assert.deepEqual(
+		lineTexts(render(states, { origin: "agent", sender: { kind: "agent" } })),
+		[
+			"Not delivered to Aida (Sam). Refused by moderation.",
+			"Waiting to be screened by Cy (Sam)…",
+		],
+	);
+});
+
+test("all moderation copy in every shipped locale has no em dash", () => {
+	for (const locale of MODERATION_LOCALES) {
+		const catalogue = JSON.parse(
+			readFileSync(`src/i18n/catalogues/${locale}/ui.teamBridge.json`, "utf8"),
+		);
+		const entries = Object.entries(catalogue).filter(([key]) =>
+			key.startsWith("ui.teamBridge.delivery."),
+		);
+		assert.equal(entries.length, 13, locale);
+		for (const [key, value] of entries) {
+			assert.doesNotMatch(value, MODERATION_EM_DASH, `${locale}:${key}`);
+		}
+	}
 });
