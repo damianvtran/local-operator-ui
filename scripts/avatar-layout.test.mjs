@@ -78,3 +78,29 @@ test("summary keeps the existing Edit workflow and agent-keyed picture field", (
 	// Summary adds no competing picture link or alternative editor route.
 	assert.ok(!source.includes("AgentAvatarEditLink"));
 });
+
+/* Review regressions for fixture provenance; these do not replace running the stories. */
+test("summary fixture seeds its provider and isolates both local transports", () => {
+	const source = read("src/renderer/src/features/agents/components/agent-avatar.stories.tsx");
+	const start = source.indexOf("const SummaryPortraitScene:");
+	const end = source.indexOf("export const SummaryPortraitPopulated:", start);
+	const scene = source.slice(start, end);
+	assert.ok(scene.includes("const client = useQueryClient()"));
+	assert.ok(scene.includes("client.setQueryData(agentAvatarsQueryKey, map)"));
+	assert.ok(!scene.includes("useSeedPictures("));
+	assert.ok(scene.includes('input.op !== "legacy.agents.list"'));
+	assert.ok(scene.includes("api.api.desktop.request = previousRequest"));
+	assert.ok(scene.includes("api.api.desktop.media = previousMedia"));
+	assert.ok(scene.includes("{ready ?"));
+});
+
+test("summary state checks require requested loading and native decode error evidence", () => {
+	const source = read("src/renderer/src/features/agents/components/agent-avatar.stories.tsx");
+	const checks = source.slice(source.indexOf("async function assertSummaryPortrait("));
+	assert.ok(checks.includes("evidence.requests > 0 && evidence.inFlight > 0"));
+	assert.ok(checks.includes("evidence.bytesDelivered && evidence.decodeErrorSource"));
+	assert.ok(source.includes("image.src === peekBlobUrl(agentAvatarPath(id, SHA))"));
+	assert.ok(source.includes('image.addEventListener("error", onError, { once: true })'));
+	assert.ok(source.includes('image.removeEventListener("error", onError)'));
+	assert.ok(source.includes("window.Image = NativeImage"));
+});

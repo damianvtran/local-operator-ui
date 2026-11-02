@@ -19,6 +19,7 @@ import { ChatDeviceSlot as GeometryDeviceSlot } from "../../chat/device/chat-dev
  */
 
 import {
+	agentAvatarPath,
 	agentAvatarsQueryKey,
 	useAgentAvatarMap,
 } from "@shared/agent-avatar/agent-avatar";
@@ -29,8 +30,10 @@ import type { AgentDetails } from "@shared/api/local-operator/types";
 import { queryClient } from "@shared/api/query-client";
 import { TooltipProvider } from "@shared/components/ui";
 import { t } from "@shared/i18n";
+import { peek as peekBlobUrl } from "@shared/lib/blob-url-cache";
 import type { CanonicalSessionRow } from "@shared/store/canonical-sessions-store";
 import type { Meta, StoryObj } from "@storybook/react";
+import { useQueryClient } from "@tanstack/react-query";
 import {
 	type FC,
 	useEffect,
@@ -647,48 +650,134 @@ async function assertHeaderGeometry(element: HTMLElement): Promise<number> {
  * These fixtures are authored under D2 NO START: no capture or pass is claimed.
  */
 type SummaryPictureState = "populated" | "no-image" | "loading" | "error";
+type SummaryPictureEvidence = {
+	requests: number;
+	inFlight: number;
+	bytesDelivered: boolean;
+	decodeErrorSource: string | null;
+};
+const summaryPictureEvidence = new WeakMap<HTMLElement, SummaryPictureEvidence>();
+
 const SummaryPortraitScene: FC<{
 	state: SummaryPictureState;
 	width?: number;
 	longName?: boolean;
 }> = ({ state, width = 960, longName = false }) => {
-	const id = `summary-portrait-${state}`;
-	const pictureIds = useMemo(
-		() => state === "no-image" ? [] : [id],
-		[state, id],
+	const client = useQueryClient();
+	const rootRef = useRef<HTMLDivElement>(null);
+	const [ready, setReady] = useState(false);
+	// Per-mount local ids prevent an earlier story's immutable blob cache from
+	// satisfying this story without its own discriminating media request.
+	const id = useMemo(
+		() => `summary-portrait-${state}-${crypto.randomUUID()}`,
+		[state],
 	);
-	useSeedPictures(pictureIds);
 	useLayoutEffect(() => {
+		const root = rootRef.current;
+		if (!root) return;
+		const evidence: SummaryPictureEvidence = {
+			requests: 0,
+			inFlight: 0,
+			bytesDelivered: false,
+			decodeErrorSource: null,
+		};
+		summaryPictureEvidence.set(root, evidence);
+		const avatar: AgentAvatarMeta = {
+			sha256: SHA,
+			mime: "image/png",
+			bytes: PNG.byteLength,
+			updated_at: "2026-10-30T00:00:00.000Z",
+		};
+		const map = state === "no-image" ? {} : { [id]: avatar };
+		// Preview owns a client per story. Seed that provider, not the app's
+		// imported singleton, BEFORE mounting a reader that can start a query.
+		client.setQueryData(agentAvatarsQueryKey, map);
 		const api = window as unknown as {
 			api: {
 				desktop: {
 					media: (request: { op?: string; agentId?: string }) => Promise<unknown>;
+					request: (request: { op?: string }) => Promise<unknown>;
 				};
 			};
 		};
-		const previous = api.api.desktop.media;
-		api.api.desktop.media = async (request) => {
-			if (request.op !== "agent.avatar") return previous(request);
-			if (request.agentId !== id)
+		const previousMedia = api.api.desktop.media;
+		const previousRequest = api.api.desktop.request;
+		const request: typeof previousRequest = async (input) => {
+			// A later stale/refetch read must reproduce this same local catalogue,
+			// never replace the seed through preview's unconfigured transport.
+			if (input.op !== "legacy.agents.list") return previousRequest(input);
+			return {
+				status: 200,
+				body: {
+					result: {
+						agents: [{
+							id,
+							name: `summary-${state}`,
+							...(state === "no-image" ? {} : { avatar }),
+						}],
+					},
+				},
+			};
+		};
+		const media: typeof previousMedia = async (input) => {
+			if (input.op !== "agent.avatar") return previousMedia(input);
+			if (input.agentId !== id)
 				throw new Error("Summary requested another identity's image");
+			evidence.requests++;
+			evidence.inFlight++;
+			root.dataset.summaryMediaPhase = "in-flight";
 			if (state === "loading") {
-				// A held transport, not a timer-dependent screenshot of a fast read.
+				// Keep a REAL requested read pending; an early empty glyph alone is
+				// not evidence that the loading arm was reached.
 				return new Promise<never>(() => {
-					/* Deliberately unresolved fixture read. */
+					/* Deliberately held transport. */
 				});
 			}
+			evidence.inFlight--;
+			evidence.bytesDelivered = true;
+			root.dataset.summaryMediaPhase = "bytes-delivered";
 			return {
 				status: 200,
 				kind: "bytes",
 				mimeType: "image/png",
-				// Invalid image bytes exercise the shared image's decode-error glyph.
 				data: state === "error" ? new Uint8Array([0, 1, 2]) : PNG,
 			};
 		};
+		// Radix loads a detached native Image before mounting its <img>. A DOM
+		// error listener cannot see that event. Observe the REAL native decoder,
+		// without synthesising an error, replacing a result or touching production.
+		const NativeImage = window.Image;
+		const observedImages = new Map<HTMLImageElement, () => void>();
+		const ObservedImage = new Proxy(NativeImage, {
+			construct(target, args) {
+				const image = Reflect.construct(target, args) as HTMLImageElement;
+				const onError = () => {
+					if (
+						state === "error" && evidence.bytesDelivered &&
+						image.src === peekBlobUrl(agentAvatarPath(id, SHA))
+					) {
+						evidence.decodeErrorSource = image.src;
+						root.dataset.summaryMediaPhase = "decode-error";
+					}
+				};
+				observedImages.set(image, onError);
+				image.addEventListener("error", onError, { once: true });
+				return image;
+			},
+		});
+		api.api.desktop.request = request;
+		api.api.desktop.media = media;
+		if (state === "error") window.Image = ObservedImage;
+		setReady(true);
 		return () => {
-			api.api.desktop.media = previous;
+			summaryPictureEvidence.delete(root);
+			for (const [image, onError] of observedImages)
+				image.removeEventListener("error", onError);
+			if (api.api.desktop.media === media) api.api.desktop.media = previousMedia;
+			if (api.api.desktop.request === request) api.api.desktop.request = previousRequest;
+			if (window.Image === ObservedImage) window.Image = NativeImage;
 		};
-	}, [state, id]);
+	}, [client, state, id]);
 	const profile = useMemo(() => makeProfile({
 		name: `summary-${state}`,
 		agent_id: id,
@@ -697,11 +786,13 @@ const SummaryPortraitScene: FC<{
 	}), [state, id]);
 	return (
 		<div
+			ref={rootRef}
 			className="bg-surface p-6"
 			style={{ width, maxWidth: "100%" }}
 			data-summary-picture-state={state}
 		>
-			<AgentDetail
+			{ready ? <AgentDetail
+				key={id}
 				profile={profile}
 				displayedName={longName
 					? "An unusually long selected agent name that must not crowd its actions"
@@ -715,7 +806,7 @@ const SummaryPortraitScene: FC<{
 				onDuplicate={noop}
 				onOpenTeam={noop}
 				onAskAgent={noop}
-			/>
+			/> : null}
 		</div>
 	);
 };
@@ -772,21 +863,36 @@ export const SummaryPortraitErrorNarrow: Story = {
 /** Authored but unexecuted during D2: these checks need a real admitted renderer. */
 async function assertSummaryPortrait(canvas: HTMLElement): Promise<void> {
 	await document.fonts.ready;
-	const portrait = canvas.querySelector<HTMLElement>("[data-agent-summary-portrait]");
-	const header = canvas.querySelector<HTMLElement>("[data-agent-summary-header]");
-	const state = canvas.querySelector<HTMLElement>("[data-summary-picture-state]")?.dataset.summaryPictureState;
-	if (!portrait || !header) throw new Error("Summary did not render its identity");
+	const root = canvas.querySelector<HTMLElement>("[data-summary-picture-state]");
+	if (!root) throw new Error("Summary fixture is missing");
+	const state = root.dataset.summaryPictureState;
+	let settled = false;
 	for (let attempt = 0; attempt < 100; attempt++) {
-		const image = portrait.querySelector("img");
-		if (state === "populated" ? image?.complete && image.naturalWidth > 0 : portrait.querySelector("svg")) break;
+		const portrait = root.querySelector("[data-agent-summary-portrait]");
+		const image = portrait?.querySelector("img");
+		const glyph = Boolean(portrait?.querySelector("svg"));
+		const evidence = summaryPictureEvidence.get(root);
+		settled = Boolean(evidence && (
+			state === "populated"
+				? evidence.requests > 0 && evidence.bytesDelivered && image?.complete && image.naturalWidth > 0
+				: state === "loading"
+					? evidence.requests > 0 && evidence.inFlight > 0 && !evidence.bytesDelivered && glyph
+					: state === "error"
+						? evidence.requests > 0 && evidence.bytesDelivered && evidence.decodeErrorSource && glyph
+						: state === "no-image" && evidence.requests === 0 && glyph
+		));
+		if (settled) break;
 		await new Promise((resolve) => setTimeout(resolve, 50));
 	}
+	if (!settled) throw new Error(`Summary never reached its discriminating ${state} state`);
+	// These frames follow the observed request/decoder event, rather than being
+	// used as a substitute for proving the event happened.
 	await new Promise((resolve) =>
 		requestAnimationFrame(() => requestAnimationFrame(resolve)),
 	);
-	const image = portrait.querySelector("img");
-	if (state === "populated" && !(image?.complete && image.naturalWidth > 0))
-		throw new Error("Populated summary never painted its agent picture");
+	const portrait = root.querySelector<HTMLElement>("[data-agent-summary-portrait]");
+	const header = root.querySelector<HTMLElement>("[data-agent-summary-header]");
+	if (!portrait || !header) throw new Error("Summary did not render its identity");
 	if (state !== "populated" && !portrait.querySelector("svg"))
 		throw new Error("Missing/loading/failed picture lost the local agent glyph");
 	const box = portrait.getBoundingClientRect();
