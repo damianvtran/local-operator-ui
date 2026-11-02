@@ -821,7 +821,10 @@ test("strict model launch binds its verified executable despite late parent over
 	}
 	// A usable parent override must not satisfy the strict model prerequisite.
 	const oldOverride = process.env.ELECTRON_OVERRIDE_DIST_PATH;
-	const hadExpectedHead = Object.hasOwn(process.env, "MODEL_CASE_EXPECTED_HEAD");
+	const hadExpectedHead = Object.hasOwn(
+		process.env,
+		"MODEL_CASE_EXPECTED_HEAD",
+	);
 	const oldExpectedHead = process.env.MODEL_CASE_EXPECTED_HEAD;
 	try {
 		process.env.MODEL_CASE_EXPECTED_HEAD = fixtureHead;
@@ -839,7 +842,10 @@ test("strict model launch binds its verified executable despite late parent over
 		if (hadExpectedHead) process.env.MODEL_CASE_EXPECTED_HEAD = oldExpectedHead;
 		else Reflect.deleteProperty(process.env, "MODEL_CASE_EXPECTED_HEAD");
 		assert.equal(process.env.MODEL_CASE_EXPECTED_HEAD, oldExpectedHead);
-		assert.equal(Object.hasOwn(process.env, "MODEL_CASE_EXPECTED_HEAD"), hadExpectedHead);
+		assert.equal(
+			Object.hasOwn(process.env, "MODEL_CASE_EXPECTED_HEAD"),
+			hadExpectedHead,
+		);
 		assert.equal(process.env.ELECTRON_OVERRIDE_DIST_PATH, oldOverride);
 	}
 });
