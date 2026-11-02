@@ -64459,6 +64459,209 @@
 					"status": "audited"
 				}
 			]
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.agents.detail.read_state",
+			"source_sha256": "0de7ac1bff46dc77b3bbe1f479b60a220361b3e32f673332dbe9eecfb56421f0",
+			"target_sha256": "4352e842cdd76d059a0f643117d7c96c6c0a277963dfceaa31b30ef603d8c48b",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-11-02"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-02",
+					"result": "clean",
+					"instance": "bf0a84aab2e8-fr-read-state",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/bf0a84aab2e8-fr-read-state.json",
+					"receipt_sha256": "36578ebfa02d607f588cff15e1724bbc4c1342ded25ac5ec8574acc0c2455ec1"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.agents.detail.read_state",
+			"source_sha256": "0de7ac1bff46dc77b3bbe1f479b60a220361b3e32f673332dbe9eecfb56421f0",
+			"target_sha256": "d1d89e4506ccc8f25b681b4db4137569cbe4778267cddda33053d9a01ed9f19d",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-11-02"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-02",
+					"result": "clean",
+					"instance": "883759c25311-read-state-zh-cn-independent-audit",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/883759c25311-read-state-zh-cn-independent-audit.json",
+					"receipt_sha256": "e1d06c4f8e640d1dda8df28a71f7769cb33c57f062ed2b59e39ba61f5453a783"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ru",
+			"namespace": "ui.agents.detail.read_state",
+			"source_sha256": "0de7ac1bff46dc77b3bbe1f479b60a220361b3e32f673332dbe9eecfb56421f0",
+			"target_sha256": "3f8f8e1f0aa1e99b7e38838bb63ce8cd5ccdc8354cba7465b1f248a3fbcfe221",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-11-02"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-02",
+					"result": "clean",
+					"instance": "agent-detail-read-state-ru-a77610536f64-4c975e9f2d29",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/agent-detail-read-state-ru-a77610536f64-4c975e9f2d29.json",
+					"receipt_sha256": "43ae1c7df1f55b08fc40c343f260e8ed0f04cbd8eac0d467313a56204be73e37"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "vi",
+			"namespace": "ui.agents.detail.read_state",
+			"source_sha256": "0de7ac1bff46dc77b3bbe1f479b60a220361b3e32f673332dbe9eecfb56421f0",
+			"target_sha256": "a47e3f46777295b1c634b98d05d5ed887507b65f874d1b5116c5a9717f275a3d",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-11-02"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-02",
+					"result": "clean",
+					"instance": "ae031ebbd4ab-vi-read-state-receipt-20261102",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/ae031ebbd4ab-vi-read-state-receipt-20261102.json",
+					"receipt_sha256": "1b1e13780a0ddd41ca94d2f67dd73bf9388c6a9ba5cdf004ea9fc3a1d843fa04"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.agents.detail.read_state",
+			"source_sha256": "0de7ac1bff46dc77b3bbe1f479b60a220361b3e32f673332dbe9eecfb56421f0",
+			"target_sha256": "c717a43d2fb31e64a2c4f3cc7523f7473ce43920ec3eb38398dd6c834fdc7dde",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-11-02"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-02",
+					"result": "clean",
+					"instance": "e32d3a8f20c8-read-state-ur-1c7d8709691e",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/e32d3a8f20c8-read-state-ur-1c7d8709691e.json",
+					"receipt_sha256": "acaf4ef9126fe86a7c01250690c5572a03bd97379d81982a2803ed4f9ca9053f"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "es",
+			"namespace": "ui.agents.detail.read_state",
+			"source_sha256": "0de7ac1bff46dc77b3bbe1f479b60a220361b3e32f673332dbe9eecfb56421f0",
+			"target_sha256": "28fdf9d99dc5ad50a3c70734f383fb0fcb51832d8422de3ea1ada387fdb9926a",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-11-02"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-02",
+					"result": "clean",
+					"instance": "agent-detail-read-state-es-e1ddb39eaf06-r1",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/agent-detail-read-state-es-e1ddb39eaf06-r1.json",
+					"receipt_sha256": "886685a93fd011bb0d4db38e57e9ae1335b84d6a2c9a7b67a13f39b09c5ba26c"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.agents.detail.read_state",
+			"source_sha256": "0de7ac1bff46dc77b3bbe1f479b60a220361b3e32f673332dbe9eecfb56421f0",
+			"target_sha256": "f81b2e33cc1d6574dfd29aca826bcf6da6f62fa5f79a3b372959c4cd682fbe4d",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-11-02"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-02",
+					"result": "clean",
+					"instance": "9a5ed084c6d5-read-state-hi-audit",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/9a5ed084c6d5-read-state-hi-audit.json",
+					"receipt_sha256": "020a28b2a5f74b37e51ef4dd4c05d20b14b16baf25bc9dc950a1a0d4f0f899bd"
+				}
+			],
+			"status": "audited"
 		}
 	]
 }
