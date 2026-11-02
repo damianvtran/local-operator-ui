@@ -1,0 +1,106 @@
+{
+  "schema": 1,
+  "auditor": "i18n-auditor (independent lopdev task 'UI #1604 delta i18n audit A', session f89f59f896f1)",
+  "model": "anthropic/claude-opus-5-5",
+  "model_provenance": "Whole audit (source reads, semantic review, structural probe, classification, receipt writing) ran on the session's announced model anthropic/claude-opus-5-5. No fallback or model switch was observed during this session.",
+  "instance": "f89f59f896f1-zh-cn",
+  "audit_session": "f89f59f896f1",
+  "locale": "zh-CN",
+  "namespace": "ui.mesh",
+  "date": "2026-11-02",
+  "scope": "Delta audit A of f6a91444077..fbbbdec31b1 (PR #1604 remediation commit). All 11 changed ui.mesh value(s) in this locale read in final bytes; English/context change to scope_session reviewed. Also re-read in final bytes the 19 ui.mesh.approval.* values for consent consistency (borrow/login terms). Unchanged non-approval values retain historical audits.",
+  "audited_head": "fbbbdec31b15b34d06b511278707ae3b0792b080",
+  "delta_base": "f6a91444077ee6e70edfbdff6d4b740c864b8503",
+  "status": "passed",
+  "sha256": {
+    "en": "edf18f0d32404972428c4bfcc107f835d170df6e2f6c800d10681d1a1e6e4fd1",
+    "zh-CN": "518c657ae34c377ccefbc2e13682cc90bf7fd79772acc2509bc7eb4b2ce1353d"
+  },
+  "base_sha256": {
+    "en": "14428f2aa934af49f6c9d34a09696a3ba29505f653894a1c69b3fb8a22a261e4",
+    "zh-CN": "cab7351d35a12432679b506ab74eafea80a91cd3e3cad05106e6eeca943e5f83"
+  },
+  "findings": [],
+  "changed_keys": [
+    "ui.mesh.approval.head_finite_share",
+    "ui.mesh.approval.head_inheritance",
+    "ui.mesh.approval.scope_device",
+    "ui.mesh.approval.scope_session",
+    "ui.mesh.approval.org_limited",
+    "ui.mesh.approval.not_copied",
+    "ui.mesh.approval.needs_broker",
+    "ui.mesh.approval.undoes_withdrawals",
+    "ui.mesh.approval.recipient_key",
+    "ui.mesh.approval.file_key_disclosure",
+    "ui.mesh.approval.applying"
+  ],
+  "verbatim_values": {
+    "ui.mesh.approval.head_finite_share": "与{device}共享你的{credential}登录",
+    "ui.mesh.approval.head_inheritance": "允许{device}使用你的{provider}账号{account}",
+    "ui.mesh.approval.scope_device": "{device}上的任何会话都可以使用。",
+    "ui.mesh.approval.scope_session": "{device}上的各个会话可借用此登录凭据，访问权限分别绑定到各自的会话。",
+    "ui.mesh.approval.org_limited": "仅限{org}组织。",
+    "ui.mesh.approval.not_copied": "你的登录不会被复制到{device}。",
+    "ui.mesh.approval.needs_broker": "{device}还需要借用登录的权限，而此批准不授予该权限。",
+    "ui.mesh.approval.undoes_withdrawals": "{count, plural, other {撤销此前为{device}撤回此登录的{count, number, ::group-off}次操作。}}",
+    "ui.mesh.approval.recipient_key": "{device}的密钥：",
+    "ui.mesh.approval.file_key_disclosure": "这台机器使用密钥文件签名，而不是Touch ID，因此此批准无法证明是由人做出的。",
+    "ui.mesh.approval.applying": "正在应用……"
+  },
+  "english_values": {
+    "ui.mesh.approval.head_finite_share": "Share your {credential} login with {device}",
+    "ui.mesh.approval.head_inheritance": "Let {device} use your {provider} account {account}",
+    "ui.mesh.approval.scope_device": "Any session on {device} can use it.",
+    "ui.mesh.approval.scope_session": "Sessions on {device} can borrow this login with session-bound access.",
+    "ui.mesh.approval.org_limited": "Only for the {org} organization.",
+    "ui.mesh.approval.not_copied": "Your login is not copied to {device}.",
+    "ui.mesh.approval.needs_broker": "{device} also needs permission to borrow logins, which this does not grant.",
+    "ui.mesh.approval.undoes_withdrawals": "{count, plural, one {Undoes {count, number, ::group-off} earlier withdrawal of this login for {device}.} other {Undoes {count, number, ::group-off} earlier withdrawals of this login for {device}.}}",
+    "ui.mesh.approval.recipient_key": "{device} key:",
+    "ui.mesh.approval.file_key_disclosure": "This machine signs with a key file, not Touch ID, so this approval can't prove a person made it.",
+    "ui.mesh.approval.applying": "Applying…"
+  },
+  "context_sidecar": {
+    "path": "src/i18n/catalogues/en/ui.mesh.context.json",
+    "sha256": "79b22ab6e83a0d8675409f9673a452928b77cee22e47c52930ea0c2127f269f5",
+    "read": "scope_session context note read in full: session scope = device is holder, its sessions may each borrow with grants bound to the individual incoming session; NOT restricted to the requesting session."
+  },
+  "standards": {
+    "root": "~/local-operator/i18n at origin/main 5909dc26678 (shared checkout is on a feature branch; bytes read with git show origin/main:)",
+    "sha256": {
+      "glossary.md": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+      "style-guides/zh-CN.md": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+    }
+  },
+  "translator": {
+    "agent": "coder",
+    "jobs": [
+      "job07291411b980",
+      "c61a64298a45",
+      "21ddee198f0b"
+    ],
+    "remediation_commit": "fbbbdec31b15b34d06b511278707ae3b0792b080",
+    "attribution": "Translator/remediation coder runs named by the manager; their served model is not verified by this auditor."
+  },
+  "independence": "This session (f89f59f896f1) authored no catalogue value and is distinct from the translator/coder runs and from earlier auditors 1f7797b807b7 (job0a40e337218a) and 5c609e74f770 (job38d28c8fb9bf). Parallel auditor B writes its own receipts under its own instance ids; none were read before this verdict.",
+  "semantic_checks": [
+    "scope_session: every final locale says sessions (plural/each) on {device} may use/borrow the login with access bound to each session; none retains the superseded 'only the requesting session' claim; none widens to unbound device-wide access.",
+    "scope_device vs scope_session remain distinguishable: device scope = any session can use it; session scope adds per-session binding.",
+    "No changed value reverses or omits a consent consequence; {device} placeholder present in every changed scope line.",
+    "Prior TA2 typography/glossary remediations verified in final bytes where applicable to this locale.",
+    "scope_session: 各个会话可借用, 借用 matches needs_broker, 分别绑定到各自的会话 = per-session binding. TA2-ZH-01 resolved: probe finds no prose boundary spaces; only ICU-internal spaces and the internal space of Touch ID remain. TA2-ZH-02 resolved: applying = 正在应用…… (two U+2026). Placeholders/plural arms byte-preserved."
+  ],
+  "evidence": {
+    "probe": "i18n/receipts/f89f59f896f1-structural-probe.mjs.txt",
+    "probe_sha256": "be39a0750797ec72151f7fc18676f5b1e8b35e219485acfdb7d8c9bbb53b6fac",
+    "log": "i18n/receipts/f89f59f896f1-structural-probe-output.txt",
+    "log_sha256": "7edf239e9a6f244d05483b48b30cdcf3f3b5abe6a91318b48a7455425ce6dafd",
+    "verdict_location": "Findings, status and semantic_checks in this receipt are the auditor's review record; the companion log is actual probe output (ICU arg/plural parity vs English, NFC, bidi controls, fr colon spacing, zh spaces/ellipsis)."
+  },
+  "non_claims": [
+    "No rendered/compiled-native, width/fit, pseudo-localization, font shaping or visual RTL validation (host memory hold).",
+    "No translation edits by this auditor.",
+    "Not the second (B) delta audit; B records its own receipts."
+  ],
+  "notes": "Delta audit A on PR #1604 head fbbbdec. Passing with no findings; zero blocker/major."
+}

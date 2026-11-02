@@ -5830,8 +5830,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.mesh",
-			"source_sha256": "14428f2aa934af49f6c9d34a09696a3ba29505f653894a1c69b3fb8a22a261e4",
-			"target_sha256": "1f79b22f418654a6ea6bbbe88c4582a76b9194a84adaeaf8c262f04632674cc2",
+			"source_sha256": "edf18f0d32404972428c4bfcc107f835d170df6e2f6c800d10681d1a1e6e4fd1",
+			"target_sha256": "c2cf87410dc8c3f4ab06ed6998d514d3e3e4b973453e27bfff51da59403e93d7",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -5840,20 +5840,20 @@
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"model": "anthropic/claude-opus-5-5 + openai/gpt-6.1-sol",
+					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-02",
-					"result": "clean",
-					"instance": "1f7797b807b7-es",
+					"result": "clean-with-findings",
+					"instance": "f89f59f896f1-es",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
+						"minor": 1,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/1f7797b807b7-es.json",
-					"receipt_sha256": "7a01f858901d90be17cd86d3fc095623436a57fdf8f0c4b08813282b24a74714",
-					"scope": "19 typed credential approval keys; one independent delta audit",
-					"note": "One independent security-consent delta audit; second high-visibility audit outstanding. No catalogue edits; see receipt findings and model fallback disclosure."
+					"receipt": "i18n/receipts/f89f59f896f1-es.json",
+					"receipt_sha256": "afe6fe32796c10ae50f796618e853aa2898091b1b122e56ed75d231ec5c67e3a",
+					"scope": "PR #1604 delta f6a9144..fbbbdec; changed ui.mesh.approval values; audit A",
+					"note": "Delta audit A (session f89f59f896f1) of remediation fbbbdec: zero blocker/major; minor/nit IDs TA3A-* in receipt. Source-only; rendered/RTL fit unverified."
 				}
 			],
 			"status": "audited",
@@ -6003,6 +6003,30 @@
 							"receipt_sha256": "e00ae158292ea389a8797dff35689f9e261b82d083567e67dcce1310c7388b34",
 							"scope": "ui.mesh.mesh_actions.the_copy_there_is_deleted_once_it only (audit C)",
 							"note": "Audit C (exec 78d545d1fa90). Key authored by coder session 8a1b00106d98 (anthropic/claude-opus-5-5), not the row translator. At e99f4ecde9; tree identical to 0c693fe85e. No width check (context read refused). No findings. Second independent audit (distinct model)."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "14428f2aa934af49f6c9d34a09696a3ba29505f653894a1c69b3fb8a22a261e4",
+					"target_sha256": "1f79b22f418654a6ea6bbbe88c4582a76b9194a84adaeaf8c262f04632674cc2",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5 + openai/gpt-6.1-sol",
+							"date": "2026-11-02",
+							"result": "clean",
+							"instance": "1f7797b807b7-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/1f7797b807b7-es.json",
+							"receipt_sha256": "7a01f858901d90be17cd86d3fc095623436a57fdf8f0c4b08813282b24a74714",
+							"scope": "19 typed credential approval keys; one independent delta audit",
+							"note": "One independent security-consent delta audit; second high-visibility audit outstanding. No catalogue edits; see receipt findings and model fallback disclosure."
 						}
 					],
 					"status": "audited"
@@ -14694,8 +14718,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.mesh",
-			"source_sha256": "14428f2aa934af49f6c9d34a09696a3ba29505f653894a1c69b3fb8a22a261e4",
-			"target_sha256": "26a35122971f22f3fbccdef1e8daf9b9b95260e344d1eed66d789ae942c45f87",
+			"source_sha256": "edf18f0d32404972428c4bfcc107f835d170df6e2f6c800d10681d1a1e6e4fd1",
+			"target_sha256": "d8699315817a459b7fc559ccb54b0aae92dc27345741b2c0c504903d56a15afe",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -14704,20 +14728,20 @@
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"model": "anthropic/claude-opus-5-5 + openai/gpt-6.1-sol",
+					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-02",
 					"result": "clean-with-findings",
-					"instance": "1f7797b807b7-fr",
+					"instance": "f89f59f896f1-fr",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 1
+						"minor": 1,
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/1f7797b807b7-fr.json",
-					"receipt_sha256": "97da77fc7f2c43ad718916dc89888487546264b16883487182dd8ffa274ecf99",
-					"scope": "19 typed credential approval keys; one independent delta audit",
-					"note": "One independent security-consent delta audit; second high-visibility audit outstanding. No catalogue edits; see receipt findings and model fallback disclosure."
+					"receipt": "i18n/receipts/f89f59f896f1-fr.json",
+					"receipt_sha256": "6f3f5d32a72945e0364f1876c2e3df530be83094c16b1cd2404f4f0ba9d46228",
+					"scope": "PR #1604 delta f6a9144..fbbbdec; changed ui.mesh.approval values; audit A",
+					"note": "Delta audit A (session f89f59f896f1) of remediation fbbbdec: zero blocker/major; minor/nit IDs TA3A-* in receipt. Source-only; rendered/RTL fit unverified."
 				}
 			],
 			"status": "audited",
@@ -14867,6 +14891,30 @@
 							"receipt_sha256": "629fe41d67c3751b87f754ec6eec6c472b762adaaf46fc624afd081f595d37af",
 							"scope": "ui.mesh.mesh_actions.the_copy_there_is_deleted_once_it only (audit C)",
 							"note": "Audit C (exec 78d545d1fa90). Key authored by coder session 8a1b00106d98 (anthropic/claude-opus-5-5), not the row translator. At e99f4ecde9; tree identical to 0c693fe85e. No width check (context read refused). No findings. Second independent audit (distinct model)."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "14428f2aa934af49f6c9d34a09696a3ba29505f653894a1c69b3fb8a22a261e4",
+					"target_sha256": "26a35122971f22f3fbccdef1e8daf9b9b95260e344d1eed66d789ae942c45f87",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5 + openai/gpt-6.1-sol",
+							"date": "2026-11-02",
+							"result": "clean-with-findings",
+							"instance": "1f7797b807b7-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/1f7797b807b7-fr.json",
+							"receipt_sha256": "97da77fc7f2c43ad718916dc89888487546264b16883487182dd8ffa274ecf99",
+							"scope": "19 typed credential approval keys; one independent delta audit",
+							"note": "One independent security-consent delta audit; second high-visibility audit outstanding. No catalogue edits; see receipt findings and model fallback disclosure."
 						}
 					],
 					"status": "audited"
@@ -23864,8 +23912,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.mesh",
-			"source_sha256": "14428f2aa934af49f6c9d34a09696a3ba29505f653894a1c69b3fb8a22a261e4",
-			"target_sha256": "4cc40fa0f117a1e100140064f8f380666c3a0e6ea4a5709f9ed896dfb6675b48",
+			"source_sha256": "edf18f0d32404972428c4bfcc107f835d170df6e2f6c800d10681d1a1e6e4fd1",
+			"target_sha256": "692e69a25f52c2deaa1cf3c23afe678c274168d857113a0c33d4e9f4f66ed99a",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -23874,20 +23922,20 @@
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"model": "anthropic/claude-opus-5-5 + openai/gpt-6.1-sol",
+					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-02",
 					"result": "clean-with-findings",
-					"instance": "1f7797b807b7-hi",
+					"instance": "f89f59f896f1-hi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 1,
-						"nit": 0
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/1f7797b807b7-hi.json",
-					"receipt_sha256": "5ad874f2c7a07ed08a685c7592ada89de1134407421aa8c523afd282812baaa2",
-					"scope": "19 typed credential approval keys; one independent delta audit",
-					"note": "One independent security-consent delta audit; second high-visibility audit outstanding. No catalogue edits; see receipt findings and model fallback disclosure."
+					"receipt": "i18n/receipts/f89f59f896f1-hi.json",
+					"receipt_sha256": "58bf98850a190c46152cd357bd24fead6b9463ca94c20c44524a9d8a30141ff2",
+					"scope": "PR #1604 delta f6a9144..fbbbdec; changed ui.mesh.approval values; audit A",
+					"note": "Delta audit A (session f89f59f896f1) of remediation fbbbdec: zero blocker/major; minor/nit IDs TA3A-* in receipt. Source-only; rendered/RTL fit unverified."
 				}
 			],
 			"status": "audited",
@@ -24062,6 +24110,30 @@
 							"receipt_sha256": "4ad19b7a9ca21be1bc44cf411c10512423418d86745e74e4fefceffe3526ab4a",
 							"scope": "ui.mesh.mesh_actions.the_copy_there_is_deleted_once_it only (audit C)",
 							"note": "Audit C (exec 78d545d1fa90). Key authored by coder session 8a1b00106d98 (anthropic/claude-opus-5-5), not the row translator. At e99f4ecde9; tree identical to 0c693fe85e. No width check (context read refused). No findings. Second independent audit (distinct model)."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "14428f2aa934af49f6c9d34a09696a3ba29505f653894a1c69b3fb8a22a261e4",
+					"target_sha256": "4cc40fa0f117a1e100140064f8f380666c3a0e6ea4a5709f9ed896dfb6675b48",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5 + openai/gpt-6.1-sol",
+							"date": "2026-11-02",
+							"result": "clean-with-findings",
+							"instance": "1f7797b807b7-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/1f7797b807b7-hi.json",
+							"receipt_sha256": "5ad874f2c7a07ed08a685c7592ada89de1134407421aa8c523afd282812baaa2",
+							"scope": "19 typed credential approval keys; one independent delta audit",
+							"note": "One independent security-consent delta audit; second high-visibility audit outstanding. No catalogue edits; see receipt findings and model fallback disclosure."
 						}
 					],
 					"status": "audited"
@@ -32670,8 +32742,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.mesh",
-			"source_sha256": "14428f2aa934af49f6c9d34a09696a3ba29505f653894a1c69b3fb8a22a261e4",
-			"target_sha256": "25e6540676f395a603a830cd0f56cce2516f7a124dd0f10bd634373e3b3b29e7",
+			"source_sha256": "edf18f0d32404972428c4bfcc107f835d170df6e2f6c800d10681d1a1e6e4fd1",
+			"target_sha256": "05807a7096b1873270b13291fa392ff64b77f1568dc72e06aec4c0cd50ec6098",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -32680,20 +32752,20 @@
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"model": "anthropic/claude-opus-5-5 + openai/gpt-6.1-sol",
+					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-02",
 					"result": "clean-with-findings",
-					"instance": "1f7797b807b7-ru",
+					"instance": "f89f59f896f1-ru",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
+						"minor": 2,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/1f7797b807b7-ru.json",
-					"receipt_sha256": "a928912701b7c0d24dd261863ce07ca67f55d8c3236f30288cd7b6647e2aad9a",
-					"scope": "19 typed credential approval keys; one independent delta audit",
-					"note": "One independent security-consent delta audit; second high-visibility audit outstanding. No catalogue edits; see receipt findings and model fallback disclosure."
+					"receipt": "i18n/receipts/f89f59f896f1-ru.json",
+					"receipt_sha256": "ec5dc87c2682fd73817089abb8656fa09906e4e60b07d1f4c497617692e20455",
+					"scope": "PR #1604 delta f6a9144..fbbbdec; changed ui.mesh.approval values; audit A",
+					"note": "Delta audit A (session f89f59f896f1) of remediation fbbbdec: zero blocker/major; minor/nit IDs TA3A-* in receipt. Source-only; rendered/RTL fit unverified."
 				}
 			],
 			"status": "audited",
@@ -32843,6 +32915,30 @@
 							"receipt_sha256": "2a27f268c29805ae9dd249b94e2727977cab0a4dbd6181077c2948350976c3d9",
 							"scope": "ui.mesh.mesh_actions.the_copy_there_is_deleted_once_it only (audit C)",
 							"note": "Audit C (exec 78d545d1fa90). Key authored by coder session 8a1b00106d98 (anthropic/claude-opus-5-5), not the row translator. At e99f4ecde9; tree identical to 0c693fe85e. No width check (context read refused). No findings. Second independent audit (distinct model)."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "14428f2aa934af49f6c9d34a09696a3ba29505f653894a1c69b3fb8a22a261e4",
+					"target_sha256": "25e6540676f395a603a830cd0f56cce2516f7a124dd0f10bd634373e3b3b29e7",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5 + openai/gpt-6.1-sol",
+							"date": "2026-11-02",
+							"result": "clean-with-findings",
+							"instance": "1f7797b807b7-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/1f7797b807b7-ru.json",
+							"receipt_sha256": "a928912701b7c0d24dd261863ce07ca67f55d8c3236f30288cd7b6647e2aad9a",
+							"scope": "19 typed credential approval keys; one independent delta audit",
+							"note": "One independent security-consent delta audit; second high-visibility audit outstanding. No catalogue edits; see receipt findings and model fallback disclosure."
 						}
 					],
 					"status": "audited"
@@ -41585,8 +41681,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.mesh",
-			"source_sha256": "14428f2aa934af49f6c9d34a09696a3ba29505f653894a1c69b3fb8a22a261e4",
-			"target_sha256": "25102e5c3f308f7a9041c2071b23d9ede36cb3ba6d4d704b358f9097a9ff2570",
+			"source_sha256": "edf18f0d32404972428c4bfcc107f835d170df6e2f6c800d10681d1a1e6e4fd1",
+			"target_sha256": "b244c0297ff7cbf03f07b0b6f744631a72d7cfb0a82815215baf76fdd6dd0961",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -41595,20 +41691,20 @@
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"model": "anthropic/claude-opus-5-5 + openai/gpt-6.1-sol",
+					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-02",
 					"result": "clean",
-					"instance": "1f7797b807b7-ur",
+					"instance": "f89f59f896f1-ur",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/1f7797b807b7-ur.json",
-					"receipt_sha256": "6380d135fa3694950a42ce7cc6136561f037fc799c872043f4944db4126f8e96",
-					"scope": "19 typed credential approval keys; one independent delta audit",
-					"note": "One independent security-consent delta audit; second high-visibility audit outstanding. No catalogue edits; see receipt findings and model fallback disclosure."
+					"receipt": "i18n/receipts/f89f59f896f1-ur.json",
+					"receipt_sha256": "db1f050cd7aeb5323d641b245036577d292848596a77ea907776bdfa00e1bb79",
+					"scope": "PR #1604 delta f6a9144..fbbbdec; changed ui.mesh.approval values; audit A",
+					"note": "Delta audit A (session f89f59f896f1) of remediation fbbbdec: zero blocker/major; minor/nit IDs TA3A-* in receipt. Source-only; rendered/RTL fit unverified."
 				}
 			],
 			"status": "audited",
@@ -41759,6 +41855,30 @@
 							"receipt_sha256": "4b5880c2cf0a14f49ba10e56e54c25fe562470506c2222e09259cab813dec34b",
 							"scope": "ui.mesh.mesh_actions.the_copy_there_is_deleted_once_it only (audit C)",
 							"note": "Audit C (exec 78d545d1fa90). Key authored by coder session 8a1b00106d98 (anthropic/claude-opus-5-5), not the row translator. At e99f4ecde9; tree identical to 0c693fe85e. No width check (context read refused). No findings. Second independent audit (distinct model)."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "14428f2aa934af49f6c9d34a09696a3ba29505f653894a1c69b3fb8a22a261e4",
+					"target_sha256": "25102e5c3f308f7a9041c2071b23d9ede36cb3ba6d4d704b358f9097a9ff2570",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5 + openai/gpt-6.1-sol",
+							"date": "2026-11-02",
+							"result": "clean",
+							"instance": "1f7797b807b7-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/1f7797b807b7-ur.json",
+							"receipt_sha256": "6380d135fa3694950a42ce7cc6136561f037fc799c872043f4944db4126f8e96",
+							"scope": "19 typed credential approval keys; one independent delta audit",
+							"note": "One independent security-consent delta audit; second high-visibility audit outstanding. No catalogue edits; see receipt findings and model fallback disclosure."
 						}
 					],
 					"status": "audited"
@@ -50489,8 +50609,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.mesh",
-			"source_sha256": "14428f2aa934af49f6c9d34a09696a3ba29505f653894a1c69b3fb8a22a261e4",
-			"target_sha256": "b90e3af178bdf8a0bc2402530a52736ca6c858f0a1717e798c91588e19e7dc11",
+			"source_sha256": "edf18f0d32404972428c4bfcc107f835d170df6e2f6c800d10681d1a1e6e4fd1",
+			"target_sha256": "cd3d7ccbb509c78a99a758b31fb4e6dc35fba9fbd228cab0400665f7a9ded2f7",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -50499,20 +50619,20 @@
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"model": "anthropic/claude-opus-5-5 + openai/gpt-6.1-sol",
+					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-02",
 					"result": "clean",
-					"instance": "1f7797b807b7-vi",
+					"instance": "f89f59f896f1-vi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/1f7797b807b7-vi.json",
-					"receipt_sha256": "aed8d3d64b2f74755f10a6db553643bc040d88819ff4bca425c4ad34e3c8b607",
-					"scope": "19 typed credential approval keys; one independent delta audit",
-					"note": "One independent security-consent delta audit; second high-visibility audit outstanding. No catalogue edits; see receipt findings and model fallback disclosure."
+					"receipt": "i18n/receipts/f89f59f896f1-vi.json",
+					"receipt_sha256": "a2a6e36d8699126916a581ff20f09fd4b3bb444276998a9575406afa13032b9c",
+					"scope": "PR #1604 delta f6a9144..fbbbdec; changed ui.mesh.approval values; audit A",
+					"note": "Delta audit A (session f89f59f896f1) of remediation fbbbdec: zero blocker/major; minor/nit IDs TA3A-* in receipt. Source-only; rendered/RTL fit unverified."
 				}
 			],
 			"status": "audited",
@@ -50711,6 +50831,30 @@
 							"receipt_sha256": "7bd0fe2beaf47ec1cd4bda6f2c8e122718ed390ac1c3e940beba2c32cd75fb4c",
 							"scope": "ui.mesh.mesh_actions.the_copy_there_is_deleted_once_it only (audit C)",
 							"note": "Audit C (exec 78d545d1fa90). Key authored by coder session 8a1b00106d98 (anthropic/claude-opus-5-5), not the row translator. At e99f4ecde9; tree identical to 0c693fe85e. No width check (context read refused). No findings. Second independent audit (distinct model)."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "14428f2aa934af49f6c9d34a09696a3ba29505f653894a1c69b3fb8a22a261e4",
+					"target_sha256": "b90e3af178bdf8a0bc2402530a52736ca6c858f0a1717e798c91588e19e7dc11",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5 + openai/gpt-6.1-sol",
+							"date": "2026-11-02",
+							"result": "clean",
+							"instance": "1f7797b807b7-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/1f7797b807b7-vi.json",
+							"receipt_sha256": "aed8d3d64b2f74755f10a6db553643bc040d88819ff4bca425c4ad34e3c8b607",
+							"scope": "19 typed credential approval keys; one independent delta audit",
+							"note": "One independent security-consent delta audit; second high-visibility audit outstanding. No catalogue edits; see receipt findings and model fallback disclosure."
 						}
 					],
 					"status": "audited"
@@ -60091,8 +60235,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.mesh",
-			"source_sha256": "14428f2aa934af49f6c9d34a09696a3ba29505f653894a1c69b3fb8a22a261e4",
-			"target_sha256": "cab7351d35a12432679b506ab74eafea80a91cd3e3cad05106e6eeca943e5f83",
+			"source_sha256": "edf18f0d32404972428c4bfcc107f835d170df6e2f6c800d10681d1a1e6e4fd1",
+			"target_sha256": "518c657ae34c377ccefbc2e13682cc90bf7fd79772acc2509bc7eb4b2ce1353d",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -60102,20 +60246,20 @@
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"model": "anthropic/claude-opus-5-5 + openai/gpt-6.1-sol",
+					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-02",
-					"result": "clean-with-findings",
-					"instance": "1f7797b807b7-zh-cn",
+					"result": "clean",
+					"instance": "f89f59f896f1-zh-cn",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 2
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/1f7797b807b7-zh-cn.json",
-					"receipt_sha256": "c803bda94cdad99881d3cf774ceea79d93987eab4b7148b2a44f0114132692ae",
-					"scope": "19 typed credential approval keys; one independent delta audit",
-					"note": "One independent security-consent delta audit; second high-visibility audit outstanding. No catalogue edits; see receipt findings and model fallback disclosure."
+					"receipt": "i18n/receipts/f89f59f896f1-zh-cn.json",
+					"receipt_sha256": "da1f892aa949e4954d36c3aa19740ce08dddba817bbf72f237a89803be7c49dd",
+					"scope": "PR #1604 delta f6a9144..fbbbdec; changed ui.mesh.approval values; audit A",
+					"note": "Delta audit A (session f89f59f896f1) of remediation fbbbdec: zero blocker/major; minor/nit IDs TA3A-* in receipt. Source-only; rendered/RTL fit unverified."
 				}
 			],
 			"status": "audited",
@@ -60290,6 +60434,30 @@
 							"receipt_sha256": "1ac53822bc440b6a0ef7e4b31aba0834c184422d9bdeac8cbfc23441ba7bf79c",
 							"scope": "ui.mesh.mesh_actions.the_copy_there_is_deleted_once_it only (audit C)",
 							"note": "Audit C (exec 78d545d1fa90). Key authored by coder session 8a1b00106d98 (anthropic/claude-opus-5-5), not the row translator. At e99f4ecde9; tree identical to 0c693fe85e. No width check (context read refused). No findings. Second independent audit (distinct model)."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "14428f2aa934af49f6c9d34a09696a3ba29505f653894a1c69b3fb8a22a261e4",
+					"target_sha256": "cab7351d35a12432679b506ab74eafea80a91cd3e3cad05106e6eeca943e5f83",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5 + openai/gpt-6.1-sol",
+							"date": "2026-11-02",
+							"result": "clean-with-findings",
+							"instance": "1f7797b807b7-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 2
+							},
+							"receipt": "i18n/receipts/1f7797b807b7-zh-cn.json",
+							"receipt_sha256": "c803bda94cdad99881d3cf774ceea79d93987eab4b7148b2a44f0114132692ae",
+							"scope": "19 typed credential approval keys; one independent delta audit",
+							"note": "One independent security-consent delta audit; second high-visibility audit outstanding. No catalogue edits; see receipt findings and model fallback disclosure."
 						}
 					],
 					"status": "audited"
