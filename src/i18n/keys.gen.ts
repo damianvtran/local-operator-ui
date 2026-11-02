@@ -28,6 +28,7 @@ import enUiAgentsConfig from "./catalogues/en/ui.agents.config.json";
 import enUiAgentsDescriptions from "./catalogues/en/ui.agents.descriptions.json";
 import enUiAgentsDetailInstall from "./catalogues/en/ui.agents.detail.install.json";
 import enUiAgentsDetail from "./catalogues/en/ui.agents.detail.json";
+import enUiAgentsDetailOrigin from "./catalogues/en/ui.agents.detail.origin.json";
 import enUiAgentsDetailReadState from "./catalogues/en/ui.agents.detail.read_state.json";
 import enUiAgentsDialogs from "./catalogues/en/ui.agents.dialogs.json";
 import enUiAgents from "./catalogues/en/ui.agents.json";
@@ -959,6 +960,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiAgentsDescriptions,
 	...enUiAgentsDetailInstall,
 	...enUiAgentsDetail,
+	...enUiAgentsDetailOrigin,
 	...enUiAgentsDetailReadState,
 	...enUiAgentsDialogs,
 	...enUiAgents,
@@ -2159,6 +2161,9 @@ export type MessageParams = {
 	"ui.agents.detail.tools.every_tool_aria": undefined;
 	"ui.agents.detail.tools.may_use_any": undefined;
 	"ui.agents.detail.tools.placeholder": undefined;
+	"ui.agents.detail.origin.compare_packaged": undefined;
+	"ui.agents.detail.origin.installed_starter": undefined;
+	"ui.agents.detail.origin.shipped_with_app": undefined;
 	"ui.agents.detail.read_state.class_description": undefined;
 	"ui.agents.detail.read_state.class_off": undefined;
 	"ui.agents.detail.read_state.class_on": undefined;

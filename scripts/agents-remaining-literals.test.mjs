@@ -219,6 +219,21 @@ function seamPlugin(mutation) {
 			call: 't("ui.agents.detail.origin.created_locally")',
 			literal: '"Created on this machine."',
 		},
+		"revert-origin-builtin": {
+			filter: AGENT_DETAIL_SOURCE,
+			call: 't("ui.agents.detail.origin.shipped_with_app")',
+			literal: '"Shipped with the app."',
+		},
+		"revert-origin-installed": {
+			filter: AGENT_DETAIL_SOURCE,
+			call: 't("ui.agents.detail.origin.installed_starter")',
+			literal: '"Installed from a packaged starter."',
+		},
+		"revert-origin-compare": {
+			filter: AGENT_DETAIL_SOURCE,
+			call: 't("ui.agents.detail.origin.compare_packaged")',
+			literal: '"Compare with the packaged instructions"',
+		},
 		"revert-transport": {
 			filter: MISSING_DEFINITION_SOURCE,
 			call: 't("ui.common.errors.desktop_transport_failed")',
@@ -1033,7 +1048,7 @@ test("negative control: English backend fallback defeats the visible-detail loca
  * English pass pins exact copy; mutations prove both locale assertions fail
  * when the old literal is restored. Native layout remains the census's remit.
  */
-async function censusCopyViews(lib) {
+async function censusCopyViews(lib, profile = PROFILE) {
 	const h = lib.React.createElement;
 	const client = new lib.QueryClient({
 		defaultOptions: { queries: { retry: false } },
@@ -1048,8 +1063,8 @@ async function censusCopyViews(lib) {
 				lib.MemoryRouter,
 				null,
 				h(lib.AgentDetail, {
-					profile: PROFILE,
-					displayedName: PROFILE.name,
+					profile,
+					displayedName: profile.name,
 					classNotice: null,
 					onClassNotice: () => {},
 					teams: [],
@@ -1064,6 +1079,52 @@ async function censusCopyViews(lib) {
 }
 
 const CENSUS_ORIGIN_KEY = "ui.agents.detail.origin.created_locally";
+/*
+ * The other two origin descriptions and the Disclosure summary share the slot
+ * `created_locally` fills, so a custom agent's origin was translated while a
+ * built-in or installed agent's stayed English beside it (design review D1). The
+ * three live in their own namespace file so the audited bytes of
+ * `ui.agents.detail` stay untouched. One profile per branch: `source` picks the
+ * description, and the summary needs an installed copy that diverges from its
+ * packaged original with the packaged text to compare against.
+ */
+const ORIGIN_BRANCHES = [
+	{
+		mutation: "revert-origin-builtin",
+		key: "ui.agents.detail.origin.shipped_with_app",
+		english: "Shipped with the app.",
+		profile: { ...PROFILE, source: "builtin" },
+	},
+	{
+		mutation: "revert-origin-installed",
+		key: "ui.agents.detail.origin.installed_starter",
+		english: "Installed from a packaged starter.",
+		profile: { ...PROFILE, source: "installed" },
+	},
+	{
+		mutation: "revert-origin-compare",
+		key: "ui.agents.detail.origin.compare_packaged",
+		english: "Compare with the packaged instructions",
+		profile: {
+			...PROFILE,
+			source: "installed",
+			divergent_fields: ["instructions"],
+			packaged_instructions: "Packaged instruction fixture.",
+		},
+	},
+];
+
+async function assertOriginBranchCopy(lib, locale, branch, expected) {
+	useLocale(lib, locale);
+	const { origin, client } = await censusCopyViews(lib, branch.profile);
+	try {
+		assert.ok(origin.text().includes(expected), origin.text());
+	} finally {
+		await origin.unmount();
+		client.clear();
+	}
+}
+
 const CENSUS_TRANSPORT_KEY = "ui.common.errors.desktop_transport_failed";
 const CENSUS_TRANSPORT_ENGLISH =
 	"The backend could not complete this request. Check its connection and try again.";
@@ -1144,6 +1205,45 @@ test("negative controls: restoring either census literal defeats keyed rendering
 		});
 		await assert.rejects(
 			assertCensusCopy(lib, "fr", "FR origin marker", "FR transport marker"),
+			assert.AssertionError,
+		);
+		lib.i18n.clearRegisteredCatalogues();
+		useLocale(lib, "en");
+	}
+});
+
+test("the built-in, installed and compare-instructions origin copy render identical English and keyed copy in seven locales", async () => {
+	const lib = await load();
+	lib.i18n.clearRegisteredCatalogues();
+	for (const branch of ORIGIN_BRANCHES) {
+		await assertOriginBranchCopy(lib, "en", branch, branch.english);
+	}
+	for (const locale of ["fr", "es", "ru", "vi", "hi", "zh-CN", "ur"]) {
+		lib.i18n.registerCatalogue(
+			locale,
+			Object.fromEntries(
+				ORIGIN_BRANCHES.map((b) => [b.key, `${locale} ${b.key} marker`]),
+			),
+		);
+		for (const branch of ORIGIN_BRANCHES) {
+			await assertOriginBranchCopy(
+				lib,
+				locale,
+				branch,
+				`${locale} ${branch.key} marker`,
+			);
+		}
+	}
+	lib.i18n.clearRegisteredCatalogues();
+	useLocale(lib, "en");
+});
+
+test("negative controls: restoring any of the three origin literals defeats keyed rendering", async () => {
+	for (const branch of ORIGIN_BRANCHES) {
+		const lib = await load(branch.mutation);
+		lib.i18n.registerCatalogue("fr", { [branch.key]: "FR origin marker" });
+		await assert.rejects(
+			assertOriginBranchCopy(lib, "fr", branch, "FR origin marker"),
 			assert.AssertionError,
 		);
 		lib.i18n.clearRegisteredCatalogues();
