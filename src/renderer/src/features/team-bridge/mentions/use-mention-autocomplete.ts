@@ -562,6 +562,16 @@ export function useMentionAutocomplete(input: {
 	 * than asking the author to pick again.
 	 */
 	const awaitingKeys = useRef(new Set<string>());
+	// Availability is not subtree identity anymore. Retire only source-scoped
+	// notice/invite state when its conversation disappears or changes; draft
+	// text, tokens, selection and the page's account/tenant/target keys stay owned
+	// where they already were. A same-conversation roster refresh is not a reset.
+	const sourceConversationId = source?.conversationId ?? null;
+	// biome-ignore lint/correctness/useExhaustiveDependencies: source identity is a reset trigger; no source data is read while retiring notice state.
+	useLayoutEffect(() => {
+		setNotice(null);
+		awaitingKeys.current.clear();
+	}, [sourceConversationId]);
 	useEffect(() => {
 		if (awaitingKeys.current.size === 0) return;
 		const ready = [...awaitingKeys.current].filter((key) =>

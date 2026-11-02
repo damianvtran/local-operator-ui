@@ -27,7 +27,8 @@ const bundle = await build({
 			export {stagedMentions} from './src/renderer/src/features/team-bridge/mentions/mention-outbox';
 			export {createRoot} from 'react-dom/client';
 			export {QueryClient, QueryClientProvider} from '@tanstack/react-query';
-			export {act, createElement} from 'react';
+			export {act, createElement, useContext, useRef} from 'react';
+			export {useMentionAutocomplete} from './src/renderer/src/features/team-bridge/mentions/use-mention-autocomplete';
 		`,
 		resolveDir: process.cwd(),
 	},
@@ -245,7 +246,7 @@ async function mount({
 				{ client: queryClient },
 				mod.createElement(
 					mod.MentionSourceContext.Provider,
-					{ value: sourceFor(rows) },
+					{ value: rows === null ? null : sourceFor(rows) },
 					mod.createElement(mod.TeamBridgeThreadPaneView, {
 						root: rootMessage,
 						replies: [],
@@ -267,7 +268,7 @@ async function mount({
 			),
 		);
 	await mod.act(async () => render(list));
-	const field = host.querySelector("textarea");
+	let field = host.querySelector("textarea");
 	const type = async (value, caret = value.length) => {
 		await mod.act(async () => {
 			field.focus();
@@ -315,10 +316,15 @@ async function mount({
 		await mod.act(async () => root.unmount());
 		host.remove();
 	};
-	const rerender = (rows) => mod.act(async () => render(rows));
+	const rerender = async (rows) => {
+		await mod.act(async () => render(rows));
+		field = host.querySelector("textarea");
+	};
 	return {
 		host,
-		field,
+		get field() {
+			return field;
+		},
 		type,
 		input,
 		key,
@@ -806,6 +812,256 @@ test("message bodies highlight mentions; the reader's own is the stronger token"
 		false,
 		"no mention source, no highlight",
 	);
+});
+
+/* A first send changes a person draft into an open conversation. Context is
+ * inert again when leaving it, but the provider must not remount the timeline
+ * merely because mention availability changed (the optimistic ninth case). */
+test("mention provider preserves child identity through null-open-null while context changes", async () => {
+	const host = document.createElement("div");
+	document.body.appendChild(host);
+	const root = mod.createRoot(host);
+	let consumer;
+	const Probe = () => {
+		const source = mod.useContext(mod.MentionSourceContext);
+		const fieldRef = mod.useRef(null);
+		consumer = mod.useMentionAutocomplete({
+			draftKey: "provider-continuity",
+			text: "@B",
+			setText: () => {},
+			fieldRef,
+			listboxId: "provider-continuity-list",
+		});
+		return mod.createElement(
+			"div",
+			null,
+			mod.createElement("span", {
+				"data-mention-context": source?.conversationId ?? "inert",
+			}),
+			mod.createElement("textarea", {
+				ref: fieldRef,
+				value: "@B",
+				onChange: () => {},
+				onSelect: consumer.onSelect,
+			}),
+		);
+	};
+	const conversation = {
+		id: "bcv_provider_transition",
+		tenant_id: "org_provider",
+		kind: "dm",
+		name: null,
+		members: [],
+		visibility: "private",
+		agent_capable: false,
+		status: "open",
+		created_by: "acct_self",
+		latest_seq: 0,
+		last_read_seq: 0,
+		unread_count: 0,
+		muted: false,
+		last_message_at: null,
+	};
+	const render = (value) =>
+		mod.act(async () => {
+			root.render(
+				mod.createElement(
+					mod.TeamBridgeMentionProvider,
+					{
+						conversation: value,
+						people: [
+							{
+								account_id: "acct_ben",
+								display_label: "Ben Test",
+								email: "ben@example.invalid",
+							},
+						],
+						selfAccountId: "acct_self",
+						sendMentions: true,
+					},
+					mod.createElement(Probe),
+				),
+			);
+		});
+	try {
+		await render(null);
+		const first = host.querySelector("span");
+		assert.ok(first, "the child exists before the conversation is created");
+		assert.equal(first.getAttribute("data-mention-context"), "inert");
+		assert.equal(consumer.enabled, false);
+		assert.equal(consumer.payload(), undefined);
+		await render(conversation);
+		const opened = host.querySelector("span");
+		assert.ok(opened, "the open-conversation child exists");
+		assert.ok(
+			opened === first,
+			"opening the conversation must not remount its child",
+		);
+		assert.equal(opened.getAttribute("data-mention-context"), conversation.id);
+		const field = host.querySelector("textarea");
+		await mod.act(async () => {
+			field.focus();
+			// main's draft restore (#1590) arms autocomplete only after a real
+			// caret gesture, so a restored draft never pops the list on mount.
+			field.dispatchEvent(
+				new dom.window.KeyboardEvent("keydown", { bubbles: true }),
+			);
+			field.setSelectionRange(2, 2);
+			consumer.onSelect({
+				currentTarget: field,
+				nativeEvent: { isComposing: false },
+			});
+		});
+		assert.equal(consumer.enabled, true);
+		assert.ok(
+			consumer.flat.some((row) => row.accountId === "acct_ben"),
+			"open source offers its candidates",
+		);
+		await render(null);
+		const closed = host.querySelector("span");
+		assert.ok(
+			closed === first,
+			"returning to an inert source must not remount its child",
+		);
+		assert.equal(closed.getAttribute("data-mention-context"), "inert");
+		assert.equal(consumer.enabled, false);
+		assert.equal(
+			consumer.open,
+			false,
+			"clearing the source closes suggestions",
+		);
+		assert.equal(
+			consumer.flat.length,
+			0,
+			"old candidates do not survive a cleared source",
+		);
+		assert.equal(
+			consumer.payload(),
+			undefined,
+			"an inert source cannot stage old mentions",
+		);
+	} finally {
+		await mod.act(async () => root.unmount());
+		host.remove();
+	}
+});
+
+// The source object may refresh within a conversation without cancelling an
+// invitation. Clearing that source is different, even if the same ID reopens.
+const inviteButtonForTest = (host) =>
+	[...host.querySelectorAll("[data-mention-notice] button")].find(
+		(b) => b.textContent === "Invite them",
+	);
+const noticeForTest = (host) => host.querySelector("[data-mention-notice]");
+const pickNonmemberForTest = async (ui) => {
+	await ui.type("@sher");
+	await ui.key("Enter");
+	assert.ok(noticeForTest(ui.host), "a nonmember notice exists");
+};
+
+test("clearing mention source hides a retained nonmember notice without losing draft", async () => {
+	const ui = await mount();
+	try {
+		await pickNonmemberForTest(ui);
+		const draft = ui.field.value;
+		await ui.rerender(null);
+		assert.ok(
+			noticeForTest(ui.host) === null,
+			"null source exposes no previous notice",
+		);
+		assert.equal(
+			ui.field.value,
+			draft,
+			"source invalidation does not erase the draft",
+		);
+		await ui.rerender(candidates);
+		assert.ok(
+			noticeForTest(ui.host) === null,
+			"reopening the same source does not revive its old notice",
+		);
+	} finally {
+		await ui.unmount();
+	}
+});
+
+for (const outcome of ["resolve", "reject"]) {
+	test(`late invite ${outcome} after clear/reopen cannot replace a new request`, async () => {
+		const requests = [];
+		const ui = await mount({
+			onInvite: () =>
+				new Promise((resolve, reject) => requests.push({ resolve, reject })),
+		});
+		try {
+			await pickNonmemberForTest(ui);
+			await mod.act(async () => inviteButtonForTest(ui.host).click());
+			assert.equal(requests.length, 1);
+			await ui.rerender(null);
+			await ui.rerender(candidates);
+			// Pick a new notice and begin another write in the same conversation. An old
+			// result must neither mark this notice invited nor clear its busy/error state.
+			await pickNonmemberForTest(ui);
+			await mod.act(async () => inviteButtonForTest(ui.host).click());
+			assert.equal(
+				requests.length,
+				2,
+				"the reopened source owns a new request",
+			);
+			await mod.act(async () => {
+				if (outcome === "resolve") requests[0].resolve();
+				else requests[0].reject(new Error("synthetic old refusal"));
+				await Promise.resolve();
+			});
+			assert.ok(
+				inviteButtonForTest(ui.host)?.disabled,
+				"old settlement cannot release the new request",
+			);
+			assert.match(
+				noticeForTest(ui.host)?.textContent ?? "",
+				NOT_MEMBER_NOTICE,
+			);
+			await mod.act(async () => {
+				requests[1].resolve();
+				await Promise.resolve();
+			});
+			assert.match(
+				noticeForTest(ui.host)?.textContent ?? "",
+				INVITED_NOTICE,
+				"the new accepted request still applies",
+			);
+		} finally {
+			await ui.unmount();
+		}
+	});
+}
+
+test("same-source refresh retains an in-flight invite and applies its result once", async () => {
+	let resolve;
+	let calls = 0;
+	const ui = await mount({
+		onInvite: () => {
+			calls++;
+			return new Promise((done) => {
+				resolve = done;
+			});
+		},
+	});
+	try {
+		await pickNonmemberForTest(ui);
+		await mod.act(async () => inviteButtonForTest(ui.host).click());
+		await ui.rerender([...candidates]);
+		assert.ok(
+			inviteButtonForTest(ui.host)?.disabled,
+			"ordinary source refresh preserves request ownership",
+		);
+		await mod.act(async () => {
+			resolve();
+			await Promise.resolve();
+		});
+		assert.equal(calls, 1, "no retry or duplicate server write");
+		assert.match(noticeForTest(ui.host)?.textContent ?? "", INVITED_NOTICE);
+	} finally {
+		await ui.unmount();
+	}
 });
 
 // jsdom cannot prove layout; the Storybook play measures each glyph. This guards

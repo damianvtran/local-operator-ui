@@ -137,5 +137,6 @@
 	"ui.common.errors.agent_publish": "एजेंट प्रकाशित नहीं किया जा सका।",
 	"ui.common.errors.conversation_messages_fetch": "बातचीत के संदेश नहीं लाए जा सके",
 	"ui.common.errors.conversation_messages_fetch_unknown": "बातचीत के संदेश लाते समय कोई अज्ञात त्रुटि हुई",
-	"ui.common.errors.session_id_required": "कोड मेमोरी पढ़ने के लिए सत्र ID ज़रूरी है।"
+	"ui.common.errors.session_id_required": "कोड मेमोरी पढ़ने के लिए सत्र ID ज़रूरी है।",
+	"ui.common.errors.desktop_transport_failed": "बैकएंड यह अनुरोध पूरा नहीं कर सका। उसका कनेक्शन जाँचें और फिर कोशिश करें।"
 }

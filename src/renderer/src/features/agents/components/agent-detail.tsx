@@ -1321,10 +1321,10 @@ export function AgentDetail({
 							title={t("ui.agents.detail.section.origin")}
 							description={
 								profile.source === "builtin"
-									? "Shipped with the app."
+									? t("ui.agents.detail.origin.shipped_with_app")
 									: profile.source === "installed"
-										? "Installed from a packaged starter."
-										: "Created on this machine."
+										? t("ui.agents.detail.origin.installed_starter")
+										: t("ui.agents.detail.origin.created_locally")
 							}
 						>
 							<dl className="space-y-1 text-body-sm">
@@ -1350,7 +1350,7 @@ export function AgentDetail({
 							{profile.packaged_instructions &&
 							profile.divergent_fields?.length ? (
 								<Disclosure
-									summary="Compare with the packaged instructions"
+									summary={t("ui.agents.detail.origin.compare_packaged")}
 									className="mt-2"
 								>
 									<ReadBlock text={profile.packaged_instructions} mono />
