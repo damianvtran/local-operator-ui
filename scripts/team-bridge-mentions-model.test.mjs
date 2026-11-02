@@ -383,7 +383,7 @@ test("message mentions: the hub's mentions[] is authoritative when present", () 
 	});
 	assert.deepEqual(
 		channel.runs,
-		[{ label: "here", viewer: true }],
+		[{ label: "here", viewer: false }],
 		"only the word present (R1-06)",
 	);
 	const prose = m.messageMentionSpec({
@@ -412,7 +412,7 @@ test("message mentions: without mentions[] fall back to @Name over members and d
 		[
 			["Ben Tran", false],
 			["Ben", false],
-			["Damian Tran", true],
+			["Damian Tran", false],
 		],
 	);
 	assert.equal(
@@ -442,4 +442,38 @@ test("split: longest label wins, word ends respected, emails untouched", () => {
 	assert.deepEqual(m.splitMentions("x@Ben", runs), [
 		{ kind: "text", text: "x@Ben" },
 	]);
+});
+
+// Names are presentation, not identity; neither fallback nor a namesake may
+// acquire the warning treatment. Agent and human wire rows use the same ID rule.
+test("viewer identity requires an authoritative account id for humans and agents", () => {
+	const candidates = [
+		...roster,
+		{ kind: "human", accountId: "a_namesake", label: self.label },
+		{ kind: "agent", accountId: self.accountId, label: "My agent" },
+	];
+	for (const kind of ["human", "agent"]) {
+		const label = kind === "human" ? self.label : "My agent";
+		const spec = m.messageMentionSpec({
+			body: `@${label}`,
+			mentions: [{ kind, account_id: self.accountId }],
+			candidates,
+			self,
+		});
+		assert.equal(spec.runs[0].viewer, true);
+	}
+	const namesake = m.messageMentionSpec({
+		body: `@${self.label}`,
+		mentions: [{ kind: "human", account_id: "a_namesake" }],
+		candidates,
+		self,
+	});
+	assert.equal(namesake.runs[0].viewer, false);
+	const fallback = m.messageMentionSpec({
+		body: `@${self.label} @My agent`,
+		mentions: undefined,
+		candidates,
+		self,
+	});
+	assert.ok(fallback.runs.every((run) => run.viewer === false));
 });

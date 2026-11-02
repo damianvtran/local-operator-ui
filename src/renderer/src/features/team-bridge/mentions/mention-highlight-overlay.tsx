@@ -2,6 +2,7 @@ import { cn } from "@shared/lib/utils";
 import type { FC, RefObject } from "react";
 import { useLayoutEffect, useRef } from "react";
 import { copyTextMetrics } from "./caret-coordinates";
+import { useMentionSource } from "./mention-context";
 import { type MentionToken, segmentText } from "./tokens";
 
 /**
@@ -23,6 +24,7 @@ export const MentionHighlightOverlay: FC<{
 	tokens: readonly MentionToken[];
 }> = ({ fieldRef, text, tokens }) => {
 	const overlay = useRef<HTMLDivElement>(null);
+	const source = useMentionSource();
 	// biome-ignore lint/correctness/useExhaustiveDependencies: text and tokens are re-measure triggers; the metrics are read from the field itself.
 	useLayoutEffect(() => {
 		const field = fieldRef.current;
@@ -56,16 +58,15 @@ export const MentionHighlightOverlay: FC<{
 						key={index}
 						data-mention-pill={segment.token.notify ? "notify" : "silent"}
 						className={cn(
-							"rounded-sm",
-							segment.token.notify
-								? /*
-									 * The wash alone is 1.13-1.14:1 against the bar (design D2),
-									 * and the overlay can only paint BEHIND the field's glyphs, so
-									 * the notifying pill is carried by a 1px accent ring (5.51:1
-									 * light / 6.34:1 dark against the bar).
-									 */
-									"bg-accent-wash shadow-[0_0_0_1px_var(--color-accent)]"
-								: "underline decoration-dashed decoration-ink-dim",
+							// Equal negative margins cancel the 2px padding advance. Keep
+							// native glyphs opaque: this mirror paints BEHIND the textarea,
+							// so identity uses washes, never duplicate coloured glyphs.
+							"box-decoration-clone rounded-sm px-0.5 py-px -mx-0.5",
+							source?.self?.accountId === segment.token.accountId
+								? "bg-warning-wash group-hover/mention-field:bg-[color-mix(in_srgb,var(--color-warning-wash),var(--color-warning)_3%)]"
+								: "bg-accent-wash group-hover/mention-field:bg-[color-mix(in_srgb,var(--color-accent-wash),var(--color-accent)_3%)]",
+							!segment.token.notify &&
+								"underline decoration-dashed decoration-ink-dim",
 						)}
 					>
 						{segment.text}
