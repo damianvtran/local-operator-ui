@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "agent": "i18n-auditor",
+  "auditor": "i18n-auditor",
+  "role": "i18n-auditor (team lopdev), independent Urdu linguistic auditor",
+  "session": "accfe104567b",
+  "job_id": null,
+  "instance": "accfe104567b-census-ur-detail-71f9558db96c",
+  "model": "anthropic/claude-sonnet-5-5",
+  "model_provenance": "Model name as shown in this session's runtime header; not independently verifiable beyond that.",
+  "fallback": "None observed or claimed.",
+  "independence": "This session did not author or edit the Urdu catalogue; it audited the committed bytes only.",
+  "locale": "ur",
+  "namespace": "ui.agents.detail",
+  "branch": "fix/agent-transport-copy",
+  "head": "dd75287b77ca8b8447a362aa9d052a2dccacf097",
+  "date": "2026-11-02",
+  "status": "passed",
+  "result": "clean",
+  "source_sha256": "b52991233e7fdf8f9b54f9ec465fc0e20ac32239c37e8c5b9ed8ebd8fbdbd8f8",
+  "context_sha256": "f7c25bd96d74a861ab0a2c34764394a6feec1a8a0069085ab83517dc1a5d3e49",
+  "target_sha256": "71f9558db96cc5de75ce82a77a15efc1c6ad6c1bc0679337387b77c625375e89",
+  "keys_read": 2,
+  "keys_in_file": 51,
+  "findings": [],
+  "scope": "LINGUISTIC JUDGEMENT COVERS ONLY THE ONE NEW KEY ui.agents.detail.origin.created_locally (the census audit covered two keys across ui.agents.detail and ui.common.errors; this receipt is the ui.agents.detail half). The receipt binds the WHOLE 51-key file hash because the ledger gate requires it. The remaining 50 keys were NOT re-audited: from the committed bytes I confirmed the English and Urdu key sets are identical (51 keys) and that the commit's diff of the Urdu file against its parent 7920f05769bd4ac833a09d7ba2abc3d0e2ca557a adds exactly this key (plus the previous line's trailing comma) and changes nothing else, so those keys are byte-unchanged from the previously audited state. This is not a whole-file linguistic audit and not rendered-layout clearance: no screenshot, wrapping, glyph shaping or live RTL layout was tested.",
+  "verified": [
+    "Urdu `اس مشین پر بنایا گیا۔` reads as this device, not a hostname; matches existing `اس مشین پر` usage. Masculine agreement is correct.",
+    "No placeholders or plurals in the key or its English source; no manual bidi control or Unicode format characters in the key or anywhere in the Urdu file (scanned Cf/Cc).",
+    "Repo scripts check-duplicates and context-parity passed on the pinned tree; ledger-check failed for ur on stale hashes only, as expected before this receipt.",
+    "Source, context and target SHA-256 were derived from `git show` at the pinned head and equal the on-disk bytes in the worktree."
+  ]
+}
