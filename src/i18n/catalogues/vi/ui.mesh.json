@@ -246,7 +246,7 @@
 	"ui.mesh.approval.head_finite_share": "Chia sẻ đăng nhập {credential} của bạn với {device}",
 	"ui.mesh.approval.head_inheritance": "Cho phép {device} dùng tài khoản {provider} {account} của bạn",
 	"ui.mesh.approval.scope_device": "Mọi phiên trên {device} đều có thể dùng.",
-	"ui.mesh.approval.scope_session": "Chỉ phiên đã yêu cầu, trên {device}, mới có thể dùng.",
+	"ui.mesh.approval.scope_session": "Các phiên trên {device} có thể mượn đăng nhập này với quyền truy cập gắn với từng phiên.",
 	"ui.mesh.approval.org_limited": "Chỉ cho tổ chức {org}.",
 	"ui.mesh.approval.org_any": "Cho mọi tổ chức trong tài khoản này.",
 	"ui.mesh.approval.not_copied": "Đăng nhập của bạn không được sao chép sang {device}.",

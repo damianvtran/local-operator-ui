@@ -41,7 +41,9 @@
  */
 
 import assert from "node:assert/strict";
+import { once } from "node:events";
 import { readFileSync } from "node:fs";
+import { createServer } from "node:http";
 import { test } from "node:test";
 import { build } from "esbuild";
 
@@ -59,6 +61,7 @@ const bundle = await build({
 			export * from "./src/renderer/src/features/mesh/mesh-drop";
 			export * from "./src/renderer/src/features/mesh/mesh-drag";
 			export * from "./src/renderer/src/features/mesh/mesh-approvals";
+export { desktopResult } from "./src/renderer/src/shared/api/local-operator/desktop-api";
  export { t, setLocale, registerCatalogue, clearRegisteredCatalogues, currentLocale } from "./src/i18n";
 		`,
 		resolveDir: process.cwd(),
@@ -1835,6 +1838,10 @@ test("credential states preserve requested-only counts and ordinary Deny transit
  * finite share (`device_onboard` on disk, `what` = the op key plus the anchor).
  * Synthetic ids and digests only: nothing here names a real approval.
  */
+const EXACT_WITHDRAWAL = /owner-revoke:different/;
+const RETAINED_FENCE = /fence-other/;
+const EVIDENCE_RENDER = /typed\.disclosure\.evidence/;
+const ORIGINAL_SESSION_ONLY = /only|asked/i;
 const REQUEST_DIGEST = `sha256:${"a1".repeat(32)}`;
 const DISCLOSURE_DIGEST = `sha256:${"b2".repeat(32)}`;
 const finiteShareCapture = (fields = {}, typed = {}) =>
@@ -2118,6 +2125,85 @@ test("Try again re-sends the same body to apply-credential, only on a retryable 
 	assert.equal(mesh.canRetryCredentialApply(waiting, ON, true), false);
 });
 
+test("latest permanent apply refusal overrides an unchanged busy receipt", () => {
+	const [row] = mesh.approvalRows([
+		finiteShareCapture(
+			{ state: "failed" },
+			{
+				apply_outcome: {
+					code: "busy",
+					retryable: true,
+					reason: "Busy",
+					remedy: "Retry",
+				},
+			},
+		),
+	]);
+	assert.equal(mesh.canRetryCredentialApply(row, ON), true);
+	const latest = mesh.approvalRefusal({
+		message: "The recipient key changed.",
+		detail: {
+			apply_outcome: {
+				code: "finite_subject_mismatch",
+				retryable: false,
+				reason: "The recipient key changed.",
+				remedy: "Request a new card.",
+			},
+		},
+	});
+	assert.equal(latest.retryable, false);
+	assert.equal(mesh.canRetryCredentialApply(row, ON, latest.retryable), false);
+	assert.equal(
+		mesh.approvalDecisionRequest(row, "apply", ON, latest.retryable),
+		null,
+	);
+});
+
+test("Details preserves exact same-count withdrawal sets and retained fence", () => {
+	const first = finiteShareCapture();
+	const second = structuredClone(first);
+	second.typed_approval.disclosure.withdrawals[0] = {
+		selector: "owner-revoke:different",
+		revision: 99,
+		approval_ref: "ap_other",
+	};
+	second.typed_approval.disclosure.retained_fence = {
+		id: "fence-other",
+		revision: 98,
+	};
+	const [a, b] = mesh.approvalRows([first, second]);
+	assert.equal(
+		a.typed.disclosure.withdrawalCount,
+		b.typed.disclosure.withdrawalCount,
+	);
+	assert.notEqual(a.typed.disclosure.evidence, b.typed.disclosure.evidence);
+	assert.deepEqual(
+		JSON.parse(b.typed.disclosure.evidence),
+		second.typed_approval.disclosure,
+	);
+	assert.match(b.typed.disclosure.evidence, EXACT_WITHDRAWAL);
+	assert.match(b.typed.disclosure.evidence, RETAINED_FENCE);
+	const source = readFileSync(
+		"src/renderer/src/features/mesh/mesh-approvals-tray.tsx",
+		"utf8",
+	);
+	assert.match(source, EVIDENCE_RENDER);
+});
+
+test("session scope describes incoming-session-bound borrowing, not the original requester", () => {
+	const raw = finiteShareCapture();
+	raw.typed_approval.disclosure.scope = "session";
+	const [row] = mesh.approvalRows([raw]);
+	assert.equal(
+		mesh.credentialConsequences(row)[0],
+		"Sessions on studio-mini can borrow this login with session-bound access.",
+	);
+	assert.doesNotMatch(
+		mesh.credentialConsequences(row)[0],
+		ORIGINAL_SESSION_ONLY,
+	);
+});
+
 test("apply-phase outcomes become the card's refusal, with their own words and retry signal", () => {
 	// The approve answer that SIGNED but did not apply (HTTP 200, `applied.ok: false`).
 	const unapplied = mesh.unappliedPhase({
@@ -2221,8 +2307,8 @@ test("the tray and the page route every credential decision through the typed bu
 	assert.match(tray, /canApproveApproval\(row, capabilities\)/);
 	assert.match(
 		tray,
-		/const fileKeyNote = canApprove && typed\?\.unprovenHuman === true;/,
-		"the file-key disclosure renders wherever a file-key Approve does",
+		/const fileKeyNote = row\.typed\?\.unprovenHuman === true;/,
+		"the file-key disclosure is independent of signing availability and feature gating",
 	);
 	assert.match(tray, /t\("ui\.mesh\.approval\.file_key_disclosure"\)/);
 	assert.match(tray, /onDecide\(row\.approvalId, "apply"\)/);
@@ -5633,4 +5719,149 @@ test("reach-state story neighbors distinguish suspect unanswered from not-attemp
 	const unknown = { ...buildBox, reason: "" };
 	assert.equal(mesh.deviceReach(unknown), "unknown");
 	assert.equal(mesh.conversationsLinkDown(unknown, 340), "unknown");
+});
+
+// This fixture proves client -> real loopback HTTP -> response/error mapping only.
+// It is NOT the production backend, signature verification or credential side effects.
+test("typed client crosses synthetic loopback HTTP for approve, retry and refusal", async () => {
+	const raw = finiteShareCapture();
+	const calls = [];
+	let state = "requested";
+	const server = createServer(async (req, res) => {
+		let body = "";
+		for await (const chunk of req) body += chunk;
+		const posted = JSON.parse(body);
+		calls.push({ path: req.url, body: posted });
+		res.setHeader("Content-Type", "application/json");
+		const exact =
+			posted.operation === raw.typed_approval.operation &&
+			posted.request_digest === REQUEST_DIGEST &&
+			posted.disclosure_digest === DISCLOSURE_DIGEST &&
+			Object.keys(posted).sort().join() ===
+				"disclosure_digest,operation,request_digest";
+		if (!exact) {
+			res.writeHead(409);
+			res.end(
+				JSON.stringify({
+					detail: {
+						code: "credential_request_changed",
+						message: "Synthetic digest mismatch.",
+					},
+				}),
+			);
+			return;
+		}
+		if (req.url.endsWith("/approve-credential")) {
+			state = "failed";
+			res.end(
+				JSON.stringify({
+					result: {
+						state,
+						signed: { ok: true },
+						applied: {
+							ok: false,
+							code: "busy",
+							retryable: true,
+							reason: "Synthetic busy.",
+							remedy: "Retry.",
+						},
+					},
+				}),
+			);
+		} else if (req.url.endsWith("/apply-credential")) {
+			state = "connected";
+			res.end(JSON.stringify({ result: { state, applied: { ok: true } } }));
+		} else {
+			res.writeHead(404);
+			res.end("{}");
+		}
+	});
+	const previousWindow = globalThis.window;
+	try {
+		server.listen(0, "127.0.0.1");
+		await once(server, "listening");
+		const base = `http://127.0.0.1:${server.address().port}`;
+		globalThis.window = {
+			api: {
+				desktop: {
+					request: async (request) => {
+						const ep = contractRuntime.desktopEndpoint(request);
+						const response = await fetch(base + ep.path, {
+							method: ep.method,
+							headers: { "Content-Type": "application/json" },
+							body: JSON.stringify(ep.body),
+						});
+						return { status: response.status, body: await response.json() };
+					},
+				},
+			},
+		};
+		const [row] = mesh.approvalRows([raw]);
+		const request = mesh.approvalDecisionRequest(row, "approve", ON);
+		const answer = await mesh.desktopResult(request);
+		assert.equal(state, "failed");
+		const refusal = mesh.approvalRefusal(mesh.unappliedPhase(answer));
+		assert.equal(refusal.retryable, true);
+		const failed = { ...row, state };
+		await mesh.desktopResult(
+			mesh.approvalDecisionRequest(failed, "apply", ON, refusal.retryable),
+		);
+		assert.equal(state, "connected");
+		assert.equal(calls[0].path.endsWith("/approve-credential"), true);
+		assert.equal(calls[1].path.endsWith("/apply-credential"), true);
+		assert.deepEqual(calls[0].body, calls[1].body);
+		await assert.rejects(
+			mesh.desktopResult({
+				...request,
+				requestDigest: `sha256:${"0".repeat(64)}`,
+			}),
+			(error) =>
+				error.code === "credential_request_changed" &&
+				error.message === "Synthetic digest mismatch.",
+		);
+		assert.equal(
+			state,
+			"connected",
+			"refused echo leaves synthetic side effect unchanged",
+		);
+		assert.equal(
+			calls.some((c) => c.path.endsWith("/approve")),
+			false,
+		);
+	} finally {
+		if (previousWindow === undefined)
+			Reflect.deleteProperty(globalThis, "window");
+		else globalThis.window = previousWindow;
+		server.closeAllConnections();
+		await new Promise((resolve) => server.close(resolve));
+	}
+});
+
+test("typed fixture lane covers signable/refused/settled assurance and stateful writes", () => {
+	const stories = readFileSync(
+		"src/renderer/src/features/mesh/mesh-page.stories.tsx",
+		"utf8",
+	);
+	for (const name of [
+		"Pending",
+		"Inheritance",
+		"Empty",
+		"Settled",
+		"Multiple",
+		"Expanded",
+		"Refused",
+		"Loading",
+		"Signing",
+		"RetryFlow",
+		"PermanentRefusal",
+		"FailedOpen",
+		"ApprovedOpen",
+	]) {
+		assert.ok(stories.includes(`export const TypedCredential${name}`), name);
+	}
+	assert.ok(stories.includes('request.op === "approvals.approveCredential"'));
+	assert.ok(stories.includes('request.op === "approvals.applyCredential"'));
+	assert.ok(stories.includes("credential_approvals: 1"));
+	assert.ok(stories.includes("request.requestDigest !== typed.request_digest"));
+	assert.ok(stories.includes('row.state = failure ? "failed" : "connected"'));
 });

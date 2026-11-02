@@ -1237,7 +1237,7 @@
 	"ui.mesh.approval.scope_session": {
 		"role": "consequence — mesh approval card details",
 		"tone": "Plain and factual; calm, not alarming",
-		"note": "Who may use the shared login: only the one session that requested it, on that device (session scope). `device` is a device name."
+		"note": "Session scope: the recipient device is a holder; its sessions may each borrow this login with grants bound to the individual incoming session. NOT restricted to the session that originally requested sharing (the signed share has no requesting-session identifier). Preserve this distinction; device is a device name."
 	},
 	"ui.mesh.approval.org_limited": {
 		"role": "consequence — mesh approval card details",

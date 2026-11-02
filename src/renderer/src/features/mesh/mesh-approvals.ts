@@ -87,9 +87,9 @@ export type CredentialApprovalOperation =
 /**
  * The structured facts a typed credential card discloses BEFORE it is signed
  * (`finite_share.disclosure` / `inheritance.disclosure` on the backend - the same
- * dict the CLI renders), normalised to what this surface words. Only facts the
- * card states are kept; the backend's digest covers the whole dict, so nothing
- * here is re-serialised or sent back.
+ * dict the CLI renders). Normalised fields drive plain copy; the complete served
+ * facts are also snapshotted for Details so exact signed evidence is not lost.
+ * That display snapshot is never hashed or sent back: only served digests are echoed.
  */
 export type MeshCredentialDisclosure = {
 	operation: CredentialApprovalOperation;
@@ -103,6 +103,8 @@ export type MeshCredentialDisclosure = {
 	scope: string;
 	recipient: { deviceId: string; name: string; keyFingerprint: string };
 	withdrawalCount: number;
+	/** Complete served facts for inspection; never recomputed into an acknowledgment. */
+	evidence: string;
 	untilRevoked: boolean;
 	futureLogins: boolean;
 	installsOrJoins: boolean;
@@ -138,6 +140,8 @@ export type MeshTypedApproval = {
 	refusal: string;
 	refusalMessage: string;
 	applyOutcome: MeshApplyOutcome | null;
+	/** Availability is retained; setup is a separate admin-authorized flow. */
+	upgrade?: Record<string, unknown>;
 };
 
 /** The where-block, under whichever key the row's kind spells it. */
@@ -314,13 +318,15 @@ export function canApproveApproval(
 export function canRetryCredentialApply(
 	row: MeshApprovalRow,
 	{ credentialApprovals = false }: ApprovalCapabilities = {},
-	retryable = false,
+	retryable?: boolean,
 ): boolean {
 	return (
 		credentialApprovals &&
 		echoable(row) &&
 		(row.state === "approved" || row.state === "failed") &&
-		(retryable || row.typed.applyOutcome?.retryable === true)
+		// A latest response is authoritative, including false: an apply refusal
+		// before begin_run leaves the old retryable receipt unchanged on disk.
+		(retryable ?? row.typed.applyOutcome?.retryable === true)
 	);
 }
 
@@ -338,7 +344,7 @@ export function approvalDecisionRequest(
 	row: MeshApprovalRow,
 	decision: ApprovalDecision,
 	capabilities: ApprovalCapabilities = {},
-	retryable = false,
+	retryable?: boolean,
 ): DesktopRequest | null {
 	const approvalId = row.approvalId;
 	if (decision === "deny") return { op: "approvals.deny", approvalId };
@@ -447,6 +453,10 @@ function disclosure(value: unknown): MeshCredentialDisclosure | null {
 			name: text(recipient.name),
 			keyFingerprint: text(recipient.key_fingerprint),
 		},
+		// Preserve EVERY served fact, including exact selector/revision/ref tuples,
+		// retained fence and provenance. Counts alone hide what is being restored.
+		// This display-only snapshot is never used to compute the echoed digest.
+		evidence: JSON.stringify(value, null, 2),
 		withdrawalCount: Array.isArray(value.withdrawals)
 			? value.withdrawals.length
 			: 0,
@@ -499,6 +509,7 @@ function typedApproval(value: unknown): MeshTypedApproval | undefined {
 		refusal: text(value.refusal),
 		refusalMessage: text(value.refusal_message),
 		applyOutcome: applyOutcome(value.apply_outcome),
+		...(isRecord(value.upgrade) ? { upgrade: { ...value.upgrade } } : {}),
 	};
 }
 

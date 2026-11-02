@@ -246,7 +246,7 @@
 	"ui.mesh.approval.head_finite_share": "Compartir tu inicio de sesión de {credential} con {device}",
 	"ui.mesh.approval.head_inheritance": "Permitir que {device} use tu cuenta de {provider} {account}",
 	"ui.mesh.approval.scope_device": "Cualquier sesión en {device} puede usarlo.",
-	"ui.mesh.approval.scope_session": "Solo la sesión que lo pidió, en {device}, puede usarlo.",
+	"ui.mesh.approval.scope_session": "Las sesiones en {device} pueden usar este inicio de sesión con acceso vinculado a cada sesión.",
 	"ui.mesh.approval.org_limited": "Solo para la organización {org}.",
 	"ui.mesh.approval.org_any": "Para cualquier organización de esta cuenta.",
 	"ui.mesh.approval.not_copied": "Tu inicio de sesión no se copia a {device}.",

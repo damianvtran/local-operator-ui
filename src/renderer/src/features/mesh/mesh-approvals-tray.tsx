@@ -565,7 +565,7 @@ const MeshApprovalCard: FC<{
 	const canRetryApply = canRetryCredentialApply(
 		row,
 		capabilities,
-		refusal?.retryable === true,
+		refusal?.retryable,
 	);
 	/*
 	 * A TYPED CARD speaks from the structured disclosure: the head line names the
@@ -579,11 +579,11 @@ const MeshApprovalCard: FC<{
 	 * THE FILE-KEY DISCLOSURE (backend `typed_approval.unproven_human`, operator
 	 * decision a-b492: "the UI MUST render this disclosure when true"). On a
 	 * file-only operator key any program running as the operator can sign, so an
-	 * approval from here cannot prove a person pressed it. Shown wherever the card
-	 * offers Approve, in the card's quiet meta register - a fact to know, not an
+	 * approval from here cannot prove a person pressed it. This remains true on
+	 * refused and settled records as well as signable requests. Shown in the card's quiet meta register - a fact to know, not an
 	 * alarm, because the operator already accepted that residual.
 	 */
-	const fileKeyNote = canApprove && typed?.unprovenHuman === true;
+	const fileKeyNote = row.typed?.unprovenHuman === true;
 	/*
 	 * WHY THIS CARD CANNOT BE APPROVED HERE, in the order of who knows best: the
 	 * typed block's own refusal sentence (the policy that said no, worded by the
@@ -804,6 +804,17 @@ const MeshApprovalCard: FC<{
 							<li key={line}>{line}</li>
 						))}
 					</ul>
+				)}
+				{/* Full signed evidence follows the plain consequences, so two equal-sized
+				    withdrawal sets remain distinguishable before signing. Rendered as text,
+				    never markup or an action; the digest remains the server's own echo. */}
+				{typed?.disclosure && (
+					<pre
+						className="whitespace-pre-wrap text-meta text-ink-dim [overflow-wrap:anywhere]"
+						data-tour-tag="mesh-approval-signed-evidence"
+					>
+						{typed.disclosure.evidence}
+					</pre>
 				)}
 				{recipient && typed?.disclosure?.recipient.keyFingerprint && (
 					<p className="text-meta text-ink-dim [overflow-wrap:anywhere]">

@@ -1133,8 +1133,9 @@ export const MeshPage: FC<{ initialPresentation?: Presentation }> = ({
 								row,
 								decision,
 								{ credentialApprovals },
-								decisionRefusal?.approvalId === approvalId &&
-									decisionRefusal.retryable,
+								decisionRefusal?.approvalId === approvalId
+									? decisionRefusal.retryable
+									: undefined,
 							)
 						: null;
 					if (request) decideApproval.mutate({ approvalId, decision, request });

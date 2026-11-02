@@ -246,7 +246,7 @@
 	"ui.mesh.approval.head_finite_share": "اپنا {credential} لاگ اِن {device} کے ساتھ شیئر کریں",
 	"ui.mesh.approval.head_inheritance": "{device} کو اپنا {provider} اکاؤنٹ {account} استعمال کرنے دیں",
 	"ui.mesh.approval.scope_device": "{device} پر کوئی بھی سیشن اسے استعمال کر سکتا ہے۔",
-	"ui.mesh.approval.scope_session": "صرف {device} پر درخواست کرنے والا سیشن ہی اسے استعمال کر سکتا ہے۔",
+	"ui.mesh.approval.scope_session": "{device} پر سیشن اس لاگ اِن کو ہر سیشن سے منسلک رسائی کے ساتھ ادھار لے سکتے ہیں۔",
 	"ui.mesh.approval.org_limited": "صرف {org} تنظیم کے لیے۔",
 	"ui.mesh.approval.org_any": "اس اکاؤنٹ کی کسی بھی تنظیم کے لیے۔",
 	"ui.mesh.approval.not_copied": "آپ کا لاگ اِن {device} پر کاپی نہیں ہوتا۔",
