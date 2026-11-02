@@ -2382,6 +2382,13 @@
 		},
 		"note": "Confirms the invitation was sent and explains the mention will not notify them until they accept and join the conversation."
 	},
+	"ui.teamBridge.replies.legacy_window": {
+		"role": "Compatibility notice above thread replies",
+		"tone": "Factual, calm",
+		"length": "Two short sentences; wraps in the thread pane",
+		"placeholders": [],
+		"note": "Old server/runtime supports only ascending replies. Do not imply the loaded oldest window is newest or request consent/authorization."
+	},
 	"ui.teamBridge.delivery.refused": {
 		"role": "message delivery status line",
 		"tone": "neutral, factual, non-accusatory",

@@ -319,6 +319,7 @@
 	"ui.teamBridge.mentions.notice.silent": "Mention without notifying",
 	"ui.teamBridge.mentions.notice.pending": "{name} is invited but hasn’t joined yet, so they won’t be notified.",
 	"ui.teamBridge.mentions.notice.invited": "{name} has been invited. They won’t be notified until they join.",
+	"ui.teamBridge.replies.legacy_window": "This server only supports oldest-first replies. Load more to continue.",
 	"ui.teamBridge.delivery.refused": "Not delivered to {agent} ({owner}): refused by their moderation",
 	"ui.teamBridge.delivery.refused_manipulation": "Not delivered to {agent} ({owner}): refused by their moderation (looked like an attempt to manipulate the agent)",
 	"ui.teamBridge.delivery.refused_personal_info": "Not delivered to {agent} ({owner}): refused by their moderation (looked like a request for personal information)",

@@ -319,6 +319,7 @@
 	"ui.teamBridge.mentions.notice.silent": "Mentionner sans notifier",
 	"ui.teamBridge.mentions.notice.pending": "{name} a reçu une invitation mais n’a pas encore rejoint la conversation, et ne recevra donc pas de notification.",
 	"ui.teamBridge.mentions.notice.invited": "Invitation envoyée à {name}, qui ne recevra pas de notification avant d’avoir rejoint la conversation.",
+	"ui.teamBridge.replies.legacy_window": "Ce serveur affiche uniquement les réponses des plus anciennes aux plus récentes. Chargez-en davantage pour continuer.",
 	"ui.teamBridge.delivery.refused": "Non remis à {agent} ({owner}) : refusé par sa modération",
 	"ui.teamBridge.delivery.refused_manipulation": "Non remis à {agent} ({owner}) : refusé par sa modération (ressemblait à une tentative de manipuler l’agent)",
 	"ui.teamBridge.delivery.refused_personal_info": "Non remis à {agent} ({owner}) : refusé par sa modération (ressemblait à une demande d’informations personnelles)",

@@ -46,6 +46,7 @@ export const TeamBridgeOwnerAuditApi = {
 		conversationId: string,
 		messageId: string,
 		afterSeq?: number,
+		window?: { beforeSeq?: number; order?: "asc" | "desc"; limit?: 1 | 50 },
 	) {
 		return ownerAuditThreadSchema.parse(
 			await desktopResult<unknown>({
@@ -53,8 +54,12 @@ export const TeamBridgeOwnerAuditApi = {
 				...owner(scope),
 				conversation_id: conversationId,
 				message_id: messageId,
-				limit: 50,
+				limit: window?.limit ?? 50,
 				...(afterSeq === undefined ? {} : { after_seq: afterSeq }),
+				...(window?.beforeSeq === undefined
+					? {}
+					: { before_seq: window.beforeSeq }),
+				...(window?.order === undefined ? {} : { order: window.order }),
 			}),
 		);
 	},

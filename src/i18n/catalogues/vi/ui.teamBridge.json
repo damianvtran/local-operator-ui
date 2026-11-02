@@ -319,6 +319,7 @@
 	"ui.teamBridge.mentions.notice.silent": "Nhắc đến mà không thông báo",
 	"ui.teamBridge.mentions.notice.pending": "{name} đã được mời nhưng chưa tham gia nên sẽ không nhận được thông báo.",
 	"ui.teamBridge.mentions.notice.invited": "Đã mời {name}. Họ sẽ không nhận được thông báo cho đến khi tham gia.",
+	"ui.teamBridge.replies.legacy_window": "Máy chủ này chỉ hỗ trợ hiển thị phản hồi từ cũ đến mới. Tải thêm để tiếp tục.",
 	"ui.teamBridge.delivery.refused": "Không được chuyển tới {agent} ({owner}): bị bộ kiểm duyệt của họ từ chối",
 	"ui.teamBridge.delivery.refused_manipulation": "Không được chuyển tới {agent} ({owner}): bị bộ kiểm duyệt của họ từ chối (có vẻ là một nỗ lực thao túng tác nhân)",
 	"ui.teamBridge.delivery.refused_personal_info": "Không được chuyển tới {agent} ({owner}): bị bộ kiểm duyệt của họ từ chối (có vẻ là một yêu cầu thông tin cá nhân)",

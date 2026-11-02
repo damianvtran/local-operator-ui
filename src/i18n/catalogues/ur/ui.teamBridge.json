@@ -319,6 +319,7 @@
 	"ui.teamBridge.mentions.notice.silent": "اطلاع دیے بغیر ذکر کریں",
 	"ui.teamBridge.mentions.notice.pending": "{name} کو مدعو کیا گیا ہے لیکن وہ ابھی شامل نہیں ہوئے، اس لیے انہیں اطلاع نہیں ملے گی۔",
 	"ui.teamBridge.mentions.notice.invited": "{name} کو مدعو کر دیا گیا۔ شامل ہونے تک انہیں اطلاع نہیں ملے گی۔",
+	"ui.teamBridge.replies.legacy_window": "یہ سرور جوابات صرف پرانے سے نئے کی ترتیب میں دکھاتا ہے۔ آگے دیکھنے کے لیے مزید لوڈ کریں۔",
 	"ui.teamBridge.delivery.refused": "{agent} ({owner}) تک نہیں پہنچا: ان کی ماڈریشن نے مسترد کر دیا",
 	"ui.teamBridge.delivery.refused_manipulation": "{agent} ({owner}) تک نہیں پہنچا: ان کی ماڈریشن نے مسترد کر دیا (ایجنٹ کو ورغلانے کی کوشش جیسا لگا)",
 	"ui.teamBridge.delivery.refused_personal_info": "{agent} ({owner}) تک نہیں پہنچا: ان کی ماڈریشن نے مسترد کر دیا (ذاتی معلومات کی درخواست جیسا لگا)",

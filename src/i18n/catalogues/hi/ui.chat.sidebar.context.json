@@ -1,0 +1,13 @@
+{
+	"ui.chat.sidebar.agents.list_join": {
+		"role": "joiner for the agent-name list inside the built-in installation offer",
+		"tone": "neutral, everyday Hindi inline enumeration; preserve names verbatim, no sentence punctuation",
+		"length": "Two variable-width placeholders plus a comma and space for middle joins, or spaces around और for pair and final joins; wraps with the installation sentence, no fixed character limit.",
+		"note": "Exactly two names read naturally as Coder और Reviewer, without a comma. Longer lists use a comma and space between earlier items and और before the final name, without a serial comma. Zero names produce an empty list and one name is unchanged, with no joiner call. Keep the position select and pair/middle/other arms unchanged.",
+		"placeholders": {
+			"position": "pair for a two-name list, middle for non-final joins, end (the other arm) for the final join of three or more names",
+			"head": "first name or the already joined preceding names; preserve verbatim",
+			"tail": "next agent display name; preserve verbatim"
+		}
+	}
+}

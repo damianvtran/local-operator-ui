@@ -63,7 +63,11 @@ export function ownerAuditChronology(
 			if (seen?.body && !message.body) continue;
 			messages.set(message.id, message);
 		}
-	return [...messages.values()].sort((a, b) => a.seq - b.seq);
+	// Sequence is unique on today's hub, but defensive/tie fixtures must still
+	// have one deterministic display order independent of overlapping page order.
+	return [...messages.values()].sort(
+		(a, b) => a.seq - b.seq || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0),
+	);
 }
 
 /**

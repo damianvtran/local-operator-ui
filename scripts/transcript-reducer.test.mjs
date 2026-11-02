@@ -7254,6 +7254,52 @@ const loopGoalPrompt = (goal) =>
 const LOOP_SELF_CONTINUATION =
 	"Continue working toward the standing goal. Make concrete progress with the tools available, then briefly state what advanced and what remains. If the goal is already fully met, say so plainly and stop.";
 
+const MISSING_ARGUMENTS_RECOVERY =
+	"Harness recovery notice: required tool arguments were omitted. No rejected call ran. Supply the named required fields inside each call's argument object, including each parallel child's parameters; do not resend empty objects or invent values. If the values are unavailable, explain the blocker. An unchanged retry will stop.";
+
+test("missing-argument recovery stays hidden live and in legacy history", () => {
+	for (const text of [
+		MISSING_ARGUMENTS_RECOVERY,
+		"Harness recovery notice: the last three tool batches repeated the same arguments and errors. Inspect the error and change approach; do not repeat the unchanged failing calls. If an external condition must change, use a supported wait operation or explain the blocker.",
+	]) {
+		const message = user("recovery", text);
+		const live = applyEvent(
+			EMPTY_TRANSCRIPT,
+			{ type: "message_start", message },
+			1,
+		);
+		const history = applyHistoryPage(
+			EMPTY_TRANSCRIPT,
+			durablePage({
+				id: "recovery",
+				ts: 10,
+				type: "message",
+				payload: { kind: "message", ...message },
+			}),
+		);
+		assert.deepEqual(live.records, []);
+		assert.deepEqual(history.records, []);
+	}
+	const warning =
+		"Harness recovery notice: required tool arguments were omitted. Please investigate.";
+	const human = applyHistoryPage(
+		EMPTY_TRANSCRIPT,
+		durablePage({
+			id: "human",
+			ts: 10,
+			type: "message",
+			payload: { kind: "message", ...user("human", warning) },
+		}),
+	);
+	assert.equal(human.records[0].text, warning);
+	const liveHuman = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{ type: "message_start", message: user("human-live", warning) },
+		1,
+	);
+	assert.equal(liveHuman.records[0].text, warning);
+});
+
 test("an unstamped goal-continuation row is chrome, live - no marker needed", () => {
 	const state = applyEvent(
 		EMPTY_TRANSCRIPT,

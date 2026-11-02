@@ -1,0 +1,75 @@
+{
+	"auditor": "reviewer",
+	"model": "radient/auto",
+	"model_disclosure": "Disclosed fallback: the session's primary model anthropic/claude-opus-5-5 was unavailable (provider quota) and the harness routed this run through openai/gpt-6-astra and kimi/k3.1-pro before settling on radient/auto; the audit was completed on radient/auto.",
+	"instance": "7d20c9116360-hi",
+	"locale": "hi",
+	"namespace": "ui.agents.avatar",
+	"date": "2026-10-30",
+	"status": "passed",
+	"result": "clean-with-findings",
+	"sha256": {
+		"en": "35ac09523862b19fb4c5c942d57f42d2dd8007f926ead27b306febbc2c830847",
+		"hi": "0972624b5914652eeb94ab44d4f93342256a3f94f902f96cb38c3188b80bb22f"
+	},
+	"source_sha256": "35ac09523862b19fb4c5c942d57f42d2dd8007f926ead27b306febbc2c830847",
+	"target_sha256": "0972624b5914652eeb94ab44d4f93342256a3f94f902f96cb38c3188b80bb22f",
+	"counts": {
+		"blocker": 0,
+		"major": 0,
+		"minor": 1,
+		"nit": 2
+	},
+	"findings": [
+		{
+			"id": "A-hi-zoom",
+			"severity": "minor",
+			"key": "ui.agents.avatar.editor.zoom_in",
+			"keys": [
+				"ui.agents.avatar.editor.zoom_in",
+				"ui.agents.avatar.editor.zoom_out"
+			],
+			"detail": "hi renders the pair ज़ूम इन / ज़ूम आउट, a calque of the English. Every sibling control for the same action in the shipped catalogue reads ज़ूम बढ़ाएँ / ज़ूम घटाएँ (ui.chat.mermaid, ui.common.viewer, ui.library.preview, ui.projects.project_timeline zoom_in/zoom_out). The same +/− affordance therefore carries two vocabularies in one app.",
+			"recommend": "Reuse ज़ूम बढ़ाएँ / ज़ूम घटाएँ; two values, no other key changes."
+		},
+		{
+			"id": "A-hi-image",
+			"severity": "nit",
+			"key": "ui.agents.avatar.editor.error_decode",
+			"keys": [
+				"ui.agents.avatar.editor.error_decode",
+				"ui.agents.avatar.editor.error_size",
+				"ui.agents.avatar.editor.error_type"
+			],
+			"detail": "These three refusals say छवि, while #1517's ui.agents.settings refusals for the same file gate say तस्वीर, and the editor's own user-facing keys (edit_link, save, replace, recenter, error_save, error_remove) say तस्वीर. A deliberate image/picture split (छवि = the file, तस्वीर = the agent's picture) is defensible and mirrors the English, but it is currently an accident of this namespace.",
+			"recommend": "Either align the three refusals to तस्वीर, or record the छवि = image / तस्वीर = picture split in the hi style guide."
+		},
+		{
+			"id": "A-hi-crop",
+			"severity": "nit",
+			"key": "ui.agents.avatar.editor.crop_area",
+			"keys": [
+				"ui.agents.avatar.editor.crop_area",
+				"ui.agents.avatar.editor.error_encode"
+			],
+			"detail": "क्रॉप / क्रॉप क्षेत्र is a transliteration with no precedent in the shipped hi catalogue, and the hi guide asks for the settled Hindi term where one exists. (Sibling surfaces do ship ज़ूम, so loanwords are not banned outright; this is a nit, not a rule break.)",
+			"recommend": "काटने का क्षेत्र and वह काटा गया हिस्सा, or record क्रॉप if that is the decided term."
+		}
+	],
+	"scope": "ui.agents.avatar (25 keys) — full-namespace read of hi against English, the core glossary and hi's style guide, on PR #1537 head 478b7889387. Whole-file hashes bound.",
+	"passed_checks": [
+		"key set identical to English (25/25)",
+		"ICU placeholder parity: {name}, {size}, {width}, {height}, {value} present and unaltered in every key that carries them",
+		"no ICU plural/select arms in this namespace; {size} is a whole-megabyte digit with no inflecting noun",
+		"no manual bidi control characters (RLM/LRM/FSI/PDI/LRI/RLI) in ur; Latin format names left to the render layer's isolation",
+		"format list JPEG/PNG/WebP/GIF matches AGENT_AVATAR_MIME_TYPES in src/renderer/src/shared/agent-avatar/avatar-image.ts",
+		"no key left in English except the es/fr loanword Zoom and the numeric {value}×",
+		"punctuation conventions per locale (ur ۔ ،, hi ।, zh-CN ，。、, fr ’)"
+	],
+	"limitations": [
+		"Browser and rendered-frame capture are not in this auditor's tool set: no screenshot, pseudo-localization or measured-overflow evidence is claimed.",
+		"Overflow was reasoned from the call sites, not measured: the editor's buttons are w-fit and the settings row wraps (flex-wrap), the preview labels are image aria-labels, and no truncate/whitespace-nowrap is applied anywhere in the avatar surfaces.",
+		"Agent semantic read; no native-speaker review."
+	],
+	"independence": "Auditor did not translate, write or edit any catalogue, context or key file; it formed its own read of the strings before opening the translator's commit message."
+}

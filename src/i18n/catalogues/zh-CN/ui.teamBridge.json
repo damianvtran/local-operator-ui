@@ -319,6 +319,7 @@
 	"ui.teamBridge.mentions.notice.silent": "提及但不通知",
 	"ui.teamBridge.mentions.notice.pending": "{name}已受邀但尚未加入，因此不会收到通知。",
 	"ui.teamBridge.mentions.notice.invited": "已邀请{name}。对方加入之前不会收到通知。",
+	"ui.teamBridge.replies.legacy_window": "此服务器仅支持从最早的回复开始显示。加载更多以继续。",
 	"ui.teamBridge.delivery.refused": "未送达{agent}（{owner}）：已被其审核拒绝",
 	"ui.teamBridge.delivery.refused_manipulation": "未送达{agent}（{owner}）：已被其审核拒绝（看起来像是试图操控该智能体）",
 	"ui.teamBridge.delivery.refused_personal_info": "未送达{agent}（{owner}）：已被其审核拒绝（看起来像是索取个人信息）",

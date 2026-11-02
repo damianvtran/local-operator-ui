@@ -1,0 +1,125 @@
+{
+  "schema": 1,
+  "receipt_kind": "independent byte-evidence composition; inherited semantic coverage, no new linguistic audit",
+  "date": "2026-11-02",
+  "auditor": "i18n-auditor",
+  "agent": "i18n-auditor",
+  "session": "87206376c1d7",
+  "instance": "87206376c1d7-composition93584-fr",
+  "namespace": "ui.teamBridge",
+  "locale": "fr",
+  "status": "passed",
+  "result": "clean",
+  "sha256": {
+    "en": "dcedd81e4a50f9029c7f59511de7ff7a936bb83a38d4bb2af32901404109b5a6",
+    "fr": "5f5683aa377cc063f042a421d33907c112b20177be9f925b5f9f64162c0810df"
+  },
+  "context_sha256": "b7d8eadefb3a15c1e8bff0c90aa536199caa9126a42446281c1f0619f6f525f1",
+  "findings": [],
+  "scope": {
+    "kind": "composition only",
+    "verdict": "No composition findings; this is NOT zero findings from a fresh linguistic audit of the whole namespace. Existing historical findings and remediations remain in parent artifacts.",
+    "semantic_coverage": {
+      "delivery": "13 keys and en context raw tokens identical to own R4; preserved R5 additionally binds later unchanged namespace source. Existing zh-CN whitespace fixes remain intact.",
+      "reply_window": "Exact main value and context tokens; semantic verdict inherited solely from main independent receipt 5b9e7ac29d2a, not reissued here.",
+      "shared_keys": "Exact main tokens, all overlapping values/context entries equal preserved parent; main R5 historical provenance retained, no claim to fresh global namespace semantics."
+    },
+    "new_linguistic_audit_performed": false
+  },
+  "composition_record": {
+    "proposed_path": "i18n/receipts/87206376c1d7-composition93584-record.json",
+    "sha256": "3631033ef1179ffdfed2772a4dd2b936bbc2c88563e6ff9eb42055d954394a98",
+    "candidate": {
+      "worktree": "/Users/damian/local-operator-ui/.worktrees/bridge-delivery-source-93584",
+      "head": "7d5287d594e991e2912dbaa700f90d88ff5a1dd4",
+      "merge_head": "26bc6ecebfd37f5203d6f7158b63f220ecc963e5",
+      "remaining_unmerged": [
+        "i18n/ledger.json"
+      ],
+      "author_proof_path": "/Users/damian/.local-operator/sessions/6f5fa4ec4bea/scratchpad/ui1521-source-93584-proof.json",
+      "author_proof_sha256": "0888a3d2228adc19196447488118b972e0316d0b8ade5582ea7626fbea2c26bf"
+    },
+    "parents": {
+      "R4": {
+        "commit": "d5f2babea47e66e04d76a6e5072e1da63d5e1203",
+        "instance": "87206376c1d7-rebase4-fr",
+        "receipt": "i18n/receipts/87206376c1d7-rebase4-fr.json",
+        "receipt_sha256": "cc116c682b57fff53c029b2ae40aa2ac9c74f840a8e386ae59f9f5f22f006d71",
+        "source_sha256": "e3ef1a80523f97cba4e445d97baa1548055d1cdd54537106889a0f48c30b230b",
+        "target_sha256": "0a594db352dd7ccef853917313c0025632a867349d3efbefdd70e3601db3e9d1",
+        "context_sha256": "2a4dbc0a804618dd8366485e2b69b2540a00f6558b440aa9789ae9b16f6fab70",
+        "declared_result": "clean",
+        "coverage": "13 delivery keys and historical namespace provenance",
+        "raw_receipt_preserved_in_candidate": true
+      },
+      "preserved_R5": {
+        "commit": "7d5287d594e991e2912dbaa700f90d88ff5a1dd4",
+        "instance": "cc87b564af61-rebase5-fr",
+        "receipt": "i18n/receipts/cc87b564af61-rebase5-fr.json",
+        "receipt_sha256": "928fc593b950a385be3c42e3022a93c95ad0916042c859989969c70f3bcadcbe",
+        "source_sha256": "bc5a2fac50ce0d9670c4eb914b8d5bc75a03903774ba3816f7e9e53944cb14f9",
+        "target_sha256": "fe8e6701adb39146c5cfb69c4bf547c8d17e353171dc7680bdce26611f74d7b6",
+        "context_sha256": "8b0ed0961320527e553b56b3c5769633ecaf6c32996175ffaa2e640433093b5e",
+        "declared_result": "clean",
+        "coverage": "13 delivery keys and historical namespace provenance",
+        "raw_receipt_preserved_in_candidate": true
+      },
+      "main_reply_delta": {
+        "commit": "26bc6ecebfd37f5203d6f7158b63f220ecc963e5",
+        "instance": "5b9e7ac29d2a",
+        "receipt": "i18n/receipts/5b9e7ac29d2a.json",
+        "receipt_sha256": "57c9172cb3cc5308e587f4b28e9e880a4fc219dbb3cd15f5cecc1122fdfdf106",
+        "source_sha256": "8886c3944d34a1107b050b06f9b4f4a95aea24e10d59ad8bc5b1c4e2a8749f40",
+        "target_sha256": "9929ce22f0855dbeb9130ffb5a6515e2922233b6c41cf1939020f69044c75b93",
+        "context_sha256": "6bc61f5c6b01c9d900834504c489f3814adf14e2529ddf4559851c0cfae9fd3d",
+        "declared_result": "clean",
+        "coverage": "replies.legacy_window delta only; not a new whole-namespace semantic audit",
+        "raw_receipt_preserved_in_candidate": true
+      }
+    }
+  },
+  "model_provenance": {
+    "actual_assessment_model": "openai/gpt-6.1-sol",
+    "nominal_descriptor": "anthropic/claude-sonnet-5-5",
+    "fallback_used": true,
+    "source": "Parent/root-reported actual host wait completion and resume receipt, supplied in this turn; not independently queried by child",
+    "completed_job": "808faef7981e",
+    "previous_assessment_job_reference": "af67 (abbreviated ID supplied by parent; not expanded or invented)",
+    "host_evidence": "Root reports wait(job808faef7981e) completed with model=openai/gpt-6.1-sol; af67-to-808 resume receipt also records previous run openai/gpt-6.1-sol. Old af67 reference resolves latest 808, not a second independent completion.",
+    "scope": "Attests completed composition assessment/proposal only, not the provider serving this future metadata-only finalization turn. No claim of complete per-step provider history.",
+    "profile_or_pin_changes": false
+  },
+  "independence": "Existing auditor UID 87206376c1d7; not original author 6f5fa4ec4bea or source writer 389a. No new audit instance/translator launched; no candidate or ledger written.",
+  "historical_nits": {
+    "locale": "zh-CN",
+    "count": 10,
+    "status": "fixed in R4; exact fixed values preserved",
+    "keys": [
+      "ui.teamBridge.delivery.refused",
+      "ui.teamBridge.delivery.refused_manipulation",
+      "ui.teamBridge.delivery.refused_personal_info",
+      "ui.teamBridge.delivery.refused_abusive",
+      "ui.teamBridge.delivery.refused_unsafe_content",
+      "ui.teamBridge.delivery.refused_out_of_scope",
+      "ui.teamBridge.delivery.held",
+      "ui.teamBridge.delivery.held_screening_unavailable",
+      "ui.teamBridge.delivery.held_awaiting_review",
+      "ui.teamBridge.delivery.pending"
+    ]
+  },
+  "limitations": [
+    "No Node/checker/generator, tests, runtime, browser or PR write executed.",
+    "Ledger remains unmerged; no ledger validation or unrelated-row preservation in a resolved ledger can yet be certified.",
+    "Q1 FAIL, source hook override disclosure, and design/UX/wire-model semantic questions remain external gates; no frames or approval invented.",
+    "Byte composition does not prove changed #1560 caller/wire behavior preserves the meaning shown to users."
+  ],
+  "model": "openai/gpt-6.1-sol",
+  "provenance_addendum": {
+    "proposed_path": "i18n/receipts/87206376c1d7-composition93584-provenance.json",
+    "sha256": "1dbc3e216a9513637282840791f7909abf28105da3d9c8c5dccce95d61022859"
+  },
+  "supersedes_ineligible_draft": {
+    "sha256": "fd789c588359690e4b2c4c75d4da69955ce215b4147a23350ccf0530e735a313",
+    "reason": "Mandatory actual assessment model now supplied through parent-reported completed host record; no assessment/value/hash change."
+  }
+}

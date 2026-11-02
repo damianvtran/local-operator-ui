@@ -1,0 +1,26 @@
+PASS
+BLOCKER=0 MAJOR=0 MINOR=0 NIT=0
+Auditor: i18n-auditor-es; actual model: openai/gpt-6.1-sol; session: ff18a0fd5ea9. Temporary fallback disclosed: primary anthropic/claude-sonnet-5-5; host announced anthropic/claude-opus-5-5 and then openai/gpt-6.1-sol after provider quota failure. This substantive audit and probes ran on openai/gpt-6.1-sol.
+Key: ui.chat.sidebar.agents.list_join
+Scope: one Spanish key only; whole namespace key count is 61, not 61 linguistically audited keys.
+Arms inspected:
+  pair: {head} y {tail}
+  middle: {head}, {tail}
+  other: {head} y {tail}
+Real intl-messageformat results (the formatter imported by src/i18n/messages.ts):
+  pair, Coder + Reviewer: Coder y Reviewer
+  middle, Coder + Reviewer: Coder, Reviewer
+  end (other), Coder, Reviewer + Designer: Coder, Reviewer y Designer
+  two-name fold: Coder y Reviewer
+  three-name fold: Coder, Reviewer y Designer
+Ruling: Spanish changes y to e before a following /i/ sound (e.g. Investigador, Historiador), but not before a /je/ glide (e.g. Hierro). The position-only ICU select cannot inspect tail pronunciation. The submitted y is the correct default and is not a mistranslation or repairable by substituting e unconditionally. This is a documented formatter/caller limitation, not an unresolved BLOCKER/MAJOR on this single-key translation audit. For arbitrary names, Coder y Investigador is nonstandard; the native wording is Coder e Investigador. A general solution needs phonetic-aware list handling/caller support, not a guessed catalogue-only change.
+Reproduced boundary: pair Coder + Investigador -> Coder y Investigador; final Coder, Reviewer + Investigador -> Coder, Reviewer y Investigador. Native expected forms are Coder e Investigador and Coder, Reviewer e Investigador.
+Typography/idiom: ordinary comma U+002C followed by one normal space U+0020 between earlier items; no space before comma; no comma before final y in a simple enumeration; one normal space either side of y. No narrow NBSP or ideographic/Arabic comma. Names remain verbatim. Neutral, idiomatic Spanish for the tested default-conjunction cases; no machine-translation calque. Pair/final separator has 3 characters and middle has 2; same separator widths as English except and -> y shortens it. No numeric maxCells/maxChars hint on this key. Dynamic agent-name width is unbounded by the message and is not a new translation overflow.
+Mechanical: valid JSON; exact namespace key parity; real parser confirms position/select with pair/middle/other, head/tail preserved in every arm; no plural and hence no CLDR plural-category requirement. No markup, code, command or identifier to translate. Unknown position end correctly uses other. Malformed ICU and missing-tail negative controls rejected.
+Repo validators executed, all exit 0:
+  node scripts/i18n/context-parity.mjs (131 allowed pre-existing gaps in 4 namespaces; this source key has its own context)
+  node scripts/i18n/check-duplicates.mjs (1031 files, 0 duplicate keys)
+  node scripts/i18n/generate.mjs --check (byte-identical; no rebuild or generation write)
+  node --test --test-name-pattern=^\[es\] scripts/i18n/locale-parity.test.mjs (6 passed, 0 failed)
+  node /Users/damian/.local-operator/sessions/3ef6295a5545/scratchpad/listjoin-audit/es/format-probe.mjs (all assertions passed)
+Retention: files are a requested handoff bundle, not a tracked/merged audit record. Repository was read-only; no ledger command or repository write was performed. Manager must ingest the bundle under i18n/audits/evidence/es/ui.chat.sidebar/listjoin-es-ff18/ and record the UI-schema ledger/manifest receipt. Full-suite, UI visual fit, and entire-file linguistic review were not requested and are not claimed.

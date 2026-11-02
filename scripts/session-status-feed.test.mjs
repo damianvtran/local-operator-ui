@@ -142,10 +142,20 @@ const storeBundle = await build({
 					{ filter: ANY_MODULE_RE, namespace: "session-status-fixture" },
 					(args) => ({
 						contents: {
-							transport: `export {DesktopControlError, UserFacingError, userFacingMessage} from ${JSON.stringify(
+							transport: `export {DesktopControlError, UserFacingError, userFacingMessage, mediaError} from ${JSON.stringify(
 								`${process.cwd()}/src/renderer/src/shared/api/local-operator/desktop-api.ts`,
 							)}
-export const desktopResult = request => globalThis.__statusRequest(request);`,
+export const desktopResult = request => globalThis.__statusRequest(request);
+/*
+ * Agent pictures: the shipped sidebar/status graph now imports the avatar
+ * hooks, which read the roster through desktopControlResponse and picture
+ * bytes through desktopMedia. This fixture is not about pictures, so both
+ * answer without IO (an empty roster means no picture, so no byte read is
+ * attempted) and stay off the case's own request seam, which keeps the request
+ * log about the control under test. mediaError is the shipped, pure one.
+ */
+export const desktopControlResponse = async () => new Response(JSON.stringify({ result: { agents: [] } }), { status: 200, headers: { "Content-Type": "application/json" } });
+export const desktopMedia = async () => ({ status: 404, kind: "error", detail: "no media in this fixture" });`,
 							/*
 							 * `desktopKeys` and the query cache join this stub because the store now
 							 * reads the CATALOGUE capability out of that cache to size an unnamed

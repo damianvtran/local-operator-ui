@@ -319,6 +319,7 @@
 	"ui.teamBridge.mentions.notice.silent": "सूचना दिए बिना उल्लेख करें",
 	"ui.teamBridge.mentions.notice.pending": "{name} को आमंत्रित किया गया है, लेकिन वे अभी शामिल नहीं हुए हैं, इसलिए उन्हें सूचना नहीं मिलेगी।",
 	"ui.teamBridge.mentions.notice.invited": "{name} को आमंत्रित कर दिया गया है। शामिल होने तक उन्हें सूचना नहीं मिलेगी।",
+	"ui.teamBridge.replies.legacy_window": "यह सर्वर जवाबों को केवल पुराने से नए क्रम में दिखा सकता है। आगे देखने के लिए और लोड करें।",
 	"ui.teamBridge.delivery.refused": "{agent} ({owner}) तक नहीं पहुँचा: उनके मॉडरेशन ने अस्वीकार कर दिया",
 	"ui.teamBridge.delivery.refused_manipulation": "{agent} ({owner}) तक नहीं पहुँचा: उनके मॉडरेशन ने अस्वीकार कर दिया (एजेंट को बहकाने की कोशिश जैसा लगा)",
 	"ui.teamBridge.delivery.refused_personal_info": "{agent} ({owner}) तक नहीं पहुँचा: उनके मॉडरेशन ने अस्वीकार कर दिया (निजी जानकारी के अनुरोध जैसा लगा)",
