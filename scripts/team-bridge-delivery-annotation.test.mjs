@@ -91,9 +91,7 @@ const {
 	ownerAuditMessageSchema,
 } = compiled.exports;
 const createElement = React.createElement;
-const MODERATION_LOCALES = [
-	"en", "fr", "es", "zh-CN", "ru", "vi", "ur", "hi",
-];
+const MODERATION_LOCALES = ["en", "fr", "es", "zh-CN", "ru", "vi", "ur", "hi"];
 const MODERATION_EM_DASH = /\u2014/u;
 const INFO_LABEL = /aria-label="About message screening"/;
 const UNREAD_FIELDS = /SECRET-REASON|harassment|0\.97/;
@@ -206,9 +204,7 @@ test("a blank label falls back to the shared placeholders", () => {
 		lineTexts(
 			render([entry({ recipient_label: "  ", recipient_owner_label: "" })]),
 		),
-		[
-			"Not delivered to Unknown agent (Unknown person). Refused by moderation.",
-		],
+		["Not delivered to Unknown agent (Unknown person). Refused by moderation."],
 	);
 });
 
@@ -365,6 +361,49 @@ test("the owner-audit view carries the audited agent's delivery state to the row
 		undefined,
 		"a malformed annotation costs the annotation, never the audit row",
 	);
+});
+
+// S1 (QA round, 2026-11-02): the audit wire defaults a missing origin to "" and
+// the mapper used to coerce any unrecognised origin to the sender's kind, so a
+// human SENDER with no/unknown origin disclosed the class. Asserted through the
+// real parse -> map -> model -> SSR path, the way the hub's bytes arrive.
+test("owner-audit rows with missing, empty or future origin stay generic", () => {
+	const wire = {
+		id: "bcmsg_3",
+		conversation_id: "bconv_1",
+		seq: 3,
+		sender: { account_id: "acct_2", kind: "human", display_label: "Ben" },
+		body: "hi",
+		created_at: "2026-10-30T00:00:00Z",
+		delivery_states: [entry({ refusal_class: "abusive" })],
+	};
+	const row = (over) =>
+		ownerAuditToBridgeMessage(
+			ownerAuditMessageSchema.parse({ ...wire, ...over }),
+		);
+	const human = row({ origin: "human" });
+	assert.equal(
+		teamBridgeDeliveryLines(human.delivery_states, human)[0].refusalClass,
+		"abusive",
+		"a genuine human row keeps the permitted coarse class",
+	);
+	for (const [label, over] of [
+		["missing", {}],
+		["empty", { origin: "" }],
+		["future", { origin: "relay" }],
+	]) {
+		const message = row(over);
+		assert.equal(
+			teamBridgeDeliveryLines(message.delivery_states, message)[0].refusalClass,
+			null,
+			`${label} origin: model`,
+		);
+		assert.deepEqual(
+			lineTexts(render(message.delivery_states, message)),
+			["Not delivered to Aida (Sam). Refused by moderation."],
+			`${label} origin: rendered`,
+		);
+	}
 });
 
 test("coarse refusal classes require positively known human origin and sender", () => {

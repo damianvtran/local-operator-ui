@@ -2397,7 +2397,7 @@
 			"agent": "the recipient agent's display name, as shown in the conversation",
 			"owner": "the display name of the person who owns that agent"
 		},
-		"note": "Muted status line under a message the sender sent. The recipient agent's own moderation declined it; this is NOT the sender's error and must not sound accusatory or alarming. Keep 'their' referring to the recipient agent/owner. No reason is given in this variant."
+		"note": "Muted status line under a message the sender sent. The recipient agent's own moderation declined it; this is NOT the sender's error and must not sound accusatory or alarming. No reason is given in this variant."
 	},
 	"ui.teamBridge.delivery.refused_manipulation": {
 		"role": "message delivery status line",

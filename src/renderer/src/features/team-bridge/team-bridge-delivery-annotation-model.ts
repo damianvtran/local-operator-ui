@@ -111,9 +111,10 @@ export function teamBridgeDeliveryLines(
 				key,
 				agent,
 				owner,
-				refusalClass: knownHuman && isRefusalClass(entry.refusal_class)
-					? entry.refusal_class
-					: null,
+				refusalClass:
+					knownHuman && isRefusalClass(entry.refusal_class)
+						? entry.refusal_class
+						: null,
 			});
 		} else if (entry.state === "held") {
 			seen.add(entry.endpoint_id);

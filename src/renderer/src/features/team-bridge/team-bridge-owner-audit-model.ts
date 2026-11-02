@@ -119,12 +119,19 @@ export function ownerAuditToBridgeMessage(
 		},
 		body: message.body ?? null,
 		body_hash: message.body_hash ?? undefined,
+		/* A missing, empty or future origin is NOT evidence of a person. The
+		   delivery annotation discloses a coarse refusal class only for an
+		   explicit `human` origin (the anti-oracle rule: agent-origin and
+		   unknown-origin senders never get a category), so falling back to the
+		   sender kind here used to turn an unknown origin into a human one and
+		   leak the class. `system` is the closed vocabulary's only non-person,
+		   non-agent value, so an unrecognised origin fails closed to it. */
 		origin:
 			message.origin === "human" ||
 			message.origin === "agent" ||
 			message.origin === "system"
 				? message.origin
-				: (kind ?? "human"),
+				: "system",
 		agent_label: message.agent_label ?? undefined,
 		created_at: message.created_at,
 		thread_root_id: message.thread_root_id ?? undefined,
