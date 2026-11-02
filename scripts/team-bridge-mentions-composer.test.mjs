@@ -1312,6 +1312,76 @@ test("emoji R2-1: Escape stays dismissed for the token across an IME round-trip"
 	}
 });
 
+/*
+ * R3-1 / Q3: rows of the PR #1606 dismissal authority matrix. A dismissal
+ * belongs to one token; sending empties the draft, so the next message's
+ * shortcode at the same start (0) must open again.
+ */
+const sendThenNextShortcode = async (ui) => {
+	await ui.key("Enter");
+	assert.equal(ui.field.value, "", "the draft was sent and cleared");
+	await ui.input(":+1", "insertText");
+	assert.ok(
+		document.querySelector("[data-emoji-popover]"),
+		"next message's shortcode must open",
+	);
+};
+
+test("emoji R3-1: Escape -> send -> next message :+1 opens", async () => {
+	const ui = await mount();
+	try {
+		await ui.input(":smile", "insertText");
+		await ui.key("Escape");
+		assert.ok(!document.querySelector("[data-emoji-popover]"));
+		await sendThenNextShortcode(ui);
+		assert.equal(ui.sent[0].args[0], ":smile");
+	} finally {
+		await ui.unmount();
+	}
+});
+
+test("emoji R3-1: no-results Enter -> send -> next message :+1 opens", async () => {
+	const ui = await mount();
+	try {
+		await ui.input(":no_such_emoji_928372", "insertText");
+		await ui.key("Enter");
+		assert.equal(ui.sent.length, 0, "first Enter only dismisses");
+		await sendThenNextShortcode(ui);
+		assert.equal(ui.sent[0].args[0], ":no_such_emoji_928372");
+	} finally {
+		await ui.unmount();
+	}
+});
+
+test("emoji R3-1: pick -> send -> next message :+1 opens", async () => {
+	const ui = await mount();
+	try {
+		await ui.input(":smile", "insertText");
+		await ui.key("Enter");
+		assert.equal(ui.field.value, String.fromCodePoint(0x1f604));
+		await sendThenNextShortcode(ui);
+		assert.equal(ui.sent[0].args[0], String.fromCodePoint(0x1f604));
+	} finally {
+		await ui.unmount();
+	}
+});
+
+test("emoji matrix: typing more into a dismissed token stays closed; deleting it resets", async () => {
+	const ui = await mount();
+	try {
+		await ui.input("hi :sm", "insertText");
+		await ui.key("Escape");
+		await ui.input("hi :smil", "insertText");
+		assert.ok(!document.querySelector("[data-emoji-popover]"), "same token");
+		// Deleting the token, then retyping it at the same start, is a new token.
+		await ui.input("hi ", "deleteContentBackward");
+		await ui.input("hi :sm", "insertText");
+		assert.ok(document.querySelector("[data-emoji-popover]"), "token was gone");
+	} finally {
+		await ui.unmount();
+	}
+});
+
 for (const [query, cp] of [
 	[":fire", [0x1f525]],
 	[":rocket", [0x1f680]],

@@ -104,15 +104,26 @@ export function useEmojiAutocomplete(input: {
 		// During the text commit the field owner has not adopted its ref-only
 		// native intent yet. That transient null query must not undo Escape.
 		if (intent && intent.text !== text) return;
-		// IME composition retires the intent (R1), which nulls the query without
-		// the token changing; that must not undo Escape for the same token (R2-1).
-		// A real non-composing edit that leaves no query (the token was deleted)
-		// still resets, as does a query starting elsewhere or a draft switch.
-		const reset =
-			query === null
-				? intent !== null && !intent.composing
-				: `${draftKey}:${query.start}` !== dismissedAt;
-		if (reset) setDismissedAt(null);
+		/*
+		 * Dismissal is keyed by (draft, token start) and is the only suppression
+		 * record (PR #1606 authority matrix). It clears when that token is GONE
+		 * from the text: deleted, sent (the draft empties), or the draft switched.
+		 * A shortcode at the same start of the NEXT message then opens (R3-1).
+		 *
+		 * The test reads the text, never the intent or composition timing. IME
+		 * retires the intent (R1) and nulls the query while the token is still
+		 * there, and the intent stays null after compositionend until the next
+		 * input, so "no query and not composing" would undo Escape (R2-1). Sending
+		 * clears the draft without any input intent, so an intent-keyed reset
+		 * never fires there either (R3-1).
+		 */
+		if (dismissedAt === null) return;
+		const split = dismissedAt.lastIndexOf(":");
+		const start = Number(dismissedAt.slice(split + 1));
+		const gone =
+			dismissedAt.slice(0, split) !== draftKey || text.charAt(start) !== ":";
+		const elsewhere = query !== null && query.start !== start;
+		if (gone || elsewhere) setDismissedAt(null);
 	}, [query, draftKey, dismissedAt, intent, text]);
 	// A query below the gate (`:`, `:D`, `10 :30`) is not dismissed, just not
 	// offered: Enter stays a plain send and the next letter can still open it.
