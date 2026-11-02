@@ -65,5 +65,5 @@
 	"ui.agents.detail.empty.instructions": "अभी कोई निर्देश नहीं।",
 	"ui.agents.detail.action.create_copy": "यह कॉपी बनाएँ",
 	"ui.agents.detail.action.creating": "बनाया जा रहा है…",
-	"ui.agents.detail.action.discard_new_agent": "यह नया एजेंट छोड़ दें?"
+	"ui.agents.detail.action.discard_new_agent": "यह नया एजेंट बनाना छोड़ दें?"
 }

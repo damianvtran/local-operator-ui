@@ -174,7 +174,7 @@
 	"ui.chat.canonical.image_gen.control.stop_hint_queued": "प्रोवाइडर को कॉल किए जाने से पहले रोक देता है।",
 	"ui.chat.canonical.image_gen.control.stop_hint_running": "रोकने का अनुरोध भेजता है; प्रोवाइडर फिर भी इसे पूरा कर सकता है।",
 	"ui.chat.canonical.image_gen.batch_summary": "{count, plural, =1 {{count_display} आइटम} one {{count_display} आइटम} other {{count_display} आइटम}}",
-	"ui.chat.canonical.lightbox.filmstrip_aria": "{count, plural, =1 {{count_display} तस्वीरें} one {{count_display} तस्वीरें} other {{count_display} तस्वीरें}}",
+	"ui.chat.canonical.lightbox.filmstrip_aria": "{count, plural, =1 {{count_display} तस्वीर} one {{count_display} तस्वीर} other {{count_display} तस्वीरें}}",
 	"ui.chat.canonical.lightbox.show_image": "कुल {count, number, ::group-off} में से तस्वीर {index, number, ::group-off} दिखाएँ",
 	"ui.chat.canonical.supplement.details.summary": "विवरण"
 }

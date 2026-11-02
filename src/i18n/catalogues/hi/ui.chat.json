@@ -159,7 +159,7 @@
 	"ui.chat.slot_notice.run_draft_detail": "बातचीत शुरू करने के लिए संदेश भेजें। इसके उप-एजेंट, योजना और शेड्यूल किए गए काम यहाँ दिखेंगे।",
 	"ui.chat.slot_notice.run_reading_title": "इस बातचीत का रन पढ़ा जा रहा है…",
 	"ui.chat.slot_notice.run_unreadable_title": "इस बातचीत का रन विवरण पढ़ा नहीं जा सका।",
-	"ui.chat.slot_notice.run_unreadable_detail": "इस पैन के बगल की बातचीत में वजह और दोबारा कनेक्ट करने का तरीका देखें।",
+	"ui.chat.slot_notice.run_unreadable_detail": "इस पैनल के बगल की बातचीत में वजह और दोबारा कनेक्ट करने का तरीका देखें।",
 	"ui.chat.slot_notice.run_missing_detail": "यह बातचीत अब इस मशीन पर नहीं है।",
 	"ui.chat.slot_notice.code_draft_title": "कोड समीक्षा के लिए बातचीत ज़रूरी है।",
 	"ui.chat.slot_notice.code_draft_detail": "बातचीत शुरू करने के लिए संदेश भेजें। इसमें खोले गए या बताए गए pull requests और merge requests यहाँ दिखेंगे।",

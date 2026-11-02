@@ -171,7 +171,7 @@
 	"ui.chat.canonical.image_label": "تصویر",
 	"ui.chat.canonical.fold.images_aria": "{count, plural, =1 {اس رن کی {count_display} تصویر} other {اس رن کی {count_display} تصاویر}}",
 	"ui.chat.canonical.fold.more_images": "{count, plural, =1 {+{count_display} مزید تصویر} other {+{count_display} مزید تصاویر}}",
-	"ui.chat.canonical.image_gen.control.stop_hint_queued": "فراہم کنندہ کو کال کیے جانے سے پہلے رک جاتا ہے۔",
+	"ui.chat.canonical.image_gen.control.stop_hint_queued": "فراہم کنندہ کو درخواست بھیجے جانے سے پہلے رک جاتا ہے۔",
 	"ui.chat.canonical.image_gen.control.stop_hint_running": "روکنے کی درخواست بھیجتا ہے؛ فراہم کنندہ پھر بھی مکمل کر سکتا ہے۔",
 	"ui.chat.canonical.image_gen.batch_summary": "{count, plural, =1 {{count_display} آئٹم} other {{count_display} آئٹمز}}",
 	"ui.chat.canonical.lightbox.filmstrip_aria": "{count, plural, =1 {{count_display} تصویر} other {{count_display} تصاویر}}",

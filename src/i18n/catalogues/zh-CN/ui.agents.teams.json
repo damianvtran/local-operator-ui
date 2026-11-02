@@ -22,7 +22,7 @@
 	"ui.agents.teams.section.members_aria": "成员",
 	"ui.agents.teams.section.project_brief": "项目说明",
 	"ui.agents.teams.section.what_for": "用途",
-	"ui.agents.teams.field.name_hint": "你和你的对话用来称呼此团队的名称。",
+	"ui.agents.teams.field.name_hint": "你与对话中引用此团队时使用的名称。",
 	"ui.agents.teams.field.name_label": "团队名称",
 	"ui.agents.teams.section.manager_hint": "主导对话并决定谁做什么的智能体。",
 	"ui.agents.teams.field.manager_label": "管理者智能体",

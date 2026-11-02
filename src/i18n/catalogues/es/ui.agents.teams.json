@@ -22,7 +22,7 @@
 	"ui.agents.teams.section.members_aria": "Miembros",
 	"ui.agents.teams.section.project_brief": "Contexto del proyecto",
 	"ui.agents.teams.section.what_for": "Para qué sirve",
-	"ui.agents.teams.field.name_hint": "Cómo se referirán a este equipo tú y tus chats.",
+	"ui.agents.teams.field.name_hint": "El nombre con el que se mencionará este equipo, por ti y en tus chats.",
 	"ui.agents.teams.field.name_label": "Nombre del equipo",
 	"ui.agents.teams.section.manager_hint": "El agente que dirige el chat y decide quién trabaja en qué.",
 	"ui.agents.teams.field.manager_label": "Agente responsable",

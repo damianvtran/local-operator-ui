@@ -30,6 +30,6 @@
 	"ui.chat.asks.status.withdrawn": "Отозвано — агенту больше не нужен ответ",
 	"ui.chat.asks.status.withdrawn_label": "Отозвано",
 	"ui.chat.asks.outstanding_count": "{count, plural, =1 {{count_display} запрос} one {{count_display} запрос} few {{count_display} запроса} many {{count_display} запросов} other {{count_display} запроса}}",
-	"ui.chat.asks.outstanding_aria": "Без ответа: {label}. Агент не блокируется и продолжает работу.",
+	"ui.chat.asks.outstanding_aria": "Без ответа: {label}. Агент не ждёт вашего ответа и продолжает работу.",
 	"ui.chat.asks.answer_aria": "Ответ на: {question}"
 }

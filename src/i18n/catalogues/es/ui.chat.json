@@ -176,7 +176,7 @@
 	"ui.chat.aside.add_to_conversation_tooltip": "Añadir la consulta al margen a la conversación",
 	"ui.chat.message_controls.content_header": "Contenido",
 	"ui.chat.message_controls.replacements_header": "Reemplazos",
-	"ui.chat.message_controls.thinking_label": "Pensando",
+	"ui.chat.message_controls.thinking_label": "Pensamiento",
 	"ui.chat.scroll_to_bottom.label": "Ir al final",
 	"ui.chat.scroll_to_bottom.label_new_activity": "Actividad nueva, ir al final",
 	"ui.chat.session_status.last_reading_note": "Última lectura antes de la reconexión.",

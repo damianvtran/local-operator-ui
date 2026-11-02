@@ -170,7 +170,7 @@
 	"ui.chat.canonical.transcript.hub_from": "来自{name}",
 	"ui.chat.canonical.image_label": "图片",
 	"ui.chat.canonical.fold.images_aria": "{count, plural, other {本次运行的{count_display}张图片}}",
-	"ui.chat.canonical.fold.more_images": "{count, plural, other {+{count_display}张图片}}",
+	"ui.chat.canonical.fold.more_images": "{count, plural, other {+{count_display}张更多图片}}",
 	"ui.chat.canonical.image_gen.control.stop_hint_queued": "会在调用提供商之前停止。",
 	"ui.chat.canonical.image_gen.control.stop_hint_running": "请求停止；提供商仍可能执行完毕。",
 	"ui.chat.canonical.image_gen.batch_summary": "{count, plural, other {{count_display}项}}",

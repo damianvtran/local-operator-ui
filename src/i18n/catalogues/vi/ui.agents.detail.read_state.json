@@ -15,5 +15,5 @@
 	"ui.agents.detail.read_state.effort_inherit": "Dùng cấp năng lực của phiên",
 	"ui.agents.detail.read_state.list_failed_teams": "Không đọc được danh sách nhóm",
 	"ui.agents.detail.read_state.list_failed_agents": "Không đọc được danh sách tác nhân",
-	"ui.agents.detail.read_state.list_failed_meaning": "Không mất gì cả. Đây là thao tác đọc không thành công — backend trả về lỗi, khác với trường hợp backend đã lỗi thời."
+	"ui.agents.detail.read_state.list_failed_meaning": "Không có gì bị mất. Đây là thao tác đọc không thành công — backend trả về lỗi, khác với trường hợp backend đã lỗi thời."
 }

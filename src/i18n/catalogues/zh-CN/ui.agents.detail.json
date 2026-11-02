@@ -58,7 +58,7 @@
 	"ui.agents.detail.section.delegation_hint": "是否可将工作委派给子智能体，以及以哪个档位运行。",
 	"ui.agents.detail.field.effort_loading": "正在加载档位",
 	"ui.agents.detail.field.effort_helper": "档位来自后端的子智能体模型设置。",
-	"ui.agents.detail.field.effort_inherit_hint": "使用会话自身的推理强度",
+	"ui.agents.detail.field.effort_inherit_hint": "使用会话自身的档位",
 	"ui.agents.detail.field.effort_configured_hint": "在“设置”中配置的档位",
 	"ui.agents.detail.field.how_it_works": "与其他智能体的协作方式",
 	"ui.agents.detail.empty.description": "暂无描述——添加描述，方便模型判断何时选用此智能体。",

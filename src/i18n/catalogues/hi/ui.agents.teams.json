@@ -37,6 +37,6 @@
 	"ui.agents.teams.field.what_for_label": "यह टीम किसलिए है",
 	"ui.agents.teams.action.create": "टीम बनाएँ",
 	"ui.agents.teams.action.creating": "बनाई जा रही है…",
-	"ui.agents.teams.action.discard_question": "यह टीम छोड़ दें?",
+	"ui.agents.teams.action.discard_question": "इस टीम के बदलाव छोड़ दें?",
 	"ui.agents.teams.empty.description": "अभी कोई विवरण नहीं।"
 }

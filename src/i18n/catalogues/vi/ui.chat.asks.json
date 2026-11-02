@@ -31,5 +31,5 @@
 	"ui.chat.asks.status.withdrawn_label": "Đã rút lại",
 	"ui.chat.asks.outstanding_count": "{count, plural, other {{count_display} câu hỏi}}",
 	"ui.chat.asks.outstanding_aria": "{label} chưa trả lời. Tác nhân không phải chờ bạn.",
-	"ui.chat.asks.answer_aria": "Câu trả lời của bạn cho: {question}"
+	"ui.chat.asks.answer_aria": "Trả lời cho: {question}"
 }
