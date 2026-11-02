@@ -461,6 +461,9 @@ const navigationOk = {
 			next_before_seq: null,
 			root: auditRoot,
 			replies: [],
+			// This suite isolates query lifetime, not old-hub negotiation. Modern
+			// empty reply pages echo DESC; missing-echo fallback has its own tests.
+			order: "desc",
 			next_after_seq: null,
 		},
 	},

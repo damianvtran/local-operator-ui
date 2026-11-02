@@ -409,17 +409,19 @@ export function useOwnerAuditReplies(
 			rootId,
 		],
 		identity: { conversationId, rootId },
-		read: (mode, cursor, limit = 50) =>
-			read(() =>
-				TeamBridgeOwnerAuditApi.replies(
-					scope,
-					conversationId,
-					rootId,
-					mode === "desc" ? undefined : (cursor ?? 0),
-					mode === "desc"
-						? { beforeSeq: cursor, order: "desc", limit }
-						: undefined,
-				),
+		read: (mode, cursor, limit, signal) =>
+			read(
+				() =>
+					TeamBridgeOwnerAuditApi.replies(
+						scope,
+						conversationId,
+						rootId,
+						mode === "desc" ? undefined : (cursor ?? 0),
+						mode === "desc"
+							? { beforeSeq: cursor, order: "desc", limit }
+							: undefined,
+					),
+				signal,
 			),
 		canEvict,
 		enabled,

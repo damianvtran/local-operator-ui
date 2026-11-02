@@ -155,7 +155,15 @@ export function useThreadReplyWindow<P extends ReplyWindowPage>({
 }: {
 	queryKey: readonly string[];
 	identity: { conversationId: string; rootId: string };
-	read: (mode: ReplyWindowMode, cursor?: number, limit?: 1 | 50) => Promise<P>;
+	/** Audit admission must observe the QUERY lifetime, not a mounted-reader
+	 * ref. Pass its signal to every page and latest-row peek so the last
+	 * observer leaving abandons either request without stranding a remount. */
+	read: (
+		mode: ReplyWindowMode,
+		cursor: number | undefined,
+		limit: 1 | 50,
+		signal: AbortSignal,
+	) => Promise<P>;
 	canEvict?: (page: P) => boolean;
 	/** The real scroll controller: hold() can unpin without moving the viewport. */
 	isAtLiveEdge?: () => boolean;
@@ -279,7 +287,7 @@ export function useThreadReplyWindow<P extends ReplyWindowPage>({
 					// Same authority/read path, LIMIT1, no mark-read mutation. Keep
 					// only id/seq; the peek's body/root/attachments never enter cache.
 					const peek = validateReplyPage(
-						await read(mode, undefined, 1),
+						await read(mode, undefined, 1, signal),
 						identity,
 						mode,
 						undefined,
@@ -298,7 +306,7 @@ export function useThreadReplyWindow<P extends ReplyWindowPage>({
 				// oldData. Six loaded pages cost at most6*50+1 replies per refresh;
 				// this is bounded fresh coverage, NOT a transaction/snapshot claim.
 				page = validateReplyPage(
-					await read(mode, actualCursor, 50),
+					await read(mode, actualCursor, 50, signal),
 					identity,
 					mode,
 					actualCursor,
