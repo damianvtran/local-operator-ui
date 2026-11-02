@@ -57,6 +57,12 @@ export function createAppIconBadge<Image>(ports: AppIconBadgePorts<Image>) {
 			// scene even on macOS, whose Dock API accepts only the compact label.
 			// This is projection evidence, not a custom Dock accessibility API.
 			lastDescription = count > 0 || state.pending ? ports.describe(state) : "";
+		} catch {
+			// Localization is not badge authority. A failed description must not
+			// suppress the numeric/dot native write or retain stale account copy.
+			lastDescription = "";
+		}
+		try {
 			if (ports.platform === "darwin" && ports.setDockBadge) {
 				const label =
 					count > 99

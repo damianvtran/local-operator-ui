@@ -2656,6 +2656,7 @@ app
 			process.env.GITHUB_ACTIONS === "true" &&
 			process.env.RUNNER_ENVIRONMENT === "github-hosted" &&
 			process.platform === "darwin" &&
+			!app.isPackaged &&
 			windowLaunch.show === "never"
 		) {
 			const sceneGlobal = globalThis as typeof globalThis & {

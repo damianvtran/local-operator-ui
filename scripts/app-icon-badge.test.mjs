@@ -75,6 +75,39 @@ test("native CI scene refuses other hosts before resolving Electron", () => {
 	assert.doesNotMatch(source, /sqlite3|UPDATE |INSERT INTO|A\.approve/);
 });
 
+test("actual main scene predicate excludes packaged apps and shown windows", () => {
+	const main = readFileSync(new URL("../src/main/index.ts", import.meta.url), "utf8");
+	const start = main.indexOf("process.env.LOCAL_OPERATOR_UI_APP_ICON_BADGE_SCENE");
+	assert.ok(start >= 0);
+	const condition = main.slice(start, main.indexOf(") {", start)).trim();
+	// Execute only the production guard expression with synthetic ports, never
+	// Electron or the application body. This catches a missing packaging gate.
+	const gate = new Function("process", "app", "windowLaunch", `return (${condition});`);
+	const process = { platform: "darwin", env: { LOCAL_OPERATOR_UI_APP_ICON_BADGE_SCENE: "1",
+		CI: "true", GITHUB_ACTIONS: "true", RUNNER_ENVIRONMENT: "github-hosted" } };
+	assert.equal(gate(process, { isPackaged: false }, { show: "never" }), true);
+	assert.equal(gate(process, { isPackaged: true }, { show: "never" }), false);
+	assert.equal(gate(process, { isPackaged: false }, { show: "normal" }), false);
+});
+
+test("description failure cannot suppress macOS or Linux native badge writes", () => {
+	for (const platform of ["darwin", "linux"]) {
+		const writes = [];
+		const badge = createAppIconBadge({
+			platform,
+			linuxDesktopIdentity: true,
+			setDockBadge: (label) => writes.push(label),
+			setBadgeCount: (count) => { writes.push(count); return true; },
+			describe: () => { throw new Error("synthetic localization failure"); },
+		});
+		assert.equal(badge.update(state(12)), "applied");
+		assert.deepEqual(writes, [platform === "darwin" ? "12" : 12]);
+		assert.equal(badge.readForScene().lastDescription, "");
+		badge.reset();
+		assert.equal(writes.at(-1), platform === "darwin" ? "" : 0);
+	}
+});
+
 test("Windows uses images/null, retains exact description and bounds visual cache", () => {
 	const created = [];
 	const writes = [];
