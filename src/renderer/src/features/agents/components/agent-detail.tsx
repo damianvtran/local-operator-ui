@@ -34,6 +34,7 @@ import {
 	AlertDescription,
 	AlertTitle,
 } from "@shared/components/ui/alert";
+import { AgentAvatar, AvatarFallback } from "@shared/components/ui/avatar";
 import { Badge } from "@shared/components/ui/badge";
 import { Button } from "@shared/components/ui/button";
 import { Disclosure } from "@shared/components/ui/disclosure";
@@ -114,6 +115,34 @@ type Draft = {
 };
 
 const TOOL_TOKEN = /^[A-Za-z0-9_.:-]{1,128}$/;
+
+/*
+ * The summary portrait's box: 80px, and borderless - `AgentAvatar` carries a
+ * control border for small marks that the summary's portrait deliberately drops.
+ * Its `bg-sunken` plate is kept, so a picture with transparent pixels and the
+ * empty state sit on the same surface.
+ */
+const SUMMARY_PORTRAIT_CLASS = "size-full border-0";
+
+/**
+ * The summary's plate while there is no picture to paint: no picture saved,
+ * still loading, or bytes that failed to decode. `AgentMark` shows its OWN
+ * `AvatarFallback` only once it has a URL (loading/decode-error), and the
+ * caller's `fallback` before that (no picture). Drawing that same
+ * `AgentAvatar` + `AvatarFallback` here makes all three states one filled,
+ * borderless disc with the local agent glyph (design round 1, D1) - from the
+ * shared surface's tokens, never new colours, and never the owner's photo.
+ * Same pattern as `AgentMarkPlate` in chat-session-avatar.tsx.
+ */
+function SummaryPortraitPlate() {
+	return (
+		<AgentAvatar className={SUMMARY_PORTRAIT_CLASS} data-agent-mark="">
+			<AvatarFallback>
+				<Bot className="size-8" aria-hidden="true" />
+			</AvatarFallback>
+		</AgentAvatar>
+	);
+}
 
 function draftOf(profile: ReusableProfile): Draft {
 	return {
@@ -922,13 +951,9 @@ export function AgentDetail({
 							>
 								<AgentMark
 									agentId={profile.agent_id}
-									className="size-full border-0 bg-transparent"
+									className={SUMMARY_PORTRAIT_CLASS}
 									glyph={<Bot className="size-8" aria-hidden="true" />}
-									fallback={
-										<span className="flex size-full items-center justify-center rounded-full text-ink-muted">
-											<Bot className="size-8" aria-hidden="true" />
-										</span>
-									}
+									fallback={<SummaryPortraitPlate />}
 								/>
 							</span>
 						)}

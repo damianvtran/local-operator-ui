@@ -645,7 +645,8 @@ async function assertHeaderGeometry(element: HTMLElement): Promise<number> {
  * Summary portraits use the shipped detail pane and local media seam, never an
  * account/Bridge photo. Distinct ids per state keep a prior successful cache
  * entry from making the loading/error stories accidentally show a picture.
- * These fixtures are authored under D2 NO START: no capture or pass is claimed.
+ * Their play checks run in the Storybook preview; read pass/fail from the
+ * preview's state, since the checks are raw DOM assertions, not instrumented steps.
  */
 type SummaryPictureState = "populated" | "no-image" | "loading" | "error";
 type SummaryPictureEvidence = {
@@ -752,6 +753,10 @@ const SummaryPortraitScene: FC<{
 		// Radix loads a detached native Image before mounting its <img>. A DOM
 		// error listener cannot see that event. Observe the REAL native decoder,
 		// without synthesising an error, replacing a result or touching production.
+		// The Proxy wraps EVERY `new Image()` while the error story is mounted, not
+		// only Radix's; that is harmless because `onError` records evidence only
+		// for an image whose src is THIS story's agent-avatar blob URL, so an
+		// unrelated image failing elsewhere on the page cannot satisfy the check.
 		const NativeImage = window.Image;
 		const observedImages = new Map<HTMLImageElement, () => void>();
 		const ObservedImage = new Proxy(NativeImage, {
@@ -877,7 +882,10 @@ export const SummaryPortraitErrorNarrow: Story = {
 	},
 };
 
-/** Authored but unexecuted during D2: these checks need a real admitted renderer. */
+/**
+ * Proves the state from its request/decoder evidence, then checks geometry, in
+ * a real renderer (the Storybook preview); it cannot run under node.
+ */
 async function assertSummaryPortrait(canvas: HTMLElement): Promise<void> {
 	await document.fonts.ready;
 	const root = canvas.querySelector<HTMLElement>(
@@ -926,10 +934,34 @@ async function assertSummaryPortrait(canvas: HTMLElement): Promise<void> {
 	const header = root.querySelector<HTMLElement>("[data-agent-summary-header]");
 	if (!portrait || !header)
 		throw new Error("Summary did not render its identity");
-	if (state !== "populated" && !portrait.querySelector("svg"))
-		throw new Error(
-			"Missing/loading/failed picture lost the local agent glyph",
-		);
+	if (state !== "populated") {
+		if (!portrait.querySelector("svg"))
+			throw new Error(
+				"Missing/loading/failed picture lost the local agent glyph",
+			);
+		/*
+		 * Design D1: no-image, loading and decode-error are ONE treatment - the
+		 * shared filled plate, borderless. Compare against the shared surface's
+		 * own computed colour rather than a pinned value, so a theme change keeps
+		 * the check honest and a bare glyph (transparent) still fails.
+		 */
+		const plate = portrait.querySelector<HTMLElement>("[data-agent-mark]");
+		const fill = plate?.querySelector<HTMLElement>("span");
+		const probe = document.createElement("span");
+		probe.className = "bg-sunken";
+		document.body.append(probe);
+		const sunken = getComputedStyle(probe).backgroundColor;
+		probe.remove();
+		if (
+			!plate ||
+			!fill ||
+			getComputedStyle(fill).backgroundColor !== sunken ||
+			getComputedStyle(plate).borderTopWidth !== "0px"
+		)
+			throw new Error(
+				`Summary ${state} plate is not the shared borderless filled disc`,
+			);
+	}
 	const box = portrait.getBoundingClientRect();
 	const edge =
 		Number.parseFloat(getComputedStyle(document.documentElement).fontSize) * 5;
@@ -962,6 +994,17 @@ async function assertSummaryPortrait(canvas: HTMLElement): Promise<void> {
 		: 0;
 	if (header.scrollWidth > header.clientWidth + bleed + 1)
 		throw new Error("Summary header overflows the narrow pane");
+	// The bleed belongs to the trailing button alone (review m2): the portrait
+	// and name block gets no slack, so overflow from either fails here.
+	const identity = portrait.parentElement?.getBoundingClientRect();
+	if (
+		!identity ||
+		identity.left < bounds.left - 1 ||
+		identity.right > bounds.right + 1 ||
+		box.right > bounds.right + 1 ||
+		titleBlock.right > bounds.right + 1
+	)
+		throw new Error("Summary portrait or name escaped its responsive header");
 	for (const button of buttons) {
 		const action = button.getBoundingClientRect();
 		const allowed = button === trailing ? bleed : 0;

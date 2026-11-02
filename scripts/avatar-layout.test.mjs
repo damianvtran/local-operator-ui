@@ -45,7 +45,11 @@ test("settings picture and empty fallback use the same comfortable preview size"
 	assert.ok(probe.includes("onPresence={onPresence}"));
 });
 
-/* Source tripwires only; live geometry/keyboard assertions require fresh D2 admission. */
+/*
+ * Source tripwires. The live geometry, media-state and plate checks are the
+ * summary stories' play functions (agent-avatar.stories.tsx), which need a real
+ * renderer and run in the Storybook preview, not under node.
+ */
 test("selected agent summary binds only the existing local agent picture", () => {
 	const source = readFlat(
 		"src/renderer/src/features/agents/components/agent-detail.tsx",
@@ -56,11 +60,20 @@ test("selected agent summary binds only the existing local agent picture", () =>
 	const portrait = source.slice(start, end);
 	assert.ok(portrait.includes("<AgentMark"));
 	assert.ok(portrait.includes("agentId={profile.agent_id}"));
-	assert.ok(portrait.includes('className="size-full border-0 bg-transparent"'));
-	assert.equal(
-		portrait.split('<Bot className="size-8" aria-hidden="true" />').length - 1,
-		2,
+	assert.ok(portrait.includes("className={SUMMARY_PORTRAIT_CLASS}"));
+	assert.ok(portrait.includes("fallback={<SummaryPortraitPlate />}"));
+	// One treatment for no-image/loading/error (design D1): the empty state is the
+	// shared AgentAvatar + AvatarFallback plate, not a bespoke bare glyph.
+	const plateStart = source.indexOf("function SummaryPortraitPlate()");
+	assert.ok(plateStart >= 0);
+	const plate = source.slice(plateStart, source.indexOf("function draftOf("));
+	assert.ok(plate.includes("<AgentAvatar className={SUMMARY_PORTRAIT_CLASS}"));
+	assert.ok(plate.includes("<AvatarFallback>"));
+	assert.ok(plate.includes('<Bot className="size-8" aria-hidden="true" />'));
+	assert.ok(
+		source.includes('const SUMMARY_PORTRAIT_CLASS = "size-full border-0";'),
 	);
+	assert.ok(!source.includes("bg-transparent"));
 	for (const accountSource of [
 		"useAccountAvatar",
 		"useRadientAuth",
