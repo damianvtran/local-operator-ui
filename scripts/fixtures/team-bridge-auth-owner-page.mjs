@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import Module from "node:module";
-import { relative } from "node:path";
+import { relative, resolve } from "node:path";
 import { after } from "node:test";
 import { build } from "esbuild";
 import { JSDOM } from "jsdom";
@@ -70,6 +71,39 @@ after(() => dom.window.close());
 const SIDEBAR = /chat\/components\/chat-sidebar$/;
 const ANY = /.*/;
 const SOURCE = /\/src\/.*\.(?:tsx?|json)$/;
+const laneSource = resolve(
+	"src/renderer/src/features/team-bridge/team-bridge-pending-sends.ts",
+);
+const laneHash =
+	"9262850c304c39364cc3a88aff63c2dcf6335f4544d9264b07f75b625bd6a729";
+const hash = (value) => createHash("sha256").update(value).digest("hex");
+const laneAttempts = [];
+let laneObserverError = false;
+let laneLoads = 0;
+let transformedLaneHash;
+// Keep the exact job promise even when auth revocation clears its lane map.
+// Observers cannot alter the job or expose lane keys, errors or message data.
+// Adding observers can still change microtask order; this is instrumented proof.
+globalThis[Symbol.for("teamBridgeTestTrackLane")] = (run) => {
+	try {
+		const attempt = { id: laneAttempts.length + 1, run, state: "pending" };
+		laneAttempts.push(attempt);
+		void run
+			.then(
+				() => {
+					attempt.state = "fulfilled";
+				},
+				() => {
+					attempt.state = "rejected";
+				},
+			)
+			.catch(() => {
+				laneObserverError = true;
+			});
+	} catch {
+		laneObserverError = true;
+	}
+};
 const role = readFileSync(
 	"src/renderer/src/features/chat/components/chat-sidebar.tsx",
 	"utf8",
@@ -125,6 +159,7 @@ const bundle = await build({
 	},
 	tsconfig: "tsconfig.app.json",
 	write: false,
+	metafile: true,
 	plugins: [
 		{
 			name: "unrelated-boundaries",
@@ -132,6 +167,7 @@ const bundle = await build({
 				// Exact, isolated RED control: compile only changed source files from the
 				// original release ref; never replace files in this or another worktree.
 				const baselineRef = process.env.TEAM_BRIDGE_AUTH_BASELINE;
+				const baseline = new Map();
 				if (baselineRef) {
 					assert.equal(baselineRef, "39164868fc15bd7971a1df625ef99e53c209e08f");
 					const git = (...args) =>
@@ -145,24 +181,44 @@ const bundle = await build({
 							.trim()
 							.split("\n"),
 					);
-					const baseline = new Map(
-						paths
-							.filter((path) => baseFiles.has(path))
-							.map((path) => [path, git("show", `${baselineRef}:${path}`)]),
-					);
-					b.onLoad({ filter: SOURCE }, ({ path }) => {
-						const contents = baseline.get(relative(process.cwd(), path));
-						if (contents === undefined) return;
-						return {
-							contents,
-							loader: path.endsWith(".tsx")
-								? "tsx"
-								: path.endsWith(".json")
-									? "json"
-									: "ts",
-						};
-					});
+					for (const path of paths.filter((item) => baseFiles.has(item)))
+						baseline.set(path, git("show", `${baselineRef}:${path}`));
 				}
+				// Compose baseline selection and the exact observer in ONE loader: an
+				// earlier generic onLoad must not silently bypass the tracker.
+				b.onLoad({ filter: SOURCE }, ({ path }) => {
+					let contents = baseline.get(relative(process.cwd(), path));
+					if (resolve(path) === laneSource) {
+						laneLoads += 1;
+						assert.equal(laneLoads, 1, "lane source must load exactly once");
+						contents ??= readFileSync(path, "utf8");
+						assert.equal(
+							hash(contents),
+							laneHash,
+							"actual loaded lane source must match pinned bytes",
+						);
+						const needle = "\treturn run;\n}\n\n/** A draft lane";
+						assert.equal(
+							contents.split(needle).length,
+							2,
+							"lane hook must match exactly once",
+						);
+						contents = contents.replace(
+							needle,
+							`\tglobalThis[Symbol.for("teamBridgeTestTrackLane")](run);\n${needle}`,
+						);
+						transformedLaneHash = hash(contents);
+					}
+					if (contents === undefined) return;
+					return {
+						contents,
+						loader: path.endsWith(".tsx")
+							? "tsx"
+							: path.endsWith(".json")
+								? "json"
+								: "ts",
+					};
+				});
 				// sonner is the toast manager's one edge. The shipped manager (dedupe,
 				// transport-text rewrite) runs for real and lands here, so a test can read
 				// exactly what a person would be shown.
@@ -208,6 +264,23 @@ export const DropdownMenuGroup=Pass,DropdownMenuPortal=Pass,DropdownMenuSub=Pass
 		},
 	],
 });
+assert.equal(laneLoads, 1, "the actual lane source must be instrumented once");
+assert.ok(transformedLaneHash, "the transformed source must be identified");
+assert.ok(
+	Object.keys(bundle.metafile.inputs).some(
+		(path) => resolve(path) === laneSource,
+	),
+	"bundle must include the intended lane source",
+);
+assert.ok(
+	bundle.outputFiles[0].text.includes("teamBridgeTestTrackLane"),
+	"bundle must contain the observer marker",
+);
+const laneBuildIdentity = {
+	source: laneHash,
+	transformed: transformedLaneHash,
+	bundle: hash(bundle.outputFiles[0].text),
+};
 const compiled = new Module(
 	`${process.cwd()}/scripts/pending-owner-container-runtime.cjs`,
 );
@@ -285,7 +358,16 @@ async function mount({
 	waitReady = true,
 	statusGate = null,
 } = {}) {
+	// A revoked attempt can outlive its cleared lane and store entry. A later
+	// fixture must not reset shared state while that earlier job can still run.
+	assert.equal(laneObserverError, false, "an earlier lane observer failed");
+	assert.equal(
+		laneAttempts.some((entry) => entry.state === "pending"),
+		false,
+		"a previous fixture still owns a pending lane",
+	);
 	localStorage.clear();
+	const laneStart = laneAttempts.length;
 	const fixture = {
 		account: "acct_a",
 		tenant: "org_shared",
@@ -328,6 +410,11 @@ async function mount({
 		   another route unmounts the container while module state (lanes, pending
 		   rows) and the shared QueryClient live on. */
 		created: null,
+		// A create receipt can be malformed or name another tenant; tests must
+		// prove the view never treats either as authority to retain another scope.
+		createReceiptTenant: undefined,
+		createListTenant: undefined,
+		createReceipts: [],
 		away: false,
 	};
 	window.api = {
@@ -514,8 +601,20 @@ async function mount({
 									})),
 								],
 							};
-							fixture.created.push(row);
-							return reply(row);
+							// The transport receipt and subsequent list may disagree; keep
+							// them independently controllable instead of testing a fallback.
+							fixture.created.push(
+								fixture.createListTenant === undefined
+									? row
+									: { ...row, tenant_id: fixture.createListTenant },
+							);
+							const receipt = { ...row };
+							if (fixture.createReceiptTenant === null)
+								receipt.tenant_id = undefined;
+							else if (fixture.createReceiptTenant !== undefined)
+								receipt.tenant_id = fixture.createReceiptTenant;
+							fixture.createReceipts.push(receipt);
+							return reply(receipt);
 						}
 						return reply({
 							...conversation(`created-${generation}`),
@@ -609,6 +708,12 @@ async function mount({
 									auth: client.getQueryData(ui.radientUserKeys.user())?.account
 										?.id,
 									tenant: status?.tenant_id,
+									selectedId:
+										host
+											.querySelector(
+												'[data-conversation-id][aria-current="page"]',
+											)
+											?.getAttribute("data-conversation-id") ?? null,
 									nav: host.querySelector("[data-nav-attention]")?.textContent,
 									text: host.textContent,
 									draft: host.querySelector("textarea")?.value ?? "",
@@ -639,6 +744,9 @@ async function mount({
 		fixture,
 		client,
 		frames,
+		laneBuildIdentity,
+		laneAttempts: () => laneAttempts.slice(laneStart),
+		laneObserverFailed: () => laneObserverError,
 		render,
 		async changeAuth(accountId) {
 			fixture.account = accountId;
@@ -660,7 +768,8 @@ async function mount({
 			await act(async () => render());
 		},
 		async close() {
-			await act(async () => root.unmount());
+			// Held transport must settle before unmount; otherwise old continuations
+			// can leak into the next test after its singleton store has been reset.
 			fixture.authGate?.resolve();
 			fixture.statusGate?.resolve();
 			fixture.listGate?.resolve();
@@ -668,17 +777,51 @@ async function mount({
 			fixture.unreadGate?.resolve();
 			fixture.createGate?.resolve();
 			fixture.postGate?.resolve();
-			await act(async () => client.cancelQueries());
-			await delay();
-			for (const mutation of client.getMutationCache().getAll())
-				mutation.destroy();
-			client.clear();
-			// A cancelled Query.fetch finally can schedule GC after removal. Destroy
-			// every owned query after its cancellation settles, including removed ones.
-			await delay();
-			for (const query of ownedQueries) query.destroy();
-			stopTracking();
-			host.remove();
+			const errors = [];
+			const attemptCleanup = async (fn) => {
+				try {
+					await fn();
+				} catch (error) {
+					errors.push(error);
+				}
+			};
+			try {
+				await until(
+					() =>
+						laneAttempts
+							.slice(laneStart)
+							.every((entry) => entry.state !== "pending") &&
+						!laneObserverError,
+					"observed lane attempts settle before unmount",
+				);
+			} catch (error) {
+				errors.push(error);
+			} finally {
+				// Attempt every teardown step even if the lane or an earlier step failed.
+				await attemptCleanup(() => act(async () => root.unmount()));
+				await attemptCleanup(() => act(async () => client.cancelQueries()));
+				await attemptCleanup(delay);
+				await attemptCleanup(async () => {
+					for (const mutation of client.getMutationCache().getAll())
+						mutation.destroy();
+				});
+				await attemptCleanup(async () => client.clear());
+				await attemptCleanup(delay);
+				await attemptCleanup(async () => {
+					for (const query of ownedQueries) query.destroy();
+				});
+				await attemptCleanup(async () => stopTracking());
+				await attemptCleanup(async () => host.remove());
+			}
+			// Never discard a still-running job just to make the next test look clean.
+			if (
+				laneAttempts
+					.slice(laneStart)
+					.every((entry) => entry.state !== "pending")
+			)
+				laneAttempts.splice(laneStart);
+			if (errors.length)
+				throw new AggregateError(errors, "owner fixture cleanup failed");
 		},
 	};
 }

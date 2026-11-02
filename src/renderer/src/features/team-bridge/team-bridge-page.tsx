@@ -3965,6 +3965,13 @@ type TeamBridgeMessageLink = {
  */
 const MESSAGE_LINK_TIMEOUT_MS = 8_000;
 
+/** The page view's identity: one mounted view per account, tenant and target. */
+const viewKeyFor = (
+	accountId: string | undefined,
+	tenant: string,
+	target: TeamBridgeTarget | null,
+) => JSON.stringify([accountId, tenant, target]);
+
 const TeamBridgeOwnedPage: FC<{
 	accountId?: string;
 	messageLinkCarry: { current: TeamBridgeMessageLink | null };
@@ -4568,6 +4575,11 @@ const TeamBridgeOwnedPage: FC<{
 	 */
 	const targetRef = useRef(target);
 	targetRef.current = target;
+	const createHandoff = useRef<{
+		key: string;
+		viewKey: string;
+		arrived: boolean;
+	} | null>(null);
 
 	const sendBody = async (
 		body: string,
@@ -4656,11 +4668,41 @@ const TeamBridgeOwnedPage: FC<{
 		 * own list refresh has already resolved the same target to the new DM.
 		 */
 		let moved = false;
-		const moveToCreated = (conversationId: string) => {
+		const moveToCreated = (
+			conversationId: string,
+			createdTenant?: string | undefined,
+		) => {
 			if (moved || !isCurrentOwner()) return;
 			moved = true;
 			if (startedOn?.type === "compose" && targetRef.current === startedOn) {
-				setTarget({ type: "conversation", id: conversationId });
+				const next: TeamBridgeTarget = {
+					type: "conversation",
+					id: conversationId,
+				};
+				/*
+				 * KEEP THE COMPOSE VIEW MOUNTED THROUGH ITS OWN CREATE (#1511). The view
+				 * is keyed by account, tenant and target, so following a group draft onto
+				 * the conversation it created used to remount the whole pane: the
+				 * optimistic row, the composer and its focus were thrown away and
+				 * rebuilt mid-send. Only this one transition keeps the mounted view, and
+				 * only when the create's tenant is CONCRETE and equals the single-tenant
+				 * scope the draft was written in: All organizations, a missing tenant
+				 * or a foreign one still remount, because inferring a tenant there is
+				 * exactly how one organization's draft could be shown in another.
+				 */
+				if (
+					!mergedView &&
+					typeof createdTenant === "string" &&
+					createdTenant.length > 0 &&
+					createdTenant === scope
+				) {
+					createHandoff.current = {
+						key: viewKeyFor(accountId, createdTenant, next),
+						viewKey: viewKeyFor(accountId, scope, startedOn),
+						arrived: false,
+					};
+				}
+				setTarget(next);
 			}
 		};
 		try {
@@ -4671,18 +4713,35 @@ const TeamBridgeOwnedPage: FC<{
 				clientRef,
 				tenantId: mergedView ? undefined : scope,
 				remembered: createdForDraft.current,
-				create: (createInput) =>
-					create.mutateAsync(createInput) as Promise<{
+				create: async (createInput) => {
+					const created = (await create.mutateAsync(createInput)) as {
 						id?: string;
 						tenant_id?: string;
-					}>,
+					};
+					/*
+					 * A RECEIPT FROM ANOTHER ORGANIZATION IS REFUSED (#1511 QA). The draft
+					 * was written in one organization and the create asked for that one; a
+					 * receipt naming a different tenant would otherwise move the view into
+					 * that organization's conversation and post the author's words there.
+					 * Refused before `onCreated` and the post, so nothing moves and nothing
+					 * is sent; the row fails where it was typed. All organizations names no
+					 * tenant up front, so it has nothing to compare against here.
+					 */
+					if (
+						!mergedView &&
+						typeof created?.tenant_id === "string" &&
+						created.tenant_id !== scope
+					)
+						throw new Error("Team Bridge create answered for another tenant");
+					return created;
+				},
 				// Only an optimistic send moves early: its message is already on screen,
 				// so the view can follow the conversation while the post is out. A
 				// non-optimistic send (attachments) keeps the move after its post.
 				onCreated: delivery
 					? (created) => {
 							delivery.onCreated?.(created.id, created.tenantId);
-							moveToCreated(created.id);
+							moveToCreated(created.id, created.tenantId);
 							/* THE RAIL IS THE CREATE'S BUSINESS, not the post's (requirement 6):
 							   the row can appear as soon as the conversation exists. */
 							void list.refetch();
@@ -4897,18 +4956,30 @@ const TeamBridgeOwnedPage: FC<{
 		return () => clearTimeout(timer);
 	}, [messageLink, setMessageLink]);
 
-	const draftKey = JSON.stringify([
-		accountId,
-		selected?.tenant_id ?? scope,
-		target,
-	]);
+	const draftKey = viewKeyFor(accountId, selected?.tenant_id ?? scope, target);
 	const draftJournal = drafts.get(draftKey) ?? { body: "" };
 	drafts.set(draftKey, draftJournal);
+	/*
+	 * The one-shot create handoff (see `moveToCreated`). It holds while the view is
+	 * on the compose key or the exact created destination; the first render on any
+	 * other key - another target, account or tenant, or leaving the destination it
+	 * already reached - drops it for good, so away-and-back remounts as before.
+	 */
+	const handoff = createHandoff.current;
+	if (handoff) {
+		if (draftKey === handoff.key) handoff.arrived = true;
+		else if (handoff.arrived || draftKey !== handoff.viewKey)
+			createHandoff.current = null;
+	}
+	const viewKey =
+		createHandoff.current?.key === draftKey
+			? createHandoff.current.viewKey
+			: draftKey;
 	return (
 		<>
 			<TeamBridgePageView
 				ownerAudit={ownerAudit}
-				key={draftKey}
+				key={viewKey}
 				draftJournal={draftJournal}
 				isDraftCurrent={isCurrentOwner}
 				threadLink={threadLink}

@@ -886,6 +886,11 @@ test("mention provider preserves child identity through null-open-null while con
 		const field = host.querySelector("textarea");
 		await mod.act(async () => {
 			field.focus();
+			// main's draft restore (#1590) arms autocomplete only after a real
+			// caret gesture, so a restored draft never pops the list on mount.
+			field.dispatchEvent(
+				new dom.window.KeyboardEvent("keydown", { bubbles: true }),
+			);
 			field.setSelectionRange(2, 2);
 			consumer.onSelect({
 				currentTarget: field,
