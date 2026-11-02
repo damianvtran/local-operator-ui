@@ -104,6 +104,7 @@ export type TurnCycle = {
 const CONTINUATION_CUSTOMS: ReadonlySet<string> = new Set([
 	"job_result",
 	"hub_message",
+	"team_bridge_message",
 	"monitor_prompt",
 ]);
 
@@ -169,6 +170,9 @@ export function triggerOf(record: TranscriptRecord): TriggerKind | null {
 		case "wake":
 			return "wake";
 		case "custom":
+			// Bridge is peer traffic, not a new operator turn. Reuse the peer
+			// trigger so every segment label and quiet-cycle rule agrees.
+			if (record.customType === "team_bridge_message") return "peer";
 			return CONTINUATION_CUSTOMS.has(record.customType)
 				? (record.customType as TriggerKind)
 				: null;

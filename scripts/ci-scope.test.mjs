@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import {
 	chmodSync,
 	cpSync,
@@ -36,6 +37,7 @@ import {
 	jobPlan,
 	runJobs,
 } from "./ci-scope.mjs";
+import { OVERRIDE_ENV } from "./desktop-test-concurrency.mjs";
 
 /*
  * The contract of the change-scope classifier, in the form CI and
@@ -697,6 +699,7 @@ test("A11: every job's local commands exist and match the workflow's own steps",
 			`'${job}' has no local command, so it must be in LOCAL_EXCLUSIONS with a reason`,
 		);
 		const blocks = runBlocks(job);
+		if (job === "check-types") assertCheckpointUnitParity(commands, blocks);
 		for (const command of commands) {
 			// The FIRST TWO TOKENS rather than the whole string: the local spelling
 			// of a step may carry a prefix CI does not (`pnpm lint:scripts` is run
@@ -706,11 +709,9 @@ test("A11: every job's local commands exist and match the workflow's own steps",
 			// strongest check that the prefix cannot defeat.
 			const [tool, argument] = command.split(/\s+/);
 			if (job === "test" && command === "pnpm test:desktop") {
-				assert.ok(
-					blocks.some((b) =>
-						b.includes("node scripts/desktop-test-shards.mjs run"),
-					),
-				);
+				// The real command moved intact, not out of CI: validate the
+				// supervisor's wired shell and final await before reading it.
+				desktopStepBody();
 				const planner = readFileSync(
 					join(repoRoot, "scripts/desktop-test-shards.mjs"),
 					"utf8",
@@ -754,6 +755,59 @@ test("A11: every job's local commands exist and match the workflow's own steps",
  * Mutation: add a flag to the module and not to the `changes` job's `outputs:`;
  * inline a job list in `package.json`.
  */
+test("A11 wiring mutants: extracted command remains reachable once with exact local coverage", () => {
+	const shell = desktopStepBody();
+	for (const mutate of [
+		(job) => {
+			job.steps = job.steps.filter((s) => s.id !== "desktop_launch");
+		},
+		(job) => {
+			job.steps.push(
+				structuredClone(job.steps.find((s) => s.id === "desktop_launch")),
+			);
+		},
+		(job) => {
+			job.steps.find((s) => s.id === "desktop_launch").run =
+				"echo scripts/desktop-suite-step.sh";
+		},
+		(job) => {
+			job.steps.find((s) => s.id === "desktop_launch").run = job.steps
+				.find((s) => s.id === "desktop_launch")
+				.run.replace("scripts/desktop-suite-step.sh", "scripts/unwired.sh");
+		},
+		(job) => {
+			job.steps = job.steps.filter((s) => s.id !== "desktop_suite");
+		},
+		(job) => {
+			job.steps.find((s) => s.id === "desktop_suite").run = "true";
+		},
+		(job) => {
+			job.env.DESKTOP_SHARD_INDEX = "0";
+		},
+	]) {
+		const bad = structuredClone(jobs.test);
+		mutate(bad);
+		assert.throws(() => desktopStepBody(bad, shell));
+	}
+	for (const bad of [
+		shell.replace(DESKTOP_SHARD_COMMAND, ""),
+		`${shell}\n${DESKTOP_SHARD_COMMAND}\n`,
+		shell.replace(DESKTOP_SHARD_COMMAND, `# ${DESKTOP_SHARD_COMMAND}`),
+		shell.replace(DESKTOP_SHARD_COMMAND, `echo '${DESKTOP_SHARD_COMMAND}'`),
+	])
+		assert.throws(() => desktopStepBody(jobs.test, bad));
+	const local = JOB_COMMANDS["check-types"];
+	assertCheckpointUnitParity(local, runBlocks("check-types"));
+	assert.throws(() =>
+		assertCheckpointUnitParity(
+			local.map((c) =>
+				c.replace(" scripts/desktop-suite-checkpoints.test.mjs", ""),
+			),
+			runBlocks("check-types"),
+		),
+	);
+});
+
 test("A12: one module is named by both entry points, and FLAGS is the outputs list", () => {
 	const outputs = Object.keys(jobs.changes.outputs).sort();
 	assert.deepEqual(
@@ -1121,7 +1175,7 @@ test("A16: docs/evidence/** keeps the suite and the evidence job, and nothing el
  * both). Neither is introduced here and neither is closed here.
  */
 test("A17: exactly one desktop-suite invocation, behind a failing-closed step", () => {
-	const invocations = runBlocks("test")
+	const invocations = [...runBlocks("test"), desktopStepBody()]
 		.join("\n")
 		.match(/node scripts\/desktop-test-shards\.mjs run\b/g);
 	assert.equal(
@@ -1130,9 +1184,7 @@ test("A17: exactly one desktop-suite invocation, behind a failing-closed step", 
 		`the 'test' job invokes \`pnpm test:desktop\` ${invocations?.length ?? 0} times; the suite is the job's dominant cost and one run plus the count assertions is the whole signal`,
 	);
 	const blocks = runBlocks("test");
-	const suite = blocks.find((block) =>
-		block.includes("node scripts/desktop-test-shards.mjs run"),
-	);
+	const suite = desktopStepBody();
 	assert.match(
 		suite,
 		/set -o pipefail/,
@@ -1214,15 +1266,462 @@ test("A17: exactly one desktop-suite invocation, behind a failing-closed step", 
  */
 
 /** The `test` job's desktop-suite step, exactly as the shell will read it. */
-function desktopStepBody() {
-	const step = (jobs.test?.steps ?? []).find(
-		(candidate) =>
-			typeof candidate.run === "string" &&
-			candidate.run.includes("node scripts/desktop-test-shards.mjs run"),
+const DESKTOP_SHARD_COMMAND =
+	'node scripts/desktop-test-shards.mjs run --head "$DESKTOP_REQUESTED_HEAD" --checkout "$CHECKOUT_SHA" --index "$DESKTOP_SHARD_INDEX" > /tmp/desktop-tests.log 2>&1 || SUITE_RC=$?';
+function desktopStepBody(
+	job = jobs.test,
+	shell = readFileSync(join(repoRoot, "scripts/desktop-suite-step.sh"), "utf8"),
+) {
+	assertCheckpointSteps(job);
+	assert.equal(
+		job.steps.find((step) => step.id === "desktop_launch").if,
+		undefined,
+		"the launch cannot become an unreachable ceremonial command",
 	);
-	assert.ok(step, "the `test` job has no step that runs `pnpm test:desktop`");
-	return step.run;
+	const diagnosticPath =
+		"${{ runner.temp }}/desktop-lifecycle-${{ matrix.shard }}.jsonl";
+	for (const id of ["desktop_launch", "desktop_suite"])
+		assert.equal(
+			job.steps.find((step) => step.id === id).env
+				.LOCAL_OPERATOR_UI_LANE_DIAGNOSTICS,
+			diagnosticPath,
+		);
+	assert.equal(job.env.DESKTOP_SHARD_INDEX, "${{ matrix.shard }}");
+	assert.equal(
+		job.env.DESKTOP_REQUESTED_HEAD,
+		"${{ github.event.pull_request.head.sha || github.sha }}",
+	);
+	const lines = shell.split(/\r?\n/).map((line) => line.trim());
+	assert.deepEqual(
+		lines.filter((line) =>
+			/^node scripts\/desktop-test-shards\.mjs run\b/.test(line),
+		),
+		[DESKTOP_SHARD_COMMAND],
+	);
+	assert.deepEqual(
+		lines.filter((line) => line.startsWith("CHECKOUT_SHA=")),
+		["CHECKOUT_SHA=$(git rev-parse HEAD)"],
+	);
+	return shell;
 }
+
+function assertCheckpointUnitParity(commands, blocks) {
+	const unit = "scripts/desktop-suite-checkpoints.test.mjs";
+	const candidates = (values) =>
+		values
+			.flatMap((v) => v.split(/\r?\n/))
+			.map((v) => v.trim())
+			.filter(
+				(v) => v.startsWith("node --test ") && v.split(/\s+/).includes(unit),
+			);
+	const local = candidates(commands);
+	const actual = candidates(blocks);
+	assert.equal(
+		local.length,
+		1,
+		"checkpoint unit must occur in one local release-contract command",
+	);
+	assert.equal(
+		actual.length,
+		1,
+		"checkpoint unit must occur in one actual workflow command, not comments/echo",
+	);
+	assert.equal(
+		local[0],
+		actual[0],
+		"local checkpoint coverage must be the actual workflow command",
+	);
+	assert.equal(local[0].split(/\s+/).filter((v) => v === unit).length, 1);
+}
+
+/**
+ * The suite step SUPERVISES the await rather than wrapping it: the await starts in
+ * the background writing into the state directory, this shell owns the wall
+ * clock, forwards its bytes by offset so TAP reaches the job log exactly once,
+ * emits the census rows where a cancelled job can still see them, and reaps on
+ * expiry. A `timeout` around a single `await` did not end this step in run
+ * 124822720325 - the job was cancelled at its cap with no annotation and no
+ * census - so the shape itself is the guarantee now, and these are its clauses.
+ */
+function assertSupervisingStep(run, state) {
+	const awaitCommand =
+		'node scripts/desktop-suite-checkpoints.mjs await "$state"';
+	const lines = run.split("\n").map((line) => line.trim());
+	const started = lines.filter((line) => line.includes(awaitCommand));
+	assert.equal(started.length, 1, "exactly one desktop-suite invocation");
+	assert.equal(
+		run.split("desktop-suite-checkpoints.mjs await").length - 1,
+		1,
+		"no second await may hide anywhere in the step",
+	);
+	assert.ok(
+		started[0].endsWith("&"),
+		"the await must start in the background, or this shell has no stdout to report with",
+	);
+	assert.ok(
+		run.includes(`state=${state}`),
+		"the step must name the supervisor's state directory",
+	);
+	// The bound is this shell's own clock, and it must be the shipped 2400s.
+	assert.ok(
+		run.includes('bound="${DESKTOP_SUITE_BOUND_S:-2400}"'),
+		"the step must own a 2400s bound",
+	);
+	assert.ok(
+		/while kill -0 "\$await_pid"/u.test(run),
+		"the loop must watch the await rather than block on it",
+	);
+	assert.ok(
+		/\[ \$\(\(now - started\)\) -ge "\$bound" \]/u.test(run),
+		"the loop must measure the wall clock against its own bound",
+	);
+	// TAP NO LONGER REACHES THE LOG BY REPLAY. A measured control withheld the
+	// step's stdout reader and the supervisor still published `completed` in
+	// 406ms while the shell blocked inside this forward and then exited 124 - so
+	// the contract now forbids the forward rather than requiring it. A finite byte
+	// count bounds quantity, not the wait for a consumer. The transcript is a file
+	// the artifact step uploads; the job log carries receipts only.
+	for (const forbidden of [
+		"drain_await",
+		"tail -c +$((offset + 1))",
+		'head -c "$size" "$await_out"',
+	])
+		assert.ok(
+			!run.includes(forbidden),
+			`the step must not replay the await's transcript (${forbidden}): a reader that stops consuming must not be able to block the deadline check`,
+		);
+	assert.ok(
+		run.includes(
+			'echo "desktop suite: supervisor receipt status ${status} after',
+		),
+		"the console keeps one fixed-size receipt naming the verdict and where the transcript lives",
+	);
+	assert.ok(
+		run.includes(
+			'census_file="${LOCAL_OPERATOR_UI_KERNEL_CENSUS:-$state/kernel-census.jsonl}"',
+		),
+		"census discovery must use the path the writer was configured with: the state-directory glob found nothing, so healthy shards logged zero rows",
+	);
+	assert.ok(
+		!run.includes('"$state"/kernel-census-'),
+		"the obsolete state-directory census glob must be gone, not kept beside the real path",
+	);
+	assert.ok(
+		run.includes("census: $row"),
+		"census rows must go into the job log, where a cancelled job still has them",
+	);
+	// The receipt outranks the clock: expiry reaps and exits 124 only when the
+	// supervisor has NOT receipted, so a run that finished as the bound fired is
+	// not turned into a false failure.
+	const grace = run.indexOf("for _ in 1 2 3 4 5");
+	assert.ok(grace >= 0, "expiry must give the receipt a short bounded grace");
+	assert.ok(
+		run.indexOf('if kill -0 "$await_pid"') > grace,
+		"the reaping branch must be guarded by the receipt check, not taken unconditionally",
+	);
+	// Expiry: reap what the launch published, stop the await, fail closed. The
+	// slice ENDS at `exit 124`: a slice running to the end of the step would also
+	// contain the normal path's reap and could not tell the two apart.
+	const expiry = run.indexOf('if [ -n "$bound_hit" ]');
+	assert.ok(expiry >= 0, "the bound must have its own branch");
+	const expiryBody = run.slice(
+		expiry,
+		run.indexOf("exit 124") + "exit 124".length,
+	);
+	assert.ok(
+		expiryBody.includes(
+			'node scripts/desktop-suite-checkpoints.mjs reap "$state"',
+		),
+		"expiry must reap the recorded groups",
+	);
+	assert.ok(
+		expiryBody.includes('kill -9 "$await_pid"'),
+		"expiry must stop the await it gave up on",
+	);
+	assert.ok(
+		expiryBody.includes("exit 124"),
+		"expiry must fail the step closed",
+	);
+	// The verdict stays the supervisor's: the status is the awaited process's.
+	assert.ok(
+		run.includes('wait "$await_pid"'),
+		"the verdict must come from the await, not from this loop",
+	);
+	assert.ok(
+		run.indexOf("status=$?") > run.indexOf('wait "$await_pid"'),
+		"the status must be captured after the await is waited on",
+	);
+	assert.equal(
+		run.trimEnd().split("\n").pop().trim(),
+		'exit "$status"',
+		"the captured status must be the block's last statement, with nothing appended",
+	);
+	assert.deepEqual(
+		lines.filter((line) => line.startsWith("exit ")),
+		["exit 124", 'exit "$status"'],
+		"the step may exit only at expiry (124) and with the verdict it was given",
+	);
+	return run;
+}
+
+function assertCheckpointSteps(job) {
+	assert.equal(job["timeout-minutes"], 50);
+	const steps = job.steps;
+	const state = '"${{ runner.temp }}/desktop-supervisor-${{ matrix.shard }}"';
+	const launch = steps.filter((s) => s.id === "desktop_launch");
+	const final = steps.filter((s) => s.id === "desktop_suite");
+	assert.equal(launch.length, 1);
+	assert.equal(final.length, 1);
+	assert.equal(final[0]["timeout-minutes"], 45);
+	assert.equal(
+		launch[0].run,
+		`node scripts/desktop-suite-checkpoints.mjs launch ${state} scripts/desktop-suite-step.sh "$DESKTOP_SETUP_STARTED_MS"`,
+	);
+	/*
+	 * The step must RETURN for the always() uploads to run, and a `timeout` around
+	 * one `await` did not do that (run 124822720325 was cancelled at its cap with
+	 * no annotation and no census). So the step supervises the await itself, and
+	 * its guarantees are asserted on THAT text: one background invocation, a bound
+	 * this shell reads off the wall clock, byte-offset TAP forwarding, the census
+	 * in the log, reaping on expiry, and the verdict still the supervisor's. The
+	 * mutants below prove the check rejects the defects it was written for rather
+	 * than accepting anything that merely mentions the command.
+	 */
+	assertSupervisingStep(final[0].run, state);
+	for (const mutant of [
+		final[0].run.replace('bound="${DESKTOP_SUITE_BOUND_S:-2400}"', 'bound=""'),
+		final[0].run.replace(
+			'node scripts/desktop-suite-checkpoints.mjs await "$state"',
+			'node scripts/desktop-suite-checkpoints.mjs await "$state"\nnode scripts/desktop-suite-checkpoints.mjs await "$state"',
+		),
+		final[0].run.replace('exit "$status"', "exit 0"),
+		final[0].run.replace(
+			'node scripts/desktop-suite-checkpoints.mjs reap "$state"',
+			"true",
+		),
+		final[0].run.replace(
+			'node scripts/desktop-suite-checkpoints.mjs await "$state" >"$await_out" 2>&1 &',
+			'node scripts/desktop-suite-checkpoints.mjs await "$state" >"$await_out" 2>&1',
+		),
+		// Re-adding the replay, taking expiry unconditionally, and going back to the
+		// state-directory census glob are the three regressions this step was just
+		// repaired for; each must be rejected on its own.
+		final[0].run.replace(
+			'wait "$await_pid"',
+			'head -c "$size" "$await_out"\nwait "$await_pid"',
+		),
+		final[0].run.replace(
+			'if kill -0 "$await_pid" 2>/dev/null; then',
+			"if true; then",
+		),
+		final[0].run.replace(
+			'census_file="${LOCAL_OPERATOR_UI_KERNEL_CENSUS:-$state/kernel-census.jsonl}"',
+			'for file in "$state"/kernel-census-*.jsonl; do :; done',
+		),
+	]) {
+		assert.notEqual(
+			mutant,
+			final[0].run,
+			"each step mutant must actually change the step",
+		);
+		assert.throws(
+			() => assertSupervisingStep(mutant, state),
+			"a step that drops the bound, doubles the await, swallows the status, stops reaping or blocks on the await must fail",
+		);
+	}
+	const condition =
+		"${{ always() && steps.desktop_launch.outcome == 'success' }}";
+	assert.equal(final[0].if, condition);
+	let previous = steps.indexOf(launch[0]);
+	const names = new Set();
+	for (const [label, ms] of [
+		["early", 30000],
+		["later", 180000],
+	]) {
+		const frozen = steps.filter(
+			(s) => s.name === `Freeze ${label} desktop witness checkpoint`,
+		);
+		const upload = steps.filter(
+			(s) => s.name === `Upload ${label} desktop witness checkpoint`,
+		);
+		assert.equal(frozen.length, 1);
+		assert.equal(upload.length, 1);
+		assert.equal(frozen[0].if, condition);
+		assert.equal(upload[0].if, condition);
+		const path = `\${{ runner.temp }}/desktop-checkpoint-${label}-\${{ matrix.shard }}.json`;
+		assert.equal(
+			frozen[0].run,
+			`node scripts/desktop-suite-checkpoints.mjs checkpoint ${state} ${ms} "${path}"`,
+		);
+		assert.equal(upload[0].uses, "actions/upload-artifact@v4");
+		assert.equal(upload[0].with.path, path);
+		assert.equal(
+			upload[0].with.name,
+			`desktop-witness-${label}-\${{ github.run_id }}-\${{ github.run_attempt }}-shard-\${{ matrix.shard }}`,
+		);
+		assert.equal(upload[0].with["if-no-files-found"], "error");
+		assert.ok(!names.has(upload[0].with.name));
+		names.add(upload[0].with.name);
+		assert.ok(steps.indexOf(frozen[0]) > previous);
+		assert.ok(steps.indexOf(upload[0]) > steps.indexOf(frozen[0]));
+		previous = steps.indexOf(upload[0]);
+	}
+	assert.ok(steps.indexOf(final[0]) > previous);
+}
+
+function assertProbeTransport(probe) {
+	assert.deepEqual(Object.keys(probe.on), ["pull_request"]);
+	assert.deepEqual(probe.permissions, { contents: "read" });
+	assert.deepEqual(probe.on.pull_request.paths, [
+		".github/workflows/desktop-checkpoint-probe.yml",
+		".github/workflows/ci.yml",
+		"scripts/desktop-suite-checkpoints*.mjs",
+		"scripts/desktop-suite-step.sh",
+		"scripts/desktop-test-lane-bound*.mjs",
+		"scripts/run-desktop-tests.mjs",
+	]);
+	const job = probe.jobs.checkpoint_transport;
+	assert.equal(job["timeout-minutes"], 3);
+	const steps = job.steps;
+	const launch = steps.find(
+		(s) =>
+			s.name === "Launch release-file subject with a hard original deadline",
+	);
+	assert.ok(launch.run.includes('while [[ ! -f "$SUBJECT_ROOT/release" ]]'));
+	assert.ok(launch.run.includes("SECONDS >= 105"));
+	assert.ok(launch.run.includes("durationMs: 105000"));
+	const release = steps.find(
+		(s) =>
+			s.name ===
+			"Release subject and await its verdict and exact-owned cleanup",
+	);
+	assert.equal(release.if, "${{ always() }}");
+	assert.equal(
+		release.run.trim(),
+		'touch "$RUNNER_TEMP/release"\nnode scripts/desktop-suite-checkpoints.mjs await "$RUNNER_TEMP/probe"',
+	);
+	const uploads = steps.filter((s) => s.uses === "actions/upload-artifact@v4");
+	const downloads = steps.filter(
+		(s) => s.uses === "actions/download-artifact@v4",
+	);
+	assert.equal(uploads.length, 2);
+	assert.equal(downloads.length, 2);
+	for (const [i, label] of ["early", "later"].entries()) {
+		const name = `witness-probe-${label}-\${{ github.run_id }}-\${{ github.run_attempt }}`;
+		assert.equal(uploads[i].with.name, name);
+		assert.equal(downloads[i].with.name, name);
+		assert.equal(
+			uploads[i].with.path,
+			`\${{ runner.temp }}/probe-${label}.json`,
+		);
+		assert.equal(
+			downloads[i].with.path,
+			`\${{ runner.temp }}/downloaded-${label}`,
+		);
+		const proof = steps[steps.indexOf(downloads[i]) + 1];
+		const lines = proof.run.trim().split("\n");
+		assert.equal(
+			lines[0],
+			`cmp "$RUNNER_TEMP/probe-${label}.json" "$RUNNER_TEMP/downloaded-${label}/probe-${label}.json"`,
+		);
+		assert.equal(lines[1], 'test ! -f "$RUNNER_TEMP/probe/terminal.json"');
+		assert.equal(lines[2], 'test ! -f "$RUNNER_TEMP/release"');
+		assert.ok(
+			proof.run.includes(
+				label === "early"
+					? "live.sequence"
+					: "later.witness.sequence <= early.witness.sequence",
+			),
+		);
+		assert.ok(steps.indexOf(downloads[i]) > steps.indexOf(uploads[i]));
+		assert.ok(steps.indexOf(proof) < steps.indexOf(release));
+	}
+}
+
+test("A17probe: PR transport proof downloads bytes while a watchdog-owned subject is blocked", () => {
+	const probe = load(
+		readFileSync(
+			join(repoRoot, ".github/workflows/desktop-checkpoint-probe.yml"),
+			"utf8",
+		),
+	);
+	assertProbeTransport(probe);
+	for (const mutate of [
+		(p) => {
+			p.on = { workflow_dispatch: {} };
+		},
+		(p) => {
+			p.jobs.checkpoint_transport.steps =
+				p.jobs.checkpoint_transport.steps.filter(
+					(s) => s.uses !== "actions/download-artifact@v4",
+				);
+		},
+		(p) => {
+			p.jobs.checkpoint_transport.steps.find(
+				(s) =>
+					s.name ===
+					"Compare transported early bytes and witness progress before release",
+			).run = "true";
+		},
+		(p) => {
+			p.jobs.checkpoint_transport["timeout-minutes"] = 4;
+		},
+		(p) => {
+			const steps = p.jobs.checkpoint_transport.steps;
+			const release = steps.pop();
+			steps.unshift(release);
+		},
+	]) {
+		const bad = structuredClone(probe);
+		mutate(bad);
+		assert.throws(() => assertProbeTransport(bad));
+	}
+});
+
+test("A17e: checkpoint orchestration preserves shell bytes and fail-closed ordering", () => {
+	// R13 reviewed the direct-capture convergence from main's #1572 lineage.
+	// Byte proof: git diff a002e2596ee6..0cde76f4073 -- scripts/desktop-suite-step.sh
+	// Only capture plus its explanatory comments changed; keep every guard pinned.
+	assert.equal(
+		createHash("sha256").update(desktopStepBody()).digest("hex"),
+		"64523231536a4f11fb28489571435f56f5c8cb8233ebe9f27cd7eeacfa06d2a6",
+	);
+	assertCheckpointSteps(jobs.test);
+	for (const mutate of [
+		(j) => {
+			j.steps = j.steps.filter(
+				(s) => s.name !== "Upload early desktop witness checkpoint",
+			);
+		},
+		(j) => {
+			j.steps.push(
+				j.steps.find(
+					(s) => s.name === "Freeze later desktop witness checkpoint",
+				),
+			);
+		},
+		(j) => {
+			const i = j.steps.findIndex((s) => s.id === "desktop_suite");
+			const [s] = j.steps.splice(i, 1);
+			j.steps.unshift(s);
+		},
+		(j) => {
+			j["timeout-minutes"] = 55;
+		},
+		(j) => {
+			j.steps.find((s) => s.id === "desktop_suite").run += " || true";
+		},
+		(j) => {
+			j.steps.find(
+				(s) => s.name === "Upload early desktop witness checkpoint",
+			).with.path = "/tmp/desktop-tests.log";
+		},
+	]) {
+		const bad = structuredClone(jobs.test);
+		mutate(bad);
+		assert.throws(() => assertCheckpointSteps(bad));
+	}
+});
 
 /**
  * Run an extracted step body the way GitHub does - `bash -e` over the step's own
@@ -1251,9 +1750,24 @@ function runDesktopStep(body, scenario) {
 		stub,
 		[
 			"#!/usr/bin/env bash",
-			'cat "$CI_SCOPE_STUB_LOG"',
-			'printf "%s" "$CI_SCOPE_STUB_STDERR" >&2',
-			'exit "$CI_SCOPE_STUB_RC"',
+			// Mode-aware, because the step now starts `await` in the background and
+			// calls `reap` in its failure arm. Only `await` is the subject whose
+			// output stands in for the suite's; a `reap` that echoed the same log
+			// would make a duplicated TAP line indistinguishable from forwarded bytes.
+			'case "$2" in',
+			"  reap)",
+			// The step's failure arm reaps by reading the state directory; only the
+			// subject prints the suite's output, so a reap can never contribute a
+			// duplicated TAP line.
+			"    echo '{\"receipts\":[]}'",
+			"    ;;",
+			"  *)",
+			'    cat "$CI_SCOPE_STUB_LOG"',
+			'    printf "%s" "$CI_SCOPE_STUB_STDERR" >&2',
+			'    exit "$CI_SCOPE_STUB_RC"',
+			"    ;;",
+			"esac",
+			"exit 0",
 			"",
 		].join("\n"),
 	);
@@ -1267,9 +1781,16 @@ function runDesktopStep(body, scenario) {
 	);
 	chmodSync(gitStub, 0o755);
 	const script = join(dir, "step.sh");
+	const state = join(dir, "desktop-supervisor-0");
+	mkdirSync(state, { recursive: true });
 	writeFileSync(
 		script,
-		body.replaceAll("/tmp/desktop-tests.log", join(dir, "desktop-tests.log")),
+		body
+			.replaceAll("/tmp/desktop-tests.log", join(dir, "desktop-tests.log"))
+			// The step's state directory is a real directory here, because the step
+			// now redirects the await's output into it and reaps by reading it.
+			.replaceAll("${{ runner.temp }}", dir)
+			.replaceAll("${{ matrix.shard }}", "0"),
 	);
 	const result = spawnSync("bash", ["-e", script], {
 		cwd: dir,
@@ -1566,25 +2087,180 @@ test("A17b: the desktop step is red, and names the red test, on every red shape"
  * A failing suite therefore needs its COMPLETE tee file as a separate artifact,
  * not a tail that can drop the assertion or a second execution for diagnostics.
  */
-test("A17d: a failed desktop run retains its full log as a failure artifact", () => {
+const DESKTOP_LIFECYCLE_PATH =
+	"${{ runner.temp }}/desktop-lifecycle-${{ matrix.shard }}.jsonl";
+/**
+ * The supervisor's state directory, and the lifecycle files inside it that the
+ * transcript artifact must carry. The step no longer replays that transcript into
+ * the job console (the replay could block on a reader that stopped consuming and
+ * turn a completed run into a 124), so these files are the WHOLE of the evidence
+ * for what the supervisor saw - on a green run as much as a red one.
+ */
+/**
+ * The supervisor's state directory, and the lifecycle files inside it that the
+ * transcript artifact must carry. The step no longer replays that transcript into
+ * the job console (the replay could block on a reader that stopped consuming and
+ * turn a completed run into a 124), so these files are the WHOLE of the evidence
+ * for what the supervisor saw - on a green run as much as a red one.
+ */
+const DESKTOP_SUPERVISOR_DIR =
+	"${{ runner.temp }}/desktop-supervisor-${{ matrix.shard }}";
+/** The only value shapes `parseOverride` honours: a whole number above zero, with
+ * no leading zero and nothing after it. Module scope so the contract below cannot
+ * recompile it per case (biome's `useTopLevelRegex`). */
+const POSITIVE_WORKERS = /^[1-9]\d*$/;
+const OVERRIDE_IGNORED = /positive whole number/;
+const OVERRIDE_OFF_THE_SUITE = /never reach the suite/;
+const GOVERNOR_BYPASSED = /bypasses the governor/;
+
+/**
+ * The desktop suite's worker width, and the one supported way to pin it.
+ *
+ * `LOCAL_OPERATOR_UI_TEST_CONCURRENCY` is the governor's OWN override, so a
+ * diagnostic run can pin the pool without adding a second knob; it is OPTIONAL,
+ * and absent it changes nothing. When the workflow does set one it has to be a
+ * value that actually lands, because a switch that reads as set while the suite
+ * runs at its default width is worse than no switch: the log looks like a
+ * controlled experiment and the run is not one.
+ *
+ * Three shapes lose the value silently, and all three are rejected here:
+ *
+ *   1. it is set on `desktop_suite`, the await step. The suite is spawned by the
+ *      supervisor that `desktop_launch` starts and inherits THAT step's
+ *      environment; the await step's env reaches nothing that runs a test.
+ *   2. the value is not a positive whole number in the spelling the governor
+ *      accepts - `parseOverride` refuses `0`, `01`, `1x` and warns, then takes
+ *      the governed path, so the run is uncapped by the value someone believes
+ *      they set.
+ *   3. the runner is handed an explicit `--test-concurrency`, in the step shell
+ *      or in the shard runner that calls it. That bypasses the governor, which
+ *      leaves the variable dead.
+ */
+function assertDesktopConcurrencyOverride(job, shell) {
+	const launch = job.steps.find((step) => step.id === "desktop_launch");
+	const suite = job.steps.find((step) => step.id === "desktop_suite");
+	const launchValue = launch.env?.[OVERRIDE_ENV];
+	// Job-level env is inherited by every step, so it is a legitimate carrier.
+	const raw = launchValue ?? job.env?.[OVERRIDE_ENV];
+	if (raw === undefined) {
+		assert.equal(
+			suite.env?.[OVERRIDE_ENV],
+			undefined,
+			`${OVERRIDE_ENV} on the desktop_suite step would never reach the suite, so a run that set it there would look pinned and not be`,
+		);
+		return;
+	}
+	// The governor trims and then requires the canonical spelling of a whole
+	// number, so the contract has to accept exactly what it accepts - no stricter
+	// (a trailing space is honoured) and no looser (a leading zero is ignored).
+	assert.match(
+		String(raw).trim(),
+		POSITIVE_WORKERS,
+		`${OVERRIDE_ENV}=${JSON.stringify(raw)} is not a positive whole number the governor honours; it is ignored rather than applied`,
+	);
+	assert.equal(
+		suite.env?.[OVERRIDE_ENV],
+		undefined,
+		`${OVERRIDE_ENV} on the desktop_suite step is a no-op: only the launch step's environment reaches the suite`,
+	);
+	for (const [where, text] of [
+		["the launch step", launch.run],
+		["scripts/desktop-suite-step.sh", shell],
+		[
+			"scripts/desktop-test-shards.mjs",
+			readFileSync(join(repoRoot, "scripts/desktop-test-shards.mjs"), "utf8"),
+		],
+	])
+		assert.ok(
+			!text.includes("--test-concurrency"),
+			`${where} passes --test-concurrency explicitly, which bypasses the governor and leaves ${OVERRIDE_ENV} ignored`,
+		);
+}
+function assertDesktopDiagnosticArtifactPaths(path) {
+	assert.equal(typeof path, "string");
+	// upload-artifact consumes newline-delimited paths, not substrings or a
+	// shell expression. Exact list equality retains both required files and
+	// rejects duplicates, wrong directories, globs, and same-line concatenation.
+	const paths = path
+		.split(/\r?\n/)
+		.map((line) => line.trim())
+		.filter(Boolean);
+	assert.deepEqual(
+		paths.sort(),
+		[
+			"/tmp/desktop-tests.log",
+			"/tmp/desktop-test-diagnostics.jsonl",
+			DESKTOP_LIFECYCLE_PATH,
+			`${DESKTOP_SUPERVISOR_DIR}/console.log`,
+			`${DESKTOP_SUPERVISOR_DIR}/await.out`,
+			`${DESKTOP_SUPERVISOR_DIR}/terminal.json`,
+			`${DESKTOP_SUPERVISOR_DIR}/supervisor.log`,
+		].sort(),
+	);
+}
+
+test("A17d: a desktop run keeps its full transcript as an artifact, green or red", () => {
 	const suite = jobs.test.steps.find((step) => step.id === "desktop_suite");
 	assert.ok(
 		suite,
 		"the artifact condition needs the actual suite step outcome",
 	);
 	const artifact = jobs.test.steps.find(
-		(step) => step.name === "Upload failed desktop suite log",
+		(step) => step.name === "Upload desktop suite transcript",
 	);
-	assert.ok(artifact, "a failed suite has no full-log artifact");
+	assert.ok(artifact, "the suite's transcript has no artifact");
+	// NOT failure-only any more: the step's console replay is gone, so a GREEN
+	// run's transcript exists only here - and a green run's transcript is the
+	// baseline a later hang is compared against. `skipped` still excludes it,
+	// because a suite that never launched has no transcript to upload and the
+	// step's `if-no-files-found: error` would redden the job for it.
 	assert.equal(
 		artifact.if,
-		"${{ always() && (steps.desktop_suite.outcome == 'failure' || steps.desktop_suite.outcome == 'cancelled') }}",
+		"${{ always() && steps.desktop_suite.outcome != 'skipped' }}",
 	);
 	assert.equal(artifact.uses, "actions/upload-artifact@v4");
-	assert.deepEqual(artifact.with.path.trim().split("\n"), [
+	assertDesktopDiagnosticArtifactPaths(artifact.with.path);
+	assert.equal(
+		suite.env.LOCAL_OPERATOR_UI_LANE_DIAGNOSTICS,
+		DESKTOP_LIFECYCLE_PATH,
+	);
+	// The census reader has to look where the writer was told to write, or the
+	// inline rows are empty on every healthy shard while the artifact holds them.
+	assert.equal(
+		suite.env.LOCAL_OPERATOR_UI_KERNEL_CENSUS,
+		"${{ runner.temp }}/kernel-census-${{ matrix.shard }}.jsonl",
+		"the step must be handed the same census path as the launch step",
+	);
+	assert.equal(
+		artifact.with.path.includes(suite.env.LOCAL_OPERATOR_UI_KERNEL_CENSUS),
+		false,
+		"the census is collected by its own always() upload, not silently added twice",
+	);
+	// Mutants prove this is a structural contract over the WHOLE list, not a
+	// substring check that accidentally accepts omission or a path elsewhere.
+	for (const bad of [
 		"/tmp/desktop-tests.log",
+		DESKTOP_LIFECYCLE_PATH,
+		`/tmp/wrong-desktop-tests.log\n${DESKTOP_LIFECYCLE_PATH}`,
+		`/tmp/desktop-tests.log\n${DESKTOP_LIFECYCLE_PATH}`,
+		`/tmp/desktop-tests.log ${DESKTOP_LIFECYCLE_PATH}`,
+		`/tmp/desktop-tests.log\n${DESKTOP_LIFECYCLE_PATH}\n/tmp/desktop-tests.log`,
+		`/tmp/desktop-tests.log\n${DESKTOP_LIFECYCLE_PATH}\n${DESKTOP_SUPERVISOR_DIR}/console.log`,
+		artifact.with.path.replace(`${DESKTOP_SUPERVISOR_DIR}/terminal.json\n`, ""),
+	])
+		assert.throws(
+			() => assertDesktopDiagnosticArtifactPaths(bad),
+			`${JSON.stringify(bad)} must not satisfy the transcript contract`,
+		);
+	// Both diagnostic streams must survive convergence; the exact union above
+	// rejects omitted, duplicate or wildcarded receipts from either lineage.
+	assertDesktopDiagnosticArtifactPaths(artifact.with.path);
+	const launch = jobs.test.steps.find((step) => step.id === "desktop_launch");
+	assert.equal(String(launch.env.DESKTOP_TEST_DEADLINE_MS), "2400000");
+	assert.equal(
+		launch.env.DESKTOP_TEST_DIAGNOSTICS,
 		"/tmp/desktop-test-diagnostics.jsonl",
-	]);
+	);
 	assert.equal(String(suite.env.DESKTOP_TEST_DEADLINE_MS), "2400000");
 	assert.equal(
 		suite.env.DESKTOP_TEST_DIAGNOSTICS,
@@ -1603,7 +2279,7 @@ test("A17d: a failed desktop run retains its full log as a failure artifact", ()
 		stderr: "last stderr evidence\n",
 		suiteRc: 23,
 	};
-	const run = runDesktopStep(suite.run, scenario);
+	const run = runDesktopStep(desktopStepBody(), scenario);
 	try {
 		assert.equal(run.status, 1);
 		assert.equal(
@@ -1614,6 +2290,70 @@ test("A17d: a failed desktop run retains its full log as a failure artifact", ()
 	} finally {
 		rmSync(run.dir, { recursive: true, force: true });
 	}
+});
+
+test("the desktop concurrency switch is honoured where it is set, or absent", () => {
+	const shell = readFileSync(
+		join(repoRoot, "scripts/desktop-suite-step.sh"),
+		"utf8",
+	);
+	// The LIVE workflow is the subject first: whatever the diagnostic experiment
+	// does today has to pass its own gate.
+	assertDesktopConcurrencyOverride(jobs.test, shell);
+
+	const launchEnv = (job) =>
+		job.steps.find((step) => step.id === "desktop_launch").env;
+	const withLaunchValue = (value) => {
+		const job = structuredClone(jobs.test);
+		const env = launchEnv(job);
+		if (value === undefined) delete env[OVERRIDE_ENV];
+		else env[OVERRIDE_ENV] = value;
+		return job;
+	};
+
+	// OFF is a real shape and must stay legal: the switch exists for one
+	// experiment and the tree is expected to lose it again. The whitespace case is
+	// here because the governor TRIMS before parsing, so ` 1` is honoured rather
+	// than ignored and rejecting it would be a contract that disagrees with the
+	// code it guards.
+	for (const value of [undefined, "1", "3", "12", " 1"])
+		assertDesktopConcurrencyOverride(withLaunchValue(value), shell);
+
+	// Job-level env reaches the launch too, so it is a legal carrier.
+	const jobLevel = withLaunchValue(undefined);
+	jobLevel.env[OVERRIDE_ENV] = "1";
+	assertDesktopConcurrencyOverride(jobLevel, shell);
+
+	// Every shape whose value the governor would IGNORE, and which would
+	// therefore leave a log that looks like a controlled experiment while the pool
+	// ran at its default width.
+	for (const value of ["", "0", "01", "1x", "0x1"])
+		assert.throws(
+			() => assertDesktopConcurrencyOverride(withLaunchValue(value), shell),
+			OVERRIDE_IGNORED,
+			`${JSON.stringify(value)} is ignored by the governor, not honoured`,
+		);
+
+	// The step that READS as set but reaches nothing that runs tests.
+	const suiteOnly = withLaunchValue(undefined);
+	suiteOnly.steps.find((step) => step.id === "desktop_suite").env[
+		OVERRIDE_ENV
+	] = "1";
+	assert.throws(
+		() => assertDesktopConcurrencyOverride(suiteOnly, shell),
+		OVERRIDE_OFF_THE_SUITE,
+	);
+
+	// An explicit flag bypasses the governor outright, which makes the variable
+	// dead rather than wrong - the silent failure this whole assertion exists for.
+	for (const mutated of [
+		`${shell}\n# --test-concurrency=1\n`,
+		`${readFileSync(join(repoRoot, "scripts/desktop-test-shards.mjs"), "utf8")}\n// --test-concurrency=1\n`,
+	])
+		assert.throws(
+			() => assertDesktopConcurrencyOverride(withLaunchValue("1"), mutated),
+			GOVERNOR_BYPASSED,
+		);
 });
 
 test("A17c: every mutation that removes the guarantee changes the outcome", () => {
@@ -2468,10 +3208,36 @@ test("A17e: four protected workers feed one exact fail-closed Desktop Tests resu
 	 * scan reachable: a job cancelled at `timeout-minutes` runs no further steps,
 	 * so without a step ceiling a stall is exactly the case the scan never sees.
 	 */
-	const suiteStep = worker.steps.find(
-		(step) =>
-			typeof step.run === "string" &&
-			step.run.includes("node scripts/desktop-test-shards.mjs run"),
+	const suiteStep = worker.steps.find((step) => step.id === "desktop_suite");
+	/*
+	 * The step's ceiling only helps if the STEP returns: a job cancelled at its
+	 * own cap runs no further step, so the always() uploads after this one were
+	 * skipped in exactly the hangs they exist for. The await is therefore wrapped
+	 * in an external wall-clock bound, and that bound is the only addition here:
+	 * one invocation, still inside the wrapper, still failing closed, still
+	 * reporting the deadline as its reason.
+	 */
+	const asyncAwaitCommand =
+		'node scripts/desktop-suite-checkpoints.mjs await "$state"';
+	assert.equal(
+		suiteStep.run.split(asyncAwaitCommand).length - 1,
+		1,
+		"exactly one desktop-suite invocation, and it is started by the step",
+	);
+	assert.match(
+		suiteStep.run,
+		/bound="\$\{DESKTOP_SUITE_BOUND_S:-2400\}"/u,
+		"the step must own the external wall-clock bound",
+	);
+	assert.match(
+		suiteStep.run,
+		/status=\$\?[\s\S]*exit "\$status"/u,
+		"the step must still fail closed with the inner status",
+	);
+	assert.match(
+		suiteStep.run,
+		/124/u,
+		"exit 124 must be recorded as the deadline reason",
 	);
 	assert.equal(suiteStep["timeout-minutes"], 45);
 	assert.ok(suiteStep["timeout-minutes"] < worker["timeout-minutes"]);

@@ -1383,6 +1383,21 @@ const IDENTICAL_OK = new Map([
 		"French cognate: « Zoom » is the French noun for the control, same spelling, and the sibling zoom_in/zoom_out values are translated; scoped to fr so the other locales still translate it",
 	],
 	[
+		"ui.settings.personal_profile.zoom_value",
+		// The human photo cropper's readout reuses the agent cropper's exact
+		// `{value}×` format through the shared identity-neutral cropper; same
+		// rule as `ui.agents.avatar.editor.zoom_value` above.
+		"language-neutral format: only a {value} placeholder and '×', no words",
+	],
+	[
+		"es:ui.settings.personal_profile.zoom",
+		"Spanish cognate: « Zoom » is the Spanish noun for the control, same spelling, matching the audited agent cropper's es value; zoom_in/zoom_out are translated; scoped to es so the other locales still translate it",
+	],
+	[
+		"fr:ui.settings.personal_profile.zoom",
+		"French cognate: « Zoom » is the French noun for the control, same spelling, matching the audited agent cropper's fr value; zoom_in/zoom_out are translated; scoped to fr so the other locales still translate it",
+	],
+	[
 		"fr:ui.chat.attachments.volume",
 		"French cognate: the French noun for this control is « Volume », same spelling; scoped to fr so other locales still translate it",
 	],
