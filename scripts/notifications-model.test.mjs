@@ -59,6 +59,38 @@ const {
 	IN_VIEW_DWELL_MS,
 } = model;
 
+test("deep reel reconciles existing revisions without admitting unseen notifications", () => {
+	const original = item({ id: "known", revision: 1, seq: 1 });
+	const updated = {
+		...original,
+		revision: 2,
+		seq: 3,
+		title: "Updated in place",
+	};
+	const arrival = item({ id: "new", seq: 4 });
+	const window = { items: [original], waiting: [], high_water: 1 };
+	const facts = { ...window, items: [arrival, updated], high_water: 4 };
+	const merged = model.mergeWindowForReel(facts, window, false);
+	assert.equal(merged.items.length, 1);
+	assert.equal(merged.items[0].title, "Updated in place");
+	assert.equal(merged.newerCount, 1);
+});
+
+test("deep reel defers new ask IDs but removes settled asks", () => {
+	const pending = item({ id: "ask-known", source: "ask" });
+	const arrival = item({ id: "ask-new", source: "ask" });
+	const window = { items: [], waiting: [pending], high_water: 1 };
+	const facts = { ...window, waiting: [arrival], high_water: 2 };
+	const merged = model.mergeWindowForReel(facts, window, false);
+	assert.equal(merged.reelWaiting.length, 0);
+	assert.equal(
+		merged.waiting.length,
+		1,
+		"bulk read retains its authoritative waiting scope",
+	);
+	assert.equal(merged.newerCount, 1);
+});
+
 const NOW = new Date(2026, 9, 25, 15, 0, 0).getTime();
 const HOUR = 3_600_000;
 

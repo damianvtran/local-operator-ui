@@ -1,0 +1,16 @@
+{
+	"ui.agents.detail.read_state.failed_title": "Không đọc được “{name}”",
+	"ui.agents.detail.read_state.not_found": "Không tìm thấy phiên, hồ sơ, nhóm hoặc đăng ký theo dõi được yêu cầu",
+	"ui.agents.detail.read_state.failed_meaning": "Định nghĩa có thể đã bị xóa, hoặc backend đã từ chối yêu cầu đọc.",
+	"ui.agents.detail.read_state.request_failed": "Yêu cầu chưa hoàn tất.",
+	"ui.agents.detail.read_state.retry": "Thử lại",
+	"ui.agents.detail.read_state.retrying": "Đang thử lại…",
+	"ui.agents.detail.read_state.delegates": "Có thể ủy quyền công việc cho tác nhân con.",
+	"ui.agents.detail.read_state.no_delegation": "Tự làm công việc của mình; không ủy quyền.",
+	"ui.agents.detail.read_state.class_description": "Tác nhân ở chế độ phản hồi chỉ trả lời. Tác nhân ở chế độ chủ động còn có thể nhắn trước cho bạn.",
+	"ui.agents.detail.read_state.used_by_description": "Các nhóm chọn tác nhân này làm quản lý hoặc thành viên.",
+	"ui.agents.detail.read_state.class_on": "Bật",
+	"ui.agents.detail.read_state.class_off": "Tắt",
+	"ui.agents.detail.read_state.class_switching": "Đang chuyển…",
+	"ui.agents.detail.read_state.effort_inherit": "Dùng cấp năng lực của phiên"
+}

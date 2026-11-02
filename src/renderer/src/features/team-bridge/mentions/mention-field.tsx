@@ -154,7 +154,7 @@ export function MentionField({
 	}, [open, anchorIndex, fieldRef]);
 	if (!mentions.enabled) return <>{children}</>;
 	return (
-		<div className="relative flex min-w-0 flex-1">
+		<div className="group/mention-field relative flex min-w-0 flex-1">
 			<MentionHighlightOverlay
 				fieldRef={fieldRef}
 				text={text}

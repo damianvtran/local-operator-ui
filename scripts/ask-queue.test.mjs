@@ -1099,6 +1099,55 @@ test("a refusal WITH the owner's sentence keeps it; without one, the app says th
 	);
 });
 
+test("only a transport failure earns a Retry; a pairing refusal does not (U2)", () => {
+	/*
+	 * THE CLASSIFICATION AND THE RETRY DECISION MUST AGREE. UX review round 2's U2
+	 * measured the failure row pairing "the server does not accept this app's desktop
+	 * controls" with an ENABLED Retry: a 503 on /v1/desktop/ is `pairing.plane-closed`
+	 * in the contract, so the sentence and the control contradicted each other.
+	 *
+	 * BOTH SIDES ARE PINNED. Suppressing Retry on every refusal code would take the
+	 * one state that HAS a working next action (`transport.failed` - main could not
+	 * complete the request, so nothing was learned about the plane) and give it none.
+	 */
+	const refused = (code, message) =>
+		new queue.DesktopControlError(503, message, undefined, code);
+	for (const code of [
+		"pairing.plane-closed",
+		"pairing.refused",
+		"pairing.no-credential",
+	])
+		assert.equal(
+			queue.askFailureEarnsRetry(refused(code, "refused")),
+			false,
+			`${code} is a pairing condition, so the sentence is the whole answer`,
+		);
+	assert.equal(
+		queue.askFailureEarnsRetry(
+			refused(
+				"transport.failed",
+				"The backend could not complete this request. Check its connection and try again.",
+			),
+		),
+		true,
+		"a transport failure is the press a Retry repairs",
+	);
+	/* No code at all: the renderer's own catch (the request never left), and a plain
+	 * 404 ("no ask with that id"). Neither is a statement about the plane. */
+	assert.equal(queue.askFailureEarnsRetry(new Error("socket closed")), true);
+	assert.equal(queue.askFailureEarnsRetry({ status: 404 }), true);
+	/* And the owner's own verdict stays final, as it was before this change. */
+	assert.equal(
+		queue.askFailureEarnsRetry(
+			new queue.DesktopControlError(
+				409,
+				"That ask was already answered by the phone.",
+			),
+		),
+		false,
+	);
+});
+
 test("the item's name never doubles a mark, and its clause is the model's one spelling", () => {
 	// The name is composed from the model's own clause, so what the chip PAINTS and
 	// what a screen reader is told cannot be two different sentences - the defect the
@@ -1806,4 +1855,476 @@ test("a multi-secret ask is refused by the wiring, not guessed at", async () => 
 		"one value names no question, so nothing is posted",
 	);
 	assert.deepEqual(calls, []);
+});
+
+const revisionRow = (over = {}) =>
+	single({
+		session_id: "revision-session",
+		status: "answered",
+		answered_at: TS + 10,
+		answered_by: { surface: "phone" },
+		delivered: false,
+		answers: { target: ["staging"] },
+		...over,
+	});
+const revisionOutcome = (row, answers, older = []) => {
+	const evidence = queue.askRevisionEvidence(row, answers);
+	return {
+		settled: {
+			status: "answered",
+			at: TS + 999999,
+			answers: queue.askPaintableAnswers(row.questions, answers),
+			revision: {
+				identity: evidence.identity,
+				superseded: [...older, evidence.before],
+				accepted: evidence.after,
+			},
+		},
+	};
+};
+
+test("R12 exact superseded answered/late snapshots update answers, not server authority", () => {
+	for (const status of ["answered", "late"]) {
+		const row = revisionRow({ status });
+		const result = queue.askWithLocalSettle(
+			row,
+			revisionOutcome(row, { target: ["production"] }),
+		);
+		assert.deepEqual(result.answers, { target: ["production"] });
+		assert.equal(result.status, status);
+		assert.equal(
+			result.answered_at,
+			row.answered_at,
+			"first acceptance is not a revision clock",
+		);
+		assert.equal(result.answered_by.surface, "phone");
+		assert.equal(result.delivered, false);
+		assert.deepEqual(queue.askRevisionDraft(result), {
+			target: ["production"],
+		});
+	}
+});
+
+test("R12 delivered, terminal, identity/schema and unfamiliar authoritative facts win", () => {
+	const row = revisionRow();
+	const outcome = revisionOutcome(row, { target: ["production"] });
+	const variants = [
+		{ delivered: true },
+		{ status: "open", delivered: true },
+		...["declined", "dismissed", "withdrawn", "expired", "future_terminal"].map(
+			(status) => ({ status }),
+		),
+		{ ask_id: "other-ask" },
+		{ session_id: "other-session" },
+		{ created_at: TS + 1 },
+		{
+			questions: row.questions.map((q) => ({
+				...q,
+				question: "Different question",
+			})),
+		},
+		{ questions: row.questions.map((q) => ({ ...q, secret: true })) },
+		{ answers: { target: ["unfamiliar concurrent answer"] } },
+		{ answered_at: TS + 11 },
+		{ answered_by: { surface: "terminal" } },
+		// Optional future/additive ordering evidence is never discarded to match an old snapshot.
+		{ revised_at: TS + 20 },
+	];
+	for (const changes of variants) {
+		const authoritative = { ...row, ...changes };
+		assert.equal(
+			queue.askWithLocalSettle(authoritative, outcome) === authoritative,
+			true,
+			`must preserve authoritative fact ${Object.keys(changes).join(",")}`,
+		);
+	}
+	const firstAnswerOnly = {
+		settled: {
+			status: "answered",
+			at: TS + 999999,
+			answers: { target: ["production"] },
+		},
+	};
+	assert.equal(
+		queue.askWithLocalSettle(row, firstAnswerOnly) === row,
+		true,
+		"a generic local receipt is not revision evidence",
+	);
+});
+
+test("R12 repeated known revisions retain only masked public snapshot evidence", () => {
+	const row = revisionRow({
+		questions: [
+			...single().questions,
+			{ id: "private_marker", question: "Marker", secret: true },
+		],
+		answers: { target: ["staging"], private_marker: ["[PRIVATE_MARKER]"] },
+	});
+	const typed = "synthetic-secret-not-for-public-state";
+	const first = revisionOutcome(row, {
+		target: ["production"],
+		private_marker: [typed],
+	});
+	const nextRow = queue.askWithLocalSettle(row, first);
+	const second = revisionOutcome(
+		nextRow,
+		{ target: ["canary"], private_marker: [typed] },
+		first.settled.revision.superseded,
+	);
+	assert.deepEqual(queue.askWithLocalSettle(row, second).answers.target, [
+		"canary",
+	]);
+	assert.deepEqual(queue.askWithLocalSettle(nextRow, second).answers.target, [
+		"canary",
+	]);
+	assert.equal(JSON.stringify(first).includes(typed), false);
+	assert.equal(JSON.stringify(second).includes(typed), false);
+	assert.deepEqual(second.settled.answers.private_marker, ["[PRIVATE_MARKER]"]);
+});
+
+const acknowledgedRevision = (row, current, predecessors, sessionId) => {
+	const evidence = queue.askRevisionEvidence(row, current, sessionId);
+	return {
+		settled: {
+			status: "answered",
+			at: TS + 999999,
+			answers: queue.askPaintableAnswers(row.questions, current),
+			revision: {
+				identity: evidence.identity,
+				superseded: [],
+				accepted: evidence.after,
+				acknowledged: {
+					current: evidence.afterAnswers,
+					predecessors: predecessors.map(
+						(answers) =>
+							queue.askRevisionEvidence(row, answers, sessionId).afterAnswers,
+					),
+					unmarked: !evidence.hasRevisionMarker,
+				},
+			},
+		},
+	};
+};
+
+test("R14 actual production attention probe: answer-only overlay cannot settle the unrelated OPEN ask twice", () => {
+	const answered = revisionRow({ answers: { target: ["staging"] } });
+	const unrelated = single({
+		ask_id: "unrelated-open",
+		session_id: answered.session_id,
+	});
+	const frontier = {
+		asks: [answered, unrelated],
+		asks_open: 1,
+		asks_truncated: true,
+	};
+	const outcome = acknowledgedRevision(answered, { target: ["production"] }, [
+		{ target: ["staging"] },
+	]);
+	const control = queue.askQueueView(frontier);
+	assert.equal(control.open, 1);
+	assert.equal(queue.askAttentionCount(control), 1);
+	const result = queue.askQueueView(frontier, { [answered.ask_id]: outcome });
+	assert.deepEqual(
+		result.rows.find((row) => row.ask.ask_id === answered.ask_id).ask.answers
+			.target,
+		["production"],
+	);
+	assert.equal(
+		result.open,
+		1,
+		"answer-map replacement is not an outstanding→settled transition",
+	);
+	assert.equal(result.waiting, 1);
+	assert.equal(queue.askAttentionCount(result), 1);
+	assert.equal(queue.askChipClause(result, TS), "1 outstanding");
+	assert.equal(
+		result.open > 0,
+		true,
+		"AskDrawer's useAskClock input stays active for the unrelated OPEN ask",
+	);
+});
+
+test("R14 true OPEN/timed-out settlements decrement once, not once per answer or history entry", () => {
+	const open = single({ ask_id: "local-open" });
+	const timedOut = single({ ask_id: "local-lapsed", status: "timed_out" });
+	const dismissed = single({ ask_id: "local-dismissed" });
+	const ancestor = revisionRow({
+		ask_id: "answer-only",
+		answers: { target: ["staging"] },
+	});
+	const unrelated = single({ ask_id: "still-open" });
+	const accepted = (status) => ({
+		settled: { status, at: TS, answers: { target: ["production"] } },
+	});
+	const outcomes = {
+		[open.ask_id]: acknowledgedRevision(open, { target: ["production"] }, [
+			{ target: ["staging"] },
+			{ target: ["older"] },
+		]),
+		[timedOut.ask_id]: accepted("answered"),
+		[dismissed.ask_id]: accepted("dismissed"),
+		[ancestor.ask_id]: acknowledgedRevision(
+			ancestor,
+			{ target: ["production"] },
+			[{ target: ["staging"] }],
+		),
+	};
+	const result = queue.askQueueView(
+		{
+			asks: [open, timedOut, dismissed, ancestor, unrelated],
+			asks_open: 9,
+			asks_truncated: true,
+		},
+		outcomes,
+	);
+	assert.equal(
+		result.open,
+		6,
+		"only three original outstanding rows settled locally; backend retains unseen rows",
+	);
+	assert.equal(result.waiting, 1);
+	assert.equal(queue.askAttentionCount(result), 6);
+	assert.equal(queue.askChipClause(result, TS), "6 outstanding");
+	const once = queue.askQueueView(
+		{ asks: [open, unrelated], asks_open: 2 },
+		outcomes,
+	);
+	assert.equal(
+		once.open,
+		1,
+		"multiple acknowledged writes for one raw OPEN row subtract exactly once",
+	);
+	assert.equal(
+		queue.askQueueView({ asks: [open], asks_open: 0 }, outcomes).open,
+		0,
+		"preserve nonnegative authoritative clamp",
+	);
+});
+
+test("R14 terminal/no-overlay and truncated authoritative tallies retain their original meaning", () => {
+	const unrelated = single({ ask_id: "still-open" });
+	for (const status of [
+		"answered",
+		"declined",
+		"dismissed",
+		"withdrawn",
+		"expired",
+	]) {
+		const terminal = revisionRow({ status, delivered: true });
+		const local = acknowledgedRevision(terminal, { target: ["production"] }, [
+			{ target: ["staging"] },
+		]);
+		const view = queue.askQueueView(
+			{ asks: [terminal, unrelated], asks_open: 7, asks_truncated: true },
+			{ [terminal.ask_id]: local },
+		);
+		assert.equal(view.open, 7);
+		assert.equal(queue.askAttentionCount(view), 7);
+	}
+	const row = revisionRow({ answers: { target: ["staging"] } });
+	const local = acknowledgedRevision(row, { target: ["production"] }, [
+		{ target: ["staging"] },
+	]);
+	for (const asks_open of [1, 7]) {
+		const view = queue.askQueueView(
+			{ asks: [row, unrelated], asks_open, asks_truncated: true },
+			{ [row.ask_id]: local },
+		);
+		assert.equal(
+			view.open,
+			asks_open,
+			"published count wins over the bounded visible prefix",
+		);
+	}
+	const fallback = queue.askQueueView(
+		{ asks: [row, unrelated] },
+		{ [row.ask_id]: local },
+	);
+	assert.equal(
+		fallback.open,
+		1,
+		"older producers without a tally derive open from resolved rows",
+	);
+});
+
+test("R13 acknowledged A superseded by B preserves genuine unseen first-answer metadata", () => {
+	const original = revisionRow({
+		status: "open",
+		answers: undefined,
+		answered_at: undefined,
+		answered_by: undefined,
+	});
+	const a = { target: ["staging"] };
+	const b = { target: ["production"] };
+	const outcome = acknowledgedRevision(original, b, [a]);
+	const saved = JSON.stringify(outcome);
+	for (const status of ["answered", "late"]) {
+		const wire = {
+			...original,
+			status,
+			answers: a,
+			answered_at: TS + 99999999,
+			answered_by: { surface: "phone" },
+		};
+		const result = queue.askWithLocalSettle(wire, outcome);
+		assert.deepEqual(result.answers, b);
+		assert.equal(result.status, status);
+		assert.equal(
+			result.answered_at,
+			wire.answered_at,
+			"server's first-acceptance stamp is retained, not ranked against client time",
+		);
+		assert.equal(result.answered_by.surface, "phone");
+		assert.equal(result.delivered, false);
+		const confirmed = { ...wire, answers: b };
+		assert.equal(
+			queue.askWithLocalSettle(confirmed, outcome) === confirmed,
+			true,
+		);
+		assert.deepEqual(
+			queue.askWithLocalSettle(wire, outcome).answers,
+			b,
+			"confirmation must not erase A ancestry",
+		);
+	}
+	assert.equal(
+		JSON.stringify(outcome),
+		saved,
+		"reads do not mutate or retire causal evidence",
+	);
+});
+
+test("R13 delivered ancestor, terminal, identity/schema, unknown answer and revision-marker authority win", () => {
+	const original = revisionRow({ status: "open", answers: undefined });
+	const a = { target: ["staging"] };
+	const b = { target: ["production"] };
+	const outcome = acknowledgedRevision(original, b, [a]);
+	const ancestor = { ...original, status: "answered", answers: a };
+	for (const changes of [
+		{ delivered: true },
+		...["declined", "dismissed", "expired", "withdrawn", "future_terminal"].map(
+			(status) => ({ status }),
+		),
+		{ session_id: "foreign-session" },
+		{ ask_id: "foreign-ask" },
+		{ created_at: TS + 1 },
+		{
+			questions: original.questions.map((q) => ({
+				...q,
+				question: "Different schema",
+			})),
+		},
+		{ answers: { target: ["Unfamiliar authoritative U"] } },
+		{ revised_at: TS + 20 },
+	]) {
+		const wire = { ...ancestor, ...changes };
+		assert.equal(
+			queue.askWithLocalSettle(wire, outcome) === wire,
+			true,
+			`authoritative ${Object.keys(changes).join(",")} wins over an ancestor match`,
+		);
+	}
+});
+
+test("R13 implied detail session normalizes to explicit fleet session without crossing identity", () => {
+	const implied = revisionRow({
+		session_id: undefined,
+		status: "open",
+		answers: undefined,
+	});
+	const a = { target: ["staging"] };
+	const b = { target: ["production"] };
+	const outcome = acknowledgedRevision(implied, b, [a], "owned-session");
+	const first = { ...implied, status: "answered", answers: a };
+	const explicit = { ...first, session_id: "owned-session" };
+	assert.deepEqual(queue.askWithLocalSettle(explicit, outcome).answers, b);
+	assert.deepEqual(
+		queue.askWithLocalSettle(first, outcome, "owned-session").answers,
+		b,
+	);
+	assert.equal(
+		queue.askWithLocalSettle(first, outcome, "different-session") === first,
+		true,
+	);
+	assert.equal(
+		queue.askWithLocalSettle(
+			{ ...first, session_id: "foreign-session" },
+			outcome,
+			"owned-session",
+		).answers.target[0],
+		"staging",
+	);
+	const view = queue.askQueueView(
+		{ asks: [first], asks_open: 0 },
+		{ [first.ask_id]: outcome },
+		"owned-session",
+	);
+	assert.deepEqual(
+		view.rows[0].ask.answers,
+		b,
+		"presentation and form seeds share the normalized reader",
+	);
+});
+
+test("R13 secret changes with identical public key retain no raw marker or fictitious ordering", () => {
+	const row = revisionRow({
+		questions: [
+			...single().questions,
+			{ id: "private_marker", question: "Marker", secret: true },
+		],
+	});
+	const first = {
+		target: ["staging"],
+		private_marker: ["synthetic-first-marker"],
+	};
+	const changed = {
+		target: ["staging"],
+		private_marker: ["synthetic-second-marker"],
+	};
+	const outcome = acknowledgedRevision(row, changed, [first]);
+	const wire = {
+		...row,
+		answers: { target: ["staging"], private_marker: ["[PRIVATE_MARKER]"] },
+	};
+	assert.equal(
+		queue.askWithLocalSettle(wire, outcome) === wire,
+		true,
+		"same public map cannot order private secret values",
+	);
+	assert.equal(
+		JSON.stringify(outcome).includes(first.private_marker[0]),
+		false,
+	);
+	assert.equal(
+		JSON.stringify(outcome).includes(changed.private_marker[0]),
+		false,
+	);
+	assert.equal(
+		outcome.settled.revision.acknowledged.predecessors[0],
+		outcome.settled.revision.acknowledged.current,
+	);
+});
+
+test("R12 exact-snapshot fallback documents unversioned ABA, never overrides unknown facts", () => {
+	const baseline = revisionRow();
+	const outcome = revisionOutcome(baseline, { target: ["production"] });
+	const unknown = { ...baseline, answers: { target: ["another writer"] } };
+	assert.equal(queue.askWithLocalSettle(unknown, outcome) === unknown, true);
+	const observedABA = { ...baseline, revised_at: TS + 30 };
+	assert.equal(
+		queue.askWithLocalSettle(observedABA, outcome) === observedABA,
+		true,
+		"any visible newer/different ordering fact wins, even when the answer returns to baseline",
+	);
+	// With no public revision sequence, identical A→B→A history cannot be inferred.
+	// This intentionally pins the APPROVED LIMITATION, not a global ordering claim.
+	const indistinguishable = structuredClone(baseline);
+	assert.equal(
+		queue.askRevisionEvidence(indistinguishable, {}).before,
+		queue.askRevisionEvidence(baseline, {}).before,
+	);
+	assert.deepEqual(
+		queue.askWithLocalSettle(indistinguishable, outcome).answers.target,
+		["production"],
+	);
 });
