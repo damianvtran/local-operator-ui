@@ -1368,6 +1368,21 @@ const IDENTICAL_OK = new Map([
 		"format string: two placeholders and a space, no words",
 	],
 	[
+		"ui.agents.avatar.editor.zoom_value",
+		// `{value}×`: the crop editor's zoom readout (`2.5×`), a numeral and the
+		// multiplication sign, no words. Identical in every locale is correct, the
+		// `playback_rate_option` rule; no catalogue value changed to satisfy this.
+		"language-neutral format: only a {value} placeholder and '×', no words",
+	],
+	[
+		"es:ui.agents.avatar.editor.zoom",
+		"Spanish cognate: « Zoom » is the Spanish noun for the control, same spelling, and the sibling zoom_in/zoom_out values are translated (Acercar/Alejar); scoped to es so the other locales still translate it",
+	],
+	[
+		"fr:ui.agents.avatar.editor.zoom",
+		"French cognate: « Zoom » is the French noun for the control, same spelling, and the sibling zoom_in/zoom_out values are translated; scoped to fr so the other locales still translate it",
+	],
+	[
 		"fr:ui.chat.attachments.volume",
 		"French cognate: the French noun for this control is « Volume », same spelling; scoped to fr so other locales still translate it",
 	],

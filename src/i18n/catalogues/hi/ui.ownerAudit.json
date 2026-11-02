@@ -11,6 +11,8 @@
 	"ui.ownerAudit.agent": "चीफ़ ऑफ़ स्टाफ़",
 	"ui.ownerAudit.more": "और लोड करें",
 	"ui.ownerAudit.older": "पुराने संदेश लोड करें",
+	"ui.ownerAudit.older_replies": "पुराने जवाब लोड करें",
+	"ui.ownerAudit.empty_replies": "इस ऑडिट अवधि में कोई जवाब नहीं है।",
 	"ui.ownerAudit.page_cutoff": "पुराने संदेश अभी नहीं दिखाए गए हैं। इससे पहले के संदेश पढ़ने के लिए पुराने संदेश लोड करें।",
 	"ui.ownerAudit.admitted": "आपके चीफ़ ऑफ़ स्टाफ़ ने स्वीकार किया",
 	"ui.ownerAudit.rejected": "आपके चीफ़ ऑफ़ स्टाफ़ की जाँच ने अस्वीकार किया",
@@ -26,5 +28,10 @@
 	"ui.ownerAudit.window_unconfirmed": "इस ऑडिट का अंत ज्ञात नहीं है। इस बातचीत में आपके चीफ़ ऑफ़ स्टाफ़ की सदस्यता की पुष्टि नहीं हो सकी।",
 	"ui.ownerAudit.disclosure": "आप यह ऑडिट देख सकते हैं क्योंकि जिस चीफ़ ऑफ़ स्टाफ़ का यह ऑडिट है, उसके मालिक आप हैं। बाकी सदस्यों को बताया जाता है कि एजेंट के मालिक बातचीत का ऑडिट कर सकते हैं।",
 	"ui.ownerAudit.viewers_label": "अन्य पाठक",
-	"ui.ownerAudit.replies": "थ्रेड के उत्तर पढ़ें"
+	"ui.ownerAudit.replies": "थ्रेड के उत्तर पढ़ें",
+	"ui.ownerAudit.auth_required": "ऑडिट किए गए संदेश पढ़ने के लिए साइन इन करें। हो सकता है कि आपके सत्र की समय-सीमा समाप्त हो गई हो।",
+	"ui.ownerAudit.permission_refused": "आपको इस ऑडिट इतिहास को देखने की अनुमति नहीं है।",
+	"ui.ownerAudit.not_found": "ऑडिट की गई यह बातचीत नहीं मिली।",
+	"ui.ownerAudit.unavailable": "ऑडिट सेवा इन संदेशों को लोड नहीं कर सकी। फिर से कोशिश करें।",
+	"ui.ownerAudit.sign_in": "साइन इन करें"
 }

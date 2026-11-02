@@ -51,7 +51,14 @@ import { Badge } from "@shared/components/ui/badge";
 import { Disclosure } from "@shared/components/ui/disclosure";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
-import { Check, Clock, HelpCircle, type LucideIcon, X } from "lucide-react";
+import {
+	Check,
+	Clock,
+	HelpCircle,
+	Loader2,
+	type LucideIcon,
+	X,
+} from "lucide-react";
 import {
 	useCallback,
 	useEffect,
@@ -247,6 +254,7 @@ const askStatusMark = (
 		case "declined":
 		case "dismissed":
 		case "expired":
+		case "withdrawn":
 			return { Icon: X, className: "text-ink-muted" };
 		default:
 			return { Icon: HelpCircle, className: "text-accent" };
@@ -838,7 +846,59 @@ const AskRow = ({
 	// answer body (the backend substitutes the key name) without ever being
 	// renderable state.
 	const [secrets, setSecrets] = useState<AskSecrets>({});
+	/*
+	 * A TYPED SECRET OUTLIVES ITS SEND ONLY WHILE IT MAY BE SENT AGAIN (agent review
+	 * round 1, R1-1). The field keeps it through a failure so Retry and an edit both
+	 * have it; once the owner ACCEPTS, nothing on this surface needs the value, and a
+	 * row that stays mounted as a settled card would otherwise hold it in state for as
+	 * long as the pane is open. Cleared on the accepted record, not on the press.
+	 */
+	const accepted =
+		outcome?.settled !== undefined ||
+		(status !== "open" && status !== "timed_out");
+	useEffect(() => {
+		if (accepted)
+			setSecrets((current) =>
+				Object.keys(current).length === 0 ? current : {},
+			);
+	}, [accepted]);
 	const busy = answering || Boolean(outcome?.sending);
+	/*
+	 * Count edits, not values (R2-1/U1). Secret fields deliberately live outside
+	 * `draft`; comparing only that object's identity left Send disabled after a
+	 * secret edit, while Retry still held the original request. Both field paths
+	 * advance this non-sensitive revision. Never snapshot plaintext to compare it.
+	 * The baseline belongs to ONE retry outcome: a new failed attempt takes a new
+	 * baseline, and sending/acceptance removes it. AskRow is keyed by ask id.
+	 */
+	const [editRevision, setEditRevision] = useState(0);
+	const failedRevision = useRef<{
+		retry: NonNullable<AskOutcome["retry"]>;
+		revision: number;
+	} | null>(null);
+	const retry = outcome?.retry;
+	if (retry === undefined) failedRevision.current = null;
+	else if (failedRevision.current?.retry !== retry)
+		failedRevision.current = { retry, revision: editRevision };
+	const retryPending =
+		retry !== undefined && failedRevision.current?.revision === editRevision;
+	const retryRef = useRef<HTMLButtonElement>(null);
+	/*
+	 * Failure disables the pressed Send control. Move focus in the same commit to
+	 * its recovery action rather than letting the browser strand it on BODY. A
+	 * pairing refusal has no Retry, so its recovery is the answer field itself.
+	 */
+	const failedOutcome = useRef<AskOutcome | null>(null);
+	if (outcome?.refused) failedOutcome.current = outcome;
+	useLayoutEffect(() => {
+		const failed = failedOutcome.current;
+		if (!outcome?.refused || failed !== outcome || failed === null) return;
+		failedOutcome.current = null;
+		const recovery = retryRef.current;
+		const target =
+			recovery ?? rowRef.current?.querySelector<HTMLElement>(LIVE_CONTROL);
+		target?.focus({ preventScroll: true });
+	}, [outcome]);
 	const disabled = busy || !canAnswer;
 	const ready = useMemo(
 		() => askAnswerMap(ask, draft, secrets) !== null,
@@ -974,8 +1034,20 @@ const AskRow = ({
 	 * which is the door's own promise — a revision is free while the answer is undelivered.
 	 */
 	useEffect(() => {
-		if (outcome?.changed === true) setChanging(false);
-	}, [outcome?.changed]);
+		if (
+			outcome?.changed === true ||
+			(accepted && outcome?.refusedByOwner === true)
+		) {
+			setChanging(false);
+			/* `accepted` was already true when revision began, so its first-answer
+			 * cleanup does not fire again. A successful revision must also retire
+			 * the retyped secret. A transport failure keeps it for Retry/edit;
+			 * an owner's closed-window refusal must retire it with the form. */
+			setSecrets((current) =>
+				Object.keys(current).length === 0 ? current : {},
+			);
+		}
+	}, [outcome?.changed, outcome?.refusedByOwner, accepted]);
 	/*
 	 * The FORM'S OWN completeness, read through the SAME `askAnswerMap` the first-answer
 	 * door uses — no revision-specific rule exists, because the wire's body is the same
@@ -1168,6 +1240,7 @@ const AskRow = ({
 			ref={rowRef}
 			data-lo-ask-row={ask.ask_id}
 			data-lo-ask-status={status}
+			tabIndex={-1}
 			/*
 			 * ESCAPE IS CLAIMED AT THE CARD, NOT AT THE CHOOSER'S WRAPPER (agent review
 			 * round 2, M-B). The chooser's state is card-local, so the card is the scope
@@ -1275,9 +1348,24 @@ const AskRow = ({
 						const source = ask.questions.find((q) => q.id === entry.id);
 						const offered = (source?.options ?? []).map((o) => o.label);
 						const tags = source?.secret !== true && offered.length > 0;
+						/*
+						 * THE ROW ALREADY NAMED THIS QUESTION (design review round 3, D6). The collapsed
+						 * row above the block prints `badge + question`, and the expanded body printed the
+						 * SAME sentence again 57 px lower - two lines of repeated reading for the one line
+						 * of new information (the status sentence and `No answer given`). Only the
+						 * question the trigger already carries is dropped: a second question on a
+						 * multi-question ask still gets its label here, because nothing above names it.
+						 */
+						const echoedByTrigger =
+							entry.id === ask.questions[0]?.id &&
+							(status === "withdrawn" || status === "timed_out");
 						return (
 							<div key={entry.id} className="flex flex-col gap-0.5">
-								<span className="text-ink-muted text-xs">{entry.question}</span>
+								{echoedByTrigger ? null : (
+									<span className="text-ink-muted text-xs">
+										{entry.question}
+									</span>
+								)}
 								{entry.answers.length > 0 ? (
 									entry.answers.map((value, index) => (
 										<span
@@ -1325,12 +1413,14 @@ const AskRow = ({
 								editRecorded,
 							)}
 							disabled={fieldDisabled}
-							onCell={(cell) =>
-								writeDraft((current) => ({ ...current, [question.id]: cell }))
-							}
-							onSecret={(value) =>
-								setSecrets((current) => ({ ...current, [question.id]: value }))
-							}
+							onCell={(cell) => {
+								setEditRevision((revision) => revision + 1);
+								writeDraft((current) => ({ ...current, [question.id]: cell }));
+							}}
+							onSecret={(value) => {
+								setEditRevision((revision) => revision + 1);
+								setSecrets((current) => ({ ...current, [question.id]: value }));
+							}}
 							onAdvance={advanceFrom}
 							focusOtherRef={focusOtherRef}
 						/>
@@ -1370,9 +1460,48 @@ const AskRow = ({
 			 * the act, so it wears the danger band here too - and no mark, because the
 			 * same refusal must not read differently on the two surfaces.
 			 */}
+			{/*
+			 * THE PRESS IS VISIBLY OUT (Notifications ask-pane fix). The controls disable
+			 * while `sending`, but a disabled button alone reads the same as one that never
+			 * enabled; the line says the act is in flight. The dismissal chooser states its
+			 * own (`Dismissing…`) on the pressed reason, so it is not said twice.
+			 */}
+			{outcome?.sending === true && !dismissOpen ? (
+				<output
+					data-lo-ask-sending=""
+					className="flex items-center gap-1.5 text-ink-muted text-xs"
+				>
+					<Loader2 aria-hidden="true" size={14} className="animate-spin" />
+					{t("ui.agents.config.state.sending")}
+				</output>
+			) : null}
 			{outcome?.refused ? (
-				<output className="block text-body-sm text-danger">
-					{dismissalRefusal ?? outcome.refused}
+				<output
+					data-lo-ask-refused=""
+					className="flex flex-wrap items-center gap-2 text-body-sm text-danger"
+				>
+					<span className="min-w-0 break-words">
+						{dismissalRefusal ?? outcome.refused}
+					</span>
+					{/*
+					 * RETRY, ONLY WHERE A SECOND PRESS CAN LAND. `retry` exists only for a
+					 * transport failure (`useAskOutcomes`): the request never reached the
+					 * owner, so the same act may succeed. An owner's verdict carries none -
+					 * a Retry whose only outcome is the sentence above it is the dead
+					 * control this panel refuses elsewhere. The draft is untouched, so the
+					 * reader's typed answer is still in its field.
+					 */}
+					{retryPending ? (
+						<button
+							ref={retryRef}
+							type="button"
+							disabled={busy || !retryPending}
+							onClick={outcome.retry}
+							className="min-h-6 rounded-md border border-control px-2 py-1 text-ink text-xs hover:bg-sunken"
+						>
+							{t("ui.common.actions.retry")}
+						</button>
+					) : null}
 				</output>
 			) : null}
 			{outcome?.changed === true ? (
@@ -1429,9 +1558,17 @@ const AskRow = ({
 			) : null}
 			{(canAnswer || canDecline) && !dismissOpen ? (
 				<div className="flex items-center gap-2">
+					{/*
+					 * ONE NEXT ACTION AFTER A TRANSPORT FAILURE (design round 1, D2). While
+					 * a retryable failure stands, Retry beside the sentence sends exactly
+					 * this answer, and a filled Send answer below it was a second primary
+					 * for the same act. Send answer is DISABLED (not hidden, so the row does
+					 * not reflow under the pointer) until the reader edits the answer, which
+					 * makes it a different act than the one Retry repeats.
+					 */}
 					<button
 						type="button"
-						disabled={disabled || !ready}
+						disabled={disabled || !ready || retryPending}
 						onClick={sendAnswer}
 						className={cn(
 							"rounded-md px-3 py-1.5 text-sm",
@@ -1442,7 +1579,7 @@ const AskRow = ({
 							 * becomes enabled was also its quietest element (design round 1,
 							 * D7).
 							 */
-							disabled || !ready
+							disabled || !ready || retryPending
 								? "border border-hairline bg-surface text-ink-dim"
 								: "border border-transparent bg-accent text-on-accent hover:bg-accent-hover",
 						)}
@@ -1758,9 +1895,9 @@ export const AskPanel = ({
 	 * so the history that used to cost a chevron to escape now costs a press, and
 	 * the counts are stated ON the controls rather than in a line of prose about them.
 	 *
-	 * THE MIDDLE HALF IS `canAnswer || delivering` (`askPanelHalves`): every row a
-	 * control can still act on. A §10 answer that is recorded but not yet delivered
-	 * belongs to it too - the panel draws it as a pending card. A timed-out ask does
+	 * PENDING COUNTS UNANSWERED DECISIONS (`askPanelHalves`), not delivery work.
+	 * A recorded answer belongs to Settled immediately; its still-expanded card
+	 * separately names delivery and preserves §10's Change answer. A timed-out ask does
 	 * not (D11), which is why the label is `Pending` and no longer
 	 * `Waiting or moved on` (design round 1 on #1116, D1).
 	 *
@@ -1804,6 +1941,27 @@ export const AskPanel = ({
 	 * forgets every ask that is not answerable now; the counter re-renders even when the
 	 * pressed chip was already selected, which `setFilter` alone would skip.
 	 */
+	/* An answer changes the decision counts, not the user's action context.
+	 * Remember only slots this mount actually showed as answerable. A local
+	 * accepted receipt stays in that slot in All, including during revision;
+	 * explicit filtering/navigation releases it. No server order is rolled back,
+	 * no unrelated question is pinned, and neither scroll port is moved. */
+	const actionSlots = useRef<Map<string, number>>(new Map());
+	for (const row of view.rows) {
+		if (row.canAnswer && !actionSlots.current.has(row.ask.ask_id))
+			actionSlots.current.set(row.ask.ask_id, actionSlots.current.size);
+	}
+	const localReceiptIds = new Set(
+		view.rows
+			.filter(
+				(row) =>
+					actionSlots.current.has(row.ask.ask_id) &&
+					outcomes?.[row.ask.ask_id]?.settled?.status === "answered" &&
+					(row.status === "answered" || row.status === "late"),
+			)
+			.map((row) => row.ask.ask_id),
+	);
+	const prevReceiptIds = useRef<ReadonlySet<string>>(new Set());
 	const answerableSeen = useRef<Set<string>>(new Set());
 	for (const row of view.rows) {
 		if (row.canAnswer) answerableSeen.current.add(row.ask.ask_id);
@@ -1811,6 +1969,11 @@ export const AskPanel = ({
 	const cardHeights = useRef<Map<string, number>>(new Map());
 	const [, setReleases] = useState(0);
 	const releaseHolds = () => {
+		actionSlots.current = new Map(
+			view.rows
+				.filter((row) => row.canAnswer)
+				.map((row, index) => [row.ask.ask_id, index]),
+		);
 		answerableSeen.current = new Set(
 			view.rows.filter((row) => row.canAnswer).map((row) => row.ask.ask_id),
 		);
@@ -1818,6 +1981,20 @@ export const AskPanel = ({
 		setReleases((count) => count + 1);
 	};
 	const shown = askPanelHalves(view.rows, answerableSeen.current);
+	const actionRows =
+		filter === "all"
+			? [
+					...shown.pending,
+					...shown.settled.filter((row) => localReceiptIds.has(row.ask.ask_id)),
+				].sort(
+					(a, b) =>
+						(actionSlots.current.get(a.ask.ask_id) ?? Number.MAX_SAFE_INTEGER) -
+						(actionSlots.current.get(b.ask.ask_id) ?? Number.MAX_SAFE_INTEGER),
+				)
+			: shown.pending;
+	const historyRows = (showPending ? shown.settled : settled).filter(
+		(row) => filter !== "all" || !localReceiptIds.has(row.ask.ask_id),
+	);
 	const heldIds = new Set(
 		shown.pending.filter((row) => row.lapsed).map((row) => row.ask.ask_id),
 	);
@@ -2027,6 +2204,19 @@ export const AskPanel = ({
 				) ?? []),
 			].map((el) => [el.getAttribute("data-lo-ask-row"), el]),
 		);
+		/* If accepting removed the just-used control, focus its OWN surviving
+		 * acknowledgement without scrolling. A keyboard already moved elsewhere
+		 * wins; never land it on the unrelated next ask's irreversible controls. */
+		const justAccepted =
+			focusedAsk !== null &&
+			localReceiptIds.has(focusedAsk) &&
+			!prevReceiptIds.current.has(focusedAsk);
+		prevReceiptIds.current = localReceiptIds;
+		if (justAccepted) {
+			const current = document.activeElement;
+			if (!current || current === document.body || !current.isConnected)
+				cards.get(focusedAsk)?.focus({ preventScroll: true });
+		}
 		for (const row of view.rows) {
 			if (!row.canAnswer) continue;
 			const height =
@@ -2104,6 +2294,34 @@ export const AskPanel = ({
 	 * on #1116, U1): a card that lapses under the reader collapses IN ITS OWN SLOT into
 	 * exactly the row it will be under Settled on the next mount, so the two cannot drift.
 	 */
+	/*
+	 * THE ANSWER RIDES ON THE ONE-LINE ROW (operator report on the Notifications pane):
+	 * one conversation can hold two near-identical asks, and a settled history of
+	 * `Answered · <question>` rows told the reader WHICH question was settled but not
+	 * WITH WHAT - so an answered ask could be mistaken for its open twin. Each answered
+	 * question's recorded values follow the question, in the muted step and clamped to
+	 * two lines (the expanded card keeps the full text). A secret question's cell is a
+	 * key name, never shown here.
+	 */
+	const settledAnswerLine = (presentation: (typeof view.rows)[number]) => {
+		const answered = askSettledAnswers(presentation.ask)
+			.filter(
+				(entry) =>
+					presentation.ask.questions.find((q) => q.id === entry.id)?.secret !==
+					true,
+			)
+			.flatMap((entry) => entry.answers)
+			.filter((value) => value.trim() !== "");
+		return answered.length === 0 ? null : (
+			<span
+				data-lo-ask-settled-answer=""
+				className="line-clamp-2 min-w-0 whitespace-normal break-words text-ink-muted text-meta"
+			>
+				{answered.join(", ")}
+			</span>
+		);
+	};
+
 	const collapsedRow = (
 		presentation: (typeof view.rows)[number],
 		/*
@@ -2180,10 +2398,19 @@ export const AskPanel = ({
 							 * tooltip instead of on the row. `break-words` so a long
 							 * unbroken token cannot push the row wider than the pane.
 							 */}
-							<span className="min-w-0 whitespace-normal break-words text-ink text-meta">
-								{question}
+							{/*
+							 * THE ANSWER SITS IN THE QUESTION'S COLUMN (design round 1, D1): as a
+							 * sibling of the chip row it started under the chevron, so a stack of
+							 * settled rows scanned chip, question, then an answer jutting left.
+							 */}
+							<span className="flex min-w-0 flex-col gap-0.5">
+								<span className="min-w-0 whitespace-normal break-words text-ink text-meta">
+									{question}
+								</span>
+								{settledAnswerLine(presentation)}
 							</span>
 						</span>
+
 						{refusal === null ? null : (
 							/*
 							 * The danger band and no mark, for the reason the card's own
@@ -2373,7 +2600,7 @@ export const AskPanel = ({
 				</div>
 			) : null}
 			{showPending
-				? shown.pending.map((presentation) => {
+				? actionRows.map((presentation) => {
 						const id = presentation.ask.ask_id;
 						if (!heldIds.has(id)) return askRow(presentation);
 						const height = cardHeights.current.get(id);
@@ -2399,7 +2626,7 @@ export const AskPanel = ({
 						);
 					})
 				: null}
-			{showSettledRows && (showPending ? shown.settled : settled).length > 0 ? (
+			{showSettledRows && historyRows.length > 0 ? (
 				/*
 				 * THE SETTLED GROUP: a plain list in the same column, with a quiet boundary
 				 * label drawn only while there IS a pending half above it to be separated
@@ -2424,8 +2651,13 @@ export const AskPanel = ({
 							{t("ui.chat.asks.settled_heading")}
 						</p>
 					) : null}
-					{(showPending ? shown.settled : settled).map((presentation) =>
-						collapsedRow(presentation),
+					{historyRows.map((presentation) =>
+						/* Settled is the decision, not a claim of delivery. Keep the
+						 * delivery-aware card and legal revision door visible until
+						 * the authoritative delivered row makes it read-only history. */
+						presentation.delivering
+							? askRow(presentation)
+							: collapsedRow(presentation),
 					)}
 				</div>
 			) : null}

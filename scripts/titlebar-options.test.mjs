@@ -20,8 +20,11 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
-import { build } from "esbuild";
+import { runInNewContext } from "node:vm";
+import { build, transformSync } from "esbuild";
 
+const RENDERER_ARGUMENT_FUNCTION =
+	/function rendererArgumentFlags\([\s\S]*?\n\}/;
 const ROOT = process.cwd();
 const readSource = (path) => readFileSync(`${ROOT}/${path}`, "utf8");
 
@@ -584,11 +587,77 @@ test("the main window takes the frame and the ground from the closed decision", 
 		/windowChromeArgumentFor\(process\.platform,\s*chromeMode\)/,
 		"the renderer's argv entry must be composed from the resolved mode, not re-read from the environment",
 	);
-	assert.match(
-		main,
-		/const flags = \[[\s\S]{0,400}?windowChromeArgumentFor\(process\.platform,\s*chromeMode\)[\s\S]{0,400}?\];\s*\n\s*return flags\.length > 0 \? \{ additionalArguments: flags \} : \{\};/,
-		"the composed chrome argument must reach the renderer's `additionalArguments`",
+	/* Execute the actual composition function: the 400-character source window
+	 * falsely failed when the fixed QA scene added one legitimate argv spread.
+	 * Stub only adjacent launch facts; chrome construction is the real helper.
+	 * The negative controls prove both removing the call and dropping the output
+	 * fail this contract rather than merely accepting a larger source window. */
+	const assertChromeReachesRenderer = (source) => {
+		const functionSource = source.match(RENDERER_ARGUMENT_FUNCTION)?.[0];
+		assert.ok(
+			functionSource,
+			"the actual renderer argument function must exist",
+		);
+		const code = transformSync(functionSource, { loader: "ts" }).code;
+		for (const platform of ["darwin", "win32", "linux"]) {
+			for (const mode of ["native", "integrated"]) {
+				const result = runInNewContext(
+					`${code}; rendererArgumentFlags(null, false, mode, {state:"off",scheme:"dark"})`,
+					{
+						process: { platform },
+						mode,
+						windowChromeArgumentFor: chrome.windowChromeArgumentFor,
+						windowGlassArgument: () => "--glass-sentinel",
+						launchArgumentFlags: () => ({
+							additionalArguments: ["--launch-sentinel"],
+						}),
+						devDriverWebPreferences: {
+							additionalArguments: ["--driver-sentinel"],
+						},
+						ownerAuditStartupArguments: () => ["--scene-sentinel"],
+						telemetryWebPreferences: {
+							additionalArguments: ["--telemetry-sentinel"],
+						},
+					},
+					{ timeout: 1000 },
+				);
+				assert.ok(
+					result.additionalArguments?.includes(
+						chrome.windowChromeArgumentFor(platform, mode),
+					),
+					"the composed chrome argument must reach the renderer's additionalArguments",
+				);
+				for (const argument of [
+					"--glass-sentinel",
+					"--launch-sentinel",
+					"--driver-sentinel",
+					"--scene-sentinel",
+					"--telemetry-sentinel",
+				])
+					assert.ok(
+						result.additionalArguments.includes(argument),
+						"adjacent argv composition must survive",
+					);
+			}
+		}
+	};
+	assertChromeReachesRenderer(main);
+	const withoutChrome = main.replace(
+		"windowChromeArgumentFor(process.platform, chromeMode),",
+		"",
 	);
+	assert.notEqual(withoutChrome, main);
+	assert.throws(() => assertChromeReachesRenderer(withoutChrome), {
+		code: "ERR_ASSERTION",
+	});
+	const withoutDelivery = main.replace(
+		"return flags.length > 0 ? { additionalArguments: flags } : {};",
+		"return {};",
+	);
+	assert.notEqual(withoutDelivery, main);
+	assert.throws(() => assertChromeReachesRenderer(withoutDelivery), {
+		code: "ERR_ASSERTION",
+	});
 });
 
 test("the shell renders the lane above the columns, and exactly one of it", () => {

@@ -347,6 +347,13 @@ export class TabRegistry {
 		private readonly onRemove: (tabId: number, webContentsId: number) => void,
 		private readonly onChanged: () => void,
 		private readonly onLayout: (snapshot: LayoutSnapshot) => void = () => {},
+		// Native attachment follows the same presentation decision as visibility.
+		// It is part of layout (not a best-effort observer): a hidden attached view
+		// can steal native input on navigation even when its DOM is never shown.
+		private readonly onPresentation: (
+			view: DriveableView,
+			presented: boolean,
+		) => void = () => {},
 	) {}
 
 	// ---- creation, addressing, listing ---------------------------------------
@@ -779,6 +786,7 @@ export class TabRegistry {
 				isActive && this.contentRect ? this.contentRect : BACKGROUND_VIEWPORT,
 			);
 			record.view.setVisible(record.presented);
+			this.onPresentation(record.view, record.presented);
 		}
 		this.layoutRevision += 1;
 		const rect = this.contentRect;

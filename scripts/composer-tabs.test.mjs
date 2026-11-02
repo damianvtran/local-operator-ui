@@ -2554,8 +2554,8 @@ test("the composer notice carries the connect action the fold re-laid into it (F
 	);
 	assert.match(
 		source,
-		/label: "Connect a provider"/,
-		"the action names what the no-connection line offers",
+		/get label\(\)\s*\{\s*return t\("ui\.chat\.composer\.connect_provider"\);\s*\}/,
+		"the action resolves the specific connect-provider catalogue key when displayed, rather than pinning pre-i18n source syntax",
 	);
 	assert.match(
 		source,

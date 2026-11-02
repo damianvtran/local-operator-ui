@@ -22,6 +22,8 @@ const bundle = await build({
 			export {TeamBridgeMessageList} from './src/renderer/src/features/team-bridge/team-bridge-message-list';
 			export {renderToStaticMarkup} from 'react-dom/server';
 			export {MentionSourceContext} from './src/renderer/src/features/team-bridge/mentions/mention-context';
+			export {MentionHighlightOverlay} from './src/renderer/src/features/team-bridge/mentions/mention-highlight-overlay';
+			export {TeamBridgeMentionProvider} from './src/renderer/src/features/team-bridge/mentions/mention-source';
 			export {stagedMentions} from './src/renderer/src/features/team-bridge/mentions/mention-outbox';
 			export {createRoot} from 'react-dom/client';
 			export {QueryClient, QueryClientProvider} from '@tanstack/react-query';
@@ -96,6 +98,52 @@ try {
  */
 const queryClient = new mod.QueryClient({
 	defaultOptions: { queries: { retry: false } },
+});
+
+test("mention activation preserves the mounted draft subtree through conversation handoff", async () => {
+	const host = document.createElement("div");
+	document.body.append(host);
+	const root = mod.createRoot(host);
+	const conversation = {
+		id: "bcv_handoff",
+		tenant_id: "tnt_1",
+		kind: "dm",
+		members: [],
+	};
+	const render = (value) =>
+		mod.act(async () => {
+			root.render(
+				mod.createElement(
+					mod.TeamBridgeMentionProvider,
+					{
+						conversation: value,
+						people: [],
+						selfAccountId: "acct_self",
+						sendMentions: false,
+					},
+					mod.createElement(
+						"ol",
+						null,
+						mod.createElement("li", null, "Pending message"),
+					),
+				),
+			);
+		});
+	try {
+		await render(null);
+		const atPress = host.querySelector("li");
+		assert.ok(atPress);
+		await render(conversation);
+		// Never pass React-backed DOM objects as assertion operands: on failure
+		// their diagnostic serialization can exhaust the entire worker's memory.
+		assert.equal(host.querySelector("li") === atPress, true);
+		assert.equal(host.querySelectorAll("li").length, 1);
+		await render(null);
+		assert.equal(host.querySelector("li") === atPress, true);
+	} finally {
+		await mod.act(async () => root.unmount());
+		host.remove();
+	}
 });
 
 const CONVERSATION = "bcv_mentions01";
@@ -712,6 +760,10 @@ test("message bodies highlight mentions; the reader's own is the stronger token"
 						...rootMessage,
 						id: "bcmsg_m1",
 						body: "@Ben Tran and @Damian Tran: `@Ben Tran` in code",
+						mentions: [
+							{ kind: "human", account_id: "acct_ben" },
+							{ kind: "human", account_id: "acct_self" },
+						],
 					},
 				],
 				labelFor: (s) => s.display_label,
@@ -720,6 +772,24 @@ test("message bodies highlight mentions; the reader's own is the stronger token"
 	);
 	assert.match(html, MENTION_OTHER);
 	assert.match(html, MENTION_VIEWER);
+	// Freeze the shipped message classes independently of composer geometry.
+	const rendered = new JSDOM(html);
+	try {
+		assert.equal(
+			rendered.window.document
+				.querySelector('[data-mention="other"]')
+				.getAttribute("class"),
+			"team-bridge-mention rounded-sm px-0.5 font-medium bg-accent-wash text-accent",
+		);
+		assert.equal(
+			rendered.window.document
+				.querySelector('[data-mention="viewer"]')
+				.getAttribute("class"),
+			"team-bridge-mention rounded-sm px-0.5 font-medium bg-warning-wash text-warning",
+		);
+	} finally {
+		rendered.window.close();
+	}
 	assert.equal(
 		(html.match(MENTION_ANY) ?? []).length,
 		2,
@@ -736,4 +806,71 @@ test("message bodies highlight mentions; the reader's own is the stronger token"
 		false,
 		"no mention source, no highlight",
 	);
+});
+
+// jsdom cannot prove layout; the Storybook play measures each glyph. This guards
+// the borderless class contract and account-based washes on the actual overlay.
+test("composer highlights use borderless washes and retain silent underlines", () => {
+	const text = "@Other @Viewer @Agent";
+	const tokens = [
+		{
+			start: 0,
+			end: 6,
+			label: "Other",
+			kind: "human",
+			accountId: "acct_other",
+			notify: true,
+		},
+		{
+			start: 7,
+			end: 14,
+			label: "Viewer",
+			kind: "human",
+			accountId: "acct_self",
+			notify: true,
+		},
+		{
+			start: 15,
+			end: 21,
+			label: "Agent",
+			kind: "agent",
+			accountId: "acct_self",
+			notify: false,
+		},
+	];
+	const html = mod.renderToStaticMarkup(
+		mod.createElement(
+			mod.MentionSourceContext.Provider,
+			{
+				value: {
+					self: { accountId: "acct_self", label: "Not a matching name" },
+				},
+			},
+			mod.createElement(mod.MentionHighlightOverlay, {
+				fieldRef: { current: null },
+				text,
+				tokens,
+			}),
+		),
+	);
+	const document = new JSDOM(html).window.document;
+	const pills = document.querySelectorAll("[data-mention-pill]");
+	assert.equal(pills.length, 3);
+	for (const pill of pills) {
+		assert.ok(pill.classList.contains("px-0.5"));
+		assert.ok(pill.classList.contains("-mx-0.5"));
+		assert.ok(
+			[...pill.classList].every(
+				(name) =>
+					!["border-", "ring-", "outline-", "shadow-"].some((prefix) =>
+						name.startsWith(prefix),
+					),
+			),
+		);
+	}
+	assert.ok(pills[0].classList.contains("bg-accent-wash"));
+	assert.ok(pills[1].classList.contains("bg-warning-wash"));
+	assert.ok(pills[2].classList.contains("bg-warning-wash"));
+	assert.ok(pills[2].classList.contains("decoration-dashed"));
+	document.defaultView.close();
 });

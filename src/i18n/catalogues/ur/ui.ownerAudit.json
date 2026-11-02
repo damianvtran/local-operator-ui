@@ -11,6 +11,8 @@
 	"ui.ownerAudit.agent": "چیف آف اسٹاف",
 	"ui.ownerAudit.more": "مزید لوڈ کریں",
 	"ui.ownerAudit.older": "پرانے پیغامات لوڈ کریں",
+	"ui.ownerAudit.older_replies": "پرانے جوابات لوڈ کریں",
+	"ui.ownerAudit.empty_replies": "اس آڈٹ کی مدت میں کوئی جواب نہیں ہے۔",
 	"ui.ownerAudit.page_cutoff": "پرانے پیغامات ابھی تک نہیں دکھائے گئے۔ پرانے پیغامات لوڈ کریں تاکہ آپ پڑھ سکیں کہ پہلے کیا تھا۔",
 	"ui.ownerAudit.admitted": "آپ کے چیف آف اسٹاف نے قبول کیا",
 	"ui.ownerAudit.rejected": "آپ کے چیف آف اسٹاف کی جانچ نے مسترد کیا",
@@ -26,5 +28,10 @@
 	"ui.ownerAudit.window_unconfirmed": "اس آڈٹ کا اختتام نامعلوم ہے۔ اس گفتگو میں آپ کے چیف آف اسٹاف کی رکنیت کی تصدیق نہیں ہو سکی۔",
 	"ui.ownerAudit.disclosure": "آپ یہ آڈٹ پڑھ سکتے ہیں کیونکہ جس چیف آف اسٹاف کا یہ آڈٹ ہے، اس کے مالک آپ ہیں۔ دیگر ارکان کو بتایا جاتا ہے کہ ایجنٹ کے مالکان اس گفتگو کا آڈٹ کر سکتے ہیں۔",
 	"ui.ownerAudit.viewers_label": "یہ افراد بھی پڑھ سکتے ہیں",
-	"ui.ownerAudit.replies": "تھریڈ کے جوابات پڑھیں"
+	"ui.ownerAudit.replies": "تھریڈ کے جوابات پڑھیں",
+	"ui.ownerAudit.auth_required": "آڈٹ شدہ پیغامات پڑھنے کے لیے سائن ان کریں۔ ممکن ہے آپ کے سیشن کی میعاد ختم ہو گئی ہو۔",
+	"ui.ownerAudit.permission_refused": "آپ کو اس آڈٹ کی سرگزشت تک رسائی حاصل نہیں ہے۔",
+	"ui.ownerAudit.not_found": "یہ آڈٹ شدہ گفتگو نہیں مل سکی۔",
+	"ui.ownerAudit.unavailable": "آڈٹ سروس یہ پیغامات لوڈ نہیں کر سکی۔ دوبارہ کوشش کریں۔",
+	"ui.ownerAudit.sign_in": "سائن ان کریں"
 }

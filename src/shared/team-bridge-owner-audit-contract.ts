@@ -124,6 +124,8 @@ export const ownerAuditThreadSchema = z
 		root: ownerAuditMessageSchema,
 		replies: z.array(ownerAuditMessageSchema),
 		next_after_seq: nullableSeq,
+		next_before_seq: z.number().int().positive().nullish(),
+		order: z.enum(["asc", "desc"]).optional(),
 		has_more: z.boolean().default(false),
 	})
 	.passthrough();
