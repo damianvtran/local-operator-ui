@@ -81,6 +81,9 @@ const DOCUMENT_SCOPED: ReadonlySet<string> = new Set([
 	"click",
 	"type",
 	"press",
+	// `hover` dispatches page events at the CURRENT document and reports its hit
+	// stack, so it is authorized on entry and on the result exactly like `click`.
+	"hover",
 	"scroll",
 	"logs",
 	// `download` names a control on the CURRENT document (the link or button that
@@ -176,6 +179,13 @@ const NAVIGATING_ACTIONS: ReadonlySet<string> = new Set([
  * which is judged by the same pair. Arming `Fetch.enable` around an attach would
  * intercept that form's own POST and its subresources for no consent gain, which
  * is the side effect this set exists to avoid.
+ *
+ * `hover` IS IN NEITHER THIS SET NOR NAVIGATING_ACTIONS, deliberately: it sends one
+ * pointer move with no button, which cannot follow a link or submit a form, so there
+ * is no agent-initiated hop for the per-hop gate to decide (and arming `Fetch.enable`
+ * would fail the page's own subresource loads for no consent gain). A page whose own
+ * hover handler navigates away is the "navigated while this action was running"
+ * refusal in `authorizedPerform`, as for any autonomous navigation during a read.
  */
 const NAVIGATION_ACTIONS: ReadonlySet<string> = new Set([
 	"click",
@@ -196,6 +206,7 @@ const TAB_SCOPED: ReadonlySet<string> = new Set([
 	"click",
 	"type",
 	"press",
+	"hover",
 	"scroll",
 	"logs",
 	"close",
@@ -755,6 +766,8 @@ export class BrowserHost implements BrowserActionContext {
 				return inputActions.type(this, params);
 			case "press":
 				return inputActions.press(this, params);
+			case "hover":
+				return inputActions.hover(this, params);
 			case "download":
 				return downloadActions.download(this, params);
 			case "upload":

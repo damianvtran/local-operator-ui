@@ -123,6 +123,12 @@ export const METHODS = [
 	// comparable by eye (D8).
 	"record_start",
 	"record_stop",
+	// Pointer-move without a press (hover-revealed menus, row actions, tooltips).
+	// APPENDED rather than placed beside `press`, so no existing method's index
+	// moves: the Python mirror appends it after `record_stop` too. Hosts advertise
+	// it in HOST_CAPABILITIES (beside `press`), which is what lets the harness
+	// refuse it on an app that predates it instead of sending an unknown method.
+	"hover",
 ] as const;
 
 export type Method = (typeof METHODS)[number];
@@ -152,6 +158,8 @@ export const COMMAND_TIMEOUTS_S: Record<Method, number> = {
 	click: 25.0,
 	type: 25.0,
 	press: 25.0,
+	// A pointer move plus a short settle: no navigation, no wait on the page.
+	hover: 20.0,
 	read: 20.0,
 	snapshot: 20.0,
 	screenshot: 20.0,
@@ -228,6 +236,7 @@ export const ERROR_CODES = [
 	// policy refusal travels as an `ok: true` result here.
 	"capability_unsupported",
 	// Paired with the core press follow-up before callers use this new method.
+	// Also the refusal for a `press` chord outside the grammar (press-chord.ts).
 	"unsupported_key",
 	"internal",
 	// The console namespace's own additions (design 10.6). Spread rather than copied
@@ -328,6 +337,9 @@ export const HOST_CAPABILITIES: readonly Method[] = [
 	// Desktop-only trusted keys. Core must capability-gate extension/cmux and
 	// older desktop hosts instead of sending them an unknown method.
 	"press",
+	// `hover` rides the same list as `press` for the same reason: desktop-only, and
+	// the extension/cmux hosts and older desktop apps must be refused by capability.
+	"hover",
 	// Session-scoped network capture. DESKTOP-ONLY: the extension's debugger is
 	// attached only for the duration of an action, so it holds no standing session
 	// to keep a `Network` subscription on. The backend therefore gates these four

@@ -7775,6 +7775,7 @@ test("/health carries the capabilities this build serves", async () => {
 		"download",
 		"upload",
 		"press",
+		"hover",
 		"network_start",
 		"network_stop",
 		"network_read",
@@ -11931,9 +11932,12 @@ test("press validation refuses arbitrary keys and modifier syntax before any inp
 		"",
 		"tab",
 		"Shift",
-		"Ctrl+Tab",
-		"Shift+Enter",
-		"a",
+		// Not refused any more (the chord grammar admits them), so they are NOT
+		// here: Ctrl+Tab, Shift+Enter, a. The refusals below are what stays closed.
+		"Ctrl+Nope",
+		"Shift+Shift+a",
+		"ab",
+		"hunter2-hunter2",
 		"__proto__",
 	]) {
 		await assert.rejects(
@@ -12103,16 +12107,350 @@ test("press unsupported_key crosses the real RPC envelope without becoming inter
 			body: JSON.stringify({
 				id: "unsupported",
 				method: "press",
-				params: { tab: opened.tab, key: "Ctrl+Tab" },
+				params: { tab: opened.tab, key: "Ctrl+Nope" },
 			}),
 		});
 		assert.equal(response.status, 200);
 		const body = await response.json();
 		assert.equal(body.ok, false);
 		assert.equal(body.error.code, "unsupported_key");
-		assert.equal(body.error.message, "unsupported key: Ctrl+Tab");
-		assert.equal(body.error.data.key, "Ctrl+Tab");
+		assert.equal(body.error.message, "unsupported key: Ctrl+Nope");
+		assert.equal(body.error.data.key, "Ctrl+Nope");
 	} finally {
 		await server.close();
 	}
+});
+
+// ---- press chords and hover (harness issue #3248) ---------------------------
+
+test("press admits chords: modifiers ride ONE key pair, and a shortcut carries no text", async () => {
+	for (const [key, expected, canonical] of [
+		[
+			"Control+K",
+			{ key: "k", code: "KeyK", windowsVirtualKeyCode: 75, modifiers: 2 },
+			"Control+K",
+		],
+		[
+			"cmd+k",
+			{ key: "k", code: "KeyK", windowsVirtualKeyCode: 75, modifiers: 4 },
+			"Meta+k",
+		],
+		[
+			"Ctrl+Shift+ArrowLeft",
+			{
+				key: "ArrowLeft",
+				code: "ArrowLeft",
+				windowsVirtualKeyCode: 37,
+				modifiers: 10,
+			},
+			"Control+Shift+ArrowLeft",
+		],
+		[
+			"e",
+			{
+				key: "e",
+				code: "KeyE",
+				windowsVirtualKeyCode: 69,
+				modifiers: 0,
+				text: "e",
+				unmodifiedText: "e",
+			},
+			"e",
+		],
+		[
+			"F5",
+			{ key: "F5", code: "F5", windowsVirtualKeyCode: 116, modifiers: 0 },
+			"F5",
+		],
+	]) {
+		const { host, cdp, registry } = makeHost();
+		const opened = await openPressTab(host);
+		const contents = registry.requireSurface(opened.tab).view.webContents;
+		contents.focus = () => assert.fail("press must not focus OS contents");
+		cdp.calls.length = 0;
+		const result = await host.dispatch(
+			"press",
+			{ tab: opened.tab, key },
+			"press",
+		);
+		assert.equal(
+			result.key,
+			canonical,
+			`${key} reports its canonical spelling`,
+		);
+		const keys = cdp.calls.filter(
+			(call) => call.method === "Input.dispatchKeyEvent",
+		);
+		assert.deepEqual(
+			keys.map((call) => call.params),
+			["keyDown", "keyUp"].map((type) => ({
+				...Object.fromEntries(
+					Object.entries(expected).filter(
+						([field]) =>
+							type === "keyDown" || !["text", "unmodifiedText"].includes(field),
+					),
+				),
+				type,
+			})),
+			key,
+		);
+		assert.ok(
+			!cdp.calls.some((call) => call.method.startsWith("Input.dispatchMouse")),
+		);
+	}
+});
+
+test("press with a selector focuses the element first, refuses one that will not take focus, and sends nothing then", async () => {
+	const { host, cdp } = makeHost();
+	const opened = await openPressTab(host);
+	const send = cdp.send;
+	let focusAnswer = true;
+	cdp.send = async (contents, method, params) => {
+		if (method === "DOM.resolveNode") {
+			cdp.calls.push({ method, params });
+			return { object: { objectId: "obj-1" } };
+		}
+		if (
+			method === "Runtime.callFunctionOn" &&
+			String(params?.functionDeclaration ?? "").includes("preventScroll")
+		) {
+			cdp.calls.push({ method, params });
+			return { result: { value: focusAnswer } };
+		}
+		return send(contents, method, params);
+	};
+	cdp.calls.length = 0;
+	await host.dispatch(
+		"press",
+		{ tab: opened.tab, key: "e", selector: "#item" },
+		"press",
+	);
+	const order = cdp.calls.map((call) => call.method);
+	assert.ok(
+		order.indexOf("Runtime.callFunctionOn") <
+			order.indexOf("Input.dispatchKeyEvent"),
+		`focus precedes the key: ${order.join(",")}`,
+	);
+	const focusCall = cdp.calls.find(
+		(call) => call.method === "Runtime.callFunctionOn",
+	);
+	assert.ok(
+		!focusCall.params.functionDeclaration.includes("not_editable"),
+		"focus does not require an editable (that is type's check)",
+	);
+	focusAnswer = false;
+	cdp.calls.length = 0;
+	await assert.rejects(
+		host.dispatch(
+			"press",
+			{ tab: opened.tab, key: "e", selector: "#item" },
+			"press",
+		),
+		(error) =>
+			error.code === "element_not_found" &&
+			/cannot take focus/.test(error.message),
+	);
+	assert.ok(!cdp.calls.some((call) => call.method.startsWith("Input.")));
+});
+
+test("hover is in the wire vocabulary, advertised beside press, lane-scoped, and not a navigating action", async () => {
+	assert.ok(METHODS.includes("hover"));
+	assert.ok(isMethod("hover"));
+	assert.equal(
+		METHODS.at(-1),
+		"hover",
+		"appended: no existing method's index moved",
+	);
+	assert.ok(HOST_CAPABILITIES.includes("hover"));
+	assert.equal(
+		HOST_CAPABILITIES.indexOf("hover"),
+		HOST_CAPABILITIES.indexOf("press") + 1,
+	);
+	assert.equal(COMMAND_TIMEOUTS_S.hover, 20);
+	// Behavioural proof of set membership, not a source grep: TAB_SCOPED puts it in
+	// the per-tab lane (a second concurrent command is refused as `busy`), and it
+	// arms NO per-hop gate (`Fetch.enable`), which click/type/press do.
+	const { host, cdp } = makeHost();
+	const opened = await openPressTab(host);
+	cdp.calls.length = 0;
+	await host
+		.dispatch("hover", { tab: opened.tab, x: 10, y: 20 }, "hover")
+		.catch(() => undefined);
+	assert.ok(
+		!cdp.calls.some((call) => call.method === "Fetch.enable"),
+		"no per-hop gate around hover",
+	);
+	assert.ok(
+		cdp.calls.some((call) => call.method === "Input.dispatchMouseEvent"),
+	);
+});
+
+test("hover refuses selector+coordinates, a lone coordinate and nothing, before any page work", async () => {
+	const { host, cdp } = makeHost();
+	const opened = await openPressTab(host);
+	for (const params of [
+		{ selector: "#a", x: 1, y: 2 },
+		{ ref: "e1", x: 1, y: 2 },
+		{ selector: "#a", x: 1 },
+		{ x: 1 },
+		{ y: 2 },
+		{},
+		{ x: "1", y: "2" },
+		{ x: Number.NaN, y: 2 },
+	]) {
+		cdp.calls.length = 0;
+		await assert.rejects(
+			host.dispatch("hover", { tab: opened.tab, ...params }, "hover"),
+			(error) =>
+				error.code === "internal" &&
+				error.data.reason === "invalid_arguments" &&
+				typeof error.data.param === "string",
+			JSON.stringify(params),
+		);
+		assert.equal(
+			cdp.calls.length,
+			0,
+			`${JSON.stringify(params)} touched the page`,
+		);
+	}
+});
+
+test("hover by position sends ONE buttonless mouseMoved and reports the hit_test descriptor", async () => {
+	const { host, cdp, registry } = makeHost();
+	const opened = await openPressTab(host);
+	const contents = registry.requireSurface(opened.tab).view.webContents;
+	contents.isolatedResult = {
+		count: 1,
+		elements: [{ tag: "li", id: "row-1" }],
+	};
+	contents.focus = () => assert.fail("hover must not focus OS contents");
+	cdp.calls.length = 0;
+	const result = await host.dispatch(
+		"hover",
+		{ tab: opened.tab, x: 40.5, y: 90 },
+		"hover",
+	);
+	const moves = cdp.calls.filter(
+		(call) => call.method === "Input.dispatchMouseEvent",
+	);
+	assert.deepEqual(
+		moves.map((call) => call.params),
+		[
+			{
+				type: "mouseMoved",
+				x: 40.5,
+				y: 90,
+				button: "none",
+				buttons: 0,
+				pointerType: "mouse",
+			},
+		],
+	);
+	assert.equal(result.x, 40.5);
+	assert.equal(result.y, 90);
+	assert.deepEqual(result.hit, contents.isolatedResult);
+	assert.equal(result.url, "https://press.example/");
+	assert.ok(
+		!cdp.calls.some((call) =>
+			["Fetch.enable", "Input.dispatchKeyEvent"].includes(call.method),
+		),
+	);
+});
+
+test("hover by selector scrolls first, points at the box centre, and refuses a box-less element without moving", async () => {
+	const { host, cdp, registry } = makeHost();
+	const opened = await openPressTab(host);
+	registry.requireSurface(opened.tab).view.webContents.isolatedResult = {
+		count: 1,
+		elements: [],
+	};
+	const send = cdp.send;
+	let centre = { x: 100.004, y: 200.996 };
+	cdp.send = async (contents, method, params) => {
+		if (method === "DOM.resolveNode") {
+			cdp.calls.push({ method, params });
+			return { object: { objectId: "obj-1" } };
+		}
+		if (
+			method === "Runtime.callFunctionOn" &&
+			String(params?.functionDeclaration ?? "").includes(
+				"getBoundingClientRect",
+			)
+		) {
+			cdp.calls.push({ method, params });
+			return { result: { value: centre } };
+		}
+		return send(contents, method, params);
+	};
+	cdp.calls.length = 0;
+	const result = await host.dispatch(
+		"hover",
+		{ tab: opened.tab, selector: "#row-1" },
+		"hover",
+	);
+	const order = cdp.calls.map((call) => call.method);
+	assert.ok(
+		order.indexOf("DOM.scrollIntoViewIfNeeded") <
+			order.indexOf("Input.dispatchMouseEvent"),
+	);
+	assert.equal(result.x, 100);
+	assert.equal(result.y, 201);
+	centre = null;
+	cdp.calls.length = 0;
+	await assert.rejects(
+		host.dispatch("hover", { tab: opened.tab, selector: "#hidden" }, "hover"),
+		(error) =>
+			error.code === "element_not_found" && /no box/.test(error.message),
+	);
+	assert.ok(
+		!cdp.calls.some((call) => call.method === "Input.dispatchMouseEvent"),
+	);
+});
+
+test("hover retains missing-tab, owner proof, generation, foreign-owner and origin fences", async () => {
+	const { host, registry, cdp } = makeHost();
+	const owner = {
+		requester: "session:press",
+		owner_proof: "p".repeat(40),
+		owner_generation: "g1",
+		allocation_id: "alloc",
+	};
+	const opened = await openPressTab(host, owner);
+	cdp.calls.length = 0;
+	for (const override of [
+		{ owner_generation: "stale" },
+		{ owner_proof: "short" },
+		{ requester: "session:foreign" },
+		{ requester: "session:foreign", owner_proof: "q".repeat(40) },
+	]) {
+		await assert.rejects(
+			host.dispatch(
+				"hover",
+				{ ...owner, tab: opened.tab, x: 1, y: 2, ...override },
+				"hover",
+			),
+			{ code: "owner_refused" },
+		);
+	}
+	await assert.rejects(
+		host.dispatch("hover", { ...owner, x: 1, y: 2 }, "missing"),
+		{
+			code: "tab_closed",
+		},
+	);
+	await assert.rejects(
+		host.dispatch(
+			"hover",
+			{ ...owner, tab: "ui:missing", x: 1, y: 2 },
+			"closed",
+		),
+		{ code: "tab_closed" },
+	);
+	registry.requireSurface(opened.tab).view.webContents.url =
+		"https://unapproved.example/";
+	await assert.rejects(
+		host.dispatch("hover", { ...owner, tab: opened.tab, x: 1, y: 2 }, "origin"),
+		{ code: "origin_not_allowed" },
+	);
+	assert.ok(!cdp.calls.some((call) => call.method.startsWith("Input.")));
 });
