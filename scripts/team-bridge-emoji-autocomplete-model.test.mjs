@@ -110,7 +110,11 @@ test("U2: ranking is explicit alias, exact name, name word-prefix, then keyword"
 
 test("U1: the list opens only for 2+ characters with a letter, or an explicit alias", () => {
 	const gate = createEmojiQueryGate();
-	for (const query of ["", "D", "P", "o", "30", "3", "__"])
+	assert.ok(
+		"x" in BRIDGE_EMOJI_ALIASES,
+		"U7 premise: a one-letter alias exists",
+	);
+	for (const query of ["", "D", "P", "o", "30", "3", "__", "x", "X"])
 		assert.equal(gate(query), false, JSON.stringify(query));
 	for (const query of ["+1", "-1", "100", "fi", "smile", "笑顔"])
 		assert.equal(gate(query), true, JSON.stringify(query));

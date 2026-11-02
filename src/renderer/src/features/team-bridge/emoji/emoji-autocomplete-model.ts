@@ -114,13 +114,19 @@ const HAS_LETTER = /\p{L}/u;
  * Operator rule: no automatic destructive replacement of prose. Emoticons and
  * colon-terminated prose (`:D`, `:P`, `:o`, `list :`, `10 :30`) must leave Enter
  * as a plain send, so the list waits for two characters including a letter.
- * Explicit aliases are the deliberate exception: `:+1` / `:-1` have no letter
- * yet are unambiguous shortcodes.
+ * Letter-free explicit aliases are the deliberate exception: `:+1`, `:-1`
+ * and `:100` have no letter yet are unambiguous shortcodes.
  */
 export function createEmojiQueryGate(
 	registry: Readonly<Record<string, readonly string[]>> = BRIDGE_EMOJI_ALIASES,
 ) {
-	const explicit = new Set(Object.keys(registry).map(normalizeEmojiAlias));
+	// Only letter-free aliases may bypass the gate. A one-letter alias such as
+	// `x` is indistinguishable from prose (`nope :x`) and must meet the rule.
+	const explicit = new Set(
+		Object.keys(registry)
+			.map(normalizeEmojiAlias)
+			.filter((alias) => !HAS_LETTER.test(alias)),
+	);
 	return (query: string): boolean => {
 		if (explicit.has(normalizeEmojiAlias(query))) return true;
 		return Array.from(query).length >= 2 && HAS_LETTER.test(query);

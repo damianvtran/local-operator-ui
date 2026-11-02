@@ -1242,7 +1242,17 @@ test("emoji R1: compositionstart closes an already-open popup and a later click/
 	}
 });
 
-for (const text of [":", "list :", ":D", ":P", ":o", "10 :30"]) {
+// U7: one-letter aliases (`x`) are prose too and must not bypass the gate.
+for (const text of [
+	":",
+	"list :",
+	":D",
+	":P",
+	":o",
+	"10 :30",
+	"nope :x",
+	"shh :X",
+]) {
 	test(`emoji U1: ${JSON.stringify(text)} never opens and Enter sends it unchanged`, async () => {
 		const ui = await mount();
 		try {
@@ -1258,14 +1268,45 @@ for (const text of [":", "list :", ":D", ":P", ":o", "10 :30"]) {
 	});
 }
 
-test("emoji U1: explicit no-letter aliases :+1 / :-1 still open", async () => {
+for (const [query, cp] of [
+	[":+1", 0x1f44d],
+	[":-1", 0x1f44e],
+	[":100", 0x1f4af],
+]) {
+	test(`emoji U1/U7: letter-free alias ${query} still opens and inserts`, async () => {
+		const ui = await mount();
+		try {
+			await ui.input(query, "insertText");
+			assert.ok(document.querySelector("[data-emoji-popover]"));
+			await ui.key("Enter");
+			assert.equal(ui.field.value, String.fromCodePoint(cp));
+			assert.equal(ui.sent.length, 0);
+		} finally {
+			await ui.unmount();
+		}
+	});
+}
+
+test("emoji R2-1: Escape stays dismissed for the token across an IME round-trip", async () => {
 	const ui = await mount();
+	const composition = (type) =>
+		mod.act(async () =>
+			ui.field.dispatchEvent(new dom.window.Event(type, { bubbles: true })),
+		);
 	try {
-		await ui.input(":+1", "insertText");
-		assert.ok(document.querySelector("[data-emoji-popover]"));
-		await ui.key("Enter");
-		assert.equal(ui.field.value, String.fromCodePoint(0x1f44d));
-		assert.equal(ui.sent.length, 0);
+		await ui.input(":sm", "insertText");
+		assert.ok(document.querySelector("[data-emoji-popover]"), "open first");
+		await ui.key("Escape");
+		await composition("compositionstart");
+		await composition("compositionend");
+		await ui.input(":smi", "insertText");
+		assert.ok(
+			!document.querySelector("[data-emoji-popover]"),
+			"same token must stay dismissed",
+		);
+		// A new token still reopens: dismissal is per token, not permanent.
+		await ui.input(":smi :fi", "insertText");
+		assert.ok(document.querySelector("[data-emoji-popover]"), "new token");
 	} finally {
 		await ui.unmount();
 	}

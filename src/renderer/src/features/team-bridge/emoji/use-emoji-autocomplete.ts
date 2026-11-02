@@ -104,8 +104,15 @@ export function useEmojiAutocomplete(input: {
 		// During the text commit the field owner has not adopted its ref-only
 		// native intent yet. That transient null query must not undo Escape.
 		if (intent && intent.text !== text) return;
-		if (query === null || `${draftKey}:${query.start}` !== dismissedAt)
-			setDismissedAt(null);
+		// IME composition retires the intent (R1), which nulls the query without
+		// the token changing; that must not undo Escape for the same token (R2-1).
+		// A real non-composing edit that leaves no query (the token was deleted)
+		// still resets, as does a query starting elsewhere or a draft switch.
+		const reset =
+			query === null
+				? intent !== null && !intent.composing
+				: `${draftKey}:${query.start}` !== dismissedAt;
+		if (reset) setDismissedAt(null);
 	}, [query, draftKey, dismissedAt, intent, text]);
 	// A query below the gate (`:`, `:D`, `10 :30`) is not dismissed, just not
 	// offered: Enter stays a plain send and the next letter can still open it.
