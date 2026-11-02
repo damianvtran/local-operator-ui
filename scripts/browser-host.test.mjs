@@ -7778,7 +7778,140 @@ test("/health carries the capabilities this build serves", async () => {
 		"network_stop",
 		"network_read",
 		"network_clear",
+		"record_start",
+		"record_stop",
 	]);
+});
+
+test("a record_start whose answer is refused aborts the capture it began", async () => {
+	// The result-side document assertion runs AFTER `record_start` has already
+	// registered a capture (review N5). If it refuses the answer, the footage the
+	// refusal is about must not keep recording into an approved path.
+	const { host, registry, cdp } = makeHost();
+	const dir = mkdtempSync(join(root, "record-refused-"));
+	const params = {
+		url: "https://approved.example/",
+		requester: "session:alice",
+	};
+	await host.dispatch("request_access", params, "request");
+	host.respondToConsent(host.chromeState().pendingConsent[0].entryId, "site");
+	const opened = await host.dispatch("open", params, "open");
+	const record = registry.requireSurface(opened.tab);
+	const originalSend = cdp.send;
+	cdp.send = async (contents, method, sendParams, options) => {
+		if (method === "Page.startScreenRecording") {
+			// The page leaves for an unapproved origin while the start is in flight,
+			// which is exactly what the result-side check discards the answer for.
+			record.view.webContents.url = "https://forbidden.example/";
+			registry.bumpEpoch(record.tabId);
+		}
+		if (method === "Page.stopScreenRecording") {
+			cdp.calls.push({ method, params: sendParams });
+			return { stream: "s-refused" };
+		}
+		return originalSend(contents, method, sendParams, options);
+	};
+	await assert.rejects(
+		() =>
+			host.dispatch(
+				"record_start",
+				{ ...params, tab: opened.tab, path: join(dir, "clip.mp4") },
+				"rec",
+			),
+		(error) => error.code === "origin_not_allowed",
+	);
+	cdp.send = originalSend;
+	// F1: dropping the bookkeeping is not enough — Chromium's recorder has to be
+	// stopped, or the next start on this tab is refused with "Screencast is
+	// already active". The stop and the stream close must both have been sent.
+	assert.ok(
+		cdp.calls.some((call) => call.method === "Page.stopScreenRecording"),
+		"the refused start's recorder was stopped",
+	);
+	assert.ok(
+		cdp.calls.some(
+			(call) =>
+				call.method === "IO.close" && call.params?.handle === "s-refused",
+		),
+		"and its stream was closed",
+	);
+	await assert.rejects(
+		() => host.dispatch("record_stop", { ...params, tab: opened.tab }, "stop"),
+		(error) => error.data?.reason === "record_not_active",
+	);
+	assert.equal(existsSync(join(dir, "clip.mp4")), false);
+});
+
+test("record_start and record_stop share the tab's command lane", async () => {
+	// Review round 1, MINOR 2: dropping both verbs from TAB_SCOPED left every test
+	// green, so "the two verbs serialise on one tab" was a comment, not a pin. The
+	// lane does not queue; it refuses the second command with `busy`. So while a
+	// start is in flight, an overlapping stop AND an overlapping second start on the
+	// same tab must both read `busy` (and send no CDP call), and the tab is usable
+	// again once the start lands.
+	const { host, cdp } = makeHost();
+	const dir = mkdtempSync(join(root, "record-lane-"));
+	const params = {
+		url: "https://approved.example/",
+		requester: "session:alice",
+	};
+	await host.dispatch("request_access", params, "request");
+	host.respondToConsent(host.chromeState().pendingConsent[0].entryId, "site");
+	const opened = await host.dispatch("open", params, "open");
+	const originalSend = cdp.send;
+	let releaseStart = () => {};
+	const startHeld = new Promise((resolve) => {
+		releaseStart = resolve;
+	});
+	let startEntered = () => {};
+	const startIsInFlight = new Promise((resolve) => {
+		startEntered = resolve;
+	});
+	cdp.send = async (contents, method, sendParams, options) => {
+		if (method === "Page.startScreenRecording") {
+			startEntered();
+			await startHeld;
+			return {};
+		}
+		if (method === "Page.stopScreenRecording") return { stream: "s-lane" };
+		return originalSend(contents, method, sendParams, options);
+	};
+	const start = host.dispatch(
+		"record_start",
+		{ ...params, tab: opened.tab, path: join(dir, "lane.mp4") },
+		"lane-start",
+	);
+	await startIsInFlight;
+	// If the lane were missing the overlapping calls could wait on the held start
+	// forever; releasing it on a timer makes that a failed assertion, not a hang.
+	const safety = setTimeout(releaseStart, 1500);
+	const before = cdp.calls.length;
+	await assert.rejects(
+		() => host.dispatch("record_stop", { ...params, tab: opened.tab }, "stop"),
+		(error) => error.code === "busy",
+		"a stop overlapping a start is refused by the tab lane",
+	);
+	await assert.rejects(
+		() =>
+			host.dispatch(
+				"record_start",
+				{ ...params, tab: opened.tab, path: join(dir, "second.mp4") },
+				"lane-second",
+			),
+		(error) => error.code === "busy",
+		"a second start overlapping the first is refused by the tab lane",
+	);
+	assert.equal(cdp.calls.length, before, "the refused calls reached no CDP");
+	clearTimeout(safety);
+	releaseStart();
+	await start;
+	// The lane is free again: the stop now finds the recording the start made.
+	await assert.rejects(
+		() => host.dispatch("record_stop", { ...params, tab: opened.tab }, "stop2"),
+		(error) => error.code !== "busy",
+	);
+	cdp.send = originalSend;
+	assert.equal(existsSync(join(dir, "second.mp4")), false);
 });
 
 test("the state file carries the same list, from the same constant", () => {
@@ -11701,4 +11834,284 @@ test("page controls work while an app overlay hides the view, and only then (Q2-
 		() => host.controlPage(id, "open"),
 		/no longer presented/,
 	);
+});
+
+// press shares the existing owned-tab fixture: these are CDP contract tests,
+// not a claim that Chromium delivers keys to a hidden native view.
+async function openPressTab(host, owner = {}) {
+	const params = {
+		...owner,
+		url: "https://press.example/",
+		requester: owner.requester ?? "session:press",
+	};
+	await host.dispatch("request_access", params, "request");
+	host.respondToConsent(host.chromeState().pendingConsent[0].entryId, "site");
+	return host.dispatch("open", params, "open");
+}
+
+test("press closed wire admits the method and preserves unsupported_key", async () => {
+	assert.ok(METHODS.includes("press"));
+	assert.equal(METHODS.indexOf("press"), METHODS.indexOf("type") + 1);
+	assert.ok(ERROR_CODES.includes("unsupported_key"));
+	assert.ok(HOST_CAPABILITIES.includes("press"));
+	assert.equal(COMMAND_TIMEOUTS_S.press, 25);
+});
+
+for (const [key, code, virtualKeyCode, modifiers] of [
+	["Tab", "Tab", 9, 0],
+	["Shift+Tab", "Tab", 9, 8],
+	["Enter", "Enter", 13, 0],
+	["Escape", "Escape", 27, 0],
+	["ArrowUp", "ArrowUp", 38, 0],
+	["ArrowDown", "ArrowDown", 40, 0],
+	["ArrowLeft", "ArrowLeft", 37, 0],
+	["ArrowRight", "ArrowRight", 39, 0],
+]) {
+	test(`press ${key} dispatches only the named native key pair to the owned contents`, async () => {
+		const { host, registry, cdp } = makeHost();
+		const owner = {
+			requester: "session:press",
+			owner_proof: "p".repeat(40),
+			owner_generation: "press-g1",
+			allocation_id: "press-allocation",
+		};
+		const opened = await openPressTab(host, owner);
+		const record = registry.requireSurface(opened.tab);
+		const contents = record.view.webContents;
+		const visibility = [...record.view.visibility];
+		contents.focus = () => assert.fail("press must not focus OS contents");
+		const originalSend = cdp.send;
+		const keys = [];
+		cdp.send = async (target, method, params) => {
+			if (method.startsWith("Input.")) keys.push({ target, method, params });
+			return originalSend(target, method, params);
+		};
+		cdp.calls.length = 0;
+		const result = await host.dispatch(
+			"press",
+			{ ...owner, tab: opened.tab, key },
+			"press",
+		);
+		assert.equal(result.key, key);
+		assert.equal(result.navigated, false);
+		assert.deepEqual(record.view.visibility, visibility);
+		assert.deepEqual(
+			keys,
+			["keyDown", "keyUp"].map((type) => ({
+				target: contents,
+				method: "Input.dispatchKeyEvent",
+				params: {
+					key: code,
+					code,
+					windowsVirtualKeyCode: virtualKeyCode,
+					modifiers,
+					type,
+					...(key === "Enter" && type === "keyDown"
+						? { text: "\r", unmodifiedText: "\r" }
+						: {}),
+				},
+			})),
+		);
+		assert.ok(cdp.calls.some((call) => call.method === "Fetch.enable"));
+		assert.ok(cdp.calls.some((call) => call.method === "Fetch.disable"));
+		assert.equal(contents.listenerCount("did-start-navigation"), 0);
+	});
+}
+
+test("press validation refuses arbitrary keys and modifier syntax before any input", async () => {
+	const { host, cdp } = makeHost();
+	const opened = await openPressTab(host);
+	cdp.calls.length = 0;
+	for (const key of [
+		undefined,
+		null,
+		9,
+		{},
+		"",
+		"tab",
+		"Shift",
+		"Ctrl+Tab",
+		"Shift+Enter",
+		"a",
+		"__proto__",
+	]) {
+		await assert.rejects(
+			host.dispatch("press", { tab: opened.tab, key }, "press"),
+			(error) =>
+				error.code === "unsupported_key" && error.message.includes(String(key)),
+		);
+	}
+	assert.ok(!cdp.calls.some((call) => call.method.startsWith("Input.")));
+});
+
+test("press retains missing-tab, owner proof, generation, foreign-owner and origin fences", async () => {
+	const { host, registry, cdp } = makeHost();
+	const owner = {
+		requester: "session:press",
+		owner_proof: "p".repeat(40),
+		owner_generation: "g1",
+		allocation_id: "alloc",
+	};
+	const opened = await openPressTab(host, owner);
+	cdp.calls.length = 0;
+	for (const override of [
+		{ owner_generation: "stale" },
+		{ owner_proof: "short" },
+		{ requester: "session:foreign" },
+		{ requester: "session:foreign", owner_proof: "q".repeat(40) },
+	]) {
+		await assert.rejects(
+			host.dispatch(
+				"press",
+				{ ...owner, tab: opened.tab, key: "Enter", ...override },
+				"press",
+			),
+			{ code: "owner_refused" },
+		);
+	}
+	await assert.rejects(
+		host.dispatch("press", { ...owner, key: "Tab" }, "missing"),
+		{ code: "tab_closed" },
+	);
+	await assert.rejects(
+		host.dispatch(
+			"press",
+			{ ...owner, tab: "ui:missing", key: "Tab" },
+			"closed",
+		),
+		{ code: "tab_closed" },
+	);
+	registry.requireSurface(opened.tab).view.webContents.url =
+		"https://unapproved.example/";
+	await assert.rejects(
+		host.dispatch(
+			"press",
+			{ ...owner, tab: opened.tab, key: "Enter" },
+			"origin",
+		),
+		{ code: "origin_not_allowed" },
+	);
+	assert.ok(!cdp.calls.some((call) => call.method.startsWith("Input.")));
+});
+
+test("press releases after debugger failure without masking the typed failure", async () => {
+	const { host, registry, cdp } = makeHost();
+	const opened = await openPressTab(host);
+	const originalSend = cdp.send;
+	const attempts = [];
+	cdp.send = async (contents, method, params) => {
+		if (method === "Input.dispatchKeyEvent") {
+			attempts.push(params.type);
+			throw Object.assign(new Error("detached"), {
+				code: params.type === "keyDown" ? "debugger_conflict" : "tab_closed",
+			});
+		}
+		return originalSend(contents, method, params);
+	};
+	await assert.rejects(
+		host.dispatch("press", { tab: opened.tab, key: "Shift+Tab" }, "press"),
+		{ code: "debugger_conflict" },
+	);
+	assert.deepEqual(attempts, ["keyDown", "keyUp"]);
+	assert.equal(
+		registry
+			.requireSurface(opened.tab)
+			.view.webContents.listenerCount("did-start-navigation"),
+		0,
+	);
+	assert.ok(cdp.calls.some((call) => call.method === "Fetch.disable"));
+});
+
+test("press keeps the per-hop gate over an asynchronous Enter redirect", async () => {
+	const { host, cdp, registry } = makeHost();
+	const opened = await openPressTab(host);
+	let hop = null;
+	cdp.subscribe = (_id, listener) => {
+		hop = listener;
+		return () => {
+			hop = null;
+		};
+	};
+	const originalSend = cdp.send;
+	const pending = [];
+	cdp.send = async (contents, method, params) => {
+		if (method === "Input.dispatchKeyEvent" && params.type === "keyUp") {
+			pending.push(
+				new Promise((resolve) =>
+					setTimeout(() => {
+						assert.ok(
+							hop,
+							"gate must survive keyUp until navigation grace ends",
+						);
+						hop("Fetch.requestPaused", {
+							requestId: "approved-hop",
+							request: { url: "https://press.example/redirect" },
+						});
+						hop("Fetch.requestPaused", {
+							requestId: "forbidden-hop",
+							request: { url: "https://forbidden.example/" },
+						});
+						resolve();
+					}, 0),
+				),
+			);
+		}
+		return originalSend(contents, method, params);
+	};
+	const result = await host.dispatch(
+		"press",
+		{ tab: opened.tab, key: "Enter" },
+		"press",
+	);
+	await Promise.all(pending);
+	assert.equal(result.url, "https://press.example/");
+	assert.equal(
+		registry.requireSurface(opened.tab).view.webContents.getURL(),
+		result.url,
+	);
+	assert.ok(
+		cdp.calls.some(
+			(call) =>
+				call.method === "Fetch.continueRequest" &&
+				call.params.requestId === "approved-hop",
+		),
+	);
+	assert.ok(
+		cdp.calls.some(
+			(call) =>
+				call.method === "Fetch.failRequest" &&
+				call.params.requestId === "forbidden-hop" &&
+				call.params.errorReason === "BlockedByClient",
+		),
+	);
+	assert.equal(hop, null);
+});
+
+test("press unsupported_key crosses the real RPC envelope without becoming internal", async () => {
+	const { host } = makeHost();
+	const opened = await openPressTab(host);
+	const server = await startRpcServer({
+		key: "press-isolated-key",
+		dispatch: (method, params, id) => host.dispatch(method, params, id),
+		log: () => {},
+	});
+	try {
+		const response = await fetch(`http://127.0.0.1:${server.port}${RPC_PATH}`, {
+			method: "POST",
+			headers: { [KEY_HEADER]: "press-isolated-key" },
+			body: JSON.stringify({
+				id: "unsupported",
+				method: "press",
+				params: { tab: opened.tab, key: "Ctrl+Tab" },
+			}),
+		});
+		assert.equal(response.status, 200);
+		const body = await response.json();
+		assert.equal(body.ok, false);
+		assert.equal(body.error.code, "unsupported_key");
+		assert.equal(body.error.message, "unsupported key: Ctrl+Tab");
+		assert.equal(body.error.data.key, "Ctrl+Tab");
+	} finally {
+		await server.close();
+	}
 });
