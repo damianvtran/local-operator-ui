@@ -139,6 +139,7 @@ globalThis.requestAnimationFrame = (callback) =>
 globalThis.cancelAnimationFrame = (handle) => clearTimeout(handle);
 globalThis.ResizeObserver = class {
 	observe() {}
+	unobserve() {}
 	disconnect() {}
 };
 DOM.window.HTMLCanvasElement.prototype.getContext = () => ({
@@ -193,6 +194,8 @@ const ROOT = process.cwd();
 
 /* English shapes the pre-fix code printed; hoisted for `useTopLevelRegex`. */
 const AGENTS_PAGE_SOURCE = /features\/agents\/components\/agents-page\.tsx$/;
+const MISSING_DEFINITION_SOURCE =
+	/features\/agents\/components\/missing-definition-error\.tsx$/;
 const ENGLISH_ASK_HEADING = /Ask for an agent/;
 const ENGLISH_DELEGATES = /Delegates/;
 const ENGLISH_UPDATED = /updated/;
@@ -204,20 +207,32 @@ const bundles = new Map();
 const clients = [];
 
 function seamPlugin(mutation) {
-	if (mutation !== "revert-heading") return undefined;
+	const sites = {
+		"revert-heading": {
+			filter: AGENTS_PAGE_SOURCE,
+			call: 't("ui.agents.pages.ask.heading_agent")',
+			literal: '"Ask for an agent"',
+		},
+		"revert-not-found": {
+			filter: MISSING_DEFINITION_SOURCE,
+			call: 't("ui.agents.detail.read_state.not_found")',
+			literal: '"Requested session, profile, team or subscription not found"',
+		},
+	};
+	const site = sites[mutation];
+	if (!site) return undefined;
 	return {
 		name: "agents-literals-negative-control",
 		setup(builder) {
-			builder.onLoad({ filter: AGENTS_PAGE_SOURCE }, (args) => {
+			builder.onLoad({ filter: site.filter }, (args) => {
 				const source = readFileSync(args.path, "utf8");
-				const call = 't("ui.agents.pages.ask.heading_agent")';
 				assert.equal(
-					source.split(call).length - 1,
+					source.split(site.call).length - 1,
 					1,
-					"the negative control must revert the one heading call site",
+					"the negative control must revert exactly one call site",
 				);
 				return {
-					contents: source.replace(call, '"Ask for an agent"'),
+					contents: source.replace(site.call, site.literal),
 					loader: "tsx",
 				};
 			});
@@ -233,7 +248,9 @@ async function load(mutation) {
 			contents: [
 				'export * as React from "react";',
 				'export { AskPaneCopy, AddManuallyButton } from "../src/renderer/src/features/agents/components/agents-page";',
-				'export { AgentMeta } from "../src/renderer/src/features/agents/components/agent-detail";',
+				'export { AgentMeta, AgentDetail } from "../src/renderer/src/features/agents/components/agent-detail";',
+				'export { MissingDefinitionError } from "../src/renderer/src/features/agents/components/missing-definition-error";',
+				'export { DesktopControlError } from "../src/renderer/src/shared/api/local-operator/desktop-api";',
 				'export { ReadBlock } from "../src/renderer/src/features/agents/components/detail-parts";',
 				'export { ConfigComposer } from "../src/renderer/src/features/agents/config-run/config-composer";',
 				'export { publishDialogTitle } from "../src/renderer/src/features/agents/components/upload-agent-dialog";',
@@ -760,6 +777,235 @@ test("negative control: reverting one call site to its literal defeats the same 
 		"the positive assertion must fail against the literal",
 	);
 	await pane.unmount();
+});
+
+/**
+ * Mount the actual detail components against bundled translations, not just key
+ * existence or injected catalogues. A fallback to English must fail even when
+ * the renderer is otherwise subscribed to the right locale.
+ */
+test("missing and populated detail follow the selected non-English locale", async () => {
+	const lib = await load();
+	const h = lib.React.createElement;
+	const source = JSON.parse(
+		readFileSync(
+			"src/i18n/catalogues/en/ui.agents.detail.read_state.json",
+			"utf8",
+		),
+	);
+	lib.i18n.clearRegisteredCatalogues();
+	for (const locale of ["fr", "ur"]) {
+		const messages = JSON.parse(
+			readFileSync(
+				`src/i18n/catalogues/${locale}/ui.agents.detail.read_state.json`,
+				"utf8",
+			),
+		);
+		for (const key of Object.keys(source))
+			assert.notEqual(
+				messages[key],
+				source[key],
+				`${locale}/${key} must not fall back to English`,
+			);
+		useLocale(lib, locale);
+		const prefix = "ui.agents.detail.read_state.";
+		for (const error of [
+			new lib.DesktopControlError(
+				404,
+				source[`${prefix}not_found`],
+				undefined,
+				"wire.errors.desktop.requested_not_found",
+			),
+			new lib.DesktopControlError(404, source[`${prefix}not_found`]),
+		]) {
+			const view = await mount(
+				lib,
+				h(lib.MissingDefinitionError, {
+					name: "census-agent",
+					error,
+					retrying: false,
+					onRetry: () => {},
+				}),
+			);
+			for (const suffix of [
+				"failed_title",
+				"not_found",
+				"failed_meaning",
+				"retry",
+			]) {
+				assert.ok(
+					view
+						.text()
+						.includes(
+							messages[`${prefix}${suffix}`].replace("{name}", "census-agent"),
+						),
+					view.text(),
+				);
+			}
+			assert.ok(!view.text().includes("could not be read"));
+			await view.unmount();
+		}
+		const client = new lib.QueryClient({
+			defaultOptions: { queries: { retry: false } },
+		});
+		const view = await mount(
+			lib,
+			h(
+				lib.QueryClientProvider,
+				{ client },
+				h(
+					lib.MemoryRouter,
+					null,
+					h(lib.AgentDetail, {
+						profile: {
+							...PROFILE,
+							name: "census-agent",
+							agent_id: null,
+							description: "",
+							instructions: "",
+							tools: null,
+							effort: null,
+							delegate: false,
+							action_class: "reactive",
+						},
+						displayedName: "census-agent",
+						classNotice: null,
+						onClassNotice: () => {},
+						teams: [],
+						effortTiers: [],
+						onOpenTeam: () => {},
+						onAskAgent: () => {},
+					}),
+				),
+			),
+		);
+		for (const suffix of [
+			"no_delegation",
+			"class_description",
+			"used_by_description",
+			"class_off",
+		]) {
+			assert.ok(
+				view.text().includes(messages[`${prefix}${suffix}`]),
+				`${locale}/${suffix}: ${view.text()}`,
+			);
+		}
+		// The read-view tier is the raw backend token, not a translated config value.
+		assert.ok(view.text().includes("inherit"));
+		assert.ok(!view.text().includes("Does its own work"));
+		const edit = [...view.container.querySelectorAll("button")].find(
+			(button) =>
+				button.textContent === lib.i18n.t("ui.agents.detail.action.edit"),
+		);
+		assert.ok(edit, "the real detail exposes its edit transition");
+		await lib.React.act(async () => edit.click());
+		assert.equal(
+			view.container.querySelector('input[role="combobox"]').value,
+			messages[`${prefix}effort_inherit`],
+			"the picker shows human copy, not its raw inherit id",
+		);
+		await view.unmount();
+		client.clear();
+	}
+	useLocale(lib, "en");
+});
+
+test("missing detail preserves unknown diagnostics and localizes pending retry", async () => {
+	const lib = await load();
+	lib.i18n.clearRegisteredCatalogues();
+	useLocale(lib, "fr");
+	for (const error of [
+		new lib.DesktopControlError(
+			404,
+			"Diagnostic fixture: unknown route",
+			undefined,
+			"route_not_found",
+		),
+		new Error("Diagnostic fixture: network"),
+		// A declared category must win even if the legacy prose happens to match.
+		new lib.DesktopControlError(
+			404,
+			"Requested session, profile, team or subscription not found",
+			undefined,
+			"other_category",
+		),
+	]) {
+		let retried = false;
+		const view = await mount(
+			lib,
+			lib.React.createElement(lib.MissingDefinitionError, {
+				name: "agent-{name}",
+				error,
+				retrying: false,
+				onRetry: () => {
+					retried = true;
+				},
+			}),
+		);
+		assert.ok(view.text().includes(error.message));
+		assert.ok(
+			view.text().includes("agent-{name}"),
+			"an ICU-looking name is data, not a nested message",
+		);
+		await lib.React.act(async () =>
+			view.container.querySelector("button").click(),
+		);
+		assert.equal(retried, true);
+		await view.unmount();
+	}
+	const pending = await mount(
+		lib,
+		lib.React.createElement(lib.MissingDefinitionError, {
+			name: "census-agent",
+			error: null,
+			retrying: true,
+			onRetry: () => {
+				throw new Error("disabled retry fired");
+			},
+		}),
+	);
+	assert.equal(pending.container.querySelector("button").disabled, true);
+	assert.ok(
+		pending.text().includes(lib.i18n.t("ui.agents.detail.read_state.retrying")),
+	);
+	assert.ok(
+		pending
+			.text()
+			.includes(lib.i18n.t("ui.agents.detail.read_state.request_failed")),
+	);
+	await pending.unmount();
+});
+
+test("negative control: English backend fallback defeats the visible-detail locale assertion", async () => {
+	const lib = await load("revert-not-found");
+	lib.i18n.registerCatalogue("fr", {
+		"ui.agents.detail.read_state.not_found": "FR not_found",
+	});
+	useLocale(lib, "fr");
+	const view = await mount(
+		lib,
+		lib.React.createElement(lib.MissingDefinitionError, {
+			name: "census-agent",
+			error: new lib.DesktopControlError(
+				404,
+				"wire fallback",
+				undefined,
+				"wire.errors.desktop.requested_not_found",
+			),
+			retrying: false,
+			onRetry: () => {},
+		}),
+	);
+	assert.ok(
+		view
+			.text()
+			.includes("Requested session, profile, team or subscription not found"),
+	);
+	assert.throws(
+		() => assert.ok(view.text().includes("FR not_found")),
+		assert.AssertionError,
+	);
+	await view.unmount();
 });
 
 test("teardown: the store is back to English, and the suite closes what it opened", async () => {
