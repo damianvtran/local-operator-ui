@@ -16,6 +16,8 @@
  * what this thing IS versus where it stands right now.
  */
 
+import { t } from "@shared/i18n";
+
 import type {
 	DesktopCapabilities,
 	TagCategory,
@@ -174,14 +176,17 @@ export function modelDefaultActionRow(
 	return {
 		kind: "action",
 		id: "model-default",
-		name: "Set current model as default",
+		name: t("ui.chat.pickers.models.set_as_default"),
 		description: model
-			? `Save the current model (${provider}/${modelId}) as the default for new sessions.`
-			: "No active session model is available to save.",
+			? t("ui.chat.slash_arguments.model_default_description", {
+					provider,
+					model: modelId,
+				})
+			: t("ui.chat.slash_arguments.model_default_unavailable"),
 		model,
 		clickText: model
-			? "Click does the same."
-			: "A session model is required before this action can save a default.",
+			? t("ui.chat.slash_arguments.model_default_click")
+			: t("ui.chat.slash_arguments.model_default_required"),
 		disabled: model === null,
 	};
 }
@@ -797,8 +802,12 @@ export const TITLE_REFRESH_ROWS: readonly ArgumentRow[] = [
 	{
 		value: "--refresh",
 		name: "--refresh",
-		description: "Re-read the conversation and name it again",
-		detail: "resumes auto-naming",
+		get description() {
+			return t("ui.chat.slash_arguments.refresh_description");
+		},
+		get detail() {
+			return t("ui.chat.slash_arguments.refresh_detail");
+		},
 		aliases: ["refresh", "update", "retitle", "--update", "--retitle"],
 	},
 ];

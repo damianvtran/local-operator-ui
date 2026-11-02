@@ -243,6 +243,14 @@ export type CanonicalSessionRow = {
 	 */
 	opened_by?: SessionOpenedBy | null;
 	/**
+	 * The bound local agent and its picture digest, off the wire row
+	 * (`SessionCatalogueRow.agent_id` / `avatar_sha256`). Declared for the reason
+	 * `opened_by` is - the sidebar row reads both, and an undeclared key is
+	 * `unknown` - and spread in by `projectRows` like every other wire field.
+	 */
+	agent_id?: string | null;
+	avatar_sha256?: string | null;
+	/**
 	 * THE MESH'S FLAT LOCALITY FIELDS, on rows that arrived from a listing which
 	 * asked for peers (`include_peers`). Declared rather than left to the index
 	 * signature below for the reason `opened_by` is: every read of an undeclared

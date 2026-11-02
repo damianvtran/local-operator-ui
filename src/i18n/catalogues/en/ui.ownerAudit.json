@@ -26,5 +26,10 @@
 	"ui.ownerAudit.window_unconfirmed": "The end of this audit is unknown. Your chief of staff’s membership in this conversation could not be confirmed.",
 	"ui.ownerAudit.disclosure": "You can read this audit because you own the chief of staff it covers. The other members are told that agent owners can audit the conversation.",
 	"ui.ownerAudit.viewers_label": "Also readable by",
-	"ui.ownerAudit.replies": "Read thread replies"
+	"ui.ownerAudit.replies": "Read thread replies",
+	"ui.ownerAudit.auth_required": "Sign in to read audited messages. Your session may have expired.",
+	"ui.ownerAudit.permission_refused": "You do not have access to this audited history.",
+	"ui.ownerAudit.not_found": "This audited conversation could not be found.",
+	"ui.ownerAudit.unavailable": "The audit service could not load these messages. Try again.",
+	"ui.ownerAudit.sign_in": "Sign in"
 }

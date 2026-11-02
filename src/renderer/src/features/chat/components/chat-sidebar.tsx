@@ -20,6 +20,7 @@ import { tagHeaderAt, useChatTagDrag } from "@features/chat/use-chat-tag-drag";
  * device half rides the row itself (`chat-remote.ts`).
  */
 import { useMeshNetworks } from "@features/mesh/mesh-store";
+import { useAgentAvatar } from "@shared/agent-avatar/agent-avatar";
 import { compatibilityBannerShown } from "@shared/api/local-operator/backend-error";
 import {
 	isRemoteReceiptDeferral,
@@ -79,7 +80,6 @@ import { useDesktopFeed } from "@shared/hooks/use-desktop-feed";
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
-import { useAgentAvatar } from "@shared/store/agent-avatar-store";
 import {
 	CATALOGUE_HEAD_PAGE,
 	type CanonicalSessionRow,
@@ -297,6 +297,7 @@ import {
 	tailArrivalAnnouncement,
 	tailExtendDue,
 } from "../sidebar-scope-paging";
+import { builtinOfferSentence } from "./builtin-offer-sentence";
 import { ChatRemoteMark } from "./chat-remote-mark";
 import { ChatRowHoverIntent } from "./chat-row-hover-intent";
 import { ChatRowTitle } from "./chat-row-title";
@@ -375,7 +376,13 @@ const rowStyle =
  * 138.3 / 210.7 / 179.0 / 165.6px against main's 264px - and a literal written twice is
  * how the two paths drifted when main's row changed shape under this branch's fold.
  */
-const rowBoxStyle = "flex h-8 items-center gap-1 rounded-md";
+/*
+ * `group/row` and `relative` are the agent picture's pencil (agent profile
+ * pictures, 2026-10-30): the edit link is a SIBLING of the row button, laid over
+ * the picture, and only reachable while this wrapper is hovered or the link
+ * itself holds focus - which is why the class is here rather than on the button.
+ */
+const rowBoxStyle = "group/row relative flex h-8 items-center gap-1 rounded-md";
 
 /*
  * Where the bulk read receipt's label stops fitting, in the width of the header
@@ -745,7 +752,11 @@ import {
 	refreshFocusedInside,
 } from "../sidebar-focus-hold";
 
-import { ChatAsksOutstanding, ChatSessionStatus } from "./chat-session-status";
+import {
+	ChatSessionAvatar,
+	ChatSessionAvatarEdit,
+} from "./chat-session-avatar";
+import { ChatAsksOutstanding } from "./chat-session-status";
 
 /**
  * How often the catalogue polls when the machine-wide feed is NOT available.
@@ -991,43 +1002,6 @@ const pressRowAct = (sessionId: string, act: ChatRowAct) => {
 		.querySelector<HTMLElement>(`[data-session-row="${CSS.escape(sessionId)}"]`)
 		?.querySelector<HTMLElement>(`[${CHAT_ROW_ACT_ATTR[act]}]`)
 		?.click();
-};
-
-/**
- * The sentence that offers the built-ins, built from the names actually offered.
- *
- * It replaced copy that named activities rather than roles — "roles for coding,
- * review, design, research and coordination" — with no count at all: "research"
- * is not among the packaged profiles, architecture and testing went unnamed, and
- * the number only appeared once the batch had started ("Installing 1 of 6"), so
- * the sentence that sets the expectation for the whole flow was wrong about
- * both what is on offer and how much of it there is (UX round 1, U6). Derived
- * from the rows the backend sent rather than written by hand, because the
- * catalogue is the authority on what can be installed and a second list here
- * can disagree with it.
- */
-const builtinOfferSentence = (
-	builtins: readonly { name: string }[],
-): string => {
-	const names = builtins.map((builtin) => builtin.name);
-	/*
-	 * THE LIST IS JOINED HERE, deliberately: IntlMessageFormat has no list
-	 * formatter, and the English source joins with commas and a bare "and" (no
-	 * Oxford comma) - a shape ICU cannot express for a variable-length list. So the
-	 * count and the pre-joined names are parameters of ONE catalogue message (whose
-	 * arms carry the spelled numbers and the it/them pronoun), and a locale cannot
-	 * change the conjunction. That is a stated limit of keying this sentence, not
-	 * an oversight; moving the join into the catalogue would need a list-format
-	 * placeholder the runtime does not have.
-	 */
-	const list =
-		names.length === 1
-			? names[0]
-			: `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`;
-	return t("ui.chat.sidebar.agents.builtin_offer", {
-		count: names.length,
-		list,
-	});
 };
 
 /**
@@ -4869,7 +4843,13 @@ export function ChatSidebar({
 						/>
 					)}
 				</span>
-				<ChatSessionStatus row={row} nowSeconds={listNow / 1000} />
+				{/*
+				 * THE ROW'S LEADING MARK: its agent's picture with the status on the
+				 * corner, or the status glyph alone (agent profile pictures, 2026-10-30).
+				 * One component so the two arms cannot disagree about the state, and so
+				 * a row without a picture is exactly the cell this file drew before.
+				 */}
+				<ChatSessionAvatar row={row} nowSeconds={listNow / 1000} />
 				{/*
 				 * THE OUTSTANDING-ASKS MARK, beside the status mark and BEFORE the title.
 				 * A leading fact rather than a trailing one, for the reason the archived
@@ -5384,6 +5364,13 @@ export function ChatSidebar({
 					className={cn(rowBoxStyle, current && rowCurrent)}
 				>
 					{rowButton}
+					{/*
+					 * THE PENCIL, AS A SIBLING OF THE ROW BUTTON (see
+					 * `ChatSessionAvatarEdit` for why it cannot be inside it). It draws
+					 * nothing at all unless the row's agent has a picture and this device
+					 * owns it.
+					 */}
+					<ChatSessionAvatarEdit row={row} />
 					{silentRemedy}
 					{readAckRemedy}
 				</div>,
@@ -6149,6 +6136,9 @@ export function ChatSidebar({
 				 */}
 				{(pinsEnabled || archiveEnabled) && <ChatRowHoverIntent />}
 				{rowButton}
+				{/* The picture's pencil - a sibling of the row button, as in the
+				    no-menu arm above; it draws nothing without a picture. */}
+				<ChatSessionAvatarEdit row={row} />
 				{silentRemedy}
 				{readAckRemedy}
 				{menuRemedy}

@@ -1,0 +1,68 @@
+{
+	"audit_id": "agent-avatar-picture-20261030",
+	"date": "2026-10-30",
+	"locale": "ru",
+	"namespace": "ui.agents.avatar",
+	"source_commit": "478b7889387690accb184b88909a95301e29b342",
+	"translator": {
+		"agent": "coder",
+		"model": "radient/auto",
+		"date": "2026-10-30",
+		"note": "per translator handoff: the branch commit eed1ccfeb76 translated this namespace inside the feature commit and names no model; recorded per the lopdev handoff for the coder."
+	},
+	"auditors": [
+		{
+			"agent": "reviewer",
+			"model": "radient/auto",
+			"model_disclosure": "Disclosed fallback: the session's primary model anthropic/claude-opus-5-5 was unavailable (provider quota) and the harness routed this run through openai/gpt-6-astra and kimi/k3.1-pro before settling on radient/auto; the audit was completed on radient/auto.",
+			"date": "2026-10-30",
+			"session": "7d20c9116360",
+			"result": "clean-with-findings",
+			"instance": "7d20c9116360-ru",
+			"findings": {
+				"blocker": 0,
+				"major": 0,
+				"minor": 2,
+				"nit": 1
+			},
+			"receipt": "i18n/receipts/7d20c9116360-ru.json",
+			"receipt_sha256": "eaa3251e57f40c23615177c81edbea63db52b13bf5a46e750b383370eb2193d1",
+			"scope": "ui.agents.avatar (25 keys) — full-namespace read of ru against English, the core glossary and ru's style guide, on PR #1537 head 478b7889387. Whole-file hashes bound.",
+			"note": "Independent full-namespace audit on the PR head; no rendered-fit, screenshot or native-reader claim."
+		}
+	],
+	"files": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.agents.avatar.json",
+			"sha256": "35ac09523862b19fb4c5c942d57f42d2dd8007f926ead27b306febbc2c830847"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.agents.avatar.context.json",
+			"sha256": "cf97001ff3568d3675af9fbd4109893441e245d2f912e253fde44b2bb8bbd328"
+		},
+		"target": {
+			"path": "src/i18n/catalogues/ru/ui.agents.avatar.json",
+			"sha256": "76c5e4366fa04727e96d453e146f7cc264929d2d294c5f25b0ca388ff408488e"
+		}
+	},
+	"references": {
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+		},
+		"style_guide": {
+			"path": "~/local-operator/i18n/style-guides/ru.md",
+			"sha256": "f20e1cafaf70578c17ce072c71725628808d228e4be5604329f8da30386f1fb5"
+		},
+		"sibling_namespace": {
+			"path": "src/i18n/catalogues/ru/ui.agents.settings.json",
+			"note": "#1517's profile-picture namespace, the term reference for this audit."
+		}
+	},
+	"independence": "Auditor did not translate, write or edit any catalogue, context or key file; it read the strings and derived its own verdicts before opening the translator commit message.",
+	"limitations": [
+		"Browser and rendered-frame capture are not in this auditor's tool set; no screenshot, pseudo-localization or measured-overflow evidence is claimed.",
+		"Overflow was reasoned from call sites (w-fit buttons, a flex-wrap settings row, aria-label-only preview names, no truncate/nowrap), not measured in a rendered frame.",
+		"Agent semantic read; no native-speaker review."
+	]
+}
