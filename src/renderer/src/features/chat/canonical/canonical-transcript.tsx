@@ -61,7 +61,7 @@ import { TextSelectionControls } from "@shared/components/common/text-selection-
 import { Button } from "@shared/components/ui";
 import { Disclosure } from "@shared/components/ui/disclosure";
 import { useCompletionView } from "@shared/hooks/use-completion-view";
-import { t } from "@shared/i18n";
+import { formatDateTime, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import {
@@ -124,6 +124,7 @@ import { MessageContainer } from "../components/message-item/message-container";
 import { TurnTimestamp } from "../components/message-item/turn-timestamp";
 import { ReplyPreview } from "../components/reply-preview";
 import { DiffBlock, TraceLine } from "../components/trace";
+import { bridgeReceiptOf } from "../components/trace/bridge-receipt-model";
 import {
 	type BridgeLabelResolver,
 	type BridgeRowView,
@@ -2926,6 +2927,84 @@ const NoticeRow = memo(function NoticeRow({
  * collapsed summary verbatim, at the cost of a click (design D5, UX U2).
  */
 /** A structured receipt stays agent-to-agent, including historical reply intent. */
+/** Incoming and outgoing Bridge use the same ledger glyph and detail pane.
+ * A legacy envelope is retained under Details, never reinterpreted as its body.
+ */
+const BridgeIncomingRow = memo(function BridgeIncomingRow({
+	record,
+	isSmallView,
+	scope,
+}: {
+	record: Extract<TranscriptRecord, { kind: "custom" }>;
+	isSmallView: boolean;
+	scope: AttachmentScope | null;
+}) {
+	useI18nLocale();
+	const receipt = record.bridgeReceipt ?? bridgeReceiptOf({});
+	const sender = receipt.sender.name || t("ui.teamBridge.page.title");
+	const received = t("ui.chat.bridgeReceipt.received", { sender });
+	const target =
+		receipt.conversation.label ||
+		(receipt.conversation.kind === "dm" ? t("ui.teamBridge.kind.dm") : "");
+	const attachments = receipt.attachmentCount
+		? t("ui.teamBridge.attachments.in_message", {
+				count: receipt.attachmentCount,
+			})
+		: "";
+	const summary = [received, target, attachments].filter(Boolean).join(" · ");
+	return (
+		<MessageContainer isUser={false} isSmallView={isSmallView}>
+			<ToolLedgerRow
+				toolName="bridge"
+				verbless
+				summary={summary}
+				outcome="receipt"
+				durationS={null}
+				details={
+					<BridgeDetailPane
+						isError={false}
+						view={{
+							headline: [received, target].filter(Boolean).join(" · "),
+							body: null,
+							outcome: t("ui.chat.bridgeReceipt.unavailable"),
+							internals: [],
+							raw: record.text,
+						}}
+					>
+						<div className="flex flex-wrap items-center justify-between gap-2 text-ink-dim text-meta">
+							<p data-bridge-provenance="">
+								{t("ui.chat.bridgeReceipt.provenance")}
+							</p>
+							{Number.isFinite(record.ts) ? (
+								<time dateTime={new Date(record.ts).toISOString()}>
+									{formatDateTime(record.ts, {
+										year: "numeric",
+										month: "short",
+										day: "numeric",
+										hour: "numeric",
+										minute: "2-digit",
+									})}
+								</time>
+							) : null}
+						</div>
+					</BridgeDetailPane>
+				}
+			/>
+			{(record.images ?? []).filter(isPictureRef).map((image) => (
+				<CanonicalImage
+					key={image.id}
+					image={image}
+					scope={scope}
+					label={
+						image.name ??
+						t("ui.teamBridge.attachments.in_message", { count: 1 })
+					}
+				/>
+			))}
+		</MessageContainer>
+	);
+});
+
 const HubRow = memo(function HubRow({
 	record,
 	isSmallView,
@@ -3612,11 +3691,18 @@ const TranscriptRow = memo(function TranscriptRow({
 			);
 			break;
 		case "custom":
-			body = record.receipt ? (
-				<HubRow record={record} isSmallView={isSmallView} scope={scope} />
-			) : (
-				<NoticeRow record={record} isSmallView={isSmallView} />
-			);
+			body =
+				record.customType === "team_bridge_message" ? (
+					<BridgeIncomingRow
+						record={record}
+						isSmallView={isSmallView}
+						scope={scope}
+					/>
+				) : record.receipt ? (
+					<HubRow record={record} isSmallView={isSmallView} scope={scope} />
+				) : (
+					<NoticeRow record={record} isSmallView={isSmallView} />
+				);
 			break;
 		case "peer":
 			body = <PeerRow record={record} isSmallView={isSmallView} />;

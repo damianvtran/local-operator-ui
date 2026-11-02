@@ -27,6 +27,7 @@ import {
 } from "@shared/utils/radient-account-copy";
 import { Info, LogOut } from "lucide-react";
 import { type FC, useCallback } from "react";
+import { AccountProfileSection } from "./account-profile-section";
 import { InfoGrid, InfoItem } from "./settings-section";
 
 type RadientAccountSectionProps = {
@@ -110,6 +111,9 @@ export const RadientAccountSection: FC<RadientAccountSectionProps> = ({
 
 		return (
 			<>
+				<div className="mb-8">
+					<AccountProfileSection />
+				</div>
 				<InfoGrid>
 					<InfoItem
 						label={t("ui.settings.account.radient_account_section.status")}
