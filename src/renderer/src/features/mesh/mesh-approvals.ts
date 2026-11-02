@@ -1238,7 +1238,7 @@ export function approvalErrorMessage(error: unknown): string {
 export function approvalRefusal(error: unknown): {
 	code: string;
 	sentence: string;
-	retryable: boolean;
+	retryable?: boolean;
 } {
 	const held = error as {
 		code?: unknown;
@@ -1266,7 +1266,9 @@ export function approvalRefusal(error: unknown): {
 			outcomeSentence ||
 			text(held?.message) ||
 			t("ui.mesh.mesh_approvals.decision_could_not_be_answered"),
-		retryable: outcome?.retryable === true,
+		// Only an apply outcome may override the persisted receipt. A transport
+		// deadline or pre-apply refusal says nothing about whether apply can retry.
+		retryable: outcome ? outcome.retryable === true : undefined,
 	};
 }
 

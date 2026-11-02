@@ -246,7 +246,7 @@
 	"ui.mesh.approval.head_finite_share": "Partager votre connexion {credential} avec {device}",
 	"ui.mesh.approval.head_inheritance": "Autoriser {device} à utiliser votre compte {provider} {account}",
 	"ui.mesh.approval.scope_device": "Toute session sur {device} peut l’utiliser.",
-	"ui.mesh.approval.scope_session": "Les sessions sur {device} peuvent emprunter cet accès avec une autorisation liée à chaque session.",
+	"ui.mesh.approval.scope_session": "Les sessions sur {device} peuvent emprunter cette connexion, avec un accès lié à chaque session.",
 	"ui.mesh.approval.org_limited": "Uniquement pour l’organisation {org}.",
 	"ui.mesh.approval.org_any": "Pour toute organisation de ce compte.",
 	"ui.mesh.approval.not_copied": "Votre connexion n’est pas copiée sur {device}.",

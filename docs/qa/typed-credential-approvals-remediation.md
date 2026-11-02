@@ -67,3 +67,29 @@ onboarding surfaces. Backend `desktop_approval.upgrade()` explicitly describes
 setup as a separate admin-gated flow. Therefore no setup button or invented route
 is offered in this PR. The missing upgrade affordance remains a recorded product
 gap, not a claimed delivery. This does not authorize key setup or an admin action.
+
+## Round 2: absent apply outcome is not a permanent refusal
+
+`approvalRefusal` now preserves `retryable: undefined` when a refusal has no
+apply outcome. A transport deadline or pre-apply refusal cannot override the
+stored retryable receipt. An explicit apply outcome with `retryable: false`
+still overrides it. The targeted regression covers both no-outcome `store_busy`
+and a local-deadline-shaped refusal alongside the old busy receipt.
+
+The loopback HTTP lane additionally returns apply-route 409s with and without
+`apply_outcome`, verifies the resulting gates and unchanged synthetic state, then
+accepts a retry. No production signer/backend evidence is implied.
+
+Selected serial runs (same 2 GiB / 120-second / concurrency-1 commands above):
+- mesh-tab: tests 111, pass 111, fail 0.
+- locale-parity: tests 44, pass 44, fail 0.
+
+The first mesh invocation stopped before tests because esbuild encountered
+transient package.json conflict markers in the dependency-donor worktree. This
+worktree's symlink was switched to another existing tree with a byte-identical
+lockfile; no dependencies were installed and no donor files were changed.
+
+Spanish/French/Russian session-borrowing terminology and Hindi terminology/verb
+agreement were corrected in this round. Existing audit A's receipts and ledger
+commit remain intact; changed target bytes require a fresh independent delta
+audit. No self-audit or stale receipt rebinding is claimed.

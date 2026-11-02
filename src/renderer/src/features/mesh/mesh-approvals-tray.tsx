@@ -580,8 +580,9 @@ const MeshApprovalCard: FC<{
 	 * decision a-b492: "the UI MUST render this disclosure when true"). On a
 	 * file-only operator key any program running as the operator can sign, so an
 	 * approval from here cannot prove a person pressed it. This remains true on
-	 * refused and settled records as well as signable requests. Shown in the card's quiet meta register - a fact to know, not an
-	 * alarm, because the operator already accepted that residual.
+	 * refused and settled records as well as signable requests. Shown in the card's
+	 * quiet meta register - a fact to know, not an alarm, because the operator
+	 * already accepted that residual.
 	 */
 	const fileKeyNote = row.typed?.unprovenHuman === true;
 	/*

@@ -2159,6 +2159,37 @@ test("latest permanent apply refusal overrides an unchanged busy receipt", () =>
 	);
 });
 
+test("no-outcome refusal or local deadline preserves a stored retryable receipt", () => {
+	const [row] = mesh.approvalRows([
+		finiteShareCapture(
+			{ state: "failed" },
+			{
+				apply_outcome: {
+					code: "busy",
+					retryable: true,
+					reason: "Busy",
+					remedy: "Retry",
+				},
+			},
+		),
+	]);
+	for (const error of [
+		{ code: "store_busy", message: "Synthetic store busy." },
+		{ code: "deadline_exceeded", message: "May or may not have landed." },
+	]) {
+		const refusal = mesh.approvalRefusal(error);
+		assert.equal(refusal.retryable, undefined);
+		assert.equal(
+			mesh.canRetryCredentialApply(row, ON, refusal.retryable),
+			true,
+		);
+		assert.equal(
+			mesh.approvalDecisionRequest(row, "apply", ON, refusal.retryable)?.op,
+			"approvals.applyCredential",
+		);
+	}
+});
+
 test("Details preserves exact same-count withdrawal sets and retained fence", () => {
 	const first = finiteShareCapture();
 	const second = structuredClone(first);
@@ -2253,7 +2284,7 @@ test("apply-phase outcomes become the card's refusal, with their own words and r
 			retryable: false,
 		},
 	);
-	// A pre-apply refusal (digest/state) is verbatim, and never retryable.
+	// A pre-apply refusal (digest/state) is verbatim, without an authoritative apply outcome.
 	assert.deepEqual(
 		mesh.approvalRefusal({
 			code: "credential_disclosure_changed",
@@ -2262,7 +2293,7 @@ test("apply-phase outcomes become the card's refusal, with their own words and r
 		{
 			code: "credential_disclosure_changed",
 			sentence: "What this card discloses changed since it was reviewed.",
-			retryable: false,
+			retryable: undefined,
 		},
 	);
 });
@@ -2697,21 +2728,21 @@ test("a refused decision carries the authored sentence and its machine code, or 
 		{
 			code: "approval_signing_unavailable",
 			sentence: "no operator key here",
-			retryable: false,
+			retryable: undefined,
 		},
 	);
 	// The transport's own synthesised deadline sentence is a message without a code.
 	assert.deepEqual(approvalRefusal({ message: "may or may not have landed" }), {
 		code: "approval_refused",
 		sentence: "may or may not have landed",
-		retryable: false,
+		retryable: undefined,
 	});
 	// A failure that carried neither states what the surface knows rather than
 	// inventing a cause (the `approvalErrorMessage` fallback's own rule).
 	assert.deepEqual(approvalRefusal(null), {
 		code: "approval_refused",
 		sentence: "The decision could not be answered.",
-		retryable: false,
+		retryable: undefined,
 	});
 });
 
@@ -5727,6 +5758,7 @@ test("typed client crosses synthetic loopback HTTP for approve, retry and refusa
 	const raw = finiteShareCapture();
 	const calls = [];
 	let state = "requested";
+	let applyRefusal = null;
 	const server = createServer(async (req, res) => {
 		let body = "";
 		for await (const chunk of req) body += chunk;
@@ -5769,6 +5801,11 @@ test("typed client crosses synthetic loopback HTTP for approve, retry and refusa
 				}),
 			);
 		} else if (req.url.endsWith("/apply-credential")) {
+			if (applyRefusal) {
+				res.writeHead(409);
+				res.end(JSON.stringify({ detail: applyRefusal }));
+				return;
+			}
 			state = "connected";
 			res.end(JSON.stringify({ result: { state, applied: { ok: true } } }));
 		} else {
@@ -5802,7 +5839,65 @@ test("typed client crosses synthetic loopback HTTP for approve, retry and refusa
 		assert.equal(state, "failed");
 		const refusal = mesh.approvalRefusal(mesh.unappliedPhase(answer));
 		assert.equal(refusal.retryable, true);
-		const failed = { ...row, state };
+		const failed = {
+			...row,
+			state,
+			typed: {
+				...row.typed,
+				applyOutcome: {
+					code: "busy",
+					retryable: true,
+					reason: "Synthetic busy.",
+					remedy: "Retry.",
+				},
+			},
+		};
+		const retryRequest = mesh.approvalDecisionRequest(failed, "apply", ON);
+		// A pre-apply 409 has no opinion on retryability: keep the stored receipt.
+		applyRefusal = { code: "store_busy", message: "Synthetic store busy." };
+		await assert.rejects(mesh.desktopResult(retryRequest), (error) => {
+			const latest = mesh.approvalRefusal(error);
+			assert.equal(error.status, 409);
+			assert.equal(latest.sentence, "Synthetic store busy.");
+			assert.equal(latest.retryable, undefined);
+			assert.equal(
+				mesh.canRetryCredentialApply(failed, ON, latest.retryable),
+				true,
+			);
+			return true;
+		});
+		// An apply-phase 409 is authoritative, even while the stored busy receipt
+		// remains unchanged (the backend can refuse before writing a new receipt).
+		applyRefusal = {
+			code: "finite_subject_mismatch",
+			message: "Synthetic key changed.",
+			apply_outcome: {
+				code: "finite_subject_mismatch",
+				retryable: false,
+				reason: "Synthetic key changed.",
+				remedy: "Request a new card.",
+			},
+		};
+		await assert.rejects(mesh.desktopResult(retryRequest), (error) => {
+			const latest = mesh.approvalRefusal(error);
+			assert.equal(error.status, 409);
+			assert.equal(latest.retryable, false);
+			assert.equal(
+				mesh.canRetryCredentialApply(failed, ON, latest.retryable),
+				false,
+			);
+			assert.equal(
+				mesh.approvalDecisionRequest(failed, "apply", ON, latest.retryable),
+				null,
+			);
+			return true;
+		});
+		assert.equal(
+			state,
+			"failed",
+			"both refused HTTP retries leave synthetic state unchanged",
+		);
+		applyRefusal = null;
 		await mesh.desktopResult(
 			mesh.approvalDecisionRequest(failed, "apply", ON, refusal.retryable),
 		);
