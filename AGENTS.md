@@ -672,7 +672,7 @@ the reasoning, probe costs and constants are in
 - **Site a rig's `node_modules` by the symlink shape, never a copy.** Do not
   `cp -Rc` a pnpm tree: its store hardlinks materialise as real files on copy
   (measured: ~7.6 GB of real allocation, and ENOSPC at 3.3 GB logical on this
-  host). Use an in-repo `.worktrees/<name>` with `ln -s ../../node_modules
+  host). Site every worktree at `~/local-operator-ui/.worktrees/<name>` (never sibling dirs, `$HOME`, `/tmp` or scratchpads) and `git worktree remove` it (clean only) once its PR merges; `~/local-operator/scripts/worktree_janitor.py --repo ~/local-operator-ui` lists stragglers. Use an in-repo `.worktrees/<name>` with `ln -s ../../node_modules
   node_modules` (~0 bytes). pnpm refuses a symlinked `node_modules`, so scripts in
   such a worktree must call `node_modules/.bin/<tool>` directly rather than
   `pnpm <tool>`.
@@ -2355,7 +2355,11 @@ one that ships the wrong tree.
 #    version change and retitles this same PR, so the lock's number never moves.
 #    Push the branch and open the PR only after step 1 of *The window, and the
 #    release owner's procedure* has found no open chore(release) PR.
-WT="$(mktemp -d)/release-next"   # scratch, and session-unique: nothing else owns it
+# In-repo, never mktemp -d: eight $TMPDIR release cuts were stranded after their
+# releases. The trap removes the tree on success AND failure (a refusal on a
+# dirty tree is then reported, not forced - see step 5).
+WT=~/local-operator-ui/.worktrees/release-next-$$   # session-unique: nothing else owns it
+trap '[ -d "$WT" ] && { git -C ~/local-operator-ui worktree remove "$WT" || echo "kept $WT: dirty, inspect before forcing"; }' EXIT
 git fetch origin --tags
 git worktree add "$WT" origin/main
 git -C "$WT" switch -c release-next
@@ -2481,7 +2485,7 @@ gh run list --workflow=publish.yml --limit 3 && gh run watch <id>
 #    modified inside it — read that before forcing, because it means the tree the
 #    release came out of was not the one the review round read (the commit itself
 #    was still `package.json` only, which `-o` guarantees).
-git worktree remove "$WT"
+git -C ~/local-operator-ui worktree remove "$WT"   # the EXIT trap does this too if you skip it
 ```
 
 **Why `--target` and not `git tag vX.Y.Z && git push --tags`.** A bare tag
