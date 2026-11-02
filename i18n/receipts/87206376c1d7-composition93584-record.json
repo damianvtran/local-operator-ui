@@ -1,0 +1,649 @@
+{
+  "schema": 1,
+  "receipt_kind": "independent byte-evidence composition audit; retained semantic coverage, not fresh translation audit",
+  "date": "2026-11-02",
+  "session": "87206376c1d7",
+  "instance": "87206376c1d7-composition-93584",
+  "auditor": "independent-i18n-composition-auditor",
+  "model_descriptor": "anthropic/claude-sonnet-5-5",
+  "model_provenance": {
+    "qualification": "Current host session descriptor only, not provider completion attestation. Historical receipts retain their own descriptors; prior report model claims are not upgraded by this record. Host completion metadata must be appended separately if supplied.",
+    "provider_completion_attested": false
+  },
+  "independence": "Existing auditor UID 87206376c1d7; not original author 6f5fa4ec4bea or source writer 389a. No new audit instance/translator launched; no candidate or ledger written.",
+  "namespace": "ui.teamBridge",
+  "languages": [
+    "en",
+    "es",
+    "fr",
+    "hi",
+    "ru",
+    "ur",
+    "vi",
+    "zh-CN"
+  ],
+  "candidate": {
+    "worktree": "/Users/damian/local-operator-ui/.worktrees/bridge-delivery-source-93584",
+    "head": "7d5287d594e991e2912dbaa700f90d88ff5a1dd4",
+    "merge_head": "26bc6ecebfd37f5203d6f7158b63f220ecc963e5",
+    "remaining_unmerged": [
+      "i18n/ledger.json"
+    ],
+    "author_proof_path": "/Users/damian/.local-operator/sessions/6f5fa4ec4bea/scratchpad/ui1521-source-93584-proof.json",
+    "author_proof_sha256": "0888a3d2228adc19196447488118b972e0316d0b8ade5582ea7626fbea2c26bf"
+  },
+  "result": "clean composition of frozen nine JSON files; ledger resolution and runtime unverified",
+  "composition_findings": [],
+  "new_linguistic_audit_performed": false,
+  "semantic_coverage": {
+    "delivery": "13 keys and en context raw tokens identical to own R4; preserved R5 additionally binds later unchanged namespace source. Existing zh-CN whitespace fixes remain intact.",
+    "reply_window": "Exact main value and context tokens; semantic verdict inherited solely from main independent receipt 5b9e7ac29d2a, not reissued here.",
+    "shared_keys": "Exact main tokens, all overlapping values/context entries equal preserved parent; main R5 historical provenance retained, no claim to fresh global namespace semantics."
+  },
+  "files": {
+    "src/i18n/catalogues/en/ui.teamBridge.json": {
+      "sha256": "dcedd81e4a50f9029c7f59511de7ff7a936bb83a38d4bb2af32901404109b5a6",
+      "index_equals_worktree": true,
+      "matches_author_checkpoint": true,
+      "keys": 334,
+      "exact_union": true,
+      "overlap_changed_keys": [],
+      "delivery_keys": [
+        "ui.teamBridge.delivery.held",
+        "ui.teamBridge.delivery.held_awaiting_review",
+        "ui.teamBridge.delivery.held_screening_unavailable",
+        "ui.teamBridge.delivery.info_held",
+        "ui.teamBridge.delivery.info_label",
+        "ui.teamBridge.delivery.info_refused",
+        "ui.teamBridge.delivery.pending",
+        "ui.teamBridge.delivery.refused",
+        "ui.teamBridge.delivery.refused_abusive",
+        "ui.teamBridge.delivery.refused_manipulation",
+        "ui.teamBridge.delivery.refused_out_of_scope",
+        "ui.teamBridge.delivery.refused_personal_info",
+        "ui.teamBridge.delivery.refused_unsafe_content"
+      ],
+      "delivery_raw_value_tokens_equal_R4_and_preserved": true,
+      "every_main_raw_value_token_preserved": true,
+      "reply_window_raw_value_token_equal_main": true,
+      "parent_hashes": {
+        "R4": "e3ef1a80523f97cba4e445d97baa1548055d1cdd54537106889a0f48c30b230b",
+        "preserved": "bc5a2fac50ce0d9670c4eb914b8d5bc75a03903774ba3816f7e9e53944cb14f9",
+        "main": "8886c3944d34a1107b050b06f9b4f4a95aea24e10d59ad8bc5b1c4e2a8749f40"
+      }
+    },
+    "src/i18n/catalogues/es/ui.teamBridge.json": {
+      "sha256": "27805b3d9bb3a363a33d14fd7483de65f9cbb3ab209df7a1adfc5f271a8f11c3",
+      "index_equals_worktree": true,
+      "matches_author_checkpoint": true,
+      "keys": 334,
+      "exact_union": true,
+      "overlap_changed_keys": [],
+      "delivery_keys": [
+        "ui.teamBridge.delivery.held",
+        "ui.teamBridge.delivery.held_awaiting_review",
+        "ui.teamBridge.delivery.held_screening_unavailable",
+        "ui.teamBridge.delivery.info_held",
+        "ui.teamBridge.delivery.info_label",
+        "ui.teamBridge.delivery.info_refused",
+        "ui.teamBridge.delivery.pending",
+        "ui.teamBridge.delivery.refused",
+        "ui.teamBridge.delivery.refused_abusive",
+        "ui.teamBridge.delivery.refused_manipulation",
+        "ui.teamBridge.delivery.refused_out_of_scope",
+        "ui.teamBridge.delivery.refused_personal_info",
+        "ui.teamBridge.delivery.refused_unsafe_content"
+      ],
+      "delivery_raw_value_tokens_equal_R4_and_preserved": true,
+      "every_main_raw_value_token_preserved": true,
+      "reply_window_raw_value_token_equal_main": true,
+      "parent_hashes": {
+        "R4": "2a89e08423abfdbd940e4c15aa2dee0fa1cac1aa151a1307af7add5fcd3aa228",
+        "preserved": "d4dc08fe534457d03264afe932cd0a3388ba6868c31a81759d587d14b4c1412a",
+        "main": "dc8897569c6ae68205b3a9466e37f975188074ecc618ec93167c131013a540f7"
+      }
+    },
+    "src/i18n/catalogues/fr/ui.teamBridge.json": {
+      "sha256": "5f5683aa377cc063f042a421d33907c112b20177be9f925b5f9f64162c0810df",
+      "index_equals_worktree": true,
+      "matches_author_checkpoint": true,
+      "keys": 334,
+      "exact_union": true,
+      "overlap_changed_keys": [],
+      "delivery_keys": [
+        "ui.teamBridge.delivery.held",
+        "ui.teamBridge.delivery.held_awaiting_review",
+        "ui.teamBridge.delivery.held_screening_unavailable",
+        "ui.teamBridge.delivery.info_held",
+        "ui.teamBridge.delivery.info_label",
+        "ui.teamBridge.delivery.info_refused",
+        "ui.teamBridge.delivery.pending",
+        "ui.teamBridge.delivery.refused",
+        "ui.teamBridge.delivery.refused_abusive",
+        "ui.teamBridge.delivery.refused_manipulation",
+        "ui.teamBridge.delivery.refused_out_of_scope",
+        "ui.teamBridge.delivery.refused_personal_info",
+        "ui.teamBridge.delivery.refused_unsafe_content"
+      ],
+      "delivery_raw_value_tokens_equal_R4_and_preserved": true,
+      "every_main_raw_value_token_preserved": true,
+      "reply_window_raw_value_token_equal_main": true,
+      "parent_hashes": {
+        "R4": "0a594db352dd7ccef853917313c0025632a867349d3efbefdd70e3601db3e9d1",
+        "preserved": "fe8e6701adb39146c5cfb69c4bf547c8d17e353171dc7680bdce26611f74d7b6",
+        "main": "9929ce22f0855dbeb9130ffb5a6515e2922233b6c41cf1939020f69044c75b93"
+      }
+    },
+    "src/i18n/catalogues/hi/ui.teamBridge.json": {
+      "sha256": "06c9f56dd4fe9940702af39a783270525a6ff0e4560cf74b9239557fa5b0de35",
+      "index_equals_worktree": true,
+      "matches_author_checkpoint": true,
+      "keys": 334,
+      "exact_union": true,
+      "overlap_changed_keys": [],
+      "delivery_keys": [
+        "ui.teamBridge.delivery.held",
+        "ui.teamBridge.delivery.held_awaiting_review",
+        "ui.teamBridge.delivery.held_screening_unavailable",
+        "ui.teamBridge.delivery.info_held",
+        "ui.teamBridge.delivery.info_label",
+        "ui.teamBridge.delivery.info_refused",
+        "ui.teamBridge.delivery.pending",
+        "ui.teamBridge.delivery.refused",
+        "ui.teamBridge.delivery.refused_abusive",
+        "ui.teamBridge.delivery.refused_manipulation",
+        "ui.teamBridge.delivery.refused_out_of_scope",
+        "ui.teamBridge.delivery.refused_personal_info",
+        "ui.teamBridge.delivery.refused_unsafe_content"
+      ],
+      "delivery_raw_value_tokens_equal_R4_and_preserved": true,
+      "every_main_raw_value_token_preserved": true,
+      "reply_window_raw_value_token_equal_main": true,
+      "parent_hashes": {
+        "R4": "c745141dd85873efd254ebde3deb7bcaad2d3b699a6eedd91ddd1e38b4228840",
+        "preserved": "9b338a792a5daf9c67076b60b087c9f987f174ed4b988889ab6d8023c9f193ff",
+        "main": "6a69a92480a92a74cae35c1d083152e7c7a66e643a3d277100cf059679df2907"
+      }
+    },
+    "src/i18n/catalogues/ru/ui.teamBridge.json": {
+      "sha256": "559f6461d1c01535d605a8f66dec6105510d67399d0b1e4c3d3b0464e0cc0e87",
+      "index_equals_worktree": true,
+      "matches_author_checkpoint": true,
+      "keys": 334,
+      "exact_union": true,
+      "overlap_changed_keys": [],
+      "delivery_keys": [
+        "ui.teamBridge.delivery.held",
+        "ui.teamBridge.delivery.held_awaiting_review",
+        "ui.teamBridge.delivery.held_screening_unavailable",
+        "ui.teamBridge.delivery.info_held",
+        "ui.teamBridge.delivery.info_label",
+        "ui.teamBridge.delivery.info_refused",
+        "ui.teamBridge.delivery.pending",
+        "ui.teamBridge.delivery.refused",
+        "ui.teamBridge.delivery.refused_abusive",
+        "ui.teamBridge.delivery.refused_manipulation",
+        "ui.teamBridge.delivery.refused_out_of_scope",
+        "ui.teamBridge.delivery.refused_personal_info",
+        "ui.teamBridge.delivery.refused_unsafe_content"
+      ],
+      "delivery_raw_value_tokens_equal_R4_and_preserved": true,
+      "every_main_raw_value_token_preserved": true,
+      "reply_window_raw_value_token_equal_main": true,
+      "parent_hashes": {
+        "R4": "50ff644ea1c391ffe2210ccc7e4a02856c2d47d0966a32a6d15b101066cb7e9e",
+        "preserved": "d366261a2f91762c9af4aa673f2af0778e029260f4a90e0191c8bfad97049eb3",
+        "main": "8daae2d40438ca7179ea38f10404bde6c887eea459630cf6a54a48153dba1ad5"
+      }
+    },
+    "src/i18n/catalogues/ur/ui.teamBridge.json": {
+      "sha256": "c515f278b304c74507b2e856489ae4a8648cd315c3d12fbc4da30d85b1cedc6b",
+      "index_equals_worktree": true,
+      "matches_author_checkpoint": true,
+      "keys": 334,
+      "exact_union": true,
+      "overlap_changed_keys": [],
+      "delivery_keys": [
+        "ui.teamBridge.delivery.held",
+        "ui.teamBridge.delivery.held_awaiting_review",
+        "ui.teamBridge.delivery.held_screening_unavailable",
+        "ui.teamBridge.delivery.info_held",
+        "ui.teamBridge.delivery.info_label",
+        "ui.teamBridge.delivery.info_refused",
+        "ui.teamBridge.delivery.pending",
+        "ui.teamBridge.delivery.refused",
+        "ui.teamBridge.delivery.refused_abusive",
+        "ui.teamBridge.delivery.refused_manipulation",
+        "ui.teamBridge.delivery.refused_out_of_scope",
+        "ui.teamBridge.delivery.refused_personal_info",
+        "ui.teamBridge.delivery.refused_unsafe_content"
+      ],
+      "delivery_raw_value_tokens_equal_R4_and_preserved": true,
+      "every_main_raw_value_token_preserved": true,
+      "reply_window_raw_value_token_equal_main": true,
+      "parent_hashes": {
+        "R4": "1d3cb4bff2be1fdfd10880f2c9c7c35135fc3411dd6946d37023d510bf8a6678",
+        "preserved": "89104c5e6ce443307e923a9b929dff915b05f6b26f8371d2024ca9c391198298",
+        "main": "d562135128ee5f135d2124e08c07dee38407060f08a23a6c6876120ed6c856d2"
+      }
+    },
+    "src/i18n/catalogues/vi/ui.teamBridge.json": {
+      "sha256": "5c02f472877339605099f5c4d219065346014cf104a0edc3dc6f34237805c7ef",
+      "index_equals_worktree": true,
+      "matches_author_checkpoint": true,
+      "keys": 334,
+      "exact_union": true,
+      "overlap_changed_keys": [],
+      "delivery_keys": [
+        "ui.teamBridge.delivery.held",
+        "ui.teamBridge.delivery.held_awaiting_review",
+        "ui.teamBridge.delivery.held_screening_unavailable",
+        "ui.teamBridge.delivery.info_held",
+        "ui.teamBridge.delivery.info_label",
+        "ui.teamBridge.delivery.info_refused",
+        "ui.teamBridge.delivery.pending",
+        "ui.teamBridge.delivery.refused",
+        "ui.teamBridge.delivery.refused_abusive",
+        "ui.teamBridge.delivery.refused_manipulation",
+        "ui.teamBridge.delivery.refused_out_of_scope",
+        "ui.teamBridge.delivery.refused_personal_info",
+        "ui.teamBridge.delivery.refused_unsafe_content"
+      ],
+      "delivery_raw_value_tokens_equal_R4_and_preserved": true,
+      "every_main_raw_value_token_preserved": true,
+      "reply_window_raw_value_token_equal_main": true,
+      "parent_hashes": {
+        "R4": "ab2a9b0a243feabe140526c2de77f5ca7c1342a47a2b20810efd839a64ec9e1b",
+        "preserved": "2db73d7ef2aad6b15b3761adacfc31e972f00a65f1076ac46ce7a6e806c798d6",
+        "main": "279543e8357fe03ee8ce7ea369badbbb98adc7452bf6528e57f1a1b9507bb4b9"
+      }
+    },
+    "src/i18n/catalogues/zh-CN/ui.teamBridge.json": {
+      "sha256": "be9b12bd2f7e83662beaf84a700c650a90907b3e831f7be3341048c5c9aa070e",
+      "index_equals_worktree": true,
+      "matches_author_checkpoint": true,
+      "keys": 334,
+      "exact_union": true,
+      "overlap_changed_keys": [],
+      "delivery_keys": [
+        "ui.teamBridge.delivery.held",
+        "ui.teamBridge.delivery.held_awaiting_review",
+        "ui.teamBridge.delivery.held_screening_unavailable",
+        "ui.teamBridge.delivery.info_held",
+        "ui.teamBridge.delivery.info_label",
+        "ui.teamBridge.delivery.info_refused",
+        "ui.teamBridge.delivery.pending",
+        "ui.teamBridge.delivery.refused",
+        "ui.teamBridge.delivery.refused_abusive",
+        "ui.teamBridge.delivery.refused_manipulation",
+        "ui.teamBridge.delivery.refused_out_of_scope",
+        "ui.teamBridge.delivery.refused_personal_info",
+        "ui.teamBridge.delivery.refused_unsafe_content"
+      ],
+      "delivery_raw_value_tokens_equal_R4_and_preserved": true,
+      "every_main_raw_value_token_preserved": true,
+      "reply_window_raw_value_token_equal_main": true,
+      "parent_hashes": {
+        "R4": "4a8013a8631275c2f765cd4c4e8b717a072a20589137153a1b295dae07ba6b13",
+        "preserved": "0642a9727618303ead00ddde0eef400270360e42ffb3a7412e4be0edd584c2ff",
+        "main": "b7c07fdf1575b5af81b030e7593e51fe9ee39c10e3c97b67267cb6b8e6c5e873"
+      }
+    },
+    "src/i18n/catalogues/en/ui.teamBridge.context.json": {
+      "sha256": "b7d8eadefb3a15c1e8bff0c90aa536199caa9126a42446281c1f0619f6f525f1",
+      "index_equals_worktree": true,
+      "matches_author_checkpoint": true,
+      "keys": 334,
+      "exact_union": true,
+      "overlap_changed_keys": [],
+      "delivery_keys": [
+        "ui.teamBridge.delivery.held",
+        "ui.teamBridge.delivery.held_awaiting_review",
+        "ui.teamBridge.delivery.held_screening_unavailable",
+        "ui.teamBridge.delivery.info_held",
+        "ui.teamBridge.delivery.info_label",
+        "ui.teamBridge.delivery.info_refused",
+        "ui.teamBridge.delivery.pending",
+        "ui.teamBridge.delivery.refused",
+        "ui.teamBridge.delivery.refused_abusive",
+        "ui.teamBridge.delivery.refused_manipulation",
+        "ui.teamBridge.delivery.refused_out_of_scope",
+        "ui.teamBridge.delivery.refused_personal_info",
+        "ui.teamBridge.delivery.refused_unsafe_content"
+      ],
+      "delivery_raw_value_tokens_equal_R4_and_preserved": true,
+      "every_main_raw_value_token_preserved": true,
+      "reply_window_raw_value_token_equal_main": true,
+      "parent_hashes": {
+        "R4": "2a4dbc0a804618dd8366485e2b69b2540a00f6558b440aa9789ae9b16f6fab70",
+        "preserved": "8b0ed0961320527e553b56b3c5769633ecaf6c32996175ffaa2e640433093b5e",
+        "main": "6bc61f5c6b01c9d900834504c489f3814adf14e2529ddf4559851c0cfae9fd3d"
+      }
+    }
+  },
+  "parents": {
+    "es": {
+      "R4": {
+        "commit": "d5f2babea47e66e04d76a6e5072e1da63d5e1203",
+        "instance": "87206376c1d7-rebase4-es",
+        "receipt": "i18n/receipts/87206376c1d7-rebase4-es.json",
+        "receipt_sha256": "e1b0c5c734493c6cb51b984e8e94af1cc0c6f424a6ac60e0bc6fe5abbf232895",
+        "source_sha256": "e3ef1a80523f97cba4e445d97baa1548055d1cdd54537106889a0f48c30b230b",
+        "target_sha256": "2a89e08423abfdbd940e4c15aa2dee0fa1cac1aa151a1307af7add5fcd3aa228",
+        "context_sha256": "2a4dbc0a804618dd8366485e2b69b2540a00f6558b440aa9789ae9b16f6fab70",
+        "declared_result": "clean",
+        "coverage": "13 delivery keys and historical namespace provenance",
+        "raw_receipt_preserved_in_candidate": true
+      },
+      "preserved_R5": {
+        "commit": "7d5287d594e991e2912dbaa700f90d88ff5a1dd4",
+        "instance": "cc87b564af61-rebase5-es",
+        "receipt": "i18n/receipts/cc87b564af61-rebase5-es.json",
+        "receipt_sha256": "c48b94c8da4cc87a0b5a57355fa3e4dbdbc002f46f38ba8ec1220bfa240c7e36",
+        "source_sha256": "bc5a2fac50ce0d9670c4eb914b8d5bc75a03903774ba3816f7e9e53944cb14f9",
+        "target_sha256": "d4dc08fe534457d03264afe932cd0a3388ba6868c31a81759d587d14b4c1412a",
+        "context_sha256": "8b0ed0961320527e553b56b3c5769633ecaf6c32996175ffaa2e640433093b5e",
+        "declared_result": "clean",
+        "coverage": "13 delivery keys and historical namespace provenance",
+        "raw_receipt_preserved_in_candidate": true
+      },
+      "main_reply_delta": {
+        "commit": "26bc6ecebfd37f5203d6f7158b63f220ecc963e5",
+        "instance": "5b9e7ac29d2a",
+        "receipt": "i18n/receipts/5b9e7ac29d2a.json",
+        "receipt_sha256": "57c9172cb3cc5308e587f4b28e9e880a4fc219dbb3cd15f5cecc1122fdfdf106",
+        "source_sha256": "8886c3944d34a1107b050b06f9b4f4a95aea24e10d59ad8bc5b1c4e2a8749f40",
+        "target_sha256": "dc8897569c6ae68205b3a9466e37f975188074ecc618ec93167c131013a540f7",
+        "context_sha256": "6bc61f5c6b01c9d900834504c489f3814adf14e2529ddf4559851c0cfae9fd3d",
+        "declared_result": "clean",
+        "coverage": "replies.legacy_window delta only; not a new whole-namespace semantic audit",
+        "raw_receipt_preserved_in_candidate": true
+      }
+    },
+    "fr": {
+      "R4": {
+        "commit": "d5f2babea47e66e04d76a6e5072e1da63d5e1203",
+        "instance": "87206376c1d7-rebase4-fr",
+        "receipt": "i18n/receipts/87206376c1d7-rebase4-fr.json",
+        "receipt_sha256": "cc116c682b57fff53c029b2ae40aa2ac9c74f840a8e386ae59f9f5f22f006d71",
+        "source_sha256": "e3ef1a80523f97cba4e445d97baa1548055d1cdd54537106889a0f48c30b230b",
+        "target_sha256": "0a594db352dd7ccef853917313c0025632a867349d3efbefdd70e3601db3e9d1",
+        "context_sha256": "2a4dbc0a804618dd8366485e2b69b2540a00f6558b440aa9789ae9b16f6fab70",
+        "declared_result": "clean",
+        "coverage": "13 delivery keys and historical namespace provenance",
+        "raw_receipt_preserved_in_candidate": true
+      },
+      "preserved_R5": {
+        "commit": "7d5287d594e991e2912dbaa700f90d88ff5a1dd4",
+        "instance": "cc87b564af61-rebase5-fr",
+        "receipt": "i18n/receipts/cc87b564af61-rebase5-fr.json",
+        "receipt_sha256": "928fc593b950a385be3c42e3022a93c95ad0916042c859989969c70f3bcadcbe",
+        "source_sha256": "bc5a2fac50ce0d9670c4eb914b8d5bc75a03903774ba3816f7e9e53944cb14f9",
+        "target_sha256": "fe8e6701adb39146c5cfb69c4bf547c8d17e353171dc7680bdce26611f74d7b6",
+        "context_sha256": "8b0ed0961320527e553b56b3c5769633ecaf6c32996175ffaa2e640433093b5e",
+        "declared_result": "clean",
+        "coverage": "13 delivery keys and historical namespace provenance",
+        "raw_receipt_preserved_in_candidate": true
+      },
+      "main_reply_delta": {
+        "commit": "26bc6ecebfd37f5203d6f7158b63f220ecc963e5",
+        "instance": "5b9e7ac29d2a",
+        "receipt": "i18n/receipts/5b9e7ac29d2a.json",
+        "receipt_sha256": "57c9172cb3cc5308e587f4b28e9e880a4fc219dbb3cd15f5cecc1122fdfdf106",
+        "source_sha256": "8886c3944d34a1107b050b06f9b4f4a95aea24e10d59ad8bc5b1c4e2a8749f40",
+        "target_sha256": "9929ce22f0855dbeb9130ffb5a6515e2922233b6c41cf1939020f69044c75b93",
+        "context_sha256": "6bc61f5c6b01c9d900834504c489f3814adf14e2529ddf4559851c0cfae9fd3d",
+        "declared_result": "clean",
+        "coverage": "replies.legacy_window delta only; not a new whole-namespace semantic audit",
+        "raw_receipt_preserved_in_candidate": true
+      }
+    },
+    "hi": {
+      "R4": {
+        "commit": "d5f2babea47e66e04d76a6e5072e1da63d5e1203",
+        "instance": "87206376c1d7-rebase4-hi",
+        "receipt": "i18n/receipts/87206376c1d7-rebase4-hi.json",
+        "receipt_sha256": "6a9567453c34d98cf3348f2882e6cf599f5bdbbff14898f0283f7828ee961628",
+        "source_sha256": "e3ef1a80523f97cba4e445d97baa1548055d1cdd54537106889a0f48c30b230b",
+        "target_sha256": "c745141dd85873efd254ebde3deb7bcaad2d3b699a6eedd91ddd1e38b4228840",
+        "context_sha256": "2a4dbc0a804618dd8366485e2b69b2540a00f6558b440aa9789ae9b16f6fab70",
+        "declared_result": "clean",
+        "coverage": "13 delivery keys and historical namespace provenance",
+        "raw_receipt_preserved_in_candidate": true
+      },
+      "preserved_R5": {
+        "commit": "7d5287d594e991e2912dbaa700f90d88ff5a1dd4",
+        "instance": "cc87b564af61-rebase5-hi",
+        "receipt": "i18n/receipts/cc87b564af61-rebase5-hi.json",
+        "receipt_sha256": "665960af6e97f269bb732642073ed3e00208a3484adc64946866b6b8845cc235",
+        "source_sha256": "bc5a2fac50ce0d9670c4eb914b8d5bc75a03903774ba3816f7e9e53944cb14f9",
+        "target_sha256": "9b338a792a5daf9c67076b60b087c9f987f174ed4b988889ab6d8023c9f193ff",
+        "context_sha256": "8b0ed0961320527e553b56b3c5769633ecaf6c32996175ffaa2e640433093b5e",
+        "declared_result": "clean",
+        "coverage": "13 delivery keys and historical namespace provenance",
+        "raw_receipt_preserved_in_candidate": true
+      },
+      "main_reply_delta": {
+        "commit": "26bc6ecebfd37f5203d6f7158b63f220ecc963e5",
+        "instance": "5b9e7ac29d2a",
+        "receipt": "i18n/receipts/5b9e7ac29d2a.json",
+        "receipt_sha256": "57c9172cb3cc5308e587f4b28e9e880a4fc219dbb3cd15f5cecc1122fdfdf106",
+        "source_sha256": "8886c3944d34a1107b050b06f9b4f4a95aea24e10d59ad8bc5b1c4e2a8749f40",
+        "target_sha256": "6a69a92480a92a74cae35c1d083152e7c7a66e643a3d277100cf059679df2907",
+        "context_sha256": "6bc61f5c6b01c9d900834504c489f3814adf14e2529ddf4559851c0cfae9fd3d",
+        "declared_result": "clean",
+        "coverage": "replies.legacy_window delta only; not a new whole-namespace semantic audit",
+        "raw_receipt_preserved_in_candidate": true
+      }
+    },
+    "ru": {
+      "R4": {
+        "commit": "d5f2babea47e66e04d76a6e5072e1da63d5e1203",
+        "instance": "87206376c1d7-rebase4-ru",
+        "receipt": "i18n/receipts/87206376c1d7-rebase4-ru.json",
+        "receipt_sha256": "a4f159f6c20450ca1f0dca3a2db2acba2ca1a30fea3fade24bdacf20c444b759",
+        "source_sha256": "e3ef1a80523f97cba4e445d97baa1548055d1cdd54537106889a0f48c30b230b",
+        "target_sha256": "50ff644ea1c391ffe2210ccc7e4a02856c2d47d0966a32a6d15b101066cb7e9e",
+        "context_sha256": "2a4dbc0a804618dd8366485e2b69b2540a00f6558b440aa9789ae9b16f6fab70",
+        "declared_result": "clean",
+        "coverage": "13 delivery keys and historical namespace provenance",
+        "raw_receipt_preserved_in_candidate": true
+      },
+      "preserved_R5": {
+        "commit": "7d5287d594e991e2912dbaa700f90d88ff5a1dd4",
+        "instance": "cc87b564af61-rebase5-ru",
+        "receipt": "i18n/receipts/cc87b564af61-rebase5-ru.json",
+        "receipt_sha256": "6da9c5a022ac46890b3a15215f0548d2dda9e897f195e6bd279ab46d9a6b6c65",
+        "source_sha256": "bc5a2fac50ce0d9670c4eb914b8d5bc75a03903774ba3816f7e9e53944cb14f9",
+        "target_sha256": "d366261a2f91762c9af4aa673f2af0778e029260f4a90e0191c8bfad97049eb3",
+        "context_sha256": "8b0ed0961320527e553b56b3c5769633ecaf6c32996175ffaa2e640433093b5e",
+        "declared_result": "clean",
+        "coverage": "13 delivery keys and historical namespace provenance",
+        "raw_receipt_preserved_in_candidate": true
+      },
+      "main_reply_delta": {
+        "commit": "26bc6ecebfd37f5203d6f7158b63f220ecc963e5",
+        "instance": "5b9e7ac29d2a",
+        "receipt": "i18n/receipts/5b9e7ac29d2a.json",
+        "receipt_sha256": "57c9172cb3cc5308e587f4b28e9e880a4fc219dbb3cd15f5cecc1122fdfdf106",
+        "source_sha256": "8886c3944d34a1107b050b06f9b4f4a95aea24e10d59ad8bc5b1c4e2a8749f40",
+        "target_sha256": "8daae2d40438ca7179ea38f10404bde6c887eea459630cf6a54a48153dba1ad5",
+        "context_sha256": "6bc61f5c6b01c9d900834504c489f3814adf14e2529ddf4559851c0cfae9fd3d",
+        "declared_result": "clean",
+        "coverage": "replies.legacy_window delta only; not a new whole-namespace semantic audit",
+        "raw_receipt_preserved_in_candidate": true
+      }
+    },
+    "ur": {
+      "R4": {
+        "commit": "d5f2babea47e66e04d76a6e5072e1da63d5e1203",
+        "instance": "87206376c1d7-rebase4-ur",
+        "receipt": "i18n/receipts/87206376c1d7-rebase4-ur.json",
+        "receipt_sha256": "646e2e978a5a23f7f094c9743afad7e7a4430501f9136cfcf4e3f6de153a5881",
+        "source_sha256": "e3ef1a80523f97cba4e445d97baa1548055d1cdd54537106889a0f48c30b230b",
+        "target_sha256": "1d3cb4bff2be1fdfd10880f2c9c7c35135fc3411dd6946d37023d510bf8a6678",
+        "context_sha256": "2a4dbc0a804618dd8366485e2b69b2540a00f6558b440aa9789ae9b16f6fab70",
+        "declared_result": "clean",
+        "coverage": "13 delivery keys and historical namespace provenance",
+        "raw_receipt_preserved_in_candidate": true
+      },
+      "preserved_R5": {
+        "commit": "7d5287d594e991e2912dbaa700f90d88ff5a1dd4",
+        "instance": "cc87b564af61-rebase5-ur",
+        "receipt": "i18n/receipts/cc87b564af61-rebase5-ur.json",
+        "receipt_sha256": "a6d3b6b982c6380ab27b2aee7dbf5ea1652cfb2fecca28fad45ae85dd4139e57",
+        "source_sha256": "bc5a2fac50ce0d9670c4eb914b8d5bc75a03903774ba3816f7e9e53944cb14f9",
+        "target_sha256": "89104c5e6ce443307e923a9b929dff915b05f6b26f8371d2024ca9c391198298",
+        "context_sha256": "8b0ed0961320527e553b56b3c5769633ecaf6c32996175ffaa2e640433093b5e",
+        "declared_result": "clean",
+        "coverage": "13 delivery keys and historical namespace provenance",
+        "raw_receipt_preserved_in_candidate": true
+      },
+      "main_reply_delta": {
+        "commit": "26bc6ecebfd37f5203d6f7158b63f220ecc963e5",
+        "instance": "5b9e7ac29d2a",
+        "receipt": "i18n/receipts/5b9e7ac29d2a.json",
+        "receipt_sha256": "57c9172cb3cc5308e587f4b28e9e880a4fc219dbb3cd15f5cecc1122fdfdf106",
+        "source_sha256": "8886c3944d34a1107b050b06f9b4f4a95aea24e10d59ad8bc5b1c4e2a8749f40",
+        "target_sha256": "d562135128ee5f135d2124e08c07dee38407060f08a23a6c6876120ed6c856d2",
+        "context_sha256": "6bc61f5c6b01c9d900834504c489f3814adf14e2529ddf4559851c0cfae9fd3d",
+        "declared_result": "clean",
+        "coverage": "replies.legacy_window delta only; not a new whole-namespace semantic audit",
+        "raw_receipt_preserved_in_candidate": true
+      }
+    },
+    "vi": {
+      "R4": {
+        "commit": "d5f2babea47e66e04d76a6e5072e1da63d5e1203",
+        "instance": "87206376c1d7-rebase4-vi",
+        "receipt": "i18n/receipts/87206376c1d7-rebase4-vi.json",
+        "receipt_sha256": "433fddd60b09691e4b982e356e89b8512f653779b292952cc1085c5315023b36",
+        "source_sha256": "e3ef1a80523f97cba4e445d97baa1548055d1cdd54537106889a0f48c30b230b",
+        "target_sha256": "ab2a9b0a243feabe140526c2de77f5ca7c1342a47a2b20810efd839a64ec9e1b",
+        "context_sha256": "2a4dbc0a804618dd8366485e2b69b2540a00f6558b440aa9789ae9b16f6fab70",
+        "declared_result": "clean",
+        "coverage": "13 delivery keys and historical namespace provenance",
+        "raw_receipt_preserved_in_candidate": true
+      },
+      "preserved_R5": {
+        "commit": "7d5287d594e991e2912dbaa700f90d88ff5a1dd4",
+        "instance": "cc87b564af61-rebase5-vi",
+        "receipt": "i18n/receipts/cc87b564af61-rebase5-vi.json",
+        "receipt_sha256": "7d96691990341926b57f92037cdb856aa711bf6da2fc2e34f8f087c8afa5d4eb",
+        "source_sha256": "bc5a2fac50ce0d9670c4eb914b8d5bc75a03903774ba3816f7e9e53944cb14f9",
+        "target_sha256": "2db73d7ef2aad6b15b3761adacfc31e972f00a65f1076ac46ce7a6e806c798d6",
+        "context_sha256": "8b0ed0961320527e553b56b3c5769633ecaf6c32996175ffaa2e640433093b5e",
+        "declared_result": "clean",
+        "coverage": "13 delivery keys and historical namespace provenance",
+        "raw_receipt_preserved_in_candidate": true
+      },
+      "main_reply_delta": {
+        "commit": "26bc6ecebfd37f5203d6f7158b63f220ecc963e5",
+        "instance": "5b9e7ac29d2a",
+        "receipt": "i18n/receipts/5b9e7ac29d2a.json",
+        "receipt_sha256": "57c9172cb3cc5308e587f4b28e9e880a4fc219dbb3cd15f5cecc1122fdfdf106",
+        "source_sha256": "8886c3944d34a1107b050b06f9b4f4a95aea24e10d59ad8bc5b1c4e2a8749f40",
+        "target_sha256": "279543e8357fe03ee8ce7ea369badbbb98adc7452bf6528e57f1a1b9507bb4b9",
+        "context_sha256": "6bc61f5c6b01c9d900834504c489f3814adf14e2529ddf4559851c0cfae9fd3d",
+        "declared_result": "clean",
+        "coverage": "replies.legacy_window delta only; not a new whole-namespace semantic audit",
+        "raw_receipt_preserved_in_candidate": true
+      }
+    },
+    "zh-CN": {
+      "R4": {
+        "commit": "d5f2babea47e66e04d76a6e5072e1da63d5e1203",
+        "instance": "87206376c1d7-rebase4-zh-cn",
+        "receipt": "i18n/receipts/87206376c1d7-rebase4-zh-cn.json",
+        "receipt_sha256": "13d5002612184140ff024867c04ec492a7ff1811b6b517d2039f45f9d7072438",
+        "source_sha256": "e3ef1a80523f97cba4e445d97baa1548055d1cdd54537106889a0f48c30b230b",
+        "target_sha256": "4a8013a8631275c2f765cd4c4e8b717a072a20589137153a1b295dae07ba6b13",
+        "context_sha256": "2a4dbc0a804618dd8366485e2b69b2540a00f6558b440aa9789ae9b16f6fab70",
+        "declared_result": "clean",
+        "coverage": "13 delivery keys and historical namespace provenance",
+        "raw_receipt_preserved_in_candidate": true
+      },
+      "preserved_R5": {
+        "commit": "7d5287d594e991e2912dbaa700f90d88ff5a1dd4",
+        "instance": "cc87b564af61-rebase5-zh-cn",
+        "receipt": "i18n/receipts/cc87b564af61-rebase5-zh-cn.json",
+        "receipt_sha256": "d35271c343accd83b416feb5de7be05c208903240f3c82c1891160e80a18f433",
+        "source_sha256": "bc5a2fac50ce0d9670c4eb914b8d5bc75a03903774ba3816f7e9e53944cb14f9",
+        "target_sha256": "0642a9727618303ead00ddde0eef400270360e42ffb3a7412e4be0edd584c2ff",
+        "context_sha256": "8b0ed0961320527e553b56b3c5769633ecaf6c32996175ffaa2e640433093b5e",
+        "declared_result": "clean",
+        "coverage": "13 delivery keys and historical namespace provenance",
+        "raw_receipt_preserved_in_candidate": true
+      },
+      "main_reply_delta": {
+        "commit": "26bc6ecebfd37f5203d6f7158b63f220ecc963e5",
+        "instance": "5b9e7ac29d2a",
+        "receipt": "i18n/receipts/5b9e7ac29d2a.json",
+        "receipt_sha256": "57c9172cb3cc5308e587f4b28e9e880a4fc219dbb3cd15f5cecc1122fdfdf106",
+        "source_sha256": "8886c3944d34a1107b050b06f9b4f4a95aea24e10d59ad8bc5b1c4e2a8749f40",
+        "target_sha256": "b7c07fdf1575b5af81b030e7593e51fe9ee39c10e3c97b67267cb6b8e6c5e873",
+        "context_sha256": "6bc61f5c6b01c9d900834504c489f3814adf14e2529ddf4559851c0cfae9fd3d",
+        "declared_result": "clean",
+        "coverage": "replies.legacy_window delta only; not a new whole-namespace semantic audit",
+        "raw_receipt_preserved_in_candidate": true
+      }
+    }
+  },
+  "preserved_receipt_digests": {
+    "i18n/receipts/87206376c1d7-rebase4-es.json": "e1b0c5c734493c6cb51b984e8e94af1cc0c6f424a6ac60e0bc6fe5abbf232895",
+    "i18n/receipts/cc87b564af61-rebase5-es.json": "c48b94c8da4cc87a0b5a57355fa3e4dbdbc002f46f38ba8ec1220bfa240c7e36",
+    "i18n/receipts/5b9e7ac29d2a.json": "57c9172cb3cc5308e587f4b28e9e880a4fc219dbb3cd15f5cecc1122fdfdf106",
+    "i18n/receipts/87206376c1d7-rebase4-fr.json": "cc116c682b57fff53c029b2ae40aa2ac9c74f840a8e386ae59f9f5f22f006d71",
+    "i18n/receipts/cc87b564af61-rebase5-fr.json": "928fc593b950a385be3c42e3022a93c95ad0916042c859989969c70f3bcadcbe",
+    "i18n/receipts/87206376c1d7-rebase4-hi.json": "6a9567453c34d98cf3348f2882e6cf599f5bdbbff14898f0283f7828ee961628",
+    "i18n/receipts/cc87b564af61-rebase5-hi.json": "665960af6e97f269bb732642073ed3e00208a3484adc64946866b6b8845cc235",
+    "i18n/receipts/87206376c1d7-rebase4-ru.json": "a4f159f6c20450ca1f0dca3a2db2acba2ca1a30fea3fade24bdacf20c444b759",
+    "i18n/receipts/cc87b564af61-rebase5-ru.json": "6da9c5a022ac46890b3a15215f0548d2dda9e897f195e6bd279ab46d9a6b6c65",
+    "i18n/receipts/87206376c1d7-rebase4-ur.json": "646e2e978a5a23f7f094c9743afad7e7a4430501f9136cfcf4e3f6de153a5881",
+    "i18n/receipts/cc87b564af61-rebase5-ur.json": "a6d3b6b982c6380ab27b2aee7dbf5ea1652cfb2fecca28fad45ae85dd4139e57",
+    "i18n/receipts/87206376c1d7-rebase4-vi.json": "433fddd60b09691e4b982e356e89b8512f653779b292952cc1085c5315023b36",
+    "i18n/receipts/cc87b564af61-rebase5-vi.json": "7d96691990341926b57f92037cdb856aa711bf6da2fc2e34f8f087c8afa5d4eb",
+    "i18n/receipts/87206376c1d7-rebase4-zh-cn.json": "13d5002612184140ff024867c04ec492a7ff1811b6b517d2039f45f9d7072438",
+    "i18n/receipts/cc87b564af61-rebase5-zh-cn.json": "d35271c343accd83b416feb5de7be05c208903240f3c82c1891160e80a18f433"
+  },
+  "ledger_stage_proof": {
+    "2": {
+      "sha256": "124f2f1595f6ba9a07373fe28da33d898a13efb7586999e78d001744b7c621f0",
+      "equals_parent_commit": "7d5287d594e991e2912dbaa700f90d88ff5a1dd4"
+    },
+    "3": {
+      "sha256": "5c3bab624f8c6c433401b929b02dd203779046906ec6f6453b442ff43f6139e3",
+      "equals_parent_commit": "26bc6ecebfd37f5203d6f7158b63f220ecc963e5"
+    }
+  },
+  "proposed_minimal_ledger_resolution": {
+    "base": "Use exact main stage-3 ledger as baseline; preserve every unrelated row byte-content/object and every immutable receipt.",
+    "affected_rows": "Only seven ui.teamBridge rows: new candidate English/target hashes; fresh composition auditor reference to this exact immutable receipt once tooling-compatible schema is deliberately prepared; retain context hash and both main reply-delta + preserved R5/R4 provenance.",
+    "history": "Keep old parent hashes/auditors with their original receipts in superseded/history; merge historical audit records by identity without overwriting or discarding main records. Do not attach old auditors to changed hashes as though they audited combined bytes.",
+    "pending": "This is a scratch composition record, NOT a ledger-assemble-ready locale receipt or checker pass. Author must prepare the permitted integration schema under a fresh source batch; any hash/copy delta from these nine files invalidates this record until scoped recheck.",
+    "no_automatic_approval": "No author self-approval, no full-namespace fresh linguistic verdict; no ready-to-ship claim."
+  },
+  "limitations": [
+    "No Node/checker/generator, tests, runtime, browser or PR write executed.",
+    "Ledger remains unmerged; no ledger validation or unrelated-row preservation in a resolved ledger can yet be certified.",
+    "Q1 FAIL, source hook override disclosure, and design/UX/wire-model semantic questions remain external gates; no frames or approval invented.",
+    "Byte composition does not prove changed #1560 caller/wire behavior preserves the meaning shown to users."
+  ],
+  "historical_nits": {
+    "locale": "zh-CN",
+    "count": 10,
+    "status": "fixed in R4; exact fixed values preserved",
+    "keys": [
+      "ui.teamBridge.delivery.refused",
+      "ui.teamBridge.delivery.refused_manipulation",
+      "ui.teamBridge.delivery.refused_personal_info",
+      "ui.teamBridge.delivery.refused_abusive",
+      "ui.teamBridge.delivery.refused_unsafe_content",
+      "ui.teamBridge.delivery.refused_out_of_scope",
+      "ui.teamBridge.delivery.held",
+      "ui.teamBridge.delivery.held_screening_unavailable",
+      "ui.teamBridge.delivery.held_awaiting_review",
+      "ui.teamBridge.delivery.pending"
+    ]
+  }
+}
