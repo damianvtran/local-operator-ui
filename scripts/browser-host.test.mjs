@@ -12497,3 +12497,57 @@ test("a hover whose page handler navigates to an unapproved origin is refused wi
 		"hover arms no per-hop gate",
 	);
 });
+
+for (const failure of ["null hit", "read throws"]) {
+	test(`hover navigation is authorized and restored even when the post-move ${failure} prevents perform from returning (review R2)`, async () => {
+		const { host, cdp, registry } = makeHost();
+		const { owner, tab } = await openApprovedTab(host);
+		const record = registry.requireSurface(tab);
+		const contents = record.view.webContents;
+		// Unlike the R1 test (navigation AFTER perform returned), this is the page's
+		// mouseenter handler running DURING the move. The new document has no hit at
+		// that point, or its context disappeared: both make perform THROW before its
+		// return-side document check. Neither may leave the forbidden landing open.
+		contents.isolatedResult = null;
+		if (failure === "read throws")
+			contents.isolatedError = new Error("context destroyed");
+		const send = cdp.send;
+		cdp.send = async (target, method, params) => {
+			if (method === "Input.dispatchMouseEvent") {
+				contents.url = "https://forbidden.example/landed";
+				registry.bumpEpoch(record.tabId);
+			}
+			return send(target, method, params);
+		};
+		cdp.calls.length = 0;
+		await assert.rejects(
+			host.dispatch("hover", { ...owner, tab, x: 10, y: 10 }, "hover"),
+			(error) =>
+				error.code === "origin_not_allowed" &&
+				error.data.reason === "unapproved" &&
+				error.data.origin === "https://forbidden.example",
+		);
+		assert.equal(contents.url, "https://approved.example/");
+		assert.ok(contents.loaded.includes("https://approved.example/"));
+		assert.ok(!cdp.calls.some((call) => call.method === "Fetch.enable"));
+	});
+}
+
+test("hover's original hit failure survives when the landing document is still approved", async () => {
+	const { host, registry } = makeHost();
+	const { owner, tab } = await openApprovedTab(host);
+	const contents = registry.requireSurface(tab).view.webContents;
+	contents.isolatedResult = null;
+	const loads = contents.loaded.length;
+	await assert.rejects(
+		host.dispatch("hover", { ...owner, tab, x: 10, y: 10 }, "hover"),
+		(error) =>
+			error.code === "element_not_found" &&
+			error.message.includes("no element at point"),
+	);
+	assert.equal(
+		contents.loaded.length,
+		loads,
+		"no spurious restore without an unapproved landing",
+	);
+});

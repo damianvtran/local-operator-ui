@@ -678,7 +678,21 @@ export class BrowserHost implements BrowserActionContext {
 		// `NAVIGATION_ACTIONS` for why the others are deliberately not wrapped in it.
 		const operation = async (): Promise<Record<string, unknown>> => {
 			assertDocument();
-			const result = await this.perform(method, params, requestId);
+			let result: Record<string, unknown>;
+			try {
+				result = await this.perform(method, params, requestId);
+			} catch (error) {
+				// Input can land successfully and THEN fail reading the changed page:
+				// hover's mouseenter navigates, for example, and hitAt finds no element
+				// (or its execution context was destroyed). A return-only check leaves
+				// that unapproved landing open and reports the incidental read error.
+				// Judge/restore the landing even when perform throws; authorization
+				// takes precedence, but an approved document keeps the original error.
+				// Restrict this to actions that can move the page: a non-navigating
+				// read keeps its existing error semantics. No additional Fetch gate.
+				if (NAVIGATING_ACTIONS.has(method)) assertDocument();
+				throw error;
+			}
 			try {
 				assertDocument();
 			} catch (error) {
