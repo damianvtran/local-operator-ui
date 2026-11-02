@@ -1,5 +1,5 @@
 {
 	"ui.nativeBadge.attention": "{count, plural, one {Local Operator: # item needs attention} other {Local Operator: # items need attention}}",
 	"ui.nativeBadge.attentionPending": "{count, plural, one {Local Operator: # item needs attention; requests are still pending} other {Local Operator: # items need attention; requests are still pending}}",
-	"ui.nativeBadge.pending": "Local Operator: Requests are still pending"
+	"ui.nativeBadge.pending": "Local Operator: requests are still pending"
 }

@@ -276,8 +276,58 @@ test("malformed count clears rather than inventing authority", () => {
 	}
 });
 
+test("every Windows label has zero four-adjacent ink/rim contacts", () => {
+	for (const label of [..."123456789", "9+", "•"]) {
+		const bitmap = appIconBadgeBitmap(label);
+		let contacts = 0;
+		for (let y = 0; y < 16; y++) {
+			for (let x = 0; x < 16; x++) {
+				const distance = (x - 7.5) ** 2 + (y - 7.5) ** 2;
+				if (distance > 42.25 || bitmap[(y * 16 + x) * 4] !== 255) continue;
+				for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
+					const nx = x + dx;
+					const ny = y + dy;
+					if (nx < 0 || nx > 15 || ny < 0 || ny > 15) continue;
+					const neighborDistance = (nx - 7.5) ** 2 + (ny - 7.5) ** 2;
+					if (
+						neighborDistance > 42.25 &&
+						bitmap[(ny * 16 + nx) * 4 + 3] === 255
+					)
+						contacts++;
+				}
+			}
+		}
+		assert.equal(
+			contacts,
+			0,
+			`${label}: glyph must remain separated from the white rim`,
+		);
+	}
+});
+
+test("Windows pending indicator is a rounded 6px dot, not a square", () => {
+	const bitmap = appIconBadgeBitmap("•");
+	const ink = [];
+	for (let y = 0; y < 16; y++) {
+		for (let x = 0; x < 16; x++) {
+			if (
+				(x - 7.5) ** 2 + (y - 7.5) ** 2 <= 42.25 &&
+				bitmap[(y * 16 + x) * 4] === 255
+			)
+				ink.push([x, y]);
+		}
+	}
+	assert.equal(ink.length, 32);
+	assert.equal(Math.min(...ink.map(([x]) => x)), 5);
+	assert.equal(Math.max(...ink.map(([x]) => x)), 10);
+	assert.equal(Math.min(...ink.map(([, y]) => y)), 5);
+	assert.equal(Math.max(...ink.map(([, y]) => y)), 10);
+	for (const [x, y] of [[5, 5], [5, 10], [10, 5], [10, 10]])
+		assert.equal(bitmap[(y * 16 + x) * 4], 0, "rounded corners stay black");
+});
+
 test("Windows bitmap is deterministic 16x16 BGRA with alpha and visible label differences", () => {
-	const images = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "9+", "•"].map(
+	const images = [..."123456789", "9+", "•"].map(
 		(label) => {
 			const image = appIconBadgeBitmap(label);
 			assert.equal(image.length, 16 * 16 * 4);

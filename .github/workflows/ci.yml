@@ -1530,6 +1530,8 @@ jobs:
           "$CORE_VENV/bin/pip" install --quiet --upgrade pip
           "$CORE_VENV/bin/pip" install --quiet \
             "local-operator[server] @ git+https://github.com/damianvtran/local-operator@${LOCAL_OPERATOR_CORE_REF}"
+          # Cross-check this build hash against native-scene.json, not a source ref.
+          shasum -a 256 out/main/index.js
           LOCAL_OPERATOR_CORE_BIN="$CORE_VENV/bin/local-operator" \
           LOCAL_OPERATOR_CORE_PYTHON="$CORE_VENV/bin/python" \
           node scripts/app-icon-badge-scene.mjs

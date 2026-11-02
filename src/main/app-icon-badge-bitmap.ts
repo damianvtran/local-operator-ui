@@ -35,7 +35,7 @@ export function appIconBadgeBitmap(label: string): Buffer {
 	if (label === "•") {
 		for (let y = 5; y <= 10; y++) {
 			for (let x = 5; x <= 10; x++) {
-				if ((x - 7.5) ** 2 + (y - 7.5) ** 2 <= 6.25) pixel(x, y, true);
+				if ((x - 7.5) ** 2 + (y - 7.5) ** 2 <= 8.5) pixel(x, y, true);
 			}
 		}
 		return bitmap;
@@ -43,13 +43,17 @@ export function appIconBadgeBitmap(label: string): Buffer {
 	const overflow = label === "9+";
 	const glyph = DIGITS[overflow ? "9" : label];
 	const xScale = overflow ? 1 : 2;
-	const left = overflow ? 3 : 5;
+	// Overflow needs a black gap around its narrow 9, not a rim-shaped stroke.
+	// Trim the doubled top/bottom rows to fit the 9 in the inner 8px height.
+	const left = overflow ? 4 : 5;
 	for (let y = 0; y < 5; y++) {
+		const height = overflow && (y === 0 || y === 4) ? 1 : 2;
+		const top = 3 + y * 2 + Number(overflow && y === 0);
 		for (let x = 0; x < 3; x++) {
 			if (glyph[y][x] !== "1") continue;
-			for (let dy = 0; dy < 2; dy++) {
+			for (let dy = 0; dy < height; dy++) {
 				for (let dx = 0; dx < xScale; dx++) {
-					pixel(left + x * xScale + dx, 3 + y * 2 + dy, true);
+					pixel(left + x * xScale + dx, top + dy, true);
 				}
 			}
 		}

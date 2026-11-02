@@ -122,6 +122,12 @@ async function main() {
 		if (name.startsWith("CMUX_") || name === "XPC_FLAGS")
 			delete process.env[name];
 	const { rendererDriverApi: api } = await import("./renderer-driver.mjs");
+	// Load ICU only after refusal: local safety probes need no dependency tree.
+	// Expected copy comes from the catalog, not a second hardcoded translation.
+	const { IntlMessageFormat } = await import("intl-messageformat");
+	const enCatalog = JSON.parse(
+		readFileSync("src/i18n/catalogues/en/ui.nativeBadge.json", "utf8"),
+	);
 	mkdirSync(OUT, { recursive: true });
 	const root = mkdtempSync(join(process.env.RUNNER_TEMP, "badge-scene-"));
 	const home = join(root, "home");
@@ -309,17 +315,24 @@ print(importlib.metadata.distribution("local-operator").read_text("direct_url.js
 				"scene must never show/focus a window",
 			);
 			const description = value.projection.lastDescription;
-			if (badge === "") assert.equal(description, "");
-			else
-				assert.ok(
-					description.length > 0,
-					"keyed projection description required",
-				);
-			if (unreadCount > 0)
-				assert.ok(
-					description.includes(String(unreadCount)),
-					"description must retain exact count",
-				);
+			let expectedDescription = "";
+			if (unreadCount > 0 || pending) {
+				const key =
+					unreadCount > 0
+						? pending
+							? "attentionPending"
+							: "attention"
+						: "pending";
+				expectedDescription = new IntlMessageFormat(
+					enCatalog[`ui.nativeBadge.${key}`],
+					"en",
+				).format({ count: unreadCount });
+			}
+			assert.equal(
+				description,
+				expectedDescription,
+				`${name}: exact English catalog description (uncapped count)`,
+			);
 			const frames = [];
 			// Consecutive frames show settling separately from native API facts.
 			for (let index = 0; index < 2; index++) {
