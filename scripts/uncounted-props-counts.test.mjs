@@ -1,7 +1,12 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { test } from "node:test";
 import { build } from "esbuild";
+// A SECOND, independent ICU implementation instance (the bundle above inlines
+// its own copy): the locale expectations below are rendered here, never through
+// `t()`, so a bug in the shipped lookup/format path cannot also corrupt the
+// oracle it is judged against.
+import { IntlMessageFormat } from "intl-messageformat";
 
 // Only the shipped formatter is bundled, never a React/component dependency
 // tree. Execute the actual call expressions below rather than duplicating their
@@ -203,29 +208,247 @@ test("batch fallback retains supplied summaries, including the empty string", ()
 	}
 });
 
-// These locales still lack the eight new keys. Pin their existing per-key
-// English fallback and a reused shipped key without inventing translations.
-test("existing locale catalogues and reused keys keep their resolution", () => {
-	for (const locale of ["fr", "es", "zh-CN", "ru", "vi", "ur", "hi"]) {
-		setLocale(locale);
-		const common = JSON.parse(
-			readFileSync(
-				`src/i18n/catalogues/${locale}/ui.common.actions.json`,
-				"utf8",
-			),
-		);
-		assert.equal(
-			t("ui.common.actions.copied"),
-			common["ui.common.actions.copied"],
-		);
-		for (const [, key, baseline] of SITES) {
-			for (const count of COUNTS) {
+// The seven non-English locales now ship all eight plural keys. These tests
+// pin what each locale actually renders, using the locale's own catalogue
+// message as the oracle (rendered by an independent `intl-messageformat`), plus
+// hand-written literals for the CLDR arms, so neither a stale English fallback
+// nor a wrong plural category can pass.
+const LOCALES = ["fr", "es", "zh-CN", "ru", "vi", "ur", "hi"];
+const PLURAL_KEYS = [...new Set(SITES.map(([, key]) => key))];
+// `images_aria` has two call sites but is one key: assert the distinct key
+// count so a dropped key cannot shrink this proof silently.
+assert.equal(PLURAL_KEYS.length, 8, "eight distinct plural keys");
+// Any Unicode decimal digit: catches localised digit systems, not only ASCII.
+const ANY_DIGIT = /\p{Nd}/u;
+const DISPLAY_COUNTS = [0, 1, 2, 5, 999, 1000, 1001, 12345];
+const CATALOGUE_ROOT = "src/i18n/catalogues";
+const catalogueCache = new Map();
+function catalogueFor(locale) {
+	let merged = catalogueCache.get(locale);
+	if (merged === undefined) {
+		merged = {};
+		for (const file of readdirSync(`${CATALOGUE_ROOT}/${locale}`)) {
+			if (!file.endsWith(".json")) continue;
+			Object.assign(
+				merged,
+				JSON.parse(readFileSync(`${CATALOGUE_ROOT}/${locale}/${file}`, "utf8")),
+			);
+		}
+		catalogueCache.set(locale, merged);
+	}
+	return merged;
+}
+function oracle(locale, key, params) {
+	const message = catalogueFor(locale)[key];
+	assert.equal(typeof message, "string", `${locale} ships ${key}`);
+	return new IntlMessageFormat(message, locale).format(params);
+}
+function withLocale(locale, body) {
+	setLocale(locale);
+	try {
+		body();
+	} finally {
+		clearRegisteredCatalogues();
+		setLocale("en");
+	}
+}
+
+for (const locale of LOCALES) {
+	test(`[${locale}] every plural key resolves to the locale's own catalogue message`, () => {
+		withLocale(locale, () => {
+			const english = catalogueFor("en");
+			for (const key of PLURAL_KEYS) {
+				// A locale that silently fell back to English would match the
+				// English message; the catalogue must differ for the proof to bite.
+				assert.notEqual(
+					catalogueFor(locale)[key],
+					english[key],
+					`${locale}:${key} is translated, not an English copy`,
+				);
+				for (const count of [...new Set([...COUNTS, ...DISPLAY_COUNTS])]) {
+					for (const clipped of ["yes", "no"]) {
+						const params = { count, count_display: String(count), clipped };
+						assert.equal(
+							t(key, params),
+							oracle(locale, key, params),
+							`${locale} ${key} count=${count} clipped=${clipped}`,
+						);
+					}
+				}
+			}
+		});
+	});
+
+	test(`[${locale}] count_display is rendered verbatim, never localised or grouped`, () => {
+		withLocale(locale, () => {
+			for (const key of PLURAL_KEYS) {
+				for (const count of DISPLAY_COUNTS) {
+					const shown = String(count);
+					const out = t(key, {
+						count,
+						count_display: shown,
+						clipped: "no",
+					});
+					assert.ok(
+						out.includes(shown),
+						`${locale} ${key}: "${out}" shows ${shown}`,
+					);
+					// Whatever remains once the raw digits are removed must hold no
+					// digit at all: "1,000", "1 000" or Arabic-Indic digits would
+					// leave residue here.
+					assert.doesNotMatch(
+						out.replaceAll(shown, ""),
+						ANY_DIGIT,
+						`${locale} ${key} count=${count}: "${out}" altered the digits`,
+					);
+				}
+			}
+		});
+	});
+
+	test(`[${locale}] reused shipped key ui.common.actions.copied still resolves`, () => {
+		withLocale(locale, () => {
+			const common = catalogueFor(locale)["ui.common.actions.copied"];
+			assert.equal(typeof common, "string");
+			assert.equal(t("ui.common.actions.copied"), common);
+			assert.notEqual(
+				t("ui.common.actions.copied"),
+				"ui.common.actions.copied",
+			);
+		});
+	});
+}
+
+// Hand-written expectations, deliberately not derived from the catalogues or
+// `Intl.PluralRules`: each row is [count, rendered] for the key named in the
+// table. CLDR categories relied on: fr/es one=1 (and fr 0), many=10^6 multiples;
+// ru one/few/many by the usual Slavic rule; vi/zh-CN have only `other`;
+// ur/en-style =1 then other; hi one covers 0 and 1.
+const ARMS = [
+	[
+		"ru",
+		"ui.chat.asks.outstanding_count",
+		[
+			[1, "1 запрос"],
+			[2, "2 запроса"],
+			[5, "5 запросов"],
+			[21, "21 запрос"],
+			[22, "22 запроса"],
+			[11, "11 запросов"],
+		],
+	],
+	[
+		"ru",
+		"ui.chat.sidebar.search.count_tooltip",
+		[
+			[1, "По этому поиску найден 1 чат"],
+			[2, "По этому поиску найдено 2 чата"],
+			[5, "По этому поиску найдено 5 чатов"],
+			[21, "По этому поиску найден 21 чат"],
+		],
+	],
+	[
+		"fr",
+		"ui.chat.asks.outstanding_count",
+		[
+			[0, "0 demande"],
+			[1, "1 demande"],
+			[2, "2 demandes"],
+			[5, "5 demandes"],
+			[1000000, "1000000 de demandes"],
+		],
+	],
+	[
+		"es",
+		"ui.chat.asks.outstanding_count",
+		[
+			[0, "0 consultas"],
+			[1, "1 consulta"],
+			[2, "2 consultas"],
+			[5, "5 consultas"],
+			[1000000, "1000000 de consultas"],
+		],
+	],
+	[
+		"zh-CN",
+		"ui.chat.asks.outstanding_count",
+		[
+			[0, "0个请求"],
+			[1, "1个请求"],
+			[2, "2个请求"],
+			[5, "5个请求"],
+		],
+	],
+	[
+		"vi",
+		"ui.chat.asks.outstanding_count",
+		[
+			[0, "0 câu hỏi"],
+			[1, "1 câu hỏi"],
+			[2, "2 câu hỏi"],
+			[5, "5 câu hỏi"],
+		],
+	],
+	[
+		"ur",
+		"ui.chat.asks.outstanding_count",
+		[
+			[0, "0 سوالات"],
+			[1, "1 سوال"],
+			[2, "2 سوالات"],
+			[5, "5 سوالات"],
+		],
+	],
+	[
+		"hi",
+		"ui.chat.canonical.fold.more_images",
+		[
+			[0, "+0 और तस्वीर"],
+			[1, "+1 और तस्वीर"],
+			[2, "+2 और तस्वीरें"],
+			[5, "+5 और तस्वीरें"],
+		],
+	],
+];
+for (const [locale, key, rows] of ARMS) {
+	test(`[${locale}] ${key} selects the CLDR arm for ${rows.map(([n]) => n).join(", ")}`, () => {
+		withLocale(locale, () => {
+			for (const [count, expected] of rows) {
 				assert.equal(
 					t(key, { count, count_display: String(count), clipped: "no" }),
-					baseline(count, false),
+					expected,
+					`${locale} ${key} count=${count}`,
 				);
 			}
+		});
+	});
+}
+
+// RFC §2.5 per-key English fallback, proved on a SYNTHETIC locale that
+// deliberately lacks the plural keys (no real locale does any more). It also
+// carries one unrelated key so the test shows the locale IS active and the
+// plural keys fell through to English individually, not because the whole
+// locale was ignored. English rules must format the fallback ("1 ask", not a
+// foreign plural category).
+test("a locale that lacks a plural key falls back to English with count_display", () => {
+	// Registered inside the body: `withLocale` clears registrations on exit.
+	withLocale("qq", () => {
+		registerCatalogue("qq", { "ui.common.actions.copied": "synthetic-copied" });
+		assert.equal(t("ui.common.actions.copied"), "synthetic-copied");
+		for (const [, key, baseline] of SITES) {
+			for (const count of COUNTS) {
+				for (const clipped of [false, true]) {
+					assert.equal(
+						t(key, {
+							count,
+							count_display: String(count),
+							clipped: clipped ? "yes" : "no",
+						}),
+						baseline(count, clipped),
+						`fallback ${key} count=${count}`,
+					);
+				}
+			}
 		}
-	}
-	setLocale("en");
+	});
 });
