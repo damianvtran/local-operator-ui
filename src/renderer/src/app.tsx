@@ -55,7 +55,9 @@ import { useI18nLocaleSync } from "@shared/i18n/locale-sync";
 import { useDocumentDirection } from "@shared/i18n/use-document-direction";
 import { useKeymapShortcuts } from "@shared/keymap/use-keymap-shortcuts";
 import { t } from "../../i18n/messages";
+import { useOwnerAuditStartupScene } from "./dev-driver/owner-audit-startup";
 
+import { useAgentAvatarLayer } from "@shared/agent-avatar/agent-avatar";
 import { ChatLayout } from "@shared/components/common/chat-layout";
 import { CreateAgentDialog } from "@shared/components/common/create-agent-dialog";
 import { LowCreditsDialog } from "@shared/components/common/low-credits-dialog";
@@ -372,6 +374,12 @@ const App: FC = () => {
 	useConversationRecents();
 
 	/*
+	 * The agent pictures' layer: reads the avatar map once for the whole app so the
+	 * #1517 localStorage migration runs whichever page opens first (QA round 1, Q-2).
+	 */
+	useAgentAvatarLayer();
+
+	/*
 	 * The navigation gestures (issue #675): Cmd/Ctrl+[ and Cmd/Ctrl+] move the
 	 * router, and the mouse's back/forward buttons with them. Mounted here for
 	 * the same reason the palette's hook is — the listeners have to exist for
@@ -509,6 +517,7 @@ const App: FC = () => {
 	 * is one-shot, so a normal launch pays one cheap IPC call and nothing else.
 	 */
 	useTeamBridgeNotificationOpen(bridgeState === "enabled", navigate);
+	useOwnerAuditStartupScene(bridgeState === "enabled", navigate);
 
 	/*
 	 * AN AGENT'S `reveal`, handled in the shell because the shell is what knows

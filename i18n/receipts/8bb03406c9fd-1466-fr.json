@@ -1,0 +1,79 @@
+{
+ "schema": 1,
+ "auditor": "i18n-auditor (lopdev reviewer-role session 8bb03406c9fd, delta audit of the two ui.chat.asks keys #1466 added; not the PR coder, not the translator 1d58a9985da6, not any previous auditor of this row)",
+ "agent": "i18n-auditor (lopdev reviewer-role session 8bb03406c9fd, delta audit of the two ui.chat.asks keys #1466 added; not the PR coder, not the translator 1d58a9985da6, not any previous auditor of this row)",
+ "model": "anthropic/claude-opus-5-5",
+ "model_provenance": "Every catalogue read and verdict in this receipt ran on anthropic/claude-opus-5-5 (session header of 8bb03406c9fd); no fallback occurred in this session.",
+ "fallback": "none",
+ "independence": "Separate session (8bb03406c9fd, team lopdev, reviewer role) from the translator of these keys (8f79f63fcb: coder session 1d58a9985da6, anthropic/claude-opus-5-5) and from every earlier auditor of this row. SAME-FAMILY, NOT model-independent: translator and auditor both ran anthropic/claude-opus-5-5; agent-instance independent. Verdicts rebuilt from the English source and context, core relay.asks.status.* in this locale, the namespace's keyed siblings, the core glossary and the locale style guide; the translator's commit message was not used as evidence.",
+ "instance": "8bb03406c9fd-1466-fr",
+ "session": "8bb03406c9fd",
+ "locale": "fr",
+ "branch": "fix/notifications-ask-optimistic",
+ "head": "8f79f63fcb3dc6f76aaf8fedd075bde2953d2a77",
+ "pr": "damianvtran/local-operator-ui#1466",
+ "date": "2026-10-28",
+ "status": "passed",
+ "scope": "ui.chat.asks: delta audit of the 2 keys 8f79f63fcb added (status.withdrawn, status.withdrawn_label). The other 26 keys are byte-identical to the 96cf90fc7a blob the existing ledger row's target_sha256 names.",
+ "inputs_sha256": {
+  "en_context (ui.chat.asks.context.json)": "e1d26bb6356b2ead4b2825ec23cd7496674049494478b1a085182ae4bae98da1",
+  "glossary (local-operator/i18n/glossary.md @ 9495f8a6c3)": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+  "style guide (local-operator/i18n/style-guides/fr.md @ 9495f8a6c3)": "49010212a65f0d30d49bf532601bb39ad277be28aef5d476715186cf28525990",
+  "core relay.asks (local_operator/i18n/catalogues/fr/relay.asks.json @ 9495f8a6c3)": "46b42cf015746840431e7ad5bce1223d5eb77476cd56529e9609914d9e3aedda"
+ },
+ "verified": [
+  "key set equals en (28 keys); neither key has placeholders (en has none); values carry no bidi/zero-width/BOM characters, no edge or double spaces; NFC",
+  "carried keys byte-identical: the 26 pre-existing values equal the 96cf90fc7a file, whose sha256 is the existing ledger row's target_sha256; en ui.chat.asks likewise only adds these 2 keys",
+  "status.withdrawn equals core relay.asks.status.withdrawn in this locale byte-for-byte; withdrawn_label equals that sentence's leading clause (the sentence starts with the label)",
+  "meaning: the agent (asker) withdrew its own question and no longer needs an answer; the agent is the subject or beneficiary, not the user; not confusable with declined/dismissed/timed out in this locale",
+  "render path: ask-queue.ts ASK_STATUS_COPY.withdrawn getter -> t(status.withdrawn) (full sentence, settled card); askStatusWord('withdrawn') -> t(status.withdrawn_label) (compact badge); no English delimiter split applied to localized copy",
+  "anchors: core relay.asks.status.* (Répondu/Refusé/Ignoré/Retiré — l’agent …); this namespace's ask noun is feminine «demande» and its keyed siblings agree with it: dismiss.receipt.* «Ignorée — …», settled_heading «Réglées»; ui.browser…withdrawn_by_the_agent «Retirée par l’agent»"
+ ],
+ "namespaces": {
+  "ui.chat.asks": {
+   "namespace": "ui.chat.asks",
+   "status": "passed",
+   "result": "clean-with-findings",
+   "keys_read": 28,
+   "delta_keys_audited": [
+    "ui.chat.asks.status.withdrawn",
+    "ui.chat.asks.status.withdrawn_label"
+   ],
+   "values": {
+    "ui.chat.asks.status.withdrawn": {
+     "en": "Withdrawn — the agent no longer needs an answer",
+     "translated (8f79f63fcb)": "Retiré — l’agent n’attend plus de réponse",
+     "after (this audit)": "Retiré — l’agent n’attend plus de réponse",
+     "changed_by_auditor": false
+    },
+    "ui.chat.asks.status.withdrawn_label": {
+     "en": "Withdrawn",
+     "translated (8f79f63fcb)": "Retiré",
+     "after (this audit)": "Retiré",
+     "changed_by_auditor": false
+    }
+   },
+   "sha256": {
+    "fr": "fc177d47e8c5b19d7e4d52ea5a5df5e127fc9b508657ce05e0b653c0bef812a8",
+    "en": "4b81cb96606b6bc647c5d3020b64346c5a3f48d757b8b2990ec47ec42c33c5ee"
+   },
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.chat.asks.json",
+    "target": "src/i18n/catalogues/fr/ui.chat.asks.json",
+    "context": "src/i18n/catalogues/en/ui.chat.asks.context.json"
+   },
+   "findings": [
+    {
+     "severity": "MINOR",
+     "key": "ui.chat.asks.status.withdrawn",
+     "summary": "Agreement: «Retiré» is masculine. The UI namespace calls an ask «demande» (f.) and its keyed siblings on the same card agree with it («Ignorée — plus nécessaire», «Réglées»); the UI's other agent-withdrawal string is «Retirée par l’agent». Core's «Retiré» is impersonal and also correct, so this is consistency, not an error. Recommended: «Retirée — l’agent n’attend plus de réponse» and label «Retirée». Not changed by the auditor."
+    },
+    {
+     "severity": "INFO",
+     "key": "ui.chat.asks.status.withdrawn_label",
+     "summary": "Not counted separately: the label shares the agreement point of the MINOR on status.withdrawn; recommended «Retirée»."
+    }
+   ]
+  }
+ }
+}

@@ -1188,7 +1188,12 @@ test("A17: exactly one desktop-suite invocation, behind a failing-closed step", 
 	assert.match(
 		suite,
 		/set -o pipefail/,
-		"the single suite step does not set pipefail, so a red suite would be swallowed by the pipe into tee",
+		"the single suite step must preserve failures in its diagnostic pipelines",
+	);
+	assert.match(
+		suite,
+		/--index "\$DESKTOP_SHARD_INDEX" > \/tmp\/desktop-tests\.log 2>&1 \|\| SUITE_RC=\$\?/,
+		"capture the suite directly: streaming a multi-megabyte stack frame through tee stalled CI before the log guard could run",
 	);
 	// The assertions that stop a renamed script or a glob matching nothing from
 	// reading as a pass have to survive the collapse.
@@ -1262,7 +1267,7 @@ test("A17: exactly one desktop-suite invocation, behind a failing-closed step", 
 
 /** The `test` job's desktop-suite step, exactly as the shell will read it. */
 const DESKTOP_SHARD_COMMAND =
-	'node scripts/desktop-test-shards.mjs run --head "$DESKTOP_REQUESTED_HEAD" --checkout "$CHECKOUT_SHA" --index "$DESKTOP_SHARD_INDEX" 2>&1 | tee /tmp/desktop-tests.log || SUITE_RC=$?';
+	'node scripts/desktop-test-shards.mjs run --head "$DESKTOP_REQUESTED_HEAD" --checkout "$CHECKOUT_SHA" --index "$DESKTOP_SHARD_INDEX" > /tmp/desktop-tests.log 2>&1 || SUITE_RC=$?';
 function desktopStepBody(
 	job = jobs.test,
 	shell = readFileSync(join(repoRoot, "scripts/desktop-suite-step.sh"), "utf8"),
@@ -1719,15 +1724,15 @@ test("A17e: checkpoint orchestration preserves shell bytes and fail-closed order
  * Run an extracted step body the way GitHub does - `bash -e` over the step's own
  * text - against a synthetic suite log, and hand back its status and output.
  *
- * The body runs UNCHANGED except for one literal: its `tee /tmp/desktop-tests.log`
+ * The body runs UNCHANGED except for one literal: its `/tmp/desktop-tests.log`
  * (a fixed path every runner on this fleet shares) is rewritten to a file under
  * this case's scratch directory. Nothing else is edited, because asserting
  * against a hand-written paraphrase of the step is how a pin ends up testing the
  * paraphrase instead of the step.
  *
- * The stub `pnpm` writes the synthetic log down the same pipe the real suite
- * writes to and exits with the status the scenario names, so `pipefail`, the
- * `tee` and the capture are all exercised rather than simulated.
+ * The stub `node` writes the synthetic log to the same output the real suite
+ * writes to and exits with the status the scenario names, so direct capture
+ * and status propagation are exercised rather than simulated.
  */
 function runDesktopStep(body, scenario) {
 	const dir = realpathSync(
@@ -2026,6 +2031,36 @@ function moveDiagnosticsBelowTheExits(body) {
 	return [...lines, ...moved].join("\n");
 }
 
+test("A17: payload output is captured without streaming and the later guard names it", () => {
+	// The measured outage involved two 14.62 MiB lines. Keep that scale here:
+	// a small fixture would not exercise the failure mode that defeated tee.
+	const payload = `# at data:text/javascript;base64,${"A".repeat(15 * 1024 * 1024)}`;
+	const run = runDesktopStep(desktopStepBody(), {
+		log: `${payload}\n# tests 60\n# pass 60\n# fail 0\n`,
+		suiteRc: 0,
+	});
+	try {
+		assert.equal(run.status, 0, run.stdout + run.stderr);
+		assert.ok(run.stdout.length < 4096, "payload leaked into the Actions log");
+		assert.match(run.stdout, /# pass 60/);
+		const scan = spawnSync(
+			process.execPath,
+			[
+				join(repoRoot, "scripts/ci-log-guard.mjs"),
+				"check",
+				join(run.dir, "desktop-tests.log"),
+				"--max-line-bytes",
+				"1048576",
+			],
+			{ encoding: "utf8", timeout: 10000 },
+		);
+		assert.equal(scan.status, 1, scan.stdout + scan.stderr);
+		assert.match(scan.stdout + scan.stderr, /payload|line/i);
+	} finally {
+		rmSync(run.dir, { recursive: true, force: true });
+	}
+});
+
 test("A17b: the desktop step is red, and names the red test, on every red shape", () => {
 	const body = desktopStepBody();
 	const scratch = [];
@@ -2151,6 +2186,7 @@ function assertDesktopDiagnosticArtifactPaths(path) {
 		paths.sort(),
 		[
 			"/tmp/desktop-tests.log",
+			"/tmp/desktop-test-diagnostics.jsonl",
 			DESKTOP_LIFECYCLE_PATH,
 			`${DESKTOP_SUPERVISOR_DIR}/console.log`,
 			`${DESKTOP_SUPERVISOR_DIR}/await.out`,
@@ -2213,6 +2249,20 @@ test("A17d: a desktop run keeps its full transcript as an artifact, green or red
 			() => assertDesktopDiagnosticArtifactPaths(bad),
 			`${JSON.stringify(bad)} must not satisfy the transcript contract`,
 		);
+	// Both diagnostic streams must survive convergence; the exact union above
+	// rejects omitted, duplicate or wildcarded receipts from either lineage.
+	assertDesktopDiagnosticArtifactPaths(artifact.with.path);
+	const launch = jobs.test.steps.find((step) => step.id === "desktop_launch");
+	assert.equal(String(launch.env.DESKTOP_TEST_DEADLINE_MS), "2400000");
+	assert.equal(
+		launch.env.DESKTOP_TEST_DIAGNOSTICS,
+		"/tmp/desktop-test-diagnostics.jsonl",
+	);
+	assert.equal(String(suite.env.DESKTOP_TEST_DEADLINE_MS), "2400000");
+	assert.equal(
+		suite.env.DESKTOP_TEST_DIAGNOSTICS,
+		"/tmp/desktop-test-diagnostics.jsonl",
+	);
 	assert.equal(artifact.with["retention-days"], 7);
 	assert.equal(artifact.with["if-no-files-found"], "error");
 	assert.ok(jobs.test.steps.indexOf(artifact) > jobs.test.steps.indexOf(suite));

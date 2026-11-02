@@ -999,6 +999,8 @@ function workflowInvokedScripts() {
  * asserted below to be exactly that, so this list cannot become a place to hide.
  */
 const NO_ENTRY_POINT_COMPARISON = {
+	"browser-focus-stability-proof.mjs":
+		"`focus-stability-diagnostic.yml`; runs unconditionally at import and requires --out; no entry-point comparison (native mode separately fenced to explicitly armed disposable CI)",
 	"check-edit-diffs.mjs":
 		"`pnpm check-edit-diffs`; runs at import, and exits on its own result",
 	"npx-smoke-test.mjs": "`ci.yml`'s npx smoke test; runs at import",

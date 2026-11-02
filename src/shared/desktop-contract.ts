@@ -3893,6 +3893,8 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			message_id: id,
 			limit: z.number().int().min(1).max(100).optional(),
 			after_seq: z.number().int().nonnegative().optional(),
+			before_seq: z.number().int().positive().optional(),
+			order: z.enum(["asc", "desc"]).optional(),
 		})
 		.strict(),
 	z
@@ -3948,6 +3950,8 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			tenant_id: id,
 			limit: z.number().int().min(1).max(100).optional(),
 			after_seq: z.number().int().nonnegative().optional(),
+			before_seq: z.number().int().positive().optional(),
+			order: z.enum(["asc", "desc"]).optional(),
 		})
 		.strict(),
 	z
@@ -7099,6 +7103,21 @@ export type DesktopMediaRequest =
 	  }
 	| { op: "agent.import"; fileName: string }
 	| { op: "agent.export"; agentId: string }
+	/*
+	 * A LOCAL AGENT'S PROFILE PICTURE (core `GET|PUT|DELETE
+	 * /v1/agents/{id}/avatar`). Bytes both ways, so the relay rather than the
+	 * JSON transport; the bearer stays in main, so an `<img src>` can never point
+	 * at the route itself and the renderer paints a blob URL instead.
+	 *
+	 * `sha256` on the read is the content address the agent record published
+	 * (`avatar.sha256`): main sends it as `?v=` so a changed picture is a
+	 * different URL to every cache between here and core, and the renderer files
+	 * the blob under the same digest. The PUT carries the cropped image as a raw
+	 * body (core sniffs and re-normalises it); the DELETE carries nothing.
+	 */
+	| { op: "agent.avatar"; agentId: string; sha256: string }
+	| { op: "agent.avatar.put"; agentId: string }
+	| { op: "agent.avatar.delete"; agentId: string }
 	// A durable transcript row references an image by content digest with the
 	// payload stripped, and the JSON transport's envelope has nowhere to put
 	// bytes — which is what puts a screenshot fetch on this relay rather than
@@ -9702,6 +9721,9 @@ export function desktopEndpoint(request: DesktopRequest): {
 					path += `/${encodeURIComponent(request.message_id)}/replies`;
 					if (request.after_seq !== undefined)
 						query.set("after_seq", String(request.after_seq));
+					if (request.before_seq !== undefined)
+						query.set("before_seq", String(request.before_seq));
+					if (request.order !== undefined) query.set("order", request.order);
 				}
 			}
 			return { path: `${path}?${query}`, method: "GET" };
@@ -9818,6 +9840,9 @@ export function desktopEndpoint(request: DesktopRequest): {
 				query.set("limit", String(request.limit));
 			if (request.after_seq !== undefined)
 				query.set("after_seq", String(request.after_seq));
+			if (request.before_seq !== undefined)
+				query.set("before_seq", String(request.before_seq));
+			if (request.order !== undefined) query.set("order", request.order);
 			const suffix = query.size > 0 ? `?${query.toString()}` : "";
 			return {
 				path: `/v1/desktop/team-bridge/conversations/${encodeURIComponent(request.conversation_id)}/messages/${encodeURIComponent(request.message_id)}/replies${suffix}`,

@@ -1,0 +1,12 @@
+PASS
+BLOCKER=0 MAJOR=0 MINOR=0 NIT=0
+Auditor: i18n-auditor; session ffff115e084f; ACTUAL model openai/gpt-6.1-sol (temporary provider-quota fallback; initial anthropic/claude-sonnet-5-5, intermediate anthropic/claude-opus-5-5 disclosed)
+Key: ui.chat.sidebar.agents.list_join
+pair: {head}和{tail} => Coder和Reviewer
+middle: {head}、{tail} => Coder、Reviewer
+other: {head}和{tail} => Coder和Reviewer (position=end)
+Two names: Coder和Reviewer
+Three names: Coder、Reviewer和Designer
+Reason: Chinese enumerations conventionally separate preceding items with 、 and join the final item with 和 without a comma before 和. No added spaces are needed; 和 does not require sound-conditioned alternation. Idiomatic, accurate, and style-guide compliant.
+Validation: context parity PASS (131 pre-existing allowed gaps in 4 namespaces); generator freshness PASS; zh-CN locale parity 6/6 PASS; real intl-messageformat parsed and formatted all three arms. Missing-tail negative control threw as expected.
+Scope: one key; no full suite, package manager, rebuild, translation service, repository edit, or ledger write. Evidence is in the explicitly requested scratch output; manager owns tracked retention and ledger integration.

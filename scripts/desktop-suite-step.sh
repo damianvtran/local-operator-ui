@@ -16,7 +16,9 @@ SUITE_RC=0
 # Local pnpm test:desktop remains the full inventory; this wrapper
 # parses that exact command and forwards one partition to its runner.
 CHECKOUT_SHA=$(git rev-parse HEAD)
-node scripts/desktop-test-shards.mjs run --head "$DESKTOP_REQUESTED_HEAD" --checkout "$CHECKOUT_SHA" --index "$DESKTOP_SHARD_INDEX" 2>&1 | tee /tmp/desktop-tests.log || SUITE_RC=$?
+# Retain main's direct capture inside the supervisor too: putting tee here would
+# reintroduce the streaming stall before either log guard can inspect the file.
+node scripts/desktop-test-shards.mjs run --head "$DESKTOP_REQUESTED_HEAD" --checkout "$CHECKOUT_SHA" --index "$DESKTOP_SHARD_INDEX" > /tmp/desktop-tests.log 2>&1 || SUITE_RC=$?
 # `|| true` so a log with no counts still reaches the guards below
 # instead of tripping errexit on the way - the arms below are what name
 # that case, and they cannot name it from here if grep kills the step.

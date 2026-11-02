@@ -58,5 +58,6 @@
 	"ui.chat.sidebar.row_menu.unpin": "取消置顶",
 	"ui.chat.sidebar.pins.pin_label": "置顶“{title}”",
 	"ui.chat.sidebar.pins.unpin_label": "取消置顶“{title}”",
-	"ui.chat.sidebar.section.current_chat": "当前对话"
+	"ui.chat.sidebar.section.current_chat": "当前对话",
+	"ui.chat.sidebar.agents.list_join": "{position, select, pair {{head}和{tail}} middle {{head}、{tail}} other {{head}和{tail}}}"
 }

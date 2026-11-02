@@ -737,31 +737,12 @@ jobs:
         timeout-minutes: 1
         env:
           LOCAL_OPERATOR_UI_LANE_DIAGNOSTICS: ${{ runner.temp }}/desktop-lifecycle-${{ matrix.shard }}.jsonl
+          # The child inherits launch-time bounds; await-only values cannot reach it.
+          DESKTOP_TEST_DEADLINE_MS: 2400000
+          DESKTOP_TEST_DIAGNOSTICS: /tmp/desktop-test-diagnostics.jsonl
           # Linux-only /proc census: the instrument that names a hard-blocked
           # process without needing anything from it.
           LOCAL_OPERATOR_UI_KERNEL_CENSUS: ${{ runner.temp }}/kernel-census-${{ matrix.shard }}.jsonl
-          # DIAGNOSTIC EXPERIMENT - REVERT by deleting this one line once the
-          # question below is answered; nothing else changes with it.
-          #
-          # On run 41303745555, shard 1 froze ~2s into the suite and then made NO
-          # progress at all: the 2400s bash bound never fired, the GNU `timeout`
-          # never fired, the supervisor deadline never fired, and no `census:` row
-          # was ever emitted - while the other three shards finished in ~10
-          # minutes each. The suite's one piece of shared mutable state at that
-          # point is the FILE WORKER POOL (node's default here, i.e. 3 on a 4-core
-          # runner), so this run pins the pool to a single worker to test whether
-          # the freeze is concurrency-related.
-          #
-          # Set HERE, on the launch step, and NOT on `desktop_suite`: the suite is
-          # spawned by the supervisor this step starts and inherits THIS step's
-          # environment, so the same value on the await step would read as set and
-          # change nothing. `scripts/desktop-test-concurrency.mjs` owns the
-          # interpretation, and the runner prints
-          # `concurrency 1 (explicit LOCAL_OPERATOR_UI_TEST_CONCURRENCY; governor
-          # bypassed)` as the proof the switch took effect. Every cap, bound,
-          # verification and verdict path is untouched - this changes the width of
-          # the worker pool and nothing else.
-          LOCAL_OPERATOR_UI_TEST_CONCURRENCY: "1"
         run: node scripts/desktop-suite-checkpoints.mjs launch "${{ runner.temp }}/desktop-supervisor-${{ matrix.shard }}" scripts/desktop-suite-step.sh "$DESKTOP_SETUP_STARTED_MS"
 
       - name: Freeze early desktop witness checkpoint
@@ -801,20 +782,24 @@ jobs:
           # the inline rows below read the file that exists instead of globbing a
           # state directory the writer never used.
           LOCAL_OPERATOR_UI_KERNEL_CENSUS: ${{ runner.temp }}/kernel-census-${{ matrix.shard }}.jsonl
+          # Leave time for the suite tree to be reaped and diagnostics uploaded
+          # before the enclosing step and job ceilings cancel those steps.
+          DESKTOP_TEST_DEADLINE_MS: 2400000
+          DESKTOP_TEST_DIAGNOSTICS: /tmp/desktop-test-diagnostics.jsonl
         # A STEP ceiling below the job's, because a job cancelled at its own
         # `timeout-minutes` runs no further steps: without this, the payload
         # scan below is skipped in exactly the case it exists for. A step
         # timeout kills this step's process and the job continues, so a stall
-        # ends at 45 minutes and the scan reads the truncated tee file. 45 is
+        # ends at 45 minutes and the scan reads the truncated capture file. 45 is
         # ~1.9x the slowest measured shard (23.9 minutes, run 40182194704) and
         # leaves the job's last five minutes for the scan.
         timeout-minutes: 45
         # ONE run, not two. This job used to invoke `pnpm test:desktop` twice:
         # once for its exit status and again inside its own count assertions,
-        # which doubled the dominant cost of the job for no signal. `pipefail`
+        # which doubled the dominant cost of the job for no signal. SUITE_RC
         # gives the first half (a red suite fails the step) and the counts give
         # the second (a renamed script or a glob matching nothing still exits
-        # 0), so the suite runs once. `tee` keeps the log as evidence either
+        # 0), so the suite runs once. File redirection keeps evidence either
         # way. `scripts/ci-scope.test.mjs` asserts there is exactly one
         # invocation and that this step still fails closed.
         #
@@ -1035,6 +1020,7 @@ jobs:
           name: desktop-suite-log-${{ github.run_id }}-${{ github.run_attempt }}-shard-${{ matrix.shard }}
           path: |
             /tmp/desktop-tests.log
+            /tmp/desktop-test-diagnostics.jsonl
             ${{ runner.temp }}/desktop-lifecycle-${{ matrix.shard }}.jsonl
             ${{ runner.temp }}/desktop-supervisor-${{ matrix.shard }}/console.log
             ${{ runner.temp }}/desktop-supervisor-${{ matrix.shard }}/await.out

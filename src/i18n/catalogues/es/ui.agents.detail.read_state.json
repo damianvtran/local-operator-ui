@@ -1,0 +1,16 @@
+{
+	"ui.agents.detail.read_state.failed_title": "No se pudo leer “{name}”",
+	"ui.agents.detail.read_state.not_found": "No se encontró la sesión, el perfil, el equipo o la suscripción solicitados",
+	"ui.agents.detail.read_state.failed_meaning": "Puede que se haya eliminado la definición o que el backend haya rechazado la lectura.",
+	"ui.agents.detail.read_state.request_failed": "La solicitud no se completó.",
+	"ui.agents.detail.read_state.retry": "Reintentar",
+	"ui.agents.detail.read_state.retrying": "Reintentando…",
+	"ui.agents.detail.read_state.delegates": "Puede delegar trabajo en subagentes.",
+	"ui.agents.detail.read_state.no_delegation": "Hace su propio trabajo; no delega.",
+	"ui.agents.detail.read_state.class_description": "Los agentes reactivos solo responden. Los agentes proactivos también pueden escribirte por su cuenta.",
+	"ui.agents.detail.read_state.used_by_description": "Equipos que incluyen a este agente como responsable o miembro.",
+	"ui.agents.detail.read_state.class_on": "Activado",
+	"ui.agents.detail.read_state.class_off": "Desactivado",
+	"ui.agents.detail.read_state.class_switching": "Cambiando…",
+	"ui.agents.detail.read_state.effort_inherit": "Usar el esfuerzo de la sesión"
+}

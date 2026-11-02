@@ -1,0 +1,58 @@
+{
+	"schema": 1,
+	"kind": "translation-audit-receipt",
+	"audit_kind": "independent-translation-audit",
+	"instance": "bf0a84aab2e8-fr-read-state",
+	"locale": "fr",
+	"namespace": "ui.agents.detail.read_state",
+	"key_count": 14,
+	"keys_audited": [
+		"ui.agents.detail.read_state.failed_title",
+		"ui.agents.detail.read_state.not_found",
+		"ui.agents.detail.read_state.failed_meaning",
+		"ui.agents.detail.read_state.request_failed",
+		"ui.agents.detail.read_state.retry",
+		"ui.agents.detail.read_state.retrying",
+		"ui.agents.detail.read_state.delegates",
+		"ui.agents.detail.read_state.no_delegation",
+		"ui.agents.detail.read_state.class_description",
+		"ui.agents.detail.read_state.used_by_description",
+		"ui.agents.detail.read_state.class_on",
+		"ui.agents.detail.read_state.class_off",
+		"ui.agents.detail.read_state.class_switching",
+		"ui.agents.detail.read_state.effort_inherit"
+	],
+	"source_sha256": "0de7ac1bff46dc77b3bbe1f479b60a220361b3e32f673332dbe9eecfb56421f0",
+	"context_sha256": "e1359d1f5db124d1ca167eb042ca334bc88c1c2895f9442d517d3d9e3efbb9b2",
+	"target_sha256": "4352e842cdd76d059a0f643117d7c96c6c0a277963dfceaa31b30ef603d8c48b",
+	"head": "3553b7ae661a7c92caf04f1d39ed3792ef37ad46",
+	"audit_date": "2026-11-02",
+	"auditor": {
+		"agent": "i18n-auditor",
+		"role": "independent French translation auditor (team task)",
+		"job_id": "bf0a84aab2e8",
+		"session": "bf0a84aab2e8",
+		"instance": "bf0a84aab2e8-fr-read-state",
+		"model": "anthropic/claude-sonnet-5-5",
+		"model_fallback": "Current resumed run identifies anthropic/claude-sonnet-5-5 in the session-state header. Earlier transcript reports openai/gpt-6.1-sol quota fallback and an intermediate anthropic/claude-opus-5-5 switch; these are historical transcript claims, not independently observable routing evidence in this resumed run. This receipt and reaffirmed linguistic verdict are issued by the current model.",
+		"independent_from_translator_session": true
+	},
+	"status": "passed",
+	"result": "clean",
+	"verdict": "PASS: zero findings at every severity. All fourteen French messages preserve the source meaning, recovery action and direct explanatory register.",
+	"severity_counts": {
+		"blocker": 0,
+		"major": 0,
+		"minor": 0,
+		"nit": 0
+	},
+	"findings": [],
+	"scope": "Independent linguistic clearance only, not rendered layout clearance. I checked the English copy and context, all fourteen French values, and neighboring French agent/team/effort terminology. No catalogue was authored or changed by this auditor. No screenshot or real-panel layout validation is claimed.",
+	"judgements": [
+		"failed_title uses French guillemets with narrow nonbreaking spaces around the intact {name} placeholder.",
+		"Failure copy preserves the missing entities and both possible causes; retry and progress labels provide useful recovery guidance.",
+		"Activé, Désactivé and Changement en cours… describe switch status rather than commands.",
+		"Utiliser le niveau d’effort de la session explicitly means use session effort, not bare inheritance jargon.",
+		"responsable, membre, sous-agents, backend and niveau d’effort agree with neighboring French catalogues."
+	]
+}

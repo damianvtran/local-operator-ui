@@ -377,7 +377,11 @@ function AgentClassControl({
 					{t("ui.agents.detail.class.label")}
 				</span>
 				<span aria-live="polite" className="text-ink-muted">
-					{pending ? "Switching…" : shown === "proactive" ? "On" : "Off"}
+					{pending
+						? t("ui.agents.detail.read_state.class_switching")
+						: shown === "proactive"
+							? t("ui.agents.detail.read_state.class_on")
+							: t("ui.agents.detail.read_state.class_off")}
 				</span>
 			</div>
 			<p className="text-body-sm text-ink">{CLASS_MEANING[shown]}</p>
@@ -541,6 +545,7 @@ export function AgentDetail({
 	onAskAgent,
 	onDirtyChange,
 	belowHeader,
+	openPictureEditor = false,
 }: {
 	profile: ReusableProfile;
 	/**
@@ -554,6 +559,24 @@ export function AgentDetail({
 	onClassNotice: (copy: string | null) => void;
 	teams: readonly ReusableTeam[] | undefined;
 	effortTiers: readonly string[];
+	/**
+	 * Open the pane already in edit mode, on the `?edit=picture` deep link.
+	 *
+	 * WHY THE PANE HAS TO BE TOLD AND NOT LEFT TO THE FIELD (agent review round 1,
+	 * M1). The picture field (`agent-avatar-field.tsx`) is mounted only inside the
+	 * edit branch below, so it cannot be the thing that opens the edit - its own
+	 * reader of `?edit=picture` never runs while the pane draws view mode, and the
+	 * deep link the chat header's pencil ships was therefore a dead end. The page
+	 * reads the parameter and seeds this; the field then keeps doing the part only
+	 * it can do (scroll into view, take focus, drop the parameter).
+	 *
+	 * A SEED, NOT A CONTROLLED FLAG: it is read once, at mount, so the pane's own
+	 * Cancel/Edit controls keep owning `editing` afterwards. Gated on the profile
+	 * having an agent id - the field draws nothing without one, and `agent_id` is
+	 * what the editor uploads against - so a seed that could open nothing does not
+	 * put the pane into a form the link never meant.
+	 */
+	openPictureEditor?: boolean;
 	/** Whether the conversational path is available on this backend (scope B). */
 	askEnabled: boolean;
 	/** Reports an open edit with unsaved typing, so the page can hold the composer. */
@@ -574,7 +597,9 @@ export function AgentDetail({
 	belowHeader?: ReactNode;
 }) {
 	useI18nLocale();
-	const [editing, setEditing] = useState(false);
+	const [editing, setEditing] = useState(
+		openPictureEditor && Boolean(profile.agent_id),
+	);
 	const [base, setBase] = useState<Draft>(() => draftOf(profile));
 	const [draft, setDraft] = useState<Draft>(() => draftOf(profile));
 	const [pending, setPending] = useState(false);
@@ -601,6 +626,28 @@ export function AgentDetail({
 		profile.definition_revision,
 	);
 	const navigate = useNavigate();
+
+	/*
+	 * AN ALREADY-OPEN PANE REACTS TOO (agent review round 2, m-A). The seed above
+	 * only decides the first render, and the pane is keyed by agent, so the pencil
+	 * for the agent whose pane is on screen (the nav's chat list draws it on every
+	 * route) changed the URL and nothing else - then the next press of Edit
+	 * mounted the field, which consumed the stale `?edit=picture` and took focus.
+	 * Following the prop's rising edge opens the editor for that case as well; it
+	 * never closes it, so Cancel stays the pane's own.
+	 *
+	 * `baseRevisionRef` is captured exactly as the Edit button does, because this
+	 * is the same transition and a save must be based on the revision the editor
+	 * opened on.
+	 */
+	// biome-ignore lint/correctness/useExhaustiveDependencies: a rising edge of the prop, not a reaction to the profile or `editing`.
+	useEffect(() => {
+		if (!openPictureEditor || !profile.agent_id) return;
+		// Already editing: keep the open edit's base - re-basing a dirty edit would
+		// defeat the compare-and-swap guard (see `baseRevisionRef`).
+		if (!editing) baseRevisionRef.current = profile.definition_revision;
+		setEditing(true);
+	}, [openPictureEditor]);
 
 	const dirty = JSON.stringify(draft) !== JSON.stringify(base);
 
@@ -1050,7 +1097,7 @@ export function AgentDetail({
 						 * across selections must not carry a refusal or a busy state with it.
 						 *
 						 * NO FIELD FOR A PROFILE WITHOUT AN ID: the picture is keyed by the
-						 * agent's own id (see `shared/store/agent-avatar-store.ts`), and a builtin
+						 * agent's own id (see `@shared/agent-avatar/agent-avatar`), and a builtin
 						 * seed that was never installed has none to key on.
 						 */}
 						{profile.agent_id ? (
@@ -1116,15 +1163,25 @@ export function AgentDetail({
 										showLabel={false}
 										placeholder={t("ui.agents.detail.field.effort_placeholder")}
 										busyLabel="Loading effort tiers"
+										// Picker labels are copy; ids stay backend tokens for saves.
 										options={["inherit", ...effortTiers].map((tier) => ({
 											id: tier,
-											name: tier,
+											name:
+												tier === "inherit"
+													? t("ui.agents.detail.read_state.effort_inherit")
+													: tier,
 											description:
 												tier === "inherit"
 													? "Use the session's own effort"
 													: undefined,
 										}))}
-										selected={{ id: draft.effort, name: draft.effort }}
+										selected={{
+											id: draft.effort,
+											name:
+												draft.effort === "inherit"
+													? t("ui.agents.detail.read_state.effort_inherit")
+													: draft.effort,
+										}}
 										onSelect={(option) =>
 											setDraft((current) => ({ ...current, effort: option.id }))
 										}
@@ -1179,8 +1236,8 @@ export function AgentDetail({
 						<Section title={t("ui.agents.detail.section.delegation")}>
 							<p className="text-body-sm text-ink">
 								{profile.delegate
-									? "May hand work to subagents."
-									: "Does its own work; it does not delegate."}
+									? t("ui.agents.detail.read_state.delegates")
+									: t("ui.agents.detail.read_state.no_delegation")}
 							</p>
 							<p className="text-body-sm text-ink-muted">
 								{t("ui.agents.detail.read.effort_label")}{" "}
@@ -1223,7 +1280,7 @@ export function AgentDetail({
 							 * roster shows and the switch below stay one idea.
 							 */
 							title={t("ui.agents.detail.section.messaging")}
-							description="Reactive agents only reply. Proactive agents may also message you first."
+							description={t("ui.agents.detail.read_state.class_description")}
 						>
 							<AgentClassControl
 								profile={profile}
@@ -1235,7 +1292,7 @@ export function AgentDetail({
 						</Section>
 						<Section
 							title={t("ui.agents.detail.section.used_by")}
-							description="Teams that name this agent as a manager or a member."
+							description={t("ui.agents.detail.read_state.used_by_description")}
 						>
 							{usedBy.length > 0 ? (
 								<ul className="flex flex-wrap gap-x-3 gap-y-1">
@@ -1667,7 +1724,10 @@ export function AgentCreate({
 								placeholder={t("ui.agents.detail.field.effort_placeholder")}
 								options={["inherit", ...effortTiers].map((tier) => ({
 									id: tier,
-									name: tier,
+									name:
+										tier === "inherit"
+											? t("ui.agents.detail.read_state.effort_inherit")
+											: tier,
 									description:
 										tier === "inherit"
 											? "Use the session's own effort"
@@ -1675,7 +1735,10 @@ export function AgentCreate({
 								}))}
 								selected={{
 									id: draft.effort,
-									name: draft.effort,
+									name:
+										draft.effort === "inherit"
+											? t("ui.agents.detail.read_state.effort_inherit")
+											: draft.effort,
 								}}
 								onSelect={(option) =>
 									setDraft((current) => ({ ...current, effort: option.id }))

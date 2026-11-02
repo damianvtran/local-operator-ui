@@ -445,3 +445,54 @@ test("the per-lane bound names the lane it kills, and the rest of the suite stil
 		"and the killed lane is the one that fails",
 	);
 });
+
+test("deadline reports failure, records snapshots and reaps the suite child", () => {
+	const fixture = join(scratch, "deadline-hang.test.mjs");
+	const marker = join(scratch, "deadline-pid");
+	const diagnostics = join(scratch, "deadline.jsonl");
+	writeFileSync(
+		fixture,
+		`import { test } from "node:test";
+import { writeFileSync } from "node:fs";
+test("hang", async () => { writeFileSync(${JSON.stringify(marker)}, String(process.pid)); await new Promise(() => setInterval(() => {}, 1000)); });
+`,
+	);
+	const result = runRunner([fixture], {
+		DESKTOP_TEST_DEADLINE_MS: "6500",
+		DESKTOP_TEST_DIAGNOSTICS: diagnostics,
+	});
+	assert.equal(result.status, 137, result.stdout + result.stderr);
+	assert.match(result.stderr, /suite deadline exceeded/);
+	const events = readFileSync(diagnostics, "utf8")
+		.trim()
+		.split("\n")
+		.map(JSON.parse);
+	assert.ok(
+		events.some(
+			(item) =>
+				item.event === "lanes" &&
+				item.lanes.some((lane) => lane.lane === fixture),
+		),
+	);
+	assert.ok(events.some((item) => item.event === "deadline"));
+	assert.ok(events.some((item) => item.event === "cleanup"));
+	assert.ok(
+		events.some((item) => item.event === "exit" && item.deadlineBreached),
+	);
+	const pid = Number(readFileSync(marker, "utf8"));
+	assert.throws(() => process.kill(pid, 0), { code: "ESRCH" });
+});
+
+test("deadline opt-in preserves healthy and failing verdicts and rejects invalid configuration", () => {
+	const diagnostics = join(scratch, "healthy.jsonl");
+	const env = {
+		DESKTOP_TEST_DEADLINE_MS: "30000",
+		DESKTOP_TEST_DIAGNOSTICS: diagnostics,
+	};
+	assert.equal(runRunner([PASSES], env).status, 0);
+	assert.equal(runRunner([FAILS], env).status, 1);
+	assert.equal(
+		runRunner([PASSES], { DESKTOP_TEST_DEADLINE_MS: "invalid" }).status,
+		9,
+	);
+});
