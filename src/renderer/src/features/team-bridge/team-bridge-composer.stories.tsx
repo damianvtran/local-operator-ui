@@ -210,6 +210,9 @@ export const AtCap: Story = {
 export const Recording: Story = {
 	decorators: [withDictation({ kind: "pending" })],
 	play: async ({ canvasElement }) => {
+		// The draft store is persisted per conversation; start empty so the strip
+		// is shown over an empty draft, not `AtCap`'s (design review round 3, D3).
+		seedDraft("");
 		await pressMic(canvasElement);
 	},
 };
@@ -225,6 +228,9 @@ export const Transcribing: Story = {
 export const TranscribeFailed: Story = {
 	decorators: [withDictation({ kind: "transient-failure" })],
 	play: async ({ canvasElement }) => {
+		// The draft store is persisted per conversation; start empty so the strip
+		// is shown over an empty draft, not `AtCap`'s (design review round 3, D3).
+		seedDraft("");
 		await pressMic(canvasElement);
 		await confirmTake(canvasElement);
 	},

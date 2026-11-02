@@ -4713,28 +4713,14 @@ const TeamBridgeOwnedPage: FC<{
 				clientRef,
 				tenantId: mergedView ? undefined : scope,
 				remembered: createdForDraft.current,
-				create: async (createInput) => {
-					const created = (await create.mutateAsync(createInput)) as {
+				// The foreign-tenant refusal lives in `sendFirstMessage`, so this send
+				// and `scheduleBody` (which reaches it through
+				// `scheduleTeamBridgeDraft`) share one rule (#1511 review round 7, M1).
+				create: (createInput) =>
+					create.mutateAsync(createInput) as Promise<{
 						id?: string;
 						tenant_id?: string;
-					};
-					/*
-					 * A RECEIPT FROM ANOTHER ORGANIZATION IS REFUSED (#1511 QA). The draft
-					 * was written in one organization and the create asked for that one; a
-					 * receipt naming a different tenant would otherwise move the view into
-					 * that organization's conversation and post the author's words there.
-					 * Refused before `onCreated` and the post, so nothing moves and nothing
-					 * is sent; the row fails where it was typed. All organizations names no
-					 * tenant up front, so it has nothing to compare against here.
-					 */
-					if (
-						!mergedView &&
-						typeof created?.tenant_id === "string" &&
-						created.tenant_id !== scope
-					)
-						throw new Error("Team Bridge create answered for another tenant");
-					return created;
-				},
+					}>,
 				// Only an optimistic send moves early: its message is already on screen,
 				// so the view can follow the conversation while the post is out. A
 				// non-optimistic send (attachments) keeps the move after its post.
@@ -4964,6 +4950,11 @@ const TeamBridgeOwnedPage: FC<{
 	 * on the compose key or the exact created destination; the first render on any
 	 * other key - another target, account or tenant, or leaving the destination it
 	 * already reached - drops it for good, so away-and-back remounts as before.
+	 *
+	 * This mutates a ref DURING RENDER, so it must stay idempotent: rendering the
+	 * same key twice (StrictMode, a discarded concurrent render) has to leave the
+	 * ref exactly as one render would. Add no counters or order-dependent steps
+	 * here (review round 7, n1).
 	 */
 	const handoff = createHandoff.current;
 	if (handoff) {

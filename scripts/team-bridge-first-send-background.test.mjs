@@ -491,6 +491,41 @@ test("owned group creation retains the pending node and sends once", async () =>
 	});
 });
 
+/*
+ * #1511 review round 7 m1 / QA round 5 Q1: a create whose receipt fails the
+ * schema parse (here: no tenant) is not retried behind the author's back. A
+ * group create is not find-or-create, so a retry would be a second group.
+ */
+test("a create receipt that fails parse is sent once and posts nothing", async () => {
+	const app = await mount({ empty: true });
+	try {
+		const { create } = await beginOwnedGroup(app);
+		app.fixture.createReceiptTenant = null;
+		await act(async () => create.resolve());
+		await until(
+			() =>
+				app.fixture.createReceipts.length >= 1 &&
+				app.client.isMutating() === 0 &&
+				ui.usePendingSends
+					.getState()
+					.entries.every((entry) => entry.status !== "pending"),
+			"the refused create settles",
+		);
+		// The shared client's retry delay is 1s; wait past it so a retried create
+		// would have been dispatched and recorded.
+		await act(async () => new Promise((r) => setTimeout(r, 1500)));
+		assert.equal(
+			app.fixture.createReceipts[0].tenant_id,
+			undefined,
+			"the raw receipt carries no tenant",
+		);
+		assert.equal(app.fixture.createReceipts.length, 1, "exactly one create");
+		assert.equal(sends(app).length, 0, "a refused create posts nothing");
+	} finally {
+		await app.close();
+	}
+});
+
 test("a foreign-tenant receipt and list never carry the source draft into that destination", async () => {
 	const app = await mount({ empty: true });
 	try {

@@ -476,7 +476,11 @@ export const TeamBridgeComposer: FC<TeamBridgeComposerProps> = ({
 				{...pasteHandlers}
 				data-composer-bar=""
 				className={cn(
-					"flex w-full flex-col rounded-lg bg-elevated transition-colors duration-fast ease-out-quart",
+					/* `rounded-md` (10px), not `rounded-lg` (14px): the operator asked for LESS
+					   rounding than the shared composer, and `rounded-lg` measured rounder than
+					   the pre-#1483 bar's 12px (design review round 3, D1). `group` lets the
+					   hint below read the field's focus without React state. */
+					"group flex w-full flex-col rounded-md bg-elevated transition-colors duration-fast ease-out-quart",
 					"has-[textarea:focus-visible]:outline-2 has-[textarea:focus-visible]:outline-accent has-[textarea:focus-visible]:outline-offset-2 has-[textarea:focus-visible]:outline-solid",
 				)}
 			>
@@ -628,14 +632,19 @@ export const TeamBridgeComposer: FC<TeamBridgeComposerProps> = ({
 						<>
 							{/* THE CHORD, AT THE POINT OF TYPING and inside the row, so it
 							    reserves no line of its own. It never leaves the layout:
-							    `opacity` carries "there is nothing to send yet" so the
-							    controls cannot reflow when a draft appears. */}
+							    `opacity` carries its visibility so the controls cannot reflow.
+							    It shows only on an EMPTY, FOCUSED field - the moment someone is
+							    about to type - and gets out of the way once a draft exists, where
+							    a long caption beside the send control competed with it (design
+							    review round 3, D2). Focus is read by CSS through the bar's
+							    `group`, so no render follows a focus change. */}
 							<span
 								className={cn(
-									"min-w-0 flex-1 truncate ps-1.5 text-meta-sm text-ink-dim transition-opacity duration-fast",
-									hasContent ? "opacity-100" : "opacity-0",
+									"min-w-0 flex-1 truncate ps-1.5 text-meta-sm text-ink-dim opacity-0 transition-opacity duration-fast",
+									!hasContent && "group-has-[textarea:focus]:opacity-100",
 								)}
-								aria-hidden={!hasContent}
+								// Read out only while it can show: on the empty field.
+								aria-hidden={hasContent}
 							>
 								{hint ?? t("ui.teamBridge.composer.hint")}
 							</span>
