@@ -122,6 +122,7 @@ import {
 } from "./detail-parts";
 import { HubLinksPanel } from "./hub-links-panel";
 import { HubUpdatePanel } from "./hub-update-panel";
+import { MissingDefinitionError } from "./missing-definition-error";
 import {
 	SKILL_SCOPE_LABEL,
 	SkillDetail,
@@ -1378,18 +1379,9 @@ export function AgentsPage() {
 						   definition" while something is on its way (D4). */
 									<DetailSkeleton />
 								) : selected && detailError ? (
-									<PaneError
-										title={
-											teamMode
-												? `“${selected}” could not be read`
-												: `“${selected}” could not be read`
-										}
-										what={
-											detailError instanceof Error
-												? detailError.message
-												: "The request did not complete."
-										}
-										meaning="The definition may have been removed, or the backend refused the read."
+									<MissingDefinitionError
+										name={selected}
+										error={detailError}
 										onRetry={() => {
 											void profileDetail.refetch();
 											void teamDetail.refetch();

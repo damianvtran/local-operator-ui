@@ -48,5 +48,6 @@
 	"ui.agents.detail.tools.empty": "Chưa có công cụ nào. Hãy thêm bên dưới hoặc bật Tất cả công cụ.",
 	"ui.agents.detail.tools.every_tool_aria": "Cho tác nhân này dùng mọi công cụ",
 	"ui.agents.detail.tools.may_use_any": "Tác nhân này có thể dùng bất kỳ công cụ nào phiên cung cấp.",
-	"ui.agents.detail.tools.placeholder": "Tên công cụ"
+	"ui.agents.detail.tools.placeholder": "Tên công cụ",
+	"ui.agents.detail.origin.created_locally": "Được tạo trên máy này."
 }

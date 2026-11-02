@@ -48,5 +48,6 @@
 	"ui.agents.detail.tools.empty": "Aún no hay herramientas. Añade una abajo o activa la opción Todas las herramientas.",
 	"ui.agents.detail.tools.every_tool_aria": "Dar a este agente todas las herramientas",
 	"ui.agents.detail.tools.may_use_any": "Este agente puede usar todo lo que ofrezca la sesión.",
-	"ui.agents.detail.tools.placeholder": "Nombre de herramienta"
+	"ui.agents.detail.tools.placeholder": "Nombre de herramienta",
+	"ui.agents.detail.origin.created_locally": "Creado en esta máquina."
 }

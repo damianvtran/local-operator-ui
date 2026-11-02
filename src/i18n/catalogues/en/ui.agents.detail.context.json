@@ -251,5 +251,11 @@
 		"note": "Placeholder in the tool-name input. One or two words: the field is narrow.",
 		"role": "input placeholder",
 		"tone": "plain"
+	},
+	"ui.agents.detail.origin.created_locally": {
+		"role": "Agent origin section description for a locally created custom agent",
+		"tone": "Plain, factual sentence with full stop",
+		"length": "One short sentence in the detail pane; may wrap on narrow panes",
+		"note": "No placeholders. Describes where the agent definition was created, not which device it runs on."
 	}
 }
