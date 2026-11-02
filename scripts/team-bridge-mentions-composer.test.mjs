@@ -826,9 +826,13 @@ test("composer highlights use borderless washes and retain silent underlines", (
 	for (const pill of pills) {
 		assert.ok(pill.classList.contains("px-0.5"));
 		assert.ok(pill.classList.contains("-mx-0.5"));
-		assert.doesNotMatch(
-			pill.className,
-			/(?:^|\s)(?:border|ring|outline|shadow)-/,
+		assert.ok(
+			[...pill.classList].every(
+				(name) =>
+					!["border-", "ring-", "outline-", "shadow-"].some((prefix) =>
+						name.startsWith(prefix),
+					),
+			),
 		);
 	}
 	assert.ok(pills[0].classList.contains("bg-accent-wash"));

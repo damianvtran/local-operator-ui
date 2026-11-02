@@ -61,6 +61,13 @@ export const MentionHighlightOverlay: FC<{
 							// Equal negative margins cancel the 2px padding advance. Keep
 							// native glyphs opaque: this mirror paints BEHIND the textarea,
 							// so identity uses washes, never duplicate coloured glyphs.
+							// The typed @Name also carries mention-ness; these washes are
+							// supplementary, decorative emphasis, not a 3:1 non-text cue.
+							// WCAG 1.4.11 concerns UI components/states: the composer's
+							// existing focus indicator stays responsible for keyboard focus.
+							// The brand washes differ by hue, not luminance contrast; do
+							// not claim composer accessibility from fill alone. Messages
+							// can additionally use identifying ink because they own the DOM.
 							"box-decoration-clone rounded-sm px-0.5 py-px -mx-0.5",
 							source?.self?.accountId === segment.token.accountId
 								? "bg-warning-wash group-hover/mention-field:bg-[color-mix(in_srgb,var(--color-warning-wash),var(--color-warning)_3%)]"

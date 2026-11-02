@@ -18,14 +18,14 @@ type Parent = { children: unknown[] };
 // A small ink mix strengthens hover without the contrast loss of a translucent
 // accent over the canvas. Padding is cancelled so inline glyphs keep their advance.
 export const MENTION_CLASS =
-	"team-bridge-mention box-decoration-clone rounded-sm px-0.5 py-px -mx-0.5 bg-accent-wash text-accent hover:bg-[color-mix(in_srgb,var(--color-accent-wash),var(--color-accent)_3%)]";
+	"team-bridge-mention box-decoration-clone rounded-sm px-0.5 py-px -mx-0.5 font-medium bg-accent-wash text-accent hover:bg-[color-mix(in_srgb,var(--color-accent-wash),var(--color-accent)_3%)]";
 /*
  * THE READER'S OWN MENTION uses the theme's warning identity. `warning-wash`
  * is the theme's warm wash in both light and dark; the warning ink on it keeps
  * the name readable without a second colour scheme.
  */
 export const VIEWER_MENTION_CLASS =
-	"team-bridge-mention box-decoration-clone rounded-sm px-0.5 py-px -mx-0.5 bg-warning-wash text-warning hover:bg-[color-mix(in_srgb,var(--color-warning-wash),var(--color-warning)_3%)]";
+	"team-bridge-mention box-decoration-clone rounded-sm px-0.5 py-px -mx-0.5 font-medium bg-warning-wash text-warning hover:bg-[color-mix(in_srgb,var(--color-warning-wash),var(--color-warning)_3%)]";
 
 export function remarkTeamBridgeMentions(runs: readonly MessageMentionRun[]) {
 	return () => (tree: unknown) => {
