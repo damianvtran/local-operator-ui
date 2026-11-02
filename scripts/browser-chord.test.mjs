@@ -7,6 +7,8 @@ const SHARED_MENU_OWNER = /ownsChrome,/;
 const GUARDED_CHROME_INPUT = /chords\.chromeInput\(event, input\)/;
 const BLUR_RESETS_SUPPRESSION_ONLY =
 	/window\.on\("blur", resetMenuShortcutSuppression\)/;
+const TEXT_TYPING_SOURCE = /export async function type\([\s\S]*$/;
+const RAW_KEY_EVENT_DISPATCH = /Input\.dispatchKeyEvent/;
 
 // In-memory compilation exercises shipped TypeScript without writing generated
 // modules into a checkout or allocating another dependency tree.
@@ -818,11 +820,16 @@ test("owned menu aliases replace destructive roles; suppression is per input and
 		helper,
 		/show !== "focus"\s*\|\|\s*window\.isDestroyed\(\)\s*\|\|\s*!window\.isFocused\(\)/,
 	);
-	assert.ok(
-		!readFileSync("src/main/browser/actions/input.ts", "utf8").includes(
-			'"Input.dispatchKeyEvent"',
-		),
-	);
+	// Named-key press() deliberately dispatches trusted key events. Text typing
+	// must not: raw key events can invoke browser shortcuts instead of inserting
+	// text. Guard type() and its following helpers, including typeInto(), while
+	// failing closed if the entry-point signature disappears.
+	const typingSource = readFileSync(
+		"src/main/browser/actions/input.ts",
+		"utf8",
+	).match(TEXT_TYPING_SOURCE)?.[0];
+	assert.ok(typingSource, "the text-typing source boundary must exist");
+	assert.doesNotMatch(typingSource, RAW_KEY_EVENT_DISPATCH);
 });
 
 test("find/zoom share focus classifier with platform/Alt/IME/repeat negatives", () => {
