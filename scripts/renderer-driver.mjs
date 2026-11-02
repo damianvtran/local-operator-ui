@@ -1380,6 +1380,10 @@ function resolvedWindowMode(requested) {
 async function launchApp({
 	armed,
 	apiUrl,
+	// Strict producers bind the executable verified before backend setup. Keep
+	// generic callers' historic ambient override, but never re-resolve a bound
+	// launch through mutable parent environment after an asynchronous preflight.
+	verifiedElectronBinary,
 	/*
 	 * Defaults for the two names a caller that is NOT the CLI has no reason to
 	 * know: the CLI passes both, so its behaviour is unchanged.
@@ -1436,6 +1440,14 @@ async function launchApp({
 	 * binding for later calls that omit the argument (measured: a `null` call
 	 * used to clear the binding a following omitted-argument call needed).
 	 */
+	if (
+		verifiedElectronBinary !== undefined &&
+		verifiedElectronBinary !== installedElectronBinary(ROOT, null)
+	) {
+		throw new Error(
+			"launchApp's verified Electron executable disagrees with the installed runtime",
+		);
+	}
 	if (apiUrl !== undefined) {
 		if (typeof apiUrl !== "string" || apiUrl.trim() === "") {
 			throw new Error(
@@ -1536,7 +1548,7 @@ async function launchApp({
 	 * would make `child.pid` the shim's pid and orphan the app the shim starts.
 	 */
 	const child = spawn(
-		electronBinary(),
+		verifiedElectronBinary ?? electronBinary(),
 		[
 			// The app directory as an argument rather than `.`: argv[1] is what
 			// Electron loads, so the cwd can be the scratch directory that the

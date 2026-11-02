@@ -167,7 +167,7 @@ export function verifyModelBuild(root, receiptPath) {
 		"wrong pinned Electron",
 	);
 	// This producer requires the real installed dist, not an ambient override.
-	installedElectronBinary(root, null);
+	return installedElectronBinary(root, null);
 }
 
 /** Dedicated policy, never used to loosen the existing asks read-only policy. */

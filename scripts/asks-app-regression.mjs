@@ -807,6 +807,7 @@ async function runCase(
 	output,
 	records,
 	realBackend = null,
+	verifiedElectronBinary = undefined,
 ) {
 	process.chdir(root);
 	process.argv.push(
@@ -1063,11 +1064,17 @@ async function runCase(
 				"function",
 				"real-core case requires a non-exiting owned app drain",
 			);
+		if (realBackend)
+			assert(
+				verifiedElectronBinary,
+				"model launch needs the preflight-verified executable",
+			);
 		api.prepareDriverContext({ apiUrl: "http://127.0.0.1:8080" });
 		const app = await api.launchApp({
 			armed: true,
 			apiUrl: "http://127.0.0.1:8080",
 			tag: `asks-ci-${kind}`,
+			verifiedElectronBinary,
 		});
 		writeFileSync(
 			join(output, "owned-app.json"),
@@ -1175,7 +1182,12 @@ async function main() {
 		const root = process.env.ASKS_APP_ROOT;
 		const output = process.env.ASKS_OUTPUT;
 		assert(root && output, "model case needs its frozen app root/output");
-		verifyModelBuild(root, process.env.MODEL_CASE_BUILD_RECEIPT);
+		// Carry the strict preflight's actual executable through to spawn. Merely
+		// scrubbing the child env cannot constrain the parent's Electron resolver.
+		const verifiedElectronBinary = verifyModelBuild(
+			root,
+			process.env.MODEL_CASE_BUILD_RECEIPT,
+		);
 		mkdirSync(output, { recursive: true });
 		const backend = await startModelBackend({
 			output,
@@ -1209,6 +1221,7 @@ async function main() {
 					output,
 					backend.records,
 					backend,
+					verifiedElectronBinary,
 				);
 			},
 			accept: async () => {

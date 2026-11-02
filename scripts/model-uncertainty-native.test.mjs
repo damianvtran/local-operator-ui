@@ -712,3 +712,112 @@ test("actual backend Python environment refuses hostile app cache inheritance", 
 		}
 	}
 });
+
+test("strict model launch binds its verified executable despite late parent override", () => {
+	const root = mkdtempSync(join(tmpdir(), "model-strict-executable-"));
+	const pkg = join(root, "node_modules", "electron");
+	for (const d of [
+		"src",
+		"out/main",
+		"out/preload",
+		"out/renderer",
+		"node_modules/electron/dist",
+		"alternate-a",
+		"alternate-b",
+	])
+		mkdirSync(join(root, d), { recursive: true });
+	writeFileSync(
+		join(root, "package.json"),
+		JSON.stringify({ optionalDependencies: { electron: "45.1.0" } }),
+	);
+	writeFileSync(join(root, "pnpm-lock.yaml"), "inert-lock");
+	writeFileSync(join(root, "src/main.ts"), "inert-source");
+	for (const f of [
+		"out/main/index.js",
+		"out/preload/index.js",
+		"out/renderer/index.html",
+	])
+		writeFileSync(join(root, f), "inert fixture, not a compiled app");
+	writeFileSync(
+		join(pkg, "package.json"),
+		JSON.stringify({ name: "electron", version: "45.1.0", main: "index.js" }),
+	);
+	writeFileSync(join(pkg, "index.js"), "throw Error('INSTALLER_TRIPWIRE')");
+	writeFileSync(join(pkg, "path.txt"), "electron");
+	for (const f of [
+		"node_modules/electron/dist/electron",
+		"alternate-a/electron",
+		"alternate-b/electron",
+	])
+		writeFileSync(join(root, f), "INERT NOT EXECUTABLE");
+	const env = {
+		...process.env,
+		GIT_CONFIG_SYSTEM: "/dev/null",
+		GIT_CONFIG_GLOBAL: "/dev/null",
+		GIT_TERMINAL_PROMPT: "0",
+		GIT_AUTHOR_NAME: "Fixture",
+		GIT_AUTHOR_EMAIL: "fixture@example.invalid",
+		GIT_COMMITTER_NAME: "Fixture",
+		GIT_COMMITTER_EMAIL: "fixture@example.invalid",
+	};
+	const git = (...args) =>
+		execFileSync("git", ["-C", root, ...args], { env, stdio: "pipe" });
+	git("init", "-q");
+	git("add", ".");
+	git("commit", "-qm", "test: inert executable identity");
+	const receipt = join(root, "receipt.json");
+	writeFileSync(receipt, JSON.stringify(buildReceipt(root)));
+	const driver = new URL("./renderer-driver.mjs", import.meta.url).href;
+	const model = new URL("./model-uncertainty-native.mjs", import.meta.url).href;
+	const source = readFileSync(
+		new URL("./asks-app-regression.mjs", import.meta.url),
+		"utf8",
+	);
+	assert(source.includes("const verifiedElectronBinary = verifyModelBuild("));
+	assert(
+		source.includes("backend,\n\t\t\t\t\tverifiedElectronBinary,"),
+		"model entry must pass the verified value into runCase",
+	);
+	assert(
+		source.includes("tag: `asks-ci-${kind}`,\n\t\t\tverifiedElectronBinary,"),
+		"actual runCase must pass binding to launchApp",
+	);
+	const program = `import assert from 'node:assert/strict';import Module,{createRequire,registerHooks,syncBuiltinESMExports}from'node:module';import{readFileSync}from'node:fs';import{join}from'node:path';import{EventEmitter}from'node:events';const req=createRequire(import.meta.url);const mode=process.argv[1];const root=process.cwd();const alternateA=join(root,'alternate-a');const alternateB=join(root,'alternate-b');process.env.ELECTRON_OVERRIDE_DIST_PATH=alternateA;
+ const originalLoad=Module._load;let installer=0;Module._load=function(name,...rest){if(name==='electron'){installer++;throw Error('INSTALLER_TRIPWIRE');}return originalLoad.call(this,name,...rest);};
+ const cp=req('node:child_process');let selected=null;cp.spawn=(binary,args,options)=>{selected={binary,parent:process.env.ELECTRON_OVERRIDE_DIST_PATH,child:options.env.ELECTRON_OVERRIDE_DIST_PATH};assert.equal(args[0],root);assert(args.includes('--use-mock-keychain'));throw Error('SELECTION_INTERCEPTED_BEFORE_EXECUTION');};cp.spawnSync=()=>{throw Error('INSTALLER_SPAWN_TRIPWIRE');};const realExec=cp.execFileSync;cp.execFileSync=(cmd,args,options)=>{assert.equal(cmd,'git');return realExec(cmd,args,options);};
+ let ports=0;const net=req('node:net');net.createServer=()=>{ports++;process.env.ELECTRON_OVERRIDE_DIST_PATH=alternateB;const server=new EventEmitter();server.listen=(port,host,cb)=>queueMicrotask(cb);server.address=()=>({port:19000+ports});server.close=cb=>queueMicrotask(cb);return server;};net.connect=()=>{const socket=new EventEmitter();socket.destroy=()=>{};socket.setTimeout=()=>{};queueMicrotask(()=>socket.emit('error',Error('OWNED_CLOSED_PORT')));return socket;};globalThis.fetch=()=>{throw Error('NETWORK_TRIPWIRE');};for(const n of ['node:http','node:https']){req(n).get=()=>{throw Error('NETWORK_TRIPWIRE');};req(n).request=()=>{throw Error('NETWORK_TRIPWIRE');};}syncBuiltinESMExports();
+ const {verifyModelBuild}=await import(${JSON.stringify(model)});const verified=verifyModelBuild(root,${JSON.stringify(receipt)});assert.equal(verified,join(root,'node_modules/electron/dist/electron'));
+ if(mode==='old-selection'){const text=readFileSync(new URL(${JSON.stringify(driver)}),'utf8');const needle='verifiedElectronBinary ?? electronBinary(),';assert.equal(text.split(needle).length,2);registerHooks({load(url,context,next){if(url===${JSON.stringify(driver)})return{format:'module',source:text.replace(needle,'electronBinary(),'),shortCircuit:true};return next(url,context);}});}
+ const {rendererDriverApi:api}=await import(${JSON.stringify(driver)});api.prepareDriverContext({apiUrl:'http://127.0.0.1:8080'});process.env.ELECTRON_OVERRIDE_DIST_PATH=alternateA;
+ const binding=mode==='generic'?undefined:mode==='wrong-binding'?join(alternateA,'electron'):verified;
+ await assert.rejects(api.launchApp({armed:true,apiUrl:'http://127.0.0.1:8080',verifiedElectronBinary:binding}),mode==='wrong-binding'?/verified Electron executable disagrees/:/SELECTION_INTERCEPTED_BEFORE_EXECUTION/);
+ if(mode==='wrong-binding'){assert.equal(selected,null);assert.equal(ports,0);}else{assert.equal(selected.parent,alternateB);assert.equal(selected.binary,mode==='strict'?verified:join(alternateB,'electron'));assert.equal(selected.child,alternateA);if(mode==='old-selection')assert.notEqual(selected.binary,verified);}
+ assert.equal(installer,0);console.log(JSON.stringify({mode,selected,ports,installer,binariesExecuted:0}));`;
+	for (const mode of ["old-selection", "strict", "generic", "wrong-binding"]) {
+		const out = execFileSync(
+			process.execPath,
+			["--input-type=module", "-e", program, mode],
+			{ cwd: root, env, encoding: "utf8", timeout: 15000 },
+		);
+		const result = JSON.parse(out.trim().split("\n").at(-1));
+		assert.equal(result.mode, mode);
+		assert.equal(result.installer, 0);
+		assert.equal(result.binariesExecuted, 0);
+		console.log("STRICT_LAUNCH_CONTROL", JSON.stringify(result));
+	}
+	// A usable parent override must not satisfy the strict model prerequisite.
+	const oldOverride = process.env.ELECTRON_OVERRIDE_DIST_PATH;
+	try {
+		process.env.ELECTRON_OVERRIDE_DIST_PATH = join(root, "alternate-a");
+		writeFileSync(join(pkg, "path.txt"), "missing-installed-executable");
+		assert.throws(
+			() => verifyModelBuild(root, receipt),
+			/native executable absent/,
+		);
+		console.log("STRICT_MISSING_INSTALLED_RUNTIME_REFUSED");
+	} finally {
+		if (oldOverride === undefined)
+			Reflect.deleteProperty(process.env, "ELECTRON_OVERRIDE_DIST_PATH");
+		else process.env.ELECTRON_OVERRIDE_DIST_PATH = oldOverride;
+	}
+});
