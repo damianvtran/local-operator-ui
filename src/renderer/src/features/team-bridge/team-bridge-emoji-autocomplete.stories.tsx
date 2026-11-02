@@ -162,7 +162,9 @@ const typeQuery =
 		await userEvent.type(within(canvasElement).getByRole("combobox"), query);
 	};
 export const Populated: Story = { play: typeQuery(":smile") };
-export const EmptyQuery: Story = { play: typeQuery(":") };
+// U1: a bare `:` (or an emoticon such as `:D`) must NOT open the list; this
+// story is the visible proof that Enter stays a plain send there.
+export const BareColonNoPopup: Story = { play: typeQuery("list :") };
 export const NoResults: Story = { play: typeQuery(":no_such_emoji_928372") };
 export const Narrow: Story = {
 	decorators: [

@@ -86,6 +86,7 @@ export type MentionAutocomplete = {
 	/** Shared input provenance and edit ownership for Bridge-only autocomplete. */
 	inputScopeKey: string;
 	emojiIntent: EmojiInputIntent | null;
+	isComposing: () => boolean;
 	clearEmojiIntent: () => void;
 	applyTextEdit: (edit: {
 		text: string;
@@ -563,6 +564,12 @@ export function useMentionAutocomplete(input: {
 		if (!field || !enabled) return;
 		const start = () => {
 			composing.current = true;
+			// An emoji query adopted before the IME opened is a stale non-composing
+			// snapshot; retire it here so the open picker cannot replace text under
+			// the candidate window. Safe as state, unlike `input`: no onChange of
+			// this same dispatch can be reverted by it (#1600).
+			pendingEmojiIntent.current = null;
+			setEmojiIntent(null);
 		};
 		const end = () => {
 			composing.current = false;
@@ -747,6 +754,7 @@ export function useMentionAutocomplete(input: {
 		listboxId,
 		inputScopeKey: tokenKey,
 		emojiIntent,
+		isComposing: () => composing.current,
 		clearEmojiIntent: () => {
 			pendingEmojiIntent.current = null;
 			setEmojiIntent(null);

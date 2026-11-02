@@ -65,6 +65,7 @@ export function useComposerMentions(input: {
 		mentionQueryStart: mentions.open ? mentions.anchorIndex : null,
 		mentionRanges: mentions.tokens,
 		intent: mentions.emojiIntent,
+		isComposing: mentions.isComposing,
 		onEdit: mentions.applyTextEdit,
 	});
 	return {

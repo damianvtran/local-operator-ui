@@ -51,6 +51,7 @@ export function EmojiAutocompletePopover({
 					caret: caretRect(field, anchorIndex),
 					viewportWidth: view.innerWidth,
 					viewportHeight: view.innerHeight,
+					paneWidth: field.getBoundingClientRect().width,
 					rows: rows.length,
 					rtl: view.getComputedStyle(field).direction === "rtl",
 				}),
@@ -115,6 +116,9 @@ export function EmojiAutocompletePopover({
 							/* biome-ignore lint/a11y/useSemanticElements: rich combobox rows retain field focus; native options cannot render this content. */
 							role="option"
 							aria-selected={index === active}
+							// Count and position are announced from these, with no new copy.
+							aria-setsize={rows.length}
+							aria-posinset={index + 1}
 							data-emoji-index={index}
 							className={cn(
 								"relative flex h-9 min-h-9 cursor-pointer items-center gap-2 px-3 text-body-sm text-ink",

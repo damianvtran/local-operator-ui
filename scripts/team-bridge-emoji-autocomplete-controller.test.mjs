@@ -109,6 +109,26 @@ test("popup prefers 320px, eight 36px rows and opens above a bottom caret", () =
 	assert.equal(emojiOptionId("fixture", 0), "fixture-emoji-option-0");
 });
 
+test("U6: width is min(320, pane width), still clamped to the viewport", () => {
+	const at = (paneWidth, viewportWidth = 1000) =>
+		emojiPopoverPosition({
+			caret: { left: 900, right: 908, top: 700, height: 20 },
+			viewportWidth,
+			viewportHeight: 800,
+			paneWidth,
+			rows: 8,
+			rtl: false,
+		});
+	assert.equal(at(248).width, 248);
+	assert.equal(at(600).width, 320);
+	assert.equal(at(undefined).width, 320);
+	assert.equal(at(Number.NaN).width, 320);
+	assert.equal(at(-5).width, 0);
+	assert.equal(at(600, 200).width, 184);
+	const narrow = at(248);
+	assert.ok(narrow.left >= 8 && narrow.left + narrow.width <= 992);
+});
+
 test("top caret flips below; RTL aligns the opposite edge", () => {
 	const position = emojiPopoverPosition({
 		caret: { left: 200, right: 550, top: 10, height: 20 },

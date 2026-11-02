@@ -805,7 +805,9 @@ test("browser-ordered typing across a draft switch keeps each draft's own text a
 	}
 });
 
-for (const word of [":", ":smile", "hello :heart"]) {
+// `:sm`, not a bare `:`: U1 keeps the list closed below two characters, so a
+// bare colon now proves key retention but not intent adoption.
+for (const word of [":sm", ":smile", "hello :heart"]) {
 	test(`emoji browser-ordered StrictMode typing retains every key and adopts intent: ${word}`, async () => {
 		m.useMentionDraftStore.setState({ drafts: {} });
 		const c = await mount({ strictMode: true });

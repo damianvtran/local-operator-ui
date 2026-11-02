@@ -4,6 +4,7 @@ import { test } from "node:test";
 import {
 	BRIDGE_EMOJI_ALIASES,
 	createEmojiAliasResolver,
+	createEmojiQueryGate,
 	createEmojiSearch,
 	findEmojiQuery,
 	insertEmoji,
@@ -74,6 +75,45 @@ test("explicit aliases resolve deterministically; ambiguous hints never resolve"
 	assert.equal(ambiguous("thumbs_up"), null);
 	assert.equal(ambiguous("missing"), null);
 	assert.equal(ambiguous("duplicate")?.emoji, smile);
+});
+
+test("U2: every explicit alias names exactly one emoji in the pinned corpus", () => {
+	const present = new Set(corpus.map((entry) => entry.emoji));
+	for (const [alias, values] of Object.entries(BRIDGE_EMOJI_ALIASES)) {
+		assert.equal(values.length, 1, alias);
+		assert.ok(present.has(values[0]), `${alias} missing from corpus`);
+	}
+	assert.ok(Object.keys(BRIDGE_EMOJI_ALIASES).length >= 60);
+});
+
+test("U2: ranking is explicit alias, exact name, name word-prefix, then keyword", () => {
+	const cp = (...points) => String.fromCodePoint(...points);
+	for (const [query, expected] of [
+		["fire", cp(0x1f525)],
+		["rocket", cp(0x1f680)],
+		["eyes", cp(0x1f440)],
+		["joy", cp(0x1f602)],
+	])
+		assert.equal(search(query)[0]?.emoji, expected, query);
+	const exactName = { emoji: "n", name: "fire", keywords: [] };
+	const wordPrefix = { emoji: "w", name: "heart on fire", keywords: [] };
+	const keyword = { emoji: "k", name: "flame", keywords: ["fireplace"] };
+	const alias = { emoji: "a", name: "unrelated", keywords: [] };
+	const lookup = createEmojiSearch([keyword, wordPrefix, exactName, alias], {
+		fire: ["a"],
+	});
+	assert.deepEqual(
+		lookup("fire").map((e) => e.emoji),
+		["a", "n", "w", "k"],
+	);
+});
+
+test("U1: the list opens only for 2+ characters with a letter, or an explicit alias", () => {
+	const gate = createEmojiQueryGate();
+	for (const query of ["", "D", "P", "o", "30", "3", "__"])
+		assert.equal(gate(query), false, JSON.stringify(query));
+	for (const query of ["+1", "-1", "100", "fi", "smile", "笑顔"])
+		assert.equal(gate(query), true, JSON.stringify(query));
 });
 
 test("empty queries have stable defaults, all results are bounded, misses are empty", () => {

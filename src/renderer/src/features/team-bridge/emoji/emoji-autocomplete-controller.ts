@@ -47,6 +47,8 @@ export function emojiPopoverPosition(input: {
 	caret: { left: number; right: number; top: number; height: number };
 	viewportWidth: number;
 	viewportHeight: number;
+	/** The composer pane's width; a narrow thread pane caps the list below 320. */
+	paneWidth?: number;
 	rows: number;
 	rtl: boolean;
 }) {
@@ -54,7 +56,11 @@ export function emojiPopoverPosition(input: {
 	const viewportHeight = Math.max(0, input.viewportHeight);
 	const edge = Math.min(8, viewportWidth / 2, viewportHeight / 2);
 	const gap = 6;
-	const width = Math.min(320, Math.max(0, viewportWidth - edge * 2));
+	const pane =
+		input.paneWidth !== undefined && Number.isFinite(input.paneWidth)
+			? Math.max(0, input.paneWidth)
+			: Number.POSITIVE_INFINITY;
+	const width = Math.min(320, pane, Math.max(0, viewportWidth - edge * 2));
 	const desiredHeight =
 		Math.max(1, Math.min(EMOJI_VISIBLE_ROWS, input.rows)) * EMOJI_ROW_HEIGHT +
 		8;

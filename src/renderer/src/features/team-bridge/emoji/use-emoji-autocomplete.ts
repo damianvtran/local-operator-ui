@@ -9,6 +9,7 @@ import {
 import {
 	type EmojiCandidate,
 	type EmojiQueryInput,
+	createEmojiQueryGate,
 	createEmojiSearch,
 	findEmojiQuery,
 	insertEmoji,
@@ -23,6 +24,7 @@ const searchCorpus = createEmojiSearch(
 		keywords: keywords as string[],
 	})),
 );
+const queryGate = createEmojiQueryGate();
 /** Supplied by the sole field event owner; this hook installs no native listeners. */
 export type EmojiInputIntent = {
 	draftKey: string;
@@ -52,6 +54,11 @@ export function useEmojiAutocomplete(input: {
 	mentionQueryStart: number | null;
 	mentionRanges: EmojiQueryInput["mentionRanges"];
 	intent: EmojiInputIntent | null;
+	/**
+	 * Live IME state from the field owner. Read at pick time, because an intent
+	 * adopted before `compositionstart` is a stale non-composing snapshot.
+	 */
+	isComposing: () => boolean;
 	onEdit: (edit: NonNullable<ReturnType<typeof insertEmoji>>) => void;
 	/** A locale-aware cached corpus can replace the bundled names when available. */
 	search?: ReturnType<typeof createEmojiSearch>;
@@ -65,6 +72,7 @@ export function useEmojiAutocomplete(input: {
 		mentionQueryStart,
 		mentionRanges,
 		intent,
+		isComposing,
 		onEdit,
 		search = searchCorpus,
 	} = input;
@@ -99,15 +107,19 @@ export function useEmojiAutocomplete(input: {
 		if (query === null || `${draftKey}:${query.start}` !== dismissedAt)
 			setDismissedAt(null);
 	}, [query, draftKey, dismissedAt, intent, text]);
+	// A query below the gate (`:`, `:D`, `10 :30`) is not dismissed, just not
+	// offered: Enter stays a plain send and the next letter can still open it.
 	const eligible =
-		query !== null && `${draftKey}:${query.start}` !== dismissedAt;
+		query !== null &&
+		queryGate(query.query) &&
+		`${draftKey}:${query.start}` !== dismissedAt;
 	const owner = autocompleteOwner(
 		mentionQueryStart,
 		eligible ? query.start : null,
 	);
 	const open = owner === "emoji";
 	const rows = useMemo(
-		() => (open && query ? search(query.query, query.query ? 32 : 8) : []),
+		() => (open && query ? search(query.query, 32) : []),
 		[open, query, search],
 	);
 	const queryKey = query ? `${draftKey}:${query.start}:${query.query}` : "";
@@ -131,6 +143,7 @@ export function useEmojiAutocomplete(input: {
 			if (
 				!open ||
 				!query ||
+				isComposing() ||
 				!rows.includes(row) ||
 				!field ||
 				field.value !== text ||
@@ -144,7 +157,17 @@ export function useEmojiAutocomplete(input: {
 			setConsumed(intentKey);
 			setDismissedAt(`${draftKey}:${query.start}`);
 		},
-		[open, query, rows, fieldRef, text, onEdit, intentKey, draftKey],
+		[
+			open,
+			query,
+			rows,
+			fieldRef,
+			text,
+			onEdit,
+			intentKey,
+			draftKey,
+			isComposing,
+		],
 	);
 	const onKeyDown = useCallback(
 		(event: KeyboardEvent<HTMLTextAreaElement>): boolean => {
@@ -167,10 +190,21 @@ export function useEmojiAutocomplete(input: {
 				);
 				return true;
 			}
-			if (event.key === "Enter" && !event.shiftKey && rows[active]) {
-				// Even a stale pick must not fall through to send the unfinished shortcode.
+			const accept =
+				(event.key === "Enter" || event.key === "Tab") && !event.shiftKey;
+			if (accept && rows[active]) {
+				// Tab matches the mention popover. Even a stale pick must not fall
+				// through to send the unfinished shortcode or move focus away.
 				event.preventDefault();
 				pick(rows[active]);
+				return true;
+			}
+			if (event.key === "Enter" && !event.shiftKey) {
+				// "No emoji found" is on screen: the first Enter answers the popup the
+				// reader is looking at, never sends past it. The draft is kept; the next
+				// Enter, with the popup dismissed for this token, sends normally.
+				event.preventDefault();
+				close();
 				return true;
 			}
 			return false;
