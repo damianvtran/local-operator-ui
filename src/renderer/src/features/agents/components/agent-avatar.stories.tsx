@@ -96,9 +96,7 @@ const installMedia = () => {
 		...api.desktop,
 		media: async (request: { op?: string }) =>
 			request.op === "agent.avatar"
-				? { status: 200,
-				kind: "bytes",
-				mimeType: "image/png", data: PNG }
+				? { status: 200, kind: "bytes", mimeType: "image/png", data: PNG }
 				: { status: 404, kind: "error", detail: "Not in this story." },
 	};
 	// biome-ignore lint/suspicious/noExplicitAny: the preload bridge is a mock here.
@@ -656,7 +654,10 @@ type SummaryPictureEvidence = {
 	bytesDelivered: boolean;
 	decodeErrorSource: string | null;
 };
-const summaryPictureEvidence = new WeakMap<HTMLElement, SummaryPictureEvidence>();
+const summaryPictureEvidence = new WeakMap<
+	HTMLElement,
+	SummaryPictureEvidence
+>();
 
 const SummaryPortraitScene: FC<{
 	state: SummaryPictureState;
@@ -695,7 +696,10 @@ const SummaryPortraitScene: FC<{
 		const api = window as unknown as {
 			api: {
 				desktop: {
-					media: (request: { op?: string; agentId?: string }) => Promise<unknown>;
+					media: (request: {
+						op?: string;
+						agentId?: string;
+					}) => Promise<unknown>;
 					request: (request: { op?: string }) => Promise<unknown>;
 				};
 			};
@@ -710,11 +714,13 @@ const SummaryPortraitScene: FC<{
 				status: 200,
 				body: {
 					result: {
-						agents: [{
-							id,
-							name: `summary-${state}`,
-							...(state === "no-image" ? {} : { avatar }),
-						}],
+						agents: [
+							{
+								id,
+								name: `summary-${state}`,
+								...(state === "no-image" ? {} : { avatar }),
+							},
+						],
 					},
 				},
 			};
@@ -753,7 +759,8 @@ const SummaryPortraitScene: FC<{
 				const image = Reflect.construct(target, args) as HTMLImageElement;
 				const onError = () => {
 					if (
-						state === "error" && evidence.bytesDelivered &&
+						state === "error" &&
+						evidence.bytesDelivered &&
 						image.src === peekBlobUrl(agentAvatarPath(id, SHA))
 					) {
 						evidence.decodeErrorSource = image.src;
@@ -773,17 +780,23 @@ const SummaryPortraitScene: FC<{
 			summaryPictureEvidence.delete(root);
 			for (const [image, onError] of observedImages)
 				image.removeEventListener("error", onError);
-			if (api.api.desktop.media === media) api.api.desktop.media = previousMedia;
-			if (api.api.desktop.request === request) api.api.desktop.request = previousRequest;
+			if (api.api.desktop.media === media)
+				api.api.desktop.media = previousMedia;
+			if (api.api.desktop.request === request)
+				api.api.desktop.request = previousRequest;
 			if (window.Image === ObservedImage) window.Image = NativeImage;
 		};
 	}, [client, state, id]);
-	const profile = useMemo(() => makeProfile({
-		name: `summary-${state}`,
-		agent_id: id,
-		source: "custom",
-		description: "A local agent whose summary shows its own picture.",
-	}), [state, id]);
+	const profile = useMemo(
+		() =>
+			makeProfile({
+				name: `summary-${state}`,
+				agent_id: id,
+				source: "custom",
+				description: "A local agent whose summary shows its own picture.",
+			}),
+		[state, id],
+	);
 	return (
 		<div
 			ref={rootRef}
@@ -791,22 +804,26 @@ const SummaryPortraitScene: FC<{
 			style={{ width, maxWidth: "100%" }}
 			data-summary-picture-state={state}
 		>
-			{ready ? <AgentDetail
-				key={id}
-				profile={profile}
-				displayedName={longName
-					? "An unusually long selected agent name that must not crowd its actions"
-					: "Local summary agent"}
-				classNotice={null}
-				onClassNotice={noop}
-				teams={[]}
-				effortTiers={[]}
-				askEnabled={false}
-				onSaved={noop}
-				onDuplicate={noop}
-				onOpenTeam={noop}
-				onAskAgent={noop}
-			/> : null}
+			{ready ? (
+				<AgentDetail
+					key={id}
+					profile={profile}
+					displayedName={
+						longName
+							? "An unusually long selected agent name that must not crowd its actions"
+							: "Local summary agent"
+					}
+					classNotice={null}
+					onClassNotice={noop}
+					teams={[]}
+					effortTiers={[]}
+					askEnabled={false}
+					onSaved={noop}
+					onDuplicate={noop}
+					onOpenTeam={noop}
+					onAskAgent={noop}
+				/>
+			) : null}
 		</div>
 	);
 };
@@ -863,7 +880,9 @@ export const SummaryPortraitErrorNarrow: Story = {
 /** Authored but unexecuted during D2: these checks need a real admitted renderer. */
 async function assertSummaryPortrait(canvas: HTMLElement): Promise<void> {
 	await document.fonts.ready;
-	const root = canvas.querySelector<HTMLElement>("[data-summary-picture-state]");
+	const root = canvas.querySelector<HTMLElement>(
+		"[data-summary-picture-state]",
+	);
 	if (!root) throw new Error("Summary fixture is missing");
 	const state = root.dataset.summaryPictureState;
 	let settled = false;
@@ -872,39 +891,67 @@ async function assertSummaryPortrait(canvas: HTMLElement): Promise<void> {
 		const image = portrait?.querySelector("img");
 		const glyph = Boolean(portrait?.querySelector("svg"));
 		const evidence = summaryPictureEvidence.get(root);
-		settled = Boolean(evidence && (
-			state === "populated"
-				? evidence.requests > 0 && evidence.bytesDelivered && image?.complete && image.naturalWidth > 0
-				: state === "loading"
-					? evidence.requests > 0 && evidence.inFlight > 0 && !evidence.bytesDelivered && glyph
-					: state === "error"
-						? evidence.requests > 0 && evidence.bytesDelivered && evidence.decodeErrorSource && glyph
-						: state === "no-image" && evidence.requests === 0 && glyph
-		));
+		settled = Boolean(
+			evidence &&
+				(state === "populated"
+					? evidence.requests > 0 &&
+						evidence.bytesDelivered &&
+						image?.complete &&
+						image.naturalWidth > 0
+					: state === "loading"
+						? evidence.requests > 0 &&
+							evidence.inFlight > 0 &&
+							!evidence.bytesDelivered &&
+							glyph
+						: state === "error"
+							? evidence.requests > 0 &&
+								evidence.bytesDelivered &&
+								evidence.decodeErrorSource &&
+								glyph
+							: state === "no-image" && evidence.requests === 0 && glyph),
+		);
 		if (settled) break;
 		await new Promise((resolve) => setTimeout(resolve, 50));
 	}
-	if (!settled) throw new Error(`Summary never reached its discriminating ${state} state`);
+	if (!settled)
+		throw new Error(`Summary never reached its discriminating ${state} state`);
 	// These frames follow the observed request/decoder event, rather than being
 	// used as a substitute for proving the event happened.
 	await new Promise((resolve) =>
 		requestAnimationFrame(() => requestAnimationFrame(resolve)),
 	);
-	const portrait = root.querySelector<HTMLElement>("[data-agent-summary-portrait]");
+	const portrait = root.querySelector<HTMLElement>(
+		"[data-agent-summary-portrait]",
+	);
 	const header = root.querySelector<HTMLElement>("[data-agent-summary-header]");
-	if (!portrait || !header) throw new Error("Summary did not render its identity");
+	if (!portrait || !header)
+		throw new Error("Summary did not render its identity");
 	if (state !== "populated" && !portrait.querySelector("svg"))
-		throw new Error("Missing/loading/failed picture lost the local agent glyph");
+		throw new Error(
+			"Missing/loading/failed picture lost the local agent glyph",
+		);
 	const box = portrait.getBoundingClientRect();
-	const edge = Number.parseFloat(getComputedStyle(document.documentElement).fontSize) * 5;
+	const edge =
+		Number.parseFloat(getComputedStyle(document.documentElement).fontSize) * 5;
 	if (Math.abs(box.width - edge) > 0.1 || Math.abs(box.height - edge) > 0.1)
-		throw new Error("Summary portrait no longer reserves its comfortable square");
+		throw new Error(
+			"Summary portrait no longer reserves its comfortable square",
+		);
 	const titleBlock = portrait.nextElementSibling?.getBoundingClientRect();
-	if (!titleBlock || Math.abs(box.y + box.height / 2 - titleBlock.y - titleBlock.height / 2) > 0.1)
-		throw new Error("Summary portrait and name/status lost shared centre alignment");
-	if (header.scrollWidth > header.clientWidth + 1) throw new Error("Summary header overflows the narrow pane");
+	if (
+		!titleBlock ||
+		Math.abs(box.y + box.height / 2 - titleBlock.y - titleBlock.height / 2) >
+			0.1
+	)
+		throw new Error(
+			"Summary portrait and name/status lost shared centre alignment",
+		);
+	if (header.scrollWidth > header.clientWidth + 1)
+		throw new Error("Summary header overflows the narrow pane");
 	const bounds = header.getBoundingClientRect();
-	for (const button of header.querySelectorAll("[data-agent-summary-actions] button")) {
+	for (const button of header.querySelectorAll(
+		"[data-agent-summary-actions] button",
+	)) {
 		const action = button.getBoundingClientRect();
 		if (action.left < bounds.left - 1 || action.right > bounds.right + 1)
 			throw new Error("Summary action escaped its responsive header");
@@ -917,15 +964,25 @@ export const SummaryPortraitExistingEdit: Story = {
 	play: async ({ canvasElement }) => {
 		await assertSummaryPortrait(canvasElement);
 		const url = window.location.href;
-		const edit = Array.from(canvasElement.querySelectorAll<HTMLButtonElement>("[data-agent-summary-actions] button"))
-			.find((button) => button.textContent?.trim() === t("ui.agents.detail.action.edit"));
+		const edit = Array.from(
+			canvasElement.querySelectorAll<HTMLButtonElement>(
+				"[data-agent-summary-actions] button",
+			),
+		).find(
+			(button) =>
+				button.textContent?.trim() === t("ui.agents.detail.action.edit"),
+		);
 		if (!edit) throw new Error("Existing Edit button is missing");
 		edit.click();
 		await new Promise((resolve) =>
-		requestAnimationFrame(() => requestAnimationFrame(resolve)),
-	);
-		if (!canvasElement.querySelector("#agent-picture") || canvasElement.querySelector("[data-agent-summary-portrait]"))
+			requestAnimationFrame(() => requestAnimationFrame(resolve)),
+		);
+		if (
+			!canvasElement.querySelector("#agent-picture") ||
+			canvasElement.querySelector("[data-agent-summary-portrait]")
+		)
 			throw new Error("Edit did not open the existing agent picture field");
-		if (window.location.href !== url) throw new Error("Edit navigated to a redundant settings route");
+		if (window.location.href !== url)
+			throw new Error("Edit navigated to a redundant settings route");
 	},
 };
