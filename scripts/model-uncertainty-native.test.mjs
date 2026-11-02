@@ -765,6 +765,9 @@ test("strict model launch binds its verified executable despite late parent over
 	git("init", "-q");
 	git("add", ".");
 	git("commit", "-qm", "test: inert executable identity");
+	// CI validates this owned fixture checkout, not the outer repository's SHA.
+	const fixtureHead = git("rev-parse", "HEAD").toString("utf8").trim();
+	env.MODEL_CASE_EXPECTED_HEAD = fixtureHead;
 	const receipt = join(root, "receipt.json");
 	writeFileSync(receipt, JSON.stringify(buildReceipt(root)));
 	const driver = new URL("./renderer-driver.mjs", import.meta.url).href;
@@ -786,7 +789,18 @@ test("strict model launch binds its verified executable despite late parent over
  const originalLoad=Module._load;let installer=0;Module._load=function(name,...rest){if(name==='electron'){installer++;throw Error('INSTALLER_TRIPWIRE');}return originalLoad.call(this,name,...rest);};
  const cp=req('node:child_process');let selected=null;cp.spawn=(binary,args,options)=>{selected={binary,parent:process.env.ELECTRON_OVERRIDE_DIST_PATH,child:options.env.ELECTRON_OVERRIDE_DIST_PATH};assert.equal(args[0],root);assert(args.includes('--use-mock-keychain'));throw Error('SELECTION_INTERCEPTED_BEFORE_EXECUTION');};cp.spawnSync=()=>{throw Error('INSTALLER_SPAWN_TRIPWIRE');};const realExec=cp.execFileSync;cp.execFileSync=(cmd,args,options)=>{assert.equal(cmd,'git');return realExec(cmd,args,options);};
  let ports=0;const net=req('node:net');net.createServer=()=>{ports++;process.env.ELECTRON_OVERRIDE_DIST_PATH=alternateB;const server=new EventEmitter();server.listen=(port,host,cb)=>queueMicrotask(cb);server.address=()=>({port:19000+ports});server.close=cb=>queueMicrotask(cb);return server;};net.connect=()=>{const socket=new EventEmitter();socket.destroy=()=>{};socket.setTimeout=()=>{};queueMicrotask(()=>socket.emit('error',Error('OWNED_CLOSED_PORT')));return socket;};globalThis.fetch=()=>{throw Error('NETWORK_TRIPWIRE');};for(const n of ['node:http','node:https']){req(n).get=()=>{throw Error('NETWORK_TRIPWIRE');};req(n).request=()=>{throw Error('NETWORK_TRIPWIRE');};}syncBuiltinESMExports();
- const {verifyModelBuild}=await import(${JSON.stringify(model)});const verified=verifyModelBuild(root,${JSON.stringify(receipt)});assert.equal(verified,join(root,'node_modules/electron/dist/electron'));
+ const {verifyModelBuild}=await import(${JSON.stringify(model)});
+ if(process.env.CI){
+  const expectedHead=process.env.MODEL_CASE_EXPECTED_HEAD;assert(expectedHead,'owned fixture HEAD must be bound before CI controls');
+  try{
+   Reflect.deleteProperty(process.env,'MODEL_CASE_EXPECTED_HEAD');
+   assert.throws(()=>verifyModelBuild(root,${JSON.stringify(receipt)}),/CI must name its exact compiled checkout/);assert.equal(ports,0);assert.equal(selected,null);
+   const wrongHead=(expectedHead[0]==='0'?'1':'0')+expectedHead.slice(1);process.env.MODEL_CASE_EXPECTED_HEAD=wrongHead;
+   assert.throws(()=>verifyModelBuild(root,${JSON.stringify(receipt)}),error=>error.code==='ERR_ASSERTION'&&error.actual===expectedHead&&error.expected===wrongHead);assert.equal(ports,0);assert.equal(selected,null);
+  }finally{process.env.MODEL_CASE_EXPECTED_HEAD=expectedHead;}
+  assert.equal(process.env.MODEL_CASE_EXPECTED_HEAD,expectedHead);
+ }
+ const verified=verifyModelBuild(root,${JSON.stringify(receipt)});assert.equal(verified,join(root,'node_modules/electron/dist/electron'));
  if(mode==='old-selection'){const text=readFileSync(new URL(${JSON.stringify(driver)}),'utf8');const needle='verifiedElectronBinary ?? electronBinary(),';assert.equal(text.split(needle).length,2);registerHooks({load(url,context,next){if(url===${JSON.stringify(driver)})return{format:'module',source:text.replace(needle,'electronBinary(),'),shortCircuit:true};return next(url,context);}});}
  const {rendererDriverApi:api}=await import(${JSON.stringify(driver)});api.prepareDriverContext({apiUrl:'http://127.0.0.1:8080'});process.env.ELECTRON_OVERRIDE_DIST_PATH=alternateA;
  const binding=mode==='generic'?undefined:mode==='wrong-binding'?join(alternateA,'electron'):verified;
@@ -807,7 +821,10 @@ test("strict model launch binds its verified executable despite late parent over
 	}
 	// A usable parent override must not satisfy the strict model prerequisite.
 	const oldOverride = process.env.ELECTRON_OVERRIDE_DIST_PATH;
+	const hadExpectedHead = Object.hasOwn(process.env, "MODEL_CASE_EXPECTED_HEAD");
+	const oldExpectedHead = process.env.MODEL_CASE_EXPECTED_HEAD;
 	try {
+		process.env.MODEL_CASE_EXPECTED_HEAD = fixtureHead;
 		process.env.ELECTRON_OVERRIDE_DIST_PATH = join(root, "alternate-a");
 		writeFileSync(join(pkg, "path.txt"), "missing-installed-executable");
 		assert.throws(
@@ -819,5 +836,10 @@ test("strict model launch binds its verified executable despite late parent over
 		if (oldOverride === undefined)
 			Reflect.deleteProperty(process.env, "ELECTRON_OVERRIDE_DIST_PATH");
 		else process.env.ELECTRON_OVERRIDE_DIST_PATH = oldOverride;
+		if (hadExpectedHead) process.env.MODEL_CASE_EXPECTED_HEAD = oldExpectedHead;
+		else Reflect.deleteProperty(process.env, "MODEL_CASE_EXPECTED_HEAD");
+		assert.equal(process.env.MODEL_CASE_EXPECTED_HEAD, oldExpectedHead);
+		assert.equal(Object.hasOwn(process.env, "MODEL_CASE_EXPECTED_HEAD"), hadExpectedHead);
+		assert.equal(process.env.ELECTRON_OVERRIDE_DIST_PATH, oldOverride);
 	}
 });
