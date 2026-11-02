@@ -1,0 +1,63 @@
+{
+  "schema": 1,
+  "auditor": "i18n-auditor (lopdev team; session 860c31908627; independent vi linguistic auditor, not the translator)",
+  "agent": "i18n-auditor (lopdev team; session 860c31908627; independent vi linguistic auditor, not the translator)",
+  "model": "anthropic/claude-sonnet-5-5",
+  "model_provenance": "Model as shown in this session's runtime header (anthropic/claude-sonnet-5-5). No fallback used or claimed; no mid-session model switch observed. Not independently verified beyond the runtime header.",
+  "fallback": "none",
+  "session": "860c31908627",
+  "job_id": null,
+  "job_identity_note": "Delegated lopdev i18n-auditor task; no separate background job id was supplied. The session id identifies this auditor.",
+  "role": "i18n-auditor / independent translation auditor",
+  "independence": "I did not author or edit this translation. I read the vi style guide, glossary, English source with its context sidecar, the committed vi target, and neighbouring vi keys (ui.agents.starters.*, ui.agents.detail origin/alert keys, section.instructions) for terminology.",
+  "locale": "vi",
+  "branch": "fix/agent-transport-copy",
+  "head": "30bdd7aedbce47dc0c0c1506103368e8225fb839",
+  "audited_at_commit": "82ad0474cf9 (vi target byte-identical at 30bdd7aedbc; re-derived from git show at both commits)",
+  "pr": "damianvtran/local-operator-ui#1594",
+  "date": "2026-11-02",
+  "status": "passed",
+  "instance": "860c31908627-origin-vi",
+  "namespace": "ui.agents.detail.origin",
+  "result": "clean-with-findings",
+  "source_sha256": "bbb0eeac68c5ccd14988bffab2502698cb14ff6871a0a2b2212dd779fd67efb4",
+  "context_sha256": "470e2004a28b867981fe7ae6bd55ce81bec490cab63553490548503ff181b8f5",
+  "target_sha256": "1f42c83b90adb4489d64791a83bade84e96c9de9601bd13545f9c041c14f2bfa",
+  "paths": {
+    "source": "src/i18n/catalogues/en/ui.agents.detail.origin.json",
+    "context": "src/i18n/catalogues/en/ui.agents.detail.origin.context.json",
+    "target": "src/i18n/catalogues/vi/ui.agents.detail.origin.json"
+  },
+  "keys_read": 3,
+  "keys_in_file": 3,
+  "linguistic_scope_keys": [
+    "ui.agents.detail.origin.shipped_with_app",
+    "ui.agents.detail.origin.installed_starter",
+    "ui.agents.detail.origin.compare_packaged"
+  ],
+  "findings": [
+    {
+      "id": "A-1",
+      "severity": "minor",
+      "key": "ui.agents.detail.origin.installed_starter",
+      "text": "Được cài từ một mẫu đi kèm ứng dụng.",
+      "note": "'một mẫu' has no head noun; elsewhere in vi 'mẫu' means 'sample' (Lấy mẫu, Mẫu column, thông tin mẫu), so it could be misread as 'a sample' and does not tie back to 'tác nhân' as ui.agents.starters.* does. Defensible as is (the vi starters catalogue has no 'starter' word; it paraphrases 'tác nhân tích hợp', so 'mẫu' contradicts nothing). Suggested: 'Được cài từ một mẫu tác nhân đi kèm ứng dụng.' Not recommended: 'tác nhân tích hợp' (collides with shipped_with_app)."
+    },
+    {
+      "id": "A-2",
+      "severity": "nit",
+      "key": "ui.agents.detail.origin.compare_packaged",
+      "text": "So sánh với chỉ dẫn đi kèm ứng dụng",
+      "note": "Correct and consistent with origin.changed and section.instructions. 'chỉ dẫn gốc đi kèm ứng dụng' would stress 'original' but is not needed. No change required."
+    }
+  ],
+  "scope": "WHOLE-NAMESPACE LINGUISTIC AUDIT of the three keys of ui.agents.detail.origin (3 of 3 read; key set equals English, same order, valid JSON, NFC, no placeholders/plurals/markup/bidi controls). This clears the vi catalogue linguistically only; it does NOT clear rendered layout, wrapping or width in the live UI; no rendered frame was inspected and the sidecar sets no maxCells budget.",
+  "verified": [
+    "Open question 'starter': vi chose 'mẫu' (template). ui.agents.starters.* has no starter word and paraphrases it as 'tác nhân tích hợp' (e.g. action.all_builtins 'Cài tất cả tác nhân tích hợp'); detail.alert.builtin_title is also 'Tác nhân tích hợp'. 'mẫu' contradicts none of these; judged defensible (see A-1).",
+    "'Packaged' is rendered 'đi kèm ứng dụng' in origin.changed ('Khác với bản đi kèm ứng dụng') and alert.builtin_body, and the same phrase is used here: no second word for the concept.",
+    "shipped_with_app ('Đi kèm ứng dụng.') and installed_starter ('Được cài từ một mẫu đi kèm ứng dụng.') stay distinguishable: the passive 'Được cài từ' plus the 'mẫu' noun marks a source; it parallels created_locally 'Được tạo trên máy này.'.",
+    "Form: two sentences end with a full stop, the label does not; Vietnamese has no gender/case agreement issue for the elided subject; urdu/RTL checks not applicable.",
+    "Source, context and target hashes derived from `git show 30bdd7aedbc:<path> | shasum -a 256` and equal the values reported at 82ad0474cf9.",
+    "I did not run the repo validator or ledger command for the audit itself (checkout was on main, not the PR commit); deriveReceiptAudit was run on this receipt afterwards."
+  ]
+}

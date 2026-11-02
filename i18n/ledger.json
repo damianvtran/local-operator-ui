@@ -369,8 +369,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.agents.detail",
-			"source_sha256": "80877db48543e0557cd0a079c8fd2d0c238f1923c2885deae85428e17af1f65b",
-			"target_sha256": "08df1422014aa6407b884bd31a9438c91bace7cfbaa20b55f7ee0657d737cc15",
+			"source_sha256": "b52991233e7fdf8f9b54f9ec465fc0e20ac32239c37e8c5b9ed8ebd8fbdbd8f8",
+			"target_sha256": "c11b58be3b9ad5973b1d7d4f093f3b3337354289f519e908bdb4097b59eaa091",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "radient/auto",
@@ -379,18 +379,18 @@
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"model": "radient/auto",
-					"date": "2026-10-26",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-02",
 					"result": "clean",
-					"instance": "e9688c682c8f",
+					"instance": "2d68396b3441-es-agents-detail-census",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/e9688c682c8f.json",
-					"receipt_sha256": "c3b24d24093c5a64903f20eac2ff91ade815eb505ecccef6a0520186943f379e"
+					"receipt": "i18n/receipts/2d68396b3441-es-agents-detail-census.json",
+					"receipt_sha256": "b2dfd8ba98f28f84804b8d85a96e269062511d65b4007a870454b59845ef39bb"
 				}
 			],
 			"status": "audited",
@@ -413,6 +413,28 @@
 							},
 							"receipt": "i18n/receipts/c6732d07a0de.json",
 							"receipt_sha256": "d614ae7908dfaa210e70245c57d111f2a5b77eaf65e93c6d76aafc1f2a72fa63"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "80877db48543e0557cd0a079c8fd2d0c238f1923c2885deae85428e17af1f65b",
+					"target_sha256": "08df1422014aa6407b884bd31a9438c91bace7cfbaa20b55f7ee0657d737cc15",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean",
+							"instance": "e9688c682c8f",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/e9688c682c8f.json",
+							"receipt_sha256": "c3b24d24093c5a64903f20eac2ff91ade815eb505ecccef6a0520186943f379e"
 						}
 					],
 					"status": "audited"
@@ -4162,8 +4184,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.common.errors",
-			"source_sha256": "343f046bf9739aca4a47e1644856871261e03b13c566a19661e6397e96a5bb6b",
-			"target_sha256": "e698c8dbf77d45c9760cb3c44d5f37829426241b1505ac490199429743f3acba",
+			"source_sha256": "1c33841b78da772dab58d4476295082b6e1d56a328c587597de20a368cb7c254",
+			"target_sha256": "13549fadff5db18feb15b0bd20e01b346b1c4d280dafb87e53b874e9f13dc28c",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -4171,20 +4193,19 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-10-25",
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-02",
 					"result": "clean-with-findings",
-					"instance": "25e13765eb1a-errors-union-es",
+					"instance": "2d68396b3441-es-common-errors-census",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 2,
+						"minor": 0,
 						"nit": 1
 					},
-					"receipt": "i18n/receipts/25e13765eb1a-errors-union-es.json",
-					"receipt_sha256": "044a1a0d314a8ef58bde3e1b230688701760398cadc8004785884bc0495b90f7",
-					"scope": "two-parent union audit at 30ad5317c5; values byte-proven against parents 649a09fe30 and ece9ae9219"
+					"receipt": "i18n/receipts/2d68396b3441-es-common-errors-census.json",
+					"receipt_sha256": "439f46747b46f4e335559e2fb3d474a85a763e1ba441d560385229b0737ea795"
 				}
 			],
 			"status": "audited",
@@ -4253,6 +4274,29 @@
 							},
 							"receipt": "i18n/receipts/es-bind-9f3835e7f6fc.json",
 							"receipt_sha256": "ead041166b0f1db85a33b2592e7d06877b995c35405a0c226cd0e8f7a96ab3ce"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "343f046bf9739aca4a47e1644856871261e03b13c566a19661e6397e96a5bb6b",
+					"target_sha256": "e698c8dbf77d45c9760cb3c44d5f37829426241b1505ac490199429743f3acba",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-25",
+							"result": "clean-with-findings",
+							"instance": "25e13765eb1a-errors-union-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 2,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/25e13765eb1a-errors-union-es.json",
+							"receipt_sha256": "044a1a0d314a8ef58bde3e1b230688701760398cadc8004785884bc0495b90f7",
+							"scope": "two-parent union audit at 30ad5317c5; values byte-proven against parents 649a09fe30 and ece9ae9219"
 						}
 					],
 					"status": "audited"
@@ -9118,8 +9162,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.agents.detail",
-			"source_sha256": "80877db48543e0557cd0a079c8fd2d0c238f1923c2885deae85428e17af1f65b",
-			"target_sha256": "a095d5f6aea8467ff3d0a9c05d9aa7e93ee022ab780fdd18587d866a4e0a1f0b",
+			"source_sha256": "b52991233e7fdf8f9b54f9ec465fc0e20ac32239c37e8c5b9ed8ebd8fbdbd8f8",
+			"target_sha256": "369880ae6b590ebf68d13bc44ef5778dba5dd68320953ed240c4f81015dc38d8",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "radient/auto",
@@ -9128,19 +9172,18 @@
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"model": "radient/auto",
-					"date": "2026-10-26",
-					"result": "clean",
-					"instance": "4acffbcd1c3d",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-02",
+					"result": "clean-with-findings",
+					"instance": "222cb5679d0c-fr-agents-detail-transport",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 0
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/4acffbcd1c3d.json",
-					"receipt_sha256": "55b01c5e79a85bfd1f0fb99f7dbb095e860556e7496fdf3fef4cd2b6cb844029",
-					"note": "i18n/audits/evidence/fr/ui.agents.detail/agents-literals2-20261026/record.json — fr agents-literals-2 audit, 50-key file / 3 new, 0 blocker/major, passed; receipt i18n/receipts/fr-agents-literals-audit-4acffbcd1c3d.json"
+					"receipt": "i18n/receipts/222cb5679d0c-fr-agents-detail-transport.json",
+					"receipt_sha256": "afdc2a2d3cef39ea8b7ab8e2fcf0e9178741f8c289ff4596f640d69c7f8be939"
 				}
 			],
 			"status": "audited",
@@ -9163,6 +9206,29 @@
 							},
 							"receipt": "i18n/receipts/caa0f0b9574d.json",
 							"receipt_sha256": "23b537ab649195bf6ed3a57f19c6eed56bfcbf6a0a9350be7a290c94a8b0acc3"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "80877db48543e0557cd0a079c8fd2d0c238f1923c2885deae85428e17af1f65b",
+					"target_sha256": "a095d5f6aea8467ff3d0a9c05d9aa7e93ee022ab780fdd18587d866a4e0a1f0b",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean",
+							"instance": "4acffbcd1c3d",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/4acffbcd1c3d.json",
+							"receipt_sha256": "55b01c5e79a85bfd1f0fb99f7dbb095e860556e7496fdf3fef4cd2b6cb844029",
+							"note": "i18n/audits/evidence/fr/ui.agents.detail/agents-literals2-20261026/record.json — fr agents-literals-2 audit, 50-key file / 3 new, 0 blocker/major, passed; receipt i18n/receipts/fr-agents-literals-audit-4acffbcd1c3d.json"
 						}
 					],
 					"status": "audited"
@@ -13017,8 +13083,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.common.errors",
-			"source_sha256": "343f046bf9739aca4a47e1644856871261e03b13c566a19661e6397e96a5bb6b",
-			"target_sha256": "8a8328fc6ea235841089f869231e2e567c71a624d1d978537f75c60982b4f246",
+			"source_sha256": "1c33841b78da772dab58d4476295082b6e1d56a328c587597de20a368cb7c254",
+			"target_sha256": "cc599a8816bca0ad95bf1c94d0ca780b6174d6bbb69fe9eea8c88e87ce826227",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -13026,20 +13092,19 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-10-25",
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-02",
 					"result": "clean-with-findings",
-					"instance": "25e13765eb1a-errors-union-fr",
+					"instance": "222cb5679d0c-fr-common-errors-transport",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 1,
-						"nit": 2
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/25e13765eb1a-errors-union-fr.json",
-					"receipt_sha256": "19bec778c7cbd2e6927dea724d6156fe7e35b1e49211e91930c275887f7ad3cf",
-					"scope": "two-parent union audit at 30ad5317c5; values byte-proven against parents 649a09fe30 and ece9ae9219"
+					"receipt": "i18n/receipts/222cb5679d0c-fr-common-errors-transport.json",
+					"receipt_sha256": "c51595ff96de953e0264fa5a4b208764437b46eb8d0cad36eb3af1cc76eb023d"
 				}
 			],
 			"status": "audited",
@@ -13108,6 +13173,29 @@
 							},
 							"receipt": "i18n/receipts/fr-bind-514c5d6f5ea9.json",
 							"receipt_sha256": "ac9a542d8321e69870799b56460ca94e39d13d28883e2fa4fce97c6f025ba51c"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "343f046bf9739aca4a47e1644856871261e03b13c566a19661e6397e96a5bb6b",
+					"target_sha256": "8a8328fc6ea235841089f869231e2e567c71a624d1d978537f75c60982b4f246",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-25",
+							"result": "clean-with-findings",
+							"instance": "25e13765eb1a-errors-union-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 2
+							},
+							"receipt": "i18n/receipts/25e13765eb1a-errors-union-fr.json",
+							"receipt_sha256": "19bec778c7cbd2e6927dea724d6156fe7e35b1e49211e91930c275887f7ad3cf",
+							"scope": "two-parent union audit at 30ad5317c5; values byte-proven against parents 649a09fe30 and ece9ae9219"
 						}
 					],
 					"status": "audited"
@@ -18361,8 +18449,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.agents.detail",
-			"source_sha256": "80877db48543e0557cd0a079c8fd2d0c238f1923c2885deae85428e17af1f65b",
-			"target_sha256": "1c123f949bff4e8650697b24e24231fe09d32e5f6b3aa389b4a03038afd763b6",
+			"source_sha256": "b52991233e7fdf8f9b54f9ec465fc0e20ac32239c37e8c5b9ed8ebd8fbdbd8f8",
+			"target_sha256": "38f208c4be4d63345e55277bed313a5990744a573305d34ea9b76745d8fdd025",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "radient/auto",
@@ -18371,18 +18459,18 @@
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"model": "radient/auto",
-					"date": "2026-10-26",
-					"result": "clean",
-					"instance": "c512d3228b7f",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-02",
+					"result": "clean-with-findings",
+					"instance": "7753d553377b-census-hi-detail",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 0
+						"minor": 1,
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/c512d3228b7f.json",
-					"receipt_sha256": "ba1e7dd7de85f490ba0717a332ab1184be19c7caab62b9461ede0eee420f68cc"
+					"receipt": "i18n/receipts/7753d553377b-census-hi-detail.json",
+					"receipt_sha256": "261710e8f68bc160d296f473670dd02c9440eb4b41eef9dc59690a8accf37305"
 				}
 			],
 			"status": "audited",
@@ -18405,6 +18493,28 @@
 							},
 							"receipt": "i18n/receipts/9f3c2137fe40.json",
 							"receipt_sha256": "8932d37bd4e5ba3f1fd937ae4b94df4374a31afa56b10a0bb3183b0b09b89f56"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "80877db48543e0557cd0a079c8fd2d0c238f1923c2885deae85428e17af1f65b",
+					"target_sha256": "1c123f949bff4e8650697b24e24231fe09d32e5f6b3aa389b4a03038afd763b6",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean",
+							"instance": "c512d3228b7f",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/c512d3228b7f.json",
+							"receipt_sha256": "ba1e7dd7de85f490ba0717a332ab1184be19c7caab62b9461ede0eee420f68cc"
 						}
 					],
 					"status": "audited"
@@ -22224,8 +22334,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.common.errors",
-			"source_sha256": "343f046bf9739aca4a47e1644856871261e03b13c566a19661e6397e96a5bb6b",
-			"target_sha256": "39189348f93a1322f63bfffc7e8edfe8a3d1bb4386bdd0f25ae203e4d33945fb",
+			"source_sha256": "1c33841b78da772dab58d4476295082b6e1d56a328c587597de20a368cb7c254",
+			"target_sha256": "f5dcbcc00621e0fc41e881d97921e1c48cfa309a4c3fb3f3a03a99fff69dc5cf",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -22233,20 +22343,19 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-10-25",
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-02",
 					"result": "clean-with-findings",
-					"instance": "25e13765eb1a-errors-union-hi",
+					"instance": "7753d553377b-census-hi-errors",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 1,
-						"nit": 1
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/25e13765eb1a-errors-union-hi.json",
-					"receipt_sha256": "471acf158faccbe288e12cbc5b07a9f13bf01ff5a16f6ceb3504718229fde956",
-					"scope": "two-parent union audit at 30ad5317c5; values byte-proven against parents 649a09fe30 and ece9ae9219"
+					"receipt": "i18n/receipts/7753d553377b-census-hi-errors.json",
+					"receipt_sha256": "4be6fda2cc90ff1c485706a93ec16a4701ea5b6e2ccd4926a3f3c8c31fdd779e"
 				}
 			],
 			"status": "audited",
@@ -22315,6 +22424,29 @@
 							},
 							"receipt": "i18n/receipts/hi-bind-fbaf5e0ff7f5.json",
 							"receipt_sha256": "0fa2145781e5e0a2f9fe57ff01d789b6a13f30cd295689ccd27c98cfe596d23e"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "343f046bf9739aca4a47e1644856871261e03b13c566a19661e6397e96a5bb6b",
+					"target_sha256": "39189348f93a1322f63bfffc7e8edfe8a3d1bb4386bdd0f25ae203e4d33945fb",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-25",
+							"result": "clean-with-findings",
+							"instance": "25e13765eb1a-errors-union-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/25e13765eb1a-errors-union-hi.json",
+							"receipt_sha256": "471acf158faccbe288e12cbc5b07a9f13bf01ff5a16f6ceb3504718229fde956",
+							"scope": "two-parent union audit at 30ad5317c5; values byte-proven against parents 649a09fe30 and ece9ae9219"
 						}
 					],
 					"status": "audited"
@@ -27246,8 +27378,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.agents.detail",
-			"source_sha256": "80877db48543e0557cd0a079c8fd2d0c238f1923c2885deae85428e17af1f65b",
-			"target_sha256": "a79ce20314721ec2574266e6951bf00dcff26fb83c3f6763a492d0b2cf7e5c4d",
+			"source_sha256": "b52991233e7fdf8f9b54f9ec465fc0e20ac32239c37e8c5b9ed8ebd8fbdbd8f8",
+			"target_sha256": "2b487367c302d8d333a8f8f7ac4c2f86b78118e8802d821cdd7371ba2239fe18",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "radient/auto",
@@ -27256,18 +27388,18 @@
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"model": "radient/auto",
-					"date": "2026-10-26",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-02",
 					"result": "clean",
-					"instance": "114c8d6e8551",
+					"instance": "census-ru-23742c36ef42-ui-agents-detail",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/114c8d6e8551.json",
-					"receipt_sha256": "c7604f6af740f3a2349af3b98cfffb28d0480b88b0767d274668268eb1a40c31"
+					"receipt": "i18n/receipts/census-ru-23742c36ef42-ui-agents-detail.json",
+					"receipt_sha256": "c529b3f99b21a01a93c7bc5788bacf5621984b32252ee798b53e2678ae2a1c08"
 				}
 			],
 			"status": "audited",
@@ -27290,6 +27422,28 @@
 							},
 							"receipt": "i18n/receipts/a7f4f2fdf169.json",
 							"receipt_sha256": "f862ea9ac4ef68bd1db45834f3fa62969c31c3e67336f47d34a86834255873ce"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "80877db48543e0557cd0a079c8fd2d0c238f1923c2885deae85428e17af1f65b",
+					"target_sha256": "a79ce20314721ec2574266e6951bf00dcff26fb83c3f6763a492d0b2cf7e5c4d",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean",
+							"instance": "114c8d6e8551",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/114c8d6e8551.json",
+							"receipt_sha256": "c7604f6af740f3a2349af3b98cfffb28d0480b88b0767d274668268eb1a40c31"
 						}
 					],
 					"status": "audited"
@@ -31104,8 +31258,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.common.errors",
-			"source_sha256": "343f046bf9739aca4a47e1644856871261e03b13c566a19661e6397e96a5bb6b",
-			"target_sha256": "df023892d6f0bb728cdbfb2356cc9e55c29862f8a161eb9e7437f074ec46a568",
+			"source_sha256": "1c33841b78da772dab58d4476295082b6e1d56a328c587597de20a368cb7c254",
+			"target_sha256": "f9a776af97a389cf89a360a59adf3fddd8bb8fcfc796a82b7327b4c7163ed810",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -31113,20 +31267,19 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-10-25",
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-02",
 					"result": "clean-with-findings",
-					"instance": "25e13765eb1a-errors-union-ru",
+					"instance": "census-ru-23742c36ef42-ui-common-errors",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 1,
 						"nit": 1
 					},
-					"receipt": "i18n/receipts/25e13765eb1a-errors-union-ru.json",
-					"receipt_sha256": "429a186784d5f9bbdf3384e7606afc85b158ed9613ce2920143e739f88bb446f",
-					"scope": "two-parent union audit at 30ad5317c5; values byte-proven against parents 649a09fe30 and ece9ae9219"
+					"receipt": "i18n/receipts/census-ru-23742c36ef42-ui-common-errors.json",
+					"receipt_sha256": "bd618ec81325a762ee8e03b85a5df12af0ee0466c693d86237ef4ab7eec5581b"
 				}
 			],
 			"status": "audited",
@@ -31195,6 +31348,29 @@
 							},
 							"receipt": "i18n/receipts/ru-bind-71d310c0c205.json",
 							"receipt_sha256": "a34c79f8be88f30a647964d4856b2a8e893a45d62f1338d2b2217ae85faf1211"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "343f046bf9739aca4a47e1644856871261e03b13c566a19661e6397e96a5bb6b",
+					"target_sha256": "df023892d6f0bb728cdbfb2356cc9e55c29862f8a161eb9e7437f074ec46a568",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-25",
+							"result": "clean-with-findings",
+							"instance": "25e13765eb1a-errors-union-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/25e13765eb1a-errors-union-ru.json",
+							"receipt_sha256": "429a186784d5f9bbdf3384e7606afc85b158ed9613ce2920143e739f88bb446f",
+							"scope": "two-parent union audit at 30ad5317c5; values byte-proven against parents 649a09fe30 and ece9ae9219"
 						}
 					],
 					"status": "audited"
@@ -36089,8 +36265,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.agents.detail",
-			"source_sha256": "80877db48543e0557cd0a079c8fd2d0c238f1923c2885deae85428e17af1f65b",
-			"target_sha256": "38f9647ca8cc7f97f1cfef95f305501d939dee3b4ebfe2223625dc5fa24636db",
+			"source_sha256": "b52991233e7fdf8f9b54f9ec465fc0e20ac32239c37e8c5b9ed8ebd8fbdbd8f8",
+			"target_sha256": "71f9558db96cc5de75ce82a77a15efc1c6ad6c1bc0679337387b77c625375e89",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "radient/auto",
@@ -36099,19 +36275,18 @@
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"model": "radient/auto",
-					"date": "2026-10-26",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-02",
 					"result": "clean",
-					"instance": "d959bfda62d5",
+					"instance": "accfe104567b-census-ur-detail-71f9558db96c",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/d959bfda62d5.json",
-					"receipt_sha256": "e32b5e33f16ff501ba0aea0a4994afc57d5d66fc57655777b8e5fabe7c5b9580",
-					"note": "Record: i18n/audits/evidence/ur/ui.agents.detail/lit2-ur-r2-20261026/record.json (round-1 verdict carried at identical bytes)."
+					"receipt": "i18n/receipts/accfe104567b-census-ur-detail-71f9558db96c.json",
+					"receipt_sha256": "c95311e3b21b3ed554169619865331d481c8b3251a76f69a7c5e2d2c64bb8c86"
 				}
 			],
 			"status": "audited",
@@ -36134,6 +36309,29 @@
 							},
 							"receipt": "i18n/receipts/2ae1e9eafd56.json",
 							"receipt_sha256": "7320918a871c83fbc04048090472c81f332ae188e793216ffd67dd670b67c603"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "80877db48543e0557cd0a079c8fd2d0c238f1923c2885deae85428e17af1f65b",
+					"target_sha256": "38f9647ca8cc7f97f1cfef95f305501d939dee3b4ebfe2223625dc5fa24636db",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean",
+							"instance": "d959bfda62d5",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/d959bfda62d5.json",
+							"receipt_sha256": "e32b5e33f16ff501ba0aea0a4994afc57d5d66fc57655777b8e5fabe7c5b9580",
+							"note": "Record: i18n/audits/evidence/ur/ui.agents.detail/lit2-ur-r2-20261026/record.json (round-1 verdict carried at identical bytes)."
 						}
 					],
 					"status": "audited"
@@ -39971,8 +40169,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.common.errors",
-			"source_sha256": "343f046bf9739aca4a47e1644856871261e03b13c566a19661e6397e96a5bb6b",
-			"target_sha256": "51e410cad73e83ef7bc51edfa5b22e1db5090b40e8950dfc21b581560282a9c6",
+			"source_sha256": "1c33841b78da772dab58d4476295082b6e1d56a328c587597de20a368cb7c254",
+			"target_sha256": "b18e846f26893a4567049bdc7bf62fa471f6fa0b2e985c90aca258ea36bb300d",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -39980,20 +40178,19 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-10-25",
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-02",
 					"result": "clean-with-findings",
-					"instance": "25e13765eb1a-errors-union-ur",
+					"instance": "accfe104567b-census-ur-errors-b18e846f2689",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 1,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/25e13765eb1a-errors-union-ur.json",
-					"receipt_sha256": "4dc4e274f66fea2c93fbd2a5d05c5a4082e6bb02f651117df5f79a6152bdc206",
-					"scope": "two-parent union audit at 30ad5317c5; values byte-proven against parents 649a09fe30 and ece9ae9219"
+					"receipt": "i18n/receipts/accfe104567b-census-ur-errors-b18e846f2689.json",
+					"receipt_sha256": "db0f114f02fd901bed03058b1a755ccf6572d5c4abd3ca43e1804703f01b7c81"
 				}
 			],
 			"status": "audited",
@@ -40063,6 +40260,29 @@
 							},
 							"receipt": "i18n/receipts/ur-bind-62303bdffebd.json",
 							"receipt_sha256": "298ab5cd546063e8b94b6d3ecb6aaa70b425efade6b6cfb874a91e884ca47550"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "343f046bf9739aca4a47e1644856871261e03b13c566a19661e6397e96a5bb6b",
+					"target_sha256": "51e410cad73e83ef7bc51edfa5b22e1db5090b40e8950dfc21b581560282a9c6",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-25",
+							"result": "clean-with-findings",
+							"instance": "25e13765eb1a-errors-union-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/25e13765eb1a-errors-union-ur.json",
+							"receipt_sha256": "4dc4e274f66fea2c93fbd2a5d05c5a4082e6bb02f651117df5f79a6152bdc206",
+							"scope": "two-parent union audit at 30ad5317c5; values byte-proven against parents 649a09fe30 and ece9ae9219"
 						}
 					],
 					"status": "audited"
@@ -44855,8 +45075,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.agents.detail",
-			"source_sha256": "80877db48543e0557cd0a079c8fd2d0c238f1923c2885deae85428e17af1f65b",
-			"target_sha256": "16b98fee171732fd0a77719ca2e9661687f055516e8ae52ed8eb442c0dd1c4f3",
+			"source_sha256": "b52991233e7fdf8f9b54f9ec465fc0e20ac32239c37e8c5b9ed8ebd8fbdbd8f8",
+			"target_sha256": "a68861b646d62b8745a6dbae4064cdc9bbe1270a155ee6f928bd2e625abcbc15",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "radient/auto",
@@ -44865,19 +45085,18 @@
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"model": "radient/auto",
-					"date": "2026-10-26",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-02",
 					"result": "clean",
-					"instance": "abdb30734404",
+					"instance": "vi-census-agents-detail-e79ed644c034",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/abdb30734404.json",
-					"receipt_sha256": "0468afdef18df4ce6c8762b3a243db5da8a359470277409329d8385cf4e5a529",
-					"note": "r1 vi agents/hub literals: 25 new keys over 7 ns; record i18n/receipts/vi-agents-literals-audit-abdb30734404.json; 0 blocker/major/minor, 2 nit; rulings asked for (trực tiếp, đến, Tự thêm, Ủy quyền, Tải, {when}) accepted on shipped sibling evidence."
+					"receipt": "i18n/receipts/vi-census-agents-detail-e79ed644c034.json",
+					"receipt_sha256": "1bfebea03415b31b3f170600a87b48eddbc612e7174c8cc2ae0d175ae8ee814b"
 				}
 			],
 			"status": "audited",
@@ -44900,6 +45119,29 @@
 							},
 							"receipt": "i18n/receipts/3d1e9640e5ae.json",
 							"receipt_sha256": "26b42ddfabfd39e4a1b325c4ca608d4db6854e72b047be0ae5fb5252ad890046"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "80877db48543e0557cd0a079c8fd2d0c238f1923c2885deae85428e17af1f65b",
+					"target_sha256": "16b98fee171732fd0a77719ca2e9661687f055516e8ae52ed8eb442c0dd1c4f3",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean",
+							"instance": "abdb30734404",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/abdb30734404.json",
+							"receipt_sha256": "0468afdef18df4ce6c8762b3a243db5da8a359470277409329d8385cf4e5a529",
+							"note": "r1 vi agents/hub literals: 25 new keys over 7 ns; record i18n/receipts/vi-agents-literals-audit-abdb30734404.json; 0 blocker/major/minor, 2 nit; rulings asked for (trực tiếp, đến, Tự thêm, Ủy quyền, Tải, {when}) accepted on shipped sibling evidence."
 						}
 					],
 					"status": "audited"
@@ -48862,8 +49104,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.common.errors",
-			"source_sha256": "343f046bf9739aca4a47e1644856871261e03b13c566a19661e6397e96a5bb6b",
-			"target_sha256": "a68ee97939df431b70c85172afd1e7889731b4cf7048f156bc89b4100ee2a638",
+			"source_sha256": "1c33841b78da772dab58d4476295082b6e1d56a328c587597de20a368cb7c254",
+			"target_sha256": "59388f01800b4a1d74cfb6a0ca2dab7750f5f214e9cdad281e9eaced15bf2260",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -48871,20 +49113,19 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-10-25",
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-02",
 					"result": "clean-with-findings",
-					"instance": "25e13765eb1a-errors-union-vi",
+					"instance": "vi-census-errors-e79ed644c034",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 2,
+						"minor": 0,
 						"nit": 1
 					},
-					"receipt": "i18n/receipts/25e13765eb1a-errors-union-vi.json",
-					"receipt_sha256": "89d0dcbd2a623dc75997efc24d4e42e74e6609773672cfd51560fab76f1e130f",
-					"scope": "two-parent union audit at 30ad5317c5; values byte-proven against parents 649a09fe30 and ece9ae9219"
+					"receipt": "i18n/receipts/vi-census-errors-e79ed644c034.json",
+					"receipt_sha256": "8e7d56f5a075c7bcfe9d7f2e89574eb0df35334bf3a64b264834445529cfb15c"
 				}
 			],
 			"status": "audited",
@@ -48953,6 +49194,29 @@
 							},
 							"receipt": "i18n/receipts/vi-bind-c6082f69de5b.json",
 							"receipt_sha256": "d648cf58b578e7bed2c4993e84eed27052a6b77a861ce13ce3abf9064adfea84"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "343f046bf9739aca4a47e1644856871261e03b13c566a19661e6397e96a5bb6b",
+					"target_sha256": "a68ee97939df431b70c85172afd1e7889731b4cf7048f156bc89b4100ee2a638",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-25",
+							"result": "clean-with-findings",
+							"instance": "25e13765eb1a-errors-union-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 2,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/25e13765eb1a-errors-union-vi.json",
+							"receipt_sha256": "89d0dcbd2a623dc75997efc24d4e42e74e6609773672cfd51560fab76f1e130f",
+							"scope": "two-parent union audit at 30ad5317c5; values byte-proven against parents 649a09fe30 and ece9ae9219"
 						}
 					],
 					"status": "audited"
@@ -54148,8 +54412,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.agents.detail",
-			"source_sha256": "80877db48543e0557cd0a079c8fd2d0c238f1923c2885deae85428e17af1f65b",
-			"target_sha256": "c3b0f71f94d3062a112f3528af0f86837dfe5eda2b07fecae20b8eb9bfc754fe",
+			"source_sha256": "b52991233e7fdf8f9b54f9ec465fc0e20ac32239c37e8c5b9ed8ebd8fbdbd8f8",
+			"target_sha256": "d89af4293646a363f9412e93814fdf736a05e54d5aa9d9369e9fbb5bbee6fd05",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "radient/auto",
@@ -54158,18 +54422,18 @@
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"model": "radient/auto",
-					"date": "2026-10-26",
-					"result": "clean",
-					"instance": "c041efdee6f6",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-02",
+					"result": "clean-with-findings",
+					"instance": "88ce35339ca3-ui-agents-detail-zh-cn-census",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 0
+						"nit": 2
 					},
-					"receipt": "i18n/receipts/c041efdee6f6.json",
-					"receipt_sha256": "34ee57d4b890565cf6dfb31fdb321ec84f7ac0c2989f167cb6a1880210853f0a"
+					"receipt": "i18n/receipts/88ce35339ca3-ui-agents-detail-zh-cn-census.json",
+					"receipt_sha256": "7930039e22ebbd1966e453a4e51c48d8cad4ded83b82953a426df56ff9126600"
 				}
 			],
 			"status": "audited",
@@ -54192,6 +54456,28 @@
 							},
 							"receipt": "i18n/receipts/fa696f7f3dff.json",
 							"receipt_sha256": "96fbda6007cfea0d0ba626557d09ad70527158eaf2ff4e5c4adad4e0bffe3c2c"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "80877db48543e0557cd0a079c8fd2d0c238f1923c2885deae85428e17af1f65b",
+					"target_sha256": "c3b0f71f94d3062a112f3528af0f86837dfe5eda2b07fecae20b8eb9bfc754fe",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean",
+							"instance": "c041efdee6f6",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/c041efdee6f6.json",
+							"receipt_sha256": "34ee57d4b890565cf6dfb31fdb321ec84f7ac0c2989f167cb6a1880210853f0a"
 						}
 					],
 					"status": "audited"
@@ -58392,8 +58678,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.common.errors",
-			"source_sha256": "343f046bf9739aca4a47e1644856871261e03b13c566a19661e6397e96a5bb6b",
-			"target_sha256": "80c038d25d35f71bb098730a5a16faec9bc89adda9f8ee92b0964b5658844a5d",
+			"source_sha256": "1c33841b78da772dab58d4476295082b6e1d56a328c587597de20a368cb7c254",
+			"target_sha256": "d2f3a7c39f84c68f9404cfba278ff890db2da3f9a4cd56d62e20335d32c6d640",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -58401,20 +58687,19 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-10-25",
-					"result": "clean",
-					"instance": "25e13765eb1a-errors-union-zh-cn",
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-02",
+					"result": "clean-with-findings",
+					"instance": "88ce35339ca3-ui-common-errors-zh-cn-census",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
+						"minor": 2,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/25e13765eb1a-errors-union-zh-cn.json",
-					"receipt_sha256": "95daaeeadd14fa55d2c99077ca6133a975f446d9f2100045fab977e316c0d562",
-					"scope": "two-parent union audit at 30ad5317c5; values byte-proven against parents 649a09fe30 and ece9ae9219"
+					"receipt": "i18n/receipts/88ce35339ca3-ui-common-errors-zh-cn-census.json",
+					"receipt_sha256": "cc58c1e815e8daf6d659c649574967613eda08f7057c5d7e9ff628b274bd4f61"
 				}
 			],
 			"status": "audited",
@@ -58483,6 +58768,29 @@
 							},
 							"receipt": "i18n/receipts/zh-cn-bind-b60673ac7667.json",
 							"receipt_sha256": "09f274383d32ee3c242d7efa00d8b82400ac8a4d8805bb41f17d5bf28ad6ac55"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "343f046bf9739aca4a47e1644856871261e03b13c566a19661e6397e96a5bb6b",
+					"target_sha256": "80c038d25d35f71bb098730a5a16faec9bc89adda9f8ee92b0964b5658844a5d",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-25",
+							"result": "clean",
+							"instance": "25e13765eb1a-errors-union-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/25e13765eb1a-errors-union-zh-cn.json",
+							"receipt_sha256": "95daaeeadd14fa55d2c99077ca6133a975f446d9f2100045fab977e316c0d562",
+							"scope": "two-parent union audit at 30ad5317c5; values byte-proven against parents 649a09fe30 and ece9ae9219"
 						}
 					],
 					"status": "audited"
@@ -66107,6 +66415,209 @@
 					},
 					"receipt": "i18n/receipts/9a5ed084c6d5-read-state-hi-audit.json",
 					"receipt_sha256": "020a28b2a5f74b37e51ef4dd4c05d20b14b16baf25bc9dc950a1a0d4f0f899bd"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.agents.detail.origin",
+			"source_sha256": "bbb0eeac68c5ccd14988bffab2502698cb14ff6871a0a2b2212dd779fd67efb4",
+			"target_sha256": "fe45663c6ee13e62c863417b03a1b991dca5ac54da7c4c42384742a10d60cb55",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-02"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-02",
+					"result": "clean-with-findings",
+					"instance": "e2bbb9eacb7c-origin-fr",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 2,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/e2bbb9eacb7c-origin-fr.json",
+					"receipt_sha256": "b8f341c9beee17b351083e36c2ff2565148bd1ef4954fe8e571863cf74cef41f"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "es",
+			"namespace": "ui.agents.detail.origin",
+			"source_sha256": "bbb0eeac68c5ccd14988bffab2502698cb14ff6871a0a2b2212dd779fd67efb4",
+			"target_sha256": "d09f61041a28cf757501ced32d343184b2d4b789054da9ba3d14cf32c0b49dd5",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-02"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-02",
+					"result": "clean-with-findings",
+					"instance": "6a8123bb6bad-origin-es",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/6a8123bb6bad-origin-es.json",
+					"receipt_sha256": "8a8999ab2567540d5ea7df009ad0ed7242d96876c8e28314d9181515ded9fd59"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.agents.detail.origin",
+			"source_sha256": "bbb0eeac68c5ccd14988bffab2502698cb14ff6871a0a2b2212dd779fd67efb4",
+			"target_sha256": "9466ded33c71a6dc71814482a1d3cb4242427aadbc14d7ad03bf2bc430bdd4d5",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-02"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-02",
+					"result": "clean-with-findings",
+					"instance": "2d43e41b1d89-origin-zh-cn",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 3,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/2d43e41b1d89-origin-zh-cn.json",
+					"receipt_sha256": "06959adf0f6b507129fe6c928420d52cd03c4018dbc190509d444708aba1b978"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ru",
+			"namespace": "ui.agents.detail.origin",
+			"source_sha256": "bbb0eeac68c5ccd14988bffab2502698cb14ff6871a0a2b2212dd779fd67efb4",
+			"target_sha256": "222025d8c076f621ca1cf650856d5571df184c698356ca20d1d8609b11df494f",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-02"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-02",
+					"result": "clean-with-findings",
+					"instance": "4efa9ff7ea90-origin-ru",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/4efa9ff7ea90-origin-ru.json",
+					"receipt_sha256": "5ecaf48d5d9eceed37425cace167cffb877d191f0f7f7d2faf59008a3e9ded6a"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "vi",
+			"namespace": "ui.agents.detail.origin",
+			"source_sha256": "bbb0eeac68c5ccd14988bffab2502698cb14ff6871a0a2b2212dd779fd67efb4",
+			"target_sha256": "1f42c83b90adb4489d64791a83bade84e96c9de9601bd13545f9c041c14f2bfa",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-02"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-02",
+					"result": "clean-with-findings",
+					"instance": "860c31908627-origin-vi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/860c31908627-origin-vi.json",
+					"receipt_sha256": "291355f3d8e4301611c0e868e5c83570d211fb73b38a93badb99c8ac6cb5cc43"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.agents.detail.origin",
+			"source_sha256": "bbb0eeac68c5ccd14988bffab2502698cb14ff6871a0a2b2212dd779fd67efb4",
+			"target_sha256": "d616dbcaf1782e8b8c5b4c1078033c84c94983dd3ece9faa1a643d42820d9530",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-02"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-02",
+					"result": "clean-with-findings",
+					"instance": "1fe83fe89d7e-origin-ur",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 2,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/1fe83fe89d7e-origin-ur.json",
+					"receipt_sha256": "f55ba6df01eb9b6b85baedd4398197d1b7e22a4e0c085a81364b358429824ab4"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.agents.detail.origin",
+			"source_sha256": "bbb0eeac68c5ccd14988bffab2502698cb14ff6871a0a2b2212dd779fd67efb4",
+			"target_sha256": "5c770aa2b03d0df8aa2ff9dbea01022c100bc5d5e6cfc7a39cf579c317e8bacd",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-02"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-02",
+					"result": "clean-with-findings",
+					"instance": "15d036c2b9e3-origin-hi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 2,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/15d036c2b9e3-origin-hi.json",
+					"receipt_sha256": "892e8d8a8f035cbd73e2f3dcc991417ead3076df8b011f18eef2a7bbd92ad5a7"
 				}
 			],
 			"status": "audited"

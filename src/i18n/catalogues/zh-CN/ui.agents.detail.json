@@ -48,5 +48,6 @@
 	"ui.agents.detail.tools.empty": "尚无工具。在下方添加一个，或开启“全部工具”。",
 	"ui.agents.detail.tools.every_tool_aria": "授予此智能体全部工具",
 	"ui.agents.detail.tools.may_use_any": "此智能体可使用会话提供的任何工具。",
-	"ui.agents.detail.tools.placeholder": "工具名称"
+	"ui.agents.detail.tools.placeholder": "工具名称",
+	"ui.agents.detail.origin.created_locally": "此智能体创建于这台电脑。"
 }

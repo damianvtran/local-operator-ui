@@ -520,39 +520,52 @@ const MessageRow: FC<{
 	rowKey?: string;
 	local?: boolean;
 	delivery?: TeamBridgeRowPresentation["delivery"];
-}> = ({ reactionContext, rowKey, local = false, ...props }) =>
-	/* Keyed on the ROW identity, not the message id, and the component type does not
-	   change with delivery: an optimistic row and its server replacement must be one
-	   mounted subtree. A local row has no server id to react to, so its reactions are
-	   disabled rather than absent (absent would swap the component on reconcile). */
-	reactionContext && props.message.body !== null ? (
+}> = ({ reactionContext, rowKey, local = false, ...props }) => {
+	const reactable = Boolean(reactionContext) && props.message.body !== null;
+	/* ONE COMPONENT TYPE AND ONE KEY FOR EVERY STATE OF A ROW (#1511). Keyed on the
+	   ROW identity, not the message id: an optimistic row and its server
+	   replacement must be one mounted subtree. A first message is drawn while its
+	   draft has no conversation, so there is no reaction context yet; switching to
+	   a reaction-capable component type when the created conversation becomes the
+	   selection would unmount the very row the author is watching. The account
+	   stays in the key, so an account switch still discards reaction state. A local
+	   row has no server id to react to, so its reactions are disabled. */
+	return (
 		<ReactableMessageRow
-			key={`${reactionContext.accountId}:${rowKey ?? props.message.id}`}
+			key={`${reactionContext?.accountId ?? props.accountId ?? ""}:${rowKey ?? props.message.id}`}
 			reactionContext={
-				local ? { ...reactionContext, disabled: true } : reactionContext
+				reactable && reactionContext
+					? local
+						? { ...reactionContext, disabled: true }
+						: reactionContext
+					: undefined
 			}
 			{...props}
 			rowKey={rowKey}
 			onReply={local ? undefined : props.onReply}
 		/>
-	) : (
-		<MessageRowView
-			{...props}
-			rowKey={rowKey}
-			onReply={local ? undefined : props.onReply}
-		/>
 	);
+};
+
+/* Withheld reactions are never drawn: the inert state below has no account or
+   tenant to write with, and `disabled` makes its toggle a no-op. */
+const INERT_REACTIONS = { accountId: "", tenantId: "", disabled: true };
 
 const ReactableMessageRow: FC<
-	Omit<MessageRowProps, "reactions"> & { reactionContext: ReactionContext }
+	Omit<MessageRowProps, "reactions"> & { reactionContext?: ReactionContext }
 > = ({ reactionContext, ...props }) => {
 	const reactions = useTeamBridgeReactionState({
 		conversationId: props.message.conversation_id,
 		messageId: props.message.id,
-		...reactionContext,
+		...(reactionContext ?? INERT_REACTIONS),
 		reactions: props.message.reactions,
 	});
-	return <MessageRowView {...props} reactions={reactions} />;
+	return (
+		<MessageRowView
+			{...props}
+			reactions={reactionContext ? reactions : undefined}
+		/>
+	);
 };
 
 type MessageRowProps = {

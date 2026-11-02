@@ -3,7 +3,7 @@ import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { X } from "lucide-react";
 import type { FC } from "react";
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import type { MentionAutocomplete } from "./use-mention-autocomplete";
 
 /**
@@ -29,8 +29,25 @@ export const MentionNotice: FC<{ mentions: MentionAutocomplete }> = ({
 	useI18nLocale();
 	const [state, setState] = useState<"idle" | "inviting" | "failed">("idle");
 	const notice = mentions.notice;
-	if (!notice) return null;
 	const source = mentions.source;
+	const sourceConversationId = source?.conversationId ?? null;
+	const generation = useRef(0);
+	const request = useRef<symbol | null>(null);
+	// A null source must invalidate an already dispatched write's UI result,
+	// even if the same conversation later reopens. Do not key this on the source
+	// object: ordinary roster rerenders must keep the legitimate request alive.
+	// A replaced notice is a new intent too; old completion cannot settle it.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: semantic source and notice identity are invalidation triggers; the effect retires the previous request rather than reading their values.
+	useLayoutEffect(() => {
+		generation.current += 1;
+		request.current = null;
+		setState("idle");
+		return () => {
+			generation.current += 1;
+			request.current = null;
+		};
+	}, [sourceConversationId, notice]);
+	if (!notice || !source) return null;
 	const onInvite =
 		source?.conversationKind !== "dm" &&
 		!notice.invited &&
@@ -61,13 +78,26 @@ export const MentionNotice: FC<{ mentions: MentionAutocomplete }> = ({
 					className="h-7 px-1.5"
 					disabled={state === "inviting"}
 					onClick={() => {
+						const token = Symbol("mention-invite");
+						const epoch = generation.current;
+						request.current = token;
+						const isCurrent = () =>
+							generation.current === epoch && request.current === token;
 						setState("inviting");
+						// Do not cancel/undo the server mutation: only retire stale UI
+						// application, including rejection, after losing its owner.
 						void onInvite(notice.candidate).then(
 							() => {
+								if (!isCurrent()) return;
+								request.current = null;
 								setState("idle");
 								mentions.resolveNotice();
 							},
-							() => setState("failed"),
+							() => {
+								if (!isCurrent()) return;
+								request.current = null;
+								setState("failed");
+							},
 						);
 					}}
 				>

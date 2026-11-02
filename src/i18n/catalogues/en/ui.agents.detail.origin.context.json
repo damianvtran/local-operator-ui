@@ -1,0 +1,20 @@
+{
+	"ui.agents.detail.origin.shipped_with_app": {
+		"role": "Agent origin section description for a built-in agent",
+		"tone": "Plain, factual sentence with full stop",
+		"length": "One short sentence in the detail pane; may wrap on narrow panes",
+		"note": "No placeholders. Says the definition came bundled with the application itself, as opposed to being created by the user or installed from a starter. Sibling of installed_starter and created_locally in the same slot."
+	},
+	"ui.agents.detail.origin.installed_starter": {
+		"role": "Agent origin section description for an agent installed from a packaged starter",
+		"tone": "Plain, factual sentence with full stop",
+		"length": "One short sentence in the detail pane; may wrap on narrow panes",
+		"note": "No placeholders. Says the agent was copied from a starter that ships with the app, and may since have been edited (a changed-fields list can follow). 'Starter' is the product's word for a packaged template agent; keep it consistent with the starters catalogue."
+	},
+	"ui.agents.detail.origin.compare_packaged": {
+		"role": "Disclosure summary (toggle label) that expands a read-only view of the original packaged instructions",
+		"tone": "Plain, action-oriented noun phrase; no full stop",
+		"length": "One short line; sits on a collapsed disclosure row",
+		"note": "No placeholders. Only shown when the installed copy's instructions differ from the packaged original; the expanded block shows the packaged text for comparison with the current instructions."
+	}
+}
