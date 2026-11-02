@@ -363,7 +363,10 @@ export const ImageGroupLightbox: FC<ImageGroupLightboxProps> = ({
 				/* biome-ignore lint/a11y/useSemanticElements: the element already IS the one the rule suggests - the explicit role is the WebKit fix above, not a substitute for `ul`. */
 				role="list"
 				ref={attachStrip}
-				aria-label={t("ui.chat.canonical.lightbox.filmstrip_aria", { count })}
+				aria-label={t("ui.chat.canonical.lightbox.filmstrip_aria", {
+					count,
+					count_display: String(count),
+				})}
 				data-image-filmstrip=""
 				/*
 				 * `px-2` rather than `p-1` (design round 1, D1-6): the focus ring needs

@@ -7506,6 +7506,7 @@ export function ChatSidebar({
 				query
 					? t("ui.chat.sidebar.search.count_tooltip", {
 							clipped: clipped ? "yes" : "no",
+							count_display: String(count),
 							count,
 						})
 					: undefined

@@ -301,6 +301,7 @@ export const FoldMedia = ({
 			 * take the same noun.
 			 */
 			aria-label={t("ui.chat.canonical.fold.images_aria", {
+				count_display: String(images.length),
 				count: images.length,
 			})}
 			data-fold-media=""
@@ -370,6 +371,7 @@ export const FoldMedia = ({
 						 * the symbol's position in the row.
 						 */
 						aria-label={t("ui.chat.canonical.fold.more_images", {
+							count_display: String(more),
 							count: more,
 						})}
 						/*
@@ -377,7 +379,10 @@ export const FoldMedia = ({
 						 * meets the same string a speech user reads off the screen, and the
 						 * visible label is a substring of both (WCAG 2.5.3).
 						 */
-						title={t("ui.chat.canonical.fold.more_images", { count: more })}
+						title={t("ui.chat.canonical.fold.more_images", {
+							count: more,
+							count_display: String(more),
+						})}
 					>
 						{`+${more}`}
 					</Button>

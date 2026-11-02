@@ -711,6 +711,7 @@ export const ImageGenCard = ({ view, scope, actions }: ImageGenCardProps) => {
 					summary={
 						view.batchSummary ??
 						t("ui.chat.canonical.image_gen.batch_summary", {
+							count_display: String(view.batch.length),
 							count: view.batch.length,
 						})
 					}

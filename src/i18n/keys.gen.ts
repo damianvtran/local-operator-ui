@@ -3488,7 +3488,7 @@ export type MessageParams = {
 	"ui.chat.asks.no_answer": undefined;
 	"ui.chat.asks.other_label": undefined;
 	"ui.chat.asks.outstanding_aria": { label: string };
-	"ui.chat.asks.outstanding_count": { count: number };
+	"ui.chat.asks.outstanding_count": { count: number; count_display: string };
 	"ui.chat.asks.recommended": undefined;
 	"ui.chat.asks.send_answer": undefined;
 	"ui.chat.asks.settled_heading": undefined;
@@ -3526,9 +3526,18 @@ export type MessageParams = {
 	"ui.chat.canonical.fold.bridge.other": undefined;
 	"ui.chat.canonical.fold.bridge_post.one": undefined;
 	"ui.chat.canonical.fold.bridge_post.other": undefined;
-	"ui.chat.canonical.fold.images_aria": { count: number };
-	"ui.chat.canonical.fold.more_images": { count: number };
-	"ui.chat.canonical.image_gen.batch_summary": { count: number };
+	"ui.chat.canonical.fold.images_aria": {
+		count: number;
+		count_display: string;
+	};
+	"ui.chat.canonical.fold.more_images": {
+		count: number;
+		count_display: string;
+	};
+	"ui.chat.canonical.image_gen.batch_summary": {
+		count: number;
+		count_display: string;
+	};
 	"ui.chat.canonical.image_gen.control.edit_and_restart": undefined;
 	"ui.chat.canonical.image_gen.control.restart": undefined;
 	"ui.chat.canonical.image_gen.control.stop": undefined;
@@ -3536,7 +3545,10 @@ export type MessageParams = {
 	"ui.chat.canonical.image_gen.control.stop_hint_running": undefined;
 	"ui.chat.canonical.image_gen.progress": undefined;
 	"ui.chat.canonical.image_label": undefined;
-	"ui.chat.canonical.lightbox.filmstrip_aria": { count: number };
+	"ui.chat.canonical.lightbox.filmstrip_aria": {
+		count: number;
+		count_display: string;
+	};
 	"ui.chat.canonical.lightbox.show_image": { index: number; count: number };
 	"ui.chat.canonical.older_history.conversation_start": undefined;
 	"ui.chat.canonical.older_history.failed.long": undefined;
@@ -5227,7 +5239,7 @@ export type MessageParams = {
 	"ui.chat.run_details.monitors.cancel_aria": { name: string };
 	"ui.chat.run_details.monitors.cancel_refused": undefined;
 	"ui.chat.run_details.monitors.cancelled": undefined;
-	"ui.chat.run_details.monitors.more": { count: number };
+	"ui.chat.run_details.monitors.more": { count: number; count_display: string };
 	"ui.chat.run_details.monitors.title": undefined;
 	"ui.chat.run_details.next_subagent": undefined;
 	"ui.chat.run_details.nothing_in_flight": undefined;
@@ -5264,7 +5276,7 @@ export type MessageParams = {
 	"ui.chat.run_details.wake.cancel_wake_named": { head: string };
 	"ui.chat.run_details.wake.cancelled": undefined;
 	"ui.chat.run_details.wake.cancelling": undefined;
-	"ui.chat.run_details.wake.more": { count: number };
+	"ui.chat.run_details.wake.more": { count: number; count_display: string };
 	"ui.chat.run_details.wake_cancel.cancelling": undefined;
 	"ui.chat.run_details.wake_cancel.keep": undefined;
 	"ui.chat.run_details.wakes.title": undefined;
@@ -5328,7 +5340,11 @@ export type MessageParams = {
 	"ui.chat.sidebar.row_menu.unarchive": undefined;
 	"ui.chat.sidebar.row_menu.unpin": undefined;
 	"ui.chat.sidebar.search.clear": undefined;
-	"ui.chat.sidebar.search.count_tooltip": { clipped: string; count: number };
+	"ui.chat.sidebar.search.count_tooltip": {
+		clipped: string;
+		count: number;
+		count_display: string;
+	};
 	"ui.chat.sidebar.search.include_archived": undefined;
 	"ui.chat.sidebar.search.names_only": undefined;
 	"ui.chat.sidebar.search.no_match": { query: string };

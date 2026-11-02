@@ -267,6 +267,7 @@ export const SupplementImageGrid = ({
 			/* biome-ignore lint/a11y/useSemanticElements: the element already IS the one the rule suggests - the explicit role is the WebKit fix above, not a substitute for `ul`. */
 			role="list"
 			aria-label={t("ui.chat.canonical.fold.images_aria", {
+				count_display: String(files.length),
 				count: files.length,
 			})}
 			data-supplement-images=""

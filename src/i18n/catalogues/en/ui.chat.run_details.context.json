@@ -140,7 +140,8 @@
 		"length_hint": "Three words",
 		"note": "Counts the monitors the list does not draw.",
 		"placeholders": {
-			"count": "Number of monitors not shown."
+			"count": "Numeric count for CLDR plural selection, separate from count_display. English uses exact =1 to preserve the original strict count === 1 branch, including negative inputs.",
+			"count_display": "Raw display string from String(count), preserving the original JavaScript interpolation without grouping or rounding. Keep count numeric for CLDR plural selection; do not number-format count_display."
 		}
 	},
 	"ui.chat.run_details.wake.more": {
@@ -149,7 +150,8 @@
 		"length_hint": "Three words",
 		"note": "A wake is a scheduled follow-up the agent set for itself; counts those the list does not draw.",
 		"placeholders": {
-			"count": "Number of wakes not shown."
+			"count": "Numeric count for CLDR plural selection, separate from count_display. English uses exact =1 to preserve the original strict count === 1 branch, including negative inputs.",
+			"count_display": "Raw display string from String(count), preserving the original JavaScript interpolation without grouping or rounding. Keep count numeric for CLDR plural selection; do not number-format count_display."
 		}
 	}
 }

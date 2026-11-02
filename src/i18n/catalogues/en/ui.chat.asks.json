@@ -29,7 +29,7 @@
 	"ui.chat.asks.conversation_asks": "This conversation's asks",
 	"ui.chat.asks.status.withdrawn": "Withdrawn — the agent no longer needs an answer",
 	"ui.chat.asks.status.withdrawn_label": "Withdrawn",
-	"ui.chat.asks.outstanding_count": "{count, plural, one {# ask} other {# asks}}",
+	"ui.chat.asks.outstanding_count": "{count, plural, =1 {{count_display} ask} other {{count_display} asks}}",
 	"ui.chat.asks.outstanding_aria": "{label} outstanding. The agent is not blocked on you.",
 	"ui.chat.asks.answer_aria": "Your answer to: {question}"
 }

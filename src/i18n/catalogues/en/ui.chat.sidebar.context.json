@@ -491,7 +491,8 @@
 		"note": "One claim: how many chats match, with 'at least' and a stop note when the answer was clipped.",
 		"placeholders": {
 			"clipped": "'yes' when the result list was cut off, otherwise 'no'; a select selector, never translate.",
-			"count": "Number of matching chats."
+			"count": "Numeric count for CLDR plural selection, separate from count_display. English uses exact =1 to preserve the original strict count === 1 branch, including negative inputs.",
+			"count_display": "Raw display string from String(count), preserving the original JavaScript interpolation without grouping or rounding. Keep count numeric for CLDR plural selection; do not number-format count_display."
 		}
 	}
 }

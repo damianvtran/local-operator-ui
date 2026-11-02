@@ -62,5 +62,5 @@
 	"ui.chat.sidebar.agents.list_join": "{position, select, pair {{head} and {tail}} middle {{head}, {tail}} other {{head} and {tail}}}",
 	"ui.chat.sidebar.row.open_draft": "Open {label}",
 	"ui.chat.sidebar.entity.more_in": "{label} in {name}",
-	"ui.chat.sidebar.search.count_tooltip": "{clipped, select, yes {At least } other {}}{count, plural, one {# chat matches} other {# chats match}} this search{clipped, select, yes {; the list stops there} other {}}"
+	"ui.chat.sidebar.search.count_tooltip": "{clipped, select, yes {At least } other {}}{count, plural, =1 {{count_display} chat matches} other {{count_display} chats match}} this search{clipped, select, yes {; the list stops there} other {}}"
 }

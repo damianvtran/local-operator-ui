@@ -2688,4 +2688,7 @@ export const askDismissRequest = (
  * the chip says what is outstanding and never "waiting for you".
  */
 export const asksOutstandingLabel = (open: number): string =>
-	t("ui.chat.asks.outstanding_count", { count: open });
+	t("ui.chat.asks.outstanding_count", {
+		count: open,
+		count_display: String(open),
+	});

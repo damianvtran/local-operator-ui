@@ -376,6 +376,7 @@ export const RunDetailMonitors = ({
 						<Disclosure
 							disabled={true}
 							summary={t("ui.chat.run_details.monitors.more", {
+								count_display: String(hidden),
 								count: hidden,
 							})}
 							className={cn("ps-9 text-meta")}

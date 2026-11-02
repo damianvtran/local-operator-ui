@@ -130,7 +130,8 @@
 		"length_hint": "Number plus a noun",
 		"note": "Number plus the noun 'ask' (a question the agent put to the person).",
 		"placeholders": {
-			"count": "Number of outstanding asks."
+			"count": "Numeric count for CLDR plural selection, separate from count_display. English uses exact =1 to preserve the original strict count === 1 branch, including negative inputs.",
+			"count_display": "Raw display string from String(count), preserving the original JavaScript interpolation without grouping or rounding. Keep count numeric for CLDR plural selection; do not number-format count_display."
 		}
 	},
 	"ui.chat.asks.outstanding_aria": {

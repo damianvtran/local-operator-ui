@@ -1111,7 +1111,8 @@
 		"length_hint": "Four words",
 		"note": "Counts the pictures in the group; the group is one run's output.",
 		"placeholders": {
-			"count": "Number of pictures in the group."
+			"count": "Numeric count for CLDR plural selection, separate from count_display. English uses exact =1 to preserve the original strict count === 1 branch, including negative inputs.",
+			"count_display": "Raw display string from String(count), preserving the original JavaScript interpolation without grouping or rounding. Keep count numeric for CLDR plural selection; do not number-format count_display."
 		}
 	},
 	"ui.chat.canonical.fold.more_images": {
@@ -1120,7 +1121,8 @@
 		"length_hint": "Three words",
 		"note": "Begins with a literal plus sign because the visible label is '+N' and the accessible name must contain it (WCAG 2.5.3); keep the plus sign.",
 		"placeholders": {
-			"count": "Number of pictures not shown."
+			"count": "Numeric count for CLDR plural selection, separate from count_display. English uses exact =1 to preserve the original strict count === 1 branch, including negative inputs.",
+			"count_display": "Raw display string from String(count), preserving the original JavaScript interpolation without grouping or rounding. Keep count numeric for CLDR plural selection; do not number-format count_display."
 		}
 	},
 	"ui.chat.canonical.image_gen.control.stop_hint_queued": {
@@ -1139,18 +1141,20 @@
 		"role": "Fallback summary of a batch of generated sounds when the wire gave none",
 		"tone": "Count plus noun",
 		"length_hint": "Two words",
-		"note": "The source always said 'N items'; the plural form only corrects the singular, which a batch of one would otherwise misspell.",
+		"note": "Preserve the original fallback 'N items', including '1 items': this extraction must not make editorial singular corrections. A supplied summary (even empty) still wins.",
 		"placeholders": {
-			"count": "Number of items in the batch."
+			"count": "Numeric batch size for CLDR plural selection. English intentionally says items in every branch to preserve the original fallback.",
+			"count_display": "Raw display string from String(count), preserving the original JavaScript interpolation without grouping or rounding. Keep count numeric for CLDR plural selection; do not number-format count_display."
 		}
 	},
 	"ui.chat.canonical.lightbox.filmstrip_aria": {
 		"role": "Accessible name of the thumbnail strip under the picture lightbox",
 		"tone": "Count plus noun",
 		"length_hint": "Two words",
-		"note": "Counts the pictures in the group.",
+		"note": "Preserve the original 'N images' in every English arm, including '1 images' at catalogue level. The strip is currently guarded by count > 1; this keeps extraction consistent without changing that guard.",
 		"placeholders": {
-			"count": "Number of pictures in the group."
+			"count": "Numeric image count for CLDR plural selection. English intentionally keeps images in both arms; the strip only renders for count > 1.",
+			"count_display": "Raw display string from String(count), preserving the original JavaScript interpolation without grouping or rounding. Keep count numeric for CLDR plural selection; do not number-format count_display."
 		}
 	},
 	"ui.chat.canonical.lightbox.show_image": {
