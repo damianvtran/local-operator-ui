@@ -946,14 +946,29 @@ async function assertSummaryPortrait(canvas: HTMLElement): Promise<void> {
 		throw new Error(
 			"Summary portrait and name/status lost shared centre alignment",
 		);
-	if (header.scrollWidth > header.clientWidth + 1)
-		throw new Error("Summary header overflows the narrow pane");
+	/*
+	 * The trailing ghost button deliberately bleeds its hover box into the gutter
+	 * by its own negative right margin, so its GLYPH sits on the column edge
+	 * (design D1, `-mr-2` in agent-detail). Allow exactly that measured margin -
+	 * read from computed style, not a fixed slack - so any other overflow fails.
+	 */
 	const bounds = header.getBoundingClientRect();
-	for (const button of header.querySelectorAll(
-		"[data-agent-summary-actions] button",
-	)) {
+	const buttons = Array.from(
+		header.querySelectorAll<HTMLElement>("[data-agent-summary-actions] button"),
+	);
+	const trailing = buttons.at(-1);
+	const bleed = trailing
+		? Math.max(0, -Number.parseFloat(getComputedStyle(trailing).marginRight))
+		: 0;
+	if (header.scrollWidth > header.clientWidth + bleed + 1)
+		throw new Error("Summary header overflows the narrow pane");
+	for (const button of buttons) {
 		const action = button.getBoundingClientRect();
-		if (action.left < bounds.left - 1 || action.right > bounds.right + 1)
+		const allowed = button === trailing ? bleed : 0;
+		if (
+			action.left < bounds.left - 1 ||
+			action.right > bounds.right + allowed + 1
+		)
 			throw new Error("Summary action escaped its responsive header");
 	}
 }
