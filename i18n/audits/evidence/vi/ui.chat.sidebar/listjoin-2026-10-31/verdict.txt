@@ -1,0 +1,16 @@
+PASS
+BLOCKER=0 MAJOR=0 MINOR=0 NIT=0
+Agent: i18n-auditor (vi); session e591d2c7719f; actual model: openai/gpt-6.1-sol. Fallback disclosed: primary anthropic/claude-sonnet-5-5 → anthropic/claude-opus-5-5 → openai/gpt-6.1-sol; provider quota failures.
+Key: ui.chat.sidebar.agents.list_join
+Scope: one newly translated key, not a full namespace audit.
+pair: {head} và {tail}
+middle: {head}, {tail}
+other: {head} và {tail}
+Two names: Coder và Reviewer
+Three names: Coder, Reviewer và Designer
+Reasoning: Vietnamese naturally joins two agent names with và; a longer neutral list uses comma-space between earlier names and a plain space-và-space before the final name. A serial comma is not needed here. ASCII comma, no space before it, and one space after it are conventional Vietnamese typography. Agent names remain untouched. No person/register or glossary issue is introduced. The expression is idiomatic, not a literal-English calque.
+Context-sensitive conjunction: Vietnamese và has no normal Spanish y/e-style sound-conditioned replacement; Coder và Indexer remains correct. The position-only select introduces no defect for this locale.
+ICU: real intl-messageformat parsed and formatted pair, middle, end→other and literal other. Argument names/types match English; select labels remain pair/middle/other; no plural node, so CLDR plural-category requirements are inapplicable. Missing-tail negative control throws.
+Fit: pair/final add four characters ( và ); middle adds two (, ). All copy is NFC; sidecar imposes no fixed maxCells/maxChars, and name widths are variable. No fixed-budget overflow claim is made. RTL not applicable.
+Validation: context-parity exit 0 (131 allowed pre-existing gaps across 4 other/whole-repo namespaces reported by validator); locale-parity targeted suite exit 0, 44 tests pass. No full test suite, package manager, rebuild, translation service or repository edit performed.
+Retention: this requested output is a handoff bundle only. Read-only task prohibits writing tracked evidence or ledger; manager must retain it under the canonical tracked evidence root and bind ledger provenance without treating this as a full-namespace audit.

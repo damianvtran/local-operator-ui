@@ -36,12 +36,13 @@ const SIDEBAR_MODULE = /chat\/components\/chat-sidebar$/;
 const ANY_MODULE = /.*/;
 const SIGN_IN_ROUTE = /#\/settings\?section=radient/;
 const STALE_MARKER = /private-stale-marker/;
+const TRY_AGAIN = /Try again/;
 const bundle = await build({
 	stdin: {
 		contents: `
  export * from "./src/renderer/src/features/team-bridge/use-team-bridge-owner-audit";
  export { AuditFailure, OwnerAuditRailView, readState } from "./src/renderer/src/features/team-bridge/team-bridge-owner-audit";
- export { DesktopControlError } from "./src/renderer/src/shared/api/local-operator/desktop-api";
+ export { DesktopControlError, desktopRequestTimeoutMs } from "./src/renderer/src/shared/api/local-operator/desktop-api";
  export * from "./src/renderer/src/shared/hooks/radient-account-authority";
  export { teamBridgeKeys } from "./src/renderer/src/features/team-bridge/team-bridge-keys";
  export { QueryClient, QueryClientProvider, CancelledError } from "@tanstack/react-query";
@@ -118,16 +119,32 @@ async function mount(response, hook = m.useOwnerAuditConversations) {
 	let query;
 	function Probe() {
 		query = hook(scope, "conversation", "root");
-		return null;
+		return h(m.OwnerAuditRailView, {
+			conversations:
+				query.data?.pages.flatMap((page) => page.conversations ?? []) ?? [],
+			state: m.readState(query),
+			onSelect() {},
+			retry: () => query.refetch(),
+		});
 	}
 	const root = createRoot(document.getElementById("root"));
-	await act(async () =>
-		root.render(h(m.QueryClientProvider, { client }, h(Probe))),
-	);
+	const show = async (visible, keys = ["probe"]) =>
+		act(async () =>
+			root.render(
+				h(
+					m.QueryClientProvider,
+					{ client },
+					visible ? keys.map((key) => h(Probe, { key })) : null,
+				),
+			),
+		);
+	await show(true);
 	return {
 		client,
 		requests,
 		query: () => query,
+		show,
+		text: () => document.getElementById("root").textContent,
 		close: async () => {
 			await act(async () => root.unmount());
 			client.clear();
@@ -391,3 +408,213 @@ test("late old-epoch audit bodies never warm cache; new authority commissions a 
 		await rig.close();
 	}
 });
+
+test("a never-settling IPC read reaches the existing deadline and an actionable error", async () => {
+	const rig = await mount((_request, attempt) =>
+		attempt === 1 ? new Promise(() => {}) : ok,
+	);
+	try {
+		const timeout = m.desktopRequestTimeoutMs(rig.requests[0]);
+		console.log(
+			`hanging: initial=${m.readState(rig.query())}, existing deadline=${timeout}ms`,
+		);
+		await until(() => rig.query().isError, timeout + 1500);
+		console.log(
+			`hanging: final=${m.readState(rig.query())}, code=${rig.query().error.code}, requests=${rig.requests.length}, text=${rig.text()}`,
+		);
+		assert.equal(rig.query().error.code, "deadline_exceeded");
+		assert.equal(m.readState(rig.query()), "error");
+		assert.match(rig.text(), TRY_AGAIN);
+		assert.equal(rig.requests.length, 1);
+		await act(async () => document.querySelector("button").click());
+		await until(() => rig.query().isSuccess);
+		assert.equal(rig.requests.length, 2);
+		assert.equal(m.readState(rig.query()), "ready");
+	} finally {
+		await rig.close();
+	}
+});
+
+const auditRoot = {
+	id: "root",
+	conversation_id: "conversation",
+	seq: 1,
+	sender: { account_id: "audit_agent", kind: "agent" },
+	body: "fresh audit history",
+	created_at: "2026-11-01T00:00:00Z",
+};
+const navigationOk = {
+	status: 200,
+	body: {
+		result: {
+			...ok.body.result,
+			conversations: [
+				{
+					id: "conversation",
+					tenant_id: scope.tenantId,
+					kind: "dm",
+					name: "Fresh audited conversation",
+					agent: { account_id: "audit_agent", state: "active", joined_seq: 1 },
+				},
+			],
+			messages: [auditRoot],
+			next_before_seq: null,
+			root: auditRoot,
+			replies: [],
+			next_after_seq: null,
+		},
+	},
+};
+
+for (const hook of [
+	m.useOwnerAuditConversations,
+	m.useOwnerAuditMessages,
+	m.useOwnerAuditReplies,
+]) {
+	for (const settlement of ["late-success", "late-cancellation"]) {
+		test(`${hook.name}: navigation remount does not inherit ${settlement} from the departed read`, async () => {
+			let release;
+			let reject;
+			const rig = await mount(
+				(_request, n) =>
+					n === 1
+						? new Promise((resolve, fail) => {
+								release = resolve;
+								reject = fail;
+							})
+						: navigationOk,
+				hook,
+			);
+			try {
+				await until(() => Boolean(release));
+				console.log(
+					`${hook.name} ${settlement}: initial=${m.readState(rig.query())}, requests=${rig.requests.length}`,
+				);
+				await rig.show(false);
+				await rig.show(true);
+				await act(async () => pause(30));
+				console.log(
+					`${settlement}: remount=${m.readState(rig.query())}, requests=${rig.requests.length}`,
+				);
+				await act(async () =>
+					settlement === "late-success"
+						? release({
+								...navigationOk,
+								body: {
+									result: {
+										...navigationOk.body.result,
+										next_cursor: "private-stale-marker",
+									},
+								},
+							})
+						: reject(new m.CancelledError({ revert: true })),
+				);
+				await act(async () => pause(50));
+				console.log(
+					`${settlement}: settled-old=${m.readState(rig.query())}, fetch=${rig.query().fetchStatus}, requests=${rig.requests.length}, text=${rig.text()}`,
+				);
+				assert.equal(m.readState(rig.query()), "ready");
+				// Existing runtimes serve replies oldest-first: the departed read
+				// plus fresh DESC negotiation and its legacy read legitimately cost 3.
+				// Conversations/messages still require exactly 2 requests here.
+				assert.equal(
+					rig.requests.length,
+					hook === m.useOwnerAuditReplies ? 3 : 2,
+					"the new mount owns a fresh request (plus replies negotiation)",
+				);
+				assert.equal(
+					rig.query().data.pages[0].messages[0].body,
+					"fresh audit history",
+				);
+				assert.doesNotMatch(JSON.stringify(rig.query().data), STALE_MARKER);
+				assert.equal(rig.text(), "Fresh audited conversation");
+			} finally {
+				await rig.close();
+			}
+		});
+	}
+	test(`${hook.name}: explicit cancellation followed by remount starts a fresh read`, async () => {
+		let release;
+		const rig = await mount(
+			(_request, n) =>
+				n === 1
+					? new Promise((resolve) => {
+							release = resolve;
+						})
+					: navigationOk,
+			hook,
+		);
+		try {
+			await until(() => Boolean(release));
+			await act(async () =>
+				rig.client.cancelQueries({ queryKey: ["team-bridge", "owner-audit"] }),
+			);
+			await until(() => rig.query().fetchStatus === "idle");
+			console.log(
+				`${hook.name}: cancelled=${m.readState(rig.query())}/${rig.query().fetchStatus}`,
+			);
+			await rig.show(false);
+			await rig.show(true);
+			await until(() => rig.query().isSuccess);
+			// Abandoned request + fresh DESC attempt + legacy read for replies;
+			// the conversations/messages cancellation proof remains 2 requests.
+			assert.equal(
+				rig.requests.length,
+				hook === m.useOwnerAuditReplies ? 3 : 2,
+			);
+			await act(async () => release(navigationOk));
+			assert.equal(m.readState(rig.query()), "ready");
+		} finally {
+			await rig.close();
+		}
+	});
+
+	test(`${hook.name}: a shared read outlives its first observer, not its last`, async () => {
+		let release;
+		const legacyReplies = hook === m.useOwnerAuditReplies;
+		const rig = await mount((request, n) => {
+			// Replies alone are oldest-first in existing runtimes: newest-first
+			// needs a DESC attempt, then a separate legacy read when unsupported.
+			// Complete that read rather than leaving its promise unresolved.
+			if (legacyReplies && n === 2) {
+				assert.equal(request.order, undefined);
+				assert.equal(request.after_seq, 0);
+				return navigationOk;
+			}
+			return new Promise((resolve) => {
+				release = resolve;
+			});
+		}, hook);
+		try {
+			await until(() => Boolean(release));
+			await rig.show(true, ["probe", "other"]);
+			await rig.show(true, ["other"]);
+			await act(async () => release(navigationOk));
+			await until(() => rig.query().isSuccess);
+			if (legacyReplies) {
+				assert.equal(rig.requests.length, 2);
+				assert.equal(rig.requests[0].order, "desc");
+				const surviving = rig.client
+					.getQueryCache()
+					.findAll()
+					.find(
+						(query) =>
+							query.queryKey.includes("replies") &&
+							query.queryKey.at(-1) === "legacy",
+					);
+				assert.ok(surviving);
+				assert.equal(surviving.getObserversCount(), 1);
+				assert.equal(surviving.state.status, "success");
+				assert.equal(surviving.state.fetchStatus, "idle");
+				console.log(
+					`replies survivor: requests=${rig.requests.length}, status=${surviving.state.status}, fetch=${surviving.state.fetchStatus}, observers=${surviving.getObserversCount()}`,
+				);
+			} else {
+				assert.equal(rig.requests.length, 1);
+			}
+			assert.equal(m.readState(rig.query()), "ready");
+		} finally {
+			await rig.close();
+		}
+	});
+}

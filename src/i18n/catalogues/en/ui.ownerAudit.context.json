@@ -229,5 +229,19 @@
 		"length": "One or two short sentences; the sign-in link is a short action label.",
 		"placeholders": {},
 		"note": "Opens the existing Radient account settings so the reader can sign in. Not an audit retry or a separate authentication flow."
+	},
+	"ui.ownerAudit.older_replies": {
+		"role": "button at the start of the descending inline audit reply window",
+		"tone": "neutral, direct",
+		"length": "Short action label.",
+		"placeholders": {},
+		"note": "Pages backward to older replies, not more recent replies or parent messages. The legacy ascending fallback keeps its generic Load more label."
+	},
+	"ui.ownerAudit.empty_replies": {
+		"role": "successful empty inline audit reply window",
+		"tone": "neutral, factual",
+		"length": "One short sentence.",
+		"placeholders": {},
+		"note": "Only states the absence of visible replies in the audit window. This read-only surface must not invite the reader to start a thread; loading and errors have separate states."
 	}
 }

@@ -265,6 +265,8 @@ export const teamBridgeThreadPageSchema = z
 		root: teamBridgeMessageSchema,
 		replies: z.array(teamBridgeMessageSchema),
 		next_after_seq: z.number().int().nonnegative().optional(),
+		next_before_seq: z.number().int().positive().optional(),
+		order: z.enum(["asc", "desc"]).optional(),
 		has_more: z.boolean().optional(),
 	})
 	.passthrough();

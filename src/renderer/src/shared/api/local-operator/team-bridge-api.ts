@@ -328,6 +328,8 @@ export const TeamBridgeApi = {
 			accountId: string;
 			limit?: number;
 			afterSeq?: number;
+			beforeSeq?: number;
+			order?: "asc" | "desc";
 		},
 	): Promise<TeamBridgeThreadPage> {
 		const answer = await desktopResult<unknown>({
@@ -340,6 +342,10 @@ export const TeamBridgeApi = {
 			...(options.afterSeq === undefined
 				? {}
 				: { after_seq: options.afterSeq }),
+			...(options.beforeSeq === undefined
+				? {}
+				: { before_seq: options.beforeSeq }),
+			...(options.order === undefined ? {} : { order: options.order }),
 		});
 		return teamBridgeThreadPageSchema.parse(answer);
 	},

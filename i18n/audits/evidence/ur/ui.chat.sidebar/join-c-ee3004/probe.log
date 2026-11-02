@@ -1,0 +1,16 @@
+PASS: JSON, whole-file key parity, exact target-key ICU argument types/arm structure, no manual bidi controls; select only, CLDR plural categories not applicable.
+{"position":"pair","output":"A اور B"}
+{"position":"middle","output":"A، B"}
+{"position":"end","output":"A اور B"}
+{"position":"unknown","output":"A اور B"}
+PASS: negative control missing tail throws.
+{"production_names":[],"output":""}
+{"production_names":["A"],"output":"A"}
+{"production_names":["A","B"],"output":"A اور B"}
+{"production_names":["A","B","C"],"output":"A، B اور C"}
+{"production_names":["A","B","C","D"],"output":"A، B، C اور D"}
+{"production_names":["علی","حسن"],"output":"علی اور حسن"}
+{"production_names":["علی","حسن","عائشہ"],"output":"علی، حسن اور عائشہ"}
+{"production_names":["Coder","Reviewer","Designer"],"output":"Coder، Reviewer اور Designer"}
+{"production_names":["A","ایجنٹ"],"output":"A اور ایجنٹ"}
+PASS: actual production fold and t()/IntlMessageFormat, 0/1/2/3/4 names, native and mixed Latin/Urdu tokens; outer offer overridden only to isolate the joiner. No visual/bidi rendering claim.

@@ -8,7 +8,15 @@ import { useI18nLocale } from "@shared/i18n/use-locale";
 import { composeRefs } from "@shared/lib/compose-refs";
 import { cn } from "@shared/lib/utils";
 import { Eye, RefreshCw } from "lucide-react";
-import { type ReactNode, type Ref, useMemo, useRef, useState } from "react";
+import {
+	type ReactNode,
+	type Ref,
+	createContext,
+	useContext,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import type { TeamBridgeDirectoryMember } from "../../../../shared/team-bridge-contract";
 import type {
 	OwnerAuditConversation,
@@ -38,10 +46,16 @@ import {
 	useOwnerAuditMessages,
 	useOwnerAuditReplies,
 } from "./use-team-bridge-owner-audit";
+import { replyPageOutsideViewport } from "./use-thread-reply-window";
 
 export type ReadState = "loading" | "ready" | AuditFailureState;
 const failedState = (state: ReadState): state is AuditFailureState =>
 	state !== "loading" && state !== "ready";
+
+// The disclosure owns its non-bubbling toggle event. Pass the parent scroll
+// controller through the transcript so opening it can hold BOTH reading surfaces
+// without delegating a details-only event to an unsupported div React prop.
+const AuditTimelineHoldContext = createContext<(() => void) | null>(null);
 
 /**
  * A FAILED LATER PAGE MUST NOT ERASE WHAT IS ALREADY SHOWN.
@@ -641,12 +655,14 @@ export function OwnerAuditPanelView({
 									{t("ui.ownerAudit.empty_history")}
 								</p>
 							) : (
-								<AuditTranscript
-									conversation={conversation}
-									messages={messages}
-									people={people}
-									renderReplies={renderReplies}
-								/>
+								<AuditTimelineHoldContext.Provider value={timeline.hold}>
+									<AuditTranscript
+										conversation={conversation}
+										messages={messages}
+										people={people}
+										renderReplies={renderReplies}
+									/>
+								</AuditTimelineHoldContext.Provider>
 							)}
 							<OwnerAuditWindowEnd conversation={conversation} />
 						</>
@@ -682,36 +698,119 @@ function AuditReplies({
 	root: OwnerAuditMessage;
 	people: readonly TeamBridgeDirectoryMember[];
 }) {
-	const query = useOwnerAuditReplies(scope, conversation.id, root.id);
-	if (query.isPending)
-		return (
-			<output className="block py-1 text-[12px] text-ink-muted">
-				{t("ui.ownerAudit.loading")}
-			</output>
-		);
+	const viewport = useRef<HTMLDivElement>(null);
+	const pinnedGetter = useRef<() => boolean>(() => true);
+	const query = useOwnerAuditReplies(
+		scope,
+		conversation.id,
+		root.id,
+		(page) => replyPageOutsideViewport(page, viewport.current),
+		() => pinnedGetter.current(),
+	);
 	const state = readState(query);
-	if (failedState(state))
-		return <AuditFailure state={state} retry={() => void query.refetch()} />;
+	const viewState =
+		state === "loading"
+			? "loading"
+			: failedState(state) && (!query.data || !query.keepWindowOnError)
+				? "error"
+				: "ready";
+	const timeline = useStickToBottom({
+		resetKey: `${scope.accountId}:${scope.tenantId}:${conversation.id}:${root.id}:${query.mode}:${viewState}`,
+		contentKey: `${query.replies.length}:${query.replies.at(-1)?.id ?? ""}`,
+		scrollElement: "root",
+		preserveAnchor: true,
+		rowIds: query.replies.map((row) => row.id),
+		liveEdgeAvailable: query.latestPageAvailable,
+	});
+	pinnedGetter.current = timeline.isPinned;
+	const combinedRef = useMemo(
+		() => composeRefs(timeline.rootRef, viewport),
+		[timeline.rootRef],
+	);
 	return (
-		<div>
-			{/* The thread pane's own density: replies are the same rows, narrower. */}
-			<AuditTranscript
-				conversation={conversation}
-				messages={ownerAuditChronology(
-					query.data?.pages.map((page) => page.replies) ?? [],
+		<div className="relative min-h-0">
+			{query.mode === "legacy" && (
+				<p className="py-1 text-meta text-ink-dim">
+					{t("ui.teamBridge.replies.legacy_window")}
+				</p>
+			)}
+			<div
+				ref={combinedRef}
+				// Reserve the reading surface independently of reply arrivals. In
+				// particular, a short window must not grow under a held parent row.
+				className="h-80 min-h-0 w-full min-w-0 overflow-x-hidden overflow-y-auto"
+				data-audit-reply-window
+			>
+				{query.mode === "desc" &&
+					viewState === "ready" &&
+					query.hasNextPage && (
+						<Button
+							variant="ghost"
+							size="sm"
+							disabled={query.isFetchingNextPage}
+							onClick={() => {
+								timeline.hold();
+								void query.fetchNextPage();
+							}}
+						>
+							{t("ui.ownerAudit.older_replies")}
+						</Button>
+					)}
+				{viewState === "loading" ? (
+					<output className="block py-1 text-meta text-ink-muted">
+						{t("ui.ownerAudit.loading")}
+					</output>
+				) : viewState === "error" ? (
+					<AuditFailure
+						state={failedState(state) ? state : "error"}
+						retry={() => void query.resetLatest()}
+					/>
+				) : query.replies.length === 0 ? (
+					<p className="py-2 text-meta text-ink-muted">
+						{t("ui.ownerAudit.empty_replies")}
+					</p>
+				) : (
+					<AuditTranscript
+						conversation={conversation}
+						messages={query.replies}
+						people={people}
+						density="compact"
+					/>
 				)}
-				people={people}
-				density="compact"
-			/>
-			{query.hasNextPage && (
+				{query.mode === "legacy" && query.hasNextPage && (
+					<Button
+						variant="ghost"
+						size="sm"
+						disabled={query.isFetchingNextPage}
+						onClick={() => void query.fetchNextPage()}
+					>
+						{t("ui.ownerAudit.more")}
+					</Button>
+				)}
+			</div>
+			{/* Arrival/recovery controls belong AFTER the reserved reader. The
+			 * first held-window arrival creates Refresh; putting it above would
+			 * move the whole viewport even with both scroll anchors held. Below,
+			 * controls remain in normal flow without an overlay or empty band. */}
+			{query.mode === "desc" && !query.latestPageAvailable && (
 				<Button
 					variant="ghost"
 					size="sm"
-					disabled={query.isFetchingNextPage}
-					onClick={() => void query.fetchNextPage()}
+					onClick={() => void query.resetLatest()}
 				>
-					{t("ui.ownerAudit.more")}
+					{t("ui.ownerAudit.refresh")}
 				</Button>
+			)}
+			{query.latestPageAvailable && timeline.newMessages > 0 && (
+				<Button variant="ghost" size="sm" onClick={timeline.pin}>
+					{t("ui.teamBridge.notify.count", { count: timeline.newMessages })}
+				</Button>
+			)}
+			{query.keepWindowOnError && (
+				<AuditFailure
+					state={auditFailureState(query.error)}
+					retry={() => void query.fetchNextPage()}
+				/>
 			)}
 		</div>
 	);
@@ -729,10 +828,17 @@ function ReplyDisclosure({
 	people: readonly TeamBridgeDirectoryMember[];
 }) {
 	const [open, setOpen] = useState(false);
+	const holdParentTimeline = useContext(AuditTimelineHoldContext);
 	return (
 		<details
 			className="mt-1"
-			onToggle={(event) => setOpen(event.currentTarget.open)}
+			data-audit-reply-disclosure
+			onToggle={(event) => {
+				// Stop parent live-edge following before mounting the inline reader;
+				// later arrivals must not move its box while its own anchor is held.
+				if (event.currentTarget.open) holdParentTimeline?.();
+				setOpen(event.currentTarget.open);
+			}}
 		>
 			{/* The shared row's "N replies" summary wears the accent; this is the
 			 * same door, read-only, so it wears the same ink at the same size. */}
