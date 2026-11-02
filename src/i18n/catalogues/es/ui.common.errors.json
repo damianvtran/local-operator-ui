@@ -137,5 +137,6 @@
 	"ui.common.errors.agent_publish": "No se pudo publicar el agente.",
 	"ui.common.errors.conversation_messages_fetch": "No se pudieron obtener los mensajes de la conversación",
 	"ui.common.errors.conversation_messages_fetch_unknown": "Se produjo un error desconocido al obtener los mensajes de la conversación",
-	"ui.common.errors.session_id_required": "Se necesita un id de sesión para leer la memoria de código."
+	"ui.common.errors.session_id_required": "Se necesita un id de sesión para leer la memoria de código.",
+	"ui.common.errors.desktop_transport_failed": "El backend no pudo completar esta solicitud. Comprueba su conexión y vuelve a intentarlo."
 }

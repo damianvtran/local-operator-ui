@@ -632,10 +632,12 @@ test("the shipped reaction hook projects rows and enables a toggle", () => {
 });
 
 test("reaction state mounts only with the capability-derived owner context", () => {
-	// `ReactableMessageRow` is the only caller of the reaction hook, and it
-	// mounts only when the context is present - so withholding the context is
-	// what keeps reaction state and its toggle out of a build the runtime cannot
-	// serve. No GET is issued anywhere in the hook; a mount is the observable.
+	// `ReactableMessageRow` is the only caller of the reaction hook. Every row
+	// mounts it (#1511: one component type, so a first message keeps its node
+	// when the created conversation brings a context), but without a context it
+	// passes no reaction state to the row and its toggle is disabled - so
+	// withholding the context still keeps chips and writes out of a build the
+	// runtime cannot serve. No GET is issued anywhere in the hook.
 	assert.equal(
 		(messageList.match(/useTeamBridgeReactionState\(\{/g) ?? []).length,
 		1,
@@ -643,8 +645,13 @@ test("reaction state mounts only with the capability-derived owner context", () 
 	);
 	assert.match(
 		messageList,
-		/reactionContext && props\.message\.body !== null \?/,
-		"the reaction row mounts only with a context",
+		/reactions=\{reactionContext \? reactions : undefined\}/,
+		"reaction state reaches the row only with a context",
+	);
+	assert.match(
+		messageList,
+		/const INERT_REACTIONS = \{ accountId: "", tenantId: "", disabled: true \}/,
+		"without a context the hook is inert and its toggle disabled",
 	);
 	// The page builds that context only when the capability is available.
 	assert.match(page, /reactionsAvailable && selfAccountId && selected/);

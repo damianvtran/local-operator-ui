@@ -158,6 +158,22 @@ export function useMentionAutocomplete(input: {
 	 * jump is consumed only by the change whose value is the one it announced.
 	 */
 	const historyJump = useRef<string | null>(null);
+	/*
+	 * Set to the value a native `input` produced, by the field's own listener,
+	 * and adopted as `interactionText` by the render that receives that text.
+	 * A REF, NEVER STATE, on purpose: in a real browser a user-dispatched event
+	 * gets a microtask checkpoint between listener callbacks, and React 18 flushes
+	 * a discrete (`input`) update synchronously at that checkpoint. A setState in
+	 * the target-phase listener therefore re-rendered this component with the
+	 * PREVIOUS `text` prop before the delegated `onChange` ran, React wrote that
+	 * old value back into the controlled textarea, and onChange read the reverted
+	 * value: the key was lost, and only a key repeating the last one survived
+	 * (an equal setState bails out). That shipped in #1590 (3381fc6eafb) because
+	 * jsdom dispatches without the checkpoint; the browser-ordered tests in
+	 * mention-draft-restore.test.mjs model it. Same text-carrying contract as
+	 * `historyJump`: consumed by the change whose value is the one it announced.
+	 */
+	const nativeEditText = useRef<string | null>(null);
 	/** The map this text last had, newest first; undefined when never seen. */
 	const snapshotTokens = useCallback(
 		(value: string): MentionToken[] | undefined => {
@@ -178,15 +194,24 @@ export function useMentionAutocomplete(input: {
 		lastText.current = text;
 		spanHistory.current = [];
 		historyJump.current = null;
+		nativeEditText.current = null;
 		const next = stored
 			? rebaseTokens(stored.text, text, stored.tokens)
 			: NO_TOKENS;
 		if (next !== tokens) setTokens(next);
 	} else if (lastText.current !== text) {
 		const pending = pendingRestore.current;
-		const edited = interactionText === text;
+		// A field edit is `edited` whichever way it was announced: an ordinary
+		// keystroke must never take the `restored` branch below (which would also
+		// disarm caretInteraction when the previous text was empty).
+		const typed = nativeEditText.current === text;
+		nativeEditText.current = null;
+		const edited = interactionText === text || typed;
 		const jumped = historyJump.current === text;
 		historyJump.current = null;
+		// Adopt the native edit in this same render (like setTokens below), so a
+		// query arms on the very keystroke: '@' into an empty composer opens now.
+		if (typed && interactionText !== text) setInteractionText(text);
 		// A refused optimistic send restores text without a DOM edit. Its
 		// identities come from this mounted draft's history, never name matching.
 		const restored =
@@ -520,9 +545,14 @@ export function useMentionAutocomplete(input: {
 			const jumped = type === "historyUndo" || type === "historyRedo";
 			if (jumped) historyJump.current = field.value;
 			pendingRestore.current = null;
-			setInteractionText(field.value);
+			// NO setState here: it flushes before onChange and reverts the typed
+			// key (see `nativeEditText`). Only refs and the unsubscribed store write.
+			nativeEditText.current = field.value;
 			// Target-phase input runs before React's delegated onChange writes
 			// the text store. Persist its matching identities in that same turn.
+			// Safe to do here: this hook reads `stored` via getState() and selects
+			// only the stable `write`, so the store write re-renders nothing (the
+			// browser-ordered tests fail if it ever does).
 			const next =
 				applyingEdit.current?.text === field.value
 					? applyingEdit.current.tokens
@@ -562,6 +592,16 @@ export function useMentionAutocomplete(input: {
 	 * than asking the author to pick again.
 	 */
 	const awaitingKeys = useRef(new Set<string>());
+	// Availability is not subtree identity anymore. Retire only source-scoped
+	// notice/invite state when its conversation disappears or changes; draft
+	// text, tokens, selection and the page's account/tenant/target keys stay owned
+	// where they already were. A same-conversation roster refresh is not a reset.
+	const sourceConversationId = source?.conversationId ?? null;
+	// biome-ignore lint/correctness/useExhaustiveDependencies: source identity is a reset trigger; no source data is read while retiring notice state.
+	useLayoutEffect(() => {
+		setNotice(null);
+		awaitingKeys.current.clear();
+	}, [sourceConversationId]);
 	useEffect(() => {
 		if (awaitingKeys.current.size === 0) return;
 		const ready = [...awaitingKeys.current].filter((key) =>

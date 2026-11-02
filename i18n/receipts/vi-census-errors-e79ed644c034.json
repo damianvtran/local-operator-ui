@@ -1,0 +1,44 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "new-key-delta-on-existing-namespace",
+  "locale": "vi",
+  "namespace": "ui.common.errors",
+  "pr": 1594,
+  "date": "2026-11-02",
+  "head": "dd75287b77ca8b8447a362aa9d052a2dccacf097",
+  "base_english_parent": "7920f05769bd4ac833a09d7ba2abc3d0e2ca557a",
+  "instance": "vi-census-errors-e79ed644c034",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "e79ed644c034",
+    "role": "independent translation auditor (team lopdev); did not write the vi translation",
+    "instance": "vi-census-errors-e79ed644c034",
+    "model": "anthropic/claude-sonnet-5-5",
+    "model_note": "Model as shown by this session's runtime header; no fallback was reported or observed by this session, and none is claimed.",
+    "independent_from_translator_session": true
+  },
+  "status": "passed",
+  "result": "clean-with-findings",
+  "key_count": 140,
+  "en_sha256": "1c33841b78da772dab58d4476295082b6e1d56a328c587597de20a368cb7c254",
+  "context_sha256": "6cd0c99c1e5e40619c44e1e8fad1a249582b3dad09ca1bc32d04f3fcafee98b1",
+  "vi_sha256": "59388f01800b4a1d74cfb6a0ca2dab7750f5f214e9cdad281e9eaced15bf2260",
+  "binding": {
+    "linguistic_judgement_covers": [
+      "ui.common.errors.desktop_transport_failed"
+    ],
+    "unchanged_keys": "The remaining 139 keys are byte-unchanged from the previously audited state: `git diff 7920f05..dd75287` on this vi file adds exactly the one key above (plus the trailing comma on the preceding line) and changes nothing else; the key set equals English (140 keys); English source and context sidecar are byte-identical to the parent.",
+    "not_re_audited": "The other 139 keys were NOT re-audited by this run. This receipt binds the whole-file hashes so the ledger gate can match bytes on disk; it is not a whole-file linguistic audit.",
+    "validators": "Repo validators (check-i18n, ledger-check) were not run for the audit itself; mechanical checks were done by hand from committed bytes (valid JSON, key-set equality, no placeholders/plurals/markup in the new key)."
+  },
+  "findings": [
+    {
+      "id": "A-1",
+      "severity": "nit",
+      "key": "ui.common.errors.desktop_transport_failed",
+      "summary": "Says 'Backend' while sibling desktop_refusal.transport_failed and desktop_refusal_placeholder say 'máy chủ'. Source English distinguishes them the same way and 'Backend' matches the desktop_backend_* family; no change recommended."
+    }
+  ],
+  "audit_report": "Findings were reported to the manager in the session's final message; this receipt is the durable record."
+}

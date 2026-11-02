@@ -28,6 +28,7 @@ import enUiAgentsConfig from "./catalogues/en/ui.agents.config.json";
 import enUiAgentsDescriptions from "./catalogues/en/ui.agents.descriptions.json";
 import enUiAgentsDetailInstall from "./catalogues/en/ui.agents.detail.install.json";
 import enUiAgentsDetail from "./catalogues/en/ui.agents.detail.json";
+import enUiAgentsDetailOrigin from "./catalogues/en/ui.agents.detail.origin.json";
 import enUiAgentsDetailReadState from "./catalogues/en/ui.agents.detail.read_state.json";
 import enUiAgentsDialogs from "./catalogues/en/ui.agents.dialogs.json";
 import enUiAgents from "./catalogues/en/ui.agents.json";
@@ -49,6 +50,7 @@ import enUiCanvas from "./catalogues/en/ui.canvas.json";
 import enUiChatAnalytics from "./catalogues/en/ui.chat.analytics.json";
 import enUiChatAsks from "./catalogues/en/ui.chat.asks.json";
 import enUiChatAttachments from "./catalogues/en/ui.chat.attachments.json";
+import enUiChatBridgeReceipt from "./catalogues/en/ui.chat.bridgeReceipt.json";
 import enUiChatCanonical from "./catalogues/en/ui.chat.canonical.json";
 import enUiChatCommentaryActions from "./catalogues/en/ui.chat.commentary_actions.json";
 import enUiChatComposer from "./catalogues/en/ui.chat.composer.json";
@@ -144,6 +146,7 @@ import esUiAgentsConfig from "./catalogues/es/ui.agents.config.json";
 import esUiAgentsDescriptions from "./catalogues/es/ui.agents.descriptions.json";
 import esUiAgentsDetailInstall from "./catalogues/es/ui.agents.detail.install.json";
 import esUiAgentsDetail from "./catalogues/es/ui.agents.detail.json";
+import esUiAgentsDetailOrigin from "./catalogues/es/ui.agents.detail.origin.json";
 import esUiAgentsDetailReadState from "./catalogues/es/ui.agents.detail.read_state.json";
 import esUiAgentsDialogs from "./catalogues/es/ui.agents.dialogs.json";
 import esUiAgents from "./catalogues/es/ui.agents.json";
@@ -165,6 +168,7 @@ import esUiCanvas from "./catalogues/es/ui.canvas.json";
 import esUiChatAnalytics from "./catalogues/es/ui.chat.analytics.json";
 import esUiChatAsks from "./catalogues/es/ui.chat.asks.json";
 import esUiChatAttachments from "./catalogues/es/ui.chat.attachments.json";
+import esUiChatBridgeReceipt from "./catalogues/es/ui.chat.bridgeReceipt.json";
 import esUiChatCanonical from "./catalogues/es/ui.chat.canonical.json";
 import esUiChatCommentaryActions from "./catalogues/es/ui.chat.commentary_actions.json";
 import esUiChatComposer from "./catalogues/es/ui.chat.composer.json";
@@ -260,6 +264,7 @@ import frUiAgentsConfig from "./catalogues/fr/ui.agents.config.json";
 import frUiAgentsDescriptions from "./catalogues/fr/ui.agents.descriptions.json";
 import frUiAgentsDetailInstall from "./catalogues/fr/ui.agents.detail.install.json";
 import frUiAgentsDetail from "./catalogues/fr/ui.agents.detail.json";
+import frUiAgentsDetailOrigin from "./catalogues/fr/ui.agents.detail.origin.json";
 import frUiAgentsDetailReadState from "./catalogues/fr/ui.agents.detail.read_state.json";
 import frUiAgentsDialogs from "./catalogues/fr/ui.agents.dialogs.json";
 import frUiAgents from "./catalogues/fr/ui.agents.json";
@@ -281,6 +286,7 @@ import frUiCanvas from "./catalogues/fr/ui.canvas.json";
 import frUiChatAnalytics from "./catalogues/fr/ui.chat.analytics.json";
 import frUiChatAsks from "./catalogues/fr/ui.chat.asks.json";
 import frUiChatAttachments from "./catalogues/fr/ui.chat.attachments.json";
+import frUiChatBridgeReceipt from "./catalogues/fr/ui.chat.bridgeReceipt.json";
 import frUiChatCanonical from "./catalogues/fr/ui.chat.canonical.json";
 import frUiChatCommentaryActions from "./catalogues/fr/ui.chat.commentary_actions.json";
 import frUiChatComposer from "./catalogues/fr/ui.chat.composer.json";
@@ -376,6 +382,7 @@ import hiUiAgentsConfig from "./catalogues/hi/ui.agents.config.json";
 import hiUiAgentsDescriptions from "./catalogues/hi/ui.agents.descriptions.json";
 import hiUiAgentsDetailInstall from "./catalogues/hi/ui.agents.detail.install.json";
 import hiUiAgentsDetail from "./catalogues/hi/ui.agents.detail.json";
+import hiUiAgentsDetailOrigin from "./catalogues/hi/ui.agents.detail.origin.json";
 import hiUiAgentsDetailReadState from "./catalogues/hi/ui.agents.detail.read_state.json";
 import hiUiAgentsDialogs from "./catalogues/hi/ui.agents.dialogs.json";
 import hiUiAgents from "./catalogues/hi/ui.agents.json";
@@ -397,6 +404,7 @@ import hiUiCanvas from "./catalogues/hi/ui.canvas.json";
 import hiUiChatAnalytics from "./catalogues/hi/ui.chat.analytics.json";
 import hiUiChatAsks from "./catalogues/hi/ui.chat.asks.json";
 import hiUiChatAttachments from "./catalogues/hi/ui.chat.attachments.json";
+import hiUiChatBridgeReceipt from "./catalogues/hi/ui.chat.bridgeReceipt.json";
 import hiUiChatCanonical from "./catalogues/hi/ui.chat.canonical.json";
 import hiUiChatCommentaryActions from "./catalogues/hi/ui.chat.commentary_actions.json";
 import hiUiChatComposer from "./catalogues/hi/ui.chat.composer.json";
@@ -492,6 +500,7 @@ import ruUiAgentsConfig from "./catalogues/ru/ui.agents.config.json";
 import ruUiAgentsDescriptions from "./catalogues/ru/ui.agents.descriptions.json";
 import ruUiAgentsDetailInstall from "./catalogues/ru/ui.agents.detail.install.json";
 import ruUiAgentsDetail from "./catalogues/ru/ui.agents.detail.json";
+import ruUiAgentsDetailOrigin from "./catalogues/ru/ui.agents.detail.origin.json";
 import ruUiAgentsDetailReadState from "./catalogues/ru/ui.agents.detail.read_state.json";
 import ruUiAgentsDialogs from "./catalogues/ru/ui.agents.dialogs.json";
 import ruUiAgents from "./catalogues/ru/ui.agents.json";
@@ -513,6 +522,7 @@ import ruUiCanvas from "./catalogues/ru/ui.canvas.json";
 import ruUiChatAnalytics from "./catalogues/ru/ui.chat.analytics.json";
 import ruUiChatAsks from "./catalogues/ru/ui.chat.asks.json";
 import ruUiChatAttachments from "./catalogues/ru/ui.chat.attachments.json";
+import ruUiChatBridgeReceipt from "./catalogues/ru/ui.chat.bridgeReceipt.json";
 import ruUiChatCanonical from "./catalogues/ru/ui.chat.canonical.json";
 import ruUiChatCommentaryActions from "./catalogues/ru/ui.chat.commentary_actions.json";
 import ruUiChatComposer from "./catalogues/ru/ui.chat.composer.json";
@@ -608,6 +618,7 @@ import urUiAgentsConfig from "./catalogues/ur/ui.agents.config.json";
 import urUiAgentsDescriptions from "./catalogues/ur/ui.agents.descriptions.json";
 import urUiAgentsDetailInstall from "./catalogues/ur/ui.agents.detail.install.json";
 import urUiAgentsDetail from "./catalogues/ur/ui.agents.detail.json";
+import urUiAgentsDetailOrigin from "./catalogues/ur/ui.agents.detail.origin.json";
 import urUiAgentsDetailReadState from "./catalogues/ur/ui.agents.detail.read_state.json";
 import urUiAgentsDialogs from "./catalogues/ur/ui.agents.dialogs.json";
 import urUiAgents from "./catalogues/ur/ui.agents.json";
@@ -629,6 +640,7 @@ import urUiCanvas from "./catalogues/ur/ui.canvas.json";
 import urUiChatAnalytics from "./catalogues/ur/ui.chat.analytics.json";
 import urUiChatAsks from "./catalogues/ur/ui.chat.asks.json";
 import urUiChatAttachments from "./catalogues/ur/ui.chat.attachments.json";
+import urUiChatBridgeReceipt from "./catalogues/ur/ui.chat.bridgeReceipt.json";
 import urUiChatCanonical from "./catalogues/ur/ui.chat.canonical.json";
 import urUiChatCommentaryActions from "./catalogues/ur/ui.chat.commentary_actions.json";
 import urUiChatComposer from "./catalogues/ur/ui.chat.composer.json";
@@ -724,6 +736,7 @@ import viUiAgentsConfig from "./catalogues/vi/ui.agents.config.json";
 import viUiAgentsDescriptions from "./catalogues/vi/ui.agents.descriptions.json";
 import viUiAgentsDetailInstall from "./catalogues/vi/ui.agents.detail.install.json";
 import viUiAgentsDetail from "./catalogues/vi/ui.agents.detail.json";
+import viUiAgentsDetailOrigin from "./catalogues/vi/ui.agents.detail.origin.json";
 import viUiAgentsDetailReadState from "./catalogues/vi/ui.agents.detail.read_state.json";
 import viUiAgentsDialogs from "./catalogues/vi/ui.agents.dialogs.json";
 import viUiAgents from "./catalogues/vi/ui.agents.json";
@@ -745,6 +758,7 @@ import viUiCanvas from "./catalogues/vi/ui.canvas.json";
 import viUiChatAnalytics from "./catalogues/vi/ui.chat.analytics.json";
 import viUiChatAsks from "./catalogues/vi/ui.chat.asks.json";
 import viUiChatAttachments from "./catalogues/vi/ui.chat.attachments.json";
+import viUiChatBridgeReceipt from "./catalogues/vi/ui.chat.bridgeReceipt.json";
 import viUiChatCanonical from "./catalogues/vi/ui.chat.canonical.json";
 import viUiChatCommentaryActions from "./catalogues/vi/ui.chat.commentary_actions.json";
 import viUiChatComposer from "./catalogues/vi/ui.chat.composer.json";
@@ -840,6 +854,7 @@ import zhCNUiAgentsConfig from "./catalogues/zh-CN/ui.agents.config.json";
 import zhCNUiAgentsDescriptions from "./catalogues/zh-CN/ui.agents.descriptions.json";
 import zhCNUiAgentsDetailInstall from "./catalogues/zh-CN/ui.agents.detail.install.json";
 import zhCNUiAgentsDetail from "./catalogues/zh-CN/ui.agents.detail.json";
+import zhCNUiAgentsDetailOrigin from "./catalogues/zh-CN/ui.agents.detail.origin.json";
 import zhCNUiAgentsDetailReadState from "./catalogues/zh-CN/ui.agents.detail.read_state.json";
 import zhCNUiAgentsDialogs from "./catalogues/zh-CN/ui.agents.dialogs.json";
 import zhCNUiAgents from "./catalogues/zh-CN/ui.agents.json";
@@ -861,6 +876,7 @@ import zhCNUiCanvas from "./catalogues/zh-CN/ui.canvas.json";
 import zhCNUiChatAnalytics from "./catalogues/zh-CN/ui.chat.analytics.json";
 import zhCNUiChatAsks from "./catalogues/zh-CN/ui.chat.asks.json";
 import zhCNUiChatAttachments from "./catalogues/zh-CN/ui.chat.attachments.json";
+import zhCNUiChatBridgeReceipt from "./catalogues/zh-CN/ui.chat.bridgeReceipt.json";
 import zhCNUiChatCanonical from "./catalogues/zh-CN/ui.chat.canonical.json";
 import zhCNUiChatCommentaryActions from "./catalogues/zh-CN/ui.chat.commentary_actions.json";
 import zhCNUiChatComposer from "./catalogues/zh-CN/ui.chat.composer.json";
@@ -959,6 +975,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiAgentsDescriptions,
 	...enUiAgentsDetailInstall,
 	...enUiAgentsDetail,
+	...enUiAgentsDetailOrigin,
 	...enUiAgentsDetailReadState,
 	...enUiAgentsDialogs,
 	...enUiAgents,
@@ -980,6 +997,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiChatAnalytics,
 	...enUiChatAsks,
 	...enUiChatAttachments,
+	...enUiChatBridgeReceipt,
 	...enUiChatCanonical,
 	...enUiChatCommentaryActions,
 	...enUiChatComposer,
@@ -1083,6 +1101,7 @@ export const bundledCatalogues: Readonly<
 		...esUiAgentsDescriptions,
 		...esUiAgentsDetailInstall,
 		...esUiAgentsDetail,
+		...esUiAgentsDetailOrigin,
 		...esUiAgentsDetailReadState,
 		...esUiAgentsDialogs,
 		...esUiAgents,
@@ -1104,6 +1123,7 @@ export const bundledCatalogues: Readonly<
 		...esUiChatAnalytics,
 		...esUiChatAsks,
 		...esUiChatAttachments,
+		...esUiChatBridgeReceipt,
 		...esUiChatCanonical,
 		...esUiChatCommentaryActions,
 		...esUiChatComposer,
@@ -1201,6 +1221,7 @@ export const bundledCatalogues: Readonly<
 		...frUiAgentsDescriptions,
 		...frUiAgentsDetailInstall,
 		...frUiAgentsDetail,
+		...frUiAgentsDetailOrigin,
 		...frUiAgentsDetailReadState,
 		...frUiAgentsDialogs,
 		...frUiAgents,
@@ -1222,6 +1243,7 @@ export const bundledCatalogues: Readonly<
 		...frUiChatAnalytics,
 		...frUiChatAsks,
 		...frUiChatAttachments,
+		...frUiChatBridgeReceipt,
 		...frUiChatCanonical,
 		...frUiChatCommentaryActions,
 		...frUiChatComposer,
@@ -1319,6 +1341,7 @@ export const bundledCatalogues: Readonly<
 		...hiUiAgentsDescriptions,
 		...hiUiAgentsDetailInstall,
 		...hiUiAgentsDetail,
+		...hiUiAgentsDetailOrigin,
 		...hiUiAgentsDetailReadState,
 		...hiUiAgentsDialogs,
 		...hiUiAgents,
@@ -1340,6 +1363,7 @@ export const bundledCatalogues: Readonly<
 		...hiUiChatAnalytics,
 		...hiUiChatAsks,
 		...hiUiChatAttachments,
+		...hiUiChatBridgeReceipt,
 		...hiUiChatCanonical,
 		...hiUiChatCommentaryActions,
 		...hiUiChatComposer,
@@ -1437,6 +1461,7 @@ export const bundledCatalogues: Readonly<
 		...ruUiAgentsDescriptions,
 		...ruUiAgentsDetailInstall,
 		...ruUiAgentsDetail,
+		...ruUiAgentsDetailOrigin,
 		...ruUiAgentsDetailReadState,
 		...ruUiAgentsDialogs,
 		...ruUiAgents,
@@ -1458,6 +1483,7 @@ export const bundledCatalogues: Readonly<
 		...ruUiChatAnalytics,
 		...ruUiChatAsks,
 		...ruUiChatAttachments,
+		...ruUiChatBridgeReceipt,
 		...ruUiChatCanonical,
 		...ruUiChatCommentaryActions,
 		...ruUiChatComposer,
@@ -1555,6 +1581,7 @@ export const bundledCatalogues: Readonly<
 		...urUiAgentsDescriptions,
 		...urUiAgentsDetailInstall,
 		...urUiAgentsDetail,
+		...urUiAgentsDetailOrigin,
 		...urUiAgentsDetailReadState,
 		...urUiAgentsDialogs,
 		...urUiAgents,
@@ -1576,6 +1603,7 @@ export const bundledCatalogues: Readonly<
 		...urUiChatAnalytics,
 		...urUiChatAsks,
 		...urUiChatAttachments,
+		...urUiChatBridgeReceipt,
 		...urUiChatCanonical,
 		...urUiChatCommentaryActions,
 		...urUiChatComposer,
@@ -1673,6 +1701,7 @@ export const bundledCatalogues: Readonly<
 		...viUiAgentsDescriptions,
 		...viUiAgentsDetailInstall,
 		...viUiAgentsDetail,
+		...viUiAgentsDetailOrigin,
 		...viUiAgentsDetailReadState,
 		...viUiAgentsDialogs,
 		...viUiAgents,
@@ -1694,6 +1723,7 @@ export const bundledCatalogues: Readonly<
 		...viUiChatAnalytics,
 		...viUiChatAsks,
 		...viUiChatAttachments,
+		...viUiChatBridgeReceipt,
 		...viUiChatCanonical,
 		...viUiChatCommentaryActions,
 		...viUiChatComposer,
@@ -1791,6 +1821,7 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiAgentsDescriptions,
 		...zhCNUiAgentsDetailInstall,
 		...zhCNUiAgentsDetail,
+		...zhCNUiAgentsDetailOrigin,
 		...zhCNUiAgentsDetailReadState,
 		...zhCNUiAgentsDialogs,
 		...zhCNUiAgents,
@@ -1812,6 +1843,7 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiChatAnalytics,
 		...zhCNUiChatAsks,
 		...zhCNUiChatAttachments,
+		...zhCNUiChatBridgeReceipt,
 		...zhCNUiChatCanonical,
 		...zhCNUiChatCommentaryActions,
 		...zhCNUiChatComposer,
@@ -2140,6 +2172,7 @@ export type MessageParams = {
 	"ui.agents.detail.meta.delegates": undefined;
 	"ui.agents.detail.no_description": undefined;
 	"ui.agents.detail.origin.changed": undefined;
+	"ui.agents.detail.origin.created_locally": undefined;
 	"ui.agents.detail.origin.source": undefined;
 	"ui.agents.detail.read.effort_label": undefined;
 	"ui.agents.detail.read.show_all": undefined;
@@ -2158,6 +2191,9 @@ export type MessageParams = {
 	"ui.agents.detail.tools.every_tool_aria": undefined;
 	"ui.agents.detail.tools.may_use_any": undefined;
 	"ui.agents.detail.tools.placeholder": undefined;
+	"ui.agents.detail.origin.compare_packaged": undefined;
+	"ui.agents.detail.origin.installed_starter": undefined;
+	"ui.agents.detail.origin.shipped_with_app": undefined;
 	"ui.agents.detail.read_state.class_description": undefined;
 	"ui.agents.detail.read_state.class_off": undefined;
 	"ui.agents.detail.read_state.class_on": undefined;
@@ -3435,6 +3471,9 @@ export type MessageParams = {
 	"ui.chat.attachments.saved_copy_label": undefined;
 	"ui.chat.attachments.saved_path_copied": undefined;
 	"ui.chat.attachments.volume": undefined;
+	"ui.chat.bridgeReceipt.provenance": undefined;
+	"ui.chat.bridgeReceipt.received": { sender: string };
+	"ui.chat.bridgeReceipt.unavailable": undefined;
 	"ui.chat.canonical.fold.bridge.one": undefined;
 	"ui.chat.canonical.fold.bridge.other": undefined;
 	"ui.chat.canonical.fold.bridge_post.one": undefined;
@@ -5706,6 +5745,7 @@ export type MessageParams = {
 	"ui.common.errors.desktop_refusal.refused": undefined;
 	"ui.common.errors.desktop_refusal.transport_failed": undefined;
 	"ui.common.errors.desktop_refusal_placeholder": undefined;
+	"ui.common.errors.desktop_transport_failed": undefined;
 	"ui.common.errors.dictation_account_credits": undefined;
 	"ui.common.errors.dictation_credits_destination": { destination: string };
 	"ui.common.errors.dictation_empty": undefined;
@@ -9304,6 +9344,51 @@ export type MessageParams = {
 	"ui.settings.language.general.write_error": { message: string };
 	"ui.settings.language.palette_action": undefined;
 	"ui.settings.page.title": undefined;
+	"ui.settings.personal_profile.choose": undefined;
+	"ui.settings.personal_profile.crop_area": undefined;
+	"ui.settings.personal_profile.crop_error": undefined;
+	"ui.settings.personal_profile.crop_instructions": {
+		width: string;
+		height: string;
+	};
+	"ui.settings.personal_profile.description": undefined;
+	"ui.settings.personal_profile.description_lines": { count: string };
+	"ui.settings.personal_profile.discard": undefined;
+	"ui.settings.personal_profile.discard_action": undefined;
+	"ui.settings.personal_profile.display_name": undefined;
+	"ui.settings.personal_profile.edit": undefined;
+	"ui.settings.personal_profile.field_too_long": { count: string };
+	"ui.settings.personal_profile.heading": undefined;
+	"ui.settings.personal_profile.keep_editing": undefined;
+	"ui.settings.personal_profile.load_error": undefined;
+	"ui.settings.personal_profile.loading": undefined;
+	"ui.settings.personal_profile.manage": undefined;
+	"ui.settings.personal_profile.photo_error": undefined;
+	"ui.settings.personal_profile.photo_help": undefined;
+	"ui.settings.personal_profile.photo_invalid": undefined;
+	"ui.settings.personal_profile.photo_removed": undefined;
+	"ui.settings.personal_profile.photo_saved": undefined;
+	"ui.settings.personal_profile.preview": undefined;
+	"ui.settings.personal_profile.preview_caption": undefined;
+	"ui.settings.personal_profile.previews": undefined;
+	"ui.settings.personal_profile.recenter": undefined;
+	"ui.settings.personal_profile.remove": undefined;
+	"ui.settings.personal_profile.remove_provider": undefined;
+	"ui.settings.personal_profile.remove_uploaded": undefined;
+	"ui.settings.personal_profile.replace": undefined;
+	"ui.settings.personal_profile.save": undefined;
+	"ui.settings.personal_profile.save_error": undefined;
+	"ui.settings.personal_profile.save_photo": undefined;
+	"ui.settings.personal_profile.saved": undefined;
+	"ui.settings.personal_profile.saving": undefined;
+	"ui.settings.personal_profile.timezone": undefined;
+	"ui.settings.personal_profile.timezone_clear": undefined;
+	"ui.settings.personal_profile.timezone_placeholder": undefined;
+	"ui.settings.personal_profile.title": undefined;
+	"ui.settings.personal_profile.zoom": undefined;
+	"ui.settings.personal_profile.zoom_in": undefined;
+	"ui.settings.personal_profile.zoom_out": undefined;
+	"ui.settings.personal_profile.zoom_value": { value: string };
 	"ui.settings.profile.account_checking": undefined;
 	"ui.settings.profile.account_read_failed_refused": undefined;
 	"ui.settings.profile.account_read_failed_retry": undefined;

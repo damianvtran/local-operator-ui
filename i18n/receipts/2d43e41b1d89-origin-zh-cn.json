@@ -1,0 +1,81 @@
+{
+  "schema": 1,
+  "auditor": "i18n-auditor (lopdev team; session 2d43e41b1d89; independent zh-CN linguistic auditor, not the translator)",
+  "agent": "i18n-auditor (lopdev team; session 2d43e41b1d89; independent zh-CN linguistic auditor, not the translator)",
+  "model": "anthropic/claude-sonnet-5-5",
+  "model_provenance": "Model as shown in this session's runtime header (anthropic/claude-sonnet-5-5). No fallback used or claimed; no mid-session model switch observed. Not independently verified beyond the runtime header.",
+  "fallback": "none",
+  "session": "2d43e41b1d89",
+  "job_id": null,
+  "job_identity_note": "Delegated lopdev i18n-auditor task; no separate background job id was supplied. The session id identifies this auditor.",
+  "role": "i18n-auditor / independent translation auditor",
+  "independence": "I did not author or edit this translation. I read the zh-CN style guide, the glossary (prompt row only; it has no starter/template/built-in/packaged entry), the English source with its context sidecar, the committed zh-CN target, and the neighbouring zh-CN keys for terminology (ui.agents.starters.*, ui.agents.detail.alert.builtin_*, origin.changed, install_builtin, section.instructions).",
+  "locale": "zh-CN",
+  "branch": "fix/agent-transport-copy",
+  "head": "30bdd7aedbce47dc0c0c1506103368e8225fb839",
+  "audited_at_commit": "82ad0474cf93ead782300311a5b42e8f6f77d276",
+  "audited_commit_note": "Audited as committed at 82ad0474cf9. At 30bdd7aedbc the English source, sidecar and zh-CN target hashes were re-derived from `git show 30bdd7aedbc:<path>` and are byte-identical to the audited ones (only the es file changed in between).",
+  "pr": "damianvtran/local-operator-ui#1594",
+  "date": "2026-11-02",
+  "status": "passed",
+  "instance": "2d43e41b1d89-origin-zh-cn",
+  "namespace": "ui.agents.detail.origin",
+  "result": "clean-with-findings",
+  "source_sha256": "bbb0eeac68c5ccd14988bffab2502698cb14ff6871a0a2b2212dd779fd67efb4",
+  "context_sha256": "470e2004a28b867981fe7ae6bd55ce81bec490cab63553490548503ff181b8f5",
+  "target_sha256": "9466ded33c71a6dc71814482a1d3cb4242427aadbc14d7ad03bf2bc430bdd4d5",
+  "paths": {
+    "source": "src/i18n/catalogues/en/ui.agents.detail.origin.json",
+    "context": "src/i18n/catalogues/en/ui.agents.detail.origin.context.json",
+    "target": "src/i18n/catalogues/zh-CN/ui.agents.detail.origin.json"
+  },
+  "keys_read": 3,
+  "keys_in_file": 3,
+  "linguistic_scope_keys": [
+    "ui.agents.detail.origin.shipped_with_app",
+    "ui.agents.detail.origin.installed_starter",
+    "ui.agents.detail.origin.compare_packaged"
+  ],
+  "findings": [
+    {
+      "id": "A-1",
+      "severity": "minor",
+      "key": "ui.agents.detail.origin.installed_starter",
+      "text": "此智能体安装自应用内置的智能体。",
+      "note": "Tautological 'agent ... from ... agent' and 应用内置的智能体 can be misread as the current agent, blurring it against shipped_with_app. Suggest 此智能体安装自应用内置版本。 (reuses 内置版本 from origin.changed and install_builtin); fallback 此智能体由应用内置的智能体安装而来。 Wording is accurate and consistent with ui.agents.starters.* (内置智能体), so not a major."
+    },
+    {
+      "id": "A-2",
+      "severity": "minor",
+      "key": "ui.agents.detail.origin.compare_packaged",
+      "text": "与内置指令对比",
+      "note": "内置指令 can be misread as 'built-in commands' rather than the original built-in instructions. Suggest 与内置版本的指令对比. 指令 itself matches section.instructions and 内置 matches origin.changed; acceptable as is if length matters."
+    },
+    {
+      "id": "A-3",
+      "severity": "minor",
+      "key": "ui.agents.detail.origin.installed_starter",
+      "text": "此智能体安装自应用内置的智能体。",
+      "note": "Consistency record only, no change required: 安装自 aligns with install.action.install_to_edit (安装可编辑副本); adopting A-1 would also align with install_builtin (改为安装内置版本)."
+    },
+    {
+      "id": "A-4",
+      "severity": "nit",
+      "key": "ui.agents.detail.origin.installed_starter",
+      "text": "此智能体安装自应用内置的智能体。",
+      "note": "English qualifier 'packaged' is carried by 内置 rather than rendered separately; nothing lost, not worth a change."
+    }
+  ],
+  "starter_term_decision": {
+    "chosen": "Reuses the built-in-agent wording (应用内置的智能体); no template noun, no loanword.",
+    "existing_catalogue_wording": "ui.agents.starters.json has no word for 'starter' and uses 内置智能体 (action.all_builtins 安装所有内置智能体; available 有{count}个内置智能体可用; progress.accessible 正在安装内置智能体...). Elsewhere: install_builtin 改为安装内置版本, origin.changed 与内置版本不同, alert.builtin_title 内置智能体.",
+    "defensible": "Yes. It matches the existing catalogue and the sidecar instruction to stay consistent with the starters catalogue; a new 模板/入门 term would contradict it."
+  },
+  "scope": "WHOLE-NAMESPACE LINGUISTIC AUDIT of the three keys of ui.agents.detail.origin (shipped_with_app, installed_starter, compare_packaged); key set equals English (3 of 3, no adds or drops), valid JSON, no placeholders or plural arms, only full-width 。 on the two sentences and none on the label. This clears the catalogue linguistically, NOT rendered layout: no rendered frame was inspected and wrapping in the narrow detail pane or fit on the collapsed disclosure row is not cleared.",
+  "verified": [
+    "shipped_with_app and installed_starter remain distinguishable: 随应用提供 (comes with the app) versus 安装自 (installed from); the weakness is the object phrase in installed_starter, recorded as A-1.",
+    "shipped_with_app is word-for-word the opening of ui.agents.detail.alert.builtin_body and ui.agents.refusals.class.install_disclosure, so the reuse is consistent.",
+    "Source, context and target hashes re-derived from `git show 30bdd7aedbc:<path> | shasum -a 256` and equal the values reported at 82ad0474cf9.",
+    "I did not run the repo validators (ledger-check, context-parity) for the audit itself; the mechanical checks were my own scripted checks on the committed bytes. deriveReceiptAudit was run on this receipt afterwards."
+  ]
+}

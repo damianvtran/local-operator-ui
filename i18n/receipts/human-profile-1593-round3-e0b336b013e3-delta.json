@@ -1,0 +1,477 @@
+{
+ "schema": "independent-scoped-localization-delta-addendum",
+ "date": "2026-11-02",
+ "reviewer": {
+  "agent": "reviewer (lopdev team, independent)",
+  "instance": "e0b336b013e3",
+  "model": "anthropic/claude-opus-5-5",
+  "independent_of_implementer": true,
+  "independent_of_prior_auditor": "394f46fcc3fc"
+ },
+ "pr": "https://github.com/damianvtran/local-operator-ui/pull/1593",
+ "base_reviewed_commit": "49c3661b2efa86d68dbff2f9a5edec9178a870f2",
+ "reviewed_commit": "bb4949bbc17635acae82f5564ca19bd81753b500",
+ "working_tree_only": false,
+ "prior_receipts": {
+  "/Users/damian/.local-operator/sessions/394f46fcc3fc/scratchpad/ui1593-personal-profile-localization-audit.json": "659edeb2d60fcd278e750016c16c87e43ea12beb36b603a4c3105a9bec61611f",
+  "/Users/damian/.local-operator/sessions/394f46fcc3fc/scratchpad/ui1593-localization-remediation-addendum.json": "a3a18c6e5b4c92146348f9aaabd1eecda4db907c2661e8988708aef9f5dea0b0"
+ },
+ "scope": "Only the delta 49c3661b..bb4949bb in ui.settings: added field_too_long, description_lines; changed photo_help, photo_invalid (+ their en contexts); removed validation (+ context). en plus es, fr, hi, ru, ur, vi, zh-CN. All other keys proven byte-equal to 49c3661b.",
+ "context_path": "src/i18n/catalogues/en/ui.settings.context.json",
+ "context_sha256": "da92091b294d2ba6ec0159f066aca48bd0a2a18cd07cf968c93c60c49b792108",
+ "context_changed_keys": [
+  "ui.settings.personal_profile.description_lines",
+  "ui.settings.personal_profile.field_too_long",
+  "ui.settings.personal_profile.photo_help",
+  "ui.settings.personal_profile.photo_invalid",
+  "ui.settings.personal_profile.validation"
+ ],
+ "context_verdict": "clean: notes state the fixed limits, the {count} meaning (code points per field; line limit 8), and placement; photo_help/photo_invalid split matches the en strings.",
+ "glossary_path": "~/local-operator/i18n/glossary.md",
+ "glossary_sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+ "locales": [
+  {
+   "locale": "en",
+   "namespace": "ui.settings",
+   "source_sha256": "f52439681d9fe05f1ecdfa8145814ee62ef89888ec33bc4a2f87be1bd7ba9c20",
+   "target_sha256": "f52439681d9fe05f1ecdfa8145814ee62ef89888ec33bc4a2f87be1bd7ba9c20",
+   "context_sha256": "da92091b294d2ba6ec0159f066aca48bd0a2a18cd07cf968c93c60c49b792108",
+   "style_guide_path": "~/local-operator/i18n/style-guides/en.md",
+   "style_guide_sha256": "c967c91037be79a7b184b3288b8c0326a261e4adae95b7db06d83e96f8ea6ec7",
+   "scope_keys": [
+    "ui.settings.personal_profile.field_too_long",
+    "ui.settings.personal_profile.description_lines",
+    "ui.settings.personal_profile.photo_help",
+    "ui.settings.personal_profile.photo_invalid"
+   ],
+   "added_keys": [
+    "ui.settings.personal_profile.field_too_long",
+    "ui.settings.personal_profile.description_lines"
+   ],
+   "changed_target_keys": [
+    "ui.settings.personal_profile.photo_help",
+    "ui.settings.personal_profile.photo_invalid"
+   ],
+   "removed_keys": [
+    "ui.settings.personal_profile.validation"
+   ],
+   "unchanged_non_scope_keys_equal_to_base": true,
+   "unchanged_non_scope_key_count": 83,
+   "checks": {
+    "placeholders_match_en": true,
+    "icu_plural": "none used; bare {count} with fixed limits 8/64/80/500 — rendered noun forms verified correct for each in this locale",
+    "nfc": true,
+    "bidi_or_format_controls": "none",
+    "latin_digits": true
+   },
+   "current_scoped_result": "clean-with-findings",
+   "current_findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 1
+   },
+   "findings": [
+    {
+     "id": "L3-1",
+     "severity": "nit",
+     "key_list": [
+      "ui.settings.personal_profile.field_too_long",
+      "ui.settings.personal_profile.description_lines"
+     ],
+     "note": "Counted nouns with a bare {count} instead of ICU plural. Correct for the current fixed values in every locale; would mis-agree (e.g. ru 21 -> символа) if a limit changed. Not gating."
+    }
+   ],
+   "historical_findings": [],
+   "dispositions": []
+  },
+  {
+   "locale": "es",
+   "namespace": "ui.settings",
+   "source_sha256": "f52439681d9fe05f1ecdfa8145814ee62ef89888ec33bc4a2f87be1bd7ba9c20",
+   "target_sha256": "8b167d0ca69e5a8ba4716191c8d1a8af814c71a566b1021a27b9c05af53da1e1",
+   "context_sha256": "da92091b294d2ba6ec0159f066aca48bd0a2a18cd07cf968c93c60c49b792108",
+   "style_guide_path": "~/local-operator/i18n/style-guides/es.md",
+   "style_guide_sha256": "77b9227213802d14c74d4298d6b346ad842bbf2a5ca3b9d46fc6144430d26c3e",
+   "scope_keys": [
+    "ui.settings.personal_profile.field_too_long",
+    "ui.settings.personal_profile.description_lines",
+    "ui.settings.personal_profile.photo_help",
+    "ui.settings.personal_profile.photo_invalid"
+   ],
+   "added_keys": [
+    "ui.settings.personal_profile.field_too_long",
+    "ui.settings.personal_profile.description_lines"
+   ],
+   "changed_target_keys": [
+    "ui.settings.personal_profile.photo_help",
+    "ui.settings.personal_profile.photo_invalid"
+   ],
+   "removed_keys": [
+    "ui.settings.personal_profile.validation"
+   ],
+   "unchanged_non_scope_keys_equal_to_base": true,
+   "unchanged_non_scope_key_count": 83,
+   "checks": {
+    "placeholders_match_en": true,
+    "icu_plural": "none used; bare {count} with fixed limits 8/64/80/500 — rendered noun forms verified correct for each in this locale",
+    "nfc": true,
+    "bidi_or_format_controls": "none",
+    "latin_digits": true
+   },
+   "current_scoped_result": "clean-with-findings",
+   "current_findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 1
+   },
+   "findings": [
+    {
+     "id": "L3-1",
+     "severity": "nit",
+     "key_list": [
+      "ui.settings.personal_profile.field_too_long",
+      "ui.settings.personal_profile.description_lines"
+     ],
+     "note": "Counted nouns with a bare {count} instead of ICU plural. Correct for the current fixed values in every locale; would mis-agree (e.g. ru 21 -> символа) if a limit changed. Not gating."
+    }
+   ],
+   "historical_findings": [],
+   "dispositions": []
+  },
+  {
+   "locale": "fr",
+   "namespace": "ui.settings",
+   "source_sha256": "f52439681d9fe05f1ecdfa8145814ee62ef89888ec33bc4a2f87be1bd7ba9c20",
+   "target_sha256": "21c7d9e1f04c1029a9053efcf0e9fed6dd0ecd2bf00e821cb3de42492e28bc22",
+   "context_sha256": "da92091b294d2ba6ec0159f066aca48bd0a2a18cd07cf968c93c60c49b792108",
+   "style_guide_path": "~/local-operator/i18n/style-guides/fr.md",
+   "style_guide_sha256": "ae1519ab7617d19aa826918d607de1d018595094166edbc18aa58f6a8f0a4226",
+   "scope_keys": [
+    "ui.settings.personal_profile.field_too_long",
+    "ui.settings.personal_profile.description_lines",
+    "ui.settings.personal_profile.photo_help",
+    "ui.settings.personal_profile.photo_invalid"
+   ],
+   "added_keys": [
+    "ui.settings.personal_profile.field_too_long",
+    "ui.settings.personal_profile.description_lines"
+   ],
+   "changed_target_keys": [
+    "ui.settings.personal_profile.photo_help",
+    "ui.settings.personal_profile.photo_invalid"
+   ],
+   "removed_keys": [
+    "ui.settings.personal_profile.validation"
+   ],
+   "unchanged_non_scope_keys_equal_to_base": true,
+   "unchanged_non_scope_key_count": 83,
+   "checks": {
+    "placeholders_match_en": true,
+    "icu_plural": "none used; bare {count} with fixed limits 8/64/80/500 — rendered noun forms verified correct for each in this locale",
+    "nfc": true,
+    "bidi_or_format_controls": "none",
+    "latin_digits": true
+   },
+   "current_scoped_result": "clean-with-findings",
+   "current_findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 1
+   },
+   "findings": [
+    {
+     "id": "L3-1",
+     "severity": "nit",
+     "key_list": [
+      "ui.settings.personal_profile.field_too_long",
+      "ui.settings.personal_profile.description_lines"
+     ],
+     "note": "Counted nouns with a bare {count} instead of ICU plural. Correct for the current fixed values in every locale; would mis-agree (e.g. ru 21 -> символа) if a limit changed. Not gating."
+    }
+   ],
+   "historical_findings": [],
+   "dispositions": []
+  },
+  {
+   "locale": "hi",
+   "namespace": "ui.settings",
+   "source_sha256": "f52439681d9fe05f1ecdfa8145814ee62ef89888ec33bc4a2f87be1bd7ba9c20",
+   "target_sha256": "f9d184caabaaaa1d0a455512a161392bf089ce72b6f6e092b3b5fc6df920a286",
+   "context_sha256": "da92091b294d2ba6ec0159f066aca48bd0a2a18cd07cf968c93c60c49b792108",
+   "style_guide_path": "~/local-operator/i18n/style-guides/hi.md",
+   "style_guide_sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5",
+   "scope_keys": [
+    "ui.settings.personal_profile.field_too_long",
+    "ui.settings.personal_profile.description_lines",
+    "ui.settings.personal_profile.photo_help",
+    "ui.settings.personal_profile.photo_invalid"
+   ],
+   "added_keys": [
+    "ui.settings.personal_profile.field_too_long",
+    "ui.settings.personal_profile.description_lines"
+   ],
+   "changed_target_keys": [
+    "ui.settings.personal_profile.photo_help",
+    "ui.settings.personal_profile.photo_invalid"
+   ],
+   "removed_keys": [
+    "ui.settings.personal_profile.validation"
+   ],
+   "unchanged_non_scope_keys_equal_to_base": true,
+   "unchanged_non_scope_key_count": 83,
+   "checks": {
+    "placeholders_match_en": true,
+    "icu_plural": "none used; bare {count} with fixed limits 8/64/80/500 — rendered noun forms verified correct for each in this locale",
+    "nfc": true,
+    "bidi_or_format_controls": "none",
+    "latin_digits": true
+   },
+   "current_scoped_result": "clean-with-findings",
+   "current_findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 1
+   },
+   "findings": [
+    {
+     "id": "L3-1",
+     "severity": "nit",
+     "key_list": [
+      "ui.settings.personal_profile.field_too_long",
+      "ui.settings.personal_profile.description_lines"
+     ],
+     "note": "Counted nouns with a bare {count} instead of ICU plural. Correct for the current fixed values in every locale; would mis-agree (e.g. ru 21 -> символа) if a limit changed. Not gating."
+    }
+   ],
+   "historical_findings": [],
+   "dispositions": []
+  },
+  {
+   "locale": "ru",
+   "namespace": "ui.settings",
+   "source_sha256": "f52439681d9fe05f1ecdfa8145814ee62ef89888ec33bc4a2f87be1bd7ba9c20",
+   "target_sha256": "13ea173dededec64fa9a5d6128164cc4474891cde786bcd65cd971f5ac777a5e",
+   "context_sha256": "da92091b294d2ba6ec0159f066aca48bd0a2a18cd07cf968c93c60c49b792108",
+   "style_guide_path": "~/local-operator/i18n/style-guides/ru.md",
+   "style_guide_sha256": "f20e1cafaf70578c17ce072c71725628808d228e4be5604329f8da30386f1fb5",
+   "scope_keys": [
+    "ui.settings.personal_profile.field_too_long",
+    "ui.settings.personal_profile.description_lines",
+    "ui.settings.personal_profile.photo_help",
+    "ui.settings.personal_profile.photo_invalid"
+   ],
+   "added_keys": [
+    "ui.settings.personal_profile.field_too_long",
+    "ui.settings.personal_profile.description_lines"
+   ],
+   "changed_target_keys": [
+    "ui.settings.personal_profile.photo_help",
+    "ui.settings.personal_profile.photo_invalid"
+   ],
+   "removed_keys": [
+    "ui.settings.personal_profile.validation"
+   ],
+   "unchanged_non_scope_keys_equal_to_base": true,
+   "unchanged_non_scope_key_count": 83,
+   "checks": {
+    "placeholders_match_en": true,
+    "icu_plural": "none used; bare {count} with fixed limits 8/64/80/500 — rendered noun forms verified correct for each in this locale",
+    "nfc": true,
+    "bidi_or_format_controls": "none",
+    "latin_digits": true
+   },
+   "current_scoped_result": "clean-with-findings",
+   "current_findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 1
+   },
+   "findings": [
+    {
+     "id": "L3-1",
+     "severity": "nit",
+     "key_list": [
+      "ui.settings.personal_profile.field_too_long",
+      "ui.settings.personal_profile.description_lines"
+     ],
+     "note": "Counted nouns with a bare {count} instead of ICU plural. Correct for the current fixed values in every locale; would mis-agree (e.g. ru 21 -> символа) if a limit changed. Not gating."
+    }
+   ],
+   "historical_findings": [],
+   "dispositions": []
+  },
+  {
+   "locale": "ur",
+   "namespace": "ui.settings",
+   "source_sha256": "f52439681d9fe05f1ecdfa8145814ee62ef89888ec33bc4a2f87be1bd7ba9c20",
+   "target_sha256": "cc6c667805ee49bd7b7feea4ef28c4b3843203afb955803eecb914410bde725f",
+   "context_sha256": "da92091b294d2ba6ec0159f066aca48bd0a2a18cd07cf968c93c60c49b792108",
+   "style_guide_path": "~/local-operator/i18n/style-guides/ur.md",
+   "style_guide_sha256": "c0eecf7f7b5e89956b7de9ab7a9eb647ff1a7ef701ccf2a7f0264d5eea15ca60",
+   "scope_keys": [
+    "ui.settings.personal_profile.field_too_long",
+    "ui.settings.personal_profile.description_lines",
+    "ui.settings.personal_profile.photo_help",
+    "ui.settings.personal_profile.photo_invalid"
+   ],
+   "added_keys": [
+    "ui.settings.personal_profile.field_too_long",
+    "ui.settings.personal_profile.description_lines"
+   ],
+   "changed_target_keys": [
+    "ui.settings.personal_profile.photo_help",
+    "ui.settings.personal_profile.photo_invalid"
+   ],
+   "removed_keys": [
+    "ui.settings.personal_profile.validation"
+   ],
+   "unchanged_non_scope_keys_equal_to_base": true,
+   "unchanged_non_scope_key_count": 83,
+   "checks": {
+    "placeholders_match_en": true,
+    "icu_plural": "none used; bare {count} with fixed limits 8/64/80/500 — rendered noun forms verified correct for each in this locale",
+    "nfc": true,
+    "bidi_or_format_controls": "none",
+    "latin_digits": true
+   },
+   "current_scoped_result": "clean-with-findings",
+   "current_findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 1
+   },
+   "findings": [
+    {
+     "id": "L3-1",
+     "severity": "nit",
+     "key_list": [
+      "ui.settings.personal_profile.field_too_long",
+      "ui.settings.personal_profile.description_lines"
+     ],
+     "note": "Counted nouns with a bare {count} instead of ICU plural. Correct for the current fixed values in every locale; would mis-agree (e.g. ru 21 -> символа) if a limit changed. Not gating."
+    }
+   ],
+   "historical_findings": [],
+   "dispositions": []
+  },
+  {
+   "locale": "vi",
+   "namespace": "ui.settings",
+   "source_sha256": "f52439681d9fe05f1ecdfa8145814ee62ef89888ec33bc4a2f87be1bd7ba9c20",
+   "target_sha256": "0ef5f113dc2ee1b1c104f682c81671e744e4a2dca264417f0000843776347052",
+   "context_sha256": "da92091b294d2ba6ec0159f066aca48bd0a2a18cd07cf968c93c60c49b792108",
+   "style_guide_path": "~/local-operator/i18n/style-guides/vi.md",
+   "style_guide_sha256": "e4901497ed553e2b2ae4a2660bf776adb787b89e11d7eb0f8d08f3da4b227888",
+   "scope_keys": [
+    "ui.settings.personal_profile.field_too_long",
+    "ui.settings.personal_profile.description_lines",
+    "ui.settings.personal_profile.photo_help",
+    "ui.settings.personal_profile.photo_invalid"
+   ],
+   "added_keys": [
+    "ui.settings.personal_profile.field_too_long",
+    "ui.settings.personal_profile.description_lines"
+   ],
+   "changed_target_keys": [
+    "ui.settings.personal_profile.photo_help",
+    "ui.settings.personal_profile.photo_invalid"
+   ],
+   "removed_keys": [
+    "ui.settings.personal_profile.validation"
+   ],
+   "unchanged_non_scope_keys_equal_to_base": true,
+   "unchanged_non_scope_key_count": 83,
+   "checks": {
+    "placeholders_match_en": true,
+    "icu_plural": "none used; bare {count} with fixed limits 8/64/80/500 — rendered noun forms verified correct for each in this locale",
+    "nfc": true,
+    "bidi_or_format_controls": "none",
+    "latin_digits": true
+   },
+   "current_scoped_result": "clean-with-findings",
+   "current_findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 1
+   },
+   "findings": [
+    {
+     "id": "L3-1",
+     "severity": "nit",
+     "key_list": [
+      "ui.settings.personal_profile.field_too_long",
+      "ui.settings.personal_profile.description_lines"
+     ],
+     "note": "Counted nouns with a bare {count} instead of ICU plural. Correct for the current fixed values in every locale; would mis-agree (e.g. ru 21 -> символа) if a limit changed. Not gating."
+    }
+   ],
+   "historical_findings": [],
+   "dispositions": []
+  },
+  {
+   "locale": "zh-CN",
+   "namespace": "ui.settings",
+   "source_sha256": "f52439681d9fe05f1ecdfa8145814ee62ef89888ec33bc4a2f87be1bd7ba9c20",
+   "target_sha256": "c62f7c7f1f639e5f906beb6ba06a38ef85aa08d11d1094ca951fefe6f13f169d",
+   "context_sha256": "da92091b294d2ba6ec0159f066aca48bd0a2a18cd07cf968c93c60c49b792108",
+   "style_guide_path": "~/local-operator/i18n/style-guides/zh-CN.md",
+   "style_guide_sha256": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c",
+   "scope_keys": [
+    "ui.settings.personal_profile.field_too_long",
+    "ui.settings.personal_profile.description_lines",
+    "ui.settings.personal_profile.photo_help",
+    "ui.settings.personal_profile.photo_invalid"
+   ],
+   "added_keys": [
+    "ui.settings.personal_profile.field_too_long",
+    "ui.settings.personal_profile.description_lines"
+   ],
+   "changed_target_keys": [
+    "ui.settings.personal_profile.photo_help",
+    "ui.settings.personal_profile.photo_invalid"
+   ],
+   "removed_keys": [
+    "ui.settings.personal_profile.validation"
+   ],
+   "unchanged_non_scope_keys_equal_to_base": true,
+   "unchanged_non_scope_key_count": 83,
+   "checks": {
+    "placeholders_match_en": true,
+    "icu_plural": "none used; bare {count} with fixed limits 8/64/80/500 — rendered noun forms verified correct for each in this locale",
+    "nfc": true,
+    "bidi_or_format_controls": "none",
+    "latin_digits": true
+   },
+   "current_scoped_result": "clean-with-findings",
+   "current_findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 1
+   },
+   "findings": [
+    {
+     "id": "L3-1",
+     "severity": "nit",
+     "key_list": [
+      "ui.settings.personal_profile.field_too_long",
+      "ui.settings.personal_profile.description_lines"
+     ],
+     "note": "Counted nouns with a bare {count} instead of ICU plural. Correct for the current fixed values in every locale; would mis-agree (e.g. ru 21 -> символа) if a limit changed. Not gating."
+    }
+   ],
+   "historical_findings": [],
+   "dispositions": []
+  }
+ ],
+ "call_site_check": "account-profile-editor.tsx passes count as String(DESCRIPTION_LINES)=8 and String(FIELD_LIMITS[field]) in {64,80,500}; keys.gen.ts types count: string; no remaining t() of personal_profile.validation in src.",
+ "limits": "Source/JSON/hash/diff audit plus stdlib NFC/control-char/placeholder checks. No rendering, RTL layout, width/clipping or pseudo-localization proof. Does not update i18n/ledger.json or tracked receipts; prior tracked receipts still list the removed key and need integration.",
+ "verdict": "clean-with-findings (0 blocker, 0 major, 0 minor, 1 nit per locale) — TERMINAL for this localization delta."
+}

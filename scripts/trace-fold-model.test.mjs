@@ -26,6 +26,7 @@ const bundle = await build({
 		contents: [
 			'export * from "./src/renderer/src/features/chat/canonical/trace-fold-model";',
 			'export { isInternalReceipt, receiptFamilyOf } from "./src/renderer/src/features/chat/components/trace/receipt-row-model";',
+			'export { bridgeReceiptOf } from "./src/renderer/src/features/chat/components/trace/bridge-receipt-model";',
 		].join("\n"),
 		resolveDir: ROOT,
 	},
@@ -62,6 +63,7 @@ const {
 	foldSummaryUnits,
 	isInternalReceipt,
 	receiptFamilyOf,
+	bridgeReceiptOf,
 	receiptFoldUnits,
 	turnFeet,
 } = await import(moduleUrl);
@@ -560,6 +562,7 @@ test("internal receipt classification is structural, and stays narrow", () => {
 		{ kind: "peer" },
 		{ kind: "wake" },
 		{ kind: "custom", customType: "hub_message" },
+		{ kind: "custom", customType: "team_bridge_message" },
 		{ kind: "custom", customType: "job_result" },
 		{ kind: "custom", customType: "monitor_prompt" },
 	]) {
@@ -1613,5 +1616,44 @@ test("bridge rows join a tool group and a bridge+send run condenses", () => {
 			["kind:send", 1],
 			["kind:bridge", 1],
 		],
+	);
+});
+
+test("Bridge receipt metadata never turns a model envelope or alleged admission into a body", () => {
+	const legacy = bridgeReceiptOf({
+		sender: { name: "Example member" },
+		text: "from Root (human)\nBody: do not display",
+	});
+	assert.equal(legacy.sender.name, "Example member");
+	assert.equal(legacy.sender.kind, undefined);
+	assert.equal(legacy.conversation.kind, undefined);
+	assert.equal(legacy.attachmentCount, undefined);
+	const current = bridgeReceiptOf({
+		bridge_receipt: {
+			v: 1,
+			sender: { name: "Example agent", kind: "agent" },
+			conversation: { kind: "dm", label: "Project notes" },
+			attachment_count: 2,
+			admission: { state: "admitted" },
+			body: "Private alleged body",
+			images: [{ attachment: "fake" }],
+		},
+	});
+	assert.equal(current.sender.kind, "agent");
+	assert.equal(current.conversation.kind, "dm");
+	assert.equal(current.attachmentCount, 2);
+	assert.equal("body" in current, false);
+	assert.equal("images" in current, false);
+	for (const count of [-1, 1.5, "2", Number.POSITIVE_INFINITY])
+		assert.equal(
+			bridgeReceiptOf({ bridge_receipt: { v: 1, attachment_count: count } })
+				.attachmentCount,
+			undefined,
+		);
+	assert.equal(
+		bridgeReceiptOf({
+			bridge_receipt: { v: 2, sender: { name: "Future format" } },
+		}).sender.name,
+		"",
 	);
 });
