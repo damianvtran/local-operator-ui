@@ -854,8 +854,9 @@ async function shipped(siteOrigin) {
 		await fetch(`http://127.0.0.1:${state.port}/health`)
 	).json();
 	check(
-		"/health advertises hover beside press",
+		"/health advertises press_chord and hover beside press",
 		capabilities.capabilities.includes("hover") &&
+			capabilities.capabilities.includes("press_chord") &&
 			capabilities.capabilities.includes("press"),
 		JSON.stringify(capabilities.capabilities),
 	);

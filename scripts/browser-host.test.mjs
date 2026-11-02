@@ -7775,6 +7775,7 @@ test("/health carries the capabilities this build serves", async () => {
 		"download",
 		"upload",
 		"press",
+		"press_chord",
 		"hover",
 		"network_start",
 		"network_stop",
@@ -12262,10 +12263,18 @@ test("hover is in the wire vocabulary, advertised beside press, lane-scoped, and
 		"appended: no existing method's index moved",
 	);
 	assert.ok(HOST_CAPABILITIES.includes("hover"));
+	// The harness gates extended press on this exact token; `press` alone is true of
+	// every older desktop build, so it is not evidence of chord support.
 	assert.equal(
-		HOST_CAPABILITIES.indexOf("hover"),
+		HOST_CAPABILITIES.indexOf("press_chord"),
 		HOST_CAPABILITIES.indexOf("press") + 1,
 	);
+	assert.equal(
+		HOST_CAPABILITIES.indexOf("hover"),
+		HOST_CAPABILITIES.indexOf("press_chord") + 1,
+	);
+	assert.ok(!METHODS.includes("press_chord"), "a token, not a wire method");
+	assert.ok(!isMethod("press_chord"));
 	assert.equal(COMMAND_TIMEOUTS_S.hover, 20);
 	// Behavioural proof of set membership, not a source grep: TAB_SCOPED puts it in
 	// the per-tab lane (a second concurrent command is refused as `busy`), and it
