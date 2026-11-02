@@ -43,6 +43,7 @@ import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { HOVER_PRESS_PAGE } from "./browser-hover-press-fixture.mjs";
+import { SELECT_FIXTURE } from "./browser-select-fixture.mjs";
 import { withMockKeychain } from "./chrome-keychain.mjs";
 import { withNotificationsOff } from "./notifications-off.mjs";
 import { withTelemetryOff } from "./telemetry-off.mjs";
@@ -332,7 +333,7 @@ function startSite() {
 			);
 			return;
 		}
-		res.end(HOVER_PRESS_PAGE);
+		res.end(HOVER_PRESS_PAGE.replace("</body>", `${SELECT_FIXTURE}</body>`));
 	});
 	return new Promise((resolve) => {
 		server.listen(0, "127.0.0.1", () =>
@@ -604,6 +605,7 @@ async function main() {
 		);
 		await approve(state, siteOrigin);
 		if (LADDER) await ladder(siteOrigin);
+		else if (process.argv.includes("--select")) await selectProof(siteOrigin);
 		else await shipped(siteOrigin);
 	} finally {
 		site.server.close();
@@ -909,6 +911,198 @@ async function shipped(siteOrigin) {
 		JSON.stringify(capabilities.capabilities),
 	);
 	say(`artifacts: ${OUT_DIR}`);
+}
+
+/** Same one isolated app as the hover proof. --select chooses this bounded matrix
+ * instead of duplicating the boot/consent/teardown rig or driving an OS popup. */
+async function selectProof(siteOrigin) {
+	const opened = await callOk(state, "open", {
+		url: `${siteOrigin}/selection`,
+		requester: "session:proof",
+	});
+	const tab = opened.tab;
+	const run = async (selector, options) => {
+		const out = await call(state, "select", { tab, selector, options });
+		show(`select ${selector} ${JSON.stringify(options)}`, out);
+		return out;
+	};
+	const page = async (expression) => {
+		const target = (await targets()).find((t) => t.url.includes("/selection"));
+		const sess = await openSocket(target);
+		try {
+			return (
+				await sess.send("Runtime.evaluate", { expression, returnByValue: true })
+			).result.value;
+		} finally {
+			sess.close();
+		}
+	};
+	const read = () => page("window.__selectReading()");
+	await page("document.getElementById('selection').scrollIntoView()");
+	const initial = await read();
+	show("before", initial);
+	check(
+		"negative control: native Alpha, multiple Alpha, controlled Alpha",
+		initial.native === "a" &&
+			initial.controlled === "a" &&
+			JSON.stringify(initial.multi) === '["a"]',
+	);
+	// A property-only write does not commit framework state; its next render reverts.
+	await page(
+		"document.getElementById('controlled').value='b';window.__renderControlled()",
+	);
+	check(
+		"negative control: value-only write reverts on framework render",
+		(await read()).controlled === "a",
+	);
+	const before = await callOk(state, "screenshot", { tab });
+	writeFileSync(
+		join(OUT_DIR, "select-before.png"),
+		Buffer.from(before.data, "base64"),
+	);
+	for (const [selector, options, values] of [
+		["#native", ["beta"], ["b"]],
+		["#native", [0], ["a"]],
+		["#multi", ["Beta", "c"], ["b", "c"]],
+		["#multi", [], []],
+		["#controlled", ["Beta"], ["b"]],
+	]) {
+		const out = await run(selector, options);
+		check(
+			`native selection ${selector} ${JSON.stringify(options)}`,
+			out.ok &&
+				out.result.verified === true &&
+				JSON.stringify(out.result.selected.map((o) => o.value)) ===
+					JSON.stringify(values),
+		);
+	}
+	const controlled = await read();
+	show("readback", controlled);
+	check(
+		"controlled selection survived node replacement and events committed state",
+		controlled.controlled === "b" &&
+			controlled.held === "b" &&
+			controlled.events.includes("controlled:change"),
+	);
+	for (const [selector, options, reason] of [
+		["#native", ["missing"], "option_not_found"],
+		["#native", ["Alpha", "Beta"], "single_select"],
+		["#disabled", [0], "disabled"],
+		["#native", [2], "disabled"],
+	]) {
+		const out = await run(selector, options);
+		check(
+			`refusal ${reason}`,
+			!out.ok &&
+				out.error.code === "element_not_found" &&
+				out.error.data.reason === reason,
+		);
+	}
+	const aria = await run("#combo", ["Blue"]);
+	check(
+		"ARIA option clicked and selected verified",
+		aria.ok &&
+			aria.result.kind === "aria" &&
+			aria.result.verified === true &&
+			aria.result.selected[0].label === "Blue",
+	);
+	const unknown = await run("#unknown", ["Option without state"]);
+	check(
+		"ARIA inconclusive selection is not falsely verified",
+		unknown.ok && unknown.result.verified === false,
+	);
+	const after = await callOk(state, "screenshot", { tab });
+	writeFileSync(
+		join(OUT_DIR, "select-after.png"),
+		Buffer.from(after.data, "base64"),
+	);
+	const caps = await (
+		await fetch(`http://127.0.0.1:${state.port}/health`)
+	).json();
+	check("select capability advertised", caps.capabilities.includes("select"));
+	const harness = process.env.SELECT_HARNESS_REPO;
+	if (!harness)
+		throw new Error(
+			"SELECT_HARNESS_REPO required: use existing harness select worktree/venv for real-path rendering",
+		);
+	const probe = async (token, selector, label) => {
+		const env = {
+			...process.env,
+			HOME: HOME_DIR,
+			LOCAL_OPERATOR_CONFIG_DIR: CONFIG_DIR,
+			LOCAL_OPERATOR_NO_NOTIFICATIONS: "1",
+			LOCAL_OPERATOR_UI_TELEMETRY: "off",
+			PYTHONPATH: harness,
+		};
+		for (const key of Object.keys(env))
+			if (
+				key.startsWith("CMUX_") ||
+				key.startsWith("LOP_") ||
+				key === "XPC_FLAGS"
+			)
+				delete env[key];
+		return await new Promise((resolve) => {
+			const child = spawn(
+				join(harness, ".venv/bin/python"),
+				[
+					join(ROOT, "scripts/browser-select-harness-proof.py"),
+					CONFIG_DIR,
+					token,
+					selector,
+					label,
+				],
+				{ cwd: harness, env, stdio: ["ignore", "pipe", "pipe"] },
+			);
+			let output = "";
+			child.stdout.on("data", (b) => {
+				output += b;
+			});
+			child.stderr.on("data", (b) => {
+				output += b;
+			});
+			child.on("close", (code) => {
+				show("actual harness output", output);
+				resolve(code === 0);
+			});
+		});
+	};
+	check(
+		"actual harness select renderer → UiHostClient → live host",
+		await probe(tab, "#native", "Beta"),
+	);
+	// Public demo form, no authentication/credentials/submission. Approval uses the
+	// scratch app's consent IPC; isolated cookies/config, never the operator profile.
+	const realOrigin = "https://www.selenium.dev";
+	try {
+		await approve(state, realOrigin);
+		const real = await callOk(state, "open", {
+			url: `${realOrigin}/selenium/web/web-form.html`,
+			requester: "session:proof",
+		});
+		const recon = await callOk(state, "read", {
+			tab: real.tab,
+			selector: 'select[name="my-select"]',
+		});
+		show("third-party form recon", recon);
+		if (!(await probe(real.tab, 'select[name="my-select"]', "Two")))
+			throw new Error("harness selection failed");
+		const shot = await callOk(state, "screenshot", { tab: real.tab });
+		writeFileSync(
+			join(OUT_DIR, "select-third-party.png"),
+			Buffer.from(shot.data, "base64"),
+		);
+		check(
+			"third-party public native select: Two selected, no form submitted",
+			true,
+		);
+	} catch (error) {
+		say(`BLOCKED third-party form: ${error.message}`);
+	}
+	const listed = await callOk(state, "tabs", { requester: "session:proof" });
+	check(
+		"selection never activates agent tab",
+		listed.tabs.find((t) => t.tab === tab)?.active === false,
+	);
 }
 
 main()
