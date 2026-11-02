@@ -1,0 +1,77 @@
+{
+ "schema": 1,
+ "auditor": "i18n-auditor (lopdev reviewer-role session 8bb03406c9fd, delta audit of the two ui.chat.asks keys #1466 added; not the PR coder, not the translator 1d58a9985da6, not any previous auditor of this row)",
+ "agent": "i18n-auditor (lopdev reviewer-role session 8bb03406c9fd, delta audit of the two ui.chat.asks keys #1466 added; not the PR coder, not the translator 1d58a9985da6, not any previous auditor of this row)",
+ "model": "anthropic/claude-opus-5-5",
+ "model_provenance": "Every catalogue read and verdict in this receipt ran on anthropic/claude-opus-5-5 (session header of 8bb03406c9fd); no fallback occurred in this session.",
+ "fallback": "none",
+ "independence": "Separate session (8bb03406c9fd, team lopdev, reviewer role) from the translator of these keys (8f79f63fcb: coder session 1d58a9985da6, anthropic/claude-opus-5-5) and from every earlier auditor of this row. SAME-FAMILY, NOT model-independent: translator and auditor both ran anthropic/claude-opus-5-5; agent-instance independent. Verdicts rebuilt from the English source and context, core relay.asks.status.* in this locale, the namespace's keyed siblings, the core glossary and the locale style guide; the translator's commit message was not used as evidence.",
+ "instance": "8bb03406c9fd-1466-r2-es",
+ "session": "8bb03406c9fd",
+ "locale": "es",
+ "branch": "fix/notifications-ask-optimistic",
+ "head": "0944e1b5eb9399aa574e2b5927a9f192fd388121",
+ "pr": "damianvtran/local-operator-ui#1466",
+ "date": "2026-10-28",
+ "status": "passed",
+ "scope": "ui.chat.asks: round-2 re-audit of the 2 withdrawn keys at 0944e1b5eb after remediation of I-2; diff 5b8fd24ce9..0944e1b5eb changes only these key values in es/fr/hi plus the test expectation; the other 26 keys are unchanged.",
+ "inputs_sha256": {
+  "en_context (ui.chat.asks.context.json)": "e1d26bb6356b2ead4b2825ec23cd7496674049494478b1a085182ae4bae98da1",
+  "glossary (local-operator/i18n/glossary.md @ 9495f8a6c3)": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+  "style guide (local-operator/i18n/style-guides/es.md @ 9495f8a6c3)": "654661145add9037429af16f6799953c03e21fbad176e697c3890eb00d861b39",
+  "core relay.asks (local_operator/i18n/catalogues/es/relay.asks.json @ 9495f8a6c3)": "6eb2dadfd4c0d9198641caaedb08992cec5491e64f2e3c08a84e02b78336f93c"
+ },
+ "verified": [
+  "key set equals en (28 keys); neither key has placeholders (en has none); values carry no bidi/zero-width/BOM characters, no edge or double spaces; NFC",
+  "carried keys byte-identical: the 26 pre-existing values equal the 96cf90fc7a file, whose sha256 is the existing ledger row's target_sha256; en ui.chat.asks likewise only adds these 2 keys",
+  "I-2 remediated exactly as recommended in round 1: Retirada — el agente ya no necesita respuesta / Retirada",
+  "withdrawn_label is the sentence's leading clause; meaning unchanged (the agent withdrew its own question)",
+  "meaning: the agent (asker) withdrew its own question and no longer needs an answer; the agent is the subject or beneficiary, not the user; not confusable with declined/dismissed/timed out in this locale",
+  "render path: ask-queue.ts ASK_STATUS_COPY.withdrawn getter -> t(status.withdrawn) (full sentence, settled card); askStatusWord('withdrawn') -> t(status.withdrawn_label) (compact badge); no English delimiter split applied to localized copy",
+  "anchors: core relay.asks.status.* (Respondido/Rechazado/Descartado/Retirado — el agente …); this namespace's ask noun is feminine «consulta» and its keyed siblings agree with it: dismiss.receipt.* «Descartada — …», settled_heading «Atendidas»; ui.browser…withdrawn_by_the_agent «Retirada por el agente»",
+  "The sentence now deliberately differs from core relay.asks.status.withdrawn in gender agreement only, matching this namespace's feminine ask noun; core's masculine impersonal form remains correct in core"
+ ],
+ "namespaces": {
+  "ui.chat.asks": {
+   "namespace": "ui.chat.asks",
+   "status": "passed",
+   "result": "clean",
+   "keys_read": 28,
+   "delta_keys_audited": [
+    "ui.chat.asks.status.withdrawn",
+    "ui.chat.asks.status.withdrawn_label"
+   ],
+   "values": {
+    "ui.chat.asks.status.withdrawn": {
+     "en": "Withdrawn — the agent no longer needs an answer",
+     "round 1 (8f79f63fcb)": "Retirado — el agente ya no necesita respuesta",
+     "remediated (0944e1b5eb)": "Retirada — el agente ya no necesita respuesta",
+     "changed_by_auditor": false
+    },
+    "ui.chat.asks.status.withdrawn_label": {
+     "en": "Withdrawn",
+     "round 1 (8f79f63fcb)": "Retirado",
+     "remediated (0944e1b5eb)": "Retirada",
+     "changed_by_auditor": false
+    }
+   },
+   "sha256": {
+    "es": "b5867c678c7540ead654177adf2fcf2516b12b017691f126dd046dfc0c782f02",
+    "en": "4b81cb96606b6bc647c5d3020b64346c5a3f48d757b8b2990ec47ec42c33c5ee"
+   },
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.chat.asks.json",
+    "target": "src/i18n/catalogues/es/ui.chat.asks.json",
+    "context": "src/i18n/catalogues/en/ui.chat.asks.context.json"
+   },
+   "findings": [
+    {
+     "severity": "INFO",
+     "key": "ui.chat.asks.status.withdrawn",
+     "summary": "Round-1 I-2 resolved in 0944e1b5eb with the recommended wording; no open findings."
+    }
+   ]
+  }
+ },
+ "supersedes": "i18n/receipts/8bb03406c9fd-1466-es.json (round 1, I-2 raised)"
+}

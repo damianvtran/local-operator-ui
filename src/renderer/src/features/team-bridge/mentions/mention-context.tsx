@@ -15,6 +15,9 @@ import type { MentionCandidateRow } from "./candidates";
 export type MentionSource = {
 	/** The hub conversation a send from here lands in (the outbox key). */
 	conversationId: string;
+	/** Draft ownership is independent of directory labels/reader highlighting.
+	 * Unresolved ownership must not read or persist a mention sidecar. */
+	draftOwner?: { accountId: string; tenantId: string } | null;
 	candidates: readonly MentionCandidateRow[];
 	/** The open conversation's kind; null while composing a new message. */
 	conversationKind: "dm" | "group" | "channel" | null;

@@ -20,5 +20,8 @@
 	"ui.chat.sidebar_view.section.week": "This week",
 	"ui.chat.sidebar_view.section.older": "Older",
 	"ui.chat.sidebar_view.section.agents": "Agents",
-	"ui.chat.sidebar_view.section.teams": "Teams"
+	"ui.chat.sidebar_view.section.teams": "Teams",
+	"ui.chat.sidebar_view.relative_short": "{unit, select, now {now} minute {{count, number, ::group-off}m} hour {{count, number, ::group-off}h} day {{count, number, ::group-off}d} week {{count, number, ::group-off}w} year {{count, number, ::group-off}y} other {now}}",
+	"ui.chat.sidebar_view.relative_created": "{unit, select, now {created just now} minute {{count, plural, one {created # minute ago} other {created # minutes ago}}} hour {{count, plural, one {created # hour ago} other {created # hours ago}}} day {{count, plural, one {created # day ago} other {created # days ago}}} week {{count, plural, one {created # week ago} other {created # weeks ago}}} year {{count, plural, one {created # year ago} other {created # years ago}}} other {created just now}}",
+	"ui.chat.sidebar_view.relative_active": "{unit, select, now {last active just now} minute {{count, plural, one {last active # minute ago} other {last active # minutes ago}}} hour {{count, plural, one {last active # hour ago} other {last active # hours ago}}} day {{count, plural, one {last active # day ago} other {last active # days ago}}} week {{count, plural, one {last active # week ago} other {last active # weeks ago}}} year {{count, plural, one {last active # year ago} other {last active # years ago}}} other {last active just now}}"
 }

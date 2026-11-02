@@ -318,5 +318,6 @@
 	"ui.teamBridge.mentions.notice.invite": "आमंत्रित करें",
 	"ui.teamBridge.mentions.notice.silent": "सूचना दिए बिना उल्लेख करें",
 	"ui.teamBridge.mentions.notice.pending": "{name} को आमंत्रित किया गया है, लेकिन वे अभी शामिल नहीं हुए हैं, इसलिए उन्हें सूचना नहीं मिलेगी।",
-	"ui.teamBridge.mentions.notice.invited": "{name} को आमंत्रित कर दिया गया है। शामिल होने तक उन्हें सूचना नहीं मिलेगी।"
+	"ui.teamBridge.mentions.notice.invited": "{name} को आमंत्रित कर दिया गया है। शामिल होने तक उन्हें सूचना नहीं मिलेगी।",
+	"ui.teamBridge.replies.legacy_window": "यह सर्वर जवाबों को केवल पुराने से नए क्रम में दिखा सकता है। आगे देखने के लिए और लोड करें।"
 }

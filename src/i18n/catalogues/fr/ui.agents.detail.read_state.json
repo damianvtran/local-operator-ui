@@ -1,0 +1,16 @@
+{
+	"ui.agents.detail.read_state.failed_title": "Impossible de lire « {name} »",
+	"ui.agents.detail.read_state.not_found": "La session, le profil, l’équipe ou l’abonnement demandé est introuvable.",
+	"ui.agents.detail.read_state.failed_meaning": "La définition a peut-être été supprimée, ou le backend en a refusé la lecture.",
+	"ui.agents.detail.read_state.request_failed": "La requête n’a pas abouti.",
+	"ui.agents.detail.read_state.retry": "Réessayer",
+	"ui.agents.detail.read_state.retrying": "Nouvelle tentative…",
+	"ui.agents.detail.read_state.delegates": "Peut confier du travail à des sous-agents.",
+	"ui.agents.detail.read_state.no_delegation": "Effectue lui-même son travail, sans déléguer.",
+	"ui.agents.detail.read_state.class_description": "Les agents réactifs se contentent de répondre. Les agents proactifs peuvent aussi vous écrire en premier.",
+	"ui.agents.detail.read_state.used_by_description": "Les équipes qui désignent cet agent comme responsable ou membre.",
+	"ui.agents.detail.read_state.class_on": "Activé",
+	"ui.agents.detail.read_state.class_off": "Désactivé",
+	"ui.agents.detail.read_state.class_switching": "Changement en cours…",
+	"ui.agents.detail.read_state.effort_inherit": "Utiliser le niveau d’effort de la session"
+}

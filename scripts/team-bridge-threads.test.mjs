@@ -404,9 +404,22 @@ test("the shipped container reads and replies with the captured account", async 
 				),
 			);
 		});
-		await mod.act(async () => {
-			await new Promise((resolve) => setTimeout(resolve, 30));
-		});
+		// DESC-to-legacy negotiation takes another query/React notification turn.
+		// Wait for the rendered result rather than assuming one 30ms act settles
+		// every protocol path; a broken root render must still fail with its DOM.
+		const readinessDeadline = Date.now() + 2000;
+		while (
+			!document.body.textContent.includes("Root question") &&
+			Date.now() < readinessDeadline
+		) {
+			await mod.act(async () => {
+				await new Promise((resolve) => setTimeout(resolve, 10));
+			});
+		}
+		assert.ok(
+			document.body.textContent.includes("Root question"),
+			`Thread root did not render within 2000ms; actual DOM: ${document.body.textContent}`,
+		);
 		const replyCalls = calls.filter(([op]) => op === "listReplies");
 		assert.ok(replyCalls.length > 0, "the enabled pane reads its thread");
 		assert.equal(replyCalls[0][3].accountId, "acct_captured");

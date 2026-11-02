@@ -23,14 +23,11 @@ const chiefLabels = (): ChiefLabels => ({
  * Provides @-mentions for every composer under it (the channel composer and
  * the thread pane's), from the page's cached reads.
  *
- * Mounted only for an OPEN conversation: a new message has no members yet, so
- * every pick would be "not in this conversation" for a room that does not
- * exist. `conversation === null` therefore supplies a null source, keeping the
- * composer's pre-mention behaviour. The provider itself must remain mounted:
- * swapping a Fragment for a Provider when the first create answers remounts
- * the entire page beneath it, detaching the optimistic row during the thread
- * read even though the row key is stable. Account/tenant/draft reset keys stay
- * owned by the page; mention availability is not a subtree identity boundary.
+ * A new message has no members yet, so a null source keeps mentions unavailable
+ * until its conversation exists. Keep the provider mounted even then: changing
+ * a fragment into a provider remounts the whole page, including optimistic rows
+ * during the draft-to-conversation handoff. The page separately keys the boundary
+ * by account and tenant; privacy takes precedence over continuity across either.
  */
 export function TeamBridgeMentionProvider({
 	conversation,
@@ -90,6 +87,11 @@ export function TeamBridgeMentionProvider({
 			: undefined;
 		return {
 			conversationId: conversation.id,
+			// Ownership cannot depend on the directory having loaded a self row:
+			// the authenticated account and conversation tenant are the boundary.
+			draftOwner: selfAccountId
+				? { accountId: selfAccountId, tenantId: conversation.tenant_id }
+				: null,
 			self:
 				selfAccountId && selfRow
 					? { accountId: selfAccountId, label: personDisplayLabel(selfRow) }

@@ -478,7 +478,11 @@ export const SoundPlayer = ({
 				className={ICON_BUTTON_CLASS}
 				disabled={loading}
 				onClick={() => void toggle()}
-				aria-label={`${playing ? "Pause" : "Play"} ${label}`}
+				aria-label={
+					playing
+						? t("ui.chat.audio.pause_label", { label })
+						: t("ui.chat.audio.play_label", { label })
+				}
 			>
 				{loading ? (
 					<Spinner size="sm" />

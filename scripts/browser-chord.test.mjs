@@ -1,12 +1,38 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
-import { build, transform } from "esbuild";
+import { build, transform, transformSync } from "esbuild";
 
 const SHARED_MENU_OWNER = /ownsChrome,/;
 const GUARDED_CHROME_INPUT = /chords\.chromeInput\(event, input\)/;
 const BLUR_RESETS_SUPPRESSION_ONLY =
 	/window\.on\("blur", resetMenuShortcutSuppression\)/;
+const RAW_KEY_EVENT_DISPATCH = /Input\.dispatchKeyEvent/;
+const TYPE_ENTRY = /^async function type\(/m;
+const TYPE_INTO_ENTRY = /^async function typeInto\(/m;
+const PRESS_BODY = /^async function press\([^\n]*\) \{\n[\s\S]*?^\}/m;
+const TYPE_INTO_BODY = /^async function typeInto\([^\n]*\) \{\n[\s\S]*?^\}/m;
+
+function compiledInput(source) {
+	// esbuild parses TypeScript and emits canonical indentation: only the outer
+	// closing brace starts at column zero. This bounds the exception by function,
+	// not a following declaration, even when source braces/strings are reformatted.
+	return transformSync(source, { loader: "ts", format: "esm" }).code;
+}
+
+function assertTextTypingUsesNoRawKeyEvents(source) {
+	const code = compiledInput(source);
+	// Pin both entries independently; a rename/removal must not silently retire
+	// coverage. Exempt only press(), guarding all other code regardless of order.
+	assert.match(code, TYPE_ENTRY, "type() must exist");
+	assert.match(code, TYPE_INTO_ENTRY, "typeInto() must exist");
+	assert.match(
+		code,
+		PRESS_BODY,
+		"press() must have an explicitly bounded body",
+	);
+	assert.doesNotMatch(code.replace(PRESS_BODY, ""), RAW_KEY_EVENT_DISPATCH);
+}
 
 // In-memory compilation exercises shipped TypeScript without writing generated
 // modules into a checkout or allocating another dependency tree.
@@ -818,11 +844,51 @@ test("owned menu aliases replace destructive roles; suppression is per input and
 		helper,
 		/show !== "focus"\s*\|\|\s*window\.isDestroyed\(\)\s*\|\|\s*!window\.isFocused\(\)/,
 	);
-	assert.ok(
-		!readFileSync("src/main/browser/actions/input.ts", "utf8").includes(
-			'"Input.dispatchKeyEvent"',
-		),
+	// Raw key events can invoke browser shortcuts instead of inserting text.
+	// The named-key press body is the only exception, regardless of declaration
+	// order; typing and every other helper remain behind the whole-file guard.
+	assertTextTypingUsesNoRawKeyEvents(
+		readFileSync("src/main/browser/actions/input.ts", "utf8"),
 	);
+});
+
+test("typing key-event guard fails closed under renames and helper reordering", async () => {
+	const source = readFileSync("src/main/browser/actions/input.ts", "utf8");
+	assertTextTypingUsesNoRawKeyEvents(source);
+	for (const name of ["type", "typeInto"]) {
+		assert.throws(
+			() =>
+				assertTextTypingUsesNoRawKeyEvents(
+					source.replace(`function ${name}(`, `function renamed_${name}(`),
+				),
+			{ code: "ERR_ASSERTION" },
+			`renaming ${name} must fail closed`,
+		);
+	}
+	const code = compiledInput(source);
+	const helper = code.match(TYPE_INTO_BODY)?.[0];
+	assert.ok(helper, "the mutation must find the complete typeInto() body");
+	const dispatch =
+		'\nawait ctx.cdp.send(contents, "Input.dispatchKeyEvent", { type: "keyDown", key: text });\n';
+	const bodyStart = helper.indexOf("{\n") + 2;
+	const helperSource =
+		helper.slice(0, bodyStart) + dispatch + helper.slice(bodyStart);
+	// Remove the helper first, then relocate it by the entry's name rather than
+	// offsets that would change when declarations move.
+	const reordered = code
+		.replace(TYPE_INTO_BODY, "")
+		.replace(TYPE_ENTRY, `${helperSource}\nasync function type(`);
+	assert.ok(helperSource.includes(dispatch));
+	assert.ok(
+		reordered.indexOf("function typeInto(") <
+			reordered.indexOf("function type("),
+	);
+	// Keep the attack syntactically valid; a parser rejection is not evidence
+	// that the raw-dispatch invariant caught a reordered typing helper.
+	await transform(reordered, { loader: "ts" });
+	assert.throws(() => assertTextTypingUsesNoRawKeyEvents(reordered), {
+		code: "ERR_ASSERTION",
+	});
 });
 
 test("find/zoom share focus classifier with platform/Alt/IME/repeat negatives", () => {

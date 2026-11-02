@@ -347,9 +347,11 @@ test("the server row replaces the optimistic one in place: one row, same element
 		await settle();
 		const after = rows(app.element);
 		assert.equal(after.length, 1, "never two copies, not even for one render");
+		// Compare identity without giving assert a React-backed DOM graph to inspect.
+		// A failed node comparison exhausted GiBs even with a 512 MiB V8 heap.
 		assert.equal(
-			after[0],
-			optimistic,
+			after[0] === optimistic,
+			true,
 			"the same element: no remount, so no flicker and no second arrival",
 		);
 		assert.equal(
@@ -677,8 +679,9 @@ test("the first message survives the move onto its conversation, through the thr
 		await settle();
 		const drawn = rows(app.element);
 		assert.equal(drawn.length, 1, "one row while the thread read is in flight");
-		assert.ok(
+		assert.equal(
 			drawn[0] === atPress,
+			true,
 			"the same element: the row was not unmounted behind the spinner",
 		);
 		assert.ok(
@@ -694,8 +697,9 @@ test("the first message survives the move onto its conversation, through the thr
 			}),
 		);
 		await settle();
-		assert.ok(
+		assert.equal(
 			rows(app.element)[0] === atPress,
+			true,
 			"and still the same element after it",
 		);
 	} finally {
@@ -817,8 +821,8 @@ test("a pending row announces that it is sending, and stops when confirmed", asy
 		gate.resolve(message({ id: "msg_done", seq: 1, body: "still going" }));
 		await settle();
 		assert.equal(
-			app.element.querySelector('[data-row-key] [aria-live="polite"]'),
-			null,
+			app.element.querySelector('[data-row-key] [aria-live="polite"]') === null,
+			true,
 			"and the status leaves with the pending state",
 		);
 	} finally {

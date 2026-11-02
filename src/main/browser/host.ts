@@ -17,6 +17,7 @@ import * as inputActions from "./actions/input";
 import * as networkActions from "./actions/network";
 import * as pageActions from "./actions/page";
 import * as queryActions from "./actions/query";
+import * as recordingActions from "./actions/recording";
 import * as tabActions from "./actions/tabs";
 import * as uploadActions from "./actions/upload";
 import { collectAddressHistory, mergeAddressHistory } from "./address-history";
@@ -79,6 +80,7 @@ const DOCUMENT_SCOPED: ReadonlySet<string> = new Set([
 	"screenshot",
 	"click",
 	"type",
+	"press",
 	"scroll",
 	"logs",
 	// `download` names a control on the CURRENT document (the link or button that
@@ -91,6 +93,13 @@ const DOCUMENT_SCOPED: ReadonlySet<string> = new Set([
 	// review refused (M2).
 	"download",
 	"upload",
+	// `record_start` captures PIXELS of the current document, which is the same
+	// class of data `screenshot` gates, so it is authorized against that document
+	// on entry and again on the result (D8). `record_stop` reveals nothing new —
+	// it ends a capture the current document already authorized and writes bytes
+	// whose destination was approved at start — so it is deliberately NOT in this
+	// set. NEITHER is a NAVIGATING_ACTION: a recording does not drive the page.
+	"record_start",
 ]);
 
 /**
@@ -127,6 +136,7 @@ const DOCUMENT_SCOPED: ReadonlySet<string> = new Set([
 const NAVIGATING_ACTIONS: ReadonlySet<string> = new Set([
 	"click",
 	"type",
+	"press",
 	"download",
 	"upload",
 ]);
@@ -136,9 +146,9 @@ const NAVIGATING_ACTIONS: ReadonlySet<string> = new Set([
  * need the per-hop Document gate armed around them.
  *
  * `open` and `goto` arm it from the navigation itself (`navigateView`), so what is
- * left is the pair that navigates because a PAGE decides to: a click follows a link
- * or submits a form, a type can submit one. Arming `Fetch.enable` around the rest
- * is not free and buys nothing: the rest cannot change which document is current,
+ * left is the input family that navigates because a PAGE decides to: a click follows
+ * a link or submits a form, and type/press can submit one. Arming `Fetch.enable`
+ * around the rest is not free and buys nothing: the rest cannot change which document is current,
  * so there is no agent-initiated hop for the gate to decide, while its
  * Document-stage interception also fails the PAGE's own subresource and
  * third-party-iframe loads with `BlockedByClient` — a side effect on the page the
@@ -167,7 +177,11 @@ const NAVIGATING_ACTIONS: ReadonlySet<string> = new Set([
  * intercept that form's own POST and its subresources for no consent gain, which
  * is the side effect this set exists to avoid.
  */
-const NAVIGATION_ACTIONS: ReadonlySet<string> = new Set(["click", "type"]);
+const NAVIGATION_ACTIONS: ReadonlySet<string> = new Set([
+	"click",
+	"type",
+	"press",
+]);
 
 /** The methods that address one tab and therefore take that tab's command lane. */
 const TAB_SCOPED: ReadonlySet<string> = new Set([
@@ -181,6 +195,7 @@ const TAB_SCOPED: ReadonlySet<string> = new Set([
 	"screenshot",
 	"click",
 	"type",
+	"press",
 	"scroll",
 	"logs",
 	"close",
@@ -202,6 +217,12 @@ const TAB_SCOPED: ReadonlySet<string> = new Set([
 	"network_stop",
 	"network_read",
 	"network_clear",
+	// Both recording verbs are TAB-scoped: a recording is the tab's own capture,
+	// and the finalize reads a stream that belongs to that tab's session. The
+	// stop can hold the lane for up to 45 s while it drains, which is the same
+	// bargain `download` already makes (D7).
+	"record_start",
+	"record_stop",
 ]);
 
 /**
@@ -638,7 +659,25 @@ export class BrowserHost implements BrowserActionContext {
 		const operation = async (): Promise<Record<string, unknown>> => {
 			assertDocument();
 			const result = await this.perform(method, params, requestId);
-			assertDocument();
+			try {
+				assertDocument();
+			} catch (error) {
+				// A `record_start` that this result-side check refuses has ALREADY
+				// registered a capture. Recording into the approved path while the
+				// answer is discarded is footage the host may not hold, so the capture
+				// is discarded AND Chromium's recorder is stopped before the refusal
+				// returns (review N5, F1: dropping the bookkeeping alone left the
+				// screencast alive, and the next start on this tab was refused with
+				// "Screencast is already active"). `abortAndEnd` bounds the stop at the
+				// abort deadline, so a wedged session cannot hold the answer.
+				if (method === "record_start") {
+					await recordingActions.abortAndEnd(
+						record.view.webContents.id,
+						"document_refused_after_start",
+					);
+				}
+				throw error;
+			}
 			return result;
 		};
 		if (!NAVIGATION_ACTIONS.has(method)) return operation();
@@ -714,6 +753,8 @@ export class BrowserHost implements BrowserActionContext {
 				return inputActions.click(this, params);
 			case "type":
 				return inputActions.type(this, params);
+			case "press":
+				return inputActions.press(this, params);
 			case "download":
 				return downloadActions.download(this, params);
 			case "upload":
@@ -726,6 +767,10 @@ export class BrowserHost implements BrowserActionContext {
 				return networkActions.networkRead(this, params, requestId);
 			case "network_clear":
 				return networkActions.networkClear(this, params, requestId);
+			case "record_start":
+				return recordingActions.recordStart(this, params, requestId);
+			case "record_stop":
+				return recordingActions.recordStop(this, params, requestId);
 			case "request_access":
 				return this.approvals.requestAccess(
 					params.url,

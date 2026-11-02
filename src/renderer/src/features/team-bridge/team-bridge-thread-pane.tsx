@@ -4,11 +4,8 @@ import { Button } from "@shared/components/ui/button";
 import { ScrollArea } from "@shared/components/ui/scroll-area";
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
-import {
-	useInfiniteQuery,
-	useMutation,
-	useQueryClient,
-} from "@tanstack/react-query";
+import { composeRefs } from "@shared/lib/compose-refs";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ArrowUp, X } from "lucide-react";
 import {
 	useCallback,
@@ -18,6 +15,7 @@ import {
 	useRef,
 	useState,
 } from "react";
+import type { MutableRefObject, RefObject } from "react";
 import type {
 	TeamBridgeAttachmentCapability,
 	TeamBridgeMessage,
@@ -42,6 +40,11 @@ import {
 import { useStickToBottom } from "./use-stick-to-bottom";
 import { teamBridgeKeys, useMarkTeamBridgeRead } from "./use-team-bridge";
 import { useTeamBridgeAttachments } from "./use-team-bridge-attachments";
+import {
+	type ReplyWindowMode,
+	replyPageOutsideViewport,
+	useThreadReplyWindow,
+} from "./use-thread-reply-window";
 
 export type ThreadPaneProps = {
 	root: TeamBridgeMessage | null;
@@ -87,6 +90,12 @@ export type ThreadPaneProps = {
 	reactionContext?: { accountId: string; tenantId: string; disabled?: boolean };
 	/** Story/capture seed only: show the rows' toolbars without hover. */
 	forceToolbar?: boolean;
+	olderError?: boolean;
+	windowMode?: ReplyWindowMode;
+	latestPageAvailable?: boolean;
+	onLatest?: () => void;
+	scrollHostRef?: RefObject<HTMLDivElement>;
+	pinnedGetterRef?: MutableRefObject<(() => boolean) | null>;
 };
 
 /**
@@ -148,6 +157,12 @@ function TeamBridgeThreadPaneBody({
 	conversationId,
 	accountId,
 	attachmentCapability = null,
+	windowMode,
+	olderError = false,
+	latestPageAvailable = true,
+	onLatest,
+	scrollHostRef,
+	pinnedGetterRef,
 }: ThreadPaneProps) {
 	useI18nLocale();
 	/*
@@ -224,7 +239,25 @@ function TeamBridgeThreadPaneBody({
 	const scroll = useStickToBottom({
 		resetKey: `${tenantId ?? ""}:${conversationId ?? ""}:${root?.id ?? ""}:${state}`,
 		contentKey: `${replies.length}:${replies.at(-1)?.id ?? ""}`,
+		preserveAnchor: windowMode !== undefined,
+		rowIds: replies.map((row) => row.id),
+		rowSelector: windowMode
+			? "[data-thread-replies] [data-message-id]"
+			: "[data-message-id]",
+		liveEdgeAvailable: windowMode ? latestPageAvailable : true,
 	});
+	useLayoutEffect(() => {
+		if (!pinnedGetterRef) return;
+		pinnedGetterRef.current = scroll.isPinned;
+		return () => {
+			if (pinnedGetterRef.current === scroll.isPinned)
+				pinnedGetterRef.current = null;
+		};
+	}, [pinnedGetterRef, scroll.isPinned]);
+	const combinedScrollRef = useMemo(
+		() => composeRefs(scroll.rootRef, scrollHostRef),
+		[scroll.rootRef, scrollHostRef],
+	);
 	const hasContent = Boolean(draft.trim()) || images.count > 0;
 	/* CAN THIS PANE ACTUALLY SEND? An empty state must not INVITE a reply that has
 	 * nowhere to go (design round 1, D3). Only `readOnly` can answer no here: the
@@ -298,12 +331,29 @@ function TeamBridgeThreadPaneBody({
 					<X size={16} />
 				</Button>
 			</header>
+			{windowMode === "legacy" && (
+				<p className="px-5 py-2 text-meta text-ink-dim">
+					{t("ui.teamBridge.replies.legacy_window")}
+				</p>
+			)}
+			{windowMode === "desc" && !latestPageAvailable && (
+				<Button variant="ghost" size="sm" onClick={onLatest}>
+					{t("ui.ownerAudit.refresh")}
+				</Button>
+			)}
+			{windowMode === "desc" &&
+				latestPageAvailable &&
+				scroll.newMessages > 0 && (
+					<Button variant="ghost" size="sm" onClick={scroll.pin}>
+						{t("ui.teamBridge.notify.count", { count: scroll.newMessages })}
+					</Button>
+				)}
 			{/* Radix wraps the content in `display: table; min-width: 100%`, which
 			    grows to the widest row's min-content: one wide table or code line
 			    and every reply's hover ground and toolbar would run past the pane.
 			    A block wrapper is the viewport's width, as the page timeline's is. */}
 			<ScrollArea
-				ref={scroll.rootRef}
+				ref={combinedScrollRef}
 				className="min-h-0 flex-1 [&_[data-radix-scroll-area-viewport]>div]:block!"
 			>
 				{root && (
@@ -339,44 +389,75 @@ function TeamBridgeThreadPaneBody({
 							})}
 						</div>
 					)}
-				{state === "loading" ? (
-					<div className="flex justify-center py-8">
-						<Spinner size="sm" label={t("ui.teamBridge.thread.loading")} />
-					</div>
-				) : state === "error" ? (
-					<div role="alert" className="px-5 py-6 text-[13px] text-ink-muted">
+				{olderError && (
+					<div role="alert" className="px-5 py-2 text-meta text-ink-muted">
 						<p>{t("ui.teamBridge.thread.error")}</p>
-						<Button variant="ghost" size="sm" onClick={onRetry}>
+						<Button
+							variant="ghost"
+							size="sm"
+							onClick={() => {
+								scroll.hold();
+								onMore?.();
+							}}
+						>
 							{t("ui.teamBridge.list.retry")}
 						</Button>
 					</div>
-				) : replies.length === 0 ? (
-					canStartThread ? (
-						<p className="px-5 py-6 text-[13px] text-ink-muted">
-							{t("ui.teamBridge.replies.empty")}
-						</p>
-					) : null
-				) : (
-					<TeamBridgeMessageList
-						messages={replies}
-						arrivalKey={teamBridgeArrivalStreamKey(
-							tenantId,
-							conversationId,
-							root?.id,
-						)}
-						arrivalsEnabled={!paging}
-						accountId={accountId}
-						labelFor={labelFor}
-						profileFor={profileFor}
-						canMessagePerson={canMessagePerson}
-						onMessagePerson={onMessagePerson}
-						tenantId={tenantId}
-						density="compact"
-						reactionContext={reactionContext}
-						forceToolbar={forceToolbar}
-					/>
 				)}
-				{hasMore && (
+				{windowMode === "desc" && state === "ready" && hasMore && (
+					<Button
+						variant="ghost"
+						size="sm"
+						disabled={loadingMore}
+						onClick={() => {
+							scroll.hold();
+							onMore?.();
+						}}
+						className="mx-5 my-2"
+					>
+						{t("ui.teamBridge.replies.more")}
+					</Button>
+				)}
+				<div data-thread-replies>
+					{state === "loading" ? (
+						<div className="flex justify-center py-8">
+							<Spinner size="sm" label={t("ui.teamBridge.thread.loading")} />
+						</div>
+					) : state === "error" ? (
+						<div role="alert" className="px-5 py-6 text-[13px] text-ink-muted">
+							<p>{t("ui.teamBridge.thread.error")}</p>
+							<Button variant="ghost" size="sm" onClick={onRetry}>
+								{t("ui.teamBridge.list.retry")}
+							</Button>
+						</div>
+					) : replies.length === 0 ? (
+						canStartThread ? (
+							<p className="px-5 py-6 text-[13px] text-ink-muted">
+								{t("ui.teamBridge.replies.empty")}
+							</p>
+						) : null
+					) : (
+						<TeamBridgeMessageList
+							messages={replies}
+							arrivalKey={teamBridgeArrivalStreamKey(
+								tenantId,
+								conversationId,
+								root?.id,
+							)}
+							arrivalsEnabled={!paging}
+							accountId={accountId}
+							labelFor={labelFor}
+							profileFor={profileFor}
+							canMessagePerson={canMessagePerson}
+							onMessagePerson={onMessagePerson}
+							tenantId={tenantId}
+							density="compact"
+							reactionContext={reactionContext}
+							forceToolbar={forceToolbar}
+						/>
+					)}
+				</div>
+				{windowMode !== "desc" && hasMore && (
 					<Button
 						variant="ghost"
 						size="sm"
@@ -537,25 +618,40 @@ function TeamBridgeThreadPaneMount({
 		},
 		[read.mutateAsync],
 	);
+	const scrollHostRef = useRef<HTMLDivElement>(null);
+	const pinnedGetterRef = useRef<(() => boolean) | null>(null);
 	const key = [
 		...teamBridgeKeys.all,
 		"replies",
+		accountId,
 		tenantId,
 		conversationId,
 		rootId,
 	] as const;
-	const query = useInfiniteQuery({
+	const query = useThreadReplyWindow({
 		queryKey: key,
-		initialPageParam: undefined as number | undefined,
-		queryFn: ({ pageParam }) => loadThreadPage(target, accountId, pageParam),
-		getNextPageParam: (page) =>
-			page.has_more ? page.next_after_seq : undefined,
-		refetchInterval: 8_000,
+		identity: { conversationId, rootId },
+		read: (mode, cursor, limit = 50) =>
+			loadThreadPage(
+				target,
+				accountId,
+				mode === "desc" ? undefined : (cursor ?? 0),
+				mode === "desc"
+					? { beforeSeq: cursor, order: "desc", limit }
+					: undefined,
+			),
+		canEvict: (page) =>
+			replyPageOutsideViewport(
+				page,
+				scrollHostRef.current?.querySelector<HTMLElement>(
+					"[data-radix-scroll-area-viewport]",
+				) ?? null,
+			),
+		isAtLiveEdge: () => pinnedGetterRef.current?.() ?? true,
+		poll: true,
 	});
-	const replies = useMemo(
-		() => query.data?.pages.flatMap((page) => page.replies) ?? [],
-		[query.data],
-	);
+	const replies = query.replies;
+
 	const send = useMutation({
 		mutationFn: ({
 			body,
@@ -589,11 +685,23 @@ function TeamBridgeThreadPaneMount({
 			]);
 		},
 	});
+	// A permanent peek/page refusal must not keep painting the old root above its
+	// error panel; only the existing transient older-page retry keeps its window.
+	const rootForPane =
+		query.isError && !query.keepWindowOnError
+			? null
+			: (query.data?.pages[0]?.root ?? initialRoot ?? null);
 	return (
 		<TeamBridgeThreadPaneView
-			root={query.data?.pages[0]?.root ?? initialRoot ?? null}
+			root={rootForPane}
 			replies={replies}
-			state={query.isPending ? "loading" : query.isError ? "error" : "ready"}
+			state={
+				query.isPending
+					? "loading"
+					: query.isError && (!query.data || !query.keepWindowOnError)
+						? "error"
+						: "ready"
+			}
 			labelFor={labelFor}
 			profileFor={profileFor}
 			canMessagePerson={canMessagePerson}
@@ -612,6 +720,12 @@ function TeamBridgeThreadPaneMount({
 			hasMore={query.hasNextPage}
 			loadingMore={query.isFetchingNextPage}
 			onMore={() => void query.fetchNextPage()}
+			olderError={query.keepWindowOnError}
+			windowMode={query.mode}
+			latestPageAvailable={query.latestPageAvailable}
+			onLatest={() => void query.resetLatest()}
+			scrollHostRef={scrollHostRef}
+			pinnedGetterRef={pinnedGetterRef}
 			reactionContext={reactionContext}
 		/>
 	);

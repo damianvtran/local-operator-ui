@@ -1,0 +1,89 @@
+{
+	"ui.agents.detail.read_state.failed_title": {
+		"role": "Error heading",
+		"tone": "Plain, factual, calm; sentence case.",
+		"length": "One sentence in a resizable detail pane; wraps naturally.",
+		"note": "Used in the agent detail read state, including the missing-definition pane.",
+		"placeholders": {
+			"name": "Untranslated agent or team definition name. The quotation marks belong to the message; localize their style, not the name."
+		}
+	},
+	"ui.agents.detail.read_state.not_found": {
+		"role": "Detail-pane explanatory text",
+		"tone": "Plain, factual, calm; sentence case.",
+		"length": "One sentence in a resizable detail pane; wraps naturally.",
+		"note": "Used in the agent detail read state, including the missing-definition pane."
+	},
+	"ui.agents.detail.read_state.failed_meaning": {
+		"role": "Detail-pane explanatory text",
+		"tone": "Plain, factual, calm; sentence case.",
+		"length": "One sentence in a resizable detail pane; wraps naturally.",
+		"note": "Used in the agent detail read state, including the missing-definition pane."
+	},
+	"ui.agents.detail.read_state.request_failed": {
+		"role": "Detail-pane explanatory text",
+		"tone": "Plain, factual, calm; sentence case.",
+		"length": "One sentence in a resizable detail pane; wraps naturally.",
+		"note": "Used in the agent detail read state, including the missing-definition pane."
+	},
+	"ui.agents.detail.read_state.retry": {
+		"role": "Button label",
+		"tone": "Plain, factual, calm; sentence case.",
+		"length": "Short label, ideally one line; may wrap.",
+		"note": "Used in the agent detail read state, including the missing-definition pane."
+	},
+	"ui.agents.detail.read_state.retrying": {
+		"role": "Button label",
+		"tone": "Plain, factual, calm; sentence case.",
+		"length": "Short label, ideally one line; may wrap.",
+		"note": "Used in the agent detail read state, including the missing-definition pane."
+	},
+	"ui.agents.detail.read_state.delegates": {
+		"role": "Detail-pane explanatory text",
+		"tone": "Plain, factual, calm; sentence case.",
+		"length": "One sentence in a resizable detail pane; wraps naturally.",
+		"note": "Used in the agent detail read state, including the missing-definition pane."
+	},
+	"ui.agents.detail.read_state.no_delegation": {
+		"role": "Detail-pane explanatory text",
+		"tone": "Plain, factual, calm; sentence case.",
+		"length": "One sentence in a resizable detail pane; wraps naturally.",
+		"note": "Used in the agent detail read state, including the missing-definition pane."
+	},
+	"ui.agents.detail.read_state.class_description": {
+		"role": "Detail-pane explanatory text",
+		"tone": "Plain, factual, calm; sentence case.",
+		"length": "One sentence in a resizable detail pane; wraps naturally.",
+		"note": "Used in the agent detail read state, including the missing-definition pane."
+	},
+	"ui.agents.detail.read_state.used_by_description": {
+		"role": "Detail-pane explanatory text",
+		"tone": "Plain, factual, calm; sentence case.",
+		"length": "One sentence in a resizable detail pane; wraps naturally.",
+		"note": "Used in the agent detail read state, including the missing-definition pane."
+	},
+	"ui.agents.detail.read_state.class_on": {
+		"role": "Switch status",
+		"tone": "Plain, factual, calm; sentence case.",
+		"length": "Short label, ideally one line; may wrap.",
+		"note": "Used in the agent detail read state, including the missing-definition pane."
+	},
+	"ui.agents.detail.read_state.class_off": {
+		"role": "Switch status",
+		"tone": "Plain, factual, calm; sentence case.",
+		"length": "Short label, ideally one line; may wrap.",
+		"note": "Used in the agent detail read state, including the missing-definition pane."
+	},
+	"ui.agents.detail.read_state.class_switching": {
+		"role": "Switch status",
+		"tone": "Plain, factual, calm; sentence case.",
+		"length": "Short label, ideally one line; may wrap.",
+		"note": "Used in the agent detail read state, including the missing-definition pane."
+	},
+	"ui.agents.detail.read_state.effort_inherit": {
+		"role": "Select option label",
+		"tone": "Plain, factual, calm; sentence case.",
+		"length": "Short label, ideally one line; may wrap.",
+		"note": "The effort picker submits the raw inherit token; only its human-facing label changes."
+	}
+}

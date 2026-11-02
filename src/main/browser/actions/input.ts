@@ -31,7 +31,7 @@ import { pageOf } from "./gate";
 import { nodeIdForSelector, readAccessibilityTree } from "./page";
 
 /**
- * The interaction actions: `click` and `type`.
+ * The interaction actions: `click`, `type`, and trusted `press`.
  * Design: docs/design/ui-browser-tab.md 4 (`click`, `type` rows), 6.4.
  *
  * THE CONSTRAINT THAT SHAPES EVERY LINE HERE: an agent tab is intentionally NOT
@@ -43,6 +43,11 @@ import { nodeIdForSelector, readAccessibilityTree } from "./page";
  * which fires handlers and default actions (link navigation, form submit) without
  * the tab ever becoming visible, and therefore without touching the operator's
  * focus.
+ *
+ * `press` deliberately has no DOM-event fallback: keyboard focus traversal and
+ * activation must be Chromium defaults, not an imitation scripted in the page.
+ * Delivery to a hidden view therefore needs native QA on the supported runtime;
+ * it must never be "fixed" by activating the operator's window.
  *
  * `type` is the one action where the design and the extension differ, and this
  * file follows the design while keeping the extension's fallback:
@@ -641,6 +646,102 @@ export async function click(
 		...resolvedFields(node),
 		...after,
 	};
+}
+
+/** Named commands, not a modifier API: no caller-controlled CDP fields or held
+ * modifiers can escape this table. Virtual key codes make Chromium perform the
+ * native focus/activation defaults; insertText cannot express those defaults. */
+const PRESS_KEYS = new Map([
+	["Tab", { key: "Tab", code: "Tab", virtualKeyCode: 9, modifiers: 0 }],
+	["Shift+Tab", { key: "Tab", code: "Tab", virtualKeyCode: 9, modifiers: 8 }],
+	["Enter", { key: "Enter", code: "Enter", virtualKeyCode: 13, modifiers: 0 }],
+	[
+		"Escape",
+		{ key: "Escape", code: "Escape", virtualKeyCode: 27, modifiers: 0 },
+	],
+	[
+		"ArrowUp",
+		{ key: "ArrowUp", code: "ArrowUp", virtualKeyCode: 38, modifiers: 0 },
+	],
+	[
+		"ArrowDown",
+		{ key: "ArrowDown", code: "ArrowDown", virtualKeyCode: 40, modifiers: 0 },
+	],
+	[
+		"ArrowLeft",
+		{ key: "ArrowLeft", code: "ArrowLeft", virtualKeyCode: 37, modifiers: 0 },
+	],
+	[
+		"ArrowRight",
+		{ key: "ArrowRight", code: "ArrowRight", virtualKeyCode: 39, modifiers: 0 },
+	],
+]);
+
+export async function press(
+	ctx: BrowserActionContext,
+	params: Record<string, unknown>,
+): Promise<Record<string, unknown>> {
+	const named =
+		typeof params.key === "string" ? PRESS_KEYS.get(params.key) : undefined;
+	if (!named) {
+		throw new BrowserHostError(
+			"unsupported_key",
+			`unsupported key: ${String(params.key)}`,
+			{
+				key: params.key ?? null,
+			},
+		);
+	}
+	const record = ctx.registry.requireSurface(params.tab);
+	const contents = record.view.webContents;
+	const event = {
+		key: named.key,
+		code: named.code,
+		windowsVirtualKeyCode: named.virtualKeyCode,
+		modifiers: named.modifiers,
+	};
+	// The host's owned-tab lane and per-hop origin gate wrap this operation just
+	// like click/type. Never focus/show the view or choose a caller-supplied target.
+	const before = pageOf(record.view).url;
+	let navigationSeen = false;
+	const onStart = (...args: never[]): void => {
+		if ((args[2] as unknown) !== false) navigationSeen = true;
+	};
+	contents.on("did-start-navigation", onStart);
+	try {
+		let keyDownFailed = true;
+		try {
+			await ctx.cdp.send(contents, "Input.dispatchKeyEvent", {
+				...event,
+				type: "keyDown",
+				...(named.key === "Enter" ? { text: "\r", unmodifiedText: "\r" } : {}),
+			});
+			keyDownFailed = false;
+		} finally {
+			// Release even when dispatch fails, so the atomic Shift+Tab command cannot
+			// leave a modifier behind. A lost debugger keeps its original typed error.
+			const release = ctx.cdp.send(contents, "Input.dispatchKeyEvent", {
+				...event,
+				type: "keyUp",
+			});
+			if (keyDownFailed) await release.catch(() => undefined);
+			else await release;
+		}
+		// Enter can submit or follow a link asynchronously. Match click's grace so
+		// the host does not disarm its per-hop gate immediately after keyUp.
+		await sleep(1200);
+		if (navigationSeen)
+			await settle(contents as never, 10_000).catch(() => undefined);
+		ctx.registry.touch(record);
+		const after = pageOf(record.view);
+		return {
+			key: params.key,
+			navigated: navigationSeen || after.url !== before,
+			...after,
+		};
+	} finally {
+		contents.removeListener("did-start-navigation", onStart);
+	}
 }
 
 export async function type(
