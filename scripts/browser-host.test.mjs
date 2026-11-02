@@ -11702,3 +11702,283 @@ test("page controls work while an app overlay hides the view, and only then (Q2-
 		/no longer presented/,
 	);
 });
+
+// press shares the existing owned-tab fixture: these are CDP contract tests,
+// not a claim that Chromium delivers keys to a hidden native view.
+async function openPressTab(host, owner = {}) {
+	const params = {
+		...owner,
+		url: "https://press.example/",
+		requester: owner.requester ?? "session:press",
+	};
+	await host.dispatch("request_access", params, "request");
+	host.respondToConsent(host.chromeState().pendingConsent[0].entryId, "site");
+	return host.dispatch("open", params, "open");
+}
+
+test("press closed wire admits the method and preserves unsupported_key", async () => {
+	assert.ok(METHODS.includes("press"));
+	assert.equal(METHODS.indexOf("press"), METHODS.indexOf("type") + 1);
+	assert.ok(ERROR_CODES.includes("unsupported_key"));
+	assert.ok(HOST_CAPABILITIES.includes("press"));
+	assert.equal(COMMAND_TIMEOUTS_S.press, 25);
+});
+
+for (const [key, code, virtualKeyCode, modifiers] of [
+	["Tab", "Tab", 9, 0],
+	["Shift+Tab", "Tab", 9, 8],
+	["Enter", "Enter", 13, 0],
+	["Escape", "Escape", 27, 0],
+	["ArrowUp", "ArrowUp", 38, 0],
+	["ArrowDown", "ArrowDown", 40, 0],
+	["ArrowLeft", "ArrowLeft", 37, 0],
+	["ArrowRight", "ArrowRight", 39, 0],
+]) {
+	test(`press ${key} dispatches only the named native key pair to the owned contents`, async () => {
+		const { host, registry, cdp } = makeHost();
+		const owner = {
+			requester: "session:press",
+			owner_proof: "p".repeat(40),
+			owner_generation: "press-g1",
+			allocation_id: "press-allocation",
+		};
+		const opened = await openPressTab(host, owner);
+		const record = registry.requireSurface(opened.tab);
+		const contents = record.view.webContents;
+		const visibility = [...record.view.visibility];
+		contents.focus = () => assert.fail("press must not focus OS contents");
+		const originalSend = cdp.send;
+		const keys = [];
+		cdp.send = async (target, method, params) => {
+			if (method.startsWith("Input.")) keys.push({ target, method, params });
+			return originalSend(target, method, params);
+		};
+		cdp.calls.length = 0;
+		const result = await host.dispatch(
+			"press",
+			{ ...owner, tab: opened.tab, key },
+			"press",
+		);
+		assert.equal(result.key, key);
+		assert.equal(result.navigated, false);
+		assert.deepEqual(record.view.visibility, visibility);
+		assert.deepEqual(
+			keys,
+			["keyDown", "keyUp"].map((type) => ({
+				target: contents,
+				method: "Input.dispatchKeyEvent",
+				params: {
+					key: code,
+					code,
+					windowsVirtualKeyCode: virtualKeyCode,
+					modifiers,
+					type,
+					...(key === "Enter" && type === "keyDown"
+						? { text: "\r", unmodifiedText: "\r" }
+						: {}),
+				},
+			})),
+		);
+		assert.ok(cdp.calls.some((call) => call.method === "Fetch.enable"));
+		assert.ok(cdp.calls.some((call) => call.method === "Fetch.disable"));
+		assert.equal(contents.listenerCount("did-start-navigation"), 0);
+	});
+}
+
+test("press validation refuses arbitrary keys and modifier syntax before any input", async () => {
+	const { host, cdp } = makeHost();
+	const opened = await openPressTab(host);
+	cdp.calls.length = 0;
+	for (const key of [
+		undefined,
+		null,
+		9,
+		{},
+		"",
+		"tab",
+		"Shift",
+		"Ctrl+Tab",
+		"Shift+Enter",
+		"a",
+		"__proto__",
+	]) {
+		await assert.rejects(
+			host.dispatch("press", { tab: opened.tab, key }, "press"),
+			(error) =>
+				error.code === "unsupported_key" && error.message.includes(String(key)),
+		);
+	}
+	assert.ok(!cdp.calls.some((call) => call.method.startsWith("Input.")));
+});
+
+test("press retains missing-tab, owner proof, generation, foreign-owner and origin fences", async () => {
+	const { host, registry, cdp } = makeHost();
+	const owner = {
+		requester: "session:press",
+		owner_proof: "p".repeat(40),
+		owner_generation: "g1",
+		allocation_id: "alloc",
+	};
+	const opened = await openPressTab(host, owner);
+	cdp.calls.length = 0;
+	for (const override of [
+		{ owner_generation: "stale" },
+		{ owner_proof: "short" },
+		{ requester: "session:foreign" },
+		{ requester: "session:foreign", owner_proof: "q".repeat(40) },
+	]) {
+		await assert.rejects(
+			host.dispatch(
+				"press",
+				{ ...owner, tab: opened.tab, key: "Enter", ...override },
+				"press",
+			),
+			{ code: "owner_refused" },
+		);
+	}
+	await assert.rejects(
+		host.dispatch("press", { ...owner, key: "Tab" }, "missing"),
+		{ code: "tab_closed" },
+	);
+	await assert.rejects(
+		host.dispatch(
+			"press",
+			{ ...owner, tab: "ui:missing", key: "Tab" },
+			"closed",
+		),
+		{ code: "tab_closed" },
+	);
+	registry.requireSurface(opened.tab).view.webContents.url =
+		"https://unapproved.example/";
+	await assert.rejects(
+		host.dispatch(
+			"press",
+			{ ...owner, tab: opened.tab, key: "Enter" },
+			"origin",
+		),
+		{ code: "origin_not_allowed" },
+	);
+	assert.ok(!cdp.calls.some((call) => call.method.startsWith("Input.")));
+});
+
+test("press releases after debugger failure without masking the typed failure", async () => {
+	const { host, registry, cdp } = makeHost();
+	const opened = await openPressTab(host);
+	const originalSend = cdp.send;
+	const attempts = [];
+	cdp.send = async (contents, method, params) => {
+		if (method === "Input.dispatchKeyEvent") {
+			attempts.push(params.type);
+			throw Object.assign(new Error("detached"), {
+				code: params.type === "keyDown" ? "debugger_conflict" : "tab_closed",
+			});
+		}
+		return originalSend(contents, method, params);
+	};
+	await assert.rejects(
+		host.dispatch("press", { tab: opened.tab, key: "Shift+Tab" }, "press"),
+		{ code: "debugger_conflict" },
+	);
+	assert.deepEqual(attempts, ["keyDown", "keyUp"]);
+	assert.equal(
+		registry
+			.requireSurface(opened.tab)
+			.view.webContents.listenerCount("did-start-navigation"),
+		0,
+	);
+	assert.ok(cdp.calls.some((call) => call.method === "Fetch.disable"));
+});
+
+test("press keeps the per-hop gate over an asynchronous Enter redirect", async () => {
+	const { host, cdp, registry } = makeHost();
+	const opened = await openPressTab(host);
+	let hop = null;
+	cdp.subscribe = (_id, listener) => {
+		hop = listener;
+		return () => {
+			hop = null;
+		};
+	};
+	const originalSend = cdp.send;
+	const pending = [];
+	cdp.send = async (contents, method, params) => {
+		if (method === "Input.dispatchKeyEvent" && params.type === "keyUp") {
+			pending.push(
+				new Promise((resolve) =>
+					setTimeout(() => {
+						assert.ok(
+							hop,
+							"gate must survive keyUp until navigation grace ends",
+						);
+						hop("Fetch.requestPaused", {
+							requestId: "approved-hop",
+							request: { url: "https://press.example/redirect" },
+						});
+						hop("Fetch.requestPaused", {
+							requestId: "forbidden-hop",
+							request: { url: "https://forbidden.example/" },
+						});
+						resolve();
+					}, 0),
+				),
+			);
+		}
+		return originalSend(contents, method, params);
+	};
+	const result = await host.dispatch(
+		"press",
+		{ tab: opened.tab, key: "Enter" },
+		"press",
+	);
+	await Promise.all(pending);
+	assert.equal(result.url, "https://press.example/");
+	assert.equal(
+		registry.requireSurface(opened.tab).view.webContents.getURL(),
+		result.url,
+	);
+	assert.ok(
+		cdp.calls.some(
+			(call) =>
+				call.method === "Fetch.continueRequest" &&
+				call.params.requestId === "approved-hop",
+		),
+	);
+	assert.ok(
+		cdp.calls.some(
+			(call) =>
+				call.method === "Fetch.failRequest" &&
+				call.params.requestId === "forbidden-hop" &&
+				call.params.errorReason === "BlockedByClient",
+		),
+	);
+	assert.equal(hop, null);
+});
+
+test("press unsupported_key crosses the real RPC envelope without becoming internal", async () => {
+	const { host } = makeHost();
+	const opened = await openPressTab(host);
+	const server = await startRpcServer({
+		key: "press-isolated-key",
+		dispatch: (method, params, id) => host.dispatch(method, params, id),
+		log: () => {},
+	});
+	try {
+		const response = await fetch(`http://127.0.0.1:${server.port}${RPC_PATH}`, {
+			method: "POST",
+			headers: { [KEY_HEADER]: "press-isolated-key" },
+			body: JSON.stringify({
+				id: "unsupported",
+				method: "press",
+				params: { tab: opened.tab, key: "Ctrl+Tab" },
+			}),
+		});
+		assert.equal(response.status, 200);
+		const body = await response.json();
+		assert.equal(body.ok, false);
+		assert.equal(body.error.code, "unsupported_key");
+		assert.equal(body.error.message, "unsupported key: Ctrl+Tab");
+		assert.equal(body.error.data.key, "Ctrl+Tab");
+	} finally {
+		await server.close();
+	}
+});
