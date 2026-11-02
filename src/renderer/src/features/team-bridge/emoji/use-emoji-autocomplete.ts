@@ -7,9 +7,9 @@ import {
 	isEmojiTyping,
 } from "./emoji-autocomplete-controller";
 import {
-	createEmojiSearch,
 	type EmojiCandidate,
 	type EmojiQueryInput,
+	createEmojiSearch,
 	findEmojiQuery,
 	insertEmoji,
 } from "./emoji-autocomplete-model";
@@ -75,8 +75,11 @@ export function useEmojiAutocomplete(input: {
 	const intentKey = intent ? `${intent.draftKey}:${intent.sequence}` : "";
 	const query = useMemo(
 		() =>
-			enabled && intent && intent.draftKey === draftKey &&
-			intentKey !== consumed && intent.kind === "typing" &&
+			enabled &&
+			intent &&
+			intent.draftKey === draftKey &&
+			intentKey !== consumed &&
+			intent.kind === "typing" &&
 			isEmojiTyping(intent.inputType, intent.composing)
 				? findEmojiQuery({
 						text,
@@ -90,19 +93,28 @@ export function useEmojiAutocomplete(input: {
 		[enabled, intent, draftKey, intentKey, consumed, text, mentionRanges],
 	);
 	useEffect(() => {
-		if (query === null) setDismissedAt(null);
-	}, [query]);
-	const eligible = query !== null && `${draftKey}:${query.start}` !== dismissedAt;
-	const owner = autocompleteOwner(mentionQueryStart, eligible ? query.start : null);
+		// During the text commit the field owner has not adopted its ref-only
+		// native intent yet. That transient null query must not undo Escape.
+		if (intent && intent.text !== text) return;
+		if (query === null || `${draftKey}:${query.start}` !== dismissedAt)
+			setDismissedAt(null);
+	}, [query, draftKey, dismissedAt, intent, text]);
+	const eligible =
+		query !== null && `${draftKey}:${query.start}` !== dismissedAt;
+	const owner = autocompleteOwner(
+		mentionQueryStart,
+		eligible ? query.start : null,
+	);
 	const open = owner === "emoji";
 	const rows = useMemo(
-		() => (open && query ? search(query.query, 32) : []),
+		() => (open && query ? search(query.query, query.query ? 32 : 8) : []),
 		[open, query, search],
 	);
 	const queryKey = query ? `${draftKey}:${query.start}:${query.query}` : "";
-	const active = selection.key === queryKey
-		? Math.min(selection.index, Math.max(0, rows.length - 1))
-		: 0;
+	const active =
+		selection.key === queryKey
+			? Math.min(selection.index, Math.max(0, rows.length - 1))
+			: 0;
 	const setActive = useCallback(
 		(index: number) => {
 			if (Number.isInteger(index) && index >= 0 && index < rows.length)
@@ -117,10 +129,15 @@ export function useEmojiAutocomplete(input: {
 		(row: EmojiCandidate) => {
 			const field = fieldRef.current;
 			if (
-				!open || !query || !rows.includes(row) || !field ||
-				field.value !== text || field.selectionStart !== query.end ||
+				!open ||
+				!query ||
+				!rows.includes(row) ||
+				!field ||
+				field.value !== text ||
+				field.selectionStart !== query.end ||
 				field.selectionEnd !== query.end
-			) return;
+			)
+				return;
 			const edit = insertEmoji(text, query, row.emoji);
 			if (!edit) return;
 			onEdit(edit);
@@ -139,9 +156,15 @@ export function useEmojiAutocomplete(input: {
 				close();
 				return true;
 			}
-			if (rows.length && (event.key === "ArrowUp" || event.key === "ArrowDown")) {
+			if (
+				rows.length &&
+				(event.key === "ArrowUp" || event.key === "ArrowDown")
+			) {
 				event.preventDefault();
-				setActive((active + (event.key === "ArrowDown" ? 1 : -1) + rows.length) % rows.length);
+				setActive(
+					(active + (event.key === "ArrowDown" ? 1 : -1) + rows.length) %
+						rows.length,
+				);
 				return true;
 			}
 			if (event.key === "Enter" && !event.shiftKey && rows[active]) {
@@ -155,16 +178,28 @@ export function useEmojiAutocomplete(input: {
 		[open, close, rows, active, setActive, pick],
 	);
 	return {
-		owner, open, query, rows, active, setActive, close, pick, onKeyDown,
+		owner,
+		open,
+		query,
+		rows,
+		active,
+		setActive,
+		close,
+		pick,
+		onKeyDown,
 		listboxId,
-		aria: owner === "emoji" ? {
-			role: "combobox" as const,
-			"aria-expanded": open,
-			"aria-controls": open ? listboxId : undefined,
-			"aria-autocomplete": "list" as const,
-			"aria-activedescendant": open && rows.length
-				? emojiOptionId(listboxId, active)
-				: undefined,
-		} : {},
+		aria:
+			owner === "emoji"
+				? {
+						role: "combobox" as const,
+						"aria-expanded": open,
+						"aria-controls": open ? listboxId : undefined,
+						"aria-autocomplete": "list" as const,
+						"aria-activedescendant":
+							open && rows.length
+								? emojiOptionId(listboxId, active)
+								: undefined,
+					}
+				: {},
 	};
 }

@@ -1,17 +1,15 @@
 import "../chat/components/story-electron-shim";
 import { useConversationInputStore } from "@shared/store/conversation-input-store";
 import type { Meta, StoryObj } from "@storybook/react";
+import { userEvent, within } from "@storybook/test";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import type { TeamBridgeMessage } from "../../../../shared/team-bridge-contract";
 import {
-	MentionSourceContext,
 	type MentionSource,
+	MentionSourceContext,
 } from "./mentions/mention-context";
-import {
-	clearStagedMentions,
-	stagedMentions,
-} from "./mentions/mention-outbox";
+import { clearStagedMentions, stagedMentions } from "./mentions/mention-outbox";
 import { TeamBridgeComposer } from "./team-bridge-composer";
 import { TeamBridgeThreadPaneView } from "./team-bridge-thread-pane";
 
@@ -156,3 +154,24 @@ export const MainAgentDm: Story = { args: { mode: "agent-dm" } };
 export const MainChannel: Story = { args: { mode: "channel" } };
 export const MainGroup: Story = { args: { mode: "group" } };
 export const Thread: Story = { args: { mode: "thread" } };
+
+// Keystrokes, not a seeded value: hydration/dictation must never arm a popup.
+const typeQuery =
+	(query: string): NonNullable<Story["play"]> =>
+	async ({ canvasElement }) => {
+		await userEvent.type(within(canvasElement).getByRole("combobox"), query);
+	};
+export const Populated: Story = { play: typeQuery(":smile") };
+export const EmptyQuery: Story = { play: typeQuery(":") };
+export const NoResults: Story = { play: typeQuery(":no_such_emoji_928372") };
+export const Narrow: Story = {
+	decorators: [
+		(Story) => (
+			<div className="w-[280px]">
+				<Story />
+			</div>
+		),
+	],
+	play: typeQuery(":woman_technologist"),
+};
+export const Wide: Story = { play: typeQuery(":thumbs_up") };

@@ -18,18 +18,19 @@ export function normalizeEmojiAlias(value: string): string {
  * small compatibility vocabulary explicit; never infer a canonical alias from
  * the first matching corpus row. Unknown aliases remain ordinary search text.
  */
-export const BRIDGE_EMOJI_ALIASES: Readonly<Record<string, readonly string[]>> = {
-	"+1": ["\u{1f44d}"],
-	thumbsup: ["\u{1f44d}"],
-	thumbs_up: ["\u{1f44d}"],
-	"-1": ["\u{1f44e}"],
-	thumbsdown: ["\u{1f44e}"],
-	thumbs_down: ["\u{1f44e}"],
-	tada: ["\u{1f389}"],
-	heart: ["\u2764\ufe0f"],
-	smile: ["\u{1f604}"],
-	woman_technologist: ["\u{1f469}\u200d\u{1f4bb}"],
-};
+export const BRIDGE_EMOJI_ALIASES: Readonly<Record<string, readonly string[]>> =
+	{
+		"+1": ["\u{1f44d}"],
+		thumbsup: ["\u{1f44d}"],
+		thumbs_up: ["\u{1f44d}"],
+		"-1": ["\u{1f44e}"],
+		thumbsdown: ["\u{1f44e}"],
+		thumbs_down: ["\u{1f44e}"],
+		tada: ["\u{1f389}"],
+		heart: ["\u2764\ufe0f"],
+		smile: ["\u{1f604}"],
+		woman_technologist: ["\u{1f469}\u200d\u{1f4bb}"],
+	};
 
 /** Only explicit, unique aliases resolve; ambiguous labels never auto-select. */
 export function createEmojiAliasResolver(
@@ -70,8 +71,11 @@ export function createEmojiSearch(
 	const indexed = entries.map((entry) => ({
 		entry,
 		explicitAliases: (explicit.get(entry.emoji) ?? []).map(normalizeEmojiAlias),
-		aliases: [entry.name, ...entry.keywords, ...(explicit.get(entry.emoji) ?? [])]
-			.map(normalizeEmojiAlias),
+		aliases: [
+			entry.name,
+			...entry.keywords,
+			...(explicit.get(entry.emoji) ?? []),
+		].map(normalizeEmojiAlias),
 	}));
 	return (query: string, limit = DEFAULT_RESULTS): EmojiCandidate[] => {
 		const cap = Number.isFinite(limit)
@@ -115,9 +119,17 @@ export type EmojiQueryInput = {
 	mentionRanges?: readonly Range[];
 };
 
+const FENCE_DELIMITER = /^ {0,3}(`{3,}|~{3,})(.*)$/u;
+const COLON_QUERY = /:([\p{L}\p{M}\p{N}_+\-]*)$/u;
+const LAST_CHARACTER = /.$/u;
+const TOKEN_BOUNDARY = /[\s\p{P}\p{S}]/u;
+const EXCLUDED_BOUNDARY = /[:/@\\`]/u;
+const URL_PREFIX = /(?:\w+:\/\/|www\.)\S*$/iu;
+
 function escaped(text: string, at: number): boolean {
 	let slashes = 0;
-	while (at > 0 && text[--at] === "\\") slashes++;
+	let cursor = at;
+	while (cursor > 0 && text[--cursor] === "\\") slashes++;
 	return slashes % 2 === 1;
 }
 
@@ -126,7 +138,7 @@ function inCode(prefix: string): boolean {
 	let fence: { marker: string; length: number } | null = null;
 	let ticks = 0;
 	for (const line of prefix.split("\n")) {
-		const delimiter = /^ {0,3}(`{3,}|~{3,})(.*)$/u.exec(line);
+		const delimiter = FENCE_DELIMITER.exec(line);
 		if (fence) {
 			if (
 				delimiter &&
@@ -169,18 +181,20 @@ export function findEmojiQuery(input: EmojiQueryInput): EmojiQuery | null {
 	)
 		return null;
 	const prefix = text.slice(0, caret);
-	const match = /:([\p{L}\p{M}\p{N}_+\-]*)$/u.exec(prefix);
+	const match = COLON_QUERY.exec(prefix);
 	if (!match) return null;
 	const start = caret - match[0].length;
-	const previous = text.slice(0, start).match(/.$/u)?.[0];
+	const previous = text.slice(0, start).match(LAST_CHARACTER)?.[0];
 	if (
 		(previous &&
-			(!/[\s\p{P}\p{S}]/u.test(previous) || /[:/@\\`]/u.test(previous))) ||
+			(!TOKEN_BOUNDARY.test(previous) || EXCLUDED_BOUNDARY.test(previous))) ||
 		escaped(text, start) ||
 		inCode(prefix) ||
 		// A punctuation boundary within a URL is not a shortcode boundary.
-		/(?:\w+:\/\/|www\.)\S*$/iu.test(text.slice(0, start)) ||
-		input.mentionRanges?.some((range) => start < range.end && caret > range.start)
+		URL_PREFIX.test(text.slice(0, start)) ||
+		input.mentionRanges?.some(
+			(range) => start < range.end && caret > range.start,
+		)
 	)
 		return null;
 	return { start, end: caret, query: match[1] };

@@ -23,19 +23,22 @@ test("consumed keys never reach composer or competing autocomplete", () => {
 	for (const owner of ["mention", "emoji"]) {
 		const calls = [];
 		const event = { key: "Enter" };
-		assert.equal(routeAutocompleteKey(owner, event, {
-			mention: (actual) => {
-				assert.equal(actual, event);
-				calls.push("mention");
-				return true;
-			},
-			emoji: (actual) => {
-				assert.equal(actual, event);
-				calls.push("emoji");
-				return true;
-			},
-			composer: () => calls.push("composer"),
-		}), true);
+		assert.equal(
+			routeAutocompleteKey(owner, event, {
+				mention: (actual) => {
+					assert.equal(actual, event);
+					calls.push("mention");
+					return true;
+				},
+				emoji: (actual) => {
+					assert.equal(actual, event);
+					calls.push("emoji");
+					return true;
+				},
+				composer: () => calls.push("composer"),
+			}),
+			true,
+		);
 		assert.deepEqual(calls, [owner]);
 	}
 });
@@ -43,28 +46,48 @@ test("consumed keys never reach composer or competing autocomplete", () => {
 test("a refusal or no owner resumes normal composer behavior, never the other popup", () => {
 	for (const owner of ["none", "mention", "emoji"]) {
 		const calls = [];
-		const result = routeAutocompleteKey(owner, { key: "Enter" }, {
-			mention: () => {
-				calls.push("mention");
-				return false;
+		const result = routeAutocompleteKey(
+			owner,
+			{ key: "Enter" },
+			{
+				mention: () => {
+					calls.push("mention");
+					return false;
+				},
+				emoji: () => {
+					calls.push("emoji");
+					return false;
+				},
+				composer: () => calls.push("composer"),
 			},
-			emoji: () => {
-				calls.push("emoji");
-				return false;
-			},
-			composer: () => calls.push("composer"),
-		});
+		);
 		assert.equal(result, false);
-		assert.deepEqual(calls, owner === "none" ? ["composer"] : [owner, "composer"]);
+		assert.deepEqual(
+			calls,
+			owner === "none" ? ["composer"] : [owner, "composer"],
+		);
 	}
 });
 
 test("only text insertion and deletion are typing, never IME/paste/undo/redo", () => {
-	for (const inputType of ["insertText", "deleteContentBackward", "deleteContentForward"]) {
+	for (const inputType of [
+		"insertText",
+		"deleteContentBackward",
+		"deleteContentForward",
+	]) {
 		assert.equal(isEmojiTyping(inputType, false), true, inputType);
 		assert.equal(isEmojiTyping(inputType, true), false, inputType);
 	}
-	for (const inputType of ["", "insertFromPaste", "insertFromDrop", "insertFromComposition", "insertCompositionText", "historyUndo", "historyRedo", "insertReplacementText"]) {
+	for (const inputType of [
+		"",
+		"insertFromPaste",
+		"insertFromDrop",
+		"insertFromComposition",
+		"insertCompositionText",
+		"historyUndo",
+		"historyRedo",
+		"insertReplacementText",
+	]) {
 		assert.equal(isEmojiTyping(inputType, false), false, inputType);
 	}
 });
@@ -77,7 +100,12 @@ test("popup prefers 320px, eight 36px rows and opens above a bottom caret", () =
 		rows: 32,
 		rtl: false,
 	});
-	assert.deepEqual(position, { left: 200, top: 398, width: 320, maxHeight: 296 });
+	assert.deepEqual(position, {
+		left: 200,
+		top: 398,
+		width: 320,
+		maxHeight: 296,
+	});
 	assert.equal(emojiOptionId("fixture", 0), "fixture-emoji-option-0");
 });
 

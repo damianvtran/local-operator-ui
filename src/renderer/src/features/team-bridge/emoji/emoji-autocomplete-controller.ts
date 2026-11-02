@@ -56,7 +56,8 @@ export function emojiPopoverPosition(input: {
 	const gap = 6;
 	const width = Math.min(320, Math.max(0, viewportWidth - edge * 2));
 	const desiredHeight =
-		Math.max(1, Math.min(EMOJI_VISIBLE_ROWS, input.rows)) * EMOJI_ROW_HEIGHT + 8;
+		Math.max(1, Math.min(EMOJI_VISIBLE_ROWS, input.rows)) * EMOJI_ROW_HEIGHT +
+		8;
 	const above = Math.max(0, input.caret.top - gap - edge);
 	const below = Math.max(
 		0,
@@ -68,7 +69,9 @@ export function emojiPopoverPosition(input: {
 		flipBelow ? below : above,
 		Math.max(0, viewportHeight - edge * 2),
 	);
-	const preferredLeft = input.rtl ? input.caret.right - width : input.caret.left;
+	const preferredLeft = input.rtl
+		? input.caret.right - width
+		: input.caret.left;
 	return {
 		left: Math.max(edge, Math.min(preferredLeft, viewportWidth - edge - width)),
 		top: Math.max(

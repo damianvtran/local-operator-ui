@@ -46,22 +46,25 @@ export function EmojiAutocompletePopover({
 		const view = field?.ownerDocument.defaultView;
 		if (!field || !view) return;
 		const measure = () => {
-			setPosition(emojiPopoverPosition({
-				caret: caretRect(field, anchorIndex),
-				viewportWidth: view.innerWidth,
-				viewportHeight: view.innerHeight,
-				rows: rows.length,
-				rtl: view.getComputedStyle(field).direction === "rtl",
-			}));
+			setPosition(
+				emojiPopoverPosition({
+					caret: caretRect(field, anchorIndex),
+					viewportWidth: view.innerWidth,
+					viewportHeight: view.innerHeight,
+					rows: rows.length,
+					rtl: view.getComputedStyle(field).direction === "rtl",
+				}),
+			);
 		};
 		measure();
 		// Capture ancestor scroll as well as textarea scroll: a fixed portal does
 		// not follow its anchor when a containing pane moves beneath it.
 		view.addEventListener("scroll", measure, true);
 		view.addEventListener("resize", measure);
-		const observer = typeof ResizeObserver === "undefined"
-			? null
-			: new ResizeObserver(measure);
+		const observer =
+			typeof ResizeObserver === "undefined"
+				? null
+				: new ResizeObserver(measure);
 		observer?.observe(field);
 		return () => {
 			view.removeEventListener("scroll", measure, true);
@@ -69,17 +72,20 @@ export function EmojiAutocompletePopover({
 			observer?.disconnect();
 		};
 	}, [fieldRef, anchorIndex, rows.length]);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: query rows and available height must re-scroll an unchanged active index.
 	useLayoutEffect(() => {
-		list.current?.querySelector<HTMLElement>(
-			`[data-emoji-index="${active}"]`,
-		)?.scrollIntoView?.({ block: "nearest" });
+		list.current
+			?.querySelector<HTMLElement>(`[data-emoji-index="${active}"]`)
+			?.scrollIntoView?.({ block: "nearest" });
 	}, [active, rows, position?.maxHeight]);
 	const doc = fieldRef.current?.ownerDocument;
 	if (!doc || !position || position.maxHeight <= 0) return null;
 	return createPortal(
 		<div
 			data-emoji-popover=""
-			className={cn("fixed z-50 overflow-hidden rounded-md bg-elevated shadow-lg")}
+			className={cn(
+				"fixed z-50 overflow-hidden rounded-md bg-elevated shadow-lg",
+			)}
 			style={{
 				left: position.left,
 				top: position.top,
@@ -97,31 +103,37 @@ export function EmojiAutocompletePopover({
 				style={{ maxHeight: position.maxHeight }}
 			>
 				{rows.length === 0 ? (
-					<div role="status" className="min-h-9 px-3 py-2 text-body-sm text-ink-muted">
+					<output className="block min-h-9 px-3 py-2 text-body-sm text-ink-muted">
 						{emptyLabel}
-					</div>
-				) : rows.map((row, index) => (
-					/* biome-ignore lint/a11y/useFocusableInteractive lint/a11y/useKeyWithClickEvents lint/a11y/useSemanticElements: field owns focus and keyboard selection via aria-activedescendant. */
-					<div
-						key={row.emoji}
-						id={emojiOptionId(listboxId, index)}
-						role="option"
-						aria-selected={index === active}
-						data-emoji-index={index}
-						className={cn(
-							"relative flex h-9 min-h-9 cursor-pointer items-center gap-2 px-3 text-body-sm text-ink",
-							index === active && "bg-accent-wash before:absolute before:inset-y-0 before:start-0 before:w-0.5 before:bg-accent",
-						)}
-						onMouseMove={() => onActive(index)}
-						onMouseDown={(event) => {
-							event.preventDefault();
-						}}
-						onClick={() => onPick(row)}
-					>
-						<span aria-hidden="true" className="shrink-0 text-lg">{row.emoji}</span>
-						<span className="truncate">{labelFor(row)}</span>
-					</div>
-				))}
+					</output>
+				) : (
+					rows.map((row, index) => (
+						/* biome-ignore lint/a11y/useFocusableInteractive lint/a11y/useKeyWithClickEvents lint/a11y/useSemanticElements: field owns focus and keyboard selection via aria-activedescendant. */
+						<div
+							key={row.emoji}
+							id={emojiOptionId(listboxId, index)}
+							/* biome-ignore lint/a11y/useSemanticElements: rich combobox rows retain field focus; native options cannot render this content. */
+							role="option"
+							aria-selected={index === active}
+							data-emoji-index={index}
+							className={cn(
+								"relative flex h-9 min-h-9 cursor-pointer items-center gap-2 px-3 text-body-sm text-ink",
+								index === active &&
+									"bg-accent-wash before:absolute before:inset-y-0 before:start-0 before:w-0.5 before:bg-accent",
+							)}
+							onMouseMove={() => onActive(index)}
+							onMouseDown={(event) => {
+								event.preventDefault();
+							}}
+							onClick={() => onPick(row)}
+						>
+							<span aria-hidden="true" className="shrink-0 text-lg">
+								{row.emoji}
+							</span>
+							<span className="truncate">{labelFor(row)}</span>
+						</div>
+					))
+				)}
 			</div>
 		</div>,
 		doc.body,

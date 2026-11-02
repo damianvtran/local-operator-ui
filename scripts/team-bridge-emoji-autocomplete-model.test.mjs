@@ -106,7 +106,9 @@ test("token starts accept punctuation, multiline, empty and non-Latin aliases", 
 		assert.ok(queryAt(text), text);
 	}
 	assert.deepEqual(queryAt("hello :sm"), { start: 6, end: 9, query: "sm" });
-	const lookup = createEmojiSearch([{ emoji: smile, name: "笑顔", keywords: ["heureux"] }]);
+	const lookup = createEmojiSearch([
+		{ emoji: smile, name: "笑顔", keywords: ["heureux"] },
+	]);
 	assert.equal(lookup("笑")[0].emoji, smile);
 	assert.equal(lookup("HEUREUX")[0].emoji, smile);
 });
@@ -162,7 +164,10 @@ test("only current trusted typing owns queries, never paste, restore, STT or IME
 	for (const kind of ["paste", "restore", "dictation"]) {
 		assert.equal(queryAt(text, { interaction: { text, kind } }), null);
 	}
-	assert.equal(queryAt(text, { interaction: { text: ":s", kind: "typing" } }), null);
+	assert.equal(
+		queryAt(text, { interaction: { text: ":s", kind: "typing" } }),
+		null,
+	);
 	assert.equal(queryAt(text, { composing: true }), null);
 	assert.equal(queryAt(text, { selectionEnd: 0 }), null);
 	assert.equal(queryAt(text, { selectionStart: -1, selectionEnd: -1 }), null);
