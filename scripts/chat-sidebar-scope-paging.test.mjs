@@ -19,6 +19,8 @@ const BADGE_SR_ONLY_RE =
 	/\{badge > 0 && \(\s*<span className="sr-only">\{groupBadgeLabel\(badge\)\}<\/span>/;
 const DISCLOSURE_LABEL_RE =
 	/DISCLOSURE_LABELS|ui\.chat\.sidebar\.entity\.expand_chats/;
+const MORE_IN_ARIA_RE =
+	/aria-label=\{t\("ui\.chat\.sidebar\.entity\.more_in", \{\s*label: foot\.aria,\s*name: displayName,\s*\}\)\}/;
 
 /*
  * THE PAGED CATALOGUE, driven through the shipped store and the shipped
@@ -58,7 +60,7 @@ globalThis.__canonicalEcho = () => {};
 const bundle = await build({
 	stdin: {
 		contents:
-			'export * from "./src/renderer/src/shared/store/canonical-sessions-store"; export {desktopRequestSchema, desktopEndpoint} from "./src/shared/desktop-contract"; export {desktopFeatureEnabled} from "./src/renderer/src/shared/api/local-operator/desktop-hooks"; export {groupChatsView, groupBadgeCount, groupBadgeLabel, scopeCensusTotal, catalogueTailView, catalogueTotalSentence, tailArrivalAnnouncement, tailExtendDue} from "./src/renderer/src/features/chat/sidebar-scope-paging";',
+			'export * from "./src/renderer/src/shared/store/canonical-sessions-store"; export {desktopRequestSchema, desktopEndpoint} from "./src/shared/desktop-contract"; export {desktopFeatureEnabled} from "./src/renderer/src/shared/api/local-operator/desktop-hooks"; export {t} from "./src/i18n"; export {groupChatsView, groupBadgeCount, groupBadgeLabel, scopeCensusTotal, catalogueTailView, catalogueTotalSentence, tailArrivalAnnouncement, tailExtendDue} from "./src/renderer/src/features/chat/sidebar-scope-paging";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -153,6 +155,7 @@ const {
 	replaceSessionRows,
 	desktopRequestSchema,
 	desktopEndpoint,
+	t,
 	groupChatsView,
 	groupBadgeCount,
 	groupBadgeLabel,
@@ -1547,9 +1550,24 @@ test("the Show-more control names its group, joins the arrow-key idiom, and is f
 	 * group they are in. The assertion moved with the copy; the intent it states is
 	 * the same three clauses it stated before.
 	 */
-	assert.ok(
-		SIDEBAR_SRC.includes("aria-label={`${foot.aria} in ${displayName}`}"),
+	assert.match(
+		SIDEBAR_SRC,
+		MORE_IN_ARIA_RE,
 		"the press must say what it does, where in the group the reader is, AND which group it belongs to",
+	);
+	/*
+	 * The label is a catalogue message now (`{label} in {name}`), so the source pin
+	 * above proves WHICH two facts feed it and this proves what the reader hears: the
+	 * English resolves to the same sentence the template literal built, with the
+	 * group's name last. A catalogue edit that dropped the `{name}` clause would pass
+	 * the pin and fail here.
+	 */
+	assert.equal(
+		t("ui.chat.sidebar.entity.more_in", {
+			label: "Show 25 more of 80",
+			name: "Team Ops",
+		}),
+		"Show 25 more of 80 in Team Ops",
 	);
 	assert.ok(
 		SIDEBAR_SRC.includes(
