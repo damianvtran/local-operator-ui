@@ -93,12 +93,27 @@ function stream(
 		onCommand,
 		base64 = true,
 		layout,
+		layoutErrors = 0,
+		frameError,
 	} = {},
 ) {
 	let index = 0;
+	let layoutFailures = 0;
 	return ({ method, params }) => {
 		onCommand?.(method, params);
 		if (method === "Runtime.evaluate") {
+			// The frame wait is the only evaluate that awaits a promise; the poll is
+			// the plain one, so a fixture can fail either on its own.
+			if (params?.awaitPromise) {
+				if (frameError) throw frameError;
+				return {
+					result: { value: layout ? [layout.width, layout.height] : undefined },
+				};
+			}
+			if (layoutFailures < layoutErrors) {
+				layoutFailures += 1;
+				throw new Error("Cannot find default execution context");
+			}
 			// The poll reads the page's own viewport: two numbers, the shape
 			// Chromium returns for `[window.innerWidth, window.innerHeight]`.
 			return {
@@ -796,10 +811,13 @@ class FakeDebugger extends EventEmitter {
 function poolFixture(answer) {
 	const cdp = new mod.CdpPool();
 	const fakeDebugger = new FakeDebugger();
+	const sent = [];
 	if (answer) {
 		const original = FakeDebugger.prototype.sendCommand;
-		fakeDebugger.sendCommand = async (method) =>
-			answer({ method }) ?? original.call(fakeDebugger, method);
+		fakeDebugger.sendCommand = async (method) => {
+			sent.push(method);
+			return answer({ method }) ?? original.call(fakeDebugger, method);
+		};
 	}
 	const debuggerLike = fakeDebugger;
 	const contents = contentsFor(9001 + nextViewId++, { debugger: debuggerLike });
@@ -807,7 +825,7 @@ function poolFixture(answer) {
 		cdp,
 		registry: { requireSurface: () => ({ view: { webContents: contents } }) },
 	};
-	return { cdp, contents, debuggerLike, ctx };
+	return { cdp, contents, debuggerLike, ctx, sent };
 }
 
 test("every debugger boundary aborts a recording and clears its timer", async (t) => {
@@ -1152,6 +1170,8 @@ function sizedStart(options = {}) {
 		presentedTab: options.presentedTab,
 		handler: stream(options.chunks ?? [Buffer.from("ftyp-sized")], {
 			layout: options.layout ?? requested,
+			layoutErrors: options.layoutErrors,
+			frameError: options.frameError,
 			startError: options.startError,
 			endless: options.endless,
 		}),
@@ -1202,14 +1222,26 @@ test("a sized start sets the viewport, waits for layout, then records there", as
 		width: 2160,
 		height: 3840,
 	});
-	// The order is the contract: the viewport exists before the recorder starts.
+	// The order is the contract: the viewport exists, the page draws at it, and
+	// only then does the recorder start on it.
 	assert.deepEqual(
 		commands.map((call) => call.method),
 		[
 			"Emulation.setDeviceMetricsOverride",
 			"Runtime.evaluate",
+			"Runtime.evaluate",
 			"Page.startScreenRecording",
 		],
+	);
+	assert.equal(
+		commands[1].params.awaitPromise,
+		undefined,
+		"the poll is a plain read",
+	);
+	assert.equal(
+		commands[2].params.awaitPromise,
+		true,
+		"the settle awaits frames",
 	);
 	assert.deepEqual(commands[0].params, {
 		width: 2160,
@@ -1217,7 +1249,7 @@ test("a sized start sets the viewport, waits for layout, then records there", as
 		deviceScaleFactor: 1,
 		mobile: false,
 	});
-	assert.deepEqual(commands[2].params, {
+	assert.deepEqual(commands[3].params, {
 		audio: false,
 		maxWidth: 2160,
 		maxHeight: 3840,
@@ -1271,6 +1303,45 @@ test("a viewport that never settles is refused as not_applied and restored", asy
 	assert.equal(methods.at(-1), "Emulation.clearDeviceMetricsOverride");
 });
 
+test("a tab that never draws a frame at the new size is refused, not recorded", async () => {
+	// QA Q1: layout can match while the compositor still holds the old raster, so
+	// the start waits for a frame at the new size. A tab that never draws one
+	// must refuse rather than encode the old layout into the new clip.
+	const { start, commands, path, requested } = sizedStart({
+		frameError: new Error("Runtime.evaluate timed out"),
+	});
+	const error = await start({ path, ...requested }).catch((refusal) => refusal);
+	assert.equal(error.code, "internal");
+	assert.equal(error.data?.reason, "record_size");
+	assert.equal(error.data?.why, "not_applied");
+	assert.match(error.message, /did not draw a frame at that size/);
+	assert.match(error.message, /Nothing was started\.$/);
+	const methods = commands.map((call) => call.method);
+	assert.ok(!methods.includes("Page.startScreenRecording"));
+	assert.equal(methods.at(-1), "Emulation.clearDeviceMetricsOverride");
+});
+
+test("a transient evaluate failure during a navigation is retried, not refused", async () => {
+	// Review n-A: a tab mid-navigation answers "Cannot find default execution
+	// context" until the new document exists. That is a start racing a load, so
+	// the poll retries inside its own window instead of failing the start.
+	const { start, stop, commands, path, requested } = sizedStart({
+		layoutErrors: 2,
+	});
+	const result = await start({ path, ...requested });
+	assert.equal(result.recording, true);
+	const evaluates = commands.filter(
+		(call) => call.method === "Runtime.evaluate",
+	);
+	assert.equal(
+		evaluates.length,
+		4,
+		"two failed polls, one matching poll, one settle",
+	);
+	assert.equal(commands.at(-1).method, "Page.startScreenRecording");
+	await stop();
+});
+
 test("a failed start that had resized the tab restores the viewport", async () => {
 	const { start, stop, commands, path, requested } = sizedStart({
 		startError: new Error("Screencast is already active"),
@@ -1284,6 +1355,7 @@ test("a failed start that had resized the tab restores the viewport", async () =
 		commands.map((call) => call.method),
 		[
 			"Emulation.setDeviceMetricsOverride",
+			"Runtime.evaluate",
 			"Runtime.evaluate",
 			"Page.startScreenRecording",
 			"Emulation.clearDeviceMetricsOverride",
@@ -1657,7 +1729,7 @@ test("a forget on a destroyed view ends the recording without recursing", async 
 	// RangeError). The clear must not ask a view that is already gone.
 	const dir = scratchDir();
 	const path = join(dir, "clip.mp4");
-	const { cdp, contents, ctx } = poolFixture(({ method }) =>
+	const { cdp, contents, ctx, sent } = poolFixture(({ method }) =>
 		method === "Runtime.evaluate"
 			? { result: { value: [1920, 1080] } }
 			: undefined,
@@ -1673,10 +1745,20 @@ test("a forget on a destroyed view ends the recording without recursing", async 
 		destroyChecks += 1;
 		return true;
 	};
+	const beforeForget = sent.length;
 	cdp.forget(contents.id);
 	assert.ok(
 		destroyChecks < 20,
 		`the view was asked ${destroyChecks} times: the clear re-entered forget`,
+	);
+	// The guard, not the recursion ceiling, is what this pins: a destroyed view is
+	// never asked to clear its override at all.
+	assert.deepEqual(
+		sent
+			.slice(beforeForget)
+			.filter((method) => method === "Emulation.clearDeviceMetricsOverride"),
+		[],
+		"the clear skipped a destroyed view",
 	);
 	await rejectsReason(
 		mod.recordStop(ctx, { tab: "tab", requester: "session:a" }, "r"),

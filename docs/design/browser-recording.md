@@ -29,6 +29,15 @@ the real-path driver recorded in the PR's evidence matrix.
   page's own `innerWidth`/`innerHeight` matched. The request is refused before
   any CDP call unless both sides are even integers in 240..3840 and the area is
   at most 3840x2160. A sized result carries the measured `width`/`height`.
+- A sized start waits for the tab to DRAW a frame at the new size before the
+  recorder starts. The encoder captures the compositor's surface, not the DOM:
+  starting as soon as `innerWidth` matched left the opening frames of large
+  clips holding the old 1280x720 raster (QA Q1 — the old layout stretched across
+  a 3840x2160 clip, and a 1280x720 patch on black at 2160x3840 and 3840x1080,
+  while the clip was coded at the right size and its last frame was correct).
+  Two `requestAnimationFrame` callbacks are that wait: 8-14 ms on a hidden view,
+  bounded at 2 s, after which a tab that still has not drawn one is refused
+  `record_size`/`not_applied` rather than recorded at the old layout.
 - A sized start on the PRESENTED (user-visible) tab is refused: growing the user's
   own view to the requested size would cover the app around it. Tab close and
   detach drop the emulation with the debugger session; stop, abort, replace and a
@@ -161,6 +170,16 @@ target (`width`/`height` had no UI implementation yet), local animating page:
   responsive layouts reflow. `screenshot` on that tab returns the larger
   surface. Asking for 4K asks for a different layout, not a scaled image of the
   1280x720 one.
+- THE FIRST FRAME NEEDS A FRAME, NOT JUST A LAYOUT (QA Q1, 2026-11-02). With no
+  wait between the matching `innerWidth` and `Page.startScreenRecording`, the
+  encoder's first frames carried the PREVIOUS raster: QA's run through the host
+  path recorded a 1280x720 layout across 3840x2160, 2160x3840 and 3840x1080
+  clips, and this rig reproduced it at 2160x3840 in 3 of 3 control runs (a
+  1280x720 patch on black, 31.6 % of the frame painted). Two
+  `requestAnimationFrame` callbacks (8-14 ms) made frame 0 correct in 8 of 8
+  runs at each of 3840x2160, 2160x3840 and 1920x1080; one unclipped
+  `Page.captureScreenshot` (27-50 ms) and a fixed 500 ms wait did the same, and
+  the screenshot was rejected for the smaller margin it buys at a larger cost.
 
 ## Still unverified
 

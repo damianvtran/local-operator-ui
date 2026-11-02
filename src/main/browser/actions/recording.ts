@@ -87,6 +87,12 @@ export const RECORD_LAYOUT_SETTLE_MS = 2_000;
  * short interval keeps a stuck tab to ~40 round trips, not a spin. */
 export const RECORD_LAYOUT_POLL_MS = 50;
 
+/** How long a sized start waits, once the page's own inner size matches, for a
+ * frame AT that size to reach the compositor the encoder captures. Bound and
+ * poll cadence are separate from the layout wait above on purpose: the two
+ * measure different things and either can be the one that fails. */
+export const RECORD_FRAME_SETTLE_MS = 2_000;
+
 /** Above this area a clip counts as "large" for the provisional rule below. */
 export const RECORD_LARGE_AREA = 1920 * 1080;
 
@@ -478,6 +484,16 @@ function sizeOfRecording(recording: {
 		: { width: recording.width, height: recording.height };
 }
 
+/** The page's own inner size, in CSS pixels, from a `Runtime.evaluate` answer,
+ * or null when the answer is not a pair of numbers. */
+function sizeFromValue(value: unknown): RecordSize | null {
+	if (!Array.isArray(value) || value.length !== 2) return null;
+	const width = Number(value[0]);
+	const height = Number(value[1]);
+	if (!Number.isFinite(width) || !Number.isFinite(height)) return null;
+	return { width: Math.round(width), height: Math.round(height) };
+}
+
 /**
  * The page's own inner size, in CSS pixels, or null when the answer is not a
  * pair of numbers.
@@ -502,17 +518,19 @@ async function innerViewport(
 		},
 		{ deadlineMs: CDP_DEADLINE_MS },
 	);
-	const value = answer?.result?.value;
-	if (!Array.isArray(value) || value.length !== 2) return null;
-	const width = Number(value[0]);
-	const height = Number(value[1]);
-	if (!Number.isFinite(width) || !Number.isFinite(height)) return null;
-	return { width: Math.round(width), height: Math.round(height) };
+	return sizeFromValue(answer?.result?.value);
 }
 
 /** Wait until the emulated viewport is the one that was asked for, or refuse.
  * Polling reads the page's own layout, not a value this process wrote: the
  * override can be accepted while the renderer has not laid out yet.
+ *
+ * A TRANSIENT `Runtime.evaluate` FAILURE IS A "NOT YET": during a navigation the
+ * tab answers `Cannot get default execution context` (or "Cannot find default
+ * execution context") until the new document exists, and that is a start racing
+ * a load, not a start that cannot resize. Treating it as the answer made the
+ * whole start fail with a raw CDP error instead of waiting out the poll window
+ * (review n-A).
  *
  * The answer is the REQUESTED size: the poll passes only on an exact match, so
  * reporting the request is reporting the measurement, and the echoed width and
@@ -524,7 +542,13 @@ async function waitForViewport(
 ): Promise<RecordSize> {
 	const deadline = Date.now() + RECORD_LAYOUT_SETTLE_MS;
 	for (;;) {
-		const measured = await innerViewport(cdp, contents);
+		let measured: RecordSize | null = null;
+		try {
+			measured = await innerViewport(cdp, contents);
+		} catch {
+			// See the note above: the poll owns this window, so it retries.
+			measured = null;
+		}
 		if (
 			measured &&
 			measured.width === size.width &&
@@ -543,6 +567,81 @@ async function waitForViewport(
 			setTimeout(resolveWait, RECORD_LAYOUT_POLL_MS),
 		);
 	}
+}
+
+/** Two `requestAnimationFrame` callbacks, resolved with the inner size the tab
+ * reports at that point. The first callback runs after the resized frame has
+ * been laid out and painted, the second after that frame has been handed to the
+ * compositor — which is the surface the encoder captures. */
+const FRAME_SETTLE_EXPRESSION =
+	"new Promise((resolve) => { requestAnimationFrame(() => requestAnimationFrame(() => resolve([window.innerWidth, window.innerHeight]))); })";
+
+/**
+ * Wait until the tab has DRAWN a frame at the size the layout poll confirmed.
+ *
+ * WHY THE POLL IS NOT ENOUGH (QA Q1): `window.innerWidth` reports the override
+ * as soon as the renderer is told about it, but `Page.startScreenRecording`
+ * captures the COMPOSITOR's surface. Starting the instant the numbers matched
+ * left the encoder's first frames holding the PREVIOUS 1280x720 raster — the
+ * old layout stretched across a 3840x2160 clip, and a 1280x720 patch on black
+ * at 2160x3840 and 3840x1080 — while the clip was coded at the requested size
+ * and its LAST frame was right (measured 2026-11-02 on Electron 45.1.0, QA Q1).
+ *
+ * WHY `requestAnimationFrame` AND NOT A TIMER: a timer waits a guessed number
+ * of milliseconds for work whose duration depends on the size and the machine
+ * (500 ms was enough in the probe, but only because it is far longer than the
+ * three-frame path it was really waiting for). rAF callbacks are driven by the
+ * compositor's BeginFrames, so two of them mean what this wait means: a frame
+ * exists. Measured on the real hidden view: 8-14 ms per pair, and the first
+ * frame carried the requested size in 8 of 8 runs at each of 3840x2160,
+ * 2160x3840 and 1920x1080, against 3 of 3 stale at 2160x3840 with no wait.
+ *
+ * A view that never draws one is refused `record_size`/`not_applied` by the
+ * caller: a clip whose first frame is the old layout is a wrong clip, not a
+ * slow one. */
+async function waitForCompositedFrame(
+	cdp: BrowserActionContext["cdp"],
+	contents: CdpContents,
+	size: RecordSize,
+): Promise<void> {
+	const deadline = Date.now() + RECORD_FRAME_SETTLE_MS;
+	for (;;) {
+		const remaining = deadline - Date.now();
+		if (remaining <= 0) break;
+		let measured: RecordSize | null = null;
+		try {
+			const answer = await cdp.send<{ result?: { value?: unknown } }>(
+				contents,
+				"Runtime.evaluate",
+				{
+					expression: FRAME_SETTLE_EXPRESSION,
+					awaitPromise: true,
+					returnByValue: true,
+				},
+				{ deadlineMs: remaining },
+			);
+			measured = sizeFromValue(answer?.result?.value);
+		} catch {
+			// A promise that never settles, and a document that is being replaced,
+			// both land here; the loop's deadline is what decides.
+			measured = null;
+		}
+		if (
+			measured &&
+			measured.width === size.width &&
+			measured.height === size.height
+		) {
+			return;
+		}
+		await new Promise((resolveWait) =>
+			setTimeout(resolveWait, RECORD_LAYOUT_POLL_MS),
+		);
+	}
+	throw sizeRefusal(
+		"not_applied",
+		"size",
+		`record_start applied ${size.width}x${size.height} to the tab's viewport, but the tab did not draw a frame at that size within ${RECORD_FRAME_SETTLE_MS / 1000} s.`,
+	);
 }
 
 /** Apply one recording's override and claim the tab's viewport for it.
@@ -1117,6 +1216,9 @@ export async function recordStart(
 		if (size) {
 			viewportToken = await installViewport(ctx.cdp, contents, size);
 			measured = await waitForViewport(ctx.cdp, contents, size);
+			// The poll proved the page's geometry; this proves the compositor has a
+			// frame at it, which is what the encoder's first frame must show (Q1).
+			await waitForCompositedFrame(ctx.cdp, contents, measured);
 		}
 		try {
 			await ctx.cdp.send(
