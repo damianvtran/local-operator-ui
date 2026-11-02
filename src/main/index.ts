@@ -7,6 +7,7 @@ import {
 	BrowserWindow,
 	type BrowserWindowConstructorOptions,
 	Menu,
+	type NativeImage,
 	app,
 	dialog,
 	globalShortcut,
@@ -19,11 +20,8 @@ import {
 } from "electron";
 import { PostHog } from "posthog-node";
 import icon from "../../resources/icon.png?asset";
-import { LANGUAGE_SETTING_KEY, subscribeLocale } from "../i18n/locale";
 import { t } from "../i18n/index";
-import { AppAttentionService } from "./app-attention-service";
-import { createAppIconBadge } from "./app-icon-badge";
-import { appIconBadgeBitmap } from "./app-icon-badge-bitmap";
+import { LANGUAGE_SETTING_KEY, subscribeLocale } from "../i18n/locale";
 import type {
 	AttachmentUploadResult,
 	AttachmentUploadSource,
@@ -34,7 +32,6 @@ import {
 	BACKEND_STATUS_EVENT,
 } from "../shared/backend-status";
 import {
-	desktopRequestSchema,
 	type DirectoryListing,
 	EXTERNAL_OPEN_REFUSED_CHANNEL,
 	type ExternalOpenOutcome,
@@ -42,6 +39,7 @@ import {
 	MAX_FILE_READ_BYTES,
 	type ProbedFile,
 	type ReadFileBytesResponse,
+	desktopRequestSchema,
 } from "../shared/desktop-contract";
 import type { DesktopFeedState } from "../shared/desktop-contract";
 import type { DesktopFeedFrame } from "../shared/desktop-session-contract";
@@ -65,6 +63,9 @@ import {
 	groundWithGlass,
 	windowGlassArgument,
 } from "../shared/window-glass";
+import { AppAttentionService } from "./app-attention-service";
+import { createAppIconBadge } from "./app-icon-badge";
+import { appIconBadgeBitmap } from "./app-icon-badge-bitmap";
 import { applicationMenuLabels } from "./application-menu-labels";
 import { uploadAttachment } from "./attachment-upload";
 import {
@@ -2609,38 +2610,81 @@ app
 		// LauncherEntry needs the installed desktop identity, not a made-up count
 		// or a promise that every Linux desktop supports this protocol.
 		const desktopName = process.env.CHROME_DESKTOP;
-		const desktopIdentity = process.platform === "linux" &&
-			typeof desktopName === "string" && /^[A-Za-z0-9_.-]+\.desktop$/.test(desktopName) &&
-			[process.env.XDG_DATA_HOME || join(app.getPath("home"), ".local/share"),
-				...(process.env.XDG_DATA_DIRS || "/usr/local/share:/usr/share").split(":").filter((root) => root.startsWith("/"))]
-				.some((root) => existsSync(join(root, "applications", desktopName)));
+		const desktopIdentity =
+			process.platform === "linux" &&
+			typeof desktopName === "string" &&
+			/^[A-Za-z0-9_.-]+\.desktop$/.test(desktopName) &&
+			[
+				process.env.XDG_DATA_HOME || join(app.getPath("home"), ".local/share"),
+				...(process.env.XDG_DATA_DIRS || "/usr/local/share:/usr/share")
+					.split(":")
+					.filter((root) => root.startsWith("/")),
+			].some((root) => existsSync(join(root, "applications", desktopName)));
 		if (desktopIdentity && desktopName) app.setDesktopName(desktopName);
-		const nativeBadge = createAppIconBadge({
+		const nativeBadge = createAppIconBadge<NativeImage>({
 			platform: process.platform,
-			setDockBadge: (label) => { if (!app.dock) throw new Error("Dock unavailable"); app.dock.setBadge(label); },
+			setDockBadge: (label) => {
+				if (!app.dock) throw new Error("Dock unavailable");
+				app.dock.setBadge(label);
+			},
 			setOverlayIcon: (image, description) => {
-				if (!mainWindow || mainWindow.isDestroyed()) throw new Error("Taskbar target unavailable");
+				if (!mainWindow || mainWindow.isDestroyed())
+					throw new Error("Taskbar target unavailable");
 				mainWindow.setOverlayIcon(image, description);
 			},
-			createOverlayImage: (label) => nativeImage.createFromBitmap(appIconBadgeBitmap(label), { width: 16, height: 16, scaleFactor: 1 }),
+			createOverlayImage: (label) =>
+				nativeImage.createFromBitmap(appIconBadgeBitmap(label), {
+					width: 16,
+					height: 16,
+					scaleFactor: 1,
+				}),
 			setBadgeCount: (count) => app.setBadgeCount(count),
 			linuxDesktopIdentity: desktopIdentity,
-			describe: ({ unreadCount, pending }) => pending
-				? unreadCount > 0 ? t("ui.nativeBadge.attentionPending", { count: unreadCount }) : t("ui.nativeBadge.pending")
-				: t("ui.nativeBadge.attention", { count: unreadCount }),
+			describe: ({ unreadCount, pending }) =>
+				pending
+					? unreadCount > 0
+						? t("ui.nativeBadge.attentionPending", { count: unreadCount })
+						: t("ui.nativeBadge.pending")
+					: t("ui.nativeBadge.attention", { count: unreadCount }),
 		});
+		// Headless hides the Dock tile: hosted scene evidence reads the real
+		// Dock API through CDP, not Dock pixels. This opt-in exposes only the
+		// adapter's last projection, never a mutation or acknowledgement port.
+		if (
+			process.env.LOCAL_OPERATOR_UI_APP_ICON_BADGE_SCENE === "1" &&
+			process.env.CI === "true" &&
+			process.env.GITHUB_ACTIONS === "true" &&
+			process.env.RUNNER_ENVIRONMENT === "github-hosted" &&
+			process.platform === "darwin" &&
+			windowLaunch.show === "never"
+		) {
+			const sceneGlobal = globalThis as typeof globalThis & {
+				__lopAppIconBadgeSceneRead?: typeof nativeBadge.readForScene;
+			};
+			sceneGlobal.__lopAppIconBadgeSceneRead = () => nativeBadge.readForScene();
+		}
 		const appAttention = new AppAttentionService({
 			request: (input) => backendService.requestDesktop(input),
-			supportsUnreadEvents: desktopRequestSchema.safeParse({ op: "team_bridge.unread.events", after: "0", wait: 20 }).success,
-			publish: (snapshot, enabled) => { nativeBadge.update(snapshot, enabled); },
-			clear: () => { nativeBadge.reset(); },
+			supportsUnreadEvents: desktopRequestSchema.safeParse({
+				op: "team_bridge.unread.events",
+				after: "0",
+				wait: 20,
+			}).success,
+			publish: (snapshot, enabled) => {
+				nativeBadge.update(snapshot, enabled);
+			},
+			clear: () => {
+				nativeBadge.reset();
+			},
 		});
 		refreshAppIconBadge = () => {
 			if (process.platform !== "win32") return;
 			nativeBadge.invalidateOverlayTarget();
 			appAttention.projection.refresh();
 		};
-		const stopBadgeLocale = subscribeLocale(() => appAttention.projection.refresh());
+		const stopBadgeLocale = subscribeLocale(() =>
+			appAttention.projection.refresh(),
+		);
 		stopAppIconBadge = () => appAttention.stop();
 		resumeAppIconBadge = () => appAttention.resume();
 		app.once("will-quit", stopBadgeLocale);
@@ -4469,7 +4513,8 @@ app
 					window,
 					expectedUrl: rendererUrl,
 					appVersion: app.getVersion(),
-					onPendingConsentChanged: (pending) => appAttention.projection.setBrowserPending(pending),
+					onPendingConsentChanged: (pending) =>
+						appAttention.projection.setBrowserPending(pending),
 					userDataDir: app.getPath("userData"),
 					// The launch plan's own answer, forwarded rather than re-derived: the
 					// browser host uses it to suppress consent banners in a run with nobody at

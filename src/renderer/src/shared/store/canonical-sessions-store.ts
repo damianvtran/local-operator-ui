@@ -25,11 +25,6 @@ import {
 	userFacingMessage,
 } from "@shared/api/local-operator/desktop-api";
 import type { ChatTarget } from "@shared/api/local-operator/profile-hooks";
-import {
-	type UnreadCompletionKind,
-	isUnreadAckableCompletion,
-	unreadCompletionKind,
-} from "../../../../shared/completion-attention";
 // The echo seam, not the hook itself: these are module-level functions over a
 // registry of mounted transcripts, so the store never touches React state and
 // the dependency stays one-way (the hook does not import this store).
@@ -56,6 +51,11 @@ import {
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { t } from "../../../../i18n/messages";
+import {
+	type UnreadCompletionKind,
+	isUnreadAckableCompletion,
+	unreadCompletionKind,
+} from "../../../../shared/completion-attention";
 import type { TagRef } from "../../../../shared/desktop-contract";
 import {
 	DESKTOP_DEADLINE_EXCEEDED_CODE,
@@ -5002,8 +5002,7 @@ export const unreadMarkKind = unreadCompletionKind;
  */
 export const unreadAckableRows = (
 	rows: CanonicalSessionRow[],
-): CanonicalSessionRow[] =>
-	rows.filter(isUnreadAckableCompletion);
+): CanonicalSessionRow[] => rows.filter(isUnreadAckableCompletion);
 
 /** How many rows a click would name; zero hides the control entirely. */
 export const unreadAckableCount = (rows: CanonicalSessionRow[]): number =>

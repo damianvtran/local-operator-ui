@@ -20,7 +20,9 @@ export function unreadCompletionKind(
 		: null;
 }
 
-export function isUnreadAckableCompletion(row: CompletionAttentionRow): boolean {
+export function isUnreadAckableCompletion(
+	row: CompletionAttentionRow,
+): boolean {
 	if (unreadCompletionKind(row) === null) return false;
 	const token = row.attention?.completion_token;
 	return typeof token === "string" && token.length > 0;

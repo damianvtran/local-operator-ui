@@ -35,6 +35,8 @@ export function createAppIconBadge<Image>(ports: AppIconBadgePorts<Image>) {
 	const images = new Map<string, Image>();
 	let lastWrite: string | undefined;
 	let lastResult: AppIconBadgeResult = "unavailable";
+	let lastDescription = "";
+	let lastSnapshot: AppIconBadgeSnapshot = { unreadCount: 0, pending: false };
 
 	function update(
 		snapshot: AppIconBadgeSnapshot,
@@ -48,9 +50,22 @@ export function createAppIconBadge<Image>(ports: AppIconBadgePorts<Image>) {
 				? { unreadCount: 0, pending: false }
 				: snapshot;
 		const count = state.unreadCount;
+		lastSnapshot = { ...state };
+		lastDescription = "";
 		try {
+			// The same keyed exact description is observable in the headless CI
+			// scene even on macOS, whose Dock API accepts only the compact label.
+			// This is projection evidence, not a custom Dock accessibility API.
+			lastDescription = count > 0 || state.pending ? ports.describe(state) : "";
 			if (ports.platform === "darwin" && ports.setDockBadge) {
-				const label = count > 99 ? "99+" : count > 0 ? String(count) : state.pending ? "•" : "";
+				const label =
+					count > 99
+						? "99+"
+						: count > 0
+							? String(count)
+							: state.pending
+								? "•"
+								: "";
 				if (lastWrite !== label) ports.setDockBadge(label);
 				lastWrite = label;
 				lastResult = "applied";
@@ -59,8 +74,15 @@ export function createAppIconBadge<Image>(ports: AppIconBadgePorts<Image>) {
 				ports.setOverlayIcon &&
 				ports.createOverlayImage
 			) {
-				const label = count > 9 ? "9+" : count > 0 ? String(count) : state.pending ? "•" : "";
-				const description = label ? ports.describe(state) : "";
+				const label =
+					count > 9
+						? "9+"
+						: count > 0
+							? String(count)
+							: state.pending
+								? "•"
+								: "";
+				const description = lastDescription;
 				const key = JSON.stringify([label, description]);
 				if (lastWrite !== key) {
 					let image: Image | null = null;
@@ -82,11 +104,13 @@ export function createAppIconBadge<Image>(ports: AppIconBadgePorts<Image>) {
 				if (lastWrite !== key) {
 					if (!ports.setBadgeCount(count)) {
 						lastWrite = undefined;
-						return (lastResult = "unavailable");
+						lastResult = "unavailable";
+						return lastResult;
 					}
 				}
 				lastWrite = key;
-				lastResult = count === 0 && state.pending ? "pending-unsupported" : "applied";
+				lastResult =
+					count === 0 && state.pending ? "pending-unsupported" : "applied";
 			} else {
 				lastResult = "unavailable";
 			}
@@ -100,8 +124,16 @@ export function createAppIconBadge<Image>(ports: AppIconBadgePorts<Image>) {
 
 	return {
 		update,
+		/** Read-only scene evidence: main exposes this only to the hosted,
+		 * explicitly opted-in headless CI scene. No mutation/read acknowledgement
+		 * or native visibility claim is available through this accessor. */
+		readForScene() {
+			return { ...lastSnapshot, lastDescription, lastResult };
+		},
 		/** A replacement Windows target needs a write, not a clear on other OSes. */
-		invalidateOverlayTarget() { if (ports.platform === "win32") lastWrite = undefined; },
+		invalidateOverlayTarget() {
+			if (ports.platform === "win32") lastWrite = undefined;
+		},
 		/** Clear before switching identity; never retain an unverified old integer. */
 		reset() {
 			lastWrite = undefined;

@@ -2,6 +2,10 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { readFileSync } from "node:fs";
 import { stripTypeScriptTypes } from "node:module";
+import {
+	missingScenePrerequisites,
+	mutationPython,
+} from "./app-icon-badge-scene.mjs";
 
 // CI runs Node 22 (packaging pins 22.13.1, which includes this API). These
 // dependency-free modules need only type erasure: loading actual source avoids
@@ -33,6 +37,42 @@ test("macOS caps, deduplicates, preserves read-pending and clears disabled/reset
 	badge.update(state(7), true);
 	badge.reset();
 	assert.deepEqual(writes.slice(-4), ["7", "", "7", ""]);
+});
+
+test("scene readback retains exact localized projection and cannot mutate it", () => {
+	const writes = [];
+	const badge = createAppIconBadge({
+		platform: "darwin", setDockBadge: (label) => writes.push(label), describe,
+	});
+	badge.update(state(100));
+	const view = badge.readForScene();
+	assert.deepEqual(view, {
+		unreadCount: 100, pending: false, lastDescription: describe(state(100)),
+		lastResult: "applied",
+	});
+	view.unreadCount = 7;
+	assert.equal(badge.readForScene().unreadCount, 100);
+	assert.deepEqual(writes, ["99+"]);
+	badge.update(state(0, true));
+	assert.equal(badge.readForScene().lastDescription, describe(state(0, true)));
+	badge.update(state(0, true), false);
+	assert.equal(badge.readForScene().lastDescription, "");
+	assert.equal(badge.readForScene().pending, false);
+});
+
+test("native CI scene refuses other hosts before resolving Electron", () => {
+	const env = { CI: "true", GITHUB_ACTIONS: "true", RUNNER_ENVIRONMENT: "github-hosted",
+		RUNNER_TEMP: "/synthetic", LOCAL_OPERATOR_CORE_BIN: "/synthetic/core",
+		LOCAL_OPERATOR_CORE_PYTHON: "/synthetic/python", LOCAL_OPERATOR_CORE_REF: "a".repeat(40) };
+	assert.deepEqual(missingScenePrerequisites(env, "darwin"), []);
+	assert.ok(missingScenePrerequisites({}, "darwin").length > 0);
+	assert.ok(missingScenePrerequisites({ ...env, RUNNER_ENVIRONMENT: "self-hosted" }, "darwin").length > 0);
+	assert.ok(missingScenePrerequisites(env, "linux").length > 0);
+	const source = mutationPython({ config: "/synthetic/config", action: "read_ask" });
+	assert.match(source, /store\.mark_refs/);
+	assert.match(source, /A\.create_request/);
+	assert.match(source, /A\.deny/);
+	assert.doesNotMatch(source, /sqlite3|UPDATE |INSERT INTO|A\.approve/);
 });
 
 test("Windows uses images/null, retains exact description and bounds visual cache", () => {
