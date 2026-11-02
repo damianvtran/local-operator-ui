@@ -984,6 +984,17 @@ async function selectProof(siteOrigin) {
 			controlled.held === "b" &&
 			controlled.events.includes("controlled:change"),
 	);
+	const beforeEmpty = await read();
+	const emptySingle = await run("#native", []);
+	const afterEmpty = await read();
+	check(
+		"empty single select refuses without mutation or events",
+		!emptySingle.ok &&
+			emptySingle.error.code === "element_not_found" &&
+			emptySingle.error.data.reason === "single_select" &&
+			afterEmpty.native === beforeEmpty.native &&
+			afterEmpty.events.length === beforeEmpty.events.length,
+	);
 	for (const [selector, options, reason] of [
 		["#native", ["missing"], "option_not_found"],
 		["#native", ["Alpha", "Beta"], "single_select"],
@@ -1005,6 +1016,11 @@ async function selectProof(siteOrigin) {
 			aria.result.kind === "aria" &&
 			aria.result.verified === true &&
 			aria.result.selected[0].label === "Blue",
+	);
+	const focusOnly = await run("#focus-only", ["Beta"]);
+	check(
+		"ARIA active Beta with selected Alpha and trigger Alpha is NOT verified",
+		focusOnly.ok && focusOnly.result.verified === false,
 	);
 	const unknown = await run("#unknown", ["Option without state"]);
 	check(

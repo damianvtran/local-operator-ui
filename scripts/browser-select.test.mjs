@@ -43,7 +43,7 @@ test("native matching: exact trimmed label, case-insensitive label, value, then 
 	}
 	f.close();
 });
-test("native multiple replaces exactly; empty clears; single rejects more than one", () => {
+test("native multiple replaces exactly; empty clears; single requires exactly one", () => {
 	const multi = fixture("multiple");
 	multi.run("apply", [0, 1]);
 	assert.deepEqual(
@@ -55,7 +55,20 @@ test("native multiple replaces exactly; empty clears; single rejects more than o
 	const single = fixture();
 	assert.equal(single.run("apply", [0, 1]).status, "single_select");
 	assert.equal(single.el.selectedIndex, 0);
-	assert.deepEqual(single.run("apply", []).selected, []);
+	let events = 0;
+	single.el.addEventListener("input", () => {
+		events += 1;
+	});
+	single.el.addEventListener("change", () => {
+		events += 1;
+	});
+	assert.equal(single.run("apply", []).status, "single_select");
+	assert.equal(
+		single.el.selectedIndex,
+		0,
+		"empty request must not clear a single select",
+	);
+	assert.equal(events, 0, "refusal must emit no mutation events");
 	single.close();
 });
 test("disabled select, disabled option, disabled optgroup refuse atomically", () => {
@@ -153,4 +166,41 @@ test("argument validation touches no registry or page for missing/bad options", 
 			select(ctx, params),
 			(e) => e.code === "internal" && e.data.reason === "invalid_arguments",
 		);
+});
+
+test("ARIA active descendant alone is focus, not committed selection", () => {
+	const dom = new JSDOM(
+		'<button role="combobox" aria-controls="list" aria-activedescendant="beta">Alpha</button><div id="list" role="listbox"><div role="option" id="alpha" aria-selected="true">Alpha</div><div role="option" id="beta" aria-selected="false">Beta</div></div>',
+	);
+	const trigger = dom.window.document.querySelector("button");
+	const read = () => selectPage.call(trigger, "read", ["Beta"]);
+	assert.equal(
+		read().verified,
+		false,
+		"focused Beta with selected Alpha is not a committed Beta",
+	);
+	dom.window.document
+		.getElementById("alpha")
+		.setAttribute("aria-selected", "false");
+	assert.equal(
+		read().verified,
+		false,
+		"no selected option is not committed either",
+	);
+	trigger.textContent = "Beta";
+	assert.equal(
+		read().verified,
+		true,
+		"exact trigger text is committed evidence",
+	);
+	trigger.textContent = "Alpha";
+	dom.window.document
+		.getElementById("beta")
+		.setAttribute("aria-selected", "true");
+	assert.equal(
+		read().verified,
+		true,
+		"chosen option aria-selected is committed evidence",
+	);
+	dom.window.close();
 });

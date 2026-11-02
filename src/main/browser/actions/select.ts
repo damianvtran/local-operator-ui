@@ -92,7 +92,9 @@ export function selectPage(
 		if (!found) return { status: "option_not_found", kind, available };
 		if (!indexes.includes(found.index)) indexes.push(found.index);
 	}
-	if (!multiple && requested.length > 1)
+	// Single controls must keep exactly one choice: clearing can look like a
+	// successful value change to a framework while submitting no option at all.
+	if (!multiple && requested.length !== 1)
 		return { status: "single_select", kind };
 	if (!native && requested.length === 0) return { status: "aria_empty", kind };
 	if (
@@ -121,7 +123,7 @@ export function selectPage(
 						"value",
 					) as { set: (value: unknown) => void }
 				).set.call(this, facts[indexes[0]].value);
-			// Index setter preserves duplicate-valued options and permits clearing.
+			// Index setter preserves duplicate-valued options without clearing a single.
 			const setIndex = (
 				Object.getOwnPropertyDescriptor(
 					win.HTMLSelectElement.prototype,
@@ -144,18 +146,27 @@ export function selectPage(
 		this.dispatchEvent(new win.Event("input", { bubbles: true }));
 		this.dispatchEvent(new win.Event("change", { bubbles: true }));
 	}
-	const active =
-		this.getAttribute("aria-activedescendant") ||
-		root.getAttribute("aria-activedescendant");
+	// aria-activedescendant is keyboard focus, NOT a committed choice. Menus
+	// routinely focus Beta while Alpha remains selected until Enter/click.
 	const selected = facts.filter((o) =>
 		native
 			? (elements[o.index] as HTMLOptionElement).selected
-			: elements[o.index].getAttribute("aria-selected") === "true" ||
-				(!!active && elements[o.index].id === active),
+			: elements[o.index].getAttribute("aria-selected") === "true",
 	);
-	const verified =
+	const selectedMatch =
 		indexes.length === selected.length &&
 		indexes.every((i) => selected.some((o) => o.index === i));
+	const triggerText = (
+		(this as HTMLInputElement).value ||
+		this.textContent ||
+		""
+	).trim();
+	const triggerMatch =
+		!native &&
+		this.getAttribute("role") !== "listbox" &&
+		indexes.length === 1 &&
+		triggerText === facts[indexes[0]].label;
+	const verified = selectedMatch || triggerMatch;
 	return {
 		status: "ready",
 		kind,

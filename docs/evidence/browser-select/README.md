@@ -12,7 +12,7 @@ accepts the wire's `ref` spelling. Capability `select` follows `hover`.
 
 - String: trimmed exact option label, then case-insensitive label, then exact
   option value. Integer: zero-based index. No boolean/fractional/negative index.
-- Native single select refuses >1 request; multiple replaces exactly the given
+- Native single select requires exactly one option (empty and >1 refuse without mutation); multiple replaces exactly the given
   set (including empty). Disabled target/option/optgroup refuses before mutation.
 - Prototype `value`, `selectedIndex` and option `selected` setters bypass instance
   tracking; bubbling input AND change notify frameworks. A fresh resolution and
@@ -20,7 +20,7 @@ accepts the wire's `ref` spelling. Capability `select` follows `hover`.
 - ARIA single-select combobox/listbox or aria-haspopup=listbox trigger: the SAME
   fixed click function as click opens it and clicks the matched role=option.
   Scoped to aria-controls/owns or one visible listbox, not an arbitrary global
-  option. Verification reads aria-selected/activedescendant, or exact trigger text
+  option. Verification requires aria-selected=true on the chosen option, or exact trigger value/text
   if the popup was removed. Inconclusive success is verified:false. ARIA multi
   and clearing are explicitly refused in this first implementation.
 - Result: `{selected:[{index,value,label}],kind:'native'|'aria',verified,url,title}`.
@@ -70,7 +70,7 @@ explicitly BLOCKED, not passed; this run reached the real site successfully.
 - Controlled negative control: `.value='b'` then framework render reverts to a.
   Actual select emits input/change, commits held state b, replaces the select,
   then fresh read reports value b, verified:true.
-- Disabled select/option and single-select >1 refuse; missing option returns all
+- Disabled select/option and single-select empty/>1 refuse; missing option returns all
   three fixture options with index/label/value. No forged success.
 - ARIA Blue: index 1/value b, verified:true; state-less custom option:
   verified:false (handler gave no usable selection evidence).
@@ -102,3 +102,23 @@ semantics, not trusted native OS input. Frame selectors inherit resolver rules.
 The controlled wrapper is framework-like (no React dependency installed), not a
 claim to have exercised every React select library. No full-suite local rerun;
 CI and independent review/QA still required after the stacked PR is opened.
+
+## Review round 1 remediation
+
+R1-1: single native select requires exactly one choice; an empty request refuses
+with element_not_found/data.reason single_select, no mutation or input/change.
+Multiple controls still allow [] to clear. R1-2: aria-activedescendant denotes
+focus only, never verification. Beta focused while aria-selected=false and
+trigger Alpha is unverified; selected Beta or trigger Beta is committed evidence.
+New discriminating tests both failed before the fix.
+
+Remediation execution: targeted host/select suites **310 PASS / 0 FAIL**;
+page-program regression controls before fix **6 PASS / 2 FAIL**, after **8 PASS**.
+Native proof **20 PASS / 0 FAIL**, including empty-single refusal/no events and
+focused Beta with selected/trigger Alpha returning verified:false. Public Selenium
+form still selects Two successfully without submission. Main TypeScript passes.
+One bounded rebuild attempted: main and preload compiled successfully; unchanged
+renderer rebuild then hit the 768 MiB Node heap ceiling. No second rebuild. Proof
+used the newly compiled main/preload and the retained renderer artifact (no
+renderer/preload source delta), rather than claiming a full fresh build. Compiled
+main explicitly checked for requested.length !== 1 and selectedMatch/triggerMatch.

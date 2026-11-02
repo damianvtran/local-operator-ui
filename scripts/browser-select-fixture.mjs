@@ -9,6 +9,7 @@ export const SELECT_FIXTURE = `
 <button role="combobox" id="combo" aria-controls="choices" aria-expanded="false">Choose colour</button>
 <div id="choices" role="listbox" hidden><div role="option" id="red" data-value="r" aria-selected="false">Red</div><div role="option" id="blue" data-value="b" aria-selected="false">Blue</div></div>
 <button role="combobox" id="unknown" aria-controls="unknown-choices">Unverifiable</button><div id="unknown-choices" role="listbox" hidden><div role="option">Option without state</div></div>
+<button role="combobox" id="focus-only" aria-controls="focus-choices" aria-activedescendant="focus-beta">Alpha</button><div id="focus-choices" role="listbox" hidden><div role="option" aria-selected="true">Alpha</div><div id="focus-beta" role="option" aria-selected="false">Beta</div></div>
 <pre id="select-state"></pre>
 </section><script>
 window.__selectEvents=[];window.__controlled='a';
@@ -21,6 +22,7 @@ for(const s of document.querySelectorAll('select')){s.addEventListener('input',(
 const combo=document.getElementById('combo'), choices=document.getElementById('choices');
 combo.addEventListener('click',()=>{choices.hidden=false;combo.setAttribute('aria-expanded','true');});
 for(const o of choices.children)o.addEventListener('click',()=>{for(const x of choices.children)x.setAttribute('aria-selected',String(x===o));combo.textContent=o.textContent;combo.setAttribute('aria-activedescendant',o.id);choices.hidden=true;combo.setAttribute('aria-expanded','false');});
+document.getElementById('focus-only').onclick=()=>document.getElementById('focus-choices').hidden=false;
 document.getElementById('unknown').onclick=()=>document.getElementById('unknown-choices').hidden=false;
 window.__selectReading=()=>({native:document.getElementById('native').value,multi:Array.from(document.getElementById('multi').selectedOptions).map(o=>o.value),controlled:document.getElementById('controlled').value,held:window.__controlled,events:window.__selectEvents,combo:combo.textContent});
 </script>`;
