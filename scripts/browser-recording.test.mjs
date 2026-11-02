@@ -98,15 +98,12 @@ function stream(
 	let index = 0;
 	return ({ method, params }) => {
 		onCommand?.(method, params);
-		if (method === "Page.getLayoutMetrics") {
-			return layout
-				? {
-						cssLayoutViewport: {
-							clientWidth: layout.width,
-							clientHeight: layout.height,
-						},
-					}
-				: {};
+		if (method === "Runtime.evaluate") {
+			// The poll reads the page's own viewport: two numbers, the shape
+			// Chromium returns for `[window.innerWidth, window.innerHeight]`.
+			return {
+				result: { value: layout ? [layout.width, layout.height] : undefined },
+			};
 		}
 		if (method === "Page.startScreenRecording") {
 			if (startError) throw startError;
@@ -1210,7 +1207,7 @@ test("a sized start sets the viewport, waits for layout, then records there", as
 		commands.map((call) => call.method),
 		[
 			"Emulation.setDeviceMetricsOverride",
-			"Page.getLayoutMetrics",
+			"Runtime.evaluate",
 			"Page.startScreenRecording",
 		],
 	);
@@ -1287,7 +1284,7 @@ test("a failed start that had resized the tab restores the viewport", async () =
 		commands.map((call) => call.method),
 		[
 			"Emulation.setDeviceMetricsOverride",
-			"Page.getLayoutMetrics",
+			"Runtime.evaluate",
 			"Page.startScreenRecording",
 			"Emulation.clearDeviceMetricsOverride",
 		],
@@ -1343,8 +1340,8 @@ test("a start cancelled while its viewport is applied restores it", async () => 
 	const { start, tabs, commands } = fixture({
 		path,
 		handler: ({ method }) => {
-			if (method === "Page.getLayoutMetrics") {
-				return { cssLayoutViewport: { clientWidth: 1920, clientHeight: 1080 } };
+			if (method === "Runtime.evaluate") {
+				return { result: { value: [1920, 1080] } };
 			}
 			if (method === "Page.startScreenRecording") return gate.then(() => ({}));
 			if (method === "Page.stopScreenRecording")
@@ -1380,13 +1377,8 @@ test("only one recording above 1080p runs at a time", async () => {
 				layout = { width: call.params.width, height: call.params.height };
 				return {};
 			}
-			if (call.method === "Page.getLayoutMetrics") {
-				return {
-					cssLayoutViewport: {
-						clientWidth: layout.width,
-						clientHeight: layout.height,
-					},
-				};
+			if (call.method === "Runtime.evaluate") {
+				return { result: { value: [layout.width, layout.height] } };
 			}
 			return base(call);
 		},
@@ -1428,4 +1420,267 @@ test("record_too_large names the size of a sized clip", async () => {
 	const error = await stop().catch((refusal) => refusal);
 	assert.equal(error.data?.reason, "record_too_large");
 	assert.match(error.message, /at 1280x720/);
+});
+
+// ---- 12. viewport ownership across a replace ------------------------------
+
+/**
+ * A tab whose emulated viewport is a FACT this fixture remembers, so a case can
+ * assert which override is active after late CDP calls land. `Runtime.evaluate`
+ * answers with it, the way a page that has already reflowed would.
+ */
+function viewportTab(options = {}) {
+	let viewport = null;
+	const commands = [];
+	const handler = (call) => {
+		commands.push(call);
+		if (call.method === "Emulation.setDeviceMetricsOverride") {
+			viewport = { width: call.params.width, height: call.params.height };
+			return {};
+		}
+		if (call.method === "Emulation.clearDeviceMetricsOverride") {
+			viewport = null;
+			return {};
+		}
+		if (call.method === "Runtime.evaluate") {
+			return {
+				result: {
+					value: viewport ? [viewport.width, viewport.height] : undefined,
+				},
+			};
+		}
+		if (call.method === "IO.read") {
+			return { data: Buffer.from("clip-bytes").toString("base64"), eof: true };
+		}
+		return options.answer?.(call) ?? {};
+	};
+	const rig = fixture({ handler });
+	return {
+		...rig,
+		commands,
+		viewport: () => viewport,
+	};
+}
+
+test("a tall page with a scrollbar still settles: the poll reads innerWidth", async () => {
+	// The measured failure (review m1): a page that scrolls answers 1905 from
+	// Page.getLayoutMetrics for a 1920-wide override, because the layout viewport
+	// excludes the scrollbar, and the old poll refused a viewport that was right.
+	// innerWidth is the surface the page and the encoder see.
+	const dir = scratchDir();
+	const path = join(dir, "clip.mp4");
+	const base = stream([Buffer.from("ftyp-scroll")], {
+		layout: { width: 1920, height: 1080 },
+	});
+	const { start, stop, commands } = fixture({
+		handler: (call) => {
+			if (call.method === "Page.getLayoutMetrics") {
+				// What Electron 45.1.0 answers on a page tall enough to scroll.
+				return { cssLayoutViewport: { clientWidth: 1905, clientHeight: 1080 } };
+			}
+			return base(call);
+		},
+	});
+	const result = await start({ path, width: 1920, height: 1080 });
+	assert.equal(result.width, 1920);
+	assert.equal(result.height, 1080);
+	assert.ok(
+		!commands.some((call) => call.method === "Page.getLayoutMetrics"),
+		"the scrollbar-blind metric is not what the poll trusts",
+	);
+	await stop();
+});
+
+test("a displaced recording's late finalize leaves the successor's viewport alone", async () => {
+	const dir = scratchDir();
+	const pathA = join(dir, "a.mp4");
+	const pathB = join(dir, "b.mp4");
+	let stopCalls = 0;
+	let releaseStop;
+	const stopGate = new Promise((resolveGate) => {
+		releaseStop = resolveGate;
+	});
+	const rig = viewportTab({
+		answer: ({ method }) => {
+			if (method === "Page.stopScreenRecording") {
+				stopCalls += 1;
+				// A's stop hangs in Chromium until B is already recording.
+				return stopCalls === 1
+					? stopGate.then(() => ({ stream: "stream-a" }))
+					: { stream: "stream-b" };
+			}
+			return {};
+		},
+	});
+	const { start, stop, commands, viewport } = rig;
+	await start({ path: pathA, width: 1280, height: 720 }, "session:a");
+	const stoppingA = stop("session:a");
+	await new Promise((resolveTick) => setImmediate(resolveTick));
+	// B replaces A on the same tab: the replace installs 3840x2160 before A's
+	// stop has answered.
+	await start({ path: pathB, width: 3840, height: 2160 }, "session:b");
+	assert.deepEqual(viewport(), { width: 3840, height: 2160 });
+	const methods = commands.map((call) => call.method);
+	assert.equal(
+		methods.filter(
+			(method) => method === "Emulation.clearDeviceMetricsOverride",
+		).length,
+		1,
+		"A's own override was cleared once when it was displaced",
+	);
+	const setAtB = commands
+		.map((call) => call.method)
+		.lastIndexOf("Emulation.setDeviceMetricsOverride");
+	releaseStop();
+	await rejectsReason(stoppingA, "internal", "record_aborted");
+	assert.deepEqual(
+		viewport(),
+		{ width: 3840, height: 2160 },
+		"A's finalize landed after B's override and left it alone",
+	);
+	assert.deepEqual(
+		commands
+			.slice(setAtB + 1)
+			.filter((call) => call.method === "Emulation.clearDeviceMetricsOverride"),
+		[],
+		"no clear was issued by the late finalize",
+	);
+	const savedB = await stop("session:b");
+	assert.equal(savedB.path, pathB);
+	assert.equal(viewport(), null, "B's own stop restored the tab");
+});
+
+test("a late endReplaced from abortAndEnd leaves a later start's viewport alone", async () => {
+	const dir = scratchDir();
+	const pathA = join(dir, "a.mp4");
+	const pathB = join(dir, "b.mp4");
+	let stopCalls = 0;
+	let releaseStop;
+	const stopGate = new Promise((resolveGate) => {
+		releaseStop = resolveGate;
+	});
+	const rig = viewportTab({
+		answer: ({ method }) => {
+			if (method === "Page.stopScreenRecording") {
+				stopCalls += 1;
+				return stopCalls === 1
+					? stopGate.then(() => ({ stream: "stream-a" }))
+					: { stream: "stream-b" };
+			}
+			return {};
+		},
+	});
+	const { start, stop, commands, viewport, tabs } = rig;
+	await start({ path: pathA, width: 1280, height: 720 }, "session:a");
+	// A is aborted and its recorder stop hangs; abortRecording already dropped it
+	// from the tab, so B can start and install its own override meanwhile.
+	const ending = mod.abortAndEnd(tabs.get("tab").id, "test-replace");
+	await new Promise((resolveTick) => setImmediate(resolveTick));
+	assert.equal(viewport(), null, "the abort restored A's override");
+	await start({ path: pathB, width: 3840, height: 2160 }, "session:b");
+	assert.deepEqual(viewport(), { width: 3840, height: 2160 });
+	const setAtB = commands
+		.map((call) => call.method)
+		.lastIndexOf("Emulation.setDeviceMetricsOverride");
+	releaseStop();
+	await ending;
+	assert.deepEqual(
+		viewport(),
+		{ width: 3840, height: 2160 },
+		"endReplaced's finally clear skipped the successor's override",
+	);
+	assert.deepEqual(
+		commands
+			.slice(setAtB + 1)
+			.filter((call) => call.method === "Emulation.clearDeviceMetricsOverride"),
+		[],
+	);
+	await stop("session:b");
+	assert.equal(viewport(), null);
+});
+
+test("a cancelled start's late endReplaced leaves a later start's viewport alone", async () => {
+	const dir = scratchDir();
+	const pathA = join(dir, "a.mp4");
+	const pathB = join(dir, "b.mp4");
+	let startCalls = 0;
+	let releaseStart;
+	const startGate = new Promise((resolveGate) => {
+		releaseStart = resolveGate;
+	});
+	const rig = viewportTab({
+		answer: ({ method }) => {
+			if (method === "Page.startScreenRecording") {
+				startCalls += 1;
+				if (startCalls === 1) return startGate.then(() => ({}));
+			}
+			if (method === "Page.stopScreenRecording") {
+				return { stream: "stream-cancelled" };
+			}
+			return {};
+		},
+	});
+	const { start, stop, commands, viewport, tabs } = rig;
+	const inFlightA = start(
+		{ path: pathA, width: 1280, height: 720 },
+		"session:a",
+	);
+	await new Promise((resolveTick) => setImmediate(resolveTick));
+	// The handle goes while A's start is in flight; A never registers, so B can
+	// take the tab and install its own size before A's start answers.
+	mod.abortRecording(tabs.get("tab").id, "test-cancelled");
+	await start({ path: pathB, width: 3840, height: 2160 }, "session:b");
+	assert.deepEqual(viewport(), { width: 3840, height: 2160 });
+	const setAtB = commands
+		.map((call) => call.method)
+		.lastIndexOf("Emulation.setDeviceMetricsOverride");
+	releaseStart();
+	await rejectsReason(inFlightA, "internal", "record_failed");
+	assert.deepEqual(
+		viewport(),
+		{ width: 3840, height: 2160 },
+		"the cancelled start's endReplaced skipped B's override",
+	);
+	assert.deepEqual(
+		commands
+			.slice(setAtB + 1)
+			.filter((call) => call.method === "Emulation.clearDeviceMetricsOverride"),
+		[],
+	);
+	await stop("session:b");
+	assert.equal(viewport(), null);
+});
+
+test("a forget on a destroyed view ends the recording without recursing", async () => {
+	// Review m2: `send -> forget -> dropCaptures -> abortRecording ->
+	// clearViewport -> send` recursed on a destroyed view (depth ~870,
+	// RangeError). The clear must not ask a view that is already gone.
+	const dir = scratchDir();
+	const path = join(dir, "clip.mp4");
+	const { cdp, contents, ctx } = poolFixture(({ method }) =>
+		method === "Runtime.evaluate"
+			? { result: { value: [1920, 1080] } }
+			: undefined,
+	);
+	await cdp.attach(contents);
+	await mod.recordStart(
+		ctx,
+		{ tab: "tab", requester: "session:a", path, width: 1920, height: 1080 },
+		"r",
+	);
+	let destroyChecks = 0;
+	contents.isDestroyed = () => {
+		destroyChecks += 1;
+		return true;
+	};
+	cdp.forget(contents.id);
+	assert.ok(
+		destroyChecks < 20,
+		`the view was asked ${destroyChecks} times: the clear re-entered forget`,
+	);
+	await rejectsReason(
+		mod.recordStop(ctx, { tab: "tab", requester: "session:a" }, "r"),
+		"internal",
+		"record_not_active",
+	);
 });

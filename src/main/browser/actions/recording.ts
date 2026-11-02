@@ -92,8 +92,9 @@ export const RECORD_LARGE_AREA = 1920 * 1080;
 
 /** Provisional until two concurrent 4K encoders are measured: at most ONE
  * recording above 1920x1080 runs at a time. The probe measured 227 % CPU and
- * 365 MB encoder RSS for a single 4K clip (8K: 778 % / 1.2 GB). Lower the value
- * or drop the rule when that measurement lands; it is not wire contract. */
+ * about 370-390 MB encoder RSS for a single 4K clip (374 MB at 6 s, 389 MB at
+ * 30 s; 8K: 778 % / 1.2 GB). Lower the value or drop the rule when that
+ * measurement lands; it is not wire contract. */
 export const MAX_CONCURRENT_LARGE_RECORDINGS = 1;
 
 /** The longest single path component, in bytes, the filesystems we run on allow. */
@@ -158,6 +159,10 @@ interface Recording {
 	 * path, which reports no width/height. */
 	width?: number;
 	height?: number;
+	/** The tab viewport this recording owns: absent when it installed no override,
+	 * and the token its exits must present before clearing (see
+	 * `viewportOverrides`, review M1). */
+	viewportToken?: object;
 	/** The auto-stop timer. Cleared by every exit path. */
 	timer: ReturnType<typeof setTimeout> | undefined;
 	/** The one finalize in flight, shared by the timer and a `record_stop` that
@@ -199,6 +204,18 @@ const reservations = new Map<
 	string,
 	{ webContentsId: number; path: string; cancelled: boolean; large: boolean }
 >();
+/**
+ * The viewport override each tab currently carries, keyed by view id.
+ *
+ * A sized start installs one and every exit path clears it, but those exits belong
+ * to DIFFERENT recordings: a finalize, abort or replace of a displaced recording
+ * can land after a successor has installed its own override on the same tab.
+ * Clearing then would leave the live recording at a size nobody asked for, so a
+ * clear only acts while its own token is still the tab's (review M1). The claim
+ * happens BEFORE the CDP call, so a clear that interleaves with an install sees
+ * itself superseded rather than racing the set.
+ */
+const viewportOverrides = new Map<number, object>();
 
 function notActive(): BrowserHostError {
 	return new BrowserHostError(
@@ -431,7 +448,7 @@ function sizeOf(params: Record<string, unknown>): RecordSize | null {
 		throw sizeRefusal(
 			"area",
 			"size",
-			`record_start ${width}x${height} is larger than ${RECORD_MAX_SIDE}x${RECORD_MAX_PIXELS / RECORD_MAX_SIDE} (${RECORD_MAX_PIXELS} pixels); that is this host's ceiling.`,
+			`record_start ${width}x${height}: the area is larger than ${RECORD_MAX_SIDE}x${RECORD_MAX_PIXELS / RECORD_MAX_SIDE} (${RECORD_MAX_PIXELS} pixels), which is this host's ceiling.`,
 		);
 	}
 	return { width, height };
@@ -461,26 +478,45 @@ function sizeOfRecording(recording: {
 		: { width: recording.width, height: recording.height };
 }
 
-/** `Page.getLayoutMetrics`'s viewport, in CSS pixels. `cssLayoutViewport` is the
- * layout the page sees; `layoutViewport` is the older spelling of the same fact. */
-interface LayoutMetrics {
-	cssLayoutViewport?: { clientWidth?: number; clientHeight?: number };
-	layoutViewport?: { clientWidth?: number; clientHeight?: number };
-}
-
-function measuredViewport(
-	metrics: LayoutMetrics | undefined,
-): RecordSize | null {
-	const viewport = metrics?.cssLayoutViewport ?? metrics?.layoutViewport;
-	const width = Number(viewport?.clientWidth);
-	const height = Number(viewport?.clientHeight);
+/**
+ * The page's own inner size, in CSS pixels, or null when the answer is not a
+ * pair of numbers.
+ *
+ * WHY `window.innerWidth` AND NOT `Page.getLayoutMetrics`: that command's
+ * `cssLayoutViewport.clientWidth` EXCLUDES the scrollbar, so a page tall enough
+ * to scroll reports 1905 for a 1920-wide override and a start that worked was
+ * refused `not_applied` after the 2 s wait (measured on Electron 45.1.0, review
+ * m1). `innerWidth`/`innerHeight` are what the page sees, scrollbar included,
+ * which is the surface the encoder captures.
+ */
+async function innerViewport(
+	cdp: BrowserActionContext["cdp"],
+	contents: CdpContents,
+): Promise<RecordSize | null> {
+	const answer = await cdp.send<{ result?: { value?: unknown } }>(
+		contents,
+		"Runtime.evaluate",
+		{
+			expression: "[window.innerWidth, window.innerHeight]",
+			returnByValue: true,
+		},
+		{ deadlineMs: CDP_DEADLINE_MS },
+	);
+	const value = answer?.result?.value;
+	if (!Array.isArray(value) || value.length !== 2) return null;
+	const width = Number(value[0]);
+	const height = Number(value[1]);
 	if (!Number.isFinite(width) || !Number.isFinite(height)) return null;
 	return { width: Math.round(width), height: Math.round(height) };
 }
 
 /** Wait until the emulated viewport is the one that was asked for, or refuse.
  * Polling reads the page's own layout, not a value this process wrote: the
- * override can be accepted while the renderer has not laid out yet. */
+ * override can be accepted while the renderer has not laid out yet.
+ *
+ * The answer is the REQUESTED size: the poll passes only on an exact match, so
+ * reporting the request is reporting the measurement, and the echoed width and
+ * height stay the round numbers the caller asked for. */
 async function waitForViewport(
 	cdp: BrowserActionContext["cdp"],
 	contents: CdpContents,
@@ -488,19 +524,13 @@ async function waitForViewport(
 ): Promise<RecordSize> {
 	const deadline = Date.now() + RECORD_LAYOUT_SETTLE_MS;
 	for (;;) {
-		const metrics = await cdp.send<LayoutMetrics>(
-			contents,
-			"Page.getLayoutMetrics",
-			{},
-			{ deadlineMs: CDP_DEADLINE_MS },
-		);
-		const measured = measuredViewport(metrics);
+		const measured = await innerViewport(cdp, contents);
 		if (
 			measured &&
 			measured.width === size.width &&
 			measured.height === size.height
 		) {
-			return measured;
+			return size;
 		}
 		if (Date.now() >= deadline) {
 			throw sizeRefusal(
@@ -515,16 +545,63 @@ async function waitForViewport(
 	}
 }
 
+/** Apply one recording's override and claim the tab's viewport for it.
+ * Returns the token every later clear for that recording must present. */
+async function installViewport(
+	cdp: BrowserActionContext["cdp"],
+	contents: CdpContents,
+	size: RecordSize,
+): Promise<object> {
+	const token: object = {};
+	viewportOverrides.set(contents.id, token);
+	try {
+		await cdp.send(
+			contents,
+			"Emulation.setDeviceMetricsOverride",
+			{
+				width: size.width,
+				height: size.height,
+				deviceScaleFactor: 1,
+				mobile: false,
+			},
+			{ deadlineMs: CDP_DEADLINE_MS },
+		);
+	} catch (error) {
+		// The claim outlived no override: drop it before the start's own failure
+		// path looks for a token it never received.
+		if (viewportOverrides.get(contents.id) === token) {
+			viewportOverrides.delete(contents.id);
+		}
+		throw error;
+	}
+	return token;
+}
+
 /** Drop a viewport override, best effort.
  *
- * Bounded and swallowed on purpose: this runs on detach, tab close and failure
- * paths whose original error is the answer, and an emulation clear that cannot
- * reach a dying session must never replace it. A session that is gone drops its
- * override by itself. */
+ * ONLY THE RECORDING THAT INSTALLED IT MAY CLEAR IT: a finalize, abort or replace
+ * belonging to a displaced recording reaches here after its successor has
+ * installed its own override, and clearing then would leave the live recording at
+ * an unrequested size (review M1). The token is checked synchronously, before any
+ * await, so a superseded clear never issues a command at all.
+ *
+ * Bounded and swallowed on purpose otherwise: this runs on detach, tab close and
+ * failure paths whose original error is the answer, and an emulation clear that
+ * cannot reach a dying session must never replace it. A session that is gone
+ * drops its override by itself. */
 async function clearViewport(
 	cdp: BrowserActionContext["cdp"],
 	contents: CdpContents,
+	token: object,
 ): Promise<void> {
+	if (viewportOverrides.get(contents.id) !== token) return;
+	viewportOverrides.delete(contents.id);
+	// A DESTROYED VIEW ENDS THIS PATH WITHOUT A CDP CALL. `send` answers a
+	// destroyed view by calling `forget`, whose `dropCaptures` calls
+	// `abortRecording`, which is where this clear came from — so asking recursed
+	// until the stack went (depth ~870, RangeError; review m2). The session's
+	// override dies with its debugger session.
+	if (contents.isDestroyed()) return;
 	try {
 		await cdp.send(
 			contents,
@@ -685,8 +762,8 @@ async function runFinalize(
 		// AFTER the stop, never before: the last frames must not be rescaled.
 		// Restoring here also covers the duration timer, which finalizes without
 		// a caller.
-		if (recording.width !== undefined) {
-			await clearViewport(cdp, contents);
+		if (recording.viewportToken) {
+			await clearViewport(cdp, contents, recording.viewportToken);
 			viewportCleared = true;
 		}
 		handle = typeof stopped?.stream === "string" ? stopped.stream : "";
@@ -752,8 +829,8 @@ async function runFinalize(
 	} finally {
 		// A stop that threw never reached the clear above; a later capture on this
 		// tab must not inherit an override nobody asked for.
-		if (recording.width !== undefined && !viewportCleared) {
-			await clearViewport(cdp, contents);
+		if (recording.viewportToken && !viewportCleared) {
+			await clearViewport(cdp, contents, recording.viewportToken);
 		}
 		if (fd !== null) {
 			try {
@@ -807,7 +884,9 @@ function settle(
 }
 
 /** What ending a stream needs: the attachment and the target, nothing else. */
-type Stoppable = Pick<Recording, "cdp" | "contents" | "width" | "height">;
+type Stoppable = Pick<Recording, "cdp" | "contents" | "width" | "height"> & {
+	viewportToken?: object;
+};
 
 /**
  * End a recording that another owner is taking over, without salvaging its bytes.
@@ -849,8 +928,12 @@ export async function endReplaced(recording: Stoppable): Promise<void> {
 	} finally {
 		// After the stop attempt, so the discarded frames were captured at the size
 		// the request asked for and the tab does not keep it afterwards.
-		if (recording.width !== undefined) {
-			await clearViewport(recording.cdp, recording.contents);
+		if (recording.viewportToken) {
+			await clearViewport(
+				recording.cdp,
+				recording.contents,
+				recording.viewportToken,
+			);
 		}
 	}
 }
@@ -983,10 +1066,11 @@ export async function recordStart(
 		);
 	}
 	// The provisional large-clip rule (RS5): the probe measured 227 % CPU and
-	// 365 MB RSS for ONE 4K encoder, so two at once are not a shape to discover
-	// in a user's session. Counted synchronously with the reservation below, for
-	// the same reason as the global cap. The active entry on THIS tab is being
-	// replaced, so it does not count against this start.
+	// about 370-390 MB RSS for ONE 4K encoder (374 MB at 6 s, 389 MB at 30 s), so
+	// two at once are not a shape to discover in a user's session. Counted
+	// synchronously with the reservation below, for the same reason as the global
+	// cap. The active entry on THIS tab is being replaced, so it does not count
+	// against this start.
 	if (size && isLarge(size)) {
 		const largeRunning = [...recordings.values()].filter(
 			(other) => other !== active && isLargeRecording(other),
@@ -1019,6 +1103,8 @@ export async function recordStart(
 	// The size the layout poll confirmed; `size` itself for the unsized path,
 	// where nothing is polled and the ceiling stays in force.
 	let measured = size;
+	/** The token of THIS start's viewport claim, once one is installed. */
+	let viewportToken: object | undefined;
 	let started = false;
 	try {
 		// The abort above drops our state; this ends the recorder itself, which is
@@ -1029,17 +1115,7 @@ export async function recordStart(
 		// fires one resize event), applied BEFORE the recorder starts so the
 		// encoder sees the requested surface from its first frame.
 		if (size) {
-			await ctx.cdp.send(
-				contents,
-				"Emulation.setDeviceMetricsOverride",
-				{
-					width: size.width,
-					height: size.height,
-					deviceScaleFactor: 1,
-					mobile: false,
-				},
-				{ deadlineMs: CDP_DEADLINE_MS },
-			);
+			viewportToken = await installViewport(ctx.cdp, contents, size);
 			measured = await waitForViewport(ctx.cdp, contents, size);
 		}
 		try {
@@ -1062,7 +1138,9 @@ export async function recordStart(
 		reservations.delete(reservation);
 		// Every failed start restores the viewport; clearViewport is best effort
 		// and never masks the error this start is about to report.
-		if (size) await clearViewport(ctx.cdp, contents);
+		if (size && viewportToken) {
+			await clearViewport(ctx.cdp, contents, viewportToken);
+		}
 		throw error;
 	}
 	// The tab was released while this start was in flight (`forget`/`detach`, or a
@@ -1079,9 +1157,10 @@ export async function recordStart(
 				contents,
 				width: measured?.width,
 				height: measured?.height,
+				viewportToken,
 			});
-		} else if (size) {
-			await clearViewport(ctx.cdp, contents);
+		} else if (size && viewportToken) {
+			await clearViewport(ctx.cdp, contents, viewportToken);
 		}
 		throw new BrowserHostError(
 			"internal",
@@ -1099,6 +1178,7 @@ export async function recordStart(
 		maxBytes,
 		maxDurationS,
 		...(measured ? { width: measured.width, height: measured.height } : {}),
+		...(viewportToken ? { viewportToken } : {}),
 		timer: undefined,
 		finishing: null,
 		aborted: false,
@@ -1204,18 +1284,26 @@ export function abortRecording(
 	const recording = recordings.get(webContentsId);
 	if (recording) {
 		recording.aborted = true;
-		// A detach or close drops the session's emulation with it, but a replace or
-		// a document refusal keeps the tab, and a later capture must not inherit a
-		// size nobody asked for. Best effort on this synchronous path: the promise
-		// swallows every failure.
-		if (recording.width !== undefined) {
-			void clearViewport(recording.cdp, recording.contents);
-		}
 		if (recording.timer !== undefined) {
 			clearTimeout(recording.timer);
 			recording.timer = undefined;
 		}
+		// Dropped BEFORE the clear, so a clear that re-enters this function through
+		// `send -> forget -> dropCaptures` finds no recording to abort again (review
+		// m2).
 		recordings.delete(webContentsId);
+		// A detach or close drops the session's emulation with it, but a replace or
+		// a document refusal keeps the tab, and a later capture must not inherit a
+		// size nobody asked for. Best effort on this synchronous path: the promise
+		// swallows every failure, and the token check inside makes a superseded
+		// recording's clear a no-op (review M1).
+		if (recording.viewportToken) {
+			void clearViewport(
+				recording.cdp,
+				recording.contents,
+				recording.viewportToken,
+			);
+		}
 	}
 	if (options.tombstone && recording) {
 		settled.set(webContentsId, {

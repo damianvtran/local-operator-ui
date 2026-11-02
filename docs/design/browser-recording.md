@@ -146,9 +146,12 @@ target (`width`/`height` had no UI implementation yet), local animating page:
   applied before `Page.startScreenRecording` produced a clip at exactly the
   requested size from 854x480 through 10240x5760; the page's `innerWidth`/
   `innerHeight` matched, and one `window` resize event fired per change.
-- Cost grows with pixel count, not with `maxWidth`: 4K = 227 % CPU and 365 MB
-  encoder RSS, 8K = 778 % / 1.2 GB, 10K = 715 % / 1.9 GB. The stop flush took
-  about 2 ms at 4K, 109 ms at 8K and 2.1 s at 10K.
+- Cost grows with pixel count, not with `maxWidth`: 4K = 227 % CPU and about
+  370-390 MB encoder RSS (374 MB at 6 s, 389 MB at 30 s), 8K = 778 % / 1.2 GB,
+  10K = 715 % / 1.9 GB. The stop flush took under 20 ms at 4K, 109 ms at 8K
+  and 2.1 s at 10K. Each figure is one clip per size from this probe, with 4K
+  RSS sampled at 6 s and 30 s; unless a bullet says otherwise, none is an
+  average or a bound.
 - Bytes per second on a page where every frame differs: 720p ~68 KB/s, 1080p
   ~146 KB/s, 4K ~434 KB/s. The unchanged 64 MiB cap is therefore ~150 s at 4K,
   and the scratchpad's 32 MiB ~75 s; a longer clip is refused at stop with
@@ -161,9 +164,10 @@ target (`width`/`height` had no UI implementation yet), local animating page:
 
 ## Still unverified
 
-- CPU and memory of TWO concurrent encoders: one 4K clip measured 227 % / 365 MB
-  and the byte rates above exist, but a second encoder at the same time is
-  unmeasured — which is why the provisional rule allows only one >1080p clip.
+- CPU and memory of TWO concurrent encoders: one 4K clip measured 227 % /
+  about 370-390 MB and the byte rates above exist, but a second encoder at the
+  same time is unmeasured — which is why the provisional rule allows only one
+  >1080p clip.
 - The emulated viewport while the user ACTIVATES the tab mid-clip. A sized start
   on a presented tab is refused; what the encoder does if presentation changes
   during the clip was never measured.
