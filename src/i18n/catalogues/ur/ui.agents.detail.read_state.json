@@ -1,0 +1,16 @@
+{
+	"ui.agents.detail.read_state.failed_title": "“{name}” کو پڑھا نہیں جا سکا",
+	"ui.agents.detail.read_state.not_found": "مطلوبہ سیشن، پروفائل، ٹیم یا سبسکرپشن نہیں ملی۔",
+	"ui.agents.detail.read_state.failed_meaning": "ممکن ہے تعریف ہٹا دی گئی ہو، یا بیک اینڈ نے اسے پڑھنے کی اجازت نہ دی ہو۔",
+	"ui.agents.detail.read_state.request_failed": "درخواست مکمل نہیں ہوئی۔",
+	"ui.agents.detail.read_state.retry": "دوبارہ کوشش کریں",
+	"ui.agents.detail.read_state.retrying": "دوبارہ کوشش کی جا رہی ہے…",
+	"ui.agents.detail.read_state.delegates": "ذیلی ایجنٹس کو کام تفویض کر سکتا ہے۔",
+	"ui.agents.detail.read_state.no_delegation": "اپنا کام خود کرتا ہے؛ دوسروں کو تفویض نہیں کرتا۔",
+	"ui.agents.detail.read_state.class_description": "جوابی ایجنٹس صرف جواب دیتے ہیں۔ پیش قدم ایجنٹس خود سے بھی آپ کو پیغام بھیج سکتے ہیں۔",
+	"ui.agents.detail.read_state.used_by_description": "وہ ٹیمیں جن میں یہ ایجنٹ بطور منتظم یا رکن نامزد ہے۔",
+	"ui.agents.detail.read_state.class_on": "آن",
+	"ui.agents.detail.read_state.class_off": "آف",
+	"ui.agents.detail.read_state.class_switching": "تبدیل کیا جا رہا ہے…",
+	"ui.agents.detail.read_state.effort_inherit": "سیشن کی کوشش کا درجہ استعمال کریں"
+}

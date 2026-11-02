@@ -1,0 +1,52 @@
+{
+  "schema": 1,
+  "auditor": "translation-auditor (independent lopdev task session 9a5ed084c6d5; not the Hindi translator)",
+  "agent": "translation-auditor (independent lopdev task session 9a5ed084c6d5; not the Hindi translator)",
+  "role": "task / independent translation auditor",
+  "model": "openai/gpt-6.1-sol",
+  "model_provenance": "The resumed receipt-writing and reaffirmation run uses anthropic/claude-sonnet-5-5, as identified by the current session-state header. The prior completed audit report in this same transcript identified openai/gpt-6.1-sol as its temporary quota fallback, following configured Sonnet and an intermediate Opus switch notice. Those historical fallback details are preserved as reported in the prior transcript; they are not independently reconstructed from provider telemetry. The current auditor reaffirms the linguistic conclusions on the already-read, hash-identical committed Hindi and English catalogue bytes.",
+  "fallback": "Historical audit report: openai/gpt-6.1-sol; resumed receipt: anthropic/claude-sonnet-5-5",
+  "instance": "9a5ed084c6d5-read-state-hi-audit",
+  "session": "9a5ed084c6d5",
+  "locale": "hi",
+  "branch": "fix/agent-detail-i18n",
+  "head": "3553b7ae661a7c92caf04f1d39ed3792ef37ad46",
+  "pr": "damianvtran/local-operator-ui#1580",
+  "date": "2026-11-02",
+  "status": "passed",
+  "independence": "I did not author or modify this Hindi translation. I audited the actual translator worktree target, then read the committed source and Hindi target through read_public_copy and verified their committed hashes. This receipt is my own independent linguistic verdict.",
+  "scope": "All 14 keys of ui.agents.detail.read_state; linguistic catalogue clearance only. No rendered layout, width, screenshots, runtime interaction or UI QA clearance is claimed.",
+  "inputs_sha256": {
+    "en_context (ui.agents.detail.read_state.context.json)": "e1359d1f5db124d1ca167eb042ca334bc88c1c2895f9442d517d3d9e3efbb9b2"
+  },
+  "verified": [
+    "All 14 English and Hindi keys match; placeholder sets match, and {name} occurs exactly once.",
+    "failed_title retains the literal placeholder inside Hindi-appropriate curly double quotation marks, consistent with existing Hindi agent copy.",
+    "Failure copy retains missing-definition and backend-refusal possibilities; the retry action and in-progress state clearly tell the user how to recover.",
+    "Reactive/proactive descriptions use the existing जवाब देने वाला / पहल करने वाला terminology; agent, team, manager, member, session and effort-tier terms match neighboring Hindi agent catalogues.",
+    "चालू / बंद / बदला जा रहा है… describe switch status rather than commands.",
+    "सत्र की प्रयास श्रेणी इस्तेमाल करें explicitly means using the session effort tier and matches the adjacent effort picker terminology; it is not a bare technical inherit label.",
+    "Register is calm explanatory Hindi without unnecessary padding. Linguistic length assessment does not establish rendered fit."
+  ],
+  "namespaces": {
+    "ui.agents.detail.read_state": {
+      "namespace": "ui.agents.detail.read_state",
+      "status": "passed",
+      "result": "clean",
+      "keys_read": 14,
+      "sha256": {
+        "en": "0de7ac1bff46dc77b3bbe1f479b60a220361b3e32f673332dbe9eecfb56421f0",
+        "hi": "f81b2e33cc1d6574dfd29aca826bcf6da6f62fa5f79a3b372959c4cd682fbe4d"
+      },
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.agents.detail.read_state.json",
+        "target": "src/i18n/catalogues/hi/ui.agents.detail.read_state.json",
+        "context": "src/i18n/catalogues/en/ui.agents.detail.read_state.context.json"
+      },
+      "findings": []
+    }
+  },
+  "job_id": "7601556fae99",
+  "receipt_writer_job_id": "5ef120f16289",
+  "receipt_writer_model": "anthropic/claude-sonnet-5-5"
+}

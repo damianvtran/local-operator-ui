@@ -137,5 +137,6 @@
 	"ui.common.errors.agent_publish": "ایجنٹ شائع نہیں ہو سکا۔",
 	"ui.common.errors.conversation_messages_fetch": "گفتگو کے پیغامات حاصل نہیں ہو سکے",
 	"ui.common.errors.conversation_messages_fetch_unknown": "گفتگو کے پیغامات حاصل کرتے وقت نامعلوم خرابی پیش آئی",
-	"ui.common.errors.session_id_required": "کوڈ میموری پڑھنے کے لیے سیشن ID درکار ہے۔"
+	"ui.common.errors.session_id_required": "کوڈ میموری پڑھنے کے لیے سیشن ID درکار ہے۔",
+	"ui.common.errors.desktop_transport_failed": "بیک اینڈ یہ درخواست مکمل نہیں کر سکا۔ اس کا کنکشن چیک کریں اور دوبارہ کوشش کریں۔"
 }

@@ -15,10 +15,12 @@ type Parent = { children: unknown[] };
  * against the canvas and weight alone did not separate a name from prose;
  * accent text is 4.81:1 light / 7.54:1 dark there (4.85 / 7.18 on the wash).
  */
+// The rendered treatment is deliberately frozen to the shipped look; only the
+// composer adopts the new geometry.
 export const MENTION_CLASS =
 	"team-bridge-mention rounded-sm px-0.5 font-medium bg-accent-wash text-accent";
 /*
- * THE READER'S OWN MENTION is louder (Slack's yellow-ish token). `warning-wash`
+ * THE READER'S OWN MENTION uses the theme's warning identity. `warning-wash`
  * is the theme's warm wash in both light and dark; the warning ink on it keeps
  * the name readable without a second colour scheme.
  */

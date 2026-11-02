@@ -109,5 +109,19 @@
 		"role": "option marker",
 		"tone": "plain",
 		"note": "Marks the option the agent suggests; a glyph precedes it and is not part of the sentence."
+	},
+	"ui.chat.asks.status.withdrawn": {
+		"role": "Status sentence on a settled ask card",
+		"tone": "Factual, sentence case; not an error or a request for action",
+		"length": "One short sentence",
+		"placeholders": {},
+		"note": "The agent withdrew its own question because it no longer needs an answer. This is terminal, not waiting, not user-declined, and not user-dismissed. The sentence and compact badge are separate keys: do not rely on English punctuation to extract the badge."
+	},
+	"ui.chat.asks.status.withdrawn_label": {
+		"role": "Compact status badge on a collapsed settled ask row",
+		"tone": "Factual, sentence case; not an error or a request for action",
+		"length": "One short status label",
+		"placeholders": {},
+		"note": "The agent withdrew its own question because it no longer needs an answer. This is terminal, not waiting, not user-declined, and not user-dismissed. The sentence and compact badge are separate keys: do not rely on English punctuation to extract the badge."
 	}
 }

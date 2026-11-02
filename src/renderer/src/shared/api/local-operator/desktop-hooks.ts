@@ -195,6 +195,13 @@ export function useDesktopCapabilities() {
 export type DesktopFeature =
 	| "session_tags"
 	/**
+	 * The closed human Radient profile/photo relay (`/v1/desktop/account/
+	 * profile` and `/avatar`, core features.py `account_profile`). Settings asks
+	 * this key before offering edits: an older daemon has no such routes, so the
+	 * editor must stay read-only there rather than fail on Save.
+	 */
+	| "account_profile"
+	/**
 	 * The OPTIONAL auto-tag half of a desktop fork: the `auto_tag` body key on
 	 * `sessions.fork` and the naming call's tag contract behind it.
 	 *

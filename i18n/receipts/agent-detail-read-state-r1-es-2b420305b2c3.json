@@ -1,0 +1,38 @@
+{
+  "auditor": "translation-auditor",
+  "role": "Independent Spanish linguistic auditor",
+  "model": "openai/gpt-6.1-sol",
+  "model_origin": "anthropic/claude-sonnet-5-5",
+  "fallback": "openai/gpt-6.1-sol",
+  "model_provenance": "Manager-confirmed completion provenance for original audit job 2b420305b2c3: the substantive linguistic audit ran on openai/gpt-6.1-sol after quota fallback from configured anthropic/claude-sonnet-5-5. The same auditor instance resumed to write this receipt on anthropic/claude-sonnet-5-5; this clerical step does not reattribute the linguistic judgement. Hashes were independently derived during the original audit and re-derived from committed bytes during receipt writing.",
+  "instance": "agent-detail-read-state-es-e1ddb39eaf06-r1",
+  "job": "2b420305b2c3",
+  "session": "e1ddb39eaf06",
+  "receipt_writer": {
+    "job": "b3d7a87e5e5e",
+    "model": "anthropic/claude-sonnet-5-5",
+    "date": "2026-11-02"
+  },
+  "date": "2026-11-02",
+  "locale": "es",
+  "namespace": "ui.agents.detail.read_state",
+  "status": "passed",
+  "keys_audited": 14,
+  "audit_commit": "3553b7ae661a7c92caf04f1d39ed3792ef37ad46",
+  "source_commit": "e74035c506d839fd61f52fe432f1e3241c9bae63",
+  "sha256": {
+    "en": "0de7ac1bff46dc77b3bbe1f479b60a220361b3e32f673332dbe9eecfb56421f0",
+    "es": "28fdf9d99dc5ad50a3c70734f383fb0fcb51832d8422de3ea1ada387fdb9926a",
+    "context": "e1359d1f5db124d1ca167eb042ca334bc88c1c2895f9442d517d3d9e3efbb9b2"
+  },
+  "findings": [],
+  "validation": {
+    "independence": "I did not translate or edit these catalogue messages. I independently inspected all 14 Spanish messages against the committed English source and context sidecar, with existing Spanish agent-detail, team, configuration and model catalogues as terminology references.",
+    "meaning_and_recovery": "The failure title and explanatory messages retain what failed, the not-found scope, possible removal or backend refusal, and the incomplete-request meaning. Reintentar and Reintentando… provide a clear recovery action and pending state without vaguer or padded prose.",
+    "name_and_quotes": "The name remains the {name} placeholder exactly once, within curly double quotation marks. Those marks follow the Spanish style guide's explicit quotation policy; they are not carried-over ASCII quotes.",
+    "switch_and_effort": "Activado, Desactivado and Cambiando… describe switch states, not commands. Usar el esfuerzo de la sesión makes the effort picker's inheritance meaning explicit.",
+    "terminology_and_register": "Agente, equipo, sesión, subagentes, responsable, miembro and esfuerzo match existing Spanish agent/team/session-related catalogue terminology. Delegation and reactive/proactive descriptions remain direct, natural and faithful.",
+    "mechanical": "Verified equal 14-key sets, matching placeholder sets for every key, exactly one {name} occurrence, and byte equality between the translator-worktree target and the committed audit target. Source/context were unchanged between the source commit and audit commit. Re-derived all three SHA-256 hashes from git show 3553b7ae661a during receipt writing; all matched the audited hashes.",
+    "limitations": "This PASS clears the catalogue linguistically only. I did not inspect rendered frames or measure geometry, wrapping or overflow, so this receipt does not clear rendered layout or replace visual QA. No findings at BLOCKER, MAJOR, MINOR or NIT severity."
+  }
+}

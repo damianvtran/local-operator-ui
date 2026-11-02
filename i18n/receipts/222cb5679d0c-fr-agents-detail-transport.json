@@ -1,0 +1,49 @@
+{
+	"schema": 1,
+	"kind": "translation-audit-receipt",
+	"audit_kind": "independent-translation-audit",
+	"instance": "222cb5679d0c-fr-agents-detail-transport",
+	"locale": "fr",
+	"namespace": "ui.agents.detail",
+	"key_count": 51,
+	"keys_audited": [
+		"ui.agents.detail.origin.created_locally"
+	],
+	"source_sha256": "b52991233e7fdf8f9b54f9ec465fc0e20ac32239c37e8c5b9ed8ebd8fbdbd8f8",
+	"context_sha256": "f7c25bd96d74a861ab0a2c34764394a6feec1a8a0069085ab83517dc1a5d3e49",
+	"target_sha256": "369880ae6b590ebf68d13bc44ef5778dba5dd68320953ed240c4f81015dc38d8",
+	"head": "dd75287b77ca8b8447a362aa9d052a2dccacf097",
+	"audit_date": "2026-11-02",
+	"auditor": {
+		"agent": "i18n-auditor",
+		"role": "independent French translation auditor (team task, lopdev)",
+		"session": "222cb5679d0c",
+		"instance": "222cb5679d0c-fr-agents-detail-transport",
+		"model": "anthropic/claude-sonnet-5-5",
+		"model_fallback": "None claimed. The model is taken from this run's session-state header; it is not independently verifiable beyond that header.",
+		"independent_from_translator_session": true
+	},
+	"status": "passed",
+	"result": "clean-with-findings",
+	"verdict": "PASS: the new key reads as the user's own computer (not a hostname), is one plain factual sentence, and matches fr terminology. One NIT on the pre-existing three-way ordinateur/machine/appareil split; no change requested.",
+	"severity_counts": {
+		"blocker": 0,
+		"major": 0,
+		"minor": 0,
+		"nit": 1
+	},
+	"findings": [
+		{
+			"id": "A-2",
+			"key": "ui.agents.detail.origin.created_locally",
+			"severity": "nit",
+			"text": "Créé sur cet ordinateur.",
+			"problem": "The fr catalogue already uses three words for the user's own computer (cet ordinateur, cette machine, cet appareil); this key's choice, cet ordinateur, is correct and matches the refusals/settings precedent. Pre-existing split, no change requested. Masculine Créé agrees with agent."
+		}
+	],
+	"scope": "PARTIAL-FILE LINGUISTIC AUDIT. (a) The linguistic judgement covers ONLY the keys in keys_audited (PR #1594 additions). (b) The other keys of this file are byte-unchanged from the previously audited state: I checked that `git diff 7920f05769bd..dd75287b77ca -- src/i18n/catalogues/fr` adds exactly the two new keys (one per namespace) and changes nothing else, that the en catalogues have no diff over that range, and that fr/en key sets are equal (51/51 and 140/140), JSON valid, no placeholders or plurals. (c) I did NOT re-audit the remaining keys; their linguistic clearance rests on the earlier receipts for the previous bytes, not on this one. The hashes bind the whole file because the ledger gate requires it. Catalogue-linguistic clearance only, not rendered layout; no screenshot is claimed. Repo validators (ledger-check, context-parity) were not used to clear the catalogue; see audit_notes.",
+	"audit_notes_not_execution_log": "Audit notes, not an execution log. Style guide read: i18n/style-guides/fr.md and i18n/glossary.md from ~/local-operator (last commit 4981010c6fb6); their hashes were not recorded.",
+	"judgements": [
+		"created_locally: 'Créé sur cet ordinateur.' reads as the user's own computer, not a server hostname; masculine agrees with agent."
+	]
+}

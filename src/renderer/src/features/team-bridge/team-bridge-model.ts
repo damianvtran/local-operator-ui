@@ -1910,6 +1910,15 @@ export function threadItems(
 	return items;
 }
 
+const FOREIGN_TENANT_REFUSAL = "Team Bridge create answered for another tenant";
+/*
+ * Drafts whose create was answered for another organization, keyed by the
+ * caller's `remembered` map so the marker shares its owner scope (the page keeps
+ * one map per account) and is collected with it. A WeakMap keeps the function's
+ * signature unchanged for every caller.
+ */
+const refusedForeignDrafts = new WeakMap<object, Set<string>>();
+
 /**
  * A draft's FIRST SEND: create the conversation, then post into it.
  *
@@ -1949,10 +1958,36 @@ export async function sendFirstMessage(args: {
 	 */
 	onCreated?: (created: { id: string; tenantId: string | undefined }) => void;
 }): Promise<{ id: string; tenantId: string | undefined }> {
+	if (refusedForeignDrafts.get(args.remembered)?.has(args.draftKey))
+		throw new Error(FOREIGN_TENANT_REFUSAL);
 	let created = args.remembered.get(args.draftKey);
 	if (created === undefined) {
 		const response = await args.create(args.input);
 		if (!response.id) throw new Error("create returned no conversation id");
+		/*
+		 * A RECEIPT FROM ANOTHER ORGANIZATION IS REFUSED (#1511, review round 7
+		 * M1). The draft was written in `tenantId` and the create asked for that
+		 * one; a receipt naming a different tenant would otherwise move the view
+		 * into that organization's conversation and post - or SCHEDULE, which runs
+		 * through here too - the author's words there. Refused before `onCreated`
+		 * and `post`, so nothing moves and nothing is written. All organizations
+		 * passes no `tenantId`, so it has nothing to compare against.
+		 *
+		 * The refusal is remembered per draft (m2) so Retry fails again without
+		 * creating another group. The foreign id is deliberately NOT put in
+		 * `remembered`: a remembered id skips `create`, so Retry would never reach
+		 * this check and would post into the other organization.
+		 */
+		if (
+			args.tenantId !== undefined &&
+			typeof response.tenant_id === "string" &&
+			response.tenant_id !== args.tenantId
+		) {
+			const refused = refusedForeignDrafts.get(args.remembered) ?? new Set();
+			refused.add(args.draftKey);
+			refusedForeignDrafts.set(args.remembered, refused);
+			throw new Error(FOREIGN_TENANT_REFUSAL);
+		}
 		created = {
 			id: response.id,
 			tenantId: response.tenant_id ?? args.tenantId,

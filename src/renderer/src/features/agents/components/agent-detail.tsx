@@ -377,7 +377,11 @@ function AgentClassControl({
 					{t("ui.agents.detail.class.label")}
 				</span>
 				<span aria-live="polite" className="text-ink-muted">
-					{pending ? "Switching…" : shown === "proactive" ? "On" : "Off"}
+					{pending
+						? t("ui.agents.detail.read_state.class_switching")
+						: shown === "proactive"
+							? t("ui.agents.detail.read_state.class_on")
+							: t("ui.agents.detail.read_state.class_off")}
 				</span>
 			</div>
 			<p className="text-body-sm text-ink">{CLASS_MEANING[shown]}</p>
@@ -1159,15 +1163,25 @@ export function AgentDetail({
 										showLabel={false}
 										placeholder={t("ui.agents.detail.field.effort_placeholder")}
 										busyLabel="Loading effort tiers"
+										// Picker labels are copy; ids stay backend tokens for saves.
 										options={["inherit", ...effortTiers].map((tier) => ({
 											id: tier,
-											name: tier,
+											name:
+												tier === "inherit"
+													? t("ui.agents.detail.read_state.effort_inherit")
+													: tier,
 											description:
 												tier === "inherit"
 													? "Use the session's own effort"
 													: undefined,
 										}))}
-										selected={{ id: draft.effort, name: draft.effort }}
+										selected={{
+											id: draft.effort,
+											name:
+												draft.effort === "inherit"
+													? t("ui.agents.detail.read_state.effort_inherit")
+													: draft.effort,
+										}}
 										onSelect={(option) =>
 											setDraft((current) => ({ ...current, effort: option.id }))
 										}
@@ -1222,8 +1236,8 @@ export function AgentDetail({
 						<Section title={t("ui.agents.detail.section.delegation")}>
 							<p className="text-body-sm text-ink">
 								{profile.delegate
-									? "May hand work to subagents."
-									: "Does its own work; it does not delegate."}
+									? t("ui.agents.detail.read_state.delegates")
+									: t("ui.agents.detail.read_state.no_delegation")}
 							</p>
 							<p className="text-body-sm text-ink-muted">
 								{t("ui.agents.detail.read.effort_label")}{" "}
@@ -1266,7 +1280,7 @@ export function AgentDetail({
 							 * roster shows and the switch below stay one idea.
 							 */
 							title={t("ui.agents.detail.section.messaging")}
-							description="Reactive agents only reply. Proactive agents may also message you first."
+							description={t("ui.agents.detail.read_state.class_description")}
 						>
 							<AgentClassControl
 								profile={profile}
@@ -1278,7 +1292,7 @@ export function AgentDetail({
 						</Section>
 						<Section
 							title={t("ui.agents.detail.section.used_by")}
-							description="Teams that name this agent as a manager or a member."
+							description={t("ui.agents.detail.read_state.used_by_description")}
 						>
 							{usedBy.length > 0 ? (
 								<ul className="flex flex-wrap gap-x-3 gap-y-1">
@@ -1307,10 +1321,10 @@ export function AgentDetail({
 							title={t("ui.agents.detail.section.origin")}
 							description={
 								profile.source === "builtin"
-									? "Shipped with the app."
+									? t("ui.agents.detail.origin.shipped_with_app")
 									: profile.source === "installed"
-										? "Installed from a packaged starter."
-										: "Created on this machine."
+										? t("ui.agents.detail.origin.installed_starter")
+										: t("ui.agents.detail.origin.created_locally")
 							}
 						>
 							<dl className="space-y-1 text-body-sm">
@@ -1336,7 +1350,7 @@ export function AgentDetail({
 							{profile.packaged_instructions &&
 							profile.divergent_fields?.length ? (
 								<Disclosure
-									summary="Compare with the packaged instructions"
+									summary={t("ui.agents.detail.origin.compare_packaged")}
 									className="mt-2"
 								>
 									<ReadBlock text={profile.packaged_instructions} mono />
@@ -1710,7 +1724,10 @@ export function AgentCreate({
 								placeholder={t("ui.agents.detail.field.effort_placeholder")}
 								options={["inherit", ...effortTiers].map((tier) => ({
 									id: tier,
-									name: tier,
+									name:
+										tier === "inherit"
+											? t("ui.agents.detail.read_state.effort_inherit")
+											: tier,
 									description:
 										tier === "inherit"
 											? "Use the session's own effort"
@@ -1718,7 +1735,10 @@ export function AgentCreate({
 								}))}
 								selected={{
 									id: draft.effort,
-									name: draft.effort,
+									name:
+										draft.effort === "inherit"
+											? t("ui.agents.detail.read_state.effort_inherit")
+											: draft.effort,
 								}}
 								onSelect={(option) =>
 									setDraft((current) => ({ ...current, effort: option.id }))

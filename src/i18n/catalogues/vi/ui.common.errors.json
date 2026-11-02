@@ -137,5 +137,6 @@
 	"ui.common.errors.agent_publish": "Không thể xuất bản tác nhân.",
 	"ui.common.errors.conversation_messages_fetch": "Không thể tải tin nhắn của cuộc trò chuyện",
 	"ui.common.errors.conversation_messages_fetch_unknown": "Đã xảy ra lỗi không xác định khi tải tin nhắn của cuộc trò chuyện",
-	"ui.common.errors.session_id_required": "Cần ID phiên để đọc bộ nhớ mã."
+	"ui.common.errors.session_id_required": "Cần ID phiên để đọc bộ nhớ mã.",
+	"ui.common.errors.desktop_transport_failed": "Backend không thể hoàn tất yêu cầu này. Hãy kiểm tra kết nối của backend rồi thử lại."
 }
