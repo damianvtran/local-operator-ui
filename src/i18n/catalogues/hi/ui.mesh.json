@@ -98,9 +98,6 @@
 	"ui.mesh.mesh_approvals.move_sessions_to_or_from_there": "सत्र वहाँ ले जाएँ या वहाँ से लाएँ",
 	"ui.mesh.mesh_approvals.borrow_the_logins_stored_there": "वहाँ सहेजे गए लॉगिन उधार लें",
 	"ui.mesh.mesh_approvals.answer_approval_prompts_there": "वहाँ स्वीकृति प्रॉम्प्ट का जवाब दें",
-	"ui.mesh.mesh_approvals.expires_in_under_a_minute": "एक मिनट से कम में समय-सीमा पूरी होगी",
-	"ui.mesh.mesh_approvals.expires_minutes": "{count, plural, one {{count, number, ::group-off} मिनट} other {{count, number, ::group-off} मिनट}} में समय-सीमा पूरी होगी",
-	"ui.mesh.mesh_approvals.expires_hours": "{count, plural, one {{count, number, ::group-off} घंटे} other {{count, number, ::group-off} घंटे}} में समय-सीमा पूरी होगी",
 	"ui.mesh.mesh_approvals.the_approvals_could_not_be_read": "स्वीकृतियाँ पढ़ी नहीं जा सकीं।",
 	"ui.mesh.mesh_canvas.networks": "नेटवर्क",
 	"ui.mesh.mesh_canvas.devices": "डिवाइस",
@@ -239,10 +236,8 @@
 	"ui.mesh.approval.unknown_title": "स्वीकृति अनुरोध",
 	"ui.mesh.approval.details_unavailable": "इस ऐप में अनुरोध का पूरा विवरण उपलब्ध नहीं है। इस मशीन की कमांड लाइन से अनुरोध की समीक्षा करें।",
 	"ui.mesh.approval.cli_review": "इस मशीन की कमांड लाइन से इस अनुरोध की समीक्षा करें। यह ऐप इसे स्वीकृति नहीं दे सकता।",
-	"ui.mesh.approval.approved_pending_apply": "स्वीकृत; लागू होने का इंतज़ार",
 	"ui.mesh.approval.approved_apply_hint": "स्वीकृति दर्ज है। सर्वर का बताया लागू करने का चरण देखने के लिए विवरण खोलें।",
 	"ui.mesh.approval.approved_details_missing": "स्वीकृति दर्ज है। लागू करने का चरण इस ऐप में उपलब्ध नहीं है।",
-	"ui.mesh.approval.request_window": "अनुरोध की समय-सीमा: {remaining}",
 	"ui.mesh.approval.head_finite_share": "अपना {credential} लॉगिन {device} के साथ साझा करें",
 	"ui.mesh.approval.head_inheritance": "{device} को अपना {provider} खाता ({account}) इस्तेमाल करने दें",
 	"ui.mesh.approval.scope_device": "{device} पर कोई भी सत्र इसका इस्तेमाल कर सकता है।",
@@ -267,7 +262,7 @@
 	"ui.mesh.approval.needs_attention": "ध्यान देना ज़रूरी: {count, number, ::group-off}",
 	"ui.mesh.approval.shared_count": "साझा किए गए: {count, number, ::group-off}",
 	"ui.mesh.approval.shared": "साझा किया गया",
-	"ui.mesh.approval.result_status": "साझा किए गए: {shared, number, ::group-off}. ध्यान देना ज़रूरी: {attention, number, ::group-off}.",
+	"ui.mesh.approval.result_status": "साझा किए गए: {shared, number, ::group-off}। ध्यान देना ज़रूरी: {attention, number, ::group-off}।",
 	"ui.mesh.approval.duration_under_minute": "एक मिनट से कम",
 	"ui.mesh.approval.duration_minutes": "{count, plural, one {{count, number, ::group-off} मिनट} other {{count, number, ::group-off} मिनट}}",
 	"ui.mesh.approval.duration_hours": "{count, plural, one {{count, number, ::group-off} घंटे} other {{count, number, ::group-off} घंटे}}",
@@ -276,6 +271,6 @@
 	"ui.mesh.approval.cancel_sharing": "साझा करना रद्द करें",
 	"ui.mesh.approval.cancel_hint": "साझा करना रद्द करने से यह अनुरोध रुक जाता है। पहले से साझा एक्सेस वापस नहीं लिया जाता।",
 	"ui.mesh.approval.signing_applying": "हस्ताक्षर और लागू हो रहा है…",
-	"ui.mesh.approval.retry_hint": "इस स्वीकृत अनुरोध को लागू करने के लिए फिर से कोशिश करें चुनें।",
-	"ui.mesh.approval.named_refusal": "अनुरोध “{request}”: {reason}"
+	"ui.mesh.approval.retry_hint": "इस स्वीकृत अनुरोध को लागू करने के लिए “फिर से कोशिश करें” चुनें।",
+	"ui.mesh.approval.named_refusal": "“{request}” के लिए: {reason}"
 }

@@ -2531,7 +2531,7 @@ test("the summary states the ask, and the consequences stay in the CLI's order",
 		approvalRequesterLabel,
 		approvalScopeEntries,
 		approvalHead,
-		approvalRemainingLabel,
+		approvalAnswerWindowLabel,
 		approvalSummary,
 		approvalSubject,
 	} = mesh;
@@ -2691,28 +2691,28 @@ test("the summary states the ask, and the consequences stay in the CLI's order",
 	// The window rounds UP to the next minute and unit, so the copy never claims less
 	// time than is left (the browser consent card's own rule, for the same reason).
 	assert.equal(
-		approvalRemainingLabel(1_000 + 42 * 60, 1_000),
-		"expires in 42 minutes",
+		approvalAnswerWindowLabel(1_000 + 42 * 60, 1_000),
+		"Answer within 42 minutes",
 	);
 	assert.equal(
-		approvalRemainingLabel(1_000 + 30, 1_000),
-		"expires in under a minute",
+		approvalAnswerWindowLabel(1_000 + 30, 1_000),
+		"Answer within less than a minute",
 	);
 	assert.equal(
-		approvalRemainingLabel(1_000 + 60, 1_000),
-		"expires in 1 minute",
+		approvalAnswerWindowLabel(1_000 + 60, 1_000),
+		"Answer within 1 minute",
 	);
 	assert.equal(
-		approvalRemainingLabel(1_000 + 3 * 3_600, 1_000),
-		"expires in 3 hours",
+		approvalAnswerWindowLabel(1_000 + 3 * 3_600, 1_000),
+		"Answer within 3 hours",
 	);
 	assert.equal(
-		approvalRemainingLabel(999, 1_000),
+		approvalAnswerWindowLabel(999, 1_000),
 		null,
 		"a passed window says nothing",
 	);
 	assert.equal(
-		approvalRemainingLabel(null, 1_000),
+		approvalAnswerWindowLabel(null, 1_000),
 		null,
 		"no window says nothing",
 	);
@@ -3514,7 +3514,7 @@ test("a refused decision renders its sentence, and the tray splits waiting from 
 	);
 	assert.match(
 		tray,
-		/\{waiting && remaining && \(/,
+		/\{\(waiting \|\| isAttentionApproval\(row\)\) && remaining && \(/,
 		"the countdown prints only while the decision is still the reader's (design round 1, D3 / UX round 1, U3)",
 	);
 	assert.match(
@@ -6063,4 +6063,53 @@ test("signed unapplied credentials remain live and consent facts stay visible", 
 	);
 	assert.ok(source.includes("aria-describedby="));
 	assert.ok(source.includes("max-h-48 overflow-auto"));
+});
+
+test("pre-capture fixes preserve legacy hints, live deadlines and isolated refusal fields", () => {
+	const source = readFileSync(
+		"src/renderer/src/features/mesh/mesh-approvals-tray.tsx",
+		"utf8",
+	);
+	assert.ok(source.includes("!row.typed &&"));
+	assert.ok(source.includes('"ui.mesh.approval.approved_apply_hint"'));
+	assert.ok(
+		source.includes("(waiting || isAttentionApproval(row)) && remaining"),
+	);
+	const status = source.slice(
+		source.indexOf("<output"),
+		source.indexOf("</output>"),
+	);
+	assert.equal(
+		status.includes("refusal"),
+		false,
+		"counts-only status cannot repeat the focused refusal",
+	);
+	assert.ok(source.includes('<bdi dir="auto"'));
+	const previous = mesh.currentLocale();
+	try {
+		mesh.setLocale("ur");
+		const parts = mesh.namedApprovalRefusalParts(
+			"worker {reason}",
+			"Backend refused. {request}",
+		);
+		assert.deepEqual(
+			parts.filter((p) => p.kind !== "literal"),
+			[
+				{ kind: "request", text: "worker {reason}" },
+				{ kind: "reason", text: "Backend refused. {request}" },
+			],
+		);
+	} finally {
+		mesh.setLocale(previous);
+	}
+	const stories = readFileSync(
+		"src/renderer/src/features/mesh/mesh-page.stories.tsx",
+		"utf8",
+	);
+	const legacy = stories.slice(
+		stories.indexOf("export const CredentialApprovedDetails"),
+		stories.indexOf("export const CredentialMultiple"),
+	);
+	assert.ok(legacy.includes('"Approved, but not applied yet."'));
+	assert.ok(legacy.includes('["Shared", "Denied", "Expired"]'));
 });

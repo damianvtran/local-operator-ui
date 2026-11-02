@@ -1112,29 +1112,6 @@ const grantClauses = (): Record<string, string> => ({
 	),
 });
 
-/**
- * "expires in 42 minutes" — the record's ONE window (§2.1: 60 minutes by
- * default), rounded UP to the next unit so the copy never claims less time than
- * is left, which is the browser consent card's own rule for the same reason.
- * `null` when there is no window or it has passed (a passed window folds to
- * `expired` server-side anyway; this is the belt beside that brace).
- */
-export function approvalRemainingLabel(
-	expiresAtSeconds: number | null,
-	nowSeconds: number,
-): string | null {
-	if (expiresAtSeconds === null || expiresAtSeconds <= 0) return null;
-	const leftSeconds = expiresAtSeconds - nowSeconds;
-	if (leftSeconds <= 0) return null;
-	if (leftSeconds < 60)
-		return t("ui.mesh.mesh_approvals.expires_in_under_a_minute");
-	const minutes = Math.ceil(leftSeconds / 60);
-	if (minutes < 90)
-		return t("ui.mesh.mesh_approvals.expires_minutes", { count: minutes });
-	const hours = Math.ceil(minutes / 60);
-	return t("ui.mesh.mesh_approvals.expires_hours", { count: hours });
-}
-
 /** A signed credential still needing a decision is live, not settled history. */
 export function isAttentionApproval(row: MeshApprovalRow): boolean {
 	return (
@@ -1346,4 +1323,35 @@ export function unappliedPhase(answer: unknown): {
 		message: text(applied.message),
 		applyOutcome: applied,
 	};
+}
+
+const NAMED_REFUSAL_FIELDS = /(\{request\}|\{reason\})/;
+
+/**
+ * Keep locale-authored ordering/punctuation, but return the two interpolations
+ * separately so React can isolate each with bdi. Pass literal field tokens into
+ * the formatter, then insert actual untrusted text AFTER splitting: a request or
+ * backend reason containing the same token can never be interpreted as markup
+ * or confused with a template field. No manual bidi controls are stored in copy.
+ */
+export function namedApprovalRefusalParts(
+	request: string,
+	reason: string,
+): {
+	kind: "literal" | "request" | "reason";
+	text: string;
+}[] {
+	return t("ui.mesh.approval.named_refusal", {
+		request: "{request}",
+		reason: "{reason}",
+	})
+		.split(NAMED_REFUSAL_FIELDS)
+		.filter(Boolean)
+		.map((part) =>
+			part === "{request}"
+				? { kind: "request", text: request }
+				: part === "{reason}"
+					? { kind: "reason", text: reason }
+					: { kind: "literal", text: part },
+		);
 }

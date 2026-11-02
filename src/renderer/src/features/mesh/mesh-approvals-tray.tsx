@@ -104,6 +104,7 @@ import {
 	credentialVisibleConsequences,
 	isAttentionApproval,
 	isWaitingApproval,
+	namedApprovalRefusalParts,
 } from "./mesh-approvals";
 
 /**
@@ -422,8 +423,7 @@ export const MeshApprovalsTray: FC<MeshApprovalsTrayProps> = ({
 				{t("ui.mesh.approval.result_status", {
 					shared: sharedCount,
 					attention: attentionCount,
-				})}{" "}
-				{refusal?.sentence}
+				})}
 			</output>
 			<div className="flex flex-wrap items-center gap-2">
 				<ShieldCheck aria-hidden="true" className="size-4 text-ink-muted" />
@@ -473,15 +473,12 @@ export const MeshApprovalsTray: FC<MeshApprovalsTrayProps> = ({
 
 			{refusal && !refusalAttached && (
 				<MeshDecisionRefusal
-					refusal={{
-						...refusal,
-						sentence: t("ui.mesh.approval.named_refusal", {
-							request: refusedRow
-								? approvalHead(refusedRow)
-								: t("ui.mesh.approval.credential_title"),
-							reason: refusal.sentence,
-						}),
-					}}
+					refusal={refusal}
+					request={
+						refusedRow
+							? approvalHead(refusedRow)
+							: t("ui.mesh.approval.credential_title")
+					}
 				/>
 			)}
 
@@ -709,7 +706,7 @@ const MeshApprovalCard: FC<{
 				 * on the record whatever its state (`badge_row` passes it raw; only
 				 * `presented()` reads it), so the gate is the SURFACE's, by state.
 				 */}
-				{waiting && remaining && (
+				{(waiting || isAttentionApproval(row)) && remaining && (
 					<span className="text-meta text-ink-dim">{remaining}</span>
 				)}
 			</div>
@@ -780,6 +777,19 @@ const MeshApprovalCard: FC<{
 					{restrictedRemedy}
 				</p>
 			)}
+			{row.kind === "credential" && !row.typed && row.state === "approved" && (
+				<p
+					className="text-meta text-ink-muted"
+					data-tour-tag="mesh-approval-apply-hint"
+				>
+					{t(
+						row.details?.length
+							? "ui.mesh.approval.approved_apply_hint"
+							: "ui.mesh.approval.approved_details_missing",
+					)}
+				</p>
+			)}
+
 			{fileKeyNote && (
 				<p
 					className="text-meta text-ink-dim"
@@ -1001,7 +1011,8 @@ const MeshApprovalCard: FC<{
 /** Quiet, focusable outcome; raw machine codes stay in the owning card's Details. */
 const MeshDecisionRefusal: FC<{
 	refusal: { code: string; sentence: string };
-}> = ({ refusal }) => {
+	request?: string;
+}> = ({ refusal, request }) => {
 	useI18nLocale();
 	return (
 		<p
@@ -1009,7 +1020,19 @@ const MeshDecisionRefusal: FC<{
 			className="text-meta text-warning [overflow-wrap:anywhere]"
 			data-tour-tag="mesh-approval-refusal"
 		>
-			{refusal.sentence}
+			{request ? (
+				namedApprovalRefusalParts(request, refusal.sentence).map((part) =>
+					part.kind === "literal" ? (
+						<Fragment key={part.text}>{part.text}</Fragment>
+					) : (
+						<bdi dir="auto" key={part.kind}>
+							{part.text}
+						</bdi>
+					),
+				)
+			) : (
+				<bdi dir="auto">{refusal.sentence}</bdi>
+			)}
 		</p>
 	);
 };

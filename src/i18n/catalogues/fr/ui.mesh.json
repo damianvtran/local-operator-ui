@@ -98,9 +98,6 @@
 	"ui.mesh.mesh_approvals.move_sessions_to_or_from_there": "déplacer des sessions vers ou depuis là-bas",
 	"ui.mesh.mesh_approvals.borrow_the_logins_stored_there": "emprunter les connexions stockées là-bas",
 	"ui.mesh.mesh_approvals.answer_approval_prompts_there": "répondre aux invites d’approbation là-bas",
-	"ui.mesh.mesh_approvals.expires_in_under_a_minute": "expire dans moins d’une minute",
-	"ui.mesh.mesh_approvals.expires_minutes": "expire dans {count, plural, one {{count, number, ::group-off} minute} many {{count, number, ::group-off} de minutes} other {{count, number, ::group-off} minutes}}",
-	"ui.mesh.mesh_approvals.expires_hours": "expire dans {count, plural, one {{count, number, ::group-off} heure} many {{count, number, ::group-off} d’heures} other {{count, number, ::group-off} heures}}",
 	"ui.mesh.mesh_approvals.the_approvals_could_not_be_read": "Les approbations n’ont pas pu être lues.",
 	"ui.mesh.mesh_canvas.networks": "Réseaux",
 	"ui.mesh.mesh_canvas.devices": "Appareils",
@@ -239,10 +236,8 @@
 	"ui.mesh.approval.unknown_title": "Demande d’approbation",
 	"ui.mesh.approval.details_unavailable": "Les détails complets de la demande sont indisponibles dans cette application. Vérifiez la demande depuis la ligne de commande sur cet ordinateur.",
 	"ui.mesh.approval.cli_review": "Vérifiez cette demande depuis la ligne de commande sur cet ordinateur. Cette application ne peut pas l’approuver.",
-	"ui.mesh.approval.approved_pending_apply": "Approuvée ; en attente d’application",
 	"ui.mesh.approval.approved_apply_hint": "L’approbation est enregistrée. Ouvrez Détails pour l’étape d’application fournie par le serveur.",
 	"ui.mesh.approval.approved_details_missing": "L’approbation est enregistrée. L’étape d’application est indisponible dans cette application.",
-	"ui.mesh.approval.request_window": "Fenêtre de la demande : {remaining}",
 	"ui.mesh.approval.head_finite_share": "Partager votre connexion {credential} avec {device}",
 	"ui.mesh.approval.head_inheritance": "Autoriser {device} à utiliser votre compte {provider} ({account})",
 	"ui.mesh.approval.scope_device": "Toute session sur {device} peut l’utiliser.",
@@ -266,8 +261,8 @@
 	"ui.mesh.approval.technical_request": "Demande signée exacte (technique)",
 	"ui.mesh.approval.needs_attention": "À traiter : {count, number, ::group-off}",
 	"ui.mesh.approval.shared_count": "Partagés : {count, number, ::group-off}",
-	"ui.mesh.approval.shared": "Partagé",
-	"ui.mesh.approval.result_status": "Partagés: {shared, number, ::group-off}. À traiter: {attention, number, ::group-off}.",
+	"ui.mesh.approval.shared": "Partagée",
+	"ui.mesh.approval.result_status": "Partagés : {shared, number, ::group-off}. À traiter : {attention, number, ::group-off}.",
 	"ui.mesh.approval.duration_under_minute": "moins d’une minute",
 	"ui.mesh.approval.duration_minutes": "{count, plural, one {{count, number, ::group-off} minute} many {{count, number, ::group-off} minutes} other {{count, number, ::group-off} minutes}}",
 	"ui.mesh.approval.duration_hours": "{count, plural, one {{count, number, ::group-off} heure} many {{count, number, ::group-off} heures} other {{count, number, ::group-off} heures}}",
@@ -277,5 +272,5 @@
 	"ui.mesh.approval.cancel_hint": "Annuler le partage arrête cette demande, sans retirer les accès déjà partagés.",
 	"ui.mesh.approval.signing_applying": "Signature et application…",
 	"ui.mesh.approval.retry_hint": "Choisissez Réessayer pour appliquer cette demande approuvée.",
-	"ui.mesh.approval.named_refusal": "Pour « {request} » : {reason}"
+	"ui.mesh.approval.named_refusal": "Pour « {request} » : {reason}"
 }

@@ -135,3 +135,37 @@ browser launched in this pass. Fifteen new catalogue keys and modified assurance
 account copy are translated into all seven supported locales with English context;
 keys regenerated. Fresh independent semantic audits and ledger refresh are needed;
 no self-audit or historical receipt rebinding is claimed.
+
+
+## Pre-capture follow-ups (agent review round 4 / translation round 3)
+
+Updated the legacy approved/settled story assertions, restored the untyped
+approved-card Details hint, and kept answer deadlines visible on needs-attention
+cards. The polite status now announces counts only; focus announces the refusal,
+so its sentence is no longer repeated in the atomic region. Named refusals format
+locale-authored punctuation with placeholder tokens, then insert actual request/
+reason strings into separate bdi elements. Input tokens cannot become template
+fields because input is inserted only after splitting. Standalone backend refusal
+sentences are isolated too. Real RTL/AT rendering remains manager-scheduled.
+
+Removed the unused old expiry helper and five obsolete keys (and context) after
+checking production call sites; expiry tests now exercise the unified answer
+window helper. The restored legacy apply hint keys remain, because they are used.
+Applied the translation audit punctuation/quotation/agreement nits without
+claiming self-audit. Fresh independent audits are required for changed namespaces.
+
+Selected tests, serially with 2 GiB / 120s / concurrency 1: mesh-tab 114 pass,
+0 fail; locale-parity 44 pass, 0 fail. No build/browser/full suite run here.
+
+### Exact catalogue delta for independent auditors
+
+- **en changed:** none.
+- **es changed:** `ui.mesh.approval.file_key_disclosure`, `ui.mesh.approval.answer_window`, `ui.mesh.approval.file_key_recorded`, `ui.mesh.approval.named_refusal`.
+- **fr changed:** `ui.mesh.approval.shared`, `ui.mesh.approval.result_status`, `ui.mesh.approval.named_refusal`.
+- **ru changed:** `ui.mesh.approval.named_refusal`.
+- **hi changed:** `ui.mesh.approval.result_status`, `ui.mesh.approval.retry_hint`, `ui.mesh.approval.named_refusal`.
+- **ur changed:** `ui.mesh.approval.result_status`, `ui.mesh.approval.retry_hint`, `ui.mesh.approval.named_refusal`.
+- **vi changed:** `ui.mesh.approval.cancel_hint`, `ui.mesh.approval.named_refusal`.
+- **zh-CN changed:** `ui.mesh.approval.head_inheritance`, `ui.mesh.approval.file_key_disclosure`, `ui.mesh.approval.result_status`.
+- **Removed in all eight catalogues:** `ui.mesh.mesh_approvals.expires_in_under_a_minute`, `ui.mesh.mesh_approvals.expires_minutes`, `ui.mesh.mesh_approvals.expires_hours`, `ui.mesh.approval.approved_pending_apply`, `ui.mesh.approval.request_window`.
+- **English context updated:** `ui.mesh.approval.result_status`, `ui.mesh.approval.named_refusal`; removed contexts for the same five obsolete keys.

@@ -2635,7 +2635,7 @@ export const CredentialApprovedDetails: Story = {
 		await user.click(
 			await screen.findByRole("button", { name: /^Settled approvals \(1\)/ }),
 		);
-		await screen.findByText("Approved; waiting to apply");
+		await screen.findByText("Approved, but not applied yet.");
 		if (document.querySelector('[data-tour-tag="mesh-approval-cli-remedy"]'))
 			throw new Error("Approved request repeated the approval instruction");
 		await user.click(await screen.findByRole("button", { name: "Details" }));
@@ -2665,7 +2665,7 @@ export const CredentialSettledOpen: Story = {
 		await userEvent.click(
 			await screen.findByRole("button", { name: /^Settled approvals \(3\)/ }),
 		);
-		for (const state of ["Connected", "Denied", "Expired"])
+		for (const state of ["Shared", "Denied", "Expired"])
 			await screen.findByText(state);
 		if (screen.queryByRole("button", { name: /^(Approve|Deny|Stop)$/ }))
 			throw new Error("Terminal credentials exposed a decision");

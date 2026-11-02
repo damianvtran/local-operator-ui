@@ -6950,7 +6950,6 @@ export type MessageParams = {
 	"ui.mesh.approval.approved_apply_hint": undefined;
 	"ui.mesh.approval.approved_details_missing": undefined;
 	"ui.mesh.approval.approved_not_applied": undefined;
-	"ui.mesh.approval.approved_pending_apply": undefined;
 	"ui.mesh.approval.cancel_hint": undefined;
 	"ui.mesh.approval.cancel_sharing": undefined;
 	"ui.mesh.approval.cli_review": undefined;
@@ -6978,7 +6977,6 @@ export type MessageParams = {
 	"ui.mesh.approval.org_any": undefined;
 	"ui.mesh.approval.org_limited": { org: string };
 	"ui.mesh.approval.recipient_key": { device: string };
-	"ui.mesh.approval.request_window": { remaining: string };
 	"ui.mesh.approval.result_status": { shared: number; attention: number };
 	"ui.mesh.approval.retry_hint": undefined;
 	"ui.mesh.approval.scope_device": { device: string };
@@ -7044,9 +7042,6 @@ export type MessageParams = {
 	"ui.mesh.mesh_approvals.decision_could_not_be_answered": undefined;
 	"ui.mesh.mesh_approvals.denied": undefined;
 	"ui.mesh.mesh_approvals.expired": undefined;
-	"ui.mesh.mesh_approvals.expires_hours": { count: number };
-	"ui.mesh.mesh_approvals.expires_in_under_a_minute": undefined;
-	"ui.mesh.mesh_approvals.expires_minutes": { count: number };
 	"ui.mesh.mesh_approvals.failed": undefined;
 	"ui.mesh.mesh_approvals.grant_capability": { grant: string };
 	"ui.mesh.mesh_approvals.install_local_operator": undefined;

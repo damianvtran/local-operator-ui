@@ -1,11 +1,9 @@
 {
 	"ui.mesh.approval.approved_apply_hint": "Одобрение записано. Откройте «Подробности», чтобы увидеть шаг применения, предоставленный сервером.",
 	"ui.mesh.approval.approved_details_missing": "Одобрение записано. Шаг применения недоступен в этом приложении.",
-	"ui.mesh.approval.approved_pending_apply": "Одобрено; ожидает применения",
 	"ui.mesh.approval.cli_review": "Просмотрите этот запрос из командной строки на этом компьютере. Приложение не может его одобрить.",
 	"ui.mesh.approval.credential_title": "Запрос доступа к учётным данным",
 	"ui.mesh.approval.details_unavailable": "Полные сведения о запросе недоступны в этом приложении. Просмотрите запрос из командной строки на этом компьютере.",
-	"ui.mesh.approval.request_window": "Окно запроса: {remaining}",
 	"ui.mesh.approval.head_finite_share": "Поделиться входом {credential} с {device}",
 	"ui.mesh.approval.head_inheritance": "Разрешить {device} использовать ваш аккаунт {provider} ({account})",
 	"ui.mesh.approval.scope_device": "Им может пользоваться любая сессия на {device}.",
@@ -76,9 +74,6 @@
 	"ui.mesh.mesh_approvals.decision_could_not_be_answered": "Не удалось отправить решение.",
 	"ui.mesh.mesh_approvals.denied": "Отклонено",
 	"ui.mesh.mesh_approvals.expired": "Истекло",
-	"ui.mesh.mesh_approvals.expires_hours": "истекает через {count, plural, one {{count, number, ::group-off} час} few {{count, number, ::group-off} часа} many {{count, number, ::group-off} часов} other {{count, number, ::group-off} часа}}",
-	"ui.mesh.mesh_approvals.expires_in_under_a_minute": "истекает менее чем через минуту",
-	"ui.mesh.mesh_approvals.expires_minutes": "истекает через {count, plural, one {{count, number, ::group-off} минуту} few {{count, number, ::group-off} минуты} many {{count, number, ::group-off} минут} other {{count, number, ::group-off} минуты}}",
 	"ui.mesh.mesh_approvals.failed": "Ошибка",
 	"ui.mesh.mesh_approvals.grant_capability": "предоставить право {grant}",
 	"ui.mesh.mesh_approvals.install_local_operator": "установить Local Operator",
@@ -277,5 +272,5 @@
 	"ui.mesh.approval.cancel_hint": "Отмена останавливает этот запрос, но не отзывает уже предоставленный доступ.",
 	"ui.mesh.approval.signing_applying": "Подписание и применение…",
 	"ui.mesh.approval.retry_hint": "Выберите «Повторить», чтобы применить этот одобренный запрос.",
-	"ui.mesh.approval.named_refusal": "Запрос «{request}»: {reason}"
+	"ui.mesh.approval.named_refusal": "Для «{request}»: {reason}"
 }
