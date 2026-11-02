@@ -48,11 +48,15 @@ const textFields = (
 	description: snapshot.profile.description,
 	timezone: snapshot.profile.timezone,
 });
-/** The service's own bounds (agent-server ACCOUNT-PROFILE.md). The inputs carry
- * them as `maxLength` so a draft cannot grow past what Save will accept; the
- * submit check stays because a retained draft and the 8-line rule are not
- * something `maxLength` can express. */
+/** The service's own bounds (agent-server ACCOUNT-PROFILE.md), in code points
+ * (runes). The submit check below counts code points and is the authority; it
+ * also covers the 8-line rule and a retained draft, which no attribute can. */
 const FIELD_LIMITS = { display_name: 64, title: 80, description: 500 } as const;
+/** `maxLength` counts UTF-16 code units, so the code-point limit itself would
+ * stop a name of emoji (2 units each) at half its allowed length (code round
+ * 3, m1). Twice the limit is the most units the limit's code points can take,
+ * so the attribute never refuses valid input; it only caps a runaway paste. */
+const inputMaxLength = (field: TextField) => FIELD_LIMITS[field] * 2;
 const DESCRIPTION_LINES = 8;
 type TextField = keyof typeof FIELD_LIMITS;
 type FieldError = { field: TextField; reason: "length" | "lines" };
@@ -189,9 +193,10 @@ export function AccountProfileEditor({
 	 */
 	useEffect(() => {
 		if (!focusNext) return;
-		const target = refs[focusNext].current;
-		if (!target) return;
-		target.focus();
+		// One attempt, then the request is spent (code round 3, m2): a target
+		// that is absent now (a refetch removed the photo, so no Remove button)
+		// must not stay pending and steal focus when it next mounts.
+		refs[focusNext].current?.focus();
 		setFocusNext(undefined);
 	});
 	const clearCrop = () => {
@@ -379,7 +384,7 @@ export function AccountProfileEditor({
 				{control({
 					id: `${id}-${field}`,
 					value: draft[field],
-					maxLength: FIELD_LIMITS[field],
+					maxLength: inputMaxLength(field),
 					readOnly: saving,
 					"aria-invalid": message ? true : undefined,
 					"aria-describedby": message ? `${id}-${field}-error` : undefined,

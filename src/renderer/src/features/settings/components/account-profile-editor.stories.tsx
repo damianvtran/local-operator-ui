@@ -208,15 +208,26 @@ async function chooseFixture(canvasElement: HTMLElement) {
 			"image/png",
 		),
 	);
+	/*
+	 * BY SELECTOR, NOT BY LABEL (design round 2, D8). The file input is
+	 * deliberately unnamed and `aria-hidden` (UX round 1, N2): the visible
+	 * button is the one accessible name. A label lookup therefore threw, the
+	 * play stopped, and the story rendered the plain form while looking like a
+	 * passing frame. A missing input now throws by name, and the crop area is
+	 * awaited so the story cannot settle anywhere but in the crop state.
+	 */
+	const input =
+		canvasElement.querySelector<HTMLInputElement>("input[type=file]");
+	if (!input) throw new Error("Profile photo file input is not rendered");
 	await userEvent.upload(
-		within(canvasElement).getByLabelText(
-			t("ui.settings.personal_profile.choose"),
-		),
+		input,
 		new File([blob], "synthetic-profile.png", { type: "image/png" }),
 	);
-	await within(canvasElement).findByLabelText(
-		t("ui.settings.personal_profile.crop_area"),
-	);
+	await expect(
+		await within(canvasElement).findByLabelText(
+			t("ui.settings.personal_profile.crop_area"),
+		),
+	).toBeInTheDocument();
 }
 export const Crop: Story = {
 	play: async ({ canvasElement }) => chooseFixture(canvasElement),
@@ -372,6 +383,12 @@ export const PhotoFailure: Story = {
 				name: t("ui.settings.personal_profile.save_photo"),
 			}),
 		);
-		await within(canvasElement).findByRole("alert");
+		// The upload's own error, not just any alert: the story must settle in
+		// the photo-failure state it is named for.
+		await expect(
+			await within(canvasElement).findByText(
+				t("ui.settings.personal_profile.photo_error"),
+			),
+		).toBeInTheDocument();
 	},
 };

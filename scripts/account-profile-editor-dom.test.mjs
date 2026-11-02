@@ -11,11 +11,15 @@
  *  - U2: actions unmounted or disabled their own trigger and focus fell to
  *    <body>. Each action must land focus on a named control.
  *  - U3: Escape must back out of the discard question.
- *  - U5: inputs carry the service bounds as `maxLength`, and a refused field is
- *    marked `aria-invalid`, described and focused.
+ *  - U5: a refused field is marked `aria-invalid`, described and focused.
+ *  - m1 (code round 3): limits are code points, as the service counts them, so
+ *    `maxLength` (UTF-16 units) must not cut a name of emoji at half length.
+ *  - m2 (code round 3): a focus request whose target is absent is spent, not
+ *    left pending to steal focus when that control next mounts.
  *
- * The harness is `agent-picture-dom.test.mjs`'s: esbuild bundles the component
- * with React external, then jsdom is installed AFTER the bundle is evaluated.
+ * The harness is `agent-picture-dom.test.mjs`'s esbuild bundle with React
+ * external, except that jsdom is installed BEFORE the bundle is evaluated (the
+ * reason is at that install, below).
  */
 
 import assert from "node:assert/strict";
@@ -258,19 +262,77 @@ test("U1: a dirty draft registers no beforeunload guard (Electron would silently
 	assert.equal(event.defaultPrevented, false, "an unload is never cancelled");
 });
 
-test("U5: inputs carry the service bounds as maxLength", async () => {
+test("m1: maxLength never refuses input the code-point limit allows", async () => {
 	const container = await mount();
-	assert.equal(
-		field(container, t("ui.settings.personal_profile.display_name")).maxLength,
-		64,
+	for (const [label, limit] of [
+		[t("ui.settings.personal_profile.display_name"), 64],
+		[t("ui.settings.personal_profile.title"), 80],
+		[t("ui.settings.personal_profile.description"), 500],
+	]) {
+		// The worst case: every code point astral, two UTF-16 units each.
+		const { maxLength } = field(container, label);
+		assert.ok(maxLength >= limit * 2, `${label}: maxLength ${maxLength}`);
+	}
+});
+
+test("m1: 64 emoji save; 65 are refused by the code-point check", async () => {
+	const saved = [];
+	const container = await mount({
+		onSave: async (fields) => {
+			saved.push(fields);
+			return SNAPSHOT;
+		},
+	});
+	const name = field(container, t("ui.settings.personal_profile.display_name"));
+	const emoji = String.fromCodePoint(0x1f600);
+	await type(name, emoji.repeat(65));
+	await click(button(container, t("ui.settings.personal_profile.save")));
+	assert.equal(saved.length, 0, "65 code points are refused");
+	assert.equal(name.getAttribute("aria-invalid"), "true");
+	await type(name, emoji.repeat(64));
+	await click(button(container, t("ui.settings.personal_profile.save")));
+	assert.equal(saved.length, 1, "64 code points (128 UTF-16 units) are sent");
+	assert.equal([...saved[0].display_name].length, 64);
+});
+
+test("m2: a focus request for an absent control is spent, not left pending", async () => {
+	const container = document.createElement("div");
+	document.body.append(container);
+	const root = createRoot(container);
+	mounted.push(root);
+	const render = (snapshot) =>
+		act(async () =>
+			root.render(
+				h(AccountProfileEditor, {
+					snapshot,
+					onSave: async () => snapshot,
+					onUpload: async () => snapshot,
+					onRemove: async () => snapshot,
+				}),
+			),
+		);
+	const photoless = {
+		...SNAPSHOT,
+		profile: { ...SNAPSHOT.profile, avatar: undefined },
+	};
+	await render(SNAPSHOT);
+	await click(button(container, t("ui.settings.personal_profile.remove")));
+	// A refetch removes the photo while the confirmation is open, so the
+	// Remove button that Cancel would return focus to no longer exists.
+	await render(photoless);
+	const cancel = [...container.querySelectorAll("fieldset button")].find(
+		(node) => node.textContent?.trim() === t("ui.common.actions.cancel"),
 	);
+	await click(cancel);
+	const name = field(container, t("ui.settings.personal_profile.display_name"));
+	await act(async () => name.focus());
+	// The photo comes back: Remove mounts again. A pending request would now
+	// pull focus out of the field the reader moved to.
+	await render(SNAPSHOT);
 	assert.equal(
-		field(container, t("ui.settings.personal_profile.title")).maxLength,
-		80,
-	);
-	assert.equal(
-		field(container, t("ui.settings.personal_profile.description")).maxLength,
-		500,
+		document.activeElement,
+		name,
+		"focus stayed where the reader put it",
 	);
 });
 
