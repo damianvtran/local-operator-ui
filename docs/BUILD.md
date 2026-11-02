@@ -64,12 +64,20 @@ The following environment variables are used for code signing across all platfor
 - `CSC_CONTENT`: Base64-encoded signing certificate (p12 file)
 - `CSC_KEY_PASSWORD`: Password for the signing certificate
 
-For macOS notarization, additional variables are required:
+In CI these read the repository secrets `MACOS_DEVID_APP_P12_BASE64` and
+`MACOS_DEVID_APP_P12_PASSWORD` (the Radient Inc. organization's Developer ID
+Application identity); see [CODE_SIGNING.md](./CODE_SIGNING.md).
 
-- `APPLE_ID`: Your Apple ID email
-- `APPLE_ID_PASSWORD`: App-specific password for your Apple ID
+For macOS notarization, an App Store Connect API key:
+
+- `APPLE_API_KEY`: Path to the API key's `.p8` file
+- `APPLE_API_KEY_ID`: The key's id
+- `APPLE_API_ISSUER`: The App Store Connect issuer id (a UUID)
 - `APPLE_TEAM_ID`: Your Apple Developer Team ID
 - `NOTARIZE`: Set to "true" to enable notarization (optional)
+
+`APPLE_ID` / `APPLE_ID_PASSWORD` still work as a local fallback when no API
+key is set; the release workflows no longer use them.
 
 You can set these variables in your CI/CD pipeline or locally in a `.env.build` file before building.
 

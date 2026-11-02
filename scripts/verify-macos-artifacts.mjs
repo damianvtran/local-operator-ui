@@ -43,6 +43,8 @@ import {
 import { isEntryPoint } from "./entry-point.mjs";
 import {
 	EMBEDDED_PROVISIONING_PROFILE_PATH,
+	plistStringValues,
+	profileAllowlistAuthorizes,
 	profileBackedEntitlementKeys,
 } from "./macos-entitlement-policy.mjs";
 import {
@@ -230,8 +232,22 @@ export function profileAuthorizes(
 	 * to carry the entitlement at all (the general case, where the value is not
 	 * something this gate can judge).
 	 */
+	/*
+	 * Through Apple's matching rule, not `===`: a real Developer ID profile
+	 * authorizes keychain groups as the team wildcard `<TEAM_ID>.*` and never
+	 * lists the WebAuthn group by name, so an exact comparison failed the one
+	 * profile that does authorize it. `profileAllowlistAuthorizes` is the copy the
+	 * renderer uses too (`scripts/macos-entitlement-policy.mjs`), and it still
+	 * refuses another team's wildcard and a bare `*`. The bundle id stays part of
+	 * the question: a group for a different app is a refusal even when a wildcard
+	 * would cover it.
+	 */
 	if (group != null && key === "keychain-access-groups") {
-		return webauthnEntitlementGroup(profileEntitlements, bundleId) === group;
+		if (bundleId && !group.endsWith(`.${bundleId}.webauthn`)) return false;
+		return profileAllowlistAuthorizes(
+			plistStringValues(profileEntitlements, key),
+			group,
+		);
 	}
 	return profileDeclaresKey(profileEntitlements, key);
 }

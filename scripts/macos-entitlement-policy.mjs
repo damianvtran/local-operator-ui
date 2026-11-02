@@ -57,6 +57,75 @@ export function isProfileBackedEntitlement(key) {
 }
 
 /**
+ * Whether one profile allowlist entry authorizes one claimed value, by Apple's
+ * matching rule: equal, or a wildcard entry ending in `*` whose prefix starts
+ * the value.
+ *
+ * WHY A RULE AND NOT `===`. A Developer ID provisioning profile does not list
+ * the keychain access groups it authorizes one by one: measured with
+ * `security cms -D` on the Radient Inc. organization's real profiles (the
+ * desktop app's and the key agent's), `keychain-access-groups` is the single
+ * wildcard `<TEAM_ID>.*`, which is how the developer portal issues every
+ * Developer ID profile. An exact-match check therefore refused the one profile
+ * that can authorize the WebAuthn group, and the door to passkeys stayed shut for
+ * a reason that was ours rather than Apple's.
+ *
+ * WHAT IT STILL REFUSES, which is what keeps the 0.29.6 brick out:
+ *   - a different team's wildcard (`OTHERTEAM1.*` does not start our group);
+ *   - a bare `*`, or any wildcard whose prefix is not a dotted team-scoped stem
+ *     (`<prefix>.*`). Apple issues only team-prefixed wildcards in Developer ID
+ *     profiles, so a bare `*` is not a profile this pipeline has ever been given,
+ *     and treating it as "authorizes everything" is the one reading that could
+ *     sign in a claim amfid then refuses. Refusing it costs nothing real;
+ *   - a claimed value that itself contains `*`: a signature claims concrete
+ *     values, and a wildcard claim is matched only by an identical entry.
+ *
+ * ONE COPY. The release-time renderer (`scripts/render-mac-entitlements.mjs`)
+ * and the release gate (`scripts/verify-macos-artifacts.mjs`) both ask "does the
+ * profile authorize this value", and two spellings of that answer are how a
+ * build the renderer accepted could be failed by the gate, or the reverse.
+ */
+export function profileEntryAuthorizes(entry, value) {
+	if (typeof entry !== "string" || typeof value !== "string") return false;
+	if (!entry || !value) return false;
+	if (entry === value) return true;
+	if (!entry.endsWith(".*")) return false;
+	const stem = entry.slice(0, -1);
+	if (stem === "." || stem.includes("*") || value.includes("*")) return false;
+	return value.startsWith(stem) && value.length > stem.length;
+}
+
+/** Whether any entry of a profile allowlist authorizes `value`
+ * (`profileEntryAuthorizes` over the list). */
+export function profileAllowlistAuthorizes(entries, value) {
+	return (entries ?? []).some((entry) => profileEntryAuthorizes(entry, value));
+}
+
+/**
+ * The string values a plist holds for `key`: the members of its `<array>`, or the
+ * one `<string>` when the value is scalar; `[]` when the key is absent.
+ *
+ * Read from the text that `security cms -D` (a profile) or `codesign -d
+ * --entitlements - --xml` (a signature) prints, and BOUNDED at the value's own
+ * close: an open-ended walk leaves the array it started in and picks up strings
+ * from whatever key follows (agent review round 2, R4 on the release gate). Only
+ * the first occurrence of the key is read; a profile's dump names each
+ * entitlement once, inside its `Entitlements` dict.
+ */
+export function plistStringValues(plistText, key) {
+	const text = String(plistText ?? "");
+	const escaped = key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+	const match = new RegExp(
+		`<key>${escaped}</key>\\s*(?:<array>([\\s\\S]*?)</array>|<string>([^<]*)</string>)`,
+	).exec(text);
+	if (!match) return [];
+	if (match[2] !== undefined) return [match[2].trim()];
+	return [...match[1].matchAll(/<string>([^<]*)<\/string>/g)].map(([, value]) =>
+		value.trim(),
+	);
+}
+
+/**
  * Every entitlement key an entitlements plist claims that needs a profile.
  *
  * The scan reads `<key>` names only: the question is WHICH entitlements are

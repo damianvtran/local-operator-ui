@@ -214,7 +214,7 @@ const notarizeStepBundle = await build({
 					loader: "js",
 					contents: `
 							export const notarize = async (opts) => {
-								globalThis.__loNotarizeCalls.push({ appPath: opts.appPath, tool: opts.tool });
+								globalThis.__loNotarizeCalls.push({ appPath: opts.appPath, tool: opts.tool, appleApiKey: opts.appleApiKey, appleApiKeyId: opts.appleApiKeyId, appleApiIssuer: opts.appleApiIssuer, appleId: opts.appleId });
 								const behavior = globalThis.__loNotarizeBehavior;
 								if (behavior) await behavior(opts);
 							};
@@ -6228,9 +6228,9 @@ test("the notarization step hands the notarizer an absolute path", async () => {
 	const platform = Object.getOwnPropertyDescriptor(process, "platform");
 	const savedEnv = {
 		NOTARIZE: process.env.NOTARIZE,
-		APPLE_ID: process.env.APPLE_ID,
-		APPLE_ID_PASSWORD: process.env.APPLE_ID_PASSWORD,
-		APPLE_TEAM_ID: process.env.APPLE_TEAM_ID,
+		APPLE_API_KEY: process.env.APPLE_API_KEY,
+		APPLE_API_KEY_ID: process.env.APPLE_API_KEY_ID,
+		APPLE_API_ISSUER: process.env.APPLE_API_ISSUER,
 	};
 	try {
 		// The step is darwin-only and `test:desktop` runs on Linux CI, but the bug
@@ -6241,9 +6241,11 @@ test("the notarization step hands the notarizer an absolute path", async () => {
 			configurable: true,
 		});
 		process.env.NOTARIZE = "true";
-		process.env.APPLE_ID = "test@example.invalid";
-		process.env.APPLE_ID_PASSWORD = "test-app-specific-password";
-		process.env.APPLE_TEAM_ID = "TESTTEAM01";
+		// The App Store Connect API key form, which is what both release workflows
+		// bind since the move to the organization identity.
+		process.env.APPLE_API_KEY = "/nonexistent/AuthKey_TEST.p8";
+		process.env.APPLE_API_KEY_ID = "TESTKEY001";
+		process.env.APPLE_API_ISSUER = "00000000-0000-0000-0000-000000000000";
 		globalThis.__loNotarizeCalls = [];
 		// biome-ignore lint/performance/noDelete: teardown of a fixture global; every reader uses `?.`/`??`/truthiness, and ABSENT is what "no override for this case" means - `= undefined` would leave the property present.
 		delete globalThis.__loNotarizeBehavior;
@@ -6254,6 +6256,18 @@ test("the notarization step hands the notarizer an absolute path", async () => {
 		await notarizeArtifacts({ dist: relativeDist, log: () => {} });
 		assert.equal(globalThis.__loNotarizeCalls.length, 1);
 		assert.equal(globalThis.__loNotarizeCalls[0].tool, "notarytool");
+		// The API key reached the notarizer in the option names @electron/notarize
+		// 2.x reads (`isNotaryToolApiKeyCredentials`), and no Apple ID did.
+		assert.equal(
+			globalThis.__loNotarizeCalls[0].appleApiKey,
+			"/nonexistent/AuthKey_TEST.p8",
+		);
+		assert.equal(globalThis.__loNotarizeCalls[0].appleApiKeyId, "TESTKEY001");
+		assert.equal(
+			globalThis.__loNotarizeCalls[0].appleApiIssuer,
+			"00000000-0000-0000-0000-000000000000",
+		);
+		assert.equal(globalThis.__loNotarizeCalls[0].appleId, undefined);
 		assert.equal(
 			isAbsolute(globalThis.__loNotarizeCalls[0].appPath),
 			true,
@@ -6328,9 +6342,9 @@ test("a rejected notarization fails the step and exits non-zero", async () => {
 	const platform = Object.getOwnPropertyDescriptor(process, "platform");
 	const savedEnv = {
 		NOTARIZE: process.env.NOTARIZE,
-		APPLE_ID: process.env.APPLE_ID,
-		APPLE_ID_PASSWORD: process.env.APPLE_ID_PASSWORD,
-		APPLE_TEAM_ID: process.env.APPLE_TEAM_ID,
+		APPLE_API_KEY: process.env.APPLE_API_KEY,
+		APPLE_API_KEY_ID: process.env.APPLE_API_KEY_ID,
+		APPLE_API_ISSUER: process.env.APPLE_API_ISSUER,
 	};
 	try {
 		Object.defineProperty(process, "platform", {
@@ -6338,9 +6352,11 @@ test("a rejected notarization fails the step and exits non-zero", async () => {
 			configurable: true,
 		});
 		process.env.NOTARIZE = "true";
-		process.env.APPLE_ID = "test@example.invalid";
-		process.env.APPLE_ID_PASSWORD = "test-app-specific-password";
-		process.env.APPLE_TEAM_ID = "TESTTEAM01";
+		// The App Store Connect API key form, which is what both release workflows
+		// bind since the move to the organization identity.
+		process.env.APPLE_API_KEY = "/nonexistent/AuthKey_TEST.p8";
+		process.env.APPLE_API_KEY_ID = "TESTKEY001";
+		process.env.APPLE_API_ISSUER = "00000000-0000-0000-0000-000000000000";
 		globalThis.__loNotarizeCalls = [];
 		globalThis.__loNotarizeBehavior = async () => {
 			throw new Error("stubbed notarization rejected");
@@ -6423,9 +6439,9 @@ test("a rejected notarization fails the step and exits non-zero", async () => {
 			env: {
 				...process.env,
 				NOTARIZE: "true",
-				APPLE_ID: "test@example.invalid",
-				APPLE_ID_PASSWORD: "test-app-specific-password",
-				APPLE_TEAM_ID: "TESTTEAM01",
+				APPLE_API_KEY: "/nonexistent/AuthKey_TEST.p8",
+				APPLE_API_KEY_ID: "TESTKEY001",
+				APPLE_API_ISSUER: "00000000-0000-0000-0000-000000000000",
 				LO_NOTARIZE_PROBE_FILE: probeFile,
 			},
 		},
@@ -18511,4 +18527,87 @@ test("the offer carries whether this press restarts the server", async () => {
 	} finally {
 		inPlace.dispose();
 	}
+});
+
+/**
+ * A missing notarization credential under NOTARIZE=true FAILS on GitHub Actions
+ * and stays a skip locally.
+ *
+ * The skip used to be the only behaviour: one line, exit 0, and only the
+ * skip-refusing gate (`require-notarized-dmg.sh`) or the artifact verification
+ * noticed. On a release runner that is a misbound secret, and the move to the App
+ * Store Connect API key changed every credential name at once, which is exactly
+ * when a binding is most likely to be wrong. So on Actions both hooks throw at
+ * the step that cannot do its job; a developer's ad-hoc build keeps the skip.
+ * Through the real entrypoint, with the same module-hook stub as the test above,
+ * so the exit status is the one the workflow reads.
+ */
+test("a missing notarization credential fails on Actions and skips locally", () => {
+	const root = tempDir("lo-notarize-missing-");
+	const dist = join(root, "dist");
+	mkdirSync(dist, { recursive: true });
+	writeFileSync(join(dist, "local-operator-ui-0.18.0-arm64.dmg"), "disk image");
+	const hookDir = join(root, "hook");
+	mkdirSync(hookDir);
+	writeFileSync(
+		join(hookDir, "register.mjs"),
+		[
+			'import { register } from "node:module";',
+			'Object.defineProperty(process, "platform", { value: "darwin", configurable: true });',
+			'register("./resolve.mjs", import.meta.url);',
+			"",
+		].join("\n"),
+	);
+	writeFileSync(
+		join(hookDir, "resolve.mjs"),
+		[
+			"export async function resolve(specifier, context, next) {",
+			'\tif (specifier === "@electron/notarize") {',
+			'\t\treturn { url: new URL("./stub.mjs", import.meta.url).href, shortCircuit: true };',
+			"\t}",
+			"\treturn next(specifier, context);",
+			"}",
+			"",
+		].join("\n"),
+	);
+	writeFileSync(
+		join(hookDir, "stub.mjs"),
+		'export async function notarize() { throw new Error("must not be reached"); }\n',
+	);
+	const env = { ...process.env, NOTARIZE: "true" };
+	for (const key of [
+		"APPLE_API_KEY",
+		"APPLE_API_KEY_ID",
+		"APPLE_API_ISSUER",
+		"APPLE_ID",
+		"APPLE_ID_PASSWORD",
+		"APPLE_TEAM_ID",
+	])
+		delete env[key];
+	const run = (extra) =>
+		spawnSync(
+			process.execPath,
+			[
+				"--import",
+				join(hookDir, "register.mjs"),
+				join(process.cwd(), "scripts", "notarize-artifacts.mjs"),
+				"--dist",
+				dist,
+			],
+			// cwd is the fixture root, so no developer's `.env.build` is loaded.
+			{ cwd: root, encoding: "utf8", env: { ...env, ...extra } },
+		);
+	// Two of three API-key values is still "missing": a partial binding is the
+	// misbound-secret case this exists for.
+	const onActions = run({
+		GITHUB_ACTIONS: "true",
+		APPLE_API_KEY_ID: "TESTKEY001",
+		APPLE_API_ISSUER: "00000000-0000-0000-0000-000000000000",
+	});
+	assert.notEqual(onActions.status, 0, onActions.stdout);
+	assert.match(onActions.stderr, /notarization credentials missing/);
+	assert.doesNotMatch(onActions.stderr, /must not be reached/);
+	const local = run({ GITHUB_ACTIONS: "" });
+	assert.equal(local.status, 0, local.stderr);
+	assert.match(local.stdout, /^Skipping disk image notarization: /m);
 });
