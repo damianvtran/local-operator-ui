@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "new-key-delta-on-existing-namespace",
+  "locale": "vi",
+  "namespace": "ui.agents.detail",
+  "pr": 1594,
+  "date": "2026-11-02",
+  "head": "dd75287b77ca8b8447a362aa9d052a2dccacf097",
+  "base_english_parent": "7920f05769bd4ac833a09d7ba2abc3d0e2ca557a",
+  "instance": "vi-census-agents-detail-e79ed644c034",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "e79ed644c034",
+    "role": "independent translation auditor (team lopdev); did not write the vi translation",
+    "instance": "vi-census-agents-detail-e79ed644c034",
+    "model": "anthropic/claude-sonnet-5-5",
+    "model_note": "Model as shown by this session's runtime header; no fallback was reported or observed by this session, and none is claimed.",
+    "independent_from_translator_session": true
+  },
+  "status": "passed",
+  "result": "clean",
+  "key_count": 51,
+  "en_sha256": "b52991233e7fdf8f9b54f9ec465fc0e20ac32239c37e8c5b9ed8ebd8fbdbd8f8",
+  "context_sha256": "f7c25bd96d74a861ab0a2c34764394a6feec1a8a0069085ab83517dc1a5d3e49",
+  "vi_sha256": "a68861b646d62b8745a6dbae4064cdc9bbe1270a155ee6f928bd2e625abcbc15",
+  "binding": {
+    "linguistic_judgement_covers": [
+      "ui.agents.detail.origin.created_locally"
+    ],
+    "unchanged_keys": "The remaining 50 keys are byte-unchanged from the previously audited state: `git diff 7920f05..dd75287` on this vi file adds exactly the one key above (plus the trailing comma on the preceding line) and changes nothing else; the key set equals English (51 keys); English source and context sidecar are byte-identical to the parent.",
+    "not_re_audited": "The other 50 keys were NOT re-audited by this run. This receipt binds the whole-file hashes so the ledger gate can match bytes on disk; it is not a whole-file linguistic audit.",
+    "validators": "Repo validators (check-i18n, ledger-check) were not run for the audit itself; mechanical checks were done by hand from committed bytes (valid JSON, key-set equality, no placeholders/plurals/markup in the new key)."
+  },
+  "findings": [],
+  "audit_report": "Findings were reported to the manager in the session's final message; this receipt is the durable record."
+}

@@ -14,7 +14,7 @@
  "head": "dd75287b77ca8b8447a362aa9d052a2dccacf097",
  "date": "2026-11-02",
  "status": "passed",
- "result": "clean",
+ "result": "clean-with-findings",
  "instance": "2d68396b3441-es-common-errors-census",
  "namespace": "ui.common.errors",
  "source_sha256": "1c33841b78da772dab58d4476295082b6e1d56a328c587597de20a368cb7c254",
