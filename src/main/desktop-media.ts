@@ -48,7 +48,45 @@ const TEAM_BRIDGE_ATTACHMENT_TYPES: ReadonlySet<string> = new Set([
 ]);
 const MAX_DOWNLOAD_BYTES = 32 * 1024 * 1024;
 
+const profileScope = z.string().regex(/^[a-f0-9]{64}$/);
+const profileFields = z
+	.object({
+		display_name: z.string().max(128).optional(),
+		title: z.string().max(160).optional(),
+		description: z.string().max(1000).optional(),
+		timezone: z.string().max(64).optional(),
+	})
+	.strict()
+	.refine((fields) => Object.keys(fields).length > 0);
+
 const mediaRequestSchema = z.discriminatedUnion("op", [
+	z
+		.object({ op: z.literal("account.profile"), expectedAccountId: id })
+		.strict(),
+	z
+		.object({
+			op: z.literal("account.profile.update"),
+			expectedAccountId: id,
+			scope: profileScope,
+			fields: profileFields,
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("account.avatar.put"),
+			expectedAccountId: id,
+			scope: profileScope,
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("account.avatar.delete"),
+			expectedAccountId: id,
+			scope: profileScope,
+			mode: z.enum(["uploaded", "provider"]),
+			confirmed: z.literal(true),
+		})
+		.strict(),
 	z
 		.object({
 			op: z.literal("speech.create"),
@@ -83,6 +121,22 @@ const mediaRequestSchema = z.discriminatedUnion("op", [
 	z
 		.object({ op: z.literal("agent.export"), agentId: id })
 		.strict(),
+	/*
+	 * A local agent's profile picture: read, replace, clear (core
+	 * `/v1/agents/{id}/avatar`). The route needs the bearer, which only main
+	 * holds, so the renderer cannot point an `<img>` at it. `sha256` is the
+	 * content address `agent.yml` publishes - exactly 64 lowercase hex - and is
+	 * shape-checked because main builds the query from it.
+	 */
+	z
+		.object({
+			op: z.literal("agent.avatar"),
+			agentId: id,
+			sha256: z.string().regex(/^[0-9a-f]{64}$/),
+		})
+		.strict(),
+	z.object({ op: z.literal("agent.avatar.put"), agentId: id }).strict(),
+	z.object({ op: z.literal("agent.avatar.delete"), agentId: id }).strict(),
 	// A durable transcript row references an image by content digest with the
 	// payload stripped, so rendering a screenshot after a reload means fetching
 	// bytes. That cannot go through the JSON transport (its envelope has nowhere
@@ -285,9 +339,29 @@ export type DesktopMediaResponse =
 
 function endpoint(request: DesktopMediaRequest): {
 	path: string;
-	method: "POST" | "GET";
+	method: "POST" | "GET" | "PUT" | "DELETE" | "PATCH";
 } {
 	switch (request.op) {
+		case "account.profile":
+			return {
+				path: `/v1/desktop/account/profile?${new URLSearchParams({ expected_account_id: request.expectedAccountId })}`,
+				method: "GET",
+			};
+		case "account.profile.update":
+			return {
+				path: `/v1/desktop/account/profile?${new URLSearchParams({ expected_account_id: request.expectedAccountId, scope: request.scope })}`,
+				method: "PATCH",
+			};
+		case "account.avatar.put":
+			return {
+				path: `/v1/desktop/account/avatar?${new URLSearchParams({ expected_account_id: request.expectedAccountId, scope: request.scope })}`,
+				method: "PUT",
+			};
+		case "account.avatar.delete":
+			return {
+				path: `/v1/desktop/account/avatar?${new URLSearchParams({ expected_account_id: request.expectedAccountId, scope: request.scope, mode: request.mode, confirmed: "true" })}`,
+				method: "DELETE",
+			};
 		case "speech.create":
 			return { path: "/v1/tools/speech", method: "POST" };
 		case "speech.agent":
@@ -298,6 +372,15 @@ function endpoint(request: DesktopMediaRequest): {
 			return { path: "/v1/agents/import", method: "POST" };
 		case "agent.export":
 			return { path: `/v1/agents/${request.agentId}/export`, method: "GET" };
+		case "agent.avatar":
+			return {
+				path: `/v1/agents/${request.agentId}/avatar?${new URLSearchParams({ v: request.sha256 })}`,
+				method: "GET",
+			};
+		case "agent.avatar.put":
+			return { path: `/v1/agents/${request.agentId}/avatar`, method: "PUT" };
+		case "agent.avatar.delete":
+			return { path: `/v1/agents/${request.agentId}/avatar`, method: "DELETE" };
 		case "sessions.attachment":
 			return {
 				path: `/v1/desktop/sessions/${request.sessionId}/attachments/${request.digest}`,
@@ -434,9 +517,13 @@ export async function requestDesktopMediaOutcome(
 		};
 	}
 	if (
-		request.op === "team_bridge.attachment.upload" &&
+		(request.op === "team_bridge.attachment.upload" ||
+			request.op === "account.avatar.put") &&
 		bytes &&
-		bytes.byteLength > TEAM_BRIDGE_ATTACHMENT_MAX_BYTES
+		bytes.byteLength >
+			(request.op === "account.avatar.put"
+				? 1024 * 1024
+				: TEAM_BRIDGE_ATTACHMENT_MAX_BYTES)
 	) {
 		// Never sent: the hub would answer 413 for the same bytes.
 		return {
@@ -453,7 +540,11 @@ export async function requestDesktopMediaOutcome(
 	let body: BodyInit | undefined;
 	let contentType: string | undefined;
 	if (
+		request.op === "account.profile" ||
+		request.op === "account.avatar.delete" ||
 		request.op === "agent.export" ||
+		request.op === "agent.avatar" ||
+		request.op === "agent.avatar.delete" ||
 		request.op === "sessions.attachment" ||
 		request.op === "subagents.attachment" ||
 		request.op === "sessions.attachment.waveform" ||
@@ -467,7 +558,16 @@ export async function requestDesktopMediaOutcome(
 	) {
 		// A GET carries no body; `fetch` rejects one outright.
 		body = undefined;
-	} else if (request.op === "team_bridge.attachment.upload") {
+	} else if (
+		request.op === "team_bridge.attachment.upload" ||
+		request.op === "account.avatar.put" ||
+		request.op === "agent.avatar.put"
+	) {
+		/*
+		 * Both are a raw image body with no filename or declared type: the receiver
+		 * sniffs the magic bytes (core's avatar gate refuses by content, never by
+		 * extension), so nothing the client claims can be trusted by mistake.
+		 */
 		if (!bytes || bytes.byteLength === 0) {
 			return {
 				response: {
@@ -480,6 +580,9 @@ export async function requestDesktopMediaOutcome(
 		}
 		body = new Blob([bytes]);
 		contentType = "application/octet-stream";
+	} else if (request.op === "account.profile.update") {
+		body = JSON.stringify(request.fields);
+		contentType = "application/json";
 	} else if (request.op === "speech.create" || request.op === "speech.agent") {
 		body = JSON.stringify(request.request);
 		contentType = "application/json";
@@ -709,13 +812,16 @@ export async function requestDesktopMediaOutcome(
 			};
 		}
 		if (
-			request.op === "team_bridge.attachment" &&
+			(request.op === "team_bridge.attachment" ||
+				request.op === "agent.avatar") &&
 			!TEAM_BRIDGE_ATTACHMENT_TYPES.has(
 				responseType.split(";")[0].trim().toLowerCase(),
 			)
 		) {
 			// A member-gated picture route answering a non-picture is not one of
 			// ours; refuse it before any byte reaches the renderer (see the set).
+			// The agent avatar shares the set because core stores exactly PNG or
+			// JPEG, so anything else (an SVG above all) is not a picture it wrote.
 			return {
 				response: {
 					status: 502,

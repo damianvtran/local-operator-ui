@@ -676,6 +676,7 @@ the reasoning, probe costs and constants are in
   node_modules` (~0 bytes). pnpm refuses a symlinked `node_modules`, so scripts in
   such a worktree must call `node_modules/.bin/<tool>` directly rather than
   `pnpm <tool>`.
+- **Where worktrees live.** Prefer `<repo>/.worktrees/<name>` sharing the primary dependency tree; a sibling `../<repo>-<topic>` is tolerated with APFS-cloned deps or an absolute link; never session scratchpads, /tmp or `$TMPDIR` dirs, `$HOME` top level or ad-hoc sibling roots. `git worktree remove` (clean only, never discard unpushed work) once the PR merges or the lane closes; `~/local-operator/scripts/worktree_janitor.py --repo ~/local-operator-ui` lists stragglers.
 
 **Anything that spawns `node --test` must drop `NODE_TEST_CONTEXT`.** Node
 exports it into every test-file process, and a nested `node --test` that inherits
@@ -2355,7 +2356,12 @@ one that ships the wrong tree.
 #    version change and retitles this same PR, so the lock's number never moves.
 #    Push the branch and open the PR only after step 1 of *The window, and the
 #    release owner's procedure* has found no open chore(release) PR.
-WT="$(mktemp -d)/release-next"   # scratch, and session-unique: nothing else owns it
+# In-repo and at a STABLE path, never mktemp -d: eight $TMPDIR release cuts were
+# stranded after their releases. No `trap` and no `$$`: this recipe spans many
+# separate shell invocations (claim, edit, review round, merge, publish), so an
+# EXIT trap would fire after the first one and `$$` would differ in each.
+# If the release aborts, run the step-5 removal below (clean tree only) first.
+WT=~/local-operator-ui/.worktrees/release-next
 git fetch origin --tags
 git worktree add "$WT" origin/main
 git -C "$WT" switch -c release-next
@@ -2481,7 +2487,7 @@ gh run list --workflow=publish.yml --limit 3 && gh run watch <id>
 #    modified inside it — read that before forcing, because it means the tree the
 #    release came out of was not the one the review round read (the commit itself
 #    was still `package.json` only, which `-o` guarantees).
-git worktree remove "$WT"
+git -C ~/local-operator-ui worktree remove "$WT"
 ```
 
 **Why `--target` and not `git tag vX.Y.Z && git push --tags`.** A bare tag

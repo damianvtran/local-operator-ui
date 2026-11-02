@@ -1,3 +1,7 @@
+/* The page mounts the shared dictation chord, which reads the preload bridge;
+   without this shim a standalone `iframe.html?id=` load of these stories threw
+   on `ipcRenderer` (design review round 3, D4). */
+import "../chat/components/story-electron-shim";
 import type { Meta, StoryObj } from "@storybook/react";
 import { useEffect, useState } from "react";
 import type {
@@ -8,7 +12,10 @@ import {
 	type TeamBridgeOrganization,
 	asTeamBridgeTenantId,
 } from "./team-bridge-model";
-import { TeamBridgePageView } from "./team-bridge-page";
+import {
+	TeamBridgePageView,
+	type TeamBridgePageViewProps,
+} from "./team-bridge-page";
 
 /*
  * THE OPTIMISTIC SEND, AS A FRAME (operator report, 2026-10-30).
@@ -282,4 +289,44 @@ const reportingSend = (
 export const ChiefFirstMessageMove: Story = {
 	render: () => <MoveSequenceStory />,
 	args: { ...base, onSend: reportingSend },
+};
+
+/* Manual settlement keeps the loading handoff available for a frame capture:
+   a timer can advance while the reviewer is inspecting the preserved row. */
+const PersonHandoffStory = (args: TeamBridgePageViewProps) => {
+	const [step, setStep] = useState(0);
+	const [body, setBody] = useState("");
+	return (
+		<>
+			<button type="button" onClick={() => setStep(2)} disabled={step !== 1}>
+				Finish thread read (story control)
+			</button>
+			<TeamBridgePageView
+				{...args}
+				target={
+					step === 0 ? args.target : { type: "conversation", id: createdDm.id }
+				}
+				conversations={step === 0 ? args.conversations : [createdDm]}
+				messageState={step === 0 ? "idle" : step === 1 ? "loading" : "ready"}
+				messages={
+					step === 2 ? [{ ...stored(body), conversation_id: createdDm.id }] : []
+				}
+				onSend={async (text, _clientRef, _attachments, delivery) => {
+					setBody(text);
+					delivery?.onCreated?.(createdDm.id, createdDm.tenant_id);
+					setStep(1);
+				}}
+			/>
+		</>
+	);
+};
+
+export const PersonFirstMessageHandoff: Story = {
+	render: (args) => <PersonHandoffStory {...args} />,
+	args: {
+		...base,
+		target: { type: "person", accountId: peer },
+		conversations: [],
+		onSend: reportingSend,
+	},
 };

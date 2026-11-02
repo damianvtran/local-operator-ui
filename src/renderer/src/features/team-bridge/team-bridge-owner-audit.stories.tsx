@@ -1,4 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { useEffect, useRef, useState } from "react";
 import type { TeamBridgeDirectoryMember } from "../../../../shared/team-bridge-contract";
 import type {
 	OwnerAuditConversation,
@@ -8,7 +10,13 @@ import {
 	OwnerAuditPanelView,
 	OwnerAuditRailView,
 	OwnerAuditSectionHeader,
+	useOwnerAuditSurface,
 } from "./team-bridge-owner-audit";
+import {
+	createOwnerAuditQueryFixture,
+	queryHistoryViewport,
+} from "./team-bridge-owner-audit-query.fixture";
+import { TeamBridgeThreadPane } from "./team-bridge-thread-pane";
 
 /**
  * The owner-audit section — "{chief of staff}'s messages" — in the four states
@@ -25,11 +33,15 @@ import {
  * The fixtures are the shapes the routes send (`docs/team-bridge-owner-audit.md`
  * in local-operator), including the two absences that carry meaning: no read
  * state on a row, and no `agent_delivery_status` on the agent's own messages.
- * Nothing here talks to a hub — the views are props-driven by design, which is
- * exactly why this story can exist at all.
+ * Nothing here talks to a hub. The presentation stories are props-driven;
+ * the query-backed history story instead mounts the real slot/rail/panel with
+ * a synthetic desktop transport so query retention and viewport admission are
+ * exercised together, without borrowing a live runtime or credentials.
  *
- * NOT A CLAIM ABOUT THE LIVE APP: the rail rows are the shipped ones, but the
- * selection never moves here (no query cache, no transport). The behaviour is
+ * NOT A CLAIM ABOUT THE LIVE APP: the presentation stories keep selection
+ * fixed. QueryBackedHistoryExercise uses only a synthetic IPC transport, never
+ * a live account/runtime; its real query/selection behavior is separately
+ * observable through bounded counters. The behavior is
  * pinned by `scripts/team-bridge-owner-audit-render.test.mjs`.
  */
 
@@ -302,7 +314,7 @@ const unavailableMessages: OwnerAuditMessage[] = messages.map((message) => ({
 	attachment_count: 0,
 }));
 
-type State = "loading" | "error" | "ready";
+type State = import("./team-bridge-owner-audit").ReadState;
 
 /**
  * The section as the page composes it: rail on the left, panel on the right,
@@ -318,6 +330,10 @@ function Section({
 	hasMore,
 	people: directory,
 	panelState,
+	loadMore,
+	loadingMore,
+	onRefresh,
+	latestPageAvailable,
 }: {
 	state: State;
 	conversations: OwnerAuditConversation[];
@@ -331,6 +347,10 @@ function Section({
 	people?: TeamBridgeDirectoryMember[];
 	/** The panel's own read, separate from the rail's. */
 	panelState?: State;
+	loadMore?: () => void;
+	loadingMore?: boolean;
+	onRefresh?: () => void;
+	latestPageAvailable?: boolean;
 }) {
 	const noop = () => {};
 	return (
@@ -365,8 +385,11 @@ function Section({
 						conversation={selected}
 						messages={rows}
 						state={panelState ?? state}
-						retry={noop}
+						retry={onRefresh ?? noop}
 						hasMore={hasMore}
+						loadMore={loadMore}
+						loadingMore={loadingMore}
+						latestPageAvailable={latestPageAvailable}
 						readerAccountId={readerAccountId}
 						people={directory}
 					/>
@@ -479,6 +502,22 @@ export const LegacyInlineImageRtl: Story = {
 	],
 };
 
+/** One bounded newest page, not a fetched full history. Large sequence values
+ * make the distinction visible: the first row is older within the latest page,
+ * while opening must anchor its newest row without asking for older pages. */
+export const LatestPageLongHistory: Story = {
+	args: {
+		hasMore: true,
+		messages: Array.from({ length: 50 }, (_, index) => ({
+			...messages[0],
+			id: `bmsg_history_${9951 + index}`,
+			seq: 9951 + index,
+			body: `History fixture message ${9951 + index}. The newest bounded page opens at its end, not at its oldest row.`,
+			agent_delivery_status: "admitted" as const,
+		})),
+	},
+};
+
 /** Nothing to audit in this organization yet — and therefore no panel: the slot
  * only opens one for a row the reader has selected. */
 export const Empty: Story = {
@@ -544,4 +583,604 @@ export const PanelReadFailed: Story = {
 /** A selected conversation with nothing in its audit window. */
 export const PanelEmpty: Story = {
 	args: { messages: [] },
+};
+
+/** Classified refusals are distinct from an empty history, and only a server
+ * failure offers the one in-scope retry. Loading/Empty above remain unchanged. */
+export const AuthRequired: Story = { args: { state: "auth", messages: [] } };
+export const PermissionRefused: Story = {
+	args: { state: "permission", messages: [] },
+};
+export const NotFound: Story = { args: { state: "not-found", messages: [] } };
+export const ServerUnavailable: Story = {
+	args: { state: "unavailable", messages: [] },
+};
+
+/* Browser-only measurement surface. Controls change props of the SHIPPED panel;
+ * counters are fixture operations, NOT backend HTTP evidence (the real HTTP
+ * pagination regression is in team-bridge-history-anchor.test.mjs). Geometry is
+ * read from the rendered DOM, never supplied as expected numbers. */
+function HistoryAnchorExercise() {
+	const makePage = (last: number) =>
+		Array.from({ length: 50 }, (_, index) => ({
+			...messages[0],
+			id: `bmsg_history_${last - 49 + index}`,
+			seq: last - 49 + index,
+			body: `History fixture message ${last - 49 + index}. Bounded chronological page.`,
+			attachments: [],
+			attachment_count: 0,
+			agent_delivery_status: "admitted" as const,
+		}));
+	const [rows, setRows] = useState(() => makePage(10000));
+	const [conversation, setConversation] = useState(dm);
+	const [state, setState] = useState<State>("ready");
+	const [loadingMore, setLoadingMore] = useState(false);
+	const [geometry, setGeometry] = useState("");
+	const [generation, setGeneration] = useState(1);
+	const rootRef = useRef<HTMLDivElement>(null);
+	const latestAvailable = rows.some((row) => row.seq >= 10000);
+	useEffect(() => {
+		const host = rootRef.current?.querySelector<HTMLElement>(
+			"main .overflow-auto",
+		);
+		if (!host) return;
+		const measure = () => {
+			const box = host.getBoundingClientRect();
+			const visible = [
+				...host.querySelectorAll<HTMLElement>("[data-message-id]"),
+			].filter((node) => {
+				const r = node.getBoundingClientRect();
+				return r.bottom > box.top && r.top < box.bottom;
+			});
+			const first = visible[0];
+			const text = JSON.stringify({
+				generation,
+				state,
+				rows: rows.length,
+				scrollTop: Math.round(host.scrollTop * 100) / 100,
+				scrollHeight: host.scrollHeight,
+				clientHeight: host.clientHeight,
+				firstVisible: first?.dataset.messageId ?? null,
+				offset: first
+					? Math.round((first.getBoundingClientRect().top - box.top) * 100) /
+						100
+					: null,
+				lastVisible: visible.at(-1)?.dataset.messageId ?? null,
+				latestAvailable,
+			});
+			setGeometry((old) => (old === text ? old : text));
+		};
+		const observer = new ResizeObserver(measure);
+		observer.observe(host);
+		if (host.firstElementChild) observer.observe(host.firstElementChild);
+		host.addEventListener("scroll", measure, { passive: true });
+		measure();
+		return () => {
+			observer.disconnect();
+			host.removeEventListener("scroll", measure);
+		};
+	}, [rows, generation, latestAvailable, state]);
+	const latest = () => {
+		setState("loading");
+		setTimeout(() => {
+			setRows(makePage(10000));
+			setState("ready");
+		}, 200);
+	};
+	return (
+		<div ref={rootRef}>
+			<Section
+				state="ready"
+				conversations={[channel, conversation]}
+				selected={conversation}
+				messages={rows}
+				readerAccountId={OWNER}
+				people={people}
+				panelState={state}
+				hasMore
+				loadingMore={loadingMore}
+				latestPageAvailable={latestAvailable}
+				onRefresh={latest}
+				loadMore={() => {
+					if (loadingMore) return;
+					setLoadingMore(true);
+					const first = rows[0]?.seq ?? 9951;
+					setTimeout(() => {
+						setRows((old) => [...makePage(first - 1), ...old].slice(0, 300));
+						setLoadingMore(false);
+					}, 200);
+				}}
+			/>
+			<div className="fixed bottom-0 left-0 z-50 max-w-[290px] bg-canvas text-ink">
+				<button
+					type="button"
+					onClick={() => {
+						const host = rootRef.current?.querySelector<HTMLElement>(
+							"main .overflow-auto",
+						);
+						if (host) host.scrollTop -= 300;
+					}}
+				>
+					Fixture up
+				</button>{" "}
+				<button
+					type="button"
+					onClick={() => {
+						const host = rootRef.current?.querySelector<HTMLElement>(
+							"main .overflow-auto",
+						);
+						if (host) host.scrollTop = 0;
+					}}
+				>
+					Fixture top
+				</button>{" "}
+				<button
+					type="button"
+					onClick={() =>
+						setRows((old) => {
+							const last = old.at(-1);
+							return latestAvailable && last
+								? [
+										...old,
+										{
+											...last,
+											id: `bmsg_history_${last.seq + 1}`,
+											seq: last.seq + 1,
+											body: "Incoming fixture message",
+										},
+									]
+								: old;
+						})
+					}
+				>
+					Fixture incoming
+				</button>{" "}
+				<button
+					type="button"
+					onClick={() =>
+						setRows((old) =>
+							old.map((row, index) =>
+								index === 0
+									? {
+											...row,
+											body: `${row.body}\n\n${"Dynamic fixture height.\n\n".repeat(15)}`,
+										}
+									: row,
+							),
+						)
+					}
+				>
+					Fixture reflow
+				</button>{" "}
+				<button type="button" onClick={latest}>
+					Fixture reopen
+				</button>{" "}
+				<button
+					type="button"
+					onClick={() => {
+						setGeneration((value) => value + 1);
+						setConversation({
+							...dm,
+							tenant_id: "org_other",
+							id: "bconv_other",
+						});
+						setRows(
+							makePage(10000).map((row) => ({
+								...row,
+								id: `other_${row.id}`,
+								conversation_id: "bconv_other",
+							})),
+						);
+					}}
+				>
+					Fixture org switch
+				</button>{" "}
+				<button type="button" onClick={() => setState("error")}>
+					Fixture error
+				</button>
+				<output data-history-geometry className="block break-all text-[10px]">
+					{geometry}
+				</output>
+			</div>
+		</div>
+	);
+}
+export const HistoryAnchorExerciseStates: Story = {
+	render: () => <HistoryAnchorExercise />,
+};
+
+/** The member pane is the shipped consumer, not a props-only copy of its rows. */
+function QueryMemberThreadSurface({ tenantId }: { tenantId: string }) {
+	const [open, setOpen] = useState(true);
+	return (
+		<div className="flex h-screen min-h-0 overflow-hidden bg-canvas text-ink">
+			<aside className="w-[300px] shrink-0 bg-panel">
+				<button type="button" onClick={() => setOpen(true)}>
+					Fixture reopen member thread
+				</button>
+			</aside>
+			<div
+				data-query-member-thread
+				className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
+			>
+				{open && (
+					<TeamBridgeThreadPane
+						key={`${tenantId}:${dm.id}`}
+						accountId={OWNER}
+						target={{
+							tenantId,
+							conversationId: dm.id,
+							rootId: `bmsg_query_${tenantId}_${dm.id}_9999`,
+						}}
+						readOnly={false}
+						labelFor={(sender) => sender.display_label}
+						onClose={() => setOpen(false)}
+					/>
+				)}
+			</div>
+		</div>
+	);
+}
+function replyFixtureViewport(root: ParentNode | null) {
+	return (
+		root?.querySelector<HTMLElement>(
+			"[data-audit-reply-window], [data-query-member-thread] [data-radix-scroll-area-viewport]",
+		) ?? null
+	);
+}
+function measureReplyFixture(host: HTMLElement | null) {
+	const box = host?.getBoundingClientRect();
+	const selector = host?.closest("[data-query-member-thread]")
+		? "[data-thread-replies] [data-message-id]"
+		: "[data-message-id]";
+	const rows = host ? [...host.querySelectorAll<HTMLElement>(selector)] : [];
+	const visible = box
+		? rows.filter((row) => {
+				const r = row.getBoundingClientRect();
+				return r.bottom > box.top && r.top < box.bottom;
+			})
+		: [];
+	return {
+		mounted: Boolean(host),
+		viewportRect: box
+			? { top: box.top, bottom: box.bottom, height: box.height }
+			: null,
+		boundsOk: Boolean(
+			host &&
+				box &&
+				host.clientHeight > 0 &&
+				box.height <= window.innerHeight &&
+				box.top >= 0 &&
+				box.bottom <= window.innerHeight + 1,
+		),
+		clientHeight: host?.clientHeight,
+		scrollHeight: host?.scrollHeight,
+		scrollTop: host?.scrollTop,
+		rows: rows.length,
+		firstVisible: visible[0]?.dataset.messageId,
+		lastVisible: visible.at(-1)?.dataset.messageId,
+		offset:
+			visible[0] && box
+				? Math.round((visible[0].getBoundingClientRect().top - box.top) * 100) /
+					100
+				: null,
+	};
+}
+
+/** The actual rail/selection/private panel, not the props-only Section wrapper. */
+function QueryHistorySurface({ tenantId }: { tenantId: string }) {
+	const slot = useOwnerAuditSurface({
+		accountId: OWNER,
+		enabled: true,
+		scopeKey: tenantId,
+		organizations: [{ tenantId, name: "Synthetic organization" }],
+		onSelect: () => {},
+	});
+	return (
+		<div className="flex h-screen min-h-0 overflow-hidden bg-canvas text-ink">
+			<aside className="min-h-0 w-[300px] shrink-0 overflow-auto bg-panel">
+				{slot?.rail(() => {})}
+				<button type="button" onClick={() => slot?.clear()}>
+					Fixture close panel
+				</button>
+			</aside>
+			{/* Match the app's bounded flex column: the real panel is flex-1,
+			   so a plain auto-height div lets its transcript grow to content. */}
+			<div
+				data-query-history-panel
+				className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
+			>
+				{slot?.panel ?? (
+					<p>Select a synthetic conversation in the real rail.</p>
+				)}
+			</div>
+		</div>
+	);
+}
+
+function QueryBackedHistoryExercise({
+	memberThread = false,
+}: { memberThread?: boolean }) {
+	const [fixture] = useState(() =>
+		createOwnerAuditQueryFixture({
+			accountId: OWNER,
+			tenantIds: [TENANT, "org_query_other"],
+			conversations: [dm, channel],
+			members: people,
+			message: messages[0],
+			unavailableMessage: unavailableMessages[0],
+		}),
+	);
+	const [tenantId, setTenantId] = useState(TENANT);
+	const [ready, setReady] = useState(false);
+	const [setupError, setSetupError] = useState(false);
+	const [geometry, setGeometry] = useState("");
+	const root = useRef<HTMLDivElement>(null);
+	const imageTimer = useRef<number>();
+	const instrumentedImage = useRef<HTMLImageElement | null>(null);
+	useEffect(
+		() => () => {
+			window.clearTimeout(imageTimer.current);
+			if (instrumentedImage.current) instrumentedImage.current.onload = null;
+			instrumentedImage.current?.remove();
+		},
+		[],
+	);
+	useEffect(() => {
+		// A stale Storybook preload mock is a setup failure, never a spinner pass.
+		const desktop = window.api?.desktop;
+		if (
+			!desktop ||
+			typeof desktop.request !== "function" ||
+			Object.isFrozen(desktop)
+		) {
+			setSetupError(true);
+			return;
+		}
+		const previous = desktop.request;
+		fixture.activate();
+		Object.assign(desktop, { request: fixture.request });
+		setReady(true);
+		return () => {
+			if (desktop.request === fixture.request)
+				Object.assign(desktop, { request: previous });
+			fixture.dispose();
+		};
+	}, [fixture]);
+	useEffect(() => {
+		const timer = window.setInterval(() => {
+			const host = queryHistoryViewport(root.current);
+			const box = host?.getBoundingClientRect();
+			const visible =
+				host && box
+					? [...host.querySelectorAll<HTMLElement>("[data-message-id]")].filter(
+							(row) => {
+								const rect = row.getBoundingClientRect();
+								return rect.bottom > box.top && rect.top < box.bottom;
+							},
+						)
+					: [];
+			const first = visible[0];
+			const text = JSON.stringify({
+				tenantId,
+				...fixture.inspect(),
+				replyViewport: measureReplyFixture(replyFixtureViewport(root.current)),
+				mountedPanel: Boolean(host),
+				storyViewportHeight: window.innerHeight,
+				viewportRect: box
+					? { top: box.top, bottom: box.bottom, height: box.height }
+					: null,
+				viewportBoundsOk: Boolean(
+					host &&
+						box &&
+						host.clientHeight > 0 &&
+						host.clientHeight <= window.innerHeight &&
+						box.height > 0 &&
+						box.height <= window.innerHeight &&
+						box.top >= 0 &&
+						box.bottom <= window.innerHeight + 1,
+				),
+				scrollable: Boolean(host && host.scrollHeight > host.clientHeight),
+				scrollTop: host?.scrollTop,
+				scrollHeight: host?.scrollHeight,
+				clientHeight: host?.clientHeight,
+				firstVisible: first?.dataset.messageId,
+				lastVisible: visible.at(-1)?.dataset.messageId,
+				instrumentedImages: [
+					...(host?.querySelectorAll<HTMLImageElement>(
+						"img[data-fixture-height]",
+					) ?? []),
+				].map((image) => ({
+					naturalHeight: image.naturalHeight,
+					height: image.height,
+					complete: image.complete,
+				})),
+				offset:
+					first && box
+						? Math.round((first.getBoundingClientRect().top - box.top) * 100) /
+							100
+						: null,
+			});
+			setGeometry((old) => (old === text ? old : text));
+		}, 100);
+		return () => window.clearInterval(timer);
+	}, [fixture, tenantId]);
+	const scroll = (edge: "up" | "top" | "end") => {
+		const host =
+			replyFixtureViewport(root.current) ?? queryHistoryViewport(root.current);
+		if (host)
+			host.scrollTop =
+				edge === "up"
+					? host.scrollTop - 300
+					: edge === "top"
+						? 0
+						: host.scrollHeight;
+	};
+	const decodeControlledImage = () => {
+		const row = (
+			replyFixtureViewport(root.current) ?? queryHistoryViewport(root.current)
+		)?.querySelector<HTMLElement>("[data-message-id]");
+		if (!row || row.querySelector("[data-fixture-height]")) return;
+		// A fixed story-only image instruments the real scroll host. It tests
+		// actual decode/height events, NOT production attachment admission.
+		window.clearTimeout(imageTimer.current);
+		if (instrumentedImage.current) instrumentedImage.current.onload = null;
+		instrumentedImage.current?.remove();
+		const image = document.createElement("img");
+		instrumentedImage.current = image;
+		image.dataset.fixtureHeight = "true";
+		image.alt = "Controlled fixture image height";
+		image.width = 240;
+		image.style.height = "1px";
+		image.onload = () => {
+			imageTimer.current = window.setTimeout(() => {
+				image.style.height = "256px";
+			}, 180);
+		};
+		image.src = `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="240" height="256"><rect width="240" height="256" fill="#ddd"/></svg>')}`;
+		row.append(image);
+	};
+	return (
+		<div ref={root}>
+			{setupError ? (
+				<p role="alert">
+					Fixture setup failed: supported mutable desktop request API is
+					required.
+				</p>
+			) : (
+				ready && (
+					<QueryClientProvider client={fixture.client}>
+						{memberThread ? (
+							<QueryMemberThreadSurface tenantId={tenantId} />
+						) : (
+							<QueryHistorySurface tenantId={tenantId} />
+						)}
+					</QueryClientProvider>
+				)
+			)}
+			<div className="fixed bottom-0 left-0 z-50 max-h-[45vh] w-[290px] overflow-auto bg-canvas text-[10px] text-ink">
+				<button type="button" onClick={() => scroll("up")}>
+					Fixture query up
+				</button>{" "}
+				<button type="button" onClick={() => scroll("top")}>
+					Fixture query top
+				</button>{" "}
+				<button type="button" onClick={() => scroll("end")}>
+					Fixture query end
+				</button>{" "}
+				<button type="button" onClick={() => fixture.holdNextOlder()}>
+					Fixture hold next older
+				</button>{" "}
+				<button type="button" onClick={() => fixture.release()}>
+					Fixture release older
+				</button>{" "}
+				<button
+					type="button"
+					onClick={() => {
+						fixture.arrive();
+						void fixture.refreshBackend();
+					}}
+				>
+					Fixture transport arrival
+				</button>{" "}
+				<button
+					type="button"
+					onClick={() => {
+						fixture.expand();
+						void fixture.refreshBackend();
+					}}
+				>
+					Fixture transport reflow
+				</button>{" "}
+				<button type="button" onClick={decodeControlledImage}>
+					Fixture decoded image height
+				</button>{" "}
+				<button
+					type="button"
+					onClick={() =>
+						setTenantId((old) => (old === TENANT ? "org_query_other" : TENANT))
+					}
+				>
+					Fixture query org switch
+				</button>{" "}
+				{(["normal", "empty", "short", "denied", "unavailable"] as const).map(
+					(mode) => (
+						<button
+							type="button"
+							key={mode}
+							onClick={() => {
+								window.clearTimeout(imageTimer.current);
+								if (instrumentedImage.current)
+									instrumentedImage.current.onload = null;
+								instrumentedImage.current?.remove();
+								fixture.setMode(mode);
+							}}
+						>
+							Fixture backend {mode}
+						</button>
+					),
+				)}
+				<button
+					type="button"
+					onClick={() => {
+						fixture.holdNextFirstReply();
+						void fixture.resetReplyQueries();
+					}}
+				>
+					Fixture hold first reply
+				</button>{" "}
+				<button type="button" onClick={() => fixture.releaseReplies()}>
+					Fixture release replies
+				</button>{" "}
+				{(["http503", "transport"] as const).map((failure) => (
+					<button
+						type="button"
+						key={failure}
+						onClick={() => fixture.failNextOlderReply(failure)}
+					>
+						Fixture fail next older reply {failure}
+					</button>
+				))}
+				{(["normal", "empty", "short", "denied", "unavailable"] as const).map(
+					(mode) => (
+						<button
+							type="button"
+							key={`reply-${mode}`}
+							onClick={() => {
+								fixture.setMode(mode);
+								void fixture.resetReplyQueries();
+							}}
+						>
+							Fixture reply backend {mode}
+						</button>
+					),
+				)}
+				{(["backward", "old-server", "old-runtime"] as const).map((value) => (
+					<button
+						type="button"
+						key={value}
+						onClick={() => {
+							fixture.setThreadMode(value);
+							void fixture.resetReplyQueries();
+						}}
+					>
+						Fixture thread protocol {value}
+					</button>
+				))}
+				<output data-query-history-geometry className="block break-all">
+					{geometry}
+				</output>
+			</div>
+		</div>
+	);
+}
+
+/** No live runtime: real API decoder/hooks/panel and cursor decisions, fake IPC only. */
+export const QueryBackedHistory: Story = {
+	render: () => <QueryBackedHistoryExercise />,
+};
+
+/** Same synthetic transport, actual member query/pane/anchor; no hub or Electron proof. */
+export const QueryBackedMemberThread: Story = {
+	render: () => <QueryBackedHistoryExercise memberThread />,
 };

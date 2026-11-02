@@ -21,12 +21,14 @@
  */
 
 import type { Meta, StoryObj } from "@storybook/react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import "../../../styles/index.css";
 import {
-	setAgentAvatar,
+	agentAvatarsQueryKey,
 	useAgentAvatar,
-} from "@shared/store/agent-avatar-store";
+	useAgentAvatarMap,
+} from "@shared/agent-avatar/agent-avatar";
+import { useQueryClient } from "@tanstack/react-query";
 import type { CanonicalFrontendState } from "../../../../../shared/desktop-session-contract";
 import { CanonicalTranscript } from "./canonical-transcript";
 import type { CanonicalTranscriptStatus } from "./transcript-pane";
@@ -244,21 +246,68 @@ const Panel = ({
 /** The agent the fixture picture is stored under. */
 const STORY_AGENT_ID = "agent-story-coder";
 
+/** A digest-shaped id: the media stub keys the bytes by it, nothing verifies it. */
+const STORY_SHA = "b".repeat(64);
+
 /**
- * Stores the synthetic picture ONCE per page, through the same call the
- * settings pane makes, so the frame shows the stored shape rather than a
- * hand-written URL. A canvas minted per render would give the panes different
- * pixels of the same fixture, which a reviewer then has to explain.
+ * Seeds the synthetic picture ONCE per page, through the SAME seam the app
+ * reads: the agents map carries the picture's record (the key a real agents
+ * read fills) and the preload media relay answers `agent.avatar` with the
+ * bytes, so `useAgentAvatar` fetches it exactly as it does in the app.
+ *
+ * WHY NOT A WRITE: the picture lives in the backend now, so there is no
+ * client-side `setAgentAvatar(id, dataUrl)` to call; a story cannot have a
+ * backend, so it stands in for the two reads the seam makes. A canvas minted per
+ * render would give the panes different pixels of the same fixture, which a
+ * reviewer then has to explain - the bytes are decoded once.
  */
+const STORY_PICTURE = (() => {
+	const dataUrl = syntheticPicture();
+	const base64 = dataUrl.split(",")[1] ?? "";
+	return {
+		mime: dataUrl.slice(5, dataUrl.indexOf(";")) || "image/webp",
+		bytes: Uint8Array.from(atob(base64), (character) =>
+			character.charCodeAt(0),
+		),
+	};
+})();
+
+const installMedia = () => {
+	// biome-ignore lint/suspicious/noExplicitAny: the preload bridge is a mock here.
+	const api = (window as any).api ?? {};
+	api.desktop = {
+		...api.desktop,
+		media: async (request: { op?: string }) =>
+			request.op === "agent.avatar"
+				? {
+						status: 200,
+						kind: "bytes",
+						mimeType: STORY_PICTURE.mime,
+						data: STORY_PICTURE.bytes,
+					}
+				: { status: 404, kind: "error", detail: "Not in this story." },
+	};
+	// biome-ignore lint/suspicious/noExplicitAny: the preload bridge is a mock here.
+	(window as any).api = api;
+};
+installMedia();
+
 const useStoredPicture = () => {
-	const [stored, setStored] = useState(false);
+	// The story's OWN client (`.storybook/preview.tsx` makes one per story): the
+	// app singleton is not the one this pane reads through.
+	const client = useQueryClient();
 	useEffect(() => {
-		if (stored) return;
-		const picture = syntheticPicture();
-		if (picture) setAgentAvatar(STORY_AGENT_ID, picture);
-		setStored(true);
-	}, [stored]);
-	return stored;
+		client.setQueryData(agentAvatarsQueryKey, {
+			[STORY_AGENT_ID]: {
+				sha256: STORY_SHA,
+				mime: STORY_PICTURE.mime,
+				bytes: STORY_PICTURE.bytes.byteLength,
+				updated_at: "2026-10-30T00:00:00.000Z",
+			},
+		});
+	}, [client]);
+	// Read the map so the pane repaints when the query is filled.
+	useAgentAvatarMap();
 };
 
 /**

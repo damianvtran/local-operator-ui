@@ -48,5 +48,6 @@
 	"ui.agents.detail.tools.empty": "अभी कोई टूल नहीं। नीचे एक जोड़ें, या सभी टूल चालू करें।",
 	"ui.agents.detail.tools.every_tool_aria": "इस एजेंट को हर टूल दें",
 	"ui.agents.detail.tools.may_use_any": "यह एजेंट सत्र में उपलब्ध हर टूल इस्तेमाल कर सकता है।",
-	"ui.agents.detail.tools.placeholder": "टूल का नाम"
+	"ui.agents.detail.tools.placeholder": "टूल का नाम",
+	"ui.agents.detail.origin.created_locally": "इसे इसी कंप्यूटर पर बनाया गया था।"
 }

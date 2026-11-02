@@ -7,10 +7,17 @@ import {
 	PopoverContent,
 	PopoverTrigger,
 } from "@shared/components/ui/popover";
+import { requestAccountProfileFocus } from "@shared/hooks/account-profile-navigation";
+import {
+	observedRadientAuthority,
+	radientAuthoritySnapshot,
+	useObservedRadientAuthority,
+} from "@shared/hooks/radient-account-authority";
 import { useTeamBridgeAvatar } from "@shared/hooks/use-account-avatar";
 import { formatTime, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
+import { useQueryClient } from "@tanstack/react-query";
 import { Bot, Clock, MessageSquare, X } from "lucide-react";
 import {
 	type CSSProperties,
@@ -25,6 +32,7 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { useNavigate } from "react-router-dom";
 import type { TeamBridgeDirectoryMember } from "../../../../shared/team-bridge-contract";
 import { personDisplayLabel, personInitial } from "./team-bridge-model";
 
@@ -96,11 +104,32 @@ export function TeamBridgeAvatar({
  * with this" key: the context-menu key or Shift+F10 opens it and moves focus into
  * it, the same pairing the transcript's link toolbar and message rows use.
  */
+/** Kept below the own-account gate so fixture/embedded cards with an explicit
+ * callback need no router, and no unrelated person's card acquires navigation. */
+function NativeProfileEditButton({
+	onBeforeNavigate,
+}: { onBeforeNavigate: () => boolean }) {
+	const navigate = useNavigate();
+	return (
+		<Button
+			variant="secondary"
+			size="sm"
+			className="w-full"
+			onClick={() => {
+				if (onBeforeNavigate()) navigate("/settings");
+			}}
+		>
+			{t("ui.settings.personal_profile.edit")}
+		</Button>
+	);
+}
+
 export function TeamBridgeProfileCard({
 	member,
 	label,
 	agentName,
 	onMessage,
+	onEditOwnProfile,
 	canMessage = true,
 	openDelayMs = 400,
 	fastOpenDelayMs,
@@ -112,6 +141,7 @@ export function TeamBridgeProfileCard({
 	label: string;
 	agentName?: string;
 	onMessage: () => void;
+	onEditOwnProfile?: () => void;
 	canMessage?: boolean;
 	/** Pointer dwell on the anchor before the card opens. */
 	openDelayMs?: number;
@@ -124,6 +154,9 @@ export function TeamBridgeProfileCard({
 	children: ReactElement<HTMLAttributes<HTMLElement>>;
 }) {
 	const locale = useI18nLocale();
+	const authority = useObservedRadientAuthority();
+	const queryClient = useQueryClient();
+	const profileHandoff = useRef(false);
 	const [open, setOpen] = useState(false);
 	const [now, setNow] = useState(() => new Date());
 	const headingId = useId();
@@ -139,6 +172,24 @@ export function TeamBridgeProfileCard({
 	const focusContentOnOpen = useRef(false);
 	const isAgent = agentName !== undefined;
 	const displayName = isAgent ? label : member.profile?.display_name || label;
+	// This is the base card's existing human/agent distinction, not canMessage.
+	// The avatar lane replaces it with its required explicit kind contract.
+	const canEditOwnProfile =
+		!isAgent &&
+		Boolean(authority.accountId) &&
+		member.account_id === authority.accountId;
+	const beginProfileHandoff = () => {
+		if (
+			!canEditOwnProfile ||
+			radientAuthoritySnapshot(queryClient) !== authority.token ||
+			observedRadientAuthority(queryClient).accountId !== member.account_id
+		)
+			return false;
+		profileHandoff.current = true;
+		changeOpen(false);
+		requestAccountProfileFocus(authority.token);
+		return true;
+	};
 
 	const clearTimer = () => {
 		clearTimeout(timer.current);
@@ -346,6 +397,13 @@ export function TeamBridgeProfileCard({
 				}}
 				onOpenAutoFocus={(event) => event.preventDefault()}
 				onCloseAutoFocus={(event) => {
+					// Settings owns the next focus; the departing popover must not
+					// restore its anchor over the asynchronously mounted editor.
+					if (profileHandoff.current) {
+						profileHandoff.current = false;
+						event.preventDefault();
+						return;
+					}
 					// A pointer-only preview never owned focus and must not take it
 					// from the composer when its leave timer expires.
 					if (!contentOwnedFocus.current) {
@@ -426,6 +484,21 @@ export function TeamBridgeProfileCard({
 							{t("ui.teamBridge.profile.local_time", { time: localTime })}
 						</p>
 					)}
+					{canEditOwnProfile &&
+						(onEditOwnProfile ? (
+							<Button
+								variant="secondary"
+								size="sm"
+								className="w-full"
+								onClick={() => {
+									if (beginProfileHandoff()) onEditOwnProfile();
+								}}
+							>
+								{t("ui.settings.personal_profile.edit")}
+							</Button>
+						) : (
+							<NativeProfileEditButton onBeforeNavigate={beginProfileHandoff} />
+						))}
 					{canMessage && (
 						<Button
 							className="w-full"

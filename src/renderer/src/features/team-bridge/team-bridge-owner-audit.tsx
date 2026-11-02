@@ -5,15 +5,23 @@ import { Badge } from "@shared/components/ui/badge";
 import { Button } from "@shared/components/ui/button";
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
+import { composeRefs } from "@shared/lib/compose-refs";
 import { cn } from "@shared/lib/utils";
 import { Eye, RefreshCw } from "lucide-react";
-import { type ReactNode, useState } from "react";
+import {
+	type ReactNode,
+	type Ref,
+	createContext,
+	useContext,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import type { TeamBridgeDirectoryMember } from "../../../../shared/team-bridge-contract";
 import type {
 	OwnerAuditConversation,
 	OwnerAuditMessage,
 } from "../../../../shared/team-bridge-owner-audit-contract";
-import { InlineDataBody } from "./inline-data-receipt";
 import { TeamBridgeMessageList } from "./team-bridge-message-list";
 import type { ChiefLabels } from "./team-bridge-model";
 import {
@@ -29,14 +37,25 @@ import {
 	RAIL_ROW,
 	RailGroupHeader,
 } from "./team-bridge-rail";
+import { useStickToBottom } from "./use-stick-to-bottom";
 import { useTeamBridgeDirectory } from "./use-team-bridge";
 import {
+	type AuditFailureState,
+	auditFailureState,
 	useOwnerAuditConversations,
 	useOwnerAuditMessages,
 	useOwnerAuditReplies,
 } from "./use-team-bridge-owner-audit";
+import { replyPageOutsideViewport } from "./use-thread-reply-window";
 
-type ReadState = "loading" | "error" | "ready";
+export type ReadState = "loading" | "ready" | AuditFailureState;
+const failedState = (state: ReadState): state is AuditFailureState =>
+	state !== "loading" && state !== "ready";
+
+// The disclosure owns its non-bubbling toggle event. Pass the parent scroll
+// controller through the transcript so opening it can hold BOTH reading surfaces
+// without delegating a details-only event to an unsupported div React prop.
+const AuditTimelineHoldContext = createContext<(() => void) | null>(null);
 
 /**
  * A FAILED LATER PAGE MUST NOT ERASE WHAT IS ALREADY SHOWN.
@@ -50,13 +69,27 @@ type ReadState = "loading" | "error" | "ready";
  * has nothing to show. A failed later page keeps the rows and offers the retry
  * that failed-page affordance already carries.
  */
-function readState(query: {
+export function readState(query: {
 	isPending: boolean;
 	isError: boolean;
 	data: unknown;
+	error?: unknown;
+	auditAuthRequired?: boolean;
 }): ReadState {
+	if (query.auditAuthRequired) return "auth";
 	if (query.isPending) return "loading";
-	if (query.isError && !query.data) return "error";
+	if (query.isError) {
+		const failure = auditFailureState(query.error);
+		// Retaining earlier pages is useful for a server failure, not for a
+		// refusal. A 403 must not leave Refresh/Load more offering a retry loop.
+		if (
+			!query.data ||
+			failure === "auth" ||
+			failure === "permission" ||
+			failure === "not-found"
+		)
+			return failure;
+	}
 	return "ready";
 }
 const title = (conversation: OwnerAuditConversation) =>
@@ -72,10 +105,12 @@ const title = (conversation: OwnerAuditConversation) =>
  * in its scope — the panel header drops its Refresh while this is what the
  * reader is looking at, so one refetch does not appear twice (D7).
  */
-function AuditFailure({
+export function AuditFailure({
+	state = "error",
 	retry,
 	inset = "px-3",
 }: {
+	state?: AuditFailureState;
 	retry: () => void;
 	/*
 	 * The section's own inline inset. The rail's rows sit at `px-3`; the panel's
@@ -87,10 +122,29 @@ function AuditFailure({
 }) {
 	return (
 		<div role="alert" className={cn("space-y-2 text-sm text-danger", inset)}>
-			<p>{t("ui.ownerAudit.error")}</p>
-			<Button variant="ghost" onClick={retry}>
-				{t("ui.ownerAudit.retry")}
-			</Button>
+			<p>
+				{t(
+					state === "auth"
+						? "ui.ownerAudit.auth_required"
+						: state === "permission"
+							? "ui.ownerAudit.permission_refused"
+							: state === "not-found"
+								? "ui.ownerAudit.not_found"
+								: state === "unavailable"
+									? "ui.ownerAudit.unavailable"
+									: "ui.ownerAudit.error",
+				)}
+			</p>
+			{state === "auth" && (
+				<Button variant="ghost" asChild>
+					<a href="#/settings?section=radient">{t("ui.ownerAudit.sign_in")}</a>
+				</Button>
+			)}
+			{(state === "error" || state === "unavailable") && (
+				<Button variant="ghost" onClick={retry}>
+					{t("ui.ownerAudit.retry")}
+				</Button>
+			)}
 		</div>
 	);
 }
@@ -121,7 +175,7 @@ export function OwnerAuditRailView({
 				{t("ui.ownerAudit.loading")}
 			</output>
 		);
-	if (state === "error") return <AuditFailure retry={retry} />;
+	if (failedState(state)) return <AuditFailure state={state} retry={retry} />;
 	return (
 		<>
 			{conversations.length === 0 && (
@@ -241,36 +295,16 @@ const VERDICT = {
  * `decorate` hook: the verdict chip, the audit's own null-body sentence, the
  * attachment notes and thread replies.
  *
- * Unadmitted and unknown bodies are disclosed as inert plaintext only after an
- * explicit press. Admitted and own bodies use the shared no-image Markdown.
- * What this surface must never do — load an
+ * THE OLD "NEVER INVOKE MARKDOWN" RULE is still met in substance: the list's
+ * body renderer (`TeamBridgeMarkdown`) emits no raw HTML, draws images as text
+ * and links only http(s)/mailto, which is the same guarantee a member's channel
+ * relies on for the same bodies. What this surface must never do — load an
  * attachment's bytes, offer a reaction, a reply or a "Message" action — is
  * withheld by omission: the adapter drops `attachments`, and none of
  * `reactionContext` / `onReply` / `onMessagePerson` is passed, so the toolbar
  * (which renders nothing without one of the first two) and the profile card's
  * Message button do not exist here.
  */
-function WithheldAuditBody({ body }: { body: string }) {
-	const [open, setOpen] = useState(false);
-	return (
-		<details onToggle={(event) => setOpen(event.currentTarget.open)}>
-			<summary className={cn("cursor-pointer text-sm text-ink-muted")}>
-				{t("ui.ownerAudit.inspect_body")}
-			</summary>
-			{open && (
-				<InlineDataBody
-					body={body}
-					renderText={(text) => (
-						<p className={cn("whitespace-pre-wrap break-words text-sm")}>
-							{text}
-						</p>
-					)}
-				/>
-			)}
-		</details>
-	);
-}
-
 function AuditTranscript({
 	conversation,
 	messages,
@@ -314,12 +348,15 @@ function AuditTranscript({
 					badge: verdict && (
 						<Badge variant={verdict.variant}>{t(verdict.copy)}</Badge>
 					),
-					/* Unadmitted and unknown bodies are untrusted; a human can inspect
-					   plaintext deliberately, without Markdown or fetching attachments. */
-					bodyOverride:
-						delivery !== "own" && delivery !== "admitted" && message.body ? (
-							<WithheldAuditBody body={message.body} />
-						) : undefined,
+					/* Every body reads inline, unadmitted ones included: the chip above
+					   is what says the agent refused or never saw the text. The hub
+					   contract's "collapsed by default" (v2 m4) was a presentation
+					   choice, not the isolation guard. The human-only boundary is the
+					   runtime's (local-operator scopes audit reads and refuses unscoped
+					   ones in team_bridge/client.py, and the agent tool has no audit
+					   op), and here the audit reads sit under their own
+					   ["team-bridge", "owner-audit", ...] query keys and write nothing:
+					   no read markers, drafts or agent feed. */
 					withheldCopy: t("ui.ownerAudit.body_unavailable"),
 					attachments:
 						attachmentCount > 0 ? (
@@ -454,6 +491,8 @@ export function OwnerAuditPanelView({
 	renderReplies,
 	readerAccountId,
 	people = EMPTY_PEOPLE,
+	latestPageAvailable = true,
+	scrollHostRef,
 }: {
 	conversation: OwnerAuditConversation;
 	messages: OwnerAuditMessage[];
@@ -471,6 +510,11 @@ export function OwnerAuditPanelView({
 	 * contradiction back in silently at the next call site.
 	 */
 	readerAccountId: string;
+	/** False after older paging evicts the bounded newest page; Refresh returns
+	 * to an uncursored latest read instead of pretending this window is live. */
+	latestPageAvailable?: boolean;
+	/** Read-only visibility guard for bounded cache eviction; no scroll writer. */
+	scrollHostRef?: Ref<HTMLDivElement>;
 	/**
 	 * The tenant directory, so senders are named and pictured by the same rule a
 	 * channel uses ("Aida (Ben Tran)", a photo or initial, the Bot glyph).
@@ -481,6 +525,21 @@ export function OwnerAuditPanelView({
 	people?: readonly TeamBridgeDirectoryMember[];
 }) {
 	const locale = useI18nLocale();
+	/* The server already returns a bounded NEWEST page. Its chronological rows
+	 * must open at the end using the same anchor policy as member DM/channel and
+	 * thread panes, not at scrollTop zero (the oldest row of that latest page). */
+	const timeline = useStickToBottom({
+		resetKey: `${conversation.tenant_id}:${conversation.id}:${state}`,
+		contentKey: `${messages.length}:${messages[0]?.id ?? ""}:${messages.at(-1)?.id ?? ""}`,
+		scrollElement: "root",
+		preserveAnchor: true,
+		rowIds: messages.map((message) => message.id),
+		liveEdgeAvailable: latestPageAvailable,
+	});
+	const viewportRef = useMemo(
+		() => composeRefs(timeline.rootRef, scrollHostRef),
+		[timeline.rootRef, scrollHostRef],
+	);
 	/*
 	 * WHO ELSE CAN READ THIS. `viewers` is the server's own answer, one entry per
 	 * agent owner whose agent is (or was) in the conversation. It includes the
@@ -494,7 +553,7 @@ export function OwnerAuditPanelView({
 	);
 	return (
 		<section
-			className="flex min-h-0 flex-1 flex-col"
+			className="relative flex min-h-0 flex-1 flex-col"
 			aria-label={t("ui.ownerAudit.title")}
 		>
 			{/*
@@ -518,7 +577,7 @@ export function OwnerAuditPanelView({
 					</h2>
 					{/* One retry per scope: while the body shows AuditFailure, the
 					 * header's Refresh would be a second control for the same refetch. */}
-					{state !== "error" && (
+					{!failedState(state) && (
 						<Button variant="ghost" size="sm" onClick={retry}>
 							<RefreshCw aria-hidden="true" />
 							{t("ui.ownerAudit.refresh")}
@@ -554,51 +613,74 @@ export function OwnerAuditPanelView({
 					)}
 				</Alert>
 			</header>
+			{/* Window scope belongs outside the scrolling transcript: the reader
+			 * opens at the newest row, but must see the cutoff at every position.
+			 * A reserved flex row cannot cover messages or membership notices. */}
+			{state === "ready" && hasMore && (
+				<aside className="flex shrink-0 flex-wrap items-center gap-x-2 border-b border-hairline px-5 py-2">
+					<p className="text-meta text-ink-dim">
+						{t("ui.ownerAudit.page_cutoff")}
+					</p>
+					<Button
+						variant="ghost"
+						size="sm"
+						onClick={loadMore}
+						disabled={loadingMore}
+					>
+						{t("ui.ownerAudit.older")}
+					</Button>
+				</aside>
+			)}
 			{/* No horizontal padding here: the shared list's rows carry the column's
 			 * own 20px gutter (and their hover band runs edge to edge), so every
 			 * other child takes the same `px-5` itself. */}
-			<div className="min-h-0 flex-1 overflow-auto pb-5">
-				{state === "loading" ? (
-					<output className="block px-5 py-8 text-[13px] text-ink-muted">
-						{t("ui.ownerAudit.loading")}
-					</output>
-				) : state === "error" ? (
-					<div className="py-4">
-						<AuditFailure retry={retry} inset="px-5" />
-					</div>
-				) : (
-					<>
-						{hasMore && (
-							<div className="flex flex-wrap items-center gap-x-2 px-5 pt-3">
-								<p className="text-meta text-ink-dim">
-									{t("ui.ownerAudit.page_cutoff")}
+			<div
+				ref={viewportRef}
+				className="min-h-0 flex-1 overflow-auto pb-5"
+				style={{ overflowAnchor: "none" }}
+			>
+				<div className="min-h-full">
+					{state === "loading" ? (
+						<output className="block px-5 py-8 text-[13px] text-ink-muted">
+							{t("ui.ownerAudit.loading")}
+						</output>
+					) : failedState(state) ? (
+						<div className="py-4">
+							<AuditFailure state={state} retry={retry} inset="px-5" />
+						</div>
+					) : (
+						<>
+							{messages.length === 0 ? (
+								<p className="px-5 py-8 text-[13px] text-ink-muted">
+									{t("ui.ownerAudit.empty_history")}
 								</p>
-								<Button
-									variant="ghost"
-									size="sm"
-									onClick={loadMore}
-									disabled={loadingMore}
-								>
-									{t("ui.ownerAudit.older")}
-								</Button>
-							</div>
-						)}
-						{messages.length === 0 ? (
-							<p className="px-5 py-8 text-[13px] text-ink-muted">
-								{t("ui.ownerAudit.empty_history")}
-							</p>
-						) : (
-							<AuditTranscript
-								conversation={conversation}
-								messages={messages}
-								people={people}
-								renderReplies={renderReplies}
-							/>
-						)}
-						<OwnerAuditWindowEnd conversation={conversation} />
-					</>
-				)}
+							) : (
+								<AuditTimelineHoldContext.Provider value={timeline.hold}>
+									<AuditTranscript
+										conversation={conversation}
+										messages={messages}
+										people={people}
+										renderReplies={renderReplies}
+									/>
+								</AuditTimelineHoldContext.Provider>
+							)}
+							<OwnerAuditWindowEnd conversation={conversation} />
+						</>
+					)}
+				</div>
 			</div>
+			{/* History controls belong to the ready transcript, not a retained
+			 * window behind a refusal or the failure UI's single retry. */}
+			{state === "ready" &&
+				(!latestPageAvailable ? (
+					<Button className="absolute bottom-4 right-4" onClick={retry}>
+						{t("ui.ownerAudit.refresh")}
+					</Button>
+				) : timeline.newMessages > 0 ? (
+					<Button className="absolute bottom-4 right-4" onClick={timeline.pin}>
+						{t("ui.teamBridge.notify.count", { count: timeline.newMessages })}
+					</Button>
+				) : null)}
 		</section>
 	);
 }
@@ -616,35 +698,119 @@ function AuditReplies({
 	root: OwnerAuditMessage;
 	people: readonly TeamBridgeDirectoryMember[];
 }) {
-	const query = useOwnerAuditReplies(scope, conversation.id, root.id);
-	if (query.isPending)
-		return (
-			<output className="block py-1 text-[12px] text-ink-muted">
-				{t("ui.ownerAudit.loading")}
-			</output>
-		);
-	if (readState(query) === "error")
-		return <AuditFailure retry={() => void query.refetch()} />;
+	const viewport = useRef<HTMLDivElement>(null);
+	const pinnedGetter = useRef<() => boolean>(() => true);
+	const query = useOwnerAuditReplies(
+		scope,
+		conversation.id,
+		root.id,
+		(page) => replyPageOutsideViewport(page, viewport.current),
+		() => pinnedGetter.current(),
+	);
+	const state = readState(query);
+	const viewState =
+		state === "loading"
+			? "loading"
+			: failedState(state) && (!query.data || !query.keepWindowOnError)
+				? "error"
+				: "ready";
+	const timeline = useStickToBottom({
+		resetKey: `${scope.accountId}:${scope.tenantId}:${conversation.id}:${root.id}:${query.mode}:${viewState}`,
+		contentKey: `${query.replies.length}:${query.replies.at(-1)?.id ?? ""}`,
+		scrollElement: "root",
+		preserveAnchor: true,
+		rowIds: query.replies.map((row) => row.id),
+		liveEdgeAvailable: query.latestPageAvailable,
+	});
+	pinnedGetter.current = timeline.isPinned;
+	const combinedRef = useMemo(
+		() => composeRefs(timeline.rootRef, viewport),
+		[timeline.rootRef],
+	);
 	return (
-		<div>
-			{/* The thread pane's own density: replies are the same rows, narrower. */}
-			<AuditTranscript
-				conversation={conversation}
-				messages={ownerAuditChronology(
-					query.data?.pages.map((page) => page.replies) ?? [],
+		<div className="relative min-h-0">
+			{query.mode === "legacy" && (
+				<p className="py-1 text-meta text-ink-dim">
+					{t("ui.teamBridge.replies.legacy_window")}
+				</p>
+			)}
+			<div
+				ref={combinedRef}
+				// Reserve the reading surface independently of reply arrivals. In
+				// particular, a short window must not grow under a held parent row.
+				className="h-80 min-h-0 w-full min-w-0 overflow-x-hidden overflow-y-auto"
+				data-audit-reply-window
+			>
+				{query.mode === "desc" &&
+					viewState === "ready" &&
+					query.hasNextPage && (
+						<Button
+							variant="ghost"
+							size="sm"
+							disabled={query.isFetchingNextPage}
+							onClick={() => {
+								timeline.hold();
+								void query.fetchNextPage();
+							}}
+						>
+							{t("ui.ownerAudit.older_replies")}
+						</Button>
+					)}
+				{viewState === "loading" ? (
+					<output className="block py-1 text-meta text-ink-muted">
+						{t("ui.ownerAudit.loading")}
+					</output>
+				) : viewState === "error" ? (
+					<AuditFailure
+						state={failedState(state) ? state : "error"}
+						retry={() => void query.resetLatest()}
+					/>
+				) : query.replies.length === 0 ? (
+					<p className="py-2 text-meta text-ink-muted">
+						{t("ui.ownerAudit.empty_replies")}
+					</p>
+				) : (
+					<AuditTranscript
+						conversation={conversation}
+						messages={query.replies}
+						people={people}
+						density="compact"
+					/>
 				)}
-				people={people}
-				density="compact"
-			/>
-			{query.hasNextPage && (
+				{query.mode === "legacy" && query.hasNextPage && (
+					<Button
+						variant="ghost"
+						size="sm"
+						disabled={query.isFetchingNextPage}
+						onClick={() => void query.fetchNextPage()}
+					>
+						{t("ui.ownerAudit.more")}
+					</Button>
+				)}
+			</div>
+			{/* Arrival/recovery controls belong AFTER the reserved reader. The
+			 * first held-window arrival creates Refresh; putting it above would
+			 * move the whole viewport even with both scroll anchors held. Below,
+			 * controls remain in normal flow without an overlay or empty band. */}
+			{query.mode === "desc" && !query.latestPageAvailable && (
 				<Button
 					variant="ghost"
 					size="sm"
-					disabled={query.isFetchingNextPage}
-					onClick={() => void query.fetchNextPage()}
+					onClick={() => void query.resetLatest()}
 				>
-					{t("ui.ownerAudit.more")}
+					{t("ui.ownerAudit.refresh")}
 				</Button>
+			)}
+			{query.latestPageAvailable && timeline.newMessages > 0 && (
+				<Button variant="ghost" size="sm" onClick={timeline.pin}>
+					{t("ui.teamBridge.notify.count", { count: timeline.newMessages })}
+				</Button>
+			)}
+			{query.keepWindowOnError && (
+				<AuditFailure
+					state={auditFailureState(query.error)}
+					retry={() => void query.fetchNextPage()}
+				/>
 			)}
 		</div>
 	);
@@ -662,10 +828,17 @@ function ReplyDisclosure({
 	people: readonly TeamBridgeDirectoryMember[];
 }) {
 	const [open, setOpen] = useState(false);
+	const holdParentTimeline = useContext(AuditTimelineHoldContext);
 	return (
 		<details
 			className="mt-1"
-			onToggle={(event) => setOpen(event.currentTarget.open)}
+			data-audit-reply-disclosure
+			onToggle={(event) => {
+				// Stop parent live-edge following before mounting the inline reader;
+				// later arrivals must not move its box while its own anchor is held.
+				if (event.currentTarget.open) holdParentTimeline?.();
+				setOpen(event.currentTarget.open);
+			}}
 		>
 			{/* The shared row's "N replies" summary wears the accent; this is the
 			 * same door, read-only, so it wears the same ink at the same size. */}
@@ -688,7 +861,23 @@ function OwnerAuditPanel({
 	scope,
 	conversation,
 }: { scope: OwnerAuditScope; conversation: OwnerAuditConversation }) {
-	const query = useOwnerAuditMessages(scope, conversation.id);
+	const scrollHostRef = useRef<HTMLDivElement>(null);
+	const query = useOwnerAuditMessages(scope, conversation.id, (page) => {
+		const host = scrollHostRef.current;
+		if (!host) return false;
+		const box = host.getBoundingClientRect();
+		const dropping = new Set(page.messages.map((message) => message.id));
+		return ![...host.querySelectorAll<HTMLElement>("[data-message-id]")].some(
+			(row) => {
+				const rect = row.getBoundingClientRect();
+				return (
+					dropping.has(row.dataset.messageId ?? "") &&
+					rect.bottom > box.top &&
+					rect.top < box.bottom
+				);
+			},
+		);
+	});
 	/* The same directory read (and cache entry) the member view uses for this
 	   organization, so names usually arrive with no extra request. Its failure
 	   is not this panel's failure: the transcript falls back to stored labels. */
@@ -705,7 +894,9 @@ function OwnerAuditPanel({
 				query.data?.pages.map((page) => page.messages) ?? [],
 			)}
 			state={readState(query)}
-			retry={() => void query.refetch()}
+			retry={() => void query.refetchLatest()}
+			latestPageAvailable={query.data?.pageParams[0] === undefined}
+			scrollHostRef={scrollHostRef}
 			hasMore={query.hasNextPage}
 			loadingMore={query.isFetchingNextPage}
 			loadMore={() => void query.fetchNextPage()}

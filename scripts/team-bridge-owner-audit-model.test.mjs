@@ -333,7 +333,9 @@ test("the adapter keeps a null body null and carries no bytes or actions", () =>
 	assert.equal(row.reply_count, undefined);
 	assert.equal(row.reply_participants, undefined);
 	assert.equal(row.thread_root_id, undefined);
-	assert.equal(row.origin, "human", "an unknown origin falls back to the kind");
+	// S1: an unknown origin is not evidence of a person; it fails closed to
+	// `system` so the delivery annotation never discloses a refusal class.
+	assert.equal(row.origin, "system", "an unknown origin never becomes human");
 	assert.deepEqual(row.sender, {
 		account_id: "acct_ben",
 		kind: "human",

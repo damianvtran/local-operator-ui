@@ -58,5 +58,6 @@
 	"ui.chat.sidebar.row_menu.unarchive": "बातचीत बहाल करें",
 	"ui.chat.sidebar.row_menu.unpin": "बातचीत अनपिन करें",
 	"ui.chat.sidebar.pins.pin_label": "“{title}” पिन करें",
-	"ui.chat.sidebar.pins.unpin_label": "“{title}” अनपिन करें"
+	"ui.chat.sidebar.pins.unpin_label": "“{title}” अनपिन करें",
+	"ui.chat.sidebar.agents.list_join": "{position, select, pair {{head} और {tail}} middle {{head}, {tail}} other {{head} और {tail}}}"
 }

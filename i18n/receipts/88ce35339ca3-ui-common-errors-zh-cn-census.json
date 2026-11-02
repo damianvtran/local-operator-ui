@@ -1,0 +1,58 @@
+{
+  "schema": 1,
+  "auditor": "i18n-auditor (lopdev team; session 88ce35339ca3; independent zh-CN linguistic auditor, not the translator)",
+  "agent": "i18n-auditor (lopdev team; session 88ce35339ca3; independent zh-CN linguistic auditor, not the translator)",
+  "model": "anthropic/claude-sonnet-5-5",
+  "model_provenance": "Model as shown in this session's runtime header (anthropic/claude-sonnet-5-5). No fallback used or claimed; no mid-session model switch observed. Not independently verified beyond the runtime header.",
+  "fallback": "none",
+  "session": "88ce35339ca3",
+  "job_id": null,
+  "job_identity_note": "Delegated lopdev i18n-auditor task; no separate background job id was supplied. The session id identifies this auditor.",
+  "role": "i18n-auditor / independent translation auditor",
+  "independence": "I did not author or edit this translation. I read the zh-CN style guide, glossary, English source with its context sidecar, the committed zh-CN target, and neighbouring zh-CN keys for terminology.",
+  "locale": "zh-CN",
+  "branch": "fix/agent-transport-copy",
+  "head": "dd75287b77ca8b8447a362aa9d052a2dccacf097",
+  "pr": "damianvtran/local-operator-ui#1594",
+  "date": "2026-11-02",
+  "status": "passed",
+  "instance": "88ce35339ca3-ui-common-errors-zh-cn-census",
+  "namespace": "ui.common.errors",
+  "result": "clean-with-findings",
+  "source_sha256": "1c33841b78da772dab58d4476295082b6e1d56a328c587597de20a368cb7c254",
+  "context_sha256": "6cd0c99c1e5e40619c44e1e8fad1a249582b3dad09ca1bc32d04f3fcafee98b1",
+  "target_sha256": "d2f3a7c39f84c68f9404cfba278ff890db2da3f9a4cd56d62e20335d32c6d640",
+  "paths": {
+    "source": "src/i18n/catalogues/en/ui.common.errors.json",
+    "context": "src/i18n/catalogues/en/ui.common.errors.context.json",
+    "target": "src/i18n/catalogues/zh-CN/ui.common.errors.json"
+  },
+  "keys_read": 1,
+  "keys_in_file": 140,
+  "linguistic_scope_keys": [
+    "ui.common.errors.desktop_transport_failed"
+  ],
+  "findings": [
+    {
+      "id": "A-1",
+      "severity": "minor",
+      "key": "ui.common.errors.desktop_transport_failed",
+      "text": "后端无法完成此请求。请检查后端连接，然后重试。",
+      "note": "Style guide: 请 only where English says please; English is a bare imperative. Low impact; neighbouring keys use 请重试. Suggested: 检查后端连接，然后重试。"
+    },
+    {
+      "id": "A-2",
+      "severity": "minor",
+      "key": "ui.common.errors.desktop_transport_failed",
+      "text": "后端连接",
+      "note": "Interpretation note, not a defect: 后端连接 carries the app-to-backend connection reading, not the user's internet; as loose as English 'its connection' and consistent with desktop_backend_compatibility."
+    }
+  ],
+  "scope": "PARTIAL-FILE LINGUISTIC AUDIT. (a) My linguistic judgement covers ONLY the one new key ui.common.errors.desktop_transport_failed. (b) The other 139 keys in this file are byte-unchanged from the previously audited state: I checked the commit's zh-CN diff (git show dd75287b -- src/i18n/catalogues/zh-CN), which adds exactly this one key (plus the previous last line's trailing comma) and changes nothing else; and the key set equals English (140 keys, no adds/drops, valid JSON). (c) I did NOT re-audit those other keys linguistically; their clearance rests on the earlier ledger audit, not on this receipt. This receipt does not clear rendered layout, wrapping or live UI; no rendered frame was inspected.",
+  "verified": [
+    "The transport message states what happened (backend could not complete the request) and what to do (check backend connection, retry), no vaguer than English; terminology 后端/请求/连接/智能体 matches the catalogue.",
+    "Key has no placeholders, plural arms or markup, and none were added.",
+    "Source, context and target hashes derived from committed blobs at dd75287b77ca8b8447a362aa9d052a2dccacf097; on-disk files in this worktree verified byte-identical (shasum).",
+    "I did not run the repo validator or ledger command for the audit itself; deriveReceiptAudit was run on this receipt afterwards."
+  ]
+}

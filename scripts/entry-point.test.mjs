@@ -203,6 +203,27 @@ function cases(root) {
 	return [
 		{ ...desktopShardRefusal, cwd: plain, env: {} },
 		{
+			script: "desktop-suite-checkpoints.mjs",
+			args: ["invalid-mode", "unused-state"],
+			cwd: plain,
+			env: {},
+			status: 1,
+			stdout: /^$/,
+			stderr: /Desktop checkpoint supervision failed: Usage:/,
+		},
+		{
+			// ci.yml consumes the real installed identity, not an import-only
+			// module. Drive its successful answer from this installed checkout so
+			// both spellings must resolve jsdom/nwsapi and hash the actual locks.
+			script: "desktop-test-lane-bound.mjs",
+			args: ["--identity", join(SCRIPTS, "onboarding-tour-i18n.test.mjs")],
+			cwd: join(SCRIPTS, ".."),
+			env: {},
+			status: 0,
+			stdout: /"nwsapi":\{"path":"[^"]+","version":"[^"]+"\}/,
+			stderr: /^$/,
+		},
+		{
 			// Reject the SHA before any Linux/compiler/dependency control can start.
 			// This is the diagnostic's own CLI verdict, not a blanket exemption.
 			script: "onboarding-desktop-diagnostic.mjs",
@@ -736,6 +757,74 @@ test("every release script runs when it is reached through a symlinked path", ()
 	}
 });
 
+test("checkpoint supervisor CLI refuses through physical and symlinked paths", () => {
+	const root = mkdtempSync(
+		join(
+			process.env.LOCAL_OPERATOR_SCRATCHPAD ?? tmpdir(),
+			"checkpoint-entry-point-",
+		),
+	);
+	try {
+		const bin = stubBin(root);
+		const kase = cases(root).find(
+			(entry) => entry.script === "desktop-suite-checkpoints.mjs",
+		);
+		assert.ok(kase);
+		const alias = join(root, "linked-scripts");
+		symlinkSync(SCRIPTS, alias);
+		const direct = run(join(SCRIPTS, kase.script), kase, bin, root);
+		const linked = run(join(alias, kase.script), kase, bin, root);
+		assert.equal(direct.status, 1);
+		assert.match(direct.stderr, kase.stderr);
+		assert.equal(direct.stdout, "");
+		assert.deepEqual(linked, direct);
+	} finally {
+		rmSync(root, { recursive: true, force: true });
+	}
+});
+
+test("desktop diagnostic identity CLI answers identically through direct and symlinked paths", () => {
+	const root = mkdtempSync(
+		join(
+			process.env.LOCAL_OPERATOR_SCRATCHPAD ?? tmpdir(),
+			"diagnostic-entry-point-",
+		),
+	);
+	try {
+		const bin = stubBin(root);
+		const kase = cases(root).find(
+			(entry) => entry.script === "desktop-test-lane-bound.mjs",
+		);
+		assert.ok(kase, "workflow identity CLI must be in the driven table");
+		const alias = join(root, "linked-scripts");
+		symlinkSync(SCRIPTS, alias);
+		assert.notEqual(realpathSync(alias), alias);
+		const direct = run(join(SCRIPTS, kase.script), kase, bin, root);
+		const linked = run(join(alias, kase.script), kase, bin, root);
+		assert.equal(direct.status, 0, direct.stderr);
+		assert.match(direct.stdout, kase.stdout);
+		assert.equal(direct.stderr, "");
+		assert.equal(linked.status, 0, linked.stderr);
+		assert.equal(
+			linked.stdout,
+			direct.stdout,
+			"a symlinked CLI must not silently do nothing",
+		);
+		assert.equal(linked.stderr, direct.stderr);
+		const identity = JSON.parse(direct.stdout);
+		assert.equal(identity.node, process.version);
+		assert.equal(identity.checkoutSha.length, 40);
+		assert.equal(identity.installedLockSha256.length, 64);
+		assert.equal(identity.checkoutLockSha256.length, 64);
+		assert.ok(identity.jsdom.path);
+		assert.ok(identity.jsdom.version);
+		assert.ok(identity.nwsapi.path);
+		assert.ok(identity.nwsapi.version);
+	} finally {
+		rmSync(root, { recursive: true, force: true });
+	}
+});
+
 test("a script reached through a symlinked NAME answers too, not just a symlinked directory", () => {
 	// The other spelling of the same defect, and the one the table above does not
 	// cover: `ln -s scripts/check-runtime-deps.mjs /tmp/alias.mjs && node
@@ -910,6 +999,8 @@ function workflowInvokedScripts() {
  * asserted below to be exactly that, so this list cannot become a place to hide.
  */
 const NO_ENTRY_POINT_COMPARISON = {
+	"browser-focus-stability-proof.mjs":
+		"`focus-stability-diagnostic.yml`; runs unconditionally at import and requires --out; no entry-point comparison (native mode separately fenced to explicitly armed disposable CI)",
 	"check-edit-diffs.mjs":
 		"`pnpm check-edit-diffs`; runs at import, and exits on its own result",
 	"npx-smoke-test.mjs": "`ci.yml`'s npx smoke test; runs at import",

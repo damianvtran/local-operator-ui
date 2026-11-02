@@ -137,5 +137,6 @@
 	"ui.common.errors.agent_publish": "Не удалось опубликовать агента.",
 	"ui.common.errors.conversation_messages_fetch": "Не удалось получить сообщения разговора",
 	"ui.common.errors.conversation_messages_fetch_unknown": "При получении сообщений разговора произошла неизвестная ошибка",
-	"ui.common.errors.session_id_required": "Для чтения памяти кода требуется ID сессии."
+	"ui.common.errors.session_id_required": "Для чтения памяти кода требуется ID сессии.",
+	"ui.common.errors.desktop_transport_failed": "Бэкенд не смог выполнить этот запрос. Проверьте подключение к нему и повторите попытку."
 }
