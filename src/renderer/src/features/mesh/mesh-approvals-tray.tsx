@@ -91,6 +91,9 @@ import {
 	approvalWhereLabel,
 	canApproveApproval,
 	canDenyApproval,
+	canRetryCredentialApply,
+	credentialConsequences,
+	credentialRecipientLabel,
 	isWaitingApproval,
 } from "./mesh-approvals";
 
@@ -211,9 +214,17 @@ export interface MeshApprovalsTrayProps {
 		approvalId: string | null;
 		code: string;
 		sentence: string;
+		/** An apply-phase refusal after which the same signed card can still succeed. */
+		retryable?: boolean;
 	} | null;
 	onDecide: (approvalId: string, decision: ApprovalDecision) => void;
 	onRetry: () => void;
+	/**
+	 * `features.credential_approvals >= 1`: the backend serves the typed
+	 * credential routes. Absent or false, a credential card keeps its Deny-only
+	 * shape - there is no route here that could carry its Approve.
+	 */
+	credentialApprovals?: boolean;
 	/** The read's own stamp, for the expiry lines (the page owns the clock reading). */
 	nowSeconds: number;
 	/**
@@ -234,6 +245,7 @@ export const MeshApprovalsTray: FC<MeshApprovalsTrayProps> = ({
 	onRetry,
 	nowSeconds,
 	networkNames,
+	credentialApprovals = false,
 }) => {
 	useI18nLocale();
 	/*
@@ -407,6 +419,7 @@ export const MeshApprovalsTray: FC<MeshApprovalsTrayProps> = ({
 							onDecide={decide}
 							nowSeconds={nowSeconds}
 							networkNames={networkNames}
+							credentialApprovals={credentialApprovals}
 						/>
 					))}
 				</ul>
@@ -496,6 +509,7 @@ export const MeshApprovalsTray: FC<MeshApprovalsTrayProps> = ({
 									onDecide={decide}
 									nowSeconds={nowSeconds}
 									networkNames={networkNames}
+									credentialApprovals={credentialApprovals}
 								/>
 							))}
 						</ul>
@@ -514,12 +528,23 @@ const MeshApprovalCard: FC<{
 	/** Whether ANY decision is in flight: the gate the surface owns (see the tray). */
 	busy: boolean;
 	/** This record's refusal, or `null` when the last one was about another record. */
-	refusal: { code: string; sentence: string } | null;
+	refusal: { code: string; sentence: string; retryable?: boolean } | null;
 	onDecide: (approvalId: string, decision: ApprovalDecision) => void;
 	nowSeconds: number;
 	/** Id -> name, for the summary's join clause (UX round 1, U1); absent until the mesh read lands. */
 	networkNames?: ReadonlyMap<string, string>;
-}> = ({ row, pending, busy, refusal, onDecide, nowSeconds, networkNames }) => {
+	/** `features.credential_approvals`: see the tray's own prop. */
+	credentialApprovals: boolean;
+}> = ({
+	row,
+	pending,
+	busy,
+	refusal,
+	onDecide,
+	nowSeconds,
+	networkNames,
+	credentialApprovals,
+}) => {
 	useI18nLocale();
 	const waiting = isWaitingApproval(row.state);
 	const head = approvalHead(row);
@@ -534,8 +559,41 @@ const MeshApprovalCard: FC<{
 	// Generic signing/install hints are false for opaque typed intent. The
 	// server's full disclosure is the only description of what would be signed.
 	const hints = restricted ? [] : stateHints(row.state);
-	const canApprove = canApproveApproval(row);
+	const capabilities = { credentialApprovals };
+	const canApprove = canApproveApproval(row, capabilities);
 	const canDeny = canDenyApproval(row.state);
+	const canRetryApply = canRetryCredentialApply(
+		row,
+		capabilities,
+		refusal?.retryable === true,
+	);
+	/*
+	 * A TYPED CARD speaks from the structured disclosure: the head line names the
+	 * credential and the device, and Details lists the consequences in words. The
+	 * backend's CLI-shaped `details` lines stay the fallback for a row without one.
+	 */
+	const typed = credentialApprovals ? row.typed : undefined;
+	const consequences = typed ? credentialConsequences(row) : [];
+	const recipient = typed?.disclosure ? credentialRecipientLabel(row) : null;
+	/*
+	 * THE FILE-KEY DISCLOSURE (backend `typed_approval.unproven_human`, operator
+	 * decision a-b492: "the UI MUST render this disclosure when true"). On a
+	 * file-only operator key any program running as the operator can sign, so an
+	 * approval from here cannot prove a person pressed it. Shown wherever the card
+	 * offers Approve, in the card's quiet meta register - a fact to know, not an
+	 * alarm, because the operator already accepted that residual.
+	 */
+	const fileKeyNote = canApprove && typed?.unprovenHuman === true;
+	/*
+	 * WHY THIS CARD CANNOT BE APPROVED HERE, in the order of who knows best: the
+	 * typed block's own refusal sentence (the policy that said no, worded by the
+	 * backend that applied it), then the legacy `approve_remedy`, then the generic
+	 * line. A card that CAN be approved here shows none of them.
+	 */
+	const restrictedRemedy =
+		(typed?.refusalMessage ?? "") ||
+		row.approveRemedy ||
+		t("ui.mesh.approval.cli_review");
 	return (
 		<li
 			className="flex flex-col gap-2 py-3 first:pt-0 last:pb-0"
@@ -620,12 +678,35 @@ const MeshApprovalCard: FC<{
 			{/* Optional false is a generic restriction, not just an inheritance
 			    special case. Commands are authenticated backend TEXT, never actions.
 			    Only pending cards repeat the approval remedy: approved is not applied. */}
-			{waiting && restricted && (
+			{waiting && restricted && !canApprove && (
 				<p
 					className="text-meta text-ink-muted whitespace-pre-wrap [overflow-wrap:anywhere]"
 					data-tour-tag="mesh-approval-cli-remedy"
 				>
-					{row.approveRemedy || t("ui.mesh.approval.cli_review")}
+					{restrictedRemedy}
+				</p>
+			)}
+			{fileKeyNote && (
+				<p
+					className="text-meta text-ink-dim"
+					data-tour-tag="mesh-approval-file-key"
+				>
+					{t("ui.mesh.approval.file_key_disclosure")}
+				</p>
+			)}
+			{/*
+			 * A FAILED TYPED CARD says why it stopped and what happens next, from its
+			 * durable receipt (`typed_approval.apply_outcome`), so the reason survives a
+			 * reload. The backend's own two sentences, verbatim.
+			 */}
+			{typed?.applyOutcome && row.state === "failed" && (
+				<p
+					className="text-meta text-ink-muted"
+					data-tour-tag="mesh-approval-apply-outcome"
+				>
+					{[typed.applyOutcome.reason, typed.applyOutcome.remedy]
+						.filter(Boolean)
+						.join(" ")}
 				</p>
 			)}
 			{row.kind === "credential" && row.state === "approved" && (
@@ -633,14 +714,30 @@ const MeshApprovalCard: FC<{
 					className="text-meta text-ink-muted"
 					data-tour-tag="mesh-approval-apply-hint"
 				>
-					{row.details?.length
-						? t("ui.mesh.approval.approved_apply_hint")
-						: t("ui.mesh.approval.approved_details_missing")}
+					{typed
+						? t("ui.mesh.approval.approved_not_applied")
+						: row.details?.length
+							? t("ui.mesh.approval.approved_apply_hint")
+							: t("ui.mesh.approval.approved_details_missing")}
 				</p>
 			)}
 
-			{(canApprove || canDeny) && (
+			{(canApprove || canDeny || canRetryApply) && (
 				<div className="flex flex-wrap items-center gap-2">
+					{canRetryApply && (
+						/* Only on a retryable outcome: a permanent refusal retried is a loop
+						   a person cannot leave (backend `approval_copy`, UX U2). It sends the
+						   SAME reviewed digests to `apply-credential`; nothing is signed. */
+						<Button
+							variant="primary"
+							size="sm"
+							disabled={busy}
+							onClick={() => onDecide(row.approvalId, "apply")}
+							data-tour-tag="mesh-approval-retry-apply"
+						>
+							{t("ui.mesh.approval.try_again")}
+						</Button>
+					)}
 					{canApprove && (
 						<Button
 							variant="primary"
@@ -675,7 +772,9 @@ const MeshApprovalCard: FC<{
 								? t(
 										"ui.mesh.mesh_approvals_tray.waiting_for_the_signing_prompt",
 									)
-								: t("ui.mesh.mesh_approvals_tray.writing_the_decision")}
+								: pending.decision === "apply"
+									? t("ui.mesh.approval.applying")
+									: t("ui.mesh.mesh_approvals_tray.writing_the_decision")}
 						</span>
 					)}
 				</div>
@@ -696,7 +795,26 @@ const MeshApprovalCard: FC<{
 					</span>
 				}
 			>
+				{consequences.length > 0 && (
+					<ul
+						className="flex flex-col gap-1.5 text-meta text-ink-muted [overflow-wrap:anywhere]"
+						data-tour-tag="mesh-approval-credential-consequences"
+					>
+						{consequences.map((line) => (
+							<li key={line}>{line}</li>
+						))}
+					</ul>
+				)}
+				{recipient && typed?.disclosure?.recipient.keyFingerprint && (
+					<p className="text-meta text-ink-dim [overflow-wrap:anywhere]">
+						{t("ui.mesh.approval.recipient_key", { device: recipient })}{" "}
+						<span className="font-mono">
+							{typed.disclosure.recipient.keyFingerprint}
+						</span>
+					</p>
+				)}
 				{opaque &&
+					consequences.length === 0 &&
 					(row.details?.length ? (
 						<ul
 							className="flex flex-col gap-1.5 text-meta text-ink-muted [overflow-wrap:anywhere]"

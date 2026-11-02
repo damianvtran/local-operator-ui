@@ -1219,6 +1219,101 @@
 		"tone": "Factual and restrained; quiet, secondary to the card's state",
 		"note": "The countdown beside a still-decidable credential request. Placeholder: `remaining` is an ALREADY-LOCALIZED string produced by the meshes' own `approvalRemainingLabel`, which picks one of the sibling `expires_*` messages (under a minute / minutes / hours) - it is never a raw number here. Do not reformat it, pluralize it, add units to it, or wrap it in `{remaining, number}`: that work is already done by those sibling keys, and doing it again would double the unit or the plural. Length: a compact line (`text-meta`, dim) in the card header, around the English footprint. Keep the trailing colon of the English label; the duration reads after it. Note the sibling `expires_*` keys carry the plural forms, so a locale's plural categories belong to THEM, not to this label."
 	},
+	"ui.mesh.approval.head_finite_share": {
+		"role": "heading — mesh approval card, credential share request",
+		"tone": "Plain and factual; calm, not alarming",
+		"note": "The card's one-line ask. `credential` is a product name (GitHub) or a raw key id; `device` is a device name. The operator is giving another of THEIR devices use of a login stored here. Keep it short (one line at app width); do not turn it into a question."
+	},
+	"ui.mesh.approval.head_inheritance": {
+		"role": "heading — mesh approval card, standing credential inheritance request",
+		"tone": "Plain and factual; calm, not alarming",
+		"note": "The card's one-line ask. `device` borrows the operator's `provider` account `account` (an account id, kept verbatim). The login is used through this device, not copied. Keep it one line where the language allows."
+	},
+	"ui.mesh.approval.scope_device": {
+		"role": "consequence — mesh approval card details",
+		"tone": "Plain and factual; calm, not alarming",
+		"note": "Who may use the shared login: every session on that device (device scope). `device` is a device name."
+	},
+	"ui.mesh.approval.scope_session": {
+		"role": "consequence — mesh approval card details",
+		"tone": "Plain and factual; calm, not alarming",
+		"note": "Who may use the shared login: only the one session that requested it, on that device (session scope). `device` is a device name."
+	},
+	"ui.mesh.approval.org_limited": {
+		"role": "consequence — mesh approval card details",
+		"tone": "Plain and factual; calm, not alarming",
+		"note": "The permission is limited to one organization of the account. `org` is an id, kept verbatim."
+	},
+	"ui.mesh.approval.org_any": {
+		"role": "consequence — mesh approval card details",
+		"tone": "Plain and factual; calm, not alarming",
+		"note": "The permission is NOT limited to an organization: any organization on the account. Must not read as narrower than that."
+	},
+	"ui.mesh.approval.not_copied": {
+		"role": "consequence — mesh approval card details",
+		"tone": "Plain and factual; calm, not alarming",
+		"note": "The credential stays on this machine; the other device borrows it. Must not read as the login being sent."
+	},
+	"ui.mesh.approval.until_revoked": {
+		"role": "consequence — mesh approval card details",
+		"tone": "Plain and factual; calm, not alarming",
+		"note": "How long the permission lasts: no automatic expiry, it ends when the operator revokes it. Distinct from the card's request window (how long the card can be answered)."
+	},
+	"ui.mesh.approval.future_logins_covered": {
+		"role": "consequence — mesh approval card details",
+		"tone": "Plain and factual; calm, not alarming",
+		"note": "A later sign-in to the SAME account is covered without a new approval. Plain statement, not a warning."
+	},
+	"ui.mesh.approval.future_logins_not_shared": {
+		"role": "consequence — mesh approval card details",
+		"tone": "Plain and factual; calm, not alarming",
+		"note": "Only the existing login is shared; later sign-ins are not."
+	},
+	"ui.mesh.approval.installs_something": {
+		"role": "consequence — mesh approval card details",
+		"tone": "Plain and factual; calm, not alarming",
+		"note": "Fallback shown only when the server did not state that nothing is installed or joined. Must stay cautious: it may."
+	},
+	"ui.mesh.approval.installs_nothing": {
+		"role": "consequence — mesh approval card details",
+		"tone": "Plain and factual; calm, not alarming",
+		"note": "Approving installs no software and joins no network."
+	},
+	"ui.mesh.approval.needs_broker": {
+		"role": "consequence — mesh approval card details",
+		"tone": "Plain and factual; calm, not alarming",
+		"note": "The other device also needs the separate 'borrow logins' permission; this approval does not grant it. `device` is a device name."
+	},
+	"ui.mesh.approval.undoes_withdrawals": {
+		"role": "consequence — mesh approval card details",
+		"tone": "Plain and factual; calm, not alarming",
+		"note": "This share restores access the operator previously withdrew; `count` is how many earlier withdrawals it clears. Preserve the plural arms and the number format."
+	},
+	"ui.mesh.approval.recipient_key": {
+		"role": "label — mesh approval card details, before a key fingerprint",
+		"tone": "Plain and factual; calm, not alarming",
+		"note": "Label before the other device's key fingerprint (monospace, follows on the same line). `device` is a device name. Keep the trailing colon."
+	},
+	"ui.mesh.approval.file_key_disclosure": {
+		"role": "disclosure — mesh approval card, beside Approve",
+		"tone": "Plain and factual; calm, not alarming",
+		"note": "REQUIRED disclosure on a machine whose operator key is a file, not a hardware key: any program running as the user could sign, so the approval cannot prove a person made it. Quiet register (dim meta text); state the fact without alarm. Keep 'Touch ID' as the product name."
+	},
+	"ui.mesh.approval.approved_not_applied": {
+		"role": "status text — mesh approval card, signed but not applied",
+		"tone": "Plain and factual; calm, not alarming",
+		"note": "The approval was signed but the change has not taken effect yet. Must not claim access works."
+	},
+	"ui.mesh.approval.try_again": {
+		"role": "button — mesh approval card",
+		"tone": "Plain and factual; calm, not alarming",
+		"note": "Re-applies an already-approved card. Short button label."
+	},
+	"ui.mesh.approval.applying": {
+		"role": "status text — mesh approval card, beside the buttons while the apply runs",
+		"tone": "Plain and factual; calm, not alarming",
+		"note": "In-progress cue; keep the ellipsis."
+	},
 	"ui.mesh.mesh_reach.handshake_refused_hint": {
 		"note": "The next check after the handshake-refused headline: WHO should look at what. It names the two causes the protocol actually refuses for (removed membership, epoch disagreement) but says 'check', never 'this is why' - the wire closes the handshake with no reason, so the app may not assert a cause. Keep it one sentence; it sits under the headline in the device panel only, where there is room.",
 		"role": "recovery hint — device panel, under the handshake-refused headline",

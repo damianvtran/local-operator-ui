@@ -1828,6 +1828,490 @@ test("credential states preserve requested-only counts and ordinary Deny transit
 	);
 });
 
+/* ------------------------------------------------- typed credential approval */
+
+/*
+ * THE TYPED CREDENTIAL ROW, as `desktop_approval.row_fields` serves it for a
+ * finite share (`device_onboard` on disk, `what` = the op key plus the anchor).
+ * Synthetic ids and digests only: nothing here names a real approval.
+ */
+const REQUEST_DIGEST = `sha256:${"a1".repeat(32)}`;
+const DISCLOSURE_DIGEST = `sha256:${"b2".repeat(32)}`;
+const finiteShareCapture = (fields = {}, typed = {}) =>
+	approvalCapture({
+		approval_id: "ap_7f3k9m2q8r5s",
+		what: {
+			credential_finite_share: { opaque: "server-validated payload" },
+			anchor: { key_id: "op_fixture" },
+		},
+		device: { device_id: "d_recipient", name: "studio-mini" },
+		summary: "Restore sharing of 'github' with studio-mini (device scope).",
+		details: ["CLI-shaped line"],
+		can_approve_here: false,
+		approve_remedy:
+			"This permission can't be approved in this version of the desktop app.",
+		typed_approval: {
+			action: "approve-credential",
+			operation: "credential_finite_share",
+			request_digest: REQUEST_DIGEST,
+			disclosure_digest: DISCLOSURE_DIGEST,
+			assurance: "file_only",
+			unproven_human: true,
+			signable_here: true,
+			disclosure: {
+				version: 1,
+				operation: "credential_finite_share",
+				approval_id: "ap_7f3k9m2q8r5s",
+				credential_key: "github",
+				scope: "device",
+				owner_device: "d_owner",
+				network_id: "n_1",
+				recipient: {
+					device_id: "d_recipient",
+					name: "studio-mini",
+					key_fingerprint: "SHA256:fixturefp",
+				},
+				signing_principal: "op_fixture",
+				policy_revision: 3,
+				retained_fence: null,
+				withdrawals: [
+					{ selector: "owner-revoke:1", revision: 2, approval_ref: "" },
+				],
+				request_window: { created_at: 1, expires_at: 1_800_000_000 },
+				grant_lifetime: { kind: "until_revoked" },
+				future_logins: false,
+				installs_or_joins: false,
+			},
+			...typed,
+		},
+		...fields,
+	});
+const ON = { credentialApprovals: true };
+
+test("a finite-share card is a credential row, headed in plain words from its disclosure", () => {
+	const [row] = mesh.approvalRows([finiteShareCapture()]);
+	assert.equal(
+		row.kind,
+		"credential",
+		"`credential_finite_share` must not be classified as a device onboarding",
+	);
+	assert.equal(
+		mesh.approvalHead(row),
+		"Share your GitHub login with studio-mini",
+	);
+	assert.equal(
+		mesh.approvalSummary(row),
+		"Share your GitHub login with studio-mini",
+	);
+	assert.doesNotMatch(mesh.approvalHead(row), /Onboard/);
+	assert.deepEqual(mesh.approvalScopeEntries(row), []);
+	assert.deepEqual(mesh.credentialConsequences(row), [
+		"Any session on studio-mini can use it.",
+		"It lasts until you revoke it.",
+		"Future sign-ins are not shared.",
+		"Nothing is installed or joined.",
+		"Undoes 1 earlier withdrawal of this login for studio-mini.",
+	]);
+	assert.equal(row.typed.unprovenHuman, true);
+	// The typed action alone also classifies, whatever `what` carries.
+	const [byAction] = mesh.approvalRows([
+		finiteShareCapture({ what: { anchor: { key_id: "op_fixture" } } }),
+	]);
+	assert.equal(byAction.kind, "credential");
+	// A finite share with no typed block (an older backend) keeps the legacy shape.
+	const [legacy] = mesh.approvalRows([
+		finiteShareCapture({ typed_approval: undefined }),
+	]);
+	assert.equal(legacy.kind, "credential");
+	assert.equal(legacy.typed, undefined);
+	assert.equal(mesh.approvalHead(legacy), legacy.summary);
+	assert.equal(mesh.canApproveApproval(legacy, ON), false);
+});
+
+test("typed Approve needs the feature, `requested`, `signable_here` and well-formed digests", () => {
+	const [row] = mesh.approvalRows([finiteShareCapture()]);
+	assert.equal(mesh.canApproveApproval(row, ON), true);
+	assert.equal(
+		mesh.canApproveApproval(row),
+		false,
+		"no `credential_approvals` feature: no Approve",
+	);
+	assert.equal(
+		mesh.canApproveApproval(row, { credentialApprovals: false }),
+		false,
+	);
+	for (const state of ["approved", "connecting", "failed", "denied"]) {
+		const [settled] = mesh.approvalRows([finiteShareCapture({ state })]);
+		assert.equal(mesh.canApproveApproval(settled, ON), false, state);
+	}
+	for (const signable of [false, undefined, "true", 1]) {
+		const [refused] = mesh.approvalRows([
+			finiteShareCapture({}, { signable_here: signable }),
+		]);
+		assert.equal(mesh.canApproveApproval(refused, ON), false, `${signable}`);
+	}
+	for (const typed of [
+		{ request_digest: "sha256:abc" },
+		{ request_digest: ` ${REQUEST_DIGEST}` },
+		{ request_digest: REQUEST_DIGEST.toUpperCase() },
+		{ disclosure_digest: "" },
+		{ disclosure_digest: undefined },
+		{ operation: "credential_unknown" },
+		{ action: "approve" },
+		{ disclosure: undefined },
+		{ disclosure: { operation: "credential_inheritance" } },
+	]) {
+		const [bad] = mesh.approvalRows([finiteShareCapture({}, typed)]);
+		assert.equal(
+			mesh.canApproveApproval(bad, ON),
+			false,
+			JSON.stringify(typed),
+		);
+		assert.equal(
+			mesh.approvalDecisionRequest(bad, "approve", ON),
+			null,
+			"no request is built for a block that cannot be echoed exactly",
+		);
+	}
+	// `can_approve_here` stays false on the wire; this renderer does not read it
+	// for a credential row in either direction.
+	const [flagged] = mesh.approvalRows([
+		finiteShareCapture({ can_approve_here: true }, { signable_here: false }),
+	]);
+	assert.equal(mesh.canApproveApproval(flagged, ON), false);
+});
+
+test("Approve echoes the row's operation and digests byte for byte, never the bodiless route", () => {
+	const raw = finiteShareCapture();
+	const [row] = mesh.approvalRows([raw]);
+	const request = mesh.approvalDecisionRequest(row, "approve", ON);
+	assert.deepEqual(request, {
+		op: "approvals.approveCredential",
+		approvalId: "ap_7f3k9m2q8r5s",
+		operation: "credential_finite_share",
+		requestDigest: raw.typed_approval.request_digest,
+		disclosureDigest: raw.typed_approval.disclosure_digest,
+	});
+	assert.equal(
+		contractRuntime.desktopRequestSchema.safeParse(request).success,
+		true,
+	);
+	const endpoint = contractRuntime.desktopEndpoint(request);
+	assert.equal(endpoint.method, "POST");
+	assert.equal(
+		endpoint.path,
+		"/v1/desktop/approvals/ap_7f3k9m2q8r5s/approve-credential",
+	);
+	// Exactly the backend model's three fields (extra=forbid), values unchanged.
+	assert.equal(
+		JSON.stringify(endpoint.body),
+		JSON.stringify({
+			operation: "credential_finite_share",
+			request_digest: REQUEST_DIGEST,
+			disclosure_digest: DISCLOSURE_DIGEST,
+		}),
+	);
+	// The bodiless `/approve` is unreachable for any credential row, any flag.
+	for (const capabilities of [ON, {}, { credentialApprovals: false }])
+		for (const fields of [
+			{},
+			{ can_approve_here: true },
+			{ typed_approval: undefined, can_approve_here: true },
+		]) {
+			const [credential] = mesh.approvalRows([finiteShareCapture(fields)]);
+			const built = mesh.approvalDecisionRequest(
+				credential,
+				"approve",
+				capabilities,
+			);
+			assert.notEqual(built?.op, "approvals.approve");
+		}
+	// Deny keeps its own bodiless route, for every kind.
+	assert.deepEqual(mesh.approvalDecisionRequest(row, "deny", ON), {
+		op: "approvals.deny",
+		approvalId: "ap_7f3k9m2q8r5s",
+	});
+	// The legacy device card is unchanged.
+	const [device] = mesh.approvalRows([approvalCapture()]);
+	assert.deepEqual(mesh.approvalDecisionRequest(device, "approve"), {
+		op: "approvals.approve",
+		approvalId: device.approvalId,
+	});
+	assert.equal(mesh.approvalDecisionRequest(device, "apply", ON), null);
+	// The schema refuses a synthesised or malformed echo by name.
+	for (const bad of [
+		{ ...request, requestDigest: "sha256:short" },
+		{ ...request, operation: "credential_other" },
+		{ ...request, extra: 1 },
+	])
+		assert.equal(
+			contractRuntime.desktopRequestSchema.safeParse(bad).success,
+			false,
+		);
+	// It waits on the same presence-gated signer as the generic approve.
+	assert.equal(
+		contractRuntime.desktopRequestDeadlineMs("approvals.approveCredential"),
+		195_000,
+	);
+	assert.equal(
+		contractRuntime.desktopRequestDeadlineMs("approvals.applyCredential"),
+		20_000,
+		"a retry never signs - it keeps the control budget",
+	);
+});
+
+test("Try again re-sends the same body to apply-credential, only on a retryable outcome", () => {
+	const retryable = {
+		code: "busy",
+		retryable: true,
+		reason: "Another change was in progress.",
+		remedy:
+			"Nothing was changed. Apply the same approved card again in a moment.",
+	};
+	const [failed] = mesh.approvalRows([
+		finiteShareCapture(
+			{ state: "failed" },
+			{ signable_here: false, apply_outcome: retryable },
+		),
+	]);
+	assert.equal(mesh.canRetryCredentialApply(failed, ON), true);
+	assert.equal(mesh.canRetryCredentialApply(failed), false, "feature-gated");
+	const request = mesh.approvalDecisionRequest(failed, "apply", ON);
+	assert.deepEqual(request, {
+		op: "approvals.applyCredential",
+		approvalId: "ap_7f3k9m2q8r5s",
+		operation: "credential_finite_share",
+		requestDigest: REQUEST_DIGEST,
+		disclosureDigest: DISCLOSURE_DIGEST,
+	});
+	const endpoint = contractRuntime.desktopEndpoint(request);
+	assert.equal(
+		endpoint.path,
+		"/v1/desktop/approvals/ap_7f3k9m2q8r5s/apply-credential",
+	);
+	assert.deepEqual(endpoint.body, {
+		operation: "credential_finite_share",
+		request_digest: REQUEST_DIGEST,
+		disclosure_digest: DISCLOSURE_DIGEST,
+	});
+	// A permanent outcome offers no retry: it would be a loop with no exit.
+	const [permanent] = mesh.approvalRows([
+		finiteShareCapture(
+			{ state: "failed" },
+			{ apply_outcome: { ...retryable, retryable: false } },
+		),
+	]);
+	assert.equal(mesh.canRetryCredentialApply(permanent, ON), false);
+	assert.equal(mesh.approvalDecisionRequest(permanent, "apply", ON), null);
+	// An `approved` card whose approve answer said "retryable" (no receipt yet).
+	const [approved] = mesh.approvalRows([
+		finiteShareCapture({ state: "approved" }, { signable_here: false }),
+	]);
+	assert.equal(mesh.canRetryCredentialApply(approved, ON), false);
+	assert.equal(mesh.canRetryCredentialApply(approved, ON, true), true);
+	assert.equal(
+		mesh.approvalDecisionRequest(approved, "apply", ON, true)?.op,
+		"approvals.applyCredential",
+	);
+	// Never on a waiting card: nothing is signed yet.
+	const [waiting] = mesh.approvalRows([finiteShareCapture()]);
+	assert.equal(mesh.canRetryCredentialApply(waiting, ON, true), false);
+});
+
+test("apply-phase outcomes become the card's refusal, with their own words and retry signal", () => {
+	// The approve answer that SIGNED but did not apply (HTTP 200, `applied.ok: false`).
+	const unapplied = mesh.unappliedPhase({
+		approval_id: "ap_7f3k9m2q8r5s",
+		signed: { ok: true, key_id: "op_fixture" },
+		applied: {
+			ok: false,
+			message: "CLI-shaped text",
+			code: "busy",
+			retryable: true,
+			reason: "Another change was in progress.",
+			remedy: "Apply the same approved card again in a moment.",
+		},
+		state: "approved",
+	});
+	assert.deepEqual(mesh.approvalRefusal(unapplied), {
+		code: "busy",
+		sentence:
+			"Another change was in progress. Apply the same approved card again in a moment.",
+		retryable: true,
+	});
+	assert.equal(
+		mesh.unappliedPhase({ applied: { ok: true, code: "" } }),
+		null,
+		"a clean apply is not a refusal",
+	);
+	assert.equal(mesh.unappliedPhase(null), null);
+	// The retry's 409 carries `apply_outcome` on the refusal body.
+	assert.deepEqual(
+		mesh.approvalRefusal({
+			code: "consent_conflict",
+			message: "CLI-shaped",
+			detail: {
+				code: "consent_conflict",
+				message: "CLI-shaped",
+				apply_outcome: {
+					code: "consent_conflict",
+					retryable: false,
+					reason: "Who may use this credential changed.",
+					remedy: "Ask for a new approval.",
+				},
+			},
+		}),
+		{
+			code: "consent_conflict",
+			sentence: "Who may use this credential changed. Ask for a new approval.",
+			retryable: false,
+		},
+	);
+	// A pre-apply refusal (digest/state) is verbatim, and never retryable.
+	assert.deepEqual(
+		mesh.approvalRefusal({
+			code: "credential_disclosure_changed",
+			message: "What this card discloses changed since it was reviewed.",
+		}),
+		{
+			code: "credential_disclosure_changed",
+			sentence: "What this card discloses changed since it was reviewed.",
+			retryable: false,
+		},
+	);
+});
+
+test("the tray and the page route every credential decision through the typed builder", () => {
+	const page = readFileSync(
+		"src/renderer/src/features/mesh/mesh-page.tsx",
+		"utf8",
+	);
+	assert.match(
+		page,
+		/desktopFeatureState\(capabilities\.data, "credential_approvals"\) ===\s*"enabled"/,
+		"the typed Approve is gated on its own feature key",
+	);
+	assert.match(
+		page,
+		/approvalDecisionRequest\(\s*row,\s*decision,\s*\{ credentialApprovals \}/,
+		"the page builds the request from the row the card drew",
+	);
+	assert.match(
+		page,
+		/if \(request\)\s*decideApproval\.mutate\(\{ approvalId, decision, request \}\)/,
+	);
+	const model = readFileSync(
+		"src/renderer/src/features/mesh/mesh-approvals.ts",
+		"utf8",
+	);
+	assert.match(
+		model,
+		/const answer = await desktopResult<unknown>\(ask\.request\);/,
+		"the mutation sends the built request, not one of its own",
+	);
+	assert.doesNotMatch(
+		model,
+		/op: "approvals\.approve", approvalId: ask\.approvalId/,
+		"the old per-decision request literal is gone",
+	);
+	const tray = readFileSync(
+		"src/renderer/src/features/mesh/mesh-approvals-tray.tsx",
+		"utf8",
+	);
+	assert.match(tray, /canApproveApproval\(row, capabilities\)/);
+	assert.match(
+		tray,
+		/const fileKeyNote = canApprove && typed\?\.unprovenHuman === true;/,
+		"the file-key disclosure renders wherever a file-key Approve does",
+	);
+	assert.match(tray, /t\("ui\.mesh\.approval\.file_key_disclosure"\)/);
+	assert.match(tray, /onDecide\(row\.approvalId, "apply"\)/);
+	assert.match(
+		tray,
+		/\(typed\?\.refusalMessage \?\? ""\) \|\|\s*row\.approveRemedy \|\|/,
+		"the typed refusal sentence is preferred over the CLI remedy",
+	);
+	const en = JSON.parse(
+		readFileSync("src/i18n/catalogues/en/ui.mesh.json", "utf8"),
+	);
+	assert.match(
+		en["ui.mesh.approval.file_key_disclosure"],
+		/key file.*can't prove a person/,
+	);
+});
+
+test("a typed card that cannot be signed here says why in the backend's words", () => {
+	const [row] = mesh.approvalRows([
+		finiteShareCapture(
+			{},
+			{
+				signable_here: false,
+				refusal: "credential_assurance_refused",
+				refusal_message: "This machine's key cannot sign this permission.",
+			},
+		),
+	]);
+	assert.equal(mesh.canApproveApproval(row, ON), false);
+	assert.equal(
+		row.typed.refusalMessage,
+		"This machine's key cannot sign this permission.",
+	);
+	assert.equal(mesh.canDenyApproval(row.state), true, "Deny stays available");
+});
+
+test("an inheritance card is headed from its disclosure and lists what it does not grant", () => {
+	const [row] = mesh.approvalRows([
+		approvalCapture({
+			approval_id: "ap_7f3k9m2q8r6t",
+			what: {
+				credential_inheritance: { opaque: "server-validated" },
+				anchor: { key_id: "op_fixture" },
+			},
+			can_approve_here: false,
+			typed_approval: {
+				action: "approve-credential",
+				operation: "credential_inheritance",
+				request_digest: REQUEST_DIGEST,
+				disclosure_digest: DISCLOSURE_DIGEST,
+				assurance: "presence",
+				unproven_human: false,
+				signable_here: true,
+				disclosure: {
+					operation: "credential_inheritance",
+					provider: "github",
+					account: "octo",
+					org: "",
+					recipient: { device_id: "d_worker", name: "worker-1" },
+					grant_lifetime: { kind: "until_revoked" },
+					future_logins: true,
+					copies_credential: false,
+					requires_capability: { name: "broker_credential" },
+					installs_or_joins: false,
+				},
+			},
+		}),
+	]);
+	assert.equal(row.kind, "credential");
+	assert.equal(
+		mesh.approvalHead(row),
+		"Let worker-1 use your GitHub account octo",
+	);
+	assert.deepEqual(mesh.credentialConsequences(row), [
+		"For any organization on this account.",
+		"Your login is not copied to worker-1.",
+		"It lasts until you revoke it.",
+		"Later sign-ins to this account are covered without asking again.",
+		"Nothing is installed or joined.",
+		"worker-1 also needs permission to borrow logins, which this does not grant.",
+	]);
+	assert.equal(mesh.canApproveApproval(row, ON), true);
+	assert.equal(row.typed.unprovenHuman, false);
+	assert.equal(
+		mesh.approvalDecisionRequest(row, "approve", ON)?.operation,
+		"credential_inheritance",
+	);
+});
+
 test("the wait count names `requested` alone; the store's open set is unchanged", () => {
 	const {
 		approvalRows,
@@ -2127,18 +2611,21 @@ test("a refused decision carries the authored sentence and its machine code, or 
 		{
 			code: "approval_signing_unavailable",
 			sentence: "no operator key here",
+			retryable: false,
 		},
 	);
 	// The transport's own synthesised deadline sentence is a message without a code.
 	assert.deepEqual(approvalRefusal({ message: "may or may not have landed" }), {
 		code: "approval_refused",
 		sentence: "may or may not have landed",
+		retryable: false,
 	});
 	// A failure that carried neither states what the surface knows rather than
 	// inventing a cause (the `approvalErrorMessage` fallback's own rule).
 	assert.deepEqual(approvalRefusal(null), {
 		code: "approval_refused",
 		sentence: "The decision could not be answered.",
+		retryable: false,
 	});
 });
 
