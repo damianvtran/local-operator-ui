@@ -521,6 +521,22 @@ async function innerViewport(
 	return sizeFromValue(answer?.result?.value);
 }
 
+/** Whether a failed `Runtime.evaluate` is a state these waits can poll through.
+ *
+ * TWO FAILURES ARE THE ANSWER, NOT A "NOT YET": a destroyed view is refused
+ * `tab_closed` by `send` before a command leaves, and a view DevTools has taken
+ * answers `debugger_conflict` (`cdp.ts` `sendTo`). Neither can heal inside a
+ * two-second poll, so retrying either only hides the real cause behind the
+ * wait's own `not_applied` — a `record_size` refusal for a tab that is gone.
+ *
+ * EVERYTHING ELSE STAYS RETRYABLE, and `deadline`'s own stall (`internal`) is
+ * the case that must stay: a promise that has not settled is exactly what the
+ * window exists for. */
+function isWaitableEvaluateFailure(error: unknown): boolean {
+	if (!(error instanceof BrowserHostError)) return true;
+	return error.code !== "tab_closed" && error.code !== "debugger_conflict";
+}
+
 /** Wait until the emulated viewport is the one that was asked for, or refuse.
  * Polling reads the page's own layout, not a value this process wrote: the
  * override can be accepted while the renderer has not laid out yet.
@@ -545,8 +561,10 @@ async function waitForViewport(
 		let measured: RecordSize | null = null;
 		try {
 			measured = await innerViewport(cdp, contents);
-		} catch {
-			// See the note above: the poll owns this window, so it retries.
+		} catch (error) {
+			// See the note above: the poll owns this window, so it retries what a
+			// later poll can answer. A dead tab or a DevTools hand-over cannot be.
+			if (!isWaitableEvaluateFailure(error)) throw error;
 			measured = null;
 		}
 		if (
@@ -596,6 +614,12 @@ const FRAME_SETTLE_EXPRESSION =
  * frame carried the requested size in 8 of 8 runs at each of 3840x2160,
  * 2160x3840 and 1920x1080, against 3 of 3 stale at 2160x3840 with no wait.
  *
+ * THIS WAIT ONLY RUNS ON A HIDDEN VIEW BECAUSE `attach` TURNS ON FOCUS
+ * EMULATION: neither callback arrives on a view the app never raises until
+ * `Emulation.setFocusEmulationEnabled` (`cdp.ts` `attach`) has made the page
+ * believe it is focused; the same evaluate never replied within 2.5 s without
+ * it. The wait therefore depends on that call, not on the view being visible.
+ *
  * A view that never draws one is refused `record_size`/`not_applied` by the
  * caller: a clip whose first frame is the old layout is a wrong clip, not a
  * slow one. */
@@ -621,9 +645,12 @@ async function waitForCompositedFrame(
 				{ deadlineMs: remaining },
 			);
 			measured = sizeFromValue(answer?.result?.value);
-		} catch {
+		} catch (error) {
 			// A promise that never settles, and a document that is being replaced,
-			// both land here; the loop's deadline is what decides.
+			// both land here; the loop's deadline is what decides. A tab that is gone
+			// or in DevTools' hands cannot draw again, so its own error is the answer
+			// rather than a `not_applied` two seconds later.
+			if (!isWaitableEvaluateFailure(error)) throw error;
 			measured = null;
 		}
 		if (

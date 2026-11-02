@@ -37,7 +37,10 @@ the real-path driver recorded in the PR's evidence matrix.
   while the clip was coded at the right size and its last frame was correct).
   Two `requestAnimationFrame` callbacks are that wait: 8-14 ms on a hidden view,
   bounded at 2 s, after which a tab that still has not drawn one is refused
-  `record_size`/`not_applied` rather than recorded at the old layout.
+  `record_size`/`not_applied` rather than recorded at the old layout. That wait
+  only runs because `attach` enables `Emulation.setFocusEmulationEnabled`
+  (`cdp.ts`); on a view the app never raises, the same evaluate never replied
+  within 2.5 s without it.
 - A sized start on the PRESENTED (user-visible) tab is refused: growing the user's
   own view to the requested size would cover the app around it. Tab close and
   detach drop the emulation with the debugger session; stop, abort, replace and a
@@ -180,6 +183,9 @@ target (`width`/`height` had no UI implementation yet), local animating page:
   runs at each of 3840x2160, 2160x3840 and 1920x1080; one unclipped
   `Page.captureScreenshot` (27-50 ms) and a fixed 500 ms wait did the same, and
   the screenshot was rejected for the smaller margin it buys at a larger cost.
+  Those callbacks only arrive on an unfocused view because `attach` turns on
+  `Emulation.setFocusEmulationEnabled` (`cdp.ts`): without it the same evaluate
+  never replied within 2.5 s.
 
 ## Still unverified
 

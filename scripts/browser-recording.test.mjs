@@ -22,6 +22,9 @@ const bundle = await build({
 			'export * from "./src/main/browser/actions/recording";',
 			'export * from "./src/main/browser/protocol";',
 			'export * from "./src/main/browser/cdp";',
+			// The typed failure itself, so a case can script the exact code a dead tab
+			// or a DevTools hand-over answers with.
+			'export * from "./src/main/browser/errors";',
 		].join("\n"),
 		resolveDir: process.cwd(),
 	},
@@ -94,7 +97,9 @@ function stream(
 		base64 = true,
 		layout,
 		layoutErrors = 0,
+		pollError,
 		frameError,
+		frames,
 	} = {},
 ) {
 	let index = 0;
@@ -106,10 +111,16 @@ function stream(
 			// the plain one, so a fixture can fail either on its own.
 			if (params?.awaitPromise) {
 				if (frameError) throw frameError;
+				// `frames` lets a case answer the first awaited frame with the OLD size
+				// and a later one with the request; once it runs out the request stands.
+				const answer = frames?.length ? frames.shift() : layout;
 				return {
-					result: { value: layout ? [layout.width, layout.height] : undefined },
+					result: {
+						value: answer ? [answer.width, answer.height] : undefined,
+					},
 				};
 			}
+			if (pollError) throw pollError;
 			if (layoutFailures < layoutErrors) {
 				layoutFailures += 1;
 				throw new Error("Cannot find default execution context");
@@ -1171,7 +1182,9 @@ function sizedStart(options = {}) {
 		handler: stream(options.chunks ?? [Buffer.from("ftyp-sized")], {
 			layout: options.layout ?? requested,
 			layoutErrors: options.layoutErrors,
+			pollError: options.pollError,
 			frameError: options.frameError,
+			frames: options.frames,
 			startError: options.startError,
 			endless: options.endless,
 		}),
@@ -1319,6 +1332,99 @@ test("a tab that never draws a frame at the new size is refused, not recorded", 
 	const methods = commands.map((call) => call.method);
 	assert.ok(!methods.includes("Page.startScreenRecording"));
 	assert.equal(methods.at(-1), "Emulation.clearDeviceMetricsOverride");
+});
+
+test("a closed or DevTools-taken tab fails the layout poll at once, not as not_applied", async () => {
+	// Q1's wait used to swallow EVERY failure, so a destroyed tab (`tab_closed`) or
+	// a DevTools hand-over (`debugger_conflict`) burned the 2 s window and surfaced
+	// as record_size/not_applied — a size refusal for a tab that is gone. Only a
+	// failure a later poll can answer is a "not yet".
+	for (const code of ["tab_closed", "debugger_conflict"]) {
+		const original = new mod.BrowserHostError(code, `${code} from send`);
+		const { start, commands, path, requested } = sizedStart({
+			pollError: original,
+		});
+		const began = Date.now();
+		const error = await start({ path, ...requested }).catch(
+			(refusal) => refusal,
+		);
+		assert.equal(error, original, `${code} is rethrown untouched`);
+		assert.equal(error.code, code);
+		assert.equal(error.data?.reason, undefined, "not a record_size refusal");
+		assert.ok(Date.now() - began < 1_000, `${code} fails at once`);
+		assert.equal(
+			commands.filter((call) => call.method === "Runtime.evaluate").length,
+			1,
+			`${code} is not retried`,
+		);
+		assert.equal(
+			commands.at(-1).method,
+			"Emulation.clearDeviceMetricsOverride",
+			`${code} still restores the viewport`,
+		);
+		assert.ok(
+			!commands.some((call) => call.method === "Page.startScreenRecording"),
+			`${code} never reaches the recorder`,
+		);
+	}
+});
+
+test("a closed or DevTools-taken tab fails the frame wait at once, not as not_applied", async () => {
+	// Q1's frame wait has the same tail as the poll: a tab that cannot draw again
+	// must report why, not wait out the window and blame the size.
+	for (const code of ["tab_closed", "debugger_conflict"]) {
+		const original = new mod.BrowserHostError(code, `${code} from send`);
+		const { start, commands, path, requested } = sizedStart({
+			frameError: original,
+		});
+		const began = Date.now();
+		const error = await start({ path, ...requested }).catch(
+			(refusal) => refusal,
+		);
+		assert.equal(error, original, `${code} is rethrown untouched`);
+		assert.equal(error.code, code);
+		assert.equal(error.data?.reason, undefined, "not a record_size refusal");
+		assert.ok(Date.now() - began < 1_000, `${code} fails at once`);
+		assert.equal(
+			commands.filter((call) => call.method === "Runtime.evaluate").length,
+			2,
+			`${code}: one poll and one frame answer, no retry`,
+		);
+		assert.equal(
+			commands.at(-1).method,
+			"Emulation.clearDeviceMetricsOverride",
+			`${code} still restores the viewport`,
+		);
+		assert.ok(
+			!commands.some((call) => call.method === "Page.startScreenRecording"),
+			`${code} never reaches the recorder`,
+		);
+	}
+});
+
+test("a stale first frame answer is retried until the requested size is drawn", async () => {
+	// Q1's loop must keep going when the first awaited frame still reports the OLD
+	// size: the encoder would capture exactly the raster the wait exists to avoid.
+	const { start, stop, commands, path, requested } = sizedStart({
+		frames: [
+			{ width: 1280, height: 720 },
+			{ width: 1920, height: 1080 },
+		],
+	});
+	const result = await start({ path, ...requested });
+	assert.equal(result.width, 1920);
+	assert.equal(result.height, 1080);
+	const evaluates = commands.filter(
+		(call) => call.method === "Runtime.evaluate",
+	);
+	assert.equal(evaluates.length, 3, "poll, stale frame answer, matching one");
+	assert.equal(
+		evaluates.filter((call) => call.params.awaitPromise === true).length,
+		2,
+		"the stale answer was retried once",
+	);
+	assert.equal(commands.at(-1).method, "Page.startScreenRecording");
+	await stop();
 });
 
 test("a transient evaluate failure during a navigation is retried, not refused", async () => {
