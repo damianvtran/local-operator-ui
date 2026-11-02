@@ -178,6 +178,22 @@ export async function styles(
 	return { ...structuredResult("styles", result), ...pageOf(record.view) };
 }
 
+/** The `hit_test` page function at (x, y): the structured stack, or `null` for a
+ * point with no element. Exported so `hover` reports exactly the descriptor
+ * `hit_test` does rather than keeping a second reader of the same facts. */
+export async function hitAt(
+	record: TabRecord,
+	x: number,
+	y: number,
+): Promise<unknown> {
+	return await runFixed(
+		record,
+		HIT_TEST_SOURCE,
+		[x, y],
+		`hit_test(${x}, ${y})`,
+	);
+}
+
 /** `hit_test`: the elements at viewport point (x, y), topmost first, as
  * `document.elementsFromPoint` sees them. A point with no element on it is the
  * function's `null`, raised as `element_not_found` like the extension does. */
@@ -196,12 +212,7 @@ export async function hitTest(
 			"'hit_test' needs numeric x and y (viewport coordinates)",
 		);
 	}
-	const result = await runFixed(
-		record,
-		HIT_TEST_SOURCE,
-		[x, y],
-		`hit_test(${x}, ${y})`,
-	);
+	const result = await hitAt(record, x, y);
 	if (result === null || result === undefined) {
 		throw new BrowserHostError(
 			"element_not_found",

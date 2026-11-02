@@ -386,6 +386,14 @@ const APP_SPAWN_SITES = [
 		/const env = withNotificationsOff\(\{/,
 	),
 	guarded(
+		"scripts/browser-hover-press-proof.mjs",
+		"spawn",
+		1,
+		/(?:\{|,)\s*env\s*,/,
+		"boots the built app on an isolated HOME/config/log/profile to prove background hover and press; the scratch environment must suppress notifications and telemetry, never treating proof traffic as a product user",
+		/const env = withNotificationsOff\(\{/,
+	),
+	guarded(
 		"scripts/browser-host-proof.mjs",
 		"spawn",
 		1,
