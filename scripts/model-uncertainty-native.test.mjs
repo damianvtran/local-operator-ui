@@ -13,6 +13,9 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
+// The embedded child asserts the launch carries the mock-keychain switch; it
+// takes the one spelling from chrome-keychain.mjs (chrome-keychain.test.mjs).
+import { MOCK_KEYCHAIN_SWITCH } from "./chrome-keychain.mjs";
 import {
 	assertModelTraffic,
 	buildReceipt,
@@ -283,6 +286,7 @@ test("Python transport contracts preserve genuine bytes and never enforce the ca
 });
 function oracleContext(mode = "happy") {
 	const sid = "aaaaaaaaaaaa";
+	const rowA = `[data-sidebar-region="chats"] [data-session-row=${JSON.stringify(sid)}] [data-tour-tag="chat-session-row"]`;
 	const frames = [];
 	const stamps = [];
 	const calls = [];
@@ -395,9 +399,11 @@ function oracleContext(mode = "happy") {
 		},
 		wait: async (predicate) => {
 			calls.push(["wait", predicate]);
+			// A is found by id in the chats region; the old document-wide count
+			// also counted resident agent sessions on a real core (CI41535781273).
 			if (
 				predicate ===
-				'document.querySelectorAll("[data-tour-tag=chat-session-row]").length===1'
+				`document.querySelectorAll(${JSON.stringify(rowA)}).length===1`
 			)
 				return;
 			if (
@@ -420,7 +426,7 @@ function oracleContext(mode = "happy") {
 		press: async (selector) => {
 			calls.push(["press", selector]);
 			if (
-				selector === '[data-tour-tag="chat-session-row"]' ||
+				selector === rowA ||
 				selector === '[contenteditable="true"][role="textbox"]'
 			)
 				return;
@@ -580,6 +586,37 @@ for (const mode of [
 		await assert.rejects(modelUncertaintyCase.drive(ctx));
 	});
 }
+
+test("native drive waits on A by id in the chats region, with a row census on failure", async () => {
+	/*
+	 * CI41535781273: a real core lists resident agent sessions beside A, so the
+	 * old document-wide `chat-session-row` count never settled at 1. Pin the
+	 * replacement: the wait names A's id under the chats region, carries a
+	 * diagnostic, and the document-wide predicate is no longer issued.
+	 */
+	const ctx = oracleContext();
+	const seen = [];
+	const inner = ctx.wait;
+	ctx.wait = async (predicate, diagnose) => {
+		seen.push([predicate, diagnose]);
+		return inner(predicate, diagnose);
+	};
+	await modelUncertaintyCase.drive(ctx);
+	const rowWait = seen.find(([p]) => p.includes("chat-session-row"));
+	assert(rowWait, "drive never waited for A's row");
+	assert.match(rowWait[0], /\[data-sidebar-region=\\?"chats\\?"\]/);
+	assert.match(rowWait[0], /data-session-row=\\?"aaaaaaaaaaaa\\?"/);
+	assert.match(rowWait[0], /\.length===1$/);
+	assert.match(String(rowWait[1]), /row-census/);
+	assert(
+		!seen.some(
+			([p]) =>
+				p ===
+				'document.querySelectorAll("[data-tour-tag=chat-session-row]").length===1',
+		),
+		"document-wide row count must not return",
+	);
+});
 
 test("observer is ordinary-mode NOOP and armed receipts retain only bounded metadata", async () => {
 	const { transformSync } = await import("esbuild");
@@ -787,7 +824,7 @@ test("strict model launch binds its verified executable despite late parent over
 	);
 	const program = `import assert from 'node:assert/strict';import Module,{createRequire,registerHooks,syncBuiltinESMExports}from'node:module';import{readFileSync}from'node:fs';import{join}from'node:path';import{EventEmitter}from'node:events';const req=createRequire(import.meta.url);const mode=process.argv[1];const root=process.cwd();const alternateA=join(root,'alternate-a');const alternateB=join(root,'alternate-b');process.env.ELECTRON_OVERRIDE_DIST_PATH=alternateA;
  const originalLoad=Module._load;let installer=0;Module._load=function(name,...rest){if(name==='electron'){installer++;throw Error('INSTALLER_TRIPWIRE');}return originalLoad.call(this,name,...rest);};
- const cp=req('node:child_process');let selected=null;cp.spawn=(binary,args,options)=>{selected={binary,parent:process.env.ELECTRON_OVERRIDE_DIST_PATH,child:options.env.ELECTRON_OVERRIDE_DIST_PATH};assert.equal(args[0],root);assert(args.includes('--use-mock-keychain'));throw Error('SELECTION_INTERCEPTED_BEFORE_EXECUTION');};cp.spawnSync=()=>{throw Error('INSTALLER_SPAWN_TRIPWIRE');};const realExec=cp.execFileSync;cp.execFileSync=(cmd,args,options)=>{assert.equal(cmd,'git');return realExec(cmd,args,options);};
+ const cp=req('node:child_process');let selected=null;cp.spawn=(binary,args,options)=>{selected={binary,parent:process.env.ELECTRON_OVERRIDE_DIST_PATH,child:options.env.ELECTRON_OVERRIDE_DIST_PATH};assert.equal(args[0],root);assert(args.includes(${JSON.stringify(MOCK_KEYCHAIN_SWITCH)}));throw Error('SELECTION_INTERCEPTED_BEFORE_EXECUTION');};cp.spawnSync=()=>{throw Error('INSTALLER_SPAWN_TRIPWIRE');};const realExec=cp.execFileSync;cp.execFileSync=(cmd,args,options)=>{assert.equal(cmd,'git');return realExec(cmd,args,options);};
  let ports=0;const net=req('node:net');net.createServer=()=>{ports++;process.env.ELECTRON_OVERRIDE_DIST_PATH=alternateB;const server=new EventEmitter();server.listen=(port,host,cb)=>queueMicrotask(cb);server.address=()=>({port:19000+ports});server.close=cb=>queueMicrotask(cb);return server;};net.connect=()=>{const socket=new EventEmitter();socket.destroy=()=>{};socket.setTimeout=()=>{};queueMicrotask(()=>socket.emit('error',Error('OWNED_CLOSED_PORT')));return socket;};globalThis.fetch=()=>{throw Error('NETWORK_TRIPWIRE');};for(const n of ['node:http','node:https']){req(n).get=()=>{throw Error('NETWORK_TRIPWIRE');};req(n).request=()=>{throw Error('NETWORK_TRIPWIRE');};}syncBuiltinESMExports();
  const {verifyModelBuild}=await import(${JSON.stringify(model)});
  if(process.env.CI){

@@ -694,10 +694,22 @@ export const modelUncertaintyCase = {
 		// Native chat opens on SSE, not a sessions.get. Warm A through owned
 		// setup; the genuine cold HTTP proof remains separately labelled.
 		assert.equal((await backend.commandA()).status, 200);
+		/*
+		 * A by ID, in the chats region. A fresh real-core profile also lists the
+		 * resident agent sessions (measured on v0.94.15: Librarian and Aida, bound
+		 * to their agents, beside our unbound A), so a document-wide row count is
+		 * not "A is drawn" - CI run 41535781273 timed out on exactly that. The
+		 * asks case may count all rows only because its fake backend serves two
+		 * sessions and no residents. Still EXACTLY one: a duplicate A is a bug.
+		 */
+		const rowA = `[data-sidebar-region="chats"] [data-session-row=${JSON.stringify(backend.sessionId)}] [data-tour-tag="chat-session-row"]`;
 		await wait(
-			'document.querySelectorAll("[data-tour-tag=chat-session-row]").length===1',
+			`document.querySelectorAll(${JSON.stringify(rowA)}).length===1`,
+			// Self-diagnosing failure: per-region counts plus each drawn row's id
+			// and visible text, so the next CI run says what WAS on screen.
+			`/* model-case: row-census */ JSON.stringify([...document.querySelectorAll('[data-tour-tag="chat-session-row"]')].map(e=>({region:e.closest('[data-sidebar-region]')?.getAttribute('data-sidebar-region')??null,session:e.closest('[data-session-row]')?.getAttribute('data-session-row')??null,text:(e.textContent||'').trim().slice(0,60)})))`,
 		);
-		await press('[data-tour-tag="chat-session-row"]');
+		await press(rowA);
 		const input = '[contenteditable="true"][role="textbox"]';
 		await press(input);
 		await cdp.send("Input.insertText", { text: "/model" });
