@@ -336,6 +336,45 @@ export function execBound(executable, hostArch = process.arch) {
 }
 
 /**
+ * Why a check that would exec a TRANSLATED child refuses to, off hosted CI.
+ *
+ * EVIDENCE. On 2026-11-02 at 18:35:36 macOS 27.2 showed the operator "App Update
+ * Required: This version of "Local Operator" includes a component that will not
+ * open in macOS 28", and ecosystemd logged `[NOTIFICATION_SENT] decision=launch
+ * name=/Users/<user>/Local Operator.app bundle=com.local-operator`. The shipped arm64
+ * app was clean (0 Intel-only Mach-O; `app-native-components` enforces that). The
+ * launch that fired it was a local QA rig running `pnpm verify-macos-artifacts`
+ * against the x64 0.47.7 bundle on an arm64 Mac: `app-spawn`,
+ * `app-bytecode-loadable` and `app-seed-python-version` exec the bundle's
+ * x86_64 launcher / interpreter, the kernel hands them to Rosetta, and macOS
+ * attributes a Rosetta launch to the bundle's identifier and warns the operator
+ * against Local Operator. The notice is rate-limited to one per 86400 s, so every
+ * such run re-arms it for another day.
+ *
+ * THE RULE. Hosted CI (`CI=true` or `GITHUB_ACTIONS=true`) has no operator to
+ * warn, so it still runs these probes - that is where the x64 artifact is
+ * proven. Anywhere else the exec needs an explicit
+ * `LOCAL_OPERATOR_ALLOW_ROSETTA_EXEC=1`. A refused probe is a FAILED result, not
+ * a skip: this is a release gate and an unproven check must never read green.
+ * Static checks are unaffected - only the exec is withheld.
+ *
+ * `env` and `hostArch` are parameters so the rule is asserted without touching
+ * the real environment or needing a particular host.
+ */
+export function refusesLocalRosettaExec(
+	executable,
+	{ hostArch = process.arch, env = process.env } = {},
+) {
+	if (!hostTranslatesExecutable(executable, hostArch)) return false;
+	if (env.CI === "true" || env.GITHUB_ACTIONS === "true") return false;
+	return env.LOCAL_OPERATOR_ALLOW_ROSETTA_EXEC !== "1";
+}
+
+/** The failure a refused exec check reports, written once for all three. */
+export const ROSETTA_EXEC_REFUSAL =
+	"Not executed: exec of an x86_64 bundle on an arm64 host runs under Rosetta and makes macOS show the macOS-28 'App Update Required' notice against Local Operator; run on hosted CI or set LOCAL_OPERATOR_ALLOW_ROSETTA_EXEC=1";
+
+/**
  * The entitlements an embedded provisioning profile authorizes, if it has one.
  *
  * Why `security cms -D` rather than a plist read: `embedded.provisionprofile`
@@ -368,6 +407,7 @@ export function artifactChecks({
 	dmgPath,
 	profile = null,
 	hostArch = process.arch,
+	env = process.env,
 }) {
 	const checks = [];
 	const bundleId = appPath ? bundleIdentifierFromInfoPlist(appPath) : null;
@@ -375,6 +415,12 @@ export function artifactChecks({
 	// The launcher the checks exec, resolved once: the spawn probe's bound depends
 	// on the architecture in ITS header, and both are read from one path lookup.
 	const executable = appPath ? mainExecutablePath(appPath) : null;
+	// Decided once for both exec checks; `runChecks` reports a refused check as
+	// failed without running it. See `refusesLocalRosettaExec`.
+	const refusal =
+		executable && refusesLocalRosettaExec(executable, { hostArch, env })
+			? ROSETTA_EXEC_REFUSAL
+			: null;
 	if (appPath) {
 		checks.push(
 			{
@@ -433,6 +479,7 @@ export function artifactChecks({
 				id: "app-spawn",
 				scope: "app",
 				target: executable,
+				refusal,
 				description:
 					"the app's main executable really spawns (run in Electron's node mode, which exits immediately unless the OS refuses the exec)",
 				command: executable,
@@ -480,6 +527,7 @@ export function artifactChecks({
 				id: "app-bytecode-loadable",
 				scope: "app",
 				target: executable,
+				refusal,
 				description:
 					"the app's own Electron accepts the V8 bytecode it ships (arm64 bytecode in an x64 bundle is refused at load, and every signature check passes on it)",
 				command: executable,
@@ -1097,7 +1145,7 @@ export function seedBootstrapCheck(appPath) {
  */
 export function seedVersionCheck(
 	appPath,
-	{ run = spawnRunner, hostArch = process.arch } = {},
+	{ run = spawnRunner, hostArch = process.arch, env = process.env } = {},
 ) {
 	return appCheck(
 		"app-seed-python-version",
@@ -1112,6 +1160,8 @@ export function seedVersionCheck(
 			const python = join(root, "bin", "python3");
 			if (!existsSync(python))
 				throw new Error(`The seed has no bin/python3 to ask: ${python}`);
+			if (refusesLocalRosettaExec(python, { hostArch, env }))
+				throw new Error(ROSETTA_EXEC_REFUSAL);
 			const result = run(
 				python,
 				["-I", "-B", "--version"],
@@ -1534,50 +1584,72 @@ function withCheckEnv(env, work) {
  * different reads — which is why the read happens once here when the caller has
  * none to hand in (review round 1, finding 5).
  */
-export function runChecks({ appPath, dmgPath, run, profile = null }) {
+export function runChecks({
+	appPath,
+	dmgPath,
+	run,
+	profile = null,
+	hostArch = process.arch,
+	env = process.env,
+}) {
 	const embedded = appPath
 		? (profile ?? readEmbeddedProfileEntitlements(appPath, run))
 		: { present: false, entitlements: null };
-	return artifactChecks({ appPath, dmgPath, profile: embedded }).map(
-		(check) => {
-			const result = withCheckEnv(check.env, () =>
-				run(check.command, check.args, check.input, check.env, check.timeoutMs),
-			);
-			const passed = check.expect(result);
-			// A check that knows what its raw output must not leak says so through
-			// `report`; null falls back to the generic trim below (stderr included).
-			const output =
-				check.report?.(result) ??
-				[result.stdout, result.stderr]
-					.join("\n")
-					.trim()
-					.split("\n")
-					.filter((line) => line.trim().length > 0)
-					.slice(0, 4)
-					.join(" | ");
+	return artifactChecks({
+		appPath,
+		dmgPath,
+		profile: embedded,
+		hostArch,
+		env,
+	}).map((check) => {
+		// Refused before `run`: the exec itself is what fires the notice, so the
+		// child must never start (see `refusesLocalRosettaExec`).
+		if (check.refusal)
 			return {
 				id: check.id,
 				scope: check.scope,
 				description: check.description,
 				target: check.target,
-				passed,
-				// A check that died without printing anything — the shape an OS refusal
-				// takes, since the process never ran — would otherwise report an empty
-				// reason, which reads as "no detail" rather than "killed at spawn".
-				output:
-					output ||
-					[
-						result.status === null
-							? "no exit status (the child never ran to an exit)"
-							: `exit ${result.status}`,
-						result.signal ? `killed by ${result.signal}` : null,
-						result.timedOut ? "did not exit within the check's bound" : null,
-					]
-						.filter(Boolean)
-						.join("; "),
+				passed: false,
+				output: check.refusal,
 			};
-		},
-	);
+		const result = withCheckEnv(check.env, () =>
+			run(check.command, check.args, check.input, check.env, check.timeoutMs),
+		);
+		const passed = check.expect(result);
+		// A check that knows what its raw output must not leak says so through
+		// `report`; null falls back to the generic trim below (stderr included).
+		const output =
+			check.report?.(result) ??
+			[result.stdout, result.stderr]
+				.join("\n")
+				.trim()
+				.split("\n")
+				.filter((line) => line.trim().length > 0)
+				.slice(0, 4)
+				.join(" | ");
+		return {
+			id: check.id,
+			scope: check.scope,
+			description: check.description,
+			target: check.target,
+			passed,
+			// A check that died without printing anything — the shape an OS refusal
+			// takes, since the process never ran — would otherwise report an empty
+			// reason, which reads as "no detail" rather than "killed at spawn".
+			output:
+				output ||
+				[
+					result.status === null
+						? "no exit status (the child never ran to an exit)"
+						: `exit ${result.status}`,
+					result.signal ? `killed by ${result.signal}` : null,
+					result.timedOut ? "did not exit within the check's bound" : null,
+				]
+					.filter(Boolean)
+					.join("; "),
+		};
+	});
 }
 
 export function summarize(results) {

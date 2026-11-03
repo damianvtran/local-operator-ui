@@ -10,8 +10,15 @@ import {
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { after, test } from "node:test";
+import { PYTHON_VERSION } from "./bundled-runtime-layout.mjs";
 import { MACH_O_CPUTYPE, MACH_O_FILETYPE } from "./prune-python-seed.mjs";
-import { nativeComponentsCheck } from "./verify-macos-artifacts.mjs";
+import {
+	ROSETTA_EXEC_REFUSAL,
+	nativeComponentsCheck,
+	refusesLocalRosettaExec,
+	runChecks,
+	seedVersionCheck,
+} from "./verify-macos-artifacts.mjs";
 
 /*
  * Coverage for the release gate's native-component check - the one that answers
@@ -353,4 +360,140 @@ test("a bundle with no readable component at all fails rather than passing vacuo
 	const fail = nativeComponentsCheck(app, { run: lipo("arm64") });
 	assert.equal(fail.passed, false);
 	assert.match(fail.output, /No Mach-O component at all under the bundle/);
+});
+
+/*
+ * The local-Rosetta exec guard (`refusesLocalRosettaExec`).
+ *
+ * WHY: on 2026-11-02 a local run of this gate against the x64 bundle on an
+ * arm64 Mac exec'd its x86_64 launcher under Rosetta, and macOS showed the
+ * operator the macOS-28 "App Update Required" notice against Local Operator.
+ * These cases pin that the exec checks never START such a child off hosted CI
+ * unless opted in, that the refusal is a FAILED result (never a silent pass),
+ * and that CI, the opt-in and a native child all still run. The runner is
+ * injected and records every command, so "no spawn" is observed, not assumed.
+ */
+
+const EXEC_CHECK_IDS = ["app-spawn", "app-bytecode-loadable"];
+
+/** An app whose launcher and seed interpreter are thin Mach-O of `cpuType`. */
+function makeExecApp(cpuType) {
+	const dir = tempDir("verify-rosetta-");
+	const app = join(dir, "Local Operator.app");
+	mkdirSync(join(app, "Contents"), { recursive: true });
+	writeFileSync(
+		join(app, "Contents", "Info.plist"),
+		"<plist><dict><key>CFBundleExecutable</key><string>Local Operator</string></dict></plist>",
+	);
+	const executable = join(app, "Contents", "MacOS", "Local Operator");
+	writeThin(executable, cpuType);
+	const python = join(
+		app,
+		"Contents",
+		"Resources",
+		"python-runtime-seed",
+		cpuType === MACH_O_CPUTYPE.X86_64 ? "x64" : "arm64",
+		"bin",
+		"python3",
+	);
+	writeThin(python, cpuType);
+	return { app, executable, python };
+}
+
+/** A runner that records each command and answers like a healthy child. */
+function recordingRunner() {
+	const calls = [];
+	const run = (command) => {
+		calls.push(command);
+		return {
+			status: 0,
+			signal: null,
+			stdout: `Python ${PYTHON_VERSION}\n`,
+			stderr: "",
+		};
+	};
+	return { run, calls };
+}
+
+function runExecChecks(cpuType, env) {
+	const { app, executable, python } = makeExecApp(cpuType);
+	const { run, calls } = recordingRunner();
+	const results = runChecks({
+		appPath: app,
+		dmgPath: null,
+		run,
+		profile: { present: false, entitlements: null },
+		hostArch: "arm64",
+		env,
+	}).filter((result) => EXEC_CHECK_IDS.includes(result.id));
+	const seed = seedVersionCheck(app, { run, hostArch: "arm64", env });
+	return { executable, python, calls, results, seed };
+}
+
+test("arm64 host, x64 bundle, no CI: the exec checks fail closed and never spawn", () => {
+	const { executable, python, calls, results, seed } = runExecChecks(
+		MACH_O_CPUTYPE.X86_64,
+		{},
+	);
+	assert.deepEqual(
+		results.map((result) => result.id).sort(),
+		[...EXEC_CHECK_IDS].sort(),
+	);
+	for (const result of [...results, seed]) {
+		assert.equal(result.passed, false, result.id);
+		assert.match(result.output, /Rosetta/);
+		assert.match(result.output, /LOCAL_OPERATOR_ALLOW_ROSETTA_EXEC=1/);
+	}
+	assert.equal(seed.output, ROSETTA_EXEC_REFUSAL);
+	assert.ok(!calls.includes(executable), "the x64 launcher was exec'd");
+	assert.ok(!calls.includes(python), "the x64 interpreter was exec'd");
+});
+
+test("hosted CI (CI=true or GITHUB_ACTIONS=true) still runs the translated exec checks", () => {
+	for (const env of [{ CI: "true" }, { GITHUB_ACTIONS: "true" }]) {
+		const { executable, python, calls, results, seed } = runExecChecks(
+			MACH_O_CPUTYPE.X86_64,
+			env,
+		);
+		assert.ok(results.every((result) => result.passed));
+		assert.equal(seed.passed, true);
+		assert.equal(calls.filter((command) => command === executable).length, 2);
+		assert.ok(calls.includes(python));
+	}
+});
+
+test("LOCAL_OPERATOR_ALLOW_ROSETTA_EXEC=1 opts a local run in", () => {
+	const { executable, python, calls, results, seed } = runExecChecks(
+		MACH_O_CPUTYPE.X86_64,
+		{ LOCAL_OPERATOR_ALLOW_ROSETTA_EXEC: "1" },
+	);
+	assert.ok(results.every((result) => result.passed));
+	assert.equal(seed.passed, true);
+	assert.equal(calls.filter((command) => command === executable).length, 2);
+	assert.ok(calls.includes(python));
+});
+
+test("a native child runs locally without any opt-in", () => {
+	const { executable, python, calls, results, seed } = runExecChecks(
+		MACH_O_CPUTYPE.ARM64,
+		{},
+	);
+	assert.ok(results.every((result) => result.passed));
+	assert.equal(seed.passed, true);
+	assert.equal(calls.filter((command) => command === executable).length, 2);
+	assert.ok(calls.includes(python));
+});
+
+test("the predicate: only an untranslated host, CI or the exact opt-in lets it exec", () => {
+	const { executable } = makeExecApp(MACH_O_CPUTYPE.X86_64);
+	const refuses = (hostArch, env) =>
+		refusesLocalRosettaExec(executable, { hostArch, env });
+	assert.equal(refuses("arm64", {}), true);
+	assert.equal(refuses("arm64", { CI: "1" }), true);
+	assert.equal(
+		refuses("arm64", { LOCAL_OPERATOR_ALLOW_ROSETTA_EXEC: "true" }),
+		true,
+	);
+	assert.equal(refuses("arm64", { CI: "true" }), false);
+	assert.equal(refuses("x64", {}), false);
 });
