@@ -4899,6 +4899,14 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 		const guardSecretSend = useCallback(
 			(text: string): boolean => {
 				if (!secretAsk || !looksLikeSecret(text)) return false;
+				/*
+				 * A NEW ATTEMPT STARTS WITH A CLEAN FOCUS LEDGER (agent review round 3,
+				 * MINOR-2). The retirement effect's first line returns when there is no
+				 * confirm, so a press that ENDED one - `openTookKeyboard` set, confirm
+				 * already null - leaves the flag standing; the next retirement would then
+				 * skip the caret it owes the box, once, for a press it never belonged to.
+				 */
+				openTookKeyboard.current = false;
 				setSecretConfirm({ value: text.trim(), key: secretAsk.key });
 				return true;
 			},
@@ -4998,11 +5006,14 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			 * THE PANEL IS WHERE THE ASK IS, so a refusal puts it on screen beside the
 			 * sentence - including the owner's own refusal on the card. `focus: false`
 			 * asks it not to take the caret; the ANSWER says whether it could keep that
-			 * promise (agent review round 2, M2-r2): docked it did, so the caret goes
-			 * back to the box (QA round 1, Q3); under the overlay sheet it could not -
-			 * the box is inert - so the caret stays in the sheet instead of falling to
-			 * `<body>`. An `unavailable` pane has no session to open onto, so it is
-			 * left closed and the box keeps the caret.
+			 * promise (agent review round 2, M2-r2). DOCKED this box gets the caret back
+			 * (QA round 1, Q3) and the card's own refusal-recovery focus then moves it on
+			 * to the masked field or Retry - the keyboard ends in the pane, which is
+			 * where the next act is (agent review round 3, Q1: corrected; the composer's
+			 * hand-back is real, it is just not the last write). Under the overlay sheet
+			 * the box is inert and cannot hold it, so the sheet takes it instead of
+			 * letting it fall to `<body>`. An `unavailable` pane has no session to open
+			 * onto, so it is left closed and the box keeps the caret.
 			 */
 			const takesFocus =
 				outcome === "unavailable" ? false : secretAsk.onOpen({ focus: false });

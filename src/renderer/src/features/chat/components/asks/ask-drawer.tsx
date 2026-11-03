@@ -263,6 +263,17 @@ export type AskDrawerProps = {
 	 */
 	ground?: "glass" | "solid";
 	/**
+	 * WHETHER THIS SURFACE COVERS CONTENT, which is what decides whether a press on
+	 * SOMEONE ELSE'S control survives its own commit (agent review round 3, MINOR-1).
+	 * The sheet's mount inerts or removes the control that opened it, so the press is
+	 * latched and the keyboard follows it in; the docked pane takes nothing away, so a
+	 * control that still holds focus keeps it - and a composer the user is typing in
+	 * must never be pulled into the pane by a request it did not make. Chosen by the
+	 * mount from `askPanePresentation`'s mode, beside `ground` and from the same fact;
+	 * defaults to "docked" so every existing mount and story keeps its behaviour.
+	 */
+	presentation?: "docked" | "overlay";
+	/**
 	 * The door that closes the drawer WITHOUT answering. The caller owns the flag
 	 * (the store does), so this reports the request rather than applying it - AND
 	 * IT CARRIES WHICH KIND OF CLOSE IT IS (#1079): the X below is the user asking
@@ -337,6 +348,7 @@ export const AskDrawer = ({
 	frontend,
 	scope,
 	ground = "glass",
+	presentation = "docked",
 	onClose,
 	onAnswer,
 	onDecline,
@@ -811,6 +823,7 @@ export const AskDrawer = ({
 		 */
 		if (door !== null) pressedDoorRef.current = door;
 		else if (
+			presentation === "overlay" &&
 			requested &&
 			!viaMenu.current &&
 			pressedDoorRef.current === null &&
@@ -824,6 +837,11 @@ export const AskDrawer = ({
 			 * column's `inert`, or removed with the confirm, and either way the keyboard
 			 * must end in the sheet rather than on `<body>`. The menu's trigger keeps its
 			 * own guard and is never latched as a press (`viaMenu`).
+			 *
+			 * AND ONLY THE SHEET LATCHES (agent review round 3, MINOR-1): the docked
+			 * pane takes nothing away, so a control still holding focus - the composer
+			 * the user is typing in, most of all - keeps it. Latching there made an asks
+			 * request pull the caret out of the box.
 			 */
 			pressedDoorRef.current = active;
 		}
@@ -869,7 +887,8 @@ export const AskDrawer = ({
 		 * exactly that place. The latched origin is adopted when the keyboard is still ON
 		 * it, or when it went to `<body>` and our own commit took the control away - the
 		 * covered column marks it `inert`, or the confirm that held it was removed
-		 * (`!isConnected`). Anything else means the user moved on.
+		 * (`!isConnected`). Anything else means the user moved on. Only a SHEET has a
+		 * latch to adopt at all (see the latch above).
 		 */
 		const latched = pressedDoorRef.current;
 		const latchedPressOk =

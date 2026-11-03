@@ -647,6 +647,7 @@ export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
 											ground={
 												askPresentation.mode === "docked" ? "glass" : "solid"
 											}
+											presentation={askPresentation.mode}
 											/*
 											 * THE KIND OF CLOSE IS FORWARDED, NOT DECIDED HERE (#1079): the pane's X
 											 * asks for an empty slot and passes `dismissSlot`, while its own Escape

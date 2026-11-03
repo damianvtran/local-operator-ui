@@ -115,16 +115,21 @@ Scope: the Ask drawer only (session scope in `chat-content.tsx`, fleet scope in
       labelled door that does nothing below the breakpoint is a dead control; the
       drawer latches that control as the press origin, so a control our own commit
       blurs (inert) or removes (the confirm) still lands the keyboard in the sheet
-      rather than on `<body>`.
+      rather than on `<body>`. Only the SHEET latches (review round 3, MINOR-1): the
+      docked pane takes nothing away, so a control that still holds focus - the
+      composer above all - keeps it.
     - a LANDED fill (`focus: false, openInSheet: false`) opens beside the box when
       docked and does NOT open the sheet: the act is done, and covering the
       conversation would price a completed action.
-    - a REFUSED fill (`focus: false`) opens beside the box when docked and keeps the
-      caret there; under the sheet it opens and takes the keyboard, because the
-      composer is inert and cannot hold it - which is also what keeps
-      `secret_fill_refused` ("the asks panel shows why") true. `onOpen` answers with
-      whether it took the keyboard, and the composer decides the caret from that
-      answer instead of assuming its box is focusable.
+    - a REFUSED fill (`focus: false`) opens beside the box when docked. The composer
+      hands the caret back to the box (QA round 1, Q3) and the card's own
+      refusal-recovery focus then moves it on to the masked field or Retry, which is
+      where the next act is - so the keyboard ends in the PANE, not in the composer.
+      Under the sheet it opens and takes the keyboard directly, because the composer
+      is inert and cannot hold it - which is also what keeps `secret_fill_refused`
+      ("the asks panel shows why") true. `onOpen` answers with whether it took the
+      keyboard, and the composer decides the caret from that answer instead of
+      assuming its box is focusable.
     The invitation is untouched: rules 5 and 6 still mean no auto-open.
   - Rejected: auto-open as a modal sheet (blurs the composer via inert, a focus
     theft); leaving the policy alone (reproduces the report on every conversation

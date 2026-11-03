@@ -5004,6 +5004,56 @@ test("the confirm is bound to its ask: a different head retires it, and nothing 
 	assert.equal(boxHasFocus(second), true);
 });
 
+/*
+ * A NEW ATTEMPT STARTS WITH A CLEAN FOCUS LEDGER (agent review round 3, MINOR-2).
+ * The retirement effect returns before it reads `openTookKeyboard` when there is no
+ * confirm, so the press that ENDED one - the multi-secret door, whose confirm is
+ * cleared in the same handler - left the flag standing; the next retirement then
+ * skipped the caret it owed the box, once, for a press it never belonged to.
+ */
+test("a press that ended a confirm does not waive the next retirement's caret", async () => {
+	const conversationId = "conv-secret-ask-ledger";
+	const multi = await mount({
+		conversationId,
+		secretAsk: queuedSecretAsk({
+			key: "ledger-multi:*",
+			fillable: false,
+			onOpen: () => true,
+		}),
+	});
+	await armConfirm(multi);
+	confirmControl("Open asks panel")?.focus();
+	await act(async () => {
+		confirmControl("Open asks panel")?.click();
+	});
+	await settle();
+	assert.ok(!boxHasFocus(multi), "the panel took the keyboard");
+
+	/* A later attempt, on a new ask: arming it must forget the earlier press. */
+	const second = await mount({
+		conversationId,
+		keepWorld: true,
+		secretAsk: queuedSecretAsk({ key: "ledger-single:*" }),
+	});
+	await enter(second);
+	await settle();
+	assert.ok(
+		window.document.getElementById("composer-secret-confirm"),
+		"the second attempt is armed",
+	);
+	/* And its ask changes under it, which retires it and owes the box the caret. */
+	const third = await mount({
+		conversationId,
+		keepWorld: true,
+		secretAsk: queuedSecretAsk({ key: "ledger-third:*" }),
+	});
+	assert.match(refusalText() ?? "", /changed/i, "the retirement is reported");
+	assert.ok(
+		boxHasFocus(third),
+		"the retirement must hand the caret back; a spent press from the previous attempt must not swallow it",
+	);
+});
+
 test("the confirm retires when its ask leaves the queue", async () => {
 	const conversationId = "conv-secret-ask-gone";
 	const first = await mount({ conversationId, secretAsk: queuedSecretAsk() });

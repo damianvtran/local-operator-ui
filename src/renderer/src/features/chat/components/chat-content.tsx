@@ -3627,6 +3627,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								 * `data-glass-region="pane"` marker so `bg-elevated` is opaque.
 								 */
 								ground={askPresentation.mode === "docked" ? "glass" : "solid"}
+								presentation={askPresentation.mode}
 								/*
 								 * SESSION-SCOPED, because this mount is the conversation's own: its rows
 								 * arrive on this session's frame and its answers go to this session.

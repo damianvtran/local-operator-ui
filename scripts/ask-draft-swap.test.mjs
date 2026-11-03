@@ -541,7 +541,12 @@ test("a chord press whose control our commit removed still lands in the drawer",
 	store.getState().requestAskOpen("session", "chord");
 	const view = await mountFor(
 		t,
-		h(AskDrawer, { frontend: null, scope: "session", onClose: () => {} }),
+		h(AskDrawer, {
+			frontend: null,
+			scope: "session",
+			onClose: () => {},
+			presentation: "overlay",
+		}),
 	);
 	button.remove();
 	assert.equal(
@@ -554,6 +559,7 @@ test("a chord press whose control our commit removed still lands in the drawer",
 			frontend: frontend([radioAsk]),
 			scope: "session",
 			onClose: () => {},
+			presentation: "overlay",
 		}),
 	);
 	const active = document.activeElement;
@@ -562,6 +568,80 @@ test("a chord press whose control our commit removed still lands in the drawer",
 		"staging",
 		"the press the confirm unmounted must still reach the sheet",
 	);
+});
+
+/*
+ * THE DOCKED PANE TAKES NOTHING AWAY, SO IT LATCHES NOTHING (agent review round 3,
+ * MINOR-1). An asks request raised while the composer holds focus used to adopt the
+ * textarea as a "press origin" and pull the caret into the pane - a docked regression
+ * that only the sheet can justify, because only there does our own commit inert the
+ * control. Behavioural both ways: the composer keeps its caret in the docked pane, and
+ * a notice press under the sheet still lands.
+ */
+test("a chord request never pulls the caret out of the composer in the docked pane", async (t) => {
+	const store = useUiPreferencesStore;
+	const textarea = document.createElement("textarea");
+	document.body.appendChild(textarea);
+	textarea.focus();
+	store.getState().requestAskOpen("session", "chord");
+	const mountView = async () => {
+		const view = await mountFor(
+			t,
+			h(AskDrawer, { frontend: null, scope: "session", onClose: () => {} }),
+		);
+		await view.rerender(
+			h(AskDrawer, {
+				frontend: frontend([radioAsk]),
+				scope: "session",
+				onClose: () => {},
+			}),
+		);
+		return view;
+	};
+	await mountView();
+	assert.ok(
+		document.activeElement === textarea,
+		"the docked pane must leave a control it does not cover exactly where the user left it",
+	);
+	textarea.remove();
+});
+
+test("a notice press under the sheet still lands in the drawer", async (t) => {
+	const store = useUiPreferencesStore;
+	const covered = document.createElement("div");
+	const press = document.createElement("button");
+	press.textContent = "Open asks";
+	covered.appendChild(press);
+	document.body.appendChild(covered);
+	press.focus();
+	store.getState().requestAskOpen("session", "chord");
+	const view = await mountFor(
+		t,
+		h(AskDrawer, {
+			frontend: null,
+			scope: "session",
+			onClose: () => {},
+			presentation: "overlay",
+		}),
+	);
+	/* Our own commit, in order: the covered marker lands, the focused control blurs. */
+	covered.setAttribute("inert", "");
+	press.blur();
+	await view.rerender(
+		h(AskDrawer, {
+			frontend: frontend([radioAsk]),
+			scope: "session",
+			onClose: () => {},
+			presentation: "overlay",
+		}),
+	);
+	const active = document.activeElement;
+	assert.equal(
+		active?.getAttribute("data-ask-option"),
+		"staging",
+		"the press is still the user's last act, so the sheet takes the keyboard",
+	);
+	covered.remove();
 });
 
 test("the close door fires ONCE per emptying", async () => {
