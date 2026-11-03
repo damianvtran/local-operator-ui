@@ -1,0 +1,43 @@
+// QA-only probe (#1643 r2): bundle team-bridge-model.ts at a given src tree and
+// evaluate recipientLabel / unlistedMemberLabel / storedAgentName on edge cases.
+import { build } from "esbuild";
+import { writeFileSync } from "node:fs";
+import { join } from "node:path";
+const root = process.argv[2];
+const out = join(process.env.LOCAL_OPERATOR_SCRATCHPAD, "qa1643r2", `model-${process.argv[3]}.mjs`);
+await build({
+  entryPoints: [join(root, "src/renderer/src/features/team-bridge/team-bridge-model.ts")],
+  bundle: true, format: "esm", platform: "node", outfile: out, logLevel: "error",
+  absWorkingDir: root,
+  tsconfig: join(root, "tsconfig.web.json"),
+  external: ["react", "react-dom"],
+});
+const m = await import(out);
+const chief = { named: (a, p) => `${a} (${p})`, unnamed: (p) => `${p}’s chief of staff` };
+const cases = [
+  ["Aida (Ben Tran)", "Ben Tran"],
+  ["Aida（v2）(Ben Tran)", "Ben Tran"],
+  ["Aida (v2) (Ben Tran)", "Ben Tran"],
+  ["Aida (Ben Tran (Sales))", "Ben Tran (Sales)"],
+  ["Aida", "Ben Tran (Sales)"],
+  ["Ben Tran (Sales) (Ben Tran (Sales))", "Ben Tran (Sales)"],
+  ["Ben Tran (Sales)", "Ben Tran (Sales)"],
+  ["Aida (Ana (she/her))", "Ana (she/her)"],
+  ["Aida（Ana (she/her)）", "Ana (she/her)"],
+  ["Ana (she/her)", "Ana (she/her)"],
+  ["Ana (she/her) (Ana (she/her))", "Ana (she/her)"],
+  ["Ana (she/her) (Ana (she/her))", ""],
+  ["Ben Tran (Ben Tran)", ""],
+  ["Aida (she/her)", "Ana (she/her)"],
+  ["Aida ((Ben Tran)", "Ben Tran"],
+  ["Aida (Ben Tran))", "Ben Tran"],
+  ["Ben Tran", "Ben Tran"],
+  ["", ""],
+];
+for (const [label, ownerLabel] of cases)
+  console.log("recipientLabel", JSON.stringify({ label, ownerLabel }), "=>", JSON.stringify(m.recipientLabel({ kind: "agent", label, ownerLabel }, chief)));
+const um = ["Ana (she/her) (Ana (she/her))", "Ana (she/her)", "Aida (Ana (she/her))", "Ben Tran (Ben Tran)", "Ben Tran（Ben Tran）", "Member", "", "Juno (Sam)", "Juno", "Ben Tran (Sales) (Ben Tran (Sales))"];
+if (m.unlistedMemberLabel) for (const l of um)
+  console.log("unlistedMemberLabel agent", JSON.stringify(l), "=>", JSON.stringify(m.unlistedMemberLabel({ kind: "agent", display_label: l }, chief)));
+for (const l of ["Member", "Ana"]) if (m.unlistedMemberLabel)
+  console.log("unlistedMemberLabel human", JSON.stringify(l), "=>", JSON.stringify(m.unlistedMemberLabel({ kind: "human", display_label: l }, chief)));

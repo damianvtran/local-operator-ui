@@ -1,0 +1,155 @@
+import type { Meta, StoryObj } from "@storybook/react";
+import { t } from "@shared/i18n";
+import { type FC, useMemo } from "react";
+import type {
+	TeamBridgeConversation,
+	TeamBridgeDeliveryState,
+	TeamBridgeMessage,
+} from "../../../../shared/team-bridge-contract";
+import { buildMentionCandidates } from "./mentions/candidates";
+import { rankMentionCandidates } from "./mentions/matcher";
+import { MentionPopover } from "./mentions/mention-popover";
+import { TeamBridgeMessageList } from "./team-bridge-message-list";
+
+/*
+ * QA-ONLY (PR #1643 round 2, never committed). Two harnesses:
+ *  - Delivery: the default refusal, one classed refusal, held and screened-
+ *    pending lines for a NAMED recipient (Aida / Ben Tran) and an UNNAMED one
+ *    (owner-named "Ben Tran" / Ben Tran), so es/vi render both {recipient} forms.
+ *  - Mentions: the popover fed by the REAL `buildMentionCandidates` (the
+ *    provider's own call) over a conversation whose members the directory does
+ *    not list, including an agent stored "Ben Tran (Ben Tran)" (m2-r2) and a
+ *    "Member" placeholder that must stay out.
+ */
+const both = (
+	endpoint: string,
+	recipient_label: string,
+	recipient_owner_label: string,
+): TeamBridgeDeliveryState[] => [
+	{ endpoint_id: `${endpoint}_r`, recipient_label, recipient_owner_label, state: "refused" },
+	{
+		endpoint_id: `${endpoint}_rc`,
+		recipient_label,
+		recipient_owner_label,
+		state: "refused",
+		refusal_class: "abusive",
+	},
+	{ endpoint_id: `${endpoint}_h`, recipient_label, recipient_owner_label, state: "held" },
+	{
+		endpoint_id: `${endpoint}_p`,
+		recipient_label,
+		recipient_owner_label,
+		state: "held",
+		hold_class: "delivery_pending",
+	},
+];
+
+const message: TeamBridgeMessage = {
+	id: "bcmsg_qa1643r2",
+	conversation_id: "bcv_qa1643r2",
+	seq: 1,
+	sender: { account_id: "acct_me", kind: "human", display_label: "Ada" },
+	body: "QA 1643 r2",
+	origin: "human",
+	created_at: "2026-11-03T12:00:00.000Z",
+	delivery_states: [
+		...both("bep_named", "Aida", "Ben Tran"),
+		...both("bep_unnamed", "Ben Tran", "Ben Tran"),
+	],
+} as TeamBridgeMessage;
+
+const Delivery: FC = () => (
+	<div data-qa="thread" className="flex w-[820px] flex-col bg-surface pt-6 text-ink">
+		<TeamBridgeMessageList
+			messages={[message]}
+			labelFor={(sender) => sender.display_label}
+			tenantId="tnt_story"
+		/>
+	</div>
+);
+
+const conversation = {
+	id: "bcv_qa1643r2m",
+	tenant_id: "tnt_story",
+	kind: "group",
+	visibility: "private",
+	agent_capable: true,
+	status: "open",
+	created_by: "acct_me",
+	last_message_at: "2026-11-03T12:00:00.000Z",
+	latest_seq: 1,
+	last_read_seq: 1,
+	unread_count: 0,
+	muted: false,
+	members: [
+		{ account_id: "acct_me", kind: "human", display_label: "Ada", role: "owner", state: "active" },
+		{ account_id: "acct_ana", kind: "human", display_label: "Ana", role: "member", state: "active" },
+		{ account_id: "acct_ben", kind: "agent", display_label: "Ben Tran (Ben Tran)", role: "member", state: "active" },
+		{ account_id: "acct_sam", kind: "agent", display_label: "Juno (Sam)", role: "member", state: "active" },
+		{ account_id: "acct_x", kind: "agent", display_label: "Member", role: "member", state: "active" },
+		{ account_id: "acct_bs", kind: "agent", display_label: "Ben Tran (Sales) (Ben Tran (Sales))", role: "member", state: "active" },
+	],
+} as TeamBridgeConversation;
+
+const Mentions: FC = () => {
+	const ranked = useMemo(() => {
+		const rows = buildMentionCandidates({
+			conversation,
+			people: [],
+			selfAccountId: "acct_me",
+			chiefLabels: {
+				named: (agent, person) => t("ui.teamBridge.chief.label", { agent, person }),
+				unnamed: (person) => t("ui.teamBridge.chief.unnamed", { person }),
+			},
+			agentRole: t("ui.teamBridge.chief.fallback"),
+		});
+		return rankMentionCandidates("", rows);
+	}, []);
+	return (
+		<div data-qa="mentions" className="flex min-h-[420px] items-end bg-canvas p-6">
+			<MentionPopover
+				inline
+				listboxId="qa-mentions"
+				sections={ranked.sections}
+				active={0}
+				query=""
+				onActive={() => {}}
+				onPick={() => {}}
+				position={null}
+			/>
+		</div>
+	);
+};
+
+const meta = {
+	title: "QA 1643 r2/Harness",
+	parameters: { layout: "centered" },
+} satisfies Meta;
+export default meta;
+
+export const DeliveryLines: StoryObj = { render: () => <Delivery /> };
+
+/* Q10: owners whose names carry brackets; each line must name the owner once. */
+const bracketMessage: TeamBridgeMessage = {
+	...message,
+	id: "bcmsg_qa1643r2_q10",
+	delivery_states: [
+		{ endpoint_id: "bep_q10a", recipient_label: "Aida (Ana (she/her))", recipient_owner_label: "Ana (she/her)", state: "refused" },
+		{ endpoint_id: "bep_q10b", recipient_label: "Aida (Ben Tran (Sales))", recipient_owner_label: "Ben Tran (Sales)", state: "refused" },
+		{ endpoint_id: "bep_q10c", recipient_label: "Ben Tran (Sales) (Ben Tran (Sales))", recipient_owner_label: "Ben Tran (Sales)", state: "refused" },
+		{ endpoint_id: "bep_q10d", recipient_label: "Ana (she/her) (Ana (she/her))", recipient_owner_label: "", state: "refused" },
+		{ endpoint_id: "bep_q10e", recipient_label: "Aida (Damian Tran (Minerva))", recipient_owner_label: "Damian Tran (Minerva)", state: "held" },
+	],
+} as TeamBridgeMessage;
+export const BracketedOwners: StoryObj = {
+	render: () => (
+		<div data-qa="thread" className="flex w-[820px] flex-col bg-surface pt-6 text-ink">
+			<TeamBridgeMessageList
+				messages={[bracketMessage]}
+				labelFor={(sender) => sender.display_label}
+				tenantId="tnt_story"
+			/>
+		</div>
+	),
+};
+export const UnlistedMentions: StoryObj = { render: () => <Mentions /> };
