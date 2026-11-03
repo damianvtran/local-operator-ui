@@ -111,11 +111,8 @@ function AuditResourceFixture({
 		let attempts = 0;
 		// Deliberately omit the removed legacy save method even if another fixture
 		// left it behind. This boundary provides image bytes only, never file export.
-		const desktop = Object.fromEntries(
-			Object.entries(previous?.desktop ?? {}).filter(
-				([name]) => name !== "ownerAuditAttachmentSave",
-			),
-		);
+		const desktop = { ...previous?.desktop };
+		Reflect.deleteProperty(desktop, "ownerAuditAttachmentSave");
 		window.api = {
 			...previous,
 			desktop: {
