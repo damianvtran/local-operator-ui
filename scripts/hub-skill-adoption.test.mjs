@@ -4,10 +4,23 @@
  * IPC boundary. Failure controls prevent a guessed fixture from becoming a pass.
  */
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { test } from "node:test";
 import { build } from "esbuild";
 import { JSDOM } from "jsdom";
+
+// These six full envelopes came from actual core HTTP requests, not a second
+// frontend interpretation of which state/strategy combinations should exist.
+const coreResponseTable = JSON.parse(
+	readFileSync(
+		new URL(
+			"./fixtures/hub-skill-adoption-core-responses.json",
+			import.meta.url,
+		),
+		"utf8",
+	),
+);
 
 const require = createRequire(import.meta.url);
 const React = require("react");
@@ -1039,3 +1052,156 @@ test("cancel then reopen the same candidate under the opposite action cannot ret
 		await s.cleanup();
 	}
 });
+
+test("production exact core equal preview can re-preview and confirm using only the requested merge strategy", async () => {
+	const equalCase = coreResponseTable.cases.find(
+		(entry) => entry.name === "equal/equal",
+	);
+	const equalPreview = equalCase.response.result;
+	const content = equalPreview.adoption.files[0].proposed;
+	assert.equal(
+		skillAdoptionPreviewSchema.safeParse(equalPreview).success,
+		true,
+	);
+	assert.equal(
+		desktopRequestSchema.safeParse({
+			op: "hub.skillPull",
+			requestId: source.requestId,
+			hubId: source.remoteId,
+			hubSource: "http://localhost:8127/v1",
+			visibility: "org",
+			tenantId: source.scope.tenantId,
+			localAlias: source.alias,
+			adoptionStrategy: "equal",
+		}).success,
+		false,
+		"response equality must not extend the request policy enum",
+	);
+	const s = await productionSubscribeScene({
+		override: (input) => {
+			if (input.op === "hub.skillPull" && input.dryRun)
+				return { status: equalCase.http_status, body: equalCase.response };
+			if (
+				input.op === "hub.skillPull" &&
+				input.confirm &&
+				input.adoptionReceipt === equalPreview.adoption_receipt
+			)
+				return ok(applied);
+		},
+	});
+	try {
+		await s.clickTestId("hub-skill-open");
+		await s.clickTestId("hub-skill-download");
+		await press("Review and merge");
+		await press("Create preview");
+		assert.equal(
+			button("Confirm reviewed adoption").disabled,
+			false,
+			"valid HTTP200 equal preview must enable explicit confirmation",
+		);
+		assert.ok(text().includes(content));
+		assert.equal(text().includes("No adoption is confirmed"), false);
+		assert.equal(
+			s.writes().length,
+			2,
+			"equal preview itself must not confirm or apply",
+		);
+		assert.deepEqual(s.client.getQueryData(["desktop", "hub-links"]), {
+			links: [],
+			unresolved: [],
+		});
+		await press("Create new preview");
+		assert.equal(button("Confirm reviewed adoption").disabled, false);
+		await press("Confirm reviewed adoption");
+		const writes = s.writes();
+		assert.equal(writes.length, 4);
+		for (const request of writes.slice(1)) {
+			assert.equal(
+				request.adoptionStrategy,
+				"merge",
+				"response-only equal is never sent as a request strategy",
+			);
+			assert.equal(request.subscribe, false);
+			assert.equal(request.autoPush, false);
+		}
+		assert.equal(writes[1].dryRun, true);
+		assert.equal(writes[2].dryRun, true);
+		assert.equal(writes[3].confirm, true);
+		assert.equal(writes[3].adoptionReceipt, equalPreview.adoption_receipt);
+		assert.ok(text().includes("Skill adopted"));
+	} finally {
+		await s.cleanup();
+	}
+});
+
+for (const entry of coreResponseTable.cases) {
+	test(`actual serialized core boundary: ${entry.name} HTTP ${entry.http_status}`, async () => {
+		assert.equal(
+			entry.core_head,
+			coreResponseTable.capture_provenance.core_head,
+		);
+		const result = entry.response.result;
+		const parsed = skillAdoptionPreviewSchema.safeParse(result);
+		assert.equal(
+			parsed.success,
+			entry.http_status === 200,
+			"only actual successful preview envelopes qualify for confirmation",
+		);
+		const s = await scene(() => ({
+			status: entry.http_status,
+			body: entry.response,
+		}));
+		try {
+			await press("Create preview");
+			if (entry.http_status !== 200) {
+				assert.equal(button("Confirm reviewed adoption"), undefined);
+				assert.ok(text().includes("No adoption is confirmed"));
+			} else {
+				assert.equal(parsed.data.adoption.state, result.adoption.state);
+				assert.equal(parsed.data.adoption.strategy, result.adoption.strategy);
+				assert.equal(
+					button("Confirm reviewed adoption").disabled,
+					result.adoption.state === "needs-choice",
+				);
+				for (const file of result.adoption.files)
+					if (file.proposed) assert.ok(text().includes(file.proposed));
+				if (result.adoption.state === "needs-choice") {
+					assert.equal(result.adoption.strategy, null);
+					assert.ok(button("Preview keeping local"));
+					assert.ok(button("Preview using Hub"));
+				}
+			}
+			assert.equal(
+				s.requests.length,
+				1,
+				"a response must not automatically trigger confirmation",
+			);
+		} finally {
+			await s.cleanup();
+		}
+	});
+}
+
+for (const invalid of [
+	{ field: "state", value: "unsupported-state" },
+	{ field: "strategy", value: "unsupported-strategy" },
+]) {
+	test(`unsupported response ${invalid.field} fails closed at the actual-core boundary`, async () => {
+		const captured = coreResponseTable.cases.find(
+			(entry) => entry.name === "equal/equal",
+		).response.result;
+		const result = {
+			...captured,
+			adoption: { ...captured.adoption, [invalid.field]: invalid.value },
+		};
+		assert.equal(skillAdoptionPreviewSchema.safeParse(result).success, false);
+		const s = await scene(() => ok(result));
+		try {
+			await press("Create preview");
+			assert.equal(button("Confirm reviewed adoption"), undefined);
+			assert.ok(text().includes("No adoption is confirmed"));
+		} finally {
+			await s.cleanup();
+		}
+	});
+}

@@ -16,7 +16,11 @@ export const skillAdoptionPreviewSchema = z
 		adoption: z
 			.object({
 				state: z.enum(["equal", "ready", "needs-choice"]),
-				strategy: skillAdoptionStrategy.nullable().optional(),
+				// Equal describes the core's comparison result, never a request policy.
+				strategy: z
+					.union([skillAdoptionStrategy, z.literal("equal")])
+					.nullable()
+					.optional(),
 				files: z.array(
 					z
 						.object({

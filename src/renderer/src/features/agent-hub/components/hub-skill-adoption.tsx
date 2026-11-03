@@ -210,7 +210,14 @@ export function HubSkillAdoptionReview({
 				<Button
 					variant="outline"
 					disabled={pending}
-					onClick={() => onPreview(preview?.adoption.strategy ?? "merge")}
+					onClick={() =>
+						onPreview(
+							// The response-only equality marker is not a selectable policy.
+							preview?.adoption.strategy === "equal"
+								? "merge"
+								: (preview?.adoption.strategy ?? "merge"),
+						)
+					}
 				>
 					{t(
 						preview || error
