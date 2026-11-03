@@ -35,5 +35,6 @@
 	"ui.hub.adoption.kept_combined": "Combinado de ambas versiones",
 	"ui.hub.adoption.kept_unresolved": "Secciones sin resolver",
 	"ui.hub.adoption.file_carried": "Conservar los datos locales originales sin cambios",
-	"ui.hub.adoption.file_not_adopted": "Archivo del hub no adoptado"
+	"ui.hub.adoption.file_not_adopted": "Archivo del hub no adoptado",
+	"ui.hub.adoption.file_relocated": "Mover las instrucciones locales a esta ruta"
 }

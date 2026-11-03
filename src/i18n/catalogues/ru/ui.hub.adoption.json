@@ -35,5 +35,6 @@
 	"ui.hub.adoption.kept_combined": "Объединено из обеих версий",
 	"ui.hub.adoption.kept_unresolved": "Неразрешённые разделы",
 	"ui.hub.adoption.file_carried": "Сохранить исходные локальные данные без изменений",
-	"ui.hub.adoption.file_not_adopted": "Файл Hub не принят"
+	"ui.hub.adoption.file_not_adopted": "Файл Hub не принят",
+	"ui.hub.adoption.file_relocated": "Переместить локальные инструкции по этому пути"
 }

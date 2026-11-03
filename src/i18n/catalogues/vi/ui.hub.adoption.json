@@ -35,5 +35,6 @@
 	"ui.hub.adoption.kept_combined": "Kết hợp từ cả hai",
 	"ui.hub.adoption.kept_unresolved": "Các phần chưa giải quyết",
 	"ui.hub.adoption.file_carried": "Giữ nguyên dữ liệu cục bộ gốc",
-	"ui.hub.adoption.file_not_adopted": "Không tiếp nhận tệp Hub"
+	"ui.hub.adoption.file_not_adopted": "Không tiếp nhận tệp Hub",
+	"ui.hub.adoption.file_relocated": "Chuyển hướng dẫn cục bộ đến đường dẫn này"
 }

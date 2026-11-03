@@ -1,5 +1,5 @@
 {
-	"ui.hub.adoption.review": "समीक्षा करके मर्ज करें",
+	"ui.hub.adoption.review": "समीक्षा करके merge करें",
 	"ui.hub.adoption.title": "मौजूदा कौशल की समीक्षा करें",
 	"ui.hub.adoption.preservation": "पूर्वावलोकन कौशल या उसके लिंक को बदले बिना एक पूरा, बहाल करने योग्य स्नैपशॉट सहेजता है। पुष्टि करने पर केवल समीक्षा किया गया प्रस्ताव लिखा जाता है और चुनी गई सदस्यता नीति के साथ Hub लिंक बनता है। रद्द करने पर कौशल और लिंक नहीं बदलते; स्नैपशॉट बना रहता है।",
 	"ui.hub.adoption.model_consent": "कॉन्फ़िगर किए गए मॉडल को कौशल का पाठ भेजने और मिलते-जुलते अंशों को एकीकृत करने की अनुमति दें। मॉडल के बिना समीक्षा के लिए इसे बंद रखें।",
@@ -35,5 +35,6 @@
 	"ui.hub.adoption.kept_combined": "दोनों से एकीकृत",
 	"ui.hub.adoption.kept_unresolved": "अनसुलझे खंड",
 	"ui.hub.adoption.file_carried": "मूल स्थानीय डेटा बिना बदलाव के रखें",
-	"ui.hub.adoption.file_not_adopted": "Hub की फ़ाइल नहीं अपनाई जाएगी"
+	"ui.hub.adoption.file_not_adopted": "Hub की फ़ाइल नहीं अपनाई जाएगी",
+	"ui.hub.adoption.file_relocated": "स्थानीय निर्देश इस पथ पर ले जाएँ"
 }

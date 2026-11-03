@@ -29,7 +29,7 @@ const ANY_MODULE = /.*/;
 const built = await build({
 	stdin: {
 		contents:
-			'export * from "./src/renderer/src/features/agent-hub/components/hub-skill-adoption"; export * from "./src/renderer/src/shared/api/local-operator/hub-skill-adoption"; export { desktopRequestSchema, desktopEndpoint } from "./src/shared/desktop-contract";',
+			'export * from "./src/renderer/src/features/agent-hub/components/hub-skill-adoption"; export * from "./src/renderer/src/shared/api/local-operator/hub-skill-adoption"; export { desktopRequestSchema, desktopEndpoint } from "./src/shared/desktop-contract"; export { useAdoptionFixtureDocumentDirection } from "./src/renderer/src/features/agent-hub/hub-skill-adoption.fixtures"; export { setLocale } from "./src/i18n";',
 		resolveDir: process.cwd(),
 		loader: "ts",
 	},
@@ -75,6 +75,9 @@ new Function("require", "module", "exports", built.outputFiles[0].text)(
 );
 const {
 	HubSkillAdoption,
+	adoptionFileActionKey,
+	useAdoptionFixtureDocumentDirection,
+	setLocale,
 	skillAdoptionPreviewSchema,
 	skillPullDidWrite,
 	desktopRequestSchema,
@@ -403,5 +406,84 @@ test("older-core failure and malformed previews cannot enable confirmation", asy
 		assert.equal(button("Confirm reviewed adoption"), undefined);
 	} finally {
 		await s.cleanup();
+	}
+});
+
+test("actual core not-installed, relocated and carried actions render distinct dispositions", async () => {
+	const cases = {
+		"not-installed": "ui.hub.adoption.file_not_adopted",
+		relocated: "ui.hub.adoption.file_relocated",
+		carried: "ui.hub.adoption.file_carried",
+		"set-aside": "ui.hub.adoption.file_aside",
+	};
+	for (const [action, key] of Object.entries(cases))
+		assert.equal(adoptionFileActionKey(action), key);
+	assert.equal(
+		adoptionFileActionKey("future-action"),
+		"ui.hub.adoption.file_review",
+	);
+	const actualActions = {
+		...preview,
+		adoption: {
+			...preview.adoption,
+			files: Object.keys(cases).map((action, index) => ({
+				...preview.adoption.files[0],
+				path: `references/disposition-${index}.md`,
+				action,
+				local_path: action === "relocated" ? "references/original.md" : null,
+			})),
+		},
+	};
+	const s = await scene(() => ok(actualActions));
+	try {
+		await press("Create preview");
+		for (const label of [
+			"Hub file not adopted",
+			"Move local guidance to this path",
+			"Carry original local bytes unchanged",
+			"Not installed; preserved in snapshot only",
+		])
+			assert.ok(text().includes(label), label);
+		assert.ok(text().includes("references/original.md"));
+		assert.equal(text().includes("Review file disposition"), false);
+	} finally {
+		await s.cleanup();
+	}
+});
+
+test("adoption fixtures mirror shipping document direction and restore prior attributes", async () => {
+	const html = document.documentElement;
+	const previous = {
+		dir: html.getAttribute("dir"),
+		lang: html.getAttribute("lang"),
+	};
+	html.setAttribute("dir", "ltr");
+	html.setAttribute("lang", "fixture-origin");
+	const mount = createRoot(document.getElementById("root"));
+	function DirectionProbe() {
+		useAdoptionFixtureDocumentDirection();
+		return null;
+	}
+	try {
+		setLocale("ur");
+		await act(async () => {
+			mount.render(React.createElement(DirectionProbe));
+		});
+		assert.equal(html.getAttribute("dir"), "rtl");
+		assert.equal(html.getAttribute("lang"), "ur");
+		await act(async () => {
+			setLocale("fr");
+		});
+		assert.equal(html.getAttribute("dir"), "ltr");
+		assert.equal(html.getAttribute("lang"), "fr");
+	} finally {
+		await act(async () => mount.unmount());
+		assert.equal(html.getAttribute("dir"), "ltr");
+		assert.equal(html.getAttribute("lang"), "fixture-origin");
+		setLocale("en");
+		for (const key of ["dir", "lang"]) {
+			if (previous[key] === null) html.removeAttribute(key);
+			else html.setAttribute(key, previous[key]);
+		}
 	}
 });

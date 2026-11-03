@@ -32,8 +32,18 @@ const actionKeys = {
 	"set-aside": "ui.hub.adoption.file_aside",
 	"needs-choice": "ui.hub.adoption.file_choice",
 	carried: "ui.hub.adoption.file_carried",
-	"not-adopted": "ui.hub.adoption.file_not_adopted",
+	"not-installed": "ui.hub.adoption.file_not_adopted",
+	relocated: "ui.hub.adoption.file_relocated",
 } as const;
+
+// Core dispositions are not installation outcomes: a remote-only file can be
+// deliberately excluded, while moved local guidance is still preserved.
+export function adoptionFileActionKey(action: string) {
+	return (
+		actionKeys[action as keyof typeof actionKeys] ??
+		"ui.hub.adoption.file_review"
+	);
+}
 
 function ReviewText({ text, diff = false }: { text: string; diff?: boolean }) {
 	return (
@@ -151,10 +161,7 @@ export function HubSkillAdoptionReview({
 								</p>
 							)}
 							<p className="text-body-sm text-ink-muted">
-								{t(
-									actionKeys[file.action as keyof typeof actionKeys] ??
-										"ui.hub.adoption.file_review",
-								)}
+								{t(adoptionFileActionKey(file.action))}
 							</p>
 							{file.kept && (
 								<dl className="space-y-1 text-body-sm text-ink-muted">

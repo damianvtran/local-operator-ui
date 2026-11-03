@@ -6,7 +6,10 @@ import type {
 	DesktopResponse,
 } from "../../../../shared/desktop-contract";
 import { HubSkillsLibrary } from "./components/hub-skills-library";
-import { adoptionFixture } from "./hub-skill-adoption.fixtures";
+import {
+	adoptionFixture,
+	useAdoptionFixtureDocumentDirection,
+} from "./hub-skill-adoption.fixtures";
 
 const row = {
 	id: "fixture-release-checklist",
@@ -180,16 +183,21 @@ const meta = {
 } satisfies Meta;
 export default meta;
 type Story = StoryObj<typeof meta>;
+function ProductionFixture() {
+	useAdoptionFixtureDocumentDirection();
+	return (
+		<div className="p-6">
+			<HubSkillsLibrary
+				scope={{ visibility: "public", tenantId: null, organization: null }}
+				signedIn
+			/>
+		</div>
+	);
+}
+
 export const ProductionComposition: Story = {
 	render: () => {
 		installFixture();
-		return (
-			<div className="p-6">
-				<HubSkillsLibrary
-					scope={{ visibility: "public", tenantId: null, organization: null }}
-					signedIn
-				/>
-			</div>
-		);
+		return <ProductionFixture />;
 	},
 };

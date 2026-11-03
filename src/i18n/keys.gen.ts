@@ -6472,6 +6472,7 @@ export type MessageParams = {
 	"ui.hub.adoption.file_local": undefined;
 	"ui.hub.adoption.file_merged": undefined;
 	"ui.hub.adoption.file_not_adopted": undefined;
+	"ui.hub.adoption.file_relocated": undefined;
 	"ui.hub.adoption.file_review": undefined;
 	"ui.hub.adoption.file_same": undefined;
 	"ui.hub.adoption.keep_local": undefined;

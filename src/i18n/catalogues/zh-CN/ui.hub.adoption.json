@@ -1,5 +1,5 @@
 {
-	"ui.hub.adoption.review": "审阅并合并",
+	"ui.hub.adoption.review": "审阅并 merge",
 	"ui.hub.adoption.title": "审阅现有技能",
 	"ui.hub.adoption.preservation": "预览会保存完整、可恢复的快照，不会更改技能或链接。确认后仅写入已审阅的方案，并按所选订阅策略创建 Hub 链接。取消不会更改技能或链接；快照会保留。",
 	"ui.hub.adoption.model_consent": "允许已配置的模型接收技能文本并整合重叠内容。关闭此选项可在不使用模型的情况下审阅。",
@@ -35,5 +35,6 @@
 	"ui.hub.adoption.kept_combined": "整合自双方",
 	"ui.hub.adoption.kept_unresolved": "未解决的章节",
 	"ui.hub.adoption.file_carried": "原样保留本地数据",
-	"ui.hub.adoption.file_not_adopted": "不接管此 Hub 文件"
+	"ui.hub.adoption.file_not_adopted": "不接管此 Hub 文件",
+	"ui.hub.adoption.file_relocated": "将本地指引移至此路径"
 }

@@ -12,7 +12,10 @@ import {
 	type AdoptionReviewState,
 	HubSkillAdoptionReview,
 } from "./components/hub-skill-adoption";
-import { adoptionFixture } from "./hub-skill-adoption.fixtures";
+import {
+	adoptionFixture,
+	useAdoptionFixtureDocumentDirection,
+} from "./hub-skill-adoption.fixtures";
 
 const preview = adoptionFixture;
 const fixtureAlias = "release-checklist";
@@ -29,6 +32,7 @@ function Fixture({
 		| "review"
 		| "applied";
 }) {
+	useAdoptionFixtureDocumentDirection();
 	const [allowLlm, setAllowLlm] = useState(false);
 	const [state, setState] = useState<AdoptionReviewState>({
 		preview: ["idle", "loading", "error"].includes(initial)

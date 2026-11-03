@@ -1,4 +1,6 @@
 import type { SkillAdoptionPreview } from "@shared/api/local-operator/hub-skill-adoption";
+import { useDocumentDirection } from "@shared/i18n/use-document-direction";
+import { useLayoutEffect } from "react";
 
 // Invented review content shared by presentation and production-composition stories.
 export const adoptionFixture: SkillAdoptionPreview = {
@@ -43,3 +45,24 @@ export const adoptionFixture: SkillAdoptionPreview = {
 	},
 	confirmation_required: true,
 };
+
+/** Storybook has no App document writer; portals still inherit from <html>. */
+export function useAdoptionFixtureDocumentDirection() {
+	useLayoutEffect(() => {
+		const root = document.documentElement;
+		const previous = {
+			dir: root.getAttribute("dir"),
+			lang: root.getAttribute("lang"),
+		};
+		// A fixture may be followed by an unrelated story, so its document owner
+		// must release both attributes rather than leave Urdu direction behind.
+		return () => {
+			for (const key of ["dir", "lang"] as const) {
+				const value = previous[key];
+				if (value === null) root.removeAttribute(key);
+				else root.setAttribute(key, value);
+			}
+		};
+	}, []);
+	useDocumentDirection();
+}

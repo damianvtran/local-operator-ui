@@ -35,5 +35,6 @@
 	"ui.hub.adoption.kept_combined": "Combined from both",
 	"ui.hub.adoption.kept_unresolved": "Unresolved sections",
 	"ui.hub.adoption.file_carried": "Carry original local bytes unchanged",
-	"ui.hub.adoption.file_not_adopted": "Hub file not adopted"
+	"ui.hub.adoption.file_not_adopted": "Hub file not adopted",
+	"ui.hub.adoption.file_relocated": "Move local guidance to this path"
 }

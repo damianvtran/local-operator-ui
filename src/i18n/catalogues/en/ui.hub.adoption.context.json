@@ -220,5 +220,11 @@
 		"tone": "Calm, factual, explicit consent. No implied install on preview.",
 		"length": "Wrapping dialog copy; actions wrap on narrow screens. No truncation of reviewed content.",
 		"note": "English source: Hub file not adopted. Local means existing authored folder; Hub means remote skill. Snapshot is complete original bytes and remains after cancellation. Preview choices do not apply. Keep identifiers/path/model placeholders unchanged."
+	},
+	"ui.hub.adoption.file_relocated": {
+		"role": "Per-file disposition in the existing skill adoption review dialog",
+		"tone": "Concise, factual; describes a pending filesystem move, not an applied result.",
+		"length": "One wrapping status label, no fixed width.",
+		"note": "Core action relocated: existing local guidance remains preserved but is moved to the displayed file path so it does not collide with Hub guidance. Local means the authored folder. Path is shown separately; do not add a placeholder. English source: Move local guidance to this path"
 	}
 }

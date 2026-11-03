@@ -1,5 +1,5 @@
 {
-	"ui.hub.adoption.review": "جائزہ لیں اور ضم کریں",
+	"ui.hub.adoption.review": "جائزہ لیں اور merge کریں",
 	"ui.hub.adoption.title": "موجودہ مہارت کا جائزہ",
 	"ui.hub.adoption.preservation": "پیش منظر مہارت یا اس کے ربط کو بدلے بغیر ایک مکمل، قابلِ بحالی اسنیپ شاٹ محفوظ کرتا ہے۔ تصدیق پر صرف جائزہ شدہ تجویز لکھی جاتی ہے اور منتخب سبسکرپشن پالیسی کے ساتھ Hub کا ربط بنتا ہے۔ منسوخ کرنے سے مہارت یا ربط نہیں بدلتا؛ اسنیپ شاٹ محفوظ رہتا ہے۔",
 	"ui.hub.adoption.model_consent": "ترتیب دیے گئے ماڈل کو مہارت کا متن وصول کرنے اور مشترک مواد یکجا کرنے کی اجازت دیں۔ ماڈل کے بغیر جائزے کے لیے اسے بند رکھیں۔",
@@ -35,5 +35,6 @@
 	"ui.hub.adoption.kept_combined": "دونوں سے یکجا",
 	"ui.hub.adoption.kept_unresolved": "غیر حل شدہ حصے",
 	"ui.hub.adoption.file_carried": "اصل مقامی ڈیٹا بغیر تبدیلی کے رکھیں",
-	"ui.hub.adoption.file_not_adopted": "Hub کی فائل نہیں اپنائی جائے گی"
+	"ui.hub.adoption.file_not_adopted": "Hub کی فائل نہیں اپنائی جائے گی",
+	"ui.hub.adoption.file_relocated": "مقامی رہنمائی اس راستے پر منتقل کریں"
 }
