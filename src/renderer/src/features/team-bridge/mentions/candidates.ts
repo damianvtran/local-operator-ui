@@ -20,9 +20,9 @@ import type {
 import {
 	type ChiefLabels,
 	composeChiefLabel,
-	memberStoredName,
 	personDisplayLabel,
 	personRowState,
+	unlistedMemberLabel,
 } from "../team-bridge-model";
 import type { MentionCandidate } from "./matcher";
 
@@ -127,7 +127,7 @@ export function buildMentionCandidates(input: {
 		if (seen.has(key) || !(members.has(key) || invited.has(key))) continue;
 		if (member.kind === "human" && member.account_id === selfAccountId)
 			continue;
-		const stored = memberStoredName(member);
+		const stored = unlistedMemberLabel(member, chiefLabels);
 		if (stored === null) continue;
 		seen.add(key);
 		const endpoint = (member as { endpoint_id?: unknown }).endpoint_id;
@@ -138,11 +138,12 @@ export function buildMentionCandidates(input: {
 				? { endpointId: endpoint }
 				: {}),
 			/*
-			 * The stored label through `memberStoredName`, the read rule every
-			 * other surface applies: a legacy "Ben Tran (Ben Tran)" or the
-			 * "Member" placeholder must not reach the popover row or the
-			 * `mentions.notice.*` sentence verbatim (review m1 on #1643). A
-			 * label that names nobody cannot be typed as a mention; skip it.
+			 * The stored label through `unlistedMemberLabel`, the read rule every
+			 * other surface applies: a legacy "Ben Tran (Ben Tran)" reads "Ben
+			 * Tran's chief of staff" and the "Member" placeholder never reaches
+			 * the popover row or the `mentions.notice.*` sentence verbatim
+			 * (review m1, m2-r2 on #1643). A label that names nobody cannot be
+			 * typed as a mention; skip it.
 			 */
 			label: stored,
 			member: members.has(key),

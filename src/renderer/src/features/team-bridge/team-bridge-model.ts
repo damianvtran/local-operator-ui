@@ -1679,8 +1679,13 @@ export function storedLabel(label: string): string | null {
  * m2 on #1643). A read-path match only: the tail is stripped solely when it
  * equals the owner (`storedAgentName`), so an agent truly named "Aida（Sales）"
  * keeps its name.
+ *
+ * The tail is the LAST bracket group and holds no bracket of either kind
+ * (review m1-r2 on #1643): with `(.+)` the lazy head stopped at the FIRST
+ * bracket, so "Aida（v2）(Ben Tran)" or "Aida (v2) (Ben Tran)" split as
+ * "Aida" + "v2）(Ben Tran" and the owner was composed a second time.
  */
-const COMPOSED_LABEL = /^(.+?)\s*[(（](.+)[)）]$/u;
+const COMPOSED_LABEL = /^(.+?)\s*[(（]([^()（）]+)[)）]$/u;
 
 /**
  * The stored tails of an unnamed agent's label. The ASCII form is the only
@@ -1771,6 +1776,28 @@ export function storedAgentName(
 		}
 	}
 	return stored;
+}
+
+/**
+ * The label for a conversation member the directory does not list (a guest, or
+ * a roster that has not answered yet), or null when the stored label names
+ * nobody.
+ *
+ * Like `memberStoredName`, except that a self-composed agent "X (X)" is NOT
+ * nobody here (review m2-r2 on #1643): with no directory row it is still X's
+ * unnamed agent, a real mention target, so it reads "X's chief of staff"
+ * through the same `chiefLabels.unnamed` form every other surface uses.
+ */
+export function unlistedMemberLabel(
+	member: { kind: "human" | "agent"; display_label: string },
+	chiefLabels: ChiefLabels,
+): string | null {
+	const stored = memberStoredName(member);
+	if (stored !== null || member.kind !== "agent") return stored;
+	const label = storedLabel(member.display_label);
+	if (label === null) return null;
+	const owner = dedupedAgentLabel(label);
+	return owner !== label ? chiefLabels.unnamed(owner) : null;
 }
 
 /**

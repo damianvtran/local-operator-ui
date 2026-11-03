@@ -337,6 +337,20 @@ const RECIPIENT_LABEL_CASES = [
 		"Aida（销售） <陈伟>",
 	],
 	[
+		"agent, full-width name stored ASCII-composed (review m1-r2)",
+		"agent",
+		"Aida（v2）(Ben Tran)",
+		"Ben Tran",
+		"Aida（v2） <Ben Tran>",
+	],
+	[
+		"agent, bracketed name stored composed (review m1-r2)",
+		"agent",
+		"Aida (v2) (Ben Tran)",
+		"Ben Tran",
+		"Aida (v2) <Ben Tran>",
+	],
+	[
 		"agent, label equals the owner",
 		"agent",
 		"Ben Tran",
@@ -381,7 +395,9 @@ test("an unnamed recipient takes the delivery-scoped in-sentence form, not the r
 		hi: "Ben Tran के चीफ़ ऑफ़ स्टाफ़ तक नहीं पहुँचा।",
 		ur: "Ben Tran کے چیف آف اسٹاف تک نہیں پہنچا۔",
 		fr: "Non remis à la cheffe de cabinet (Ben Tran).",
-		es: "No entregado a el jefe de gabinete de Ben Tran.",
+		// es is built around "para" so no "a el" contraction arises (C5 on #1643).
+		es: "Mensaje para el jefe de gabinete de Ben Tran no entregado.",
+		vi: "Không được chuyển tới chánh văn phòng của Ben Tran",
 	};
 	try {
 		for (const [locale, prefix] of Object.entries(expected)) {

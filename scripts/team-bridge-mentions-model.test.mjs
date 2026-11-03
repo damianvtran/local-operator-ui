@@ -508,10 +508,13 @@ test("members the directory does not list are offered by their stored NAME, neve
 		},
 		agentRole: "Chief of staff",
 	});
+	// "Ben Tran (Ben Tran)" is Ben's UNNAMED agent, still a mention target
+	// (review m2-r2 on #1643); only "Member" names nobody.
 	assert.deepEqual(
 		rows.map((row) => [row.kind, row.label]),
 		[
 			["human", "Ana"],
+			["agent", "Ben Tran’s chief of staff"],
 			["agent", "Juno (Sam)"],
 		],
 	);
