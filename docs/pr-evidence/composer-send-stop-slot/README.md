@@ -51,3 +51,17 @@ Regenerated on head `8ca363d464` (review R2-1, design D9/D11/D13, UX U1).
   the Russian equivalent both fit.
 - `rtl-*`, `proof-rtl.txt`: RTL. `numbers-frames.json`, `proof-frames.txt`: all
   states at 1024 and 520, dark and light.
+
+## Round 3 (`round-3/`)
+
+Vertical deltas against idle, at column width 1024, plain readings, dark
+(`composer-slots-proof.mjs`, `dCard` = card height change, `dControlsY` = the
+controls' y change), in a bottom-anchored pane (the chat band) and a top-anchored
+one (`--anchor=top`):
+
+| state | dCard | dControlsY bottom | dControlsY top |
+| --- | --- | --- | --- |
+| preparing | +40 | 0 | +40 |
+| recording | +84 | 0 | +84 |
+| Send recording held | +40 | 0 | +40 |
+| running / stopping | 0 | 0 | 0 |
