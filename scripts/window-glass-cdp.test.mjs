@@ -1020,6 +1020,73 @@ for (const [themeName, label] of [
 	);
 
 	test(
+		`${label}: the glass scale adds no blur layer, and publishes the lifted pane alpha`,
+		{ skip, timeout: 120_000 },
+		async () => {
+			await loadTheme(themeName);
+			await setGlass({
+				enabled: true,
+				coverage: "full",
+				intensity: 80,
+				material: "window",
+			});
+			await wait(400);
+			/*
+			 * THE BLUR CEILING (glass scale, docs/branding.md): exactly one
+			 * `backdrop-filter` exists in the built renderer - the isolating band's.
+			 * A second would be the "blur it harder" answer to "glass is weak on
+			 * light", which cannot work (the layer samples the page, not the OS
+			 * desktop) and costs a compositor layer per region. Counted over the
+			 * BUILT stylesheets, `none` excluded; finding none is also a failure.
+			 */
+			const blurs = await cdp.ev(`(() => {
+        const out = [];
+        const walk = (rules) => {
+          for (const r of rules) {
+            if (r.cssRules) walk(r.cssRules);
+            const v = r.style && (r.style.getPropertyValue("backdrop-filter") || r.style.getPropertyValue("-webkit-backdrop-filter"));
+            if (v && v.trim() !== "none") out.push({ sel: r.selectorText || r.cssText.slice(0, 80), v });
+          }
+        };
+        for (const sh of document.styleSheets) { try { walk(sh.cssRules); } catch {} }
+        return out;
+      })()`);
+			assert.ok(
+				blurs.length >= 1,
+				`${label}: no backdrop-filter declaration was found, so the scan measured nothing`,
+			);
+			assert.ok(
+				blurs.length <= 1,
+				`${label}: ${blurs.length} backdrop-filter declarations (ceiling 1): ${JSON.stringify(blurs)}`,
+			);
+			/* The scale's variables are published and the pane var is the lifted net. */
+			const vars = await cdp.ev(
+				`Object.fromEntries(["--lo-glass-in-pane","--lo-glass-in-elevated","--lo-glass-pane-lift","--lo-glass-edge-mix"].map((n) => [n, getComputedStyle(document.documentElement).getPropertyValue(n).trim()]))`,
+			);
+			for (const [name, value] of Object.entries(vars))
+				assert.ok(value !== "", `${label}: ${name} is not published`);
+			if (label === "light") {
+				assert.ok(
+					Number(vars["--lo-glass-pane-lift"]) > 0 &&
+						Number(vars["--lo-glass-edge-mix"]) > 0,
+					`${label}: the light scale is the regular tier (lift and edge mix above 0)`,
+				);
+				assert.ok(
+					Number(vars["--lo-glass-in-pane"]) >
+						Number(vars["--lo-glass-in-elevated"]),
+					`${label}: the lifted pane net must exceed the unlifted one that clamps to 0`,
+				);
+			} else {
+				assert.equal(
+					vars["--lo-glass-in-pane"],
+					vars["--lo-glass-in-elevated"],
+					`${label}: dark has lift 0, so the pane paints exactly as before`,
+				);
+			}
+		},
+	);
+
+	test(
 		`${label}: the two coverages are provably different pages, not one page twice`,
 		{ skip, timeout: 240_000 },
 		async () => {

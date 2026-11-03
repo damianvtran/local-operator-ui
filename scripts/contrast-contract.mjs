@@ -66,15 +66,24 @@ import {
 	GLASS_INKS,
 	GLASS_INK_FLOOR,
 	GLASS_LANE_STEP,
+	GLASS_PANE_STEP,
+	GLASS_PANE_STEP_FROM,
 	GLASS_ROLES,
+	GLASS_SCALE_GRAYS,
+	GLASS_SEAM_STEP,
 	GLASS_STATE_DIM_FLOOR,
 	LANE_ALPHA_CEILING,
+	auditGlassText,
 	derive as deriveGlassFloors,
+	deriveGlassScale,
 	composite as glassComposite,
 	glassEdge,
 	gray as glassGray,
+	glassGrounds,
 	ratio as glassRatio,
 	schemeOf as glassSchemeOf,
+	paneOverCanvas,
+	seamOver,
 } from "./derive-glass-floors.mjs";
 import { loadPalettes } from "./palette-source.mjs";
 
@@ -8443,6 +8452,110 @@ for (const row of ROW_STATE_MEASURED_SHORTFALL) {
 	for (const [intensity, row] of Object.entries(matrix))
 		console.log(
 			`  lane ΔE00 at ${intensity}: dark ${r2(row.dark)} / light ${r2(row.light)}`,
+		);
+}
+
+/* ---- 5d. the window glass scale (light pane lift, panel edge mix) ---- */
+
+/*
+ * THE GLASS SCALE (`window-glass-floors.json` -> `glassScale`). Four statements:
+ *   (a) canvas -> lifted pane steps ΔE00 `GLASS_PANE_STEP` on every light palette,
+ *       slider 40..100, both light material greys (the defect: it was 0.0);
+ *   (b) the recoloured panel seam steps ΔE00 `GLASS_SEAM_STEP` off each of the
+ *       three glass grounds at their floors on every light palette;
+ *   (c) text over every ground the scale touches - raw canvas / surface / elevated
+ *       and the LIFTED pane, with and without each state overlay, slider 0..100 -
+ *       still clears AA (`inkDim` on an overlay: the stated 3.5 relaxation), and the
+ *       worst pair per scheme is NAMED so the margin is a number, not a tick;
+ *   (d) the committed numbers are not below the derived ones.
+ * It also reads the stylesheet: the pane rule must read the lifted var, and the one
+ * `backdrop-filter` in the file must stay one (a second would be the "blur it
+ * harder" fix this scale exists to avoid).
+ */
+{
+	const file = JSON.parse(
+		readFileSync(join(ROOT, "src/shared/window-glass-floors.json"), "utf8"),
+	);
+	const scale = file.glassScale;
+	const tierFloors = file.alphaFloor["under-window"];
+	let minPane = { step: Number.POSITIVE_INFINITY, id: null };
+	let minSeam = { step: Number.POSITIVE_INFINITY, id: null };
+	for (const { id, palette } of palettes) {
+		if (glassSchemeOf(palette) !== "light") continue;
+		for (const g of GLASS_SCALE_GRAYS.light) {
+			for (let i = GLASS_PANE_STEP_FROM; i <= 100; i++) {
+				assertions++;
+				const { canvas, pane } = paneOverCanvas(
+					palette,
+					tierFloors.light,
+					scale.paneLift.light,
+					i,
+					g,
+				);
+				const step = deltaE(canvas, pane);
+				if (step < minPane.step) minPane = { step, id: `${id}@${i}/grey ${g}` };
+				if (step < GLASS_PANE_STEP)
+					fail(
+						`glass scale: ${id} canvas -> pane is ΔE00 ${r2(step)} at slider ${i} over grey ${g}, floor ${GLASS_PANE_STEP} - the pane would read as the canvas`,
+					);
+			}
+			for (const { role, hex } of glassGrounds(palette, tierFloors.light, g)) {
+				assertions++;
+				const step = deltaE(seamOver(palette, scale.edgeMix.light, hex), hex);
+				if (step < minSeam.step)
+					minSeam = { step, id: `${id}/${role}/grey ${g}` };
+				if (step < GLASS_SEAM_STEP)
+					fail(
+						`glass scale: ${id} panel seam is ΔE00 ${r2(step)} off ${role} glass over grey ${g}, floor ${GLASS_SEAM_STEP} - raise edgeMix by re-deriving`,
+					);
+			}
+		}
+	}
+	const derivedScale = deriveGlassScale(file.alphaFloor);
+	for (const key of ["paneLift", "edgeMix"])
+		for (const scheme of ["dark", "light"]) {
+			assertions++;
+			if ((scale[key]?.[scheme] ?? -1) < derivedScale[key][scheme])
+				fail(
+					`glass scale ${key}/${scheme} is ${scale[key]?.[scheme]} but the palettes need ${derivedScale[key][scheme]} - re-derive with scripts/derive-glass-floors.mjs, never hand-lower it`,
+				);
+		}
+	const audit = auditGlassText(file.alphaFloor, scale);
+	assertions += audit.checked;
+	for (const f of audit.failures.slice(0, 20))
+		fail(
+			`glass scale text: ${f.palette} ${f.ink} on ${f.ground}${f.overlay === "none" ? "" : ` + ${f.overlay} overlay`} at slider ${f.intensity} over grey ${f.gray} is ${r2(f.ratio)}:1, floor ${f.floor}`,
+		);
+	const css = readFileSync(
+		join(ROOT, "src/renderer/src/styles/index.css"),
+		"utf8",
+	).replace(/\/\*[\s\S]*?\*\//g, "");
+	assertions += 2;
+	if (!/lo-elevated\)\s*calc\(var\(--lo-glass-in-pane\)/.test(css))
+		fail(
+			"glass scale: the net pane rule in index.css no longer reads `--lo-glass-in-pane`, so the lift is not painted",
+		);
+	/* The glass seam rule owns the colour, so its alpha must be the class's alpha:
+	 * the existing check above reads `bg-hairline/<n>`, this one reads the rule. */
+	assertions++;
+	const edgeRule = css.match(
+		/html\[data-glass\]\s*\[data-panel-edge\]\s*\{[^}]*?\)\s*(\d+)%,\s*transparent/,
+	);
+	if (!edgeRule || Number(edgeRule[1]) !== Math.round(PANEL_SEAM_ALPHA * 100))
+		fail(
+			`glass scale: the glass \`[data-panel-edge]\` rule does not paint at ${Math.round(PANEL_SEAM_ALPHA * 100)}% (read ${edgeRule?.[1] ?? "no rule"}) - it must match PANEL_SEAM_ALPHA and the derivation's GLASS_SEAM_ALPHA`,
+		);
+	const blurs = (css.match(/backdrop-filter\s*:\s*[^n;][^;]*;/g) ?? []).length;
+	if (blurs > 1)
+		fail(
+			`glass scale: index.css declares ${blurs} backdrop-filter layers, ceiling is 1 (the isolating band)`,
+		);
+	log.push(
+		`Window glass scale: paneLift ${scale.paneLift.light}/${scale.paneLift.dark}, edgeMix ${scale.edgeMix.light}/${scale.edgeMix.dark} (light/dark); tightest canvas -> pane ΔE00 ${r2(minPane.step)} (${minPane.id}), tightest seam ΔE00 ${r2(minSeam.step)} (${minSeam.id}); ${audit.checked} text pairs.`,
+	);
+	for (const [scheme, w] of Object.entries(audit.worst))
+		log.push(
+			`  worst ${scheme} text pair: ${w.palette} ${w.ink} on ${w.ground}${w.overlay === "none" ? "" : ` + ${w.overlay} overlay`} at slider ${w.intensity}, grey ${w.gray}: ${r2(w.ratio)}:1 (floor ${w.floor})`,
 		);
 }
 

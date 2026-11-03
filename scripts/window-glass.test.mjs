@@ -19,6 +19,7 @@ import {
 	LANE_ALPHA_CEILING,
 	LANE_ROLES,
 	deriveLaneWash,
+	glassAlphaAt,
 } from "./derive-glass-floors.mjs";
 
 const ROOT = process.cwd();
@@ -1013,6 +1014,246 @@ test("G-8 paint: which kinds a coverage turns translucent, and the net alphas", 
 		}
 		assert.match(value, /^\d(\.\d+)?$/);
 	}
+});
+
+/*
+ * G-8b THE GLASS SCALE'S PUBLISHED VARIABLES.
+ *
+ * DARK IS BYTE-IDENTICAL. The golden below is `glassPaintFor` on origin/main
+ * (2ff3187db6, before the scale existed) for dark / vibrancy / window / full app at
+ * six slider positions, captured by bundling that revision's module. Every name it
+ * had must still carry the same string; the only additions are the three scale
+ * variables, and on dark `--lo-glass-in-pane` is `--lo-glass-in-elevated` exactly.
+ */
+const DARK_PRE_SCALE = {
+	0: {
+		"--lo-glass-a-canvas": "0.96",
+		"--lo-glass-a-surface": "0.96",
+		"--lo-glass-a-elevated": "0.96",
+		"--lo-glass-a-row-hover": "0.05",
+		"--lo-glass-a-row-selected": "0.08",
+		"--lo-glass-a-row-work": "0.08",
+		"--lo-glass-a-field": "0.05",
+		"--lo-glass-a-block-veil": "0.09",
+		"--lo-glass-a-band-floor": "0.91",
+		"--lo-glass-a-lane": "0.7",
+		"--lo-glass-lane-tone": "var(--lo-sunken)",
+		"--lo-glass-control-mix": "0.15",
+		"--lo-glass-in-surface": "0",
+		"--lo-glass-in-elevated": "0",
+	},
+	25: {
+		"--lo-glass-a-canvas": "0.87",
+		"--lo-glass-a-surface": "0.89",
+		"--lo-glass-a-elevated": "0.94",
+		"--lo-glass-a-row-hover": "0.05",
+		"--lo-glass-a-row-selected": "0.08",
+		"--lo-glass-a-row-work": "0.08",
+		"--lo-glass-a-field": "0.05",
+		"--lo-glass-a-block-veil": "0.09",
+		"--lo-glass-a-band-floor": "0.91",
+		"--lo-glass-a-lane": "0.64",
+		"--lo-glass-lane-tone": "var(--lo-sunken)",
+		"--lo-glass-control-mix": "0.15",
+		"--lo-glass-in-surface": "0.15",
+		"--lo-glass-in-elevated": "0.54",
+	},
+	40: {
+		"--lo-glass-a-canvas": "0.81",
+		"--lo-glass-a-surface": "0.84",
+		"--lo-glass-a-elevated": "0.92",
+		"--lo-glass-a-row-hover": "0.05",
+		"--lo-glass-a-row-selected": "0.08",
+		"--lo-glass-a-row-work": "0.08",
+		"--lo-glass-a-field": "0.05",
+		"--lo-glass-a-block-veil": "0.09",
+		"--lo-glass-a-band-floor": "0.91",
+		"--lo-glass-a-lane": "0.59",
+		"--lo-glass-lane-tone": "var(--lo-sunken)",
+		"--lo-glass-control-mix": "0.15",
+		"--lo-glass-in-surface": "0.16",
+		"--lo-glass-in-elevated": "0.58",
+	},
+	60: {
+		"--lo-glass-a-canvas": "0.74",
+		"--lo-glass-a-surface": "0.79",
+		"--lo-glass-a-elevated": "0.91",
+		"--lo-glass-a-row-hover": "0.05",
+		"--lo-glass-a-row-selected": "0.08",
+		"--lo-glass-a-row-work": "0.08",
+		"--lo-glass-a-field": "0.05",
+		"--lo-glass-a-block-veil": "0.09",
+		"--lo-glass-a-band-floor": "0.91",
+		"--lo-glass-a-lane": "0.54",
+		"--lo-glass-lane-tone": "var(--lo-sunken)",
+		"--lo-glass-control-mix": "0.15",
+		"--lo-glass-in-surface": "0.19",
+		"--lo-glass-in-elevated": "0.65",
+	},
+	80: {
+		"--lo-glass-a-canvas": "0.66",
+		"--lo-glass-a-surface": "0.73",
+		"--lo-glass-a-elevated": "0.89",
+		"--lo-glass-a-row-hover": "0.05",
+		"--lo-glass-a-row-selected": "0.08",
+		"--lo-glass-a-row-work": "0.08",
+		"--lo-glass-a-field": "0.05",
+		"--lo-glass-a-block-veil": "0.09",
+		"--lo-glass-a-band-floor": "0.91",
+		"--lo-glass-a-lane": "0.48",
+		"--lo-glass-lane-tone": "var(--lo-sunken)",
+		"--lo-glass-control-mix": "0.15",
+		"--lo-glass-in-surface": "0.21",
+		"--lo-glass-in-elevated": "0.68",
+	},
+	100: {
+		"--lo-glass-a-canvas": "0.59",
+		"--lo-glass-a-surface": "0.67",
+		"--lo-glass-a-elevated": "0.87",
+		"--lo-glass-a-row-hover": "0.05",
+		"--lo-glass-a-row-selected": "0.08",
+		"--lo-glass-a-row-work": "0.08",
+		"--lo-glass-a-field": "0.05",
+		"--lo-glass-a-block-veil": "0.09",
+		"--lo-glass-a-band-floor": "0.91",
+		"--lo-glass-a-lane": "0.43",
+		"--lo-glass-lane-tone": "var(--lo-sunken)",
+		"--lo-glass-control-mix": "0.15",
+		"--lo-glass-in-surface": "0.2",
+		"--lo-glass-in-elevated": "0.68",
+	},
+};
+
+test("G-8b the glass scale: dark paints exactly as before, light lifts the pane", () => {
+	const paint = (intensity, scheme, material = "window", coverage = "full") =>
+		glass.glassPaintFor({
+			coverage,
+			intensity,
+			mechanism: "vibrancy",
+			material,
+			scheme,
+		}).vars;
+	for (const [intensity, before] of Object.entries(DARK_PRE_SCALE)) {
+		const now = paint(Number(intensity), "dark");
+		for (const [name, value] of Object.entries(before))
+			assert.equal(now[name], value, `dark@${intensity} ${name} moved`);
+		assert.deepEqual(
+			Object.keys(now).filter((n) => !(n in before)),
+			["--lo-glass-in-pane", "--lo-glass-pane-lift", "--lo-glass-edge-mix"],
+			"the scale adds exactly its three variables",
+		);
+	}
+	/* Dark: lift 0 and edge 0 on every material and slider position, and the lifted
+	 * pane net IS the unlifted one. */
+	for (const material of ["window", "menu", "popover"])
+		for (let intensity = 0; intensity <= 100; intensity += 5) {
+			const v = paint(intensity, "dark", material);
+			assert.equal(v["--lo-glass-pane-lift"], "0");
+			assert.equal(v["--lo-glass-edge-mix"], "0");
+			assert.equal(
+				v["--lo-glass-in-pane"],
+				v["--lo-glass-in-elevated"],
+				`dark ${material}@${intensity}: lift 0 must leave the pane net alone`,
+			);
+		}
+	/* Light: the committed numbers are what is published, and the pane net follows
+	 * min(.96, max(elevated, canvas + lift)) through the same net arithmetic. */
+	const net = (target, canvas) =>
+		Math.round(
+			Math.min(1, Math.max(0, 1 - (1 - target) / (1 - canvas))) * 100,
+		) / 100;
+	for (let intensity = 0; intensity <= 100; intensity += 5) {
+		const v = paint(intensity, "light");
+		const canvas = Number(v["--lo-glass-a-canvas"]);
+		const elevated = Number(v["--lo-glass-a-elevated"]);
+		assert.equal(
+			v["--lo-glass-pane-lift"],
+			String(floorsFile.glassScale.paneLift.light),
+		);
+		assert.equal(
+			v["--lo-glass-edge-mix"],
+			String(floorsFile.glassScale.edgeMix.light),
+		);
+		const want = net(
+			Math.min(
+				0.96,
+				Math.max(elevated, canvas + floorsFile.glassScale.paneLift.light),
+			),
+			canvas,
+		);
+		assert.equal(
+			Number(v["--lo-glass-in-pane"]),
+			want,
+			`light@${intensity} pane net`,
+		);
+		/* The lift clamp: never above the veil ceiling, never below the unlifted net. */
+		assert.ok(
+			Number(v["--lo-glass-in-pane"]) >= Number(v["--lo-glass-in-elevated"]),
+		);
+		assert.ok(
+			1 - (1 - Number(v["--lo-glass-in-pane"])) * (1 - canvas) <= 0.96 + 0.011,
+			`light@${intensity}: the lifted pane stacks past the .96 ceiling`,
+		);
+	}
+	/* The defect itself: at the default slider the unlifted light net is 0 (pane ==
+	 * canvas) and the lifted one is not. */
+	const at80 = paint(80, "light");
+	assert.equal(at80["--lo-glass-in-elevated"], "0");
+	assert.ok(Number(at80["--lo-glass-in-pane"]) > 0);
+	/* The derivation's mirror of the alpha curve is the module's. */
+	for (const scheme of ["dark", "light"])
+		for (let intensity = 0; intensity <= 100; intensity += 10) {
+			const alphas = glass.glassAlphas({
+				intensity,
+				mechanism: "vibrancy",
+				material: "window",
+				scheme,
+			});
+			for (const role of ["canvas", "elevated"])
+				assert.equal(
+					glassAlphaAt(
+						floorsFile.alphaFloor["under-window"][scheme][role],
+						intensity,
+					),
+					alphas[role],
+					`glassAlphaAt(${role}) drifted from glassAlphas at ${scheme}@${intensity}`,
+				);
+		}
+});
+
+test("G-8c every glass variable the paint publishes is cleared on switch-off", () => {
+	const hook = readFileSync(
+		`${ROOT}/src/renderer/src/shared/hooks/use-window-glass.ts`,
+		"utf8",
+	);
+	const listed = new Set(
+		[
+			...hook
+				.slice(hook.indexOf("const GLASS_VARS"))
+				.split("] as const")[0]
+				.matchAll(/"(--lo-glass-[a-z-]+)"/g),
+		].map((m) => m[1]),
+	);
+	const published = Object.keys(
+		glass.glassPaintFor({
+			coverage: "full",
+			intensity: 50,
+			mechanism: "vibrancy",
+			material: "window",
+			scheme: "light",
+		}).vars,
+	);
+	for (const name of published)
+		assert.ok(
+			listed.has(name),
+			`${name} is published but GLASS_VARS would not clear it`,
+		);
+	for (const name of [
+		"--lo-glass-in-pane",
+		"--lo-glass-pane-lift",
+		"--lo-glass-edge-mix",
+	])
+		assert.ok(listed.has(name), `${name} missing from GLASS_VARS`);
 });
 
 test("G-9 argv round-trip: the first-frame fact fails closed", () => {

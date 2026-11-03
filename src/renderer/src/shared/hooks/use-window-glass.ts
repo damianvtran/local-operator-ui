@@ -48,6 +48,9 @@ const GLASS_VARS = [
 	"--lo-glass-control-mix",
 	"--lo-glass-in-surface",
 	"--lo-glass-in-elevated",
+	"--lo-glass-in-pane",
+	"--lo-glass-pane-lift",
+	"--lo-glass-edge-mix",
 ] as const;
 
 type Applied = {

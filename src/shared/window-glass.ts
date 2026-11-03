@@ -770,6 +770,27 @@ export function glassControlMix(
 }
 
 /**
+ * THE GLASS SCALE, three tiers of how strongly the material reads. Numbers live in
+ * `window-glass-floors.json` (`glassScale`, derived by
+ * `scripts/derive-glass-floors.mjs`), never here.
+ *
+ *   - thin:    lift 0, edge 0. The look that shipped.
+ *   - regular: the derived `paneLift` / `edgeMix` for the scheme. The shipped
+ *              default: on light a pane steps off the canvas (it netted to alpha 0
+ *              and read as the same sheet) and the panel seam is recoloured toward
+ *              `ink`; on dark both are 0, so dark paints exactly as thin.
+ *   - thick:   RESERVED. Not shipped; it would be a larger pair of the same two
+ *              numbers, not a new mechanism.
+ *
+ * Two published variables carry it: `--lo-glass-pane-lift` (the alpha added to the
+ * canvas alpha to form a pane's target, folded into `--lo-glass-in-pane`) and
+ * `--lo-glass-edge-mix` (the `ink` share mixed into the panel seam's `hairline`).
+ * Blur, saturation and shadow are deliberately absent: they cannot reach the OS
+ * desktop behind the window, and docs/branding.md allows one shadow only
+ * (docs/branding.md, Glass scale).
+ */
+
+/**
  * The renderer's paint: the kinds that go translucent and every alpha they use.
  *
  * TWO SETS OF ALPHAS, because one region stacks. `<main>` is the canvas BACKING for
@@ -793,6 +814,16 @@ export function glassPaintFor(input: {
 	const raw = glassAlphas(input);
 	const net = (target: number): number =>
 		round2(Math.min(1, Math.max(0, 1 - (1 - target) / (1 - raw.canvas))));
+	const lift = GLASS_FLOORS.glassScale.paneLift[input.scheme];
+	/* The pane's target: its own elevated alpha, or the canvas alpha plus the scale's
+	 * lift when that is higher. The `.96` ceiling bounds the LIFT only: an elevated
+	 * floor already above it (dark, densest material) is the contract and stays. With
+	 * a lift of 0 this is `raw.elevated` wherever elevated >= canvas (all of dark),
+	 * and where it is not (light) both sides net to 0, so thin is today's look. */
+	const paneTarget = Math.max(
+		raw.elevated,
+		Math.min(GLASS_ALPHA_CEILING, raw.canvas + lift),
+	);
 	const vars: Record<string, string> = {
 		"--lo-glass-a-canvas": String(raw.canvas),
 		"--lo-glass-a-surface": String(raw.surface),
@@ -862,6 +893,14 @@ export function glassPaintFor(input: {
 		),
 		"--lo-glass-in-surface": String(net(raw.surface)),
 		"--lo-glass-in-elevated": String(net(raw.elevated)),
+		/* The pane inside <main> paints THIS, not `in-elevated` (see the scale note above
+		 * `glassPaintFor`). `in-elevated` stays published for the rules that want the
+		 * unlifted net. */
+		"--lo-glass-in-pane": String(net(paneTarget)),
+		"--lo-glass-pane-lift": String(lift),
+		"--lo-glass-edge-mix": String(
+			GLASS_FLOORS.glassScale.edgeMix[input.scheme],
+		),
 	};
 	return { kinds: GLASS_KINDS_BY_COVERAGE[input.coverage].join(" "), vars };
 }

@@ -1233,7 +1233,56 @@ the step between page and frame is zero there (dark palettes keep a 1 point step
 accepted rather than fixed: the rows' own hairlines carry the separation, as they
 did on the flat panel tier, and giving the frame its own rung would stack a second
 alpha over the backing. `scripts/window-glass-cdp.test.mjs` encodes it as
-`max(surface, canvas)`.
+`max(surface, canvas)`. The side PANE is the exception, because it is the one frame
+that is a whole plane beside the conversation: it takes the glass scale's lift (below),
+so on light it no longer lands at the canvas's tone.
+
+**Glass scale (how strongly the material reads).** Measured, the light theme's glass read
+weaker than the dark one for a structural reason, not a taste one: a pane inside
+`<main>` is painted at the NET alpha (`1 - (1 - target) / (1 - backing)`), and on light
+the pane's target (`elevated`, 0.55 at 80%) is below the canvas backing (0.68), so the net
+clamped to 0 and the pane was the canvas - canvas -> pane ΔE00 0.0 on every light
+palette, against 2.5 to 5.4 on dark. The scale moves the two things the app owns:
+
+| Tier | Pane lift (light / dark) | Panel edge mix (light / dark) | Status |
+|---|---|---|---|
+| thin | 0 / 0 | 0 / 0 | the look that shipped; dark still paints exactly this |
+| regular | 0.14 / 0 | 0.06 / 0 | the default: derived, in `window-glass-floors.json` `glassScale` |
+| thick | reserved | reserved | not shipped; would be a larger pair of the same two numbers |
+
+- `--lo-glass-pane-lift`: added to the canvas alpha to form the pane's target,
+  `min(0.96, max(elevated, canvas + lift))`, then netted like any other inside-`<main>`
+  alpha and published as `--lo-glass-in-pane`. At 80% on `localOperatorLight` the pane
+  paints net 0.44 over the 0.68 backing (effective 0.82 against 0.68 before) and steps
+  ΔE00 2.76 off the canvas (it was 0.00). The tightest step over all 18 light palettes,
+  slider 40 to 100 and both light material greys (199 and 224), is ΔE00 1.53
+  (`tokyoNightDay`). Below slider 40 the canvas is nearly opaque and the flat
+  `canvas` -> `elevated` gap already carries the step. The titlebar lane re-points at the
+  same target, so the lane does not show a seam against the pane.
+- `--lo-glass-edge-mix`: the share of `ink` mixed into the panel seam's `hairline` on
+  glass only (`html[data-glass] [data-panel-edge]`). It recolours the existing 1px
+  `PanelEdge` and keeps its 75% alpha; it adds no line. The seam steps at least ΔE00 3.0
+  off each of the three glass grounds on every light palette; the tightest is `rosePineDawn`
+  against `canvas`, 3.19 (1.68 before).
+- **Text keeps AA.** `scripts/contrast-contract.mjs` holds `ink`, `inkMuted` and `inkDim`
+  over the raw canvas, surface and elevated grounds and the lifted pane, with and without
+  each state overlay, every slider position (steps of 5) and both light material greys
+  (the dark grey 81): 97,020 pairs, none under their floor (4.5, or the stated 3.5 for
+  `inkDim` on an overlay). The tightest pair on light is `rosePineDawn` `inkDim` on
+  `surface` at slider 100 over grey 199, 4.55:1; on dark, `cyberpunk` `inkDim` on `canvas`
+  at slider 100 over grey 81, 4.52:1. Neither is on the lifted pane: the lift makes the
+  pane MORE opaque, which only raises ink contrast.
+- **No new blur.** Exactly one `backdrop-filter` exists in the stylesheet, the isolating
+  band's `blur(12px)`, and `pnpm check-themes` and `scripts/window-glass-cdp.test.mjs`
+  fail above one. `saturate()`, a larger blur and a shadow were considered and rejected:
+  a `backdrop-filter` samples the page behind the element, and behind the window's
+  translucent layers there is only the OS desktop, which CSS cannot reach - the filter
+  would blur and saturate our own canvas, not the desktop, and cost a compositor layer
+  per region. A shadow is elevation by another name, and this system allows one shadow,
+  for things that leave the flow. Dark is byte-identical: both numbers are 0 there and
+  `scripts/window-glass.test.mjs` (G-8b) pins every dark variable to its pre-scale value.
+- Numbers are derived (`node scripts/derive-glass-floors.mjs`; `--check` fails when the
+  committed values are below it, `--report` prints the text audit) and never hand-set.
 
 **A window enabled live on macOS stays active when unfocused.** `visualEffectState` is a
 CONSTRUCTOR option (Electron 44's `setVibrancy` takes only `animationDuration`), so the

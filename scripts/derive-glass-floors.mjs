@@ -490,10 +490,248 @@ export function deriveControlMix(floors) {
 	return out;
 }
 
+/**
+ * THE GLASS SCALE: how much STRONGER than the thin look the material reads on light.
+ *
+ * Three tiers, named so a later change has something to point at:
+ *
+ *   - thin    lift 0, edge 0: the look that shipped. On dark it is still the shipped
+ *             look (both numbers below are 0 on dark).
+ *   - regular the default: the derived `paneLift` and `edgeMix` below.
+ *   - thick   RESERVED, not shipped. It would be a larger pair, not a new mechanism.
+ *
+ * WHY LIGHT NEEDS IT AND DARK DOES NOT (measured, not assumed). A pane inside
+ * `<main>` is painted at the NET alpha, `1 - (1 - target) / (1 - canvasBacking)`,
+ * clamped at 0. On dark the pane target (`elevated`, 0.87+) sits well above the
+ * canvas backing and the pane steps ΔE00 2.5-5.4 off the canvas. On light the
+ * targets run the other way (`surface` 0.59 / `elevated` 0.55 under a 0.68 canvas
+ * at 80): the net clamps to 0, the pane paints NOTHING, and canvas -> pane is
+ * ΔE00 0.0. The side pane then reads as the same sheet as the conversation, which
+ * is the "glass is weaker on light" report.
+ *
+ * WHAT CANNOT FIX IT, so the derivation does not try: CSS `backdrop-filter` blur
+ * and `saturate()` sample the page behind the element, and behind the window's
+ * translucent layers there is only the OS desktop, which CSS never sees; a shadow
+ * is forbidden as elevation (docs/branding.md, one shadow, for things that leave
+ * the flow). The scale therefore moves two things the app owns: the pane's alpha
+ * (`paneLift`) and the seam's colour (`edgeMix`).
+ *
+ * `paneLift` (light): the smallest lift, added to the canvas alpha to form the
+ * pane's target, at which the pane steps `GLASS_PANE_STEP` off the canvas for every
+ * light palette, slider 40..100 and both light material greys. Below slider 40 the
+ * canvas is nearly opaque, so the flat `canvas` -> `elevated` gap already carries
+ * the step.
+ * `edgeMix` (light): the smallest `ink` share mixed into `hairline` at which the
+ * 75% panel seam steps `GLASS_SEAM_STEP` off each of the three glass grounds at
+ * their floors. It recolours the existing seam; it adds no line.
+ * Dark is 0 for both: nothing is derived for a scheme that does not need it.
+ */
+export const GLASS_PANE_STEP = 1.5;
+export const GLASS_SEAM_STEP = 3.0;
+/** The light material greys the scale is held over: the measured worst (199) and a brighter one. */
+export const GLASS_SCALE_GRAYS = { light: [199, 224], dark: [81] };
+/** The slider range the pane step is held over (see above for why not below 40). */
+export const GLASS_PANE_STEP_FROM = 40;
+/** The seam's alpha: mirrors `bg-hairline/75` in `panel-edge.tsx` (the contract reads that class back). */
+export const GLASS_SEAM_ALPHA = 0.75;
+
+const round2 = (n) => Math.round(n * 100) / 100;
+
+/** Mirrors `glassAlphas` in `src/shared/window-glass.ts`: the role alpha at a slider position. */
+export const glassAlphaAt = (floor, intensity) => {
+	const t = Math.min(100, Math.max(0, intensity)) / 100;
+	const top = Math.max(LANE_ALPHA_CEILING, floor);
+	return round2(top - t * (top - floor));
+};
+
+/**
+ * The lifted pane inside `<main>` and the canvas backing under it, as flat hexes:
+ * what `glassPaintFor` paints (`--lo-glass-in-pane` over `--lo-glass-a-canvas`).
+ * Mirrors the TypeScript formula; `window-glass.test.mjs` pins the two together.
+ */
+export function paneOverCanvas(
+	palette,
+	tierFloors,
+	lift,
+	intensity,
+	grayLevel,
+) {
+	const aCanvas = glassAlphaAt(tierFloors.canvas, intensity);
+	const aElevated = glassAlphaAt(tierFloors.elevated, intensity);
+	const target = Math.max(
+		aElevated,
+		Math.min(LANE_ALPHA_CEILING, aCanvas + lift),
+	);
+	const net = round2(
+		Math.min(1, Math.max(0, 1 - (1 - target) / (1 - aCanvas))),
+	);
+	const backing = composite(palette.canvas, aCanvas, gray(grayLevel));
+	return {
+		canvas: backing,
+		pane: composite(palette.elevated, net, backing),
+		net,
+	};
+}
+
+/** The smallest pane lift (0.01 steps) that steps `GLASS_PANE_STEP` off the canvas; dark is 0. */
+export function derivePaneLift(floors) {
+	const palettes = loadPalettes();
+	const out = { dark: 0 };
+	const tierFloors = floors["under-window"].light;
+	for (let lift = 0; lift <= 0.5; lift = round2(lift + 0.01)) {
+		let clears = true;
+		for (const { palette } of palettes) {
+			if (schemeOf(palette) !== "light") continue;
+			for (const g of GLASS_SCALE_GRAYS.light)
+				for (let i = GLASS_PANE_STEP_FROM; i <= 100; i++) {
+					const { canvas, pane } = paneOverCanvas(
+						palette,
+						tierFloors,
+						lift,
+						i,
+						g,
+					);
+					if (deltaE(canvas, pane) < GLASS_PANE_STEP) clears = false;
+				}
+		}
+		if (clears) {
+			out.light = lift;
+			return out;
+		}
+	}
+	throw new Error(
+		`no pane lift up to 0.5 clears ΔE00 ${GLASS_PANE_STEP} on light`,
+	);
+}
+
+/** The seam as painted: `ink` at `mix` over `hairline`, at `GLASS_SEAM_ALPHA`, over `ground`. */
+export const seamOver = (palette, mix, ground) =>
+	composite(
+		composite(palette.ink, mix, palette.hairline),
+		GLASS_SEAM_ALPHA,
+		ground,
+	);
+
+/** The three glass grounds at their floors over a material grey. */
+export const glassGrounds = (palette, tierFloors, grayLevel) =>
+	GLASS_ROLES.map((role) => ({
+		role,
+		hex: composite(palette[role], tierFloors[role], gray(grayLevel)),
+	}));
+
+/** The smallest ink mix (0.01 steps) the seam needs to step `GLASS_SEAM_STEP`; dark is 0. */
+export function deriveEdgeMix(floors) {
+	const palettes = loadPalettes();
+	const tierFloors = floors["under-window"].light;
+	let need = 0;
+	for (const { palette } of palettes) {
+		if (schemeOf(palette) !== "light") continue;
+		for (const g of GLASS_SCALE_GRAYS.light)
+			for (const { hex } of glassGrounds(palette, tierFloors, g)) {
+				let m = 0;
+				while (
+					m < 1 &&
+					deltaE(seamOver(palette, m, hex), hex) < GLASS_SEAM_STEP
+				)
+					m = round2(m + 0.01);
+				need = Math.max(need, m);
+			}
+	}
+	return { dark: 0, light: need };
+}
+
+export const deriveGlassScale = (floors) => ({
+	paneLift: derivePaneLift(floors),
+	edgeMix: deriveEdgeMix(floors),
+});
+
+/**
+ * THE TEXT AUDIT over every ground the scale touches. For each palette, ink, ground
+ * (raw canvas, raw surface, raw elevated, and the lifted pane inside `<main>), state
+ * overlay, slider position (0..100 step 5) and material grey, the ratio is held to
+ * `GLASS_INK_FLOOR` (`inkDim` on an overlay: `GLASS_STATE_DIM_FLOOR`). Returns the
+ * violations and the single worst pair per scheme, by margin over its own floor.
+ */
+export function auditGlassText(floors, scale) {
+	const palettes = loadPalettes();
+	const tier = floors["under-window"];
+	const overlays = [["none", 0], ...Object.entries(GLASS_STATE_ALPHA)];
+	const failures = [];
+	const worst = {};
+	let checked = 0;
+	for (const { id, palette } of palettes) {
+		const scheme = schemeOf(palette);
+		const lift = scale.paneLift[scheme];
+		for (const g of GLASS_SCALE_GRAYS[scheme])
+			for (let i = 0; i <= 100; i += 5) {
+				const floorsHere = tier[scheme];
+				const raw = {
+					canvas: composite(
+						palette.canvas,
+						glassAlphaAt(floorsHere.canvas, i),
+						gray(g),
+					),
+					surface: composite(
+						palette.surface,
+						glassAlphaAt(floorsHere.surface, i),
+						gray(g),
+					),
+					elevated: composite(
+						palette.elevated,
+						glassAlphaAt(floorsHere.elevated, i),
+						gray(g),
+					),
+					pane: paneOverCanvas(palette, floorsHere, lift, i, g).pane,
+				};
+				for (const [ground, base] of Object.entries(raw))
+					for (const [overlay, a] of overlays) {
+						const fill = a ? composite(palette.ink, a, base) : base;
+						for (const ink of GLASS_INKS) {
+							const floor =
+								ink === "inkDim" && a ? GLASS_STATE_DIM_FLOOR : GLASS_INK_FLOOR;
+							const r = ratio(palette[ink], fill);
+							checked++;
+							const entry = {
+								palette: id ?? palette.name,
+								scheme,
+								ground,
+								ink,
+								overlay,
+								intensity: i,
+								gray: g,
+								ratio: r,
+								floor,
+							};
+							if (r < floor) failures.push(entry);
+							if (
+								!worst[scheme] ||
+								r - floor < worst[scheme].ratio - worst[scheme].floor
+							)
+								worst[scheme] = entry;
+						}
+					}
+			}
+	}
+	return { failures, worst, checked };
+}
+
 /* The shared helper, not a hand-rolled argv compare: a symlinked path (macOS
  * `/tmp`) must answer the same, and `scripts/entry-point.test.mjs` enforces it. */
 if (isEntryPoint(import.meta.url)) {
 	const derived = derive();
+	if (process.argv.includes("--report")) {
+		/* The AA matrix and the two step minima, at the COMMITTED scale. */
+		const file = JSON.parse(readFileSync(FLOORS_PATH, "utf8"));
+		const audit = auditGlassText(file.alphaFloor, file.glassScale);
+		console.log(
+			`text pairs checked: ${audit.checked}; violations: ${audit.failures.length}`,
+		);
+		for (const [scheme, w] of Object.entries(audit.worst))
+			console.log(
+				`worst ${scheme}: ${w.palette} ${w.ink} on ${w.ground}${w.overlay === "none" ? "" : ` + ${w.overlay} overlay`} at slider ${w.intensity}, grey ${w.gray}: ${w.ratio.toFixed(2)}:1 (floor ${w.floor})`,
+			);
+		process.exit(audit.failures.length ? 1 : 0);
+	}
 	if (!process.argv.includes("--check")) {
 		console.log(
 			JSON.stringify(
@@ -504,6 +742,7 @@ if (isEntryPoint(import.meta.url)) {
 					controlMix: deriveControlMix(derived),
 					bandFloor: deriveBandFloor(),
 					stateAlpha: GLASS_STATE_ALPHA,
+					glassScale: deriveGlassScale(derived),
 				},
 				null,
 				"\t",
@@ -551,6 +790,22 @@ if (isEntryPoint(import.meta.url)) {
 					`lane wash ${scheme} is ${JSON.stringify(file.laneWash?.[scheme])} but the palettes need ${JSON.stringify(lane[scheme])} for a ΔE00 ${GLASS_LANE_STEP} step off the page at every slider position - re-derive, never hand-lower it`,
 				);
 			}
+		const scale = deriveGlassScale(committed);
+		for (const key of ["paneLift", "edgeMix"])
+			for (const scheme of ["dark", "light"])
+				if ((file.glassScale?.[key]?.[scheme] ?? -1) < scale[key][scheme]) {
+					bad++;
+					console.error(
+						`glass scale ${key}/${scheme} is ${file.glassScale?.[key]?.[scheme]} but the palettes need ${scale[key][scheme]} - re-derive, never hand-lower it`,
+					);
+				}
+		const audit = auditGlassText(committed, file.glassScale ?? scale);
+		for (const f of audit.failures.slice(0, 10)) {
+			bad++;
+			console.error(
+				`glass text ${f.palette} ${f.ink} on ${f.ground}${f.overlay === "none" ? "" : ` + ${f.overlay}`} at ${f.intensity}/grey ${f.gray} is ${f.ratio.toFixed(2)}:1, floor ${f.floor}`,
+			);
+		}
 		process.exit(bad ? 1 : 0);
 	}
 }

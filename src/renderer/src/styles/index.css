@@ -2104,9 +2104,12 @@ html[data-glass~="pane"] [data-glass-region="pane"] {
 html[data-glass~="pane"]
 	main[data-glass-region="canvas-backing"]
 	[data-glass-region="pane"]:not([data-glass-split]) {
+	/* The LIFTED net (`--lo-glass-in-pane`), not `--lo-glass-in-elevated`: on light the
+	 * unlifted net clamps to 0 and the pane is the canvas (docs/branding.md, Glass
+	 * scale). With a lift of 0 (dark) the two are the same number. */
 	background-color: color-mix(
 		in srgb,
-		var(--lo-elevated) calc(var(--lo-glass-in-elevated) * 100%),
+		var(--lo-elevated) calc(var(--lo-glass-in-pane) * 100%),
 		transparent
 	);
 }
@@ -2146,6 +2149,27 @@ html[data-glass~="canvas"] [data-glass-region="panel"] {
 	background-color: color-mix(
 		in srgb,
 		var(--lo-surface) calc(var(--lo-glass-in-surface) * 100%),
+		transparent
+	);
+}
+/*
+ * THE PANEL EDGE ON GLASS (the glass scale's second number). `PanelEdge` is
+ * `bg-hairline/75`; on glass the hairline is mixed toward `ink` by
+ * `--lo-glass-edge-mix` (light 0.06, dark 0) so the seam still steps off a ground
+ * that is now translucent. It RECOLOURS the existing 1px element - no border,
+ * shadow or second line - and keeps the class's 75% alpha: this rule owns the
+ * colour only, and an `rgb(... / 75%)` is applied here so the contract's reading of
+ * the class stays the one source of the alpha. Unlayered, so it beats the utility.
+ */
+html[data-glass] [data-panel-edge] {
+	background-color: color-mix(
+		in srgb,
+		color-mix(
+				in srgb,
+				var(--lo-ink) calc(var(--lo-glass-edge-mix) * 100%),
+				var(--lo-hairline)
+			)
+			75%,
 		transparent
 	);
 }
@@ -2293,9 +2317,19 @@ html[data-glass] {
 		var(--lo-canvas) calc(var(--lo-glass-a-canvas) * 100%),
 		transparent
 	);
+	/* The raw alpha a pane is painted at: its own, or the canvas's plus the scale's lift
+	 * when higher - the same target `glassPaintFor` nets into `--lo-glass-in-pane`, so a
+	 * stop drawn from the lane meets the pane without a seam. */
 	--lo-glass-g-elevated: color-mix(
 		in srgb,
-		var(--lo-elevated) calc(var(--lo-glass-a-elevated) * 100%),
+		var(--lo-elevated)
+			calc(
+				max(
+					var(--lo-glass-a-elevated),
+					min(0.96, var(--lo-glass-a-canvas) + var(--lo-glass-pane-lift))
+				) *
+				100%
+			),
 		transparent
 	);
 }
