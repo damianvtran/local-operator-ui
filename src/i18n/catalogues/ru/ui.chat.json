@@ -201,5 +201,8 @@
 	"ui.chat.session_status.context_aria_no_reading": "Контекст: пока ничего не измерено. {hint}",
 	"ui.chat.session_status.context_aria_reading": "Контекст: {spelling}{estimate, select, yes {, оценка} other {}}. {hint}",
 	"ui.chat.session_status.active_time_aria": "Активное время: {duration}. {explanation}",
-	"ui.chat.session_status.duration_explanation": "Время работы; ожидание не учитывается."
+	"ui.chat.session_status.duration_explanation": "Время работы; ожидание не учитывается.",
+	"ui.chat.session_status.effort_level.low": "Низкий",
+	"ui.chat.session_status.effort_level.medium": "Средний",
+	"ui.chat.session_status.effort_level.high": "Высокий"
 }

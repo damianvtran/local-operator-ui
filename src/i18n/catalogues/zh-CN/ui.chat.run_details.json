@@ -87,5 +87,7 @@
 	"ui.chat.run_details.job_cancel_aria": "取消{label}",
 	"ui.chat.run_details.monitors.cancel_aria": "取消监控{name}",
 	"ui.chat.run_details.monitors.more": "{count, plural, other {另有{count_display}个监控项}}",
-	"ui.chat.run_details.wake.more": "{count, plural, other {另有{count_display}个唤醒项}}"
+	"ui.chat.run_details.wake.more": "{count, plural, other {另有{count_display}个唤醒项}}",
+	"ui.chat.run_details.wake.armed_count": "{count, plural, other {{count_display}个唤醒项待触发}}",
+	"ui.chat.run_details.wake.cadence_once": "一次"
 }
