@@ -11,6 +11,7 @@ import {
 	useRef,
 	useState,
 } from "react";
+import type { EmojiInputIntent } from "../emoji/use-emoji-autocomplete";
 import type { MentionCandidateRow } from "./candidates";
 import {
 	type MentionSection,
@@ -82,6 +83,16 @@ export type MentionAutocomplete = {
 	resolveNotice: () => void;
 	source: ReturnType<typeof useMentionSource>;
 	listboxId: string;
+	/** Shared input provenance and edit ownership for Bridge-only autocomplete. */
+	inputScopeKey: string;
+	emojiIntent: EmojiInputIntent | null;
+	isComposing: () => boolean;
+	clearEmojiIntent: () => void;
+	applyTextEdit: (edit: {
+		text: string;
+		caret: number;
+		edit: { start: number; end: number; insert: string };
+	}) => void;
 };
 
 const NO_TOKENS: MentionToken[] = [];
@@ -174,6 +185,12 @@ export function useMentionAutocomplete(input: {
 	 * `historyJump`: consumed by the change whose value is the one it announced.
 	 */
 	const nativeEditText = useRef<string | null>(null);
+	// Ref-only at the target listener: state there reverts controlled input before
+	// React's delegated onChange (#1600). Adopt this same object after commit;
+	// never consume it during render, which StrictMode may replay.
+	const pendingEmojiIntent = useRef<EmojiInputIntent | null>(null);
+	const emojiSequence = useRef(0);
+	const [emojiIntent, setEmojiIntent] = useState<EmojiInputIntent | null>(null);
 	/** The map this text last had, newest first; undefined when never seen. */
 	const snapshotTokens = useCallback(
 		(value: string): MentionToken[] | undefined => {
@@ -195,6 +212,8 @@ export function useMentionAutocomplete(input: {
 		spanHistory.current = [];
 		historyJump.current = null;
 		nativeEditText.current = null;
+		pendingEmojiIntent.current = null;
+		setEmojiIntent(null);
 		const next = stored
 			? rebaseTokens(stored.text, text, stored.tokens)
 			: NO_TOKENS;
@@ -330,6 +349,15 @@ export function useMentionAutocomplete(input: {
 		)
 			syncCaret();
 	}, [text, enabled]);
+
+	useLayoutEffect(() => {
+		const intent = pendingEmojiIntent.current;
+		const current = intent?.draftKey === tokenKey && intent.text === text;
+		// Retire on an authoritative non-input commit, not during render. A
+		// refused send restoring identical old text must not resurrect old intent.
+		if (!current) pendingEmojiIntent.current = null;
+		setEmojiIntent(current ? intent : null);
+	}, [text, tokenKey]);
 
 	/*
 	 * EDITS GO THROUGH THE FIELD'S OWN EDITING PATH WHEN IT CAN (review R1-04).
@@ -515,6 +543,15 @@ export function useMentionAutocomplete(input: {
 			composing.current = Boolean(native.isComposing);
 			const field = event.currentTarget;
 			if (caretInteraction.current) setInteractionText(text);
+			const intent = pendingEmojiIntent.current;
+			if (
+				intent &&
+				(field.selectionStart !== intent.selectionStart ||
+					field.selectionEnd !== intent.selectionEnd)
+			) {
+				pendingEmojiIntent.current = null;
+				setEmojiIntent(null);
+			}
 			const previous = caret ?? field.selectionStart;
 			syncCaret(field.selectionStart < previous ? "backward" : "forward");
 		},
@@ -527,6 +564,12 @@ export function useMentionAutocomplete(input: {
 		if (!field || !enabled) return;
 		const start = () => {
 			composing.current = true;
+			// An emoji query adopted before the IME opened is a stale non-composing
+			// snapshot; retire it here so the open picker cannot replace text under
+			// the candidate window. Safe as state, unlike `input`: no onChange of
+			// this same dispatch can be reverted by it (#1600).
+			pendingEmojiIntent.current = null;
+			setEmojiIntent(null);
 		};
 		const end = () => {
 			composing.current = false;
@@ -548,6 +591,18 @@ export function useMentionAutocomplete(input: {
 			// NO setState here: it flushes before onChange and reverts the typed
 			// key (see `nativeEditText`). Only refs and the unsubscribed store write.
 			nativeEditText.current = field.value;
+			pendingEmojiIntent.current = {
+				draftKey: tokenKey,
+				sequence: ++emojiSequence.current,
+				text: field.value,
+				selectionStart: field.selectionStart,
+				selectionEnd: field.selectionEnd,
+				kind:
+					type === "insertFromPaste" ? "paste" : jumped ? "restore" : "typing",
+				inputType: type,
+				composing:
+					composing.current || Boolean((event as InputEvent).isComposing),
+			};
 			// Target-phase input runs before React's delegated onChange writes
 			// the text store. Persist its matching identities in that same turn.
 			// Safe to do here: this hook reads `stored` via getState() and selects
@@ -575,7 +630,15 @@ export function useMentionAutocomplete(input: {
 			field.removeEventListener("pointerdown", armCaret);
 			field.removeEventListener("keydown", armCaret);
 		};
-	}, [fieldRef, enabled, syncCaret, snapshotTokens, tokens, persistDraft]);
+	}, [
+		fieldRef,
+		enabled,
+		syncCaret,
+		snapshotTokens,
+		tokens,
+		persistDraft,
+		tokenKey,
+	]);
 
 	const activeKeys = useMemo(
 		() =>
@@ -689,5 +752,23 @@ export function useMentionAutocomplete(input: {
 		},
 		source,
 		listboxId,
+		inputScopeKey: tokenKey,
+		emojiIntent,
+		isComposing: () => composing.current,
+		clearEmojiIntent: () => {
+			pendingEmojiIntent.current = null;
+			setEmojiIntent(null);
+		},
+		applyTextEdit: (edit) => {
+			// One undo/redo and sidecar owner for both @ and : replacements.
+			applyEdit(
+				{
+					text: edit.text,
+					caret: edit.caret,
+					tokens: rebaseTokens(text, edit.text, tokens),
+				},
+				edit.edit,
+			);
+		},
 	};
 }
