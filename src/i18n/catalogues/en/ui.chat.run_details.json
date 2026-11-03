@@ -82,5 +82,10 @@
 	"ui.chat.run_details.chip.mcp_attention": "{count, plural, one {# MCP server needs attention} other {# MCP servers need attention}}",
 	"ui.chat.run_details.mcp.cold_label": "No session is running — server status cannot be checked.",
 	"ui.chat.run_details.nothing_in_flight": "Nothing in flight.",
-	"ui.chat.run_details.nothing_to_show_yet": "Nothing to show yet."
+	"ui.chat.run_details.nothing_to_show_yet": "Nothing to show yet.",
+	"ui.chat.run_details.subagents_of_aria": "Subagents of {owner}",
+	"ui.chat.run_details.job_cancel_aria": "Cancel {label}",
+	"ui.chat.run_details.monitors.cancel_aria": "Cancel monitor {name}",
+	"ui.chat.run_details.monitors.more": "{count, plural, =1 {{count_display} more monitor} other {{count_display} more monitors}}",
+	"ui.chat.run_details.wake.more": "{count, plural, =1 {{count_display} more wake} other {{count_display} more wakes}}"
 }
