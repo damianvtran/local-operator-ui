@@ -8078,7 +8078,7 @@
 			"locale": "es",
 			"namespace": "ui.teamBridge",
 			"source_sha256": "0fc05324f1284ff6f7f37f8fe9dc8aa78d0f17f03640f300e02b3e37c3ca954b",
-			"target_sha256": "24499fe6366913535f41e35fb791414a5bdb7ea943cd8e3c818645e1c0c37a4e",
+			"target_sha256": "6145efc174102e4bc885e5ff013d5245d929e3195f8363bb4b5d7fc47b946cbc",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -8096,21 +8096,21 @@
 					"agent": "copy-reviewer",
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-03",
-					"result": "changes_requested",
-					"instance": "2fd8346bf635-es",
+					"result": "clean",
+					"instance": "122b7f54cbdc-es",
 					"findings": {
 						"blocker": 0,
-						"major": 1,
+						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/2fd8346bf635-es.json",
-					"receipt_sha256": "9371d5dbce37ecd25c0af772249d08f5a9f3529d26cbf9fbcc1f85d1f7a913bd",
-					"scope": "Round 2: new ui.teamBridge.delivery.recipient_unnamed + the ten delivery.* sentences with both recipient forms (PR #1643 head 70646b20)",
-					"note": "C5 MAJOR: recipient_unnamed \"el …\" renders \"a el jefe\" (needs al) in refused*/pending; C4 fixed in held* only. Receipt i18n/receipts/2fd8346bf635-es.json"
+					"receipt": "i18n/receipts/122b7f54cbdc-es.json",
+					"receipt_sha256": "9d98dc730e38ee723b6c2f620b81ee8642b7294df8907e7e50fc893f336d912a",
+					"scope": "Round 3: remediation 4dbd846d of delivery.* with both recipient forms (PR #1643 head 4dbd846d)",
+					"note": "Round 3: C5 fixed (\"Mensaje para {recipient}\", no a+el in any of ten); no new findings. Receipt i18n/receipts/122b7f54cbdc-es.json"
 				}
 			],
-			"status": "changes_requested",
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "0694bc18d6400d88ea4e84e2d3585a76c55dbfc913da7e53dbed7457e4f0bea2",
@@ -9579,6 +9579,30 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "0fc05324f1284ff6f7f37f8fe9dc8aa78d0f17f03640f300e02b3e37c3ca954b",
+					"target_sha256": "24499fe6366913535f41e35fb791414a5bdb7ea943cd8e3c818645e1c0c37a4e",
+					"auditors": [
+						{
+							"agent": "copy-reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-03",
+							"result": "changes_requested",
+							"instance": "2fd8346bf635-es",
+							"findings": {
+								"blocker": 0,
+								"major": 1,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/2fd8346bf635-es.json",
+							"receipt_sha256": "9371d5dbce37ecd25c0af772249d08f5a9f3529d26cbf9fbcc1f85d1f7a913bd",
+							"scope": "Round 2: new ui.teamBridge.delivery.recipient_unnamed + the ten delivery.* sentences with both recipient forms (PR #1643 head 70646b20)",
+							"note": "C5 MAJOR: recipient_unnamed \"el …\" renders \"a el jefe\" (needs al) in refused*/pending; C4 fixed in held* only. Receipt i18n/receipts/2fd8346bf635-es.json"
+						}
+					],
+					"status": "changes_requested"
 				}
 			]
 		},
@@ -57557,7 +57581,7 @@
 			"locale": "vi",
 			"namespace": "ui.teamBridge",
 			"source_sha256": "0fc05324f1284ff6f7f37f8fe9dc8aa78d0f17f03640f300e02b3e37c3ca954b",
-			"target_sha256": "c9f1118a1ea2924a7fbf6fa997bf9af50ab1215c64274356731a8d2c41baff83",
+			"target_sha256": "0e202c413fc8251e166ff099e0955b2f5654358d96cc70ddd9deeae8413b0790",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -57575,18 +57599,18 @@
 					"agent": "copy-reviewer",
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-03",
-					"result": "clean-with-findings",
-					"instance": "2fd8346bf635-vi",
+					"result": "clean",
+					"instance": "122b7f54cbdc-vi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
+						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/2fd8346bf635-vi.json",
-					"receipt_sha256": "fb33a7c48304023abb96d3292d116b0f0af8f909671d27e35f5ee906339a1ead",
-					"scope": "Round 2: new ui.teamBridge.delivery.recipient_unnamed + the ten delivery.* sentences with both recipient forms (PR #1643 head 70646b20)",
-					"note": "C6 MINOR: in-sentence recipient_unnamed keeps a capital (Chánh → chánh). Receipt i18n/receipts/2fd8346bf635-vi.json"
+					"receipt": "i18n/receipts/122b7f54cbdc-vi.json",
+					"receipt_sha256": "fc0d5d9bb389d0509f328da2136e47025be3355d3216546634af3f34a7f24ef4",
+					"scope": "Round 3: remediation 4dbd846d of delivery.* with both recipient forms (PR #1643 head 4dbd846d)",
+					"note": "Round 3: C6 fixed (\"chánh văn phòng của {person}\"); no new findings. Receipt i18n/receipts/122b7f54cbdc-vi.json"
 				}
 			],
 			"status": "audited",
@@ -59016,6 +59040,30 @@
 							"receipt_sha256": "eabe3168ce2d033d0283ef9f318f4c30aad809000306b8d893415d599fa24816",
 							"scope": "Ten ui.teamBridge.delivery.* values re-pointed to {recipient} (PR #1643 head 0ce7d254)",
 							"note": "Clean 0/0/0/0. Receipt i18n/receipts/7fc20c1e3809-vi.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "0fc05324f1284ff6f7f37f8fe9dc8aa78d0f17f03640f300e02b3e37c3ca954b",
+					"target_sha256": "c9f1118a1ea2924a7fbf6fa997bf9af50ab1215c64274356731a8d2c41baff83",
+					"auditors": [
+						{
+							"agent": "copy-reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-03",
+							"result": "clean-with-findings",
+							"instance": "2fd8346bf635-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/2fd8346bf635-vi.json",
+							"receipt_sha256": "fb33a7c48304023abb96d3292d116b0f0af8f909671d27e35f5ee906339a1ead",
+							"scope": "Round 2: new ui.teamBridge.delivery.recipient_unnamed + the ten delivery.* sentences with both recipient forms (PR #1643 head 70646b20)",
+							"note": "C6 MINOR: in-sentence recipient_unnamed keeps a capital (Chánh → chánh). Receipt i18n/receipts/2fd8346bf635-vi.json"
 						}
 					],
 					"status": "audited"
