@@ -739,5 +739,16 @@
 	"ui.chat.pickers.slash.phase.arguments": "آرگیومنٹس",
 	"ui.chat.pickers.slash.region_label": "سلیش کمانڈز",
 	"ui.chat.pickers.destination_pickers.no_agents_are_registered": "کوئی ایجنٹ رجسٹرڈ نہیں۔",
-	"ui.chat.pickers.destination_pickers.applies_to_the_conversation_this_chat_starts": "یہ اس گفتگو پر لاگو ہوتا ہے جو یہ چیٹ شروع کرتی ہے۔"
+	"ui.chat.pickers.destination_pickers.applies_to_the_conversation_this_chat_starts": "یہ اس گفتگو پر لاگو ہوتا ہے جو یہ چیٹ شروع کرتی ہے۔",
+	"ui.chat.pickers.slash.source.model": "ماڈلز",
+	"ui.chat.pickers.slash.source.effort": "کوشش",
+	"ui.chat.pickers.slash.source.approvals": "منظوریاں",
+	"ui.chat.pickers.slash.source.team": "ٹیمیں",
+	"ui.chat.pickers.slash.source.agent": "ایجنٹس",
+	"ui.chat.pickers.slash.source.providers": "فراہم کنندگان",
+	"ui.chat.pickers.slash.source.provider_accounts": "اکاؤنٹس",
+	"ui.chat.pickers.slash.source.mcp": "سرورز",
+	"ui.chat.pickers.slash.source.theme": "تھیمز",
+	"ui.chat.pickers.slash.source.title_refresh": "اختیارات",
+	"ui.chat.pickers.slash.source.session_tags": "ٹیگز"
 }

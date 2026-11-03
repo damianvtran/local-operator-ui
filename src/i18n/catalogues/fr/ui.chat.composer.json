@@ -64,5 +64,6 @@
 	"ui.chat.composer.secret_fill_gone": "Non placé dans le champ secret : cette demande n’est plus en attente. Votre texte est conservé.",
 	"ui.chat.composer.secret_fill_refused": "Le champ secret n’a pas accepté cette valeur. Votre texte est conservé — le panneau des demandes en indique la raison.",
 	"ui.chat.composer.secret_fill_unavailable": "Impossible d’atteindre le champ secret. Votre texte est conservé.",
-	"ui.chat.composer.secret_fill_multi": "Cette demande exige plusieurs secrets. Votre texte est conservé — choisissez le champ dans le panneau des demandes."
+	"ui.chat.composer.secret_fill_multi": "Cette demande exige plusieurs secrets. Votre texte est conservé — choisissez le champ dans le panneau des demandes.",
+	"ui.chat.composer.secret_closure_notice": "Répondez à la demande de secret dans le panneau des demandes — ce champ reste en pause jusqu’à votre réponse, et votre brouillon est conservé."
 }

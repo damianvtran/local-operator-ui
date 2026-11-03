@@ -64,5 +64,6 @@
 	"ui.chat.composer.secret_fill_gone": "Not put in the secret field: that request is no longer waiting. Your text is kept.",
 	"ui.chat.composer.secret_fill_refused": "The secret field did not take that value. Your text is kept — the asks panel shows why.",
 	"ui.chat.composer.secret_fill_unavailable": "Could not reach the secret field. Your text is kept.",
-	"ui.chat.composer.secret_fill_multi": "This request asks for more than one secret. Your text is kept — choose the field in the asks panel."
+	"ui.chat.composer.secret_fill_multi": "This request asks for more than one secret. Your text is kept — choose the field in the asks panel.",
+	"ui.chat.composer.secret_closure_notice": "Answer the secret request in the asks panel — this box is paused until it is answered, and your draft is kept."
 }

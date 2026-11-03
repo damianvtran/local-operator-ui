@@ -739,5 +739,16 @@
 	"ui.chat.pickers.slash.phase.arguments": "Arguments",
 	"ui.chat.pickers.slash.region_label": "Commandes slash",
 	"ui.chat.pickers.destination_pickers.no_agents_are_registered": "Aucun agent n’est enregistré.",
-	"ui.chat.pickers.destination_pickers.applies_to_the_conversation_this_chat_starts": "S’applique à la conversation qui va être lancée."
+	"ui.chat.pickers.destination_pickers.applies_to_the_conversation_this_chat_starts": "S’applique à la conversation qui va être lancée.",
+	"ui.chat.pickers.slash.source.model": "Modèles",
+	"ui.chat.pickers.slash.source.effort": "Effort",
+	"ui.chat.pickers.slash.source.approvals": "Approbations",
+	"ui.chat.pickers.slash.source.team": "Équipes",
+	"ui.chat.pickers.slash.source.agent": "Agents",
+	"ui.chat.pickers.slash.source.providers": "Fournisseurs",
+	"ui.chat.pickers.slash.source.provider_accounts": "Comptes",
+	"ui.chat.pickers.slash.source.mcp": "Serveurs",
+	"ui.chat.pickers.slash.source.theme": "Thèmes",
+	"ui.chat.pickers.slash.source.title_refresh": "Options",
+	"ui.chat.pickers.slash.source.session_tags": "Étiquettes"
 }

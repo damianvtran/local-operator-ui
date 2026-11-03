@@ -739,5 +739,16 @@
 	"ui.chat.pickers.slash.phase.arguments": "आर्ग्युमेंट",
 	"ui.chat.pickers.slash.region_label": "स्लैश कमांड",
 	"ui.chat.pickers.destination_pickers.no_agents_are_registered": "कोई एजेंट रजिस्टर नहीं है।",
-	"ui.chat.pickers.destination_pickers.applies_to_the_conversation_this_chat_starts": "यह उस बातचीत पर लागू होता है जो यह चैट शुरू करती है।"
+	"ui.chat.pickers.destination_pickers.applies_to_the_conversation_this_chat_starts": "यह उस बातचीत पर लागू होता है जो यह चैट शुरू करती है।",
+	"ui.chat.pickers.slash.source.model": "मॉडल",
+	"ui.chat.pickers.slash.source.effort": "प्रयास",
+	"ui.chat.pickers.slash.source.approvals": "स्वीकृतियाँ",
+	"ui.chat.pickers.slash.source.team": "टीमें",
+	"ui.chat.pickers.slash.source.agent": "एजेंट",
+	"ui.chat.pickers.slash.source.providers": "प्रोवाइडर",
+	"ui.chat.pickers.slash.source.provider_accounts": "खाते",
+	"ui.chat.pickers.slash.source.mcp": "सर्वर",
+	"ui.chat.pickers.slash.source.theme": "थीम",
+	"ui.chat.pickers.slash.source.title_refresh": "विकल्प",
+	"ui.chat.pickers.slash.source.session_tags": "टैग"
 }

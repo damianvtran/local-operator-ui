@@ -1,0 +1,29 @@
+{
+  "locale": "zh-CN",
+  "namespace": "ui.chat.pickers",
+  "agent": "i18n-auditor",
+  "instance": "11cfc45d3555",
+  "model": "radient/auto",
+  "requested_route": "radient/auto",
+  "served_underlying_model": "UNKNOWN",
+  "model_kind": "requested_route_only",
+  "status": "passed",
+  "source_sha256": "ecc10fb18100d4d462f36214c83507a48c7f0f8173cb72f37bf5964a05abb58c",
+  "target_sha256": "1187771d4e7cc1bdff27c24289de4ee6c854dc8a122ac167a30b2b399dcddf11",
+  "context_sha256": "a03f45c9158177d2282d89c088fec46c949f42952959ac84d6a8b72e0582d981",
+  "base_target_sha256": "18e7c58d79856b9dd867aeb0696b4669bc140e2638bc4b842d84399791a7f535",
+  "reviewed_keys": [
+    "ui.chat.pickers.slash.source.model",
+    "ui.chat.pickers.slash.source.effort",
+    "ui.chat.pickers.slash.source.approvals",
+    "ui.chat.pickers.slash.source.team",
+    "ui.chat.pickers.slash.source.agent",
+    "ui.chat.pickers.slash.source.providers",
+    "ui.chat.pickers.slash.source.provider_accounts",
+    "ui.chat.pickers.slash.source.mcp",
+    "ui.chat.pickers.slash.source.theme",
+    "ui.chat.pickers.slash.source.title_refresh",
+    "ui.chat.pickers.slash.source.session_tags"
+  ],
+  "findings": []
+}

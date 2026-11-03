@@ -423,5 +423,11 @@
 		"tone": "failure sentence that states the take survived, then names the control",
 		"note": "Rendered in the composer and the canvas inline editor next to a control labelled ui.common.actions.retry. Say that the recording is kept and that this control sends it again; do not repeat the toast's imperative on its own. The control label must stay recognisable in the sentence.",
 		"maxCells": 150
+	},
+	"ui.chat.composer.secret_closure_notice": {
+		"role": "notice rendered above the message box while a secret ask holds the composer paused",
+		"tone": "calm explanatory sentence, sentence case, one em dash before the consequence",
+		"note": "Names where the secret is answered (the asks panel, the same surface ui.chat.asks.* copy names) and the two facts the reader needs: the box is paused until that request is answered, and the draft already typed here is kept. Do not promise security properties (nothing about encryption, safety or where the value is stored) and do not state or imply a limit on attempts or budget — the notice describes the pause, not the secret's handling. Keep the em dash and the two clauses in that order.",
+		"placeholders": {}
 	}
 }

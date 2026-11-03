@@ -739,5 +739,16 @@
 	"ui.chat.pickers.slash.phase.arguments": "参数",
 	"ui.chat.pickers.slash.region_label": "斜杠命令",
 	"ui.chat.pickers.destination_pickers.no_agents_are_registered": "没有已注册智能体。",
-	"ui.chat.pickers.destination_pickers.applies_to_the_conversation_this_chat_starts": "适用于这次聊天将要开始的对话。"
+	"ui.chat.pickers.destination_pickers.applies_to_the_conversation_this_chat_starts": "适用于这次聊天将要开始的对话。",
+	"ui.chat.pickers.slash.source.model": "模型",
+	"ui.chat.pickers.slash.source.effort": "推理强度",
+	"ui.chat.pickers.slash.source.approvals": "审批",
+	"ui.chat.pickers.slash.source.team": "团队",
+	"ui.chat.pickers.slash.source.agent": "智能体",
+	"ui.chat.pickers.slash.source.providers": "提供商",
+	"ui.chat.pickers.slash.source.provider_accounts": "账户",
+	"ui.chat.pickers.slash.source.mcp": "服务器",
+	"ui.chat.pickers.slash.source.theme": "主题",
+	"ui.chat.pickers.slash.source.title_refresh": "选项",
+	"ui.chat.pickers.slash.source.session_tags": "标签"
 }

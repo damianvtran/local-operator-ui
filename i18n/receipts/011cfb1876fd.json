@@ -1,0 +1,28 @@
+{
+	"locale": "es",
+	"namespace": "ui.chat.composer",
+	"agent": "i18n-auditor",
+	"instance": "011cfb1876fd",
+	"model": "radient/auto",
+	"requested_route": "radient/auto",
+	"served_underlying_model": "UNKNOWN",
+	"model_kind": "requested_route_only",
+	"status": "passed",
+	"source_sha256": "67b5bc499440a52a727774876e13ee4ed9eaef20b439c4f5ec97466ae8b238cd",
+	"target_sha256": "b56a81abf1f43378fa337d81fd9bb2a7cbf37b96e60c8ecffe29e5e674c28890",
+	"context_sha256": "77c879963392e2e3f202aa689ff5d372946995c76891cc0eabc293fe75097df7",
+	"base_target_sha256": "916b7e8b760c5df95dba90b48cbb82738a8f6295f39473269890ab27541d98eb",
+	"reviewed_keys": [
+		"ui.chat.composer.secret_closure_notice"
+	],
+	"findings": [
+		{
+			"id": "es-composer-nit-1",
+			"severity": "nit",
+			"key": "ui.chat.composer.secret_closure_notice",
+			"problem": "\"Responde a la solicitud de secreto ... hasta que la respondas\" opens responder in its prepositional regime (responder a) and then switches to the transitive clitic (la respondas) in the same sentence. Both uses are legitimate Spanish, but the switch reads as a seam and is avoidable.",
+			"evidence": "Current: \"… en el panel de consultas — este cuadro está en pausa hasta que la respondas, y tu borrador se conserva.\" First clause: \"Responde a la solicitud de secreto\" (prepositional). Second clause: \"la respondas\" (direct object, feminine = la solicitud). Source EN keeps one verb form: \"Answer the secret request … until it is answered\".",
+			"suggestion": "\"Responde a la solicitud de secreto en el panel de consultas — este cuadro está en pausa hasta que respondas, y tu borrador se conserva.\" (drops the clitic; 2 characters shorter; meaning and clause order unchanged)."
+		}
+	]
+}

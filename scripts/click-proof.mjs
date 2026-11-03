@@ -195,7 +195,7 @@ const READ_REPORT = `(() => {
 	const alerts = [...document.querySelectorAll('[role="alert"]')]
 		.map((n) => n.textContent.replace(/\\s+/g, " ").trim())
 		.filter(Boolean);
-	const field = document.querySelector('fieldset[aria-label="Answer options"]');
+	const field = document.querySelector('fieldset[data-ask-options]');
 	const notSent = "Your answer was not sent.";
 	const inAlerts = alerts.some((a) => a.includes(notSent));
 	return {
@@ -325,7 +325,7 @@ async function evaluate(expression) {
  * supported.
  */
 const READ_STATE = `(() => {
-	const field = document.querySelector('fieldset[aria-label="Answer options"]');
+	const field = document.querySelector('fieldset[data-ask-options]');
 	const buttons = field ? [...field.querySelectorAll("button")] : [];
 	const name = (b) => {
 		const copy = b.cloneNode(true);
@@ -530,7 +530,7 @@ try {
 	for (;;) {
 		if (
 			await evaluate(
-				`Boolean(document.querySelector('fieldset[aria-label="Answer options"]'))`,
+				`Boolean(document.querySelector('fieldset[data-ask-options]'))`,
 			)
 		)
 			break;
@@ -550,7 +550,7 @@ try {
 	const hittableDeadline = Date.now() + 45_000;
 	for (;;) {
 		const probe = await evaluate(`(() => {
-			const field = document.querySelector('fieldset[aria-label="Answer options"]');
+			const field = document.querySelector('fieldset[data-ask-options]');
 			if (!field) return { ok: false, why: "no fieldset" };
 			const buttons = [...field.querySelectorAll("button")];
 			const strip = (b) => { const c = b.cloneNode(true);
@@ -577,7 +577,7 @@ try {
 	record.frames = { before: `${before.theme}.webp` };
 
 	const aim = await evaluate(`(() => {
-		const field = document.querySelector('fieldset[aria-label="Answer options"]');
+		const field = document.querySelector('fieldset[data-ask-options]');
 		const buttons = [...field.querySelectorAll("button")];
 		const strip = (b) => { const c = b.cloneNode(true);
 			c.querySelectorAll('[aria-hidden="true"]').forEach((n) => n.remove());
@@ -622,7 +622,7 @@ try {
 	let gateCleared = false;
 	for (;;) {
 		const state = await evaluate(`(() => {
-			const field = document.querySelector('fieldset[aria-label="Answer options"]');
+			const field = document.querySelector('fieldset[data-ask-options]');
 			const alerts = [...document.querySelectorAll('[role="alert"]')];
 			return {
 				up: Boolean(field),

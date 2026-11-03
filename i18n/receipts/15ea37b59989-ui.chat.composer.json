@@ -1,0 +1,48 @@
+{
+	"locale": "es",
+	"namespace": "ui.chat.composer",
+	"agent": "i18n-auditor",
+	"instance": "15ea37b59989",
+	"model": "radient/auto",
+	"requested_route": "radient/auto",
+	"served_underlying_model": "UNKNOWN",
+	"model_kind": "requested_route_only",
+	"status": "passed",
+	"source_sha256": "67b5bc499440a52a727774876e13ee4ed9eaef20b439c4f5ec97466ae8b238cd",
+	"target_sha256": "b56a81abf1f43378fa337d81fd9bb2a7cbf37b96e60c8ecffe29e5e674c28890",
+	"context_sha256": "77c879963392e2e3f202aa689ff5d372946995c76891cc0eabc293fe75097df7",
+	"base_target_sha256": "916b7e8b760c5df95dba90b48cbb82738a8f6295f39473269890ab27541d98eb",
+	"reviewed_keys": [
+		"ui.chat.composer.secret_closure_notice"
+	],
+	"findings": [],
+	"audit_date": "2026-11-03",
+	"key_count": 67,
+	"translator_session": "4a4433493c1d",
+	"independent_from_translator_session": true,
+	"actual_model_source": "route label in session header; served underlying model not exposed by the harness",
+	"input_hashes": {
+		"en": {
+			"path": "/Users/damian/local-operator-ui/.worktrees/i18n-four-flows/src/i18n/catalogues/en/ui.chat.composer.json",
+			"sha256": "67b5bc499440a52a727774876e13ee4ed9eaef20b439c4f5ec97466ae8b238cd"
+		},
+		"context": {
+			"path": "/Users/damian/local-operator-ui/.worktrees/i18n-four-flows/src/i18n/catalogues/en/ui.chat.composer.context.json",
+			"sha256": "77c879963392e2e3f202aa689ff5d372946995c76891cc0eabc293fe75097df7"
+		},
+		"es": {
+			"path": "/Users/damian/.local-operator/sessions/4a4433493c1d/scratchpad/target/es/ui.chat.composer.json",
+			"sha256": "b56a81abf1f43378fa337d81fd9bb2a7cbf37b96e60c8ecffe29e5e674c28890"
+		},
+		"es_base": {
+			"path": "/Users/damian/local-operator-ui/.worktrees/i18n-four-flows/src/i18n/catalogues/es/ui.chat.composer.json",
+			"sha256": "916b7e8b760c5df95dba90b48cbb82738a8f6295f39473269890ab27541d98eb"
+		}
+	},
+	"scope_note": "12-key delta only; 807 previously approved values not re-audited; no runtime, render, pseudo or RTL checks run",
+	"current_report_verdict": {
+		"status": "passed",
+		"unresolved_blocker_major_count": 0,
+		"finding_ids": []
+	}
+}

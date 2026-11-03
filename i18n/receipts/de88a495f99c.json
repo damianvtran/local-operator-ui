@@ -1,0 +1,28 @@
+{
+  "locale": "vi",
+  "namespace": "ui.chat.composer",
+  "agent": "i18n-auditor",
+  "instance": "de88a495f99c",
+  "model": "radient/auto",
+  "requested_route": "radient/auto",
+  "served_underlying_model": "UNKNOWN",
+  "model_kind": "requested_route_only",
+  "status": "passed",
+  "source_sha256": "67b5bc499440a52a727774876e13ee4ed9eaef20b439c4f5ec97466ae8b238cd",
+  "target_sha256": "c114864cc373fb1b996752d4624a5ed987f4c86746038e9411c0efba7b809888",
+  "context_sha256": "77c879963392e2e3f202aa689ff5d372946995c76891cc0eabc293fe75097df7",
+  "base_target_sha256": "a6bc2d8119b3fabeb915560fac9ba7ae3ff342696b3acbe187675c21fba53a6b",
+  "reviewed_keys": [
+    "ui.chat.composer.secret_closure_notice"
+  ],
+  "findings": [
+    {
+      "id": "V1",
+      "severity": "nit",
+      "key": "ui.chat.composer.secret_closure_notice",
+      "problem": "Meaning and all three facts are correct; this is precision only. «ô này» uses bare «ô», which this catalogue also uses for a generic field: the same key family says «hãy chọn ô trong bảng câu hỏi» (ui.chat.composer.secret_fill_multi) about the ask panel's own field. In a notice whose first clause names the asks panel, the deictic can be read as one of that panel's fields rather than the composer. The established noun for the message box here is «ô nhập».",
+      "suggestion": "Replace only «ô này» with «ô nhập này»: «Trả lời yêu cầu bí mật trong bảng câu hỏi — ô nhập này tạm dừng cho đến khi có câu trả lời, và bản nháp của bạn vẫn được giữ lại.» Keep every other word, the spaced em dash, the clause order and the final period.",
+      "evidence": "vi catalogue: «ô nhập» in 4 values, e.g. ui.onboarding.tour.attachments.body.4 («dán hình ảnh vào ô nhập trò chuyện») and ui.agents.config.status.attached («nó vẫn còn trong ô nhập»); bare «ô» for a panel field in ui.chat.composer.secret_fill_multi. This key carries no placeholder and no maxCells/maxChars in the English context, so the extra word costs no fit budget."
+    }
+  ]
+}
