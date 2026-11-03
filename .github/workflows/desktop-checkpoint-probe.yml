@@ -1,0 +1,106 @@
+# Parent authorizes ONE triggering push only after independent local gates.
+# CAT_CI also selects the ordinary full CI pass: this probe is concurrent cost,
+# not a claim that transport was verified before expensive jobs started.
+name: Desktop witness checkpoint transport probe
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/desktop-checkpoint-probe.yml'
+      - '.github/workflows/ci.yml'
+      - 'scripts/desktop-suite-checkpoints*.mjs'
+      - 'scripts/desktop-suite-step.sh'
+      - 'scripts/desktop-test-lane-bound*.mjs'
+      - 'scripts/run-desktop-tests.mjs'
+permissions:
+  contents: read
+jobs:
+  checkpoint_transport:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Launch release-file subject with a hard original deadline
+        env:
+          SUBJECT_ROOT: ${{ runner.temp }}
+        run: |
+          cat > "$RUNNER_TEMP/subject.sh" <<'SH'
+          printf '%s\n' "$$" > "$SUBJECT_ROOT/subject.pid"
+          mkfifo "$SUBJECT_ROOT/tick.fifo"
+          exec 9<> "$SUBJECT_ROOT/tick.fifo"
+          while [[ ! -f "$SUBJECT_ROOT/release" ]]; do
+            if (( SECONDS >= 105 )); then exit 124; fi
+            # Builtin timed read, not a completion race against a fixed sleep.
+            read -r -t 0.2 <&9 || :
+          done
+          echo synthetic-subject-released
+          SH
+          node --input-type=module - <<'JS'
+          import { launch } from './scripts/desktop-suite-checkpoints.mjs';
+          launch({state: process.env.RUNNER_TEMP + '/probe', shell: process.env.RUNNER_TEMP + '/subject.sh', durationMs: 105000, setupStarted: Date.now(), witnessMs: 500});
+          JS
+      - name: Freeze early bounded evidence
+        run: node scripts/desktop-suite-checkpoints.mjs checkpoint "$RUNNER_TEMP/probe" 1500 "$RUNNER_TEMP/probe-early.json"
+      - name: Upload early immutable evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: witness-probe-early-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/probe-early.json
+          if-no-files-found: error
+          retention-days: 1
+      - name: Download early evidence while subject remains blocked
+        uses: actions/download-artifact@v4
+        with:
+          name: witness-probe-early-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/downloaded-early
+      - name: Compare transported early bytes and witness progress before release
+        run: |
+          cmp "$RUNNER_TEMP/probe-early.json" "$RUNNER_TEMP/downloaded-early/probe-early.json"
+          test ! -f "$RUNNER_TEMP/probe/terminal.json"
+          test ! -f "$RUNNER_TEMP/release"
+          node --input-type=module - <<'JS'
+          import { readFileSync } from 'node:fs';
+          import { identity } from './scripts/desktop-suite-checkpoints.mjs';
+          const root = process.env.RUNNER_TEMP;
+          const read = p => JSON.parse(readFileSync(root + p));
+          const frozen = read('/downloaded-early/probe-early.json');
+          const live = read('/probe/witness.json');
+          const config = read('/probe/config.json');
+          const pid = Number(readFileSync(root + '/subject.pid', 'utf8'));
+          if (frozen.terminal !== null || !frozen.witness?.sequence || live.sequence <= frozen.witness.sequence) throw Error('Downloaded checkpoint did not precede independent witness progress');
+          if (identity(pid)?.start !== config.pipeline.start) throw Error('Subject is no longer the blocked owned process');
+          console.log('PASS early artifact downloaded byte-identically while owned subject remains blocked and witness advances');
+          JS
+      - name: Freeze later independent evidence
+        run: node scripts/desktop-suite-checkpoints.mjs checkpoint "$RUNNER_TEMP/probe" 4500 "$RUNNER_TEMP/probe-later.json"
+      - name: Upload later evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: witness-probe-later-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/probe-later.json
+          if-no-files-found: error
+          retention-days: 1
+      - name: Download later evidence before release
+        uses: actions/download-artifact@v4
+        with:
+          name: witness-probe-later-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/downloaded-later
+      - name: Verify later round trip still precedes subject release
+        run: |
+          cmp "$RUNNER_TEMP/probe-later.json" "$RUNNER_TEMP/downloaded-later/probe-later.json"
+          test ! -f "$RUNNER_TEMP/probe/terminal.json"
+          test ! -f "$RUNNER_TEMP/release"
+          node --input-type=module - <<'JS'
+          import { readFileSync } from 'node:fs';
+          const read = p => JSON.parse(readFileSync(process.env.RUNNER_TEMP + p));
+          const early = read('/downloaded-early/probe-early.json');
+          const later = read('/downloaded-later/probe-later.json');
+          if (later.terminal !== null || later.witness.sequence <= early.witness.sequence) throw Error('Later transported witness did not advance while blocked');
+          JS
+      - name: Release subject and await its verdict and exact-owned cleanup
+        if: ${{ always() }}
+        run: |
+          touch "$RUNNER_TEMP/release"
+          node scripts/desktop-suite-checkpoints.mjs await "$RUNNER_TEMP/probe"

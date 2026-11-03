@@ -17,5 +17,7 @@
 	"ui.chat.header.saving_conversation_name": "Сохранение названия разговора",
 	"ui.chat.header.session_model_connect": "Подключить",
 	"ui.chat.header.session_model_switch": "Сменить модель",
-	"ui.chat.header.transcript_display": "Вид транскрипта"
+	"ui.chat.header.transcript_display": "Вид транскрипта",
+	"ui.chat.header.starting_session": "Запуск сессии",
+	"ui.chat.header.canonical_chat": "Канонический чат"
 }

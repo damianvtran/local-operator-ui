@@ -47,8 +47,8 @@ export class WebContentsView {
    isDestroyed: () => !!wc.destroyed, isLoading: () => false, getURL: () => wc.url || 'about:blank', getTitle: () => '',
    getUserAgent: () => 'isolated-test', setUserAgent() {}, setAudioMuted() {}, setBackgroundThrottling() {},
    setZoomMode() {}, setZoomFactor() {}, getZoomFactor: () => 1,
-   setWindowOpenHandler() {}, loadURL: async url => { wc.url = url; },
-   close: () => { if (!wc.destroyed) { wc.destroyed = true; wc.emit('destroyed'); f().views.delete(wc.id); } },
+   setWindowOpenHandler() {}, loadURL: async url => { wc.url = url; this.parentedAtLoad = f().window.contentView.children.includes(this); },
+   close: () => { if (!wc.destroyed) { wc.destroyed = true; wc.emit('destroyed'); f().views.delete(wc.id); f().liveViews.delete(wc.id); } },
    debugger: { isAttached: () => false },
    navigationHistory: { canGoBack: () => false, canGoForward: () => false,
      length: () => 1, getActiveIndex: () => 0,
@@ -56,14 +56,14 @@ export class WebContentsView {
      restore: async ({ entries }) => { wc.url = entries[0]?.url; },
      getAllEntries: () => [{ url: wc.url || 'about:blank' }] }
   });
-  this.webContents = wc; this.setBounds = () => {}; this.setVisible = () => {};
+  this.webContents = wc; this.setBounds = () => {}; this.visible = true; this.setVisible = value => { this.visible = value; };
   // The card child reads its provisional width and sets its ground through
   // these; a launch that builds the card must not fail on a missing native
   // boundary, and the zero-width measurement returns before any DOM read.
   this.setBackgroundColor = () => {};
   this.getBounds = () => ({ x: 0, y: 0, width: 0, height: 0 });
   wc.executeJavaScript = async () => 0;
-  f().views.add(wc.id); f().peak = Math.max(f().peak, f().views.size);
+  f().views.add(wc.id); f().liveViews.set(wc.id, this); f().peak = Math.max(f().peak, f().views.size);
  }
 }
 `;
@@ -209,6 +209,7 @@ function fixture(failConsole) {
 		window,
 		handlers: new Map(),
 		views: new Set(),
+		liveViews: new Map(),
 		peak: 0,
 		id: 800,
 		installs: 0,
@@ -288,9 +289,9 @@ function overlayOptions() {
 const APPROVALS_OVERLAY_DISABLE_ENV =
 	"LOCAL_OPERATOR_UI_BROWSER_APPROVALS_OVERLAY_DISABLE";
 
-/** The card child among the restored tab views the fake window now records. */
-function cardChildren(f) {
-	return f.window.contentView.children.filter((view) =>
+/** A live card document still exists while its hidden native child is detached. */
+function cardViews(f) {
+	return [...f.liveViews.values()].filter((view) =>
 		view.webContents.getURL().includes("browser-approvals-overlay.html"),
 	);
 }
@@ -304,10 +305,20 @@ test("the approvals card is default-on: an ordinary launch builds its child", as
 			...options(f),
 			approvalsOverlay: overlayOptions(),
 		});
+		const cards = cardViews(f);
 		assert.equal(
-			cardChildren(f).length,
+			cards.length,
 			1,
-			"the enabled launch adds the native card child",
+			"default-on still constructs the reusable card document",
+		);
+		// Availability is not native parenting: hidden loading children caused the
+		// focus loss. Prove creation AND the load boundary, not merely zero children.
+		assert.equal(cards[0].parentedAtLoad, false, "navigation starts detached");
+		assert.equal(cards[0].visible, false, "the warming card stays hidden");
+		assert.equal(
+			f.window.contentView.children.includes(cards[0]),
+			false,
+			"startup does not leave a hidden native card attached",
 		);
 		const projection = f.handlers.get("browser-state")({
 			sender: f.window.webContents,
@@ -317,9 +328,9 @@ test("the approvals card is default-on: an ordinary launch builds its child", as
 	} finally {
 		await stopBrowserHost();
 		assert.equal(
-			cardChildren(f).length,
+			cardViews(f).length,
 			0,
-			"stopping the host removes the card child",
+			"stopping the host destroys the card document",
 		);
 		if (previous === undefined) {
 			delete process.env[APPROVALS_OVERLAY_DISABLE_ENV];
@@ -338,7 +349,7 @@ test("the disable switch makes an ordinary launch create no card child at all", 
 			...options(f),
 			approvalsOverlay: overlayOptions(),
 		});
-		assert.equal(cardChildren(f).length, 0, "the kill switch creates no child");
+		assert.equal(cardViews(f).length, 0, "the kill switch creates no child");
 		const projection = f.handlers.get("browser-state")({
 			sender: f.window.webContents,
 			senderFrame: f.window.webContents.mainFrame,
@@ -367,7 +378,7 @@ test("a card child that throws while it is being constructed leaves the host run
 			...options(f),
 			approvalsOverlay: overlayOptions(),
 		});
-		assert.equal(cardChildren(f).length, 0, "no card child exists");
+		assert.equal(cardViews(f).length, 0, "no card child exists");
 		const projection = f.handlers.get("browser-state")({
 			sender: f.window.webContents,
 			senderFrame: f.window.webContents.mainFrame,

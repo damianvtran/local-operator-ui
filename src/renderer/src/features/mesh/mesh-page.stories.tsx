@@ -32,7 +32,7 @@
  */
 
 import type { Meta, StoryObj } from "@storybook/react";
-import { expect, screen, userEvent, waitFor } from "@storybook/test";
+import { expect, screen, userEvent, waitFor, within } from "@storybook/test";
 import type { DesktopResponse } from "../../../../shared/desktop-contract";
 import { MoveNotice } from "./mesh-actions";
 import { resolveDrop } from "./mesh-drop";
@@ -45,7 +45,13 @@ import {
 	peerList,
 } from "./mesh-types";
 
-type BridgeRequest = { op: string; approvalId?: string };
+type BridgeRequest = {
+	op: string;
+	approvalId?: string;
+	operation?: string;
+	requestDigest?: string;
+	disclosureDigest?: string;
+};
 
 /** The desktop plane's answer envelope, as the preload bridge hands it to the API. */
 const ok = <T,>(result: T): DesktopResponse => ({
@@ -288,6 +294,11 @@ type Fixture = {
 	failSessions?: boolean;
 	/** The approval records the badge read answers (`approvals.list`). */
 	approvals?: unknown[];
+	/** Opt in only typed stories; legacy compatibility stories retain their old backend. */
+	credentialApprovals?: boolean;
+	/** Synthetic apply refuses once, or permanently; no real credentials are touched. */
+	typedApplyFailure?: "retryable" | "permanent";
+	typedHoldDecision?: boolean;
 	/** The approvals read refuses, with the transport's own sentence. */
 	failApprovals?: boolean;
 	/**
@@ -320,7 +331,12 @@ function installBridge(fixture: Fixture) {
 				// All three keys are advertised UNCONDITIONALLY by the backend, including
 				// on a machine in no network (`routes/capabilities.py`), so a story that
 				// withheld one would be photographing a backend nobody ships.
-				features: { peers: 1, session_transfer: 1, approvals: 1 },
+				features: {
+					peers: 1,
+					session_transfer: 1,
+					approvals: 1,
+					...(fixture.credentialApprovals ? { credential_approvals: 1 } : {}),
+				},
 			});
 		}
 		if (request.op === "approvals.list") {
@@ -338,6 +354,90 @@ function installBridge(fixture: Fixture) {
 				};
 			}
 			return answer({ approvals: fixture.approvals ?? [] });
+		}
+		// Exercise the shipped controller/mutation/refetch path, not a fake click
+		// callback. Digests are compared to the synthetic row before changing state.
+		if (
+			request.op === "approvals.approveCredential" ||
+			request.op === "approvals.applyCredential"
+		) {
+			fixture.onDecisionRequest?.(request);
+			if (fixture.typedHoldDecision) return await new Promise(() => {});
+			const row = fixture.approvals?.find(
+				(value) =>
+					(value as { approval_id?: string }).approval_id ===
+					request.approvalId,
+			) as ReturnType<typeof typedCredentialRecord> | undefined;
+			const typed = row?.typed_approval;
+			if (
+				!fixture.credentialApprovals ||
+				!row ||
+				!typed ||
+				request.operation !== typed.operation ||
+				request.requestDigest !== typed.request_digest ||
+				request.disclosureDigest !== typed.disclosure_digest
+			) {
+				return {
+					status: 409,
+					body: {
+						detail: {
+							code: "credential_request_changed",
+							message: "The synthetic card changed. Nothing was approved.",
+						},
+					},
+				};
+			}
+			if (
+				request.op === "approvals.approveCredential" &&
+				(!typed.signable_here || row.state !== "requested")
+			)
+				return {
+					status: 409,
+					body: {
+						detail: {
+							code: "credential_assurance_refused",
+							message:
+								typed.refusal_message ||
+								"This synthetic card cannot be signed.",
+						},
+					},
+				};
+			const failure = fixture.typedApplyFailure;
+			const outcome = failure
+				? {
+						code: failure === "retryable" ? "busy" : "finite_subject_mismatch",
+						retryable: failure === "retryable",
+						reason:
+							failure === "retryable"
+								? "Another change to who may use a credential was in progress at the same time."
+								: "The device, its key or the credential no longer match what was approved.",
+						remedy:
+							failure === "retryable"
+								? "Nothing was changed. Apply the same approved card again in a moment."
+								: "This card can't be used again; a new request is needed. Ask the agent or person who asked for this access to request it again, then approve the new card.",
+					}
+				: null;
+			row.state = failure ? "failed" : "connected";
+			typed.signable_here = false;
+			typed.apply_outcome = outcome;
+			if (failure === "retryable") fixture.typedApplyFailure = undefined;
+			if (request.op === "approvals.applyCredential" && outcome)
+				return {
+					status: 409,
+					body: {
+						detail: {
+							code: outcome.code,
+							message: outcome.reason,
+							apply_outcome: outcome,
+						},
+					},
+				};
+			return answer({
+				approval_id: row.approval_id,
+				state: row.state,
+				signed: { ok: true, key_id: "op_synthetic" },
+				applied: outcome ? { ok: false, ...outcome } : { ok: true, code: "" },
+			});
 		}
 		if (request.op === "approvals.approve" || request.op === "approvals.deny") {
 			fixture.onDecisionRequest?.(request);
@@ -2535,7 +2635,7 @@ export const CredentialApprovedDetails: Story = {
 		await user.click(
 			await screen.findByRole("button", { name: /^Settled approvals \(1\)/ }),
 		);
-		await screen.findByText("Approved; waiting to apply");
+		await screen.findByText("Approved, but not applied yet.");
 		if (document.querySelector('[data-tour-tag="mesh-approval-cli-remedy"]'))
 			throw new Error("Approved request repeated the approval instruction");
 		await user.click(await screen.findByRole("button", { name: "Details" }));
@@ -2565,7 +2665,7 @@ export const CredentialSettledOpen: Story = {
 		await userEvent.click(
 			await screen.findByRole("button", { name: /^Settled approvals \(3\)/ }),
 		);
-		for (const state of ["Connected", "Denied", "Expired"])
+		for (const state of ["Shared", "Denied", "Expired"])
 			await screen.findByText(state);
 		if (screen.queryByRole("button", { name: /^(Approve|Deny|Stop)$/ }))
 			throw new Error("Terminal credentials exposed a decision");
@@ -3128,5 +3228,271 @@ export const ApprovalsMachineAuthority: Story = {
 			approvals: [authorityRecord({})],
 		});
 		return <MeshPage />;
+	},
+};
+
+/**
+ * Typed credential states use only invented ids/digests. These are preload-seam
+ * fixtures, NOT proof of a real HTTP server, signing helper or credential store.
+ * Retain legacy Credential* stories to show the older-backend fallback separately.
+ */
+function typedCredentialRecord(
+	state = "requested",
+	operation:
+		| "credential_finite_share"
+		| "credential_inheritance" = "credential_finite_share",
+	id = "ap_7f3k9m2q8r5s",
+) {
+	return {
+		approval_id: id,
+		state,
+		what: { [operation]: {}, anchor: { key_id: "op_synthetic" } },
+		device: { device_id: DEVICE_PEER, name: "studio-mini" },
+		requested_by: {
+			surface: "desktop",
+			session_id: "",
+			device_id: DEVICE_SELF,
+		},
+		expires_at: Math.floor(Date.now() / 1000) + 3600,
+		can_approve_here: false,
+		typed_approval: {
+			action: "approve-credential",
+			operation,
+			request_digest: `sha256:${"a1".repeat(32)}`,
+			disclosure_digest: `sha256:${"b2".repeat(32)}`,
+			assurance:
+				operation === "credential_finite_share" ? "file_only" : "presence",
+			unproven_human: operation === "credential_finite_share",
+			signable_here: state === "requested",
+			refusal_message: "",
+			apply_outcome: null as {
+				code: string;
+				retryable: boolean;
+				reason: string;
+				remedy: string;
+			} | null,
+			disclosure: {
+				version: 1,
+				operation,
+				approval_id: id,
+				owner_device: DEVICE_SELF,
+				network_id: NET_HOME,
+				recipient: {
+					device_id: DEVICE_PEER,
+					name: "studio-mini",
+					key_fingerprint: "SHA256:synthetic",
+				},
+				signing_principal: "op_synthetic",
+				request_window: { created_at: 1, expires_at: 1800000000 },
+				grant_lifetime: { kind: "until_revoked" },
+				future_logins: operation === "credential_inheritance",
+				installs_or_joins: false,
+				...(operation === "credential_finite_share"
+					? {
+							credential_key: "github",
+							scope: "device",
+							policy_revision: 3,
+							retained_fence: { id: "synthetic-fence", revision: 2 },
+							withdrawals: [
+								{
+									selector: "owner-revoke:synthetic",
+									revision: 2,
+									approval_ref: "ap_synthetic",
+								},
+							],
+						}
+					: {
+							provider: "github",
+							account: "synthetic-account",
+							org: "",
+							copies_credential: false,
+							requires_capability: {
+								name: "broker_credential",
+								devices: [DEVICE_SELF, DEVICE_PEER],
+							},
+						}),
+			},
+		},
+	};
+}
+function typedStory(
+	rows: ReturnType<typeof typedCredentialRecord>[],
+	extra: Partial<Fixture> = {},
+): Story {
+	return {
+		render: () => {
+			// Fresh mutable fixtures on every mount: decisions must not leak across captures.
+			installBridge({
+				...singleDeviceFixture(),
+				credentialApprovals: true,
+				approvals: structuredClone(rows),
+				...extra,
+			});
+			return <MeshPage />;
+		},
+	};
+}
+export const TypedCredentialPending = typedStory([typedCredentialRecord()]);
+export const TypedCredentialInheritance = typedStory([
+	typedCredentialRecord("requested", "credential_inheritance"),
+]);
+export const TypedCredentialEmpty = typedStory([]);
+export const TypedCredentialSettled = typedStory([
+	typedCredentialRecord("connected"),
+]);
+export const TypedCredentialMultiple = typedStory([
+	typedCredentialRecord(),
+	typedCredentialRecord(
+		"requested",
+		"credential_inheritance",
+		"ap_7f3k9m2q8r6t",
+	),
+	typedCredentialRecord(
+		"approved",
+		"credential_finite_share",
+		"ap_7f3k9m2q8r7v",
+	),
+]);
+export const TypedCredentialExpanded: Story = {
+	...TypedCredentialPending,
+	play: async () => {
+		await userEvent.click(
+			await screen.findByRole("button", { name: "Details" }),
+		);
+	},
+};
+const refusedTypedRecord = typedCredentialRecord();
+refusedTypedRecord.typed_approval.signable_here = false;
+refusedTypedRecord.typed_approval.refusal_message =
+	"This machine cannot sign this synthetic permission.";
+export const TypedCredentialRefused = typedStory([refusedTypedRecord]);
+export const TypedCredentialLoading = typedStory([typedCredentialRecord()], {
+	holdReads: true,
+});
+export const TypedCredentialSigning: Story = {
+	...typedStory([typedCredentialRecord()], { typedHoldDecision: true }),
+	play: async () => {
+		await userEvent.click(
+			await screen.findByRole("button", { name: "Approve" }),
+		);
+	},
+};
+export const TypedCredentialRetryFlow: Story = {
+	...typedStory([typedCredentialRecord()], { typedApplyFailure: "retryable" }),
+	play: async () => {
+		await userEvent.click(
+			await screen.findByRole("button", { name: "Approve" }),
+		);
+		const retry = await screen.findByRole("button", { name: "Try again" });
+		const card = retry.closest<HTMLElement>(
+			'[data-tour-tag="mesh-approval-card"]',
+		);
+		if (!card) throw new Error("Retry has no owning approval card");
+		await within(card).findByText(
+			"Another change to who may use a credential was in progress at the same time. Nothing was changed. Apply the same approved card again in a moment.",
+		);
+		await userEvent.click(
+			await screen.findByRole("button", { name: "Try again" }),
+		);
+		await screen.findByText("Shared: 1");
+		const settled = await screen.findByRole("button", {
+			name: /^Settled approvals/,
+		});
+		await waitFor(() => expect(document.activeElement).toBe(settled));
+	},
+};
+export const TypedCredentialPermanentRefusal: Story = {
+	...typedStory([typedCredentialRecord()], { typedApplyFailure: "permanent" }),
+	play: async () => {
+		await userEvent.click(
+			await screen.findByRole("button", { name: "Approve" }),
+		);
+		await screen.findByText(
+			"The device, its key or the credential no longer match what was approved. This card can't be used again; a new request is needed. Ask the agent or person who asked for this access to request it again, then approve the new card.",
+		);
+	},
+};
+
+const failedTypedRecord = typedCredentialRecord("failed");
+failedTypedRecord.typed_approval.apply_outcome = {
+	code: "busy",
+	retryable: true,
+	reason:
+		"Another change to who may use a credential was in progress at the same time.",
+	remedy:
+		"Nothing was changed. Apply the same approved card again in a moment.",
+};
+export const TypedCredentialFailed = typedStory([failedTypedRecord]);
+export const TypedCredentialApproved = typedStory([
+	typedCredentialRecord("approved"),
+]);
+export const TypedCredentialFailedOpen: Story = {
+	...TypedCredentialFailed,
+	play: async () => {
+		await userEvent.click(
+			await screen.findByRole("button", { name: "Details" }),
+		);
+	},
+};
+export const TypedCredentialApprovedOpen: Story = {
+	...TypedCredentialApproved,
+	play: async () => {
+		await userEvent.click(
+			await screen.findByRole("button", { name: "Details" }),
+		);
+	},
+};
+
+/** Captures for the consent summary, technical disclosure, success and narrow fit. */
+export const TypedCredentialTechnicalOpen: Story = {
+	...TypedCredentialExpanded,
+	play: async () => {
+		await userEvent.click(
+			await screen.findByRole("button", { name: "Details" }),
+		);
+		await userEvent.click(
+			await screen.findByRole("button", {
+				name: "Exact signed request (technical)",
+			}),
+		);
+	},
+};
+export const TypedCredentialApproveFlow: Story = {
+	...TypedCredentialPending,
+	play: async () => {
+		await userEvent.click(
+			await screen.findByRole("button", { name: "Approve" }),
+		);
+		await screen.findByText("Shared: 1");
+		// The bridge resolves in the same tick: no pending frame is guaranteed.
+		const settled = await screen.findByRole("button", {
+			name: /^Settled approvals/,
+		});
+		await waitFor(() => expect(document.activeElement).toBe(settled));
+	},
+};
+export const TypedCredentialNarrowDetails: Story = {
+	...TypedCredentialExpanded,
+	parameters: {
+		viewport: {
+			defaultViewport: "typedNarrow",
+			viewports: {
+				typedNarrow: {
+					name: "Typed credential narrow",
+					styles: { width: "800px", height: "600px" },
+					type: "desktop",
+				},
+			},
+		},
+	},
+};
+export const TypedCredentialRetryableOutcome: Story = {
+	...typedStory([typedCredentialRecord()], { typedApplyFailure: "retryable" }),
+	play: async () => {
+		await userEvent.click(
+			await screen.findByRole("button", { name: "Approve" }),
+		);
+		await screen.findByRole("button", { name: "Try again" });
+		await screen.findByText("Needs attention: 1");
 	},
 };

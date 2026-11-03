@@ -245,5 +245,6 @@
 	"ui.browser.webauthn_chooser.the_choice_did_not_name_a_passkey": "انتخاب میں اس سائٹ کی پیش کردہ پاس کی کا نام نہیں تھا، اس لیے درخواست منسوخ ہو گئی۔ سائٹ سے دوبارہ کوشش کریں۔",
 	"ui.browser.webauthn_chooser.the_site_stored_no_name_for_this": "سائٹ نے اس پاس کی کا کوئی نام محفوظ نہیں کیا۔",
 	"ui.browser.webauthn_chooser.this_passkey_request_expired": "پاس کی کی اس درخواست کی میعاد ختم ہو گئی",
-	"ui.browser.webauthn_chooser.this_passkey_request_was_cancelled": "پاس کی کی یہ درخواست منسوخ ہو گئی"
+	"ui.browser.webauthn_chooser.this_passkey_request_was_cancelled": "پاس کی کی یہ درخواست منسوخ ہو گئی",
+	"ui.browser.browser_url_bar.reload_shortcut": "دوبارہ لوڈ کریں ({shortcut})"
 }

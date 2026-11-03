@@ -274,6 +274,14 @@ function exempt(file, name, index, why, site, noEnv) {
 
 const APP_SPAWN_SITES = [
 	guarded(
+		"scripts/browser-focus-stability-proof.mjs",
+		"spawn",
+		2,
+		/(?:\{|,)\s*env\s*,/,
+		"boots the real app for isolated native focus discrimination; launch suppression must accompany the scratch profile, including the explicitly armed CI-only native-owner mode",
+		/const env = withNotificationsOff\(\{/,
+	),
+	guarded(
 		"scripts/browser-approvals-first-paint-probe.mjs",
 		"spawn",
 		1,
@@ -375,6 +383,14 @@ const APP_SPAWN_SITES = [
 		1,
 		/(?:\{|,)\s*env\s*,/,
 		"boots a BUILT app tree - `--app-tree`, so the same rig runs against a before and an after tree - headless for the challenge arm and inactive for the real-site one, and drives the browser host over its own /rpc",
+		/const env = withNotificationsOff\(\{/,
+	),
+	guarded(
+		"scripts/browser-hover-press-proof.mjs",
+		"spawn",
+		1,
+		/(?:\{|,)\s*env\s*,/,
+		"boots the built app on an isolated HOME/config/log/profile to prove background hover and press; the scratch environment must suppress notifications and telemetry, never treating proof traffic as a product user",
 		/const env = withNotificationsOff\(\{/,
 	),
 	guarded(

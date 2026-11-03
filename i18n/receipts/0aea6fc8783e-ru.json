@@ -1,0 +1,97 @@
+{
+  "schema": 1,
+  "auditor": "i18n-auditor (independent lopdev task 'UI #1604 i18n audit round 4A', session 0aea6fc8783e)",
+  "model": "anthropic/claude-opus-5-5",
+  "model_provenance": "Whole audit (source reads, semantic review, structural probe, receipt writing, gate runs) ran on this session's announced model anthropic/claude-opus-5-5. No fallback or model switch was observed during this session.",
+  "instance": "0aea6fc8783e-ru",
+  "audit_session": "0aea6fc8783e",
+  "locale": "ru",
+  "namespace": "ui.mesh",
+  "date": "2026-11-02",
+  "scope": "Translation delta round 4 (auditor A) of 6cce93ed973..ccd51b021dc (PR #1604 translation remediation round 3, 'polish approval capture flows and isolate refusal text'): the 1 changed ui.mesh.approval value(s) in this locale read in final bytes against unchanged English and the updated context notes for result_status and named_refusal, plus renderer call sites; verified removal of 5 obsolete keys. Unchanged values retain their earlier audits.",
+  "audited_head": "ccd51b021dc8b09b4583f912e5258e6ee7c7766d",
+  "delta_base": "6cce93ed973e06189703e8b04d285e16e0c125a0",
+  "status": "passed",
+  "sha256": {
+    "en": "321cd5b9c918247c9ead225cf7497a21c322028766c6db600ba5ba3e31be2696",
+    "ru": "e7b65bec08cdb7a9f79de02dcaaa00189e9ce374efba0a44ee789b039c278c62"
+  },
+  "base_sha256": {
+    "en": "7acc3ea2a00d63aa3b68aadf7e42007e19d3de9e4cef9b72beafdbe73e351359",
+    "ru": "043539358f5956a2bb3be3f4f096b5d39563c78b68a5db2f54f63885b2ce283d"
+  },
+  "findings": [],
+  "prior_findings_verified": [
+    "B N5 fixed: neutral 'Для «{request}»' replaces 'Запрос «{request}»' (no doubling with fallback 'Запрос доступа к учётным данным')",
+    "A: ru was clean in round 3; no prior A finding"
+  ],
+  "observations": [],
+  "changed_keys": [
+    "ui.mesh.approval.named_refusal"
+  ],
+  "removed_keys_verified": {
+    "keys": [
+      "ui.mesh.approval.approved_pending_apply",
+      "ui.mesh.approval.request_window",
+      "ui.mesh.mesh_approvals.expires_hours",
+      "ui.mesh.mesh_approvals.expires_in_under_a_minute",
+      "ui.mesh.mesh_approvals.expires_minutes"
+    ],
+    "result": "Absent from en and all seven target catalogues, from keys.gen.ts and from ui.mesh.context.json at head; `git grep` over the tree (excluding i18n/receipts and i18n/ledger.json history) finds them only in docs/qa/typed-credential-approvals-remediation.md (the removal record). Same-suffix hits are other namespaces (ui.browser.approval_queue_model.expires_*) or the backend field `request_window` in test fixtures, not message keys. No template-literal key construction for ui.mesh.approval.* or ui.mesh.mesh_approvals.* exists in src/ or scripts/."
+  },
+  "verbatim_values": {
+    "ui.mesh.approval.named_refusal": "Для «{request}»: {reason}"
+  },
+  "base_values": {
+    "ui.mesh.approval.named_refusal": "Запрос «{request}»: {reason}"
+  },
+  "english_values": {
+    "ui.mesh.approval.named_refusal": "For “{request}”: {reason}"
+  },
+  "context_sidecar": {
+    "path": "src/i18n/catalogues/en/ui.mesh.context.json",
+    "sha256": "2f31e6b6996c1c655871947f8b7d4158113f79d973afb180ed042f9ef8cc474f",
+    "read": "Updated notes for result_status (counts-only polite status; refusal announced by focus) and named_refusal (request = localized head, reason = verbatim backend sentence, each parameter isolated by bdi) read in full and checked against code: tray.tsx:422-427 sr-only <output aria-live=polite> renders counts only; tray.tsx:355-365 focus handoff targets [data-tour-tag=mesh-approval-refusal] (tabIndex -1); tray.tsx:475-480 passes approvalHead(refusedRow) or credential_title as request; tray.tsx:1012-1037 wraps each parameter in <bdi dir=auto>; mesh-approvals.ts namedApprovalRefusalParts formats with literal tokens then splits. The notes are accurate."
+  },
+  "call_sites_read": [
+    "src/renderer/src/features/mesh/mesh-approvals-tray.tsx: result_status (422-427), shared vs approved_not_applied (693-698), MeshDecisionRefusal (1012-1037), refusal focus (340-365), named request source (475-480), retry_hint (806-808)",
+    "src/renderer/src/features/mesh/mesh-approvals.ts namedApprovalRefusalParts (1329-1355)",
+    "src/i18n/messages.ts translate/formatterFor (intl-messageformat, no implicit bidi isolation)"
+  ],
+  "standards": {
+    "root": "~/local-operator/i18n at origin/main 7a641391b97 (read with git show origin/main:)",
+    "sha256": {
+      "glossary.md": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+      "style-guides/ru.md": "f20e1cafaf70578c17ce072c71725628808d228e4be5604329f8da30386f1fb5"
+    }
+  },
+  "translator": {
+    "agent": "coder",
+    "jobs": [
+      "07291411b980",
+      "c61a64298a45",
+      "21ddee198f0b",
+      "d82369d8e233",
+      "c3976a04742d",
+      "4fe47970b5a5"
+    ],
+    "remediation_commit": "ccd51b021dc8b09b4583f912e5258e6ee7c7766d",
+    "attribution": "Translator/coder runs named by the manager; their served model is not verified by this auditor."
+  },
+  "independence": "This session (0aea6fc8783e) authored no catalogue value and edited no translation. It is distinct from the translator/coder runs 07291411b980, c61a64298a45, 21ddee198f0b, d82369d8e233, c3976a04742d, 4fe47970b5a5 and from earlier auditors 0a40e337218a, 38d28c8fb9bf, 4cb156711482, e4d4705aa898, ce58dae953f0, 3b60dc9f25d1, f89f59f896f1, f1566d61a664, 30323a25557e. The verdict comes from reading final bytes here.",
+  "semantic_checks": [
+    "named_refusal: 'Для «{request}»: {reason}' = For “{request}”: {reason}; quoted title stays uninflected; ёлочки per guide; both fields once."
+  ],
+  "evidence": {
+    "probe": "i18n/receipts/0aea6fc8783e-structural-probe.mjs.txt",
+    "probe_sha256": "13a24e4db28d0449921410555b56c23f8637509b0715bdd58e82946d7134541c",
+    "log": "i18n/receipts/0aea6fc8783e-structural-probe-output.txt",
+    "log_sha256": "8b04aac586615eec969476982c372ec75ba6b2c14cee001f9ff2b386e1660f97",
+    "verdict_location": "Status, findings and semantic_checks here are the auditor's review record. The companion log is the actual probe output: key-level base/head diff (changed set equals the remediation list, removed set equals the five obsolete keys), ICU parse and argument name/type parity with English, NFC, no bidi controls, style-guide punctuation signals (0), intl-messageformat render, and named_refusal field-split parity with namedApprovalRefusalParts."
+  },
+  "non_claims": [
+    "No rendered/compiled-native, width/fit, pseudo-localization, font shaping, RTL layout or visual validation (host memory hold); bdi isolation verified in source only.",
+    "No translation edits by this auditor."
+  ],
+  "notes": "Delta round 4A on PR #1604 head ccd51b0: passed, 0 findings; round-3 A/B findings for ru verified fixed."
+}

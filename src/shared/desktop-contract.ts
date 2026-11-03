@@ -157,6 +157,23 @@ const meshId = z.string().regex(/^[A-Za-z0-9_-]{1,128}$/);
  */
 const approvalId = z.string().regex(/^ap_[0-9a-hjkmnp-tv-z]{1,64}$/);
 /**
+ * What a typed credential decision echoes back: the backend's
+ * `CredentialApprovalAcknowledgment`, field for field. The two credential
+ * operations are the model's own `Literal`, and both digests its
+ * `^sha256:[0-9a-f]{64}$` pattern, so a malformed echo is refused HERE, by
+ * name, instead of by the daemon's generic 422.
+ */
+export const CREDENTIAL_APPROVAL_OPERATIONS = [
+	"credential_finite_share",
+	"credential_inheritance",
+] as const;
+export const CREDENTIAL_APPROVAL_DIGEST = /^sha256:[0-9a-f]{64}$/;
+const credentialApprovalAcknowledgment = {
+	operation: z.enum(CREDENTIAL_APPROVAL_OPERATIONS),
+	requestDigest: z.string().regex(CREDENTIAL_APPROVAL_DIGEST),
+	disclosureDigest: z.string().regex(CREDENTIAL_APPROVAL_DIGEST),
+};
+/**
  * The Library's two opaque identifiers, bounded at the boundary.
  *
  * An asset id is `la_` + 16 hex characters (the design contract's derivation);
@@ -3893,6 +3910,8 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			message_id: id,
 			limit: z.number().int().min(1).max(100).optional(),
 			after_seq: z.number().int().nonnegative().optional(),
+			before_seq: z.number().int().positive().optional(),
+			order: z.enum(["asc", "desc"]).optional(),
 		})
 		.strict(),
 	z
@@ -3948,6 +3967,8 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			tenant_id: id,
 			limit: z.number().int().min(1).max(100).optional(),
 			after_seq: z.number().int().nonnegative().optional(),
+			before_seq: z.number().int().positive().optional(),
+			order: z.enum(["asc", "desc"]).optional(),
 		})
 		.strict(),
 	z
@@ -4221,6 +4242,39 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 		.strict(),
 	z.object({ op: z.literal("approvals.approve"), approvalId }).strict(),
 	z.object({ op: z.literal("approvals.deny"), approvalId }).strict(),
+	/*
+	 * THE TYPED CREDENTIAL DECISIONS (`features.credential_approvals`). A credential
+	 * permission cannot ride the bodiless `approve` above: that request proves
+	 * nothing about which disclosure was on screen, so the backend refuses it for
+	 * these records on purpose (`network/credentials/desktop_approval.py`, "WHY THE
+	 * GENERIC /approve STAYS REFUSED"). These two carry what the card REVIEWED - the
+	 * operation and the two digests the row served - and the server recomputes both
+	 * from the record on disk and refuses a mismatch before any signer runs.
+	 *
+	 * THE DIGESTS ARE ECHOED, NEVER COMPUTED HERE. The renderer has no canonical
+	 * JSON encoder that matches the backend's byte for byte, and a digest this app
+	 * minted would be a claim about a disclosure the server did not serve. So the
+	 * shape is pinned to the backend model's own pattern
+	 * (`CredentialApprovalAcknowledgment`, strict, `extra: forbid`) and the value is
+	 * whatever the list row carried.
+	 *
+	 * `approveCredential` is review -> sign -> apply in one call;
+	 * `applyCredential` is the retry of a signed card whose apply did not finish.
+	 */
+	z
+		.object({
+			op: z.literal("approvals.approveCredential"),
+			approvalId,
+			...credentialApprovalAcknowledgment,
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("approvals.applyCredential"),
+			approvalId,
+			...credentialApprovalAcknowledgment,
+		})
+		.strict(),
 	/*
 	 * THE FLEET ASKS READ (`GET /v1/desktop/asks`), the cross-session companion of
 	 * the per-session queue the canonical frame carries. A GET with no parameters
@@ -6626,7 +6680,10 @@ export function desktopRequestDeadlineMs(
 	// Op-keyed rather than request-keyed, because the gesture's bound is a property
 	// of the op alone: a caller holding only the op string (a story, a test) gets
 	// the same number the transport uses.
-	if (op === "approvals.approve") return APPROVAL_APPROVE_DEADLINE_MS;
+	// The typed approve signs through the same presence-gated signer before it
+	// applies, so it waits on the same human gesture. Its retry never signs.
+	if (op === "approvals.approve" || op === "approvals.approveCredential")
+		return APPROVAL_APPROVE_DEADLINE_MS;
 	if (op === "tunnel.setup.run") return PHONE_SETUP_RUN_DEADLINE_MS;
 	if (op === "tunnel.setup.plan") return PHONE_SETUP_PLAN_DEADLINE_MS;
 	const hub = hubWriteDeadlineMs(op);
@@ -6895,7 +6952,7 @@ export function desktopRequestDeadlineDetail(
 	 * half: answering again is SAFE, because the store keeps the first decision and
 	 * refuses a second rather than repeating one (write-once, F3).
 	 */
-	if (op === "approvals.approve") {
+	if (op === "approvals.approve" || op === "approvals.approveCredential") {
 		return {
 			code,
 			message: `The app waits up to ${seconds} seconds for an approval, and the signing prompt was still open when it stopped waiting. The request was sent, so the decision may or may not have landed: read the approvals again — if the record still waits, answering it again is safe, because the store keeps the first decision and refuses a second.`,
@@ -7099,6 +7156,43 @@ export type DesktopMediaRequest =
 	  }
 	| { op: "agent.import"; fileName: string }
 	| { op: "agent.export"; agentId: string }
+	/*
+	 * A LOCAL AGENT'S PROFILE PICTURE (core `GET|PUT|DELETE
+	 * /v1/agents/{id}/avatar`). Bytes both ways, so the relay rather than the
+	 * JSON transport; the bearer stays in main, so an `<img src>` can never point
+	 * at the route itself and the renderer paints a blob URL instead.
+	 *
+	 * `sha256` on the read is the content address the agent record published
+	 * (`avatar.sha256`): main sends it as `?v=` so a changed picture is a
+	 * different URL to every cache between here and core, and the renderer files
+	 * the blob under the same digest. The PUT carries the cropped image as a raw
+	 * body (core sniffs and re-normalises it); the DELETE carries nothing.
+	 */
+	| { op: "agent.avatar"; agentId: string; sha256: string }
+	// Human profile operations are intentionally disjoint from local agents.
+	// The opaque scope binds writes to the login that commissioned the editor.
+	| { op: "account.profile"; expectedAccountId: string }
+	| {
+			op: "account.profile.update";
+			expectedAccountId: string;
+			scope: string;
+			fields: {
+				display_name?: string;
+				title?: string;
+				description?: string;
+				timezone?: string;
+			};
+	  }
+	| { op: "account.avatar.put"; expectedAccountId: string; scope: string }
+	| {
+			op: "account.avatar.delete";
+			expectedAccountId: string;
+			scope: string;
+			mode: "uploaded" | "provider";
+			confirmed: true;
+	  }
+	| { op: "agent.avatar.put"; agentId: string }
+	| { op: "agent.avatar.delete"; agentId: string }
 	// A durable transcript row references an image by content digest with the
 	// payload stripped, and the JSON transport's envelope has nowhere to put
 	// bytes — which is what puts a screenshot fetch on this relay rather than
@@ -7189,6 +7283,21 @@ export type DesktopMediaRequest =
 			op: "team_bridge.avatar";
 			expectedAccountId: string;
 			accountId: string;
+			hash: string;
+			size: 64 | 256;
+	  }
+	/*
+	 * An AGENT's own published picture, by ENDPOINT (never by its owner's
+	 * account, which is how an owner's face reached an agent on 2026-10-30).
+	 * Same closure as the account op: typed id/hash/size, never a URL; core's
+	 * `/v1/desktop/team-bridge/endpoints/{id}/avatar` relay holds the hub
+	 * credential and fences the read to `expectedAccountId`. An older core
+	 * answers 404 and the plate keeps the agent glyph.
+	 */
+	| {
+			op: "team_bridge.endpoint_avatar";
+			expectedAccountId: string;
+			endpointId: string;
 			hash: string;
 			size: 64 | 256;
 	  }
@@ -8013,6 +8122,26 @@ export function desktopEndpoint(request: DesktopRequest): {
 			return {
 				path: `/v1/desktop/approvals/${encodeURIComponent(request.approvalId)}/deny`,
 				method: "POST",
+			};
+		/*
+		 * The typed pair: the body is the backend model's three fields and nothing
+		 * else (the model forbids extras), each copied from the request unchanged so
+		 * the digests reach the server exactly as the list row served them.
+		 */
+		case "approvals.approveCredential":
+		case "approvals.applyCredential":
+			return {
+				path: `/v1/desktop/approvals/${encodeURIComponent(request.approvalId)}/${
+					request.op === "approvals.approveCredential"
+						? "approve-credential"
+						: "apply-credential"
+				}`,
+				method: "POST",
+				body: {
+					operation: request.operation,
+					request_digest: request.requestDigest,
+					disclosure_digest: request.disclosureDigest,
+				},
 			};
 		case "profiles.list":
 			return { path: "/v1/desktop/profiles", method: "GET" };
@@ -9702,6 +9831,9 @@ export function desktopEndpoint(request: DesktopRequest): {
 					path += `/${encodeURIComponent(request.message_id)}/replies`;
 					if (request.after_seq !== undefined)
 						query.set("after_seq", String(request.after_seq));
+					if (request.before_seq !== undefined)
+						query.set("before_seq", String(request.before_seq));
+					if (request.order !== undefined) query.set("order", request.order);
 				}
 			}
 			return { path: `${path}?${query}`, method: "GET" };
@@ -9818,6 +9950,9 @@ export function desktopEndpoint(request: DesktopRequest): {
 				query.set("limit", String(request.limit));
 			if (request.after_seq !== undefined)
 				query.set("after_seq", String(request.after_seq));
+			if (request.before_seq !== undefined)
+				query.set("before_seq", String(request.before_seq));
+			if (request.order !== undefined) query.set("order", request.order);
 			const suffix = query.size > 0 ? `?${query.toString()}` : "";
 			return {
 				path: `/v1/desktop/team-bridge/conversations/${encodeURIComponent(request.conversation_id)}/messages/${encodeURIComponent(request.message_id)}/replies${suffix}`,

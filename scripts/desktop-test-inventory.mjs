@@ -12,8 +12,9 @@
  *
  * THE RULE. Every `*.test.mjs` under `scripts/` (recursively) is a desktop test,
  * unless `EXEMPT` below names it with the reason and the place it runs instead.
- * Adding a test file therefore edits nothing shared; exempting one is the
- * deliberate, reviewed act.
+ * Adding a test file under scripts/ therefore edits nothing shared; exempting
+ * one is the deliberate, reviewed act. `EXTERNAL_TESTS` preserves desktop tests
+ * main already registered outside scripts/ without sweeping unrelated src suites.
  *
  * WHY A WALK AND NOT A CHECKED-IN GENERATED LIST. A generated list still has to
  * be rewritten by every pull request that adds a test, so it moves the conflict
@@ -40,6 +41,16 @@ import { isEntryPoint } from "./entry-point.mjs";
 
 /** The tree the inventory is derived from, repository-relative. */
 export const TEST_ROOT = "scripts";
+
+/**
+ * Main already runs this colocated DOM regression in the desktop lane. Keep
+ * that coverage when replacing the literal list, without opting every src test
+ * into the lane (the other colocated suites have separate i18n commands).
+ * A missing or linked registration fails closed just like a scripts/ test.
+ */
+export const EXTERNAL_TESTS = Object.freeze([
+	"src/renderer/src/features/team-bridge/mentions/mention-draft-restore.test.mjs",
+]);
 
 /**
  * The ONLY accepted `scripts.test:desktop` value. It is a constant on purpose:
@@ -86,6 +97,8 @@ export const EXEMPT = Object.freeze({
 		"`node --test scripts/check-scripts-lint.test.mjs`, its own CI step (ci.yml).",
 	"scripts/release-baseline.test.mjs":
 		"the release-gate suite in ci.yml, run as one node --test invocation.",
+	"scripts/desktop-suite-checkpoints.test.mjs":
+		"ci.yml's Check release contracts step runs it with the release-gate suite; scripts/ci-scope.test.mjs:1309 assertCheckpointUnitParity pins the local/CI commands and fails if this registration is dropped.",
 	"scripts/upload-release.test.mjs":
 		"the release-gate step in ci.yml, its own node --test invocation: it drives the attach path against a stub upload endpoint, which the desktop suite has no fixture for.",
 	"scripts/release-candidate.test.mjs":
@@ -131,6 +144,17 @@ export function walkTestFiles(root) {
 	if (!lstatSync(join(root, TEST_ROOT)).isDirectory())
 		throw new Error(`Missing ${TEST_ROOT}/ directory`);
 	visit(TEST_ROOT);
+	for (const file of EXTERNAL_TESTS) {
+		let path = root;
+		for (const component of file.split("/")) {
+			path = join(path, component);
+			if (lstatSync(path).isSymbolicLink())
+				throw new Error(`Symlink in external desktop test: ${file}`);
+		}
+		if (!lstatSync(path).isFile())
+			throw new Error(`External desktop test is not a file: ${file}`);
+		found.push(file);
+	}
 	return found.sort();
 }
 
@@ -146,7 +170,7 @@ export function selectDesktopTests(paths, exempt = EXEMPT) {
 		if (
 			!SAFE_PATH.test(file) ||
 			file.split("/").some((p) => p === "." || p === "..") ||
-			!file.startsWith(`${TEST_ROOT}/`)
+			!(file.startsWith(`${TEST_ROOT}/`) || EXTERNAL_TESTS.includes(file))
 		)
 			throw new Error(
 				`Unsafe/unsupported test path ${JSON.stringify(file)}: no flags, quotes, glob, shell operators or traversal`,

@@ -199,11 +199,13 @@ const DetailLineRow: FC<{ line: DetailLine }> = ({ line }) => (
 );
 
 /** A run of detail lines, in the pane's own vertical rhythm. */
-const DetailLines: FC<{ lines: readonly DetailLine[]; label: string }> = ({
+/* `section` is the `data-detail-lines` hook (a selector token), not copy: it was
+ * `label` until the i18n scanner started counting that prop name as prose. */
+const DetailLines: FC<{ lines: readonly DetailLine[]; section: string }> = ({
 	lines,
-	label,
+	section,
 }) => (
-	<div className={cn("flex flex-col gap-1")} data-detail-lines={label}>
+	<div className={cn("flex flex-col gap-1")} data-detail-lines={section}>
 		{lines.map((line, index) => (
 			// The dotted path is unique for every REAL wire payload, but not by
 			// construction: an argument key that itself contains a dot (`{"a.b": 1}`
@@ -380,7 +382,7 @@ export const ToolDetail: FC<ToolDetailProps> = ({
 			{input.length > 0 && (
 				<div data-detail-section="input">
 					<div ref={inputRef} className={cn(SECTION_MAX, "overflow-auto")}>
-						<DetailLines lines={input} label="input" />
+						<DetailLines lines={input} section="input" />
 					</div>
 					<Remainder
 						lines={inputBelow.lines}
@@ -429,7 +431,7 @@ export const ToolDetail: FC<ToolDetailProps> = ({
 					</span>
 					<div ref={outputRef} className={cn(SECTION_MAX, "overflow-auto")}>
 						{structured ? (
-							<DetailLines lines={structured} label="result-json" />
+							<DetailLines lines={structured} section="result-json" />
 						) : (
 							// Verbatim, and deliberately NOT wrapped: `whitespace-pre` keeps a
 							// shell result's own columns intact, which is the TUI's rule for an
@@ -478,11 +480,16 @@ export const ToolDetail: FC<ToolDetailProps> = ({
  * reader's sentences in sans, the machine payload in mono).
  */
 export const BridgeDetail: FC<{
-	view: BridgeRowView;
+	view: Pick<
+		BridgeRowView,
+		"headline" | "body" | "outcome" | "internals" | "raw"
+	>;
 	isError: boolean;
+	/** Admitted incoming media uses the same pane without fabricating tool tokens. */
+	children?: ReactNode;
 	/** The delivery note, which outranks the plain outcome sentence. */
 	note?: ReactNode;
-}> = ({ view, isError, note = null }) => {
+}> = ({ view, isError, note = null, children }) => {
 	const outcome = note ?? view.outcome;
 	const hasInternals = view.internals.length > 0 || Boolean(view.raw);
 	return (
@@ -519,6 +526,7 @@ export const BridgeDetail: FC<{
 					{outcome}
 				</div>
 			) : null}
+			{children}
 			{hasInternals ? (
 				<Disclosure
 					chevron="trailing"

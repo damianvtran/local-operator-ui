@@ -58,5 +58,9 @@
 	"ui.chat.sidebar.search.unavailable": "گفتگو کی تلاش دستیاب نہیں، اس لیے یہ صرف نام سے ملے ہوئے نتائج ہیں۔",
 	"ui.chat.sidebar.section.current_chat": "موجودہ چیٹ",
 	"ui.chat.sidebar.teams.create": "ٹیم بنائیں",
-	"ui.chat.sidebar.teams.loading": "ٹیمیں لوڈ ہو رہی ہیں…"
+	"ui.chat.sidebar.teams.loading": "ٹیمیں لوڈ ہو رہی ہیں…",
+	"ui.chat.sidebar.agents.list_join": "{position, select, pair {{head} اور {tail}} middle {{head}، {tail}} other {{head} اور {tail}}}",
+	"ui.chat.sidebar.row.open_draft": "{label} کھولیں",
+	"ui.chat.sidebar.entity.more_in": "{name} میں {label}",
+	"ui.chat.sidebar.search.count_tooltip": "{clipped, select, yes {کم از کم } other {}}{count, plural, =1 {{count_display} چیٹ اس تلاش سے مطابقت رکھتی ہے} other {{count_display} چیٹس اس تلاش سے مطابقت رکھتی ہیں}}{clipped, select, yes {؛ فہرست یہیں رک جاتی ہے} other {}}"
 }

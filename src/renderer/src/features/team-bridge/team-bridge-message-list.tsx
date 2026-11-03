@@ -15,6 +15,7 @@ import type {
 	TeamBridgeEvent,
 	TeamBridgeMessage,
 } from "../../../../shared/team-bridge-contract";
+import { InlineDataBody } from "./inline-data-receipt";
 import { useMessageMentions } from "./mentions/use-message-mentions";
 import {
 	type TeamBridgeArrivalIdentity,
@@ -24,6 +25,7 @@ import {
 	teamBridgeSuspendArrivals,
 } from "./team-bridge-arrival-model";
 import { TeamBridgeMessageAttachments } from "./team-bridge-attachments";
+import { TeamBridgeDeliveryAnnotation } from "./team-bridge-delivery-annotation";
 import { EMOJI_ENTRIES } from "./team-bridge-emoji-model";
 import { warmEmojiProbeCache } from "./team-bridge-emoji-support";
 import { TeamBridgeMarkdown } from "./team-bridge-markdown";
@@ -519,39 +521,52 @@ const MessageRow: FC<{
 	rowKey?: string;
 	local?: boolean;
 	delivery?: TeamBridgeRowPresentation["delivery"];
-}> = ({ reactionContext, rowKey, local = false, ...props }) =>
-	/* Keyed on the ROW identity, not the message id, and the component type does not
-	   change with delivery: an optimistic row and its server replacement must be one
-	   mounted subtree. A local row has no server id to react to, so its reactions are
-	   disabled rather than absent (absent would swap the component on reconcile). */
-	reactionContext && props.message.body !== null ? (
+}> = ({ reactionContext, rowKey, local = false, ...props }) => {
+	const reactable = Boolean(reactionContext) && props.message.body !== null;
+	/* ONE COMPONENT TYPE AND ONE KEY FOR EVERY STATE OF A ROW (#1511). Keyed on the
+	   ROW identity, not the message id: an optimistic row and its server
+	   replacement must be one mounted subtree. A first message is drawn while its
+	   draft has no conversation, so there is no reaction context yet; switching to
+	   a reaction-capable component type when the created conversation becomes the
+	   selection would unmount the very row the author is watching. The account
+	   stays in the key, so an account switch still discards reaction state. A local
+	   row has no server id to react to, so its reactions are disabled. */
+	return (
 		<ReactableMessageRow
-			key={`${reactionContext.accountId}:${rowKey ?? props.message.id}`}
+			key={`${reactionContext?.accountId ?? props.accountId ?? ""}:${rowKey ?? props.message.id}`}
 			reactionContext={
-				local ? { ...reactionContext, disabled: true } : reactionContext
+				reactable && reactionContext
+					? local
+						? { ...reactionContext, disabled: true }
+						: reactionContext
+					: undefined
 			}
 			{...props}
 			rowKey={rowKey}
 			onReply={local ? undefined : props.onReply}
 		/>
-	) : (
-		<MessageRowView
-			{...props}
-			rowKey={rowKey}
-			onReply={local ? undefined : props.onReply}
-		/>
 	);
+};
+
+/* Withheld reactions are never drawn: the inert state below has no account or
+   tenant to write with, and `disabled` makes its toggle a no-op. */
+const INERT_REACTIONS = { accountId: "", tenantId: "", disabled: true };
 
 const ReactableMessageRow: FC<
-	Omit<MessageRowProps, "reactions"> & { reactionContext: ReactionContext }
+	Omit<MessageRowProps, "reactions"> & { reactionContext?: ReactionContext }
 > = ({ reactionContext, ...props }) => {
 	const reactions = useTeamBridgeReactionState({
 		conversationId: props.message.conversation_id,
 		messageId: props.message.id,
-		...reactionContext,
+		...(reactionContext ?? INERT_REACTIONS),
 		reactions: props.message.reactions,
 	});
-	return <MessageRowView {...props} reactions={reactions} />;
+	return (
+		<MessageRowView
+			{...props}
+			reactions={reactionContext ? reactions : undefined}
+		/>
+	);
 };
 
 type MessageRowProps = {
@@ -638,7 +653,7 @@ const MessageRowView: FC<MessageRowProps> = ({
 		<TeamBridgeProfileCard
 			member={member}
 			label={label}
-			agentName={agent ? label : undefined}
+			kind={agent ? "agent" : "human"}
 			onMessage={messagePerson}
 			canMessage={canMessage}
 		>
@@ -648,13 +663,16 @@ const MessageRowView: FC<MessageRowProps> = ({
 			>
 				<TeamBridgeAvatar
 					member={member}
+					kind={agent ? "agent" : "human"}
 					label={label}
 					size={36}
-					className="size-9 rounded-md bg-media-surface text-ink-muted text-[14px]"
+					/* NO ink here: the plate owns it (`text-accent` for an agent,
+					   `text-ink-muted` for a person), and a host that restated the
+					   muted ink beat `text-accent` through tailwind-merge — one agent
+					   with two inks in one frame (agent review round 2, F4). */
+					className="size-9 rounded-md bg-media-surface text-[14px]"
 					fallback={
-						agent ? (
-							<Bot size={18} />
-						) : known === null ? (
+						known === null ? (
 							<UserRound size={18} />
 						) : (
 							known.trim().charAt(0).toUpperCase() || "?"
@@ -747,7 +765,7 @@ const MessageRowView: FC<MessageRowProps> = ({
 							<TeamBridgeProfileCard
 								member={member}
 								label={label}
-								agentName={agent ? label : undefined}
+								kind={agent ? "agent" : "human"}
 								onMessage={messagePerson}
 								canMessage={canMessage}
 							>
@@ -821,22 +839,27 @@ const MessageRowView: FC<MessageRowProps> = ({
 					 * invisible. The value is driven on the row instead, scoped to it: the
 					 * stylesheet keeps styling every other markdown surface in the app.
 					 */
-					<TeamBridgeMarkdown
-						/* `transition-colors` is restored rather than the comment rewritten: the
+					<InlineDataBody
+						body={message.body}
+						renderText={(text) => (
+							<TeamBridgeMarkdown
+								/* `transition-colors` is restored rather than the comment rewritten: the
 						   comment describes a settle, and no rule on `.lo-markdown` competes with a
 						   TRANSITION (only its `color` is unlayered). Design round 3 measured the
 						   step at 1.19:1 light / 1.63:1 dark - quiet enough that the settle must
 						   not read as motion, which is what a 150 ms colour fade gives. */
-						className="team-bridge-message-body text-[14px] transition-colors duration-fast"
-						style={{
-							...(delivery?.status === "pending"
-								? { "--md-ink": "var(--lo-ink-muted)" }
-								: {}),
-						}}
-						mentions={mentionRuns}
-					>
-						{message.body}
-					</TeamBridgeMarkdown>
+								className="team-bridge-message-body text-[14px] transition-colors duration-fast"
+								style={{
+									...(delivery?.status === "pending"
+										? { "--md-ink": "var(--lo-ink-muted)" }
+										: {}),
+								}}
+								mentions={mentionRuns}
+							>
+								{text}
+							</TeamBridgeMarkdown>
+						)}
+					/>
 				)}
 				{/* THE STATE IN WORDS, for a reader who cannot see the ink: the row is
 				    otherwise only quieter, and a screen reader announces status changes when
@@ -848,6 +871,7 @@ const MessageRowView: FC<MessageRowProps> = ({
 							: t("ui.agents.config.state.sending")}
 					</p>
 				)}
+				<TeamBridgeDeliveryAnnotation message={message} />
 				{/* Images come ONLY from the structured list, never from the body. */}
 				{(message.attachments?.length ?? 0) > 0 && (
 					<TeamBridgeMessageAttachments

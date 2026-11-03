@@ -2,6 +2,7 @@ import {
 	useAidaDisplayName,
 	useAidaTarget,
 } from "@features/aida/use-aida-target";
+import { useAgentAvatar } from "@shared/agent-avatar/agent-avatar";
 import {
 	backendPaneSentence,
 	compatibilityBannerShown,
@@ -46,7 +47,6 @@ import {
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
-import { useAgentAvatar } from "@shared/store/agent-avatar-store";
 import { useAsideStore } from "@shared/store/aside-store";
 import {
 	ANSWER_NOT_SENT_CODE,
@@ -4676,9 +4676,11 @@ function SessionPanel({
 								 * declares immutable, so the two lines now state one fact.
 								 */
 								starting
-								? (loadedTargetDisplay ?? "Starting the session")
+								? (loadedTargetDisplay ?? t("ui.chat.header.starting_session"))
 								: draft?.sessionId
-									? canonical.frontend?.cwd || cwd || "Canonical chat"
+									? canonical.frontend?.cwd ||
+										cwd ||
+										t("ui.chat.header.canonical_chat")
 									: /*
 										 * A DRAFT WITH NO SESSION STATES WHERE IT WILL RUN, NOT WHAT IT
 										 * WILL DO (§H, U23). This slot held "The session starts when you

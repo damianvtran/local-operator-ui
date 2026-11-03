@@ -24,6 +24,7 @@ import { dirname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
 	DESKTOP_COMMAND,
+	EXTERNAL_TESTS,
 	TEST_ROOT,
 	discoverDesktopTests,
 	runNode,
@@ -122,7 +123,15 @@ export function plan(root, head, checkout, metadataPackage, metadataGitTree) {
 			const match = /^([0-9]{6}) (blob|tree|commit) [a-f0-9]{40}\t(.+)$/.exec(
 				line,
 			);
-			if (!match || !match[3].startsWith(`${TEST_ROOT}/`)) continue;
+			if (
+				!match ||
+				!(
+					match[3].startsWith(`${TEST_ROOT}/`) ||
+					EXTERNAL_TESTS.includes(match[3]) ||
+					EXTERNAL_TESTS.some((file) => file.startsWith(`${match[3]}/`))
+				)
+			)
+				continue;
 			if (match[1] === "120000" || match[2] === "commit")
 				throw new Error(
 					`Inventory path absent or unsafe in pinned Git tree: ${match[3]}`,
@@ -130,6 +139,11 @@ export function plan(root, head, checkout, metadataPackage, metadataGitTree) {
 			if (/^(100644|100755)$/.test(match[1]) && match[3].endsWith(".test.mjs"))
 				candidates.push(match[3]);
 		}
+		for (const file of EXTERNAL_TESTS)
+			if (!candidates.includes(file))
+				throw new Error(
+					`External desktop test missing from pinned Git tree: ${file}`,
+				);
 		files = selectDesktopTests(candidates.sort());
 	} else {
 		files = discoverDesktopTests(root);
@@ -183,17 +197,15 @@ export function tapSummary(text) {
 /** Actual guarded-runner argv cardinality, not the number of nested TAP cases. */
 export function observedRunnerFileCount(text) {
 	const lines = text.split(/\r?\n/).filter((line) => {
-		// The real runner shares this prefix across count, memory, lane and
-		// warning lines. Only cardinality candidates belong to uniqueness.
-		// Keep malformed counts as candidates so they cannot hide beside a
-		// good count; nested TAP comments and indentation are not evidence.
-		return (
-			!/^desktop tests: (?:memory bound\b|per-lane bound\b|WARNING\b)/u.test(
-				line,
-			) &&
-			/^desktop tests:\s*(?:[+-]?\d|.*\b(?:files?|concurrency|cap)\b)/.test(
-				line,
-			)
+		// Parent diagnostics use the same namespace, but their JSON `file`
+		// fields are not argv cardinality. Admit only the anchored count-record
+		// envelope, not arbitrary occurrences of "file" later in a log line.
+		// Keep malformed true records (bad number, comma or concurrency) in the
+		// candidate set so one cannot hide beside a good record. Nested TAP
+		// comments and indentation remain ineligible as execution evidence.
+		if (line.startsWith("desktop tests: diagnostic ")) return false;
+		return /^desktop tests:\s*(?:[+-]?\d|\S+\s+files?\b|files?\b|(?:no\s+)?concurrency\b|cap\b)/.test(
+			line,
 		);
 	});
 	if (lines.length !== 1)

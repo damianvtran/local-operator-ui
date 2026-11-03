@@ -7,5 +7,10 @@
 	"ui.common.layout.sidebar_header.import_agent": "Importer un agent",
 	"ui.common.layout.sidebar_header.new_agent": "Nouvel agent",
 	"ui.common.layout.toasts.dismiss": "Fermer la notification",
-	"ui.common.layout.toasts.notifications": "Notifications"
+	"ui.common.layout.toasts.notifications": "Notifications",
+	"ui.common.layout.chat_layout.resize_canvas_double_click_resets_the_shared_pane_width": "Redimensionner le canvas. Double-cliquez pour réinitialiser la largeur partagée du panneau.",
+	"ui.common.layout.chat_layout.resize_run_details_double_click_resets_the_shared_pane_width": "Redimensionner les détails de l’exécution. Double-cliquez pour réinitialiser la largeur partagée du panneau.",
+	"ui.common.layout.chat_layout.resize_browser_double_click_resets_the_shared_pane_width": "Redimensionner le navigateur. Double-cliquez pour réinitialiser la largeur partagée du panneau.",
+	"ui.common.layout.chat_layout.resize_console_double_click_resets_the_shared_pane_width": "Redimensionner la console. Double-cliquez pour réinitialiser la largeur partagée du panneau.",
+	"ui.common.layout.chat_layout.resize_code_review_double_click_resets_the_shared_pane_width": "Redimensionner la revue de code. Double-cliquez pour réinitialiser la largeur partagée du panneau."
 }

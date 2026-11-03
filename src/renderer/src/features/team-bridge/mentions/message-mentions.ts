@@ -22,7 +22,7 @@ import type { MentionCandidate } from "./matcher";
 export type MessageMentionRun = {
 	/** The text after `@`. */
 	label: string;
-	/** This mention names the reader (or `@channel`/`@here` the reader is in). */
+	/** An authoritative account_id names the reader; display names never prove it. */
 	viewer: boolean;
 };
 
@@ -55,8 +55,8 @@ export function messageMentionSpec(input: {
 				},
 			]
 		: candidates;
-	const isViewer = (kind: unknown, accountId: unknown) =>
-		self !== null && kind === "human" && accountId === self.accountId;
+	const isViewer = (accountId: unknown) =>
+		self !== null && accountId === self.accountId;
 	if (Array.isArray(input.mentions)) {
 		const runs: MessageMentionRun[] = [];
 		for (const row of input.mentions as WireMention[]) {
@@ -73,7 +73,7 @@ export function messageMentionSpec(input: {
 						(seg) => seg.kind === "mention",
 					),
 				);
-				if (word) runs.push({ label: word, viewer: self !== null });
+				if (word) runs.push({ label: word, viewer: false });
 				continue;
 			}
 			const match = people.find(
@@ -82,7 +82,7 @@ export function messageMentionSpec(input: {
 			if (match)
 				runs.push({
 					label: match.label,
-					viewer: isViewer(row.kind, row.account_id),
+					viewer: isViewer(row.account_id),
 				});
 		}
 		return runs.length > 0
@@ -91,7 +91,9 @@ export function messageMentionSpec(input: {
 	}
 	const runs = people
 		.filter((p) => p.label !== "" && body.includes(`@${p.label}`))
-		.map((p) => ({ label: p.label, viewer: isViewer(p.kind, p.accountId) }));
+		// A matching display name is not proof of account identity: only an
+		// authoritative wire account_id may select the viewer treatment.
+		.map((p) => ({ label: p.label, viewer: false }));
 	/*
 	 * The fallback is a HEURISTIC and says so: it matches `@<display name>`
 	 * EXACTLY as the name is spelled (case-sensitive, review R1-06), which is

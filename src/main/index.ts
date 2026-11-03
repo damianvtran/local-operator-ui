@@ -1,5 +1,5 @@
 import { readFileSync, writeFileSync } from "node:fs";
-import { existsSync, statSync } from "node:fs";
+import { existsSync, realpathSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { electronApp, is } from "@electron-toolkit/utils";
@@ -7,6 +7,7 @@ import {
 	BrowserWindow,
 	type BrowserWindowConstructorOptions,
 	Menu,
+	type NativeImage,
 	app,
 	dialog,
 	globalShortcut,
@@ -19,6 +20,7 @@ import {
 } from "electron";
 import { PostHog } from "posthog-node";
 import icon from "../../resources/icon.png?asset";
+import { t } from "../i18n/index";
 import { LANGUAGE_SETTING_KEY, subscribeLocale } from "../i18n/locale";
 import type {
 	AttachmentUploadResult,
@@ -37,6 +39,7 @@ import {
 	MAX_FILE_READ_BYTES,
 	type ProbedFile,
 	type ReadFileBytesResponse,
+	desktopRequestSchema,
 } from "../shared/desktop-contract";
 import type { DesktopFeedState } from "../shared/desktop-contract";
 import type { DesktopFeedFrame } from "../shared/desktop-session-contract";
@@ -60,6 +63,9 @@ import {
 	groundWithGlass,
 	windowGlassArgument,
 } from "../shared/window-glass";
+import { AppAttentionService } from "./app-attention-service";
+import { createAppIconBadge } from "./app-icon-badge";
+import { appIconBadgeBitmap } from "./app-icon-badge-bitmap";
 import { applicationMenuLabels } from "./application-menu-labels";
 import { uploadAttachment } from "./attachment-upload";
 import {
@@ -104,8 +110,10 @@ import { DesktopNotifier } from "./desktop-notifier";
 import {
 	describeDevDriverArming,
 	devDriverArgument,
+	devDriverSceneArgument,
 	headlessExerciserAllowed,
 	resolveDevDriverArming,
+	resolveDevDriverStartupScene,
 } from "./dev-driver";
 import { readAttachArguments } from "./dev-driver-attach";
 import { registerDevDriverIPC } from "./dev-driver-ipc";
@@ -390,7 +398,8 @@ app.setName("Local Operator");
  * two byte-identical relaunches came up regular and accessory — so the policy
  * is asserted here, where the mode is already known, instead of trusted from
  * whatever the launch context handed the process. The dock-policy show call is
- * idempotent for an app that is already regular, and it is NOT a window raise:
+ * must be gated on isVisible(): Electron's DockShow can transfer activation
+ * even for an already-regular active app. It is NOT an ordinary window raise:
  * the dock show/hide pair sets the app's DOCK participation, which is the policy
  * `windowLaunch.hideDock` already decides — the raise-family ban in
  * `scripts/window-mode.test.mjs` is about windows (show/focus/maximize), so its
@@ -408,7 +417,9 @@ if (process.platform === "darwin" && app.dock) {
 	if (windowLaunch.hideDock) {
 		app.dock.hide();
 	} else {
-		app.dock.show();
+		if (!app.dock.isVisible()) {
+			app.dock.show();
+		}
 		app.dock.setIcon(image);
 	}
 }
@@ -443,6 +454,9 @@ if (process.platform === "darwin" && app.dock) {
 function reassertDockParticipation(): void {
 	if (process.platform !== "darwin" || !app.dock) return;
 	if (windowLaunch.hideDock) return;
+	// DockShow can hand activation to the Dock and then take it back. Only
+	// repair accessory policy; never bounce an already-regular active app.
+	if (app.dock.isVisible()) return;
 	app.dock.show();
 }
 
@@ -1194,6 +1208,7 @@ function createWindow(
 	mainWindow.on("ready-to-show", () => {
 		if (presentHandled) return;
 		presentHandled = true;
+		refreshAppIconBadge();
 		/*
 		 * `normal` raises and focuses the window: the ordinary launch, which is a
 		 * person starting the app. `inactive` orders the window without
@@ -1357,6 +1372,7 @@ const backendInstaller = new BackendInstaller({
 	// (`./relaunch-pending` owns why scheduling happens only at the terminal).
 	onQuitCancelled: () => {
 		quitState.cancel();
+		resumeAppIconBadge();
 		/*
 		 * AND THE QUIT'S HARD DEADLINE IS RELEASED WITH IT, because this is the
 		 * quit's ONE cancellation: the process goes on running, and a deadline
@@ -1621,6 +1637,11 @@ const telemetryWebPreferences = {
 // Some APIs can only be used after this event occurs.
 // Define mainWindow at a higher scope to be accessible in event handlers
 let mainWindow: BrowserWindow | null = null;
+// A replacement Windows taskbar target needs a fresh native write, not a new
+// unread observer. This callback never creates, presents or retains a window.
+let refreshAppIconBadge = (): void => {};
+let stopAppIconBadge = (): void => {};
+let resumeAppIconBadge = (): void => {};
 
 // Kept outside the quick-send availability gate: recording has its own window door.
 const recordingShortcut = new RecordingShortcutCoordinator(
@@ -1716,6 +1737,51 @@ function launchArgumentFlags(
 	return {};
 }
 
+/** Evaluate only after discovery, at actual window construction. launchEnv is
+ * captured before dotenv; a checkout file must never activate this test seam.
+ * realpath refuses missing directories and symlink escapes, including an argv
+ * profile that Electron did not actually select. No scene means no path reads. */
+function ownerAuditStartupArguments(): string[] {
+	if (!launchEnv.LOCAL_OPERATOR_UI_DEV_DRIVER_SCENE) return [];
+	let paths: Parameters<typeof resolveDevDriverStartupScene>[0]["paths"] = null;
+	try {
+		const requested = process.argv
+			.find((arg) => arg.startsWith("--user-data-dir="))
+			?.slice("--user-data-dir=".length);
+		if (
+			requested &&
+			launchEnv.LOCAL_OPERATOR_UI_DEV_DRIVER_ROOT &&
+			launchEnv.HOME &&
+			launchEnv.LOCAL_OPERATOR_CONFIG_DIR &&
+			process.env.HOME &&
+			process.env.LOCAL_OPERATOR_CONFIG_DIR &&
+			realpathSync(process.env.HOME) === realpathSync(launchEnv.HOME) &&
+			realpathSync(process.env.LOCAL_OPERATOR_CONFIG_DIR) ===
+				realpathSync(launchEnv.LOCAL_OPERATOR_CONFIG_DIR)
+		) {
+			paths = {
+				root: realpathSync(launchEnv.LOCAL_OPERATOR_UI_DEV_DRIVER_ROOT),
+				home: realpathSync(launchEnv.HOME),
+				config: realpathSync(launchEnv.LOCAL_OPERATOR_CONFIG_DIR),
+				requestedUserData: realpathSync(requested),
+				actualUserData: realpathSync(app.getPath("userData")),
+			};
+		}
+	} catch {
+		/* Missing isolation is refusal, never an alternate launch path. */
+	}
+	const scene = resolveDevDriverStartupScene({
+		env: launchEnv,
+		armed: devDriverArming.armed,
+		packaged: app.isPackaged,
+		windowMode: windowLaunch.mode,
+		backendManagerDisabled: process.env.VITE_DISABLE_BACKEND_MANAGER === "true",
+		selectedBackendUrl: backendService.getBackendUrl(),
+		paths,
+	});
+	return scene ? [devDriverSceneArgument(scene)] : [];
+}
+
 /**
  * Everything this app puts in a renderer process's argv, in one value.
  *
@@ -1757,6 +1823,7 @@ function rendererArgumentFlags(
 		...(launchArgumentFlags(initialSession, openCatalogue)
 			.additionalArguments ?? []),
 		...(devDriverWebPreferences.additionalArguments ?? []),
+		...ownerAuditStartupArguments(),
 		...(telemetryWebPreferences.additionalArguments ?? []),
 	];
 	return flags.length > 0 ? { additionalArguments: flags } : {};
@@ -2533,6 +2600,9 @@ app
 		// builds and Cmd/Ctrl+minus by default, so the Console never saw reverse
 		// search and Zoom Out never fired (#1085).
 		app.on("browser-window-created", (_, window) => {
+			// Update relaunch can detach Dock participation after startup. Healing
+			// on real window events never shows/focuses a window of its own.
+			window.on("show", () => refreshAppIconBadge());
 			window.webContents.on("before-input-event", (event, input) => {
 				if (!shouldToggleDevTools(input, is.dev)) return;
 				event.preventDefault();
@@ -2546,9 +2616,130 @@ app
 		// requires a genuinely foreground window no matter which path emits it.
 		// The notifier holds its own reference to this sender, so guarding only
 		// the renderer IPC entry would leave that path ungated.
+		// LauncherEntry needs the installed desktop identity, not a made-up count
+		// or a promise that every Linux desktop supports this protocol.
+		const desktopName = process.env.CHROME_DESKTOP;
+		const desktopIdentity =
+			process.platform === "linux" &&
+			typeof desktopName === "string" &&
+			/^[A-Za-z0-9_.-]+\.desktop$/.test(desktopName) &&
+			[
+				process.env.XDG_DATA_HOME || join(app.getPath("home"), ".local/share"),
+				...(process.env.XDG_DATA_DIRS || "/usr/local/share:/usr/share")
+					.split(":")
+					.filter((root) => root.startsWith("/")),
+			].some((root) => existsSync(join(root, "applications", desktopName)));
+		if (desktopIdentity && desktopName) app.setDesktopName(desktopName);
+		const nativeBadge = createAppIconBadge<NativeImage>({
+			platform: process.platform,
+			setDockBadge: (label) => {
+				if (!app.dock) throw new Error("Dock unavailable");
+				app.dock.setBadge(label);
+			},
+			setOverlayIcon: (image, description) => {
+				if (!mainWindow || mainWindow.isDestroyed())
+					throw new Error("Taskbar target unavailable");
+				mainWindow.setOverlayIcon(image, description);
+			},
+			createOverlayImage: (label) =>
+				nativeImage.createFromBitmap(appIconBadgeBitmap(label), {
+					width: 16,
+					height: 16,
+					scaleFactor: 1,
+				}),
+			setBadgeCount: (count) => app.setBadgeCount(count),
+			linuxDesktopIdentity: desktopIdentity,
+			describe: ({ unreadCount, pending }) =>
+				pending
+					? unreadCount > 0
+						? t("ui.nativeBadge.attentionPending", { count: unreadCount })
+						: t("ui.nativeBadge.pending")
+					: t("ui.nativeBadge.attention", { count: unreadCount }),
+		});
+		// Headless hides the Dock tile: hosted scene evidence reads the real
+		// Dock API through CDP, not Dock pixels. This opt-in exposes only the
+		// adapter's last projection, never a mutation or acknowledgement port.
+		if (
+			process.env.LOCAL_OPERATOR_UI_APP_ICON_BADGE_SCENE === "1" &&
+			process.env.CI === "true" &&
+			process.env.GITHUB_ACTIONS === "true" &&
+			process.env.RUNNER_ENVIRONMENT === "github-hosted" &&
+			process.platform === "darwin" &&
+			!app.isPackaged &&
+			windowLaunch.show === "never"
+		) {
+			const sceneGlobal = globalThis as typeof globalThis & {
+				__lopAppIconBadgeSceneRead?: typeof nativeBadge.readForScene;
+			};
+			sceneGlobal.__lopAppIconBadgeSceneRead = () => nativeBadge.readForScene();
+		}
+		if (process.platform === "darwin") {
+			logger.info(
+				"[app-badge] notificationAuthorization=unknown (no supported Electron badge permission query)",
+				LogFileType.BACKEND,
+			);
+		}
+		let lastBadgeLog: string | undefined;
+		const publishBadge = (
+			snapshot: { unreadCount: number; pending: boolean },
+			enabled?: boolean,
+			reassert = true,
+		) => {
+			// Keep the existing headless guard in the one Dock policy helper.
+			// setBadge alone succeeds even with no running tile after ShipIt.
+			if (reassert) reassertDockParticipation();
+			nativeBadge.update(snapshot, enabled);
+			const state = nativeBadge.readForScene();
+			// isVisible reports regular activation policy, not painted Dock pixels
+			// or notification authorization. Read after the gated show decision;
+			// an asynchronous repair can still report accessory until it completes.
+			const policy =
+				process.platform === "darwin" && app.dock
+					? app.dock.isVisible()
+						? "regular"
+						: "accessory"
+					: "unavailable";
+			const label =
+				process.platform === "darwin" && app.dock
+					? app.dock.getBadge()
+					: "platform-native";
+			const line = `[app-badge] label=${label} count=${state.unreadCount} pending=${state.pending} policy=${policy} enabled=${enabled !== false}`;
+			if (line !== lastBadgeLog) {
+				lastBadgeLog = line;
+				logger.info(line, LogFileType.BACKEND);
+			}
+		};
+		const appAttention = new AppAttentionService({
+			request: (input) => backendService.requestDesktop(input),
+			supportsUnreadEvents: desktopRequestSchema.safeParse({
+				op: "team_bridge.unread.events",
+				after: "0",
+				wait: 20,
+			}).success,
+			publish: publishBadge,
+			clear: () => {
+				// Quit/reset clears must never request Dock activation-policy repair.
+				publishBadge({ unreadCount: 0, pending: false }, undefined, false);
+				nativeBadge.reset();
+			},
+		});
+		refreshAppIconBadge = () => {
+			if (process.platform === "win32") nativeBadge.invalidateOverlayTarget();
+			appAttention.projection.refresh();
+		};
+		const stopBadgeLocale = subscribeLocale(() =>
+			appAttention.projection.refresh(),
+		);
+		stopAppIconBadge = () => appAttention.stop();
+		resumeAppIconBadge = () => appAttention.resume();
+		app.once("will-quit", stopBadgeLocale);
 		const sendDesktop = guardForegroundReceipts(
 			() => mainWindow,
-			(input) => backendService.requestDesktop(input),
+			async (input) => {
+				const response = await backendService.requestDesktop(input);
+				appAttention.observeResponse(input, response);
+				return response;
+			},
 		);
 		const desktopNotifier = new DesktopNotifier(
 			() => mainWindow,
@@ -2613,8 +2804,10 @@ app
 		 * the new renderer to pull on mount.
 		 */
 		let notificationAvatarAvailable = false;
+		let notificationEndpointAvatarAvailable = false;
 		const notificationImages = new TeamBridgeNotificationImages({
 			enabled: () => notificationAvatarAvailable,
+			endpointAvatars: () => notificationEndpointAvatarAvailable,
 			request: (input) => backendService.requestDesktopMedia(input, null),
 			theme: () => (nativeTheme.shouldUseDarkColors ? "dark" : "light"),
 			decode: (data) => {
@@ -2665,9 +2858,11 @@ app
 		// defers the legacy toast until the read settles, so nothing can slip
 		// through the window in between.
 		backendService.onBackendReady(() => {
+			appAttention.reset();
 			// Negotiate outside delivery. A restarted/older core drops all image
 			// eligibility until its own capability answers; never 404-probe per event.
 			notificationAvatarAvailable = false;
+			notificationEndpointAvatarAvailable = false;
 			notificationImages.clear();
 			void backendService
 				.requestDesktop({ op: "capabilities" })
@@ -2679,6 +2874,11 @@ app
 						Number(
 							body?.result?.features?.team_bridge_notification_avatar ?? 0,
 						) >= 1;
+					// An agent's own picture on a banner needs core's endpoint relay;
+					// without it the agent keeps the glyph composite.
+					notificationEndpointAvatarAvailable =
+						Number(body?.result?.features?.team_bridge_endpoint_avatar ?? 0) >=
+						1;
 					// Gated on the capability reading TRUE after any backend-ready, not on a
 					// false -> true flip: this event cleared the cache just above, so the
 					// replay only refills what it emptied, and no path runs from cache
@@ -2759,6 +2959,7 @@ app
 		 */
 		backendService.observeDesktopFeed(
 			(frame: DesktopFeedFrame) => {
+				appAttention.observe(frame);
 				if (frame.type === "notification") {
 					desktopNotifier.observe(frame.session_id, frame);
 					return;
@@ -2786,6 +2987,7 @@ app
 				window.webContents.send("desktop-feed-frame", frame);
 			},
 			(state: DesktopFeedState) => {
+				if (!state.connected) appAttention.reset();
 				const window = mainWindow;
 				if (!window || window.isDestroyed()) return;
 				window.webContents.send("desktop-feed-state", state);
@@ -4364,6 +4566,8 @@ app
 					window,
 					expectedUrl: rendererUrl,
 					appVersion: app.getVersion(),
+					onPendingConsentChanged: (pending) =>
+						appAttention.projection.setBrowserPending(pending),
 					userDataDir: app.getPath("userData"),
 					// The launch plan's own answer, forwarded rather than re-derived: the
 					// browser host uses it to suppress consent banners in a run with nobody at
@@ -5123,6 +5327,7 @@ app.on("before-quit", async (event) => {
 	 * its own cancellation (`./quit-state` owns why it is the only one).
 	 */
 	quitState.begin();
+	stopAppIconBadge();
 	/*
 	 * AND THE HARD DEADLINE IS ARMED HERE, IN THE SYNCHRONOUS PART - beside the
 	 * quit's record, BEFORE the session-cookie hold can wait (the hold can spend

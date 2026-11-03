@@ -58,5 +58,9 @@
 	"ui.chat.sidebar.row_menu.unarchive": "Désarchiver la conversation",
 	"ui.chat.sidebar.row_menu.unpin": "Désépingler la conversation",
 	"ui.chat.sidebar.pins.pin_label": "Épingler « {title} »",
-	"ui.chat.sidebar.pins.unpin_label": "Désépingler « {title} »"
+	"ui.chat.sidebar.pins.unpin_label": "Désépingler « {title} »",
+	"ui.chat.sidebar.agents.list_join": "{position, select, pair {{head} et {tail}} middle {{head}, {tail}} other {{head} et {tail}}}",
+	"ui.chat.sidebar.row.open_draft": "Ouvrir {label}",
+	"ui.chat.sidebar.entity.more_in": "{label} dans {name}",
+	"ui.chat.sidebar.search.count_tooltip": "{clipped, select, yes {Au moins } other {}}{count, plural, one {{count_display} conversation correspond} many {{count_display} de conversations correspondent} other {{count_display} conversations correspondent}} à cette recherche{clipped, select, yes { ; la liste s’arrête là} other {}}"
 }

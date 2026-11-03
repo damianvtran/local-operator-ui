@@ -498,7 +498,7 @@ jobs:
           # download, `7z` and `zsyncmake` are exercised by the Linux build
           # job's own steps in publish.yml.
           node --test scripts/appimage-update-info.test.mjs
-          node --test scripts/release-baseline.test.mjs scripts/release-candidate.test.mjs scripts/entry-point.test.mjs scripts/require-report.test.mjs
+          node --test scripts/release-baseline.test.mjs scripts/release-candidate.test.mjs scripts/entry-point.test.mjs scripts/require-report.test.mjs scripts/desktop-suite-checkpoints.test.mjs
           # The attach path's recovery branches, against a local stub upload endpoint: a
           # stalled attempt retried, a `starter` record repaired, a same-size asset
           # skipped and a same-name/different-size asset refused. They run here because
@@ -624,6 +624,9 @@ jobs:
       DESKTOP_REQUESTED_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
 
     steps:
+      - name: Mark desktop setup start (not job creation time)
+        run: echo "DESKTOP_SETUP_STARTED_MS=$(( $(date +%s) * 1000 ))" >> "$GITHUB_ENV"
+
       - name: Checkout code
         uses: actions/checkout@v4
 
@@ -640,6 +643,10 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      # Lock intent alone cannot identify the modules used on a dead runner.
+      - name: Record installed desktop selector engine identity
+        run: node scripts/desktop-test-lane-bound.mjs --identity scripts/onboarding-tour-i18n.test.mjs
 
       # ITS OWN PROCESS, BEFORE THE BIG SUITE, and both halves are the fix.
       # This suite bundles the shipped renderer with esbuild and drives it in
@@ -720,22 +727,79 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
+      # The first step marker is not the job creation time. Checkpoints budget
+      # against it conservatively; the actual job ceiling remains 50 minutes.
+      # Checkpoints are FILE-ONLY so stdout backpressure cannot postpone upload.
+      # Initial TAP is delayed ~3 minutes plus uploads; the original tee records
+      # immediately, and await forwards each captured console byte exactly once.
+      - name: Launch the existing desktop shell once
+        id: desktop_launch
+        timeout-minutes: 1
+        env:
+          LOCAL_OPERATOR_UI_LANE_DIAGNOSTICS: ${{ runner.temp }}/desktop-lifecycle-${{ matrix.shard }}.jsonl
+          # The child inherits launch-time bounds; await-only values cannot reach it.
+          DESKTOP_TEST_DEADLINE_MS: 2400000
+          DESKTOP_TEST_DIAGNOSTICS: /tmp/desktop-test-diagnostics.jsonl
+          # Linux-only /proc census: the instrument that names a hard-blocked
+          # process without needing anything from it.
+          LOCAL_OPERATOR_UI_KERNEL_CENSUS: ${{ runner.temp }}/kernel-census-${{ matrix.shard }}.jsonl
+        run: node scripts/desktop-suite-checkpoints.mjs launch "${{ runner.temp }}/desktop-supervisor-${{ matrix.shard }}" scripts/desktop-suite-step.sh "$DESKTOP_SETUP_STARTED_MS"
+
+      - name: Freeze early desktop witness checkpoint
+        if: ${{ always() && steps.desktop_launch.outcome == 'success' }}
+        run: node scripts/desktop-suite-checkpoints.mjs checkpoint "${{ runner.temp }}/desktop-supervisor-${{ matrix.shard }}" 30000 "${{ runner.temp }}/desktop-checkpoint-early-${{ matrix.shard }}.json"
+
+      - name: Upload early desktop witness checkpoint
+        if: ${{ always() && steps.desktop_launch.outcome == 'success' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-witness-early-${{ github.run_id }}-${{ github.run_attempt }}-shard-${{ matrix.shard }}
+          path: ${{ runner.temp }}/desktop-checkpoint-early-${{ matrix.shard }}.json
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Freeze later desktop witness checkpoint
+        if: ${{ always() && steps.desktop_launch.outcome == 'success' }}
+        run: node scripts/desktop-suite-checkpoints.mjs checkpoint "${{ runner.temp }}/desktop-supervisor-${{ matrix.shard }}" 180000 "${{ runner.temp }}/desktop-checkpoint-later-${{ matrix.shard }}.json"
+
+      - name: Upload later desktop witness checkpoint
+        if: ${{ always() && steps.desktop_launch.outcome == 'success' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-witness-later-${{ github.run_id }}-${{ github.run_attempt }}-shard-${{ matrix.shard }}
+          path: ${{ runner.temp }}/desktop-checkpoint-later-${{ matrix.shard }}.json
+          if-no-files-found: error
+          retention-days: 7
+
       - name: Run the desktop suite and assert it actually ran
         id: desktop_suite
+        if: ${{ always() && steps.desktop_launch.outcome == 'success' }}
+        env:
+          # Side ledger bypasses Node's ordered per-file TAP buffering. The
+          # existing sampler adds 30s heartbeats; no cap/verdict/retry changes.
+          LOCAL_OPERATOR_UI_LANE_DIAGNOSTICS: ${{ runner.temp }}/desktop-lifecycle-${{ matrix.shard }}.jsonl
+          # The SAME configured census path the launch step hands the writer, so
+          # the inline rows below read the file that exists instead of globbing a
+          # state directory the writer never used.
+          LOCAL_OPERATOR_UI_KERNEL_CENSUS: ${{ runner.temp }}/kernel-census-${{ matrix.shard }}.jsonl
+          # Leave time for the suite tree to be reaped and diagnostics uploaded
+          # before the enclosing step and job ceilings cancel those steps.
+          DESKTOP_TEST_DEADLINE_MS: 2400000
+          DESKTOP_TEST_DIAGNOSTICS: /tmp/desktop-test-diagnostics.jsonl
         # A STEP ceiling below the job's, because a job cancelled at its own
         # `timeout-minutes` runs no further steps: without this, the payload
         # scan below is skipped in exactly the case it exists for. A step
         # timeout kills this step's process and the job continues, so a stall
-        # ends at 45 minutes and the scan reads the truncated tee file. 45 is
+        # ends at 45 minutes and the scan reads the truncated capture file. 45 is
         # ~1.9x the slowest measured shard (23.9 minutes, run 40182194704) and
         # leaves the job's last five minutes for the scan.
         timeout-minutes: 45
         # ONE run, not two. This job used to invoke `pnpm test:desktop` twice:
         # once for its exit status and again inside its own count assertions,
-        # which doubled the dominant cost of the job for no signal. `pipefail`
+        # which doubled the dominant cost of the job for no signal. SUITE_RC
         # gives the first half (a red suite fails the step) and the counts give
         # the second (a renamed script or a glob matching nothing still exits
-        # 0), so the suite runs once. `tee` keeps the log as evidence either
+        # 0), so the suite runs once. File redirection keeps evidence either
         # way. `scripts/ci-scope.test.mjs` asserts there is exactly one
         # invocation and that this step still fails closed.
         #
@@ -764,82 +828,137 @@ jobs:
         # FAILS CLOSED, and that is unchanged: every arm below ends in `exit 1`,
         # so a red suite, a truncated run and a renamed script are all still red.
         # What changed is that they are red WITH a reason.
+        # THE ARTIFACT LEAVES THE RUNNER ONLY AFTER THIS STEP RETURNS. In the
+        # last two hangs the step never returned, the job was cancelled at its
+        # 50-minute cap, and every `if: always()` upload after it was skipped -
+        # so the census never left the machine. An external wall-clock bound
+        # makes the step return on its own, well inside the cap, and the
+        # existing always() uploads then actually run. The bound is a wrapper
+        # around the await only: the verdict, the annotation and the TAP
+        # handling below stay exactly as they were, and exit 124 is reported as
+        # the deadline reason and still fails the step closed.
         run: |
-          set -o pipefail
-          # GitHub surfaces only a BOUNDED number of error annotations per step
-          # and drops the rest with no trace on either surface; 10 is the bound
-          # the lanes that chased this one measured, so `head -20` was asking for
-          # ten drops nobody could see. The head and the bound now agree, and the
-          # count is printed beside them, so an 11th failure is still NAMED.
-          ANNOTATION_CAP=10
-          # THE CAPTURE DOES NOT DEPEND ON ERREXIT, BY CONSTRUCTION: a command
-          # in a `||` list is exempt from errexit, so this needs no `set +e` /
-          # `set -e` pair around it. That pair was the weaker shape - dropping it
-          # while keeping `SUITE_RC=$?` restored the entire original defect
-          # (measured: no rc line, no TAP summary, no annotations) and every
-          # string pin still matched the body.
-          SUITE_STARTED=$SECONDS
-          SUITE_RC=0
-          # Local pnpm test:desktop remains the full inventory; this wrapper
-          # parses that exact command and forwards one partition to its runner.
-          CHECKOUT_SHA=$(git rev-parse HEAD)
-          node scripts/desktop-test-shards.mjs run --head "$DESKTOP_REQUESTED_HEAD" --checkout "$CHECKOUT_SHA" --index "$DESKTOP_SHARD_INDEX" 2>&1 | tee /tmp/desktop-tests.log || SUITE_RC=$?
-          # `|| true` so a log with no counts still reaches the guards below
-          # instead of tripping errexit on the way - the arms below are what name
-          # that case, and they cannot name it from here if grep kills the step.
-          PASS=$(grep -E '^# pass ' /tmp/desktop-tests.log | awk '{print $3}' || true)
-          FAIL=$(grep -E '^# fail ' /tmp/desktop-tests.log | awk '{print $3}' || true)
-          echo "desktop suite: rc=$SUITE_RC pass=$PASS fail=$FAIL"
-          echo "elapsed=$((SECONDS - SUITE_STARTED))" >> "$GITHUB_OUTPUT"
-          # WHERE THIS ACTUALLY REACHES A READER, stated rather than implied:
-          # everything printed below is written AFTER the suite finishes, so it
-          # lands at the very END of the job log (measured: byte 37,747,599 of
-          # 37,750,309 - 99.99%) and a `gh run view --log` reader never gets it.
-          # ONLY the annotations cross that cut. Read them back - they are not in
-          # the log at all - with:
-          #   gh api repos/<owner>/<repo>/check-runs/<id>/annotations --jq '.[].message'
-          # And do NOT "verify" this by grepping a truncated log for `::error::`:
-          # the runner echoes this whole `run:` body into the log, so the first
-          # hit is that echo (byte 25,750 of the attempt-1 view) and the green
-          # means nothing.
-          grep -E '^# (tests|pass|fail|skipped) ' /tmp/desktop-tests.log || true
-          NOT_OK=$(grep -cE '^not ok ' /tmp/desktop-tests.log || true)
-          echo "desktop suite: not-ok lines=$NOT_OK; annotating the first $ANNOTATION_CAP"
-          # Workflow commands need `%` and CR escaped, by the runner's own command
-          # rules, or a test name carrying one renders as a mangled annotation -
-          # the failure this step exists to make readable. `IFS= read -r` strips
-          # the line's own LF, so LF is the one of the three that cannot occur.
-          grep -E '^not ok ' /tmp/desktop-tests.log | head -n "$ANNOTATION_CAP" | while IFS= read -r line; do
-            line=${line//%/%25}
-            line=${line//$'\r'/%0D}
-            echo "::error::$line"
-          done || true
-          # A log with no summary is TWO situations, and the exit status is what
-          # tells them apart: reported as one, a red run whose summary never
-          # printed reads as a coverage problem instead of as a failure.
-          if [ -z "$PASS" ]; then
-            if [ "$SUITE_RC" != "0" ]; then
-              echo "The desktop suite exited $SUITE_RC without printing a TAP summary."
-              echo "The run died before the summary: read the suite's own failure, not this line."
-            else
-              echo "Desktop suite reported no pass count at all; expected at least 60."
-              echo "Either tests were dropped or the runner matched no files."
+          set +e
+          state="${{ runner.temp }}/desktop-supervisor-${{ matrix.shard }}"
+          # Test seams only, and the shipped numbers are the contract's pins: CI
+          # leaves them unset, so 2400s is what actually bounds this step while a
+          # control can prove the same path fires in seconds.
+          bound="${DESKTOP_SUITE_BOUND_S:-2400}"
+          census_every="${DESKTOP_SUITE_CENSUS_EVERY_S:-60}"
+          await_out="$state/await.out"
+          # THE CENSUS FILE THE SUPERVISOR WAS CONFIGURED WITH, not a glob of the
+          # state directory. The launch step hands the writer
+          # `LOCAL_OPERATOR_UI_KERNEL_CENSUS` under runner.temp, and that path is
+          # what the always() artifact glob collects - so a reader looking beside
+          # the state files found nothing, and every healthy shard logged zero
+          # `census:` rows while its artifact held them. Same expression, same
+          # default as the writer's own (`desktop-suite-checkpoints.mjs`), so the
+          # two cannot disagree.
+          census_file="${LOCAL_OPERATOR_UI_KERNEL_CENSUS:-$state/kernel-census.jsonl}"
+          # THE STEP OWNS THE CLOCK, not the await. `timeout` around a single
+          # `node ... await` did not end this step in run 124822720325: the job was
+          # cancelled at its cap with no annotation and no census. So the await is
+          # started here as a background writer, and this shell keeps its own
+          # stdin/stdout to report with while it runs. The verdict is still the
+          # supervisor's - this loop only watches it and adds the
+          # external-bound failure path.
+          node scripts/desktop-suite-checkpoints.mjs await "$state" >"$await_out" 2>&1 &
+          await_pid=$!
+          started=$(date +%s)
+          last_census=$started
+          bound_hit=""
+          # THE TRANSCRIPT IS NOT REPLAYED THROUGH THIS SHELL, and this is the one
+          # behaviour change in the step. A measured control (real supervisor,
+          # unchanged) withheld the step's stdout reader for four seconds: the
+          # supervisor published `completed` in 406ms, and the shell sat blocked
+          # inside its own bulk forward of the TAP transcript, alive past its bound,
+          # then exited 124 against a receipt that said success. A finite byte
+          # count bounds QUANTITY, not the TIME spent waiting for a consumer, so the
+          # synchronously drained `head | tail` window could block this step for as
+          # long as the platform declined to read - before the deadline check below
+          # was ever reached. The full transcript is retained as a file by the
+          # supervisor and uploaded by the artifact step instead; what this shell
+          # writes to its own stdout is bounded and fixed-size.
+          #
+          # Census rows outlive the job: once it is cancelled no artifact upload
+          # can run, so the samples are put in the log itself. Only complete rows
+          # are sent, each one once, and the census file is byte- and sample-capped
+          # by its writer - this is a bounded receipt stream, not a transcript.
+          drain_census() {
+            local offset_file size rows emitted chunk seen
+            [ -f "$census_file" ] || return 0
+            offset_file="$state/.census-offset-"$(basename "$census_file")
+            seen=0
+            if [ -f "$offset_file" ]; then seen=$(cat "$offset_file"); fi
+            [ -n "$seen" ] || seen=0
+            size=$(wc -c <"$census_file" | tr -d ' ')
+            [ "$size" -gt "$seen" ] || return 0
+            rows=$(tail -c +$((seen + 1)) "$census_file" | wc -l | tr -d ' ')
+            [ "$rows" -gt 0 ] || return 0
+            # ONE snapshot for both the emitted rows and the bytes they cost: a
+            # second read could count a row the first read did not see, and the
+            # offset would then repeat it on the next tick.
+            chunk=$(tail -c +$((seen + 1)) "$census_file" | head -n "$rows")
+            [ -n "$chunk" ] || return 0
+            printf '%s\n' "$chunk" |
+              while IFS= read -r row; do echo "census: $row"; done
+            emitted=$(printf '%s\n' "$chunk" | wc -c | tr -d ' ')
+            echo $((seen + emitted)) >"$offset_file"
+          }
+          while kill -0 "$await_pid" 2>/dev/null; do
+            sleep 1
+            now=$(date +%s)
+            if [ $((now - started)) -ge "$bound" ]; then
+              bound_hit=yes
+              break
             fi
-            exit 1
+            if [ $((now - last_census)) -ge "$census_every" ]; then
+              drain_census
+              last_census=$now
+            fi
+          done
+          if [ -n "$bound_hit" ]; then
+            # THE RECEIPT OUTRANKS THE CLOCK. `await` exits with the supervisor's
+            # receipted code and nothing else, so a run that finished as the bound
+            # fired must not be turned into a 124 by reaping first. A short grace is
+            # enough because `await` polls for the receipt every 50ms; when the
+            # supervisor really is wedged the grace costs seconds, not minutes.
+            for _ in 1 2 3 4 5; do
+              kill -0 "$await_pid" 2>/dev/null || break
+              sleep 1
+            done
+            if kill -0 "$await_pid" 2>/dev/null; then
+              node scripts/desktop-suite-checkpoints.mjs reap "$state"
+              kill -9 "$await_pid" 2>/dev/null
+              drain_census
+              echo "::error::desktop suite exceeded its ${bound}s external bound; the supervisor deadline did not end the step, so the bound did. Artifacts are still uploaded."
+              exit 124
+            fi
           fi
-          if [ "$PASS" -lt 60 ]; then
-            echo "Desktop suite reported $PASS passing tests; expected at least 60."
-            echo "Either tests were dropped or the runner matched no files."
-            exit 1
+          wait "$await_pid"
+          status=$?
+          drain_census
+          if [ "$status" -ne 0 ]; then
+            node scripts/desktop-suite-checkpoints.mjs reap "$state"
           fi
-          if [ "$FAIL" != "0" ]; then
-            echo "Desktop suite reported $FAIL failing tests."
-            exit 1
+          if [ "$status" -eq 124 ]; then
+            echo "::error::desktop suite exceeded its ${bound}s external bound; the supervisor deadline did not end the step, so the bound did. Artifacts are still uploaded."
           fi
-          if [ "$SUITE_RC" != "0" ]; then
-            echo "The desktop suite exited $SUITE_RC while reporting pass=$PASS fail=$FAIL."
-            exit 1
-          fi
+          # ONE fixed-size receipt is the whole of this step's transcript now: the
+          # verdict, the seconds it took, and where the real log is kept.
+          echo "desktop suite: supervisor receipt status ${status} after $(( $(date +%s) - started ))s; the full TAP transcript is in the desktop-suite-log artifact"
+          exit "$status"
+
+      # Never fails the job: a run with no census is the case this instrument
+      # exists to improve, not one to turn red.
+      - name: Upload kernel census
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-kernel-census-${{ github.run_id }}-${{ github.run_attempt }}-shard-${{ matrix.shard }}
+          path: ${{ runner.temp }}/kernel-census-*.jsonl
+          if-no-files-found: warn
+          retention-days: 7
 
       # A CEILING CANNOT NAME A MULTI-MEGABYTE LINE, so this step does. It is
       # deliberately a SEPARATE step: the suite step's body is extracted and run
@@ -883,13 +1002,30 @@ jobs:
 
       # gh's rendered job log can omit the middle of a large run, including
       # its real assertions and TAP summary. Keep the exact single-run tee file
-      # independently retrievable on failure; no rerun or environment dump.
-      - name: Upload failed desktop suite log
-        if: ${{ always() && (steps.desktop_suite.outcome == 'failure' || steps.desktop_suite.outcome == 'cancelled') }}
+      # independently retrievable.
+      #
+      # ON SUCCESS TOO, and this is load-bearing rather than generous: the step no
+      # longer replays the supervisor's transcript into the job console (that
+      # replay could block on a reader that stopped consuming, and it made a
+      # completed run report 124). The console therefore carries only fixed-size
+      # receipts, so the artifact is the ONE place the transcript survives - and a
+      # green run's transcript is what a later hang is compared against. The
+      # supervisor's own console/await/terminal files ride along so the lifecycle
+      # is inspectable without re-running anything; `if-no-files-found: error`
+      # still holds because the tee file exists whenever this step ran at all.
+      - name: Upload desktop suite transcript
+        if: ${{ always() && steps.desktop_suite.outcome != 'skipped' }}
         uses: actions/upload-artifact@v4
         with:
           name: desktop-suite-log-${{ github.run_id }}-${{ github.run_attempt }}-shard-${{ matrix.shard }}
-          path: /tmp/desktop-tests.log
+          path: |
+            /tmp/desktop-tests.log
+            /tmp/desktop-test-diagnostics.jsonl
+            ${{ runner.temp }}/desktop-lifecycle-${{ matrix.shard }}.jsonl
+            ${{ runner.temp }}/desktop-supervisor-${{ matrix.shard }}/console.log
+            ${{ runner.temp }}/desktop-supervisor-${{ matrix.shard }}/await.out
+            ${{ runner.temp }}/desktop-supervisor-${{ matrix.shard }}/terminal.json
+            ${{ runner.temp }}/desktop-supervisor-${{ matrix.shard }}/supervisor.log
           if-no-files-found: error
           retention-days: 7
 
@@ -1370,6 +1506,44 @@ jobs:
           LOCAL_OPERATOR_CORE_BIN="$CORE_VENV/bin/local-operator" \
           LOCAL_OPERATOR_CORE_PYTHON="$CORE_VENV/bin/python" \
           node scripts/notifications-app-scene.mjs
+
+      # Headless deliberately hides the Dock tile. This proves the real native
+      # getBadge() API through main CDP, NOT Dock pixels; renderer frames are
+      # uploaded separately alongside hidden/unfocused window facts. Never reuse
+      # or widen the notifications lane's shown-window exception for this scene.
+      - name: Prove native app-icon badge API readback without showing a window
+        id: app_icon_badge_native
+        if: runner.os == 'macOS' && github.event_name == 'pull_request'
+        timeout-minutes: 12
+        env:
+          # Merged core PR #3320, including approval baseline remediation.
+          # The scene verifies the installed commit against this merged pin.
+          LOCAL_OPERATOR_CORE_REF: 3a001653fa1f08d434ca7582ca68581c792369d7
+          VITE_DISABLE_BACKEND_MANAGER: 'true'
+          LOCAL_OPERATOR_UI_NO_BYTECODE: 'true'
+          LOCAL_OPERATOR_UI_TELEMETRY: 'off'
+          LOCAL_OPERATOR_NO_NOTIFICATIONS: '1'
+        run: |
+          set -euo pipefail
+          CORE_VENV="$RUNNER_TEMP/app-icon-badge-core-venv"
+          python3 -m venv "$CORE_VENV"
+          "$CORE_VENV/bin/pip" install --quiet --upgrade pip
+          "$CORE_VENV/bin/pip" install --quiet \
+            "local-operator[server] @ git+https://github.com/damianvtran/local-operator@${LOCAL_OPERATOR_CORE_REF}"
+          # Cross-check this build hash against native-scene.json, not a source ref.
+          shasum -a 256 out/main/index.js
+          LOCAL_OPERATOR_CORE_BIN="$CORE_VENV/bin/local-operator" \
+          LOCAL_OPERATOR_CORE_PYTHON="$CORE_VENV/bin/python" \
+          node scripts/app-icon-badge-scene.mjs
+
+      - name: Upload native app-icon badge API and renderer evidence
+        if: ${{ always() && (steps.app_icon_badge_native.outcome == 'success' || steps.app_icon_badge_native.outcome == 'failure') }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-icon-badge-native-${{ github.event.pull_request.number }}-${{ github.run_id }}
+          path: artifacts/app-icon-badge-native/
+          if-no-files-found: error
+          retention-days: 7
 
       - name: Upload notifications native foreground evidence
         if: ${{ always() && steps.notifications_native.conclusion != 'skipped' }}

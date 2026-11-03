@@ -60,24 +60,35 @@
  */
 
 import { spawn } from "node:child_process";
+import { appendFileSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+	SUITE_STATE_ENV,
+	publishCoordinator,
+} from "./desktop-suite-checkpoints.mjs";
 import {
 	OVERRIDE_ENV,
 	formatDesktopTestConcurrencyLine,
 	resolveDesktopTestConcurrency,
 } from "./desktop-test-concurrency.mjs";
 import {
+	LANE_DIAGNOSTICS_ENV,
 	createLaneBoundWatchdog,
 	formatLaneBoundLine,
 	formatLaneTripLine,
 	resolveLaneBound,
+	snapshotLaneGroup,
+	writeLaneDiagnostic,
 } from "./desktop-test-lane-bound.mjs";
 import {
 	BREACH_EXIT_CODE,
 	createMemoryWatchdog,
 	formatBreachLine,
 	formatMemoryBudgetLine,
+	killTree,
 	resolveMemoryBudget,
+	sampleGroup,
 } from "./desktop-test-memory-guard.mjs";
 import { withNotificationsOff } from "./notifications-off.mjs";
 import { withTelemetryOff } from "./telemetry-off.mjs";
@@ -161,6 +172,24 @@ const fileCount = fileArgs.length;
  */
 const laneArgs = fileArgs.filter((arg) => arg.endsWith(".test.mjs"));
 
+/**
+ * Anchor for the supervisor's kernel census: it must key off the suite's own
+ * first output, not the supervisor's launch, because setup and import cost
+ * minutes before the first test runs.
+ */
+function publishSuiteStart() {
+	const state = process.env[SUITE_STATE_ENV];
+	if (!state) return;
+	try {
+		writeFileSync(
+			join(state, "suite-start.json"),
+			JSON.stringify({ at: Date.now(), pid: process.pid, files: fileCount }),
+		);
+	} catch {
+		/* A marker that cannot be written must never fail a run. */
+	}
+}
+
 const nodeArgs = ["--test"];
 if (explicitFlag === undefined) {
 	const decision = resolveDesktopTestConcurrency();
@@ -201,6 +230,9 @@ if (explicitFlag === undefined) {
 		`desktop tests: ${fileCount} file${fileCount === 1 ? "" : "s"}, concurrency ${value} (explicit ${explicitFlag} in argv; governor bypassed)`,
 	);
 }
+// Both concurrency paths reach here, so the supervisor's census anchor is
+// published whichever way the width was decided.
+publishSuiteStart();
 nodeArgs.push(`--import=${GUARD_PRELOAD.href}`);
 /*
  * NEVER add `--test-force-exit` here. A test file can register tests after a
@@ -256,7 +288,14 @@ if (process.env[STAND_DOWN_ENV] === "1") {
 const childEnv = withTelemetryOff(
 	withNotificationsOff(
 		Object.fromEntries(
-			Object.entries(process.env).filter(([key]) => key !== _TEST_CONTEXT_ENV),
+			// Nested fixture runners must not inherit the outer suite's deadline or
+			// truncate its shared sidecar while exercising their own process paths.
+			Object.entries(process.env).filter(
+				([key]) =>
+					key !== _TEST_CONTEXT_ENV &&
+					key !== "DESKTOP_TEST_DEADLINE_MS" &&
+					key !== "DESKTOP_TEST_DIAGNOSTICS",
+			),
 		),
 	),
 );
@@ -270,11 +309,63 @@ const childEnv = withTelemetryOff(
  * `detached` launches already carry. The child's stdin stays inherited; node's
  * test runner does not read it.
  */
+// Opt-in only: file processes append to the side ledger via this preload;
+// the existing lane sampler supplies independent heartbeats. Reporter ordering,
+// bounds, kills and exit arithmetic remain unchanged.
+const diagnosticPath = process.env[LANE_DIAGNOSTICS_ENV];
+if (diagnosticPath)
+	nodeArgs.unshift(
+		"--import",
+		fileURLToPath(new URL("./desktop-test-lane-bound.mjs", import.meta.url)),
+	);
+
+// CI opts in explicitly: local runs retain their existing unlimited wall time.
+// Reject malformed values before starting any child rather than silently losing the bound.
+const deadlineValue = process.env.DESKTOP_TEST_DEADLINE_MS;
+if (
+	deadlineValue !== undefined &&
+	(!/^[1-9]\d*$/.test(deadlineValue) || Number(deadlineValue) > 2147483647)
+) {
+	console.error(
+		"desktop tests: DESKTOP_TEST_DEADLINE_MS must be a positive timer-safe integer",
+	);
+	process.exit(9);
+}
+const diagnosticsPath = process.env.DESKTOP_TEST_DIAGNOSTICS;
+let lastSnapshot = 0;
+function diagnostic(event) {
+	if (!diagnosticsPath) return;
+	try {
+		appendFileSync(
+			diagnosticsPath,
+			`${JSON.stringify({ at: new Date().toISOString(), ...event })}\n`,
+		);
+	} catch (error) {
+		console.error(`desktop tests: diagnostic write failed: ${error.message}`);
+	}
+}
+if (diagnosticsPath) {
+	try {
+		writeFileSync(diagnosticsPath, "");
+	} catch (error) {
+		console.error(
+			`desktop tests: diagnostic initialization failed: ${error.message}`,
+		);
+	}
+	diagnostic({
+		event: "start",
+		deadlineMs: deadlineValue ? Number(deadlineValue) : null,
+	});
+}
 const child = spawn(process.execPath, nodeArgs, {
 	stdio: "inherit",
 	env: childEnv,
 	detached: true,
 });
+publishCoordinator(
+	process.env.LOCAL_OPERATOR_UI_COORDINATOR_IDENTITY,
+	child.pid,
+);
 
 /*
  * The death-watch (R1 of the PR #733 review). `detached` takes the test tree out
@@ -334,6 +425,37 @@ console.log(formatMemoryBudgetLine(memoryBudget));
 const laneBound = resolveLaneBound();
 console.log(formatLaneBoundLine(laneBound));
 let breached = false;
+const diagnosticSnapshot = (reason) =>
+	snapshotLaneGroup(child.pid, laneArgs, reason, diagnosticPath);
+let lastHeartbeat = 0;
+let diagnosticWorkers = new Map();
+const diagnosticSample = (seen) => {
+	if (!diagnosticPath) return;
+	for (const [file, identity] of diagnosticWorkers) {
+		if (seen.get(file)?.pid !== identity.pid)
+			writeLaneDiagnostic(diagnosticPath, {
+				event: "worker-disappeared",
+				file,
+				...identity,
+			});
+	}
+	diagnosticWorkers = new Map(seen);
+	if (Date.now() - lastHeartbeat < 30_000) return;
+	lastHeartbeat = Date.now();
+	const event = {
+		event: "heartbeat",
+		leaderPid: child.pid,
+		active: [...seen].map(([file, identity]) => ({ file, ...identity })),
+	};
+	writeLaneDiagnostic(diagnosticPath, event);
+	// Parent stderr is outside Node's per-file reporter pipes.
+	console.error(`desktop tests: diagnostic ${JSON.stringify(event)}`);
+};
+if (diagnosticPath)
+	writeLaneDiagnostic(diagnosticPath, {
+		event: "coordinator-start",
+		pid: child.pid,
+	});
 const watchdog =
 	memoryBudget.budgetMb === null || child.pid === undefined
 		? null
@@ -345,6 +467,7 @@ const watchdog =
 					// pre-kill re-read is still in flight, and must already read as a
 					// verdict rather than a signal death to re-raise.
 					breached = true;
+					diagnosticSnapshot("memory-timeout");
 				},
 				onBreach: (reading, outcome) => {
 					console.error(
@@ -378,6 +501,19 @@ const laneWatchdog =
 				leaderPid: child.pid,
 				lanes: laneArgs,
 				boundMs: laneBound.boundMs,
+				onProbe: (phase) =>
+					writeLaneDiagnostic(diagnosticPath, { event: "sampler", phase }),
+				onSample: (seen) => {
+					diagnosticSample(seen);
+					const now = Date.now();
+					if (now - lastSnapshot < 60000) return;
+					lastSnapshot = now;
+					diagnostic({
+						event: "lanes",
+						lanes: [...seen].map(([lane, process]) => ({ lane, ...process })),
+					});
+				},
+				onTimeout: () => diagnosticSnapshot("lane-timeout"),
 				onTrip: ({ lane, pid, elapsedMs, killed }) =>
 					console.error(
 						formatLaneTripLine({
@@ -395,6 +531,48 @@ const laneWatchdog =
 			});
 laneWatchdog?.start();
 
+// Latch before sampling: even if the child exits during the bounded probe, the
+// wall-clock breach remains a failure and the recorded descendants still get reaped.
+let deadlineBreached = false;
+let deadlineCleanup = null;
+const deadlineTimer =
+	deadlineValue && child.pid !== undefined
+		? setTimeout(() => {
+				deadlineBreached = true;
+				console.error(
+					`desktop tests: suite deadline exceeded (${deadlineValue} ms); reaping test tree`,
+				);
+				diagnostic({ event: "deadline", deadlineMs: Number(deadlineValue) });
+				deadlineCleanup = (async () => {
+					let reading = null;
+					try {
+						reading = await sampleGroup(child.pid);
+					} catch (error) {
+						console.error(
+							`desktop tests: deadline sample failed: ${error.message}`,
+						);
+					}
+					try {
+						const outcome = await killTree(child.pid, reading?.members ?? []);
+						diagnostic({
+							event: "cleanup",
+							signalled: outcome.signalled,
+							skipped: outcome.skipped,
+							errors: outcome.errors.map(String),
+						});
+						if (outcome.errors.length)
+							console.error(
+								`desktop tests: deadline cleanup errors: ${outcome.errors.map(String).join(", ")}`,
+							);
+					} catch (error) {
+						console.error(
+							`desktop tests: deadline cleanup failed: ${error.message}`,
+						);
+					}
+				})();
+			}, Number(deadlineValue))
+		: null;
+
 // Forward the signals a user or CI actually sends, so Ctrl-C interrupts the
 // suite rather than leaving it orphaned behind a killed wrapper. To the GROUP:
 // the child no longer shares ours, and its own children are what hold memory.
@@ -404,6 +582,7 @@ laneWatchdog?.start();
 // watchdog's breach path walks out-of-group descendants.
 for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"]) {
 	process.on(signal, () => {
+		diagnosticSnapshot(signal);
 		if (child.exitCode === null && child.signalCode === null) {
 			try {
 				process.kill(-child.pid, signal);
@@ -414,11 +593,27 @@ for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"]) {
 	});
 }
 
-child.on("exit", (code, signal) => {
+child.on("exit", async (code, signal) => {
+	if (deadlineTimer) clearTimeout(deadlineTimer);
+	if (deadlineCleanup) await deadlineCleanup;
+	diagnostic({ event: "exit", code, signal, deadlineBreached });
+	if (diagnosticPath)
+		writeLaneDiagnostic(diagnosticPath, {
+			event: "coordinator-exit",
+			pid: child.pid,
+			code,
+			signal,
+		});
 	watchdog?.stop();
+	writeLaneDiagnostic(diagnosticPath, {
+		event: "watchdogs-stop",
+		reason: "coordinator-exit",
+		code,
+		signal,
+	});
 	laneWatchdog?.stop();
 	releaseKeeper();
-	if (breached) {
+	if (breached || deadlineBreached) {
 		// The watchdog's SIGKILL is a deliberate, already-announced verdict: report
 		// it as an exit status rather than re-raising, so the loud line above is
 		// the last word and callers see a plain non-zero code.

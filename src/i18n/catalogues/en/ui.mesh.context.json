@@ -494,21 +494,6 @@
 		"tone": "Plain explanatory language; preserve confidence and safety meaning",
 		"note": "Onboarding authority approval: names/explains answer approval prompts there. This is authority-bearing copy: keep who grants/signs and which machine receives/uses the permission explicit; do not strengthen the permission. Length: keep the approval/permission explanation compact, around the English footprint; no hard cell cap is defined."
 	},
-	"ui.mesh.mesh_approvals.expires_in_under_a_minute": {
-		"role": "approval/permission explanation — onboarding authority approval",
-		"tone": "Plain explanatory language; preserve confidence and safety meaning",
-		"note": "Onboarding authority approval: names/explains expires in under a minute. Length: keep the approval/permission explanation compact, around the English footprint; no hard cell cap is defined."
-	},
-	"ui.mesh.mesh_approvals.expires_minutes": {
-		"role": "approval/permission explanation — onboarding authority approval",
-		"tone": "Plain explanatory language; preserve confidence and safety meaning",
-		"note": "Onboarding authority approval: names/explains expires minutes. Placeholders: count = count of the named objects/states; ICU controls grammar. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label. Plural guidance: use the target locale’s complete CLDR cardinal categories (Russian one/few/many/other; Arabic zero/one/two/few/many/other), not an English count === 1 rule. Identical English forms or abbreviations do not limit the categories a translation may need; preserve every count placeholder and the stated action/scope."
-	},
-	"ui.mesh.mesh_approvals.expires_hours": {
-		"role": "approval/permission explanation — onboarding authority approval",
-		"tone": "Plain explanatory language; preserve confidence and safety meaning",
-		"note": "Onboarding authority approval: names/explains expires hours. Placeholders: count = count of the named objects/states; ICU controls grammar. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label. Plural guidance: use the target locale’s complete CLDR cardinal categories (Russian one/few/many/other; Arabic zero/one/two/few/many/other), not an English count === 1 rule. Identical English forms or abbreviations do not limit the categories a translation may need; preserve every count placeholder and the stated action/scope."
-	},
 	"ui.mesh.mesh_approvals.the_approvals_could_not_be_read": {
 		"role": "approval/permission explanation — onboarding authority approval",
 		"tone": "Plain explanatory language; preserve confidence and safety meaning",
@@ -1199,11 +1184,6 @@
 		"tone": "Plain and factual; an instruction, not a refusal and not an apology",
 		"note": "Shown on a still-pending request the app cannot decide here (an opaque credential/unknown kind, or `canApproveHere` false) and for which the server sent no `approve_remedy` text, so this is the generic remedy. It must stay TRUE: the app genuinely cannot approve it, and the command line on THIS machine genuinely can. Keep `command line` and `on this machine` uncompromised - a translation that drops either sends the reader to a surface that cannot help. Length: an explanatory line under the card, may wrap onto two lines; `text-meta` and muted, so keep it near the English length where the language allows."
 	},
-	"ui.mesh.approval.approved_pending_apply": {
-		"role": "status label — mesh approval card, credential request approved but not yet applied",
-		"tone": "Factual and restrained; a state statement, not a progress indicator",
-		"note": "Replaces the card's normal state line for exactly one case: a credential request whose state is `approved` in the store, where approval is recorded but the apply step has not happened yet. There is no count and no time in it. THIS IS A LIE IF ENLARGED: it must not promise that access now works - approval and apply are two steps and only the second grants use. Length: one short state line in the card header, around the English footprint; it stands where the card's ordinary state word stands, so it may be slightly longer than a single word but must not wrap into a second line."
-	},
 	"ui.mesh.approval.approved_apply_hint": {
 		"role": "instruction — mesh approval card, approved credential request with server-provided details",
 		"tone": "Plain and factual; points onward without promising the outcome",
@@ -1214,14 +1194,194 @@
 		"tone": "Factual and restrained; states the gap without blaming the reader or the server",
 		"note": "The sibling of `approved_apply_hint` for the case where approval is recorded but the server sent NO detail lines, so there is nothing to open. It must not imply the reader can do the apply step here - unlike its sibling it should NOT send them to Details for content that is absent. No placeholders. Length: an explanatory line under the card, may wrap; keep it to the same footprint as `approved_apply_hint` so the two variants do not shift the card's height."
 	},
-	"ui.mesh.approval.request_window": {
-		"role": "status text — mesh approval card, credential request's remaining decision window",
-		"tone": "Factual and restrained; quiet, secondary to the card's state",
-		"note": "The countdown beside a still-decidable credential request. Placeholder: `remaining` is an ALREADY-LOCALIZED string produced by the meshes' own `approvalRemainingLabel`, which picks one of the sibling `expires_*` messages (under a minute / minutes / hours) - it is never a raw number here. Do not reformat it, pluralize it, add units to it, or wrap it in `{remaining, number}`: that work is already done by those sibling keys, and doing it again would double the unit or the plural. Length: a compact line (`text-meta`, dim) in the card header, around the English footprint. Keep the trailing colon of the English label; the duration reads after it. Note the sibling `expires_*` keys carry the plural forms, so a locale's plural categories belong to THEM, not to this label."
+	"ui.mesh.approval.head_finite_share": {
+		"role": "heading — mesh approval card, credential share request",
+		"tone": "Plain and factual; calm, not alarming",
+		"note": "The card's one-line ask. `credential` is a product name (GitHub) or a raw key id; `device` is a device name. The operator is giving another of THEIR devices use of a login stored here. Keep it short (one line at app width); do not turn it into a question."
+	},
+	"ui.mesh.approval.head_inheritance": {
+		"role": "heading — mesh approval card, standing credential inheritance request",
+		"tone": "Plain and factual; calm, not alarming",
+		"note": "The card's one-line ask. `device` borrows the operator's `provider` account `account` (an account id, kept verbatim). The login is used through this device, not copied. Keep it one line where the language allows. Account id is set off in parentheses to distinguish it from prose."
+	},
+	"ui.mesh.approval.scope_device": {
+		"role": "consequence — mesh approval card details",
+		"tone": "Plain and factual; calm, not alarming",
+		"note": "Who may use the shared login: every session on that device (device scope). `device` is a device name."
+	},
+	"ui.mesh.approval.scope_session": {
+		"role": "consequence — mesh approval card details",
+		"tone": "Plain and factual; calm, not alarming",
+		"note": "Session scope: the recipient device is a holder; its sessions may each borrow this login with grants bound to the individual incoming session. NOT restricted to the session that originally requested sharing (the signed share has no requesting-session identifier). Preserve this distinction; device is a device name."
+	},
+	"ui.mesh.approval.org_limited": {
+		"role": "consequence — mesh approval card details",
+		"tone": "Plain and factual; calm, not alarming",
+		"note": "The permission is limited to one organization of the account. `org` is an id, kept verbatim."
+	},
+	"ui.mesh.approval.org_any": {
+		"role": "consequence — mesh approval card details",
+		"tone": "Plain and factual; calm, not alarming",
+		"note": "The permission is NOT limited to an organization: any organization on the account. Must not read as narrower than that."
+	},
+	"ui.mesh.approval.not_copied": {
+		"role": "consequence — mesh approval card details",
+		"tone": "Plain and factual; calm, not alarming",
+		"note": "The credential stays on this machine; the other device borrows it. Must not read as the login being sent."
+	},
+	"ui.mesh.approval.until_revoked": {
+		"role": "consequence — mesh approval card details",
+		"tone": "Plain and factual; calm, not alarming",
+		"note": "How long the permission lasts: no automatic expiry, it ends when the operator revokes it. Distinct from the card's request window (how long the card can be answered)."
+	},
+	"ui.mesh.approval.future_logins_covered": {
+		"role": "consequence — mesh approval card details",
+		"tone": "Plain and factual; calm, not alarming",
+		"note": "A later sign-in to the SAME account is covered without a new approval. Plain statement, not a warning."
+	},
+	"ui.mesh.approval.future_logins_not_shared": {
+		"role": "consequence — mesh approval card details",
+		"tone": "Plain and factual; calm, not alarming",
+		"note": "Only the existing login is shared; later sign-ins are not."
+	},
+	"ui.mesh.approval.installs_something": {
+		"role": "consequence — mesh approval card details",
+		"tone": "Plain and factual; calm, not alarming",
+		"note": "Fallback shown only when the server did not state that nothing is installed or joined. Must stay cautious: it may."
+	},
+	"ui.mesh.approval.installs_nothing": {
+		"role": "consequence — mesh approval card details",
+		"tone": "Plain and factual; calm, not alarming",
+		"note": "Approving installs no software and joins no network."
+	},
+	"ui.mesh.approval.needs_broker": {
+		"role": "consequence — mesh approval card details",
+		"tone": "Plain and factual; calm, not alarming",
+		"note": "The other device also needs the separate 'borrow logins' permission; this approval does not grant it. `device` is a device name."
+	},
+	"ui.mesh.approval.undoes_withdrawals": {
+		"role": "consequence — mesh approval card details",
+		"tone": "Plain and factual; calm, not alarming",
+		"note": "This share restores access the operator previously withdrew; `count` is how many earlier withdrawals it clears. Preserve the plural arms and the number format."
+	},
+	"ui.mesh.approval.recipient_key": {
+		"role": "label — mesh approval card details, before a key fingerprint",
+		"tone": "Plain and factual; calm, not alarming",
+		"note": "Label before the other device's key fingerprint (monospace, follows on the same line). `device` is a device name. Keep the trailing colon."
+	},
+	"ui.mesh.approval.file_key_disclosure": {
+		"role": "disclosure — mesh approval card, beside Approve",
+		"tone": "Plain and factual; calm, not alarming",
+		"note": "Assurance fact for unsigned waiting/refused records. Signing here uses a file key; such a signature cannot prove human approval. No claim the refused request was already signed."
+	},
+	"ui.mesh.approval.approved_not_applied": {
+		"role": "status text — mesh approval card, signed but not applied",
+		"tone": "Plain and factual; calm, not alarming",
+		"note": "The approval was signed but the change has not taken effect yet. Must not claim access works."
+	},
+	"ui.mesh.approval.try_again": {
+		"role": "button — mesh approval card",
+		"tone": "Plain and factual; calm, not alarming",
+		"note": "Re-applies an already-approved card. Short button label."
+	},
+	"ui.mesh.approval.applying": {
+		"role": "status text — mesh approval card, beside the buttons while the apply runs",
+		"tone": "Plain and factual; calm, not alarming",
+		"note": "In-progress cue; keep the ellipsis."
 	},
 	"ui.mesh.mesh_reach.handshake_refused_hint": {
 		"note": "The next check after the handshake-refused headline: WHO should look at what. It names the two causes the protocol actually refuses for (removed membership, epoch disagreement) but says 'check', never 'this is why' - the wire closes the handshake with no reason, so the app may not assert a cause. Keep it one sentence; it sits under the headline in the device panel only, where there is room.",
 		"role": "recovery hint — device panel, under the handshake-refused headline",
 		"tone": "Plain, non-accusatory; a next check, never an asserted cause"
+	},
+	"ui.mesh.approval.technical_request": {
+		"role": "status or instruction — Mesh credential approval card",
+		"tone": "Plain, quiet and factual",
+		"note": "Nested disclosure inside Details, collapsed by default; exact complete signed facts are technical inspection material, not the plain explanation. The open content scrolls within a bounded area."
+	},
+	"ui.mesh.approval.needs_attention": {
+		"role": "status or instruction — Mesh credential approval card",
+		"tone": "Plain, quiet and factual",
+		"note": "Count of signed credential cards not yet applied (approved or failed). These stay live outside settled history, even when retry is permanently refused and cancellation is the remaining action."
+	},
+	"ui.mesh.approval.shared_count": {
+		"role": "status or instruction — Mesh credential approval card",
+		"tone": "Plain, quiet and factual",
+		"note": "Quiet success count on collapsed settled-history summary. Count names credential shares, not device connections."
+	},
+	"ui.mesh.approval.shared": {
+		"role": "status or instruction — Mesh credential approval card",
+		"tone": "Plain, quiet and factual",
+		"note": "Credential record successfully applied. Means shared, not a device connection."
+	},
+	"ui.mesh.approval.result_status": {
+		"role": "status or instruction — Mesh credential approval card",
+		"tone": "Plain, quiet and factual",
+		"note": "Counts-only polite screen-reader status for shared and needs-attention records. Refusal text is announced by focus, not repeated here. Preserve both numeric placeholders."
+	},
+	"ui.mesh.approval.duration_under_minute": {
+		"role": "status or instruction — Mesh credential approval card",
+		"tone": "Plain, quiet and factual",
+		"note": "Bare localized under-one-minute duration shared by answer_window (requested, unanswered card) and expires_window (already-approved needs-attention card). Both describe the CARD window, not share lifetime; preserve grammatical compatibility with both outer messages."
+	},
+	"ui.mesh.approval.duration_minutes": {
+		"role": "status or instruction — Mesh credential approval card",
+		"tone": "Plain, quiet and factual",
+		"note": "Bare localized minute duration shared by answer_window (requested, unanswered card) and expires_window (already-approved needs-attention card). Both describe the CARD window, not share lifetime; preserve grammatical compatibility with both outer messages."
+	},
+	"ui.mesh.approval.duration_hours": {
+		"role": "status or instruction — Mesh credential approval card",
+		"tone": "Plain, quiet and factual",
+		"note": "Bare localized hour duration shared by answer_window (requested, unanswered card) and expires_window (already-approved needs-attention card). Both describe the CARD window, not share lifetime; preserve grammatical compatibility with both outer messages."
+	},
+	"ui.mesh.approval.answer_window": {
+		"role": "status or instruction — Mesh credential approval card",
+		"tone": "Plain, quiet and factual",
+		"note": "How long the operator has to answer THIS request, not how long access lasts. duration is already localized bare duration; do not format it again."
+	},
+	"ui.mesh.approval.file_key_recorded": {
+		"role": "status or instruction — Mesh credential approval card",
+		"tone": "Plain, quiet and factual",
+		"note": "Past-tense assurance disclosure for signed approved/failed/connected records: no proof a person signed because the key is a file. Must stay visible."
+	},
+	"ui.mesh.approval.cancel_sharing": {
+		"role": "status or instruction — Mesh credential approval card",
+		"tone": "Plain, quiet and factual",
+		"note": "Button on signed but unapplied credential cards. Denies/stops this request; does not revoke already-shared access."
+	},
+	"ui.mesh.approval.cancel_hint": {
+		"role": "status or instruction — Mesh credential approval card",
+		"tone": "Plain, quiet and factual",
+		"note": "Visible explanation for Cancel sharing. It stops this pending request, not existing shared access."
+	},
+	"ui.mesh.approval.signing_applying": {
+		"role": "status or instruction — Mesh credential approval card",
+		"tone": "Plain, quiet and factual",
+		"note": "Neutral progress for file-key approve route (sign AND apply in a single call); no Touch ID prompt promised."
+	},
+	"ui.mesh.approval.retry_hint": {
+		"role": "status or instruction — Mesh credential approval card",
+		"tone": "Plain, quiet and factual",
+		"note": "Links the backend reason/remedy to the actual Try again button. Keep the button name consistent with ui.mesh.approval.try_again."
+	},
+	"ui.mesh.approval.named_refusal": {
+		"role": "warning explanation — Mesh approval outcome outside a visible card",
+		"tone": "Quiet and factual",
+		"note": "Attribution when the owning card is not visible. request is the displayed head (catalogue-authored or a verbatim backend summary); reason is the verbatim backend sentence. React isolates each parameter with bdi, preserving locale ordering and punctuation. Catalogue-authored request text uses locale direction even with a leading Latin device name. Backend-summary request text and backend reason use automatic direction. No machine code."
+	},
+	"ui.mesh.approval.expires_window": {
+		"role": "status — deadline on an already approved needs-attention card",
+		"tone": "Quiet and factual",
+		"note": "The decision was already answered; the operator may retry applying or cancel before the record expires. duration is the same already-localized bare duration used by answer_window. Do not call this an answer deadline or imply permission expires: this is the CARD window. The visible subject is THIS CARD, not the shared login or permission."
+	},
+	"ui.mesh.approval.could_not_apply": {
+		"role": "terminal outcome label — permanently refused signed credential card",
+		"tone": "Quiet and factual",
+		"note": "Approval was signed but the SAME card cannot be applied successfully. No suggestion that waiting/retrying helps. Replaces approved_not_applied and suppresses countdown when retryable is false, or apply_outcome is present without retryable; a row with no apply_outcome is not permanent. Cancel remains available."
+	},
+	"ui.mesh.approval.typed_review_unavailable": {
+		"role": "safe fallback — typed credential request lacks backend refusal_message",
+		"tone": "Plain and actionable",
+		"note": "A typed card this app cannot safely disclose. Do not send the user to a terminal, say the app is outdated, or suggest blind approval. Deny the current request and ask for a new one."
 	}
 }

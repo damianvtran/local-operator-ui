@@ -191,8 +191,30 @@ const NOTARIZE_SCRIPT = "notarize-dmg";
 const NOTARIZE_ARTIFACTS = /notarize-artifacts\.mjs/;
 /** The skip gate inside that script, asserted so this file's premise is checked. */
 const NOTARIZE_SKIP_GATE = /NOTARIZE !== "true"/;
-/** The credentials notarisation needs, all three, or it skips. */
-const APPLE_CREDENTIALS = ["APPLE_ID", "APPLE_ID_PASSWORD", "APPLE_TEAM_ID"];
+/**
+ * The credentials notarisation needs, all three, or it skips (fails, on Actions).
+ *
+ * The App Store Connect API key, which both workflows notarize with since the move
+ * to the Radient Inc. organization's identity: `APPLE_API_KEY` is the path of the
+ * decoded `.p8`, the other two are the key id and issuer. The Apple ID set this
+ * replaced is pinned ABSENT below (`RETIRED_SECRETS`), because a workflow that
+ * still bound it would keep passing on the old account while the new one was
+ * never exercised.
+ */
+const APPLE_CREDENTIALS = [
+	"APPLE_API_KEY",
+	"APPLE_API_KEY_ID",
+	"APPLE_API_ISSUER",
+];
+/** The individual-account secrets the workflows stopped reading. They stay in
+ * the repository for rollback, so nothing but this list notices a binding that
+ * drifts back to them. */
+const RETIRED_SECRETS = [
+	"APPLE_ID",
+	"APPLE_ID_PASSWORD",
+	"CSC_CONTENT",
+	"CSC_KEY_PASSWORD",
+];
 /**
  * Steps that legitimately bind a notarisation credential WITHOUT notarising, and why.
  *
@@ -598,7 +620,7 @@ for (const workflow of SHIPPING_WORKFLOWS) {
 			for (const credential of APPLE_CREDENTIALS) {
 				assert.ok(
 					typeof env[credential] === "string" && env[credential].length > 0,
-					`${label} has no ${credential} in its effective environment. Notarisation needs all three credentials and skips quietly without them, so the disk image is left unnotarised: the notarisation step's own gate refuses that there, and Gatekeeper would refuse the image on a user's machine - the friction the build was supposed to prevent, caught after it instead of by it.`,
+					`${label} has no ${credential} in its effective environment. Notarisation needs all three credentials and skips without them (off Actions; on Actions it throws), so the disk image is left unnotarised: the notarisation step's own gate refuses that there, and Gatekeeper would refuse the image on a user's machine - the friction the build was supposed to prevent, caught after it instead of by it.`,
 				);
 			}
 		}
@@ -684,6 +706,48 @@ for (const workflow of SHIPPING_WORKFLOWS) {
 		}
 	});
 
+	test(`${workflow}: every macOS pass signs with the staged profile and rendered entitlements, never on the inherit plist`, () => {
+		// The candidate has to be built the way a release is, or its verdict is about
+		// a bundle nobody ships - and the profile is what keeps the WebAuthn group
+		// from being the 0.29.6 brick, so a pass without it is the one shape that
+		// must not reach either workflow. `entitlementsInherit` is never overridden:
+		// the helpers and ShipIt get no profile, so a group there is refused at exec.
+		const runs = runSteps(workflow);
+		const stage = runs.findIndex(({ step }) =>
+			/node scripts\/render-mac-entitlements\.mjs [^\n]*--profile "\$RUNNER_TEMP\/embedded\.provisionprofile"/.test(
+				step.run,
+			),
+		);
+		assert.notEqual(
+			stage,
+			-1,
+			`${workflow} never renders the entitlements with the provisioning profile, so its passes have nothing authorized to sign with.`,
+		);
+		assert.ok(passes.length > 0);
+		for (const entry of passes) {
+			const label = `${workflow}:${entry.job}:${entry.name}`;
+			assert.ok(
+				entry.index > stage,
+				`${label} runs before the profile is staged`,
+			);
+			assert.match(
+				entry.step.run,
+				/-c\.mac\.provisioningProfile="\$RUNNER_TEMP\/embedded\.provisionprofile"/,
+				`${label} does not embed the provisioning profile`,
+			);
+			assert.match(
+				entry.step.run,
+				/-c\.mac\.entitlements="\$RUNNER_TEMP\/entitlements\.mac\.rendered\.plist"/,
+				`${label} does not sign the main executable with the rendered plist`,
+			);
+			assert.doesNotMatch(
+				entry.step.run,
+				/entitlementsInherit/,
+				`${label} overrides entitlementsInherit - the 0.29.6 brick`,
+			);
+		}
+	});
+
 	test(`${workflow}: the update feed is snapshotted between the passes and merged after the last`, () => {
 		// `latest-mac.yml` is ONE file describing BOTH architectures, and
 		// electron-builder rewrites it from scratch at the end of every pass.
@@ -723,6 +787,24 @@ for (const workflow of SHIPPING_WORKFLOWS) {
 		);
 	});
 }
+
+test("no workflow reads the retired individual-account signing secrets", () => {
+	// Read from the raw text rather than the parsed env, so a `secrets.*` inside a
+	// `run:` (how the Windows step decodes its p12) is caught as well as a binding.
+	for (const [name] of WORKFLOWS) {
+		const text = readFileSync(
+			new URL(`../.github/workflows/${name}`, import.meta.url),
+			"utf8",
+		);
+		for (const secret of RETIRED_SECRETS) {
+			assert.doesNotMatch(
+				text,
+				new RegExp(`secrets\\.${secret}\\b`),
+				`${name} still reads secrets.${secret}; signing and notarization moved to the Radient Inc. organization's MACOS_DEVID_APP_* identity and the App Store Connect API key, and the old secret is kept for rollback only.`,
+			);
+		}
+	}
+});
 
 test("the notarisation-credential exemptions still describe steps that bind one", () => {
 	// An exemption is a claim about a step, so it has to keep being true: a table

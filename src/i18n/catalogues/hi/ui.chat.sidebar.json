@@ -58,5 +58,9 @@
 	"ui.chat.sidebar.row_menu.unarchive": "बातचीत बहाल करें",
 	"ui.chat.sidebar.row_menu.unpin": "बातचीत अनपिन करें",
 	"ui.chat.sidebar.pins.pin_label": "“{title}” पिन करें",
-	"ui.chat.sidebar.pins.unpin_label": "“{title}” अनपिन करें"
+	"ui.chat.sidebar.pins.unpin_label": "“{title}” अनपिन करें",
+	"ui.chat.sidebar.agents.list_join": "{position, select, pair {{head} और {tail}} middle {{head}, {tail}} other {{head} और {tail}}}",
+	"ui.chat.sidebar.row.open_draft": "{label} खोलें",
+	"ui.chat.sidebar.entity.more_in": "{name} में {label}",
+	"ui.chat.sidebar.search.count_tooltip": "इस खोज से {clipped, select, yes {कम से कम } other {}}{count, plural, =1 {{count_display} चैट मेल खाती है} one {{count_display} चैट मेल खाती है} other {{count_display} चैट मेल खाती हैं}}{clipped, select, yes {; सूची यहीं रुक जाती है} other {}}"
 }

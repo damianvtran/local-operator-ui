@@ -47,6 +47,10 @@ const IDENTICAL_OK = new Map([
 	],
 	// French cognates only: these are the normal French UI nouns, not English
 	// fallbacks. Scope to fr so untranslated nouns in other languages still fail.
+	[
+		"fr:ui.chat.canonical.image_label",
+		"French UI noun: Image, same spelling as English; scoped to fr so other locales still translate it",
+	],
 	["fr:ui.notifications.nav.label", "French UI noun: Notifications"],
 	["fr:ui.notifications.page.title", "French UI noun: Notifications"],
 	[
@@ -1366,6 +1370,36 @@ const IDENTICAL_OK = new Map([
 		// exists so a locale can reorder them (ur does). Verb-then-object is the
 		// natural order in most shipped locales, where identical is correct.
 		"format string: two placeholders and a space, no words",
+	],
+	[
+		"ui.agents.avatar.editor.zoom_value",
+		// `{value}×`: the crop editor's zoom readout (`2.5×`), a numeral and the
+		// multiplication sign, no words. Identical in every locale is correct, the
+		// `playback_rate_option` rule; no catalogue value changed to satisfy this.
+		"language-neutral format: only a {value} placeholder and '×', no words",
+	],
+	[
+		"es:ui.agents.avatar.editor.zoom",
+		"Spanish cognate: « Zoom » is the Spanish noun for the control, same spelling, and the sibling zoom_in/zoom_out values are translated (Acercar/Alejar); scoped to es so the other locales still translate it",
+	],
+	[
+		"fr:ui.agents.avatar.editor.zoom",
+		"French cognate: « Zoom » is the French noun for the control, same spelling, and the sibling zoom_in/zoom_out values are translated; scoped to fr so the other locales still translate it",
+	],
+	[
+		"ui.settings.personal_profile.zoom_value",
+		// The human photo cropper's readout reuses the agent cropper's exact
+		// `{value}×` format through the shared identity-neutral cropper; same
+		// rule as `ui.agents.avatar.editor.zoom_value` above.
+		"language-neutral format: only a {value} placeholder and '×', no words",
+	],
+	[
+		"es:ui.settings.personal_profile.zoom",
+		"Spanish cognate: « Zoom » is the Spanish noun for the control, same spelling, matching the audited agent cropper's es value; zoom_in/zoom_out are translated; scoped to es so the other locales still translate it",
+	],
+	[
+		"fr:ui.settings.personal_profile.zoom",
+		"French cognate: « Zoom » is the French noun for the control, same spelling, matching the audited agent cropper's fr value; zoom_in/zoom_out are translated; scoped to fr so the other locales still translate it",
 	],
 	[
 		"fr:ui.chat.attachments.volume",

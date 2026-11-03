@@ -12,6 +12,7 @@ import { test } from "node:test";
 import {
 	DESKTOP_COMMAND,
 	EXEMPT,
+	EXTERNAL_TESTS,
 	selectDesktopTests,
 	walkTestFiles,
 } from "./desktop-test-inventory.mjs";
@@ -55,7 +56,7 @@ function runnerLog(count, summary = log) {
 function fixture(fn) {
 	const root = mkdtempSync(join(tmpdir(), "desktop-shard-data-"));
 	try {
-		const files = names.slice(0, 9);
+		const files = [...names.slice(0, 9), ...EXTERNAL_TESTS];
 		for (const file of [...files, ...Object.keys(EXEMPT)]) {
 			mkdirSync(join(root, file, ".."), { recursive: true });
 			writeFileSync(join(root, file), "// data only\n");
@@ -182,10 +183,21 @@ test("the walk eagerly includes a new nested file and refuses a symlink under sc
 		assert.throws(() => inventory(DESKTOP_COMMAND, root), /Symlink/);
 	}));
 
+test("external main registrations survive derivation and missing or linked paths fail closed", () =>
+	fixture((root, files) => {
+		for (const file of EXTERNAL_TESTS) {
+			assert.ok(inventory(DESKTOP_COMMAND, root).includes(file));
+			rmSync(join(root, file));
+			assert.throws(() => inventory(DESKTOP_COMMAND, root), /ENOENT/);
+			symlinkSync(join(root, files[0]), join(root, file));
+			assert.throws(() => inventory(DESKTOP_COMMAND, root), /Symlink/);
+		}
+	}));
+
 test("metadata plan checks actual files and rejects missing files, symlinks and wrong head identity", () =>
 	fixture((root, files) => {
 		const p = plan(root, HEAD, CHECKOUT);
-		assert.equal(p.total, 9);
+		assert.equal(p.total, files.length);
 		assert.equal(p.digest.length, 64);
 		assert.throws(() => plan(root, "short", CHECKOUT), /full/);
 		assert.throws(
@@ -384,6 +396,41 @@ test("R1: actual receipt rejects healthy TAP without guarded-runner file-count e
 	assert.throws(() => receipt(p, 0, log, 0, 1), /runner.*count/i);
 });
 
+// Reduced verbatim from run 41223709456, shard 2 job 124611472370's
+// suite-step log (QA session 52517629cd9a). Ordered TAP isn't reproduced here:
+// the collision is entirely between these two parent-runner protocol records.
+const CI_COUNT_RECORD =
+	"desktop tests: 163 files, concurrency 3 (CI runner: governor stands down, node default for 4 cores)";
+const CI_HEARTBEAT_RECORD =
+	'desktop tests: diagnostic {"event":"heartbeat","leaderPid":2350,"active":[{"file":"scripts/agent-class-toggle.test.mjs","pid":2363,"ppid":2350},{"file":"scripts/agent-hub-skills-tab-count.test.mjs","pid":2364,"ppid":2350},{"file":"scripts/agents-publication.test.mjs","pid":2442,"ppid":2350}]}';
+
+test("Q3: authentic runner count survives diagnostic file fields without weakening receipts", () => {
+	const mixed = `${CI_COUNT_RECORD}\n${CI_HEARTBEAT_RECORD}\n${log}`;
+	assert.equal(observedRunnerFileCount(mixed), 163);
+	const p = expected();
+	const wanted = p.shards[0].length;
+	const valid = `${runnerLog(wanted)}${CI_HEARTBEAT_RECORD}\n`;
+	assert.equal(receipt(p, 0, valid, 0, 1).runnerFileCount, wanted);
+
+	// Diagnostics cannot replace evidence, hide a duplicate/malformed genuine
+	// record, or forgive a count inconsistent with the planned shard inventory.
+	for (const bad of [
+		`${CI_HEARTBEAT_RECORD}\n${log}`,
+		`${CI_COUNT_RECORD}\n${CI_COUNT_RECORD}\n${CI_HEARTBEAT_RECORD}\n`,
+		`${CI_COUNT_RECORD}\n${CI_HEARTBEAT_RECORD}\ndesktop tests: many files, concurrency 3\n`,
+		`${CI_COUNT_RECORD}\n${CI_HEARTBEAT_RECORD}\ndesktop tests: 163 files concurrency 3\n`,
+		`${CI_COUNT_RECORD}\n${CI_HEARTBEAT_RECORD}\ndesktop tests: -163 files, concurrency 3\n`,
+		`${CI_HEARTBEAT_RECORD}\n# ${CI_COUNT_RECORD}\n`,
+		`${CI_HEARTBEAT_RECORD}\n    ${CI_COUNT_RECORD}\n`,
+	])
+		assert.throws(() => observedRunnerFileCount(bad), /runner.*count/i);
+	assert.throws(
+		() =>
+			receipt(p, 0, `${runnerLog(wanted + 1)}${CI_HEARTBEAT_RECORD}\n`, 0, 1),
+		/runner.*count/i,
+	);
+});
+
 test("R2: actual exported metadata planner cannot create or verify execution receipts", () =>
 	fixture((root, files) => {
 		const packagePath = join(root, "exported-package.json");
@@ -394,6 +441,14 @@ test("R2: actual exported metadata planner cannot create or verify execution rec
 		const treePath = join(root, "exported-tree.txt");
 		const tree = [...files, ...Object.keys(EXEMPT)].map(
 			(file) => `100644 blob ${HEAD}\t${file}`,
+		);
+		writeFileSync(
+			treePath,
+			`${tree.filter((row) => !EXTERNAL_TESTS.some((file) => row.endsWith(`\t${file}`))).join("\n")}\n`,
+		);
+		assert.throws(
+			() => plan(root, HEAD, CHECKOUT, packagePath, treePath),
+			/External desktop test missing/,
 		);
 		writeFileSync(
 			treePath,

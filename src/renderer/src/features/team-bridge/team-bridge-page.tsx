@@ -13,6 +13,7 @@ import { Spinner } from "@shared/components/common/spinner";
 import { AttentionBadge } from "@shared/components/ui/attention-badge";
 import { Button } from "@shared/components/ui/button";
 import { ScrollArea } from "@shared/components/ui/scroll-area";
+import { useRadientCredentialProbe } from "@shared/hooks/use-credentials";
 import { useRadientAuth } from "@shared/hooks/use-radient-auth";
 import { formatRelativeTime, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
@@ -82,7 +83,10 @@ import {
 	sendAttachmentIds,
 } from "./team-bridge-attachments-model";
 import { TeamBridgeComposeBar } from "./team-bridge-compose-bar";
-import { TeamBridgeComposer } from "./team-bridge-composer";
+import {
+	TeamBridgeComposer,
+	type TeamBridgeComposerProps,
+} from "./team-bridge-composer";
 import { TeamBridgeConversationMenu } from "./team-bridge-conversation-menu";
 import { TeamBridgeCreateDialog } from "./team-bridge-create-dialog";
 import { TeamBridgeDefaultOnBanner } from "./team-bridge-default-on-banner";
@@ -757,6 +761,15 @@ export type TeamBridgePageViewProps = {
 	 * the "not supported" note instead of a chip.
 	 */
 	attachmentCapability?: TeamBridgeAttachmentCapability | null;
+	/*
+	 * The speech capability for the composer's microphone, read by the OWNED
+	 * page (`useRadientCredentialProbe`). It is threaded rather than read in the
+	 * composer for the reason the shared chat composer states on its own `recordingProbe`:
+	 * the probe is a react-query read, and this view is mounted without a
+	 * QueryClient by the desktop suites and the stories. Absent, the composer
+	 * fails closed (mic disabled, the neutral "could not be checked" reason).
+	 */
+	recordingProbe?: TeamBridgeComposerProps["recordingProbe"];
 	/** Open the channel form (Channels' "+" and its empty line). */
 	onSchedule?: (
 		body: string,
@@ -859,6 +872,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	onSend,
 	onSchedule,
 	attachmentCapability: imageCapability = null,
+	recordingProbe,
 	onNewChannel,
 	onRetry,
 	onScopeChange,
@@ -3219,11 +3233,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 													<TeamBridgeProfileCard
 														member={draftPerson}
 														label={paneTitle ?? ""}
-														agentName={
-															target.type === "chief"
-																? (paneTitle ?? "")
-																: undefined
-														}
+														kind={target.type === "chief" ? "agent" : "human"}
 														onMessage={() => {}}
 														canMessage={false}
 													>
@@ -3242,14 +3252,12 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 														>
 															<TeamBridgeAvatar
 																member={draftPerson}
+																kind={
+																	target.type === "chief" ? "agent" : "human"
+																}
 																label={paneTitle ?? ""}
 																size={56}
 																className="rounded-xl text-[22px]"
-																fallback={
-																	target.type === "chief" ? (
-																		<Bot size={26} />
-																	) : undefined
-																}
 															/>
 														</button>
 													</TeamBridgeProfileCard>
@@ -3561,6 +3569,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 										   fail-closed rule forbids, and a refused send names the
 										   capability instead (see `submit`). */
 										canAttach={Boolean(imageCapability)}
+										recordingProbe={recordingProbe}
 										disabled={
 											!canCompose ||
 											Boolean(heldAttempt) ||
@@ -3822,10 +3831,12 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 		</div>
 	);
 	/* @-MENTIONS for both composers in this pane (channel and thread), from the
-	   cached directory and the open conversation (mentions/). Bound as a const
-	   above so mounting the provider does not re-indent the page. */
+	   cached directory and the open conversation (mentions/). The provider stays
+	   mounted through same-owner/tenant creation, but crossing either privacy
+	   boundary deliberately discards its subtree instead of preserving old state. */
 	return (
 		<TeamBridgeMentionProvider
+			key={JSON.stringify([selfAccountId, draftTenant])}
 			conversation={shown}
 			people={shown ? rosterFor(shown.tenant_id) : []}
 			selfAccountId={selfAccountId}
@@ -3947,6 +3958,13 @@ type TeamBridgeMessageLink = {
  * from is worse than none.
  */
 const MESSAGE_LINK_TIMEOUT_MS = 8_000;
+
+/** The page view's identity: one mounted view per account, tenant and target. */
+const viewKeyFor = (
+	accountId: string | undefined,
+	tenant: string,
+	target: TeamBridgeTarget | null,
+) => JSON.stringify([accountId, tenant, target]);
 
 const TeamBridgeOwnedPage: FC<{
 	accountId?: string;
@@ -4072,6 +4090,8 @@ const TeamBridgeOwnedPage: FC<{
 	const status = useTeamBridgeStatus();
 	const auth = useRadientAuth();
 	const capabilities = useDesktopCapabilities();
+	/* The composer's speech capability; see `recordingProbe` on the view's props. */
+	const recordingProbe = useRadientCredentialProbe();
 	const ownerGuard =
 		(capabilities.data?.features?.team_bridge_conversation_owner_guard ?? 0) >=
 		1;
@@ -4549,6 +4569,11 @@ const TeamBridgeOwnedPage: FC<{
 	 */
 	const targetRef = useRef(target);
 	targetRef.current = target;
+	const createHandoff = useRef<{
+		key: string;
+		viewKey: string;
+		arrived: boolean;
+	} | null>(null);
 
 	const sendBody = async (
 		body: string,
@@ -4637,11 +4662,41 @@ const TeamBridgeOwnedPage: FC<{
 		 * own list refresh has already resolved the same target to the new DM.
 		 */
 		let moved = false;
-		const moveToCreated = (conversationId: string) => {
+		const moveToCreated = (
+			conversationId: string,
+			createdTenant?: string | undefined,
+		) => {
 			if (moved || !isCurrentOwner()) return;
 			moved = true;
 			if (startedOn?.type === "compose" && targetRef.current === startedOn) {
-				setTarget({ type: "conversation", id: conversationId });
+				const next: TeamBridgeTarget = {
+					type: "conversation",
+					id: conversationId,
+				};
+				/*
+				 * KEEP THE COMPOSE VIEW MOUNTED THROUGH ITS OWN CREATE (#1511). The view
+				 * is keyed by account, tenant and target, so following a group draft onto
+				 * the conversation it created used to remount the whole pane: the
+				 * optimistic row, the composer and its focus were thrown away and
+				 * rebuilt mid-send. Only this one transition keeps the mounted view, and
+				 * only when the create's tenant is CONCRETE and equals the single-tenant
+				 * scope the draft was written in: All organizations, a missing tenant
+				 * or a foreign one still remount, because inferring a tenant there is
+				 * exactly how one organization's draft could be shown in another.
+				 */
+				if (
+					!mergedView &&
+					typeof createdTenant === "string" &&
+					createdTenant.length > 0 &&
+					createdTenant === scope
+				) {
+					createHandoff.current = {
+						key: viewKeyFor(accountId, createdTenant, next),
+						viewKey: viewKeyFor(accountId, scope, startedOn),
+						arrived: false,
+					};
+				}
+				setTarget(next);
 			}
 		};
 		try {
@@ -4652,6 +4707,9 @@ const TeamBridgeOwnedPage: FC<{
 				clientRef,
 				tenantId: mergedView ? undefined : scope,
 				remembered: createdForDraft.current,
+				// The foreign-tenant refusal lives in `sendFirstMessage`, so this send
+				// and `scheduleBody` (which reaches it through
+				// `scheduleTeamBridgeDraft`) share one rule (#1511 review round 7, M1).
 				create: (createInput) =>
 					create.mutateAsync(createInput) as Promise<{
 						id?: string;
@@ -4663,7 +4721,7 @@ const TeamBridgeOwnedPage: FC<{
 				onCreated: delivery
 					? (created) => {
 							delivery.onCreated?.(created.id, created.tenantId);
-							moveToCreated(created.id);
+							moveToCreated(created.id, created.tenantId);
 							/* THE RAIL IS THE CREATE'S BUSINESS, not the post's (requirement 6):
 							   the row can appear as soon as the conversation exists. */
 							void list.refetch();
@@ -4878,18 +4936,35 @@ const TeamBridgeOwnedPage: FC<{
 		return () => clearTimeout(timer);
 	}, [messageLink, setMessageLink]);
 
-	const draftKey = JSON.stringify([
-		accountId,
-		selected?.tenant_id ?? scope,
-		target,
-	]);
+	const draftKey = viewKeyFor(accountId, selected?.tenant_id ?? scope, target);
 	const draftJournal = drafts.get(draftKey) ?? { body: "" };
 	drafts.set(draftKey, draftJournal);
+	/*
+	 * The one-shot create handoff (see `moveToCreated`). It holds while the view is
+	 * on the compose key or the exact created destination; the first render on any
+	 * other key - another target, account or tenant, or leaving the destination it
+	 * already reached - drops it for good, so away-and-back remounts as before.
+	 *
+	 * This mutates a ref DURING RENDER, so it must stay idempotent: rendering the
+	 * same key twice (StrictMode, a discarded concurrent render) has to leave the
+	 * ref exactly as one render would. Add no counters or order-dependent steps
+	 * here (review round 7, n1).
+	 */
+	const handoff = createHandoff.current;
+	if (handoff) {
+		if (draftKey === handoff.key) handoff.arrived = true;
+		else if (handoff.arrived || draftKey !== handoff.viewKey)
+			createHandoff.current = null;
+	}
+	const viewKey =
+		createHandoff.current?.key === draftKey
+			? createHandoff.current.viewKey
+			: draftKey;
 	return (
 		<>
 			<TeamBridgePageView
 				ownerAudit={ownerAudit}
-				key={draftKey}
+				key={viewKey}
 				draftJournal={draftJournal}
 				isDraftCurrent={isCurrentOwner}
 				threadLink={threadLink}
@@ -5073,6 +5148,7 @@ const TeamBridgeOwnedPage: FC<{
 				}}
 				onSend={sendBody}
 				attachmentCapability={attachmentCapability(status.data)}
+				recordingProbe={recordingProbe}
 				onSchedule={
 					scope === TEAM_BRIDGE_ALL_SCOPE && !selected
 						? undefined

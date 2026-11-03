@@ -237,6 +237,7 @@
 	"ui.browser.webauthn_chooser.this_passkey_request_expired": "Esta solicitud de clave de acceso ha caducado",
 	"ui.browser.webauthn_chooser.nobody_chose_a_passkey_within_a_minute": "Nadie eligió una clave de acceso en un minuto, así que se canceló la solicitud del sitio. Vuelve a pedir una clave de acceso al sitio.",
 	"ui.browser.webauthn_chooser.this_passkey_request_was_cancelled": "Esta solicitud de clave de acceso se canceló",
+	"ui.browser.browser_url_bar.reload_shortcut": "Recargar ({shortcut})",
 	"ui.browser.webauthn_chooser.the_browser_tab_that_asked_went_away": "La pestaña del navegador que lo pidió se cerró antes de que se eligiera una clave de acceso, así que se canceló la solicitud.",
 	"ui.browser.webauthn_chooser.that_passkey_was_not_offered": "Esa clave de acceso no se ofreció",
 	"ui.browser.webauthn_chooser.the_choice_did_not_name_a_passkey": "La elección no indicaba una clave de acceso que este sitio ofreciera, así que se canceló la solicitud. Vuelve a intentarlo desde el sitio.",

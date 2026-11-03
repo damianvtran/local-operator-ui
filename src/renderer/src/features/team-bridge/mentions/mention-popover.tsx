@@ -1,7 +1,6 @@
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
-import { Bot } from "lucide-react";
 import type { CSSProperties, FC } from "react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -61,29 +60,43 @@ export function mentionOptionId(listboxId: string, index: number): string {
 }
 
 export const MentionRowAvatar: FC<{ row: MentionCandidateRow }> = ({ row }) => {
-	const fallback =
-		row.kind === "agent" ? (
-			<Bot size={14} aria-hidden="true" />
-		) : (
-			personInitial(row.label)
-		);
-	if (row.profile)
-		return (
-			<TeamBridgeAvatar
-				member={row.profile}
-				label={row.label}
-				size={28}
-				className="size-7 rounded-md text-meta"
-				fallback={row.kind === "agent" ? fallback : undefined}
-			/>
-		);
+	/*
+	 * ONE PLATE FOR EVERY ROW (design review round 5, D1 / convergence R2-1).
+	 * The no-directory branch used to hand-draw a 14 px muted Bot with no mark,
+	 * so a guest agent — or ANY agent before its roster answer lands — sat under
+	 * correctly marked agents wearing a third, unmarked style, and could repaint
+	 * from muted to accent while the popover was open (candidates.ts offers a
+	 * directory-less row from the participant loop first). That branch was a
+	 * surface opting an agent out of the agent style, which the plate's own
+	 * contract forbids. Both branches now go through `TeamBridgeAvatar`, so the
+	 * plate owns the mark, the ink and the glyph size and there is no second
+	 * avatar style in this popover.
+	 *
+	 * The stand-in member mirrors `MemberAvatar` in `team-bridge-add-members.tsx`:
+	 * it carries no `avatar_url`, so an agent gets the glyph + notch and a person
+	 * gets their initial — the same pixels the old span drew for a person.
+	 */
+	const member = row.profile ?? {
+		account_id: row.accountId,
+		display_label: row.label,
+		role: "member",
+		bridge_enabled: false,
+		bridge_state: "none" as const,
+	};
 	return (
-		<span
-			aria-hidden="true"
-			className="inline-flex size-7 shrink-0 items-center justify-center rounded-md bg-media-surface font-medium text-meta text-ink-muted"
-		>
-			{fallback}
-		</span>
+		<TeamBridgeAvatar
+			member={member}
+			label={row.label}
+			/* The plate needs the KIND, not a name, to know whether it may draw a
+			   picture at all: an agent's directory row is its owner's, so resolving
+			   by account would show the owner's photo (the 2026-10-30 defect). */
+			kind={row.kind}
+			size={28}
+			className="size-7 rounded-md text-meta"
+			/* A person's initial only: the plate ignores `fallback` for an agent, so
+			   passing the Bot here was dead (convergence R2-2). */
+			fallback={row.kind === "human" ? personInitial(row.label) : undefined}
+		/>
 	);
 };
 

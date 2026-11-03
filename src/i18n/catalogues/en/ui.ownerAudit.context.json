@@ -25,7 +25,7 @@
 		"tone": "factual, non-technical, non-blaming; no error code, no HTTP status",
 		"length": "One sentence.",
 		"placeholders": {},
-		"note": "Covers every refusal the audit routes give this surface, including the ones that mean \"this is not your agent's conversation\" and \"that conversation is outside the audit window\". It must NOT say the conversation does not exist and must NOT imply the agent has no conversations — the surface cannot tell those apart, which is why the sentence is about the READ rather than about the agent's history. The refusal wording for a missing conversation is a separate, more specific string (ui.tb resources); this one is the generic audit read failure."
+		"note": "Fallback for an unknown audit-read failure. Known authentication, permission, not-found and server failures use the specific sibling keys. This string must not assert the conversation is missing, the history is empty, or that the failure is temporary."
 	},
 	"ui.ownerAudit.retry": {
 		"role": "button in the failure state",
@@ -194,5 +194,95 @@
 		"length": "Three words at most.",
 		"placeholders": {},
 		"note": "The <details> summary that fetches and shows the replies under a thread root. Reads are audited like any other message, and replies carry the same verdict chips. Keep it an action phrase (\"read …\") rather than a count: the count is already visible in the message row."
+	},
+	"ui.ownerAudit.auth_required": {
+		"role": "authentication failure sentence",
+		"tone": "plain, factual, non-blaming",
+		"length": "One or two short sentences; the sign-in link is a short action label.",
+		"placeholders": {},
+		"note": "Sign-in is required or the session may have expired. Do not assert expiry is certain. The adjacent Sign in link opens the existing account settings; there is no retry button."
+	},
+	"ui.ownerAudit.permission_refused": {
+		"role": "permission refusal sentence",
+		"tone": "plain, factual, non-blaming",
+		"length": "One or two short sentences; the sign-in link is a short action label.",
+		"placeholders": {},
+		"note": "The current reader has no access to this audited history. This is neither an empty history nor a temporary failure. There is no retry button."
+	},
+	"ui.ownerAudit.not_found": {
+		"role": "missing audited conversation sentence",
+		"tone": "plain, factual, non-blaming",
+		"length": "One or two short sentences; the sign-in link is a short action label.",
+		"placeholders": {},
+		"note": "The route answered not-found for this audited conversation. Do not imply the whole service is unavailable or that retrying will restore access."
+	},
+	"ui.ownerAudit.unavailable": {
+		"role": "server failure sentence",
+		"tone": "plain, factual, non-blaming",
+		"length": "One or two short sentences; the sign-in link is a short action label.",
+		"placeholders": {},
+		"note": "The known server failure could not load these messages. One Try again button is available. Do not promise the failure is temporary or that another attempt will succeed."
+	},
+	"ui.ownerAudit.sign_in": {
+		"role": "link to account settings",
+		"tone": "plain, factual, non-blaming",
+		"length": "One or two short sentences; the sign-in link is a short action label.",
+		"placeholders": {},
+		"note": "Opens the existing Radient account settings so the reader can sign in. Not an audit retry or a separate authentication flow."
+	},
+	"ui.ownerAudit.older_replies": {
+		"role": "button at the start of the descending inline audit reply window",
+		"tone": "neutral, direct",
+		"length": "Short action label.",
+		"placeholders": {},
+		"note": "Pages backward to older replies, not more recent replies or parent messages. The legacy ascending fallback keeps its generic Load more label."
+	},
+	"ui.ownerAudit.empty_replies": {
+		"role": "successful empty inline audit reply window",
+		"tone": "neutral, factual",
+		"length": "One short sentence.",
+		"placeholders": {},
+		"note": "Only states the absence of visible replies in the audit window. This read-only surface must not invite the reader to start a thread; loading and errors have separate states."
+	},
+	"ui.ownerAudit.inspect_body": {
+		"role": "Disclosure summary",
+		"tone": "Short, neutral imperative",
+		"length": "Short action label",
+		"placeholders": {},
+		"note": "Summary of a collapsed disclosure that hides a long run of text which may be encoded data (it follows an inline image data URI but cannot be confirmed as image bytes). Opening it shows that run as inert plaintext, one bounded segment at a time; it never decodes, downloads or previews anything."
+	},
+	"ui.ownerAudit.inline_image_receipt": {
+		"role": "Collapsed disclosure summary for a legacy inline image data URI",
+		"tone": "Factual and compact",
+		"length": "One line where possible",
+		"placeholders": {
+			"mime": "MIME type, such as image/jpeg; preserve literally.",
+			"count": "Number of characters in the encoded URI, not decoded bytes."
+		},
+		"note": "This is data embedded in the message body, not a verified attachment or a preview. Activating it reveals a bounded plaintext segment, never an image."
+	},
+	"ui.ownerAudit.previous_chunk": {
+		"role": "Pagination button for inspecting encoded text",
+		"tone": "Neutral imperative",
+		"length": "Short button label",
+		"placeholders": {},
+		"note": "Moves to the preceding plaintext segment of a legacy image URI; disabled at the first segment."
+	},
+	"ui.ownerAudit.next_chunk": {
+		"role": "Pagination button for inspecting encoded text",
+		"tone": "Neutral imperative",
+		"length": "Short button label",
+		"placeholders": {},
+		"note": "Moves to the next plaintext segment of a legacy image URI; disabled at the last segment."
+	},
+	"ui.ownerAudit.chunk_number": {
+		"role": "Pagination status for encoded text",
+		"tone": "Factual",
+		"length": "Short inline status",
+		"placeholders": {
+			"page": "One-based current segment number.",
+			"count": "Total number of segments."
+		},
+		"note": "Reports the current segment and total while inspecting a data URI. Neither number is a byte count."
 	}
 }

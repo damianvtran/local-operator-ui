@@ -17,7 +17,7 @@
 	"ui.common.errors.desktop_refusal.transport_failed": {
 		"role": "diagnosis shown when a desktop control got no answer from the server",
 		"tone": "calm factual statement, sentence case, full stop",
-		"note": "Composed from the refusal code when the request never completed: nothing was established about the server's pairing state, so the sentence claims only that no answer arrived. 'Local Operator' is the product name and stays in English."
+		"note": "Composed from the refusal code when the request never completed: nothing was established about the server's pairing state, so the sentence claims only that no answer arrived. 'Local Operator' is the product name and stays in English. DELIBERATELY DIFFERENT from ui.common.errors.desktop_transport_failed (\"The backend could not complete this request...\"): that key words the same transport.failed refusal in the agent/team detail error pane, where it replaced the machine sentinel the pane already showed, so its English could not change. This key serves every other surface (composer, sidebar, notices), where it has always been the shown sentence. Both claim only that the request did not complete; translate each on its own terms and do not harmonise one onto the other."
 	},
 	"ui.common.errors.error_boundary.error_details": {
 		"role": "heading",
@@ -987,5 +987,11 @@
 		"tone": "Factual and actionable without blame.",
 		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
 		"note": "English source: A session id is required to read code memory."
+	},
+	"ui.common.errors.desktop_transport_failed": {
+		"role": "Generic transport-refusal diagnosis in an agent or team detail error pane",
+		"tone": "Calm, factual and actionable; two sentences",
+		"length": "Two short sentences; wraps within the detail error pane",
+		"note": "No placeholders. Display copy for main-authored transport_failed refusals; never translate or replace the stable machine sentinel or the requested_not_found backend fallback. DELIBERATELY DIFFERENT from ui.common.errors.desktop_refusal.transport_failed (\"The Local Operator server did not answer this request.\"): this key keeps the pane's pre-existing wording, which is also the machine sentinel's English, so the pane reads exactly as before; the other key is the sentence every other surface shows for the same refusal code. Both claim only that the request did not complete; translate each on its own terms and do not harmonise one onto the other."
 	}
 }

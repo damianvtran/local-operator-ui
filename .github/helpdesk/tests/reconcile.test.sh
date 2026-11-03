@@ -20,7 +20,8 @@
 # ready_for_review transition, the `check` subcommand including `--pr`
 # validation, and the step-summary table with its dispatch lead line and
 # bound notes. The workflow guards at the end scan the paired mention filter
-# and the temp-dir helpdesk surface (HELPDESK_WORKFLOW re-points them for the
+# and the temp-dir helpdesk surface, and both run-failure notice steps (one
+# comment per thread, PATCHed in place) — HELPDESK_WORKFLOW re-points them for the
 # RED demonstration).
 set -euo pipefail
 
@@ -1209,6 +1210,148 @@ for spec in \
   text="${spec#*|}"
   if mention_matches "$review_re" "$text"; then got="accept"; else got="reject"; fi
   check "mention guard: ${want}s '${text}'" "$want" "$got"
+done
+
+# --- failure notices: one comment per thread, updated in place -------------
+#
+# Both `Report a failed run` steps (review job, triage job) must find their
+# earlier notice and PATCH it instead of posting a new one — a failing run
+# repeats, and each fresh comment was pure noise. The steps' `run:` blocks are
+# extracted from the workflow verbatim and executed against a recording `gh`
+# stub, so the test exercises the shipped script, not a copy of it.
+
+# notice_step_script <workflow-file> <job-key>: prints the run: block of that
+# job's "Report a failed run" step, de-indented.
+notice_step_script() {
+  awk -v job="$2" '
+    /^  [A-Za-z0-9_-]+:$/ { cur = $1; sub(":", "", cur); in_step = 0; in_run = 0; next }
+    cur == job && /^      - name: Report a failed run$/ { in_step = 1; next }
+    in_step && /^      - / { in_step = 0; in_run = 0 }
+    in_step && /^        run: \|$/ { in_run = 1; next }
+    in_run {
+      if ($0 ~ /^ *$/) { print ""; next }
+      if ($0 !~ /^          /) { in_run = 0; in_step = 0; next }
+      print substr($0, 11)
+    }
+  ' "$1"
+}
+
+NOTICE_BIN="$tmp/notice-bin"
+NOTICE_DIR="$tmp/notice"
+mkdir -p "$NOTICE_BIN" "$NOTICE_DIR"
+cat > "$NOTICE_BIN/gh" <<'STUB'
+#!/usr/bin/env bash
+# Recording gh for the failure-notice steps: GET comments serves
+# $NOTICE_DIR/comments.json; POST/PATCH log "<verb> <path>" to calls.log and
+# copy the body file to body.md. Anything else fails loudly. Fault injection:
+# NOTICE_FAIL_GET=1 makes the list call print a non-JSON error page and exit 1
+# (a 502 mid-pagination); NOTICE_FAIL_PATCH=1 makes the edit exit 1 after
+# logging "PATCH <path> FAILED".
+set -euo pipefail
+dir="${NOTICE_DIR:?}"
+[ "${1:-}" = api ] || { echo "notice stub: unsupported: $*" >&2; exit 1; }
+shift
+verb=GET path="" body=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    -X) verb="$2"; shift 2 ;;
+    -F) body="${2#body=@}"; shift 2 ;;
+    --paginate) shift ;;
+    *) path="$1"; shift ;;
+  esac
+done
+case "$verb $path" in
+  "GET repos/example/repo/issues/"*/comments)
+    if [ "${NOTICE_FAIL_GET:-}" = 1 ]; then echo '<html>502 Bad Gateway</html>'; exit 1; fi
+    cat "$dir/comments.json"
+    ;;
+  "PATCH repos/example/repo/issues/comments/"*)
+    if [ "${NOTICE_FAIL_PATCH:-}" = 1 ]; then echo "$verb $path FAILED" >> "$dir/calls.log"; exit 1; fi
+    echo "$verb $path" >> "$dir/calls.log"
+    cp "$body" "$dir/body.md"
+    echo '{}'
+    ;;
+  "POST repos/example/repo/issues/"*/comments | "PATCH repos/example/repo/issues/comments/"*)
+    echo "$verb $path" >> "$dir/calls.log"
+    cp "$body" "$dir/body.md"
+    echo '{}'
+    ;;
+  *) echo "notice stub: unsupported api call: $verb $path" >&2; exit 1 ;;
+esac
+STUB
+chmod +x "$NOTICE_BIN/gh"
+
+# run_notice <job> <comments-json>: runs the step; prints the recorded calls.
+run_notice() {
+  rm -f "$NOTICE_DIR/calls.log" "$NOTICE_DIR/body.md"
+  printf '%s' "$2" > "$NOTICE_DIR/comments.json"
+  notice_step_script "$workflow_file" "$1" > "$NOTICE_DIR/step.sh"
+  (
+    export PATH="$NOTICE_BIN:$PATH" NOTICE_DIR RUNNER_TEMP="$NOTICE_DIR" \
+      GITHUB_SERVER_URL="https://github.com" GITHUB_REPOSITORY="example/repo" \
+      GITHUB_RUN_ID="4242" PR_NUMBER="7" ISSUE_NUMBER="9" MODE="verdict"
+    bash -euo pipefail "$NOTICE_DIR/step.sh"
+  ) || echo "STEP-FAILED"
+  cat "$NOTICE_DIR/calls.log" 2>/dev/null || true
+}
+
+bot='github-actions[bot]'
+review_h='### Sir Knight Lop the Second — verdict run failed'
+triage_h='### Sir Knight Lop the Second — triage run failed'
+
+for job in review triage; do
+  check "failure notice ($job): the step script is extractable from the workflow" "yes" \
+    "$([ -n "$(notice_step_script "$workflow_file" "$job")" ] && echo yes || echo no)"
+done
+
+num_for() { [ "$1" = review ] && echo 7 || echo 9; }
+for job in review triage; do
+  h="$review_h"; [ "$job" = triage ] && h="$triage_h"
+  n="$(num_for "$job")"
+
+  check "failure notice ($job): no earlier notice -> POST one" \
+    "POST repos/example/repo/issues/$n/comments" "$(run_notice "$job" '[]')"
+  contains "failure notice ($job): a new notice opens with the heading" "$(head -n 1 "$NOTICE_DIR/body.md")" "$h"
+  contains "failure notice ($job): a new notice counts one failure" "$(cat "$NOTICE_DIR/body.md")" "— 1 failure so far"
+  contains "failure notice ($job): a new notice links the run" "$(cat "$NOTICE_DIR/body.md")" "https://github.com/example/repo/actions/runs/4242"
+
+  # Pages arrive as separate arrays under --paginate; the notice is on page 2,
+  # and was written in the pre-count format (counts as one earlier failure).
+  pages="$(jq -nc --arg h "$h" --arg bot "$bot" '[{id: 1, user: {login: "someone"}, body: "hello"}], [{id: 55, user: {login: $bot}, body: ($h + "\n\nold notice. Run log: x")}]')"
+  check "failure notice ($job): an earlier notice (later page, old format) -> PATCH it, no POST" \
+    "PATCH repos/example/repo/issues/comments/55" "$(run_notice "$job" "$pages")"
+  contains "failure notice ($job): an old-format notice becomes the second failure" "$(cat "$NOTICE_DIR/body.md")" "— 2 failures so far"
+
+  counted="$(jq -nc --arg h "$h" --arg bot "$bot" '[{id: 60, user: {login: $bot}, body: ($h + "\n\nx\n\nLast failure: 2026-11-01T00:00:00Z — 5 failures so far (this notice is updated in place, not reposted).\n")}]')"
+  check "failure notice ($job): a counted notice -> PATCH it" \
+    "PATCH repos/example/repo/issues/comments/60" "$(run_notice "$job" "$counted")"
+  contains "failure notice ($job): the count increments" "$(cat "$NOTICE_DIR/body.md")" "— 6 failures so far"
+  contains "failure notice ($job): the timestamp is refreshed" "$(cat "$NOTICE_DIR/body.md")" "Last failure: $(date -u +%Y-%m-%d)T"
+
+  # A human quoting the heading, a different mode's heading, and the heading
+  # past the first line must all be left alone -> a fresh POST.
+  others="$(jq -nc --arg h "$h" --arg bot "$bot" '[
+    {id: 70, user: {login: "alice"}, body: ($h + "\n\nquoted")},
+    {id: 71, user: {login: $bot}, body: "### Sir Knight Lop the Second — review run failed-ish\n\nx"},
+    {id: 72, user: {login: $bot}, body: ("note\n" + $h)}]')"
+  check "failure notice ($job): human quotes, other headings and non-first-line headings are not matched" \
+    "POST repos/example/repo/issues/$n/comments" "$(run_notice "$job" "$others")"
+
+  # The lookup only picks PATCH vs POST; under -eo pipefail a failed list call
+  # or a non-JSON body must degrade to a POST, never abort before any write.
+  check "failure notice ($job): the comment list call fails -> still POST" \
+    "POST repos/example/repo/issues/$n/comments" "$(NOTICE_FAIL_GET=1 run_notice "$job" "$counted")"
+  contains "failure notice ($job): after a failed lookup the notice counts one failure" "$(cat "$NOTICE_DIR/body.md")" "— 1 failure so far"
+  check "failure notice ($job): the comment list is not JSON -> still POST" \
+    "POST repos/example/repo/issues/$n/comments" "$(run_notice "$job" '<html>oops</html>')"
+
+  # A failed edit falls back to a fresh notice with a warning annotation.
+  got="$(NOTICE_FAIL_PATCH=1 run_notice "$job" "$counted")"
+  check "failure notice ($job): the PATCH fails -> fall back to POST" \
+    "::warning::could not update the earlier failure notice; posting a new one
+PATCH repos/example/repo/issues/comments/60 FAILED
+POST repos/example/repo/issues/$n/comments" "$got"
+  contains "failure notice ($job): the fallback notice keeps the running count" "$(cat "$NOTICE_DIR/body.md")" "— 6 failures so far"
 done
 
 # ---------------------------------------------------------------------------

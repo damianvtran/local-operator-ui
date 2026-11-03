@@ -1,3 +1,4 @@
+import { desktopKeys } from "@shared/api/local-operator/desktop-hooks";
 import {
 	beginRadientAuthorityTransition,
 	radientUserKeys,
@@ -39,6 +40,7 @@ import type { OwnerAuditConversation } from "../../../../shared/team-bridge-owne
 import "../chat/components/story-electron-shim";
 import { useConversationInputStore } from "@shared/store/conversation-input-store";
 import { teamBridgeComposerKey } from "@shared/store/team-bridge-composer-rows";
+import agentPortrait from "../../assets/images/storybook-avatar-portrait.jpg";
 import profileImage from "../../assets/radient-icon-1024x1024.png";
 import { ChatLayout } from "../../shared/components/common/chat-layout";
 import { draftStorageKey, draftTargetKey } from "./team-bridge-drafts";
@@ -2311,16 +2313,27 @@ export const LegacyMemberLabelsAllOrganizations: Story = {
 function ProfileDirectoryStory({
 	avatarState,
 	longFields = false,
+	agentPicture = false,
 	...args
 }: ComponentProps<typeof TeamBridgePageView> & {
 	avatarState: "ready" | "loading" | "error" | "decode-error" | "empty";
 	longFields?: boolean;
+	/** Aida publishes her OWN picture (hub `agent.avatar_url`), served only
+	 * through the endpoint relay op — a distinct portrait from Bea's photo, so
+	 * a regression to the owner's face is unmistakable. */
+	agentPicture?: boolean;
 }) {
 	const [client] = useState(() => {
 		const value = new QueryClient({
 			defaultOptions: { queries: { retry: false } },
 		});
 		value.setQueryData(radientUserKeys.user(), { account: { id: self } });
+		// A core serving agent pictures: plates read them only when advertised.
+		if (agentPicture)
+			value.setQueryData(desktopKeys.capabilities, {
+				desktop_available: true,
+				features: { team_bridge_endpoint_avatar: 1 },
+			});
 		return value;
 	});
 	const [target, setTarget] = useState(args.target);
@@ -2330,6 +2343,19 @@ function ProfileDirectoryStory({
 		const media = async (
 			input: DesktopMediaRequest,
 		): Promise<DesktopMediaResponse> => {
+			if (
+				agentPicture &&
+				input.op === "team_bridge.endpoint_avatar" &&
+				input.endpointId === "ep_bea"
+			) {
+				const bytes = await (await fetch(agentPortrait)).arrayBuffer();
+				return {
+					status: 200,
+					kind: "bytes",
+					mimeType: "image/jpeg",
+					data: new Uint8Array(bytes),
+				};
+			}
 			if (input.op !== "team_bridge.avatar")
 				return {
 					status: 404,
@@ -2367,7 +2393,7 @@ function ProfileDirectoryStory({
 			beginRadientAuthorityTransition(client);
 			client.clear();
 		};
-	}, [avatarState, client]);
+	}, [agentPicture, avatarState, client]);
 	const people = directoryPeople.map((member) =>
 		member.account_id !== "acct_bea" || avatarState === "empty"
 			? {
@@ -2382,6 +2408,12 @@ function ProfileDirectoryStory({
 						name: "Aida",
 						endpoint_id: "ep_bea",
 						state: "active" as const,
+						...(agentPicture
+							? {
+									avatar_url:
+										"/v1/messaging/endpoints/ep_bea/avatar?v=a1a1a1a1a1a1a1a1",
+								}
+							: {}),
 					},
 					profile: {
 						display_name: "Bea",
@@ -3042,5 +3074,146 @@ export const LongContentRowsStayInColumn: Story = {
 				await expect(tb.right).toBeLessThanOrEqual(r.right + EDGE_TOLERANCE);
 			}
 		}
+	},
+};
+
+/*
+ * AN AGENT NEVER WEARS ITS OWNER'S FACE (2026-10-30). Bea has a real photo,
+ * and her chief of staff "Aida" rides on the same directory row. Before the
+ * fix every Aida surface showed Bea's photo, because the plate looked the
+ * picture up by the owner's account id. These boards show each surface with
+ * the photo READY, so a regression shows Bea's face where the Bot glyph
+ * belongs. Bea's own (human) plate is the control: it must still show her
+ * photo.
+ */
+const agentAvatarChannel: TeamBridgeConversation = {
+	...channel,
+	members: [
+		...channel.members.map((member) =>
+			member.account_id === "acct_bea"
+				? { ...member, account_id: "acc_bea" }
+				: member,
+		),
+		{
+			account_id: "acc_bea",
+			kind: "agent",
+			display_label: "Aida",
+			role: "member",
+			state: "active",
+		},
+	],
+};
+const agentAvatarArgs = {
+	...profileArgs,
+	conversations: [agentAvatarChannel, profileArgs.conversations[0]],
+	target: { type: "conversation" as const, id: agentAvatarChannel.id },
+	messages: [
+		{
+			...messages[0],
+			id: "agent-avatar-human",
+			conversation_id: agentAvatarChannel.id,
+			sender: {
+				account_id: "acc_bea",
+				kind: "human" as const,
+				display_label: "Bea",
+			},
+			body: "Aida, can you summarise the launch checklist?",
+		},
+		{
+			...messages[1],
+			id: "agent-avatar-agent",
+			conversation_id: agentAvatarChannel.id,
+			seq: 2,
+			sender: {
+				account_id: "acc_bea",
+				kind: "agent" as const,
+				display_label: "Aida",
+			},
+			body: "Two items remain open: the pricing copy and the status page.",
+		},
+	],
+};
+export const AgentAvatarMessages: Story = {
+	args: agentAvatarArgs,
+	render: (args) => <ProfileDirectoryStory {...args} avatarState="ready" />,
+};
+export const AgentAvatarProfileCard: Story = {
+	args: agentAvatarArgs,
+	render: (args) => <ProfileDirectoryStory {...args} avatarState="ready" />,
+	play: async ({ canvasElement }) => {
+		const row = canvasElement.querySelector(
+			'[data-message-id="agent-avatar-agent"]',
+		);
+		const trigger = row?.querySelector<HTMLButtonElement>("button");
+		if (!trigger) throw new Error("Agent message avatar missing");
+		trigger.focus();
+		await within(canvasElement.ownerDocument.body).findByRole("dialog");
+	},
+};
+export const AgentAvatarMembersDialog: Story = {
+	args: { ...agentAvatarArgs, initialMembersOpen: true },
+	render: (args) => <ProfileDirectoryStory {...args} avatarState="ready" />,
+};
+export const AgentAvatarChiefDraft: Story = {
+	args: {
+		...agentAvatarArgs,
+		target: { type: "chief" as const, accountId: "acc_bea" },
+		messages: [],
+		messageState: "idle" as const,
+	},
+	render: (args) => <ProfileDirectoryStory {...args} avatarState="ready" />,
+};
+export const AgentAvatarComposeChips: Story = {
+	args: {
+		...agentAvatarArgs,
+		target: {
+			type: "compose" as const,
+			recipients: [
+				{
+					kind: "agent" as const,
+					accountId: "acc_bea",
+					endpointId: "ep_bea",
+					label: "Aida (Bea)",
+				},
+			],
+		},
+		messages: [],
+		messageState: "idle" as const,
+	},
+	render: (args) => <ProfileDirectoryStory {...args} avatarState="ready" />,
+	play: async ({ canvasElement }) => {
+		const field = within(canvasElement).getByRole("combobox");
+		field.focus();
+	},
+};
+
+/*
+ * AN AGENT WEARS ITS OWN PICTURE (2026-10-31). The same boards with Aida's
+ * hub-published picture (`agent.avatar_url`, read through the endpoint relay):
+ * every Aida surface shows HER portrait with the agent mark painted over it,
+ * and Bea's own plate still shows Bea's photo. Before this change these were
+ * the Bot glyph, by design, because no endpoint relay existed.
+ */
+const agentPictureRender = (
+	args: ComponentProps<typeof TeamBridgePageView>,
+) => <ProfileDirectoryStory {...args} avatarState="ready" agentPicture />;
+export const AgentOwnPictureMessages: Story = {
+	args: agentAvatarArgs,
+	render: agentPictureRender,
+};
+export const AgentOwnPictureProfileCard: Story = {
+	...AgentAvatarProfileCard,
+	render: agentPictureRender,
+};
+export const AgentOwnPictureMembersDialog: Story = {
+	...AgentAvatarMembersDialog,
+	render: agentPictureRender,
+};
+export const AgentOwnPictureMention: Story = {
+	args: agentAvatarArgs,
+	render: agentPictureRender,
+	play: async ({ canvasElement }) => {
+		const field = await within(canvasElement).findByRole("combobox");
+		await userEvent.type(field, "@Ai");
 	},
 };

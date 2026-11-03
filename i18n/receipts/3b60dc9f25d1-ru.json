@@ -1,0 +1,88 @@
+{
+  "schema": 1,
+  "auditor": "i18n-auditor (independent lopdev task 'UI #1604 i18n delta round 2', session 3b60dc9f25d1)",
+  "model": "anthropic/claude-opus-5-5",
+  "model_provenance": "Whole audit (source reads, semantic review, structural probe, receipt writing) ran on this session's announced model anthropic/claude-opus-5-5. No fallback or model switch was observed during this session.",
+  "instance": "3b60dc9f25d1-ru",
+  "audit_session": "3b60dc9f25d1",
+  "locale": "ru",
+  "namespace": "ui.mesh",
+  "date": "2026-11-02",
+  "scope": "Translation delta round 2 of f0c3a0ef26c..7c766326b39 (PR #1604 translation remediation round 2). All 1 changed ui.mesh value(s) in this locale read in final bytes against unchanged English and context. Neighbouring approval-card consent lines re-read for term consistency. Unchanged values retain their earlier audits.",
+  "audited_head": "7c766326b3916aafe2dd5c0f77a430073b77aae4",
+  "delta_base": "f0c3a0ef26c5b4fcd86a59fdf07088a7a14988c8",
+  "status": "passed",
+  "sha256": {
+    "en": "edf18f0d32404972428c4bfcc107f835d170df6e2f6c800d10681d1a1e6e4fd1",
+    "ru": "55a359112656f0458efb0f76edf5a073ea0fb962b43afbc9f4e58119b57f0f49"
+  },
+  "base_sha256": {
+    "en": "edf18f0d32404972428c4bfcc107f835d170df6e2f6c800d10681d1a1e6e4fd1",
+    "ru": "05807a7096b1873270b13291fa392ff64b77f1568dc72e06aec4c0cd50ec6098"
+  },
+  "findings": [],
+  "observations": [
+    {
+      "severity": "INFO",
+      "key": "ui.mesh.mesh_approvals.borrow_logins_there",
+      "verbatim": "Out of delta scope, unchanged since earlier audits, not counted: ui.mesh.mesh_approvals.borrow_logins_there / borrow_the_logins_stored_there render 'borrow' as 'использовать входы в учётные записи'. Not a consent line on the approval card; recorded only so the next ui.mesh pass can decide whether to align it with заимствовать."
+    }
+  ],
+  "changed_keys": [
+    "ui.mesh.approval.scope_session"
+  ],
+  "verbatim_values": {
+    "ui.mesh.approval.scope_session": "Сессии на {device} могут заимствовать этот вход с доступом, привязанным к каждой сессии."
+  },
+  "base_values": {
+    "ui.mesh.approval.scope_session": "Сессии на {device} могут использовать этот логин с доступом, привязанным к каждой сессии."
+  },
+  "english_values": {
+    "ui.mesh.approval.scope_session": "Sessions on {device} can borrow this login with session-bound access."
+  },
+  "context_sidecar": {
+    "path": "src/i18n/catalogues/en/ui.mesh.context.json",
+    "sha256": "79b22ab6e83a0d8675409f9673a452928b77cee22e47c52930ea0c2127f269f5",
+    "read": "scope_session note (each session borrows with grants bound to the individual incoming session; NOT restricted to the requesting session) and file_key_disclosure note (REQUIRED disclosure; cannot prove a person made it; keep Touch ID) read in full. Byte-identical to delta base."
+  },
+  "standards": {
+    "root": "~/local-operator/i18n at origin/main bb45297811c (read with git show origin/main:)",
+    "sha256": {
+      "glossary.md": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+      "style-guides/ru.md": "f20e1cafaf70578c17ce072c71725628808d228e4be5604329f8da30386f1fb5"
+    }
+  },
+  "translator": {
+    "agent": "coder",
+    "jobs": [
+      "job07291411b980",
+      "c61a64298a45",
+      "21ddee198f0b",
+      "d82369d8e233"
+    ],
+    "remediation_commit": "7c766326b3916aafe2dd5c0f77a430073b77aae4",
+    "attribution": "Translator/remediation coder runs named by the manager; their served model is not verified by this auditor."
+  },
+  "independence": "This session (3b60dc9f25d1) authored no catalogue value. It is distinct from the translator/coder runs 07291411b980/c61a64298a45/21ddee198f0b/d82369d8e233 and from earlier auditors 0a40e337218a, 38d28c8fb9bf, 4cb156711482 (receipts f89f59f896f1), e4d4705aa898. Prior audit comments 6589736157 and 6589592813 were read for the finding IDs only; the verdict comes from reading final bytes here.",
+  "prior_findings_verified": [
+    "TA3A-RU-01",
+    "TA3A-RU-02",
+    "TB-RU-01"
+  ],
+  "semantic_checks": [
+    "ui.mesh.approval.scope_session: Meaning matches English exactly: sessions (plural) on {device} may borrow ('заимствовать', the needs_broker term) this login ('этот вход', the namespace term used in head_finite_share/not_copied/needs_broker) with access bound to each session. The username-ambiguous 'логин' is gone (0 occurrences in ru ui.mesh at head). Glossary 'сессия' inflected correctly (Сессии / каждой сессии). TA3A-RU-01 / TA3A-RU-02 / TB-RU-01 resolved.",
+    "Security-consent equivalence: no changed value reverses, omits or widens a consent consequence; {device} preserved; scope_device and scope_session remain distinguishable."
+  ],
+  "evidence": {
+    "probe": "i18n/receipts/3b60dc9f25d1-structural-probe.mjs.txt",
+    "probe_sha256": "6d9845d5d7e41dba07a5fa9a48975f090874867260026d5f989ccb3a9eabca74",
+    "log": "i18n/receipts/3b60dc9f25d1-structural-probe-output.txt",
+    "log_sha256": "03580dd4ba7fbf084a0a97dd71d726885bbba2978e63bd806a66038bc9b44dda",
+    "verdict_location": "Status, findings and semantic_checks here are the auditor's review record. The companion log is the actual probe output: key-level base/head diff, ICU argument parity with English, brace balance, NFC, bidi controls and fr U+202F."
+  },
+  "non_claims": [
+    "No rendered/compiled-native, width/fit, pseudo-localization, font shaping or visual validation (host memory hold).",
+    "No translation edits by this auditor."
+  ],
+  "notes": "Translation delta round 2 on PR #1604 head 7c76632: passed, 0 blocker/major/minor/nit."
+}

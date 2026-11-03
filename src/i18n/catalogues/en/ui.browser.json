@@ -245,5 +245,6 @@
 	"ui.browser.webauthn_chooser.the_choice_did_not_name_a_passkey": "The choice did not name a passkey this site offered, so the request was cancelled. Try again from the site.",
 	"ui.browser.webauthn_chooser.the_site_stored_no_name_for_this": "The site stored no name for this passkey.",
 	"ui.browser.webauthn_chooser.this_passkey_request_expired": "This passkey request expired",
-	"ui.browser.webauthn_chooser.this_passkey_request_was_cancelled": "This passkey request was cancelled"
+	"ui.browser.webauthn_chooser.this_passkey_request_was_cancelled": "This passkey request was cancelled",
+	"ui.browser.browser_url_bar.reload_shortcut": "Reload ({shortcut})"
 }

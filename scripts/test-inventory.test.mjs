@@ -38,12 +38,16 @@ import { inventory } from "./desktop-test-shards.mjs";
  * gate through `inventory()` anyway (R1-2).
  */
 
-/** Every `scripts/**\/*.test.mjs`, by a route deliberately unlike the planner's. */
+/** Scripts plus main's colocated registration, independent of the planner. */
 function treeTestFiles() {
-	return readdirSync("scripts", { recursive: true })
-		.map((name) => `scripts/${name.split("\\").join("/")}`)
-		.filter((path) => path.endsWith(".test.mjs"))
-		.sort();
+	return [
+		...readdirSync("scripts", { recursive: true })
+			.map((name) => `scripts/${name.split("\\").join("/")}`)
+			.filter((path) => path.endsWith(".test.mjs")),
+		// An independent pin for main's pre-existing colocated desktop suite:
+		// importing EXTERNAL_TESTS here would hide its accidental removal.
+		"src/renderer/src/features/team-bridge/mentions/mention-draft-restore.test.mjs",
+	].sort();
 }
 
 test("every scripts/**/*.test.mjs is run by test:desktop or exempt with a reason", () => {

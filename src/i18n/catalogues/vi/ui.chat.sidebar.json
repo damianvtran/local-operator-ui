@@ -58,5 +58,9 @@
 	"ui.chat.sidebar.row_menu.archive": "Lưu trữ cuộc trò chuyện",
 	"ui.chat.sidebar.row_menu.pin": "Ghim cuộc trò chuyện",
 	"ui.chat.sidebar.row_menu.unarchive": "Khôi phục cuộc trò chuyện",
-	"ui.chat.sidebar.row_menu.unpin": "Bỏ ghim cuộc trò chuyện"
+	"ui.chat.sidebar.row_menu.unpin": "Bỏ ghim cuộc trò chuyện",
+	"ui.chat.sidebar.agents.list_join": "{position, select, pair {{head} và {tail}} middle {{head}, {tail}} other {{head} và {tail}}}",
+	"ui.chat.sidebar.row.open_draft": "Mở {label}",
+	"ui.chat.sidebar.entity.more_in": "{label} trong {name}",
+	"ui.chat.sidebar.search.count_tooltip": "{clipped, select, yes {Ít nhất } other {}}{count, plural, other {{count_display} cuộc trò chuyện}} khớp với tìm kiếm này{clipped, select, yes {; danh sách dừng ở đó} other {}}"
 }

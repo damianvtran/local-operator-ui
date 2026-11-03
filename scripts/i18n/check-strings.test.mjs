@@ -9,6 +9,7 @@ import {
 	ALLOWLIST,
 	BASELINE,
 	BASELINE_NOTE,
+	COPY_ATTRIBUTES,
 	allowlistReason,
 	countsOf,
 	failureSummary,
@@ -39,7 +40,12 @@ import {
 const REPO = new URL("../..", import.meta.url).pathname;
 const FIXTURE = "scripts/i18n/fixtures/scan/violations.tsx";
 
-const fixtureApi = openSnapshot(REPO, [join(REPO, FIXTURE)]);
+const PROPS_FIXTURE = "scripts/i18n/fixtures/scan/props.tsx";
+
+const fixtureApi = openSnapshot(REPO, [
+	join(REPO, FIXTURE),
+	join(REPO, PROPS_FIXTURE),
+]);
 after(() => {
 	fixtureApi.api.close();
 });
@@ -49,6 +55,13 @@ function fixtureFindings() {
 		extraScan: [FIXTURE],
 	});
 	return scanned.get(FIXTURE) ?? [];
+}
+
+function propsFindings() {
+	const scanned = scanSnapshot(fixtureApi.snapshot, REPO, {
+		extraScan: [PROPS_FIXTURE],
+	});
+	return scanned.get(PROPS_FIXTURE) ?? [];
 }
 
 /**
@@ -148,6 +161,99 @@ test("the fixture's exempt shapes stay unflagged", () => {
 	);
 	// ...and an expression-valued copy attribute is not a literal.
 	assert.ok(!texts.some((text) => text === "Expression" || text === "Copy"));
+});
+
+/*
+ * THE PROSE-CARRYING PROPS. The scanner used to count only the four native
+ * attributes, so `<Tooltip content="View options">` and `label="Run details"`
+ * were invisible and the baseline read `files: {}` while a locale switch still
+ * left English in tooltips, panels and field labels. Every prop in
+ * `COPY_ATTRIBUTES` must now fail on a literal and pass once keyed; the
+ * fixture carries both spellings of every one, so adding a name to the set
+ * without a fixture row (or the reverse) fails the first assertion below.
+ */
+const PROSE_PROPS = [
+	"label",
+	"content",
+	"description",
+	"closeLabel",
+	"busyLabel",
+	"titleText",
+	"helperText",
+	"saveLabel",
+	"dirtyHint",
+	"text",
+	"verb",
+	"summary",
+	"ariaLabel",
+	"actionLabel",
+	"pendingLabel",
+	"blockedReason",
+	"empty",
+	"emptyText",
+	"header",
+	"hint",
+	"listNotice",
+	"meaning",
+	"what",
+	"srLabel",
+	"triggerLabel",
+];
+
+test("COPY_ATTRIBUTES is exactly the four native attributes plus the fixture's prose props", () => {
+	assert.deepEqual(
+		[...COPY_ATTRIBUTES].sort(),
+		["aria-label", "placeholder", "title", "alt", ...PROSE_PROPS].sort(),
+	);
+});
+
+test("every prose prop FAILS on a literal and passes once keyed", () => {
+	const found = propsFindings();
+	for (const prop of PROSE_PROPS) {
+		const literal = found.filter(
+			(finding) => finding.text === `Literal ${prop}`,
+		);
+		assert.equal(
+			literal.length,
+			1,
+			`${prop}: literal not flagged exactly once`,
+		);
+		assert.equal(literal[0].kind, `attribute:${prop}`);
+		// The keyed spelling yields no finding: `t("ui.fixture.<prop>")` is a call,
+		// so it exposes no static text, and nothing else on its line is copy.
+		assert.ok(
+			!found.some((finding) => finding.text.includes(`ui.fixture.${prop}`)),
+			`${prop}: a keyed site was flagged`,
+		);
+	}
+});
+
+test("expression-valued copy is counted per literal piece; calls, identifiers, digits and punctuation are not", () => {
+	const texts = propsFindings().map((finding) => finding.text);
+	for (const expected of [
+		"Conditional arm A",
+		"Conditional arm B",
+		"Template span",
+		"Fallback prose",
+		"Concatenated",
+		"Guarded prose",
+	]) {
+		assert.ok(texts.includes(expected), `${expected} was not counted`);
+	}
+	// 25 literals + 6 expression pieces: nothing else in the fixture is copy.
+	assert.equal(texts.length, PROSE_PROPS.length + 6);
+	assert.ok(!texts.includes("exempt-token"), "a reasoned pragma still exempts");
+	assert.ok(!texts.some((text) => text.startsWith("ui.fixture.")));
+});
+
+test("the props fixture fails an unbaselined run and passes once every literal is keyed", () => {
+	const failing = runCheck({
+		repo: REPO,
+		extraScan: [PROPS_FIXTURE],
+		baseline: { files: {}, note: "" },
+	});
+	assert.equal(failing.counts[PROPS_FIXTURE], PROSE_PROPS.length + 6);
+	assert.equal(failing.failures.length, 1);
 });
 
 test("an allowlist entry needs a reason and matches exact paths or prefixes", () => {

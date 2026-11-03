@@ -13,6 +13,7 @@ import {
 	mkdtempSync,
 	readFileSync,
 	rmSync,
+	statSync,
 	writeFileSync,
 } from "node:fs";
 import { createRequire } from "node:module";
@@ -51,7 +52,8 @@ const step = (job, name) => steps(job).find((s) => s.name === name);
  * `cachedDataRejected`. Each architecture now builds in its own pass.
  *
  * Every invariant these tests assert — signing forced, no NOTARIZE/CSC_LINK in
- * the step env, no entitlements or profile overrides on the command line — has
+ * the step env, the rendered entitlements and the profile on the MAIN
+ * executable only (never `entitlementsInherit`) — has
  * to hold for EACH pass, so the helper returns all of them and the assertions
  * iterate. A test that kept naming one step would silently stop covering the
  * other one the day a third arch is added.
@@ -584,8 +586,23 @@ test("mac signing uses imported keychain without CSC_LINK, keeps notarization", 
 	for (const mac of macSteps) {
 		assert.ok(!("NOTARIZE" in mac.env), mac.name);
 		assert.ok(!("CSC_LINK" in mac.env), mac.name);
-		for (const key of ["APPLE_ID", "APPLE_ID_PASSWORD", "APPLE_TEAM_ID"])
+		// Notarization is the App Store Connect API key: the key id and issuer
+		// read the same secrets the preflight checks, and APPLE_API_KEY is the
+		// path the staging step decoded the .p8 to.
+		for (const key of ["APPLE_API_KEY_ID", "APPLE_API_ISSUER"])
 			assert.equal(mac.env[key], preflight.env[key], `${mac.name}: ${key}`);
+		assert.equal(
+			mac.env.APPLE_API_KEY,
+			"${{ runner.temp }}/notary/AuthKey.p8",
+			mac.name,
+		);
+		assert.equal(
+			mac.env.CSC_KEY_PASSWORD,
+			preflight.env.MACOS_DEVID_APP_P12_PASSWORD,
+			`${mac.name}: the p12 password is the organization identity's`,
+		);
+		for (const retired of ["APPLE_ID", "APPLE_ID_PASSWORD"])
+			assert.ok(!(retired in mac.env), `${mac.name}: ${retired}`);
 	}
 	const setup = step("build-macos", "Setup code signing").run;
 	assert.match(setup, /CSC_KEYCHAIN=\"\$RUNNER_TEMP\/build.keychain-db\"/);
@@ -597,68 +614,179 @@ test("mac signing uses imported keychain without CSC_LINK, keeps notarization", 
 	for (const job of ["build-windows", "build-linux"])
 		assert.ok(!JSON.stringify(jobs[job]).includes("forceCodeSigning"));
 });
-test("the macOS app is codesigned with the committed, group-free entitlements plist", () => {
+test("passkeys are wired: profile and rendered entitlements reach the MAIN executable only", () => {
 	/*
-	 * WHY THIS SHAPE, and what it replaced. The build used to render
-	 * `build/entitlements.mac.plist` plus the WebAuthn access group into
-	 * `$RUNNER_TEMP` and pass that file to BOTH `-c.mac.entitlements` and
-	 * `-c.mac.entitlementsInherit` (`entitlementsInherit` is what gave the group to
-	 * the helpers and ShipIt). The group is a RESTRICTED entitlement that needs a
-	 * provisioning profile behind it (Apple TN3125), no profile secret exists, and
-	 * v0.29.6 shipped exactly that — so macOS refused to spawn every executable in
-	 * the bundle and the app could never be launched, while codesign, spctl and
-	 * stapler all passed.
+	 * WHY THIS SHAPE, and what it replaced. 0.29.6 rendered
+	 * `build/entitlements.mac.plist` plus the WebAuthn access group and passed it
+	 * to BOTH `-c.mac.entitlements` and `-c.mac.entitlementsInherit` with no
+	 * provisioning profile. The group is a RESTRICTED entitlement (Apple TN3125),
+	 * so macOS refused to spawn every executable in the bundle — helpers and
+	 * ShipIt included — while codesign, spctl and stapler all passed. The release
+	 * path then shipped group-free until a profile existed.
 	 *
-	 * So the assertion is now the inverse: nothing in this job overrides the
-	 * entitlements, no secret-bearing plist reaches the build, and the committed
-	 * plist carries no group. Re-enabling passkeys is one secret wide and is
-	 * documented in the step's own comment rather than wired half-built — which is
-	 * why `provisioningProfile` is asserted ABSENT here.
+	 * The Radient Inc. organization's Developer ID profile now exists, so the
+	 * documented "one secret wide" path is wired, and this asserts each part of
+	 * it: the profile is decoded and the plist rendered WITH it (the renderer
+	 * refuses unless the profile authorizes every claim) BEFORE either pass; both
+	 * passes hand the profile and the rendered plist to the main executable; and
+	 * nothing ever overrides `entitlementsInherit`, which stays the committed,
+	 * group-free plist from package.json.
 	 */
-	const macSteps = steps("build-macos").map((s) => s.name);
-	assert.ok(
-		!macSteps.includes("Render the macOS entitlements plist"),
-		"no entitlements render step runs in the release path",
+	const macSteps = steps("build-macos");
+	const stageIndex = macSteps.findIndex(
+		(s) =>
+			s.name ===
+			"Stage the provisioning profile, entitlements and notarization key",
 	);
-	assert.doesNotMatch(
-		JSON.stringify(jobs["build-macos"]),
-		/ENTITLEMENTS_PLIST/,
-		"no rendered plist path reaches the build",
+	assert.notEqual(stageIndex, -1, "the staging step exists");
+	const stage = macSteps[stageIndex];
+	assert.equal(
+		stage.env.MACOS_APP_PROFILE_BASE64,
+		"${{ secrets.MACOS_APP_PROFILE_BASE64 }}",
+	);
+	assert.match(
+		stage.run,
+		/node scripts\/render-mac-entitlements\.mjs --out "\$RUNNER_TEMP\/entitlements\.mac\.rendered\.plist" --profile "\$RUNNER_TEMP\/embedded\.provisionprofile"/,
 	);
 	for (const build of macBuildSteps()) {
-		assert.doesNotMatch(
+		assert.ok(
+			macSteps.indexOf(build) > stageIndex,
+			`${build.name} runs after the profile is staged`,
+		);
+		assert.match(
 			build.run,
-			/mac\.entitlements/,
-			`${build.name}: the entitlements config stays at its committed value`,
+			/-c\.mac\.provisioningProfile="\$RUNNER_TEMP\/embedded\.provisionprofile"/,
+			`${build.name}: the profile is embedded`,
+		);
+		assert.match(
+			build.run,
+			/-c\.mac\.entitlements="\$RUNNER_TEMP\/entitlements\.mac\.rendered\.plist"/,
+			`${build.name}: the main executable gets the rendered plist`,
 		);
 		assert.doesNotMatch(
 			build.run,
-			/mac\.provisioningProfile/,
-			`${build.name}: the profile path is documented, not wired: a dormant branch that has never had its secret is a behaviour nobody can test`,
+			/entitlementsInherit/,
+			`${build.name}: helpers and ShipIt keep the committed, group-free plist — a group there is the 0.29.6 brick`,
 		);
 	}
-	// The committed plist stays secret-free and carries no group: every local build
-	// signs with it, and a group there would be a team id in the repository plus a
-	// signature no developer's identity can honour.
+	// package.json's inherit plist is the committed one, and it stays
+	// secret-free and group-free: every helper is signed with it.
+	assert.equal(
+		pkg.build.mac.entitlementsInherit,
+		"build/entitlements.mac.plist",
+	);
 	const committed = readFileSync(
 		new URL("../build/entitlements.mac.plist", import.meta.url),
 		"utf8",
 	);
 	assert.doesNotMatch(committed, /keychain-access-groups/);
+	assert.doesNotMatch(committed, /application-identifier|team-identifier/);
 	for (const job of ["build-windows", "build-linux"])
-		assert.ok(!JSON.stringify(jobs[job]).includes("ENTITLEMENTS_PLIST"));
+		assert.doesNotMatch(
+			JSON.stringify(jobs[job]),
+			/provisionprofile|render-mac-entitlements/,
+		);
 });
+test("the notarization key is decoded owner-only, never echoed, and removed whatever happens", () => {
+	const macSteps = steps("build-macos");
+	const stage = step(
+		"build-macos",
+		"Stage the provisioning profile, entitlements and notarization key",
+	);
+	assert.equal(
+		stage.env.APPLE_API_KEY_P8_BASE64,
+		"${{ secrets.APPLE_API_KEY_P8_BASE64 }}",
+	);
+	assert.match(stage.run, /^umask 077$/m);
+	assert.match(
+		stage.run,
+		/base64 --decode > "\$RUNNER_TEMP\/notary\/AuthKey\.p8"/,
+	);
+	assert.doesNotMatch(stage.run, /\b(echo|cat)\b[^\n]*(P8|AuthKey|PROFILE)/);
+	const cleanup = macSteps.at(-1);
+	assert.equal(cleanup.name, "Remove the notarization key");
+	assert.equal(cleanup.if, "always()");
+	assert.match(cleanup.run, /rm -rf "\$RUNNER_TEMP\/notary"/);
+	// Only the steps that notarize see the key path.
+	const bound = macSteps
+		.filter((s) => s.env && "APPLE_API_KEY" in s.env)
+		.map((s) => s.name);
+	assert.deepEqual(bound, [
+		...macBuildSteps().map((s) => s.name),
+		"Notarize and staple the disk images",
+	]);
+});
+test("the staging shell decodes, refuses an empty decode, and runs the renderer", () =>
+	sandbox((dir) => {
+		// The real step body with `node` stubbed: what is asserted is the file
+		// handling around the renderer (owner-only key, empty-decode refusal),
+		// which the renderer's own tests do not cover.
+		mkdirSync(join(dir, "bin"));
+		writeFileSync(
+			join(dir, "bin", "node"),
+			`#!/bin/sh\necho "NODE $*" >> "${join(dir, "calls")}"\n`,
+			{ mode: 0o755 },
+		);
+		const run = step(
+			"build-macos",
+			"Stage the provisioning profile, entitlements and notarization key",
+		).run;
+		const env = {
+			PATH: `${join(dir, "bin")}:${process.env.PATH}`,
+			RUNNER_TEMP: dir,
+			APPLE_API_KEY_P8_BASE64: Buffer.from("fixture-p8").toString("base64"),
+			MACOS_APP_PROFILE_BASE64:
+				Buffer.from("fixture-profile").toString("base64"),
+			APPLE_TEAM_ID: "AB12CD34EF",
+		};
+		const ok = shell(run, env, dir);
+		assert.equal(ok.status, 0, ok.stderr);
+		assert.doesNotMatch(ok.stdout + ok.stderr, /fixture-p8|fixture-profile/);
+		const key = join(dir, "notary", "AuthKey.p8");
+		assert.equal(readFileSync(key, "utf8"), "fixture-p8");
+		assert.equal(statSync(key).mode & 0o777, 0o600, "the key is owner-only");
+		assert.equal(
+			statSync(join(dir, "embedded.provisionprofile")).mode & 0o777,
+			0o644,
+			"the profile osx-sign copies into the bundle is world-readable",
+		);
+		assert.match(
+			readFileSync(join(dir, "calls"), "utf8"),
+			/render-mac-entitlements\.mjs/,
+		);
+		rmSync(join(dir, "notary"), { recursive: true, force: true });
+		rmSync(join(dir, "calls"), { force: true });
+		// A misbound (empty) secret stops the step before the renderer runs.
+		const empty = shell(run, { ...env, MACOS_APP_PROFILE_BASE64: "" }, dir);
+		assert.notEqual(empty.status, 0);
+		assert.ok(!existsSync(join(dir, "calls")), "the renderer did not run");
+	}));
 test("keychain password is generated per job, masked, and never a repository dependency", () => {
 	assert.ok(!("KEYCHAIN_PASSWORD" in preflight.env));
 	assert.doesNotMatch(preflight.run, /KEYCHAIN_PASSWORD/);
 	assert.doesNotMatch(JSON.stringify(workflow), /secrets\.KEYCHAIN_PASSWORD/);
 	assert.deepEqual(Object.keys(preflight.env).sort(), [
-		"APPLE_ID",
-		"APPLE_ID_PASSWORD",
+		"APPLE_API_ISSUER",
+		"APPLE_API_KEY_ID",
+		"APPLE_API_KEY_P8_BASE64",
 		"APPLE_TEAM_ID",
-		"CSC_CONTENT",
-		"CSC_KEY_PASSWORD",
+		"MACOS_APP_PROFILE_BASE64",
+		"MACOS_DEVID_APP_P12_BASE64",
+		"MACOS_DEVID_APP_P12_PASSWORD",
 	]);
+	// The env names are the secret names, so a missing one is reported as the
+	// secret to set.
+	for (const [name, value] of Object.entries(preflight.env))
+		assert.equal(value, `\${{ secrets.${name} }}`, name);
+	const keychainStep = step("build-macos", "Setup code signing");
+	assert.equal(
+		keychainStep.env.CSC_CONTENT,
+		"${{ secrets.MACOS_DEVID_APP_P12_BASE64 }}",
+	);
+	assert.equal(
+		keychainStep.env.CSC_KEY_PASSWORD,
+		"${{ secrets.MACOS_DEVID_APP_P12_PASSWORD }}",
+	);
 	const setup = step("build-macos", "Setup code signing");
 	assert.ok(!("KEYCHAIN_PASSWORD" in setup.env));
 	assert.match(setup.run, /KEYCHAIN_PASSWORD="\$\(openssl rand -hex 32\)"/);
@@ -854,6 +982,21 @@ test("actual pnpm forwarding and electron-builder parser enforce signing", async
 			shouldForce,
 			JSON.stringify({ args, options }),
 		);
+		if (shouldForce) {
+			// The passkey overrides survive pnpm's forwarding and the real parser
+			// as the MAIN executable's config, and nothing reaches the inherit plist.
+			assert.match(
+				String(options.config?.mac?.provisioningProfile),
+				/\/embedded\.provisionprofile$/,
+				JSON.stringify(args),
+			);
+			assert.match(
+				String(options.config?.mac?.entitlements),
+				/\/entitlements\.mac\.rendered\.plist$/,
+				JSON.stringify(args),
+			);
+			assert.equal(options.config?.mac?.entitlementsInherit, undefined);
+		}
 		console.log(
 			`ACTUAL ${command}: argv=${JSON.stringify(args)} forceCodeSigning=${options.config?.forceCodeSigning}`,
 		);

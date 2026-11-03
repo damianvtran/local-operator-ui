@@ -73,6 +73,9 @@ export const METHODS = [
 	"screenshot",
 	"click",
 	"type",
+	// Trusted desktop key input; the core mirror must add this at the same
+	// position because this list is the closed admission gate, not discovery.
+	"press",
 	"close",
 	"status",
 	"tabs",
@@ -115,6 +118,21 @@ export const METHODS = [
 	"network_stop",
 	"network_read",
 	"network_clear",
+	// Desktop-only video recording. Appended after the network family in the order
+	// `protocol.py`'s METHODS tuple carries them, so the hand-kept mirror stays
+	// comparable by eye (D8).
+	"record_start",
+	"record_stop",
+	// Pointer-move without a press (hover-revealed menus, row actions, tooltips).
+	// APPENDED here so no existing method's index moves on this host. The Python
+	// mirror (`protocol.py`, local-operator#3326) places it right after `press`
+	// instead: the lists are NOT byte-comparable at this entry, and the wire is by
+	// NAME, so `isMethod` admits it either way. Hosts advertise it in
+	// HOST_CAPABILITIES (beside `press`), which is what lets the harness refuse it
+	// on an app that predates it instead of sending an unknown method.
+	"hover",
+	// DOM/native and page-owned ARIA selection; never an OS popup.
+	"select",
 ] as const;
 
 export type Method = (typeof METHODS)[number];
@@ -143,6 +161,10 @@ export const COMMAND_TIMEOUTS_S: Record<Method, number> = {
 	goto: 30.0,
 	click: 25.0,
 	type: 25.0,
+	press: 25.0,
+	// A pointer move plus a short settle: no navigation, no wait on the page.
+	hover: 20.0,
+	select: 25.0,
 	read: 20.0,
 	snapshot: 20.0,
 	screenshot: 20.0,
@@ -175,6 +197,12 @@ export const COMMAND_TIMEOUTS_S: Record<Method, number> = {
 	network_stop: 20.0,
 	network_read: 20.0,
 	network_clear: 20.0,
+	// `record_start` covers the attach plus the encoder utility process launch.
+	// `record_stop` is the host's 45 s stop budget with the answer's room on top
+	// (D8): the client timeout derives from this table, so this is the only place
+	// the nesting lives.
+	record_start: 20.0,
+	record_stop: 60.0,
 };
 
 /**
@@ -212,6 +240,9 @@ export const ERROR_CODES = [
 	// direction (daemon -> session), a browser host is not, which is exactly why a
 	// policy refusal travels as an `ok: true` result here.
 	"capability_unsupported",
+	// Paired with the core press follow-up before callers use this new method.
+	// Also the refusal for a `press` chord outside the grammar (press-chord.ts).
+	"unsupported_key",
 	"internal",
 	// The console namespace's own additions (design 10.6). Spread rather than copied
 	// for the same reason METHODS is: this list is what `rpc.ts` narrows a raised
@@ -278,6 +309,25 @@ export interface UploadResult {
 }
 
 /**
+ * Capability TOKENS that are not wire methods: a flag on a method the host already
+ * serves. `press_chord` says this build's `press` understands the extended
+ * contract (a modifier chord such as `Control+K`, the closed base-key table, and an
+ * optional `selector` to focus first). It cannot be inferred from `press` alone:
+ * every desktop build since the 8-key allowlist advertises `press`, and such a build
+ * would ignore `selector` and answer `unsupported_key` for the rest, so the harness
+ * (`protocol.PRESS_CHORD_CAPABILITY`, damianvtran/local-operator#3326) sends only a
+ * legacy-shaped press on `press` alone and requires this exact spelling for more.
+ *
+ * `record_size` is the second token: it says this build's `record_start` accepts a
+ * `width`/`height`, so the harness may request a resized capture. It is a capability
+ * TOKEN and not a wire method — absent from `METHODS` on purpose, which is what keeps
+ * the extension from ever advertising it — and it needs no `PROTO_VERSION` bump: an
+ * old harness simply never sends the fields, and a host that does not advertise this
+ * token is refused by capability rather than by version arithmetic.
+ */
+export type HostCapabilityToken = "press_chord" | "record_size";
+
+/**
  * The methods THIS host build serves, as it advertises them.
  *
  * WHY CAPABILITY AND NOT A VERSION COMPARISON (design §6.3): a host that predates
@@ -294,9 +344,17 @@ export interface UploadResult {
  * typed, actionable refusal instead.
  *
  * ONE constant, three writers: a second list beside this one is how a host starts
- * advertising something it does not serve.
+ * advertising something it does not serve. The list is a constant of THIS build, so
+ * it is not a runtime probe: a build that lists `record_*` can still be running an
+ * engine without `Page.startScreenRecording` (Chromium below 153), and that case is
+ * refused at `record_start` with `record_unsupported`, not by the capability list.
+ *
+ * `record_size` is a CAPABILITY, not a wire method: it advertises that
+ * `record_start` accepts `width`/`height`. It is deliberately absent from
+ * `METHODS`, so the extension can never advertise it, and an old harness simply
+ * never sends the fields.
  */
-export const HOST_CAPABILITIES: readonly Method[] = [
+export const HOST_CAPABILITIES: readonly (Method | HostCapabilityToken)[] = [
 	"console_resources",
 	"console_cleanup",
 	"styles",
@@ -305,6 +363,16 @@ export const HOST_CAPABILITIES: readonly Method[] = [
 	"query",
 	"download",
 	"upload",
+	// Desktop-only trusted keys. Core must capability-gate extension/cmux and
+	// older desktop hosts instead of sending them an unknown method.
+	"press",
+	// The extended-press flag (see `HostCapabilityToken`). Advertised with the same
+	// change that implements the grammar in `actions/press-chord.ts`, never ahead of it.
+	"press_chord",
+	// `hover` rides the same list as `press` for the same reason: desktop-only, and
+	// the extension/cmux hosts and older desktop apps must be refused by capability.
+	"hover",
+	"select",
 	// Session-scoped network capture. DESKTOP-ONLY: the extension's debugger is
 	// attached only for the duration of an action, so it holds no standing session
 	// to keep a `Network` subscription on. The backend therefore gates these four
@@ -313,6 +381,15 @@ export const HOST_CAPABILITIES: readonly Method[] = [
 	"network_stop",
 	"network_read",
 	"network_clear",
+	// Video recording is served by this host build because it ships on a runtime
+	// with `Page.startScreenRecording` (D8): the Electron bump is the ordering
+	// PR-A owns, so a build that predates the bump advertises nothing it cannot
+	// do.
+	"record_start",
+	"record_stop",
+	// Sized recording (width/height on record_start) is not a method; the
+	// harness capability-gates the two params on this name.
+	"record_size",
 ];
 
 export interface Request {

@@ -11,6 +11,7 @@ import {
 	useRef,
 	useState,
 } from "react";
+import type { EmojiInputIntent } from "../emoji/use-emoji-autocomplete";
 import type { MentionCandidateRow } from "./candidates";
 import {
 	type MentionSection,
@@ -19,7 +20,10 @@ import {
 	rankMentionCandidates,
 } from "./matcher";
 import { useMentionSource } from "./mention-context";
-import { useMentionDraftStore } from "./mention-draft-store";
+import {
+	mentionDraftStorageKey,
+	useMentionDraftStore,
+} from "./mention-draft-store";
 import {
 	type MentionToken,
 	type MentionWireRow,
@@ -79,6 +83,16 @@ export type MentionAutocomplete = {
 	resolveNotice: () => void;
 	source: ReturnType<typeof useMentionSource>;
 	listboxId: string;
+	/** Shared input provenance and edit ownership for Bridge-only autocomplete. */
+	inputScopeKey: string;
+	emojiIntent: EmojiInputIntent | null;
+	isComposing: () => boolean;
+	clearEmojiIntent: () => void;
+	applyTextEdit: (edit: {
+		text: string;
+		caret: number;
+		edit: { start: number; end: number; insert: string };
+	}) => void;
 };
 
 const NO_TOKENS: MentionToken[] = [];
@@ -100,18 +114,43 @@ export function useMentionAutocomplete(input: {
 	const { draftKey, text, setText, fieldRef, listboxId } = input;
 	const source = useMentionSource();
 	const enabled = source !== null;
+	const storageKey = mentionDraftStorageKey(source?.draftOwner, draftKey);
+	// A scope change also retires in-memory tokens/history without requiring
+	// the parent to unmount us. Missing ownership must never reuse another map.
+	const tokenKey = storageKey ?? JSON.stringify(["unresolved", draftKey]);
 
 	/*
 	 * THE TOKEN MAP. Seeded from the persisted sidecar for this draft key (a
 	 * restored draft gets its pills back), then carried across every text value
 	 * by `rebaseTokens`. `lastText` is the text the map was last true for.
 	 */
-	const stored = useMentionDraftStore((state) => state.drafts[draftKey]);
+	// localStorage hydration is synchronous. Read the seed, not a subscription
+	// to our own writes: publishing tokens before the parent's text update must
+	// not synchronously re-render this hook against the previous text prop.
+	// Never fall back to a legacy unscoped draftKey: its owner is unknowable.
+	const stored = storageKey
+		? useMentionDraftStore.getState().drafts[storageKey]
+		: undefined;
 	const writeStored = useMentionDraftStore((state) => state.write);
+	const persistDraft = useCallback(
+		(value: string, map: MentionToken[]) => {
+			if (storageKey) writeStored(storageKey, value, map);
+		},
+		[storageKey, writeStored],
+	);
 	const [tokens, setTokens] = useState<MentionToken[]>(() =>
 		stored ? rebaseTokens(stored.text, text, stored.tokens) : NO_TOKENS,
 	);
 	const lastText = useRef(text);
+	// The text owner can deliver its draft a render after this synchronous
+	// sidecar. Keep that snapshot until matching text or an actual field edit;
+	// an empty hydration render is NOT a deletion of the user's draft.
+	const pendingRestore = useRef(stored && stored.text !== text ? stored : null);
+	const [interactionText, setInteractionText] = useState<string | null>(null);
+	const caretInteraction = useRef(false);
+	const applyingEdit = useRef<{ text: string; tokens: MentionToken[] } | null>(
+		null,
+	);
 	/*
 	 * THE PILL HISTORY: a bounded list of (text, token map) pairs, newest
 	 * last. Every other edit only ever SHRINKS the map (`rebaseTokens` drops a
@@ -130,41 +169,96 @@ export function useMentionAutocomplete(input: {
 	 * jump is consumed only by the change whose value is the one it announced.
 	 */
 	const historyJump = useRef<string | null>(null);
+	/*
+	 * Set to the value a native `input` produced, by the field's own listener,
+	 * and adopted as `interactionText` by the render that receives that text.
+	 * A REF, NEVER STATE, on purpose: in a real browser a user-dispatched event
+	 * gets a microtask checkpoint between listener callbacks, and React 18 flushes
+	 * a discrete (`input`) update synchronously at that checkpoint. A setState in
+	 * the target-phase listener therefore re-rendered this component with the
+	 * PREVIOUS `text` prop before the delegated `onChange` ran, React wrote that
+	 * old value back into the controlled textarea, and onChange read the reverted
+	 * value: the key was lost, and only a key repeating the last one survived
+	 * (an equal setState bails out). That shipped in #1590 (3381fc6eafb) because
+	 * jsdom dispatches without the checkpoint; the browser-ordered tests in
+	 * mention-draft-restore.test.mjs model it. Same text-carrying contract as
+	 * `historyJump`: consumed by the change whose value is the one it announced.
+	 */
+	const nativeEditText = useRef<string | null>(null);
+	// Ref-only at the target listener: state there reverts controlled input before
+	// React's delegated onChange (#1600). Adopt this same object after commit;
+	// never consume it during render, which StrictMode may replay.
+	const pendingEmojiIntent = useRef<EmojiInputIntent | null>(null);
+	const emojiSequence = useRef(0);
+	const [emojiIntent, setEmojiIntent] = useState<EmojiInputIntent | null>(null);
 	/** The map this text last had, newest first; undefined when never seen. */
-	const snapshotTokens = (value: string): MentionToken[] | undefined => {
-		for (let i = spanHistory.current.length - 1; i >= 0; i -= 1)
-			if (spanHistory.current[i].text === value)
-				return spanHistory.current[i].tokens;
-		return undefined;
-	};
-	const keyRef = useRef(draftKey);
-	if (keyRef.current !== draftKey) {
+	const snapshotTokens = useCallback(
+		(value: string): MentionToken[] | undefined => {
+			for (let i = spanHistory.current.length - 1; i >= 0; i -= 1)
+				if (spanHistory.current[i].text === value)
+					return spanHistory.current[i].tokens;
+			return undefined;
+		},
+		[],
+	);
+	const keyRef = useRef(tokenKey);
+	if (keyRef.current !== tokenKey) {
 		// A different draft: its own sidecar, never the previous draft's pills.
-		keyRef.current = draftKey;
+		keyRef.current = tokenKey;
+		pendingRestore.current = stored && stored.text !== text ? stored : null;
+		setInteractionText(null);
+		caretInteraction.current = false;
 		lastText.current = text;
 		spanHistory.current = [];
 		historyJump.current = null;
+		nativeEditText.current = null;
+		pendingEmojiIntent.current = null;
+		setEmojiIntent(null);
 		const next = stored
 			? rebaseTokens(stored.text, text, stored.tokens)
 			: NO_TOKENS;
 		if (next !== tokens) setTokens(next);
 	} else if (lastText.current !== text) {
+		const pending = pendingRestore.current;
+		// A field edit is `edited` whichever way it was announced: an ordinary
+		// keystroke must never take the `restored` branch below (which would also
+		// disarm caretInteraction when the previous text was empty).
+		const typed = nativeEditText.current === text;
+		nativeEditText.current = null;
+		const edited = interactionText === text || typed;
 		const jumped = historyJump.current === text;
 		historyJump.current = null;
-		const restored = jumped ? snapshotTokens(text) : undefined;
-		const next = restored ?? rebaseTokens(lastText.current, text, tokens);
+		// Adopt the native edit in this same render (like setTokens below), so a
+		// query arms on the very keystroke: '@' into an empty composer opens now.
+		if (typed && interactionText !== text) setInteractionText(text);
+		// A refused optimistic send restores text without a DOM edit. Its
+		// identities come from this mounted draft's history, never name matching.
+		const restored =
+			jumped || (!edited && lastText.current === "")
+				? snapshotTokens(text)
+				: undefined;
+		const next =
+			pending?.text === text
+				? rebaseTokens(text, text, pending.tokens)
+				: (restored ?? rebaseTokens(lastText.current, text, tokens));
+		if (pending?.text === text) pendingRestore.current = null;
+		if (!edited) {
+			setInteractionText(null);
+			caretInteraction.current = false;
+		}
 		lastText.current = text;
 		setTokens(next);
 	}
 	useEffect(() => {
-		writeStored(draftKey, text, tokens);
+		if (pendingRestore.current) return;
+		persistDraft(text, tokens);
 		const history = spanHistory.current;
 		const newest = history.at(-1);
 		if (!newest || newest.text !== text || newest.tokens !== tokens) {
 			history.push({ text, tokens });
 			if (history.length > PILL_HISTORY_LIMIT) history.shift();
 		}
-	}, [draftKey, text, tokens, writeStored]);
+	}, [persistDraft, text, tokens]);
 
 	const [caret, setCaret] = useState<number | null>(null);
 	const [dismissedAt, setDismissedAt] = useState<number | null>(null);
@@ -173,14 +267,16 @@ export function useMentionAutocomplete(input: {
 	const composing = useRef(false);
 
 	const query = useMemo(() => {
-		if (!enabled || caret === null) return null;
+		// Hydration/remount is not an autocomplete gesture, even in an
+		// autofocus field. Only input or an intentional caret interaction arms it.
+		if (!enabled || caret === null || interactionText !== text) return null;
 		const found = findMentionQuery(text, caret);
 		if (!found) return null;
 		// Inside an existing pill is not a new query.
 		if (tokens.some((t) => found.start >= t.start && found.start < t.end))
 			return null;
 		return found;
-	}, [enabled, caret, text, tokens]);
+	}, [enabled, caret, text, tokens, interactionText]);
 
 	const ranked = useMemo(
 		() =>
@@ -254,6 +350,15 @@ export function useMentionAutocomplete(input: {
 			syncCaret();
 	}, [text, enabled]);
 
+	useLayoutEffect(() => {
+		const intent = pendingEmojiIntent.current;
+		const current = intent?.draftKey === tokenKey && intent.text === text;
+		// Retire on an authoritative non-input commit, not during render. A
+		// refused send restoring identical old text must not resurrect old intent.
+		if (!current) pendingEmojiIntent.current = null;
+		setEmojiIntent(current ? intent : null);
+	}, [text, tokenKey]);
+
 	/*
 	 * EDITS GO THROUGH THE FIELD'S OWN EDITING PATH WHEN IT CAN (review R1-04).
 	 * Setting `value` programmatically wipes Chromium's undo stack for the
@@ -275,6 +380,12 @@ export function useMentionAutocomplete(input: {
 			range?: { start: number; end: number; insert: string },
 		) => {
 			const field = fieldRef.current;
+			pendingRestore.current = null;
+			applyingEdit.current = next;
+			// Write the pair before the text setter/native input persists text.
+			// Otherwise a synchronous unmount can strand text without identities.
+			persistDraft(next.text, next.tokens);
+			setInteractionText(next.text);
 			let native = false;
 			if (field && range) {
 				field.focus();
@@ -290,6 +401,7 @@ export function useMentionAutocomplete(input: {
 					native = false;
 				}
 			}
+			applyingEdit.current = null;
 			lastText.current = next.text;
 			setTokens(next.tokens);
 			if (!native) setText(next.text);
@@ -301,7 +413,7 @@ export function useMentionAutocomplete(input: {
 				current.setSelectionRange(next.caret, next.caret);
 			});
 		},
-		[fieldRef, setText],
+		[fieldRef, setText, persistDraft],
 	);
 
 	/** Back to the field with the caret where it was (design D4). */
@@ -430,10 +542,20 @@ export function useMentionAutocomplete(input: {
 			const native = event.nativeEvent as Event & { isComposing?: boolean };
 			composing.current = Boolean(native.isComposing);
 			const field = event.currentTarget;
+			if (caretInteraction.current) setInteractionText(text);
+			const intent = pendingEmojiIntent.current;
+			if (
+				intent &&
+				(field.selectionStart !== intent.selectionStart ||
+					field.selectionEnd !== intent.selectionEnd)
+			) {
+				pendingEmojiIntent.current = null;
+				setEmojiIntent(null);
+			}
 			const previous = caret ?? field.selectionStart;
 			syncCaret(field.selectionStart < previous ? "backward" : "forward");
 		},
-		[caret, syncCaret],
+		[caret, syncCaret, text],
 	);
 
 	// Composition events do not all reach `onSelect`; track them directly.
@@ -442,6 +564,12 @@ export function useMentionAutocomplete(input: {
 		if (!field || !enabled) return;
 		const start = () => {
 			composing.current = true;
+			// An emoji query adopted before the IME opened is a stale non-composing
+			// snapshot; retire it here so the open picker cannot replace text under
+			// the candidate window. Safe as state, unlike `input`: no onChange of
+			// this same dispatch can be reverted by it (#1600).
+			pendingEmojiIntent.current = null;
+			setEmojiIntent(null);
 		};
 		const end = () => {
 			composing.current = false;
@@ -457,18 +585,60 @@ export function useMentionAutocomplete(input: {
 		 */
 		const onInput = (event: Event) => {
 			const type = (event as InputEvent).inputType;
-			if (type !== "historyUndo" && type !== "historyRedo") return;
-			historyJump.current = field.value;
+			const jumped = type === "historyUndo" || type === "historyRedo";
+			if (jumped) historyJump.current = field.value;
+			pendingRestore.current = null;
+			// NO setState here: it flushes before onChange and reverts the typed
+			// key (see `nativeEditText`). Only refs and the unsubscribed store write.
+			nativeEditText.current = field.value;
+			pendingEmojiIntent.current = {
+				draftKey: tokenKey,
+				sequence: ++emojiSequence.current,
+				text: field.value,
+				selectionStart: field.selectionStart,
+				selectionEnd: field.selectionEnd,
+				kind:
+					type === "insertFromPaste" ? "paste" : jumped ? "restore" : "typing",
+				inputType: type,
+				composing:
+					composing.current || Boolean((event as InputEvent).isComposing),
+			};
+			// Target-phase input runs before React's delegated onChange writes
+			// the text store. Persist its matching identities in that same turn.
+			// Safe to do here: this hook reads `stored` via getState() and selects
+			// only the stable `write`, so the store write re-renders nothing (the
+			// browser-ordered tests fail if it ever does).
+			const next =
+				applyingEdit.current?.text === field.value
+					? applyingEdit.current.tokens
+					: ((jumped ? snapshotTokens(field.value) : undefined) ??
+						rebaseTokens(lastText.current, field.value, tokens));
+			persistDraft(field.value, next);
+		};
+		const armCaret = () => {
+			caretInteraction.current = true;
 		};
 		field.addEventListener("compositionstart", start);
 		field.addEventListener("compositionend", end);
 		field.addEventListener("input", onInput);
+		field.addEventListener("pointerdown", armCaret);
+		field.addEventListener("keydown", armCaret);
 		return () => {
 			field.removeEventListener("compositionstart", start);
 			field.removeEventListener("compositionend", end);
 			field.removeEventListener("input", onInput);
+			field.removeEventListener("pointerdown", armCaret);
+			field.removeEventListener("keydown", armCaret);
 		};
-	}, [fieldRef, enabled, syncCaret]);
+	}, [
+		fieldRef,
+		enabled,
+		syncCaret,
+		snapshotTokens,
+		tokens,
+		persistDraft,
+		tokenKey,
+	]);
 
 	const activeKeys = useMemo(
 		() =>
@@ -485,6 +655,16 @@ export function useMentionAutocomplete(input: {
 	 * than asking the author to pick again.
 	 */
 	const awaitingKeys = useRef(new Set<string>());
+	// Availability is not subtree identity anymore. Retire only source-scoped
+	// notice/invite state when its conversation disappears or changes; draft
+	// text, tokens, selection and the page's account/tenant/target keys stay owned
+	// where they already were. A same-conversation roster refresh is not a reset.
+	const sourceConversationId = source?.conversationId ?? null;
+	// biome-ignore lint/correctness/useExhaustiveDependencies: source identity is a reset trigger; no source data is read while retiring notice state.
+	useLayoutEffect(() => {
+		setNotice(null);
+		awaitingKeys.current.clear();
+	}, [sourceConversationId]);
 	useEffect(() => {
 		if (awaitingKeys.current.size === 0) return;
 		const ready = [...awaitingKeys.current].filter((key) =>
@@ -572,5 +752,23 @@ export function useMentionAutocomplete(input: {
 		},
 		source,
 		listboxId,
+		inputScopeKey: tokenKey,
+		emojiIntent,
+		isComposing: () => composing.current,
+		clearEmojiIntent: () => {
+			pendingEmojiIntent.current = null;
+			setEmojiIntent(null);
+		},
+		applyTextEdit: (edit) => {
+			// One undo/redo and sidecar owner for both @ and : replacements.
+			applyEdit(
+				{
+					text: edit.text,
+					caret: edit.caret,
+					tokens: rebaseTokens(text, edit.text, tokens),
+				},
+				edit.edit,
+			);
+		},
 	};
 }

@@ -41,7 +41,7 @@ import {
 	writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
@@ -49,6 +49,80 @@ const REPO = dirname(dirname(fileURLToPath(import.meta.url)));
 const INSTALLER = join(REPO, "scripts", "hooks-install.mjs");
 const GATE = join(REPO, "scripts", "pre-push-gate.mjs");
 const HOOK = join(REPO, ".githooks", "pre-push");
+
+/**
+ * noEmit is not read-only for composite/incremental projects. A dependency
+ * lender can be lock-compatible but must never receive another worktree's
+ * build-info writes; assert the configured destination, not a hook-only override.
+ */
+function ownedTypecheckCache(source, expected) {
+	const entries = [...source.matchAll(/"tsBuildInfoFile"\s*:\s*"([^"]+)"/g)];
+	assert.equal(
+		entries.length,
+		1,
+		"each project must declare exactly one cache path",
+	);
+	const configured = entries[0][1];
+	assert.equal(
+		isAbsolute(configured),
+		false,
+		"cache must be worktree-relative",
+	);
+	assert.equal(
+		configured,
+		expected,
+		"cache destination must stay explicitly owned",
+	);
+	const destination = resolve(REPO, configured);
+	const insideCache = relative(resolve(REPO, ".cache/typecheck"), destination);
+	assert.equal(isAbsolute(insideCache), false);
+	assert.ok(insideCache !== ".." && !insideCache.startsWith(`..${sep}`));
+	assert.equal(destination.split(sep).includes("node_modules"), false);
+	return destination;
+}
+
+test("typecheck build-info stays in distinct ignored worktree-owned caches", () => {
+	const destinations = ["node", "app"].map((project) =>
+		ownedTypecheckCache(
+			readFileSync(join(REPO, `tsconfig.${project}.json`), "utf8"),
+			`./.cache/typecheck/${project}.tsbuildinfo`,
+		),
+	);
+	assert.equal(
+		new Set(destinations).size,
+		2,
+		"projects must not overwrite each other",
+	);
+	const ignored = readFileSync(join(REPO, ".gitignore"), "utf8").split(/\r?\n/);
+	assert.ok(
+		ignored.includes("/.cache/typecheck/"),
+		"owned metadata must stay untracked",
+	);
+});
+
+test("typecheck build-info rejects borrowed, escaping and ambiguous destinations", () => {
+	const expected = "./.cache/typecheck/node.tsbuildinfo";
+	for (const unsafe of [
+		"./node_modules/.tmp/tsconfig.node.tsbuildinfo",
+		"../foreign/node.tsbuildinfo",
+		"/foreign/node.tsbuildinfo",
+		"./.cache/typecheck/app.tsbuildinfo",
+	]) {
+		assert.throws(() =>
+			ownedTypecheckCache(
+				JSON.stringify({ tsBuildInfoFile: unsafe }),
+				expected,
+			),
+		);
+	}
+	assert.throws(() => ownedTypecheckCache("{}", expected));
+	assert.throws(() =>
+		ownedTypecheckCache(
+			`{"tsBuildInfoFile":"${expected}","tsBuildInfoFile":"${expected}"}`,
+			expected,
+		),
+	);
+});
 
 /**
  * The files a fixture needs to BE this gate: the tracked hook, the gate itself,

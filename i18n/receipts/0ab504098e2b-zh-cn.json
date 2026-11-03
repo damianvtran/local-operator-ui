@@ -1,0 +1,94 @@
+{
+  "schema": 1,
+  "auditor": "i18n-auditor (independent lopdev task 'UI #1604 i18n audit round 7A', session 0ab504098e2b)",
+  "model": "[redacted]/claude-opus-5-5",
+  "model_provenance": "Whole audit (source reads, semantic review, probe, receipt writing, gate runs) ran on this session's announced model [redacted]/claude-opus-5-5. No fallback or model switch was observed during this session.",
+  "instance": "0ab504098e2b-zh-cn",
+  "audit_session": "0ab504098e2b",
+  "locale": "zh-CN",
+  "namespace": "ui.mesh",
+  "date": "2026-11-02",
+  "scope": "Translation audit round 7A of PR #1604 head 3705c557424: the three ui.mesh values changed in b61f1b4396b..3705c557424 (added could_not_apply, added typed_review_unavailable, changed expires_window) read against English and the changed context entries; expires_window rendered for every duration the helper can produce. Unchanged values retain their earlier audits.",
+  "audited_head": "3705c5574248ce4d280a8fa09d7b84c682ac73ef",
+  "delta_base": "b61f1b4396b4146b74bd8970b916e5f62d15285f",
+  "status": "passed",
+  "sha256": {
+    "en": "4e7d304432abb54b8e7d5eb96fd83d6ba1bbbdeab3a97ba1b07a80faa20ae10e",
+    "zh-CN": "e37469d764a6812dd4fd27e968b66c7bf37f21343a7740e1e70b9d1a712104a0"
+  },
+  "findings": [],
+  "observations": [
+    "English context note for could_not_apply says the countdown is suppressed 'only when explicit apply_outcome.retryable is false'. In code, applyOutcome() normalises retryable as value.retryable === true, and hasPermanentCredentialOutcome() tests (retryable ?? typed.applyOutcome.retryable) === false, so an apply_outcome object that OMITS retryable is also treated as permanent. Fail-closed and consistent with the backend rule that retryable is the only Try-again signal; the note's word 'explicit' is imprecise. No translation is affected; not counted against any locale. (Recorded in every locale receipt of this audit; not counted.)"
+  ],
+  "changed_keys": [
+    "ui.mesh.approval.could_not_apply",
+    "ui.mesh.approval.expires_window",
+    "ui.mesh.approval.typed_review_unavailable"
+  ],
+  "verbatim_values": {
+    "ui.mesh.approval.could_not_apply": "无法应用",
+    "ui.mesh.approval.expires_window": "此卡片将在{duration}后到期",
+    "ui.mesh.approval.typed_review_unavailable": "此处无法安全显示此请求。请拒绝此请求并要求重新发起请求。"
+  },
+  "english_values": {
+    "ui.mesh.approval.could_not_apply": "Couldn't be applied",
+    "ui.mesh.approval.expires_window": "This card expires in {duration}",
+    "ui.mesh.approval.typed_review_unavailable": "This request can't be shown safely here. Deny it and ask for a new request."
+  },
+  "deny_control_label": "拒绝",
+  "context_sidecar": {
+    "path": "src/i18n/catalogues/en/ui.mesh.context.json",
+    "sha256": "a7b0f284c1ffdb1b8678b5717e0428616ca97ec4f9b2c9caffb2aa4c0d636e60",
+    "changed_notes": [
+      "ui.mesh.approval.could_not_apply",
+      "ui.mesh.approval.expires_window",
+      "ui.mesh.approval.typed_review_unavailable"
+    ],
+    "read": "Context entries changed in the delta (expires_window note extended; could_not_apply and typed_review_unavailable added) were read against code at head. expires_window: approvalAnswerWindowLabel wraps the shared bare duration in expires_window when isAttentionApproval(row) (typed credential in approved/failed), and the tray renders it only under !permanentOutcome && (waiting || attention); 'THIS CARD' subject is accurate. could_not_apply: shown when hasPermanentCredentialOutcome(row, refusal.retryable) and replaces approved_not_applied; countdown suppressed; Cancel sharing stays (canDenyApproval covers approved/failed, signed). Accurate except the 'explicit' qualifier (see observations). typed_review_unavailable: restrictedRemedy uses it for typed rows with an empty refusal_message instead of the legacy CLI remedy, shown only for waiting restricted non-approvable cards, beside Deny. Accurate."
+  },
+  "call_sites_read": [
+    "src/renderer/src/features/mesh/mesh-approvals.ts approvalAnswerWindowLabel, isAttentionApproval, hasPermanentCredentialOutcome, applyOutcome, approvalRefusal, canApproveApproval, canDenyApproval/OPEN_STATES",
+    "src/renderer/src/features/mesh/mesh-approvals-tray.tsx permanentOutcome state label and countdown guard, restrictedRemedy (waiting && restricted && !canApprove), Deny / Cancel sharing button labels"
+  ],
+  "standards": {
+    "root": "~/local-operator/i18n at origin/main 1c7fd39304d (read with git show origin/main:)",
+    "sha256": {
+      "glossary.md": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+      "style-guides/zh-CN.md": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+    }
+  },
+  "translator": {
+    "agent": "coder",
+    "jobs": [
+      "07291411b980",
+      "c61a64298a45",
+      "21ddee198f0b",
+      "d82369d8e233",
+      "c3976a04742d",
+      "4fe47970b5a5",
+      "486744e25afc",
+      "835b27311cfb",
+      "317b3e0e1617"
+    ],
+    "remediation_commit": "3705c5574248ce4d280a8fa09d7b84c682ac73ef",
+    "attribution": "Translator/coder runs named by the manager; their served model is not verified by this auditor."
+  },
+  "independence": "This session (0ab504098e2b) authored no catalogue value and edited no translation or code. It is distinct from translator/coder runs 07291411b980, c61a64298a45, 21ddee198f0b, d82369d8e233, c3976a04742d, 4fe47970b5a5, 486744e25afc, 835b27311cfb, 317b3e0e1617 and from every prior auditor. Findings and severities were formed from the final bytes before the concurrent round-7 second audit (session d459d2006f29) was posted on the PR; that comment was read afterwards only to confirm no parallel commit, and did not set any verdict here.",
+  "semantic_checks": [
+    "could_not_apply '无法应用': no retry hint.",
+    "typed_review_unavailable '此处无法安全显示此请求。请拒绝此请求并要求重新发起请求。': no CLI wording; 拒绝 matches the Deny control; slightly repetitive (此请求 ×2), as is the English.",
+    "expires_window '此卡片将在{duration}后到期': names the card; renders 不到一分钟后 / 1分钟后 / 2小时后 correctly."
+  ],
+  "evidence": {
+    "probe": "i18n/receipts/0ab504098e2b-structural-probe.mjs.txt",
+    "probe_sha256": "4ebc2221991f9a2150c9f59ce5a16e0fd529caf328815ad34a7a2cd2b7032993",
+    "log": "i18n/receipts/0ab504098e2b-structural-probe-output.txt",
+    "log_sha256": "5a8d07ccef5aede51e9e3e6615568e5a7bd3e253bf2b9aa5bff709f020bba120",
+    "verdict_location": "Status, findings and semantic_checks here are the auditor's review record. The companion log is the actual probe output: per-locale delta limited to the three keys, key-set parity, ICU argument parity/NFC/bidi, terminal/CLI-word scan of typed_review_unavailable, Deny-control label, and expires_window rendered for every reachable duration with per-CLDR-category grouping and a ru genitive check."
+  },
+  "non_claims": [
+    "No rendered/compiled-native, width/fit, font shaping, RTL layout, screen-reader or visual validation (host memory hold); source-only.",
+    "No translation edits by this auditor."
+  ],
+  "notes": "Round 7A at 3705c557: passed, 0 findings; three changed keys clean; expires_window renders correctly for every duration."
+}

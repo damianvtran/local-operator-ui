@@ -16,5 +16,10 @@
 	"ui.chat.attachments.playback_position": "प्लेबैक की स्थिति",
 	"ui.chat.attachments.playback_rate": "प्लेबैक की गति",
 	"ui.chat.attachments.playback_rate_option": "{rate}x",
-	"ui.chat.attachments.volume": "वॉल्यूम"
+	"ui.chat.attachments.volume": "वॉल्यूम",
+	"ui.chat.attachments.open_named": "{name} खोलें",
+	"ui.chat.attachments.expand_aria": "{name} बड़ा करें",
+	"ui.chat.attachments.expand_title": "{name} बड़ा करने के लिए क्लिक करें",
+	"ui.chat.attachments.open_title": "{name} खोलने के लिए क्लिक करें",
+	"ui.chat.attachments.not_viewable": "फ़ाइल देखी नहीं जा सकती: {name}"
 }

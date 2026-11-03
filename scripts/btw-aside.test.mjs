@@ -2946,7 +2946,11 @@ test("the panel names its chord's verb, describes its blocked control, and annou
 	// term (R5-3).
 	assert.match(input, RE_SEND_VERB);
 	assert.match(input, RE_SEND_LABEL);
-	assert.match(panel, /content="Add the aside to the conversation"/);
+	// The sentence is a catalogue message now; the tooltip must still be that one.
+	assert.match(
+		panel,
+		/content=\{t\("ui\.chat\.aside\.add_to_conversation_tooltip"\)\}/,
+	);
 
 	// The announcement: one sentence per phase, and the answer ONCE, at settle.
 	assert.equal(asideAnnouncement(undefined), null);

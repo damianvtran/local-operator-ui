@@ -159,19 +159,29 @@ jobs:
     needs: validate-release
     if: ${{ needs.validate-release.result == 'success' }}
     steps:
+      # The env names here ARE the repository secret names, so a missing one is
+      # reported as the secret to set rather than as an alias. These are the
+      # Radient Inc. organization's signing material: the Developer ID Application
+      # identity (p12 + password), its Developer ID provisioning profile for
+      # `com.local-operator` (passkeys), and the App Store Connect API key
+      # notarytool authenticates with. The retired individual-account secrets
+      # (CSC_CONTENT, CSC_KEY_PASSWORD, APPLE_ID, APPLE_ID_PASSWORD) are left in
+      # the repository for rollback and are read by nothing.
       - name: Check required secrets
         env:
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
+          APPLE_API_KEY_P8_BASE64: ${{ secrets.APPLE_API_KEY_P8_BASE64 }}
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          CSC_CONTENT: ${{ secrets.CSC_CONTENT }}
-          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          MACOS_DEVID_APP_P12_BASE64: ${{ secrets.MACOS_DEVID_APP_P12_BASE64 }}
+          MACOS_DEVID_APP_P12_PASSWORD: ${{ secrets.MACOS_DEVID_APP_P12_PASSWORD }}
+          MACOS_APP_PROFILE_BASE64: ${{ secrets.MACOS_APP_PROFILE_BASE64 }}
         run: |
           if [ "$NOTARIZE" != true ]; then
             echo 'NOTARIZE must be true'
             exit 1
           fi
-          for var in APPLE_ID APPLE_ID_PASSWORD APPLE_TEAM_ID CSC_CONTENT CSC_KEY_PASSWORD; do
+          for var in APPLE_API_KEY_P8_BASE64 APPLE_API_KEY_ID APPLE_API_ISSUER APPLE_TEAM_ID MACOS_DEVID_APP_P12_BASE64 MACOS_DEVID_APP_P12_PASSWORD MACOS_APP_PROFILE_BASE64; do
             if [ -z "${!var}" ]; then
               echo "Missing required secret: $var"
               exit 1
@@ -335,10 +345,14 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # The identity is the Radient Inc. organization's Developer ID Application
+      # certificate. The step-local names stay CSC_CONTENT/CSC_KEY_PASSWORD (the
+      # names electron-builder and this script have always used); only the
+      # `secrets.*` they read changed.
       - name: Setup code signing
         env:
-          CSC_CONTENT: ${{ secrets.CSC_CONTENT }}
-          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          CSC_CONTENT: ${{ secrets.MACOS_DEVID_APP_P12_BASE64 }}
+          CSC_KEY_PASSWORD: ${{ secrets.MACOS_DEVID_APP_P12_PASSWORD }}
         run: |
           # This runner-local keychain has no lifetime beyond the job. Generate
           # its password here rather than requiring a persistent repository secret.
@@ -367,44 +381,101 @@ jobs:
         run: |
           pnpm setup-python
 
-      # THE RELEASE PATH SHIPS NO WebAuthn keychain access group, and the reason is
-      # the 0.29.6 incident rather than a preference. `keychain-access-groups` is a
+      # PASSKEYS ARE ON: the main executable is signed with the WebAuthn keychain
+      # access group, under a Developer ID provisioning profile that authorizes it.
+      #
+      # WHY A PROFILE, and what it prevents. `keychain-access-groups` is a
       # RESTRICTED entitlement: per Apple TN3125 it must be authorized by an
       # embedded provisioning profile, and 0.29.6 signed it into every executable
       # of the bundle with no profile. amfid then refused every Mach-O at exec
       # (-413 "No matching profile found"), so the app could not be launched at all
       # — and neither could the ShipIt that was supposed to relaunch it — while
       # `codesign --verify`, `spctl` and `stapler validate` all passed on the
-      # bundle. The previous arrangement rendered `build/entitlements.mac.plist`
-      # plus the group here and handed it to the build for BOTH
-      # `-c.mac.entitlements` and `-c.mac.entitlementsInherit`, which is also how
-      # the helpers and ShipIt inherited a claim no profile authorized.
+      # bundle. That arrangement also handed the rendered plist to
+      # `entitlementsInherit`, which is how the helpers and ShipIt inherited a
+      # claim no profile authorized.
       #
-      # So the build now uses the committed `build/entitlements.mac.plist` (see
-      # package.json's `mac.entitlements`/`entitlementsInherit`), which is
-      # secret-free and carries no group; the app is inert for passkeys by design
-      # (`decideWebauthnGate` in src/main/webauthn.ts logs one line and never
-      # calls configureWebAuthn), and `pnpm verify-macos-artifacts` asserts the
-      # spawn and the absence of any unauthorized restricted claim before
-      # anything is attached.
+      # HOW IT WORKS NOW, step by step:
+      #   1. The step below decodes `MACOS_APP_PROFILE_BASE64` — the Radient Inc.
+      #      organization's Developer ID profile for App ID
+      #      `<TEAM_ID>.com.local-operator` — to `$RUNNER_TEMP/embedded.provisionprofile`.
+      #   2. `scripts/render-mac-entitlements.mjs --profile` renders the committed
+      #      `build/entitlements.mac.plist` plus `keychain-access-groups`
+      #      (`<TEAM_ID>.com.local-operator.webauthn`),
+      #      `com.apple.application-identifier` and
+      #      `com.apple.developer.team-identifier` into
+      #      `$RUNNER_TEMP/entitlements.mac.rendered.plist`, and REFUSES (the step
+      #      fails) unless the profile authorizes all three. A Developer ID profile
+      #      authorizes keychain groups as the team wildcard `<TEAM_ID>.*`, which
+      #      the renderer and the release gate both read through Apple's matching
+      #      rule (`scripts/macos-entitlement-policy.mjs`); another team's wildcard
+      #      or a bare `*` is still a refusal. It prints key names, never values.
+      #   3. Both `dist:mac` passes take `-c.mac.provisioningProfile` (osx-sign
+      #      copies it to `Contents/embedded.provisionprofile` of the MAIN bundle
+      #      only) and `-c.mac.entitlements` = the rendered plist. The rendered plist
+      #      goes to `mac.entitlements` ONLY: `entitlementsInherit` stays the
+      #      committed, group-free plist (package.json), because Chromium reads the
+      #      MAIN executable's entitlement and a helper or ShipIt carrying the group
+      #      has no profile of its own and is refused — the 0.29.6 failure.
+      #   4. `pnpm verify-macos-artifacts` (below) spawns every bundle
+      #      (`app-spawn`), requires every restricted claim in every executable to
+      #      be authorized by the embedded profile (`app-profile-authorization`),
+      #      and requires the main executable's group to be this app's and
+      #      authorized (`app-webauthn-entitlement`) before anything is attached.
       #
-      # RE-ENABLING PASSKEYS IS ONE SECRET WIDE, and it is not wired half-built
-      # here because a dormant branch that has never had its secret is a
-      # behaviour nobody can test. The three steps, in order:
-      #   1. Create a Developer ID provisioning profile for the App ID with
-      #      Keychain Sharing enabled for <TEAM_ID>.com.local-operator.webauthn
-      #      (Apple's capability table checks keychain sharing for Developer ID).
-      #   2. Store it as a CI secret (base64) and decode it to
-      #      `$RUNNER_TEMP/embedded.provisionprofile`.
-      #   3. Add `-c.mac.provisioningProfile=$RUNNER_TEMP/embedded.provisionprofile`
-      #      to the `dist:mac` line below, and render the group WITH that profile —
-      #      `node scripts/render-mac-entitlements.mjs --out <plist> --profile
-      #      <profile>`, which refuses to emit the group without one — passing the
-      #      result to `-c.mac.entitlements` ONLY. The group stays out of
-      #      `entitlementsInherit`: Chromium reads the MAIN executable's
-      #      entitlement, osx-sign embeds the profile in the main bundle only, and
-      #      a helper or ShipIt carrying the group gets no profile and is refused
-      #      — which is exactly how this incident took the relaunch leg down.
+      # A LOCAL BUILD is unchanged: `pnpm dist:mac` without these overrides signs
+      # with the committed plist, carries no restricted claim, and the app stays
+      # inert for passkeys (`decideWebauthnGate` in src/main/webauthn.ts logs one
+      # line and never calls configureWebAuthn).
+      #
+      # WHERE THE MATERIAL LIVES. GitHub repository secrets (names only; values
+      # never in the tree or a log): `MACOS_DEVID_APP_P12_BASE64` +
+      # `MACOS_DEVID_APP_P12_PASSWORD` (the Developer ID Application identity),
+      # `MACOS_APP_PROFILE_BASE64` (this profile), `APPLE_API_KEY_P8_BASE64` +
+      # `APPLE_API_KEY_ID` + `APPLE_API_ISSUER` (the App Store Connect Team API key
+      # notarytool uses), `APPLE_TEAM_ID`. The same material is held in the
+      # operator's encrypted credential store, which is the source to re-set a
+      # secret from. The retired individual-account secrets stay in the repository
+      # for rollback only; nothing reads them.
+      #
+      # RENEWAL AND ROTATION. The Developer ID Application certificate expires
+      # 2027-12-02. A Developer ID profile EMBEDS the certificate it was issued
+      # for, so a new certificate means a NEW profile too, even though the
+      # profile's own expiry date is far later. The two dates stop different
+      # things: macOS checks a Developer ID profile at EVERY launch, so the
+      # profile's expiry (2044-10-28) stops installed apps from launching, while
+      # the certificate's expiry only means future builds need a new certificate
+      # AND a new profile (timestamped, notarized builds keep running). To renew: create the certificate, then
+      # regenerate the "Local Operator desktop passkeys (Developer ID, Radient Inc)"
+      # profile against it, and replace `MACOS_DEVID_APP_P12_BASE64`,
+      # `MACOS_DEVID_APP_P12_PASSWORD` and `MACOS_APP_PROFILE_BASE64` together
+      # (`base64 -i <file> | gh secret set <NAME>`). Rotating only the p12 leaves a
+      # profile that names the old certificate. The team id does not change, so
+      # the designated requirement installed apps check on update still matches.
+      # Rotate the notary key by issuing a new App Store Connect key and replacing
+      # the three `APPLE_API_*` secrets; it is independent of the certificate.
+      - name: Stage the provisioning profile, entitlements and notarization key
+        env:
+          MACOS_APP_PROFILE_BASE64: ${{ secrets.MACOS_APP_PROFILE_BASE64 }}
+          APPLE_API_KEY_P8_BASE64: ${{ secrets.APPLE_API_KEY_P8_BASE64 }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          # Owner-only from creation: the .p8 is a live credential, and the umask
+          # closes the window a later chmod would leave. Nothing here echoes a
+          # decoded value; `test -s` fails the step on an empty decode instead of
+          # letting a misbound secret surface as a notarization error 30 min later.
+          umask 077
+          mkdir -p "$RUNNER_TEMP/notary"
+          printf '%s' "$APPLE_API_KEY_P8_BASE64" | base64 --decode > "$RUNNER_TEMP/notary/AuthKey.p8"
+          test -s "$RUNNER_TEMP/notary/AuthKey.p8"
+          printf '%s' "$MACOS_APP_PROFILE_BASE64" | base64 --decode > "$RUNNER_TEMP/embedded.provisionprofile"
+          test -s "$RUNNER_TEMP/embedded.provisionprofile"
+          # osx-sign copies this file into the bundle mode and all, so it must not
+          # keep the umask's 0600: a bundle file only its builder can read is not
+          # what an installed app should carry. The profile is not a secret.
+          chmod 0644 "$RUNNER_TEMP/embedded.provisionprofile"
+          node scripts/render-mac-entitlements.mjs --out "$RUNNER_TEMP/entitlements.mac.rendered.plist" --profile "$RUNNER_TEMP/embedded.provisionprofile"
+
       # ONE BUILD CANNOT SERVE BOTH MAC ARCHITECTURES, because `pnpm run build`
       # emits V8 bytecode and V8 bytecode is per-architecture.
       #
@@ -431,20 +502,24 @@ jobs:
       # pass two would silently reuse pass one's binary and reintroduce the bug.
       #
       # Cost: one extra Electron download and one extra `electron-vite build`
-      # (~4 min) inside a 60 min budget. Signing and notarization are unchanged;
-      # they already ran per bundle.
+      # (~4 min) inside a 60 min budget. Signing and notarization run per bundle,
+      # so both passes take the same profile and rendered entitlements.
       - name: Build macOS app (arm64)
         # pnpm forwards a literal -- to electron-builder; the config must precede it.
         run: |
           rm -rf node_modules/electron/dist
           npm_config_arch=arm64 node ./bin/ensure-electron.js
-          npm_config_arch=arm64 pnpm dist:mac -c.forceCodeSigning=true --arm64
+          npm_config_arch=arm64 pnpm dist:mac -c.forceCodeSigning=true -c.mac.provisioningProfile="$RUNNER_TEMP/embedded.provisionprofile" -c.mac.entitlements="$RUNNER_TEMP/entitlements.mac.rendered.plist" --arm64
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          CSC_KEY_PASSWORD: ${{ secrets.MACOS_DEVID_APP_P12_PASSWORD }}
+          # `scripts/notarize.js` (afterSign) notarizes this pass's app bundle with
+          # the App Store Connect API key. APPLE_API_KEY is the PATH of the .p8 the
+          # staging step decoded, not a secret value; bound per step rather than
+          # through $GITHUB_ENV so it reaches only the steps that notarize.
+          APPLE_API_KEY: ${{ runner.temp }}/notary/AuthKey.p8
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
           VITE_GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
           VITE_GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
           VITE_MICROSOFT_CLIENT_ID: ${{ secrets.MICROSOFT_CLIENT_ID }}
@@ -470,13 +545,17 @@ jobs:
         run: |
           rm -rf node_modules/electron/dist
           npm_config_arch=x64 node ./bin/ensure-electron.js
-          npm_config_arch=x64 pnpm dist:mac -c.forceCodeSigning=true --x64
+          npm_config_arch=x64 pnpm dist:mac -c.forceCodeSigning=true -c.mac.provisioningProfile="$RUNNER_TEMP/embedded.provisionprofile" -c.mac.entitlements="$RUNNER_TEMP/entitlements.mac.rendered.plist" --x64
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          CSC_KEY_PASSWORD: ${{ secrets.MACOS_DEVID_APP_P12_PASSWORD }}
+          # `scripts/notarize.js` (afterSign) notarizes this pass's app bundle with
+          # the App Store Connect API key. APPLE_API_KEY is the PATH of the .p8 the
+          # staging step decoded, not a secret value; bound per step rather than
+          # through $GITHUB_ENV so it reaches only the steps that notarize.
+          APPLE_API_KEY: ${{ runner.temp }}/notary/AuthKey.p8
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
           VITE_GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
           VITE_GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
           VITE_MICROSOFT_CLIENT_ID: ${{ secrets.MICROSOFT_CLIENT_ID }}
@@ -533,9 +612,9 @@ jobs:
           bash scripts/require-report.sh "Disk image notarization" pnpm --silent notarize-dmg | tee "$report"
           bash scripts/require-notarized-dmg.sh "$report"
         env:
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_API_KEY: ${{ runner.temp }}/notary/AuthKey.p8
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
 
       # Assert on the artifacts that were really built, before anything is
       # uploaded. These are the checks a user's Gatekeeper performs, and a
@@ -571,6 +650,13 @@ jobs:
             dist/latest*.yml
           if-no-files-found: error
           retention-days: 5
+
+      # The notary key is a live credential: removed whatever happened above, so
+      # it never outlives the job even on a runner that is not discarded. The
+      # profile and rendered plist go with it (not secret, but nothing needs them).
+      - name: Remove the notarization key
+        if: always()
+        run: rm -rf "$RUNNER_TEMP/notary" "$RUNNER_TEMP/embedded.provisionprofile" "$RUNNER_TEMP/entitlements.mac.rendered.plist"
 
   build-windows:
     name: Build Windows App
@@ -609,10 +695,19 @@ jobs:
       - name: Stage the bundled uv (Windows)
         run: pnpm setup-python:win
 
+      # The same p12 the macOS job imports, which is now the Radient Inc.
+      # organization's Developer ID Application identity. The Windows Authenticode
+      # SIGNER therefore changes with this move: the individual account's Developer
+      # ID cert (the old CSC_CONTENT) becomes Radient Inc.'s. It is still an Apple
+      # Developer ID cert used for Authenticode, so Windows trust is no better or
+      # worse than before. Updates do not break on the change because nothing pins
+      # the publisher: `win.verifyUpdateCodeSignature` is false, so electron-builder
+      # writes no `publisherName` into latest.yml / app-update.yml and the NSIS
+      # updater skips the signer comparison.
       - name: Setup code signing (Windows)
         shell: bash
         run: |
-          echo "${{ secrets.CSC_CONTENT }}" | base64 -d > certificate.p12
+          echo "${{ secrets.MACOS_DEVID_APP_P12_BASE64 }}" | base64 -d > certificate.p12
 
       # The Windows installer set is deliberately left alone, the union installer
       # included (that is `nsis.buildUniversalInstaller`, default true). It builds
@@ -632,7 +727,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_LINK: ./certificate.p12
-          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          CSC_KEY_PASSWORD: ${{ secrets.MACOS_DEVID_APP_P12_PASSWORD }}
           VITE_GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
           VITE_GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
           VITE_MICROSOFT_CLIENT_ID: ${{ secrets.MICROSOFT_CLIENT_ID }}

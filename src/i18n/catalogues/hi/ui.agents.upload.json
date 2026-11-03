@@ -27,5 +27,7 @@
 	"ui.agents.upload.title.published_org": "“{name}” को {destination} पर प्रकाशित किया गया",
 	"ui.agents.upload.title.published_public": "“{name}” को एजेंट हब पर प्रकाशित किया गया",
 	"ui.agents.upload.title.republished": "“{name}” की एजेंट हब लिस्टिंग अपडेट की गई",
-	"ui.agents.upload.title.update_listing": "“{name}” की एजेंट हब लिस्टिंग अपडेट करें?"
+	"ui.agents.upload.title.update_listing": "“{name}” की एजेंट हब लिस्टिंग अपडेट करें?",
+	"ui.agents.upload.sign_in.title_continue": "जारी रखने के लिए साइन इन करें",
+	"ui.agents.upload.sign_in.title_again": "फिर साइन इन करें"
 }

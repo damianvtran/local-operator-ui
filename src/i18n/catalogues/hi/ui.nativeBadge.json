@@ -1,0 +1,5 @@
+{
+	"ui.nativeBadge.attention": "{count, plural, one {Local Operator: # आइटम पर ध्यान देने की ज़रूरत है} other {Local Operator: # आइटमों पर ध्यान देने की ज़रूरत है}}",
+	"ui.nativeBadge.attentionPending": "{count, plural, one {Local Operator: # आइटम पर ध्यान देने की ज़रूरत है; अनुरोध अभी भी लंबित हैं} other {Local Operator: # आइटमों पर ध्यान देने की ज़रूरत है; अनुरोध अभी भी लंबित हैं}}",
+	"ui.nativeBadge.pending": "Local Operator: अनुरोध अभी भी लंबित हैं"
+}

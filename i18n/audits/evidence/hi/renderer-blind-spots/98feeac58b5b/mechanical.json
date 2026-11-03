@@ -1,0 +1,6609 @@
+{
+  "categories": [
+    "one",
+    "other"
+  ],
+  "key_count": 35,
+  "checks": "key parity; JSON; ICU parse; placeholder names/types; all Hindi CLDR plural categories; all select arms rendered",
+  "results": [
+    {
+      "key": "ui.chat.audio.play",
+      "hi": "चलाएँ",
+      "en": "Play",
+      "context": {
+        "role": "accessible control name",
+        "tone": "sentence case; preserve the existing action or factual wording",
+        "maxCells": 40,
+        "placeholders": {}
+      },
+      "variants": [
+        {
+          "unit": "now",
+          "count": 0,
+          "text": "चलाएँ"
+        },
+        {
+          "unit": "now",
+          "count": 1,
+          "text": "चलाएँ"
+        },
+        {
+          "unit": "now",
+          "count": 2,
+          "text": "चलाएँ"
+        },
+        {
+          "unit": "now",
+          "count": 12,
+          "text": "चलाएँ"
+        },
+        {
+          "unit": "now",
+          "count": 52,
+          "text": "चलाएँ"
+        },
+        {
+          "unit": "minute",
+          "count": 0,
+          "text": "चलाएँ"
+        },
+        {
+          "unit": "minute",
+          "count": 1,
+          "text": "चलाएँ"
+        },
+        {
+          "unit": "minute",
+          "count": 2,
+          "text": "चलाएँ"
+        },
+        {
+          "unit": "minute",
+          "count": 12,
+          "text": "चलाएँ"
+        },
+        {
+          "unit": "minute",
+          "count": 52,
+          "text": "चलाएँ"
+        },
+        {
+          "unit": "hour",
+          "count": 0,
+          "text": "चलाएँ"
+        },
+        {
+          "unit": "hour",
+          "count": 1,
+          "text": "चलाएँ"
+        },
+        {
+          "unit": "hour",
+          "count": 2,
+          "text": "चलाएँ"
+        },
+        {
+          "unit": "hour",
+          "count": 12,
+          "text": "चलाएँ"
+        },
+        {
+          "unit": "hour",
+          "count": 52,
+          "text": "चलाएँ"
+        },
+        {
+          "unit": "day",
+          "count": 0,
+          "text": "चलाएँ"
+        },
+        {
+          "unit": "day",
+          "count": 1,
+          "text": "चलाएँ"
+        },
+        {
+          "unit": "day",
+          "count": 2,
+          "text": "चलाएँ"
+        },
+        {
+          "unit": "day",
+          "count": 12,
+          "text": "चलाएँ"
+        },
+        {
+          "unit": "day",
+          "count": 52,
+          "text": "चलाएँ"
+        },
+        {
+          "unit": "week",
+          "count": 0,
+          "text": "चलाएँ"
+        },
+        {
+          "unit": "week",
+          "count": 1,
+          "text": "चलाएँ"
+        },
+        {
+          "unit": "week",
+          "count": 2,
+          "text": "चलाएँ"
+        },
+        {
+          "unit": "week",
+          "count": 12,
+          "text": "चलाएँ"
+        },
+        {
+          "unit": "week",
+          "count": 52,
+          "text": "चलाएँ"
+        },
+        {
+          "unit": "year",
+          "count": 0,
+          "text": "चलाएँ"
+        },
+        {
+          "unit": "year",
+          "count": 1,
+          "text": "चलाएँ"
+        },
+        {
+          "unit": "year",
+          "count": 2,
+          "text": "चलाएँ"
+        },
+        {
+          "unit": "year",
+          "count": 12,
+          "text": "चलाएँ"
+        },
+        {
+          "unit": "year",
+          "count": 52,
+          "text": "चलाएँ"
+        },
+        {
+          "unit": "unknown",
+          "count": 0,
+          "text": "चलाएँ"
+        },
+        {
+          "unit": "unknown",
+          "count": 1,
+          "text": "चलाएँ"
+        },
+        {
+          "unit": "unknown",
+          "count": 2,
+          "text": "चलाएँ"
+        },
+        {
+          "unit": "unknown",
+          "count": 12,
+          "text": "चलाएँ"
+        },
+        {
+          "unit": "unknown",
+          "count": 52,
+          "text": "चलाएँ"
+        }
+      ]
+    },
+    {
+      "key": "ui.chat.audio.pause",
+      "hi": "रोकें",
+      "en": "Pause",
+      "context": {
+        "role": "accessible control name",
+        "tone": "sentence case; preserve the existing action or factual wording",
+        "maxCells": 40,
+        "placeholders": {}
+      },
+      "variants": [
+        {
+          "unit": "now",
+          "count": 0,
+          "text": "रोकें"
+        },
+        {
+          "unit": "now",
+          "count": 1,
+          "text": "रोकें"
+        },
+        {
+          "unit": "now",
+          "count": 2,
+          "text": "रोकें"
+        },
+        {
+          "unit": "now",
+          "count": 12,
+          "text": "रोकें"
+        },
+        {
+          "unit": "now",
+          "count": 52,
+          "text": "रोकें"
+        },
+        {
+          "unit": "minute",
+          "count": 0,
+          "text": "रोकें"
+        },
+        {
+          "unit": "minute",
+          "count": 1,
+          "text": "रोकें"
+        },
+        {
+          "unit": "minute",
+          "count": 2,
+          "text": "रोकें"
+        },
+        {
+          "unit": "minute",
+          "count": 12,
+          "text": "रोकें"
+        },
+        {
+          "unit": "minute",
+          "count": 52,
+          "text": "रोकें"
+        },
+        {
+          "unit": "hour",
+          "count": 0,
+          "text": "रोकें"
+        },
+        {
+          "unit": "hour",
+          "count": 1,
+          "text": "रोकें"
+        },
+        {
+          "unit": "hour",
+          "count": 2,
+          "text": "रोकें"
+        },
+        {
+          "unit": "hour",
+          "count": 12,
+          "text": "रोकें"
+        },
+        {
+          "unit": "hour",
+          "count": 52,
+          "text": "रोकें"
+        },
+        {
+          "unit": "day",
+          "count": 0,
+          "text": "रोकें"
+        },
+        {
+          "unit": "day",
+          "count": 1,
+          "text": "रोकें"
+        },
+        {
+          "unit": "day",
+          "count": 2,
+          "text": "रोकें"
+        },
+        {
+          "unit": "day",
+          "count": 12,
+          "text": "रोकें"
+        },
+        {
+          "unit": "day",
+          "count": 52,
+          "text": "रोकें"
+        },
+        {
+          "unit": "week",
+          "count": 0,
+          "text": "रोकें"
+        },
+        {
+          "unit": "week",
+          "count": 1,
+          "text": "रोकें"
+        },
+        {
+          "unit": "week",
+          "count": 2,
+          "text": "रोकें"
+        },
+        {
+          "unit": "week",
+          "count": 12,
+          "text": "रोकें"
+        },
+        {
+          "unit": "week",
+          "count": 52,
+          "text": "रोकें"
+        },
+        {
+          "unit": "year",
+          "count": 0,
+          "text": "रोकें"
+        },
+        {
+          "unit": "year",
+          "count": 1,
+          "text": "रोकें"
+        },
+        {
+          "unit": "year",
+          "count": 2,
+          "text": "रोकें"
+        },
+        {
+          "unit": "year",
+          "count": 12,
+          "text": "रोकें"
+        },
+        {
+          "unit": "year",
+          "count": 52,
+          "text": "रोकें"
+        },
+        {
+          "unit": "unknown",
+          "count": 0,
+          "text": "रोकें"
+        },
+        {
+          "unit": "unknown",
+          "count": 1,
+          "text": "रोकें"
+        },
+        {
+          "unit": "unknown",
+          "count": 2,
+          "text": "रोकें"
+        },
+        {
+          "unit": "unknown",
+          "count": 12,
+          "text": "रोकें"
+        },
+        {
+          "unit": "unknown",
+          "count": 52,
+          "text": "रोकें"
+        }
+      ]
+    },
+    {
+      "key": "ui.chat.audio.play_label",
+      "hi": "{label} चलाएँ",
+      "en": "Play {label}",
+      "context": {
+        "role": "accessible control name",
+        "tone": "sentence case; preserve the existing action or factual wording",
+        "maxCells": 40,
+        "placeholders": {
+          "label": "User-provided audio title; do not translate."
+        }
+      },
+      "variants": [
+        {
+          "unit": "now",
+          "count": 0,
+          "text": "Audio चलाएँ"
+        },
+        {
+          "unit": "now",
+          "count": 1,
+          "text": "Audio चलाएँ"
+        },
+        {
+          "unit": "now",
+          "count": 2,
+          "text": "Audio चलाएँ"
+        },
+        {
+          "unit": "now",
+          "count": 12,
+          "text": "Audio चलाएँ"
+        },
+        {
+          "unit": "now",
+          "count": 52,
+          "text": "Audio चलाएँ"
+        },
+        {
+          "unit": "minute",
+          "count": 0,
+          "text": "Audio चलाएँ"
+        },
+        {
+          "unit": "minute",
+          "count": 1,
+          "text": "Audio चलाएँ"
+        },
+        {
+          "unit": "minute",
+          "count": 2,
+          "text": "Audio चलाएँ"
+        },
+        {
+          "unit": "minute",
+          "count": 12,
+          "text": "Audio चलाएँ"
+        },
+        {
+          "unit": "minute",
+          "count": 52,
+          "text": "Audio चलाएँ"
+        },
+        {
+          "unit": "hour",
+          "count": 0,
+          "text": "Audio चलाएँ"
+        },
+        {
+          "unit": "hour",
+          "count": 1,
+          "text": "Audio चलाएँ"
+        },
+        {
+          "unit": "hour",
+          "count": 2,
+          "text": "Audio चलाएँ"
+        },
+        {
+          "unit": "hour",
+          "count": 12,
+          "text": "Audio चलाएँ"
+        },
+        {
+          "unit": "hour",
+          "count": 52,
+          "text": "Audio चलाएँ"
+        },
+        {
+          "unit": "day",
+          "count": 0,
+          "text": "Audio चलाएँ"
+        },
+        {
+          "unit": "day",
+          "count": 1,
+          "text": "Audio चलाएँ"
+        },
+        {
+          "unit": "day",
+          "count": 2,
+          "text": "Audio चलाएँ"
+        },
+        {
+          "unit": "day",
+          "count": 12,
+          "text": "Audio चलाएँ"
+        },
+        {
+          "unit": "day",
+          "count": 52,
+          "text": "Audio चलाएँ"
+        },
+        {
+          "unit": "week",
+          "count": 0,
+          "text": "Audio चलाएँ"
+        },
+        {
+          "unit": "week",
+          "count": 1,
+          "text": "Audio चलाएँ"
+        },
+        {
+          "unit": "week",
+          "count": 2,
+          "text": "Audio चलाएँ"
+        },
+        {
+          "unit": "week",
+          "count": 12,
+          "text": "Audio चलाएँ"
+        },
+        {
+          "unit": "week",
+          "count": 52,
+          "text": "Audio चलाएँ"
+        },
+        {
+          "unit": "year",
+          "count": 0,
+          "text": "Audio चलाएँ"
+        },
+        {
+          "unit": "year",
+          "count": 1,
+          "text": "Audio चलाएँ"
+        },
+        {
+          "unit": "year",
+          "count": 2,
+          "text": "Audio चलाएँ"
+        },
+        {
+          "unit": "year",
+          "count": 12,
+          "text": "Audio चलाएँ"
+        },
+        {
+          "unit": "year",
+          "count": 52,
+          "text": "Audio चलाएँ"
+        },
+        {
+          "unit": "unknown",
+          "count": 0,
+          "text": "Audio चलाएँ"
+        },
+        {
+          "unit": "unknown",
+          "count": 1,
+          "text": "Audio चलाएँ"
+        },
+        {
+          "unit": "unknown",
+          "count": 2,
+          "text": "Audio चलाएँ"
+        },
+        {
+          "unit": "unknown",
+          "count": 12,
+          "text": "Audio चलाएँ"
+        },
+        {
+          "unit": "unknown",
+          "count": 52,
+          "text": "Audio चलाएँ"
+        }
+      ]
+    },
+    {
+      "key": "ui.chat.audio.pause_label",
+      "hi": "{label} रोकें",
+      "en": "Pause {label}",
+      "context": {
+        "role": "accessible control name",
+        "tone": "sentence case; preserve the existing action or factual wording",
+        "maxCells": 40,
+        "placeholders": {
+          "label": "User-provided audio title; do not translate."
+        }
+      },
+      "variants": [
+        {
+          "unit": "now",
+          "count": 0,
+          "text": "Audio रोकें"
+        },
+        {
+          "unit": "now",
+          "count": 1,
+          "text": "Audio रोकें"
+        },
+        {
+          "unit": "now",
+          "count": 2,
+          "text": "Audio रोकें"
+        },
+        {
+          "unit": "now",
+          "count": 12,
+          "text": "Audio रोकें"
+        },
+        {
+          "unit": "now",
+          "count": 52,
+          "text": "Audio रोकें"
+        },
+        {
+          "unit": "minute",
+          "count": 0,
+          "text": "Audio रोकें"
+        },
+        {
+          "unit": "minute",
+          "count": 1,
+          "text": "Audio रोकें"
+        },
+        {
+          "unit": "minute",
+          "count": 2,
+          "text": "Audio रोकें"
+        },
+        {
+          "unit": "minute",
+          "count": 12,
+          "text": "Audio रोकें"
+        },
+        {
+          "unit": "minute",
+          "count": 52,
+          "text": "Audio रोकें"
+        },
+        {
+          "unit": "hour",
+          "count": 0,
+          "text": "Audio रोकें"
+        },
+        {
+          "unit": "hour",
+          "count": 1,
+          "text": "Audio रोकें"
+        },
+        {
+          "unit": "hour",
+          "count": 2,
+          "text": "Audio रोकें"
+        },
+        {
+          "unit": "hour",
+          "count": 12,
+          "text": "Audio रोकें"
+        },
+        {
+          "unit": "hour",
+          "count": 52,
+          "text": "Audio रोकें"
+        },
+        {
+          "unit": "day",
+          "count": 0,
+          "text": "Audio रोकें"
+        },
+        {
+          "unit": "day",
+          "count": 1,
+          "text": "Audio रोकें"
+        },
+        {
+          "unit": "day",
+          "count": 2,
+          "text": "Audio रोकें"
+        },
+        {
+          "unit": "day",
+          "count": 12,
+          "text": "Audio रोकें"
+        },
+        {
+          "unit": "day",
+          "count": 52,
+          "text": "Audio रोकें"
+        },
+        {
+          "unit": "week",
+          "count": 0,
+          "text": "Audio रोकें"
+        },
+        {
+          "unit": "week",
+          "count": 1,
+          "text": "Audio रोकें"
+        },
+        {
+          "unit": "week",
+          "count": 2,
+          "text": "Audio रोकें"
+        },
+        {
+          "unit": "week",
+          "count": 12,
+          "text": "Audio रोकें"
+        },
+        {
+          "unit": "week",
+          "count": 52,
+          "text": "Audio रोकें"
+        },
+        {
+          "unit": "year",
+          "count": 0,
+          "text": "Audio रोकें"
+        },
+        {
+          "unit": "year",
+          "count": 1,
+          "text": "Audio रोकें"
+        },
+        {
+          "unit": "year",
+          "count": 2,
+          "text": "Audio रोकें"
+        },
+        {
+          "unit": "year",
+          "count": 12,
+          "text": "Audio रोकें"
+        },
+        {
+          "unit": "year",
+          "count": 52,
+          "text": "Audio रोकें"
+        },
+        {
+          "unit": "unknown",
+          "count": 0,
+          "text": "Audio रोकें"
+        },
+        {
+          "unit": "unknown",
+          "count": 1,
+          "text": "Audio रोकें"
+        },
+        {
+          "unit": "unknown",
+          "count": 2,
+          "text": "Audio रोकें"
+        },
+        {
+          "unit": "unknown",
+          "count": 12,
+          "text": "Audio रोकें"
+        },
+        {
+          "unit": "unknown",
+          "count": 52,
+          "text": "Audio रोकें"
+        }
+      ]
+    },
+    {
+      "key": "ui.chat.audio.mute",
+      "hi": "आवाज़ बंद करें",
+      "en": "Mute",
+      "context": {
+        "role": "accessible control name",
+        "tone": "sentence case; preserve the existing action or factual wording",
+        "maxCells": 40,
+        "placeholders": {}
+      },
+      "variants": [
+        {
+          "unit": "now",
+          "count": 0,
+          "text": "आवाज़ बंद करें"
+        },
+        {
+          "unit": "now",
+          "count": 1,
+          "text": "आवाज़ बंद करें"
+        },
+        {
+          "unit": "now",
+          "count": 2,
+          "text": "आवाज़ बंद करें"
+        },
+        {
+          "unit": "now",
+          "count": 12,
+          "text": "आवाज़ बंद करें"
+        },
+        {
+          "unit": "now",
+          "count": 52,
+          "text": "आवाज़ बंद करें"
+        },
+        {
+          "unit": "minute",
+          "count": 0,
+          "text": "आवाज़ बंद करें"
+        },
+        {
+          "unit": "minute",
+          "count": 1,
+          "text": "आवाज़ बंद करें"
+        },
+        {
+          "unit": "minute",
+          "count": 2,
+          "text": "आवाज़ बंद करें"
+        },
+        {
+          "unit": "minute",
+          "count": 12,
+          "text": "आवाज़ बंद करें"
+        },
+        {
+          "unit": "minute",
+          "count": 52,
+          "text": "आवाज़ बंद करें"
+        },
+        {
+          "unit": "hour",
+          "count": 0,
+          "text": "आवाज़ बंद करें"
+        },
+        {
+          "unit": "hour",
+          "count": 1,
+          "text": "आवाज़ बंद करें"
+        },
+        {
+          "unit": "hour",
+          "count": 2,
+          "text": "आवाज़ बंद करें"
+        },
+        {
+          "unit": "hour",
+          "count": 12,
+          "text": "आवाज़ बंद करें"
+        },
+        {
+          "unit": "hour",
+          "count": 52,
+          "text": "आवाज़ बंद करें"
+        },
+        {
+          "unit": "day",
+          "count": 0,
+          "text": "आवाज़ बंद करें"
+        },
+        {
+          "unit": "day",
+          "count": 1,
+          "text": "आवाज़ बंद करें"
+        },
+        {
+          "unit": "day",
+          "count": 2,
+          "text": "आवाज़ बंद करें"
+        },
+        {
+          "unit": "day",
+          "count": 12,
+          "text": "आवाज़ बंद करें"
+        },
+        {
+          "unit": "day",
+          "count": 52,
+          "text": "आवाज़ बंद करें"
+        },
+        {
+          "unit": "week",
+          "count": 0,
+          "text": "आवाज़ बंद करें"
+        },
+        {
+          "unit": "week",
+          "count": 1,
+          "text": "आवाज़ बंद करें"
+        },
+        {
+          "unit": "week",
+          "count": 2,
+          "text": "आवाज़ बंद करें"
+        },
+        {
+          "unit": "week",
+          "count": 12,
+          "text": "आवाज़ बंद करें"
+        },
+        {
+          "unit": "week",
+          "count": 52,
+          "text": "आवाज़ बंद करें"
+        },
+        {
+          "unit": "year",
+          "count": 0,
+          "text": "आवाज़ बंद करें"
+        },
+        {
+          "unit": "year",
+          "count": 1,
+          "text": "आवाज़ बंद करें"
+        },
+        {
+          "unit": "year",
+          "count": 2,
+          "text": "आवाज़ बंद करें"
+        },
+        {
+          "unit": "year",
+          "count": 12,
+          "text": "आवाज़ बंद करें"
+        },
+        {
+          "unit": "year",
+          "count": 52,
+          "text": "आवाज़ बंद करें"
+        },
+        {
+          "unit": "unknown",
+          "count": 0,
+          "text": "आवाज़ बंद करें"
+        },
+        {
+          "unit": "unknown",
+          "count": 1,
+          "text": "आवाज़ बंद करें"
+        },
+        {
+          "unit": "unknown",
+          "count": 2,
+          "text": "आवाज़ बंद करें"
+        },
+        {
+          "unit": "unknown",
+          "count": 12,
+          "text": "आवाज़ बंद करें"
+        },
+        {
+          "unit": "unknown",
+          "count": 52,
+          "text": "आवाज़ बंद करें"
+        }
+      ]
+    },
+    {
+      "key": "ui.chat.audio.unmute",
+      "hi": "आवाज़ चालू करें",
+      "en": "Unmute",
+      "context": {
+        "role": "accessible control name",
+        "tone": "sentence case; preserve the existing action or factual wording",
+        "maxCells": 40,
+        "placeholders": {}
+      },
+      "variants": [
+        {
+          "unit": "now",
+          "count": 0,
+          "text": "आवाज़ चालू करें"
+        },
+        {
+          "unit": "now",
+          "count": 1,
+          "text": "आवाज़ चालू करें"
+        },
+        {
+          "unit": "now",
+          "count": 2,
+          "text": "आवाज़ चालू करें"
+        },
+        {
+          "unit": "now",
+          "count": 12,
+          "text": "आवाज़ चालू करें"
+        },
+        {
+          "unit": "now",
+          "count": 52,
+          "text": "आवाज़ चालू करें"
+        },
+        {
+          "unit": "minute",
+          "count": 0,
+          "text": "आवाज़ चालू करें"
+        },
+        {
+          "unit": "minute",
+          "count": 1,
+          "text": "आवाज़ चालू करें"
+        },
+        {
+          "unit": "minute",
+          "count": 2,
+          "text": "आवाज़ चालू करें"
+        },
+        {
+          "unit": "minute",
+          "count": 12,
+          "text": "आवाज़ चालू करें"
+        },
+        {
+          "unit": "minute",
+          "count": 52,
+          "text": "आवाज़ चालू करें"
+        },
+        {
+          "unit": "hour",
+          "count": 0,
+          "text": "आवाज़ चालू करें"
+        },
+        {
+          "unit": "hour",
+          "count": 1,
+          "text": "आवाज़ चालू करें"
+        },
+        {
+          "unit": "hour",
+          "count": 2,
+          "text": "आवाज़ चालू करें"
+        },
+        {
+          "unit": "hour",
+          "count": 12,
+          "text": "आवाज़ चालू करें"
+        },
+        {
+          "unit": "hour",
+          "count": 52,
+          "text": "आवाज़ चालू करें"
+        },
+        {
+          "unit": "day",
+          "count": 0,
+          "text": "आवाज़ चालू करें"
+        },
+        {
+          "unit": "day",
+          "count": 1,
+          "text": "आवाज़ चालू करें"
+        },
+        {
+          "unit": "day",
+          "count": 2,
+          "text": "आवाज़ चालू करें"
+        },
+        {
+          "unit": "day",
+          "count": 12,
+          "text": "आवाज़ चालू करें"
+        },
+        {
+          "unit": "day",
+          "count": 52,
+          "text": "आवाज़ चालू करें"
+        },
+        {
+          "unit": "week",
+          "count": 0,
+          "text": "आवाज़ चालू करें"
+        },
+        {
+          "unit": "week",
+          "count": 1,
+          "text": "आवाज़ चालू करें"
+        },
+        {
+          "unit": "week",
+          "count": 2,
+          "text": "आवाज़ चालू करें"
+        },
+        {
+          "unit": "week",
+          "count": 12,
+          "text": "आवाज़ चालू करें"
+        },
+        {
+          "unit": "week",
+          "count": 52,
+          "text": "आवाज़ चालू करें"
+        },
+        {
+          "unit": "year",
+          "count": 0,
+          "text": "आवाज़ चालू करें"
+        },
+        {
+          "unit": "year",
+          "count": 1,
+          "text": "आवाज़ चालू करें"
+        },
+        {
+          "unit": "year",
+          "count": 2,
+          "text": "आवाज़ चालू करें"
+        },
+        {
+          "unit": "year",
+          "count": 12,
+          "text": "आवाज़ चालू करें"
+        },
+        {
+          "unit": "year",
+          "count": 52,
+          "text": "आवाज़ चालू करें"
+        },
+        {
+          "unit": "unknown",
+          "count": 0,
+          "text": "आवाज़ चालू करें"
+        },
+        {
+          "unit": "unknown",
+          "count": 1,
+          "text": "आवाज़ चालू करें"
+        },
+        {
+          "unit": "unknown",
+          "count": 2,
+          "text": "आवाज़ चालू करें"
+        },
+        {
+          "unit": "unknown",
+          "count": 12,
+          "text": "आवाज़ चालू करें"
+        },
+        {
+          "unit": "unknown",
+          "count": 52,
+          "text": "आवाज़ चालू करें"
+        }
+      ]
+    },
+    {
+      "key": "ui.chat.message_controls.copy",
+      "hi": "संदेश कॉपी करें",
+      "en": "Copy message",
+      "context": {
+        "role": "accessible control name",
+        "tone": "sentence case; preserve the existing action or factual wording",
+        "maxCells": 40,
+        "placeholders": {}
+      },
+      "variants": [
+        {
+          "unit": "now",
+          "count": 0,
+          "text": "संदेश कॉपी करें"
+        },
+        {
+          "unit": "now",
+          "count": 1,
+          "text": "संदेश कॉपी करें"
+        },
+        {
+          "unit": "now",
+          "count": 2,
+          "text": "संदेश कॉपी करें"
+        },
+        {
+          "unit": "now",
+          "count": 12,
+          "text": "संदेश कॉपी करें"
+        },
+        {
+          "unit": "now",
+          "count": 52,
+          "text": "संदेश कॉपी करें"
+        },
+        {
+          "unit": "minute",
+          "count": 0,
+          "text": "संदेश कॉपी करें"
+        },
+        {
+          "unit": "minute",
+          "count": 1,
+          "text": "संदेश कॉपी करें"
+        },
+        {
+          "unit": "minute",
+          "count": 2,
+          "text": "संदेश कॉपी करें"
+        },
+        {
+          "unit": "minute",
+          "count": 12,
+          "text": "संदेश कॉपी करें"
+        },
+        {
+          "unit": "minute",
+          "count": 52,
+          "text": "संदेश कॉपी करें"
+        },
+        {
+          "unit": "hour",
+          "count": 0,
+          "text": "संदेश कॉपी करें"
+        },
+        {
+          "unit": "hour",
+          "count": 1,
+          "text": "संदेश कॉपी करें"
+        },
+        {
+          "unit": "hour",
+          "count": 2,
+          "text": "संदेश कॉपी करें"
+        },
+        {
+          "unit": "hour",
+          "count": 12,
+          "text": "संदेश कॉपी करें"
+        },
+        {
+          "unit": "hour",
+          "count": 52,
+          "text": "संदेश कॉपी करें"
+        },
+        {
+          "unit": "day",
+          "count": 0,
+          "text": "संदेश कॉपी करें"
+        },
+        {
+          "unit": "day",
+          "count": 1,
+          "text": "संदेश कॉपी करें"
+        },
+        {
+          "unit": "day",
+          "count": 2,
+          "text": "संदेश कॉपी करें"
+        },
+        {
+          "unit": "day",
+          "count": 12,
+          "text": "संदेश कॉपी करें"
+        },
+        {
+          "unit": "day",
+          "count": 52,
+          "text": "संदेश कॉपी करें"
+        },
+        {
+          "unit": "week",
+          "count": 0,
+          "text": "संदेश कॉपी करें"
+        },
+        {
+          "unit": "week",
+          "count": 1,
+          "text": "संदेश कॉपी करें"
+        },
+        {
+          "unit": "week",
+          "count": 2,
+          "text": "संदेश कॉपी करें"
+        },
+        {
+          "unit": "week",
+          "count": 12,
+          "text": "संदेश कॉपी करें"
+        },
+        {
+          "unit": "week",
+          "count": 52,
+          "text": "संदेश कॉपी करें"
+        },
+        {
+          "unit": "year",
+          "count": 0,
+          "text": "संदेश कॉपी करें"
+        },
+        {
+          "unit": "year",
+          "count": 1,
+          "text": "संदेश कॉपी करें"
+        },
+        {
+          "unit": "year",
+          "count": 2,
+          "text": "संदेश कॉपी करें"
+        },
+        {
+          "unit": "year",
+          "count": 12,
+          "text": "संदेश कॉपी करें"
+        },
+        {
+          "unit": "year",
+          "count": 52,
+          "text": "संदेश कॉपी करें"
+        },
+        {
+          "unit": "unknown",
+          "count": 0,
+          "text": "संदेश कॉपी करें"
+        },
+        {
+          "unit": "unknown",
+          "count": 1,
+          "text": "संदेश कॉपी करें"
+        },
+        {
+          "unit": "unknown",
+          "count": 2,
+          "text": "संदेश कॉपी करें"
+        },
+        {
+          "unit": "unknown",
+          "count": 12,
+          "text": "संदेश कॉपी करें"
+        },
+        {
+          "unit": "unknown",
+          "count": 52,
+          "text": "संदेश कॉपी करें"
+        }
+      ]
+    },
+    {
+      "key": "ui.chat.message_controls.copied",
+      "hi": "कॉपी किया गया",
+      "en": "Copied",
+      "context": {
+        "role": "accessible control name",
+        "tone": "sentence case; preserve the existing action or factual wording",
+        "maxCells": 40,
+        "placeholders": {}
+      },
+      "variants": [
+        {
+          "unit": "now",
+          "count": 0,
+          "text": "कॉपी किया गया"
+        },
+        {
+          "unit": "now",
+          "count": 1,
+          "text": "कॉपी किया गया"
+        },
+        {
+          "unit": "now",
+          "count": 2,
+          "text": "कॉपी किया गया"
+        },
+        {
+          "unit": "now",
+          "count": 12,
+          "text": "कॉपी किया गया"
+        },
+        {
+          "unit": "now",
+          "count": 52,
+          "text": "कॉपी किया गया"
+        },
+        {
+          "unit": "minute",
+          "count": 0,
+          "text": "कॉपी किया गया"
+        },
+        {
+          "unit": "minute",
+          "count": 1,
+          "text": "कॉपी किया गया"
+        },
+        {
+          "unit": "minute",
+          "count": 2,
+          "text": "कॉपी किया गया"
+        },
+        {
+          "unit": "minute",
+          "count": 12,
+          "text": "कॉपी किया गया"
+        },
+        {
+          "unit": "minute",
+          "count": 52,
+          "text": "कॉपी किया गया"
+        },
+        {
+          "unit": "hour",
+          "count": 0,
+          "text": "कॉपी किया गया"
+        },
+        {
+          "unit": "hour",
+          "count": 1,
+          "text": "कॉपी किया गया"
+        },
+        {
+          "unit": "hour",
+          "count": 2,
+          "text": "कॉपी किया गया"
+        },
+        {
+          "unit": "hour",
+          "count": 12,
+          "text": "कॉपी किया गया"
+        },
+        {
+          "unit": "hour",
+          "count": 52,
+          "text": "कॉपी किया गया"
+        },
+        {
+          "unit": "day",
+          "count": 0,
+          "text": "कॉपी किया गया"
+        },
+        {
+          "unit": "day",
+          "count": 1,
+          "text": "कॉपी किया गया"
+        },
+        {
+          "unit": "day",
+          "count": 2,
+          "text": "कॉपी किया गया"
+        },
+        {
+          "unit": "day",
+          "count": 12,
+          "text": "कॉपी किया गया"
+        },
+        {
+          "unit": "day",
+          "count": 52,
+          "text": "कॉपी किया गया"
+        },
+        {
+          "unit": "week",
+          "count": 0,
+          "text": "कॉपी किया गया"
+        },
+        {
+          "unit": "week",
+          "count": 1,
+          "text": "कॉपी किया गया"
+        },
+        {
+          "unit": "week",
+          "count": 2,
+          "text": "कॉपी किया गया"
+        },
+        {
+          "unit": "week",
+          "count": 12,
+          "text": "कॉपी किया गया"
+        },
+        {
+          "unit": "week",
+          "count": 52,
+          "text": "कॉपी किया गया"
+        },
+        {
+          "unit": "year",
+          "count": 0,
+          "text": "कॉपी किया गया"
+        },
+        {
+          "unit": "year",
+          "count": 1,
+          "text": "कॉपी किया गया"
+        },
+        {
+          "unit": "year",
+          "count": 2,
+          "text": "कॉपी किया गया"
+        },
+        {
+          "unit": "year",
+          "count": 12,
+          "text": "कॉपी किया गया"
+        },
+        {
+          "unit": "year",
+          "count": 52,
+          "text": "कॉपी किया गया"
+        },
+        {
+          "unit": "unknown",
+          "count": 0,
+          "text": "कॉपी किया गया"
+        },
+        {
+          "unit": "unknown",
+          "count": 1,
+          "text": "कॉपी किया गया"
+        },
+        {
+          "unit": "unknown",
+          "count": 2,
+          "text": "कॉपी किया गया"
+        },
+        {
+          "unit": "unknown",
+          "count": 12,
+          "text": "कॉपी किया गया"
+        },
+        {
+          "unit": "unknown",
+          "count": 52,
+          "text": "कॉपी किया गया"
+        }
+      ]
+    },
+    {
+      "key": "ui.chat.image_actions.save_as",
+      "hi": "दूसरे नाम से सहेजें…",
+      "en": "Save as…",
+      "context": {
+        "role": "image action menu label",
+        "tone": "sentence case; preserve the existing action or factual wording",
+        "maxCells": 28,
+        "placeholders": {}
+      },
+      "variants": [
+        {
+          "unit": "now",
+          "count": 0,
+          "text": "दूसरे नाम से सहेजें…"
+        },
+        {
+          "unit": "now",
+          "count": 1,
+          "text": "दूसरे नाम से सहेजें…"
+        },
+        {
+          "unit": "now",
+          "count": 2,
+          "text": "दूसरे नाम से सहेजें…"
+        },
+        {
+          "unit": "now",
+          "count": 12,
+          "text": "दूसरे नाम से सहेजें…"
+        },
+        {
+          "unit": "now",
+          "count": 52,
+          "text": "दूसरे नाम से सहेजें…"
+        },
+        {
+          "unit": "minute",
+          "count": 0,
+          "text": "दूसरे नाम से सहेजें…"
+        },
+        {
+          "unit": "minute",
+          "count": 1,
+          "text": "दूसरे नाम से सहेजें…"
+        },
+        {
+          "unit": "minute",
+          "count": 2,
+          "text": "दूसरे नाम से सहेजें…"
+        },
+        {
+          "unit": "minute",
+          "count": 12,
+          "text": "दूसरे नाम से सहेजें…"
+        },
+        {
+          "unit": "minute",
+          "count": 52,
+          "text": "दूसरे नाम से सहेजें…"
+        },
+        {
+          "unit": "hour",
+          "count": 0,
+          "text": "दूसरे नाम से सहेजें…"
+        },
+        {
+          "unit": "hour",
+          "count": 1,
+          "text": "दूसरे नाम से सहेजें…"
+        },
+        {
+          "unit": "hour",
+          "count": 2,
+          "text": "दूसरे नाम से सहेजें…"
+        },
+        {
+          "unit": "hour",
+          "count": 12,
+          "text": "दूसरे नाम से सहेजें…"
+        },
+        {
+          "unit": "hour",
+          "count": 52,
+          "text": "दूसरे नाम से सहेजें…"
+        },
+        {
+          "unit": "day",
+          "count": 0,
+          "text": "दूसरे नाम से सहेजें…"
+        },
+        {
+          "unit": "day",
+          "count": 1,
+          "text": "दूसरे नाम से सहेजें…"
+        },
+        {
+          "unit": "day",
+          "count": 2,
+          "text": "दूसरे नाम से सहेजें…"
+        },
+        {
+          "unit": "day",
+          "count": 12,
+          "text": "दूसरे नाम से सहेजें…"
+        },
+        {
+          "unit": "day",
+          "count": 52,
+          "text": "दूसरे नाम से सहेजें…"
+        },
+        {
+          "unit": "week",
+          "count": 0,
+          "text": "दूसरे नाम से सहेजें…"
+        },
+        {
+          "unit": "week",
+          "count": 1,
+          "text": "दूसरे नाम से सहेजें…"
+        },
+        {
+          "unit": "week",
+          "count": 2,
+          "text": "दूसरे नाम से सहेजें…"
+        },
+        {
+          "unit": "week",
+          "count": 12,
+          "text": "दूसरे नाम से सहेजें…"
+        },
+        {
+          "unit": "week",
+          "count": 52,
+          "text": "दूसरे नाम से सहेजें…"
+        },
+        {
+          "unit": "year",
+          "count": 0,
+          "text": "दूसरे नाम से सहेजें…"
+        },
+        {
+          "unit": "year",
+          "count": 1,
+          "text": "दूसरे नाम से सहेजें…"
+        },
+        {
+          "unit": "year",
+          "count": 2,
+          "text": "दूसरे नाम से सहेजें…"
+        },
+        {
+          "unit": "year",
+          "count": 12,
+          "text": "दूसरे नाम से सहेजें…"
+        },
+        {
+          "unit": "year",
+          "count": 52,
+          "text": "दूसरे नाम से सहेजें…"
+        },
+        {
+          "unit": "unknown",
+          "count": 0,
+          "text": "दूसरे नाम से सहेजें…"
+        },
+        {
+          "unit": "unknown",
+          "count": 1,
+          "text": "दूसरे नाम से सहेजें…"
+        },
+        {
+          "unit": "unknown",
+          "count": 2,
+          "text": "दूसरे नाम से सहेजें…"
+        },
+        {
+          "unit": "unknown",
+          "count": 12,
+          "text": "दूसरे नाम से सहेजें…"
+        },
+        {
+          "unit": "unknown",
+          "count": 52,
+          "text": "दूसरे नाम से सहेजें…"
+        }
+      ]
+    },
+    {
+      "key": "ui.chat.image_actions.copy_image",
+      "hi": "तस्वीर कॉपी करें",
+      "en": "Copy image",
+      "context": {
+        "role": "image action menu label",
+        "tone": "sentence case; preserve the existing action or factual wording",
+        "maxCells": 28,
+        "placeholders": {}
+      },
+      "variants": [
+        {
+          "unit": "now",
+          "count": 0,
+          "text": "तस्वीर कॉपी करें"
+        },
+        {
+          "unit": "now",
+          "count": 1,
+          "text": "तस्वीर कॉपी करें"
+        },
+        {
+          "unit": "now",
+          "count": 2,
+          "text": "तस्वीर कॉपी करें"
+        },
+        {
+          "unit": "now",
+          "count": 12,
+          "text": "तस्वीर कॉपी करें"
+        },
+        {
+          "unit": "now",
+          "count": 52,
+          "text": "तस्वीर कॉपी करें"
+        },
+        {
+          "unit": "minute",
+          "count": 0,
+          "text": "तस्वीर कॉपी करें"
+        },
+        {
+          "unit": "minute",
+          "count": 1,
+          "text": "तस्वीर कॉपी करें"
+        },
+        {
+          "unit": "minute",
+          "count": 2,
+          "text": "तस्वीर कॉपी करें"
+        },
+        {
+          "unit": "minute",
+          "count": 12,
+          "text": "तस्वीर कॉपी करें"
+        },
+        {
+          "unit": "minute",
+          "count": 52,
+          "text": "तस्वीर कॉपी करें"
+        },
+        {
+          "unit": "hour",
+          "count": 0,
+          "text": "तस्वीर कॉपी करें"
+        },
+        {
+          "unit": "hour",
+          "count": 1,
+          "text": "तस्वीर कॉपी करें"
+        },
+        {
+          "unit": "hour",
+          "count": 2,
+          "text": "तस्वीर कॉपी करें"
+        },
+        {
+          "unit": "hour",
+          "count": 12,
+          "text": "तस्वीर कॉपी करें"
+        },
+        {
+          "unit": "hour",
+          "count": 52,
+          "text": "तस्वीर कॉपी करें"
+        },
+        {
+          "unit": "day",
+          "count": 0,
+          "text": "तस्वीर कॉपी करें"
+        },
+        {
+          "unit": "day",
+          "count": 1,
+          "text": "तस्वीर कॉपी करें"
+        },
+        {
+          "unit": "day",
+          "count": 2,
+          "text": "तस्वीर कॉपी करें"
+        },
+        {
+          "unit": "day",
+          "count": 12,
+          "text": "तस्वीर कॉपी करें"
+        },
+        {
+          "unit": "day",
+          "count": 52,
+          "text": "तस्वीर कॉपी करें"
+        },
+        {
+          "unit": "week",
+          "count": 0,
+          "text": "तस्वीर कॉपी करें"
+        },
+        {
+          "unit": "week",
+          "count": 1,
+          "text": "तस्वीर कॉपी करें"
+        },
+        {
+          "unit": "week",
+          "count": 2,
+          "text": "तस्वीर कॉपी करें"
+        },
+        {
+          "unit": "week",
+          "count": 12,
+          "text": "तस्वीर कॉपी करें"
+        },
+        {
+          "unit": "week",
+          "count": 52,
+          "text": "तस्वीर कॉपी करें"
+        },
+        {
+          "unit": "year",
+          "count": 0,
+          "text": "तस्वीर कॉपी करें"
+        },
+        {
+          "unit": "year",
+          "count": 1,
+          "text": "तस्वीर कॉपी करें"
+        },
+        {
+          "unit": "year",
+          "count": 2,
+          "text": "तस्वीर कॉपी करें"
+        },
+        {
+          "unit": "year",
+          "count": 12,
+          "text": "तस्वीर कॉपी करें"
+        },
+        {
+          "unit": "year",
+          "count": 52,
+          "text": "तस्वीर कॉपी करें"
+        },
+        {
+          "unit": "unknown",
+          "count": 0,
+          "text": "तस्वीर कॉपी करें"
+        },
+        {
+          "unit": "unknown",
+          "count": 1,
+          "text": "तस्वीर कॉपी करें"
+        },
+        {
+          "unit": "unknown",
+          "count": 2,
+          "text": "तस्वीर कॉपी करें"
+        },
+        {
+          "unit": "unknown",
+          "count": 12,
+          "text": "तस्वीर कॉपी करें"
+        },
+        {
+          "unit": "unknown",
+          "count": 52,
+          "text": "तस्वीर कॉपी करें"
+        }
+      ]
+    },
+    {
+      "key": "ui.chat.image_actions.copy_image_url",
+      "hi": "तस्वीर का URL कॉपी करें",
+      "en": "Copy image URL",
+      "context": {
+        "role": "image action menu label",
+        "tone": "sentence case; preserve the existing action or factual wording",
+        "maxCells": 28,
+        "placeholders": {}
+      },
+      "variants": [
+        {
+          "unit": "now",
+          "count": 0,
+          "text": "तस्वीर का URL कॉपी करें"
+        },
+        {
+          "unit": "now",
+          "count": 1,
+          "text": "तस्वीर का URL कॉपी करें"
+        },
+        {
+          "unit": "now",
+          "count": 2,
+          "text": "तस्वीर का URL कॉपी करें"
+        },
+        {
+          "unit": "now",
+          "count": 12,
+          "text": "तस्वीर का URL कॉपी करें"
+        },
+        {
+          "unit": "now",
+          "count": 52,
+          "text": "तस्वीर का URL कॉपी करें"
+        },
+        {
+          "unit": "minute",
+          "count": 0,
+          "text": "तस्वीर का URL कॉपी करें"
+        },
+        {
+          "unit": "minute",
+          "count": 1,
+          "text": "तस्वीर का URL कॉपी करें"
+        },
+        {
+          "unit": "minute",
+          "count": 2,
+          "text": "तस्वीर का URL कॉपी करें"
+        },
+        {
+          "unit": "minute",
+          "count": 12,
+          "text": "तस्वीर का URL कॉपी करें"
+        },
+        {
+          "unit": "minute",
+          "count": 52,
+          "text": "तस्वीर का URL कॉपी करें"
+        },
+        {
+          "unit": "hour",
+          "count": 0,
+          "text": "तस्वीर का URL कॉपी करें"
+        },
+        {
+          "unit": "hour",
+          "count": 1,
+          "text": "तस्वीर का URL कॉपी करें"
+        },
+        {
+          "unit": "hour",
+          "count": 2,
+          "text": "तस्वीर का URL कॉपी करें"
+        },
+        {
+          "unit": "hour",
+          "count": 12,
+          "text": "तस्वीर का URL कॉपी करें"
+        },
+        {
+          "unit": "hour",
+          "count": 52,
+          "text": "तस्वीर का URL कॉपी करें"
+        },
+        {
+          "unit": "day",
+          "count": 0,
+          "text": "तस्वीर का URL कॉपी करें"
+        },
+        {
+          "unit": "day",
+          "count": 1,
+          "text": "तस्वीर का URL कॉपी करें"
+        },
+        {
+          "unit": "day",
+          "count": 2,
+          "text": "तस्वीर का URL कॉपी करें"
+        },
+        {
+          "unit": "day",
+          "count": 12,
+          "text": "तस्वीर का URL कॉपी करें"
+        },
+        {
+          "unit": "day",
+          "count": 52,
+          "text": "तस्वीर का URL कॉपी करें"
+        },
+        {
+          "unit": "week",
+          "count": 0,
+          "text": "तस्वीर का URL कॉपी करें"
+        },
+        {
+          "unit": "week",
+          "count": 1,
+          "text": "तस्वीर का URL कॉपी करें"
+        },
+        {
+          "unit": "week",
+          "count": 2,
+          "text": "तस्वीर का URL कॉपी करें"
+        },
+        {
+          "unit": "week",
+          "count": 12,
+          "text": "तस्वीर का URL कॉपी करें"
+        },
+        {
+          "unit": "week",
+          "count": 52,
+          "text": "तस्वीर का URL कॉपी करें"
+        },
+        {
+          "unit": "year",
+          "count": 0,
+          "text": "तस्वीर का URL कॉपी करें"
+        },
+        {
+          "unit": "year",
+          "count": 1,
+          "text": "तस्वीर का URL कॉपी करें"
+        },
+        {
+          "unit": "year",
+          "count": 2,
+          "text": "तस्वीर का URL कॉपी करें"
+        },
+        {
+          "unit": "year",
+          "count": 12,
+          "text": "तस्वीर का URL कॉपी करें"
+        },
+        {
+          "unit": "year",
+          "count": 52,
+          "text": "तस्वीर का URL कॉपी करें"
+        },
+        {
+          "unit": "unknown",
+          "count": 0,
+          "text": "तस्वीर का URL कॉपी करें"
+        },
+        {
+          "unit": "unknown",
+          "count": 1,
+          "text": "तस्वीर का URL कॉपी करें"
+        },
+        {
+          "unit": "unknown",
+          "count": 2,
+          "text": "तस्वीर का URL कॉपी करें"
+        },
+        {
+          "unit": "unknown",
+          "count": 12,
+          "text": "तस्वीर का URL कॉपी करें"
+        },
+        {
+          "unit": "unknown",
+          "count": 52,
+          "text": "तस्वीर का URL कॉपी करें"
+        }
+      ]
+    },
+    {
+      "key": "ui.chat.image_actions.open_in_browser",
+      "hi": "ब्राउज़र में खोलें",
+      "en": "Open in browser",
+      "context": {
+        "role": "image action menu label",
+        "tone": "sentence case; preserve the existing action or factual wording",
+        "maxCells": 28,
+        "placeholders": {}
+      },
+      "variants": [
+        {
+          "unit": "now",
+          "count": 0,
+          "text": "ब्राउज़र में खोलें"
+        },
+        {
+          "unit": "now",
+          "count": 1,
+          "text": "ब्राउज़र में खोलें"
+        },
+        {
+          "unit": "now",
+          "count": 2,
+          "text": "ब्राउज़र में खोलें"
+        },
+        {
+          "unit": "now",
+          "count": 12,
+          "text": "ब्राउज़र में खोलें"
+        },
+        {
+          "unit": "now",
+          "count": 52,
+          "text": "ब्राउज़र में खोलें"
+        },
+        {
+          "unit": "minute",
+          "count": 0,
+          "text": "ब्राउज़र में खोलें"
+        },
+        {
+          "unit": "minute",
+          "count": 1,
+          "text": "ब्राउज़र में खोलें"
+        },
+        {
+          "unit": "minute",
+          "count": 2,
+          "text": "ब्राउज़र में खोलें"
+        },
+        {
+          "unit": "minute",
+          "count": 12,
+          "text": "ब्राउज़र में खोलें"
+        },
+        {
+          "unit": "minute",
+          "count": 52,
+          "text": "ब्राउज़र में खोलें"
+        },
+        {
+          "unit": "hour",
+          "count": 0,
+          "text": "ब्राउज़र में खोलें"
+        },
+        {
+          "unit": "hour",
+          "count": 1,
+          "text": "ब्राउज़र में खोलें"
+        },
+        {
+          "unit": "hour",
+          "count": 2,
+          "text": "ब्राउज़र में खोलें"
+        },
+        {
+          "unit": "hour",
+          "count": 12,
+          "text": "ब्राउज़र में खोलें"
+        },
+        {
+          "unit": "hour",
+          "count": 52,
+          "text": "ब्राउज़र में खोलें"
+        },
+        {
+          "unit": "day",
+          "count": 0,
+          "text": "ब्राउज़र में खोलें"
+        },
+        {
+          "unit": "day",
+          "count": 1,
+          "text": "ब्राउज़र में खोलें"
+        },
+        {
+          "unit": "day",
+          "count": 2,
+          "text": "ब्राउज़र में खोलें"
+        },
+        {
+          "unit": "day",
+          "count": 12,
+          "text": "ब्राउज़र में खोलें"
+        },
+        {
+          "unit": "day",
+          "count": 52,
+          "text": "ब्राउज़र में खोलें"
+        },
+        {
+          "unit": "week",
+          "count": 0,
+          "text": "ब्राउज़र में खोलें"
+        },
+        {
+          "unit": "week",
+          "count": 1,
+          "text": "ब्राउज़र में खोलें"
+        },
+        {
+          "unit": "week",
+          "count": 2,
+          "text": "ब्राउज़र में खोलें"
+        },
+        {
+          "unit": "week",
+          "count": 12,
+          "text": "ब्राउज़र में खोलें"
+        },
+        {
+          "unit": "week",
+          "count": 52,
+          "text": "ब्राउज़र में खोलें"
+        },
+        {
+          "unit": "year",
+          "count": 0,
+          "text": "ब्राउज़र में खोलें"
+        },
+        {
+          "unit": "year",
+          "count": 1,
+          "text": "ब्राउज़र में खोलें"
+        },
+        {
+          "unit": "year",
+          "count": 2,
+          "text": "ब्राउज़र में खोलें"
+        },
+        {
+          "unit": "year",
+          "count": 12,
+          "text": "ब्राउज़र में खोलें"
+        },
+        {
+          "unit": "year",
+          "count": 52,
+          "text": "ब्राउज़र में खोलें"
+        },
+        {
+          "unit": "unknown",
+          "count": 0,
+          "text": "ब्राउज़र में खोलें"
+        },
+        {
+          "unit": "unknown",
+          "count": 1,
+          "text": "ब्राउज़र में खोलें"
+        },
+        {
+          "unit": "unknown",
+          "count": 2,
+          "text": "ब्राउज़र में खोलें"
+        },
+        {
+          "unit": "unknown",
+          "count": 12,
+          "text": "ब्राउज़र में खोलें"
+        },
+        {
+          "unit": "unknown",
+          "count": 52,
+          "text": "ब्राउज़र में खोलें"
+        }
+      ]
+    },
+    {
+      "key": "ui.chat.image_actions.expand_image",
+      "hi": "तस्वीर बड़ी करें",
+      "en": "Expand image",
+      "context": {
+        "role": "image action menu label",
+        "tone": "sentence case; preserve the existing action or factual wording",
+        "maxCells": 28,
+        "placeholders": {}
+      },
+      "variants": [
+        {
+          "unit": "now",
+          "count": 0,
+          "text": "तस्वीर बड़ी करें"
+        },
+        {
+          "unit": "now",
+          "count": 1,
+          "text": "तस्वीर बड़ी करें"
+        },
+        {
+          "unit": "now",
+          "count": 2,
+          "text": "तस्वीर बड़ी करें"
+        },
+        {
+          "unit": "now",
+          "count": 12,
+          "text": "तस्वीर बड़ी करें"
+        },
+        {
+          "unit": "now",
+          "count": 52,
+          "text": "तस्वीर बड़ी करें"
+        },
+        {
+          "unit": "minute",
+          "count": 0,
+          "text": "तस्वीर बड़ी करें"
+        },
+        {
+          "unit": "minute",
+          "count": 1,
+          "text": "तस्वीर बड़ी करें"
+        },
+        {
+          "unit": "minute",
+          "count": 2,
+          "text": "तस्वीर बड़ी करें"
+        },
+        {
+          "unit": "minute",
+          "count": 12,
+          "text": "तस्वीर बड़ी करें"
+        },
+        {
+          "unit": "minute",
+          "count": 52,
+          "text": "तस्वीर बड़ी करें"
+        },
+        {
+          "unit": "hour",
+          "count": 0,
+          "text": "तस्वीर बड़ी करें"
+        },
+        {
+          "unit": "hour",
+          "count": 1,
+          "text": "तस्वीर बड़ी करें"
+        },
+        {
+          "unit": "hour",
+          "count": 2,
+          "text": "तस्वीर बड़ी करें"
+        },
+        {
+          "unit": "hour",
+          "count": 12,
+          "text": "तस्वीर बड़ी करें"
+        },
+        {
+          "unit": "hour",
+          "count": 52,
+          "text": "तस्वीर बड़ी करें"
+        },
+        {
+          "unit": "day",
+          "count": 0,
+          "text": "तस्वीर बड़ी करें"
+        },
+        {
+          "unit": "day",
+          "count": 1,
+          "text": "तस्वीर बड़ी करें"
+        },
+        {
+          "unit": "day",
+          "count": 2,
+          "text": "तस्वीर बड़ी करें"
+        },
+        {
+          "unit": "day",
+          "count": 12,
+          "text": "तस्वीर बड़ी करें"
+        },
+        {
+          "unit": "day",
+          "count": 52,
+          "text": "तस्वीर बड़ी करें"
+        },
+        {
+          "unit": "week",
+          "count": 0,
+          "text": "तस्वीर बड़ी करें"
+        },
+        {
+          "unit": "week",
+          "count": 1,
+          "text": "तस्वीर बड़ी करें"
+        },
+        {
+          "unit": "week",
+          "count": 2,
+          "text": "तस्वीर बड़ी करें"
+        },
+        {
+          "unit": "week",
+          "count": 12,
+          "text": "तस्वीर बड़ी करें"
+        },
+        {
+          "unit": "week",
+          "count": 52,
+          "text": "तस्वीर बड़ी करें"
+        },
+        {
+          "unit": "year",
+          "count": 0,
+          "text": "तस्वीर बड़ी करें"
+        },
+        {
+          "unit": "year",
+          "count": 1,
+          "text": "तस्वीर बड़ी करें"
+        },
+        {
+          "unit": "year",
+          "count": 2,
+          "text": "तस्वीर बड़ी करें"
+        },
+        {
+          "unit": "year",
+          "count": 12,
+          "text": "तस्वीर बड़ी करें"
+        },
+        {
+          "unit": "year",
+          "count": 52,
+          "text": "तस्वीर बड़ी करें"
+        },
+        {
+          "unit": "unknown",
+          "count": 0,
+          "text": "तस्वीर बड़ी करें"
+        },
+        {
+          "unit": "unknown",
+          "count": 1,
+          "text": "तस्वीर बड़ी करें"
+        },
+        {
+          "unit": "unknown",
+          "count": 2,
+          "text": "तस्वीर बड़ी करें"
+        },
+        {
+          "unit": "unknown",
+          "count": 12,
+          "text": "तस्वीर बड़ी करें"
+        },
+        {
+          "unit": "unknown",
+          "count": 52,
+          "text": "तस्वीर बड़ी करें"
+        }
+      ]
+    },
+    {
+      "key": "ui.chat.composer.connect_provider",
+      "hi": "प्रोवाइडर कनेक्ट करें",
+      "en": "Connect a provider",
+      "context": {
+        "role": "composer error recovery action",
+        "tone": "sentence case; preserve the existing action or factual wording",
+        "maxCells": 28,
+        "placeholders": {}
+      },
+      "variants": [
+        {
+          "unit": "now",
+          "count": 0,
+          "text": "प्रोवाइडर कनेक्ट करें"
+        },
+        {
+          "unit": "now",
+          "count": 1,
+          "text": "प्रोवाइडर कनेक्ट करें"
+        },
+        {
+          "unit": "now",
+          "count": 2,
+          "text": "प्रोवाइडर कनेक्ट करें"
+        },
+        {
+          "unit": "now",
+          "count": 12,
+          "text": "प्रोवाइडर कनेक्ट करें"
+        },
+        {
+          "unit": "now",
+          "count": 52,
+          "text": "प्रोवाइडर कनेक्ट करें"
+        },
+        {
+          "unit": "minute",
+          "count": 0,
+          "text": "प्रोवाइडर कनेक्ट करें"
+        },
+        {
+          "unit": "minute",
+          "count": 1,
+          "text": "प्रोवाइडर कनेक्ट करें"
+        },
+        {
+          "unit": "minute",
+          "count": 2,
+          "text": "प्रोवाइडर कनेक्ट करें"
+        },
+        {
+          "unit": "minute",
+          "count": 12,
+          "text": "प्रोवाइडर कनेक्ट करें"
+        },
+        {
+          "unit": "minute",
+          "count": 52,
+          "text": "प्रोवाइडर कनेक्ट करें"
+        },
+        {
+          "unit": "hour",
+          "count": 0,
+          "text": "प्रोवाइडर कनेक्ट करें"
+        },
+        {
+          "unit": "hour",
+          "count": 1,
+          "text": "प्रोवाइडर कनेक्ट करें"
+        },
+        {
+          "unit": "hour",
+          "count": 2,
+          "text": "प्रोवाइडर कनेक्ट करें"
+        },
+        {
+          "unit": "hour",
+          "count": 12,
+          "text": "प्रोवाइडर कनेक्ट करें"
+        },
+        {
+          "unit": "hour",
+          "count": 52,
+          "text": "प्रोवाइडर कनेक्ट करें"
+        },
+        {
+          "unit": "day",
+          "count": 0,
+          "text": "प्रोवाइडर कनेक्ट करें"
+        },
+        {
+          "unit": "day",
+          "count": 1,
+          "text": "प्रोवाइडर कनेक्ट करें"
+        },
+        {
+          "unit": "day",
+          "count": 2,
+          "text": "प्रोवाइडर कनेक्ट करें"
+        },
+        {
+          "unit": "day",
+          "count": 12,
+          "text": "प्रोवाइडर कनेक्ट करें"
+        },
+        {
+          "unit": "day",
+          "count": 52,
+          "text": "प्रोवाइडर कनेक्ट करें"
+        },
+        {
+          "unit": "week",
+          "count": 0,
+          "text": "प्रोवाइडर कनेक्ट करें"
+        },
+        {
+          "unit": "week",
+          "count": 1,
+          "text": "प्रोवाइडर कनेक्ट करें"
+        },
+        {
+          "unit": "week",
+          "count": 2,
+          "text": "प्रोवाइडर कनेक्ट करें"
+        },
+        {
+          "unit": "week",
+          "count": 12,
+          "text": "प्रोवाइडर कनेक्ट करें"
+        },
+        {
+          "unit": "week",
+          "count": 52,
+          "text": "प्रोवाइडर कनेक्ट करें"
+        },
+        {
+          "unit": "year",
+          "count": 0,
+          "text": "प्रोवाइडर कनेक्ट करें"
+        },
+        {
+          "unit": "year",
+          "count": 1,
+          "text": "प्रोवाइडर कनेक्ट करें"
+        },
+        {
+          "unit": "year",
+          "count": 2,
+          "text": "प्रोवाइडर कनेक्ट करें"
+        },
+        {
+          "unit": "year",
+          "count": 12,
+          "text": "प्रोवाइडर कनेक्ट करें"
+        },
+        {
+          "unit": "year",
+          "count": 52,
+          "text": "प्रोवाइडर कनेक्ट करें"
+        },
+        {
+          "unit": "unknown",
+          "count": 0,
+          "text": "प्रोवाइडर कनेक्ट करें"
+        },
+        {
+          "unit": "unknown",
+          "count": 1,
+          "text": "प्रोवाइडर कनेक्ट करें"
+        },
+        {
+          "unit": "unknown",
+          "count": 2,
+          "text": "प्रोवाइडर कनेक्ट करें"
+        },
+        {
+          "unit": "unknown",
+          "count": 12,
+          "text": "प्रोवाइडर कनेक्ट करें"
+        },
+        {
+          "unit": "unknown",
+          "count": 52,
+          "text": "प्रोवाइडर कनेक्ट करें"
+        }
+      ]
+    },
+    {
+      "key": "ui.chat.slot_notice.run_draft_title",
+      "hi": "रन विवरण के लिए बातचीत ज़रूरी है।",
+      "en": "Run details need a conversation.",
+      "context": {
+        "role": "right-slot notice title",
+        "tone": "sentence case; preserve the existing action or factual wording",
+        "maxCells": 120,
+        "placeholders": {}
+      },
+      "variants": [
+        {
+          "unit": "now",
+          "count": 0,
+          "text": "रन विवरण के लिए बातचीत ज़रूरी है।"
+        },
+        {
+          "unit": "now",
+          "count": 1,
+          "text": "रन विवरण के लिए बातचीत ज़रूरी है।"
+        },
+        {
+          "unit": "now",
+          "count": 2,
+          "text": "रन विवरण के लिए बातचीत ज़रूरी है।"
+        },
+        {
+          "unit": "now",
+          "count": 12,
+          "text": "रन विवरण के लिए बातचीत ज़रूरी है।"
+        },
+        {
+          "unit": "now",
+          "count": 52,
+          "text": "रन विवरण के लिए बातचीत ज़रूरी है।"
+        },
+        {
+          "unit": "minute",
+          "count": 0,
+          "text": "रन विवरण के लिए बातचीत ज़रूरी है।"
+        },
+        {
+          "unit": "minute",
+          "count": 1,
+          "text": "रन विवरण के लिए बातचीत ज़रूरी है।"
+        },
+        {
+          "unit": "minute",
+          "count": 2,
+          "text": "रन विवरण के लिए बातचीत ज़रूरी है।"
+        },
+        {
+          "unit": "minute",
+          "count": 12,
+          "text": "रन विवरण के लिए बातचीत ज़रूरी है।"
+        },
+        {
+          "unit": "minute",
+          "count": 52,
+          "text": "रन विवरण के लिए बातचीत ज़रूरी है।"
+        },
+        {
+          "unit": "hour",
+          "count": 0,
+          "text": "रन विवरण के लिए बातचीत ज़रूरी है।"
+        },
+        {
+          "unit": "hour",
+          "count": 1,
+          "text": "रन विवरण के लिए बातचीत ज़रूरी है।"
+        },
+        {
+          "unit": "hour",
+          "count": 2,
+          "text": "रन विवरण के लिए बातचीत ज़रूरी है।"
+        },
+        {
+          "unit": "hour",
+          "count": 12,
+          "text": "रन विवरण के लिए बातचीत ज़रूरी है।"
+        },
+        {
+          "unit": "hour",
+          "count": 52,
+          "text": "रन विवरण के लिए बातचीत ज़रूरी है।"
+        },
+        {
+          "unit": "day",
+          "count": 0,
+          "text": "रन विवरण के लिए बातचीत ज़रूरी है।"
+        },
+        {
+          "unit": "day",
+          "count": 1,
+          "text": "रन विवरण के लिए बातचीत ज़रूरी है।"
+        },
+        {
+          "unit": "day",
+          "count": 2,
+          "text": "रन विवरण के लिए बातचीत ज़रूरी है।"
+        },
+        {
+          "unit": "day",
+          "count": 12,
+          "text": "रन विवरण के लिए बातचीत ज़रूरी है।"
+        },
+        {
+          "unit": "day",
+          "count": 52,
+          "text": "रन विवरण के लिए बातचीत ज़रूरी है।"
+        },
+        {
+          "unit": "week",
+          "count": 0,
+          "text": "रन विवरण के लिए बातचीत ज़रूरी है।"
+        },
+        {
+          "unit": "week",
+          "count": 1,
+          "text": "रन विवरण के लिए बातचीत ज़रूरी है।"
+        },
+        {
+          "unit": "week",
+          "count": 2,
+          "text": "रन विवरण के लिए बातचीत ज़रूरी है।"
+        },
+        {
+          "unit": "week",
+          "count": 12,
+          "text": "रन विवरण के लिए बातचीत ज़रूरी है।"
+        },
+        {
+          "unit": "week",
+          "count": 52,
+          "text": "रन विवरण के लिए बातचीत ज़रूरी है।"
+        },
+        {
+          "unit": "year",
+          "count": 0,
+          "text": "रन विवरण के लिए बातचीत ज़रूरी है।"
+        },
+        {
+          "unit": "year",
+          "count": 1,
+          "text": "रन विवरण के लिए बातचीत ज़रूरी है।"
+        },
+        {
+          "unit": "year",
+          "count": 2,
+          "text": "रन विवरण के लिए बातचीत ज़रूरी है।"
+        },
+        {
+          "unit": "year",
+          "count": 12,
+          "text": "रन विवरण के लिए बातचीत ज़रूरी है।"
+        },
+        {
+          "unit": "year",
+          "count": 52,
+          "text": "रन विवरण के लिए बातचीत ज़रूरी है।"
+        },
+        {
+          "unit": "unknown",
+          "count": 0,
+          "text": "रन विवरण के लिए बातचीत ज़रूरी है।"
+        },
+        {
+          "unit": "unknown",
+          "count": 1,
+          "text": "रन विवरण के लिए बातचीत ज़रूरी है।"
+        },
+        {
+          "unit": "unknown",
+          "count": 2,
+          "text": "रन विवरण के लिए बातचीत ज़रूरी है।"
+        },
+        {
+          "unit": "unknown",
+          "count": 12,
+          "text": "रन विवरण के लिए बातचीत ज़रूरी है।"
+        },
+        {
+          "unit": "unknown",
+          "count": 52,
+          "text": "रन विवरण के लिए बातचीत ज़रूरी है।"
+        }
+      ]
+    },
+    {
+      "key": "ui.chat.slot_notice.run_draft_detail",
+      "hi": "बातचीत शुरू करने के लिए संदेश भेजें। इसके उप-एजेंट, योजना और शेड्यूल किए गए काम यहाँ दिखेंगे।",
+      "en": "Send a message to start this conversation; its subagents, plan and scheduled work appear here.",
+      "context": {
+        "role": "right-slot notice detail",
+        "tone": "sentence case; preserve the existing action or factual wording",
+        "maxCells": 120,
+        "placeholders": {}
+      },
+      "variants": [
+        {
+          "unit": "now",
+          "count": 0,
+          "text": "बातचीत शुरू करने के लिए संदेश भेजें। इसके उप-एजेंट, योजना और शेड्यूल किए गए काम यहाँ दिखेंगे।"
+        },
+        {
+          "unit": "now",
+          "count": 1,
+          "text": "बातचीत शुरू करने के लिए संदेश भेजें। इसके उप-एजेंट, योजना और शेड्यूल किए गए काम यहाँ दिखेंगे।"
+        },
+        {
+          "unit": "now",
+          "count": 2,
+          "text": "बातचीत शुरू करने के लिए संदेश भेजें। इसके उप-एजेंट, योजना और शेड्यूल किए गए काम यहाँ दिखेंगे।"
+        },
+        {
+          "unit": "now",
+          "count": 12,
+          "text": "बातचीत शुरू करने के लिए संदेश भेजें। इसके उप-एजेंट, योजना और शेड्यूल किए गए काम यहाँ दिखेंगे।"
+        },
+        {
+          "unit": "now",
+          "count": 52,
+          "text": "बातचीत शुरू करने के लिए संदेश भेजें। इसके उप-एजेंट, योजना और शेड्यूल किए गए काम यहाँ दिखेंगे।"
+        },
+        {
+          "unit": "minute",
+          "count": 0,
+          "text": "बातचीत शुरू करने के लिए संदेश भेजें। इसके उप-एजेंट, योजना और शेड्यूल किए गए काम यहाँ दिखेंगे।"
+        },
+        {
+          "unit": "minute",
+          "count": 1,
+          "text": "बातचीत शुरू करने के लिए संदेश भेजें। इसके उप-एजेंट, योजना और शेड्यूल किए गए काम यहाँ दिखेंगे।"
+        },
+        {
+          "unit": "minute",
+          "count": 2,
+          "text": "बातचीत शुरू करने के लिए संदेश भेजें। इसके उप-एजेंट, योजना और शेड्यूल किए गए काम यहाँ दिखेंगे।"
+        },
+        {
+          "unit": "minute",
+          "count": 12,
+          "text": "बातचीत शुरू करने के लिए संदेश भेजें। इसके उप-एजेंट, योजना और शेड्यूल किए गए काम यहाँ दिखेंगे।"
+        },
+        {
+          "unit": "minute",
+          "count": 52,
+          "text": "बातचीत शुरू करने के लिए संदेश भेजें। इसके उप-एजेंट, योजना और शेड्यूल किए गए काम यहाँ दिखेंगे।"
+        },
+        {
+          "unit": "hour",
+          "count": 0,
+          "text": "बातचीत शुरू करने के लिए संदेश भेजें। इसके उप-एजेंट, योजना और शेड्यूल किए गए काम यहाँ दिखेंगे।"
+        },
+        {
+          "unit": "hour",
+          "count": 1,
+          "text": "बातचीत शुरू करने के लिए संदेश भेजें। इसके उप-एजेंट, योजना और शेड्यूल किए गए काम यहाँ दिखेंगे।"
+        },
+        {
+          "unit": "hour",
+          "count": 2,
+          "text": "बातचीत शुरू करने के लिए संदेश भेजें। इसके उप-एजेंट, योजना और शेड्यूल किए गए काम यहाँ दिखेंगे।"
+        },
+        {
+          "unit": "hour",
+          "count": 12,
+          "text": "बातचीत शुरू करने के लिए संदेश भेजें। इसके उप-एजेंट, योजना और शेड्यूल किए गए काम यहाँ दिखेंगे।"
+        },
+        {
+          "unit": "hour",
+          "count": 52,
+          "text": "बातचीत शुरू करने के लिए संदेश भेजें। इसके उप-एजेंट, योजना और शेड्यूल किए गए काम यहाँ दिखेंगे।"
+        },
+        {
+          "unit": "day",
+          "count": 0,
+          "text": "बातचीत शुरू करने के लिए संदेश भेजें। इसके उप-एजेंट, योजना और शेड्यूल किए गए काम यहाँ दिखेंगे।"
+        },
+        {
+          "unit": "day",
+          "count": 1,
+          "text": "बातचीत शुरू करने के लिए संदेश भेजें। इसके उप-एजेंट, योजना और शेड्यूल किए गए काम यहाँ दिखेंगे।"
+        },
+        {
+          "unit": "day",
+          "count": 2,
+          "text": "बातचीत शुरू करने के लिए संदेश भेजें। इसके उप-एजेंट, योजना और शेड्यूल किए गए काम यहाँ दिखेंगे।"
+        },
+        {
+          "unit": "day",
+          "count": 12,
+          "text": "बातचीत शुरू करने के लिए संदेश भेजें। इसके उप-एजेंट, योजना और शेड्यूल किए गए काम यहाँ दिखेंगे।"
+        },
+        {
+          "unit": "day",
+          "count": 52,
+          "text": "बातचीत शुरू करने के लिए संदेश भेजें। इसके उप-एजेंट, योजना और शेड्यूल किए गए काम यहाँ दिखेंगे।"
+        },
+        {
+          "unit": "week",
+          "count": 0,
+          "text": "बातचीत शुरू करने के लिए संदेश भेजें। इसके उप-एजेंट, योजना और शेड्यूल किए गए काम यहाँ दिखेंगे।"
+        },
+        {
+          "unit": "week",
+          "count": 1,
+          "text": "बातचीत शुरू करने के लिए संदेश भेजें। इसके उप-एजेंट, योजना और शेड्यूल किए गए काम यहाँ दिखेंगे।"
+        },
+        {
+          "unit": "week",
+          "count": 2,
+          "text": "बातचीत शुरू करने के लिए संदेश भेजें। इसके उप-एजेंट, योजना और शेड्यूल किए गए काम यहाँ दिखेंगे।"
+        },
+        {
+          "unit": "week",
+          "count": 12,
+          "text": "बातचीत शुरू करने के लिए संदेश भेजें। इसके उप-एजेंट, योजना और शेड्यूल किए गए काम यहाँ दिखेंगे।"
+        },
+        {
+          "unit": "week",
+          "count": 52,
+          "text": "बातचीत शुरू करने के लिए संदेश भेजें। इसके उप-एजेंट, योजना और शेड्यूल किए गए काम यहाँ दिखेंगे।"
+        },
+        {
+          "unit": "year",
+          "count": 0,
+          "text": "बातचीत शुरू करने के लिए संदेश भेजें। इसके उप-एजेंट, योजना और शेड्यूल किए गए काम यहाँ दिखेंगे।"
+        },
+        {
+          "unit": "year",
+          "count": 1,
+          "text": "बातचीत शुरू करने के लिए संदेश भेजें। इसके उप-एजेंट, योजना और शेड्यूल किए गए काम यहाँ दिखेंगे।"
+        },
+        {
+          "unit": "year",
+          "count": 2,
+          "text": "बातचीत शुरू करने के लिए संदेश भेजें। इसके उप-एजेंट, योजना और शेड्यूल किए गए काम यहाँ दिखेंगे।"
+        },
+        {
+          "unit": "year",
+          "count": 12,
+          "text": "बातचीत शुरू करने के लिए संदेश भेजें। इसके उप-एजेंट, योजना और शेड्यूल किए गए काम यहाँ दिखेंगे।"
+        },
+        {
+          "unit": "year",
+          "count": 52,
+          "text": "बातचीत शुरू करने के लिए संदेश भेजें। इसके उप-एजेंट, योजना और शेड्यूल किए गए काम यहाँ दिखेंगे।"
+        },
+        {
+          "unit": "unknown",
+          "count": 0,
+          "text": "बातचीत शुरू करने के लिए संदेश भेजें। इसके उप-एजेंट, योजना और शेड्यूल किए गए काम यहाँ दिखेंगे।"
+        },
+        {
+          "unit": "unknown",
+          "count": 1,
+          "text": "बातचीत शुरू करने के लिए संदेश भेजें। इसके उप-एजेंट, योजना और शेड्यूल किए गए काम यहाँ दिखेंगे।"
+        },
+        {
+          "unit": "unknown",
+          "count": 2,
+          "text": "बातचीत शुरू करने के लिए संदेश भेजें। इसके उप-एजेंट, योजना और शेड्यूल किए गए काम यहाँ दिखेंगे।"
+        },
+        {
+          "unit": "unknown",
+          "count": 12,
+          "text": "बातचीत शुरू करने के लिए संदेश भेजें। इसके उप-एजेंट, योजना और शेड्यूल किए गए काम यहाँ दिखेंगे।"
+        },
+        {
+          "unit": "unknown",
+          "count": 52,
+          "text": "बातचीत शुरू करने के लिए संदेश भेजें। इसके उप-एजेंट, योजना और शेड्यूल किए गए काम यहाँ दिखेंगे।"
+        }
+      ]
+    },
+    {
+      "key": "ui.chat.slot_notice.run_reading_title",
+      "hi": "इस बातचीत का रन पढ़ा जा रहा है…",
+      "en": "Reading this conversation's run…",
+      "context": {
+        "role": "right-slot notice title",
+        "tone": "sentence case; preserve the existing action or factual wording",
+        "maxCells": 120,
+        "placeholders": {}
+      },
+      "variants": [
+        {
+          "unit": "now",
+          "count": 0,
+          "text": "इस बातचीत का रन पढ़ा जा रहा है…"
+        },
+        {
+          "unit": "now",
+          "count": 1,
+          "text": "इस बातचीत का रन पढ़ा जा रहा है…"
+        },
+        {
+          "unit": "now",
+          "count": 2,
+          "text": "इस बातचीत का रन पढ़ा जा रहा है…"
+        },
+        {
+          "unit": "now",
+          "count": 12,
+          "text": "इस बातचीत का रन पढ़ा जा रहा है…"
+        },
+        {
+          "unit": "now",
+          "count": 52,
+          "text": "इस बातचीत का रन पढ़ा जा रहा है…"
+        },
+        {
+          "unit": "minute",
+          "count": 0,
+          "text": "इस बातचीत का रन पढ़ा जा रहा है…"
+        },
+        {
+          "unit": "minute",
+          "count": 1,
+          "text": "इस बातचीत का रन पढ़ा जा रहा है…"
+        },
+        {
+          "unit": "minute",
+          "count": 2,
+          "text": "इस बातचीत का रन पढ़ा जा रहा है…"
+        },
+        {
+          "unit": "minute",
+          "count": 12,
+          "text": "इस बातचीत का रन पढ़ा जा रहा है…"
+        },
+        {
+          "unit": "minute",
+          "count": 52,
+          "text": "इस बातचीत का रन पढ़ा जा रहा है…"
+        },
+        {
+          "unit": "hour",
+          "count": 0,
+          "text": "इस बातचीत का रन पढ़ा जा रहा है…"
+        },
+        {
+          "unit": "hour",
+          "count": 1,
+          "text": "इस बातचीत का रन पढ़ा जा रहा है…"
+        },
+        {
+          "unit": "hour",
+          "count": 2,
+          "text": "इस बातचीत का रन पढ़ा जा रहा है…"
+        },
+        {
+          "unit": "hour",
+          "count": 12,
+          "text": "इस बातचीत का रन पढ़ा जा रहा है…"
+        },
+        {
+          "unit": "hour",
+          "count": 52,
+          "text": "इस बातचीत का रन पढ़ा जा रहा है…"
+        },
+        {
+          "unit": "day",
+          "count": 0,
+          "text": "इस बातचीत का रन पढ़ा जा रहा है…"
+        },
+        {
+          "unit": "day",
+          "count": 1,
+          "text": "इस बातचीत का रन पढ़ा जा रहा है…"
+        },
+        {
+          "unit": "day",
+          "count": 2,
+          "text": "इस बातचीत का रन पढ़ा जा रहा है…"
+        },
+        {
+          "unit": "day",
+          "count": 12,
+          "text": "इस बातचीत का रन पढ़ा जा रहा है…"
+        },
+        {
+          "unit": "day",
+          "count": 52,
+          "text": "इस बातचीत का रन पढ़ा जा रहा है…"
+        },
+        {
+          "unit": "week",
+          "count": 0,
+          "text": "इस बातचीत का रन पढ़ा जा रहा है…"
+        },
+        {
+          "unit": "week",
+          "count": 1,
+          "text": "इस बातचीत का रन पढ़ा जा रहा है…"
+        },
+        {
+          "unit": "week",
+          "count": 2,
+          "text": "इस बातचीत का रन पढ़ा जा रहा है…"
+        },
+        {
+          "unit": "week",
+          "count": 12,
+          "text": "इस बातचीत का रन पढ़ा जा रहा है…"
+        },
+        {
+          "unit": "week",
+          "count": 52,
+          "text": "इस बातचीत का रन पढ़ा जा रहा है…"
+        },
+        {
+          "unit": "year",
+          "count": 0,
+          "text": "इस बातचीत का रन पढ़ा जा रहा है…"
+        },
+        {
+          "unit": "year",
+          "count": 1,
+          "text": "इस बातचीत का रन पढ़ा जा रहा है…"
+        },
+        {
+          "unit": "year",
+          "count": 2,
+          "text": "इस बातचीत का रन पढ़ा जा रहा है…"
+        },
+        {
+          "unit": "year",
+          "count": 12,
+          "text": "इस बातचीत का रन पढ़ा जा रहा है…"
+        },
+        {
+          "unit": "year",
+          "count": 52,
+          "text": "इस बातचीत का रन पढ़ा जा रहा है…"
+        },
+        {
+          "unit": "unknown",
+          "count": 0,
+          "text": "इस बातचीत का रन पढ़ा जा रहा है…"
+        },
+        {
+          "unit": "unknown",
+          "count": 1,
+          "text": "इस बातचीत का रन पढ़ा जा रहा है…"
+        },
+        {
+          "unit": "unknown",
+          "count": 2,
+          "text": "इस बातचीत का रन पढ़ा जा रहा है…"
+        },
+        {
+          "unit": "unknown",
+          "count": 12,
+          "text": "इस बातचीत का रन पढ़ा जा रहा है…"
+        },
+        {
+          "unit": "unknown",
+          "count": 52,
+          "text": "इस बातचीत का रन पढ़ा जा रहा है…"
+        }
+      ]
+    },
+    {
+      "key": "ui.chat.slot_notice.run_unreadable_title",
+      "hi": "इस बातचीत का रन विवरण पढ़ा नहीं जा सका।",
+      "en": "Run details could not be read for this conversation.",
+      "context": {
+        "role": "right-slot notice title",
+        "tone": "sentence case; preserve the existing action or factual wording",
+        "maxCells": 120,
+        "placeholders": {}
+      },
+      "variants": [
+        {
+          "unit": "now",
+          "count": 0,
+          "text": "इस बातचीत का रन विवरण पढ़ा नहीं जा सका।"
+        },
+        {
+          "unit": "now",
+          "count": 1,
+          "text": "इस बातचीत का रन विवरण पढ़ा नहीं जा सका।"
+        },
+        {
+          "unit": "now",
+          "count": 2,
+          "text": "इस बातचीत का रन विवरण पढ़ा नहीं जा सका।"
+        },
+        {
+          "unit": "now",
+          "count": 12,
+          "text": "इस बातचीत का रन विवरण पढ़ा नहीं जा सका।"
+        },
+        {
+          "unit": "now",
+          "count": 52,
+          "text": "इस बातचीत का रन विवरण पढ़ा नहीं जा सका।"
+        },
+        {
+          "unit": "minute",
+          "count": 0,
+          "text": "इस बातचीत का रन विवरण पढ़ा नहीं जा सका।"
+        },
+        {
+          "unit": "minute",
+          "count": 1,
+          "text": "इस बातचीत का रन विवरण पढ़ा नहीं जा सका।"
+        },
+        {
+          "unit": "minute",
+          "count": 2,
+          "text": "इस बातचीत का रन विवरण पढ़ा नहीं जा सका।"
+        },
+        {
+          "unit": "minute",
+          "count": 12,
+          "text": "इस बातचीत का रन विवरण पढ़ा नहीं जा सका।"
+        },
+        {
+          "unit": "minute",
+          "count": 52,
+          "text": "इस बातचीत का रन विवरण पढ़ा नहीं जा सका।"
+        },
+        {
+          "unit": "hour",
+          "count": 0,
+          "text": "इस बातचीत का रन विवरण पढ़ा नहीं जा सका।"
+        },
+        {
+          "unit": "hour",
+          "count": 1,
+          "text": "इस बातचीत का रन विवरण पढ़ा नहीं जा सका।"
+        },
+        {
+          "unit": "hour",
+          "count": 2,
+          "text": "इस बातचीत का रन विवरण पढ़ा नहीं जा सका।"
+        },
+        {
+          "unit": "hour",
+          "count": 12,
+          "text": "इस बातचीत का रन विवरण पढ़ा नहीं जा सका।"
+        },
+        {
+          "unit": "hour",
+          "count": 52,
+          "text": "इस बातचीत का रन विवरण पढ़ा नहीं जा सका।"
+        },
+        {
+          "unit": "day",
+          "count": 0,
+          "text": "इस बातचीत का रन विवरण पढ़ा नहीं जा सका।"
+        },
+        {
+          "unit": "day",
+          "count": 1,
+          "text": "इस बातचीत का रन विवरण पढ़ा नहीं जा सका।"
+        },
+        {
+          "unit": "day",
+          "count": 2,
+          "text": "इस बातचीत का रन विवरण पढ़ा नहीं जा सका।"
+        },
+        {
+          "unit": "day",
+          "count": 12,
+          "text": "इस बातचीत का रन विवरण पढ़ा नहीं जा सका।"
+        },
+        {
+          "unit": "day",
+          "count": 52,
+          "text": "इस बातचीत का रन विवरण पढ़ा नहीं जा सका।"
+        },
+        {
+          "unit": "week",
+          "count": 0,
+          "text": "इस बातचीत का रन विवरण पढ़ा नहीं जा सका।"
+        },
+        {
+          "unit": "week",
+          "count": 1,
+          "text": "इस बातचीत का रन विवरण पढ़ा नहीं जा सका।"
+        },
+        {
+          "unit": "week",
+          "count": 2,
+          "text": "इस बातचीत का रन विवरण पढ़ा नहीं जा सका।"
+        },
+        {
+          "unit": "week",
+          "count": 12,
+          "text": "इस बातचीत का रन विवरण पढ़ा नहीं जा सका।"
+        },
+        {
+          "unit": "week",
+          "count": 52,
+          "text": "इस बातचीत का रन विवरण पढ़ा नहीं जा सका।"
+        },
+        {
+          "unit": "year",
+          "count": 0,
+          "text": "इस बातचीत का रन विवरण पढ़ा नहीं जा सका।"
+        },
+        {
+          "unit": "year",
+          "count": 1,
+          "text": "इस बातचीत का रन विवरण पढ़ा नहीं जा सका।"
+        },
+        {
+          "unit": "year",
+          "count": 2,
+          "text": "इस बातचीत का रन विवरण पढ़ा नहीं जा सका।"
+        },
+        {
+          "unit": "year",
+          "count": 12,
+          "text": "इस बातचीत का रन विवरण पढ़ा नहीं जा सका।"
+        },
+        {
+          "unit": "year",
+          "count": 52,
+          "text": "इस बातचीत का रन विवरण पढ़ा नहीं जा सका।"
+        },
+        {
+          "unit": "unknown",
+          "count": 0,
+          "text": "इस बातचीत का रन विवरण पढ़ा नहीं जा सका।"
+        },
+        {
+          "unit": "unknown",
+          "count": 1,
+          "text": "इस बातचीत का रन विवरण पढ़ा नहीं जा सका।"
+        },
+        {
+          "unit": "unknown",
+          "count": 2,
+          "text": "इस बातचीत का रन विवरण पढ़ा नहीं जा सका।"
+        },
+        {
+          "unit": "unknown",
+          "count": 12,
+          "text": "इस बातचीत का रन विवरण पढ़ा नहीं जा सका।"
+        },
+        {
+          "unit": "unknown",
+          "count": 52,
+          "text": "इस बातचीत का रन विवरण पढ़ा नहीं जा सका।"
+        }
+      ]
+    },
+    {
+      "key": "ui.chat.slot_notice.run_unreadable_detail",
+      "hi": "इस पैन के बगल की बातचीत में वजह और दोबारा कनेक्ट करने का तरीका देखें।",
+      "en": "The conversation beside this pane says why and how to reconnect.",
+      "context": {
+        "role": "right-slot notice detail",
+        "tone": "sentence case; preserve the existing action or factual wording",
+        "maxCells": 120,
+        "placeholders": {}
+      },
+      "variants": [
+        {
+          "unit": "now",
+          "count": 0,
+          "text": "इस पैन के बगल की बातचीत में वजह और दोबारा कनेक्ट करने का तरीका देखें।"
+        },
+        {
+          "unit": "now",
+          "count": 1,
+          "text": "इस पैन के बगल की बातचीत में वजह और दोबारा कनेक्ट करने का तरीका देखें।"
+        },
+        {
+          "unit": "now",
+          "count": 2,
+          "text": "इस पैन के बगल की बातचीत में वजह और दोबारा कनेक्ट करने का तरीका देखें।"
+        },
+        {
+          "unit": "now",
+          "count": 12,
+          "text": "इस पैन के बगल की बातचीत में वजह और दोबारा कनेक्ट करने का तरीका देखें।"
+        },
+        {
+          "unit": "now",
+          "count": 52,
+          "text": "इस पैन के बगल की बातचीत में वजह और दोबारा कनेक्ट करने का तरीका देखें।"
+        },
+        {
+          "unit": "minute",
+          "count": 0,
+          "text": "इस पैन के बगल की बातचीत में वजह और दोबारा कनेक्ट करने का तरीका देखें।"
+        },
+        {
+          "unit": "minute",
+          "count": 1,
+          "text": "इस पैन के बगल की बातचीत में वजह और दोबारा कनेक्ट करने का तरीका देखें।"
+        },
+        {
+          "unit": "minute",
+          "count": 2,
+          "text": "इस पैन के बगल की बातचीत में वजह और दोबारा कनेक्ट करने का तरीका देखें।"
+        },
+        {
+          "unit": "minute",
+          "count": 12,
+          "text": "इस पैन के बगल की बातचीत में वजह और दोबारा कनेक्ट करने का तरीका देखें।"
+        },
+        {
+          "unit": "minute",
+          "count": 52,
+          "text": "इस पैन के बगल की बातचीत में वजह और दोबारा कनेक्ट करने का तरीका देखें।"
+        },
+        {
+          "unit": "hour",
+          "count": 0,
+          "text": "इस पैन के बगल की बातचीत में वजह और दोबारा कनेक्ट करने का तरीका देखें।"
+        },
+        {
+          "unit": "hour",
+          "count": 1,
+          "text": "इस पैन के बगल की बातचीत में वजह और दोबारा कनेक्ट करने का तरीका देखें।"
+        },
+        {
+          "unit": "hour",
+          "count": 2,
+          "text": "इस पैन के बगल की बातचीत में वजह और दोबारा कनेक्ट करने का तरीका देखें।"
+        },
+        {
+          "unit": "hour",
+          "count": 12,
+          "text": "इस पैन के बगल की बातचीत में वजह और दोबारा कनेक्ट करने का तरीका देखें।"
+        },
+        {
+          "unit": "hour",
+          "count": 52,
+          "text": "इस पैन के बगल की बातचीत में वजह और दोबारा कनेक्ट करने का तरीका देखें।"
+        },
+        {
+          "unit": "day",
+          "count": 0,
+          "text": "इस पैन के बगल की बातचीत में वजह और दोबारा कनेक्ट करने का तरीका देखें।"
+        },
+        {
+          "unit": "day",
+          "count": 1,
+          "text": "इस पैन के बगल की बातचीत में वजह और दोबारा कनेक्ट करने का तरीका देखें।"
+        },
+        {
+          "unit": "day",
+          "count": 2,
+          "text": "इस पैन के बगल की बातचीत में वजह और दोबारा कनेक्ट करने का तरीका देखें।"
+        },
+        {
+          "unit": "day",
+          "count": 12,
+          "text": "इस पैन के बगल की बातचीत में वजह और दोबारा कनेक्ट करने का तरीका देखें।"
+        },
+        {
+          "unit": "day",
+          "count": 52,
+          "text": "इस पैन के बगल की बातचीत में वजह और दोबारा कनेक्ट करने का तरीका देखें।"
+        },
+        {
+          "unit": "week",
+          "count": 0,
+          "text": "इस पैन के बगल की बातचीत में वजह और दोबारा कनेक्ट करने का तरीका देखें।"
+        },
+        {
+          "unit": "week",
+          "count": 1,
+          "text": "इस पैन के बगल की बातचीत में वजह और दोबारा कनेक्ट करने का तरीका देखें।"
+        },
+        {
+          "unit": "week",
+          "count": 2,
+          "text": "इस पैन के बगल की बातचीत में वजह और दोबारा कनेक्ट करने का तरीका देखें।"
+        },
+        {
+          "unit": "week",
+          "count": 12,
+          "text": "इस पैन के बगल की बातचीत में वजह और दोबारा कनेक्ट करने का तरीका देखें।"
+        },
+        {
+          "unit": "week",
+          "count": 52,
+          "text": "इस पैन के बगल की बातचीत में वजह और दोबारा कनेक्ट करने का तरीका देखें।"
+        },
+        {
+          "unit": "year",
+          "count": 0,
+          "text": "इस पैन के बगल की बातचीत में वजह और दोबारा कनेक्ट करने का तरीका देखें।"
+        },
+        {
+          "unit": "year",
+          "count": 1,
+          "text": "इस पैन के बगल की बातचीत में वजह और दोबारा कनेक्ट करने का तरीका देखें।"
+        },
+        {
+          "unit": "year",
+          "count": 2,
+          "text": "इस पैन के बगल की बातचीत में वजह और दोबारा कनेक्ट करने का तरीका देखें।"
+        },
+        {
+          "unit": "year",
+          "count": 12,
+          "text": "इस पैन के बगल की बातचीत में वजह और दोबारा कनेक्ट करने का तरीका देखें।"
+        },
+        {
+          "unit": "year",
+          "count": 52,
+          "text": "इस पैन के बगल की बातचीत में वजह और दोबारा कनेक्ट करने का तरीका देखें।"
+        },
+        {
+          "unit": "unknown",
+          "count": 0,
+          "text": "इस पैन के बगल की बातचीत में वजह और दोबारा कनेक्ट करने का तरीका देखें।"
+        },
+        {
+          "unit": "unknown",
+          "count": 1,
+          "text": "इस पैन के बगल की बातचीत में वजह और दोबारा कनेक्ट करने का तरीका देखें।"
+        },
+        {
+          "unit": "unknown",
+          "count": 2,
+          "text": "इस पैन के बगल की बातचीत में वजह और दोबारा कनेक्ट करने का तरीका देखें।"
+        },
+        {
+          "unit": "unknown",
+          "count": 12,
+          "text": "इस पैन के बगल की बातचीत में वजह और दोबारा कनेक्ट करने का तरीका देखें।"
+        },
+        {
+          "unit": "unknown",
+          "count": 52,
+          "text": "इस पैन के बगल की बातचीत में वजह और दोबारा कनेक्ट करने का तरीका देखें।"
+        }
+      ]
+    },
+    {
+      "key": "ui.chat.slot_notice.run_missing_detail",
+      "hi": "यह बातचीत अब इस मशीन पर नहीं है।",
+      "en": "This conversation is no longer on this machine.",
+      "context": {
+        "role": "right-slot notice detail",
+        "tone": "sentence case; preserve the existing action or factual wording",
+        "maxCells": 120,
+        "placeholders": {}
+      },
+      "variants": [
+        {
+          "unit": "now",
+          "count": 0,
+          "text": "यह बातचीत अब इस मशीन पर नहीं है।"
+        },
+        {
+          "unit": "now",
+          "count": 1,
+          "text": "यह बातचीत अब इस मशीन पर नहीं है।"
+        },
+        {
+          "unit": "now",
+          "count": 2,
+          "text": "यह बातचीत अब इस मशीन पर नहीं है।"
+        },
+        {
+          "unit": "now",
+          "count": 12,
+          "text": "यह बातचीत अब इस मशीन पर नहीं है।"
+        },
+        {
+          "unit": "now",
+          "count": 52,
+          "text": "यह बातचीत अब इस मशीन पर नहीं है।"
+        },
+        {
+          "unit": "minute",
+          "count": 0,
+          "text": "यह बातचीत अब इस मशीन पर नहीं है।"
+        },
+        {
+          "unit": "minute",
+          "count": 1,
+          "text": "यह बातचीत अब इस मशीन पर नहीं है।"
+        },
+        {
+          "unit": "minute",
+          "count": 2,
+          "text": "यह बातचीत अब इस मशीन पर नहीं है।"
+        },
+        {
+          "unit": "minute",
+          "count": 12,
+          "text": "यह बातचीत अब इस मशीन पर नहीं है।"
+        },
+        {
+          "unit": "minute",
+          "count": 52,
+          "text": "यह बातचीत अब इस मशीन पर नहीं है।"
+        },
+        {
+          "unit": "hour",
+          "count": 0,
+          "text": "यह बातचीत अब इस मशीन पर नहीं है।"
+        },
+        {
+          "unit": "hour",
+          "count": 1,
+          "text": "यह बातचीत अब इस मशीन पर नहीं है।"
+        },
+        {
+          "unit": "hour",
+          "count": 2,
+          "text": "यह बातचीत अब इस मशीन पर नहीं है।"
+        },
+        {
+          "unit": "hour",
+          "count": 12,
+          "text": "यह बातचीत अब इस मशीन पर नहीं है।"
+        },
+        {
+          "unit": "hour",
+          "count": 52,
+          "text": "यह बातचीत अब इस मशीन पर नहीं है।"
+        },
+        {
+          "unit": "day",
+          "count": 0,
+          "text": "यह बातचीत अब इस मशीन पर नहीं है।"
+        },
+        {
+          "unit": "day",
+          "count": 1,
+          "text": "यह बातचीत अब इस मशीन पर नहीं है।"
+        },
+        {
+          "unit": "day",
+          "count": 2,
+          "text": "यह बातचीत अब इस मशीन पर नहीं है।"
+        },
+        {
+          "unit": "day",
+          "count": 12,
+          "text": "यह बातचीत अब इस मशीन पर नहीं है।"
+        },
+        {
+          "unit": "day",
+          "count": 52,
+          "text": "यह बातचीत अब इस मशीन पर नहीं है।"
+        },
+        {
+          "unit": "week",
+          "count": 0,
+          "text": "यह बातचीत अब इस मशीन पर नहीं है।"
+        },
+        {
+          "unit": "week",
+          "count": 1,
+          "text": "यह बातचीत अब इस मशीन पर नहीं है।"
+        },
+        {
+          "unit": "week",
+          "count": 2,
+          "text": "यह बातचीत अब इस मशीन पर नहीं है।"
+        },
+        {
+          "unit": "week",
+          "count": 12,
+          "text": "यह बातचीत अब इस मशीन पर नहीं है।"
+        },
+        {
+          "unit": "week",
+          "count": 52,
+          "text": "यह बातचीत अब इस मशीन पर नहीं है।"
+        },
+        {
+          "unit": "year",
+          "count": 0,
+          "text": "यह बातचीत अब इस मशीन पर नहीं है।"
+        },
+        {
+          "unit": "year",
+          "count": 1,
+          "text": "यह बातचीत अब इस मशीन पर नहीं है।"
+        },
+        {
+          "unit": "year",
+          "count": 2,
+          "text": "यह बातचीत अब इस मशीन पर नहीं है।"
+        },
+        {
+          "unit": "year",
+          "count": 12,
+          "text": "यह बातचीत अब इस मशीन पर नहीं है।"
+        },
+        {
+          "unit": "year",
+          "count": 52,
+          "text": "यह बातचीत अब इस मशीन पर नहीं है।"
+        },
+        {
+          "unit": "unknown",
+          "count": 0,
+          "text": "यह बातचीत अब इस मशीन पर नहीं है।"
+        },
+        {
+          "unit": "unknown",
+          "count": 1,
+          "text": "यह बातचीत अब इस मशीन पर नहीं है।"
+        },
+        {
+          "unit": "unknown",
+          "count": 2,
+          "text": "यह बातचीत अब इस मशीन पर नहीं है।"
+        },
+        {
+          "unit": "unknown",
+          "count": 12,
+          "text": "यह बातचीत अब इस मशीन पर नहीं है।"
+        },
+        {
+          "unit": "unknown",
+          "count": 52,
+          "text": "यह बातचीत अब इस मशीन पर नहीं है।"
+        }
+      ]
+    },
+    {
+      "key": "ui.chat.slot_notice.code_draft_title",
+      "hi": "कोड समीक्षा के लिए बातचीत ज़रूरी है।",
+      "en": "Code review needs a conversation.",
+      "context": {
+        "role": "right-slot notice title",
+        "tone": "sentence case; preserve the existing action or factual wording",
+        "maxCells": 120,
+        "placeholders": {}
+      },
+      "variants": [
+        {
+          "unit": "now",
+          "count": 0,
+          "text": "कोड समीक्षा के लिए बातचीत ज़रूरी है।"
+        },
+        {
+          "unit": "now",
+          "count": 1,
+          "text": "कोड समीक्षा के लिए बातचीत ज़रूरी है।"
+        },
+        {
+          "unit": "now",
+          "count": 2,
+          "text": "कोड समीक्षा के लिए बातचीत ज़रूरी है।"
+        },
+        {
+          "unit": "now",
+          "count": 12,
+          "text": "कोड समीक्षा के लिए बातचीत ज़रूरी है।"
+        },
+        {
+          "unit": "now",
+          "count": 52,
+          "text": "कोड समीक्षा के लिए बातचीत ज़रूरी है।"
+        },
+        {
+          "unit": "minute",
+          "count": 0,
+          "text": "कोड समीक्षा के लिए बातचीत ज़रूरी है।"
+        },
+        {
+          "unit": "minute",
+          "count": 1,
+          "text": "कोड समीक्षा के लिए बातचीत ज़रूरी है।"
+        },
+        {
+          "unit": "minute",
+          "count": 2,
+          "text": "कोड समीक्षा के लिए बातचीत ज़रूरी है।"
+        },
+        {
+          "unit": "minute",
+          "count": 12,
+          "text": "कोड समीक्षा के लिए बातचीत ज़रूरी है।"
+        },
+        {
+          "unit": "minute",
+          "count": 52,
+          "text": "कोड समीक्षा के लिए बातचीत ज़रूरी है।"
+        },
+        {
+          "unit": "hour",
+          "count": 0,
+          "text": "कोड समीक्षा के लिए बातचीत ज़रूरी है।"
+        },
+        {
+          "unit": "hour",
+          "count": 1,
+          "text": "कोड समीक्षा के लिए बातचीत ज़रूरी है।"
+        },
+        {
+          "unit": "hour",
+          "count": 2,
+          "text": "कोड समीक्षा के लिए बातचीत ज़रूरी है।"
+        },
+        {
+          "unit": "hour",
+          "count": 12,
+          "text": "कोड समीक्षा के लिए बातचीत ज़रूरी है।"
+        },
+        {
+          "unit": "hour",
+          "count": 52,
+          "text": "कोड समीक्षा के लिए बातचीत ज़रूरी है।"
+        },
+        {
+          "unit": "day",
+          "count": 0,
+          "text": "कोड समीक्षा के लिए बातचीत ज़रूरी है।"
+        },
+        {
+          "unit": "day",
+          "count": 1,
+          "text": "कोड समीक्षा के लिए बातचीत ज़रूरी है।"
+        },
+        {
+          "unit": "day",
+          "count": 2,
+          "text": "कोड समीक्षा के लिए बातचीत ज़रूरी है।"
+        },
+        {
+          "unit": "day",
+          "count": 12,
+          "text": "कोड समीक्षा के लिए बातचीत ज़रूरी है।"
+        },
+        {
+          "unit": "day",
+          "count": 52,
+          "text": "कोड समीक्षा के लिए बातचीत ज़रूरी है।"
+        },
+        {
+          "unit": "week",
+          "count": 0,
+          "text": "कोड समीक्षा के लिए बातचीत ज़रूरी है।"
+        },
+        {
+          "unit": "week",
+          "count": 1,
+          "text": "कोड समीक्षा के लिए बातचीत ज़रूरी है।"
+        },
+        {
+          "unit": "week",
+          "count": 2,
+          "text": "कोड समीक्षा के लिए बातचीत ज़रूरी है।"
+        },
+        {
+          "unit": "week",
+          "count": 12,
+          "text": "कोड समीक्षा के लिए बातचीत ज़रूरी है।"
+        },
+        {
+          "unit": "week",
+          "count": 52,
+          "text": "कोड समीक्षा के लिए बातचीत ज़रूरी है।"
+        },
+        {
+          "unit": "year",
+          "count": 0,
+          "text": "कोड समीक्षा के लिए बातचीत ज़रूरी है।"
+        },
+        {
+          "unit": "year",
+          "count": 1,
+          "text": "कोड समीक्षा के लिए बातचीत ज़रूरी है।"
+        },
+        {
+          "unit": "year",
+          "count": 2,
+          "text": "कोड समीक्षा के लिए बातचीत ज़रूरी है।"
+        },
+        {
+          "unit": "year",
+          "count": 12,
+          "text": "कोड समीक्षा के लिए बातचीत ज़रूरी है।"
+        },
+        {
+          "unit": "year",
+          "count": 52,
+          "text": "कोड समीक्षा के लिए बातचीत ज़रूरी है।"
+        },
+        {
+          "unit": "unknown",
+          "count": 0,
+          "text": "कोड समीक्षा के लिए बातचीत ज़रूरी है।"
+        },
+        {
+          "unit": "unknown",
+          "count": 1,
+          "text": "कोड समीक्षा के लिए बातचीत ज़रूरी है।"
+        },
+        {
+          "unit": "unknown",
+          "count": 2,
+          "text": "कोड समीक्षा के लिए बातचीत ज़रूरी है।"
+        },
+        {
+          "unit": "unknown",
+          "count": 12,
+          "text": "कोड समीक्षा के लिए बातचीत ज़रूरी है।"
+        },
+        {
+          "unit": "unknown",
+          "count": 52,
+          "text": "कोड समीक्षा के लिए बातचीत ज़रूरी है।"
+        }
+      ]
+    },
+    {
+      "key": "ui.chat.slot_notice.code_draft_detail",
+      "hi": "बातचीत शुरू करने के लिए संदेश भेजें। इसमें खोले गए या बताए गए pull requests और merge requests यहाँ दिखेंगे।",
+      "en": "Send a message to start this conversation; the pull requests and merge requests it opens or mentions appear here.",
+      "context": {
+        "role": "right-slot notice detail",
+        "tone": "sentence case; preserve the existing action or factual wording",
+        "maxCells": 120,
+        "placeholders": {}
+      },
+      "variants": [
+        {
+          "unit": "now",
+          "count": 0,
+          "text": "बातचीत शुरू करने के लिए संदेश भेजें। इसमें खोले गए या बताए गए pull requests और merge requests यहाँ दिखेंगे।"
+        },
+        {
+          "unit": "now",
+          "count": 1,
+          "text": "बातचीत शुरू करने के लिए संदेश भेजें। इसमें खोले गए या बताए गए pull requests और merge requests यहाँ दिखेंगे।"
+        },
+        {
+          "unit": "now",
+          "count": 2,
+          "text": "बातचीत शुरू करने के लिए संदेश भेजें। इसमें खोले गए या बताए गए pull requests और merge requests यहाँ दिखेंगे।"
+        },
+        {
+          "unit": "now",
+          "count": 12,
+          "text": "बातचीत शुरू करने के लिए संदेश भेजें। इसमें खोले गए या बताए गए pull requests और merge requests यहाँ दिखेंगे।"
+        },
+        {
+          "unit": "now",
+          "count": 52,
+          "text": "बातचीत शुरू करने के लिए संदेश भेजें। इसमें खोले गए या बताए गए pull requests और merge requests यहाँ दिखेंगे।"
+        },
+        {
+          "unit": "minute",
+          "count": 0,
+          "text": "बातचीत शुरू करने के लिए संदेश भेजें। इसमें खोले गए या बताए गए pull requests और merge requests यहाँ दिखेंगे।"
+        },
+        {
+          "unit": "minute",
+          "count": 1,
+          "text": "बातचीत शुरू करने के लिए संदेश भेजें। इसमें खोले गए या बताए गए pull requests और merge requests यहाँ दिखेंगे।"
+        },
+        {
+          "unit": "minute",
+          "count": 2,
+          "text": "बातचीत शुरू करने के लिए संदेश भेजें। इसमें खोले गए या बताए गए pull requests और merge requests यहाँ दिखेंगे।"
+        },
+        {
+          "unit": "minute",
+          "count": 12,
+          "text": "बातचीत शुरू करने के लिए संदेश भेजें। इसमें खोले गए या बताए गए pull requests और merge requests यहाँ दिखेंगे।"
+        },
+        {
+          "unit": "minute",
+          "count": 52,
+          "text": "बातचीत शुरू करने के लिए संदेश भेजें। इसमें खोले गए या बताए गए pull requests और merge requests यहाँ दिखेंगे।"
+        },
+        {
+          "unit": "hour",
+          "count": 0,
+          "text": "बातचीत शुरू करने के लिए संदेश भेजें। इसमें खोले गए या बताए गए pull requests और merge requests यहाँ दिखेंगे।"
+        },
+        {
+          "unit": "hour",
+          "count": 1,
+          "text": "बातचीत शुरू करने के लिए संदेश भेजें। इसमें खोले गए या बताए गए pull requests और merge requests यहाँ दिखेंगे।"
+        },
+        {
+          "unit": "hour",
+          "count": 2,
+          "text": "बातचीत शुरू करने के लिए संदेश भेजें। इसमें खोले गए या बताए गए pull requests और merge requests यहाँ दिखेंगे।"
+        },
+        {
+          "unit": "hour",
+          "count": 12,
+          "text": "बातचीत शुरू करने के लिए संदेश भेजें। इसमें खोले गए या बताए गए pull requests और merge requests यहाँ दिखेंगे।"
+        },
+        {
+          "unit": "hour",
+          "count": 52,
+          "text": "बातचीत शुरू करने के लिए संदेश भेजें। इसमें खोले गए या बताए गए pull requests और merge requests यहाँ दिखेंगे।"
+        },
+        {
+          "unit": "day",
+          "count": 0,
+          "text": "बातचीत शुरू करने के लिए संदेश भेजें। इसमें खोले गए या बताए गए pull requests और merge requests यहाँ दिखेंगे।"
+        },
+        {
+          "unit": "day",
+          "count": 1,
+          "text": "बातचीत शुरू करने के लिए संदेश भेजें। इसमें खोले गए या बताए गए pull requests और merge requests यहाँ दिखेंगे।"
+        },
+        {
+          "unit": "day",
+          "count": 2,
+          "text": "बातचीत शुरू करने के लिए संदेश भेजें। इसमें खोले गए या बताए गए pull requests और merge requests यहाँ दिखेंगे।"
+        },
+        {
+          "unit": "day",
+          "count": 12,
+          "text": "बातचीत शुरू करने के लिए संदेश भेजें। इसमें खोले गए या बताए गए pull requests और merge requests यहाँ दिखेंगे।"
+        },
+        {
+          "unit": "day",
+          "count": 52,
+          "text": "बातचीत शुरू करने के लिए संदेश भेजें। इसमें खोले गए या बताए गए pull requests और merge requests यहाँ दिखेंगे।"
+        },
+        {
+          "unit": "week",
+          "count": 0,
+          "text": "बातचीत शुरू करने के लिए संदेश भेजें। इसमें खोले गए या बताए गए pull requests और merge requests यहाँ दिखेंगे।"
+        },
+        {
+          "unit": "week",
+          "count": 1,
+          "text": "बातचीत शुरू करने के लिए संदेश भेजें। इसमें खोले गए या बताए गए pull requests और merge requests यहाँ दिखेंगे।"
+        },
+        {
+          "unit": "week",
+          "count": 2,
+          "text": "बातचीत शुरू करने के लिए संदेश भेजें। इसमें खोले गए या बताए गए pull requests और merge requests यहाँ दिखेंगे।"
+        },
+        {
+          "unit": "week",
+          "count": 12,
+          "text": "बातचीत शुरू करने के लिए संदेश भेजें। इसमें खोले गए या बताए गए pull requests और merge requests यहाँ दिखेंगे।"
+        },
+        {
+          "unit": "week",
+          "count": 52,
+          "text": "बातचीत शुरू करने के लिए संदेश भेजें। इसमें खोले गए या बताए गए pull requests और merge requests यहाँ दिखेंगे।"
+        },
+        {
+          "unit": "year",
+          "count": 0,
+          "text": "बातचीत शुरू करने के लिए संदेश भेजें। इसमें खोले गए या बताए गए pull requests और merge requests यहाँ दिखेंगे।"
+        },
+        {
+          "unit": "year",
+          "count": 1,
+          "text": "बातचीत शुरू करने के लिए संदेश भेजें। इसमें खोले गए या बताए गए pull requests और merge requests यहाँ दिखेंगे।"
+        },
+        {
+          "unit": "year",
+          "count": 2,
+          "text": "बातचीत शुरू करने के लिए संदेश भेजें। इसमें खोले गए या बताए गए pull requests और merge requests यहाँ दिखेंगे।"
+        },
+        {
+          "unit": "year",
+          "count": 12,
+          "text": "बातचीत शुरू करने के लिए संदेश भेजें। इसमें खोले गए या बताए गए pull requests और merge requests यहाँ दिखेंगे।"
+        },
+        {
+          "unit": "year",
+          "count": 52,
+          "text": "बातचीत शुरू करने के लिए संदेश भेजें। इसमें खोले गए या बताए गए pull requests और merge requests यहाँ दिखेंगे।"
+        },
+        {
+          "unit": "unknown",
+          "count": 0,
+          "text": "बातचीत शुरू करने के लिए संदेश भेजें। इसमें खोले गए या बताए गए pull requests और merge requests यहाँ दिखेंगे।"
+        },
+        {
+          "unit": "unknown",
+          "count": 1,
+          "text": "बातचीत शुरू करने के लिए संदेश भेजें। इसमें खोले गए या बताए गए pull requests और merge requests यहाँ दिखेंगे।"
+        },
+        {
+          "unit": "unknown",
+          "count": 2,
+          "text": "बातचीत शुरू करने के लिए संदेश भेजें। इसमें खोले गए या बताए गए pull requests और merge requests यहाँ दिखेंगे।"
+        },
+        {
+          "unit": "unknown",
+          "count": 12,
+          "text": "बातचीत शुरू करने के लिए संदेश भेजें। इसमें खोले गए या बताए गए pull requests और merge requests यहाँ दिखेंगे।"
+        },
+        {
+          "unit": "unknown",
+          "count": 52,
+          "text": "बातचीत शुरू करने के लिए संदेश भेजें। इसमें खोले गए या बताए गए pull requests और merge requests यहाँ दिखेंगे।"
+        }
+      ]
+    },
+    {
+      "key": "ui.chat.slot_notice.code_below_version_title",
+      "hi": "Local Operator सर्वर अभी कोड समीक्षा उपलब्ध नहीं कराता।",
+      "en": "The Local Operator server doesn't serve code review yet.",
+      "context": {
+        "role": "right-slot notice title",
+        "tone": "sentence case; preserve the existing action or factual wording",
+        "maxCells": 120,
+        "placeholders": {}
+      },
+      "variants": [
+        {
+          "unit": "now",
+          "count": 0,
+          "text": "Local Operator सर्वर अभी कोड समीक्षा उपलब्ध नहीं कराता।"
+        },
+        {
+          "unit": "now",
+          "count": 1,
+          "text": "Local Operator सर्वर अभी कोड समीक्षा उपलब्ध नहीं कराता।"
+        },
+        {
+          "unit": "now",
+          "count": 2,
+          "text": "Local Operator सर्वर अभी कोड समीक्षा उपलब्ध नहीं कराता।"
+        },
+        {
+          "unit": "now",
+          "count": 12,
+          "text": "Local Operator सर्वर अभी कोड समीक्षा उपलब्ध नहीं कराता।"
+        },
+        {
+          "unit": "now",
+          "count": 52,
+          "text": "Local Operator सर्वर अभी कोड समीक्षा उपलब्ध नहीं कराता।"
+        },
+        {
+          "unit": "minute",
+          "count": 0,
+          "text": "Local Operator सर्वर अभी कोड समीक्षा उपलब्ध नहीं कराता।"
+        },
+        {
+          "unit": "minute",
+          "count": 1,
+          "text": "Local Operator सर्वर अभी कोड समीक्षा उपलब्ध नहीं कराता।"
+        },
+        {
+          "unit": "minute",
+          "count": 2,
+          "text": "Local Operator सर्वर अभी कोड समीक्षा उपलब्ध नहीं कराता।"
+        },
+        {
+          "unit": "minute",
+          "count": 12,
+          "text": "Local Operator सर्वर अभी कोड समीक्षा उपलब्ध नहीं कराता।"
+        },
+        {
+          "unit": "minute",
+          "count": 52,
+          "text": "Local Operator सर्वर अभी कोड समीक्षा उपलब्ध नहीं कराता।"
+        },
+        {
+          "unit": "hour",
+          "count": 0,
+          "text": "Local Operator सर्वर अभी कोड समीक्षा उपलब्ध नहीं कराता।"
+        },
+        {
+          "unit": "hour",
+          "count": 1,
+          "text": "Local Operator सर्वर अभी कोड समीक्षा उपलब्ध नहीं कराता।"
+        },
+        {
+          "unit": "hour",
+          "count": 2,
+          "text": "Local Operator सर्वर अभी कोड समीक्षा उपलब्ध नहीं कराता।"
+        },
+        {
+          "unit": "hour",
+          "count": 12,
+          "text": "Local Operator सर्वर अभी कोड समीक्षा उपलब्ध नहीं कराता।"
+        },
+        {
+          "unit": "hour",
+          "count": 52,
+          "text": "Local Operator सर्वर अभी कोड समीक्षा उपलब्ध नहीं कराता।"
+        },
+        {
+          "unit": "day",
+          "count": 0,
+          "text": "Local Operator सर्वर अभी कोड समीक्षा उपलब्ध नहीं कराता।"
+        },
+        {
+          "unit": "day",
+          "count": 1,
+          "text": "Local Operator सर्वर अभी कोड समीक्षा उपलब्ध नहीं कराता।"
+        },
+        {
+          "unit": "day",
+          "count": 2,
+          "text": "Local Operator सर्वर अभी कोड समीक्षा उपलब्ध नहीं कराता।"
+        },
+        {
+          "unit": "day",
+          "count": 12,
+          "text": "Local Operator सर्वर अभी कोड समीक्षा उपलब्ध नहीं कराता।"
+        },
+        {
+          "unit": "day",
+          "count": 52,
+          "text": "Local Operator सर्वर अभी कोड समीक्षा उपलब्ध नहीं कराता।"
+        },
+        {
+          "unit": "week",
+          "count": 0,
+          "text": "Local Operator सर्वर अभी कोड समीक्षा उपलब्ध नहीं कराता।"
+        },
+        {
+          "unit": "week",
+          "count": 1,
+          "text": "Local Operator सर्वर अभी कोड समीक्षा उपलब्ध नहीं कराता।"
+        },
+        {
+          "unit": "week",
+          "count": 2,
+          "text": "Local Operator सर्वर अभी कोड समीक्षा उपलब्ध नहीं कराता।"
+        },
+        {
+          "unit": "week",
+          "count": 12,
+          "text": "Local Operator सर्वर अभी कोड समीक्षा उपलब्ध नहीं कराता।"
+        },
+        {
+          "unit": "week",
+          "count": 52,
+          "text": "Local Operator सर्वर अभी कोड समीक्षा उपलब्ध नहीं कराता।"
+        },
+        {
+          "unit": "year",
+          "count": 0,
+          "text": "Local Operator सर्वर अभी कोड समीक्षा उपलब्ध नहीं कराता।"
+        },
+        {
+          "unit": "year",
+          "count": 1,
+          "text": "Local Operator सर्वर अभी कोड समीक्षा उपलब्ध नहीं कराता।"
+        },
+        {
+          "unit": "year",
+          "count": 2,
+          "text": "Local Operator सर्वर अभी कोड समीक्षा उपलब्ध नहीं कराता।"
+        },
+        {
+          "unit": "year",
+          "count": 12,
+          "text": "Local Operator सर्वर अभी कोड समीक्षा उपलब्ध नहीं कराता।"
+        },
+        {
+          "unit": "year",
+          "count": 52,
+          "text": "Local Operator सर्वर अभी कोड समीक्षा उपलब्ध नहीं कराता।"
+        },
+        {
+          "unit": "unknown",
+          "count": 0,
+          "text": "Local Operator सर्वर अभी कोड समीक्षा उपलब्ध नहीं कराता।"
+        },
+        {
+          "unit": "unknown",
+          "count": 1,
+          "text": "Local Operator सर्वर अभी कोड समीक्षा उपलब्ध नहीं कराता।"
+        },
+        {
+          "unit": "unknown",
+          "count": 2,
+          "text": "Local Operator सर्वर अभी कोड समीक्षा उपलब्ध नहीं कराता।"
+        },
+        {
+          "unit": "unknown",
+          "count": 12,
+          "text": "Local Operator सर्वर अभी कोड समीक्षा उपलब्ध नहीं कराता।"
+        },
+        {
+          "unit": "unknown",
+          "count": 52,
+          "text": "Local Operator सर्वर अभी कोड समीक्षा उपलब्ध नहीं कराता।"
+        }
+      ]
+    },
+    {
+      "key": "ui.chat.slot_notice.code_below_version_detail",
+      "hi": "इस बातचीत में खोले गए pull requests और merge requests देखने के लिए सर्वर अपडेट करें।",
+      "en": "Update the server to see the pull requests and merge requests this conversation opens.",
+      "context": {
+        "role": "right-slot notice detail",
+        "tone": "sentence case; preserve the existing action or factual wording",
+        "maxCells": 120,
+        "placeholders": {}
+      },
+      "variants": [
+        {
+          "unit": "now",
+          "count": 0,
+          "text": "इस बातचीत में खोले गए pull requests और merge requests देखने के लिए सर्वर अपडेट करें।"
+        },
+        {
+          "unit": "now",
+          "count": 1,
+          "text": "इस बातचीत में खोले गए pull requests और merge requests देखने के लिए सर्वर अपडेट करें।"
+        },
+        {
+          "unit": "now",
+          "count": 2,
+          "text": "इस बातचीत में खोले गए pull requests और merge requests देखने के लिए सर्वर अपडेट करें।"
+        },
+        {
+          "unit": "now",
+          "count": 12,
+          "text": "इस बातचीत में खोले गए pull requests और merge requests देखने के लिए सर्वर अपडेट करें।"
+        },
+        {
+          "unit": "now",
+          "count": 52,
+          "text": "इस बातचीत में खोले गए pull requests और merge requests देखने के लिए सर्वर अपडेट करें।"
+        },
+        {
+          "unit": "minute",
+          "count": 0,
+          "text": "इस बातचीत में खोले गए pull requests और merge requests देखने के लिए सर्वर अपडेट करें।"
+        },
+        {
+          "unit": "minute",
+          "count": 1,
+          "text": "इस बातचीत में खोले गए pull requests और merge requests देखने के लिए सर्वर अपडेट करें।"
+        },
+        {
+          "unit": "minute",
+          "count": 2,
+          "text": "इस बातचीत में खोले गए pull requests और merge requests देखने के लिए सर्वर अपडेट करें।"
+        },
+        {
+          "unit": "minute",
+          "count": 12,
+          "text": "इस बातचीत में खोले गए pull requests और merge requests देखने के लिए सर्वर अपडेट करें।"
+        },
+        {
+          "unit": "minute",
+          "count": 52,
+          "text": "इस बातचीत में खोले गए pull requests और merge requests देखने के लिए सर्वर अपडेट करें।"
+        },
+        {
+          "unit": "hour",
+          "count": 0,
+          "text": "इस बातचीत में खोले गए pull requests और merge requests देखने के लिए सर्वर अपडेट करें।"
+        },
+        {
+          "unit": "hour",
+          "count": 1,
+          "text": "इस बातचीत में खोले गए pull requests और merge requests देखने के लिए सर्वर अपडेट करें।"
+        },
+        {
+          "unit": "hour",
+          "count": 2,
+          "text": "इस बातचीत में खोले गए pull requests और merge requests देखने के लिए सर्वर अपडेट करें।"
+        },
+        {
+          "unit": "hour",
+          "count": 12,
+          "text": "इस बातचीत में खोले गए pull requests और merge requests देखने के लिए सर्वर अपडेट करें।"
+        },
+        {
+          "unit": "hour",
+          "count": 52,
+          "text": "इस बातचीत में खोले गए pull requests और merge requests देखने के लिए सर्वर अपडेट करें।"
+        },
+        {
+          "unit": "day",
+          "count": 0,
+          "text": "इस बातचीत में खोले गए pull requests और merge requests देखने के लिए सर्वर अपडेट करें।"
+        },
+        {
+          "unit": "day",
+          "count": 1,
+          "text": "इस बातचीत में खोले गए pull requests और merge requests देखने के लिए सर्वर अपडेट करें।"
+        },
+        {
+          "unit": "day",
+          "count": 2,
+          "text": "इस बातचीत में खोले गए pull requests और merge requests देखने के लिए सर्वर अपडेट करें।"
+        },
+        {
+          "unit": "day",
+          "count": 12,
+          "text": "इस बातचीत में खोले गए pull requests और merge requests देखने के लिए सर्वर अपडेट करें।"
+        },
+        {
+          "unit": "day",
+          "count": 52,
+          "text": "इस बातचीत में खोले गए pull requests और merge requests देखने के लिए सर्वर अपडेट करें।"
+        },
+        {
+          "unit": "week",
+          "count": 0,
+          "text": "इस बातचीत में खोले गए pull requests और merge requests देखने के लिए सर्वर अपडेट करें।"
+        },
+        {
+          "unit": "week",
+          "count": 1,
+          "text": "इस बातचीत में खोले गए pull requests और merge requests देखने के लिए सर्वर अपडेट करें।"
+        },
+        {
+          "unit": "week",
+          "count": 2,
+          "text": "इस बातचीत में खोले गए pull requests और merge requests देखने के लिए सर्वर अपडेट करें।"
+        },
+        {
+          "unit": "week",
+          "count": 12,
+          "text": "इस बातचीत में खोले गए pull requests और merge requests देखने के लिए सर्वर अपडेट करें।"
+        },
+        {
+          "unit": "week",
+          "count": 52,
+          "text": "इस बातचीत में खोले गए pull requests और merge requests देखने के लिए सर्वर अपडेट करें।"
+        },
+        {
+          "unit": "year",
+          "count": 0,
+          "text": "इस बातचीत में खोले गए pull requests और merge requests देखने के लिए सर्वर अपडेट करें।"
+        },
+        {
+          "unit": "year",
+          "count": 1,
+          "text": "इस बातचीत में खोले गए pull requests और merge requests देखने के लिए सर्वर अपडेट करें।"
+        },
+        {
+          "unit": "year",
+          "count": 2,
+          "text": "इस बातचीत में खोले गए pull requests और merge requests देखने के लिए सर्वर अपडेट करें।"
+        },
+        {
+          "unit": "year",
+          "count": 12,
+          "text": "इस बातचीत में खोले गए pull requests और merge requests देखने के लिए सर्वर अपडेट करें।"
+        },
+        {
+          "unit": "year",
+          "count": 52,
+          "text": "इस बातचीत में खोले गए pull requests और merge requests देखने के लिए सर्वर अपडेट करें।"
+        },
+        {
+          "unit": "unknown",
+          "count": 0,
+          "text": "इस बातचीत में खोले गए pull requests और merge requests देखने के लिए सर्वर अपडेट करें।"
+        },
+        {
+          "unit": "unknown",
+          "count": 1,
+          "text": "इस बातचीत में खोले गए pull requests और merge requests देखने के लिए सर्वर अपडेट करें।"
+        },
+        {
+          "unit": "unknown",
+          "count": 2,
+          "text": "इस बातचीत में खोले गए pull requests और merge requests देखने के लिए सर्वर अपडेट करें।"
+        },
+        {
+          "unit": "unknown",
+          "count": 12,
+          "text": "इस बातचीत में खोले गए pull requests और merge requests देखने के लिए सर्वर अपडेट करें।"
+        },
+        {
+          "unit": "unknown",
+          "count": 52,
+          "text": "इस बातचीत में खोले गए pull requests और merge requests देखने के लिए सर्वर अपडेट करें।"
+        }
+      ]
+    },
+    {
+      "key": "ui.chat.slot_notice.code_checking_title",
+      "hi": "सर्वर पर कोड समीक्षा की उपलब्धता जाँची जा रही है…",
+      "en": "Checking whether the server serves code review…",
+      "context": {
+        "role": "right-slot notice title",
+        "tone": "sentence case; preserve the existing action or factual wording",
+        "maxCells": 120,
+        "placeholders": {}
+      },
+      "variants": [
+        {
+          "unit": "now",
+          "count": 0,
+          "text": "सर्वर पर कोड समीक्षा की उपलब्धता जाँची जा रही है…"
+        },
+        {
+          "unit": "now",
+          "count": 1,
+          "text": "सर्वर पर कोड समीक्षा की उपलब्धता जाँची जा रही है…"
+        },
+        {
+          "unit": "now",
+          "count": 2,
+          "text": "सर्वर पर कोड समीक्षा की उपलब्धता जाँची जा रही है…"
+        },
+        {
+          "unit": "now",
+          "count": 12,
+          "text": "सर्वर पर कोड समीक्षा की उपलब्धता जाँची जा रही है…"
+        },
+        {
+          "unit": "now",
+          "count": 52,
+          "text": "सर्वर पर कोड समीक्षा की उपलब्धता जाँची जा रही है…"
+        },
+        {
+          "unit": "minute",
+          "count": 0,
+          "text": "सर्वर पर कोड समीक्षा की उपलब्धता जाँची जा रही है…"
+        },
+        {
+          "unit": "minute",
+          "count": 1,
+          "text": "सर्वर पर कोड समीक्षा की उपलब्धता जाँची जा रही है…"
+        },
+        {
+          "unit": "minute",
+          "count": 2,
+          "text": "सर्वर पर कोड समीक्षा की उपलब्धता जाँची जा रही है…"
+        },
+        {
+          "unit": "minute",
+          "count": 12,
+          "text": "सर्वर पर कोड समीक्षा की उपलब्धता जाँची जा रही है…"
+        },
+        {
+          "unit": "minute",
+          "count": 52,
+          "text": "सर्वर पर कोड समीक्षा की उपलब्धता जाँची जा रही है…"
+        },
+        {
+          "unit": "hour",
+          "count": 0,
+          "text": "सर्वर पर कोड समीक्षा की उपलब्धता जाँची जा रही है…"
+        },
+        {
+          "unit": "hour",
+          "count": 1,
+          "text": "सर्वर पर कोड समीक्षा की उपलब्धता जाँची जा रही है…"
+        },
+        {
+          "unit": "hour",
+          "count": 2,
+          "text": "सर्वर पर कोड समीक्षा की उपलब्धता जाँची जा रही है…"
+        },
+        {
+          "unit": "hour",
+          "count": 12,
+          "text": "सर्वर पर कोड समीक्षा की उपलब्धता जाँची जा रही है…"
+        },
+        {
+          "unit": "hour",
+          "count": 52,
+          "text": "सर्वर पर कोड समीक्षा की उपलब्धता जाँची जा रही है…"
+        },
+        {
+          "unit": "day",
+          "count": 0,
+          "text": "सर्वर पर कोड समीक्षा की उपलब्धता जाँची जा रही है…"
+        },
+        {
+          "unit": "day",
+          "count": 1,
+          "text": "सर्वर पर कोड समीक्षा की उपलब्धता जाँची जा रही है…"
+        },
+        {
+          "unit": "day",
+          "count": 2,
+          "text": "सर्वर पर कोड समीक्षा की उपलब्धता जाँची जा रही है…"
+        },
+        {
+          "unit": "day",
+          "count": 12,
+          "text": "सर्वर पर कोड समीक्षा की उपलब्धता जाँची जा रही है…"
+        },
+        {
+          "unit": "day",
+          "count": 52,
+          "text": "सर्वर पर कोड समीक्षा की उपलब्धता जाँची जा रही है…"
+        },
+        {
+          "unit": "week",
+          "count": 0,
+          "text": "सर्वर पर कोड समीक्षा की उपलब्धता जाँची जा रही है…"
+        },
+        {
+          "unit": "week",
+          "count": 1,
+          "text": "सर्वर पर कोड समीक्षा की उपलब्धता जाँची जा रही है…"
+        },
+        {
+          "unit": "week",
+          "count": 2,
+          "text": "सर्वर पर कोड समीक्षा की उपलब्धता जाँची जा रही है…"
+        },
+        {
+          "unit": "week",
+          "count": 12,
+          "text": "सर्वर पर कोड समीक्षा की उपलब्धता जाँची जा रही है…"
+        },
+        {
+          "unit": "week",
+          "count": 52,
+          "text": "सर्वर पर कोड समीक्षा की उपलब्धता जाँची जा रही है…"
+        },
+        {
+          "unit": "year",
+          "count": 0,
+          "text": "सर्वर पर कोड समीक्षा की उपलब्धता जाँची जा रही है…"
+        },
+        {
+          "unit": "year",
+          "count": 1,
+          "text": "सर्वर पर कोड समीक्षा की उपलब्धता जाँची जा रही है…"
+        },
+        {
+          "unit": "year",
+          "count": 2,
+          "text": "सर्वर पर कोड समीक्षा की उपलब्धता जाँची जा रही है…"
+        },
+        {
+          "unit": "year",
+          "count": 12,
+          "text": "सर्वर पर कोड समीक्षा की उपलब्धता जाँची जा रही है…"
+        },
+        {
+          "unit": "year",
+          "count": 52,
+          "text": "सर्वर पर कोड समीक्षा की उपलब्धता जाँची जा रही है…"
+        },
+        {
+          "unit": "unknown",
+          "count": 0,
+          "text": "सर्वर पर कोड समीक्षा की उपलब्धता जाँची जा रही है…"
+        },
+        {
+          "unit": "unknown",
+          "count": 1,
+          "text": "सर्वर पर कोड समीक्षा की उपलब्धता जाँची जा रही है…"
+        },
+        {
+          "unit": "unknown",
+          "count": 2,
+          "text": "सर्वर पर कोड समीक्षा की उपलब्धता जाँची जा रही है…"
+        },
+        {
+          "unit": "unknown",
+          "count": 12,
+          "text": "सर्वर पर कोड समीक्षा की उपलब्धता जाँची जा रही है…"
+        },
+        {
+          "unit": "unknown",
+          "count": 52,
+          "text": "सर्वर पर कोड समीक्षा की उपलब्धता जाँची जा रही है…"
+        }
+      ]
+    },
+    {
+      "key": "ui.chat.slot_notice.code_load_lead",
+      "hi": "कोड समीक्षा लोड नहीं हो सकी।",
+      "en": "Code review could not be loaded.",
+      "context": {
+        "role": "right-slot notice title",
+        "tone": "sentence case; preserve the existing action or factual wording",
+        "maxCells": 120,
+        "placeholders": {}
+      },
+      "variants": [
+        {
+          "unit": "now",
+          "count": 0,
+          "text": "कोड समीक्षा लोड नहीं हो सकी।"
+        },
+        {
+          "unit": "now",
+          "count": 1,
+          "text": "कोड समीक्षा लोड नहीं हो सकी।"
+        },
+        {
+          "unit": "now",
+          "count": 2,
+          "text": "कोड समीक्षा लोड नहीं हो सकी।"
+        },
+        {
+          "unit": "now",
+          "count": 12,
+          "text": "कोड समीक्षा लोड नहीं हो सकी।"
+        },
+        {
+          "unit": "now",
+          "count": 52,
+          "text": "कोड समीक्षा लोड नहीं हो सकी।"
+        },
+        {
+          "unit": "minute",
+          "count": 0,
+          "text": "कोड समीक्षा लोड नहीं हो सकी।"
+        },
+        {
+          "unit": "minute",
+          "count": 1,
+          "text": "कोड समीक्षा लोड नहीं हो सकी।"
+        },
+        {
+          "unit": "minute",
+          "count": 2,
+          "text": "कोड समीक्षा लोड नहीं हो सकी।"
+        },
+        {
+          "unit": "minute",
+          "count": 12,
+          "text": "कोड समीक्षा लोड नहीं हो सकी।"
+        },
+        {
+          "unit": "minute",
+          "count": 52,
+          "text": "कोड समीक्षा लोड नहीं हो सकी।"
+        },
+        {
+          "unit": "hour",
+          "count": 0,
+          "text": "कोड समीक्षा लोड नहीं हो सकी।"
+        },
+        {
+          "unit": "hour",
+          "count": 1,
+          "text": "कोड समीक्षा लोड नहीं हो सकी।"
+        },
+        {
+          "unit": "hour",
+          "count": 2,
+          "text": "कोड समीक्षा लोड नहीं हो सकी।"
+        },
+        {
+          "unit": "hour",
+          "count": 12,
+          "text": "कोड समीक्षा लोड नहीं हो सकी।"
+        },
+        {
+          "unit": "hour",
+          "count": 52,
+          "text": "कोड समीक्षा लोड नहीं हो सकी।"
+        },
+        {
+          "unit": "day",
+          "count": 0,
+          "text": "कोड समीक्षा लोड नहीं हो सकी।"
+        },
+        {
+          "unit": "day",
+          "count": 1,
+          "text": "कोड समीक्षा लोड नहीं हो सकी।"
+        },
+        {
+          "unit": "day",
+          "count": 2,
+          "text": "कोड समीक्षा लोड नहीं हो सकी।"
+        },
+        {
+          "unit": "day",
+          "count": 12,
+          "text": "कोड समीक्षा लोड नहीं हो सकी।"
+        },
+        {
+          "unit": "day",
+          "count": 52,
+          "text": "कोड समीक्षा लोड नहीं हो सकी।"
+        },
+        {
+          "unit": "week",
+          "count": 0,
+          "text": "कोड समीक्षा लोड नहीं हो सकी।"
+        },
+        {
+          "unit": "week",
+          "count": 1,
+          "text": "कोड समीक्षा लोड नहीं हो सकी।"
+        },
+        {
+          "unit": "week",
+          "count": 2,
+          "text": "कोड समीक्षा लोड नहीं हो सकी।"
+        },
+        {
+          "unit": "week",
+          "count": 12,
+          "text": "कोड समीक्षा लोड नहीं हो सकी।"
+        },
+        {
+          "unit": "week",
+          "count": 52,
+          "text": "कोड समीक्षा लोड नहीं हो सकी।"
+        },
+        {
+          "unit": "year",
+          "count": 0,
+          "text": "कोड समीक्षा लोड नहीं हो सकी।"
+        },
+        {
+          "unit": "year",
+          "count": 1,
+          "text": "कोड समीक्षा लोड नहीं हो सकी।"
+        },
+        {
+          "unit": "year",
+          "count": 2,
+          "text": "कोड समीक्षा लोड नहीं हो सकी।"
+        },
+        {
+          "unit": "year",
+          "count": 12,
+          "text": "कोड समीक्षा लोड नहीं हो सकी।"
+        },
+        {
+          "unit": "year",
+          "count": 52,
+          "text": "कोड समीक्षा लोड नहीं हो सकी।"
+        },
+        {
+          "unit": "unknown",
+          "count": 0,
+          "text": "कोड समीक्षा लोड नहीं हो सकी।"
+        },
+        {
+          "unit": "unknown",
+          "count": 1,
+          "text": "कोड समीक्षा लोड नहीं हो सकी।"
+        },
+        {
+          "unit": "unknown",
+          "count": 2,
+          "text": "कोड समीक्षा लोड नहीं हो सकी।"
+        },
+        {
+          "unit": "unknown",
+          "count": 12,
+          "text": "कोड समीक्षा लोड नहीं हो सकी।"
+        },
+        {
+          "unit": "unknown",
+          "count": 52,
+          "text": "कोड समीक्षा लोड नहीं हो सकी।"
+        }
+      ]
+    },
+    {
+      "key": "ui.chat.slash_arguments.model_default_description",
+      "hi": "मौजूदा मॉडल ({provider}/{model}) को नए सत्रों के लिए डिफ़ॉल्ट बनाएँ।",
+      "en": "Save the current model ({provider}/{model}) as the default for new sessions.",
+      "context": {
+        "role": "slash argument description or action help",
+        "tone": "sentence case; concise factual guidance",
+        "maxCells": 100,
+        "placeholders": {
+          "provider": "Provider identifier; preserve verbatim.",
+          "model": "Model identifier; preserve verbatim."
+        }
+      },
+      "variants": [
+        {
+          "unit": "now",
+          "count": 0,
+          "text": "मौजूदा मॉडल (anthropic/claude-sonnet-5-5) को नए सत्रों के लिए डिफ़ॉल्ट बनाएँ।"
+        },
+        {
+          "unit": "now",
+          "count": 1,
+          "text": "मौजूदा मॉडल (anthropic/claude-sonnet-5-5) को नए सत्रों के लिए डिफ़ॉल्ट बनाएँ।"
+        },
+        {
+          "unit": "now",
+          "count": 2,
+          "text": "मौजूदा मॉडल (anthropic/claude-sonnet-5-5) को नए सत्रों के लिए डिफ़ॉल्ट बनाएँ।"
+        },
+        {
+          "unit": "now",
+          "count": 12,
+          "text": "मौजूदा मॉडल (anthropic/claude-sonnet-5-5) को नए सत्रों के लिए डिफ़ॉल्ट बनाएँ।"
+        },
+        {
+          "unit": "now",
+          "count": 52,
+          "text": "मौजूदा मॉडल (anthropic/claude-sonnet-5-5) को नए सत्रों के लिए डिफ़ॉल्ट बनाएँ।"
+        },
+        {
+          "unit": "minute",
+          "count": 0,
+          "text": "मौजूदा मॉडल (anthropic/claude-sonnet-5-5) को नए सत्रों के लिए डिफ़ॉल्ट बनाएँ।"
+        },
+        {
+          "unit": "minute",
+          "count": 1,
+          "text": "मौजूदा मॉडल (anthropic/claude-sonnet-5-5) को नए सत्रों के लिए डिफ़ॉल्ट बनाएँ।"
+        },
+        {
+          "unit": "minute",
+          "count": 2,
+          "text": "मौजूदा मॉडल (anthropic/claude-sonnet-5-5) को नए सत्रों के लिए डिफ़ॉल्ट बनाएँ।"
+        },
+        {
+          "unit": "minute",
+          "count": 12,
+          "text": "मौजूदा मॉडल (anthropic/claude-sonnet-5-5) को नए सत्रों के लिए डिफ़ॉल्ट बनाएँ।"
+        },
+        {
+          "unit": "minute",
+          "count": 52,
+          "text": "मौजूदा मॉडल (anthropic/claude-sonnet-5-5) को नए सत्रों के लिए डिफ़ॉल्ट बनाएँ।"
+        },
+        {
+          "unit": "hour",
+          "count": 0,
+          "text": "मौजूदा मॉडल (anthropic/claude-sonnet-5-5) को नए सत्रों के लिए डिफ़ॉल्ट बनाएँ।"
+        },
+        {
+          "unit": "hour",
+          "count": 1,
+          "text": "मौजूदा मॉडल (anthropic/claude-sonnet-5-5) को नए सत्रों के लिए डिफ़ॉल्ट बनाएँ।"
+        },
+        {
+          "unit": "hour",
+          "count": 2,
+          "text": "मौजूदा मॉडल (anthropic/claude-sonnet-5-5) को नए सत्रों के लिए डिफ़ॉल्ट बनाएँ।"
+        },
+        {
+          "unit": "hour",
+          "count": 12,
+          "text": "मौजूदा मॉडल (anthropic/claude-sonnet-5-5) को नए सत्रों के लिए डिफ़ॉल्ट बनाएँ।"
+        },
+        {
+          "unit": "hour",
+          "count": 52,
+          "text": "मौजूदा मॉडल (anthropic/claude-sonnet-5-5) को नए सत्रों के लिए डिफ़ॉल्ट बनाएँ।"
+        },
+        {
+          "unit": "day",
+          "count": 0,
+          "text": "मौजूदा मॉडल (anthropic/claude-sonnet-5-5) को नए सत्रों के लिए डिफ़ॉल्ट बनाएँ।"
+        },
+        {
+          "unit": "day",
+          "count": 1,
+          "text": "मौजूदा मॉडल (anthropic/claude-sonnet-5-5) को नए सत्रों के लिए डिफ़ॉल्ट बनाएँ।"
+        },
+        {
+          "unit": "day",
+          "count": 2,
+          "text": "मौजूदा मॉडल (anthropic/claude-sonnet-5-5) को नए सत्रों के लिए डिफ़ॉल्ट बनाएँ।"
+        },
+        {
+          "unit": "day",
+          "count": 12,
+          "text": "मौजूदा मॉडल (anthropic/claude-sonnet-5-5) को नए सत्रों के लिए डिफ़ॉल्ट बनाएँ।"
+        },
+        {
+          "unit": "day",
+          "count": 52,
+          "text": "मौजूदा मॉडल (anthropic/claude-sonnet-5-5) को नए सत्रों के लिए डिफ़ॉल्ट बनाएँ।"
+        },
+        {
+          "unit": "week",
+          "count": 0,
+          "text": "मौजूदा मॉडल (anthropic/claude-sonnet-5-5) को नए सत्रों के लिए डिफ़ॉल्ट बनाएँ।"
+        },
+        {
+          "unit": "week",
+          "count": 1,
+          "text": "मौजूदा मॉडल (anthropic/claude-sonnet-5-5) को नए सत्रों के लिए डिफ़ॉल्ट बनाएँ।"
+        },
+        {
+          "unit": "week",
+          "count": 2,
+          "text": "मौजूदा मॉडल (anthropic/claude-sonnet-5-5) को नए सत्रों के लिए डिफ़ॉल्ट बनाएँ।"
+        },
+        {
+          "unit": "week",
+          "count": 12,
+          "text": "मौजूदा मॉडल (anthropic/claude-sonnet-5-5) को नए सत्रों के लिए डिफ़ॉल्ट बनाएँ।"
+        },
+        {
+          "unit": "week",
+          "count": 52,
+          "text": "मौजूदा मॉडल (anthropic/claude-sonnet-5-5) को नए सत्रों के लिए डिफ़ॉल्ट बनाएँ।"
+        },
+        {
+          "unit": "year",
+          "count": 0,
+          "text": "मौजूदा मॉडल (anthropic/claude-sonnet-5-5) को नए सत्रों के लिए डिफ़ॉल्ट बनाएँ।"
+        },
+        {
+          "unit": "year",
+          "count": 1,
+          "text": "मौजूदा मॉडल (anthropic/claude-sonnet-5-5) को नए सत्रों के लिए डिफ़ॉल्ट बनाएँ।"
+        },
+        {
+          "unit": "year",
+          "count": 2,
+          "text": "मौजूदा मॉडल (anthropic/claude-sonnet-5-5) को नए सत्रों के लिए डिफ़ॉल्ट बनाएँ।"
+        },
+        {
+          "unit": "year",
+          "count": 12,
+          "text": "मौजूदा मॉडल (anthropic/claude-sonnet-5-5) को नए सत्रों के लिए डिफ़ॉल्ट बनाएँ।"
+        },
+        {
+          "unit": "year",
+          "count": 52,
+          "text": "मौजूदा मॉडल (anthropic/claude-sonnet-5-5) को नए सत्रों के लिए डिफ़ॉल्ट बनाएँ।"
+        },
+        {
+          "unit": "unknown",
+          "count": 0,
+          "text": "मौजूदा मॉडल (anthropic/claude-sonnet-5-5) को नए सत्रों के लिए डिफ़ॉल्ट बनाएँ।"
+        },
+        {
+          "unit": "unknown",
+          "count": 1,
+          "text": "मौजूदा मॉडल (anthropic/claude-sonnet-5-5) को नए सत्रों के लिए डिफ़ॉल्ट बनाएँ।"
+        },
+        {
+          "unit": "unknown",
+          "count": 2,
+          "text": "मौजूदा मॉडल (anthropic/claude-sonnet-5-5) को नए सत्रों के लिए डिफ़ॉल्ट बनाएँ।"
+        },
+        {
+          "unit": "unknown",
+          "count": 12,
+          "text": "मौजूदा मॉडल (anthropic/claude-sonnet-5-5) को नए सत्रों के लिए डिफ़ॉल्ट बनाएँ।"
+        },
+        {
+          "unit": "unknown",
+          "count": 52,
+          "text": "मौजूदा मॉडल (anthropic/claude-sonnet-5-5) को नए सत्रों के लिए डिफ़ॉल्ट बनाएँ।"
+        }
+      ]
+    },
+    {
+      "key": "ui.chat.slash_arguments.model_default_unavailable",
+      "hi": "सहेजने के लिए किसी सक्रिय सत्र का मॉडल उपलब्ध नहीं है।",
+      "en": "No active session model is available to save.",
+      "context": {
+        "role": "slash argument description or action help",
+        "tone": "sentence case; concise factual guidance",
+        "maxCells": 100,
+        "placeholders": {}
+      },
+      "variants": [
+        {
+          "unit": "now",
+          "count": 0,
+          "text": "सहेजने के लिए किसी सक्रिय सत्र का मॉडल उपलब्ध नहीं है।"
+        },
+        {
+          "unit": "now",
+          "count": 1,
+          "text": "सहेजने के लिए किसी सक्रिय सत्र का मॉडल उपलब्ध नहीं है।"
+        },
+        {
+          "unit": "now",
+          "count": 2,
+          "text": "सहेजने के लिए किसी सक्रिय सत्र का मॉडल उपलब्ध नहीं है।"
+        },
+        {
+          "unit": "now",
+          "count": 12,
+          "text": "सहेजने के लिए किसी सक्रिय सत्र का मॉडल उपलब्ध नहीं है।"
+        },
+        {
+          "unit": "now",
+          "count": 52,
+          "text": "सहेजने के लिए किसी सक्रिय सत्र का मॉडल उपलब्ध नहीं है।"
+        },
+        {
+          "unit": "minute",
+          "count": 0,
+          "text": "सहेजने के लिए किसी सक्रिय सत्र का मॉडल उपलब्ध नहीं है।"
+        },
+        {
+          "unit": "minute",
+          "count": 1,
+          "text": "सहेजने के लिए किसी सक्रिय सत्र का मॉडल उपलब्ध नहीं है।"
+        },
+        {
+          "unit": "minute",
+          "count": 2,
+          "text": "सहेजने के लिए किसी सक्रिय सत्र का मॉडल उपलब्ध नहीं है।"
+        },
+        {
+          "unit": "minute",
+          "count": 12,
+          "text": "सहेजने के लिए किसी सक्रिय सत्र का मॉडल उपलब्ध नहीं है।"
+        },
+        {
+          "unit": "minute",
+          "count": 52,
+          "text": "सहेजने के लिए किसी सक्रिय सत्र का मॉडल उपलब्ध नहीं है।"
+        },
+        {
+          "unit": "hour",
+          "count": 0,
+          "text": "सहेजने के लिए किसी सक्रिय सत्र का मॉडल उपलब्ध नहीं है।"
+        },
+        {
+          "unit": "hour",
+          "count": 1,
+          "text": "सहेजने के लिए किसी सक्रिय सत्र का मॉडल उपलब्ध नहीं है।"
+        },
+        {
+          "unit": "hour",
+          "count": 2,
+          "text": "सहेजने के लिए किसी सक्रिय सत्र का मॉडल उपलब्ध नहीं है।"
+        },
+        {
+          "unit": "hour",
+          "count": 12,
+          "text": "सहेजने के लिए किसी सक्रिय सत्र का मॉडल उपलब्ध नहीं है।"
+        },
+        {
+          "unit": "hour",
+          "count": 52,
+          "text": "सहेजने के लिए किसी सक्रिय सत्र का मॉडल उपलब्ध नहीं है।"
+        },
+        {
+          "unit": "day",
+          "count": 0,
+          "text": "सहेजने के लिए किसी सक्रिय सत्र का मॉडल उपलब्ध नहीं है।"
+        },
+        {
+          "unit": "day",
+          "count": 1,
+          "text": "सहेजने के लिए किसी सक्रिय सत्र का मॉडल उपलब्ध नहीं है।"
+        },
+        {
+          "unit": "day",
+          "count": 2,
+          "text": "सहेजने के लिए किसी सक्रिय सत्र का मॉडल उपलब्ध नहीं है।"
+        },
+        {
+          "unit": "day",
+          "count": 12,
+          "text": "सहेजने के लिए किसी सक्रिय सत्र का मॉडल उपलब्ध नहीं है।"
+        },
+        {
+          "unit": "day",
+          "count": 52,
+          "text": "सहेजने के लिए किसी सक्रिय सत्र का मॉडल उपलब्ध नहीं है।"
+        },
+        {
+          "unit": "week",
+          "count": 0,
+          "text": "सहेजने के लिए किसी सक्रिय सत्र का मॉडल उपलब्ध नहीं है।"
+        },
+        {
+          "unit": "week",
+          "count": 1,
+          "text": "सहेजने के लिए किसी सक्रिय सत्र का मॉडल उपलब्ध नहीं है।"
+        },
+        {
+          "unit": "week",
+          "count": 2,
+          "text": "सहेजने के लिए किसी सक्रिय सत्र का मॉडल उपलब्ध नहीं है।"
+        },
+        {
+          "unit": "week",
+          "count": 12,
+          "text": "सहेजने के लिए किसी सक्रिय सत्र का मॉडल उपलब्ध नहीं है।"
+        },
+        {
+          "unit": "week",
+          "count": 52,
+          "text": "सहेजने के लिए किसी सक्रिय सत्र का मॉडल उपलब्ध नहीं है।"
+        },
+        {
+          "unit": "year",
+          "count": 0,
+          "text": "सहेजने के लिए किसी सक्रिय सत्र का मॉडल उपलब्ध नहीं है।"
+        },
+        {
+          "unit": "year",
+          "count": 1,
+          "text": "सहेजने के लिए किसी सक्रिय सत्र का मॉडल उपलब्ध नहीं है।"
+        },
+        {
+          "unit": "year",
+          "count": 2,
+          "text": "सहेजने के लिए किसी सक्रिय सत्र का मॉडल उपलब्ध नहीं है।"
+        },
+        {
+          "unit": "year",
+          "count": 12,
+          "text": "सहेजने के लिए किसी सक्रिय सत्र का मॉडल उपलब्ध नहीं है।"
+        },
+        {
+          "unit": "year",
+          "count": 52,
+          "text": "सहेजने के लिए किसी सक्रिय सत्र का मॉडल उपलब्ध नहीं है।"
+        },
+        {
+          "unit": "unknown",
+          "count": 0,
+          "text": "सहेजने के लिए किसी सक्रिय सत्र का मॉडल उपलब्ध नहीं है।"
+        },
+        {
+          "unit": "unknown",
+          "count": 1,
+          "text": "सहेजने के लिए किसी सक्रिय सत्र का मॉडल उपलब्ध नहीं है।"
+        },
+        {
+          "unit": "unknown",
+          "count": 2,
+          "text": "सहेजने के लिए किसी सक्रिय सत्र का मॉडल उपलब्ध नहीं है।"
+        },
+        {
+          "unit": "unknown",
+          "count": 12,
+          "text": "सहेजने के लिए किसी सक्रिय सत्र का मॉडल उपलब्ध नहीं है।"
+        },
+        {
+          "unit": "unknown",
+          "count": 52,
+          "text": "सहेजने के लिए किसी सक्रिय सत्र का मॉडल उपलब्ध नहीं है।"
+        }
+      ]
+    },
+    {
+      "key": "ui.chat.slash_arguments.model_default_click",
+      "hi": "क्लिक करने पर भी यही होता है।",
+      "en": "Click does the same.",
+      "context": {
+        "role": "slash argument description or action help",
+        "tone": "sentence case; concise factual guidance",
+        "maxCells": 100,
+        "placeholders": {}
+      },
+      "variants": [
+        {
+          "unit": "now",
+          "count": 0,
+          "text": "क्लिक करने पर भी यही होता है।"
+        },
+        {
+          "unit": "now",
+          "count": 1,
+          "text": "क्लिक करने पर भी यही होता है।"
+        },
+        {
+          "unit": "now",
+          "count": 2,
+          "text": "क्लिक करने पर भी यही होता है।"
+        },
+        {
+          "unit": "now",
+          "count": 12,
+          "text": "क्लिक करने पर भी यही होता है।"
+        },
+        {
+          "unit": "now",
+          "count": 52,
+          "text": "क्लिक करने पर भी यही होता है।"
+        },
+        {
+          "unit": "minute",
+          "count": 0,
+          "text": "क्लिक करने पर भी यही होता है।"
+        },
+        {
+          "unit": "minute",
+          "count": 1,
+          "text": "क्लिक करने पर भी यही होता है।"
+        },
+        {
+          "unit": "minute",
+          "count": 2,
+          "text": "क्लिक करने पर भी यही होता है।"
+        },
+        {
+          "unit": "minute",
+          "count": 12,
+          "text": "क्लिक करने पर भी यही होता है।"
+        },
+        {
+          "unit": "minute",
+          "count": 52,
+          "text": "क्लिक करने पर भी यही होता है।"
+        },
+        {
+          "unit": "hour",
+          "count": 0,
+          "text": "क्लिक करने पर भी यही होता है।"
+        },
+        {
+          "unit": "hour",
+          "count": 1,
+          "text": "क्लिक करने पर भी यही होता है।"
+        },
+        {
+          "unit": "hour",
+          "count": 2,
+          "text": "क्लिक करने पर भी यही होता है।"
+        },
+        {
+          "unit": "hour",
+          "count": 12,
+          "text": "क्लिक करने पर भी यही होता है।"
+        },
+        {
+          "unit": "hour",
+          "count": 52,
+          "text": "क्लिक करने पर भी यही होता है।"
+        },
+        {
+          "unit": "day",
+          "count": 0,
+          "text": "क्लिक करने पर भी यही होता है।"
+        },
+        {
+          "unit": "day",
+          "count": 1,
+          "text": "क्लिक करने पर भी यही होता है।"
+        },
+        {
+          "unit": "day",
+          "count": 2,
+          "text": "क्लिक करने पर भी यही होता है।"
+        },
+        {
+          "unit": "day",
+          "count": 12,
+          "text": "क्लिक करने पर भी यही होता है।"
+        },
+        {
+          "unit": "day",
+          "count": 52,
+          "text": "क्लिक करने पर भी यही होता है।"
+        },
+        {
+          "unit": "week",
+          "count": 0,
+          "text": "क्लिक करने पर भी यही होता है।"
+        },
+        {
+          "unit": "week",
+          "count": 1,
+          "text": "क्लिक करने पर भी यही होता है।"
+        },
+        {
+          "unit": "week",
+          "count": 2,
+          "text": "क्लिक करने पर भी यही होता है।"
+        },
+        {
+          "unit": "week",
+          "count": 12,
+          "text": "क्लिक करने पर भी यही होता है।"
+        },
+        {
+          "unit": "week",
+          "count": 52,
+          "text": "क्लिक करने पर भी यही होता है।"
+        },
+        {
+          "unit": "year",
+          "count": 0,
+          "text": "क्लिक करने पर भी यही होता है।"
+        },
+        {
+          "unit": "year",
+          "count": 1,
+          "text": "क्लिक करने पर भी यही होता है।"
+        },
+        {
+          "unit": "year",
+          "count": 2,
+          "text": "क्लिक करने पर भी यही होता है।"
+        },
+        {
+          "unit": "year",
+          "count": 12,
+          "text": "क्लिक करने पर भी यही होता है।"
+        },
+        {
+          "unit": "year",
+          "count": 52,
+          "text": "क्लिक करने पर भी यही होता है।"
+        },
+        {
+          "unit": "unknown",
+          "count": 0,
+          "text": "क्लिक करने पर भी यही होता है।"
+        },
+        {
+          "unit": "unknown",
+          "count": 1,
+          "text": "क्लिक करने पर भी यही होता है।"
+        },
+        {
+          "unit": "unknown",
+          "count": 2,
+          "text": "क्लिक करने पर भी यही होता है।"
+        },
+        {
+          "unit": "unknown",
+          "count": 12,
+          "text": "क्लिक करने पर भी यही होता है।"
+        },
+        {
+          "unit": "unknown",
+          "count": 52,
+          "text": "क्लिक करने पर भी यही होता है।"
+        }
+      ]
+    },
+    {
+      "key": "ui.chat.slash_arguments.model_default_required",
+      "hi": "डिफ़ॉल्ट सहेजने के लिए पहले सत्र का मॉडल ज़रूरी है।",
+      "en": "A session model is required before this action can save a default.",
+      "context": {
+        "role": "slash argument description or action help",
+        "tone": "sentence case; concise factual guidance",
+        "maxCells": 100,
+        "placeholders": {}
+      },
+      "variants": [
+        {
+          "unit": "now",
+          "count": 0,
+          "text": "डिफ़ॉल्ट सहेजने के लिए पहले सत्र का मॉडल ज़रूरी है।"
+        },
+        {
+          "unit": "now",
+          "count": 1,
+          "text": "डिफ़ॉल्ट सहेजने के लिए पहले सत्र का मॉडल ज़रूरी है।"
+        },
+        {
+          "unit": "now",
+          "count": 2,
+          "text": "डिफ़ॉल्ट सहेजने के लिए पहले सत्र का मॉडल ज़रूरी है।"
+        },
+        {
+          "unit": "now",
+          "count": 12,
+          "text": "डिफ़ॉल्ट सहेजने के लिए पहले सत्र का मॉडल ज़रूरी है।"
+        },
+        {
+          "unit": "now",
+          "count": 52,
+          "text": "डिफ़ॉल्ट सहेजने के लिए पहले सत्र का मॉडल ज़रूरी है।"
+        },
+        {
+          "unit": "minute",
+          "count": 0,
+          "text": "डिफ़ॉल्ट सहेजने के लिए पहले सत्र का मॉडल ज़रूरी है।"
+        },
+        {
+          "unit": "minute",
+          "count": 1,
+          "text": "डिफ़ॉल्ट सहेजने के लिए पहले सत्र का मॉडल ज़रूरी है।"
+        },
+        {
+          "unit": "minute",
+          "count": 2,
+          "text": "डिफ़ॉल्ट सहेजने के लिए पहले सत्र का मॉडल ज़रूरी है।"
+        },
+        {
+          "unit": "minute",
+          "count": 12,
+          "text": "डिफ़ॉल्ट सहेजने के लिए पहले सत्र का मॉडल ज़रूरी है।"
+        },
+        {
+          "unit": "minute",
+          "count": 52,
+          "text": "डिफ़ॉल्ट सहेजने के लिए पहले सत्र का मॉडल ज़रूरी है।"
+        },
+        {
+          "unit": "hour",
+          "count": 0,
+          "text": "डिफ़ॉल्ट सहेजने के लिए पहले सत्र का मॉडल ज़रूरी है।"
+        },
+        {
+          "unit": "hour",
+          "count": 1,
+          "text": "डिफ़ॉल्ट सहेजने के लिए पहले सत्र का मॉडल ज़रूरी है।"
+        },
+        {
+          "unit": "hour",
+          "count": 2,
+          "text": "डिफ़ॉल्ट सहेजने के लिए पहले सत्र का मॉडल ज़रूरी है।"
+        },
+        {
+          "unit": "hour",
+          "count": 12,
+          "text": "डिफ़ॉल्ट सहेजने के लिए पहले सत्र का मॉडल ज़रूरी है।"
+        },
+        {
+          "unit": "hour",
+          "count": 52,
+          "text": "डिफ़ॉल्ट सहेजने के लिए पहले सत्र का मॉडल ज़रूरी है।"
+        },
+        {
+          "unit": "day",
+          "count": 0,
+          "text": "डिफ़ॉल्ट सहेजने के लिए पहले सत्र का मॉडल ज़रूरी है।"
+        },
+        {
+          "unit": "day",
+          "count": 1,
+          "text": "डिफ़ॉल्ट सहेजने के लिए पहले सत्र का मॉडल ज़रूरी है।"
+        },
+        {
+          "unit": "day",
+          "count": 2,
+          "text": "डिफ़ॉल्ट सहेजने के लिए पहले सत्र का मॉडल ज़रूरी है।"
+        },
+        {
+          "unit": "day",
+          "count": 12,
+          "text": "डिफ़ॉल्ट सहेजने के लिए पहले सत्र का मॉडल ज़रूरी है।"
+        },
+        {
+          "unit": "day",
+          "count": 52,
+          "text": "डिफ़ॉल्ट सहेजने के लिए पहले सत्र का मॉडल ज़रूरी है।"
+        },
+        {
+          "unit": "week",
+          "count": 0,
+          "text": "डिफ़ॉल्ट सहेजने के लिए पहले सत्र का मॉडल ज़रूरी है।"
+        },
+        {
+          "unit": "week",
+          "count": 1,
+          "text": "डिफ़ॉल्ट सहेजने के लिए पहले सत्र का मॉडल ज़रूरी है।"
+        },
+        {
+          "unit": "week",
+          "count": 2,
+          "text": "डिफ़ॉल्ट सहेजने के लिए पहले सत्र का मॉडल ज़रूरी है।"
+        },
+        {
+          "unit": "week",
+          "count": 12,
+          "text": "डिफ़ॉल्ट सहेजने के लिए पहले सत्र का मॉडल ज़रूरी है।"
+        },
+        {
+          "unit": "week",
+          "count": 52,
+          "text": "डिफ़ॉल्ट सहेजने के लिए पहले सत्र का मॉडल ज़रूरी है।"
+        },
+        {
+          "unit": "year",
+          "count": 0,
+          "text": "डिफ़ॉल्ट सहेजने के लिए पहले सत्र का मॉडल ज़रूरी है।"
+        },
+        {
+          "unit": "year",
+          "count": 1,
+          "text": "डिफ़ॉल्ट सहेजने के लिए पहले सत्र का मॉडल ज़रूरी है।"
+        },
+        {
+          "unit": "year",
+          "count": 2,
+          "text": "डिफ़ॉल्ट सहेजने के लिए पहले सत्र का मॉडल ज़रूरी है।"
+        },
+        {
+          "unit": "year",
+          "count": 12,
+          "text": "डिफ़ॉल्ट सहेजने के लिए पहले सत्र का मॉडल ज़रूरी है।"
+        },
+        {
+          "unit": "year",
+          "count": 52,
+          "text": "डिफ़ॉल्ट सहेजने के लिए पहले सत्र का मॉडल ज़रूरी है।"
+        },
+        {
+          "unit": "unknown",
+          "count": 0,
+          "text": "डिफ़ॉल्ट सहेजने के लिए पहले सत्र का मॉडल ज़रूरी है।"
+        },
+        {
+          "unit": "unknown",
+          "count": 1,
+          "text": "डिफ़ॉल्ट सहेजने के लिए पहले सत्र का मॉडल ज़रूरी है।"
+        },
+        {
+          "unit": "unknown",
+          "count": 2,
+          "text": "डिफ़ॉल्ट सहेजने के लिए पहले सत्र का मॉडल ज़रूरी है।"
+        },
+        {
+          "unit": "unknown",
+          "count": 12,
+          "text": "डिफ़ॉल्ट सहेजने के लिए पहले सत्र का मॉडल ज़रूरी है।"
+        },
+        {
+          "unit": "unknown",
+          "count": 52,
+          "text": "डिफ़ॉल्ट सहेजने के लिए पहले सत्र का मॉडल ज़रूरी है।"
+        }
+      ]
+    },
+    {
+      "key": "ui.chat.slash_arguments.refresh_description",
+      "hi": "बातचीत दोबारा पढ़ें और नया नाम दें",
+      "en": "Re-read the conversation and name it again",
+      "context": {
+        "role": "slash argument description or action help",
+        "tone": "sentence case; concise factual guidance",
+        "maxCells": 100,
+        "placeholders": {}
+      },
+      "variants": [
+        {
+          "unit": "now",
+          "count": 0,
+          "text": "बातचीत दोबारा पढ़ें और नया नाम दें"
+        },
+        {
+          "unit": "now",
+          "count": 1,
+          "text": "बातचीत दोबारा पढ़ें और नया नाम दें"
+        },
+        {
+          "unit": "now",
+          "count": 2,
+          "text": "बातचीत दोबारा पढ़ें और नया नाम दें"
+        },
+        {
+          "unit": "now",
+          "count": 12,
+          "text": "बातचीत दोबारा पढ़ें और नया नाम दें"
+        },
+        {
+          "unit": "now",
+          "count": 52,
+          "text": "बातचीत दोबारा पढ़ें और नया नाम दें"
+        },
+        {
+          "unit": "minute",
+          "count": 0,
+          "text": "बातचीत दोबारा पढ़ें और नया नाम दें"
+        },
+        {
+          "unit": "minute",
+          "count": 1,
+          "text": "बातचीत दोबारा पढ़ें और नया नाम दें"
+        },
+        {
+          "unit": "minute",
+          "count": 2,
+          "text": "बातचीत दोबारा पढ़ें और नया नाम दें"
+        },
+        {
+          "unit": "minute",
+          "count": 12,
+          "text": "बातचीत दोबारा पढ़ें और नया नाम दें"
+        },
+        {
+          "unit": "minute",
+          "count": 52,
+          "text": "बातचीत दोबारा पढ़ें और नया नाम दें"
+        },
+        {
+          "unit": "hour",
+          "count": 0,
+          "text": "बातचीत दोबारा पढ़ें और नया नाम दें"
+        },
+        {
+          "unit": "hour",
+          "count": 1,
+          "text": "बातचीत दोबारा पढ़ें और नया नाम दें"
+        },
+        {
+          "unit": "hour",
+          "count": 2,
+          "text": "बातचीत दोबारा पढ़ें और नया नाम दें"
+        },
+        {
+          "unit": "hour",
+          "count": 12,
+          "text": "बातचीत दोबारा पढ़ें और नया नाम दें"
+        },
+        {
+          "unit": "hour",
+          "count": 52,
+          "text": "बातचीत दोबारा पढ़ें और नया नाम दें"
+        },
+        {
+          "unit": "day",
+          "count": 0,
+          "text": "बातचीत दोबारा पढ़ें और नया नाम दें"
+        },
+        {
+          "unit": "day",
+          "count": 1,
+          "text": "बातचीत दोबारा पढ़ें और नया नाम दें"
+        },
+        {
+          "unit": "day",
+          "count": 2,
+          "text": "बातचीत दोबारा पढ़ें और नया नाम दें"
+        },
+        {
+          "unit": "day",
+          "count": 12,
+          "text": "बातचीत दोबारा पढ़ें और नया नाम दें"
+        },
+        {
+          "unit": "day",
+          "count": 52,
+          "text": "बातचीत दोबारा पढ़ें और नया नाम दें"
+        },
+        {
+          "unit": "week",
+          "count": 0,
+          "text": "बातचीत दोबारा पढ़ें और नया नाम दें"
+        },
+        {
+          "unit": "week",
+          "count": 1,
+          "text": "बातचीत दोबारा पढ़ें और नया नाम दें"
+        },
+        {
+          "unit": "week",
+          "count": 2,
+          "text": "बातचीत दोबारा पढ़ें और नया नाम दें"
+        },
+        {
+          "unit": "week",
+          "count": 12,
+          "text": "बातचीत दोबारा पढ़ें और नया नाम दें"
+        },
+        {
+          "unit": "week",
+          "count": 52,
+          "text": "बातचीत दोबारा पढ़ें और नया नाम दें"
+        },
+        {
+          "unit": "year",
+          "count": 0,
+          "text": "बातचीत दोबारा पढ़ें और नया नाम दें"
+        },
+        {
+          "unit": "year",
+          "count": 1,
+          "text": "बातचीत दोबारा पढ़ें और नया नाम दें"
+        },
+        {
+          "unit": "year",
+          "count": 2,
+          "text": "बातचीत दोबारा पढ़ें और नया नाम दें"
+        },
+        {
+          "unit": "year",
+          "count": 12,
+          "text": "बातचीत दोबारा पढ़ें और नया नाम दें"
+        },
+        {
+          "unit": "year",
+          "count": 52,
+          "text": "बातचीत दोबारा पढ़ें और नया नाम दें"
+        },
+        {
+          "unit": "unknown",
+          "count": 0,
+          "text": "बातचीत दोबारा पढ़ें और नया नाम दें"
+        },
+        {
+          "unit": "unknown",
+          "count": 1,
+          "text": "बातचीत दोबारा पढ़ें और नया नाम दें"
+        },
+        {
+          "unit": "unknown",
+          "count": 2,
+          "text": "बातचीत दोबारा पढ़ें और नया नाम दें"
+        },
+        {
+          "unit": "unknown",
+          "count": 12,
+          "text": "बातचीत दोबारा पढ़ें और नया नाम दें"
+        },
+        {
+          "unit": "unknown",
+          "count": 52,
+          "text": "बातचीत दोबारा पढ़ें और नया नाम दें"
+        }
+      ]
+    },
+    {
+      "key": "ui.chat.slash_arguments.refresh_detail",
+      "hi": "अपने-आप नाम देना फिर शुरू होता है",
+      "en": "resumes auto-naming",
+      "context": {
+        "role": "slash argument state detail",
+        "tone": "sentence case; concise factual guidance",
+        "maxCells": 100,
+        "placeholders": {}
+      },
+      "variants": [
+        {
+          "unit": "now",
+          "count": 0,
+          "text": "अपने-आप नाम देना फिर शुरू होता है"
+        },
+        {
+          "unit": "now",
+          "count": 1,
+          "text": "अपने-आप नाम देना फिर शुरू होता है"
+        },
+        {
+          "unit": "now",
+          "count": 2,
+          "text": "अपने-आप नाम देना फिर शुरू होता है"
+        },
+        {
+          "unit": "now",
+          "count": 12,
+          "text": "अपने-आप नाम देना फिर शुरू होता है"
+        },
+        {
+          "unit": "now",
+          "count": 52,
+          "text": "अपने-आप नाम देना फिर शुरू होता है"
+        },
+        {
+          "unit": "minute",
+          "count": 0,
+          "text": "अपने-आप नाम देना फिर शुरू होता है"
+        },
+        {
+          "unit": "minute",
+          "count": 1,
+          "text": "अपने-आप नाम देना फिर शुरू होता है"
+        },
+        {
+          "unit": "minute",
+          "count": 2,
+          "text": "अपने-आप नाम देना फिर शुरू होता है"
+        },
+        {
+          "unit": "minute",
+          "count": 12,
+          "text": "अपने-आप नाम देना फिर शुरू होता है"
+        },
+        {
+          "unit": "minute",
+          "count": 52,
+          "text": "अपने-आप नाम देना फिर शुरू होता है"
+        },
+        {
+          "unit": "hour",
+          "count": 0,
+          "text": "अपने-आप नाम देना फिर शुरू होता है"
+        },
+        {
+          "unit": "hour",
+          "count": 1,
+          "text": "अपने-आप नाम देना फिर शुरू होता है"
+        },
+        {
+          "unit": "hour",
+          "count": 2,
+          "text": "अपने-आप नाम देना फिर शुरू होता है"
+        },
+        {
+          "unit": "hour",
+          "count": 12,
+          "text": "अपने-आप नाम देना फिर शुरू होता है"
+        },
+        {
+          "unit": "hour",
+          "count": 52,
+          "text": "अपने-आप नाम देना फिर शुरू होता है"
+        },
+        {
+          "unit": "day",
+          "count": 0,
+          "text": "अपने-आप नाम देना फिर शुरू होता है"
+        },
+        {
+          "unit": "day",
+          "count": 1,
+          "text": "अपने-आप नाम देना फिर शुरू होता है"
+        },
+        {
+          "unit": "day",
+          "count": 2,
+          "text": "अपने-आप नाम देना फिर शुरू होता है"
+        },
+        {
+          "unit": "day",
+          "count": 12,
+          "text": "अपने-आप नाम देना फिर शुरू होता है"
+        },
+        {
+          "unit": "day",
+          "count": 52,
+          "text": "अपने-आप नाम देना फिर शुरू होता है"
+        },
+        {
+          "unit": "week",
+          "count": 0,
+          "text": "अपने-आप नाम देना फिर शुरू होता है"
+        },
+        {
+          "unit": "week",
+          "count": 1,
+          "text": "अपने-आप नाम देना फिर शुरू होता है"
+        },
+        {
+          "unit": "week",
+          "count": 2,
+          "text": "अपने-आप नाम देना फिर शुरू होता है"
+        },
+        {
+          "unit": "week",
+          "count": 12,
+          "text": "अपने-आप नाम देना फिर शुरू होता है"
+        },
+        {
+          "unit": "week",
+          "count": 52,
+          "text": "अपने-आप नाम देना फिर शुरू होता है"
+        },
+        {
+          "unit": "year",
+          "count": 0,
+          "text": "अपने-आप नाम देना फिर शुरू होता है"
+        },
+        {
+          "unit": "year",
+          "count": 1,
+          "text": "अपने-आप नाम देना फिर शुरू होता है"
+        },
+        {
+          "unit": "year",
+          "count": 2,
+          "text": "अपने-आप नाम देना फिर शुरू होता है"
+        },
+        {
+          "unit": "year",
+          "count": 12,
+          "text": "अपने-आप नाम देना फिर शुरू होता है"
+        },
+        {
+          "unit": "year",
+          "count": 52,
+          "text": "अपने-आप नाम देना फिर शुरू होता है"
+        },
+        {
+          "unit": "unknown",
+          "count": 0,
+          "text": "अपने-आप नाम देना फिर शुरू होता है"
+        },
+        {
+          "unit": "unknown",
+          "count": 1,
+          "text": "अपने-आप नाम देना फिर शुरू होता है"
+        },
+        {
+          "unit": "unknown",
+          "count": 2,
+          "text": "अपने-आप नाम देना फिर शुरू होता है"
+        },
+        {
+          "unit": "unknown",
+          "count": 12,
+          "text": "अपने-आप नाम देना फिर शुरू होता है"
+        },
+        {
+          "unit": "unknown",
+          "count": 52,
+          "text": "अपने-आप नाम देना फिर शुरू होता है"
+        }
+      ]
+    },
+    {
+      "key": "ui.chat.sidebar_view.relative_short",
+      "hi": "{unit, select, now {अभी} minute {{count, number, ::group-off} मि.} hour {{count, number, ::group-off} घं.} day {{count, number, ::group-off} दिन} week {{count, number, ::group-off} सप्ताह} year {{count, number, ::group-off} साल} other {अभी}}",
+      "en": "{unit, select, now {now} minute {{count, number, ::group-off}m} hour {{count, number, ::group-off}h} day {{count, number, ::group-off}d} week {{count, number, ::group-off}w} year {{count, number, ::group-off}y} other {now}}",
+      "context": {
+        "role": "sidebar row compact time",
+        "tone": "terse lowercase; factual time since creation or last activity",
+        "maxCells": 6,
+        "note": "All units are selected from numeric elapsed time, never parsed from translated text. Preserve the selected basis; adapt unit abbreviations idiomatically. Width is advisory, not a truncation instruction.",
+        "placeholders": {
+          "unit": "Internal select token: now, minute, hour, day, week, year. Do not translate token names.",
+          "count": "Non-negative elapsed quantity; use locale digits and plural rules."
+        }
+      },
+      "variants": [
+        {
+          "unit": "now",
+          "count": 0,
+          "text": "अभी"
+        },
+        {
+          "unit": "now",
+          "count": 1,
+          "text": "अभी"
+        },
+        {
+          "unit": "now",
+          "count": 2,
+          "text": "अभी"
+        },
+        {
+          "unit": "now",
+          "count": 12,
+          "text": "अभी"
+        },
+        {
+          "unit": "now",
+          "count": 52,
+          "text": "अभी"
+        },
+        {
+          "unit": "minute",
+          "count": 0,
+          "text": "0 मि."
+        },
+        {
+          "unit": "minute",
+          "count": 1,
+          "text": "1 मि."
+        },
+        {
+          "unit": "minute",
+          "count": 2,
+          "text": "2 मि."
+        },
+        {
+          "unit": "minute",
+          "count": 12,
+          "text": "12 मि."
+        },
+        {
+          "unit": "minute",
+          "count": 52,
+          "text": "52 मि."
+        },
+        {
+          "unit": "hour",
+          "count": 0,
+          "text": "0 घं."
+        },
+        {
+          "unit": "hour",
+          "count": 1,
+          "text": "1 घं."
+        },
+        {
+          "unit": "hour",
+          "count": 2,
+          "text": "2 घं."
+        },
+        {
+          "unit": "hour",
+          "count": 12,
+          "text": "12 घं."
+        },
+        {
+          "unit": "hour",
+          "count": 52,
+          "text": "52 घं."
+        },
+        {
+          "unit": "day",
+          "count": 0,
+          "text": "0 दिन"
+        },
+        {
+          "unit": "day",
+          "count": 1,
+          "text": "1 दिन"
+        },
+        {
+          "unit": "day",
+          "count": 2,
+          "text": "2 दिन"
+        },
+        {
+          "unit": "day",
+          "count": 12,
+          "text": "12 दिन"
+        },
+        {
+          "unit": "day",
+          "count": 52,
+          "text": "52 दिन"
+        },
+        {
+          "unit": "week",
+          "count": 0,
+          "text": "0 सप्ताह"
+        },
+        {
+          "unit": "week",
+          "count": 1,
+          "text": "1 सप्ताह"
+        },
+        {
+          "unit": "week",
+          "count": 2,
+          "text": "2 सप्ताह"
+        },
+        {
+          "unit": "week",
+          "count": 12,
+          "text": "12 सप्ताह"
+        },
+        {
+          "unit": "week",
+          "count": 52,
+          "text": "52 सप्ताह"
+        },
+        {
+          "unit": "year",
+          "count": 0,
+          "text": "0 साल"
+        },
+        {
+          "unit": "year",
+          "count": 1,
+          "text": "1 साल"
+        },
+        {
+          "unit": "year",
+          "count": 2,
+          "text": "2 साल"
+        },
+        {
+          "unit": "year",
+          "count": 12,
+          "text": "12 साल"
+        },
+        {
+          "unit": "year",
+          "count": 52,
+          "text": "52 साल"
+        },
+        {
+          "unit": "unknown",
+          "count": 0,
+          "text": "अभी"
+        },
+        {
+          "unit": "unknown",
+          "count": 1,
+          "text": "अभी"
+        },
+        {
+          "unit": "unknown",
+          "count": 2,
+          "text": "अभी"
+        },
+        {
+          "unit": "unknown",
+          "count": 12,
+          "text": "अभी"
+        },
+        {
+          "unit": "unknown",
+          "count": 52,
+          "text": "अभी"
+        }
+      ]
+    },
+    {
+      "key": "ui.chat.sidebar_view.relative_created",
+      "hi": "{unit, select, now {अभी-अभी बनी} minute {{count, plural, one {# मिनट पहले बनी} other {# मिनट पहले बनी}}} hour {{count, plural, one {# घंटे पहले बनी} other {# घंटे पहले बनी}}} day {{count, plural, one {# दिन पहले बनी} other {# दिन पहले बनी}}} week {{count, plural, one {# हफ़्ते पहले बनी} other {# हफ़्ते पहले बनी}}} year {{count, plural, one {# साल पहले बनी} other {# साल पहले बनी}}} other {अभी-अभी बनी}}",
+      "en": "{unit, select, now {created just now} minute {{count, plural, one {created # minute ago} other {created # minutes ago}}} hour {{count, plural, one {created # hour ago} other {created # hours ago}}} day {{count, plural, one {created # day ago} other {created # days ago}}} week {{count, plural, one {created # week ago} other {created # weeks ago}}} year {{count, plural, one {created # year ago} other {created # years ago}}} other {created just now}}",
+      "context": {
+        "role": "sidebar row accessible time sentence",
+        "tone": "terse lowercase; factual time since creation or last activity",
+        "maxCells": 64,
+        "note": "All units are selected from numeric elapsed time, never parsed from translated text. Preserve the selected basis; adapt unit abbreviations idiomatically. Width is advisory, not a truncation instruction.",
+        "placeholders": {
+          "unit": "Internal select token: now, minute, hour, day, week, year. Do not translate token names.",
+          "count": "Non-negative elapsed quantity; use locale digits and plural rules."
+        }
+      },
+      "variants": [
+        {
+          "unit": "now",
+          "count": 0,
+          "text": "अभी-अभी बनी"
+        },
+        {
+          "unit": "now",
+          "count": 1,
+          "text": "अभी-अभी बनी"
+        },
+        {
+          "unit": "now",
+          "count": 2,
+          "text": "अभी-अभी बनी"
+        },
+        {
+          "unit": "now",
+          "count": 12,
+          "text": "अभी-अभी बनी"
+        },
+        {
+          "unit": "now",
+          "count": 52,
+          "text": "अभी-अभी बनी"
+        },
+        {
+          "unit": "minute",
+          "count": 0,
+          "text": "0 मिनट पहले बनी"
+        },
+        {
+          "unit": "minute",
+          "count": 1,
+          "text": "1 मिनट पहले बनी"
+        },
+        {
+          "unit": "minute",
+          "count": 2,
+          "text": "2 मिनट पहले बनी"
+        },
+        {
+          "unit": "minute",
+          "count": 12,
+          "text": "12 मिनट पहले बनी"
+        },
+        {
+          "unit": "minute",
+          "count": 52,
+          "text": "52 मिनट पहले बनी"
+        },
+        {
+          "unit": "hour",
+          "count": 0,
+          "text": "0 घंटे पहले बनी"
+        },
+        {
+          "unit": "hour",
+          "count": 1,
+          "text": "1 घंटे पहले बनी"
+        },
+        {
+          "unit": "hour",
+          "count": 2,
+          "text": "2 घंटे पहले बनी"
+        },
+        {
+          "unit": "hour",
+          "count": 12,
+          "text": "12 घंटे पहले बनी"
+        },
+        {
+          "unit": "hour",
+          "count": 52,
+          "text": "52 घंटे पहले बनी"
+        },
+        {
+          "unit": "day",
+          "count": 0,
+          "text": "0 दिन पहले बनी"
+        },
+        {
+          "unit": "day",
+          "count": 1,
+          "text": "1 दिन पहले बनी"
+        },
+        {
+          "unit": "day",
+          "count": 2,
+          "text": "2 दिन पहले बनी"
+        },
+        {
+          "unit": "day",
+          "count": 12,
+          "text": "12 दिन पहले बनी"
+        },
+        {
+          "unit": "day",
+          "count": 52,
+          "text": "52 दिन पहले बनी"
+        },
+        {
+          "unit": "week",
+          "count": 0,
+          "text": "0 हफ़्ते पहले बनी"
+        },
+        {
+          "unit": "week",
+          "count": 1,
+          "text": "1 हफ़्ते पहले बनी"
+        },
+        {
+          "unit": "week",
+          "count": 2,
+          "text": "2 हफ़्ते पहले बनी"
+        },
+        {
+          "unit": "week",
+          "count": 12,
+          "text": "12 हफ़्ते पहले बनी"
+        },
+        {
+          "unit": "week",
+          "count": 52,
+          "text": "52 हफ़्ते पहले बनी"
+        },
+        {
+          "unit": "year",
+          "count": 0,
+          "text": "0 साल पहले बनी"
+        },
+        {
+          "unit": "year",
+          "count": 1,
+          "text": "1 साल पहले बनी"
+        },
+        {
+          "unit": "year",
+          "count": 2,
+          "text": "2 साल पहले बनी"
+        },
+        {
+          "unit": "year",
+          "count": 12,
+          "text": "12 साल पहले बनी"
+        },
+        {
+          "unit": "year",
+          "count": 52,
+          "text": "52 साल पहले बनी"
+        },
+        {
+          "unit": "unknown",
+          "count": 0,
+          "text": "अभी-अभी बनी"
+        },
+        {
+          "unit": "unknown",
+          "count": 1,
+          "text": "अभी-अभी बनी"
+        },
+        {
+          "unit": "unknown",
+          "count": 2,
+          "text": "अभी-अभी बनी"
+        },
+        {
+          "unit": "unknown",
+          "count": 12,
+          "text": "अभी-अभी बनी"
+        },
+        {
+          "unit": "unknown",
+          "count": 52,
+          "text": "अभी-अभी बनी"
+        }
+      ]
+    },
+    {
+      "key": "ui.chat.sidebar_view.relative_active",
+      "hi": "{unit, select, now {अभी-अभी सक्रिय} minute {{count, plural, one {आख़िरी बार # मिनट पहले सक्रिय} other {आख़िरी बार # मिनट पहले सक्रिय}}} hour {{count, plural, one {आख़िरी बार # घंटे पहले सक्रिय} other {आख़िरी बार # घंटे पहले सक्रिय}}} day {{count, plural, one {आख़िरी बार # दिन पहले सक्रिय} other {आख़िरी बार # दिन पहले सक्रिय}}} week {{count, plural, one {आख़िरी बार # हफ़्ते पहले सक्रिय} other {आख़िरी बार # हफ़्ते पहले सक्रिय}}} year {{count, plural, one {आख़िरी बार # साल पहले सक्रिय} other {आख़िरी बार # साल पहले सक्रिय}}} other {अभी-अभी सक्रिय}}",
+      "en": "{unit, select, now {last active just now} minute {{count, plural, one {last active # minute ago} other {last active # minutes ago}}} hour {{count, plural, one {last active # hour ago} other {last active # hours ago}}} day {{count, plural, one {last active # day ago} other {last active # days ago}}} week {{count, plural, one {last active # week ago} other {last active # weeks ago}}} year {{count, plural, one {last active # year ago} other {last active # years ago}}} other {last active just now}}",
+      "context": {
+        "role": "sidebar row accessible time sentence",
+        "tone": "terse lowercase; factual time since creation or last activity",
+        "maxCells": 64,
+        "note": "All units are selected from numeric elapsed time, never parsed from translated text. Preserve the selected basis; adapt unit abbreviations idiomatically. Width is advisory, not a truncation instruction.",
+        "placeholders": {
+          "unit": "Internal select token: now, minute, hour, day, week, year. Do not translate token names.",
+          "count": "Non-negative elapsed quantity; use locale digits and plural rules."
+        }
+      },
+      "variants": [
+        {
+          "unit": "now",
+          "count": 0,
+          "text": "अभी-अभी सक्रिय"
+        },
+        {
+          "unit": "now",
+          "count": 1,
+          "text": "अभी-अभी सक्रिय"
+        },
+        {
+          "unit": "now",
+          "count": 2,
+          "text": "अभी-अभी सक्रिय"
+        },
+        {
+          "unit": "now",
+          "count": 12,
+          "text": "अभी-अभी सक्रिय"
+        },
+        {
+          "unit": "now",
+          "count": 52,
+          "text": "अभी-अभी सक्रिय"
+        },
+        {
+          "unit": "minute",
+          "count": 0,
+          "text": "आख़िरी बार 0 मिनट पहले सक्रिय"
+        },
+        {
+          "unit": "minute",
+          "count": 1,
+          "text": "आख़िरी बार 1 मिनट पहले सक्रिय"
+        },
+        {
+          "unit": "minute",
+          "count": 2,
+          "text": "आख़िरी बार 2 मिनट पहले सक्रिय"
+        },
+        {
+          "unit": "minute",
+          "count": 12,
+          "text": "आख़िरी बार 12 मिनट पहले सक्रिय"
+        },
+        {
+          "unit": "minute",
+          "count": 52,
+          "text": "आख़िरी बार 52 मिनट पहले सक्रिय"
+        },
+        {
+          "unit": "hour",
+          "count": 0,
+          "text": "आख़िरी बार 0 घंटे पहले सक्रिय"
+        },
+        {
+          "unit": "hour",
+          "count": 1,
+          "text": "आख़िरी बार 1 घंटे पहले सक्रिय"
+        },
+        {
+          "unit": "hour",
+          "count": 2,
+          "text": "आख़िरी बार 2 घंटे पहले सक्रिय"
+        },
+        {
+          "unit": "hour",
+          "count": 12,
+          "text": "आख़िरी बार 12 घंटे पहले सक्रिय"
+        },
+        {
+          "unit": "hour",
+          "count": 52,
+          "text": "आख़िरी बार 52 घंटे पहले सक्रिय"
+        },
+        {
+          "unit": "day",
+          "count": 0,
+          "text": "आख़िरी बार 0 दिन पहले सक्रिय"
+        },
+        {
+          "unit": "day",
+          "count": 1,
+          "text": "आख़िरी बार 1 दिन पहले सक्रिय"
+        },
+        {
+          "unit": "day",
+          "count": 2,
+          "text": "आख़िरी बार 2 दिन पहले सक्रिय"
+        },
+        {
+          "unit": "day",
+          "count": 12,
+          "text": "आख़िरी बार 12 दिन पहले सक्रिय"
+        },
+        {
+          "unit": "day",
+          "count": 52,
+          "text": "आख़िरी बार 52 दिन पहले सक्रिय"
+        },
+        {
+          "unit": "week",
+          "count": 0,
+          "text": "आख़िरी बार 0 हफ़्ते पहले सक्रिय"
+        },
+        {
+          "unit": "week",
+          "count": 1,
+          "text": "आख़िरी बार 1 हफ़्ते पहले सक्रिय"
+        },
+        {
+          "unit": "week",
+          "count": 2,
+          "text": "आख़िरी बार 2 हफ़्ते पहले सक्रिय"
+        },
+        {
+          "unit": "week",
+          "count": 12,
+          "text": "आख़िरी बार 12 हफ़्ते पहले सक्रिय"
+        },
+        {
+          "unit": "week",
+          "count": 52,
+          "text": "आख़िरी बार 52 हफ़्ते पहले सक्रिय"
+        },
+        {
+          "unit": "year",
+          "count": 0,
+          "text": "आख़िरी बार 0 साल पहले सक्रिय"
+        },
+        {
+          "unit": "year",
+          "count": 1,
+          "text": "आख़िरी बार 1 साल पहले सक्रिय"
+        },
+        {
+          "unit": "year",
+          "count": 2,
+          "text": "आख़िरी बार 2 साल पहले सक्रिय"
+        },
+        {
+          "unit": "year",
+          "count": 12,
+          "text": "आख़िरी बार 12 साल पहले सक्रिय"
+        },
+        {
+          "unit": "year",
+          "count": 52,
+          "text": "आख़िरी बार 52 साल पहले सक्रिय"
+        },
+        {
+          "unit": "unknown",
+          "count": 0,
+          "text": "अभी-अभी सक्रिय"
+        },
+        {
+          "unit": "unknown",
+          "count": 1,
+          "text": "अभी-अभी सक्रिय"
+        },
+        {
+          "unit": "unknown",
+          "count": 2,
+          "text": "अभी-अभी सक्रिय"
+        },
+        {
+          "unit": "unknown",
+          "count": 12,
+          "text": "अभी-अभी सक्रिय"
+        },
+        {
+          "unit": "unknown",
+          "count": 52,
+          "text": "अभी-अभी सक्रिय"
+        }
+      ]
+    }
+  ]
+}

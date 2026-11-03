@@ -1,0 +1,43 @@
+{
+  "schema": 1,
+  "auditor": "translation-auditor (lopdev task session 883759c25311; independent zh-CN linguistic auditor, not the translator)",
+  "agent": "translation-auditor (lopdev task session 883759c25311; independent zh-CN linguistic auditor, not the translator)",
+  "model": "anthropic/claude-sonnet-5-5",
+  "model_provenance": "Receipt authoring on resume uses anthropic/claude-sonnet-5-5, as identified by the current session-state. The preceding audit reports in this same session recorded openai/gpt-6.1-sol as the completing fallback model and an intervening anthropic/claude-opus-5-5 switch; those historical routing claims are transcript provenance, not independently verified runtime telemetry. No model setting was changed for this receipt.",
+  "fallback": "Prior audit report disclosed openai/gpt-6.1-sol fallback and an intervening anthropic/claude-opus-5-5 switch; current receipt authoring runs anthropic/claude-sonnet-5-5.",
+  "instance": "883759c25311-read-state-zh-cn-independent-audit",
+  "session": "883759c25311",
+  "job_id": null,
+  "job_identity_note": "Delegated task role; a separate background job id was not supplied in this session context. Session id identifies this independent auditor.",
+  "role": "task / independent translation auditor",
+  "independence": "I did not author or edit this translation. I read the English source and context, the actual target, the zh-CN style guide, and existing agent/team/session terminology, and independently assessed all 14 keys.",
+  "locale": "zh-CN",
+  "namespace": "ui.agents.detail.read_state",
+  "branch": "fix/agent-detail-i18n",
+  "head": "3553b7ae661a7c92caf04f1d39ed3792ef37ad46",
+  "pr": "damianvtran/local-operator-ui#1580",
+  "date": "2026-11-02",
+  "status": "passed",
+  "result": "clean",
+  "source_sha256": "0de7ac1bff46dc77b3bbe1f479b60a220361b3e32f673332dbe9eecfb56421f0",
+  "context_sha256": "e1359d1f5db124d1ca167eb042ca334bc88c1c2895f9442d517d3d9e3efbb9b2",
+  "target_sha256": "d1d89e4506ccc8f25b681b4db4137569cbe4778267cddda33053d9a01ed9f19d",
+  "paths": {
+    "source": "src/i18n/catalogues/en/ui.agents.detail.read_state.json",
+    "context": "src/i18n/catalogues/en/ui.agents.detail.read_state.context.json",
+    "target": "src/i18n/catalogues/zh-CN/ui.agents.detail.read_state.json"
+  },
+  "keys_read": 14,
+  "findings": [],
+  "scope": "Linguistic clearance of the complete 14-key zh-CN catalogue only. This receipt does not clear rendered layout, clipping, wrapping, or live interaction behavior; I did not inspect rendered UI frames for this audit.",
+  "verified": [
+    "Failed-read heading, missing-resource explanation, possible removal/backend refusal, incomplete-request text and retry affordance retain the English meaning and useful next action.",
+    "failed_title keeps exactly one {name} placeholder inside mainland Chinese quotation marks: 无法读取“{name}”.",
+    "Reactive/proactive and delegation descriptions preserve the behavior distinctions without extra hedging.",
+    "The teams note preserves manager/member meaning and matches existing 管理者 and 团队 terminology.",
+    "已开启, 已关闭 and 正在切换…… express switch status, not commands.",
+    "使用会话档位 means use the session effort level, rather than bare inherit, and matches the existing 档位 labels.",
+    "The 14 keys and placeholder sets match English. No plural arms occur in these messages.",
+    "Source, context and target hashes were freshly derived from committed blobs at the audit pin on resume; current on-disk files were verified byte-identical."
+  ]
+}

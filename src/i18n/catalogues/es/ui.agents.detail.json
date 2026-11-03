@@ -48,5 +48,22 @@
 	"ui.agents.detail.tools.empty": "Aún no hay herramientas. Añade una abajo o activa la opción Todas las herramientas.",
 	"ui.agents.detail.tools.every_tool_aria": "Dar a este agente todas las herramientas",
 	"ui.agents.detail.tools.may_use_any": "Este agente puede usar todo lo que ofrezca la sesión.",
-	"ui.agents.detail.tools.placeholder": "Nombre de herramienta"
+	"ui.agents.detail.tools.placeholder": "Nombre de herramienta",
+	"ui.agents.detail.origin.created_locally": "Creado en esta máquina.",
+	"ui.agents.detail.tools.remove_aria": "Quitar {tool}",
+	"ui.agents.detail.tools.add_label": "Añadir una herramienta",
+	"ui.agents.detail.field.when_to_use": "Cuándo usar este agente",
+	"ui.agents.detail.field.when_to_use_hint": "Una frase que el modelo lee para decidir cuándo este agente es el adecuado.",
+	"ui.agents.detail.field.instructions_hint": "Lo que se le indica al agente que haga. Es todo su comportamiento.",
+	"ui.agents.detail.section.delegation_hint": "Si este agente puede delegar trabajo en subagentes y con qué nivel de esfuerzo se ejecuta.",
+	"ui.agents.detail.field.effort_loading": "Cargando niveles de esfuerzo",
+	"ui.agents.detail.field.effort_helper": "Los niveles vienen de los ajustes de modelo de subagentes del backend.",
+	"ui.agents.detail.field.effort_inherit_hint": "Usar el esfuerzo propio de la sesión",
+	"ui.agents.detail.field.effort_configured_hint": "Un nivel configurado en Ajustes",
+	"ui.agents.detail.field.how_it_works": "Cómo funciona con otros",
+	"ui.agents.detail.empty.description": "Aún no hay descripción — añade una para que un modelo sepa cuándo elegir este agente.",
+	"ui.agents.detail.empty.instructions": "Aún no hay instrucciones.",
+	"ui.agents.detail.action.create_copy": "Crear la copia",
+	"ui.agents.detail.action.creating": "Creando…",
+	"ui.agents.detail.action.discard_new_agent": "¿Descartar este agente nuevo?"
 }
