@@ -24,7 +24,9 @@ if (!file) {
 	console.error("usage: composer-slots-proof.mjs <numbers.json> [--tree=...]");
 	process.exit(2);
 }
-const TREE = (rest.find((a) => a.startsWith("--tree=")) ?? "--tree=after").slice(7);
+const TREE = (
+	rest.find((a) => a.startsWith("--tree=")) ?? "--tree=after"
+).slice(7);
 const rows = Object.values(JSON.parse(readFileSync(file, "utf8")));
 
 /** Slot A is the button 36px (one control + gap) left of the primary, slot B the last one. */
@@ -65,12 +67,17 @@ for (const [key, group] of byGroup) {
 		};
 		states.push(entry);
 		if (!entry.aEqualsIdle || !entry.bEqualsIdle)
-			out.failures.push(`${key} ${row.state}: A ${a?.left} B ${b?.left} vs idle A ${ref.a?.left} B ${ref.b?.left}`);
+			out.failures.push(
+				`${key} ${row.state}: A ${a?.left} B ${b?.left} vs idle A ${ref.a?.left} B ${ref.b?.left}`,
+			);
 	}
 	out.groups.push({ key, idleA: ref.a?.left, idleB: ref.b?.left, states });
 }
 out.verdict = out.failures.length === 0 ? "PASS" : "FAIL";
-writeFileSync(join(dirname(file), "slot-proof.json"), `${JSON.stringify(out, null, 2)}\n`);
+writeFileSync(
+	join(dirname(file), "slot-proof.json"),
+	`${JSON.stringify(out, null, 2)}\n`,
+);
 for (const g of out.groups) {
 	console.log(`\n${g.key}  idle A=${g.idleA} B=${g.idleB}`);
 	for (const s of g.states)
