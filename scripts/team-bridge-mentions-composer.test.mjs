@@ -1051,6 +1051,408 @@ test("same-source refresh retains an in-flight invite and applies its result onc
 
 // jsdom cannot prove layout; the Storybook play measures each glyph. This guards
 // the borderless class contract and account-based washes on the actual overlay.
+test("emoji: cached aliases, keyboard selection and Enter insert without sending, then normal send resumes", async () => {
+	const ui = await mount();
+	try {
+		await ui.input(":smile", "insertText");
+		assert.ok(document.querySelector("[data-emoji-popover]"));
+		assert.ok(
+			!document.querySelector("[data-mention-popover]"),
+			"mention popup must not compete",
+		);
+		assert.ok(ui.options().length > 0);
+		await ui.key("ArrowDown");
+		assert.equal(ui.options()[1].selected, true);
+		await ui.key("ArrowUp");
+		await ui.key("Enter");
+		assert.equal(ui.field.value, String.fromCodePoint(0x1f604));
+		assert.equal(ui.field.selectionStart, 2);
+		assert.equal(ui.sent.length, 0);
+		assert.ok(
+			!document.querySelector("[data-emoji-popover]"),
+			"emoji popup must be closed",
+		);
+		await ui.key("Enter");
+		assert.equal(ui.sent.length, 1);
+		assert.equal(ui.sent[0].args[0], String.fromCodePoint(0x1f604));
+	} finally {
+		await ui.unmount();
+	}
+});
+
+test("emoji: click keeps focus, UTF-16 suffix and mention identity through undo/redo", async () => {
+	const ui = await mount();
+	try {
+		await ui.type("@Be");
+		await ui.key("Enter");
+		const before = "@Ben Tran :woman_technologist remainder\nsecond line";
+		const caret = before.indexOf(" remainder");
+		await ui.input(before, "insertText", caret);
+		const option = document.querySelector("[data-emoji-index='0']");
+		assert.ok(option);
+		// Commit the click before advancing the frame stub: browser discrete
+		// events commit before rAF, whereas a timer inside async act delays it.
+		await mod.act(() => {
+			option.dispatchEvent(
+				new dom.window.MouseEvent("mousedown", {
+					bubbles: true,
+					cancelable: true,
+				}),
+			);
+			option.dispatchEvent(
+				new dom.window.MouseEvent("click", { bubbles: true }),
+			);
+		});
+		await mod.act(async () => new Promise((resolve) => setTimeout(resolve, 5)));
+		const emoji = String.fromCodePoint(0x1f469, 0x200d, 0x1f4bb);
+		const after = `@Ben Tran ${emoji} remainder\nsecond line`;
+		assert.equal(ui.field.value, after);
+		assert.equal(ui.field.selectionStart, "@Ben Tran ".length + emoji.length);
+		assert.ok(
+			document.activeElement === ui.field,
+			"emoji click must retain textarea focus",
+		);
+		assert.equal(ui.sent.length, 0);
+		await ui.input(before, "historyUndo", caret);
+		assert.ok(
+			!document.querySelector("[data-emoji-popover]"),
+			"emoji popup must be closed",
+		);
+		await ui.input(after, "historyRedo");
+		await ui.key("Enter");
+		assert.equal(ui.sent[0].args[0], after);
+		assert.equal(ui.sent[0].mentions[0].account_id, "acct_ben");
+	} finally {
+		await ui.unmount();
+	}
+});
+
+test("emoji: Escape stays dismissed for the token; a new token reopens; no-results Enter dismisses first (D1)", async () => {
+	const ui = await mount();
+	try {
+		// `:sm`, not `:s`: one character is below the U1 open gate, so there
+		// would be no popup for Escape to dismiss.
+		await ui.input(":sm", "insertText");
+		assert.ok(document.querySelector("[data-emoji-popover]"), "open first");
+		await ui.key("Escape");
+		await ui.input(":smile", "insertText");
+		assert.ok(
+			!document.querySelector("[data-emoji-popover]"),
+			"emoji popup must be closed",
+		);
+		await ui.input(":smile :heart", "insertText");
+		assert.ok(document.querySelector("[data-emoji-popover]"));
+		await ui.input(":no_such_emoji_928372", "insertText");
+		assert.ok(document.querySelector("[data-emoji-popover]"));
+		assert.equal(ui.options().length, 0);
+		assert.ok(
+			document
+				.querySelector("[data-emoji-popover]")
+				.textContent.includes("No emoji found"),
+		);
+		// D1: the first Enter answers the visible "No emoji found" popup and
+		// keeps the draft; it must not send past it.
+		await ui.key("Enter");
+		assert.equal(ui.sent.length, 0, "no-results Enter must not send");
+		assert.equal(ui.field.value, ":no_such_emoji_928372");
+		assert.ok(!document.querySelector("[data-emoji-popover]"), "dismissed");
+		await ui.key("Enter");
+		assert.equal(ui.sent.length, 1);
+		assert.equal(ui.sent[0].args[0], ":no_such_emoji_928372");
+	} finally {
+		await ui.unmount();
+	}
+});
+
+test("emoji: paste, history, replacement, restored text and IME never arm queries", async () => {
+	for (const inputType of [
+		"insertFromPaste",
+		"historyUndo",
+		"historyRedo",
+		"insertReplacementText",
+		"insertFromComposition",
+	]) {
+		const ui = await mount();
+		try {
+			await ui.input(":smile", inputType);
+			assert.ok(!document.querySelector("[data-emoji-popover]"), inputType);
+		} finally {
+			await ui.unmount();
+		}
+	}
+	const ui = await mount();
+	try {
+		await mod.act(async () =>
+			ui.field.dispatchEvent(
+				new dom.window.Event("compositionstart", { bubbles: true }),
+			),
+		);
+		await ui.input(":s", "insertText");
+		assert.ok(
+			!document.querySelector("[data-emoji-popover]"),
+			"emoji popup must be closed",
+		);
+		await ui.key("Enter", { isComposing: true });
+		assert.equal(ui.sent.length, 0);
+		await mod.act(async () =>
+			ui.field.dispatchEvent(
+				new dom.window.Event("compositionend", { bubbles: true }),
+			),
+		);
+		await ui.input(":smile", "insertText");
+		assert.ok(document.querySelector("[data-emoji-popover]"));
+	} finally {
+		await ui.unmount();
+	}
+});
+
+test("emoji R1: compositionstart closes an already-open popup and a later click/Enter cannot replace text", async () => {
+	const ui = await mount();
+	try {
+		await ui.input(":smile", "insertText");
+		assert.ok(document.querySelector("[data-emoji-popover]"), "open first");
+		const stale = document.querySelector("[data-emoji-index='0']");
+		await mod.act(async () =>
+			ui.field.dispatchEvent(
+				new dom.window.Event("compositionstart", { bubbles: true }),
+			),
+		);
+		assert.ok(
+			!document.querySelector("[data-emoji-popover]"),
+			"composition must close the popup",
+		);
+		// A click on the row captured while it was open, then Enter: neither may
+		// replace the draft while the candidate window owns input.
+		await mod.act(() => {
+			stale.dispatchEvent(
+				new dom.window.MouseEvent("mousedown", {
+					bubbles: true,
+					cancelable: true,
+				}),
+			);
+			stale.dispatchEvent(
+				new dom.window.MouseEvent("click", { bubbles: true }),
+			);
+		});
+		await ui.key("Enter", { isComposing: true });
+		assert.equal(ui.field.value, ":smile");
+		assert.equal(ui.sent.length, 0);
+	} finally {
+		await ui.unmount();
+	}
+});
+
+// U7: one-letter aliases (`x`) are prose too and must not bypass the gate.
+for (const text of [
+	":",
+	"list :",
+	":D",
+	":P",
+	":o",
+	"10 :30",
+	"nope :x",
+	"shh :X",
+]) {
+	test(`emoji U1: ${JSON.stringify(text)} never opens and Enter sends it unchanged`, async () => {
+		const ui = await mount();
+		try {
+			await ui.input(text, "insertText");
+			assert.ok(!document.querySelector("[data-emoji-popover]"), "no popup");
+			assert.notEqual(ui.field.getAttribute("aria-expanded"), "true");
+			await ui.key("Enter");
+			assert.equal(ui.sent.length, 1);
+			assert.equal(ui.sent[0].args[0], text);
+		} finally {
+			await ui.unmount();
+		}
+	});
+}
+
+for (const [query, cp] of [
+	[":+1", 0x1f44d],
+	[":-1", 0x1f44e],
+	[":100", 0x1f4af],
+]) {
+	test(`emoji U1/U7: letter-free alias ${query} still opens and inserts`, async () => {
+		const ui = await mount();
+		try {
+			await ui.input(query, "insertText");
+			assert.ok(document.querySelector("[data-emoji-popover]"));
+			await ui.key("Enter");
+			assert.equal(ui.field.value, String.fromCodePoint(cp));
+			assert.equal(ui.sent.length, 0);
+		} finally {
+			await ui.unmount();
+		}
+	});
+}
+
+test("emoji R2-1: Escape stays dismissed for the token across an IME round-trip", async () => {
+	const ui = await mount();
+	const composition = (type) =>
+		mod.act(async () =>
+			ui.field.dispatchEvent(new dom.window.Event(type, { bubbles: true })),
+		);
+	try {
+		await ui.input(":sm", "insertText");
+		assert.ok(document.querySelector("[data-emoji-popover]"), "open first");
+		await ui.key("Escape");
+		await composition("compositionstart");
+		await composition("compositionend");
+		await ui.input(":smi", "insertText");
+		assert.ok(
+			!document.querySelector("[data-emoji-popover]"),
+			"same token must stay dismissed",
+		);
+		// A new token still reopens: dismissal is per token, not permanent.
+		await ui.input(":smi :fi", "insertText");
+		assert.ok(document.querySelector("[data-emoji-popover]"), "new token");
+	} finally {
+		await ui.unmount();
+	}
+});
+
+/*
+ * R3-1 / Q3: rows of the PR #1606 dismissal authority matrix. A dismissal
+ * belongs to one token; sending empties the draft, so the next message's
+ * shortcode at the same start (0) must open again.
+ */
+const sendThenNextShortcode = async (ui) => {
+	await ui.key("Enter");
+	assert.equal(ui.field.value, "", "the draft was sent and cleared");
+	await ui.input(":+1", "insertText");
+	assert.ok(
+		document.querySelector("[data-emoji-popover]"),
+		"next message's shortcode must open",
+	);
+};
+
+test("emoji R3-1: Escape -> send -> next message :+1 opens", async () => {
+	const ui = await mount();
+	try {
+		await ui.input(":smile", "insertText");
+		await ui.key("Escape");
+		assert.ok(!document.querySelector("[data-emoji-popover]"));
+		await sendThenNextShortcode(ui);
+		assert.equal(ui.sent[0].args[0], ":smile");
+	} finally {
+		await ui.unmount();
+	}
+});
+
+test("emoji R3-1: no-results Enter -> send -> next message :+1 opens", async () => {
+	const ui = await mount();
+	try {
+		await ui.input(":no_such_emoji_928372", "insertText");
+		await ui.key("Enter");
+		assert.equal(ui.sent.length, 0, "first Enter only dismisses");
+		await sendThenNextShortcode(ui);
+		assert.equal(ui.sent[0].args[0], ":no_such_emoji_928372");
+	} finally {
+		await ui.unmount();
+	}
+});
+
+test("emoji R3-1: pick -> send -> next message :+1 opens", async () => {
+	const ui = await mount();
+	try {
+		await ui.input(":smile", "insertText");
+		await ui.key("Enter");
+		assert.equal(ui.field.value, String.fromCodePoint(0x1f604));
+		await sendThenNextShortcode(ui);
+		assert.equal(ui.sent[0].args[0], String.fromCodePoint(0x1f604));
+	} finally {
+		await ui.unmount();
+	}
+});
+
+test("emoji matrix: typing more into a dismissed token stays closed; deleting it resets", async () => {
+	const ui = await mount();
+	try {
+		await ui.input("hi :sm", "insertText");
+		await ui.key("Escape");
+		await ui.input("hi :smil", "insertText");
+		assert.ok(!document.querySelector("[data-emoji-popover]"), "same token");
+		// Deleting the token, then retyping it at the same start, is a new token.
+		await ui.input("hi ", "deleteContentBackward");
+		await ui.input("hi :sm", "insertText");
+		assert.ok(document.querySelector("[data-emoji-popover]"), "token was gone");
+	} finally {
+		await ui.unmount();
+	}
+});
+
+for (const [query, cp] of [
+	[":fire", [0x1f525]],
+	[":rocket", [0x1f680]],
+	[":eyes", [0x1f440]],
+	[":joy", [0x1f602]],
+]) {
+	test(`emoji U2: ${query} + Enter inserts the shortcode's emoji`, async () => {
+		const ui = await mount();
+		try {
+			await ui.input(query, "insertText");
+			await ui.key("Enter");
+			assert.equal(ui.field.value, String.fromCodePoint(...cp));
+			assert.equal(ui.sent.length, 0);
+		} finally {
+			await ui.unmount();
+		}
+	});
+}
+
+test("emoji U3/U5: Tab accepts like mentions; options expose set size and position", async () => {
+	const ui = await mount();
+	try {
+		await ui.input("ok :tada", "insertText");
+		const rows = [...document.querySelectorAll("[data-emoji-index]")];
+		assert.ok(rows.length > 0);
+		rows.forEach((row, i) => {
+			assert.equal(row.getAttribute("aria-setsize"), String(rows.length));
+			assert.equal(row.getAttribute("aria-posinset"), String(i + 1));
+		});
+		await ui.key("Tab");
+		assert.equal(ui.field.value, `ok ${String.fromCodePoint(0x1f389)}`);
+		assert.ok(document.activeElement === ui.field, "Tab keeps focus");
+		assert.equal(ui.sent.length, 0);
+	} finally {
+		await ui.unmount();
+	}
+});
+
+test("emoji U4: a closing colon closes the popup and leaves raw text", async () => {
+	const ui = await mount();
+	try {
+		await ui.input(":fire", "insertText");
+		assert.ok(document.querySelector("[data-emoji-popover]"));
+		await ui.input(":fire:", "insertText");
+		assert.ok(!document.querySelector("[data-emoji-popover]"), "closed");
+		assert.equal(ui.field.value, ":fire:", "no auto-replacement");
+		await ui.key("Enter");
+		assert.equal(ui.sent[0].args[0], ":fire:");
+	} finally {
+		await ui.unmount();
+	}
+});
+
+for (const kind of ["dm", "group", "channel"]) {
+	test(`emoji: shared Bridge ${kind} mount opens on a real query, generic/no-source stays inert`, async () => {
+		const ui = await mount({ kind });
+		try {
+			await ui.input(":fi", "insertText");
+			assert.ok(ui.options().length > 0);
+			assert.equal(ui.field.getAttribute("aria-expanded"), "true");
+			await ui.rerender(null);
+			assert.ok(
+				!document.querySelector("[data-emoji-popover]"),
+				"emoji popup must be closed",
+			);
+		} finally {
+			await ui.unmount();
+		}
+	});
+}
+
 test("composer highlights use borderless washes and retain silent underlines", () => {
 	const text = "@Other @Viewer @Agent";
 	const tokens = [
