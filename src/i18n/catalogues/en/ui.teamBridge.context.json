@@ -2547,5 +2547,19 @@
 		"length": "one short status phrase",
 		"placeholders": {},
 		"note": "Use the same wording for expired, withheld, deleted, revoked, unknown descriptor state. Do not reveal retention, screening, account or access-refusal reasons; no preview/download/retry is implied."
+	},
+	"ui.teamBridge.attachmentCard.download": {
+		"role": "button on an explicitly bound opaque attachment in authenticated owner audit",
+		"tone": "direct action",
+		"length": "2-4 words",
+		"placeholders": {},
+		"note": "Opens the native main-owned Save As dialog with fixed opaque name attachment.bin. Not upload, inline preview, or a public URL. Only shown when native saving and captured owner authority are available."
+	},
+	"ui.teamBridge.attachmentCard.saved": {
+		"role": "polite success status after the native file save completes",
+		"tone": "factual, concise",
+		"length": "2-4 words",
+		"placeholders": {},
+		"note": "Shown only after the main process confirms writing the opaque file chosen by the user. Not shown on cancel, refusal, account switch or failure. Do not include a filename or filesystem path."
 	}
 }

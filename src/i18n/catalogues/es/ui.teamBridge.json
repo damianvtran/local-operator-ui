@@ -337,5 +337,7 @@
 	"ui.teamBridge.attachmentCard.file": "Archivo",
 	"ui.teamBridge.attachmentCard.bytes": "{size, number} bytes",
 	"ui.teamBridge.attachmentCard.metadata_only": "La vista previa no está disponible en esta vista",
-	"ui.teamBridge.attachmentCard.unavailable": "Archivo adjunto no disponible"
+	"ui.teamBridge.attachmentCard.unavailable": "Archivo adjunto no disponible",
+	"ui.teamBridge.attachmentCard.download": "Descargar archivo",
+	"ui.teamBridge.attachmentCard.saved": "Archivo guardado"
 }

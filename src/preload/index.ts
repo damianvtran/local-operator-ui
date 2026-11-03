@@ -36,6 +36,7 @@ import type {
 } from "../shared/browser-tab-actions-menu";
 import {
 	type DesktopMediaRequest,
+	type DesktopOwnerAuditAttachmentScope,
 	type DesktopRequest,
 	type DesktopStreamEvent,
 	EXTERNAL_OPEN_REFUSED_CHANNEL,
@@ -105,6 +106,8 @@ const api = {
 			ipcRenderer.invoke("desktop-request", request),
 		openAuthorization: (operationId: string, reopen = false) =>
 			ipcRenderer.invoke("desktop-open-authorization", operationId, reopen),
+		ownerAuditAttachmentSave: (input: DesktopOwnerAuditAttachmentScope) =>
+			ipcRenderer.invoke("desktop-owner-audit-attachment-save", input),
 		media: (request: DesktopMediaRequest, bytes: Uint8Array | null) =>
 			ipcRenderer.invoke("desktop-media", request, bytes),
 		/**

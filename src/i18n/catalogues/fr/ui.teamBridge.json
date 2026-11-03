@@ -337,5 +337,7 @@
 	"ui.teamBridge.attachmentCard.file": "Fichier",
 	"ui.teamBridge.attachmentCard.bytes": "{size, number} octets",
 	"ui.teamBridge.attachmentCard.metadata_only": "Aperçu indisponible dans cette vue",
-	"ui.teamBridge.attachmentCard.unavailable": "Pièce jointe indisponible"
+	"ui.teamBridge.attachmentCard.unavailable": "Pièce jointe indisponible",
+	"ui.teamBridge.attachmentCard.download": "Télécharger le fichier",
+	"ui.teamBridge.attachmentCard.saved": "Fichier enregistré"
 }

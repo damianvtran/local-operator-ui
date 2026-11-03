@@ -337,5 +337,7 @@
 	"ui.teamBridge.attachmentCard.file": "Файл",
 	"ui.teamBridge.attachmentCard.bytes": "{size, number} байт",
 	"ui.teamBridge.attachmentCard.metadata_only": "Предпросмотр недоступен в этом представлении",
-	"ui.teamBridge.attachmentCard.unavailable": "Вложение недоступно"
+	"ui.teamBridge.attachmentCard.unavailable": "Вложение недоступно",
+	"ui.teamBridge.attachmentCard.download": "Скачать файл",
+	"ui.teamBridge.attachmentCard.saved": "Файл сохранён"
 }
