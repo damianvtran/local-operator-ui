@@ -78,6 +78,8 @@ import {
 } from "@shared/components/ui/dropdown-menu";
 import { useDesktopFeed } from "@shared/hooks/use-desktop-feed";
 import { useCurrentView } from "@shared/hooks/use-route-params";
+import { isolateLtr } from "@shared/i18n/isolate-ltr";
+import { ShortcutText } from "@shared/i18n/shortcut-text";
 import { useTextDirection } from "@shared/i18n/use-document-direction";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
@@ -1974,7 +1976,7 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 	 * just said it does not have.
 	 */
 	const newChatLabel = t("ui.shell.sidebar_navigation.new_chat_shortcut", {
-		shortcut: newChatShortcutCap(isMac).replace("+", ""),
+		shortcut: isolateLtr(newChatShortcutCap(isMac).replace("+", "")),
 	});
 	/*
 	 * BOTH DOORS IN THE NAME (design/UX round 2, U3; re-pointed by issue #850):
@@ -1991,12 +1993,12 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 	 * most a rail row can carry.
 	 */
 	const searchLabel = t("ui.shell.sidebar_navigation.search_accessible", {
-		everything: paletteDoorLabel("everything", isMac),
-		chats: paletteDoorLabel("chats", isMac),
+		everything: isolateLtr(paletteDoorLabel("everything", isMac)),
+		chats: isolateLtr(paletteDoorLabel("chats", isMac)),
 	});
 	const searchTitle = t("ui.shell.sidebar_navigation.search_tooltip", {
-		everything: paletteDoorLabel("everything", isMac),
-		chats: paletteDoorLabel("chats", isMac),
+		everything: isolateLtr(paletteDoorLabel("everything", isMac)),
+		chats: isolateLtr(paletteDoorLabel("chats", isMac)),
 	});
 	const primaryRow = (
 		icon: LucideIcon,
@@ -2100,7 +2102,10 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 	) => {
 		const Icon = icon;
 		return (
-			<BrowserSafeTooltip content={label} side={rtl ? "left" : "right"}>
+			<BrowserSafeTooltip
+				content={<ShortcutText text={label} />}
+				side={rtl ? "left" : "right"}
+			>
 				<button
 					type="button"
 					{...props.attrs}

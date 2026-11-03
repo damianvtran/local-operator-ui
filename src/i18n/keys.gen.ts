@@ -4101,6 +4101,9 @@ export type MessageParams = {
 	"ui.chat.session_status.duration_explanation": undefined;
 	"ui.chat.session_status.effort_change": undefined;
 	"ui.chat.session_status.effort_change_draft": undefined;
+	"ui.chat.session_status.effort_level.high": undefined;
+	"ui.chat.session_status.effort_level.low": undefined;
+	"ui.chat.session_status.effort_level.medium": undefined;
 	"ui.chat.session_status.estimate": undefined;
 	"ui.chat.session_status.last_reading": undefined;
 	"ui.chat.session_status.last_reading_note": undefined;
@@ -5286,6 +5289,11 @@ export type MessageParams = {
 	"ui.chat.run_details.unopenable": undefined;
 	"ui.chat.run_details.update_backend": undefined;
 	"ui.chat.run_details.updating_backend": undefined;
+	"ui.chat.run_details.wake.armed_count": {
+		count: number;
+		count_display: string;
+	};
+	"ui.chat.run_details.wake.cadence_once": undefined;
 	"ui.chat.run_details.wake.cancel": undefined;
 	"ui.chat.run_details.wake.cancel_wake": undefined;
 	"ui.chat.run_details.wake.cancel_wake_due": { due: string };

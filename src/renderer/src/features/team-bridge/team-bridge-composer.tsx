@@ -4,7 +4,7 @@ import { Button } from "@shared/components/ui/button";
 import { useMessageInput } from "@shared/hooks/use-message-input";
 import { useRecordingShortcutLabel } from "@shared/hooks/use-recording-shortcut";
 import { resolvePushToTalkBinding } from "@shared/hooks/use-speech-to-text-manager";
-import { t } from "@shared/i18n";
+import { isolateLtr, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import {
 	type RadientSpeechBlock,
@@ -395,7 +395,7 @@ export const TeamBridgeComposer: FC<TeamBridgeComposerProps> = ({
 		: shortcutLabel === null
 			? t("ui.chat.composer.start_recording")
 			: t("ui.chat.composer.start_recording_hint", {
-					shortcut: shortcutLabel,
+					shortcut: isolateLtr(shortcutLabel),
 					pushToTalk: resolvePushToTalkBinding().label,
 				});
 

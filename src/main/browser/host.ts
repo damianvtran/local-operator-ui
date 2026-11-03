@@ -1013,7 +1013,14 @@ export class BrowserHost implements BrowserActionContext {
 				.map((entry, displayOrder) => ({
 					...(this.chromeTabOrder.hasCustomOrder ? { displayOrder } : {}),
 					tabId: entry.tabId,
-					title: this.titleForChrome(entry.title) || "New tab",
+					// MAIN OWNS THIS WORD: the projection hands the strip a ready title, so
+					// the renderer's own fallback never runs and a literal here shows in
+					// English under every locale. Reuses the strip's key, which every
+					// shipped locale already translates, rather than minting a twin that
+					// would have to be translated and audited again.
+					title:
+						this.titleForChrome(entry.title) ||
+						t("ui.browser.browser_tab_strip.new_tab"),
 					url: entry.url,
 					owner: entry.owner,
 					// WHICH CONVERSATION THIS TAB BELONGS TO, and the ONLY new field this
