@@ -12488,6 +12488,22 @@
 					"receipt_sha256": "e82186607103b1bf3d0e037d16a4b82487c9aa038bda3d1925617728832fcc56",
 					"scope": "ui.chat.pickers fr at 8afc03c6ca4",
 					"note": "PR #1625 third-audit remediation; findings carried as listed in the receipt"
+				},
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol (fallback after anthropic/claude-sonnet-5-5 and anthropic/claude-opus-5-5 quota failures)",
+					"date": "2026-11-03",
+					"result": "clean",
+					"instance": "6cfeec091166",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/6cfeec091166.json",
+					"receipt_sha256": "be0d5a810bd07316801c4436d478fa6f121b45ccd82ebdf85146d3f4238ecc00",
+					"scope": "second independent safety audit of two approval-default scope values at c6f1c9ec23d"
 				}
 			],
 			"status": "audited",
@@ -22219,6 +22235,22 @@
 					"receipt_sha256": "1987dc94dbc9279b5cf1b2088de8f4e330401b32f8f4a40fa772fd3cf6e826ff",
 					"scope": "ui.chat.pickers hi at 8afc03c6ca4",
 					"note": "PR #1625 third-audit remediation; findings carried as listed in the receipt"
+				},
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-03",
+					"result": "clean",
+					"instance": "9e2472367ad7",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/9e2472367ad7.json",
+					"receipt_sha256": "00ba57158f4931ed4f166cdd9c23b734498ca6b9d8870b987606f71f8a9b77d3",
+					"scope": "second independent safety audit of two approval-default scope values at c6f1c9ec23d"
 				}
 			],
 			"status": "audited",
@@ -31647,6 +31679,22 @@
 					"receipt_sha256": "3b906d79274ebf442d343e13b2bf0e7fa495600699054d71322e5ab6f59d81b6",
 					"scope": "ui.chat.pickers ru at 8afc03c6ca4",
 					"note": "PR #1625 third-audit remediation; findings carried as listed in the receipt"
+				},
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-03",
+					"result": "clean",
+					"instance": "8711ef54a14d",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/8711ef54a14d.json",
+					"receipt_sha256": "edfc45bb9c6d20f852ec0f1ed83ffb12e91d36ad228e8bbde7da56319fb3429b",
+					"scope": "second independent safety audit of two approval-default scope values at c6f1c9ec23d"
 				}
 			],
 			"status": "audited",
@@ -41066,6 +41114,22 @@
 					"receipt_sha256": "04a8c0b19e85cfb425e0c5df15db8e6b2beeb6ae557bab64a1f94d4963fb7fbe",
 					"scope": "ui.chat.pickers ur at 8afc03c6ca4",
 					"note": "PR #1625 third-audit remediation; findings carried as listed in the receipt"
+				},
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-03",
+					"result": "clean",
+					"instance": "d890d0154160",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/d890d0154160.json",
+					"receipt_sha256": "9304cbf3b53322dc76db0d5a530d97c65650a21533853aa62d250d0693121314",
+					"scope": "second independent safety audit of two approval-default scope values at c6f1c9ec23d"
 				}
 			],
 			"status": "audited",

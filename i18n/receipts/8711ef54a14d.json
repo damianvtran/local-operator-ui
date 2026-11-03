@@ -1,0 +1,27 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "openai/gpt-6.1-sol",
+  "instance": "8711ef54a14d",
+  "status": "passed",
+  "namespace": "ui.chat.pickers",
+  "sha256": {
+    "ru": "7d891a2594cf87f612ef5a189ffe6b540421891ca16c5344c7708656acbdce26",
+    "en": "88d81780ea0cf598689a73b5b0206da020ccfe1b847631214f87f40791b684c7"
+  },
+  "findings": [],
+  "scope": {
+    "head": "c6f1c9ec23db8db01a88af576fb4d7f1a2dde737",
+    "semantic_keys": [
+      "ui.chat.pickers.destination_pickers.default_approvals_for_all_sessions_that_follow_it_this_session_follows_i",
+      "ui.chat.pickers.destination_pickers.default_for_all_sessions_that_follow_it"
+    ],
+    "mechanical_key_count": 741
+  },
+  "model_provenance": "Actual audit and receipt: openai/gpt-6.1-sol fallback after provider quota failures; initial guide read used anthropic/claude-sonnet-5-5. Switch notice also named anthropic/claude-opus-5-5 before work resumed.",
+  "checks": {
+    "repo_validator": "Committed locale-parity.test.mjs against committed en/ru namespace-only scratch fixture using existing node_modules; 8 passed, 0 failed; validator.log",
+    "supplemental": "mechanical.log: key parity, typed ICU/tag parity, CLDR, NFC, backticks/flags; 741 keys; 31 plural and 13 select nodes; 512 MB heap",
+    "semantic": "Independent Russian reading: both changed strings denote sessions using the default, not later/future sessions. The result sentence preserves the explicit-choice exception. Одобрения and сессия conform to glossary. Grammar, sentence-case and punctuation are appropriate.",
+    "fit": "No maxCells/maxChars hints on the two context entries. No rendered measurement performed; no pixel or overflow claim."
+  }
+}
