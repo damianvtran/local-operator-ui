@@ -22,6 +22,8 @@
  * pointerdown-on-Send / pointerup-after-flip fire Stop).
  */
 
+import { BARE_OPTION_ORDINAL, approvalAnswerValue } from "./approval-words";
+
 /** The dictation lifecycle as the composer reports it. */
 export type DictationPhase =
 	| "idle"
@@ -308,4 +310,21 @@ export function dictatedSendCheck({
 }): { expected: string; intact: boolean } {
 	const expected = join(draftAtPress, transcript);
 	return { expected, intact: current === expected };
+}
+
+/**
+ * Whether dictated words, sent while a question is pending, would ANSWER it.
+ *
+ * The page takes the sent text of a pending gate two ways: `approvalAnswerValue`
+ * (yes, ok, allow, approve, deny, 1, 2 ...) for an approval, and
+ * `resolveNumericAnswer` (a bare 1-9 picks that option of an ask card) for a
+ * question. Either one turns a transcript the user has not read into a decision,
+ * and a stray "ok" or "two" from the room is enough. The composer does not hold
+ * the gate's options, so any bare ordinal is refused rather than only the ones
+ * that happen to be in range.
+ */
+export function dictatedWouldAnswerGate(text: string): boolean {
+	return (
+		approvalAnswerValue(text) !== null || BARE_OPTION_ORDINAL.test(text.trim())
+	);
 }

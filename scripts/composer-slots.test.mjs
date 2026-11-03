@@ -530,7 +530,7 @@ test("a guarded role that is still arming wears a ramp, not a disabled look", ()
 	]) {
 		assert.match(
 			block(key),
-			new RegExp(`${flag} && "opacity-60"|${flag}\\) &&`),
+			new RegExp(`${flag} && "opacity-72"|${flag}\\) &&`),
 			key,
 		);
 	}
@@ -544,20 +544,49 @@ test("Enter on a focused cluster button keeps its own meaning (UX U2)", () => {
 	assert.ok(win.indexOf("closest(") < win.indexOf("handleConfirmRecording()"));
 });
 
-test("M1: a dictated transcript that would answer an approval gate is never sent", () => {
+test("M1: a dictated transcript that would answer a gate is never sent, and the check precedes every send", () => {
 	const run = ROW_SOURCE.slice(
 		ROW_SOURCE.indexOf("const runSubmit = (dictated = false)"),
 		ROW_SOURCE.indexOf("const handleSubmit = (e: FormEvent)"),
 	);
-	assert.match(
-		run,
-		/dictated &&\s*awaitingAnswer &&\s*approvalAnswerValue\(newMessage\) !== null\s*\)\s*return false/,
+	const gate = run.search(
+		/dictated &&\s*awaitingAnswer &&\s*dictatedWouldAnswerGate\(newMessage\)\s*\)\s*return false/,
 	);
-	assert.ok(
-		run.indexOf("approvalAnswerValue(") < run.indexOf("onSendMessage") ||
-			!run.includes("onSendMessage"),
-		"the gate check precedes anything that sends",
-	);
+	assert.ok(gate > -1, "the gate refusal is gone from runSubmit");
+	// Every way out of runSubmit that sends or arms a send sits AFTER the refusal.
+	for (const sender of ["submitCapture()", "applyPlan(", "submitMessage()"]) {
+		const at = run.indexOf(sender);
+		assert.ok(at > -1, `runSubmit no longer calls ${sender}`);
+		assert.ok(gate < at, `the gate refusal must precede ${sender}`);
+	}
+});
+
+test("what a dictated transcript may not say while a question is pending: approval words AND bare option ordinals", () => {
+	const answers = [
+		"yes",
+		"OK",
+		"Allow",
+		"deny",
+		"cancel",
+		"1",
+		"2.",
+		" 3 ",
+		"9",
+	];
+	for (const text of answers) {
+		assert.equal(slots.dictatedWouldAnswerGate(text), true, text);
+	}
+	// Prose, a partial token, an out-of-the-ordinal-range digit, empty: not a decision.
+	for (const text of [
+		"yes please summarise the report",
+		"okay then",
+		"10",
+		"0",
+		"two",
+		"",
+	]) {
+		assert.equal(slots.dictatedWouldAnswerGate(text), false, text);
+	}
 });
 
 test("a recorder that already died cannot park the slot: the press settles instead of entering the phase", () => {
@@ -574,7 +603,13 @@ test("a recorder that already died cannot park the slot: the press settles inste
 });
 
 test("the recording hint line names the irreversible action (UX U3)", () => {
-	assert.match(ROW_SOURCE, /sendsNow=\{true\}/);
+	// Offered only while the control exists and works: a hint naming a button
+	// that is disabled (no provider, credential capture) would promise a send
+	// the press will not make.
+	assert.match(
+		ROW_SOURCE,
+		/sendsNow=\{slotB\.role === "send-recording" && slotB\.enabled\}/,
+	);
 	const indicator = readFileSync(
 		"src/renderer/src/features/chat/components/audio-recording-indicator.tsx",
 		"utf8",
@@ -633,16 +668,32 @@ test("the held box and its reservation are gone from the tree", () => {
 	assert.match(ROW_SOURCE, /const controlsThirdBox = isRecording;/);
 });
 
-test("Q1: the preparing caption takes no width from the cluster", () => {
-	const caption = ROW_SOURCE.slice(
-		ROW_SOURCE.indexOf('data-preparing-indicator=""'),
-		ROW_SOURCE.indexOf('{(slotA === "mic" || slotA === "mic-preparing")'),
+test("Q1/R2-1/D9: the preparing caption lives in the caption row under the field, never in the controls row", () => {
+	const at = ROW_SOURCE.indexOf('data-preparing-indicator=""');
+	assert.ok(at > -1);
+	const cluster = ROW_SOURCE.indexOf("data-lo-composer-controls={true}");
+	const transcribing = ROW_SOURCE.indexOf('data-transcribing-indicator=""');
+	assert.ok(
+		at < cluster && at < transcribing,
+		"the caption renders in the caption row, before the controls cluster and beside the transcribing line",
 	);
-	// Out of flow, hung off the cluster's inline-start edge.
-	assert.match(caption, /absolute end-full/);
+	const caption = ROW_SOURCE.slice(at, at + 1400);
+	// Nothing painted over the readings, no ground of its own to get wrong.
+	assert.doesNotMatch(caption, /\babsolute\b|\bbg-[a-z]/);
+	// The cluster keeps its intrinsic 68px: not a containing block for anything.
 	assert.match(
 		ROW_SOURCE,
-		/className="relative ms-auto flex order-3 shrink-0 items-center gap-1"/,
-		"the cluster is the caption's containing block and never shrinks",
+		/className="ms-auto flex order-3 shrink-0 items-center gap-1"/,
 	);
+});
+
+test("D13: a send-recording wait has one live element - the waveform is dropped from the caption", () => {
+	const at = ROW_SOURCE.indexOf('data-transcribing-indicator=""');
+	const row = ROW_SOURCE.slice(at, at + 1500);
+	assert.match(row, /sendRecordingPhase === "idle" && <WaveformAnimation \/>/);
+});
+
+test("the guard ramp is the one opacity (0.72), above the 0.6 that fell under 3:1 in light (design D11)", () => {
+	assert.doesNotMatch(ROW_SOURCE, /opacity-60/);
+	assert.ok((ROW_SOURCE.match(/opacity-72/g) ?? []).length >= 4);
 });

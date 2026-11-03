@@ -91,6 +91,8 @@ const CROP = flag("crop") === "form" ? "form" : "row";
  * overwrite each other's numbers.
  */
 const DIR = flag("dir") === "rtl" ? "rtl" : null;
+/** `--locale=fr`: the composer copy in that language (see the harness). */
+const LOCALE = flag("locale") ?? null;
 const ORIGIN = `http://127.0.0.1:${PORT}`;
 const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 
@@ -649,9 +651,19 @@ const main = async () => {
 	for (const state of STATES) {
 		for (const readings of READING_FIXTURES) {
 			for (const width of WIDTHS) {
-				const id = `${state}-${readings}-w${width}${MEASURE ? `-m${MEASURE}` : ""}${DIR ? `-${DIR}` : ""}`;
+				const id = `${state}-${readings}-w${width}${MEASURE ? `-m${MEASURE}` : ""}${DIR ? `-${DIR}` : ""}${LOCALE ? `-${LOCALE}` : ""}`;
 				if (ONLY && !ONLY.some((needle) => id.includes(needle))) continue;
-				cases.push({ id, state, readings, width, measure: MEASURE, dir: DIR });
+				// `fixture` is the readings fixture's NAME: the probe's own `readings` (an
+				// array of what rendered) overwrites the entry's field of that name below.
+				cases.push({
+					id,
+					state,
+					readings,
+					fixture: readings,
+					width,
+					measure: MEASURE,
+					dir: DIR,
+				});
 			}
 		}
 	}
@@ -669,7 +681,7 @@ const main = async () => {
 			await cdp.send("Page.navigate", { url: "about:blank" });
 			await sleep(120);
 			await cdp.send("Page.navigate", {
-				url: `${ORIGIN}/composer-readings-geometry.html?w=${entry.width}&state=${entry.state}&readings=${entry.readings}&theme=${theme}${MEASURE ? `&measure=${MEASURE}` : ""}${DIR ? `&dir=${DIR}` : ""}`,
+				url: `${ORIGIN}/composer-readings-geometry.html?w=${entry.width}&state=${entry.state}&readings=${entry.readings}&theme=${theme}${MEASURE ? `&measure=${MEASURE}` : ""}${DIR ? `&dir=${DIR}` : ""}${LOCALE ? `&locale=${LOCALE}` : ""}`,
 			});
 			await waitForRow(cdp);
 			await sleep(180);

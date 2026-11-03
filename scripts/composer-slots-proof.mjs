@@ -41,7 +41,11 @@ const positions = (row) => {
 
 const byGroup = new Map();
 for (const row of rows) {
-	const key = `${row.width}|${row.theme}|${row.id.split("-").slice(-2, -1)[0]}`;
+	if (!row.fixture)
+		throw new Error(
+			`${row.id}: no readings fixture name; capture with a rig that records \`fixture\``,
+		);
+	const key = `${row.width}|${row.theme}|${row.fixture}`;
 	if (!byGroup.has(key)) byGroup.set(key, []);
 	byGroup.get(key).push(row);
 }

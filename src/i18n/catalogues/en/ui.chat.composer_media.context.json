@@ -9,7 +9,7 @@
 		"role": "keyboard hint after Enter keycap",
 		"tone": "lowercase verb; no capital or trailing punctuation",
 		"maxCells": 12,
-		"note": "Follows a separately rendered Enter keycap. Keep a short lowercase verb; maxCells is advisory, not measured fit."
+		"note": "Follows a separately rendered Enter keycap. Names what Enter does while recording: it inserts the transcript into the box for review (the control is labelled ui.chat.composer.insert_transcript), so use that wording's verb, not a generic confirm. Short lowercase verb; maxCells is advisory, not measured fit."
 	},
 	"ui.chat.composer_media.cancels": {
 		"role": "keyboard hint after Esc keycap",

@@ -83,6 +83,7 @@ import {
 import {
 	type SendRecordingPhase,
 	dictatedSendCheck,
+	dictatedWouldAnswerGate,
 	sendRecordingNext,
 	slotARole,
 	slotBRole,
@@ -7350,11 +7351,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			 * the room would approve a tool action - so a transcript that WOULD answer
 			 * the gate stays in the box for the user to read and send by hand.
 			 */
-			if (
-				dictated &&
-				awaitingAnswer &&
-				approvalAnswerValue(newMessage) !== null
-			)
+			if (dictated && awaitingAnswer && dictatedWouldAnswerGate(newMessage))
 				return false;
 			if (submitCapture()) return true;
 			/*
@@ -9727,8 +9724,46 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 						{isRecording && (
 							<AudioRecordingIndicator
 								isRecording={isRecording}
-								sendsNow={true}
+								sendsNow={slotB.role === "send-recording" && slotB.enabled}
 							/>
+						)}
+						{/*
+						 * THE PRESS IS ANSWERED BEFORE THE RECORDER EXISTS (operator feedback
+						 * via Aida, 2026-10-01). The microphone acquisition is the one part
+						 * of the click path that is genuinely slow - 830 ms cold on this
+						 * fleet, and measured past two minutes under swap exhaustion - and it
+						 * used to be silent: the screen looked exactly as it did before the
+						 * press. This line, with the control's own busy face beside it, is
+						 * that window's answer, both written in the click's own frame.
+						 *
+						 * IT LIVES IN THE CAPTION ROW UNDER THE FIELD, beside where "Processing
+						 * audio" shows (QA round 1 Q1, review R2-1, design D9). In the controls
+						 * row it was a flex item that grew the 68px cluster to ~147px and
+						 * pushed Send past the card's edge; as an overlay it painted over the
+						 * readings and cut a value at every width, for as long as the
+						 * acquisition took. Here it takes no width from the row, covers
+						 * nothing, and the controls keep the x they had. The row grows the
+						 * card for the window, exactly as the transcribing row does.
+						 *
+						 * ONE INDETERMINATE ELEMENT ON THIS SURFACE (branding 5): the ring is
+						 * on the mic's busy face and this line is words.
+						 */}
+						{isPreparing && micControlShown && (
+							<output
+								data-preparing-indicator=""
+								/*
+								 * THE STATE IS ANNOUNCED, not merely painted: `aria-busy` on the
+								 * button is the control's half and screen readers expose it
+								 * inconsistently; the words are the other half, and they are only
+								 * announced if they ARE a live region - an `<output>`, this file's
+								 * established spelling of `role="status"`.
+								 */
+								className="mt-1 flex items-center px-2 font-medium text-body-sm text-ink-muted [min-height:1.5rem]"
+							>
+								{isSmallView
+									? t("ui.chat.composer.starting")
+									: t("ui.chat.composer.starting_recording")}
+							</output>
 						)}
 						{isTranscribing && (
 							<div
@@ -9738,7 +9773,12 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 								<span className="font-medium text-body-sm text-ink-muted">
 									{t("ui.chat.composer.processing_audio")}
 								</span>
-								<WaveformAnimation />
+								{/*
+								 * ONE LIVE ELEMENT FOR A SEND-RECORDING WAIT (design D13): slot A
+								 * already spins for it, so the caption is words only there. A plain
+								 * dictation has no spinner in the row and keeps its waveform.
+								 */}
+								{sendRecordingPhase === "idle" && <WaveformAnimation />}
 							</div>
 						)}
 						{/*
@@ -10068,68 +10108,8 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 											clusterHadFocusRef.current = false;
 										}
 									}}
-									className="relative ms-auto flex order-3 shrink-0 items-center gap-1"
+									className="ms-auto flex order-3 shrink-0 items-center gap-1"
 								>
-									{/*
-									 * THE PRESS IS ANSWERED BEFORE THE RECORDER EXISTS (operator feedback
-									 * via Aida, 2026-10-01). The microphone acquisition is the one part
-									 * of the click path that is genuinely slow - 830 ms cold on this
-									 * fleet, and measured past two minutes under swap exhaustion - and it
-									 * used to be silent: the screen looked exactly as it did before the
-									 * press. This line, with the control's own busy face beside it, is
-									 * that window's answer, both written in the click's own frame.
-									 *
-									 * IT LIVES IN THIS ROW, NOT UNDER THE FIELD (design round 1, D2): a
-									 * line of its own grew the card on the press. This row is 32px in
-									 * every state, so an ~18px child cannot make it taller - and the line
-									 * is added to the INLINE-START of a group this row anchors with
-									 * `ms-auto`, so the mic and send controls keep the x they had: the
-									 * free space between the readings and this group is what pays.
-									 *
-									 * ONE INDETERMINATE ELEMENT ON THIS SURFACE (branding § 5's
-									 * "one such element per surface"): the ring is on the control below
-									 * and this line is words, so the acknowledgment is one live element
-									 * rather than two spinners for one wait (UX round 1, U4).
-									 */}
-									{isPreparing && micControlShown && (
-										<output
-											data-preparing-indicator=""
-											/*
-											 * THE STATE IS ANNOUNCED, not merely painted (agent review round 2,
-											 * minor a). `aria-busy` on the button is the control's half and screen
-											 * readers expose it inconsistently; the words are the other half, and they
-											 * are only announced if they ARE a live region - a bare span changes on
-											 * screen and says nothing to a reader that is not looking at it. The caption
-											 * carries the text, so the region goes here rather than on the ring - as an
-											 * `<output>` rather than a `role="status"` attribute, which is this file's
-											 * established spelling of the same thing (the interrupt notice and the
-											 * no-model hint both use the element).
-											 */
-											/*
-											 * The five-word copy is the composer's own; the SMALL VIEW's
-											 * shorter one is this row's existing yield rule rather than a
-											 * second wording - the model selector shortens to its glyph, the
-											 * usage reading drops below 480px of composer and the cwd chip
-											 * truncates at the same pressure, and a truncated "Starting
-											 * recor..." is not a sentence. `shrink-0` puts this line on the
-											 * yielding side of that bargain rather than letting it compress
-											 * into an ellipsis of its own.
-											 *
-											 * IT TAKES NO WIDTH FROM THE CLUSTER (QA round 1, Q1). As a flex item
-											 * it grew the 68px cluster to ~147px, pushed the mic and Send 17-51px
-											 * right and Send past the card's edge on every readings fixture. It is
-											 * now positioned against the cluster's inline-start edge instead, on the
-											 * card's own ground, so the cluster stays 68px and slots A and B keep
-											 * their x; where a reading sits under it, it is covered for the
-											 * ~1s the acquisition takes rather than the row being pushed.
-											 */
-											className="absolute end-full top-1/2 me-1 -translate-y-1/2 whitespace-nowrap bg-surface ps-2 font-medium text-body-sm text-ink-muted"
-										>
-											{isSmallView
-												? t("ui.chat.composer.starting")
-												: t("ui.chat.composer.starting_recording")}
-										</output>
-									)}
 									{(slotA === "mic" || slotA === "mic-preparing") &&
 										micControlShown && (
 											<Tooltip
@@ -10256,7 +10236,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 													type="button"
 													className={cn(
 														"text-ink-dim hover:bg-elevated hover:text-ink",
-														cancelArming && "opacity-60",
+														cancelArming && "opacity-72",
 													)}
 													onClick={(event) => {
 														// A reflex press right after the row flips to recording
@@ -10286,7 +10266,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 													type="button"
 													className={cn(
 														"border-success-border bg-success-wash text-success hover:bg-success-wash",
-														confirmArming && "opacity-60",
+														confirmArming && "opacity-72",
 													)}
 													onClick={(event) => {
 														if (ignoreConfirmPress(event.detail)) return;
@@ -10327,7 +10307,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 														// round 1, D1).
 														(slotB.role === "send-recording-busy" ||
 															slotBArming) &&
-															"opacity-60",
+															"opacity-72",
 													)}
 													aria-busy={
 														slotB.role === "send-recording-busy" || undefined
@@ -10461,7 +10441,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 															"data-[stopping]:border-danger data-[stopping]:text-ink data-[stopping]:bg-[color-mix(in_oklab,var(--color-danger-wash)_80%,var(--color-danger))]",
 															// A Stop that arrived because a SEND flipped the slot ignores a pointer
 															// press for ~500 ms; the ramp says so (opacity, never `disabled`).
-															slotBArming && "opacity-60",
+															slotBArming && "opacity-72",
 														)}
 													>
 														<Square aria-hidden="true" />

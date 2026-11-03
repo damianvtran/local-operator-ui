@@ -87,6 +87,7 @@ import { ThemeProvider as MuiThemeProvider } from "@mui/material/styles";
 import type { DirectoryWritePath } from "@renderer/features/chat/components/directory-indicator";
 import type { Message } from "@renderer/features/chat/types/message";
 import { MessageInput } from "@renderer/shared/components/composer/message-input";
+import { registerCatalogue, setLocale, t } from "@shared/i18n";
 import { useConversationInputStore } from "@shared/store/conversation-input-store";
 import { DEFAULT_THEME, applyThemeToDocument, getTheme } from "@shared/themes";
 import type { ThemeName } from "@shared/themes";
@@ -202,6 +203,31 @@ const MEASURE = MEASURE_PARAM > 0 ? MEASURE_PARAM : null;
  * harness's own wrapper, and the strip resolves it with `getComputedStyle`.
  */
 const DIR = params.get("dir") === "rtl" ? "rtl" : "ltr";
+
+/*
+ * THE COPY'S LANGUAGE (`--locale=fr`): the longest shipped strings are what the
+ * recording hint line and the caption row have to fit, and `en` is the shortest
+ * case. Only the composer's own two namespaces are registered; everything else
+ * falls through to the bundled en map, per key.
+ */
+const LOCALE = params.get("locale");
+if (LOCALE) {
+	const catalogues = {
+		...(import.meta.glob("../src/i18n/catalogues/*/ui.chat.composer.json", {
+			eager: true,
+			import: "default",
+		}) as Record<string, Record<string, string>>),
+		...(import.meta.glob(
+			"../src/i18n/catalogues/*/ui.chat.composer_media.json",
+			{ eager: true, import: "default" },
+		) as Record<string, Record<string, string>>),
+	};
+	for (const [path, messages] of Object.entries(catalogues)) {
+		if (path.includes(`/catalogues/${LOCALE}/`))
+			registerCatalogue(LOCALE, messages);
+	}
+	setLocale(LOCALE);
+}
 
 applyThemeToDocument(THEME);
 
@@ -453,10 +479,22 @@ const Harness = () => {
 	 */
 	useEffect(() => {
 		const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
-		const button = (label: string) =>
-			document.querySelector<HTMLButtonElement>(
+		// The controls are found by accessible name, and that name is the shipped
+		// copy in whatever locale `--locale` registered: the scripted presses read
+		// it through `t()`, so a French run clicks the French controls.
+		const NAMES: Record<string, string> = {
+			"Start recording": t("ui.chat.composer.start_recording"),
+			"Send recording": t("ui.chat.composer.send_recording"),
+			"Insert transcript": t("ui.chat.composer.insert_transcript"),
+			"Send message": t("ui.chat.composer.send_message"),
+			Stop: t("ui.chat.composer.stop"),
+		};
+		const button = (key: string) => {
+			const label = NAMES[key] ?? key;
+			return document.querySelector<HTMLButtonElement>(
 				`[data-lo-composer-controls] button[aria-label="${label}"]`,
 			);
+		};
 		const until = async (label: string) => {
 			for (let i = 0; i < 40 && !button(label); i += 1) await wait(50);
 			const found = button(label);

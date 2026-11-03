@@ -1,6 +1,6 @@
 {
 	"ui.chat.composer_media.recording": "录音中",
-	"ui.chat.composer_media.confirms": "确认",
+	"ui.chat.composer_media.confirms": "插入",
 	"ui.chat.composer_media.cancels": "取消",
 	"ui.chat.composer_media.sends_now": "立即发送",
 	"ui.chat.composer_media.pasted_type": "粘贴的{mimeType}",

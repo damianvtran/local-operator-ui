@@ -59,7 +59,12 @@ const { useRoleGuard, ROLE_GUARD_MS } = await import(bundlePath.href);
 await unlink(bundlePath);
 
 const h = React.createElement;
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+// The guard's own timer ends `arming` with a state update; waiting inside `act`
+// is what lets React account for it instead of warning that it ran outside one.
+const sleep = (ms) =>
+	act(async () => {
+		await new Promise((resolve) => setTimeout(resolve, ms));
+	});
 
 /** The hook and one button: what the row does with it, reduced to the question. */
 function Probe({ role, log }) {

@@ -2731,13 +2731,13 @@
 		{
 			"locale": "es",
 			"namespace": "ui.chat.composer_media",
-			"source_sha256": "02732c4406f9727405a3a9a7a98de3c9f604913cd7651350b4e29048f80cc1a4",
-			"target_sha256": "e842571c503e82287f55df3e3cb5f312fd9a3ded9619d883fa1f5a02bcfc07c2",
+			"source_sha256": "c1ddfc211ada93d361b212446fe9ac8dbef08506190eef710898baf392690582",
+			"target_sha256": "2449b14109148274836c53866663b2856aeb0484673a870a666bc81856831c9f",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
 				"date": "2026-10-18",
-				"note": "The one key the composer button-slot change added (sends_now) was translated by agent coder (lopdev team, coder-desktop session) on anthropic/claude-sonnet-5-5 in this change, 2026-11-03 (ur wording fixed to the audited form); every older key is byte-identical to the previously audited translation by the translator above."
+				"note": "The keys the composer button-slot change added or changed (sends_now new; confirms reworded from 'confirms' to 'inserts' because Enter inserts the transcript) were translated by agent coder (lopdev team, coder-desktop session) on anthropic/claude-sonnet-5-5, 2026-11-03 (ur sends_now fixed to the audited form); every other key is byte-identical to the previously audited translation by the translator above."
 			},
 			"auditors": [
 				{
@@ -2745,16 +2745,16 @@
 					"model": "anthropic/claude-sonnet-5-5",
 					"date": "2026-11-03",
 					"result": "clean",
-					"instance": "0b2a6fefb140-composer-media-es",
+					"instance": "809c7b5c7328-composer-media-confirms-es",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/0b2a6fefb140-composer-media-es.json",
-					"receipt_sha256": "582afa6c42b140cf5cbdad0d2049b409922ac84f7512561d235806e63f5d6c1f",
-					"scope": "Delta audit of the one ui.chat.composer_media key the composer button-slot change adds (sends_now); previously unchanged messages retain prior provenance"
+					"receipt": "i18n/receipts/809c7b5c7328-composer-media-confirms-es.json",
+					"receipt_sha256": "5df61a964509552e4ec7dfe0b8cd882d855ba552687d7f0bcbe43d60b786c87c",
+					"scope": "Delta audit of ui.chat.composer_media.confirms (Enter now inserts the transcript; value changed in all 8 catalogues) and sends_now read coherently on the same hint line; previously unchanged messages retain prior provenance"
 				}
 			],
 			"status": "audited",
@@ -2778,6 +2778,29 @@
 							"receipt": "i18n/receipts/ea3629c2a645.json",
 							"receipt_sha256": "1adcf5201c953c8581cc9ebb888ae927bb4547d324f2ae550e1b8ca27f25874d",
 							"scope": "Full semantic read; exhaustive mechanical checks."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "02732c4406f9727405a3a9a7a98de3c9f604913cd7651350b4e29048f80cc1a4",
+					"target_sha256": "e842571c503e82287f55df3e3cb5f312fd9a3ded9619d883fa1f5a02bcfc07c2",
+					"auditors": [
+						{
+							"agent": "reviewer-session",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-03",
+							"result": "clean",
+							"instance": "0b2a6fefb140-composer-media-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/0b2a6fefb140-composer-media-es.json",
+							"receipt_sha256": "582afa6c42b140cf5cbdad0d2049b409922ac84f7512561d235806e63f5d6c1f",
+							"scope": "Delta audit of the one ui.chat.composer_media key the composer button-slot change adds (sends_now); previously unchanged messages retain prior provenance"
 						}
 					],
 					"status": "audited"
@@ -12477,30 +12500,30 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.chat.composer_media",
-			"source_sha256": "02732c4406f9727405a3a9a7a98de3c9f604913cd7651350b4e29048f80cc1a4",
-			"target_sha256": "fc28fa390e5736f75befc69217970e330d7273d7ba8e9fbc3d0e86e9a59d7cf6",
+			"source_sha256": "c1ddfc211ada93d361b212446fe9ac8dbef08506190eef710898baf392690582",
+			"target_sha256": "ef1cd323db417d00c42cfb1b97e3fb284b978699a102e66702e8c26e91dbb7d4",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
 				"date": "2026-10-18",
-				"note": "The one key the composer button-slot change added (sends_now) was translated by agent coder (lopdev team, coder-desktop session) on anthropic/claude-sonnet-5-5 in this change, 2026-11-03 (ur wording fixed to the audited form); every older key is byte-identical to the previously audited translation by the translator above."
+				"note": "The keys the composer button-slot change added or changed (sends_now new; confirms reworded from 'confirms' to 'inserts' because Enter inserts the transcript) were translated by agent coder (lopdev team, coder-desktop session) on anthropic/claude-sonnet-5-5, 2026-11-03 (ur sends_now fixed to the audited form); every other key is byte-identical to the previously audited translation by the translator above."
 			},
 			"auditors": [
 				{
 					"agent": "reviewer-session",
 					"model": "anthropic/claude-sonnet-5-5",
 					"date": "2026-11-03",
-					"result": "clean-with-findings",
-					"instance": "0b2a6fefb140-composer-media-fr",
+					"result": "clean",
+					"instance": "809c7b5c7328-composer-media-confirms-fr",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
+						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/0b2a6fefb140-composer-media-fr.json",
-					"receipt_sha256": "187d543ef664cb61d32d899226e2de4c096e91d5a5e7d4beb5e680e235946156",
-					"scope": "Delta audit of the one ui.chat.composer_media key the composer button-slot change adds (sends_now); previously unchanged messages retain prior provenance"
+					"receipt": "i18n/receipts/809c7b5c7328-composer-media-confirms-fr.json",
+					"receipt_sha256": "dcea491fe72ed1ebef2c0367edff053090fda2b50d6955100ad17e4d7fc5e772",
+					"scope": "Delta audit of ui.chat.composer_media.confirms (Enter now inserts the transcript; value changed in all 8 catalogues) and sends_now read coherently on the same hint line; previously unchanged messages retain prior provenance"
 				}
 			],
 			"status": "audited",
@@ -12525,6 +12548,29 @@
 							"receipt_sha256": "384b9a6c0380589c8f2b2dad6f1e929275d213c813d99b564438f82337297c7d",
 							"scope": "Chunk D at 1516984ec99ae09e635b0cb58c4f2e747de1483c; full 206 new keys plus prior408 full coverage retained with typography-only delta.",
 							"note": "Actual automatic quota-fallback model verified; same resumed auditor, not second independent auditor. Nonblocking minors retained as deferred."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "02732c4406f9727405a3a9a7a98de3c9f604913cd7651350b4e29048f80cc1a4",
+					"target_sha256": "fc28fa390e5736f75befc69217970e330d7273d7ba8e9fbc3d0e86e9a59d7cf6",
+					"auditors": [
+						{
+							"agent": "reviewer-session",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-03",
+							"result": "clean-with-findings",
+							"instance": "0b2a6fefb140-composer-media-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/0b2a6fefb140-composer-media-fr.json",
+							"receipt_sha256": "187d543ef664cb61d32d899226e2de4c096e91d5a5e7d4beb5e680e235946156",
+							"scope": "Delta audit of the one ui.chat.composer_media key the composer button-slot change adds (sends_now); previously unchanged messages retain prior provenance"
 						}
 					],
 					"status": "audited"
@@ -22549,13 +22595,13 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.chat.composer_media",
-			"source_sha256": "02732c4406f9727405a3a9a7a98de3c9f604913cd7651350b4e29048f80cc1a4",
-			"target_sha256": "46d95b71c71fad733d0ce6ace28f203eb42f2a6aed50350c3ba7f982f15ac093",
+			"source_sha256": "c1ddfc211ada93d361b212446fe9ac8dbef08506190eef710898baf392690582",
+			"target_sha256": "76f584d0850c1a350fc615554fd8bbaefea26a75cad0c7c472a92e4cf509b009",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
 				"date": "2026-10-19",
-				"note": "The one key the composer button-slot change added (sends_now) was translated by agent coder (lopdev team, coder-desktop session) on anthropic/claude-sonnet-5-5 in this change, 2026-11-03 (ur wording fixed to the audited form); every older key is byte-identical to the previously audited translation by the translator above."
+				"note": "The keys the composer button-slot change added or changed (sends_now new; confirms reworded from 'confirms' to 'inserts' because Enter inserts the transcript) were translated by agent coder (lopdev team, coder-desktop session) on anthropic/claude-sonnet-5-5, 2026-11-03 (ur sends_now fixed to the audited form); every other key is byte-identical to the previously audited translation by the translator above."
 			},
 			"auditors": [
 				{
@@ -22563,16 +22609,16 @@
 					"model": "anthropic/claude-sonnet-5-5",
 					"date": "2026-11-03",
 					"result": "clean",
-					"instance": "0b2a6fefb140-composer-media-hi",
+					"instance": "809c7b5c7328-composer-media-confirms-hi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/0b2a6fefb140-composer-media-hi.json",
-					"receipt_sha256": "436179ed7d76db172f82862c8f6fc2bff41febb62d5606158d448aea294c0358",
-					"scope": "Delta audit of the one ui.chat.composer_media key the composer button-slot change adds (sends_now); previously unchanged messages retain prior provenance"
+					"receipt": "i18n/receipts/809c7b5c7328-composer-media-confirms-hi.json",
+					"receipt_sha256": "f6ce6323d13a54efe1caf884cf055cf9f44d37177c21ad41482878f250b6752a",
+					"scope": "Delta audit of ui.chat.composer_media.confirms (Enter now inserts the transcript; value changed in all 8 catalogues) and sends_now read coherently on the same hint line; previously unchanged messages retain prior provenance"
 				}
 			],
 			"status": "audited",
@@ -22597,6 +22643,29 @@
 							"receipt_sha256": "c337156ee6eed6363260f89bcc1a43a439b897c1723d948824ad241b9175c7c4",
 							"scope": "hi ui.chat.composer_media vs en source — round 1 independent full pass, 7 keys",
 							"note": "Independent audit on openai/gpt-6.1-sol after the pinned anthropic/claude-sonnet-5-5 quota fallback."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "02732c4406f9727405a3a9a7a98de3c9f604913cd7651350b4e29048f80cc1a4",
+					"target_sha256": "46d95b71c71fad733d0ce6ace28f203eb42f2a6aed50350c3ba7f982f15ac093",
+					"auditors": [
+						{
+							"agent": "reviewer-session",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-03",
+							"result": "clean",
+							"instance": "0b2a6fefb140-composer-media-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/0b2a6fefb140-composer-media-hi.json",
+							"receipt_sha256": "436179ed7d76db172f82862c8f6fc2bff41febb62d5606158d448aea294c0358",
+							"scope": "Delta audit of the one ui.chat.composer_media key the composer button-slot change adds (sends_now); previously unchanged messages retain prior provenance"
 						}
 					],
 					"status": "audited"
@@ -32336,13 +32405,13 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.chat.composer_media",
-			"source_sha256": "02732c4406f9727405a3a9a7a98de3c9f604913cd7651350b4e29048f80cc1a4",
-			"target_sha256": "a6f58d2a5586c39d3786f8f45c38e1b602b200908b457abcb6d189dda0b324ad",
+			"source_sha256": "c1ddfc211ada93d361b212446fe9ac8dbef08506190eef710898baf392690582",
+			"target_sha256": "3ea45f5e8abd80709209fe8fba109c66b3f0a179cc9528ac8ae298273cbd8ca8",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
 				"date": "2026-10-18",
-				"note": "The one key the composer button-slot change added (sends_now) was translated by agent coder (lopdev team, coder-desktop session) on anthropic/claude-sonnet-5-5 in this change, 2026-11-03 (ur wording fixed to the audited form); every older key is byte-identical to the previously audited translation by the translator above."
+				"note": "The keys the composer button-slot change added or changed (sends_now new; confirms reworded from 'confirms' to 'inserts' because Enter inserts the transcript) were translated by agent coder (lopdev team, coder-desktop session) on anthropic/claude-sonnet-5-5, 2026-11-03 (ur sends_now fixed to the audited form); every other key is byte-identical to the previously audited translation by the translator above."
 			},
 			"auditors": [
 				{
@@ -32350,16 +32419,16 @@
 					"model": "anthropic/claude-sonnet-5-5",
 					"date": "2026-11-03",
 					"result": "clean",
-					"instance": "0b2a6fefb140-composer-media-ru",
+					"instance": "809c7b5c7328-composer-media-confirms-ru",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/0b2a6fefb140-composer-media-ru.json",
-					"receipt_sha256": "52545433fa92e10a80593d2686bdd86f13c1dc4acecc8e7ede4e4a433dc59a92",
-					"scope": "Delta audit of the one ui.chat.composer_media key the composer button-slot change adds (sends_now); previously unchanged messages retain prior provenance"
+					"receipt": "i18n/receipts/809c7b5c7328-composer-media-confirms-ru.json",
+					"receipt_sha256": "bcc3610efd8d2ce4de1a820cc664c905f83d0ee1e4b699409e70f4779d03a006",
+					"scope": "Delta audit of ui.chat.composer_media.confirms (Enter now inserts the transcript; value changed in all 8 catalogues) and sends_now read coherently on the same hint line; previously unchanged messages retain prior provenance"
 				}
 			],
 			"status": "audited",
@@ -32384,6 +32453,29 @@
 								"nit": 0
 							},
 							"note": "Automatic fallback from anthropic/claude-sonnet-5-5 due to quota. Copy audit only; rendered and second high-visibility audit gates remain separate."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "02732c4406f9727405a3a9a7a98de3c9f604913cd7651350b4e29048f80cc1a4",
+					"target_sha256": "a6f58d2a5586c39d3786f8f45c38e1b602b200908b457abcb6d189dda0b324ad",
+					"auditors": [
+						{
+							"agent": "reviewer-session",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-03",
+							"result": "clean",
+							"instance": "0b2a6fefb140-composer-media-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/0b2a6fefb140-composer-media-ru.json",
+							"receipt_sha256": "52545433fa92e10a80593d2686bdd86f13c1dc4acecc8e7ede4e4a433dc59a92",
+							"scope": "Delta audit of the one ui.chat.composer_media key the composer button-slot change adds (sends_now); previously unchanged messages retain prior provenance"
 						}
 					],
 					"status": "audited"
@@ -42098,30 +42190,30 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.chat.composer_media",
-			"source_sha256": "02732c4406f9727405a3a9a7a98de3c9f604913cd7651350b4e29048f80cc1a4",
-			"target_sha256": "14b3cc59ff6869900f86bd9c9f462f2c50d65d416881f7f499e8797305775a23",
+			"source_sha256": "c1ddfc211ada93d361b212446fe9ac8dbef08506190eef710898baf392690582",
+			"target_sha256": "ff5d51690b3ca45b10a170eaa75790ba565dd52ee6e714e180e5046e97889713",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
 				"date": "2026-10-19",
-				"note": "The one key the composer button-slot change added (sends_now) was translated by agent coder (lopdev team, coder-desktop session) on anthropic/claude-sonnet-5-5 in this change, 2026-11-03 (ur wording fixed to the audited form); every older key is byte-identical to the previously audited translation by the translator above."
+				"note": "The keys the composer button-slot change added or changed (sends_now new; confirms reworded from 'confirms' to 'inserts' because Enter inserts the transcript) were translated by agent coder (lopdev team, coder-desktop session) on anthropic/claude-sonnet-5-5, 2026-11-03 (ur sends_now fixed to the audited form); every other key is byte-identical to the previously audited translation by the translator above."
 			},
 			"auditors": [
 				{
 					"agent": "reviewer-session",
 					"model": "anthropic/claude-sonnet-5-5",
 					"date": "2026-11-03",
-					"result": "clean-with-findings",
-					"instance": "0b2a6fefb140-composer-media-ur",
+					"result": "clean",
+					"instance": "809c7b5c7328-composer-media-confirms-ur",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
+						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/0b2a6fefb140-composer-media-ur.json",
-					"receipt_sha256": "37b76159995ae975b3cb3d007f91f710c5a6b7bc949384e90f61532497d4fbc2",
-					"scope": "Delta audit of the one ui.chat.composer_media key the composer button-slot change adds (sends_now); previously unchanged messages retain prior provenance"
+					"receipt": "i18n/receipts/809c7b5c7328-composer-media-confirms-ur.json",
+					"receipt_sha256": "0652584c1be7bd5ea622e236b8d82c4ac4778867b6ffdfebec2b49c0b215bc31",
+					"scope": "Delta audit of ui.chat.composer_media.confirms (Enter now inserts the transcript; value changed in all 8 catalogues) and sends_now read coherently on the same hint line; previously unchanged messages retain prior provenance"
 				}
 			],
 			"status": "audited",
@@ -42146,6 +42238,29 @@
 							"receipt_sha256": "9cf5311d3e87ee9ff90304782aae6ea3a5535cb78213ad107f9f48c737df1d63",
 							"scope": "Full independent copy audit of the namespace at the recorded bytes; zero findings.",
 							"note": "Independent auditor post-dates the translator; all findings remediated and re-audited to zero. Audit model fell back from anthropic/claude-sonnet-5-5 to openai/gpt-6.1-sol due to provider quota."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "02732c4406f9727405a3a9a7a98de3c9f604913cd7651350b4e29048f80cc1a4",
+					"target_sha256": "14b3cc59ff6869900f86bd9c9f462f2c50d65d416881f7f499e8797305775a23",
+					"auditors": [
+						{
+							"agent": "reviewer-session",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-03",
+							"result": "clean-with-findings",
+							"instance": "0b2a6fefb140-composer-media-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/0b2a6fefb140-composer-media-ur.json",
+							"receipt_sha256": "37b76159995ae975b3cb3d007f91f710c5a6b7bc949384e90f61532497d4fbc2",
+							"scope": "Delta audit of the one ui.chat.composer_media key the composer button-slot change adds (sends_now); previously unchanged messages retain prior provenance"
 						}
 					],
 					"status": "audited"
@@ -51723,13 +51838,13 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.chat.composer_media",
-			"source_sha256": "02732c4406f9727405a3a9a7a98de3c9f604913cd7651350b4e29048f80cc1a4",
-			"target_sha256": "8c49f16312921741666687fd6a548c9b5d4b951471279ac0eab7db92ba4bb356",
+			"source_sha256": "c1ddfc211ada93d361b212446fe9ac8dbef08506190eef710898baf392690582",
+			"target_sha256": "03f9542dd36db178c5f39872c17c918028a725bc0befdf9a78941897d3ca80ed",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
 				"date": "2026-10-18",
-				"note": "The one key the composer button-slot change added (sends_now) was translated by agent coder (lopdev team, coder-desktop session) on anthropic/claude-sonnet-5-5 in this change, 2026-11-03 (ur wording fixed to the audited form); every older key is byte-identical to the previously audited translation by the translator above."
+				"note": "The keys the composer button-slot change added or changed (sends_now new; confirms reworded from 'confirms' to 'inserts' because Enter inserts the transcript) were translated by agent coder (lopdev team, coder-desktop session) on anthropic/claude-sonnet-5-5, 2026-11-03 (ur sends_now fixed to the audited form); every other key is byte-identical to the previously audited translation by the translator above."
 			},
 			"auditors": [
 				{
@@ -51737,16 +51852,16 @@
 					"model": "anthropic/claude-sonnet-5-5",
 					"date": "2026-11-03",
 					"result": "clean",
-					"instance": "0b2a6fefb140-composer-media-vi",
+					"instance": "809c7b5c7328-composer-media-confirms-vi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/0b2a6fefb140-composer-media-vi.json",
-					"receipt_sha256": "8e5e58fef1f3b5313d9c67ae81a5ccd0f36b47861aa4ef3e69f564e359716aba",
-					"scope": "Delta audit of the one ui.chat.composer_media key the composer button-slot change adds (sends_now); previously unchanged messages retain prior provenance"
+					"receipt": "i18n/receipts/809c7b5c7328-composer-media-confirms-vi.json",
+					"receipt_sha256": "ab62a6d24692c7ee65364a33f9d847dbabb432ba85c6d894105ee6fd98791d76",
+					"scope": "Delta audit of ui.chat.composer_media.confirms (Enter now inserts the transcript; value changed in all 8 catalogues) and sends_now read coherently on the same hint line; previously unchanged messages retain prior provenance"
 				}
 			],
 			"status": "audited",
@@ -51795,6 +51910,29 @@
 							"receipt_sha256": "9c207f99528da1c951aa4522aec7db8aad07574bcb04aa63923ae899d340d67f",
 							"scope": "round 1 review remediation: M1/M2/N1/N2/N4 verification on the changed namespaces",
 							"note": "Review round 1 remediation verification. Independent re-audit of the changed bytes; every other namespace keeps its earlier certified row. Both roles ran on the harness-reported fallback model openai/gpt-6.1-sol."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "02732c4406f9727405a3a9a7a98de3c9f604913cd7651350b4e29048f80cc1a4",
+					"target_sha256": "8c49f16312921741666687fd6a548c9b5d4b951471279ac0eab7db92ba4bb356",
+					"auditors": [
+						{
+							"agent": "reviewer-session",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-03",
+							"result": "clean",
+							"instance": "0b2a6fefb140-composer-media-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/0b2a6fefb140-composer-media-vi.json",
+							"receipt_sha256": "8e5e58fef1f3b5313d9c67ae81a5ccd0f36b47861aa4ef3e69f564e359716aba",
+							"scope": "Delta audit of the one ui.chat.composer_media key the composer button-slot change adds (sends_now); previously unchanged messages retain prior provenance"
 						}
 					],
 					"status": "audited"
@@ -62084,13 +62222,13 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.chat.composer_media",
-			"source_sha256": "02732c4406f9727405a3a9a7a98de3c9f604913cd7651350b4e29048f80cc1a4",
-			"target_sha256": "7617e7c56c14e9e8a2ad474ec3692fc754d842ae7603f9e5ad5e324c0dbf9ced",
+			"source_sha256": "c1ddfc211ada93d361b212446fe9ac8dbef08506190eef710898baf392690582",
+			"target_sha256": "e525b3929a04d7c01d78afcb60ff26369280872bb781c67b30f504c10ebda29c",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
 				"date": "2026-10-18",
-				"note": "The one key the composer button-slot change added (sends_now) was translated by agent coder (lopdev team, coder-desktop session) on anthropic/claude-sonnet-5-5 in this change, 2026-11-03 (ur wording fixed to the audited form); every older key is byte-identical to the previously audited translation by the translator above."
+				"note": "The keys the composer button-slot change added or changed (sends_now new; confirms reworded from 'confirms' to 'inserts' because Enter inserts the transcript) were translated by agent coder (lopdev team, coder-desktop session) on anthropic/claude-sonnet-5-5, 2026-11-03 (ur sends_now fixed to the audited form); every other key is byte-identical to the previously audited translation by the translator above."
 			},
 			"auditors": [
 				{
@@ -62098,16 +62236,16 @@
 					"model": "anthropic/claude-sonnet-5-5",
 					"date": "2026-11-03",
 					"result": "clean",
-					"instance": "0b2a6fefb140-composer-media-zh-cn",
+					"instance": "809c7b5c7328-composer-media-confirms-zh-cn",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/0b2a6fefb140-composer-media-zh-cn.json",
-					"receipt_sha256": "453845527590f75653a7ecfd2f0ac66b10380dfc292baf94c8f8e12bd7b29351",
-					"scope": "Delta audit of the one ui.chat.composer_media key the composer button-slot change adds (sends_now); previously unchanged messages retain prior provenance"
+					"receipt": "i18n/receipts/809c7b5c7328-composer-media-confirms-zh-cn.json",
+					"receipt_sha256": "d813bbcc25c67ebd4c3732878f75f6338f8380a484177f3274e2c2a76b10f46b",
+					"scope": "Delta audit of ui.chat.composer_media.confirms (Enter now inserts the transcript; value changed in all 8 catalogues) and sends_now read coherently on the same hint line; previously unchanged messages retain prior provenance"
 				}
 			],
 			"status": "audited",
@@ -62132,6 +62270,29 @@
 							"receipt_sha256": "35d802cb2f5c2117e83a58e7cd3819479964cdfc14cae977896e692286bfe9d6",
 							"scope": "round 2: remediation delta 1844a072210c29a34ea1462d0ee31333d4407575..44e22f031ddaee2b3e10a0cd5b8f5a773cfe6d84",
 							"note": "Full independent pass; zero findings. Translated by a task subagent on the actual fallback model openai/gpt-6.1-sol after Anthropic quota exhaustion."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "02732c4406f9727405a3a9a7a98de3c9f604913cd7651350b4e29048f80cc1a4",
+					"target_sha256": "7617e7c56c14e9e8a2ad474ec3692fc754d842ae7603f9e5ad5e324c0dbf9ced",
+					"auditors": [
+						{
+							"agent": "reviewer-session",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-03",
+							"result": "clean",
+							"instance": "0b2a6fefb140-composer-media-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/0b2a6fefb140-composer-media-zh-cn.json",
+							"receipt_sha256": "453845527590f75653a7ecfd2f0ac66b10380dfc292baf94c8f8e12bd7b29351",
+							"scope": "Delta audit of the one ui.chat.composer_media key the composer button-slot change adds (sends_now); previously unchanged messages retain prior provenance"
 						}
 					],
 					"status": "audited"
