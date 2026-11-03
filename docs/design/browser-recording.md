@@ -8,7 +8,8 @@ it governs cannot drift apart. This document covers the DESKTOP host slice (PR-B
 this repository.
 
 Where it lives: `src/main/browser/actions/recording.ts` (state, capture, publish),
-`src/main/browser/protocol.ts` (methods, budgets, capabilities),
+`recording-hq.ts` / `recording-encoder-host.ts` / `recording-mux.ts` beside it (the
+opt-in high-quality engine, D15-D22), `src/main/browser/protocol.ts` (methods, budgets, capabilities),
 `src/main/browser/host.ts` (dispatch and the two scoping sets),
 `src/main/browser/cdp.ts` (`dropCaptures`, the one place every debugger boundary
 ends a capture), `scripts/browser-recording.test.mjs` (the rule-level suite), and
@@ -54,6 +55,49 @@ the real-path driver recorded in the PR's evidence matrix.
 - Audio is never captured, and no bytes cross the RPC wire (D3): the harness
   learns a path and a size, and verifies both from disk itself.
 - Two recordings may run at once, app-wide (D6). A third is refused with `busy`.
+  A high-quality recording (below) counts like any other, at its size.
+
+### High quality is opt-in and separate (D15-D22)
+
+- `record_start` takes an optional `quality: "standard" | "high"`. Absent and
+  `"standard"` are the same request and run everything above, unchanged: the same
+  CDP calls, the same AV1 clip, the same result keys (a golden test pins the call
+  list). Any other value is refused `record_quality` (`why: "value"`) before a CDP
+  call. The host advertises the `record_quality` capability token (not a method,
+  no `PROTO_VERSION` bump); a harness gates the param on it and checks the echoed
+  `codec: "h264"`, because a host without it ignores the field and records AV1.
+- `high` is a different engine, not a tuned one: Chromium's screencast supplies
+  PNG frames, a hidden per-recording window encodes them to H.264 High with
+  WebCodecs, and the host writes an MP4 itself (faststart, BT.709 limited range,
+  one key frame at the start and every 2 s). It exists because the AV1 recorder
+  has no quality lever and smears text on scrolling pages.
+- The clip is variable frame rate at up to 10 fps, with the page's own timestamps:
+  a static page costs almost nothing and the last frame is held until the stop.
+  Chromium produces a frame only after the previous one is acknowledged, so the
+  host delays the acknowledgement to hold ~10 fps and the encoder never queues
+  4K bitmaps. A page that paints nothing is nudged with one screenshot after
+  300 ms and refused `record_failed` after 3 s.
+- A start result carries `quality`, `codec: "h264"`, `fps: 10`,
+  `encoder: "hardware" | "software"`, `bitrate_bps` (the target: 4 / 8 / 16 Mbps
+  by area) and the MEASURED `width`/`height`, even for an unsized clip. A stop
+  result adds `quality`, `encoder`, `frames`, `measured_fps`, `avg_bitrate_kbps`
+  and `stop_reason: "stop" | "max_duration" | "max_bytes"`.
+- Hardware encoding is preferred. Software H.264 is used only at 1920x1080 or
+  smaller. Anything else is refused `record_quality_unavailable` with a `why` of
+  `no_h264_encoder`, `software_over_1080p`, `size_unsupported` or `encoder_start`,
+  and the host NEVER falls back to the AV1 path: the caller asked for the sharper
+  clip and can retry without `quality` knowingly. Hardware 4K is measured on
+  macOS only.
+- Hitting `max_bytes` ends a high clip GRACEFULLY: what is already recorded is
+  published with `stop_reason: "max_bytes"`. (The standard engine keeps its
+  `record_too_large` discard, because its bytes only exist at stop.) Memory is
+  bounded by that cap, and nothing touches the disk until the stop, so a hard kill
+  still leaves no file.
+- The encoder window dying or hanging fails the recording `record_failed`; every
+  exit (stop, abort at any debugger boundary, replace, a failed start, app quit)
+  destroys the window, drops the chunks, clears the timers and restores the
+  viewport. Visible-tab refusal, size validation and the concurrency caps are
+  unchanged.
 
 ## What the host cannot promise
 
@@ -89,6 +133,12 @@ record_start  {tab, requester, label.., path (abs, *.mp4), max_duration_s 1..600
                   width?, height? (only when the call was sized)}
 record_stop   {tab, requester}
               -> {path, bytes, duration_ms, auto_stopped:bool, fps, container, codec, width?, height?}
+quality:"high" (capability `record_quality`; D15-D22) adds:
+record_start  {quality?: "standard"|"high"}
+              -> + {quality:"high", codec:"h264", fps:10, encoder:"hardware"|"software",
+                    bitrate_bps, width, height (always, measured)}
+record_stop   -> + {quality:"high", encoder, frames, measured_fps, avg_bitrate_kbps,
+                    stop_reason:"stop"|"max_duration"|"max_bytes"}
 errors        code + data.reason (reasons below); Python renders copy by reason, host `message` is the fallback.
 ```
 
@@ -97,7 +147,10 @@ Reason values carried in `data.reason`: `record_unsupported` (Chromium < 153 or
 start or stop failure; Chromium's text verbatim), `record_path`, `record_size`
 (`param` in width/height/size, `why` in incomplete/range/odd/area/visible/
 not_applied), `record_active` (`busy`), `record_not_active`, `record_limit`
-(`busy`), `record_too_large`, `record_aborted` (the debugger-detach tombstone).
+(`busy`), `record_too_large`, `record_aborted` (the debugger-detach tombstone),
+`record_quality` (`why: "value"`, an unknown `quality`) and
+`record_quality_unavailable` (`why` in no_h264_encoder/software_over_1080p/
+size_unsupported/encoder_start).
 `record_size` is also the capability name that advertises the two params; it is
 not a wire method.
 
@@ -119,6 +172,14 @@ not a wire method.
 | **D12** | PR-C fixes `_capability_message` so a desktop-only method on the extension host says "desktop app only", not "toggle the extension". |
 | **D13** | No new `BrowserParams` fields: reuse `path` and `timeout_s`. |
 | **D14** | Capture params: fps 10 and audio off are fixed. Size is the fixed 1280x720 ceiling when `width`/`height` are omitted; when given (even ints 240..3840, area <= 3840x2160) they replace the ceiling with a real emulated viewport and the result reports the measured size. Raising the 4K ceiling is one constant per side plus docs. |
+| **D15** | **Question:** Capture and encode for opt-in high quality. **Taken:** keep Chromium's screencast for capture (`Page.startScreencast`, PNG, `everyNthFrame:1`), encode with WebCodecs H.264 in a hidden per-recording `BrowserWindow` (`show:false`, `sandbox`, `contextIsolation`, no Node, in-memory partition, navigation/permissions/popups denied, `backgroundThrottling:false`); frames go main -> IPC -> `createImageBitmap` -> `VideoFrame` -> `VideoEncoder`, chunks come back by IPC and main muxes them; `Page.screencastFrameAck` is delayed to pace the source; the base64 PNG is passed to the renderer unmodified (no `Buffer` decode in main). **Rejected:** tuning `Page.startScreenRecording` (no quality lever: AV1 realtime, fixed cpu_speed), a native AVFoundation helper (macOS-only, signing inside the notarisation flow), ffmpeg (`ffmpeg-static` is GPL-3.0 through x264, the repo is MIT), `utilityProcess` encoding (no WebCodecs), `MediaRecorder` on a canvas (wall-clock timing), JPEG frames (~2x bigger, no better), HEVC (hardware-only, weaker playback), one shared encoder window (a crash takes two clips). **Commits us to:** one window per recording destroyed on every exit, `recording-encoder.html` and its preload shipped as build inputs. **Overturned by:** main-process CPU above ~30 % of a core at 4K after the string pass-through (restrict `high` to 1080p or move to a native helper). **Owner:** coder. |
+| **D16** | **Question:** Wire surface. **Taken:** `quality:"standard"|"high"` on `record_start`; token `record_quality`; `high` emits H.264 only; default path byte-identical (golden test); harness echo-checks `codec:"h264"`. **Rejected:** a bitrate or fps arg (probe: target 4–32 Mbps made no visible difference, actual 1–2.6 Mbps); making `high` the default. **Commits us to:** `quality`, `record_quality`, `record_quality`/`record_quality_unavailable` reasons, `stop_reason`. **Overturned by:** a measured need for an fps arg (needs a 60 fps 4K CPU measurement first). **Owner:** coder. |
+| **D17** | **Question:** Frame timing. **Taken:** variable frame rate from screencast timestamps, key frame every 2 s, no B-frames, first frame nudged by `Page.captureScreenshot` after 300 ms, refuse after 3 s, hold last frame. **Rejected:** fixed-rate hold (re-encodes unchanged frames, costs CPU). **Commits us to:** a monotone timestamp assertion. **Overturned by:** a static-page screencast test showing a reliable first frame (drops the nudge). **Owner:** coder. |
+| **D18** | **Question:** Muxing. **Taken:** own writer extending `mp4.cjs`, faststart, `colr` box, in-memory chunks bounded by the cap, graceful cap finish with `stop_reason`. **Rejected:** mp4-muxer (deprecated), mediabunny (MPL-2.0, 724 KB, daily releases), fragmented MP4 (editor support), incremental disk writes (breaks "nothing touches disk until stop"). **Commits us to:** 32-bit offsets, no B-frames, `.part`/`linkSync` publish unchanged. **Overturned by:** a failed Chromium `<video>` decode of our output (switch to mediabunny). **Owner:** coder. |
+| **D19** | **Question:** Bitrate, level, hardware vs software, concurrency. **Taken:** High profile, 4/8/16 Mbps by area, `avc1.640033` (plus `avc1.640028` at ≤1080p once measured), hardware preferred, software ≤1080p only, concurrency rules unchanged. **Rejected:** `latencyMode:"quality"` (2.4x bitrate for +0.5 dB), software 4K (1.38 GB RSS, 88% CPU), HEVC/VP9. **Commits us to:** `record_limit` counts both modes. **Overturned by:** two-4K-encoder measurement; software 4K under ~600 MB. **Owner:** coder. |
+| **D20** | **Question:** Non-macOS behaviour. **Taken:** `isConfigSupported` hardware → software (≤1080p) → refuse `record_quality_unavailable`; never silent fallback. **Rejected:** silent fallback to the old path (gives the smeared clip). **Commits us to:** the guide must say 4K hardware is only measured on macOS. **Overturned by:** a Windows or Linux run showing the signal is unreliable. **Owner:** coder, then QA. |
+| **D21** | **Question:** Failure and exit paths. **Taken:** engine handle on `Recording`; dispose in `abortRecording`; `await Page.stopScreencast` where the tab survives; encoder crash settles `record_failed`; `before-quit` disposes. **Rejected:** a new hook in `cdp.ts` (the four boundaries already reach `abortRecording`). **Commits us to:** `Recording`/`Stoppable` gain `engine` and `encoder`. **Overturned by:** a fifth boundary found that bypasses `dropCaptures`. **Owner:** coder, reviewer. |
+| **D22** | **Question:** Test plan and PR split. **Taken:** UI PR first (golden default, fake-encoder lifecycle, mux unit tests, real-path matrix), harness PR second (token gate, echo check, docs, ledger). **Rejected:** a single combined PR (two repos); ffprobe-based checks (not installed). **Commits us to:** QA needs both worktrees for the end-to-end pass. **Overturned by:** none expected. **Owner:** manager. |
 
 ## What the real-path run measured
 
