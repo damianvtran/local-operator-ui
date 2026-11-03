@@ -548,7 +548,7 @@ export const createBaseTheme = (palette: ThemePalette): Theme => {
 					root: {
 						top: 0,
 						/* Opaque, not translucent. The old themes used an 80% canvas
-						   with no `backdrop-filter`, so the bar just leaked whatever
+						   with no backdrop blur, so the bar just leaked whatever
 						   scrolled behind it. It leaves the flow, so it takes
 						   `shadows[4]` from its default elevation. */
 						backgroundColor: palette.canvas,

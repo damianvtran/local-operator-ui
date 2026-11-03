@@ -708,7 +708,7 @@ const App: FC = () => {
 			 * reason is the rule rather than a count: `position: relative` establishes a
 			 * containing block for `absolute` descendants only. `fixed` resolves against
 			 * the viewport unless an ancestor carries `transform`, `filter`,
-			 * `perspective`, `backdrop-filter`, `contain` or `will-change` of one of
+			 * `perspective`, a backdrop blur, `contain` or `will-change` of one of
 			 * those - none of which is added here - so the floating alert, the update
 			 * notification, the dialogs, the sheets and the command palette keep
 			 * covering the window exactly as before. The two bands have LEFT that set: each

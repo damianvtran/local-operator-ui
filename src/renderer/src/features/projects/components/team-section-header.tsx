@@ -67,7 +67,7 @@ import { useI18nLocale } from "@shared/i18n/use-locale";
  * the scrolling `<ul>`'s `px-6` inset, so the band and a row both run
  * x=24..1256 at the 1280px frame - which is what lets a row scroll fully under
  * it with no pixel escaping beside it. OFF GLASS the fill is opaque and needs
- * no `backdrop-blur` and no scrim. ON GLASS it is the field overlay
+ * no blurred backdrop and no scrim. ON GLASS it is the field overlay
  * (`data-glass-well`): deliberately translucent, because a solid plate inside a
  * translucent column is the hard seam the surface pass removed. A row's text
  * can therefore be glimpsed under the band; the design takes that over the

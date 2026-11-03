@@ -1046,17 +1046,18 @@ for (const [themeName, label] of [
           for (const r of rules) {
             if (r.cssRules) walk(r.cssRules);
             const v = r.style && (r.style.getPropertyValue("backdrop-filter") || r.style.getPropertyValue("-webkit-backdrop-filter"));
-            if (v && v.trim() !== "none") out.push({ sel: r.selectorText || r.cssText.slice(0, 80), v });
+            if (v && v.trim() !== "none") out.push({ sel: r.selectorText || r.cssText.slice(0, 80), v, body: r.style.cssText });
           }
         };
         for (const sh of document.styleSheets) { try { walk(sh.cssRules); } catch {} }
         return out;
       })()`);
-			/* Tailwind's inert .backdrop-blur / .backdrop-filter shells carry only
-			 * var(--tw-backdrop-*) placeholders and are in every build, base included: the
-			 * shared definition of a layer (backdrop-filter-layers.mjs) excludes them, the
-			 * same one the stylesheet scan in contrast-contract.mjs uses. */
-			const blurs = declared.filter((d) => isRealBackdropFilter(d.v));
+			/* A Tailwind utility's backdrop-filter is only placeholders, with the effect in
+			 * a sibling --tw-backdrop-* property of the same rule: the shared definition of
+			 * a layer (backdrop-filter-layers.mjs, the one contrast-contract.mjs uses) reads
+			 * the rule body, so a real .backdrop-blur-md counts and the bare .backdrop-filter
+			 * shell does not. */
+			const blurs = declared.filter((d) => isRealBackdropFilter(d.v, d.body));
 			assert.ok(
 				blurs.length >= 1,
 				`${label}: no backdrop-filter declaration was found, so the scan measured nothing`,
@@ -1064,6 +1065,24 @@ for (const [themeName, label] of [
 			assert.ok(
 				blurs.length <= 1,
 				`${label}: ${blurs.length} backdrop-filter declarations (ceiling 1): ${JSON.stringify(blurs)}`,
+			);
+			/*
+			 * The same ceiling on the MOUNTED page: no element outside the isolating band
+			 * computes a backdrop-filter. This is what a stylesheet scan cannot say - a
+			 * rule that is in the build but unused is not a layer, one that an element
+			 * carries is.
+			 */
+			const filtered = await cdp.ev(`[...document.querySelectorAll("*")]
+        .filter((e) => {
+          const cs = getComputedStyle(e);
+          const v = cs.backdropFilter || cs.webkitBackdropFilter || "none";
+          return v !== "none" && !e.matches('[data-glass-plane="band-backdrop"]');
+        })
+        .map((e) => e.tagName.toLowerCase() + "." + String(e.className).slice(0, 80))`);
+			assert.deepEqual(
+				filtered,
+				[],
+				`${label}: elements outside the band compute a backdrop-filter`,
 			);
 			/* The scale's variables are published and the pane var is the lifted net. */
 			const vars = await cdp.ev(

@@ -66,10 +66,12 @@ The dark edge is the same colour in both builds, serialised differently (`oklab(
 Also published after: `--lo-glass-pane-lift` 0.14 / 0 and `--lo-glass-edge-mix` 0.06 / 0 (light / dark).
 
 `backdrop-filter`, all four frames: stylesheet declarations that are not `none` = **3** by this naive walk, but two
-are Tailwind's inert utility shells (`.backdrop-blur`, `.backdrop-filter`: `var(--tw-backdrop-*)` placeholders that
-resolve to nothing); the single real value is `blur(12px)` (the isolating band, `index.css:2813`). The repo's own
-test counts the same way and asserts one over the BUILT renderer stylesheet, where Tailwind drops unused utilities;
-Storybook's dev stylesheet keeps them. Elements whose computed `backdrop-filter` is not `none`: **2** per frame,
+are Tailwind's unused utility rules (`.backdrop-blur`, `.backdrop-filter`: `var(--tw-backdrop-*)` placeholders; no
+element in these frames carries either class, so they paint nothing); the single real value is `blur(12px)` (the
+isolating band, `index.css:2813`). The repo's own test asserts one over the BUILT renderer stylesheet, where Tailwind
+drops unused utilities (only the bare `.backdrop-filter` shell remains, which sets no function and is not a layer);
+Storybook's dev stylesheet keeps them. A rule that DOES set a `--tw-backdrop-*` function (a used `.backdrop-blur-md`)
+counts as a layer. Elements whose computed `backdrop-filter` is not `none`: **2** per frame,
 both the sticky `H3` section headers in the files list (`bg-surface`, `blur(12px)`), identical before and after.
 So no backdrop-filter was added by the change.
 

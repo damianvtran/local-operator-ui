@@ -1286,21 +1286,25 @@ slider 80). The scale moves the two things the app owns:
 - **Text keeps AA.** `scripts/contrast-contract.mjs` holds `ink`, `inkMuted` and `inkDim`
   over the raw canvas, surface and elevated grounds and the lifted pane, with and without
   each state overlay, every slider position (steps of 5), every material tier at its
-  own greys (light: window 199 and 224, menu 171, popover 143; dark: the tier's grey): 245,700 pairs, none under their floor (4.5, or the stated 3.5 for
-  `inkDim` on an overlay). The tightest pair on light is `rosePineDawn` `inkDim` on
-  `surface` at slider 100 over grey 199, 4.55:1; on dark, `cyberpunk` `inkDim` on `canvas`
+  own greys (light: window 199 and 224, menu 171, popover 143; dark: the tier's grey):
+  245,700 pairs, none under their floor (4.5, or the stated 3.5 for `inkDim` on an
+  overlay). The tightest pair on light is `rosePineDawn` `inkDim` on `surface` at slider 100 over grey 199, 4.55:1; on dark, `cyberpunk` `inkDim` on `canvas`
   at slider 100 over grey 81, 4.52:1. Neither is on the lifted pane: the lift makes the
   pane MORE opaque, which only raises ink contrast.
 - **Sticky section headers and the seam.** A sticky section header band keeps its own
-  alpha floor and now steps about 15 RGB points off the lifted pane (about 27 before the lift; design
-  review round 1 figures), so the header still reads as a band without a new rule. The
-  pane-to-rail seam is the heaviest edge on light (luminance step about 0.155, design review round 1) because the
-  lifted pane is the lightest region on the screen. A tighter `window` lift of 0.10 was
+  alpha floor and now steps about 17 RGB points off the lifted pane (about 30 before the lift;
+  light, backdrop grey 199; 14 against 26 at grey 224), so the header still reads as a band
+  without a new rule. The pane-to-rail seam is the heaviest edge on light (relative-luminance
+  step about 0.18 to 0.20; the canvas-to-pane seam is about 0.15 to 0.17) because the lifted
+  pane is the lightest region on the screen. Both figures are medians read from the committed
+  `docs/pr-evidence/glass-light-scale` frames. A tighter `window` lift of 0.10 was
   evaluated and rejected: it does not clear the 1.5 pane-step floor (tightest ΔE00 1.10 at
   `tokyoNightDay`, slider 95, grey 224; 1.59 over grey 199 only), where 0.14 holds 1.53.
-- **No new blur.** Exactly one real `backdrop-filter` exists in the stylesheet (inert
-  Tailwind shells whose value is only `var(--tw-backdrop-*)` placeholders, and `none`,
-  do not count; one shared definition, `scripts/backdrop-filter-layers.mjs`), the isolating
+- **No new blur.** Exactly one real `backdrop-filter` exists in the stylesheet (`none`
+  and Tailwind's bare `.backdrop-filter` shell, whose value is only `var(--tw-backdrop-*)`
+  placeholders with no function set beside them, do not count; a utility such as
+  `.backdrop-blur-md` does, because it sets `--tw-backdrop-blur` in the same rule; one
+  shared definition, `scripts/backdrop-filter-layers.mjs`), the isolating
   band's `blur(12px)`, and `pnpm check-themes` and `scripts/window-glass-cdp.test.mjs`
   fail above one. `saturate()`, a larger blur and a shadow were considered and rejected:
   a `backdrop-filter` samples the page behind the element, and behind the window's

@@ -15,7 +15,10 @@ import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { build } from "esbuild";
 import { JSDOM } from "jsdom";
-import { realBackdropDeclarations } from "./backdrop-filter-layers.mjs";
+import {
+	isRealBackdropFilter,
+	realBackdropDeclarations,
+} from "./backdrop-filter-layers.mjs";
 import {
 	LANE_ALPHA_CEILING,
 	LANE_ROLES,
@@ -1267,6 +1270,86 @@ test("G-8d index.css still reads the lifted pane var and keeps the glass panel-e
 		realBackdropDeclarations(css).length,
 		1,
 		"index.css must declare exactly one real backdrop-filter (the isolating band)",
+	);
+});
+
+/*
+ * The definition of a blur layer, on the shapes Tailwind and hand-written CSS really
+ * produce. The Tailwind utility's `backdrop-filter` is only placeholders; its blur
+ * lives in a sibling `--tw-backdrop-*` property, so the verdict is the RULE's.
+ */
+test("G-8e a backdrop-filter layer is judged by its rule, not its value alone", () => {
+	const PH =
+		"var(--tw-backdrop-blur,) var(--tw-backdrop-brightness,) var(--tw-backdrop-contrast,) var(--tw-backdrop-grayscale,) var(--tw-backdrop-hue-rotate,) var(--tw-backdrop-invert,) var(--tw-backdrop-opacity,) var(--tw-backdrop-saturate,) var(--tw-backdrop-sepia,)";
+	const count = (css) => realBackdropDeclarations(css).length;
+	assert.equal(
+		count(
+			`.backdrop-blur-md{--tw-backdrop-blur:blur(var(--blur-md));-webkit-backdrop-filter:${PH};backdrop-filter:${PH}}`,
+		),
+		1,
+		"a Tailwind blur utility is one layer (prefixed + unprefixed together are one)",
+	);
+	assert.equal(
+		count(
+			`.backdrop-saturate-150{--tw-backdrop-saturate:saturate(150%);backdrop-filter:${PH}}`,
+		),
+		1,
+		"any --tw-backdrop-* function counts, not only blur",
+	);
+	assert.equal(
+		count(
+			`.backdrop-filter{-webkit-backdrop-filter:${PH};backdrop-filter:${PH}}`,
+		),
+		0,
+		"the bare .backdrop-filter shell sets no function, so it paints nothing",
+	);
+	assert.equal(
+		count(`.x{--tw-backdrop-blur:;backdrop-filter:${PH}}`),
+		0,
+		"an empty --tw-backdrop-* value sets nothing",
+	);
+	assert.equal(count(".x{backdrop-filter:blur(4px) var(--tw-x)}"), 1);
+	assert.equal(count(".x{backdrop-filter:saturate(1.2)}"), 1);
+	assert.equal(
+		count(
+			"@supports (backdrop-filter:blur(1px)){.x{backdrop-filter:blur(8px)}}",
+		),
+		1,
+		"a layer inside @supports counts",
+	);
+	assert.equal(
+		count(
+			`@supports (backdrop-filter:blur(1px)){.x{--tw-backdrop-blur:blur(8px);backdrop-filter:${PH}}}`,
+		),
+		1,
+		"a Tailwind blur inside @supports counts",
+	);
+	assert.equal(count(".x{backdrop-filter:none}"), 0);
+	assert.equal(count(".x{backdrop-filter:}"), 0);
+	assert.equal(
+		count(".x{-webkit-backdrop-filter:blur(4px)}"),
+		1,
+		"a prefixed-only blur is a layer, as the CSSOM walk in the CDP test sees it",
+	);
+	assert.equal(
+		count(".x{-WEBKIT-BACKDROP-FILTER:blur(4px)}"),
+		1,
+		"property names are case-insensitive",
+	);
+	assert.equal(
+		count(".a{backdrop-filter:blur(4px)}.b{backdrop-filter:blur(4px)}"),
+		2,
+		"two rules are two layers",
+	);
+	/* The CSSOM side reads the same verdict from a value plus the rule's cssText. */
+	assert.equal(
+		isRealBackdropFilter(PH, "--tw-backdrop-blur: blur(8px);"),
+		true,
+	);
+	assert.equal(isRealBackdropFilter(PH, ""), false);
+	assert.equal(
+		isRealBackdropFilter("none", "--tw-backdrop-blur: blur(8px);"),
+		false,
 	);
 });
 
