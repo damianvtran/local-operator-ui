@@ -6229,8 +6229,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.ownerAudit",
-			"source_sha256": "1be9b36e0201411304198a33f426ee66b41bdd6e2f96372b1c325fb5a1a848ef",
-			"target_sha256": "ad384109f9a8881d3db13338d55b39480e714487334a55f3b7dc9285641eb03e",
+			"source_sha256": "41a736f06c88440a3a662521643aa5b40d43acd83a898053aad74a4122fc7cdd",
+			"target_sha256": "60a92d32e39d96b2a1fda68b207492b04de596495d59264646f19b3a4fb38384",
 			"translator": {
 				"agent": "coder-baa670dd72df",
 				"model": "openai/gpt-6.1-sol",
@@ -6239,21 +6239,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "independent-translation-auditor",
-					"model": "anthropic/claude-sonnet-5-5",
-					"date": "2026-11-01",
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-02",
 					"result": "clean",
-					"instance": "75830dea2957-owner-audit-reply-delta",
+					"instance": "5b6b5bce99e4-merge1554-es",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/75830dea2957-owner-audit-reply-delta.json",
-					"receipt_sha256": "a40a1310e10ee075fe8cb56706bd2bad96ffe0284b637c7a0113c7b4be414a41",
-					"scope": "Two-key textual delta: older_replies and empty_replies; hash-verified working-tree files, not staged; sole auditor, no rendered RTL validation",
-					"note": "Sole audit, not a second independent pass. Receipt withdraws unsupported earlier model claim; records terminology observations and confidence limits."
+					"receipt": "i18n/receipts/5b6b5bce99e4-merge1554-es.json",
+					"receipt_sha256": "24317f545db19968092c378c1f4208c8bed19ff422296dce5255c94b8de24db1",
+					"scope": "Post-merge re-audit (#1554 x main e8f34569c5b): 5 receipt keys (inspect_body, inline_image_receipt, previous_chunk, next_chunk, chunk_number) re-read linguistically; main-side bytes covered by main's row",
+					"note": "Post-merge re-audit by reviewer session 5b6b5bce99e4: 5 receipt keys byte-identical to audited bbb6cd2952f, rest byte-identical to main e8f34569c5b. Evidence: i18n/audits/evidence/es/ui.ownerAudit/owneraudit-receipt-merge1554-audit-5b6b5bce99e4-merge1554-es/record.json"
 				}
 			],
 			"status": "audited",
@@ -6331,6 +6331,30 @@
 						"model": "radient/auto",
 						"date": "2026-10-29"
 					}
+				},
+				{
+					"source_sha256": "1be9b36e0201411304198a33f426ee66b41bdd6e2f96372b1c325fb5a1a848ef",
+					"target_sha256": "ad384109f9a8881d3db13338d55b39480e714487334a55f3b7dc9285641eb03e",
+					"auditors": [
+						{
+							"agent": "independent-translation-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-01",
+							"result": "clean",
+							"instance": "75830dea2957-owner-audit-reply-delta",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/75830dea2957-owner-audit-reply-delta.json",
+							"receipt_sha256": "a40a1310e10ee075fe8cb56706bd2bad96ffe0284b637c7a0113c7b4be414a41",
+							"scope": "Two-key textual delta: older_replies and empty_replies; hash-verified working-tree files, not staged; sole auditor, no rendered RTL validation",
+							"note": "Sole audit, not a second independent pass. Receipt withdraws unsupported earlier model claim; records terminology observations and confidence limits."
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
@@ -15267,8 +15291,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.ownerAudit",
-			"source_sha256": "1be9b36e0201411304198a33f426ee66b41bdd6e2f96372b1c325fb5a1a848ef",
-			"target_sha256": "c499d49bb20b231d99425555e2b5556fc60cf7ecf0f2cdfee6cb4baf24b84655",
+			"source_sha256": "41a736f06c88440a3a662521643aa5b40d43acd83a898053aad74a4122fc7cdd",
+			"target_sha256": "6ca5a7ed0b2c539a5ebc95cae314cb2c9e33644f5a29a565ee9eab4b4c3a4b2b",
 			"translator": {
 				"agent": "coder-baa670dd72df",
 				"model": "openai/gpt-6.1-sol",
@@ -15277,21 +15301,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "independent-translation-auditor",
-					"model": "anthropic/claude-sonnet-5-5",
-					"date": "2026-11-01",
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-02",
 					"result": "clean",
-					"instance": "75830dea2957-owner-audit-reply-delta",
+					"instance": "5b6b5bce99e4-merge1554-fr",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/75830dea2957-owner-audit-reply-delta.json",
-					"receipt_sha256": "a40a1310e10ee075fe8cb56706bd2bad96ffe0284b637c7a0113c7b4be414a41",
-					"scope": "Two-key textual delta: older_replies and empty_replies; hash-verified working-tree files, not staged; sole auditor, no rendered RTL validation",
-					"note": "Sole audit, not a second independent pass. Receipt withdraws unsupported earlier model claim; records terminology observations and confidence limits."
+					"receipt": "i18n/receipts/5b6b5bce99e4-merge1554-fr.json",
+					"receipt_sha256": "fb7ecbf4ed8220a5b6053027e769aacd69f95ae2adc7183ca6f1ac746dfb78b7",
+					"scope": "Post-merge re-audit (#1554 x main e8f34569c5b): 5 receipt keys (inspect_body, inline_image_receipt, previous_chunk, next_chunk, chunk_number) re-read linguistically; main-side bytes covered by main's row",
+					"note": "Post-merge re-audit by reviewer session 5b6b5bce99e4: 5 receipt keys byte-identical to audited bbb6cd2952f, rest byte-identical to main e8f34569c5b. Evidence: i18n/audits/evidence/fr/ui.ownerAudit/owneraudit-receipt-merge1554-audit-5b6b5bce99e4-merge1554-fr/record.json"
 				}
 			],
 			"status": "audited",
@@ -15369,6 +15393,30 @@
 						"model": "radient/auto",
 						"date": "2026-10-29"
 					}
+				},
+				{
+					"source_sha256": "1be9b36e0201411304198a33f426ee66b41bdd6e2f96372b1c325fb5a1a848ef",
+					"target_sha256": "c499d49bb20b231d99425555e2b5556fc60cf7ecf0f2cdfee6cb4baf24b84655",
+					"auditors": [
+						{
+							"agent": "independent-translation-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-01",
+							"result": "clean",
+							"instance": "75830dea2957-owner-audit-reply-delta",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/75830dea2957-owner-audit-reply-delta.json",
+							"receipt_sha256": "a40a1310e10ee075fe8cb56706bd2bad96ffe0284b637c7a0113c7b4be414a41",
+							"scope": "Two-key textual delta: older_replies and empty_replies; hash-verified working-tree files, not staged; sole auditor, no rendered RTL validation",
+							"note": "Sole audit, not a second independent pass. Receipt withdraws unsupported earlier model claim; records terminology observations and confidence limits."
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
@@ -24555,8 +24603,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.ownerAudit",
-			"source_sha256": "1be9b36e0201411304198a33f426ee66b41bdd6e2f96372b1c325fb5a1a848ef",
-			"target_sha256": "bd8b43142e5e8be93a12ffd30fa07e2353a03171c6ed101a37a04eab5f96590d",
+			"source_sha256": "41a736f06c88440a3a662521643aa5b40d43acd83a898053aad74a4122fc7cdd",
+			"target_sha256": "2846d6611af4103fddf0cda055ecbc707d521ea801d90974bce5f757ea7b0985",
 			"translator": {
 				"agent": "coder-baa670dd72df",
 				"model": "openai/gpt-6.1-sol",
@@ -24565,21 +24613,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "independent-translation-auditor",
-					"model": "anthropic/claude-sonnet-5-5",
-					"date": "2026-11-01",
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-02",
 					"result": "clean",
-					"instance": "75830dea2957-owner-audit-reply-delta",
+					"instance": "5b6b5bce99e4-merge1554-hi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/75830dea2957-owner-audit-reply-delta.json",
-					"receipt_sha256": "a40a1310e10ee075fe8cb56706bd2bad96ffe0284b637c7a0113c7b4be414a41",
-					"scope": "Two-key textual delta: older_replies and empty_replies; hash-verified working-tree files, not staged; sole auditor, no rendered RTL validation",
-					"note": "Sole audit, not a second independent pass. Receipt withdraws unsupported earlier model claim; records terminology observations and confidence limits."
+					"receipt": "i18n/receipts/5b6b5bce99e4-merge1554-hi.json",
+					"receipt_sha256": "2dbc740857051e68a9246deed45a4f7f1bf3b57e89b20bae31f36d9e1d7f627a",
+					"scope": "Post-merge re-audit (#1554 x main e8f34569c5b): 5 receipt keys (inspect_body, inline_image_receipt, previous_chunk, next_chunk, chunk_number) re-read linguistically; main-side bytes covered by main's row",
+					"note": "Post-merge re-audit by reviewer session 5b6b5bce99e4: 5 receipt keys byte-identical to audited bbb6cd2952f, rest byte-identical to main e8f34569c5b. Evidence: i18n/audits/evidence/hi/ui.ownerAudit/owneraudit-receipt-merge1554-audit-5b6b5bce99e4-merge1554-hi/record.json"
 				}
 			],
 			"status": "audited",
@@ -24657,6 +24705,30 @@
 						"model": "radient/auto",
 						"date": "2026-10-29"
 					}
+				},
+				{
+					"source_sha256": "1be9b36e0201411304198a33f426ee66b41bdd6e2f96372b1c325fb5a1a848ef",
+					"target_sha256": "bd8b43142e5e8be93a12ffd30fa07e2353a03171c6ed101a37a04eab5f96590d",
+					"auditors": [
+						{
+							"agent": "independent-translation-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-01",
+							"result": "clean",
+							"instance": "75830dea2957-owner-audit-reply-delta",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/75830dea2957-owner-audit-reply-delta.json",
+							"receipt_sha256": "a40a1310e10ee075fe8cb56706bd2bad96ffe0284b637c7a0113c7b4be414a41",
+							"scope": "Two-key textual delta: older_replies and empty_replies; hash-verified working-tree files, not staged; sole auditor, no rendered RTL validation",
+							"note": "Sole audit, not a second independent pass. Receipt withdraws unsupported earlier model claim; records terminology observations and confidence limits."
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
@@ -33471,8 +33543,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.ownerAudit",
-			"source_sha256": "1be9b36e0201411304198a33f426ee66b41bdd6e2f96372b1c325fb5a1a848ef",
-			"target_sha256": "ec6a85175a359e1cc6a40ee40c882402028b19cc0b10cdd1d7729cbc6118d6b6",
+			"source_sha256": "41a736f06c88440a3a662521643aa5b40d43acd83a898053aad74a4122fc7cdd",
+			"target_sha256": "06ab8825ff96909ba23446b656e7e7e01a547c92ded2e01d3b8b230e165625a2",
 			"translator": {
 				"agent": "coder-baa670dd72df",
 				"model": "openai/gpt-6.1-sol",
@@ -33481,21 +33553,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "independent-translation-auditor",
-					"model": "anthropic/claude-sonnet-5-5",
-					"date": "2026-11-01",
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-02",
 					"result": "clean",
-					"instance": "75830dea2957-owner-audit-reply-delta",
+					"instance": "5b6b5bce99e4-merge1554-ru",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/75830dea2957-owner-audit-reply-delta.json",
-					"receipt_sha256": "a40a1310e10ee075fe8cb56706bd2bad96ffe0284b637c7a0113c7b4be414a41",
-					"scope": "Two-key textual delta: older_replies and empty_replies; hash-verified working-tree files, not staged; sole auditor, no rendered RTL validation",
-					"note": "Sole audit, not a second independent pass. Receipt withdraws unsupported earlier model claim; records terminology observations and confidence limits."
+					"receipt": "i18n/receipts/5b6b5bce99e4-merge1554-ru.json",
+					"receipt_sha256": "8f2e23f57222a41b340148e6a9eaf77fd8cbb6fc45b917cc223107a1f0f97afe",
+					"scope": "Post-merge re-audit (#1554 x main e8f34569c5b): 5 receipt keys (inspect_body, inline_image_receipt, previous_chunk, next_chunk, chunk_number) re-read linguistically; main-side bytes covered by main's row",
+					"note": "Post-merge re-audit by reviewer session 5b6b5bce99e4: 5 receipt keys byte-identical to audited bbb6cd2952f, rest byte-identical to main e8f34569c5b. Evidence: i18n/audits/evidence/ru/ui.ownerAudit/owneraudit-receipt-merge1554-audit-5b6b5bce99e4-merge1554-ru/record.json"
 				}
 			],
 			"status": "audited",
@@ -33573,6 +33645,30 @@
 						"model": "radient/auto",
 						"date": "2026-10-29"
 					}
+				},
+				{
+					"source_sha256": "1be9b36e0201411304198a33f426ee66b41bdd6e2f96372b1c325fb5a1a848ef",
+					"target_sha256": "ec6a85175a359e1cc6a40ee40c882402028b19cc0b10cdd1d7729cbc6118d6b6",
+					"auditors": [
+						{
+							"agent": "independent-translation-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-01",
+							"result": "clean",
+							"instance": "75830dea2957-owner-audit-reply-delta",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/75830dea2957-owner-audit-reply-delta.json",
+							"receipt_sha256": "a40a1310e10ee075fe8cb56706bd2bad96ffe0284b637c7a0113c7b4be414a41",
+							"scope": "Two-key textual delta: older_replies and empty_replies; hash-verified working-tree files, not staged; sole auditor, no rendered RTL validation",
+							"note": "Sole audit, not a second independent pass. Receipt withdraws unsupported earlier model claim; records terminology observations and confidence limits."
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
@@ -42464,8 +42560,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.ownerAudit",
-			"source_sha256": "1be9b36e0201411304198a33f426ee66b41bdd6e2f96372b1c325fb5a1a848ef",
-			"target_sha256": "eed43be662a13236caeb73787b9f1a583f7134fb53162834c7543dea1286cb39",
+			"source_sha256": "41a736f06c88440a3a662521643aa5b40d43acd83a898053aad74a4122fc7cdd",
+			"target_sha256": "cd2218494c7ebfbe4650af82e5fc38f5c5e0bbfba614caa0ec61c08e30573dd7",
 			"translator": {
 				"agent": "coder-baa670dd72df",
 				"model": "openai/gpt-6.1-sol",
@@ -42474,21 +42570,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "independent-translation-auditor",
-					"model": "anthropic/claude-sonnet-5-5",
-					"date": "2026-11-01",
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-02",
 					"result": "clean",
-					"instance": "75830dea2957-owner-audit-reply-delta",
+					"instance": "5b6b5bce99e4-merge1554-ur",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/75830dea2957-owner-audit-reply-delta.json",
-					"receipt_sha256": "a40a1310e10ee075fe8cb56706bd2bad96ffe0284b637c7a0113c7b4be414a41",
-					"scope": "Two-key textual delta: older_replies and empty_replies; hash-verified working-tree files, not staged; sole auditor, no rendered RTL validation",
-					"note": "Sole audit, not a second independent pass. Receipt withdraws unsupported earlier model claim; records terminology observations and confidence limits."
+					"receipt": "i18n/receipts/5b6b5bce99e4-merge1554-ur.json",
+					"receipt_sha256": "f4d1294dc06f3c53e272fca577bab951ecdb3c38325f3bec2a41504dc3b8642d",
+					"scope": "Post-merge re-audit (#1554 x main e8f34569c5b): 5 receipt keys (inspect_body, inline_image_receipt, previous_chunk, next_chunk, chunk_number) re-read linguistically; main-side bytes covered by main's row",
+					"note": "Post-merge re-audit by reviewer session 5b6b5bce99e4: 5 receipt keys byte-identical to audited bbb6cd2952f, rest byte-identical to main e8f34569c5b. Evidence: i18n/audits/evidence/ur/ui.ownerAudit/owneraudit-receipt-merge1554-audit-5b6b5bce99e4-merge1554-ur/record.json"
 				}
 			],
 			"status": "audited",
@@ -42566,6 +42662,30 @@
 						"model": "radient/auto",
 						"date": "2026-10-29"
 					}
+				},
+				{
+					"source_sha256": "1be9b36e0201411304198a33f426ee66b41bdd6e2f96372b1c325fb5a1a848ef",
+					"target_sha256": "eed43be662a13236caeb73787b9f1a583f7134fb53162834c7543dea1286cb39",
+					"auditors": [
+						{
+							"agent": "independent-translation-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-01",
+							"result": "clean",
+							"instance": "75830dea2957-owner-audit-reply-delta",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/75830dea2957-owner-audit-reply-delta.json",
+							"receipt_sha256": "a40a1310e10ee075fe8cb56706bd2bad96ffe0284b637c7a0113c7b4be414a41",
+							"scope": "Two-key textual delta: older_replies and empty_replies; hash-verified working-tree files, not staged; sole auditor, no rendered RTL validation",
+							"note": "Sole audit, not a second independent pass. Receipt withdraws unsupported earlier model claim; records terminology observations and confidence limits."
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
@@ -51606,8 +51726,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.ownerAudit",
-			"source_sha256": "1be9b36e0201411304198a33f426ee66b41bdd6e2f96372b1c325fb5a1a848ef",
-			"target_sha256": "b93efa8b94f16ef47bb20039d7ff23100d786a26446db98bc7373c3a6c1370ab",
+			"source_sha256": "41a736f06c88440a3a662521643aa5b40d43acd83a898053aad74a4122fc7cdd",
+			"target_sha256": "9cabff06a61347f21c9c12f80b11a39c381f049ad04e29e6583444008d093763",
 			"translator": {
 				"agent": "coder-baa670dd72df",
 				"model": "openai/gpt-6.1-sol",
@@ -51616,21 +51736,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "independent-translation-auditor",
-					"model": "anthropic/claude-sonnet-5-5",
-					"date": "2026-11-01",
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-02",
 					"result": "clean",
-					"instance": "75830dea2957-owner-audit-reply-delta",
+					"instance": "5b6b5bce99e4-merge1554-vi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/75830dea2957-owner-audit-reply-delta.json",
-					"receipt_sha256": "a40a1310e10ee075fe8cb56706bd2bad96ffe0284b637c7a0113c7b4be414a41",
-					"scope": "Two-key textual delta: older_replies and empty_replies; hash-verified working-tree files, not staged; sole auditor, no rendered RTL validation",
-					"note": "Sole audit, not a second independent pass. Receipt withdraws unsupported earlier model claim; records terminology observations and confidence limits."
+					"receipt": "i18n/receipts/5b6b5bce99e4-merge1554-vi.json",
+					"receipt_sha256": "66c8739ca64f4563fb17e628391737489bd04cb5e5ce3e890e73d1ac4b57fd76",
+					"scope": "Post-merge re-audit (#1554 x main e8f34569c5b): 5 receipt keys (inspect_body, inline_image_receipt, previous_chunk, next_chunk, chunk_number) re-read linguistically; main-side bytes covered by main's row",
+					"note": "Post-merge re-audit by reviewer session 5b6b5bce99e4: 5 receipt keys byte-identical to audited bbb6cd2952f, rest byte-identical to main e8f34569c5b. Evidence: i18n/audits/evidence/vi/ui.ownerAudit/owneraudit-receipt-merge1554-audit-5b6b5bce99e4-merge1554-vi/record.json"
 				}
 			],
 			"status": "audited",
@@ -51708,6 +51828,30 @@
 						"model": "radient/auto",
 						"date": "2026-10-29"
 					}
+				},
+				{
+					"source_sha256": "1be9b36e0201411304198a33f426ee66b41bdd6e2f96372b1c325fb5a1a848ef",
+					"target_sha256": "b93efa8b94f16ef47bb20039d7ff23100d786a26446db98bc7373c3a6c1370ab",
+					"auditors": [
+						{
+							"agent": "independent-translation-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-01",
+							"result": "clean",
+							"instance": "75830dea2957-owner-audit-reply-delta",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/75830dea2957-owner-audit-reply-delta.json",
+							"receipt_sha256": "a40a1310e10ee075fe8cb56706bd2bad96ffe0284b637c7a0113c7b4be414a41",
+							"scope": "Two-key textual delta: older_replies and empty_replies; hash-verified working-tree files, not staged; sole auditor, no rendered RTL validation",
+							"note": "Sole audit, not a second independent pass. Receipt withdraws unsupported earlier model claim; records terminology observations and confidence limits."
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
@@ -61359,8 +61503,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.ownerAudit",
-			"source_sha256": "1be9b36e0201411304198a33f426ee66b41bdd6e2f96372b1c325fb5a1a848ef",
-			"target_sha256": "240847e1b6fb177418142c05de7d28c2ad3991809d26b97db61591877d23c568",
+			"source_sha256": "41a736f06c88440a3a662521643aa5b40d43acd83a898053aad74a4122fc7cdd",
+			"target_sha256": "b22c9a37f6f23f45855905bd1bc606934ca6d39c9dc73b090a1ffa1b10294a8b",
 			"translator": {
 				"agent": "coder-baa670dd72df",
 				"model": "openai/gpt-6.1-sol",
@@ -61369,21 +61513,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "independent-translation-auditor",
-					"model": "anthropic/claude-sonnet-5-5",
-					"date": "2026-11-01",
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-02",
 					"result": "clean",
-					"instance": "75830dea2957-owner-audit-reply-delta",
+					"instance": "cd08059be49d-merge1554-zh-cn",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/75830dea2957-owner-audit-reply-delta.json",
-					"receipt_sha256": "a40a1310e10ee075fe8cb56706bd2bad96ffe0284b637c7a0113c7b4be414a41",
-					"scope": "Two-key textual delta: older_replies and empty_replies; hash-verified working-tree files, not staged; sole auditor, no rendered RTL validation",
-					"note": "Sole audit, not a second independent pass. Receipt withdraws unsupported earlier model claim; records terminology observations and confidence limits."
+					"receipt": "i18n/receipts/cd08059be49d-merge1554-zh-cn.json",
+					"receipt_sha256": "2b50fddb89bf160c9fa9ca5cf340e1c11cd00784320ae497db0402a6bb4173d0",
+					"scope": "Narrow re-audit of bc53982680e (ZH1/ZH2 applied): chunk_number and inline_image_receipt re-read linguistically; other 38 values byte-identical to 738df0eb884 (audited 5b6b5bce99e4)",
+					"note": "Re-audit by reviewer session cd08059be49d: ZH1/ZH2 fixed, en unchanged, 38 values byte-identical to 738df0eb884. Evidence: i18n/audits/evidence/zh-CN/ui.ownerAudit/owneraudit-receipt-merge1554-audit-cd08059be49d-merge1554-zh-cn/record.json"
 				}
 			],
 			"status": "audited",
@@ -61461,6 +61605,54 @@
 						"model": "radient/auto",
 						"date": "2026-10-29"
 					}
+				},
+				{
+					"source_sha256": "1be9b36e0201411304198a33f426ee66b41bdd6e2f96372b1c325fb5a1a848ef",
+					"target_sha256": "240847e1b6fb177418142c05de7d28c2ad3991809d26b97db61591877d23c568",
+					"auditors": [
+						{
+							"agent": "independent-translation-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-01",
+							"result": "clean",
+							"instance": "75830dea2957-owner-audit-reply-delta",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/75830dea2957-owner-audit-reply-delta.json",
+							"receipt_sha256": "a40a1310e10ee075fe8cb56706bd2bad96ffe0284b637c7a0113c7b4be414a41",
+							"scope": "Two-key textual delta: older_replies and empty_replies; hash-verified working-tree files, not staged; sole auditor, no rendered RTL validation",
+							"note": "Sole audit, not a second independent pass. Receipt withdraws unsupported earlier model claim; records terminology observations and confidence limits."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "41a736f06c88440a3a662521643aa5b40d43acd83a898053aad74a4122fc7cdd",
+					"target_sha256": "03c6163b6af351b513fe1a87096e79495edc4c5a78a181bbc87f93a2efc265e4",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-02",
+							"result": "clean-with-findings",
+							"instance": "5b6b5bce99e4-merge1554-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 2,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/5b6b5bce99e4-merge1554-zh-cn.json",
+							"receipt_sha256": "76d5ed4ac82f882237afc78f7f5ebd051d2800c2d2dbe2ea94a05072dae210d1",
+							"scope": "Post-merge re-audit (#1554 x main e8f34569c5b): 5 receipt keys (inspect_body, inline_image_receipt, previous_chunk, next_chunk, chunk_number) re-read linguistically; main-side bytes covered by main's row",
+							"note": "Post-merge re-audit by reviewer session 5b6b5bce99e4: 5 receipt keys byte-identical to audited bbb6cd2952f, rest byte-identical to main e8f34569c5b. Evidence: i18n/audits/evidence/zh-CN/ui.ownerAudit/owneraudit-receipt-merge1554-audit-5b6b5bce99e4-merge1554-zh-cn/record.json"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},

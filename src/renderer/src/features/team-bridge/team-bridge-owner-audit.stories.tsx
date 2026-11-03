@@ -420,6 +420,106 @@ type Story = StoryObj<typeof meta>;
  * absent body, and the agent's own message. */
 export const Populated: Story = {};
 
+/** The attachments lane's reproduction shape, synthetic bytes: a one-line
+ * `[image ...; jpeg ...; sha256 ...]` header followed on the SAME line by a
+ * ~600 KB `data:image/jpeg;base64,` URI. One admitted row and one rejected row,
+ * so the frame also shows the rejected text reading inline under its verdict
+ * chip (#1533) with the receipt standing in only for the data. */
+const OPERATOR_REPRO_BODY = `${"[image 1/1: photo.jpg; jpeg 1600x1200; 452118 bytes; sha256 3f1c9a0e5b7d2f4a6c8e0b1d3f5a7c9e1b3d5f7a9c0e2b4d6f8a0c2e4b6d8f0a]"} data:image/jpeg;base64,/9j/4AAQSkZJRgABAQ${"Qk+/x9Zp".repeat(75000)}AB==`;
+export const OperatorReproReceipt: Story = {
+	args: {
+		messages: [
+			{ ...messages[0], body: OPERATOR_REPRO_BODY },
+			{
+				...messages[1],
+				body: `Screening refused this upload: ${OPERATOR_REPRO_BODY}`,
+			},
+		],
+	},
+};
+
+/** Synthetic legacy receipt, never bytes from a real operator message. */
+export const LegacyInlineImage: Story = {
+	args: {
+		messages: [
+			{
+				...messages[0],
+				body: `[image 1/1: example.jpg; jpeg 489x71; 7488 bytes]\ndata:image/jpeg;base64,${"A".repeat(10000)}`,
+			},
+			{
+				...messages[1],
+				body: `Forwarded message:\n[image 1/1: example.jpg; jpeg 489x71; 7488 bytes]\ndata:image/jpeg;base64,${"A".repeat(10000)}`,
+			},
+		],
+	},
+};
+
+/** Synthetic negative controls: unadmitted Markdown/remote image is inert,
+ * and a parameterized URI remains bounded at realistic large payload sizes. */
+export const UnsafeUnscreenedAndLargeData: Story = {
+	args: {
+		messages: [
+			{
+				...messages[0],
+				body: `Ordinary text before.\ndata:image/svg+xml;charset=utf-8;base64,${"A".repeat(200000)}%2F${"B".repeat(200000)}\nOrdinary text after.`,
+			},
+			{
+				...messages[2],
+				body: "**Unscreened text**\n![tracker](https://example.invalid/tracker.png)\n<script>unsafe()</script>",
+			},
+		],
+	},
+};
+
+/** Wrapped synthetic data and adjacent Markdown exercise the ambiguous boundary. */
+export const WrappedDataAndAdjacentProse: Story = {
+	args: {
+		messages: [
+			{
+				...messages[0],
+				body: `Before\ndata:image/png;base64,${"A".repeat(100)}\n${"B".repeat(10000)})**important**\nordinary next line`,
+			},
+		],
+	},
+};
+
+/** Synthetic ambiguous continuations stay inspectable without claiming image provenance. */
+export const AmbiguousImageData: Story = {
+	args: {
+		messages: [
+			{
+				...messages[0],
+				body: `Before\ndata:image/png;base64,${"A".repeat(100)}\n${Array(400).fill("B".repeat(32)).join("\n")}\nordinary prose survives`,
+			},
+			{
+				...messages[0],
+				id: "synthetic-prose",
+				seq: 42,
+				body: `data:image/png;base64,${"A".repeat(100)}\nordinary\nneighbor\nfamilies\nmorningx\ntomorrow\npleasant\nresearch\ncomplete`,
+			},
+			{
+				...messages[0],
+				id: "synthetic-svg",
+				seq: 43,
+				body: `data:image/svg+xml,%3Csvg%3E]${"F".repeat(10000)}\nAfter`,
+			},
+		],
+	},
+};
+
+/** Locale alone does not change Storybook's document direction; exercise the
+ * same fixture under an explicit RTL ancestor to see bidirectional controls. */
+export const LegacyInlineImageRtl: Story = {
+	...LegacyInlineImage,
+	decorators: [
+		(Story) => (
+			<div dir="rtl">
+				<Story />
+			</div>
+		),
+	],
+};
+
 /** One bounded newest page, not a fetched full history. Large sequence values
  * make the distinction visible: the first row is older within the latest page,
  * while opening must anchor its newest row without asking for older pages. */

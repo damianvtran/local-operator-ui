@@ -315,6 +315,45 @@ export const BubbleOneImage: StoryObj<typeof Thread> = {
 	),
 };
 
+/** The attachments lane's reproduction in the conversation thread, synthetic
+ * bytes: a legacy body that inlined the image as text, `[image ...; jpeg ...;
+ * sha256 ...] data:image/jpeg;base64,<~600 KB>`. It must read as a bounded,
+ * inert receipt, never megabytes of base64 and never an image. */
+export const BubbleLegacyInlineDataReceipt: StoryObj<typeof Thread> = {
+	render: () => (
+		<Thread
+			messages={[
+				message({
+					body: `${"[image 1/1: photo.jpg; jpeg 1600x1200; 452118 bytes; sha256 3f1c9a0e5b7d2f4a6c8e0b1d3f5a7c9e1b3d5f7a9c0e2b4d6f8a0c2e4b6d8f0a]"} data:image/jpeg;base64,/9j/4AAQSkZJRgABAQ${"Qk+/x9Zp".repeat(75000)}AB==`,
+				}),
+			]}
+		/>
+	),
+};
+
+/** PR #1554 review round 1 (R1-1 / Q1): data URIs in Markdown code. A short one
+ * in a fence or an inline code span is ordinary code, never a receipt, and the
+ * prose after the fence stays prose. A large one in a fence becomes ONE receipt
+ * for the whole block, so neither neighbour is left inside a broken fence.
+ * Synthetic bytes. */
+export const BubbleDataUriInCode: StoryObj<typeof Thread> = {
+	render: () => (
+		<Thread
+			messages={[
+				message({
+					id: "bmsg_code_small",
+					body: 'Strip the `data:image/jpeg;base64,` prefix before decoding. Example:\n\n```html\n<img src="data:image/png;base64,iVBORw0KGgo=">\n```\n\nThe line after the fence is prose.',
+				}),
+				message({
+					id: "bmsg_code_large",
+					seq: 2,
+					body: `Fenced big:\n\n\`\`\`\ndata:image/png;base64,${"Qk+/x9Zp".repeat(2500)}\n\`\`\`\n\nThe line after the fence.`,
+				}),
+			]}
+		/>
+	),
+};
+
 export const BubbleFourImages: StoryObj<typeof Thread> = {
 	render: () => (
 		<Thread

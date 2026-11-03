@@ -732,6 +732,74 @@ test("undo past a paste that covered a pill restores the exact token map (Q3-1)"
 	}
 });
 
+/*
+ * The conversation thread, not only the audit: the operator's reproduction
+ * shape (a one-line `[image ...; jpeg ...; sha256 ...]` header followed on the
+ * same line by `data:image/jpeg;base64,<large>`) renders a bounded, inert
+ * receipt in the shared message list. Synthetic ~600 KB payload.
+ */
+test("the operator's single-line receipt + data URI is a bounded receipt in the thread", () => {
+	const header =
+		"[image 1/1: photo.jpg; jpeg 1600x1200; 452118 bytes; sha256 3f1c9a0e5b7d2f4a6c8e0b1d3f5a7c9e1b3d5f7a9c0e2b4d6f8a0c2e4b6d8f0a]";
+	const uri = `data:image/jpeg;base64,/9j/4AAQSkZJRgABAQ${"Qk+/x9Zp".repeat(75000)}AB==`;
+	const html = mod.renderToStaticMarkup(
+		mod.createElement(mod.TeamBridgeMessageList, {
+			messages: [
+				{ ...rootMessage, id: "bcmsg_repro", body: `${header} ${uri}` },
+			],
+			labelFor: (s) => s.display_label,
+		}),
+	);
+	assert.ok(html.includes(header), "header stays readable");
+	assert.ok(
+		/* The count is locale-grouped (design D1); the test renders in en. */
+		html.includes(
+			`Inline image data · image/jpeg · ${new Intl.NumberFormat("en").format(uri.length)} characters`,
+		),
+	);
+	assert.equal(html.includes("Qk+/x9Zp"), false, "no base64 run in markup");
+	assert.equal(html.includes("<img"), false);
+	assert.ok(html.length < 5000, `markup ${html.length} bytes`);
+});
+
+test("mentions on both sides of a legacy image remain highlighted", () => {
+	const html = mod.renderToStaticMarkup(
+		mod.createElement(
+			mod.MentionSourceContext.Provider,
+			{
+				value: {
+					conversationId: CONVERSATION,
+					candidates,
+					conversationKind: "group",
+					sendMentions: true,
+					self: { accountId: "acct_self", label: "Damian Tran" },
+				},
+			},
+			mod.createElement(mod.TeamBridgeMessageList, {
+				messages: [
+					{
+						...rootMessage,
+						id: "bcmsg_inline",
+						body: `@Ben Tran\ndata:image/jpeg;base64,${"A".repeat(5000)}\n@Damian Tran`,
+						/* Highlighting is identity-backed (the wire's `mentions`), so the
+						   fixture carries both accounts: the receipt split must keep each
+						   side's token resolvable against the same list. */
+						mentions: [
+							{ kind: "human", account_id: "acct_ben" },
+							{ kind: "human", account_id: "acct_self" },
+						],
+					},
+				],
+				labelFor: (s) => s.display_label,
+			}),
+		),
+	);
+	assert.match(html, MENTION_OTHER);
+	assert.match(html, MENTION_VIEWER);
+	assert.equal((html.match(MENTION_ANY) ?? []).length, 2);
+	assert.equal(html.includes("A".repeat(100)), false);
+});
+
 test("message bodies highlight mentions; the reader's own is the stronger token", () => {
 	const html = mod.renderToStaticMarkup(
 		mod.createElement(
