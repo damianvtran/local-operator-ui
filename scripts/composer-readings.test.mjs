@@ -964,7 +964,14 @@ test("the inline layout is a PAIRING, and neither half works alone", () => {
 	// RTL row, which the RTL evidence cell measures as a 2px gap and a hidden
 	// duration. `margin-inline-start` is the same margin in LTR and the mirrored
 	// one in RTL.
-	assert.match(composer, /className="ms-auto flex order-3 items-center gap-1"/);
+	// `relative` and `shrink-0` were added by the slot change: the preparing caption
+	// is positioned against this group instead of being a flex item, so it can
+	// no longer grow the 68px cluster (QA round 1, Q1) - pinned in
+	// `composer-slots.test.mjs`.
+	assert.match(
+		composer,
+		/className="relative ms-auto flex order-3 shrink-0 items-center gap-1"/,
+	);
 	assert.doesNotMatch(composer, /className="ml-auto flex order-3/);
 
 	// And the left group holds its width. Without this the chip's own `shrink-0`

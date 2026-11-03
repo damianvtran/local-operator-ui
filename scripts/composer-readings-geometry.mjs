@@ -77,6 +77,12 @@ const PORT = Number(flag("port") ?? 5431);
  * a widened capture can never overwrite or be mistaken for a default-810 one.
  */
 const MEASURE = flag("measure") ?? null;
+/**
+ * `--crop=form` photographs the whole composer card instead of the control row,
+ * for the states whose evidence is OUTSIDE the row: the "Processing audio"
+ * caption and waveform under the field, the recording lane above the controls.
+ */
+const CROP = flag("crop") === "form" ? "form" : "row";
 /*
  * THE ROW'S DIRECTION, for the locale case. `dir="rtl"` mirrors which edge the
  * duration's anchor and gap are measured from, and a physical rule passes every
@@ -117,6 +123,9 @@ const WIDTHS = flag("widths")
 /** The two states the row can be photographed in. */
 /** States whose presses the page scripts; the driver waits for the page to say it is done. */
 const SCRIPTED = [
+	"stop-cleared",
+	"stop-after-send",
+	"preparing",
 	"recording",
 	"sendrec-ok",
 	"sendrec-empty",
@@ -344,6 +353,7 @@ const PROBE = `(() => {
 					].length,
 				}
 			: null,
+		formBox: rect(form),
 		form: form
 			? {
 					scrollWidth: form.scrollWidth,
@@ -428,6 +438,10 @@ const PROBE = `(() => {
 					};
 				})
 			: [],
+		bOpacity: (() => {
+			const b = controls?.querySelector('[data-composer-slot="b"]');
+			return b ? Number(getComputedStyle(b).opacity) : null;
+		})(),
 		sent: window.__sent ?? null,
 		bTimeline: window.__bTimeline ?? null,
 		transcriptionCalls: window.__transcriptionCalls ?? null,
@@ -681,7 +695,12 @@ const main = async () => {
 				 * layout rather than two.
 				 */
 				const column = probe.containerBox;
-				const rowBox = probe.row ? probe.row.box : null;
+				const rowBox =
+					CROP === "form" && probe.formBox
+						? probe.formBox
+						: probe.row
+							? probe.row.box
+							: null;
 				const shot = await cdp.send("Page.captureScreenshot", {
 					format: "png",
 					clip: {
@@ -693,7 +712,10 @@ const main = async () => {
 					},
 				});
 				writeFileSync(
-					join(OUT_DIR, `${LABEL}-${entry.id}-${theme}.png`),
+					join(
+						OUT_DIR,
+						`${LABEL}-${entry.id}${CROP === "form" ? "-card" : ""}-${theme}.png`,
+					),
 					Buffer.from(shot.data, "base64"),
 				);
 			}

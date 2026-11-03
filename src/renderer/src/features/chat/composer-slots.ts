@@ -46,10 +46,36 @@ export type SlotBRole =
 	| "stop"
 	| "stop-busy"
 	| "connecting"
-	| "send-recording";
+	| "send-recording"
+	| "send-recording-busy";
 
 /** The roles that destroy or send something, and so ignore a press that follows their arrival too closely. */
 export type GuardedRole = "stop" | "cancel" | "confirm" | "send-recording";
+
+/**
+ * Whether a guarded role's arrival arms the guard at all, given the role the
+ * slot held just before it.
+ *
+ * Cancel, Insert transcript and Send recording are always armed: each arrives
+ * under the pointer because the user just pressed the mic.
+ *
+ * STOP IS ARMED ONLY WHEN A SEND PUT IT THERE. The reflex re-press the guard
+ * exists for is a second click on the control the user just pressed - Send -
+ * and a send is always `connecting` for at least one render between Send and
+ * Stop (the box empties on the press and `sendBusy` holds the slot). A Stop that
+ * arrives any other way (the user cleared the box, a turn started elsewhere)
+ * was not preceded by a press on this slot, so ignoring its first press would
+ * be a dead button with no cause the user can see (UX round 1, U1).
+ */
+export function guardArmedBy(
+	role: SlotARole | SlotBRole | SlotCRole,
+	from: string | null,
+): boolean {
+	if (guardedRole(role) === null) return false;
+	if (role === "stop")
+		return from === "connecting" || from === "send-recording-busy";
+	return true;
+}
 
 /**
  * How long a guarded role ignores a pointer press after it arrives in its slot.
@@ -87,7 +113,7 @@ export type SlotBResult = { role: SlotBRole; enabled: boolean };
 /**
  * Slot B, first match wins:
  *
- *   Send recording in flight        -> connecting (inert, role locked)
+ *   Send recording in flight        -> send-recording-busy (inert, role locked)
  *   recording                       -> send-recording
  *   send in flight, box empty       -> connecting
  *   working, Stop pressed           -> stop-busy (outranks typed text)
@@ -102,7 +128,11 @@ export type SlotBResult = { role: SlotBRole; enabled: boolean };
  */
 export function slotBRole(input: SlotBInput): SlotBResult {
 	if (input.sendRecording !== "idle") {
-		return { role: "connecting", enabled: false };
+		// A held face of its OWN, not `connecting`: slot A already draws the one
+		// spinner for this wait, so B stays a static disc that still says what the
+		// press was ("Send recording", busy) rather than "Sending your message",
+		// which would be false until the submit actually starts.
+		return { role: "send-recording-busy", enabled: false };
 	}
 	if (input.dictation === "recording") {
 		return {

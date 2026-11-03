@@ -3824,6 +3824,7 @@ export type MessageParams = {
 	"ui.chat.composer_media.preview_failed": undefined;
 	"ui.chat.composer_media.recording": undefined;
 	"ui.chat.composer_media.remove_attachment": undefined;
+	"ui.chat.composer_media.sends_now": undefined;
 	"ui.chat.device.check_again": undefined;
 	"ui.chat.device.fact.this_device": undefined;
 	"ui.chat.device.footer.move_deletes_copy": undefined;

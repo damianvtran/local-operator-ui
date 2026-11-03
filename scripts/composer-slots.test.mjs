@@ -43,6 +43,7 @@ const slots = await import(bundlePath.href);
 await unlink(bundlePath);
 const {
 	ROLE_GUARD_MS,
+	guardArmedBy,
 	slotARole,
 	slotBRole,
 	slotCRole,
@@ -199,7 +200,7 @@ test("Send recording is refused exactly when a normal Send would be", () => {
 
 /* ------------------------------------------------ the Send-recording hold */
 
-test("from the press until the submit settles, slot B is Connecting and NEVER Stop", () => {
+test("from the press until the submit settles, slot B holds the static Send-recording face and NEVER Stop", () => {
 	for (const phase of [
 		"awaiting-transcript",
 		"ready-to-submit",
@@ -216,7 +217,10 @@ test("from the press until the submit settles, slot B is Connecting and NEVER St
 				// after the submit clears it: exactly the state that would show Stop.
 				for (const hasPayload of [false, true]) {
 					const got = b({ sendRecording: phase, alive, dictation, hasPayload });
-					assert.deepEqual(got, { role: "connecting", enabled: false });
+					assert.deepEqual(got, {
+						role: "send-recording-busy",
+						enabled: false,
+					});
 				}
 			}
 		}
@@ -369,6 +373,7 @@ test("only the destructive or sending roles are guarded; the mic and a plain Sen
 		"steer",
 		"stop-busy",
 		"connecting",
+		"send-recording-busy",
 	]) {
 		assert.equal(guardedRole(role), null, role);
 	}
@@ -384,6 +389,22 @@ test("a pointer press inside the window after arrival is ignored; at the edge an
 	assert.equal(press(499), true);
 	assert.equal(press(500), false);
 	assert.equal(press(2000), false);
+});
+
+test("STOP IS ARMED ONLY WHEN A SEND PUT IT THERE; the recording roles always are", () => {
+	// A Send press empties the box, so the slot passes through Connecting.
+	assert.equal(guardArmedBy("stop", "connecting"), true);
+	assert.equal(guardArmedBy("stop", "send-recording-busy"), true);
+	// The user cleared the box, or a turn started elsewhere: nothing was pressed.
+	assert.equal(guardArmedBy("stop", "send"), false);
+	assert.equal(guardArmedBy("stop", "steer"), false);
+	assert.equal(guardArmedBy("stop", null), false);
+	for (const role of ["cancel", "confirm", "send-recording"]) {
+		assert.equal(guardArmedBy(role, "mic"), true, role);
+		assert.equal(guardArmedBy(role, null), true, role);
+	}
+	assert.equal(guardArmedBy("mic", "spinner"), false);
+	assert.equal(guardArmedBy("send", "connecting"), false);
 });
 
 test("a keyboard activation (detail 0) is never guarded", () => {
@@ -415,7 +436,7 @@ test("DOM order is visual order: Cancel, Confirm, then slot B's roles, mic in sl
 	};
 	const cancel = at('slotC === "cancel" && (');
 	const confirm = at('slotA === "confirm" && (');
-	const sendRec = at('slotB.role === "send-recording" && (');
+	const sendRec = at('(slotB.role === "send-recording" ||');
 	const connecting = at('slotB.role === "connecting" && (');
 	const stop = at('slotB.role === "stop-busy") &&');
 	const send = at('(slotB.role === "send" || slotB.role === "steer") &&');
@@ -441,24 +462,138 @@ test("every role is its own keyed element, so a press cannot complete on another
 	assert.match(ROW_SOURCE, /key=\{slotB\.role\}/);
 });
 
-test("the three recording roles and Stop go through the guard", () => {
-	for (const guard of [
-		"ignoreCancelPress(event.detail)",
-		"ignoreConfirmPress(event.detail)",
-		"ignoreSlotBPress(event.detail)",
-	]) {
-		assert.ok(ROW_SOURCE.includes(guard), guard);
+/**
+ * One control's own source: from its `key="<k>"` to the next role's key. Slicing
+ * by block is what makes the assertions below able to fail - a fixed-width
+ * window from the key does not reach the button's `onClick` (measured: the mic's
+ * is 1000+ characters on).
+ */
+const KEYS = [
+	"mic",
+	"spinner",
+	"cancel",
+	"confirm",
+	"send-recording",
+	"connecting",
+	"stop",
+];
+const block = (key) => {
+	const from = ROW_SOURCE.indexOf(`key="${key}"`);
+	assert.ok(from > -1, `no key="${key}"`);
+	const next = KEYS.map((k) => ROW_SOURCE.indexOf(`key="${k}"`))
+		.filter((i) => i > from)
+		.sort((x, y) => x - y)[0];
+	// The last role (stop) is followed by the legacy Stop agent and Send arms.
+	const end =
+		next ?? ROW_SOURCE.indexOf("{isLoading && currentJobId && (", from);
+	return ROW_SOURCE.slice(from, end);
+};
+
+test("the recording roles and Stop go through the guard; the mic and the busy faces do not", () => {
+	const guards = {
+		cancel: "ignoreCancelPress(event.detail)",
+		confirm: "ignoreConfirmPress(event.detail)",
+		"send-recording": "ignoreSlotBPress(event.detail)",
+		stop: "ignoreSlotBPress(event.detail)",
+	};
+	for (const [key, guard] of Object.entries(guards)) {
+		assert.ok(block(key).includes(guard), `${key} must call ${guard}`);
 	}
-	// The mic is not guarded: dictation is never refused.
-	const mic = ROW_SOURCE.slice(
-		ROW_SOURCE.indexOf('key="mic"'),
-		ROW_SOURCE.indexOf('key="mic"') + 400,
-	);
-	assert.doesNotMatch(mic, /ignore\w+Press/);
+	for (const key of ["mic", "spinner", "connecting"]) {
+		assert.doesNotMatch(block(key), /ignore\w+Press/, `${key} is not guarded`);
+	}
 });
 
-test("an ignored press never sets `disabled` (the button keeps focus)", () => {
-	assert.doesNotMatch(ROW_SOURCE, /setPressIgnored|guardDisabled/);
+test("an ignored press never sets `disabled` on a guarded role (the button keeps focus)", () => {
+	// Send recording is `disabled` only by the refusal a plain Send also obeys.
+	for (const key of ["cancel", "confirm", "stop"]) {
+		assert.doesNotMatch(
+			block(key),
+			/\bdisabled=/,
+			`${key} must not be disabled`,
+		);
+	}
+	const sendRec = block("send-recording");
+	assert.match(
+		sendRec,
+		/disabled=\{\s*!slotB\.enabled &&\s*slotB\.role !== "send-recording-busy"\s*\}/,
+	);
+	assert.doesNotMatch(sendRec, /disabled=\{[^}]*Arming/);
+});
+
+test("a guarded role that is still arming wears a ramp, not a disabled look", () => {
+	for (const [key, flag] of [
+		["cancel", "cancelArming"],
+		["confirm", "confirmArming"],
+		["stop", "slotBArming"],
+		["send-recording", "slotBArming"],
+	]) {
+		assert.match(
+			block(key),
+			new RegExp(`${flag} && "opacity-60"|${flag}\\) &&`),
+			key,
+		);
+	}
+});
+
+test("Enter on a focused cluster button keeps its own meaning (UX U2)", () => {
+	const at = ROW_SOURCE.indexOf("A FOCUSED CLUSTER BUTTON KEEPS ITS OWN ENTER");
+	assert.ok(at > -1, "the Enter handler's focus exception is gone");
+	const win = ROW_SOURCE.slice(at, at + 1200);
+	assert.match(win, /closest\("\[data-lo-composer-controls\] button"\)/);
+	assert.ok(win.indexOf("closest(") < win.indexOf("handleConfirmRecording()"));
+});
+
+test("M1: a dictated transcript that would answer an approval gate is never sent", () => {
+	const run = ROW_SOURCE.slice(
+		ROW_SOURCE.indexOf("const runSubmit = (dictated = false)"),
+		ROW_SOURCE.indexOf("const handleSubmit = (e: FormEvent)"),
+	);
+	assert.match(
+		run,
+		/dictated &&\s*awaitingAnswer &&\s*approvalAnswerValue\(newMessage\) !== null\s*\)\s*return false/,
+	);
+	assert.ok(
+		run.indexOf("approvalAnswerValue(") < run.indexOf("onSendMessage") ||
+			!run.includes("onSendMessage"),
+		"the gate check precedes anything that sends",
+	);
+});
+
+test("a recorder that already died cannot park the slot: the press settles instead of entering the phase", () => {
+	const press = ROW_SOURCE.slice(
+		ROW_SOURCE.indexOf("const handleSendRecording = useCallback"),
+		ROW_SOURCE.indexOf("const endDictatedSend"),
+	);
+	assert.ok(
+		press.indexOf('mediaRecorderRef.current?.state !== "recording"') > -1 &&
+			press.indexOf('mediaRecorderRef.current?.state !== "recording"') <
+				press.indexOf("dictatedSendRef.current = {"),
+		"the dead-recorder exit precedes entering the phase",
+	);
+});
+
+test("the recording hint line names the irreversible action (UX U3)", () => {
+	assert.match(ROW_SOURCE, /sendsNow=\{true\}/);
+	const indicator = readFileSync(
+		"src/renderer/src/features/chat/components/audio-recording-indicator.tsx",
+		"utf8",
+	);
+	assert.match(indicator, /ui\.chat\.composer_media\.sends_now/);
+});
+
+test("one send glyph for the primary slot, and one spinner for a send-recording wait (design D1, D3)", () => {
+	assert.doesNotMatch(ROW_SOURCE, /<ArrowUp\b/);
+	const sendRec = block("send-recording");
+	assert.match(sendRec, /<Send aria-hidden="true" \/>/);
+	assert.doesNotMatch(sendRec, /<Spinner/);
+	assert.match(block("spinner"), /<Spinner/);
+	// B's name stays the control's own, busy, until the submit starts (D2/U4).
+	assert.match(sendRec, /ui\.chat\.composer\.send_recording"/);
+	assert.match(
+		sendRec,
+		/aria-busy=\{\s*slotB\.role === "send-recording-busy" \|\| undefined\s*\}/,
+	);
 });
 
 test("FAILURE PATH: the only call that submits a dictated message sits behind the intact check", () => {
@@ -496,4 +631,18 @@ test("the held box and its reservation are gone from the tree", () => {
 		/interruptSlotDrawn|useInterruptSlotHold|data-interrupt-slot/,
 	);
 	assert.match(ROW_SOURCE, /const controlsThirdBox = isRecording;/);
+});
+
+test("Q1: the preparing caption takes no width from the cluster", () => {
+	const caption = ROW_SOURCE.slice(
+		ROW_SOURCE.indexOf('data-preparing-indicator=""'),
+		ROW_SOURCE.indexOf('{(slotA === "mic" || slotA === "mic-preparing")'),
+	);
+	// Out of flow, hung off the cluster's inline-start edge.
+	assert.match(caption, /absolute end-full/);
+	assert.match(
+		ROW_SOURCE,
+		/className="relative ms-auto flex order-3 shrink-0 items-center gap-1"/,
+		"the cluster is the caption's containing block and never shrinks",
+	);
 });

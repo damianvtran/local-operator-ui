@@ -41,13 +41,15 @@ const positions = (row) => {
 
 const byGroup = new Map();
 for (const row of rows) {
-	const key = `${row.width}|${row.theme}`;
+	const key = `${row.width}|${row.theme}|${row.id.split("-").slice(-2, -1)[0]}`;
 	if (!byGroup.has(key)) byGroup.set(key, []);
 	byGroup.get(key).push(row);
 }
 
 const out = { tree: TREE, groups: [], failures: [] };
 for (const [key, group] of byGroup) {
+	// One group per (width, theme, readings fixture): the idle reference has to be
+	// the same row the other states are compared with.
 	const idle = group.find((r) => r.state === "idle");
 	if (!idle) continue;
 	const ref = positions(idle);
@@ -62,10 +64,17 @@ for (const [key, group] of byGroup) {
 			clusterWidth: row.controls?.width,
 			aEqualsIdle: a?.left === ref.a?.left,
 			bEqualsIdle: b?.left === ref.b?.left,
+			// The row must never overflow its card: a control pushed past the edge is
+			// the failure the preparing caption caused (QA round 1, Q1).
+			rowOverflow: row.row?.overflow ?? null,
 			sent: row.sent?.length ?? 0,
 			boxValue: row.boxValue,
 		};
 		states.push(entry);
+		if (entry.rowOverflow !== null && entry.rowOverflow > 0)
+			out.failures.push(
+				`${key} ${row.state}: the row overflows by ${entry.rowOverflow}px`,
+			);
 		if (!entry.aEqualsIdle || !entry.bEqualsIdle)
 			out.failures.push(
 				`${key} ${row.state}: A ${a?.left} B ${b?.left} vs idle A ${ref.a?.left} B ${ref.b?.left}`,
@@ -82,7 +91,7 @@ for (const g of out.groups) {
 	console.log(`\n${g.key}  idle A=${g.idleA} B=${g.idleB}`);
 	for (const s of g.states)
 		console.log(
-			`  ${s.state.padEnd(14)} boxes=${s.boxes} A=${String(s.slotA?.left).padEnd(5)} B=${String(s.slotB?.left).padEnd(5)} cluster=${s.clusterWidth}  A=idle:${s.aEqualsIdle} B=idle:${s.bEqualsIdle}`,
+			`  ${s.state.padEnd(14)} ov=${String(s.rowOverflow).padEnd(4)} boxes=${s.boxes} A=${String(s.slotA?.left).padEnd(5)} B=${String(s.slotB?.left).padEnd(5)} cluster=${s.clusterWidth}  A=idle:${s.aEqualsIdle} B=idle:${s.bEqualsIdle}`,
 		);
 }
 console.log(`\n${out.verdict} (${out.failures.length} failure(s))`);

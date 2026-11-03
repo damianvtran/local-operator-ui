@@ -104,6 +104,8 @@ const STATE = params.get("state") ?? "running";
 const DRAFT_TEXT = "Summarise the Q3 report and flag anything unusual";
 const TRANSCRIPT_TEXT = "and email it to the team";
 const TEXT_STATES = new Set([
+	"stop-cleared",
+	"stop-after-send",
 	"idle-text",
 	"running-text",
 	"sendrec-ok",
@@ -113,6 +115,8 @@ const TEXT_STATES = new Set([
 	"sendrec-running",
 ]);
 const RUNNING_STATES = new Set([
+	"stop-cleared",
+	"stop-after-send",
 	"running",
 	"running-text",
 	"stopping",
@@ -171,6 +175,8 @@ type HarnessWindow = Window & {
 if (navigator.mediaDevices) {
 	const keep: AudioContext[] = [];
 	navigator.mediaDevices.getUserMedia = async () => {
+		// `preparing` is the window BEFORE the recorder exists: hold it open.
+		if (STATE === "preparing") return new Promise<MediaStream>(() => {});
 		const context = new AudioContext();
 		keep.push(context);
 		const oscillator = context.createOscillator();
@@ -460,6 +466,46 @@ const Harness = () => {
 		let cancelled = false;
 		(async () => {
 			await wait(250);
+			if (STATE === "preparing") {
+				(await until("Start recording")).click();
+				await wait(500);
+			}
+			/*
+			 * STOP ARRIVAL, two ways. `stop-cleared`: the box is emptied while a turn
+			 * runs, so Steer becomes Stop with no press on this slot - the guard must
+			 * stay OPEN (opacity 1). `stop-after-send`: Send is pressed with the turn
+			 * running, the slot passes through its held face and lands on Stop - the
+			 * guard is ARMED, and the frame is taken inside the window (opacity ramp).
+			 */
+			if (STATE === "stop-cleared") {
+				// Through the DOM, as a person clearing the box does: the composer owns
+				// its text, and the store write alone leaves the textarea as it was.
+				const area = document.querySelector("textarea");
+				if (area) {
+					const set = Object.getOwnPropertyDescriptor(
+						HTMLTextAreaElement.prototype,
+						"value",
+					)?.set;
+					set?.call(area, "");
+					area.dispatchEvent(new Event("input", { bubbles: true }));
+				}
+				await wait(60);
+			}
+			if (STATE === "stop-after-send") {
+				const timeline: string[] = [];
+				(window as HarnessWindow).__bTimeline = timeline;
+				const sampler = setInterval(() => {
+					const b = document.querySelector(
+						'[data-lo-composer-controls] [data-composer-slot="b"]',
+					);
+					const label = `${b?.getAttribute("aria-label") ?? "(none)"}@${getComputedStyle(b ?? document.body).opacity}`;
+					if (timeline[timeline.length - 1] !== label) timeline.push(label);
+				}, 5);
+				setTimeout(() => clearInterval(sampler), 3000);
+				(await until("Send message")).click();
+				for (let i = 0; i < 100 && !button("Stop"); i += 1) await wait(10);
+				await wait(60);
+			}
 			if (RECORDING_STATES.has(STATE)) {
 				(await until("Start recording")).click();
 				// Past the composer's 250 ms minimum take, so Confirm keeps it.
@@ -522,8 +568,15 @@ const Harness = () => {
 				canonicalStop={
 					running ? { active: true, stopping, onStop: () => {} } : undefined
 				}
-				onSendMessage={async (content, attachments) => {
+				onSendMessage={async (content, attachments, onEchoPainted) => {
 					(window as HarnessWindow).__sent?.push({ content, attachments });
+					// The app empties the box when the echo is painted, while the send is
+					// still in flight: that is the window the held face exists for.
+					onEchoPainted?.();
+					// A real send is in flight for a while (the pane's send lock); an
+					// instant answer would skip the held face the guard is armed from.
+					if (STATE === "stop-after-send")
+						await new Promise((resolve) => setTimeout(resolve, 250));
 					return true;
 				}}
 			/>

@@ -1,3 +1,4 @@
+import { Send } from "lucide-react";
 import { useEffect, useRef } from "react";
 
 import { KeyboardShortcut } from "@shared/components/common/keyboard-shortcut";
@@ -16,6 +17,13 @@ import {
  */
 type AudioRecordingIndicatorProps = {
 	isRecording: boolean;
+	/**
+	 * The host draws a "Send recording" control beside Confirm, so the hint line
+	 * names it. The one irreversible action of the three (it transcribes AND
+	 * sends, with no review) is the one the line must not leave unnamed (UX
+	 * round 1, U3). Off for the canvas editor, which has no such control.
+	 */
+	sendsNow?: boolean;
 };
 
 const BUFFER_SIZE = 120; // Number of bars in the waveform
@@ -84,6 +92,7 @@ const PULSE_KEYFRAMES = `
  */
 export const AudioRecordingIndicator = ({
 	isRecording,
+	sendsNow = false,
 }: AudioRecordingIndicatorProps): JSX.Element | null => {
 	// Subscribe at render time so changing language does not restart the audio effect.
 	useI18nLocale();
@@ -341,6 +350,15 @@ export const AudioRecordingIndicator = ({
 						<KeyboardShortcut shortcut="Esc" />
 						{t("ui.chat.composer_media.cancels")}
 					</span>
+					{sendsNow && (
+						<>
+							<span aria-hidden="true">·</span>
+							<span className="flex items-center gap-1">
+								<Send aria-hidden="true" className="size-3.5" />
+								{t("ui.chat.composer_media.sends_now")}
+							</span>
+						</>
+					)}
 				</span>
 			</div>
 			{/*

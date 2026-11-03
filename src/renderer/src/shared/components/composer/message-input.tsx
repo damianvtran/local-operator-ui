@@ -176,7 +176,6 @@ import {
 	showWarningToast,
 } from "@shared/utils/toast-manager";
 import {
-	ArrowUp,
 	Check,
 	CircleAlert,
 	Mic,
@@ -6976,6 +6975,15 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			// The same refusals as a plain Send, plus a send of this composer still
 			// going out: its clear would park the transcript instead of boxing it.
 			if (isInputDisabled || noProvider || noModel || sendBusy) return;
+			/*
+			 * A RECORDER THAT ALREADY DIED has no `onstop` to come, so entering the
+			 * phase would hold slot B and the mic inert until a remount. Settle it as
+			 * Insert transcript would and send nothing.
+			 */
+			if (mediaRecorderRef.current?.state !== "recording") {
+				settleRecordingAttempt("release");
+				return;
+			}
 			dictatedSendRef.current = { draftAtPress: newMessage, transcript: null };
 			setSendRecordingPhase((phase) =>
 				sendRecordingNext(phase, { type: "press" }),
@@ -7007,6 +7015,20 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			const handleKeyDown = (event: globalThis.KeyboardEvent) => {
 				if (isRecording) {
 					if (event.key === "Enter") {
+						/*
+						 * A FOCUSED CLUSTER BUTTON KEEPS ITS OWN ENTER (UX round 1, U2).
+						 * Enter on Cancel or Send recording used to be swallowed here and
+						 * run Insert transcript instead - the one key press that does the
+						 * opposite of the control it is on. The button's native activation
+						 * (detail 0, never guarded) is the answer; this window-level
+						 * shortcut is for focus anywhere else.
+						 */
+						const target = event.target;
+						if (
+							target instanceof Element &&
+							target.closest("[data-lo-composer-controls] button")
+						)
+							return;
 						event.preventDefault();
 						handleConfirmRecording();
 					} else if (event.key === "Escape") {
@@ -7320,6 +7342,20 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			 * has, by construction, because it is the same function.
 			 */
 			if (dictated && isTyping(capture)) return false;
+			/*
+			 * AN APPROVAL GATE IS ANSWERED BY THIS SAME PRESS (agent review round 1,
+			 * M1): `chat-page.tsx` takes the sent text of a pending gate through
+			 * `approvalAnswerValue`, where "yes", "ok" or "1" is an approval. Words from
+			 * a microphone the user has not read must never be one - a stray "ok" from
+			 * the room would approve a tool action - so a transcript that WOULD answer
+			 * the gate stays in the box for the user to read and send by hand.
+			 */
+			if (
+				dictated &&
+				awaitingAnswer &&
+				approvalAnswerValue(newMessage) !== null
+			)
+				return false;
 			if (submitCapture()) return true;
 			/*
 			 * The SAME planner the Enter key consults, so the Send button and the
@@ -7373,7 +7409,6 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * synchronously, so the first `submitting` render already sees it, and a
 		 * submit that was never entered is released on that same render.
 		 */
-		// biome-ignore lint/correctness/useExhaustiveDependencies: the body reads the live render through refs
 		useEffect(() => {
 			if (sendRecordingPhase === "ready-to-submit") {
 				if (isTranscribing) return;
@@ -8235,9 +8270,13 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * remount there would drop focus mid-gesture.
 		 */
 		const slotBKey = slotB.role === "stop-busy" ? "stop" : slotB.role;
-		const ignoreCancelPress = useRoleGuard(slotC ?? "none");
-		const ignoreConfirmPress = useRoleGuard(slotA);
-		const ignoreSlotBPress = useRoleGuard(slotBKey);
+		const { ignore: ignoreCancelPress, arming: cancelArming } = useRoleGuard(
+			slotC ?? "none",
+		);
+		const { ignore: ignoreConfirmPress, arming: confirmArming } =
+			useRoleGuard(slotA);
+		const { ignore: ignoreSlotBPress, arming: slotBArming } =
+			useRoleGuard(slotBKey);
 		/*
 		 * A FOCUSED CONTROL THAT LEAVES THE ROW TAKES THE CARET WITH IT. When a role
 		 * flip unmounts the button focus was on (Send -> Connecting, Confirm ->
@@ -9686,7 +9725,10 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 						 * carries a status and no control, so the pointer map does not move.
 						 */}
 						{isRecording && (
-							<AudioRecordingIndicator isRecording={isRecording} />
+							<AudioRecordingIndicator
+								isRecording={isRecording}
+								sendsNow={true}
+							/>
 						)}
 						{isTranscribing && (
 							<div
@@ -10026,7 +10068,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 											clusterHadFocusRef.current = false;
 										}
 									}}
-									className="ms-auto flex order-3 items-center gap-1"
+									className="relative ms-auto flex order-3 shrink-0 items-center gap-1"
 								>
 									{/*
 									 * THE PRESS IS ANSWERED BEFORE THE RECORDER EXISTS (operator feedback
@@ -10072,8 +10114,16 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 											 * recor..." is not a sentence. `shrink-0` puts this line on the
 											 * yielding side of that bargain rather than letting it compress
 											 * into an ellipsis of its own.
+											 *
+											 * IT TAKES NO WIDTH FROM THE CLUSTER (QA round 1, Q1). As a flex item
+											 * it grew the 68px cluster to ~147px, pushed the mic and Send 17-51px
+											 * right and Send past the card's edge on every readings fixture. It is
+											 * now positioned against the cluster's inline-start edge instead, on the
+											 * card's own ground, so the cluster stays 68px and slots A and B keep
+											 * their x; where a reading sits under it, it is covered for the
+											 * ~1s the acquisition takes rather than the row being pushed.
 											 */
-											className="shrink-0 font-medium text-body-sm text-ink-muted"
+											className="absolute end-full top-1/2 me-1 -translate-y-1/2 whitespace-nowrap bg-surface ps-2 font-medium text-body-sm text-ink-muted"
 										>
 											{isSmallView
 												? t("ui.chat.composer.starting")
@@ -10201,10 +10251,13 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 											<span>
 												<Button
 													data-composer-slot="c"
-													variant="ghost"
+													variant="outline"
 													size={isSmallView ? "icon-sm" : "icon"}
 													type="button"
-													className="text-ink-dim hover:bg-elevated hover:text-ink"
+													className={cn(
+														"text-ink-dim hover:bg-elevated hover:text-ink",
+														cancelArming && "opacity-60",
+													)}
 													onClick={(event) => {
 														// A reflex press right after the row flips to recording
 														// would discard a take the user just began.
@@ -10231,7 +10284,10 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 													variant="outline"
 													size={isSmallView ? "icon-sm" : "icon"}
 													type="button"
-													className="border-success-border text-success hover:bg-success-wash"
+													className={cn(
+														"border-success-border bg-success-wash text-success hover:bg-success-wash",
+														confirmArming && "opacity-60",
+													)}
 													onClick={(event) => {
 														if (ignoreConfirmPress(event.detail)) return;
 														handleConfirmRecording();
@@ -10252,7 +10308,8 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 											</span>
 										</Tooltip>
 									)}
-									{slotB.role === "send-recording" && (
+									{(slotB.role === "send-recording" ||
+										slotB.role === "send-recording-busy") && (
 										<Tooltip
 											key="send-recording"
 											content={t("ui.chat.composer.send_recording_hint")}
@@ -10263,7 +10320,21 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 													variant="primary"
 													size={isSmallView ? "icon-sm" : "icon"}
 													type="button"
-													className="rounded-full disabled:bg-surface"
+													className={cn(
+														"rounded-full disabled:bg-surface",
+														// The held face after the press: the same disc, quieter, and
+														// STATIC - slot A carries this wait's one spinner (design
+														// round 1, D1).
+														(slotB.role === "send-recording-busy" ||
+															slotBArming) &&
+															"opacity-60",
+													)}
+													aria-busy={
+														slotB.role === "send-recording-busy" || undefined
+													}
+													aria-disabled={
+														slotB.role === "send-recording-busy" || undefined
+													}
 													/*
 													 * THE SAME REFUSAL AS SEND: no provider or model disables it and
 													 * the press explains why (the caret-holding press handler), so
@@ -10271,17 +10342,27 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 													 */
 													onPointerDown={holdCaretOnSendPress}
 													onClick={(event) => {
+														// Inert while held, without `disabled`: focus stays on the
+														// control that was pressed.
+														if (slotB.role === "send-recording-busy") return;
 														if (ignoreSlotBPress(event.detail)) return;
 														handleSendRecording();
 													}}
-													disabled={!slotB.enabled}
+													// The held face keeps the primary disc (design D1: reduced emphasis, not
+													// a disabled grey) and is inert through `aria-disabled` and the click
+													// guard above, so it never drops focus.
+													disabled={
+														!slotB.enabled &&
+														slotB.role !== "send-recording-busy"
+													}
 													aria-label={
 														aside !== null && !awaitingAnswer
 															? t("ui.chat.composer.ask_aside")
 															: t("ui.chat.composer.send_recording")
 													}
 												>
-													<ArrowUp aria-hidden="true" />
+													{/* The idle Send's own glyph: one icon for one press point. */}
+													<Send aria-hidden="true" />
 												</Button>
 											</span>
 										</Tooltip>
@@ -10378,6 +10459,9 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 														}
 														className={cn(
 															"data-[stopping]:border-danger data-[stopping]:text-ink data-[stopping]:bg-[color-mix(in_oklab,var(--color-danger-wash)_80%,var(--color-danger))]",
+															// A Stop that arrived because a SEND flipped the slot ignores a pointer
+															// press for ~500 ms; the ramp says so (opacity, never `disabled`).
+															slotBArming && "opacity-60",
 														)}
 													>
 														<Square aria-hidden="true" />
