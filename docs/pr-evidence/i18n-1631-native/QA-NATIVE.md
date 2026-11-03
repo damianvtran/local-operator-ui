@@ -1,6 +1,6 @@
 ### QA report — round 2
 
-Reviewer: qa-tester — anthropic/claude-sonnet-5-5; no fallback in this resumed execution.
+Reviewer: qa-tester — **openai/gpt-6.1-sol (actual execution)**. Requested header was anthropic/claude-sonnet-5-5, but own persisted usage.provider/model_id and native_replay metadata record GPT for round 1 and every round-2 continuation. Earlier Sonnet/no-fallback claims were incorrect.
 Head: 6fe683b6d7aae8c80e4faeb215139d057b1e1400
 Scope: ae0c38872982c2f47c035b6e042572162de4d43a..6fe683b6d7aae8c80e4faeb215139d057b1e1400; bounded census targets, C1/C2 and direct neighbors only.
 Verdict: **PASS — TERMINAL for the bounded localization/census scope**, using the executed native cells below together with the retained discriminating 2/2 remediation runtime tests and unchanged formatter/CLDR evidence. No new locale-introduced Q-code defect established. Uncaptured native permutations remain explicitly unproved, and the pre-existing narrow wake pane is NOT passed. This is not whole-UI completion or merge/CI clearance. Native slot is released; no more capture or tests requested by this report.

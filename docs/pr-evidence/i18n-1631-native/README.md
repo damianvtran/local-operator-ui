@@ -17,3 +17,7 @@ The report discloses the build's load-limit overshoot, the build-only existing-p
 ## Retention verification
 
 The retaining implementer verified all original checksum entries against this bundle, inspected both contact sheets, and scanned textual records for private keys, provider tokens, JWTs, bearer credentials and credential assignments without printing matched values. No unexplained sensitive-pattern hit was found. The independent QA report attributes the run to isolated synthetic HOME/config/session fixtures, an owned loopback daemon and explicit synthetic OAuth strings; retention does not claim another native run or a separate linguistic audit.
+
+## Author provenance correction
+
+After original retention commit `b0c7f1010c3d3a1bc0f324a5383711e87e6b9f23`, the independent QA author corrected only the reviewer-model lines in `QA-NATIVE.md` and `CHECKPOINT.md` using their persisted usage metadata: actual execution was `openai/gpt-6.1-sol`, not the requested Sonnet header. [correction-manifest.json](correction-manifest.json) preserves the author's exact before/after hashes and scope; the original report bytes remain available in that Git commit's history. The reports and checksum record here are the author's corrected bytes, not implementer rewrites. Pixels, machine receipts, captured application head, disclosures, scope and verdict are unchanged. The portable artifact manifest records the corrected report hashes and the correction record itself. No rerun or new review verdict is asserted.

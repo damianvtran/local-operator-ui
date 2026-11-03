@@ -1,7 +1,7 @@
 # Native QA checkpoint — PR #1631
 
 Head: `6fe683b6d7aae8c80e4faeb215139d057b1e1400`.
-Reviewer: qa-tester, anthropic/claude-sonnet-5-5; no fallback this resumed round.
+Reviewer: qa-tester — **openai/gpt-6.1-sol (actual execution)**. Requested header was anthropic/claude-sonnet-5-5, but own persisted usage.provider/model_id and native_replay metadata record GPT for round 1 and every round-2 continuation. Earlier Sonnet/no-fallback claims were incorrect.
 
 **BLOCKED on capture admission; zero current-head native frames.** This is not design/native sign-off. Lightweight round-2 execution remains 2/2 PASS, previous-source negative control 0/2 PASS.
 

@@ -2,23 +2,23 @@
   "schema": 1,
   "kind": "immutable-native-evidence-retention",
   "application_head": "6fe683b6d7aae8c80e4faeb215139d057b1e1400",
-  "qa_report_sha256": "92381e2164b4d55dff209d02015d4b1b334f4a5c0568101d93ff3b2b4d38ba8f",
+  "qa_report_sha256": "78e6c6a20f414d023b345c5d10d95d0007e77d603792506ab048268f60085d81",
   "original_checksum_entries_verified": 84,
   "path_base": ".",
   "files": [
     {
       "path": "CHECKPOINT.md",
-      "sha256": "92b005e4a468e02bb5ad79125ee6e045be5d2b0ce1122e0f259f74f23e6545ae",
-      "bytes": 3040
+      "sha256": "6f636f481902e5bce7b397e0747c655bccc61d438b8e4b225fc38fb50e5314ff",
+      "bytes": 3249
     },
     {
       "path": "QA-NATIVE.md",
-      "sha256": "92381e2164b4d55dff209d02015d4b1b334f4a5c0568101d93ff3b2b4d38ba8f",
-      "bytes": 14353
+      "sha256": "78e6c6a20f414d023b345c5d10d95d0007e77d603792506ab048268f60085d81",
+      "bytes": 14552
     },
     {
       "path": "SHA256SUMS.txt",
-      "sha256": "54a0c4868300e99c10c6acac102e0dace80921340360e3e2e7d404df77e780d3",
+      "sha256": "2e905cf4a0de67f6a02eed79dabdac5d36cc755b3cca061b790ea55f05eb2acb",
       "bytes": 9006
     },
     {
@@ -35,6 +35,11 @@
       "path": "cleanup-verified.json",
       "sha256": "96e2c754e9ddd0e050a8408d0a84c8319f46c8db0ee9a7218b55ef0f44d01ad0",
       "bytes": 431
+    },
+    {
+      "path": "correction-manifest.json",
+      "sha256": "7319e8860b9de6851e12aace32978ee0fbe24200250e2c4b93a04d612458e4b4",
+      "bytes": 1235
     },
     {
       "path": "effort-contact-sheet.png",
@@ -431,5 +436,10 @@
       "sha256": "89e708bf716ede4f5fbc6cdc0a2c69675b86a5b6ac8e874f6f9c6a12239e6ca6",
       "bytes": 196800
     }
-  ]
+  ],
+  "provenance_correction": {
+    "manifest": "correction-manifest.json",
+    "original_retention_commit": "b0c7f1010c3d3a1bc0f324a5383711e87e6b9f23",
+    "scope": "Author-corrected reviewer model lines only; no execution, result, frame or machine-receipt changes."
+  }
 }
