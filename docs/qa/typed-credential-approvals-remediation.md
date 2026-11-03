@@ -346,3 +346,30 @@ English could_not_apply context now explicitly says retryable false, or a presen
 apply_outcome without retryable; no apply_outcome is not permanent. This is context
 only, matching existing code. No catalogue values, keys or generated types changed;
 no new translation audit is claimed necessary for unchanged target values.
+
+## Consent-safe focus on the next unread request (U3-1)
+
+When the next live neighbour is still requested, focus now lands on its summary
+(tabIndex=-1), not its Approve button. Repeated Enter after a fast previous
+approval cannot consent to a second unread request. Already-approved/attention
+neighbours retain their enabled apply/action control target; outcome and history
+fallback priorities, moved-user-focus protection and stale-attempt guard remain.
+
+Real tray DOM test synchronously approves A with B requested, asserts focus on
+B's summary, dispatches repeated Enter keydown there and verifies onDecide stayed
+at one call. A separate neighbour assertion keeps Try again for an already-
+approved card. Negative control replacing the target with the old first enabled
+control fails (selected tests 1/pass 0/fail 1; expected mesh-approval-summary).
+This is assertion failure, not a ceiling kill. Source restored byte-identical.
+
+All node runs used process-group memory_mb=2500, V8 heap 2048 MiB, timeout 120,
+concurrency 1; tray timeout/render caps unchanged. Memory readings immediately
+before: first fixed system free 54%, free 7710/speculative 771 pages (16KiB);
+negative system free 56%, free 44860/speculative 1374; final fixed system free
+55%, free 8574/speculative 650. Final mesh tests 118/pass 118/fail 0.
+
+D3-1 punctuation nit deferred intentionally: changing the approved terminal label
+for a full stop would create another copy/audit delta across languages with
+different punctuation conventions. No catalogue values, context, keys or generated
+types change in this commit. No semantic self-audit. Browser/AT speech is not
+proved by this DOM test; independent browser consent-flow confirmation remains.

@@ -6491,12 +6491,14 @@ test(
 				true,
 				"same-tick success focuses history without a pending frame",
 			);
-			// With another live card, its first enabled control takes priority over history.
+			// With another requested card, focus its summary: repeated Enter cannot consent.
+			let immediateDecisions = 0;
 			const second = { ...requested(), approvalId: "ap_7f3k9m2q8r6t" };
 			props = {
 				...props,
 				rows: [requested(), second],
 				onDecide: () => {
+					immediateDecisions++;
 					props = {
 						...props,
 						rows: [{ ...props.rows[0], state: "connected" }, second],
@@ -6513,7 +6515,43 @@ test(
 					.getAttribute("data-approval-id"),
 				second.approvalId,
 			);
-			assert.equal(document.activeElement.textContent, "Approve");
+			assert.equal(
+				document.activeElement.getAttribute("data-tour-tag"),
+				"mesh-approval-summary",
+			);
+			assert.equal(immediateDecisions, 1);
+			await mounted.act(async () =>
+				document.activeElement.dispatchEvent(
+					new dom.window.KeyboardEvent("keydown", {
+						key: "Enter",
+						code: "Enter",
+						repeat: true,
+						bubbles: true,
+					}),
+				),
+			);
+			assert.equal(
+				immediateDecisions,
+				1,
+				"repeated Enter on the next summary cannot decide card B",
+			);
+			// Already-approved neighbours still receive their explicit apply control.
+			const attention = { ...row(), approvalId: second.approvalId };
+			props = {
+				...props,
+				rows: [requested(), attention],
+				onDecide: () => {
+					props = {
+						...props,
+						rows: [{ ...props.rows[0], state: "connected" }, attention],
+					};
+					renderInstant();
+				},
+			};
+			await render();
+			approve().focus();
+			await mounted.act(async () => approve().click());
+			assert.equal(document.activeElement.textContent, "Try again");
 			// Same-tick refusal keeps focus on its outcome rather than another control.
 			props = {
 				...props,

@@ -356,17 +356,23 @@ export const MeshApprovalsTray: FC<MeshApprovalsTrayProps> = ({
 		if (row === handoff.rowAtStart && !newRefusal) return;
 		deniedFocus.current = null;
 		// Only an outcome on the current live card takes precedence. Otherwise
-		// continue to another live card (never this card's Details button), then
-		// the settled toggle. The delivery boundary preserves moved user focus.
+		// continue to another live card, then the settled toggle. Requested
+		// neighbours receive focus on their summary, NEVER Approve: repeated Enter
+		// after a fast completion must not consent to an unread second request.
+		// Already-approved neighbours retain their actionable control target.
+		const nextLive = waiting.find((entry) => entry.approvalId !== handoff.id);
+		const nextTarget = nextLive
+			? trayRef.current?.querySelector<HTMLElement>(
+					`[data-tour-tag="mesh-approvals-live"] [data-approval-id="${CSS.escape(nextLive.approvalId)}"] ${isWaitingApproval(nextLive.state) ? '[data-tour-tag="mesh-approval-summary"]' : '[data-tour-tag="mesh-approval-controls"] button:not(:disabled)'}`,
+				)
+			: null;
 		const target =
 			(waiting.some((entry) => entry.approvalId === handoff.id)
 				? trayRef.current?.querySelector<HTMLElement>(
 						`[data-approval-id="${CSS.escape(handoff.id)}"] [data-tour-tag="mesh-approval-refusal"]`,
 					)
 				: null) ??
-			trayRef.current?.querySelector<HTMLButtonElement>(
-				`[data-tour-tag="mesh-approvals-live"] [data-approval-id]:not([data-approval-id="${CSS.escape(handoff.id)}"]) [data-tour-tag="mesh-approval-controls"] button:not(:disabled)`,
-			) ??
+			nextTarget ??
 			recordsRef.current?.querySelector<HTMLButtonElement>("button");
 		const refusalTarget = refusal
 			? (trayRef.current?.querySelector<HTMLElement>(
@@ -794,6 +800,7 @@ const MeshApprovalCard: FC<{
 			<p
 				className="text-body-sm text-ink [overflow-wrap:anywhere]"
 				data-tour-tag="mesh-approval-summary"
+				tabIndex={-1}
 				id={summaryId}
 			>
 				{waiting ? summary : head}
