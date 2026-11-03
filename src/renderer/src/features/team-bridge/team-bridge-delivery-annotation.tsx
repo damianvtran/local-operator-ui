@@ -13,6 +13,7 @@ import {
 	type TeamBridgeDeliveryLine,
 	teamBridgeDeliveryLines,
 } from "./team-bridge-delivery-annotation-model";
+import { type ChiefLabels, recipientLabel } from "./team-bridge-model";
 
 /**
  * The muted per-recipient delivery lines under a message: "Not delivered to
@@ -110,15 +111,35 @@ const DeliveryInfo: FC<{ text: string }> = ({ text }) => {
 	);
 };
 
+/**
+ * The same catalogue-backed chief forms the message rows use (`chief.label`,
+ * `chief.unnamed`). Local rather than imported from the page for the reason
+ * `ownerAuditChiefLabels` gives: the page is the composition root, and this
+ * row component also renders inside the owner-audit view.
+ */
+const deliveryChiefLabels = (): ChiefLabels => ({
+	named: (agent, person) => t("ui.teamBridge.chief.label", { agent, person }),
+	unnamed: (person) => t("ui.teamBridge.chief.unnamed", { person }),
+});
+
 const DeliveryLineText: FC<{ line: TeamBridgeDeliveryLine }> = ({ line }) => {
-	// A blank wire label falls back to the shared placeholders rather than
-	// rendering "Not delivered to  ()" (review round 1, R2).
+	/*
+	 * ONE composed `{recipient}`, never "{agent} ({owner})" spliced here: an
+	 * agent member stored by an older client already reads "Aida (Ben Tran)",
+	 * and splicing it rendered "Aida (Ben Tran) (Ben Tran)" (operator report,
+	 * 2026-11-03). Every delivery entry is an agent recipient (contract v1). A
+	 * label that names nobody falls back to the shared placeholder rather than
+	 * rendering "Not delivered to  ()" (review round 1, R2).
+	 */
 	const params = {
-		agent: line.agent || t("ui.teamBridge.sender.unknown_agent"),
-		owner: line.owner || t("ui.teamBridge.sender.unknown_person"),
+		recipient:
+			recipientLabel(
+				{ kind: "agent", label: line.agent, ownerLabel: line.owner },
+				deliveryChiefLabels(),
+			) ?? t("ui.teamBridge.sender.unknown_agent"),
 	};
 	if (line.kind === "pending") {
-		return <>{t("ui.teamBridge.delivery.pending", { agent: params.agent })}</>;
+		return <>{t("ui.teamBridge.delivery.pending", params)}</>;
 	}
 	if (line.kind === "held") {
 		switch (line.holdReason) {

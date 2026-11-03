@@ -8,6 +8,18 @@ import type {
 	TeamBridgeNotify,
 	TeamBridgeTenantId,
 } from "../../../../shared/team-bridge-contract";
+import {
+	type ChiefLabels,
+	composeChiefLabel,
+	nameKey,
+} from "../../../../shared/team-bridge-labels";
+
+/*
+ * Re-exported so every renderer caller keeps one import site; the definitions
+ * live in `src/shared` because the main-process banner composes the same label
+ * (`team-bridge-notifier.ts`) and main cannot import renderer modules.
+ */
+export { type ChiefLabels, composeChiefLabel };
 
 /**
  * The Team Bridge list's scope: one organization's tenant id, or every
@@ -1650,18 +1662,6 @@ export function storedLabel(label: string): string | null {
 }
 
 /**
- * The two catalogue strings a chief-of-staff label is composed from. Injected
- * because both are translatable ("{agent} ({person})" and "{person}'s chief of
- * staff" reorder and re-punctuate per locale).
- */
-export type ChiefLabels = {
-	/** "Aida (Ben Tran)": the agent's own name, the person as context. */
-	named: (agent: string, person: string) => string;
-	/** "Ben Tran's chief of staff": used when the agent has no name of its own. */
-	unnamed: (person: string) => string;
-};
-
-/**
  * "Agent (Owner)": the composed display form. Older clients stored it as the
  * agent member's `display_label`, so the read path must recognise it (and "X
  * (X)") in existing rows; this client now stores a bare name (`storedAgentLabel`).
@@ -1704,36 +1704,6 @@ function hubTruncatedPerson(personName: string): string {
 	if (bytes.length <= cut) return person;
 	while (cut > 0 && (bytes[cut] & 0xc0) === 0x80) cut -= 1;
 	return new TextDecoder().decode(bytes.subarray(0, cut)).trim();
-}
-
-/** Case-, space- and accent-insensitive form for "is this the same name". */
-function nameKey(name: string): string {
-	return name.normalize("NFKC").trim().replace(/\s+/g, " ").toLocaleLowerCase();
-}
-
-/**
- * THE ONE PLACE a chief-of-staff label is composed (operator report,
- * 2026-10-22: "Ben Tran (Ben Tran)" on the rail, the thread header and the
- * composer placeholder, and persisted by the server verbatim as the agent
- * member's `display_label`).
- *
- * WHY IT HAPPENED. The directory's `agent.name` is the endpoint's agent name,
- * else its label, and an endpoint enrolled without an agent name was labelled
- * with its OWNER's name. Composing "{agent} ({person})" from that repeated the
- * person. So an agent name that is empty, or the same as the person's
- * (normalised), is no name at all: the label is then "{person}'s chief of
- * staff", and the person's name never appears twice.
- */
-export function composeChiefLabel(
-	agentName: string,
-	personName: string,
-	labels: ChiefLabels,
-): string {
-	const agent = agentName.trim();
-	const person = personName.trim();
-	return agent === "" || nameKey(agent) === nameKey(person)
-		? labels.unnamed(person)
-		: labels.named(agent, person);
 }
 
 /**
@@ -1787,6 +1757,45 @@ export function storedAgentName(
 		}
 	}
 	return stored;
+}
+
+/**
+ * The display label for a recipient known only by its wire labels (no account
+ * id to look up in the directory), or null when the labels name nobody.
+ *
+ * WHY (operator report, 2026-11-03: "Not delivered to Aida (Ben Tran) (Ben
+ * Tran). Refused by moderation."). The hub's delivery-state entries carry the
+ * agent MEMBER's stored label and its owner's name as two strings, and the
+ * annotation used to splice them into "{agent} ({owner})". A member row written
+ * by an older client already holds the composed "Aida (Ben Tran)", so the owner
+ * appeared twice. Routing the pair through `storedAgentName` and
+ * `composeChiefLabel` gives these lines exactly the label the message rows and
+ * the rail paint: "Aida (Ben Tran)", or "Ben Tran's chief of staff" for an
+ * agent with no name of its own, and the owner never twice.
+ *
+ * - A human is named by their own label alone; no owner applies.
+ * - An agent whose owner label is blank keeps its stored label as-is (which may
+ *   already carry its owner); a parenthetical with nothing in it would say less.
+ *
+ * NULL IS THE CALLER'S TO PAINT, as with `participantLabel`: the shared
+ * "Unknown agent" / "Unknown person" copy, never an invented name.
+ */
+export function recipientLabel(
+	recipient: {
+		kind: "human" | "agent";
+		label: string;
+		ownerLabel: string;
+	},
+	chiefLabels: ChiefLabels,
+): string | null {
+	if (recipient.kind === "human") return storedLabel(recipient.label);
+	const owner = recipient.ownerLabel.trim();
+	if (owner === "") return storedAgentName(recipient.label, null);
+	return composeChiefLabel(
+		storedAgentName(recipient.label, owner) ?? "",
+		owner,
+		chiefLabels,
+	);
 }
 
 /** The signed-in reader, when the account read has answered with a name. */

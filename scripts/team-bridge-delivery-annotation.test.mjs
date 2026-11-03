@@ -93,6 +93,8 @@ const {
 const createElement = React.createElement;
 const MODERATION_LOCALES = ["en", "fr", "es", "zh-CN", "ru", "vi", "ur", "hi"];
 const MODERATION_EM_DASH = /\u2014/u;
+const RECIPIENT_LINE_KEY = /^ui\.teamBridge\.delivery\.(refused|held|pending)/;
+const SPLICED_PARTS = /\{(agent|owner)\}/;
 const INFO_LABEL = /aria-label="About message screening"/;
 const UNREAD_FIELDS = /SECRET-REASON|harassment|0\.97/;
 const INFO_REFUSED_CONSTANT = /t\("ui\.teamBridge\.delivery\.info_refused"\)/;
@@ -195,7 +197,9 @@ test("delivery_pending is its own line: screened, not waiting to be screened", (
 	const html = render([
 		entry({ state: "held", hold_class: "delivery_pending" }),
 	]);
-	assert.deepEqual(lineTexts(html), ["Screened; delivery to Aida is pending"]);
+	assert.deepEqual(lineTexts(html), [
+		"Screened; delivery to Aida (Sam) is pending",
+	]);
 	assert.doesNotMatch(html, INFO_LABEL, "neither tooltip describes it");
 });
 
@@ -204,8 +208,113 @@ test("a blank label falls back to the shared placeholders", () => {
 		lineTexts(
 			render([entry({ recipient_label: "  ", recipient_owner_label: "" })]),
 		),
-		["Not delivered to Unknown agent (Unknown person). Refused by moderation."],
+		["Not delivered to Unknown agent. Refused by moderation."],
 	);
+});
+
+/*
+ * THE OWNER EXACTLY ONCE (operator report, 2026-11-03: "Not delivered to Aida
+ * (Ben Tran) (Ben Tran). Refused by moderation."). The recipient is resolved
+ * through the same `storedAgentName` + `composeChiefLabel` the message rows
+ * use, so each shape a stored agent label takes on the wire renders the row's
+ * label. Asserted on the refused, held and pending lines, because all three
+ * templates take the one composed `{recipient}`.
+ */
+const LINE_STATES = [
+	["refused", {}, (r) => `Not delivered to ${r}. Refused by moderation.`],
+	["held", { state: "held" }, (r) => `Waiting to be screened by ${r}…`],
+	[
+		"pending",
+		{ state: "held", hold_class: "delivery_pending" },
+		(r) => `Screened; delivery to ${r} is pending`,
+	],
+];
+const RECIPIENT_SHAPES = [
+	["a bare agent name gains its owner", "Aida", "Ben Tran", "Aida (Ben Tran)"],
+	[
+		"a label already carrying its owner keeps it once",
+		"Aida (Ben Tran)",
+		"Ben Tran",
+		"Aida (Ben Tran)",
+	],
+	[
+		"a composed label matched across case and spacing keeps it once",
+		"Aida  (ben tran)",
+		"Ben Tran",
+		"Aida (Ben Tran)",
+	],
+	[
+		"an agent labelled with its owner's name is the owner's chief of staff",
+		"Ben Tran",
+		"Ben Tran",
+		"Ben Tran’s chief of staff",
+	],
+	[
+		"a self-composed X (X) label is the owner's chief of staff",
+		"Ben Tran (Ben Tran)",
+		"Ben Tran",
+		"Ben Tran’s chief of staff",
+	],
+	[
+		"the hub's unnamed-agent label is not composed a second time",
+		"Ben Tran's chief of staff",
+		"Ben Tran",
+		"Ben Tran’s chief of staff",
+	],
+	[
+		"a blank agent label with a known owner is the owner's chief of staff",
+		"  ",
+		"Ben Tran",
+		"Ben Tran’s chief of staff",
+	],
+	[
+		"a blank owner keeps the stored label as is, without an empty parenthetical",
+		"Aida (Ben Tran)",
+		"",
+		"Aida (Ben Tran)",
+	],
+	[
+		"a label naming a different person in parentheses is the agent's own name",
+		"Aida (Sales)",
+		"Ben Tran",
+		"Aida (Sales) (Ben Tran)",
+	],
+	["blank labels fall back to the shared copy", " ", "", "Unknown agent"],
+];
+for (const [name, label, owner, expected] of RECIPIENT_SHAPES) {
+	for (const [kind, over, sentence] of LINE_STATES) {
+		test(`recipient label, ${kind} line: ${name}`, () => {
+			assert.deepEqual(
+				lineTexts(
+					render([
+						entry({
+							recipient_label: label,
+							recipient_owner_label: owner,
+							...over,
+						}),
+					]),
+				),
+				[sentence(expected)],
+			);
+		});
+	}
+}
+
+test("no delivery template splices an owner beside the recipient, in any locale", () => {
+	for (const locale of MODERATION_LOCALES) {
+		const catalogue = JSON.parse(
+			readFileSync(`src/i18n/catalogues/${locale}/ui.teamBridge.json`, "utf8"),
+		);
+		for (const [key, value] of Object.entries(catalogue)) {
+			if (!RECIPIENT_LINE_KEY.test(key)) continue;
+			assert.doesNotMatch(value, SPLICED_PARTS, `${locale} ${key}`);
+			assert.equal(
+				value.split("{recipient}").length - 1,
+				1,
+				`${locale} ${key} names its recipient exactly once`,
+			);
+		}
+	}
 });
 
 test("multi-recipient: one line per agent; merging happens only within a recipient", () => {

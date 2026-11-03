@@ -176,3 +176,42 @@ export const AgentMixedPartialDelivery: Story = {
 		],
 	},
 };
+
+/*
+ * The recipient label as older clients stored it (operator report,
+ * 2026-11-03). An agent member written before the composition fix holds the
+ * already composed "Aida (Ben Tran)", and an endpoint enrolled without an agent
+ * name holds its owner's name. Each line must name its recipient the way the
+ * message rows do: the owner exactly once, or "Ben Tran's chief of staff".
+ * Refused, held and pending are drawn together because all three templates
+ * take the one composed `{recipient}`.
+ */
+export const LegacyComposedRecipientLabels: Story = {
+	args: {
+		states: [
+			state({
+				endpoint_id: "bep_aida",
+				recipient_label: "Aida (Ben Tran)",
+				recipient_owner_label: "Ben Tran",
+			}),
+			state({
+				endpoint_id: "bep_orion",
+				recipient_label: "Orion (Sherman Lee)",
+				recipient_owner_label: "Sherman Lee",
+				state: "held",
+			}),
+			state({
+				endpoint_id: "bep_cy",
+				recipient_label: "Cy (Cyrus Patel)",
+				recipient_owner_label: "Cyrus Patel",
+				state: "held",
+				hold_class: "delivery_pending",
+			}),
+			state({
+				endpoint_id: "bep_dana",
+				recipient_label: "Dana Ortiz",
+				recipient_owner_label: "Dana Ortiz",
+			}),
+		],
+	},
+};
