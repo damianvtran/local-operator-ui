@@ -819,6 +819,22 @@ const CONTROLS = [
 		ink: "inkDim",
 	},
 	{
+		/*
+		 * The composer's "Insert transcript" control while a dictation records: the
+		 * outline button (no fill, so its fill IS the composer box's `surface`)
+		 * wearing `successBorder` and `success` ink so it reads as the affirmative of
+		 * the recording trio, beside a neutral Cancel and the accent Send recording.
+		 * Colour is never the only carrier - the glyph is a check and the name says
+		 * "Insert transcript" - so this row holds the ink and edge the pairing
+		 * actually draws rather than a state the reader has to decode.
+		 */
+		name: "composer insert transcript (success outline)",
+		on: ["surface"],
+		fill: "surface",
+		border: "successBorder",
+		ink: "success",
+	},
+	{
 		name: "success callout",
 		on: ["canvas", "surface"],
 		fill: "successWash",

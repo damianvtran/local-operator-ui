@@ -258,29 +258,26 @@ export type SessionStatusStripProps = {
 	readingsDropped?: boolean;
 	/**
 	 * Whether the composer's controls group is drawing a THIRD box beside the
-	 * microphone and Send while this strip renders.
+	 * two fixed slots while this strip renders: true only while a dictation is
+	 * recording, when `[Cancel][Confirm][Send recording]` is 104px (92px in the
+	 * small view) instead of the 68px (60px) `[mic][Send | Stop]` pair.
 	 *
 	 * TOLD, never inferred, for the reason `held` and `readingsDropped` are told
 	 * rather than derived here: the group's composition is the row's fact, and a
 	 * strip that guessed it from its own props would be a second authority for
-	 * when a Stop is on screen.
+	 * what the row draws.
 	 *
 	 * WHY IT EXISTS (issue #788). The three width ladders (effort, cost, context)
 	 * are container queries, and a container query can see the column narrow but
-	 * not a SIBLING appear. The group is 68px idle (mic + Send) and 104px whenever
-	 * a third box is drawn - the Stop square while a turn runs, the invisible
-	 * `data-interrupt-slot` through the post-stop grace window, and the recording
-	 * pair, which reserves the same slot. Their thresholds were derived against
-	 * the 68px pair, so above the band a reading came back into a row whose
-	 * controls had grown by 36px and overran them; and because the composer box is
-	 * capped at `--lo-chat-measure` the row does not grow with the column, so no
-	 * wider band exists that would fit. Those three ladders therefore carry a
-	 * state pair as well as a width.
+	 * not a SIBLING grow. Their 750 / 705 / 640 thresholds were derived against the
+	 * 68px pair; a running turn no longer grows the group (Stop stands in Send's
+	 * own slot), so only a live recording needs the 780 / 740 / 675 arms. Because
+	 * the composer box is capped at `--lo-chat-measure` the row does not grow with
+	 * the column, so no wider band exists that would fit.
 	 *
-	 * THE DURATION IS NOT ONE OF ITS READERS ANY MORE. Its fit is measured against
-	 * the row's real free gap (`data-lo-composer-controls`), so this flag is the
-	 * three value ladders' input and only theirs; a running turn is not a reason
-	 * to hide a live number.
+	 * THE DURATION IS NOT ONE OF ITS READERS. Its fit is measured against the
+	 * row's real free gap (`data-lo-composer-controls`), so this flag is the
+	 * three value ladders' input and only theirs.
 	 */
 	controlsThirdBox?: boolean;
 	/*

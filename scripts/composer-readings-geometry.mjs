@@ -115,7 +115,16 @@ const WIDTHS = flag("widths")
 	: [700, 800, 840, 860, 880, 900, 1024];
 
 /** The two states the row can be photographed in. */
-const STATES = ["idle", "running"];
+/** States whose presses the page scripts; the driver waits for the page to say it is done. */
+const SCRIPTED = [
+	"recording",
+	"sendrec-ok",
+	"sendrec-empty",
+	"sendrec-error",
+	"sendrec-hang",
+	"sendrec-running",
+];
+const STATES = flag("states") ? flag("states").split(",") : ["idle", "running"];
 
 /**
  * The readings fixtures: the cheap end (`plain`), the issue #788 repro and its
@@ -199,7 +208,7 @@ const PROBE = `(() => {
 	const controls =
 		items.find((el) =>
 			el.querySelector(
-				'button[aria-label="Send message"], button[aria-label="Stop"], button[aria-label="Stop agent"]',
+				'button[aria-label="Send message"], button[aria-label="Send recording"], button[aria-label="Confirm recording"], button[aria-label="Stop"], button[aria-label="Stop agent"], button[aria-label="Sending your message"]',
 			),
 		) ?? null;
 	const attach = items.find((el) => el !== strip && el !== controls) ?? null;
@@ -399,6 +408,30 @@ const PROBE = `(() => {
 		readings,
 		durationShown: duration !== null && isBox(duration),
 		durationBox: rect(duration),
+		/*
+		 * THE SLOT POSITIONS, which are the claim of the button-slot change: the
+		 * mic's press point (slot A) and the primary slot (B) hold the same x in every
+		 * state. Left edges and widths, in document order = visual order.
+		 */
+		slots: controls
+			? [...controls.querySelectorAll("button")].map((b) => {
+					const r = b.getBoundingClientRect();
+					return {
+						// null on a tree that predates the slot markers (the BEFORE run).
+						slot: b.getAttribute("data-composer-slot"),
+						label: b.getAttribute("aria-label"),
+						left: round(r.left),
+						right: round(r.right),
+						width: round(r.width),
+						height: round(r.height),
+						disabled: b.disabled || b.getAttribute("aria-disabled") === "true",
+					};
+				})
+			: [],
+		sent: window.__sent ?? null,
+		bTimeline: window.__bTimeline ?? null,
+		transcriptionCalls: window.__transcriptionCalls ?? null,
+		boxValue: document.querySelector("textarea")?.value ?? null,
 		controlNames: controls
 			? [...controls.querySelectorAll("button")].map(
 					(b) => b.getAttribute("aria-label") ?? "(unnamed)",
@@ -566,10 +599,18 @@ const waitForRow = async (cdp) => {
 				const strip = document.querySelector("[data-lo-session-strip]");
 				if (!strip) return false;
 				const row = strip.parentElement;
+				// Base trees carry no slot markers: fall back to the labelled primary.
 				const send = row.querySelector(
-					'button[aria-label="Send message"], button[aria-label="Stop"], button[aria-label="Stop agent"]',
+					'[data-composer-slot="b"], button[aria-label="Send message"], button[aria-label="Stop"], button[aria-label="Confirm recording"]',
 				);
-				return !!send && send.getBoundingClientRect().width > 0;
+				if (!send || send.getBoundingClientRect().width <= 0) return false;
+				// The scripted states (recording, send-recording) mark themselves
+				// ready when their presses are done; "error: ..." is a failed script.
+				const ready = document.documentElement.dataset.loReady;
+				if (ready && ready.startsWith("error")) throw new Error(ready);
+				return (${JSON.stringify(SCRIPTED)}).includes(new URLSearchParams(location.search).get("state"))
+					? ready === "1"
+					: true;
 			})()`,
 		});
 		if (result.value === true) return;

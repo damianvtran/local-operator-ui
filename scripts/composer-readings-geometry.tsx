@@ -27,11 +27,33 @@
  * `issue` is the #788 repro and `reported` is the operator's own row from the
  * duration report; the fixture docblock below says what each one is for.
  *
+ * THE SLOT STATES (composer button-slot change). `STATE` also names the rest of
+ * the matrix the cluster is photographed in, each reached through the SHIPPED
+ * composer rather than a prop that fakes it:
+ *
+ *   idle-text        a draft in the box
+ *   running-text     a turn runs and the box holds text (Steer, not Stop)
+ *   stopping         the Stop press has landed and the turn has not ended
+ *   recording        the mic pressed against a synthetic microphone, so the real
+ *                    recorder runs and the row draws its recording controls
+ *   mic-off          no speech capability: the mic is drawn disabled
+ *   sendrec-hang     recording, then Send recording pressed against a
+ *                    transcription that never answers: slot B holds its busy face
+ *   sendrec-ok       ... against one that answers: the words are sent
+ *   sendrec-empty / sendrec-error
+ *                    ... against an empty / failing one: NOTHING is sent
+ *
+ * The harness serves its own `window.api.desktop.media` (the transcription
+ * request) and records what the composer hands `onSendMessage` in `__sent`, so
+ * the probe can state what left the box. A scripted press is `element.click()`,
+ * which carries `detail === 0` (a keyboard-like activation) and so passes the
+ * 500 ms press guard; that guard is measured by its own unit test, not here.
+ *
  * WHAT IS DELIBERATELY NOT HERE. The post-stop GRACE window's reserved slot
- * (`data-interrupt-slot`) is not mounted as a third state, and it is not reachable
+ * (deleted: Stop now stands in Send's own slot) was never mounted as a third state, and was not reachable
  * by a mount: the reservation opens on a TRANSITION (the Stop control leaving the
  * tree) and a freshly mounted composer holds nothing - the composer's own comment
- * on `StopSlotSettled` says exactly that, and `useInterruptSlotHold`'s fold fires
+ * on `StopSlotSettled` says exactly that, and the hold's fold fired
  * on the edge rather than on the render. The window's geometry is the SAME third
  * 32px box as `running`'s (`visibility: hidden` keeps layout, which is the whole
  * point of rendering the Stop's own markup invisible), so the running row is the
@@ -79,6 +101,85 @@ import "@renderer/features/chat/components/story-electron-shim";
 const params = new URLSearchParams(window.location.search);
 const COLUMN = Number(params.get("w") ?? 1024);
 const STATE = params.get("state") ?? "running";
+const DRAFT_TEXT = "Summarise the Q3 report and flag anything unusual";
+const TRANSCRIPT_TEXT = "and email it to the team";
+const TEXT_STATES = new Set([
+	"idle-text",
+	"running-text",
+	"sendrec-ok",
+	"sendrec-empty",
+	"sendrec-error",
+	"sendrec-hang",
+	"sendrec-running",
+]);
+const RUNNING_STATES = new Set([
+	"running",
+	"running-text",
+	"stopping",
+	"sendrec-running",
+]);
+const RECORDING_STATES = new Set([
+	"recording",
+	"sendrec-running",
+	"sendrec-ok",
+	"sendrec-empty",
+	"sendrec-error",
+	"sendrec-hang",
+]);
+const sttMode = (): "ok" | "empty" | "error" | "hang" =>
+	STATE === "sendrec-empty"
+		? "empty"
+		: STATE === "sendrec-error"
+			? "error"
+			: STATE === "sendrec-hang"
+				? "hang"
+				: "ok";
+type HarnessWindow = Window & {
+	__sent?: { content: string; attachments: string[] }[];
+	__transcriptionCalls?: number;
+	/** Slot B's accessible name sampled every 10 ms from the press of Send recording on. */
+	__bTimeline?: string[];
+};
+
+/*
+ * The transcription request, served by the page. `desktopMedia` prefers
+ * `window.api.desktop.media` when it exists, so this is the seam the real
+ * composer already uses; nothing in the composer is stubbed.
+ */
+(window as HarnessWindow).__sent = [];
+(window as HarnessWindow).__transcriptionCalls = 0;
+(window as unknown as { api: unknown }).api = {
+	desktop: {
+		media: async () => {
+			(window as HarnessWindow).__transcriptionCalls =
+				((window as HarnessWindow).__transcriptionCalls ?? 0) + 1;
+			const mode = sttMode();
+			if (mode === "hang") return new Promise(() => {});
+			await new Promise((r) => setTimeout(r, 120));
+			if (mode === "error")
+				return { status: 402, kind: "error", detail: "Out of credits" };
+			return {
+				status: 200,
+				kind: "json",
+				body: { result: { text: mode === "empty" ? "" : TRANSCRIPT_TEXT } },
+			};
+		},
+	},
+};
+
+/* A synthetic microphone: the composer's real MediaRecorder runs against it. */
+if (navigator.mediaDevices) {
+	const keep: AudioContext[] = [];
+	navigator.mediaDevices.getUserMedia = async () => {
+		const context = new AudioContext();
+		keep.push(context);
+		const oscillator = context.createOscillator();
+		const destination = context.createMediaStreamDestination();
+		oscillator.connect(destination);
+		oscillator.start();
+		return destination.stream;
+	};
+}
 const READINGS = params.get("readings") ?? "plain";
 const THEME = (params.get("theme") ?? DEFAULT_THEME) as ThemeName;
 /*
@@ -299,6 +400,11 @@ const sessionStatus = { frontend };
  * would otherwise still be in the row.
  */
 useConversationInputStore.setState({ inputByConversation: {} });
+if (TEXT_STATES.has(STATE)) {
+	useConversationInputStore
+		.getState()
+		.setCurrentInput(CONVERSATION, DRAFT_TEXT);
+}
 
 const client = new QueryClient({
 	defaultOptions: { queries: { retry: false } },
@@ -327,7 +433,68 @@ const Harness = () => {
 	 * same fact that paints the wait line. Photographed without it the row would
 	 * read "Ask me for help" - the idle string - under a running Stop.
 	 */
-	const running = STATE === "running";
+	const running = RUNNING_STATES.has(STATE);
+	const stopping = STATE === "stopping";
+	const recordingProbe =
+		STATE === "mic-off"
+			? undefined
+			: { canUseRadientSpeech: true, speechBlock: "checking" as const };
+
+	/*
+	 * The scripted presses that bring the shipped composer to a recording state.
+	 * Marks the document ready when the script is done so the driver measures a
+	 * settled frame and never a half-way one.
+	 */
+	useEffect(() => {
+		const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
+		const button = (label: string) =>
+			document.querySelector<HTMLButtonElement>(
+				`[data-lo-composer-controls] button[aria-label="${label}"]`,
+			);
+		const until = async (label: string) => {
+			for (let i = 0; i < 40 && !button(label); i += 1) await wait(50);
+			const found = button(label);
+			if (!found) throw new Error(`no control named ${label}`);
+			return found;
+		};
+		let cancelled = false;
+		(async () => {
+			await wait(250);
+			if (RECORDING_STATES.has(STATE)) {
+				(await until("Start recording")).click();
+				// Past the composer's 250 ms minimum take, so Confirm keeps it.
+				// "Confirm recording" is the base tree's name for the same moment.
+				await until("Send recording").catch(() => until("Confirm recording"));
+				await wait(450);
+				if (STATE.startsWith("sendrec")) {
+					const send = button("Send recording");
+					const timeline: string[] = [];
+					(window as HarnessWindow).__bTimeline = timeline;
+					const sampler = setInterval(() => {
+						const label =
+							document
+								.querySelector(
+									'[data-lo-composer-controls] [data-composer-slot="b"]',
+								)
+								?.getAttribute("aria-label") ?? "(none)";
+						if (timeline[timeline.length - 1] !== label) timeline.push(label);
+					}, 10);
+					if (send) send.click();
+					setTimeout(
+						() => clearInterval(sampler),
+						STATE === "sendrec-hang" ? 400 : 1200,
+					);
+					await wait(STATE === "sendrec-hang" ? 400 : 1200);
+				}
+			}
+			if (!cancelled) document.documentElement.dataset.loReady = "1";
+		})().catch((error) => {
+			document.documentElement.dataset.loReady = `error: ${error.message}`;
+		});
+		return () => {
+			cancelled = true;
+		};
+	}, []);
 
 	return (
 		<div
@@ -351,9 +518,14 @@ const Harness = () => {
 				cwdWritePath={MOVING_CWD}
 				sessionStatus={sessionStatus}
 				awaitingReply={running}
-				canonicalStopAvailable={true}
-				canonicalStop={running ? { active: true, onStop: () => {} } : undefined}
-				onSendMessage={async () => true}
+				recordingProbe={recordingProbe}
+				canonicalStop={
+					running ? { active: true, stopping, onStop: () => {} } : undefined
+				}
+				onSendMessage={async (content, attachments) => {
+					(window as HarnessWindow).__sent?.push({ content, attachments });
+					return true;
+				}}
 			/>
 		</div>
 	);

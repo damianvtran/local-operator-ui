@@ -1198,7 +1198,7 @@ test("the narrow ladder sheds effort, then cost, then context - the duration is 
 	 * setting) first, then cost, then context last (the reading the band keeps
 	 * the longest, because it predicts the operator's next action). Each rung
 	 * sheds below a container threshold, and one step earlier while the composer
-	 * draws a THIRD control box - the state half of #788 - because that box
+	 * draws a THIRD control box (now only a live recording) - the state half of #788 - because that box
 	 * costs the row 36px at every width.
 	 *
 	 * The thresholds are the fit points measured in
@@ -1330,17 +1330,24 @@ test("the shed's state comes from the row's own third-box predicate, computed on
 	 * and the strip finds it by that, not by this predicate or by a button's
 	 * translated label.
 	 */
+	/*
+	 * THE THIRD BOX IS A LIVE RECORDING AND NOTHING ELSE. The cluster is two
+	 * fixed slots (`[A mic][B Send | Stop]`, 68px) in every state, because Stop
+	 * stands in Send's own slot; only `[Cancel][Confirm][Send recording]` (104px)
+	 * is wider. The held-box reservation this used to read (`interruptSlotDrawn`,
+	 * `useInterruptSlotHold`) is gone, so a regression that put a running turn
+	 * back on the 780/740/675 arms - or the reservation back in the tree - fails
+	 * here by name.
+	 */
 	assert.match(
 		row,
-		/const interruptSlotDrawn =\s*\n\s*canonicalStopAvailable &&\s*\n\s*!canonicalStop\?\.active &&\s*\n\s*\(slotHold\.held \|\| isRecording\) &&\s*\n\s*!\(isLoading && currentJobId\);/,
-		"the slot must be drawn on the capability, the grace window, a live recording, and not on the legacy job path",
+		/const controlsThirdBox = isRecording;/,
+		"the third box is the recording trio and only that",
 	);
-	// The THIRD BOX is the visible Stop or the reserved slot: the two states whose
-	// composition is `[mic][third][Send]` rather than `[mic][Send]`.
-	assert.match(
+	assert.doesNotMatch(
 		row,
-		/const controlsThirdBox =\s*\n\s*Boolean\(canonicalStop\?\.active\) \|\| interruptSlotDrawn;/,
-		"the third box is the visible Stop control or the slot reserved for it",
+		/interruptSlotDrawn|useInterruptSlotHold|data-interrupt-slot/,
+		"the held box is deleted: Send and Stop share one slot, so nothing is reserved",
 	);
 	assert.match(
 		row,
@@ -1528,9 +1535,9 @@ test("the duration's visibility is measured from the row, not declared from a br
 
 test("a running session renders the duration reading; only the measurement may hide it", () => {
 	/*
-	 * THE OPERATOR'S REPORT AS MARKUP. While a turn runs `controlsThirdBox` is
-	 * true, and that fact used to remove this reading from the tree at EVERY
-	 * width. The element must be present, with its value, and with no
+	 * THE OPERATOR'S REPORT AS MARKUP. While the row draws its third box
+	 * (`controlsThirdBox`, now a live recording) that fact used to remove this
+	 * reading from the tree at EVERY width. The element must be present, with its value, and with no
 	 * class-based hide on it: the state may reach it only through the measured
 	 * `invisible`, which the browser decides from the row's geometry.
 	 */
