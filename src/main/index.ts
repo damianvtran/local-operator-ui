@@ -88,6 +88,7 @@ import {
 	startBrowserHost,
 	stopBrowserHost,
 } from "./browser";
+import { disposeAllRecordingEncoders } from "./browser/actions/recording-encoder-host";
 import {
 	ADDRESS_OVERLAY_VISIBLE_MAX_MS,
 	addressListDocumentUrlFor,
@@ -2947,6 +2948,12 @@ app
 			rendererUrl,
 			"browser-approvals-overlay.html",
 		);
+		// The hidden H.264 encoder document (`record_start {quality: "high"}`),
+		// derived from the same trusted URL for the same reason.
+		const recordingEncoderDocumentUrl = documentUrlFor(
+			rendererUrl,
+			"recording-encoder.html",
+		);
 		/*
 		 * The machine-wide feed's two consumers, and the split between them is the
 		 * design: main takes the notifications (so a completion banners with no
@@ -4676,6 +4683,13 @@ app
 							"../preload/browser-approvals-overlay.js",
 						),
 					},
+					// The hidden H.264 encoder behind `record_start {quality: "high"}`:
+					// the app's own bundled document and preload, derived like the
+					// documents above and never caller-supplied.
+					recordingEncoder: {
+						documentUrl: recordingEncoderDocumentUrl,
+						preloadPath: join(__dirname, "../preload/recording-encoder.js"),
+					},
 					preloadPath: join(__dirname, "../preload/index.js"),
 					/*
 					 * The console's surfaces are handed the user's own PATH, from the same
@@ -5496,6 +5510,11 @@ app.on("before-quit", async (event) => {
 	// file, so a session stopping at the same moment does not read a record naming
 	// a process that is already gone. Not awaited: `before-quit` is synchronous,
 	// and each of these steps is also safe to lose (see `stopBrowserHost`).
+	// A hidden recording-encoder window is destroyed HERE, synchronously, and not
+	// left to the stop above: that one is not awaited, and a window that outlives
+	// `before-quit` is a renderer process the quit has to wait for (D21). A
+	// recording in flight is lost with the app, exactly as the standard path's is.
+	disposeAllRecordingEncoders();
 	void stopBrowserHost();
 	/*
 	 * The synchronous tail is done. What remains is the window close Electron
