@@ -602,7 +602,15 @@ const MessageImage: FC<{
 			? "unavailable"
 			: attachmentView(attachment);
 	const [attempt, setAttempt] = useState(0);
-	const key = `team-bridge:${tenantId}:${message.conversation_id}:${message.id}:${attachment.id}`;
+	// Member and owner-audit resources never share an authority/cache key.
+	const key = JSON.stringify([
+		"team-bridge-member",
+		accountId,
+		tenantId,
+		message.conversation_id,
+		message.id,
+		attachment.id,
+	]);
 	const source = useBridgeAttachmentUrl(
 		key,
 		{

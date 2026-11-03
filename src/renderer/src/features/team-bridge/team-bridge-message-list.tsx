@@ -875,6 +875,12 @@ const MessageRowView: FC<MessageRowProps> = ({
 				{/* Images come ONLY from the structured list, never from the body. */}
 				{(message.attachments?.length ?? 0) > 0 && (
 					<TeamBridgeMessageAttachments
+						key={JSON.stringify([
+							accountId,
+							tenantId,
+							message.conversation_id,
+							message.id,
+						])}
 						message={message}
 						tenantId={tenantId ?? null}
 						density={density}
