@@ -91,6 +91,7 @@ import {
 	type MeshApprovalRow,
 	approvalAnswerWindowLabel,
 	approvalHead,
+	approvalHeadUsesBackendSummary,
 	approvalHostKeyLabel,
 	approvalRefusalPartDirection,
 	approvalRequesterLabel,
@@ -379,6 +380,7 @@ export const MeshApprovalsTray: FC<MeshApprovalsTrayProps> = ({
 		});
 		if (delivery.focused) focusedRefusal.current = refusalKey;
 	}, [rows, pending, refusal, waiting, refusalKey]);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: row replacement can move/unmount the refusal DOM node without changing its text
 	useLayoutEffect(() => {
 		if (!refusal || pending) {
 			focusedRefusal.current = null;
@@ -391,10 +393,9 @@ export const MeshApprovalsTray: FC<MeshApprovalsTrayProps> = ({
 		}
 		// Runs AFTER the focus handoff. When focus was preserved elsewhere, a
 		// refusal card vanished, or focusing failed, announce the sentence here.
-		const owningRow = rows.find((row) => row.approvalId === refusal.approvalId);
 		const refusalTarget =
 			trayRef.current?.querySelector<HTMLElement>(
-				`[data-approval-refusal-id="${CSS.escape(owningRow?.approvalId ?? refusal.approvalId ?? "")}"]`,
+				`[data-approval-refusal-id="${CSS.escape(refusal.approvalId ?? "")}"]`,
 			) ?? null;
 		const delivery = deliverApprovalRefusal({
 			document,
@@ -525,6 +526,9 @@ export const MeshApprovalsTray: FC<MeshApprovalsTrayProps> = ({
 			{refusal && !refusalAttached && (
 				<MeshDecisionRefusal
 					approvalId={refusal.approvalId ?? ""}
+					requestIsBackendSummary={
+						refusedRow ? approvalHeadUsesBackendSummary(refusedRow) : false
+					}
 					refusal={refusal}
 					request={
 						refusedRow
@@ -1069,8 +1073,9 @@ const MeshApprovalCard: FC<{
 const MeshDecisionRefusal: FC<{
 	refusal: { code: string; sentence: string };
 	request?: string;
+	requestIsBackendSummary?: boolean;
 	approvalId: string;
-}> = ({ refusal, request, approvalId }) => {
+}> = ({ refusal, request, approvalId, requestIsBackendSummary = false }) => {
 	useI18nLocale();
 	const direction = useTextDirection();
 	return (
@@ -1088,7 +1093,11 @@ const MeshDecisionRefusal: FC<{
 							<Fragment key={`literal:${index}`}>{part.text}</Fragment>
 						) : (
 							<bdi
-								dir={approvalRefusalPartDirection(part.kind, direction)}
+								dir={approvalRefusalPartDirection(
+									part.kind,
+									direction,
+									requestIsBackendSummary,
+								)}
 								key={part.kind}
 							>
 								{part.text}

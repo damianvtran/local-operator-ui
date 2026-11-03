@@ -1322,17 +1322,17 @@
 	"ui.mesh.approval.duration_under_minute": {
 		"role": "status or instruction — Mesh credential approval card",
 		"tone": "Plain, quiet and factual",
-		"note": "Bare duration for the request-answer window, not share lifetime."
+		"note": "Bare localized under-one-minute duration shared by answer_window (requested, unanswered card) and expires_window (already-approved needs-attention card). Both describe the CARD window, not share lifetime; preserve grammatical compatibility with both outer messages."
 	},
 	"ui.mesh.approval.duration_minutes": {
 		"role": "status or instruction — Mesh credential approval card",
 		"tone": "Plain, quiet and factual",
-		"note": "Compact bare minute duration, count is numeric. Request-answer window only."
+		"note": "Bare localized minute duration shared by answer_window (requested, unanswered card) and expires_window (already-approved needs-attention card). Both describe the CARD window, not share lifetime; preserve grammatical compatibility with both outer messages."
 	},
 	"ui.mesh.approval.duration_hours": {
 		"role": "status or instruction — Mesh credential approval card",
 		"tone": "Plain, quiet and factual",
-		"note": "Compact bare hour duration, count is numeric. Request-answer window only."
+		"note": "Bare localized hour duration shared by answer_window (requested, unanswered card) and expires_window (already-approved needs-attention card). Both describe the CARD window, not share lifetime; preserve grammatical compatibility with both outer messages."
 	},
 	"ui.mesh.approval.answer_window": {
 		"role": "status or instruction — Mesh credential approval card",
@@ -1367,7 +1367,7 @@
 	"ui.mesh.approval.named_refusal": {
 		"role": "warning explanation — Mesh approval outcome outside a visible card",
 		"tone": "Quiet and factual",
-		"note": "Attribution when the owning card is not visible. request is the localized request head, reason is the verbatim backend sentence. React isolates EACH parameter with bdi, preserving locale ordering and punctuation. No machine code. The localized request isolate takes the locale direction even if it starts with a Latin device name; only verbatim backend text uses automatic direction."
+		"note": "Attribution when the owning card is not visible. request is the displayed head (catalogue-authored or a verbatim backend summary); reason is the verbatim backend sentence. React isolates each parameter with bdi, preserving locale ordering and punctuation. Catalogue-authored request text uses locale direction even with a leading Latin device name. Backend-summary request text and backend reason use automatic direction. No machine code."
 	},
 	"ui.mesh.approval.expires_window": {
 		"role": "status — deadline on an already approved needs-attention card",

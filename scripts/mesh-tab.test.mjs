@@ -6221,3 +6221,224 @@ test("Urdu request starting with a Latin device retains locale direction", () =>
 		"Expires in 10 minutes",
 	);
 });
+
+test("request direction distinguishes backend summaries from catalogue heads", () => {
+	const [legacy] = mesh.approvalRows([
+		finiteShareCapture({
+			typed_approval: undefined,
+			summary: "Share an English backend login",
+		}),
+	]);
+	assert.equal(mesh.approvalHeadUsesBackendSummary(legacy), true);
+	assert.equal(
+		mesh.approvalRefusalPartDirection(
+			"request",
+			"rtl",
+			mesh.approvalHeadUsesBackendSummary(legacy),
+		),
+		"auto",
+	);
+	const [typed] = mesh.approvalRows([finiteShareCapture()]);
+	assert.equal(
+		mesh.approvalHeadUsesBackendSummary(typed),
+		false,
+		"typed localized head takes priority over legacy summary",
+	);
+	assert.equal(
+		mesh.approvalRefusalPartDirection(
+			"request",
+			"rtl",
+			mesh.approvalHeadUsesBackendSummary(typed),
+		),
+		"rtl",
+	);
+});
+
+test("tray coordinates focus and announcement across settle and refetch", async () => {
+	// Existing jsdom/React only; stub visual primitives, NOT the tray/effects or
+	// delivery helpers. This is DOM scheduling proof, not a browser/AT capture.
+	const dom = new JSDOM(
+		'<!doctype html><div id="root"></div><button id="elsewhere">Elsewhere</button>',
+		{ pretendToBeVisual: true },
+	);
+	const channels = [];
+	const NativeMessageChannel = globalThis.MessageChannel;
+	const globals = {
+		MessageChannel: class extends NativeMessageChannel {
+			constructor() {
+				super();
+				channels.push(this);
+			}
+		},
+		window: dom.window,
+		document: dom.window.document,
+		navigator: dom.window.navigator,
+		HTMLElement: dom.window.HTMLElement,
+		Element: dom.window.Element,
+		Node: dom.window.Node,
+		MutationObserver: dom.window.MutationObserver,
+		CSS: { escape: (value) => value },
+		IS_REACT_ACT_ENVIRONMENT: true,
+	};
+	const previous = new Map(
+		Object.keys(globals).map((key) => [
+			key,
+			Object.getOwnPropertyDescriptor(globalThis, key),
+		]),
+	);
+	for (const [key, value] of Object.entries(globals))
+		Object.defineProperty(globalThis, key, {
+			configurable: true,
+			writable: true,
+			value,
+		});
+	let root;
+	let mounted;
+	try {
+		const result = await build({
+			stdin: {
+				contents: `
+				export { MeshApprovalsTray } from "./src/renderer/src/features/mesh/mesh-approvals-tray";
+				export { approvalRows } from "./src/renderer/src/features/mesh/mesh-approvals";
+				export { setLocale } from "./src/i18n";
+				export { createElement, act } from "react";
+				export { createRoot } from "react-dom/client";
+			`,
+				resolveDir: process.cwd(),
+			},
+			bundle: true,
+			write: false,
+			format: "esm",
+			platform: "node",
+			jsx: "automatic",
+			mainFields: ["module", "main"],
+			conditions: ["import"],
+			alias: { "@shared": "./src/renderer/src/shared" },
+			plugins: [
+				{
+					name: "dom-primitives",
+					setup(builder) {
+						builder.onResolve(
+							{ filter: /^@shared\/components\/ui(?:\/disclosure)?$/ },
+							(args) => ({ path: args.path, namespace: "dom-primitives" }),
+						);
+						builder.onLoad(
+							{ filter: /.*/, namespace: "dom-primitives" },
+							() => ({
+								resolveDir: process.cwd(),
+								loader: "tsx",
+								contents: `
+					import {useState} from "react";
+					export function Button({variant,size,children,...props}){return <button {...props}>{children}</button>}
+					export function Disclosure({summary,children,open,onOpenChange}){
+						const [local,setLocal]=useState(false);const expanded=open??local;
+						return <section><button onClick={()=>{setLocal(!expanded);onOpenChange?.(!expanded)}}>{summary}</button>{expanded&&children}</section>
+					}
+				`,
+							}),
+						);
+					},
+				},
+			],
+		});
+		mounted = await import(
+			`data:text/javascript;base64,${Buffer.from(result.outputFiles[0].text).toString("base64")}`
+		);
+		mounted.setLocale("en");
+		root = mounted.createRoot(dom.window.document.getElementById("root"));
+		const row = () =>
+			mounted.approvalRows([
+				finiteShareCapture(
+					{ state: "failed" },
+					{
+						signable_here: false,
+						apply_outcome: {
+							code: "busy",
+							retryable: true,
+							reason: "Busy.",
+							remedy: "Try again.",
+						},
+					},
+				),
+			])[0];
+		let props = {
+			rows: [row()],
+			error: null,
+			pending: null,
+			refusal: null,
+			onDecide: () => {},
+			onRetry: () => {},
+			nowSeconds: 1000,
+			credentialApprovals: true,
+		};
+		const render = async () =>
+			mounted.act(async () =>
+				root.render(mounted.createElement(mounted.MeshApprovalsTray, props)),
+			);
+		const start = async () => {
+			props = { ...props, rows: [row()], pending: null, refusal: null };
+			await render();
+			const button = [...document.querySelectorAll("button")].find(
+				(button) => button.textContent === "Try again",
+			);
+			button.focus();
+			await mounted.act(async () => button.click());
+			props = {
+				...props,
+				pending: { approvalId: props.rows[0].approvalId, decision: "apply" },
+			};
+			await render();
+		};
+		await start();
+		const refusal = {
+			approvalId: props.rows[0].approvalId,
+			code: "busy",
+			sentence: "The apply was refused.",
+			retryable: true,
+		};
+		props = { ...props, rows: [row()], pending: null, refusal };
+		await render();
+		const announcement = () =>
+			document.querySelector('[data-tour-tag="mesh-approval-announcement"]')
+				.textContent;
+		assert.equal(
+			document.activeElement.getAttribute("data-tour-tag"),
+			"mesh-approval-refusal",
+		);
+		assert.equal(
+			announcement(),
+			"",
+			"focus effect must run before announcement effect",
+		);
+		// Same event, card leaves on refetch: content identity retains delivery.
+		props = { ...props, rows: [{ ...props.rows[0], state: "expired" }] };
+		await render();
+		assert.equal(
+			announcement(),
+			"",
+			"refetch must not reannounce an already focused refusal",
+		);
+		await start();
+		const elsewhere = document.getElementById("elsewhere");
+		elsewhere.focus();
+		props = { ...props, rows: [row()], pending: null, refusal: { ...refusal } };
+		await render();
+		assert.equal(document.activeElement, elsewhere);
+		assert.equal(
+			announcement(),
+			refusal.sentence,
+			"preserved user focus requires the polite fallback",
+		);
+	} finally {
+		if (root) await mounted.act(async () => root.unmount());
+		dom.window.close();
+		for (const channel of channels) {
+			channel.port1.close();
+			channel.port2.close();
+		}
+		for (const [key, descriptor] of previous) {
+			if (descriptor) Object.defineProperty(globalThis, key, descriptor);
+			else Reflect.deleteProperty(globalThis, key);
+		}
+	}
+});

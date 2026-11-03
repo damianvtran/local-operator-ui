@@ -710,6 +710,13 @@ export function approvalHead(row: MeshApprovalRow): string {
 			});
 }
 
+/** Direction provenance follows the SAME head selection as approvalHead. */
+export function approvalHeadUsesBackendSummary(row: MeshApprovalRow): boolean {
+	if (!row.summary) return false;
+	if (row.kind === "credential") return credentialHead(row) === null;
+	return row.kind === "unknown" || row.canApproveHere === false;
+}
+
 /**
  * Brand spellings for the credential keys a finite share names. The key is a
  * store identifier (`github`), and the ask reads better with the product's own
@@ -1362,12 +1369,16 @@ export function namedApprovalRefusalParts(
 		);
 }
 
-/** A localized request must not let a leading Latin device name select LTR. */
+/**
+ * Catalogue-authored requests keep locale direction despite leading Latin ids;
+ * a backend summary has no locale provenance and must select its own direction.
+ */
 export function approvalRefusalPartDirection(
 	kind: "request" | "reason" | "literal",
 	direction: "ltr" | "rtl",
+	backendSummary = false,
 ): "ltr" | "rtl" | "auto" {
-	return kind === "request" ? direction : "auto";
+	return kind === "request" && !backendSummary ? direction : "auto";
 }
 
 /**

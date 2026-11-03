@@ -209,3 +209,39 @@ Exact catalogue delta for auditors (no removed keys):
 - zh-CN: `ui.mesh.approval.named_refusal`, `ui.mesh.approval.expires_window`
 
 English context: added `ui.mesh.approval.expires_window`; updated `ui.mesh.approval.named_refusal`.
+
+## Narrow expiry grammar, summary provenance and effect-order regression
+
+Russian expires_window now uses «Истекает в течение {duration}», matching the
+shared genitive duration forms. English duration_minutes/duration_hours/
+duration_under_minute context now explicitly names both answer_window and
+expires_window. English named_refusal context records both request origins.
+No self-audit or stale receipt rebinding is claimed.
+
+Request-head direction now follows its actual provenance: catalogue-authored
+heads retain locale direction, while a displayed backend summary uses auto,
+like the verbatim backend reason. A regression checks a legacy backend summary
+versus the typed catalogue head (which takes precedence over the legacy summary).
+The redundant owningRow lookup was removed; the effect's row dependency is
+explicitly documented because row replacement can move/unmount its DOM target.
+
+A small tray render test uses existing JSDOM/React dependencies and the real
+MeshApprovalsTray/effects. Only Button/Disclosure visual primitives are stubbed;
+there are no installs or browser builds. It checks focus suppresses announcement,
+a refetch retains delivery identity after the card leaves, and preserved user
+focus requires a polite fallback. Removing identity suppression OR swapping the
+two layout effects makes this test fail (each selected negative control: tests 1,
+pass 0, fail 1). Source restored byte-identical after both probes. Scheduler
+MessageChannel ports are tracked and closed along with React root and DOM;
+globals are restored. An initial test pass held the process open until its
+120-second bound before this scheduler teardown was added; final runs exit cleanly.
+
+Final selected serial execution (2 GiB, 120-second bound, concurrency 1):
+mesh-tab tests 118/pass 118/fail 0; locale-parity tests 44/pass 44/fail 0.
+This is DOM scheduling proof, NOT rendered pixels or real AT speech. No full
+suite/native/browser run. Independent semantic delta audit remains required.
+
+Changed catalogue values: ru `ui.mesh.approval.expires_window` only.
+Changed English context entries: `ui.mesh.approval.duration_minutes`,
+`ui.mesh.approval.duration_hours`, `ui.mesh.approval.duration_under_minute`,
+`ui.mesh.approval.named_refusal`. No added/removed message keys.
