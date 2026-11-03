@@ -169,3 +169,43 @@ Selected tests, serially with 2 GiB / 120s / concurrency 1: mesh-tab 114 pass,
 - **zh-CN changed:** `ui.mesh.approval.head_inheritance`, `ui.mesh.approval.file_key_disclosure`, `ui.mesh.approval.result_status`.
 - **Removed in all eight catalogues:** `ui.mesh.mesh_approvals.expires_in_under_a_minute`, `ui.mesh.mesh_approvals.expires_minutes`, `ui.mesh.mesh_approvals.expires_hours`, `ui.mesh.approval.approved_pending_apply`, `ui.mesh.approval.request_window`.
 - **English context updated:** `ui.mesh.approval.result_status`, `ui.mesh.approval.named_refusal`; removed contexts for the same five obsolete keys.
+
+
+## Refusal announcement fallback and request-isolate direction
+
+The localized request isolate now uses the active locale direction from
+useTextDirection; only verbatim backend reasons/standalone sentences use auto.
+Repeated static locale punctuation Fragments use position keys with a narrow
+lint explanation. A regression uses an Urdu inheritance title beginning with
+the Latin device name mac-mini and asserts RTL request versus auto reason.
+
+Counts remain in their own polite output. A separate polite output receives the
+refusal only when it was not delivered by focus. The delivery boundary reads
+actual activeElement after attempting handoff; failed/disconnected targets do
+not count as delivery, and user focus elsewhere is preserved. Content identity
+prevents a later refetch from announcing an already-focused refusal again;
+another pending decision resets that identity. JSDOM behavioural tests exercise
+focused refusal/no announcement, preserved user focus/announcement, removed card/
+next control/announcement, and unsuccessful focus/announcement. This proves DOM
+routing, NOT real screen-reader speech or native/browser layout.
+
+Already-answered needs-attention cards now say Expires in (the card window),
+while requested cards retain Answer within. The duration computation is shared.
+French shared-count/status agreement and the Chinese refusal prefix nit are
+corrected. Fresh independent audits are required; no self-audit claimed.
+
+Final selected runs: mesh-tab 116/pass 116/fail 0; locale-parity 44/pass 44/fail 0,
+serial, one file at a time, 2 GiB and 120-second limit. No full suite/build/browser.
+
+Exact catalogue delta for auditors (no removed keys):
+
+- en: `ui.mesh.approval.expires_window`
+- es: `ui.mesh.approval.expires_window`
+- fr: `ui.mesh.approval.shared_count`, `ui.mesh.approval.result_status`, `ui.mesh.approval.expires_window`
+- ru: `ui.mesh.approval.expires_window`
+- hi: `ui.mesh.approval.expires_window`
+- ur: `ui.mesh.approval.expires_window`
+- vi: `ui.mesh.approval.expires_window`
+- zh-CN: `ui.mesh.approval.named_refusal`, `ui.mesh.approval.expires_window`
+
+English context: added `ui.mesh.approval.expires_window`; updated `ui.mesh.approval.named_refusal`.

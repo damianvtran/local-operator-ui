@@ -272,5 +272,6 @@
 	"ui.mesh.approval.cancel_hint": "Hủy chia sẻ dừng yêu cầu này, không rút lại quyền truy cập đã chia sẻ.",
 	"ui.mesh.approval.signing_applying": "Đang ký và áp dụng…",
 	"ui.mesh.approval.retry_hint": "Chọn Thử lại để áp dụng yêu cầu đã phê duyệt này.",
-	"ui.mesh.approval.named_refusal": "Đối với “{request}”: {reason}"
+	"ui.mesh.approval.named_refusal": "Đối với “{request}”: {reason}",
+	"ui.mesh.approval.expires_window": "Hết hạn sau {duration}"
 }

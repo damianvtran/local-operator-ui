@@ -260,9 +260,9 @@
 	"ui.mesh.mesh_reach.handshake_refused_hint": "Vérifiez que cet appareil est toujours membre du réseau et que son époque d’appartenance correspond à celle du réseau ; un appareil supprimé ou une époque modifiée entraîne le refus de la poignée de main.",
 	"ui.mesh.approval.technical_request": "Demande signée exacte (technique)",
 	"ui.mesh.approval.needs_attention": "À traiter : {count, number, ::group-off}",
-	"ui.mesh.approval.shared_count": "Partagés : {count, number, ::group-off}",
+	"ui.mesh.approval.shared_count": "Partagées : {count, number, ::group-off}",
 	"ui.mesh.approval.shared": "Partagée",
-	"ui.mesh.approval.result_status": "Partagés : {shared, number, ::group-off}. À traiter : {attention, number, ::group-off}.",
+	"ui.mesh.approval.result_status": "Partagées : {shared, number, ::group-off}. À traiter : {attention, number, ::group-off}.",
 	"ui.mesh.approval.duration_under_minute": "moins d’une minute",
 	"ui.mesh.approval.duration_minutes": "{count, plural, one {{count, number, ::group-off} minute} many {{count, number, ::group-off} minutes} other {{count, number, ::group-off} minutes}}",
 	"ui.mesh.approval.duration_hours": "{count, plural, one {{count, number, ::group-off} heure} many {{count, number, ::group-off} heures} other {{count, number, ::group-off} heures}}",
@@ -272,5 +272,6 @@
 	"ui.mesh.approval.cancel_hint": "Annuler le partage arrête cette demande, sans retirer les accès déjà partagés.",
 	"ui.mesh.approval.signing_applying": "Signature et application…",
 	"ui.mesh.approval.retry_hint": "Choisissez Réessayer pour appliquer cette demande approuvée.",
-	"ui.mesh.approval.named_refusal": "Pour « {request} » : {reason}"
+	"ui.mesh.approval.named_refusal": "Pour « {request} » : {reason}",
+	"ui.mesh.approval.expires_window": "Expire dans {duration}"
 }

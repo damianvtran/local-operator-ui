@@ -272,5 +272,6 @@
 	"ui.mesh.approval.cancel_hint": "شیئر کرنا منسوخ کرنے سے یہ درخواست رک جاتی ہے۔ پہلے سے شیئر کی گئی رسائی واپس نہیں لی جاتی۔",
 	"ui.mesh.approval.signing_applying": "دستخط اور اطلاق جاری ہے…",
 	"ui.mesh.approval.retry_hint": "اس منظور شدہ درخواست کو لاگو کرنے کے لیے “دوبارہ کوشش کریں” منتخب کریں۔",
-	"ui.mesh.approval.named_refusal": "“{request}” کے لیے: {reason}"
+	"ui.mesh.approval.named_refusal": "“{request}” کے لیے: {reason}",
+	"ui.mesh.approval.expires_window": "{duration} میں میعاد ختم ہو گی"
 }

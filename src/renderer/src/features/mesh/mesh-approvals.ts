@@ -1125,6 +1125,7 @@ export function isAttentionApproval(row: MeshApprovalRow): boolean {
 export function approvalAnswerWindowLabel(
 	expires: number | null,
 	now: number,
+	alreadyAnswered = false,
 ): string | null {
 	if (expires === null || expires <= now || expires <= 0) return null;
 	const minutes = Math.ceil((expires - now) / 60);
@@ -1136,7 +1137,12 @@ export function approvalAnswerWindowLabel(
 				: t("ui.mesh.approval.duration_hours", {
 						count: Math.ceil(minutes / 60),
 					});
-	return t("ui.mesh.approval.answer_window", { duration });
+	return t(
+		alreadyAnswered
+			? "ui.mesh.approval.expires_window"
+			: "ui.mesh.approval.answer_window",
+		{ duration },
+	);
 }
 
 /** The consent-critical facts remain visible before a person presses Approve. */
@@ -1354,4 +1360,43 @@ export function namedApprovalRefusalParts(
 					? { kind: "reason", text: reason }
 					: { kind: "literal", text: part },
 		);
+}
+
+/** A localized request must not let a leading Latin device name select LTR. */
+export function approvalRefusalPartDirection(
+	kind: "request" | "reason" | "literal",
+	direction: "ltr" | "rtl",
+): "ltr" | "rtl" | "auto" {
+	return kind === "request" ? direction : "auto";
+}
+
+/**
+ * Route a refusal through focus OR a polite announcement, never neither/both.
+ * Read actual focus AFTER attempting the handoff: a disconnected/unfocusable
+ * target does not count as delivery. Pure DOM boundary for behavioural tests.
+ */
+export function deliverApprovalRefusal({
+	document,
+	target,
+	refusalTarget,
+	origin,
+	allowFocus,
+	sentence,
+}: {
+	document: Pick<Document, "activeElement" | "body">;
+	target: HTMLElement | null;
+	refusalTarget: HTMLElement | null;
+	origin: Element | null;
+	allowFocus: boolean;
+	sentence: string;
+}): { focused: boolean; announcement: string } {
+	if (
+		allowFocus &&
+		(document.activeElement === document.body ||
+			document.activeElement === origin)
+	)
+		target?.focus({ preventScroll: true });
+	const focused =
+		refusalTarget !== null && document.activeElement === refusalTarget;
+	return { focused, announcement: focused ? "" : sentence };
 }

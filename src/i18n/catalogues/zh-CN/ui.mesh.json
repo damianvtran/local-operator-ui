@@ -272,5 +272,6 @@
 	"ui.mesh.approval.cancel_hint": "取消共享会停止此请求，但不会撤回已经共享的访问权限。",
 	"ui.mesh.approval.signing_applying": "正在签名并应用……",
 	"ui.mesh.approval.retry_hint": "选择“重试”以应用此已批准的请求。",
-	"ui.mesh.approval.named_refusal": "请求“{request}”：{reason}"
+	"ui.mesh.approval.named_refusal": "“{request}”：{reason}",
+	"ui.mesh.approval.expires_window": "{duration}后到期"
 }

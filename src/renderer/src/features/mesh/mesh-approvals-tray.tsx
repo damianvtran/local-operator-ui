@@ -72,6 +72,7 @@
 
 import { Button } from "@shared/components/ui";
 import { Disclosure } from "@shared/components/ui/disclosure";
+import { useTextDirection } from "@shared/i18n/use-document-direction";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { ShieldCheck } from "lucide-react";
@@ -91,6 +92,7 @@ import {
 	approvalAnswerWindowLabel,
 	approvalHead,
 	approvalHostKeyLabel,
+	approvalRefusalPartDirection,
 	approvalRequesterLabel,
 	approvalScopeEntries,
 	approvalStateLabel,
@@ -102,6 +104,7 @@ import {
 	credentialConsequences,
 	credentialRecipientLabel,
 	credentialVisibleConsequences,
+	deliverApprovalRefusal,
 	isAttentionApproval,
 	isWaitingApproval,
 	namedApprovalRefusalParts,
@@ -268,6 +271,13 @@ export const MeshApprovalsTray: FC<MeshApprovalsTrayProps> = ({
 	 * gesture at a time, on the whole tray.
 	 */
 	const busy = pending !== null;
+	const [refusalAnnouncement, setRefusalAnnouncement] = useState("");
+	const focusedRefusal = useRef<string | null>(null);
+	// Content identity survives query refetches; pending clears it for another
+	// explicit attempt that receives the same refusal again.
+	const refusalKey = refusal
+		? JSON.stringify([refusal.approvalId, refusal.code, refusal.sentence])
+		: null;
 	/*
 	 * THE TWO SETS, in the store's own order (oldest first) and nothing re-sorted:
 	 * the oldest record is the first to expire, and a surface that re-sorted would
@@ -341,14 +351,6 @@ export const MeshApprovalsTray: FC<MeshApprovalsTrayProps> = ({
 		if (row === handoff.rowAtStart && refusal?.approvalId !== handoff.id)
 			return;
 		deniedFocus.current = null;
-		// The successful Deny removes its focused control. Hand it to the next
-		// live request, or to CLOSED history, without opening records or taking
-		// focus back from a person who moved elsewhere while the RPC was pending.
-		if (
-			document.activeElement !== document.body &&
-			document.activeElement !== handoff.origin
-		)
-			return;
 		// Prefer the updated card's outcome/control; otherwise next live card or
 		// closed history. Never steal focus from someone who moved elsewhere.
 		const target =
@@ -362,8 +364,49 @@ export const MeshApprovalsTray: FC<MeshApprovalsTrayProps> = ({
 						'[data-tour-tag="mesh-approval-controls"] button:not(:disabled)',
 					)
 				: recordsRef.current?.querySelector<HTMLButtonElement>("button"));
-		target?.focus({ preventScroll: true });
-	}, [rows, pending, refusal, waiting]);
+		const refusalTarget = refusal
+			? (trayRef.current?.querySelector<HTMLElement>(
+					`[data-approval-refusal-id="${CSS.escape(refusal.approvalId ?? "")}"]`,
+				) ?? null)
+			: null;
+		const delivery = deliverApprovalRefusal({
+			document,
+			target: target ?? null,
+			refusalTarget,
+			origin: handoff.origin,
+			allowFocus: true,
+			sentence: refusal?.sentence ?? "",
+		});
+		if (delivery.focused) focusedRefusal.current = refusalKey;
+	}, [rows, pending, refusal, waiting, refusalKey]);
+	useLayoutEffect(() => {
+		if (!refusal || pending) {
+			focusedRefusal.current = null;
+			setRefusalAnnouncement("");
+			return;
+		}
+		if (focusedRefusal.current === refusalKey) {
+			setRefusalAnnouncement("");
+			return;
+		}
+		// Runs AFTER the focus handoff. When focus was preserved elsewhere, a
+		// refusal card vanished, or focusing failed, announce the sentence here.
+		const owningRow = rows.find((row) => row.approvalId === refusal.approvalId);
+		const refusalTarget =
+			trayRef.current?.querySelector<HTMLElement>(
+				`[data-approval-refusal-id="${CSS.escape(owningRow?.approvalId ?? refusal.approvalId ?? "")}"]`,
+			) ?? null;
+		const delivery = deliverApprovalRefusal({
+			document,
+			target: null,
+			refusalTarget,
+			origin: null,
+			allowFocus: false,
+			sentence: refusal.sentence,
+		});
+		if (delivery.focused) focusedRefusal.current = refusalKey;
+		setRefusalAnnouncement(delivery.announcement);
+	}, [refusal, refusalKey, pending, rows]);
 	const waitingCount = waiting.filter((row) =>
 		isWaitingApproval(row.state),
 	).length;
@@ -425,6 +468,14 @@ export const MeshApprovalsTray: FC<MeshApprovalsTrayProps> = ({
 					attention: attentionCount,
 				})}
 			</output>
+			<output
+				aria-live="polite"
+				aria-atomic="true"
+				className="sr-only"
+				data-tour-tag="mesh-approval-announcement"
+			>
+				<bdi dir="auto">{refusalAnnouncement}</bdi>
+			</output>
 			<div className="flex flex-wrap items-center gap-2">
 				<ShieldCheck aria-hidden="true" className="size-4 text-ink-muted" />
 				<h2 className="text-body-sm text-ink">
@@ -473,6 +524,7 @@ export const MeshApprovalsTray: FC<MeshApprovalsTrayProps> = ({
 
 			{refusal && !refusalAttached && (
 				<MeshDecisionRefusal
+					approvalId={refusal.approvalId ?? ""}
 					refusal={refusal}
 					request={
 						refusedRow
@@ -615,7 +667,11 @@ const MeshApprovalCard: FC<{
 	const where = approvalWhereLabel(row);
 	const hostKey = approvalHostKeyLabel(row);
 	const requester = approvalRequesterLabel(row);
-	const remaining = approvalAnswerWindowLabel(row.expiresAt, nowSeconds);
+	const remaining = approvalAnswerWindowLabel(
+		row.expiresAt,
+		nowSeconds,
+		isAttentionApproval(row),
+	);
 	const opaque = row.kind === "credential" || row.kind === "unknown";
 	const restricted = opaque || row.canApproveHere === false;
 	// Generic signing/install hints are false for opaque typed intent. The
@@ -809,6 +865,7 @@ const MeshApprovalCard: FC<{
 			)}
 			{outcomeSentence && (
 				<MeshDecisionRefusal
+					approvalId={row.approvalId}
 					refusal={{ code: refusalCode ?? "", sentence: outcomeSentence }}
 				/>
 			)}
@@ -1012,23 +1069,31 @@ const MeshApprovalCard: FC<{
 const MeshDecisionRefusal: FC<{
 	refusal: { code: string; sentence: string };
 	request?: string;
-}> = ({ refusal, request }) => {
+	approvalId: string;
+}> = ({ refusal, request, approvalId }) => {
 	useI18nLocale();
+	const direction = useTextDirection();
 	return (
 		<p
 			tabIndex={-1}
 			className="text-meta text-warning [overflow-wrap:anywhere]"
 			data-tour-tag="mesh-approval-refusal"
+			data-approval-refusal-id={approvalId}
 		>
 			{request ? (
-				namedApprovalRefusalParts(request, refusal.sentence).map((part) =>
-					part.kind === "literal" ? (
-						<Fragment key={part.text}>{part.text}</Fragment>
-					) : (
-						<bdi dir="auto" key={part.kind}>
-							{part.text}
-						</bdi>
-					),
+				namedApprovalRefusalParts(request, refusal.sentence).map(
+					(part, index) =>
+						part.kind === "literal" ? (
+							// biome-ignore lint/suspicious/noArrayIndexKey: locale-authored static punctuation can repeat
+							<Fragment key={`literal:${index}`}>{part.text}</Fragment>
+						) : (
+							<bdi
+								dir={approvalRefusalPartDirection(part.kind, direction)}
+								key={part.kind}
+							>
+								{part.text}
+							</bdi>
+						),
 				)
 			) : (
 				<bdi dir="auto">{refusal.sentence}</bdi>

@@ -46,6 +46,7 @@ import { readFileSync } from "node:fs";
 import { createServer } from "node:http";
 import { test } from "node:test";
 import { build } from "esbuild";
+import { JSDOM } from "jsdom";
 
 import { withAbsentLocale } from "./i18n/absent-locale.mjs";
 
@@ -6075,15 +6076,6 @@ test("pre-capture fixes preserve legacy hints, live deadlines and isolated refus
 	assert.ok(
 		source.includes("(waiting || isAttentionApproval(row)) && remaining"),
 	);
-	const status = source.slice(
-		source.indexOf("<output"),
-		source.indexOf("</output>"),
-	);
-	assert.equal(
-		status.includes("refusal"),
-		false,
-		"counts-only status cannot repeat the focused refusal",
-	);
 	assert.ok(source.includes('<bdi dir="auto"'));
 	const previous = mesh.currentLocale();
 	try {
@@ -6112,4 +6104,120 @@ test("pre-capture fixes preserve legacy hints, live deadlines and isolated refus
 	);
 	assert.ok(legacy.includes('"Approved, but not applied yet."'));
 	assert.ok(legacy.includes('["Shared", "Denied", "Expired"]'));
+});
+
+test("refusal delivery focuses once or announces without stealing focus", () => {
+	const dom = new JSDOM(
+		'<!doctype html><button id="origin">Approve</button><button id="next">Next</button><p id="refusal" tabindex="-1">Refused</p>',
+	);
+	try {
+		const document = dom.window.document;
+		const origin = document.getElementById("origin");
+		const next = document.getElementById("next");
+		const refusalTarget = document.getElementById("refusal");
+		const sentence = "This request was refused.";
+		origin.focus();
+		const focused = mesh.deliverApprovalRefusal({
+			document,
+			origin,
+			target: refusalTarget,
+			refusalTarget,
+			allowFocus: true,
+			sentence,
+		});
+		assert.equal(document.activeElement, refusalTarget);
+		assert.deepEqual(
+			focused,
+			{ focused: true, announcement: "" },
+			"focus and live announcement must not both speak the sentence",
+		);
+		// A refetch keeps the same focused refusal: no fallback announcement.
+		assert.equal(
+			mesh.deliverApprovalRefusal({
+				document,
+				origin: null,
+				target: null,
+				refusalTarget,
+				allowFocus: false,
+				sentence,
+			}).announcement,
+			"",
+		);
+		// User moved elsewhere while RPC was pending: keep their focus, announce.
+		next.focus();
+		assert.deepEqual(
+			mesh.deliverApprovalRefusal({
+				document,
+				origin,
+				target: refusalTarget,
+				refusalTarget,
+				allowFocus: true,
+				sentence,
+			}),
+			{ focused: false, announcement: sentence },
+		);
+		assert.equal(document.activeElement, next);
+		// Conflict/expiry removed the owning card; handoff goes to another control.
+		origin.focus();
+		refusalTarget.remove();
+		assert.deepEqual(
+			mesh.deliverApprovalRefusal({
+				document,
+				origin,
+				target: next,
+				refusalTarget: null,
+				allowFocus: true,
+				sentence,
+			}),
+			{ focused: false, announcement: sentence },
+		);
+		assert.equal(document.activeElement, next);
+		// Attempting to focus a disconnected paragraph is not successful delivery.
+		origin.focus();
+		assert.deepEqual(
+			mesh.deliverApprovalRefusal({
+				document,
+				origin,
+				target: refusalTarget,
+				refusalTarget,
+				allowFocus: true,
+				sentence,
+			}),
+			{ focused: false, announcement: sentence },
+		);
+	} finally {
+		dom.window.close();
+	}
+});
+
+test("Urdu request starting with a Latin device retains locale direction", () => {
+	const previous = mesh.currentLocale();
+	try {
+		mesh.setLocale("ur");
+		const request = mesh.t("ui.mesh.approval.head_inheritance", {
+			device: "mac-mini",
+			provider: "GitHub",
+			account: "acct-42",
+		});
+		assert.ok(request.startsWith("mac-mini"));
+		const parts = mesh.namedApprovalRefusalParts(request, "Backend refused.");
+		const requestPart = parts.find((part) => part.kind === "request");
+		assert.equal(requestPart.text, request);
+		assert.equal(
+			mesh.approvalRefusalPartDirection(requestPart.kind, "rtl"),
+			"rtl",
+		);
+		assert.equal(mesh.approvalRefusalPartDirection("reason", "rtl"), "auto");
+		assert.equal(mesh.approvalRefusalPartDirection("request", "ltr"), "ltr");
+	} finally {
+		mesh.setLocale(previous);
+	}
+	assert.equal(
+		mesh.approvalAnswerWindowLabel(1600, 1000),
+		"Answer within 10 minutes",
+	);
+	assert.equal(
+		mesh.approvalAnswerWindowLabel(1600, 1000, true),
+		"Expires in 10 minutes",
+	);
 });

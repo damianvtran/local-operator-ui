@@ -1367,6 +1367,11 @@
 	"ui.mesh.approval.named_refusal": {
 		"role": "warning explanation — Mesh approval outcome outside a visible card",
 		"tone": "Quiet and factual",
-		"note": "Attribution when the owning card is not visible. request is the localized request head, reason is the verbatim backend sentence. React isolates EACH parameter with bdi, preserving locale ordering and punctuation. No machine code."
+		"note": "Attribution when the owning card is not visible. request is the localized request head, reason is the verbatim backend sentence. React isolates EACH parameter with bdi, preserving locale ordering and punctuation. No machine code. The localized request isolate takes the locale direction even if it starts with a Latin device name; only verbatim backend text uses automatic direction."
+	},
+	"ui.mesh.approval.expires_window": {
+		"role": "status — deadline on an already approved needs-attention card",
+		"tone": "Quiet and factual",
+		"note": "The decision was already answered; the operator may retry applying or cancel before the record expires. duration is the same already-localized bare duration used by answer_window. Do not call this an answer deadline or imply permission expires: this is the CARD window."
 	}
 }

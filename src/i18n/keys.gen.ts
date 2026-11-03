@@ -6958,6 +6958,7 @@ export type MessageParams = {
 	"ui.mesh.approval.duration_hours": { count: number };
 	"ui.mesh.approval.duration_minutes": { count: number };
 	"ui.mesh.approval.duration_under_minute": undefined;
+	"ui.mesh.approval.expires_window": { duration: string };
 	"ui.mesh.approval.file_key_disclosure": undefined;
 	"ui.mesh.approval.file_key_recorded": undefined;
 	"ui.mesh.approval.future_logins_covered": undefined;

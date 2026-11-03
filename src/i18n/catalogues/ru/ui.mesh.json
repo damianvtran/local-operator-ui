@@ -272,5 +272,6 @@
 	"ui.mesh.approval.cancel_hint": "Отмена останавливает этот запрос, но не отзывает уже предоставленный доступ.",
 	"ui.mesh.approval.signing_applying": "Подписание и применение…",
 	"ui.mesh.approval.retry_hint": "Выберите «Повторить», чтобы применить этот одобренный запрос.",
-	"ui.mesh.approval.named_refusal": "Для «{request}»: {reason}"
+	"ui.mesh.approval.named_refusal": "Для «{request}»: {reason}",
+	"ui.mesh.approval.expires_window": "Истекает через {duration}"
 }

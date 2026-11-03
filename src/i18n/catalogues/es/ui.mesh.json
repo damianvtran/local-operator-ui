@@ -272,5 +272,6 @@
 	"ui.mesh.approval.cancel_hint": "Cancelar el uso compartido detiene esta solicitud. No retira el acceso ya compartido.",
 	"ui.mesh.approval.signing_applying": "Firmando y aplicando…",
 	"ui.mesh.approval.retry_hint": "Elige Reintentar para aplicar esta solicitud aprobada.",
-	"ui.mesh.approval.named_refusal": "Para “{request}”: {reason}"
+	"ui.mesh.approval.named_refusal": "Para “{request}”: {reason}",
+	"ui.mesh.approval.expires_window": "Caduca en {duration}"
 }

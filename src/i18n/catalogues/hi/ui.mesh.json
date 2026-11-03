@@ -272,5 +272,6 @@
 	"ui.mesh.approval.cancel_hint": "साझा करना रद्द करने से यह अनुरोध रुक जाता है। पहले से साझा एक्सेस वापस नहीं लिया जाता।",
 	"ui.mesh.approval.signing_applying": "हस्ताक्षर और लागू हो रहा है…",
 	"ui.mesh.approval.retry_hint": "इस स्वीकृत अनुरोध को लागू करने के लिए “फिर से कोशिश करें” चुनें।",
-	"ui.mesh.approval.named_refusal": "“{request}” के लिए: {reason}"
+	"ui.mesh.approval.named_refusal": "“{request}” के लिए: {reason}",
+	"ui.mesh.approval.expires_window": "{duration} में समय-सीमा समाप्त होगी"
 }
