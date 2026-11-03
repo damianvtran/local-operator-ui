@@ -28,5 +28,6 @@
 	"ui.agents.pages.search.teams": "Поиск команд",
 	"ui.agents.pages.search_aria": "Поиск агентов и команд",
 	"ui.agents.pages.tab.agents": "Агенты",
-	"ui.agents.pages.tab.teams": "Команды"
+	"ui.agents.pages.tab.teams": "Команды",
+	"ui.agents.pages.blocked_edit": "Сначала завершите или отмените правку."
 }

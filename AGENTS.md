@@ -2145,6 +2145,21 @@ with no manual step on the pipeline. So **merging is not releasing**: a merged P
 that has not been released yet is the normal state of `main`, not a problem to fix,
 and a request to *implement* something is not a request to *release* it.
 
+**What the macOS build signs and notarizes with.** Both `publish.yml` and
+`signed-update-candidate.yml` sign with the Radient Inc. organization's Developer ID
+Application identity (`MACOS_DEVID_APP_P12_BASE64` / `_PASSWORD`), embed its
+Developer ID provisioning profile (`MACOS_APP_PROFILE_BASE64`) so the main
+executable can carry the passkey keychain group, and notarize with an App Store
+Connect API key (`APPLE_API_KEY_P8_BASE64`, `APPLE_API_KEY_ID`, `APPLE_API_ISSUER`).
+The team id did not change in the move off the individual account, so installed
+apps' designated requirements still accept the new signature. The retired secrets
+(`CSC_CONTENT`, `CSC_KEY_PASSWORD`, `APPLE_ID`, `APPLE_ID_PASSWORD`) stay for
+rollback and nothing may read them (`scripts/mac-build-arch.test.mjs`). Renewal is
+a pair: the certificate expires 2027-12-02, and a Developer ID profile embeds its
+certificate, so a new p12 always ships with a NEW profile — the comment above
+`publish.yml`'s staging step is the runbook. Never put the WebAuthn group on
+`entitlementsInherit` (the 0.29.6 brick; `docs/design/browser-challenges-and-passkeys.md` §3.4).
+
 That used to be the other way round, and the history is worth keeping because it
 explains why the trigger is a *published Release* and nothing else. The deleted
 `.github/workflows/auto-release.yml` derived a version from merged commit subjects,

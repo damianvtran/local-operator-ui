@@ -21,5 +21,22 @@
 	"ui.agents.teams.section.members": "ارکان",
 	"ui.agents.teams.section.members_aria": "ارکان",
 	"ui.agents.teams.section.project_brief": "پروجیکٹ کا بریف",
-	"ui.agents.teams.section.what_for": "یہ کس لیے ہے"
+	"ui.agents.teams.section.what_for": "یہ کس لیے ہے",
+	"ui.agents.teams.field.name_hint": "وہ نام جس سے آپ اور آپ کی چیٹس اس ٹیم کا ذکر کریں گے۔",
+	"ui.agents.teams.field.name_label": "ٹیم کا نام",
+	"ui.agents.teams.section.manager_hint": "وہ ایجنٹ جو گفتگو کی قیادت کرتا ہے اور طے کرتا ہے کہ کون کس کام پر ہے۔",
+	"ui.agents.teams.field.manager_label": "منتظم ایجنٹ",
+	"ui.agents.teams.field.manager_list_notice": "اس مشین پر موجود ایجنٹس اور ٹیمیں",
+	"ui.agents.teams.section.members_hint": "منتظم کن کو کام تفویض کر سکتا ہے، ہر ایک کی کتنی تعداد، اور ہر ایک کس ماڈل پر چلتا ہے۔",
+	"ui.agents.teams.field.loading_agents": "ایجنٹ لوڈ ہو رہے ہیں",
+	"ui.agents.teams.field.member_aria": "رکن {index, number, ::group-off}",
+	"ui.agents.teams.field.member_kind_aria": "رکن {index, number, ::group-off} کی قسم",
+	"ui.agents.teams.action.fewer_aria": "ایک {role} کم",
+	"ui.agents.teams.action.more_aria": "ایک {role} مزید",
+	"ui.agents.teams.field.count_aria": "{role} کی تعداد {count, number, ::group-off}",
+	"ui.agents.teams.field.what_for_label": "یہ ٹیم کس لیے ہے",
+	"ui.agents.teams.action.create": "ٹیم بنائیں",
+	"ui.agents.teams.action.creating": "بنایا جا رہا ہے…",
+	"ui.agents.teams.action.discard_question": "یہ ٹیم رد کریں؟",
+	"ui.agents.teams.empty.description": "ابھی کوئی تفصیل نہیں۔"
 }

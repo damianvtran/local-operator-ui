@@ -12,5 +12,8 @@
 	"ui.agents.detail.read_state.class_on": "已开启",
 	"ui.agents.detail.read_state.class_off": "已关闭",
 	"ui.agents.detail.read_state.class_switching": "正在切换……",
-	"ui.agents.detail.read_state.effort_inherit": "使用会话档位"
+	"ui.agents.detail.read_state.effort_inherit": "使用会话档位",
+	"ui.agents.detail.read_state.list_failed_teams": "无法读取团队",
+	"ui.agents.detail.read_state.list_failed_agents": "无法读取智能体",
+	"ui.agents.detail.read_state.list_failed_meaning": "没有内容丢失。这是一次读取失败——后端返回了错误，这与后端版本过旧不同。"
 }

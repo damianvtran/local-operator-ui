@@ -15,6 +15,7 @@ const bundle = await build({
 			export {useMentionDraftStore} from './src/renderer/src/features/team-bridge/mentions/mention-draft-store';
 			export {stagedMentions} from './src/renderer/src/features/team-bridge/mentions/mention-outbox';
 			export {createRoot} from 'react-dom/client';
+			export {QueryClient, QueryClientProvider} from '@tanstack/react-query';
 			export {act, createElement, useRef, StrictMode, Fragment} from 'react';`,
 		resolveDir: process.cwd(),
 	},
@@ -104,6 +105,11 @@ async function mount({
 	const host = document.createElement("div");
 	document.body.append(host);
 	const root = m.createRoot(host);
+	// The shipping app supplies query context to every avatar in the popover.
+	// Keep this client mount-owned and shared by every draft rerender.
+	const queryClient = new m.QueryClient({
+		defaultOptions: { queries: { retry: false } },
+	});
 	let controller;
 	const sent = [];
 	const textWrites = [];
@@ -157,23 +163,27 @@ async function mount({
 		text = value;
 		root.render(
 			m.createElement(
-				m.MentionSourceContext.Provider,
-				{
-					value: {
-						conversationId: "bcv_restore",
-						draftOwner: owner,
-						self: owner
-							? { accountId: owner.accountId, label: "Draft owner" }
-							: null,
-						candidates: list,
-						conversationKind: "group",
-						sendMentions: true,
-					},
-				},
+				m.QueryClientProvider,
+				{ client: queryClient },
 				m.createElement(
-					strictMode ? m.StrictMode : m.Fragment,
-					null,
-					m.createElement(Composer, { value }),
+					m.MentionSourceContext.Provider,
+					{
+						value: {
+							conversationId: "bcv_restore",
+							draftOwner: owner,
+							self: owner
+								? { accountId: owner.accountId, label: "Draft owner" }
+								: null,
+							candidates: list,
+							conversationKind: "group",
+							sendMentions: true,
+						},
+					},
+					m.createElement(
+						strictMode ? m.StrictMode : m.Fragment,
+						null,
+						m.createElement(Composer, { value }),
+					),
 				),
 			),
 		);
@@ -274,6 +284,7 @@ async function mount({
 		},
 		async dispose() {
 			await m.act(async () => root.unmount());
+			queryClient.clear();
 			host.remove();
 		},
 	};

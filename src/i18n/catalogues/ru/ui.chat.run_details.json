@@ -82,5 +82,10 @@
 	"ui.chat.run_details.chip.mcp_attention": "{count, plural, one {# MCP-сервер требует внимания} few {# MCP-сервера требуют внимания} many {# MCP-серверов требуют внимания} other {# MCP-сервера требуют внимания}}",
 	"ui.chat.run_details.mcp.cold_label": "Сессия не запущена — состояние серверов проверить нельзя.",
 	"ui.chat.run_details.nothing_in_flight": "Ничего не выполняется.",
-	"ui.chat.run_details.nothing_to_show_yet": "Пока нечего показать."
+	"ui.chat.run_details.nothing_to_show_yet": "Пока нечего показать.",
+	"ui.chat.run_details.subagents_of_aria": "Субагенты: {owner}",
+	"ui.chat.run_details.job_cancel_aria": "Отменить {label}",
+	"ui.chat.run_details.monitors.cancel_aria": "Отменить мониторинг {name}",
+	"ui.chat.run_details.monitors.more": "{count, plural, =1 {Ещё {count_display} мониторинг} one {Ещё {count_display} мониторинг} few {Ещё {count_display} мониторинга} many {Ещё {count_display} мониторингов} other {Ещё {count_display} мониторинга}}",
+	"ui.chat.run_details.wake.more": "{count, plural, =1 {Ещё {count_display} пробуждение} one {Ещё {count_display} пробуждение} few {Ещё {count_display} пробуждения} many {Ещё {count_display} пробуждений} other {Ещё {count_display} пробуждения}}"
 }

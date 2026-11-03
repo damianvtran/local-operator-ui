@@ -47,6 +47,10 @@ const IDENTICAL_OK = new Map([
 	],
 	// French cognates only: these are the normal French UI nouns, not English
 	// fallbacks. Scope to fr so untranslated nouns in other languages still fail.
+	[
+		"fr:ui.chat.canonical.image_label",
+		"French UI noun: Image, same spelling as English; scoped to fr so other locales still translate it",
+	],
 	["fr:ui.notifications.nav.label", "French UI noun: Notifications"],
 	["fr:ui.notifications.page.title", "French UI noun: Notifications"],
 	[

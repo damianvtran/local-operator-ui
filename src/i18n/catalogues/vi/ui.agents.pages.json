@@ -28,5 +28,6 @@
 	"ui.agents.pages.search.teams": "Tìm nhóm",
 	"ui.agents.pages.search_aria": "Tìm tác nhân và nhóm",
 	"ui.agents.pages.tab.agents": "Tác nhân",
-	"ui.agents.pages.tab.teams": "Nhóm"
+	"ui.agents.pages.tab.teams": "Nhóm",
+	"ui.agents.pages.blocked_edit": "Hãy hoàn tất hoặc hủy phần chỉnh sửa trước."
 }

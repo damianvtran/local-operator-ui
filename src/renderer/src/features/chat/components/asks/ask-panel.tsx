@@ -515,7 +515,9 @@ const AskQuestionField = ({
 					 * than an association (`dom_audit` reported `fail input-label`; design
 					 * round 1, D8).
 					 */
-					aria-label={`Your answer to: ${question.question}`}
+					aria-label={t("ui.chat.asks.answer_aria", {
+						question: question.question,
+					})}
 					/*
 					 * The placeholder pair `ui/input.tsx` uses: the placeholder is where the skip
 					 * rule is stated, and the browser default measured 2.81:1 on Linen against
@@ -735,7 +737,9 @@ const AskQuestionField = ({
 								fieldRef={otherField}
 								value={other.text}
 								disabled={disabled}
-								ariaLabel={`Your answer to: ${question.question}`}
+								ariaLabel={t("ui.chat.asks.answer_aria", {
+									question: question.question,
+								})}
 								placeholder={OTHER_PROMPT}
 								onChange={(text) => writeOther({ open: true, text })}
 								onEnter={() => onAdvance(question.id)}
@@ -758,7 +762,9 @@ const AskQuestionField = ({
 					fieldRef={otherField}
 					value={other.text}
 					disabled={disabled}
-					ariaLabel={`Your answer to: ${question.question}`}
+					ariaLabel={t("ui.chat.asks.answer_aria", {
+						question: question.question,
+					})}
 					placeholder={OTHER_PROMPT}
 					onChange={(text) => writeOther({ open: true, text })}
 					onEnter={() => onAdvance(question.id)}

@@ -22,6 +22,9 @@ const bundle = await build({
 			'export * from "./src/main/browser/actions/recording";',
 			'export * from "./src/main/browser/protocol";',
 			'export * from "./src/main/browser/cdp";',
+			// The typed failure itself, so a case can script the exact code a dead tab
+			// or a DevTools hand-over answers with.
+			'export * from "./src/main/browser/errors";',
 		].join("\n"),
 		resolveDir: process.cwd(),
 	},
@@ -92,11 +95,42 @@ function stream(
 		endless,
 		onCommand,
 		base64 = true,
+		layout,
+		layoutErrors = 0,
+		pollError,
+		frameError,
+		frames,
 	} = {},
 ) {
 	let index = 0;
+	let layoutFailures = 0;
 	return ({ method, params }) => {
 		onCommand?.(method, params);
+		if (method === "Runtime.evaluate") {
+			// The frame wait is the only evaluate that awaits a promise; the poll is
+			// the plain one, so a fixture can fail either on its own.
+			if (params?.awaitPromise) {
+				if (frameError) throw frameError;
+				// `frames` lets a case answer the first awaited frame with the OLD size
+				// and a later one with the request; once it runs out the request stands.
+				const answer = frames?.length ? frames.shift() : layout;
+				return {
+					result: {
+						value: answer ? [answer.width, answer.height] : undefined,
+					},
+				};
+			}
+			if (pollError) throw pollError;
+			if (layoutFailures < layoutErrors) {
+				layoutFailures += 1;
+				throw new Error("Cannot find default execution context");
+			}
+			// The poll reads the page's own viewport: two numbers, the shape
+			// Chromium returns for `[window.innerWidth, window.innerHeight]`.
+			return {
+				result: { value: layout ? [layout.width, layout.height] : undefined },
+			};
+		}
 		if (method === "Page.startScreenRecording") {
 			if (startError) throw startError;
 			return startResult ?? {};
@@ -165,7 +199,10 @@ function fixture(options = {}) {
 			requireSurface: (token) => {
 				const contents = tabs.get(String(token));
 				if (!contents) throw new Error(`no tab ${token}`);
-				return { view: { webContents: contents } };
+				return {
+					view: { webContents: contents },
+					presented: String(token) === options.presentedTab,
+				};
 			},
 		},
 		cdp: {
@@ -202,7 +239,7 @@ function fixture(options = {}) {
 
 // ---- 1. start -------------------------------------------------------------
 
-test("record_start sends exactly the fixed capture params and writes nothing", async () => {
+test("record_start without a size sends the fixed capture params and writes nothing", async () => {
 	const dir = scratchDir();
 	const path = join(dir, "clip.mp4");
 	const { start, stop, commands } = fixture({ path });
@@ -216,7 +253,13 @@ test("record_start sends exactly the fixed capture params and writes nothing", a
 		container: "mp4",
 		codec: "av1",
 	});
-	// D14: the capture shape is fixed and not agent-tunable.
+	// D14: without width/height the capture shape is the fixed ceiling, and no
+	// emulation call is made at all.
+	assert.deepEqual(
+		commands.map((call) => call.method),
+		["Page.startScreenRecording"],
+		"the unsized path makes no Emulation call",
+	);
 	assert.deepEqual(commands[0].params, {
 		audio: false,
 		maxWidth: 1280,
@@ -779,10 +822,13 @@ class FakeDebugger extends EventEmitter {
 function poolFixture(answer) {
 	const cdp = new mod.CdpPool();
 	const fakeDebugger = new FakeDebugger();
+	const sent = [];
 	if (answer) {
 		const original = FakeDebugger.prototype.sendCommand;
-		fakeDebugger.sendCommand = async (method) =>
-			answer({ method }) ?? original.call(fakeDebugger, method);
+		fakeDebugger.sendCommand = async (method) => {
+			sent.push(method);
+			return answer({ method }) ?? original.call(fakeDebugger, method);
+		};
 	}
 	const debuggerLike = fakeDebugger;
 	const contents = contentsFor(9001 + nextViewId++, { debugger: debuggerLike });
@@ -790,7 +836,7 @@ function poolFixture(answer) {
 		cdp,
 		registry: { requireSurface: () => ({ view: { webContents: contents } }) },
 	};
-	return { cdp, contents, debuggerLike, ctx };
+	return { cdp, contents, debuggerLike, ctx, sent };
 }
 
 test("every debugger boundary aborts a recording and clears its timer", async (t) => {
@@ -1114,6 +1160,715 @@ test("the protocol mirror carries both methods with D8's budgets", () => {
 			`${method} is advertised as a capability`,
 		);
 	}
+	// Sized recording is a capability, not a method: the extension never
+	// advertises it and an old harness never sends the fields.
+	assert.ok(mod.HOST_CAPABILITIES.includes("record_size"));
+	assert.equal(mod.isMethod("record_size"), false);
 	assert.equal(mod.COMMAND_TIMEOUTS_S.record_start, 20);
 	assert.equal(mod.COMMAND_TIMEOUTS_S.record_stop, 60);
+});
+
+// ---- 12. agent-chosen capture size (D14, RS1-RS6) -------------------------
+
+/** A sized start's layout answer: the request, so the poll settles immediately. */
+function sizedStart(options = {}) {
+	const dir = scratchDir();
+	const path = join(dir, "clip.mp4");
+	const requested = { width: 1920, height: 1080, ...options.size };
+	const rig = fixture({
+		path,
+		chunks: options.chunks ?? [Buffer.from("ftyp-sized")],
+		presentedTab: options.presentedTab,
+		handler: stream(options.chunks ?? [Buffer.from("ftyp-sized")], {
+			layout: options.layout ?? requested,
+			layoutErrors: options.layoutErrors,
+			pollError: options.pollError,
+			frameError: options.frameError,
+			frames: options.frames,
+			startError: options.startError,
+			endless: options.endless,
+		}),
+	});
+	return { ...rig, dir, path, requested };
+}
+
+test("bad sizes are refused before any CDP call, with param and why", async () => {
+	const dir = scratchDir();
+	const path = join(dir, "clip.mp4");
+	const { start, commands } = fixture({ path });
+	const cases = [
+		[{ width: 1280 }, "height", "incomplete"],
+		[{ height: 720 }, "width", "incomplete"],
+		[{ width: 1280.5, height: 720 }, "width", "range"],
+		[{ width: 1280, height: "720p" }, "height", "range"],
+		[{ width: 1281, height: 720 }, "width", "odd"],
+		[{ width: 1280, height: 721 }, "height", "odd"],
+		[{ width: 200, height: 720 }, "width", "range"],
+		[{ width: 1280, height: 4000 }, "height", "range"],
+		[{ width: 3840, height: 3840 }, "size", "area"],
+	];
+	for (const [params, param, why] of cases) {
+		const error = await start({ path, ...params }).catch((refusal) => refusal);
+		assert.equal(error.code, "internal", JSON.stringify(params));
+		assert.equal(error.data?.reason, "record_size", JSON.stringify(params));
+		assert.equal(error.data?.param, param, JSON.stringify(params));
+		assert.equal(error.data?.why, why, JSON.stringify(params));
+		assert.match(error.message, /Nothing was started\.$/);
+	}
+	assert.deepEqual(commands, [], "a size refusal costs no CDP call");
+	assert.deepEqual(readdirSync(dir), []);
+});
+
+test("a sized start sets the viewport, waits for layout, then records there", async () => {
+	const { start, stop, commands, path, requested } = sizedStart({
+		size: { width: 2160, height: 3840 },
+	});
+	const result = await start({ path, ...requested });
+	assert.deepEqual(result, {
+		recording: true,
+		path,
+		max_duration_s: 120,
+		max_bytes: 64 * 1024 * 1024,
+		fps: 10,
+		container: "mp4",
+		codec: "av1",
+		width: 2160,
+		height: 3840,
+	});
+	// The order is the contract: the viewport exists, the page draws at it, and
+	// only then does the recorder start on it.
+	assert.deepEqual(
+		commands.map((call) => call.method),
+		[
+			"Emulation.setDeviceMetricsOverride",
+			"Runtime.evaluate",
+			"Runtime.evaluate",
+			"Page.startScreenRecording",
+		],
+	);
+	assert.equal(
+		commands[1].params.awaitPromise,
+		undefined,
+		"the poll is a plain read",
+	);
+	assert.equal(
+		commands[2].params.awaitPromise,
+		true,
+		"the settle awaits frames",
+	);
+	assert.deepEqual(commands[0].params, {
+		width: 2160,
+		height: 3840,
+		deviceScaleFactor: 1,
+		mobile: false,
+	});
+	assert.deepEqual(commands[3].params, {
+		audio: false,
+		maxWidth: 2160,
+		maxHeight: 3840,
+		frameRate: 10,
+	});
+	const stopped = await stop();
+	assert.equal(stopped.width, 2160);
+	assert.equal(stopped.height, 3840);
+	const methods = commands.map((call) => call.method);
+	const stopAt = methods.indexOf("Page.stopScreenRecording");
+	const clearAt = methods.indexOf("Emulation.clearDeviceMetricsOverride");
+	assert.ok(stopAt >= 0 && clearAt > stopAt, "cleared after the stop");
+	assert.ok(
+		clearAt < methods.indexOf("IO.read"),
+		"the viewport is restored before the stream is read",
+	);
+	assert.equal(
+		methods.filter(
+			(method) => method === "Emulation.clearDeviceMetricsOverride",
+		).length,
+		1,
+	);
+});
+
+test("a sized start on a user-visible tab is refused before any CDP call", async () => {
+	const { start, commands, path, requested } = sizedStart({
+		presentedTab: "tab",
+	});
+	const error = await start({ path, ...requested }).catch((refusal) => refusal);
+	assert.equal(error.code, "internal");
+	assert.equal(error.data?.reason, "record_size");
+	assert.equal(error.data?.param, "size");
+	assert.equal(error.data?.why, "visible");
+	assert.match(error.message, /Nothing was started\.$/);
+	assert.deepEqual(commands, []);
+});
+
+test("a viewport that never settles is refused as not_applied and restored", async () => {
+	// A tab stuck at its old layout: the poll runs out and the start must not reach
+	// Chromium's recorder, so no clip is produced at the wrong size.
+	const { start, commands, path, requested } = sizedStart({
+		layout: { width: 1280, height: 720 },
+	});
+	const error = await start({ path, ...requested }).catch((refusal) => refusal);
+	assert.equal(error.code, "internal");
+	assert.equal(error.data?.reason, "record_size");
+	assert.equal(error.data?.why, "not_applied");
+	assert.match(error.message, /Nothing was started\.$/);
+	const methods = commands.map((call) => call.method);
+	assert.ok(!methods.includes("Page.startScreenRecording"));
+	assert.equal(methods.at(-1), "Emulation.clearDeviceMetricsOverride");
+});
+
+test("a tab that never draws a frame at the new size is refused, not recorded", async () => {
+	// QA Q1: layout can match while the compositor still holds the old raster, so
+	// the start waits for a frame at the new size. A tab that never draws one
+	// must refuse rather than encode the old layout into the new clip.
+	const { start, commands, path, requested } = sizedStart({
+		frameError: new Error("Runtime.evaluate timed out"),
+	});
+	const error = await start({ path, ...requested }).catch((refusal) => refusal);
+	assert.equal(error.code, "internal");
+	assert.equal(error.data?.reason, "record_size");
+	assert.equal(error.data?.why, "not_applied");
+	assert.match(error.message, /did not draw a frame at that size/);
+	assert.match(error.message, /Nothing was started\.$/);
+	const methods = commands.map((call) => call.method);
+	assert.ok(!methods.includes("Page.startScreenRecording"));
+	assert.equal(methods.at(-1), "Emulation.clearDeviceMetricsOverride");
+});
+
+test("a closed or DevTools-taken tab fails the layout poll at once, not as not_applied", async () => {
+	// Q1's wait used to swallow EVERY failure, so a destroyed tab (`tab_closed`) or
+	// a DevTools hand-over (`debugger_conflict`) burned the 2 s window and surfaced
+	// as record_size/not_applied — a size refusal for a tab that is gone. Only a
+	// failure a later poll can answer is a "not yet".
+	for (const code of ["tab_closed", "debugger_conflict"]) {
+		const original = new mod.BrowserHostError(code, `${code} from send`);
+		const { start, commands, path, requested } = sizedStart({
+			pollError: original,
+		});
+		const began = Date.now();
+		const error = await start({ path, ...requested }).catch(
+			(refusal) => refusal,
+		);
+		assert.equal(error, original, `${code} is rethrown untouched`);
+		assert.equal(error.code, code);
+		assert.equal(error.data?.reason, undefined, "not a record_size refusal");
+		assert.ok(Date.now() - began < 1_000, `${code} fails at once`);
+		assert.equal(
+			commands.filter((call) => call.method === "Runtime.evaluate").length,
+			1,
+			`${code} is not retried`,
+		);
+		assert.equal(
+			commands.at(-1).method,
+			"Emulation.clearDeviceMetricsOverride",
+			`${code} still restores the viewport`,
+		);
+		assert.ok(
+			!commands.some((call) => call.method === "Page.startScreenRecording"),
+			`${code} never reaches the recorder`,
+		);
+	}
+});
+
+test("a closed or DevTools-taken tab fails the frame wait at once, not as not_applied", async () => {
+	// Q1's frame wait has the same tail as the poll: a tab that cannot draw again
+	// must report why, not wait out the window and blame the size.
+	for (const code of ["tab_closed", "debugger_conflict"]) {
+		const original = new mod.BrowserHostError(code, `${code} from send`);
+		const { start, commands, path, requested } = sizedStart({
+			frameError: original,
+		});
+		const began = Date.now();
+		const error = await start({ path, ...requested }).catch(
+			(refusal) => refusal,
+		);
+		assert.equal(error, original, `${code} is rethrown untouched`);
+		assert.equal(error.code, code);
+		assert.equal(error.data?.reason, undefined, "not a record_size refusal");
+		assert.ok(Date.now() - began < 1_000, `${code} fails at once`);
+		assert.equal(
+			commands.filter((call) => call.method === "Runtime.evaluate").length,
+			2,
+			`${code}: one poll and one frame answer, no retry`,
+		);
+		assert.equal(
+			commands.at(-1).method,
+			"Emulation.clearDeviceMetricsOverride",
+			`${code} still restores the viewport`,
+		);
+		assert.ok(
+			!commands.some((call) => call.method === "Page.startScreenRecording"),
+			`${code} never reaches the recorder`,
+		);
+	}
+});
+
+test("a stale first frame answer is retried until the requested size is drawn", async () => {
+	// Q1's loop must keep going when the first awaited frame still reports the OLD
+	// size: the encoder would capture exactly the raster the wait exists to avoid.
+	const { start, stop, commands, path, requested } = sizedStart({
+		frames: [
+			{ width: 1280, height: 720 },
+			{ width: 1920, height: 1080 },
+		],
+	});
+	const result = await start({ path, ...requested });
+	assert.equal(result.width, 1920);
+	assert.equal(result.height, 1080);
+	const evaluates = commands.filter(
+		(call) => call.method === "Runtime.evaluate",
+	);
+	assert.equal(evaluates.length, 3, "poll, stale frame answer, matching one");
+	assert.equal(
+		evaluates.filter((call) => call.params.awaitPromise === true).length,
+		2,
+		"the stale answer was retried once",
+	);
+	assert.equal(commands.at(-1).method, "Page.startScreenRecording");
+	await stop();
+});
+
+test("a transient evaluate failure during a navigation is retried, not refused", async () => {
+	// Review n-A: a tab mid-navigation answers "Cannot find default execution
+	// context" until the new document exists. That is a start racing a load, so
+	// the poll retries inside its own window instead of failing the start.
+	const { start, stop, commands, path, requested } = sizedStart({
+		layoutErrors: 2,
+	});
+	const result = await start({ path, ...requested });
+	assert.equal(result.recording, true);
+	const evaluates = commands.filter(
+		(call) => call.method === "Runtime.evaluate",
+	);
+	assert.equal(
+		evaluates.length,
+		4,
+		"two failed polls, one matching poll, one settle",
+	);
+	assert.equal(commands.at(-1).method, "Page.startScreenRecording");
+	await stop();
+});
+
+test("a failed start that had resized the tab restores the viewport", async () => {
+	const { start, stop, commands, path, requested } = sizedStart({
+		startError: new Error("Screencast is already active"),
+	});
+	await rejectsReason(
+		start({ path, ...requested }),
+		"internal",
+		"record_failed",
+	);
+	assert.deepEqual(
+		commands.map((call) => call.method),
+		[
+			"Emulation.setDeviceMetricsOverride",
+			"Runtime.evaluate",
+			"Runtime.evaluate",
+			"Page.startScreenRecording",
+			"Emulation.clearDeviceMetricsOverride",
+		],
+	);
+	await rejectsReason(stop(), "internal", "record_not_active");
+});
+
+test("a sized recording's duration timer restores the viewport", async (t) => {
+	t.mock.timers.enable({ apis: ["setTimeout"] });
+	const { start, stop, commands, path, requested } = sizedStart();
+	await start({ path, ...requested, max_duration_s: 5 });
+	t.mock.timers.tick(5_000);
+	const result = await stop();
+	assert.equal(result.auto_stopped, true);
+	assert.equal(result.width, 1920);
+	assert.equal(result.height, 1080);
+	const methods = commands.map((call) => call.method);
+	assert.ok(
+		methods.indexOf("Emulation.clearDeviceMetricsOverride") >
+			methods.indexOf("Page.stopScreenRecording"),
+		"the auto-stop restored the viewport",
+	);
+});
+
+test("an abort restores the viewport it applied", async () => {
+	const { start, stop, commands, path, requested, tabs } = sizedStart();
+	await start({ path, ...requested });
+	mod.abortRecording(tabs.get("tab").id, "test-abort");
+	assert.ok(
+		commands.some(
+			(call) => call.method === "Emulation.clearDeviceMetricsOverride",
+		),
+	);
+	await rejectsReason(stop(), "internal", "record_not_active");
+});
+
+test("abortAndEnd stops the recorder and restores the viewport", async () => {
+	const { start, commands, path, requested, tabs } = sizedStart();
+	await start({ path, ...requested });
+	await mod.abortAndEnd(tabs.get("tab").id, "test-replace");
+	const methods = commands.map((call) => call.method);
+	assert.ok(methods.includes("Page.stopScreenRecording"));
+	assert.ok(methods.includes("Emulation.clearDeviceMetricsOverride"));
+});
+
+test("a start cancelled while its viewport is applied restores it", async () => {
+	const dir = scratchDir();
+	const path = join(dir, "clip.mp4");
+	let release;
+	const gate = new Promise((resolveGate) => {
+		release = resolveGate;
+	});
+	const { start, tabs, commands } = fixture({
+		path,
+		handler: ({ method }) => {
+			if (method === "Runtime.evaluate") {
+				return { result: { value: [1920, 1080] } };
+			}
+			if (method === "Page.startScreenRecording") return gate.then(() => ({}));
+			if (method === "Page.stopScreenRecording")
+				return { stream: "s-cancelled" };
+			return {};
+		},
+	});
+	const inFlight = start({ path, width: 1920, height: 1080 });
+	await new Promise((resolveTick) => setImmediate(resolveTick));
+	mod.abortRecording(tabs.get("tab").id, "test-cancelled");
+	release();
+	await rejectsReason(inFlight, "internal", "record_failed");
+	const methods = commands.map((call) => call.method);
+	assert.ok(
+		methods.includes("Page.stopScreenRecording"),
+		"the accepted start was ended",
+	);
+	assert.ok(
+		methods.includes("Emulation.clearDeviceMetricsOverride"),
+		"the viewport was restored",
+	);
+});
+
+test("only one recording above 1080p runs at a time", async () => {
+	const dir = scratchDir();
+	// The layout answer follows the last override, so any accepted size settles.
+	let layout = { width: 1280, height: 720 };
+	const base = stream([Buffer.from("x")]);
+	const { start, stop, addTab } = fixture({
+		path: join(dir, "a.mp4"),
+		handler: (call) => {
+			if (call.method === "Emulation.setDeviceMetricsOverride") {
+				layout = { width: call.params.width, height: call.params.height };
+				return {};
+			}
+			if (call.method === "Runtime.evaluate") {
+				return { result: { value: [layout.width, layout.height] } };
+			}
+			return base(call);
+		},
+	});
+	addTab("tab-2");
+	addTab("tab-3");
+	addTab("tab-4");
+	addTab("tab-5");
+	await start(
+		{ path: join(dir, "a.mp4"), width: 2560, height: 1440 },
+		"session:a",
+		"tab",
+	);
+	const refused = await start(
+		{ path: join(dir, "b.mp4"), width: 3840, height: 2160 },
+		"session:a",
+		"tab-2",
+	).catch((error) => error);
+	assert.equal(refused.code, "busy");
+	assert.equal(refused.data?.reason, "record_limit");
+	assert.equal(refused.data?.limit, 1);
+	assert.match(refused.message, /1920x1080/);
+	// 1080p exactly is not "large", and is still allowed beside the 4K-ish clip.
+	await start(
+		{ path: join(dir, "c.mp4"), width: 1920, height: 1080 },
+		"session:a",
+		"tab-4",
+	);
+	await stop("session:a", "tab");
+	await stop("session:a", "tab-4");
+});
+
+test("record_too_large names the size of a sized clip", async () => {
+	const { start, stop, path, requested } = sizedStart({
+		size: { width: 1280, height: 720 },
+		endless: true,
+	});
+	await start({ path, ...requested, max_bytes: 1024 * 1024 });
+	const error = await stop().catch((refusal) => refusal);
+	assert.equal(error.data?.reason, "record_too_large");
+	assert.match(error.message, /at 1280x720/);
+});
+
+// ---- 12. viewport ownership across a replace ------------------------------
+
+/**
+ * A tab whose emulated viewport is a FACT this fixture remembers, so a case can
+ * assert which override is active after late CDP calls land. `Runtime.evaluate`
+ * answers with it, the way a page that has already reflowed would.
+ */
+function viewportTab(options = {}) {
+	let viewport = null;
+	const commands = [];
+	const handler = (call) => {
+		commands.push(call);
+		if (call.method === "Emulation.setDeviceMetricsOverride") {
+			viewport = { width: call.params.width, height: call.params.height };
+			return {};
+		}
+		if (call.method === "Emulation.clearDeviceMetricsOverride") {
+			viewport = null;
+			return {};
+		}
+		if (call.method === "Runtime.evaluate") {
+			return {
+				result: {
+					value: viewport ? [viewport.width, viewport.height] : undefined,
+				},
+			};
+		}
+		if (call.method === "IO.read") {
+			return { data: Buffer.from("clip-bytes").toString("base64"), eof: true };
+		}
+		return options.answer?.(call) ?? {};
+	};
+	const rig = fixture({ handler });
+	return {
+		...rig,
+		commands,
+		viewport: () => viewport,
+	};
+}
+
+test("a tall page with a scrollbar still settles: the poll reads innerWidth", async () => {
+	// The measured failure (review m1): a page that scrolls answers 1905 from
+	// Page.getLayoutMetrics for a 1920-wide override, because the layout viewport
+	// excludes the scrollbar, and the old poll refused a viewport that was right.
+	// innerWidth is the surface the page and the encoder see.
+	const dir = scratchDir();
+	const path = join(dir, "clip.mp4");
+	const base = stream([Buffer.from("ftyp-scroll")], {
+		layout: { width: 1920, height: 1080 },
+	});
+	const { start, stop, commands } = fixture({
+		handler: (call) => {
+			if (call.method === "Page.getLayoutMetrics") {
+				// What Electron 45.1.0 answers on a page tall enough to scroll.
+				return { cssLayoutViewport: { clientWidth: 1905, clientHeight: 1080 } };
+			}
+			return base(call);
+		},
+	});
+	const result = await start({ path, width: 1920, height: 1080 });
+	assert.equal(result.width, 1920);
+	assert.equal(result.height, 1080);
+	assert.ok(
+		!commands.some((call) => call.method === "Page.getLayoutMetrics"),
+		"the scrollbar-blind metric is not what the poll trusts",
+	);
+	await stop();
+});
+
+test("a displaced recording's late finalize leaves the successor's viewport alone", async () => {
+	const dir = scratchDir();
+	const pathA = join(dir, "a.mp4");
+	const pathB = join(dir, "b.mp4");
+	let stopCalls = 0;
+	let releaseStop;
+	const stopGate = new Promise((resolveGate) => {
+		releaseStop = resolveGate;
+	});
+	const rig = viewportTab({
+		answer: ({ method }) => {
+			if (method === "Page.stopScreenRecording") {
+				stopCalls += 1;
+				// A's stop hangs in Chromium until B is already recording.
+				return stopCalls === 1
+					? stopGate.then(() => ({ stream: "stream-a" }))
+					: { stream: "stream-b" };
+			}
+			return {};
+		},
+	});
+	const { start, stop, commands, viewport } = rig;
+	await start({ path: pathA, width: 1280, height: 720 }, "session:a");
+	const stoppingA = stop("session:a");
+	await new Promise((resolveTick) => setImmediate(resolveTick));
+	// B replaces A on the same tab: the replace installs 3840x2160 before A's
+	// stop has answered.
+	await start({ path: pathB, width: 3840, height: 2160 }, "session:b");
+	assert.deepEqual(viewport(), { width: 3840, height: 2160 });
+	const methods = commands.map((call) => call.method);
+	assert.equal(
+		methods.filter(
+			(method) => method === "Emulation.clearDeviceMetricsOverride",
+		).length,
+		1,
+		"A's own override was cleared once when it was displaced",
+	);
+	const setAtB = commands
+		.map((call) => call.method)
+		.lastIndexOf("Emulation.setDeviceMetricsOverride");
+	releaseStop();
+	await rejectsReason(stoppingA, "internal", "record_aborted");
+	assert.deepEqual(
+		viewport(),
+		{ width: 3840, height: 2160 },
+		"A's finalize landed after B's override and left it alone",
+	);
+	assert.deepEqual(
+		commands
+			.slice(setAtB + 1)
+			.filter((call) => call.method === "Emulation.clearDeviceMetricsOverride"),
+		[],
+		"no clear was issued by the late finalize",
+	);
+	const savedB = await stop("session:b");
+	assert.equal(savedB.path, pathB);
+	assert.equal(viewport(), null, "B's own stop restored the tab");
+});
+
+test("a late endReplaced from abortAndEnd leaves a later start's viewport alone", async () => {
+	const dir = scratchDir();
+	const pathA = join(dir, "a.mp4");
+	const pathB = join(dir, "b.mp4");
+	let stopCalls = 0;
+	let releaseStop;
+	const stopGate = new Promise((resolveGate) => {
+		releaseStop = resolveGate;
+	});
+	const rig = viewportTab({
+		answer: ({ method }) => {
+			if (method === "Page.stopScreenRecording") {
+				stopCalls += 1;
+				return stopCalls === 1
+					? stopGate.then(() => ({ stream: "stream-a" }))
+					: { stream: "stream-b" };
+			}
+			return {};
+		},
+	});
+	const { start, stop, commands, viewport, tabs } = rig;
+	await start({ path: pathA, width: 1280, height: 720 }, "session:a");
+	// A is aborted and its recorder stop hangs; abortRecording already dropped it
+	// from the tab, so B can start and install its own override meanwhile.
+	const ending = mod.abortAndEnd(tabs.get("tab").id, "test-replace");
+	await new Promise((resolveTick) => setImmediate(resolveTick));
+	assert.equal(viewport(), null, "the abort restored A's override");
+	await start({ path: pathB, width: 3840, height: 2160 }, "session:b");
+	assert.deepEqual(viewport(), { width: 3840, height: 2160 });
+	const setAtB = commands
+		.map((call) => call.method)
+		.lastIndexOf("Emulation.setDeviceMetricsOverride");
+	releaseStop();
+	await ending;
+	assert.deepEqual(
+		viewport(),
+		{ width: 3840, height: 2160 },
+		"endReplaced's finally clear skipped the successor's override",
+	);
+	assert.deepEqual(
+		commands
+			.slice(setAtB + 1)
+			.filter((call) => call.method === "Emulation.clearDeviceMetricsOverride"),
+		[],
+	);
+	await stop("session:b");
+	assert.equal(viewport(), null);
+});
+
+test("a cancelled start's late endReplaced leaves a later start's viewport alone", async () => {
+	const dir = scratchDir();
+	const pathA = join(dir, "a.mp4");
+	const pathB = join(dir, "b.mp4");
+	let startCalls = 0;
+	let releaseStart;
+	const startGate = new Promise((resolveGate) => {
+		releaseStart = resolveGate;
+	});
+	const rig = viewportTab({
+		answer: ({ method }) => {
+			if (method === "Page.startScreenRecording") {
+				startCalls += 1;
+				if (startCalls === 1) return startGate.then(() => ({}));
+			}
+			if (method === "Page.stopScreenRecording") {
+				return { stream: "stream-cancelled" };
+			}
+			return {};
+		},
+	});
+	const { start, stop, commands, viewport, tabs } = rig;
+	const inFlightA = start(
+		{ path: pathA, width: 1280, height: 720 },
+		"session:a",
+	);
+	await new Promise((resolveTick) => setImmediate(resolveTick));
+	// The handle goes while A's start is in flight; A never registers, so B can
+	// take the tab and install its own size before A's start answers.
+	mod.abortRecording(tabs.get("tab").id, "test-cancelled");
+	await start({ path: pathB, width: 3840, height: 2160 }, "session:b");
+	assert.deepEqual(viewport(), { width: 3840, height: 2160 });
+	const setAtB = commands
+		.map((call) => call.method)
+		.lastIndexOf("Emulation.setDeviceMetricsOverride");
+	releaseStart();
+	await rejectsReason(inFlightA, "internal", "record_failed");
+	assert.deepEqual(
+		viewport(),
+		{ width: 3840, height: 2160 },
+		"the cancelled start's endReplaced skipped B's override",
+	);
+	assert.deepEqual(
+		commands
+			.slice(setAtB + 1)
+			.filter((call) => call.method === "Emulation.clearDeviceMetricsOverride"),
+		[],
+	);
+	await stop("session:b");
+	assert.equal(viewport(), null);
+});
+
+test("a forget on a destroyed view ends the recording without recursing", async () => {
+	// Review m2: `send -> forget -> dropCaptures -> abortRecording ->
+	// clearViewport -> send` recursed on a destroyed view (depth ~870,
+	// RangeError). The clear must not ask a view that is already gone.
+	const dir = scratchDir();
+	const path = join(dir, "clip.mp4");
+	const { cdp, contents, ctx, sent } = poolFixture(({ method }) =>
+		method === "Runtime.evaluate"
+			? { result: { value: [1920, 1080] } }
+			: undefined,
+	);
+	await cdp.attach(contents);
+	await mod.recordStart(
+		ctx,
+		{ tab: "tab", requester: "session:a", path, width: 1920, height: 1080 },
+		"r",
+	);
+	let destroyChecks = 0;
+	contents.isDestroyed = () => {
+		destroyChecks += 1;
+		return true;
+	};
+	const beforeForget = sent.length;
+	cdp.forget(contents.id);
+	assert.ok(
+		destroyChecks < 20,
+		`the view was asked ${destroyChecks} times: the clear re-entered forget`,
+	);
+	// The guard, not the recursion ceiling, is what this pins: a destroyed view is
+	// never asked to clear its override at all.
+	assert.deepEqual(
+		sent
+			.slice(beforeForget)
+			.filter((method) => method === "Emulation.clearDeviceMetricsOverride"),
+		[],
+		"the clear skipped a destroyed view",
+	);
+	await rejectsReason(
+		mod.recordStop(ctx, { tab: "tab", requester: "session:a" }, "r"),
+		"internal",
+		"record_not_active",
+	);
 });

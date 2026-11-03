@@ -85,5 +85,23 @@
 		"tone": "Plain, factual, calm; sentence case.",
 		"length": "Short label, ideally one line; may wrap.",
 		"note": "The effort picker submits the raw inherit token; only its human-facing label changes."
+	},
+	"ui.agents.detail.read_state.list_failed_teams": {
+		"role": "Title of the error panel when the teams list read failed",
+		"tone": "Plain statement, sentence case, no period",
+		"length_hint": "Four words",
+		"note": "A failed read, distinct from the backend being out of date."
+	},
+	"ui.agents.detail.read_state.list_failed_agents": {
+		"role": "Title of the error panel when the agents list read failed",
+		"tone": "Plain statement, sentence case, no period",
+		"length_hint": "Four words",
+		"note": "A failed read, distinct from the backend being out of date."
+	},
+	"ui.agents.detail.read_state.list_failed_meaning": {
+		"role": "Explanatory body of the list read-failure panel",
+		"tone": "Reassuring plain sentences",
+		"length_hint": "Two sentences",
+		"note": "Tells the person their data is intact and that the server answered with an error rather than being too old."
 	}
 }

@@ -4676,9 +4676,11 @@ function SessionPanel({
 								 * declares immutable, so the two lines now state one fact.
 								 */
 								starting
-								? (loadedTargetDisplay ?? "Starting the session")
+								? (loadedTargetDisplay ?? t("ui.chat.header.starting_session"))
 								: draft?.sessionId
-									? canonical.frontend?.cwd || cwd || "Canonical chat"
+									? canonical.frontend?.cwd ||
+										cwd ||
+										t("ui.chat.header.canonical_chat")
 									: /*
 										 * A DRAFT WITH NO SESSION STATES WHERE IT WILL RUN, NOT WHAT IT
 										 * WILL DO (§H, U23). This slot held "The session starts when you

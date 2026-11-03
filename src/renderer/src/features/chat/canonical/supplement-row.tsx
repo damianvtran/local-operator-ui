@@ -865,7 +865,7 @@ export const SupplementRow = memo(function SupplementRow({
 								onOpenChange={setDetailsOpen}
 								rowClassName="min-h-6 py-0"
 								chevronClassName="text-ink-dim"
-								summary="Details"
+								summary={t("ui.chat.canonical.supplement.details.summary")}
 							>
 								<div className="max-h-[min(320px,40vh)] overflow-auto break-words font-mono text-ink-dim">
 									{record.model && (

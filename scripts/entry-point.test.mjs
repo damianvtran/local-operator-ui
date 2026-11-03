@@ -331,6 +331,17 @@ function cases(root) {
 				/^notifications native scene refused: this environment cannot honestly own a foreground desktop\. Missing LOCAL_OPERATOR_UI_NATIVE_SCENE=notifications, CI=true, GITHUB_ACTIONS=true, RUNNER_ENVIRONMENT=github-hosted, .*LOCAL_OPERATOR_CORE_BIN, LOCAL_OPERATOR_CORE_PYTHON, LOCAL_OPERATOR_CORE_REF\. No headless fallback is taken/,
 		},
 		{
+			// Refusal must precede Electron resolution through either entry spelling.
+			script: "app-icon-badge-scene.mjs",
+			args: [],
+			cwd: plain,
+			env: {},
+			status: 1,
+			stdout: /^$/,
+			stderr:
+				/native badge scene refused: CI=true, GITHUB_ACTIONS=true, GitHub-hosted runner/,
+		},
+		{
 			// The group, asked for WITHOUT the profile that authorizes it: the door stays
 			// shut, and it shuts on an exit status rather than on a warning. This is the
 			// half-open state that produced the unlaunchable 0.29.6 bundle.

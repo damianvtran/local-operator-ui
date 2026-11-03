@@ -17,5 +17,7 @@
 	"ui.chat.header.saving_conversation_name": "Enregistrement du nom de la conversation",
 	"ui.chat.header.session_model_connect": "Connecter",
 	"ui.chat.header.session_model_switch": "Changer de modèle",
-	"ui.chat.header.transcript_display": "Affichage de la transcription"
+	"ui.chat.header.transcript_display": "Affichage de la transcription",
+	"ui.chat.header.starting_session": "Démarrage de la session",
+	"ui.chat.header.canonical_chat": "Conversation canonique"
 }

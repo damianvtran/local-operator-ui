@@ -93,7 +93,7 @@ const bundle = await build({
 							? "export const TeamBridgeApi={react:(...args)=>globalThis.__reactionApi(...args)}; export const requireBridgeWriteAccount=(accountId)=>{if(!accountId) throw new Error('Team Bridge write account required'); return accountId;};"
 							: args.path.includes("markdown")
 								? "export const TeamBridgeMarkdown=({children})=>children;"
-								: 'export const t=(key)=>key; export const useI18nLocale=()=>"en";export const formatDate=()=>"today";export const formatTime=()=>"12:00";',
+								: 'export const t=(key)=>key; export const useI18nLocale=()=>"en";export const formatDate=()=>"today";export const formatTime=()=>"12:00";export const formatNumber=(value)=>String(value);',
 					loader: "js",
 				}));
 			},

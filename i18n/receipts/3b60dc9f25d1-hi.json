@@ -1,0 +1,88 @@
+{
+  "schema": 1,
+  "auditor": "i18n-auditor (independent lopdev task 'UI #1604 i18n delta round 2', session 3b60dc9f25d1)",
+  "model": "anthropic/claude-opus-5-5",
+  "model_provenance": "Whole audit (source reads, semantic review, structural probe, receipt writing) ran on this session's announced model anthropic/claude-opus-5-5. No fallback or model switch was observed during this session.",
+  "instance": "3b60dc9f25d1-hi",
+  "audit_session": "3b60dc9f25d1",
+  "locale": "hi",
+  "namespace": "ui.mesh",
+  "date": "2026-11-02",
+  "scope": "Translation delta round 2 of f0c3a0ef26c..7c766326b39 (PR #1604 translation remediation round 2). All 2 changed ui.mesh value(s) in this locale read in final bytes against unchanged English and context. Neighbouring approval-card consent lines re-read for term consistency. Unchanged values retain their earlier audits.",
+  "audited_head": "7c766326b3916aafe2dd5c0f77a430073b77aae4",
+  "delta_base": "f0c3a0ef26c5b4fcd86a59fdf07088a7a14988c8",
+  "status": "passed",
+  "sha256": {
+    "en": "edf18f0d32404972428c4bfcc107f835d170df6e2f6c800d10681d1a1e6e4fd1",
+    "hi": "9e06377a6acc6fd928f21ede8cd6e9820b2f1e3404f4b1be8634d95abae21014"
+  },
+  "base_sha256": {
+    "en": "edf18f0d32404972428c4bfcc107f835d170df6e2f6c800d10681d1a1e6e4fd1",
+    "hi": "692e69a25f52c2deaa1cf3c23afe678c274168d857113a0c33d4e9f4f66ed99a"
+  },
+  "findings": [],
+  "observations": [],
+  "changed_keys": [
+    "ui.mesh.approval.file_key_disclosure",
+    "ui.mesh.approval.scope_session"
+  ],
+  "verbatim_values": {
+    "ui.mesh.approval.file_key_disclosure": "यह मशीन Touch ID से नहीं, कुंजी फ़ाइल से हस्ताक्षर करती है, इसलिए यह स्वीकृति साबित नहीं कर सकती कि इसे किसी व्यक्ति ने दिया।",
+    "ui.mesh.approval.scope_session": "{device} पर सत्र इस लॉगिन को हर सत्र से जुड़ी पहुँच के साथ उधार ले सकते हैं।"
+  },
+  "base_values": {
+    "ui.mesh.approval.file_key_disclosure": "यह मशीन Touch ID से नहीं, कुंजी फ़ाइल से हस्ताक्षर करती है, इसलिए यह स्वीकृति साबित नहीं कर सकती कि इसे किसी व्यक्ति ने दी।",
+    "ui.mesh.approval.scope_session": "{device} पर सत्र इस लॉगिन को हर सत्र से जुड़े ऐक्सेस के साथ उधार ले सकते हैं।"
+  },
+  "english_values": {
+    "ui.mesh.approval.file_key_disclosure": "This machine signs with a key file, not Touch ID, so this approval can't prove a person made it.",
+    "ui.mesh.approval.scope_session": "Sessions on {device} can borrow this login with session-bound access."
+  },
+  "context_sidecar": {
+    "path": "src/i18n/catalogues/en/ui.mesh.context.json",
+    "sha256": "79b22ab6e83a0d8675409f9673a452928b77cee22e47c52930ea0c2127f269f5",
+    "read": "scope_session note (each session borrows with grants bound to the individual incoming session; NOT restricted to the requesting session) and file_key_disclosure note (REQUIRED disclosure; cannot prove a person made it; keep Touch ID) read in full. Byte-identical to delta base."
+  },
+  "standards": {
+    "root": "~/local-operator/i18n at origin/main bb45297811c (read with git show origin/main:)",
+    "sha256": {
+      "glossary.md": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+      "style-guides/hi.md": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+    }
+  },
+  "translator": {
+    "agent": "coder",
+    "jobs": [
+      "job07291411b980",
+      "c61a64298a45",
+      "21ddee198f0b",
+      "d82369d8e233"
+    ],
+    "remediation_commit": "7c766326b3916aafe2dd5c0f77a430073b77aae4",
+    "attribution": "Translator/remediation coder runs named by the manager; their served model is not verified by this auditor."
+  },
+  "independence": "This session (3b60dc9f25d1) authored no catalogue value. It is distinct from the translator/coder runs 07291411b980/c61a64298a45/21ddee198f0b/d82369d8e233 and from earlier auditors 0a40e337218a, 38d28c8fb9bf, 4cb156711482 (receipts f89f59f896f1), e4d4705aa898. Prior audit comments 6589736157 and 6589592813 were read for the finding IDs only; the verdict comes from reading final bytes here.",
+  "prior_findings_verified": [
+    "TA3A-HI-01",
+    "TA3A-HI-02",
+    "TB-HI-01",
+    "TB-HI-02"
+  ],
+  "semantic_checks": [
+    "ui.mesh.approval.scope_session: Meaning matches English exactly: sessions (glossary सत्र) on {device} may borrow (उधार ले सकते हैं, plural agreement) this login with access tied to each session. पहुँच is feminine and जुड़ी agrees; पहुँच matches credential_title 'क्रेडेंशियल पहुँच' and the hi catalogue spelling (57 occurrences of पहुँच, 0 of पहुंच). ऐक्सेस removed. TA3A-HI-02 / TB-HI-01 resolved.",
+    "ui.mesh.approval.file_key_disclosure: Meaning matches English and the REQUIRED-disclosure note: the machine signs with a key file, not Touch ID (product name kept Latin), so the approval cannot prove a person gave it. Agreement now correct: with ergative ने and a को-marked object (इसे), the verb takes default masculine singular दिया. Quiet, non-alarming register. TA3A-HI-01 / TB-HI-02 resolved.",
+    "Security-consent equivalence: no changed value reverses, omits or widens a consent consequence; {device} preserved; scope_device and scope_session remain distinguishable."
+  ],
+  "evidence": {
+    "probe": "i18n/receipts/3b60dc9f25d1-structural-probe.mjs.txt",
+    "probe_sha256": "6d9845d5d7e41dba07a5fa9a48975f090874867260026d5f989ccb3a9eabca74",
+    "log": "i18n/receipts/3b60dc9f25d1-structural-probe-output.txt",
+    "log_sha256": "03580dd4ba7fbf084a0a97dd71d726885bbba2978e63bd806a66038bc9b44dda",
+    "verdict_location": "Status, findings and semantic_checks here are the auditor's review record. The companion log is the actual probe output: key-level base/head diff, ICU argument parity with English, brace balance, NFC, bidi controls and fr U+202F."
+  },
+  "non_claims": [
+    "No rendered/compiled-native, width/fit, pseudo-localization, font shaping or visual validation (host memory hold).",
+    "No translation edits by this auditor."
+  ],
+  "notes": "Translation delta round 2 on PR #1604 head 7c76632: passed, 0 blocker/major/minor/nit."
+}

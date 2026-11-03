@@ -4387,7 +4387,9 @@ export const FastPicker: FC<PickerContext> = ({
 			 */
 			description={
 				draft
-					? "Applies to the conversation this chat starts."
+					? t(
+							"ui.chat.pickers.destination_pickers.applies_to_the_conversation_this_chat_starts",
+						)
 					: t(
 							"ui.chat.pickers.destination_pickers.applies_to_this_session_only",
 						)

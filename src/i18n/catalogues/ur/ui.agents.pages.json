@@ -28,5 +28,6 @@
 	"ui.agents.pages.search.teams": "ٹیمیں تلاش کریں",
 	"ui.agents.pages.search_aria": "ایجنٹس اور ٹیمیں تلاش کریں",
 	"ui.agents.pages.tab.agents": "ایجنٹس",
-	"ui.agents.pages.tab.teams": "ٹیمیں"
+	"ui.agents.pages.tab.teams": "ٹیمیں",
+	"ui.agents.pages.blocked_edit": "پہلے اپنی ترمیم مکمل کریں یا منسوخ کریں۔"
 }

@@ -1,0 +1,127 @@
+base f6a91444077ee6e70edfbdff6d4b740c864b8503
+head fbbbdec31b15b34d06b511278707ae3b0792b080
+context 79b22ab6e83a0d8675409f9673a452928b77cee22e47c52930ea0c2127f269f5 src/i18n/catalogues/en/ui.mesh.context.json
+
+== en base_sha256=14428f2aa934af49f6c9d34a09696a3ba29505f653894a1c69b3fb8a22a261e4 head_sha256=edf18f0d32404972428c4bfcc107f835d170df6e2f6c800d10681d1a1e6e4fd1 keys=264 keyset_eq_en=true
+added=0 removed=0 changed=1
+  ui.mesh.approval.scope_session
+    base: Only the session that asked, on {device}, can use it.
+    head: Sessions on {device} can borrow this login with session-bound access.
+    args=device:1 arms=- en_arms=- nfc=true bidi_ctrl=0 
+
+== es base_sha256=1f79b22f418654a6ea6bbbe88c4582a76b9194a84adaeaf8c262f04632674cc2 head_sha256=c2cf87410dc8c3f4ab06ed6998d514d3e3e4b973453e27bfff51da59403e93d7 keys=264 keyset_eq_en=true
+added=0 removed=0 changed=1
+  ui.mesh.approval.scope_session
+    base: Solo la sesión que lo pidió, en {device}, puede usarlo.
+    head: Las sesiones en {device} pueden usar este inicio de sesión con acceso vinculado a cada sesión.
+    args=device:1 arms=- en_arms=- nfc=true bidi_ctrl=0 
+
+== fr base_sha256=26a35122971f22f3fbccdef1e8daf9b9b95260e344d1eed66d789ae942c45f87 head_sha256=d8699315817a459b7fc559ccb54b0aae92dc27345741b2c0c504903d56a15afe keys=264 keyset_eq_en=true
+added=0 removed=0 changed=3
+  ui.mesh.approval.scope_session
+    base: Seule la session qui l’a demandé, sur {device}, peut l’utiliser.
+    head: Les sessions sur {device} peuvent emprunter cet accès avec une autorisation liée à chaque session.
+    args=device:1 arms=- en_arms=- nfc=true bidi_ctrl=0 
+  ui.mesh.approval.recipient_key
+    base: Clé de {device} :
+    head: Clé de {device} :
+    args=device:1 arms=- en_arms=- nfc=true bidi_ctrl=0 fr_before_:=U+202F
+  ui.mesh.approval.file_key_disclosure
+    base: Cette machine signe avec un fichier de clé, pas avec Touch ID : cette approbation ne peut donc pas prouver qu’une personne l’a donnée.
+    head: Cette machine signe avec un fichier de clé, pas avec Touch ID : cette approbation ne peut donc pas prouver qu’une personne l’a donnée.
+    args= arms=- en_arms=- nfc=true bidi_ctrl=0 fr_before_:=U+202F
+
+== hi base_sha256=4cc40fa0f117a1e100140064f8f380666c3a0e6ea4a5709f9ed896dfb6675b48 head_sha256=692e69a25f52c2deaa1cf3c23afe678c274168d857113a0c33d4e9f4f66ed99a keys=264 keyset_eq_en=true
+added=0 removed=0 changed=5
+  ui.mesh.approval.scope_session
+    base: केवल {device} पर अनुरोध करने वाला सत्र ही इसका इस्तेमाल कर सकता है।
+    head: {device} पर सत्र इस लॉगिन को हर सत्र से जुड़े ऐक्सेस के साथ उधार ले सकते हैं।
+    args=device:1 arms=- en_arms=- nfc=true bidi_ctrl=0 
+  ui.mesh.approval.installs_something
+    base: मंज़ूरी देने से कुछ इंस्टॉल या जुड़ भी सकता है।
+    head: स्वीकृति देने से कुछ इंस्टॉल या जुड़ भी सकता है।
+    args= arms=- en_arms=- nfc=true bidi_ctrl=0 
+  ui.mesh.approval.needs_broker
+    base: {device} को लॉगिन उधार लेने की अनुमति भी चाहिए, जो यह मंज़ूरी नहीं देती।
+    head: {device} को लॉगिन उधार लेने की अनुमति भी चाहिए, जो यह स्वीकृति नहीं देती।
+    args=device:1 arms=- en_arms=- nfc=true bidi_ctrl=0 
+  ui.mesh.approval.file_key_disclosure
+    base: यह मशीन Touch ID से नहीं, कुंजी फ़ाइल से हस्ताक्षर करती है, इसलिए यह मंज़ूरी साबित नहीं कर सकती कि इसे किसी व्यक्ति ने दिया।
+    head: यह मशीन Touch ID से नहीं, कुंजी फ़ाइल से हस्ताक्षर करती है, इसलिए यह स्वीकृति साबित नहीं कर सकती कि इसे किसी व्यक्ति ने दी।
+    args= arms=- en_arms=- nfc=true bidi_ctrl=0 
+  ui.mesh.approval.approved_not_applied
+    base: मंज़ूर, लेकिन अभी लागू नहीं हुआ।
+    head: स्वीकृत, लेकिन अभी लागू नहीं हुआ।
+    args= arms=- en_arms=- nfc=true bidi_ctrl=0 
+
+== ru base_sha256=25e6540676f395a603a830cd0f56cce2516f7a124dd0f10bd634373e3b3b29e7 head_sha256=05807a7096b1873270b13291fa392ff64b77f1568dc72e06aec4c0cd50ec6098 keys=264 keyset_eq_en=true
+added=0 removed=0 changed=2
+  ui.mesh.approval.scope_device
+    base: Им может пользоваться любой сеанс на {device}.
+    head: Им может пользоваться любая сессия на {device}.
+    args=device:1 arms=- en_arms=- nfc=true bidi_ctrl=0 
+  ui.mesh.approval.scope_session
+    base: Им может пользоваться только запросивший сеанс на {device}.
+    head: Сессии на {device} могут использовать этот логин с доступом, привязанным к каждой сессии.
+    args=device:1 arms=- en_arms=- nfc=true bidi_ctrl=0 
+
+== ur base_sha256=25102e5c3f308f7a9041c2071b23d9ede36cb3ba6d4d704b358f9097a9ff2570 head_sha256=b244c0297ff7cbf03f07b0b6f744631a72d7cfb0a82815215baf76fdd6dd0961 keys=264 keyset_eq_en=true
+added=0 removed=0 changed=1
+  ui.mesh.approval.scope_session
+    base: صرف {device} پر درخواست کرنے والا سیشن ہی اسے استعمال کر سکتا ہے۔
+    head: {device} پر سیشن اس لاگ اِن کو ہر سیشن سے منسلک رسائی کے ساتھ ادھار لے سکتے ہیں۔
+    args=device:1 arms=- en_arms=- nfc=true bidi_ctrl=0 
+
+== vi base_sha256=b90e3af178bdf8a0bc2402530a52736ca6c858f0a1717e798c91588e19e7dc11 head_sha256=cd3d7ccbb509c78a99a758b31fb4e6dc35fba9fbd228cab0400665f7a9ded2f7 keys=264 keyset_eq_en=true
+added=0 removed=0 changed=1
+  ui.mesh.approval.scope_session
+    base: Chỉ phiên đã yêu cầu, trên {device}, mới có thể dùng.
+    head: Các phiên trên {device} có thể mượn đăng nhập này với quyền truy cập gắn với từng phiên.
+    args=device:1 arms=- en_arms=- nfc=true bidi_ctrl=0 
+
+== zh-CN base_sha256=cab7351d35a12432679b506ab74eafea80a91cd3e3cad05106e6eeca943e5f83 head_sha256=518c657ae34c377ccefbc2e13682cc90bf7fd79772acc2509bc7eb4b2ce1353d keys=264 keyset_eq_en=true
+added=0 removed=0 changed=11
+  ui.mesh.approval.head_finite_share
+    base: 与 {device} 共享你的 {credential} 登录
+    head: 与{device}共享你的{credential}登录
+    args=credential:1,device:1 arms=- en_arms=- nfc=true bidi_ctrl=0 zh_spaces=[] zh_ellipsis_U2026=0
+  ui.mesh.approval.head_inheritance
+    base: 允许 {device} 使用你的 {provider} 账号 {account}
+    head: 允许{device}使用你的{provider}账号{account}
+    args=account:1,device:1,provider:1 arms=- en_arms=- nfc=true bidi_ctrl=0 zh_spaces=[] zh_ellipsis_U2026=0
+  ui.mesh.approval.scope_device
+    base: {device} 上的任何会话都可以使用。
+    head: {device}上的任何会话都可以使用。
+    args=device:1 arms=- en_arms=- nfc=true bidi_ctrl=0 zh_spaces=[] zh_ellipsis_U2026=0
+  ui.mesh.approval.scope_session
+    base: 只有 {device} 上发出请求的那个会话可以使用。
+    head: {device}上的各个会话可借用此登录凭据，访问权限分别绑定到各自的会话。
+    args=device:1 arms=- en_arms=- nfc=true bidi_ctrl=0 zh_spaces=[] zh_ellipsis_U2026=0
+  ui.mesh.approval.org_limited
+    base: 仅限 {org} 组织。
+    head: 仅限{org}组织。
+    args=org:1 arms=- en_arms=- nfc=true bidi_ctrl=0 zh_spaces=[] zh_ellipsis_U2026=0
+  ui.mesh.approval.not_copied
+    base: 你的登录不会被复制到 {device}。
+    head: 你的登录不会被复制到{device}。
+    args=device:1 arms=- en_arms=- nfc=true bidi_ctrl=0 zh_spaces=[] zh_ellipsis_U2026=0
+  ui.mesh.approval.needs_broker
+    base: {device} 还需要借用登录的权限，而此批准不授予该权限。
+    head: {device}还需要借用登录的权限，而此批准不授予该权限。
+    args=device:1 arms=- en_arms=- nfc=true bidi_ctrl=0 zh_spaces=[] zh_ellipsis_U2026=0
+  ui.mesh.approval.undoes_withdrawals
+    base: {count, plural, other {撤销此前为 {device} 撤回此登录的 {count, number, ::group-off} 次操作。}}
+    head: {count, plural, other {撤销此前为{device}撤回此登录的{count, number, ::group-off}次操作。}}
+    args=count:2,count:6,device:1 arms=count=[other] en_arms=count=[one,other] nfc=true bidi_ctrl=0 zh_spaces=[",␠p",",␠o","r␠{",",␠n",",␠:"] zh_ellipsis_U2026=0
+  ui.mesh.approval.recipient_key
+    base: {device} 的密钥：
+    head: {device}的密钥：
+    args=device:1 arms=- en_arms=- nfc=true bidi_ctrl=0 zh_spaces=[] zh_ellipsis_U2026=0
+  ui.mesh.approval.file_key_disclosure
+    base: 这台机器使用密钥文件签名，而不是 Touch ID，因此此批准无法证明是由人做出的。
+    head: 这台机器使用密钥文件签名，而不是Touch ID，因此此批准无法证明是由人做出的。
+    args= arms=- en_arms=- nfc=true bidi_ctrl=0 zh_spaces=["h␠I"] zh_ellipsis_U2026=0
+  ui.mesh.approval.applying
+    base: 正在应用…
+    head: 正在应用……
+    args= arms=- en_arms=- nfc=true bidi_ctrl=0 zh_spaces=[] zh_ellipsis_U2026=2

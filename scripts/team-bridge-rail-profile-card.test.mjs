@@ -68,7 +68,12 @@ const rowCurrentLiteral = readFileSync(
 if (!rowCurrentLiteral) throw new Error("rowCurrent literal not found");
 
 const CHAT_SIDEBAR_SEAM = /chat\/components\/chat-sidebar$/;
-const AVATAR_SEAM = /^\.\/use-team-bridge-avatar$/;
+// The plate's photo hook, by the path the plate actually imports
+// (`@shared/hooks/use-account-avatar`). The old `/^\.\/use-team-bridge-avatar$/`
+// matched no import at all: the stub was inert and the "no bytes are fetched"
+// claim unenforced, and this PR then deleted the export it named (agent review
+// round 1, N1). Stubbing `useIdentityAvatar` keeps the isolation real.
+const AVATAR_SEAM = /hooks\/use-account-avatar$/;
 const ANY_SEAM = /.*/;
 const bundle = await build({
 	stdin: {
@@ -107,7 +112,7 @@ const bundle = await build({
 				b.onLoad({ filter: ANY_SEAM, namespace: "seam" }, (args) => ({
 					contents:
 						args.path === "avatar"
-							? "export const useTeamBridgeAvatar = () => undefined;"
+							? "export const useIdentityAvatar = () => undefined;"
 							: `export const rowCurrent = ${rowCurrentLiteral};`,
 					loader: "js",
 				}));

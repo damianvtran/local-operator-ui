@@ -15,6 +15,7 @@ import type {
 	TeamBridgeEvent,
 	TeamBridgeMessage,
 } from "../../../../shared/team-bridge-contract";
+import { InlineDataBody } from "./inline-data-receipt";
 import { useMessageMentions } from "./mentions/use-message-mentions";
 import {
 	type TeamBridgeArrivalIdentity,
@@ -652,7 +653,7 @@ const MessageRowView: FC<MessageRowProps> = ({
 		<TeamBridgeProfileCard
 			member={member}
 			label={label}
-			agentName={agent ? label : undefined}
+			kind={agent ? "agent" : "human"}
 			onMessage={messagePerson}
 			canMessage={canMessage}
 		>
@@ -662,13 +663,16 @@ const MessageRowView: FC<MessageRowProps> = ({
 			>
 				<TeamBridgeAvatar
 					member={member}
+					kind={agent ? "agent" : "human"}
 					label={label}
 					size={36}
-					className="size-9 rounded-md bg-media-surface text-ink-muted text-[14px]"
+					/* NO ink here: the plate owns it (`text-accent` for an agent,
+					   `text-ink-muted` for a person), and a host that restated the
+					   muted ink beat `text-accent` through tailwind-merge — one agent
+					   with two inks in one frame (agent review round 2, F4). */
+					className="size-9 rounded-md bg-media-surface text-[14px]"
 					fallback={
-						agent ? (
-							<Bot size={18} />
-						) : known === null ? (
+						known === null ? (
 							<UserRound size={18} />
 						) : (
 							known.trim().charAt(0).toUpperCase() || "?"
@@ -761,7 +765,7 @@ const MessageRowView: FC<MessageRowProps> = ({
 							<TeamBridgeProfileCard
 								member={member}
 								label={label}
-								agentName={agent ? label : undefined}
+								kind={agent ? "agent" : "human"}
 								onMessage={messagePerson}
 								canMessage={canMessage}
 							>
@@ -835,22 +839,27 @@ const MessageRowView: FC<MessageRowProps> = ({
 					 * invisible. The value is driven on the row instead, scoped to it: the
 					 * stylesheet keeps styling every other markdown surface in the app.
 					 */
-					<TeamBridgeMarkdown
-						/* `transition-colors` is restored rather than the comment rewritten: the
+					<InlineDataBody
+						body={message.body}
+						renderText={(text) => (
+							<TeamBridgeMarkdown
+								/* `transition-colors` is restored rather than the comment rewritten: the
 						   comment describes a settle, and no rule on `.lo-markdown` competes with a
 						   TRANSITION (only its `color` is unlayered). Design round 3 measured the
 						   step at 1.19:1 light / 1.63:1 dark - quiet enough that the settle must
 						   not read as motion, which is what a 150 ms colour fade gives. */
-						className="team-bridge-message-body text-[14px] transition-colors duration-fast"
-						style={{
-							...(delivery?.status === "pending"
-								? { "--md-ink": "var(--lo-ink-muted)" }
-								: {}),
-						}}
-						mentions={mentionRuns}
-					>
-						{message.body}
-					</TeamBridgeMarkdown>
+								className="team-bridge-message-body text-[14px] transition-colors duration-fast"
+								style={{
+									...(delivery?.status === "pending"
+										? { "--md-ink": "var(--lo-ink-muted)" }
+										: {}),
+								}}
+								mentions={mentionRuns}
+							>
+								{text}
+							</TeamBridgeMarkdown>
+						)}
+					/>
 				)}
 				{/* THE STATE IN WORDS, for a reader who cannot see the ink: the row is
 				    otherwise only quieter, and a screen reader announces status changes when

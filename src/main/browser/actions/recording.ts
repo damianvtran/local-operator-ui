@@ -64,11 +64,44 @@ import { requesterOf, stringParam } from "./context";
  * in as many words), and it matters because `MAX_AGENT_TABS` is 8.
  */
 
-/** Fixed capture shape (D14): the agent tab's own viewport, a frame rate the
- * encoder sustains on a hidden view, and no audio. Not agent-tunable in v1. */
+/** The UNSIZED capture shape (D14): the ceiling the encoder scales a clip to fit
+ * inside, a frame rate it sustains on a hidden view, and no audio. A
+ * `record_start` carrying `width`/`height` replaces the ceiling with a real
+ * viewport (see `sizeOf`); omitting them keeps this behaviour exactly. */
 export const RECORD_WIDTH = 1280;
 export const RECORD_HEIGHT = 720;
 export const RECORD_FPS = 10;
+
+/** The agent-tunable size contract (D14/RS1). The 4K ceiling lives in ONE place
+ * per side so raising it is a constant change plus docs, not a rewrite. */
+export const RECORD_MIN_SIDE = 240;
+export const RECORD_MAX_SIDE = 3840;
+export const RECORD_MAX_PIXELS = 3840 * 2160;
+
+/** How long a sized start waits for the emulated viewport to be laid out before
+ * refusing `record_size`/`not_applied`. The probe measured the page resizing on
+ * the next frame. */
+export const RECORD_LAYOUT_SETTLE_MS = 2_000;
+
+/** Poll cadence for that wait: the normal case settles on the first check, and a
+ * short interval keeps a stuck tab to ~40 round trips, not a spin. */
+export const RECORD_LAYOUT_POLL_MS = 50;
+
+/** How long a sized start waits, once the page's own inner size matches, for a
+ * frame AT that size to reach the compositor the encoder captures. Bound and
+ * poll cadence are separate from the layout wait above on purpose: the two
+ * measure different things and either can be the one that fails. */
+export const RECORD_FRAME_SETTLE_MS = 2_000;
+
+/** Above this area a clip counts as "large" for the provisional rule below. */
+export const RECORD_LARGE_AREA = 1920 * 1080;
+
+/** Provisional until two concurrent 4K encoders are measured: at most ONE
+ * recording above 1920x1080 runs at a time. The probe measured 227 % CPU and
+ * about 370-390 MB encoder RSS for a single 4K clip (374 MB at 6 s, 389 MB at
+ * 30 s; 8K: 778 % / 1.2 GB). Lower the value or drop the rule when that
+ * measurement lands; it is not wire contract. */
+export const MAX_CONCURRENT_LARGE_RECORDINGS = 1;
 
 /** The longest single path component, in bytes, the filesystems we run on allow. */
 const MAX_NAME_BYTES = 255;
@@ -128,6 +161,14 @@ interface Recording {
 	startedAt: number;
 	maxBytes: number;
 	maxDurationS: number;
+	/** The confirmed size of a sized recording. Both are absent on the unsized
+	 * path, which reports no width/height. */
+	width?: number;
+	height?: number;
+	/** The tab viewport this recording owns: absent when it installed no override,
+	 * and the token its exits must present before clearing (see
+	 * `viewportOverrides`, review M1). */
+	viewportToken?: object;
 	/** The auto-stop timer. Cleared by every exit path. */
 	timer: ReturnType<typeof setTimeout> | undefined;
 	/** The one finalize in flight, shared by the timer and a `record_stop` that
@@ -161,12 +202,26 @@ const settled = new Map<number, Settled>();
  * and all proceed — the cap held only for calls that happened to serialise
  * (review M1). A reservation is taken SYNCHRONOUSLY with the path it will write,
  * which also makes a duplicate path impossible before either start registers.
- * Key is a token; value is the absolute path.
+ * Key is a token; value is the absolute path and whether the start is LARGE for
+ * the provisional one-large-at-a-time rule (RS5), so four simultaneous sized
+ * starts cannot all see the same count.
  */
 const reservations = new Map<
 	string,
-	{ webContentsId: number; path: string; cancelled: boolean }
+	{ webContentsId: number; path: string; cancelled: boolean; large: boolean }
 >();
+/**
+ * The viewport override each tab currently carries, keyed by view id.
+ *
+ * A sized start installs one and every exit path clears it, but those exits belong
+ * to DIFFERENT recordings: a finalize, abort or replace of a displaced recording
+ * can land after a successor has installed its own override on the same tab.
+ * Clearing then would leave the live recording at a size nobody asked for, so a
+ * clear only acts while its own token is still the tab's (review M1). The claim
+ * happens BEFORE the CDP call, so a clear that interleaves with an install sees
+ * itself superseded rather than racing the set.
+ */
+const viewportOverrides = new Map<number, object>();
 
 function notActive(): BrowserHostError {
 	return new BrowserHostError(
@@ -324,6 +379,367 @@ function maxBytesOf(params: Record<string, unknown>): number {
 	return bytes;
 }
 
+interface RecordSize {
+	width: number;
+	height: number;
+}
+
+/** A refusal that must arrive before any side effect, tagged with the field and
+ * the cause so Python can render its own copy (RS2). */
+function sizeRefusal(
+	why: "incomplete" | "range" | "odd" | "area" | "visible" | "not_applied",
+	param: "width" | "height" | "size",
+	detail: string,
+): BrowserHostError {
+	return new BrowserHostError("internal", `${detail} Nothing was started.`, {
+		reason: "record_size",
+		param,
+		why,
+	});
+}
+
+/**
+ * D14's agent-tunable size, or null for the fixed ceiling.
+ *
+ * Both or neither: a lone `height` is a half-expressed request, not a request
+ * for a default width. Even sides are required because the encoder's chroma
+ * planes are half resolution; the area cap allows 2160x3840 portrait while
+ * refusing 3840x3840. Every refusal names the bound and says nothing started.
+ */
+function sizeOf(params: Record<string, unknown>): RecordSize | null {
+	const hasWidth = params.width !== undefined;
+	const hasHeight = params.height !== undefined;
+	if (!hasWidth && !hasHeight) return null;
+	if (!hasWidth || !hasHeight) {
+		const missing = hasWidth ? "height" : "width";
+		throw sizeRefusal(
+			"incomplete",
+			missing,
+			`record_start width and height must be given together; ${missing} is missing.`,
+		);
+	}
+	const width = Number(params.width);
+	const height = Number(params.height);
+	if (!Number.isInteger(width) || !Number.isInteger(height)) {
+		const param = Number.isInteger(width) ? "height" : "width";
+		throw sizeRefusal(
+			"range",
+			param,
+			`record_start width and height must be whole numbers of pixels: got ${String(params.width)}x${String(params.height)}.`,
+		);
+	}
+	if (width % 2 !== 0 || height % 2 !== 0) {
+		const param = width % 2 !== 0 ? "width" : "height";
+		throw sizeRefusal(
+			"odd",
+			param,
+			`record_start ${param} must be even, because the encoder's chroma planes are half resolution: got ${width}x${height}.`,
+		);
+	}
+	if (
+		width < RECORD_MIN_SIDE ||
+		width > RECORD_MAX_SIDE ||
+		height < RECORD_MIN_SIDE ||
+		height > RECORD_MAX_SIDE
+	) {
+		const param =
+			width < RECORD_MIN_SIDE || width > RECORD_MAX_SIDE ? "width" : "height";
+		throw sizeRefusal(
+			"range",
+			param,
+			`record_start ${param} must be from ${RECORD_MIN_SIDE} to ${RECORD_MAX_SIDE} pixels: got ${width}x${height}.`,
+		);
+	}
+	if (width * height > RECORD_MAX_PIXELS) {
+		throw sizeRefusal(
+			"area",
+			"size",
+			`record_start ${width}x${height}: the area is larger than ${RECORD_MAX_SIDE}x${RECORD_MAX_PIXELS / RECORD_MAX_SIDE} (${RECORD_MAX_PIXELS} pixels), which is this host's ceiling.`,
+		);
+	}
+	return { width, height };
+}
+
+/** True when a size is above 1080p's area, the provisional large-clip rule. */
+function isLarge(size: RecordSize): boolean {
+	return size.width * size.height > RECORD_LARGE_AREA;
+}
+
+/** The same rule for a recording or a start that may be unsized. */
+function isLargeRecording(recording: {
+	width?: number;
+	height?: number;
+}): boolean {
+	const size = sizeOfRecording(recording);
+	return size !== null && isLarge(size);
+}
+
+/** The confirmed size of a recording, or null when it used the ceiling. */
+function sizeOfRecording(recording: {
+	width?: number;
+	height?: number;
+}): RecordSize | null {
+	return recording.width === undefined || recording.height === undefined
+		? null
+		: { width: recording.width, height: recording.height };
+}
+
+/** The page's own inner size, in CSS pixels, from a `Runtime.evaluate` answer,
+ * or null when the answer is not a pair of numbers. */
+function sizeFromValue(value: unknown): RecordSize | null {
+	if (!Array.isArray(value) || value.length !== 2) return null;
+	const width = Number(value[0]);
+	const height = Number(value[1]);
+	if (!Number.isFinite(width) || !Number.isFinite(height)) return null;
+	return { width: Math.round(width), height: Math.round(height) };
+}
+
+/**
+ * The page's own inner size, in CSS pixels, or null when the answer is not a
+ * pair of numbers.
+ *
+ * WHY `window.innerWidth` AND NOT `Page.getLayoutMetrics`: that command's
+ * `cssLayoutViewport.clientWidth` EXCLUDES the scrollbar, so a page tall enough
+ * to scroll reports 1905 for a 1920-wide override and a start that worked was
+ * refused `not_applied` after the 2 s wait (measured on Electron 45.1.0, review
+ * m1). `innerWidth`/`innerHeight` are what the page sees, scrollbar included,
+ * which is the surface the encoder captures.
+ */
+async function innerViewport(
+	cdp: BrowserActionContext["cdp"],
+	contents: CdpContents,
+): Promise<RecordSize | null> {
+	const answer = await cdp.send<{ result?: { value?: unknown } }>(
+		contents,
+		"Runtime.evaluate",
+		{
+			expression: "[window.innerWidth, window.innerHeight]",
+			returnByValue: true,
+		},
+		{ deadlineMs: CDP_DEADLINE_MS },
+	);
+	return sizeFromValue(answer?.result?.value);
+}
+
+/** Whether a failed `Runtime.evaluate` is a state these waits can poll through.
+ *
+ * TWO FAILURES ARE THE ANSWER, NOT A "NOT YET": a destroyed view is refused
+ * `tab_closed` by `send` before a command leaves, and a view DevTools has taken
+ * answers `debugger_conflict` (`cdp.ts` `sendTo`). Neither can heal inside a
+ * two-second poll, so retrying either only hides the real cause behind the
+ * wait's own `not_applied` — a `record_size` refusal for a tab that is gone.
+ *
+ * EVERYTHING ELSE STAYS RETRYABLE, and `deadline`'s own stall (`internal`) is
+ * the case that must stay: a promise that has not settled is exactly what the
+ * window exists for. */
+function isWaitableEvaluateFailure(error: unknown): boolean {
+	if (!(error instanceof BrowserHostError)) return true;
+	return error.code !== "tab_closed" && error.code !== "debugger_conflict";
+}
+
+/** Wait until the emulated viewport is the one that was asked for, or refuse.
+ * Polling reads the page's own layout, not a value this process wrote: the
+ * override can be accepted while the renderer has not laid out yet.
+ *
+ * A TRANSIENT `Runtime.evaluate` FAILURE IS A "NOT YET": during a navigation the
+ * tab answers `Cannot get default execution context` (or "Cannot find default
+ * execution context") until the new document exists, and that is a start racing
+ * a load, not a start that cannot resize. Treating it as the answer made the
+ * whole start fail with a raw CDP error instead of waiting out the poll window
+ * (review n-A).
+ *
+ * The answer is the REQUESTED size: the poll passes only on an exact match, so
+ * reporting the request is reporting the measurement, and the echoed width and
+ * height stay the round numbers the caller asked for. */
+async function waitForViewport(
+	cdp: BrowserActionContext["cdp"],
+	contents: CdpContents,
+	size: RecordSize,
+): Promise<RecordSize> {
+	const deadline = Date.now() + RECORD_LAYOUT_SETTLE_MS;
+	for (;;) {
+		let measured: RecordSize | null = null;
+		try {
+			measured = await innerViewport(cdp, contents);
+		} catch (error) {
+			// See the note above: the poll owns this window, so it retries what a
+			// later poll can answer. A dead tab or a DevTools hand-over cannot be.
+			if (!isWaitableEvaluateFailure(error)) throw error;
+			measured = null;
+		}
+		if (
+			measured &&
+			measured.width === size.width &&
+			measured.height === size.height
+		) {
+			return size;
+		}
+		if (Date.now() >= deadline) {
+			throw sizeRefusal(
+				"not_applied",
+				"size",
+				`record_start could not apply ${size.width}x${size.height} to the tab's viewport within ${RECORD_LAYOUT_SETTLE_MS / 1000} s.`,
+			);
+		}
+		await new Promise((resolveWait) =>
+			setTimeout(resolveWait, RECORD_LAYOUT_POLL_MS),
+		);
+	}
+}
+
+/** Two `requestAnimationFrame` callbacks, resolved with the inner size the tab
+ * reports at that point. The first callback runs after the resized frame has
+ * been laid out and painted, the second after that frame has been handed to the
+ * compositor — which is the surface the encoder captures. */
+const FRAME_SETTLE_EXPRESSION =
+	"new Promise((resolve) => { requestAnimationFrame(() => requestAnimationFrame(() => resolve([window.innerWidth, window.innerHeight]))); })";
+
+/**
+ * Wait until the tab has DRAWN a frame at the size the layout poll confirmed.
+ *
+ * WHY THE POLL IS NOT ENOUGH (QA Q1): `window.innerWidth` reports the override
+ * as soon as the renderer is told about it, but `Page.startScreenRecording`
+ * captures the COMPOSITOR's surface. Starting the instant the numbers matched
+ * left the encoder's first frames holding the PREVIOUS 1280x720 raster — the
+ * old layout stretched across a 3840x2160 clip, and a 1280x720 patch on black
+ * at 2160x3840 and 3840x1080 — while the clip was coded at the requested size
+ * and its LAST frame was right (measured 2026-11-02 on Electron 45.1.0, QA Q1).
+ *
+ * WHY `requestAnimationFrame` AND NOT A TIMER: a timer waits a guessed number
+ * of milliseconds for work whose duration depends on the size and the machine
+ * (500 ms was enough in the probe, but only because it is far longer than the
+ * three-frame path it was really waiting for). rAF callbacks are driven by the
+ * compositor's BeginFrames, so two of them mean what this wait means: a frame
+ * exists. Measured on the real hidden view: 8-14 ms per pair, and the first
+ * frame carried the requested size in 8 of 8 runs at each of 3840x2160,
+ * 2160x3840 and 1920x1080, against 3 of 3 stale at 2160x3840 with no wait.
+ *
+ * THIS WAIT ONLY RUNS ON A HIDDEN VIEW BECAUSE `attach` TURNS ON FOCUS
+ * EMULATION: neither callback arrives on a view the app never raises until
+ * `Emulation.setFocusEmulationEnabled` (`cdp.ts` `attach`) has made the page
+ * believe it is focused; the same evaluate never replied within 2.5 s without
+ * it. The wait therefore depends on that call, not on the view being visible.
+ *
+ * A view that never draws one is refused `record_size`/`not_applied` by the
+ * caller: a clip whose first frame is the old layout is a wrong clip, not a
+ * slow one. */
+async function waitForCompositedFrame(
+	cdp: BrowserActionContext["cdp"],
+	contents: CdpContents,
+	size: RecordSize,
+): Promise<void> {
+	const deadline = Date.now() + RECORD_FRAME_SETTLE_MS;
+	for (;;) {
+		const remaining = deadline - Date.now();
+		if (remaining <= 0) break;
+		let measured: RecordSize | null = null;
+		try {
+			const answer = await cdp.send<{ result?: { value?: unknown } }>(
+				contents,
+				"Runtime.evaluate",
+				{
+					expression: FRAME_SETTLE_EXPRESSION,
+					awaitPromise: true,
+					returnByValue: true,
+				},
+				{ deadlineMs: remaining },
+			);
+			measured = sizeFromValue(answer?.result?.value);
+		} catch (error) {
+			// A promise that never settles, and a document that is being replaced,
+			// both land here; the loop's deadline is what decides. A tab that is gone
+			// or in DevTools' hands cannot draw again, so its own error is the answer
+			// rather than a `not_applied` two seconds later.
+			if (!isWaitableEvaluateFailure(error)) throw error;
+			measured = null;
+		}
+		if (
+			measured &&
+			measured.width === size.width &&
+			measured.height === size.height
+		) {
+			return;
+		}
+		await new Promise((resolveWait) =>
+			setTimeout(resolveWait, RECORD_LAYOUT_POLL_MS),
+		);
+	}
+	throw sizeRefusal(
+		"not_applied",
+		"size",
+		`record_start applied ${size.width}x${size.height} to the tab's viewport, but the tab did not draw a frame at that size within ${RECORD_FRAME_SETTLE_MS / 1000} s.`,
+	);
+}
+
+/** Apply one recording's override and claim the tab's viewport for it.
+ * Returns the token every later clear for that recording must present. */
+async function installViewport(
+	cdp: BrowserActionContext["cdp"],
+	contents: CdpContents,
+	size: RecordSize,
+): Promise<object> {
+	const token: object = {};
+	viewportOverrides.set(contents.id, token);
+	try {
+		await cdp.send(
+			contents,
+			"Emulation.setDeviceMetricsOverride",
+			{
+				width: size.width,
+				height: size.height,
+				deviceScaleFactor: 1,
+				mobile: false,
+			},
+			{ deadlineMs: CDP_DEADLINE_MS },
+		);
+	} catch (error) {
+		// The claim outlived no override: drop it before the start's own failure
+		// path looks for a token it never received.
+		if (viewportOverrides.get(contents.id) === token) {
+			viewportOverrides.delete(contents.id);
+		}
+		throw error;
+	}
+	return token;
+}
+
+/** Drop a viewport override, best effort.
+ *
+ * ONLY THE RECORDING THAT INSTALLED IT MAY CLEAR IT: a finalize, abort or replace
+ * belonging to a displaced recording reaches here after its successor has
+ * installed its own override, and clearing then would leave the live recording at
+ * an unrequested size (review M1). The token is checked synchronously, before any
+ * await, so a superseded clear never issues a command at all.
+ *
+ * Bounded and swallowed on purpose otherwise: this runs on detach, tab close and
+ * failure paths whose original error is the answer, and an emulation clear that
+ * cannot reach a dying session must never replace it. A session that is gone
+ * drops its override by itself. */
+async function clearViewport(
+	cdp: BrowserActionContext["cdp"],
+	contents: CdpContents,
+	token: object,
+): Promise<void> {
+	if (viewportOverrides.get(contents.id) !== token) return;
+	viewportOverrides.delete(contents.id);
+	// A DESTROYED VIEW ENDS THIS PATH WITHOUT A CDP CALL. `send` answers a
+	// destroyed view by calling `forget`, whose `dropCaptures` calls
+	// `abortRecording`, which is where this clear came from — so asking recursed
+	// until the stack went (depth ~870, RangeError; review m2). The session's
+	// override dies with its debugger session.
+	if (contents.isDestroyed()) return;
+	try {
+		await cdp.send(
+			contents,
+			"Emulation.clearDeviceMetricsOverride",
+			{},
+			{ deadlineMs: CDP_DEADLINE_MS },
+		);
+	} catch {
+		// Best effort: see above.
+	}
+}
+
 /** The cap in the words the refusal uses: MiB for a sane cap, KiB for a test-sized
  * one, so "larger than 0 MiB" can never be the only thing a reader sees. */
 function capWords(bytes: number): string {
@@ -369,18 +785,18 @@ function classifyStartFailure(error: unknown): BrowserHostError {
 /**
  * The result shape of both methods, from one place so the two cannot drift.
  *
- * Width and height are deliberately NOT reported. `RECORD_WIDTH`/`RECORD_HEIGHT`
- * are only the CEILING handed to Chromium (`maxWidth`/`maxHeight`); the clip is
- * scaled to fit inside it. Measured on Electron 45.1.0: a hidden agent tab
- * (1280x720) records at 1280x720, but a presented 1380x868 view recorded at
- * 1144x720. Reporting the ceiling as the size would be a claim nobody measured
- * for the visible tab, so the host reports only what is fixed by construction.
+ * An UNSIZED clip reports no width/height: `RECORD_WIDTH`/`RECORD_HEIGHT` are
+ * only the ceiling handed to Chromium, the clip is scaled to fit inside it, and
+ * a presented 1380x868 view measured 1144x720. A SIZED clip reports the size the
+ * layout poll confirmed, because that is a claim this host measured, not the
+ * ceiling it asked for.
  */
-function captureShape(): Record<string, unknown> {
+function captureShape(size?: RecordSize | null): Record<string, unknown> {
 	return {
 		fps: RECORD_FPS,
 		container: "mp4",
 		codec: "av1",
+		...(size ? { width: size.width, height: size.height } : {}),
 	};
 }
 
@@ -430,9 +846,10 @@ async function readStream(
 			bytes += chunk.length;
 		}
 		if (bytes > recording.maxBytes) {
+			const atSize = sizeOfRecording(recording);
 			throw new BrowserHostError(
 				"internal",
-				`the recording is larger than ${capWords(recording.maxBytes)}; nothing was saved. Record a shorter span (timeout_s) and retry.`,
+				`the recording is larger than ${capWords(recording.maxBytes)}${atSize ? ` at ${atSize.width}x${atSize.height}` : ""}; nothing was saved. Record a shorter span (timeout_s) and retry.`,
 				{ reason: "record_too_large", max_bytes: recording.maxBytes },
 			);
 		}
@@ -459,6 +876,7 @@ async function runFinalize(
 	let fd: number | null = null;
 	let createdPart = false;
 	let endedAt = recording.startedAt;
+	let viewportCleared = false;
 	try {
 		const stopped = await cdp.send<{ stream?: string }>(
 			contents,
@@ -467,6 +885,13 @@ async function runFinalize(
 			{ deadlineMs: RECORD_STOP_DEADLINE_MS },
 		);
 		endedAt = Date.now();
+		// AFTER the stop, never before: the last frames must not be rescaled.
+		// Restoring here also covers the duration timer, which finalizes without
+		// a caller.
+		if (recording.viewportToken) {
+			await clearViewport(cdp, contents, recording.viewportToken);
+			viewportCleared = true;
+		}
 		handle = typeof stopped?.stream === "string" ? stopped.stream : "";
 		if (recording.aborted) throw abortedWhileSaving();
 		if (!handle) {
@@ -523,11 +948,16 @@ async function runFinalize(
 			bytes,
 			duration_ms: endedAt - recording.startedAt,
 			auto_stopped: autoStopped,
-			...captureShape(),
+			...captureShape(sizeOfRecording(recording)),
 		};
 	} catch (error) {
 		throw typedFailure(error);
 	} finally {
+		// A stop that threw never reached the clear above; a later capture on this
+		// tab must not inherit an override nobody asked for.
+		if (recording.viewportToken && !viewportCleared) {
+			await clearViewport(cdp, contents, recording.viewportToken);
+		}
 		if (fd !== null) {
 			try {
 				closeSync(fd);
@@ -580,7 +1010,9 @@ function settle(
 }
 
 /** What ending a stream needs: the attachment and the target, nothing else. */
-type Stoppable = Pick<Recording, "cdp" | "contents">;
+type Stoppable = Pick<Recording, "cdp" | "contents" | "width" | "height"> & {
+	viewportToken?: object;
+};
 
 /**
  * End a recording that another owner is taking over, without salvaging its bytes.
@@ -619,6 +1051,16 @@ export async function endReplaced(recording: Stoppable): Promise<void> {
 	} catch {
 		// A session that is already gone cannot be stopped; the start below is where
 		// that becomes visible, with Chromium's own words.
+	} finally {
+		// After the stop attempt, so the discarded frames were captured at the size
+		// the request asked for and the tab does not keep it afterwards.
+		if (recording.viewportToken) {
+			await clearViewport(
+				recording.cdp,
+				recording.contents,
+				recording.viewportToken,
+			);
+		}
 	}
 }
 
@@ -694,6 +1136,16 @@ export async function recordStart(
 			);
 		}
 	}
+	// The size is validated before anything with a side effect: a refusal must
+	// cost the tab no CDP call (RS1/RS2).
+	const size = sizeOf(params);
+	if (size && tab.presented) {
+		throw sizeRefusal(
+			"visible",
+			"size",
+			`record_start cannot grow the tab the user is looking at to ${size.width}x${size.height}: that view is the app's own content area. Activate another tab, or omit width/height for a 1280x720 clip.`,
+		);
+	}
 	const path = preflightPath(params);
 	const maxDurationS = durationOf(params);
 	const maxBytes = maxBytesOf(params);
@@ -739,6 +1191,27 @@ export async function recordStart(
 			{ reason: "record_limit", limit: MAX_CONCURRENT_RECORDINGS },
 		);
 	}
+	// The provisional large-clip rule (RS5): the probe measured 227 % CPU and
+	// about 370-390 MB RSS for ONE 4K encoder (374 MB at 6 s, 389 MB at 30 s), so
+	// two at once are not a shape to discover in a user's session. Counted
+	// synchronously with the reservation below, for the same reason as the global
+	// cap. The active entry on THIS tab is being replaced, so it does not count
+	// against this start.
+	if (size && isLarge(size)) {
+		const largeRunning = [...recordings.values()].filter(
+			(other) => other !== active && isLargeRecording(other),
+		).length;
+		const largeStarting = [...reservations.values()].filter(
+			(entry) => entry.large,
+		).length;
+		if (largeRunning + largeStarting >= MAX_CONCURRENT_LARGE_RECORDINGS) {
+			throw new BrowserHostError(
+				"busy",
+				`a recording larger than 1920x1080 is already running, and this host allows ${MAX_CONCURRENT_LARGE_RECORDINGS} at a time; stop it with record_stop, ask for 1920x1080 or smaller, or omit width/height. Nothing was started.`,
+				{ reason: "record_limit", limit: MAX_CONCURRENT_LARGE_RECORDINGS },
+			);
+		}
+	}
 	if (active) {
 		// The other owner's session is gone (the wedge `owner_recover` exists to
 		// avoid), so its recording is discarded rather than allowed to block this
@@ -746,22 +1219,42 @@ export async function recordStart(
 		abortRecording(id, "replaced_by_another_owner");
 	}
 	const reservation = `${Date.now()}-${Math.random()}`;
-	const entry = { webContentsId: id, path, cancelled: false };
+	const entry = {
+		webContentsId: id,
+		path,
+		cancelled: false,
+		large: size !== null && isLarge(size),
+	};
 	reservations.set(reservation, entry);
+	// The size the layout poll confirmed; `size` itself for the unsized path,
+	// where nothing is polled and the ceiling stays in force.
+	let measured = size;
+	/** The token of THIS start's viewport claim, once one is installed. */
+	let viewportToken: object | undefined;
 	let started = false;
 	try {
 		// The abort above drops our state; this ends the recorder itself, which is
 		// what lets the next start succeed on the same target.
 		if (active) await endReplaced(active);
 		await ctx.cdp.attach(contents);
+		// A sized start is a real viewport change (measured: the page reflows and
+		// fires one resize event), applied BEFORE the recorder starts so the
+		// encoder sees the requested surface from its first frame.
+		if (size) {
+			viewportToken = await installViewport(ctx.cdp, contents, size);
+			measured = await waitForViewport(ctx.cdp, contents, size);
+			// The poll proved the page's geometry; this proves the compositor has a
+			// frame at it, which is what the encoder's first frame must show (Q1).
+			await waitForCompositedFrame(ctx.cdp, contents, measured);
+		}
 		try {
 			await ctx.cdp.send(
 				contents,
 				"Page.startScreenRecording",
 				{
 					audio: false,
-					maxWidth: RECORD_WIDTH,
-					maxHeight: RECORD_HEIGHT,
+					maxWidth: measured?.width ?? RECORD_WIDTH,
+					maxHeight: measured?.height ?? RECORD_HEIGHT,
 					frameRate: RECORD_FPS,
 				},
 				{ deadlineMs: RECORD_START_DEADLINE_MS },
@@ -772,6 +1265,11 @@ export async function recordStart(
 		}
 	} catch (error) {
 		reservations.delete(reservation);
+		// Every failed start restores the viewport; clearViewport is best effort
+		// and never masks the error this start is about to report.
+		if (size && viewportToken) {
+			await clearViewport(ctx.cdp, contents, viewportToken);
+		}
 		throw error;
 	}
 	// The tab was released while this start was in flight (`forget`/`detach`, or a
@@ -780,7 +1278,19 @@ export async function recordStart(
 	// the refusal returns (review F4).
 	if (entry.cancelled) {
 		reservations.delete(reservation);
-		if (started) await endReplaced({ cdp: ctx.cdp, contents });
+		// endReplaced stops the recorder, then restores the viewport; a start that
+		// never reached Chromium has no stream to stop and is restored directly.
+		if (started) {
+			await endReplaced({
+				cdp: ctx.cdp,
+				contents,
+				width: measured?.width,
+				height: measured?.height,
+				viewportToken,
+			});
+		} else if (size && viewportToken) {
+			await clearViewport(ctx.cdp, contents, viewportToken);
+		}
 		throw new BrowserHostError(
 			"internal",
 			"that browser tab was released while the recording was starting; nothing was saved. Use 'open' with a URL to get a new tab.",
@@ -796,6 +1306,8 @@ export async function recordStart(
 		startedAt: Date.now(),
 		maxBytes,
 		maxDurationS,
+		...(measured ? { width: measured.width, height: measured.height } : {}),
+		...(viewportToken ? { viewportToken } : {}),
 		timer: undefined,
 		finishing: null,
 		aborted: false,
@@ -815,7 +1327,7 @@ export async function recordStart(
 		path,
 		max_duration_s: maxDurationS,
 		max_bytes: maxBytes,
-		...captureShape(),
+		...captureShape(measured),
 	};
 }
 
@@ -905,7 +1417,22 @@ export function abortRecording(
 			clearTimeout(recording.timer);
 			recording.timer = undefined;
 		}
+		// Dropped BEFORE the clear, so a clear that re-enters this function through
+		// `send -> forget -> dropCaptures` finds no recording to abort again (review
+		// m2).
 		recordings.delete(webContentsId);
+		// A detach or close drops the session's emulation with it, but a replace or
+		// a document refusal keeps the tab, and a later capture must not inherit a
+		// size nobody asked for. Best effort on this synchronous path: the promise
+		// swallows every failure, and the token check inside makes a superseded
+		// recording's clear a no-op (review M1).
+		if (recording.viewportToken) {
+			void clearViewport(
+				recording.cdp,
+				recording.contents,
+				recording.viewportToken,
+			);
+		}
 	}
 	if (options.tombstone && recording) {
 		settled.set(webContentsId, {

@@ -1,0 +1,112 @@
+{
+  "schema": 1,
+  "auditor": "i18n-auditor (independent lopdev task 'UI #1604 i18n audit round 4A', session 0aea6fc8783e)",
+  "model": "anthropic/claude-opus-5-5",
+  "model_provenance": "Whole audit (source reads, semantic review, structural probe, receipt writing, gate runs) ran on this session's announced model anthropic/claude-opus-5-5. No fallback or model switch was observed during this session.",
+  "instance": "0aea6fc8783e-zh-cn",
+  "audit_session": "0aea6fc8783e",
+  "locale": "zh-CN",
+  "namespace": "ui.mesh",
+  "date": "2026-11-02",
+  "scope": "Translation delta round 4 (auditor A) of 6cce93ed973..ccd51b021dc (PR #1604 translation remediation round 3, 'polish approval capture flows and isolate refusal text'): the 3 changed ui.mesh.approval value(s) in this locale read in final bytes against unchanged English and the updated context notes for result_status and named_refusal, plus renderer call sites; verified removal of 5 obsolete keys. Unchanged values retain their earlier audits.",
+  "audited_head": "ccd51b021dc8b09b4583f912e5258e6ee7c7766d",
+  "delta_base": "6cce93ed973e06189703e8b04d285e16e0c125a0",
+  "status": "passed",
+  "sha256": {
+    "en": "321cd5b9c918247c9ead225cf7497a21c322028766c6db600ba5ba3e31be2696",
+    "zh-CN": "487243af4180f1034d2ab5c4096f66816dccd922a5d25290a1ca825c48778dbc"
+  },
+  "base_sha256": {
+    "en": "7acc3ea2a00d63aa3b68aadf7e42007e19d3de9e4cef9b72beafdbe73e351359",
+    "zh-CN": "6bd3118d6a07d813a21a37aacf06b0e2e6bf1fe0d07aa10b314e500edcf1d299"
+  },
+  "findings": [],
+  "prior_findings_verified": [
+    "A R3-X-01 fixed: full-width ：。 in result_status, matching shared_count/needs_attention siblings",
+    "A R3-ZH-02 fixed: full-width （）around {account}; placeholders byte-identical",
+    "B M1 fixed (zh part)",
+    "B N3 fixed: '无法证明请求是由人批准的'",
+    "B N4 fixed (same as R3-ZH-02)"
+  ],
+  "observations": [
+    "Out of delta scope (value unchanged since its round-3 audit, not counted): zh-CN named_refusal '请求“{request}”：{reason}' keeps a 'Request' prefix, so the fallback head renders '请求“凭据访问请求”：…'. Round-3 B N5 (NIT) named es/ru/ur/hi/vi only. Meaning is intact; recorded for the implementer's optional consistency pass."
+  ],
+  "changed_keys": [
+    "ui.mesh.approval.head_inheritance",
+    "ui.mesh.approval.file_key_disclosure",
+    "ui.mesh.approval.result_status"
+  ],
+  "removed_keys_verified": {
+    "keys": [
+      "ui.mesh.approval.approved_pending_apply",
+      "ui.mesh.approval.request_window",
+      "ui.mesh.mesh_approvals.expires_hours",
+      "ui.mesh.mesh_approvals.expires_in_under_a_minute",
+      "ui.mesh.mesh_approvals.expires_minutes"
+    ],
+    "result": "Absent from en and all seven target catalogues, from keys.gen.ts and from ui.mesh.context.json at head; `git grep` over the tree (excluding i18n/receipts and i18n/ledger.json history) finds them only in docs/qa/typed-credential-approvals-remediation.md (the removal record). Same-suffix hits are other namespaces (ui.browser.approval_queue_model.expires_*) or the backend field `request_window` in test fixtures, not message keys. No template-literal key construction for ui.mesh.approval.* or ui.mesh.mesh_approvals.* exists in src/ or scripts/."
+  },
+  "verbatim_values": {
+    "ui.mesh.approval.head_inheritance": "允许{device}使用你的{provider}账号（{account}）",
+    "ui.mesh.approval.file_key_disclosure": "此处使用密钥文件而非Touch ID签名，因此无法证明请求是由人批准的。",
+    "ui.mesh.approval.result_status": "已共享：{shared, number, ::group-off}。需要处理：{attention, number, ::group-off}。"
+  },
+  "base_values": {
+    "ui.mesh.approval.head_inheritance": "允许{device}使用你的{provider}账号({account})",
+    "ui.mesh.approval.file_key_disclosure": "此处使用密钥文件而非Touch ID签名，因此无法证明是由人批准了请求。",
+    "ui.mesh.approval.result_status": "已共享: {shared, number, ::group-off}. 需要处理: {attention, number, ::group-off}."
+  },
+  "english_values": {
+    "ui.mesh.approval.head_inheritance": "Let {device} use your {provider} account ({account})",
+    "ui.mesh.approval.file_key_disclosure": "Signing here uses a key file, not Touch ID, so it cannot prove a person approved the request.",
+    "ui.mesh.approval.result_status": "Shared: {shared, number, ::group-off}. Needs attention: {attention, number, ::group-off}."
+  },
+  "context_sidecar": {
+    "path": "src/i18n/catalogues/en/ui.mesh.context.json",
+    "sha256": "2f31e6b6996c1c655871947f8b7d4158113f79d973afb180ed042f9ef8cc474f",
+    "read": "Updated notes for result_status (counts-only polite status; refusal announced by focus) and named_refusal (request = localized head, reason = verbatim backend sentence, each parameter isolated by bdi) read in full and checked against code: tray.tsx:422-427 sr-only <output aria-live=polite> renders counts only; tray.tsx:355-365 focus handoff targets [data-tour-tag=mesh-approval-refusal] (tabIndex -1); tray.tsx:475-480 passes approvalHead(refusedRow) or credential_title as request; tray.tsx:1012-1037 wraps each parameter in <bdi dir=auto>; mesh-approvals.ts namedApprovalRefusalParts formats with literal tokens then splits. The notes are accurate."
+  },
+  "call_sites_read": [
+    "src/renderer/src/features/mesh/mesh-approvals-tray.tsx: result_status (422-427), shared vs approved_not_applied (693-698), MeshDecisionRefusal (1012-1037), refusal focus (340-365), named request source (475-480), retry_hint (806-808)",
+    "src/renderer/src/features/mesh/mesh-approvals.ts namedApprovalRefusalParts (1329-1355)",
+    "src/i18n/messages.ts translate/formatterFor (intl-messageformat, no implicit bidi isolation)"
+  ],
+  "standards": {
+    "root": "~/local-operator/i18n at origin/main 7a641391b97 (read with git show origin/main:)",
+    "sha256": {
+      "glossary.md": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+      "style-guides/zh-CN.md": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+    }
+  },
+  "translator": {
+    "agent": "coder",
+    "jobs": [
+      "07291411b980",
+      "c61a64298a45",
+      "21ddee198f0b",
+      "d82369d8e233",
+      "c3976a04742d",
+      "4fe47970b5a5"
+    ],
+    "remediation_commit": "ccd51b021dc8b09b4583f912e5258e6ee7c7766d",
+    "attribution": "Translator/coder runs named by the manager; their served model is not verified by this auditor."
+  },
+  "independence": "This session (0aea6fc8783e) authored no catalogue value and edited no translation. It is distinct from the translator/coder runs 07291411b980, c61a64298a45, 21ddee198f0b, d82369d8e233, c3976a04742d, 4fe47970b5a5 and from earlier auditors 0a40e337218a, 38d28c8fb9bf, 4cb156711482, e4d4705aa898, ce58dae953f0, 3b60dc9f25d1, f89f59f896f1, f1566d61a664, 30323a25557e. The verdict comes from reading final bytes here.",
+  "semantic_checks": [
+    "head_inheritance: '允许{device}使用你的{…}账号（{account}）' = Let {device} use your {…} account ({account}); only parentheses changed to full-width; placeholders byte-identical.",
+    "file_key_disclosure: '此处使用密钥文件而非Touch ID签名，因此无法证明请求是由人批准的。' = Signing here uses a key file, not Touch ID, so it cannot prove a person approved the request; habitual, no claim of a completed signature.",
+    "result_status: '已共享：n。需要处理：n。' = Shared: n. Needs attention: n.; matches shared_count/needs_attention."
+  ],
+  "evidence": {
+    "probe": "i18n/receipts/0aea6fc8783e-structural-probe.mjs.txt",
+    "probe_sha256": "13a24e4db28d0449921410555b56c23f8637509b0715bdd58e82946d7134541c",
+    "log": "i18n/receipts/0aea6fc8783e-structural-probe-output.txt",
+    "log_sha256": "8b04aac586615eec969476982c372ec75ba6b2c14cee001f9ff2b386e1660f97",
+    "verdict_location": "Status, findings and semantic_checks here are the auditor's review record. The companion log is the actual probe output: key-level base/head diff (changed set equals the remediation list, removed set equals the five obsolete keys), ICU parse and argument name/type parity with English, NFC, no bidi controls, style-guide punctuation signals (0), intl-messageformat render, and named_refusal field-split parity with namedApprovalRefusalParts."
+  },
+  "non_claims": [
+    "No rendered/compiled-native, width/fit, pseudo-localization, font shaping, RTL layout or visual validation (host memory hold); bdi isolation verified in source only.",
+    "No translation edits by this auditor."
+  ],
+  "notes": "Delta round 4A on PR #1604 head ccd51b0: passed, 0 findings; round-3 A/B findings for zh-CN verified fixed."
+}

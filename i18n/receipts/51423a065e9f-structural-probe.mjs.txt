@@ -1,0 +1,146 @@
+// Structural + render probe for PR #1604 i18n audit round 8 (session 51423a065e9f).
+// Scope f93c4beb4e5..f3a758d5da6: es ui.mesh must change exactly expires_window and
+// typed_review_unavailable; the other six locales' catalogues byte-identical; English
+// ui.mesh.json identical; English context changes exactly could_not_apply's note.
+// expires_window is rendered through the SHIPPED approvalAnswerWindowLabel + t()
+// (esbuild bundle exactly as scripts/mesh-tab.test.mjs builds it) for every duration it
+// can produce: 1..59 s, minutes 1..89, hours 2..200 (plus boundaries), es and en control.
+// The could_not_apply context note's claim (countdown suppressed when apply_outcome is
+// not retryable, false or absent) is exercised through hasPermanentCredentialOutcome.
+// Run from the worktree root: node <this file>
+import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
+import { build } from "esbuild";
+import { parse, TYPE } from "@formatjs/icu-messageformat-parser";
+
+const BASE = "f93c4beb4e51f102bba6095d4b4bfa3280531866";
+const HEAD = "f3a758d5da69e11f7cb16148040ac167894769b6";
+const LOCALES = ["es", "fr", "hi", "ru", "ur", "vi", "zh-CN"];
+const ES_KEYS = ["ui.mesh.approval.expires_window", "ui.mesh.approval.typed_review_unavailable"];
+const git = (...a) => execFileSync("git", a);
+const sha = (b) => createHash("sha256").update(b).digest("hex");
+const BIDI = /[\u200E\u200F\u202A-\u202E\u2066-\u2069]/;
+let fail = 0;
+const check = (ok, line) => { console.log(`${ok ? "PASS" : "FAIL"} ${line}`); if (!ok) fail++; };
+
+console.log(`HEAD=${git("rev-parse", "HEAD").toString().trim()} expected=${HEAD}`);
+check(git("rev-parse", "HEAD").toString().trim() === HEAD, "worktree HEAD is the audited head");
+const dirty = git("status", "--porcelain", "--", "src").toString().trim();
+check(dirty === "", `src/ clean against HEAD (porcelain=${JSON.stringify(dirty)})`);
+
+// 1. Delta shape.
+const names = git("diff", "--name-only", BASE, HEAD, "--", "src/i18n").toString().trim().split("\n").sort();
+check(JSON.stringify(names) === JSON.stringify(["src/i18n/catalogues/en/ui.mesh.context.json", "src/i18n/catalogues/es/ui.mesh.json"]), `src/i18n files changed: ${JSON.stringify(names)}`);
+for (const l of LOCALES.filter((x) => x !== "es")) {
+	const tree = (rev) => git("rev-parse", `${rev}:src/i18n/catalogues/${l}`).toString().trim();
+	check(tree(BASE) === tree(HEAD), `${l} catalogue tree byte-identical ${tree(HEAD)}`);
+}
+const enp = "src/i18n/catalogues/en/ui.mesh.json";
+check(git("rev-parse", `${BASE}:${enp}`).toString() === git("rev-parse", `${HEAD}:${enp}`).toString(), "en ui.mesh.json byte-identical");
+const esp = "src/i18n/catalogues/es/ui.mesh.json";
+const esB = JSON.parse(git("show", `${BASE}:${esp}`)), es = JSON.parse(git("show", `${HEAD}:${esp}`));
+const en = JSON.parse(git("show", `${HEAD}:${enp}`));
+const esChanged = Object.keys({ ...esB, ...es }).filter((k) => esB[k] !== es[k]).sort();
+check(JSON.stringify(esChanged) === JSON.stringify(ES_KEYS), `es changed keys ${JSON.stringify(esChanged)}`);
+check(JSON.stringify(Object.keys(es).sort()) === JSON.stringify(Object.keys(en).sort()), "es key set == en key set");
+const ctxp = "src/i18n/catalogues/en/ui.mesh.context.json";
+const cB = JSON.parse(git("show", `${BASE}:${ctxp}`)), cH = JSON.parse(git("show", `${HEAD}:${ctxp}`));
+const ctxChanged = Object.keys({ ...cB, ...cH }).filter((k) => JSON.stringify(cB[k]) !== JSON.stringify(cH[k]));
+check(JSON.stringify(ctxChanged) === JSON.stringify(["ui.mesh.approval.could_not_apply"]), `context changed ${JSON.stringify(ctxChanged)}`);
+const cna = "ui.mesh.approval.could_not_apply";
+check(cB[cna].role === cH[cna].role && cB[cna].tone === cH[cna].tone, "could_not_apply role/tone unchanged (note only)");
+console.log(`  note BEFORE: ${cB[cna].note}\n  note AFTER : ${cH[cna].note}`);
+console.log(`sha256 en/ui.mesh.json=${sha(git("show", `${HEAD}:${enp}`))}`);
+console.log(`sha256 es/ui.mesh.json=${sha(git("show", `${HEAD}:${esp}`))}`);
+console.log(`sha256 en/ui.mesh.context.json=${sha(git("show", `${HEAD}:${ctxp}`))}`);
+
+// 2. Structural: ICU args, NFC, bidi, typography of the two values.
+const args = (v) => { const s = new Set(); const walk = (ns) => { for (const n of ns) { if ([TYPE.argument, TYPE.plural, TYPE.select, TYPE.number].includes(n.type)) s.add(n.value); if (n.options) for (const o of Object.values(n.options)) walk(o.value); } }; walk(parse(v, { ignoreTag: true })); return [...s].sort().join(","); };
+for (const k of ES_KEYS) {
+	const v = es[k];
+	console.log(`  ${k}\n    en: ${en[k]}\n    es BEFORE: ${esB[k]}\n    es AFTER : ${v}`);
+	check(args(v) === args(en[k]), `${k} ICU args es=[${args(v)}] en=[${args(en[k])}]`);
+	check(v === v.normalize("NFC") && !BIDI.test(v), `${k} NFC and bidi-control-free`);
+	check(!/  |\s$|^\s|!|\s[:;?]/.test(v), `${k} no double/edge space, no "!", no space before : ; ?`);
+}
+const tru = es["ui.mesh.approval.typed_review_unavailable"];
+check(!/terminal|comando|consola|l[ií]nea de comandos|CLI|\blop\b|actualiza/i.test(tru), "typed_review_unavailable: no terminal/CLI/update-the-app wording");
+const deny = es["ui.mesh.mesh_approvals_tray.deny"];
+check(deny === "Denegar" && /\bDeni[eé]gala\b/.test(tru), `typed_review_unavailable verb Deniégala matches Deny control '${deny}' (denegar, e->ie, tú imperative + enclitic la)`);
+check(!/\bRech[aá]z/.test(tru), "typed_review_unavailable no longer says Recházala");
+
+// 3. Real render path: bundle the shipped modules as scripts/mesh-tab.test.mjs does.
+const bundle = await build({
+	stdin: {
+		contents: `
+			export * from "./src/renderer/src/features/mesh/mesh-approvals";
+			export { t, setLocale, currentLocale } from "./src/i18n";`,
+		resolveDir: process.cwd(),
+	},
+	bundle: true, format: "esm", platform: "node", mainFields: ["module", "main"], conditions: ["import"],
+	alias: { "@shared": "./src/renderer/src/shared" }, write: false, logLevel: "silent",
+});
+const mesh = await import(`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`);
+const NOW = 1_700_000_000;
+const label = (s, answered = true) => mesh.approvalAnswerWindowLabel(NOW + s, NOW, answered);
+const cases = [];
+for (let s = 1; s <= 59; s++) cases.push(s);
+for (let m = 1; m <= 89; m++) cases.push(m * 60);
+cases.push(89 * 60 + 1, 90 * 60, 90 * 60 + 1, 2 * 3600 + 1, 24 * 3600, 48 * 3600);
+for (let h = 3; h <= 200; h++) cases.push(h * 3600);
+for (const loc of ["es", "en"]) {
+	mesh.setLocale(loc);
+	check(mesh.currentLocale() === loc, `locale set to ${loc}`);
+	const shapes = new Map();
+	let bad = 0;
+	for (const s of cases) {
+		const out = label(s);
+		const shape = out.replace(/\d+/g, "N");
+		if (!shapes.has(shape)) shapes.set(shape, []);
+		shapes.get(shape).push(s);
+		if (loc === "es") {
+			const m = Math.ceil(s / 60), n = s < 60 ? null : m < 90 ? m : Math.ceil(m / 60);
+			const unit = s < 60 ? null : m < 90 ? "minuto" : "hora";
+			const want = s < 60 ? "Esta tarjeta caduca en menos de un minuto" : `Esta tarjeta caduca en ${n} ${unit}${n === 1 ? "" : "s"}`;
+			if (out !== want) { bad++; console.log(`  MISMATCH ${s}s: «${out}» want «${want}»`); }
+		}
+	}
+	console.log(`== ${loc}: ${cases.length} cases, ${shapes.size} distinct shapes`);
+	for (const [shape, ss] of shapes) {
+		const sample = [...new Set(ss.map((s) => label(s)))].slice(0, 8);
+		console.log(`  «${shape}» ×${ss.length}  e.g. ${sample.map((x) => `«${x}»`).join(" ")}`);
+	}
+	if (loc === "es") check(bad === 0, `es expires_window grammatical number/agreement in all ${cases.length} cases (mismatches=${bad})`);
+	console.log(`  control answer_window (unanswered, 5 min / 1 min / 30 s / 3 h): «${label(300, false)}» «${label(60, false)}» «${label(30, false)}» «${label(3 * 3600, false)}»`);
+	console.log(`  none when expired: ${JSON.stringify(label(0))} ${JSON.stringify(label(-5))}`);
+	console.log(`  t(typed_review_unavailable): «${mesh.t("ui.mesh.approval.typed_review_unavailable")}»`);
+	console.log(`  t(mesh_approvals_tray.deny): «${mesh.t("ui.mesh.mesh_approvals_tray.deny")}»  t(could_not_apply): «${mesh.t("ui.mesh.approval.could_not_apply")}»`);
+}
+mesh.setLocale("es");
+check(mesh.t("ui.mesh.approval.expires_window", { duration: "5 minutos" }) === "Esta tarjeta caduca en 5 minutos", "t() serves the head es value (bundled catalogue, not fallback)");
+
+// 4. could_not_apply context note vs code: permanent iff the outcome is not retryable.
+const typed = (outcome) => ({
+	approval_id: "ap_r8probe0001", state: "failed", expires_at: NOW + 600,
+	what: { credential_finite_share: { opaque: "x" }, anchor: { key_id: "op_probe" } },
+	device: { device_id: "d_probe", name: "probe" },
+	typed_approval: { action: "approve-credential", operation: "credential_finite_share", signable_here: true, ...(outcome === undefined ? {} : { apply_outcome: outcome }) },
+});
+const rowOf = (o, state = "failed") => { const [r] = mesh.approvalRows([{ ...typed(o), state }]); return r; };
+const perm = (o, refusalRetryable, state) => mesh.hasPermanentCredentialOutcome(rowOf(o, state), refusalRetryable);
+const table = [
+	["stored retryable:false", perm({ code: "x", retryable: false }), true],
+	["stored retryable ABSENT (outcome present)", perm({ code: "x", reason: "r" }), true],
+	["stored retryable:true", perm({ code: "x", retryable: true }), false],
+	["NO apply_outcome at all", perm(undefined), false],
+	["fresh refusal outcome w/o retryable overrides stored true", perm({ code: "x", retryable: true }, mesh.approvalRefusal({ applyOutcome: { code: "y" } }).retryable), true],
+	["no-outcome refusal keeps stored true", perm({ code: "x", retryable: true }, mesh.approvalRefusal({ code: "store_busy" }).retryable), false],
+	["approved state, retryable absent", perm({ code: "x" }, undefined, "approved"), true],
+	["requested state never permanent", perm({ code: "x", retryable: false }, undefined, "requested"), false],
+];
+for (const [name, got, want] of table) check(got === want, `hasPermanentCredentialOutcome ${name}: ${got}`);
+console.log(`  canDenyApproval failed/approved (Cancel sharing stays): ${mesh.canDenyApproval("failed")}/${mesh.canDenyApproval("approved")}`);
+check(mesh.canDenyApproval("failed") && mesh.canDenyApproval("approved"), "cancel remains available on permanent-outcome states");
+
+console.log(`\nprobe failures=${fail}`);
+process.exit(fail ? 1 : 0);

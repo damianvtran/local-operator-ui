@@ -23,6 +23,7 @@
  * focuses the name, and suggests a name that cannot collide.
  */
 
+import { AgentMark } from "@shared/agent-avatar/agent-mark";
 import { desktopResult } from "@shared/api/local-operator/desktop-api";
 import type {
 	ReusableProfile,
@@ -33,6 +34,7 @@ import {
 	AlertDescription,
 	AlertTitle,
 } from "@shared/components/ui/alert";
+import { AgentAvatar, AvatarFallback } from "@shared/components/ui/avatar";
 import { Badge } from "@shared/components/ui/badge";
 import { Button } from "@shared/components/ui/button";
 import { Disclosure } from "@shared/components/ui/disclosure";
@@ -58,7 +60,7 @@ import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
-import { LogIn, MoreHorizontal } from "lucide-react";
+import { Bot, LogIn, MoreHorizontal } from "lucide-react";
 import {
 	type FormEvent,
 	type ReactNode,
@@ -93,7 +95,6 @@ import {
 	LINK_HIT_AREA,
 	ReadBlock,
 	Section,
-	TITLE_LINE_HEIGHT,
 	consumeHeadingFocus,
 	requestHeadingFocus,
 	sourceLabel,
@@ -114,6 +115,34 @@ type Draft = {
 };
 
 const TOOL_TOKEN = /^[A-Za-z0-9_.:-]{1,128}$/;
+
+/*
+ * The summary portrait's box: 80px, and borderless - `AgentAvatar` carries a
+ * control border for small marks that the summary's portrait deliberately drops.
+ * Its `bg-sunken` plate is kept, so a picture with transparent pixels and the
+ * empty state sit on the same surface.
+ */
+const SUMMARY_PORTRAIT_CLASS = "size-full border-0";
+
+/**
+ * The summary's plate while there is no picture to paint: no picture saved,
+ * still loading, or bytes that failed to decode. `AgentMark` shows its OWN
+ * `AvatarFallback` only once it has a URL (loading/decode-error), and the
+ * caller's `fallback` before that (no picture). Drawing that same
+ * `AgentAvatar` + `AvatarFallback` here makes all three states one filled,
+ * borderless disc with the local agent glyph (design round 1, D1) - from the
+ * shared surface's tokens, never new colours, and never the owner's photo.
+ * Same pattern as `AgentMarkPlate` in chat-session-avatar.tsx.
+ */
+function SummaryPortraitPlate() {
+	return (
+		<AgentAvatar className={SUMMARY_PORTRAIT_CLASS} data-agent-mark="">
+			<AvatarFallback>
+				<Bot className="size-8" aria-hidden="true" />
+			</AvatarFallback>
+		</AgentAvatar>
+	);
+}
 
 function draftOf(profile: ReusableProfile): Draft {
 	return {
@@ -476,7 +505,9 @@ function ToolsEditor({
 										<Button
 											variant="ghost"
 											size="sm"
-											aria-label={`Remove ${tool}`}
+											aria-label={t("ui.agents.detail.tools.remove_aria", {
+												tool,
+											})}
 											onClick={() =>
 												onChange(tools.filter((each) => each !== tool))
 											}
@@ -496,7 +527,7 @@ function ToolsEditor({
 					<div className="flex items-end gap-2">
 						<div className="min-w-0 flex-1">
 							<FieldLabel
-								label="Add a tool"
+								label={t("ui.agents.detail.tools.add_label")}
 								htmlFor={inputId}
 								error={entryError ?? error}
 							/>
@@ -904,34 +935,60 @@ export function AgentDetail({
 		 */
 		<div className="space-y-8">
 			<header className="space-y-3">
-				<div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
-					<div className="min-w-0 flex-[1_1_16rem] space-y-1">
-						{/* The page's only h1 is the page title; a definition's name is a
-						    second-level heading (design D9). */}
-						<h2
-							ref={headingRef}
-							tabIndex={-1}
-							// A long name truncates instead of wrapping under the actions.
-							title={displayedName}
-							className="truncate text-title focus:outline-none"
-						>
-							{displayedName}
-						</h2>
-						{/*
-						 * THE DESCRIPTION IS SAID ONCE. It sat here AND in the "When to use it"
-						 * box ~130 px below, which is the same sentence twice on one screen
-						 * (design review round 1, D10). The box keeps it, because the box is
-						 * titled by the question the sentence answers.
-						 */}
-						<AgentMeta profile={profile} />
+				<div
+					className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3"
+					data-agent-summary-header=""
+				>
+					<div className="flex min-w-0 flex-[1_1_16rem] items-center gap-4">
+						{/* A summary must identify the selected AGENT, not the signed-in
+						    owner. Use the same local id as the existing picture editor;
+						    an uninstalled seed has no id and keeps the local Bot glyph.
+						    Reserve the same borderless 80px box through missing/loading/
+						    failed bytes so neither the title nor actions jump on arrival. */}
+						{editing ? null : (
+							<span
+								className="size-20 shrink-0"
+								data-agent-summary-portrait=""
+								aria-hidden="true"
+							>
+								<AgentMark
+									agentId={profile.agent_id}
+									className={SUMMARY_PORTRAIT_CLASS}
+									glyph={<Bot className="size-8" aria-hidden="true" />}
+									fallback={<SummaryPortraitPlate />}
+								/>
+							</span>
+						)}
+						<div className="min-w-0 flex-1 space-y-1">
+							{/* The page's only h1 is the page title; a definition's name is a
+							    second-level heading (design D9). */}
+							<h2
+								ref={headingRef}
+								tabIndex={-1}
+								// A long name truncates instead of wrapping under the actions.
+								title={displayedName}
+								className="truncate text-title focus:outline-none"
+							>
+								{displayedName}
+							</h2>
+							{/*
+							 * THE DESCRIPTION IS SAID ONCE. It sat here AND in the "When to use it"
+							 * box ~130 px below, which is the same sentence twice on one screen
+							 * (design review round 1, D10). The box keeps it, because the box is
+							 * titled by the question the sentence answers.
+							 */}
+							<AgentMeta profile={profile} />
+						</div>
 					</div>
 					{/*
 					 * ONE PRIMARY, ONE SECONDARY, ONE QUIET - and none while the form is open
 					 * (design D5; spec D8). The primary while editing is Save changes in the
 					 * footer, and a second accent fill in the same frame split the decision.
-					 * `TITLE_LINE_HEIGHT` is the title's own line box (derived from the type
-					 * token, not copied), so the 32 px buttons centre on the TITLE line and
-					 * not on the title-plus-meta block.
+					 * The identity and actions are sibling flex items centred as whole boxes.
+					 * The identity may include an 80px portrait, or the actions may wrap
+					 * below it on a narrow pane; neither needs a title-specific offset.
+					 * The action cluster can wrap internally too: a narrow pane must not
+					 * turn its existing controls into an overflowing unbroken strip.
 					 *
 					 * THE TRAILING GLYPH SITS ON THE COLUMN EDGE (design review round 1 D1):
 					 * the last control is the ghost "More actions" icon button, 32 px wide
@@ -941,10 +998,8 @@ export function AgentDetail({
 					 */}
 					{editing ? null : (
 						<div
-							className={cn(
-								"flex shrink-0 items-center gap-2",
-								TITLE_LINE_HEIGHT,
-							)}
+							className="flex min-w-0 flex-wrap items-center gap-2"
+							data-agent-summary-actions=""
 						>
 							<Button
 								variant="primary"
@@ -1108,8 +1163,8 @@ export function AgentDetail({
 						) : null}
 						<EditSection
 							title={t("ui.agents.detail.section.when_to_use")}
-							description="One sentence the model reads to decide when this agent is the right one."
-							label="When to use this agent"
+							description={t("ui.agents.detail.field.when_to_use_hint")}
+							label={t("ui.agents.detail.field.when_to_use")}
 							value={draft.description}
 							error={errorField === "description" ? error : null}
 							onChange={(value) =>
@@ -1118,8 +1173,8 @@ export function AgentDetail({
 						/>
 						<EditSection
 							title={t("ui.agents.detail.section.instructions")}
-							description="What the agent is told to do. This is the agent's whole behaviour."
-							label="Instructions"
+							description={t("ui.agents.detail.field.instructions_hint")}
+							label={t("ui.agents.detail.section.instructions")}
 							value={draft.instructions}
 							rows={12}
 							required
@@ -1139,7 +1194,7 @@ export function AgentDetail({
 						</Section>
 						<Section
 							title={t("ui.agents.detail.section.delegation")}
-							description="Whether this agent may hand work to subagents, and which effort tier it runs at."
+							description={t("ui.agents.detail.section.delegation_hint")}
 						>
 							<div className="space-y-4">
 								<div className="flex items-center gap-2 text-body-sm">
@@ -1154,15 +1209,15 @@ export function AgentDetail({
 								</div>
 								<div className="space-y-1">
 									<FieldLabel
-										label="Effort tier"
+										label={t("ui.agents.models.override.tier_field")}
 										htmlFor="agent-effort"
 										error={errorField === "effort" ? error : null}
 									/>
 									<SearchableSelect
-										ariaLabel="Effort tier"
+										ariaLabel={t("ui.agents.models.override.tier_field")}
 										showLabel={false}
 										placeholder={t("ui.agents.detail.field.effort_placeholder")}
-										busyLabel="Loading effort tiers"
+										busyLabel={t("ui.agents.detail.field.effort_loading")}
 										// Picker labels are copy; ids stay backend tokens for saves.
 										options={["inherit", ...effortTiers].map((tier) => ({
 											id: tier,
@@ -1172,7 +1227,7 @@ export function AgentDetail({
 													: tier,
 											description:
 												tier === "inherit"
-													? "Use the session's own effort"
+													? t("ui.agents.detail.field.effort_inherit_hint")
 													: undefined,
 										}))}
 										selected={{
@@ -1185,7 +1240,7 @@ export function AgentDetail({
 										onSelect={(option) =>
 											setDraft((current) => ({ ...current, effort: option.id }))
 										}
-										helperText="Tiers come from the backend's subagent model settings."
+										helperText={t("ui.agents.detail.field.effort_helper")}
 									/>
 								</div>
 							</div>
@@ -1198,8 +1253,8 @@ export function AgentDetail({
 							pending={pending}
 							onSave={() => void save()}
 							onCancel={cancel}
-							saveLabel="Save changes"
-							dirtyHint="Discard your unsaved changes to this agent?"
+							saveLabel={t("ui.agents.detail.action.save_changes")}
+							dirtyHint={t("ui.agents.pages.discard_bar.agent")}
 						/>
 					</>
 				) : (
@@ -1207,7 +1262,7 @@ export function AgentDetail({
 						<Section title={t("ui.agents.detail.section.when_to_use")}>
 							<ReadBlock
 								text={agentDescriptionText(profile) || ""}
-								empty="No description yet — add one so a model knows when to pick this agent."
+								empty={t("ui.agents.detail.empty.description")}
 							/>
 						</Section>
 						<Section title={t("ui.agents.detail.section.instructions")}>
@@ -1215,7 +1270,7 @@ export function AgentDetail({
 								text={
 									profile.instructions ?? profile.packaged_instructions ?? ""
 								}
-								empty="No instructions yet."
+								empty={t("ui.agents.detail.empty.instructions")}
 							/>
 						</Section>
 						<Section title={t("ui.agents.detail.section.tools")}>
@@ -1637,7 +1692,7 @@ export function AgentCreate({
 					<div className="grid gap-4 sm:grid-cols-2">
 						<div className="space-y-1">
 							<FieldLabel
-								label="Name"
+								label={t("ui.agents.detail.field.name")}
 								htmlFor="agent-create-name"
 								error={errorField === "name" ? error : null}
 							/>
@@ -1652,7 +1707,7 @@ export function AgentCreate({
 						</div>
 						<div className="space-y-1">
 							<FieldLabel
-								label="How it works with others"
+								label={t("ui.agents.detail.field.how_it_works")}
 								htmlFor="agent-create-kind"
 							/>
 							<Select
@@ -1682,8 +1737,8 @@ export function AgentCreate({
 				</Section>
 				<EditSection
 					title={t("ui.agents.detail.section.when_to_use")}
-					description="One sentence the model reads to decide when this agent is the right one."
-					label="When to use this agent"
+					description={t("ui.agents.detail.field.when_to_use_hint")}
+					label={t("ui.agents.detail.field.when_to_use")}
 					value={draft.description}
 					error={errorField === "description" ? error : null}
 					onChange={(value) =>
@@ -1692,8 +1747,8 @@ export function AgentCreate({
 				/>
 				<EditSection
 					title={t("ui.agents.detail.section.instructions")}
-					description="What the agent is told to do. This is the agent's whole behaviour."
-					label="Instructions"
+					description={t("ui.agents.detail.field.instructions_hint")}
+					label={t("ui.agents.detail.section.instructions")}
 					value={draft.instructions}
 					rows={12}
 					required
@@ -1716,11 +1771,14 @@ export function AgentCreate({
 							<span>{t("ui.agents.detail.delegate.label")}</span>
 						</div>
 						<div className="space-y-1">
-							<FieldLabel label="Effort tier" htmlFor="agent-create-effort" />
+							<FieldLabel
+								label={t("ui.agents.models.override.tier_field")}
+								htmlFor="agent-create-effort"
+							/>
 							<SearchableSelect
-								ariaLabel="Effort tier"
+								ariaLabel={t("ui.agents.models.override.tier_field")}
 								showLabel={false}
-								busyLabel="Loading effort tiers"
+								busyLabel={t("ui.agents.detail.field.effort_loading")}
 								placeholder={t("ui.agents.detail.field.effort_placeholder")}
 								options={["inherit", ...effortTiers].map((tier) => ({
 									id: tier,
@@ -1730,8 +1788,8 @@ export function AgentCreate({
 											: tier,
 									description:
 										tier === "inherit"
-											? "Use the session's own effort"
-											: "A tier configured in Settings",
+											? t("ui.agents.detail.field.effort_inherit_hint")
+											: t("ui.agents.detail.field.effort_configured_hint"),
 								}))}
 								selected={{
 									id: draft.effort,
@@ -1763,9 +1821,13 @@ export function AgentCreate({
 					submit
 					dirty={Boolean(name.trim() || draft.instructions)}
 					pending={pending}
-					saveLabel={initial ? "Create the copy" : "Create agent"}
-					pendingLabel="Creating…"
-					dirtyHint="Discard this new agent?"
+					saveLabel={
+						initial
+							? t("ui.agents.detail.action.create_copy")
+							: t("ui.agents.dialogs.create.submit")
+					}
+					pendingLabel={t("ui.agents.detail.action.creating")}
+					dirtyHint={t("ui.agents.detail.action.discard_new_agent")}
 					onSave={() => void save()}
 					onCancel={onCancel}
 				/>

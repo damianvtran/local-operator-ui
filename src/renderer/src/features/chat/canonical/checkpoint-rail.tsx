@@ -1,4 +1,5 @@
 import { Popover, PopoverAnchor, PopoverContent } from "@shared/components/ui";
+import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { Check, CircleAlert, CircleDot, CircleSlash } from "lucide-react";
@@ -1127,7 +1128,7 @@ const CheckpointRailView: FC<CheckpointRailProps> = ({
 						role="tooltip"
 						aria-label={
 							activeCheckpoint.kind === "user"
-								? "Your message"
+								? t("ui.chat.transcript_copy.row.your_message")
 								: checkpointLeadLabel(activeCheckpoint, turnCount)
 						}
 						// Radix's focus-scope defaults assume a press-opened popover.

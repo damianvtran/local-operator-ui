@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { ENDPOINT_AVATAR_URL } from "./identity-avatar";
 
 /**
  * The Team Bridge conversation wire shapes (docs/TEAM-BRIDGE-CONVERSATIONS.md).
@@ -525,6 +526,25 @@ export const teamBridgeDirectoryAgentSchema = z
 		endpoint_id: id,
 		name: z.string().max(128),
 		state: z.string().min(1).max(32),
+		/*
+		 * THE ENDPOINT'S OWN PICTURE, validated where it enters the app rather
+		 * than handed to the resolver as `unknown`. The hub publishes it from
+		 * `BridgeEndpointAvatarPointer` (agent-server #260) when the owner's
+		 * desktop has published a picture; `src/shared/identity-avatar.ts`
+		 * parses it and the endpoint relay reads the bytes. Optional and
+		 * `.catch(undefined)` — an older or newer hub must never cost a person
+		 * their agent row over a picture.
+		 */
+		avatar_url: z
+			.string()
+			.max(512)
+			/* THE RESOLVER'S OWN PATTERN, not a copy: two literals that drift turn a
+			   picture the hub does send into a silently missing one
+			   (`.catch(undefined)`) - round 1's F1 failure mode one layer up (round 2,
+			   F6). */
+			.regex(ENDPOINT_AVATAR_URL)
+			.optional()
+			.catch(undefined),
 	})
 	.passthrough();
 export type TeamBridgeDirectoryAgent = z.infer<

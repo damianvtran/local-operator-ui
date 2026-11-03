@@ -328,13 +328,24 @@ try {
 	// BLOCKED rather than FAIL: a VM that carries signing or API credentials is
 	// misconfigured, and calling that a product failure would send a reader to the
 	// candidate's code. Nothing below this line runs when it fires.
+	// The names cover both generations of signing material: the App Store Connect
+	// API key and the organization identity the workflows bind now, and the
+	// retired Apple ID / individual-account names, which still exist as
+	// repository secrets for rollback and are no less a leak if one reaches here.
 	if (
 		[
+			"APPLE_API_KEY",
+			"APPLE_API_KEY_ID",
+			"APPLE_API_ISSUER",
+			"APPLE_API_KEY_P8_BASE64",
 			"APPLE_ID",
 			"APPLE_ID_PASSWORD",
 			"APPLE_TEAM_ID",
 			"CSC_CONTENT",
 			"CSC_KEY_PASSWORD",
+			"MACOS_APP_PROFILE_BASE64",
+			"MACOS_DEVID_APP_P12_BASE64",
+			"MACOS_DEVID_APP_P12_PASSWORD",
 			"GH_TOKEN",
 			"GITHUB_TOKEN",
 		].some((name) => process.env[name])
