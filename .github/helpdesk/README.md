@@ -271,7 +271,8 @@ one place in `.github/helpdesk/reconcile.sh`):
   failure edits the existing notice (latest run link, `Last failure: <UTC>`
   and a running failure count) instead of posting another, because the sweep
   retries a failed attempt every `FAILED_ATTEMPT_BACKOFF_MINUTES` and fresh
-  comments buried threads (an unpublished pin once left 84 of them).
+  comments buried threads (an unpublished pin once left dozens of them).
+  A failed lookup or edit degrades to posting a fresh notice, never to none.
   `reconcile.test.sh` runs both notice steps against a stubbed `gh`.
 - Nothing here adds a human reviewer or notifies anyone; the bot never writes
   an `@handle` for a person.

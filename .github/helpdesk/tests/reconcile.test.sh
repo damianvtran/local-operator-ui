@@ -1243,7 +1243,10 @@ cat > "$NOTICE_BIN/gh" <<'STUB'
 #!/usr/bin/env bash
 # Recording gh for the failure-notice steps: GET comments serves
 # $NOTICE_DIR/comments.json; POST/PATCH log "<verb> <path>" to calls.log and
-# copy the body file to body.md. Anything else fails loudly.
+# copy the body file to body.md. Anything else fails loudly. Fault injection:
+# NOTICE_FAIL_GET=1 makes the list call print a non-JSON error page and exit 1
+# (a 502 mid-pagination); NOTICE_FAIL_PATCH=1 makes the edit exit 1 after
+# logging "PATCH <path> FAILED".
 set -euo pipefail
 dir="${NOTICE_DIR:?}"
 [ "${1:-}" = api ] || { echo "notice stub: unsupported: $*" >&2; exit 1; }
@@ -1258,7 +1261,16 @@ while [ $# -gt 0 ]; do
   esac
 done
 case "$verb $path" in
-  "GET repos/example/repo/issues/"*/comments) cat "$dir/comments.json" ;;
+  "GET repos/example/repo/issues/"*/comments)
+    if [ "${NOTICE_FAIL_GET:-}" = 1 ]; then echo '<html>502 Bad Gateway</html>'; exit 1; fi
+    cat "$dir/comments.json"
+    ;;
+  "PATCH repos/example/repo/issues/comments/"*)
+    if [ "${NOTICE_FAIL_PATCH:-}" = 1 ]; then echo "$verb $path FAILED" >> "$dir/calls.log"; exit 1; fi
+    echo "$verb $path" >> "$dir/calls.log"
+    cp "$body" "$dir/body.md"
+    echo '{}'
+    ;;
   "POST repos/example/repo/issues/"*/comments | "PATCH repos/example/repo/issues/comments/"*)
     echo "$verb $path" >> "$dir/calls.log"
     cp "$body" "$dir/body.md"
@@ -1324,6 +1336,22 @@ for job in review triage; do
     {id: 72, user: {login: $bot}, body: ("note\n" + $h)}]')"
   check "failure notice ($job): human quotes, other headings and non-first-line headings are not matched" \
     "POST repos/example/repo/issues/$n/comments" "$(run_notice "$job" "$others")"
+
+  # The lookup only picks PATCH vs POST; under -eo pipefail a failed list call
+  # or a non-JSON body must degrade to a POST, never abort before any write.
+  check "failure notice ($job): the comment list call fails -> still POST" \
+    "POST repos/example/repo/issues/$n/comments" "$(NOTICE_FAIL_GET=1 run_notice "$job" "$counted")"
+  contains "failure notice ($job): after a failed lookup the notice counts one failure" "$(cat "$NOTICE_DIR/body.md")" "— 1 failure so far"
+  check "failure notice ($job): the comment list is not JSON -> still POST" \
+    "POST repos/example/repo/issues/$n/comments" "$(run_notice "$job" '<html>oops</html>')"
+
+  # A failed edit falls back to a fresh notice with a warning annotation.
+  got="$(NOTICE_FAIL_PATCH=1 run_notice "$job" "$counted")"
+  check "failure notice ($job): the PATCH fails -> fall back to POST" \
+    "::warning::could not update the earlier failure notice; posting a new one
+PATCH repos/example/repo/issues/comments/60 FAILED
+POST repos/example/repo/issues/$n/comments" "$got"
+  contains "failure notice ($job): the fallback notice keeps the running count" "$(cat "$NOTICE_DIR/body.md")" "— 6 failures so far"
 done
 
 # ---------------------------------------------------------------------------

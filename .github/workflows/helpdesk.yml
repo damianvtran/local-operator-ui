@@ -553,9 +553,9 @@ jobs:
           # One notice per thread, updated in place. A failing run repeats (the
           # sweep retries a failed attempt after FAILED_ATTEMPT_BACKOFF_MINUTES,
           # mentions re-trigger it), and posting afresh each time buried PRs
-          # under dozens of identical notices — an unpublished harness pin once
-          # produced 84 of them. So: find this workflow token's earlier notice
-          # whose FIRST line is this exact heading, and PATCH it with the
+          # under dozens of identical notices (an unpublished harness pin). So:
+          # find this workflow token's earlier notice whose FIRST line is this
+          # exact heading, and PATCH it with the
           # latest run link, a UTC timestamp and a running count; post only
           # when none exists. Matching the author too means a human quoting
           # the heading is never edited (the token could not edit it anyway).
@@ -563,8 +563,14 @@ jobs:
           # the failure may precede the checkout; reconcile.test.sh runs this
           # block against a stubbed gh.
           run_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
-          existing="$(gh api "repos/${GITHUB_REPOSITORY}/issues/${num}/comments" --paginate \
-            | jq -sc --arg h "$heading" '[add // [] | .[] | select(.user.login == "github-actions[bot]") | select((.body // "" | split("\n")[0] | rtrimstr("\r")) == $h)] | last // empty')"
+          # The lookup only decides PATCH vs POST, so it must never cost the
+          # notice: steps run under `bash -eo pipefail`, where a failed list
+          # call (e.g. a 502 mid-pagination on a long thread) or jq choking on
+          # a non-JSON error body would abort the step before anything is
+          # written. Either failure degrades to "no earlier notice" -> POST.
+          existing="$( { gh api "repos/${GITHUB_REPOSITORY}/issues/${num}/comments" --paginate || echo '[]'; } \
+            | jq -sc --arg h "$heading" '[add // [] | .[] | select(.user.login == "github-actions[bot]") | select((.body // "" | split("\n")[0] | rtrimstr("\r")) == $h)] | last // empty' \
+            || true)"
           count=1
           if [ -n "$existing" ]; then
             prev="$(jq -r '.body' <<<"$existing" | sed -n 's/^Last failure: .* — \([0-9][0-9]*\) failures\{0,1\} so far.*/\1/p' | tail -n 1)"
@@ -579,12 +585,19 @@ jobs:
             "$heading" "$sentence Latest run log: ${run_url}" \
             "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$count" "$noun" \
             > "$RUNNER_TEMP/helpdesk-notice.md"
-          if [ -n "$existing" ]; then
-            gh api -X PATCH "repos/${GITHUB_REPOSITORY}/issues/comments/$(jq -r '.id' <<<"$existing")" \
-              -F body=@"$RUNNER_TEMP/helpdesk-notice.md" > /dev/null
-          else
+          post_notice() {
             gh api -X POST "repos/${GITHUB_REPOSITORY}/issues/${num}/comments" \
               -F body=@"$RUNNER_TEMP/helpdesk-notice.md" > /dev/null
+          }
+          if [ -n "$existing" ]; then
+            # A failed edit (transient API error, notice deleted meanwhile)
+            # falls back to a fresh notice, as lop's reconcile script does: a
+            # duplicate is cheaper than a thread left showing a stale run.
+            gh api -X PATCH "repos/${GITHUB_REPOSITORY}/issues/comments/$(jq -r '.id' <<<"$existing")" \
+              -F body=@"$RUNNER_TEMP/helpdesk-notice.md" > /dev/null \
+              || { echo "::warning::could not update the earlier failure notice; posting a new one"; post_notice; }
+          else
+            post_notice
           fi
 
   triage:
@@ -756,9 +769,9 @@ jobs:
           # One notice per thread, updated in place. A failing run repeats (the
           # sweep retries a failed attempt after FAILED_ATTEMPT_BACKOFF_MINUTES,
           # mentions re-trigger it), and posting afresh each time buried PRs
-          # under dozens of identical notices — an unpublished harness pin once
-          # produced 84 of them. So: find this workflow token's earlier notice
-          # whose FIRST line is this exact heading, and PATCH it with the
+          # under dozens of identical notices (an unpublished harness pin). So:
+          # find this workflow token's earlier notice whose FIRST line is this
+          # exact heading, and PATCH it with the
           # latest run link, a UTC timestamp and a running count; post only
           # when none exists. Matching the author too means a human quoting
           # the heading is never edited (the token could not edit it anyway).
@@ -766,8 +779,14 @@ jobs:
           # the failure may precede the checkout; reconcile.test.sh runs this
           # block against a stubbed gh.
           run_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
-          existing="$(gh api "repos/${GITHUB_REPOSITORY}/issues/${num}/comments" --paginate \
-            | jq -sc --arg h "$heading" '[add // [] | .[] | select(.user.login == "github-actions[bot]") | select((.body // "" | split("\n")[0] | rtrimstr("\r")) == $h)] | last // empty')"
+          # The lookup only decides PATCH vs POST, so it must never cost the
+          # notice: steps run under `bash -eo pipefail`, where a failed list
+          # call (e.g. a 502 mid-pagination on a long thread) or jq choking on
+          # a non-JSON error body would abort the step before anything is
+          # written. Either failure degrades to "no earlier notice" -> POST.
+          existing="$( { gh api "repos/${GITHUB_REPOSITORY}/issues/${num}/comments" --paginate || echo '[]'; } \
+            | jq -sc --arg h "$heading" '[add // [] | .[] | select(.user.login == "github-actions[bot]") | select((.body // "" | split("\n")[0] | rtrimstr("\r")) == $h)] | last // empty' \
+            || true)"
           count=1
           if [ -n "$existing" ]; then
             prev="$(jq -r '.body' <<<"$existing" | sed -n 's/^Last failure: .* — \([0-9][0-9]*\) failures\{0,1\} so far.*/\1/p' | tail -n 1)"
@@ -782,10 +801,17 @@ jobs:
             "$heading" "$sentence Latest run log: ${run_url}" \
             "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$count" "$noun" \
             > "$RUNNER_TEMP/helpdesk-notice.md"
-          if [ -n "$existing" ]; then
-            gh api -X PATCH "repos/${GITHUB_REPOSITORY}/issues/comments/$(jq -r '.id' <<<"$existing")" \
-              -F body=@"$RUNNER_TEMP/helpdesk-notice.md" > /dev/null
-          else
+          post_notice() {
             gh api -X POST "repos/${GITHUB_REPOSITORY}/issues/${num}/comments" \
               -F body=@"$RUNNER_TEMP/helpdesk-notice.md" > /dev/null
+          }
+          if [ -n "$existing" ]; then
+            # A failed edit (transient API error, notice deleted meanwhile)
+            # falls back to a fresh notice, as lop's reconcile script does: a
+            # duplicate is cheaper than a thread left showing a stale run.
+            gh api -X PATCH "repos/${GITHUB_REPOSITORY}/issues/comments/$(jq -r '.id' <<<"$existing")" \
+              -F body=@"$RUNNER_TEMP/helpdesk-notice.md" > /dev/null \
+              || { echo "::warning::could not update the earlier failure notice; posting a new one"; post_notice; }
+          else
+            post_notice
           fi
