@@ -67457,6 +67457,398 @@
 				}
 			],
 			"status": "audited"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.nativeBadge",
+			"source_sha256": "e0c32081675d7666443fb3ee6a8523af32b46681019547ee7a92f836764aa03a",
+			"target_sha256": "5e01b516dfb1e0fc0b08ac24c0dcfe905628c3bf127c93a5378f80266b55239e",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-02"
+			},
+			"auditors": [
+				{
+					"agent": "task",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-02",
+					"result": "clean",
+					"instance": "96cc80375fbd-fr",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/96cc80375fbd-fr.json",
+					"receipt_sha256": "a29d9e66a6d0daa4ec46e70d26cf66d55c21913afd68308902296f038776ec53",
+					"scope": "All three ui.nativeBadge keys at the recorded English (post-D3) and target hashes; en/ru D3 delta verified as single-character case changes; fr/es/zh-CN/vi/hi/ur target bytes unchanged since 2220591debf9 and re-confirmed against the new source; independent hash-pinned source-language recheck; no native rendering or screen-reader claim.",
+					"note": "Receipt serialized from manager-relayed independent auditor 96cc80375fbd values; not an implementer audit"
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "f34add839ee407fb0468184330099db692da3bb8823f14babbd9d3811a8793de",
+					"target_sha256": "5e01b516dfb1e0fc0b08ac24c0dcfe905628c3bf127c93a5378f80266b55239e",
+					"auditors": [
+						{
+							"agent": "task",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-02",
+							"result": "clean",
+							"instance": "2220591debf9-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/2220591debf9-fr.json",
+							"receipt_sha256": "3a44ae316b37c1682bd9700e09a8f7e4e68918781f822c72d9028a27d1c75398",
+							"scope": "All three ui.nativeBadge keys; independent hash-pinned source-language recheck relayed by manager; no native rendering claim."
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "es",
+			"namespace": "ui.nativeBadge",
+			"source_sha256": "e0c32081675d7666443fb3ee6a8523af32b46681019547ee7a92f836764aa03a",
+			"target_sha256": "91d5815153165101ed357003c2ec0a4ca0b80020041105eb6682e804d4a51471",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-02"
+			},
+			"auditors": [
+				{
+					"agent": "task",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-02",
+					"result": "clean",
+					"instance": "96cc80375fbd-es",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/96cc80375fbd-es.json",
+					"receipt_sha256": "6ac449987c5903c0505ae231bfd72ebeaa3353c9dd9da1a69d1ba1eb866a1e4c",
+					"scope": "All three ui.nativeBadge keys at the recorded English (post-D3) and target hashes; en/ru D3 delta verified as single-character case changes; fr/es/zh-CN/vi/hi/ur target bytes unchanged since 2220591debf9 and re-confirmed against the new source; independent hash-pinned source-language recheck; no native rendering or screen-reader claim.",
+					"note": "Receipt serialized from manager-relayed independent auditor 96cc80375fbd values; not an implementer audit"
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "f34add839ee407fb0468184330099db692da3bb8823f14babbd9d3811a8793de",
+					"target_sha256": "91d5815153165101ed357003c2ec0a4ca0b80020041105eb6682e804d4a51471",
+					"auditors": [
+						{
+							"agent": "task",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-02",
+							"result": "clean",
+							"instance": "2220591debf9-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/2220591debf9-es.json",
+							"receipt_sha256": "2b224c4178823061690028ac4f63c100de13b7367c1deac667fdad23f52148f4",
+							"scope": "All three ui.nativeBadge keys; independent hash-pinned source-language recheck relayed by manager; no native rendering claim."
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.nativeBadge",
+			"source_sha256": "e0c32081675d7666443fb3ee6a8523af32b46681019547ee7a92f836764aa03a",
+			"target_sha256": "4eca2e5f88018162e0ff9e5160305b8ba01b444de45f8397c8e28965ba70bf6e",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-02"
+			},
+			"auditors": [
+				{
+					"agent": "task",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-02",
+					"result": "clean",
+					"instance": "96cc80375fbd-zh-cn",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/96cc80375fbd-zh-cn.json",
+					"receipt_sha256": "8fade9d2c0ad2cf439a2ef9b7d180500baa9fc1949ff9f1558b0227a45bcf3ea",
+					"scope": "All three ui.nativeBadge keys at the recorded English (post-D3) and target hashes; en/ru D3 delta verified as single-character case changes; fr/es/zh-CN/vi/hi/ur target bytes unchanged since 2220591debf9 and re-confirmed against the new source; independent hash-pinned source-language recheck; no native rendering or screen-reader claim.",
+					"note": "Receipt serialized from manager-relayed independent auditor 96cc80375fbd values; not an implementer audit"
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "f34add839ee407fb0468184330099db692da3bb8823f14babbd9d3811a8793de",
+					"target_sha256": "4eca2e5f88018162e0ff9e5160305b8ba01b444de45f8397c8e28965ba70bf6e",
+					"auditors": [
+						{
+							"agent": "task",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-02",
+							"result": "clean",
+							"instance": "2220591debf9-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/2220591debf9-zh-cn.json",
+							"receipt_sha256": "1c867b5bb373b86514df85b8613829d7acd44d359de5900b2fefbb170d0923b5",
+							"scope": "All three ui.nativeBadge keys; independent hash-pinned source-language recheck relayed by manager; no native rendering claim."
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "vi",
+			"namespace": "ui.nativeBadge",
+			"source_sha256": "e0c32081675d7666443fb3ee6a8523af32b46681019547ee7a92f836764aa03a",
+			"target_sha256": "15ec3770281675a8ae42d698540c295c90e781618bc0a3942baaa6619248e173",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-02"
+			},
+			"auditors": [
+				{
+					"agent": "task",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-02",
+					"result": "clean",
+					"instance": "96cc80375fbd-vi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/96cc80375fbd-vi.json",
+					"receipt_sha256": "11e5e3ed1266cfeb9eea39be14ee2dc25fdbb478fccd3932d350bc5de3637c57",
+					"scope": "All three ui.nativeBadge keys at the recorded English (post-D3) and target hashes; en/ru D3 delta verified as single-character case changes; fr/es/zh-CN/vi/hi/ur target bytes unchanged since 2220591debf9 and re-confirmed against the new source; independent hash-pinned source-language recheck; no native rendering or screen-reader claim.",
+					"note": "Receipt serialized from manager-relayed independent auditor 96cc80375fbd values; not an implementer audit"
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "f34add839ee407fb0468184330099db692da3bb8823f14babbd9d3811a8793de",
+					"target_sha256": "15ec3770281675a8ae42d698540c295c90e781618bc0a3942baaa6619248e173",
+					"auditors": [
+						{
+							"agent": "task",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-02",
+							"result": "clean",
+							"instance": "2220591debf9-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/2220591debf9-vi.json",
+							"receipt_sha256": "38c634b9b7656664350a287bdb4a92bf7f869de41bb81ddfa83218fd295845a6",
+							"scope": "All three ui.nativeBadge keys; independent hash-pinned source-language recheck relayed by manager; no native rendering claim."
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.nativeBadge",
+			"source_sha256": "e0c32081675d7666443fb3ee6a8523af32b46681019547ee7a92f836764aa03a",
+			"target_sha256": "c5c15bc16ed6703d97abbfcc4e87ee7e0226c9ae033a40426a4b80074cc68a73",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-02"
+			},
+			"auditors": [
+				{
+					"agent": "task",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-02",
+					"result": "clean",
+					"instance": "96cc80375fbd-hi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/96cc80375fbd-hi.json",
+					"receipt_sha256": "40e8997b8d1d474e0e35187ec89e5c3e708d5c9139ae15584973faf686df35ed",
+					"scope": "All three ui.nativeBadge keys at the recorded English (post-D3) and target hashes; en/ru D3 delta verified as single-character case changes; fr/es/zh-CN/vi/hi/ur target bytes unchanged since 2220591debf9 and re-confirmed against the new source; independent hash-pinned source-language recheck; no native rendering or screen-reader claim.",
+					"note": "Receipt serialized from manager-relayed independent auditor 96cc80375fbd values; not an implementer audit"
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "f34add839ee407fb0468184330099db692da3bb8823f14babbd9d3811a8793de",
+					"target_sha256": "c5c15bc16ed6703d97abbfcc4e87ee7e0226c9ae033a40426a4b80074cc68a73",
+					"auditors": [
+						{
+							"agent": "task",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-02",
+							"result": "clean",
+							"instance": "2220591debf9-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/2220591debf9-hi.json",
+							"receipt_sha256": "6386b07d24879ab29528919637c33e3c17b24ca12f31ba8b399dbdbbac9b4c18",
+							"scope": "All three ui.nativeBadge keys; independent hash-pinned source-language recheck relayed by manager; no native rendering claim."
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "ru",
+			"namespace": "ui.nativeBadge",
+			"source_sha256": "e0c32081675d7666443fb3ee6a8523af32b46681019547ee7a92f836764aa03a",
+			"target_sha256": "1b8a5e0dfed07b39a5209d509bb061d797661a6372265d14bb56295b602e33f3",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-02"
+			},
+			"auditors": [
+				{
+					"agent": "task",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-02",
+					"result": "clean-with-findings",
+					"instance": "96cc80375fbd-ru",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/96cc80375fbd-ru.json",
+					"receipt_sha256": "e43881b373b93539468d1c4f6b07a2a386bb603bb3599d4347691cac27f8766e",
+					"scope": "All three ui.nativeBadge keys at the recorded English (post-D3) and target hashes; en/ru D3 delta verified as single-character case changes; fr/es/zh-CN/vi/hi/ur target bytes unchanged since 2220591debf9 and re-confirmed against the new source; independent hash-pinned source-language recheck; no native rendering or screen-reader claim.",
+					"note": "Receipt serialized from manager-relayed independent auditor 96cc80375fbd values; not an implementer audit"
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "f34add839ee407fb0468184330099db692da3bb8823f14babbd9d3811a8793de",
+					"target_sha256": "a2e42fe062dec16640ef24eca062da7526c4e1a8252b78f61dba26494c2c7fff",
+					"auditors": [
+						{
+							"agent": "task",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-02",
+							"result": "clean-with-findings",
+							"instance": "2220591debf9-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/2220591debf9-ru.json",
+							"receipt_sha256": "0b19b329e80e1125486dbc02a762622b1491e74b5018885609edcade64092da2",
+							"scope": "All three ui.nativeBadge keys; independent hash-pinned source-language recheck relayed by manager; no native rendering claim."
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.nativeBadge",
+			"source_sha256": "e0c32081675d7666443fb3ee6a8523af32b46681019547ee7a92f836764aa03a",
+			"target_sha256": "9ab5c9bed0bee7da98f974622308b5c239467008885f06f8a87569deaf916636",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-02"
+			},
+			"auditors": [
+				{
+					"agent": "task",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-02",
+					"result": "clean",
+					"instance": "96cc80375fbd-ur",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/96cc80375fbd-ur.json",
+					"receipt_sha256": "d88bc947395911cc296bed8884a571dded0049f3a1bcd735b2609757d7621ecb",
+					"scope": "All three ui.nativeBadge keys at the recorded English (post-D3) and target hashes; en/ru D3 delta verified as single-character case changes; fr/es/zh-CN/vi/hi/ur target bytes unchanged since 2220591debf9 and re-confirmed against the new source; independent hash-pinned source-language recheck; no native rendering or screen-reader claim.",
+					"note": "Receipt serialized from manager-relayed independent auditor 96cc80375fbd values; not an implementer audit"
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "f34add839ee407fb0468184330099db692da3bb8823f14babbd9d3811a8793de",
+					"target_sha256": "9ab5c9bed0bee7da98f974622308b5c239467008885f06f8a87569deaf916636",
+					"auditors": [
+						{
+							"agent": "task",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-02",
+							"result": "clean",
+							"instance": "2220591debf9-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/2220591debf9-ur.json",
+							"receipt_sha256": "d2c3d2efefe481397c28fab468175e5e85e2c00a6bce5b4de090cb6778b64c2c",
+							"scope": "All three ui.nativeBadge keys; independent hash-pinned source-language recheck relayed by manager; no native rendering claim."
+						}
+					],
+					"status": "audited"
+				}
+			]
 		}
 	]
 }

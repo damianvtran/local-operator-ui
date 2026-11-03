@@ -189,6 +189,8 @@ export interface StartBrowserHostOptions {
 	window: BrowserWindow;
 	/** The trusted renderer URL, for the IPC sender check. */
 	expectedUrl: string;
+	/** App-owned boolean only: no origin, requester, or content leaves the host. */
+	onPendingConsentChanged?: (pending: boolean) => void;
 	appVersion: string;
 	/** `userData` — where the approvals store, `session.json` and the extensions
 	 * directory live. */
@@ -1236,9 +1238,9 @@ async function initializeBrowserHost(
 			log,
 		});
 		syncApprovalsOverlay = () => {
-			// No card (kill switch, an embedder that passed none, or a child that
-			// failed to build): no read, no timer, no clock.
-			if (!approvalsOverlay) return;
+			// The app icon uses this SAME expiry clock even without an overlay.
+			// No parallel timer/renderer lifetime or second approval model.
+			if (!approvalsOverlay && !options.onPendingConsentChanged) return;
 			if (approvalsExpiryTimer) {
 				clearTimeout(approvalsExpiryTimer);
 				approvalsExpiryTimer = null;
@@ -1250,6 +1252,7 @@ async function initializeBrowserHost(
 				...entry,
 				requesterSessionId: sessionRequesterOf(entry.requester),
 			}));
+			options.onPendingConsentChanged?.(entries.length > 0);
 			approvalsOverlay?.setModel({ entries });
 			if (entries.length === 0) return;
 			const delay = approvalsExpiryDelay(entries);

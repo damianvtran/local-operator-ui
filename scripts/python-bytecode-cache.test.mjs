@@ -2784,6 +2784,20 @@ const HARNESS_PYTHON_SPAWN_SITES = [
 		why: "the runtime's own `read_transcript_page`, driven against the isolated session copy; this is the site review R1 / QA Q0 caught inheriting the ambient environment, and it was run on the operator's machine to produce the fixture",
 	},
 	{
+		file: "scripts/app-icon-badge-scene.mjs",
+		name: "execFileSync",
+		index: 1,
+		env: /env:\s*pythonChildEnv\(\{/,
+		why: "the pinned core store writer uses the scene HOME/config/token via an explicitly sealed Python environment",
+	},
+	{
+		file: "scripts/app-icon-badge-scene.mjs",
+		name: "spawn",
+		index: 1,
+		env: /env:\s*pythonChildEnv\(\{/,
+		why: "the pinned core server uses the same isolated scene environment and never inherits ambient Python bindings",
+	},
+	{
 		file: "scripts/notifications-app-scene.mjs",
 		name: "execFileSync",
 		index: 1,
