@@ -1,0 +1,90 @@
+import type { Meta, StoryObj } from "@storybook/react";
+import type { FC } from "react";
+import type {
+	TeamBridgeDeliveryState,
+	TeamBridgeMessage,
+} from "../../../../shared/team-bridge-contract";
+import { TeamBridgeMessageList } from "./team-bridge-message-list";
+
+/*
+ * QA-ONLY (PR #1643 round 1, never committed). The same fixtures are dropped
+ * into the head worktree and a base (2ff3187) worktree so the frames compare
+ * like for like: each story draws one recipient-label case as refused, held
+ * (sender view) and screened-pending lines under one message.
+ */
+const lines = (
+	endpoint: string,
+	recipient_label: string,
+	recipient_owner_label: string,
+): TeamBridgeDeliveryState[] => [
+	{ endpoint_id: `${endpoint}_r`, recipient_label, recipient_owner_label, state: "refused" },
+	{ endpoint_id: `${endpoint}_h`, recipient_label, recipient_owner_label, state: "held" },
+	{
+		endpoint_id: `${endpoint}_p`,
+		recipient_label,
+		recipient_owner_label,
+		state: "held",
+		hold_class: "delivery_pending",
+	},
+];
+
+const message = (delivery_states: TeamBridgeDeliveryState[]): TeamBridgeMessage => ({
+	id: "bcmsg_qa1643",
+	conversation_id: "bcv_qa1643",
+	seq: 1,
+	sender: { account_id: "acct_me", kind: "human", display_label: "Ada" },
+	body: "QA 1643: can you pull the Q3 renewal list?",
+	origin: "human",
+	created_at: "2026-11-03T12:00:00.000Z",
+	delivery_states,
+});
+
+const Thread: FC<{ states: TeamBridgeDeliveryState[] }> = ({ states }) => (
+	<div data-qa="thread" className="flex w-[760px] flex-col bg-surface pt-6 text-ink">
+		<TeamBridgeMessageList
+			messages={[message(states)]}
+			labelFor={(sender) => sender.display_label}
+			tenantId="tnt_story"
+		/>
+	</div>
+);
+
+const meta = {
+	title: "QA 1643/Delivery recipient",
+	component: Thread,
+	parameters: { layout: "centered" },
+} satisfies Meta<typeof Thread>;
+export default meta;
+type Story = StoryObj<typeof meta>;
+
+/** (a) legacy composed stored label, the operator's report. */
+export const A_LegacyComposed: Story = {
+	args: { states: lines("bep_a", "Aida (Ben Tran)", "Ben Tran") },
+};
+/** (b) bare agent name. */
+export const B_BareAgent: Story = {
+	args: { states: lines("bep_b", "Aida", "Ben Tran") },
+};
+/** (c) owner-named agent (endpoint enrolled without an agent name). */
+export const C_OwnerNamed: Story = {
+	args: { states: lines("bep_c", "Ben Tran", "Ben Tran") },
+};
+/** (c') legacy stored "Ben Tran (Ben Tran)" and the chief-of-staff suffix. */
+export const C2_LegacyDoubledAndSuffix: Story = {
+	args: {
+		states: [
+			...lines("bep_c2", "Ben Tran (Ben Tran)", "Ben Tran"),
+			...lines("bep_c3", "Ben Tran’s chief of staff", "Ben Tran"),
+		],
+	},
+};
+/** (d) blank labels: both, agent only, owner only. */
+export const D_Blank: Story = {
+	args: {
+		states: [
+			...lines("bep_d1", "", ""),
+			...lines("bep_d2", "", "Ben Tran"),
+			...lines("bep_d3", "Aida", ""),
+		],
+	},
+};
