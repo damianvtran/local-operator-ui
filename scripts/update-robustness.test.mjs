@@ -7398,6 +7398,35 @@ const loadUpdateServiceModule = async ({
 			js: 'import { createRequire as __loCreateRequire } from "node:module"; const require = __loCreateRequire(import.meta.url);',
 		},
 		plugins: [
+			/*
+			 * WHY THE NON-ENGLISH CATALOGUES ARE EMPTIED HERE. This loader runs ~140 times in
+			 * one process and Node's ESM loader never evicts a module it has imported, so every
+			 * bundle written and imported below stays resident for the life of the file. The
+			 * graph reaches `src/i18n/keys.gen.ts`, which imports every catalogue of every
+			 * locale eagerly: 944 JSON modules, 9.26 of the bundle's 10.4 MB, measured at
+			 * ~28 MB retained per load against ~8 MB when the seven locale folders are empty.
+			 * 140 x 28 MB sits on V8's default 4,144 MB old-space ceiling, so a few KB of new
+			 * catalogue text tips the file into `FATAL ERROR: Reached heap limit` (PR #1603).
+			 *
+			 * NOTHING HERE ASSERTS ON A TRANSLATION: the update service runs under the default
+			 * locale (`en`) and its sentences are read from `catalogues/en`, which stays whole.
+			 * Raising the heap would move the cliff, not remove it; the next catalogue wave
+			 * would meet it again.
+			 */
+			{
+				name: "english-only-catalogues",
+				setup(builder) {
+					builder.onLoad(
+						{
+							filter: /[\\/]i18n[\\/]catalogues[\\/][^\\/]+[\\/][^\\/]+\.json$/,
+						},
+						(args) =>
+							/[\\/]catalogues[\\/]en[\\/]/.test(args.path)
+								? undefined
+								: { contents: "{}", loader: "json" },
+					);
+				},
+			},
 			{
 				name: "electron-fixture",
 				setup(builder) {
