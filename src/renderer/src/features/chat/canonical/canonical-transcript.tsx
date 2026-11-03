@@ -48,6 +48,7 @@ import {
 	FlagLinesProvider,
 	useFlaggedItem,
 } from "@features/notifications/components/flag-line";
+import { useNotificationReveal } from "@features/notifications/drawer-tab-store";
 import {
 	NO_PROVIDER_NOTICE,
 	useConnectProviderStore,
@@ -5272,6 +5273,24 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 		(id: string) => jumpTo(id, THREAD_SEARCH_JUMP_MISS_COPY),
 		[jumpTo],
 	);
+	/*
+	 * The notifications drawer's "Show in conversation": the same near path, for
+	 * the `notify` call's row (`tool:<call id>`), so a flag line inside a collapsed
+	 * turn or in history not yet loaded is reached instead of silently missed.
+	 */
+	const notificationReveal = useNotificationReveal((state) => state.request);
+	const settleNotificationReveal = useNotificationReveal(
+		(state) => state.settle,
+	);
+	useEffect(() => {
+		if (!notificationReveal || sessionId === null) return;
+		if (notificationReveal.sessionId !== sessionId) return;
+		settleNotificationReveal(notificationReveal.nonce);
+		void jumpTo(
+			`tool:${notificationReveal.anchorId}`,
+			THREAD_SEARCH_JUMP_MISS_COPY,
+		);
+	}, [notificationReveal, sessionId, jumpTo, settleNotificationReveal]);
 	/*
 	 * The rail's naming warm (D2): `onHover` already fires on the CARD's own
 	 * intent-delayed open, not on a fly-over, so each call here is one the
