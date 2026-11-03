@@ -266,14 +266,26 @@ one place in `.github/helpdesk/reconcile.sh`):
   writes a run-summary note and stops with no comment and no red check (setup
   item 1). Real failures on a configured run — auth, timeouts, crashes — are
   still red checks and post the run-failure notice on the thread, always with
-  the workflow token, so a broken app token cannot silence the notice.
+  the workflow token, so a broken app token cannot silence the notice. The
+  notice is ONE comment per thread and mode, updated in place: a repeat
+  failure edits the existing notice (latest run link, `Last failure: <UTC>`
+  and a running failure count) instead of posting another, because the sweep
+  retries a failed attempt every `FAILED_ATTEMPT_BACKOFF_MINUTES` and fresh
+  comments buried threads (an unpublished pin once left dozens of them).
+  A failed lookup or edit degrades to posting a fresh notice, never to none.
+  `reconcile.test.sh` runs both notice steps against a stubbed `gh`.
 - Nothing here adds a human reviewer or notifies anyone; the bot never writes
   an `@handle` for a person.
 
 ## Maintenance
 
 - **Harness pin**: the workflow pins `local-operator==<version>` from PyPI.
-  Bump it deliberately by editing the pin in `.github/workflows/helpdesk.yml`.
+  Bump it deliberately by editing the pin in `.github/workflows/helpdesk.yml`
+  (both the review and triage jobs carry it). The pin must be a version still
+  published on PyPI — old releases are removed, and a pin to a removed version
+  fails every run at `Install the pinned harness` (0.62.38 did exactly that).
+  Check with `curl -s https://pypi.org/pypi/local-operator/json | jq -r
+  '.releases | keys[]'` before pinning.
 - **Thresholds and decisions**: `REVIEW_DELAY_MINUTES`,
   `VERDICT_SETTLE_MINUTES` and `WINDOW_DAYS` live at the top of
   `.github/helpdesk/reconcile.sh`, which is also where the sweep's skips and
