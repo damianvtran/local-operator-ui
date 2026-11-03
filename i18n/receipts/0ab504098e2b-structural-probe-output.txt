@@ -1,0 +1,112 @@
+# Actual output: NODE_OPTIONS=--max-old-space-size=2048 timeout 120 node i18n/receipts/0ab504098e2b-structural-probe.mjs.txt (as .mjs), worktree at 3705c557424
+en ui.mesh head=4e7d304432abb54b8e7d5eb96fd83d6ba1bbbdeab3a97ba1b07a80faa20ae10e worktree_matches_head=true changed=["ui.mesh.approval.could_not_apply","ui.mesh.approval.expires_window","ui.mesh.approval.typed_review_unavailable"]
+context head=a7b0f284c1ffdb1b8678b5717e0428616ca97ec4f9b2c9caffb2aa4c0d636e60 changed=["ui.mesh.approval.could_not_apply","ui.mesh.approval.expires_window","ui.mesh.approval.typed_review_unavailable"]
+  expires_window role/tone unchanged=true; note appended only=true
+
+locale delta BASE -> HEAD
+PASS es: head=f7330e8ec1851f0c1c442a87030b0d415ba8a1b8a129877bd001922f007cc908 worktree_matches_head=true keyset_matches_en=true changed=3
+    ok  could_not_apply args=[] en_args=[] nfc=true bidi_free=true
+        No se pudo aplicar
+    ok  expires_window args=[duration] en_args=[duration] nfc=true bidi_free=true
+        Esta solicitud caduca en {duration}
+    ok  typed_review_unavailable args=[] en_args=[] nfc=true bidi_free=true
+        Esta solicitud no se puede mostrar aquí de forma segura. Recházala y pide una nueva solicitud.
+    typed_review_unavailable cli/terminal-free=true; Deny control label = Denegar
+PASS fr: head=7590e3522db56ec8309d5ff08573bcc87429c9e2e6ffe84fad8fee87b3519357 worktree_matches_head=true keyset_matches_en=true changed=3
+    ok  could_not_apply args=[] en_args=[] nfc=true bidi_free=true
+        Impossible à appliquer
+    ok  expires_window args=[duration] en_args=[duration] nfc=true bidi_free=true
+        Cette fiche expire dans {duration}
+    ok  typed_review_unavailable args=[] en_args=[] nfc=true bidi_free=true
+        Cette demande ne peut pas être présentée ici en toute sécurité. Refusez-la et demandez-en une nouvelle.
+    typed_review_unavailable cli/terminal-free=true; Deny control label = Refuser
+PASS hi: head=19b5ab05bd3b1ffae119dfe5e3955d822fe7cbe28e8f4f93ea3c2ee07a245d51 worktree_matches_head=true keyset_matches_en=true changed=3
+    ok  could_not_apply args=[] en_args=[] nfc=true bidi_free=true
+        लागू नहीं हो सका
+    ok  expires_window args=[duration] en_args=[duration] nfc=true bidi_free=true
+        इस कार्ड की समय-सीमा {duration} में समाप्त होगी
+    ok  typed_review_unavailable args=[] en_args=[] nfc=true bidi_free=true
+        यह अनुरोध यहाँ सुरक्षित रूप से नहीं दिखाया जा सकता। इसे अस्वीकार करें और नया अनुरोध माँगें।
+    typed_review_unavailable cli/terminal-free=true; Deny control label = अस्वीकार करें
+PASS ru: head=a6872d6c1909368a033d6348eb04dcdd482fd77c8969275c70d39d15dc4a768b worktree_matches_head=true keyset_matches_en=true changed=3
+    ok  could_not_apply args=[] en_args=[] nfc=true bidi_free=true
+        Не удалось применить
+    ok  expires_window args=[duration] en_args=[duration] nfc=true bidi_free=true
+        Срок этой карточки истекает в течение {duration}
+    ok  typed_review_unavailable args=[] en_args=[] nfc=true bidi_free=true
+        Этот запрос нельзя безопасно показать здесь. Отклоните его и попросите новый запрос.
+    typed_review_unavailable cli/terminal-free=true; Deny control label = Отклонить
+PASS ur: head=f7daa7e36d3ad7edcac839918ed6d444d3a751e9714cbf3008fbc0885adbd210 worktree_matches_head=true keyset_matches_en=true changed=3
+    ok  could_not_apply args=[] en_args=[] nfc=true bidi_free=true
+        لاگو نہیں ہو سکا
+    ok  expires_window args=[duration] en_args=[duration] nfc=true bidi_free=true
+        اس کارڈ کی میعاد {duration} میں ختم ہو گی
+    ok  typed_review_unavailable args=[] en_args=[] nfc=true bidi_free=true
+        یہ درخواست یہاں محفوظ طریقے سے نہیں دکھائی جا سکتی۔ اسے مسترد کریں اور نئی درخواست مانگیں۔
+    typed_review_unavailable cli/terminal-free=true; Deny control label = مسترد کریں
+PASS vi: head=146a9a6e1d5f3004434858960e4c3c89ca11de6d289f027045cac174e9e5c39b worktree_matches_head=true keyset_matches_en=true changed=3
+    ok  could_not_apply args=[] en_args=[] nfc=true bidi_free=true
+        Không thể áp dụng
+    ok  expires_window args=[duration] en_args=[duration] nfc=true bidi_free=true
+        Thẻ này hết hạn sau {duration}
+    ok  typed_review_unavailable args=[] en_args=[] nfc=true bidi_free=true
+        Không thể hiển thị yêu cầu này một cách an toàn ở đây. Hãy từ chối và đề nghị gửi yêu cầu mới.
+    typed_review_unavailable cli/terminal-free=true; Deny control label = Từ chối
+PASS zh-CN: head=e37469d764a6812dd4fd27e968b66c7bf37f21343a7740e1e70b9d1a712104a0 worktree_matches_head=true keyset_matches_en=true changed=3
+    ok  could_not_apply args=[] en_args=[] nfc=true bidi_free=true
+        无法应用
+    ok  expires_window args=[duration] en_args=[duration] nfc=true bidi_free=true
+        此卡片将在{duration}后到期
+    ok  typed_review_unavailable args=[] en_args=[] nfc=true bidi_free=true
+        此处无法安全显示此请求。请拒绝此请求并要求重新发起请求。
+    typed_review_unavailable cli/terminal-free=true; Deny control label = 拒绝
+
+expires_window, every reachable duration: distinct render per (unit, CLDR category) with the counts that produce it
+== es
+  under-minute (1..59 s): Esta solicitud caduca en menos de un minuto
+  min:one e.g. «Esta solicitud caduca en 1 minuto» counts=1
+  min:other e.g. «Esta solicitud caduca en 2 minutos» counts=2,3,4,5,6,7,8,9,10,11,…(88)
+  hour:other e.g. «Esta solicitud caduca en 2 horas» counts=2,3,4,5,6,7,8,9,10,11,…(199)
+  boundary 89 min + 1 s: Esta solicitud caduca en 2 horas
+== fr
+  under-minute (1..59 s): Cette fiche expire dans moins d’une minute
+  min:one e.g. «Cette fiche expire dans 1 minute» counts=1
+  min:other e.g. «Cette fiche expire dans 2 minutes» counts=2,3,4,5,6,7,8,9,10,11,…(88)
+  hour:other e.g. «Cette fiche expire dans 2 heures» counts=2,3,4,5,6,7,8,9,10,11,…(199)
+  boundary 89 min + 1 s: Cette fiche expire dans 2 heures
+== hi
+  under-minute (1..59 s): इस कार्ड की समय-सीमा एक मिनट से कम में समाप्त होगी
+  min:one e.g. «इस कार्ड की समय-सीमा 1 मिनट में समाप्त होगी» counts=1
+  min:other e.g. «इस कार्ड की समय-सीमा 2 मिनट में समाप्त होगी» counts=2,3,4,5,6,7,8,9,10,11,…(88)
+  hour:other e.g. «इस कार्ड की समय-सीमा 2 घंटे में समाप्त होगी» counts=2,3,4,5,6,7,8,9,10,11,…(199)
+  boundary 89 min + 1 s: इस कार्ड की समय-सीमा 2 घंटे में समाप्त होगी
+== ru
+  under-minute (1..59 s): Срок этой карточки истекает в течение менее минуты
+  min:one e.g. «Срок этой карточки истекает в течение 1 минуты» counts=1,21,31,41,51,61,71,81
+  min:few e.g. «Срок этой карточки истекает в течение 2 минут» counts=2,3,4,22,23,24,32,33,34,42,…(24)
+  min:many e.g. «Срок этой карточки истекает в течение 5 минут» counts=5,6,7,8,9,10,11,12,13,14,…(57)
+  hour:few e.g. «Срок этой карточки истекает в течение 2 часов» counts=2,3,4,22,23,24,32,33,34,42,…(54)
+  hour:many e.g. «Срок этой карточки истекает в течение 5 часов» counts=5,6,7,8,9,10,11,12,13,14,…(128)
+  hour:one e.g. «Срок этой карточки истекает в течение 21 часа» counts=21,31,41,51,61,71,81,91,101,121,…(17)
+  boundary 89 min + 1 s: Срок этой карточки истекает в течение 2 часов
+== ur
+  under-minute (1..59 s): اس کارڈ کی میعاد ایک منٹ سے کم میں ختم ہو گی
+  min:one e.g. «اس کارڈ کی میعاد 1 منٹ میں ختم ہو گی» counts=1
+  min:other e.g. «اس کارڈ کی میعاد 2 منٹ میں ختم ہو گی» counts=2,3,4,5,6,7,8,9,10,11,…(88)
+  hour:other e.g. «اس کارڈ کی میعاد 2 گھنٹے میں ختم ہو گی» counts=2,3,4,5,6,7,8,9,10,11,…(199)
+  boundary 89 min + 1 s: اس کارڈ کی میعاد 2 گھنٹے میں ختم ہو گی
+== vi
+  under-minute (1..59 s): Thẻ này hết hạn sau chưa đến một phút
+  min:other e.g. «Thẻ này hết hạn sau 1 phút» counts=1,2,3,4,5,6,7,8,9,10,…(89)
+  hour:other e.g. «Thẻ này hết hạn sau 2 giờ» counts=2,3,4,5,6,7,8,9,10,11,…(199)
+  boundary 89 min + 1 s: Thẻ này hết hạn sau 2 giờ
+== zh-CN
+  under-minute (1..59 s): 此卡片将在不到一分钟后到期
+  min:other e.g. «此卡片将在1分钟后到期» counts=1,2,3,4,5,6,7,8,9,10,…(89)
+  hour:other e.g. «此卡片将在2小时后到期» counts=2,3,4,5,6,7,8,9,10,11,…(199)
+  boundary 89 min + 1 s: 此卡片将在2小时后到期
+
+ru genitive-after-"в течение" mismatches across 1..89 min and 2..200 h: 0
+
+probe failures=0
+exit=0
