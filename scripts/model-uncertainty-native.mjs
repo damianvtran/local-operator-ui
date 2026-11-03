@@ -675,6 +675,7 @@ export const modelUncertaintyCase = {
 			press,
 			wait,
 			waitFor,
+			pressEscape,
 			frame,
 			stamp,
 			realBackend: backend,
@@ -733,21 +734,47 @@ export const modelUncertaintyCase = {
 			error.message += ` - after reveal: ${JSON.stringify(reveal)}`;
 			throw error;
 		}
-		const input = '[contenteditable="true"][role="textbox"]';
+		/*
+		 * SELECTORS ARE MAIN'S, pinned by `model-uncertainty-native.test.mjs`
+		 * against the source files (CI 41560884417 found the first stale one):
+		 * the composer is a <textarea> inside `chat-input-textarea`
+		 * (message-input.tsx; renderer-driver's own spelling), and picker rows
+		 * are `role="option"` in the picker dialog (picker-host.tsx).
+		 */
+		const input = '[data-tour-tag="chat-input-textarea"] textarea';
 		await press(input);
 		await cdp.send("Input.insertText", { text: "/model" });
-		for (const type of ["keyDown", "keyUp"])
-			await cdp.send("Input.dispatchKeyEvent", {
-				type,
-				key: "Enter",
-				code: "Enter",
-				windowsVirtualKeyCode: 13,
-			});
+		const enter = async () => {
+			for (const type of ["keyDown", "keyUp"])
+				await cdp.send("Input.dispatchKeyEvent", {
+					type,
+					key: "Enter",
+					code: "Enter",
+					windowsVirtualKeyCode: 13,
+				});
+		};
+		await enter();
+		/*
+		 * renderer-driver's `/fast` flow: Enter may first only complete the slash
+		 * popup's row, leaving the popup up and no dialog. Then Escape the popup
+		 * and send the completed command with one more Enter - never a third.
+		 */
+		const dialogOpen = () =>
+			cdp.evaluate(`Boolean(document.querySelector('[role="dialog"]'))`);
+		await waitFor(dialogOpen, 5_000);
+		if (!(await dialogOpen())) {
+			const popup = await cdp.evaluate(
+				`Boolean(document.querySelector('[role="listbox"][aria-label="Command arguments"], [role="listbox"][aria-label="Slash commands"]'))`,
+			);
+			if (popup) await pressEscape();
+			await enter();
+		}
 		await wait(
-			'[...document.querySelectorAll("[cmdk-item]")].some(e=>e.textContent.includes("mock-model-b"))',
+			`[...document.querySelectorAll('[role="dialog"] [role="option"]')].some(e=>e.textContent.includes("mock-model-b"))`,
+			`/* model-case: picker-census */ JSON.stringify({dialog:Boolean(document.querySelector('[role="dialog"]')),title:document.querySelector('[role="dialog"] h2')?.textContent??null,options:[...document.querySelectorAll('[role="dialog"] [role="option"]')].map(e=>(e.textContent||'').trim().slice(0,40)),composer:document.querySelector('[data-tour-tag="chat-input-textarea"] textarea')?.value??null})`,
 		);
 		await cdp.evaluate(
-			`/* model-case: mark-targets */ (()=>{const row=[...document.querySelectorAll('[cmdk-item]')].find(e=>e.textContent.includes('mock-model-b'));if(!row)throw Error('real B option absent');row.setAttribute('data-model-case-b','');const check=[...document.querySelectorAll('[role=dialog] [role=checkbox]')].find(e=>/default/i.test(e.parentElement?.textContent||''));if(!check)throw Error('real default checkbox absent');check.setAttribute('data-model-case-default','')})()`,
+			`/* model-case: mark-targets */ (()=>{const row=[...document.querySelectorAll('[role="dialog"] [role="option"]')].find(e=>e.textContent.includes('mock-model-b'));if(!row)throw Error('real B option absent');row.setAttribute('data-model-case-b','');const check=[...document.querySelectorAll('[role=dialog] [role=checkbox]')].find(e=>/default/i.test(e.parentElement?.textContent||''));if(!check)throw Error('real default checkbox absent');check.setAttribute('data-model-case-default','')})()`,
 		);
 		const geometry = async (label) => {
 			const value = await cdp.evaluate(
@@ -898,7 +925,7 @@ export const modelUncertaintyCase = {
 			await assertB(`${label}-after-frame`);
 		}
 		await cdp.evaluate(
-			`/* model-case: mark-save */ (()=>{const b=[...document.querySelectorAll('[role=dialog] button')].find(e=>/^set as default$/i.test(e.textContent.trim()));if(!b)throw Error('explicit default save missing');b.setAttribute('data-model-case-save','')})()`,
+			`/* model-case: mark-save */ (()=>{const b=[...document.querySelectorAll('[role=dialog] button')].find(e=>/^set current model as default$/i.test(e.textContent.trim()));if(!b)throw Error('explicit default save missing');b.setAttribute('data-model-case-save','')})()`,
 		);
 		await assertB("before-explicit-save");
 		await press("[data-model-case-save]");

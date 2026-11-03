@@ -386,6 +386,8 @@ function oracleContext(mode = "happy") {
 					"unknown fake input",
 				);
 				if (name === "Input.insertText") assert.equal(args.text, "/model");
+				if (name === "Input.dispatchKeyEvent" && args.type === "keyDown")
+					calls.push(["key", args.key]);
 			},
 			evaluate: async (source) => {
 				if (source.includes("model-case: reveal-row")) {
@@ -400,6 +402,13 @@ function oracleContext(mode = "happy") {
 							};
 				}
 				if (source.includes("model-case: geometry")) return geometry();
+				// The picker dialog is up after the first Enter in the fake; the
+				// popup-retry branch is exercised by its own test below.
+				if (source === `Boolean(document.querySelector('[role="dialog"]'))`) {
+					calls.push(["dialog-probe"]);
+					return mode !== "popup-first" || calls.some((x) => x[0] === "escape");
+				}
+				if (source.includes('aria-label="Slash commands"')) return true;
 				if (
 					source.includes("model-case: mark-targets") ||
 					source.includes("model-case: mark-save")
@@ -419,7 +428,7 @@ function oracleContext(mode = "happy") {
 				return;
 			if (
 				predicate ===
-				'[...document.querySelectorAll("[cmdk-item]")].some(e=>e.textContent.includes("mock-model-b"))'
+				`[...document.querySelectorAll('[role="dialog"] [role="option"]')].some(e=>e.textContent.includes("mock-model-b"))`
 			)
 				return;
 			if (
@@ -430,6 +439,9 @@ function oracleContext(mode = "happy") {
 			}
 			assert.fail("unknown fake wait predicate");
 		},
+		pressEscape: async () => {
+			calls.push(["escape"]);
+		},
 		waitFor: async (predicate) => {
 			for (let n = 0; n < 3; n++) if (await predicate()) return;
 			return;
@@ -438,7 +450,7 @@ function oracleContext(mode = "happy") {
 			calls.push(["press", selector]);
 			if (
 				selector === rowA ||
-				selector === '[contenteditable="true"][role="textbox"]'
+				selector === '[data-tour-tag="chat-input-textarea"] textarea'
 			)
 				return;
 			if (selector === "[data-model-case-b]") {
@@ -661,6 +673,133 @@ test("native drive refuses row A outside the sidebar scroller instead of pressin
 			(x) => x[0] === "press" && x[1].includes("data-session-row"),
 		),
 		"no press may follow a failed reveal",
+	);
+});
+
+/*
+ * EVERY SELECTOR THE NATIVE DRIVE PRESSES OR WAITS ON, PINNED TO THE SOURCE
+ * THAT DRAWS IT (CI 41560884417 found a contenteditable composer the app does
+ * not have, and the drive also looked for cmdk rows and an old button label).
+ * A renamed tag, role or English string fails here instead of on a mac runner.
+ */
+test("native drive selectors exist in the source that renders them", () => {
+	const read = (path) =>
+		readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
+	const drive = read("scripts/model-uncertainty-native.mjs");
+	const composer = read(
+		"src/renderer/src/shared/components/composer/message-input.tsx",
+	);
+	const host = read("src/renderer/src/features/chat/pickers/picker-host.tsx");
+	const pickers = read(
+		"src/renderer/src/features/chat/pickers/destination-pickers.tsx",
+	);
+	const sidebar = read(
+		"src/renderer/src/features/chat/components/chat-sidebar.tsx",
+	);
+	const en = JSON.parse(read("src/i18n/catalogues/en/ui.chat.pickers.json"));
+	const enProjects = JSON.parse(
+		read("src/i18n/catalogues/en/ui.projects.json"),
+	);
+	// Composer: the driver's spelling, and the tag really wraps a <textarea>.
+	assert(drive.includes(`'[data-tour-tag="chat-input-textarea"] textarea'`));
+	assert(composer.includes('data-tour-tag="chat-input-textarea"'));
+	assert.match(composer, /<textarea\b/);
+	assert(
+		!/\[contenteditable/.test(drive),
+		"the composer is not contenteditable",
+	);
+	// Sidebar: scroller, chats region, row id and row tag.
+	for (const hook of [
+		'data-sidebar-region="scroller"',
+		'data-sidebar-region="chats"',
+		"data-session-row={row.session_id}",
+		'data-tour-tag="chat-session-row"',
+	])
+		assert(sidebar.includes(hook), `sidebar lost ${hook}`);
+	// Picker: options and listbox roles; no cmdk anywhere in the drive.
+	assert(host.includes('role="option"') && host.includes('role="listbox"'));
+	assert(!drive.includes("[cmdk-item]"), "this app has no cmdk rows");
+	assert(drive.includes(`[role="dialog"] [role="option"]`));
+	// Slash popup labels the retry reads.
+	assert.equal(en["ui.chat.pickers.slash.region_label"], "Slash commands");
+	assert.equal(
+		en["ui.chat.pickers.slash.arguments_region_label"],
+		"Command arguments",
+	);
+	// The default checkbox is a real role=checkbox control in the picker toolbar
+	// (Radix Checkbox via PickerCheck), gated by `unconfirmedModel`.
+	assert.match(
+		pickers,
+		/<PickerCheck\s+checked=\{persistDefault\}\s+disabled=\{unconfirmedModel\}/,
+	);
+	assert(
+		/default/i.test(
+			en[
+				"ui.chat.pickers.destination_pickers.also_make_this_the_default_for_new_sessions"
+			],
+		),
+	);
+	// The explicit save button's label, matched exactly by the drive.
+	assert.equal(
+		en["ui.chat.pickers.models.set_as_default"],
+		"Set current model as default",
+	);
+	assert(drive.includes("/^set current model as default$/i"));
+	assert(pickers.includes('t("ui.chat.pickers.models.set_as_default")'));
+	// Uncertainty copy the drive waits on, and its description sentence.
+	assert.match(
+		enProjects[
+			"ui.projects.use_request_update.the_request_could_not_be_confirmed"
+		],
+		/could not be confirmed/i,
+	);
+	assert.match(
+		en[
+			"ui.chat.pickers.destination_pickers.this_session_runs_choosing_another_applies_to_this_session_only_unless_y"
+		],
+		/\{shownselector\}/,
+	);
+});
+
+test("native drive opens /model from the textarea with Enter, retrying once past the slash popup", async () => {
+	const direct = oracleContext();
+	await modelUncertaintyCase.drive(direct);
+	const firstPicker = direct.calls.findIndex(
+		(x) => x[0] === "press" && x[1] === "[data-model-case-b]",
+	);
+	const enters = direct.calls
+		.slice(0, firstPicker)
+		.filter((x) => x[0] === "key" && x[1] === "Enter");
+	assert.equal(enters.length, 1, "dialog up after one Enter needs no retry");
+	assert(!direct.calls.some((x) => x[0] === "escape"));
+	const typed = direct.calls.findIndex(
+		(x) =>
+			x[0] === "press" &&
+			x[1] === '[data-tour-tag="chat-input-textarea"] textarea',
+	);
+	assert(
+		typed >= 0 && typed < firstPicker,
+		"the composer is focused before typing",
+	);
+
+	const popup = oracleContext("popup-first");
+	await modelUncertaintyCase.drive(popup);
+	const until = popup.calls.findIndex(
+		(x) => x[0] === "press" && x[1] === "[data-model-case-b]",
+	);
+	const head = popup.calls.slice(0, until);
+	assert.equal(
+		head.filter((x) => x[0] === "key" && x[1] === "Enter").length,
+		2,
+		"exactly one retry Enter",
+	);
+	const esc = head.findIndex((x) => x[0] === "escape");
+	const lastEnter = head
+		.map((x) => x[0] === "key" && x[1] === "Enter")
+		.lastIndexOf(true);
+	assert(
+		esc >= 0 && esc < lastEnter,
+		"the popup is dismissed before the retry Enter",
 	);
 });
 
