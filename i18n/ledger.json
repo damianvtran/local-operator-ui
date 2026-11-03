@@ -61504,7 +61504,7 @@
 			"locale": "zh-CN",
 			"namespace": "ui.ownerAudit",
 			"source_sha256": "41a736f06c88440a3a662521643aa5b40d43acd83a898053aad74a4122fc7cdd",
-			"target_sha256": "03c6163b6af351b513fe1a87096e79495edc4c5a78a181bbc87f93a2efc265e4",
+			"target_sha256": "b22c9a37f6f23f45855905bd1bc606934ca6d39c9dc73b090a1ffa1b10294a8b",
 			"translator": {
 				"agent": "coder-baa670dd72df",
 				"model": "openai/gpt-6.1-sol",
@@ -61516,18 +61516,18 @@
 					"agent": "reviewer",
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-02",
-					"result": "clean-with-findings",
-					"instance": "5b6b5bce99e4-merge1554-zh-cn",
+					"result": "clean",
+					"instance": "cd08059be49d-merge1554-zh-cn",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 2,
+						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/5b6b5bce99e4-merge1554-zh-cn.json",
-					"receipt_sha256": "76d5ed4ac82f882237afc78f7f5ebd051d2800c2d2dbe2ea94a05072dae210d1",
-					"scope": "Post-merge re-audit (#1554 x main e8f34569c5b): 5 receipt keys (inspect_body, inline_image_receipt, previous_chunk, next_chunk, chunk_number) re-read linguistically; main-side bytes covered by main's row",
-					"note": "Post-merge re-audit by reviewer session 5b6b5bce99e4: 5 receipt keys byte-identical to audited bbb6cd2952f, rest byte-identical to main e8f34569c5b. Evidence: i18n/audits/evidence/zh-CN/ui.ownerAudit/owneraudit-receipt-merge1554-audit-5b6b5bce99e4-merge1554-zh-cn/record.json"
+					"receipt": "i18n/receipts/cd08059be49d-merge1554-zh-cn.json",
+					"receipt_sha256": "2b50fddb89bf160c9fa9ca5cf340e1c11cd00784320ae497db0402a6bb4173d0",
+					"scope": "Narrow re-audit of bc53982680e (ZH1/ZH2 applied): chunk_number and inline_image_receipt re-read linguistically; other 38 values byte-identical to 738df0eb884 (audited 5b6b5bce99e4)",
+					"note": "Re-audit by reviewer session cd08059be49d: ZH1/ZH2 fixed, en unchanged, 38 values byte-identical to 738df0eb884. Evidence: i18n/audits/evidence/zh-CN/ui.ownerAudit/owneraudit-receipt-merge1554-audit-cd08059be49d-merge1554-zh-cn/record.json"
 				}
 			],
 			"status": "audited",
@@ -61626,6 +61626,30 @@
 							"receipt_sha256": "a40a1310e10ee075fe8cb56706bd2bad96ffe0284b637c7a0113c7b4be414a41",
 							"scope": "Two-key textual delta: older_replies and empty_replies; hash-verified working-tree files, not staged; sole auditor, no rendered RTL validation",
 							"note": "Sole audit, not a second independent pass. Receipt withdraws unsupported earlier model claim; records terminology observations and confidence limits."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "41a736f06c88440a3a662521643aa5b40d43acd83a898053aad74a4122fc7cdd",
+					"target_sha256": "03c6163b6af351b513fe1a87096e79495edc4c5a78a181bbc87f93a2efc265e4",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-02",
+							"result": "clean-with-findings",
+							"instance": "5b6b5bce99e4-merge1554-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 2,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/5b6b5bce99e4-merge1554-zh-cn.json",
+							"receipt_sha256": "76d5ed4ac82f882237afc78f7f5ebd051d2800c2d2dbe2ea94a05072dae210d1",
+							"scope": "Post-merge re-audit (#1554 x main e8f34569c5b): 5 receipt keys (inspect_body, inline_image_receipt, previous_chunk, next_chunk, chunk_number) re-read linguistically; main-side bytes covered by main's row",
+							"note": "Post-merge re-audit by reviewer session 5b6b5bce99e4: 5 receipt keys byte-identical to audited bbb6cd2952f, rest byte-identical to main e8f34569c5b. Evidence: i18n/audits/evidence/zh-CN/ui.ownerAudit/owneraudit-receipt-merge1554-audit-5b6b5bce99e4-merge1554-zh-cn/record.json"
 						}
 					],
 					"status": "audited"
