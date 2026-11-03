@@ -7777,6 +7777,7 @@ test("/health carries the capabilities this build serves", async () => {
 		"press",
 		"press_chord",
 		"hover",
+		"select",
 		"network_start",
 		"network_stop",
 		"network_read",
@@ -12259,7 +12260,7 @@ test("hover is in the wire vocabulary, advertised beside press, lane-scoped, and
 	assert.ok(METHODS.includes("hover"));
 	assert.ok(isMethod("hover"));
 	assert.equal(
-		METHODS.at(-1),
+		METHODS.at(-2),
 		"hover",
 		"appended: no existing method's index moved",
 	);
@@ -12550,5 +12551,60 @@ test("hover's original hit failure survives when the landing document is still a
 		contents.loaded.length,
 		loads,
 		"no spurious restore without an unapproved landing",
+	);
+});
+
+test("select is advertised, owned/document scoped, and restores forbidden change-handler landings without Fetch", async () => {
+	assert.ok(METHODS.includes("select"));
+	assert.ok(isMethod("select"));
+	assert.ok(HOST_CAPABILITIES.includes("select"));
+	assert.equal(
+		HOST_CAPABILITIES.indexOf("select"),
+		HOST_CAPABILITIES.indexOf("hover") + 1,
+	);
+	assert.equal(COMMAND_TIMEOUTS_S.select, 25);
+	const { host, cdp, registry } = makeHost();
+	const { owner, tab } = await openApprovedTab(host);
+	const contents = registry.requireSurface(tab).view.webContents;
+	const original = cdp.send;
+	cdp.send = async (target, method, params) => {
+		if (method === "DOM.resolveNode") return { object: { objectId: "select" } };
+		if (method === "Runtime.callFunctionOn") {
+			if (params.functionDeclaration.includes("tagName === 'SELECT'"))
+				return { result: { value: true } };
+			if (params.arguments?.[0]?.value === "apply") {
+				contents.url = "https://forbidden.example/selected";
+				registry.bumpEpoch(registry.requireSurface(tab).tabId);
+				throw new Error("context destroyed on change");
+			}
+		}
+		return original(target, method, params);
+	};
+	cdp.calls.length = 0;
+	await assert.rejects(
+		host.dispatch(
+			"select",
+			{ ...owner, tab, selector: "#s", options: ["Beta"] },
+			"select",
+		),
+		(e) =>
+			e.code === "origin_not_allowed" &&
+			e.data.origin === "https://forbidden.example",
+	);
+	assert.equal(contents.url, "https://approved.example/");
+	assert.ok(!cdp.calls.some((c) => c.method === "Fetch.enable"));
+	await assert.rejects(
+		host.dispatch(
+			"select",
+			{
+				...owner,
+				tab,
+				selector: "#s",
+				options: [0],
+				owner_generation: "stale",
+			},
+			"select",
+		),
+		{ code: "owner_refused" },
 	);
 });

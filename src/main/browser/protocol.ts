@@ -131,6 +131,8 @@ export const METHODS = [
 	// HOST_CAPABILITIES (beside `press`), which is what lets the harness refuse it
 	// on an app that predates it instead of sending an unknown method.
 	"hover",
+	// DOM/native and page-owned ARIA selection; never an OS popup.
+	"select",
 ] as const;
 
 export type Method = (typeof METHODS)[number];
@@ -162,6 +164,7 @@ export const COMMAND_TIMEOUTS_S: Record<Method, number> = {
 	press: 25.0,
 	// A pointer move plus a short settle: no navigation, no wait on the page.
 	hover: 20.0,
+	select: 25.0,
 	read: 20.0,
 	snapshot: 20.0,
 	screenshot: 20.0,
@@ -369,6 +372,7 @@ export const HOST_CAPABILITIES: readonly (Method | HostCapabilityToken)[] = [
 	// `hover` rides the same list as `press` for the same reason: desktop-only, and
 	// the extension/cmux hosts and older desktop apps must be refused by capability.
 	"hover",
+	"select",
 	// Session-scoped network capture. DESKTOP-ONLY: the extension's debugger is
 	// attached only for the duration of an action, so it holds no standing session
 	// to keep a `Network` subscription on. The backend therefore gates these four
