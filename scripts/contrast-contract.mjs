@@ -58,6 +58,7 @@
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { realBackdropDeclarations } from "./backdrop-filter-layers.mjs";
 import { deltaE, labToHex, r2, toLab } from "./color.mjs";
 import {
 	BACKDROP_GRAY,
@@ -70,6 +71,7 @@ import {
 	GLASS_PANE_STEP_FROM,
 	GLASS_ROLES,
 	GLASS_SCALE_GRAYS,
+	GLASS_SCALE_GRAYS_BY_TIER,
 	GLASS_SEAM_STEP,
 	GLASS_STATE_DIM_FLOOR,
 	LANE_ALPHA_CEILING,
@@ -8478,27 +8480,31 @@ for (const row of ROW_STATE_MEASURED_SHORTFALL) {
 	);
 	const scale = file.glassScale;
 	const tierFloors = file.alphaFloor["under-window"];
-	let minPane = { step: Number.POSITIVE_INFINITY, id: null };
+	/* The pane step is held per MATERIAL TIER at that tier's own lift, floors and greys. */
+	const minPaneByTier = {};
 	let minSeam = { step: Number.POSITIVE_INFINITY, id: null };
 	for (const { id, palette } of palettes) {
 		if (glassSchemeOf(palette) !== "light") continue;
-		for (const g of GLASS_SCALE_GRAYS.light) {
-			for (let i = GLASS_PANE_STEP_FROM; i <= 100; i++) {
-				assertions++;
-				const { canvas, pane } = paneOverCanvas(
-					palette,
-					tierFloors.light,
-					scale.paneLift.light,
-					i,
-					g,
-				);
-				const step = deltaE(canvas, pane);
-				if (step < minPane.step) minPane = { step, id: `${id}@${i}/grey ${g}` };
-				if (step < GLASS_PANE_STEP)
-					fail(
-						`glass scale: ${id} canvas -> pane is ΔE00 ${r2(step)} at slider ${i} over grey ${g}, floor ${GLASS_PANE_STEP} - the pane would read as the canvas`,
+		for (const tier of Object.keys(BACKDROP_GRAY))
+			for (const g of GLASS_SCALE_GRAYS_BY_TIER[tier].light)
+				for (let i = GLASS_PANE_STEP_FROM; i <= 100; i++) {
+					assertions++;
+					const { canvas, pane } = paneOverCanvas(
+						palette,
+						file.alphaFloor[tier].light,
+						scale.paneLift[tier].light,
+						i,
+						g,
 					);
-			}
+					const step = deltaE(canvas, pane);
+					if (step < (minPaneByTier[tier]?.step ?? Number.POSITIVE_INFINITY))
+						minPaneByTier[tier] = { step, id: `${id}@${i}/grey ${g}` };
+					if (step < GLASS_PANE_STEP)
+						fail(
+							`glass scale: ${id} canvas -> pane is ΔE00 ${r2(step)} at slider ${i} over ${tier} grey ${g}, floor ${GLASS_PANE_STEP} - the pane would read as the canvas`,
+						);
+				}
+		for (const g of GLASS_SCALE_GRAYS.light) {
 			for (const { role, hex } of glassGrounds(palette, tierFloors.light, g)) {
 				assertions++;
 				const step = deltaE(seamOver(palette, scale.edgeMix.light, hex), hex);
@@ -8512,14 +8518,27 @@ for (const row of ROW_STATE_MEASURED_SHORTFALL) {
 		}
 	}
 	const derivedScale = deriveGlassScale(file.alphaFloor);
-	for (const key of ["paneLift", "edgeMix"])
-		for (const scheme of ["dark", "light"]) {
-			assertions++;
-			if ((scale[key]?.[scheme] ?? -1) < derivedScale[key][scheme])
-				fail(
-					`glass scale ${key}/${scheme} is ${scale[key]?.[scheme]} but the palettes need ${derivedScale[key][scheme]} - re-derive with scripts/derive-glass-floors.mjs, never hand-lower it`,
-				);
-		}
+	const scaleCells = [
+		...Object.keys(BACKDROP_GRAY).flatMap((tier) =>
+			["dark", "light"].map((scheme) => ({
+				name: `paneLift/${tier}/${scheme}`,
+				have: scale.paneLift?.[tier]?.[scheme],
+				need: derivedScale.paneLift[tier][scheme],
+			})),
+		),
+		...["dark", "light"].map((scheme) => ({
+			name: `edgeMix/${scheme}`,
+			have: scale.edgeMix?.[scheme],
+			need: derivedScale.edgeMix[scheme],
+		})),
+	];
+	for (const { name, have, need } of scaleCells) {
+		assertions++;
+		if ((have ?? -1) < need)
+			fail(
+				`glass scale ${name} is ${have} but the palettes need ${need} - re-derive with scripts/derive-glass-floors.mjs, never hand-lower it`,
+			);
+	}
 	const audit = auditGlassText(file.alphaFloor, scale);
 	assertions += audit.checked;
 	for (const f of audit.failures.slice(0, 20))
@@ -8557,13 +8576,23 @@ for (const row of ROW_STATE_MEASURED_SHORTFALL) {
 		fail(
 			"glass scale: the glass `[data-panel-edge]` rule no longer mixes `--lo-ink` into `--lo-hairline` by `--lo-glass-edge-mix`, so the seam recolour is not painted",
 		);
-	const blurs = (css.match(/backdrop-filter\s*:\s*[^n;][^;]*;/g) ?? []).length;
+	const blurs = realBackdropDeclarations(css).length;
 	if (blurs > 1)
 		fail(
 			`glass scale: index.css declares ${blurs} backdrop-filter layers, ceiling is 1 (the isolating band)`,
 		);
 	log.push(
-		`Window glass scale: paneLift ${scale.paneLift.light}/${scale.paneLift.dark}, edgeMix ${scale.edgeMix.light}/${scale.edgeMix.dark} (light/dark); tightest canvas -> pane ΔE00 ${r2(minPane.step)} (${minPane.id}), tightest seam ΔE00 ${r2(minSeam.step)} (${minSeam.id}); ${audit.checked} text pairs.`,
+		`Window glass scale: paneLift ${Object.entries(scale.paneLift)
+			.map(([t, v]) => `${t} ${v.light}/${v.dark}`)
+			.join(
+				", ",
+			)} (light/dark), edgeMix ${scale.edgeMix.light}/${scale.edgeMix.dark} (light/dark); tightest canvas -> pane ΔE00 ${Object.entries(
+			minPaneByTier,
+		)
+			.map(([t, m]) => `${t} ${r2(m.step)} (${m.id})`)
+			.join(
+				", ",
+			)}, tightest seam ΔE00 ${r2(minSeam.step)} (${minSeam.id}); ${audit.checked} text pairs.`,
 	);
 	for (const [scheme, w] of Object.entries(audit.worst))
 		log.push(

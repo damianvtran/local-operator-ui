@@ -15,6 +15,7 @@ import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { build } from "esbuild";
 import { JSDOM } from "jsdom";
+import { realBackdropDeclarations } from "./backdrop-filter-layers.mjs";
 import {
 	LANE_ALPHA_CEILING,
 	LANE_ROLES,
@@ -1162,39 +1163,55 @@ test("G-8b the glass scale: dark paints exactly as before, light lifts the pane"
 		Math.round(
 			Math.min(1, Math.max(0, 1 - (1 - target) / (1 - canvas))) * 100,
 		) / 100;
-	for (let intensity = 0; intensity <= 100; intensity += 5) {
-		const v = paint(intensity, "light");
-		const canvas = Number(v["--lo-glass-a-canvas"]);
-		const elevated = Number(v["--lo-glass-a-elevated"]);
-		assert.equal(
-			v["--lo-glass-pane-lift"],
-			String(floorsFile.glassScale.paneLift.light),
-		);
-		assert.equal(
-			v["--lo-glass-edge-mix"],
-			String(floorsFile.glassScale.edgeMix.light),
-		);
-		const want = net(
-			Math.min(
-				0.96,
-				Math.max(elevated, canvas + floorsFile.glassScale.paneLift.light),
-			),
-			canvas,
-		);
-		assert.equal(
-			Number(v["--lo-glass-in-pane"]),
-			want,
-			`light@${intensity} pane net`,
-		);
-		/* The lift clamp: never above the veil ceiling, never below the unlifted net. */
-		assert.ok(
-			Number(v["--lo-glass-in-pane"]) >= Number(v["--lo-glass-in-elevated"]),
-		);
-		assert.ok(
-			1 - (1 - Number(v["--lo-glass-in-pane"])) * (1 - canvas) <= 0.96 + 0.011,
-			`light@${intensity}: the lifted pane stacks past the .96 ceiling`,
-		);
+	const floorTier = {
+		window: "under-window",
+		menu: "menu",
+		popover: "popover",
+	};
+	for (const material of ["window", "menu", "popover"]) {
+		const lift = floorsFile.glassScale.paneLift[floorTier[material]].light;
+		for (let intensity = 0; intensity <= 100; intensity += 5) {
+			const v = paint(intensity, "light", material);
+			const canvas = Number(v["--lo-glass-a-canvas"]);
+			const elevated = Number(v["--lo-glass-a-elevated"]);
+			assert.equal(
+				v["--lo-glass-pane-lift"],
+				String(lift),
+				`light ${material}@${intensity}: the lift is the material tier's own`,
+			);
+			assert.equal(
+				v["--lo-glass-edge-mix"],
+				String(floorsFile.glassScale.edgeMix.light),
+			);
+			const want = net(
+				Math.min(0.96, Math.max(elevated, canvas + lift)),
+				canvas,
+			);
+			assert.equal(
+				Number(v["--lo-glass-in-pane"]),
+				want,
+				`light ${material}@${intensity} pane net`,
+			);
+			/* The lift clamp: never above the veil ceiling, never below the unlifted net. */
+			assert.ok(
+				Number(v["--lo-glass-in-pane"]) >= Number(v["--lo-glass-in-elevated"]),
+			);
+			assert.ok(
+				1 - (1 - Number(v["--lo-glass-in-pane"])) * (1 - canvas) <=
+					0.96 + 0.011,
+				`light ${material}@${intensity}: the lifted pane stacks past the .96 ceiling`,
+			);
+		}
 	}
+	/* Per-tier lift is the point: the shipped default (window) is unchanged and the
+	 * darker menu/popover materials take a smaller one. */
+	assert.equal(floorsFile.glassScale.paneLift["under-window"].light, 0.14);
+	for (const tier of ["menu", "popover"])
+		assert.ok(
+			floorsFile.glassScale.paneLift[tier].light <
+				floorsFile.glassScale.paneLift["under-window"].light,
+			`${tier} must not inherit the under-window lift`,
+		);
 	/* The defect itself: at the default slider the unlifted light net is 0 (pane ==
 	 * canvas) and the lifted one is not. */
 	const at80 = paint(80, "light");
@@ -1219,6 +1236,38 @@ test("G-8b the glass scale: dark paints exactly as before, light lifts the pane"
 					`glassAlphaAt(${role}) drifted from glassAlphas at ${scheme}@${intensity}`,
 				);
 		}
+});
+
+/*
+ * G-8d THE STYLESHEET STILL PAINTS THE SCALE (static, so a plain `node --test` sees it).
+ *
+ * Every number in G-8b is computed from the JSON and the TypeScript, not from the
+ * stylesheet. If the net pane rule stops reading `--lo-glass-in-pane`, or the glass
+ * `[data-panel-edge]` rule is deleted, light silently paints the pre-scale look
+ * (pane == canvas, plain hairline seam) while this whole file stays green; only
+ * `contrast-contract.mjs` read the CSS. This keeps the same two reads here, and the
+ * blur ceiling on the shared definition of a layer.
+ */
+test("G-8d index.css still reads the lifted pane var and keeps the glass panel-edge rule", () => {
+	const css = readFileSync(
+		`${ROOT}/src/renderer/src/styles/index.css`,
+		"utf8",
+	).replace(/\/\*[\s\S]*?\*\//g, "");
+	assert.match(
+		css,
+		/lo-elevated\)\s*calc\(var\(--lo-glass-in-pane\)/,
+		"the net pane rule no longer reads --lo-glass-in-pane, so the lift is not painted",
+	);
+	assert.match(
+		css,
+		/html\[data-glass\]\s*\[data-panel-edge\]\s*\{[^}]*var\(--lo-ink\)\s*calc\(var\(--lo-glass-edge-mix\)\s*\*\s*100%\)\s*,\s*var\(--lo-hairline\)/,
+		"the glass [data-panel-edge] rule is gone or no longer mixes --lo-ink into --lo-hairline by --lo-glass-edge-mix",
+	);
+	assert.equal(
+		realBackdropDeclarations(css).length,
+		1,
+		"index.css must declare exactly one real backdrop-filter (the isolating band)",
+	);
 });
 
 test("G-8c every glass variable the paint publishes is cleared on switch-off", () => {

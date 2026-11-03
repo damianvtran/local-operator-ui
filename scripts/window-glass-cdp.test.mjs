@@ -61,6 +61,7 @@ import { after, before, test } from "node:test";
 import { fileURLToPath } from "node:url";
 import electronPath from "electron";
 import { reapOnExit, stopAppTree } from "./app-tree-teardown.mjs";
+import { isRealBackdropFilter } from "./backdrop-filter-layers.mjs";
 import { withMockKeychain } from "./chrome-keychain.mjs";
 import { withNotificationsOff } from "./notifications-off.mjs";
 import { withTelemetryOff } from "./telemetry-off.mjs";
@@ -1037,9 +1038,9 @@ for (const [themeName, label] of [
 			 * A second would be the "blur it harder" answer to "glass is weak on
 			 * light", which cannot work (the layer samples the page, not the OS
 			 * desktop) and costs a compositor layer per region. Counted over the
-			 * BUILT stylesheets, `none` excluded; finding none is also a failure.
+			 * BUILT stylesheets, `none` and inert placeholder shells excluded; finding none is also a failure.
 			 */
-			const blurs = await cdp.ev(`(() => {
+			const declared = await cdp.ev(`(() => {
         const out = [];
         const walk = (rules) => {
           for (const r of rules) {
@@ -1051,6 +1052,11 @@ for (const [themeName, label] of [
         for (const sh of document.styleSheets) { try { walk(sh.cssRules); } catch {} }
         return out;
       })()`);
+			/* Tailwind's inert .backdrop-blur / .backdrop-filter shells carry only
+			 * var(--tw-backdrop-*) placeholders and are in every build, base included: the
+			 * shared definition of a layer (backdrop-filter-layers.mjs) excludes them, the
+			 * same one the stylesheet scan in contrast-contract.mjs uses. */
+			const blurs = declared.filter((d) => isRealBackdropFilter(d.v));
 			assert.ok(
 				blurs.length >= 1,
 				`${label}: no backdrop-filter declaration was found, so the scan measured nothing`,

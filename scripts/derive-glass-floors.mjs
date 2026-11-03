@@ -516,9 +516,10 @@ export function deriveControlMix(floors) {
  * the flow). The scale therefore moves two things the app owns: the pane's alpha
  * (`paneLift`) and the seam's colour (`edgeMix`).
  *
- * `paneLift` (light): the smallest lift, added to the canvas alpha to form the
- * pane's target, at which the pane steps `GLASS_PANE_STEP` off the canvas for every
- * light palette, slider 40..100 and both light material greys. Below slider 40 the
+ * `paneLift` (light, PER MATERIAL TIER like the floors): the smallest lift, added to
+ * the canvas alpha to form the pane's target, at which the pane steps
+ * `GLASS_PANE_STEP` off the canvas for every light palette, slider 40..100 and the
+ * tier's material greys (under-window: 199 and 224; menu 171; popover 143). Below slider 40 the
  * canvas is nearly opaque and the pane is not held to the floor (sliders 5..39 step
  * 1.54+ over grey 199; sliders 0..4 are not lifted enough: net 0 at 0-1, step
  * 0.93-0.99 at 2-4, as before the scale).
@@ -526,9 +527,11 @@ export function deriveControlMix(floors) {
  * WHY 1.5: `GLASS_PANE_STEP` reuses `GLASS_LANE_STEP`, the repo's floor for a
  * translucent plane that must read as structure against its neighbour (below it the
  * plane is not structure). With 0.14 the tightest light pane step is 1.53
- * (`tokyoNightDay`, slider 91, grey 224). It is held at the under-window greys; the
- * menu and popover tiers, measured at their own greys (171 / 143, slider 40..100,
- * light), step 3.42 and 2.87 at the tightest, both above the floor.
+ * (`tokyoNightDay`, slider 91, grey 224) for the under-window tier. The menu and
+ * popover tiers are darker materials, so the same step needs far less lift (0.05 and
+ * 0.04; tightest 1.59 and 2.00). One under-window lift applied everywhere (the first
+ * version) only added opacity there: menu 0.82 -> 0.96 and popover 0.88 -> 0.96
+ * effective alpha at slider 80, for a pane step that was already 3.42 and 2.87.
  * `edgeMix` (light): the smallest `ink` share mixed into `hairline` at which the
  * 75% panel seam steps `GLASS_SEAM_STEP` off each of the three glass grounds at
  * their floors. It recolours the existing seam; it adds no line.
@@ -538,6 +541,22 @@ export const GLASS_PANE_STEP = 1.5;
 export const GLASS_SEAM_STEP = 3.0;
 /** The light material greys the scale is held over: the measured worst (199) and a brighter one. */
 export const GLASS_SCALE_GRAYS = { light: [199, 224], dark: [81] };
+/**
+ * The greys each material tier's pane step is held over. Only the under-window tier
+ * has the brighter 224 variant (a window material lifted by a bright wallpaper);
+ * menu and popover were measured at one grey per scheme and are held there.
+ */
+export const GLASS_SCALE_GRAYS_BY_TIER = {
+	"under-window": GLASS_SCALE_GRAYS,
+	menu: {
+		light: [BACKDROP_GRAY.menu.light],
+		dark: [BACKDROP_GRAY.menu.dark],
+	},
+	popover: {
+		light: [BACKDROP_GRAY.popover.light],
+		dark: [BACKDROP_GRAY.popover.dark],
+	},
+};
 /** The slider range the pane step is held over (see above for why not below 40). */
 export const GLASS_PANE_STEP_FROM = 40;
 /** The seam's alpha: mirrors `bg-hairline/75` in `panel-edge.tsx` (the contract reads that class back). */
@@ -581,35 +600,48 @@ export function paneOverCanvas(
 	};
 }
 
-/** The smallest pane lift (0.01 steps) that steps `GLASS_PANE_STEP` off the canvas; dark is 0. */
+/**
+ * The smallest pane lift (0.01 steps) per material tier that steps `GLASS_PANE_STEP`
+ * off the canvas; dark is 0 on every tier. The lift is derived PER TIER because the
+ * tier's own floors and grey decide how much of it is needed: the menu and popover
+ * panes already sit a larger step off their canvas at a given lift than the
+ * under-window one does (the material is darker), so the one lift that clears the
+ * under-window tier would only add opacity there.
+ */
 export function derivePaneLift(floors) {
 	const palettes = loadPalettes();
-	const out = { dark: 0 };
-	const tierFloors = floors["under-window"].light;
-	for (let lift = 0; lift <= 0.5; lift = round2(lift + 0.01)) {
-		let clears = true;
-		for (const { palette } of palettes) {
-			if (schemeOf(palette) !== "light") continue;
-			for (const g of GLASS_SCALE_GRAYS.light)
-				for (let i = GLASS_PANE_STEP_FROM; i <= 100; i++) {
-					const { canvas, pane } = paneOverCanvas(
-						palette,
-						tierFloors,
-						lift,
-						i,
-						g,
-					);
-					if (deltaE(canvas, pane) < GLASS_PANE_STEP) clears = false;
-				}
+	const out = {};
+	for (const tier of Object.keys(BACKDROP_GRAY)) {
+		out[tier] = { dark: 0 };
+		const tierFloors = floors[tier].light;
+		const grays = GLASS_SCALE_GRAYS_BY_TIER[tier].light;
+		for (let lift = 0; lift <= 0.5; lift = round2(lift + 0.01)) {
+			let clears = true;
+			for (const { palette } of palettes) {
+				if (schemeOf(palette) !== "light") continue;
+				for (const g of grays)
+					for (let i = GLASS_PANE_STEP_FROM; i <= 100; i++) {
+						const { canvas, pane } = paneOverCanvas(
+							palette,
+							tierFloors,
+							lift,
+							i,
+							g,
+						);
+						if (deltaE(canvas, pane) < GLASS_PANE_STEP) clears = false;
+					}
+			}
+			if (clears) {
+				out[tier].light = lift;
+				break;
+			}
 		}
-		if (clears) {
-			out.light = lift;
-			return out;
-		}
+		if (out[tier].light === undefined)
+			throw new Error(
+				`no pane lift up to 0.5 clears ΔE00 ${GLASS_PANE_STEP} on light (${tier})`,
+			);
 	}
-	throw new Error(
-		`no pane lift up to 0.5 clears ΔE00 ${GLASS_PANE_STEP} on light`,
-	);
+	return out;
 }
 
 /** The seam as painted: `ink` at `mix` over `hairline`, at `GLASS_SEAM_ALPHA`, over `ground`. */
@@ -662,63 +694,66 @@ export const deriveGlassScale = (floors) => ({
  */
 export function auditGlassText(floors, scale) {
 	const palettes = loadPalettes();
-	const tier = floors["under-window"];
 	const overlays = [["none", 0], ...Object.entries(GLASS_STATE_ALPHA)];
 	const failures = [];
 	const worst = {};
 	let checked = 0;
 	for (const { id, palette } of palettes) {
 		const scheme = schemeOf(palette);
-		const lift = scale.paneLift[scheme];
-		for (const g of GLASS_SCALE_GRAYS[scheme])
-			for (let i = 0; i <= 100; i += 5) {
-				const floorsHere = tier[scheme];
-				const raw = {
-					canvas: composite(
-						palette.canvas,
-						glassAlphaAt(floorsHere.canvas, i),
-						gray(g),
-					),
-					surface: composite(
-						palette.surface,
-						glassAlphaAt(floorsHere.surface, i),
-						gray(g),
-					),
-					elevated: composite(
-						palette.elevated,
-						glassAlphaAt(floorsHere.elevated, i),
-						gray(g),
-					),
-					pane: paneOverCanvas(palette, floorsHere, lift, i, g).pane,
-				};
-				for (const [ground, base] of Object.entries(raw))
-					for (const [overlay, a] of overlays) {
-						const fill = a ? composite(palette.ink, a, base) : base;
-						for (const ink of GLASS_INKS) {
-							const floor =
-								ink === "inkDim" && a ? GLASS_STATE_DIM_FLOOR : GLASS_INK_FLOOR;
-							const r = ratio(palette[ink], fill);
-							checked++;
-							const entry = {
-								palette: id ?? palette.name,
-								scheme,
-								ground,
-								ink,
-								overlay,
-								intensity: i,
-								gray: g,
-								ratio: r,
-								floor,
-							};
-							if (r < floor) failures.push(entry);
-							if (
-								!worst[scheme] ||
-								r - floor < worst[scheme].ratio - worst[scheme].floor
-							)
-								worst[scheme] = entry;
+		for (const tierName of Object.keys(BACKDROP_GRAY))
+			for (const g of GLASS_SCALE_GRAYS_BY_TIER[tierName][scheme])
+				for (let i = 0; i <= 100; i += 5) {
+					const floorsHere = floors[tierName][scheme];
+					const lift = scale.paneLift[tierName][scheme];
+					const raw = {
+						canvas: composite(
+							palette.canvas,
+							glassAlphaAt(floorsHere.canvas, i),
+							gray(g),
+						),
+						surface: composite(
+							palette.surface,
+							glassAlphaAt(floorsHere.surface, i),
+							gray(g),
+						),
+						elevated: composite(
+							palette.elevated,
+							glassAlphaAt(floorsHere.elevated, i),
+							gray(g),
+						),
+						pane: paneOverCanvas(palette, floorsHere, lift, i, g).pane,
+					};
+					for (const [ground, base] of Object.entries(raw))
+						for (const [overlay, a] of overlays) {
+							const fill = a ? composite(palette.ink, a, base) : base;
+							for (const ink of GLASS_INKS) {
+								const floor =
+									ink === "inkDim" && a
+										? GLASS_STATE_DIM_FLOOR
+										: GLASS_INK_FLOOR;
+								const r = ratio(palette[ink], fill);
+								checked++;
+								const entry = {
+									palette: id ?? palette.name,
+									scheme,
+									tier: tierName,
+									ground,
+									ink,
+									overlay,
+									intensity: i,
+									gray: g,
+									ratio: r,
+									floor,
+								};
+								if (r < floor) failures.push(entry);
+								if (
+									!worst[scheme] ||
+									r - floor < worst[scheme].ratio - worst[scheme].floor
+								)
+									worst[scheme] = entry;
+							}
 						}
-					}
-			}
+				}
 	}
 	return { failures, worst, checked };
 }
@@ -799,14 +834,28 @@ if (isEntryPoint(import.meta.url)) {
 				);
 			}
 		const scale = deriveGlassScale(committed);
-		for (const key of ["paneLift", "edgeMix"])
-			for (const scheme of ["dark", "light"])
-				if ((file.glassScale?.[key]?.[scheme] ?? -1) < scale[key][scheme]) {
-					bad++;
-					console.error(
-						`glass scale ${key}/${scheme} is ${file.glassScale?.[key]?.[scheme]} but the palettes need ${scale[key][scheme]} - re-derive, never hand-lower it`,
-					);
-				}
+		/* paneLift is per material tier; edgeMix is one pair. */
+		const scaleCells = [
+			...Object.keys(BACKDROP_GRAY).flatMap((tier) =>
+				["dark", "light"].map((scheme) => ({
+					name: `paneLift/${tier}/${scheme}`,
+					have: file.glassScale?.paneLift?.[tier]?.[scheme],
+					need: scale.paneLift[tier][scheme],
+				})),
+			),
+			...["dark", "light"].map((scheme) => ({
+				name: `edgeMix/${scheme}`,
+				have: file.glassScale?.edgeMix?.[scheme],
+				need: scale.edgeMix[scheme],
+			})),
+		];
+		for (const { name, have, need } of scaleCells)
+			if ((have ?? -1) < need) {
+				bad++;
+				console.error(
+					`glass scale ${name} is ${have} but the palettes need ${need} - re-derive, never hand-lower it`,
+				);
+			}
 		const audit = auditGlassText(committed, file.glassScale ?? scale);
 		for (const f of audit.failures.slice(0, 10)) {
 			bad++;

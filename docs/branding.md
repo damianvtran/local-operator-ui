@@ -1248,12 +1248,23 @@ slider 80). The scale moves the two things the app owns:
 | Tier | Pane lift (light / dark) | Panel edge mix (light / dark) | Status |
 |---|---|---|---|
 | thin | 0 / 0 | 0 / 0 | the look that shipped; dark still paints exactly this |
-| regular | 0.14 / 0 | 0.06 / 0 | the default: derived, in `window-glass-floors.json` `glassScale` |
+| regular, `window` (under-window) | 0.14 / 0 | 0.06 / 0 | the default: derived, in `window-glass-floors.json` `glassScale` |
+| regular, `menu` | 0.05 / 0 | 0.06 / 0 | derived per material tier at its own grey (171) |
+| regular, `popover` | 0.04 / 0 | 0.06 / 0 | derived per material tier at its own grey (143) |
 | thick | reserved | reserved | not shipped; would be a larger pair of the same two numbers |
 
 - `--lo-glass-pane-lift`: added to the canvas alpha to form the pane's target,
   `min(0.96, max(elevated, canvas + lift))`, then netted like any other inside-`<main>`
-  alpha and published as `--lo-glass-in-pane`. At 80% on `localOperatorLight` the pane
+  alpha and published as `--lo-glass-in-pane`. The lift is derived PER MATERIAL TIER
+  (`glassScale.paneLift[tier][scheme]`, like the alpha floors), each at its own measured
+  grey: `window` 0.14 (greys 199 and 224), `menu` 0.05 (171), `popover` 0.04 (143). The
+  darker materials already step further off their canvas, so one under-window lift
+  applied everywhere (the first version) only added opacity there: at slider 80 on light
+  the effective menu alpha went 0.82 to 0.96 and the popover's 0.88 to 0.96, for a pane step
+  that was already 3.42 and 2.87. Per tier it is 0.82 to 0.87 and 0.88 to 0.92. The tightest
+  pane step per tier is ΔE00 1.53 (`window`, `tokyoNightDay`, slider 91, grey 224),
+  1.59 (`menu`, `tokyoNightDay`, slider 86) and 2.00 (`popover`, `rosePineDawn`, slider 96).
+  Dark is 0 on every tier. At 80% on `localOperatorLight` the pane
   paints net 0.44 over the 0.68 backing (effective 0.82 against 0.68 before) and steps
   ΔE00 2.76 off the canvas (it was 0.00). The tightest step over all 18 light palettes,
   slider 40 to 100 and both light material greys (199 and 224), is ΔE00 1.53
@@ -1274,13 +1285,22 @@ slider 80). The scale moves the two things the app owns:
   `edgeMix` of 0.08.
 - **Text keeps AA.** `scripts/contrast-contract.mjs` holds `ink`, `inkMuted` and `inkDim`
   over the raw canvas, surface and elevated grounds and the lifted pane, with and without
-  each state overlay, every slider position (steps of 5) and both light material greys
-  (the dark grey 81): 97,020 pairs, none under their floor (4.5, or the stated 3.5 for
+  each state overlay, every slider position (steps of 5), every material tier at its
+  own greys (light: window 199 and 224, menu 171, popover 143; dark: the tier's grey): 245,700 pairs, none under their floor (4.5, or the stated 3.5 for
   `inkDim` on an overlay). The tightest pair on light is `rosePineDawn` `inkDim` on
   `surface` at slider 100 over grey 199, 4.55:1; on dark, `cyberpunk` `inkDim` on `canvas`
   at slider 100 over grey 81, 4.52:1. Neither is on the lifted pane: the lift makes the
   pane MORE opaque, which only raises ink contrast.
-- **No new blur.** Exactly one `backdrop-filter` exists in the stylesheet, the isolating
+- **Sticky section headers and the seam.** A sticky section header band keeps its own
+  alpha floor and now steps about 15 RGB points off the lifted pane (about 27 before the lift; design
+  review round 1 figures), so the header still reads as a band without a new rule. The
+  pane-to-rail seam is the heaviest edge on light (luminance step about 0.155, design review round 1) because the
+  lifted pane is the lightest region on the screen. A tighter `window` lift of 0.10 was
+  evaluated and rejected: it does not clear the 1.5 pane-step floor (tightest ΔE00 1.10 at
+  `tokyoNightDay`, slider 95, grey 224; 1.59 over grey 199 only), where 0.14 holds 1.53.
+- **No new blur.** Exactly one real `backdrop-filter` exists in the stylesheet (inert
+  Tailwind shells whose value is only `var(--tw-backdrop-*)` placeholders, and `none`,
+  do not count; one shared definition, `scripts/backdrop-filter-layers.mjs`), the isolating
   band's `blur(12px)`, and `pnpm check-themes` and `scripts/window-glass-cdp.test.mjs`
   fail above one. `saturate()`, a larger blur and a shadow were considered and rejected:
   a `backdrop-filter` samples the page behind the element, and behind the window's

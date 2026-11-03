@@ -77,10 +77,20 @@
 		"work": 0.08
 	},
 	"glassScale": {
-		"_why": "The glass scale: tiers thin (lift 0, edge 0: the look that shipped), regular (these values: the default) and thick (reserved, not shipped). On light the pane inside <main> nets to alpha 0 (its target is below the canvas backing), so canvas -> pane is dE00 0.0; paneLift is added to the canvas alpha to form the pane's target, the smallest lift giving every light palette a dE00 1.5 step off the canvas at slider 40..100 over material greys 199 and 224 (1.5 reuses the lane step, the repo's floor for a translucent plane to read as structure; tightest is 1.53, tokyoNightDay slider 91 grey 224; menu and popover tiers at their own greys 171 and 143 measure 3.42 and 2.87). edgeMix is the ink share mixed into hairline for the 75% panel seam, the smallest giving dE00 3.0 against the three glass grounds at their floors. Dark is 0 for both (byte-identical). Derived by scripts/derive-glass-floors.mjs and asserted by scripts/contrast-contract.mjs; never hand-set.",
+		"_why": "The glass scale: tiers thin (lift 0, edge 0: the look that shipped), regular (these values: the default) and thick (reserved, not shipped). On light the pane inside <main> nets to alpha 0 (its target is below the canvas backing), so canvas -> pane is dE00 0.0; paneLift is added to the canvas alpha to form the pane's target, per material tier (under-window, menu, popover: each at its own measured grey, 199 and 224 for under-window light only), the smallest lift giving every light palette a dE00 1.5 step off the canvas at slider 40..100 (1.5 reuses the lane step, the repo's floor for a translucent plane to read as structure; tightest per tier: under-window 1.53 at tokyoNightDay slider 91 grey 224, menu 1.59 at tokyoNightDay slider 86, popover 2.00 at rosePineDawn slider 96). A single under-window lift applied to menu and popover only added opacity there (their step was already 3.42 and 2.87 at .14). edgeMix is the ink share mixed into hairline for the 75% panel seam, the smallest giving dE00 3.0 against the three glass grounds at their floors. Dark is 0 for both (byte-identical). Derived by scripts/derive-glass-floors.mjs and asserted by scripts/contrast-contract.mjs; never hand-set.",
 		"paneLift": {
-			"dark": 0,
-			"light": 0.14
+			"under-window": {
+				"dark": 0,
+				"light": 0.14
+			},
+			"menu": {
+				"dark": 0,
+				"light": 0.05
+			},
+			"popover": {
+				"dark": 0,
+				"light": 0.04
+			}
 		},
 		"edgeMix": {
 			"dark": 0,

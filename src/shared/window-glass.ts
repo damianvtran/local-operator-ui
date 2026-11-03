@@ -775,7 +775,8 @@ export function glassControlMix(
  * `scripts/derive-glass-floors.mjs`), never here.
  *
  *   - thin:    lift 0, edge 0. The look that shipped.
- *   - regular: the derived `paneLift` / `edgeMix` for the scheme. The shipped
+ *   - regular: the derived `paneLift` (per material tier, like the floors) and
+ *              `edgeMix` for the scheme. The shipped
  *              default: on light a pane steps off the canvas (it netted to alpha 0
  *              and read as the same sheet) and the panel seam is recoloured toward
  *              `ink`; on dark both are 0, so dark paints exactly as thin.
@@ -814,7 +815,10 @@ export function glassPaintFor(input: {
 	const raw = glassAlphas(input);
 	const net = (target: number): number =>
 		round2(Math.min(1, Math.max(0, 1 - (1 - target) / (1 - raw.canvas))));
-	const lift = GLASS_FLOORS.glassScale.paneLift[input.scheme];
+	const lift =
+		GLASS_FLOORS.glassScale.paneLift[
+			floorTierFor(input.mechanism, input.material)
+		][input.scheme];
 	/* The pane's target: its own elevated alpha, or the canvas alpha plus the scale's
 	 * lift when that is higher. The `.96` ceiling bounds the LIFT only: an elevated
 	 * floor already above it (dark, densest material) is the contract and stays. With
