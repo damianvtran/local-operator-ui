@@ -403,6 +403,7 @@ const stateOf = (cdp) =>
  theme:document.documentElement.dataset.theme,dir:document.documentElement.dir,
  viewport:{width:window.innerWidth,height:window.innerHeight},
  glass:document.documentElement.dataset.glass,
+ covered:[...document.querySelectorAll('[data-tour-tag="chat-column"], [data-ask-covered-content]')].map(e=>({tag:e.hasAttribute('data-ask-covered-content')?'fleet-covered':'chat-column',inert:Boolean(e.closest('[inert]'))})),
  bounds:[...document.querySelectorAll('[data-drawer-read-view], [data-drawer-updates], [data-ask-drawer], [data-ask-scrim], [data-tour-tag="ask-drawer-slot"], [data-tour-tag="pane-row"], [data-panel-rail-host]')].map(e=>{const r=e.getBoundingClientRect();const name=e.dataset.drawerReadView??e.dataset.askDrawer??(e.hasAttribute('data-ask-scrim')?'scrim':e.hasAttribute('data-drawer-updates')?'updates':e.dataset.tourTag??(e.hasAttribute('data-panel-rail-host')?'rail':'unknown'));return {selector:name,x:r.x,y:r.y,width:r.width,height:r.height,scrollWidth:e.scrollWidth,clientWidth:e.clientWidth,scrollLeft:e.scrollLeft,mode:e.dataset.askMode,glass:e.hasAttribute('data-glass-region')}})
 }))()`);
 
@@ -467,6 +468,30 @@ export async function runDrawerRemediationScene({
 			0,
 			`${label}: the row the pane is pinned to must not be scrolled - scrollLeft ${row.scrollLeft} translates the pinned overlay out of the window`,
 		);
+		/*
+		 * THE COVERED CONTENT IS INERT EXACTLY WHILE THE SHEET IS UP (review round 1,
+		 * M1/m5), read through ANCESTORS: the fleet mount inerts a `display: contents`
+		 * wrapper, so `.inert` on the chat column itself is false even though every
+		 * stop inside it is inert. A docked pane leaves it live.
+		 */
+		const scope = state.bounds.find(
+			(box) => box.selector === "session" || box.selector === "fleet",
+		)?.selector;
+		for (const box of state.covered ?? []) {
+			/* Each scope covers its own thing: the session its chat column, the
+			 * fleet the shell's wrapper (which exists on every route but is only
+			 * inert for the fleet sheet). */
+			const coveredHere =
+				scope === "fleet"
+					? box.tag === "fleet-covered"
+					: box.tag === "chat-column";
+			if (!coveredHere) continue;
+			assert.equal(
+				box.inert,
+				pane.mode === "overlay",
+				`${label}: ${box.tag} must be inert exactly while the sheet is up - got ${box.inert} in ${pane.mode}`,
+			);
+		}
 		if (pane.mode !== "overlay") return;
 		/*
 		 * THE SHEET'S OWN GEOMETRY (2026-11-03), on every overlay frame: it never draws
@@ -958,6 +983,68 @@ export async function runDrawerRemediationScene({
 				frame.viewport.width <= 520 && frame.viewport.height <= 520,
 				`the ${half} capture of the theme pair must be at the zoomed viewport, got ${JSON.stringify(frame.viewport)}`,
 			);
+		/*
+		 * m5 - THE INERT LIFECYCLE, ON THE REAL DOM (review round 1). The frame above
+		 * was captured with the sheet open; close it with its own X and the covered
+		 * content must be live again, then widen the window and reopen: DOCKED, and
+		 * still live. `capture` asserts the covered flag against the mode on every
+		 * frame, so the two states are checked by the same rule the frames carry.
+		 */
+		const sheetUp = await stateOf(cdp);
+		assert.ok(
+			sheetUp.bounds.some(
+				(box) => box.selector === "ask-drawer-slot" && box.mode === "overlay",
+			),
+			"the inert round starts from the sheet's overlay frame",
+		);
+		/* This scene is the SESSION scope: its covered element is the chat column. */
+		const coveredUp = (sheetUp.covered ?? []).filter(
+			(box) => box.tag === "chat-column",
+		);
+		assert.ok(
+			coveredUp.length > 0,
+			"the inert round needs the covered chat column in the receipt",
+		);
+		for (const box of coveredUp)
+			assert.equal(
+				box.inert,
+				true,
+				`${box.tag} must be inert while the sheet is up`,
+			);
+		/* Back to 1x before the press: the X must be a hit-testable control, and the row
+		 * is still 696px at 1000x900 (overlay), so the claim the round is about holds. */
+		await zoomTo(1);
+		await pause(300);
+		await click(cdp, '[data-tour-tag="close-asks-button"]');
+		await until(
+			() => cdp.evaluate(`!document.querySelector('[data-ask-drawer]')`),
+			"ask drawer closed",
+		);
+		for (const box of ((await stateOf(cdp)).covered ?? []).filter(
+			(entry) => entry.tag === "chat-column",
+		))
+			assert.equal(
+				box.inert,
+				false,
+				`${box.tag} must be live again once the sheet closes`,
+			);
+		await nodeCdp.evaluate(
+			`(()=>{const e=process.mainModule.require('electron');const w=e.BrowserWindow.getAllWindows()[0];w.webContents.setZoomFactor(1);w.setContentSize(1500,900);return true})()`,
+		);
+		await pause(400);
+		await click(cdp, '[data-tour-tag="ask-pane-trigger"]');
+		await until(
+			() =>
+				cdp.evaluate(`Boolean(document.querySelector('[data-ask-drawer]'))`),
+			"ask drawer reopened docked",
+		);
+		const dockedFrame = await capture("inert-docked");
+		assert.ok(
+			dockedFrame.bounds.some(
+				(box) => box.selector === "ask-drawer-slot" && box.mode === "docked",
+			),
+			"a 1500px window must dock the drawer, so the round proves the mode flip",
+		);
 		receipt.result = "PASS";
 	} catch (error) {
 		receipt.result = "FAIL";

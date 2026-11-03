@@ -8,6 +8,7 @@ import {
 	askOpenFacts,
 	askOutstandingReading,
 	askSettledAnnouncement,
+	askWaitingAnnouncement,
 	createAskOpenView,
 	shouldCloseCarriedDrawer,
 } from "./ask-open-policy";
@@ -202,6 +203,25 @@ export const useAskOpenPolicy = ({
 		) {
 			live.setAskDrawerOpen(false, "session");
 		}
+		/*
+		 * A MODAL SHEET IS NOT CARRIED (agent review round 1, m2). A DOCKED drawer can
+		 * follow the user between conversations: it sits beside the composer, and the
+		 * conversation switch is not an act on it. The SHEET cannot - it covers and
+		 * inerts the content, and a carried one mounts with the keyboard on `<body>`
+		 * (the switch destroyed the element that held it), where Escape is not claimed
+		 * and the only way out is to Tab into the sheet. So at the start of a view under
+		 * the sheet presentation the carried open is closed as a WITHDRAWAL (no
+		 * options): it returns a displaced pane like Escape, and the rail's asks item is
+		 * still the door. A view that opens the drawer itself is unaffected - this runs
+		 * once, before that decision.
+		 */
+		if (
+			overlayPresentation() &&
+			live.isAskDrawerOpen &&
+			live.askDrawerScope === "session"
+		) {
+			live.setAskDrawerOpen(false, "session");
+		}
 	}, [sessionId]);
 
 	/*
@@ -267,7 +287,16 @@ export const useAskOpenPolicy = ({
 			 */
 			overlayPresentation: overlayPresentation(),
 		});
-		if (verdict.action === "open") {
+		if (verdict.reason === "covers-conversation") {
+			/*
+			 * THE REFUSAL STILL SPEAKS (agent review round 1, m3): the drawer stays shut,
+			 * so the only thing a reader who cannot see the chip would miss is that asks
+			 * are waiting. It is the queue's own clause, not an "opened" claim, and it is
+			 * the sentence the settled transition speaks for the same reason (see
+			 * `askWaitingAnnouncement`).
+			 */
+			setAnnouncement(askWaitingAnnouncement(view));
+		} else if (verdict.action === "open") {
 			/*
 			 * THE WRITE IS UNCONDITIONAL BECAUSE THE DECISION ALREADY WAS. `observe` refuses
 			 * to open over an up drawer (`drawer-open`), reading the same flag this effect

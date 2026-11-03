@@ -1687,6 +1687,59 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 				: canonical.asks;
 		const sessionAsksView = useMemo(() => askQueueView(askFrame), [askFrame]);
 		/*
+		 * THE ROW'S OWN WIDTH, which the canvas's mode, the ask sheet's geometry and the
+		 * open policy's `covers-conversation` fact are all decided from (§I).
+		 *
+		 * Measured rather than computed from `window.innerWidth`: the row is the work area
+		 * AFTER the sidebar has taken its width, and the sidebar is 0, 56 or 260 of those
+		 * pixels depending on the band (`resolveSidebarLayout`) - so a window-width
+		 * calculation here would re-derive a decision another module already owns, and
+		 * would be wrong in exactly the two bands §I's order of yielding is about. The
+		 * same idiom as the run panel's capacity above, for the same reason.
+		 *
+		 * It is measured whether or not a pane is open: a resize while the pane is closed
+		 * has to be accounted for by the time it opens, and the observer is one element.
+		 *
+		 * IT LIVES HERE, ABOVE THE OPEN POLICY, because that policy takes the row's
+		 * PRESENTATION as a fact (an auto-open below the dock breakpoint would cover and
+		 * inert the conversation). The ref carries the same number to code that runs
+		 * outside a render: the policy's decision runs in an effect, and a cached frame can
+		 * take the view's one decision in the commit that first measures it, so a
+		 * render-time value would answer with the pre-measurement row (0, i.e. docked)
+		 * exactly where the answer matters.
+		 */
+		const runPanelRowRef = useRef<HTMLDivElement | null>(null);
+		const chatColumnRef = useRef<HTMLDivElement | null>(null);
+		const [paneRowWidth, setPaneRowWidth] = useState(0);
+		const paneRowWidthRef = useRef(0);
+		useLayoutEffect(() => {
+			const row = runPanelRowRef.current;
+			if (!row) return;
+			const measure = () => {
+				const width = row.getBoundingClientRect().width;
+				paneRowWidthRef.current = width;
+				setPaneRowWidth(width);
+			};
+			measure();
+			const observer = new ResizeObserver(measure);
+			observer.observe(row);
+			return () => observer.disconnect();
+		}, []);
+		/*
+		 * THE PRESENTATION FACT, read live rather than at render: the row's first
+		 * measurement is a layout effect, and a decision can run in the commit that
+		 * first measures it, so a render-time boolean would answer the
+		 * pre-measurement question (row 0, i.e. docked) exactly where it matters.
+		 * `canvasPaneMode` is the one predicate, here read for its mode.
+		 */
+		const inOverlayPresentation = useCallback(
+			() =>
+				canvasPaneMode(paneRowWidthRef.current || Number.MAX_SAFE_INTEGER) ===
+				"overlay",
+			[],
+		);
+
+		/*
 		 * THE QUEUED SECRET ASK'S COMPOSER HOOKUP (the operator's ask, `a-9e0c`).
 		 *
 		 * The composer used to REFUSE ALL TYPING while a secret-only ask waited, on
@@ -1706,13 +1759,23 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		 * round 1, U4). The `focus: false` arm exists for the paths that open the
 		 * drawer as a RESULT rather than as a press - a refused "Put in secret field"
 		 * must leave the caret in the box, not take it into the panel (QA round 1, Q3).
+		 *
+		 * AND IN THE SHEET PRESENTATION THE RESULT PATH DOES NOT OPEN AT ALL (agent
+		 * review round 1, m2). The sheet makes the composer `inert`, so opening it as a
+		 * RESULT would take the caret out of the box this arm exists to leave it in -
+		 * focus would fall to `<body>` inside an inert column, the exact strand
+		 * `covers-conversation` refuses for the auto-open. The user pressed nothing;
+		 * the queue stays announced on the chip and the rail door, and the landed or
+		 * refused value is reported where it was typed. The PRESSED path (the notice's
+		 * own door, `focus` unset) still opens: that is a user's act.
 		 */
 		const openAsksForSecret = useCallback(
 			(options?: { focus?: boolean }) => {
+				if (options?.focus === false && inOverlayPresentation()) return;
 				setAskDrawerOpen(true, "session");
 				if (options?.focus !== false) requestAskOpen("session", "chord");
 			},
-			[setAskDrawerOpen, requestAskOpen],
+			[setAskDrawerOpen, requestAskOpen, inOverlayPresentation],
 		);
 
 		const secretAsk = useMemo(() => {
@@ -1753,45 +1816,6 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 			};
 		}, [sessionAsksView, canonical?.onFillSecretAnswer, openAsksForSecret]);
 		/*
-		 * THE ROW'S OWN WIDTH, which the canvas's mode, the ask sheet's geometry and the
-		 * open policy's `covers-conversation` fact are all decided from (§I).
-		 *
-		 * Measured rather than computed from `window.innerWidth`: the row is the work area
-		 * AFTER the sidebar has taken its width, and the sidebar is 0, 56 or 260 of those
-		 * pixels depending on the band (`resolveSidebarLayout`) - so a window-width
-		 * calculation here would re-derive a decision another module already owns, and
-		 * would be wrong in exactly the two bands §I's order of yielding is about. The
-		 * same idiom as the run panel's capacity above, for the same reason.
-		 *
-		 * It is measured whether or not a pane is open: a resize while the pane is closed
-		 * has to be accounted for by the time it opens, and the observer is one element.
-		 *
-		 * IT LIVES HERE, ABOVE THE OPEN POLICY, because that policy takes the row's
-		 * PRESENTATION as a fact (an auto-open below the dock breakpoint would cover and
-		 * inert the conversation). The ref carries the same number to code that runs
-		 * outside a render: the policy's decision runs in an effect, and a cached frame can
-		 * take the view's one decision in the commit that first measures it, so a
-		 * render-time value would answer with the pre-measurement row (0, i.e. docked)
-		 * exactly where the answer matters.
-		 */
-		const runPanelRowRef = useRef<HTMLDivElement | null>(null);
-		const chatColumnRef = useRef<HTMLDivElement | null>(null);
-		const [paneRowWidth, setPaneRowWidth] = useState(0);
-		const paneRowWidthRef = useRef(0);
-		useLayoutEffect(() => {
-			const row = runPanelRowRef.current;
-			if (!row) return;
-			const measure = () => {
-				const width = row.getBoundingClientRect().width;
-				paneRowWidthRef.current = width;
-				setPaneRowWidth(width);
-			};
-			measure();
-			const observer = new ResizeObserver(measure);
-			observer.observe(row);
-			return () => observer.disconnect();
-		}, []);
-		/*
 		 * OPEN BY DEFAULT over pending asks (the open policy; `ask-open-policy.ts` states
 		 * the six-rule contract it shares with the TUI, the relay and the native app).
 		 *
@@ -1812,15 +1836,10 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 			view: sessionAsksView,
 			/*
 			 * THE PRESENTATION FACT (design 2026-11-03, D5): below the dock breakpoint the
-			 * drawer is a sheet OVER the row and the conversation goes `inert`, so an
-			 * auto-open there would cover and disable what the user is reading. Read through
-			 * the ref rather than the rendered `paneRowWidth` for the reason the measurement
-			 * block above states: the decision can run in the commit that first measures the
-			 * row. `canvasPaneMode` is the one predicate, here for its `mode` only.
+			 * drawer is a sheet OVER the row and the covered content goes `inert`, so an
+			 * auto-open there would cover and disable what the user is reading.
 			 */
-			overlayPresentation: () =>
-				canvasPaneMode(paneRowWidthRef.current || Number.MAX_SAFE_INTEGER) ===
-				"overlay",
+			overlayPresentation: inOverlayPresentation,
 		});
 		/*
 		 * The same `FLEET_ASKS_QUERY_KEY` read the sidebar and the sessions list already
@@ -2123,15 +2142,24 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 			askPreferredWidth,
 		);
 		/*
-		 * THE CONVERSATION IS INERT UNDER THE SHEET (design 2026-11-03, D4). The sheet is
-		 * modal over the ROW rather than the window: the sidebar and the panel rail stay
-		 * live (the rail's asks item is still a working toggle), and the conversation
-		 * behind the scrim must not be tabbable or reachable by a screen reader. `inert`
-		 * is the native attribute, set from a LAYOUT effect so the drawer's own entry read
-		 * (`ask-drawer.tsx` reads focus in a layout effect) and the opener's return see the
-		 * final DOM. It cannot be a React prop (this React's types have no `inert`), and it
-		 * must not be folded into the column's class string - `chat-pane-floors.test.mjs`
-		 * and `lane-leading.test.mjs` read that string.
+		 * THE COVERED CONTENT IS INERT UNDER THE SHEET (design 2026-11-03, D4). The sheet
+		 * is modal over the ROW rather than the window: the sidebar and the panel rail
+		 * stay reachable (the rail's asks item is how the sheet is closed or reopened),
+		 * and the conversation behind the scrim must not be tabbable or reachable by a
+		 * screen reader. `inert` is the native attribute, set from a LAYOUT effect so it
+		 * lands before the browser paints; it cannot be a React prop (this React's types
+		 * have no `inert`), and it must not be folded into the column's class string -
+		 * `chat-pane-floors.test.mjs` and `lane-leading.test.mjs` read that string.
+		 *
+		 * ORDERING, stated because it looks inverted: this component is the drawer's
+		 * PARENT, and React flushes a child's layout effects before its parent's. So
+		 * `AskDrawer`'s entry read (`ask-drawer.tsx`) runs while the chip still holds
+		 * focus - it sees the door - and only then does this effect inert the column,
+		 * which is what blurs that chip to `<body>`. The door read must come first or
+		 * the press would be invisible to the drawer; the drawer latches the door for
+		 * the unread-frame wait rather than re-reading focus afterwards (see the latch
+		 * there), and the close clears `inert` in a layout effect before the microtask
+		 * that returns focus.
 		 *
 		 * And no `role="dialog"` anywhere on the sheet, deliberately: `pressLandsOnOverlay`
 		 * (`keyboard-scopes.ts`) treats a dialog as a layer ABOVE the drawer, which would

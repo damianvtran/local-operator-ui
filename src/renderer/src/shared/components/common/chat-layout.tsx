@@ -380,6 +380,25 @@ export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
 	const drawnSlotWidth =
 		drawnPane === "ask" ? askPresentation.width : slotWidth;
 	/*
+	 * THE COVERED CONTENT GOES INERT UNDER THE FLEET SHEET (design D4 amendment,
+	 * 2026-11-03; agent review round 1, M1). The fleet sheet runs on every route,
+	 * so the thing it covers is whatever the route drew - not a chat column the
+	 * mount can name. The wrapper below is `display: contents`, so its child is
+	 * still the flex item the row lays out; making the WRAPPER inert covers
+	 * everything inside it without touching layout or either measurement
+	 * (`contentColumnRef`, the lane's stop).
+	 *
+	 * The sidebar and the panel rail are siblings OUTSIDE this row and stay
+	 * reachable: the rail's asks item is how the sheet is closed or reopened, and
+	 * freezing it would leave a pointer user with only the sheet's own X.
+	 */
+	const fleetContentRef = useRef<HTMLDivElement | null>(null);
+	useLayoutEffect(() => {
+		const element = fleetContentRef.current;
+		if (!element) return;
+		element.inert = fleetAsksOpen && askPresentation.mode === "overlay";
+	}, [fleetAsksOpen, askPresentation.mode]);
+	/*
 	 * The slot's DOCKED/OVERLAY mode, from the same measured box the width comes
 	 * from: the width resolver above answers where the pane STOPS, and this answers
 	 * whether it is docked or has stopped docking (the `overlay` literal;
@@ -542,7 +561,18 @@ export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
 						 * pane's leading edge one number.
 						 */}
 						<div className="relative flex h-full min-h-0 w-full overflow-hidden">
-							{content}
+							{/*
+							 * THE COVERED CONTENT, wrapped so the fleet sheet can inert it
+							 * without disturbing the flex row (`display: contents`). See
+							 * `fleetContentRef` above.
+							 */}
+							<div
+								ref={fleetContentRef}
+								data-ask-covered-content=""
+								className="contents"
+							>
+								{content}
+							</div>
 							{/*
 							 * THE FLEET ASKS PANE: the same three pieces the route's occupants
 							 * use (the divider, the slot, the pane), so the column is one idiom in

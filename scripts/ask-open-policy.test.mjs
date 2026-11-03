@@ -70,6 +70,7 @@ const {
 	askOpenAnnouncement,
 	askOpenFacts,
 	askSettledAnnouncement,
+	askWaitingAnnouncement,
 	askQueueView,
 	createAskDismissals,
 	createAskOpenView,
@@ -207,6 +208,28 @@ test("D5 - pending on open in the SHEET presentation: left alone, once, and a la
 	const widened = view.observe(frame(withRows([ask("open")])));
 	assert.equal(widened.verdict.action, "leave");
 	assert.equal(widened.verdict.reason, "already-decided");
+});
+
+/*
+ * m3 (review round 1): the refusal speaks, and it speaks the QUEUE'S clause rather
+ * than an "opened" claim - the drawer stayed shut. Same builder as the settled
+ * sentence, because it is the same statement about the queue.
+ */
+test("D5 - the sheet refusal's sentence claims nothing about a surface", () => {
+	assert.equal(
+		askWaitingAnnouncement(askQueueView(withRows([ask("open")]))),
+		"1 question waiting.",
+	);
+	assert.equal(
+		askWaitingAnnouncement(askQueueView(withRows([ask("open"), ask("open")]))),
+		"2 questions waiting.",
+	);
+	assert.ok(
+		!askWaitingAnnouncement(askQueueView(withRows([ask("open")]))).startsWith(
+			"Opened",
+		),
+		"the drawer did not open, so the region must not say it did",
+	);
 });
 
 test("state 1 - no asks on open: closed, and an ask that arrives later does not open it", () => {

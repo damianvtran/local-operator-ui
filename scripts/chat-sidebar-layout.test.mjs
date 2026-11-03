@@ -46,6 +46,7 @@ const {
 	SIDEBAR_MIN_WIDTH,
 	CANVAS_PANE_MIN_PX,
 	CHAT_PANE_MIN_PX,
+	ASK_SHEET_MIN_SCRIM_PX,
 	ASK_SHEET_SCRIM_GUTTER_PX,
 	canvasDockWidth,
 	canvasPaneMode,
@@ -421,7 +422,9 @@ test("the ask drawer is a sheet where the row cannot host the dock's floor (2026
 	 */
 	const DOCK_BREAKPOINT = CHAT_PANE_MIN_PX + CANVAS_PANE_MIN_PX;
 	assert.equal(DOCK_BREAKPOINT, 880);
-	const ROWS = [300, 400, 447, 448, 449, 456, 506, 675, 700, 879, 880, 1000];
+	const ROWS = [
+		300, 400, 401, 415, 416, 447, 448, 449, 456, 506, 675, 700, 879, 880, 1000,
+	];
 	for (const preferred of [640, 1000]) {
 		for (const row of ROWS) {
 			const presentation = askPanePresentation(row, preferred);
@@ -443,6 +446,11 @@ test("the ask drawer is a sheet where the row cannot host the dock's floor (2026
 				uncovered >= 0,
 				`row ${row}: the uncovered strip is a subtraction, not a negative`,
 			);
+			if (uncovered > 0)
+				assert.ok(
+					uncovered >= ASK_SHEET_MIN_SCRIM_PX,
+					`row ${row}: a strip thinner than ${ASK_SHEET_MIN_SCRIM_PX}px is not a press target`,
+				);
 			assert.equal(
 				presentation.scrimmed,
 				presentation.mode === "overlay" && uncovered > 0,
@@ -457,10 +465,12 @@ test("the ask drawer is a sheet where the row cannot host the dock's floor (2026
 				 * function under test.
 				 */
 				const floor = Math.min(row, CANVAS_PANE_MIN_PX);
-				const expectedWidth = Math.min(
+				const raw = Math.min(
 					preferred,
 					Math.max(floor, row - ASK_SHEET_SCRIM_GUTTER_PX),
 				);
+				/* A strip too thin to press is no strip: the sheet fills the row. */
+				const expectedWidth = row - raw >= ASK_SHEET_MIN_SCRIM_PX ? raw : row;
 				assert.equal(
 					presentation.width,
 					expectedWidth,
@@ -492,6 +502,7 @@ test("the ask drawer is a sheet where the row cannot host the dock's floor (2026
 	}
 	/* The one new number, chosen as a press target: above the 44px rail item. */
 	assert.equal(ASK_SHEET_SCRIM_GUTTER_PX, 48);
+	assert.equal(ASK_SHEET_MIN_SCRIM_PX, 16);
 	assert.ok(ASK_SHEET_SCRIM_GUTTER_PX > PANEL_RAIL_WIDTH_PX);
 	/* The preference is the slot's, unchanged: the sheet takes no new width rule. */
 	assert.equal(rightSlotPaneWidth(CANVAS_PANE_MIN_PX, 640), 640);

@@ -1,48 +1,153 @@
 # Ask drawer below the dock breakpoint: design decisions
 
-Status: architect recommendation, 2026-11-03; implemented on `fix/ask-panel-overlap` the same day. Paste into the PR body as `## Decisions`.
-Scope: the Ask drawer only (session scope `chat-content.tsx`, fleet scope `chat-layout.tsx`). The canvas `overlay` literal is untouched.
+Status: architect recommendation, 2026-11-03; implemented the same day, with the
+amendments recorded below from the first review and QA rounds.
+
+Scope: the Ask drawer only (session scope in `chat-content.tsx`, fleet scope in
+`chat-layout.tsx`). The canvas `overlay` literal is untouched.
 
 ## Decisions
 
 - **D1 - Which predicate says "dock or overlay", and measured from where?**
-  - Taken: keep `canvasPaneMode(rowWidth)` (`chat-sidebar-layout.ts:196`: row - 480 >= 400, i.e. row >= 880) as the one predicate, measured from the pane ROW (`paneRowWidth` `chat-content.tsx:2047`, `contentBox.width` `chat-layout.tsx:351`), not the window. No second threshold.
-  - Rejected: a separate ask-drawer threshold (would split the one-width system; `resolveRightSlotWidth` `ui-preferences-store.ts:1618` already routes "ask" through `canvasDockWidth`). Window-measured (the sidebar yield already predicts the row from the window, `sidebarYieldsToCanvas` `chat-sidebar-layout.ts:286`, so a window measure is a second copy).
-  - Commits us to: no feedback loop. The sheet is `absolute`, so it never changes the row; the sidebar decision is a function of the window (`resolveSidebarLayout`), not of this measure. Probe (esbuild-bundled real module, drawer open, rail 44, sidebar pref 260): 979px -> sidebar 260, row 675, overlay; 980 -> strip 56, row 880, docked; 1184 -> sidebar 260, row 880, docked. So overlay occurs only below ~980px (936 with no rail on settings/agents); Ben's ~810px = row 506.
-  - Overturned by: operator wanting the chat to shrink below 480 (`CHAT_PANE_MIN_PX`, `chat-sidebar-layout.ts:61`).
-  - Owner: coder.
+  - Taken: keep `canvasPaneMode(rowWidth)` (row - 480 >= 400, i.e. row >= 880) as the
+    one predicate, measured from the pane ROW (`paneRowWidth` in `chat-content.tsx`,
+    `contentBox.width` in `chat-layout.tsx`), not the window. No second threshold.
+  - Rejected: a separate ask-drawer threshold (would split the one-width system;
+    `resolveRightSlotWidth` already routes "ask" through `canvasDockWidth`).
+    Window-measured: the sidebar yield already predicts the row from the window
+    (`sidebarYieldsToCanvas`), so a window measure is a second copy.
+  - Commits us to: no feedback loop. The sheet is `absolute`, so it never changes the
+    row; the sidebar decision is a function of the window (`resolveSidebarLayout`),
+    not of this measure. Probe (esbuild-bundled real module, drawer open, rail 44,
+    sidebar preference 260): 979px -> sidebar 260, row 675, overlay; 980 -> strip 56,
+    row 880, docked; 1184 -> sidebar 260, row 880, docked. So overlay occurs only
+    below ~980px (936 with no rail on settings/agents routes).
+  - Overturned by: operator wanting the chat to shrink below 480
+    (`CHAT_PANE_MIN_PX`).
 - **D2 - Geometry.**
-  - Taken: right-anchored sheet inside the pane row, not full-row cover. `absolute inset-y-0 end-0 z-40 shadow-overlay max-w-full`, inline `width`, scrim sibling `absolute inset-0 z-30 bg-scrim` covering the ROW only (sidebar and rail stay live; the rail's asks item remains a working toggle). Width = `min(preferred, max(min(row, 400), row - 48))`: the 400 floor is kept, so the row uncovered is 48 where it can be and less (0 at row <= 400) where it cannot; `preferred = rightSlotPaneWidth(CANVAS_PANE_MIN_PX, rightSlotWidth)`, the same shared 640 default / 400 floor / 1200 cap (`ui-preferences-store.ts:1699`). No width or constant of uniform-side-panels changes; the 48 gutter is the only new number (chosen, not measured: a click-to-close target >= the 44px rail precedent `PANEL_RAIL_WIDTH_PX`). `end-0` + `max-w-full` + inline width is not the over-constrained `inset-0`+width case `pane-slot.tsx` documents (D8); `max-w-full` resolves at paint time, so a one-reflow-old row number cannot overflow.
-  - Rejected: keep `absolute inset-0` (today; no seam, no context, no click target, and `pane-slot.tsx` D8 note only argued for it to avoid a 0-wide box). Pure "replace" (full row, chat hidden): consistent with `docs/branding.md:564` "Narrow windows replace, they do not overlay" but that rule is about route detail rails; branding.md:354-357 blesses the one shadow for a drawer, and a replaced transcript loses the question's context. The PR must add one sentence to branding.md:564 scoping it away from the transient Ask drawer.
-  - Overturned by: operator preferring replace; the change is then width = row, no scrim, and nothing else moves.
-  - Owner: coder (geometry), designer (D-round on frames at 800/810/979).
+  - Taken: right-anchored sheet inside the pane row, not a full-row cover.
+    `absolute inset-y-0 end-0 z-40 shadow-overlay max-w-full`, inline `width`, with a
+    scrim sibling (`absolute inset-0 z-30 bg-scrim`) covering the ROW only. Width =
+    `min(preferred, max(min(row, 400), row - 48))`: the 400 floor is kept, so the row
+    uncovered is 48 where it can be and less (0 at row <= 400) where it cannot.
+    `preferred` is `rightSlotPaneWidth(CANVAS_PANE_MIN_PX, rightSlotWidth)`, the same
+    shared 640 default / 400 floor / 1200 cap. No width or constant of
+    uniform-side-panels changes; the 48 gutter is the only new number (chosen, not
+    measured: a click-to-close target >= the 44px rail precedent, `PANEL_RAIL_WIDTH_PX`).
+    `end-0` + `max-w-full` + inline width is not the over-constrained `inset-0`+width
+    case `pane-slot.tsx` documents (D8); `max-w-full` resolves at paint time, so a
+    one-reflow-old row number cannot overflow.
+  - Amendment (review round 1, nit): a strip narrower than `ASK_SHEET_MIN_SCRIM_PX`
+    (16px) is not a press target, so there the sheet takes the whole row and the
+    scrim is not drawn. That covers rows at or below the 400 floor and the 401-415
+    band the floor would otherwise leave a 1-15px sliver of.
+  - Rejected: keep `absolute inset-0` (no seam, no context, no click target). Pure
+    "replace" (full row, chat hidden): consistent with the branding rule "Narrow
+    windows replace, they do not overlay", but that rule is about route detail rails;
+    the branding contract blesses the one shadow for a drawer, and a replaced
+    transcript loses the question's context. `docs/branding.md` gained one sentence
+    scoping the rule away from the transient Ask drawer.
+  - Overturned by: operator preferring replace; the change is then width = row, no
+    scrim, and nothing else moves.
 - **D3 - Root cause of "text bleeds through" is the ground, not only the position.**
-  - Taken: in overlay mode the drawer must not wear `data-glass-region="pane"` (`ask-drawer.tsx:1011`). That marker applies `color-mix(elevated, --lo-glass-a-elevated)` (`styles/index.css:2097`, net alpha `:2105` inside `<main>`), i.e. a TRANSLUCENT ground by design for a docked pane over window material; over the transcript that shows text through. Without the marker the class `bg-elevated` is opaque. Add a prop `ground: "glass" | "solid"` on `AskDrawer`, solid when `mode==="overlay"`. Not measured: the actual alpha at Ben's intensity (mechanism read from CSS, screenshot consistent with it).
-  - Rejected: a second background class on the slot (would fight the unlayered glass rule by specificity).
-  - Owner: coder.
+  - Taken: in overlay mode the drawer must not wear `data-glass-region="pane"`. That
+    marker applies `color-mix(elevated, --lo-glass-a-elevated)` (net alpha inside
+    `<main>`), i.e. a TRANSLUCENT ground by design for a docked pane over window
+    material; over the transcript it shows text through. Without the marker the
+    class `bg-elevated` is opaque. A prop `ground: "glass" | "solid"` on `AskDrawer`
+    (forwarded by `FleetAskDrawer`) carries it, solid when the presentation's mode is
+    `overlay`. Not measured: the actual alpha at the operator's glass intensity
+    (mechanism read from CSS, screenshot consistent with it).
+  - Rejected: a second background class on the slot (would fight the unlayered glass
+    rule by specificity).
 - **D4 - Focus and Escape.**
-  - Taken: modal over the ROW via `inert` on the chat column (`chatColumnRef` div, `chat-content.tsx:2384`), applied by a layout effect setting `el.inert` (React 18.3 and `@types/react` 18.3.18 have no `inert` prop: 0 hits in the types), NOT by editing that element's class string (`chat-pane-floors.test.mjs:123` and `lane-leading.test.mjs:357` regex it). Scrim `onPointerDown` = `onClose()` with no options (a withdrawal, same kind as Escape, returns a displaced pane; the X stays the only `dismissSlot` door). Escape unchanged: drawer `onKeyDown` `ask-drawer.tsx:1025`, window ladder `askClaimsEscape` `ask-queue.ts:940`, fleet listener `fleet-ask-drawer.tsx:246`. Focus-on-mount unchanged (door read in layout effect `ask-drawer.tsx:707-775`, landing focus `:872`); inert must be set in a LAYOUT effect so the door read and the opener return (`:925-950`, microtask) see the final DOM. Do NOT give the sheet `role="dialog"`: `pressLandsOnOverlay` (`keyboard-scopes.ts:70`, selector `:49`) would make `askClaimsEscape` return false (`ask-queue.ts:948`) and silently drop the chat-page Escape claim.
-  - Rejected: Radix Dialog/Sheet (`shared/components/ui/sheet.tsx:34-50`: `fixed inset-0 z-50`, portal to body, covers sidebar+rail+lane, role=dialog (above), its own FocusScope autofocus races the door read, registers `useSuppressBrowserView` `sheet.tsx:69`, and would mean a second mount of a drawer that is mounted in two scopes). Extending `PaneSlot` with a mode prop (`pane-slot.tsx` owns only the box/seam; `pane-slot-ground.test.mjs:538` pins ONE spelling of its class list and 6 mount sites; pass `className`/`width` as the mounts already do). A focus trap library (a second trap beside Radix's, the thing sheet.tsx:14 warns about).
-  - Owner: coder; qa-tester walks door -> open -> Tab -> Escape -> focus returns to chip/rail item.
-- **D5 - Auto-open must not cover the conversation (needs operator confirmation, one clause to flip).**
-  - Taken: in overlay presentation `decideAskAutoOpen` (`ask-open-policy.ts:299`) leaves with new reason `"covers-conversation"` (fact `overlayPresentation`, fed from `use-ask-open-policy.ts:236`). The policy header's premise "the drawer docks BESIDE the composer and covers nothing" (`ask-open-policy.ts:~221-227`) is false in overlay mode, and rules 5/6 (no theft) are why. The chip and badge still announce. Ben's screenshot is most plausibly an auto-open over a pending ask.
-  - Rejected: auto-open as a modal sheet (deviates from nothing in the cross-surface contract only if the phone's modal behaviour is wanted on desktop; but it blurs the composer via inert, a focus theft). Leaving policy alone (reproduces the report on every conversation open at <980px).
-  - Overturned by: operator saying the desktop should match the phone's modal auto-open.
-  - Owner: coder; `ask-open-policy.test.mjs` change.
+  - Taken: modal over the ROW via `inert`, applied by a layout effect setting
+    `el.inert` (React 18.3 and its types have no `inert` prop), NOT by editing a
+    class string (`chat-pane-floors.test.mjs` and `lane-leading.test.mjs` regex it).
+    Scrim `onPointerDown` = `onClose()` with no options (a withdrawal, the same kind
+    as Escape; the X stays the only `dismissSlot` door). Escape unchanged: the
+    drawer's `onKeyDown`, the window ladder's `askClaimsEscape`, the fleet listener.
+    Focus-on-mount unchanged. Do NOT give the sheet `role="dialog"`:
+    `pressLandsOnOverlay` would make `askClaimsEscape` return false and silently drop
+    the chat-page Escape claim.
+  - **D4 amendment (review round 1, M1; QA round 1, Q1): the FLEET mount covers
+    `{content}`, so it inerts it too.** The session mount has a chat column to name;
+    the shell's fleet sheet runs on every route, so the covered thing is whatever the
+    route drew. `chat-layout.tsx` wraps `{content}` in a `display: contents` element
+    (`data-ask-covered-content`) and sets `inert` on it from a layout effect. It
+    introduces no box, so the flex row and both measurements (`contentColumnRef`, the
+    lane's stop) are unchanged. Scope is precise: **covered content inert; the sidebar
+    and the panel rail stay reachable** - the rail's asks item is how the sheet is
+    closed or reopened, and freezing it would leave a pointer user with only the
+    sheet's own X.
+  - Ordering (review round 1, m1): React flushes a child's layout effects before its
+    parent's, so `AskDrawer`'s door read runs while the chip still holds focus, and
+    only then does the parent's effect inert the column - which blurs that chip to
+    `<body>`. The drawer latches the pressed door before the unread-frame wait
+    (`pressedDoorRef`) instead of re-reading focus after inert is on, and accepts the
+    latched door when `<body>` is where that inert left it.
+  - Rejected: `role="dialog"` and Radix `DismissableLayer`; a Radix drawer (`display:
+    contents` was preferred over moving the composer out of the inert subtree);
+    claiming Escape from `<body>` (it would add a page-wide claim for a case the
+    carried-open close below removes); a focus-trap library (a second trap beside
+    Radix's).
+- **D5 - Auto-open must not cover the conversation.**
+  - Taken: in overlay presentation `decideAskAutoOpen` leaves with reason
+    `"covers-conversation"` (fact `overlayPresentation`, fed from
+    `use-ask-open-policy.ts`). Rules 5 and 6 (no theft) are why this is a refusal
+    rather than a modal. The chip and the rail still announce; the live region speaks
+    the queue's own clause (`askWaitingAnnouncement`), so a reader who cannot see the
+    chip is told asks are waiting. The leave is FINAL for the view: a later resize
+    does not open it, because "on open" is the one moment the policy acts.
+  - Related (review round 1, m2): a CARRIED open (one that outlives a conversation
+    switch) is closed as a withdrawal at the start of an overlay view - the switch
+    destroyed the element that held focus, so a carried sheet would mount with the
+    keyboard on `<body>` inside an inert column. A DOCKED drawer still follows the
+    user, as it always did. The `focus: false` secret path (`openAsksForSecret`)
+    does not open the sheet either: that arm exists to leave the caret in the
+    composer, which the sheet would inert.
+  - Rejected: auto-open as a modal sheet (blurs the composer via inert, a focus
+    theft); leaving the policy alone (reproduces the report on every conversation
+    open below ~980px); claiming Escape from `<body>` (a page-wide claim for a state
+    the carried-open close removes).
 - **D6 - Pure function.**
-  - Taken: in `chat-sidebar-layout.ts` beside `canvasPaneMode` (no import cycle: the store already imports from this file, so `preferred` is an argument):
-    `export const ASK_SHEET_SCRIM_GUTTER_PX = 48;`
-    `export type AskPanePresentation = { mode: "docked" | "overlay"; width: number; scrimmed: boolean };`
-    `export function askPanePresentation(rowWidth: number, preferredWidth: number): AskPanePresentation`
-    docked: `{mode:"docked", width: min(preferred, canvasDockWidth(row)), scrimmed:false}` (equals `resolveRightSlotWidth` for ask); overlay: `width = min(preferred, max(min(row, 400), row - 48))`, `scrimmed = row - width > 0` (probe: row 300/400 -> uncovered 0; 456 -> 48; 506 -> 48; 700 -> 60; 879 -> 239). Both mounts call it; chat-layout's `slotEdge` (`chat-layout.tsx:382`) takes `.width` so `data-slot-edge` equals the drawn edge (`capture-evidence.mjs:6866` asserts that). Keep `data-ask-mode` values "docked"|"overlay" (rigs read them).
-  - Owner: coder. Rewrite the `canvasPaneMode` comment (`:171-190`): the ask drawer now draws a sheet; the canvas is still the withheld-divider flex dock.
-  - As built: both mounts read `preferred` through `resolveRightSlotWidth(Number.MAX_SAFE_INTEGER, ...)` rather than calling `rightSlotPaneWidth` a fifth time - `chat-pane-floors.test.mjs` pins exactly four calls in `chat-content.tsx` and must stay green unedited. The number is identical (the resolver returns the preference for a row with no constraint).
+  - Taken: in `chat-sidebar-layout.ts` beside `canvasPaneMode` (no import cycle: the
+    store already imports from this file, so `preferred` is an argument):
+    `ASK_SHEET_SCRIM_GUTTER_PX = 48`, `ASK_SHEET_MIN_SCRIM_PX = 16`,
+    `type AskPanePresentation = { mode: "docked" | "overlay"; width: number; scrimmed: boolean }`,
+    `askPanePresentation(rowWidth, preferredWidth)`.
+    Docked: `{mode:"docked", width: min(preferred, canvasDockWidth(row)), scrimmed:false}`
+    (equals `resolveRightSlotWidth` for ask); overlay:
+    `width = min(preferred, max(min(row, 400), row - 48))`, with a strip under 16px
+    collapsing to the full row; `scrimmed = row - width >= 16` (probe: row
+    300/400/415 -> uncovered 0; 416 -> 16; 456 -> 48; 506 -> 48; 700 -> 60; 879 ->
+    239). Both mounts call it. `chat-layout.tsx`'s lane stop takes `.width`, so
+    `data-slot-edge` equals the drawn edge (the capture evidence asserts that). Keep
+    `data-ask-mode` values "docked"|"overlay" (rigs read them).
+  - As built (review round 1, B2): the two mounts read `preferred` TWO WAYS, and that
+    is recorded rather than unified. `chat-content.tsx` reads it through
+    `resolveRightSlotWidth(Number.MAX_SAFE_INTEGER, state)` because
+    `chat-pane-floors.test.mjs` pins exactly four `rightSlotPaneWidth` calls in that
+    file (the drawn panes) and must stay green unedited; the resolver returns the
+    preference unchanged for a row that constrains nothing. `chat-layout.tsx` calls
+    `rightSlotPaneWidth` directly (no such pin there). Both answers are the same
+    number; the difference is a test-visible call count, not an arithmetic.
+  - The canvas is still the withheld-divider flex dock; `canvasPaneMode`'s note was
+    rewritten to say which occupant draws what.
 
-## Existing tests/rigs that pin the current behaviour
-- `scripts/pane-slot-ground.test.mjs:157,632` (`ASK_SLOT_MODE` regex is the literal `canvasDocked ? ... "overlay"` expression: must follow the new expression) and add a pin that `absolute inset-0` is gone from both mounts.
-- `scripts/notifications-drawer-scene.mjs:443-478` (rig; overlay branch asserts flush to rail edge: still true; add width <= row, scrim present, opaque ground).
-- `scripts/window-glass.test.mjs:214-226` (fixtures are docked only; add an overlay fixture with no `data-glass-region`).
-- `scripts/ask-open-policy.test.mjs` (new reason; `:169`/`:918` fixtures need the new fact).
-- `scripts/chat-sidebar-layout.test.mjs` (home for the pure-function cases: rows 400, 447, 448, 449, 506, 675, 879, 880; RTL not applicable to numbers). `chat-pane-floors.test.mjs:421-479` and `right-slot-width.test.mjs:710-726` should stay green UNCHANGED; that is the proof the resolver and widths did not move.
-- Re-run, expect no edit: `ask-dismiss-panel.test.mjs`, `ask-dismiss.test.mjs`, `fleet-asks.test.mjs`, `lane-leading.test.mjs`, `capture-evidence.mjs` ask-covering-browser frame.
-- Leave: `renderer-driver.mjs:11678-11694` (canvas adjacency assertion, canvas out of scope).
+## Existing tests/rigs that pin the behaviour
+
+- `scripts/pane-slot-ground.test.mjs` - the drawer slot's mode, the sheet class
+  list, the width, the scrim, the absence of `absolute inset-0`, and the `inert`
+  assignment on both mounts.
+- `scripts/notifications-drawer-scene.mjs` - the rig's overlay branch asserts width
+  <= row, the scrim, the opaque ground and `inert` on the covered content.
+- `scripts/window-glass.test.mjs` - an overlay fixture resolves to the opaque
+  elevated role while the docked fixtures stay veiled.
+- `scripts/ask-open-policy.test.mjs` - the reason matrix, `covers-conversation` and
+  its precedence, and the announcement.
+- `scripts/chat-sidebar-layout.test.mjs` - the pure function over rows 300-1000 and
+  two preferred widths, including the minimum strip. `chat-pane-floors.test.mjs` and
+  `right-slot-width.test.mjs` stay green UNCHANGED: that is the proof the resolver
+  and the uniform-side-panels widths did not move.
+- Leave: `renderer-driver.mjs`'s canvas adjacency assertion (canvas out of scope).

@@ -210,10 +210,21 @@ export function canvasPaneMode(rowWidth: number): "docked" | "overlay" {
  * the conversation stays legible above the sheet's start. 48 is above the 44px
  * rail item precedent (`PANEL_RAIL_WIDTH_PX`) that this app treats as the smallest
  * comfortable control box. The row keeps this strip only where it CAN: a row at or
- * below the sheet's 400px floor gives the strip up entirely (see
- * `askPanePresentation`).
+ * below the sheet's 400px floor gives the strip up entirely, and so does any row
+ * that would leave less than `ASK_SHEET_MIN_SCRIM_PX` (see `askPanePresentation`).
  */
 export const ASK_SHEET_SCRIM_GUTTER_PX = 48;
+
+/**
+ * The narrowest strip that still counts as a press target, in pixels.
+ *
+ * A 1px strip is as unpressable as no strip, and the rule that leaves one is an
+ * accident of the 400px floor rather than a design (rows 401-447 would leave
+ * 1-47px). Below this the sheet takes the whole row and the scrim is not drawn: a
+ * target the reader cannot see is worse than no target, and the keyboard door
+ * (Escape) and the drawer's own X are unaffected.
+ */
+export const ASK_SHEET_MIN_SCRIM_PX = 16;
 
 /**
  * How the ASK DRAWER occupies the row: the geometry one pure function, so the
@@ -233,9 +244,12 @@ export const ASK_SHEET_SCRIM_GUTTER_PX = 48;
  * rightSlotWidth)` at the call sites: this module cannot import the store (the
  * store imports it), so the preference travels as an argument.
  *
- * `scrimmed` is whether any conversation remains uncovered to press. It is false
- * only at rows the sheet fills (row <= 400), where the drawer's own X and Escape
- * are the doors - a 0px band would be a press target that cannot be seen.
+ * `scrimmed` is whether a strip of conversation remains that can carry a press.
+ * A strip narrower than `ASK_SHEET_MIN_SCRIM_PX` is no target at all, so there the
+ * sheet takes the whole row (`ASK_SHEET_MIN_SCRIM_PX` carries the reasoning): rows
+ * at or below the 400 floor, and the 401-415 band the floor would otherwise leave a
+ * 1-15px sliver of. Those rows are scrimless; Escape and the drawer's X are their
+ * doors.
  *
  * UNMEASURED IS DOCKED AT THE PREFERENCE, the idiom `resolveRightSlotWidth`
  * states: the first frame's row is 0, and callers pass
@@ -266,7 +280,15 @@ export function askPanePresentation(
 			rowWidth - ASK_SHEET_SCRIM_GUTTER_PX,
 		),
 	);
-	return { mode: "overlay", width, scrimmed: rowWidth - width > 0 };
+	/*
+	 * The scrim strip exists only when it can be pressed: a strip thinner than
+	 * `ASK_SHEET_MIN_SCRIM_PX` is the same no-target the 400px floor already
+	 * produces below it, so the sheet fills the row instead.
+	 */
+	const strip = rowWidth - width;
+	return strip >= ASK_SHEET_MIN_SCRIM_PX
+		? { mode: "overlay", width, scrimmed: true }
+		: { mode: "overlay", width: rowWidth, scrimmed: false };
 }
 
 /**

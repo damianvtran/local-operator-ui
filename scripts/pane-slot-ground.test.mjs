@@ -793,3 +793,59 @@ test("the shell's sidebar yield reads the drawable-aware derivation (#868)", () 
 		`${CHAT_LAYOUT} restates the canvas/asks disjunction again - the second copy #868 removed`,
 	);
 });
+
+test("the covered content is inert while the sheet is up, on both mounts", () => {
+	/*
+	 * THE PR'S HEADLINE BEHAVIOUR, pinned as source because the property is an
+	 * attribute a layout effect writes, not a class: the content behind the scrim
+	 * must not be tabbable or readable by a screen reader.
+	 *
+	 * M1 (review round 1) / Q1 (QA round 1): the FLEET mount had no equivalent of
+	 * the session's chat column, so Tab walked nine stops into the covered chat. It
+	 * now inerts a `display: contents` wrapper around `{content}` - no box, so the
+	 * flex row and the lane's stop do not move.
+	 *
+	 * m5: each assignment is read with its presentation gate in ONE expression, so
+	 * an edit that drops the mode check (and inerts a docked pane) fails here
+	 * rather than in a keyboard pass; both are written from layout effects, the
+	 * phase that lands before paint. m2's programmatic-open guard is pinned too:
+	 * the sheet must not be opened as a RESULT over an inert composer.
+	 */
+	const session = withoutComments(read(CHAT_CONTENT));
+	const shell = withoutComments(read(CHAT_LAYOUT));
+	for (const [mount, text, assignment, label] of [
+		[
+			"session",
+			session,
+			/column\.inert = sessionAsksOpen && askPresentation\.mode === "overlay"/,
+			"the chat column",
+		],
+		[
+			"fleet",
+			shell,
+			/element\.inert = fleetAsksOpen && askPresentation\.mode === "overlay"/,
+			"the covered content wrapper",
+		],
+	]) {
+		assert.match(
+			text,
+			assignment,
+			`the ${mount} mount no longer inerts ${label} while the sheet is up`,
+		);
+		assert.match(
+			text,
+			/useLayoutEffect\(\(\) => \{[\s\S]{0,600}?\.inert =/,
+			`the ${mount} mount no longer sets inert from a layout effect (a passive effect paints inert content first)`,
+		);
+	}
+	assert.match(
+		shell,
+		/data-ask-covered-content=""[\s\S]{0,120}?className="contents"/,
+		`${CHAT_LAYOUT} no longer wraps the covered content in the display:contents marker the rig reads`,
+	);
+	assert.match(
+		session,
+		/if \(options\?\.focus === false && inOverlayPresentation\(\)\) return;/,
+		`${CHAT_CONTENT} opens the sheet as a RESULT again: that arm exists to leave the caret in the composer, which the sheet inerts`,
+	);
+});

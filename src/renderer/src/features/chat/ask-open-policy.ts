@@ -19,7 +19,14 @@
  * six rules in their own idiom, so a rule changed here is a rule to change there:
  *
  *  1. NOTHING PENDING ON OPEN -> closed (what every surface did before the policy).
- *  2. PENDING ON OPEN -> open, ONCE for that view of that conversation.
+ *  2. PENDING ON OPEN -> open, ONCE for that view of that conversation. THE DESKTOP
+ *     HAS ONE EXCEPTION, and it is the first rule the other surfaces do not have:
+ *     when the drawer would be the SHEET over the conversation (below the dock
+ *     breakpoint), it does not open - `covers-conversation`. The sheet makes the
+ *     content inert, so an auto-open would cover and disable what the user is
+ *     reading; rules 5 and 6 are why that is a refusal rather than a modal. The
+ *     sheet is still one press away, the chip and the rail still announce it, and
+ *     the live region speaks the queue's own clause.
  *  3. ALL ADDRESSED ON OPEN -> closed, and a queue that settles never re-opens.
  *  4. A DELIBERATE CLOSE WHILE ASKS REMAIN IS RESPECTED for that conversation: not on
  *     a re-render, a queue refresh, an ask arriving or changing, or a switch away and
@@ -174,6 +181,12 @@ export type AskOpenReason =
 	 * the user is reading or typing in. Rule 5 ("an arrival never lands on someone
 	 * who is working") and rule 6 ("no theft") are why this is a refusal and not a
 	 * modal: the chip and the badge still announce the queue.
+	 *
+	 * FINAL FOR THE VIEW, like every other `leave` that is not a wait: widening the
+	 * window afterwards does NOT open it. "On open" is the one moment the policy acts,
+	 * and a resize is not a user asking for the drawer; opening on a resize would also
+	 * move the keyboard into a surface nobody just pressed. The chip and the rail are
+	 * the doors, which is what the announced clause points at.
 	 */
 	| "covers-conversation";
 
@@ -580,8 +593,20 @@ export const askOpenAnnouncement = (view: AskQueueView): string =>
  * chip's own clause for the same reason the open sentence does: one vocabulary
  * point, so the region and the chip cannot disagree.
  */
-export const askSettledAnnouncement = (view: AskQueueView): string =>
+const askQueueSentence = (view: AskQueueView): string =>
 	`${askChipCountClause(view)}.`;
+
+export const askSettledAnnouncement = askQueueSentence;
+
+/**
+ * THE SAME SENTENCE, FOR THE ONE OTHER EVENT THAT NEEDS IT (agent review round 1, m3):
+ * a view whose queue is pending but which must not open the drawer because the sheet
+ * would cover and inert the conversation (`covers-conversation`). The sentence is the
+ * chip's own clause - it claims nothing about a surface being up - so the live region
+ * and the chip cannot disagree, and a reader who cannot see the sheet still learns
+ * that asks are waiting. One builder, two events.
+ */
+export const askWaitingAnnouncement = askQueueSentence;
 
 /**
  * The conversations whose surface the user has closed while asks remained, and WHICH

@@ -715,6 +715,8 @@ export const AskDrawer = ({
 
 	const wasBootstrapped = useRef(false);
 	const doorRef = useRef<Element | null>(null);
+	/* The press itself, latched before the unread wait (see the entry effect). */
+	const pressedDoorRef = useRef<Element | null>(null);
 	useLayoutEffect(() => {
 		/*
 		 * THE CLAIM RE-ARMS ON EVERY COMMIT UNTIL IT SETTLES, including a commit a
@@ -784,6 +786,15 @@ export const AskDrawer = ({
 		 * menu row as a no-op.
 		 */
 		if (door !== null || requested) openedByDoor.current = true;
+		/*
+		 * THE DOOR IS LATCHED AS SOON AS IT IS SEEN, BEFORE THE WAIT BELOW CAN RETURN
+		 * (agent review round 1, m1). The covered column is `inert` on this same commit
+		 * - the parent's layout effect runs AFTER this one, and `inert` blurs the chip
+		 * to `<body>` - so a later commit of the unread wait cannot re-read the press.
+		 * Only a real DOOR is latched (`pressedDoorRef`), never the menu's trigger: the
+		 * request path has its own guard and must keep it.
+		 */
+		if (door !== null) pressedDoorRef.current = door;
 		const root = rootRef.current;
 		/* No container yet: nothing to move focus into, and the one-shot is not spent. */
 		if (root === null) return;
@@ -814,7 +825,19 @@ export const AskDrawer = ({
 		 */
 		if ((door !== null || requested) && frameUnread) return;
 		wasBootstrapped.current = true;
-		if (door === null && !requested) return;
+		/*
+		 * THE LATCHED PRESS IS ACCEPTED WHEN `<body>` IS WHERE OUR OWN `inert` LEFT IT
+		 * (agent review round 1, m1): focus on the body is not the user moving away, it
+		 * is the covered column being made inert under the chip they pressed. A user who
+		 * moved the keyboard somewhere real is still `door === null` here and stands the
+		 * move down, as before.
+		 */
+		const pressedDoor =
+			door ??
+			(active === document.body && doorRef.current === null
+				? pressedDoorRef.current
+				: null);
+		if (pressedDoor === null && !requested) return;
 		/*
 		 * THE RETURN TARGET: the pressed door itself, or - for the menu's request -
 		 * the trigger Radix handed the keyboard back to (`MENU_TRIGGER_SELECTOR`).
@@ -828,11 +851,11 @@ export const AskDrawer = ({
 		 * elsewhere (the composer, a palette) keeps their newer act. Either way the
 		 * one-shot is SPENT above, so a later Tab cannot resurrect the move.
 		 */
-		if (door !== null) doorRef.current = door;
+		if (pressedDoor !== null) doorRef.current = pressedDoor;
 		/* The request's target was recorded when the request was SEEN (above); this
 		 * is the fallback for a paint that could not find one then. */
 		if (viaMenu.current) doorRef.current ??= menuReturnTarget(active);
-		if (door === null && !keyboardLeftOnMenuPress(active)) return;
+		if (pressedDoor === null && !keyboardLeftOnMenuPress(active)) return;
 		/*
 		 * THE LIST'S FIRST CONTROL, not the bar's and not the filter's (UX round 1, U4;
 		 * agent review round 1, m1). The bar leads the DOM and its first focusable is
