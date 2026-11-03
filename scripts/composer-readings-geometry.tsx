@@ -203,6 +203,14 @@ const MEASURE = MEASURE_PARAM > 0 ? MEASURE_PARAM : null;
  * harness's own wrapper, and the strip resolves it with `getComputedStyle`.
  */
 const DIR = params.get("dir") === "rtl" ? "rtl" : "ltr";
+/*
+ * THE HOST'S ANCHOR. The chat band is bottom-anchored (the card grows UP), but
+ * some hosts mount the composer from the top of their pane (`--anchor=top`: the
+ * card grows DOWN, so a state that adds a row under the field moves the controls
+ * by the card's growth). The vertical numbers in \`composer-slots-proof.mjs\` are
+ * only meaningful against the anchor they were taken with.
+ */
+const ANCHOR = params.get("anchor") === "top" ? "top" : "bottom";
 
 /*
  * THE COPY'S LANGUAGE (`--locale=fr`): the longest shipped strings are what the
@@ -635,7 +643,7 @@ createRoot(document.getElementById("root") as HTMLElement).render(
 				<div
 					dir={DIR}
 					style={{ height: "100vh", display: "flex", flexDirection: "column" }}
-					className="justify-end bg-canvas"
+					className={`${ANCHOR === "top" ? "justify-start" : "justify-end"} bg-canvas`}
 					data-lo-geometry-dir={DIR}
 				>
 					<Harness />

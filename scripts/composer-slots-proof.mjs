@@ -71,6 +71,15 @@ for (const [key, group] of byGroup) {
 			// The row must never overflow its card: a control pushed past the edge is
 			// the failure the preparing caption caused (QA round 1, Q1).
 			rowOverflow: row.row?.overflow ?? null,
+			// VERTICAL: the card grows for the states that add a caption or lane row
+			// (preparing, transcribing, recording). In a bottom-anchored host (the
+			// chat band, and this rig) the card's top moves and the controls' y does
+			// not; in a TOP-anchored host the controls would move DOWN by exactly the
+			// card's growth. Both are reported against idle rather than asserted, because
+			// the claim this file proves is horizontal.
+			cardHeight: row.formBox?.height ?? null,
+			cardTop: row.formBox?.top ?? null,
+			controlsTop: row.controls?.top ?? null,
 			sent: row.sent?.length ?? 0,
 			boxValue: row.boxValue,
 		};
@@ -84,6 +93,17 @@ for (const [key, group] of byGroup) {
 				`${key} ${row.state}: A ${a?.left} B ${b?.left} vs idle A ${ref.a?.left} B ${ref.b?.left}`,
 			);
 	}
+	const idleV = states.find((s) => s.state === "idle");
+	for (const s of states) {
+		s.cardHeightDelta =
+			s.cardHeight !== null && idleV?.cardHeight != null
+				? Math.round((s.cardHeight - idleV.cardHeight) * 10) / 10
+				: null;
+		s.controlsYDelta =
+			s.controlsTop !== null && idleV?.controlsTop != null
+				? Math.round((s.controlsTop - idleV.controlsTop) * 10) / 10
+				: null;
+	}
 	out.groups.push({ key, idleA: ref.a?.left, idleB: ref.b?.left, states });
 }
 out.verdict = out.failures.length === 0 ? "PASS" : "FAIL";
@@ -95,7 +115,7 @@ for (const g of out.groups) {
 	console.log(`\n${g.key}  idle A=${g.idleA} B=${g.idleB}`);
 	for (const s of g.states)
 		console.log(
-			`  ${s.state.padEnd(14)} ov=${String(s.rowOverflow).padEnd(4)} boxes=${s.boxes} A=${String(s.slotA?.left).padEnd(5)} B=${String(s.slotB?.left).padEnd(5)} cluster=${s.clusterWidth}  A=idle:${s.aEqualsIdle} B=idle:${s.bEqualsIdle}`,
+			`  ${s.state.padEnd(14)} ov=${String(s.rowOverflow).padEnd(4)} boxes=${s.boxes} A=${String(s.slotA?.left).padEnd(5)} B=${String(s.slotB?.left).padEnd(5)} cluster=${s.clusterWidth} dCard=${s.cardHeightDelta} dControlsY=${s.controlsYDelta}  A=idle:${s.aEqualsIdle} B=idle:${s.bEqualsIdle}`,
 		);
 }
 console.log(`\n${out.verdict} (${out.failures.length} failure(s))`);
