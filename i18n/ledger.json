@@ -8077,8 +8077,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "abb57e40f1b5c4ac9fd8426d12d622d8a68d1b974b77ab4cdfd7f13a21f604b9",
-			"target_sha256": "99354ec31392b5bb24eb609108c604148465a4e10ae6f4c22900feca21d14e9d",
+			"source_sha256": "0fc05324f1284ff6f7f37f8fe9dc8aa78d0f17f03640f300e02b3e37c3ca954b",
+			"target_sha256": "24499fe6366913535f41e35fb791414a5bdb7ea943cd8e3c818645e1c0c37a4e",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -8096,21 +8096,21 @@
 					"agent": "copy-reviewer",
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-03",
-					"result": "clean-with-findings",
-					"instance": "7fc20c1e3809-es",
+					"result": "changes_requested",
+					"instance": "2fd8346bf635-es",
 					"findings": {
 						"blocker": 0,
-						"major": 0,
-						"minor": 1,
+						"major": 1,
+						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/7fc20c1e3809-es.json",
-					"receipt_sha256": "074373c5e8144717aa61843fb8c08e447d7f435c9cf2aa37348d5fbc48a4f740",
-					"scope": "Ten ui.teamBridge.delivery.* values re-pointed to {recipient} (PR #1643 head 0ce7d254)",
-					"note": "C4 MINOR: unnamed label lacks article mid-sentence. Receipt i18n/receipts/7fc20c1e3809-es.json"
+					"receipt": "i18n/receipts/2fd8346bf635-es.json",
+					"receipt_sha256": "9371d5dbce37ecd25c0af772249d08f5a9f3529d26cbf9fbcc1f85d1f7a913bd",
+					"scope": "Round 2: new ui.teamBridge.delivery.recipient_unnamed + the ten delivery.* sentences with both recipient forms (PR #1643 head 70646b20)",
+					"note": "C5 MAJOR: recipient_unnamed \"el …\" renders \"a el jefe\" (needs al) in refused*/pending; C4 fixed in held* only. Receipt i18n/receipts/2fd8346bf635-es.json"
 				}
 			],
-			"status": "audited",
+			"status": "changes_requested",
 			"superseded": [
 				{
 					"source_sha256": "0694bc18d6400d88ea4e84e2d3585a76c55dbfc913da7e53dbed7457e4f0bea2",
@@ -9552,6 +9552,30 @@
 							"receipt": "i18n/receipts/f93eb129057e-es.json",
 							"receipt_sha256": "4fe558aa7e29b4b535148887365af91eb277eac6cab6de31dcd979f4f2c43dcd",
 							"scope": "Five attachmentCard keys; older values identical to ledger-bound base 47e06bc7"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "abb57e40f1b5c4ac9fd8426d12d622d8a68d1b974b77ab4cdfd7f13a21f604b9",
+					"target_sha256": "99354ec31392b5bb24eb609108c604148465a4e10ae6f4c22900feca21d14e9d",
+					"auditors": [
+						{
+							"agent": "copy-reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-03",
+							"result": "clean-with-findings",
+							"instance": "7fc20c1e3809-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/7fc20c1e3809-es.json",
+							"receipt_sha256": "074373c5e8144717aa61843fb8c08e447d7f435c9cf2aa37348d5fbc48a4f740",
+							"scope": "Ten ui.teamBridge.delivery.* values re-pointed to {recipient} (PR #1643 head 0ce7d254)",
+							"note": "C4 MINOR: unnamed label lacks article mid-sentence. Receipt i18n/receipts/7fc20c1e3809-es.json"
 						}
 					],
 					"status": "audited"
@@ -18120,8 +18144,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "abb57e40f1b5c4ac9fd8426d12d622d8a68d1b974b77ab4cdfd7f13a21f604b9",
-			"target_sha256": "a6fe5d7b1b7168aab3524f10acf52964a0c163fdc62eb268c4c3070fcd867194",
+			"source_sha256": "0fc05324f1284ff6f7f37f8fe9dc8aa78d0f17f03640f300e02b3e37c3ca954b",
+			"target_sha256": "b719be6c4c22141cdee9e781107265be9e33ce15fd3dd329222d82833431228b",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -18140,18 +18164,18 @@
 					"agent": "copy-reviewer",
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-03",
-					"result": "clean-with-findings",
-					"instance": "7fc20c1e3809-fr",
+					"result": "clean",
+					"instance": "2fd8346bf635-fr",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
+						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/7fc20c1e3809-fr.json",
-					"receipt_sha256": "a39296b8155615dbc4e50d139f257629ad7673b35ead2c214a7ee50a434039c6",
-					"scope": "Ten ui.teamBridge.delivery.* values re-pointed to {recipient} (PR #1643 head 0ce7d254)",
-					"note": "C3 MINOR: unnamed label lacks article mid-sentence. Receipt i18n/receipts/7fc20c1e3809-fr.json"
+					"receipt": "i18n/receipts/2fd8346bf635-fr.json",
+					"receipt_sha256": "4295eb6e75b56b69d2e01be8f819c72191cff56f77800aaa739dca93a4050dd6",
+					"scope": "Round 2: new ui.teamBridge.delivery.recipient_unnamed + the ten delivery.* sentences with both recipient forms (PR #1643 head 70646b20)",
+					"note": "Round 2: C3 fixed (\"à la cheffe de cabinet\"); no new findings. Receipt i18n/receipts/2fd8346bf635-fr.json"
 				}
 			],
 			"status": "audited",
@@ -19620,6 +19644,30 @@
 							"receipt": "i18n/receipts/f93eb129057e-fr.json",
 							"receipt_sha256": "60a61625870414586e08c9a4a1bc5b0969d42024c2527c7de474733ecf6d09eb",
 							"scope": "Five attachmentCard keys; older values identical to ledger-bound base 47e06bc7"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "abb57e40f1b5c4ac9fd8426d12d622d8a68d1b974b77ab4cdfd7f13a21f604b9",
+					"target_sha256": "a6fe5d7b1b7168aab3524f10acf52964a0c163fdc62eb268c4c3070fcd867194",
+					"auditors": [
+						{
+							"agent": "copy-reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-03",
+							"result": "clean-with-findings",
+							"instance": "7fc20c1e3809-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/7fc20c1e3809-fr.json",
+							"receipt_sha256": "a39296b8155615dbc4e50d139f257629ad7673b35ead2c214a7ee50a434039c6",
+							"scope": "Ten ui.teamBridge.delivery.* values re-pointed to {recipient} (PR #1643 head 0ce7d254)",
+							"note": "C3 MINOR: unnamed label lacks article mid-sentence. Receipt i18n/receipts/7fc20c1e3809-fr.json"
 						}
 					],
 					"status": "audited"
@@ -28043,8 +28091,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "abb57e40f1b5c4ac9fd8426d12d622d8a68d1b974b77ab4cdfd7f13a21f604b9",
-			"target_sha256": "7e660f29961f0508d7bf17343a7ba38df43b9d3641ca063e06eb6a2300e177f0",
+			"source_sha256": "0fc05324f1284ff6f7f37f8fe9dc8aa78d0f17f03640f300e02b3e37c3ca954b",
+			"target_sha256": "a8a64fb0d668eee3ebd3c1832a596417d691ee13f7f07c312a3d1106b928b371",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -28062,21 +28110,21 @@
 					"agent": "copy-reviewer",
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-03",
-					"result": "changes_requested",
-					"instance": "7fc20c1e3809-hi",
+					"result": "clean",
+					"instance": "2fd8346bf635-hi",
 					"findings": {
 						"blocker": 0,
-						"major": 1,
+						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/7fc20c1e3809-hi.json",
-					"receipt_sha256": "bc49ac0c4320f7ce2263c1daadcfd13ad34a2eabc9e032ce2c279dd45400f207",
-					"scope": "Ten ui.teamBridge.delivery.* values re-pointed to {recipient} (PR #1643 head 0ce7d254)",
-					"note": "C1 MAJOR: unnamed chief label (का) before तक/द्वारा needs oblique के in all ten lines. Receipt i18n/receipts/7fc20c1e3809-hi.json"
+					"receipt": "i18n/receipts/2fd8346bf635-hi.json",
+					"receipt_sha256": "d649b1dd08b95b52165e0613498946c0b15d123aa7ed5b56bcfe55946ecfec8f",
+					"scope": "Round 2: new ui.teamBridge.delivery.recipient_unnamed + the ten delivery.* sentences with both recipient forms (PR #1643 head 70646b20)",
+					"note": "Round 2: C1 fixed (oblique के before तक / द्वारा); no new findings. Receipt i18n/receipts/2fd8346bf635-hi.json"
 				}
 			],
-			"status": "changes_requested",
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "92f6c40f5da4092adb0b720fb6f89ba0f42857590f19627e99e8c6579b11585b",
@@ -29451,6 +29499,30 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "abb57e40f1b5c4ac9fd8426d12d622d8a68d1b974b77ab4cdfd7f13a21f604b9",
+					"target_sha256": "7e660f29961f0508d7bf17343a7ba38df43b9d3641ca063e06eb6a2300e177f0",
+					"auditors": [
+						{
+							"agent": "copy-reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-03",
+							"result": "changes_requested",
+							"instance": "7fc20c1e3809-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 1,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/7fc20c1e3809-hi.json",
+							"receipt_sha256": "bc49ac0c4320f7ce2263c1daadcfd13ad34a2eabc9e032ce2c279dd45400f207",
+							"scope": "Ten ui.teamBridge.delivery.* values re-pointed to {recipient} (PR #1643 head 0ce7d254)",
+							"note": "C1 MAJOR: unnamed chief label (का) before तक/द्वारा needs oblique के in all ten lines. Receipt i18n/receipts/7fc20c1e3809-hi.json"
+						}
+					],
+					"status": "changes_requested"
 				}
 			]
 		},
@@ -37645,8 +37717,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "abb57e40f1b5c4ac9fd8426d12d622d8a68d1b974b77ab4cdfd7f13a21f604b9",
-			"target_sha256": "a454f8f89ecefff3bb5543270c5c62344ab4056819774e1b2018a3fa26107efa",
+			"source_sha256": "0fc05324f1284ff6f7f37f8fe9dc8aa78d0f17f03640f300e02b3e37c3ca954b",
+			"target_sha256": "baaa2c7e9a146f5e01cf3099e64ef503d9e461e7e1d6456044450b9423635949",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -37666,17 +37738,17 @@
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-03",
 					"result": "clean",
-					"instance": "7fc20c1e3809-ru",
+					"instance": "2fd8346bf635-ru",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/7fc20c1e3809-ru.json",
-					"receipt_sha256": "89b0c584871a2890d982289cc92d2745552125e0db07f0c97c6088b9e198d323",
-					"scope": "Ten ui.teamBridge.delivery.* values re-pointed to {recipient} (PR #1643 head 0ce7d254)",
-					"note": "Clean 0/0/0/0. Receipt i18n/receipts/7fc20c1e3809-ru.json"
+					"receipt": "i18n/receipts/2fd8346bf635-ru.json",
+					"receipt_sha256": "234817cd3381a4abcc91bc8134bba88b33355325ae750a73b47d752a37d3e6fb",
+					"scope": "Round 2: new ui.teamBridge.delivery.recipient_unnamed + the ten delivery.* sentences with both recipient forms (PR #1643 head 70646b20)",
+					"note": "Round 2: new key copies audited chief.unnamed; all ten sentences natural. Receipt i18n/receipts/2fd8346bf635-ru.json"
 				}
 			],
 			"status": "audited",
@@ -39140,6 +39212,30 @@
 							"receipt": "i18n/receipts/f93eb129057e-ru.json",
 							"receipt_sha256": "fe09d7e37c58de32411de72a9931c77987ae8ef8429777982b98153d426e71b5",
 							"scope": "Five attachmentCard keys; older values identical to ledger-bound base 47e06bc7"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "abb57e40f1b5c4ac9fd8426d12d622d8a68d1b974b77ab4cdfd7f13a21f604b9",
+					"target_sha256": "a454f8f89ecefff3bb5543270c5c62344ab4056819774e1b2018a3fa26107efa",
+					"auditors": [
+						{
+							"agent": "copy-reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-03",
+							"result": "clean",
+							"instance": "7fc20c1e3809-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/7fc20c1e3809-ru.json",
+							"receipt_sha256": "89b0c584871a2890d982289cc92d2745552125e0db07f0c97c6088b9e198d323",
+							"scope": "Ten ui.teamBridge.delivery.* values re-pointed to {recipient} (PR #1643 head 0ce7d254)",
+							"note": "Clean 0/0/0/0. Receipt i18n/receipts/7fc20c1e3809-ru.json"
 						}
 					],
 					"status": "audited"
@@ -47374,8 +47470,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "abb57e40f1b5c4ac9fd8426d12d622d8a68d1b974b77ab4cdfd7f13a21f604b9",
-			"target_sha256": "e816f39bc0de8bf4f43f8793cfde760150e9ae585c74455ba8ef9751b3dad6c7",
+			"source_sha256": "0fc05324f1284ff6f7f37f8fe9dc8aa78d0f17f03640f300e02b3e37c3ca954b",
+			"target_sha256": "44534b830238d01356a2d256172653eede029631129e13d6bfd04ca7c67e650a",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -47393,21 +47489,21 @@
 					"agent": "copy-reviewer",
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-03",
-					"result": "changes_requested",
-					"instance": "7fc20c1e3809-ur",
+					"result": "clean",
+					"instance": "2fd8346bf635-ur",
 					"findings": {
 						"blocker": 0,
-						"major": 1,
+						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/7fc20c1e3809-ur.json",
-					"receipt_sha256": "1e6880d89058b3f9ee5b74e4b1106bd04c45b3c4435f282070f4b0961967887a",
-					"scope": "Ten ui.teamBridge.delivery.* values re-pointed to {recipient} (PR #1643 head 0ce7d254)",
-					"note": "C2 MAJOR: unnamed chief label (کا) before تک/کی جانب سے needs oblique کے in all ten lines. Receipt i18n/receipts/7fc20c1e3809-ur.json"
+					"receipt": "i18n/receipts/2fd8346bf635-ur.json",
+					"receipt_sha256": "199def967058629b47ebf8979c0261d0d6ede3391422db577535c7f90fea5055",
+					"scope": "Round 2: new ui.teamBridge.delivery.recipient_unnamed + the ten delivery.* sentences with both recipient forms (PR #1643 head 70646b20)",
+					"note": "Round 2: C2 fixed (oblique کے before تک / کی جانب سے); no new findings. Receipt i18n/receipts/2fd8346bf635-ur.json"
 				}
 			],
-			"status": "changes_requested",
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "92f6c40f5da4092adb0b720fb6f89ba0f42857590f19627e99e8c6579b11585b",
@@ -48782,6 +48878,30 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "abb57e40f1b5c4ac9fd8426d12d622d8a68d1b974b77ab4cdfd7f13a21f604b9",
+					"target_sha256": "e816f39bc0de8bf4f43f8793cfde760150e9ae585c74455ba8ef9751b3dad6c7",
+					"auditors": [
+						{
+							"agent": "copy-reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-03",
+							"result": "changes_requested",
+							"instance": "7fc20c1e3809-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 1,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/7fc20c1e3809-ur.json",
+							"receipt_sha256": "1e6880d89058b3f9ee5b74e4b1106bd04c45b3c4435f282070f4b0961967887a",
+							"scope": "Ten ui.teamBridge.delivery.* values re-pointed to {recipient} (PR #1643 head 0ce7d254)",
+							"note": "C2 MAJOR: unnamed chief label (کا) before تک/کی جانب سے needs oblique کے in all ten lines. Receipt i18n/receipts/7fc20c1e3809-ur.json"
+						}
+					],
+					"status": "changes_requested"
 				}
 			]
 		},
@@ -57436,8 +57556,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "abb57e40f1b5c4ac9fd8426d12d622d8a68d1b974b77ab4cdfd7f13a21f604b9",
-			"target_sha256": "ea0f3c8924756a199559f3df9401f9f25ff03a4ca17d1709b67166594b0c7740",
+			"source_sha256": "0fc05324f1284ff6f7f37f8fe9dc8aa78d0f17f03640f300e02b3e37c3ca954b",
+			"target_sha256": "c9f1118a1ea2924a7fbf6fa997bf9af50ab1215c64274356731a8d2c41baff83",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -57455,18 +57575,18 @@
 					"agent": "copy-reviewer",
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-03",
-					"result": "clean",
-					"instance": "7fc20c1e3809-vi",
+					"result": "clean-with-findings",
+					"instance": "2fd8346bf635-vi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
+						"minor": 1,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/7fc20c1e3809-vi.json",
-					"receipt_sha256": "eabe3168ce2d033d0283ef9f318f4c30aad809000306b8d893415d599fa24816",
-					"scope": "Ten ui.teamBridge.delivery.* values re-pointed to {recipient} (PR #1643 head 0ce7d254)",
-					"note": "Clean 0/0/0/0. Receipt i18n/receipts/7fc20c1e3809-vi.json"
+					"receipt": "i18n/receipts/2fd8346bf635-vi.json",
+					"receipt_sha256": "fb33a7c48304023abb96d3292d116b0f0af8f909671d27e35f5ee906339a1ead",
+					"scope": "Round 2: new ui.teamBridge.delivery.recipient_unnamed + the ten delivery.* sentences with both recipient forms (PR #1643 head 70646b20)",
+					"note": "C6 MINOR: in-sentence recipient_unnamed keeps a capital (Chánh → chánh). Receipt i18n/receipts/2fd8346bf635-vi.json"
 				}
 			],
 			"status": "audited",
@@ -58872,6 +58992,30 @@
 							"receipt": "i18n/receipts/f93eb129057e-vi.json",
 							"receipt_sha256": "3fdd568a4cea5597e607d28e2bdd78fd8520da97f4a1ba2a0f92c5db5b2722e3",
 							"scope": "Five attachmentCard keys; older values identical to ledger-bound base 47e06bc7"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "abb57e40f1b5c4ac9fd8426d12d622d8a68d1b974b77ab4cdfd7f13a21f604b9",
+					"target_sha256": "ea0f3c8924756a199559f3df9401f9f25ff03a4ca17d1709b67166594b0c7740",
+					"auditors": [
+						{
+							"agent": "copy-reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-03",
+							"result": "clean",
+							"instance": "7fc20c1e3809-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/7fc20c1e3809-vi.json",
+							"receipt_sha256": "eabe3168ce2d033d0283ef9f318f4c30aad809000306b8d893415d599fa24816",
+							"scope": "Ten ui.teamBridge.delivery.* values re-pointed to {recipient} (PR #1643 head 0ce7d254)",
+							"note": "Clean 0/0/0/0. Receipt i18n/receipts/7fc20c1e3809-vi.json"
 						}
 					],
 					"status": "audited"
@@ -68122,8 +68266,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "abb57e40f1b5c4ac9fd8426d12d622d8a68d1b974b77ab4cdfd7f13a21f604b9",
-			"target_sha256": "c1e3274ab12f2c2959c975d2a790efbf9984930a037ab35ca17b873b6d82df64",
+			"source_sha256": "0fc05324f1284ff6f7f37f8fe9dc8aa78d0f17f03640f300e02b3e37c3ca954b",
+			"target_sha256": "e899700354282b668e7f998a70f3e7614b7b8140193db87f0a166bcee71d81d0",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -68142,17 +68286,17 @@
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-03",
 					"result": "clean",
-					"instance": "7fc20c1e3809-zh-cn",
+					"instance": "2fd8346bf635-zh-cn",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/7fc20c1e3809-zh-cn.json",
-					"receipt_sha256": "32b7fc561861a3128ac9a69f99367ce344cbbdd5dca627ae7f28c338973902d1",
-					"scope": "Ten ui.teamBridge.delivery.* values re-pointed to {recipient} (PR #1643 head 0ce7d254)",
-					"note": "Clean 0/0/0/0. Receipt i18n/receipts/7fc20c1e3809-zh-cn.json"
+					"receipt": "i18n/receipts/2fd8346bf635-zh-cn.json",
+					"receipt_sha256": "53a20e8940af495a74280632ee054e7a86b43eb7970130da3bab0faa18bd1b07",
+					"scope": "Round 2: new ui.teamBridge.delivery.recipient_unnamed + the ten delivery.* sentences with both recipient forms (PR #1643 head 70646b20)",
+					"note": "Round 2: new key copies audited chief.unnamed; all ten sentences natural. Receipt i18n/receipts/2fd8346bf635-zh-cn.json"
 				}
 			],
 			"status": "audited",
@@ -69580,6 +69724,30 @@
 							"receipt": "i18n/receipts/f93eb129057e-zh-cn.json",
 							"receipt_sha256": "3080a67ffe533a151a201f7871cd40e6ccab40caaa48331fe7bc65992671c2e0",
 							"scope": "Five attachmentCard keys; older values identical to ledger-bound base 47e06bc7"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "abb57e40f1b5c4ac9fd8426d12d622d8a68d1b974b77ab4cdfd7f13a21f604b9",
+					"target_sha256": "c1e3274ab12f2c2959c975d2a790efbf9984930a037ab35ca17b873b6d82df64",
+					"auditors": [
+						{
+							"agent": "copy-reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-03",
+							"result": "clean",
+							"instance": "7fc20c1e3809-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/7fc20c1e3809-zh-cn.json",
+							"receipt_sha256": "32b7fc561861a3128ac9a69f99367ce344cbbdd5dca627ae7f28c338973902d1",
+							"scope": "Ten ui.teamBridge.delivery.* values re-pointed to {recipient} (PR #1643 head 0ce7d254)",
+							"note": "Clean 0/0/0/0. Receipt i18n/receipts/7fc20c1e3809-zh-cn.json"
 						}
 					],
 					"status": "audited"
