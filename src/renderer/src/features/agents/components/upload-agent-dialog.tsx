@@ -815,7 +815,7 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 							{t("ui.agents.upload.sign_in.needed")}
 						</p>
 						<RadientAuthButtons
-							titleText="Sign in to continue"
+							titleText={t("ui.agents.upload.sign_in.title_continue")}
 							descriptionText=""
 							onSignInSuccess={onSignInSuccess}
 						/>
@@ -881,7 +881,7 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 							{t("ui.agents.upload.sign_in.reauthenticate")}
 						</p>
 						<RadientAuthButtons
-							titleText="Sign in again"
+							titleText={t("ui.agents.upload.sign_in.title_again")}
 							descriptionText=""
 							onSignInSuccess={() => {
 								// The refusal was about the credential, so it stops being the question

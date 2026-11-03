@@ -28,5 +28,6 @@
 	"ui.agents.pages.search.teams": "Rechercher des équipes",
 	"ui.agents.pages.search_aria": "Rechercher des agents et des équipes",
 	"ui.agents.pages.tab.agents": "Agents",
-	"ui.agents.pages.tab.teams": "Équipes"
+	"ui.agents.pages.tab.teams": "Équipes",
+	"ui.agents.pages.blocked_edit": "Terminez ou annulez d’abord votre modification."
 }

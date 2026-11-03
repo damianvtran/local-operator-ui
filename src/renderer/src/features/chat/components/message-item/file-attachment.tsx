@@ -383,8 +383,8 @@ export const FileAttachment: FC<FileAttachmentProps> = memo(
 								type="button"
 								className={cn("block max-w-full cursor-pointer")}
 								onClick={() => setExpanded(true)}
-								aria-label={`Expand ${name}`}
-								title={`Click to expand ${name}`}
+								aria-label={t("ui.chat.attachments.expand_aria", { name })}
+								title={t("ui.chat.attachments.expand_title", { name })}
 							>
 								<AttachmentFrame>
 									<img
@@ -438,7 +438,9 @@ export const FileAttachment: FC<FileAttachmentProps> = memo(
 					type="button"
 					className="flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 text-start"
 					onClick={handleClick}
-					title={`Click to open ${getFileName(file)}`}
+					title={t("ui.chat.attachments.open_title", {
+						name: getFileName(file),
+					})}
 				>
 					{/* Neutral, not accent. A conversation can carry a dozen of these
 					 * and § 2 budgets the accent at about three spends per screen —

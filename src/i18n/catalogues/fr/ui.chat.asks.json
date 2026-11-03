@@ -28,5 +28,8 @@
 	"ui.chat.asks.all_asks": "Toutes les demandes",
 	"ui.chat.asks.conversation_asks": "Demandes de cette conversation",
 	"ui.chat.asks.status.withdrawn": "Retirée — l’agent n’attend plus de réponse",
-	"ui.chat.asks.status.withdrawn_label": "Retirée"
+	"ui.chat.asks.status.withdrawn_label": "Retirée",
+	"ui.chat.asks.outstanding_count": "{count, plural, one {{count_display} demande} many {{count_display} de demandes} other {{count_display} demandes}}",
+	"ui.chat.asks.outstanding_aria": "{label} en attente. L’agent n’est pas bloqué en attendant votre réponse.",
+	"ui.chat.asks.answer_aria": "Votre réponse à : {question}"
 }

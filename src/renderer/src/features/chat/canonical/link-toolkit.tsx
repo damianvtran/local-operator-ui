@@ -86,6 +86,8 @@ import {
 	useSpeakDismissal,
 } from "@shared/components/common/speak-control";
 import { Button, Tooltip } from "@shared/components/ui";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { clipForSpeech } from "@shared/lib/speech-clip";
 import { useSpeechBindingFor } from "@shared/lib/speech-target";
 import { cn } from "@shared/lib/utils";
@@ -150,6 +152,7 @@ export const LinkToolkit: FC<LinkToolkitProps> = ({
 	quoteAvailable,
 	onDismiss,
 }) => {
+	useI18nLocale();
 	const target = subject.getAttribute(LINK_TARGET_PATH_ATTR) ?? "";
 	const kind = (subject.getAttribute("data-lo-kind") ?? "file") as LinkKind;
 	/*
@@ -470,14 +473,20 @@ export const LinkToolkit: FC<LinkToolkitProps> = ({
 						 * and a pressed control that looks identical to an unpressed one is how
 						 * a reader presses it twice.
 						 */
-						content={action.id === "copy" && copied ? "Copied" : action.label}
+						content={
+							action.id === "copy" && copied
+								? t("ui.common.actions.copied")
+								: action.label
+						}
 						side={placement?.placement === "below" ? "bottom" : "top"}
 					>
 						<Button
 							variant="ghost"
 							size="icon-sm"
 							aria-label={
-								action.id === "copy" && copied ? "Copied" : action.label
+								action.id === "copy" && copied
+									? t("ui.common.actions.copied")
+									: action.label
 							}
 							className="text-ink-dim hover:bg-accent-wash hover:text-accent"
 							onClick={presses[action.id]}

@@ -49,5 +49,21 @@
 	"ui.agents.detail.tools.every_tool_aria": "Дать этому агенту все инструменты",
 	"ui.agents.detail.tools.may_use_any": "Этот агент может использовать всё, что предлагает сессия.",
 	"ui.agents.detail.tools.placeholder": "Имя инструмента",
-	"ui.agents.detail.origin.created_locally": "Создан на этом компьютере."
+	"ui.agents.detail.origin.created_locally": "Создан на этом компьютере.",
+	"ui.agents.detail.tools.remove_aria": "Убрать {tool}",
+	"ui.agents.detail.tools.add_label": "Добавить инструмент",
+	"ui.agents.detail.field.when_to_use": "Когда использовать этого агента",
+	"ui.agents.detail.field.when_to_use_hint": "Одно предложение, по которому модель решает, подходит ли этот агент.",
+	"ui.agents.detail.field.instructions_hint": "Что агенту поручено делать. Это и есть всё его поведение.",
+	"ui.agents.detail.section.delegation_hint": "Может ли этот агент передавать работу субагентам и на каком уровне усилий он работает.",
+	"ui.agents.detail.field.effort_loading": "Загрузка уровней усилий",
+	"ui.agents.detail.field.effort_helper": "Уровни берутся из настроек моделей субагентов на бэкенде.",
+	"ui.agents.detail.field.effort_inherit_hint": "Использовать усилия самой сессии",
+	"ui.agents.detail.field.effort_configured_hint": "Уровень, заданный в настройках",
+	"ui.agents.detail.field.how_it_works": "Как взаимодействует с другими",
+	"ui.agents.detail.empty.description": "Описания пока нет — добавьте его, чтобы модель знала, когда выбирать этого агента.",
+	"ui.agents.detail.empty.instructions": "Инструкций пока нет.",
+	"ui.agents.detail.action.create_copy": "Создать копию",
+	"ui.agents.detail.action.creating": "Создание…",
+	"ui.agents.detail.action.discard_new_agent": "Отменить создание агента?"
 }

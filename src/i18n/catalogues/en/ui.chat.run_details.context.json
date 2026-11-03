@@ -106,5 +106,52 @@
 		"length": "Four words.",
 		"note": "The other arm of the same block: the run HAS requested details, but none of them has anything to show. Distinct from `Nothing in flight.`, which is a run that asked for nothing at all.",
 		"placeholders": {}
+	},
+	"ui.chat.run_details.subagents_of_aria": {
+		"role": "Accessible name of a child subagent's own subagent list",
+		"tone": "Noun phrase plus a name",
+		"length_hint": "Two words plus a name",
+		"note": "Names whose subagents the list shows.",
+		"placeholders": {
+			"owner": "The owning subagent's label; do not translate."
+		}
+	},
+	"ui.chat.run_details.job_cancel_aria": {
+		"role": "Accessible name of the cancel button on a job row",
+		"tone": "Imperative plus a name",
+		"length_hint": "One word plus a name",
+		"note": "Imperative plus the job's own label.",
+		"placeholders": {
+			"label": "The job's display label; do not translate."
+		}
+	},
+	"ui.chat.run_details.monitors.cancel_aria": {
+		"role": "Accessible name of the cancel button on a monitor row",
+		"tone": "Imperative plus a name",
+		"length_hint": "Two words plus a name",
+		"note": "Imperative plus the monitor's name.",
+		"placeholders": {
+			"name": "The monitor's name; do not translate."
+		}
+	},
+	"ui.chat.run_details.monitors.more": {
+		"role": "Non-interactive summary under a capped monitor list",
+		"tone": "Count plus noun",
+		"length_hint": "Three words",
+		"note": "Counts the monitors the list does not draw.",
+		"placeholders": {
+			"count": "Numeric count for CLDR plural selection, separate from count_display. English uses exact =1 to preserve the original strict count === 1 branch, including negative inputs.",
+			"count_display": "Raw display string from String(count), preserving the original JavaScript interpolation without grouping or rounding. Keep count numeric for CLDR plural selection; do not number-format count_display."
+		}
+	},
+	"ui.chat.run_details.wake.more": {
+		"role": "Non-interactive summary under a capped wake list",
+		"tone": "Count plus noun",
+		"length_hint": "Three words",
+		"note": "A wake is a scheduled follow-up the agent set for itself; counts those the list does not draw.",
+		"placeholders": {
+			"count": "Numeric count for CLDR plural selection, separate from count_display. English uses exact =1 to preserve the original strict count === 1 branch, including negative inputs.",
+			"count_display": "Raw display string from String(count), preserving the original JavaScript interpolation without grouping or rounding. Keep count numeric for CLDR plural selection; do not number-format count_display."
+		}
 	}
 }

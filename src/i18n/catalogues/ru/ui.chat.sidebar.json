@@ -59,5 +59,8 @@
 	"ui.chat.sidebar.row_menu.unpin": "Открепить разговор",
 	"ui.chat.sidebar.pins.pin_label": "Закрепить «{title}»",
 	"ui.chat.sidebar.pins.unpin_label": "Открепить «{title}»",
-	"ui.chat.sidebar.agents.list_join": "{position, select, pair {{head} и {tail}} middle {{head}, {tail}} other {{head} и {tail}}}"
+	"ui.chat.sidebar.agents.list_join": "{position, select, pair {{head} и {tail}} middle {{head}, {tail}} other {{head} и {tail}}}",
+	"ui.chat.sidebar.row.open_draft": "Открыть {label}",
+	"ui.chat.sidebar.entity.more_in": "{label} в «{name}»",
+	"ui.chat.sidebar.search.count_tooltip": "По этому поиску {count, plural, =1 {{clipped, select, yes {найдено не менее {count_display} чата} other {найден {count_display} чат}}} one {{clipped, select, yes {найдено не менее {count_display} чата} other {найден {count_display} чат}}} few {{clipped, select, yes {найдено не менее {count_display} чатов} other {найдено {count_display} чата}}} many {{clipped, select, yes {найдено не менее {count_display} чатов} other {найдено {count_display} чатов}}} other {{clipped, select, yes {найдено не менее {count_display} чата} other {найдено {count_display} чата}}}}{clipped, select, yes {; список на этом обрывается} other {}}"
 }

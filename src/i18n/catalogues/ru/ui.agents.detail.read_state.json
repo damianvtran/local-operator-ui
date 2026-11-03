@@ -12,5 +12,8 @@
 	"ui.agents.detail.read_state.class_on": "Включено",
 	"ui.agents.detail.read_state.class_off": "Выключено",
 	"ui.agents.detail.read_state.class_switching": "Переключение…",
-	"ui.agents.detail.read_state.effort_inherit": "Использовать уровень усилий сессии"
+	"ui.agents.detail.read_state.effort_inherit": "Использовать уровень усилий сессии",
+	"ui.agents.detail.read_state.list_failed_teams": "Не удалось прочитать команды",
+	"ui.agents.detail.read_state.list_failed_agents": "Не удалось прочитать агентов",
+	"ui.agents.detail.read_state.list_failed_meaning": "Ничего не потеряно. Чтение не удалось: бэкенд вернул ошибку — это не то же самое, что устаревший бэкенд."
 }

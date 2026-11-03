@@ -166,5 +166,15 @@
 	"ui.chat.canonical.tool_row.bridge.verb.take_up.settled": "Pris en charge :",
 	"ui.chat.canonical.tool_row.bridge.verb.unknown.failed": "Impossible d’utiliser Team Bridge",
 	"ui.chat.canonical.tool_row.bridge.verb.unknown.running": "Utilisation de Team Bridge",
-	"ui.chat.canonical.tool_row.bridge.verb.unknown.settled": "Team Bridge utilisé"
+	"ui.chat.canonical.tool_row.bridge.verb.unknown.settled": "Team Bridge utilisé",
+	"ui.chat.canonical.transcript.hub_from": "De {name}",
+	"ui.chat.canonical.image_label": "Image",
+	"ui.chat.canonical.fold.images_aria": "{count, plural, one {{count_display} image de cette exécution} many {{count_display} d’images de cette exécution} other {{count_display} images de cette exécution}}",
+	"ui.chat.canonical.fold.more_images": "{count, plural, one {+{count_display} autre image} many {+{count_display} d’autres images} other {+{count_display} autres images}}",
+	"ui.chat.canonical.image_gen.control.stop_hint_queued": "S’arrête avant l’appel au fournisseur.",
+	"ui.chat.canonical.image_gen.control.stop_hint_running": "Demande l’arrêt ; le fournisseur peut quand même terminer.",
+	"ui.chat.canonical.image_gen.batch_summary": "{count, plural, one {{count_display} élément} many {{count_display} d’éléments} other {{count_display} éléments}}",
+	"ui.chat.canonical.lightbox.filmstrip_aria": "{count, plural, one {{count_display} image} many {{count_display} d’images} other {{count_display} images}}",
+	"ui.chat.canonical.lightbox.show_image": "Afficher l’image {index, number, ::group-off} sur {count, number, ::group-off}",
+	"ui.chat.canonical.supplement.details.summary": "Détails"
 }

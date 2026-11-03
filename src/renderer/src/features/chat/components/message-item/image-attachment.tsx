@@ -1,4 +1,6 @@
 import { ImageLightbox } from "@shared/components/common/image-lightbox";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { useCanvasStore } from "@shared/store/canvas-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
@@ -237,6 +239,7 @@ export const ImageAttachment: FC<ImageAttachmentProps> = memo(
 		press,
 		pathActions,
 	}) => {
+		useI18nLocale();
 		const [hasError, setHasError] = useState(false);
 		const [isLoaded, setIsLoaded] = useState(false);
 		/**
@@ -504,8 +507,14 @@ export const ImageAttachment: FC<ImageAttachmentProps> = memo(
 					 * for a mouse and effectively absent for a reader (UX round 1, U1-1).
 					 * The name now states what pressing it does.
 					 */
-					aria-label={press ? press.label : `Expand ${name}`}
-					title={press ? press.title : `Click to expand ${name}`}
+					aria-label={
+						press ? press.label : t("ui.chat.attachments.expand_aria", { name })
+					}
+					title={
+						press
+							? press.title
+							: t("ui.chat.attachments.expand_title", { name })
+					}
 					aria-current={press?.current ? "true" : undefined}
 				>
 					{picture}

@@ -39,6 +39,7 @@ import {
 	loadAllowlist,
 	openSnapshot,
 	pragmaLines,
+	staticTextNodes,
 } from "./check-strings.mjs";
 
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
@@ -48,9 +49,21 @@ const HUNK_RE = /^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@/;
 const TEST_DIRECTORY_RE = /(?:^|\/)(?:__tests__|tests?)\//;
 const TEST_FILE_RE = /\.(?:test|spec)\.[^.]+$/;
 
-/** Property names whose string values are product copy, not arbitrary data. */
+/**
+ * Property names whose string values are product copy, not arbitrary data.
+ *
+ * The four native attributes are spelled out rather than spread from
+ * `COPY_ATTRIBUTES`: that set also holds component-prop names (`content`,
+ * `summary`, `empty`, `header`...) which are prose as JSX props but are
+ * ordinary data keys in object literals elsewhere, and widening this guard
+ * with them would flag unrelated added lines. Widening object-literal
+ * coverage is its own measured change.
+ */
 export const COPY_PROPERTIES = new Set([
-	...COPY_ATTRIBUTES,
+	"aria-label",
+	"placeholder",
+	"title",
+	"alt",
 	"label",
 	"description",
 	"message",
@@ -110,44 +123,6 @@ function propertyName(node) {
 		return node.text;
 	}
 	return undefined;
-}
-
-/** Return only literal text nodes whose value is statically present in copy. */
-function staticTextNodes(node) {
-	switch (node.kind) {
-		case SyntaxKind.StringLiteral:
-		case SyntaxKind.NoSubstitutionTemplateLiteral:
-			return [node];
-		case SyntaxKind.TemplateExpression:
-			return [node.head, ...node.templateSpans.map((span) => span.literal)];
-		case SyntaxKind.ConditionalExpression:
-			return [
-				...staticTextNodes(node.whenTrue),
-				...staticTextNodes(node.whenFalse),
-			];
-		case SyntaxKind.BinaryExpression: {
-			const operator = node.operatorToken.kind;
-			if (operator === SyntaxKind.AmpersandAmpersandToken) {
-				// Only the right arm of && can become copy; the left is its guard.
-				return staticTextNodes(node.right);
-			}
-			if (
-				operator === SyntaxKind.PlusToken ||
-				operator === SyntaxKind.BarBarToken ||
-				operator === SyntaxKind.QuestionQuestionToken
-			) {
-				return [...staticTextNodes(node.left), ...staticTextNodes(node.right)];
-			}
-			return [];
-		}
-		case SyntaxKind.ParenthesizedExpression:
-		case SyntaxKind.AsExpression:
-		case SyntaxKind.SatisfiesExpression:
-		case SyntaxKind.NonNullExpression:
-			return staticTextNodes(node.expression);
-		default:
-			return [];
-	}
 }
 
 /**

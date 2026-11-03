@@ -305,7 +305,9 @@ const verdictStop = (sentence: string): string =>
 
 const SignedIn: FC<{
 	brand: string;
-	verb: "Signed in to" | "Connected";
+	/** Which headline to draw: a token, resolved to a translated sentence below.
+	 * It was `verb` until the i18n scanner started counting that prop name as prose. */
+	kind: "signed-in" | "connected";
 	defaults: DefaultsApplied | null | undefined;
 	retainedNotice?: string | null;
 	unverified?: string | null;
@@ -339,7 +341,7 @@ const SignedIn: FC<{
 	verdict?: ProviderReadiness | null;
 }> = ({
 	brand,
-	verb,
+	kind,
 	defaults,
 	retainedNotice,
 	unverified,
@@ -406,7 +408,7 @@ const SignedIn: FC<{
 					{contested && verdict
 						? verdict.label
 						: (headline ??
-							(verb === "Connected"
+							(kind === "connected"
 								? t("ui.providers.provider_detail.connected_variant_163", {
 										brand,
 									})
@@ -1038,7 +1040,7 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 					{methodTabs}
 					<SignedIn
 						brand={brand}
-						verb="Connected"
+						kind="connected"
 						defaults={keySaved.defaults_applied}
 						/*
 						 * `valid: true` is the only verified answer. `null` is the backend
@@ -1488,7 +1490,7 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 		body = (
 			<SignedIn
 				brand={brand}
-				verb="Signed in to"
+				kind="signed-in"
 				defaults={operation.defaults_applied}
 				// Recovery copy belongs to this successful Radient operation only;
 				// a generic message can contain provider diagnostics, not this receipt.
@@ -1503,7 +1505,7 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 				// stranded the phone block on "sign in, then check again".
 				actionLabel={
 					provider.id === "radient" && readiness?.group === "Needs sign-in"
-						? "Sign in again"
+						? t("ui.providers.provider_detail.sign_in_again")
 						: doneLabel
 				}
 				onAction={

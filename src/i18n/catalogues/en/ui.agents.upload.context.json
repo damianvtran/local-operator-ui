@@ -169,5 +169,17 @@
 			"name": "The agent's name as stored; user-authored data, never translate it."
 		},
 		"note": "It must say UPDATE, not publish: the dialog would otherwise read as a first publication of something already on the hub."
+	},
+	"ui.agents.upload.sign_in.title_continue": {
+		"role": "Heading of the sign-in block in the publish dialog (signed-out state)",
+		"tone": "Short imperative",
+		"length_hint": "Three words",
+		"note": "Heads the Radient sign-in buttons shown before an agent can be published."
+	},
+	"ui.agents.upload.sign_in.title_again": {
+		"role": "Heading of the sign-in block in the publish dialog (expired session)",
+		"tone": "Short imperative",
+		"length_hint": "Three words",
+		"note": "Heads the Radient sign-in buttons when the stored session was refused."
 	}
 }

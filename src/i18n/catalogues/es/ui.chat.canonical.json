@@ -166,5 +166,15 @@
 	"ui.chat.canonical.tool_row.bridge.verb.take_up.settled": "Recogido",
 	"ui.chat.canonical.tool_row.bridge.verb.unknown.failed": "No se pudo usar Team Bridge",
 	"ui.chat.canonical.tool_row.bridge.verb.unknown.running": "Usando Team Bridge",
-	"ui.chat.canonical.tool_row.bridge.verb.unknown.settled": "Usó Team Bridge"
+	"ui.chat.canonical.tool_row.bridge.verb.unknown.settled": "Usó Team Bridge",
+	"ui.chat.canonical.transcript.hub_from": "De {name}",
+	"ui.chat.canonical.image_label": "Imagen",
+	"ui.chat.canonical.fold.images_aria": "{count, plural, one {{count_display} imagen de esta ejecución} many {{count_display} de imágenes de esta ejecución} other {{count_display} imágenes de esta ejecución}}",
+	"ui.chat.canonical.fold.more_images": "{count, plural, one {+{count_display} imagen más} many {+{count_display} de imágenes más} other {+{count_display} imágenes más}}",
+	"ui.chat.canonical.image_gen.control.stop_hint_queued": "Se detiene antes de llamar al proveedor.",
+	"ui.chat.canonical.image_gen.control.stop_hint_running": "Solicita la detención; el proveedor puede terminar igualmente.",
+	"ui.chat.canonical.image_gen.batch_summary": "{count, plural, one {{count_display} elemento} many {{count_display} de elementos} other {{count_display} elementos}}",
+	"ui.chat.canonical.lightbox.filmstrip_aria": "{count, plural, one {{count_display} imagen} many {{count_display} de imágenes} other {{count_display} imágenes}}",
+	"ui.chat.canonical.lightbox.show_image": "Mostrar la imagen {index, number, ::group-off} de {count, number, ::group-off}",
+	"ui.chat.canonical.supplement.details.summary": "Detalles"
 }

@@ -180,7 +180,9 @@ export const VideoAttachment: FC<VideoAttachmentProps> = memo(
 						}
 					}}
 					onError={handleError}
-					title={`Click to open ${getFileName(file)}`}
+					title={t("ui.chat.attachments.open_title", {
+						name: getFileName(file),
+					})}
 				/>
 				{isLocalFile && (
 					<div

@@ -1089,5 +1089,88 @@
 		"length": "A short verb phrase; the object follows on the same line in monospace.",
 		"note": "Grammar is verb + object: the object (a #conversation, a name, or a kind word like 'a conversation') is appended after it, so the phrase must read as the start of that sentence. Must not claim more than the call did.",
 		"placeholders": {}
+	},
+	"ui.chat.canonical.transcript.hub_from": {
+		"role": "Summary line of an agent-to-agent hub receipt row",
+		"tone": "Preposition plus a name",
+		"length_hint": "One word plus a name",
+		"note": "Names the sender of a message another agent relayed through the hub.",
+		"placeholders": {
+			"name": "Sender display name from the hub; do not translate."
+		}
+	},
+	"ui.chat.canonical.image_label": {
+		"role": "Accessible name of a picture in the transcript that has no filename",
+		"tone": "Single noun, sentence case",
+		"length_hint": "One word",
+		"note": "One noun; a lone picture is 'Image', never numbered."
+	},
+	"ui.chat.canonical.fold.images_aria": {
+		"role": "Accessible name of a strip or grid of pictures a run produced",
+		"tone": "Count plus noun plus origin",
+		"length_hint": "Four words",
+		"note": "Counts the pictures in the group; the group is one run's output.",
+		"placeholders": {
+			"count": "Numeric count for CLDR plural selection, separate from count_display. English uses exact =1 to preserve the original strict count === 1 branch, including negative inputs.",
+			"count_display": "Raw display string from String(count), preserving the original JavaScript interpolation without grouping or rounding. Keep count numeric for CLDR plural selection; do not number-format count_display."
+		}
+	},
+	"ui.chat.canonical.fold.more_images": {
+		"role": "Tooltip and accessible name of the '+N' overflow button in a picture strip",
+		"tone": "Plus sign, count, noun",
+		"length_hint": "Three words",
+		"note": "Begins with a literal plus sign because the visible label is '+N' and the accessible name must contain it (WCAG 2.5.3); keep the plus sign.",
+		"placeholders": {
+			"count": "Numeric count for CLDR plural selection, separate from count_display. English uses exact =1 to preserve the original strict count === 1 branch, including negative inputs.",
+			"count_display": "Raw display string from String(count), preserving the original JavaScript interpolation without grouping or rounding. Keep count numeric for CLDR plural selection; do not number-format count_display."
+		}
+	},
+	"ui.chat.canonical.image_gen.control.stop_hint_queued": {
+		"role": "Tooltip of the Stop control on a generation that has not started",
+		"tone": "Plain statement",
+		"length_hint": "One sentence",
+		"note": "A queued call can be stopped for certain, so the sentence promises it."
+	},
+	"ui.chat.canonical.image_gen.control.stop_hint_running": {
+		"role": "Tooltip of the Stop control on a generation the provider is already running",
+		"tone": "Two clauses joined by a semicolon",
+		"length_hint": "One sentence",
+		"note": "A running call can only be asked to stop, and the provider may still bill for it."
+	},
+	"ui.chat.canonical.image_gen.batch_summary": {
+		"role": "Fallback summary of a batch of generated sounds when the wire gave none",
+		"tone": "Count plus noun",
+		"length_hint": "Two words",
+		"note": "Preserve the original fallback 'N items', including '1 items': this extraction must not make editorial singular corrections. A supplied summary (even empty) still wins.",
+		"placeholders": {
+			"count": "Numeric batch size for CLDR plural selection. English intentionally says items in every branch to preserve the original fallback.",
+			"count_display": "Raw display string from String(count), preserving the original JavaScript interpolation without grouping or rounding. Keep count numeric for CLDR plural selection; do not number-format count_display."
+		}
+	},
+	"ui.chat.canonical.lightbox.filmstrip_aria": {
+		"role": "Accessible name of the thumbnail strip under the picture lightbox",
+		"tone": "Count plus noun",
+		"length_hint": "Two words",
+		"note": "Preserve the original 'N images' in every English arm, including '1 images' at catalogue level. The strip is currently guarded by count > 1; this keeps extraction consistent without changing that guard.",
+		"placeholders": {
+			"count": "Numeric image count for CLDR plural selection. English intentionally keeps images in both arms; the strip only renders for count > 1.",
+			"count_display": "Raw display string from String(count), preserving the original JavaScript interpolation without grouping or rounding. Keep count numeric for CLDR plural selection; do not number-format count_display."
+		}
+	},
+	"ui.chat.canonical.lightbox.show_image": {
+		"role": "Tooltip and accessible name of a thumbnail that jumps to one picture in the lightbox",
+		"tone": "Imperative plus a position",
+		"length_hint": "Five words",
+		"note": "Position of the picture within the group, one-based.",
+		"placeholders": {
+			"index": "One-based position of the picture.",
+			"count": "Total number of pictures in the group."
+		}
+	},
+	"ui.chat.canonical.supplement.details.summary": {
+		"role": "Disclosure summary that opens a supplement row's technical details",
+		"tone": "Single noun, sentence case",
+		"length_hint": "One word",
+		"note": "Single noun; the disclosure holds model, attempts and similar run facts."
 	}
 }

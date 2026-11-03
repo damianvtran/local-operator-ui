@@ -319,7 +319,7 @@ export const QuoteToolkit: FC<QuoteToolkitProps> = ({
 		>
 			{allowQuote && (
 				<Tooltip
-					content="Quote"
+					content={t("ui.chat.transcript_copy.selection.quote")}
 					/*
 					 * The tooltip takes the opposite side to the control, because the
 					 * control sits BELOW the highlight when there was no room above it -
