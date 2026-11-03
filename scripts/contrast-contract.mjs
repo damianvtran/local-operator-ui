@@ -821,8 +821,9 @@ const CONTROLS = [
 	{
 		/*
 		 * The composer's "Insert transcript" control while a dictation records: the
-		 * outline button (no fill, so its fill IS the composer box's `surface`)
-		 * wearing `successBorder` and `success` ink so it reads as the affirmative of
+		 * outline button FILLED with `successWash` (design round 1, D4: an empty
+		 * bordered square read as a checked checkbox, not a press), wearing
+		 * `successBorder` and `success` ink so it reads as the affirmative of
 		 * the recording trio, beside a neutral Cancel and the accent Send recording.
 		 * Colour is never the only carrier - the glyph is a check and the name says
 		 * "Insert transcript" - so this row holds the ink and edge the pairing
@@ -830,7 +831,7 @@ const CONTROLS = [
 		 */
 		name: "composer insert transcript (success outline)",
 		on: ["surface"],
-		fill: "surface",
+		fill: "successWash",
 		border: "successBorder",
 		ink: "success",
 	},
