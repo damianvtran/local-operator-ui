@@ -973,8 +973,17 @@ test("the selector narrows to the app's own ackable predicate, not a second deri
 	const missed = code(MISSED);
 	assert.match(
 		missed,
-		/unreadAckableRows\(\s*sessions\.filter\(\(row\) => row\.session_id === sessionId\)\)/,
-		"the count reads the store's one predicate over HER row",
+		/import \{ aidaMissedMessages \} from "\.\.\/\.\.\/\.\.\/\.\.\/shared\/completion-attention"/,
+		"the rail and native badge import one shared Aida predicate",
+	);
+	const shared = readFileSync(
+		new URL("../src/shared/completion-attention.ts", import.meta.url),
+		"utf8",
+	);
+	assert.match(
+		shared,
+		/row\.session_id === sessionId && isUnreadAckableCompletion\(row\)/,
+		"the shared rule narrows the canonical ackable predicate to HER row",
 	);
 	assert.ok(
 		missed.includes("useCanonicalSessionsStore"),

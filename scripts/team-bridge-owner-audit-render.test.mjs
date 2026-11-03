@@ -2564,6 +2564,321 @@ test("a large data URI inside a fence becomes one receipt for the whole block", 
 	await view.close();
 });
 
+/*
+ * PR #1554 round 2, R2-1: a fence can open on the same line as a list marker
+ * (`- ```` , `* ~~~`, `1. ```html`), and inside a blockquote. Unrecognised, a
+ * large URI in one split the fence and the prose after it rendered as code.
+ * The prefix after the marker is CommonMark's: the item's content column.
+ */
+test("a fence opened on a list-marker line is one receipt, prose after it", async () => {
+	const uri = `data:image/png;base64,${"Qk+/x9Zp".repeat(400)}`;
+	for (const [id, open, close, indent] of [
+		["list_dash", "- ```", "```", "  "],
+		["list_star_tilde", "* ~~~", "~~~", "  "],
+		["list_ordered_info", "1. ```html", "```", "   "],
+		["list_paren_nested", "2) - ```", "```", "     "],
+		// The item's content sits 2 columns into the quote: `>` + optional space
+		// + 2. With only `> `, the line is left of the item and ends it (R1-1).
+		["quote_list", "> - ```", "```", ">   "],
+	]) {
+		const body = `Steps:\n\n${open}\n${indent}<img src="${uri}">\n${indent}${close}\n\nafter prose`;
+		const { view, row } = await renderAuditBody(id, body);
+		assert.equal(row.querySelectorAll("details").length, 1, id);
+		assert.equal(row.querySelectorAll("pre").length, 0, `${id}: no code block`);
+		const after = [...row.querySelectorAll("p")].find(
+			(p) => p.textContent === "after prose",
+		);
+		assert.ok(after, `${id}: the prose after the fence is a paragraph`);
+		assert.ok(row.textContent.includes("Steps:"), id);
+		assert.ok(row.textContent.length < 1000, id);
+		await view.close();
+	}
+});
+
+/*
+ * R2-2: with no list or quote container, 4+ spaces before ``` make an indented
+ * code line, not a fence opener. Read as one, it opened an unclosed fence, and
+ * a later large URI put everything to the end of the body behind the receipt.
+ * The same holds 4+ columns into a list item's content.
+ */
+test("a 4-space indented fence line is indented code, not an opener", async () => {
+	const uri = `data:image/png;base64,${"A".repeat(3000)}`;
+	for (const [id, prefix] of [
+		["indent4_top", "To write a fence:\n\n    ```"],
+		["indent_tab_top", "To write a fence:\n\n\t```"],
+		["indent4_in_item", "- To write a fence:\n\n      ```"],
+		["indent4_after_marker", "-      ```"],
+	]) {
+		const body = `${prefix}\n\nThen the image: ${uri}\n\nMore important prose.`;
+		const { view, row } = await renderAuditBody(id, body);
+		assert.equal(row.querySelectorAll("details").length, 1, id);
+		assert.ok(
+			row
+				.querySelector("summary")
+				.textContent.includes(m.formatNumber(uri.length)),
+			`${id}: the receipt covers the URI, not the rest of the body`,
+		);
+		const more = [...row.querySelectorAll("p")].find(
+			(p) => p.textContent === "More important prose.",
+		);
+		assert.ok(more, `${id}: the prose after the URI stays visible`);
+		assert.ok(
+			[...row.querySelectorAll("pre")].some((pre) =>
+				pre.textContent.includes("```"),
+			),
+			`${id}: the indented line renders as code, as authored`,
+		);
+		await view.close();
+	}
+});
+
+/*
+ * R2-3: one code region holding several large URIs is one receipt, and it
+ * states the TOTAL of those URIs. A URI below the floor is not counted, so the
+ * total does not depend on which comes first.
+ */
+/*
+ * PR #1622 round 1, R1-1 / QA Q1. A fence opened inside a list item or a
+ * blockquote ends with its container, as in CommonMark. Without that, an
+ * unclosed `- ```` stayed open to the end of the body and a later large URI
+ * put every paragraph after the list behind the receipt. The bodies are the
+ * reviewer's and QA's reproductions; the last two (quote, own-line fence under
+ * an item) were already wrong on main.
+ */
+test("a fence inside a list item or quote closes when its container ends", async () => {
+	const uri = `data:image/png;base64,${"A".repeat(3000)}`;
+	for (const [id, body, visible] of [
+		[
+			"item_end",
+			`- \`\`\`\n  code\n\nVisible prose after the list.\n\n${uri}\n\nThanks.`,
+			["Visible prose after the list.", "Thanks."],
+		],
+		[
+			"next_item",
+			`- \`\`\` opens a fence\n- ~~~ also\n\nVisible prose after the list. ${uri}\n\nThanks.`,
+			["Visible prose after the list.", "Thanks."],
+		],
+		[
+			"truncated_item_fence",
+			`- \`\`\`js\n  let a\n\nPROSE1 text.\n\n${uri}\n\nPROSE2 text.`,
+			["PROSE1 text.", "PROSE2 text."],
+		],
+		[
+			"qa_ordered_next_item",
+			`1. \`\`\`sh\n   make\n2. Then the image:\n\n${uri}\n\nImportant prose after.`,
+			["Then the image:", "Important prose after."],
+		],
+		[
+			"qa_dash_paragraph",
+			`- \`\`\`sh\n  make\n\nThen the image: ${uri}\n\nImportant prose after.`,
+			["Then the image:", "Important prose after."],
+		],
+		[
+			"qa_quote_list",
+			`> - \`\`\`\n>   code\n\nThen the image: ${uri}\n\nImportant prose after.`,
+			["Then the image:", "Important prose after."],
+		],
+		[
+			"quote_fence_main",
+			`> \`\`\`\n> code\n\nPROSE1 text.\n\n${uri}\n\nPROSE2 text.`,
+			["PROSE1 text.", "PROSE2 text."],
+		],
+		[
+			"own_line_fence_next_item_main",
+			`1. Install:\n   \`\`\`bash\n   npm i\n2. PROSE1 text.\n\n${uri}\n\nPROSE2 text.`,
+			["PROSE1 text.", "PROSE2 text."],
+		],
+	]) {
+		const { view, row } = await renderAuditBody(id, body);
+		assert.equal(row.querySelectorAll("details").length, 1, id);
+		assert.ok(
+			row
+				.querySelector("summary")
+				.textContent.includes(m.formatNumber(uri.length)),
+			`${id}: the receipt is the URI's alone`,
+		);
+		for (const text of visible)
+			assert.ok(
+				[...row.querySelectorAll("p, li")].some((node) =>
+					node.textContent.includes(text),
+				),
+				`${id}: "${text}" stays visible`,
+			);
+		assert.ok(row.querySelector("pre"), `${id}: the fence renders as code`);
+		await view.close();
+	}
+});
+
+/*
+ * R1-2: a list also ends at a block that cannot lazily continue a paragraph
+ * (a heading, a thematic break, a blockquote, a fence at column 0), not only
+ * after a blank line. A stale item column let a 4-space ``` open a phantom
+ * fence again (the R2-2 failure). All four were already wrong on main.
+ */
+test("a list ended by a block does not keep its column for a later opener", async () => {
+	const uri = `data:image/png;base64,${"A".repeat(3000)}`;
+	for (const [id, between] of [
+		["after_heading", "# PROSE0 heading\n    ```"],
+		["after_hr", "***\n    ```"],
+		["after_quote", ">     ```"],
+		["after_fence", "```\nx\n```\n    ```"],
+	]) {
+		const body = `- a\n${between}\n\nPROSE1 text\n\n${uri}\n\nPROSE2`;
+		const { view, row } = await renderAuditBody(id, body);
+		assert.equal(row.querySelectorAll("details").length, 1, id);
+		assert.ok(
+			row
+				.querySelector("summary")
+				.textContent.includes(m.formatNumber(uri.length)),
+			`${id}: the receipt is the URI's alone`,
+		);
+		for (const text of ["PROSE1 text", "PROSE2"])
+			assert.ok(
+				[...row.querySelectorAll("p")].some(
+					(node) => node.textContent === text,
+				),
+				`${id}: "${text}" stays a paragraph`,
+			);
+		await view.close();
+	}
+});
+
+/*
+ * R1-3: the R2-3 total scans URIs inside a code receipt, and a run of
+ * overlapping `data:image/` headers was rescanned once per match there
+ * (reviewer: 2,023 ms against main's 4 ms on ~1M characters). Bounded by the
+ * scanner's own regex-test count, which is deterministic on a shared host:
+ * the per-match rescan is ~89 tests per character, ~30x this bound. The wall-time bound is loose and
+ * only a backstop.
+ */
+test("overlapping image headers in a code receipt are scanned once", () => {
+	const unit = `${"data:image/".repeat(180)} `;
+	const body = `\`\`\`\ndata:image/png;base64,${"A".repeat(3000)}\n${unit.repeat(Math.ceil(1000000 / unit.length))}\n\`\`\`\nafter`;
+	const original = RegExp.prototype.test;
+	let checks = 0;
+	let spans;
+	const started = performance.now();
+	try {
+		RegExp.prototype.test = function (value) {
+			checks++;
+			return original.call(this, value);
+		};
+		spans = m.inlineImageSpans(body);
+	} finally {
+		RegExp.prototype.test = original;
+	}
+	const elapsed = performance.now() - started;
+	assert.equal(spans.length, 1);
+	assert.ok(
+		checks <= 3 * body.length + 100,
+		`${checks} checks for ${body.length} characters`,
+	);
+	assert.ok(elapsed < 500, `${body.length} characters took ${elapsed} ms`);
+});
+
+/* PR #1622 round 2 R2-1: lazy continuation requires the item's last block
+ * to be a paragraph, and cannot outlive the item's quote. These are the four
+ * review repros. A stale item column ended the real fence early on its closer,
+ * then re-read that closer as an opener hiding Done/Tail behind the receipt. */
+test("non-paragraph item blocks and dropped quotes do not leave stale fence columns", async () => {
+	const uri = `data:image/png;base64,${"A".repeat(3000)}`;
+	for (const [id, source] of [
+		["heading_item", "- ## Install\nRun this:\n  ```sh\n  make\n```"],
+		[
+			"item_closed_then_text",
+			"1. Run:\n   ```sh\n   make\n   ```\nThen do this:\n   ```sh\n   make install\n```",
+		],
+		["hr_item", "- ***\nplain\n  ```\n  y\n```"],
+		["quote_item_drop", "> - quoted item\n  ```sh\nmake\n```"],
+	]) {
+		const body = `${source}\n\nDone prose.\n\n${uri}\n\nTail prose.`;
+		const { view, row } = await renderAuditBody(id, body);
+		assert.equal(row.querySelectorAll("details").length, 1, id);
+		for (const text of ["Done prose.", "Tail prose."])
+			assert.ok(
+				[...row.querySelectorAll("p")].some((p) => p.textContent === text),
+				`${id}: ${text} stays visible`,
+			);
+		const spans = m.inlineImageSpans(body);
+		assert.equal(spans[0].start, body.indexOf(uri), `${id}: no phantom fence`);
+		assert.equal(spans[0].end, body.indexOf(uri) + uri.length, id);
+		await view.close();
+	}
+});
+
+/* R2-2: an end-of-line marker is an empty item, with its content column one
+ * past the marker. No paragraph is open, so dedented prose ends the item. */
+test("an empty list marker gives its fence an item container", async () => {
+	const uri = `data:image/png;base64,${"A".repeat(3000)}`;
+	for (const [id, source] of [
+		["empty_dash", "-\n  ```\n  x"],
+		["empty_ordered", "1.\n   ```sh\n   make"],
+		["empty_dash_fence4", "-\n    ```js\n    x\n  ```"],
+	]) {
+		const body = `${source}\n\nDone prose.\n\n${uri}\n\nTail prose.`;
+		const { view, row } = await renderAuditBody(id, body);
+		for (const text of ["Done prose.", "Tail prose."])
+			assert.ok(
+				[...row.querySelectorAll("p")].some((p) => p.textContent === text),
+				`${id}: ${text} stays visible`,
+			);
+		assert.equal(m.inlineImageSpans(body)[0].start, body.indexOf(uri), id);
+		await view.close();
+	}
+});
+
+/* The round-2 fuzz's direct neighbours pin the distinction between an empty
+ * item, a bare marker after indented code, a quote-local item and a thematic
+ * break which resembles a marker. They all put the tail URI outside code in
+ * remark-gfm, and must not acquire a phantom opener. */
+test("empty markers and fence closers preserve their surrounding block context", () => {
+	const uri = `data:image/png;base64,${"A".repeat(3000)}`;
+	for (const source of [
+		"         ```\n```\n===\n> ````\n````",
+		"   \tPROSEa\n-\n  ```\n\t***\n````",
+		"-\n   > ```\n  ```",
+		"- 10. d\n* ***\n   ````\n    ~~~\n===\n````",
+		"+ c\n-\n-\n   > ````\n  ````",
+		"\t-\n> 10. d\n     ```\n-\n   ```\n> q",
+		" * # h\n> PROSEa\n\t  ```\n-\n   ```",
+		"> - ***\n\t\t- b\n-\n     ```\n  ```",
+	]) {
+		const body = `${source}\n\nDone prose.\n\n${uri}\n\nTail prose.`;
+		const spans = m.inlineImageSpans(body);
+		assert.equal(spans.length, 1, source);
+		assert.equal(spans[0].start, body.indexOf(uri), source);
+	}
+});
+
+test("a receipt for a code region totals every large URI in it", async () => {
+	const first = `data:image/png;base64,${"A".repeat(3000)}`;
+	const second = `data:image/jpeg;base64,${"B".repeat(4000)}`;
+	const small = "data:image/gif;base64,R0lGOD==";
+	for (const [id, inner, total] of [
+		["two_large", `${first}\n${second}`, first.length + second.length],
+		[
+			"small_first",
+			`${small}\n${first}\n${second}`,
+			first.length + second.length,
+		],
+		[
+			"three_with_small",
+			`${first}\n${small}\n${second}\n${first}`,
+			2 * first.length + second.length,
+		],
+	]) {
+		const body = `Before\n\n\`\`\`\n${inner}\n\`\`\`\n\nAfter`;
+		const { view, row } = await renderAuditBody(id, body);
+		assert.equal(row.querySelectorAll("details").length, 1, id);
+		assert.ok(
+			row.querySelector("summary").textContent.includes(m.formatNumber(total)),
+			`${id}: expected ${total} in "${row.querySelector("summary").textContent}"`,
+		);
+		assert.ok(row.textContent.includes("After"), id);
+		await view.close();
+	}
+});
+
 test("a large data URI inside an inline code span takes the span, not the paragraph", async () => {
 	const uri = `data:image/png;base64,${"A".repeat(5000)}`;
 	const { view, row } = await renderAuditBody(
@@ -2650,6 +2965,18 @@ test("backtick- and fence-heavy bodies keep the code-region scan linear", () => 
 		`data:image/png;base64,${"A".repeat(3000)} ${"` x ".repeat(250000)}`,
 		`data:image/png;base64,${"A".repeat(3000)} ${"`".repeat(1)}${" ``x".repeat(250000)}`,
 		`${"```\nx\n".repeat(150000)}data:image/png;base64,${"A".repeat(3000)}`,
+		// List/quote/indent prefixes (R2-1 / R2-2), ~1M characters each: marker
+		// runs, nested markers, long digit runs, deep one-line nesting followed
+		// by many short lines (the container stack), and indented fence lines.
+		`${"- ```\n  x\n  ```\n".repeat(55000)}data:image/png;base64,${"A".repeat(3000)}`,
+		`${"> 1. - * + ~~~\n".repeat(70000)}data:image/png;base64,${"A".repeat(3000)}`,
+		`${"123456789012. ```\n".repeat(55000)}data:image/png;base64,${"A".repeat(3000)}`,
+		`${"- ".repeat(250000)}x\n${"a\n\n".repeat(160000)}data:image/png;base64,${"A".repeat(3000)}`,
+		`${"     ```\n\n".repeat(90000)}data:image/png;base64,${"A".repeat(3000)}`,
+		// Thematic-break candidates must not rescan at each nested marker.
+		`${"- ".repeat(250000)}x\ndata:image/png;base64,${"A".repeat(3000)}`,
+		// Many large URIs in one fence, each totalled (R2-3), and small ones.
+		`\`\`\`\n${`data:image/png;base64,${"A".repeat(2100)}\ndata:image/gif;base64,R0==\n`.repeat(450)}`,
 	]) {
 		const started = performance.now();
 		m.inlineImageSpans(body);

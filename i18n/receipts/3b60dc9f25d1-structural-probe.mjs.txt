@@ -1,0 +1,42 @@
+// Structural probe for PR #1604 i18n delta round 2 (auditor session 3b60dc9f25d1).
+// Reads base (f0c3a0ef26c) and head bytes via git, diffs ui.mesh per locale at key level,
+// and checks every changed value: ICU argument names vs English, brace balance, NFC,
+// manual bidi controls, fr narrow-NBSP before : ; ! ?, and file sha256.
+import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
+const BASE = "f0c3a0ef26c5b4fcd86a59fdf07088a7a14988c8";
+const HEAD = "7c766326b3916aafe2dd5c0f77a430073b77aae4";
+const show = (rev, p) => execFileSync("git", ["show", `${rev}:${p}`]);
+const sha = (b) => createHash("sha256").update(b).digest("hex");
+const args = (s) => [...s.matchAll(/\{\s*([A-Za-z_][\w]*)\s*(?:[,}])/g)].map((m) => m[1]).sort().join(",");
+const bal = (s) => { let d = 0; for (const c of s) { if (c === "{") d++; if (c === "}") d--; if (d < 0) return false; } return d === 0; };
+const BIDI = /[\u200E\u200F\u202A-\u202E\u2066-\u2069]/;
+const enP = "src/i18n/catalogues/en/ui.mesh.json";
+const enB = show(BASE, enP), enH = show(HEAD, enP);
+console.log(`en base=${sha(enB)} head=${sha(enH)} identical=${enB.equals(enH)}`);
+const ctx = "src/i18n/catalogues/en/ui.mesh.context.json";
+console.log(`context base=${sha(show(BASE, ctx))} head=${sha(show(HEAD, ctx))}`);
+const en = JSON.parse(enH);
+let fail = 0;
+for (const l of ["es", "fr", "ru", "hi", "ur", "vi", "zh-CN"]) {
+  const p = `src/i18n/catalogues/${l}/ui.mesh.json`;
+  const b = show(BASE, p), h = show(HEAD, p);
+  const B = JSON.parse(b), H = JSON.parse(h);
+  const keysEq = JSON.stringify(Object.keys(H).sort()) === JSON.stringify(Object.keys(en).sort());
+  const changed = Object.keys(H).filter((k) => B[k] !== H[k]);
+  console.log(`\n${l}: base=${sha(b)} head=${sha(h)} keyset_matches_en=${keysEq} changed=${changed.length}`);
+  if (!keysEq) fail++;
+  for (const k of changed) {
+    const v = H[k];
+    const r = {
+      args_match: args(v) === args(en[k]), en_args: args(en[k]), tgt_args: args(v),
+      braces: bal(v), nfc: v === v.normalize("NFC"), bidi_free: !BIDI.test(v),
+    };
+    if (l === "fr") r.fr_nnbsp_ok = !/[^\u202F][:;!?]/.test(v.replace(/\{[^}]*\}/g, ""));
+    const ok = r.args_match && r.braces && r.nfc && r.bidi_free && (r.fr_nnbsp_ok ?? true);
+    if (!ok) fail++;
+    console.log(`  ${ok ? "PASS" : "FAIL"} ${k}\n    base: ${B[k]}\n    head: ${v}\n    ${JSON.stringify(r)}`);
+  }
+}
+console.log(`\nprobe failures=${fail}`);
+process.exit(fail ? 1 : 0);
