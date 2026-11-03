@@ -332,5 +332,10 @@
 	"ui.teamBridge.delivery.pending": "جانچ ہو گئی؛ {agent} تک ترسیل باقی ہے",
 	"ui.teamBridge.delivery.info_refused": "ہر ایجنٹ آنے والے پیغامات کو اپنے مالک کی ماڈریشن سے جانچتا ہے۔ مسترد کیا گیا پیغام ایجنٹ تک نہیں پہنچایا گیا۔ درخواست کو دوبارہ لکھنا عموماً مددگار ہوتا ہے۔",
 	"ui.teamBridge.delivery.info_held": "ہر ایجنٹ آنے والے پیغامات کو آگے پہنچانے سے پہلے اپنے مالک کی ماڈریشن سے جانچتا ہے۔ اس پیغام کی جانچ ابھی نہیں ہوئی؛ یہ خود بخود پہنچا دیا جائے گا یا مسترد کر دیا جائے گا۔",
-	"ui.teamBridge.delivery.info_label": "پیغام کی جانچ کے بارے میں"
+	"ui.teamBridge.delivery.info_label": "پیغام کی جانچ کے بارے میں",
+	"ui.teamBridge.attachmentCard.list": "{count, plural, one {# منسلکہ} other {# منسلکات}}",
+	"ui.teamBridge.attachmentCard.file": "فائل",
+	"ui.teamBridge.attachmentCard.bytes": "{size, number} بائٹس",
+	"ui.teamBridge.attachmentCard.metadata_only": "اس منظر میں پیش نظارہ دستیاب نہیں",
+	"ui.teamBridge.attachmentCard.unavailable": "منسلکہ دستیاب نہیں"
 }

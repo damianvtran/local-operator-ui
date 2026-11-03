@@ -22,6 +22,7 @@ import type {
 	OwnerAuditConversation,
 	OwnerAuditMessage,
 } from "../../../../shared/team-bridge-owner-audit-contract";
+import { BridgeAttachmentGroup } from "./attachments/bridge-attachment-group";
 import { TeamBridgeMessageList } from "./team-bridge-message-list";
 import type { ChiefLabels } from "./team-bridge-model";
 import {
@@ -358,22 +359,13 @@ function AuditTranscript({
 					   ["team-bridge", "owner-audit", ...] query keys and write nothing:
 					   no read markers, drafts or agent feed. */
 					withheldCopy: t("ui.ownerAudit.body_unavailable"),
-					attachments:
-						attachmentCount > 0 ? (
-							<ul className="mt-1 space-y-0.5 text-[12px] text-ink-muted">
-								{message.attachments?.length ? (
-									message.attachments.map((attachment) => (
-										<li key={attachment.id}>
-											{attachment.state === "expired"
-												? t("ui.ownerAudit.attachment_expired")
-												: t("ui.ownerAudit.attachment_unavailable")}
-										</li>
-									))
-								) : (
-									<li>{t("ui.ownerAudit.attachment_unavailable")}</li>
-								)}
-							</ul>
-						) : undefined,
+					attachments: (
+						<BridgeAttachmentGroup
+							attachments={message.attachments ?? []}
+							count={attachmentCount}
+							compact={density === "compact"}
+						/>
+					),
 					after:
 						renderReplies && (message.reply_count ?? 0) > 0
 							? renderReplies(message)

@@ -332,5 +332,10 @@
 	"ui.teamBridge.delivery.pending": "Analizado; la entrega a {agent} está pendiente",
 	"ui.teamBridge.delivery.info_refused": "Cada agente analiza los mensajes entrantes con la moderación de su propietario. Un mensaje rechazado no se pasó al agente. Reformular la solicitud suele ayudar.",
 	"ui.teamBridge.delivery.info_held": "Cada agente analiza los mensajes entrantes con la moderación de su propietario antes de entregarlos. Este mensaje aún no se ha analizado; se entregará o se rechazará automáticamente.",
-	"ui.teamBridge.delivery.info_label": "Acerca del análisis de mensajes"
+	"ui.teamBridge.delivery.info_label": "Acerca del análisis de mensajes",
+	"ui.teamBridge.attachmentCard.list": "{count, plural, one {# archivo adjunto} other {# archivos adjuntos}}",
+	"ui.teamBridge.attachmentCard.file": "Archivo",
+	"ui.teamBridge.attachmentCard.bytes": "{size, number} bytes",
+	"ui.teamBridge.attachmentCard.metadata_only": "La vista previa no está disponible en esta vista",
+	"ui.teamBridge.attachmentCard.unavailable": "Archivo adjunto no disponible"
 }
