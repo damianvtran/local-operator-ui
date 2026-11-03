@@ -231,11 +231,15 @@ the x64 artifact on an arm64 Mac, and its exec checks (`app-spawn`,
 `app-bytecode-loadable`, `app-seed-python-version`) launched the x86_64 launcher
 under Rosetta, which macOS attributes to the bundle and warns about (at most once
 per 86400 s, re-armed by every such launch). So `refusesLocalRosettaExec` now
-withholds any exec this host would translate unless the run is hosted CI
-(`CI=true` or `GITHUB_ACTIONS=true`) or the operator sets
-`LOCAL_OPERATOR_ALLOW_ROSETTA_EXEC=1`; a withheld check reports FAILED rather
-than passing unproven, and every static check still runs. Prove the x64
-artifact's exec checks on hosted CI.
+withholds any exec this host would translate (a launcher or interpreter with no
+arm64 slice, thin or fat, on Apple silicon - including when the verifier's own
+`node` is x64 under Rosetta, read from `sysctl.proc_translated`) unless the run
+is a GitHub-hosted runner (`GITHUB_ACTIONS=true` and
+`RUNNER_ENVIRONMENT=github-hosted`, the gate `verify-signed-update.mjs` already
+uses; `CI=true` alone, or a self-hosted runner, does not count) or the operator
+sets `LOCAL_OPERATOR_ALLOW_ROSETTA_EXEC=1`; a withheld check reports FAILED
+rather than passing unproven, and every static check still runs. Prove the x64
+artifact's exec checks on the hosted `macos-latest` release jobs.
 
 **What `uv` is doing in the bundle.** The install scripts create the backend venv
 and install `local-operator` into it, and that install is the dominant cost of a
