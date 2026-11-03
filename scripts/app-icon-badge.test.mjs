@@ -284,7 +284,12 @@ test("every Windows label has zero four-adjacent ink/rim contacts", () => {
 			for (let x = 0; x < 16; x++) {
 				const distance = (x - 7.5) ** 2 + (y - 7.5) ** 2;
 				if (distance > 42.25 || bitmap[(y * 16 + x) * 4] !== 255) continue;
-				for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
+				for (const [dx, dy] of [
+					[-1, 0],
+					[1, 0],
+					[0, -1],
+					[0, 1],
+				]) {
 					const nx = x + dx;
 					const ny = y + dy;
 					if (nx < 0 || nx > 15 || ny < 0 || ny > 15) continue;
@@ -322,21 +327,24 @@ test("Windows pending indicator is a rounded 6px dot, not a square", () => {
 	assert.equal(Math.max(...ink.map(([x]) => x)), 10);
 	assert.equal(Math.min(...ink.map(([, y]) => y)), 5);
 	assert.equal(Math.max(...ink.map(([, y]) => y)), 10);
-	for (const [x, y] of [[5, 5], [5, 10], [10, 5], [10, 10]])
+	for (const [x, y] of [
+		[5, 5],
+		[5, 10],
+		[10, 5],
+		[10, 10],
+	])
 		assert.equal(bitmap[(y * 16 + x) * 4], 0, "rounded corners stay black");
 });
 
 test("Windows bitmap is deterministic 16x16 BGRA with alpha and visible label differences", () => {
-	const images = [..."123456789", "9+", "•"].map(
-		(label) => {
-			const image = appIconBadgeBitmap(label);
-			assert.equal(image.length, 16 * 16 * 4);
-			assert.equal(image[3], 0, "corner outside the disc is transparent");
-			assert.ok(image.some((value, i) => i % 4 === 3 && value === 255));
-			assert.deepEqual(image, appIconBadgeBitmap(label));
-			return image.toString("hex");
-		},
-	);
+	const images = [..."123456789", "9+", "•"].map((label) => {
+		const image = appIconBadgeBitmap(label);
+		assert.equal(image.length, 16 * 16 * 4);
+		assert.equal(image[3], 0, "corner outside the disc is transparent");
+		assert.ok(image.some((value, i) => i % 4 === 3 && value === 255));
+		assert.deepEqual(image, appIconBadgeBitmap(label));
+		return image.toString("hex");
+	});
 	assert.equal(new Set(images).size, 11);
 	assert.throws(() => appIconBadgeBitmap("10"), /Unsupported/);
 });
