@@ -323,6 +323,7 @@ export const MeshApprovalsTray: FC<MeshApprovalsTrayProps> = ({
 		id: string;
 		origin: Element | null;
 		rowAtStart: MeshApprovalRow | undefined;
+		refusalAtStart: MeshApprovalsTrayProps["refusal"];
 	} | null>(null);
 	const decide = (id: string, decision: ApprovalDecision) => {
 		if (
@@ -332,6 +333,7 @@ export const MeshApprovalsTray: FC<MeshApprovalsTrayProps> = ({
 				id,
 				origin: document.activeElement,
 				rowAtStart: rows.find((row) => row.approvalId === id),
+				refusalAtStart: refusal,
 			};
 		}
 		onDecide(id, decision);
@@ -346,8 +348,9 @@ export const MeshApprovalsTray: FC<MeshApprovalsTrayProps> = ({
 		if (pending) return;
 		// Mutation settlement can precede its invalidated read. Wait for the new
 		// row (or the refusal) before focusing a control a refetch will remove.
-		if (row === handoff.rowAtStart && refusal?.approvalId !== handoff.id)
-			return;
+		const newRefusal =
+			refusal?.approvalId === handoff.id && refusal !== handoff.refusalAtStart;
+		if (row === handoff.rowAtStart && !newRefusal) return;
 		deniedFocus.current = null;
 		// Only an outcome on the current live card takes precedence. Otherwise
 		// continue to another live card (never this card's Details button), then
@@ -359,7 +362,7 @@ export const MeshApprovalsTray: FC<MeshApprovalsTrayProps> = ({
 					)
 				: null) ??
 			trayRef.current?.querySelector<HTMLButtonElement>(
-				`[data-approval-id]:not([data-approval-id="${CSS.escape(handoff.id)}"]) [data-tour-tag="mesh-approval-controls"] button:not(:disabled)`,
+				`[data-tour-tag="mesh-approvals-live"] [data-approval-id]:not([data-approval-id="${CSS.escape(handoff.id)}"]) [data-tour-tag="mesh-approval-controls"] button:not(:disabled)`,
 			) ??
 			recordsRef.current?.querySelector<HTMLButtonElement>("button");
 		const refusalTarget = refusal
@@ -503,7 +506,10 @@ export const MeshApprovalsTray: FC<MeshApprovalsTrayProps> = ({
 			)}
 
 			{waiting.length > 0 && (
-				<ul className="flex flex-col divide-y divide-hairline">
+				<ul
+					className="flex flex-col divide-y divide-hairline"
+					data-tour-tag="mesh-approvals-live"
+				>
 					{waiting.map((row) => (
 						<MeshApprovalCard
 							key={row.approvalId}

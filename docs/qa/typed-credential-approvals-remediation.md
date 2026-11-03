@@ -269,9 +269,11 @@ Actual tray rendering assertions cover the permanent label/countdown and malform
 typed inheritance fallback. Remaining live-card expiry explicitly names This card,
 not the permission lifetime, in all locales.
 
-D2-3 header-count grammar normalization is deferred: it is cosmetic and would
-change waiting/history labels shared with noncredential cards across locales;
-that broader copy churn is not required for the QA failure or these corrections.
+D2-3 header-count grammar normalization is deferred: it is cosmetic. The two
+inconsistent count labels were added by this PR (they are not inherited shared
+labels). Aligning them is possible, but would change seven additional target
+catalogues for a non-gating grammar preference. This final narrow batch keeps
+those values unchanged; that is a scope decision, not a technical dependency.
 No follow-up issue created. Fresh independent audit required for new/changed copy;
 existing receipt history is untouched and no self-audit is claimed.
 
@@ -285,3 +287,26 @@ Exact catalogue changes: all eight locales add `ui.mesh.approval.could_not_apply
 and `ui.mesh.approval.typed_review_unavailable`, and change
 `ui.mesh.approval.expires_window`. English context adds the two new entries and
 clarifies expires_window's card-only subject. No removed keys.
+
+
+## Last pre-QA narrow corrections
+
+Spanish expires_window now says Esta tarjeta caduca en {duration}; the subject
+is the card, not the permission or request. typed_review_unavailable now uses
+Deniégala, matching the Deny action. English could_not_apply context describes
+not retryable (false or absent), per the independent audit; no production gate
+was broadened by this context-only correction. Fresh independent audit required.
+
+Next-live focus lookup is scoped to the live list only. An expanded settled
+legacy failed card can expose a control, but cannot be selected as next live.
+The handoff stores the refusal object present at click time and waits for a
+replaced row or a DIFFERENT same-id refusal. Unrelated renders with an old error
+cannot complete a newly armed attempt. Real tray DOM regression covers both:
+expanded history with controls falls back to its toggle, and an unchanged old
+refusal preserves the retry button's focus until a new refusal arrives.
+
+Selected serial runs: mesh-tab tests 118/pass 118/fail 0; locale-parity tests
+44/pass 44/fail 0, 2 GiB/120 seconds/concurrency 1. No full suite/native/browser.
+Exact catalogue delta: es ui.mesh.approval.expires_window and
+ui.mesh.approval.typed_review_unavailable. English context only:
+ui.mesh.approval.could_not_apply. No new/removed keys or generated type change.

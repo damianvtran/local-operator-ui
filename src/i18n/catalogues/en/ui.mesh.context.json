@@ -1377,7 +1377,7 @@
 	"ui.mesh.approval.could_not_apply": {
 		"role": "terminal outcome label — permanently refused signed credential card",
 		"tone": "Quiet and factual",
-		"note": "Approval was signed but the SAME card cannot be applied successfully. No suggestion that waiting/retrying helps. Replaces approved_not_applied and suppresses countdown only when explicit apply_outcome.retryable is false; cancel remains available."
+		"note": "Approval was signed but the SAME card cannot be applied successfully. No suggestion that waiting/retrying helps. Replaces approved_not_applied and suppresses countdown when apply_outcome is not retryable (false or absent); cancel remains available."
 	},
 	"ui.mesh.approval.typed_review_unavailable": {
 		"role": "safe fallback — typed credential request lacks backend refusal_message",

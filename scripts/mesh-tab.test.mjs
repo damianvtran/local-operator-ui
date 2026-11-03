@@ -6495,6 +6495,69 @@ test("tray coordinates focus and announcement across settle and refetch", async 
 			"mesh-approval-refusal",
 		);
 		assert.equal(announcement(), "");
+		// An expanded settled failed legacy card can have controls, but is NOT
+		// the next live card. Completing the only live card must focus its toggle.
+		const history = {
+			...row(),
+			approvalId: "ap_7f3k9m2q8r7v",
+			typed: undefined,
+		};
+		props = {
+			...props,
+			rows: [requested(), history],
+			refusal: null,
+			onDecide: () => {
+				props = {
+					...props,
+					rows: [{ ...props.rows[0], state: "connected" }, history],
+				};
+				renderInstant();
+			},
+		};
+		await render();
+		const toggle = [...document.querySelectorAll("button")].find((button) =>
+			button.textContent.startsWith("Settled approvals"),
+		);
+		await mounted.act(async () => toggle.click());
+		approve().focus();
+		await mounted.act(async () => approve().click());
+		assert.equal(
+			document.activeElement,
+			toggle,
+			"expanded history controls cannot capture next-live focus",
+		);
+		// A stale same-card refusal at click time is not completion of a new try.
+		const unchanged = row();
+		props = {
+			...props,
+			rows: [unchanged],
+			refusal: { ...refusal },
+			onDecide: () => {},
+		};
+		await render();
+		const retry = [...document.querySelectorAll("button")].find(
+			(button) => button.textContent === "Try again",
+		);
+		retry.focus();
+		await mounted.act(async () => retry.click());
+		props = { ...props };
+		await render();
+		assert.equal(
+			document.activeElement,
+			retry,
+			"unrelated rerender with old refusal must wait",
+		);
+		props = {
+			...props,
+			refusal: { ...refusal, sentence: "A new attempt was refused." },
+		};
+		await render();
+		assert.equal(
+			document.activeElement.getAttribute("data-tour-tag"),
+			"mesh-approval-refusal",
+			"new refusal completes the armed attempt",
+		);
+
 		// Permanent apply outcomes have no misleading 'yet' or countdown.
 		const permanent = row();
 		permanent.typed.applyOutcome = {
