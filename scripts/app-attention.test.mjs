@@ -288,6 +288,11 @@ test("service resolves the enabled Aida rail and rechecks it after local control
 	await flush();
 	assert.equal(output.at(-1).unreadCount, 10);
 	assert.equal(requests.filter((op) => op === "aida.status").length, 2);
+	enabled = true;
+	service.observeResponse({ op: "settings.edit" }, { status: 200 });
+	await flush();
+	assert.equal(output.at(-1).unreadCount, 11);
+	assert.equal(requests.filter((op) => op === "aida.status").length, 3);
 	service.stop();
 });
 

@@ -209,7 +209,7 @@ export class AppAttentionProjection {
 	private replaceSession(id: string, next: SessionLevel): void {
 		const old = this.sessions.get(id);
 		// Whole-feed unseen completions include hidden/historical conversations
-		// (124 on the reported install), not the rail's single Aida pill.
+		// across historical conversations, not the rail's single Aida pill.
 		if (id === this.aidaSession) {
 			this.completions = aidaMissedMessages(
 				[{ ...next, session_id: id }],

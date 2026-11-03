@@ -398,7 +398,8 @@ app.setName("Local Operator");
  * two byte-identical relaunches came up regular and accessory — so the policy
  * is asserted here, where the mode is already known, instead of trusted from
  * whatever the launch context handed the process. The dock-policy show call is
- * idempotent for an app that is already regular, and it is NOT a window raise:
+ * must be gated on isVisible(): Electron's DockShow can transfer activation
+ * even for an already-regular active app. It is NOT an ordinary window raise:
  * the dock show/hide pair sets the app's DOCK participation, which is the policy
  * `windowLaunch.hideDock` already decides — the raise-family ban in
  * `scripts/window-mode.test.mjs` is about windows (show/focus/maximize), so its
@@ -416,7 +417,9 @@ if (process.platform === "darwin" && app.dock) {
 	if (windowLaunch.hideDock) {
 		app.dock.hide();
 	} else {
-		app.dock.show();
+		if (!app.dock.isVisible()) {
+			app.dock.show();
+		}
 		app.dock.setIcon(image);
 	}
 }
@@ -451,6 +454,9 @@ if (process.platform === "darwin" && app.dock) {
 function reassertDockParticipation(): void {
 	if (process.platform !== "darwin" || !app.dock) return;
 	if (windowLaunch.hideDock) return;
+	// DockShow can hand activation to the Dock and then take it back. Only
+	// repair accessory policy; never bounce an already-regular active app.
+	if (app.dock.isVisible()) return;
 	app.dock.show();
 }
 
@@ -2597,7 +2603,6 @@ app
 			// Update relaunch can detach Dock participation after startup. Healing
 			// on real window events never shows/focuses a window of its own.
 			window.on("show", () => refreshAppIconBadge());
-			window.on("focus", () => refreshAppIconBadge());
 			window.webContents.on("before-input-event", (event, input) => {
 				if (!shouldToggleDevTools(input, is.dev)) return;
 				event.preventDefault();
@@ -2678,25 +2683,27 @@ app
 		const publishBadge = (
 			snapshot: { unreadCount: number; pending: boolean },
 			enabled?: boolean,
+			reassert = true,
 		) => {
 			// Keep the existing headless guard in the one Dock policy helper.
 			// setBadge alone succeeds even with no running tile after ShipIt.
-			reassertDockParticipation();
+			if (reassert) reassertDockParticipation();
 			nativeBadge.update(snapshot, enabled);
 			const state = nativeBadge.readForScene();
-			// Electron exposes tile visibility, not notification authorization or
-			// LaunchServices ApplicationType. Do not invent either permission fact.
-			const dockType =
+			// isVisible reports regular activation policy, not painted Dock pixels
+			// or notification authorization. Read after the gated show decision;
+			// an asynchronous repair can still report accessory until it completes.
+			const policy =
 				process.platform === "darwin" && app.dock
 					? app.dock.isVisible()
-						? "tile-visible"
-						: "tile-hidden"
+						? "regular"
+						: "accessory"
 					: "unavailable";
 			const label =
 				process.platform === "darwin" && app.dock
 					? app.dock.getBadge()
 					: "platform-native";
-			const line = `[app-badge] label=${label} count=${state.unreadCount} pending=${state.pending} dockType=${dockType} enabled=${enabled !== false}`;
+			const line = `[app-badge] label=${label} count=${state.unreadCount} pending=${state.pending} policy=${policy} enabled=${enabled !== false}`;
 			if (line !== lastBadgeLog) {
 				lastBadgeLog = line;
 				logger.info(line, LogFileType.BACKEND);
@@ -2711,7 +2718,8 @@ app
 			}).success,
 			publish: publishBadge,
 			clear: () => {
-				publishBadge({ unreadCount: 0, pending: false });
+				// Quit/reset clears must never request Dock activation-policy repair.
+				publishBadge({ unreadCount: 0, pending: false }, undefined, false);
 				nativeBadge.reset();
 			},
 		});

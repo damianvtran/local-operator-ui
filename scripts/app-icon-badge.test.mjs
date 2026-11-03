@@ -49,7 +49,7 @@ test("macOS caps, deduplicates, preserves read-pending and clears disabled/reset
 	assert.deepEqual(writes.slice(-4), ["7", "", "7", ""]);
 });
 
-test("Dock recovery is guarded headless and runs on publish/show/focus without raising windows", () => {
+test("real Dock helper repairs only accessory policy and cannot loop on focus/publish", () => {
 	const main = readFileSync(
 		new URL("../src/main/index.ts", import.meta.url),
 		"utf8",
@@ -59,10 +59,13 @@ test("Dock recovery is guarded headless and runs on publish/show/focus without r
 		main.indexOf("\n/*", main.indexOf("function reassertDockParticipation")),
 	);
 	let shows = 0;
+	let visible = false;
 	const app = {
 		dock: {
+			isVisible: () => visible,
 			show: () => {
 				shows++;
+				visible = true;
 			},
 		},
 	};
@@ -75,7 +78,14 @@ test("Dock recovery is guarded headless and runs on publish/show/focus without r
 	run(app, { platform: "darwin" }, { hideDock: true });
 	assert.equal(shows, 0, "headless must not acquire a Dock tile");
 	run(app, { platform: "darwin" }, { hideDock: false });
-	assert.equal(shows, 1, "a detached ordinary app reasserts participation");
+	assert.equal(shows, 1, "a detached ordinary app reasserts once");
+	shows = 0;
+	for (let cycle = 0; cycle < 5; cycle++) {
+		// Simulate focus -> publish invoking the actual helper again. Once
+		// regular, this must never enter Electron's activation-taking DockShow.
+		run(app, { platform: "darwin" }, { hideDock: false });
+	}
+	assert.equal(shows, 0, "visible focus/publish cycles cannot call DockShow");
 	const publisher = main.slice(
 		main.indexOf("const publishBadge ="),
 		main.indexOf("const appAttention ="),
@@ -86,8 +96,53 @@ test("Dock recovery is guarded headless and runs on publish/show/focus without r
 	);
 	assert.match(publisher, /if \(line !== lastBadgeLog\)/);
 	assert.match(main, /window.on\("show", \(\) => refreshAppIconBadge\(\)\)/);
-	assert.match(main, /window.on\("focus", \(\) => refreshAppIconBadge\(\)\)/);
+	assert.doesNotMatch(
+		main,
+		/window.on\("focus", \(\) => refreshAppIconBadge\(\)\)/,
+		"focus must not publish another repair",
+	);
+	assert.match(
+		main,
+		/publishBadge\(\{ unreadCount: 0, pending: false \}, undefined, false\)/,
+		"clear-on-quit/reset explicitly bypasses repair",
+	);
+	assert.match(publisher, /if \(reassert\) reassertDockParticipation\(\)/);
+	assert.match(publisher, /policy=\$\{policy\}/);
+	assert.doesNotMatch(publisher, /dockType=/);
 	assert.doesNotMatch(publisher, /\.focus\(|\.show\(|bounce\(/);
+	let state;
+	const lines = [];
+	app.dock.getBadge = () => String(state.unreadCount || "");
+	const publish = new Function(
+		"app",
+		"process",
+		"nativeBadge",
+		"reassertDockParticipation",
+		"logger",
+		"LogFileType",
+		`let lastBadgeLog; ${stripTypeScriptTypes(publisher)}; return publishBadge;`,
+	)(
+		app,
+		{ platform: "darwin" },
+		{
+			update: (snapshot) => {
+				state = snapshot;
+			},
+			readForScene: () => state,
+		},
+		() => run(app, { platform: "darwin" }, { hideDock: false }),
+		{ info: (line) => lines.push(line) },
+		{ BACKEND: "backend" },
+	);
+	publish({ unreadCount: 11, pending: false }, true);
+	publish({ unreadCount: 11, pending: false }, true);
+	assert.equal(shows, 0, "visible publish cycles never call DockShow");
+	assert.equal(lines.length, 1, "unchanged state logs once");
+	assert.match(lines[0], /policy=regular/);
+	visible = false;
+	publish({ unreadCount: 0, pending: false }, undefined, false);
+	assert.equal(shows, 0, "clear path never repairs accessory policy");
+	assert.match(lines.at(-1), /policy=accessory/);
 });
 
 test("scene readback retains exact localized projection and cannot mutate it", () => {
