@@ -18,6 +18,25 @@ const dom = new JSDOM("<main id='root'></main>", { url: "http://localhost/" });
 globalThis.window = dom.window;
 globalThis.document = dom.window.document;
 globalThis.HTMLElement = dom.window.HTMLElement;
+// The real Dialog/portal path needs browser DOM constructors in this Node host;
+// these are jsdom objects, not a separate browser or native UI claim.
+for (const name of [
+	"Element",
+	"Node",
+	"NodeFilter",
+	"DocumentFragment",
+	"MutationObserver",
+	"CustomEvent",
+	"HTMLInputElement",
+	"HTMLTextAreaElement",
+	"HTMLFormElement",
+])
+	globalThis[name] = dom.window[name];
+globalThis.getComputedStyle = dom.window.getComputedStyle.bind(dom.window);
+Object.defineProperty(globalThis, "navigator", {
+	value: dom.window.navigator,
+	configurable: true,
+});
 Object.defineProperty(globalThis, "localStorage", {
 	value: dom.window.localStorage,
 	configurable: true,
@@ -29,7 +48,7 @@ const ANY_MODULE = /.*/;
 const built = await build({
 	stdin: {
 		contents:
-			'export * from "./src/renderer/src/features/agent-hub/components/hub-skill-adoption"; export * from "./src/renderer/src/shared/api/local-operator/hub-skill-adoption"; export { desktopRequestSchema, desktopEndpoint } from "./src/shared/desktop-contract"; export { useAdoptionFixtureDocumentDirection } from "./src/renderer/src/features/agent-hub/hub-skill-adoption.fixtures"; export { setLocale } from "./src/i18n";',
+			'export * from "./src/renderer/src/features/agent-hub/components/hub-skill-adoption"; export * from "./src/renderer/src/shared/api/local-operator/hub-skill-adoption"; export { desktopRequestSchema, desktopEndpoint } from "./src/shared/desktop-contract"; export { useAdoptionFixtureDocumentDirection } from "./src/renderer/src/features/agent-hub/hub-skill-adoption.fixtures"; export { setLocale } from "./src/i18n"; export { HubSkillsLibrary } from "./src/renderer/src/features/agent-hub/components/hub-skills-library";',
 		resolveDir: process.cwd(),
 		loader: "ts",
 	},
@@ -60,7 +79,7 @@ const built = await build({
 					contents:
 						path === "config"
 							? 'export const apiConfig={radientBaseUrl:"http://localhost:8127"};'
-							: 'export const useServerHealth=()=>{throw new Error("unexpected health hook");};',
+							: "export const useServerHealth=()=>({data:{online:false,snapshot:null},isError:true,isPlaceholderData:false});",
 					loader: "js",
 				}));
 			},
@@ -75,6 +94,7 @@ new Function("require", "module", "exports", built.outputFiles[0].text)(
 );
 const {
 	HubSkillAdoption,
+	HubSkillsLibrary,
 	adoptionFileActionKey,
 	useAdoptionFixtureDocumentDirection,
 	setLocale,
@@ -485,5 +505,257 @@ test("adoption fixtures mirror shipping document direction and restore prior att
 			if (previous[key] === null) html.removeAttribute(key);
 			else html.setAttribute(key, previous[key]);
 		}
+	}
+});
+
+async function productionSubscribeScene() {
+	const requests = [];
+	let installed = false;
+	const row = {
+		id: source.remoteId,
+		name: source.alias,
+		description: "Fixture skill",
+		visibility: "org",
+		tenant_id: source.scope.tenantId,
+		document_version: 1,
+		content_revision: 1,
+		revision: "fixture-revision",
+		sync_contract: { revision_cas: 1, skills: 1 },
+		files: [{ path: "SKILL.md", content: "# Hub guidance\n" }],
+	};
+	const direction = {
+		state: "up-to-date",
+		classification: null,
+		enabled: false,
+		last_checked_at: null,
+		last_success_at: null,
+		attempts: 0,
+		next_retry_at: null,
+		error_class: null,
+		error_subclass: null,
+		safe_message: null,
+		operation_id: null,
+		model_used: null,
+		summary: null,
+		backup_receipt: null,
+	};
+	const link = {
+		link_id: "subscribe-adoption-link",
+		kind: "skill",
+		local_id: source.alias,
+		name: source.alias,
+		hub_id: source.remoteId,
+		hub_source: "http://localhost:8127/v1",
+		visibility: "org",
+		tenant_id: source.scope.tenantId,
+		tenant_name: "Minerva",
+		policy: {
+			subscribe: true,
+			auto_push: false,
+			revision: "policy-after-adoption",
+		},
+		eligibility: { can_auto_push: true, reason: null },
+		baseline_state: "pulled",
+		remote_revision: row.revision,
+		content_state: "present",
+		local_path: "/fixture/managed/release-checklist",
+		auto_will_apply: false,
+		auto_will_push: false,
+		pull: direction,
+		push: direction,
+	};
+	const inventory = () => ({ links: installed ? [link] : [], unresolved: [] });
+	const caps = {
+		desktop_contract: 1,
+		desktop_available: true,
+		desktop_auth: "bearer",
+		features: { hub_skills: 1, hub_links: 1, radient_org: 1 },
+	};
+	window.api = {
+		desktop: {
+			request: async (input) => {
+				requests.push(input);
+				if (input.op === "capabilities") return ok(caps);
+				if (input.op === "hub.links") return ok(inventory());
+				if (input.op === "radient.request") {
+					const operation = input.control.operation;
+					if (operation === "org_skills.list")
+						return ok({
+							data: {
+								result: { skills: [row], sync_contract: row.sync_contract },
+							},
+						});
+					if (operation === "org_skill.get")
+						return ok({ data: { result: row } });
+				}
+				if (input.op === "hub.skillSubscribe")
+					return {
+						status: 409,
+						body: {
+							detail: {
+								code: "alias-occupied",
+								message: "Review this authored folder before subscribing.",
+							},
+						},
+					};
+				if (input.op === "hub.skillPull" && input.dryRun)
+					return ok({ ...preview, links: inventory() });
+				if (
+					input.op === "hub.skillPull" &&
+					input.confirm &&
+					input.adoptionReceipt === preview.adoption_receipt
+				) {
+					installed = true;
+					return ok({ ...applied, link, links: inventory() });
+				}
+				throw new Error(
+					`Unexpected production Subscribe fixture operation: ${input.op}`,
+				);
+			},
+		},
+	};
+	const client = new QueryClient({
+		defaultOptions: {
+			queries: { retry: false, gcTime: Number.POSITIVE_INFINITY },
+			mutations: { retry: false },
+		},
+	});
+	client.setQueryData(["desktop", "capabilities"], caps);
+	const mount = createRoot(document.getElementById("root"));
+	await act(async () => {
+		mount.render(
+			React.createElement(
+				QueryClientProvider,
+				{ client },
+				React.createElement(HubSkillsLibrary, {
+					scope: source.scope,
+					signedIn: true,
+				}),
+			),
+		);
+		await pause();
+	});
+	await act(async () => {
+		await pause();
+	});
+	const clickTestId = async (id) => {
+		const node = document.querySelector(`[data-testid="${id}"]`);
+		assert.ok(node, `missing ${id}: ${text()}`);
+		assert.notEqual(node.disabled, true, `disabled ${id}`);
+		await act(async () => {
+			node.click();
+			await pause();
+		});
+		await act(async () => {
+			await pause();
+		});
+	};
+	return {
+		requests,
+		client,
+		clickTestId,
+		writes: () =>
+			requests.filter(
+				(r) => r.op === "hub.skillSubscribe" || r.op === "hub.skillPull",
+			),
+		cleanup: async () => {
+			await act(async () => mount.unmount());
+			client.clear();
+		},
+	};
+}
+
+test("production direct Subscribe collision retains membership intent through reviewed adoption", async () => {
+	const s = await productionSubscribeScene();
+	try {
+		await s.clickTestId("hub-skill-open");
+		assert.equal(
+			s.writes().length,
+			0,
+			"opening the production detail never mutates membership/content",
+		);
+		await s.clickTestId("hub-skill-subscribe");
+		assert.equal(s.writes().length, 1);
+		assert.equal(s.writes()[0].op, "hub.skillSubscribe");
+		assert.ok(
+			document.querySelector('[data-testid="hub-skill-subscribe-failed"]'),
+		);
+		await press("Review and merge");
+		assert.equal(
+			s.writes().length,
+			1,
+			"opening review never silently downloads or previews",
+		);
+		assert.equal(
+			document.querySelector('[data-testid="hub-skill-subscribe-failed"]'),
+			null,
+			"stale subscription refusal is hidden during review",
+		);
+		await press("Create preview");
+		await press("Confirm reviewed adoption");
+		const writes = s.writes();
+		assert.equal(writes.length, 3);
+		for (const request of writes.slice(1)) {
+			assert.equal(request.op, "hub.skillPull");
+			assert.equal(
+				request.subscribe,
+				true,
+				"Subscribe recovery must not become Download-only",
+			);
+			assert.equal(request.autoPush, false);
+			assert.equal(request.confirmPublicEgress, false);
+			assert.equal(request.hubId, source.remoteId);
+			assert.equal(request.tenantId, source.scope.tenantId);
+			assert.equal(request.localAlias, source.alias);
+		}
+		assert.equal(writes[1].dryRun, true);
+		assert.equal(writes[1].allowLlm, false);
+		assert.equal(writes[2].confirm, true);
+		assert.equal(writes[2].adoptionReceipt, preview.adoption_receipt);
+		assert.equal(writes[2].adoptionStrategy, writes[1].adoptionStrategy);
+		assert.ok(text().includes("Skill adopted"));
+		await press("Done");
+		assert.equal(
+			document.querySelector('[data-testid="hub-skill-subscribe-failed"]'),
+			null,
+		);
+		assert.equal(
+			button("Review and merge"),
+			undefined,
+			"completed adoption cannot reopen a stale Subscribe refusal",
+		);
+	} finally {
+		await s.cleanup();
+	}
+});
+
+test("production Subscribe collision review can cancel without a preview or membership write", async () => {
+	const s = await productionSubscribeScene();
+	try {
+		await s.clickTestId("hub-skill-open");
+		await s.clickTestId("hub-skill-subscribe");
+		await press("Review and merge");
+		await press("Cancel");
+		assert.equal(
+			s.writes().length,
+			1,
+			"cancel must leave only the original refused Subscribe",
+		);
+		assert.equal(s.writes()[0].op, "hub.skillSubscribe");
+		assert.equal(
+			document.querySelector('[data-testid="hub-skill-subscribe-failed"]'),
+			null,
+		);
+		assert.equal(
+			button("Review and merge"),
+			undefined,
+			"cancel clears stale recovery state",
+		);
+		assert.deepEqual(s.client.getQueryData(["desktop", "hub-links"]), {
+			links: [],
+			unresolved: [],
+		});
+	} finally {
+		await s.cleanup();
 	}
 });

@@ -146,6 +146,19 @@ export function HubSkillsLibrary({
 	const subscribe = useSubscribeHubSkill();
 	const unpull = useUnpullHubSkill();
 	const policy = useHubLinkPolicy();
+	// An occupied authored folder needs the same receipt review for either act,
+	// but recovery must retain Subscribe's intent rather than become Download.
+	const adoptionCandidate: PullHubSkillInput | null =
+		aliasConflict(subscribe.error) && subscribe.variables
+			? {
+					...subscribe.variables,
+					subscribe: true,
+					autoPush: false,
+					consent: false,
+				}
+			: aliasConflict(pull.error) && pull.variables
+				? pull.variables
+				: null;
 	// The local inventory is a desktop read, not a hub read: it answers for the
 	// public scope without a credential, and a signed-out person still sees which
 	// skills this machine already holds.
@@ -298,6 +311,7 @@ export function HubSkillsLibrary({
 		}
 		const localAlias = selectedRow?.name ?? "";
 		if (!localAlias) return;
+		pull.reset();
 		subscribe.mutate({
 			requestId: requestIdFor(
 				JSON.stringify({ op: "subscribe", selected, scope, localAlias }),
@@ -578,6 +592,8 @@ export function HubSkillsLibrary({
 					if (!open) {
 						setSelected(null);
 						setAdoptionInput(null);
+						pull.reset();
+						subscribe.reset();
 					}
 				}}
 			>
@@ -738,22 +754,21 @@ export function HubSkillsLibrary({
 									)}
 								</p>
 							)}
-							{!adoptionInput &&
-								aliasConflict(pull.error) &&
-								pull.variables && (
-									<Button
-										variant="outline"
-										onClick={() => setAdoptionInput(pull.variables ?? null)}
-									>
-										{t("ui.hub.adoption.review")}
-									</Button>
-								)}
+							{!adoptionInput && adoptionCandidate && (
+								<Button
+									variant="outline"
+									onClick={() => setAdoptionInput(adoptionCandidate)}
+								>
+									{t("ui.hub.adoption.review")}
+								</Button>
+							)}
 							{adoptionInput && (
 								<HubSkillAdoption
 									input={adoptionInput}
 									onClose={() => {
 										setAdoptionInput(null);
 										pull.reset();
+										subscribe.reset();
 									}}
 								/>
 							)}
@@ -796,7 +811,7 @@ export function HubSkillsLibrary({
 									{t("ui.hub.skills.unpull_failed")}
 								</p>
 							)}
-							{subscribe.error && (
+							{subscribe.error && !adoptionInput && (
 								<p
 									role="alert"
 									className="text-body-sm text-danger"
