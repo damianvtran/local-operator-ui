@@ -1527,10 +1527,7 @@ export function targetConversation(
 
 /** "X (X)" collapses to "X"; any other label is returned unchanged. */
 function dedupedAgentLabel(label: string): string {
-	const twice = COMPOSED_LABEL.exec(label.trim());
-	return twice && nameKey(twice[1]) === nameKey(twice[2])
-		? twice[1].trim()
-		: label;
+	return selfComposedName(label.trim()) ?? label;
 }
 
 /**
@@ -1672,20 +1669,79 @@ export function storedLabel(label: string): string | null {
  * "Agent (Owner)": the composed display form. Older clients stored it as the
  * agent member's `display_label`, so the read path must recognise it (and "X
  * (X)") in existing rows; this client now stores a bare name (`storedAgentLabel`).
- */
-/*
- * Full-width brackets too: the zh-CN `chief.label` is "{agent}（{person}）", so a
- * client that ever stored the composed zh-CN form wrote "Aida（陈伟）" (review
- * m2 on #1643). A read-path match only: the tail is stripped solely when it
- * equals the owner (`storedAgentName`), so an agent truly named "Aida（Sales）"
- * keeps its name.
  *
- * The tail is the LAST bracket group and holds no bracket of either kind
- * (review m1-r2 on #1643): with `(.+)` the lazy head stopped at the FIRST
- * bracket, so "Aida（v2）(Ben Tran)" or "Aida (v2) (Ben Tran)" split as
- * "Aida" + "v2）(Ben Tran" and the owner was composed a second time.
+ * WHY NOT A REGEX (review M1-r3 on #1643, the second regression on this
+ * function). A single pattern has to guess where the owner's bracket opens,
+ * and any guess is wrong for some real label: a lazy head mis-split "Aida (v2)
+ * (Ben Tran)", and a bracket-free tail refused an owner "Ana (she/her)" or
+ * "Damian Tran (Minerva)", so the owner was composed a second time. The two
+ * questions the read path asks are answered directly instead:
+ * - owner KNOWN (`stripOwnerSuffix`): does the label END with that owner in
+ *   brackets? A comparison, so whatever the owner's name contains is matched;
+ * - owner UNKNOWN (`selfComposedName`): is the label "X (X)"? Every split
+ *   whose trailing group is one balanced bracket pair is tried, so a bracket
+ *   inside a name ("(she/her)") never splits it.
+ * Both bracket forms are recognised because the zh-CN `chief.label` is
+ * "{agent}（{person}）".
  */
-const COMPOSED_LABEL = /^(.+?)\s*[(（]([^()（）]+)[)）]$/u;
+const BRACKET_PAIRS: Readonly<Record<string, string>> = {
+	"(": ")",
+	"（": "）",
+};
+
+/**
+ * The head of `label` when it ends with `(owner)` / `（owner）` (optional
+ * whitespace before the bracket), or null. The owner is compared by `nameKey`,
+ * so case, spacing and NFKC width do not matter.
+ */
+function stripOwnerSuffix(label: string, owner: string): string | null {
+	const ownerKey = nameKey(owner);
+	if (ownerKey === "") return null;
+	for (let open = 0; open < label.length; open += 1) {
+		const close = BRACKET_PAIRS[label[open]];
+		if (close === undefined || !label.endsWith(close)) continue;
+		const inner = label.slice(open + 1, label.length - close.length);
+		const head = label.slice(0, open).trim();
+		if (head !== "" && bracketsBalance(inner) && nameKey(inner) === ownerKey)
+			return head;
+	}
+	return null;
+}
+
+/** True when `text` opens and closes its brackets (either form) in order. */
+function bracketsBalance(text: string): boolean {
+	const closers = new Set(Object.values(BRACKET_PAIRS));
+	const stack: string[] = [];
+	for (const char of text) {
+		const close = BRACKET_PAIRS[char];
+		if (close !== undefined) stack.push(close);
+		else if (closers.has(char) && stack.pop() !== char) return false;
+	}
+	return stack.length === 0;
+}
+
+/**
+ * X when `label` is "X (X)" / "X（X）" (the self-composition older clients
+ * stored for an unnamed agent), else null. Only a trailing group that is ONE
+ * balanced pair counts as the tail, so "Ana (she/her) (Ana (she/her))" is
+ * "Ana (she/her)" twice and "Ana (she/her)" alone is not a composition.
+ */
+function selfComposedName(label: string): string | null {
+	for (let open = 0; open < label.length; open += 1) {
+		const close = BRACKET_PAIRS[label[open]];
+		if (close === undefined || !label.endsWith(close)) continue;
+		const inner = label.slice(open + 1, label.length - close.length);
+		const head = label.slice(0, open).trim();
+		if (
+			head !== "" &&
+			bracketsBalance(inner) &&
+			nameKey(head) === nameKey(inner)
+		) {
+			return head;
+		}
+	}
+	return null;
+}
 
 /**
  * The stored tails of an unnamed agent's label. The ASCII form is the only
@@ -1767,14 +1823,13 @@ export function storedAgentName(
 	) {
 		return null;
 	}
-	const composed = COMPOSED_LABEL.exec(stored);
-	if (composed) {
-		const [, agent, owner] = composed;
-		if (nameKey(agent) === nameKey(owner)) return null;
-		if (personName !== null && nameKey(owner) === nameKey(personName)) {
-			return agent.trim();
+	if (personName !== null) {
+		const agent = stripOwnerSuffix(stored, personName);
+		if (agent !== null) {
+			return nameKey(agent) === nameKey(personName) ? null : agent;
 		}
 	}
+	if (selfComposedName(stored) !== null) return null;
 	return stored;
 }
 
@@ -1795,9 +1850,8 @@ export function unlistedMemberLabel(
 	const stored = memberStoredName(member);
 	if (stored !== null || member.kind !== "agent") return stored;
 	const label = storedLabel(member.display_label);
-	if (label === null) return null;
-	const owner = dedupedAgentLabel(label);
-	return owner !== label ? chiefLabels.unnamed(owner) : null;
+	const owner = label === null ? null : selfComposedName(label);
+	return owner === null ? null : chiefLabels.unnamed(owner);
 }
 
 /**
@@ -1815,8 +1869,11 @@ export function unlistedMemberLabel(
  * agent with no name of its own, and the owner never twice.
  *
  * - A human is named by their own label alone; no owner applies.
- * - An agent whose owner label is blank keeps its stored label as-is (which may
- *   already carry its owner); a parenthetical with nothing in it would say less.
+ * - An agent whose owner label is blank is read as an unlisted member
+ *   (`unlistedMemberLabel`): its stored label as-is (which may already carry
+ *   its owner), or "X's chief of staff" for a self-composed "X (X)", whose X is
+ *   the owner (review M1-r3 matrix on #1643). A parenthetical with nothing in
+ *   it would say less.
  *
  * NULL IS THE CALLER'S TO PAINT, as with `participantLabel`: the shared
  * "Unknown agent" / "Unknown person" copy, never an invented name.
@@ -1831,7 +1888,11 @@ export function recipientLabel(
 ): string | null {
 	if (recipient.kind === "human") return storedLabel(recipient.label);
 	const owner = recipient.ownerLabel.trim();
-	if (owner === "") return storedAgentName(recipient.label, null);
+	if (owner === "")
+		return unlistedMemberLabel(
+			{ kind: "agent", display_label: recipient.label },
+			chiefLabels,
+		);
 	return composeChiefLabel(
 		storedAgentName(recipient.label, owner) ?? "",
 		owner,
@@ -1894,7 +1955,16 @@ export function participantLabel(
 			: storedAgentName(participant.display_label, personName);
 	if (personName)
 		return composeChiefLabel(agentName ?? "", personName, chiefLabels);
-	return agentName;
+	// An owner the directory does not list: read as an unlisted member, so a
+	// self-composed "X (X)" is X's chief of staff on the rows exactly as on the
+	// delivery line and in mentions (review M1-r3 matrix on #1643).
+	return (
+		agentName ??
+		unlistedMemberLabel(
+			{ kind: "agent", display_label: participant.display_label },
+			chiefLabels,
+		)
+	);
 }
 
 export type ThreadItem =
