@@ -12,5 +12,8 @@
 	"ui.agents.detail.read_state.class_on": "On",
 	"ui.agents.detail.read_state.class_off": "Off",
 	"ui.agents.detail.read_state.class_switching": "Switching…",
-	"ui.agents.detail.read_state.effort_inherit": "Use session effort"
+	"ui.agents.detail.read_state.effort_inherit": "Use session effort",
+	"ui.agents.detail.read_state.list_failed_teams": "Teams could not be read",
+	"ui.agents.detail.read_state.list_failed_agents": "Agents could not be read",
+	"ui.agents.detail.read_state.list_failed_meaning": "Nothing is lost. This is a read that failed — the backend answered an error, which is different from the backend being out of date."
 }

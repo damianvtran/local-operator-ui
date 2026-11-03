@@ -16,5 +16,10 @@
 	"ui.chat.attachments.playback_position": "Позиция воспроизведения",
 	"ui.chat.attachments.playback_rate": "Скорость воспроизведения",
 	"ui.chat.attachments.playback_rate_option": "{rate}x",
-	"ui.chat.attachments.volume": "Громкость"
+	"ui.chat.attachments.volume": "Громкость",
+	"ui.chat.attachments.open_named": "Открыть {name}",
+	"ui.chat.attachments.expand_aria": "Развернуть {name}",
+	"ui.chat.attachments.expand_title": "Нажмите, чтобы развернуть {name}",
+	"ui.chat.attachments.open_title": "Нажмите, чтобы открыть {name}",
+	"ui.chat.attachments.not_viewable": "Файл нельзя просмотреть: {name}"
 }

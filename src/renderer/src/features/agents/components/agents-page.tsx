@@ -1362,15 +1362,17 @@ export function AgentsPage() {
 									<PaneError
 										title={
 											teamMode
-												? "Teams could not be read"
-												: "Agents could not be read"
+												? t("ui.agents.detail.read_state.list_failed_teams")
+												: t("ui.agents.detail.read_state.list_failed_agents")
 										}
 										what={
 											listError instanceof Error
 												? listError.message
-												: "The request did not complete."
+												: t("ui.agents.detail.read_state.request_failed")
 										}
-										meaning="Nothing is lost. This is a read that failed — the backend answered an error, which is different from the backend being out of date."
+										meaning={t(
+											"ui.agents.detail.read_state.list_failed_meaning",
+										)}
 										onRetry={refreshAll}
 										retrying={profiles.isFetching || teams.isFetching}
 									/>
@@ -1590,7 +1592,7 @@ export function AgentsPage() {
 							focusToken={skillMode ? skillAskFocus : 0}
 							blockedReason={
 								editDirty
-									? "Finish or cancel your edit first."
+									? t("ui.agents.pages.blocked_edit")
 									: skillMode && skillGate !== null
 										? t(SKILL_GATE_KEY[skillGate])
 										: null

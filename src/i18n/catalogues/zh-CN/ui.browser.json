@@ -245,5 +245,6 @@
 	"ui.browser.webauthn_chooser.the_choice_did_not_name_a_passkey": "所选通行密钥不在此网站提供的选项中，因此请求已取消。请在网站上重试。",
 	"ui.browser.webauthn_chooser.the_site_stored_no_name_for_this": "网站未为此通行密钥保存名称。",
 	"ui.browser.webauthn_chooser.this_passkey_request_expired": "此通行密钥请求已过期",
-	"ui.browser.webauthn_chooser.this_passkey_request_was_cancelled": "此通行密钥请求已取消"
+	"ui.browser.webauthn_chooser.this_passkey_request_was_cancelled": "此通行密钥请求已取消",
+	"ui.browser.browser_url_bar.reload_shortcut": "重新加载（{shortcut}）"
 }

@@ -27,5 +27,7 @@
 	"ui.agents.upload.title.published_org": "Đã xuất bản “{name}” đến {destination}",
 	"ui.agents.upload.title.published_public": "Đã xuất bản “{name}” lên Trung tâm tác nhân",
 	"ui.agents.upload.title.republished": "Đã cập nhật mục đăng của “{name}” trên Trung tâm tác nhân",
-	"ui.agents.upload.title.update_listing": "Cập nhật mục đăng của “{name}” trên Trung tâm tác nhân?"
+	"ui.agents.upload.title.update_listing": "Cập nhật mục đăng của “{name}” trên Trung tâm tác nhân?",
+	"ui.agents.upload.sign_in.title_continue": "Đăng nhập để tiếp tục",
+	"ui.agents.upload.sign_in.title_again": "Đăng nhập lại"
 }

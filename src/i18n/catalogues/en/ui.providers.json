@@ -187,5 +187,6 @@
 	"ui.providers.provider_detail.the_sign_in_page": "the sign-in page",
 	"ui.providers.provider_grid.row_action": "{action}: {brand}",
 	"ui.providers.provider_detail.code_expiry": "Code expires in {minutes, plural, other {{minutes, number, ::group-off} min}}",
-	"ui.providers.provider_detail.link_expiry": "Link expires in {minutes, plural, other {{minutes, number, ::group-off} min}}"
+	"ui.providers.provider_detail.link_expiry": "Link expires in {minutes, plural, other {{minutes, number, ::group-off} min}}",
+	"ui.providers.provider_detail.sign_in_again": "Sign in again"
 }

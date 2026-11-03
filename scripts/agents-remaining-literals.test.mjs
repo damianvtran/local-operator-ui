@@ -234,6 +234,13 @@ function seamPlugin(mutation) {
 			call: 't("ui.agents.detail.origin.compare_packaged")',
 			literal: '"Compare with the packaged instructions"',
 		},
+		"revert-effort-tier": {
+			filter: AGENT_DETAIL_SOURCE,
+			// Two call sites carry this key; the create form's is the 8-tab one, so the
+			// anchor includes its indentation and the revert hits exactly that one.
+			call: 'ariaLabel={t("ui.agents.models.override.tier_field")}\n\t\t\t\t\t\t\t\tshowLabel={false}',
+			literal: 'ariaLabel="Effort tier"\n\t\t\t\t\t\t\t\tshowLabel={false}',
+		},
 		"revert-transport": {
 			filter: MISSING_DEFINITION_SOURCE,
 			call: 't("ui.common.errors.desktop_transport_failed")',
@@ -275,7 +282,7 @@ async function load(mutation) {
 			contents: [
 				'export * as React from "react";',
 				'export { AskPaneCopy, AddManuallyButton } from "../src/renderer/src/features/agents/components/agents-page";',
-				'export { AgentMeta, AgentDetail } from "../src/renderer/src/features/agents/components/agent-detail";',
+				'export { AgentMeta, AgentDetail, AgentCreate } from "../src/renderer/src/features/agents/components/agent-detail";',
 				'export { MissingDefinitionError } from "../src/renderer/src/features/agents/components/missing-definition-error";',
 				'export { DesktopControlError } from "../src/renderer/src/shared/api/local-operator/desktop-api";',
 				'export { DESKTOP_REFUSAL_CODE } from "../src/shared/desktop-contract";',
@@ -363,6 +370,8 @@ const copy = (marker) => ({
 	"ui.agents.upload.title.published_public": `${marker} published {name}`,
 	"ui.agents.upload.title.published_org": `${marker} published {name} to {destination}`,
 	"ui.agents.upload.title.republished": `${marker} republished {name}`,
+	"ui.agents.models.override.tier_field": `${marker} effort tier`,
+	"ui.agents.detail.field.effort_loading": `${marker} loading tiers`,
 	"ui.common.actions.retry_again": `${marker} retry`,
 	"ui.common.actions.retrying": `${marker} retrying`,
 });
@@ -1249,6 +1258,94 @@ test("negative controls: restoring any of the three origin literals defeats keye
 		lib.i18n.clearRegisteredCatalogues();
 		useLocale(lib, "en");
 	}
+});
+
+/*
+ * THE EFFORT-TIER CONTROL (the `label`, `ariaLabel`, `busyLabel` and section
+ * `description` props the scanner did not count). The create form is the shipped
+ * `AgentCreate`; the combobox's accessible name is read off the real input.
+ */
+async function effortTierView(lib) {
+	const h = lib.React.createElement;
+	const client = new lib.QueryClient({
+		defaultOptions: { queries: { retry: false } },
+	});
+	clients.push(client);
+	const view = await mount(
+		lib,
+		h(
+			lib.QueryClientProvider,
+			{ client },
+			h(
+				lib.MemoryRouter,
+				null,
+				h(lib.AgentCreate, {
+					takenNames: [],
+					effortTiers: ["low", "high"],
+					onSaved: () => {},
+					onCancel: () => {},
+				}),
+			),
+		),
+	);
+	return { view, client };
+}
+
+async function assertEffortTierCopy(lib, locale, marker) {
+	useLocale(lib, locale);
+	const { view, client } = await effortTierView(lib);
+	try {
+		const combo = view.container.querySelector('input[role="combobox"]');
+		assert.ok(combo, "the effort-tier combobox did not render");
+		assert.equal(combo.getAttribute("aria-label"), `${marker} effort tier`);
+		assert.ok(view.text().includes(`${marker} effort tier`), view.text());
+	} finally {
+		await view.unmount();
+		client.clear();
+	}
+}
+
+test("the effort-tier control follows the locale", async () => {
+	const lib = await load();
+	// Earlier cases clear the registry, so the markers are registered afresh.
+	lib.i18n.clearRegisteredCatalogues();
+	for (const [locale, marker] of [
+		["fr", "FR"],
+		["ur", "UR"],
+	])
+		lib.i18n.registerCatalogue(locale, copy(marker));
+	for (const [locale, marker] of [
+		["fr", "FR"],
+		["ur", "UR"],
+	]) {
+		await assertEffortTierCopy(lib, locale, marker);
+	}
+	// English is the source: the catalogue value is the literal it replaced.
+	lib.i18n.clearRegisteredCatalogues();
+	useLocale(lib, "en");
+	const { view, client } = await effortTierView(lib);
+	try {
+		assert.equal(
+			view.container
+				.querySelector('input[role="combobox"]')
+				.getAttribute("aria-label"),
+			"Effort tier",
+		);
+	} finally {
+		await view.unmount();
+		client.clear();
+	}
+});
+
+test("negative control: reverting the combobox name to its literal defeats the locale assertion", async () => {
+	const lib = await load("revert-effort-tier");
+	lib.i18n.registerCatalogue("fr", copy("FR"));
+	await assert.rejects(
+		assertEffortTierCopy(lib, "fr", "FR"),
+		assert.AssertionError,
+	);
+	lib.i18n.clearRegisteredCatalogues();
+	useLocale(lib, "en");
 });
 
 test("teardown: the store is back to English, and the suite closes what it opened", async () => {

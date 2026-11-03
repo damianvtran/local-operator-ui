@@ -36,7 +36,6 @@ import {
 } from "./session-cost";
 import {
 	DURATION_EXPLANATION,
-	DURATION_LABEL_EXPLANATION,
 	durationReading,
 	formatDuration,
 } from "./session-duration";
@@ -459,7 +458,8 @@ function useActiveSeconds(banked: number, startedAt: number | null): number {
  * and lives in the same place as every other qualification this component
  * makes about a value (see `modelReason`, `costTooltip`, `contextTooltipLines`).
  */
-export const LAST_READING_NOTE = "Last reading from before the reconnect.";
+export const LAST_READING_NOTE = () =>
+	t("ui.chat.session_status.last_reading_note");
 
 /**
  * The sentence that stands where the readings were, when the stream spent its
@@ -770,7 +770,7 @@ const Reading: FC<{
 		// not have. The extra column level is the tooltip's own `gap-0.5`.
 		<span className="flex flex-col gap-0.5">
 			{tooltip}
-			<span className="text-ink-muted">{LAST_READING_NOTE}</span>
+			<span className="text-ink-muted">{LAST_READING_NOTE()}</span>
 		</span>
 	) : (
 		tooltip
@@ -888,7 +888,7 @@ function contextBreakdownLine(
 ): string {
 	// Nothing to open says so FIRST: the three lines below all name a control, and
 	// naming one that cannot open is the D3 defect in the context reading.
-	if (!openable) return COMMANDS_OFF;
+	if (!openable) return COMMANDS_OFF();
 	/*
 	 * WHILE HELD THE LINE MAY NOT SAY "NOW" (design round 1, D3). The strip's own
 	 * mark already says these are the readings from before the reconnect, and
@@ -903,15 +903,15 @@ function contextBreakdownLine(
 	 */
 	if (held) {
 		if (status === "measured" || status === "estimate")
-			return "Click for the full breakdown, which estimates your next request.";
-		return "Click for the full breakdown.";
+			return t("ui.chat.session_status.context_click_breakdown_held");
+		return t("ui.chat.session_status.context_click_breakdown_held_plain");
 	}
 	if (status === "measured")
-		return "Measured now; click for the full breakdown, which estimates your next request";
+		return t("ui.chat.session_status.context_measured_now");
 	if (status === "estimate")
-		return "Estimated now; click for the full breakdown, which estimates your next request";
+		return t("ui.chat.session_status.context_estimated_now");
 	// Nothing has been counted, so there is no "now" to contrast with.
-	return "Click for the full breakdown";
+	return t("ui.chat.session_status.context_click_breakdown");
 }
 
 /**
@@ -924,8 +924,7 @@ function contextBreakdownLine(
  * banner ("slash commands … are off"), and this sentence is deliberately about
  * the ability, not about the reason, because the reason is the server's.
  */
-const COMMANDS_OFF =
-	"Slash commands are off on this server, so this reading cannot be opened from here.";
+const COMMANDS_OFF = () => t("ui.chat.session_status.commands_off");
 
 /**
  * The model reading's closing line — the tooltip's second line and the tail of
@@ -951,8 +950,8 @@ const COMMANDS_OFF =
 function modelReason(draft: boolean, openable: boolean): string {
 	if (openable)
 		return draft
-			? "Click to choose a different model. It applies to this conversation."
-			: "Click to choose a different model";
+			? t("ui.chat.session_status.model_click_choose_draft")
+			: t("ui.chat.session_status.model_click_choose");
 	if (draft)
 		/*
 		 * The inert branch, corrected to the scope the system implements (review
@@ -968,8 +967,8 @@ function modelReason(draft: boolean, openable: boolean): string {
 		 * first message does use the model - which is why only the subject of the
 		 * sentence moves.
 		 */
-		return "This conversation will use it. Change it once the conversation starts.";
-	return COMMANDS_OFF;
+		return t("ui.chat.session_status.model_draft_inert");
+	return COMMANDS_OFF();
 }
 
 /**
@@ -1001,9 +1000,11 @@ function effortReason(
 ): string | null {
 	if (!adjustable) return null;
 	if (openable)
-		return draft ? "Change it. It applies to this conversation." : "Change it.";
+		return draft
+			? t("ui.chat.session_status.effort_change_draft")
+			: t("ui.chat.session_status.effort_change");
 	if (draft) return draftEffortLine();
-	return COMMANDS_OFF;
+	return COMMANDS_OFF();
 }
 
 /**
@@ -1506,7 +1507,13 @@ const SessionStatusReadings: FC<SessionStatusStripProps> = ({
 			 */
 			/* biome-ignore lint/a11y/useSemanticElements: a `<fieldset>` is the semantic element for `group`, and it is the wrong one here - it would add form-section semantics and its own default box and margin to a row that is deliberately borderless and measured to the pixel (see the wrap rule above). What this role buys is a LABELLING SCOPE for the held statement, not a form boundary, and there is no form. */
 			role="group"
-			aria-label={held ? `Session readings. ${LAST_READING_NOTE}` : undefined}
+			aria-label={
+				held
+					? t("ui.chat.session_status.readings_aria_held", {
+							note: LAST_READING_NOTE(),
+						})
+					: undefined
+			}
 		>
 			{/*
 			 * THE VISIBLE MARK, FIRST IN THE CLUSTER (design round 1, D1). A word
@@ -1543,8 +1550,15 @@ const SessionStatusReadings: FC<SessionStatusStripProps> = ({
 					// draft has no session to confirm a switch against.
 					label={
 						pending
-							? `Model: ${identity.selector}${fastOn ? ", fast mode on" : ""}. Switching; waiting for the session to confirm it.`
-							: `Model: ${identity.selector}${fastOn ? ", fast mode on" : ""}. ${modelReason(draft, Boolean(openModel))}`
+							? t("ui.chat.session_status.model_aria_pending", {
+									selector: identity.selector,
+									fast: fastOn ? "yes" : "no",
+								})
+							: t("ui.chat.session_status.model_aria", {
+									selector: identity.selector,
+									fast: fastOn ? "yes" : "no",
+									reason: modelReason(draft, Boolean(openModel)),
+								})
 					}
 					tooltip={
 						<TooltipLines
@@ -1616,7 +1630,12 @@ const SessionStatusReadings: FC<SessionStatusStripProps> = ({
 					 * spinner while the same operation is in flight, so the band does too;
 					 * the label is what carries it into the accessibility tree.
 					 */}
-					{pending && <Spinner size="xs" label="Switching the model" />}
+					{pending && (
+						<Spinner
+							size="xs"
+							label={t("ui.chat.session_status.switching_model")}
+						/>
+					)}
 				</Reading>
 			)}
 			{/*
@@ -1665,8 +1684,8 @@ const SessionStatusReadings: FC<SessionStatusStripProps> = ({
 				<Reading
 					label={
 						draftResolution.status === "failed"
-							? "Model: this conversation's model was not resolved. Retry."
-							: "Model: resolving the model this conversation will run on."
+							? t("ui.chat.session_status.model_aria_unresolved")
+							: t("ui.chat.session_status.model_aria_resolving")
 					}
 					tooltip={
 						<TooltipLines
@@ -1702,7 +1721,7 @@ const SessionStatusReadings: FC<SessionStatusStripProps> = ({
 					{draftResolution.status === "pending" && (
 						<Spinner
 							size="xs"
-							label="Resolving the model this conversation will run on"
+							label={t("ui.chat.session_status.resolving_model_spinner")}
 						/>
 					)}
 				</Reading>
@@ -1814,10 +1833,22 @@ const SessionStatusReadings: FC<SessionStatusStripProps> = ({
 					draft
 						? draftContextLabel()
 						: reading.status === "no-reading"
-							? `Context: no reading yet. ${contextBreakdownLine("no-reading", Boolean(sessionDispatch), held || contextHeld)}`
-							: `Context: ${reading.spelling}${
-									reading.status === "estimate" ? ", estimated" : ""
-								}. ${contextBreakdownLine(reading.status, Boolean(sessionDispatch), held || contextHeld)}`
+							? t("ui.chat.session_status.context_aria_no_reading", {
+									hint: contextBreakdownLine(
+										"no-reading",
+										Boolean(sessionDispatch),
+										held || contextHeld,
+									),
+								})
+							: t("ui.chat.session_status.context_aria_reading", {
+									spelling: reading.spelling,
+									estimate: reading.status === "estimate" ? "yes" : "no",
+									hint: contextBreakdownLine(
+										reading.status,
+										Boolean(sessionDispatch),
+										held || contextHeld,
+									),
+								})
 				}
 				tooltip={
 					<TooltipLines
@@ -2021,7 +2052,10 @@ const SessionStatusReadings: FC<SessionStatusStripProps> = ({
 					}}
 				>
 					<Reading
-						label={`Active time: ${formatDuration(activeSeconds)}. ${DURATION_LABEL_EXPLANATION}`}
+						label={t("ui.chat.session_status.active_time_aria", {
+							duration: formatDuration(activeSeconds),
+							explanation: t("ui.chat.session_status.duration_explanation"),
+						})}
 						tooltip={
 							<TooltipLines
 								lines={[formatDuration(activeSeconds), DURATION_EXPLANATION]}

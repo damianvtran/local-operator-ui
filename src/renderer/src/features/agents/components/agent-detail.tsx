@@ -505,7 +505,9 @@ function ToolsEditor({
 										<Button
 											variant="ghost"
 											size="sm"
-											aria-label={`Remove ${tool}`}
+											aria-label={t("ui.agents.detail.tools.remove_aria", {
+												tool,
+											})}
 											onClick={() =>
 												onChange(tools.filter((each) => each !== tool))
 											}
@@ -525,7 +527,7 @@ function ToolsEditor({
 					<div className="flex items-end gap-2">
 						<div className="min-w-0 flex-1">
 							<FieldLabel
-								label="Add a tool"
+								label={t("ui.agents.detail.tools.add_label")}
 								htmlFor={inputId}
 								error={entryError ?? error}
 							/>
@@ -1161,8 +1163,8 @@ export function AgentDetail({
 						) : null}
 						<EditSection
 							title={t("ui.agents.detail.section.when_to_use")}
-							description="One sentence the model reads to decide when this agent is the right one."
-							label="When to use this agent"
+							description={t("ui.agents.detail.field.when_to_use_hint")}
+							label={t("ui.agents.detail.field.when_to_use")}
 							value={draft.description}
 							error={errorField === "description" ? error : null}
 							onChange={(value) =>
@@ -1171,8 +1173,8 @@ export function AgentDetail({
 						/>
 						<EditSection
 							title={t("ui.agents.detail.section.instructions")}
-							description="What the agent is told to do. This is the agent's whole behaviour."
-							label="Instructions"
+							description={t("ui.agents.detail.field.instructions_hint")}
+							label={t("ui.agents.detail.section.instructions")}
 							value={draft.instructions}
 							rows={12}
 							required
@@ -1192,7 +1194,7 @@ export function AgentDetail({
 						</Section>
 						<Section
 							title={t("ui.agents.detail.section.delegation")}
-							description="Whether this agent may hand work to subagents, and which effort tier it runs at."
+							description={t("ui.agents.detail.section.delegation_hint")}
 						>
 							<div className="space-y-4">
 								<div className="flex items-center gap-2 text-body-sm">
@@ -1207,15 +1209,15 @@ export function AgentDetail({
 								</div>
 								<div className="space-y-1">
 									<FieldLabel
-										label="Effort tier"
+										label={t("ui.agents.models.override.tier_field")}
 										htmlFor="agent-effort"
 										error={errorField === "effort" ? error : null}
 									/>
 									<SearchableSelect
-										ariaLabel="Effort tier"
+										ariaLabel={t("ui.agents.models.override.tier_field")}
 										showLabel={false}
 										placeholder={t("ui.agents.detail.field.effort_placeholder")}
-										busyLabel="Loading effort tiers"
+										busyLabel={t("ui.agents.detail.field.effort_loading")}
 										// Picker labels are copy; ids stay backend tokens for saves.
 										options={["inherit", ...effortTiers].map((tier) => ({
 											id: tier,
@@ -1225,7 +1227,7 @@ export function AgentDetail({
 													: tier,
 											description:
 												tier === "inherit"
-													? "Use the session's own effort"
+													? t("ui.agents.detail.field.effort_inherit_hint")
 													: undefined,
 										}))}
 										selected={{
@@ -1238,7 +1240,7 @@ export function AgentDetail({
 										onSelect={(option) =>
 											setDraft((current) => ({ ...current, effort: option.id }))
 										}
-										helperText="Tiers come from the backend's subagent model settings."
+										helperText={t("ui.agents.detail.field.effort_helper")}
 									/>
 								</div>
 							</div>
@@ -1251,8 +1253,8 @@ export function AgentDetail({
 							pending={pending}
 							onSave={() => void save()}
 							onCancel={cancel}
-							saveLabel="Save changes"
-							dirtyHint="Discard your unsaved changes to this agent?"
+							saveLabel={t("ui.agents.detail.action.save_changes")}
+							dirtyHint={t("ui.agents.pages.discard_bar.agent")}
 						/>
 					</>
 				) : (
@@ -1260,7 +1262,7 @@ export function AgentDetail({
 						<Section title={t("ui.agents.detail.section.when_to_use")}>
 							<ReadBlock
 								text={agentDescriptionText(profile) || ""}
-								empty="No description yet — add one so a model knows when to pick this agent."
+								empty={t("ui.agents.detail.empty.description")}
 							/>
 						</Section>
 						<Section title={t("ui.agents.detail.section.instructions")}>
@@ -1268,7 +1270,7 @@ export function AgentDetail({
 								text={
 									profile.instructions ?? profile.packaged_instructions ?? ""
 								}
-								empty="No instructions yet."
+								empty={t("ui.agents.detail.empty.instructions")}
 							/>
 						</Section>
 						<Section title={t("ui.agents.detail.section.tools")}>
@@ -1690,7 +1692,7 @@ export function AgentCreate({
 					<div className="grid gap-4 sm:grid-cols-2">
 						<div className="space-y-1">
 							<FieldLabel
-								label="Name"
+								label={t("ui.agents.detail.field.name")}
 								htmlFor="agent-create-name"
 								error={errorField === "name" ? error : null}
 							/>
@@ -1705,7 +1707,7 @@ export function AgentCreate({
 						</div>
 						<div className="space-y-1">
 							<FieldLabel
-								label="How it works with others"
+								label={t("ui.agents.detail.field.how_it_works")}
 								htmlFor="agent-create-kind"
 							/>
 							<Select
@@ -1735,8 +1737,8 @@ export function AgentCreate({
 				</Section>
 				<EditSection
 					title={t("ui.agents.detail.section.when_to_use")}
-					description="One sentence the model reads to decide when this agent is the right one."
-					label="When to use this agent"
+					description={t("ui.agents.detail.field.when_to_use_hint")}
+					label={t("ui.agents.detail.field.when_to_use")}
 					value={draft.description}
 					error={errorField === "description" ? error : null}
 					onChange={(value) =>
@@ -1745,8 +1747,8 @@ export function AgentCreate({
 				/>
 				<EditSection
 					title={t("ui.agents.detail.section.instructions")}
-					description="What the agent is told to do. This is the agent's whole behaviour."
-					label="Instructions"
+					description={t("ui.agents.detail.field.instructions_hint")}
+					label={t("ui.agents.detail.section.instructions")}
 					value={draft.instructions}
 					rows={12}
 					required
@@ -1769,11 +1771,14 @@ export function AgentCreate({
 							<span>{t("ui.agents.detail.delegate.label")}</span>
 						</div>
 						<div className="space-y-1">
-							<FieldLabel label="Effort tier" htmlFor="agent-create-effort" />
+							<FieldLabel
+								label={t("ui.agents.models.override.tier_field")}
+								htmlFor="agent-create-effort"
+							/>
 							<SearchableSelect
-								ariaLabel="Effort tier"
+								ariaLabel={t("ui.agents.models.override.tier_field")}
 								showLabel={false}
-								busyLabel="Loading effort tiers"
+								busyLabel={t("ui.agents.detail.field.effort_loading")}
 								placeholder={t("ui.agents.detail.field.effort_placeholder")}
 								options={["inherit", ...effortTiers].map((tier) => ({
 									id: tier,
@@ -1783,8 +1788,8 @@ export function AgentCreate({
 											: tier,
 									description:
 										tier === "inherit"
-											? "Use the session's own effort"
-											: "A tier configured in Settings",
+											? t("ui.agents.detail.field.effort_inherit_hint")
+											: t("ui.agents.detail.field.effort_configured_hint"),
 								}))}
 								selected={{
 									id: draft.effort,
@@ -1816,9 +1821,13 @@ export function AgentCreate({
 					submit
 					dirty={Boolean(name.trim() || draft.instructions)}
 					pending={pending}
-					saveLabel={initial ? "Create the copy" : "Create agent"}
-					pendingLabel="Creating…"
-					dirtyHint="Discard this new agent?"
+					saveLabel={
+						initial
+							? t("ui.agents.detail.action.create_copy")
+							: t("ui.agents.dialogs.create.submit")
+					}
+					pendingLabel={t("ui.agents.detail.action.creating")}
+					dirtyHint={t("ui.agents.detail.action.discard_new_agent")}
 					onSave={() => void save()}
 					onCancel={onCancel}
 				/>

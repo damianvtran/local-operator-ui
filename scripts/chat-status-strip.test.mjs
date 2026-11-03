@@ -483,17 +483,14 @@ test("the strip is one live region, one Retry, and one dismissal", () => {
 	// The dismissal is a REAL collapse (a pill that re-expands), not a hide.
 	assert.match(source, /data-lo-status-pill=""/);
 	assert.match(source, /data-lo-status-strip=""/);
-	assert.match(source, /aria-label=\{`Connection status/);
+	assert.match(source, /aria-label=\{t\("ui\.chat\.status\.pill_aria"/);
 	/*
 	 * The pill's name is the strip's own TWO lines, not the first of them: it carried
 	 * `display.title` alone, so dismissing a strip whose second line was Retry's own
 	 * outcome dropped the newest fact about the root cause (UX round 1's U12).
 	 */
-	assert.match(
-		source,
-		/aria-label=\{`Connection status: \$\{display\.title\}\$/,
-	);
-	assert.match(source, /outcome \? ` \$\{outcome\}` : ""/);
+	assert.match(source, /title: display\.title,/);
+	assert.match(source, /hasOutcome: outcome \? "yes" : "no",/);
 	/*
 	 * And the outcome is RETIRED with the state it was reported against: a sentence a
 	 * Retry wrote cannot ride into a state the reader reached later (U5's contradiction,

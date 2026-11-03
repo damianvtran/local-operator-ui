@@ -121,15 +121,13 @@ export function durationReading(
 export const DURATION_EXPLANATION =
 	"Time the agent has spent working in this conversation. Time waiting between turns is not counted.";
 
-/**
- * The same fact, shorter, for the `aria-label`.
- *
- * Two strings rather than one because they are read in different conditions.
- * The tooltip is read at leisure beside the value it explains, so it can afford
- * the full sentence; the label is spoken in one breath after the number and is
+/*
+ * The shorter sentence for the `aria-label` is NOT exported from here: it is
+ * the catalogue message `ui.chat.session_status.duration_explanation`, resolved
+ * at the call site in `session-status-strip.tsx`. This module stays a pure,
+ * import-free port (the tests load it straight from source), so it cannot
+ * reach `t()`. Why two sentences and not one: the tooltip is read at leisure
+ * beside the value, the label is spoken in one breath after the number and
  * re-read on every focus, so design decision 2.5 (D17) spells it with a
- * semicolon and no repetition. Keeping one string for both, which is what
- * round 2 shipped, makes the screen-reader case pay for the tooltip's leisure.
+ * semicolon and no repetition.
  */
-export const DURATION_LABEL_EXPLANATION =
-	"Time spent working; waiting is not counted.";

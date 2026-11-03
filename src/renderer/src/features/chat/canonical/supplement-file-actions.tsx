@@ -180,7 +180,7 @@ export const FileActionsMenu = memo(function FileActionsMenu({
 	const ariaLabel = `Actions for ${label || "this file"}`;
 	return (
 		<DropdownMenu>
-			<Tooltip content="File actions">
+			<Tooltip content={t("ui.common.actions.file_actions_menu.file_actions")}>
 				<DropdownMenuTrigger asChild={true}>
 					{overlay ? (
 						/*
