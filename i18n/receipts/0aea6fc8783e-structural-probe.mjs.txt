@@ -1,0 +1,103 @@
+// Structural + render probe for PR #1604 i18n delta round 4 (auditor A, session 0aea6fc8783e).
+// Delta: 6cce93ed973 (round-3 audit receipts) .. ccd51b021dc (translation remediation round 3).
+// For each locale: key-level diff of ui.mesh, assert the changed set equals the remediation
+// comment's list and the removed set equals the five obsolete keys; for each changed value:
+// ICU parse with the repo's @formatjs/icu-messageformat-parser, argument names vs English,
+// NFC, no manual bidi controls, the style-guide punctuation signals the round-3 findings named
+// (fr U+202F before : and inside « »; zh-CN full-width ：（）。; hi danda; ur ۔; es/ur/hi/vi “ ”),
+// and an intl-messageformat render. named_refusal is also split exactly as
+// namedApprovalRefusalParts does (mesh-approvals.ts) to prove each field appears once and
+// survives formatting as its literal token. Signals are inputs the auditor grades, not verdicts.
+// Run from the worktree root: node --input-type=module < r4a-probe.mjs
+import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
+import { TYPE, parse } from "@formatjs/icu-messageformat-parser";
+import { IntlMessageFormat } from "intl-messageformat";
+const BASE = "6cce93ed973e06189703e8b04d285e16e0c125a0";
+const HEAD = "ccd51b021dc8b09b4583f912e5258e6ee7c7766d";
+const P = "ui.mesh.approval.";
+const EXPECT = {
+  es: ["file_key_disclosure", "answer_window", "file_key_recorded", "named_refusal"],
+  fr: ["shared", "result_status", "named_refusal"],
+  ru: ["named_refusal"],
+  hi: ["result_status", "retry_hint", "named_refusal"],
+  ur: ["result_status", "retry_hint", "named_refusal"],
+  vi: ["cancel_hint", "named_refusal"],
+  "zh-CN": ["head_inheritance", "file_key_disclosure", "result_status"],
+};
+const REMOVED = [
+  "ui.mesh.mesh_approvals.expires_in_under_a_minute",
+  "ui.mesh.mesh_approvals.expires_minutes",
+  "ui.mesh.mesh_approvals.expires_hours",
+  "ui.mesh.approval.approved_pending_apply",
+  "ui.mesh.approval.request_window",
+].sort();
+const show = (rev, p) => execFileSync("git", ["show", `${rev}:${p}`]);
+const sha = (b) => createHash("sha256").update(b).digest("hex");
+const BIDI = /[\u200E\u200F\u202A-\u202E\u2066-\u2069]/;
+function walk(ast, args) {
+  for (const n of ast) {
+    if ([TYPE.argument, TYPE.number, TYPE.date, TYPE.time].includes(n.type)) args.add(`${n.value}:${n.type}`);
+    if (n.type === TYPE.plural || n.type === TYPE.select) {
+      args.add(`${n.value}:${n.type}`);
+      for (const o of Object.values(n.options)) walk(o.value, args);
+    }
+  }
+}
+const argsOf = (s) => { const a = new Set(); walk(parse(s, { ignoreTag: true }), a); return [...a].sort().join(","); };
+const SAMPLE = { device: "Studio-Mac", credential: "GitHub", provider: "Anthropic", account: "dev@example.com", shared: 1500, attention: 2, duration: "<DURATION>", request: "{request}", reason: "{reason}" };
+const enP = "src/i18n/catalogues/en/ui.mesh.json";
+const ctxP = "src/i18n/catalogues/en/ui.mesh.context.json";
+const enB = show(BASE, enP), enH = show(HEAD, enP);
+console.log(`en base=${sha(enB)} head=${sha(enH)} english_bytes_identical=${sha(enB) === sha(enH) ? "no-check" : "differs"}`);
+const enBase = JSON.parse(enB), en = JSON.parse(enH);
+const enChangedValues = Object.keys(en).filter((k) => k in enBase && enBase[k] !== en[k]);
+const enRemoved = Object.keys(enBase).filter((k) => !(k in en)).sort();
+console.log(`en changed_values=${enChangedValues.length} removed=${JSON.stringify(enRemoved)} removed_matches=${JSON.stringify(enRemoved) === JSON.stringify(REMOVED)}`);
+const ctxB = JSON.parse(show(BASE, ctxP)), ctxH = JSON.parse(show(HEAD, ctxP));
+console.log(`context base=${sha(show(BASE, ctxP))} head=${sha(show(HEAD, ctxP))}`);
+const ctxChanged = Object.keys(ctxH).filter((k) => k in ctxB && JSON.stringify(ctxB[k]) !== JSON.stringify(ctxH[k]));
+const ctxRemoved = Object.keys(ctxB).filter((k) => !(k in ctxH)).sort();
+console.log(`context changed=${JSON.stringify(ctxChanged)} removed_matches=${JSON.stringify(ctxRemoved) === JSON.stringify(REMOVED)}`);
+let fail = 0, signals = 0;
+for (const [l, keys] of Object.entries(EXPECT)) {
+  const p = `src/i18n/catalogues/${l}/ui.mesh.json`;
+  const b = show(BASE, p), h = show(HEAD, p);
+  const B = JSON.parse(b), H = JSON.parse(h);
+  const keysEq = JSON.stringify(Object.keys(H).sort()) === JSON.stringify(Object.keys(en).sort());
+  const changed = Object.keys(H).filter((k) => k in B && B[k] !== H[k]).sort();
+  const removed = Object.keys(B).filter((k) => !(k in H)).sort();
+  const added = Object.keys(H).filter((k) => !(k in B));
+  const changedOk = JSON.stringify(changed) === JSON.stringify(keys.map((k) => P + k).sort());
+  const removedOk = JSON.stringify(removed) === JSON.stringify(REMOVED);
+  console.log(`\n${l}: base=${sha(b)} head=${sha(h)} keyset_matches_en=${keysEq} changed=${changed.length} changed_matches_list=${changedOk} removed_matches=${removedOk} added=${added.length}`);
+  if (!keysEq || !changedOk || !removedOk || added.length) fail++;
+  for (const k of changed) {
+    const v = H[k];
+    const r = {};
+    try {
+      r.args = argsOf(v); r.args_match = r.args === argsOf(en[k]);
+      r.nfc = v === v.normalize("NFC"); r.bidi_free = !BIDI.test(v);
+      r.render = new IntlMessageFormat(v, l).format(SAMPLE);
+    } catch (err) { r.error = String(err.message ?? err); }
+    const sig = [];
+    const prose = v.replace(/\{[^{}]*\}/g, "\u0000");
+    if (l === "fr") { if (/[^\u202F][:;!?]/.test(prose)) sig.push("fr: missing U+202F before : ; ! ?"); if (/«[^\u202F]|[^\u202F]»/.test(v)) sig.push("fr: « » without U+202F inside"); }
+    if (l === "zh-CN") { if (/[:().,]/.test(prose.replace(/Touch ID/g, ""))) sig.push("zh-CN: half-width punctuation in prose"); }
+    if (l === "hi" && /\.(\s|$)/.test(prose)) sig.push("hi: ASCII period, not danda");
+    if (l === "ur" && /\.(\s|$)/.test(prose)) sig.push("ur: ASCII period, not ۔");
+    if (["es", "hi", "ur", "vi"].includes(l) && /[«»"]/.test(v)) sig.push(`${l}: non-guide quote marks`);
+    if (l === "ru" && /[“”"]/.test(v)) sig.push("ru: non-guide quote marks");
+    if (k === P + "named_refusal") {
+      const parts = new IntlMessageFormat(v, l).format({ request: "{request}", reason: "{reason}" }).split(/(\{request\}|\{reason\})/).filter(Boolean);
+      const req = parts.filter((x) => x === "{request}").length, rea = parts.filter((x) => x === "{reason}").length;
+      r.parts = parts; r.fields_once = req === 1 && rea === 1;
+    }
+    signals += sig.length;
+    const ok = !r.error && r.args_match && r.nfc && r.bidi_free && (k !== P + "named_refusal" || r.fields_once);
+    if (!ok) fail++;
+    console.log(`  ${ok ? "PASS" : "FAIL"} ${k}\n    en:   ${en[k]}\n    base: ${B[k]}\n    head: ${v}\n    ${JSON.stringify(r)}${sig.length ? `\n    SIGNAL: ${sig.join("; ")}` : ""}`);
+  }
+}
+console.log(`\nprobe structural failures=${fail} punctuation signals=${signals}`);
+process.exit(fail ? 1 : 0);
