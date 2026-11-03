@@ -3014,6 +3014,7 @@ const HubRow = memo(function HubRow({
 	isSmallView: boolean;
 	scope: AttachmentScope | null;
 }) {
+	useI18nLocale();
 	const receipt = record.receipt;
 	if (!receipt) return <NoticeRow record={record} isSmallView={isSmallView} />;
 	return (
@@ -3021,7 +3022,9 @@ const HubRow = memo(function HubRow({
 			<ToolLedgerRow
 				toolName="hub"
 				verbless
-				summary={`From ${hubIdentity(receipt)}`}
+				summary={t("ui.chat.canonical.transcript.hub_from", {
+					name: hubIdentity(receipt),
+				})}
 				outcome="receipt"
 				durationS={null}
 				details={
@@ -3051,7 +3054,7 @@ const HubRow = memo(function HubRow({
 					key={image.id}
 					image={image}
 					scope={scope}
-					label={image.name ?? "Image"}
+					label={image.name ?? t("ui.chat.canonical.image_label")}
 				/>
 			))}
 		</MessageContainer>

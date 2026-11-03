@@ -17,5 +17,7 @@
 	"ui.chat.header.saving_conversation_name": "正在保存对话名称",
 	"ui.chat.header.session_model_connect": "连接",
 	"ui.chat.header.session_model_switch": "切换模型",
-	"ui.chat.header.transcript_display": "对话记录显示方式"
+	"ui.chat.header.transcript_display": "对话记录显示方式",
+	"ui.chat.header.starting_session": "正在启动会话",
+	"ui.chat.header.canonical_chat": "规范对话"
 }

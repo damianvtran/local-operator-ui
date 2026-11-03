@@ -1719,7 +1719,7 @@ test("a held reading keeps its value, and the strip says once that it is the las
 	 */
 	for (const label of heldLabels)
 		assert.ok(
-			!label.includes(LAST_READING_NOTE),
+			!label.includes(LAST_READING_NOTE()),
 			`the clause must not be repeated on every reading: ${label}`,
 		);
 

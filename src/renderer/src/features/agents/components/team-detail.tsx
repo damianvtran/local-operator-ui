@@ -899,10 +899,10 @@ export function TeamDetail({
 						{creating ? (
 							<Section
 								title={t("ui.agents.detail.field.name")}
-								description="How you and your chats will refer to this team."
+								description={t("ui.agents.teams.field.name_hint")}
 							>
 								<FieldLabel
-									label="Team name"
+									label={t("ui.agents.teams.field.name_label")}
 									htmlFor="team-name"
 									error={errorField === "name" ? error : null}
 								/>
@@ -921,19 +921,19 @@ export function TeamDetail({
 						) : null}
 						<Section
 							title={t("ui.agents.teams.section.manager")}
-							description="The agent that leads the chat and decides who works on what."
+							description={t("ui.agents.teams.section.manager_hint")}
 						>
 							<div className="space-y-2">
 								<FieldLabel
-									label="Manager agent"
+									label={t("ui.agents.teams.field.manager_label")}
 									htmlFor="team-manager"
 									error={errorField === "manager" ? error : null}
 								/>
 								<SearchableSelect
-									ariaLabel="Manager agent"
+									ariaLabel={t("ui.agents.teams.field.manager_label")}
 									showLabel={false}
 									placeholder={t("ui.agents.teams.field.manager_placeholder")}
-									busyLabel="Loading agents"
+									busyLabel={t("ui.agents.teams.field.loading_agents")}
 									options={managerOptions(agents, teams)}
 									selected={
 										managerOptions(agents, teams).find(
@@ -946,7 +946,7 @@ export function TeamDetail({
 									onCustomSubmit={(text) =>
 										setDraft((current) => ({ ...current, manager: text }))
 									}
-									listNotice="Agents and teams on this machine"
+									listNotice={t("ui.agents.teams.field.manager_list_notice")}
 								/>
 								{!managerOptions(agents, teams).some(
 									(option) => option.id === draft.manager,
@@ -961,7 +961,7 @@ export function TeamDetail({
 						</Section>
 						<Section
 							title={t("ui.agents.teams.section.members")}
-							description="Who the manager can delegate to, how many of each, and the model each runs on."
+							description={t("ui.agents.teams.section.members_hint")}
 						>
 							{/*
 							 * THE SCOPE AND THE PRECEDENCE, at the point of choice (UX round 1,
@@ -1046,12 +1046,14 @@ export function TeamDetail({
 										>
 											<div className="min-w-0">
 												<SearchableSelect
-													ariaLabel={`Member ${index + 1}`}
+													ariaLabel={t("ui.agents.teams.field.member_aria", {
+														index: index + 1,
+													})}
 													showLabel={false}
 													placeholder={t(
 														"ui.agents.teams.field.member_placeholder",
 													)}
-													busyLabel="Loading agents"
+													busyLabel={t("ui.agents.teams.field.loading_agents")}
 													options={[
 														...managerOptions(agents, teams).filter((option) =>
 															member.kind === "team"
@@ -1084,7 +1086,12 @@ export function TeamDetail({
 												}
 											>
 												<SelectTrigger
-													aria-label={`Member ${index + 1} kind`}
+													aria-label={t(
+														"ui.agents.teams.field.member_kind_aria",
+														{
+															index: index + 1,
+														},
+													)}
 													className="w-full"
 												>
 													<SelectValue />
@@ -1107,7 +1114,9 @@ export function TeamDetail({
 												<Button
 													variant="secondary"
 													size="icon-sm"
-													aria-label={`One fewer ${member.role}`}
+													aria-label={t("ui.agents.teams.action.fewer_aria", {
+														role: member.role,
+													})}
 													disabled={member.count <= 1}
 													onClick={() =>
 														updateMember(index, { count: member.count - 1 })
@@ -1117,14 +1126,19 @@ export function TeamDetail({
 												</Button>
 												<span
 													className="min-w-6 text-center text-body-sm tabular-nums"
-													aria-label={`${member.count} of ${member.role}`}
+													aria-label={t("ui.agents.teams.field.count_aria", {
+														count: member.count,
+														role: member.role,
+													})}
 												>
 													{member.count}
 												</span>
 												<Button
 													variant="secondary"
 													size="icon-sm"
-													aria-label={`One more ${member.role}`}
+													aria-label={t("ui.agents.teams.action.more_aria", {
+														role: member.role,
+													})}
 													disabled={member.count >= 16}
 													onClick={() =>
 														updateMember(index, { count: member.count + 1 })
@@ -1348,7 +1362,7 @@ export function TeamDetail({
 						</Section>
 						<Section title={t("ui.agents.teams.section.description")}>
 							<FieldLabel
-								label="What this team is for"
+								label={t("ui.agents.teams.field.what_for_label")}
 								htmlFor="team-description"
 								error={errorField === "description" ? error : null}
 							/>
@@ -1415,9 +1429,17 @@ export function TeamDetail({
 							onConfirmingChange={setConfirmDiscard}
 							dirty={dirty}
 							pending={pending}
-							saveLabel={creating ? "Create team" : "Save changes"}
-							pendingLabel={creating ? "Creating…" : "Saving…"}
-							dirtyHint="Discard this team?"
+							saveLabel={
+								creating
+									? t("ui.agents.teams.action.create")
+									: t("ui.agents.detail.action.save_changes")
+							}
+							pendingLabel={
+								creating
+									? t("ui.agents.teams.action.creating")
+									: t("ui.agents.detail.action.saving")
+							}
+							dirtyHint={t("ui.agents.teams.action.discard_question")}
 							onSave={() => void save()}
 							onCancel={cancel}
 						/>
@@ -1735,7 +1757,7 @@ export function TeamDetail({
 						<Section title={t("ui.agents.teams.section.what_for")}>
 							<ReadBlock
 								text={team?.description ?? ""}
-								empty="No description yet."
+								empty={t("ui.agents.teams.empty.description")}
 							/>
 						</Section>
 						{team?.instructions ? (
@@ -1744,7 +1766,7 @@ export function TeamDetail({
 							</Section>
 						) : null}
 						{team?.project ? (
-							<Disclosure summary="Project brief">
+							<Disclosure summary={t("ui.agents.teams.section.project_brief")}>
 								<ReadBlock text={team.project} />
 							</Disclosure>
 						) : null}

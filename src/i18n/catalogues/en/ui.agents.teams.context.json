@@ -113,5 +113,123 @@
 		"field title",
 		"plain, question-shaped",
 		"Label above the description field in the editor; not the same string as the read-view heading 'Description'."
-	]
+	],
+	"ui.agents.teams.field.name_hint": {
+		"role": "Description line under the Name section heading of the team form",
+		"tone": "Plain explanatory sentence",
+		"length_hint": "One sentence",
+		"note": "Says the name is how the person and their chats address the team."
+	},
+	"ui.agents.teams.field.name_label": {
+		"role": "Field label of the team name input",
+		"tone": "Short noun phrase",
+		"length_hint": "Two words",
+		"note": "Distinguishes the team's name from an agent's name elsewhere."
+	},
+	"ui.agents.teams.section.manager_hint": {
+		"role": "Description line under the Manager section heading",
+		"tone": "Plain explanatory sentence",
+		"length_hint": "One sentence",
+		"note": "The manager is the single agent that leads a team chat and delegates to members."
+	},
+	"ui.agents.teams.field.manager_label": {
+		"role": "Field label and accessible name of the manager picker",
+		"tone": "Short noun phrase",
+		"length_hint": "Two words",
+		"note": "The picker also accepts a team as the manager value; the label names the usual case."
+	},
+	"ui.agents.teams.field.manager_list_notice": {
+		"role": "Notice line in the manager picker's list",
+		"tone": "Short noun phrase, no period",
+		"length_hint": "Five words",
+		"note": "States the scope of the options: only definitions stored on this computer."
+	},
+	"ui.agents.teams.section.members_hint": {
+		"role": "Description line under the Members section heading",
+		"tone": "Plain explanatory sentence",
+		"length_hint": "One sentence",
+		"note": "Members are the agents or teams the manager may hand work to, with a count and a model for each."
+	},
+	"ui.agents.teams.field.loading_agents": {
+		"role": "Busy/status text while a member or manager picker loads",
+		"tone": "Short progressive phrase, no ellipsis",
+		"length_hint": "Two words",
+		"note": "Announced by assistive technology while the list is fetched."
+	},
+	"ui.agents.teams.field.member_aria": {
+		"role": "Accessible name of a team member's agent picker",
+		"tone": "Noun plus ordinal",
+		"length_hint": "Two words plus a number",
+		"note": "The number is the 1-based row position in the member table.",
+		"placeholders": {
+			"index": "1-based row number."
+		}
+	},
+	"ui.agents.teams.field.member_kind_aria": {
+		"role": "Accessible name of a member row's agent-or-team type select",
+		"tone": "Noun, ordinal, noun",
+		"length_hint": "Three words plus a number",
+		"note": "'Kind' means agent versus team.",
+		"placeholders": {
+			"index": "1-based row number."
+		}
+	},
+	"ui.agents.teams.action.fewer_aria": {
+		"role": "Accessible name of the decrement button of a member's count stepper",
+		"tone": "Short imperative-ish phrase",
+		"length_hint": "Three words plus a name",
+		"note": "{role} is the member's role name taken from the team definition.",
+		"placeholders": {
+			"role": "Member role name from the team definition; do not translate."
+		}
+	},
+	"ui.agents.teams.action.more_aria": {
+		"role": "Accessible name of the increment button of a member's count stepper",
+		"tone": "Short imperative-ish phrase",
+		"length_hint": "Three words plus a name",
+		"note": "{role} is the member's role name taken from the team definition.",
+		"placeholders": {
+			"role": "Member role name from the team definition; do not translate."
+		}
+	},
+	"ui.agents.teams.field.count_aria": {
+		"role": "Accessible name of a member row's current count",
+		"tone": "Number, preposition, role name",
+		"length_hint": "Two words plus a number and a name",
+		"note": "Read out as '3 of reviewer'; the count is the number of copies of that member.",
+		"placeholders": {
+			"count": "Number of copies, 1 to 16.",
+			"role": "Member role name from the team definition; do not translate."
+		}
+	},
+	"ui.agents.teams.field.what_for_label": {
+		"role": "Field label of the team description textarea",
+		"tone": "Plain phrase, sentence case",
+		"length_hint": "Five words",
+		"note": "Labels the free-text purpose of the team."
+	},
+	"ui.agents.teams.action.create": {
+		"role": "Primary button label when creating a new team",
+		"tone": "Short imperative",
+		"length_hint": "Two words",
+		"note": "Shown in the footer of the new-team form."
+	},
+	"ui.agents.teams.action.creating": {
+		"role": "Pending label of the create button while the write is in flight",
+		"tone": "Progressive verb with ellipsis",
+		"length_hint": "One word",
+		"note": "Replaces the create button's label until the write settles."
+	},
+	"ui.agents.teams.action.discard_question": {
+		"role": "Confirmation hint on the team form's discard control",
+		"tone": "Short question",
+		"length_hint": "Three words",
+		"note": "Asks before throwing away unsaved team edits."
+	},
+	"ui.agents.teams.empty.description": {
+		"role": "Empty-state text where a team has no description",
+		"tone": "Plain statement",
+		"length_hint": "Four words",
+		"note": "Shown in read mode in place of the description block."
+	}
 }

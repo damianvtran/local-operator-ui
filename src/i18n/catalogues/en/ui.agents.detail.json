@@ -49,5 +49,21 @@
 	"ui.agents.detail.tools.every_tool_aria": "Give this agent every tool",
 	"ui.agents.detail.tools.may_use_any": "This agent may use whatever the session offers.",
 	"ui.agents.detail.tools.placeholder": "Tool name",
-	"ui.agents.detail.origin.created_locally": "Created on this machine."
+	"ui.agents.detail.origin.created_locally": "Created on this machine.",
+	"ui.agents.detail.tools.remove_aria": "Remove {tool}",
+	"ui.agents.detail.tools.add_label": "Add a tool",
+	"ui.agents.detail.field.when_to_use": "When to use this agent",
+	"ui.agents.detail.field.when_to_use_hint": "One sentence the model reads to decide when this agent is the right one.",
+	"ui.agents.detail.field.instructions_hint": "What the agent is told to do. This is the agent's whole behaviour.",
+	"ui.agents.detail.section.delegation_hint": "Whether this agent may hand work to subagents, and which effort tier it runs at.",
+	"ui.agents.detail.field.effort_loading": "Loading effort tiers",
+	"ui.agents.detail.field.effort_helper": "Tiers come from the backend's subagent model settings.",
+	"ui.agents.detail.field.effort_inherit_hint": "Use the session's own effort",
+	"ui.agents.detail.field.effort_configured_hint": "A tier configured in Settings",
+	"ui.agents.detail.field.how_it_works": "How it works with others",
+	"ui.agents.detail.empty.description": "No description yet — add one so a model knows when to pick this agent.",
+	"ui.agents.detail.empty.instructions": "No instructions yet.",
+	"ui.agents.detail.action.create_copy": "Create the copy",
+	"ui.agents.detail.action.creating": "Creating…",
+	"ui.agents.detail.action.discard_new_agent": "Discard this new agent?"
 }

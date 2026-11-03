@@ -901,7 +901,7 @@ export const AsidePanel: FC<AsidePanelProps> = ({
 					 * keys across the two hosts is better than two. What was missing was the
 					 * verb, and the label is where a cap can carry it.
 					 */}
-					<Tooltip content="Add the aside to the conversation">
+					<Tooltip content={t("ui.chat.aside.add_to_conversation_tooltip")}>
 						<span>
 							<KeyboardShortcut shortcut={asideAdoptCap(isMac)} />
 						</span>

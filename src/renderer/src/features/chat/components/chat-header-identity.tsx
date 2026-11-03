@@ -685,8 +685,8 @@ const IdentityControl: FC<IdentityControlProps> = ({
 				loadError={rows.isError ? errorText(rows.error) : null}
 				emptyText={
 					kind === "team"
-						? "No teams are registered."
-						: "No agents are registered."
+						? t("ui.chat.pickers.destination_pickers.no_teams_are_registered")
+						: t("ui.chat.pickers.destination_pickers.no_agents_are_registered")
 				}
 				/*
 				 * The rule the rows were marked by, stated once above the list (issue

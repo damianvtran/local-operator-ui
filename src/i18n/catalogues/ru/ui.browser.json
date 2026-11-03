@@ -245,5 +245,6 @@
 	"ui.browser.webauthn_chooser.the_choice_did_not_name_a_passkey": "Выбор не указал ни на один ключ доступа, предложенный этим сайтом, поэтому запрос отменён. Повторите попытку на сайте.",
 	"ui.browser.webauthn_chooser.the_site_stored_no_name_for_this": "Сайт не сохранил имя для этого ключа доступа.",
 	"ui.browser.webauthn_chooser.this_passkey_request_expired": "Срок этого запроса ключа доступа истёк",
-	"ui.browser.webauthn_chooser.this_passkey_request_was_cancelled": "Этот запрос ключа доступа отменён"
+	"ui.browser.webauthn_chooser.this_passkey_request_was_cancelled": "Этот запрос ключа доступа отменён",
+	"ui.browser.browser_url_bar.reload_shortcut": "Перезагрузить ({shortcut})"
 }

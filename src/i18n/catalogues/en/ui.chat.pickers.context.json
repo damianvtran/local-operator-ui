@@ -4403,5 +4403,17 @@
 		"role": "row marker",
 		"tone": "plain",
 		"note": "Names what kind of completion row this is, at the end of the row, in a smaller weight."
+	},
+	"ui.chat.pickers.destination_pickers.no_agents_are_registered": {
+		"role": "Empty state of the header's agent picker",
+		"tone": "Plain statement with a period",
+		"length_hint": "Four words",
+		"note": "Sibling of the teams empty state."
+	},
+	"ui.chat.pickers.destination_pickers.applies_to_the_conversation_this_chat_starts": {
+		"role": "Description under a picker on a draft conversation",
+		"tone": "Plain statement with a period",
+		"length_hint": "One sentence",
+		"note": "The draft has no session yet, so the choice applies to the one the first message creates."
 	}
 }

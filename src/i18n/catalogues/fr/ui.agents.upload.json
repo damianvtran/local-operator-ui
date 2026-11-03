@@ -27,5 +27,7 @@
 	"ui.agents.upload.title.published_org": "Publication de « {name} » vers {destination}",
 	"ui.agents.upload.title.published_public": "Publication de « {name} » sur le Hub des agents",
 	"ui.agents.upload.title.republished": "Fiche de « {name} » mise à jour sur le Hub des agents",
-	"ui.agents.upload.title.update_listing": "Mettre à jour la fiche de « {name} » sur le Hub des agents ?"
+	"ui.agents.upload.title.update_listing": "Mettre à jour la fiche de « {name} » sur le Hub des agents ?",
+	"ui.agents.upload.sign_in.title_continue": "Connectez-vous pour continuer",
+	"ui.agents.upload.sign_in.title_again": "Reconnectez-vous"
 }
