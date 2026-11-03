@@ -2700,6 +2700,13 @@ function harnessSources() {
  */
 const HARNESS_PYTHON_SPAWN_SITES = [
 	{
+		file: "scripts/browser-hover-press-proof.mjs",
+		name: "spawn",
+		index: 2,
+		binding: /const env = pythonChildEnv\(\{/,
+		why: "selection proof's real harness venv Python: isolated HOME/config, fresh bytecode cache with writes disabled, explicitly pinned PYTHONPATH, notifications and telemetry suppressed independently of the Electron child",
+	},
+	{
 		file: "scripts/check-evidence.mjs",
 		name: "spawnSync",
 		index: 1,

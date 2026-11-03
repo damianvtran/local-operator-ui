@@ -46,6 +46,7 @@ import { HOVER_PRESS_PAGE } from "./browser-hover-press-fixture.mjs";
 import { SELECT_FIXTURE } from "./browser-select-fixture.mjs";
 import { withMockKeychain } from "./chrome-keychain.mjs";
 import { withNotificationsOff } from "./notifications-off.mjs";
+import { pythonChildEnv } from "./python-child-env.mjs";
 import { withTelemetryOff } from "./telemetry-off.mjs";
 
 const ROOT = process.cwd();
@@ -1042,14 +1043,24 @@ async function selectProof(siteOrigin) {
 			"SELECT_HARNESS_REPO required: use existing harness select worktree/venv for real-path rendering",
 		);
 	const probe = async (token, selector, label) => {
-		const env = {
-			...process.env,
-			HOME: HOME_DIR,
-			LOCAL_OPERATOR_CONFIG_DIR: CONFIG_DIR,
-			LOCAL_OPERATOR_NO_NOTIFICATIONS: "1",
-			LOCAL_OPERATOR_UI_TELEMETRY: "off",
-			PYTHONPATH: harness,
-		};
+		// This is a separate Python child, not the Electron launch's environment:
+		// remove ambient PYTHON* (especially in-bundle cache prefixes), prohibit
+		// bytecode writes and deliberately re-add ONLY the pinned harness source.
+		const env = pythonChildEnv({
+			base: withNotificationsOff({
+				...process.env,
+				HOME: HOME_DIR,
+				LOCAL_OPERATOR_CONFIG_DIR: CONFIG_DIR,
+			}),
+			extra: {
+				PYTHONPATH: harness,
+				// Suppression helpers preserve deliberate interactive opt-ins; this
+				// isolated probe is never interactive, so override ambient opt-ins.
+				LOCAL_OPERATOR_NO_NOTIFICATIONS: "1",
+				LOCAL_OPERATOR_UI_TELEMETRY: "off",
+			},
+		});
+		withTelemetryOff(env);
 		for (const key of Object.keys(env))
 			if (
 				key.startsWith("CMUX_") ||
