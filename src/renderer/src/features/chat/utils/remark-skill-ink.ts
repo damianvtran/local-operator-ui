@@ -103,9 +103,14 @@ const NO_DESCENT = new Set([
 /** A character a backslash may escape in CommonMark (ASCII punctuation). */
 const ASCII_PUNCTUATION = /[!-/:-@[-`{-~]/;
 
-/** A character reference as the source spells it; what it DECODES to is not known here. */
-const ENTITY =
-	/^&(?:#[xX][0-9a-fA-F]{1,6}|#[0-9]{1,7}|[A-Za-z][A-Za-z0-9]{1,31});/;
+/**
+ * A character reference as the source spells it; what it DECODES to is not known
+ * here. Sticky, so a test at an offset reads that offset and never scans ahead
+ * (a slice per `&` is linear in the node, and a node may be tens of thousands of
+ * characters long).
+ */
+const ENTITY_AT =
+	/&(?:#[xX][0-9a-fA-F]{1,6}|#[0-9]{1,7}|[A-Za-z][A-Za-z0-9]{1,31});/y;
 
 /**
  * How many UTF-16 units one character reference may decode to. Every numeric
@@ -114,15 +119,141 @@ const ENTITY =
  */
 const MAX_ENTITY_UNITS = 4;
 
-/** Branch visits one node may spend on entity ambiguity before it gives up. */
-const ENTITY_BUDGET = 4096;
+/**
+ * The work one node may cost, in steps (one step = one live reading advanced past
+ * one value character). The honest walk keeps a handful of readings alive, so the
+ * budget is linear in the node: it is a ceiling on TIME that holds for any input,
+ * and a node that needs more gets no ink rather than a stall on the render path.
+ */
+const STEPS_PER_VALUE_UNIT = 8;
+const STEP_FLOOR = 4096;
 
 const isBlank = (char: string | undefined): boolean =>
 	char === " " || char === "\t";
 
+const isLineEnding = (char: string | undefined): boolean =>
+	char === "\n" || char === "\r";
+
+/** Source length of the character reference at `at` inside `[.., end)`, or 0. */
+const entityLengthAt = (source: string, at: number, end: number): number => {
+	ENTITY_AT.lastIndex = at;
+	return ENTITY_AT.test(source) && ENTITY_AT.lastIndex <= end
+		? ENTITY_AT.lastIndex - at
+		: 0;
+};
+
 /**
- * The source offset of each character of a text node's value, or `null` when the
- * two cannot be aligned with certainty.
+ * The ways one value character can be read from the source at `from`, pushed as
+ * triples `(value units consumed, next source cursor, source offset of the
+ * character)`. Line handling comes first; a character reference, and a `>` that
+ * opens a continuation line, are the only places a character has more than one
+ * reading. Returns the blanks and markers it skipped, so the caller can charge
+ * them to the node's budget.
+ */
+const successors = (
+	value: string,
+	source: string,
+	end: number,
+	index: number,
+	from: number,
+	out: number[],
+): number => {
+	out.length = 0;
+	let cursor = from;
+	const char = value[index];
+	if (isLineEnding(char)) {
+		// The parser drops blanks that trail a line.
+		while (cursor < end && isBlank(source[cursor])) cursor += 1;
+	} else if (isLineEnding(value[index - 1])) {
+		/*
+		 * A continuation line's leading blanks are consumed too, and inside a
+		 * blockquote its `> ` markers. When the value itself holds a `>` here, the
+		 * source's `>` may be a marker or that character (`> \> b`), so stopping at
+		 * each one is also a reading; the proof that follows picks the survivor.
+		 */
+		while (
+			cursor < end &&
+			(isBlank(source[cursor]) || source[cursor] === ">")
+		) {
+			if (char === ">" && source[cursor] === ">")
+				out.push(1, cursor + 1, cursor);
+			cursor += 1;
+		}
+	}
+	const skipped = cursor - from;
+	if (cursor >= end) return skipped;
+	if (source[cursor] === "&") {
+		const length = entityLengthAt(source, cursor, end);
+		if (length > 0) {
+			for (
+				let units = 1;
+				units <= MAX_ENTITY_UNITS && index + units <= value.length;
+				units++
+			) {
+				out.push(units, cursor + length, cursor);
+			}
+		}
+	}
+	if (
+		source[cursor] === "\\" &&
+		cursor + 1 < end &&
+		source[cursor + 1] === char &&
+		ASCII_PUNCTUATION.test(char)
+	) {
+		out.push(1, cursor + 2, cursor + 1);
+	} else if (source[cursor] === char) {
+		out.push(1, cursor + 1, cursor);
+	}
+	return skipped;
+};
+
+/**
+ * For each source position, the most a reading starting there could still
+ * "absorb": source characters the walk consumes without yielding a value unit.
+ * Only a backslash escape, a character reference, and blanks or `>` markers at a
+ * line edge can; ordinary text absorbs nothing. A reading that is behind (or
+ * ahead) by more than this cannot finish, which is what ends the wrong readings
+ * of a long plain tail early instead of walking them to the end.
+ */
+const absorbCapacity = (
+	source: string,
+	start: number,
+	end: number,
+): Int32Array => {
+	const capacity = new Int32Array(end - start + 1);
+	for (let at = start; at < end; ) {
+		const char = source[at];
+		if (isBlank(char) || char === ">") {
+			let stop = at;
+			while (stop < end && (isBlank(source[stop]) || source[stop] === ">")) {
+				stop += 1;
+			}
+			const leading = at > start && isLineEnding(source[at - 1]);
+			const trailing = stop === end || isLineEnding(source[stop]);
+			for (let run = at; run < stop; run++) {
+				if (leading || (trailing && isBlank(source[run]))) {
+					capacity[run - start] = 1;
+				}
+			}
+			at = stop;
+			continue;
+		}
+		if (char === "\\") capacity[at - start] = 1;
+		else if (char === "&") {
+			// A reference absorbs everything past the one unit it must yield.
+			capacity[at - start] = Math.max(entityLengthAt(source, at, end) - 1, 0);
+		}
+		at += 1;
+	}
+	for (let at = end - start - 1; at >= 0; at--)
+		capacity[at] += capacity[at + 1];
+	return capacity;
+};
+
+/**
+ * The source offset of each character of a text node's value, `-1` where the
+ * complete readings disagree about it, or `null` when no reading can be proved
+ * or the node costs more than its budget.
  *
  * A value is the source with markdown's own consumption applied. The cases this
  * undoes, each of which the parser performs and a naive offset arithmetic does
@@ -135,11 +266,17 @@ const isBlank = (char: string | undefined): boolean =>
  *   or two value characters.
  *
  * The first two are deterministic. The third is not: nothing in this module
- * knows the named-reference table, so the decoded width of `&name;` is searched
- * (1 to {@link MAX_ENTITY_UNITS} units) and the alignment is accepted ONLY when
- * exactly one reading consumes the node's whole source range. Two readings, an
- * exhausted budget, or none is `null`: the node gets NO ink rather than ink on
- * the wrong characters.
+ * knows the named-reference table, so a reference may be read as 1 to
+ * {@link MAX_ENTITY_UNITS} value units. All the readings advance TOGETHER, one
+ * value character at a time, as a set of live source cursors per value index
+ * (readings that reach the same cursor are the same reading). That is
+ * O(value length x live readings), where re-walking the tail once per fork was
+ * not, and it is capped by {@link STEPS_PER_VALUE_UNIT} so no input can cost more.
+ * A backward pass keeps only the readings that consume the node's whole range.
+ *
+ * What the caller may rely on: a returned offset is `>= 0` only where EVERY
+ * complete reading puts that value character at that source offset. Where they
+ * differ it is `-1`, and the caller inks nothing that depends on it.
  */
 const alignValue = (
 	value: string,
@@ -150,73 +287,72 @@ const alignValue = (
 	if (end - start === value.length && source.startsWith(value, start)) {
 		return Array.from({ length: value.length }, (_, index) => start + index);
 	}
-	const offsets: number[] = [];
-	let solution: number[] | null = null;
-	let solutions = 0;
-	let budget = ENTITY_BUDGET;
-	let exhausted = false;
-
-	// Deterministic from `(index, cursor)` until a character reference forks it, so
-	// recursion depth is the number of references and never the node's length.
-	const run = (from: number, resume: number): void => {
-		let cursor = resume;
-		for (let index = from; index < value.length; index++) {
-			const char = value[index];
-			const previous = value[index - 1];
-			if (char === "\n" || char === "\r") {
-				// The parser drops blanks that trail a line.
-				while (isBlank(source[cursor])) cursor += 1;
-			} else if (previous === "\n" || previous === "\r") {
-				/*
-				 * A continuation line's leading blanks are consumed too, and inside a
-				 * blockquote its `> ` markers. A `>` the value itself holds at the
-				 * line start is never skipped, so a literal one cannot be eaten.
-				 */
-				while (
-					isBlank(source[cursor]) ||
-					(source[cursor] === ">" && char !== ">")
-				) {
-					cursor += 1;
-				}
-			}
-			if (source[cursor] === "&") {
-				const reference = ENTITY.exec(source.slice(cursor, end));
-				if (reference) {
-					for (let units = 1; units <= MAX_ENTITY_UNITS; units++) {
-						if (budget-- <= 0) exhausted = true;
-						if (solutions > 1 || exhausted) return;
-						if (index + units > value.length) break;
-						const kept = offsets.length;
-						for (let unit = 0; unit < units; unit++) offsets.push(cursor);
-						run(index + units, cursor + reference[0].length);
-						offsets.length = kept;
-					}
-				}
-			}
-			if (
-				source[cursor] === "\\" &&
-				source[cursor + 1] === char &&
-				ASCII_PUNCTUATION.test(char)
-			) {
-				offsets.push(cursor + 1);
-				cursor += 2;
-			} else if (source[cursor] === char) {
-				offsets.push(cursor);
-				cursor += 1;
-			} else {
-				return;
-			}
-		}
-		// Whatever source is left in the node must be blanks the parser trimmed.
-		for (let rest = cursor; rest < end; rest++) {
-			if (!isBlank(source[rest])) return;
-		}
-		if (cursor > end) return;
-		solutions += 1;
-		solution = offsets.slice();
+	const length = value.length;
+	let budget = STEPS_PER_VALUE_UNIT * length + STEP_FLOOR;
+	const capacity = absorbCapacity(source, start, end);
+	// A reading that has `ahead` source characters more than value characters left
+	// can finish only if the rest of the node can absorb that many; one that has
+	// fewer cannot finish at all. This ends the wrong readings of a long plain tail
+	// at the first character instead of walking them to the end.
+	const viable = (index: number, cursor: number): boolean => {
+		const ahead = end - cursor - (length - index);
+		return ahead >= 0 && ahead <= capacity[cursor - start];
 	};
-	run(0, start);
-	return solutions === 1 && !exhausted ? solution : null;
+
+	// layers[i]: the source cursors at which value index i can be reached.
+	const layers: (Set<number> | undefined)[] = new Array(length + 1);
+	layers[0] = new Set([start]);
+	const moves: number[] = [];
+	for (let index = 0; index < length; index++) {
+		const here = layers[index];
+		if (here === undefined) continue;
+		for (const cursor of here) {
+			budget -= 1 + successors(value, source, end, index, cursor, moves);
+			if (budget < 0) return null;
+			for (let at = 0; at < moves.length; at += 3) {
+				const to = index + moves[at];
+				const next = moves[at + 1];
+				if (!viable(to, next)) continue;
+				let layer = layers[to];
+				if (layer === undefined) {
+					layer = new Set();
+					layers[to] = layer;
+				}
+				layer.add(next);
+			}
+		}
+	}
+	// Backward: keep the readings that finish, and gather what they say per index.
+	// Whatever source is left after the last value character must be blanks the
+	// parser trimmed.
+	let tail = end;
+	while (tail > start && isBlank(source[tail - 1])) tail -= 1;
+	const finals = new Set<number>();
+	for (const cursor of layers[length] ?? []) {
+		if (cursor >= tail) finals.add(cursor);
+	}
+	if (finals.size === 0) return null;
+	layers[length] = finals;
+	const offsets: number[] = new Array(length).fill(-2);
+	for (let index = length - 1; index >= 0; index--) {
+		const survivors = new Set<number>();
+		for (const cursor of layers[index] ?? []) {
+			successors(value, source, end, index, cursor, moves);
+			for (let at = 0; at < moves.length; at += 3) {
+				const to = index + moves[at];
+				if (!layers[to]?.has(moves[at + 1])) continue;
+				survivors.add(cursor);
+				for (let unit = index; unit < to; unit++) {
+					offsets[unit] =
+						offsets[unit] === -2 || offsets[unit] === moves[at + 2]
+							? moves[at + 2]
+							: -1;
+				}
+			}
+		}
+		layers[index] = survivors;
+	}
+	return layers[0]?.size ? offsets : null;
 };
 
 const textNode = (
@@ -253,45 +389,52 @@ const splitText = (
 	const offsets = alignValue(value, source, start, end);
 	if (offsets === null) return null;
 
+	// A negative offset is a character the readings disagree about: its source
+	// position is unknown, so a piece that ends on one carries no position (the
+	// plugins behind this one then read no predecessor, as for any positionless
+	// node) rather than a wrong one.
+	const spanOf = (
+		from: number,
+		to: number,
+	): [number | undefined, number | undefined] => {
+		const first = offsets[from];
+		const last = offsets[to - 1];
+		return first >= 0 && last >= 0 ? [first, last + 1] : [undefined, undefined];
+	};
 	const pieces: MdastNode[] = [];
 	let cursor = 0;
 	let placed = false;
 	for (const mention of inside) {
-		const first = offsets.indexOf(mention.start);
-		// One past the mention's last character: its `$` through its final name
-		// character, mapped back to value indices.
-		let last = first;
-		while (last < offsets.length && offsets[last] < mention.end) last += 1;
+		// From `cursor`: mentions arrive in order, and a scan from 0 per mention is
+		// quadratic in a node that holds thousands of them.
+		const first = offsets.indexOf(mention.start, cursor);
+		const last = first + (mention.end - mention.start);
 		/*
-		 * The last proof before any ink: the value characters the offsets name are
-		 * the SAME characters the source holds at the mention. An alignment that
-		 * slipped would fail here and ink nothing, never the wrong characters.
+		 * The last proof before any ink: every character of the token sits, in EVERY
+		 * complete reading, at the source offset of the same character of the
+		 * mention, and the value holds the same characters the source does there. An
+		 * alignment that slipped would fail here and ink nothing, never the wrong
+		 * characters.
 		 */
+		let proved = first >= 0 && first >= cursor && last <= offsets.length;
+		for (let index = first; proved && index < last; index++) {
+			proved = offsets[index] === mention.start + (index - first);
+		}
 		if (
-			first < 0 ||
-			first < cursor ||
-			last - first !== mention.end - mention.start ||
+			!proved ||
 			value.slice(first, last) !== source.slice(mention.start, mention.end)
 		) {
 			continue;
 		}
 		if (first > cursor) {
 			pieces.push(
-				textNode(
-					value.slice(cursor, first),
-					offsets[cursor],
-					offsets[first - 1] + 1,
-				),
+				textNode(value.slice(cursor, first), ...spanOf(cursor, first)),
 			);
 		}
 		pieces.push({
 			type: "skillToken",
 			children: [
-				textNode(
-					value.slice(first, last),
-					offsets[first],
-					offsets[last - 1] + 1,
-				),
+				textNode(value.slice(first, last), mention.start, mention.end),
 			],
 			data: {
 				hName: "span",
@@ -303,13 +446,7 @@ const splitText = (
 	}
 	if (!placed) return null;
 	if (cursor < value.length) {
-		pieces.push(
-			textNode(
-				value.slice(cursor),
-				offsets[cursor],
-				offsets[offsets.length - 1] + 1,
-			),
-		);
+		pieces.push(textNode(value.slice(cursor), ...spanOf(cursor, value.length)));
 	}
 	return pieces;
 };

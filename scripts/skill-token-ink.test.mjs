@@ -468,6 +468,27 @@ const ALIGNED = [
 	["a named entity that decodes to two units", "&NotEqualTilde; $research"],
 	["an entity after a line ending", "x &amp;\n$research"],
 	["an escape and an entity together", "\\&amp; $research &amp;"],
+	// Two complete readings (a reference is one unit then a blank, or two units),
+	// and the token sits BEFORE the reference, so both readings agree on it (Q3).
+	["a reference then an inline code span", "use $research &amp; `c`"],
+	["a reference then bold", "use $research &lt; **b**"],
+	["a reference then a link", "use $research &amp; [l](http://x.y)"],
+	["a reference, two blanks, more text", "$research &amp; `c`  more"],
+	// Ambiguity doubles per reference unless the readings are kept as a set (Q4).
+	["fourteen references before the token", `${"&amp; ".repeat(14)}$research`],
+	[
+		"two hundred references before the token",
+		`${"&amp; ".repeat(200)}$research`,
+	],
+	// A continuation line that opens with an escaped `>` (Q5).
+	[
+		"an escaped `>` opening a quoted continuation line",
+		"> a\n> \\> b $research",
+	],
+	[
+		"a decoded `>` opening a quoted continuation line",
+		"> a\n> &gt; b $research",
+	],
 ];
 
 for (const [label, source] of ALIGNED) {
@@ -487,7 +508,11 @@ for (const [label, source] of ALIGNED) {
 test("position mapping: a literal `>` the value holds is never eaten as a quote marker", async () => {
 	// `&gt;` decodes to a `>` at the start of the continuation line: skipping it as
 	// a marker would shift every later offset. The result is either the right
-	// token or no ink, and it is never a span over other characters.
+	// token or no ink, and it is never a span over other characters. This test
+	// discriminates only the FINAL guard in `splitText` (value versus source at the
+	// reported offsets), not `alignValue`: no input reaches that guard with a wrong
+	// alignment (zero hits over ~33k tokens in review), so the ALIGNED table above
+	// is what holds `alignValue` honest.
 	for (const source of ["> a\n> &gt; b $research", "a\n\\> b $research"]) {
 		for (const tokens of [inkTree(source), inkTree(source, { math: true })]) {
 			for (const token of tokens) {
@@ -502,20 +527,18 @@ test("position mapping: a literal `>` the value holds is never eaten as a quote 
 });
 
 test("position mapping: when alignment cannot be proved the node gets NO ink, and the text is untouched", async () => {
-	// `&gt;` leads the continuation line inside a quote, so the `>` the source
-	// shows could be the marker or the decoded character: two readings, no proof.
-	// The long tail is the discriminator: a naive offset arithmetic would land the
-	// token's length on other characters INSIDE the node and ink them, where a short
-	// line only runs it off the end and loses the ink by luck.
-	const source =
-		"> a \n> &gt; b $research and then a long tail of ordinary prose follows";
+	// Four hundred references that each decode to two units, then the token: the
+	// readings fan out past the node's step budget, so the walk gives up. That is
+	// the fail-closed path: no ink, never ink on a guess. (A naive offset
+	// arithmetic would land the token's length on other characters INSIDE the node
+	// and ink them, so the exact-characters assertion below is the discriminator.)
+	const source = `${"&NotEqualTilde;".repeat(400)} $research and a tail of prose`;
 	assert.deepEqual(inkTree(source), []);
 	assert.deepEqual(inkTree(source, { math: true }), []);
 	const mounted = await both(source, ["research"]);
 	assert.deepEqual(inked(mounted.container), []);
 	// The words are all still there: failing to ink must not lose or alter text.
 	assert.equal(mounted.container.textContent.includes("$research"), true);
-	assert.equal(mounted.container.textContent.includes("> b"), true);
 	// And a SECOND, alignable node in the same document still inks: the failure is
 	// per node, not per turn.
 	const other = await both(`${source}\n\nnext $research`, ["research"]);
@@ -524,6 +547,100 @@ test("position mapping: when alignment cannot be proved the node gets NO ink, an
 		other.container.querySelectorAll("p")[1].querySelector(INK_SELECTOR)
 			.textContent,
 		"$research",
+	);
+});
+
+/* --------------------- cost: no input may stall the render path ------------- */
+
+/*
+ * `remarkSkillInk` runs on the main thread for any turn that attached a skill, and
+ * the text it reads is whatever the reader pasted. The alignment search once cost
+ * (character-reference forks) x (the rest of the node): `&amp;` x12 then 49,000
+ * dashes took 1.5 s in the plugin alone, 12.8 s at 190,000 characters. It now
+ * advances every reading together, so the cost is the node's length times the few
+ * readings alive.
+ *
+ * Only the TRANSFORM is timed: `remark-parse` has its own cost on such input (1.7 s
+ * here for the 49,000-dash shape, and it is not this plugin's), so the tree is
+ * parsed once and a structured clone is transformed per repetition.
+ *
+ * The bound is 400 ms on the best of three runs. Measured on this host at a
+ * 1-minute load near 50: the new walk 12-60 ms, the old one 935-1,478 ms on these
+ * shapes. 400 ms is roughly 7x the slowest new reading and under half the fastest
+ * old one; the best of three discards a scheduling spike without hiding a
+ * super-linear walk, which is slow on every repetition.
+ */
+const TRANSFORM_BOUND_MS = 400;
+
+const timedInk = (source) => {
+	const processor = unified()
+		.use(remarkParse)
+		.use(remarkGfm)
+		.use(remarkSkillInk, { names: ["research"] });
+	const parsed = processor.parse(source);
+	let best = Number.POSITIVE_INFINITY;
+	let tokens = [];
+	for (let run = 0; run < 3; run++) {
+		const tree = structuredClone(parsed);
+		const began = performance.now();
+		processor.runSync(tree, { value: source });
+		best = Math.min(best, performance.now() - began);
+		tokens = [];
+		const visit = (node) => {
+			if (node.type === "skillToken") {
+				const [text] = node.children;
+				tokens.push({
+					value: text.value,
+					start: text.position.start.offset,
+					end: text.position.end.offset,
+				});
+			}
+			for (const child of node.children ?? []) visit(child);
+		};
+		visit(tree);
+	}
+	return { best, tokens };
+};
+
+const COST_SHAPES = [
+	[
+		"twelve `&amp;` then 49,000 dashes",
+		`${"&amp;".repeat(12)}${"-".repeat(49_000)} `,
+	],
+	[
+		"twelve `&lt;` then 48,000 characters of short words",
+		`${"&lt;".repeat(12)}${"ab ".repeat(16_000)}`,
+	],
+	[
+		"six `&nbsp;` then a 100,000-character pasted block",
+		`${"&nbsp;".repeat(6)}${"word ".repeat(20_000)}`,
+	],
+];
+
+for (const [label, lead] of COST_SHAPES) {
+	test(`cost: ${label} is aligned in bounded time and inks exactly the token`, () => {
+		const source = `${lead}$research`;
+		const token = source.length - "$research".length;
+		const { best, tokens } = timedInk(source);
+		// Time first, so a regression reports the stall and not just the lost ink.
+		assert.ok(
+			best < TRANSFORM_BOUND_MS,
+			`${label}: best of 3 took ${best.toFixed(0)} ms, bound ${TRANSFORM_BOUND_MS} ms`,
+		);
+		assert.deepEqual(tokens, [
+			{ value: "$research", start: token, end: source.length },
+		]);
+	});
+}
+
+test("cost: a node whose readings outgrow the budget fails closed, fast, and leaves the text alone", () => {
+	// 3,000 references that each decode to two units: far past the budget.
+	const source = `${"&NotEqualTilde;".repeat(3000)} $research`;
+	const { best, tokens } = timedInk(source);
+	assert.deepEqual(tokens, []);
+	assert.ok(
+		best < TRANSFORM_BOUND_MS,
+		`best of 3 took ${best.toFixed(0)} ms, bound ${TRANSFORM_BOUND_MS} ms`,
 	);
 });
 
