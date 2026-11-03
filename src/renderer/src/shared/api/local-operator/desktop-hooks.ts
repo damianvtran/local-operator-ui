@@ -22,6 +22,31 @@ export const desktopKeys = {
 	capabilities: ["desktop", "capabilities"] as const,
 	providers: ["desktop", "auth", "providers"] as const,
 	commands: ["desktop", "commands"] as const,
+	/**
+	 * The command registry AS THE BACKEND DESCRIBED IT IN ONE LANGUAGE.
+	 *
+	 * `commands.list` does not hand the renderer copy it can translate: each row's
+	 * `description` is rendered SERVER-side in the language the backend resolved
+	 * when the request arrived (core `desktop_commands.py` -> `describe(spec,
+	 * locale)`), so the locale is part of the DOCUMENT's identity rather than a
+	 * parameter of the reader.
+	 *
+	 * WHY THAT MATTERS (i18n programme, C5): one shared key handed the FR reader
+	 * the EN rows cached before the switch - 46 backend-resolved descriptions left
+	 * English in a French popup for up to the `staleTime` window, while every other
+	 * word around them had switched. Scoping the key to the resolved locale makes a
+	 * language switch a DIFFERENT query: React Query has no entry for the new
+	 * locale, so it fetches and shows its pending state rather than painting the
+	 * previous language's rows under the new one. An invalidation alone cannot do
+	 * that - it marks the same document stale and re-renders the old data while the
+	 * refetch is in flight, which is the very frame this closes.
+	 *
+	 * SCOPED UNDER `commands` ON PURPOSE: the catalogue's root stays a PREFIX, so a
+	 * caller that wants to forget every language's entry (or the whole registry at
+	 * close) still invalidates one key, and the plane-open refresh below keeps its
+	 * meaning.
+	 */
+	commandsFor: (locale: string) => ["desktop", "commands", locale] as const,
 	accounts: ["desktop", "auth", "accounts"] as const,
 	/**
 	 * The model catalogues, keyed by the `live` flag the read carried.

@@ -58,6 +58,7 @@ import {
 } from "@shared/api/local-operator/desktop-hooks";
 import type { CanonicalSessionHandle } from "@shared/hooks/use-canonical-session";
 import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { useAsideStore } from "@shared/store/aside-store";
 import {
 	admitChatDraft,
@@ -533,8 +534,16 @@ export function useSlashDispatch({
 	const aidaControl = useAidaControl();
 	const resolveAida = useAidaResolver();
 
+	/*
+	 * THE SAME LOCALE-SCOPED KEY THE COMPLETION POPUP READS (i18n programme, C5),
+	 * and for the same reason: `commands.list` returns rows the BACKEND described
+	 * in the language it resolved, so a key without the locale hands this reader
+	 * the previous language's document. One key, both readers - a second spelling
+	 * here is how dispatch starts naming rows the popup no longer shows.
+	 */
+	const locale = useI18nLocale();
 	const commandsQuery = useQuery({
-		queryKey: desktopKeys.commands,
+		queryKey: desktopKeys.commandsFor(locale),
 		queryFn: () =>
 			desktopResult<{ commands: SlashCommandMeta[] }>({
 				op: "commands.list",
