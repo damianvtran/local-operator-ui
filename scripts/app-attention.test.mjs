@@ -127,7 +127,11 @@ test("empty inbox plus historical completions stays clear through the real nativ
 	);
 	assert.equal(badge.readForScene().unreadCount, 0);
 	assert.equal(badge.readForScene().pending, false);
-	assert.deepEqual(writes, [""], "historical receipts must not paint any badge");
+	assert.deepEqual(
+		writes,
+		[""],
+		"historical receipts must not paint any badge",
+	);
 });
 
 test("rail sum 11 clears to zero through the real projection and native adapter", () => {
