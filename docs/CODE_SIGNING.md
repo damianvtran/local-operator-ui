@@ -42,7 +42,7 @@ Store Connect Team API key. Repository secrets (names only):
 
 | Secret | Holds |
 |---|---|
-| `MACOS_DEVID_APP_P12_BASE64` / `MACOS_DEVID_APP_P12_PASSWORD` | the Developer ID Application identity (p12), imported into a job-local keychain (and used for the Windows signing step, as the old p12 was) |
+| `MACOS_DEVID_APP_P12_BASE64` / `MACOS_DEVID_APP_P12_PASSWORD` | the Developer ID Application identity (p12), imported into a job-local keychain, and also the Windows Authenticode signer (see below) |
 | `MACOS_APP_PROFILE_BASE64` | the Developer ID provisioning profile for `com.local-operator`, which authorizes the passkey keychain group |
 | `APPLE_API_KEY_P8_BASE64`, `APPLE_API_KEY_ID`, `APPLE_API_ISSUER` | the notary API key; the `.p8` is decoded to a 0600 file under `$RUNNER_TEMP` and removed at job end |
 | `APPLE_TEAM_ID` | the team id the main executable's entitlements are rendered for |
@@ -53,13 +53,24 @@ read by nothing (`scripts/mac-build-arch.test.mjs` fails a workflow that reads
 one). The comment above `publish.yml`'s staging step is the authority for
 renewal: the certificate expires 2027-12-02, and a new certificate needs a NEW
 profile too, because a Developer ID profile embeds the certificate it was
-issued for.
+issued for. The two dates stop different things: macOS checks a Developer ID
+profile at every launch, so the profile's expiry (2044-10-28) stops installed
+apps from launching, while the certificate's expiry only means future builds
+need a new certificate and a new profile.
+
+**Windows signer change.** Windows is Authenticode-signed with the same p12 as
+macOS, so the move to the organization identity changes the Windows signer from
+the individual account's Developer ID certificate to Radient Inc.'s. It is still
+an Apple Developer ID certificate, so Windows trust is unchanged. Updates are not
+affected: `win.verifyUpdateCodeSignature` is `false`, so `latest.yml` carries no
+`publisherName` and the updater does not compare signers. The first release
+built from this change should say so in its notes.
 
 ### How It Works
 
 1. **Certificate Preparation**:
    - The CI/CD pipeline decodes the base64-encoded certificate (`MACOS_DEVID_APP_P12_BASE64`) and imports it into a job-local keychain
-   - On Windows the same p12 is written to a file and passed as `CSC_LINK`
+   - On Windows the same p12 is written to a file and passed as `CSC_LINK` (so the Windows signer is the organization identity too)
 
 2. **Build Process**:
    - The application is built using `pnpm dist:mac`, `pnpm dist:win`, or `pnpm dist:linux`

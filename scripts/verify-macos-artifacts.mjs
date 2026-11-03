@@ -46,6 +46,7 @@ import {
 	plistStringValues,
 	profileAllowlistAuthorizes,
 	profileBackedEntitlementKeys,
+	unauthorizedClaims,
 } from "./macos-entitlement-policy.mjs";
 import {
 	MACH_O_CPUTYPE,
@@ -229,8 +230,9 @@ export function profileAuthorizes(
 	 * granularities: with a `group` in hand the profile has to authorize THAT
 	 * value (the WebAuthn case, where a profile carrying a different group is a
 	 * passkey feature that can never work), and with only a `key` the profile has
-	 * to carry the entitlement at all (the general case, where the value is not
-	 * something this gate can judge).
+	 * to carry the entitlement at all. The bundle-wide walk no longer asks the
+	 * key-only form: it judges every claimed VALUE through
+	 * `unauthorizedEntitlementKeys` (agent review round 1, R3).
 	 */
 	/*
 	 * Through Apple's matching rule, not `===`: a real Developer ID profile
@@ -250,6 +252,13 @@ export function profileAuthorizes(
 		);
 	}
 	return profileDeclaresKey(profileEntitlements, key);
+}
+
+/** Every `<key>` an entitlements plist names, in order, without values. */
+function entitlementKeyNames(plistText) {
+	return [...String(plistText ?? "").matchAll(/<key>([^<]+)<\/key>/g)].map(
+		([, key]) => key,
+	);
 }
 
 /** Whether a plist declares an entitlement key at all, whatever its value. */
@@ -532,6 +541,13 @@ export function artifactChecks({
 				// default here — the group absent, passkeys inert — and a PASS.
 				command: CODESIGN,
 				args: ["-d", "--entitlements", "-", "--xml", appPath],
+				// Key names only, never the plist: every restricted value embeds the
+				// team id, which the renderer never prints either, and the whole XML
+				// is noise in a CI row (QA round 1, Q2).
+				report: (result) =>
+					result.status === 0
+						? `entitlement keys: ${entitlementKeyNames(result.stdout).join(", ") || "(none)"}`
+						: null,
 				expect: (result) => {
 					// "We could not ask" is not "nothing is claimed", and an empty
 					// plist must not pass just because `[].every()` is true: a read
@@ -1272,6 +1288,54 @@ export function nativeComponentsCheck(appPath, { run = spawnRunner } = {}) {
 }
 
 /**
+ * The nested `.app` (relative to the outer bundle) whose MAIN executable
+ * `executable` is, or null — for `ShipIt`, the crashpad handler, the bundled
+ * python and anything else that is not a nested bundle's own launcher.
+ *
+ * Only a bundle's `CFBundleExecutable` is covered by that bundle's embedded
+ * profile, so an executable that merely sits somewhere inside a helper `.app`
+ * is not given the helper's profile: the strict reading, because the lenient one
+ * is how a claim with no profile behind it gets past this gate.
+ */
+export function nestedAppBundle(appPath, executable) {
+	const parts = executable.split("/");
+	for (let index = parts.length - 1; index > 0; index -= 1) {
+		if (!parts[index - 1].endsWith(".app")) continue;
+		const bundle = parts.slice(0, index).join("/");
+		const launcher = mainExecutablePath(join(appPath, bundle));
+		return launcher === join(appPath, executable) ? bundle : null;
+	}
+	return null;
+}
+
+/**
+ * The keys of `keys` (restricted claims read off one signature) that `profile`
+ * does not authorize.
+ *
+ * VALUES, not key presence (agent review round 1, R3; QA round 1, Q1): a string
+ * or array claim is judged value by value through `unauthorizedClaims`, the same
+ * helper the renderer refuses a profile with, so a profile issued for another
+ * app id (the key agent's `<TEAM>.com.local-operator.lopkeyagent` under a
+ * `<TEAM>.com.local-operator` signature) is a failure here too. A claim with no
+ * string value (a boolean, an empty array) has nothing to match, so the profile
+ * has to declare the key — the only question that can be asked of it. No
+ * profile authorizes nothing.
+ */
+export function unauthorizedEntitlementKeys(profile, signature, keys) {
+	if (!profile) return [...keys];
+	return keys.filter((key) => {
+		const values = plistStringValues(signature, key);
+		if (values.length === 0) return !profileDeclaresKey(profile, key);
+		return (
+			unauthorizedClaims(
+				profile,
+				values.map((value) => [key, value]),
+			).length > 0
+		);
+	});
+}
+
+/**
  * Every restricted entitlement ANY executable in the bundle claims, judged
  * against the profile the bundle embeds.
  *
@@ -1294,7 +1358,6 @@ export function profileAuthorizationCheck(
 	{ run = spawnRunner, profile = null } = {},
 ) {
 	const embedded = profile ?? readEmbeddedProfileEntitlements(appPath, run);
-	const bundleId = bundleIdentifierFromInfoPlist(appPath);
 	// A walk that cannot run is a third outcome, and it must not escape as a stack
 	// trace: the gate reports rows, and `require-report.sh` wants a report even when
 	// the thing it was pointed at could not be read.
@@ -1305,6 +1368,19 @@ export function profileAuthorizationCheck(
 	} catch (error) {
 		walkError = error.message ?? String(error);
 	}
+	const mainRelative = mainExecutablePath(appPath).slice(appPath.length + 1);
+	// One `security cms -D` per nested bundle, however many executables it holds.
+	const nestedProfiles = new Map();
+	const nestedBundleProfile = (executable) => {
+		const bundle = nestedAppBundle(appPath, executable);
+		if (bundle == null) return { present: false, entitlements: null };
+		if (!nestedProfiles.has(bundle))
+			nestedProfiles.set(
+				bundle,
+				readEmbeddedProfileEntitlements(join(appPath, bundle), run),
+			);
+		return nestedProfiles.get(bundle);
+	};
 	const unauthorized = [];
 	const unreadable = [];
 	for (const relative of executables) {
@@ -1319,16 +1395,29 @@ export function profileAuthorizationCheck(
 			unreadable.push(relative);
 			continue;
 		}
-		for (const key of profileBackedEntitlementKeys(result.stdout)) {
-			const group =
-				key === "keychain-access-groups"
-					? webauthnEntitlementGroup(result.stdout, bundleId)
-					: null;
-			if (!profileAuthorizes(embedded.entitlements, key, bundleId, group))
-				unauthorized.push(
-					`${relative} claims ${key}${group ? ` (${group})` : ""}`,
-				);
-		}
+		const keys = profileBackedEntitlementKeys(result.stdout);
+		if (keys.length === 0) continue;
+		/*
+		 * WHICH profile judges this executable. macOS authorizes a restricted claim
+		 * against the profile of the bundle the executable belongs to, so the main
+		 * bundle's profile covers `CFBundleExecutable` and nothing else: a helper
+		 * `.app` is judged by its OWN `Contents/embedded.provisionprofile`, and
+		 * `ShipIt` (inside `Squirrel.framework`, which no profile can sit in) by
+		 * none. Judging every executable against the main bundle's profile was the
+		 * hole: once a team-wildcard profile is always embedded, the 0.29.6 shape —
+		 * the group on `ShipIt` and the helpers — passed (agent review round 1, R1).
+		 */
+		const owner =
+			relative === mainRelative ? embedded : nestedBundleProfile(relative);
+		const denied = unauthorizedEntitlementKeys(
+			owner.entitlements,
+			result.stdout,
+			keys,
+		);
+		for (const key of denied)
+			unauthorized.push(
+				`${relative} claims ${key}${owner === embedded ? "" : owner.present ? " (its own bundle's profile does not authorize it)" : " (it has no profile of its own; the main bundle's does not extend to it)"}`,
+			);
 	}
 	const reasons = [];
 	if (walkError != null)
@@ -1455,13 +1544,17 @@ export function runChecks({ appPath, dmgPath, run, profile = null }) {
 				run(check.command, check.args, check.input, check.env, check.timeoutMs),
 			);
 			const passed = check.expect(result);
-			const output = [result.stdout, result.stderr]
-				.join("\n")
-				.trim()
-				.split("\n")
-				.filter((line) => line.trim().length > 0)
-				.slice(0, 4)
-				.join(" | ");
+			// A check that knows what its raw output must not leak says so through
+			// `report`; null falls back to the generic trim below (stderr included).
+			const output =
+				check.report?.(result) ??
+				[result.stdout, result.stderr]
+					.join("\n")
+					.trim()
+					.split("\n")
+					.filter((line) => line.trim().length > 0)
+					.slice(0, 4)
+					.join(" | ");
 			return {
 				id: check.id,
 				scope: check.scope,

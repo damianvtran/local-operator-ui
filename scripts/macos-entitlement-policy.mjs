@@ -144,3 +144,25 @@ export function profileBackedEntitlementKeys(plistText) {
 	}
 	return keys;
 }
+
+/**
+ * The keys of `claims` (`[key, value]` pairs) the profile's entitlements do NOT
+ * authorize, by Apple's matching rule (`profileAllowlistAuthorizes`). Empty means
+ * every claim is covered. Returns keys, never values: the caller's message lands
+ * in a CI log, and every value embeds the team id.
+ *
+ * Shared by the renderer (before it signs a claim in) and the release gate (after
+ * the bundle is signed), so the two cannot disagree about a value one of them
+ * accepted (agent review round 1, R3; QA round 1, Q1).
+ */
+export function unauthorizedClaims(profileEntitlementsText, claims) {
+	return claims
+		.filter(
+			([key, value]) =>
+				!profileAllowlistAuthorizes(
+					plistStringValues(profileEntitlementsText, key),
+					value,
+				),
+		)
+		.map(([key]) => key);
+}

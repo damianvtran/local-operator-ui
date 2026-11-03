@@ -441,7 +441,11 @@ jobs:
       # RENEWAL AND ROTATION. The Developer ID Application certificate expires
       # 2027-12-02. A Developer ID profile EMBEDS the certificate it was issued
       # for, so a new certificate means a NEW profile too, even though the
-      # profile's own expiry date is far later: create the certificate, then
+      # profile's own expiry date is far later. The two dates stop different
+      # things: macOS checks a Developer ID profile at EVERY launch, so the
+      # profile's expiry (2044-10-28) stops installed apps from launching, while
+      # the certificate's expiry only means future builds need a new certificate
+      # AND a new profile (timestamped, notarized builds keep running). To renew: create the certificate, then
       # regenerate the "Local Operator desktop passkeys (Developer ID, Radient Inc)"
       # profile against it, and replace `MACOS_DEVID_APP_P12_BASE64`,
       # `MACOS_DEVID_APP_P12_PASSWORD` and `MACOS_APP_PROFILE_BASE64` together
@@ -691,10 +695,15 @@ jobs:
       - name: Stage the bundled uv (Windows)
         run: pnpm setup-python:win
 
-      # The same p12 the macOS job imports (the Radient Inc. organization's
-      # Developer ID Application identity), as it was before the move off the
-      # individual account's CSC_CONTENT/CSC_KEY_PASSWORD - only the secret names
-      # changed here, not what Windows is signed with.
+      # The same p12 the macOS job imports, which is now the Radient Inc.
+      # organization's Developer ID Application identity. The Windows Authenticode
+      # SIGNER therefore changes with this move: the individual account's Developer
+      # ID cert (the old CSC_CONTENT) becomes Radient Inc.'s. It is still an Apple
+      # Developer ID cert used for Authenticode, so Windows trust is no better or
+      # worse than before. Updates do not break on the change because nothing pins
+      # the publisher: `win.verifyUpdateCodeSignature` is false, so electron-builder
+      # writes no `publisherName` into latest.yml / app-update.yml and the NSIS
+      # updater skips the signer comparison.
       - name: Setup code signing (Windows)
         shell: bash
         run: |

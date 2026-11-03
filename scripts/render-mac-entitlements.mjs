@@ -84,7 +84,7 @@ import { fileURLToPath } from "node:url";
 import { isEntryPoint } from "./entry-point.mjs";
 import {
 	plistStringValues,
-	profileAllowlistAuthorizes,
+	unauthorizedClaims,
 } from "./macos-entitlement-policy.mjs";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -117,22 +117,14 @@ export function profileBackedClaims(teamId, bundleId) {
 	];
 }
 
-/**
- * The keys of `claims` the profile's entitlements do NOT authorize, by Apple's
- * matching rule (`profileAllowlistAuthorizes`). Empty means every claim is
- * covered. Returns keys, never values: the caller's message lands in a CI log.
+/*
+ * `unauthorizedClaims` lives in `macos-entitlement-policy.mjs` beside the
+ * matching rule it applies, because the release gate asks the same question of a
+ * built bundle and imports it from there (agent review round 1, R3): one copy of
+ * "does the profile authorize this value" for the renderer and the gate both.
+ * Re-exported so this module's callers and its test keep their import.
  */
-export function unauthorizedClaims(profileEntitlementsText, claims) {
-	return claims
-		.filter(
-			([key, value]) =>
-				!profileAllowlistAuthorizes(
-					plistStringValues(profileEntitlementsText, key),
-					value,
-				),
-		)
-		.map(([key]) => key);
-}
+export { unauthorizedClaims };
 
 /**
  * Set one scalar string entitlement, replacing an existing value. Same string
