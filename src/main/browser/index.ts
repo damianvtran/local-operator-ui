@@ -53,6 +53,7 @@ import {
 	browserPageOwnsChord,
 	createBrowserChordRouter,
 } from "./browser-chord";
+import { observeBrowserLocale } from "./browser-locale";
 import { CdpPool } from "./cdp";
 import {
 	type ConsentAttentionPayload,
@@ -1307,6 +1308,10 @@ async function initializeBrowserHost(
 					}
 				: undefined,
 		});
+		// Main can resolve language after renderer renegotiation. Publish from the
+		// actual locale owner, not from the renderer's earlier request or a timer.
+		const stopLocaleUpdates = observeBrowserLocale(options.window);
+		rollback.add(stopLocaleUpdates);
 		respondToConsent = (entryId, decision) =>
 			host.respondToConsent(entryId, decision);
 		// The store exists from here on; every later clear reaches it. Assigned
@@ -1681,6 +1686,7 @@ async function initializeBrowserHost(
 			sessionCookies: () => restoreReport,
 			...(addressOverlay ? { addressOverlay: probeAddressOverlay } : {}),
 			stop: async () => {
+				stopLocaleUpdates();
 				detachChords();
 				host.flushHistory();
 				/*
