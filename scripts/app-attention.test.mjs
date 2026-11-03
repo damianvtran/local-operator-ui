@@ -9,6 +9,7 @@ const root = new URL("../src/", import.meta.url);
 const allowed = new Set([
 	"main/app-attention-projection.ts",
 	"main/app-attention-service.ts",
+	"main/app-icon-badge.ts",
 	"shared/completion-attention.ts",
 	"shared/team-bridge-poll.ts",
 ]);
@@ -33,6 +34,9 @@ const { AppAttentionProjection } = await import(
 );
 const { AppAttentionService } = await import(
 	await moduleUrl("main/app-attention-service.ts")
+);
+const { createAppIconBadge } = await import(
+	await moduleUrl("main/app-icon-badge.ts")
 );
 const { unreadCompletionKind, isUnreadAckableCompletion } = await import(
 	await moduleUrl("shared/completion-attention.ts")
@@ -95,6 +99,64 @@ test("live regression: rail 10 + Aida 1 + Bridge 0 ignores 124 historical comple
 	assert.equal(last.unreadCount, 10, "reading Aida clears only her one pill");
 	p.setAidaSession(null);
 	assert.equal(last.unreadCount, 10, "hidden/disabled Aida contributes zero");
+});
+
+test("empty inbox plus historical completions stays clear through the real native adapter", () => {
+	const writes = [];
+	const badge = createAppIconBadge({
+		platform: "darwin",
+		setDockBadge: (label) => writes.push(label),
+		describe: () => "synthetic description",
+	});
+	const p = new AppAttentionProjection((snapshot, enabled) => {
+		badge.update(snapshot, enabled);
+	});
+	p.setAidaSession("synthetic");
+	const receipts = {};
+	const statuses = {};
+	for (let i = 0; i < 124; i++) {
+		receipts[`session/historical-${i}`] = attention(true, `old-${i}`);
+		statuses[`session/historical-${i}`] = { code: "complete", revision: 1 };
+	}
+	p.observe(
+		open({
+			notifications: inbox(0),
+			attention: receipts,
+			attention_status: statuses,
+		}),
+	);
+	assert.equal(badge.readForScene().unreadCount, 0);
+	assert.equal(badge.readForScene().pending, false);
+	assert.deepEqual(writes, [""], "historical receipts must not paint any badge");
+});
+
+test("rail sum 11 clears to zero through the real projection and native adapter", () => {
+	const writes = [];
+	const badge = createAppIconBadge({
+		platform: "darwin",
+		setDockBadge: (label) => writes.push(label),
+		describe: () => "synthetic description",
+	});
+	const p = new AppAttentionProjection((snapshot, enabled) => {
+		badge.update(snapshot, enabled);
+	});
+	p.setAidaSession("synthetic");
+	p.observe(
+		open({
+			notifications: inbox(10),
+			attention: { "session/synthetic": attention() },
+			attention_status: {
+				"session/synthetic": { code: "complete", revision: 1 },
+			},
+		}),
+	);
+	assert.equal(writes.at(-1), "11");
+	p.observe(frame("attention", 2, attention(false, "completion-1", [1, 1])));
+	assert.equal(writes.at(-1), "10");
+	p.observe(frame("notifications", 3, inbox(0, 0, 0, 2)));
+	assert.equal(badge.readForScene().unreadCount, 0);
+	assert.equal(badge.readForScene().pending, false);
+	assert.deepEqual(writes, ["", "11", "10", ""]);
 });
 
 test("shared sidebar predicate: only unseen terminal receipts with token are ackable", () => {
