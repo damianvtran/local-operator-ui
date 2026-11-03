@@ -1,0 +1,99 @@
+{
+	"schema": 1,
+	"receipt_kind": "independent copy-delta audit (placeholder re-point), one locale",
+	"audit_id": "delivery-recipient-repoint-7fc20c1e3809",
+	"date": "2026-11-03",
+	"agent": "copy-reviewer",
+	"model": "anthropic/claude-opus-5-5",
+	"model_provenance": "Served model as announced by the harness system prompt for session 7fc20c1e3809 (Model: anthropic/claude-opus-5-5); no fallback announced or observed during the run.",
+	"model_fallback": {
+		"announced": false,
+		"observed": false
+	},
+	"instance": "7fc20c1e3809-es",
+	"session": "7fc20c1e3809",
+	"status": "passed",
+	"result": "clean-with-findings",
+	"locale": "es",
+	"namespace": "ui.teamBridge",
+	"sha256": {
+		"en": "abb57e40f1b5c4ac9fd8426d12d622d8a68d1b974b77ab4cdfd7f13a21f604b9",
+		"es": "99354ec31392b5bb24eb609108c604148465a4e10ae6f4c22900feca21d14e9d"
+	},
+	"context": {
+		"path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+		"sha256": "ae4e73c95e85e7c773fefae1b6ec3cb5cccb3e3f1a802420bc3f608a3cadb1b4",
+		"delta_entries_present": true,
+		"note": "Exactly the ten delivery entries changed vs base 2ff3187db64d, and only their placeholders block ({agent},{owner} -> {recipient}); role/tone/length/note unchanged."
+	},
+	"reference_hashes": {
+		"~/local-operator/i18n/glossary.md": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+		"~/local-operator/i18n/style-guides/es.md": "77b9227213802d14c74d4298d6b346ad842bbf2a5ca3b9d46fc6144430d26c3e",
+		"core_commit": "b42471d3935cb7e95d64428af27c32626665f4c0"
+	},
+	"integration": {
+		"pr": 1643,
+		"branch": "fix/delivery-recipient-label",
+		"reviewed_head": "0ce7d254d234513a2d522965e6170a6944239f4d",
+		"merge_base_main": "2ff3187db64d36fa42bd0b97b24ef5f184ac8145",
+		"author_job": "da8eee3a55f2"
+	},
+	"scope": {
+		"keys": [
+			"ui.teamBridge.delivery.refused",
+			"ui.teamBridge.delivery.refused_manipulation",
+			"ui.teamBridge.delivery.refused_personal_info",
+			"ui.teamBridge.delivery.refused_abusive",
+			"ui.teamBridge.delivery.refused_unsafe_content",
+			"ui.teamBridge.delivery.refused_out_of_scope",
+			"ui.teamBridge.delivery.held",
+			"ui.teamBridge.delivery.held_screening_unavailable",
+			"ui.teamBridge.delivery.held_awaiting_review",
+			"ui.teamBridge.delivery.pending"
+		],
+		"kind": "Independent linguistic audit of exactly the ten re-pointed delivery values against English, the context sidecar and the locale glossary/style guide, including how each sentence reads with both composed recipient forms (ui.teamBridge.chief.label and ui.teamBridge.chief.unnamed in this locale) and the pending meaning change. Unchanged namespace content is inherited, not re-audited.",
+		"unchanged_proof": "Parsed base and head: no key outside the ten changed in this catalogue; for each of the ten, the head value equals the base value with '{agent} ({owner})' (zh-CN: '{agent}（{owner}）') and, for pending, '{agent}' replaced by '{recipient}'. Translated words are byte-identical. Base file hash equals the existing ledger target hash.",
+		"base_target_sha256_prefix": "4e4149606e02"
+	},
+	"independence": "copy-reviewer session 7fc20c1e3809 on the radientdev team. Authored none of PR #1643 (author: coder job da8eee3a55f2), none of the translations and none of the prior receipts; edited no catalogue value. Its only writes are these receipts and the ledger rows derived from them by ledger-assemble.",
+	"placeholder_check": {
+		"placeholders": [
+			"recipient"
+		],
+		"leftover_agent_or_owner": false,
+		"each_value_exactly_one_recipient": true
+	},
+	"per_key_verdict": {
+		"ui.teamBridge.delivery.refused": "PASS with finding (unnamed form only): No entregado a {recipient}. Rechazado por la moderación.",
+		"ui.teamBridge.delivery.refused_manipulation": "PASS with finding (unnamed form only): No entregado a {recipient}: rechazado por su moderación (parecía un intento de manipular al agente)",
+		"ui.teamBridge.delivery.refused_personal_info": "PASS with finding (unnamed form only): No entregado a {recipient}: rechazado por su moderación (parecía una solicitud de información personal)",
+		"ui.teamBridge.delivery.refused_abusive": "PASS with finding (unnamed form only): No entregado a {recipient}: rechazado por su moderación (parecía contenido abusivo)",
+		"ui.teamBridge.delivery.refused_unsafe_content": "PASS with finding (unnamed form only): No entregado a {recipient}: rechazado por su moderación (parecía contenido o enlaces no seguros)",
+		"ui.teamBridge.delivery.refused_out_of_scope": "PASS with finding (unnamed form only): No entregado a {recipient}: rechazado por su moderación (parecía una solicitud fuera de lo que gestiona este agente)",
+		"ui.teamBridge.delivery.held": "PASS with finding (unnamed form only): Esperando a que {recipient} lo analice…",
+		"ui.teamBridge.delivery.held_screening_unavailable": "PASS with finding (unnamed form only): Esperando a que {recipient} lo analice. El análisis no está disponible temporalmente.",
+		"ui.teamBridge.delivery.held_awaiting_review": "PASS with finding (unnamed form only): Esperando a que {recipient} lo analice. El mensaje está pendiente de revisión.",
+		"ui.teamBridge.delivery.pending": "PASS with finding (unnamed form only): Analizado; la entrega a {recipient} está pendiente"
+	},
+	"composition_notes": "Named: \"No entregado a Aida (Ben Tran)\", \"Esperando a que Aida (Ben Tran) lo analice…\", \"la entrega a Aida (Ben Tran) está pendiente\": natural.",
+	"findings": [
+		{
+			"id": "C4",
+			"key": "ui.teamBridge.delivery.{refused*,held*,pending}",
+			"severity": "minor",
+			"current": "No entregado a {recipient}. / Esperando a que {recipient} lo analice… / la entrega a {recipient}, with {recipient} = chief.unnamed \"Jefe de gabinete de {person}\"",
+			"renders": "Esperando a que Jefe de gabinete de Ben Tran lo analice…",
+			"expected": "Esperando a que el jefe de gabinete de Ben Tran lo analice… / No entregado al jefe de gabinete de Ben Tran.",
+			"message": "The unnamed rail label lands as a bare capitalised common noun, most noticeable as the subject of held*. Understood, but reads as a pasted label. A delivery-scoped form must handle a+el→al contraction, so the article cannot simply be prepended in the label; follow-up for the translator. Named form is correct."
+		}
+	],
+	"out_of_scope_observations": [],
+	"copy_scan": "design-qa copy_scan.py over src/i18n/catalogues/{fr,es,ru,vi,ur,hi,zh-CN}/ui.teamBridge.json: scanned 7 files, 3219 candidate strings; 0 findings",
+	"not_audited": [
+		"Unchanged namespace language",
+		"Runtime ICU execution",
+		"Rendered fit and RTL layout",
+		"Pseudo-localization"
+	],
+	"execution_limitations": "Source and composition review; no rendered frames captured by this auditor."
+}

@@ -8077,8 +8077,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "00a4cb6150b71677766c8527369527497cf29ec3ccb91cb5e2b8a3d1c65baffd",
-			"target_sha256": "4e4149606e029b605eb55acbc8309f7989fe00bfe75dc2b6c69d3da2cf39536c",
+			"source_sha256": "abb57e40f1b5c4ac9fd8426d12d622d8a68d1b974b77ab4cdfd7f13a21f604b9",
+			"target_sha256": "99354ec31392b5bb24eb609108c604148465a4e10ae6f4c22900feca21d14e9d",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -8093,20 +8093,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "reviewer",
-					"model": "openai/gpt-6.1-sol",
+					"agent": "copy-reviewer",
+					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-03",
-					"result": "clean",
-					"instance": "f93eb129057e-es",
+					"result": "clean-with-findings",
+					"instance": "7fc20c1e3809-es",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
+						"minor": 1,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/f93eb129057e-es.json",
-					"receipt_sha256": "4fe558aa7e29b4b535148887365af91eb277eac6cab6de31dcd979f4f2c43dcd",
-					"scope": "Five attachmentCard keys; older values identical to ledger-bound base 47e06bc7"
+					"receipt": "i18n/receipts/7fc20c1e3809-es.json",
+					"receipt_sha256": "074373c5e8144717aa61843fb8c08e447d7f435c9cf2aa37348d5fbc48a4f740",
+					"scope": "Ten ui.teamBridge.delivery.* values re-pointed to {recipient} (PR #1643 head 0ce7d254)",
+					"note": "C4 MINOR: unnamed label lacks article mid-sentence. Receipt i18n/receipts/7fc20c1e3809-es.json"
 				}
 			],
 			"status": "audited",
@@ -9528,6 +9529,29 @@
 							"receipt": "i18n/receipts/f93eb129057e-slice2-es.json",
 							"receipt_sha256": "53dd7810d65eb0d2903dd113347b7b42d7722edc93aefe493772630d373ad150",
 							"scope": "Two owner-audit save action keys; prior values unchanged from1364eb5; inherited Russian R2 deferred"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "00a4cb6150b71677766c8527369527497cf29ec3ccb91cb5e2b8a3d1c65baffd",
+					"target_sha256": "4e4149606e029b605eb55acbc8309f7989fe00bfe75dc2b6c69d3da2cf39536c",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-03",
+							"result": "clean",
+							"instance": "f93eb129057e-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/f93eb129057e-es.json",
+							"receipt_sha256": "4fe558aa7e29b4b535148887365af91eb277eac6cab6de31dcd979f4f2c43dcd",
+							"scope": "Five attachmentCard keys; older values identical to ledger-bound base 47e06bc7"
 						}
 					],
 					"status": "audited"
@@ -18096,8 +18120,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "00a4cb6150b71677766c8527369527497cf29ec3ccb91cb5e2b8a3d1c65baffd",
-			"target_sha256": "50fbac8752e8891eb4bc2ad3c71fb0e173eb6fbde1a155f31a3058acbf642329",
+			"source_sha256": "abb57e40f1b5c4ac9fd8426d12d622d8a68d1b974b77ab4cdfd7f13a21f604b9",
+			"target_sha256": "a6fe5d7b1b7168aab3524f10acf52964a0c163fdc62eb268c4c3070fcd867194",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -18113,20 +18137,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "reviewer",
-					"model": "openai/gpt-6.1-sol",
+					"agent": "copy-reviewer",
+					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-03",
-					"result": "clean",
-					"instance": "f93eb129057e-fr",
+					"result": "clean-with-findings",
+					"instance": "7fc20c1e3809-fr",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
+						"minor": 1,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/f93eb129057e-fr.json",
-					"receipt_sha256": "60a61625870414586e08c9a4a1bc5b0969d42024c2527c7de474733ecf6d09eb",
-					"scope": "Five attachmentCard keys; older values identical to ledger-bound base 47e06bc7"
+					"receipt": "i18n/receipts/7fc20c1e3809-fr.json",
+					"receipt_sha256": "a39296b8155615dbc4e50d139f257629ad7673b35ead2c214a7ee50a434039c6",
+					"scope": "Ten ui.teamBridge.delivery.* values re-pointed to {recipient} (PR #1643 head 0ce7d254)",
+					"note": "C3 MINOR: unnamed label lacks article mid-sentence. Receipt i18n/receipts/7fc20c1e3809-fr.json"
 				}
 			],
 			"status": "audited",
@@ -19572,6 +19597,29 @@
 							"receipt": "i18n/receipts/f93eb129057e-slice2-fr.json",
 							"receipt_sha256": "02215e635674678582aa40bc3c0b503269a69aba122a30d2cf129272b32015b2",
 							"scope": "Two owner-audit save action keys; prior values unchanged from1364eb5; inherited Russian R2 deferred"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "00a4cb6150b71677766c8527369527497cf29ec3ccb91cb5e2b8a3d1c65baffd",
+					"target_sha256": "50fbac8752e8891eb4bc2ad3c71fb0e173eb6fbde1a155f31a3058acbf642329",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-03",
+							"result": "clean",
+							"instance": "f93eb129057e-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/f93eb129057e-fr.json",
+							"receipt_sha256": "60a61625870414586e08c9a4a1bc5b0969d42024c2527c7de474733ecf6d09eb",
+							"scope": "Five attachmentCard keys; older values identical to ledger-bound base 47e06bc7"
 						}
 					],
 					"status": "audited"
@@ -27995,8 +28043,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "00a4cb6150b71677766c8527369527497cf29ec3ccb91cb5e2b8a3d1c65baffd",
-			"target_sha256": "688eea4077454fb0c029bf48279a18c805def8b98050c2a7a536631cf784d8cd",
+			"source_sha256": "abb57e40f1b5c4ac9fd8426d12d622d8a68d1b974b77ab4cdfd7f13a21f604b9",
+			"target_sha256": "7e660f29961f0508d7bf17343a7ba38df43b9d3641ca063e06eb6a2300e177f0",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -28011,23 +28059,24 @@
 			},
 			"auditors": [
 				{
-					"agent": "reviewer",
-					"model": "openai/gpt-6.1-sol",
+					"agent": "copy-reviewer",
+					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-03",
-					"result": "clean",
-					"instance": "f93eb129057e-hi",
+					"result": "changes_requested",
+					"instance": "7fc20c1e3809-hi",
 					"findings": {
 						"blocker": 0,
-						"major": 0,
+						"major": 1,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/f93eb129057e-hi.json",
-					"receipt_sha256": "0daccb8bf6333a03e284ad1139e83016e84f10f0205d55002cd847c098609294",
-					"scope": "Five attachmentCard keys; older values identical to ledger-bound base 47e06bc7"
+					"receipt": "i18n/receipts/7fc20c1e3809-hi.json",
+					"receipt_sha256": "bc49ac0c4320f7ce2263c1daadcfd13ad34a2eabc9e032ce2c279dd45400f207",
+					"scope": "Ten ui.teamBridge.delivery.* values re-pointed to {recipient} (PR #1643 head 0ce7d254)",
+					"note": "C1 MAJOR: unnamed chief label (का) before तक/द्वारा needs oblique के in all ten lines. Receipt i18n/receipts/7fc20c1e3809-hi.json"
 				}
 			],
-			"status": "audited",
+			"status": "changes_requested",
 			"superseded": [
 				{
 					"source_sha256": "92f6c40f5da4092adb0b720fb6f89ba0f42857590f19627e99e8c6579b11585b",
@@ -29376,6 +29425,29 @@
 							"receipt": "i18n/receipts/f93eb129057e-slice2-hi.json",
 							"receipt_sha256": "e8eb33bbe331bc6c56a68cb618609978bd168c7a66ba769823969d0a7bf21d1d",
 							"scope": "Two owner-audit save action keys; prior values unchanged from1364eb5; inherited Russian R2 deferred"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "00a4cb6150b71677766c8527369527497cf29ec3ccb91cb5e2b8a3d1c65baffd",
+					"target_sha256": "688eea4077454fb0c029bf48279a18c805def8b98050c2a7a536631cf784d8cd",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-03",
+							"result": "clean",
+							"instance": "f93eb129057e-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/f93eb129057e-hi.json",
+							"receipt_sha256": "0daccb8bf6333a03e284ad1139e83016e84f10f0205d55002cd847c098609294",
+							"scope": "Five attachmentCard keys; older values identical to ledger-bound base 47e06bc7"
 						}
 					],
 					"status": "audited"
@@ -37573,8 +37645,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "00a4cb6150b71677766c8527369527497cf29ec3ccb91cb5e2b8a3d1c65baffd",
-			"target_sha256": "6af703983652a04d8f452ff16d694eafd74cce4d7f7b05030d4e830560531ced",
+			"source_sha256": "abb57e40f1b5c4ac9fd8426d12d622d8a68d1b974b77ab4cdfd7f13a21f604b9",
+			"target_sha256": "a454f8f89ecefff3bb5543270c5c62344ab4056819774e1b2018a3fa26107efa",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -37590,20 +37662,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "reviewer",
-					"model": "openai/gpt-6.1-sol",
+					"agent": "copy-reviewer",
+					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-03",
-					"result": "clean-with-findings",
-					"instance": "f93eb129057e-ru",
+					"result": "clean",
+					"instance": "7fc20c1e3809-ru",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
+						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/f93eb129057e-ru.json",
-					"receipt_sha256": "fe09d7e37c58de32411de72a9931c77987ae8ef8429777982b98153d426e71b5",
-					"scope": "Five attachmentCard keys; older values identical to ledger-bound base 47e06bc7"
+					"receipt": "i18n/receipts/7fc20c1e3809-ru.json",
+					"receipt_sha256": "89b0c584871a2890d982289cc92d2745552125e0db07f0c97c6088b9e198d323",
+					"scope": "Ten ui.teamBridge.delivery.* values re-pointed to {recipient} (PR #1643 head 0ce7d254)",
+					"note": "Clean 0/0/0/0. Receipt i18n/receipts/7fc20c1e3809-ru.json"
 				}
 			],
 			"status": "audited",
@@ -39044,6 +39117,29 @@
 							"receipt": "i18n/receipts/f93eb129057e-slice2-ru.json",
 							"receipt_sha256": "1686036d692140e977ccfe2188f5e67e6e74f63f455211b09e731da010a9c21f",
 							"scope": "Two owner-audit save action keys; prior values unchanged from1364eb5; inherited Russian R2 deferred"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "00a4cb6150b71677766c8527369527497cf29ec3ccb91cb5e2b8a3d1c65baffd",
+					"target_sha256": "6af703983652a04d8f452ff16d694eafd74cce4d7f7b05030d4e830560531ced",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-03",
+							"result": "clean-with-findings",
+							"instance": "f93eb129057e-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/f93eb129057e-ru.json",
+							"receipt_sha256": "fe09d7e37c58de32411de72a9931c77987ae8ef8429777982b98153d426e71b5",
+							"scope": "Five attachmentCard keys; older values identical to ledger-bound base 47e06bc7"
 						}
 					],
 					"status": "audited"
@@ -47278,8 +47374,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "00a4cb6150b71677766c8527369527497cf29ec3ccb91cb5e2b8a3d1c65baffd",
-			"target_sha256": "81bb71ab4c38818d6af5a1c8475c80e1bacea89c5dcb991eb79a40748d032c19",
+			"source_sha256": "abb57e40f1b5c4ac9fd8426d12d622d8a68d1b974b77ab4cdfd7f13a21f604b9",
+			"target_sha256": "e816f39bc0de8bf4f43f8793cfde760150e9ae585c74455ba8ef9751b3dad6c7",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -47294,23 +47390,24 @@
 			},
 			"auditors": [
 				{
-					"agent": "reviewer",
-					"model": "openai/gpt-6.1-sol",
+					"agent": "copy-reviewer",
+					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-03",
-					"result": "clean",
-					"instance": "f93eb129057e-ur",
+					"result": "changes_requested",
+					"instance": "7fc20c1e3809-ur",
 					"findings": {
 						"blocker": 0,
-						"major": 0,
+						"major": 1,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/f93eb129057e-ur.json",
-					"receipt_sha256": "99c4ad13393194f3939f88fd8587b9014d0b721b80722db6353bcfe4d27b04f0",
-					"scope": "Five attachmentCard keys; older values identical to ledger-bound base 47e06bc7"
+					"receipt": "i18n/receipts/7fc20c1e3809-ur.json",
+					"receipt_sha256": "1e6880d89058b3f9ee5b74e4b1106bd04c45b3c4435f282070f4b0961967887a",
+					"scope": "Ten ui.teamBridge.delivery.* values re-pointed to {recipient} (PR #1643 head 0ce7d254)",
+					"note": "C2 MAJOR: unnamed chief label (کا) before تک/کی جانب سے needs oblique کے in all ten lines. Receipt i18n/receipts/7fc20c1e3809-ur.json"
 				}
 			],
-			"status": "audited",
+			"status": "changes_requested",
 			"superseded": [
 				{
 					"source_sha256": "92f6c40f5da4092adb0b720fb6f89ba0f42857590f19627e99e8c6579b11585b",
@@ -48659,6 +48756,29 @@
 							"receipt": "i18n/receipts/f93eb129057e-slice2-ur.json",
 							"receipt_sha256": "5edf3e161fe700a4e55f53a743f87655e46ee734514ad773810c820a26eef076",
 							"scope": "Two owner-audit save action keys; prior values unchanged from1364eb5; inherited Russian R2 deferred"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "00a4cb6150b71677766c8527369527497cf29ec3ccb91cb5e2b8a3d1c65baffd",
+					"target_sha256": "81bb71ab4c38818d6af5a1c8475c80e1bacea89c5dcb991eb79a40748d032c19",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-03",
+							"result": "clean",
+							"instance": "f93eb129057e-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/f93eb129057e-ur.json",
+							"receipt_sha256": "99c4ad13393194f3939f88fd8587b9014d0b721b80722db6353bcfe4d27b04f0",
+							"scope": "Five attachmentCard keys; older values identical to ledger-bound base 47e06bc7"
 						}
 					],
 					"status": "audited"
@@ -57316,8 +57436,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "00a4cb6150b71677766c8527369527497cf29ec3ccb91cb5e2b8a3d1c65baffd",
-			"target_sha256": "9e50088b52ae39b539e6adad89be4064a976a10906f0ccd8db18123ff5278607",
+			"source_sha256": "abb57e40f1b5c4ac9fd8426d12d622d8a68d1b974b77ab4cdfd7f13a21f604b9",
+			"target_sha256": "ea0f3c8924756a199559f3df9401f9f25ff03a4ca17d1709b67166594b0c7740",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -57332,20 +57452,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "reviewer",
-					"model": "openai/gpt-6.1-sol",
+					"agent": "copy-reviewer",
+					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-03",
 					"result": "clean",
-					"instance": "f93eb129057e-vi",
+					"instance": "7fc20c1e3809-vi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/f93eb129057e-vi.json",
-					"receipt_sha256": "3fdd568a4cea5597e607d28e2bdd78fd8520da97f4a1ba2a0f92c5db5b2722e3",
-					"scope": "Five attachmentCard keys; older values identical to ledger-bound base 47e06bc7"
+					"receipt": "i18n/receipts/7fc20c1e3809-vi.json",
+					"receipt_sha256": "eabe3168ce2d033d0283ef9f318f4c30aad809000306b8d893415d599fa24816",
+					"scope": "Ten ui.teamBridge.delivery.* values re-pointed to {recipient} (PR #1643 head 0ce7d254)",
+					"note": "Clean 0/0/0/0. Receipt i18n/receipts/7fc20c1e3809-vi.json"
 				}
 			],
 			"status": "audited",
@@ -58728,6 +58849,29 @@
 							"receipt": "i18n/receipts/f93eb129057e-slice2-vi.json",
 							"receipt_sha256": "70f0077449868f4d0f4498ad9011b677eccd238e084744f00aa083a64046dbf7",
 							"scope": "Two owner-audit save action keys; prior values unchanged from1364eb5; inherited Russian R2 deferred"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "00a4cb6150b71677766c8527369527497cf29ec3ccb91cb5e2b8a3d1c65baffd",
+					"target_sha256": "9e50088b52ae39b539e6adad89be4064a976a10906f0ccd8db18123ff5278607",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-03",
+							"result": "clean",
+							"instance": "f93eb129057e-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/f93eb129057e-vi.json",
+							"receipt_sha256": "3fdd568a4cea5597e607d28e2bdd78fd8520da97f4a1ba2a0f92c5db5b2722e3",
+							"scope": "Five attachmentCard keys; older values identical to ledger-bound base 47e06bc7"
 						}
 					],
 					"status": "audited"
@@ -67978,8 +68122,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "00a4cb6150b71677766c8527369527497cf29ec3ccb91cb5e2b8a3d1c65baffd",
-			"target_sha256": "a24f0b1db6a5f97e6739f31bafc65ccb4ac12db210592bcfdbd9fd16468adb23",
+			"source_sha256": "abb57e40f1b5c4ac9fd8426d12d622d8a68d1b974b77ab4cdfd7f13a21f604b9",
+			"target_sha256": "c1e3274ab12f2c2959c975d2a790efbf9984930a037ab35ca17b873b6d82df64",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -67994,20 +68138,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "reviewer",
-					"model": "openai/gpt-6.1-sol",
+					"agent": "copy-reviewer",
+					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-03",
 					"result": "clean",
-					"instance": "f93eb129057e-zh-cn",
+					"instance": "7fc20c1e3809-zh-cn",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/f93eb129057e-zh-cn.json",
-					"receipt_sha256": "3080a67ffe533a151a201f7871cd40e6ccab40caaa48331fe7bc65992671c2e0",
-					"scope": "Five attachmentCard keys; older values identical to ledger-bound base 47e06bc7"
+					"receipt": "i18n/receipts/7fc20c1e3809-zh-cn.json",
+					"receipt_sha256": "32b7fc561861a3128ac9a69f99367ce344cbbdd5dca627ae7f28c338973902d1",
+					"scope": "Ten ui.teamBridge.delivery.* values re-pointed to {recipient} (PR #1643 head 0ce7d254)",
+					"note": "Clean 0/0/0/0. Receipt i18n/receipts/7fc20c1e3809-zh-cn.json"
 				}
 			],
 			"status": "audited",
@@ -69412,6 +69557,29 @@
 							"receipt": "i18n/receipts/f93eb129057e-slice2-zh-cn.json",
 							"receipt_sha256": "b8852c00c7e729245056735ac33d87d4347b95e78e84ec76b0f0e47ad25a9d00",
 							"scope": "Two owner-audit save action keys; prior values unchanged from1364eb5; inherited Russian R2 deferred"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "00a4cb6150b71677766c8527369527497cf29ec3ccb91cb5e2b8a3d1c65baffd",
+					"target_sha256": "a24f0b1db6a5f97e6739f31bafc65ccb4ac12db210592bcfdbd9fd16468adb23",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-03",
+							"result": "clean",
+							"instance": "f93eb129057e-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/f93eb129057e-zh-cn.json",
+							"receipt_sha256": "3080a67ffe533a151a201f7871cd40e6ccab40caaa48331fe7bc65992671c2e0",
+							"scope": "Five attachmentCard keys; older values identical to ledger-bound base 47e06bc7"
 						}
 					],
 					"status": "audited"
