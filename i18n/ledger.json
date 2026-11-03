@@ -5831,7 +5831,7 @@
 			"locale": "es",
 			"namespace": "ui.mesh",
 			"source_sha256": "4e7d304432abb54b8e7d5eb96fd83d6ba1bbbdeab3a97ba1b07a80faa20ae10e",
-			"target_sha256": "f7330e8ec1851f0c1c442a87030b0d415ba8a1b8a129877bd001922f007cc908",
+			"target_sha256": "7658a8e0b1fba0edf2308e3869df9c69a700c424c09d6f6beadbe6147ceeb0dd",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -5842,18 +5842,18 @@
 					"agent": "i18n-auditor",
 					"model": "[redacted]/claude-opus-5-5",
 					"date": "2026-11-02",
-					"result": "clean-with-findings",
-					"instance": "0ab504098e2b-es",
+					"result": "clean",
+					"instance": "51423a065e9f-es",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 2,
+						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/0ab504098e2b-es.json",
-					"receipt_sha256": "9b39b1415896e76249756f81034a6e90b3a1a148028f42033ca1fc59e17b9d49",
-					"scope": "PR #1604 translation audit round 7A at 3705c55; delta b61f1b4..3705c55 (could_not_apply, typed_review_unavailable, expires_window)",
-					"note": "Round 7A (session 0ab504098e2b) at 3705c557: 2 MINOR open (R7A-ES-01 expires_window names solicitud not card; R7A-ES-02 Recházala vs Denegar). Source-only; rendered fit unverified."
+					"receipt": "i18n/receipts/51423a065e9f-es.json",
+					"receipt_sha256": "7ecb29d6f17e36ae0def24a40da0aed90beab6252534f0c591e66d178c33c761",
+					"scope": "PR #1604 translation audit round 8 at f3a758d; delta f93c4be..f3a758d (es expires_window, typed_review_unavailable)",
+					"note": "Round 8 (session 51423a065e9f) at f3a758d5: clean, 0 findings; R7A-ES-01/R7B-1 (tarjeta) and R7A-ES-02/R7B-2 (Deniégala) resolved. Source-only; rendered fit unverified."
 				}
 			],
 			"status": "audited",
@@ -6147,6 +6147,30 @@
 							"receipt_sha256": "9fcd85060ed8717df7429b3d62d17e6cb7b78a963777690a13015c661158d68b",
 							"scope": "PR #1604 translation audit round 6 at 318ce5c; final ui.mesh bytes; round-5 delta 7a583b6..318ce5c",
 							"note": "Round 6 audit (session e72be69493d5) at 318ce5c: clean, 0 findings; ui.mesh bytes = round-5-clean 5405030 except ru expires_window fix (R5 MAJOR verified fixed). Source-only; rendered fit unverified."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "4e7d304432abb54b8e7d5eb96fd83d6ba1bbbdeab3a97ba1b07a80faa20ae10e",
+					"target_sha256": "f7330e8ec1851f0c1c442a87030b0d415ba8a1b8a129877bd001922f007cc908",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "[redacted]/claude-opus-5-5",
+							"date": "2026-11-02",
+							"result": "clean-with-findings",
+							"instance": "0ab504098e2b-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 2,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/0ab504098e2b-es.json",
+							"receipt_sha256": "9b39b1415896e76249756f81034a6e90b3a1a148028f42033ca1fc59e17b9d49",
+							"scope": "PR #1604 translation audit round 7A at 3705c55; delta b61f1b4..3705c55 (could_not_apply, typed_review_unavailable, expires_window)",
+							"note": "Round 7A (session 0ab504098e2b) at 3705c557: 2 MINOR open (R7A-ES-01 expires_window names solicitud not card; R7A-ES-02 Recházala vs Denegar). Source-only; rendered fit unverified."
 						}
 					],
 					"status": "audited"
