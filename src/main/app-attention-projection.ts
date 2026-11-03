@@ -1,6 +1,6 @@
 import {
 	type CompletionAttentionRow,
-	isUnreadAckableCompletion,
+	aidaMissedMessages,
 } from "../shared/completion-attention";
 import type {
 	CompletionAttention,
@@ -28,6 +28,7 @@ export class AppAttentionProjection {
 	private readonly sessions = new Map<string, SessionLevel>();
 	private inbox: InboxLevel | undefined;
 	private completions = 0;
+	private aidaSession: string | null = null;
 	private gates = 0;
 	private bridgeUnread = 0;
 	private browserPending = false;
@@ -49,6 +50,7 @@ export class AppAttentionProjection {
 	/** Fence outstanding HTTP authority reads before reconnect/backend/account reset. */
 	reset(publish = true): number {
 		this.generation++;
+		if (publish) this.aidaSession = null;
 		this.sessions.clear();
 		this.inbox = undefined;
 		this.completions = this.gates = this.bridgeUnread = 0;
@@ -58,6 +60,19 @@ export class AppAttentionProjection {
 		this.sequence = -1;
 		if (publish) this.emit();
 		return this.generation;
+	}
+
+	/** Resolve only the visible Aida rail identity, never the historical receipt
+	 * universe. O(1) lookup keeps switching/enabling the rail bounded. */
+	setAidaSession(sessionId: string | null, generation = this.generation): void {
+		if (generation !== this.generation) return;
+		this.aidaSession = sessionId;
+		const row = sessionId ? this.sessions.get(sessionId) : undefined;
+		this.completions =
+			row && sessionId
+				? aidaMissedMessages([{ ...row, session_id: sessionId }], sessionId)
+				: 0;
+		this.emit();
 	}
 
 	refresh(): void {
@@ -193,9 +208,14 @@ export class AppAttentionProjection {
 
 	private replaceSession(id: string, next: SessionLevel): void {
 		const old = this.sessions.get(id);
-		this.completions +=
-			Number(isUnreadAckableCompletion(next)) -
-			Number(old ? isUnreadAckableCompletion(old) : false);
+		// Whole-feed unseen completions include hidden/historical conversations
+		// (124 on the reported install), not the rail's single Aida pill.
+		if (id === this.aidaSession) {
+			this.completions = aidaMissedMessages(
+				[{ ...next, session_id: id }],
+				this.aidaSession,
+			);
+		}
 		this.gates +=
 			Number(this.isGate(next)) - Number(old ? this.isGate(old) : false);
 		this.sessions.set(id, next);

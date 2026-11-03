@@ -2594,6 +2594,10 @@ app
 		// builds and Cmd/Ctrl+minus by default, so the Console never saw reverse
 		// search and Zoom Out never fired (#1085).
 		app.on("browser-window-created", (_, window) => {
+			// Update relaunch can detach Dock participation after startup. Healing
+			// on real window events never shows/focuses a window of its own.
+			window.on("show", () => refreshAppIconBadge());
+			window.on("focus", () => refreshAppIconBadge());
 			window.webContents.on("before-input-event", (event, input) => {
 				if (!shouldToggleDevTools(input, is.dev)) return;
 				event.preventDefault();
@@ -2664,6 +2668,40 @@ app
 			};
 			sceneGlobal.__lopAppIconBadgeSceneRead = () => nativeBadge.readForScene();
 		}
+		if (process.platform === "darwin") {
+			logger.info(
+				"[app-badge] notificationAuthorization=unknown (no supported Electron badge permission query)",
+				LogFileType.BACKEND,
+			);
+		}
+		let lastBadgeLog: string | undefined;
+		const publishBadge = (
+			snapshot: { unreadCount: number; pending: boolean },
+			enabled?: boolean,
+		) => {
+			// Keep the existing headless guard in the one Dock policy helper.
+			// setBadge alone succeeds even with no running tile after ShipIt.
+			reassertDockParticipation();
+			nativeBadge.update(snapshot, enabled);
+			const state = nativeBadge.readForScene();
+			// Electron exposes tile visibility, not notification authorization or
+			// LaunchServices ApplicationType. Do not invent either permission fact.
+			const dockType =
+				process.platform === "darwin" && app.dock
+					? app.dock.isVisible()
+						? "tile-visible"
+						: "tile-hidden"
+					: "unavailable";
+			const label =
+				process.platform === "darwin" && app.dock
+					? app.dock.getBadge()
+					: "platform-native";
+			const line = `[app-badge] label=${label} count=${state.unreadCount} pending=${state.pending} dockType=${dockType} enabled=${enabled !== false}`;
+			if (line !== lastBadgeLog) {
+				lastBadgeLog = line;
+				logger.info(line, LogFileType.BACKEND);
+			}
+		};
 		const appAttention = new AppAttentionService({
 			request: (input) => backendService.requestDesktop(input),
 			supportsUnreadEvents: desktopRequestSchema.safeParse({
@@ -2671,16 +2709,14 @@ app
 				after: "0",
 				wait: 20,
 			}).success,
-			publish: (snapshot, enabled) => {
-				nativeBadge.update(snapshot, enabled);
-			},
+			publish: publishBadge,
 			clear: () => {
+				publishBadge({ unreadCount: 0, pending: false });
 				nativeBadge.reset();
 			},
 		});
 		refreshAppIconBadge = () => {
-			if (process.platform !== "win32") return;
-			nativeBadge.invalidateOverlayTarget();
+			if (process.platform === "win32") nativeBadge.invalidateOverlayTarget();
 			appAttention.projection.refresh();
 		};
 		const stopBadgeLocale = subscribeLocale(() =>

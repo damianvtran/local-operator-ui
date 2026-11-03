@@ -49,6 +49,47 @@ test("macOS caps, deduplicates, preserves read-pending and clears disabled/reset
 	assert.deepEqual(writes.slice(-4), ["7", "", "7", ""]);
 });
 
+test("Dock recovery is guarded headless and runs on publish/show/focus without raising windows", () => {
+	const main = readFileSync(
+		new URL("../src/main/index.ts", import.meta.url),
+		"utf8",
+	);
+	const helper = main.slice(
+		main.indexOf("function reassertDockParticipation"),
+		main.indexOf("\n/*", main.indexOf("function reassertDockParticipation")),
+	);
+	let shows = 0;
+	const app = {
+		dock: {
+			show: () => {
+				shows++;
+			},
+		},
+	};
+	const run = new Function(
+		"app",
+		"process",
+		"windowLaunch",
+		`${stripTypeScriptTypes(helper)}; reassertDockParticipation();`,
+	);
+	run(app, { platform: "darwin" }, { hideDock: true });
+	assert.equal(shows, 0, "headless must not acquire a Dock tile");
+	run(app, { platform: "darwin" }, { hideDock: false });
+	assert.equal(shows, 1, "a detached ordinary app reasserts participation");
+	const publisher = main.slice(
+		main.indexOf("const publishBadge ="),
+		main.indexOf("const appAttention ="),
+	);
+	assert.match(
+		publisher,
+		/reassertDockParticipation\(\);[\s\S]*nativeBadge.update/,
+	);
+	assert.match(publisher, /if \(line !== lastBadgeLog\)/);
+	assert.match(main, /window.on\("show", \(\) => refreshAppIconBadge\(\)\)/);
+	assert.match(main, /window.on\("focus", \(\) => refreshAppIconBadge\(\)\)/);
+	assert.doesNotMatch(publisher, /\.focus\(|\.show\(|bounce\(/);
+});
+
 test("scene readback retains exact localized projection and cannot mutate it", () => {
 	const writes = [];
 	const badge = createAppIconBadge({
