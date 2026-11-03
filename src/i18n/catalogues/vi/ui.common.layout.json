@@ -7,5 +7,10 @@
 	"ui.common.layout.sidebar_header.new_agent": "Tác nhân mới",
 	"ui.common.layout.sidebar_header.search_agents": "Tìm tác nhân",
 	"ui.common.layout.toasts.dismiss": "Đóng thông báo",
-	"ui.common.layout.toasts.notifications": "Thông báo"
+	"ui.common.layout.toasts.notifications": "Thông báo",
+	"ui.common.layout.chat_layout.resize_canvas_double_click_resets_the_shared_pane_width": "Đổi kích thước khung Canvas. Nhấp đúp để đặt lại chiều rộng khung dùng chung.",
+	"ui.common.layout.chat_layout.resize_run_details_double_click_resets_the_shared_pane_width": "Đổi kích thước khung chi tiết lượt chạy. Nhấp đúp để đặt lại chiều rộng khung dùng chung.",
+	"ui.common.layout.chat_layout.resize_browser_double_click_resets_the_shared_pane_width": "Đổi kích thước khung trình duyệt. Nhấp đúp để đặt lại chiều rộng khung dùng chung.",
+	"ui.common.layout.chat_layout.resize_console_double_click_resets_the_shared_pane_width": "Đổi kích thước bảng lệnh. Nhấp đúp để đặt lại chiều rộng khung dùng chung.",
+	"ui.common.layout.chat_layout.resize_code_review_double_click_resets_the_shared_pane_width": "Đổi kích thước khung rà soát mã. Nhấp đúp để đặt lại chiều rộng khung dùng chung."
 }

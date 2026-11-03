@@ -833,5 +833,203 @@
 		"tone": "sentence case; concise factual guidance",
 		"maxCells": 100,
 		"placeholders": {}
+	},
+	"ui.chat.aside.add_to_conversation_tooltip": {
+		"role": "Tooltip of the control that adopts an aside exchange into the main conversation",
+		"tone": "Imperative sentence, no period",
+		"length_hint": "Six words",
+		"note": "Longer sibling of the control's own label; names the verb the keyboard chord alone cannot carry."
+	},
+	"ui.chat.message_controls.content_header": {
+		"role": "Header of the raw content block under a message",
+		"tone": "Single noun",
+		"length_hint": "One word",
+		"note": "Names the block that shows the message's raw content text."
+	},
+	"ui.chat.message_controls.replacements_header": {
+		"role": "Header of the replacements block under a message",
+		"tone": "Single noun",
+		"length_hint": "One word",
+		"note": "Names the block that shows text replacements an action applied."
+	},
+	"ui.chat.message_controls.thinking_label": {
+		"role": "Trigger label of the collapsible reasoning block above a reply",
+		"tone": "Single word",
+		"length_hint": "One word",
+		"note": "Single progressive word; it opens the model's visible reasoning."
+	},
+	"ui.chat.scroll_to_bottom.label": {
+		"role": "Accessible name of the floating button that jumps to the newest message",
+		"tone": "Imperative phrase",
+		"length_hint": "Three words",
+		"note": "Imperative; the button sits above the composer."
+	},
+	"ui.chat.scroll_to_bottom.label_new_activity": {
+		"role": "Accessible name of the jump-to-newest button while unseen activity exists",
+		"tone": "Noun phrase, comma, imperative",
+		"length_hint": "Five words",
+		"note": "Says why the button matters, then what it does."
+	},
+	"ui.chat.session_status.last_reading_note": {
+		"role": "Sentence marking held session readings as stale (tooltip and accessible name)",
+		"tone": "Plain statement ending in a period",
+		"length_hint": "One sentence",
+		"note": "States that the numbers shown are the last ones received before the connection dropped."
+	},
+	"ui.chat.session_status.readings_aria_held": {
+		"role": "Accessible name of the session readings group while the readings are held",
+		"tone": "Label then sentence",
+		"length_hint": "Two short sentences",
+		"note": "Group name followed by the held-readings note.",
+		"placeholders": {
+			"note": "The already-localised last-reading note; interpolate as-is."
+		}
+	},
+	"ui.chat.session_status.commands_off": {
+		"role": "Reason a session reading cannot be opened",
+		"tone": "Plain explanatory sentence",
+		"length_hint": "One sentence",
+		"note": "Slash commands are the in-conversation commands (for example /model); the server can switch them off."
+	},
+	"ui.chat.session_status.context_click_breakdown_held": {
+		"role": "Hint on the context reading while its numbers are held (measured or estimated)",
+		"tone": "Short imperative plus a clause",
+		"length_hint": "One sentence",
+		"note": "Invites opening the breakdown panel."
+	},
+	"ui.chat.session_status.context_click_breakdown_held_plain": {
+		"role": "Hint on the context reading while held and nothing was measured",
+		"tone": "Short imperative",
+		"length_hint": "Five words",
+		"note": "Invites opening the breakdown panel."
+	},
+	"ui.chat.session_status.context_measured_now": {
+		"role": "Hint on a measured context reading",
+		"tone": "Two clauses joined by a semicolon",
+		"length_hint": "One line",
+		"note": "Says the number is current and invites opening the breakdown; no final period in the source."
+	},
+	"ui.chat.session_status.context_estimated_now": {
+		"role": "Hint on an estimated context reading",
+		"tone": "Two clauses joined by a semicolon",
+		"length_hint": "One line",
+		"note": "Says the number is an estimate and invites opening the breakdown; no final period in the source."
+	},
+	"ui.chat.session_status.context_click_breakdown": {
+		"role": "Hint on a context reading with no measurement",
+		"tone": "Short imperative",
+		"length_hint": "Five words",
+		"note": "Invites opening the breakdown panel; no final period in the source."
+	},
+	"ui.chat.session_status.model_click_choose_draft": {
+		"role": "Hint on the model chip of a draft conversation",
+		"tone": "Imperative plus a statement",
+		"length_hint": "Two sentences",
+		"note": "Tells the person the model choice applies to the conversation about to start."
+	},
+	"ui.chat.session_status.model_click_choose": {
+		"role": "Hint on the model chip of a running conversation",
+		"tone": "Short imperative",
+		"length_hint": "Six words",
+		"note": "No final period in the source."
+	},
+	"ui.chat.session_status.model_draft_inert": {
+		"role": "Reason the model chip of a draft is not openable",
+		"tone": "Two plain statements",
+		"length_hint": "Two sentences",
+		"note": "The model is fixed until the draft becomes a real conversation."
+	},
+	"ui.chat.session_status.effort_change_draft": {
+		"role": "Hint on the reasoning-effort chip of a draft",
+		"tone": "Imperative plus a statement",
+		"length_hint": "Two short sentences",
+		"note": "'It' is the reasoning effort."
+	},
+	"ui.chat.session_status.effort_change": {
+		"role": "Hint on the reasoning-effort chip of a running conversation",
+		"tone": "Short imperative",
+		"length_hint": "Two words",
+		"note": "'It' is the reasoning effort."
+	},
+	"ui.chat.session_status.model_aria": {
+		"role": "Accessible name of the model chip",
+		"tone": "Label, identifier, clause, sentence",
+		"length_hint": "One line plus a sentence",
+		"note": "Model identifier, then fast-mode state when on, then the reason or hint sentence.",
+		"placeholders": {
+			"selector": "Model identifier such as a vendor/model slug; do not translate.",
+			"fast": "'yes' when fast mode is on, otherwise 'no'; a select selector, never translate.",
+			"reason": "The already-localised hint sentence; interpolate as-is."
+		}
+	},
+	"ui.chat.session_status.model_aria_pending": {
+		"role": "Accessible name of the model chip while a switch is pending",
+		"tone": "Label, identifier, clause, two clauses",
+		"length_hint": "One line plus a sentence",
+		"note": "Model identifier, fast-mode state when on, then a statement that the session has not yet confirmed the switch.",
+		"placeholders": {
+			"selector": "Model identifier such as a vendor/model slug; do not translate.",
+			"fast": "'yes' when fast mode is on, otherwise 'no'; a select selector, never translate."
+		}
+	},
+	"ui.chat.session_status.switching_model": {
+		"role": "Spinner accessible name while the model switch is in flight",
+		"tone": "Progressive phrase, no ellipsis",
+		"length_hint": "Three words",
+		"note": "Announced by assistive technology next to the model chip."
+	},
+	"ui.chat.session_status.model_aria_unresolved": {
+		"role": "Accessible name of the model reading when resolving a draft's model failed",
+		"tone": "Label, statement, imperative",
+		"length_hint": "Two short sentences",
+		"note": "'Retry' is the action the reading offers."
+	},
+	"ui.chat.session_status.model_aria_resolving": {
+		"role": "Accessible name of the model reading while a draft's model resolves",
+		"tone": "Label then progressive statement",
+		"length_hint": "One sentence",
+		"note": "Progress statement."
+	},
+	"ui.chat.session_status.resolving_model_spinner": {
+		"role": "Spinner accessible name while a draft's model resolves",
+		"tone": "Progressive phrase, no final period",
+		"length_hint": "Eight words",
+		"note": "Announced next to the 'Resolving the model' text."
+	},
+	"ui.chat.session_status.context_aria_no_reading": {
+		"role": "Accessible name of the context reading before any measurement",
+		"tone": "Label, statement, sentence",
+		"length_hint": "One line plus a hint",
+		"note": "Label, statement, then the already-localised hint.",
+		"placeholders": {
+			"hint": "The already-localised breakdown hint; interpolate as-is."
+		}
+	},
+	"ui.chat.session_status.context_aria_reading": {
+		"role": "Accessible name of the context reading with a value",
+		"tone": "Label, value, clause, sentence",
+		"length_hint": "One line plus a hint",
+		"note": "Label, the value as the strip spells it, 'estimated' when it is an estimate, then the hint.",
+		"placeholders": {
+			"spelling": "The value as spelled in the strip (for example 20.3%/1M); do not translate.",
+			"estimate": "'yes' when the value is an estimate, otherwise 'no'; a select selector, never translate.",
+			"hint": "The already-localised breakdown hint; interpolate as-is."
+		}
+	},
+	"ui.chat.session_status.active_time_aria": {
+		"role": "Accessible name of the session's active-time reading",
+		"tone": "Label, value, sentence",
+		"length_hint": "One line plus a sentence",
+		"note": "Label, the formatted duration, then the short explanation.",
+		"placeholders": {
+			"duration": "The already-formatted duration; interpolate as-is.",
+			"explanation": "The already-localised duration explanation; interpolate as-is."
+		}
+	},
+	"ui.chat.session_status.duration_explanation": {
+		"role": "Short explanation of the active-time reading, for the accessible name",
+		"tone": "Plain clause pair",
+		"length_hint": "One sentence",
+		"note": "Spoken in one breath after the number, so it is a single clause with a semicolon."
 	}
 }

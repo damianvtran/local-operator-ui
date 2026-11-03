@@ -16,5 +16,10 @@
 	"ui.chat.attachments.playback_position": "播放位置",
 	"ui.chat.attachments.playback_rate": "播放速度",
 	"ui.chat.attachments.playback_rate_option": "{rate}x",
-	"ui.chat.attachments.volume": "音量"
+	"ui.chat.attachments.volume": "音量",
+	"ui.chat.attachments.open_named": "打开{name}",
+	"ui.chat.attachments.expand_aria": "展开{name}",
+	"ui.chat.attachments.expand_title": "点击展开{name}",
+	"ui.chat.attachments.open_title": "点击打开{name}",
+	"ui.chat.attachments.not_viewable": "无法查看文件：{name}"
 }

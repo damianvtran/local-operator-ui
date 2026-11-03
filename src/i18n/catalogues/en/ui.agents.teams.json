@@ -21,5 +21,22 @@
 	"ui.agents.teams.section.members": "Members",
 	"ui.agents.teams.section.members_aria": "Members",
 	"ui.agents.teams.section.project_brief": "Project brief",
-	"ui.agents.teams.section.what_for": "What it is for"
+	"ui.agents.teams.section.what_for": "What it is for",
+	"ui.agents.teams.field.name_hint": "How you and your chats will refer to this team.",
+	"ui.agents.teams.field.name_label": "Team name",
+	"ui.agents.teams.section.manager_hint": "The agent that leads the chat and decides who works on what.",
+	"ui.agents.teams.field.manager_label": "Manager agent",
+	"ui.agents.teams.field.manager_list_notice": "Agents and teams on this machine",
+	"ui.agents.teams.section.members_hint": "Who the manager can delegate to, how many of each, and the model each runs on.",
+	"ui.agents.teams.field.loading_agents": "Loading agents",
+	"ui.agents.teams.field.member_aria": "Member {index, number, ::group-off}",
+	"ui.agents.teams.field.member_kind_aria": "Member {index, number, ::group-off} kind",
+	"ui.agents.teams.action.fewer_aria": "One fewer {role}",
+	"ui.agents.teams.action.more_aria": "One more {role}",
+	"ui.agents.teams.field.count_aria": "{count, number, ::group-off} of {role}",
+	"ui.agents.teams.field.what_for_label": "What this team is for",
+	"ui.agents.teams.action.create": "Create team",
+	"ui.agents.teams.action.creating": "Creating…",
+	"ui.agents.teams.action.discard_question": "Discard this team?",
+	"ui.agents.teams.empty.description": "No description yet."
 }

@@ -737,5 +737,7 @@
 	"ui.chat.pickers.slash.click.stages": "Haz clic para insertar /{label}.",
 	"ui.chat.pickers.slash.enter_needs_a_pick": "Intro necesita que elijas una fila: ↓ y luego Intro · Tab completa esta fila.",
 	"ui.chat.pickers.slash.phase.arguments": "Argumentos",
-	"ui.chat.pickers.slash.region_label": "Comandos slash"
+	"ui.chat.pickers.slash.region_label": "Comandos slash",
+	"ui.chat.pickers.destination_pickers.no_agents_are_registered": "No hay agentes registrados.",
+	"ui.chat.pickers.destination_pickers.applies_to_the_conversation_this_chat_starts": "Se aplica a la conversación que inicia este chat."
 }

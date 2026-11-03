@@ -27,5 +27,7 @@
 	"ui.agents.upload.title.published_org": "Published \"{name}\" to {destination}",
 	"ui.agents.upload.title.published_public": "Published \"{name}\" to the Agent Hub",
 	"ui.agents.upload.title.republished": "Updated the Agent Hub listing for \"{name}\"",
-	"ui.agents.upload.title.update_listing": "Update the Agent Hub listing for \"{name}\"?"
+	"ui.agents.upload.title.update_listing": "Update the Agent Hub listing for \"{name}\"?",
+	"ui.agents.upload.sign_in.title_continue": "Sign in to continue",
+	"ui.agents.upload.sign_in.title_again": "Sign in again"
 }

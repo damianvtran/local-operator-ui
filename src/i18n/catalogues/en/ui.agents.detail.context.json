@@ -257,5 +257,104 @@
 		"tone": "Plain, factual sentence with full stop",
 		"length": "One short sentence in the detail pane; may wrap on narrow panes",
 		"note": "No placeholders. Describes where the agent definition was created, not which device it runs on."
+	},
+	"ui.agents.detail.tools.remove_aria": {
+		"role": "Accessible name of the per-tool remove button in the agent's tool list",
+		"tone": "Short imperative naming the tool",
+		"length_hint": "Two words plus a tool name",
+		"note": "The tool name is an identifier shown to the user as the tool's own name; keep it as-is.",
+		"placeholders": {
+			"tool": "Tool identifier (for example a tool slug); do not translate."
+		}
+	},
+	"ui.agents.detail.tools.add_label": {
+		"role": "Field label above the free-text tool-name input",
+		"tone": "Short imperative",
+		"length_hint": "Three words",
+		"note": "Labels the input that adds one tool to the agent's allow-list."
+	},
+	"ui.agents.detail.field.when_to_use": {
+		"role": "Field label for the agent's one-sentence description",
+		"tone": "Plain noun clause, sentence case",
+		"length_hint": "Five words",
+		"note": "The description is what a model reads to decide whether to pick the agent; the label speaks to the person editing it."
+	},
+	"ui.agents.detail.field.when_to_use_hint": {
+		"role": "Helper sentence under the description field",
+		"tone": "Plain explanatory sentence ending in a period",
+		"length_hint": "One sentence",
+		"note": "'The model' is the language model that routes work to agents, not a product name."
+	},
+	"ui.agents.detail.field.instructions_hint": {
+		"role": "Helper sentence under the instructions field",
+		"tone": "Plain explanatory sentences ending in periods",
+		"length_hint": "Two short sentences",
+		"note": "Explains that the instructions text is everything the agent is given. British spelling 'behaviour' is the source's own."
+	},
+	"ui.agents.detail.section.delegation_hint": {
+		"role": "Description line under the Delegation and effort section heading",
+		"tone": "Plain explanatory sentence",
+		"length_hint": "One sentence",
+		"note": "Subagents are the agents a delegating agent can hand work to; an effort tier is the lo/med/hi routing word."
+	},
+	"ui.agents.detail.field.effort_loading": {
+		"role": "Busy/status text while the effort-tier picker loads its options",
+		"tone": "Short progressive phrase, no ellipsis",
+		"length_hint": "Three words",
+		"note": "Announced by assistive technology while the list is being fetched."
+	},
+	"ui.agents.detail.field.effort_helper": {
+		"role": "Helper sentence under the effort-tier picker",
+		"tone": "Plain explanatory sentence",
+		"length_hint": "One sentence",
+		"note": "'Backend' is the local server process; tiers are configured there."
+	},
+	"ui.agents.detail.field.effort_inherit_hint": {
+		"role": "Option description for the 'inherit' effort tier",
+		"tone": "Short imperative phrase, no period",
+		"length_hint": "Five words",
+		"note": "Describes the inherit option: the conversation's own reasoning effort applies."
+	},
+	"ui.agents.detail.field.effort_configured_hint": {
+		"role": "Option description for a concrete effort tier in the create form",
+		"tone": "Short noun phrase, no period",
+		"length_hint": "Five words",
+		"note": "Tells the person the tier name comes from their own Settings."
+	},
+	"ui.agents.detail.field.how_it_works": {
+		"role": "Field label for the agent's kind (role versus specialist)",
+		"tone": "Plain phrase, sentence case",
+		"length_hint": "Five words",
+		"note": "Labels the choice between an agent you chat with and one other agents call on."
+	},
+	"ui.agents.detail.empty.description": {
+		"role": "Empty-state text where an agent has no description",
+		"tone": "Plain statement plus a nudge, sentence case",
+		"length_hint": "One sentence",
+		"note": "Shown in read mode in place of the description block."
+	},
+	"ui.agents.detail.empty.instructions": {
+		"role": "Empty-state text where an agent has no instructions",
+		"tone": "Plain statement, sentence case",
+		"length_hint": "Three words",
+		"note": "Shown in read mode in place of the instructions block."
+	},
+	"ui.agents.detail.action.create_copy": {
+		"role": "Primary button label when creating an editable copy of a built-in agent",
+		"tone": "Short imperative",
+		"length_hint": "Three words",
+		"note": "The agent being copied is built-in and cannot be edited in place."
+	},
+	"ui.agents.detail.action.creating": {
+		"role": "Pending label of the create button while the write is in flight",
+		"tone": "Progressive verb with ellipsis",
+		"length_hint": "One word",
+		"note": "Replaces the create button's label until the write settles."
+	},
+	"ui.agents.detail.action.discard_new_agent": {
+		"role": "Confirmation hint on the create form's discard control",
+		"tone": "Short question",
+		"length_hint": "Four words",
+		"note": "Asks before throwing away a not-yet-created agent."
 	}
 }

@@ -12,5 +12,8 @@
 	"ui.agents.detail.read_state.class_on": "Activado",
 	"ui.agents.detail.read_state.class_off": "Desactivado",
 	"ui.agents.detail.read_state.class_switching": "Cambiando…",
-	"ui.agents.detail.read_state.effort_inherit": "Usar el esfuerzo de la sesión"
+	"ui.agents.detail.read_state.effort_inherit": "Usar el esfuerzo de la sesión",
+	"ui.agents.detail.read_state.list_failed_teams": "No se pudieron leer los equipos",
+	"ui.agents.detail.read_state.list_failed_agents": "No se pudieron leer los agentes",
+	"ui.agents.detail.read_state.list_failed_meaning": "No se ha perdido nada. Falló una lectura: el backend respondió con un error, lo cual es distinto de que el backend esté desactualizado."
 }

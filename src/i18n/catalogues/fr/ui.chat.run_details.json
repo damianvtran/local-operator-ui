@@ -82,5 +82,10 @@
 	"ui.chat.run_details.chip.mcp_attention": "{count, plural, one {# serveur MCP nécessite votre attention} many {# de serveurs MCP nécessitent votre attention} other {# serveurs MCP nécessitent votre attention}}",
 	"ui.chat.run_details.mcp.cold_label": "Aucune session n’est active — impossible de vérifier l’état des serveurs.",
 	"ui.chat.run_details.nothing_in_flight": "Rien en cours.",
-	"ui.chat.run_details.nothing_to_show_yet": "Rien à afficher pour l’instant."
+	"ui.chat.run_details.nothing_to_show_yet": "Rien à afficher pour l’instant.",
+	"ui.chat.run_details.subagents_of_aria": "Sous-agents de {owner}",
+	"ui.chat.run_details.job_cancel_aria": "Annuler {label}",
+	"ui.chat.run_details.monitors.cancel_aria": "Annuler la surveillance {name}",
+	"ui.chat.run_details.monitors.more": "{count, plural, one {{count_display} autre surveillance} many {{count_display} d’autres surveillances} other {{count_display} autres surveillances}}",
+	"ui.chat.run_details.wake.more": "{count, plural, one {{count_display} autre réveil} many {{count_display} d’autres réveils} other {{count_display} autres réveils}}"
 }

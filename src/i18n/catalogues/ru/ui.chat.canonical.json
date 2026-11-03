@@ -166,5 +166,15 @@
 	"ui.chat.canonical.tool_row.bridge.verb.take_up.settled": "Получил",
 	"ui.chat.canonical.tool_row.bridge.verb.unknown.failed": "Не удалось использовать Team Bridge",
 	"ui.chat.canonical.tool_row.bridge.verb.unknown.running": "Использует Team Bridge",
-	"ui.chat.canonical.tool_row.bridge.verb.unknown.settled": "Использовал Team Bridge"
+	"ui.chat.canonical.tool_row.bridge.verb.unknown.settled": "Использовал Team Bridge",
+	"ui.chat.canonical.transcript.hub_from": "От {name}",
+	"ui.chat.canonical.image_label": "Изображение",
+	"ui.chat.canonical.fold.images_aria": "{count, plural, =1 {{count_display} изображение из этого запуска} one {{count_display} изображение из этого запуска} few {{count_display} изображения из этого запуска} many {{count_display} изображений из этого запуска} other {{count_display} изображения из этого запуска}}",
+	"ui.chat.canonical.fold.more_images": "{count, plural, =1 {+{count_display} ещё изображение} one {+{count_display} ещё изображение} few {+{count_display} ещё изображения} many {+{count_display} ещё изображений} other {+{count_display} ещё изображения}}",
+	"ui.chat.canonical.image_gen.control.stop_hint_queued": "Остановка произойдёт до обращения к провайдеру.",
+	"ui.chat.canonical.image_gen.control.stop_hint_running": "Запрашивает остановку; провайдер всё равно может завершить вызов.",
+	"ui.chat.canonical.image_gen.batch_summary": "{count, plural, =1 {{count_display} элемент} one {{count_display} элемент} few {{count_display} элемента} many {{count_display} элементов} other {{count_display} элемента}}",
+	"ui.chat.canonical.lightbox.filmstrip_aria": "{count, plural, =1 {{count_display} изображение} one {{count_display} изображение} few {{count_display} изображения} many {{count_display} изображений} other {{count_display} изображения}}",
+	"ui.chat.canonical.lightbox.show_image": "Показать изображение {index, number, ::group-off} из {count, number, ::group-off}",
+	"ui.chat.canonical.supplement.details.summary": "Подробности"
 }

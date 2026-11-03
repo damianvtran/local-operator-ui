@@ -17,5 +17,7 @@
 	"ui.chat.header.saving_conversation_name": "گفتگو کا نام محفوظ کیا جا رہا ہے",
 	"ui.chat.header.session_model_connect": "منسلک کریں",
 	"ui.chat.header.session_model_switch": "ماڈل بدلیں",
-	"ui.chat.header.transcript_display": "ٹرانسکرپٹ کی نمائش"
+	"ui.chat.header.transcript_display": "ٹرانسکرپٹ کی نمائش",
+	"ui.chat.header.starting_session": "سیشن شروع ہو رہا ہے",
+	"ui.chat.header.canonical_chat": "مستند چیٹ"
 }
