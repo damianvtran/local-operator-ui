@@ -10,8 +10,8 @@ import {
 	SIDEBAR_COLLAPSED_WIDTH,
 	SIDEBAR_MIN_WIDTH,
 	type SidebarLayout,
+	askPanePresentation,
 	canvasDockWidth,
-	canvasPaneMode,
 	isSidebarTogglePress,
 	resolveSidebarLayout,
 	sidebarDockCapacity,
@@ -25,8 +25,10 @@ import { useTextDirection } from "@shared/i18n/use-document-direction";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import {
+	resolveDrawnRightSlotPane,
 	resolveRightSlotWidth,
 	resolveRightSlotYieldsSidebar,
+	rightSlotPaneWidth,
 	useUiPreferencesStore,
 } from "@shared/store/ui-preferences-store";
 import {
@@ -345,7 +347,10 @@ export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
 	 * is what the ONE resolver in `ui-preferences-store` answers for it. Both this
 	 * lane and `chat-content.tsx` call that resolver; a second derivation here is
 	 * the drift the resolver exists to prevent (`resolveRightSlotWidth` states
-	 * the whole argument, including the canvas's overlay mode).
+	 * the whole argument, including the canvas's overlay mode). `drawnSlotWidth`
+	 * below is what the lane actually stops at: the resolver's number for every
+	 * DOCKED occupant, and the ask sheet's own width where the drawer is drawn as
+	 * the overlay - the resolver's leftover (`row - 480`) is not that sheet.
 	 */
 	const contentColumnRef = useRef<HTMLDivElement | null>(null);
 	const contentBox = useMeasuredBox(contentColumnRef, direction);
@@ -353,18 +358,40 @@ export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
 		resolveRightSlotWidth(contentBox.width, state),
 	);
 	/*
+	 * THE ASK SHEET'S OWN GEOMETRY, from the same measured box (2026-11-03).
+	 *
+	 * WHY THE SHELL NEEDS IT AS WELL AS THE MOUNTS. `slotWidth` is the resolver's
+	 * answer for a DOCKED pane, and below the dock breakpoint the resolver's answer
+	 * for the ask pane is the row's leftover (`row - 480`) - which is not what the
+	 * sheet draws. The lane's stop and `data-slot-edge` have to name the pane's
+	 * leading EDGE, so where the drawn pane is the ask drawer this number replaces
+	 * the resolver's one. `resolveDrawnRightSlotPane` is the same drawable-aware
+	 * read the rail lights from (#868), so a claimed-but-undrawable drawer still
+	 * answers no width here.
+	 */
+	const askPreferredWidth = useUiPreferencesStore((state) =>
+		rightSlotPaneWidth(CANVAS_PANE_MIN_PX, state.rightSlotWidth),
+	);
+	const askPresentation = askPanePresentation(
+		contentBox.width || Number.MAX_SAFE_INTEGER,
+		askPreferredWidth,
+	);
+	const drawnPane = useUiPreferencesStore(resolveDrawnRightSlotPane);
+	const drawnSlotWidth =
+		drawnPane === "ask" ? askPresentation.width : slotWidth;
+	/*
 	 * The slot's DOCKED/OVERLAY mode, from the same measured box the width comes
 	 * from: the width resolver above answers where the pane STOPS, and this answers
 	 * whether it is docked or has stopped docking (the `overlay` literal;
-	 * `canvasPaneMode` states what it draws today) - §I's one pair of rules, read
-	 * through the same `canvasPaneMode` the route-mounted occupants call.
+	 * `canvasPaneMode` states what each occupant draws). For the ask drawer the
+	 * answer is the presentation's own mode - one call, so the width, the scrim and
+	 * the ground cannot disagree about which mode the sheet is in.
 	 */
-	const fleetDocked =
-		canvasPaneMode(contentBox.width || Number.MAX_SAFE_INTEGER) === "docked";
+	const fleetDocked = askPresentation.mode === "docked";
 	/*
 	 * THE STOP IS THE PANE'S LEADING EDGE. The pane hugs the slot's trailing edge,
-	 * so its leading edge sits `slotWidth` px LEFT of the content column's right
-	 * edge - not `columnWidth + slotWidth` px from the window's left, which is
+	 * so its leading edge sits `drawnSlotWidth` px LEFT of the content column's
+	 * right edge - not `columnWidth + slotWidth` px from the window's left, which is
 	 * where a first cut of this stop landed, and a captured frame showed exactly
 	 * what that arithmetic costs: the lane's band changed ground 60px right of the
 	 * pane's own edge, a `canvas` sliver over an `elevated` pane - the y32 band
@@ -383,7 +410,7 @@ export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
 		contentBox.width > 0
 			? (direction === "rtl"
 					? viewportWidth - contentBox.left
-					: contentBox.left + contentBox.width) - slotWidth
+					: contentBox.left + contentBox.width) - drawnSlotWidth
 			: 0;
 	return (
 		<div
@@ -525,9 +552,26 @@ export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
 							 */}
 							{fleetAsksOpen && (
 								<>
+									{/*
+									 * THE SCRIM: the strip of conversation the sheet leaves uncovered, and the press
+									 * that puts the sheet away. It covers this ROW only - the sidebar and the panel
+									 * rail are siblings outside it, so the rail's asks item stays a working toggle -
+									 * and it is drawn only where `askPanePresentation` says a strip remains (the
+									 * sheet fills the row at and below its 400px floor, where a 0px target would
+									 * be invisible). Pointer-only: Escape is the keyboard door and the drawer
+									 * already claims it (`ask-drawer.tsx`).
+									 */}
+									{askPresentation.scrimmed && (
+										<div
+											aria-hidden="true"
+											data-ask-scrim=""
+											className="absolute inset-0 z-30 bg-scrim"
+											onPointerDown={() => setAskDrawerOpen(false, "fleet")}
+										/>
+									)}
 									{fleetDocked && (
 										<ResizableDivider
-											sidebarWidth={slotWidth}
+											sidebarWidth={drawnSlotWidth}
 											onSidebarWidthChange={setRightSlotWidth}
 											minWidth={CANVAS_PANE_MIN_PX}
 											maxWidth={Math.max(
@@ -542,26 +586,36 @@ export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
 										/>
 									)}
 									{/*
-									 * THE SAME NARROW-ROW RULE AS THE CONVERSATION'S MOUNT (agent review round 4):
-									 * in the `overlay` mode the pane covers the row it cannot sit beside instead of
-									 * taking a 0-wide box in it - `chat-content.tsx` carries the measured numbers and
-									 * the whole argument. It mattered here too: this row is the content column's,
-									 * and the rail is a sibling AFTER that column, so nothing a pane draws can reach
-									 * the rail unless the pane escapes the row.
+									 * THE ASK SHEET, in the two presentations `askPanePresentation` decides
+									 * (2026-11-03). Docked it is the family's flex pane at the resolver's width;
+									 * below the dock breakpoint it is a right-anchored sheet over this row -
+									 * `absolute inset-y-0 end-0`, so it never takes (or measures) flow space and
+									 * the row's width cannot feed back into the breakpoint that chose it.
+									 * `max-w-full` resolves against the row at paint time, so the inline width
+									 * cannot overrun a row number one reflow old (the over-constrained case
+									 * `pane-slot.tsx`'s `width` note records).
 									 */}
 									<PaneSlot
-										/*
-										 * Overlay: no width. The pane overlays the row it is pinned to, and that
-										 * row's width is the browser's to resolve at paint time - see the mount in
-										 * `chat-content.tsx` and `pane-slot.tsx`'s `width` note (design review
-										 * round 2, D8).
-										 */
-										width={fleetDocked ? slotWidth : undefined}
-										className={fleetDocked ? undefined : "absolute inset-0"}
+										width={askPresentation.width}
+										className={
+											askPresentation.mode === "docked"
+												? undefined
+												: "absolute inset-y-0 end-0 z-40 max-w-full shadow-overlay"
+										}
 										tourTag="ask-fleet-slot"
-										data-ask-mode={fleetDocked ? "docked" : "overlay"}
+										data-ask-mode={askPresentation.mode}
 									>
 										<FleetAskDrawer
+											/*
+											 * AN OPAQUE GROUND OVER THE CONVERSATION (2026-11-03): the glass
+											 * marker is a TRANSLUCENT ground meant for a pane over window
+											 * material, and over a transcript it lets the text show through.
+											 * `ground` drops the marker in the sheet, where `bg-elevated` is
+											 * then opaque.
+											 */
+											ground={
+												askPresentation.mode === "docked" ? "glass" : "solid"
+											}
 											/*
 											 * THE KIND OF CLOSE IS FORWARDED, NOT DECIDED HERE (#1079): the pane's X
 											 * asks for an empty slot and passes `dismissSlot`, while its own Escape

@@ -46,8 +46,10 @@ const {
 	SIDEBAR_MIN_WIDTH,
 	CANVAS_PANE_MIN_PX,
 	CHAT_PANE_MIN_PX,
+	ASK_SHEET_SCRIM_GUTTER_PX,
 	canvasDockWidth,
 	canvasPaneMode,
+	askPanePresentation,
 	clampSidebarWidth,
 	isSidebarTogglePress,
 	resolveSidebarLayout,
@@ -353,4 +355,145 @@ test("the yield counts the 44px panel rail: the band is 980-1183 at the default 
 		resolveSidebarLayout(1140, false, SIDEBAR_DEFAULT_WIDTH, true, 0).mode,
 		"docked",
 	);
+});
+
+/*
+ * THE RESOLVER, bundled beside the layout module so the docked arm can be compared
+ * with the number the app actually draws. It needs the renderer's `localStorage` at
+ * import time (the store persists preferences), which this test never reads.
+ */
+const preferenceMemory = new Map();
+globalThis.localStorage = {
+	getItem: (key) =>
+		preferenceMemory.has(key) ? preferenceMemory.get(key) : null,
+	setItem: (key, value) => void preferenceMemory.set(key, String(value)),
+	removeItem: (key) => void preferenceMemory.delete(key),
+	clear: () => preferenceMemory.clear(),
+	key: (index) => [...preferenceMemory.keys()][index] ?? null,
+	get length() {
+		return preferenceMemory.size;
+	},
+};
+const slotBundle = await build({
+	stdin: {
+		contents:
+			'export { resolveRightSlotWidth, rightSlotPaneWidth } from "./src/renderer/src/shared/store/ui-preferences-store";',
+		resolveDir: ROOT,
+		loader: "ts",
+	},
+	bundle: true,
+	format: "esm",
+	platform: "node",
+	write: false,
+	// The renderer's own path aliases; esbuild reads the ROOT tsconfig by default.
+	alias: {
+		"@features": `${ROOT}/src/renderer/src/features`,
+		"@shared": `${ROOT}/src/renderer/src/shared`,
+	},
+	logLevel: "silent",
+});
+const { resolveRightSlotWidth, rightSlotPaneWidth } = await import(
+	`data:text/javascript;base64,${Buffer.from(slotBundle.outputFiles[0].text).toString("base64")}`
+);
+
+/** The store state that spells "the asks drawer is the open, drawable pane". */
+const askPaneState = (rightSlotWidth) => ({
+	isCanvasOpen: false,
+	isAskDrawerOpen: true,
+	isRunPanelOpen: false,
+	isBrowserPaneOpen: false,
+	isConsolePaneOpen: false,
+	isCodeReviewPaneOpen: false,
+	rightSlotWidth,
+	rightSlotRoute: { mounted: true, session: true },
+});
+
+test("the ask drawer is a sheet where the row cannot host the dock's floor (2026-11-03)", () => {
+	/*
+	 * THE OPERATOR'S REPORT, as numbers. Below the dock breakpoint the drawer used to
+	 * be a flex dock at the row's leftover (`row - 480`, zero at a 500px window), then
+	 * a full-row `inset-0` cover. `askPanePresentation` now answers a right-anchored
+	 * sheet: the slot keeps its 400px floor where the row can spare it, leaves the
+	 * scrim's 48px strip of conversation, and never draws wider than the row.
+	 *
+	 * The breakpoint is UNCHANGED and reads the row, not the window: 880 docks (400
+	 * beside the chat's 480), 879 does not.
+	 */
+	const DOCK_BREAKPOINT = CHAT_PANE_MIN_PX + CANVAS_PANE_MIN_PX;
+	assert.equal(DOCK_BREAKPOINT, 880);
+	const ROWS = [300, 400, 447, 448, 449, 456, 506, 675, 700, 879, 880, 1000];
+	for (const preferred of [640, 1000]) {
+		for (const row of ROWS) {
+			const presentation = askPanePresentation(row, preferred);
+			assert.equal(
+				presentation.mode,
+				row >= DOCK_BREAKPOINT ? "docked" : "overlay",
+				`row ${row} must ${row >= DOCK_BREAKPOINT ? "dock" : "overlay"} at preferred ${preferred}`,
+			);
+			assert.ok(
+				presentation.width <= row,
+				`row ${row}: the sheet never draws wider than its row (got ${presentation.width})`,
+			);
+			assert.ok(
+				presentation.width > 0,
+				`row ${row}: a presentation is a readable width, never the 0-wide dock it replaces`,
+			);
+			const uncovered = row - presentation.width;
+			assert.ok(
+				uncovered >= 0,
+				`row ${row}: the uncovered strip is a subtraction, not a negative`,
+			);
+			assert.equal(
+				presentation.scrimmed,
+				presentation.mode === "overlay" && uncovered > 0,
+				`row ${row}: the scrim exists exactly while the sheet leaves a strip of conversation`,
+			);
+			if (presentation.mode === "overlay") {
+				/*
+				 * THE SHAPE, as the decision states it: the 400 floor where the row can
+				 * host it, otherwise the row itself; the 48px strip where the row can
+				 * spare it, no strip where it cannot; and the preference caps both. The
+				 * expected width is written out here rather than read back from the
+				 * function under test.
+				 */
+				const floor = Math.min(row, CANVAS_PANE_MIN_PX);
+				const expectedWidth = Math.min(
+					preferred,
+					Math.max(floor, row - ASK_SHEET_SCRIM_GUTTER_PX),
+				);
+				assert.equal(
+					presentation.width,
+					expectedWidth,
+					`row ${row} preferred ${preferred}: the sheet is the 400-floor / 48px-strip rule`,
+				);
+				assert.equal(
+					uncovered,
+					row - expectedWidth,
+					`row ${row}: the uncovered strip is what the sheet leaves`,
+				);
+			}
+			/*
+			 * The docked arm is the resolver's own answer for the ask pane, so the
+			 * drawn edge, the lane's stop and the divider cannot disagree.
+			 */
+			if (presentation.mode === "docked") {
+				for (const rightSlotWidth of [0, preferred]) {
+					assert.equal(
+						askPanePresentation(
+							row,
+							rightSlotPaneWidth(CANVAS_PANE_MIN_PX, rightSlotWidth),
+						).width,
+						resolveRightSlotWidth(row, askPaneState(rightSlotWidth)),
+						`row ${row} preferred ${preferred}: a docked ask drawer draws the resolver's width`,
+					);
+				}
+			}
+		}
+	}
+	/* The one new number, chosen as a press target: above the 44px rail item. */
+	assert.equal(ASK_SHEET_SCRIM_GUTTER_PX, 48);
+	assert.ok(ASK_SHEET_SCRIM_GUTTER_PX > PANEL_RAIL_WIDTH_PX);
+	/* The preference is the slot's, unchanged: the sheet takes no new width rule. */
+	assert.equal(rightSlotPaneWidth(CANVAS_PANE_MIN_PX, 640), 640);
+	assert.equal(rightSlotPaneWidth(CANVAS_PANE_MIN_PX, 0), 640);
 });

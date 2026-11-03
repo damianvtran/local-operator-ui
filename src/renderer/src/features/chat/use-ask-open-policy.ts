@@ -73,7 +73,8 @@ useUiPreferencesStore.subscribe((state) => {
  *     is what makes a dismissal survive a switch (the record is the page's
  *     `askDismissals`, outside any mount) while the "once" resets.
  *  2. READ THE LIVE FACTS the module takes as inputs: the store's drawer flags, whether
- *     the composer holds text, where the keyboard is, and the clock.
+ *     the composer holds text, where the keyboard is, whether the drawer would be
+ *     drawn as the sheet over the conversation, and the clock.
  *  3. APPLY THE VERDICT through the store's ONE writer, `setAskDrawerOpen`, so an
  *     auto-open goes through the same slot claim as a press on the chip - including
  *     the borrow of a durable pane, which the close gives back.
@@ -109,10 +110,22 @@ export const useAskOpenPolicy = ({
 	sessionId,
 	composerId,
 	view,
+	overlayPresentation,
 }: {
 	sessionId: string | undefined;
 	composerId: string | undefined;
 	view: AskQueueView;
+	/**
+	 * Whether the drawer would be drawn as the SHEET over the conversation at this
+	 * instant (`askPanePresentation`'s mode for the row it mounts in), read as a
+	 * function rather than a boolean: the row width is measured in a layout effect,
+	 * and a cached frame can take the view's one decision in the commit that first
+	 * measures it, so a render-time value would answer the pre-measurement question
+	 * (row 0, i.e. docked) exactly where the answer matters. Read only inside the
+	 * decision effect, which is the only place it is a fact (see
+	 * `AskOpenInput.overlayPresentation`).
+	 */
+	overlayPresentation: () => boolean;
 }): string => {
 	/*
 	 * THE LIVE REGION'S SENTENCE (design review round 1, D1): "" until a POLICY open
@@ -247,6 +260,12 @@ export const useAskOpenPolicy = ({
 			keyboardOnDoor: !wasDecided && keyboardIsOnDoor(),
 			drawerOpen: liveDrawerOpen,
 			sessionDrawerOpen: liveSessionDrawerOpen,
+			/*
+			 * READ LAST, LIVE, LIKE THE FLAGS ABOVE: the presentation is a fact about the
+			 * row at decision time, not about the render this effect was scheduled from
+			 * (the row's first measurement is a layout effect in the same commit).
+			 */
+			overlayPresentation: overlayPresentation(),
 		});
 		if (verdict.action === "open") {
 			/*

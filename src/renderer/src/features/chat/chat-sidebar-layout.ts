@@ -165,36 +165,108 @@ export function canvasDockWidth(rowWidth: number): number {
 }
 
 /**
- * How the canvas occupies the row at this width: docked beside the chat, or
+ * How the right slot occupies the row at this width: docked beside the chat, or
  * stopped docking - the mode the `overlay` literal names.
  *
- * WHAT `overlay` DRAWS TODAY, stated once and here, because several comments had
- * drifted into describing it as a pane that covers the conversation: the mode
- * withholds the divider and writes `data-canvas-mode`/`data-ask-mode`; it does NOT
- * position the pane over the chat. `f0f974ef0a3` drew one (`absolute inset-y-0
- * right-0 z-20`), but `1e88f7fc167` (#564, the PaneSlot refactor) removed that
- * class without its message saying so, and the pane is a flex dock beside the
- * 480px conversation at the row's leftover. Restoring a true overlay is an OPEN
- * design decision, not an accident to fix here: it needs positioning; a width
- * rule that does not fight the one-width resolver; Escape/focus handling (there
- * is no scrim); a lane-gradient stop; and - for the Browser - main-process bounds
- * for the native view.
+ * THIS IS THE ONE PREDICATE, measured from the pane ROW, and it stays one: the
+ * sidebar has already yielded what it will (§B1: below 1024 it is the 56px strip,
+ * which `resolveSidebarLayout` does), and if the slot's own 400px floor still does
+ * not fit beside the chat's 480, the pane stops docking. No second threshold, and
+ * no feedback loop: the sheet an overlay draws is `absolute`, so it never changes
+ * the row it is measured against.
  *
- * §I's order of yielding, in one predicate. The sidebar yields first (§B1: below
- * 1024 it is the 56px strip, which `resolveSidebarLayout` already does), and if
- * the canvas's own 400px floor still does not fit beside the chat's 480 the canvas
- * stops docking and switches to the `overlay` literal.
+ * WHAT `overlay` DRAWS, per occupant, because they differ and the difference is
+ * the whole point of naming the mode:
+ *
+ *  - THE CANVAS is a flex dock at the row's leftover (`canvasDockWidth`). It
+ *    withholds the divider and writes `data-canvas-mode`; it does NOT position
+ *    itself over the chat. `f0f974ef0a3` drew one (`absolute inset-y-0 right-0
+ *    z-20`), but `1e88f7fc167` (#564, the PaneSlot refactor) removed that class
+ *    without its message saying so. A true canvas overlay is still an OPEN design
+ *    decision: it needs positioning, a width rule that does not fight the
+ *    one-width resolver, Escape/focus handling, a lane-gradient stop and - for
+ *    the Browser - main-process bounds for the native view.
+ *  - THE ASK DRAWER DOES draw one (2026-11-03): below this breakpoint
+ *    `askPanePresentation` answers a right-anchored sheet over the row with a
+ *    scrim, an opaque ground and an inert conversation, because a 0-wide flex
+ *    dock is not a readable drawer. The seat of that decision is the function
+ *    below, not this predicate.
  *
  * The run panel has no such mode: §I says it "is never an overlay (it is a reading
  * pane, not a document); it obeys the same 480 floor and closes itself rather than
  * squeezing the chat below it" - which is what the run pane's own separator
- * contract does against the measured capacity. With the positioning
- * removed above, "never an overlay" is no longer a contrast between it and the
- * canvas: no pane covers the conversation today, and the mode is the withheld
- * divider and the data attribute.
+ * contract does against the measured capacity.
  */
 export function canvasPaneMode(rowWidth: number): "docked" | "overlay" {
 	return canvasDockWidth(rowWidth) >= CANVAS_PANE_MIN_PX ? "docked" : "overlay";
+}
+
+/**
+ * The clearance the ask sheet leaves at the row's inline start while it is drawn
+ * over the conversation, in pixels.
+ *
+ * A CLICK-TARGET FLOOR, chosen rather than measured: it is a press target on the
+ * scrim (which closes like Escape) and it clears the chat's own leading edge so
+ * the conversation stays legible above the sheet's start. 48 is above the 44px
+ * rail item precedent (`PANEL_RAIL_WIDTH_PX`) that this app treats as the smallest
+ * comfortable control box. The row keeps this strip only where it CAN: a row at or
+ * below the sheet's 400px floor gives the strip up entirely (see
+ * `askPanePresentation`).
+ */
+export const ASK_SHEET_SCRIM_GUTTER_PX = 48;
+
+/**
+ * How the ASK DRAWER occupies the row: the geometry one pure function, so the
+ * session mount (`chat-content.tsx`) and the fleet mount (`chat-layout.tsx`)
+ * cannot draw two different sheets and a test can reach the numbers.
+ *
+ * DOCKED is the slot's ordinary flex pane, and its width is the resolver's own
+ * answer for the ask pane (`resolveRightSlotWidth`: `min(preferred,
+ * canvasDockWidth(row))`). OVERLAY is a right-anchored sheet over the row:
+ *
+ *     width = min(preferred, max(min(row, 400), row - 48))
+ *
+ * The 400 floor is kept, so a row that can give the sheet 400 beside a 48px strip
+ * does, and a row narrower than the floor draws the sheet full-row (uncovered 0)
+ * rather than a column too narrow to read its own card - the 0-wide dock this
+ * change exists to remove. `preferred` is `rightSlotPaneWidth(CANVAS_PANE_MIN_PX,
+ * rightSlotWidth)` at the call sites: this module cannot import the store (the
+ * store imports it), so the preference travels as an argument.
+ *
+ * `scrimmed` is whether any conversation remains uncovered to press. It is false
+ * only at rows the sheet fills (row <= 400), where the drawer's own X and Escape
+ * are the doors - a 0px band would be a press target that cannot be seen.
+ *
+ * UNMEASURED IS DOCKED AT THE PREFERENCE, the idiom `resolveRightSlotWidth`
+ * states: the first frame's row is 0, and callers pass
+ * `rowWidth || Number.MAX_SAFE_INTEGER`, so the sheet never flashes at a bogus
+ * narrow geometry before the observer reports.
+ */
+export type AskPanePresentation = {
+	mode: "docked" | "overlay";
+	width: number;
+	scrimmed: boolean;
+};
+
+export function askPanePresentation(
+	rowWidth: number,
+	preferredWidth: number,
+): AskPanePresentation {
+	if (canvasPaneMode(rowWidth) === "docked") {
+		return {
+			mode: "docked",
+			width: Math.min(preferredWidth, canvasDockWidth(rowWidth)),
+			scrimmed: false,
+		};
+	}
+	const width = Math.min(
+		preferredWidth,
+		Math.max(
+			Math.min(rowWidth, CANVAS_PANE_MIN_PX),
+			rowWidth - ASK_SHEET_SCRIM_GUTTER_PX,
+		),
+	);
+	return { mode: "overlay", width, scrimmed: rowWidth - width > 0 };
 }
 
 /**

@@ -168,11 +168,18 @@ const h = React.createElement;
 
 /*
  * The call site and its import, as patterns hoisted to module scope (a regex literal in
- * a test body is rebuilt per call). The call is matched whole - three named arguments -
- * so a rewiring that dropped one (the composer key, say) is a failure, not a pass.
+ * a test body is rebuilt per call). The call is matched whole - four named arguments -
+ * so a rewiring that dropped one (the composer key, say, or the presentation fact that
+ * keeps an auto-open off the sheet) is a failure, not a pass.
  */
 const HOOK_CALL =
-	/useAskOpenPolicy\(\{\s*sessionId,\s*composerId: conversationId,\s*view: sessionAsksView,\s*\}\)/;
+	/useAskOpenPolicy\(\{\s*sessionId,\s*composerId: conversationId,\s*view: sessionAsksView,/;
+/*
+ * THE PRESENTATION FACT (design 2026-11-03, D5). Matched apart from the three wiring
+ * arguments because the call site carries a long comment between them, and a pinned
+ * gap would fail on the prose rather than on the fact.
+ */
+const HOOK_OVERLAY = /overlayPresentation:\s*\(\)\s*=>[\s\S]{0,200}?"overlay"/;
 const HOOK_IMPORT =
 	/import \{ useAskOpenPolicy \} from "\.\.\/use-ask-open-policy";/;
 /** The call site CAPTURES the return (the live region's sentence; design review round 1, D1). */
@@ -227,6 +234,9 @@ const Pane = ({ sessionId, frontend }) => {
 		sessionId,
 		composerId: sessionId,
 		view,
+		/* The harness is the DOCKED presentation: a sheet auto-open is
+		 * `ask-open-policy`'s own arm, driven there as a pure input. */
+		overlayPresentation: () => false,
 	});
 	/*
 	 * THE COMPOSER'S REAL REGISTRATION (`registerComposerFocus`), not a stub that focuses the
@@ -1300,6 +1310,7 @@ test("U8 - the live region speaks the settled clause when the queue empties with
 			sessionId: "c-u8",
 			composerId: "c-u8",
 			view,
+			overlayPresentation: () => false,
 		});
 		return h("output", { "data-u8-announcer": "" }, text);
 	};
@@ -1380,6 +1391,11 @@ test("ChatContent calls the hook with the conversation, the composer key and the
 		source,
 		HOOK_CALL,
 		"the open policy is no longer wired at the mount that owns the drawer",
+	);
+	assert.match(
+		source,
+		HOOK_OVERLAY,
+		"the mount no longer hands the policy its presentation fact: below the dock breakpoint an auto-open would cover and inert the conversation",
 	);
 	assert.match(source, HOOK_IMPORT);
 	const wired = source.indexOf("useAskOpenPolicy({");

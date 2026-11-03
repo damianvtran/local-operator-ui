@@ -403,7 +403,7 @@ const stateOf = (cdp) =>
  theme:document.documentElement.dataset.theme,dir:document.documentElement.dir,
  viewport:{width:window.innerWidth,height:window.innerHeight},
  glass:document.documentElement.dataset.glass,
- bounds:[...document.querySelectorAll('[data-drawer-read-view], [data-drawer-updates], [data-ask-drawer], [data-tour-tag="ask-drawer-slot"], [data-tour-tag="pane-row"], [data-panel-rail-host]')].map(e=>{const r=e.getBoundingClientRect();const name=e.dataset.drawerReadView??e.dataset.askDrawer??(e.hasAttribute('data-drawer-updates')?'updates':e.dataset.tourTag??(e.hasAttribute('data-panel-rail-host')?'rail':'unknown'));return {selector:name,x:r.x,y:r.y,width:r.width,height:r.height,scrollWidth:e.scrollWidth,clientWidth:e.clientWidth,scrollLeft:e.scrollLeft,mode:e.dataset.askMode}})
+ bounds:[...document.querySelectorAll('[data-drawer-read-view], [data-drawer-updates], [data-ask-drawer], [data-ask-scrim], [data-tour-tag="ask-drawer-slot"], [data-tour-tag="pane-row"], [data-panel-rail-host]')].map(e=>{const r=e.getBoundingClientRect();const name=e.dataset.drawerReadView??e.dataset.askDrawer??(e.hasAttribute('data-ask-scrim')?'scrim':e.hasAttribute('data-drawer-updates')?'updates':e.dataset.tourTag??(e.hasAttribute('data-panel-rail-host')?'rail':'unknown'));return {selector:name,x:r.x,y:r.y,width:r.width,height:r.height,scrollWidth:e.scrollWidth,clientWidth:e.clientWidth,scrollLeft:e.scrollLeft,mode:e.dataset.askMode,glass:e.hasAttribute('data-glass-region')}})
 }))()`);
 
 /** Uses actual UI actions, real foreground guard, real HTTP receipts and store readback. */
@@ -468,6 +468,49 @@ export async function runDrawerRemediationScene({
 			`${label}: the row the pane is pinned to must not be scrolled - scrollLeft ${row.scrollLeft} translates the pinned overlay out of the window`,
 		);
 		if (pane.mode !== "overlay") return;
+		/*
+		 * THE SHEET'S OWN GEOMETRY (2026-11-03), on every overlay frame: it never draws
+		 * wider than the row it is pinned to, and the strip it leaves is the scrim -
+		 * present exactly while there is a strip to press, and covering the ROW (the
+		 * sidebar and the rail are outside it). A sheet that filled the row again would
+		 * be the `inset-0` cover the operator reported.
+		 */
+		assert.ok(
+			pane.width <= row.width + 0.5,
+			`${label}: the sheet must not draw wider than its row - pane ${pane.width}, row ${row.width}`,
+		);
+		const scrim = state.bounds.find((box) => box.selector === "scrim");
+		const strip = row.width - pane.width;
+		if (strip > 0.5) {
+			assert.ok(
+				scrim,
+				`${label}: an overlay sheet that leaves ${strip}px of conversation must draw the scrim that closes it`,
+			);
+			assert.ok(
+				Math.abs(scrim.width - row.width) <= 0.5,
+				`${label}: the scrim covers the pane ROW, not the window - scrim ${scrim.width}, row ${row.width}`,
+			);
+		} else {
+			assert.equal(
+				scrim,
+				undefined,
+				`${label}: no strip means no scrim - a 0px press target would be invisible`,
+			);
+		}
+		/*
+		 * THE GROUND IS OPAQUE. The sheet is the one drawer presentation drawn over the
+		 * transcript, and the glass marker is a translucent ground: it drops the marker
+		 * so `bg-elevated` paints.
+		 */
+		const drawerBoxes = state.bounds.filter(
+			(box) => box.selector === "session" || box.selector === "fleet",
+		);
+		for (const drawerBox of drawerBoxes)
+			assert.equal(
+				drawerBox.glass,
+				false,
+				`${label}: the overlay drawer must not wear the glass region marker (selector ${drawerBox.selector})`,
+			);
 		const rail = state.bounds.find((box) => box.selector === "rail");
 		if (!rail || rail.width === 0) return;
 		const paneEdge = state.dir === "rtl" ? pane.x : pane.x + pane.width;

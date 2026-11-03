@@ -11,12 +11,12 @@
  *
  * The fix is the container, not the symptom: the panel is now a member of the
  * CANVAS FAMILY - right-docked, a 40px chrome bar, its own scroller, the family's
- * width arithmetic (`min(RIGHT_SLOT_MAX_PX, row - 480)`, floor 400, the `overlay`
- * literal below the floor - a flex dock, not a cover, since the positioning was
- * removed; see `chat-sidebar-layout.ts`). The card can no longer be the widest
- * thing on the screen because it fills a pane the family sizes, and it opens at
- * the same width as every other pane in the slot; there is no separate width rule
- * here for it to fight with.
+ * width arithmetic (`min(RIGHT_SLOT_MAX_PX, row - 480)`, floor 400). Below the dock
+ * breakpoint it is a right-anchored SHEET over the row that cannot host it
+ * (`askPanePresentation`), with a scrim and an opaque ground, because a 0-wide flex
+ * dock is not a readable drawer. The card can no longer be the widest thing on the
+ * screen because it fills a pane the family sizes, and it opens at the same width
+ * as every other pane in the slot; there is no separate width rule here.
  *
  * ## One right pane at a time
  *
@@ -238,6 +238,16 @@ export type AskDrawerProps = {
 	 */
 	scope: AskScope;
 	/**
+	 * THE GROUND THIS DRAWER PAINTS, chosen by the mount from the presentation it
+	 * was drawn in (2026-11-03). "glass" is the pane's translucent window-glass
+	 * ground (`data-glass-region="pane"`): correct for a pane DOCKED beside the
+	 * conversation over window material, wrong for the sheet drawn OVER the
+	 * conversation, where the transcript shows through it. "solid" drops that
+	 * marker so `bg-elevated` is opaque. Defaults to "glass", the pane's existing
+	 * ground, so every existing mount and story keeps what it had.
+	 */
+	ground?: "glass" | "solid";
+	/**
 	 * The door that closes the drawer WITHOUT answering. The caller owns the flag
 	 * (the store does), so this reports the request rather than applying it - AND
 	 * IT CARRIES WHICH KIND OF CLOSE IT IS (#1079): the X below is the user asking
@@ -311,6 +321,7 @@ export type AskDrawerProps = {
 export const AskDrawer = ({
 	frontend,
 	scope,
+	ground = "glass",
 	onClose,
 	onAnswer,
 	onDecline,
@@ -1005,7 +1016,14 @@ export const AskDrawer = ({
 					: t("ui.chat.asks.conversation_asks")
 			}
 			data-lo-ask-surfaces=""
-			data-glass-region="pane"
+			/*
+			 * THE GLASS MARKER IS THE PRESENTATION'S, not the component's (2026-11-03): the
+			 * CSS gives every `[data-glass-region="pane"]` a TRANSLUCENT `elevated`
+			 * (`styles/index.css`, net alpha inside `<main>`), which is what a docked pane
+			 * wants over window material and what makes text bleed through when the same
+			 * pane is drawn over the transcript. The sheet mount passes `ground="solid"`.
+			 */
+			data-glass-region={ground === "glass" ? "pane" : undefined}
 			data-ask-drawer={scope}
 			tabIndex={-1}
 			className={cn("panel-top-pad flex h-full flex-col bg-elevated")}

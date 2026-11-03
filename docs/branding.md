@@ -564,7 +564,12 @@ popover.
 - **Narrow windows replace, they do not overlay.** A detail rail that cannot
   fit beside the content at its minimum width becomes the full-width route view;
   the content and filter rail step aside. The filter rail collapses into its
-  sheet below 1200px. A panel never floats over another panel's content.
+  sheet below 1200px. A panel never floats over another panel's content. The one
+  exception is the transient Ask drawer below its dock breakpoint: replacing the
+  transcript there would take the question's context away with it, so the drawer
+  is a right-anchored sheet over the chat row - scrim over the row only, an
+  opaque `elevated` ground, the conversation `inert` while it is up - and it is
+  the case the one drawer shadow is for.
 
 The Library route is the reference: a flush `bg-canvas` page root, a
 full-height `bg-surface` filter rail and `bg-surface` asset-details dock, both

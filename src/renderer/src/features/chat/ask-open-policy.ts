@@ -167,7 +167,15 @@ export type AskOpenReason =
 	/** The keyboard is on one of the drawer's doors: an open would read as a press (rule 6). */
 	| "door-focused"
 	/** The asks drawer is already up, in either scope: there is nothing to open. */
-	| "drawer-open";
+	| "drawer-open"
+	/**
+	 * The drawer would be drawn as the SHEET OVER the conversation (the row is below
+	 * the dock breakpoint), so an auto-open would cover - and make inert - the thing
+	 * the user is reading or typing in. Rule 5 ("an arrival never lands on someone
+	 * who is working") and rule 6 ("no theft") are why this is a refusal and not a
+	 * modal: the chip and the badge still announce the queue.
+	 */
+	| "covers-conversation";
 
 export type AskOpenVerdict = {
 	action: "open" | "leave";
@@ -226,10 +234,13 @@ export type AskOpenInput = {
 	 * WHY A HELD DRAFT BLOCKS THE OPEN, AND WHY THAT IS A JUDGMENT CALL. Rule 5 says an
 	 * auto-open never lands on a user who is typing, and the other three surfaces keep it
 	 * literally (the phone's sheet is modal and covers the box; the TUI's panel stashes
-	 * the draft). On THIS surface the drawer docks BESIDE the composer and covers
+	 * the draft). On THIS surface a DOCKED drawer sits beside the composer and covers
 	 * nothing, and the composer's routing no longer depends on the drawer, so there is no
 	 * hazard to the draft - what remains is motion: a pane sliding in beside the line
-	 * being typed, and the column narrowing under the caret.
+	 * being typed, and the column narrowing under the caret. IN THE OVERLAY PRESENTATION
+	 * (below the dock breakpoint) the sheet DOES cover the box and makes the conversation
+	 * inert, and that case is refused outright (`overlayPresentation`,
+	 * `covers-conversation`) rather than reasoned about here.
 	 *
 	 * THE COST IS THE LATCH. The view decides once, so a user who had a half-written
 	 * message when the conversation opened and clears it a moment later does not get the
@@ -268,6 +279,19 @@ export type AskOpenInput = {
 	 * is meant to read the same on all four.
 	 */
 	drawerOpen: boolean;
+	/**
+	 * Whether THIS surface would present the drawer as the overlay sheet rather than
+	 * as a pane docked beside the composer: `askPanePresentation(...).mode ===
+	 * "overlay"` for the row the drawer mounts in (design 2026-11-03). Below the dock
+	 * breakpoint the sheet covers the row and the conversation is `inert` while it is
+	 * up, so an auto-open there is the focus theft and the covered transcript that
+	 * rules 5 and 6 forbid.
+	 *
+	 * A LATENT FACT RATHER THAN A LIVE ONE: the presentation is a function of the row
+	 * width, which does not change under a view unless the user resizes; a resize does
+	 * not re-open a view that has already taken its one decision.
+	 */
+	overlayPresentation: boolean;
 };
 
 const wait = (reason: AskOpenReason): AskOpenVerdict => ({
@@ -287,9 +311,10 @@ const leave = (reason: AskOpenReason): AskOpenVerdict => ({
  *
  * THE ORDER IS THE SPEC for which reason is reported, because each `leave` should
  * name the first thing that kept the drawer closed: `dismissed`, `composer-has-text`,
- * `door-focused` and `drawer-open` are reported only for a queue that WOULD have
- * opened (they are overrides on a pending queue, so a settled queue in a dismissed
- * conversation says `nothing-pending`, which is the truer sentence).
+ * `door-focused`, `drawer-open` and `covers-conversation` are reported only for a
+ * queue that WOULD have opened (they are overrides on a pending queue, so a settled
+ * queue in a dismissed conversation says `nothing-pending`, which is the truer
+ * sentence).
  *
  * Only `no-conversation`, `unresolved` and `tally-only` return without settling: each
  * means "the queue has not answered in a form a surface can draw", and each is bounded
@@ -317,6 +342,12 @@ export const decideAskAutoOpen = (input: AskOpenInput): AskOpenVerdict => {
 	if (input.composerHasText) return leave("composer-has-text");
 	if (input.keyboardOnDoor) return leave("door-focused");
 	if (input.drawerOpen) return leave("drawer-open");
+	/*
+	 * LAST OF THE OVERRIDES, so a row that is both narrow and busy keeps the more
+	 * specific sentence (`composer-has-text`, `door-focused`, `drawer-open`), and so
+	 * every reason a wide window already reported keeps its precedence there.
+	 */
+	if (input.overlayPresentation) return leave("covers-conversation");
 	return { action: "open", settled: true, reason: "pending-on-open" };
 };
 
