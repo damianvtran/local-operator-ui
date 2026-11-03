@@ -35,8 +35,12 @@
  * node's `position` offsets into `file.value`, and those three plugins emit text
  * nodes with no `position` at all (see `predecessorOf` in
  * `remark-linkify-targets.ts`); run after them, a node has nothing to map by.
- * The pieces this plugin emits DO carry offsets, so the plugins behind it see the
- * same predecessor character they always saw.
+ * The pieces this plugin emits DO carry offsets, so the plugins behind it still
+ * read their predecessor character from the source. One consequence is visible:
+ * a token glued to a path (`$research/tmp/a.txt`) now reaches the linkifier as
+ * two nodes, so `/tmp/a.txt` is its own node and gets linked. That is arguably
+ * right - `$research/...` already fires the skill on submit - and it is the only
+ * change in what the plugins behind this one see.
  *
  * ## What it never touches
  *
@@ -99,15 +103,43 @@ const NO_DESCENT = new Set([
 /** A character a backslash may escape in CommonMark (ASCII punctuation). */
 const ASCII_PUNCTUATION = /[!-/:-@[-`{-~]/;
 
+/** A character reference as the source spells it; what it DECODES to is not known here. */
+const ENTITY =
+	/^&(?:#[xX][0-9a-fA-F]{1,6}|#[0-9]{1,7}|[A-Za-z][A-Za-z0-9]{1,31});/;
+
+/**
+ * How many UTF-16 units one character reference may decode to. Every numeric
+ * reference is 1 or 2, and so is every HTML5 named one (`&fjlig;` is `fj`,
+ * `&Afr;` is an astral pair); 4 leaves room without making the search wide.
+ */
+const MAX_ENTITY_UNITS = 4;
+
+/** Branch visits one node may spend on entity ambiguity before it gives up. */
+const ENTITY_BUDGET = 4096;
+
+const isBlank = (char: string | undefined): boolean =>
+	char === " " || char === "\t";
+
 /**
  * The source offset of each character of a text node's value, or `null` when the
  * two cannot be aligned with certainty.
  *
- * A value is the source with markdown's own consumption applied: `\$` is one
- * character in the value and two in the source, an entity is one against many.
- * The walk handles the first (the case a skill turn actually produces, and the
- * one trap 4 pins) and gives up on anything else, so a node it cannot align gets
- * NO ink rather than ink on the wrong characters.
+ * A value is the source with markdown's own consumption applied. The cases this
+ * undoes, each of which the parser performs and a naive offset arithmetic does
+ * not:
+ *
+ * - `\$` is one character in the value and two in the source;
+ * - blanks before a line ending are dropped (`first \nsecond`), and so are the
+ *   blanks, and in a blockquote the `>` markers, that open a continuation line;
+ * - a character reference (`&amp;`, `&#35;`) is several source characters and one
+ *   or two value characters.
+ *
+ * The first two are deterministic. The third is not: nothing in this module
+ * knows the named-reference table, so the decoded width of `&name;` is searched
+ * (1 to {@link MAX_ENTITY_UNITS} units) and the alignment is accepted ONLY when
+ * exactly one reading consumes the node's whole source range. Two readings, an
+ * exhausted budget, or none is `null`: the node gets NO ink rather than ink on
+ * the wrong characters.
  */
 const alignValue = (
 	value: string,
@@ -119,36 +151,72 @@ const alignValue = (
 		return Array.from({ length: value.length }, (_, index) => start + index);
 	}
 	const offsets: number[] = [];
-	let cursor = start;
-	// By UTF-16 unit, so an offset's index is a `value` index: the slices below
-	// are `String.prototype.slice`, which counts the same way.
-	for (let index = 0; index < value.length; index++) {
-		const char = value[index];
-		/*
-		 * A continuation line's leading blanks are consumed by the parser too
-		 * (`line one\n   line two` is `line one\nline two` in the value), so a
-		 * multi-line turn aligns across them rather than losing its ink.
-		 */
-		if (value[index - 1] === "\n") {
-			while (source[cursor] === " " || source[cursor] === "\t") cursor += 1;
+	let solution: number[] | null = null;
+	let solutions = 0;
+	let budget = ENTITY_BUDGET;
+	let exhausted = false;
+
+	// Deterministic from `(index, cursor)` until a character reference forks it, so
+	// recursion depth is the number of references and never the node's length.
+	const run = (from: number, resume: number): void => {
+		let cursor = resume;
+		for (let index = from; index < value.length; index++) {
+			const char = value[index];
+			const previous = value[index - 1];
+			if (char === "\n" || char === "\r") {
+				// The parser drops blanks that trail a line.
+				while (isBlank(source[cursor])) cursor += 1;
+			} else if (previous === "\n" || previous === "\r") {
+				/*
+				 * A continuation line's leading blanks are consumed too, and inside a
+				 * blockquote its `> ` markers. A `>` the value itself holds at the
+				 * line start is never skipped, so a literal one cannot be eaten.
+				 */
+				while (
+					isBlank(source[cursor]) ||
+					(source[cursor] === ">" && char !== ">")
+				) {
+					cursor += 1;
+				}
+			}
+			if (source[cursor] === "&") {
+				const reference = ENTITY.exec(source.slice(cursor, end));
+				if (reference) {
+					for (let units = 1; units <= MAX_ENTITY_UNITS; units++) {
+						if (budget-- <= 0) exhausted = true;
+						if (solutions > 1 || exhausted) return;
+						if (index + units > value.length) break;
+						const kept = offsets.length;
+						for (let unit = 0; unit < units; unit++) offsets.push(cursor);
+						run(index + units, cursor + reference[0].length);
+						offsets.length = kept;
+					}
+				}
+			}
+			if (
+				source[cursor] === "\\" &&
+				source[cursor + 1] === char &&
+				ASCII_PUNCTUATION.test(char)
+			) {
+				offsets.push(cursor + 1);
+				cursor += 2;
+			} else if (source[cursor] === char) {
+				offsets.push(cursor);
+				cursor += 1;
+			} else {
+				return;
+			}
 		}
-		if (
-			source[cursor] === "\\" &&
-			source[cursor + 1] === char &&
-			ASCII_PUNCTUATION.test(char)
-		) {
-			offsets.push(cursor + 1);
-			cursor += 2;
-			continue;
+		// Whatever source is left in the node must be blanks the parser trimmed.
+		for (let rest = cursor; rest < end; rest++) {
+			if (!isBlank(source[rest])) return;
 		}
-		if (source[cursor] === char) {
-			offsets.push(cursor);
-			cursor += 1;
-			continue;
-		}
-		return null;
-	}
-	return cursor <= end ? offsets : null;
+		if (cursor > end) return;
+		solutions += 1;
+		solution = offsets.slice();
+	};
+	run(0, start);
+	return solutions === 1 && !exhausted ? solution : null;
 };
 
 const textNode = (
@@ -194,7 +262,17 @@ const splitText = (
 		// character, mapped back to value indices.
 		let last = first;
 		while (last < offsets.length && offsets[last] < mention.end) last += 1;
-		if (first < cursor || last - first !== mention.end - mention.start) {
+		/*
+		 * The last proof before any ink: the value characters the offsets name are
+		 * the SAME characters the source holds at the mention. An alignment that
+		 * slipped would fail here and ink nothing, never the wrong characters.
+		 */
+		if (
+			first < 0 ||
+			first < cursor ||
+			last - first !== mention.end - mention.start ||
+			value.slice(first, last) !== source.slice(mention.start, mention.end)
+		) {
 			continue;
 		}
 		if (first > cursor) {

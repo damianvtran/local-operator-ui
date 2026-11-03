@@ -6532,7 +6532,7 @@ for (const { id, palette: p } of palettes) {
 			const got = ratio(p[COMMAND_TOKEN], p[ground]);
 			if (got < 4.5) {
 				fail(
-					`${id}: the command token \`tokenCommand\` ${p[COMMAND_TOKEN]} reads ${r2(got)}:1 on \`${ground}\` (need 4.5) - the leading /word is text a user is typing, not decoration`,
+					`${id}: the command token \`tokenCommand\` ${p[COMMAND_TOKEN]} reads ${r2(got)}:1 on \`${ground}\` (need 4.5) - the token is text a user typed (the composer's leading /word, or the sent \`$skill\` mention), not decoration`,
 				);
 			}
 		}

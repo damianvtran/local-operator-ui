@@ -519,7 +519,7 @@ const REMARK_PIPELINES: Record<string, typeof GFM_MATH_LINKIFY_AND_CITATIONS> =
  * they were (and every render with no attached skill still gets one of them,
  * the identity contract above untouched), and a turn that DID attach a skill gets
  * the same array with the plugin FIRST, built once per (pipeline, names) by
- * `useSkillInkPipeline` and held by `useMemo`.
+ * `useMathPipeline` and held by `useMemo`.
  *
  * FIRST, not last, and it is not a style choice: the plugin maps its matches onto
  * text nodes by their `position` offsets into the source, and `remarkLinkifyTargets`,

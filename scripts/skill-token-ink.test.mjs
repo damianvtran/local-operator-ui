@@ -6,6 +6,9 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { build } from "esbuild";
 import { JSDOM } from "jsdom";
 import { createElement as h } from "react";
+import remarkGfm from "remark-gfm";
+import remarkParse from "remark-parse";
+import { unified } from "unified";
 
 /*
  * THE `$skill` TOKEN INK IN A SENT TURN (operator ask, 2026-11-03).
@@ -112,6 +115,8 @@ const bundle = await build({
 			'export { MarkdownRenderer } from "./src/renderer/src/features/chat/components/markdown-renderer";',
 			'export { CanonicalTranscript } from "./src/renderer/src/features/chat/canonical/canonical-transcript";',
 			'export { copyTextForRecord } from "./src/renderer/src/features/chat/canonical/transcript-copy";',
+			'export { remarkSkillInk } from "./src/renderer/src/features/chat/utils/remark-skill-ink";',
+			'export { default as remarkGuardedMath } from "./src/renderer/src/features/chat/components/markdown-math-guarded";',
 			'export { renderSkillBlock, skillBlockNames, skillMentions, skillMentionSpans } from "./src/renderer/src/features/chat/components/skill-invocation";',
 			'export { useUiPreferencesStore } from "./src/renderer/src/shared/store/ui-preferences-store";',
 		].join("\n"),
@@ -150,6 +155,8 @@ const {
 	MarkdownRenderer,
 	CanonicalTranscript,
 	copyTextForRecord,
+	remarkSkillInk,
+	remarkGuardedMath,
 	renderSkillBlock,
 	skillBlockNames,
 	skillMentions,
@@ -168,12 +175,7 @@ const TEXT_TRANSFORM = /text-transform/;
 const HEX = /#[0-9a-fA-F]{3,8}\b/;
 const COLOR_DECLARATION = /color:\s*var\(--lo-token-command\)/;
 const WEIGHT_DECLARATION = /font-weight:\s*600/;
-// The plugin is prepended to whichever hoisted array the selector chose, so it
-// precedes every plugin in it, and only when the caller opted into citations.
-const INK_PREPENDED =
-	/\[\[remarkSkillInk, \{ names: inkKey\.split\("\\0"\) \}\], \.\.\.base\]/;
 const INK_ONLY_FOR_CITATIONS = /citations && skillNames/;
-const HOISTED_ARRAY_MENTION = /^const GFM_[A-Z_]+ = \[[^\]]*remarkSkillInk/m;
 
 /* --------------------------------- fixtures ------------------------------- */
 
@@ -403,14 +405,140 @@ test("trap 2: a trailing dot is prose; dashed, underscored and dotted names ink 
 	}
 });
 
+/* --------------------- position mapping: what the parser consumes ---------- */
+
+/*
+ * The plugin maps each source mention onto the text node that holds it, and a text
+ * node's value is the source with the parser's own consumption applied. A naive
+ * `value index == source offset - node start` mapping inks the WRONG characters
+ * (or none) the moment any byte is consumed, so every case here asserts the exact
+ * characters inside the span, from the DOM and from the tree's own offsets.
+ */
+
+/** The plugin through unified directly, so the tree's offsets can be read back. */
+const inkTree = (source, { math = false, names = ["research"] } = {}) => {
+	const processor = unified().use(remarkParse).use(remarkGfm);
+	if (math) processor.use(remarkGuardedMath);
+	processor.use(remarkSkillInk, { names });
+	const tree = processor.parse(source);
+	processor.runSync(tree, { value: source });
+	const tokens = [];
+	const visit = (node) => {
+		if (node.type === "skillToken") {
+			const [text] = node.children;
+			tokens.push({
+				value: text.value,
+				source: source.slice(
+					text.position.start.offset,
+					text.position.end.offset,
+				),
+			});
+		}
+		for (const child of node.children ?? []) visit(child);
+	};
+	visit(tree);
+	return tokens;
+};
+
+const ALIGNED = [
+	["CRLF line ending", "a\r\nb $research"],
+	["lone CR line ending", "a\rb $research"],
+	["emoji before the token", "\u{1F600}\u{1F600} $research"],
+	["combining and CJK before the token", "e\u0301 \u65e5\u672c $research"],
+	["token in a table cell", "| a | b |\n|---|---|\n| x | $research |"],
+	["token in a list item", "- item $research\n- other"],
+	["token on a list continuation line", "- a\n  b $research"],
+	["token in a heading", "# head $research"],
+	["bold neighbour text", "**bold** $research **more**"],
+	["trailing blank before a line ending", "first $research \nsecond"],
+	["trailing blank on the line before the token", "first \nsecond $research"],
+	["trailing tab before a line ending", "x\t\ny $research"],
+	["hard break by two blanks", "a  \nb $research"],
+	["hard break by backslash", "a\\\nb $research"],
+	["blockquote continuation marker", "> a\n> b $research"],
+	["nested blockquote markers", "> > a\n> > b $research"],
+	["a lazy blockquote line", "> a\nb $research"],
+	["entity on the token's line", "Hi $research!\nHow &amp; why"],
+	["entity before the token", "a &lt; $research"],
+	[
+		"entities before the token and a long tail",
+		"&lt;&gt;&amp; $research and then a long tail of ordinary prose follows",
+	],
+	["a numeric entity before the token", "&#35; &#x1F600; $research"],
+	["a named entity that decodes to two units", "&NotEqualTilde; $research"],
+	["an entity after a line ending", "x &amp;\n$research"],
+	["an escape and an entity together", "\\&amp; $research &amp;"],
+];
+
+for (const [label, source] of ALIGNED) {
+	test(`position mapping: ${label} inks exactly the token`, async () => {
+		for (const math of [false, true]) {
+			assert.deepEqual(
+				inkTree(source, { math }),
+				[{ value: "$research", source: "$research" }],
+				`${label}: the tree's offsets name the typed token (math ${math})`,
+			);
+		}
+		const mounted = await both(source, ["research"]);
+		assert.deepEqual(inked(mounted.container), ["$research"], label);
+	});
+}
+
+test("position mapping: a literal `>` the value holds is never eaten as a quote marker", async () => {
+	// `&gt;` decodes to a `>` at the start of the continuation line: skipping it as
+	// a marker would shift every later offset. The result is either the right
+	// token or no ink, and it is never a span over other characters.
+	for (const source of ["> a\n> &gt; b $research", "a\n\\> b $research"]) {
+		for (const tokens of [inkTree(source), inkTree(source, { math: true })]) {
+			for (const token of tokens) {
+				assert.deepEqual(token, { value: "$research", source: "$research" });
+			}
+		}
+		const mounted = await both(source, ["research"]);
+		for (const text of inked(mounted.container)) {
+			assert.equal(text, "$research", "never ink over other characters");
+		}
+	}
+});
+
+test("position mapping: when alignment cannot be proved the node gets NO ink, and the text is untouched", async () => {
+	// `&gt;` leads the continuation line inside a quote, so the `>` the source
+	// shows could be the marker or the decoded character: two readings, no proof.
+	// The long tail is the discriminator: a naive offset arithmetic would land the
+	// token's length on other characters INSIDE the node and ink them, where a short
+	// line only runs it off the end and loses the ink by luck.
+	const source =
+		"> a \n> &gt; b $research and then a long tail of ordinary prose follows";
+	assert.deepEqual(inkTree(source), []);
+	assert.deepEqual(inkTree(source, { math: true }), []);
+	const mounted = await both(source, ["research"]);
+	assert.deepEqual(inked(mounted.container), []);
+	// The words are all still there: failing to ink must not lose or alter text.
+	assert.equal(mounted.container.textContent.includes("$research"), true);
+	assert.equal(mounted.container.textContent.includes("> b"), true);
+	// And a SECOND, alignable node in the same document still inks: the failure is
+	// per node, not per turn.
+	const other = await both(`${source}\n\nnext $research`, ["research"]);
+	assert.deepEqual(inked(other.container), ["$research"]);
+	assert.equal(
+		other.container.querySelectorAll("p")[1].querySelector(INK_SELECTOR)
+			.textContent,
+		"$research",
+	);
+});
+
 /* ------------------------------ trap 3: copy and DOM ----------------------- */
 
-test("trap 3: the DOM text is the source, the span is the one class, and nothing is inserted", async () => {
+test("trap 3 (the discriminator): copy fidelity - the DOM text equals the source and each span holds exactly the typed characters", async () => {
 	const typed = "use $research then $code-review to check $5";
 	const mounted = await both(typed, ["research", "code-review"]);
 	assert.equal(mounted.container.textContent, typed);
 	const spans = [...mounted.container.querySelectorAll(INK_SELECTOR)];
 	assert.equal(spans.length, 2);
+	assert.deepEqual(
+		spans.map((span) => span.textContent),
+		["$research", "$code-review"],
+	);
 	for (const span of spans) {
 		assert.deepEqual([...span.classList], ["lo-skill-token"]);
 		assert.equal(span.tagName, "SPAN");
@@ -435,7 +563,7 @@ test("trap 3: the stylesheet rule uses the theme token and inserts no characters
 	assert.equal(CSS.includes(".lo-skill-token:after"), false);
 });
 
-test("trap 3: Copy and Quote read the record, and the typed line is what they hold", () => {
+test("trap 3 property pin (not a discriminator; passes on main too): Copy and Quote read the record, so the typed line is what they hold", () => {
 	const typed = "use $research then $code-review to check $5";
 	const record = userRecord("u-copy", typed, ["research", "code-review"]);
 	assert.equal(copyTextForRecord(record), typed);
@@ -577,11 +705,11 @@ test("ordering: ink survives the linkifier, the citations and the soft breaks be
 	assert.deepEqual(inked(mixed.container), ["$research"]);
 	assert.equal(mixed.container.querySelectorAll("a").length, 1);
 	assert.equal(mixed.container.querySelector("a .lo-skill-token"), null);
-	// And the plugin is wired ahead of everything in the selected array, for the
-	// user-turn (citations) pipelines only.
-	assert.match(RENDERER, INK_PREPENDED);
+	// Being FIRST is what the three cases above prove: the linkifier, the citation
+	// chips and the soft breaks all emit position-less text nodes, so behind any
+	// of them the plugin would find nothing to map by and ink nothing. The one
+	// source pin left is that the ink is wired for the user-turn pipelines only.
 	assert.match(RENDERER, INK_ONLY_FOR_CITATIONS);
-	assert.doesNotMatch(RENDERER, HOISTED_ARRAY_MENTION);
 });
 
 test("agent guard: an assistant row never inks, and an unflagged render ignores names", async () => {
