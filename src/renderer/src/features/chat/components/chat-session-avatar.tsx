@@ -93,6 +93,8 @@ export function ChatSessionAvatar({
 					agentId={agentId}
 					sha256={sha256}
 					className={cn(SESSION_MARK_BOX, "rounded-full")}
+					// `SESSION_MARK_BOX` is `size-4`: 16 CSS px.
+					cssPx={16}
 					/*
 					 * A PLATE, NEVER A SECOND STATUS (agent review round 2, MAJOR-1). While the
 					 * bytes are cold - every pictured row until its fetch lands, and for good

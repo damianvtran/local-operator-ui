@@ -1,9 +1,8 @@
-import type { DesktopCapabilities } from "@shared/api/local-operator/desktop-api";
-import {
-	desktopFeatureEnabled,
-	desktopKeys,
-} from "@shared/api/local-operator/desktop-hooks";
 import { TeamBridgeApi } from "@shared/api/local-operator/team-bridge-api";
+import {
+	useDevicePixelRatio,
+	usePassiveDesktopFeature,
+} from "@shared/hooks/display-density";
 import {
 	observedRadientAuthority,
 	radientAuthoritySnapshot,
@@ -12,14 +11,7 @@ import {
 } from "@shared/hooks/radient-account-authority";
 import { createBlobUrl, revokeBlobUrl } from "@shared/lib/blob-url-cache";
 import { type QueryClient, useQueryClient } from "@tanstack/react-query";
-import {
-	useCallback,
-	useEffect,
-	useMemo,
-	useRef,
-	useState,
-	useSyncExternalStore,
-} from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
 	type AvatarVariant,
 	pickAvatarVariant,
@@ -179,80 +171,12 @@ export function useIdentityAvatar(
 	return usePrivateAvatar(version, size);
 }
 
-/*
- * THE DISPLAY'S DEVICE PIXEL RATIO, LIVE (operator report 2026-11-03, retina
- * blur). Callers pass a CSS size and this picks the server variant for the
- * display the window is on NOW: dragging the window from a 1x external monitor
- * to the 2x built-in panel changes `devicePixelRatio` without any resize the
- * plate would otherwise notice, so a one-shot read would keep the 64 px file
- * upscaled on the retina panel until the next remount.
- *
- * `matchMedia("(resolution: Xdppx)")` fires `change` exactly when the ratio
- * leaves X, so the listener is re-armed for the new value on every change
- * (the standard MDN pattern; there is no "any resolution change" query). One
- * store is shared by every plate: a message list of hundreds of rows adds one
- * media listener, not one per row.
- *
- * The cache key carries the VARIANT, not the CSS size, so plates of different
- * CSS sizes that land on the same variant share one fetch and one blob, and a
- * 256 already fetched for the card is reused by a 36 px row at 2x.
- */
-const dprListeners = new Set<() => void>();
-let dprQuery: MediaQueryList | undefined;
-function currentDpr(): number {
-	return typeof window === "undefined" ? 1 : window.devicePixelRatio || 1;
-}
-function onDprChange(): void {
-	armDprQuery();
-	for (const listener of dprListeners) listener();
-}
-function armDprQuery(): void {
-	dprQuery?.removeEventListener("change", onDprChange);
-	dprQuery = undefined;
-	if (typeof window === "undefined" || typeof window.matchMedia !== "function")
-		return;
-	dprQuery = window.matchMedia(`(resolution: ${currentDpr()}dppx)`);
-	dprQuery.addEventListener("change", onDprChange);
-}
-function subscribeDpr(listener: () => void): () => void {
-	dprListeners.add(listener);
-	if (dprListeners.size === 1) armDprQuery();
-	return () => {
-		dprListeners.delete(listener);
-		if (dprListeners.size === 0) {
-			dprQuery?.removeEventListener("change", onDprChange);
-			dprQuery = undefined;
-		}
-	};
-}
 function useAvatarVariant(cssPx: number): AvatarVariant {
-	const dpr = useSyncExternalStore(subscribeDpr, currentDpr, () => 1);
-	return pickAvatarVariant(cssPx, dpr);
+	return pickAvatarVariant(cssPx, useDevicePixelRatio());
 }
 
 function useEndpointPicturesAdvertised(): boolean {
-	const client = useQueryClient();
-	const subscribe = useCallback(
-		(listener: () => void) =>
-			client.getQueryCache().subscribe((event) => {
-				if (
-					(event.type === "updated" || event.type === "removed") &&
-					event.query.queryKey[0] === desktopKeys.capabilities[0] &&
-					event.query.queryKey[1] === desktopKeys.capabilities[1]
-				)
-					listener();
-			}),
-		[client],
-	);
-	const snapshot = useCallback(
-		() =>
-			desktopFeatureEnabled(
-				client.getQueryData<DesktopCapabilities>(desktopKeys.capabilities),
-				"team_bridge_endpoint_avatar",
-			),
-		[client],
-	);
-	return useSyncExternalStore(subscribe, snapshot, snapshot);
+	return usePassiveDesktopFeature("team_bridge_endpoint_avatar");
 }
 
 /** One hash-pinned avatar: whose, and which content version. */

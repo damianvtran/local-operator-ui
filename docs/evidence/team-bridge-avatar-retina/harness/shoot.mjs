@@ -61,10 +61,21 @@ async function derivatives(hue, glyph) {
 				.jpeg({ quality: 85 })
 				.toBuffer()
 		).toString("base64");
+	// Core's local agent derivatives are PNG (LANCZOS) for a PNG original.
+	const sizedPng = async (side) =>
+		(
+			await sharp(source)
+				.resize(side, side, { kernel: "lanczos3" })
+				.png()
+				.toBuffer()
+		).toString("base64");
 	return {
 		64: await sized(64),
 		256: await sized(256),
 		512: source.toString("base64"),
+		png64: await sizedPng(64),
+		png128: await sizedPng(128),
+		png256: await sizedPng(256),
 	};
 }
 const person = await derivatives(210, "P");
@@ -82,17 +93,27 @@ const INJECT = `(() => {
 		const set = input.op === "team_bridge.avatar" ? P
 			: input.op === "team_bridge.endpoint_avatar" || input.op === "agent.avatar" ? A : null;
 		if (!set) return answer;
-		const side = input.op === "agent.avatar" ? 512 : input.size;
+		// agent.avatar: core's ?size derivative when asked, else the 512 original.
+		const side = input.op === "agent.avatar" ? (input.size ?? 512) : input.size;
 		window.__avatarReads.push(input.op + ":" + side);
-		return { ...answer, mimeType: side === 512 ? "image/png" : "image/jpeg", data: bytes(set[side]) };
+		const png = side === 512 || input.op === "agent.avatar";
+		return { ...answer, mimeType: png ? "image/png" : "image/jpeg", data: bytes(png ? (set["png" + side] ?? set[side]) : set[side]) };
 	}, { __wrapped: true });
 	const hookDesktop = (api) => {
 		if (!api || typeof api !== "object") return api;
-		let desktop = api.desktop;
-		if (desktop) desktop.media = wrap(desktop.media);
+		// A story may replace \`desktop\` OR assign \`desktop.media\` directly (the
+		// summary portrait does); both paths go through the wrapper.
+		const hookMedia = (d) => {
+			if (!d || typeof d !== "object") return d;
+			let media = wrap(d.media);
+			Object.defineProperty(d, "media", { configurable: true, enumerable: true,
+				get: () => media, set: (next) => { media = wrap(next); } });
+			return d;
+		};
+		let desktop = hookMedia(api.desktop);
 		Object.defineProperty(api, "desktop", { configurable: true, enumerable: true,
 			get: () => desktop,
-			set: (next) => { desktop = next; if (desktop) desktop.media = wrap(desktop.media); } });
+			set: (next) => { desktop = hookMedia(next); } });
 		return api;
 	};
 	let api = hookDesktop(window.api);
@@ -132,7 +153,31 @@ const SURFACES = [
 		"[data-agent-mark] img",
 		"[data-agent-mark]",
 	],
+	[
+		"chat-sidebar-row",
+		"features-agents-agent-avatar--chat-row-statuses",
+		"[data-agent-mark] img",
+		"[data-agent-mark]",
+	],
+	[
+		"agents-sidebar",
+		"features-agents-agent-avatar--roster-states",
+		"li img",
+		"li span:has(> img)",
+	],
+	[
+		"agents-page-portrait",
+		"features-agents-agent-avatar--summary-portrait-populated",
+		"[data-agent-summary-portrait] img",
+		"[data-agent-summary-portrait]",
+	],
 ];
+/* `--agent-sizes` adds `agentAvatarSizes=1` (story-seeded core capability
+   `agent_avatar_sizes`) to every story URL; without it a story answers as a
+   core that predates the feature. */
+const QUERY = process.argv.includes("--agent-sizes")
+	? "&agentAvatarSizes=1"
+	: "";
 
 const PROBE = `(() => {
 	const dpr = window.devicePixelRatio;
@@ -144,7 +189,7 @@ const PROBE = `(() => {
 	return {
 		dpr,
 		images: imgs.map((i) => ({
-			where: i.closest("[data-team-bridge-avatar]") ? "team-bridge-plate" : i.closest("[data-agent-mark]") ? "agent-mark" : "other",
+			where: i.closest("[data-team-bridge-avatar]") ? "team-bridge-plate" : i.closest("[data-agent-mark]") ? "agent-mark" : i.closest("[data-agent-summary-portrait]") ? "agent-portrait" : "other",
 			naturalWidth: i.naturalWidth,
 			clientWidth: i.clientWidth,
 			devicePx: i.clientWidth * dpr,
@@ -244,7 +289,7 @@ try {
 	for (const [name, id, ready, crop] of SURFACES) {
 		try {
 			await send("Page.navigate", {
-				url: `${ORIGIN}/iframe.html?id=${id}&viewMode=story`,
+				url: `${ORIGIN}/iframe.html?id=${id}&viewMode=story${QUERY}`,
 			});
 			const start = Date.now();
 			while (

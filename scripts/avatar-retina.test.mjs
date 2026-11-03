@@ -64,7 +64,10 @@ const setDpr = (next) => {
 const bundle = await build({
 	stdin: {
 		contents: `
-export { pickAvatarVariant, AVATAR_VARIANTS } from './src/shared/avatar-variant';
+export { pickAvatarVariant, AVATAR_VARIANTS, pickAgentAvatarSize } from './src/shared/avatar-variant';
+export { AgentMark } from './src/renderer/src/shared/agent-avatar/agent-mark';
+export { useAgentAvatar } from './src/renderer/src/shared/agent-avatar/agent-avatar';
+export { requestDesktopMediaOutcome } from './src/main/desktop-media';
 export { TeamBridgeAvatar, agentMarkPx } from './src/renderer/src/features/team-bridge/team-bridge-profile-card';
 export { useAccountAvatar } from './src/renderer/src/shared/hooks/use-account-avatar';
 export { desktopKeys } from './src/renderer/src/shared/api/local-operator/desktop-hooks';
@@ -294,5 +297,212 @@ test("plates of different CSS sizes on the same variant share one read", async (
 		);
 	} finally {
 		await f.close();
+	}
+});
+
+/*
+ * LOCAL AGENT PICTURES (core `agent_avatar_sizes`, local-operator #3381). Every
+ * surface that draws one, at its CSS size: chat sidebar row 16, chat session
+ * mark 16, Agents roster 16, chat header 20, message avatar 20, agents sidebar
+ * 32, agent detail summary portrait 80. The relay asks core for the smallest
+ * of 64/128/256 covering the device pixels - and asks for NO size when core
+ * does not advertise the feature (an older core serves the 512 px original).
+ */
+const AGENT_CALL_SITE_CSS = [16, 20, 32, 80];
+
+test("pickAgentAvatarSize covers device pixels at every local-agent call site", () => {
+	for (const ratio of [1, 2, 3])
+		for (const css of AGENT_CALL_SITE_CSS) {
+			const size = m.pickAgentAvatarSize(css, ratio);
+			const device = Math.ceil(css * ratio);
+			assert.ok(
+				size >= device || size === 256,
+				`${css} CSS px @${ratio}x -> ${size} must be >= ${device} (or the 256 cap)`,
+			);
+			assert.ok([64, 128, 256].includes(size));
+		}
+	assert.equal(m.pickAgentAvatarSize(20, 2), 64);
+	assert.equal(m.pickAgentAvatarSize(32, 3), 128);
+	assert.equal(m.pickAgentAvatarSize(80, 1), 128);
+	assert.equal(m.pickAgentAvatarSize(80, 2), 256);
+	assert.equal(m.pickAgentAvatarSize(80, 3), 256);
+});
+
+function agentFixture({ sizes }) {
+	const client = new m.QueryClient();
+	client.setQueryData(m.desktopKeys.capabilities, {
+		desktop_available: true,
+		features: sizes
+			? { agent_avatar: 1, agent_avatar_sizes: 1 }
+			: { agent_avatar: 1 },
+	});
+	const reads = [];
+	window.api = {
+		desktop: {
+			media: async (request) => {
+				reads.push(request);
+				return {
+					status: 200,
+					kind: "bytes",
+					mimeType: "image/png",
+					data: new Uint8Array([137, 80, 78, 71]),
+				};
+			},
+		},
+	};
+	let seq = 0;
+	URL.createObjectURL = () => `blob:agent/${++seq}`;
+	URL.revokeObjectURL = () => {};
+	const host = document.createElement("div");
+	document.body.append(host);
+	const root = m.createRoot(host);
+	return {
+		reads,
+		render: (children) =>
+			m.act(async () =>
+				root.render(
+					m.createElement(m.QueryClientProvider, { client }, children),
+				),
+			),
+		async close() {
+			await m.act(async () => root.unmount());
+			host.remove();
+			client.clear();
+			window.api = undefined;
+		},
+	};
+}
+
+const AGENT_SHA = "c".repeat(64);
+let agentSeq = 0;
+function Agent({ id, css }) {
+	const url = m.useAgentAvatar(id, AGENT_SHA, css);
+	return m.createElement("img", { src: url ?? undefined });
+}
+
+for (const ratio of [1, 2, 3])
+	test(`local agent reads at ${ratio}x ask core for >= DPR x CSS at every call site`, async () => {
+		dpr = ratio;
+		const f = agentFixture({ sizes: true });
+		try {
+			// A fresh agent id per CSS size: the blob cache is module-wide, and
+			// the assertion is about what each surface ASKS for.
+			const ids = AGENT_CALL_SITE_CSS.map(
+				(css) => `agent-${ratio}x-${css}-${++agentSeq}`,
+			);
+			await f.render(
+				AGENT_CALL_SITE_CSS.map((css, i) =>
+					m.createElement(Agent, { key: css, id: ids[i], css }),
+				),
+			);
+			assert.equal(f.reads.length, AGENT_CALL_SITE_CSS.length);
+			for (const [i, css] of AGENT_CALL_SITE_CSS.entries()) {
+				const read = f.reads.find((r) => r.agentId === ids[i]);
+				assert.equal(read.op, "agent.avatar");
+				assert.ok(
+					read.size >= Math.min(256, Math.ceil(css * ratio)),
+					`${css} CSS px @${ratio}x asked ${read.size}`,
+				);
+			}
+		} finally {
+			await f.close();
+		}
+	});
+
+test("no size is sent when core does not advertise agent_avatar_sizes, nor for the editor's original", async () => {
+	dpr = 2;
+	const f = agentFixture({ sizes: false });
+	try {
+		await f.render([
+			m.createElement(Agent, {
+				key: "a",
+				id: `agent-old-${++agentSeq}`,
+				css: 20,
+			}),
+			m.createElement(Agent, {
+				key: "b",
+				id: `agent-old-${++agentSeq}`,
+				css: 80,
+			}),
+		]);
+		assert.equal(f.reads.length, 2);
+		for (const read of f.reads) assert.equal("size" in read, false);
+	} finally {
+		await f.close();
+	}
+	const g = agentFixture({ sizes: true });
+	try {
+		// No CSS size = the editor's crop preview: it must see the stored original.
+		await g.render(
+			m.createElement(Agent, { id: `agent-editor-${++agentSeq}` }),
+		);
+		assert.equal(g.reads.length, 1);
+		assert.equal("size" in g.reads[0], false);
+	} finally {
+		await g.close();
+	}
+});
+
+test("AgentMark forwards its CSS size to the read", async () => {
+	dpr = 2;
+	const f = agentFixture({ sizes: true });
+	try {
+		await f.render(
+			m.createElement(m.AgentMark, {
+				agentId: `agent-mark-${++agentSeq}`,
+				sha256: AGENT_SHA,
+				className: "size-5",
+				cssPx: 20,
+				fallback: null,
+			}),
+		);
+		assert.deepEqual(
+			f.reads.map((r) => r.size),
+			[64],
+		);
+	} finally {
+		await f.close();
+	}
+});
+
+test("main sends ?size only when asked, and refuses a size core does not serve", async () => {
+	const original = globalThis.fetch;
+	const urls = [];
+	globalThis.fetch = async (url) => {
+		urls.push(String(url));
+		return new Response(new Uint8Array([137, 80, 78, 71]), {
+			status: 200,
+			headers: { "Content-Type": "image/png" },
+		});
+	};
+	try {
+		const run = (request) =>
+			m.requestDesktopMediaOutcome(
+				request,
+				null,
+				"http://127.0.0.1:1111",
+				"test-bearer",
+			);
+		await run({
+			op: "agent.avatar",
+			agentId: "a1",
+			sha256: AGENT_SHA,
+			size: 128,
+		});
+		await run({ op: "agent.avatar", agentId: "a1", sha256: AGENT_SHA });
+		assert.deepEqual(urls, [
+			`http://127.0.0.1:1111/v1/agents/a1/avatar?v=${AGENT_SHA}&size=128`,
+			`http://127.0.0.1:1111/v1/agents/a1/avatar?v=${AGENT_SHA}`,
+		]);
+		const refused = await run({
+			op: "agent.avatar",
+			agentId: "a1",
+			sha256: AGENT_SHA,
+			size: 512,
+		});
+		assert.equal(urls.length, 2, "an unserved size never reaches core");
+		assert.notEqual(refused.response?.kind, "bytes");
+	} finally {
+		globalThis.fetch = original;
 	}
 });

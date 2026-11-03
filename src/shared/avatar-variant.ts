@@ -26,9 +26,36 @@ export const AVATAR_VARIANTS = [64, 256] as const;
 export type AvatarVariant = (typeof AVATAR_VARIANTS)[number];
 
 export function pickAvatarVariant(cssPx: number, dpr: number): AvatarVariant {
+	return pickFrom(AVATAR_VARIANTS, cssPx, dpr);
+}
+
+/*
+ * THE LOCAL AGENT PICTURE'S VARIANTS (local-operator #3381, feature
+ * `agent_avatar_sizes`): core keeps the 512 px original under
+ * `<agents_dir>/<id>/avatar.png` and serves `?size=64|128|256` LANCZOS
+ * derivatives. Same rule as above over core's set; the 128 step matters here
+ * because the Agents page summary portrait (80 CSS px) would otherwise jump
+ * from 64 to 256 at 1x. Without the feature the caller sends no size and gets
+ * the original, which is sharp at every size these surfaces draw.
+ */
+export const AGENT_AVATAR_SIZES = [64, 128, 256] as const;
+export type AgentAvatarSize = (typeof AGENT_AVATAR_SIZES)[number];
+
+export function pickAgentAvatarSize(
+	cssPx: number,
+	dpr: number,
+): AgentAvatarSize {
+	return pickFrom(AGENT_AVATAR_SIZES, cssPx, dpr);
+}
+
+function pickFrom<T extends number>(
+	sizes: readonly T[],
+	cssPx: number,
+	dpr: number,
+): T {
 	const ratio = Number.isFinite(dpr) && dpr > 1 ? dpr : 1;
 	const css = Number.isFinite(cssPx) && cssPx > 0 ? cssPx : 0;
 	const needed = Math.ceil(css * ratio);
-	for (const variant of AVATAR_VARIANTS) if (variant >= needed) return variant;
-	return AVATAR_VARIANTS[AVATAR_VARIANTS.length - 1];
+	for (const size of sizes) if (size >= needed) return size;
+	return sizes[sizes.length - 1];
 }

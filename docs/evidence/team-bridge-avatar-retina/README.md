@@ -24,7 +24,10 @@ upscaled. Source: `probe-before.json` (origin/main `2ff3187db64`) and
 | Profile hover card, agent (`…--agent-own-picture-profile-card`) | 64 | 64 / 128 / **0.5** | 256 / 128 / 2.0 |
 | Rail rows (same story) | 20 | 64 / 40 / 1.6 | 64 / 40 / 1.6 (unchanged; 64 already covers it) |
 | Sidebar account row (`navigation-user-profile--account-photo`) | 28 | 64 / 56 / 1.143 | 64 / 56 / 1.143 (unchanged) |
-| Chat header agent picture (`features-agents-agent-avatar--header-geometry`) | 18 | 512 / 36 / 14.2 | unchanged: core's local agent picture, not this hook |
+| Chat header agent picture (`features-agents-agent-avatar--header-geometry`) | 18 (story scale; `size-5` = 20 in the app) | 512 / 36 / 14.2 | 64 / 36 / 1.778 |
+| Chat sidebar row mark (`…--chat-row-statuses`) | 14 (story frame; `size-4`) | 512 / 28 / 18.3 | 64 / 28 / 2.286 |
+| Agents sidebar row (`…--roster-states`) | 30 (story frame; `size-8`) | 512 / 60 / 8.53 | 64 / 60 / 1.067 |
+| Agents page summary portrait (`…--summary-portrait-populated`) | 80 | 512 / 160 / 3.2 | 256 / 160 / 1.6 |
 
 Agent mark (the corner dog-ear, outer / inner CSS px):
 
@@ -40,6 +43,26 @@ Relay reads recorded by the rig's media wrapper:
 - After, the 36 and 64 plates ask `:256`. The 20 px rail plates still ask `:64`,
   so right-sizing holds. The variant is the cache key, so plates on the same
   variant share one read.
+
+Local agent pictures (the last four rows) come from core's
+`GET /v1/agents/{id}/avatar`. With core's `agent_avatar_sizes` feature
+(local-operator #3381), the renderer asks for `?size=` = the smallest of
+64/128/256 covering `ceil(css x DPR)`. Without the feature it sends no size and
+core serves the 512 px original, exactly as before.
+
+- After, with the feature (`probe-after.json`, stories opened with
+  `agentAvatarSizes=1`): reads were `agent.avatar:64` for the header, chat row
+  and agents sidebar, and `agent.avatar:256` for the portrait. Every one still
+  has coverage >= 1.
+- The flag-off control (`probe-after-noflag.json`, same head, no capability)
+  reads `agent.avatar:512` everywhere, the same as before.
+- The editor's crop preview passes no CSS size, so it always reads the
+  original.
+
+The first four rows' "CSS px" are the image boxes as the stories draw them. The
+story frames' borders and scales make some of them differ from the app's
+`size-*` class by 1-2 px; `scripts/avatar-retina.test.mjs` pins the app's real
+sizes (16, 20, 32, 80) at 1x, 2x and 3x.
 
 ## Fixture
 
@@ -59,15 +82,19 @@ Frames are rig output. This repository refuses committed frames
 
 - `before/` and `after/`: full 2x frames, plus a 4x nearest-neighbour crop of
   the plate each surface is named for.
-- `profile-card-before-after-zoom4x.png` and
-  `message-row-before-after-zoom4x.png`: the side-by-side pairs.
+- `after-noflag/`: the flag-off control frames.
+- `profile-card-before-after-zoom4x.png`,
+  `message-row-before-after-zoom4x.png` and
+  `agents-page-portrait-before-after-zoom4x.png`: the side-by-side pairs. The
+  portrait pair is equally sharp: 256 still covers 160 device px, at about
+  half the decoded pixels.
 
 ## Reproduce
 
 ```
-git checkout origin/main -- src/renderer src/main   # BEFORE (restore after)
+# BEFORE: run from a detached worktree at the merge base (2ff3187db64), with this harness copied in
 node scripts/with-storybook.mjs -- sh -c \
-  'node docs/evidence/team-bridge-avatar-retina/harness/shoot.mjs "$STORYBOOK_ORIGIN" docs/evidence-frames/team-bridge-avatar-retina/before before'
+  'node docs/evidence/team-bridge-avatar-retina/harness/shoot.mjs "$STORYBOOK_ORIGIN" docs/evidence-frames/team-bridge-avatar-retina/before before --agent-sizes'
 ```
 
 One command boots Storybook, uses a private `--headless=new` Chrome
@@ -78,6 +105,5 @@ One command boots Storybook, uses a private `--headless=new` Chrome
 - OS notification banners. The composite size moved 64 → 256. Unit tests cover
   the request size, and core's own `compose` was measured, but no banner frame
   was captured: that needs a real notification centre.
-- Core's local agent pictures: the chat header, Agents page, mobile web and the
-  mobile app. Core serves the 512 px original whole, which is sharp but not
-  right-sized. Right-sizing it is a core-side change, out of this PR.
+- Mobile web and the mobile app. They right-size against the same core
+  feature in their own repositories (#3381 carries the mobile web half).

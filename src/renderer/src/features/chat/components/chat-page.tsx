@@ -3718,7 +3718,8 @@ function SessionPanel({
 	const speakerAgentId =
 		agentProfiles.data?.find((row) => row.name === speakerAgent)?.agent_id ??
 		null;
-	const agentAvatar = useAgentAvatar(speakerAgentId);
+	// 20 = `MessageAvatar`'s `size-5` plate, the only place this URL is drawn.
+	const agentAvatar = useAgentAvatar(speakerAgentId, undefined, 20);
 	// The header names the conversation the user clicked, so it falls back to the
 	// catalogue row's name for the same reason `loaded` falls back to its binding:
 	// `conversation_title` is the journalled title only, and the row's name is
