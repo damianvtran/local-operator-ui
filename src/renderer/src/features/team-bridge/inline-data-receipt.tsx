@@ -41,8 +41,13 @@ type Span = {
 	end: number;
 	mime: string;
 	uncertain?: boolean;
-	/** The URI's own length when the span was widened to a code region around it
-	 * (the receipt states the data's size; inspection pages through the region). */
+	/** Set when the span was widened to a code region around a large URI: the
+	 * TOTAL length of every large URI in that region (the receipt states the size
+	 * of the data it hides; inspection pages through the region). Summed, not the
+	 * first URI's (PR #1554 round 2, R2-3): a fence holding two 3K URIs hides 6K,
+	 * and "3,022 characters" undercounted it. Small URIs below the floor are not
+	 * counted, whichever side of a large one they sit, so the figure does not
+	 * depend on order. */
 	dataLength?: number;
 };
 type Region = { start: number; end: number };
@@ -56,49 +61,162 @@ type Region = { start: number; end: number };
  * heavy body ran past 120 s). So this is a deliberately small, LINEAR model of the
  * two CommonMark code constructs, char comparisons only (no regex), and it only
  * has to be right about where code is, never render anything:
- *  - fenced blocks: a line whose prefix (spaces, tabs, blockquote `>`) is followed
- *    by 3+ backticks or tildes, closed by a line with at least as many of the same
- *    character and nothing else; an unclosed fence runs to the end, as in
- *    CommonMark. The prefix is looser than CommonMark's 0-3 spaces so a fence
- *    inside a list item or quote counts too; erring towards "code" only ever keeps
- *    a small URI visible, which is the safe side.
+ *  - fenced blocks: 3+ backticks or tildes, closed by a line with at least as
+ *    many of the same character and nothing else; an unclosed fence runs to the
+ *    end, as in CommonMark. The opener's prefix follows CommonMark's containers
+ *    (see `fenceStart`): blockquote `>` markers and list markers (`- `, `* `,
+ *    `+ `, `1. `, `1) `) are skipped, so `- ```` opens a fence (R2-1), and after
+ *    them at most 3 columns of indent may precede the fence, measured from the
+ *    current list item's content column when the line sits inside one. Four or
+ *    more is an indented code line, NOT an opener (R2-2). Erring towards "code"
+ *    is NOT a safe side: a phantom unclosed fence makes everything after it one
+ *    region, and a later large URI then puts the rest of the message, prose
+ *    included, behind the receipt.
+ *    The closer keeps the looser prefix (spaces, tabs, `>`): inside a fence only
+ *    "does this line close it" matters, and a list marker there is content.
  *  - inline code spans: a backtick run closed by the next run of EXACTLY its
  *    length within the same paragraph (a blank line ends one), an escaped opener
  *    losing its first backtick. Matching keeps one forward-only pointer per run
  *    length, so many unmatched openers cost one pass, not one pass each.
- * Not modelled: indented (4-space) code blocks. A small URI in one is untouched
- * by the floor; a large one splits as before, which degrades only that block. */
+ * Not modelled: indented (4-space) code blocks as regions. A line indented that
+ * far is only ruled out as a fence opener. A small URI in one is untouched by the
+ * floor; a large one splits as before, which degrades only that block.
+ * List tracking is just enough for the opener's column: a stack of the open
+ * items' content columns, popped when a line after a blank sits left of them.
+ * Lazy continuation and the finer item-ending rules are approximated; a miss
+ * there misjudges one opener's indent, never the scan's cost. */
+/** Columns of spaces/tabs from `i` (a tab advances to the next multiple of 4,
+ * counted from `col`), and where they end. */
+function indentAt(body: string, from: number, lineEnd: number, startCol = 0) {
+	let i = from;
+	let col = startCol;
+	while (i < lineEnd && (body[i] === " " || body[i] === "\t")) {
+		col = body[i] === "\t" ? col + 4 - (col % 4) : col + 1;
+		i++;
+	}
+	return { i, col };
+}
+
+/** Length of a list marker at `i` (`-`/`*`/`+`, or 1-9 digits then `.`/`)`),
+ * or 0. CommonMark requires a space or tab after it, which also keeps `---`
+ * and `***` (thematic breaks) and `-x` prose from reading as markers. */
+function listMarkerAt(body: string, i: number, lineEnd: number): number {
+	let j = i;
+	if (body[j] === "-" || body[j] === "*" || body[j] === "+") j++;
+	else {
+		while (j < lineEnd && j - i < 9 && body[j] >= "0" && body[j] <= "9") j++;
+		if (j === i || (body[j] !== "." && body[j] !== ")")) return 0;
+		j++;
+	}
+	return body[j] === " " || body[j] === "\t" ? j - i : 0;
+}
+
+/** The content column of the deepest open list item at or left of `col`, or 0.
+ * `items` is strictly increasing (a child's content starts right of its
+ * parent's), so a binary search finds it: O(log depth) per line, which keeps a
+ * hostile 250K-deep nest followed by 250K short lines linear-ish, not quadratic. */
+function containerColumn(items: number[], col: number): number {
+	let low = 0;
+	let high = items.length;
+	while (low < high) {
+		const mid = (low + high) >> 1;
+		if (items[mid] <= col) low = mid + 1;
+		else high = mid;
+	}
+	return low ? items[low - 1] : 0;
+}
+
+/** Where a fence opener's run would start on this line, or -1 when the prefix
+ * rules it out (R2-1 / R2-2; the model is described above `codeRegions`).
+ * `items` holds the content columns of the open list items and is updated in
+ * place for the markers on this line. Every loop only moves forward through
+ * the line's prefix, and each item is pushed once and popped at most once. */
+function fenceStart(
+	body: string,
+	lineStart: number,
+	lineEnd: number,
+	items: number[],
+	afterBlank: boolean,
+): { at: number; blank: boolean } {
+	let i = lineStart;
+	// Blockquote markers: up to 3 spaces, `>`, and one optional space.
+	for (;;) {
+		const ws = indentAt(body, i, lineEnd);
+		if (ws.col > 3 || body[ws.i] !== ">") break;
+		i = ws.i + 1;
+		if (body[i] === " " || body[i] === "\t") i++;
+	}
+	let { i: at, col } = indentAt(body, i, lineEnd);
+	const blank = at === lineEnd || (body[at] === "\r" && at + 1 === lineEnd);
+	if (blank) return { at: -1, blank };
+	// A line left of an item's content column after a blank line ends that item.
+	// Without the blank it may be a lazy paragraph continuation, so the item
+	// stays open: a later `  ```` under it is still the item's fence.
+	if (afterBlank)
+		while (items.length && items[items.length - 1] > col) items.pop();
+	// List markers, possibly nested on one line (`- 1. ```` ). A marker is one
+	// only within 3 columns of its container; its content starts after 1-4
+	// spaces, and with 5+ one space after the marker (the rest is indented code,
+	// so the run cannot be an opener: it is 4+ columns into the content).
+	for (;;) {
+		const base = containerColumn(items, col);
+		if (col - base > 3) return { at: -1, blank };
+		const marker = listMarkerAt(body, at, lineEnd);
+		if (!marker) break;
+		const after = indentAt(body, at + marker, lineEnd, col + marker);
+		const gap = after.col - col - marker;
+		const content = col + marker + (gap > 4 ? 1 : gap);
+		while (items.length && items[items.length - 1] > col) items.pop();
+		items.push(content);
+		if (gap > 4) return { at: -1, blank };
+		at = after.i;
+		col = after.col;
+	}
+	return { at, blank };
+}
+
 function codeRegions(body: string): Region[] {
 	const regions: Region[] = [];
 	let segment = 0;
 	let fence: { char: string; size: number; start: number } | null = null;
 	let lineStart = 0;
+	const items: number[] = [];
+	let afterBlank = false;
 	for (;;) {
 		let lineEnd = body.indexOf("\n", lineStart);
 		if (lineEnd < 0) lineEnd = body.length;
-		let i = lineStart;
-		while (
-			i < lineEnd &&
-			(body[i] === " " || body[i] === "\t" || body[i] === ">")
-		)
-			i++;
-		const char = body[i];
-		let run = 0;
-		if (char === "`" || char === "~")
-			while (i + run < lineEnd && body[i + run] === char) run++;
-		const rest = () => body.slice(i + run, lineEnd);
 		if (fence) {
-			if (char === fence.char && run >= fence.size && !rest().trim()) {
+			let i = lineStart;
+			while (
+				i < lineEnd &&
+				(body[i] === " " || body[i] === "\t" || body[i] === ">")
+			)
+				i++;
+			let run = 0;
+			while (i + run < lineEnd && body[i + run] === fence.char) run++;
+			if (run >= fence.size && !body.slice(i + run, lineEnd).trim()) {
 				regions.push({ start: fence.start, end: lineEnd });
 				fence = null;
 				segment = lineEnd;
 			}
-		} else if (run >= 3 && !(char === "`" && rest().includes("`"))) {
-			inlineCodeRegions(body, segment, lineStart, regions);
-			fence = { char, size: run, start: lineStart };
-		} else if (i === lineEnd || (body[i] === "\r" && i + 1 === lineEnd)) {
-			inlineCodeRegions(body, segment, lineStart, regions);
-			segment = lineEnd;
+		} else {
+			const line = fenceStart(body, lineStart, lineEnd, items, afterBlank);
+			const i = line.at;
+			const char = i < 0 ? "" : body[i];
+			let run = 0;
+			if (char === "`" || char === "~")
+				while (i + run < lineEnd && body[i + run] === char) run++;
+			if (
+				run >= 3 &&
+				!(char === "`" && body.slice(i + run, lineEnd).includes("`"))
+			) {
+				inlineCodeRegions(body, segment, lineStart, regions);
+				fence = { char, size: run, start: lineStart };
+			} else if (line.blank) {
+				inlineCodeRegions(body, segment, lineStart, regions);
+				segment = lineEnd;
+			}
+			afterBlank = line.blank;
 		}
 		if (lineEnd === body.length) break;
 		lineStart = lineEnd + 1;
@@ -162,9 +280,20 @@ export function inlineImageSpans(body: string): Span[] {
 	// per closing tag serves every match before it (no rescan per match).
 	let lineEnd = -1;
 	let svgEnd: RegExpExecArray | null | undefined;
+	// End of the last large URI. Inside a code-region receipt, later matches are
+	// still scanned so their sizes join its total (R2-3), but never one that
+	// starts inside a URI already measured: that keeps each character in at most
+	// one URI scan, so the pass stays linear.
+	let uriEnd = -1;
 	for (const match of body.matchAll(IMAGE_START)) {
 		const start = match.index;
-		if (spans.length && start < spans[spans.length - 1].end) continue;
+		const last = spans[spans.length - 1];
+		if (
+			last &&
+			start < last.end &&
+			(last.dataLength === undefined || start < uriEnd)
+		)
+			continue;
 		regions ??= codeRegions(body);
 		while (region < regions.length && regions[region].end <= start) region++;
 		const code =
@@ -269,6 +398,7 @@ export function inlineImageSpans(body: string): Span[] {
 		uncertainEnd = Math.min(uncertainEnd, limit);
 		const end = Math.max(cursor, uncertainEnd);
 		if (end - start < RECEIPT_FLOOR) continue;
+		uriEnd = end;
 		// Lower-cased for display only (QA N1): MIME types are case-insensitive.
 		const mime = header
 			.slice(
@@ -282,11 +412,16 @@ export function inlineImageSpans(body: string): Span[] {
 			// author wrote them. Leaving it as code would put the wall back (a
 			// fenced block is not height-bounded); splitting inside it breaks the
 			// fence. The code around the URI is one click away, in inspection.
+			const dataLength = Math.min(end, code.end) - start;
+			if (last?.dataLength !== undefined && last.start === code.start) {
+				last.dataLength += dataLength;
+				continue;
+			}
 			spans.push({
 				start: code.start,
 				end: code.end,
 				mime,
-				dataLength: Math.min(end, code.end) - start,
+				dataLength,
 			});
 			continue;
 		}
