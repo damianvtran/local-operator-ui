@@ -106,6 +106,7 @@ import {
 	credentialRecipientLabel,
 	credentialVisibleConsequences,
 	deliverApprovalRefusal,
+	hasPermanentCredentialOutcome,
 	isAttentionApproval,
 	isWaitingApproval,
 	namedApprovalRefusalParts,
@@ -321,7 +322,6 @@ export const MeshApprovalsTray: FC<MeshApprovalsTrayProps> = ({
 	const deniedFocus = useRef<{
 		id: string;
 		origin: Element | null;
-		sawPending: boolean;
 		rowAtStart: MeshApprovalRow | undefined;
 	} | null>(null);
 	const decide = (id: string, decision: ApprovalDecision) => {
@@ -331,7 +331,6 @@ export const MeshApprovalsTray: FC<MeshApprovalsTrayProps> = ({
 			deniedFocus.current = {
 				id,
 				origin: document.activeElement,
-				sawPending: false,
 				rowAtStart: rows.find((row) => row.approvalId === id),
 			};
 		}
@@ -340,31 +339,29 @@ export const MeshApprovalsTray: FC<MeshApprovalsTrayProps> = ({
 	useLayoutEffect(() => {
 		const handoff = deniedFocus.current;
 		if (!handoff) return;
-		if (pending?.approvalId === handoff.id) handoff.sawPending = true;
 
 		const row = rows.find((entry) => entry.approvalId === handoff.id);
-		if (row?.state === "requested" && refusal?.approvalId !== handoff.id) {
-			return;
-		}
-		if (pending || !handoff.sawPending) return;
+		// A fast decision may settle before React ever renders pending. Completion
+		// is the new row/refusal, not whether an intermediate frame was observed.
+		if (pending) return;
 		// Mutation settlement can precede its invalidated read. Wait for the new
 		// row (or the refusal) before focusing a control a refetch will remove.
 		if (row === handoff.rowAtStart && refusal?.approvalId !== handoff.id)
 			return;
 		deniedFocus.current = null;
-		// Prefer the updated card's outcome/control; otherwise next live card or
-		// closed history. Never steal focus from someone who moved elsewhere.
+		// Only an outcome on the current live card takes precedence. Otherwise
+		// continue to another live card (never this card's Details button), then
+		// the settled toggle. The delivery boundary preserves moved user focus.
 		const target =
 			(waiting.some((entry) => entry.approvalId === handoff.id)
 				? trayRef.current?.querySelector<HTMLElement>(
-						`[data-approval-id="${CSS.escape(handoff.id)}"] [data-tour-tag="mesh-approval-refusal"], [data-approval-id="${CSS.escape(handoff.id)}"] button:not(:disabled)`,
+						`[data-approval-id="${CSS.escape(handoff.id)}"] [data-tour-tag="mesh-approval-refusal"]`,
 					)
 				: null) ??
-			(waiting.length
-				? trayRef.current?.querySelector<HTMLButtonElement>(
-						'[data-tour-tag="mesh-approval-controls"] button:not(:disabled)',
-					)
-				: recordsRef.current?.querySelector<HTMLButtonElement>("button"));
+			trayRef.current?.querySelector<HTMLButtonElement>(
+				`[data-approval-id]:not([data-approval-id="${CSS.escape(handoff.id)}"]) [data-tour-tag="mesh-approval-controls"] button:not(:disabled)`,
+			) ??
+			recordsRef.current?.querySelector<HTMLButtonElement>("button");
 		const refusalTarget = refusal
 			? (trayRef.current?.querySelector<HTMLElement>(
 					`[data-approval-refusal-id="${CSS.escape(refusal.approvalId ?? "")}"]`,
@@ -564,7 +561,7 @@ export const MeshApprovalsTray: FC<MeshApprovalsTrayProps> = ({
 			 * reader" mark and costs the summary nothing.
 			 */}
 			{records.length > 0 && (
-				<div ref={recordsRef}>
+				<div ref={recordsRef} data-tour-tag="mesh-approvals-settled">
 					<Disclosure
 						open={recordsOpen}
 						onOpenChange={setRecordsOpen}
@@ -663,6 +660,10 @@ const MeshApprovalCard: FC<{
 }) => {
 	useI18nLocale();
 	const waiting = isWaitingApproval(row.state);
+	const permanentOutcome = hasPermanentCredentialOutcome(
+		row,
+		refusal?.retryable,
+	);
 	const summaryId = useId();
 	const criticalId = useId();
 	const head = approvalHead(row);
@@ -722,14 +723,15 @@ const MeshApprovalCard: FC<{
 	const visibleConsequences = credentialVisibleConsequences(row);
 	/*
 	 * WHY THIS CARD CANNOT BE APPROVED HERE, in the order of who knows best: the
-	 * typed block's own refusal sentence (the policy that said no, worded by the
-	 * backend that applied it), then the legacy `approve_remedy`, then the generic
-	 * line. A card that CAN be approved here shows none of them.
+	 * typed block's own refusal sentence, or a non-CLI safety explanation if it
+	 * cannot disclose the request. The legacy remedy can contain a terminal
+	 * command and is only for untyped rows. An approvable card shows neither.
 	 */
 	const restrictedRemedy =
-		(typed?.refusalMessage ?? "") ||
-		row.approveRemedy ||
-		t("ui.mesh.approval.cli_review");
+		(row.typed?.refusalMessage ?? "") ||
+		(row.typed
+			? t("ui.mesh.approval.typed_review_unavailable")
+			: row.approveRemedy || t("ui.mesh.approval.cli_review"));
 	return (
 		<li
 			className="flex flex-col gap-2 py-3 first:pt-0 last:pb-0"
@@ -750,25 +752,24 @@ const MeshApprovalCard: FC<{
 						isAttentionApproval(row) ? "text-warning" : stateInk(row.state),
 					)}
 				>
-					{row.kind === "credential" && row.state === "connected"
-						? t("ui.mesh.approval.shared")
-						: row.kind === "credential" &&
-								(row.state === "approved" || row.state === "failed")
-							? t("ui.mesh.approval.approved_not_applied")
-							: approvalStateLabel(row.state)}
+					{permanentOutcome
+						? t("ui.mesh.approval.could_not_apply")
+						: row.kind === "credential" && row.state === "connected"
+							? t("ui.mesh.approval.shared")
+							: row.kind === "credential" &&
+									(row.state === "approved" || row.state === "failed")
+								? t("ui.mesh.approval.approved_not_applied")
+								: approvalStateLabel(row.state)}
 				</span>
 				<div className="grow" />
-				{/*
-				 * THE WINDOW PRINTS ONLY WHILE IT IS THE READER'S TO ACT ON (design
-				 * round 1, D3; UX round 1, U3): a countdown is a prompt, and a settled
-				 * record wears none — on `approved`/`connecting` the decision is made,
-				 * and on `failed` the runner has stopped. The store keeps `expires_at`
-				 * on the record whatever its state (`badge_row` passes it raw; only
-				 * `presented()` reads it), so the gate is the SURFACE's, by state.
-				 */}
-				{(waiting || isAttentionApproval(row)) && remaining && (
-					<span className="text-meta text-ink-dim">{remaining}</span>
-				)}
+				{/* Requested cards show the answer window; approved cards show the
+				    remaining apply window. A permanent outcome has no countdown:
+				    waiting cannot make the same card applicable again. */}
+				{!permanentOutcome &&
+					(waiting || isAttentionApproval(row)) &&
+					remaining && (
+						<span className="text-meta text-ink-dim">{remaining}</span>
+					)}
 			</div>
 
 			{/*
@@ -862,16 +863,16 @@ const MeshApprovalCard: FC<{
 					)}
 				</p>
 			)}
-			{canRetryApply && (
-				<p className="text-meta text-ink-muted">
-					{t("ui.mesh.approval.retry_hint")}
-				</p>
-			)}
 			{outcomeSentence && (
 				<MeshDecisionRefusal
 					approvalId={row.approvalId}
 					refusal={{ code: refusalCode ?? "", sentence: outcomeSentence }}
 				/>
+			)}
+			{canRetryApply && (
+				<p className="text-meta text-ink-muted">
+					{t("ui.mesh.approval.retry_hint")}
+				</p>
 			)}
 			{signed && canDeny && (
 				<p className="text-meta text-ink-muted">

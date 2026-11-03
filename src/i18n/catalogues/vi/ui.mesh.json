@@ -273,5 +273,7 @@
 	"ui.mesh.approval.signing_applying": "Đang ký và áp dụng…",
 	"ui.mesh.approval.retry_hint": "Chọn Thử lại để áp dụng yêu cầu đã phê duyệt này.",
 	"ui.mesh.approval.named_refusal": "Đối với “{request}”: {reason}",
-	"ui.mesh.approval.expires_window": "Hết hạn sau {duration}"
+	"ui.mesh.approval.expires_window": "Thẻ này hết hạn sau {duration}",
+	"ui.mesh.approval.could_not_apply": "Không thể áp dụng",
+	"ui.mesh.approval.typed_review_unavailable": "Không thể hiển thị yêu cầu này một cách an toàn ở đây. Hãy từ chối và đề nghị gửi yêu cầu mới."
 }

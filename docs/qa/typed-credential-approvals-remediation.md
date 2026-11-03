@@ -245,3 +245,43 @@ Changed catalogue values: ru `ui.mesh.approval.expires_window` only.
 Changed English context entries: `ui.mesh.approval.duration_minutes`,
 `ui.mesh.approval.duration_hours`, `ui.mesh.approval.duration_under_minute`,
 `ui.mesh.approval.named_refusal`. No added/removed message keys.
+
+## Final QA/UX round-2 follow-ups
+
+Completion focus no longer depends on a pending render: a nonpending decision
+with a new row or same-id refusal fires the handoff. Priority is the current
+live card's outcome, another live card's first enabled decision control, then
+closed Settled approvals. It never picks the decided card's Details/control as
+a substitute and preserves focus the user moved elsewhere.
+
+The actual tray render test now resolves onDecide synchronously without any
+pending render, checking focus on history, another live card, and a same-card
+refusal respectively. Reintroducing sawPending makes the same-tick success
+assertion fail (selected negative control: tests 1/pass 0/fail 1); source restored
+byte-identical. The retry story scopes its outcome lookup to the owning card,
+and approve/retry success plays assert the Settled button as deterministic anchor.
+Stories have not been browser-executed in this pass.
+
+Permanent nonretryable outcomes read Couldn't be applied and show no countdown.
+The reason precedes the explicit Try again hint. Typed rows without a backend
+refusal_message use a safe non-CLI fallback, never their legacy terminal remedy.
+Actual tray rendering assertions cover the permanent label/countdown and malformed
+typed inheritance fallback. Remaining live-card expiry explicitly names This card,
+not the permission lifetime, in all locales.
+
+D2-3 header-count grammar normalization is deferred: it is cosmetic and would
+change waiting/history labels shared with noncredential cards across locales;
+that broader copy churn is not required for the QA failure or these corrections.
+No follow-up issue created. Fresh independent audit required for new/changed copy;
+existing receipt history is untouched and no self-audit is claimed.
+
+Final selected runs: mesh-tab tests 118/pass 118/fail 0; locale-parity tests
+44/pass 44/fail 0, serial, 2 GiB, 120 seconds, concurrency 1. Existing dependency
+donor had been removed, leaving its link broken; switched only this worktree's
+symlink to another existing tree after byte-comparing lockfiles. No install or
+donor mutation. No full suite/native build/browser/live approval actions.
+
+Exact catalogue changes: all eight locales add `ui.mesh.approval.could_not_apply`
+and `ui.mesh.approval.typed_review_unavailable`, and change
+`ui.mesh.approval.expires_window`. English context adds the two new entries and
+clarifies expires_window's card-only subject. No removed keys.

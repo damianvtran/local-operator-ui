@@ -273,5 +273,7 @@
 	"ui.mesh.approval.signing_applying": "Firmando y aplicando…",
 	"ui.mesh.approval.retry_hint": "Elige Reintentar para aplicar esta solicitud aprobada.",
 	"ui.mesh.approval.named_refusal": "Para “{request}”: {reason}",
-	"ui.mesh.approval.expires_window": "Caduca en {duration}"
+	"ui.mesh.approval.expires_window": "Esta solicitud caduca en {duration}",
+	"ui.mesh.approval.could_not_apply": "No se pudo aplicar",
+	"ui.mesh.approval.typed_review_unavailable": "Esta solicitud no se puede mostrar aquí de forma segura. Recházala y pide una nueva solicitud."
 }

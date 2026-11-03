@@ -273,5 +273,7 @@
 	"ui.mesh.approval.signing_applying": "Подписание и применение…",
 	"ui.mesh.approval.retry_hint": "Выберите «Повторить», чтобы применить этот одобренный запрос.",
 	"ui.mesh.approval.named_refusal": "Для «{request}»: {reason}",
-	"ui.mesh.approval.expires_window": "Истекает в течение {duration}"
+	"ui.mesh.approval.expires_window": "Срок этой карточки истекает в течение {duration}",
+	"ui.mesh.approval.could_not_apply": "Не удалось применить",
+	"ui.mesh.approval.typed_review_unavailable": "Этот запрос нельзя безопасно показать здесь. Отклоните его и попросите новый запрос."
 }

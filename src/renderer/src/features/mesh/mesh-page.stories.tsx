@@ -32,7 +32,7 @@
  */
 
 import type { Meta, StoryObj } from "@storybook/react";
-import { expect, screen, userEvent, waitFor } from "@storybook/test";
+import { expect, screen, userEvent, waitFor, within } from "@storybook/test";
 import type { DesktopResponse } from "../../../../shared/desktop-contract";
 import { MoveNotice } from "./mesh-actions";
 import { resolveDrop } from "./mesh-drop";
@@ -3383,13 +3383,22 @@ export const TypedCredentialRetryFlow: Story = {
 		await userEvent.click(
 			await screen.findByRole("button", { name: "Approve" }),
 		);
-		await screen.findByText(
+		const retry = await screen.findByRole("button", { name: "Try again" });
+		const card = retry.closest<HTMLElement>(
+			'[data-tour-tag="mesh-approval-card"]',
+		);
+		if (!card) throw new Error("Retry has no owning approval card");
+		await within(card).findByText(
 			"Another change to who may use a credential was in progress at the same time. Nothing was changed. Apply the same approved card again in a moment.",
 		);
 		await userEvent.click(
 			await screen.findByRole("button", { name: "Try again" }),
 		);
 		await screen.findByText("Shared: 1");
+		const settled = await screen.findByRole("button", {
+			name: /^Settled approvals/,
+		});
+		await waitFor(() => expect(document.activeElement).toBe(settled));
 	},
 };
 export const TypedCredentialPermanentRefusal: Story = {
@@ -3455,6 +3464,11 @@ export const TypedCredentialApproveFlow: Story = {
 			await screen.findByRole("button", { name: "Approve" }),
 		);
 		await screen.findByText("Shared: 1");
+		// The bridge resolves in the same tick: no pending frame is guaranteed.
+		const settled = await screen.findByRole("button", {
+			name: /^Settled approvals/,
+		});
+		await waitFor(() => expect(document.activeElement).toBe(settled));
 	},
 };
 export const TypedCredentialNarrowDetails: Story = {

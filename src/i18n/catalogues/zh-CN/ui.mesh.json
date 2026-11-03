@@ -273,5 +273,7 @@
 	"ui.mesh.approval.signing_applying": "正在签名并应用……",
 	"ui.mesh.approval.retry_hint": "选择“重试”以应用此已批准的请求。",
 	"ui.mesh.approval.named_refusal": "“{request}”：{reason}",
-	"ui.mesh.approval.expires_window": "{duration}后到期"
+	"ui.mesh.approval.expires_window": "此卡片将在{duration}后到期",
+	"ui.mesh.approval.could_not_apply": "无法应用",
+	"ui.mesh.approval.typed_review_unavailable": "此处无法安全显示此请求。请拒绝此请求并要求重新发起请求。"
 }

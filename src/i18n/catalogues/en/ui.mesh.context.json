@@ -1372,6 +1372,16 @@
 	"ui.mesh.approval.expires_window": {
 		"role": "status — deadline on an already approved needs-attention card",
 		"tone": "Quiet and factual",
-		"note": "The decision was already answered; the operator may retry applying or cancel before the record expires. duration is the same already-localized bare duration used by answer_window. Do not call this an answer deadline or imply permission expires: this is the CARD window."
+		"note": "The decision was already answered; the operator may retry applying or cancel before the record expires. duration is the same already-localized bare duration used by answer_window. Do not call this an answer deadline or imply permission expires: this is the CARD window. The visible subject is THIS CARD, not the shared login or permission."
+	},
+	"ui.mesh.approval.could_not_apply": {
+		"role": "terminal outcome label — permanently refused signed credential card",
+		"tone": "Quiet and factual",
+		"note": "Approval was signed but the SAME card cannot be applied successfully. No suggestion that waiting/retrying helps. Replaces approved_not_applied and suppresses countdown only when explicit apply_outcome.retryable is false; cancel remains available."
+	},
+	"ui.mesh.approval.typed_review_unavailable": {
+		"role": "safe fallback — typed credential request lacks backend refusal_message",
+		"tone": "Plain and actionable",
+		"note": "A typed card this app cannot safely disclose. Do not send the user to a terminal, say the app is outdated, or suggest blind approval. Deny the current request and ask for a new one."
 	}
 }

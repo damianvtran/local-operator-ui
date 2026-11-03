@@ -1128,6 +1128,18 @@ export function isAttentionApproval(row: MeshApprovalRow): boolean {
 	);
 }
 
+/** A latest explicit outcome overrides the stored receipt, including false. */
+export function hasPermanentCredentialOutcome(
+	row: MeshApprovalRow,
+	retryable?: boolean,
+): boolean {
+	return (
+		row.kind === "credential" &&
+		(row.state === "approved" || row.state === "failed") &&
+		(retryable ?? row.typed?.applyOutcome?.retryable) === false
+	);
+}
+
 /** Request-answer deadline, NOT the duration of the share. Shared by every card kind. */
 export function approvalAnswerWindowLabel(
 	expires: number | null,

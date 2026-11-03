@@ -273,5 +273,7 @@
 	"ui.mesh.approval.signing_applying": "Signing and applying…",
 	"ui.mesh.approval.retry_hint": "Choose Try again to apply this approved request.",
 	"ui.mesh.approval.named_refusal": "For “{request}”: {reason}",
-	"ui.mesh.approval.expires_window": "Expires in {duration}"
+	"ui.mesh.approval.expires_window": "This card expires in {duration}",
+	"ui.mesh.approval.could_not_apply": "Couldn't be applied",
+	"ui.mesh.approval.typed_review_unavailable": "This request can't be shown safely here. Deny it and ask for a new request."
 }

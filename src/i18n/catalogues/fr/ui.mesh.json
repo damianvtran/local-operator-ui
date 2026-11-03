@@ -273,5 +273,7 @@
 	"ui.mesh.approval.signing_applying": "Signature et application…",
 	"ui.mesh.approval.retry_hint": "Choisissez Réessayer pour appliquer cette demande approuvée.",
 	"ui.mesh.approval.named_refusal": "Pour « {request} » : {reason}",
-	"ui.mesh.approval.expires_window": "Expire dans {duration}"
+	"ui.mesh.approval.expires_window": "Cette fiche expire dans {duration}",
+	"ui.mesh.approval.could_not_apply": "Impossible à appliquer",
+	"ui.mesh.approval.typed_review_unavailable": "Cette demande ne peut pas être présentée ici en toute sécurité. Refusez-la et demandez-en une nouvelle."
 }

@@ -2348,7 +2348,7 @@ test("the tray and the page route every credential decision through the typed bu
 	assert.match(tray, /onDecide\(row\.approvalId, "apply"\)/);
 	assert.match(
 		tray,
-		/\(typed\?\.refusalMessage \?\? ""\) \|\|\s*row\.approveRemedy \|\|/,
+		/\(row\.typed\?\.refusalMessage \?\? ""\) \|\|/,
 		"the typed refusal sentence is preferred over the CLI remedy",
 	);
 	const en = JSON.parse(
@@ -3515,7 +3515,7 @@ test("a refused decision renders its sentence, and the tray splits waiting from 
 	);
 	assert.match(
 		tray,
-		/\{\(waiting \|\| isAttentionApproval\(row\)\) && remaining && \(/,
+		/\{!permanentOutcome &&\s*\(waiting \|\| isAttentionApproval\(row\)\) &&\s*remaining && \(/,
 		"the countdown prints only while the decision is still the reader's (design round 1, D3 / UX round 1, U3)",
 	);
 	assert.match(
@@ -6073,9 +6073,7 @@ test("pre-capture fixes preserve legacy hints, live deadlines and isolated refus
 	);
 	assert.ok(source.includes("!row.typed &&"));
 	assert.ok(source.includes('"ui.mesh.approval.approved_apply_hint"'));
-	assert.ok(
-		source.includes("(waiting || isAttentionApproval(row)) && remaining"),
-	);
+	assert.ok(source.includes("!permanentOutcome &&"));
 	assert.ok(source.includes('<bdi dir="auto"'));
 	const previous = mesh.currentLocale();
 	try {
@@ -6218,7 +6216,7 @@ test("Urdu request starting with a Latin device retains locale direction", () =>
 	);
 	assert.equal(
 		mesh.approvalAnswerWindowLabel(1600, 1000, true),
-		"Expires in 10 minutes",
+		"This card expires in 10 minutes",
 	);
 });
 
@@ -6428,6 +6426,115 @@ test("tray coordinates focus and announcement across settle and refetch", async 
 			announcement(),
 			refusal.sentence,
 			"preserved user focus requires the polite fallback",
+		);
+		// Same-tick success: onDecide replaces the row immediately and NEVER
+		// renders pending. Focus must still land on closed history.
+		const requested = () => mounted.approvalRows([finiteShareCapture()])[0];
+		const renderInstant = () =>
+			root.render(mounted.createElement(mounted.MeshApprovalsTray, props));
+		props = {
+			...props,
+			rows: [requested()],
+			pending: null,
+			refusal: null,
+			onDecide: () => {
+				props = { ...props, rows: [{ ...props.rows[0], state: "connected" }] };
+				renderInstant();
+			},
+		};
+		await render();
+		const approve = () =>
+			[...document.querySelectorAll("button")].find(
+				(button) => button.textContent === "Approve",
+			);
+		approve().focus();
+		await mounted.act(async () => approve().click());
+		assert.equal(
+			document.activeElement.textContent.startsWith("Settled approvals"),
+			true,
+			"same-tick success focuses history without a pending frame",
+		);
+		// With another live card, its first enabled control takes priority over history.
+		const second = { ...requested(), approvalId: "ap_7f3k9m2q8r6t" };
+		props = {
+			...props,
+			rows: [requested(), second],
+			onDecide: () => {
+				props = {
+					...props,
+					rows: [{ ...props.rows[0], state: "connected" }, second],
+				};
+				renderInstant();
+			},
+		};
+		await render();
+		approve().focus();
+		await mounted.act(async () => approve().click());
+		assert.equal(
+			document.activeElement
+				.closest("[data-approval-id]")
+				.getAttribute("data-approval-id"),
+			second.approvalId,
+		);
+		assert.equal(document.activeElement.textContent, "Approve");
+		// Same-tick refusal keeps focus on its outcome rather than another control.
+		props = {
+			...props,
+			rows: [requested()],
+			refusal: null,
+			onDecide: () => {
+				props = { ...props, rows: [row()], refusal: { ...refusal } };
+				renderInstant();
+			},
+		};
+		await render();
+		approve().focus();
+		await mounted.act(async () => approve().click());
+		assert.equal(
+			document.activeElement.getAttribute("data-tour-tag"),
+			"mesh-approval-refusal",
+		);
+		assert.equal(announcement(), "");
+		// Permanent apply outcomes have no misleading 'yet' or countdown.
+		const permanent = row();
+		permanent.typed.applyOutcome = {
+			code: "finite_subject_mismatch",
+			retryable: false,
+			reason: "Cannot apply.",
+			remedy: "Request a new card.",
+		};
+		props = { ...props, rows: [permanent], refusal: null };
+		await render();
+		const permanentCard = document.querySelector(
+			'[data-tour-tag="mesh-approval-card"]',
+		);
+		assert.ok(permanentCard.textContent.includes("Couldn't be applied"));
+		assert.equal(
+			permanentCard.textContent.includes("This card expires"),
+			false,
+		);
+		// Typed inheritance cannot leak its old terminal remedy when no message exists.
+		const malformed = mounted.approvalRows([
+			finiteShareCapture(
+				{
+					what: { credential_inheritance: {} },
+					approve_remedy: "Run a terminal command",
+				},
+				{ signable_here: false, refusal_message: "", disclosure: null },
+			),
+		])[0];
+		props = { ...props, rows: [malformed], refusal: null };
+		await render();
+		assert.ok(
+			document
+				.querySelector('[data-tour-tag="mesh-approval-card"]')
+				.textContent.includes("This request can't be shown safely here"),
+		);
+		assert.equal(
+			document
+				.querySelector('[data-tour-tag="mesh-approval-card"]')
+				.textContent.includes("terminal"),
+			false,
 		);
 	} finally {
 		if (root) await mounted.act(async () => root.unmount());

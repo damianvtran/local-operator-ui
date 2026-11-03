@@ -273,5 +273,7 @@
 	"ui.mesh.approval.signing_applying": "دستخط اور اطلاق جاری ہے…",
 	"ui.mesh.approval.retry_hint": "اس منظور شدہ درخواست کو لاگو کرنے کے لیے “دوبارہ کوشش کریں” منتخب کریں۔",
 	"ui.mesh.approval.named_refusal": "“{request}” کے لیے: {reason}",
-	"ui.mesh.approval.expires_window": "{duration} میں میعاد ختم ہو گی"
+	"ui.mesh.approval.expires_window": "اس کارڈ کی میعاد {duration} میں ختم ہو گی",
+	"ui.mesh.approval.could_not_apply": "لاگو نہیں ہو سکا",
+	"ui.mesh.approval.typed_review_unavailable": "یہ درخواست یہاں محفوظ طریقے سے نہیں دکھائی جا سکتی۔ اسے مسترد کریں اور نئی درخواست مانگیں۔"
 }

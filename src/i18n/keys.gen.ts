@@ -6953,6 +6953,7 @@ export type MessageParams = {
 	"ui.mesh.approval.cancel_hint": undefined;
 	"ui.mesh.approval.cancel_sharing": undefined;
 	"ui.mesh.approval.cli_review": undefined;
+	"ui.mesh.approval.could_not_apply": undefined;
 	"ui.mesh.approval.credential_title": undefined;
 	"ui.mesh.approval.details_unavailable": undefined;
 	"ui.mesh.approval.duration_hours": { count: number };
@@ -6987,6 +6988,7 @@ export type MessageParams = {
 	"ui.mesh.approval.signing_applying": undefined;
 	"ui.mesh.approval.technical_request": undefined;
 	"ui.mesh.approval.try_again": undefined;
+	"ui.mesh.approval.typed_review_unavailable": undefined;
 	"ui.mesh.approval.undoes_withdrawals": { count: number; device: string };
 	"ui.mesh.approval.unknown_title": undefined;
 	"ui.mesh.approval.until_revoked": undefined;
