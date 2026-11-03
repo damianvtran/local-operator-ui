@@ -709,7 +709,30 @@ export const modelUncertaintyCase = {
 			// and visible text, so the next CI run says what WAS on screen.
 			`/* model-case: row-census */ JSON.stringify([...document.querySelectorAll('[data-tour-tag="chat-session-row"]')].map(e=>({region:e.closest('[data-sidebar-region]')?.getAttribute('data-sidebar-region')??null,session:e.closest('[data-session-row]')?.getAttribute('data-session-row')??null,text:(e.textContent||'').trim().slice(0,60)})))`,
 		);
-		await press(rowA);
+		/*
+		 * A IS BELOW THE FOLD on a real core: the sidebar body
+		 * (`[data-sidebar-region="scroller"]`, overflow-y:auto) draws the entity
+		 * sections before the chats list, so in the 1380x900 window A's centre sat
+		 * at y=920 and the pointer gate rightly refused it (CI 41554454323). The
+		 * asks case never meets this - two fake sessions, no residents. Scroll the
+		 * row into view inside that container, as a user would, then let `press`
+		 * re-read and hit-test the point; the gate is never bypassed.
+		 */
+		const reveal = await cdp.evaluate(
+			`/* model-case: reveal-row */ (()=>{const r=document.querySelector(${JSON.stringify(rowA)});const s=r&&r.closest('[data-sidebar-region="scroller"]');if(!r||!s)return {found:Boolean(r),scroller:Boolean(s)};r.scrollIntoView({block:'nearest'});const b=r.getBoundingClientRect();return {found:true,scroller:true,scrollTop:s.scrollTop,clientHeight:s.clientHeight,scrollHeight:s.scrollHeight,rowTop:b.top,rowBottom:b.bottom,innerHeight:innerHeight}})()`,
+		);
+		assert(
+			reveal?.found && reveal?.scroller,
+			`row A is not inside the sidebar scroller: ${JSON.stringify(reveal)}`,
+		);
+		try {
+			await press(rowA);
+		} catch (error) {
+			// The scroller's own numbers say whether the scroll ran out of extent
+			// or something else covered the point.
+			error.message += ` - after reveal: ${JSON.stringify(reveal)}`;
+			throw error;
+		}
 		const input = '[contenteditable="true"][role="textbox"]';
 		await press(input);
 		await cdp.send("Input.insertText", { text: "/model" });

@@ -388,6 +388,17 @@ function oracleContext(mode = "happy") {
 				if (name === "Input.insertText") assert.equal(args.text, "/model");
 			},
 			evaluate: async (source) => {
+				if (source.includes("model-case: reveal-row")) {
+					calls.push(["reveal", source]);
+					return mode === "no-scroller"
+						? { found: true, scroller: false }
+						: {
+								found: true,
+								scroller: true,
+								scrollTop: 120,
+								clientHeight: 800,
+							};
+				}
 				if (source.includes("model-case: geometry")) return geometry();
 				if (
 					source.includes("model-case: mark-targets") ||
@@ -615,6 +626,41 @@ test("native drive waits on A by id in the chats region, with a row census on fa
 				'document.querySelectorAll("[data-tour-tag=chat-session-row]").length===1',
 		),
 		"document-wide row count must not return",
+	);
+});
+
+test("native drive scrolls row A into view inside the sidebar scroller before the gated press", async () => {
+	/*
+	 * CI41554454323: A's centre was at y=920 in a 900px window, so the pointer
+	 * gate refused it. Pin the order: reveal (scrollIntoView on A within
+	 * `[data-sidebar-region="scroller"]`) strictly before the press of A, and the
+	 * press still goes through the gate rather than a forced click.
+	 */
+	const ctx = oracleContext();
+	await modelUncertaintyCase.drive(ctx);
+	const reveal = ctx.calls.findIndex((x) => x[0] === "reveal");
+	const pressA = ctx.calls.findIndex(
+		(x) => x[0] === "press" && x[1].includes('data-session-row="aaaaaaaaaaaa"'),
+	);
+	assert(reveal >= 0, "drive never revealed row A");
+	assert(pressA > reveal, "row A pressed before it was scrolled into view");
+	const source = ctx.calls[reveal][1];
+	assert.match(source, /scrollIntoView\(\{block:'nearest'\}\)/);
+	assert.match(source, /data-sidebar-region="scroller"/);
+	assert.match(source, /data-session-row=\\?"aaaaaaaaaaaa\\?"/);
+});
+
+test("native drive refuses row A outside the sidebar scroller instead of pressing", async () => {
+	const ctx = oracleContext("no-scroller");
+	await assert.rejects(
+		modelUncertaintyCase.drive(ctx),
+		/row A is not inside the sidebar scroller/,
+	);
+	assert(
+		!ctx.calls.some(
+			(x) => x[0] === "press" && x[1].includes("data-session-row"),
+		),
+		"no press may follow a failed reveal",
 	);
 });
 
