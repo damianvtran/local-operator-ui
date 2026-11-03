@@ -1687,6 +1687,22 @@
 					"receipt": "i18n/receipts/f50d87966867.json",
 					"receipt_sha256": "a67c55ebe7aa0d49175eb0c6315b6617277e2b5254b78e3018f52b6acee98a35",
 					"scope": "five-key delta at c44e9e8be8e, previous unchanged messages retained; static linguistic/mechanical audit only, no native/pseudo-frame fit sign-off"
+				},
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-03",
+					"result": "clean",
+					"instance": "es2-ac9ef02a0918",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/es2-ac9ef02a0918.json",
+					"receipt_sha256": "42d523ee85368f85bf3970512a1df4e11561c40086dea5152535e0e03cf36d84",
+					"scope": "second independent high-visibility five-key delta at 19868532b9c, previous unchanged messages retained; static linguistic/mechanical audit only, no native/pseudo-frame fit sign-off"
 				}
 			],
 			"status": "audited",
@@ -3357,6 +3373,22 @@
 					"receipt": "i18n/receipts/f50d87966867.json",
 					"receipt_sha256": "a67c55ebe7aa0d49175eb0c6315b6617277e2b5254b78e3018f52b6acee98a35",
 					"scope": "five-key delta at c44e9e8be8e, previous unchanged messages retained; static linguistic/mechanical audit only, no native/pseudo-frame fit sign-off"
+				},
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-03",
+					"result": "clean",
+					"instance": "es2-ac9ef02a0918",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/es2-ac9ef02a0918.json",
+					"receipt_sha256": "42d523ee85368f85bf3970512a1df4e11561c40086dea5152535e0e03cf36d84",
+					"scope": "second independent high-visibility five-key delta at 19868532b9c, previous unchanged messages retained; static linguistic/mechanical audit only, no native/pseudo-frame fit sign-off"
 				}
 			],
 			"status": "audited",
@@ -11047,6 +11079,22 @@
 					"receipt": "i18n/receipts/c44e0f808e48.json",
 					"receipt_sha256": "fc8d9970636be1fa9644fa9a5ab5e46d549168fcf27bff5b2e5e766f4a354ebe",
 					"scope": "five-key delta at c44e9e8be8e, previous unchanged messages retained; static linguistic/mechanical audit only, no native/pseudo-frame fit sign-off"
+				},
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-03",
+					"result": "clean",
+					"instance": "35aac0a677bc",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/35aac0a677bc.json",
+					"receipt_sha256": "71d38bf7687638f054dc1faea345a95f9c267bd8a570d465ae009bcc866c7627",
+					"scope": "second independent high-visibility five-key delta at 19868532b9c, previous unchanged messages retained; static linguistic/mechanical audit only, no native/pseudo-frame fit sign-off"
 				}
 			],
 			"status": "audited",
@@ -12788,6 +12836,22 @@
 					"receipt": "i18n/receipts/c44e0f808e48.json",
 					"receipt_sha256": "fc8d9970636be1fa9644fa9a5ab5e46d549168fcf27bff5b2e5e766f4a354ebe",
 					"scope": "five-key delta at c44e9e8be8e, previous unchanged messages retained; static linguistic/mechanical audit only, no native/pseudo-frame fit sign-off"
+				},
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-03",
+					"result": "clean",
+					"instance": "35aac0a677bc",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/35aac0a677bc.json",
+					"receipt_sha256": "71d38bf7687638f054dc1faea345a95f9c267bd8a570d465ae009bcc866c7627",
+					"scope": "second independent high-visibility five-key delta at 19868532b9c, previous unchanged messages retained; static linguistic/mechanical audit only, no native/pseudo-frame fit sign-off"
 				}
 			],
 			"status": "audited",
@@ -20822,6 +20886,22 @@
 					"receipt": "i18n/receipts/b858f6df97a0.json",
 					"receipt_sha256": "bea7caae3a302bd77a672869d9836326e28ba17093f4c603e81a33a031a6a4f3",
 					"scope": "five-key delta at c44e9e8be8e, previous unchanged messages retained; static linguistic/mechanical audit only, no native/pseudo-frame fit sign-off"
+				},
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-03",
+					"result": "clean",
+					"instance": "786d3d9ff0bb-hi-census-r2",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/786d3d9ff0bb-hi-census-r2.json",
+					"receipt_sha256": "0e7893e85078c0a4cb231f7da4e9f55b31cfa97ee8dfdfbf11492be71212750a",
+					"scope": "second independent high-visibility five-key delta at 19868532b9c, previous unchanged messages retained; static linguistic/mechanical audit only, no native/pseudo-frame fit sign-off"
 				}
 			],
 			"status": "audited",
@@ -22541,6 +22621,22 @@
 					"receipt": "i18n/receipts/b858f6df97a0.json",
 					"receipt_sha256": "bea7caae3a302bd77a672869d9836326e28ba17093f4c603e81a33a031a6a4f3",
 					"scope": "five-key delta at c44e9e8be8e, previous unchanged messages retained; static linguistic/mechanical audit only, no native/pseudo-frame fit sign-off"
+				},
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-03",
+					"result": "clean",
+					"instance": "786d3d9ff0bb-hi-census-r2",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/786d3d9ff0bb-hi-census-r2.json",
+					"receipt_sha256": "0e7893e85078c0a4cb231f7da4e9f55b31cfa97ee8dfdfbf11492be71212750a",
+					"scope": "second independent high-visibility five-key delta at 19868532b9c, previous unchanged messages retained; static linguistic/mechanical audit only, no native/pseudo-frame fit sign-off"
 				}
 			],
 			"status": "audited",
@@ -30315,6 +30411,22 @@
 					"receipt": "i18n/receipts/917e940202d4.json",
 					"receipt_sha256": "3ebc356627f0303f572d70c048901f719902bbb9c883861f962bcadb6f2a9fd2",
 					"scope": "five-key delta at c44e9e8be8e, previous unchanged messages retained; static linguistic/mechanical audit only, no native/pseudo-frame fit sign-off"
+				},
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-03",
+					"result": "clean",
+					"instance": "97bb3462a65c-ru-census-r2",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/97bb3462a65c-ru-census-r2.json",
+					"receipt_sha256": "4799e45e81398b982f644011487d6c97cc5fd137aada37afdc7232d7b9ebe9fa",
+					"scope": "second independent high-visibility five-key delta at 19868532b9c, previous unchanged messages retained; static linguistic/mechanical audit only, no native/pseudo-frame fit sign-off"
 				}
 			],
 			"status": "audited",
@@ -31993,6 +32105,22 @@
 					"receipt": "i18n/receipts/917e940202d4.json",
 					"receipt_sha256": "3ebc356627f0303f572d70c048901f719902bbb9c883861f962bcadb6f2a9fd2",
 					"scope": "five-key delta at c44e9e8be8e, previous unchanged messages retained; static linguistic/mechanical audit only, no native/pseudo-frame fit sign-off"
+				},
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-03",
+					"result": "clean",
+					"instance": "97bb3462a65c-ru-census-r2",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/97bb3462a65c-ru-census-r2.json",
+					"receipt_sha256": "4799e45e81398b982f644011487d6c97cc5fd137aada37afdc7232d7b9ebe9fa",
+					"scope": "second independent high-visibility five-key delta at 19868532b9c, previous unchanged messages retained; static linguistic/mechanical audit only, no native/pseudo-frame fit sign-off"
 				}
 			],
 			"status": "audited",
@@ -39736,6 +39864,22 @@
 					"receipt": "i18n/receipts/1b7a2a90c876.json",
 					"receipt_sha256": "e0724c474622d00bcc36d240d24e997f7e9337d1531707b4d0dfececafc7c8d9",
 					"scope": "five-key delta at c44e9e8be8e, previous unchanged messages retained; static linguistic/mechanical audit only, no native/pseudo-frame fit sign-off"
+				},
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-03",
+					"result": "clean",
+					"instance": "25304c88781e-ur-census-second",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/25304c88781e-ur-census-second.json",
+					"receipt_sha256": "11d6d32d6c51defc436d60d24ba69d1d83173122d2b33f394125aacaf6d69177",
+					"scope": "second independent high-visibility five-key delta at 19868532b9c, previous unchanged messages retained; static linguistic/mechanical audit only, no native/pseudo-frame fit sign-off"
 				}
 			],
 			"status": "audited",
@@ -41434,6 +41578,22 @@
 					"receipt": "i18n/receipts/1b7a2a90c876.json",
 					"receipt_sha256": "e0724c474622d00bcc36d240d24e997f7e9337d1531707b4d0dfececafc7c8d9",
 					"scope": "five-key delta at c44e9e8be8e, previous unchanged messages retained; static linguistic/mechanical audit only, no native/pseudo-frame fit sign-off"
+				},
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-03",
+					"result": "clean",
+					"instance": "25304c88781e-ur-census-second",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/25304c88781e-ur-census-second.json",
+					"receipt_sha256": "11d6d32d6c51defc436d60d24ba69d1d83173122d2b33f394125aacaf6d69177",
+					"scope": "second independent high-visibility five-key delta at 19868532b9c, previous unchanged messages retained; static linguistic/mechanical audit only, no native/pseudo-frame fit sign-off"
 				}
 			],
 			"status": "audited",
@@ -49081,6 +49241,22 @@
 					"receipt": "i18n/receipts/54cb9d3782eb.json",
 					"receipt_sha256": "600b4d515b20049c2c5a21ccddfa7b7c6eb035919fd0e4aeeb566f3e13ba2304",
 					"scope": "five-key delta at c44e9e8be8e, previous unchanged messages retained; static linguistic/mechanical audit only, no native/pseudo-frame fit sign-off"
+				},
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-03",
+					"result": "clean",
+					"instance": "6431174917d4-vi-census-r2",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/6431174917d4-vi-census-r2.json",
+					"receipt_sha256": "ba932cc7196aec0beff8fb2a44438238c0f63cccfe1e083f60e4de5b86c769ff",
+					"scope": "second independent high-visibility five-key delta at 19868532b9c, previous unchanged messages retained; static linguistic/mechanical audit only, no native/pseudo-frame fit sign-off"
 				}
 			],
 			"status": "audited",
@@ -50858,6 +51034,22 @@
 					"receipt": "i18n/receipts/54cb9d3782eb.json",
 					"receipt_sha256": "600b4d515b20049c2c5a21ccddfa7b7c6eb035919fd0e4aeeb566f3e13ba2304",
 					"scope": "five-key delta at c44e9e8be8e, previous unchanged messages retained; static linguistic/mechanical audit only, no native/pseudo-frame fit sign-off"
+				},
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-03",
+					"result": "clean",
+					"instance": "6431174917d4-vi-census-r2",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/6431174917d4-vi-census-r2.json",
+					"receipt_sha256": "ba932cc7196aec0beff8fb2a44438238c0f63cccfe1e083f60e4de5b86c769ff",
+					"scope": "second independent high-visibility five-key delta at 19868532b9c, previous unchanged messages retained; static linguistic/mechanical audit only, no native/pseudo-frame fit sign-off"
 				}
 			],
 			"status": "audited",
@@ -59125,6 +59317,22 @@
 					"receipt": "i18n/receipts/e55f54b6a26e.json",
 					"receipt_sha256": "8cc40b876f150a0503c6ad632cc099b4df24ae737e1bc2036f632ad88245abf4",
 					"scope": "five-key delta at c44e9e8be8e, previous unchanged messages retained; static linguistic/mechanical audit only, no native/pseudo-frame fit sign-off"
+				},
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-03",
+					"result": "clean",
+					"instance": "6433b7a5b3e9",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/6433b7a5b3e9.json",
+					"receipt_sha256": "3378cfab2ff9554ad49f13e4f9ba0aecdeb7b492d26bcaa541745aba278592f3",
+					"scope": "second independent high-visibility five-key delta at 19868532b9c, previous unchanged messages retained; static linguistic/mechanical audit only, no native/pseudo-frame fit sign-off"
 				}
 			],
 			"status": "audited",
@@ -60884,6 +61092,22 @@
 					"receipt": "i18n/receipts/e55f54b6a26e.json",
 					"receipt_sha256": "8cc40b876f150a0503c6ad632cc099b4df24ae737e1bc2036f632ad88245abf4",
 					"scope": "five-key delta at c44e9e8be8e, previous unchanged messages retained; static linguistic/mechanical audit only, no native/pseudo-frame fit sign-off"
+				},
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-03",
+					"result": "clean",
+					"instance": "6433b7a5b3e9",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/6433b7a5b3e9.json",
+					"receipt_sha256": "3378cfab2ff9554ad49f13e4f9ba0aecdeb7b492d26bcaa541745aba278592f3",
+					"scope": "second independent high-visibility five-key delta at 19868532b9c, previous unchanged messages retained; static linguistic/mechanical audit only, no native/pseudo-frame fit sign-off"
 				}
 			],
 			"status": "audited",

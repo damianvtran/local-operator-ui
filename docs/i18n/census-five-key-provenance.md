@@ -71,14 +71,52 @@ The coordinator reports that all seven audits substantively completed on the
 quota-fallback model recorded above. Receipt validation establishes internal
 identity/hash consistency; it does not independently prove authorship.
 
+## Second independent high-visibility delta audits
+
+All seven second-auditor receipts derive a clean result with zero findings for
+both namespaces. Source and target hashes were checked against the committed
+catalogue bytes at `19868532b9c`, identical to the working catalogue bytes.
+Auditor instances and models below were read from the receipts, including the
+instance suffixes; they were not reconstructed from session IDs.
+
+| Locale | Second auditor instance | Canonical receipt | Model recorded in receipt |
+| --- | --- | --- | --- |
+| zh-CN | `6433b7a5b3e9` | [`6433b7a5b3e9.json`](../../i18n/receipts/6433b7a5b3e9.json) | `openai/gpt-6.1-sol` |
+| fr | `35aac0a677bc` | [`35aac0a677bc.json`](../../i18n/receipts/35aac0a677bc.json) | `openai/gpt-6.1-sol` |
+| es | `es2-ac9ef02a0918` | [`es2-ac9ef02a0918.json`](../../i18n/receipts/es2-ac9ef02a0918.json) | `openai/gpt-6.1-sol` |
+| ru | `97bb3462a65c-ru-census-r2` | [`97bb3462a65c-ru-census-r2.json`](../../i18n/receipts/97bb3462a65c-ru-census-r2.json) | `openai/gpt-6.1-sol` |
+| vi | `6431174917d4-vi-census-r2` | [`6431174917d4-vi-census-r2.json`](../../i18n/receipts/6431174917d4-vi-census-r2.json) | `openai/gpt-6.1-sol` |
+| ur | `25304c88781e-ur-census-second` | [`25304c88781e-ur-census-second.json`](../../i18n/receipts/25304c88781e-ur-census-second.json) | `openai/gpt-6.1-sol` |
+| hi | `786d3d9ff0bb-hi-census-r2` | [`786d3d9ff0bb-hi-census-r2.json`](../../i18n/receipts/786d3d9ff0bb-hi-census-r2.json) | `openai/gpt-6.1-sol` |
+
+The same immutable multi-namespace receipt backs both rows for each locale.
+The first audits, baseline translator metadata, and superseded history are
+unchanged. Every affected row now has two distinct current-byte auditor
+instances; this records two static delta audits, not a new whole-namespace audit.
+The second audit entries were appended only by `ledger-assemble.mjs`, dated
+`2026-11-03`, with scope:
+
+> second independent high-visibility five-key delta at 19868532b9c, previous unchanged messages retained; static linguistic/mechanical audit only, no native/pseudo-frame fit sign-off
+
+Auditor-written companion records, mechanical results, scripts and execution
+logs are retained byte-for-byte under
+[`i18n/audit-evidence/census-five-key-second/`](../../i18n/audit-evidence/census-five-key-second/).
+The [manifest](../../i18n/audit-evidence/census-five-key-second/manifest.json)
+maps each locale's canonical receipt to the original companion paths and their
+SHA-256 hashes. These are preserved historical artifacts, not rewritten logs or
+claims that this assembly session reran their commands. Scratch-only copies of
+repository modules and catalogue inputs were not duplicated except where the
+auditor supplied an aggregate input artifact.
+
 ## Open gates: not locale clearance
 
-**High-visibility second independent audits and native/pseudo-rendered QA remain
-open gates.** These receipts provide static linguistic/mechanical evidence only;
-they do not establish measured fit, native rendering, pseudo-frame fit, or
-whole-namespace linguistic reapproval. Passing ledger validation, including a
-mechanically derived `audited` status, is not locale clearance and does not close
-those outstanding gates.
+**The high-visibility second static audit gate is recorded; native/pseudo-rendered
+QA and code/design review gates remain pending.** These receipts provide static
+linguistic/mechanical evidence only; they do not establish measured fit, native
+rendering, pseudo-frame fit, or whole-namespace linguistic reapproval. Passing
+ledger validation, including a mechanically derived `audited` status, is not
+locale clearance or language completion and does not close those outstanding
+gates.
 
 Assembly was performed by session `9cb61d8c4e27`, actually running
 `openai/gpt-6.1-sol` after provider-quota fallback from the configured

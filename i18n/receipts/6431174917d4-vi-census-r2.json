@@ -1,0 +1,74 @@
+{
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "6431174917d4",
+    "instance": "6431174917d4-vi-census-r2",
+    "model": "openai/gpt-6.1-sol",
+    "actual_model_source": "Host model-switch notice: openai/gpt-6.1-sol fallback due to provider quota; initial sonnet and intermediate opus notices preceded substantive audit execution.",
+    "fallback": true,
+    "independent_from_translator_session": true,
+    "independence_source": "Manager delegation names this session independent second auditor; translator session ID not supplied; no translator or first-audit findings/receipts read."
+  },
+  "model": "openai/gpt-6.1-sol",
+  "instance": "6431174917d4-vi-census-r2",
+  "locale": "vi",
+  "audit_date": "2026-11-03",
+  "status": "passed",
+  "audit_kind": "second-independent-high-visibility-delta",
+  "source_commit": "19868532b9cd2bca0eca468dbf22572d8dd78a5b",
+  "comparison_base": "6dd43fd7494",
+  "operator_request_verbatim": "Make sure to continue the work all the way for all languages to get the entire UI completely translated",
+  "scope": "Only five new census display keys; no whole-namespace re-audit or whole-UI completion claim.",
+  "namespaces": {
+    "ui.chat": {
+      "status": "passed",
+      "sha256": {
+        "en": "270fc752791e2960006b560ec9616c2010dab80e92af19f075f7e04a3055bd27",
+        "vi": "40ba9c3761d9e5fed84b2a1bb5289cfd2baf402984f351559dee348511fe24ea"
+      },
+      "context_sha256": "efcf4d1872974b6fc7456e753a2e10010ab896fffede262ae7c19d96c35ecee1",
+      "key_count": 3,
+      "keys": [
+        "ui.chat.session_status.effort_level.low",
+        "ui.chat.session_status.effort_level.medium",
+        "ui.chat.session_status.effort_level.high"
+      ],
+      "findings": []
+    },
+    "ui.chat.run_details": {
+      "status": "passed",
+      "sha256": {
+        "en": "f8184d5f41b359364e47747871988bbb731d79c12bc3b9ec755f3db73e5db6ab",
+        "vi": "a7ff21ae3033644e02cb029ae6382222a13cc79e7026a4d202e63c55ef0da5c8"
+      },
+      "context_sha256": "da588f521188a2bcba1d0aeb7a265c3474b16673b8f653a021fa7e9e7075e911",
+      "key_count": 2,
+      "keys": [
+        "ui.chat.run_details.wake.armed_count",
+        "ui.chat.run_details.wake.cadence_once"
+      ],
+      "findings": []
+    }
+  },
+  "finding_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+  },
+  "limitations": [
+    "No native application execution.",
+    "No pseudo-localization or rendered pixels, clipping, geometry or font-fit proof.",
+    "No full-repository validator/scanner, builds, tsc, installs or worktrees; only bounded existing ICU parser/formatter plus pure repository receipt validator.",
+    "Full-file hashes bind inputs; approval covers the five-key delta only."
+  ],
+  "audit_notes_not_execution_log": [
+    "Thấp / Trung bình / Cao preserve ordinal effort meaning and menu capitalization. Trung bình is naturally two written words; English one-word guidance is not a Vietnamese grammar constraint.",
+    "lịch thức dậy đã đặt preserves the intransitive thức dậy glossary term and names set wake schedules, not deliveries.",
+    "một lần is idiomatic lowercase one-time cadence, including direct schedule sentence consumers.",
+    "Style guide keep-English low/medium/high policy applies to config tokens; source sidecar and code distinguish translated display labels from unchanged raw wire values.",
+    "count selects the plural; count_display is printed ungrouped as required, including 1000 and 1.5.",
+    "No numeric maxCells/maxChars for these keys. Trung bình is 10 Unicode characters; actual pixel fit remains unverified.",
+    "keepRepeatLabel null branch uses its own existing keep_as_once message; non-null branch passes formatWakeCadence. No invented claim that the new once key flows through the null keep label."
+  ]
+}

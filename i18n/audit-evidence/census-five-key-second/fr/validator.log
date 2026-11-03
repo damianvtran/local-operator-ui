@@ -1,0 +1,16 @@
+✔ the English source is non-empty (the guard would pass vacuously otherwise) (1.165292ms)
+✔ [fr] ships at least one message (not an empty claim) (0.549333ms)
+✔ [fr] defines each key in at most one namespace file (0.922ms)
+✔ [fr] carries EVERY key of each namespace file it ships (0.816459ms)
+✔ [fr] names only keys the English source defines (0.772542ms)
+✔ [fr] preserves every ICU placeholder from the English source (7.084833ms)
+✔ [fr] is not an English stub (no value identical to the source) (1.697ms)
+✔ a locale-scoped identical-value exemption does not exempt another locale (0.124208ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 372.961084
