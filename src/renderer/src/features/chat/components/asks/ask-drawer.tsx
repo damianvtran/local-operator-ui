@@ -211,6 +211,21 @@ const keyboardLeftOnMenuPress = (active: Element): boolean =>
 	active === document.body || active.matches(MENU_TRIGGER_SELECTOR);
 
 /**
+ * Whether the element is inside a subtree an `inert` ancestor has covered.
+ *
+ * THE PRESS LATCH BELOW NEEDS THIS, not merely "focus is on BODY": a click on
+ * chrome that cannot take focus, or a blur, also parks the keyboard on body
+ * while the drawer waits for its records, and adopting the latch there would
+ * pull focus into the drawer after the user moved away (agent review round 2,
+ * m-r2-2). `inert` blurs the focused descendant to body AND marks the subtree,
+ * so the marker is what distinguishes our own open from a keyboard that left.
+ * The property reflects the attribute in every engine the app ships on, so
+ * `closest` reads the same fact the parent's layout effect wrote.
+ */
+const insideInert = (element: Element | null): boolean =>
+	element !== null && element.closest("[inert]") !== null;
+
+/**
  * HOW MANY TIMES the claim below may re-take the keyboard before it gives up.
  *
  * A BOUND, NOT A TUNING KNOB. The menu's close writes focus more than once on
@@ -795,6 +810,23 @@ export const AskDrawer = ({
 		 * request path has its own guard and must keep it.
 		 */
 		if (door !== null) pressedDoorRef.current = door;
+		else if (
+			requested &&
+			!viaMenu.current &&
+			pressedDoorRef.current === null &&
+			active !== document.body
+		) {
+			/*
+			 * A CHORD'S PRESSED CONTROL IS THE SAME KIND OF ORIGIN (agent review round 2,
+			 * M2-r2). A press that opens the sheet from an ordinary button - the notice's
+			 * "Open asks", the confirm's "Open asks panel" - is latched here too: the button
+			 * may still hold focus on this commit and is then blurred by the covered
+			 * column's `inert`, or removed with the confirm, and either way the keyboard
+			 * must end in the sheet rather than on `<body>`. The menu's trigger keeps its
+			 * own guard and is never latched as a press (`viaMenu`).
+			 */
+			pressedDoorRef.current = active;
+		}
 		const root = rootRef.current;
 		/* No container yet: nothing to move focus into, and the one-shot is not spent. */
 		if (root === null) return;
@@ -826,17 +858,26 @@ export const AskDrawer = ({
 		if ((door !== null || requested) && frameUnread) return;
 		wasBootstrapped.current = true;
 		/*
-		 * THE LATCHED PRESS IS ACCEPTED WHEN `<body>` IS WHERE OUR OWN `inert` LEFT IT
-		 * (agent review round 1, m1): focus on the body is not the user moving away, it
-		 * is the covered column being made inert under the chip they pressed. A user who
-		 * moved the keyboard somewhere real is still `door === null` here and stands the
-		 * move down, as before.
+		 * THE LATCHED PRESS IS ACCEPTED WHERE OUR OWN COMMIT LEFT THE KEYBOARD (agent
+		 * review round 1, m1): focus on the body is not the user moving away, it is the
+		 * covered column being made inert under the chip they pressed - or that control
+		 * removed outright -, and a user who went anywhere else still has no `door` here
+		 * and stands the move down, as before.
+		 *
+		 * AND THE TWO READINGS ARE BOTH EVIDENCE, because `<body>` alone is not (agent
+		 * review round 2, m-r2-2): a click on non-focusable chrome parks the keyboard in
+		 * exactly that place. The latched origin is adopted when the keyboard is still ON
+		 * it, or when it went to `<body>` and our own commit took the control away - the
+		 * covered column marks it `inert`, or the confirm that held it was removed
+		 * (`!isConnected`). Anything else means the user moved on.
 		 */
-		const pressedDoor =
-			door ??
-			(active === document.body && doorRef.current === null
-				? pressedDoorRef.current
-				: null);
+		const latched = pressedDoorRef.current;
+		const latchedPressOk =
+			latched !== null &&
+			(active === latched ||
+				(active === document.body &&
+					(insideInert(latched) || !latched.isConnected)));
+		const pressedDoor = door ?? (latchedPressOk ? latched : null);
 		if (pressedDoor === null && !requested) return;
 		/*
 		 * THE RETURN TARGET: the pressed door itself, or - for the menu's request -

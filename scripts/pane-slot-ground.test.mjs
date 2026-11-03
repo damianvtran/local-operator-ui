@@ -843,9 +843,20 @@ test("the covered content is inert while the sheet is up, on both mounts", () =>
 		/data-ask-covered-content=""[\s\S]{0,120}?className="contents"/,
 		`${CHAT_LAYOUT} no longer wraps the covered content in the display:contents marker the rig reads`,
 	);
+	/*
+	 * PRESS VERSUS RESULT (review round 2, M2-r2). A press must open in both
+	 * presentations; a LANDED result must not open the sheet; and a refused result
+	 * must be allowed to land there, because the composer it would leave the caret in
+	 * is inert. The three arms are pinned as the one expression that decides them.
+	 */
 	assert.match(
 		session,
-		/if \(options\?\.focus === false && inOverlayPresentation\(\)\) return;/,
-		`${CHAT_CONTENT} opens the sheet as a RESULT again: that arm exists to leave the caret in the composer, which the sheet inerts`,
+		/if \(sheet && options\?\.focus === false && options\.openInSheet === false\)\s*\n?\s*return false;/,
+		`${CHAT_CONTENT} opens the sheet for a landed result again: that arm exists to leave the caret in the composer, which the sheet inerts`,
+	);
+	assert.match(
+		session,
+		/const takesFocus = options\?\.focus !== false \|\| sheet;/,
+		`${CHAT_CONTENT} no longer answers whether an open took the keyboard, so the composer cannot know whether to take the caret back`,
 	);
 });

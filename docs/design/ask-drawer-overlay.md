@@ -84,8 +84,12 @@ Scope: the Ask drawer only (session scope in `chat-content.tsx`, fleet scope in
     parent's, so `AskDrawer`'s door read runs while the chip still holds focus, and
     only then does the parent's effect inert the column - which blurs that chip to
     `<body>`. The drawer latches the pressed door before the unread-frame wait
-    (`pressedDoorRef`) instead of re-reading focus after inert is on, and accepts the
-    latched door when `<body>` is where that inert left it.
+    (`pressedDoorRef`) instead of re-reading focus at the commit that moves it, and
+    accepts the latch only when the press is still the user's last act: the keyboard
+    is still on that control, or it fell to `<body>` because our own commit took the
+    control away - the covered column's `inert` marker is on it, or the control was
+    removed. `<body>` alone is not evidence (a click on chrome parks it there too;
+    review round 2, m-r2-2).
   - Rejected: `role="dialog"` and Radix `DismissableLayer`; a Radix drawer (`display:
     contents` was preferred over moving the composer out of the inert subtree);
     claiming Escape from `<body>` (it would add a page-wide claim for a case the
@@ -103,9 +107,25 @@ Scope: the Ask drawer only (session scope in `chat-content.tsx`, fleet scope in
     switch) is closed as a withdrawal at the start of an overlay view - the switch
     destroyed the element that held focus, so a carried sheet would mount with the
     keyboard on `<body>` inside an inert column. A DOCKED drawer still follows the
-    user, as it always did. The `focus: false` secret path (`openAsksForSecret`)
-    does not open the sheet either: that arm exists to leave the caret in the
-    composer, which the sheet would inert.
+    user, as it always did.
+  - **PRESS VERSUS RESULT (review round 2, M2-r2).** `openAsksForSecret` has three
+    callers and the sheet changes only the middle one:
+    - a PRESS (no options; the notice's "Open asks", the multi-secret confirm's
+      "Open asks panel") opens in both presentations and takes the keyboard. A
+      labelled door that does nothing below the breakpoint is a dead control; the
+      drawer latches that control as the press origin, so a control our own commit
+      blurs (inert) or removes (the confirm) still lands the keyboard in the sheet
+      rather than on `<body>`.
+    - a LANDED fill (`focus: false, openInSheet: false`) opens beside the box when
+      docked and does NOT open the sheet: the act is done, and covering the
+      conversation would price a completed action.
+    - a REFUSED fill (`focus: false`) opens beside the box when docked and keeps the
+      caret there; under the sheet it opens and takes the keyboard, because the
+      composer is inert and cannot hold it - which is also what keeps
+      `secret_fill_refused` ("the asks panel shows why") true. `onOpen` answers with
+      whether it took the keyboard, and the composer decides the caret from that
+      answer instead of assuming its box is focusable.
+    The invitation is untouched: rules 5 and 6 still mean no auto-open.
   - Rejected: auto-open as a modal sheet (blurs the composer via inert, a focus
     theft); leaving the policy alone (reproduces the report on every conversation
     open below ~980px); claiming Escape from `<body>` (a page-wide claim for a state
@@ -150,4 +170,13 @@ Scope: the Ask drawer only (session scope in `chat-content.tsx`, fleet scope in
   two preferred widths, including the minimum strip. `chat-pane-floors.test.mjs` and
   `right-slot-width.test.mjs` stay green UNCHANGED: that is the proof the resolver
   and the uniform-side-panels widths did not move.
+- `scripts/credential-composer.test.mjs` - the composer's share of press versus
+  result, driven through the shipped `MessageInput`: the multi-secret control opens
+  as a press and keeps the keyboard out of the box, and a refused fill refocuses the
+  box only when the panel answered that it did not take the keyboard.
+- `scripts/ask-draft-swap.test.mjs` - the drawer's entry move when our own commit
+  blurred the pressed control (`inert`) or removed it (the confirm): the press still
+  lands; a control parked on `<body>` without that evidence moves nothing.
+- `scripts/ask-open-render.test.mjs` - the refusal's live-region clause is retired
+  when a queue settles while the sheet never opened.
 - Leave: `renderer-driver.mjs`'s canvas adjacency assertion (canvas out of scope).

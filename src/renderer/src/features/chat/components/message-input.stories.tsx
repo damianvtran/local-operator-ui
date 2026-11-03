@@ -3741,7 +3741,7 @@ export const QueuedSecretAsk: Story = {
 				secretAsk={{
 					key: "story-secret-1:api_token",
 					fillable: true,
-					onOpen: () => {},
+					onOpen: () => false,
 					onFill: async () => "sent",
 				}}
 			/>
@@ -3760,7 +3760,7 @@ export const SecretAskSending: Story = {
 				secretAsk={{
 					key: "story-ask-sending",
 					fillable: true,
-					onOpen: () => {},
+					onOpen: () => false,
 					/* Never resolves: the frame is the window a slow link shows. */
 					onFill: () => new Promise(() => {}),
 				}}
@@ -3793,7 +3793,7 @@ export const SecretAskRefused: Story = {
 				secretAsk={{
 					key: "story-ask-refused",
 					fillable: true,
-					onOpen: () => {},
+					onOpen: () => false,
 					onFill: async () => "refused",
 				}}
 			/>
@@ -3825,7 +3825,7 @@ export const SecretAskMulti: Story = {
 				secretAsk={{
 					key: "story-ask-multi",
 					fillable: false,
-					onOpen: () => {},
+					onOpen: () => false,
 					onFill: async () => "multi",
 				}}
 			/>
@@ -3851,7 +3851,7 @@ export const SecretAskConfirm: Story = {
 				secretAsk={{
 					key: "story-secret-1:api_token",
 					fillable: true,
-					onOpen: () => {},
+					onOpen: () => false,
 					onFill: async () => "sent",
 				}}
 			/>

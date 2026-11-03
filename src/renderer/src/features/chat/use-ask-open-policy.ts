@@ -378,8 +378,19 @@ export const useAskOpenPolicy = ({
 	);
 	useEffect(() => {
 		const waiting = view.waiting > 0 || view.open > 0 || view.delivering > 0;
-		if (wasWaiting.current && !waiting && sessionDrawerOpen)
+		if (wasWaiting.current && !waiting && sessionDrawerOpen) {
 			setAnnouncement(askSettledAnnouncement(view));
+		} else if (!waiting && !sessionDrawerOpen) {
+			/*
+			 * AND A QUIET QUEUE HAS NOTHING TO ANNOUNCE (agent review round 2, m-r2-3).
+			 * The `covers-conversation` refusal speaks over a SHUT drawer, so neither
+			 * the close watch above (no close happened) nor the settle arm (no drawer was
+			 * up) can end that sentence - a queue that emptied after a refusal left
+			 * "1 question waiting." standing for the rest of the mount. Nothing waiting,
+			 * nothing up: the region has nothing true left to say.
+			 */
+			setAnnouncement("");
+		}
 		wasWaiting.current = waiting;
 	}, [view, sessionDrawerOpen]);
 

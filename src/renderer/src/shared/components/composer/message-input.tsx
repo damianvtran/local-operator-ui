@@ -749,9 +749,13 @@ export type MessageInputProps = {
 	 * review round 1, m1; QA round 1, Q2). `fillable` is false for an ask with
 	 * more than one secret question: one value names no field there, so the
 	 * confirm's primary control opens the panel instead of putting anything
-	 * (design round 1, D2). `onOpen` opens the asks panel -- with `focus: false`
-	 * when the open is a RESULT of the composer (a refused fill) rather than a
-	 * press, so the caret stays in the box. `onFill` posts one value as that
+	 * (design round 1, D2). `onOpen` opens the asks panel and RESOLVES WHETHER THE
+	 * SURFACE TOOK THE KEYBOARD: a press (no options) always does, a refused fill
+	 * (`focus: false`) does only where the composer cannot keep the caret - under
+	 * the overlay sheet, where the box is `inert` - and a landed fill
+	 * (`focus: false, openInSheet: false`) never does and does not open the sheet
+	 * at all. The caller decides the caret with that answer rather than assuming
+	 * the box is focusable. `onFill` posts one value as that
 	 * field's answer and resolves WHAT HAPPENED, not merely whether it landed: a
 	 * refusal, a lock, an expired ask and a missing session are four different
 	 * sentences, and `false` collapsed them into "nothing happened" (agent review
@@ -762,7 +766,10 @@ export type MessageInputProps = {
 	secretAsk?: {
 		key: string;
 		fillable: boolean;
-		onOpen: (options?: { focus?: boolean }) => void;
+		onOpen: (options?: {
+			focus?: boolean;
+			openInSheet?: boolean;
+		}) => boolean;
 		onFill: (value: string, key: string) => Promise<SecretFillOutcome>;
 	} | null;
 	/**
@@ -4817,6 +4824,18 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			secretConfirmGroup.current?.focus();
 		}, [secretFilling]);
 
+		/**
+		 * THE LAST CONFIRM PRESS ASKED THE PANEL TO TAKE THE KEYBOARD.
+		 *
+		 * The retirement effect below moves focus back into the box whenever the
+		 * confirm disappears - right for a dismissal, a send, and a refusal whose panel
+		 * stayed out of the way. It is wrong when the same press opened a surface that
+		 * took the keyboard itself (the sheet under the overlay): that write lands
+		 * after the panel's own layout effect and would pull the caret out of a surface
+		 * the user just asked for. One press, one answer, read once.
+		 */
+		const openTookKeyboard = useRef(false);
+
 		/*
 		 * THE CONFIRM IS BOUND TO ITS ASK (agent review round 1, m1; QA round 1,
 		 * Q1/Q2). If the ask goes away - answered in the panel, expired, declined -
@@ -4843,6 +4862,10 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			 * so a press that left the keyboard on a confirm control is found by
 			 * `contains` and handed back to the box.
 			 */
+			if (openTookKeyboard.current) {
+				openTookKeyboard.current = false;
+				return;
+			}
 			const active = document.activeElement;
 			if (
 				active !== null &&
@@ -4928,8 +4951,15 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			if (!secretAsk.fillable) {
 				setSecretConfirm(null);
 				setSecretRefusal(t("ui.chat.composer.secret_fill_multi"));
-				secretAsk.onOpen({ focus: false });
-				textareaRef.current?.focus();
+				/*
+				 * A PRESS, not a result (agent review round 2, M2-r2): the control is
+				 * labelled "Open asks panel", and the panel is where the user must choose
+				 * the field. It takes the keyboard in BOTH presentations, so this branch
+				 * does not put the caret back in the box - doing so would be the second
+				 * thing deciding focus, and under the sheet the box is about to be inert.
+				 */
+				secretAsk.onOpen();
+				openTookKeyboard.current = true;
 				return;
 			}
 			setSecretFilling(true);
@@ -4966,12 +4996,18 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			setSecretRefusal(secretFillSentence(outcome));
 			/*
 			 * THE PANEL IS WHERE THE ASK IS, so a refusal puts it on screen beside the
-			 * sentence - including the owner's own refusal on the card - without taking
-			 * the caret out of the box (`focus: false`, QA round 1, Q3). An
-			 * `unavailable` pane has no session to open onto, so it is left closed.
+			 * sentence - including the owner's own refusal on the card. `focus: false`
+			 * asks it not to take the caret; the ANSWER says whether it could keep that
+			 * promise (agent review round 2, M2-r2): docked it did, so the caret goes
+			 * back to the box (QA round 1, Q3); under the overlay sheet it could not -
+			 * the box is inert - so the caret stays in the sheet instead of falling to
+			 * `<body>`. An `unavailable` pane has no session to open onto, so it is
+			 * left closed and the box keeps the caret.
 			 */
-			if (outcome !== "unavailable") secretAsk.onOpen({ focus: false });
-			textareaRef.current?.focus();
+			const takesFocus =
+				outcome === "unavailable" ? false : secretAsk.onOpen({ focus: false });
+			openTookKeyboard.current = takesFocus;
+			if (!takesFocus) textareaRef.current?.focus();
 		}, [
 			secretAsk,
 			secretConfirm,

@@ -4916,7 +4916,14 @@ test("a refused fill keeps the text, opens the panel and says why", async () => 
 	const opens = [];
 	const frame = await mount({
 		secretAsk: queuedSecretAsk({
-			onOpen: (...args) => opens.push(args),
+			/*
+			 * THE DOCKED ANSWER (agent review round 2, M2-r2): the panel opened beside the
+			 * box and did not need the keyboard, so the composer puts the caret back.
+			 */
+			onOpen: (options) => {
+				opens.push(options);
+				return false;
+			},
 			onFill: async () => "refused",
 		}),
 	});
@@ -4938,8 +4945,8 @@ test("a refused fill keeps the text, opens the panel and says why", async () => 
 	);
 	assert.deepEqual(
 		opens[0],
-		[{ focus: false }],
-		"and it is opened WITHOUT taking the caret (Q3): the refusal returns focus to the box",
+		{ focus: false },
+		"and it is opened WITHOUT asking for the caret (Q3)",
 	);
 	assert.match(
 		refusalText() ?? "",
@@ -5023,7 +5030,10 @@ test("a multi-secret ask is opened, not filled, and says which field to choose",
 		secretAsk: queuedSecretAsk({
 			key: "qa-secret-multi:*",
 			fillable: false,
-			onOpen: (...args) => opens.push(args),
+			onOpen: (options) => {
+				opens.push(options);
+				return true;
+			},
 			onFill: async (value) => {
 				fills.push(value);
 				return "multi";
@@ -5036,20 +5046,63 @@ test("a multi-secret ask is opened, not filled, and says which field to choose",
 		undefined,
 		"the confirm is up, and its label does not promise a put (design round 1, D2)",
 	);
+	/* A real press puts the keyboard on the control before it unmounts. */
+	confirmControl("Open asks panel")?.focus();
 	await act(async () => {
 		confirmControl("Open asks panel")?.click();
 	});
 	await settle();
 	assert.deepEqual(fills, [], "nothing is posted to a guessed question");
 	assert.equal(opens.length, 1, "the panel is opened");
-	assert.deepEqual(opens[0], [{ focus: false }]);
+	assert.equal(
+		opens[0],
+		undefined,
+		"as a PRESS, not a result: no `focus: false` on a control labelled 'Open asks panel' (agent review round 2, M2-r2)",
+	);
 	assert.match(
 		refusalText() ?? "",
 		/more than one secret/i,
 		"and the reason is visible",
 	);
 	assert.equal(frame.value(), "correct-horse-9", "the draft is kept");
-	assert.equal(boxHasFocus(frame), true, "and the caret is back in the box");
+	assert.equal(
+		boxHasFocus(frame),
+		false,
+		"and the composer does not take the keyboard back from the panel that just opened",
+	);
+});
+
+/*
+ * THE SHEET'S ARM OF THE SAME RULE (agent review round 2, M2-r2): under the overlay
+ * the composer is `inert` once the sheet is up, so "put the caret back in the box"
+ * would put it on `<body>`. The provider's answer says it took the keyboard, and the
+ * composer must take that answer rather than its own preference.
+ */
+test("a refused fill under the sheet leaves the caret to the panel it opened", async () => {
+	const opens = [];
+	const frame = await mount({
+		secretAsk: queuedSecretAsk({
+			onOpen: (options) => {
+				opens.push(options);
+				return true;
+			},
+			onFill: async () => "refused",
+		}),
+	});
+	await armConfirm(frame);
+	confirmControl("Put in secret field")?.focus();
+	await act(async () => {
+		confirmControl("Put in secret field")?.click();
+	});
+	await settle();
+	assert.deepEqual(opens, [{ focus: false }], "the result still asks quietly");
+	assert.equal(frame.value(), "correct-horse-9", "the text is kept");
+	assert.match(refusalText() ?? "", /did not take that value/i);
+	assert.equal(
+		boxHasFocus(frame),
+		false,
+		"the composer did not steal the keyboard back from the sheet",
+	);
 });
 
 test("while a Put is in flight its other controls are disabled and it says so", async () => {

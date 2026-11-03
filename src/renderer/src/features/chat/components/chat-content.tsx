@@ -1760,20 +1760,38 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		 * drawer as a RESULT rather than as a press - a refused "Put in secret field"
 		 * must leave the caret in the box, not take it into the panel (QA round 1, Q3).
 		 *
-		 * AND IN THE SHEET PRESENTATION THE RESULT PATH DOES NOT OPEN AT ALL (agent
-		 * review round 1, m2). The sheet makes the composer `inert`, so opening it as a
-		 * RESULT would take the caret out of the box this arm exists to leave it in -
-		 * focus would fall to `<body>` inside an inert column, the exact strand
-		 * `covers-conversation` refuses for the auto-open. The user pressed nothing;
-		 * the queue stays announced on the chip and the rail door, and the landed or
-		 * refused value is reported where it was typed. The PRESSED path (the notice's
-		 * own door, `focus` unset) still opens: that is a user's act.
+		 * THE THREE KINDS OF OPEN, and the sheet changes only the middle one (agent
+		 * review round 2, M2-r2):
+		 *
+		 *  - A PRESS (`options` absent): a user pressed a control whose label says it
+		 *    opens the panel - the notice's "Open asks", the multi-secret confirm's
+		 *    "Open asks panel". It opens, and the request moves the keyboard into the
+		 *    card in BOTH presentations: a labelled door that does nothing below the
+		 *    breakpoint is a dead control.
+		 *  - A QUIET RESULT (`focus: false, openInSheet: false`): a fill landed, the
+		 *    composer already said so, and the act is DONE. Docked it opens beside the
+		 *    box without taking the caret; under the sheet it does NOT open at all -
+		 *    covering the conversation after a completed action is noise.
+		 *  - A REFUSED RESULT (`focus: false`): the reason lives on the card and the
+		 *    composer still shows its sentence. Docked, the panel opens and the caret
+		 *    stays in the box. Under the sheet the box is `inert`, so the caret CANNOT
+		 *    stay: the sheet opens and takes it, which is also what keeps
+		 *    `secret_fill_refused` ("the asks panel shows why") true. Leaving it shut
+		 *    would strand the keyboard on `<body>` and point at a panel nothing opened.
+		 *
+		 * IT RETURNS WHETHER THE OPEN TOOK THE KEYBOARD, so the composer knows whether
+		 * to hand the caret back (`message-input.tsx`). A caller cannot know the
+		 * presentation; this is the one place that does.
 		 */
 		const openAsksForSecret = useCallback(
-			(options?: { focus?: boolean }) => {
-				if (options?.focus === false && inOverlayPresentation()) return;
+			(options?: { focus?: boolean; openInSheet?: boolean }): boolean => {
+				const sheet = inOverlayPresentation();
+				if (sheet && options?.focus === false && options.openInSheet === false)
+					return false;
+				const takesFocus = options?.focus !== false || sheet;
 				setAskDrawerOpen(true, "session");
-				if (options?.focus !== false) requestAskOpen("session", "chord");
+				if (takesFocus) requestAskOpen("session", "chord");
+				return takesFocus;
 			},
 			[setAskDrawerOpen, requestAskOpen, inOverlayPresentation],
 		);
@@ -1808,9 +1826,15 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 						canonical?.onFillSecretAnswer ??
 							(async () => ({ status: "unavailable" as const })),
 					).then((outcome) => {
-						/* The panel is where the refusal sentence lives, so a landed value
-						 * opens it; every other outcome is answered in the composer as well. */
-						if (outcome === "sent") openAsksForSecret({ focus: false });
+						/*
+						 * A LANDED VALUE OPENS THE DRAWER ONLY WHERE IT CAN DO SO WITHOUT
+						 * TAKING THE CARET (`openInSheet: false`): in the overlay the sheet
+						 * would cover the box the value just left, for a result the user
+						 * already sees. The refusal path is the opposite case and lives in
+						 * `message-input.tsx` (see `openAsksForSecret`).
+						 */
+						if (outcome === "sent")
+							openAsksForSecret({ focus: false, openInSheet: false });
 						return outcome;
 					}),
 			};
@@ -3511,8 +3535,9 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 						 * and the press that puts the sheet away. It covers this ROW only - the sidebar
 						 * and the panel rail are outside it, so the rail's asks item stays a working
 						 * toggle - and it is drawn only where `askPanePresentation` says a strip remains
-						 * (the sheet fills the row at and below its 400px floor, where a 0px target would
-						 * be invisible). Pointer-only by design: Escape is the keyboard door and the
+						 * (the sheet fills the row at or below the 416px scrim threshold - the 400px
+						 * floor plus the 16px minimum - where a sliver would not be a target).
+						 * Pointer-only by design: Escape is the keyboard door and the
 						 * drawer already claims it (`ask-drawer.tsx`), so a second focusable surface here
 						 * would be a stop with no action of its own. The close is a WITHDRAWAL (no
 						 * options), the same kind as Escape: it returns a displaced pane.

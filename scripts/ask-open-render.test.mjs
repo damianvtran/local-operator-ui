@@ -1571,6 +1571,18 @@ test("D5 - the sheet presentation leaves the drawer shut, speaks the queue's cla
 	 */
 	await render(askQueueView(withRows([ask("open")])), false);
 	assert.equal(useUiPreferencesStore.getState().isAskDrawerOpen, false);
+	/*
+	 * AND THE SENTENCE GOES WHEN THE WAITING DOES (agent review round 2, m-r2-3): the
+	 * refusal speaks over a SHUT drawer, so neither the close watch nor the open-drawer
+	 * settle can ever end it - a queue that emptied left "1 question waiting." standing
+	 * for the rest of the mount.
+	 */
+	await render(askQueueView(withRows([])), false);
+	assert.equal(
+		region(),
+		"",
+		"nothing is waiting and nothing is up: the region has nothing true left to say",
+	);
 	await act(async () => root.unmount());
 	container.remove();
 });

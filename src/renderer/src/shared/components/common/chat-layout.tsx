@@ -587,9 +587,10 @@ export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
 									 * that puts the sheet away. It covers this ROW only - the sidebar and the panel
 									 * rail are siblings outside it, so the rail's asks item stays a working toggle -
 									 * and it is drawn only where `askPanePresentation` says a strip remains (the
-									 * sheet fills the row at and below its 400px floor, where a 0px target would
-									 * be invisible). Pointer-only: Escape is the keyboard door and the drawer
-									 * already claims it (`ask-drawer.tsx`).
+									 * sheet fills the row at or below the 416px scrim threshold - the 400px
+									 * floor plus the 16px minimum - where a sliver would not be a target).
+									 * Pointer-only: Escape is the keyboard door and the drawer already
+									 * claims it (`ask-drawer.tsx`).
 									 */}
 									{askPresentation.scrimmed && (
 										<div
