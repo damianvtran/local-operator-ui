@@ -189,6 +189,31 @@ export const Populated: Story = {
 	},
 };
 
+/*
+ * An agent the directory names after its OWNER (an endpoint enrolled without an
+ * agent name). The roster used to compose it "Sherman Tsui (Sherman Tsui)"; it
+ * reads "Sherman Tsui’s chief of staff", as the members list and the rail do
+ * (design review D1 on #1643).
+ */
+export const OwnerNamedAgent: Story = {
+	args: {
+		people: people.map((person) =>
+			person.account_id === "acct_sherman" && person.agent
+				? { ...person, agent: { ...person.agent, name: "Sherman Tsui" } }
+				: person,
+		),
+	},
+	play: async ({ canvasElement }) => {
+		const dialog = within(canvasElement.ownerDocument.body);
+		await expect(
+			dialog.getByText("Sherman Tsui’s chief of staff"),
+		).toBeInTheDocument();
+		await expect(
+			dialog.queryByText("Sherman Tsui (Sherman Tsui)"),
+		).not.toBeInTheDocument();
+	},
+};
+
 export const Loading: Story = {
 	args: { people: [], peopleState: "loading" },
 };

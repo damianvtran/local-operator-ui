@@ -67,6 +67,8 @@ const bundle = await build({
 			export { teamBridgeMessageSchema } from "./src/shared/team-bridge-contract";
 			export { ownerAuditToBridgeMessage } from "./src/renderer/src/features/team-bridge/team-bridge-owner-audit-model";
 			export { ownerAuditMessageSchema } from "./src/shared/team-bridge-owner-audit-contract";
+			export { recipientLabel } from "./src/renderer/src/features/team-bridge/team-bridge-model";
+			export { setLocale } from "./src/renderer/src/shared/i18n";
 		`,
 		resolveDir: process.cwd(),
 	},
@@ -89,6 +91,8 @@ const {
 	teamBridgeMessageSchema,
 	ownerAuditToBridgeMessage,
 	ownerAuditMessageSchema,
+	recipientLabel,
+	setLocale,
 } = compiled.exports;
 const createElement = React.createElement;
 const MODERATION_LOCALES = ["en", "fr", "es", "zh-CN", "ru", "vi", "ur", "hi"];
@@ -299,6 +303,96 @@ for (const [name, label, owner, expected] of RECIPIENT_SHAPES) {
 		});
 	}
 }
+
+/*
+ * `recipientLabel` DIRECTLY (review M1 on #1643): the delivery lines only ever
+ * pass agents, so the human branch is reachable only here. Plain injected
+ * forms keep these cases about the resolution rule, not about catalogue copy.
+ */
+const PLAIN_CHIEF = {
+	named: (agent, person) => `${agent} <${person}>`,
+	unnamed: (person) => `unnamed:${person}`,
+};
+const RECIPIENT_LABEL_CASES = [
+	["agent, bare name", "agent", "Aida", "Ben Tran", "Aida <Ben Tran>"],
+	[
+		"agent, stored already composed",
+		"agent",
+		"Aida (Ben Tran)",
+		"Ben Tran",
+		"Aida <Ben Tran>",
+	],
+	[
+		"agent, full-width composed (review m2)",
+		"agent",
+		"Aida（陈伟）",
+		"陈伟",
+		"Aida <陈伟>",
+	],
+	[
+		"agent, full-width tail naming someone else is its own name",
+		"agent",
+		"Aida（销售）",
+		"陈伟",
+		"Aida（销售） <陈伟>",
+	],
+	[
+		"agent, label equals the owner",
+		"agent",
+		"Ben Tran",
+		"Ben Tran",
+		"unnamed:Ben Tran",
+	],
+	[
+		"agent, unnamed (blank label)",
+		"agent",
+		"  ",
+		"Ben Tran",
+		"unnamed:Ben Tran",
+	],
+	["agent, blank labels", "agent", "", " ", null],
+	["agent, blank owner and X (X)", "agent", "Ben Tran (Ben Tran)", "", null],
+	[
+		"human, named alone, owner ignored",
+		"human",
+		"Ben Tran",
+		"Sam Rivera",
+		"Ben Tran",
+	],
+	["human, legacy placeholder", "human", "Member", "", null],
+	["human, blank", "human", "   ", "Ben Tran", null],
+];
+for (const [name, kind, label, ownerLabel, expected] of RECIPIENT_LABEL_CASES) {
+	test(`recipientLabel: ${name}`, () => {
+		assert.equal(
+			recipientLabel({ kind, label, ownerLabel }, PLAIN_CHIEF),
+			expected,
+		);
+	});
+}
+
+test("an unnamed recipient takes the delivery-scoped in-sentence form, not the rail label", () => {
+	// i18n audit C1-C4 on #1643: the rail's standalone `chief.unnamed` is the
+	// wrong case/article mid-sentence in hi, ur, fr and es.
+	const unnamed = [
+		entry({ recipient_label: "Ben Tran", recipient_owner_label: "Ben Tran" }),
+	];
+	const expected = {
+		hi: "Ben Tran के चीफ़ ऑफ़ स्टाफ़ तक नहीं पहुँचा।",
+		ur: "Ben Tran کے چیف آف اسٹاف تک نہیں پہنچا۔",
+		fr: "Non remis à la cheffe de cabinet (Ben Tran).",
+		es: "No entregado a el jefe de gabinete de Ben Tran.",
+	};
+	try {
+		for (const [locale, prefix] of Object.entries(expected)) {
+			setLocale(locale);
+			const [line] = lineTexts(render(unnamed));
+			assert.ok(line.startsWith(prefix), `${locale}: ${line}`);
+		}
+	} finally {
+		setLocale("en");
+	}
+});
 
 test("no delivery template splices an owner beside the recipient, in any locale", () => {
 	for (const locale of MODERATION_LOCALES) {
@@ -591,7 +685,8 @@ test("all moderation copy in every shipped locale has no em dash", () => {
 		const entries = Object.entries(catalogue).filter(([key]) =>
 			key.startsWith("ui.teamBridge.delivery."),
 		);
-		assert.equal(entries.length, 13, locale);
+		// 13 lines plus `recipient_unnamed`, the in-sentence unnamed form (#1643).
+		assert.equal(entries.length, 14, locale);
 		for (const [key, value] of entries) {
 			assert.doesNotMatch(value, MODERATION_EM_DASH, `${locale}:${key}`);
 		}

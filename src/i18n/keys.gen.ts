@@ -10104,6 +10104,7 @@ export type MessageParams = {
 	"ui.teamBridge.delivery.info_label": undefined;
 	"ui.teamBridge.delivery.info_refused": undefined;
 	"ui.teamBridge.delivery.pending": { recipient: string };
+	"ui.teamBridge.delivery.recipient_unnamed": { person: string };
 	"ui.teamBridge.delivery.refused": { recipient: string };
 	"ui.teamBridge.delivery.refused_abusive": { recipient: string };
 	"ui.teamBridge.delivery.refused_manipulation": { recipient: string };

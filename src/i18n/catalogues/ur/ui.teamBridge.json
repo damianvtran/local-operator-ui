@@ -330,6 +330,7 @@
 	"ui.teamBridge.delivery.held_screening_unavailable": "{recipient} کی جانب سے جانچ کا انتظار ہے۔ جانچ عارضی طور پر دستیاب نہیں ہے۔",
 	"ui.teamBridge.delivery.held_awaiting_review": "{recipient} کی جانب سے جانچ کا انتظار ہے۔ پیغام جائزے کا منتظر ہے۔",
 	"ui.teamBridge.delivery.pending": "جانچ ہو گئی؛ {recipient} تک ترسیل باقی ہے",
+	"ui.teamBridge.delivery.recipient_unnamed": "{person} کے چیف آف اسٹاف",
 	"ui.teamBridge.delivery.info_refused": "ہر ایجنٹ آنے والے پیغامات کو اپنے مالک کی ماڈریشن سے جانچتا ہے۔ مسترد کیا گیا پیغام ایجنٹ تک نہیں پہنچایا گیا۔ درخواست کو دوبارہ لکھنا عموماً مددگار ہوتا ہے۔",
 	"ui.teamBridge.delivery.info_held": "ہر ایجنٹ آنے والے پیغامات کو آگے پہنچانے سے پہلے اپنے مالک کی ماڈریشن سے جانچتا ہے۔ اس پیغام کی جانچ ابھی نہیں ہوئی؛ یہ خود بخود پہنچا دیا جائے گا یا مسترد کر دیا جائے گا۔",
 	"ui.teamBridge.delivery.info_label": "پیغام کی جانچ کے بارے میں",

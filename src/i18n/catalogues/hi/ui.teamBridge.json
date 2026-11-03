@@ -330,6 +330,7 @@
 	"ui.teamBridge.delivery.held_screening_unavailable": "{recipient} द्वारा जाँच का इंतज़ार है। जाँच अस्थायी रूप से उपलब्ध नहीं है।",
 	"ui.teamBridge.delivery.held_awaiting_review": "{recipient} द्वारा जाँच का इंतज़ार है। संदेश समीक्षा के इंतज़ार में है।",
 	"ui.teamBridge.delivery.pending": "जाँच हो गई; {recipient} तक डिलीवरी बाकी है",
+	"ui.teamBridge.delivery.recipient_unnamed": "{person} के चीफ़ ऑफ़ स्टाफ़",
 	"ui.teamBridge.delivery.info_refused": "हर एजेंट आने वाले संदेशों को अपने मालिक के मॉडरेशन से जाँचता है। अस्वीकार किया गया संदेश एजेंट तक नहीं पहुँचाया गया। अनुरोध को दोबारा लिखना आमतौर पर मदद करता है।",
 	"ui.teamBridge.delivery.info_held": "हर एजेंट आने वाले संदेशों को आगे पहुँचाने से पहले अपने मालिक के मॉडरेशन से जाँचता है। इस संदेश की जाँच अभी नहीं हुई है; यह अपने-आप पहुँचा दिया जाएगा या अस्वीकार कर दिया जाएगा।",
 	"ui.teamBridge.delivery.info_label": "संदेश जाँच के बारे में",

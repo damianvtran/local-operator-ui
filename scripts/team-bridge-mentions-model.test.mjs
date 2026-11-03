@@ -17,6 +17,7 @@ const bundle = await build({
 			export * from "./src/renderer/src/features/team-bridge/mentions/matcher";
 			export * from "./src/renderer/src/features/team-bridge/mentions/tokens";
 			export * from "./src/renderer/src/features/team-bridge/mentions/message-mentions";
+			export { buildMentionCandidates } from "./src/renderer/src/features/team-bridge/mentions/candidates";
 		`,
 		resolveDir: process.cwd(),
 	},
@@ -476,4 +477,42 @@ test("viewer identity requires an authoritative account id for humans and agents
 		self,
 	});
 	assert.ok(fallback.runs.every((run) => run.viewer === false));
+});
+
+test("members the directory does not list are offered by their stored NAME, never a legacy composed label", () => {
+	// Review m1 on #1643: the fallback loop used the raw `display_label`, so a
+	// legacy "Ben Tran (Ben Tran)" reached the popover row and the notice
+	// sentence verbatim, and the "Member" placeholder was offered as a name.
+	const member = (account_id, kind, display_label) => ({
+		account_id,
+		kind,
+		display_label,
+		role: "member",
+		state: "active",
+	});
+	const rows = m.buildMentionCandidates({
+		conversation: {
+			members: [
+				member("a_self", "human", "Damian"),
+				member("a_ana", "human", "Ana"),
+				member("a_ben", "agent", "Ben Tran (Ben Tran)"),
+				member("a_sam", "agent", "Juno (Sam)"),
+				member("a_old", "human", "Member"),
+			],
+		},
+		people: [],
+		selfAccountId: "a_self",
+		chiefLabels: {
+			named: (agent, person) => `${agent} (${person})`,
+			unnamed: (person) => `${person}’s chief of staff`,
+		},
+		agentRole: "Chief of staff",
+	});
+	assert.deepEqual(
+		rows.map((row) => [row.kind, row.label]),
+		[
+			["human", "Ana"],
+			["agent", "Juno (Sam)"],
+		],
+	);
 });

@@ -330,6 +330,7 @@
 	"ui.teamBridge.delivery.held_screening_unavailable": "Ожидает проверки агентом {recipient}. Проверка временно недоступна.",
 	"ui.teamBridge.delivery.held_awaiting_review": "Ожидает проверки агентом {recipient}. Сообщение ожидает рассмотрения.",
 	"ui.teamBridge.delivery.pending": "Проверено; ожидается доставка агенту {recipient}",
+	"ui.teamBridge.delivery.recipient_unnamed": "Координатор ({person})",
 	"ui.teamBridge.delivery.info_refused": "Каждый агент проверяет входящие сообщения с помощью модерации своего владельца. Отклонённое сообщение не было передано агенту. Обычно помогает переформулировать запрос.",
 	"ui.teamBridge.delivery.info_held": "Каждый агент проверяет входящие сообщения с помощью модерации своего владельца, прежде чем передать их дальше. Это сообщение ещё не проверено; оно будет доставлено или отклонено автоматически.",
 	"ui.teamBridge.delivery.info_label": "О проверке сообщений",

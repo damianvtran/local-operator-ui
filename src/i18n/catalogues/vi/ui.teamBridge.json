@@ -330,6 +330,7 @@
 	"ui.teamBridge.delivery.held_screening_unavailable": "Đang chờ {recipient} sàng lọc. Tính năng sàng lọc tạm thời không khả dụng.",
 	"ui.teamBridge.delivery.held_awaiting_review": "Đang chờ {recipient} sàng lọc. Tin nhắn đang chờ xem xét.",
 	"ui.teamBridge.delivery.pending": "Đã sàng lọc; đang chờ chuyển tới {recipient}",
+	"ui.teamBridge.delivery.recipient_unnamed": "Chánh văn phòng của {person}",
 	"ui.teamBridge.delivery.info_refused": "Mỗi tác nhân sàng lọc tin nhắn đến bằng bộ kiểm duyệt của chủ sở hữu. Tin nhắn bị từ chối không được chuyển tới tác nhân. Diễn đạt lại yêu cầu thường sẽ giúp ích.",
 	"ui.teamBridge.delivery.info_held": "Mỗi tác nhân sàng lọc tin nhắn đến bằng bộ kiểm duyệt của chủ sở hữu trước khi chuyển tiếp. Tin nhắn này chưa được sàng lọc; tin nhắn sẽ tự động được chuyển tới tác nhân hoặc bị từ chối.",
 	"ui.teamBridge.delivery.info_label": "Giới thiệu về sàng lọc tin nhắn",

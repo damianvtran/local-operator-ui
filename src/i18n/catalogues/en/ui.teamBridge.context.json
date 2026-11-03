@@ -2479,6 +2479,15 @@
 		},
 		"note": "Owner view only: screening finished and passed; only delivery to the agent is outstanding. Must not say it is waiting to be screened."
 	},
+	"ui.teamBridge.delivery.recipient_unnamed": {
+		"role": "recipient name inside a delivery status sentence",
+		"tone": "plain, lower-case where the language allows",
+		"length": "Short; sits mid-sentence",
+		"placeholders": {
+			"person": "The owning teammate's display name, verbatim."
+		},
+		"note": "Names a teammate's chief of staff (an agent with no name of its own) INSIDE the delivery lines: it is the {recipient} of ui.teamBridge.delivery.refused*, held* and pending, so it follows a preposition or precedes a postposition ('Not delivered to Ben Tran’s chief of staff', 'Waiting to be screened by Ben Tran’s chief of staff…'). Use the form the grammar needs there: oblique case, article and its contractions, lower case. This is NOT ui.teamBridge.chief.unnamed, which is the standalone rail and header label and stays as it is. Must not repeat the person."
+	},
 	"ui.teamBridge.delivery.info_refused": {
 		"role": "tooltip",
 		"tone": "explanatory, reassuring",

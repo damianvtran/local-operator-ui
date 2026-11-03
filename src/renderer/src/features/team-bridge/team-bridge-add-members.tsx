@@ -189,9 +189,13 @@ export function TeamBridgeAddMembersView({
 	const chiefLabel = useCallback(
 		(agent: string, person: string) =>
 			composeChiefLabel(agent, person, {
-				named: (named, owner) =>
-					t("ui.teamBridge.chief.label", { agent: named, person: owner }),
-				unnamed: (owner) => t("ui.teamBridge.chief.unnamed", { person: owner }),
+				named: (agentName, personName) =>
+					t("ui.teamBridge.chief.label", {
+						agent: agentName,
+						person: personName,
+					}),
+				unnamed: (personName) =>
+					t("ui.teamBridge.chief.unnamed", { person: personName }),
 			}),
 		[],
 	);

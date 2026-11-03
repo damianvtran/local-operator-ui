@@ -65,8 +65,15 @@ export type TeamBridgeOrganization = {
  * header come to disagree about what a conversation is called.
  */
 
-/** A member's stored name; an agent's never repeats its owner ("X (X)"). */
-function memberStoredName(member: {
+/**
+ * A member's stored name; an agent's never repeats its owner ("X (X)").
+ *
+ * For surfaces holding a conversation's member rows but no directory (the
+ * owner-audit title, the mention fallback for unlisted members): with no owner
+ * to compare against, a self-composed "X (X)" is no name and the legacy
+ * "Member" placeholder is nobody, exactly as `conversationTitle` reads them.
+ */
+export function memberStoredName(member: {
 	kind: "human" | "agent";
 	display_label: string;
 }): string | null {
@@ -1666,7 +1673,14 @@ export function storedLabel(label: string): string | null {
  * agent member's `display_label`, so the read path must recognise it (and "X
  * (X)") in existing rows; this client now stores a bare name (`storedAgentLabel`).
  */
-const COMPOSED_LABEL = /^(.+?)\s*\((.+)\)$/;
+/*
+ * Full-width brackets too: the zh-CN `chief.label` is "{agent}（{person}）", so a
+ * client that ever stored the composed zh-CN form wrote "Aida（陈伟）" (review
+ * m2 on #1643). A read-path match only: the tail is stripped solely when it
+ * equals the owner (`storedAgentName`), so an agent truly named "Aida（Sales）"
+ * keeps its name.
+ */
+const COMPOSED_LABEL = /^(.+?)\s*[(（](.+)[)）]$/u;
 
 /**
  * The stored tails of an unnamed agent's label. The ASCII form is the only

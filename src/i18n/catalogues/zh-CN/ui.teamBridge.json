@@ -330,6 +330,7 @@
 	"ui.teamBridge.delivery.held_screening_unavailable": "正在等待{recipient}检查。检查暂时不可用。",
 	"ui.teamBridge.delivery.held_awaiting_review": "正在等待{recipient}检查。消息正在等待审核。",
 	"ui.teamBridge.delivery.pending": "已检查；正在等待送达{recipient}",
+	"ui.teamBridge.delivery.recipient_unnamed": "{person}的首席助理",
 	"ui.teamBridge.delivery.info_refused": "每个智能体都会使用其所有者的审核设置检查收到的消息。被拒绝的消息未传递给智能体。重新表述请求通常会有帮助。",
 	"ui.teamBridge.delivery.info_held": "每个智能体都会先使用其所有者的审核设置检查收到的消息，然后再传递。此消息尚未检查完成，之后会自动送达或被拒绝。",
 	"ui.teamBridge.delivery.info_label": "关于消息检查",

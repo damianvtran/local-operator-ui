@@ -330,6 +330,7 @@
 	"ui.teamBridge.delivery.held_screening_unavailable": "Esperando a que {recipient} lo analice. El análisis no está disponible temporalmente.",
 	"ui.teamBridge.delivery.held_awaiting_review": "Esperando a que {recipient} lo analice. El mensaje está pendiente de revisión.",
 	"ui.teamBridge.delivery.pending": "Analizado; la entrega a {recipient} está pendiente",
+	"ui.teamBridge.delivery.recipient_unnamed": "el jefe de gabinete de {person}",
 	"ui.teamBridge.delivery.info_refused": "Cada agente analiza los mensajes entrantes con la moderación de su propietario. Un mensaje rechazado no se pasó al agente. Reformular la solicitud suele ayudar.",
 	"ui.teamBridge.delivery.info_held": "Cada agente analiza los mensajes entrantes con la moderación de su propietario antes de entregarlos. Este mensaje aún no se ha analizado; se entregará o se rechazará automáticamente.",
 	"ui.teamBridge.delivery.info_label": "Acerca del análisis de mensajes",

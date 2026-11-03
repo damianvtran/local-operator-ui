@@ -8,6 +8,7 @@ import type {
 } from "../../../../shared/team-bridge-owner-audit-contract";
 import {
 	type ChiefLabels,
+	memberStoredName,
 	participantLabel,
 	storedLabel,
 } from "./team-bridge-model";
@@ -36,9 +37,19 @@ export function ownerAuditTitle(
 ) {
 	return (
 		conversation.name?.trim() ||
+		/*
+		 * Through `memberStoredName`, as `conversationTitle` reads the same rows:
+		 * a raw stored label titled a thread "Ana, Ben Tran (Ben Tran), Member"
+		 * (review m1 on #1643). An unknown kind reads as a human label.
+		 */
 		conversation.members
-			.map((member) => member.display_label.trim())
-			.filter(Boolean)
+			.map((member) =>
+				memberStoredName({
+					kind: member.kind === "agent" ? "agent" : "human",
+					display_label: member.display_label,
+				}),
+			)
+			.filter((label): label is string => label !== null)
 			.join(", ") ||
 		fallback
 	);
