@@ -508,7 +508,10 @@ test("adoption fixtures mirror shipping document direction and restore prior att
 	}
 });
 
-async function productionSubscribeScene() {
+async function productionSubscribeScene({
+	override,
+	secondCandidate = false,
+} = {}) {
 	const requests = [];
 	let installed = false;
 	const row = {
@@ -523,6 +526,9 @@ async function productionSubscribeScene() {
 		sync_contract: { revision_cas: 1, skills: 1 },
 		files: [{ path: "SKILL.md", content: "# Hub guidance\n" }],
 	};
+	const rows = secondCandidate
+		? [row, { ...row, id: "skill-second-candidate", name: "second-candidate" }]
+		: [row];
 	const direction = {
 		state: "up-to-date",
 		classification: null,
@@ -575,6 +581,8 @@ async function productionSubscribeScene() {
 		desktop: {
 			request: async (input) => {
 				requests.push(input);
+				const overridden = override?.(input);
+				if (overridden !== undefined) return overridden;
 				if (input.op === "capabilities") return ok(caps);
 				if (input.op === "hub.links") return ok(inventory());
 				if (input.op === "radient.request") {
@@ -582,11 +590,18 @@ async function productionSubscribeScene() {
 					if (operation === "org_skills.list")
 						return ok({
 							data: {
-								result: { skills: [row], sync_contract: row.sync_contract },
+								result: { skills: rows, sync_contract: row.sync_contract },
 							},
 						});
 					if (operation === "org_skill.get")
-						return ok({ data: { result: row } });
+						return ok({
+							data: {
+								result:
+									rows.find(
+										(candidate) => candidate.id === input.control.skill_id,
+									) ?? row,
+							},
+						});
 				}
 				if (input.op === "hub.skillSubscribe")
 					return {
@@ -595,6 +610,16 @@ async function productionSubscribeScene() {
 							detail: {
 								code: "alias-occupied",
 								message: "Review this authored folder before subscribing.",
+							},
+						},
+					};
+				if (input.op === "hub.skillPull" && !input.dryRun && !input.confirm)
+					return {
+						status: 409,
+						body: {
+							detail: {
+								code: "alias-occupied",
+								message: "Review this authored folder before downloading.",
 							},
 						},
 					};
@@ -755,6 +780,261 @@ test("production Subscribe collision review can cancel without a preview or memb
 			links: [],
 			unresolved: [],
 		});
+	} finally {
+		await s.cleanup();
+	}
+});
+
+for (const { first, latest, subscribed } of [
+	{
+		first: "hub-skill-subscribe",
+		latest: "hub-skill-download",
+		subscribed: false,
+	},
+	{
+		first: "hub-skill-download",
+		latest: "hub-skill-subscribe",
+		subscribed: true,
+	},
+]) {
+	test(`production ${first} then ${latest} reviews and confirms only the latest intent`, async () => {
+		const s = await productionSubscribeScene();
+		try {
+			await s.clickTestId("hub-skill-open");
+			await s.clickTestId(first);
+			await s.clickTestId(latest);
+			const refusals = s.writes();
+			assert.equal(
+				refusals.length,
+				2,
+				"both direct actions must actually refuse before recovery",
+			);
+			assert.equal(
+				refusals[0].op,
+				first === "hub-skill-subscribe"
+					? "hub.skillSubscribe"
+					: "hub.skillPull",
+			);
+			assert.equal(
+				refusals[1].op,
+				latest === "hub-skill-subscribe"
+					? "hub.skillSubscribe"
+					: "hub.skillPull",
+			);
+			await press("Review and merge");
+			assert.equal(
+				s.writes().length,
+				2,
+				"review must not silently apply either intent",
+			);
+			await press("Create preview");
+			await press("Confirm reviewed adoption");
+			const writes = s.writes();
+			assert.equal(writes.length, 4);
+			for (const request of writes.slice(2)) {
+				assert.equal(request.op, "hub.skillPull");
+				assert.equal(
+					request.subscribe,
+					subscribed,
+					"stale opposite-action refusal must not change reviewed membership intent",
+				);
+				assert.equal(request.autoPush, false);
+				assert.equal(request.confirmPublicEgress, false);
+				assert.equal(request.hubId, source.remoteId);
+				assert.equal(request.tenantId, source.scope.tenantId);
+				assert.equal(request.localAlias, source.alias);
+			}
+			assert.equal(writes[2].dryRun, true);
+			assert.equal(writes[3].confirm, true);
+			assert.equal(writes[3].adoptionReceipt, preview.adoption_receipt);
+			assert.equal(writes[3].adoptionStrategy, writes[2].adoptionStrategy);
+			assert.ok(text().includes("Skill adopted"));
+		} finally {
+			await s.cleanup();
+		}
+	});
+}
+
+function deferredResponse() {
+	let resolve;
+	const promise = new Promise((done) => {
+		resolve = done;
+	});
+	return { promise, resolve };
+}
+const occupiedResponse = {
+	status: 409,
+	body: {
+		detail: { code: "alias-occupied", message: "Occupied authored skill." },
+	},
+};
+
+for (const { first, latest, subscribed } of [
+	{
+		first: "hub-skill-subscribe",
+		latest: "hub-skill-download",
+		subscribed: false,
+	},
+	{
+		first: "hub-skill-download",
+		latest: "hub-skill-subscribe",
+		subscribed: true,
+	},
+]) {
+	test(`late old ${first} response cannot replace current ${latest} review intent`, async () => {
+		const delayed = deferredResponse();
+		const firstOp =
+			first === "hub-skill-subscribe" ? "hub.skillSubscribe" : "hub.skillPull";
+		let held = false;
+		const s = await productionSubscribeScene({
+			override: (input) => {
+				if (!held && input.op === firstOp) {
+					held = true;
+					return delayed.promise;
+				}
+			},
+		});
+		try {
+			await s.clickTestId("hub-skill-open");
+			await s.clickTestId(first);
+			await s.clickTestId(latest);
+			assert.equal(s.writes().length, 2);
+			await act(async () => {
+				delayed.resolve(occupiedResponse);
+				await pause();
+			});
+			await press("Review and merge");
+			await press("Create preview");
+			await press("Confirm reviewed adoption");
+			for (const request of s.writes().slice(2)) {
+				assert.equal(
+					request.subscribe,
+					subscribed,
+					"detached old mutation must not regain review priority",
+				);
+				assert.equal(request.autoPush, false);
+			}
+			assert.equal(s.writes()[3].adoptionReceipt, preview.adoption_receipt);
+		} finally {
+			delayed.resolve(occupiedResponse);
+			await s.cleanup();
+		}
+	});
+}
+
+test("closing an old pending preview then opening a different candidate cannot reuse its receipt", async () => {
+	const delayed = deferredResponse();
+	let held = false;
+	const s = await productionSubscribeScene({
+		secondCandidate: true,
+		override: (input) => {
+			if (!held && input.op === "hub.skillPull" && input.dryRun) {
+				held = true;
+				return delayed.promise;
+			}
+		},
+	});
+	try {
+		await s.clickTestId("hub-skill-open");
+		await s.clickTestId("hub-skill-subscribe");
+		await press("Review and merge");
+		await press("Create preview");
+		const close = document.querySelector(
+			'[role="dialog"] button[aria-label="Close"]',
+		);
+		assert.ok(
+			close,
+			"shipping dialog must permit closing a pending non-mutating preview",
+		);
+		await act(async () => {
+			close.click();
+			await pause();
+		});
+		const second = document.querySelector(
+			'[data-skill-id="skill-second-candidate"]',
+		);
+		assert.ok(second);
+		await act(async () => {
+			second.click();
+			await pause();
+		});
+		await act(async () => {
+			await pause();
+		});
+		await s.clickTestId("hub-skill-download");
+		await press("Review and merge");
+		await act(async () => {
+			delayed.resolve(
+				ok({ ...preview, adoption_receipt: "obsolete-first-preview-receipt" }),
+			);
+			await pause();
+		});
+		assert.equal(
+			button("Confirm reviewed adoption"),
+			undefined,
+			"late old preview cannot populate a fresh candidate review",
+		);
+		await press("Create preview");
+		await press("Confirm reviewed adoption");
+		const confirm = s.writes().at(-1);
+		assert.equal(confirm.hubId, "skill-second-candidate");
+		assert.equal(confirm.localAlias, "second-candidate");
+		assert.equal(confirm.subscribe, false);
+		assert.equal(confirm.autoPush, false);
+		assert.equal(
+			confirm.adoptionReceipt,
+			preview.adoption_receipt,
+			"confirmation cannot attach a prior candidate/action receipt",
+		);
+	} finally {
+		delayed.resolve(ok(preview));
+		await s.cleanup();
+	}
+});
+
+test("cancel then reopen the same candidate under the opposite action cannot retain the previous receipt", async () => {
+	let previews = 0;
+	const s = await productionSubscribeScene({
+		override: (input) => {
+			if (input.op === "hub.skillPull" && input.dryRun) {
+				previews += 1;
+				return ok({
+					...preview,
+					adoption_receipt:
+						previews === 1
+							? "cancelled-subscribe-preview-receipt"
+							: preview.adoption_receipt,
+				});
+			}
+		},
+	});
+	try {
+		await s.clickTestId("hub-skill-open");
+		await s.clickTestId("hub-skill-subscribe");
+		await press("Review and merge");
+		await press("Create preview");
+		await press("Cancel");
+		await s.clickTestId("hub-skill-download");
+		await press("Review and merge");
+		assert.equal(button("Confirm reviewed adoption"), undefined);
+		await press("Create preview");
+		await press("Confirm reviewed adoption");
+		const writes = s.writes();
+		assert.equal(writes.length, 5);
+		assert.equal(writes[1].subscribe, true);
+		assert.equal(writes[3].subscribe, false);
+		assert.equal(writes[4].subscribe, false);
+		assert.equal(writes[4].adoptionReceipt, preview.adoption_receipt);
+		assert.notEqual(
+			writes[1].requestId,
+			writes[3].requestId,
+			"each action review owns its own request identity",
+		);
+		assert.notEqual(
+			writes[3].requestId,
+			writes[4].requestId,
+			"confirmation is a separate receipt-bound request",
+		);
 	} finally {
 		await s.cleanup();
 	}

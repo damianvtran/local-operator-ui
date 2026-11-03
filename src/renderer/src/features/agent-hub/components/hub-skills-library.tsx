@@ -263,9 +263,12 @@ export function HubSkillsLibrary({
 		if (!selected || !ready || !signedIn) return;
 		const localAlias = forLink?.name ?? selectedRow?.name ?? "";
 		if (!localAlias) return;
+		// Reset detaches the old mutation observer, including late responses:
+		// review must recover the current Download, not a prior Subscribe intent.
+		subscribe.reset();
 		// Download does NOT subscribe, and never edits the subscription an
 		// existing link already has: content and membership are separate facts.
-		const subscribe = forLink ? forLink.policy.subscribe : false;
+		const subscribed = forLink ? forLink.policy.subscribe : false;
 		const autoPush = forLink?.policy.auto_push ?? false;
 		// Consent is an affirmative act, never re-asserted by a download.
 		const consent = false;
@@ -281,7 +284,7 @@ export function HubSkillsLibrary({
 					selected,
 					scope,
 					localAlias,
-					subscribe,
+					subscribe: subscribed,
 					autoPush,
 					consent,
 				}),
@@ -289,7 +292,7 @@ export function HubSkillsLibrary({
 			remoteId: selected,
 			scope,
 			alias: localAlias,
-			subscribe,
+			subscribe: subscribed,
 			autoPush,
 			consent,
 		});
