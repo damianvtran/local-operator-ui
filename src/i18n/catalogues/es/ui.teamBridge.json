@@ -338,6 +338,6 @@
 	"ui.teamBridge.attachmentCard.bytes": "{size, number} bytes",
 	"ui.teamBridge.attachmentCard.metadata_only": "La vista previa no está disponible en esta vista",
 	"ui.teamBridge.attachmentCard.unavailable": "Archivo adjunto no disponible",
-	"ui.teamBridge.fileCard.list": "{count, plural, one {# archivo} other {# archivos}}",
+	"ui.teamBridge.fileCard.list": "{count, plural, one {# archivo} many {# de archivos} other {# archivos}}",
 	"ui.teamBridge.fileCard.kind": "{kind, select, pdf {PDF} text {Archivo de texto} container {ZIP} other {Archivo}}"
 }
