@@ -332,5 +332,10 @@
 	"ui.teamBridge.delivery.pending": "Screened; delivery to {agent} is pending",
 	"ui.teamBridge.delivery.info_refused": "Each agent screens incoming messages with its owner's moderation. A refused message wasn't passed to the agent. Rephrasing the request usually helps.",
 	"ui.teamBridge.delivery.info_held": "Each agent screens incoming messages with its owner's moderation before passing them on. This one hasn't been screened yet; it will be delivered or refused automatically.",
-	"ui.teamBridge.delivery.info_label": "About message screening"
+	"ui.teamBridge.delivery.info_label": "About message screening",
+	"ui.teamBridge.attachmentCard.list": "{count, plural, one {# attachment} other {# attachments}}",
+	"ui.teamBridge.attachmentCard.file": "File",
+	"ui.teamBridge.attachmentCard.bytes": "{size, number} bytes",
+	"ui.teamBridge.attachmentCard.metadata_only": "Preview unavailable in this view",
+	"ui.teamBridge.attachmentCard.unavailable": "Attachment unavailable"
 }

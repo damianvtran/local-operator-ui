@@ -1329,8 +1329,11 @@ test("the surface offers no way to write: no composer, no reaction, no admit", a
 test("a message with attachments names them without fetching bytes", async () => {
 	const view = await renderView(panel({ messages: [admitted] }));
 	const text = view.text();
-	assert.ok(text.includes(m.t("ui.ownerAudit.attachment_expired")));
-	assert.ok(text.includes(m.t("ui.ownerAudit.attachment_unavailable")));
+	assert.ok(text.includes(m.t("ui.teamBridge.attachmentCard.unavailable")));
+	assert.equal(
+		text.split(m.t("ui.teamBridge.attachmentCard.unavailable")).length - 1,
+		2,
+	);
 	/* No image tag, no byte URL: this text-only surface never loads a private
 	 * attachment into a renderer. */
 	assert.equal(view.host.querySelectorAll("img").length, 0);
@@ -3070,7 +3073,9 @@ test("attachments are named, never fetched, through the shared list", async () =
 	await settleTimes();
 	const row = rowOf(view.host, admitted.id);
 	assert.ok(row, "rendered by the shared list");
-	assert.ok(row.textContent.includes(m.t("ui.ownerAudit.attachment_expired")));
+	assert.ok(
+		row.textContent.includes(m.t("ui.teamBridge.attachmentCard.unavailable")),
+	);
 	assert.equal(row.querySelectorAll("img").length, 0);
 	assert.equal(
 		requests.filter((request) => String(request.op).includes("attachment"))

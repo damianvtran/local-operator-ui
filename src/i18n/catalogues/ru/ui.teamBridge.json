@@ -332,5 +332,10 @@
 	"ui.teamBridge.delivery.pending": "Проверено; ожидается доставка агенту {agent}",
 	"ui.teamBridge.delivery.info_refused": "Каждый агент проверяет входящие сообщения с помощью модерации своего владельца. Отклонённое сообщение не было передано агенту. Обычно помогает переформулировать запрос.",
 	"ui.teamBridge.delivery.info_held": "Каждый агент проверяет входящие сообщения с помощью модерации своего владельца, прежде чем передать их дальше. Это сообщение ещё не проверено; оно будет доставлено или отклонено автоматически.",
-	"ui.teamBridge.delivery.info_label": "О проверке сообщений"
+	"ui.teamBridge.delivery.info_label": "О проверке сообщений",
+	"ui.teamBridge.attachmentCard.list": "{count, plural, one {# вложение} few {# вложения} many {# вложений} other {# вложения}}",
+	"ui.teamBridge.attachmentCard.file": "Файл",
+	"ui.teamBridge.attachmentCard.bytes": "{size, number} байт",
+	"ui.teamBridge.attachmentCard.metadata_only": "Предпросмотр недоступен в этом представлении",
+	"ui.teamBridge.attachmentCard.unavailable": "Вложение недоступно"
 }

@@ -2508,5 +2508,44 @@
 		"length": "3-5 words",
 		"placeholders": {},
 		"note": "Screen-reader name of the info icon that opens the moderation tooltip."
+	},
+	"ui.teamBridge.attachmentCard.list": {
+		"role": "accessible label for the structured attachment list; visible label for a count-only audit receipt",
+		"tone": "neutral, factual",
+		"length": "short noun phrase with count",
+		"placeholders": {
+			"count": "Number of actual descriptors, or the known attachment count when no descriptors are supplied. Use the locale's ICU plural rules."
+		},
+		"note": "Counts files/images attached to one message, not upload progress. A count-only audit receipt grants no preview or download authority and must not invent individual attachment names."
+	},
+	"ui.teamBridge.attachmentCard.file": {
+		"role": "generic safe attachment-card title when no original filename is in the wire contract",
+		"tone": "neutral",
+		"length": "one short noun",
+		"placeholders": {},
+		"note": "Deliberately generic for both images and other files. Never substitute an opaque attachment ID, digest, MIME string, local path or guessed original filename."
+	},
+	"ui.teamBridge.attachmentCard.bytes": {
+		"role": "attachment-card metadata for a positive safe-integer byte size",
+		"tone": "neutral, technical unit label",
+		"length": "one short numeric phrase",
+		"placeholders": {
+			"size": "Byte count formatted with ICU number formatting; not kilobytes, upload percentage or dimensions."
+		},
+		"note": "Translate the byte unit idiomatically; standard Spanish bytes legitimately matches English. Inflect units according to the locale's number rules. The value is omitted when size is unknown or the attachment is unavailable."
+	},
+	"ui.teamBridge.attachmentCard.metadata_only": {
+		"role": "explanation on a noninteractive metadata-only attachment card",
+		"tone": "factual, calm",
+		"length": "one short sentence or phrase",
+		"placeholders": {},
+		"note": "The current view cannot preview this attachment. Owner audit in this slice never fetches bytes or offers a download. Do not imply upload is pending, access was granted, a retry will work, or the attachment was deleted."
+	},
+	"ui.teamBridge.attachmentCard.unavailable": {
+		"role": "generic terminal or non-authorized attachment-card status",
+		"tone": "neutral, no blame",
+		"length": "one short status phrase",
+		"placeholders": {},
+		"note": "Use the same wording for expired, withheld, deleted, revoked, unknown descriptor state. Do not reveal retention, screening, account or access-refusal reasons; no preview/download/retry is implied."
 	}
 }

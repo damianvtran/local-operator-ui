@@ -15,6 +15,7 @@ import type {
 	TeamBridgeEvent,
 	TeamBridgeMessage,
 } from "../../../../shared/team-bridge-contract";
+import { TeamBridgeMessageAttachments } from "./attachments/member-attachments";
 import { InlineDataBody } from "./inline-data-receipt";
 import { useMessageMentions } from "./mentions/use-message-mentions";
 import {
@@ -24,7 +25,6 @@ import {
 	teamBridgeObserveArrivals,
 	teamBridgeSuspendArrivals,
 } from "./team-bridge-arrival-model";
-import { TeamBridgeMessageAttachments } from "./team-bridge-attachments";
 import { TeamBridgeDeliveryAnnotation } from "./team-bridge-delivery-annotation";
 import { EMOJI_ENTRIES } from "./team-bridge-emoji-model";
 import { warmEmojiProbeCache } from "./team-bridge-emoji-support";

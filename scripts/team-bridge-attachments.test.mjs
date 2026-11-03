@@ -7,6 +7,31 @@ import { build } from "esbuild";
 import { JSDOM } from "jsdom";
 import React, { act } from "react";
 
+// Shared, non-global matchers keep this touched test file lint-ratchet clean.
+const BOUND_ATTACHMENT_ID = /batt_a/;
+const INLINE_BYTES = /base64|data:|iVBOR/;
+const PREVIEW_BLOB_URL = /^blob:test\//;
+const TERMINAL_REASON = /expired|deleted|withheld/i;
+const ATTACHMENT_ID_PREFIX = /batt_/;
+const MARKDOWN_ALT = /shot/;
+const UNTRUSTED_IMAGE_URL = /https:\/\/evil\.example\/p\.png/;
+const RENDER_LIMIT_ERROR = /rendered more than 3 times/;
+const SETTLE_LIMIT_ERROR = /did not settle within 20 ms/;
+const STORAGE_REFUSAL = /browser storage denied/;
+const ACCOUNT_CHANGED_COPY =
+	/Signed-in account has changed since this message was started/i;
+const SIGNED_OUT_COPY = /signed out/i;
+const IMAGE_QUOTA_COPY = /too many images/i;
+const RETRY_COPY = /retry/i;
+const OPAQUE_ID = /opaque/;
+const COUNT_ONLY_COPY = /3 attachments/;
+const PRIVATE_TERMINAL_METADATA =
+	/expired|withheld|deleted|unknown|revoked|opaque|2,048/;
+const GENERIC_FILE_COPY = /File/;
+const LOCALIZED_BYTE_COUNT = /2,048 bytes/;
+const PRIVATE_FILE_METADATA = /secret|script|private/;
+const TINY_RESERVED_BOX = /width: 64px; height: 64px/;
+
 /*
  * Team Bridge image attachments: wire contract, pure model, staging hook,
  * draft persistence and message rendering - exercising the SHIPPED modules
@@ -116,6 +141,9 @@ const bundle = await build({
  export * from "./src/renderer/src/features/team-bridge/use-team-bridge-drafts";
  export * from "./src/renderer/src/features/team-bridge/team-bridge-drafts";
  export * from "./src/renderer/src/features/team-bridge/team-bridge-scheduling";
+ export {OwnerAuditPanelView} from "./src/renderer/src/features/team-bridge/team-bridge-owner-audit";
+ export {BridgeAttachmentGroup} from "./src/renderer/src/features/team-bridge/attachments/bridge-attachment-group";
+ export {attachmentBox} from "./src/renderer/src/features/team-bridge/attachments/attachment-model";
  export {TeamBridgeMessageList} from "./src/renderer/src/features/team-bridge/team-bridge-message-list";
  export {TeamBridgeMarkdown} from "./src/renderer/src/features/team-bridge/team-bridge-markdown";
  export {TeamBridgeScheduledAttachments} from "./src/renderer/src/features/team-bridge/team-bridge-attachments";
@@ -889,8 +917,8 @@ test("drafts persist descriptors only, restore them, and the logout fence clears
 	const raw = Object.entries(localStorage).find(([key]) =>
 		key.startsWith("team-bridge-authored-drafts:v1:"),
 	)[1];
-	assert.match(raw, /batt_a/);
-	assert.doesNotMatch(raw, /base64|data:|iVBOR/, "no image bytes in storage");
+	assert.match(raw, BOUND_ATTACHMENT_ID);
+	assert.doesNotMatch(raw, INLINE_BYTES, "no image bytes in storage");
 	// A tampered entry carrying bytes is dropped on read, never restored.
 	const key = Object.keys(localStorage).find((k) =>
 		k.startsWith("team-bridge-authored-drafts:v1:"),
@@ -1023,11 +1051,22 @@ test("bubble: images render ONLY from attachments[], fetched member-gated; place
 	}
 	const imgs = [...view.element.querySelectorAll("img")];
 	assert.equal(imgs.length, 1);
-	assert.match(imgs[0].getAttribute("src"), /^blob:test\//);
+	assert.match(imgs[0].getAttribute("src"), PREVIEW_BLOB_URL);
 	const placeholders = [
 		...view.element.querySelectorAll("[data-attachment-placeholder]"),
 	].map((node) => node.getAttribute("data-attachment-placeholder"));
-	assert.deepEqual(placeholders.sort(), ["expired", "failed", "unavailable"]);
+	assert.deepEqual(placeholders.sort(), ["unavailable"]);
+	assert.equal(
+		view.element.querySelectorAll('[data-bridge-attachment-card="unavailable"]')
+			.length,
+		2,
+	);
+	assert.doesNotMatch(view.element.textContent, TERMINAL_REASON);
+	assert.equal(
+		view.element.querySelectorAll("button").length,
+		1,
+		"404 and terminal descriptors expose no retry",
+	);
 	assert.equal(
 		view.element.querySelector(".team-bridge-message-body"),
 		null,
@@ -1035,7 +1074,7 @@ test("bubble: images render ONLY from attachments[], fetched member-gated; place
 	);
 	assert.doesNotMatch(
 		view.element.textContent,
-		/batt_/,
+		ATTACHMENT_ID_PREFIX,
 		"ids never reach the screen",
 	);
 	await view.close();
@@ -1054,8 +1093,8 @@ test("markdown images in a body stay alt text and fetch nothing", async () => {
 		}),
 	]);
 	assert.equal(view.element.querySelectorAll("img").length, 0);
-	assert.match(view.element.textContent, /shot/);
-	assert.match(view.element.textContent, /https:\/\/evil\.example\/p\.png/);
+	assert.match(view.element.textContent, MARKDOWN_ALT);
+	assert.match(view.element.textContent, UNTRUSTED_IMAGE_URL);
 	assert.equal(mediaCalls.length, 0);
 	await view.close();
 });
@@ -1859,10 +1898,10 @@ test("fail-fast guards: the render budget and the settle bound turn a runaway in
 	budget.tick();
 	budget.tick();
 	assert.equal(budget.count, 3);
-	assert.throws(() => budget.tick(), /rendered more than 3 times/);
+	assert.throws(() => budget.tick(), RENDER_LIMIT_ERROR);
 	await assert.rejects(
 		within(20, new Promise(() => {}), "a step that never settles"),
-		/did not settle within 20 ms/,
+		SETTLE_LIMIT_ERROR,
 	);
 	assert.equal(
 		await within(1000, Promise.resolve("ok"), "a settled step"),
@@ -1992,15 +2031,15 @@ test("denied browser storage: attachment draft and descriptor paths render, read
 		// Harness self-check: a bare `localStorage` read (what the pre-fix
 		// status clients did) now throws, so a reintroduced bare read fails
 		// the identity() assertion below instead of finding a working store.
-		assert.throws(() => localStorage, /browser storage denied/);
-		assert.throws(() => globalThis.localStorage, /browser storage denied/);
-		assert.throws(() => window.localStorage, /browser storage denied/);
+		assert.throws(() => localStorage, STORAGE_REFUSAL);
+		assert.throws(() => globalThis.localStorage, STORAGE_REFUSAL);
+		assert.throws(() => window.localStorage, STORAGE_REFUSAL);
 		// And the pre-fix status-client shape, called through the real
 		// reconcileDraftAccount, now rejects: the harness would catch it.
 		await assert.rejects(
 			(async () =>
 				m.reconcileDraftAccount(localStorage, { state: "signed_out" }))(),
-			/browser storage denied/,
+			STORAGE_REFUSAL,
 		);
 		assert.equal(
 			m.browserDraftStorage(),
@@ -2618,23 +2657,23 @@ test("R1-01: an account change is its own sentence — never a quota, never a si
 		const text = element.textContent;
 		assert.match(
 			text,
-			/Signed-in account has changed since this message was started/i,
+			ACCOUNT_CHANGED_COPY,
 			"the account-change sentence is shown",
 		);
 		assert.equal(
-			/signed out/i.test(text),
+			SIGNED_OUT_COPY.test(text),
 			false,
 			"a sign-out is a different fact and must not be claimed",
 		);
 		assert.equal(
-			/too many images/i.test(text),
+			IMAGE_QUOTA_COPY.test(text),
 			false,
 			"the quota sentence is reserved for the actual limit refusal",
 		);
 		// A retry would 409 again until the account is resolved.
 		assert.equal(
 			[...element.querySelectorAll("button")].some((button) =>
-				/retry/i.test(button.textContent ?? ""),
+				RETRY_COPY.test(button.textContent ?? ""),
 			),
 			false,
 			"no Retry on an account mismatch",
@@ -2675,4 +2714,339 @@ test("R1-02: the delete receipt is required by the shipped schema", () => {
 			.success,
 		true,
 	);
+});
+
+/* Shared presentation: these probe the actual shipped group, not a copy. Audit
+ * supplies metadata only; a renderPreview spy is the negative control proving
+ * terminal metadata cannot even commission a member resource component. */
+async function renderAttachmentGroup(props) {
+	const element = document.createElement("div");
+	document.body.append(element);
+	const root = createRoot(element);
+	await act(async () =>
+		root.render(React.createElement(m.BridgeAttachmentGroup, props)),
+	);
+	return {
+		element,
+		close: async () => {
+			await act(async () => root.unmount());
+			element.remove();
+		},
+	};
+}
+
+test("shared audit cards: bound descriptors and count-only receipts never fetch", async () => {
+	mediaCalls = [];
+	for (const props of [
+		{
+			attachments: [
+				{
+					id: "opaque",
+					mime: "image/png",
+					size: 2048,
+					width: null,
+					height: null,
+					state: "bound",
+				},
+			],
+		},
+		{ attachments: [], count: 3 },
+	]) {
+		const view = await renderAttachmentGroup(props);
+		assert.equal(view.element.querySelectorAll("li").length, 1);
+		assert.equal(view.element.querySelectorAll("button,img,a").length, 0);
+		assert.doesNotMatch(view.element.textContent, OPAQUE_ID);
+		if (props.count === 3)
+			assert.match(view.element.textContent, COUNT_ONLY_COPY);
+		assert.equal(mediaCalls.length, 0);
+		await view.close();
+	}
+	const empty = await renderAttachmentGroup({ attachments: [] });
+	assert.equal(empty.element.innerHTML, "");
+	await empty.close();
+});
+
+test("shared cards: every terminal state is generic and cannot commission a preview", async () => {
+	let commissioned = 0;
+	const view = await renderAttachmentGroup({
+		attachments: [
+			"expired",
+			"withheld",
+			"deleted",
+			"unknown",
+			"revoked",
+			"",
+		].map((state, index) => ({
+			id: `opaque-${index}`,
+			mime: "image/png",
+			size: 2048,
+			state,
+		})),
+		renderPreview: () => {
+			commissioned++;
+			return React.createElement("button", { type: "button" }, "forbidden");
+		},
+	});
+	assert.equal(commissioned, 0);
+	assert.equal(
+		view.element.querySelectorAll('[data-bridge-attachment-card="unavailable"]')
+			.length,
+		6,
+	);
+	assert.doesNotMatch(view.element.textContent, PRIVATE_TERMINAL_METADATA);
+	assert.equal(view.element.querySelectorAll("button,img,a").length, 0);
+	await view.close();
+});
+
+test("shared file metadata: generic safe name, no raw descriptor text or inline bytes", async () => {
+	let commissioned = 0;
+	const view = await renderAttachmentGroup({
+		attachments: [
+			{
+				id: "private/id",
+				mime: "<script>alert(1)</script>",
+				size: 2048,
+				state: "bound",
+				filename: "/private/home/secret.txt",
+			},
+		],
+		renderPreview: () => {
+			commissioned++;
+			return null;
+		},
+	});
+	assert.equal(commissioned, 0);
+	assert.match(view.element.textContent, GENERIC_FILE_COPY);
+	assert.match(view.element.textContent, LOCALIZED_BYTE_COUNT);
+	assert.doesNotMatch(view.element.textContent, PRIVATE_FILE_METADATA);
+	assert.equal(view.element.querySelectorAll("button,img,a,script").length, 0);
+	await view.close();
+});
+
+test("shared geometry: nullable, invalid and huge dimensions stay finite and bounded", () => {
+	for (const width of [
+		null,
+		0,
+		-1,
+		Number.NaN,
+		Number.POSITIVE_INFINITY,
+		1e300,
+	]) {
+		for (const compact of [false, true]) {
+			const box = m.attachmentBox({ width, height: width }, true, compact);
+			assert.ok(Number.isFinite(box.width) && Number.isFinite(box.height));
+			assert.ok(box.width > 0 && box.width <= (compact ? 264 : 360));
+			assert.ok(box.height > 0 && box.height <= (compact ? 176 : 240));
+		}
+	}
+	assert.deepEqual(m.attachmentBox(null, false, true), {
+		width: 128,
+		height: 88,
+	});
+});
+
+test("member resource: authenticated refusal is terminal; 503 alone offers explicit retry", async () => {
+	for (const status of [401, 403, 404, 410, 503]) {
+		mediaCalls = [];
+		let ready = false;
+		mediaAnswer = () =>
+			ready
+				? { status: 200, kind: "bytes", mimeType: "image/png", data: PNG }
+				: { status, kind: "error" };
+		const view = await renderList([
+			message({
+				id: `refusal-${status}`,
+				attachments: [
+					{
+						id: `resource-${status}`,
+						mime: "image/png",
+						size: 10,
+						width: 4,
+						height: 3,
+						state: "bound",
+					},
+				],
+			}),
+		]);
+		assert.equal(mediaCalls.length, 1);
+		assert.equal(mediaCalls[0].request.expectedAccountId, "acct_a");
+		const retry = [...view.element.querySelectorAll("button")].find(
+			(node) =>
+				node.textContent === m.t("ui.teamBridge.attachments.retry_load"),
+		);
+		assert.equal(Boolean(retry), status === 503);
+		if (retry) {
+			const box = view.element
+				.querySelector("[data-attachment-placeholder]")
+				.getAttribute("style");
+			ready = true;
+			await act(async () => retry.click());
+			await settle();
+			await settle();
+			assert.equal(mediaCalls.length, 2);
+			assert.equal(view.element.querySelectorAll("img").length, 1);
+			const reserved = view.element.querySelector("[data-attachment-reserved]");
+			assert.equal(
+				reserved,
+				null,
+				"ready preview replaces reserved loading frame",
+			);
+			assert.match(box, TINY_RESERVED_BOX);
+		}
+		await view.close();
+	}
+});
+
+// Exercise the production audit decoration, not just the standalone group:
+// a null-rendering React element still counts as a supplied list decoration.
+test("audit attachment presence: zero blank bodies keep fallback; descriptors/count-only stay nonfetchable", async () => {
+	mediaCalls = [];
+	const element = document.createElement("div");
+	document.body.append(element);
+	const root = createRoot(element);
+	const conversation = {
+		id: "bcv_audit_presence",
+		tenant_id: "tnt_audit_presence",
+		kind: "dm",
+		title: null,
+		visibility: "private",
+		status: "active",
+		builtin: null,
+		members: [],
+		member_count: 0,
+		viewers: [],
+		agent: {
+			account_id: "acct_audit_agent",
+			display_label: "Synthetic agent",
+			state: "active",
+			joined_seq: 0,
+			left_seq: null,
+		},
+		created_at: "2026-10-23T10:00:00Z",
+		last_message_at: null,
+		latest_seq: 6,
+		last_thread_root_id: null,
+	};
+	const attachment = {
+		id: "opaque_audit_image",
+		mime: "image/png",
+		size: 2048,
+		width: 640,
+		height: 480,
+		state: "bound",
+	};
+	const cases = [
+		{ id: "audit_blank", body: "", attachments: [], attachment_count: 0 },
+		{
+			id: "audit_whitespace",
+			body: " \n\t",
+			attachments: [],
+			attachment_count: 0,
+		},
+		{
+			id: "audit_text",
+			body: "No attachments",
+			attachments: [],
+			attachment_count: 0,
+		},
+		{
+			id: "audit_metadata",
+			body: "Image and file metadata",
+			attachments: [
+				attachment,
+				{ ...attachment, id: "opaque_file", mime: "application/octet-stream" },
+			],
+			attachment_count: 2,
+		},
+		{
+			id: "audit_revoked",
+			body: "Terminal receipt",
+			attachments: [{ ...attachment, state: "revoked" }],
+			attachment_count: 1,
+		},
+		{
+			id: "audit_count",
+			body: "Count only",
+			attachments: [],
+			attachment_count: 3,
+		},
+	];
+	const rows = cases.map((item, seq) => ({
+		...message({}),
+		conversation_id: conversation.id,
+		seq: seq + 1,
+		body_hash: null,
+		agent_label: null,
+		thread_root_id: null,
+		reply_count: null,
+		last_reply_at: null,
+		reply_participants: null,
+		agent_delivery_status: "admitted",
+		agent_verdict_at: null,
+		...item,
+	}));
+	await act(async () =>
+		root.render(
+			React.createElement(
+				m.QueryClientProvider,
+				{ client: new m.QueryClient() },
+				React.createElement(m.OwnerAuditPanelView, {
+					conversation,
+					messages: rows,
+					state: "ready",
+					retry: () => {},
+					readerAccountId: "acct_audit_owner",
+					people: [],
+				}),
+			),
+		),
+	);
+	await settle();
+	await settle();
+	for (const id of ["audit_blank", "audit_whitespace"]) {
+		const row = element.querySelector(`[data-message-id="${id}"]`);
+		assert.ok(
+			row.textContent.includes(m.t("ui.ownerAudit.body_unavailable")),
+			`${id} retains unavailable body`,
+		);
+		assert.equal(
+			row.querySelectorAll("[data-bridge-attachment-card]").length,
+			0,
+		);
+	}
+	const byId = (id) => element.querySelector(`[data-message-id="${id}"]`);
+	assert.equal(
+		byId("audit_text").querySelectorAll("[data-bridge-attachment-card]").length,
+		0,
+	);
+	assert.equal(
+		byId("audit_metadata").querySelectorAll(
+			'[data-bridge-attachment-card="metadata"]',
+		).length,
+		2,
+	);
+	assert.equal(
+		byId("audit_revoked").querySelectorAll(
+			'[data-bridge-attachment-card="unavailable"]',
+		).length,
+		1,
+	);
+	assert.ok(
+		byId("audit_count").textContent.includes(
+			m.t("ui.teamBridge.attachmentCard.list", { count: 3 }),
+		),
+	);
+	assert.equal(
+		byId("audit_count").querySelectorAll("[data-bridge-attachment-card]")
+			.length,
+		1,
+	);
+	assert.equal(element.querySelectorAll("img").length, 0);
+	assert.equal(
+		mediaCalls.filter((call) => call.request.op === "team_bridge.attachment")
+			.length,
+		0,
+	);
+	await act(async () => root.unmount());
+	element.remove();
 });

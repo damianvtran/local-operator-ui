@@ -22,6 +22,7 @@ import type {
 	OwnerAuditConversation,
 	OwnerAuditMessage,
 } from "../../../../shared/team-bridge-owner-audit-contract";
+import { BridgeAttachmentGroup } from "./attachments/bridge-attachment-group";
 import { TeamBridgeMessageList } from "./team-bridge-message-list";
 import type { ChiefLabels } from "./team-bridge-model";
 import {
@@ -343,7 +344,7 @@ function AuditTranscript({
 				);
 				const verdict = delivery === "own" ? null : VERDICT[delivery];
 				const attachmentCount =
-					message.attachments?.length ?? message.attachment_count ?? 0;
+					message.attachments?.length || message.attachment_count || 0;
 				return {
 					badge: verdict && (
 						<Badge variant={verdict.variant}>{t(verdict.copy)}</Badge>
@@ -360,19 +361,11 @@ function AuditTranscript({
 					withheldCopy: t("ui.ownerAudit.body_unavailable"),
 					attachments:
 						attachmentCount > 0 ? (
-							<ul className="mt-1 space-y-0.5 text-[12px] text-ink-muted">
-								{message.attachments?.length ? (
-									message.attachments.map((attachment) => (
-										<li key={attachment.id}>
-											{attachment.state === "expired"
-												? t("ui.ownerAudit.attachment_expired")
-												: t("ui.ownerAudit.attachment_unavailable")}
-										</li>
-									))
-								) : (
-									<li>{t("ui.ownerAudit.attachment_unavailable")}</li>
-								)}
-							</ul>
+							<BridgeAttachmentGroup
+								attachments={message.attachments ?? []}
+								count={attachmentCount}
+								compact={density === "compact"}
+							/>
 						) : undefined,
 					after:
 						renderReplies && (message.reply_count ?? 0) > 0

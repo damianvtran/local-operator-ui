@@ -332,5 +332,10 @@
 	"ui.teamBridge.delivery.pending": "Vérifié ; la remise à {agent} est en attente",
 	"ui.teamBridge.delivery.info_refused": "Chaque agent vérifie les messages entrants avec la modération de son propriétaire. Un message refusé n’a pas été transmis à l’agent. Reformuler la demande aide généralement.",
 	"ui.teamBridge.delivery.info_held": "Chaque agent vérifie les messages entrants avec la modération de son propriétaire avant de les transmettre. Celui-ci n’a pas encore été vérifié ; il sera remis ou refusé automatiquement.",
-	"ui.teamBridge.delivery.info_label": "À propos de la vérification des messages"
+	"ui.teamBridge.delivery.info_label": "À propos de la vérification des messages",
+	"ui.teamBridge.attachmentCard.list": "{count, plural, one {# pièce jointe} other {# pièces jointes}}",
+	"ui.teamBridge.attachmentCard.file": "Fichier",
+	"ui.teamBridge.attachmentCard.bytes": "{size, number} octets",
+	"ui.teamBridge.attachmentCard.metadata_only": "Aperçu indisponible dans cette vue",
+	"ui.teamBridge.attachmentCard.unavailable": "Pièce jointe indisponible"
 }

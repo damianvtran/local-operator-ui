@@ -1,0 +1,80 @@
+{
+  "schema": 1,
+  "description": "Maps canonical immutable independent S3 delta audit records to the ledger-required receipt copies. Records and receipts are byte-identical; no new audit is claimed.",
+  "entries": [
+    {
+      "locale": "es",
+      "namespace": "ui.teamBridge",
+      "auditor_instance": "f93eb129057e-es",
+      "canonical_record": "i18n/audits/evidence/es/ui.teamBridge/f93eb129057e-es/record.json",
+      "receipt": "i18n/receipts/f93eb129057e-es.json",
+      "sha256": "4fe558aa7e29b4b535148887365af91eb277eac6cab6de31dcd979f4f2c43dcd",
+      "finding_dispositions": {}
+    },
+    {
+      "locale": "fr",
+      "namespace": "ui.teamBridge",
+      "auditor_instance": "f93eb129057e-fr",
+      "canonical_record": "i18n/audits/evidence/fr/ui.teamBridge/f93eb129057e-fr/record.json",
+      "receipt": "i18n/receipts/f93eb129057e-fr.json",
+      "sha256": "60a61625870414586e08c9a4a1bc5b0969d42024c2527c7de474733ecf6d09eb",
+      "finding_dispositions": {}
+    },
+    {
+      "locale": "hi",
+      "namespace": "ui.teamBridge",
+      "auditor_instance": "f93eb129057e-hi",
+      "canonical_record": "i18n/audits/evidence/hi/ui.teamBridge/f93eb129057e-hi/record.json",
+      "receipt": "i18n/receipts/f93eb129057e-hi.json",
+      "sha256": "0daccb8bf6333a03e284ad1139e83016e84f10f0205d55002cd847c098609294",
+      "finding_dispositions": {}
+    },
+    {
+      "locale": "ru",
+      "namespace": "ui.teamBridge",
+      "auditor_instance": "f93eb129057e-ru",
+      "canonical_record": "i18n/audits/evidence/ru/ui.teamBridge/f93eb129057e-ru/record.json",
+      "receipt": "i18n/receipts/f93eb129057e-ru.json",
+      "sha256": "fe09d7e37c58de32411de72a9931c77987ae8ef8429777982b98153d426e71b5",
+      "finding_dispositions": {
+        "R2": "deferred — nonblocking Russian byte-count agreement polish; audited catalogue bytes unchanged"
+      }
+    },
+    {
+      "locale": "ur",
+      "namespace": "ui.teamBridge",
+      "auditor_instance": "f93eb129057e-ur",
+      "canonical_record": "i18n/audits/evidence/ur/ui.teamBridge/f93eb129057e-ur/record.json",
+      "receipt": "i18n/receipts/f93eb129057e-ur.json",
+      "sha256": "99c4ad13393194f3939f88fd8587b9014d0b721b80722db6353bcfe4d27b04f0",
+      "finding_dispositions": {}
+    },
+    {
+      "locale": "vi",
+      "namespace": "ui.teamBridge",
+      "auditor_instance": "f93eb129057e-vi",
+      "canonical_record": "i18n/audits/evidence/vi/ui.teamBridge/f93eb129057e-vi/record.json",
+      "receipt": "i18n/receipts/f93eb129057e-vi.json",
+      "sha256": "3fdd568a4cea5597e607d28e2bdd78fd8520da97f4a1ba2a0f92c5db5b2722e3",
+      "finding_dispositions": {}
+    },
+    {
+      "locale": "zh-CN",
+      "namespace": "ui.teamBridge",
+      "auditor_instance": "f93eb129057e-zh-cn",
+      "canonical_record": "i18n/audits/evidence/zh-CN/ui.teamBridge/f93eb129057e-zh-cn/record.json",
+      "receipt": "i18n/receipts/f93eb129057e-zh-cn.json",
+      "sha256": "3080a67ffe533a151a201f7871cd40e6ccab40caaa48331fe7bc65992671c2e0",
+      "finding_dispositions": {}
+    }
+  ],
+  "context_only_addendum": {
+    "record": "i18n/audits/evidence/en/ui.teamBridge/f93eb129057e-context-followup/record.json",
+    "sha256": "cf7427e674e21b215549fd58e5a10711b98e295db6ed22b3c9cafc380e8fdd88",
+    "context_path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+    "context_sha256": "b309e464421167093b9434f33944bbbb1931385a63c822cc3763c4f1c5a6cb49",
+    "auditor_instance": "f93eb129057e-context-followup",
+    "actual_model": "anthropic/claude-sonnet-5-5",
+    "scope": "Five English context additions only; not a replacement linguistic or ledger audit. Original seven receipts and Russian R2 disposition remain unchanged."
+  }
+}

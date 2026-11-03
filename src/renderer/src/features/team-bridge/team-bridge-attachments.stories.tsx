@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { expect, screen, userEvent, waitFor, within } from "@storybook/test";
-import type { FC, ReactNode } from "react";
+import { type FC, type ReactNode, useLayoutEffect } from "react";
 import type {
 	TeamBridgeAttachment,
 	TeamBridgeMessage,
@@ -45,6 +45,10 @@ const decode = (b64: string) =>
 	Uint8Array.from(atob(b64), (character) => character.charCodeAt(0));
 
 const DELAY_PREFIX = /^batt_delay_/;
+// Explicit gates let QA capture pending, ready and settled frames without a
+// timer race. Synthetic authority is required by the real member component.
+const controlledMedia = new Map<string, () => void>();
+const controlledAttempts = new Map<string, number>();
 const installMedia = () => {
 	// biome-ignore lint/suspicious/noExplicitAny: the preload bridge is a mock here.
 	const api = (window as any).api ?? {};
@@ -52,6 +56,25 @@ const installMedia = () => {
 		...api.desktop,
 		media: async (request: { op?: string; attachmentId?: string }) => {
 			const id = request.attachmentId ?? "";
+			if (id.startsWith("batt_refused_"))
+				return {
+					status: Number(id.slice("batt_refused_".length)),
+					kind: "error",
+				};
+			if (id.startsWith("batt_control_") || id.startsWith("batt_retry_")) {
+				const attempt = (controlledAttempts.get(id) ?? 0) + 1;
+				controlledAttempts.set(id, attempt);
+				if (id.startsWith("batt_retry_") && attempt === 1)
+					return { status: 503, kind: "error" };
+				await new Promise<void>((resolve) => controlledMedia.set(id, resolve));
+				controlledMedia.delete(id);
+				return {
+					status: 200,
+					kind: "bytes",
+					mimeType: "image/png",
+					data: decode(SHOT_WIDE_B64),
+				};
+			}
 			/*
 			 * Loading-state ids. `batt_hold_*` NEVER answers, so the reserved box
 			 * can be captured for as long as needed; `batt_delay_*` answers after
@@ -292,12 +315,21 @@ export const PasteUnsupported: Story = {
 
 /* -------------------------------- bubbles -------------------------------- */
 
-const Thread: FC<{ messages: TeamBridgeMessage[] }> = ({ messages }) => (
-	<div className="flex w-[760px] flex-col bg-surface text-ink">
+const Thread: FC<{
+	messages: TeamBridgeMessage[];
+	width?: number;
+	density?: "regular" | "compact";
+}> = ({ messages, width = 760, density }) => (
+	<div
+		style={{ width, maxWidth: "100%" }}
+		className="flex min-w-0 flex-col bg-surface text-ink"
+	>
 		<TeamBridgeMessageList
 			messages={messages}
 			labelFor={(sender) => sender.display_label}
 			tenantId="tnt_story"
+			accountId="acct_story_reader"
+			density={density}
 		/>
 	</div>
 );
@@ -673,7 +705,8 @@ export const LightboxKeyboard: StoryObj<typeof Thread> = {
 			name: "Open image 2 of 4",
 		});
 		await waitFor(() => expect(tile).not.toBeDisabled());
-		await userEvent.click(tile);
+		tile.focus();
+		await userEvent.keyboard("{Enter}");
 		const dialog = await screen.findByRole("dialog");
 		const at = (name: string) =>
 			waitFor(() =>
@@ -686,16 +719,109 @@ export const LightboxKeyboard: StoryObj<typeof Thread> = {
 		await at("Image 3 of 4");
 		await userEvent.keyboard("{ArrowLeft}{ArrowLeft}");
 		await at("Image 1 of 4");
-		// Focus trap: a full lap of Tab (more presses than controls) never
-		// leaves the dialog.
-		for (let press = 0; press < 10; press += 1) {
-			await userEvent.tab();
-			await expect(dialog.contains(document.activeElement)).toBe(true);
+		// Count actual enabled controls, then walk more than a complete lap
+		// in both directions. QA records the real order from rendered focus.
+		const controls = dialog.querySelectorAll(
+			'button:not([disabled]), a[href], input:not([disabled]), [tabindex="0"]',
+		);
+		for (const shift of [false, true]) {
+			for (let press = 0; press <= controls.length; press += 1) {
+				await userEvent.tab({ shift });
+				await expect(dialog.contains(document.activeElement)).toBe(true);
+			}
 		}
-		await userEvent.tab({ shift: true });
-		await expect(dialog.contains(document.activeElement)).toBe(true);
+		await userEvent.keyboard("{ArrowLeft}");
+		await at("Image 4 of 4");
+		await userEvent.keyboard("{ArrowRight}");
+		await at("Image 1 of 4");
 		await userEvent.keyboard("{Escape}");
 		await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
 		await waitFor(() => expect(tile).toHaveFocus());
+		await userEvent.keyboard(" ");
+		const reopened = await screen.findByRole("dialog");
+		await userEvent.click(
+			within(reopened).getByRole("button", { name: "Close image" }),
+		);
+		await waitFor(() => expect(tile).toHaveFocus());
 	},
+};
+
+/** Fixture controls release synthetic bytes, never production auth or transport.
+ * A fresh story mount resets only its own synthetic request counters. */
+const ControlledMember: FC<{ retry?: boolean; compact?: boolean }> = ({
+	retry = false,
+	compact = false,
+}) => {
+	const id = retry
+		? "batt_retry_explicit"
+		: compact
+			? "batt_control_compact"
+			: "batt_control_single";
+	useLayoutEffect(() => {
+		controlledAttempts.delete(id);
+		return () => {
+			controlledMedia.get(id)?.();
+			controlledMedia.delete(id);
+			controlledAttempts.delete(id);
+		};
+	}, [id]);
+	return (
+		<div className="space-y-3">
+			<button
+				type="button"
+				className="min-h-6 rounded border border-control px-2 text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
+				onClick={() => controlledMedia.get(id)?.()}
+			>
+				Release synthetic preview bytes
+			</button>
+			<Thread
+				width={compact ? 272 : 760}
+				density={compact ? "compact" : "regular"}
+				messages={[
+					message({
+						id: `message_${id}`,
+						body: retry
+							? "503 first; use Try again, then release bytes."
+							: "Pending until released; compare ready and settled geometry.",
+						attachments: [descriptor(id, 240, 150)],
+					}),
+					message({
+						id: `after_${id}`,
+						seq: 2,
+						body: "This following message must not move.",
+					}),
+				]}
+			/>
+			<button type="button">After attachment flow</button>
+		</div>
+	);
+};
+export const PendingToReady: StoryObj = { render: () => <ControlledMember /> };
+export const PendingToReadyCompact: StoryObj = {
+	render: () => <ControlledMember compact />,
+};
+export const TransientExplicitRetry: StoryObj = {
+	render: () => <ControlledMember retry />,
+};
+export const MemberTerminalRefusals: StoryObj<typeof Thread> = {
+	render: () => (
+		<Thread
+			messages={[
+				message({
+					body: "Terminal responses are not retry actions.",
+					attachments: [401, 403, 404].map((status) =>
+						descriptor(`batt_refused_${status}`, 240, 150),
+					),
+				}),
+			]}
+		/>
+	),
+};
+export const LightMemberPreview: StoryObj<typeof Thread> = {
+	args: { ...{ theme: "localOperatorLight" }, messages: [fourImages] },
+	render: (args) => <Thread {...args} />,
+};
+export const DarkMemberPreview: StoryObj<typeof Thread> = {
+	args: { ...{ theme: "localOperatorDark" }, messages: [fourImages] },
+	render: (args) => <Thread {...args} />,
 };
