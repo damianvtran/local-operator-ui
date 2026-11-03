@@ -111,6 +111,7 @@ export class AppAttentionService {
 		// Positive allowlist only: directory/history/list traffic must NEVER
 		// trigger another settings/status/unread reconciliation.
 		const writes = new Set([
+			"aida.control",
 			"settings.edit",
 			"settings.reset",
 			"notifications.read",
@@ -236,6 +237,22 @@ export class AppAttentionService {
 								preference?.value !== false,
 								projectionGeneration,
 							);
+						}
+						// Match rail visibility: capability plus enabled Aida status. This
+						// is an identity read, not a session-history/count scan.
+						if (Number(features?.aida ?? 0) >= 1) {
+							const aida = this.body(
+								await this.ports.request({ op: "aida.status" }),
+							);
+							if (!current()) continue;
+							this.projection.setAidaSession(
+								aida?.enabled === true && typeof aida.session_id === "string"
+									? aida.session_id
+									: null,
+								projectionGeneration,
+							);
+						} else {
+							this.projection.setAidaSession(null, projectionGeneration);
 						}
 						if (Number(features?.notifications ?? 0) >= 1) {
 							const version = this.projection.currentInboxVersion;

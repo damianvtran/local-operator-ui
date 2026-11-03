@@ -9,6 +9,7 @@ const root = new URL("../src/", import.meta.url);
 const allowed = new Set([
 	"main/app-attention-projection.ts",
 	"main/app-attention-service.ts",
+	"main/app-icon-badge.ts",
 	"shared/completion-attention.ts",
 	"shared/team-bridge-poll.ts",
 ]);
@@ -33,6 +34,9 @@ const { AppAttentionProjection } = await import(
 );
 const { AppAttentionService } = await import(
 	await moduleUrl("main/app-attention-service.ts")
+);
+const { createAppIconBadge } = await import(
+	await moduleUrl("main/app-icon-badge.ts")
 );
 const { unreadCompletionKind, isUnreadAckableCompletion } = await import(
 	await moduleUrl("shared/completion-attention.ts")
@@ -70,6 +74,95 @@ const frame = (
 ) => ({ type, seq, payload, session_id, epoch });
 const flush = () => new Promise(setImmediate);
 
+test("live regression: rail 10 + Aida 1 + Bridge 0 ignores 124 historical completions", () => {
+	let last;
+	const p = new AppAttentionProjection((snapshot) => {
+		last = snapshot;
+	});
+	p.setAidaSession("synthetic");
+	const receipts = { "session/synthetic": attention() };
+	const statuses = { "session/synthetic": { code: "complete", revision: 1 } };
+	for (let i = 0; i < 124; i++) {
+		receipts[`session/historical-${i}`] = attention(true, `old-${i}`);
+		statuses[`session/historical-${i}`] = { code: "complete", revision: 1 };
+	}
+	p.observe(
+		open({
+			notifications: inbox(10),
+			attention: receipts,
+			attention_status: statuses,
+		}),
+	);
+	assert.equal(last.unreadCount, 11);
+	assert.equal(last.pending, false);
+	p.observe(frame("attention", 2, attention(false, "completion-1", [1, 1])));
+	assert.equal(last.unreadCount, 10, "reading Aida clears only her one pill");
+	p.setAidaSession(null);
+	assert.equal(last.unreadCount, 10, "hidden/disabled Aida contributes zero");
+});
+
+test("empty inbox plus historical completions stays clear through the real native adapter", () => {
+	const writes = [];
+	const badge = createAppIconBadge({
+		platform: "darwin",
+		setDockBadge: (label) => writes.push(label),
+		describe: () => "synthetic description",
+	});
+	const p = new AppAttentionProjection((snapshot, enabled) => {
+		badge.update(snapshot, enabled);
+	});
+	p.setAidaSession("synthetic");
+	const receipts = {};
+	const statuses = {};
+	for (let i = 0; i < 124; i++) {
+		receipts[`session/historical-${i}`] = attention(true, `old-${i}`);
+		statuses[`session/historical-${i}`] = { code: "complete", revision: 1 };
+	}
+	p.observe(
+		open({
+			notifications: inbox(0),
+			attention: receipts,
+			attention_status: statuses,
+		}),
+	);
+	assert.equal(badge.readForScene().unreadCount, 0);
+	assert.equal(badge.readForScene().pending, false);
+	assert.deepEqual(
+		writes,
+		[""],
+		"historical receipts must not paint any badge",
+	);
+});
+
+test("rail sum 11 clears to zero through the real projection and native adapter", () => {
+	const writes = [];
+	const badge = createAppIconBadge({
+		platform: "darwin",
+		setDockBadge: (label) => writes.push(label),
+		describe: () => "synthetic description",
+	});
+	const p = new AppAttentionProjection((snapshot, enabled) => {
+		badge.update(snapshot, enabled);
+	});
+	p.setAidaSession("synthetic");
+	p.observe(
+		open({
+			notifications: inbox(10),
+			attention: { "session/synthetic": attention() },
+			attention_status: {
+				"session/synthetic": { code: "complete", revision: 1 },
+			},
+		}),
+	);
+	assert.equal(writes.at(-1), "11");
+	p.observe(frame("attention", 2, attention(false, "completion-1", [1, 1])));
+	assert.equal(writes.at(-1), "10");
+	p.observe(frame("notifications", 3, inbox(0, 0, 0, 2)));
+	assert.equal(badge.readForScene().unreadCount, 0);
+	assert.equal(badge.readForScene().pending, false);
+	assert.deepEqual(writes, ["", "11", "10", ""]);
+});
+
 test("shared sidebar predicate: only unseen terminal receipts with token are ackable", () => {
 	for (const code of ["complete", "error", "interrupted"]) {
 		const row = { status: { code }, attention: attention() };
@@ -103,6 +196,7 @@ test("shared sidebar predicate: only unseen terminal receipts with token are ack
 test("canonical ask/read/pending, independent completion, duplicate banner/Aida/legacy aliases", () => {
 	const output = [];
 	const p = new AppAttentionProjection((snapshot) => output.push(snapshot));
+	p.setAidaSession("synthetic");
 	p.observe(
 		open({
 			notifications: inbox(1, 1, 1),
@@ -151,6 +245,7 @@ test("canonical ask/read/pending, independent completion, duplicate banner/Aida/
 test("startup unknown status, gate takeover, reordered receipts and identity fencing", () => {
 	const output = [];
 	const p = new AppAttentionProjection((snapshot) => output.push(snapshot));
+	p.setAidaSession("synthetic");
 	p.observe(open({ attention: { "session/synthetic": attention() } }));
 	assert.equal(
 		output.at(-1).unreadCount,
@@ -184,6 +279,7 @@ test("HTTP inbox snapshot cannot overwrite a newer feed level", () => {
 	const p = new AppAttentionProjection((snapshot) => {
 		last = snapshot;
 	});
+	p.setAidaSession("synthetic");
 	p.observe(open({ notifications: inbox(3) }));
 	const version = p.currentInboxVersion;
 	p.observe(frame("notifications", 2, inbox(0, 0, 0, 2)));
@@ -219,6 +315,51 @@ test("successful READ traffic never triggers reconciliation; only proven writes 
 	assert.equal(requests[0].op, "team_bridge.status");
 	service.stop();
 	await flush();
+});
+
+test("service resolves the enabled Aida rail and rechecks it after local control writes", async () => {
+	let enabled = true;
+	const output = [];
+	const requests = [];
+	const service = new AppAttentionService({
+		request: async (input) => {
+			requests.push(input.op);
+			const result =
+				input.op === "capabilities"
+					? { features: { aida: 1, notifications: 1 } }
+					: input.op === "aida.status"
+						? { enabled, session_id: "synthetic" }
+						: input.op === "notifications.count"
+							? inbox(10)
+							: input.op === "team_bridge.status"
+								? { state: "signed_out", account_id: null }
+								: {};
+			return { status: 200, body: { result } };
+		},
+		publish: (snapshot) => output.push(snapshot),
+		clear: () => {},
+	});
+	service.observe(
+		open({
+			attention: { "session/synthetic": attention() },
+			attention_status: {
+				"session/synthetic": { code: "complete", revision: 1 },
+			},
+		}),
+	);
+	await flush();
+	assert.equal(output.at(-1).unreadCount, 11);
+	enabled = false;
+	service.observeResponse({ op: "aida.control" }, { status: 200 });
+	await flush();
+	assert.equal(output.at(-1).unreadCount, 10);
+	assert.equal(requests.filter((op) => op === "aida.status").length, 2);
+	enabled = true;
+	service.observeResponse({ op: "settings.edit" }, { status: 200 });
+	await flush();
+	assert.equal(output.at(-1).unreadCount, 11);
+	assert.equal(requests.filter((op) => op === "aida.status").length, 3);
+	service.stop();
 });
 
 test("Bridge uses one authorized account total and rejects a write-racing stale snapshot", async () => {
@@ -284,6 +425,7 @@ test("snapshot cursor reserved before reads preserves the queued newer level", (
 	const p = new AppAttentionProjection((snapshot) => {
 		last = snapshot;
 	});
+	p.setAidaSession("synthetic");
 	p.observe({ ...open({ notifications: inbox(4, 0, 0, 1) }), seq: 10 });
 	p.observe(frame("notifications", 11, inbox(0, 0, 0, 2)));
 	assert.equal(last.unreadCount, 0);
@@ -563,6 +705,7 @@ test("approval HTTP snapshot cannot overwrite a newer settle feed level", () => 
 	const p = new AppAttentionProjection((snapshot) => {
 		last = snapshot;
 	});
+	p.setAidaSession("synthetic");
 	p.observe(open({ approvals_pending: true }));
 	const version = p.currentMeshVersion;
 	p.observe(frame("approvals", 2, { pending: false }));
@@ -603,6 +746,7 @@ test("retired completion is acknowledgeable when canonical status is interrupted
 	const p = new AppAttentionProjection((snapshot) => {
 		last = snapshot;
 	});
+	p.setAidaSession("synthetic");
 	const retired = { ...attention(true, "retire-for-build"), kind: "retired" };
 	p.observe(open({}));
 	p.observe(frame("attention", 2, retired));
