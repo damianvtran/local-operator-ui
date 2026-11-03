@@ -1,0 +1,22 @@
+
+1024|localOperatorDark|plain  idle A=259 B=223
+  idle           ov=0    boxes=2 A=259   B=223   cluster=68  A=idle:true B=idle:true
+  recording      ov=0    boxes=3 A=259   B=223   cluster=104  A=idle:true B=idle:true
+  sendrec-hang   ov=0    boxes=2 A=259   B=223   cluster=68  A=idle:true B=idle:true
+
+1024|localOperatorLight|plain  idle A=259 B=223
+  idle           ov=0    boxes=2 A=259   B=223   cluster=68  A=idle:true B=idle:true
+  recording      ov=0    boxes=3 A=259   B=223   cluster=104  A=idle:true B=idle:true
+  sendrec-hang   ov=0    boxes=2 A=259   B=223   cluster=68  A=idle:true B=idle:true
+
+520|localOperatorDark|plain  idle A=254 B=222
+  idle           ov=0    boxes=2 A=254   B=222   cluster=60  A=idle:true B=idle:true
+  recording      ov=0    boxes=3 A=254   B=222   cluster=92  A=idle:true B=idle:true
+  sendrec-hang   ov=0    boxes=2 A=254   B=222   cluster=60  A=idle:true B=idle:true
+
+520|localOperatorLight|plain  idle A=254 B=222
+  idle           ov=0    boxes=2 A=254   B=222   cluster=60  A=idle:true B=idle:true
+  recording      ov=0    boxes=3 A=254   B=222   cluster=92  A=idle:true B=idle:true
+  sendrec-hang   ov=0    boxes=2 A=254   B=222   cluster=60  A=idle:true B=idle:true
+
+PASS (0 failure(s))

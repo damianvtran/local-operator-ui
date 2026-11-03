@@ -1,0 +1,98 @@
+
+1024|localOperatorDark|plain  idle A=933 B=969
+  idle           ov=0    boxes=2 A=933   B=969   cluster=68  A=idle:true B=idle:true
+  preparing      ov=0    boxes=2 A=933   B=969   cluster=68  A=idle:true B=idle:true
+
+1024|localOperatorLight|plain  idle A=933 B=969
+  idle           ov=0    boxes=2 A=933   B=969   cluster=68  A=idle:true B=idle:true
+  preparing      ov=0    boxes=2 A=933   B=969   cluster=68  A=idle:true B=idle:true
+
+900|localOperatorDark|plain  idle A=871 B=907
+  idle           ov=0    boxes=2 A=871   B=907   cluster=68  A=idle:true B=idle:true
+  preparing      ov=0    boxes=2 A=871   B=907   cluster=68  A=idle:true B=idle:true
+
+900|localOperatorLight|plain  idle A=871 B=907
+  idle           ov=0    boxes=2 A=871   B=907   cluster=68  A=idle:true B=idle:true
+  preparing      ov=0    boxes=2 A=871   B=907   cluster=68  A=idle:true B=idle:true
+
+840|localOperatorDark|plain  idle A=832 B=868
+  idle           ov=0    boxes=2 A=832   B=868   cluster=68  A=idle:true B=idle:true
+  preparing      ov=0    boxes=2 A=832   B=868   cluster=68  A=idle:true B=idle:true
+
+840|localOperatorLight|plain  idle A=832 B=868
+  idle           ov=0    boxes=2 A=832   B=868   cluster=68  A=idle:true B=idle:true
+  preparing      ov=0    boxes=2 A=832   B=868   cluster=68  A=idle:true B=idle:true
+
+780|localOperatorDark|plain  idle A=772 B=808
+  idle           ov=0    boxes=2 A=772   B=808   cluster=68  A=idle:true B=idle:true
+  preparing      ov=0    boxes=2 A=772   B=808   cluster=68  A=idle:true B=idle:true
+
+780|localOperatorLight|plain  idle A=772 B=808
+  idle           ov=0    boxes=2 A=772   B=808   cluster=68  A=idle:true B=idle:true
+  preparing      ov=0    boxes=2 A=772   B=808   cluster=68  A=idle:true B=idle:true
+
+720|localOperatorDark|plain  idle A=712 B=748
+  idle           ov=0    boxes=2 A=712   B=748   cluster=68  A=idle:true B=idle:true
+  preparing      ov=0    boxes=2 A=712   B=748   cluster=68  A=idle:true B=idle:true
+
+720|localOperatorLight|plain  idle A=712 B=748
+  idle           ov=0    boxes=2 A=712   B=748   cluster=68  A=idle:true B=idle:true
+  preparing      ov=0    boxes=2 A=712   B=748   cluster=68  A=idle:true B=idle:true
+
+700|localOperatorDark|plain  idle A=692 B=728
+  idle           ov=0    boxes=2 A=692   B=728   cluster=68  A=idle:true B=idle:true
+  preparing      ov=0    boxes=2 A=692   B=728   cluster=68  A=idle:true B=idle:true
+
+700|localOperatorLight|plain  idle A=692 B=728
+  idle           ov=0    boxes=2 A=692   B=728   cluster=68  A=idle:true B=idle:true
+  preparing      ov=0    boxes=2 A=692   B=728   cluster=68  A=idle:true B=idle:true
+
+1024|localOperatorDark|fullest  idle A=933 B=969
+  idle           ov=0    boxes=2 A=933   B=969   cluster=68  A=idle:true B=idle:true
+  preparing      ov=0    boxes=2 A=933   B=969   cluster=68  A=idle:true B=idle:true
+
+1024|localOperatorLight|fullest  idle A=933 B=969
+  idle           ov=0    boxes=2 A=933   B=969   cluster=68  A=idle:true B=idle:true
+  preparing      ov=0    boxes=2 A=933   B=969   cluster=68  A=idle:true B=idle:true
+
+900|localOperatorDark|fullest  idle A=871 B=907
+  idle           ov=0    boxes=2 A=871   B=907   cluster=68  A=idle:true B=idle:true
+  preparing      ov=0    boxes=2 A=871   B=907   cluster=68  A=idle:true B=idle:true
+
+900|localOperatorLight|fullest  idle A=871 B=907
+  idle           ov=0    boxes=2 A=871   B=907   cluster=68  A=idle:true B=idle:true
+  preparing      ov=0    boxes=2 A=871   B=907   cluster=68  A=idle:true B=idle:true
+
+840|localOperatorDark|fullest  idle A=832 B=868
+  idle           ov=0    boxes=2 A=832   B=868   cluster=68  A=idle:true B=idle:true
+  preparing      ov=0    boxes=2 A=832   B=868   cluster=68  A=idle:true B=idle:true
+
+840|localOperatorLight|fullest  idle A=832 B=868
+  idle           ov=0    boxes=2 A=832   B=868   cluster=68  A=idle:true B=idle:true
+  preparing      ov=0    boxes=2 A=832   B=868   cluster=68  A=idle:true B=idle:true
+
+780|localOperatorDark|fullest  idle A=772 B=808
+  idle           ov=0    boxes=2 A=772   B=808   cluster=68  A=idle:true B=idle:true
+  preparing      ov=0    boxes=2 A=772   B=808   cluster=68  A=idle:true B=idle:true
+
+780|localOperatorLight|fullest  idle A=772 B=808
+  idle           ov=0    boxes=2 A=772   B=808   cluster=68  A=idle:true B=idle:true
+  preparing      ov=0    boxes=2 A=772   B=808   cluster=68  A=idle:true B=idle:true
+
+720|localOperatorDark|fullest  idle A=712 B=748
+  idle           ov=0    boxes=2 A=712   B=748   cluster=68  A=idle:true B=idle:true
+  preparing      ov=0    boxes=2 A=712   B=748   cluster=68  A=idle:true B=idle:true
+
+720|localOperatorLight|fullest  idle A=712 B=748
+  idle           ov=0    boxes=2 A=712   B=748   cluster=68  A=idle:true B=idle:true
+  preparing      ov=0    boxes=2 A=712   B=748   cluster=68  A=idle:true B=idle:true
+
+700|localOperatorDark|fullest  idle A=692 B=728
+  idle           ov=0    boxes=2 A=692   B=728   cluster=68  A=idle:true B=idle:true
+  preparing      ov=0    boxes=2 A=692   B=728   cluster=68  A=idle:true B=idle:true
+
+700|localOperatorLight|fullest  idle A=692 B=728
+  idle           ov=0    boxes=2 A=692   B=728   cluster=68  A=idle:true B=idle:true
+  preparing      ov=0    boxes=2 A=692   B=728   cluster=68  A=idle:true B=idle:true
+
+PASS (0 failure(s))

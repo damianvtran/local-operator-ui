@@ -34,3 +34,20 @@ findings; the first set above is the head `1df62ff` it replaces.
 - `stop-arrival-numbers-after.json`: Stop reached by clearing the box (opacity 1,
   never guarded) and Stop reached from a Send press (slot B timeline
   `Sending your message@1` then `Stop@0.6`, the ramp while the guard is armed).
+
+## Round 2 (`round-2/`)
+
+Regenerated on head `8ca363d464` (review R2-1, design D9/D11/D13, UX U1).
+
+- `preparing-*-card-*`: the whole card with "Starting recording" in the caption row
+  under the field. Nothing is painted over a reading, the cluster is 68px.
+- `prep-*`, `numbers-prep.json`, `proof-prep.txt`: idle vs preparing at column
+  widths 1024/900/840/780/720/700, both readings fixtures, both themes - A and B x
+  identical, row overflow 0 (PASS).
+- `stop-*`, `numbers-stop.json`: Stop after clearing the box (opacity 1, never
+  guarded) and Stop after a send press (`Sending your message@1` then `Stop@0.72`).
+- `loc-recording-w520-{fr,ru}-card-*`: the recording hint line in French and
+  Russian at 520px (`--locale=fr|ru`): "insere . annule . envoie maintenant" and
+  the Russian equivalent both fit.
+- `rtl-*`, `proof-rtl.txt`: RTL. `numbers-frames.json`, `proof-frames.txt`: all
+  states at 1024 and 520, dark and light.

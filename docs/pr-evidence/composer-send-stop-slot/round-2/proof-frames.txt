@@ -1,0 +1,62 @@
+
+1024|localOperatorDark|plain  idle A=933 B=969
+  idle           ov=0    boxes=2 A=933   B=969   cluster=68  A=idle:true B=idle:true
+  idle-text      ov=0    boxes=2 A=933   B=969   cluster=68  A=idle:true B=idle:true
+  running        ov=0    boxes=2 A=933   B=969   cluster=68  A=idle:true B=idle:true
+  running-text   ov=0    boxes=2 A=933   B=969   cluster=68  A=idle:true B=idle:true
+  stopping       ov=0    boxes=2 A=933   B=969   cluster=68  A=idle:true B=idle:true
+  recording      ov=0    boxes=3 A=933   B=969   cluster=104  A=idle:true B=idle:true
+  preparing      ov=0    boxes=2 A=933   B=969   cluster=68  A=idle:true B=idle:true
+  mic-off        ov=0    boxes=2 A=933   B=969   cluster=68  A=idle:true B=idle:true
+  sendrec-hang   ov=0    boxes=2 A=933   B=969   cluster=68  A=idle:true B=idle:true
+  sendrec-ok     ov=0    boxes=2 A=933   B=969   cluster=68  A=idle:true B=idle:true
+  sendrec-empty  ov=0    boxes=2 A=933   B=969   cluster=68  A=idle:true B=idle:true
+  sendrec-error  ov=0    boxes=2 A=933   B=969   cluster=68  A=idle:true B=idle:true
+  sendrec-running ov=0    boxes=2 A=933   B=969   cluster=68  A=idle:true B=idle:true
+
+1024|localOperatorLight|plain  idle A=933 B=969
+  idle           ov=0    boxes=2 A=933   B=969   cluster=68  A=idle:true B=idle:true
+  idle-text      ov=0    boxes=2 A=933   B=969   cluster=68  A=idle:true B=idle:true
+  running        ov=0    boxes=2 A=933   B=969   cluster=68  A=idle:true B=idle:true
+  running-text   ov=0    boxes=2 A=933   B=969   cluster=68  A=idle:true B=idle:true
+  stopping       ov=0    boxes=2 A=933   B=969   cluster=68  A=idle:true B=idle:true
+  recording      ov=0    boxes=3 A=933   B=969   cluster=104  A=idle:true B=idle:true
+  preparing      ov=0    boxes=2 A=933   B=969   cluster=68  A=idle:true B=idle:true
+  mic-off        ov=0    boxes=2 A=933   B=969   cluster=68  A=idle:true B=idle:true
+  sendrec-hang   ov=0    boxes=2 A=933   B=969   cluster=68  A=idle:true B=idle:true
+  sendrec-ok     ov=0    boxes=2 A=933   B=969   cluster=68  A=idle:true B=idle:true
+  sendrec-empty  ov=0    boxes=2 A=933   B=969   cluster=68  A=idle:true B=idle:true
+  sendrec-error  ov=0    boxes=2 A=933   B=969   cluster=68  A=idle:true B=idle:true
+  sendrec-running ov=0    boxes=2 A=933   B=969   cluster=68  A=idle:true B=idle:true
+
+520|localOperatorDark|plain  idle A=618 B=650
+  idle           ov=0    boxes=2 A=618   B=650   cluster=60  A=idle:true B=idle:true
+  idle-text      ov=0    boxes=2 A=618   B=650   cluster=60  A=idle:true B=idle:true
+  running        ov=0    boxes=2 A=618   B=650   cluster=60  A=idle:true B=idle:true
+  running-text   ov=0    boxes=2 A=618   B=650   cluster=60  A=idle:true B=idle:true
+  stopping       ov=0    boxes=2 A=618   B=650   cluster=60  A=idle:true B=idle:true
+  recording      ov=0    boxes=3 A=618   B=650   cluster=92  A=idle:true B=idle:true
+  preparing      ov=0    boxes=2 A=618   B=650   cluster=60  A=idle:true B=idle:true
+  mic-off        ov=0    boxes=2 A=618   B=650   cluster=60  A=idle:true B=idle:true
+  sendrec-hang   ov=0    boxes=2 A=618   B=650   cluster=60  A=idle:true B=idle:true
+  sendrec-ok     ov=0    boxes=2 A=618   B=650   cluster=60  A=idle:true B=idle:true
+  sendrec-empty  ov=0    boxes=2 A=618   B=650   cluster=60  A=idle:true B=idle:true
+  sendrec-error  ov=0    boxes=2 A=618   B=650   cluster=60  A=idle:true B=idle:true
+  sendrec-running ov=0    boxes=2 A=618   B=650   cluster=60  A=idle:true B=idle:true
+
+520|localOperatorLight|plain  idle A=618 B=650
+  idle           ov=0    boxes=2 A=618   B=650   cluster=60  A=idle:true B=idle:true
+  idle-text      ov=0    boxes=2 A=618   B=650   cluster=60  A=idle:true B=idle:true
+  running        ov=0    boxes=2 A=618   B=650   cluster=60  A=idle:true B=idle:true
+  running-text   ov=0    boxes=2 A=618   B=650   cluster=60  A=idle:true B=idle:true
+  stopping       ov=0    boxes=2 A=618   B=650   cluster=60  A=idle:true B=idle:true
+  recording      ov=0    boxes=3 A=618   B=650   cluster=92  A=idle:true B=idle:true
+  preparing      ov=0    boxes=2 A=618   B=650   cluster=60  A=idle:true B=idle:true
+  mic-off        ov=0    boxes=2 A=618   B=650   cluster=60  A=idle:true B=idle:true
+  sendrec-hang   ov=0    boxes=2 A=618   B=650   cluster=60  A=idle:true B=idle:true
+  sendrec-ok     ov=0    boxes=2 A=618   B=650   cluster=60  A=idle:true B=idle:true
+  sendrec-empty  ov=0    boxes=2 A=618   B=650   cluster=60  A=idle:true B=idle:true
+  sendrec-error  ov=0    boxes=2 A=618   B=650   cluster=60  A=idle:true B=idle:true
+  sendrec-running ov=0    boxes=2 A=618   B=650   cluster=60  A=idle:true B=idle:true
+
+PASS (0 failure(s))
