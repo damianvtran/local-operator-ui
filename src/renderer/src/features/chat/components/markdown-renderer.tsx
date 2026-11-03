@@ -31,6 +31,7 @@ import {
 import { closeOpenMarkdown, openFenceOf } from "../utils/markdown-remend";
 import { opensInCanvas } from "../utils/open-in-canvas";
 import { remarkLinkifyTargets } from "../utils/remark-linkify-targets";
+import { remarkSkillInk } from "../utils/remark-skill-ink";
 import { remarkSoftBreaks } from "../utils/remark-soft-breaks";
 import { citationAwareAnchor } from "./credential-citation";
 import { remarkCredentialCitations } from "./credential-citation-remark";
@@ -116,6 +117,17 @@ type MarkdownRendererProps = {
 	 * a second flag - the four citation pipelines below carry it and say why.
 	 */
 	credentialCitations?: boolean;
+	/**
+	 * The skills the turn ATTACHED (`skillBlockNames(record.text)`), so their
+	 * `$name` tokens in the painted text take the command-token ink.
+	 *
+	 * Only meaningful with `credentialCitations`, i.e. on the reader's own turn:
+	 * the ink is the same opt-in family as the chips and the kept line breaks, and
+	 * an agent's answer never passes it. Absent or empty means NO plugin in the
+	 * pipeline at all, so every render that does not invoke a skill is the array it
+	 * always was. See `utils/remark-skill-ink.ts` for the grammar and the ordering.
+	 */
+	skillNames?: readonly string[];
 	/**
 	 * The identity of the message this text belongs to - the transcript's
 	 * `record.id` - so the link evidence can tell a NEW message from a remount of
@@ -500,6 +512,20 @@ const REMARK_PIPELINES: Record<string, typeof GFM_MATH_LINKIFY_AND_CITATIONS> =
 		"110": GFM_MATH_LINKIFY,
 		"111": GFM_MATH_LINKIFY_AND_CITATIONS,
 	};
+/*
+ * THE SKILL INK IS THE ONE PLUGIN THAT NEEDS PER-MESSAGE OPTIONS, which the eight
+ * hoisted arrays above cannot carry: `[remarkSkillInk, { names }]` is a different
+ * entry for every distinct set of attached skills. So the arrays stay exactly as
+ * they were (and every render with no attached skill still gets one of them,
+ * the identity contract above untouched), and a turn that DID attach a skill gets
+ * the same array with the plugin FIRST, built once per (pipeline, names) by
+ * `useSkillInkPipeline` and held by `useMemo`.
+ *
+ * FIRST, not last, and it is not a style choice: the plugin maps its matches onto
+ * text nodes by their `position` offsets into the source, and `remarkLinkifyTargets`,
+ * `remarkCredentialCitations` and `remarkSoftBreaks` all emit text nodes with no
+ * `position`. Behind any of them a node has nothing to map by (`remark-skill-ink.ts`).
+ */
 const NO_REHYPE: [] = [];
 const KATEX_ONLY = [rehypeKatex];
 
@@ -546,11 +572,20 @@ const useStyleVariables = (
  * rename here would be a third spelling of the same function for no behaviour.
  * `REMARK_PIPELINES` above is what holds the answer; every branch of it is a
  * hoisted array, which is what such a memo would read.
+ *
+ * ONE EXCEPTION TO "ONE OF THE EIGHT", stated here because the paragraphs above
+ * claim otherwise: a user turn that ATTACHED a skill (`skillNames`, never empty
+ * for it) gets a `useMemo`'d array that is the selected constant with
+ * `[remarkSkillInk, { names }]` in front. It is keyed by the names' content, so
+ * the same skills give the same array across re-renders, and every render with no
+ * attached skill - all of agent output, and almost all user turns - still returns
+ * a hoisted constant untouched.
  */
 const useMathPipeline = (
 	content: string,
 	linkify: boolean,
 	citations: boolean,
+	skillNames?: readonly string[],
 ) => {
 	const hasLatex = useMemo(() => containsRenderableMath(content), [content]);
 	/*
@@ -579,13 +614,27 @@ const useMathPipeline = (
 		};
 	}, [hasLatex, katexReady]);
 
+	// Keyed by the three decisions in their own order - math, linkify, citations
+	// - so the answer is one of the eight hoisted arrays and never a fresh one.
+	const base =
+		REMARK_PIPELINES[
+			`${mathEnabled ? 1 : 0}${linkify ? 1 : 0}${citations ? 1 : 0}`
+		];
+	/*
+	 * The key is the names' CONTENT, not the array's identity: the caller derives
+	 * the list per record and a re-render must not rebuild the pipeline for the same
+	 * skills. Only the user-turn (citation) pipelines carry the ink.
+	 */
+	const inkKey = citations && skillNames ? skillNames.join("\0") : "";
+	const remarkPlugins = useMemo(
+		() =>
+			inkKey === ""
+				? base
+				: [[remarkSkillInk, { names: inkKey.split("\0") }], ...base],
+		[base, inkKey],
+	);
 	return {
-		// Keyed by the three decisions in their own order - math, linkify, citations
-		// - so the answer is one of the eight hoisted arrays and never a fresh one.
-		remarkPlugins:
-			REMARK_PIPELINES[
-				`${mathEnabled ? 1 : 0}${linkify ? 1 : 0}${citations ? 1 : 0}`
-			],
+		remarkPlugins: remarkPlugins as typeof base,
 		rehypePlugins: mathEnabled ? KATEX_ONLY : NO_REHYPE,
 	};
 };
@@ -701,6 +750,7 @@ export const MarkdownRenderer: FC<MarkdownRendererProps> = memo(
 		className,
 		linkify = true,
 		credentialCitations = false,
+		skillNames,
 		documentId,
 	}) => {
 		const trimmed = useMemo(() => content.trim(), [content]);
@@ -708,6 +758,7 @@ export const MarkdownRenderer: FC<MarkdownRendererProps> = memo(
 			trimmed,
 			linkify,
 			credentialCitations,
+			skillNames,
 		);
 		const style = useStyleVariables(styleProps);
 		/*

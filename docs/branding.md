@@ -419,6 +419,15 @@ the advances — which wrapped the mirror earlier than the textarea and hid the
 tail of the user's draft behind the mirror's own overflow (measured: 65 of 78
 typed characters). Add a run ink here and give it the same treatment.
 
+The same role also inks a `$skill` token in a sent turn: `.lo-skill-token` in
+`markdown.css` paints it in `tokenCommand` at weight 600, so the token the
+composer showed and the sealed row shows reads the same once the turn is in the
+transcript. It is this role and not `accent` (budgeted at about three per screen,
+and a message can hold several tokens) or `accentAlt` (barred from links and
+syntax tokens, § The second accent), and a new role would cost every palette a
+value. Because the bubble's fill is `messageSurface`, that ground is asserted for
+the role too, and in `obsidian` the weight is the only separation, as above.
+
 ### The two lines — the distinction people get wrong
 
 - **`hairline`** is decorative: section rules, table separators, list dividers.
