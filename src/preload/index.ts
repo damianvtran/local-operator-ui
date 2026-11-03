@@ -436,6 +436,26 @@ const api = {
 		}
 	},
 	/**
+	 * The clipboard's plain text, read SYNCHRONOUSLY - for a composer's `paste`
+	 * handler only (issue #1573, `pasteInsertsOnlyFileNames`).
+	 *
+	 * WHY SYNC, AND WHY NOT `clipboard` HERE. A macOS paste that carries a file
+	 * gives the event `types: ["Files"]` and no `text/plain`, while Chromium's
+	 * default insert still types the pasteboard's plain string (the file name).
+	 * Cancelling that insert has to be decided before the handler returns, and
+	 * `navigator.clipboard.readText()` is async. Electron 45's `clipboard`
+	 * module is promise-only too, so main reads it and answers a `sendSync`.
+	 * Never throws; `""` means "nothing to read" and keeps the default insert.
+	 */
+	readPasteTextSync: (): string => {
+		try {
+			const text = ipcRenderer.sendSync("clipboard:paste-plain-text");
+			return typeof text === "string" ? text : "";
+		} catch {
+			return "";
+		}
+	},
+	/**
 	 * Bytes for the in-app viewers. No encoding: a PDF is not text, and base64
 	 * would inflate it by a third on both sides of the boundary.
 	 */

@@ -337,5 +337,7 @@
 	"ui.teamBridge.attachmentCard.file": "فائل",
 	"ui.teamBridge.attachmentCard.bytes": "{size, number} بائٹس",
 	"ui.teamBridge.attachmentCard.metadata_only": "اس منظر میں پیش نظارہ دستیاب نہیں",
-	"ui.teamBridge.attachmentCard.unavailable": "منسلکہ دستیاب نہیں"
+	"ui.teamBridge.attachmentCard.unavailable": "منسلکہ دستیاب نہیں",
+	"ui.teamBridge.fileCard.list": "{count, plural, one {# فائل} other {# فائلیں}}",
+	"ui.teamBridge.fileCard.kind": "{kind, select, pdf {PDF} text {ٹیکسٹ فائل} container {ZIP} other {فائل}}"
 }

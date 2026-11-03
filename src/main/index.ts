@@ -9,6 +9,7 @@ import {
 	Menu,
 	type NativeImage,
 	app,
+	clipboard,
 	dialog,
 	globalShortcut,
 	ipcMain,
@@ -3418,6 +3419,37 @@ app
 				return;
 			}
 			recordingShortcut.setClaims(rev, claims);
+		});
+		/*
+		 * THE PASTE'S PLAIN TEXT, SYNCHRONOUSLY (issue #1573). On macOS a paste
+		 * whose pasteboard holds a file hands the renderer's `paste` event only
+		 * `types: ["Files"]` with `getData("text/plain") === ""`, yet Chromium's
+		 * default insert still types the pasteboard's plain string - the file's
+		 * name - into the composer (measured on Electron 45.1.0, QA round 1). The
+		 * handler must decide inside the event whether to cancel that insert, so
+		 * it asks here with `sendSync`; the reply waits for Electron 45's
+		 * promise-only `clipboard.readText()`, and the renderer stays blocked only
+		 * for that one read.
+		 *
+		 * The same two documents that mount the chat composer may ask (main window
+		 * and mini view). A refused or failed read STILL answers `""`: a `sendSync`
+		 * with no `returnValue` never returns, which would freeze the renderer, and
+		 * `""` is the fail-safe answer (the paste keeps its default insert).
+		 */
+		ipcMain.removeAllListeners("clipboard:paste-plain-text");
+		ipcMain.on("clipboard:paste-plain-text", (event) => {
+			if (!isAdmittedSender(event, recordingSenders())) {
+				event.returnValue = "";
+				return;
+			}
+			clipboard.readText().then(
+				(text) => {
+					event.returnValue = text;
+				},
+				() => {
+					event.returnValue = "";
+				},
+			);
 		});
 		ipcMain.removeAllListeners("recording-shortcut:pending");
 		ipcMain.on("recording-shortcut:pending", (event, value) => {

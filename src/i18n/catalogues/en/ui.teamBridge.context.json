@@ -2547,5 +2547,23 @@
 		"length": "one short status phrase",
 		"placeholders": {},
 		"note": "Use the same wording for expired, withheld, deleted, revoked, unknown descriptor state. Do not reveal retention, screening, account or access-refusal reasons; no preview/download/retry is implied."
+	},
+	"ui.teamBridge.fileCard.list": {
+		"role": "accessible label for a message's list of generic file cards; visible label of a count-only file receipt",
+		"tone": "neutral, factual",
+		"length": "short noun phrase with count",
+		"placeholders": {
+			"count": "Number of files attached to one message. Use the locale's ICU plural rules."
+		},
+		"note": "Counts non-image files (documents, text, archives) on one message, not upload progress. Never includes a file name. A count-only receipt grants no preview or download."
+	},
+	"ui.teamBridge.fileCard.kind": {
+		"role": "short type label on a file card when the file name has no extension",
+		"tone": "neutral, technical",
+		"length": "one or two words",
+		"placeholders": {
+			"kind": "Server file class: pdf, text, container (ZIP-based, including Office documents) or other. Keep every select arm."
+		},
+		"note": "PDF and ZIP are format names and normally stay untranslated. The class is a label from byte sniffing, not a safety or scan claim; do not imply the file was checked."
 	}
 }

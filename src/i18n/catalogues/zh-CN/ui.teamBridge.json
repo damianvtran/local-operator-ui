@@ -337,5 +337,7 @@
 	"ui.teamBridge.attachmentCard.file": "文件",
 	"ui.teamBridge.attachmentCard.bytes": "{size, number} 字节",
 	"ui.teamBridge.attachmentCard.metadata_only": "此视图不支持预览",
-	"ui.teamBridge.attachmentCard.unavailable": "附件不可用"
+	"ui.teamBridge.attachmentCard.unavailable": "附件不可用",
+	"ui.teamBridge.fileCard.list": "{count, number} 个文件",
+	"ui.teamBridge.fileCard.kind": "{kind, select, pdf {PDF} text {文本文件} container {ZIP} other {文件}}"
 }

@@ -53,12 +53,16 @@ import type {
 	TeamBridgeMessage,
 } from "../../../../shared/team-bridge-contract";
 import { AttachmentFrame } from "../chat/components/message-item/attachment-frame";
-import { attachmentBox } from "./attachments/attachment-model";
+import {
+	attachmentBox,
+	toBridgeFileDescriptor,
+} from "./attachments/attachment-model";
 import { BridgeAttachmentGroup } from "./attachments/bridge-attachment-group";
 import {
 	type AttachmentFailure,
 	attachmentView,
 	imageFiles,
+	imagePasteCancelsText,
 	uploadPreview,
 } from "./team-bridge-attachments-model";
 import type {
@@ -692,11 +696,15 @@ export const TeamBridgeMessageAttachments: FC<{
 }> = ({ message, tenantId, density = "regular", accountId }) => {
 	useI18nLocale();
 	const attachments = message.attachments ?? [];
+	/* S3b generic files ride beside the images as metadata-only cards; they
+	 * never enter this component's byte relay, cache or lightbox. */
+	const files = (message.files ?? []).map(toBridgeFileDescriptor);
+	const fileCount = Math.max(files.length, message.file_count ?? 0);
 	const [open, setOpen] = useState<number | null>(null);
 	const [urls, setUrls] = useState<(string | null)[]>([]);
 	const buttons = useRef<(HTMLButtonElement | null)[]>([]);
 	const restore = useRef<HTMLElement | null>(null);
-	if (attachments.length === 0) return null;
+	if (attachments.length === 0 && fileCount === 0) return null;
 	const count = attachments.length;
 	const register = (index: number, url: string | null) =>
 		setUrls((previous) => {
@@ -721,6 +729,8 @@ export const TeamBridgeMessageAttachments: FC<{
 			<BridgeAttachmentGroup
 				attachments={attachments}
 				compact={density === "compact"}
+				files={files}
+				fileCount={fileCount}
 				renderPreview={(attachment, index) => (
 					<MessageImage
 						message={message}
@@ -854,19 +864,18 @@ export const TeamBridgeScheduledAttachments: FC<{
 
 /**
  * Paste and drop on the composer box. Only IMAGE files are taken; text in the
- * same paste flows into the field untouched (the default is prevented only
- * when the clipboard carried nothing but images). A paste of images on a hub
- * without the capability falls through to the hook's "unsupported" note.
+ * same paste flows into the field untouched, UNLESS that text is nothing but
+ * the pasted files' names - the `text/plain` a Finder file copy carries, which
+ * used to be typed into the reply beside its chip (issue #1573,
+ * `pastedTextIsOnlyFileNames`). A paste of images on a hub without the
+ * capability falls through to the hook's "unsupported" note.
  */
 export function attachmentPasteHandlers(state: TeamBridgeAttachmentsState) {
 	return {
 		onPaste: (event: ClipboardEvent<HTMLElement>) => {
 			const files = imageFiles(event.clipboardData);
 			if (files.length === 0) return;
-			const hasText = Array.from(event.clipboardData.types).includes(
-				"text/plain",
-			);
-			if (!hasText) event.preventDefault();
+			if (imagePasteCancelsText(event.clipboardData)) event.preventDefault();
 			state.add(files);
 		},
 		onDragOver: (event: DragEvent<HTMLElement>) => {

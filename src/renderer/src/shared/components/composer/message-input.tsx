@@ -158,6 +158,7 @@ import {
 	useConversationInputStore,
 } from "@shared/store/conversation-input-store";
 import type { AskDrawerCloseOptions } from "@shared/store/ui-preferences-store";
+import { pasteInsertsOnlyFileNames } from "@shared/utils/paste-utils";
 import { normalizePath } from "@shared/utils/path-utils";
 import {
 	dismissToast,
@@ -7441,7 +7442,22 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			 * is asked for its word only while those bytes are still in the draft, exactly
 			 * like the cancel's, so an emptied box is prose again.
 			 */
-			if (pasted) pastedRun.current = pastedCredentialRun(pasted);
+			/*
+			 * A PASTED FILE IS NOT ALSO PASTED AS ITS NAME (issue #1573). A Finder copy
+			 * puts the file name(s) on `text/plain` beside the file items; the loop below
+			 * attaches the files, so letting the browser's insert run as well typed the
+			 * name into the prompt. Cancelled ONLY when that text is nothing but the
+			 * names (`pastedTextIsOnlyFileNames`) - prose pasted alongside a file is the
+			 * operator's and still lands. This sits AFTER the credential branch on
+			 * purpose: an armed capture owns the paste whatever it carries. On macOS
+			 * the event omits that `text/plain` entirely (QA round 1, Q1), so the
+			 * predicate reads the pasteboard synchronously when files arrive alone.
+			 * Only a paste whose insert still happens records its provenance run
+			 * (review round 1, R3): a cancelled insert brings no bytes into the draft.
+			 */
+			if (pasteInsertsOnlyFileNames(event.clipboardData ?? null))
+				event.preventDefault();
+			else if (pasted) pastedRun.current = pastedCredentialRun(pasted);
 			const items = event.clipboardData?.items;
 			if (items) {
 				for (let i = 0; i < items.length; i++) {

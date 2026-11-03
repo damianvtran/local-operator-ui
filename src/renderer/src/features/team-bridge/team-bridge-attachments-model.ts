@@ -27,6 +27,7 @@ import type {
 } from "../../../../shared/team-bridge-contract";
 import { teamBridgeAttachmentCapabilitySchema } from "../../../../shared/team-bridge-contract";
 import { onDraftRevocation } from "../../shared/store/team-bridge-draft-account";
+import { pasteInsertsOnlyFileNames } from "../../shared/utils/paste-utils";
 import {
 	IMAGE_JPEG_QUALITY,
 	IMAGE_MAX_EDGE,
@@ -361,6 +362,24 @@ export function imageFiles(list: DataTransfer | null | undefined): File[] {
 	for (const file of Array.from(list.files ?? []))
 		if (isImageCandidate(file)) files.push(file);
 	return files;
+}
+
+/**
+ * Whether a paste whose images were just taken should also cancel the
+ * browser's text insert: yes when the text that insert would type is empty or
+ * only the pasted files' names - a Finder file copy, which otherwise typed
+ * "shot.png" beside its own chip (issue #1573). Real prose alongside the
+ * images is the reader's and is kept. On macOS the event carries no
+ * `text/plain` for a file paste even when the pasteboard has prose, so the
+ * text comes from `pasteInsertsOnlyFileNames`' synchronous pasteboard read,
+ * the chat composer's source of truth; a files-only paste with nothing on the
+ * pasteboard still cancels, as the original rule did. One predicate for both
+ * bridge paste handlers, so they cannot drift.
+ */
+export function imagePasteCancelsText(
+	data: Pick<DataTransfer, "types" | "getData" | "items" | "files">,
+): boolean {
+	return pasteInsertsOnlyFileNames(data);
 }
 
 /*
