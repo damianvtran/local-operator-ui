@@ -42,6 +42,10 @@ const SOURCE_LOCALE = "en";
  */
 const IDENTICAL_OK = new Map([
 	[
+		"es:ui.teamBridge.attachmentCard.bytes",
+		"Spanish standard unit copy is {size, number} bytes; independently audited by f93eb129057e (S3 receipt). Exact locale/key only, not an English fallback.",
+	],
+	[
 		"fr:ui.chat.thread_search.role.agent",
 		"French cognate: the role name for an agent turn is « Agent », same spelling; scoped to fr so other locales still translate it",
 	],

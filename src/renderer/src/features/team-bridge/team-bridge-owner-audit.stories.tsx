@@ -1202,3 +1202,112 @@ export const QueryBackedHistory: Story = {
 export const QueryBackedMemberThread: Story = {
 	render: () => <QueryBackedHistoryExercise memberThread />,
 };
+
+/* S3 integration evidence uses the actual audit panel/list decoration, not the
+ * standalone metadata primitive. No byte transport is installed or permitted. */
+const auditAttachment = {
+	id: "batt_audit_synthetic",
+	mime: "image/png",
+	size: 2048,
+	width: 640,
+	height: 480,
+	sha256: "",
+	state: "bound",
+	expires_at: null,
+};
+const attachmentRows: OwnerAuditMessage[] = [
+	{
+		...messages[0],
+		id: "bmsg_audit_metadata",
+		seq: 101,
+		body: "Image and file descriptors in the actual owner audit transcript.",
+		reply_count: null,
+		attachments: [
+			auditAttachment,
+			{
+				...auditAttachment,
+				id: "batt_audit_file",
+				mime: "application/octet-stream",
+				width: null,
+				height: null,
+			},
+		],
+		attachment_count: 2,
+	},
+	{
+		...messages[0],
+		id: "bmsg_audit_revoked",
+		seq: 102,
+		body: "Unavailable receipts disclose no reason.",
+		reply_count: null,
+		attachments: ["revoked", "expired"].map((state) => ({
+			...auditAttachment,
+			id: `batt_audit_${state}`,
+			state,
+		})),
+		attachment_count: 2,
+	},
+	{
+		...messages[0],
+		id: "bmsg_audit_count",
+		seq: 103,
+		body: "A count without descriptors is not byte authority.",
+		reply_count: null,
+		attachments: [],
+		attachment_count: 3,
+	},
+	{
+		...messages[0],
+		id: "bmsg_audit_zero",
+		seq: 104,
+		body: "This message has no attachments.",
+		reply_count: null,
+		attachments: [],
+		attachment_count: 0,
+	},
+	{
+		...messages[0],
+		id: "bmsg_audit_blank",
+		seq: 105,
+		body: "",
+		reply_count: null,
+		attachments: [],
+		attachment_count: 0,
+	},
+	{
+		...messages[0],
+		id: "bmsg_audit_whitespace",
+		seq: 106,
+		body: " \n\t",
+		reply_count: null,
+		attachments: [],
+		attachment_count: 0,
+	},
+];
+export const StructuredAttachmentRows: Story = {
+	args: { messages: attachmentRows },
+};
+export const StructuredAttachmentRowsLight: Story = {
+	args: { ...{ theme: "localOperatorLight" }, messages: attachmentRows },
+};
+export const StructuredAttachmentRowsDark: Story = {
+	args: { ...{ theme: "localOperatorDark" }, messages: attachmentRows },
+};
+export const StructuredAttachmentRowsNarrow: Story = {
+	args: { messages: attachmentRows },
+	render: (args) => (
+		<div
+			style={{ width: 360, maxWidth: "100%", height: 900 }}
+			className="flex min-w-0 flex-col bg-surface text-ink"
+		>
+			<OwnerAuditPanelView
+				conversation={dm}
+				messages={args.messages}
+				state="ready"
+				retry={() => {}}
+				readerAccountId={OWNER}
+				people={people}
+			/>
+		</div>
+	),
+};

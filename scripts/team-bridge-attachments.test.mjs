@@ -141,6 +141,7 @@ const bundle = await build({
  export * from "./src/renderer/src/features/team-bridge/use-team-bridge-drafts";
  export * from "./src/renderer/src/features/team-bridge/team-bridge-drafts";
  export * from "./src/renderer/src/features/team-bridge/team-bridge-scheduling";
+ export {OwnerAuditPanelView} from "./src/renderer/src/features/team-bridge/team-bridge-owner-audit";
  export {BridgeAttachmentGroup} from "./src/renderer/src/features/team-bridge/attachments/bridge-attachment-group";
  export {attachmentBox} from "./src/renderer/src/features/team-bridge/attachments/attachment-model";
  export {TeamBridgeMessageList} from "./src/renderer/src/features/team-bridge/team-bridge-message-list";
@@ -2894,4 +2895,158 @@ test("member resource: authenticated refusal is terminal; 503 alone offers expli
 		}
 		await view.close();
 	}
+});
+
+// Exercise the production audit decoration, not just the standalone group:
+// a null-rendering React element still counts as a supplied list decoration.
+test("audit attachment presence: zero blank bodies keep fallback; descriptors/count-only stay nonfetchable", async () => {
+	mediaCalls = [];
+	const element = document.createElement("div");
+	document.body.append(element);
+	const root = createRoot(element);
+	const conversation = {
+		id: "bcv_audit_presence",
+		tenant_id: "tnt_audit_presence",
+		kind: "dm",
+		title: null,
+		visibility: "private",
+		status: "active",
+		builtin: null,
+		members: [],
+		member_count: 0,
+		viewers: [],
+		agent: {
+			account_id: "acct_audit_agent",
+			display_label: "Synthetic agent",
+			state: "active",
+			joined_seq: 0,
+			left_seq: null,
+		},
+		created_at: "2026-10-23T10:00:00Z",
+		last_message_at: null,
+		latest_seq: 6,
+		last_thread_root_id: null,
+	};
+	const attachment = {
+		id: "opaque_audit_image",
+		mime: "image/png",
+		size: 2048,
+		width: 640,
+		height: 480,
+		state: "bound",
+	};
+	const cases = [
+		{ id: "audit_blank", body: "", attachments: [], attachment_count: 0 },
+		{
+			id: "audit_whitespace",
+			body: " \n\t",
+			attachments: [],
+			attachment_count: 0,
+		},
+		{
+			id: "audit_text",
+			body: "No attachments",
+			attachments: [],
+			attachment_count: 0,
+		},
+		{
+			id: "audit_metadata",
+			body: "Image and file metadata",
+			attachments: [
+				attachment,
+				{ ...attachment, id: "opaque_file", mime: "application/octet-stream" },
+			],
+			attachment_count: 2,
+		},
+		{
+			id: "audit_revoked",
+			body: "Terminal receipt",
+			attachments: [{ ...attachment, state: "revoked" }],
+			attachment_count: 1,
+		},
+		{
+			id: "audit_count",
+			body: "Count only",
+			attachments: [],
+			attachment_count: 3,
+		},
+	];
+	const rows = cases.map((item, seq) => ({
+		...message({}),
+		conversation_id: conversation.id,
+		seq: seq + 1,
+		body_hash: null,
+		agent_label: null,
+		thread_root_id: null,
+		reply_count: null,
+		last_reply_at: null,
+		reply_participants: null,
+		agent_delivery_status: "admitted",
+		agent_verdict_at: null,
+		...item,
+	}));
+	await act(async () =>
+		root.render(
+			React.createElement(
+				m.QueryClientProvider,
+				{ client: new m.QueryClient() },
+				React.createElement(m.OwnerAuditPanelView, {
+					conversation,
+					messages: rows,
+					state: "ready",
+					retry: () => {},
+					readerAccountId: "acct_audit_owner",
+					people: [],
+				}),
+			),
+		),
+	);
+	await settle();
+	await settle();
+	for (const id of ["audit_blank", "audit_whitespace"]) {
+		const row = element.querySelector(`[data-message-id="${id}"]`);
+		assert.ok(
+			row.textContent.includes(m.t("ui.ownerAudit.body_unavailable")),
+			`${id} retains unavailable body`,
+		);
+		assert.equal(
+			row.querySelectorAll("[data-bridge-attachment-card]").length,
+			0,
+		);
+	}
+	const byId = (id) => element.querySelector(`[data-message-id="${id}"]`);
+	assert.equal(
+		byId("audit_text").querySelectorAll("[data-bridge-attachment-card]").length,
+		0,
+	);
+	assert.equal(
+		byId("audit_metadata").querySelectorAll(
+			'[data-bridge-attachment-card="metadata"]',
+		).length,
+		2,
+	);
+	assert.equal(
+		byId("audit_revoked").querySelectorAll(
+			'[data-bridge-attachment-card="unavailable"]',
+		).length,
+		1,
+	);
+	assert.ok(
+		byId("audit_count").textContent.includes(
+			m.t("ui.teamBridge.attachmentCard.list", { count: 3 }),
+		),
+	);
+	assert.equal(
+		byId("audit_count").querySelectorAll("[data-bridge-attachment-card]")
+			.length,
+		1,
+	);
+	assert.equal(element.querySelectorAll("img").length, 0);
+	assert.equal(
+		mediaCalls.filter((call) => call.request.op === "team_bridge.attachment")
+			.length,
+		0,
+	);
+	await act(async () => root.unmount());
+	element.remove();
 });

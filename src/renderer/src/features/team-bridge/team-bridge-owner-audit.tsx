@@ -344,7 +344,7 @@ function AuditTranscript({
 				);
 				const verdict = delivery === "own" ? null : VERDICT[delivery];
 				const attachmentCount =
-					message.attachments?.length ?? message.attachment_count ?? 0;
+					message.attachments?.length || message.attachment_count || 0;
 				return {
 					badge: verdict && (
 						<Badge variant={verdict.variant}>{t(verdict.copy)}</Badge>
@@ -359,13 +359,14 @@ function AuditTranscript({
 					   ["team-bridge", "owner-audit", ...] query keys and write nothing:
 					   no read markers, drafts or agent feed. */
 					withheldCopy: t("ui.ownerAudit.body_unavailable"),
-					attachments: (
-						<BridgeAttachmentGroup
-							attachments={message.attachments ?? []}
-							count={attachmentCount}
-							compact={density === "compact"}
-						/>
-					),
+					attachments:
+						attachmentCount > 0 ? (
+							<BridgeAttachmentGroup
+								attachments={message.attachments ?? []}
+								count={attachmentCount}
+								compact={density === "compact"}
+							/>
+						) : undefined,
 					after:
 						renderReplies && (message.reply_count ?? 0) > 0
 							? renderReplies(message)

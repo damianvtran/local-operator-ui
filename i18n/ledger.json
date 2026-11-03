@@ -7999,8 +7999,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "f5b404b727961f04be67c5340a6a597eed44f02fc10b126d93a5fb95ae4ebd73",
-			"target_sha256": "b6fe43075a57f1df282ed9a04dd0a9162078a194582e0329c0afe07ee9525620",
+			"source_sha256": "00a4cb6150b71677766c8527369527497cf29ec3ccb91cb5e2b8a3d1c65baffd",
+			"target_sha256": "4e4149606e029b605eb55acbc8309f7989fe00bfe75dc2b6c69d3da2cf39536c",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -8015,21 +8015,20 @@
 			},
 			"auditors": [
 				{
-					"agent": "task",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-02",
+					"agent": "reviewer",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-03",
 					"result": "clean",
-					"instance": "439bcc181f80",
+					"instance": "f93eb129057e-es",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/439bcc181f80.json",
-					"receipt_sha256": "d0fd89319774cf7d40c49760876dc3b97c271908fab7d569f6b9422ac199468d",
-					"scope": "ui.teamBridge.delivery.{refused,refused_manipulation,refused_personal_info,refused_abusive,refused_unsafe_content,refused_out_of_scope,held,held_screening_unavailable,held_awaiting_review,pending,info_refused,info_held,info_label} (PR #1521 copy delta)",
-					"note": "Independent copy-delta audit of #1521's 13 delivery keys by session 439bcc181f80, clean 0/0/0/0. Evidence: i18n/receipts/439bcc181f80.json (sha256 d0fd8931...468d)."
+					"receipt": "i18n/receipts/f93eb129057e-es.json",
+					"receipt_sha256": "4fe558aa7e29b4b535148887365af91eb277eac6cab6de31dcd979f4f2c43dcd",
+					"scope": "Five attachmentCard keys; older values identical to ledger-bound base 47e06bc7"
 				}
 			],
 			"status": "audited",
@@ -9381,6 +9380,30 @@
 							"receipt_sha256": "1b117fd7cf81ca692b99b06ad38847e8adc81fbe2025627407b2b303be94f3cb",
 							"scope": "Independent exact byte composition only: 13 R4/R5 delivery tokens + main reply-window delta; inherited semantic coverage, not a new full-namespace linguistic audit.",
 							"note": "Composition 3631033e; completed assessment model GPT-6.1-Sol per root-reported host job 808faef7981e/af67 resume. Historical findings/receipts retained."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "f5b404b727961f04be67c5340a6a597eed44f02fc10b126d93a5fb95ae4ebd73",
+					"target_sha256": "b6fe43075a57f1df282ed9a04dd0a9162078a194582e0329c0afe07ee9525620",
+					"auditors": [
+						{
+							"agent": "task",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-02",
+							"result": "clean",
+							"instance": "439bcc181f80",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/439bcc181f80.json",
+							"receipt_sha256": "d0fd89319774cf7d40c49760876dc3b97c271908fab7d569f6b9422ac199468d",
+							"scope": "ui.teamBridge.delivery.{refused,refused_manipulation,refused_personal_info,refused_abusive,refused_unsafe_content,refused_out_of_scope,held,held_screening_unavailable,held_awaiting_review,pending,info_refused,info_held,info_label} (PR #1521 copy delta)",
+							"note": "Independent copy-delta audit of #1521's 13 delivery keys by session 439bcc181f80, clean 0/0/0/0. Evidence: i18n/receipts/439bcc181f80.json (sha256 d0fd8931...468d)."
 						}
 					],
 					"status": "audited"
@@ -17871,8 +17894,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "f5b404b727961f04be67c5340a6a597eed44f02fc10b126d93a5fb95ae4ebd73",
-			"target_sha256": "dbd81e5e998449e9c002c3b6d125d82cc17687ec275339f6f98d00b6a0fb66c3",
+			"source_sha256": "00a4cb6150b71677766c8527369527497cf29ec3ccb91cb5e2b8a3d1c65baffd",
+			"target_sha256": "50fbac8752e8891eb4bc2ad3c71fb0e173eb6fbde1a155f31a3058acbf642329",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -17888,21 +17911,20 @@
 			},
 			"auditors": [
 				{
-					"agent": "task",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-02",
+					"agent": "reviewer",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-03",
 					"result": "clean",
-					"instance": "439bcc181f80",
+					"instance": "f93eb129057e-fr",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/439bcc181f80.json",
-					"receipt_sha256": "d0fd89319774cf7d40c49760876dc3b97c271908fab7d569f6b9422ac199468d",
-					"scope": "ui.teamBridge.delivery.{refused,refused_manipulation,refused_personal_info,refused_abusive,refused_unsafe_content,refused_out_of_scope,held,held_screening_unavailable,held_awaiting_review,pending,info_refused,info_held,info_label} (PR #1521 copy delta)",
-					"note": "Independent copy-delta audit of #1521's 13 delivery keys by session 439bcc181f80, clean 0/0/0/0. Evidence: i18n/receipts/439bcc181f80.json (sha256 d0fd8931...468d)."
+					"receipt": "i18n/receipts/f93eb129057e-fr.json",
+					"receipt_sha256": "60a61625870414586e08c9a4a1bc5b0969d42024c2527c7de474733ecf6d09eb",
+					"scope": "Five attachmentCard keys; older values identical to ledger-bound base 47e06bc7"
 				}
 			],
 			"status": "audited",
@@ -19278,6 +19300,30 @@
 							"receipt_sha256": "0d63810175da70f51b7babb615591c656fe178400ab1e8e22d0a8e2f898fa7c6",
 							"scope": "Independent exact byte composition only: 13 R4/R5 delivery tokens + main reply-window delta; inherited semantic coverage, not a new full-namespace linguistic audit.",
 							"note": "Composition 3631033e; completed assessment model GPT-6.1-Sol per root-reported host job 808faef7981e/af67 resume. Historical findings/receipts retained."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "f5b404b727961f04be67c5340a6a597eed44f02fc10b126d93a5fb95ae4ebd73",
+					"target_sha256": "dbd81e5e998449e9c002c3b6d125d82cc17687ec275339f6f98d00b6a0fb66c3",
+					"auditors": [
+						{
+							"agent": "task",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-02",
+							"result": "clean",
+							"instance": "439bcc181f80",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/439bcc181f80.json",
+							"receipt_sha256": "d0fd89319774cf7d40c49760876dc3b97c271908fab7d569f6b9422ac199468d",
+							"scope": "ui.teamBridge.delivery.{refused,refused_manipulation,refused_personal_info,refused_abusive,refused_unsafe_content,refused_out_of_scope,held,held_screening_unavailable,held_awaiting_review,pending,info_refused,info_held,info_label} (PR #1521 copy delta)",
+							"note": "Independent copy-delta audit of #1521's 13 delivery keys by session 439bcc181f80, clean 0/0/0/0. Evidence: i18n/receipts/439bcc181f80.json (sha256 d0fd8931...468d)."
 						}
 					],
 					"status": "audited"
@@ -27623,8 +27669,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "f5b404b727961f04be67c5340a6a597eed44f02fc10b126d93a5fb95ae4ebd73",
-			"target_sha256": "9c1b09f38ec15860f89863f1e0f7ef2535859b92ea81700305257809c234501a",
+			"source_sha256": "00a4cb6150b71677766c8527369527497cf29ec3ccb91cb5e2b8a3d1c65baffd",
+			"target_sha256": "688eea4077454fb0c029bf48279a18c805def8b98050c2a7a536631cf784d8cd",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -27639,21 +27685,20 @@
 			},
 			"auditors": [
 				{
-					"agent": "task",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-02",
+					"agent": "reviewer",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-03",
 					"result": "clean",
-					"instance": "439bcc181f80",
+					"instance": "f93eb129057e-hi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/439bcc181f80.json",
-					"receipt_sha256": "d0fd89319774cf7d40c49760876dc3b97c271908fab7d569f6b9422ac199468d",
-					"scope": "ui.teamBridge.delivery.{refused,refused_manipulation,refused_personal_info,refused_abusive,refused_unsafe_content,refused_out_of_scope,held,held_screening_unavailable,held_awaiting_review,pending,info_refused,info_held,info_label} (PR #1521 copy delta)",
-					"note": "Independent copy-delta audit of #1521's 13 delivery keys by session 439bcc181f80, clean 0/0/0/0. Evidence: i18n/receipts/439bcc181f80.json (sha256 d0fd8931...468d)."
+					"receipt": "i18n/receipts/f93eb129057e-hi.json",
+					"receipt_sha256": "0daccb8bf6333a03e284ad1139e83016e84f10f0205d55002cd847c098609294",
+					"scope": "Five attachmentCard keys; older values identical to ledger-bound base 47e06bc7"
 				}
 			],
 			"status": "audited",
@@ -28935,6 +28980,30 @@
 							"receipt_sha256": "37f942e067f16aed67945a893e5bf11adec5753e5a1b8c0d7a2a944ce615249e",
 							"scope": "Independent exact byte composition only: 13 R4/R5 delivery tokens + main reply-window delta; inherited semantic coverage, not a new full-namespace linguistic audit.",
 							"note": "Composition 3631033e; completed assessment model GPT-6.1-Sol per root-reported host job 808faef7981e/af67 resume. Historical findings/receipts retained."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "f5b404b727961f04be67c5340a6a597eed44f02fc10b126d93a5fb95ae4ebd73",
+					"target_sha256": "9c1b09f38ec15860f89863f1e0f7ef2535859b92ea81700305257809c234501a",
+					"auditors": [
+						{
+							"agent": "task",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-02",
+							"result": "clean",
+							"instance": "439bcc181f80",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/439bcc181f80.json",
+							"receipt_sha256": "d0fd89319774cf7d40c49760876dc3b97c271908fab7d569f6b9422ac199468d",
+							"scope": "ui.teamBridge.delivery.{refused,refused_manipulation,refused_personal_info,refused_abusive,refused_unsafe_content,refused_out_of_scope,held,held_screening_unavailable,held_awaiting_review,pending,info_refused,info_held,info_label} (PR #1521 copy delta)",
+							"note": "Independent copy-delta audit of #1521's 13 delivery keys by session 439bcc181f80, clean 0/0/0/0. Evidence: i18n/receipts/439bcc181f80.json (sha256 d0fd8931...468d)."
 						}
 					],
 					"status": "audited"
@@ -37054,8 +37123,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "f5b404b727961f04be67c5340a6a597eed44f02fc10b126d93a5fb95ae4ebd73",
-			"target_sha256": "00f364d625aee5e726481deb5d1c25322589885412d581c7ebb2105c52e070cd",
+			"source_sha256": "00a4cb6150b71677766c8527369527497cf29ec3ccb91cb5e2b8a3d1c65baffd",
+			"target_sha256": "6af703983652a04d8f452ff16d694eafd74cce4d7f7b05030d4e830560531ced",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -37071,21 +37140,20 @@
 			},
 			"auditors": [
 				{
-					"agent": "task",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-02",
-					"result": "clean",
-					"instance": "439bcc181f80",
+					"agent": "reviewer",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-03",
+					"result": "clean-with-findings",
+					"instance": "f93eb129057e-ru",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
+						"minor": 1,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/439bcc181f80.json",
-					"receipt_sha256": "d0fd89319774cf7d40c49760876dc3b97c271908fab7d569f6b9422ac199468d",
-					"scope": "ui.teamBridge.delivery.{refused,refused_manipulation,refused_personal_info,refused_abusive,refused_unsafe_content,refused_out_of_scope,held,held_screening_unavailable,held_awaiting_review,pending,info_refused,info_held,info_label} (PR #1521 copy delta)",
-					"note": "Independent copy-delta audit of #1521's 13 delivery keys by session 439bcc181f80, clean 0/0/0/0. Evidence: i18n/receipts/439bcc181f80.json (sha256 d0fd8931...468d)."
+					"receipt": "i18n/receipts/f93eb129057e-ru.json",
+					"receipt_sha256": "fe09d7e37c58de32411de72a9931c77987ae8ef8429777982b98153d426e71b5",
+					"scope": "Five attachmentCard keys; older values identical to ledger-bound base 47e06bc7"
 				}
 			],
 			"status": "audited",
@@ -38456,6 +38524,30 @@
 							"receipt_sha256": "bada8411717437f6fe316cc095df7735879233515eaa9849eaac958a25be6f54",
 							"scope": "Independent exact byte composition only: 13 R4/R5 delivery tokens + main reply-window delta; inherited semantic coverage, not a new full-namespace linguistic audit.",
 							"note": "Composition 3631033e; completed assessment model GPT-6.1-Sol per root-reported host job 808faef7981e/af67 resume. Historical findings/receipts retained."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "f5b404b727961f04be67c5340a6a597eed44f02fc10b126d93a5fb95ae4ebd73",
+					"target_sha256": "00f364d625aee5e726481deb5d1c25322589885412d581c7ebb2105c52e070cd",
+					"auditors": [
+						{
+							"agent": "task",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-02",
+							"result": "clean",
+							"instance": "439bcc181f80",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/439bcc181f80.json",
+							"receipt_sha256": "d0fd89319774cf7d40c49760876dc3b97c271908fab7d569f6b9422ac199468d",
+							"scope": "ui.teamBridge.delivery.{refused,refused_manipulation,refused_personal_info,refused_abusive,refused_unsafe_content,refused_out_of_scope,held,held_screening_unavailable,held_awaiting_review,pending,info_refused,info_held,info_label} (PR #1521 copy delta)",
+							"note": "Independent copy-delta audit of #1521's 13 delivery keys by session 439bcc181f80, clean 0/0/0/0. Evidence: i18n/receipts/439bcc181f80.json (sha256 d0fd8931...468d)."
 						}
 					],
 					"status": "audited"
@@ -46612,8 +46704,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "f5b404b727961f04be67c5340a6a597eed44f02fc10b126d93a5fb95ae4ebd73",
-			"target_sha256": "48c5f84a76b6b3bdf7bc75090985ee3ede9644f35c8c06ebe7be90a5da8055e8",
+			"source_sha256": "00a4cb6150b71677766c8527369527497cf29ec3ccb91cb5e2b8a3d1c65baffd",
+			"target_sha256": "81bb71ab4c38818d6af5a1c8475c80e1bacea89c5dcb991eb79a40748d032c19",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -46628,21 +46720,20 @@
 			},
 			"auditors": [
 				{
-					"agent": "task",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-02",
+					"agent": "reviewer",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-03",
 					"result": "clean",
-					"instance": "439bcc181f80",
+					"instance": "f93eb129057e-ur",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/439bcc181f80.json",
-					"receipt_sha256": "d0fd89319774cf7d40c49760876dc3b97c271908fab7d569f6b9422ac199468d",
-					"scope": "ui.teamBridge.delivery.{refused,refused_manipulation,refused_personal_info,refused_abusive,refused_unsafe_content,refused_out_of_scope,held,held_screening_unavailable,held_awaiting_review,pending,info_refused,info_held,info_label} (PR #1521 copy delta)",
-					"note": "Independent copy-delta audit of #1521's 13 delivery keys by session 439bcc181f80, clean 0/0/0/0. Evidence: i18n/receipts/439bcc181f80.json (sha256 d0fd8931...468d)."
+					"receipt": "i18n/receipts/f93eb129057e-ur.json",
+					"receipt_sha256": "99c4ad13393194f3939f88fd8587b9014d0b721b80722db6353bcfe4d27b04f0",
+					"scope": "Five attachmentCard keys; older values identical to ledger-bound base 47e06bc7"
 				}
 			],
 			"status": "audited",
@@ -47924,6 +48015,30 @@
 							"receipt_sha256": "6614d2c2dd7bbc7f43b41d3ea92569c4f15f6e1bcb8a8c69c357776a7976d5ee",
 							"scope": "Independent exact byte composition only: 13 R4/R5 delivery tokens + main reply-window delta; inherited semantic coverage, not a new full-namespace linguistic audit.",
 							"note": "Composition 3631033e; completed assessment model GPT-6.1-Sol per root-reported host job 808faef7981e/af67 resume. Historical findings/receipts retained."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "f5b404b727961f04be67c5340a6a597eed44f02fc10b126d93a5fb95ae4ebd73",
+					"target_sha256": "48c5f84a76b6b3bdf7bc75090985ee3ede9644f35c8c06ebe7be90a5da8055e8",
+					"auditors": [
+						{
+							"agent": "task",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-02",
+							"result": "clean",
+							"instance": "439bcc181f80",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/439bcc181f80.json",
+							"receipt_sha256": "d0fd89319774cf7d40c49760876dc3b97c271908fab7d569f6b9422ac199468d",
+							"scope": "ui.teamBridge.delivery.{refused,refused_manipulation,refused_personal_info,refused_abusive,refused_unsafe_content,refused_out_of_scope,held,held_screening_unavailable,held_awaiting_review,pending,info_refused,info_held,info_label} (PR #1521 copy delta)",
+							"note": "Independent copy-delta audit of #1521's 13 delivery keys by session 439bcc181f80, clean 0/0/0/0. Evidence: i18n/receipts/439bcc181f80.json (sha256 d0fd8931...468d)."
 						}
 					],
 					"status": "audited"
@@ -56503,8 +56618,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "f5b404b727961f04be67c5340a6a597eed44f02fc10b126d93a5fb95ae4ebd73",
-			"target_sha256": "039a530f0c8540ebf90ac689865423fb3b468193a4c3e7099e37c7cfb7268496",
+			"source_sha256": "00a4cb6150b71677766c8527369527497cf29ec3ccb91cb5e2b8a3d1c65baffd",
+			"target_sha256": "9e50088b52ae39b539e6adad89be4064a976a10906f0ccd8db18123ff5278607",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -56519,21 +56634,20 @@
 			},
 			"auditors": [
 				{
-					"agent": "task",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-02",
+					"agent": "reviewer",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-03",
 					"result": "clean",
-					"instance": "439bcc181f80",
+					"instance": "f93eb129057e-vi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/439bcc181f80.json",
-					"receipt_sha256": "d0fd89319774cf7d40c49760876dc3b97c271908fab7d569f6b9422ac199468d",
-					"scope": "ui.teamBridge.delivery.{refused,refused_manipulation,refused_personal_info,refused_abusive,refused_unsafe_content,refused_out_of_scope,held,held_screening_unavailable,held_awaiting_review,pending,info_refused,info_held,info_label} (PR #1521 copy delta)",
-					"note": "Independent copy-delta audit of #1521's 13 delivery keys by session 439bcc181f80, clean 0/0/0/0. Evidence: i18n/receipts/439bcc181f80.json (sha256 d0fd8931...468d)."
+					"receipt": "i18n/receipts/f93eb129057e-vi.json",
+					"receipt_sha256": "3fdd568a4cea5597e607d28e2bdd78fd8520da97f4a1ba2a0f92c5db5b2722e3",
+					"scope": "Five attachmentCard keys; older values identical to ledger-bound base 47e06bc7"
 				}
 			],
 			"status": "audited",
@@ -57846,6 +57960,30 @@
 							"receipt_sha256": "e69843b662a4ee347f8c803091701bccb8f174872f3b842763d2121b93d864d9",
 							"scope": "Independent exact byte composition only: 13 R4/R5 delivery tokens + main reply-window delta; inherited semantic coverage, not a new full-namespace linguistic audit.",
 							"note": "Composition 3631033e; completed assessment model GPT-6.1-Sol per root-reported host job 808faef7981e/af67 resume. Historical findings/receipts retained."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "f5b404b727961f04be67c5340a6a597eed44f02fc10b126d93a5fb95ae4ebd73",
+					"target_sha256": "039a530f0c8540ebf90ac689865423fb3b468193a4c3e7099e37c7cfb7268496",
+					"auditors": [
+						{
+							"agent": "task",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-02",
+							"result": "clean",
+							"instance": "439bcc181f80",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/439bcc181f80.json",
+							"receipt_sha256": "d0fd89319774cf7d40c49760876dc3b97c271908fab7d569f6b9422ac199468d",
+							"scope": "ui.teamBridge.delivery.{refused,refused_manipulation,refused_personal_info,refused_abusive,refused_unsafe_content,refused_out_of_scope,held,held_screening_unavailable,held_awaiting_review,pending,info_refused,info_held,info_label} (PR #1521 copy delta)",
+							"note": "Independent copy-delta audit of #1521's 13 delivery keys by session 439bcc181f80, clean 0/0/0/0. Evidence: i18n/receipts/439bcc181f80.json (sha256 d0fd8931...468d)."
 						}
 					],
 					"status": "audited"
@@ -67018,8 +67156,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "f5b404b727961f04be67c5340a6a597eed44f02fc10b126d93a5fb95ae4ebd73",
-			"target_sha256": "795ecf8b2b2a6318e5ae11d7dc724b048769d66b9aabb3ad8a9d10c529417f3d",
+			"source_sha256": "00a4cb6150b71677766c8527369527497cf29ec3ccb91cb5e2b8a3d1c65baffd",
+			"target_sha256": "a24f0b1db6a5f97e6739f31bafc65ccb4ac12db210592bcfdbd9fd16468adb23",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -67034,21 +67172,20 @@
 			},
 			"auditors": [
 				{
-					"agent": "task",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-02",
+					"agent": "reviewer",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-03",
 					"result": "clean",
-					"instance": "439bcc181f80",
+					"instance": "f93eb129057e-zh-cn",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/439bcc181f80.json",
-					"receipt_sha256": "d0fd89319774cf7d40c49760876dc3b97c271908fab7d569f6b9422ac199468d",
-					"scope": "ui.teamBridge.delivery.{refused,refused_manipulation,refused_personal_info,refused_abusive,refused_unsafe_content,refused_out_of_scope,held,held_screening_unavailable,held_awaiting_review,pending,info_refused,info_held,info_label} (PR #1521 copy delta)",
-					"note": "Independent copy-delta audit of #1521's 13 delivery keys by session 439bcc181f80, clean 0/0/0/0. Evidence: i18n/receipts/439bcc181f80.json (sha256 d0fd8931...468d)."
+					"receipt": "i18n/receipts/f93eb129057e-zh-cn.json",
+					"receipt_sha256": "3080a67ffe533a151a201f7871cd40e6ccab40caaa48331fe7bc65992671c2e0",
+					"scope": "Five attachmentCard keys; older values identical to ledger-bound base 47e06bc7"
 				}
 			],
 			"status": "audited",
@@ -68383,6 +68520,30 @@
 							"receipt_sha256": "22a493bf80478b369ab786157556b504169a049138eeb608b39be6fbb28d089e",
 							"scope": "Independent exact byte composition only: 13 R4/R5 delivery tokens + main reply-window delta; inherited semantic coverage, not a new full-namespace linguistic audit.",
 							"note": "Composition 3631033e; completed assessment model GPT-6.1-Sol per root-reported host job 808faef7981e/af67 resume. Historical findings/receipts retained."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "f5b404b727961f04be67c5340a6a597eed44f02fc10b126d93a5fb95ae4ebd73",
+					"target_sha256": "795ecf8b2b2a6318e5ae11d7dc724b048769d66b9aabb3ad8a9d10c529417f3d",
+					"auditors": [
+						{
+							"agent": "task",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-02",
+							"result": "clean",
+							"instance": "439bcc181f80",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/439bcc181f80.json",
+							"receipt_sha256": "d0fd89319774cf7d40c49760876dc3b97c271908fab7d569f6b9422ac199468d",
+							"scope": "ui.teamBridge.delivery.{refused,refused_manipulation,refused_personal_info,refused_abusive,refused_unsafe_content,refused_out_of_scope,held,held_screening_unavailable,held_awaiting_review,pending,info_refused,info_held,info_label} (PR #1521 copy delta)",
+							"note": "Independent copy-delta audit of #1521's 13 delivery keys by session 439bcc181f80, clean 0/0/0/0. Evidence: i18n/receipts/439bcc181f80.json (sha256 d0fd8931...468d)."
 						}
 					],
 					"status": "audited"
