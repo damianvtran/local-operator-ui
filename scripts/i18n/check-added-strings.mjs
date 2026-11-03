@@ -223,7 +223,24 @@ function changedFiles(repo, base) {
 	};
 }
 
-export function runAddedCheck({ repo = REPO, base = "origin/main" } = {}) {
+/**
+ * `afterListing` is a test seam fired between listing changed files and
+ * reading them: it is the exact window in which a concurrent process can
+ * delete a file, so tests can open that window deterministically.
+ *
+ * Why vanished UNTRACKED files are skipped but TRACKED ones still throw: many
+ * sibling tests write a transient `_*.bundle.mjs` into scripts/i18n, import it
+ * and unlink it, and under `node --test` concurrency the checker can list it
+ * and then lose it (CI runs 41603855749 / 41595469149, exit 2 instead of 1).
+ * A file that existed only as untracked scratch and is gone can never be
+ * committed, so it holds no copy to guard. A tracked file that vanishes is a
+ * real working-tree change the check cannot vouch for, so it stays fail-closed.
+ */
+export function runAddedCheck({
+	repo = REPO,
+	base = "origin/main",
+	afterListing,
+} = {}) {
 	const comparisonBase = resolveComparisonBase(repo, base);
 	const { tracked, untracked } = changedFiles(repo, comparisonBase);
 	const allowlist = loadAllowlist(join(repo, "i18n", "allowlist.json"));
@@ -244,6 +261,7 @@ export function runAddedCheck({ repo = REPO, base = "origin/main" } = {}) {
 	for (const rel of untracked) {
 		if (!allowlistReason(rel, allowlist)) additions.set(rel, null);
 	}
+	afterListing?.();
 	const files = [...additions.keys()];
 	if (files.length === 0) {
 		return { base: comparisonBase, files, findings: [] };
@@ -257,9 +275,15 @@ export function runAddedCheck({ repo = REPO, base = "origin/main" } = {}) {
 		const findings = [];
 		for (const rel of files) {
 			const abs = join(repo, rel);
-			if (!existsSync(abs)) throw new Error(`Changed file disappeared: ${rel}`);
+			const isUntracked = additions.get(rel) === null;
+			if (!existsSync(abs)) {
+				if (isUntracked) continue;
+				throw new Error(`Changed file disappeared: ${rel}`);
+			}
 			const project = snapshot.getDefaultProjectForFile(abs);
 			const sourceFile = project.program.getSourceFile(abs);
+			// Vanished between existsSync and parse: same untracked-only rule.
+			if (!sourceFile && isUntracked && !existsSync(abs)) continue;
 			if (!sourceFile) throw new Error(`TypeScript could not parse ${rel}`);
 			for (const finding of findAddedCopyViolations(
 				sourceFile,
