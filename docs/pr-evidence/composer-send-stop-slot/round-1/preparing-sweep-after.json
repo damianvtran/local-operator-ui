@@ -1,0 +1,8978 @@
+{
+  "idle-plain-w1024|localOperatorDark": {
+    "id": "idle-plain-w1024",
+    "state": "idle",
+    "readings": [
+      {
+        "kind": "model",
+        "text": "gpt-5-mini",
+        "shown": true,
+        "box": {
+          "left": 530,
+          "right": 602.9,
+          "width": 72.9,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "effort",
+        "text": "Medium",
+        "shown": true,
+        "box": {
+          "left": 606.9,
+          "right": 662.2,
+          "width": 55.4,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "context",
+        "text": "10.2%/400k",
+        "shown": true,
+        "box": {
+          "left": 666.2,
+          "right": 770.5,
+          "width": 104.3,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "cost",
+        "text": "≥$2.41",
+        "shown": true,
+        "box": {
+          "left": 774.5,
+          "right": 829.8,
+          "width": 55.4,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "duration",
+        "text": "6m12s",
+        "shown": true,
+        "box": {
+          "left": 833.8,
+          "right": 882,
+          "width": 48.1,
+          "top": 200,
+          "height": 24.7
+        }
+      }
+    ],
+    "width": 1024,
+    "measure": null,
+    "dir": null,
+    "theme": "localOperatorDark",
+    "containerBox": {
+      "left": 100,
+      "right": 1124,
+      "width": 1024,
+      "top": 126,
+      "height": 134
+    },
+    "queryContainer": {
+      "box": {
+        "left": 100,
+        "right": 1124,
+        "width": 1024,
+        "top": 126,
+        "height": 134
+      },
+      "contentWidth": 976
+    },
+    "row": {
+      "box": {
+        "left": 223,
+        "right": 1001,
+        "width": 778,
+        "top": 196,
+        "height": 32
+      },
+      "scrollWidth": 778,
+      "clientWidth": 778,
+      "overflow": 0,
+      "itemCount": 3,
+      "lines": 1
+    },
+    "formBox": {
+      "left": 124,
+      "right": 1100,
+      "width": 976,
+      "top": 134,
+      "height": 110
+    },
+    "form": {
+      "scrollWidth": 976,
+      "clientWidth": 976,
+      "overflow": 0
+    },
+    "strip": {
+      "left": 530,
+      "right": 829.8,
+      "width": 299.8,
+      "top": 200,
+      "height": 24
+    },
+    "controls": {
+      "left": 933,
+      "right": 1001,
+      "width": 68,
+      "top": 196,
+      "height": 32,
+      "children": 2
+    },
+    "attach": {
+      "left": 223,
+      "right": 528,
+      "width": 305,
+      "top": 196,
+      "height": 32
+    },
+    "chip": {
+      "left": 267,
+      "right": 528,
+      "width": 261,
+      "top": 196,
+      "height": 32
+    },
+    "gap": 103.2,
+    "direction": "ltr",
+    "readingsRight": 882,
+    "readingsLeft": 530,
+    "lastReadingRight": 829.8,
+    "lastReadingLeft": 530,
+    "anchorDelta": 0,
+    "durationVisible": true,
+    "glyphOverlap": -51,
+    "durationShown": true,
+    "durationBox": {
+      "left": 833.8,
+      "right": 882,
+      "width": 48.1,
+      "top": 200,
+      "height": 24.7
+    },
+    "slots": [
+      {
+        "slot": "a",
+        "label": "Start recording",
+        "left": 933,
+        "right": 965,
+        "width": 32,
+        "height": 32,
+        "disabled": false
+      },
+      {
+        "slot": "b",
+        "label": "Send message",
+        "left": 969,
+        "right": 1001,
+        "width": 32,
+        "height": 32,
+        "disabled": true
+      }
+    ],
+    "sent": [],
+    "bTimeline": null,
+    "transcriptionCalls": 0,
+    "boxValue": "",
+    "controlNames": [
+      "Start recording",
+      "Send message"
+    ]
+  },
+  "idle-plain-w1024|localOperatorLight": {
+    "id": "idle-plain-w1024",
+    "state": "idle",
+    "readings": [
+      {
+        "kind": "model",
+        "text": "gpt-5-mini",
+        "shown": true,
+        "box": {
+          "left": 530,
+          "right": 602.9,
+          "width": 72.9,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "effort",
+        "text": "Medium",
+        "shown": true,
+        "box": {
+          "left": 606.9,
+          "right": 662.2,
+          "width": 55.4,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "context",
+        "text": "10.2%/400k",
+        "shown": true,
+        "box": {
+          "left": 666.2,
+          "right": 770.5,
+          "width": 104.3,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "cost",
+        "text": "≥$2.41",
+        "shown": true,
+        "box": {
+          "left": 774.5,
+          "right": 829.8,
+          "width": 55.4,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "duration",
+        "text": "6m12s",
+        "shown": true,
+        "box": {
+          "left": 833.8,
+          "right": 882,
+          "width": 48.1,
+          "top": 200,
+          "height": 24.7
+        }
+      }
+    ],
+    "width": 1024,
+    "measure": null,
+    "dir": null,
+    "theme": "localOperatorLight",
+    "containerBox": {
+      "left": 100,
+      "right": 1124,
+      "width": 1024,
+      "top": 126,
+      "height": 134
+    },
+    "queryContainer": {
+      "box": {
+        "left": 100,
+        "right": 1124,
+        "width": 1024,
+        "top": 126,
+        "height": 134
+      },
+      "contentWidth": 976
+    },
+    "row": {
+      "box": {
+        "left": 223,
+        "right": 1001,
+        "width": 778,
+        "top": 196,
+        "height": 32
+      },
+      "scrollWidth": 778,
+      "clientWidth": 778,
+      "overflow": 0,
+      "itemCount": 3,
+      "lines": 1
+    },
+    "formBox": {
+      "left": 124,
+      "right": 1100,
+      "width": 976,
+      "top": 134,
+      "height": 110
+    },
+    "form": {
+      "scrollWidth": 976,
+      "clientWidth": 976,
+      "overflow": 0
+    },
+    "strip": {
+      "left": 530,
+      "right": 829.8,
+      "width": 299.8,
+      "top": 200,
+      "height": 24
+    },
+    "controls": {
+      "left": 933,
+      "right": 1001,
+      "width": 68,
+      "top": 196,
+      "height": 32,
+      "children": 2
+    },
+    "attach": {
+      "left": 223,
+      "right": 528,
+      "width": 305,
+      "top": 196,
+      "height": 32
+    },
+    "chip": {
+      "left": 267,
+      "right": 528,
+      "width": 261,
+      "top": 196,
+      "height": 32
+    },
+    "gap": 103.2,
+    "direction": "ltr",
+    "readingsRight": 882,
+    "readingsLeft": 530,
+    "lastReadingRight": 829.8,
+    "lastReadingLeft": 530,
+    "anchorDelta": 0,
+    "durationVisible": true,
+    "glyphOverlap": -51,
+    "durationShown": true,
+    "durationBox": {
+      "left": 833.8,
+      "right": 882,
+      "width": 48.1,
+      "top": 200,
+      "height": 24.7
+    },
+    "slots": [
+      {
+        "slot": "a",
+        "label": "Start recording",
+        "left": 933,
+        "right": 965,
+        "width": 32,
+        "height": 32,
+        "disabled": false
+      },
+      {
+        "slot": "b",
+        "label": "Send message",
+        "left": 969,
+        "right": 1001,
+        "width": 32,
+        "height": 32,
+        "disabled": true
+      }
+    ],
+    "sent": [],
+    "bTimeline": null,
+    "transcriptionCalls": 0,
+    "boxValue": "",
+    "controlNames": [
+      "Start recording",
+      "Send message"
+    ]
+  },
+  "idle-plain-w900|localOperatorDark": {
+    "id": "idle-plain-w900",
+    "state": "idle",
+    "readings": [
+      {
+        "kind": "model",
+        "text": "gpt-5-mini",
+        "shown": true,
+        "box": {
+          "left": 467,
+          "right": 539.9,
+          "width": 72.9,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "effort",
+        "text": "Medium",
+        "shown": true,
+        "box": {
+          "left": 543.9,
+          "right": 599.2,
+          "width": 55.4,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "context",
+        "text": "10.2%/400k",
+        "shown": true,
+        "box": {
+          "left": 603.2,
+          "right": 707.5,
+          "width": 104.3,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "cost",
+        "text": "≥$2.41",
+        "shown": true,
+        "box": {
+          "left": 711.5,
+          "right": 766.8,
+          "width": 55.4,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "duration",
+        "text": "6m12s",
+        "shown": true,
+        "box": {
+          "left": 770.8,
+          "right": 819,
+          "width": 48.1,
+          "top": 200,
+          "height": 24.7
+        }
+      }
+    ],
+    "width": 900,
+    "measure": null,
+    "dir": null,
+    "theme": "localOperatorDark",
+    "containerBox": {
+      "left": 100,
+      "right": 1000,
+      "width": 900,
+      "top": 126,
+      "height": 134
+    },
+    "queryContainer": {
+      "box": {
+        "left": 100,
+        "right": 1000,
+        "width": 900,
+        "top": 126,
+        "height": 134
+      },
+      "contentWidth": 852
+    },
+    "row": {
+      "box": {
+        "left": 161,
+        "right": 939,
+        "width": 778,
+        "top": 196,
+        "height": 32
+      },
+      "scrollWidth": 778,
+      "clientWidth": 778,
+      "overflow": 0,
+      "itemCount": 3,
+      "lines": 1
+    },
+    "formBox": {
+      "left": 124,
+      "right": 976,
+      "width": 852,
+      "top": 134,
+      "height": 110
+    },
+    "form": {
+      "scrollWidth": 852,
+      "clientWidth": 852,
+      "overflow": 0
+    },
+    "strip": {
+      "left": 467,
+      "right": 766.8,
+      "width": 299.8,
+      "top": 200,
+      "height": 24
+    },
+    "controls": {
+      "left": 871,
+      "right": 939,
+      "width": 68,
+      "top": 196,
+      "height": 32,
+      "children": 2
+    },
+    "attach": {
+      "left": 161,
+      "right": 465,
+      "width": 304,
+      "top": 196,
+      "height": 32
+    },
+    "chip": {
+      "left": 205,
+      "right": 465,
+      "width": 260,
+      "top": 196,
+      "height": 32
+    },
+    "gap": 104.2,
+    "direction": "ltr",
+    "readingsRight": 819,
+    "readingsLeft": 467,
+    "lastReadingRight": 766.8,
+    "lastReadingLeft": 467,
+    "anchorDelta": 0,
+    "durationVisible": true,
+    "glyphOverlap": -52,
+    "durationShown": true,
+    "durationBox": {
+      "left": 770.8,
+      "right": 819,
+      "width": 48.1,
+      "top": 200,
+      "height": 24.7
+    },
+    "slots": [
+      {
+        "slot": "a",
+        "label": "Start recording",
+        "left": 871,
+        "right": 903,
+        "width": 32,
+        "height": 32,
+        "disabled": false
+      },
+      {
+        "slot": "b",
+        "label": "Send message",
+        "left": 907,
+        "right": 939,
+        "width": 32,
+        "height": 32,
+        "disabled": true
+      }
+    ],
+    "sent": [],
+    "bTimeline": null,
+    "transcriptionCalls": 0,
+    "boxValue": "",
+    "controlNames": [
+      "Start recording",
+      "Send message"
+    ]
+  },
+  "idle-plain-w900|localOperatorLight": {
+    "id": "idle-plain-w900",
+    "state": "idle",
+    "readings": [
+      {
+        "kind": "model",
+        "text": "gpt-5-mini",
+        "shown": true,
+        "box": {
+          "left": 467,
+          "right": 539.9,
+          "width": 72.9,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "effort",
+        "text": "Medium",
+        "shown": true,
+        "box": {
+          "left": 543.9,
+          "right": 599.2,
+          "width": 55.4,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "context",
+        "text": "10.2%/400k",
+        "shown": true,
+        "box": {
+          "left": 603.2,
+          "right": 707.5,
+          "width": 104.3,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "cost",
+        "text": "≥$2.41",
+        "shown": true,
+        "box": {
+          "left": 711.5,
+          "right": 766.8,
+          "width": 55.4,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "duration",
+        "text": "6m12s",
+        "shown": true,
+        "box": {
+          "left": 770.8,
+          "right": 819,
+          "width": 48.1,
+          "top": 200,
+          "height": 24.7
+        }
+      }
+    ],
+    "width": 900,
+    "measure": null,
+    "dir": null,
+    "theme": "localOperatorLight",
+    "containerBox": {
+      "left": 100,
+      "right": 1000,
+      "width": 900,
+      "top": 126,
+      "height": 134
+    },
+    "queryContainer": {
+      "box": {
+        "left": 100,
+        "right": 1000,
+        "width": 900,
+        "top": 126,
+        "height": 134
+      },
+      "contentWidth": 852
+    },
+    "row": {
+      "box": {
+        "left": 161,
+        "right": 939,
+        "width": 778,
+        "top": 196,
+        "height": 32
+      },
+      "scrollWidth": 778,
+      "clientWidth": 778,
+      "overflow": 0,
+      "itemCount": 3,
+      "lines": 1
+    },
+    "formBox": {
+      "left": 124,
+      "right": 976,
+      "width": 852,
+      "top": 134,
+      "height": 110
+    },
+    "form": {
+      "scrollWidth": 852,
+      "clientWidth": 852,
+      "overflow": 0
+    },
+    "strip": {
+      "left": 467,
+      "right": 766.8,
+      "width": 299.8,
+      "top": 200,
+      "height": 24
+    },
+    "controls": {
+      "left": 871,
+      "right": 939,
+      "width": 68,
+      "top": 196,
+      "height": 32,
+      "children": 2
+    },
+    "attach": {
+      "left": 161,
+      "right": 465,
+      "width": 304,
+      "top": 196,
+      "height": 32
+    },
+    "chip": {
+      "left": 205,
+      "right": 465,
+      "width": 260,
+      "top": 196,
+      "height": 32
+    },
+    "gap": 104.2,
+    "direction": "ltr",
+    "readingsRight": 819,
+    "readingsLeft": 467,
+    "lastReadingRight": 766.8,
+    "lastReadingLeft": 467,
+    "anchorDelta": 0,
+    "durationVisible": true,
+    "glyphOverlap": -52,
+    "durationShown": true,
+    "durationBox": {
+      "left": 770.8,
+      "right": 819,
+      "width": 48.1,
+      "top": 200,
+      "height": 24.7
+    },
+    "slots": [
+      {
+        "slot": "a",
+        "label": "Start recording",
+        "left": 871,
+        "right": 903,
+        "width": 32,
+        "height": 32,
+        "disabled": false
+      },
+      {
+        "slot": "b",
+        "label": "Send message",
+        "left": 907,
+        "right": 939,
+        "width": 32,
+        "height": 32,
+        "disabled": true
+      }
+    ],
+    "sent": [],
+    "bTimeline": null,
+    "transcriptionCalls": 0,
+    "boxValue": "",
+    "controlNames": [
+      "Start recording",
+      "Send message"
+    ]
+  },
+  "idle-plain-w840|localOperatorDark": {
+    "id": "idle-plain-w840",
+    "state": "idle",
+    "readings": [
+      {
+        "kind": "model",
+        "text": "gpt-5-mini",
+        "shown": true,
+        "box": {
+          "left": 446,
+          "right": 518.9,
+          "width": 72.9,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "effort",
+        "text": "Medium",
+        "shown": true,
+        "box": {
+          "left": 522.9,
+          "right": 578.2,
+          "width": 55.4,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "context",
+        "text": "10.2%/400k",
+        "shown": true,
+        "box": {
+          "left": 582.2,
+          "right": 686.5,
+          "width": 104.3,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "cost",
+        "text": "≥$2.41",
+        "shown": true,
+        "box": {
+          "left": 690.5,
+          "right": 745.8,
+          "width": 55.4,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "duration",
+        "text": "6m12s",
+        "shown": true,
+        "box": {
+          "left": 749.8,
+          "right": 798,
+          "width": 48.1,
+          "top": 200,
+          "height": 24.7
+        }
+      }
+    ],
+    "width": 840,
+    "measure": null,
+    "dir": null,
+    "theme": "localOperatorDark",
+    "containerBox": {
+      "left": 100,
+      "right": 940,
+      "width": 840,
+      "top": 126,
+      "height": 134
+    },
+    "queryContainer": {
+      "box": {
+        "left": 100,
+        "right": 940,
+        "width": 840,
+        "top": 126,
+        "height": 134
+      },
+      "contentWidth": 792
+    },
+    "row": {
+      "box": {
+        "left": 140,
+        "right": 900,
+        "width": 760,
+        "top": 196,
+        "height": 32
+      },
+      "scrollWidth": 760,
+      "clientWidth": 760,
+      "overflow": 0,
+      "itemCount": 3,
+      "lines": 1
+    },
+    "formBox": {
+      "left": 124,
+      "right": 916,
+      "width": 792,
+      "top": 134,
+      "height": 110
+    },
+    "form": {
+      "scrollWidth": 792,
+      "clientWidth": 792,
+      "overflow": 0
+    },
+    "strip": {
+      "left": 446,
+      "right": 745.8,
+      "width": 299.8,
+      "top": 200,
+      "height": 24
+    },
+    "controls": {
+      "left": 832,
+      "right": 900,
+      "width": 68,
+      "top": 196,
+      "height": 32,
+      "children": 2
+    },
+    "attach": {
+      "left": 140,
+      "right": 444,
+      "width": 304,
+      "top": 196,
+      "height": 32
+    },
+    "chip": {
+      "left": 184,
+      "right": 444,
+      "width": 260,
+      "top": 196,
+      "height": 32
+    },
+    "gap": 86.2,
+    "direction": "ltr",
+    "readingsRight": 798,
+    "readingsLeft": 446,
+    "lastReadingRight": 745.8,
+    "lastReadingLeft": 446,
+    "anchorDelta": 0,
+    "durationVisible": true,
+    "glyphOverlap": -34,
+    "durationShown": true,
+    "durationBox": {
+      "left": 749.8,
+      "right": 798,
+      "width": 48.1,
+      "top": 200,
+      "height": 24.7
+    },
+    "slots": [
+      {
+        "slot": "a",
+        "label": "Start recording",
+        "left": 832,
+        "right": 864,
+        "width": 32,
+        "height": 32,
+        "disabled": false
+      },
+      {
+        "slot": "b",
+        "label": "Send message",
+        "left": 868,
+        "right": 900,
+        "width": 32,
+        "height": 32,
+        "disabled": true
+      }
+    ],
+    "sent": [],
+    "bTimeline": null,
+    "transcriptionCalls": 0,
+    "boxValue": "",
+    "controlNames": [
+      "Start recording",
+      "Send message"
+    ]
+  },
+  "idle-plain-w840|localOperatorLight": {
+    "id": "idle-plain-w840",
+    "state": "idle",
+    "readings": [
+      {
+        "kind": "model",
+        "text": "gpt-5-mini",
+        "shown": true,
+        "box": {
+          "left": 446,
+          "right": 518.9,
+          "width": 72.9,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "effort",
+        "text": "Medium",
+        "shown": true,
+        "box": {
+          "left": 522.9,
+          "right": 578.2,
+          "width": 55.4,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "context",
+        "text": "10.2%/400k",
+        "shown": true,
+        "box": {
+          "left": 582.2,
+          "right": 686.5,
+          "width": 104.3,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "cost",
+        "text": "≥$2.41",
+        "shown": true,
+        "box": {
+          "left": 690.5,
+          "right": 745.8,
+          "width": 55.4,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "duration",
+        "text": "6m12s",
+        "shown": true,
+        "box": {
+          "left": 749.8,
+          "right": 798,
+          "width": 48.1,
+          "top": 200,
+          "height": 24.7
+        }
+      }
+    ],
+    "width": 840,
+    "measure": null,
+    "dir": null,
+    "theme": "localOperatorLight",
+    "containerBox": {
+      "left": 100,
+      "right": 940,
+      "width": 840,
+      "top": 126,
+      "height": 134
+    },
+    "queryContainer": {
+      "box": {
+        "left": 100,
+        "right": 940,
+        "width": 840,
+        "top": 126,
+        "height": 134
+      },
+      "contentWidth": 792
+    },
+    "row": {
+      "box": {
+        "left": 140,
+        "right": 900,
+        "width": 760,
+        "top": 196,
+        "height": 32
+      },
+      "scrollWidth": 760,
+      "clientWidth": 760,
+      "overflow": 0,
+      "itemCount": 3,
+      "lines": 1
+    },
+    "formBox": {
+      "left": 124,
+      "right": 916,
+      "width": 792,
+      "top": 134,
+      "height": 110
+    },
+    "form": {
+      "scrollWidth": 792,
+      "clientWidth": 792,
+      "overflow": 0
+    },
+    "strip": {
+      "left": 446,
+      "right": 745.8,
+      "width": 299.8,
+      "top": 200,
+      "height": 24
+    },
+    "controls": {
+      "left": 832,
+      "right": 900,
+      "width": 68,
+      "top": 196,
+      "height": 32,
+      "children": 2
+    },
+    "attach": {
+      "left": 140,
+      "right": 444,
+      "width": 304,
+      "top": 196,
+      "height": 32
+    },
+    "chip": {
+      "left": 184,
+      "right": 444,
+      "width": 260,
+      "top": 196,
+      "height": 32
+    },
+    "gap": 86.2,
+    "direction": "ltr",
+    "readingsRight": 798,
+    "readingsLeft": 446,
+    "lastReadingRight": 745.8,
+    "lastReadingLeft": 446,
+    "anchorDelta": 0,
+    "durationVisible": true,
+    "glyphOverlap": -34,
+    "durationShown": true,
+    "durationBox": {
+      "left": 749.8,
+      "right": 798,
+      "width": 48.1,
+      "top": 200,
+      "height": 24.7
+    },
+    "slots": [
+      {
+        "slot": "a",
+        "label": "Start recording",
+        "left": 832,
+        "right": 864,
+        "width": 32,
+        "height": 32,
+        "disabled": false
+      },
+      {
+        "slot": "b",
+        "label": "Send message",
+        "left": 868,
+        "right": 900,
+        "width": 32,
+        "height": 32,
+        "disabled": true
+      }
+    ],
+    "sent": [],
+    "bTimeline": null,
+    "transcriptionCalls": 0,
+    "boxValue": "",
+    "controlNames": [
+      "Start recording",
+      "Send message"
+    ]
+  },
+  "idle-plain-w780|localOperatorDark": {
+    "id": "idle-plain-w780",
+    "state": "idle",
+    "readings": [
+      {
+        "kind": "model",
+        "text": "gpt-5-mini",
+        "shown": true,
+        "box": {
+          "left": 446,
+          "right": 518.9,
+          "width": 72.9,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "effort",
+        "text": "Medium",
+        "shown": false,
+        "box": {
+          "left": 0,
+          "right": 0,
+          "width": 0,
+          "top": 0,
+          "height": 0
+        }
+      },
+      {
+        "kind": "context",
+        "text": "10.2%/400k",
+        "shown": true,
+        "box": {
+          "left": 522.9,
+          "right": 627.1,
+          "width": 104.3,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "cost",
+        "text": "≥$2.41",
+        "shown": true,
+        "box": {
+          "left": 631.1,
+          "right": 686.5,
+          "width": 55.4,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "duration",
+        "text": "6m12s",
+        "shown": true,
+        "box": {
+          "left": 690.5,
+          "right": 738.6,
+          "width": 48.1,
+          "top": 200,
+          "height": 24.7
+        }
+      }
+    ],
+    "width": 780,
+    "measure": null,
+    "dir": null,
+    "theme": "localOperatorDark",
+    "containerBox": {
+      "left": 100,
+      "right": 880,
+      "width": 780,
+      "top": 126,
+      "height": 134
+    },
+    "queryContainer": {
+      "box": {
+        "left": 100,
+        "right": 880,
+        "width": 780,
+        "top": 126,
+        "height": 134
+      },
+      "contentWidth": 732
+    },
+    "row": {
+      "box": {
+        "left": 140,
+        "right": 840,
+        "width": 700,
+        "top": 196,
+        "height": 32
+      },
+      "scrollWidth": 700,
+      "clientWidth": 700,
+      "overflow": 0,
+      "itemCount": 3,
+      "lines": 1
+    },
+    "formBox": {
+      "left": 124,
+      "right": 856,
+      "width": 732,
+      "top": 134,
+      "height": 110
+    },
+    "form": {
+      "scrollWidth": 732,
+      "clientWidth": 732,
+      "overflow": 0
+    },
+    "strip": {
+      "left": 446,
+      "right": 686.5,
+      "width": 240.5,
+      "top": 200,
+      "height": 24
+    },
+    "controls": {
+      "left": 772,
+      "right": 840,
+      "width": 68,
+      "top": 196,
+      "height": 32,
+      "children": 2
+    },
+    "attach": {
+      "left": 140,
+      "right": 444,
+      "width": 304,
+      "top": 196,
+      "height": 32
+    },
+    "chip": {
+      "left": 184,
+      "right": 444,
+      "width": 260,
+      "top": 196,
+      "height": 32
+    },
+    "gap": 85.5,
+    "direction": "ltr",
+    "readingsRight": 738.6,
+    "readingsLeft": 446,
+    "lastReadingRight": 686.5,
+    "lastReadingLeft": 446,
+    "anchorDelta": 0,
+    "durationVisible": true,
+    "glyphOverlap": -33.4,
+    "durationShown": true,
+    "durationBox": {
+      "left": 690.5,
+      "right": 738.6,
+      "width": 48.1,
+      "top": 200,
+      "height": 24.7
+    },
+    "slots": [
+      {
+        "slot": "a",
+        "label": "Start recording",
+        "left": 772,
+        "right": 804,
+        "width": 32,
+        "height": 32,
+        "disabled": false
+      },
+      {
+        "slot": "b",
+        "label": "Send message",
+        "left": 808,
+        "right": 840,
+        "width": 32,
+        "height": 32,
+        "disabled": true
+      }
+    ],
+    "sent": [],
+    "bTimeline": null,
+    "transcriptionCalls": 0,
+    "boxValue": "",
+    "controlNames": [
+      "Start recording",
+      "Send message"
+    ]
+  },
+  "idle-plain-w780|localOperatorLight": {
+    "id": "idle-plain-w780",
+    "state": "idle",
+    "readings": [
+      {
+        "kind": "model",
+        "text": "gpt-5-mini",
+        "shown": true,
+        "box": {
+          "left": 446,
+          "right": 518.9,
+          "width": 72.9,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "effort",
+        "text": "Medium",
+        "shown": false,
+        "box": {
+          "left": 0,
+          "right": 0,
+          "width": 0,
+          "top": 0,
+          "height": 0
+        }
+      },
+      {
+        "kind": "context",
+        "text": "10.2%/400k",
+        "shown": true,
+        "box": {
+          "left": 522.9,
+          "right": 627.1,
+          "width": 104.3,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "cost",
+        "text": "≥$2.41",
+        "shown": true,
+        "box": {
+          "left": 631.1,
+          "right": 686.5,
+          "width": 55.4,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "duration",
+        "text": "6m12s",
+        "shown": true,
+        "box": {
+          "left": 690.5,
+          "right": 738.6,
+          "width": 48.1,
+          "top": 200,
+          "height": 24.7
+        }
+      }
+    ],
+    "width": 780,
+    "measure": null,
+    "dir": null,
+    "theme": "localOperatorLight",
+    "containerBox": {
+      "left": 100,
+      "right": 880,
+      "width": 780,
+      "top": 126,
+      "height": 134
+    },
+    "queryContainer": {
+      "box": {
+        "left": 100,
+        "right": 880,
+        "width": 780,
+        "top": 126,
+        "height": 134
+      },
+      "contentWidth": 732
+    },
+    "row": {
+      "box": {
+        "left": 140,
+        "right": 840,
+        "width": 700,
+        "top": 196,
+        "height": 32
+      },
+      "scrollWidth": 700,
+      "clientWidth": 700,
+      "overflow": 0,
+      "itemCount": 3,
+      "lines": 1
+    },
+    "formBox": {
+      "left": 124,
+      "right": 856,
+      "width": 732,
+      "top": 134,
+      "height": 110
+    },
+    "form": {
+      "scrollWidth": 732,
+      "clientWidth": 732,
+      "overflow": 0
+    },
+    "strip": {
+      "left": 446,
+      "right": 686.5,
+      "width": 240.5,
+      "top": 200,
+      "height": 24
+    },
+    "controls": {
+      "left": 772,
+      "right": 840,
+      "width": 68,
+      "top": 196,
+      "height": 32,
+      "children": 2
+    },
+    "attach": {
+      "left": 140,
+      "right": 444,
+      "width": 304,
+      "top": 196,
+      "height": 32
+    },
+    "chip": {
+      "left": 184,
+      "right": 444,
+      "width": 260,
+      "top": 196,
+      "height": 32
+    },
+    "gap": 85.5,
+    "direction": "ltr",
+    "readingsRight": 738.6,
+    "readingsLeft": 446,
+    "lastReadingRight": 686.5,
+    "lastReadingLeft": 446,
+    "anchorDelta": 0,
+    "durationVisible": true,
+    "glyphOverlap": -33.4,
+    "durationShown": true,
+    "durationBox": {
+      "left": 690.5,
+      "right": 738.6,
+      "width": 48.1,
+      "top": 200,
+      "height": 24.7
+    },
+    "slots": [
+      {
+        "slot": "a",
+        "label": "Start recording",
+        "left": 772,
+        "right": 804,
+        "width": 32,
+        "height": 32,
+        "disabled": false
+      },
+      {
+        "slot": "b",
+        "label": "Send message",
+        "left": 808,
+        "right": 840,
+        "width": 32,
+        "height": 32,
+        "disabled": true
+      }
+    ],
+    "sent": [],
+    "bTimeline": null,
+    "transcriptionCalls": 0,
+    "boxValue": "",
+    "controlNames": [
+      "Start recording",
+      "Send message"
+    ]
+  },
+  "idle-plain-w720|localOperatorDark": {
+    "id": "idle-plain-w720",
+    "state": "idle",
+    "readings": [
+      {
+        "kind": "model",
+        "text": "gpt-5-mini",
+        "shown": true,
+        "box": {
+          "left": 446,
+          "right": 518.9,
+          "width": 72.9,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "effort",
+        "text": "Medium",
+        "shown": false,
+        "box": {
+          "left": 0,
+          "right": 0,
+          "width": 0,
+          "top": 0,
+          "height": 0
+        }
+      },
+      {
+        "kind": "context",
+        "text": "10.2%/400k",
+        "shown": true,
+        "box": {
+          "left": 522.9,
+          "right": 627.1,
+          "width": 104.3,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "cost",
+        "text": "≥$2.41",
+        "shown": false,
+        "box": {
+          "left": 0,
+          "right": 0,
+          "width": 0,
+          "top": 0,
+          "height": 0
+        }
+      },
+      {
+        "kind": "duration",
+        "text": "6m12s",
+        "shown": true,
+        "box": {
+          "left": 631.1,
+          "right": 679.3,
+          "width": 48.1,
+          "top": 200,
+          "height": 24.7
+        }
+      }
+    ],
+    "width": 720,
+    "measure": null,
+    "dir": null,
+    "theme": "localOperatorDark",
+    "containerBox": {
+      "left": 100,
+      "right": 820,
+      "width": 720,
+      "top": 126,
+      "height": 134
+    },
+    "queryContainer": {
+      "box": {
+        "left": 100,
+        "right": 820,
+        "width": 720,
+        "top": 126,
+        "height": 134
+      },
+      "contentWidth": 672
+    },
+    "row": {
+      "box": {
+        "left": 140,
+        "right": 780,
+        "width": 640,
+        "top": 196,
+        "height": 32
+      },
+      "scrollWidth": 640,
+      "clientWidth": 640,
+      "overflow": 0,
+      "itemCount": 3,
+      "lines": 1
+    },
+    "formBox": {
+      "left": 124,
+      "right": 796,
+      "width": 672,
+      "top": 134,
+      "height": 110
+    },
+    "form": {
+      "scrollWidth": 672,
+      "clientWidth": 672,
+      "overflow": 0
+    },
+    "strip": {
+      "left": 446,
+      "right": 627.1,
+      "width": 181.1,
+      "top": 200,
+      "height": 24
+    },
+    "controls": {
+      "left": 712,
+      "right": 780,
+      "width": 68,
+      "top": 196,
+      "height": 32,
+      "children": 2
+    },
+    "attach": {
+      "left": 140,
+      "right": 444,
+      "width": 304,
+      "top": 196,
+      "height": 32
+    },
+    "chip": {
+      "left": 184,
+      "right": 444,
+      "width": 260,
+      "top": 196,
+      "height": 32
+    },
+    "gap": 84.9,
+    "direction": "ltr",
+    "readingsRight": 679.3,
+    "readingsLeft": 446,
+    "lastReadingRight": 627.1,
+    "lastReadingLeft": 446,
+    "anchorDelta": 0,
+    "durationVisible": true,
+    "glyphOverlap": -32.7,
+    "durationShown": true,
+    "durationBox": {
+      "left": 631.1,
+      "right": 679.3,
+      "width": 48.1,
+      "top": 200,
+      "height": 24.7
+    },
+    "slots": [
+      {
+        "slot": "a",
+        "label": "Start recording",
+        "left": 712,
+        "right": 744,
+        "width": 32,
+        "height": 32,
+        "disabled": false
+      },
+      {
+        "slot": "b",
+        "label": "Send message",
+        "left": 748,
+        "right": 780,
+        "width": 32,
+        "height": 32,
+        "disabled": true
+      }
+    ],
+    "sent": [],
+    "bTimeline": null,
+    "transcriptionCalls": 0,
+    "boxValue": "",
+    "controlNames": [
+      "Start recording",
+      "Send message"
+    ]
+  },
+  "idle-plain-w720|localOperatorLight": {
+    "id": "idle-plain-w720",
+    "state": "idle",
+    "readings": [
+      {
+        "kind": "model",
+        "text": "gpt-5-mini",
+        "shown": true,
+        "box": {
+          "left": 446,
+          "right": 518.9,
+          "width": 72.9,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "effort",
+        "text": "Medium",
+        "shown": false,
+        "box": {
+          "left": 0,
+          "right": 0,
+          "width": 0,
+          "top": 0,
+          "height": 0
+        }
+      },
+      {
+        "kind": "context",
+        "text": "10.2%/400k",
+        "shown": true,
+        "box": {
+          "left": 522.9,
+          "right": 627.1,
+          "width": 104.3,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "cost",
+        "text": "≥$2.41",
+        "shown": false,
+        "box": {
+          "left": 0,
+          "right": 0,
+          "width": 0,
+          "top": 0,
+          "height": 0
+        }
+      },
+      {
+        "kind": "duration",
+        "text": "6m12s",
+        "shown": true,
+        "box": {
+          "left": 631.1,
+          "right": 679.3,
+          "width": 48.1,
+          "top": 200,
+          "height": 24.7
+        }
+      }
+    ],
+    "width": 720,
+    "measure": null,
+    "dir": null,
+    "theme": "localOperatorLight",
+    "containerBox": {
+      "left": 100,
+      "right": 820,
+      "width": 720,
+      "top": 126,
+      "height": 134
+    },
+    "queryContainer": {
+      "box": {
+        "left": 100,
+        "right": 820,
+        "width": 720,
+        "top": 126,
+        "height": 134
+      },
+      "contentWidth": 672
+    },
+    "row": {
+      "box": {
+        "left": 140,
+        "right": 780,
+        "width": 640,
+        "top": 196,
+        "height": 32
+      },
+      "scrollWidth": 640,
+      "clientWidth": 640,
+      "overflow": 0,
+      "itemCount": 3,
+      "lines": 1
+    },
+    "formBox": {
+      "left": 124,
+      "right": 796,
+      "width": 672,
+      "top": 134,
+      "height": 110
+    },
+    "form": {
+      "scrollWidth": 672,
+      "clientWidth": 672,
+      "overflow": 0
+    },
+    "strip": {
+      "left": 446,
+      "right": 627.1,
+      "width": 181.1,
+      "top": 200,
+      "height": 24
+    },
+    "controls": {
+      "left": 712,
+      "right": 780,
+      "width": 68,
+      "top": 196,
+      "height": 32,
+      "children": 2
+    },
+    "attach": {
+      "left": 140,
+      "right": 444,
+      "width": 304,
+      "top": 196,
+      "height": 32
+    },
+    "chip": {
+      "left": 184,
+      "right": 444,
+      "width": 260,
+      "top": 196,
+      "height": 32
+    },
+    "gap": 84.9,
+    "direction": "ltr",
+    "readingsRight": 679.3,
+    "readingsLeft": 446,
+    "lastReadingRight": 627.1,
+    "lastReadingLeft": 446,
+    "anchorDelta": 0,
+    "durationVisible": true,
+    "glyphOverlap": -32.7,
+    "durationShown": true,
+    "durationBox": {
+      "left": 631.1,
+      "right": 679.3,
+      "width": 48.1,
+      "top": 200,
+      "height": 24.7
+    },
+    "slots": [
+      {
+        "slot": "a",
+        "label": "Start recording",
+        "left": 712,
+        "right": 744,
+        "width": 32,
+        "height": 32,
+        "disabled": false
+      },
+      {
+        "slot": "b",
+        "label": "Send message",
+        "left": 748,
+        "right": 780,
+        "width": 32,
+        "height": 32,
+        "disabled": true
+      }
+    ],
+    "sent": [],
+    "bTimeline": null,
+    "transcriptionCalls": 0,
+    "boxValue": "",
+    "controlNames": [
+      "Start recording",
+      "Send message"
+    ]
+  },
+  "idle-plain-w700|localOperatorDark": {
+    "id": "idle-plain-w700",
+    "state": "idle",
+    "readings": [
+      {
+        "kind": "model",
+        "text": "gpt-5-mini",
+        "shown": true,
+        "box": {
+          "left": 446,
+          "right": 518.9,
+          "width": 72.9,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "effort",
+        "text": "Medium",
+        "shown": false,
+        "box": {
+          "left": 0,
+          "right": 0,
+          "width": 0,
+          "top": 0,
+          "height": 0
+        }
+      },
+      {
+        "kind": "context",
+        "text": "10.2%/400k",
+        "shown": true,
+        "box": {
+          "left": 522.9,
+          "right": 627.1,
+          "width": 104.3,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "cost",
+        "text": "≥$2.41",
+        "shown": false,
+        "box": {
+          "left": 0,
+          "right": 0,
+          "width": 0,
+          "top": 0,
+          "height": 0
+        }
+      },
+      {
+        "kind": "duration",
+        "text": "6m12s",
+        "shown": true,
+        "box": {
+          "left": 631.1,
+          "right": 679.3,
+          "width": 48.1,
+          "top": 200,
+          "height": 24.7
+        }
+      }
+    ],
+    "width": 700,
+    "measure": null,
+    "dir": null,
+    "theme": "localOperatorDark",
+    "containerBox": {
+      "left": 100,
+      "right": 800,
+      "width": 700,
+      "top": 126,
+      "height": 134
+    },
+    "queryContainer": {
+      "box": {
+        "left": 100,
+        "right": 800,
+        "width": 700,
+        "top": 126,
+        "height": 134
+      },
+      "contentWidth": 652
+    },
+    "row": {
+      "box": {
+        "left": 140,
+        "right": 760,
+        "width": 620,
+        "top": 196,
+        "height": 32
+      },
+      "scrollWidth": 620,
+      "clientWidth": 620,
+      "overflow": 0,
+      "itemCount": 3,
+      "lines": 1
+    },
+    "formBox": {
+      "left": 124,
+      "right": 776,
+      "width": 652,
+      "top": 134,
+      "height": 110
+    },
+    "form": {
+      "scrollWidth": 652,
+      "clientWidth": 652,
+      "overflow": 0
+    },
+    "strip": {
+      "left": 446,
+      "right": 627.1,
+      "width": 181.1,
+      "top": 200,
+      "height": 24
+    },
+    "controls": {
+      "left": 692,
+      "right": 760,
+      "width": 68,
+      "top": 196,
+      "height": 32,
+      "children": 2
+    },
+    "attach": {
+      "left": 140,
+      "right": 444,
+      "width": 304,
+      "top": 196,
+      "height": 32
+    },
+    "chip": {
+      "left": 184,
+      "right": 444,
+      "width": 260,
+      "top": 196,
+      "height": 32
+    },
+    "gap": 64.9,
+    "direction": "ltr",
+    "readingsRight": 679.3,
+    "readingsLeft": 446,
+    "lastReadingRight": 627.1,
+    "lastReadingLeft": 446,
+    "anchorDelta": 0,
+    "durationVisible": true,
+    "glyphOverlap": -12.7,
+    "durationShown": true,
+    "durationBox": {
+      "left": 631.1,
+      "right": 679.3,
+      "width": 48.1,
+      "top": 200,
+      "height": 24.7
+    },
+    "slots": [
+      {
+        "slot": "a",
+        "label": "Start recording",
+        "left": 692,
+        "right": 724,
+        "width": 32,
+        "height": 32,
+        "disabled": false
+      },
+      {
+        "slot": "b",
+        "label": "Send message",
+        "left": 728,
+        "right": 760,
+        "width": 32,
+        "height": 32,
+        "disabled": true
+      }
+    ],
+    "sent": [],
+    "bTimeline": null,
+    "transcriptionCalls": 0,
+    "boxValue": "",
+    "controlNames": [
+      "Start recording",
+      "Send message"
+    ]
+  },
+  "idle-plain-w700|localOperatorLight": {
+    "id": "idle-plain-w700",
+    "state": "idle",
+    "readings": [
+      {
+        "kind": "model",
+        "text": "gpt-5-mini",
+        "shown": true,
+        "box": {
+          "left": 446,
+          "right": 518.9,
+          "width": 72.9,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "effort",
+        "text": "Medium",
+        "shown": false,
+        "box": {
+          "left": 0,
+          "right": 0,
+          "width": 0,
+          "top": 0,
+          "height": 0
+        }
+      },
+      {
+        "kind": "context",
+        "text": "10.2%/400k",
+        "shown": true,
+        "box": {
+          "left": 522.9,
+          "right": 627.1,
+          "width": 104.3,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "cost",
+        "text": "≥$2.41",
+        "shown": false,
+        "box": {
+          "left": 0,
+          "right": 0,
+          "width": 0,
+          "top": 0,
+          "height": 0
+        }
+      },
+      {
+        "kind": "duration",
+        "text": "6m12s",
+        "shown": true,
+        "box": {
+          "left": 631.1,
+          "right": 679.3,
+          "width": 48.1,
+          "top": 200,
+          "height": 24.7
+        }
+      }
+    ],
+    "width": 700,
+    "measure": null,
+    "dir": null,
+    "theme": "localOperatorLight",
+    "containerBox": {
+      "left": 100,
+      "right": 800,
+      "width": 700,
+      "top": 126,
+      "height": 134
+    },
+    "queryContainer": {
+      "box": {
+        "left": 100,
+        "right": 800,
+        "width": 700,
+        "top": 126,
+        "height": 134
+      },
+      "contentWidth": 652
+    },
+    "row": {
+      "box": {
+        "left": 140,
+        "right": 760,
+        "width": 620,
+        "top": 196,
+        "height": 32
+      },
+      "scrollWidth": 620,
+      "clientWidth": 620,
+      "overflow": 0,
+      "itemCount": 3,
+      "lines": 1
+    },
+    "formBox": {
+      "left": 124,
+      "right": 776,
+      "width": 652,
+      "top": 134,
+      "height": 110
+    },
+    "form": {
+      "scrollWidth": 652,
+      "clientWidth": 652,
+      "overflow": 0
+    },
+    "strip": {
+      "left": 446,
+      "right": 627.1,
+      "width": 181.1,
+      "top": 200,
+      "height": 24
+    },
+    "controls": {
+      "left": 692,
+      "right": 760,
+      "width": 68,
+      "top": 196,
+      "height": 32,
+      "children": 2
+    },
+    "attach": {
+      "left": 140,
+      "right": 444,
+      "width": 304,
+      "top": 196,
+      "height": 32
+    },
+    "chip": {
+      "left": 184,
+      "right": 444,
+      "width": 260,
+      "top": 196,
+      "height": 32
+    },
+    "gap": 64.9,
+    "direction": "ltr",
+    "readingsRight": 679.3,
+    "readingsLeft": 446,
+    "lastReadingRight": 627.1,
+    "lastReadingLeft": 446,
+    "anchorDelta": 0,
+    "durationVisible": true,
+    "glyphOverlap": -12.7,
+    "durationShown": true,
+    "durationBox": {
+      "left": 631.1,
+      "right": 679.3,
+      "width": 48.1,
+      "top": 200,
+      "height": 24.7
+    },
+    "slots": [
+      {
+        "slot": "a",
+        "label": "Start recording",
+        "left": 692,
+        "right": 724,
+        "width": 32,
+        "height": 32,
+        "disabled": false
+      },
+      {
+        "slot": "b",
+        "label": "Send message",
+        "left": 728,
+        "right": 760,
+        "width": 32,
+        "height": 32,
+        "disabled": true
+      }
+    ],
+    "sent": [],
+    "bTimeline": null,
+    "transcriptionCalls": 0,
+    "boxValue": "",
+    "controlNames": [
+      "Start recording",
+      "Send message"
+    ]
+  },
+  "idle-fullest-w1024|localOperatorDark": {
+    "id": "idle-fullest-w1024",
+    "state": "idle",
+    "readings": [
+      {
+        "kind": "model",
+        "text": "claude-sonnet-4-5",
+        "shown": true,
+        "box": {
+          "left": 530,
+          "right": 649.5,
+          "width": 119.5,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "effort",
+        "text": "High",
+        "shown": true,
+        "box": {
+          "left": 653.5,
+          "right": 694.4,
+          "width": 40.9,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "context",
+        "text": "66.0%/400kestimate",
+        "shown": true,
+        "box": {
+          "left": 698.4,
+          "right": 864.4,
+          "width": 166,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "cost",
+        "text": "$190.85",
+        "shown": true,
+        "box": {
+          "left": 868.4,
+          "right": 931,
+          "width": 62.6,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "duration",
+        "text": "20h",
+        "shown": false,
+        "box": {
+          "left": 935,
+          "right": 968.7,
+          "width": 33.7,
+          "top": 200,
+          "height": 24.7
+        }
+      }
+    ],
+    "width": 1024,
+    "measure": null,
+    "dir": null,
+    "theme": "localOperatorDark",
+    "containerBox": {
+      "left": 100,
+      "right": 1124,
+      "width": 1024,
+      "top": 126,
+      "height": 134
+    },
+    "queryContainer": {
+      "box": {
+        "left": 100,
+        "right": 1124,
+        "width": 1024,
+        "top": 126,
+        "height": 134
+      },
+      "contentWidth": 976
+    },
+    "row": {
+      "box": {
+        "left": 223,
+        "right": 1001,
+        "width": 778,
+        "top": 196,
+        "height": 32
+      },
+      "scrollWidth": 778,
+      "clientWidth": 778,
+      "overflow": 0,
+      "itemCount": 3,
+      "lines": 1
+    },
+    "formBox": {
+      "left": 124,
+      "right": 1100,
+      "width": 976,
+      "top": 134,
+      "height": 110
+    },
+    "form": {
+      "scrollWidth": 976,
+      "clientWidth": 976,
+      "overflow": 0
+    },
+    "strip": {
+      "left": 530,
+      "right": 931,
+      "width": 401,
+      "top": 200,
+      "height": 24
+    },
+    "controls": {
+      "left": 933,
+      "right": 1001,
+      "width": 68,
+      "top": 196,
+      "height": 32,
+      "children": 2
+    },
+    "attach": {
+      "left": 223,
+      "right": 528,
+      "width": 305,
+      "top": 196,
+      "height": 32
+    },
+    "chip": {
+      "left": 267,
+      "right": 528,
+      "width": 261,
+      "top": 196,
+      "height": 32
+    },
+    "gap": 2,
+    "direction": "ltr",
+    "readingsRight": 931,
+    "readingsLeft": 530,
+    "lastReadingRight": 931,
+    "lastReadingLeft": 530,
+    "anchorDelta": 0,
+    "durationVisible": false,
+    "glyphOverlap": -2,
+    "durationShown": true,
+    "durationBox": {
+      "left": 935,
+      "right": 968.7,
+      "width": 33.7,
+      "top": 200,
+      "height": 24.7
+    },
+    "slots": [
+      {
+        "slot": "a",
+        "label": "Start recording",
+        "left": 933,
+        "right": 965,
+        "width": 32,
+        "height": 32,
+        "disabled": false
+      },
+      {
+        "slot": "b",
+        "label": "Send message",
+        "left": 969,
+        "right": 1001,
+        "width": 32,
+        "height": 32,
+        "disabled": true
+      }
+    ],
+    "sent": [],
+    "bTimeline": null,
+    "transcriptionCalls": 0,
+    "boxValue": "",
+    "controlNames": [
+      "Start recording",
+      "Send message"
+    ]
+  },
+  "idle-fullest-w1024|localOperatorLight": {
+    "id": "idle-fullest-w1024",
+    "state": "idle",
+    "readings": [
+      {
+        "kind": "model",
+        "text": "claude-sonnet-4-5",
+        "shown": true,
+        "box": {
+          "left": 530,
+          "right": 649.5,
+          "width": 119.5,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "effort",
+        "text": "High",
+        "shown": true,
+        "box": {
+          "left": 653.5,
+          "right": 694.4,
+          "width": 40.9,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "context",
+        "text": "66.0%/400kestimate",
+        "shown": true,
+        "box": {
+          "left": 698.4,
+          "right": 864.4,
+          "width": 166,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "cost",
+        "text": "$190.85",
+        "shown": true,
+        "box": {
+          "left": 868.4,
+          "right": 931,
+          "width": 62.6,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "duration",
+        "text": "20h",
+        "shown": false,
+        "box": {
+          "left": 935,
+          "right": 968.7,
+          "width": 33.7,
+          "top": 200,
+          "height": 24.7
+        }
+      }
+    ],
+    "width": 1024,
+    "measure": null,
+    "dir": null,
+    "theme": "localOperatorLight",
+    "containerBox": {
+      "left": 100,
+      "right": 1124,
+      "width": 1024,
+      "top": 126,
+      "height": 134
+    },
+    "queryContainer": {
+      "box": {
+        "left": 100,
+        "right": 1124,
+        "width": 1024,
+        "top": 126,
+        "height": 134
+      },
+      "contentWidth": 976
+    },
+    "row": {
+      "box": {
+        "left": 223,
+        "right": 1001,
+        "width": 778,
+        "top": 196,
+        "height": 32
+      },
+      "scrollWidth": 778,
+      "clientWidth": 778,
+      "overflow": 0,
+      "itemCount": 3,
+      "lines": 1
+    },
+    "formBox": {
+      "left": 124,
+      "right": 1100,
+      "width": 976,
+      "top": 134,
+      "height": 110
+    },
+    "form": {
+      "scrollWidth": 976,
+      "clientWidth": 976,
+      "overflow": 0
+    },
+    "strip": {
+      "left": 530,
+      "right": 931,
+      "width": 401,
+      "top": 200,
+      "height": 24
+    },
+    "controls": {
+      "left": 933,
+      "right": 1001,
+      "width": 68,
+      "top": 196,
+      "height": 32,
+      "children": 2
+    },
+    "attach": {
+      "left": 223,
+      "right": 528,
+      "width": 305,
+      "top": 196,
+      "height": 32
+    },
+    "chip": {
+      "left": 267,
+      "right": 528,
+      "width": 261,
+      "top": 196,
+      "height": 32
+    },
+    "gap": 2,
+    "direction": "ltr",
+    "readingsRight": 931,
+    "readingsLeft": 530,
+    "lastReadingRight": 931,
+    "lastReadingLeft": 530,
+    "anchorDelta": 0,
+    "durationVisible": false,
+    "glyphOverlap": -2,
+    "durationShown": true,
+    "durationBox": {
+      "left": 935,
+      "right": 968.7,
+      "width": 33.7,
+      "top": 200,
+      "height": 24.7
+    },
+    "slots": [
+      {
+        "slot": "a",
+        "label": "Start recording",
+        "left": 933,
+        "right": 965,
+        "width": 32,
+        "height": 32,
+        "disabled": false
+      },
+      {
+        "slot": "b",
+        "label": "Send message",
+        "left": 969,
+        "right": 1001,
+        "width": 32,
+        "height": 32,
+        "disabled": true
+      }
+    ],
+    "sent": [],
+    "bTimeline": null,
+    "transcriptionCalls": 0,
+    "boxValue": "",
+    "controlNames": [
+      "Start recording",
+      "Send message"
+    ]
+  },
+  "idle-fullest-w900|localOperatorDark": {
+    "id": "idle-fullest-w900",
+    "state": "idle",
+    "readings": [
+      {
+        "kind": "model",
+        "text": "claude-sonnet-4-5",
+        "shown": true,
+        "box": {
+          "left": 467,
+          "right": 587.1,
+          "width": 120.1,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "effort",
+        "text": "High",
+        "shown": true,
+        "box": {
+          "left": 591.1,
+          "right": 632,
+          "width": 40.9,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "context",
+        "text": "66.0%/400kestimate",
+        "shown": true,
+        "box": {
+          "left": 636,
+          "right": 802,
+          "width": 166,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "cost",
+        "text": "$190.85",
+        "shown": true,
+        "box": {
+          "left": 806,
+          "right": 868.6,
+          "width": 62.6,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "duration",
+        "text": "20h",
+        "shown": false,
+        "box": {
+          "left": 872.6,
+          "right": 906.3,
+          "width": 33.7,
+          "top": 200,
+          "height": 24.7
+        }
+      }
+    ],
+    "width": 900,
+    "measure": null,
+    "dir": null,
+    "theme": "localOperatorDark",
+    "containerBox": {
+      "left": 100,
+      "right": 1000,
+      "width": 900,
+      "top": 126,
+      "height": 134
+    },
+    "queryContainer": {
+      "box": {
+        "left": 100,
+        "right": 1000,
+        "width": 900,
+        "top": 126,
+        "height": 134
+      },
+      "contentWidth": 852
+    },
+    "row": {
+      "box": {
+        "left": 161,
+        "right": 939,
+        "width": 778,
+        "top": 196,
+        "height": 32
+      },
+      "scrollWidth": 778,
+      "clientWidth": 778,
+      "overflow": 0,
+      "itemCount": 3,
+      "lines": 1
+    },
+    "formBox": {
+      "left": 124,
+      "right": 976,
+      "width": 852,
+      "top": 134,
+      "height": 110
+    },
+    "form": {
+      "scrollWidth": 852,
+      "clientWidth": 852,
+      "overflow": 0
+    },
+    "strip": {
+      "left": 467,
+      "right": 868.6,
+      "width": 401.6,
+      "top": 200,
+      "height": 24
+    },
+    "controls": {
+      "left": 871,
+      "right": 939,
+      "width": 68,
+      "top": 196,
+      "height": 32,
+      "children": 2
+    },
+    "attach": {
+      "left": 161,
+      "right": 465,
+      "width": 304,
+      "top": 196,
+      "height": 32
+    },
+    "chip": {
+      "left": 205,
+      "right": 465,
+      "width": 260,
+      "top": 196,
+      "height": 32
+    },
+    "gap": 2.4,
+    "direction": "ltr",
+    "readingsRight": 868.6,
+    "readingsLeft": 467,
+    "lastReadingRight": 868.6,
+    "lastReadingLeft": 467,
+    "anchorDelta": 0,
+    "durationVisible": false,
+    "glyphOverlap": -2.4,
+    "durationShown": true,
+    "durationBox": {
+      "left": 872.6,
+      "right": 906.3,
+      "width": 33.7,
+      "top": 200,
+      "height": 24.7
+    },
+    "slots": [
+      {
+        "slot": "a",
+        "label": "Start recording",
+        "left": 871,
+        "right": 903,
+        "width": 32,
+        "height": 32,
+        "disabled": false
+      },
+      {
+        "slot": "b",
+        "label": "Send message",
+        "left": 907,
+        "right": 939,
+        "width": 32,
+        "height": 32,
+        "disabled": true
+      }
+    ],
+    "sent": [],
+    "bTimeline": null,
+    "transcriptionCalls": 0,
+    "boxValue": "",
+    "controlNames": [
+      "Start recording",
+      "Send message"
+    ]
+  },
+  "idle-fullest-w900|localOperatorLight": {
+    "id": "idle-fullest-w900",
+    "state": "idle",
+    "readings": [
+      {
+        "kind": "model",
+        "text": "claude-sonnet-4-5",
+        "shown": true,
+        "box": {
+          "left": 467,
+          "right": 587.1,
+          "width": 120.1,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "effort",
+        "text": "High",
+        "shown": true,
+        "box": {
+          "left": 591.1,
+          "right": 632,
+          "width": 40.9,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "context",
+        "text": "66.0%/400kestimate",
+        "shown": true,
+        "box": {
+          "left": 636,
+          "right": 802,
+          "width": 166,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "cost",
+        "text": "$190.85",
+        "shown": true,
+        "box": {
+          "left": 806,
+          "right": 868.6,
+          "width": 62.6,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "duration",
+        "text": "20h",
+        "shown": false,
+        "box": {
+          "left": 872.6,
+          "right": 906.3,
+          "width": 33.7,
+          "top": 200,
+          "height": 24.7
+        }
+      }
+    ],
+    "width": 900,
+    "measure": null,
+    "dir": null,
+    "theme": "localOperatorLight",
+    "containerBox": {
+      "left": 100,
+      "right": 1000,
+      "width": 900,
+      "top": 126,
+      "height": 134
+    },
+    "queryContainer": {
+      "box": {
+        "left": 100,
+        "right": 1000,
+        "width": 900,
+        "top": 126,
+        "height": 134
+      },
+      "contentWidth": 852
+    },
+    "row": {
+      "box": {
+        "left": 161,
+        "right": 939,
+        "width": 778,
+        "top": 196,
+        "height": 32
+      },
+      "scrollWidth": 778,
+      "clientWidth": 778,
+      "overflow": 0,
+      "itemCount": 3,
+      "lines": 1
+    },
+    "formBox": {
+      "left": 124,
+      "right": 976,
+      "width": 852,
+      "top": 134,
+      "height": 110
+    },
+    "form": {
+      "scrollWidth": 852,
+      "clientWidth": 852,
+      "overflow": 0
+    },
+    "strip": {
+      "left": 467,
+      "right": 868.6,
+      "width": 401.6,
+      "top": 200,
+      "height": 24
+    },
+    "controls": {
+      "left": 871,
+      "right": 939,
+      "width": 68,
+      "top": 196,
+      "height": 32,
+      "children": 2
+    },
+    "attach": {
+      "left": 161,
+      "right": 465,
+      "width": 304,
+      "top": 196,
+      "height": 32
+    },
+    "chip": {
+      "left": 205,
+      "right": 465,
+      "width": 260,
+      "top": 196,
+      "height": 32
+    },
+    "gap": 2.4,
+    "direction": "ltr",
+    "readingsRight": 868.6,
+    "readingsLeft": 467,
+    "lastReadingRight": 868.6,
+    "lastReadingLeft": 467,
+    "anchorDelta": 0,
+    "durationVisible": false,
+    "glyphOverlap": -2.4,
+    "durationShown": true,
+    "durationBox": {
+      "left": 872.6,
+      "right": 906.3,
+      "width": 33.7,
+      "top": 200,
+      "height": 24.7
+    },
+    "slots": [
+      {
+        "slot": "a",
+        "label": "Start recording",
+        "left": 871,
+        "right": 903,
+        "width": 32,
+        "height": 32,
+        "disabled": false
+      },
+      {
+        "slot": "b",
+        "label": "Send message",
+        "left": 907,
+        "right": 939,
+        "width": 32,
+        "height": 32,
+        "disabled": true
+      }
+    ],
+    "sent": [],
+    "bTimeline": null,
+    "transcriptionCalls": 0,
+    "boxValue": "",
+    "controlNames": [
+      "Start recording",
+      "Send message"
+    ]
+  },
+  "idle-fullest-w840|localOperatorDark": {
+    "id": "idle-fullest-w840",
+    "state": "idle",
+    "readings": [
+      {
+        "kind": "model",
+        "text": "claude-sonnet-4-5",
+        "shown": true,
+        "box": {
+          "left": 446,
+          "right": 548.5,
+          "width": 102.5,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "effort",
+        "text": "High",
+        "shown": true,
+        "box": {
+          "left": 552.5,
+          "right": 593.4,
+          "width": 40.9,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "context",
+        "text": "66.0%/400kestimate",
+        "shown": true,
+        "box": {
+          "left": 597.4,
+          "right": 763.4,
+          "width": 166,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "cost",
+        "text": "$190.85",
+        "shown": true,
+        "box": {
+          "left": 767.4,
+          "right": 830,
+          "width": 62.6,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "duration",
+        "text": "20h",
+        "shown": false,
+        "box": {
+          "left": 834,
+          "right": 867.7,
+          "width": 33.7,
+          "top": 200,
+          "height": 24.7
+        }
+      }
+    ],
+    "width": 840,
+    "measure": null,
+    "dir": null,
+    "theme": "localOperatorDark",
+    "containerBox": {
+      "left": 100,
+      "right": 940,
+      "width": 840,
+      "top": 126,
+      "height": 134
+    },
+    "queryContainer": {
+      "box": {
+        "left": 100,
+        "right": 940,
+        "width": 840,
+        "top": 126,
+        "height": 134
+      },
+      "contentWidth": 792
+    },
+    "row": {
+      "box": {
+        "left": 140,
+        "right": 900,
+        "width": 760,
+        "top": 196,
+        "height": 32
+      },
+      "scrollWidth": 760,
+      "clientWidth": 760,
+      "overflow": 0,
+      "itemCount": 3,
+      "lines": 1
+    },
+    "formBox": {
+      "left": 124,
+      "right": 916,
+      "width": 792,
+      "top": 134,
+      "height": 110
+    },
+    "form": {
+      "scrollWidth": 792,
+      "clientWidth": 792,
+      "overflow": 0
+    },
+    "strip": {
+      "left": 446,
+      "right": 830,
+      "width": 384,
+      "top": 200,
+      "height": 24
+    },
+    "controls": {
+      "left": 832,
+      "right": 900,
+      "width": 68,
+      "top": 196,
+      "height": 32,
+      "children": 2
+    },
+    "attach": {
+      "left": 140,
+      "right": 444,
+      "width": 304,
+      "top": 196,
+      "height": 32
+    },
+    "chip": {
+      "left": 184,
+      "right": 444,
+      "width": 260,
+      "top": 196,
+      "height": 32
+    },
+    "gap": 2,
+    "direction": "ltr",
+    "readingsRight": 830,
+    "readingsLeft": 446,
+    "lastReadingRight": 830,
+    "lastReadingLeft": 446,
+    "anchorDelta": 0,
+    "durationVisible": false,
+    "glyphOverlap": -2,
+    "durationShown": true,
+    "durationBox": {
+      "left": 834,
+      "right": 867.7,
+      "width": 33.7,
+      "top": 200,
+      "height": 24.7
+    },
+    "slots": [
+      {
+        "slot": "a",
+        "label": "Start recording",
+        "left": 832,
+        "right": 864,
+        "width": 32,
+        "height": 32,
+        "disabled": false
+      },
+      {
+        "slot": "b",
+        "label": "Send message",
+        "left": 868,
+        "right": 900,
+        "width": 32,
+        "height": 32,
+        "disabled": true
+      }
+    ],
+    "sent": [],
+    "bTimeline": null,
+    "transcriptionCalls": 0,
+    "boxValue": "",
+    "controlNames": [
+      "Start recording",
+      "Send message"
+    ]
+  },
+  "idle-fullest-w840|localOperatorLight": {
+    "id": "idle-fullest-w840",
+    "state": "idle",
+    "readings": [
+      {
+        "kind": "model",
+        "text": "claude-sonnet-4-5",
+        "shown": true,
+        "box": {
+          "left": 446,
+          "right": 548.5,
+          "width": 102.5,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "effort",
+        "text": "High",
+        "shown": true,
+        "box": {
+          "left": 552.5,
+          "right": 593.4,
+          "width": 40.9,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "context",
+        "text": "66.0%/400kestimate",
+        "shown": true,
+        "box": {
+          "left": 597.4,
+          "right": 763.4,
+          "width": 166,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "cost",
+        "text": "$190.85",
+        "shown": true,
+        "box": {
+          "left": 767.4,
+          "right": 830,
+          "width": 62.6,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "duration",
+        "text": "20h",
+        "shown": false,
+        "box": {
+          "left": 834,
+          "right": 867.7,
+          "width": 33.7,
+          "top": 200,
+          "height": 24.7
+        }
+      }
+    ],
+    "width": 840,
+    "measure": null,
+    "dir": null,
+    "theme": "localOperatorLight",
+    "containerBox": {
+      "left": 100,
+      "right": 940,
+      "width": 840,
+      "top": 126,
+      "height": 134
+    },
+    "queryContainer": {
+      "box": {
+        "left": 100,
+        "right": 940,
+        "width": 840,
+        "top": 126,
+        "height": 134
+      },
+      "contentWidth": 792
+    },
+    "row": {
+      "box": {
+        "left": 140,
+        "right": 900,
+        "width": 760,
+        "top": 196,
+        "height": 32
+      },
+      "scrollWidth": 760,
+      "clientWidth": 760,
+      "overflow": 0,
+      "itemCount": 3,
+      "lines": 1
+    },
+    "formBox": {
+      "left": 124,
+      "right": 916,
+      "width": 792,
+      "top": 134,
+      "height": 110
+    },
+    "form": {
+      "scrollWidth": 792,
+      "clientWidth": 792,
+      "overflow": 0
+    },
+    "strip": {
+      "left": 446,
+      "right": 830,
+      "width": 384,
+      "top": 200,
+      "height": 24
+    },
+    "controls": {
+      "left": 832,
+      "right": 900,
+      "width": 68,
+      "top": 196,
+      "height": 32,
+      "children": 2
+    },
+    "attach": {
+      "left": 140,
+      "right": 444,
+      "width": 304,
+      "top": 196,
+      "height": 32
+    },
+    "chip": {
+      "left": 184,
+      "right": 444,
+      "width": 260,
+      "top": 196,
+      "height": 32
+    },
+    "gap": 2,
+    "direction": "ltr",
+    "readingsRight": 830,
+    "readingsLeft": 446,
+    "lastReadingRight": 830,
+    "lastReadingLeft": 446,
+    "anchorDelta": 0,
+    "durationVisible": false,
+    "glyphOverlap": -2,
+    "durationShown": true,
+    "durationBox": {
+      "left": 834,
+      "right": 867.7,
+      "width": 33.7,
+      "top": 200,
+      "height": 24.7
+    },
+    "slots": [
+      {
+        "slot": "a",
+        "label": "Start recording",
+        "left": 832,
+        "right": 864,
+        "width": 32,
+        "height": 32,
+        "disabled": false
+      },
+      {
+        "slot": "b",
+        "label": "Send message",
+        "left": 868,
+        "right": 900,
+        "width": 32,
+        "height": 32,
+        "disabled": true
+      }
+    ],
+    "sent": [],
+    "bTimeline": null,
+    "transcriptionCalls": 0,
+    "boxValue": "",
+    "controlNames": [
+      "Start recording",
+      "Send message"
+    ]
+  },
+  "idle-fullest-w780|localOperatorDark": {
+    "id": "idle-fullest-w780",
+    "state": "idle",
+    "readings": [
+      {
+        "kind": "model",
+        "text": "claude-sonnet-4-5",
+        "shown": true,
+        "box": {
+          "left": 446,
+          "right": 533.4,
+          "width": 87.4,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "effort",
+        "text": "High",
+        "shown": false,
+        "box": {
+          "left": 0,
+          "right": 0,
+          "width": 0,
+          "top": 0,
+          "height": 0
+        }
+      },
+      {
+        "kind": "context",
+        "text": "66.0%/400kestimate",
+        "shown": true,
+        "box": {
+          "left": 537.4,
+          "right": 703.4,
+          "width": 166,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "cost",
+        "text": "$190.85",
+        "shown": true,
+        "box": {
+          "left": 707.4,
+          "right": 770,
+          "width": 62.6,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "duration",
+        "text": "20h",
+        "shown": false,
+        "box": {
+          "left": 774,
+          "right": 807.7,
+          "width": 33.7,
+          "top": 200,
+          "height": 24.7
+        }
+      }
+    ],
+    "width": 780,
+    "measure": null,
+    "dir": null,
+    "theme": "localOperatorDark",
+    "containerBox": {
+      "left": 100,
+      "right": 880,
+      "width": 780,
+      "top": 126,
+      "height": 134
+    },
+    "queryContainer": {
+      "box": {
+        "left": 100,
+        "right": 880,
+        "width": 780,
+        "top": 126,
+        "height": 134
+      },
+      "contentWidth": 732
+    },
+    "row": {
+      "box": {
+        "left": 140,
+        "right": 840,
+        "width": 700,
+        "top": 196,
+        "height": 32
+      },
+      "scrollWidth": 700,
+      "clientWidth": 700,
+      "overflow": 0,
+      "itemCount": 3,
+      "lines": 1
+    },
+    "formBox": {
+      "left": 124,
+      "right": 856,
+      "width": 732,
+      "top": 134,
+      "height": 110
+    },
+    "form": {
+      "scrollWidth": 732,
+      "clientWidth": 732,
+      "overflow": 0
+    },
+    "strip": {
+      "left": 446,
+      "right": 770,
+      "width": 324,
+      "top": 200,
+      "height": 24
+    },
+    "controls": {
+      "left": 772,
+      "right": 840,
+      "width": 68,
+      "top": 196,
+      "height": 32,
+      "children": 2
+    },
+    "attach": {
+      "left": 140,
+      "right": 444,
+      "width": 304,
+      "top": 196,
+      "height": 32
+    },
+    "chip": {
+      "left": 184,
+      "right": 444,
+      "width": 260,
+      "top": 196,
+      "height": 32
+    },
+    "gap": 2,
+    "direction": "ltr",
+    "readingsRight": 770,
+    "readingsLeft": 446,
+    "lastReadingRight": 770,
+    "lastReadingLeft": 446,
+    "anchorDelta": 0,
+    "durationVisible": false,
+    "glyphOverlap": -2,
+    "durationShown": true,
+    "durationBox": {
+      "left": 774,
+      "right": 807.7,
+      "width": 33.7,
+      "top": 200,
+      "height": 24.7
+    },
+    "slots": [
+      {
+        "slot": "a",
+        "label": "Start recording",
+        "left": 772,
+        "right": 804,
+        "width": 32,
+        "height": 32,
+        "disabled": false
+      },
+      {
+        "slot": "b",
+        "label": "Send message",
+        "left": 808,
+        "right": 840,
+        "width": 32,
+        "height": 32,
+        "disabled": true
+      }
+    ],
+    "sent": [],
+    "bTimeline": null,
+    "transcriptionCalls": 0,
+    "boxValue": "",
+    "controlNames": [
+      "Start recording",
+      "Send message"
+    ]
+  },
+  "idle-fullest-w780|localOperatorLight": {
+    "id": "idle-fullest-w780",
+    "state": "idle",
+    "readings": [
+      {
+        "kind": "model",
+        "text": "claude-sonnet-4-5",
+        "shown": true,
+        "box": {
+          "left": 446,
+          "right": 533.4,
+          "width": 87.4,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "effort",
+        "text": "High",
+        "shown": false,
+        "box": {
+          "left": 0,
+          "right": 0,
+          "width": 0,
+          "top": 0,
+          "height": 0
+        }
+      },
+      {
+        "kind": "context",
+        "text": "66.0%/400kestimate",
+        "shown": true,
+        "box": {
+          "left": 537.4,
+          "right": 703.4,
+          "width": 166,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "cost",
+        "text": "$190.85",
+        "shown": true,
+        "box": {
+          "left": 707.4,
+          "right": 770,
+          "width": 62.6,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "duration",
+        "text": "20h",
+        "shown": false,
+        "box": {
+          "left": 774,
+          "right": 807.7,
+          "width": 33.7,
+          "top": 200,
+          "height": 24.7
+        }
+      }
+    ],
+    "width": 780,
+    "measure": null,
+    "dir": null,
+    "theme": "localOperatorLight",
+    "containerBox": {
+      "left": 100,
+      "right": 880,
+      "width": 780,
+      "top": 126,
+      "height": 134
+    },
+    "queryContainer": {
+      "box": {
+        "left": 100,
+        "right": 880,
+        "width": 780,
+        "top": 126,
+        "height": 134
+      },
+      "contentWidth": 732
+    },
+    "row": {
+      "box": {
+        "left": 140,
+        "right": 840,
+        "width": 700,
+        "top": 196,
+        "height": 32
+      },
+      "scrollWidth": 700,
+      "clientWidth": 700,
+      "overflow": 0,
+      "itemCount": 3,
+      "lines": 1
+    },
+    "formBox": {
+      "left": 124,
+      "right": 856,
+      "width": 732,
+      "top": 134,
+      "height": 110
+    },
+    "form": {
+      "scrollWidth": 732,
+      "clientWidth": 732,
+      "overflow": 0
+    },
+    "strip": {
+      "left": 446,
+      "right": 770,
+      "width": 324,
+      "top": 200,
+      "height": 24
+    },
+    "controls": {
+      "left": 772,
+      "right": 840,
+      "width": 68,
+      "top": 196,
+      "height": 32,
+      "children": 2
+    },
+    "attach": {
+      "left": 140,
+      "right": 444,
+      "width": 304,
+      "top": 196,
+      "height": 32
+    },
+    "chip": {
+      "left": 184,
+      "right": 444,
+      "width": 260,
+      "top": 196,
+      "height": 32
+    },
+    "gap": 2,
+    "direction": "ltr",
+    "readingsRight": 770,
+    "readingsLeft": 446,
+    "lastReadingRight": 770,
+    "lastReadingLeft": 446,
+    "anchorDelta": 0,
+    "durationVisible": false,
+    "glyphOverlap": -2,
+    "durationShown": true,
+    "durationBox": {
+      "left": 774,
+      "right": 807.7,
+      "width": 33.7,
+      "top": 200,
+      "height": 24.7
+    },
+    "slots": [
+      {
+        "slot": "a",
+        "label": "Start recording",
+        "left": 772,
+        "right": 804,
+        "width": 32,
+        "height": 32,
+        "disabled": false
+      },
+      {
+        "slot": "b",
+        "label": "Send message",
+        "left": 808,
+        "right": 840,
+        "width": 32,
+        "height": 32,
+        "disabled": true
+      }
+    ],
+    "sent": [],
+    "bTimeline": null,
+    "transcriptionCalls": 0,
+    "boxValue": "",
+    "controlNames": [
+      "Start recording",
+      "Send message"
+    ]
+  },
+  "idle-fullest-w720|localOperatorDark": {
+    "id": "idle-fullest-w720",
+    "state": "idle",
+    "readings": [
+      {
+        "kind": "model",
+        "text": "claude-sonnet-4-5",
+        "shown": true,
+        "box": {
+          "left": 446,
+          "right": 540,
+          "width": 94,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "effort",
+        "text": "High",
+        "shown": false,
+        "box": {
+          "left": 0,
+          "right": 0,
+          "width": 0,
+          "top": 0,
+          "height": 0
+        }
+      },
+      {
+        "kind": "context",
+        "text": "66.0%/400kestimate",
+        "shown": true,
+        "box": {
+          "left": 544,
+          "right": 710,
+          "width": 166,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "cost",
+        "text": "$190.85",
+        "shown": false,
+        "box": {
+          "left": 0,
+          "right": 0,
+          "width": 0,
+          "top": 0,
+          "height": 0
+        }
+      },
+      {
+        "kind": "duration",
+        "text": "20h",
+        "shown": false,
+        "box": {
+          "left": 714,
+          "right": 747.7,
+          "width": 33.7,
+          "top": 200,
+          "height": 24.7
+        }
+      }
+    ],
+    "width": 720,
+    "measure": null,
+    "dir": null,
+    "theme": "localOperatorDark",
+    "containerBox": {
+      "left": 100,
+      "right": 820,
+      "width": 720,
+      "top": 126,
+      "height": 134
+    },
+    "queryContainer": {
+      "box": {
+        "left": 100,
+        "right": 820,
+        "width": 720,
+        "top": 126,
+        "height": 134
+      },
+      "contentWidth": 672
+    },
+    "row": {
+      "box": {
+        "left": 140,
+        "right": 780,
+        "width": 640,
+        "top": 196,
+        "height": 32
+      },
+      "scrollWidth": 640,
+      "clientWidth": 640,
+      "overflow": 0,
+      "itemCount": 3,
+      "lines": 1
+    },
+    "formBox": {
+      "left": 124,
+      "right": 796,
+      "width": 672,
+      "top": 134,
+      "height": 110
+    },
+    "form": {
+      "scrollWidth": 672,
+      "clientWidth": 672,
+      "overflow": 0
+    },
+    "strip": {
+      "left": 446,
+      "right": 710,
+      "width": 264,
+      "top": 200,
+      "height": 24
+    },
+    "controls": {
+      "left": 712,
+      "right": 780,
+      "width": 68,
+      "top": 196,
+      "height": 32,
+      "children": 2
+    },
+    "attach": {
+      "left": 140,
+      "right": 444,
+      "width": 304,
+      "top": 196,
+      "height": 32
+    },
+    "chip": {
+      "left": 184,
+      "right": 444,
+      "width": 260,
+      "top": 196,
+      "height": 32
+    },
+    "gap": 2,
+    "direction": "ltr",
+    "readingsRight": 710,
+    "readingsLeft": 446,
+    "lastReadingRight": 710,
+    "lastReadingLeft": 446,
+    "anchorDelta": 0,
+    "durationVisible": false,
+    "glyphOverlap": -2,
+    "durationShown": true,
+    "durationBox": {
+      "left": 714,
+      "right": 747.7,
+      "width": 33.7,
+      "top": 200,
+      "height": 24.7
+    },
+    "slots": [
+      {
+        "slot": "a",
+        "label": "Start recording",
+        "left": 712,
+        "right": 744,
+        "width": 32,
+        "height": 32,
+        "disabled": false
+      },
+      {
+        "slot": "b",
+        "label": "Send message",
+        "left": 748,
+        "right": 780,
+        "width": 32,
+        "height": 32,
+        "disabled": true
+      }
+    ],
+    "sent": [],
+    "bTimeline": null,
+    "transcriptionCalls": 0,
+    "boxValue": "",
+    "controlNames": [
+      "Start recording",
+      "Send message"
+    ]
+  },
+  "idle-fullest-w720|localOperatorLight": {
+    "id": "idle-fullest-w720",
+    "state": "idle",
+    "readings": [
+      {
+        "kind": "model",
+        "text": "claude-sonnet-4-5",
+        "shown": true,
+        "box": {
+          "left": 446,
+          "right": 540,
+          "width": 94,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "effort",
+        "text": "High",
+        "shown": false,
+        "box": {
+          "left": 0,
+          "right": 0,
+          "width": 0,
+          "top": 0,
+          "height": 0
+        }
+      },
+      {
+        "kind": "context",
+        "text": "66.0%/400kestimate",
+        "shown": true,
+        "box": {
+          "left": 544,
+          "right": 710,
+          "width": 166,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "cost",
+        "text": "$190.85",
+        "shown": false,
+        "box": {
+          "left": 0,
+          "right": 0,
+          "width": 0,
+          "top": 0,
+          "height": 0
+        }
+      },
+      {
+        "kind": "duration",
+        "text": "20h",
+        "shown": false,
+        "box": {
+          "left": 714,
+          "right": 747.7,
+          "width": 33.7,
+          "top": 200,
+          "height": 24.7
+        }
+      }
+    ],
+    "width": 720,
+    "measure": null,
+    "dir": null,
+    "theme": "localOperatorLight",
+    "containerBox": {
+      "left": 100,
+      "right": 820,
+      "width": 720,
+      "top": 126,
+      "height": 134
+    },
+    "queryContainer": {
+      "box": {
+        "left": 100,
+        "right": 820,
+        "width": 720,
+        "top": 126,
+        "height": 134
+      },
+      "contentWidth": 672
+    },
+    "row": {
+      "box": {
+        "left": 140,
+        "right": 780,
+        "width": 640,
+        "top": 196,
+        "height": 32
+      },
+      "scrollWidth": 640,
+      "clientWidth": 640,
+      "overflow": 0,
+      "itemCount": 3,
+      "lines": 1
+    },
+    "formBox": {
+      "left": 124,
+      "right": 796,
+      "width": 672,
+      "top": 134,
+      "height": 110
+    },
+    "form": {
+      "scrollWidth": 672,
+      "clientWidth": 672,
+      "overflow": 0
+    },
+    "strip": {
+      "left": 446,
+      "right": 710,
+      "width": 264,
+      "top": 200,
+      "height": 24
+    },
+    "controls": {
+      "left": 712,
+      "right": 780,
+      "width": 68,
+      "top": 196,
+      "height": 32,
+      "children": 2
+    },
+    "attach": {
+      "left": 140,
+      "right": 444,
+      "width": 304,
+      "top": 196,
+      "height": 32
+    },
+    "chip": {
+      "left": 184,
+      "right": 444,
+      "width": 260,
+      "top": 196,
+      "height": 32
+    },
+    "gap": 2,
+    "direction": "ltr",
+    "readingsRight": 710,
+    "readingsLeft": 446,
+    "lastReadingRight": 710,
+    "lastReadingLeft": 446,
+    "anchorDelta": 0,
+    "durationVisible": false,
+    "glyphOverlap": -2,
+    "durationShown": true,
+    "durationBox": {
+      "left": 714,
+      "right": 747.7,
+      "width": 33.7,
+      "top": 200,
+      "height": 24.7
+    },
+    "slots": [
+      {
+        "slot": "a",
+        "label": "Start recording",
+        "left": 712,
+        "right": 744,
+        "width": 32,
+        "height": 32,
+        "disabled": false
+      },
+      {
+        "slot": "b",
+        "label": "Send message",
+        "left": 748,
+        "right": 780,
+        "width": 32,
+        "height": 32,
+        "disabled": true
+      }
+    ],
+    "sent": [],
+    "bTimeline": null,
+    "transcriptionCalls": 0,
+    "boxValue": "",
+    "controlNames": [
+      "Start recording",
+      "Send message"
+    ]
+  },
+  "idle-fullest-w700|localOperatorDark": {
+    "id": "idle-fullest-w700",
+    "state": "idle",
+    "readings": [
+      {
+        "kind": "model",
+        "text": "claude-sonnet-4-5",
+        "shown": true,
+        "box": {
+          "left": 446,
+          "right": 520,
+          "width": 74,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "effort",
+        "text": "High",
+        "shown": false,
+        "box": {
+          "left": 0,
+          "right": 0,
+          "width": 0,
+          "top": 0,
+          "height": 0
+        }
+      },
+      {
+        "kind": "context",
+        "text": "66.0%/400kestimate",
+        "shown": true,
+        "box": {
+          "left": 524,
+          "right": 690,
+          "width": 166,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "cost",
+        "text": "$190.85",
+        "shown": false,
+        "box": {
+          "left": 0,
+          "right": 0,
+          "width": 0,
+          "top": 0,
+          "height": 0
+        }
+      },
+      {
+        "kind": "duration",
+        "text": "20h",
+        "shown": false,
+        "box": {
+          "left": 694,
+          "right": 727.7,
+          "width": 33.7,
+          "top": 200,
+          "height": 24.7
+        }
+      }
+    ],
+    "width": 700,
+    "measure": null,
+    "dir": null,
+    "theme": "localOperatorDark",
+    "containerBox": {
+      "left": 100,
+      "right": 800,
+      "width": 700,
+      "top": 126,
+      "height": 134
+    },
+    "queryContainer": {
+      "box": {
+        "left": 100,
+        "right": 800,
+        "width": 700,
+        "top": 126,
+        "height": 134
+      },
+      "contentWidth": 652
+    },
+    "row": {
+      "box": {
+        "left": 140,
+        "right": 760,
+        "width": 620,
+        "top": 196,
+        "height": 32
+      },
+      "scrollWidth": 620,
+      "clientWidth": 620,
+      "overflow": 0,
+      "itemCount": 3,
+      "lines": 1
+    },
+    "formBox": {
+      "left": 124,
+      "right": 776,
+      "width": 652,
+      "top": 134,
+      "height": 110
+    },
+    "form": {
+      "scrollWidth": 652,
+      "clientWidth": 652,
+      "overflow": 0
+    },
+    "strip": {
+      "left": 446,
+      "right": 690,
+      "width": 244,
+      "top": 200,
+      "height": 24
+    },
+    "controls": {
+      "left": 692,
+      "right": 760,
+      "width": 68,
+      "top": 196,
+      "height": 32,
+      "children": 2
+    },
+    "attach": {
+      "left": 140,
+      "right": 444,
+      "width": 304,
+      "top": 196,
+      "height": 32
+    },
+    "chip": {
+      "left": 184,
+      "right": 444,
+      "width": 260,
+      "top": 196,
+      "height": 32
+    },
+    "gap": 2,
+    "direction": "ltr",
+    "readingsRight": 690,
+    "readingsLeft": 446,
+    "lastReadingRight": 690,
+    "lastReadingLeft": 446,
+    "anchorDelta": 0,
+    "durationVisible": false,
+    "glyphOverlap": -2,
+    "durationShown": true,
+    "durationBox": {
+      "left": 694,
+      "right": 727.7,
+      "width": 33.7,
+      "top": 200,
+      "height": 24.7
+    },
+    "slots": [
+      {
+        "slot": "a",
+        "label": "Start recording",
+        "left": 692,
+        "right": 724,
+        "width": 32,
+        "height": 32,
+        "disabled": false
+      },
+      {
+        "slot": "b",
+        "label": "Send message",
+        "left": 728,
+        "right": 760,
+        "width": 32,
+        "height": 32,
+        "disabled": true
+      }
+    ],
+    "sent": [],
+    "bTimeline": null,
+    "transcriptionCalls": 0,
+    "boxValue": "",
+    "controlNames": [
+      "Start recording",
+      "Send message"
+    ]
+  },
+  "idle-fullest-w700|localOperatorLight": {
+    "id": "idle-fullest-w700",
+    "state": "idle",
+    "readings": [
+      {
+        "kind": "model",
+        "text": "claude-sonnet-4-5",
+        "shown": true,
+        "box": {
+          "left": 446,
+          "right": 520,
+          "width": 74,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "effort",
+        "text": "High",
+        "shown": false,
+        "box": {
+          "left": 0,
+          "right": 0,
+          "width": 0,
+          "top": 0,
+          "height": 0
+        }
+      },
+      {
+        "kind": "context",
+        "text": "66.0%/400kestimate",
+        "shown": true,
+        "box": {
+          "left": 524,
+          "right": 690,
+          "width": 166,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "cost",
+        "text": "$190.85",
+        "shown": false,
+        "box": {
+          "left": 0,
+          "right": 0,
+          "width": 0,
+          "top": 0,
+          "height": 0
+        }
+      },
+      {
+        "kind": "duration",
+        "text": "20h",
+        "shown": false,
+        "box": {
+          "left": 694,
+          "right": 727.7,
+          "width": 33.7,
+          "top": 200,
+          "height": 24.7
+        }
+      }
+    ],
+    "width": 700,
+    "measure": null,
+    "dir": null,
+    "theme": "localOperatorLight",
+    "containerBox": {
+      "left": 100,
+      "right": 800,
+      "width": 700,
+      "top": 126,
+      "height": 134
+    },
+    "queryContainer": {
+      "box": {
+        "left": 100,
+        "right": 800,
+        "width": 700,
+        "top": 126,
+        "height": 134
+      },
+      "contentWidth": 652
+    },
+    "row": {
+      "box": {
+        "left": 140,
+        "right": 760,
+        "width": 620,
+        "top": 196,
+        "height": 32
+      },
+      "scrollWidth": 620,
+      "clientWidth": 620,
+      "overflow": 0,
+      "itemCount": 3,
+      "lines": 1
+    },
+    "formBox": {
+      "left": 124,
+      "right": 776,
+      "width": 652,
+      "top": 134,
+      "height": 110
+    },
+    "form": {
+      "scrollWidth": 652,
+      "clientWidth": 652,
+      "overflow": 0
+    },
+    "strip": {
+      "left": 446,
+      "right": 690,
+      "width": 244,
+      "top": 200,
+      "height": 24
+    },
+    "controls": {
+      "left": 692,
+      "right": 760,
+      "width": 68,
+      "top": 196,
+      "height": 32,
+      "children": 2
+    },
+    "attach": {
+      "left": 140,
+      "right": 444,
+      "width": 304,
+      "top": 196,
+      "height": 32
+    },
+    "chip": {
+      "left": 184,
+      "right": 444,
+      "width": 260,
+      "top": 196,
+      "height": 32
+    },
+    "gap": 2,
+    "direction": "ltr",
+    "readingsRight": 690,
+    "readingsLeft": 446,
+    "lastReadingRight": 690,
+    "lastReadingLeft": 446,
+    "anchorDelta": 0,
+    "durationVisible": false,
+    "glyphOverlap": -2,
+    "durationShown": true,
+    "durationBox": {
+      "left": 694,
+      "right": 727.7,
+      "width": 33.7,
+      "top": 200,
+      "height": 24.7
+    },
+    "slots": [
+      {
+        "slot": "a",
+        "label": "Start recording",
+        "left": 692,
+        "right": 724,
+        "width": 32,
+        "height": 32,
+        "disabled": false
+      },
+      {
+        "slot": "b",
+        "label": "Send message",
+        "left": 728,
+        "right": 760,
+        "width": 32,
+        "height": 32,
+        "disabled": true
+      }
+    ],
+    "sent": [],
+    "bTimeline": null,
+    "transcriptionCalls": 0,
+    "boxValue": "",
+    "controlNames": [
+      "Start recording",
+      "Send message"
+    ]
+  },
+  "preparing-plain-w1024|localOperatorDark": {
+    "id": "preparing-plain-w1024",
+    "state": "preparing",
+    "readings": [
+      {
+        "kind": "model",
+        "text": "gpt-5-mini",
+        "shown": true,
+        "box": {
+          "left": 530,
+          "right": 602.9,
+          "width": 72.9,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "effort",
+        "text": "Medium",
+        "shown": true,
+        "box": {
+          "left": 606.9,
+          "right": 662.2,
+          "width": 55.4,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "context",
+        "text": "10.2%/400k",
+        "shown": true,
+        "box": {
+          "left": 666.2,
+          "right": 770.5,
+          "width": 104.3,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "cost",
+        "text": "≥$2.41",
+        "shown": true,
+        "box": {
+          "left": 774.5,
+          "right": 829.8,
+          "width": 55.4,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "duration",
+        "text": "6m12s",
+        "shown": true,
+        "box": {
+          "left": 833.8,
+          "right": 882,
+          "width": 48.1,
+          "top": 200,
+          "height": 24.7
+        }
+      }
+    ],
+    "width": 1024,
+    "measure": null,
+    "dir": null,
+    "theme": "localOperatorDark",
+    "containerBox": {
+      "left": 100,
+      "right": 1124,
+      "width": 1024,
+      "top": 126,
+      "height": 134
+    },
+    "queryContainer": {
+      "box": {
+        "left": 100,
+        "right": 1124,
+        "width": 1024,
+        "top": 126,
+        "height": 134
+      },
+      "contentWidth": 976
+    },
+    "row": {
+      "box": {
+        "left": 223,
+        "right": 1001,
+        "width": 778,
+        "top": 196,
+        "height": 32
+      },
+      "scrollWidth": 778,
+      "clientWidth": 778,
+      "overflow": 0,
+      "itemCount": 3,
+      "lines": 1
+    },
+    "formBox": {
+      "left": 124,
+      "right": 1100,
+      "width": 976,
+      "top": 134,
+      "height": 110
+    },
+    "form": {
+      "scrollWidth": 976,
+      "clientWidth": 976,
+      "overflow": 0
+    },
+    "strip": {
+      "left": 530,
+      "right": 829.8,
+      "width": 299.8,
+      "top": 200,
+      "height": 24
+    },
+    "controls": {
+      "left": 933,
+      "right": 1001,
+      "width": 68,
+      "top": 196,
+      "height": 32,
+      "children": 3
+    },
+    "attach": {
+      "left": 223,
+      "right": 528,
+      "width": 305,
+      "top": 196,
+      "height": 32
+    },
+    "chip": {
+      "left": 267,
+      "right": 528,
+      "width": 261,
+      "top": 196,
+      "height": 32
+    },
+    "gap": 103.2,
+    "direction": "ltr",
+    "readingsRight": 882,
+    "readingsLeft": 530,
+    "lastReadingRight": 829.8,
+    "lastReadingLeft": 530,
+    "anchorDelta": 0,
+    "durationVisible": true,
+    "glyphOverlap": -51,
+    "durationShown": true,
+    "durationBox": {
+      "left": 833.8,
+      "right": 882,
+      "width": 48.1,
+      "top": 200,
+      "height": 24.7
+    },
+    "slots": [
+      {
+        "slot": "a",
+        "label": "Start recording",
+        "left": 933,
+        "right": 965,
+        "width": 32,
+        "height": 32,
+        "disabled": false
+      },
+      {
+        "slot": "b",
+        "label": "Send message",
+        "left": 969,
+        "right": 1001,
+        "width": 32,
+        "height": 32,
+        "disabled": true
+      }
+    ],
+    "sent": [],
+    "bTimeline": null,
+    "transcriptionCalls": 0,
+    "boxValue": "",
+    "controlNames": [
+      "Start recording",
+      "Send message"
+    ]
+  },
+  "preparing-plain-w1024|localOperatorLight": {
+    "id": "preparing-plain-w1024",
+    "state": "preparing",
+    "readings": [
+      {
+        "kind": "model",
+        "text": "gpt-5-mini",
+        "shown": true,
+        "box": {
+          "left": 530,
+          "right": 602.9,
+          "width": 72.9,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "effort",
+        "text": "Medium",
+        "shown": true,
+        "box": {
+          "left": 606.9,
+          "right": 662.2,
+          "width": 55.4,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "context",
+        "text": "10.2%/400k",
+        "shown": true,
+        "box": {
+          "left": 666.2,
+          "right": 770.5,
+          "width": 104.3,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "cost",
+        "text": "≥$2.41",
+        "shown": true,
+        "box": {
+          "left": 774.5,
+          "right": 829.8,
+          "width": 55.4,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "duration",
+        "text": "6m12s",
+        "shown": true,
+        "box": {
+          "left": 833.8,
+          "right": 882,
+          "width": 48.1,
+          "top": 200,
+          "height": 24.7
+        }
+      }
+    ],
+    "width": 1024,
+    "measure": null,
+    "dir": null,
+    "theme": "localOperatorLight",
+    "containerBox": {
+      "left": 100,
+      "right": 1124,
+      "width": 1024,
+      "top": 126,
+      "height": 134
+    },
+    "queryContainer": {
+      "box": {
+        "left": 100,
+        "right": 1124,
+        "width": 1024,
+        "top": 126,
+        "height": 134
+      },
+      "contentWidth": 976
+    },
+    "row": {
+      "box": {
+        "left": 223,
+        "right": 1001,
+        "width": 778,
+        "top": 196,
+        "height": 32
+      },
+      "scrollWidth": 778,
+      "clientWidth": 778,
+      "overflow": 0,
+      "itemCount": 3,
+      "lines": 1
+    },
+    "formBox": {
+      "left": 124,
+      "right": 1100,
+      "width": 976,
+      "top": 134,
+      "height": 110
+    },
+    "form": {
+      "scrollWidth": 976,
+      "clientWidth": 976,
+      "overflow": 0
+    },
+    "strip": {
+      "left": 530,
+      "right": 829.8,
+      "width": 299.8,
+      "top": 200,
+      "height": 24
+    },
+    "controls": {
+      "left": 933,
+      "right": 1001,
+      "width": 68,
+      "top": 196,
+      "height": 32,
+      "children": 3
+    },
+    "attach": {
+      "left": 223,
+      "right": 528,
+      "width": 305,
+      "top": 196,
+      "height": 32
+    },
+    "chip": {
+      "left": 267,
+      "right": 528,
+      "width": 261,
+      "top": 196,
+      "height": 32
+    },
+    "gap": 103.2,
+    "direction": "ltr",
+    "readingsRight": 882,
+    "readingsLeft": 530,
+    "lastReadingRight": 829.8,
+    "lastReadingLeft": 530,
+    "anchorDelta": 0,
+    "durationVisible": true,
+    "glyphOverlap": -51,
+    "durationShown": true,
+    "durationBox": {
+      "left": 833.8,
+      "right": 882,
+      "width": 48.1,
+      "top": 200,
+      "height": 24.7
+    },
+    "slots": [
+      {
+        "slot": "a",
+        "label": "Start recording",
+        "left": 933,
+        "right": 965,
+        "width": 32,
+        "height": 32,
+        "disabled": false
+      },
+      {
+        "slot": "b",
+        "label": "Send message",
+        "left": 969,
+        "right": 1001,
+        "width": 32,
+        "height": 32,
+        "disabled": true
+      }
+    ],
+    "sent": [],
+    "bTimeline": null,
+    "transcriptionCalls": 0,
+    "boxValue": "",
+    "controlNames": [
+      "Start recording",
+      "Send message"
+    ]
+  },
+  "preparing-plain-w900|localOperatorDark": {
+    "id": "preparing-plain-w900",
+    "state": "preparing",
+    "readings": [
+      {
+        "kind": "model",
+        "text": "gpt-5-mini",
+        "shown": true,
+        "box": {
+          "left": 467,
+          "right": 539.9,
+          "width": 72.9,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "effort",
+        "text": "Medium",
+        "shown": true,
+        "box": {
+          "left": 543.9,
+          "right": 599.2,
+          "width": 55.4,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "context",
+        "text": "10.2%/400k",
+        "shown": true,
+        "box": {
+          "left": 603.2,
+          "right": 707.5,
+          "width": 104.3,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "cost",
+        "text": "≥$2.41",
+        "shown": true,
+        "box": {
+          "left": 711.5,
+          "right": 766.8,
+          "width": 55.4,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "duration",
+        "text": "6m12s",
+        "shown": true,
+        "box": {
+          "left": 770.8,
+          "right": 819,
+          "width": 48.1,
+          "top": 200,
+          "height": 24.7
+        }
+      }
+    ],
+    "width": 900,
+    "measure": null,
+    "dir": null,
+    "theme": "localOperatorDark",
+    "containerBox": {
+      "left": 100,
+      "right": 1000,
+      "width": 900,
+      "top": 126,
+      "height": 134
+    },
+    "queryContainer": {
+      "box": {
+        "left": 100,
+        "right": 1000,
+        "width": 900,
+        "top": 126,
+        "height": 134
+      },
+      "contentWidth": 852
+    },
+    "row": {
+      "box": {
+        "left": 161,
+        "right": 939,
+        "width": 778,
+        "top": 196,
+        "height": 32
+      },
+      "scrollWidth": 778,
+      "clientWidth": 778,
+      "overflow": 0,
+      "itemCount": 3,
+      "lines": 1
+    },
+    "formBox": {
+      "left": 124,
+      "right": 976,
+      "width": 852,
+      "top": 134,
+      "height": 110
+    },
+    "form": {
+      "scrollWidth": 852,
+      "clientWidth": 852,
+      "overflow": 0
+    },
+    "strip": {
+      "left": 467,
+      "right": 766.8,
+      "width": 299.8,
+      "top": 200,
+      "height": 24
+    },
+    "controls": {
+      "left": 871,
+      "right": 939,
+      "width": 68,
+      "top": 196,
+      "height": 32,
+      "children": 3
+    },
+    "attach": {
+      "left": 161,
+      "right": 465,
+      "width": 304,
+      "top": 196,
+      "height": 32
+    },
+    "chip": {
+      "left": 205,
+      "right": 465,
+      "width": 260,
+      "top": 196,
+      "height": 32
+    },
+    "gap": 104.2,
+    "direction": "ltr",
+    "readingsRight": 819,
+    "readingsLeft": 467,
+    "lastReadingRight": 766.8,
+    "lastReadingLeft": 467,
+    "anchorDelta": 0,
+    "durationVisible": true,
+    "glyphOverlap": -52,
+    "durationShown": true,
+    "durationBox": {
+      "left": 770.8,
+      "right": 819,
+      "width": 48.1,
+      "top": 200,
+      "height": 24.7
+    },
+    "slots": [
+      {
+        "slot": "a",
+        "label": "Start recording",
+        "left": 871,
+        "right": 903,
+        "width": 32,
+        "height": 32,
+        "disabled": false
+      },
+      {
+        "slot": "b",
+        "label": "Send message",
+        "left": 907,
+        "right": 939,
+        "width": 32,
+        "height": 32,
+        "disabled": true
+      }
+    ],
+    "sent": [],
+    "bTimeline": null,
+    "transcriptionCalls": 0,
+    "boxValue": "",
+    "controlNames": [
+      "Start recording",
+      "Send message"
+    ]
+  },
+  "preparing-plain-w900|localOperatorLight": {
+    "id": "preparing-plain-w900",
+    "state": "preparing",
+    "readings": [
+      {
+        "kind": "model",
+        "text": "gpt-5-mini",
+        "shown": true,
+        "box": {
+          "left": 467,
+          "right": 539.9,
+          "width": 72.9,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "effort",
+        "text": "Medium",
+        "shown": true,
+        "box": {
+          "left": 543.9,
+          "right": 599.2,
+          "width": 55.4,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "context",
+        "text": "10.2%/400k",
+        "shown": true,
+        "box": {
+          "left": 603.2,
+          "right": 707.5,
+          "width": 104.3,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "cost",
+        "text": "≥$2.41",
+        "shown": true,
+        "box": {
+          "left": 711.5,
+          "right": 766.8,
+          "width": 55.4,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "duration",
+        "text": "6m12s",
+        "shown": true,
+        "box": {
+          "left": 770.8,
+          "right": 819,
+          "width": 48.1,
+          "top": 200,
+          "height": 24.7
+        }
+      }
+    ],
+    "width": 900,
+    "measure": null,
+    "dir": null,
+    "theme": "localOperatorLight",
+    "containerBox": {
+      "left": 100,
+      "right": 1000,
+      "width": 900,
+      "top": 126,
+      "height": 134
+    },
+    "queryContainer": {
+      "box": {
+        "left": 100,
+        "right": 1000,
+        "width": 900,
+        "top": 126,
+        "height": 134
+      },
+      "contentWidth": 852
+    },
+    "row": {
+      "box": {
+        "left": 161,
+        "right": 939,
+        "width": 778,
+        "top": 196,
+        "height": 32
+      },
+      "scrollWidth": 778,
+      "clientWidth": 778,
+      "overflow": 0,
+      "itemCount": 3,
+      "lines": 1
+    },
+    "formBox": {
+      "left": 124,
+      "right": 976,
+      "width": 852,
+      "top": 134,
+      "height": 110
+    },
+    "form": {
+      "scrollWidth": 852,
+      "clientWidth": 852,
+      "overflow": 0
+    },
+    "strip": {
+      "left": 467,
+      "right": 766.8,
+      "width": 299.8,
+      "top": 200,
+      "height": 24
+    },
+    "controls": {
+      "left": 871,
+      "right": 939,
+      "width": 68,
+      "top": 196,
+      "height": 32,
+      "children": 3
+    },
+    "attach": {
+      "left": 161,
+      "right": 465,
+      "width": 304,
+      "top": 196,
+      "height": 32
+    },
+    "chip": {
+      "left": 205,
+      "right": 465,
+      "width": 260,
+      "top": 196,
+      "height": 32
+    },
+    "gap": 104.2,
+    "direction": "ltr",
+    "readingsRight": 819,
+    "readingsLeft": 467,
+    "lastReadingRight": 766.8,
+    "lastReadingLeft": 467,
+    "anchorDelta": 0,
+    "durationVisible": true,
+    "glyphOverlap": -52,
+    "durationShown": true,
+    "durationBox": {
+      "left": 770.8,
+      "right": 819,
+      "width": 48.1,
+      "top": 200,
+      "height": 24.7
+    },
+    "slots": [
+      {
+        "slot": "a",
+        "label": "Start recording",
+        "left": 871,
+        "right": 903,
+        "width": 32,
+        "height": 32,
+        "disabled": false
+      },
+      {
+        "slot": "b",
+        "label": "Send message",
+        "left": 907,
+        "right": 939,
+        "width": 32,
+        "height": 32,
+        "disabled": true
+      }
+    ],
+    "sent": [],
+    "bTimeline": null,
+    "transcriptionCalls": 0,
+    "boxValue": "",
+    "controlNames": [
+      "Start recording",
+      "Send message"
+    ]
+  },
+  "preparing-plain-w840|localOperatorDark": {
+    "id": "preparing-plain-w840",
+    "state": "preparing",
+    "readings": [
+      {
+        "kind": "model",
+        "text": "gpt-5-mini",
+        "shown": true,
+        "box": {
+          "left": 446,
+          "right": 518.9,
+          "width": 72.9,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "effort",
+        "text": "Medium",
+        "shown": true,
+        "box": {
+          "left": 522.9,
+          "right": 578.2,
+          "width": 55.4,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "context",
+        "text": "10.2%/400k",
+        "shown": true,
+        "box": {
+          "left": 582.2,
+          "right": 686.5,
+          "width": 104.3,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "cost",
+        "text": "≥$2.41",
+        "shown": true,
+        "box": {
+          "left": 690.5,
+          "right": 745.8,
+          "width": 55.4,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "duration",
+        "text": "6m12s",
+        "shown": true,
+        "box": {
+          "left": 749.8,
+          "right": 798,
+          "width": 48.1,
+          "top": 200,
+          "height": 24.7
+        }
+      }
+    ],
+    "width": 840,
+    "measure": null,
+    "dir": null,
+    "theme": "localOperatorDark",
+    "containerBox": {
+      "left": 100,
+      "right": 940,
+      "width": 840,
+      "top": 126,
+      "height": 134
+    },
+    "queryContainer": {
+      "box": {
+        "left": 100,
+        "right": 940,
+        "width": 840,
+        "top": 126,
+        "height": 134
+      },
+      "contentWidth": 792
+    },
+    "row": {
+      "box": {
+        "left": 140,
+        "right": 900,
+        "width": 760,
+        "top": 196,
+        "height": 32
+      },
+      "scrollWidth": 760,
+      "clientWidth": 760,
+      "overflow": 0,
+      "itemCount": 3,
+      "lines": 1
+    },
+    "formBox": {
+      "left": 124,
+      "right": 916,
+      "width": 792,
+      "top": 134,
+      "height": 110
+    },
+    "form": {
+      "scrollWidth": 792,
+      "clientWidth": 792,
+      "overflow": 0
+    },
+    "strip": {
+      "left": 446,
+      "right": 745.8,
+      "width": 299.8,
+      "top": 200,
+      "height": 24
+    },
+    "controls": {
+      "left": 832,
+      "right": 900,
+      "width": 68,
+      "top": 196,
+      "height": 32,
+      "children": 3
+    },
+    "attach": {
+      "left": 140,
+      "right": 444,
+      "width": 304,
+      "top": 196,
+      "height": 32
+    },
+    "chip": {
+      "left": 184,
+      "right": 444,
+      "width": 260,
+      "top": 196,
+      "height": 32
+    },
+    "gap": 86.2,
+    "direction": "ltr",
+    "readingsRight": 798,
+    "readingsLeft": 446,
+    "lastReadingRight": 745.8,
+    "lastReadingLeft": 446,
+    "anchorDelta": 0,
+    "durationVisible": true,
+    "glyphOverlap": -34,
+    "durationShown": true,
+    "durationBox": {
+      "left": 749.8,
+      "right": 798,
+      "width": 48.1,
+      "top": 200,
+      "height": 24.7
+    },
+    "slots": [
+      {
+        "slot": "a",
+        "label": "Start recording",
+        "left": 832,
+        "right": 864,
+        "width": 32,
+        "height": 32,
+        "disabled": false
+      },
+      {
+        "slot": "b",
+        "label": "Send message",
+        "left": 868,
+        "right": 900,
+        "width": 32,
+        "height": 32,
+        "disabled": true
+      }
+    ],
+    "sent": [],
+    "bTimeline": null,
+    "transcriptionCalls": 0,
+    "boxValue": "",
+    "controlNames": [
+      "Start recording",
+      "Send message"
+    ]
+  },
+  "preparing-plain-w840|localOperatorLight": {
+    "id": "preparing-plain-w840",
+    "state": "preparing",
+    "readings": [
+      {
+        "kind": "model",
+        "text": "gpt-5-mini",
+        "shown": true,
+        "box": {
+          "left": 446,
+          "right": 518.9,
+          "width": 72.9,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "effort",
+        "text": "Medium",
+        "shown": true,
+        "box": {
+          "left": 522.9,
+          "right": 578.2,
+          "width": 55.4,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "context",
+        "text": "10.2%/400k",
+        "shown": true,
+        "box": {
+          "left": 582.2,
+          "right": 686.5,
+          "width": 104.3,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "cost",
+        "text": "≥$2.41",
+        "shown": true,
+        "box": {
+          "left": 690.5,
+          "right": 745.8,
+          "width": 55.4,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "duration",
+        "text": "6m12s",
+        "shown": true,
+        "box": {
+          "left": 749.8,
+          "right": 798,
+          "width": 48.1,
+          "top": 200,
+          "height": 24.7
+        }
+      }
+    ],
+    "width": 840,
+    "measure": null,
+    "dir": null,
+    "theme": "localOperatorLight",
+    "containerBox": {
+      "left": 100,
+      "right": 940,
+      "width": 840,
+      "top": 126,
+      "height": 134
+    },
+    "queryContainer": {
+      "box": {
+        "left": 100,
+        "right": 940,
+        "width": 840,
+        "top": 126,
+        "height": 134
+      },
+      "contentWidth": 792
+    },
+    "row": {
+      "box": {
+        "left": 140,
+        "right": 900,
+        "width": 760,
+        "top": 196,
+        "height": 32
+      },
+      "scrollWidth": 760,
+      "clientWidth": 760,
+      "overflow": 0,
+      "itemCount": 3,
+      "lines": 1
+    },
+    "formBox": {
+      "left": 124,
+      "right": 916,
+      "width": 792,
+      "top": 134,
+      "height": 110
+    },
+    "form": {
+      "scrollWidth": 792,
+      "clientWidth": 792,
+      "overflow": 0
+    },
+    "strip": {
+      "left": 446,
+      "right": 745.8,
+      "width": 299.8,
+      "top": 200,
+      "height": 24
+    },
+    "controls": {
+      "left": 832,
+      "right": 900,
+      "width": 68,
+      "top": 196,
+      "height": 32,
+      "children": 3
+    },
+    "attach": {
+      "left": 140,
+      "right": 444,
+      "width": 304,
+      "top": 196,
+      "height": 32
+    },
+    "chip": {
+      "left": 184,
+      "right": 444,
+      "width": 260,
+      "top": 196,
+      "height": 32
+    },
+    "gap": 86.2,
+    "direction": "ltr",
+    "readingsRight": 798,
+    "readingsLeft": 446,
+    "lastReadingRight": 745.8,
+    "lastReadingLeft": 446,
+    "anchorDelta": 0,
+    "durationVisible": true,
+    "glyphOverlap": -34,
+    "durationShown": true,
+    "durationBox": {
+      "left": 749.8,
+      "right": 798,
+      "width": 48.1,
+      "top": 200,
+      "height": 24.7
+    },
+    "slots": [
+      {
+        "slot": "a",
+        "label": "Start recording",
+        "left": 832,
+        "right": 864,
+        "width": 32,
+        "height": 32,
+        "disabled": false
+      },
+      {
+        "slot": "b",
+        "label": "Send message",
+        "left": 868,
+        "right": 900,
+        "width": 32,
+        "height": 32,
+        "disabled": true
+      }
+    ],
+    "sent": [],
+    "bTimeline": null,
+    "transcriptionCalls": 0,
+    "boxValue": "",
+    "controlNames": [
+      "Start recording",
+      "Send message"
+    ]
+  },
+  "preparing-plain-w780|localOperatorDark": {
+    "id": "preparing-plain-w780",
+    "state": "preparing",
+    "readings": [
+      {
+        "kind": "model",
+        "text": "gpt-5-mini",
+        "shown": true,
+        "box": {
+          "left": 446,
+          "right": 518.9,
+          "width": 72.9,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "effort",
+        "text": "Medium",
+        "shown": false,
+        "box": {
+          "left": 0,
+          "right": 0,
+          "width": 0,
+          "top": 0,
+          "height": 0
+        }
+      },
+      {
+        "kind": "context",
+        "text": "10.2%/400k",
+        "shown": true,
+        "box": {
+          "left": 522.9,
+          "right": 627.1,
+          "width": 104.3,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "cost",
+        "text": "≥$2.41",
+        "shown": true,
+        "box": {
+          "left": 631.1,
+          "right": 686.5,
+          "width": 55.4,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "duration",
+        "text": "6m12s",
+        "shown": true,
+        "box": {
+          "left": 690.5,
+          "right": 738.6,
+          "width": 48.1,
+          "top": 200,
+          "height": 24.7
+        }
+      }
+    ],
+    "width": 780,
+    "measure": null,
+    "dir": null,
+    "theme": "localOperatorDark",
+    "containerBox": {
+      "left": 100,
+      "right": 880,
+      "width": 780,
+      "top": 126,
+      "height": 134
+    },
+    "queryContainer": {
+      "box": {
+        "left": 100,
+        "right": 880,
+        "width": 780,
+        "top": 126,
+        "height": 134
+      },
+      "contentWidth": 732
+    },
+    "row": {
+      "box": {
+        "left": 140,
+        "right": 840,
+        "width": 700,
+        "top": 196,
+        "height": 32
+      },
+      "scrollWidth": 700,
+      "clientWidth": 700,
+      "overflow": 0,
+      "itemCount": 3,
+      "lines": 1
+    },
+    "formBox": {
+      "left": 124,
+      "right": 856,
+      "width": 732,
+      "top": 134,
+      "height": 110
+    },
+    "form": {
+      "scrollWidth": 732,
+      "clientWidth": 732,
+      "overflow": 0
+    },
+    "strip": {
+      "left": 446,
+      "right": 686.5,
+      "width": 240.5,
+      "top": 200,
+      "height": 24
+    },
+    "controls": {
+      "left": 772,
+      "right": 840,
+      "width": 68,
+      "top": 196,
+      "height": 32,
+      "children": 3
+    },
+    "attach": {
+      "left": 140,
+      "right": 444,
+      "width": 304,
+      "top": 196,
+      "height": 32
+    },
+    "chip": {
+      "left": 184,
+      "right": 444,
+      "width": 260,
+      "top": 196,
+      "height": 32
+    },
+    "gap": 85.5,
+    "direction": "ltr",
+    "readingsRight": 738.6,
+    "readingsLeft": 446,
+    "lastReadingRight": 686.5,
+    "lastReadingLeft": 446,
+    "anchorDelta": 0,
+    "durationVisible": true,
+    "glyphOverlap": -33.4,
+    "durationShown": true,
+    "durationBox": {
+      "left": 690.5,
+      "right": 738.6,
+      "width": 48.1,
+      "top": 200,
+      "height": 24.7
+    },
+    "slots": [
+      {
+        "slot": "a",
+        "label": "Start recording",
+        "left": 772,
+        "right": 804,
+        "width": 32,
+        "height": 32,
+        "disabled": false
+      },
+      {
+        "slot": "b",
+        "label": "Send message",
+        "left": 808,
+        "right": 840,
+        "width": 32,
+        "height": 32,
+        "disabled": true
+      }
+    ],
+    "sent": [],
+    "bTimeline": null,
+    "transcriptionCalls": 0,
+    "boxValue": "",
+    "controlNames": [
+      "Start recording",
+      "Send message"
+    ]
+  },
+  "preparing-plain-w780|localOperatorLight": {
+    "id": "preparing-plain-w780",
+    "state": "preparing",
+    "readings": [
+      {
+        "kind": "model",
+        "text": "gpt-5-mini",
+        "shown": true,
+        "box": {
+          "left": 446,
+          "right": 518.9,
+          "width": 72.9,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "effort",
+        "text": "Medium",
+        "shown": false,
+        "box": {
+          "left": 0,
+          "right": 0,
+          "width": 0,
+          "top": 0,
+          "height": 0
+        }
+      },
+      {
+        "kind": "context",
+        "text": "10.2%/400k",
+        "shown": true,
+        "box": {
+          "left": 522.9,
+          "right": 627.1,
+          "width": 104.3,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "cost",
+        "text": "≥$2.41",
+        "shown": true,
+        "box": {
+          "left": 631.1,
+          "right": 686.5,
+          "width": 55.4,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "duration",
+        "text": "6m12s",
+        "shown": true,
+        "box": {
+          "left": 690.5,
+          "right": 738.6,
+          "width": 48.1,
+          "top": 200,
+          "height": 24.7
+        }
+      }
+    ],
+    "width": 780,
+    "measure": null,
+    "dir": null,
+    "theme": "localOperatorLight",
+    "containerBox": {
+      "left": 100,
+      "right": 880,
+      "width": 780,
+      "top": 126,
+      "height": 134
+    },
+    "queryContainer": {
+      "box": {
+        "left": 100,
+        "right": 880,
+        "width": 780,
+        "top": 126,
+        "height": 134
+      },
+      "contentWidth": 732
+    },
+    "row": {
+      "box": {
+        "left": 140,
+        "right": 840,
+        "width": 700,
+        "top": 196,
+        "height": 32
+      },
+      "scrollWidth": 700,
+      "clientWidth": 700,
+      "overflow": 0,
+      "itemCount": 3,
+      "lines": 1
+    },
+    "formBox": {
+      "left": 124,
+      "right": 856,
+      "width": 732,
+      "top": 134,
+      "height": 110
+    },
+    "form": {
+      "scrollWidth": 732,
+      "clientWidth": 732,
+      "overflow": 0
+    },
+    "strip": {
+      "left": 446,
+      "right": 686.5,
+      "width": 240.5,
+      "top": 200,
+      "height": 24
+    },
+    "controls": {
+      "left": 772,
+      "right": 840,
+      "width": 68,
+      "top": 196,
+      "height": 32,
+      "children": 3
+    },
+    "attach": {
+      "left": 140,
+      "right": 444,
+      "width": 304,
+      "top": 196,
+      "height": 32
+    },
+    "chip": {
+      "left": 184,
+      "right": 444,
+      "width": 260,
+      "top": 196,
+      "height": 32
+    },
+    "gap": 85.5,
+    "direction": "ltr",
+    "readingsRight": 738.6,
+    "readingsLeft": 446,
+    "lastReadingRight": 686.5,
+    "lastReadingLeft": 446,
+    "anchorDelta": 0,
+    "durationVisible": true,
+    "glyphOverlap": -33.4,
+    "durationShown": true,
+    "durationBox": {
+      "left": 690.5,
+      "right": 738.6,
+      "width": 48.1,
+      "top": 200,
+      "height": 24.7
+    },
+    "slots": [
+      {
+        "slot": "a",
+        "label": "Start recording",
+        "left": 772,
+        "right": 804,
+        "width": 32,
+        "height": 32,
+        "disabled": false
+      },
+      {
+        "slot": "b",
+        "label": "Send message",
+        "left": 808,
+        "right": 840,
+        "width": 32,
+        "height": 32,
+        "disabled": true
+      }
+    ],
+    "sent": [],
+    "bTimeline": null,
+    "transcriptionCalls": 0,
+    "boxValue": "",
+    "controlNames": [
+      "Start recording",
+      "Send message"
+    ]
+  },
+  "preparing-plain-w720|localOperatorDark": {
+    "id": "preparing-plain-w720",
+    "state": "preparing",
+    "readings": [
+      {
+        "kind": "model",
+        "text": "gpt-5-mini",
+        "shown": true,
+        "box": {
+          "left": 446,
+          "right": 518.9,
+          "width": 72.9,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "effort",
+        "text": "Medium",
+        "shown": false,
+        "box": {
+          "left": 0,
+          "right": 0,
+          "width": 0,
+          "top": 0,
+          "height": 0
+        }
+      },
+      {
+        "kind": "context",
+        "text": "10.2%/400k",
+        "shown": true,
+        "box": {
+          "left": 522.9,
+          "right": 627.1,
+          "width": 104.3,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "cost",
+        "text": "≥$2.41",
+        "shown": false,
+        "box": {
+          "left": 0,
+          "right": 0,
+          "width": 0,
+          "top": 0,
+          "height": 0
+        }
+      },
+      {
+        "kind": "duration",
+        "text": "6m12s",
+        "shown": true,
+        "box": {
+          "left": 631.1,
+          "right": 679.3,
+          "width": 48.1,
+          "top": 200,
+          "height": 24.7
+        }
+      }
+    ],
+    "width": 720,
+    "measure": null,
+    "dir": null,
+    "theme": "localOperatorDark",
+    "containerBox": {
+      "left": 100,
+      "right": 820,
+      "width": 720,
+      "top": 126,
+      "height": 134
+    },
+    "queryContainer": {
+      "box": {
+        "left": 100,
+        "right": 820,
+        "width": 720,
+        "top": 126,
+        "height": 134
+      },
+      "contentWidth": 672
+    },
+    "row": {
+      "box": {
+        "left": 140,
+        "right": 780,
+        "width": 640,
+        "top": 196,
+        "height": 32
+      },
+      "scrollWidth": 640,
+      "clientWidth": 640,
+      "overflow": 0,
+      "itemCount": 3,
+      "lines": 1
+    },
+    "formBox": {
+      "left": 124,
+      "right": 796,
+      "width": 672,
+      "top": 134,
+      "height": 110
+    },
+    "form": {
+      "scrollWidth": 672,
+      "clientWidth": 672,
+      "overflow": 0
+    },
+    "strip": {
+      "left": 446,
+      "right": 627.1,
+      "width": 181.1,
+      "top": 200,
+      "height": 24
+    },
+    "controls": {
+      "left": 712,
+      "right": 780,
+      "width": 68,
+      "top": 196,
+      "height": 32,
+      "children": 3
+    },
+    "attach": {
+      "left": 140,
+      "right": 444,
+      "width": 304,
+      "top": 196,
+      "height": 32
+    },
+    "chip": {
+      "left": 184,
+      "right": 444,
+      "width": 260,
+      "top": 196,
+      "height": 32
+    },
+    "gap": 84.9,
+    "direction": "ltr",
+    "readingsRight": 679.3,
+    "readingsLeft": 446,
+    "lastReadingRight": 627.1,
+    "lastReadingLeft": 446,
+    "anchorDelta": 0,
+    "durationVisible": true,
+    "glyphOverlap": -32.7,
+    "durationShown": true,
+    "durationBox": {
+      "left": 631.1,
+      "right": 679.3,
+      "width": 48.1,
+      "top": 200,
+      "height": 24.7
+    },
+    "slots": [
+      {
+        "slot": "a",
+        "label": "Start recording",
+        "left": 712,
+        "right": 744,
+        "width": 32,
+        "height": 32,
+        "disabled": false
+      },
+      {
+        "slot": "b",
+        "label": "Send message",
+        "left": 748,
+        "right": 780,
+        "width": 32,
+        "height": 32,
+        "disabled": true
+      }
+    ],
+    "sent": [],
+    "bTimeline": null,
+    "transcriptionCalls": 0,
+    "boxValue": "",
+    "controlNames": [
+      "Start recording",
+      "Send message"
+    ]
+  },
+  "preparing-plain-w720|localOperatorLight": {
+    "id": "preparing-plain-w720",
+    "state": "preparing",
+    "readings": [
+      {
+        "kind": "model",
+        "text": "gpt-5-mini",
+        "shown": true,
+        "box": {
+          "left": 446,
+          "right": 518.9,
+          "width": 72.9,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "effort",
+        "text": "Medium",
+        "shown": false,
+        "box": {
+          "left": 0,
+          "right": 0,
+          "width": 0,
+          "top": 0,
+          "height": 0
+        }
+      },
+      {
+        "kind": "context",
+        "text": "10.2%/400k",
+        "shown": true,
+        "box": {
+          "left": 522.9,
+          "right": 627.1,
+          "width": 104.3,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "cost",
+        "text": "≥$2.41",
+        "shown": false,
+        "box": {
+          "left": 0,
+          "right": 0,
+          "width": 0,
+          "top": 0,
+          "height": 0
+        }
+      },
+      {
+        "kind": "duration",
+        "text": "6m12s",
+        "shown": true,
+        "box": {
+          "left": 631.1,
+          "right": 679.3,
+          "width": 48.1,
+          "top": 200,
+          "height": 24.7
+        }
+      }
+    ],
+    "width": 720,
+    "measure": null,
+    "dir": null,
+    "theme": "localOperatorLight",
+    "containerBox": {
+      "left": 100,
+      "right": 820,
+      "width": 720,
+      "top": 126,
+      "height": 134
+    },
+    "queryContainer": {
+      "box": {
+        "left": 100,
+        "right": 820,
+        "width": 720,
+        "top": 126,
+        "height": 134
+      },
+      "contentWidth": 672
+    },
+    "row": {
+      "box": {
+        "left": 140,
+        "right": 780,
+        "width": 640,
+        "top": 196,
+        "height": 32
+      },
+      "scrollWidth": 640,
+      "clientWidth": 640,
+      "overflow": 0,
+      "itemCount": 3,
+      "lines": 1
+    },
+    "formBox": {
+      "left": 124,
+      "right": 796,
+      "width": 672,
+      "top": 134,
+      "height": 110
+    },
+    "form": {
+      "scrollWidth": 672,
+      "clientWidth": 672,
+      "overflow": 0
+    },
+    "strip": {
+      "left": 446,
+      "right": 627.1,
+      "width": 181.1,
+      "top": 200,
+      "height": 24
+    },
+    "controls": {
+      "left": 712,
+      "right": 780,
+      "width": 68,
+      "top": 196,
+      "height": 32,
+      "children": 3
+    },
+    "attach": {
+      "left": 140,
+      "right": 444,
+      "width": 304,
+      "top": 196,
+      "height": 32
+    },
+    "chip": {
+      "left": 184,
+      "right": 444,
+      "width": 260,
+      "top": 196,
+      "height": 32
+    },
+    "gap": 84.9,
+    "direction": "ltr",
+    "readingsRight": 679.3,
+    "readingsLeft": 446,
+    "lastReadingRight": 627.1,
+    "lastReadingLeft": 446,
+    "anchorDelta": 0,
+    "durationVisible": true,
+    "glyphOverlap": -32.7,
+    "durationShown": true,
+    "durationBox": {
+      "left": 631.1,
+      "right": 679.3,
+      "width": 48.1,
+      "top": 200,
+      "height": 24.7
+    },
+    "slots": [
+      {
+        "slot": "a",
+        "label": "Start recording",
+        "left": 712,
+        "right": 744,
+        "width": 32,
+        "height": 32,
+        "disabled": false
+      },
+      {
+        "slot": "b",
+        "label": "Send message",
+        "left": 748,
+        "right": 780,
+        "width": 32,
+        "height": 32,
+        "disabled": true
+      }
+    ],
+    "sent": [],
+    "bTimeline": null,
+    "transcriptionCalls": 0,
+    "boxValue": "",
+    "controlNames": [
+      "Start recording",
+      "Send message"
+    ]
+  },
+  "preparing-plain-w700|localOperatorDark": {
+    "id": "preparing-plain-w700",
+    "state": "preparing",
+    "readings": [
+      {
+        "kind": "model",
+        "text": "gpt-5-mini",
+        "shown": true,
+        "box": {
+          "left": 446,
+          "right": 518.9,
+          "width": 72.9,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "effort",
+        "text": "Medium",
+        "shown": false,
+        "box": {
+          "left": 0,
+          "right": 0,
+          "width": 0,
+          "top": 0,
+          "height": 0
+        }
+      },
+      {
+        "kind": "context",
+        "text": "10.2%/400k",
+        "shown": true,
+        "box": {
+          "left": 522.9,
+          "right": 627.1,
+          "width": 104.3,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "cost",
+        "text": "≥$2.41",
+        "shown": false,
+        "box": {
+          "left": 0,
+          "right": 0,
+          "width": 0,
+          "top": 0,
+          "height": 0
+        }
+      },
+      {
+        "kind": "duration",
+        "text": "6m12s",
+        "shown": true,
+        "box": {
+          "left": 631.1,
+          "right": 679.3,
+          "width": 48.1,
+          "top": 200,
+          "height": 24.7
+        }
+      }
+    ],
+    "width": 700,
+    "measure": null,
+    "dir": null,
+    "theme": "localOperatorDark",
+    "containerBox": {
+      "left": 100,
+      "right": 800,
+      "width": 700,
+      "top": 126,
+      "height": 134
+    },
+    "queryContainer": {
+      "box": {
+        "left": 100,
+        "right": 800,
+        "width": 700,
+        "top": 126,
+        "height": 134
+      },
+      "contentWidth": 652
+    },
+    "row": {
+      "box": {
+        "left": 140,
+        "right": 760,
+        "width": 620,
+        "top": 196,
+        "height": 32
+      },
+      "scrollWidth": 620,
+      "clientWidth": 620,
+      "overflow": 0,
+      "itemCount": 3,
+      "lines": 1
+    },
+    "formBox": {
+      "left": 124,
+      "right": 776,
+      "width": 652,
+      "top": 134,
+      "height": 110
+    },
+    "form": {
+      "scrollWidth": 652,
+      "clientWidth": 652,
+      "overflow": 0
+    },
+    "strip": {
+      "left": 446,
+      "right": 627.1,
+      "width": 181.1,
+      "top": 200,
+      "height": 24
+    },
+    "controls": {
+      "left": 692,
+      "right": 760,
+      "width": 68,
+      "top": 196,
+      "height": 32,
+      "children": 3
+    },
+    "attach": {
+      "left": 140,
+      "right": 444,
+      "width": 304,
+      "top": 196,
+      "height": 32
+    },
+    "chip": {
+      "left": 184,
+      "right": 444,
+      "width": 260,
+      "top": 196,
+      "height": 32
+    },
+    "gap": 64.9,
+    "direction": "ltr",
+    "readingsRight": 679.3,
+    "readingsLeft": 446,
+    "lastReadingRight": 627.1,
+    "lastReadingLeft": 446,
+    "anchorDelta": 0,
+    "durationVisible": true,
+    "glyphOverlap": -12.7,
+    "durationShown": true,
+    "durationBox": {
+      "left": 631.1,
+      "right": 679.3,
+      "width": 48.1,
+      "top": 200,
+      "height": 24.7
+    },
+    "slots": [
+      {
+        "slot": "a",
+        "label": "Start recording",
+        "left": 692,
+        "right": 724,
+        "width": 32,
+        "height": 32,
+        "disabled": false
+      },
+      {
+        "slot": "b",
+        "label": "Send message",
+        "left": 728,
+        "right": 760,
+        "width": 32,
+        "height": 32,
+        "disabled": true
+      }
+    ],
+    "sent": [],
+    "bTimeline": null,
+    "transcriptionCalls": 0,
+    "boxValue": "",
+    "controlNames": [
+      "Start recording",
+      "Send message"
+    ]
+  },
+  "preparing-plain-w700|localOperatorLight": {
+    "id": "preparing-plain-w700",
+    "state": "preparing",
+    "readings": [
+      {
+        "kind": "model",
+        "text": "gpt-5-mini",
+        "shown": true,
+        "box": {
+          "left": 446,
+          "right": 518.9,
+          "width": 72.9,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "effort",
+        "text": "Medium",
+        "shown": false,
+        "box": {
+          "left": 0,
+          "right": 0,
+          "width": 0,
+          "top": 0,
+          "height": 0
+        }
+      },
+      {
+        "kind": "context",
+        "text": "10.2%/400k",
+        "shown": true,
+        "box": {
+          "left": 522.9,
+          "right": 627.1,
+          "width": 104.3,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "cost",
+        "text": "≥$2.41",
+        "shown": false,
+        "box": {
+          "left": 0,
+          "right": 0,
+          "width": 0,
+          "top": 0,
+          "height": 0
+        }
+      },
+      {
+        "kind": "duration",
+        "text": "6m12s",
+        "shown": true,
+        "box": {
+          "left": 631.1,
+          "right": 679.3,
+          "width": 48.1,
+          "top": 200,
+          "height": 24.7
+        }
+      }
+    ],
+    "width": 700,
+    "measure": null,
+    "dir": null,
+    "theme": "localOperatorLight",
+    "containerBox": {
+      "left": 100,
+      "right": 800,
+      "width": 700,
+      "top": 126,
+      "height": 134
+    },
+    "queryContainer": {
+      "box": {
+        "left": 100,
+        "right": 800,
+        "width": 700,
+        "top": 126,
+        "height": 134
+      },
+      "contentWidth": 652
+    },
+    "row": {
+      "box": {
+        "left": 140,
+        "right": 760,
+        "width": 620,
+        "top": 196,
+        "height": 32
+      },
+      "scrollWidth": 620,
+      "clientWidth": 620,
+      "overflow": 0,
+      "itemCount": 3,
+      "lines": 1
+    },
+    "formBox": {
+      "left": 124,
+      "right": 776,
+      "width": 652,
+      "top": 134,
+      "height": 110
+    },
+    "form": {
+      "scrollWidth": 652,
+      "clientWidth": 652,
+      "overflow": 0
+    },
+    "strip": {
+      "left": 446,
+      "right": 627.1,
+      "width": 181.1,
+      "top": 200,
+      "height": 24
+    },
+    "controls": {
+      "left": 692,
+      "right": 760,
+      "width": 68,
+      "top": 196,
+      "height": 32,
+      "children": 3
+    },
+    "attach": {
+      "left": 140,
+      "right": 444,
+      "width": 304,
+      "top": 196,
+      "height": 32
+    },
+    "chip": {
+      "left": 184,
+      "right": 444,
+      "width": 260,
+      "top": 196,
+      "height": 32
+    },
+    "gap": 64.9,
+    "direction": "ltr",
+    "readingsRight": 679.3,
+    "readingsLeft": 446,
+    "lastReadingRight": 627.1,
+    "lastReadingLeft": 446,
+    "anchorDelta": 0,
+    "durationVisible": true,
+    "glyphOverlap": -12.7,
+    "durationShown": true,
+    "durationBox": {
+      "left": 631.1,
+      "right": 679.3,
+      "width": 48.1,
+      "top": 200,
+      "height": 24.7
+    },
+    "slots": [
+      {
+        "slot": "a",
+        "label": "Start recording",
+        "left": 692,
+        "right": 724,
+        "width": 32,
+        "height": 32,
+        "disabled": false
+      },
+      {
+        "slot": "b",
+        "label": "Send message",
+        "left": 728,
+        "right": 760,
+        "width": 32,
+        "height": 32,
+        "disabled": true
+      }
+    ],
+    "sent": [],
+    "bTimeline": null,
+    "transcriptionCalls": 0,
+    "boxValue": "",
+    "controlNames": [
+      "Start recording",
+      "Send message"
+    ]
+  },
+  "preparing-fullest-w1024|localOperatorDark": {
+    "id": "preparing-fullest-w1024",
+    "state": "preparing",
+    "readings": [
+      {
+        "kind": "model",
+        "text": "claude-sonnet-4-5",
+        "shown": true,
+        "box": {
+          "left": 530,
+          "right": 649.5,
+          "width": 119.5,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "effort",
+        "text": "High",
+        "shown": true,
+        "box": {
+          "left": 653.5,
+          "right": 694.4,
+          "width": 40.9,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "context",
+        "text": "66.0%/400kestimate",
+        "shown": true,
+        "box": {
+          "left": 698.4,
+          "right": 864.4,
+          "width": 166,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "cost",
+        "text": "$190.85",
+        "shown": true,
+        "box": {
+          "left": 868.4,
+          "right": 931,
+          "width": 62.6,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "duration",
+        "text": "20h",
+        "shown": false,
+        "box": {
+          "left": 935,
+          "right": 968.7,
+          "width": 33.7,
+          "top": 200,
+          "height": 24.7
+        }
+      }
+    ],
+    "width": 1024,
+    "measure": null,
+    "dir": null,
+    "theme": "localOperatorDark",
+    "containerBox": {
+      "left": 100,
+      "right": 1124,
+      "width": 1024,
+      "top": 126,
+      "height": 134
+    },
+    "queryContainer": {
+      "box": {
+        "left": 100,
+        "right": 1124,
+        "width": 1024,
+        "top": 126,
+        "height": 134
+      },
+      "contentWidth": 976
+    },
+    "row": {
+      "box": {
+        "left": 223,
+        "right": 1001,
+        "width": 778,
+        "top": 196,
+        "height": 32
+      },
+      "scrollWidth": 778,
+      "clientWidth": 778,
+      "overflow": 0,
+      "itemCount": 3,
+      "lines": 1
+    },
+    "formBox": {
+      "left": 124,
+      "right": 1100,
+      "width": 976,
+      "top": 134,
+      "height": 110
+    },
+    "form": {
+      "scrollWidth": 976,
+      "clientWidth": 976,
+      "overflow": 0
+    },
+    "strip": {
+      "left": 530,
+      "right": 931,
+      "width": 401,
+      "top": 200,
+      "height": 24
+    },
+    "controls": {
+      "left": 933,
+      "right": 1001,
+      "width": 68,
+      "top": 196,
+      "height": 32,
+      "children": 3
+    },
+    "attach": {
+      "left": 223,
+      "right": 528,
+      "width": 305,
+      "top": 196,
+      "height": 32
+    },
+    "chip": {
+      "left": 267,
+      "right": 528,
+      "width": 261,
+      "top": 196,
+      "height": 32
+    },
+    "gap": 2,
+    "direction": "ltr",
+    "readingsRight": 931,
+    "readingsLeft": 530,
+    "lastReadingRight": 931,
+    "lastReadingLeft": 530,
+    "anchorDelta": 0,
+    "durationVisible": false,
+    "glyphOverlap": -2,
+    "durationShown": true,
+    "durationBox": {
+      "left": 935,
+      "right": 968.7,
+      "width": 33.7,
+      "top": 200,
+      "height": 24.7
+    },
+    "slots": [
+      {
+        "slot": "a",
+        "label": "Start recording",
+        "left": 933,
+        "right": 965,
+        "width": 32,
+        "height": 32,
+        "disabled": false
+      },
+      {
+        "slot": "b",
+        "label": "Send message",
+        "left": 969,
+        "right": 1001,
+        "width": 32,
+        "height": 32,
+        "disabled": true
+      }
+    ],
+    "sent": [],
+    "bTimeline": null,
+    "transcriptionCalls": 0,
+    "boxValue": "",
+    "controlNames": [
+      "Start recording",
+      "Send message"
+    ]
+  },
+  "preparing-fullest-w1024|localOperatorLight": {
+    "id": "preparing-fullest-w1024",
+    "state": "preparing",
+    "readings": [
+      {
+        "kind": "model",
+        "text": "claude-sonnet-4-5",
+        "shown": true,
+        "box": {
+          "left": 530,
+          "right": 649.5,
+          "width": 119.5,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "effort",
+        "text": "High",
+        "shown": true,
+        "box": {
+          "left": 653.5,
+          "right": 694.4,
+          "width": 40.9,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "context",
+        "text": "66.0%/400kestimate",
+        "shown": true,
+        "box": {
+          "left": 698.4,
+          "right": 864.4,
+          "width": 166,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "cost",
+        "text": "$190.85",
+        "shown": true,
+        "box": {
+          "left": 868.4,
+          "right": 931,
+          "width": 62.6,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "duration",
+        "text": "20h",
+        "shown": false,
+        "box": {
+          "left": 935,
+          "right": 968.7,
+          "width": 33.7,
+          "top": 200,
+          "height": 24.7
+        }
+      }
+    ],
+    "width": 1024,
+    "measure": null,
+    "dir": null,
+    "theme": "localOperatorLight",
+    "containerBox": {
+      "left": 100,
+      "right": 1124,
+      "width": 1024,
+      "top": 126,
+      "height": 134
+    },
+    "queryContainer": {
+      "box": {
+        "left": 100,
+        "right": 1124,
+        "width": 1024,
+        "top": 126,
+        "height": 134
+      },
+      "contentWidth": 976
+    },
+    "row": {
+      "box": {
+        "left": 223,
+        "right": 1001,
+        "width": 778,
+        "top": 196,
+        "height": 32
+      },
+      "scrollWidth": 778,
+      "clientWidth": 778,
+      "overflow": 0,
+      "itemCount": 3,
+      "lines": 1
+    },
+    "formBox": {
+      "left": 124,
+      "right": 1100,
+      "width": 976,
+      "top": 134,
+      "height": 110
+    },
+    "form": {
+      "scrollWidth": 976,
+      "clientWidth": 976,
+      "overflow": 0
+    },
+    "strip": {
+      "left": 530,
+      "right": 931,
+      "width": 401,
+      "top": 200,
+      "height": 24
+    },
+    "controls": {
+      "left": 933,
+      "right": 1001,
+      "width": 68,
+      "top": 196,
+      "height": 32,
+      "children": 3
+    },
+    "attach": {
+      "left": 223,
+      "right": 528,
+      "width": 305,
+      "top": 196,
+      "height": 32
+    },
+    "chip": {
+      "left": 267,
+      "right": 528,
+      "width": 261,
+      "top": 196,
+      "height": 32
+    },
+    "gap": 2,
+    "direction": "ltr",
+    "readingsRight": 931,
+    "readingsLeft": 530,
+    "lastReadingRight": 931,
+    "lastReadingLeft": 530,
+    "anchorDelta": 0,
+    "durationVisible": false,
+    "glyphOverlap": -2,
+    "durationShown": true,
+    "durationBox": {
+      "left": 935,
+      "right": 968.7,
+      "width": 33.7,
+      "top": 200,
+      "height": 24.7
+    },
+    "slots": [
+      {
+        "slot": "a",
+        "label": "Start recording",
+        "left": 933,
+        "right": 965,
+        "width": 32,
+        "height": 32,
+        "disabled": false
+      },
+      {
+        "slot": "b",
+        "label": "Send message",
+        "left": 969,
+        "right": 1001,
+        "width": 32,
+        "height": 32,
+        "disabled": true
+      }
+    ],
+    "sent": [],
+    "bTimeline": null,
+    "transcriptionCalls": 0,
+    "boxValue": "",
+    "controlNames": [
+      "Start recording",
+      "Send message"
+    ]
+  },
+  "preparing-fullest-w900|localOperatorDark": {
+    "id": "preparing-fullest-w900",
+    "state": "preparing",
+    "readings": [
+      {
+        "kind": "model",
+        "text": "claude-sonnet-4-5",
+        "shown": true,
+        "box": {
+          "left": 467,
+          "right": 587.1,
+          "width": 120.1,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "effort",
+        "text": "High",
+        "shown": true,
+        "box": {
+          "left": 591.1,
+          "right": 632,
+          "width": 40.9,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "context",
+        "text": "66.0%/400kestimate",
+        "shown": true,
+        "box": {
+          "left": 636,
+          "right": 802,
+          "width": 166,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "cost",
+        "text": "$190.85",
+        "shown": true,
+        "box": {
+          "left": 806,
+          "right": 868.6,
+          "width": 62.6,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "duration",
+        "text": "20h",
+        "shown": false,
+        "box": {
+          "left": 872.6,
+          "right": 906.3,
+          "width": 33.7,
+          "top": 200,
+          "height": 24.7
+        }
+      }
+    ],
+    "width": 900,
+    "measure": null,
+    "dir": null,
+    "theme": "localOperatorDark",
+    "containerBox": {
+      "left": 100,
+      "right": 1000,
+      "width": 900,
+      "top": 126,
+      "height": 134
+    },
+    "queryContainer": {
+      "box": {
+        "left": 100,
+        "right": 1000,
+        "width": 900,
+        "top": 126,
+        "height": 134
+      },
+      "contentWidth": 852
+    },
+    "row": {
+      "box": {
+        "left": 161,
+        "right": 939,
+        "width": 778,
+        "top": 196,
+        "height": 32
+      },
+      "scrollWidth": 778,
+      "clientWidth": 778,
+      "overflow": 0,
+      "itemCount": 3,
+      "lines": 1
+    },
+    "formBox": {
+      "left": 124,
+      "right": 976,
+      "width": 852,
+      "top": 134,
+      "height": 110
+    },
+    "form": {
+      "scrollWidth": 852,
+      "clientWidth": 852,
+      "overflow": 0
+    },
+    "strip": {
+      "left": 467,
+      "right": 868.6,
+      "width": 401.6,
+      "top": 200,
+      "height": 24
+    },
+    "controls": {
+      "left": 871,
+      "right": 939,
+      "width": 68,
+      "top": 196,
+      "height": 32,
+      "children": 3
+    },
+    "attach": {
+      "left": 161,
+      "right": 465,
+      "width": 304,
+      "top": 196,
+      "height": 32
+    },
+    "chip": {
+      "left": 205,
+      "right": 465,
+      "width": 260,
+      "top": 196,
+      "height": 32
+    },
+    "gap": 2.4,
+    "direction": "ltr",
+    "readingsRight": 868.6,
+    "readingsLeft": 467,
+    "lastReadingRight": 868.6,
+    "lastReadingLeft": 467,
+    "anchorDelta": 0,
+    "durationVisible": false,
+    "glyphOverlap": -2.4,
+    "durationShown": true,
+    "durationBox": {
+      "left": 872.6,
+      "right": 906.3,
+      "width": 33.7,
+      "top": 200,
+      "height": 24.7
+    },
+    "slots": [
+      {
+        "slot": "a",
+        "label": "Start recording",
+        "left": 871,
+        "right": 903,
+        "width": 32,
+        "height": 32,
+        "disabled": false
+      },
+      {
+        "slot": "b",
+        "label": "Send message",
+        "left": 907,
+        "right": 939,
+        "width": 32,
+        "height": 32,
+        "disabled": true
+      }
+    ],
+    "sent": [],
+    "bTimeline": null,
+    "transcriptionCalls": 0,
+    "boxValue": "",
+    "controlNames": [
+      "Start recording",
+      "Send message"
+    ]
+  },
+  "preparing-fullest-w900|localOperatorLight": {
+    "id": "preparing-fullest-w900",
+    "state": "preparing",
+    "readings": [
+      {
+        "kind": "model",
+        "text": "claude-sonnet-4-5",
+        "shown": true,
+        "box": {
+          "left": 467,
+          "right": 587.1,
+          "width": 120.1,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "effort",
+        "text": "High",
+        "shown": true,
+        "box": {
+          "left": 591.1,
+          "right": 632,
+          "width": 40.9,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "context",
+        "text": "66.0%/400kestimate",
+        "shown": true,
+        "box": {
+          "left": 636,
+          "right": 802,
+          "width": 166,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "cost",
+        "text": "$190.85",
+        "shown": true,
+        "box": {
+          "left": 806,
+          "right": 868.6,
+          "width": 62.6,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "duration",
+        "text": "20h",
+        "shown": false,
+        "box": {
+          "left": 872.6,
+          "right": 906.3,
+          "width": 33.7,
+          "top": 200,
+          "height": 24.7
+        }
+      }
+    ],
+    "width": 900,
+    "measure": null,
+    "dir": null,
+    "theme": "localOperatorLight",
+    "containerBox": {
+      "left": 100,
+      "right": 1000,
+      "width": 900,
+      "top": 126,
+      "height": 134
+    },
+    "queryContainer": {
+      "box": {
+        "left": 100,
+        "right": 1000,
+        "width": 900,
+        "top": 126,
+        "height": 134
+      },
+      "contentWidth": 852
+    },
+    "row": {
+      "box": {
+        "left": 161,
+        "right": 939,
+        "width": 778,
+        "top": 196,
+        "height": 32
+      },
+      "scrollWidth": 778,
+      "clientWidth": 778,
+      "overflow": 0,
+      "itemCount": 3,
+      "lines": 1
+    },
+    "formBox": {
+      "left": 124,
+      "right": 976,
+      "width": 852,
+      "top": 134,
+      "height": 110
+    },
+    "form": {
+      "scrollWidth": 852,
+      "clientWidth": 852,
+      "overflow": 0
+    },
+    "strip": {
+      "left": 467,
+      "right": 868.6,
+      "width": 401.6,
+      "top": 200,
+      "height": 24
+    },
+    "controls": {
+      "left": 871,
+      "right": 939,
+      "width": 68,
+      "top": 196,
+      "height": 32,
+      "children": 3
+    },
+    "attach": {
+      "left": 161,
+      "right": 465,
+      "width": 304,
+      "top": 196,
+      "height": 32
+    },
+    "chip": {
+      "left": 205,
+      "right": 465,
+      "width": 260,
+      "top": 196,
+      "height": 32
+    },
+    "gap": 2.4,
+    "direction": "ltr",
+    "readingsRight": 868.6,
+    "readingsLeft": 467,
+    "lastReadingRight": 868.6,
+    "lastReadingLeft": 467,
+    "anchorDelta": 0,
+    "durationVisible": false,
+    "glyphOverlap": -2.4,
+    "durationShown": true,
+    "durationBox": {
+      "left": 872.6,
+      "right": 906.3,
+      "width": 33.7,
+      "top": 200,
+      "height": 24.7
+    },
+    "slots": [
+      {
+        "slot": "a",
+        "label": "Start recording",
+        "left": 871,
+        "right": 903,
+        "width": 32,
+        "height": 32,
+        "disabled": false
+      },
+      {
+        "slot": "b",
+        "label": "Send message",
+        "left": 907,
+        "right": 939,
+        "width": 32,
+        "height": 32,
+        "disabled": true
+      }
+    ],
+    "sent": [],
+    "bTimeline": null,
+    "transcriptionCalls": 0,
+    "boxValue": "",
+    "controlNames": [
+      "Start recording",
+      "Send message"
+    ]
+  },
+  "preparing-fullest-w840|localOperatorDark": {
+    "id": "preparing-fullest-w840",
+    "state": "preparing",
+    "readings": [
+      {
+        "kind": "model",
+        "text": "claude-sonnet-4-5",
+        "shown": true,
+        "box": {
+          "left": 446,
+          "right": 548.5,
+          "width": 102.5,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "effort",
+        "text": "High",
+        "shown": true,
+        "box": {
+          "left": 552.5,
+          "right": 593.4,
+          "width": 40.9,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "context",
+        "text": "66.0%/400kestimate",
+        "shown": true,
+        "box": {
+          "left": 597.4,
+          "right": 763.4,
+          "width": 166,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "cost",
+        "text": "$190.85",
+        "shown": true,
+        "box": {
+          "left": 767.4,
+          "right": 830,
+          "width": 62.6,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "duration",
+        "text": "20h",
+        "shown": false,
+        "box": {
+          "left": 834,
+          "right": 867.7,
+          "width": 33.7,
+          "top": 200,
+          "height": 24.7
+        }
+      }
+    ],
+    "width": 840,
+    "measure": null,
+    "dir": null,
+    "theme": "localOperatorDark",
+    "containerBox": {
+      "left": 100,
+      "right": 940,
+      "width": 840,
+      "top": 126,
+      "height": 134
+    },
+    "queryContainer": {
+      "box": {
+        "left": 100,
+        "right": 940,
+        "width": 840,
+        "top": 126,
+        "height": 134
+      },
+      "contentWidth": 792
+    },
+    "row": {
+      "box": {
+        "left": 140,
+        "right": 900,
+        "width": 760,
+        "top": 196,
+        "height": 32
+      },
+      "scrollWidth": 760,
+      "clientWidth": 760,
+      "overflow": 0,
+      "itemCount": 3,
+      "lines": 1
+    },
+    "formBox": {
+      "left": 124,
+      "right": 916,
+      "width": 792,
+      "top": 134,
+      "height": 110
+    },
+    "form": {
+      "scrollWidth": 792,
+      "clientWidth": 792,
+      "overflow": 0
+    },
+    "strip": {
+      "left": 446,
+      "right": 830,
+      "width": 384,
+      "top": 200,
+      "height": 24
+    },
+    "controls": {
+      "left": 832,
+      "right": 900,
+      "width": 68,
+      "top": 196,
+      "height": 32,
+      "children": 3
+    },
+    "attach": {
+      "left": 140,
+      "right": 444,
+      "width": 304,
+      "top": 196,
+      "height": 32
+    },
+    "chip": {
+      "left": 184,
+      "right": 444,
+      "width": 260,
+      "top": 196,
+      "height": 32
+    },
+    "gap": 2,
+    "direction": "ltr",
+    "readingsRight": 830,
+    "readingsLeft": 446,
+    "lastReadingRight": 830,
+    "lastReadingLeft": 446,
+    "anchorDelta": 0,
+    "durationVisible": false,
+    "glyphOverlap": -2,
+    "durationShown": true,
+    "durationBox": {
+      "left": 834,
+      "right": 867.7,
+      "width": 33.7,
+      "top": 200,
+      "height": 24.7
+    },
+    "slots": [
+      {
+        "slot": "a",
+        "label": "Start recording",
+        "left": 832,
+        "right": 864,
+        "width": 32,
+        "height": 32,
+        "disabled": false
+      },
+      {
+        "slot": "b",
+        "label": "Send message",
+        "left": 868,
+        "right": 900,
+        "width": 32,
+        "height": 32,
+        "disabled": true
+      }
+    ],
+    "sent": [],
+    "bTimeline": null,
+    "transcriptionCalls": 0,
+    "boxValue": "",
+    "controlNames": [
+      "Start recording",
+      "Send message"
+    ]
+  },
+  "preparing-fullest-w840|localOperatorLight": {
+    "id": "preparing-fullest-w840",
+    "state": "preparing",
+    "readings": [
+      {
+        "kind": "model",
+        "text": "claude-sonnet-4-5",
+        "shown": true,
+        "box": {
+          "left": 446,
+          "right": 548.5,
+          "width": 102.5,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "effort",
+        "text": "High",
+        "shown": true,
+        "box": {
+          "left": 552.5,
+          "right": 593.4,
+          "width": 40.9,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "context",
+        "text": "66.0%/400kestimate",
+        "shown": true,
+        "box": {
+          "left": 597.4,
+          "right": 763.4,
+          "width": 166,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "cost",
+        "text": "$190.85",
+        "shown": true,
+        "box": {
+          "left": 767.4,
+          "right": 830,
+          "width": 62.6,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "duration",
+        "text": "20h",
+        "shown": false,
+        "box": {
+          "left": 834,
+          "right": 867.7,
+          "width": 33.7,
+          "top": 200,
+          "height": 24.7
+        }
+      }
+    ],
+    "width": 840,
+    "measure": null,
+    "dir": null,
+    "theme": "localOperatorLight",
+    "containerBox": {
+      "left": 100,
+      "right": 940,
+      "width": 840,
+      "top": 126,
+      "height": 134
+    },
+    "queryContainer": {
+      "box": {
+        "left": 100,
+        "right": 940,
+        "width": 840,
+        "top": 126,
+        "height": 134
+      },
+      "contentWidth": 792
+    },
+    "row": {
+      "box": {
+        "left": 140,
+        "right": 900,
+        "width": 760,
+        "top": 196,
+        "height": 32
+      },
+      "scrollWidth": 760,
+      "clientWidth": 760,
+      "overflow": 0,
+      "itemCount": 3,
+      "lines": 1
+    },
+    "formBox": {
+      "left": 124,
+      "right": 916,
+      "width": 792,
+      "top": 134,
+      "height": 110
+    },
+    "form": {
+      "scrollWidth": 792,
+      "clientWidth": 792,
+      "overflow": 0
+    },
+    "strip": {
+      "left": 446,
+      "right": 830,
+      "width": 384,
+      "top": 200,
+      "height": 24
+    },
+    "controls": {
+      "left": 832,
+      "right": 900,
+      "width": 68,
+      "top": 196,
+      "height": 32,
+      "children": 3
+    },
+    "attach": {
+      "left": 140,
+      "right": 444,
+      "width": 304,
+      "top": 196,
+      "height": 32
+    },
+    "chip": {
+      "left": 184,
+      "right": 444,
+      "width": 260,
+      "top": 196,
+      "height": 32
+    },
+    "gap": 2,
+    "direction": "ltr",
+    "readingsRight": 830,
+    "readingsLeft": 446,
+    "lastReadingRight": 830,
+    "lastReadingLeft": 446,
+    "anchorDelta": 0,
+    "durationVisible": false,
+    "glyphOverlap": -2,
+    "durationShown": true,
+    "durationBox": {
+      "left": 834,
+      "right": 867.7,
+      "width": 33.7,
+      "top": 200,
+      "height": 24.7
+    },
+    "slots": [
+      {
+        "slot": "a",
+        "label": "Start recording",
+        "left": 832,
+        "right": 864,
+        "width": 32,
+        "height": 32,
+        "disabled": false
+      },
+      {
+        "slot": "b",
+        "label": "Send message",
+        "left": 868,
+        "right": 900,
+        "width": 32,
+        "height": 32,
+        "disabled": true
+      }
+    ],
+    "sent": [],
+    "bTimeline": null,
+    "transcriptionCalls": 0,
+    "boxValue": "",
+    "controlNames": [
+      "Start recording",
+      "Send message"
+    ]
+  },
+  "preparing-fullest-w780|localOperatorDark": {
+    "id": "preparing-fullest-w780",
+    "state": "preparing",
+    "readings": [
+      {
+        "kind": "model",
+        "text": "claude-sonnet-4-5",
+        "shown": true,
+        "box": {
+          "left": 446,
+          "right": 533.4,
+          "width": 87.4,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "effort",
+        "text": "High",
+        "shown": false,
+        "box": {
+          "left": 0,
+          "right": 0,
+          "width": 0,
+          "top": 0,
+          "height": 0
+        }
+      },
+      {
+        "kind": "context",
+        "text": "66.0%/400kestimate",
+        "shown": true,
+        "box": {
+          "left": 537.4,
+          "right": 703.4,
+          "width": 166,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "cost",
+        "text": "$190.85",
+        "shown": true,
+        "box": {
+          "left": 707.4,
+          "right": 770,
+          "width": 62.6,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "duration",
+        "text": "20h",
+        "shown": false,
+        "box": {
+          "left": 774,
+          "right": 807.7,
+          "width": 33.7,
+          "top": 200,
+          "height": 24.7
+        }
+      }
+    ],
+    "width": 780,
+    "measure": null,
+    "dir": null,
+    "theme": "localOperatorDark",
+    "containerBox": {
+      "left": 100,
+      "right": 880,
+      "width": 780,
+      "top": 126,
+      "height": 134
+    },
+    "queryContainer": {
+      "box": {
+        "left": 100,
+        "right": 880,
+        "width": 780,
+        "top": 126,
+        "height": 134
+      },
+      "contentWidth": 732
+    },
+    "row": {
+      "box": {
+        "left": 140,
+        "right": 840,
+        "width": 700,
+        "top": 196,
+        "height": 32
+      },
+      "scrollWidth": 700,
+      "clientWidth": 700,
+      "overflow": 0,
+      "itemCount": 3,
+      "lines": 1
+    },
+    "formBox": {
+      "left": 124,
+      "right": 856,
+      "width": 732,
+      "top": 134,
+      "height": 110
+    },
+    "form": {
+      "scrollWidth": 732,
+      "clientWidth": 732,
+      "overflow": 0
+    },
+    "strip": {
+      "left": 446,
+      "right": 770,
+      "width": 324,
+      "top": 200,
+      "height": 24
+    },
+    "controls": {
+      "left": 772,
+      "right": 840,
+      "width": 68,
+      "top": 196,
+      "height": 32,
+      "children": 3
+    },
+    "attach": {
+      "left": 140,
+      "right": 444,
+      "width": 304,
+      "top": 196,
+      "height": 32
+    },
+    "chip": {
+      "left": 184,
+      "right": 444,
+      "width": 260,
+      "top": 196,
+      "height": 32
+    },
+    "gap": 2,
+    "direction": "ltr",
+    "readingsRight": 770,
+    "readingsLeft": 446,
+    "lastReadingRight": 770,
+    "lastReadingLeft": 446,
+    "anchorDelta": 0,
+    "durationVisible": false,
+    "glyphOverlap": -2,
+    "durationShown": true,
+    "durationBox": {
+      "left": 774,
+      "right": 807.7,
+      "width": 33.7,
+      "top": 200,
+      "height": 24.7
+    },
+    "slots": [
+      {
+        "slot": "a",
+        "label": "Start recording",
+        "left": 772,
+        "right": 804,
+        "width": 32,
+        "height": 32,
+        "disabled": false
+      },
+      {
+        "slot": "b",
+        "label": "Send message",
+        "left": 808,
+        "right": 840,
+        "width": 32,
+        "height": 32,
+        "disabled": true
+      }
+    ],
+    "sent": [],
+    "bTimeline": null,
+    "transcriptionCalls": 0,
+    "boxValue": "",
+    "controlNames": [
+      "Start recording",
+      "Send message"
+    ]
+  },
+  "preparing-fullest-w780|localOperatorLight": {
+    "id": "preparing-fullest-w780",
+    "state": "preparing",
+    "readings": [
+      {
+        "kind": "model",
+        "text": "claude-sonnet-4-5",
+        "shown": true,
+        "box": {
+          "left": 446,
+          "right": 533.4,
+          "width": 87.4,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "effort",
+        "text": "High",
+        "shown": false,
+        "box": {
+          "left": 0,
+          "right": 0,
+          "width": 0,
+          "top": 0,
+          "height": 0
+        }
+      },
+      {
+        "kind": "context",
+        "text": "66.0%/400kestimate",
+        "shown": true,
+        "box": {
+          "left": 537.4,
+          "right": 703.4,
+          "width": 166,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "cost",
+        "text": "$190.85",
+        "shown": true,
+        "box": {
+          "left": 707.4,
+          "right": 770,
+          "width": 62.6,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "duration",
+        "text": "20h",
+        "shown": false,
+        "box": {
+          "left": 774,
+          "right": 807.7,
+          "width": 33.7,
+          "top": 200,
+          "height": 24.7
+        }
+      }
+    ],
+    "width": 780,
+    "measure": null,
+    "dir": null,
+    "theme": "localOperatorLight",
+    "containerBox": {
+      "left": 100,
+      "right": 880,
+      "width": 780,
+      "top": 126,
+      "height": 134
+    },
+    "queryContainer": {
+      "box": {
+        "left": 100,
+        "right": 880,
+        "width": 780,
+        "top": 126,
+        "height": 134
+      },
+      "contentWidth": 732
+    },
+    "row": {
+      "box": {
+        "left": 140,
+        "right": 840,
+        "width": 700,
+        "top": 196,
+        "height": 32
+      },
+      "scrollWidth": 700,
+      "clientWidth": 700,
+      "overflow": 0,
+      "itemCount": 3,
+      "lines": 1
+    },
+    "formBox": {
+      "left": 124,
+      "right": 856,
+      "width": 732,
+      "top": 134,
+      "height": 110
+    },
+    "form": {
+      "scrollWidth": 732,
+      "clientWidth": 732,
+      "overflow": 0
+    },
+    "strip": {
+      "left": 446,
+      "right": 770,
+      "width": 324,
+      "top": 200,
+      "height": 24
+    },
+    "controls": {
+      "left": 772,
+      "right": 840,
+      "width": 68,
+      "top": 196,
+      "height": 32,
+      "children": 3
+    },
+    "attach": {
+      "left": 140,
+      "right": 444,
+      "width": 304,
+      "top": 196,
+      "height": 32
+    },
+    "chip": {
+      "left": 184,
+      "right": 444,
+      "width": 260,
+      "top": 196,
+      "height": 32
+    },
+    "gap": 2,
+    "direction": "ltr",
+    "readingsRight": 770,
+    "readingsLeft": 446,
+    "lastReadingRight": 770,
+    "lastReadingLeft": 446,
+    "anchorDelta": 0,
+    "durationVisible": false,
+    "glyphOverlap": -2,
+    "durationShown": true,
+    "durationBox": {
+      "left": 774,
+      "right": 807.7,
+      "width": 33.7,
+      "top": 200,
+      "height": 24.7
+    },
+    "slots": [
+      {
+        "slot": "a",
+        "label": "Start recording",
+        "left": 772,
+        "right": 804,
+        "width": 32,
+        "height": 32,
+        "disabled": false
+      },
+      {
+        "slot": "b",
+        "label": "Send message",
+        "left": 808,
+        "right": 840,
+        "width": 32,
+        "height": 32,
+        "disabled": true
+      }
+    ],
+    "sent": [],
+    "bTimeline": null,
+    "transcriptionCalls": 0,
+    "boxValue": "",
+    "controlNames": [
+      "Start recording",
+      "Send message"
+    ]
+  },
+  "preparing-fullest-w720|localOperatorDark": {
+    "id": "preparing-fullest-w720",
+    "state": "preparing",
+    "readings": [
+      {
+        "kind": "model",
+        "text": "claude-sonnet-4-5",
+        "shown": true,
+        "box": {
+          "left": 446,
+          "right": 540,
+          "width": 94,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "effort",
+        "text": "High",
+        "shown": false,
+        "box": {
+          "left": 0,
+          "right": 0,
+          "width": 0,
+          "top": 0,
+          "height": 0
+        }
+      },
+      {
+        "kind": "context",
+        "text": "66.0%/400kestimate",
+        "shown": true,
+        "box": {
+          "left": 544,
+          "right": 710,
+          "width": 166,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "cost",
+        "text": "$190.85",
+        "shown": false,
+        "box": {
+          "left": 0,
+          "right": 0,
+          "width": 0,
+          "top": 0,
+          "height": 0
+        }
+      },
+      {
+        "kind": "duration",
+        "text": "20h",
+        "shown": false,
+        "box": {
+          "left": 714,
+          "right": 747.7,
+          "width": 33.7,
+          "top": 200,
+          "height": 24.7
+        }
+      }
+    ],
+    "width": 720,
+    "measure": null,
+    "dir": null,
+    "theme": "localOperatorDark",
+    "containerBox": {
+      "left": 100,
+      "right": 820,
+      "width": 720,
+      "top": 126,
+      "height": 134
+    },
+    "queryContainer": {
+      "box": {
+        "left": 100,
+        "right": 820,
+        "width": 720,
+        "top": 126,
+        "height": 134
+      },
+      "contentWidth": 672
+    },
+    "row": {
+      "box": {
+        "left": 140,
+        "right": 780,
+        "width": 640,
+        "top": 196,
+        "height": 32
+      },
+      "scrollWidth": 640,
+      "clientWidth": 640,
+      "overflow": 0,
+      "itemCount": 3,
+      "lines": 1
+    },
+    "formBox": {
+      "left": 124,
+      "right": 796,
+      "width": 672,
+      "top": 134,
+      "height": 110
+    },
+    "form": {
+      "scrollWidth": 672,
+      "clientWidth": 672,
+      "overflow": 0
+    },
+    "strip": {
+      "left": 446,
+      "right": 710,
+      "width": 264,
+      "top": 200,
+      "height": 24
+    },
+    "controls": {
+      "left": 712,
+      "right": 780,
+      "width": 68,
+      "top": 196,
+      "height": 32,
+      "children": 3
+    },
+    "attach": {
+      "left": 140,
+      "right": 444,
+      "width": 304,
+      "top": 196,
+      "height": 32
+    },
+    "chip": {
+      "left": 184,
+      "right": 444,
+      "width": 260,
+      "top": 196,
+      "height": 32
+    },
+    "gap": 2,
+    "direction": "ltr",
+    "readingsRight": 710,
+    "readingsLeft": 446,
+    "lastReadingRight": 710,
+    "lastReadingLeft": 446,
+    "anchorDelta": 0,
+    "durationVisible": false,
+    "glyphOverlap": -2,
+    "durationShown": true,
+    "durationBox": {
+      "left": 714,
+      "right": 747.7,
+      "width": 33.7,
+      "top": 200,
+      "height": 24.7
+    },
+    "slots": [
+      {
+        "slot": "a",
+        "label": "Start recording",
+        "left": 712,
+        "right": 744,
+        "width": 32,
+        "height": 32,
+        "disabled": false
+      },
+      {
+        "slot": "b",
+        "label": "Send message",
+        "left": 748,
+        "right": 780,
+        "width": 32,
+        "height": 32,
+        "disabled": true
+      }
+    ],
+    "sent": [],
+    "bTimeline": null,
+    "transcriptionCalls": 0,
+    "boxValue": "",
+    "controlNames": [
+      "Start recording",
+      "Send message"
+    ]
+  },
+  "preparing-fullest-w720|localOperatorLight": {
+    "id": "preparing-fullest-w720",
+    "state": "preparing",
+    "readings": [
+      {
+        "kind": "model",
+        "text": "claude-sonnet-4-5",
+        "shown": true,
+        "box": {
+          "left": 446,
+          "right": 540,
+          "width": 94,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "effort",
+        "text": "High",
+        "shown": false,
+        "box": {
+          "left": 0,
+          "right": 0,
+          "width": 0,
+          "top": 0,
+          "height": 0
+        }
+      },
+      {
+        "kind": "context",
+        "text": "66.0%/400kestimate",
+        "shown": true,
+        "box": {
+          "left": 544,
+          "right": 710,
+          "width": 166,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "cost",
+        "text": "$190.85",
+        "shown": false,
+        "box": {
+          "left": 0,
+          "right": 0,
+          "width": 0,
+          "top": 0,
+          "height": 0
+        }
+      },
+      {
+        "kind": "duration",
+        "text": "20h",
+        "shown": false,
+        "box": {
+          "left": 714,
+          "right": 747.7,
+          "width": 33.7,
+          "top": 200,
+          "height": 24.7
+        }
+      }
+    ],
+    "width": 720,
+    "measure": null,
+    "dir": null,
+    "theme": "localOperatorLight",
+    "containerBox": {
+      "left": 100,
+      "right": 820,
+      "width": 720,
+      "top": 126,
+      "height": 134
+    },
+    "queryContainer": {
+      "box": {
+        "left": 100,
+        "right": 820,
+        "width": 720,
+        "top": 126,
+        "height": 134
+      },
+      "contentWidth": 672
+    },
+    "row": {
+      "box": {
+        "left": 140,
+        "right": 780,
+        "width": 640,
+        "top": 196,
+        "height": 32
+      },
+      "scrollWidth": 640,
+      "clientWidth": 640,
+      "overflow": 0,
+      "itemCount": 3,
+      "lines": 1
+    },
+    "formBox": {
+      "left": 124,
+      "right": 796,
+      "width": 672,
+      "top": 134,
+      "height": 110
+    },
+    "form": {
+      "scrollWidth": 672,
+      "clientWidth": 672,
+      "overflow": 0
+    },
+    "strip": {
+      "left": 446,
+      "right": 710,
+      "width": 264,
+      "top": 200,
+      "height": 24
+    },
+    "controls": {
+      "left": 712,
+      "right": 780,
+      "width": 68,
+      "top": 196,
+      "height": 32,
+      "children": 3
+    },
+    "attach": {
+      "left": 140,
+      "right": 444,
+      "width": 304,
+      "top": 196,
+      "height": 32
+    },
+    "chip": {
+      "left": 184,
+      "right": 444,
+      "width": 260,
+      "top": 196,
+      "height": 32
+    },
+    "gap": 2,
+    "direction": "ltr",
+    "readingsRight": 710,
+    "readingsLeft": 446,
+    "lastReadingRight": 710,
+    "lastReadingLeft": 446,
+    "anchorDelta": 0,
+    "durationVisible": false,
+    "glyphOverlap": -2,
+    "durationShown": true,
+    "durationBox": {
+      "left": 714,
+      "right": 747.7,
+      "width": 33.7,
+      "top": 200,
+      "height": 24.7
+    },
+    "slots": [
+      {
+        "slot": "a",
+        "label": "Start recording",
+        "left": 712,
+        "right": 744,
+        "width": 32,
+        "height": 32,
+        "disabled": false
+      },
+      {
+        "slot": "b",
+        "label": "Send message",
+        "left": 748,
+        "right": 780,
+        "width": 32,
+        "height": 32,
+        "disabled": true
+      }
+    ],
+    "sent": [],
+    "bTimeline": null,
+    "transcriptionCalls": 0,
+    "boxValue": "",
+    "controlNames": [
+      "Start recording",
+      "Send message"
+    ]
+  },
+  "preparing-fullest-w700|localOperatorDark": {
+    "id": "preparing-fullest-w700",
+    "state": "preparing",
+    "readings": [
+      {
+        "kind": "model",
+        "text": "claude-sonnet-4-5",
+        "shown": true,
+        "box": {
+          "left": 446,
+          "right": 520,
+          "width": 74,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "effort",
+        "text": "High",
+        "shown": false,
+        "box": {
+          "left": 0,
+          "right": 0,
+          "width": 0,
+          "top": 0,
+          "height": 0
+        }
+      },
+      {
+        "kind": "context",
+        "text": "66.0%/400kestimate",
+        "shown": true,
+        "box": {
+          "left": 524,
+          "right": 690,
+          "width": 166,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "cost",
+        "text": "$190.85",
+        "shown": false,
+        "box": {
+          "left": 0,
+          "right": 0,
+          "width": 0,
+          "top": 0,
+          "height": 0
+        }
+      },
+      {
+        "kind": "duration",
+        "text": "20h",
+        "shown": false,
+        "box": {
+          "left": 694,
+          "right": 727.7,
+          "width": 33.7,
+          "top": 200,
+          "height": 24.7
+        }
+      }
+    ],
+    "width": 700,
+    "measure": null,
+    "dir": null,
+    "theme": "localOperatorDark",
+    "containerBox": {
+      "left": 100,
+      "right": 800,
+      "width": 700,
+      "top": 126,
+      "height": 134
+    },
+    "queryContainer": {
+      "box": {
+        "left": 100,
+        "right": 800,
+        "width": 700,
+        "top": 126,
+        "height": 134
+      },
+      "contentWidth": 652
+    },
+    "row": {
+      "box": {
+        "left": 140,
+        "right": 760,
+        "width": 620,
+        "top": 196,
+        "height": 32
+      },
+      "scrollWidth": 620,
+      "clientWidth": 620,
+      "overflow": 0,
+      "itemCount": 3,
+      "lines": 1
+    },
+    "formBox": {
+      "left": 124,
+      "right": 776,
+      "width": 652,
+      "top": 134,
+      "height": 110
+    },
+    "form": {
+      "scrollWidth": 652,
+      "clientWidth": 652,
+      "overflow": 0
+    },
+    "strip": {
+      "left": 446,
+      "right": 690,
+      "width": 244,
+      "top": 200,
+      "height": 24
+    },
+    "controls": {
+      "left": 692,
+      "right": 760,
+      "width": 68,
+      "top": 196,
+      "height": 32,
+      "children": 3
+    },
+    "attach": {
+      "left": 140,
+      "right": 444,
+      "width": 304,
+      "top": 196,
+      "height": 32
+    },
+    "chip": {
+      "left": 184,
+      "right": 444,
+      "width": 260,
+      "top": 196,
+      "height": 32
+    },
+    "gap": 2,
+    "direction": "ltr",
+    "readingsRight": 690,
+    "readingsLeft": 446,
+    "lastReadingRight": 690,
+    "lastReadingLeft": 446,
+    "anchorDelta": 0,
+    "durationVisible": false,
+    "glyphOverlap": -2,
+    "durationShown": true,
+    "durationBox": {
+      "left": 694,
+      "right": 727.7,
+      "width": 33.7,
+      "top": 200,
+      "height": 24.7
+    },
+    "slots": [
+      {
+        "slot": "a",
+        "label": "Start recording",
+        "left": 692,
+        "right": 724,
+        "width": 32,
+        "height": 32,
+        "disabled": false
+      },
+      {
+        "slot": "b",
+        "label": "Send message",
+        "left": 728,
+        "right": 760,
+        "width": 32,
+        "height": 32,
+        "disabled": true
+      }
+    ],
+    "sent": [],
+    "bTimeline": null,
+    "transcriptionCalls": 0,
+    "boxValue": "",
+    "controlNames": [
+      "Start recording",
+      "Send message"
+    ]
+  },
+  "preparing-fullest-w700|localOperatorLight": {
+    "id": "preparing-fullest-w700",
+    "state": "preparing",
+    "readings": [
+      {
+        "kind": "model",
+        "text": "claude-sonnet-4-5",
+        "shown": true,
+        "box": {
+          "left": 446,
+          "right": 520,
+          "width": 74,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "effort",
+        "text": "High",
+        "shown": false,
+        "box": {
+          "left": 0,
+          "right": 0,
+          "width": 0,
+          "top": 0,
+          "height": 0
+        }
+      },
+      {
+        "kind": "context",
+        "text": "66.0%/400kestimate",
+        "shown": true,
+        "box": {
+          "left": 524,
+          "right": 690,
+          "width": 166,
+          "top": 200,
+          "height": 24
+        }
+      },
+      {
+        "kind": "cost",
+        "text": "$190.85",
+        "shown": false,
+        "box": {
+          "left": 0,
+          "right": 0,
+          "width": 0,
+          "top": 0,
+          "height": 0
+        }
+      },
+      {
+        "kind": "duration",
+        "text": "20h",
+        "shown": false,
+        "box": {
+          "left": 694,
+          "right": 727.7,
+          "width": 33.7,
+          "top": 200,
+          "height": 24.7
+        }
+      }
+    ],
+    "width": 700,
+    "measure": null,
+    "dir": null,
+    "theme": "localOperatorLight",
+    "containerBox": {
+      "left": 100,
+      "right": 800,
+      "width": 700,
+      "top": 126,
+      "height": 134
+    },
+    "queryContainer": {
+      "box": {
+        "left": 100,
+        "right": 800,
+        "width": 700,
+        "top": 126,
+        "height": 134
+      },
+      "contentWidth": 652
+    },
+    "row": {
+      "box": {
+        "left": 140,
+        "right": 760,
+        "width": 620,
+        "top": 196,
+        "height": 32
+      },
+      "scrollWidth": 620,
+      "clientWidth": 620,
+      "overflow": 0,
+      "itemCount": 3,
+      "lines": 1
+    },
+    "formBox": {
+      "left": 124,
+      "right": 776,
+      "width": 652,
+      "top": 134,
+      "height": 110
+    },
+    "form": {
+      "scrollWidth": 652,
+      "clientWidth": 652,
+      "overflow": 0
+    },
+    "strip": {
+      "left": 446,
+      "right": 690,
+      "width": 244,
+      "top": 200,
+      "height": 24
+    },
+    "controls": {
+      "left": 692,
+      "right": 760,
+      "width": 68,
+      "top": 196,
+      "height": 32,
+      "children": 3
+    },
+    "attach": {
+      "left": 140,
+      "right": 444,
+      "width": 304,
+      "top": 196,
+      "height": 32
+    },
+    "chip": {
+      "left": 184,
+      "right": 444,
+      "width": 260,
+      "top": 196,
+      "height": 32
+    },
+    "gap": 2,
+    "direction": "ltr",
+    "readingsRight": 690,
+    "readingsLeft": 446,
+    "lastReadingRight": 690,
+    "lastReadingLeft": 446,
+    "anchorDelta": 0,
+    "durationVisible": false,
+    "glyphOverlap": -2,
+    "durationShown": true,
+    "durationBox": {
+      "left": 694,
+      "right": 727.7,
+      "width": 33.7,
+      "top": 200,
+      "height": 24.7
+    },
+    "slots": [
+      {
+        "slot": "a",
+        "label": "Start recording",
+        "left": 692,
+        "right": 724,
+        "width": 32,
+        "height": 32,
+        "disabled": false
+      },
+      {
+        "slot": "b",
+        "label": "Send message",
+        "left": 728,
+        "right": 760,
+        "width": 32,
+        "height": 32,
+        "disabled": true
+      }
+    ],
+    "sent": [],
+    "bTimeline": null,
+    "transcriptionCalls": 0,
+    "boxValue": "",
+    "controlNames": [
+      "Start recording",
+      "Send message"
+    ]
+  }
+}

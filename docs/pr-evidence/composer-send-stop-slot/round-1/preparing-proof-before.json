@@ -1,0 +1,1088 @@
+{
+  "tree": "before",
+  "groups": [
+    {
+      "key": "1024|localOperatorDark|plain",
+      "idleA": 933,
+      "idleB": 969,
+      "states": [
+        {
+          "state": "idle",
+          "boxes": 2,
+          "slotA": {
+            "label": "Start recording",
+            "left": 933
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 969
+          },
+          "clusterWidth": 68,
+          "aEqualsIdle": true,
+          "bEqualsIdle": true,
+          "rowOverflow": 0,
+          "sent": 0,
+          "boxValue": ""
+        },
+        {
+          "state": "preparing",
+          "boxes": 2,
+          "slotA": {
+            "label": "Start recording",
+            "left": 938.9
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 974.9
+          },
+          "clusterWidth": 178.7,
+          "aEqualsIdle": false,
+          "bEqualsIdle": false,
+          "rowOverflow": 6,
+          "sent": 0,
+          "boxValue": ""
+        }
+      ]
+    },
+    {
+      "key": "1024|localOperatorLight|plain",
+      "idleA": 933,
+      "idleB": 969,
+      "states": [
+        {
+          "state": "idle",
+          "boxes": 2,
+          "slotA": {
+            "label": "Start recording",
+            "left": 933
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 969
+          },
+          "clusterWidth": 68,
+          "aEqualsIdle": true,
+          "bEqualsIdle": true,
+          "rowOverflow": 0,
+          "sent": 0,
+          "boxValue": ""
+        },
+        {
+          "state": "preparing",
+          "boxes": 2,
+          "slotA": {
+            "label": "Start recording",
+            "left": 938.9
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 974.9
+          },
+          "clusterWidth": 178.7,
+          "aEqualsIdle": false,
+          "bEqualsIdle": false,
+          "rowOverflow": 6,
+          "sent": 0,
+          "boxValue": ""
+        }
+      ]
+    },
+    {
+      "key": "900|localOperatorDark|plain",
+      "idleA": 871,
+      "idleB": 907,
+      "states": [
+        {
+          "state": "idle",
+          "boxes": 2,
+          "slotA": {
+            "label": "Start recording",
+            "left": 871
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 907
+          },
+          "clusterWidth": 68,
+          "aEqualsIdle": true,
+          "bEqualsIdle": true,
+          "rowOverflow": 0,
+          "sent": 0,
+          "boxValue": ""
+        },
+        {
+          "state": "preparing",
+          "boxes": 2,
+          "slotA": {
+            "label": "Start recording",
+            "left": 876.5
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 912.5
+          },
+          "clusterWidth": 179.1,
+          "aEqualsIdle": false,
+          "bEqualsIdle": false,
+          "rowOverflow": 6,
+          "sent": 0,
+          "boxValue": ""
+        }
+      ]
+    },
+    {
+      "key": "900|localOperatorLight|plain",
+      "idleA": 871,
+      "idleB": 907,
+      "states": [
+        {
+          "state": "idle",
+          "boxes": 2,
+          "slotA": {
+            "label": "Start recording",
+            "left": 871
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 907
+          },
+          "clusterWidth": 68,
+          "aEqualsIdle": true,
+          "bEqualsIdle": true,
+          "rowOverflow": 0,
+          "sent": 0,
+          "boxValue": ""
+        },
+        {
+          "state": "preparing",
+          "boxes": 2,
+          "slotA": {
+            "label": "Start recording",
+            "left": 876.5
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 912.5
+          },
+          "clusterWidth": 179.1,
+          "aEqualsIdle": false,
+          "bEqualsIdle": false,
+          "rowOverflow": 6,
+          "sent": 0,
+          "boxValue": ""
+        }
+      ]
+    },
+    {
+      "key": "840|localOperatorDark|plain",
+      "idleA": 832,
+      "idleB": 868,
+      "states": [
+        {
+          "state": "idle",
+          "boxes": 2,
+          "slotA": {
+            "label": "Start recording",
+            "left": 832
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 868
+          },
+          "clusterWidth": 68,
+          "aEqualsIdle": true,
+          "bEqualsIdle": true,
+          "rowOverflow": 0,
+          "sent": 0,
+          "boxValue": ""
+        },
+        {
+          "state": "preparing",
+          "boxes": 2,
+          "slotA": {
+            "label": "Start recording",
+            "left": 844.4
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 880.4
+          },
+          "clusterWidth": 172.2,
+          "aEqualsIdle": false,
+          "bEqualsIdle": false,
+          "rowOverflow": 12,
+          "sent": 0,
+          "boxValue": ""
+        }
+      ]
+    },
+    {
+      "key": "840|localOperatorLight|plain",
+      "idleA": 832,
+      "idleB": 868,
+      "states": [
+        {
+          "state": "idle",
+          "boxes": 2,
+          "slotA": {
+            "label": "Start recording",
+            "left": 832
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 868
+          },
+          "clusterWidth": 68,
+          "aEqualsIdle": true,
+          "bEqualsIdle": true,
+          "rowOverflow": 0,
+          "sent": 0,
+          "boxValue": ""
+        },
+        {
+          "state": "preparing",
+          "boxes": 2,
+          "slotA": {
+            "label": "Start recording",
+            "left": 844.4
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 880.4
+          },
+          "clusterWidth": 172.2,
+          "aEqualsIdle": false,
+          "bEqualsIdle": false,
+          "rowOverflow": 12,
+          "sent": 0,
+          "boxValue": ""
+        }
+      ]
+    },
+    {
+      "key": "780|localOperatorDark|plain",
+      "idleA": 772,
+      "idleB": 808,
+      "states": [
+        {
+          "state": "idle",
+          "boxes": 2,
+          "slotA": {
+            "label": "Start recording",
+            "left": 772
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 808
+          },
+          "clusterWidth": 68,
+          "aEqualsIdle": true,
+          "bEqualsIdle": true,
+          "rowOverflow": 0,
+          "sent": 0,
+          "boxValue": ""
+        },
+        {
+          "state": "preparing",
+          "boxes": 2,
+          "slotA": {
+            "label": "Start recording",
+            "left": 786.4
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 822.4
+          },
+          "clusterWidth": 170.2,
+          "aEqualsIdle": false,
+          "bEqualsIdle": false,
+          "rowOverflow": 14,
+          "sent": 0,
+          "boxValue": ""
+        }
+      ]
+    },
+    {
+      "key": "780|localOperatorLight|plain",
+      "idleA": 772,
+      "idleB": 808,
+      "states": [
+        {
+          "state": "idle",
+          "boxes": 2,
+          "slotA": {
+            "label": "Start recording",
+            "left": 772
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 808
+          },
+          "clusterWidth": 68,
+          "aEqualsIdle": true,
+          "bEqualsIdle": true,
+          "rowOverflow": 0,
+          "sent": 0,
+          "boxValue": ""
+        },
+        {
+          "state": "preparing",
+          "boxes": 2,
+          "slotA": {
+            "label": "Start recording",
+            "left": 786.4
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 822.4
+          },
+          "clusterWidth": 170.2,
+          "aEqualsIdle": false,
+          "bEqualsIdle": false,
+          "rowOverflow": 14,
+          "sent": 0,
+          "boxValue": ""
+        }
+      ]
+    },
+    {
+      "key": "720|localOperatorDark|plain",
+      "idleA": 712,
+      "idleB": 748,
+      "states": [
+        {
+          "state": "idle",
+          "boxes": 2,
+          "slotA": {
+            "label": "Start recording",
+            "left": 712
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 748
+          },
+          "clusterWidth": 68,
+          "aEqualsIdle": true,
+          "bEqualsIdle": true,
+          "rowOverflow": 0,
+          "sent": 0,
+          "boxValue": ""
+        },
+        {
+          "state": "preparing",
+          "boxes": 2,
+          "slotA": {
+            "label": "Start recording",
+            "left": 729
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 765
+          },
+          "clusterWidth": 167.6,
+          "aEqualsIdle": false,
+          "bEqualsIdle": false,
+          "rowOverflow": 17,
+          "sent": 0,
+          "boxValue": ""
+        }
+      ]
+    },
+    {
+      "key": "720|localOperatorLight|plain",
+      "idleA": 712,
+      "idleB": 748,
+      "states": [
+        {
+          "state": "idle",
+          "boxes": 2,
+          "slotA": {
+            "label": "Start recording",
+            "left": 712
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 748
+          },
+          "clusterWidth": 68,
+          "aEqualsIdle": true,
+          "bEqualsIdle": true,
+          "rowOverflow": 0,
+          "sent": 0,
+          "boxValue": ""
+        },
+        {
+          "state": "preparing",
+          "boxes": 2,
+          "slotA": {
+            "label": "Start recording",
+            "left": 729
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 765
+          },
+          "clusterWidth": 167.6,
+          "aEqualsIdle": false,
+          "bEqualsIdle": false,
+          "rowOverflow": 17,
+          "sent": 0,
+          "boxValue": ""
+        }
+      ]
+    },
+    {
+      "key": "700|localOperatorDark|plain",
+      "idleA": 692,
+      "idleB": 728,
+      "states": [
+        {
+          "state": "idle",
+          "boxes": 2,
+          "slotA": {
+            "label": "Start recording",
+            "left": 692
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 728
+          },
+          "clusterWidth": 68,
+          "aEqualsIdle": true,
+          "bEqualsIdle": true,
+          "rowOverflow": 0,
+          "sent": 0,
+          "boxValue": ""
+        },
+        {
+          "state": "preparing",
+          "boxes": 2,
+          "slotA": {
+            "label": "Start recording",
+            "left": 719.1
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 755.1
+          },
+          "clusterWidth": 157.5,
+          "aEqualsIdle": false,
+          "bEqualsIdle": false,
+          "rowOverflow": 27,
+          "sent": 0,
+          "boxValue": ""
+        }
+      ]
+    },
+    {
+      "key": "700|localOperatorLight|plain",
+      "idleA": 692,
+      "idleB": 728,
+      "states": [
+        {
+          "state": "idle",
+          "boxes": 2,
+          "slotA": {
+            "label": "Start recording",
+            "left": 692
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 728
+          },
+          "clusterWidth": 68,
+          "aEqualsIdle": true,
+          "bEqualsIdle": true,
+          "rowOverflow": 0,
+          "sent": 0,
+          "boxValue": ""
+        },
+        {
+          "state": "preparing",
+          "boxes": 2,
+          "slotA": {
+            "label": "Start recording",
+            "left": 719.1
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 755.1
+          },
+          "clusterWidth": 157.5,
+          "aEqualsIdle": false,
+          "bEqualsIdle": false,
+          "rowOverflow": 27,
+          "sent": 0,
+          "boxValue": ""
+        }
+      ]
+    },
+    {
+      "key": "1024|localOperatorDark|fullest",
+      "idleA": 933,
+      "idleB": 969,
+      "states": [
+        {
+          "state": "idle",
+          "boxes": 2,
+          "slotA": {
+            "label": "Start recording",
+            "left": 933
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 969
+          },
+          "clusterWidth": 68,
+          "aEqualsIdle": true,
+          "bEqualsIdle": true,
+          "rowOverflow": 0,
+          "sent": 0,
+          "boxValue": ""
+        },
+        {
+          "state": "preparing",
+          "boxes": 2,
+          "slotA": {
+            "label": "Start recording",
+            "left": 969.9
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 1005.9
+          },
+          "clusterWidth": 147.7,
+          "aEqualsIdle": false,
+          "bEqualsIdle": false,
+          "rowOverflow": 37,
+          "sent": 0,
+          "boxValue": ""
+        }
+      ]
+    },
+    {
+      "key": "1024|localOperatorLight|fullest",
+      "idleA": 933,
+      "idleB": 969,
+      "states": [
+        {
+          "state": "idle",
+          "boxes": 2,
+          "slotA": {
+            "label": "Start recording",
+            "left": 933
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 969
+          },
+          "clusterWidth": 68,
+          "aEqualsIdle": true,
+          "bEqualsIdle": true,
+          "rowOverflow": 0,
+          "sent": 0,
+          "boxValue": ""
+        },
+        {
+          "state": "preparing",
+          "boxes": 2,
+          "slotA": {
+            "label": "Start recording",
+            "left": 969.9
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 1005.9
+          },
+          "clusterWidth": 147.7,
+          "aEqualsIdle": false,
+          "bEqualsIdle": false,
+          "rowOverflow": 37,
+          "sent": 0,
+          "boxValue": ""
+        }
+      ]
+    },
+    {
+      "key": "900|localOperatorDark|fullest",
+      "idleA": 871,
+      "idleB": 907,
+      "states": [
+        {
+          "state": "idle",
+          "boxes": 2,
+          "slotA": {
+            "label": "Start recording",
+            "left": 871
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 907
+          },
+          "clusterWidth": 68,
+          "aEqualsIdle": true,
+          "bEqualsIdle": true,
+          "rowOverflow": 0,
+          "sent": 0,
+          "boxValue": ""
+        },
+        {
+          "state": "preparing",
+          "boxes": 2,
+          "slotA": {
+            "label": "Start recording",
+            "left": 907.6
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 943.6
+          },
+          "clusterWidth": 148,
+          "aEqualsIdle": false,
+          "bEqualsIdle": false,
+          "rowOverflow": 37,
+          "sent": 0,
+          "boxValue": ""
+        }
+      ]
+    },
+    {
+      "key": "900|localOperatorLight|fullest",
+      "idleA": 871,
+      "idleB": 907,
+      "states": [
+        {
+          "state": "idle",
+          "boxes": 2,
+          "slotA": {
+            "label": "Start recording",
+            "left": 871
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 907
+          },
+          "clusterWidth": 68,
+          "aEqualsIdle": true,
+          "bEqualsIdle": true,
+          "rowOverflow": 0,
+          "sent": 0,
+          "boxValue": ""
+        },
+        {
+          "state": "preparing",
+          "boxes": 2,
+          "slotA": {
+            "label": "Start recording",
+            "left": 907.6
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 943.6
+          },
+          "clusterWidth": 148,
+          "aEqualsIdle": false,
+          "bEqualsIdle": false,
+          "rowOverflow": 37,
+          "sent": 0,
+          "boxValue": ""
+        }
+      ]
+    },
+    {
+      "key": "840|localOperatorDark|fullest",
+      "idleA": 832,
+      "idleB": 868,
+      "states": [
+        {
+          "state": "idle",
+          "boxes": 2,
+          "slotA": {
+            "label": "Start recording",
+            "left": 832
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 868
+          },
+          "clusterWidth": 68,
+          "aEqualsIdle": true,
+          "bEqualsIdle": true,
+          "rowOverflow": 0,
+          "sent": 0,
+          "boxValue": ""
+        },
+        {
+          "state": "preparing",
+          "boxes": 2,
+          "slotA": {
+            "label": "Start recording",
+            "left": 874.3
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 910.3
+          },
+          "clusterWidth": 142.3,
+          "aEqualsIdle": false,
+          "bEqualsIdle": false,
+          "rowOverflow": 42,
+          "sent": 0,
+          "boxValue": ""
+        }
+      ]
+    },
+    {
+      "key": "840|localOperatorLight|fullest",
+      "idleA": 832,
+      "idleB": 868,
+      "states": [
+        {
+          "state": "idle",
+          "boxes": 2,
+          "slotA": {
+            "label": "Start recording",
+            "left": 832
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 868
+          },
+          "clusterWidth": 68,
+          "aEqualsIdle": true,
+          "bEqualsIdle": true,
+          "rowOverflow": 0,
+          "sent": 0,
+          "boxValue": ""
+        },
+        {
+          "state": "preparing",
+          "boxes": 2,
+          "slotA": {
+            "label": "Start recording",
+            "left": 874.3
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 910.3
+          },
+          "clusterWidth": 142.3,
+          "aEqualsIdle": false,
+          "bEqualsIdle": false,
+          "rowOverflow": 42,
+          "sent": 0,
+          "boxValue": ""
+        }
+      ]
+    },
+    {
+      "key": "780|localOperatorDark|fullest",
+      "idleA": 772,
+      "idleB": 808,
+      "states": [
+        {
+          "state": "idle",
+          "boxes": 2,
+          "slotA": {
+            "label": "Start recording",
+            "left": 772
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 808
+          },
+          "clusterWidth": 68,
+          "aEqualsIdle": true,
+          "bEqualsIdle": true,
+          "rowOverflow": 0,
+          "sent": 0,
+          "boxValue": ""
+        },
+        {
+          "state": "preparing",
+          "boxes": 2,
+          "slotA": {
+            "label": "Start recording",
+            "left": 822.9
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 858.9
+          },
+          "clusterWidth": 133.7,
+          "aEqualsIdle": false,
+          "bEqualsIdle": false,
+          "rowOverflow": 51,
+          "sent": 0,
+          "boxValue": ""
+        }
+      ]
+    },
+    {
+      "key": "780|localOperatorLight|fullest",
+      "idleA": 772,
+      "idleB": 808,
+      "states": [
+        {
+          "state": "idle",
+          "boxes": 2,
+          "slotA": {
+            "label": "Start recording",
+            "left": 772
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 808
+          },
+          "clusterWidth": 68,
+          "aEqualsIdle": true,
+          "bEqualsIdle": true,
+          "rowOverflow": 0,
+          "sent": 0,
+          "boxValue": ""
+        },
+        {
+          "state": "preparing",
+          "boxes": 2,
+          "slotA": {
+            "label": "Start recording",
+            "left": 822.9
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 858.9
+          },
+          "clusterWidth": 133.7,
+          "aEqualsIdle": false,
+          "bEqualsIdle": false,
+          "rowOverflow": 51,
+          "sent": 0,
+          "boxValue": ""
+        }
+      ]
+    },
+    {
+      "key": "720|localOperatorDark|fullest",
+      "idleA": 712,
+      "idleB": 748,
+      "states": [
+        {
+          "state": "idle",
+          "boxes": 2,
+          "slotA": {
+            "label": "Start recording",
+            "left": 712
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 748
+          },
+          "clusterWidth": 68,
+          "aEqualsIdle": true,
+          "bEqualsIdle": true,
+          "rowOverflow": 0,
+          "sent": 0,
+          "boxValue": ""
+        },
+        {
+          "state": "preparing",
+          "boxes": 2,
+          "slotA": {
+            "label": "Start recording",
+            "left": 765.1
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 801.1
+          },
+          "clusterWidth": 131.5,
+          "aEqualsIdle": false,
+          "bEqualsIdle": false,
+          "rowOverflow": 53,
+          "sent": 0,
+          "boxValue": ""
+        }
+      ]
+    },
+    {
+      "key": "720|localOperatorLight|fullest",
+      "idleA": 712,
+      "idleB": 748,
+      "states": [
+        {
+          "state": "idle",
+          "boxes": 2,
+          "slotA": {
+            "label": "Start recording",
+            "left": 712
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 748
+          },
+          "clusterWidth": 68,
+          "aEqualsIdle": true,
+          "bEqualsIdle": true,
+          "rowOverflow": 0,
+          "sent": 0,
+          "boxValue": ""
+        },
+        {
+          "state": "preparing",
+          "boxes": 2,
+          "slotA": {
+            "label": "Start recording",
+            "left": 765.1
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 801.1
+          },
+          "clusterWidth": 131.5,
+          "aEqualsIdle": false,
+          "bEqualsIdle": false,
+          "rowOverflow": 53,
+          "sent": 0,
+          "boxValue": ""
+        }
+      ]
+    },
+    {
+      "key": "700|localOperatorDark|fullest",
+      "idleA": 692,
+      "idleB": 728,
+      "states": [
+        {
+          "state": "idle",
+          "boxes": 2,
+          "slotA": {
+            "label": "Start recording",
+            "left": 692
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 728
+          },
+          "clusterWidth": 68,
+          "aEqualsIdle": true,
+          "bEqualsIdle": true,
+          "rowOverflow": 0,
+          "sent": 0,
+          "boxValue": ""
+        },
+        {
+          "state": "preparing",
+          "boxes": 2,
+          "slotA": {
+            "label": "Start recording",
+            "left": 745.1
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 781.1
+          },
+          "clusterWidth": 131.5,
+          "aEqualsIdle": false,
+          "bEqualsIdle": false,
+          "rowOverflow": 53,
+          "sent": 0,
+          "boxValue": ""
+        }
+      ]
+    },
+    {
+      "key": "700|localOperatorLight|fullest",
+      "idleA": 692,
+      "idleB": 728,
+      "states": [
+        {
+          "state": "idle",
+          "boxes": 2,
+          "slotA": {
+            "label": "Start recording",
+            "left": 692
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 728
+          },
+          "clusterWidth": 68,
+          "aEqualsIdle": true,
+          "bEqualsIdle": true,
+          "rowOverflow": 0,
+          "sent": 0,
+          "boxValue": ""
+        },
+        {
+          "state": "preparing",
+          "boxes": 2,
+          "slotA": {
+            "label": "Start recording",
+            "left": 745.1
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 781.1
+          },
+          "clusterWidth": 131.5,
+          "aEqualsIdle": false,
+          "bEqualsIdle": false,
+          "rowOverflow": 53,
+          "sent": 0,
+          "boxValue": ""
+        }
+      ]
+    }
+  ],
+  "failures": [
+    "1024|localOperatorDark|plain preparing: the row overflows by 6px",
+    "1024|localOperatorDark|plain preparing: A 938.9 B 974.9 vs idle A 933 B 969",
+    "1024|localOperatorLight|plain preparing: the row overflows by 6px",
+    "1024|localOperatorLight|plain preparing: A 938.9 B 974.9 vs idle A 933 B 969",
+    "900|localOperatorDark|plain preparing: the row overflows by 6px",
+    "900|localOperatorDark|plain preparing: A 876.5 B 912.5 vs idle A 871 B 907",
+    "900|localOperatorLight|plain preparing: the row overflows by 6px",
+    "900|localOperatorLight|plain preparing: A 876.5 B 912.5 vs idle A 871 B 907",
+    "840|localOperatorDark|plain preparing: the row overflows by 12px",
+    "840|localOperatorDark|plain preparing: A 844.4 B 880.4 vs idle A 832 B 868",
+    "840|localOperatorLight|plain preparing: the row overflows by 12px",
+    "840|localOperatorLight|plain preparing: A 844.4 B 880.4 vs idle A 832 B 868",
+    "780|localOperatorDark|plain preparing: the row overflows by 14px",
+    "780|localOperatorDark|plain preparing: A 786.4 B 822.4 vs idle A 772 B 808",
+    "780|localOperatorLight|plain preparing: the row overflows by 14px",
+    "780|localOperatorLight|plain preparing: A 786.4 B 822.4 vs idle A 772 B 808",
+    "720|localOperatorDark|plain preparing: the row overflows by 17px",
+    "720|localOperatorDark|plain preparing: A 729 B 765 vs idle A 712 B 748",
+    "720|localOperatorLight|plain preparing: the row overflows by 17px",
+    "720|localOperatorLight|plain preparing: A 729 B 765 vs idle A 712 B 748",
+    "700|localOperatorDark|plain preparing: the row overflows by 27px",
+    "700|localOperatorDark|plain preparing: A 719.1 B 755.1 vs idle A 692 B 728",
+    "700|localOperatorLight|plain preparing: the row overflows by 27px",
+    "700|localOperatorLight|plain preparing: A 719.1 B 755.1 vs idle A 692 B 728",
+    "1024|localOperatorDark|fullest preparing: the row overflows by 37px",
+    "1024|localOperatorDark|fullest preparing: A 969.9 B 1005.9 vs idle A 933 B 969",
+    "1024|localOperatorLight|fullest preparing: the row overflows by 37px",
+    "1024|localOperatorLight|fullest preparing: A 969.9 B 1005.9 vs idle A 933 B 969",
+    "900|localOperatorDark|fullest preparing: the row overflows by 37px",
+    "900|localOperatorDark|fullest preparing: A 907.6 B 943.6 vs idle A 871 B 907",
+    "900|localOperatorLight|fullest preparing: the row overflows by 37px",
+    "900|localOperatorLight|fullest preparing: A 907.6 B 943.6 vs idle A 871 B 907",
+    "840|localOperatorDark|fullest preparing: the row overflows by 42px",
+    "840|localOperatorDark|fullest preparing: A 874.3 B 910.3 vs idle A 832 B 868",
+    "840|localOperatorLight|fullest preparing: the row overflows by 42px",
+    "840|localOperatorLight|fullest preparing: A 874.3 B 910.3 vs idle A 832 B 868",
+    "780|localOperatorDark|fullest preparing: the row overflows by 51px",
+    "780|localOperatorDark|fullest preparing: A 822.9 B 858.9 vs idle A 772 B 808",
+    "780|localOperatorLight|fullest preparing: the row overflows by 51px",
+    "780|localOperatorLight|fullest preparing: A 822.9 B 858.9 vs idle A 772 B 808",
+    "720|localOperatorDark|fullest preparing: the row overflows by 53px",
+    "720|localOperatorDark|fullest preparing: A 765.1 B 801.1 vs idle A 712 B 748",
+    "720|localOperatorLight|fullest preparing: the row overflows by 53px",
+    "720|localOperatorLight|fullest preparing: A 765.1 B 801.1 vs idle A 712 B 748",
+    "700|localOperatorDark|fullest preparing: the row overflows by 53px",
+    "700|localOperatorDark|fullest preparing: A 745.1 B 781.1 vs idle A 692 B 728",
+    "700|localOperatorLight|fullest preparing: the row overflows by 53px",
+    "700|localOperatorLight|fullest preparing: A 745.1 B 781.1 vs idle A 692 B 728"
+  ],
+  "verdict": "FAIL"
+}
