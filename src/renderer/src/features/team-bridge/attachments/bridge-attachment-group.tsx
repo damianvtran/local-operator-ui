@@ -26,6 +26,7 @@ import {
 	isAvailableAttachment,
 	isAvailableFile,
 	middleTruncateFileName,
+	splitFileNameTail,
 } from "./attachment-model";
 
 export function BridgeAttachmentGroup<T extends BridgeAttachmentDescriptor>({
@@ -149,6 +150,53 @@ const CLASS_MIME = new Map<string, string>([
 const NAME_BUDGET = { regular: 34, compact: 28 } as const;
 
 /**
+ * One file name as a flex row: the head shrinks and carries the ellipsis, the
+ * tail (extension or ending, see `splitFileNameTail`) never shrinks, so the
+ * width backstop can no longer clip what middle truncation preserved.
+ *
+ * BIDI: the row takes its direction from the whole name (`dir="auto"` reads
+ * the first strong character of its descendants), so an Arabic name lays its
+ * parts out right to left. Each part is `unicode-bidi: isolate`, so a Latin
+ * `.csv` tail cannot reorder into the head. D9: text only, never an
+ * aria-label, title or id.
+ */
+function FileNameLabel({
+	label,
+	available,
+}: {
+	label: string;
+	available: boolean;
+}) {
+	const { head, tail } = splitFileNameTail(label);
+	return (
+		<span
+			dir="auto"
+			className={cn(
+				"flex min-w-0 font-medium",
+				available ? "text-ink" : "text-ink-muted",
+			)}
+		>
+			<span
+				data-file-name-part="head"
+				className="min-w-0 truncate"
+				style={{ unicodeBidi: "isolate" }}
+			>
+				{head}
+			</span>
+			{tail && (
+				<span
+					data-file-name-part="tail"
+					className="shrink-0 whitespace-pre"
+					style={{ unicodeBidi: "isolate" }}
+				>
+					{tail}
+				</span>
+			)}
+		</span>
+	);
+}
+
+/**
  * Generic files (S3b) as noninteractive metadata cards: a class glyph, the
  * cleaned name, and `TYPE · size`. There is deliberately NO control on a card:
  * no download, open or Save As (removed in #1634 until a download contract is
@@ -230,22 +278,27 @@ export function BridgeFileGroup({
 							)}
 						</span>
 						<span className="min-w-0 flex-1">
-							<span
-								dir="auto"
-								className={cn(
-									"block truncate font-medium",
-									available ? "text-ink" : "text-ink-muted",
-								)}
-							>
-								{file === null
-									? t("ui.teamBridge.fileCard.list", { count })
-									: name
-										? middleTruncateFileName(
-												name,
-												NAME_BUDGET[compact ? "compact" : "regular"],
-											)
+							{file !== null && name ? (
+								<FileNameLabel
+									label={middleTruncateFileName(
+										name,
+										NAME_BUDGET[compact ? "compact" : "regular"],
+									)}
+									available={available}
+								/>
+							) : (
+								<span
+									dir="auto"
+									className={cn(
+										"block truncate font-medium",
+										available ? "text-ink" : "text-ink-muted",
+									)}
+								>
+									{file === null
+										? t("ui.teamBridge.fileCard.list", { count })
 										: t("ui.teamBridge.attachmentCard.file")}
-							</span>
+								</span>
+							)}
 							{file !== null && (
 								<span className="block truncate text-ink-muted">
 									{available

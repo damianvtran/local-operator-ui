@@ -143,7 +143,7 @@ const bundle = await build({
  export * from "./src/renderer/src/features/team-bridge/team-bridge-scheduling";
  export {OwnerAuditPanelView} from "./src/renderer/src/features/team-bridge/team-bridge-owner-audit";
  export {BridgeAttachmentGroup, BridgeFileGroup} from "./src/renderer/src/features/team-bridge/attachments/bridge-attachment-group";
- export {middleTruncateFileName, toBridgeFileDescriptor} from "./src/renderer/src/features/team-bridge/attachments/attachment-model";
+ export {middleTruncateFileName, splitFileNameTail, toBridgeFileDescriptor} from "./src/renderer/src/features/team-bridge/attachments/attachment-model";
  export {ownerAuditMessageSchema} from "./src/shared/team-bridge-owner-audit-contract";
  export {attachmentBox} from "./src/renderer/src/features/team-bridge/attachments/attachment-model";
  export {TeamBridgeMessageList} from "./src/renderer/src/features/team-bridge/team-bridge-message-list";
@@ -3195,6 +3195,8 @@ const SHRINKS = /min-w-0/;
 const CAPPED = /max-w-full/;
 const TRUNCATES = /truncate/;
 const LONE_SURROGATE = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])/;
+const NO_SHRINK = /shrink-0/;
+const EXTENSION_TAIL = /^\.(pdf|bin)$/;
 
 function attributeText(element) {
 	return [...element.querySelectorAll("*")]
@@ -3343,9 +3345,17 @@ test("S3b files: mixed 4 images + 6 files at compact density stays bounded and w
 		assert.equal(card.style.width, "208px");
 		assert.match(card.className, CAPPED);
 		const name = card.querySelector('[dir="auto"]');
-		assert.match(name.className, TRUNCATES);
+		const head = name.querySelector('[data-file-name-part="head"]');
+		const tail = name.querySelector('[data-file-name-part="tail"]');
+		// Only the head may ellipsise; the extension sits in its own
+		// non-shrinking element, so CSS cannot clip what middle truncation kept.
+		assert.match(head.className, TRUNCATES);
+		assert.match(head.className, SHRINKS);
+		assert.match(tail.className, NO_SHRINK);
+		assert.doesNotMatch(tail.className, TRUNCATES);
+		assert.match(tail.textContent, EXTENSION_TAIL);
 		assert.ok(Array.from(name.textContent).length <= 28, name.textContent);
-		assert.ok(name.textContent.includes("…"));
+		assert.ok(head.textContent.includes("…"));
 	}
 	assert.equal(view.element.querySelectorAll("button,a").length, 0);
 	await view.close();
@@ -3457,4 +3467,62 @@ test("S3b files: owner audit renders file cards with no audit media read", async
 	assert.equal(mediaCalls.length, 0);
 	await act(async () => root.unmount());
 	element.remove();
+});
+
+test("S3b files: the tail is a protected element; only the head ellipsises (Q1/D1/U2)", async () => {
+	assert.deepEqual(m.splitFileNameTail("Customer onboarding…list v12.docx"), {
+		head: "Customer onboarding…list v12",
+		tail: ".docx",
+	});
+	// No short extension: the last code points are protected, emoji intact.
+	const emoji = m.splitFileNameTail("会议记录最终版😀😀😀😀");
+	assert.equal(emoji.tail, "😀😀😀😀");
+	assert.doesNotMatch(emoji.head + emoji.tail, LONE_SURROGATE);
+	// The tail never starts before the inserted ellipsis.
+	const cut = m.splitFileNameTail("abcdefgh…xyz");
+	assert.ok(cut.head.endsWith("…"));
+	assert.equal(cut.tail, "xyz");
+	assert.deepEqual(m.splitFileNameTail("README"), { head: "README", tail: "" });
+
+	const names = [
+		"Customer onboarding checklist v12.docx",
+		"تقرير الربع الرابع.csv",
+		"四半期の取締役会報告書と議事録の最終版.pdf",
+	];
+	const view = await renderAttachmentGroup({
+		attachments: [],
+		files: names.map((displayName, index) =>
+			m.toBridgeFileDescriptor({
+				id: `bfile_tail${index}`,
+				class: "pdf",
+				size: 2048,
+				display_name: displayName,
+				state: "bound",
+			}),
+		),
+	});
+	const rows = view.element.querySelectorAll("[data-bridge-file-card]");
+	assert.equal(rows.length, 3);
+	for (const [index, card] of [...rows].entries()) {
+		const label = card.querySelector('[dir="auto"]');
+		const head = label.querySelector('[data-file-name-part="head"]');
+		const tail = label.querySelector('[data-file-name-part="tail"]');
+		assert.equal(head.parentElement, label);
+		assert.equal(tail.parentElement, label);
+		assert.match(head.className, TRUNCATES);
+		assert.match(tail.className, NO_SHRINK);
+		assert.equal(head.style.unicodeBidi, "isolate");
+		assert.equal(tail.style.unicodeBidi, "isolate");
+		assert.equal(tail.textContent, `.${names[index].split(".").pop()}`);
+	}
+	// D9 holds for the split label: no name fragment in any attribute.
+	const attrs = attributeText(view.element);
+	for (const name of names)
+		for (const part of [name, name.slice(0, 8), name.split(".").shift()])
+			assert.ok(!attrs.includes(part), part);
+	assert.equal(
+		view.element.querySelectorAll("[title],[aria-label] [aria-label]").length,
+		0,
+	);
+	await view.close();
 });
