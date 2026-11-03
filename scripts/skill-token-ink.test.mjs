@@ -550,15 +550,18 @@ test("position mapping: when alignment cannot be proved the node gets NO ink, an
 	);
 });
 
-/* --------------------- cost: no input may stall the render path ------------- */
+/* --------- cost: each node's walk is bounded and fails closed --------------- */
 
 /*
  * `remarkSkillInk` runs on the main thread for any turn that attached a skill, and
  * the text it reads is whatever the reader pasted. The alignment search once cost
  * (character-reference forks) x (the rest of the node): `&amp;` x12 then 49,000
  * dashes took 1.5 s in the plugin alone, 12.8 s at 190,000 characters. It now
- * advances every reading together, so the cost is the node's length times the few
- * readings alive.
+ * advances every reading together, so a node's walk costs its length times the few
+ * readings alive, and one that outgrows its step budget fails closed instead of
+ * stalling. That budget is sized by the node's VALUE, so a source much longer than
+ * its value can exhaust it (see `STEPS_PER_VALUE_UNIT` in the transform), and it
+ * bounds ONE node: it says nothing about a document's total cost.
  *
  * Only the TRANSFORM is timed: `remark-parse` has its own cost on such input (1.7 s
  * here for the 49,000-dash shape, and it is not this plugin's), so the tree is

@@ -120,10 +120,28 @@ const ENTITY_AT =
 const MAX_ENTITY_UNITS = 4;
 
 /**
- * The work one node may cost, in steps (one step = one live reading advanced past
- * one value character). The honest walk keeps a handful of readings alive, so the
- * budget is linear in the node: it is a ceiling on TIME that holds for any input,
- * and a node that needs more gets no ink rather than a stall on the render path.
+ * The work one TEXT NODE may cost, in steps: one per live reading advanced past a
+ * value character, plus one per source character skipped at a line edge. The
+ * honest walk keeps a handful of readings alive, so the budget is linear in the
+ * node's VALUE - `STEPS_PER_VALUE_UNIT * value.length + STEP_FLOOR`.
+ *
+ * It is a per-NODE bound on the value-unit work, not a bound on the document, and
+ * the line-edge skips are charged to it. A node whose SOURCE is much
+ * longer than its value can therefore run out on input that looks ordinary: a
+ * long run of blanks after a line ending (measured before a one-character value:
+ * 4,187 blanks still ink, 4,188 do not) and a deep blockquote of short lines
+ * (`"> ".repeat(8) + "a\n"` repeated: 2,087 lines still ink, 2,088 do not) both
+ * exhaust it.
+ *
+ * Over budget is fail-closed for that node - no ink, never wrong ink - and the
+ * walk carries on: the next node inks normally. The known shapes that reach it
+ * are the two above, and a long run of two-unit character references before the
+ * token, where every reference forks the readings so the work grows faster than
+ * the run while the budget grows only with the value (measured: 82 references
+ * still ink in a bare run, 165 with ~2 KB of ordinary prose after them - not "a
+ * few hundred"). A document of very many small text nodes beside many mentions
+ * also costs more than linear, since `splitText` scans the mention list per node;
+ * nothing here bounds a whole document.
  */
 const STEPS_PER_VALUE_UNIT = 8;
 const STEP_FLOOR = 4096;
@@ -270,8 +288,12 @@ const absorbCapacity = (
  * {@link MAX_ENTITY_UNITS} value units. All the readings advance TOGETHER, one
  * value character at a time, as a set of live source cursors per value index
  * (readings that reach the same cursor are the same reading). That is
- * O(value length x live readings), where re-walking the tail once per fork was
- * not, and it is capped by {@link STEPS_PER_VALUE_UNIT} so no input can cost more.
+ * O(value length x live readings) for the forward pass, where re-walking the tail
+ * once per fork was not, and {@link STEPS_PER_VALUE_UNIT} bounds it in steps sized
+ * by the VALUE. Crossing the budget returns `null` for THIS node - no ink, never
+ * wrong ink - and the rest of the tree still walks; see the constant for the
+ * shapes that reach it.
+ *
  * A backward pass keeps only the readings that consume the node's whole range.
  *
  * What the caller may rely on: a returned offset is `>= 0` only where EVERY
