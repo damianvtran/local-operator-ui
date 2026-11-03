@@ -136,7 +136,8 @@ import {
 	setDictationActive,
 	useSpeechToTextManager,
 } from "@shared/hooks/use-speech-to-text-manager";
-import { type WithoutParams, t } from "@shared/i18n";
+import { type WithoutParams, isolateLtr, t } from "@shared/i18n";
+import { ShortcutText } from "@shared/i18n/shortcut-text";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import {
 	type RadientSpeechBlock,
@@ -9896,16 +9897,21 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 									{micControlShown && (
 										<Tooltip
 											content={
-												isPreparing
-													? t("ui.chat.composer.starting_recording")
-													: !canEnableRecordingFeature
-														? recordingUnavailableReason
-														: shortcutText === null
-															? t("ui.chat.composer.start_recording")
-															: t("ui.chat.composer.start_recording_hint", {
-																	shortcut: shortcutText,
-																	pushToTalk: resolvePushToTalkBinding().label,
-																})
+												<ShortcutText
+													text={
+														isPreparing
+															? t("ui.chat.composer.starting_recording")
+															: !canEnableRecordingFeature
+																? recordingUnavailableReason
+																: shortcutText === null
+																	? t("ui.chat.composer.start_recording")
+																	: t("ui.chat.composer.start_recording_hint", {
+																			shortcut: isolateLtr(shortcutText),
+																			pushToTalk:
+																				resolvePushToTalkBinding().label,
+																		})
+													}
+												/>
 											}
 										>
 											<span>

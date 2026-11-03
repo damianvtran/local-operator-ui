@@ -1687,7 +1687,7 @@ export const formatWakeCadence = (
 	everyMs: number | null,
 	remaining: number | null,
 ): string => {
-	if (everyMs === null) return "once";
+	if (everyMs === null) return t("ui.chat.run_details.wake.cadence_once");
 	const cadence = `every ${formatWakeDuration(everyMs)}`;
 	if (remaining === null) return cadence;
 	if (remaining === 0) return `${cadence} · no deliveries left`;
@@ -1713,7 +1713,10 @@ export const formatWakeCadence = (
  * wake-delivery row's envelope vocabulary is not the one either surface uses.
  */
 export const wakeClause = (count: number): string =>
-	count === 1 ? "1 wake armed" : `${count} wakes armed`;
+	t("ui.chat.run_details.wake.armed_count", {
+		count,
+		count_display: String(count),
+	});
 
 /**
  * The count clause: `1 monitor armed` / `2 monitors armed`.
@@ -1927,7 +1930,9 @@ const deriveMonitor = (
 				? "waiting"
 				: formatWakeDue(nextDueAt, nowMs),
 		interval:
-			everyMs === null ? "once" : `every ${formatWakeDuration(everyMs)}`,
+			everyMs === null
+				? t("ui.chat.run_details.wake.cadence_once")
+				: `every ${formatWakeDuration(everyMs)}`,
 		lastCheckLabel:
 			lastCheckAt === null
 				? ""

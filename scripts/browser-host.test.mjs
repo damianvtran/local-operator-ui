@@ -96,6 +96,9 @@ const bundle = await build({
 			// below can pin the dispatched code to them; the gate that keeps them equal
 			// to the vendored driver's functions is scripts/check-geometry-sources.test.mjs.
 			'export * from "./src/main/browser/actions/geometry-sources.gen";',
+			// The main-process locale store, reached through the SAME module graph the host
+			// resolves `t()` from, so a test can drive the language the host speaks.
+			'export { clearRegisteredCatalogues, registerCatalogue, setLocale } from "./src/i18n";',
 		].join("\n"),
 		resolveDir: process.cwd(),
 	},
@@ -133,6 +136,9 @@ const {
 	// budget expiry should leave queued from `RESTORE_CONCURRENCY`, and a literal
 	// would read green the day the number moves.
 	RESTORE_CONCURRENCY,
+	clearRegisteredCatalogues,
+	registerCatalogue,
+	setLocale,
 	RESTORE_TAB_TIMEOUT_MS,
 	RESTORE_BUDGET_MS,
 	surfaceToken,
@@ -2045,6 +2051,39 @@ test("the projection names each tab's conversation — and never its capability"
 		!/"nonce"/.test(wire) && !/"handle"/.test(wire),
 		"and no field is named for one either",
 	);
+});
+
+test("an untitled tab is named by main in the language main speaks (Q-T2-4)", async () => {
+	// The projection hands the strip a READY title, so the renderer's own `New tab`
+	// fallback never runs for it: main owns the word. The census saw it in English
+	// under Urdu because it was a string literal here.
+	const { host } = makeHost();
+	await host.newTab(null);
+	try {
+		setLocale("en");
+		assert.equal(
+			host.chromeState().tabs.at(-1).title,
+			"New tab",
+			"English is byte-for-byte what it was",
+		);
+		registerCatalogue("ur", {
+			"ui.browser.browser_tab_strip.new_tab": "UR[new tab]",
+		});
+		setLocale("ur");
+		assert.equal(
+			host.chromeState().tabs.at(-1).title,
+			"UR[new tab]",
+			"a translated catalogue changes what main paints",
+		);
+		assert.equal(
+			host.chromeState().tabs.at(-1).url,
+			"about:blank",
+			"and only the title: the URL the chrome keys on is untouched",
+		);
+	} finally {
+		clearRegisteredCatalogues();
+		setLocale("en");
+	}
 });
 
 test("a tab the user opens in a conversation belongs to it, and still gives no agent a capability (R1)", async () => {

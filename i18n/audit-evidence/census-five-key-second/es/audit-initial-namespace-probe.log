@@ -1,0 +1,34 @@
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
++ actual - expected
+
++ [
++   'ui.chat.highlights.file_resolution_failed',
++   'ui.chat.usage.blocked',
++   'ui.chat.usage.continue',
++   'ui.chat.usage.eligibility_unknown',
++   'ui.chat.usage.family_caps',
++   'ui.chat.usage.unlimited'
++ ]
+- []
+
+    at file:///Users/damian/.local-operator/sessions/ac9ef02a0918/scratchpad/es-census-r2/verify.mjs:19:33 {
+  generatedMessage: true,
+  code: 'ERR_ASSERTION',
+  actual: [
+    'ui.chat.highlights.file_resolution_failed',
+    'ui.chat.usage.blocked',
+    'ui.chat.usage.continue',
+    'ui.chat.usage.eligibility_unknown',
+    'ui.chat.usage.family_caps',
+    'ui.chat.usage.unlimited'
+  ],
+  expected: [],
+  operator: 'deepStrictEqual',
+  diff: 'simple'
+}
+
+Node.js v24.22.1

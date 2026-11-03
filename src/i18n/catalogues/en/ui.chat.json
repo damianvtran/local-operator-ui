@@ -201,5 +201,8 @@
 	"ui.chat.session_status.context_aria_no_reading": "Context: no reading yet. {hint}",
 	"ui.chat.session_status.context_aria_reading": "Context: {spelling}{estimate, select, yes {, estimated} other {}}. {hint}",
 	"ui.chat.session_status.active_time_aria": "Active time: {duration}. {explanation}",
-	"ui.chat.session_status.duration_explanation": "Time spent working; waiting is not counted."
+	"ui.chat.session_status.duration_explanation": "Time spent working; waiting is not counted.",
+	"ui.chat.session_status.effort_level.low": "Low",
+	"ui.chat.session_status.effort_level.medium": "Medium",
+	"ui.chat.session_status.effort_level.high": "High"
 }
