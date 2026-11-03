@@ -65,3 +65,15 @@ one (`--anchor=top`):
 | recording | +84 | 0 | +84 |
 | Send recording held | +40 | 0 | +40 |
 | running / stopping | 0 | 0 | 0 |
+
+## Round 4 (`round-4/`)
+
+Head `d7f8d900d1`. The press opens the recording lane at its final height, with
+"Starting recording" in its label row; the handover to recording changes nothing.
+
+- `preparing-w*-card-*`, `recording-w*-card-*`: the whole card, both states.
+- `loc-*-{fr,ru}-card-*`: preparing and recording in French and Russian at 520px.
+- `bottom-anchored-*`, `top-anchored-*` (`proof-bot.txt`, `proof-top.txt`): card
+  height and controls-y against idle at 1024 and 520px, both anchors, with the
+  one-height-change assertion (idle->preparing equals idle->recording, preparing->recording is 0).
+- `all-*`, `rtl-*`, `prep-*`: the all-state proof, RTL, and the preparing width sweep.

@@ -1,0 +1,34 @@
+
+1024|localOperatorDark|plain  idle A=933 B=969
+  idle           ov=0    boxes=2 A=933   B=969   cluster=68 dCard=0 dControlsY=0  A=idle:true B=idle:true
+  running        ov=0    boxes=2 A=933   B=969   cluster=68 dCard=0 dControlsY=0  A=idle:true B=idle:true
+  stopping       ov=0    boxes=2 A=933   B=969   cluster=68 dCard=0 dControlsY=0  A=idle:true B=idle:true
+  preparing      ov=0    boxes=2 A=933   B=969   cluster=68 dCard=84 dControlsY=84 handover=0  A=idle:true B=idle:true
+  recording      ov=0    boxes=3 A=933   B=969   cluster=104 dCard=84 dControlsY=84  A=idle:true B=idle:true
+  sendrec-hang   ov=0    boxes=2 A=933   B=969   cluster=68 dCard=40 dControlsY=40  A=idle:true B=idle:true
+
+1024|localOperatorLight|plain  idle A=933 B=969
+  idle           ov=0    boxes=2 A=933   B=969   cluster=68 dCard=0 dControlsY=0  A=idle:true B=idle:true
+  running        ov=0    boxes=2 A=933   B=969   cluster=68 dCard=0 dControlsY=0  A=idle:true B=idle:true
+  stopping       ov=0    boxes=2 A=933   B=969   cluster=68 dCard=0 dControlsY=0  A=idle:true B=idle:true
+  preparing      ov=0    boxes=2 A=933   B=969   cluster=68 dCard=84 dControlsY=84 handover=0  A=idle:true B=idle:true
+  recording      ov=0    boxes=3 A=933   B=969   cluster=104 dCard=84 dControlsY=84  A=idle:true B=idle:true
+  sendrec-hang   ov=0    boxes=2 A=933   B=969   cluster=68 dCard=40 dControlsY=40  A=idle:true B=idle:true
+
+520|localOperatorDark|plain  idle A=618 B=650
+  idle           ov=0    boxes=2 A=618   B=650   cluster=60 dCard=0 dControlsY=0  A=idle:true B=idle:true
+  running        ov=0    boxes=2 A=618   B=650   cluster=60 dCard=0 dControlsY=0  A=idle:true B=idle:true
+  stopping       ov=0    boxes=2 A=618   B=650   cluster=60 dCard=0 dControlsY=0  A=idle:true B=idle:true
+  preparing      ov=0    boxes=2 A=618   B=650   cluster=60 dCard=74 dControlsY=74 handover=0  A=idle:true B=idle:true
+  recording      ov=0    boxes=3 A=618   B=650   cluster=92 dCard=74 dControlsY=74  A=idle:true B=idle:true
+  sendrec-hang   ov=0    boxes=2 A=618   B=650   cluster=60 dCard=30 dControlsY=30  A=idle:true B=idle:true
+
+520|localOperatorLight|plain  idle A=618 B=650
+  idle           ov=0    boxes=2 A=618   B=650   cluster=60 dCard=0 dControlsY=0  A=idle:true B=idle:true
+  running        ov=0    boxes=2 A=618   B=650   cluster=60 dCard=0 dControlsY=0  A=idle:true B=idle:true
+  stopping       ov=0    boxes=2 A=618   B=650   cluster=60 dCard=0 dControlsY=0  A=idle:true B=idle:true
+  preparing      ov=0    boxes=2 A=618   B=650   cluster=60 dCard=74 dControlsY=74 handover=0  A=idle:true B=idle:true
+  recording      ov=0    boxes=3 A=618   B=650   cluster=92 dCard=74 dControlsY=74  A=idle:true B=idle:true
+  sendrec-hang   ov=0    boxes=2 A=618   B=650   cluster=60 dCard=30 dControlsY=30  A=idle:true B=idle:true
+
+PASS (0 failure(s))

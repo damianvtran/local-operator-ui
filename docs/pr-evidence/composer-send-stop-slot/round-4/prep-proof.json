@@ -1,0 +1,855 @@
+{
+  "tree": "after",
+  "groups": [
+    {
+      "key": "1024|localOperatorDark|plain",
+      "idleA": 933,
+      "idleB": 969,
+      "states": [
+        {
+          "state": "idle",
+          "boxes": 2,
+          "slotA": {
+            "label": "Start recording",
+            "left": 933
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 969
+          },
+          "clusterWidth": 68,
+          "aEqualsIdle": true,
+          "bEqualsIdle": true,
+          "rowOverflow": 0,
+          "cardHeight": 110,
+          "cardTop": 134,
+          "controlsTop": 196,
+          "sent": 0,
+          "boxValue": "",
+          "cardHeightDelta": 0,
+          "controlsYDelta": 0
+        },
+        {
+          "state": "preparing",
+          "boxes": 2,
+          "slotA": {
+            "label": "Start recording",
+            "left": 933
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 969
+          },
+          "clusterWidth": 68,
+          "aEqualsIdle": true,
+          "bEqualsIdle": true,
+          "rowOverflow": 0,
+          "cardHeight": 194,
+          "cardTop": 50,
+          "controlsTop": 196,
+          "sent": 0,
+          "boxValue": "",
+          "cardHeightDelta": 84,
+          "controlsYDelta": 0
+        }
+      ]
+    },
+    {
+      "key": "1024|localOperatorLight|plain",
+      "idleA": 933,
+      "idleB": 969,
+      "states": [
+        {
+          "state": "idle",
+          "boxes": 2,
+          "slotA": {
+            "label": "Start recording",
+            "left": 933
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 969
+          },
+          "clusterWidth": 68,
+          "aEqualsIdle": true,
+          "bEqualsIdle": true,
+          "rowOverflow": 0,
+          "cardHeight": 110,
+          "cardTop": 134,
+          "controlsTop": 196,
+          "sent": 0,
+          "boxValue": "",
+          "cardHeightDelta": 0,
+          "controlsYDelta": 0
+        },
+        {
+          "state": "preparing",
+          "boxes": 2,
+          "slotA": {
+            "label": "Start recording",
+            "left": 933
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 969
+          },
+          "clusterWidth": 68,
+          "aEqualsIdle": true,
+          "bEqualsIdle": true,
+          "rowOverflow": 0,
+          "cardHeight": 194,
+          "cardTop": 50,
+          "controlsTop": 196,
+          "sent": 0,
+          "boxValue": "",
+          "cardHeightDelta": 84,
+          "controlsYDelta": 0
+        }
+      ]
+    },
+    {
+      "key": "900|localOperatorDark|plain",
+      "idleA": 871,
+      "idleB": 907,
+      "states": [
+        {
+          "state": "idle",
+          "boxes": 2,
+          "slotA": {
+            "label": "Start recording",
+            "left": 871
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 907
+          },
+          "clusterWidth": 68,
+          "aEqualsIdle": true,
+          "bEqualsIdle": true,
+          "rowOverflow": 0,
+          "cardHeight": 110,
+          "cardTop": 134,
+          "controlsTop": 196,
+          "sent": 0,
+          "boxValue": "",
+          "cardHeightDelta": 0,
+          "controlsYDelta": 0
+        },
+        {
+          "state": "preparing",
+          "boxes": 2,
+          "slotA": {
+            "label": "Start recording",
+            "left": 871
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 907
+          },
+          "clusterWidth": 68,
+          "aEqualsIdle": true,
+          "bEqualsIdle": true,
+          "rowOverflow": 0,
+          "cardHeight": 194,
+          "cardTop": 50,
+          "controlsTop": 196,
+          "sent": 0,
+          "boxValue": "",
+          "cardHeightDelta": 84,
+          "controlsYDelta": 0
+        }
+      ]
+    },
+    {
+      "key": "900|localOperatorLight|plain",
+      "idleA": 871,
+      "idleB": 907,
+      "states": [
+        {
+          "state": "idle",
+          "boxes": 2,
+          "slotA": {
+            "label": "Start recording",
+            "left": 871
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 907
+          },
+          "clusterWidth": 68,
+          "aEqualsIdle": true,
+          "bEqualsIdle": true,
+          "rowOverflow": 0,
+          "cardHeight": 110,
+          "cardTop": 134,
+          "controlsTop": 196,
+          "sent": 0,
+          "boxValue": "",
+          "cardHeightDelta": 0,
+          "controlsYDelta": 0
+        },
+        {
+          "state": "preparing",
+          "boxes": 2,
+          "slotA": {
+            "label": "Start recording",
+            "left": 871
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 907
+          },
+          "clusterWidth": 68,
+          "aEqualsIdle": true,
+          "bEqualsIdle": true,
+          "rowOverflow": 0,
+          "cardHeight": 194,
+          "cardTop": 50,
+          "controlsTop": 196,
+          "sent": 0,
+          "boxValue": "",
+          "cardHeightDelta": 84,
+          "controlsYDelta": 0
+        }
+      ]
+    },
+    {
+      "key": "780|localOperatorDark|plain",
+      "idleA": 772,
+      "idleB": 808,
+      "states": [
+        {
+          "state": "idle",
+          "boxes": 2,
+          "slotA": {
+            "label": "Start recording",
+            "left": 772
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 808
+          },
+          "clusterWidth": 68,
+          "aEqualsIdle": true,
+          "bEqualsIdle": true,
+          "rowOverflow": 0,
+          "cardHeight": 110,
+          "cardTop": 134,
+          "controlsTop": 196,
+          "sent": 0,
+          "boxValue": "",
+          "cardHeightDelta": 0,
+          "controlsYDelta": 0
+        },
+        {
+          "state": "preparing",
+          "boxes": 2,
+          "slotA": {
+            "label": "Start recording",
+            "left": 772
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 808
+          },
+          "clusterWidth": 68,
+          "aEqualsIdle": true,
+          "bEqualsIdle": true,
+          "rowOverflow": 0,
+          "cardHeight": 194,
+          "cardTop": 50,
+          "controlsTop": 196,
+          "sent": 0,
+          "boxValue": "",
+          "cardHeightDelta": 84,
+          "controlsYDelta": 0
+        }
+      ]
+    },
+    {
+      "key": "780|localOperatorLight|plain",
+      "idleA": 772,
+      "idleB": 808,
+      "states": [
+        {
+          "state": "idle",
+          "boxes": 2,
+          "slotA": {
+            "label": "Start recording",
+            "left": 772
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 808
+          },
+          "clusterWidth": 68,
+          "aEqualsIdle": true,
+          "bEqualsIdle": true,
+          "rowOverflow": 0,
+          "cardHeight": 110,
+          "cardTop": 134,
+          "controlsTop": 196,
+          "sent": 0,
+          "boxValue": "",
+          "cardHeightDelta": 0,
+          "controlsYDelta": 0
+        },
+        {
+          "state": "preparing",
+          "boxes": 2,
+          "slotA": {
+            "label": "Start recording",
+            "left": 772
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 808
+          },
+          "clusterWidth": 68,
+          "aEqualsIdle": true,
+          "bEqualsIdle": true,
+          "rowOverflow": 0,
+          "cardHeight": 194,
+          "cardTop": 50,
+          "controlsTop": 196,
+          "sent": 0,
+          "boxValue": "",
+          "cardHeightDelta": 84,
+          "controlsYDelta": 0
+        }
+      ]
+    },
+    {
+      "key": "700|localOperatorDark|plain",
+      "idleA": 692,
+      "idleB": 728,
+      "states": [
+        {
+          "state": "idle",
+          "boxes": 2,
+          "slotA": {
+            "label": "Start recording",
+            "left": 692
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 728
+          },
+          "clusterWidth": 68,
+          "aEqualsIdle": true,
+          "bEqualsIdle": true,
+          "rowOverflow": 0,
+          "cardHeight": 110,
+          "cardTop": 134,
+          "controlsTop": 196,
+          "sent": 0,
+          "boxValue": "",
+          "cardHeightDelta": 0,
+          "controlsYDelta": 0
+        },
+        {
+          "state": "preparing",
+          "boxes": 2,
+          "slotA": {
+            "label": "Start recording",
+            "left": 692
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 728
+          },
+          "clusterWidth": 68,
+          "aEqualsIdle": true,
+          "bEqualsIdle": true,
+          "rowOverflow": 0,
+          "cardHeight": 194,
+          "cardTop": 50,
+          "controlsTop": 196,
+          "sent": 0,
+          "boxValue": "",
+          "cardHeightDelta": 84,
+          "controlsYDelta": 0
+        }
+      ]
+    },
+    {
+      "key": "700|localOperatorLight|plain",
+      "idleA": 692,
+      "idleB": 728,
+      "states": [
+        {
+          "state": "idle",
+          "boxes": 2,
+          "slotA": {
+            "label": "Start recording",
+            "left": 692
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 728
+          },
+          "clusterWidth": 68,
+          "aEqualsIdle": true,
+          "bEqualsIdle": true,
+          "rowOverflow": 0,
+          "cardHeight": 110,
+          "cardTop": 134,
+          "controlsTop": 196,
+          "sent": 0,
+          "boxValue": "",
+          "cardHeightDelta": 0,
+          "controlsYDelta": 0
+        },
+        {
+          "state": "preparing",
+          "boxes": 2,
+          "slotA": {
+            "label": "Start recording",
+            "left": 692
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 728
+          },
+          "clusterWidth": 68,
+          "aEqualsIdle": true,
+          "bEqualsIdle": true,
+          "rowOverflow": 0,
+          "cardHeight": 194,
+          "cardTop": 50,
+          "controlsTop": 196,
+          "sent": 0,
+          "boxValue": "",
+          "cardHeightDelta": 84,
+          "controlsYDelta": 0
+        }
+      ]
+    },
+    {
+      "key": "1024|localOperatorDark|fullest",
+      "idleA": 933,
+      "idleB": 969,
+      "states": [
+        {
+          "state": "idle",
+          "boxes": 2,
+          "slotA": {
+            "label": "Start recording",
+            "left": 933
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 969
+          },
+          "clusterWidth": 68,
+          "aEqualsIdle": true,
+          "bEqualsIdle": true,
+          "rowOverflow": 0,
+          "cardHeight": 110,
+          "cardTop": 134,
+          "controlsTop": 196,
+          "sent": 0,
+          "boxValue": "",
+          "cardHeightDelta": 0,
+          "controlsYDelta": 0
+        },
+        {
+          "state": "preparing",
+          "boxes": 2,
+          "slotA": {
+            "label": "Start recording",
+            "left": 933
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 969
+          },
+          "clusterWidth": 68,
+          "aEqualsIdle": true,
+          "bEqualsIdle": true,
+          "rowOverflow": 0,
+          "cardHeight": 194,
+          "cardTop": 50,
+          "controlsTop": 196,
+          "sent": 0,
+          "boxValue": "",
+          "cardHeightDelta": 84,
+          "controlsYDelta": 0
+        }
+      ]
+    },
+    {
+      "key": "1024|localOperatorLight|fullest",
+      "idleA": 933,
+      "idleB": 969,
+      "states": [
+        {
+          "state": "idle",
+          "boxes": 2,
+          "slotA": {
+            "label": "Start recording",
+            "left": 933
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 969
+          },
+          "clusterWidth": 68,
+          "aEqualsIdle": true,
+          "bEqualsIdle": true,
+          "rowOverflow": 0,
+          "cardHeight": 110,
+          "cardTop": 134,
+          "controlsTop": 196,
+          "sent": 0,
+          "boxValue": "",
+          "cardHeightDelta": 0,
+          "controlsYDelta": 0
+        },
+        {
+          "state": "preparing",
+          "boxes": 2,
+          "slotA": {
+            "label": "Start recording",
+            "left": 933
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 969
+          },
+          "clusterWidth": 68,
+          "aEqualsIdle": true,
+          "bEqualsIdle": true,
+          "rowOverflow": 0,
+          "cardHeight": 194,
+          "cardTop": 50,
+          "controlsTop": 196,
+          "sent": 0,
+          "boxValue": "",
+          "cardHeightDelta": 84,
+          "controlsYDelta": 0
+        }
+      ]
+    },
+    {
+      "key": "900|localOperatorDark|fullest",
+      "idleA": 871,
+      "idleB": 907,
+      "states": [
+        {
+          "state": "idle",
+          "boxes": 2,
+          "slotA": {
+            "label": "Start recording",
+            "left": 871
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 907
+          },
+          "clusterWidth": 68,
+          "aEqualsIdle": true,
+          "bEqualsIdle": true,
+          "rowOverflow": 0,
+          "cardHeight": 110,
+          "cardTop": 134,
+          "controlsTop": 196,
+          "sent": 0,
+          "boxValue": "",
+          "cardHeightDelta": 0,
+          "controlsYDelta": 0
+        },
+        {
+          "state": "preparing",
+          "boxes": 2,
+          "slotA": {
+            "label": "Start recording",
+            "left": 871
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 907
+          },
+          "clusterWidth": 68,
+          "aEqualsIdle": true,
+          "bEqualsIdle": true,
+          "rowOverflow": 0,
+          "cardHeight": 194,
+          "cardTop": 50,
+          "controlsTop": 196,
+          "sent": 0,
+          "boxValue": "",
+          "cardHeightDelta": 84,
+          "controlsYDelta": 0
+        }
+      ]
+    },
+    {
+      "key": "900|localOperatorLight|fullest",
+      "idleA": 871,
+      "idleB": 907,
+      "states": [
+        {
+          "state": "idle",
+          "boxes": 2,
+          "slotA": {
+            "label": "Start recording",
+            "left": 871
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 907
+          },
+          "clusterWidth": 68,
+          "aEqualsIdle": true,
+          "bEqualsIdle": true,
+          "rowOverflow": 0,
+          "cardHeight": 110,
+          "cardTop": 134,
+          "controlsTop": 196,
+          "sent": 0,
+          "boxValue": "",
+          "cardHeightDelta": 0,
+          "controlsYDelta": 0
+        },
+        {
+          "state": "preparing",
+          "boxes": 2,
+          "slotA": {
+            "label": "Start recording",
+            "left": 871
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 907
+          },
+          "clusterWidth": 68,
+          "aEqualsIdle": true,
+          "bEqualsIdle": true,
+          "rowOverflow": 0,
+          "cardHeight": 194,
+          "cardTop": 50,
+          "controlsTop": 196,
+          "sent": 0,
+          "boxValue": "",
+          "cardHeightDelta": 84,
+          "controlsYDelta": 0
+        }
+      ]
+    },
+    {
+      "key": "780|localOperatorDark|fullest",
+      "idleA": 772,
+      "idleB": 808,
+      "states": [
+        {
+          "state": "idle",
+          "boxes": 2,
+          "slotA": {
+            "label": "Start recording",
+            "left": 772
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 808
+          },
+          "clusterWidth": 68,
+          "aEqualsIdle": true,
+          "bEqualsIdle": true,
+          "rowOverflow": 0,
+          "cardHeight": 110,
+          "cardTop": 134,
+          "controlsTop": 196,
+          "sent": 0,
+          "boxValue": "",
+          "cardHeightDelta": 0,
+          "controlsYDelta": 0
+        },
+        {
+          "state": "preparing",
+          "boxes": 2,
+          "slotA": {
+            "label": "Start recording",
+            "left": 772
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 808
+          },
+          "clusterWidth": 68,
+          "aEqualsIdle": true,
+          "bEqualsIdle": true,
+          "rowOverflow": 0,
+          "cardHeight": 194,
+          "cardTop": 50,
+          "controlsTop": 196,
+          "sent": 0,
+          "boxValue": "",
+          "cardHeightDelta": 84,
+          "controlsYDelta": 0
+        }
+      ]
+    },
+    {
+      "key": "780|localOperatorLight|fullest",
+      "idleA": 772,
+      "idleB": 808,
+      "states": [
+        {
+          "state": "idle",
+          "boxes": 2,
+          "slotA": {
+            "label": "Start recording",
+            "left": 772
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 808
+          },
+          "clusterWidth": 68,
+          "aEqualsIdle": true,
+          "bEqualsIdle": true,
+          "rowOverflow": 0,
+          "cardHeight": 110,
+          "cardTop": 134,
+          "controlsTop": 196,
+          "sent": 0,
+          "boxValue": "",
+          "cardHeightDelta": 0,
+          "controlsYDelta": 0
+        },
+        {
+          "state": "preparing",
+          "boxes": 2,
+          "slotA": {
+            "label": "Start recording",
+            "left": 772
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 808
+          },
+          "clusterWidth": 68,
+          "aEqualsIdle": true,
+          "bEqualsIdle": true,
+          "rowOverflow": 0,
+          "cardHeight": 194,
+          "cardTop": 50,
+          "controlsTop": 196,
+          "sent": 0,
+          "boxValue": "",
+          "cardHeightDelta": 84,
+          "controlsYDelta": 0
+        }
+      ]
+    },
+    {
+      "key": "700|localOperatorDark|fullest",
+      "idleA": 692,
+      "idleB": 728,
+      "states": [
+        {
+          "state": "idle",
+          "boxes": 2,
+          "slotA": {
+            "label": "Start recording",
+            "left": 692
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 728
+          },
+          "clusterWidth": 68,
+          "aEqualsIdle": true,
+          "bEqualsIdle": true,
+          "rowOverflow": 0,
+          "cardHeight": 110,
+          "cardTop": 134,
+          "controlsTop": 196,
+          "sent": 0,
+          "boxValue": "",
+          "cardHeightDelta": 0,
+          "controlsYDelta": 0
+        },
+        {
+          "state": "preparing",
+          "boxes": 2,
+          "slotA": {
+            "label": "Start recording",
+            "left": 692
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 728
+          },
+          "clusterWidth": 68,
+          "aEqualsIdle": true,
+          "bEqualsIdle": true,
+          "rowOverflow": 0,
+          "cardHeight": 194,
+          "cardTop": 50,
+          "controlsTop": 196,
+          "sent": 0,
+          "boxValue": "",
+          "cardHeightDelta": 84,
+          "controlsYDelta": 0
+        }
+      ]
+    },
+    {
+      "key": "700|localOperatorLight|fullest",
+      "idleA": 692,
+      "idleB": 728,
+      "states": [
+        {
+          "state": "idle",
+          "boxes": 2,
+          "slotA": {
+            "label": "Start recording",
+            "left": 692
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 728
+          },
+          "clusterWidth": 68,
+          "aEqualsIdle": true,
+          "bEqualsIdle": true,
+          "rowOverflow": 0,
+          "cardHeight": 110,
+          "cardTop": 134,
+          "controlsTop": 196,
+          "sent": 0,
+          "boxValue": "",
+          "cardHeightDelta": 0,
+          "controlsYDelta": 0
+        },
+        {
+          "state": "preparing",
+          "boxes": 2,
+          "slotA": {
+            "label": "Start recording",
+            "left": 692
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 728
+          },
+          "clusterWidth": 68,
+          "aEqualsIdle": true,
+          "bEqualsIdle": true,
+          "rowOverflow": 0,
+          "cardHeight": 194,
+          "cardTop": 50,
+          "controlsTop": 196,
+          "sent": 0,
+          "boxValue": "",
+          "cardHeightDelta": 84,
+          "controlsYDelta": 0
+        }
+      ]
+    }
+  ],
+  "failures": [],
+  "verdict": "PASS"
+}

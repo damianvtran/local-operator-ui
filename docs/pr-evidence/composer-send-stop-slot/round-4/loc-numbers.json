@@ -1,0 +1,1394 @@
+{
+  "preparing-plain-w520-fr|localOperatorDark": {
+    "id": "preparing-plain-w520-fr",
+    "state": "preparing",
+    "readings": [
+      {
+        "kind": "cost",
+        "text": "gpt-5-mini",
+        "shown": true,
+        "box": {
+          "left": 404.3,
+          "right": 477.1,
+          "width": 72.9,
+          "top": 220,
+          "height": 24
+        }
+      },
+      {
+        "kind": "effort",
+        "text": "Moyen",
+        "shown": false,
+        "box": {
+          "left": 0,
+          "right": 0,
+          "width": 0,
+          "top": 0,
+          "height": 0
+        }
+      },
+      {
+        "kind": "context",
+        "text": "10.2%/400k",
+        "shown": false,
+        "box": {
+          "left": 0,
+          "right": 0,
+          "width": 0,
+          "top": 0,
+          "height": 0
+        }
+      },
+      {
+        "kind": "cost",
+        "text": "≥$2.41",
+        "shown": false,
+        "box": {
+          "left": 0,
+          "right": 0,
+          "width": 0,
+          "top": 0,
+          "height": 0
+        }
+      },
+      {
+        "kind": "cost",
+        "text": "6m12s",
+        "shown": true,
+        "box": {
+          "left": 481.1,
+          "right": 529.3,
+          "width": 48.1,
+          "top": 220,
+          "height": 24.7
+        }
+      }
+    ],
+    "fixture": "plain",
+    "width": 520,
+    "measure": null,
+    "dir": null,
+    "theme": "localOperatorDark",
+    "containerBox": {
+      "left": 190,
+      "right": 710,
+      "width": 520,
+      "top": 90,
+      "height": 170
+    },
+    "queryContainer": {
+      "box": {
+        "left": 190,
+        "right": 710,
+        "width": 520,
+        "top": 90,
+        "height": 170
+      },
+      "contentWidth": 472
+    },
+    "row": {
+      "box": {
+        "left": 222,
+        "right": 678,
+        "width": 456,
+        "top": 216,
+        "height": 32
+      },
+      "scrollWidth": 456,
+      "clientWidth": 456,
+      "overflow": 0,
+      "itemCount": 3,
+      "lines": 1
+    },
+    "formBox": {
+      "left": 214,
+      "right": 686,
+      "width": 472,
+      "top": 92,
+      "height": 164
+    },
+    "laneBox": {
+      "left": 222,
+      "right": 678,
+      "width": 456,
+      "top": 144,
+      "height": 64
+    },
+    "fieldBox": {
+      "left": 222,
+      "right": 678,
+      "width": 456,
+      "top": 100,
+      "height": 28
+    },
+    "form": {
+      "scrollWidth": 472,
+      "clientWidth": 472,
+      "overflow": 0
+    },
+    "strip": {
+      "left": 404.3,
+      "right": 477.1,
+      "width": 72.9,
+      "top": 220,
+      "height": 24
+    },
+    "controls": null,
+    "attach": {
+      "left": 222,
+      "right": 402.3,
+      "width": 180.3,
+      "top": 216,
+      "height": 32
+    },
+    "chip": {
+      "left": 262,
+      "right": 402.3,
+      "width": 140.3,
+      "top": 216,
+      "height": 32
+    },
+    "gap": null,
+    "direction": "ltr",
+    "readingsRight": 529.3,
+    "readingsLeft": 404.3,
+    "lastReadingRight": 529.3,
+    "lastReadingLeft": 404.3,
+    "anchorDelta": -52.2,
+    "durationVisible": true,
+    "glyphOverlap": null,
+    "durationShown": true,
+    "durationBox": {
+      "left": 481.1,
+      "right": 529.3,
+      "width": 48.1,
+      "top": 220,
+      "height": 24.7
+    },
+    "slots": [],
+    "bOpacity": null,
+    "sent": [],
+    "bTimeline": null,
+    "transcriptionCalls": 0,
+    "boxValue": "",
+    "controlNames": []
+  },
+  "preparing-plain-w520-fr|localOperatorLight": {
+    "id": "preparing-plain-w520-fr",
+    "state": "preparing",
+    "readings": [
+      {
+        "kind": "cost",
+        "text": "gpt-5-mini",
+        "shown": true,
+        "box": {
+          "left": 404.3,
+          "right": 477.1,
+          "width": 72.9,
+          "top": 220,
+          "height": 24
+        }
+      },
+      {
+        "kind": "effort",
+        "text": "Moyen",
+        "shown": false,
+        "box": {
+          "left": 0,
+          "right": 0,
+          "width": 0,
+          "top": 0,
+          "height": 0
+        }
+      },
+      {
+        "kind": "context",
+        "text": "10.2%/400k",
+        "shown": false,
+        "box": {
+          "left": 0,
+          "right": 0,
+          "width": 0,
+          "top": 0,
+          "height": 0
+        }
+      },
+      {
+        "kind": "cost",
+        "text": "≥$2.41",
+        "shown": false,
+        "box": {
+          "left": 0,
+          "right": 0,
+          "width": 0,
+          "top": 0,
+          "height": 0
+        }
+      },
+      {
+        "kind": "cost",
+        "text": "6m12s",
+        "shown": true,
+        "box": {
+          "left": 481.1,
+          "right": 529.3,
+          "width": 48.1,
+          "top": 220,
+          "height": 24.7
+        }
+      }
+    ],
+    "fixture": "plain",
+    "width": 520,
+    "measure": null,
+    "dir": null,
+    "theme": "localOperatorLight",
+    "containerBox": {
+      "left": 190,
+      "right": 710,
+      "width": 520,
+      "top": 90,
+      "height": 170
+    },
+    "queryContainer": {
+      "box": {
+        "left": 190,
+        "right": 710,
+        "width": 520,
+        "top": 90,
+        "height": 170
+      },
+      "contentWidth": 472
+    },
+    "row": {
+      "box": {
+        "left": 222,
+        "right": 678,
+        "width": 456,
+        "top": 216,
+        "height": 32
+      },
+      "scrollWidth": 456,
+      "clientWidth": 456,
+      "overflow": 0,
+      "itemCount": 3,
+      "lines": 1
+    },
+    "formBox": {
+      "left": 214,
+      "right": 686,
+      "width": 472,
+      "top": 92,
+      "height": 164
+    },
+    "laneBox": {
+      "left": 222,
+      "right": 678,
+      "width": 456,
+      "top": 144,
+      "height": 64
+    },
+    "fieldBox": {
+      "left": 222,
+      "right": 678,
+      "width": 456,
+      "top": 100,
+      "height": 28
+    },
+    "form": {
+      "scrollWidth": 472,
+      "clientWidth": 472,
+      "overflow": 0
+    },
+    "strip": {
+      "left": 404.3,
+      "right": 477.1,
+      "width": 72.9,
+      "top": 220,
+      "height": 24
+    },
+    "controls": null,
+    "attach": {
+      "left": 222,
+      "right": 402.3,
+      "width": 180.3,
+      "top": 216,
+      "height": 32
+    },
+    "chip": {
+      "left": 262,
+      "right": 402.3,
+      "width": 140.3,
+      "top": 216,
+      "height": 32
+    },
+    "gap": null,
+    "direction": "ltr",
+    "readingsRight": 529.3,
+    "readingsLeft": 404.3,
+    "lastReadingRight": 529.3,
+    "lastReadingLeft": 404.3,
+    "anchorDelta": -52.2,
+    "durationVisible": true,
+    "glyphOverlap": null,
+    "durationShown": true,
+    "durationBox": {
+      "left": 481.1,
+      "right": 529.3,
+      "width": 48.1,
+      "top": 220,
+      "height": 24.7
+    },
+    "slots": [],
+    "bOpacity": null,
+    "sent": [],
+    "bTimeline": null,
+    "transcriptionCalls": 0,
+    "boxValue": "",
+    "controlNames": []
+  },
+  "recording-plain-w520-fr|localOperatorDark": {
+    "id": "recording-plain-w520-fr",
+    "state": "recording",
+    "readings": [
+      {
+        "kind": "cost",
+        "text": "gpt-5-mini",
+        "shown": true,
+        "box": {
+          "left": 404.3,
+          "right": 477.1,
+          "width": 72.9,
+          "top": 220,
+          "height": 24
+        }
+      },
+      {
+        "kind": "effort",
+        "text": "Moyen",
+        "shown": false,
+        "box": {
+          "left": 0,
+          "right": 0,
+          "width": 0,
+          "top": 0,
+          "height": 0
+        }
+      },
+      {
+        "kind": "context",
+        "text": "10.2%/400k",
+        "shown": false,
+        "box": {
+          "left": 0,
+          "right": 0,
+          "width": 0,
+          "top": 0,
+          "height": 0
+        }
+      },
+      {
+        "kind": "cost",
+        "text": "≥$2.41",
+        "shown": false,
+        "box": {
+          "left": 0,
+          "right": 0,
+          "width": 0,
+          "top": 0,
+          "height": 0
+        }
+      },
+      {
+        "kind": "cost",
+        "text": "6m12s",
+        "shown": true,
+        "box": {
+          "left": 481.1,
+          "right": 529.3,
+          "width": 48.1,
+          "top": 220,
+          "height": 24.7
+        }
+      }
+    ],
+    "fixture": "plain",
+    "width": 520,
+    "measure": null,
+    "dir": null,
+    "theme": "localOperatorDark",
+    "containerBox": {
+      "left": 190,
+      "right": 710,
+      "width": 520,
+      "top": 90,
+      "height": 170
+    },
+    "queryContainer": {
+      "box": {
+        "left": 190,
+        "right": 710,
+        "width": 520,
+        "top": 90,
+        "height": 170
+      },
+      "contentWidth": 472
+    },
+    "row": {
+      "box": {
+        "left": 222,
+        "right": 678,
+        "width": 456,
+        "top": 216,
+        "height": 32
+      },
+      "scrollWidth": 456,
+      "clientWidth": 456,
+      "overflow": 0,
+      "itemCount": 3,
+      "lines": 1
+    },
+    "formBox": {
+      "left": 214,
+      "right": 686,
+      "width": 472,
+      "top": 92,
+      "height": 164
+    },
+    "laneBox": {
+      "left": 222,
+      "right": 678,
+      "width": 456,
+      "top": 144,
+      "height": 64
+    },
+    "fieldBox": {
+      "left": 222,
+      "right": 678,
+      "width": 456,
+      "top": 100,
+      "height": 28
+    },
+    "form": {
+      "scrollWidth": 472,
+      "clientWidth": 472,
+      "overflow": 0
+    },
+    "strip": {
+      "left": 404.3,
+      "right": 477.1,
+      "width": 72.9,
+      "top": 220,
+      "height": 24
+    },
+    "controls": null,
+    "attach": {
+      "left": 222,
+      "right": 402.3,
+      "width": 180.3,
+      "top": 216,
+      "height": 32
+    },
+    "chip": {
+      "left": 262,
+      "right": 402.3,
+      "width": 140.3,
+      "top": 216,
+      "height": 32
+    },
+    "gap": null,
+    "direction": "ltr",
+    "readingsRight": 529.3,
+    "readingsLeft": 404.3,
+    "lastReadingRight": 529.3,
+    "lastReadingLeft": 404.3,
+    "anchorDelta": -52.2,
+    "durationVisible": true,
+    "glyphOverlap": null,
+    "durationShown": true,
+    "durationBox": {
+      "left": 481.1,
+      "right": 529.3,
+      "width": 48.1,
+      "top": 220,
+      "height": 24.7
+    },
+    "slots": [],
+    "bOpacity": null,
+    "sent": [],
+    "bTimeline": null,
+    "transcriptionCalls": 0,
+    "boxValue": "",
+    "controlNames": []
+  },
+  "recording-plain-w520-fr|localOperatorLight": {
+    "id": "recording-plain-w520-fr",
+    "state": "recording",
+    "readings": [
+      {
+        "kind": "cost",
+        "text": "gpt-5-mini",
+        "shown": true,
+        "box": {
+          "left": 404.3,
+          "right": 477.1,
+          "width": 72.9,
+          "top": 220,
+          "height": 24
+        }
+      },
+      {
+        "kind": "effort",
+        "text": "Moyen",
+        "shown": false,
+        "box": {
+          "left": 0,
+          "right": 0,
+          "width": 0,
+          "top": 0,
+          "height": 0
+        }
+      },
+      {
+        "kind": "context",
+        "text": "10.2%/400k",
+        "shown": false,
+        "box": {
+          "left": 0,
+          "right": 0,
+          "width": 0,
+          "top": 0,
+          "height": 0
+        }
+      },
+      {
+        "kind": "cost",
+        "text": "≥$2.41",
+        "shown": false,
+        "box": {
+          "left": 0,
+          "right": 0,
+          "width": 0,
+          "top": 0,
+          "height": 0
+        }
+      },
+      {
+        "kind": "cost",
+        "text": "6m12s",
+        "shown": true,
+        "box": {
+          "left": 481.1,
+          "right": 529.3,
+          "width": 48.1,
+          "top": 220,
+          "height": 24.7
+        }
+      }
+    ],
+    "fixture": "plain",
+    "width": 520,
+    "measure": null,
+    "dir": null,
+    "theme": "localOperatorLight",
+    "containerBox": {
+      "left": 190,
+      "right": 710,
+      "width": 520,
+      "top": 90,
+      "height": 170
+    },
+    "queryContainer": {
+      "box": {
+        "left": 190,
+        "right": 710,
+        "width": 520,
+        "top": 90,
+        "height": 170
+      },
+      "contentWidth": 472
+    },
+    "row": {
+      "box": {
+        "left": 222,
+        "right": 678,
+        "width": 456,
+        "top": 216,
+        "height": 32
+      },
+      "scrollWidth": 456,
+      "clientWidth": 456,
+      "overflow": 0,
+      "itemCount": 3,
+      "lines": 1
+    },
+    "formBox": {
+      "left": 214,
+      "right": 686,
+      "width": 472,
+      "top": 92,
+      "height": 164
+    },
+    "laneBox": {
+      "left": 222,
+      "right": 678,
+      "width": 456,
+      "top": 144,
+      "height": 64
+    },
+    "fieldBox": {
+      "left": 222,
+      "right": 678,
+      "width": 456,
+      "top": 100,
+      "height": 28
+    },
+    "form": {
+      "scrollWidth": 472,
+      "clientWidth": 472,
+      "overflow": 0
+    },
+    "strip": {
+      "left": 404.3,
+      "right": 477.1,
+      "width": 72.9,
+      "top": 220,
+      "height": 24
+    },
+    "controls": null,
+    "attach": {
+      "left": 222,
+      "right": 402.3,
+      "width": 180.3,
+      "top": 216,
+      "height": 32
+    },
+    "chip": {
+      "left": 262,
+      "right": 402.3,
+      "width": 140.3,
+      "top": 216,
+      "height": 32
+    },
+    "gap": null,
+    "direction": "ltr",
+    "readingsRight": 529.3,
+    "readingsLeft": 404.3,
+    "lastReadingRight": 529.3,
+    "lastReadingLeft": 404.3,
+    "anchorDelta": -52.2,
+    "durationVisible": true,
+    "glyphOverlap": null,
+    "durationShown": true,
+    "durationBox": {
+      "left": 481.1,
+      "right": 529.3,
+      "width": 48.1,
+      "top": 220,
+      "height": 24.7
+    },
+    "slots": [],
+    "bOpacity": null,
+    "sent": [],
+    "bTimeline": null,
+    "transcriptionCalls": 0,
+    "boxValue": "",
+    "controlNames": []
+  },
+  "preparing-plain-w520-ru|localOperatorDark": {
+    "id": "preparing-plain-w520-ru",
+    "state": "preparing",
+    "readings": [
+      {
+        "kind": "cost",
+        "text": "gpt-5-mini",
+        "shown": true,
+        "box": {
+          "left": 404.3,
+          "right": 477.1,
+          "width": 72.9,
+          "top": 220,
+          "height": 24
+        }
+      },
+      {
+        "kind": "effort",
+        "text": "Средний",
+        "shown": false,
+        "box": {
+          "left": 0,
+          "right": 0,
+          "width": 0,
+          "top": 0,
+          "height": 0
+        }
+      },
+      {
+        "kind": "cost",
+        "text": "10.2%/400k",
+        "shown": false,
+        "box": {
+          "left": 0,
+          "right": 0,
+          "width": 0,
+          "top": 0,
+          "height": 0
+        }
+      },
+      {
+        "kind": "cost",
+        "text": "≥$2.41",
+        "shown": false,
+        "box": {
+          "left": 0,
+          "right": 0,
+          "width": 0,
+          "top": 0,
+          "height": 0
+        }
+      },
+      {
+        "kind": "cost",
+        "text": "6m12s",
+        "shown": true,
+        "box": {
+          "left": 481.1,
+          "right": 529.3,
+          "width": 48.1,
+          "top": 220,
+          "height": 24.7
+        }
+      }
+    ],
+    "fixture": "plain",
+    "width": 520,
+    "measure": null,
+    "dir": null,
+    "theme": "localOperatorDark",
+    "containerBox": {
+      "left": 190,
+      "right": 710,
+      "width": 520,
+      "top": 90,
+      "height": 170
+    },
+    "queryContainer": {
+      "box": {
+        "left": 190,
+        "right": 710,
+        "width": 520,
+        "top": 90,
+        "height": 170
+      },
+      "contentWidth": 472
+    },
+    "row": {
+      "box": {
+        "left": 222,
+        "right": 678,
+        "width": 456,
+        "top": 216,
+        "height": 32
+      },
+      "scrollWidth": 456,
+      "clientWidth": 456,
+      "overflow": 0,
+      "itemCount": 3,
+      "lines": 1
+    },
+    "formBox": {
+      "left": 214,
+      "right": 686,
+      "width": 472,
+      "top": 92,
+      "height": 164
+    },
+    "laneBox": {
+      "left": 222,
+      "right": 678,
+      "width": 456,
+      "top": 144,
+      "height": 64
+    },
+    "fieldBox": {
+      "left": 222,
+      "right": 678,
+      "width": 456,
+      "top": 100,
+      "height": 28
+    },
+    "form": {
+      "scrollWidth": 472,
+      "clientWidth": 472,
+      "overflow": 0
+    },
+    "strip": {
+      "left": 404.3,
+      "right": 477.1,
+      "width": 72.9,
+      "top": 220,
+      "height": 24
+    },
+    "controls": null,
+    "attach": {
+      "left": 222,
+      "right": 402.3,
+      "width": 180.3,
+      "top": 216,
+      "height": 32
+    },
+    "chip": {
+      "left": 262,
+      "right": 402.3,
+      "width": 140.3,
+      "top": 216,
+      "height": 32
+    },
+    "gap": null,
+    "direction": "ltr",
+    "readingsRight": 529.3,
+    "readingsLeft": 404.3,
+    "lastReadingRight": 529.3,
+    "lastReadingLeft": 404.3,
+    "anchorDelta": -52.2,
+    "durationVisible": true,
+    "glyphOverlap": null,
+    "durationShown": true,
+    "durationBox": {
+      "left": 481.1,
+      "right": 529.3,
+      "width": 48.1,
+      "top": 220,
+      "height": 24.7
+    },
+    "slots": [],
+    "bOpacity": null,
+    "sent": [],
+    "bTimeline": null,
+    "transcriptionCalls": 0,
+    "boxValue": "",
+    "controlNames": []
+  },
+  "preparing-plain-w520-ru|localOperatorLight": {
+    "id": "preparing-plain-w520-ru",
+    "state": "preparing",
+    "readings": [
+      {
+        "kind": "cost",
+        "text": "gpt-5-mini",
+        "shown": true,
+        "box": {
+          "left": 404.3,
+          "right": 477.1,
+          "width": 72.9,
+          "top": 220,
+          "height": 24
+        }
+      },
+      {
+        "kind": "effort",
+        "text": "Средний",
+        "shown": false,
+        "box": {
+          "left": 0,
+          "right": 0,
+          "width": 0,
+          "top": 0,
+          "height": 0
+        }
+      },
+      {
+        "kind": "cost",
+        "text": "10.2%/400k",
+        "shown": false,
+        "box": {
+          "left": 0,
+          "right": 0,
+          "width": 0,
+          "top": 0,
+          "height": 0
+        }
+      },
+      {
+        "kind": "cost",
+        "text": "≥$2.41",
+        "shown": false,
+        "box": {
+          "left": 0,
+          "right": 0,
+          "width": 0,
+          "top": 0,
+          "height": 0
+        }
+      },
+      {
+        "kind": "cost",
+        "text": "6m12s",
+        "shown": true,
+        "box": {
+          "left": 481.1,
+          "right": 529.3,
+          "width": 48.1,
+          "top": 220,
+          "height": 24.7
+        }
+      }
+    ],
+    "fixture": "plain",
+    "width": 520,
+    "measure": null,
+    "dir": null,
+    "theme": "localOperatorLight",
+    "containerBox": {
+      "left": 190,
+      "right": 710,
+      "width": 520,
+      "top": 90,
+      "height": 170
+    },
+    "queryContainer": {
+      "box": {
+        "left": 190,
+        "right": 710,
+        "width": 520,
+        "top": 90,
+        "height": 170
+      },
+      "contentWidth": 472
+    },
+    "row": {
+      "box": {
+        "left": 222,
+        "right": 678,
+        "width": 456,
+        "top": 216,
+        "height": 32
+      },
+      "scrollWidth": 456,
+      "clientWidth": 456,
+      "overflow": 0,
+      "itemCount": 3,
+      "lines": 1
+    },
+    "formBox": {
+      "left": 214,
+      "right": 686,
+      "width": 472,
+      "top": 92,
+      "height": 164
+    },
+    "laneBox": {
+      "left": 222,
+      "right": 678,
+      "width": 456,
+      "top": 144,
+      "height": 64
+    },
+    "fieldBox": {
+      "left": 222,
+      "right": 678,
+      "width": 456,
+      "top": 100,
+      "height": 28
+    },
+    "form": {
+      "scrollWidth": 472,
+      "clientWidth": 472,
+      "overflow": 0
+    },
+    "strip": {
+      "left": 404.3,
+      "right": 477.1,
+      "width": 72.9,
+      "top": 220,
+      "height": 24
+    },
+    "controls": null,
+    "attach": {
+      "left": 222,
+      "right": 402.3,
+      "width": 180.3,
+      "top": 216,
+      "height": 32
+    },
+    "chip": {
+      "left": 262,
+      "right": 402.3,
+      "width": 140.3,
+      "top": 216,
+      "height": 32
+    },
+    "gap": null,
+    "direction": "ltr",
+    "readingsRight": 529.3,
+    "readingsLeft": 404.3,
+    "lastReadingRight": 529.3,
+    "lastReadingLeft": 404.3,
+    "anchorDelta": -52.2,
+    "durationVisible": true,
+    "glyphOverlap": null,
+    "durationShown": true,
+    "durationBox": {
+      "left": 481.1,
+      "right": 529.3,
+      "width": 48.1,
+      "top": 220,
+      "height": 24.7
+    },
+    "slots": [],
+    "bOpacity": null,
+    "sent": [],
+    "bTimeline": null,
+    "transcriptionCalls": 0,
+    "boxValue": "",
+    "controlNames": []
+  },
+  "recording-plain-w520-ru|localOperatorDark": {
+    "id": "recording-plain-w520-ru",
+    "state": "recording",
+    "readings": [
+      {
+        "kind": "cost",
+        "text": "gpt-5-mini",
+        "shown": true,
+        "box": {
+          "left": 404.3,
+          "right": 477.1,
+          "width": 72.9,
+          "top": 220,
+          "height": 24
+        }
+      },
+      {
+        "kind": "effort",
+        "text": "Средний",
+        "shown": false,
+        "box": {
+          "left": 0,
+          "right": 0,
+          "width": 0,
+          "top": 0,
+          "height": 0
+        }
+      },
+      {
+        "kind": "cost",
+        "text": "10.2%/400k",
+        "shown": false,
+        "box": {
+          "left": 0,
+          "right": 0,
+          "width": 0,
+          "top": 0,
+          "height": 0
+        }
+      },
+      {
+        "kind": "cost",
+        "text": "≥$2.41",
+        "shown": false,
+        "box": {
+          "left": 0,
+          "right": 0,
+          "width": 0,
+          "top": 0,
+          "height": 0
+        }
+      },
+      {
+        "kind": "cost",
+        "text": "6m12s",
+        "shown": true,
+        "box": {
+          "left": 481.1,
+          "right": 529.3,
+          "width": 48.1,
+          "top": 220,
+          "height": 24.7
+        }
+      }
+    ],
+    "fixture": "plain",
+    "width": 520,
+    "measure": null,
+    "dir": null,
+    "theme": "localOperatorDark",
+    "containerBox": {
+      "left": 190,
+      "right": 710,
+      "width": 520,
+      "top": 90,
+      "height": 170
+    },
+    "queryContainer": {
+      "box": {
+        "left": 190,
+        "right": 710,
+        "width": 520,
+        "top": 90,
+        "height": 170
+      },
+      "contentWidth": 472
+    },
+    "row": {
+      "box": {
+        "left": 222,
+        "right": 678,
+        "width": 456,
+        "top": 216,
+        "height": 32
+      },
+      "scrollWidth": 456,
+      "clientWidth": 456,
+      "overflow": 0,
+      "itemCount": 3,
+      "lines": 1
+    },
+    "formBox": {
+      "left": 214,
+      "right": 686,
+      "width": 472,
+      "top": 92,
+      "height": 164
+    },
+    "laneBox": {
+      "left": 222,
+      "right": 678,
+      "width": 456,
+      "top": 144,
+      "height": 64
+    },
+    "fieldBox": {
+      "left": 222,
+      "right": 678,
+      "width": 456,
+      "top": 100,
+      "height": 28
+    },
+    "form": {
+      "scrollWidth": 472,
+      "clientWidth": 472,
+      "overflow": 0
+    },
+    "strip": {
+      "left": 404.3,
+      "right": 477.1,
+      "width": 72.9,
+      "top": 220,
+      "height": 24
+    },
+    "controls": null,
+    "attach": {
+      "left": 222,
+      "right": 402.3,
+      "width": 180.3,
+      "top": 216,
+      "height": 32
+    },
+    "chip": {
+      "left": 262,
+      "right": 402.3,
+      "width": 140.3,
+      "top": 216,
+      "height": 32
+    },
+    "gap": null,
+    "direction": "ltr",
+    "readingsRight": 529.3,
+    "readingsLeft": 404.3,
+    "lastReadingRight": 529.3,
+    "lastReadingLeft": 404.3,
+    "anchorDelta": -52.2,
+    "durationVisible": true,
+    "glyphOverlap": null,
+    "durationShown": true,
+    "durationBox": {
+      "left": 481.1,
+      "right": 529.3,
+      "width": 48.1,
+      "top": 220,
+      "height": 24.7
+    },
+    "slots": [],
+    "bOpacity": null,
+    "sent": [],
+    "bTimeline": null,
+    "transcriptionCalls": 0,
+    "boxValue": "",
+    "controlNames": []
+  },
+  "recording-plain-w520-ru|localOperatorLight": {
+    "id": "recording-plain-w520-ru",
+    "state": "recording",
+    "readings": [
+      {
+        "kind": "cost",
+        "text": "gpt-5-mini",
+        "shown": true,
+        "box": {
+          "left": 404.3,
+          "right": 477.1,
+          "width": 72.9,
+          "top": 220,
+          "height": 24
+        }
+      },
+      {
+        "kind": "effort",
+        "text": "Средний",
+        "shown": false,
+        "box": {
+          "left": 0,
+          "right": 0,
+          "width": 0,
+          "top": 0,
+          "height": 0
+        }
+      },
+      {
+        "kind": "cost",
+        "text": "10.2%/400k",
+        "shown": false,
+        "box": {
+          "left": 0,
+          "right": 0,
+          "width": 0,
+          "top": 0,
+          "height": 0
+        }
+      },
+      {
+        "kind": "cost",
+        "text": "≥$2.41",
+        "shown": false,
+        "box": {
+          "left": 0,
+          "right": 0,
+          "width": 0,
+          "top": 0,
+          "height": 0
+        }
+      },
+      {
+        "kind": "cost",
+        "text": "6m12s",
+        "shown": true,
+        "box": {
+          "left": 481.1,
+          "right": 529.3,
+          "width": 48.1,
+          "top": 220,
+          "height": 24.7
+        }
+      }
+    ],
+    "fixture": "plain",
+    "width": 520,
+    "measure": null,
+    "dir": null,
+    "theme": "localOperatorLight",
+    "containerBox": {
+      "left": 190,
+      "right": 710,
+      "width": 520,
+      "top": 90,
+      "height": 170
+    },
+    "queryContainer": {
+      "box": {
+        "left": 190,
+        "right": 710,
+        "width": 520,
+        "top": 90,
+        "height": 170
+      },
+      "contentWidth": 472
+    },
+    "row": {
+      "box": {
+        "left": 222,
+        "right": 678,
+        "width": 456,
+        "top": 216,
+        "height": 32
+      },
+      "scrollWidth": 456,
+      "clientWidth": 456,
+      "overflow": 0,
+      "itemCount": 3,
+      "lines": 1
+    },
+    "formBox": {
+      "left": 214,
+      "right": 686,
+      "width": 472,
+      "top": 92,
+      "height": 164
+    },
+    "laneBox": {
+      "left": 222,
+      "right": 678,
+      "width": 456,
+      "top": 144,
+      "height": 64
+    },
+    "fieldBox": {
+      "left": 222,
+      "right": 678,
+      "width": 456,
+      "top": 100,
+      "height": 28
+    },
+    "form": {
+      "scrollWidth": 472,
+      "clientWidth": 472,
+      "overflow": 0
+    },
+    "strip": {
+      "left": 404.3,
+      "right": 477.1,
+      "width": 72.9,
+      "top": 220,
+      "height": 24
+    },
+    "controls": null,
+    "attach": {
+      "left": 222,
+      "right": 402.3,
+      "width": 180.3,
+      "top": 216,
+      "height": 32
+    },
+    "chip": {
+      "left": 262,
+      "right": 402.3,
+      "width": 140.3,
+      "top": 216,
+      "height": 32
+    },
+    "gap": null,
+    "direction": "ltr",
+    "readingsRight": 529.3,
+    "readingsLeft": 404.3,
+    "lastReadingRight": 529.3,
+    "lastReadingLeft": 404.3,
+    "anchorDelta": -52.2,
+    "durationVisible": true,
+    "glyphOverlap": null,
+    "durationShown": true,
+    "durationBox": {
+      "left": 481.1,
+      "right": 529.3,
+      "width": 48.1,
+      "top": 220,
+      "height": 24.7
+    },
+    "slots": [],
+    "bOpacity": null,
+    "sent": [],
+    "bTimeline": null,
+    "transcriptionCalls": 0,
+    "boxValue": "",
+    "controlNames": []
+  }
+}
