@@ -77,7 +77,6 @@ import {
 	radientAuthoritySnapshot,
 	subscribeRadientAuthority,
 } from "@shared/hooks/radient-account-authority";
-import { teamBridgeAvatarVersion } from "@shared/hooks/use-account-avatar";
 import { t } from "@shared/i18n";
 import {
 	type InfiniteData,
@@ -89,6 +88,10 @@ import {
 	useQueryClient,
 } from "@tanstack/react-query";
 import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
+import {
+	directoryIdentity,
+	resolveIdentityAvatar,
+} from "../../../../shared/identity-avatar";
 import type {
 	TeamBridgeDirectoryMember,
 	TeamBridgeMessage,
@@ -179,16 +182,34 @@ function bannerPlace(
  * and wait. `undefined` when the member cannot be described (e.g. an agent
  * banner for a member with no named agent).
  */
-function notificationSender(
+/**
+ * The identity a sender descriptor pictures. Exported so the KIND ARGUMENT is
+ * testable on its own: `parseTeamBridgeNotificationSender` also drops an agent's
+ * `avatar`, which means a test that only inspects the parsed descriptor passes
+ * even when this function hands the resolver the owner's kind (agent review
+ * round 1, F2 — the mutation `directoryIdentity(member, "human")` here is
+ * invisible to the descriptor assertions). One caller (`notificationSender`).
+ */
+export function senderIdentity(
+	member: TeamBridgeDirectoryMember,
+	kind: TeamBridgeNotificationSender["kind"],
+) {
+	return directoryIdentity(member, kind === "person_agent" ? "agent" : "human");
+}
+
+export function notificationSender(
 	member: TeamBridgeDirectoryMember,
 	kind: TeamBridgeNotificationSender["kind"],
 ): TeamBridgeNotificationSender | undefined {
-	// Directory identity, not a message's possibly stale composed label.
-	// Source=none wins even if an old avatar_url lingers in a response.
-	const photo =
-		member.profile?.avatar?.source === "none"
-			? null
-			: teamBridgeAvatarVersion(member);
+	// Directory identity, not a message's possibly stale composed label. The
+	// picture comes from the one identity resolver, which honours source=none
+	// and NEVER gives an agent its owner's photo: a `person_agent` banner shows
+	// the agent's OWN picture when the hub publishes one, else the glyph (core),
+	// never the owner's face (2026-10-30). The plate reads the same resolver, so
+	// a banner and a message row cannot disagree about an agent's picture.
+	const resolved = resolveIdentityAvatar(senderIdentity(member, kind)).src;
+	const photo = resolved?.type === "account" ? resolved : null;
+	const own = resolved?.type === "endpoint" ? resolved : null;
 	return parseTeamBridgeNotificationSender({
 		v: 1,
 		kind,
@@ -203,6 +224,9 @@ function notificationSender(
 		),
 		...(photo
 			? { avatar: { account_id: photo.accountId, hash: photo.hash } }
+			: {}),
+		...(own
+			? { endpoint_avatar: { endpoint_id: own.endpointId, hash: own.hash } }
 			: {}),
 	});
 }

@@ -14,7 +14,6 @@ import {
 	Archive,
 	AtSign,
 	BellOff,
-	Bot,
 	Hash,
 	MoreHorizontal,
 	Pencil,
@@ -575,6 +574,7 @@ export const PersonRailRow: FC<{
 	const avatar = (
 		<TeamBridgeAvatar
 			member={member}
+			kind="human"
 			label={label}
 			size={20}
 			selected={selected}
@@ -588,6 +588,7 @@ export const PersonRailRow: FC<{
 				<TeamBridgeProfileCard
 					member={member}
 					label={label}
+					kind="human"
 					onMessage={onSelect}
 					canMessage={false}
 					{...RAIL_CARD}
@@ -623,6 +624,7 @@ export const PersonRailRow: FC<{
 				<TeamBridgeProfileCard
 					member={member}
 					label={label}
+					kind="human"
 					onMessage={onSelect}
 					canMessage={
 						!readOnly && state !== "unavailable" && state !== "unknown"
@@ -666,6 +668,7 @@ export const PersonRailRow: FC<{
 			<TeamBridgeProfileCard
 				member={member}
 				label={label}
+				kind="human"
 				onMessage={onSelect}
 				canMessage={
 					(Boolean(dm) || !readOnly) &&
@@ -756,7 +759,7 @@ export const ChiefRailRow: FC<{
 			<TeamBridgeProfileCard
 				member={chief.person}
 				label={label}
-				agentName={label}
+				kind="agent"
 				onMessage={onSelect}
 				canMessage={Boolean(dm) || !readOnly}
 				{...RAIL_CARD}
@@ -778,11 +781,12 @@ export const ChiefRailRow: FC<{
 				>
 					<TeamBridgeAvatar
 						member={chief.person}
+						kind="agent"
+						endpointId={chief.endpointId}
 						label={label}
 						size={20}
 						selected={selected}
 						className="rounded-[5px] text-accent"
-						fallback={<Bot size={12} />}
 					/>
 					<span className="min-w-0 flex-1 truncate">{label}</span>
 					{chief.paused && (
