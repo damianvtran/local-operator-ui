@@ -314,8 +314,15 @@ export interface UploadResult {
  * would ignore `selector` and answer `unsupported_key` for the rest, so the harness
  * (`protocol.PRESS_CHORD_CAPABILITY`, damianvtran/local-operator#3326) sends only a
  * legacy-shaped press on `press` alone and requires this exact spelling for more.
+ *
+ * `record_size` is the second token: it says this build's `record_start` accepts a
+ * `width`/`height`, so the harness may request a resized capture. It is a capability
+ * TOKEN and not a wire method — absent from `METHODS` on purpose, which is what keeps
+ * the extension from ever advertising it — and it needs no `PROTO_VERSION` bump: an
+ * old harness simply never sends the fields, and a host that does not advertise this
+ * token is refused by capability rather than by version arithmetic.
  */
-export type HostCapabilityToken = "press_chord";
+export type HostCapabilityToken = "press_chord" | "record_size";
 
 /**
  * The methods THIS host build serves, as it advertises them.
@@ -338,6 +345,11 @@ export type HostCapabilityToken = "press_chord";
  * it is not a runtime probe: a build that lists `record_*` can still be running an
  * engine without `Page.startScreenRecording` (Chromium below 153), and that case is
  * refused at `record_start` with `record_unsupported`, not by the capability list.
+ *
+ * `record_size` is a CAPABILITY, not a wire method: it advertises that
+ * `record_start` accepts `width`/`height`. It is deliberately absent from
+ * `METHODS`, so the extension can never advertise it, and an old harness simply
+ * never sends the fields.
  */
 export const HOST_CAPABILITIES: readonly (Method | HostCapabilityToken)[] = [
 	"console_resources",
@@ -371,6 +383,9 @@ export const HOST_CAPABILITIES: readonly (Method | HostCapabilityToken)[] = [
 	// do.
 	"record_start",
 	"record_stop",
+	// Sized recording (width/height on record_start) is not a method; the
+	// harness capability-gates the two params on this name.
+	"record_size",
 ];
 
 export interface Request {
