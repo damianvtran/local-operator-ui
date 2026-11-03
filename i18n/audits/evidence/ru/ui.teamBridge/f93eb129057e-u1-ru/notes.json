@@ -1,0 +1,102 @@
+{
+  "schema": 1,
+  "kind": "source inspection notes, NOT an execution log",
+  "locale": "ru",
+  "head": "59d88d72dbc5577deca43ce4528654e9b965febd",
+  "semantic_assessment": "файл/файла/файлов and Текстовый файл are natural; one/few/many/other are explicit, with fractional other файла.",
+  "per_key_verdict": {
+    "ui.teamBridge.fileCard.list": "PASS — independently reviewed semantics, terminology and static ICU structure",
+    "ui.teamBridge.fileCard.kind": "PASS — independently reviewed semantics, terminology and static ICU structure"
+  },
+  "values": {
+    "ui.teamBridge.fileCard.list": "{count, plural, one {# файл} few {# файла} many {# файлов} other {# файла}}",
+    "ui.teamBridge.fileCard.kind": "{kind, select, pdf {PDF} text {Текстовый файл} container {ZIP} other {Файл}}"
+  },
+  "english_values": {
+    "ui.teamBridge.fileCard.list": "{count, plural, one {# file} other {# files}}",
+    "ui.teamBridge.fileCard.kind": "{kind, select, pdf {PDF} text {Text file} container {ZIP} other {File}}"
+  },
+  "context_entries": {
+    "ui.teamBridge.fileCard.list": {
+      "role": "accessible label for a message's list of generic file cards; visible label of a count-only file receipt",
+      "tone": "neutral, factual",
+      "length": "short noun phrase with count",
+      "placeholders": {
+        "count": "Number of files attached to one message. Use the locale's ICU plural rules."
+      },
+      "note": "Counts non-image files (documents, text, archives) on one message, not upload progress. Never includes a file name. A count-only receipt grants no preview or download."
+    },
+    "ui.teamBridge.fileCard.kind": {
+      "role": "short type label on a file card when the file name has no extension",
+      "tone": "neutral, technical",
+      "length": "one or two words",
+      "placeholders": {
+        "kind": "Server file class: pdf, text, container (ZIP-based, including Office documents) or other. Keep every select arm."
+      },
+      "note": "PDF and ZIP are format names and normally stay untranslated. The class is a label from byte sniffing, not a safety or scan claim; do not imply the file was checked."
+    }
+  },
+  "static_icu": {
+    "count_argument": "count",
+    "kind_argument": "kind",
+    "kind_select_arms": [
+      "pdf",
+      "text",
+      "container",
+      "other"
+    ],
+    "count_categories": [
+      "one",
+      "few",
+      "many",
+      "other"
+    ],
+    "type_labels": "PDF and ZIP remain technical format names; text/file labels do not imply scanning, approval or safety."
+  },
+  "direction_fit": "SOURCE INSPECTION ONLY: labels are short noun phrases; no manual bidi controls. Urdu is native RTL text with retained format names. No browser/rendered fit, actual RTL layout, pseudo-localization or ICU formatter execution was performed. No measured geometry/contrast claim.",
+  "inherited_coverage_proof": {
+    "base": "e6a9b59b8d906fed65cc2c604282c59109236386",
+    "base_source_sha256": "00a4cb6150b71677766c8527369527497cf29ec3ccb91cb5e2b8a3d1c65baffd",
+    "base_target_sha256": "6af703983652a04d8f452ff16d694eafd74cce4d7f7b05030d4e830560531ced",
+    "base_context_sha256": "b309e464421167093b9434f33944bbbb1931385a63c822cc3763c4f1c5a6cb49",
+    "all_preexisting_key_values_unchanged": true,
+    "exact_added_keys": [
+      "ui.teamBridge.fileCard.list",
+      "ui.teamBridge.fileCard.kind"
+    ],
+    "existing_context_entries_unchanged": true,
+    "active_auditors_preserved_without_identity_rewrite": [
+      {
+        "agent": "reviewer",
+        "model": "openai/gpt-6.1-sol",
+        "date": "2026-11-03",
+        "result": "clean-with-findings",
+        "instance": "f93eb129057e-ru",
+        "findings": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 1,
+          "nit": 0
+        },
+        "receipt": "i18n/receipts/f93eb129057e-ru.json",
+        "receipt_sha256": "fe09d7e37c58de32411de72a9931c77987ae8ef8429777982b98153d426e71b5",
+        "scope": "Five attachmentCard keys; older values identical to ledger-bound base 47e06bc7"
+      }
+    ],
+    "active_portable_receipt_bytes_verified_against_hashes": true
+  },
+  "remediation": {
+    "previous_head": "9c44d8b2fd31271d5617925f73f39b0992077b3e",
+    "only_changed_catalogues": [
+      "es",
+      "fr"
+    ],
+    "es_fr_changes": "exactly the two previously specified many-arm replacements; both fixes verified at current head",
+    "other_five_target_files_byte_identical": true
+  },
+  "scope_limits": [
+    "New semantic audit covers ONLY the two listed keys; older namespace semantics inherited by demonstrated byte/key compatibility, not re-audited.",
+    "No runtime/authentication/code/design/QA approval.",
+    "No repository writes or assembler execution."
+  ]
+}
