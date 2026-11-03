@@ -1516,9 +1516,9 @@ jobs:
         if: runner.os == 'macOS' && github.event_name == 'pull_request'
         timeout-minutes: 12
         env:
-          # Companion core PR #3320, including approval baseline remediation.
-          # MUST follow the merged core SHA before UI #1596 merges.
-          LOCAL_OPERATOR_CORE_REF: c1b08deee11c7af9fe2c8b83043d1318d54ebd62
+          # Merged core PR #3320, including approval baseline remediation.
+          # The scene verifies the installed commit against this merged pin.
+          LOCAL_OPERATOR_CORE_REF: 3a001653fa1f08d434ca7582ca68581c792369d7
           VITE_DISABLE_BACKEND_MANAGER: 'true'
           LOCAL_OPERATOR_UI_NO_BYTECODE: 'true'
           LOCAL_OPERATOR_UI_TELEMETRY: 'off'

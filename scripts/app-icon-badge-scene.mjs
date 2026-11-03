@@ -12,8 +12,8 @@
  *
  * Only GitHub-hosted macOS may launch this scene. Refuse before importing the
  * driver (which resolves Electron), so refusal needs no dependency installation.
- * CI supplies LOCAL_OPERATOR_CORE_BIN/PYTHON/REF and RUNNER_TEMP. The workflow's
- * explicit core PR pin must follow its merged SHA before this UI PR merges.
+ * CI supplies LOCAL_OPERATOR_CORE_BIN/PYTHON/REF and RUNNER_TEMP. The workflow
+ * pins merged core PR #3320; the installed commit must equal that supplied pin.
  */
 import assert from "node:assert/strict";
 import { execFileSync, spawn } from "node:child_process";
