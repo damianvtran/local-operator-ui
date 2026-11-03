@@ -752,7 +752,10 @@ test("the operator's single-line receipt + data URI is a bounded receipt in the 
 	);
 	assert.ok(html.includes(header), "header stays readable");
 	assert.ok(
-		html.includes(`Inline image data · image/jpeg · ${uri.length} characters`),
+		/* The count is locale-grouped (design D1); the test renders in en. */
+		html.includes(
+			`Inline image data · image/jpeg · ${new Intl.NumberFormat("en").format(uri.length)} characters`,
+		),
 	);
 	assert.equal(html.includes("Qk+/x9Zp"), false, "no base64 run in markup");
 	assert.equal(html.includes("<img"), false);
