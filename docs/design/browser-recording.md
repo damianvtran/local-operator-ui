@@ -181,6 +181,33 @@ not a wire method.
 | **D21** | **Question:** Failure and exit paths. **Taken:** engine handle on `Recording`; dispose in `abortRecording`; `await Page.stopScreencast` where the tab survives; encoder crash settles `record_failed`; `before-quit` disposes. **Rejected:** a new hook in `cdp.ts` (the four boundaries already reach `abortRecording`). **Commits us to:** `Recording`/`Stoppable` gain `engine` and `encoder`. **Overturned by:** a fifth boundary found that bypasses `dropCaptures`. **Owner:** coder, reviewer. |
 | **D22** | **Question:** Test plan and PR split. **Taken:** UI PR first (golden default, fake-encoder lifecycle, mux unit tests, real-path matrix), harness PR second (token gate, echo check, docs, ledger). **Rejected:** a single combined PR (two repos); ffprobe-based checks (not installed). **Commits us to:** QA needs both worktrees for the end-to-end pass. **Overturned by:** none expected. **Owner:** manager. |
 
+**Declined overturn of D15 (manager decision, 2026-11-03).** D15's "Overturned by"
+trigger fired: with the base64 PNG passed to the encoder window unmodified, the app's
+MAIN process used 45-48 % of a core at 3840x2160 while recording a scrolling page
+(25-42 % averaged over a clip with static segments), against the ~30 % target; at
+1920x1080 it used 8-13 %. It is NOT acted on, because the trigger's purpose is that
+`high` must not cost more than today, and the whole app process tree at 4K costs less
+than the standard engine (high 34-66 % vs standard 49-92 %; the standard engine's AV1
+encoder in its utility process is the larger cost). So 4K stays allowed, with no fps
+or size gate.
+
+Cause, by A/B on the built app through the real host (4K, scrolling, main-process CPU
+over 10 s, each variant run 2-4 times):
+
+| Variant | Main CPU |
+|---|---|
+| base64 string passed through (shipped) | 48-53 % |
+| frame decoded to a `Buffer` in main, sent as binary | 50-51 % |
+| JPEG q100 frames instead of PNG | 51 % |
+| receive only: the CDP message is parsed, dropped, acked every 100 ms, nothing sent to the window | 50-54 % |
+| receive only, acked every 400 ms (fewer frames) | 32 % |
+
+The cost is Electron's debugger delivering multi-megabyte `Page.screencastFrame`
+messages to main, not the decode or the IPC; only receiving fewer frames reduces it.
+Measured on macOS arm64, Electron 45.1.0, one synthetic text page; Windows and Linux
+are unmeasured.
+
+
 ## What the real-path run measured
 
 Electron 45.1.0 (Chromium 156.0.8078.49), built from the PR-B worktree, headless,
