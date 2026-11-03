@@ -257,7 +257,10 @@ export const DropdownMenuTrigger=({children,asChild})=>{const c=React.useContext
 export const DropdownMenuContent=({children})=>{const c=React.useContext(Ctx);return c.open?React.createElement("div",{role:"menu"},children):null;};
 export const DropdownMenuItem=({children,onSelect,onClick})=>{const c=React.useContext(Ctx);return React.createElement("div",{role:"menuitem",onClick:(e)=>{onClick?.(e);onSelect?.(e);c.setOpen(false);}},children);};
 const Pass=({children})=>React.createElement(React.Fragment,null,children);
-export const DropdownMenuGroup=Pass,DropdownMenuPortal=Pass,DropdownMenuSub=Pass,DropdownMenuRadioGroup=Pass,DropdownMenuSubTrigger=Pass,DropdownMenuSubContent=Pass,DropdownMenuCheckboxItem=DropdownMenuItem,DropdownMenuRadioItem=DropdownMenuItem,DropdownMenuLabel=Pass,DropdownMenuSeparator=()=>null,DropdownMenuShortcut=Pass;`
+const Radio=React.createContext(null);
+export const DropdownMenuRadioGroup=({children,onValueChange})=>React.createElement(Radio.Provider,{value:onValueChange},children);
+export const DropdownMenuRadioItem=({children,value,onSelect})=>{const pick=React.useContext(Radio);return React.createElement(DropdownMenuItem,{onSelect:(e)=>{onSelect?.(e);pick?.(value);}},children);};
+export const DropdownMenuGroup=Pass,DropdownMenuPortal=Pass,DropdownMenuSub=Pass,DropdownMenuSubTrigger=Pass,DropdownMenuSubContent=Pass,DropdownMenuCheckboxItem=DropdownMenuItem,DropdownMenuLabel=Pass,DropdownMenuSeparator=()=>null,DropdownMenuShortcut=Pass;`
 								: `export const rowCurrent=${role};`,
 				}));
 			},
@@ -416,6 +419,7 @@ async function mount({
 		createListTenant: undefined,
 		createReceipts: [],
 		away: false,
+		listFor: null,
 	};
 	window.api = {
 		desktop: {
@@ -499,6 +503,10 @@ async function mount({
 						});
 					case "team_bridge.conversations.list":
 						if (fixture.listGate) await fixture.listGate.promise;
+						/* PER-SCOPE ROWS (view restore): a scenario that needs each organization
+						   to answer its own list - and the account read to answer the union -
+						   supplies them here; every older suite leaves it null. */
+						if (fixture.listFor) return reply(fixture.listFor(request));
 						if (fixture.lifecycle) {
 							const wanted = request.status ?? "open";
 							return reply({
@@ -642,6 +650,15 @@ async function mount({
 						if (fixture.created)
 							return reply(fixture.messages.get(ownerKey)[0]);
 						return reply({ id: `msg_${owner}` });
+					/* A thread read answers its root out of the scenario's history, so a
+					   reopened thread pane renders rather than erroring (view restore). */
+					case "team_bridge.messages.replies": {
+						const root = (
+							fixture.historyByConversation.get(request.conversation_id) ?? []
+						).find((row) => row.id === request.message_id);
+						if (!root) return reply({});
+						return reply({ root, replies: [], has_more: false });
+					}
 					case "team_bridge.read":
 						return reply({
 							conversation_id: request.conversation_id,
@@ -667,7 +684,7 @@ async function mount({
 	const root = createRoot(host);
 	const client = ui.queryClient;
 	client.clear();
-	seed?.({ client, ui });
+	seed?.({ client, ui, fixture });
 	const ownedQueries = new Set();
 	const stopTracking = client
 		.getQueryCache()
