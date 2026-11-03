@@ -1,0 +1,516 @@
+{
+  "tree": "before",
+  "groups": [
+    {
+      "key": "1024|localOperatorDark",
+      "idleA": 933,
+      "idleB": 969,
+      "states": [
+        {
+          "state": "idle",
+          "boxes": 2,
+          "slotA": {
+            "label": "Start recording",
+            "left": 933
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 969
+          },
+          "clusterWidth": 68,
+          "aEqualsIdle": true,
+          "bEqualsIdle": true,
+          "sent": 0,
+          "boxValue": ""
+        },
+        {
+          "state": "idle-text",
+          "boxes": 2,
+          "slotA": {
+            "label": "Start recording",
+            "left": 933
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 969
+          },
+          "clusterWidth": 68,
+          "aEqualsIdle": true,
+          "bEqualsIdle": true,
+          "sent": 0,
+          "boxValue": "Summarise the Q3 report and flag anything unusual"
+        },
+        {
+          "state": "running",
+          "boxes": 3,
+          "slotA": {
+            "label": "Start recording",
+            "left": 897
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 969
+          },
+          "clusterWidth": 104,
+          "aEqualsIdle": false,
+          "bEqualsIdle": true,
+          "sent": 0,
+          "boxValue": ""
+        },
+        {
+          "state": "running-text",
+          "boxes": 3,
+          "slotA": {
+            "label": "Start recording",
+            "left": 897
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 969
+          },
+          "clusterWidth": 104,
+          "aEqualsIdle": false,
+          "bEqualsIdle": true,
+          "sent": 0,
+          "boxValue": "Summarise the Q3 report and flag anything unusual"
+        },
+        {
+          "state": "stopping",
+          "boxes": 3,
+          "slotA": {
+            "label": "Start recording",
+            "left": 897
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 969
+          },
+          "clusterWidth": 104,
+          "aEqualsIdle": false,
+          "bEqualsIdle": true,
+          "sent": 0,
+          "boxValue": ""
+        },
+        {
+          "state": "recording",
+          "boxes": 3,
+          "slotA": null,
+          "slotB": {
+            "label": null,
+            "left": 969
+          },
+          "clusterWidth": 104,
+          "aEqualsIdle": false,
+          "bEqualsIdle": true,
+          "sent": 0,
+          "boxValue": ""
+        },
+        {
+          "state": "mic-off",
+          "boxes": 2,
+          "slotA": {
+            "label": "Start recording",
+            "left": 933
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 969
+          },
+          "clusterWidth": 68,
+          "aEqualsIdle": true,
+          "bEqualsIdle": true,
+          "sent": 0,
+          "boxValue": ""
+        }
+      ]
+    },
+    {
+      "key": "1024|localOperatorLight",
+      "idleA": 933,
+      "idleB": 969,
+      "states": [
+        {
+          "state": "idle",
+          "boxes": 2,
+          "slotA": {
+            "label": "Start recording",
+            "left": 933
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 969
+          },
+          "clusterWidth": 68,
+          "aEqualsIdle": true,
+          "bEqualsIdle": true,
+          "sent": 0,
+          "boxValue": ""
+        },
+        {
+          "state": "idle-text",
+          "boxes": 2,
+          "slotA": {
+            "label": "Start recording",
+            "left": 933
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 969
+          },
+          "clusterWidth": 68,
+          "aEqualsIdle": true,
+          "bEqualsIdle": true,
+          "sent": 0,
+          "boxValue": "Summarise the Q3 report and flag anything unusual"
+        },
+        {
+          "state": "running",
+          "boxes": 3,
+          "slotA": {
+            "label": "Start recording",
+            "left": 897
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 969
+          },
+          "clusterWidth": 104,
+          "aEqualsIdle": false,
+          "bEqualsIdle": true,
+          "sent": 0,
+          "boxValue": ""
+        },
+        {
+          "state": "running-text",
+          "boxes": 3,
+          "slotA": {
+            "label": "Start recording",
+            "left": 897
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 969
+          },
+          "clusterWidth": 104,
+          "aEqualsIdle": false,
+          "bEqualsIdle": true,
+          "sent": 0,
+          "boxValue": "Summarise the Q3 report and flag anything unusual"
+        },
+        {
+          "state": "stopping",
+          "boxes": 3,
+          "slotA": {
+            "label": "Start recording",
+            "left": 897
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 969
+          },
+          "clusterWidth": 104,
+          "aEqualsIdle": false,
+          "bEqualsIdle": true,
+          "sent": 0,
+          "boxValue": ""
+        },
+        {
+          "state": "recording",
+          "boxes": 3,
+          "slotA": null,
+          "slotB": {
+            "label": null,
+            "left": 969
+          },
+          "clusterWidth": 104,
+          "aEqualsIdle": false,
+          "bEqualsIdle": true,
+          "sent": 0,
+          "boxValue": ""
+        },
+        {
+          "state": "mic-off",
+          "boxes": 2,
+          "slotA": {
+            "label": "Start recording",
+            "left": 933
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 969
+          },
+          "clusterWidth": 68,
+          "aEqualsIdle": true,
+          "bEqualsIdle": true,
+          "sent": 0,
+          "boxValue": ""
+        }
+      ]
+    },
+    {
+      "key": "520|localOperatorDark",
+      "idleA": 618,
+      "idleB": 650,
+      "states": [
+        {
+          "state": "idle",
+          "boxes": 2,
+          "slotA": {
+            "label": "Start recording",
+            "left": 618
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 650
+          },
+          "clusterWidth": 60,
+          "aEqualsIdle": true,
+          "bEqualsIdle": true,
+          "sent": 0,
+          "boxValue": ""
+        },
+        {
+          "state": "idle-text",
+          "boxes": 2,
+          "slotA": {
+            "label": "Start recording",
+            "left": 618
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 650
+          },
+          "clusterWidth": 60,
+          "aEqualsIdle": true,
+          "bEqualsIdle": true,
+          "sent": 0,
+          "boxValue": "Summarise the Q3 report and flag anything unusual"
+        },
+        {
+          "state": "running",
+          "boxes": 3,
+          "slotA": {
+            "label": "Start recording",
+            "left": 586
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 650
+          },
+          "clusterWidth": 92,
+          "aEqualsIdle": false,
+          "bEqualsIdle": true,
+          "sent": 0,
+          "boxValue": ""
+        },
+        {
+          "state": "running-text",
+          "boxes": 3,
+          "slotA": {
+            "label": "Start recording",
+            "left": 586
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 650
+          },
+          "clusterWidth": 92,
+          "aEqualsIdle": false,
+          "bEqualsIdle": true,
+          "sent": 0,
+          "boxValue": "Summarise the Q3 report and flag anything unusual"
+        },
+        {
+          "state": "stopping",
+          "boxes": 3,
+          "slotA": {
+            "label": "Start recording",
+            "left": 586
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 650
+          },
+          "clusterWidth": 92,
+          "aEqualsIdle": false,
+          "bEqualsIdle": true,
+          "sent": 0,
+          "boxValue": ""
+        },
+        {
+          "state": "recording",
+          "boxes": 3,
+          "slotA": null,
+          "slotB": {
+            "label": null,
+            "left": 650
+          },
+          "clusterWidth": 92,
+          "aEqualsIdle": false,
+          "bEqualsIdle": true,
+          "sent": 0,
+          "boxValue": ""
+        },
+        {
+          "state": "mic-off",
+          "boxes": 2,
+          "slotA": {
+            "label": "Start recording",
+            "left": 618
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 650
+          },
+          "clusterWidth": 60,
+          "aEqualsIdle": true,
+          "bEqualsIdle": true,
+          "sent": 0,
+          "boxValue": ""
+        }
+      ]
+    },
+    {
+      "key": "520|localOperatorLight",
+      "idleA": 618,
+      "idleB": 650,
+      "states": [
+        {
+          "state": "idle",
+          "boxes": 2,
+          "slotA": {
+            "label": "Start recording",
+            "left": 618
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 650
+          },
+          "clusterWidth": 60,
+          "aEqualsIdle": true,
+          "bEqualsIdle": true,
+          "sent": 0,
+          "boxValue": ""
+        },
+        {
+          "state": "idle-text",
+          "boxes": 2,
+          "slotA": {
+            "label": "Start recording",
+            "left": 618
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 650
+          },
+          "clusterWidth": 60,
+          "aEqualsIdle": true,
+          "bEqualsIdle": true,
+          "sent": 0,
+          "boxValue": "Summarise the Q3 report and flag anything unusual"
+        },
+        {
+          "state": "running",
+          "boxes": 3,
+          "slotA": {
+            "label": "Start recording",
+            "left": 586
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 650
+          },
+          "clusterWidth": 92,
+          "aEqualsIdle": false,
+          "bEqualsIdle": true,
+          "sent": 0,
+          "boxValue": ""
+        },
+        {
+          "state": "running-text",
+          "boxes": 3,
+          "slotA": {
+            "label": "Start recording",
+            "left": 586
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 650
+          },
+          "clusterWidth": 92,
+          "aEqualsIdle": false,
+          "bEqualsIdle": true,
+          "sent": 0,
+          "boxValue": "Summarise the Q3 report and flag anything unusual"
+        },
+        {
+          "state": "stopping",
+          "boxes": 3,
+          "slotA": {
+            "label": "Start recording",
+            "left": 586
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 650
+          },
+          "clusterWidth": 92,
+          "aEqualsIdle": false,
+          "bEqualsIdle": true,
+          "sent": 0,
+          "boxValue": ""
+        },
+        {
+          "state": "recording",
+          "boxes": 3,
+          "slotA": null,
+          "slotB": {
+            "label": null,
+            "left": 650
+          },
+          "clusterWidth": 92,
+          "aEqualsIdle": false,
+          "bEqualsIdle": true,
+          "sent": 0,
+          "boxValue": ""
+        },
+        {
+          "state": "mic-off",
+          "boxes": 2,
+          "slotA": {
+            "label": "Start recording",
+            "left": 618
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 650
+          },
+          "clusterWidth": 60,
+          "aEqualsIdle": true,
+          "bEqualsIdle": true,
+          "sent": 0,
+          "boxValue": ""
+        }
+      ]
+    }
+  ],
+  "failures": [
+    "1024|localOperatorDark running: A 897 B 969 vs idle A 933 B 969",
+    "1024|localOperatorDark running-text: A 897 B 969 vs idle A 933 B 969",
+    "1024|localOperatorDark stopping: A 897 B 969 vs idle A 933 B 969",
+    "1024|localOperatorDark recording: A undefined B 969 vs idle A 933 B 969",
+    "1024|localOperatorLight running: A 897 B 969 vs idle A 933 B 969",
+    "1024|localOperatorLight running-text: A 897 B 969 vs idle A 933 B 969",
+    "1024|localOperatorLight stopping: A 897 B 969 vs idle A 933 B 969",
+    "1024|localOperatorLight recording: A undefined B 969 vs idle A 933 B 969",
+    "520|localOperatorDark running: A 586 B 650 vs idle A 618 B 650",
+    "520|localOperatorDark running-text: A 586 B 650 vs idle A 618 B 650",
+    "520|localOperatorDark stopping: A 586 B 650 vs idle A 618 B 650",
+    "520|localOperatorDark recording: A undefined B 650 vs idle A 618 B 650",
+    "520|localOperatorLight running: A 586 B 650 vs idle A 618 B 650",
+    "520|localOperatorLight running-text: A 586 B 650 vs idle A 618 B 650",
+    "520|localOperatorLight stopping: A 586 B 650 vs idle A 618 B 650",
+    "520|localOperatorLight recording: A undefined B 650 vs idle A 618 B 650"
+  ],
+  "verdict": "FAIL"
+}
