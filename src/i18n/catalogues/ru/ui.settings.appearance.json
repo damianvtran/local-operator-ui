@@ -67,5 +67,10 @@
 	"ui.settings.appearance.theme.tokyo_night_storm": "Более яркая ночь: грозовое небо индиго и те же неоновые акценты.",
 	"ui.settings.appearance.theme.tokyo_night": "Глубокая сине-фиолетовая ночь с ярким синим акцентом.",
 	"ui.settings.appearance.theme.tron": "Электрические циановые цепи на сине-чёрном фоне Сети.",
-	"ui.settings.appearance.theme.vaporwave": "Пыльно-розовая и выцветшая бирюзовая пастель на глубоком фиолетовом фоне молла."
+	"ui.settings.appearance.theme.vaporwave": "Пыльно-розовая и выцветшая бирюзовая пастель на глубоком фиолетовом фоне молла.",
+	"ui.settings.appearance.agent_avatar_size_setting.agent_picture_size": "Размер фото агента",
+	"ui.settings.appearance.agent_avatar_size_setting.how_large_the_agent_s_picture_appears_in_the_chat_window_and_the_chat": "Размер фото агента в окне чата и в его заголовке. Боковая панель остаётся прежней.",
+	"ui.settings.appearance.agent_avatar_size_setting.small": "Маленький",
+	"ui.settings.appearance.agent_avatar_size_setting.medium": "Средний",
+	"ui.settings.appearance.agent_avatar_size_setting.large": "Большой"
 }

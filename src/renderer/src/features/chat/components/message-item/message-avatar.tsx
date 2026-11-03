@@ -1,5 +1,6 @@
 /**
- * The agent's picture at the head of a turn.
+ * The agent's mark at the head of a turn: its picture, or the quiet placeholder
+ * that offers one.
  *
  * WHAT CHANGED SINCE D11, and why the deletion was right then and is wrong now.
  * D11 deleted the agent glyph and the 40px gutter it was absolutely positioned
@@ -9,38 +10,43 @@
  * a filled block, an agent turn is prose on no ground). The picture says
  * something the register CANNOT: WHICH agent this turn belongs to. So it is back,
  * under those constraints: drawn once per turn, as a line of its own above the
- * turn's first line (never beside it, so no row's text measure moves), and at
- * 20px rather than 28-40px, because a photograph is intrinsically louder than a
- * muted glyph and it must not become the loudest thing in the left column.
+ * turn's first line (never beside it, so no row's text measure moves), and at the
+ * reader's chosen size (`agent-avatar-size.ts`; 20px by default) rather than
+ * 28-40px, because a photograph is intrinsically louder than a muted glyph and
+ * it must not become the loudest thing in the left column.
  *
- * NO PICTURE MEANS NO MARK. There is no placeholder here: the current look - no
- * mark at all - is D11's own answer for an agent without a picture, and a Bot
- * glyph per turn would be exactly the repetition D11 removed. `src` is
- * therefore required, and every caller renders this only when it has one.
+ * NO PICTURE NOW DRAWS A PLACEHOLDER, AND THAT DOES NOT REPEAT D11. D11's
+ * objection was a glyph per message that said nothing the register had not
+ * said. The placeholder says something nothing else does ("this agent can have a
+ * face, and here is how") and is therefore drawn ONCE - at the first turn of the
+ * loaded transcript (`firstTurnHeadOnly` in the transcript) - not per turn, and
+ * only for an agent the viewer can edit (`avatar-presence.ts`: no door, no mark).
+ * Later turns of an agent with no picture are the D11 transcript exactly. The
+ * header carries the permanent door; this one is the reader's chance to find it
+ * where they are looking. A pictured agent still draws its face every turn,
+ * because identity is the point of a picture.
  *
  * `rounded-full` is one of the three places § 5 permits it. THE EDGE IS THE
  * SHARED ONE (design review round 1, D1 on #1518): the same 1px `border-control`
  * boundary and `sunken` plate as the roster, the rail and the settings field,
- * on the circle's owner (`AgentAvatar`). It used to draw none, on the argument
- * that a picture is its own boundary - true only for pictures whose edge
- * contrasts with the transcript's ground; a photo whose edge matches it became
- * an invisible disc. The shared plate is the answer every other agent surface
- * already gives.
- *
- * The DESIGNER HAS NOT YET SEEN THE 20PX MARK WITH THE EDGE RENDERED. The
- * round-1 design pass could not produce a conversation in its rig, so the
- * boundary and the 24px rhythm there were unjudged; this change keeps the 20px
- * outer box and the `mb-1` line exactly, and the frame pass is what confirms
- * the edge reads as quiet at this size.
+ * on the circle's owner (`AgentAvatar`). The placeholder swaps the plate for the
+ * dashed form of the same edge (see `agent-avatar-slot.tsx`).
  */
 
-import { AgentAvatar, AvatarImage } from "@shared/components/ui";
+import { AgentAvatarSlot } from "@shared/agent-avatar/agent-avatar-slot";
+import type { AvatarMark } from "@shared/agent-avatar/avatar-presence";
 import { cn } from "@shared/lib/utils";
+import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import type { FC } from "react";
+import {
+	TURN_AVATAR_BOX,
+	TURN_AVATAR_GAP_PX,
+	parseAgentAvatarSize,
+} from "../../agent-avatar-size";
 
 export type MessageAvatarProps = {
-	/** The agent's stored picture. Always present; see the note above. */
-	src: string;
+	/** What the head draws; see `decideAvatarMark`. Never "nothing" - callers gate on it. */
+	mark: AvatarMark;
 	/**
 	 * The speaking agent's name, for the image's accessible name.
 	 *
@@ -53,30 +59,41 @@ export type MessageAvatarProps = {
 };
 
 export const MessageAvatar: FC<MessageAvatarProps> = ({
-	src,
+	mark,
 	name,
 	className,
 }) => {
+	const size = parseAgentAvatarSize(
+		useUiPreferencesStore((state) => state.agentAvatarSize),
+	);
+	const box = TURN_AVATAR_BOX[size];
+	/*
+	 * `TURN_AVATAR_GAP_PX` (4px, `mb-1`) is the same gap the row's own meta caption
+	 * takes from its chunk: the mark belongs to the line under it. It is read from
+	 * the table the transcript's height estimate reads, so the class and the
+	 * estimate cannot drift; the literal class below is what Tailwind scans.
+	 */
 	return (
-		/*
-		 * `mb-1` is the same 4px the row's own meta caption takes from its chunk:
-		 * the mark belongs to the line under it, and anything wider would read as
-		 * a block of its own. `flex` on the root is what keeps it a line rather
-		 * than an inline box that the first paragraph would wrap around.
-		 */
-		<AgentAvatar className={cn("mb-1 size-5", className)}>
+		<div
+			className={cn("mb-1 flex", className)}
+			data-turn-avatar-gap={TURN_AVATAR_GAP_PX}
+		>
 			{/*
 			 * `alt` NAMES THE SPEAKER, AND ONLY WHEN THERE IS A NAME (review round 1,
-			 * R-3). The old label was the fixed role word ("Assistant") and the comment
-			 * claimed it was the only place a screen reader learned whose turn it was;
-			 * both were wrong. The row this mark sits in is already a `role="group"`
-			 * labelled "Agent message", so the register had already spoken, and every
-			 * agent's picture then announced the same word - coder and reviewer were
+			 * R-3). The row this mark sits in is already a `role="group"` labelled
+			 * "Agent message", so the register had already spoken, and every agent's
+			 * picture then announced the same word - coder and reviewer were
 			 * indistinguishable. The name is the one fact the register cannot state,
 			 * so it is what the image says; with no name the mark is decoration
 			 * (`alt=""`), which is the same answer the sidebar and roster give.
 			 */}
-			<AvatarImage src={src} alt={name ?? ""} loading="eager" />
-		</AgentAvatar>
+			<AgentAvatarSlot
+				mark={mark}
+				boxClassName={box.className}
+				glyphClassName={box.glyphClassName}
+				alt={name ?? ""}
+				agentName={name}
+			/>
+		</div>
 	);
 };

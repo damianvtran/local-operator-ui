@@ -60,7 +60,7 @@ import {
 	useQuery,
 	useQueryClient,
 } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import {
 	type AgentAvatarMap,
 	SHA256,
@@ -201,8 +201,35 @@ export function useAgentAvatar(
 	agentId: string | null | undefined,
 	sha256Hint?: string | null,
 ): string | null {
+	return useAgentAvatarState(agentId, sha256Hint).url;
+}
+
+/** What `useAgentAvatarState` answers: the URL, and whether the answer is final. */
+export type AgentAvatarState = {
+	/** The paintable URL, or null for no picture AND for bytes that did not resolve. */
+	url: string | null;
+	/**
+	 * False while the answer is still being read (the agents map in flight, or
+	 * the bytes being fetched). True once it is final, INCLUDING a final "no
+	 * picture" and a final "the bytes did not resolve" - the two a bare URL cannot
+	 * tell from a read in progress, and the two `decideAvatarMark` must not draw a
+	 * plate for.
+	 */
+	settled: boolean;
+};
+
+/**
+ * `useAgentAvatar` with the one fact its URL cannot carry: whether `null` is an
+ * answer or only the absence of one. The presence decision
+ * (`avatar-presence.ts`) needs it so a cold load does not flash a placeholder
+ * that a picture is about to replace.
+ */
+export function useAgentAvatarState(
+	agentId: string | null | undefined,
+	sha256Hint?: string | null,
+): AgentAvatarState {
 	const hinted = sha256Hint !== undefined;
-	const { data } = useAgentAvatarMap(Boolean(agentId) && !hinted);
+	const { data, isPending } = useAgentAvatarMap(Boolean(agentId) && !hinted);
 	const sha256 = hinted
 		? sha256Hint && SHA256.test(sha256Hint)
 			? sha256Hint
@@ -210,7 +237,14 @@ export function useAgentAvatar(
 		: agentId
 			? (data?.[agentId]?.sha256 ?? null)
 			: null;
-	return useAvatarBytes(agentId ?? null, sha256);
+	const bytes = useAvatarBytes(agentId ?? null, sha256);
+	/*
+	 * The map is only consulted unhinted, and a pending map says nothing yet about
+	 * whether the agent has a picture. A disabled query is `isPending` too, which
+	 * is why the term is gated on the same condition that enabled it.
+	 */
+	const mapSettled = hinted || !agentId || !isPending;
+	return { url: bytes.url, settled: mapSettled && bytes.settled };
 }
 
 /**
@@ -224,7 +258,7 @@ export function useAgentAvatar(
 function useAvatarBytes(
 	agentId: string | null,
 	sha256: string | null,
-): string | null {
+): AgentAvatarState {
 	const key = agentId && sha256 ? agentAvatarPath(agentId, sha256) : null;
 	/*
 	 * THE KEY TRAVELS WITH THE URL, so a render can tell a fresh answer from the
@@ -239,43 +273,96 @@ function useAvatarBytes(
 	 * for a key it has no answer for: the new digest's warm bytes if they are
 	 * already cached, nothing otherwise - never the picture that was on screen a
 	 * moment ago. The effect then corrects it as before.
+	 *
+	 * `settled` rides with them for the same reason: it is true only for the key
+	 * it was written under, so a key change reads as unsettled until the new
+	 * key's fetch lands or fails.
 	 */
 	const [drawn, setDrawn] = useState<{
 		key: string | null;
 		url: string | null;
-	}>(() => ({ key, url: key ? peek(key) : null }));
+		settled: boolean;
+	}>(() => {
+		const warm = key ? peek(key) : null;
+		return { key, url: warm, settled: !key || warm !== null };
+	});
 	useEffect(() => {
 		if (!key || !agentId || !sha256) {
-			setDrawn({ key, url: null });
+			setDrawn({ key, url: null, settled: true });
 			return;
 		}
 		const cached = retain(key);
 		if (cached) {
-			setDrawn({ key, url: cached });
+			setDrawn({ key, url: cached, settled: true });
 			return () => release(key);
 		}
-		setDrawn({ key, url: null });
+		setDrawn({ key, url: null, settled: false });
 		let cancelled = false;
 		let held = false;
 		void desktopMedia({ op: "agent.avatar", agentId, sha256 }, null)
 			.then((result) => {
-				if (cancelled || result.kind !== "bytes") return;
+				if (cancelled) return;
+				if (result.kind !== "bytes") {
+					// A 404 or an error body: a FINAL "no bytes", not a read in progress.
+					setDrawn({ key, url: null, settled: true });
+					return;
+				}
 				publish(key, createBlobUrl(result.data as BlobPart, result.mimeType));
 				const joined = retain(key);
 				held = joined !== null;
-				setDrawn({ key, url: joined });
+				setDrawn({ key, url: joined, settled: true });
 			})
 			.catch(() => {
 				// A relay that rejected outright is the same answer as a 404: the glyph.
+				if (!cancelled) setDrawn({ key, url: null, settled: true });
 			});
 		return () => {
 			cancelled = true;
 			if (held) release(key);
 		};
 	}, [key, agentId, sha256]);
-	if (!key) return null;
-	if (drawn.key === key) return drawn.url;
-	return peek(key) ?? null;
+	if (!key) return { url: null, settled: true };
+	if (drawn.key === key) return { url: drawn.url, settled: drawn.settled };
+	const warm = peek(key) ?? null;
+	return { url: warm, settled: warm !== null };
+}
+
+/* ------------------------------------------------------------------ *
+ * WRITES IN FLIGHT
+ * ------------------------------------------------------------------ */
+
+/**
+ * The agents whose picture this window is writing or clearing right now.
+ *
+ * Kept here, beside the two writers, because they are plain functions (see
+ * `client()` above) and so is the answer a mark needs: "is a write for MY agent
+ * in flight?". A mark that offered its door while the editor's own request was
+ * still open would lead to a pane that is read-only until it settles. Counted,
+ * not boolean, so two overlapping writes for one agent release it only when both
+ * have.
+ */
+const writing = new Map<string, number>();
+const writingListeners = new Set<() => void>();
+
+function setWriting(agentId: string, on: boolean): void {
+	const next = (writing.get(agentId) ?? 0) + (on ? 1 : -1);
+	if (next > 0) writing.set(agentId, next);
+	else writing.delete(agentId);
+	for (const listener of writingListeners) listener();
+}
+
+/** Whether a picture write for this agent is in flight in this window. */
+export function useAgentAvatarWriting(
+	agentId: string | null | undefined,
+): boolean {
+	return useSyncExternalStore(
+		(listener) => {
+			writingListeners.add(listener);
+			return () => writingListeners.delete(listener);
+		},
+		() => Boolean(agentId && writing.has(agentId)),
+		() => false,
+	);
 }
 
 /**
@@ -301,7 +388,13 @@ export async function setAgentAvatar(
 	image: Blob,
 ): Promise<AgentAvatarMeta | null> {
 	const bytes = new Uint8Array(await image.arrayBuffer());
-	const result = await desktopMedia({ op: "agent.avatar.put", agentId }, bytes);
+	setWriting(agentId, true);
+	let result: Awaited<ReturnType<typeof desktopMedia>>;
+	try {
+		result = await desktopMedia({ op: "agent.avatar.put", agentId }, bytes);
+	} finally {
+		setWriting(agentId, false);
+	}
 	/*
 	 * Core's refusal sentence (unsupported_type, too_large, too_many_pixels,
 	 * undecodable) arrives as the relay's `detail`; `mediaError` carries it as
@@ -326,10 +419,13 @@ export async function setAgentAvatar(
 
 /** Forgets one agent's picture, leaving the fallback glyph in its place. */
 export async function clearAgentAvatar(agentId: string): Promise<void> {
-	const result = await desktopMedia(
-		{ op: "agent.avatar.delete", agentId },
-		null,
-	);
+	setWriting(agentId, true);
+	let result: Awaited<ReturnType<typeof desktopMedia>>;
+	try {
+		result = await desktopMedia({ op: "agent.avatar.delete", agentId }, null);
+	} finally {
+		setWriting(agentId, false);
+	}
 	// 404 is "already unset": the state the user asked for, not a failure.
 	if (
 		result.status !== 404 &&

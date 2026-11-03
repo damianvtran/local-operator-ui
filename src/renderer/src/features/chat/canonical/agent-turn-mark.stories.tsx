@@ -21,15 +21,17 @@
  */
 
 import type { Meta, StoryObj } from "@storybook/react";
-import { useEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef } from "react";
 import "../../../styles/index.css";
 import {
 	agentAvatarsQueryKey,
-	useAgentAvatar,
 	useAgentAvatarMap,
 } from "@shared/agent-avatar/agent-avatar";
+import { useAgentSlotMark } from "@shared/agent-avatar/agent-avatar-slot";
+import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { useQueryClient } from "@tanstack/react-query";
 import type { CanonicalFrontendState } from "../../../../../shared/desktop-session-contract";
+import type { AgentAvatarSize } from "../agent-avatar-size";
 import { CanonicalTranscript } from "./canonical-transcript";
 import type { CanonicalTranscriptStatus } from "./transcript-pane";
 import type { TranscriptRecord, TranscriptState } from "./transcript-reducer";
@@ -192,10 +194,15 @@ const Panel = ({
 	frame,
 	width,
 	agentId,
+	owned = true,
+	height = PANE_HEIGHT,
 }: {
 	frame: string;
 	width: number;
 	agentId: string | null;
+	/** Whether the viewer owns the agent: the placeholder's door needs it. */
+	owned?: boolean;
+	height?: number;
 }) => {
 	const containerRef = useRef<HTMLDivElement>(null);
 	/*
@@ -204,7 +211,12 @@ const Panel = ({
 	 * the stored value reaches the row - the same subscription that repaints a
 	 * conversation when the picture changes.
 	 */
-	const agentAvatar = useAgentAvatar(agentId);
+	const agentAvatar = useAgentSlotMark({
+		agentId,
+		agentName: "coder",
+		owned,
+		pictureDoor: false,
+	});
 	return (
 		<div
 			data-frame={frame}
@@ -213,7 +225,7 @@ const Panel = ({
 		>
 			<div
 				className="flex min-h-0 flex-col"
-				style={{ height: PANE_HEIGHT }}
+				style={{ height }}
 				ref={containerRef}
 			>
 				<CanonicalTranscript
@@ -226,7 +238,7 @@ const Panel = ({
 					onLoadOlder={async () => true}
 					containerRef={containerRef}
 					isSmallView={false}
-					agentAvatar={agentAvatar}
+					agentMark={agentAvatar}
 					/*
 					 * THE NAME THE IMAGE PRINTS: without it the frame renders
 					 * `alt=""` and the frame cannot show what a reader with a screen
@@ -341,9 +353,17 @@ export const GalleryStory: Story = {
 };
 
 /** A pane whose agent has a stored picture; a component so the hook is legal. */
-const PicturePane = ({ frame, width }: { frame: string; width: number }) => {
+const PicturePane = ({
+	frame,
+	width,
+	agentId = STORY_AGENT_ID,
+}: {
+	frame: string;
+	width: number;
+	agentId?: string | null;
+}) => {
 	useStoredPicture();
-	return <Panel frame={frame} width={width} agentId={STORY_AGENT_ID} />;
+	return <Panel frame={frame} width={width} agentId={agentId} />;
 };
 
 /** Just the wide picture pane, for a frame a reviewer can read at 1:1. */
@@ -382,6 +402,85 @@ export const PlainNarrow: Story = {
 	render: () => (
 		<div className="bg-canvas p-6">
 			<Panel frame="plain-narrow" width={420} agentId={null} />
+		</div>
+	),
+};
+
+/** An owned agent that has NO stored picture (the map above lists only the pictured one). */
+const BARE_AGENT_ID = "agent-story-bare";
+
+/**
+ * THE PLACEHOLDER IN A REAL TRANSCRIPT: an agent with no picture, owned, two
+ * turns. The dashed camera door is drawn at the FIRST turn's head only - the
+ * second turn is the D11 transcript exactly - which is the repetition decision
+ * (`message-avatar.tsx`) made visible. `data-frame` is the measure hook.
+ */
+export const PlaceholderOnce: Story = {
+	render: () => (
+		<div className="bg-canvas p-6">
+			<PicturePane
+				frame="placeholder-wide"
+				width={1024}
+				agentId={BARE_AGENT_ID}
+			/>
+		</div>
+	),
+};
+
+/** The same agent when the viewer does not own it: D11's transcript, no mark at all. */
+export const PlaceholderNotOwned: Story = {
+	render: () => (
+		<div className="bg-canvas p-6">
+			<Panel
+				frame="placeholder-not-owned"
+				width={1024}
+				agentId={BARE_AGENT_ID}
+				owned={false}
+			/>
+		</div>
+	),
+};
+
+/** A pane at one step of the size setting, picture or placeholder. */
+const SizedPane = ({
+	size,
+	agentId,
+}: {
+	size: AgentAvatarSize;
+	agentId: string;
+}) => {
+	useLayoutEffect(() => {
+		useUiPreferencesStore.setState({ agentAvatarSize: size });
+		return () => useUiPreferencesStore.setState({ agentAvatarSize: "small" });
+	}, [size]);
+	return <PicturePane frame={`size-${size}`} width={1024} agentId={agentId} />;
+};
+
+export const SizeSmall: Story = {
+	render: () => (
+		<div className="bg-canvas p-6">
+			<SizedPane size="small" agentId={STORY_AGENT_ID} />
+		</div>
+	),
+};
+export const SizeMedium: Story = {
+	render: () => (
+		<div className="bg-canvas p-6">
+			<SizedPane size="medium" agentId={STORY_AGENT_ID} />
+		</div>
+	),
+};
+export const SizeLarge: Story = {
+	render: () => (
+		<div className="bg-canvas p-6">
+			<SizedPane size="large" agentId={STORY_AGENT_ID} />
+		</div>
+	),
+};
+export const SizeLargePlaceholder: Story = {
+	render: () => (
+		<div className="bg-canvas p-6">
+			<SizedPane size="large" agentId={BARE_AGENT_ID} />
 		</div>
 	),
 };

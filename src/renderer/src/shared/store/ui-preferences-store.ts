@@ -5,6 +5,10 @@
  * theme selection, and provides methods to update these preferences.
  */
 
+import {
+	type AgentAvatarSize,
+	DEFAULT_AGENT_AVATAR_SIZE,
+} from "@features/chat/agent-avatar-size";
 import type { AskScope } from "@features/chat/ask-queue";
 import {
 	CANVAS_PANE_MIN_PX,
@@ -980,6 +984,28 @@ type UiPreferencesState = {
 	 * @param mode - How settled turns should be drawn
 	 */
 	setTranscriptDisplayMode: (mode: TranscriptDisplayMode) => void;
+
+	/**
+	 * How large the agent's picture is drawn in the chat window (the turn head and
+	 * the chat header): `small` (today's 20px), `medium` or `large`. An app-level
+	 * preference, not a per-agent one.
+	 *
+	 * Default `small` per `agent-avatar-size.ts`, which owns the tokens, the pixel
+	 * tables and the judgement: this store keeps the value, and every reader parses
+	 * it through `parseAgentAvatarSize` because zustand rehydrates PAST the setters
+	 * (the read-side rule `transcriptDisplayMode` above follows). A blob saved
+	 * before this field existed simply lacks the key, so the default applies and no
+	 * migration step is needed.
+	 */
+	agentAvatarSize: AgentAvatarSize;
+
+	/**
+	 * Set the picture size. Takes the resolved union, so an unknown step cannot be
+	 * written; the stored value is judged again on every read.
+	 *
+	 * @param size - The step to draw the chat window's agent picture at
+	 */
+	setAgentAvatarSize: (size: AgentAvatarSize) => void;
 
 	/**
 	 * The currently selected theme
@@ -2049,6 +2075,7 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 			sidebarOverflowExpanded: false,
 			showAgentReasoning: false,
 			transcriptDisplayMode: DEFAULT_TRANSCRIPT_DISPLAY_MODE,
+			agentAvatarSize: DEFAULT_AGENT_AVATAR_SIZE,
 			themeName: DEFAULT_THEME,
 			rightSlotWidth: 0,
 			chatSidebarWidth: DEFAULT_CHAT_SIDEBAR_WIDTH,
@@ -2156,6 +2183,12 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 			setTranscriptDisplayMode: (mode: TranscriptDisplayMode) => {
 				set({
 					transcriptDisplayMode: mode,
+				});
+			},
+
+			setAgentAvatarSize: (size: AgentAvatarSize) => {
+				set({
+					agentAvatarSize: size,
 				});
 			},
 

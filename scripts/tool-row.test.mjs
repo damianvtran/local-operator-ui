@@ -1441,8 +1441,11 @@ test("an invisible record does not consume the avatar or a turn boundary", () =>
 	 *      record: `showAvatar` stays deleted (a flag would be the per-message
 	 *      avatar coming back through the model), and the head set is
 	 *      `agentTurnHeads`'s answer.
-	 *   3. NO GLYPH WITHOUT A PICTURE: `MessageAvatar` requires `src`, so the
-	 *      Bot placeholder D11 deleted cannot return through it.
+	 *   3. THE PLACEHOLDER IS NOT D11'S GLYPH. A pictureless agent now draws the
+	 *      dashed camera door (presence round), but only ONCE - the transcript
+	 *      keeps `turnHeads` to its first head when the mark is a placeholder -
+	 *      and only for an agent the viewer owns. The Bot glyph D11 deleted
+	 *      stays deleted (asserted below, where the mark component is read).
 	 *
 	 * Asked of the CODE, not the words: the container's own comment explains
 	 * what the `pl-10` indent used to cost, and a token check that read comments
@@ -1485,12 +1488,12 @@ test("an invisible record does not consume the avatar or a turn boundary", () =>
 		.replace(/\/\*[\s\S]*?\*\//g, "")
 		.replace(/\/\/[^\n]*/g, "");
 	assert.ok(
-		/\{opensTurn && agentAvatar \? \(?\s*<MessageAvatar src=\{agentAvatar\}(?: name=\{agentName\})? \/>\s*\)? : null\}\s*\{body\}/.test(
+		/\{opensTurn && agentMark \? \(?\s*<MessageAvatar mark=\{agentMark\}(?: name=\{agentName\})? \/>\s*\)? : null\}\s*\{body\}/.test(
 			code,
 		),
 		"the mark is drawn above the row's body with nothing between them",
 	);
-	const markAt = code.indexOf("{opensTurn && agentAvatar ?");
+	const markAt = code.indexOf("{opensTurn && agentMark ?");
 	assert.ok(markAt > 0, "the mark site is in the transcript");
 	const wrapper = code.slice(code.lastIndexOf("<div", markAt), markAt);
 	assert.ok(
@@ -1671,7 +1674,7 @@ test("a receipt or a quiet call before the answer is not the head", () => {
 	assert.deepEqual([...agentTurnHeads(rows)], ["a1"]);
 });
 
-test("the head set is skipped without a picture, and the estimate knows its 24px", () => {
+test("the head set is skipped without a mark, and the estimate follows the size setting", () => {
 	/*
 	 * Review round 1, R-5. Two halves, both wiring rather than geometry, so both
 	 * are read off the source the way the D11 pin above reads the container:
@@ -1689,13 +1692,17 @@ test("the head set is skipped without a picture, and the estimate knows its 24px
 	);
 	assert.match(
 		transcript,
-		/agentAvatar \? agentTurnHeads\(rows\) : NO_TURN_HEADS/,
-		"a picture-less pane never walks the turn partition",
+		/if \(!markKind\) return NO_TURN_HEADS;\s*const heads = agentTurnHeads\(rows\);/,
+		"a pane with no mark never walks the turn partition",
 	);
 	assert.match(
 		transcript,
-		/const TURN_MARK_HEIGHT = 24;/,
-		"the mark's height is one number (size-5 20 + mb-1 4)",
+		/const markHeight = turnMarkHeight\(avatarSize\);/,
+		"the mark's height is read from the size table, not a literal",
+	);
+	assert.ok(
+		!/const TURN_MARK_HEIGHT\b/.test(transcript),
+		"the 24px literal is gone: the estimate cannot keep a belief the setting moved",
 	);
 	assert.match(
 		transcript,
@@ -1704,7 +1711,7 @@ test("the head set is skipped without a picture, and the estimate knows its 24px
 	);
 	assert.match(
 		transcript,
-		/fact\.marksHead \? TURN_MARK_HEIGHT : 0/,
+		/fact\.marksHead \? fact\.markHeight : 0/,
 		"the estimate adds the mark's own height for an entry that draws it",
 	);
 });
@@ -1725,6 +1732,7 @@ test("the entry signature moves when a slot starts drawing the mark", () => {
 		media: false,
 		unsafe: false,
 		marksHead: false,
+		markHeight: 24,
 		renderSignature: "n1:1,t1:1",
 	};
 	const without = entrySlotSignature([fact], false);
@@ -1746,21 +1754,30 @@ test("the entry signature moves when a slot starts drawing the mark", () => {
 	);
 });
 
-test("a picture-less agent's transcript renders exactly what D11 left", () => {
-	// The mark is the ONLY new node, and it is gated on a picture: with none,
-	// `MessageAvatar` is never mounted (its `src` is required), so the no-picture
-	// case cannot drift into a placeholder by accident.
+test("a pictureless agent's transcript is D11's apart from one placeholder, once", () => {
+	// The mark component takes a DECIDED mark (`decideAvatarMark`), never a bare
+	// `src`, so the only glyph it can draw is the placeholder that decision
+	// returns - owned agents only - and the Bot D11 deleted has not returned.
 	const mark = readFileSync(
 		"src/renderer/src/features/chat/components/message-item/message-avatar.tsx",
 		"utf8",
 	);
 	assert.ok(
-		/\tsrc: string;/.test(mark),
-		"the mark requires a picture; there is no glyph fallback (D11)",
+		/\tmark: AvatarMark;/.test(mark),
+		"the turn mark draws what the presence decision returned",
 	);
 	assert.ok(
 		!/<Bot\b/.test(mark),
 		"the Bot placeholder D11 deleted has not come back",
+	);
+	const transcript = readFileSync(
+		"src/renderer/src/features/chat/canonical/canonical-transcript.tsx",
+		"utf8",
+	);
+	assert.match(
+		transcript,
+		/markKind !== "placeholder" \|\| heads\.size <= 1\) return heads;\s*const \[first\] = heads;\s*return new Set\(\[first\]\);/,
+		"a placeholder is drawn at the first turn head only, never once per turn",
 	);
 });
 
@@ -6549,8 +6566,13 @@ test("the turn mark's own classes cannot narrow, float or absolutely place it", 
 		)}). The mark is a line of its own above the turn, never beside it: a float, an absolute offset or a gutter inside this component narrows the prose exactly as D11's 40px gutter did, and the call-site pin cannot see it`,
 	);
 	assert.ok(
-		tokens.includes("mb-1") && tokens.includes("size-5"),
-		"and the mark still states its own 20px box and 4px line",
+		tokens.includes("mb-1"),
+		"and the mark still states its own 4px line",
+	);
+	assert.ok(
+		/TURN_AVATAR_BOX\[size\]/.test(mark) &&
+			/size: AgentAvatarSize|parseAgentAvatarSize/.test(mark),
+		"and its box comes from the size table (20px by default), not a class of its own",
 	);
 	/*
 	 * AND THE RAIL'S 16PX DISC WEARS THE SAME PLATE (design review round 1, D1
@@ -6602,7 +6624,7 @@ test("the mark is named by the speaking agent, through every hand-off", () => {
 	assert.equal(
 		(
 			transcript.match(
-				/<MessageAvatar src=\{agentAvatar\} name=\{agentName\} \/>/g,
+				/<MessageAvatar mark=\{agentMark\} name=\{agentName\} \/>/g,
 			) ?? []
 		).length,
 		3,

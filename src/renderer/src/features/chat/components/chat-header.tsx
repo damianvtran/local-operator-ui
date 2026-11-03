@@ -1,5 +1,7 @@
-import { AgentAvatarEditLink } from "@shared/agent-avatar/agent-avatar-edit-link";
-import { AgentMark, useHasAgentPicture } from "@shared/agent-avatar/agent-mark";
+import {
+	AgentAvatarSlot,
+	useAgentSlotMark,
+} from "@shared/agent-avatar/agent-avatar-slot";
 import {
 	desktopFeatureState,
 	useDesktopCapabilities,
@@ -45,6 +47,7 @@ import {
 	X,
 } from "lucide-react";
 import { type FC, type ReactNode, useEffect, useRef, useState } from "react";
+import { HEADER_AVATAR_BOX, parseAgentAvatarSize } from "../agent-avatar-size";
 import type { AskScope } from "../ask-queue";
 import { archiveControlLabel } from "../chat-archived";
 /*
@@ -319,59 +322,57 @@ type ChatHeaderProps = {
 const PATH_CHIP_CHARS = 40;
 
 /**
- * The header's picture and the pencil's door onto its editor.
+ * The header's mark and its door onto the picture editor.
  *
- * A COMPONENT RATHER THAN A CONDITIONAL INSIDE THE HEADER, because both things
- * this decides come from hooks: presence (`useHasAgentPicture`, which reads the
- * agents query) and the mark's own bytes. Mounted only when the header HAS an
- * agent avatar, the hook surface is exactly what the mark already needed - a
- * header for a draft, a Team Bridge identity or a backend that publishes no
- * avatar still touches no query client.
+ * A COMPONENT RATHER THAN A CONDITIONAL INSIDE THE HEADER, because what it draws
+ * comes from hooks: the bytes and whether a write is in flight. Mounted only when
+ * the header HAS an agent (`agentAvatar` non-null), so a draft, a Team Bridge
+ * identity or a backend that publishes no agent id still touches no query client.
  *
- * IS THERE A PICTURE TO SHOW - AND SO A PICTURE TO CHANGE (agent review round 1,
- * m3)? The gate below used to be `agentAvatar` alone, which is the row's CLAIM
- * (an agent id and a digest). A claim whose bytes do not resolve - a 404 from
- * core, a file removed behind the row, a stale digest after a CLI write, a
- * remote row (M2) - drew `AgentMark`'s `fallback`, which the header passes as
- * `null`, and then wrapped that null in `AgentAvatarEditLink`: a bare 20px
- * circle that revealed a pencil on hover with no picture in it. A door onto an
- * empty plate.
+ * WHAT IT DRAWS IS `decideAvatarMark`'s ANSWER, shared with the transcript's turn
+ * head so the two cannot disagree:
  *
- * The header therefore asks the bytes rather than the row, and draws NOTHING
- * when there are none - which is the same thing it draws for an agent with no
- * picture at all, so the failed and the absent case cannot disagree. The hook
- * retains the URL before `AgentMark` mounts, so the mark's own `peek` paints on
- * its first frame rather than flashing an empty plate.
+ *  - a picture whose bytes resolved, with the pencil door for an owned agent;
+ *  - NO PICTURE (never had one) draws the placeholder - a dashed ring and a
+ *    camera - for an owned agent, as the door that makes the feature findable.
+ *    This used to draw nothing, which kept a pictureless conversation exactly the
+ *    header main drew and left no way to learn pictures exist (the operator's
+ *    discoverability ask, which supersedes that choice);
+ *  - A DIGEST WHOSE BYTES DO NOT RESOLVE (agent review round 1, m3: a 404, a
+ *    removed file, a stale digest, a remote row) is the same case as no picture
+ *    and draws the same placeholder - so the failed and the absent state cannot
+ *    disagree, and there is never a pencil door onto an empty plate (the defect
+ *    m3 fixed);
+ *  - while a write is in flight the placeholder keeps its box and closes its door;
+ *  - a NOT-OWNED agent (remote, or a row with no bound name) draws the picture if
+ *    there is one and otherwise nothing, exactly what it drew before.
+ *
+ * It is 20px by default and follows the reader's size setting (`agent-avatar-
+ * size.ts`), capped at 32px so the 40px bar never grows.
  */
-const ChatHeaderAvatar: FC<{
+export const ChatHeaderAvatar: FC<{
 	agent: NonNullable<ChatHeaderProps["agentAvatar"]>;
 }> = ({ agent }) => {
-	const present = useHasAgentPicture(agent.agentId, agent.sha256);
-	/*
-	 * NO PICTURE, NO PLATE, NO DOOR - and that covers the digest whose bytes do not
-	 * resolve, not just the agent that never had one. `AgentMark` renders the
-	 * caller's `fallback` in that case, which this header passes as `null` (the
-	 * title block never carried an agent glyph), so drawing the wrapper anyway
-	 * would leave a bare 20px circle with a pencil on hover - a door onto an empty
-	 * plate, and a tab stop that leads nowhere.
-	 */
-	if (!present) return null;
+	const size = parseAgentAvatarSize(
+		useUiPreferencesStore((state) => state.agentAvatarSize),
+	);
+	const box = HEADER_AVATAR_BOX[size];
+	const mark = useAgentSlotMark({
+		agentId: agent.agentId,
+		agentName: agent.agentName,
+		sha256Hint: agent.sha256,
+		owned: agent.owned,
+		pictureDoor: true,
+	});
+	if (!mark) return null;
 	return (
 		<span className="me-1 flex shrink-0 items-center">
-			<AgentAvatarEditLink
-				agentName={agent.agentName ?? ""}
-				agentId={agent.agentId}
-				owned={agent.owned && agent.agentName !== null}
-				className="size-5"
-				pencilClassName="size-2.5"
-			>
-				<AgentMark
-					agentId={agent.agentId}
-					sha256={agent.sha256}
-					className="size-5"
-					fallback={null}
-				/>
-			</AgentAvatarEditLink>
+			<AgentAvatarSlot
+				mark={mark}
+				boxClassName={box.className}
+				glyphClassName={box.glyphClassName}
+				agentName={agent.agentName}
+			/>
 		</span>
 	);
 };
@@ -436,6 +437,18 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 	const [menuOpen, setMenuOpen] = useState(false);
 	const moveRequestedRef = useRef(false);
 	const setCanvasOpen = useUiPreferencesStore((s) => s.setCanvasOpen);
+	/*
+	 * The title block clips to one line (`overflow-clip`) when no identity controls
+	 * share it, and that line was exactly the 20px avatar's height. A taller mark
+	 * would be cut by its own row, so the clip height follows the same table the
+	 * mark is drawn from (and the bar stays 40px: the table caps at 32).
+	 */
+	const avatarSize = parseAgentAvatarSize(
+		useUiPreferencesStore((s) => s.agentAvatarSize),
+	);
+	const avatarRowClass = agentAvatar
+		? HEADER_AVATAR_BOX[avatarSize].rowClassName
+		: "h-5";
 	const isCanvasOpen = useUiPreferencesStore((s) => s.isCanvasOpen);
 	/*
 	 * The code review pane's bound, read for the `...` menu's entry (N1): the
@@ -813,7 +826,7 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 					// Interactive rows need their natural height: a larger font or a
 					// multiline title must not have its ink/focus clipped to 20px.
 					// Keep the historical one-line clip only for decorative metadata.
-					identity ? "min-h-5" : "h-5 flex-wrap overflow-clip",
+					identity ? "min-h-5" : cn(avatarRowClass, "flex-wrap overflow-clip"),
 				)}
 			>
 				{/* `text-body` (14), not `text-heading` (16) and not `text-title` (20):
@@ -937,18 +950,16 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 					) : (
 						<>
 							{/*
-							 * THE PICTURE, LEFT OF THE NAME (the operator's ask). It is the one
-							 * mark in this row that is not a control, so it takes the plate's
-							 * 20px box - the same size the identity chips hold, which is what
-							 * keeps the avatar and controls on the same centre line.
+							 * THE PICTURE, LEFT OF THE NAME (the operator's ask). By default it
+							 * takes the 20px box the identity chips hold, which keeps the avatar
+							 * and the controls on the same centre line; the size setting can
+							 * raise it to 32px at most, the 40px bar's own limit.
 							 *
-							 * NOTHING WHEN THERE IS NO PICTURE, and nothing when the picture's
-							 * bytes do not resolve either: `ChatHeaderAvatar` asks the bytes
-							 * (agent review round 1, m3) and draws no plate, no pencil and no
-							 * tab stop for either, which keeps a conversation whose agent has
-							 * no picture exactly the header main draws. The pencil rides
-							 * `AgentAvatarEditLink`, which draws nothing but the bare picture
-							 * for an agent the viewer does not own.
+							 * NO PICTURE DRAWS THE PLACEHOLDER DOOR for an agent the viewer owns,
+							 * and so does a picture whose bytes do not resolve (`ChatHeaderAvatar`
+							 * asks the bytes, agent review round 1, m3, and draws one state for
+							 * both). An agent the viewer does not own with no picture draws
+							 * nothing, the header main drew.
 							 */}
 							{agentAvatar ? <ChatHeaderAvatar agent={agentAvatar} /> : null}
 							<h2

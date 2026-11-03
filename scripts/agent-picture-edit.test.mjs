@@ -41,7 +41,7 @@ const bundle = await build({
 			'export { agentAvatarPath } from "./src/renderer/src/shared/agent-avatar/agent-avatar-meta";',
 			'export { publish, release } from "./src/renderer/src/shared/lib/blob-url-cache";',
 			'export { ChatHeader } from "./src/renderer/src/features/chat/components/chat-header";',
-			'export { sessionAvatarTarget } from "./src/renderer/src/shared/agent-avatar/agent-avatar-meta";',
+			'export { sessionAvatarTarget, sessionAgentTarget } from "./src/renderer/src/shared/agent-avatar/agent-avatar-meta";',
 			'export { sessionPictureEditable } from "./src/renderer/src/shared/agent-avatar/agent-avatar-meta";',
 			'export { renderToStaticMarkup } from "react-dom/server";',
 			'export { createElement } from "react";',
@@ -116,6 +116,7 @@ const {
 	ChatSessionAvatarEdit,
 	ChatHeader,
 	sessionAvatarTarget,
+	sessionAgentTarget,
 	agentAvatarPath,
 	publish,
 	release,
@@ -407,7 +408,7 @@ test("neither placement decides ownership for itself", async () => {
 	assert.match(content, /agentAvatarOwned = useCanonicalSessionsStore/);
 	// Ownership comes out of the shared reader, which calls the one predicate.
 	assert.match(content, /avatarTarget\(state\)\?\.owned/);
-	assert.match(content, /sessionAvatarTarget\(\s*state\.sessions\.find/);
+	assert.match(content, /sessionAgentTarget\(\s*state\.sessions\.find/);
 	const meta = await readFile(
 		"src/renderer/src/shared/agent-avatar/agent-avatar-meta.ts",
 		"utf8",
@@ -511,11 +512,65 @@ test("the header takes its agent from the row's binding, never from the title", 
 	);
 	// The wiring a render cannot reach (`chat-content` needs a desktop transport):
 	// the header's avatar comes from the shared reader, and carries its name.
-	assert.match(content, /sessionAvatarTarget\(/);
+	assert.match(content, /sessionAgentTarget\(/);
 	assert.match(content, /agentName: avatarAgentName/);
 	const header = await readFile(
 		"src/renderer/src/features/chat/components/chat-header.tsx",
 		"utf8",
 	);
 	assert.doesNotMatch(header, /<ChatHeaderAvatar[^>]*agentName=/);
+});
+
+/* ------------------------------------------- the placeholder door (presence) --- */
+
+/*
+ * AN AGENT WITH NO PICTURE STILL DRAWS A DOOR in the header, for an owned agent
+ * only: same editor href as the picture's pencil, a name that says "add" rather
+ * than "change", and nothing at all where the viewer owns nothing.
+ */
+const headerFor = (r) =>
+	render(
+		createElement(
+			MemoryRouter,
+			{ initialEntries: ["/"] },
+			createElement(ChatHeader, {
+				agentName: TITLE,
+				agentAvatar: sessionAgentTarget(r),
+			}),
+		),
+	);
+
+test("an owned agent with no picture draws the placeholder door to the same editor", () => {
+	const r = row({ binding: { agent: "Scout" }, avatar_sha256: null });
+	const markup = headerFor(r);
+	assert.match(markup, /data-agent-mark="placeholder"/);
+	const href = hrefOf(markup);
+	assert.ok(href, "the placeholder is a link");
+	const params = new URLSearchParams(href.split("?")[1]);
+	assert.equal(params.get("edit"), "picture");
+	assert.equal(params.get("name"), "Scout");
+	assert.equal(params.get("agent"), "agent-1");
+	assert.match(markup, /aria-label="[^"]*Scout[^"]*"/);
+	assert.doesNotMatch(
+		markup,
+		/aria-label="Change /,
+		"it offers to add, not to change",
+	);
+});
+
+test("no picture and nothing to act on draws nothing in the header", () => {
+	for (const over of [
+		{ locality: "remote" },
+		{ binding: {} },
+		{ agent_id: null },
+	]) {
+		const r = row({
+			binding: { agent: "Scout" },
+			avatar_sha256: null,
+			...over,
+		});
+		const markup = headerFor(r);
+		assert.doesNotMatch(markup, /data-agent-mark/, JSON.stringify(over));
+		assert.doesNotMatch(markup, /data-agent-avatar-edit/, JSON.stringify(over));
+	}
 });

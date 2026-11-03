@@ -67,5 +67,10 @@
 	"ui.settings.appearance.theme.tokyo_night_storm": "更明亮的夜晚——靛蓝暴风雨天空，衬以同样的霓虹强调色。",
 	"ui.settings.appearance.theme.tokyo_night": "深蓝紫夜色，点缀明亮蓝色。",
 	"ui.settings.appearance.theme.tron": "电光青色的电路，铺在Grid的蓝黑底色上。",
-	"ui.settings.appearance.theme.vaporwave": "灰粉与褪色青绿粉彩，铺在深商场紫底色上。"
+	"ui.settings.appearance.theme.vaporwave": "灰粉与褪色青绿粉彩，铺在深商场紫底色上。",
+	"ui.settings.appearance.agent_avatar_size_setting.agent_picture_size": "智能体头像大小",
+	"ui.settings.appearance.agent_avatar_size_setting.how_large_the_agent_s_picture_appears_in_the_chat_window_and_the_chat": "智能体头像在聊天窗口和聊天标题栏中的显示大小。侧边栏保持不变。",
+	"ui.settings.appearance.agent_avatar_size_setting.small": "小",
+	"ui.settings.appearance.agent_avatar_size_setting.medium": "中",
+	"ui.settings.appearance.agent_avatar_size_setting.large": "大"
 }

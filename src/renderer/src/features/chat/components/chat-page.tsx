@@ -2,7 +2,8 @@ import {
 	useAidaDisplayName,
 	useAidaTarget,
 } from "@features/aida/use-aida-target";
-import { useAgentAvatar } from "@shared/agent-avatar/agent-avatar";
+import { sessionPictureEditable } from "@shared/agent-avatar/agent-avatar-meta";
+import { useAgentSlotMark } from "@shared/agent-avatar/agent-avatar-slot";
 import {
 	backendPaneSentence,
 	compatibilityBannerShown,
@@ -3718,7 +3719,24 @@ function SessionPanel({
 	const speakerAgentId =
 		agentProfiles.data?.find((row) => row.name === speakerAgent)?.agent_id ??
 		null;
-	const agentAvatar = useAgentAvatar(speakerAgentId);
+	/*
+	 * THE TURN HEAD'S MARK: the picture when it resolves, else (for an agent this
+	 * device owns) the placeholder that offers one, else nothing - decided by the
+	 * one function the header also asks (`decideAvatarMark`). Ownership is the
+	 * row's own answer (`sessionPictureEditable`: a remote conversation's agent
+	 * is another device's), and a draft has no row, which is the same "local"
+	 * answer a plain page's rows get. `pictureDoor` is false: the turn's picture
+	 * has never been a link; only the placeholder, which exists to be found, is.
+	 */
+	const agentAvatar = useAgentSlotMark({
+		agentId: speakerAgentId,
+		agentName: speakerAgent,
+		owned: sessionPictureEditable({
+			agent_id: speakerAgentId,
+			locality: boundRow?.locality,
+		}),
+		pictureDoor: false,
+	});
 	// The header names the conversation the user clicked, so it falls back to the
 	// catalogue row's name for the same reason `loaded` falls back to its binding:
 	// `conversation_title` is the journalled title only, and the row's name is
