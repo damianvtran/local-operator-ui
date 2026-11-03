@@ -21,6 +21,10 @@ import {
 	useSyncExternalStore,
 } from "react";
 import {
+	type AvatarVariant,
+	pickAvatarVariant,
+} from "../../../../shared/avatar-variant";
+import {
 	ACCOUNT_AVATAR_URL,
 	type AvatarIdentity,
 	resolveIdentityAvatar,
@@ -129,8 +133,10 @@ const AVATAR_PATTERN = ACCOUNT_AVATAR_URL;
  */
 export function useIdentityAvatar(
 	identity: AvatarIdentity | undefined,
-	size: 64 | 256,
+	/** The plate's CSS size; the variant is picked for this display's DPR. */
+	cssPx: number,
 ): string | undefined {
+	const size = useAvatarVariant(cssPx);
 	/*
 	 * THE SAME GATE AS THE BANNER (code review round 1, F2). An endpoint picture
 	 * is requested only from a core that advertises `team_bridge_endpoint_avatar`
@@ -171,6 +177,57 @@ export function useIdentityAvatar(
 		[type, id, hash],
 	);
 	return usePrivateAvatar(version, size);
+}
+
+/*
+ * THE DISPLAY'S DEVICE PIXEL RATIO, LIVE (operator report 2026-11-03, retina
+ * blur). Callers pass a CSS size and this picks the server variant for the
+ * display the window is on NOW: dragging the window from a 1x external monitor
+ * to the 2x built-in panel changes `devicePixelRatio` without any resize the
+ * plate would otherwise notice, so a one-shot read would keep the 64 px file
+ * upscaled on the retina panel until the next remount.
+ *
+ * `matchMedia("(resolution: Xdppx)")` fires `change` exactly when the ratio
+ * leaves X, so the listener is re-armed for the new value on every change
+ * (the standard MDN pattern; there is no "any resolution change" query). One
+ * store is shared by every plate: a message list of hundreds of rows adds one
+ * media listener, not one per row.
+ *
+ * The cache key carries the VARIANT, not the CSS size, so plates of different
+ * CSS sizes that land on the same variant share one fetch and one blob, and a
+ * 256 already fetched for the card is reused by a 36 px row at 2x.
+ */
+const dprListeners = new Set<() => void>();
+let dprQuery: MediaQueryList | undefined;
+function currentDpr(): number {
+	return typeof window === "undefined" ? 1 : window.devicePixelRatio || 1;
+}
+function onDprChange(): void {
+	armDprQuery();
+	for (const listener of dprListeners) listener();
+}
+function armDprQuery(): void {
+	dprQuery?.removeEventListener("change", onDprChange);
+	dprQuery = undefined;
+	if (typeof window === "undefined" || typeof window.matchMedia !== "function")
+		return;
+	dprQuery = window.matchMedia(`(resolution: ${currentDpr()}dppx)`);
+	dprQuery.addEventListener("change", onDprChange);
+}
+function subscribeDpr(listener: () => void): () => void {
+	dprListeners.add(listener);
+	if (dprListeners.size === 1) armDprQuery();
+	return () => {
+		dprListeners.delete(listener);
+		if (dprListeners.size === 0) {
+			dprQuery?.removeEventListener("change", onDprChange);
+			dprQuery = undefined;
+		}
+	};
+}
+function useAvatarVariant(cssPx: number): AvatarVariant {
+	const dpr = useSyncExternalStore(subscribeDpr, currentDpr, () => 1);
+	return pickAvatarVariant(cssPx, dpr);
 }
 
 function useEndpointPicturesAdvertised(): boolean {
@@ -259,7 +316,8 @@ export function radientAccountAvatarVersion(
  */
 export function useOwnAccountAvatar(
 	account: RadientAccountAvatarFields | undefined | null,
-	size: 64 | 256,
+	/** The plate's CSS size; the variant is picked for this display's DPR. */
+	cssPx: number,
 ): string | undefined {
 	const authority = useObservedRadientAuthority();
 	// Keyed on the primitives, not the object: a refetch returns a new account
@@ -280,7 +338,7 @@ export function useOwnAccountAvatar(
 	);
 	return useAccountAvatar(
 		version && version.accountId === authority.accountId ? version : null,
-		size,
+		cssPx,
 		// Always mounted, so it never recovers by remount the way a Team Bridge
 		// row does: see `FAILED_READ_RETRY_MS`.
 		{ retryOnce: true },
@@ -289,9 +347,11 @@ export function useOwnAccountAvatar(
 
 export function useAccountAvatar(
 	version: AccountAvatarVersion | null,
-	size: 64 | 256,
+	/** The plate's CSS size; the variant is picked for this display's DPR. */
+	cssPx: number,
 	options: { retryOnce?: boolean } = {},
 ): string | undefined {
+	const size = useAvatarVariant(cssPx);
 	const typed = useMemo<AvatarVersion | null>(
 		() => (version ? { type: "account", ...version } : null),
 		[version],
@@ -307,7 +367,7 @@ export function useAccountAvatar(
  */
 function usePrivateAvatar(
 	version: AvatarVersion | null,
-	size: 64 | 256,
+	size: AvatarVariant,
 	options: { retryOnce?: boolean } = {},
 ): string | undefined {
 	const retryOnce = options.retryOnce === true;
