@@ -81,6 +81,9 @@ const DOCUMENT_SCOPED: ReadonlySet<string> = new Set([
 	"click",
 	"type",
 	"press",
+	// `hover` dispatches page events at the CURRENT document and reports its hit
+	// stack, so it is authorized on entry and on the result exactly like `click`.
+	"hover",
 	"scroll",
 	"logs",
 	// `download` names a control on the CURRENT document (the link or button that
@@ -137,6 +140,15 @@ const NAVIGATING_ACTIONS: ReadonlySet<string> = new Set([
 	"click",
 	"type",
 	"press",
+	// `hover` cannot navigate by ITSELF, but the page's own `mouseenter`/`mouseover`
+	// handler can (menus and router links do exactly that), and measured against the
+	// built app (scripts/browser-hover-press-proof.mjs, `/navhover`) a hover whose
+	// handler sent the tab to an unapproved origin was refused with `origin_not_allowed`
+	// while the tab STAYED on the unapproved page. Membership here is what restores it
+	// to the entry document (and adopts an approved landing instead of reporting
+	// `changed`). It is deliberately NOT in NAVIGATION_ACTIONS: no per-hop `Fetch`
+	// gate, for the reason that set's comment gives.
+	"hover",
 	"download",
 	"upload",
 ]);
@@ -176,6 +188,13 @@ const NAVIGATING_ACTIONS: ReadonlySet<string> = new Set([
  * which is judged by the same pair. Arming `Fetch.enable` around an attach would
  * intercept that form's own POST and its subresources for no consent gain, which
  * is the side effect this set exists to avoid.
+ *
+ * `hover` IS IN NAVIGATING_ACTIONS BUT NOT THIS SET, deliberately: it sends one
+ * pointer move with no button, which cannot follow a link or submit a form, so there
+ * is no agent-initiated hop for the per-hop gate to decide (and arming `Fetch.enable`
+ * would fail the page's own subresource loads for no consent gain). A page whose own
+ * hover handler navigates away is judged and, if unapproved, reverted by the
+ * entry/result pair in `authorizedPerform` that NAVIGATING_ACTIONS selects.
  */
 const NAVIGATION_ACTIONS: ReadonlySet<string> = new Set([
 	"click",
@@ -196,6 +215,7 @@ const TAB_SCOPED: ReadonlySet<string> = new Set([
 	"click",
 	"type",
 	"press",
+	"hover",
 	"scroll",
 	"logs",
 	"close",
@@ -658,7 +678,21 @@ export class BrowserHost implements BrowserActionContext {
 		// `NAVIGATION_ACTIONS` for why the others are deliberately not wrapped in it.
 		const operation = async (): Promise<Record<string, unknown>> => {
 			assertDocument();
-			const result = await this.perform(method, params, requestId);
+			let result: Record<string, unknown>;
+			try {
+				result = await this.perform(method, params, requestId);
+			} catch (error) {
+				// Input can land successfully and THEN fail reading the changed page:
+				// hover's mouseenter navigates, for example, and hitAt finds no element
+				// (or its execution context was destroyed). A return-only check leaves
+				// that unapproved landing open and reports the incidental read error.
+				// Judge/restore the landing even when perform throws; authorization
+				// takes precedence, but an approved document keeps the original error.
+				// Restrict this to actions that can move the page: a non-navigating
+				// read keeps its existing error semantics. No additional Fetch gate.
+				if (NAVIGATING_ACTIONS.has(method)) assertDocument();
+				throw error;
+			}
 			try {
 				assertDocument();
 			} catch (error) {
@@ -755,6 +789,8 @@ export class BrowserHost implements BrowserActionContext {
 				return inputActions.type(this, params);
 			case "press":
 				return inputActions.press(this, params);
+			case "hover":
+				return inputActions.hover(this, params);
 			case "download":
 				return downloadActions.download(this, params);
 			case "upload":

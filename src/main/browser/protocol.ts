@@ -123,6 +123,14 @@ export const METHODS = [
 	// comparable by eye (D8).
 	"record_start",
 	"record_stop",
+	// Pointer-move without a press (hover-revealed menus, row actions, tooltips).
+	// APPENDED here so no existing method's index moves on this host. The Python
+	// mirror (`protocol.py`, local-operator#3326) places it right after `press`
+	// instead: the lists are NOT byte-comparable at this entry, and the wire is by
+	// NAME, so `isMethod` admits it either way. Hosts advertise it in
+	// HOST_CAPABILITIES (beside `press`), which is what lets the harness refuse it
+	// on an app that predates it instead of sending an unknown method.
+	"hover",
 ] as const;
 
 export type Method = (typeof METHODS)[number];
@@ -152,6 +160,8 @@ export const COMMAND_TIMEOUTS_S: Record<Method, number> = {
 	click: 25.0,
 	type: 25.0,
 	press: 25.0,
+	// A pointer move plus a short settle: no navigation, no wait on the page.
+	hover: 20.0,
 	read: 20.0,
 	snapshot: 20.0,
 	screenshot: 20.0,
@@ -228,6 +238,7 @@ export const ERROR_CODES = [
 	// policy refusal travels as an `ok: true` result here.
 	"capability_unsupported",
 	// Paired with the core press follow-up before callers use this new method.
+	// Also the refusal for a `press` chord outside the grammar (press-chord.ts).
 	"unsupported_key",
 	"internal",
 	// The console namespace's own additions (design 10.6). Spread rather than copied
@@ -295,6 +306,18 @@ export interface UploadResult {
 }
 
 /**
+ * Capability TOKENS that are not wire methods: a flag on a method the host already
+ * serves. `press_chord` says this build's `press` understands the extended
+ * contract (a modifier chord such as `Control+K`, the closed base-key table, and an
+ * optional `selector` to focus first). It cannot be inferred from `press` alone:
+ * every desktop build since the 8-key allowlist advertises `press`, and such a build
+ * would ignore `selector` and answer `unsupported_key` for the rest, so the harness
+ * (`protocol.PRESS_CHORD_CAPABILITY`, damianvtran/local-operator#3326) sends only a
+ * legacy-shaped press on `press` alone and requires this exact spelling for more.
+ */
+export type HostCapabilityToken = "press_chord";
+
+/**
  * The methods THIS host build serves, as it advertises them.
  *
  * WHY CAPABILITY AND NOT A VERSION COMPARISON (design §6.3): a host that predates
@@ -316,7 +339,7 @@ export interface UploadResult {
  * engine without `Page.startScreenRecording` (Chromium below 153), and that case is
  * refused at `record_start` with `record_unsupported`, not by the capability list.
  */
-export const HOST_CAPABILITIES: readonly Method[] = [
+export const HOST_CAPABILITIES: readonly (Method | HostCapabilityToken)[] = [
 	"console_resources",
 	"console_cleanup",
 	"styles",
@@ -328,6 +351,12 @@ export const HOST_CAPABILITIES: readonly Method[] = [
 	// Desktop-only trusted keys. Core must capability-gate extension/cmux and
 	// older desktop hosts instead of sending them an unknown method.
 	"press",
+	// The extended-press flag (see `HostCapabilityToken`). Advertised with the same
+	// change that implements the grammar in `actions/press-chord.ts`, never ahead of it.
+	"press_chord",
+	// `hover` rides the same list as `press` for the same reason: desktop-only, and
+	// the extension/cmux hosts and older desktop apps must be refused by capability.
+	"hover",
 	// Session-scoped network capture. DESKTOP-ONLY: the extension's debugger is
 	// attached only for the duration of an action, so it holds no standing session
 	// to keep a `Network` subscription on. The backend therefore gates these four
