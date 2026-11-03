@@ -155,7 +155,11 @@ window.api = {
 		request: async () => ({ status: 200, body: { result: {} } }),
 	},
 	getPathForFile: (file) => pathFor(file),
+	// The preload's synchronous pasteboard read (#1573): what the macOS
+	// pasteboard's plain string is when the paste event itself omits it.
+	readPasteTextSync: () => pasteboardText,
 };
+let pasteboardText = "";
 
 /* ------------------------------------------------------------------ */
 /* The bundle                                                          */
@@ -425,25 +429,32 @@ test("a refusing box takes no drop, exactly as it takes no paste", async () => {
 /* ------------------------------------------------------------------ */
 
 /*
- * THE PAYLOAD SHAPE IS THE REPORT'S, not a guess. A file copied in Finder reaches
- * Chromium's paste as one `kind: "file"` item AND a `text/plain` flavour holding
- * the file's NAME (several names, one per line, for a multi-file copy). The
- * handler attached the item and never cancelled the event, so the browser also
- * inserted that name into the prompt. jsdom has no default paste action, so the
+ * TWO PAYLOAD SHAPES, and the first is the one the shipped app actually sees.
+ *
+ * MEASURED (QA round 1, Electron 45.1.0 on macOS, a real Cmd+V against a
+ * pasteboard holding `public.file-url` + `public.utf8-plain-text`): the event
+ * carries `types: ["Files"]` and `getData("text/plain") === ""`, while
+ * Chromium's default insert still types the pasteboard's plain string. So the
+ * handler must read that string out of band - the preload's `readPasteTextSync`,
+ * faked here as `pasteboardText`. The second shape (`text/plain` on the event)
+ * is kept as the event-first source. jsdom has no default paste action, so the
  * insert is read where the browser would read it: `defaultPrevented`.
  */
-const pasteWithText = async (file, text) => {
+const pasteWithText = async (file, text, { onEvent = true } = {}) => {
 	const field = window.document.querySelector('textarea[aria-label="Message"]');
 	const event = new window.Event("paste", { bubbles: true, cancelable: true });
+	pasteboardText = text;
 	Object.defineProperty(event, "clipboardData", {
 		value: {
-			types: ["Files", "text/plain"],
+			types: onEvent ? ["Files", "text/plain"] : ["Files"],
 			items: [
 				{ kind: "file", type: file.type, getAsFile: () => file },
-				{ kind: "string", type: "text/plain", getAsFile: () => null },
+				...(onEvent
+					? [{ kind: "string", type: "text/plain", getAsFile: () => null }]
+					: []),
 			],
 			files: [file],
-			getData: (type) => (type === "text/plain" ? text : ""),
+			getData: (type) => (onEvent && type === "text/plain" ? text : ""),
 		},
 	});
 	await act(async () => {
@@ -452,33 +463,41 @@ const pasteWithText = async (file, text) => {
 	await act(async () => {
 		await new Promise((resolve) => realSetTimeout(resolve, 0));
 	});
+	pasteboardText = "";
 	return event;
 };
 
-test("a Finder-copied file attaches WITHOUT its name being pasted as text (#1573)", async () => {
-	const conversationId = await mount();
-	const event = await pasteWithText(
-		rigFile("word.txt", "text/plain"),
-		"word.txt",
-	);
-	assert.equal(staged(conversationId).length, 1, "the file attached once");
-	assert.equal(
-		event.defaultPrevented,
-		true,
-		"the text/plain flavour is only the file's name, so the browser must not insert it",
-	);
-});
+for (const [onEvent, shape] of [
+	[false, 'measured macOS shape: types ["Files"], text only on the pasteboard'],
+	[true, 'types ["Files","text/plain"], text on the event'],
+]) {
+	test(`a Finder-copied file attaches WITHOUT its name being pasted as text (#1573, ${shape})`, async () => {
+		const conversationId = await mount();
+		const event = await pasteWithText(
+			rigFile("word.txt", "text/plain"),
+			"word.txt",
+			{ onEvent },
+		);
+		assert.equal(staged(conversationId).length, 1, "the file attached once");
+		assert.equal(
+			event.defaultPrevented,
+			true,
+			"the plain text is only the file's name, so the browser must not insert it",
+		);
+	});
 
-test("intentional text pasted alongside a file is KEPT (#1573 control)", async () => {
-	const conversationId = await mount();
-	const event = await pasteWithText(
-		rigFile("word.txt", "text/plain"),
-		"please review this",
-	);
-	assert.equal(staged(conversationId).length, 1, "the file still attached");
-	assert.equal(
-		event.defaultPrevented,
-		false,
-		"real prose is not the file's name; the browser's own insert stays",
-	);
-});
+	test(`intentional text pasted alongside a file is KEPT (#1573 control, ${shape})`, async () => {
+		const conversationId = await mount();
+		const event = await pasteWithText(
+			rigFile("word.txt", "text/plain"),
+			"please review this",
+			{ onEvent },
+		);
+		assert.equal(staged(conversationId).length, 1, "the file still attached");
+		assert.equal(
+			event.defaultPrevented,
+			false,
+			"real prose is not the file's name; the browser's own insert stays",
+		);
+	});
+}

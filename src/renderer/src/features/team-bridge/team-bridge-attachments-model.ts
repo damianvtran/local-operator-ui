@@ -27,10 +27,7 @@ import type {
 } from "../../../../shared/team-bridge-contract";
 import { teamBridgeAttachmentCapabilitySchema } from "../../../../shared/team-bridge-contract";
 import { onDraftRevocation } from "../../shared/store/team-bridge-draft-account";
-import {
-	clipboardFileNames,
-	pastedTextIsOnlyFileNames,
-} from "../../shared/utils/paste-utils";
+import { pasteInsertsOnlyFileNames } from "../../shared/utils/paste-utils";
 import {
 	IMAGE_JPEG_QUALITY,
 	IMAGE_MAX_EDGE,
@@ -369,20 +366,20 @@ export function imageFiles(list: DataTransfer | null | undefined): File[] {
 
 /**
  * Whether a paste whose images were just taken should also cancel the
- * browser's text insert. Yes when it carried no `text/plain` at all (the
- * original rule), and yes when that text is only the pasted files' names - a
- * Finder file copy, which otherwise typed "shot.png" beside its own chip
- * (issue #1573). Real prose alongside the images is the reader's and is kept.
- * One predicate for both bridge paste handlers, so they cannot drift.
+ * browser's text insert: yes when the text that insert would type is empty or
+ * only the pasted files' names - a Finder file copy, which otherwise typed
+ * "shot.png" beside its own chip (issue #1573). Real prose alongside the
+ * images is the reader's and is kept. On macOS the event carries no
+ * `text/plain` for a file paste even when the pasteboard has prose, so the
+ * text comes from `pasteInsertsOnlyFileNames`' synchronous pasteboard read,
+ * the chat composer's source of truth; a files-only paste with nothing on the
+ * pasteboard still cancels, as the original rule did. One predicate for both
+ * bridge paste handlers, so they cannot drift.
  */
 export function imagePasteCancelsText(
 	data: Pick<DataTransfer, "types" | "getData" | "items" | "files">,
 ): boolean {
-	if (!Array.from(data.types ?? []).includes("text/plain")) return true;
-	return pastedTextIsOnlyFileNames(
-		data.getData("text/plain"),
-		clipboardFileNames(data),
-	);
+	return pasteInsertsOnlyFileNames(data);
 }
 
 /*

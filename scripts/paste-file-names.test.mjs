@@ -20,7 +20,11 @@ const bundle = await build({
 	platform: "node",
 	write: false,
 });
-const { clipboardFileNames, pastedTextIsOnlyFileNames } = await import(
+const {
+	clipboardFileNames,
+	pasteInsertsOnlyFileNames,
+	pastedTextIsOnlyFileNames,
+} = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
 
@@ -76,6 +80,15 @@ test("real text is never read as names (the prose must survive)", () => {
 	assert.equal(pastedTextIsOnlyFileNames("", ["word.txt"]), false, "no text");
 	assert.equal(pastedTextIsOnlyFileNames(" \n ", ["word.txt"]), false);
 	assert.equal(
+		pastedTextIsOnlyFileNames("see notes/shot.png", ["shot.png"]),
+		false,
+		"a relative-looking slash is prose, not a path (review R1)",
+	);
+	assert.equal(
+		pastedTextIsOnlyFileNames("Look at this: a/b/shot.png", ["shot.png"]),
+		false,
+	);
+	assert.equal(
 		pastedTextIsOnlyFileNames("file://%E0%A4%A", ["word.txt"]),
 		false,
 		"a malformed URL is text, not a name",
@@ -95,4 +108,77 @@ test("clipboardFileNames reads file items (not strings), else files, never both"
 		["b.pdf"],
 	);
 	assert.deepEqual(clipboardFileNames(null), []);
+});
+
+test("NFD and NFC spellings of one name compare equal (review R2)", () => {
+	const nfc = "a b\u00e9.txt";
+	assert.equal(
+		pastedTextIsOnlyFileNames("file:///Users/x/a%20be%CC%81.txt", [nfc]),
+		true,
+	);
+	assert.equal(pastedTextIsOnlyFileNames(nfc.normalize("NFD"), [nfc]), true);
+	assert.equal(
+		pastedTextIsOnlyFileNames("~/Desktop/word.txt", ["word.txt"]),
+		true,
+	);
+});
+
+/*
+ * THE MEASURED EVENT SHAPE (QA round 1): a macOS file paste reaches the handler
+ * as `types: ["Files"]`, `getData("text/plain") === ""`; the text Chromium will
+ * insert is only on the pasteboard, which the seam reads.
+ */
+const filesOnly = (name) => ({
+	types: ["Files"],
+	getData: () => "",
+	items: [fileItem(name)],
+	files: [],
+});
+
+test("pasteInsertsOnlyFileNames: event text first, else the pasteboard read", () => {
+	let reads = 0;
+	const reader = (text) => () => {
+		reads += 1;
+		return text;
+	};
+	assert.equal(
+		pasteInsertsOnlyFileNames(filesOnly("word.txt"), reader("word.txt")),
+		true,
+	);
+	assert.equal(
+		pasteInsertsOnlyFileNames(
+			filesOnly("word.txt"),
+			reader("please review this"),
+		),
+		false,
+	);
+	assert.equal(
+		pasteInsertsOnlyFileNames(filesOnly("word.txt"), reader("")),
+		true,
+	);
+	reads = 0;
+	const withText = (text) => ({
+		types: ["Files", "text/plain"],
+		getData: (t) => (t === "text/plain" ? text : ""),
+		items: [fileItem("word.txt")],
+		files: [],
+	});
+	assert.equal(
+		pasteInsertsOnlyFileNames(withText("word.txt"), reader("prose")),
+		true,
+	);
+	assert.equal(
+		pasteInsertsOnlyFileNames(withText("prose"), reader("word.txt")),
+		false,
+	);
+	assert.equal(reads, 0, "event text present: the pasteboard is not read");
+	const textOnly = {
+		types: ["text/plain"],
+		getData: () => "hi",
+		items: [],
+		files: [],
+	};
+	assert.equal(pasteInsertsOnlyFileNames(textOnly, reader("hi")), false);
+	assert.equal(reads, 0, "a paste with no files never crosses to main");
+	assert.equal(pasteInsertsOnlyFileNames(null, reader("x")), false);
 });

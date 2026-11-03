@@ -630,10 +630,13 @@ let mediaAnswer = () => ({ status: 404, kind: "error", detail: "no" });
  * (`readFile`); a fixture without them sends the composer down its "dragged out of
  * another page" data-URL route and cannot answer the upload at all.
  */
+let pasteboardText = "";
 const PNG_BASE64 =
 	"iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
 window.api = {
 	getPathForFile: () => `/fixtures/dropped-${++droppedSeq}.png`,
+	// The preload's synchronous pasteboard read (#1573), set per paste case.
+	readPasteTextSync: () => pasteboardText,
 	readFile: async () => ({ success: true, data: PNG_BASE64 }),
 	desktop: {
 		media: async (request, bytes) => {
@@ -3059,26 +3062,47 @@ test("audit attachment presence: zero blank bodies keep fallback; descriptors/co
  * copied in Finder carries `text/plain` too - its NAME - so that rule inserted
  * "shot.png" beside the chip. The rule is now "keep the default only for text
  * that is more than the pasted files' names"; the controls pin the prose arm.
+ *
+ * MEASURED SHAPE FIRST (QA round 1, Electron 45.1.0 on macOS): a file paste
+ * reaches the handler as `types: ["Files"]` with no `text/plain`, and the
+ * pasteboard's plain string is read through the preload's `readPasteTextSync`
+ * (`pasteboardText` here). The `["Files","text/plain"]` shape is kept too.
  */
-const finderPaste = (file, text) => {
+const finderPaste = (file, text, { onEvent = true } = {}) => {
 	const event = new window.Event("paste", { bubbles: true, cancelable: true });
+	pasteboardText = text;
 	Object.defineProperty(event, "clipboardData", {
 		value: {
-			types: ["Files", "text/plain"],
+			types: onEvent ? ["Files", "text/plain"] : ["Files"],
 			items: [
 				{ kind: "file", type: file.type, getAsFile: () => file },
-				{ kind: "string", type: "text/plain", getAsFile: () => null },
+				...(onEvent
+					? [{ kind: "string", type: "text/plain", getAsFile: () => null }]
+					: []),
 			],
 			files: [file],
-			getData: (type) => (type === "text/plain" ? text : ""),
+			getData: (type) => (onEvent && type === "text/plain" ? text : ""),
 		},
 	});
 	return event;
 };
 
-for (const [text, prevented, label] of [
-	["shot.png", true, "only the file's name: no text insert"],
-	["look at this", false, "real prose alongside the file: kept"],
+for (const [text, prevented, label, onEvent] of [
+	["shot.png", true, "only the file's name: no text insert", true],
+	["look at this", false, "real prose alongside the file: kept", true],
+	[
+		"shot.png",
+		true,
+		'types ["Files"], name on the pasteboard: no insert',
+		false,
+	],
+	[
+		"look at this",
+		false,
+		'types ["Files"], prose on the pasteboard: kept',
+		false,
+	],
+	["", true, 'types ["Files"], empty pasteboard: cancelled as before', false],
 ]) {
 	test(`#1573 thread-pane paste handler: ${label}`, () => {
 		const added = [];
@@ -3086,8 +3110,9 @@ for (const [text, prevented, label] of [
 			add: (files) => added.push(...files),
 		});
 		const file = new File([PNG], "shot.png", { type: "image/png" });
-		const event = finderPaste(file, text);
+		const event = finderPaste(file, text, { onEvent });
 		handlers.onPaste(event);
+		pasteboardText = "";
 		assert.equal(added.length, 1, "the image was taken either way");
 		assert.equal(event.defaultPrevented, prevented);
 	});
@@ -3100,8 +3125,9 @@ for (const [text, prevented, label] of [
 		const field = app.element.querySelector("textarea");
 		assert.ok(field, "composer field is mounted");
 		const file = new File([PNG], "shot.png", { type: "image/png" });
-		const event = finderPaste(file, text);
+		const event = finderPaste(file, text, { onEvent });
 		await act(async () => field.dispatchEvent(event));
+		pasteboardText = "";
 		for (let i = 0; i < 5; i += 1) await settle();
 		assert.equal(
 			app.element.querySelectorAll("[data-attachment-id]").length,

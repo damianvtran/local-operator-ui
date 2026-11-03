@@ -17,6 +17,15 @@
  * a `file://` URL (the `text/uri-list` spelling some sources put on the plain
  * flavour). Anything else, including a name with extra words around it, is kept.
  *
+ * WHERE THE TEXT COMES FROM (QA round 1, Q1). On macOS a paste whose pasteboard
+ * holds a file reaches the event as `types: ["Files"]` with `getData("text/plain")
+ * === ""` - yet Chromium's default insert still types the pasteboard's plain
+ * string. So the event's own `text/plain` is the first source when it is there,
+ * and otherwise the pasteboard is read out of band, SYNCHRONOUSLY, through the
+ * preload's `readPasteTextSync` (main's `clipboard.readText()`): the decision has
+ * to be made before the handler returns, and deciding synchronously is what lets
+ * the prose case keep the browser's own insert - and with it the field's undo.
+ *
  * Shared by the chat composer (`MessageInput`, which the mini composer, project
  * quick-send and config composer also mount) and both Team Bridge paste
  * handlers, so the three cannot drift apart on what counts as "only the names".
@@ -25,6 +34,13 @@
 const LINE_BREAK = /\r\n|\r|\n/;
 const PATH_SEPARATOR = /[\\/]/;
 const FILE_URL = /^file:\/\//i;
+/*
+ * Only a line that LOOKS like a whole absolute path is reduced to its last
+ * segment: `/...`, `~/...`, `C:\...` / `C:/...`, or a UNC `\\host\...`. A
+ * relative-looking slash is prose ("see notes/shot.png"), and reducing it would
+ * drop words the operator meant to paste (review round 1, R1).
+ */
+const ABSOLUTE_PATH = /^(?:\/|~\/|[A-Za-z]:[\\/]|\\\\)/;
 
 /** The names of the files a clipboard payload carries, in clipboard order. */
 export function clipboardFileNames(
@@ -47,7 +63,12 @@ export function clipboardFileNames(
 	return names;
 }
 
-/** The last segment of a bare name, a path or a `file://` URL, decoded. */
+/**
+ * The file name a line spells: the last segment of a `file://` URL (decoded) or
+ * of an absolute path, else the line itself. NFC-normalized, because a
+ * percent-encoded macOS URL is often NFD while `File.name` is NFC (review round
+ * 1, R2).
+ */
 function lineBaseName(line: string): string {
 	let value = line;
 	if (FILE_URL.test(value)) {
@@ -55,11 +76,13 @@ function lineBaseName(line: string): string {
 			value = decodeURIComponent(new URL(value).pathname);
 		} catch {
 			// A malformed URL names no file; leave it as text so it is kept.
-			return line;
+			return line.normalize("NFC");
 		}
+	} else if (!ABSOLUTE_PATH.test(value)) {
+		return value.normalize("NFC");
 	}
 	const segments = value.split(PATH_SEPARATOR).filter(Boolean);
-	return segments.at(-1) ?? value;
+	return (segments.at(-1) ?? value).normalize("NFC");
 }
 
 /**
@@ -77,6 +100,37 @@ export function pastedTextIsOnlyFileNames(
 		.map((line) => line.trim())
 		.filter((line) => line !== "");
 	if (lines.length === 0) return false;
-	const names = new Set(fileNames);
+	const names = new Set(fileNames.map((name) => name.normalize("NFC")));
 	return lines.every((line) => names.has(lineBaseName(line)));
+}
+
+/** The preload seam `pasteInsertsOnlyFileNames` reads the pasteboard through. */
+function readPasteTextSync(): string {
+	if (typeof window === "undefined") return "";
+	return window.api?.readPasteTextSync?.() ?? "";
+}
+
+/**
+ * Whether a paste that carries files should have the browser's text insert
+ * cancelled: yes when the text it would insert is empty or nothing but the
+ * pasted files' names. The text is the event's `text/plain` when present, else
+ * the pasteboard's plain string read synchronously (see the module comment) -
+ * read ONLY here, inside a paste that carries files and no `text/plain`, so an
+ * ordinary text paste never crosses to main. No preload (a plain browser, a
+ * test without the seam) reads as `""`, i.e. cancel: the rule the Team Bridge
+ * handlers always applied to a files-only payload.
+ */
+export function pasteInsertsOnlyFileNames(
+	data: Pick<DataTransfer, "types" | "getData" | "items" | "files"> | null,
+	readText: () => string = readPasteTextSync,
+): boolean {
+	if (!data) return false;
+	const names = clipboardFileNames(data);
+	if (names.length === 0) return false;
+	const eventText = Array.from(data.types ?? []).includes("text/plain")
+		? data.getData("text/plain")
+		: "";
+	const text = eventText !== "" ? eventText : readText();
+	if (text.trim() === "") return true;
+	return pastedTextIsOnlyFileNames(text, names);
 }

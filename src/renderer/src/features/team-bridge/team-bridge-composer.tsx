@@ -290,10 +290,10 @@ export const TeamBridgeComposer: FC<TeamBridgeComposerProps> = ({
 	 * The rules are `attachmentPasteHandlers`' (team-bridge-attachments.tsx), which
 	 * is what the bridge's own strip has always used: only IMAGES are taken, a paste
 	 * that also carries text keeps its default because the reader is pasting prose -
-	 * unless that text is only the files' names, a Finder copy's `text/plain`
-	 * (issue #1573, `imagePasteCancelsText`) - and `dragover` is prevented only when the drag actually carries files - a
-	 * `preventDefault` on every dragover makes the whole pane a drop target and
-	 * swallows text drags.
+	 * unless that text is only the files' names, a Finder copy's plain string
+	 * (issue #1573, `imagePasteCancelsText`) - and `dragover` is prevented only
+	 * when the drag actually carries files - a `preventDefault` on every dragover
+	 * makes the whole pane a drop target and swallows text drags.
 	 *
 	 * They live here, not in that module, because that helper needs the staging
 	 * HOOK's state while this bar stages local PATHS into the input store; sharing
