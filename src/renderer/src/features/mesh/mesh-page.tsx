@@ -195,6 +195,7 @@ export const MeshSurface: FC<{
 		 */
 		decisionRefusal: {
 			approvalId: string | null;
+			submittedAt?: number;
 			code: string;
 			sentence: string;
 			retryable?: boolean;
@@ -899,6 +900,7 @@ export const MeshPage: FC<{ initialPresentation?: Presentation }> = ({
 	const decisionRefusal = decideApproval.isError
 		? {
 				approvalId: decideApproval.variables?.approvalId ?? null,
+				submittedAt: decideApproval.submittedAt,
 				...approvalRefusal(decideApproval.error),
 			}
 		: null;

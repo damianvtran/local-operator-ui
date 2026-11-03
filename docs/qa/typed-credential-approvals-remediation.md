@@ -299,9 +299,10 @@ was broadened by this context-only correction. Fresh independent audit required.
 
 Next-live focus lookup is scoped to the live list only. An expanded settled
 legacy failed card can expose a control, but cannot be selected as next live.
-The handoff stores the refusal object present at click time and waits for a
-replaced row or a DIFFERENT same-id refusal. Unrelated renders with an old error
-cannot complete a newly armed attempt. Real tray DOM regression covers both:
+The original M2 remediation stored the refusal object at click time. That was
+ineffective in production: MeshPage rebuilt an equal refusal on each render,
+and the original test retained the same object so its effect never reran. The
+M2 fixed claim for f3a758d5da6 was incorrect; see the round-9 correction below. Real tray DOM regression covers both:
 expanded history with controls falls back to its toggle, and an unchanged old
 refusal preserves the retry button's focus until a new refusal arrives.
 
@@ -310,3 +311,38 @@ Selected serial runs: mesh-tab tests 118/pass 118/fail 0; locale-parity tests
 Exact catalogue delta: es ui.mesh.approval.expires_window and
 ui.mesh.approval.typed_review_unavailable. English context only:
 ui.mesh.approval.could_not_apply. No new/removed keys or generated type change.
+
+
+## Round-9 correction: stable mutation attempt, discriminating negative control
+
+The earlier round-8 M2 “fixed” claim was false. The current fix carries TanStack
+mutation submittedAt from MeshPage into the tray, captures its value at click,
+and accepts a same-card refusal only from a newer submittedAt. A parent render
+allocating an equal refusal object is no longer mistaken for a completed attempt.
+Row replacement still completes fast decisions without any pending render.
+
+The tray test now passes an equal NEW refusal object on rerender, forcing the
+production-like effect path. Fixed code: tests 118/pass 118/fail 0. Restoring the
+old same-id-only guard: tests 118/pass 117/fail 1, with assertion “unrelated
+rerender with old refusal must wait”. Fixed source restored byte-identical.
+This is an assertion failure, not a memory-ceiling kill.
+
+Test self-limits: timeout 5000ms for the tray test and at most 20 actual tray
+renders per transition, including internal effect renders (test-only source
+instrumentation). Identity assertions compare booleans rather than asking Node
+to inspect/diff cyclic React/jsdom DOM objects on failure. The earlier unbounded
+negative control was killed by the machine guard (reported 61.5 GB footprint),
+not a valid failure proof; its result is replaced by the bounded evidence above.
+No specific root cause of that footprint is claimed beyond the observed command.
+
+All subsequent tests and the normal push run with bash process-group memory_mb
+2500, NODE_OPTIONS max-old-space-size=2048, timeout 120, and test concurrency 1.
+Memory immediately before bounded fixed run: vm_stat free 5641 pages (16 KiB),
+speculative 627 pages; memory_pressure system free 50%. Before negative: free
+7616 pages, speculative 6632; system free 46%. Before locale test: free 6907,
+speculative 4345; system free 48%. Locale-parity tests 44/pass 44/fail 0.
+
+English could_not_apply context now explicitly says retryable false, or a present
+apply_outcome without retryable; no apply_outcome is not permanent. This is context
+only, matching existing code. No catalogue values, keys or generated types changed;
+no new translation audit is claimed necessary for unchanged target values.

@@ -227,6 +227,8 @@ export interface MeshApprovalsTrayProps {
 	 */
 	refusal: {
 		approvalId: string | null;
+		/** Mutation attempt identity, stable across parent renders. */
+		submittedAt?: number;
 		code: string;
 		sentence: string;
 		/** An apply-phase refusal after which the same signed card can still succeed. */
@@ -323,7 +325,7 @@ export const MeshApprovalsTray: FC<MeshApprovalsTrayProps> = ({
 		id: string;
 		origin: Element | null;
 		rowAtStart: MeshApprovalRow | undefined;
-		refusalAtStart: MeshApprovalsTrayProps["refusal"];
+		refusalSubmittedAtStart: number;
 	} | null>(null);
 	const decide = (id: string, decision: ApprovalDecision) => {
 		if (
@@ -333,7 +335,7 @@ export const MeshApprovalsTray: FC<MeshApprovalsTrayProps> = ({
 				id,
 				origin: document.activeElement,
 				rowAtStart: rows.find((row) => row.approvalId === id),
-				refusalAtStart: refusal,
+				refusalSubmittedAtStart: refusal?.submittedAt ?? 0,
 			};
 		}
 		onDecide(id, decision);
@@ -349,7 +351,8 @@ export const MeshApprovalsTray: FC<MeshApprovalsTrayProps> = ({
 		// Mutation settlement can precede its invalidated read. Wait for the new
 		// row (or the refusal) before focusing a control a refetch will remove.
 		const newRefusal =
-			refusal?.approvalId === handoff.id && refusal !== handoff.refusalAtStart;
+			refusal?.approvalId === handoff.id &&
+			(refusal.submittedAt ?? 0) > handoff.refusalSubmittedAtStart;
 		if (row === handoff.rowAtStart && !newRefusal) return;
 		deniedFocus.current = null;
 		// Only an outcome on the current live card takes precedence. Otherwise

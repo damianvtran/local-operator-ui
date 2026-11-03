@@ -6252,80 +6252,103 @@ test("request direction distinguishes backend summaries from catalogue heads", (
 	);
 });
 
-test("tray coordinates focus and announcement across settle and refetch", async () => {
-	// Existing jsdom/React only; stub visual primitives, NOT the tray/effects or
-	// delivery helpers. This is DOM scheduling proof, not a browser/AT capture.
-	const dom = new JSDOM(
-		'<!doctype html><div id="root"></div><button id="elsewhere">Elsewhere</button>',
-		{ pretendToBeVisual: true },
-	);
-	const channels = [];
-	const NativeMessageChannel = globalThis.MessageChannel;
-	const globals = {
-		MessageChannel: class extends NativeMessageChannel {
-			constructor() {
-				super();
-				channels.push(this);
-			}
-		},
-		window: dom.window,
-		document: dom.window.document,
-		navigator: dom.window.navigator,
-		HTMLElement: dom.window.HTMLElement,
-		Element: dom.window.Element,
-		Node: dom.window.Node,
-		MutationObserver: dom.window.MutationObserver,
-		CSS: { escape: (value) => value },
-		IS_REACT_ACT_ENVIRONMENT: true,
-	};
-	const previous = new Map(
-		Object.keys(globals).map((key) => [
-			key,
-			Object.getOwnPropertyDescriptor(globalThis, key),
-		]),
-	);
-	for (const [key, value] of Object.entries(globals))
-		Object.defineProperty(globalThis, key, {
-			configurable: true,
-			writable: true,
-			value,
-		});
-	let root;
-	let mounted;
-	try {
-		const result = await build({
-			stdin: {
-				contents: `
+test(
+	"tray coordinates focus and announcement across settle and refetch",
+	{ timeout: 5000 },
+	async () => {
+		// Existing jsdom/React only; stub visual primitives, NOT the tray/effects or
+		// delivery helpers. This is DOM scheduling proof, not a browser/AT capture.
+		const dom = new JSDOM(
+			'<!doctype html><div id="root"></div><button id="elsewhere">Elsewhere</button>',
+			{ pretendToBeVisual: true },
+		);
+		const channels = [];
+		const NativeMessageChannel = globalThis.MessageChannel;
+		let renderCount = 0;
+		const globals = {
+			__meshTrayRenderGuard: () => {
+				renderCount++;
+				assert.ok(
+					renderCount <= 20,
+					"tray exceeded 20 renders in one test transition",
+				);
+			},
+			MessageChannel: class extends NativeMessageChannel {
+				constructor() {
+					super();
+					channels.push(this);
+				}
+			},
+			window: dom.window,
+			document: dom.window.document,
+			navigator: dom.window.navigator,
+			HTMLElement: dom.window.HTMLElement,
+			Element: dom.window.Element,
+			Node: dom.window.Node,
+			MutationObserver: dom.window.MutationObserver,
+			CSS: { escape: (value) => value },
+			IS_REACT_ACT_ENVIRONMENT: true,
+		};
+		const previous = new Map(
+			Object.keys(globals).map((key) => [
+				key,
+				Object.getOwnPropertyDescriptor(globalThis, key),
+			]),
+		);
+		for (const [key, value] of Object.entries(globals))
+			Object.defineProperty(globalThis, key, {
+				configurable: true,
+				writable: true,
+				value,
+			});
+		let root;
+		let mounted;
+		try {
+			const result = await build({
+				stdin: {
+					contents: `
 				export { MeshApprovalsTray } from "./src/renderer/src/features/mesh/mesh-approvals-tray";
 				export { approvalRows } from "./src/renderer/src/features/mesh/mesh-approvals";
 				export { setLocale } from "./src/i18n";
 				export { createElement, act } from "react";
 				export { createRoot } from "react-dom/client";
 			`,
-				resolveDir: process.cwd(),
-			},
-			bundle: true,
-			write: false,
-			format: "esm",
-			platform: "node",
-			jsx: "automatic",
-			mainFields: ["module", "main"],
-			conditions: ["import"],
-			alias: { "@shared": "./src/renderer/src/shared" },
-			plugins: [
-				{
-					name: "dom-primitives",
-					setup(builder) {
-						builder.onResolve(
-							{ filter: /^@shared\/components\/ui(?:\/disclosure)?$/ },
-							(args) => ({ path: args.path, namespace: "dom-primitives" }),
-						);
-						builder.onLoad(
-							{ filter: /.*/, namespace: "dom-primitives" },
-							() => ({
-								resolveDir: process.cwd(),
-								loader: "tsx",
-								contents: `
+					resolveDir: process.cwd(),
+				},
+				bundle: true,
+				write: false,
+				format: "esm",
+				platform: "node",
+				jsx: "automatic",
+				mainFields: ["module", "main"],
+				conditions: ["import"],
+				alias: { "@shared": "./src/renderer/src/shared" },
+				plugins: [
+					{
+						name: "dom-primitives",
+						setup(builder) {
+							// Count REAL tray renders, including internal effect-triggered renders.
+							// This injection is test-only and cannot ship in production source.
+							builder.onLoad(
+								{ filter: /mesh-approvals-tray\.tsx$/ },
+								(args) => ({
+									loader: "tsx",
+									contents: readFileSync(args.path, "utf8").replace(
+										"const busy = pending !== null;",
+										"globalThis.__meshTrayRenderGuard(); const busy = pending !== null;",
+									),
+								}),
+							);
+							builder.onResolve(
+								{ filter: /^@shared\/components\/ui(?:\/disclosure)?$/ },
+								(args) => ({ path: args.path, namespace: "dom-primitives" }),
+							);
+							builder.onLoad(
+								{ filter: /.*/, namespace: "dom-primitives" },
+								() => ({
+									resolveDir: process.cwd(),
+									loader: "tsx",
+									contents: `
 					import {useState} from "react";
 					export function Button({variant,size,children,...props}){return <button {...props}>{children}</button>}
 					export function Disclosure({summary,children,open,onOpenChange}){
@@ -6333,282 +6356,300 @@ test("tray coordinates focus and announcement across settle and refetch", async 
 						return <section><button onClick={()=>{setLocal(!expanded);onOpenChange?.(!expanded)}}>{summary}</button>{expanded&&children}</section>
 					}
 				`,
-							}),
-						);
-					},
-				},
-			],
-		});
-		mounted = await import(
-			`data:text/javascript;base64,${Buffer.from(result.outputFiles[0].text).toString("base64")}`
-		);
-		mounted.setLocale("en");
-		root = mounted.createRoot(dom.window.document.getElementById("root"));
-		const row = () =>
-			mounted.approvalRows([
-				finiteShareCapture(
-					{ state: "failed" },
-					{
-						signable_here: false,
-						apply_outcome: {
-							code: "busy",
-							retryable: true,
-							reason: "Busy.",
-							remedy: "Try again.",
+								}),
+							);
 						},
 					},
-				),
-			])[0];
-		let props = {
-			rows: [row()],
-			error: null,
-			pending: null,
-			refusal: null,
-			onDecide: () => {},
-			onRetry: () => {},
-			nowSeconds: 1000,
-			credentialApprovals: true,
-		};
-		const render = async () =>
-			mounted.act(async () =>
-				root.render(mounted.createElement(mounted.MeshApprovalsTray, props)),
+				],
+			});
+			mounted = await import(
+				`data:text/javascript;base64,${Buffer.from(result.outputFiles[0].text).toString("base64")}`
 			);
-		const start = async () => {
-			props = { ...props, rows: [row()], pending: null, refusal: null };
+			mounted.setLocale("en");
+			root = mounted.createRoot(dom.window.document.getElementById("root"));
+			const row = () =>
+				mounted.approvalRows([
+					finiteShareCapture(
+						{ state: "failed" },
+						{
+							signable_here: false,
+							apply_outcome: {
+								code: "busy",
+								retryable: true,
+								reason: "Busy.",
+								remedy: "Try again.",
+							},
+						},
+					),
+				])[0];
+			let props = {
+				rows: [row()],
+				error: null,
+				pending: null,
+				refusal: null,
+				onDecide: () => {},
+				onRetry: () => {},
+				nowSeconds: 1000,
+				credentialApprovals: true,
+			};
+			const render = async () => {
+				renderCount = 0;
+				await mounted.act(async () =>
+					root.render(mounted.createElement(mounted.MeshApprovalsTray, props)),
+				);
+				assert.ok(
+					renderCount > 0 && renderCount <= 20,
+					"expected bounded tray render",
+				);
+			};
+			const start = async () => {
+				props = { ...props, rows: [row()], pending: null, refusal: null };
+				await render();
+				const button = [...document.querySelectorAll("button")].find(
+					(button) => button.textContent === "Try again",
+				);
+				button.focus();
+				await mounted.act(async () => button.click());
+				props = {
+					...props,
+					pending: { approvalId: props.rows[0].approvalId, decision: "apply" },
+				};
+				await render();
+			};
+			await start();
+			const refusal = {
+				approvalId: props.rows[0].approvalId,
+				code: "busy",
+				sentence: "The apply was refused.",
+				retryable: true,
+			};
+			props = { ...props, rows: [row()], pending: null, refusal };
 			await render();
-			const button = [...document.querySelectorAll("button")].find(
-				(button) => button.textContent === "Try again",
+			const announcement = () =>
+				document.querySelector('[data-tour-tag="mesh-approval-announcement"]')
+					.textContent;
+			assert.equal(
+				document.activeElement.getAttribute("data-tour-tag"),
+				"mesh-approval-refusal",
 			);
-			button.focus();
-			await mounted.act(async () => button.click());
+			assert.equal(
+				announcement(),
+				"",
+				"focus effect must run before announcement effect",
+			);
+			// Same event, card leaves on refetch: content identity retains delivery.
+			props = { ...props, rows: [{ ...props.rows[0], state: "expired" }] };
+			await render();
+			assert.equal(
+				announcement(),
+				"",
+				"refetch must not reannounce an already focused refusal",
+			);
+			await start();
+			const elsewhere = document.getElementById("elsewhere");
+			elsewhere.focus();
 			props = {
 				...props,
-				pending: { approvalId: props.rows[0].approvalId, decision: "apply" },
+				rows: [row()],
+				pending: null,
+				refusal: { ...refusal },
 			};
 			await render();
-		};
-		await start();
-		const refusal = {
-			approvalId: props.rows[0].approvalId,
-			code: "busy",
-			sentence: "The apply was refused.",
-			retryable: true,
-		};
-		props = { ...props, rows: [row()], pending: null, refusal };
-		await render();
-		const announcement = () =>
-			document.querySelector('[data-tour-tag="mesh-approval-announcement"]')
-				.textContent;
-		assert.equal(
-			document.activeElement.getAttribute("data-tour-tag"),
-			"mesh-approval-refusal",
-		);
-		assert.equal(
-			announcement(),
-			"",
-			"focus effect must run before announcement effect",
-		);
-		// Same event, card leaves on refetch: content identity retains delivery.
-		props = { ...props, rows: [{ ...props.rows[0], state: "expired" }] };
-		await render();
-		assert.equal(
-			announcement(),
-			"",
-			"refetch must not reannounce an already focused refusal",
-		);
-		await start();
-		const elsewhere = document.getElementById("elsewhere");
-		elsewhere.focus();
-		props = { ...props, rows: [row()], pending: null, refusal: { ...refusal } };
-		await render();
-		assert.equal(document.activeElement, elsewhere);
-		assert.equal(
-			announcement(),
-			refusal.sentence,
-			"preserved user focus requires the polite fallback",
-		);
-		// Same-tick success: onDecide replaces the row immediately and NEVER
-		// renders pending. Focus must still land on closed history.
-		const requested = () => mounted.approvalRows([finiteShareCapture()])[0];
-		const renderInstant = () =>
-			root.render(mounted.createElement(mounted.MeshApprovalsTray, props));
-		props = {
-			...props,
-			rows: [requested()],
-			pending: null,
-			refusal: null,
-			onDecide: () => {
-				props = { ...props, rows: [{ ...props.rows[0], state: "connected" }] };
-				renderInstant();
-			},
-		};
-		await render();
-		const approve = () =>
-			[...document.querySelectorAll("button")].find(
-				(button) => button.textContent === "Approve",
+			assert.equal(document.activeElement, elsewhere);
+			assert.equal(
+				announcement(),
+				refusal.sentence,
+				"preserved user focus requires the polite fallback",
 			);
-		approve().focus();
-		await mounted.act(async () => approve().click());
-		assert.equal(
-			document.activeElement.textContent.startsWith("Settled approvals"),
-			true,
-			"same-tick success focuses history without a pending frame",
-		);
-		// With another live card, its first enabled control takes priority over history.
-		const second = { ...requested(), approvalId: "ap_7f3k9m2q8r6t" };
-		props = {
-			...props,
-			rows: [requested(), second],
-			onDecide: () => {
-				props = {
-					...props,
-					rows: [{ ...props.rows[0], state: "connected" }, second],
-				};
-				renderInstant();
-			},
-		};
-		await render();
-		approve().focus();
-		await mounted.act(async () => approve().click());
-		assert.equal(
-			document.activeElement
-				.closest("[data-approval-id]")
-				.getAttribute("data-approval-id"),
-			second.approvalId,
-		);
-		assert.equal(document.activeElement.textContent, "Approve");
-		// Same-tick refusal keeps focus on its outcome rather than another control.
-		props = {
-			...props,
-			rows: [requested()],
-			refusal: null,
-			onDecide: () => {
-				props = { ...props, rows: [row()], refusal: { ...refusal } };
-				renderInstant();
-			},
-		};
-		await render();
-		approve().focus();
-		await mounted.act(async () => approve().click());
-		assert.equal(
-			document.activeElement.getAttribute("data-tour-tag"),
-			"mesh-approval-refusal",
-		);
-		assert.equal(announcement(), "");
-		// An expanded settled failed legacy card can have controls, but is NOT
-		// the next live card. Completing the only live card must focus its toggle.
-		const history = {
-			...row(),
-			approvalId: "ap_7f3k9m2q8r7v",
-			typed: undefined,
-		};
-		props = {
-			...props,
-			rows: [requested(), history],
-			refusal: null,
-			onDecide: () => {
-				props = {
-					...props,
-					rows: [{ ...props.rows[0], state: "connected" }, history],
-				};
-				renderInstant();
-			},
-		};
-		await render();
-		const toggle = [...document.querySelectorAll("button")].find((button) =>
-			button.textContent.startsWith("Settled approvals"),
-		);
-		await mounted.act(async () => toggle.click());
-		approve().focus();
-		await mounted.act(async () => approve().click());
-		assert.equal(
-			document.activeElement,
-			toggle,
-			"expanded history controls cannot capture next-live focus",
-		);
-		// A stale same-card refusal at click time is not completion of a new try.
-		const unchanged = row();
-		props = {
-			...props,
-			rows: [unchanged],
-			refusal: { ...refusal },
-			onDecide: () => {},
-		};
-		await render();
-		const retry = [...document.querySelectorAll("button")].find(
-			(button) => button.textContent === "Try again",
-		);
-		retry.focus();
-		await mounted.act(async () => retry.click());
-		props = { ...props };
-		await render();
-		assert.equal(
-			document.activeElement,
-			retry,
-			"unrelated rerender with old refusal must wait",
-		);
-		props = {
-			...props,
-			refusal: { ...refusal, sentence: "A new attempt was refused." },
-		};
-		await render();
-		assert.equal(
-			document.activeElement.getAttribute("data-tour-tag"),
-			"mesh-approval-refusal",
-			"new refusal completes the armed attempt",
-		);
-
-		// Permanent apply outcomes have no misleading 'yet' or countdown.
-		const permanent = row();
-		permanent.typed.applyOutcome = {
-			code: "finite_subject_mismatch",
-			retryable: false,
-			reason: "Cannot apply.",
-			remedy: "Request a new card.",
-		};
-		props = { ...props, rows: [permanent], refusal: null };
-		await render();
-		const permanentCard = document.querySelector(
-			'[data-tour-tag="mesh-approval-card"]',
-		);
-		assert.ok(permanentCard.textContent.includes("Couldn't be applied"));
-		assert.equal(
-			permanentCard.textContent.includes("This card expires"),
-			false,
-		);
-		// Typed inheritance cannot leak its old terminal remedy when no message exists.
-		const malformed = mounted.approvalRows([
-			finiteShareCapture(
-				{
-					what: { credential_inheritance: {} },
-					approve_remedy: "Run a terminal command",
+			// Same-tick success: onDecide replaces the row immediately and NEVER
+			// renders pending. Focus must still land on closed history.
+			const requested = () => mounted.approvalRows([finiteShareCapture()])[0];
+			const renderInstant = () =>
+				root.render(mounted.createElement(mounted.MeshApprovalsTray, props));
+			props = {
+				...props,
+				rows: [requested()],
+				pending: null,
+				refusal: null,
+				onDecide: () => {
+					props = {
+						...props,
+						rows: [{ ...props.rows[0], state: "connected" }],
+					};
+					renderInstant();
 				},
-				{ signable_here: false, refusal_message: "", disclosure: null },
-			),
-		])[0];
-		props = { ...props, rows: [malformed], refusal: null };
-		await render();
-		assert.ok(
-			document
-				.querySelector('[data-tour-tag="mesh-approval-card"]')
-				.textContent.includes("This request can't be shown safely here"),
-		);
-		assert.equal(
-			document
-				.querySelector('[data-tour-tag="mesh-approval-card"]')
-				.textContent.includes("terminal"),
-			false,
-		);
-	} finally {
-		if (root) await mounted.act(async () => root.unmount());
-		dom.window.close();
-		for (const channel of channels) {
-			channel.port1.close();
-			channel.port2.close();
+			};
+			await render();
+			const approve = () =>
+				[...document.querySelectorAll("button")].find(
+					(button) => button.textContent === "Approve",
+				);
+			approve().focus();
+			await mounted.act(async () => approve().click());
+			assert.equal(
+				document.activeElement.textContent.startsWith("Settled approvals"),
+				true,
+				"same-tick success focuses history without a pending frame",
+			);
+			// With another live card, its first enabled control takes priority over history.
+			const second = { ...requested(), approvalId: "ap_7f3k9m2q8r6t" };
+			props = {
+				...props,
+				rows: [requested(), second],
+				onDecide: () => {
+					props = {
+						...props,
+						rows: [{ ...props.rows[0], state: "connected" }, second],
+					};
+					renderInstant();
+				},
+			};
+			await render();
+			approve().focus();
+			await mounted.act(async () => approve().click());
+			assert.equal(
+				document.activeElement
+					.closest("[data-approval-id]")
+					.getAttribute("data-approval-id"),
+				second.approvalId,
+			);
+			assert.equal(document.activeElement.textContent, "Approve");
+			// Same-tick refusal keeps focus on its outcome rather than another control.
+			props = {
+				...props,
+				rows: [requested()],
+				refusal: null,
+				onDecide: () => {
+					props = { ...props, rows: [row()], refusal: { ...refusal } };
+					renderInstant();
+				},
+			};
+			await render();
+			approve().focus();
+			await mounted.act(async () => approve().click());
+			assert.equal(
+				document.activeElement.getAttribute("data-tour-tag"),
+				"mesh-approval-refusal",
+			);
+			assert.equal(announcement(), "");
+			// An expanded settled failed legacy card can have controls, but is NOT
+			// the next live card. Completing the only live card must focus its toggle.
+			const history = {
+				...row(),
+				approvalId: "ap_7f3k9m2q8r7v",
+				typed: undefined,
+			};
+			props = {
+				...props,
+				rows: [requested(), history],
+				refusal: null,
+				onDecide: () => {
+					props = {
+						...props,
+						rows: [{ ...props.rows[0], state: "connected" }, history],
+					};
+					renderInstant();
+				},
+			};
+			await render();
+			const toggle = [...document.querySelectorAll("button")].find((button) =>
+				button.textContent.startsWith("Settled approvals"),
+			);
+			await mounted.act(async () => toggle.click());
+			approve().focus();
+			await mounted.act(async () => approve().click());
+			assert.equal(
+				document.activeElement,
+				toggle,
+				"expanded history controls cannot capture next-live focus",
+			);
+			// A stale same-card refusal at click time is not completion of a new try.
+			const unchanged = row();
+			props = {
+				...props,
+				rows: [unchanged],
+				refusal: { ...refusal, submittedAt: 100 },
+				onDecide: () => {},
+			};
+			await render();
+			const retry = [...document.querySelectorAll("button")].find(
+				(button) => button.textContent === "Try again",
+			);
+			retry.focus();
+			await mounted.act(async () => retry.click());
+			props = { ...props, refusal: { ...props.refusal } };
+			await render();
+			assert.ok(
+				document.activeElement === retry,
+				"unrelated rerender with old refusal must wait",
+			);
+			props = {
+				...props,
+				refusal: {
+					...refusal,
+					submittedAt: 101,
+					sentence: "A new attempt was refused.",
+				},
+			};
+			await render();
+			assert.equal(
+				document.activeElement.getAttribute("data-tour-tag"),
+				"mesh-approval-refusal",
+				"new refusal completes the armed attempt",
+			);
+
+			// Permanent apply outcomes have no misleading 'yet' or countdown.
+			const permanent = row();
+			permanent.typed.applyOutcome = {
+				code: "finite_subject_mismatch",
+				retryable: false,
+				reason: "Cannot apply.",
+				remedy: "Request a new card.",
+			};
+			props = { ...props, rows: [permanent], refusal: null };
+			await render();
+			const permanentCard = document.querySelector(
+				'[data-tour-tag="mesh-approval-card"]',
+			);
+			assert.ok(permanentCard.textContent.includes("Couldn't be applied"));
+			assert.equal(
+				permanentCard.textContent.includes("This card expires"),
+				false,
+			);
+			// Typed inheritance cannot leak its old terminal remedy when no message exists.
+			const malformed = mounted.approvalRows([
+				finiteShareCapture(
+					{
+						what: { credential_inheritance: {} },
+						approve_remedy: "Run a terminal command",
+					},
+					{ signable_here: false, refusal_message: "", disclosure: null },
+				),
+			])[0];
+			props = { ...props, rows: [malformed], refusal: null };
+			await render();
+			assert.ok(
+				document
+					.querySelector('[data-tour-tag="mesh-approval-card"]')
+					.textContent.includes("This request can't be shown safely here"),
+			);
+			assert.equal(
+				document
+					.querySelector('[data-tour-tag="mesh-approval-card"]')
+					.textContent.includes("terminal"),
+				false,
+			);
+		} finally {
+			if (root) await mounted.act(async () => root.unmount());
+			dom.window.close();
+			for (const channel of channels) {
+				channel.port1.close();
+				channel.port2.close();
+			}
+			for (const [key, descriptor] of previous) {
+				if (descriptor) Object.defineProperty(globalThis, key, descriptor);
+				else Reflect.deleteProperty(globalThis, key);
+			}
 		}
-		for (const [key, descriptor] of previous) {
-			if (descriptor) Object.defineProperty(globalThis, key, descriptor);
-			else Reflect.deleteProperty(globalThis, key);
-		}
-	}
-});
+	},
+);
