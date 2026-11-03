@@ -6454,11 +6454,17 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * change — typed, transcribed, or restored from the draft store —
 		 * because a native textarea does not grow on its own.
 		 *
-		 * `newMessage`, `isRecording` and `isTranscribing` are triggers, not
-		 * reads: the body only touches the ref, so the linter sees them as
-		 * surplus. They are what tell the textarea to re-measure, and removing
-		 * them leaves it stuck at its previous height after a transcription
-		 * lands or a draft is restored.
+		 * `newMessage`, `isRecording`, `isTranscribing` and `isPreparing` are
+		 * triggers, not reads: the body only touches the ref, so the linter sees
+		 * them as surplus. They are what tell the textarea to re-measure, and
+		 * removing them leaves it stuck at its previous height after a
+		 * transcription lands or a draft is restored.
+		 *
+		 * `isPreparing` is here because the press opens the recording lane in the
+		 * same frame and the field must settle in THAT commit: re-measured only at
+		 * the handover it changed height a second time (34px to 28px at a 520px
+		 * column, where the placeholder swap to "Recording" wraps differently), so
+		 * one press cost two height changes (design round 3, D14).
 		 */
 		// biome-ignore lint/correctness/useExhaustiveDependencies: deps are re-measure triggers, not values read in the body
 		useEffect(() => {
@@ -6466,7 +6472,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			if (!el) return;
 			el.style.height = "auto";
 			el.style.height = `${el.scrollHeight}px`;
-		}, [newMessage, textareaRef, isRecording, isTranscribing]);
+		}, [newMessage, textareaRef, isRecording, isTranscribing, isPreparing]);
 
 		/*
 		 * A HOST-GATED EMPTY BOX FITS ITS SENTENCE (#1458 design r1 D3 / UX U9).
@@ -9692,78 +9698,42 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 							/>
 						</div>
 						{/*
-						 * NO PREPARING STRIP IN THIS SLOT, and the slot is the reason rather
-						 * than tidiness (design round 1, D2). The acknowledgment used to be a
-						 * one-line strip here - "the same slot the recording lane takes" - and
-						 * that claim was false as geometry: the lane is 84px tall where the
-						 * strip was 40px with its gap, so a press moved the composer TWICE
-						 * (card top 774 -> 734 while preparing, then 690 at handover) inside a
-						 * card whose bottom edge is pinned. The acknowledgment now rides in
-						 * the control row below - a row that exists at every width and in
-						 * every state - so a press costs the composer exactly 0px, and the
-						 * only movement left is the recording lane's own, unchanged
-						 * appearance (the lane's drawn geometry is not part of this fix).
+						 * THE LANE, from the PRESS (design round 1 D2, round 3 D14; QA round 3
+						 * Q-1). The press is answered before the recorder exists - the
+						 * microphone acquisition is the one genuinely slow part of the click
+						 * path (830 ms cold on this fleet, past two minutes under swap
+						 * exhaustion) - and the answer used to be a separate one-line row
+						 * that grew the card, after which the lane grew it AGAIN at handover:
+						 * the field jumped twice per press. Here the SAME block that the take
+						 * will occupy opens at once, at its final height, with "Starting
+						 * recording" in its label row, and the handover to recording swaps
+						 * the words and starts the waveform without moving anything. So a
+						 * press costs ONE height change, the lane's own (84px, `composer-
+						 * slots-proof.mjs` asserts the preparing and recording heights are
+						 * equal), and in the bottom-anchored chat band the controls row does
+						 * not move at all. It is not 0px: a press that adds a lane to the
+						 * card cannot be free, and the claim that it was is retired.
 						 *
-						 * AN `absolute` OVERLAY IN THIS SLOT was the alternative and it is
-						 * rejected on the record: the next thing in this box's flow is the
-						 * control row itself, so a line drawn over the slot would cover the
-						 * controls it exists to answer. The row is where a line can be added
-						 * without buying height - see the acknowledgment below, which is a
-						 * child of that row and not of this one.
+						 * NOT IN THE CONTROLS ROW and not an overlay (design round 2, D9):
+						 * as a flex item it grew the 68px cluster and pushed Send past the
+						 * card's edge, and as an overlay it painted over the readings.
+						 *
+						 * The block carries a status and no control, so the pointer map does
+						 * not move. Its words are a live region (`<output>`), and the ring on
+						 * the mic's busy face is the surface's one indeterminate element.
 						 */}
-						{/*
-						 * THE RECORDING STATE, as a full-width block under the field it belongs
-						 * to (operator feedback via Aida, 2026-09-29): the lane spans the
-						 * field's own content column, its label row sits over it, and nothing
-						 * is washed or bordered - it reads as composer chrome, on the same
-						 * step of ground the box itself uses. The controls stay in the
-						 * cluster below, where `Confirm recording`/`Cancel recording` already
-						 * hold the boxes the interrupt-slot geometry reserves; this block
-						 * carries a status and no control, so the pointer map does not move.
-						 */}
-						{isRecording && (
+						{(isRecording || (isPreparing && micControlShown)) && (
 							<AudioRecordingIndicator
 								isRecording={isRecording}
+								preparingLabel={
+									!isRecording && isPreparing
+										? isSmallView
+											? t("ui.chat.composer.starting")
+											: t("ui.chat.composer.starting_recording")
+										: null
+								}
 								sendsNow={slotB.role === "send-recording" && slotB.enabled}
 							/>
-						)}
-						{/*
-						 * THE PRESS IS ANSWERED BEFORE THE RECORDER EXISTS (operator feedback
-						 * via Aida, 2026-10-01). The microphone acquisition is the one part
-						 * of the click path that is genuinely slow - 830 ms cold on this
-						 * fleet, and measured past two minutes under swap exhaustion - and it
-						 * used to be silent: the screen looked exactly as it did before the
-						 * press. This line, with the control's own busy face beside it, is
-						 * that window's answer, both written in the click's own frame.
-						 *
-						 * IT LIVES IN THE CAPTION ROW UNDER THE FIELD, beside where "Processing
-						 * audio" shows (QA round 1 Q1, review R2-1, design D9). In the controls
-						 * row it was a flex item that grew the 68px cluster to ~147px and
-						 * pushed Send past the card's edge; as an overlay it painted over the
-						 * readings and cut a value at every width, for as long as the
-						 * acquisition took. Here it takes no width from the row, covers
-						 * nothing, and the controls keep the x they had. The row grows the
-						 * card for the window, exactly as the transcribing row does.
-						 *
-						 * ONE INDETERMINATE ELEMENT ON THIS SURFACE (branding 5): the ring is
-						 * on the mic's busy face and this line is words.
-						 */}
-						{isPreparing && micControlShown && (
-							<output
-								data-preparing-indicator=""
-								/*
-								 * THE STATE IS ANNOUNCED, not merely painted: `aria-busy` on the
-								 * button is the control's half and screen readers expose it
-								 * inconsistently; the words are the other half, and they are only
-								 * announced if they ARE a live region - an `<output>`, this file's
-								 * established spelling of `role="status"`.
-								 */
-								className="mt-1 flex items-center px-2 font-medium text-body-sm text-ink-muted [min-height:1.5rem]"
-							>
-								{isSmallView
-									? t("ui.chat.composer.starting")
-									: t("ui.chat.composer.starting_recording")}
-							</output>
 						)}
 						{isTranscribing && (
 							<div

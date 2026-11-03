@@ -104,6 +104,22 @@ for (const [key, group] of byGroup) {
 				? Math.round((s.controlsTop - idleV.controlsTop) * 10) / 10
 				: null;
 	}
+	/*
+	 * ONE HEIGHT CHANGE PER PRESS (design round 3 D14, QA round 3 Q-1). The press
+	 * opens the recording lane, so the card's growth at the press must be the lane's
+	 * own (idle -> recording) and the handover must add nothing (preparing ->
+	 * recording = 0). Asserted at every width and anchor the capture was taken at.
+	 */
+	const prep = states.find((s) => s.state === "preparing");
+	const rec = states.find((s) => s.state === "recording");
+	if (prep && rec) {
+		const handover = Math.round((rec.cardHeight - prep.cardHeight) * 10) / 10;
+		prep.handoverDelta = handover;
+		if (prep.cardHeightDelta !== rec.cardHeightDelta || handover !== 0)
+			out.failures.push(
+				`${key}: a press costs more than one height change (idle->preparing ${prep.cardHeightDelta}, idle->recording ${rec.cardHeightDelta}, preparing->recording ${handover})`,
+			);
+	}
 	out.groups.push({ key, idleA: ref.a?.left, idleB: ref.b?.left, states });
 }
 out.verdict = out.failures.length === 0 ? "PASS" : "FAIL";
@@ -115,7 +131,7 @@ for (const g of out.groups) {
 	console.log(`\n${g.key}  idle A=${g.idleA} B=${g.idleB}`);
 	for (const s of g.states)
 		console.log(
-			`  ${s.state.padEnd(14)} ov=${String(s.rowOverflow).padEnd(4)} boxes=${s.boxes} A=${String(s.slotA?.left).padEnd(5)} B=${String(s.slotB?.left).padEnd(5)} cluster=${s.clusterWidth} dCard=${s.cardHeightDelta} dControlsY=${s.controlsYDelta}  A=idle:${s.aEqualsIdle} B=idle:${s.bEqualsIdle}`,
+			`  ${s.state.padEnd(14)} ov=${String(s.rowOverflow).padEnd(4)} boxes=${s.boxes} A=${String(s.slotA?.left).padEnd(5)} B=${String(s.slotB?.left).padEnd(5)} cluster=${s.clusterWidth} dCard=${s.cardHeightDelta} dControlsY=${s.controlsYDelta}${s.handoverDelta !== undefined ? ` handover=${s.handoverDelta}` : ""}  A=idle:${s.aEqualsIdle} B=idle:${s.bEqualsIdle}`,
 		);
 }
 console.log(`\n${out.verdict} (${out.failures.length} failure(s))`);

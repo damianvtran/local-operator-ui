@@ -668,23 +668,50 @@ test("the held box and its reservation are gone from the tree", () => {
 	assert.match(ROW_SOURCE, /const controlsThirdBox = isRecording;/);
 });
 
-test("Q1/R2-1/D9: the preparing caption lives in the caption row under the field, never in the controls row", () => {
-	const at = ROW_SOURCE.indexOf('data-preparing-indicator=""');
-	assert.ok(at > -1);
-	const cluster = ROW_SOURCE.indexOf("data-lo-composer-controls={true}");
-	const transcribing = ROW_SOURCE.indexOf('data-transcribing-indicator=""');
-	assert.ok(
-		at < cluster && at < transcribing,
-		"the caption renders in the caption row, before the controls cluster and beside the transcribing line",
+test("Q1/R2-1/D9/D14: the press opens the recording lane at its final height; the words are in its label row, not in the controls row or a row of their own", () => {
+	const lane = readFileSync(
+		"src/renderer/src/features/chat/components/audio-recording-indicator.tsx",
+		"utf8",
 	);
-	const caption = ROW_SOURCE.slice(at, at + 1400);
-	// Nothing painted over the readings, no ground of its own to get wrong.
-	assert.doesNotMatch(caption, /\babsolute\b|\bbg-[a-z]/);
-	// The cluster keeps its intrinsic 68px: not a containing block for anything.
+	// The words live in the lane's label row, as a live region.
+	const at = lane.indexOf('data-preparing-indicator=""');
+	assert.ok(at > -1, "the preparing sentence is gone from the lane");
+	assert.ok(lane.lastIndexOf("<output", at) > lane.indexOf("preparing ?"));
+	// The preparing lane is the recording lane's own block: same wrapper, same
+	// waveform height (the empty box takes the canvas's class), so nothing moves
+	// at the handover.
+	assert.match(
+		lane,
+		/preparing \? \(\s*\/\/[\s\S]*?<div className=\{WAVEFORM_CLASS\} \/>/,
+	);
+	// The host opens that block from the press, and has no row of its own for it.
+	assert.match(
+		ROW_SOURCE,
+		/\(isRecording \|\| \(isPreparing && micControlShown\)\) && \(\s*<AudioRecordingIndicator/,
+	);
+	assert.doesNotMatch(
+		ROW_SOURCE,
+		/<output\s+data-preparing-indicator/,
+		"no caption row of its own for the press",
+	);
+	// And it never returns to the controls row.
+	const cluster = ROW_SOURCE.indexOf("data-lo-composer-controls={true}");
+	assert.ok(ROW_SOURCE.indexOf("preparingLabel=") < cluster);
 	assert.match(
 		ROW_SOURCE,
 		/className="ms-auto flex order-3 shrink-0 items-center gap-1"/,
 	);
+});
+
+test("the comment that claimed a press costs 0px is gone; the file states one height change", () => {
+	assert.doesNotMatch(ROW_SOURCE, /costs the composer exactly 0px/);
+	assert.doesNotMatch(ROW_SOURCE, /NO PREPARING STRIP IN THIS SLOT/);
+	assert.match(
+		ROW_SOURCE.replace(/\s*\n\s*\*\s*/g, " "),
+		/press costs ONE height change/,
+	);
+	const idx = ROW_SOURCE.indexOf("It is not 0px");
+	assert.ok(idx > -1, "the retired 0px claim is recorded as retired");
 });
 
 test("D13: a send-recording wait has one live element - the waveform is dropped from the caption", () => {
@@ -696,4 +723,11 @@ test("D13: a send-recording wait has one live element - the waveform is dropped 
 test("the guard ramp is the one opacity (0.72), above the 0.6 that fell under 3:1 in light (design D11)", () => {
 	assert.doesNotMatch(ROW_SOURCE, /opacity-60/);
 	assert.ok((ROW_SOURCE.match(/opacity-72/g) ?? []).length >= 4);
+});
+
+test("the field re-measures in the commit that opens the lane, so one press is one height change (design D14)", () => {
+	assert.match(
+		ROW_SOURCE,
+		/\}, \[newMessage, textareaRef, isRecording, isTranscribing, isPreparing\]\);/,
+	);
 });

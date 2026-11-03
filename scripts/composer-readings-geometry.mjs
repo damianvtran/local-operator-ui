@@ -358,6 +358,14 @@ const PROBE = `(() => {
 				}
 			: null,
 		formBox: rect(form),
+		// The lane (preparing or recording) and the field, so a card-height delta can
+		// be attributed to the block the press opens or to the field's own height.
+		laneBox: rect(
+			document.querySelector(
+				"[data-recording-indicator], [data-preparing-lane]",
+			),
+		),
+		fieldBox: rect(form ? form.querySelector("textarea") : null),
 		form: form
 			? {
 					scrollWidth: form.scrollWidth,
