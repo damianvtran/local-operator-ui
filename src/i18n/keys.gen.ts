@@ -10032,11 +10032,9 @@ export type MessageParams = {
 	"ui.teamBridge.agentNotify.mention": undefined;
 	"ui.teamBridge.agentNotify.mute": undefined;
 	"ui.teamBridge.attachmentCard.bytes": { size: number };
-	"ui.teamBridge.attachmentCard.download": undefined;
 	"ui.teamBridge.attachmentCard.file": undefined;
 	"ui.teamBridge.attachmentCard.list": { count: number };
 	"ui.teamBridge.attachmentCard.metadata_only": undefined;
-	"ui.teamBridge.attachmentCard.saved": undefined;
 	"ui.teamBridge.attachmentCard.unavailable": undefined;
 	"ui.teamBridge.attachments.add": undefined;
 	"ui.teamBridge.attachments.error_account_changed": undefined;

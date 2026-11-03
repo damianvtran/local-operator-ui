@@ -337,7 +337,5 @@
 	"ui.teamBridge.attachmentCard.file": "فائل",
 	"ui.teamBridge.attachmentCard.bytes": "{size, number} بائٹس",
 	"ui.teamBridge.attachmentCard.metadata_only": "اس منظر میں پیش نظارہ دستیاب نہیں",
-	"ui.teamBridge.attachmentCard.unavailable": "منسلکہ دستیاب نہیں",
-	"ui.teamBridge.attachmentCard.download": "فائل ڈاؤن لوڈ کریں",
-	"ui.teamBridge.attachmentCard.saved": "فائل محفوظ ہو گئی"
+	"ui.teamBridge.attachmentCard.unavailable": "منسلکہ دستیاب نہیں"
 }

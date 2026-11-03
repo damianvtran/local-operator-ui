@@ -56,7 +56,6 @@ import { DesktopFeedRelay } from "../desktop-feed";
 import {
 	type DesktopMediaResponse,
 	requestDesktopMediaOutcome,
-	requestOwnerAuditDownloadOutcome,
 } from "../desktop-media";
 import { DesktopStreamRelay } from "../desktop-stream";
 import {
@@ -1318,18 +1317,6 @@ export class BackendServiceManager {
 		).then(({ response, answered }) => {
 			if (answered)
 				this.noteTransportAnswer(desktopAnswerProvesPairing(input, response));
-			return response;
-		});
-	}
-
-	/** Dedicated owner-audit download: private main caller, never renderer media. */
-	requestOwnerAuditDownload(input: unknown): Promise<DesktopMediaResponse> {
-		return requestOwnerAuditDownloadOutcome(
-			input,
-			this.backendUrl,
-			this.desktopToken,
-		).then(({ response, answered }) => {
-			if (answered) this.daemonState.recordTransportAnswer();
 			return response;
 		});
 	}

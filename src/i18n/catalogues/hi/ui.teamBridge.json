@@ -337,7 +337,5 @@
 	"ui.teamBridge.attachmentCard.file": "फ़ाइल",
 	"ui.teamBridge.attachmentCard.bytes": "{size, number} बाइट",
 	"ui.teamBridge.attachmentCard.metadata_only": "इस दृश्य में पूर्वावलोकन उपलब्ध नहीं है",
-	"ui.teamBridge.attachmentCard.unavailable": "अटैचमेंट उपलब्ध नहीं है",
-	"ui.teamBridge.attachmentCard.download": "फ़ाइल डाउनलोड करें",
-	"ui.teamBridge.attachmentCard.saved": "फ़ाइल सेव हो गई"
+	"ui.teamBridge.attachmentCard.unavailable": "अटैचमेंट उपलब्ध नहीं है"
 }

@@ -65,7 +65,7 @@ const profileFields = z
 
 // Owner audit is a different authority domain. Keep the tuple closed and
 // explicit even though several ids also appear in member attachment requests.
-export const ownerAuditAttachmentTupleSchema = z
+const ownerAuditAttachmentTupleSchema = z
 	.object({
 		tenantId: id,
 		conversationId: id,
@@ -537,9 +537,6 @@ export async function requestDesktopMediaOutcome(
 	bytes: Uint8Array<ArrayBuffer> | null,
 	backendUrl: string,
 	token: string | null,
-	// Main-only call argument, never a serialized request field. Public media IPC
-	// and development proxy cannot opt into opaque downloads.
-	ownerAuditDownload = false,
 ): Promise<DesktopMediaOutcome> {
 	const parsed = mediaRequestSchema.safeParse(input);
 	if (
@@ -690,9 +687,7 @@ export async function requestDesktopMediaOutcome(
 			headers: {
 				Accept:
 					request.op === "team_bridge.owner_audit.attachment"
-						? ownerAuditDownload
-							? "application/octet-stream"
-							: "image/png, image/jpeg"
+						? "image/png, image/jpeg"
 						: "application/json, audio/*, image/*, application/octet-stream",
 				...(contentType ? { "Content-Type": contentType } : {}),
 				Authorization: `Bearer ${token}`,
@@ -715,7 +710,7 @@ export async function requestDesktopMediaOutcome(
 		const responseType = response.headers.get("content-type") ?? "";
 		if (request.op === "team_bridge.owner_audit.attachment") {
 			return {
-				response: await readOwnerAuditAttachment(response, ownerAuditDownload),
+				response: await readOwnerAuditAttachment(response),
 				answered: true,
 			};
 		}
@@ -974,30 +969,4 @@ export async function requestDesktopMedia(
 ): Promise<DesktopMediaResponse> {
 	return (await requestDesktopMediaOutcome(input, bytes, backendUrl, token))
 		.response;
-}
-
-/** Main-owned native Save As only. The generic renderer media op always uses
- * preview mode; opaque data is returned solely to this private native caller. */
-export async function requestOwnerAuditDownloadOutcome(
-	input: unknown,
-	backendUrl: string,
-	token: string | null,
-): Promise<DesktopMediaOutcome> {
-	const tuple = ownerAuditAttachmentTupleSchema.safeParse(input);
-	if (!tuple.success)
-		return {
-			response: {
-				status: 422,
-				kind: "error",
-				detail: t("ui.teamBridge.attachmentCard.unavailable"),
-			},
-			answered: false,
-		};
-	return requestDesktopMediaOutcome(
-		{ op: "team_bridge.owner_audit.attachment", ...tuple.data },
-		null,
-		backendUrl,
-		token,
-		true,
-	);
 }

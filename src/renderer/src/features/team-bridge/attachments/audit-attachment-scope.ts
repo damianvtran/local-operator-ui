@@ -26,11 +26,10 @@ export function auditAttachmentKey(scope: AuditAttachmentScope): string {
  * withheld, expired and revoked values never commission even a preview read. */
 export function auditAttachmentAction(
 	attachment: BridgeAttachmentDescriptor,
-): "preview" | "download" | null {
+): "preview" | null {
 	if (attachment.state !== "bound") return null;
 	if (attachment.mime === "image/png" || attachment.mime === "image/jpeg")
 		return "preview";
-	if (attachment.mime === "application/octet-stream") return "download";
 	return null;
 }
 

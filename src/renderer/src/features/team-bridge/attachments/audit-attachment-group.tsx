@@ -1,9 +1,5 @@
-import {
-	type OwnerAuditScope,
-	TeamBridgeOwnerAuditApi,
-} from "@shared/api/local-operator/team-bridge-owner-audit-api";
+import type { OwnerAuditScope } from "@shared/api/local-operator/team-bridge-owner-audit-api";
 import { ImageLightbox } from "@shared/components/common/image-lightbox";
-import { Spinner } from "@shared/components/common/spinner";
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { ImageOff } from "lucide-react";
@@ -21,7 +17,6 @@ import {
 import { BridgeAttachmentGroup } from "./bridge-attachment-group";
 import {
 	type AuditImageState,
-	auditFailure,
 	useAuditAttachment,
 } from "./use-audit-attachment";
 
@@ -128,60 +123,6 @@ function AuditImage({
 				)}
 			</AttachmentFrame>
 		</button>
-	);
-}
-
-function AuditFileSave({ scope }: { scope: AuditAttachmentScope }) {
-	const [state, setState] = useState<
-		"idle" | "pending" | "saved" | "failed" | "unavailable"
-	>("idle");
-	const epoch = useRef(0);
-	useEffect(
-		() => () => {
-			epoch.current += 1;
-		},
-		[],
-	);
-	const save = async () => {
-		const issued = epoch.current;
-		setState("pending");
-		try {
-			const saved = await TeamBridgeOwnerAuditApi.saveAttachment(scope);
-			if (issued === epoch.current) setState(saved ? "saved" : "idle");
-		} catch (error) {
-			if (issued === epoch.current) setState(auditFailure(error));
-		}
-	};
-	if (state === "unavailable")
-		return (
-			<div className="min-h-16">
-				<p>{t("ui.teamBridge.attachmentCard.unavailable")}</p>
-			</div>
-		);
-	return (
-		<div className="min-h-16 space-y-1">
-			<button
-				type="button"
-				disabled={state === "pending"}
-				aria-busy={state === "pending"}
-				onClick={() => void save()}
-				className="inline-flex min-h-6 items-center gap-1 rounded-sm px-2 text-accent hover:bg-elevated focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus disabled:text-ink-muted"
-			>
-				{state === "pending" && <Spinner size="xs" />}
-				{t(
-					state === "failed"
-						? "ui.teamBridge.attachments.retry_load"
-						: "ui.teamBridge.attachmentCard.download",
-				)}
-			</button>
-			<p aria-live="polite" className="min-h-8">
-				{state === "saved"
-					? t("ui.teamBridge.attachmentCard.saved")
-					: state === "failed"
-						? t("ui.teamBridge.attachmentCard.unavailable")
-						: null}
-			</p>
-		</div>
 	);
 }
 
@@ -295,20 +236,6 @@ export function AuditAttachmentGroup({
 											restore.current = openers.current[attachment.id];
 											setOpenId(attachment.id);
 										}}
-									/>
-								) : null
-						: undefined
-				}
-				renderAction={
-					scope && TeamBridgeOwnerAuditApi.canSaveAttachment()
-						? (attachment) =>
-								auditAttachmentAction(attachment) === "download" ? (
-									<AuditFileSave
-										key={auditAttachmentKey({
-											...scope,
-											attachmentId: attachment.id,
-										})}
-										scope={{ ...scope, attachmentId: attachment.id }}
 									/>
 								) : null
 						: undefined

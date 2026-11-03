@@ -60,5 +60,7 @@
     }
   ],
   "translation_source_provenance": "i18n/audits/evidence/en/ui.teamBridge/1f8487498771-slice2/translator.json",
-  "translation_source_provenance_sha256": "b8ad4231a26f8bc411d18859c81a5f2d4f884ebc1be3828d7fa3cef6ac062104"
+  "translation_source_provenance_sha256": "b8ad4231a26f8bc411d18859c81a5f2d4f884ebc1be3828d7fa3cef6ac062104",
+  "disposition": "Historical two-key save audit only; save capability and solely-save copy removed. Original signed evidence remains unchanged and ledger bindings are superseded.",
+  "removal_proof": "i18n/audits/evidence/en/ui.teamBridge/f93eb129057e-slice2-save-removal/record.json"
 }

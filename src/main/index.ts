@@ -213,8 +213,6 @@ import {
 } from "./window-raise";
 import { attachWindowSurface } from "./window-surface";
 
-const LINUX_DESKTOP_ENTRY = /^[A-Za-z0-9_.-]+\.desktop$/;
-
 const BASE64_FILE_EXTENSIONS = ["csv", "tsv", "xls", "xlsx", "ods"];
 
 /**
@@ -2624,7 +2622,7 @@ app
 		const desktopIdentity =
 			process.platform === "linux" &&
 			typeof desktopName === "string" &&
-			LINUX_DESKTOP_ENTRY.test(desktopName) &&
+			/^[A-Za-z0-9_.-]+\.desktop$/.test(desktopName) &&
 			[
 				process.env.XDG_DATA_HOME || join(app.getPath("home"), ".local/share"),
 				...(process.env.XDG_DATA_DIRS || "/usr/local/share:/usr/share")
@@ -3391,7 +3389,6 @@ app
 				void mainLocale.refresh();
 			},
 			(input) => recordingShortcut.admit(input),
-			(input) => backendService.requestOwnerAuditDownload(input),
 		);
 
 		// Both app documents may read recording state; only the main window's

@@ -2,15 +2,12 @@ import { t } from "../i18n/messages";
 import type { DesktopMediaResponse } from "./desktop-media";
 
 const IMAGE_CAP = 5 * 1024 * 1024;
-const OPAQUE_CAP = 25 * 1024 * 1024;
 const DECIMAL_LENGTH = /^\d+$/;
 
-/** Only the dedicated native Save As path may request opaque bytes. The public
- * media IPC/dev proxy always calls this with download=false. Neither a URL nor
- * a caller-supplied MIME/name/path is part of that authority. */
+/** Audit image bytes only. Generic descriptors are metadata, not permission
+ * to export opaque data; even a stale caller cannot opt into a file mode. */
 export async function readOwnerAuditAttachment(
 	response: Response,
-	download: boolean,
 ): Promise<DesktopMediaResponse> {
 	const refusal = (status: number): DesktopMediaResponse => ({
 		status,
@@ -23,10 +20,8 @@ export async function readOwnerAuditAttachment(
 		.toLowerCase();
 	const cacheControl = response.headers.get("cache-control") ?? "";
 	const csp = response.headers.get("content-security-policy") ?? "";
-	const approved = download
-		? mime === "application/octet-stream"
-		: mime === "image/png" || mime === "image/jpeg";
-	const cap = download ? OPAQUE_CAP : IMAGE_CAP;
+	const approved = mime === "image/png" || mime === "image/jpeg";
+	const cap = IMAGE_CAP;
 	const length = response.headers.get("content-length");
 	let refused = response.status !== 200 ? response.status : 422;
 	if (length && DECIMAL_LENGTH.test(length) && Number(length) > cap)

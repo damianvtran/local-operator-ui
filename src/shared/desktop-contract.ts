@@ -7150,16 +7150,6 @@ export type DesktopStreamSubscription = {
  * (`desktop-media.ts`); this is the renderer-facing type so preload and callers
  * agree on the shape.
  */
-/** Native Save As cannot return bytes or a filesystem path across preload. */
-export type DesktopOwnerAuditSaveResult =
-	| { status: 200; kind: "json"; body: { saved: boolean; cancelled: boolean } }
-	| {
-			status: number;
-			kind: "error";
-			detail: string;
-			code?: DesktopRefusalCode;
-	  };
-
 /** Captured human-owner receipt; no URL, destination path, MIME or filename. */
 export type DesktopOwnerAuditAttachmentScope = {
 	tenantId: string;
@@ -7386,10 +7376,6 @@ export type DesktopAPI = {
 		request: DesktopMediaRequest,
 		bytes: Uint8Array | null,
 	) => Promise<DesktopMediaResponse>;
-	/** Native-only opaque Save As. No bytes or filesystem path in the result. */
-	ownerAuditAttachmentSave?: (
-		input: DesktopOwnerAuditAttachmentScope,
-	) => Promise<DesktopOwnerAuditSaveResult>;
 
 	/**
 	 * Arm ONE supplement-frame mount (turn-supplements memo §4.1, lane U-b).

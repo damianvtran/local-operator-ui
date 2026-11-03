@@ -10,9 +10,9 @@ import {
 } from "../team-bridge-attachments.fixtures";
 import { OwnerAuditPanelView } from "../team-bridge-owner-audit";
 
-/** Real owner-audit panel and byte/save consumers, SYNTHETIC preload boundary.
- * No hub authority, native dialog or real filesystem operation is claimed. The
- * production native save API returns only saved/cancelled, never paths/bytes. */
+/** Real owner-audit panel and image consumers, SYNTHETIC preload boundary.
+ * No hub authority or rendered approval is claimed. Generic files remain
+ * noninteractive metadata; no native save API is registered or advertised. */
 const OWNER = "acct_synthetic_owner";
 const OTHER = "acct_synthetic_other";
 const TENANT = "org_synthetic_audit";
@@ -52,7 +52,7 @@ const messages = [
 	{
 		id: "bmsg_synthetic_file",
 		seq: 2,
-		body: "Opaque file: native main-owned Save As only.",
+		body: "Generic file: metadata only, no preview or download.",
 		attachments: [
 			{
 				...image,
@@ -104,27 +104,29 @@ function AuditResourceFixture({
 	metadataOnly = false,
 }: { mode?: Mode; narrow?: boolean; metadataOnly?: boolean }) {
 	const [owner, setOwner] = useState(OWNER);
-	const ownerRef = useRef(owner);
-	ownerRef.current = owner;
 	const releaseImage = useRef<(() => void) | null>(null);
-	const releaseSave = useRef<(() => void) | null>(null);
-	const cancelNextSave = useRef(false);
-	const holdSave = useRef(false);
 	const switchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 	useLayoutEffect(() => {
 		const previous = window.api;
 		let attempts = 0;
-		// A scoped mock, installed before passive resource effects. Renderer code
-		// still builds the production captured-account tuple and closed audit op.
+		// Deliberately omit the removed legacy save method even if another fixture
+		// left it behind. This boundary provides image bytes only, never file export.
+		const desktop = Object.fromEntries(
+			Object.entries(previous?.desktop ?? {}).filter(
+				([name]) => name !== "ownerAuditAttachmentSave",
+			),
+		);
 		window.api = {
 			...previous,
 			desktop: {
-				...previous?.desktop,
+				...desktop,
 				media: async (request) => {
 					if (
 						request.op !== "team_bridge.owner_audit.attachment" ||
 						request.tenantId !== TENANT ||
 						request.conversationId !== conversation.id ||
+						request.messageId !== "bmsg_synthetic_image" ||
+						request.attachmentId !== image.id ||
 						request.expectedAccountId !== owner
 					)
 						return { status: 403, kind: "error", detail: "Synthetic refusal" };
@@ -148,35 +150,11 @@ function AuditResourceFixture({
 						data: decode(owner === OWNER ? SHOT_WIDE_B64 : SHOT_GREEN_B64),
 					};
 				},
-				ownerAuditAttachmentSave: async (request) => {
-					if (mode === "refused")
-						return { status: 403, kind: "error", detail: "Synthetic refusal" };
-					if (
-						request.expectedAccountId !== ownerRef.current ||
-						request.tenantId !== TENANT
-					)
-						return { status: 409, kind: "error", detail: "Synthetic refusal" };
-					if (holdSave.current)
-						await new Promise<void>((resolve) => {
-							releaseSave.current = resolve;
-						});
-					if (request.expectedAccountId !== ownerRef.current)
-						return { status: 409, kind: "error", detail: "Synthetic refusal" };
-					const cancelled = cancelNextSave.current;
-					cancelNextSave.current = false;
-					return {
-						status: 200,
-						kind: "json",
-						body: { saved: !cancelled, cancelled },
-					};
-				},
 			},
 		} as typeof window.api;
 		return () => {
 			releaseImage.current?.();
 			releaseImage.current = null;
-			releaseSave.current?.();
-			releaseSave.current = null;
 			if (switchTimer.current) clearTimeout(switchTimer.current);
 			window.api = previous;
 		};
@@ -186,31 +164,6 @@ function AuditResourceFixture({
 			<div className="flex flex-wrap gap-2">
 				<button type="button" onClick={() => releaseImage.current?.()}>
 					Release synthetic image
-				</button>
-				<button
-					type="button"
-					onClick={() => {
-						cancelNextSave.current = true;
-					}}
-				>
-					Cancel next synthetic save
-				</button>
-				<button
-					type="button"
-					onClick={() => {
-						holdSave.current = true;
-					}}
-				>
-					Hold synthetic save
-				</button>
-				<button
-					type="button"
-					onClick={() => {
-						holdSave.current = false;
-						releaseSave.current?.();
-					}}
-				>
-					Release synthetic save
 				</button>
 				<button
 					type="button"
@@ -254,10 +207,11 @@ const meta = {
 } satisfies Meta<typeof AuditResourceFixture>;
 export default meta;
 type Story = StoryObj<typeof meta>;
-export const PreviewAndOpaqueSave: Story = {};
+export const PreviewAndFileMetadata: Story = {};
 export const PendingToReady: Story = { args: { mode: "pending" } };
 export const ExplicitRetry: Story = { args: { mode: "transient" } };
 export const TerminalRefusal: Story = { args: { mode: "refused" } };
+export const AccountSwitch: Story = { args: { mode: "pending" } };
 export const Narrow: Story = { args: { narrow: true } };
 export const Light: Story = {
 	args: { ...{ theme: "localOperatorLight" }, mode: "ready" },
@@ -265,5 +219,4 @@ export const Light: Story = {
 export const Dark: Story = {
 	args: { ...{ theme: "localOperatorDark" }, mode: "ready" },
 };
-
 export const NonfetchableMetadata: Story = { args: { metadataOnly: true } };

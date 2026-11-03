@@ -1,25 +1,20 @@
 import {
 	type BrowserWindow,
 	type IpcMainInvokeEvent,
-	dialog,
 	ipcMain,
 	shell,
 } from "electron";
 import { LANGUAGE_SETTING_KEY } from "../i18n/locale";
-import { t } from "../i18n/messages";
 import type { DesktopResponse } from "../shared/desktop-contract";
 import {
 	DESKTOP_FOREGROUND_REQUIRED_MESSAGE,
 	SUBSCRIPTION_ID_PATTERN,
 } from "../shared/desktop-contract";
-import { teamBridgeIdentitySchema } from "../shared/team-bridge-contract";
 import type { DesktopMediaResponse } from "./desktop-media";
 import type { DesktopNotifier } from "./desktop-notifier";
 import type { DesktopStreamRelay } from "./desktop-stream";
 import { trustedDesktopFrame } from "./desktop-transport";
 import type { SupplementFrameMounts } from "./supplement-mounts";
-import { saveOwnerAuditAttachment } from "./team-bridge-audit-save";
-import { writeAuditAttachmentAtomically } from "./team-bridge-audit-save-file";
 import type { TeamBridgeNotifier } from "./team-bridge-notifier";
 
 const OPERATION_ID = /^[a-zA-Z0-9_-]{1,128}$/;
@@ -323,8 +318,6 @@ export function registerDesktopIPC(
 	onLanguageSettingEdited?: () => void,
 	/** Refuse selected writes synchronously, before they reach the daemon. */
 	admitDesktopRequest?: (input: unknown) => DesktopResponse | null,
-	// Appended to preserve all existing positional IPC registrations.
-	ownerAuditDownload?: (input: unknown) => Promise<DesktopMediaResponse>,
 ): void {
 	const opened = new Map<string, string>();
 	function authorize(event: IpcMainInvokeEvent): void {
@@ -527,57 +520,6 @@ export function registerDesktopIPC(
 			authorizeNotifications(event);
 			return teamBridgeNotifier.takePendingOpen();
 		});
-	}
-	if (ownerAuditDownload) {
-		ipcMain.handle(
-			"desktop-owner-audit-attachment-save",
-			async (event, input: unknown) => {
-				authorize(event);
-				const owner = window();
-				if (
-					!owner ||
-					owner.isDestroyed() ||
-					!owner.isVisible() ||
-					!owner.isFocused()
-				)
-					return {
-						status: 403,
-						kind: "error",
-						detail: t("ui.teamBridge.attachmentCard.unavailable"),
-					};
-				return saveOwnerAuditAttachment(input, {
-					choose: async () => {
-						const result = await dialog.showSaveDialog(owner, {
-							defaultPath: "attachment.bin",
-							properties: ["createDirectory", "showOverwriteConfirmation"],
-						});
-						return result.canceled ? null : (result.filePath ?? null);
-					},
-					download: ownerAuditDownload,
-					currentAccount: async () => {
-						const result = await request({
-							op: "agent_messages.status",
-							boundary: "surface_open",
-						});
-						if (result.status !== 200) return null;
-						const identity = teamBridgeIdentitySchema.safeParse(
-							(result.body as { result?: unknown } | null)?.result,
-						);
-						return identity.success ? (identity.data.account_id ?? null) : null;
-					},
-					live: () => {
-						if (event.sender.isDestroyed()) return false;
-						try {
-							authorize(event);
-							return true;
-						} catch {
-							return false;
-						}
-					},
-					write: writeAuditAttachmentAtomically,
-				});
-			},
-		);
 	}
 	// Binary/multipart media relay. Bytes arrive as a structured-clone
 	// Uint8Array from preload; the response's bytes go back the same way.

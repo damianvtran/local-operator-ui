@@ -1,15 +1,6 @@
 import assert from "node:assert/strict";
-import {
-	mkdir,
-	mkdtemp,
-	readFile,
-	readdir,
-	rm,
-	stat,
-	writeFile,
-} from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import Module from "node:module";
-import { homedir } from "node:os";
 import { join } from "node:path";
 import { after, test } from "node:test";
 import { build } from "esbuild";
@@ -17,9 +8,11 @@ import { JSDOM } from "jsdom";
 import React, { act } from "react";
 import { createRoot } from "react-dom/client";
 
-/* Real shipped modules, synthetic HTTP/media/dialog boundaries. These tests
- * prove confinement and filesystem side effects, NOT deployed hub authority,
+/* Real shipped modules, synthetic HTTP/media boundaries. These tests
+ * prove confinement and image byte confinement, NOT deployed hub authority,
  * native dialog/pixels or a live owner/tenant probe. No Electron is launched. */
+const ELECTRON_MODULE = /^electron$/;
+const ANY_MODULE = /.*/;
 const dom = new JSDOM("<!doctype html><div></div>", {
 	url: "http://localhost/",
 });
@@ -69,10 +62,9 @@ const bundle = await build({
 	stdin: {
 		resolveDir: process.cwd(),
 		contents: `
+ export { registerDesktopIPC } from './src/main/desktop-ipc';
  export { readOwnerAuditAttachment } from './src/main/team-bridge-audit-media';
- export { saveOwnerAuditAttachment } from './src/main/team-bridge-audit-save';
- export { writeAuditAttachmentAtomically } from './src/main/team-bridge-audit-save-file';
- export { requestDesktopMediaOutcome, requestOwnerAuditDownloadOutcome } from './src/main/desktop-media';
+ export { requestDesktopMediaOutcome } from './src/main/desktop-media';
  export { AuditAttachmentGroup } from './src/renderer/src/features/team-bridge/attachments/audit-attachment-group';
  export { auditAttachmentKey, auditAttachmentAction, auditMessageScope } from './src/renderer/src/features/team-bridge/attachments/audit-attachment-scope';
  export { TeamBridgeOwnerAuditApi } from './src/renderer/src/shared/api/local-operator/team-bridge-owner-audit-api';
@@ -86,6 +78,27 @@ const bundle = await build({
 	write: false,
 	external: ["react", "react-dom", "react-dom/client"],
 	define: { "import.meta.env": "{}" },
+	plugins: [
+		{
+			name: "original-electron-surface",
+			setup(build) {
+				build.onResolve({ filter: ELECTRON_MODULE }, () => ({
+					path: "electron",
+					namespace: "audit-electron",
+				}));
+				build.onLoad(
+					{ filter: ANY_MODULE, namespace: "audit-electron" },
+					() => ({
+						contents: `
+   export const ipcMain = { handle: (name, fn) => globalThis.__auditIpc.set(name, fn), on: () => {} };
+   export const shell = { openExternal: async () => { throw new Error("unexpected external open"); } };
+  `,
+						loader: "js",
+					}),
+				);
+			},
+		},
+	],
 	loader: {
 		".css": "empty",
 		".svg": "text",
@@ -105,16 +118,7 @@ compiled.filename = runtimeFile;
 compiled.paths = Module._nodeModulePaths(process.cwd());
 compiled._compile(bundle.outputFiles[0].text, compiled.filename);
 const m = compiled.exports;
-const baseDir =
-	process.env.LOCAL_OPERATOR_SCRATCHPAD ??
-	process.env.RUNNER_TEMP ??
-	join(homedir(), ".cache", "local-operator-ui-tests");
-await mkdir(baseDir, { recursive: true });
-const dir = await mkdtemp(join(baseDir, "audit-attachments-"));
-after(async () => {
-	await rm(dir, { recursive: true, force: true });
-	dom.window.close();
-});
+after(() => dom.window.close());
 const scope = {
 	accountId: "acct_owner",
 	tenantId: "org_test",
@@ -159,7 +163,7 @@ test("audit authority key includes account and every tuple field; only explicit 
 			...attachment,
 			mime: "application/octet-stream",
 		}),
-		"download",
+		null,
 	);
 	for (const state of [
 		undefined,
@@ -175,7 +179,7 @@ test("audit authority key includes account and every tuple field; only explicit 
 		assert.equal(m.auditAttachmentAction({ ...attachment, mime }), null);
 });
 
-test("bounded consumer: PNG/JPEG only for preview; octet-stream only for private native download", async () => {
+test("bounded audit consumer rejects every opaque/active type, including a stale download argument", async () => {
 	for (const mime of [
 		"image/png",
 		"image/jpeg",
@@ -184,20 +188,14 @@ test("bounded consumer: PNG/JPEG only for preview; octet-stream only for private
 		"text/html",
 		"application/pdf",
 	]) {
-		for (const download of [false, true]) {
+		for (const staleDownloadArgument of [false, true]) {
 			const response = await m.readOwnerAuditAttachment(
 				new Response(bytes, { headers: headers(mime) }),
-				download,
+				staleDownloadArgument,
 			);
 			assert.equal(
 				response.kind,
-				(
-					download
-						? mime === "application/octet-stream"
-						: mime === "image/png" || mime === "image/jpeg"
-				)
-					? "bytes"
-					: "error",
+				mime === "image/png" || mime === "image/jpeg" ? "bytes" : "error",
 			);
 			if (response.kind === "bytes")
 				assert.equal(response.cacheControl, "private, no-store");
@@ -211,19 +209,14 @@ test("bounded consumer: PNG/JPEG only for preview; octet-stream only for private
 		const h = headers();
 		delete h[missing];
 		assert.equal(
-			(
-				await m.readOwnerAuditAttachment(
-					new Response(bytes, { headers: h }),
-					false,
-				)
-			).kind,
+			(await m.readOwnerAuditAttachment(new Response(bytes, { headers: h })))
+				.kind,
 			"error",
 		);
 	}
 	for (const status of [401, 403, 404, 409, 410, 503]) {
 		const response = await m.readOwnerAuditAttachment(
 			new Response("private refusal reason", { status }),
-			false,
 		);
 		assert.equal(response.kind, "error");
 		assert.equal(response.status, status);
@@ -231,13 +224,12 @@ test("bounded consumer: PNG/JPEG only for preview; octet-stream only for private
 	}
 });
 
-test("stream cap applies before exposing bytes, independent of absent/false length headers", async () => {
-	for (const download of [false, true]) {
+test("five-MiB stream cap precedes exposure regardless of stale mode/length arguments", async () => {
+	for (const staleMode of [false, true]) {
 		let cancelled = false;
-		const cap = (download ? 25 : 5) * 1024 * 1024;
 		const body = new ReadableStream({
 			start(controller) {
-				controller.enqueue(new Uint8Array(cap));
+				controller.enqueue(new Uint8Array(5 * 1024 * 1024));
 				controller.enqueue(bytes);
 			},
 			cancel() {
@@ -245,10 +237,8 @@ test("stream cap applies before exposing bytes, independent of absent/false leng
 			},
 		});
 		const answer = await m.readOwnerAuditAttachment(
-			new Response(body, {
-				headers: headers(download ? "application/octet-stream" : "image/png"),
-			}),
-			download,
+			new Response(body, { headers: headers() }),
+			staleMode,
 		);
 		assert.equal(answer.kind, "error");
 		assert.equal(answer.status, 413);
@@ -256,12 +246,8 @@ test("stream cap applies before exposing bytes, independent of absent/false leng
 	}
 	const h = { ...headers(), "content-length": String(5 * 1024 * 1024 + 1) };
 	assert.equal(
-		(
-			await m.readOwnerAuditAttachment(
-				new Response(bytes, { headers: h }),
-				false,
-			)
-		).status,
+		(await m.readOwnerAuditAttachment(new Response(bytes, { headers: h })))
+			.status,
 		413,
 	);
 });
@@ -287,23 +273,18 @@ test("closed relay binds all five fields, no-store, fixed origin and no generic 
 			"error",
 			"public relay never exposes opaque bytes",
 		);
-		const opaque = await m.requestOwnerAuditDownloadOutcome(
-			tuple,
-			"http://127.0.0.1:1",
-			"synthetic-token",
-		);
-		assert.equal(opaque.response.kind, "bytes");
+		assert.equal(typeof m.requestOwnerAuditDownloadOutcome, "undefined");
 		assert.equal(
-			calls[1].url.pathname,
+			calls[0].url.pathname,
 			"/v1/desktop/team-bridge/owner-audit/conversations/bcv_test/messages/bmsg_test/attachments/batt_test",
 		);
-		assert.equal(calls[1].url.searchParams.get("tenant_id"), scope.tenantId);
+		assert.equal(calls[0].url.searchParams.get("tenant_id"), scope.tenantId);
 		assert.equal(
-			calls[1].url.searchParams.get("expected_account_id"),
+			calls[0].url.searchParams.get("expected_account_id"),
 			scope.accountId,
 		);
-		assert.equal(calls[1].options.cache, "no-store");
-		assert.equal(calls[1].options.redirect, "error");
+		assert.equal(calls[0].options.cache, "no-store");
+		assert.equal(calls[0].options.redirect, "error");
 		for (const extra of [
 			{ ownerAuditDownload: true },
 			{ path: "/arbitrary" },
@@ -322,8 +303,13 @@ test("closed relay binds all five fields, no-store, fixed origin and no generic 
 		const before = calls.length;
 		assert.equal(
 			(
-				await m.requestOwnerAuditDownloadOutcome(
-					{ ...tuple, attachmentId: "../outside" },
+				await m.requestDesktopMediaOutcome(
+					{
+						op: "team_bridge.owner_audit.attachment",
+						...tuple,
+						attachmentId: "../outside",
+					},
+					null,
 					"http://127.0.0.1:1",
 					"synthetic-token",
 				)
@@ -334,89 +320,6 @@ test("closed relay binds all five fields, no-store, fixed origin and no generic 
 	} finally {
 		globalThis.fetch = original;
 	}
-});
-
-test("native save: cancel/denial/wrong owner/window teardown produce no file or renderer bytes/path", async () => {
-	let account = scope.accountId;
-	let live = true;
-	let downloads = 0;
-	const target = join(dir, "attachment.bin");
-	const deps = {
-		choose: async () => target,
-		download: async () => {
-			downloads++;
-			return {
-				status: 200,
-				kind: "bytes",
-				mimeType: "application/octet-stream",
-				data: bytes,
-			};
-		},
-		currentAccount: async () => account,
-		live: () => live,
-		write: m.writeAuditAttachmentAtomically,
-	};
-	let result = await m.saveOwnerAuditAttachment(tuple, {
-		...deps,
-		choose: async () => null,
-	});
-	assert.equal(result.body.cancelled, true);
-	assert.equal(downloads, 0);
-	result = await m.saveOwnerAuditAttachment(tuple, {
-		...deps,
-		download: async () => ({
-			status: 403,
-			kind: "error",
-			detail: "Unavailable",
-		}),
-	});
-	assert.equal(result.kind, "error");
-	assert.deepEqual(await readdir(dir), []);
-	account = "acct_other";
-	assert.equal((await m.saveOwnerAuditAttachment(tuple, deps)).status, 409);
-	assert.deepEqual(await readdir(dir), []);
-	account = scope.accountId;
-	live = false;
-	assert.equal((await m.saveOwnerAuditAttachment(tuple, deps)).kind, "error");
-	assert.deepEqual(await readdir(dir), []);
-	live = true;
-	result = await m.saveOwnerAuditAttachment(tuple, deps);
-	assert.deepEqual(result.body, { saved: true, cancelled: false });
-	assert.deepEqual(new Uint8Array(await readFile(target)), bytes);
-	assert.equal((await stat(target)).mode & 0o777, 0o600);
-	assert.equal(JSON.stringify(result).includes(target), false);
-	assert.equal("data" in result, false);
-	await rm(target);
-});
-
-test("atomic save rechecks owner at commit and preserves existing file on stale/failure", async () => {
-	const target = join(dir, "existing.bin");
-	await writeFile(target, "original");
-	await assert.rejects(
-		m.writeAuditAttachmentAtomically(target, bytes, async () => false),
-	);
-	assert.equal(await readFile(target, "utf8"), "original");
-	assert.deepEqual(await readdir(dir), ["existing.bin"]);
-	let account = scope.accountId;
-	const result = await m.saveOwnerAuditAttachment(tuple, {
-		choose: async () => target,
-		download: async () => ({
-			status: 200,
-			kind: "bytes",
-			mimeType: "application/octet-stream",
-			data: bytes,
-		}),
-		currentAccount: async () => account,
-		live: () => true,
-		write: async (path, data, canCommit) => {
-			account = "acct_other";
-			await m.writeAuditAttachmentAtomically(path, data, canCommit);
-		},
-	});
-	assert.equal(result.status, 409);
-	assert.equal(await readFile(target, "utf8"), "original");
-	assert.deepEqual(await readdir(dir), ["existing.bin"]);
-	await rm(target);
 });
 
 async function renderAudit(props) {
@@ -537,30 +440,6 @@ test("in-flight account switch rejects old completion; audit blobs are account/a
 	assert.equal(urls.size, 0);
 });
 
-test("save has no web/media fallback and renderer receives only native saved/cancelled outcomes", async () => {
-	let calls = 0;
-	window.api = {
-		desktop: {
-			media: async () => {
-				calls++;
-				throw new Error("not allowed");
-			},
-		},
-	};
-	await assert.rejects(m.TeamBridgeOwnerAuditApi.saveAttachment(scope));
-	assert.equal(calls, 0);
-	window.api.desktop.ownerAuditAttachmentSave = async (request) => {
-		assert.deepEqual(request, tuple);
-		return {
-			status: 200,
-			kind: "json",
-			body: { saved: false, cancelled: true },
-		};
-	};
-	assert.equal(await m.TeamBridgeOwnerAuditApi.saveAttachment(scope), false);
-	assert.equal(calls, 0);
-});
-
 test("captured query scope must match the rendered tenant and conversation exactly", () => {
 	const conversation = { id: scope.conversationId, tenant_id: scope.tenantId };
 	const message = {
@@ -602,35 +481,6 @@ test("captured query scope must match the rendered tenant and conversation exact
 	);
 });
 
-test("native save input cannot carry a renderer path or URL, even before the chooser", async () => {
-	let chosen = 0;
-	const deps = {
-		choose: async () => {
-			chosen++;
-			return join(dir, "never.bin");
-		},
-		download: async () => {
-			throw new Error("must not fetch");
-		},
-		currentAccount: async () => scope.accountId,
-		live: () => true,
-		write: m.writeAuditAttachmentAtomically,
-	};
-	for (const extra of [
-		{ path: "outside.bin" },
-		{ url: "https://untrusted.invalid" },
-		{ fileName: "private-name.pdf" },
-	]) {
-		const answer = await m.saveOwnerAuditAttachment(
-			{ ...tuple, ...extra },
-			deps,
-		);
-		assert.equal(answer.status, 422);
-	}
-	assert.equal(chosen, 0);
-	assert.deepEqual(await readdir(dir), []);
-});
-
 test("audit in-flight dedup retains one blob until the final authorized holder leaves", async () => {
 	let calls = 0;
 	let release;
@@ -665,4 +515,104 @@ test("audit in-flight dedup retains one blob until the final authorized holder l
 	assert.equal(urls.size, 1);
 	await second.close();
 	assert.equal(urls.size, 0);
+});
+
+test("removed native save is absent and stale IPC/media invocations fail closed without a fetch", async () => {
+	globalThis.__auditIpc = new Map();
+	const frame = { url: "http://localhost/index.html" };
+	const sender = { mainFrame: frame, isDestroyed: () => false };
+	const owner = { webContents: sender, isDestroyed: () => false };
+	let fetched = 0;
+	const previous = globalThis.fetch;
+	globalThis.fetch = async () => {
+		fetched++;
+		throw new Error("no request permitted");
+	};
+	try {
+		m.registerDesktopIPC(
+			() => owner,
+			frame.url,
+			async () => ({ status: 200, body: {} }),
+			undefined,
+			async (input, payload) =>
+				(
+					await m.requestDesktopMediaOutcome(
+						input,
+						payload,
+						"http://127.0.0.1:1",
+						"synthetic-token",
+					)
+				).response,
+		);
+		assert.equal(
+			globalThis.__auditIpc.has("desktop-owner-audit-attachment-save"),
+			false,
+		);
+		const invoke = async (name, ...args) => {
+			const handler = globalThis.__auditIpc.get(name);
+			if (!handler) throw new Error("No handler registered");
+			return handler({ sender, senderFrame: frame }, ...args);
+		};
+		await assert.rejects(invoke("desktop-owner-audit-attachment-save", tuple));
+		for (const op of [
+			"team_bridge.owner_audit.save",
+			"team_bridge.owner_audit.attachment.save",
+			"desktop-owner-audit-attachment-save",
+		]) {
+			const answer = await invoke("desktop-media", { op, ...tuple }, null);
+			assert.equal(answer.kind, "error");
+			assert.equal(answer.status, 422);
+		}
+		assert.equal(fetched, 0);
+		const preload = await readFile(
+			join(process.cwd(), "src/preload/index.ts"),
+			"utf8",
+		);
+		assert.equal(preload.includes("ownerAuditAttachmentSave"), false);
+		assert.equal(
+			preload.includes("desktop-owner-audit-attachment-save"),
+			false,
+		);
+		assert.equal("canSaveAttachment" in m.TeamBridgeOwnerAuditApi, false);
+		assert.equal("saveAttachment" in m.TeamBridgeOwnerAuditApi, false);
+	} finally {
+		globalThis.fetch = previous;
+	}
+});
+
+test("bound generic descriptors expose only metadata, with zero byte/save calls and no dead control", async () => {
+	let reads = 0;
+	let saves = 0;
+	window.api = {
+		desktop: {
+			media: async () => {
+				reads++;
+				throw new Error("generic file must not fetch");
+			},
+			ownerAuditAttachmentSave: async () => {
+				saves++;
+				throw new Error("removed legacy method must not run");
+			},
+		},
+	};
+	const view = await renderAudit({
+		attachments: [
+			"application/octet-stream",
+			"application/pdf",
+			"text/html",
+			"image/svg+xml",
+			"unknown",
+		].map((mime, index) => ({
+			...attachment,
+			id: `batt_generic_${index}`,
+			mime,
+		})),
+		count: 5,
+		scope,
+	});
+	assert.equal(reads, 0);
+	assert.equal(saves, 0);
+	assert.equal(view.node.querySelectorAll("button").length, 0);
+	assert.equal(view.node.querySelectorAll("img").length, 0);
+	await view.close();
 });

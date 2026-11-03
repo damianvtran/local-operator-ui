@@ -20,14 +20,12 @@ export function BridgeAttachmentGroup<T extends BridgeAttachmentDescriptor>({
 	attachments,
 	count = attachments.length,
 	renderPreview,
-	renderAction,
 	compact = false,
 }: {
 	attachments: readonly T[];
 	count?: number;
 	compact?: boolean;
 	renderPreview?: (attachment: T, index: number) => ReactNode;
-	renderAction?: (attachment: T, index: number) => ReactNode;
 }) {
 	useI18nLocale();
 	// A count-only audit response confirms presence, not descriptor authority.
@@ -99,7 +97,6 @@ export function BridgeAttachmentGroup<T extends BridgeAttachmentDescriptor>({
 									)}
 								</p>
 							)}
-							{available && attachment && renderAction?.(attachment, index)}
 						</div>
 					</li>
 				);

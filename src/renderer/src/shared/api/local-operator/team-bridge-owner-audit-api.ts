@@ -34,12 +34,8 @@ const attachmentTuple = (scope: OwnerAuditAttachmentInput) => ({
 
 /** Deliberately no member-history or agent-tool fallback. A refusal must remain
  * a refusal, not become a read under different authority. Attachment metadata
- * uses only the dedicated owner-audit relay. Generic files stay inside native
- * main-owned Save As; neither filesystem paths nor opaque bytes reach renderer. */
+ * uses only the dedicated owner-audit relay. Generic files remain metadata-only; no download path or opaque byte transport is exposed. */
 export const TeamBridgeOwnerAuditApi = {
-	canSaveAttachment(): boolean {
-		return typeof window.api?.desktop?.ownerAuditAttachmentSave === "function";
-	},
 	async attachmentBytes(
 		scope: OwnerAuditAttachmentInput,
 	): Promise<{ data: Uint8Array; mimeType: string }> {
@@ -56,22 +52,6 @@ export const TeamBridgeOwnerAuditApi = {
 				result.kind === "error" ? result.status : 422,
 			);
 		return { data: result.data, mimeType: result.mimeType };
-	},
-	async saveAttachment(scope: OwnerAuditAttachmentInput): Promise<boolean> {
-		const save = window.api?.desktop?.ownerAuditAttachmentSave;
-		if (!save) throw new OwnerAuditAttachmentError(422);
-		const result = await save(attachmentTuple(scope));
-		if (result.kind !== "json" || result.status !== 200)
-			throw new OwnerAuditAttachmentError(
-				result.kind === "error" ? result.status : 422,
-			);
-		const answer = result.body as {
-			saved?: unknown;
-			cancelled?: unknown;
-		} | null;
-		if (answer?.saved === true && answer.cancelled === false) return true;
-		if (answer?.saved === false && answer.cancelled === true) return false;
-		throw new OwnerAuditAttachmentError(422);
 	},
 	async conversations(scope: OwnerAuditScope, cursor?: string) {
 		return ownerAuditConversationPageSchema.parse(
