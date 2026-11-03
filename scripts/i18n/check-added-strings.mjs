@@ -277,7 +277,14 @@ export function runAddedCheck({
 			const abs = join(repo, rel);
 			const isUntracked = additions.get(rel) === null;
 			if (!existsSync(abs)) {
-				if (isUntracked) continue;
+				if (isUntracked) {
+					// Named on stderr so a skip is never silent; stdout and the exit
+					// code keep their meaning.
+					console.error(
+						`check-added-strings.mjs: skipped untracked file that vanished before it was read: ${rel}`,
+					);
+					continue;
+				}
 				throw new Error(`Changed file disappeared: ${rel}`);
 			}
 			const project = snapshot.getDefaultProjectForFile(abs);

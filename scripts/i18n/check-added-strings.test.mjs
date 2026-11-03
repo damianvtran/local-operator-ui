@@ -179,8 +179,16 @@ test("the real CLI rejects logical and JSX text in untracked and staged-new file
  * scratch git repo, so no timing luck and no touching of this checkout. */
 function scratchRepo() {
 	const dir = mkdtempSync(join(tmpdir(), "i18n-vanish-"));
+	// An inherited GIT_DIR/GIT_INDEX_FILE would aim these setup commands (and
+	// the checker's own git calls) at the caller's repo instead of the scratch one.
+	const env = Object.fromEntries(
+		Object.entries(process.env).filter(([key]) => !key.startsWith("GIT_")),
+	);
+	for (const key of Object.keys(process.env)) {
+		if (key.startsWith("GIT_")) delete process.env[key];
+	}
 	const run = (...args) =>
-		spawnSync("git", args, { cwd: dir, encoding: "utf8" });
+		spawnSync("git", args, { cwd: dir, env, encoding: "utf8" });
 	mkdirSync(join(dir, "src"), { recursive: true });
 	mkdirSync(join(dir, "scripts/i18n"), { recursive: true });
 	mkdirSync(join(dir, "i18n"), { recursive: true });
@@ -212,6 +220,21 @@ test("an untracked file deleted after listing is skipped, not an error", () => {
 			afterListing: () => rmSync(transient, { force: true }),
 		});
 		assert.deepEqual(result.findings, []);
+	} finally {
+		rmSync(dir, { recursive: true, force: true });
+	}
+});
+
+test("the same untracked file, still present, is reported (the skip depends on absence)", () => {
+	const dir = scratchRepo();
+	try {
+		writeFileSync(
+			join(dir, "src/b.tsx"),
+			'export const b = <i title={x && "Present copy"} />;\n',
+		);
+		const result = runAddedCheck({ repo: dir, base: "HEAD" });
+		assert.equal(result.findings.length, 1);
+		assert.equal(result.findings[0].path, "src/b.tsx");
 	} finally {
 		rmSync(dir, { recursive: true, force: true });
 	}
