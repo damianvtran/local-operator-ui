@@ -15,7 +15,7 @@ const bundle = await build({
 			export {useMentionDraftStore} from './src/renderer/src/features/team-bridge/mentions/mention-draft-store';
 			export {stagedMentions} from './src/renderer/src/features/team-bridge/mentions/mention-outbox';
 			export {createRoot} from 'react-dom/client';
-			export {act, createElement, useRef} from 'react';`,
+			export {act, createElement, useRef, StrictMode, Fragment} from 'react';`,
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -98,6 +98,7 @@ async function mount({
 	list = [human, agent],
 	failSend = false,
 	owner = defaultOwner,
+	strictMode = false,
 } = {}) {
 	let storageKey = scopedKey(key, owner);
 	const host = document.createElement("div");
@@ -169,7 +170,11 @@ async function mount({
 						sendMentions: true,
 					},
 				},
-				m.createElement(Composer, { value }),
+				m.createElement(
+					strictMode ? m.StrictMode : m.Fragment,
+					null,
+					m.createElement(Composer, { value }),
+				),
 			),
 		);
 	}
@@ -795,6 +800,53 @@ test("browser-ordered typing across a draft switch keeps each draft's own text a
 		assert.deepEqual(await c.keystrokes("!"), []);
 		assert.equal(c.text, `${textA}!`);
 		assertPills(c, tokensA);
+	} finally {
+		await c.dispose();
+	}
+});
+
+// `:sm`, not a bare `:`: U1 keeps the list closed below two characters, so a
+// bare colon now proves key retention but not intent adoption.
+for (const word of [":sm", ":smile", "hello :heart"]) {
+	test(`emoji browser-ordered StrictMode typing retains every key and adopts intent: ${word}`, async () => {
+		m.useMentionDraftStore.setState({ drafts: {} });
+		const c = await mount({ strictMode: true });
+		try {
+			assert.deepEqual(await c.keystrokes(word), []);
+			assert.equal(c.text, word);
+			assert.equal(c.controller.emoji.open, true);
+			assert.notEqual(document.querySelector("[data-emoji-popover]"), null);
+		} finally {
+			await c.dispose();
+		}
+	});
+}
+
+test("restored shortcode and programmatic dictation never invent emoji intent", async () => {
+	m.useMentionDraftStore.setState({ drafts: {} });
+	const c = await mount({ text: ":smile", strictMode: true });
+	try {
+		assert.equal(c.controller.emoji.open, false);
+		await c.restore("dictated :heart");
+		assert.equal(c.controller.emoji.open, false);
+		assert.equal(document.querySelector("[data-emoji-popover]"), null);
+		await c.switchDraft("emoji-other", ":smile");
+		assert.equal(c.controller.emoji.open, false);
+	} finally {
+		await c.dispose();
+	}
+});
+
+test("optimistic clear and identical refused-send restore cannot resurrect old emoji intent", async () => {
+	m.useMentionDraftStore.setState({ drafts: {} });
+	const c = await mount({ strictMode: true });
+	try {
+		await c.keystrokes(":smile");
+		assert.equal(c.controller.emoji.open, true);
+		await c.restore("");
+		assert.equal(c.controller.emoji.open, false);
+		await c.restore(":smile");
+		assert.equal(c.controller.emoji.open, false);
 	} finally {
 		await c.dispose();
 	}

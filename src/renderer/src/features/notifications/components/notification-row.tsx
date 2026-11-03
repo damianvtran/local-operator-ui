@@ -261,7 +261,7 @@ export const NotificationRow: FC<NotificationRowProps> = ({
 					<Checkbox
 						checked={picked}
 						tabIndex={-1}
-						className="size-6"
+						hitArea="comfortable"
 						onClick={(event) => {
 							event.stopPropagation();
 							onToggleSelect(item, event.shiftKey);
