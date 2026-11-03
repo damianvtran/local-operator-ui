@@ -14,11 +14,17 @@
 import {
 	AGENT_AVATAR_SIZE_OPTIONS,
 	type AgentAvatarSize,
+	HEADER_AVATAR_BOX,
+	TURN_AVATAR_BOX,
+	TURN_AVATAR_GAP,
 	parseAgentAvatarSize,
 } from "@features/chat/agent-avatar-size";
 import { Tabs, TabsList, TabsTrigger } from "@shared/components/ui";
+import { AgentAvatar } from "@shared/components/ui/avatar";
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
+import { cn } from "@shared/lib/utils";
+import { User } from "lucide-react";
 import { type FC, useId } from "react";
 
 type AgentAvatarSizeSettingProps = {
@@ -40,6 +46,48 @@ const stepLabel = (size: AgentAvatarSize): string =>
 		: size === "medium"
 			? t(`${BASE}.medium`)
 			: t(`${BASE}.large`);
+
+/**
+ * A LIVE SAMPLE OF WHAT THE STEP DRAWS (design review D4). The tabs say "Small"
+ * and nothing about how small, and the two places the setting acts are not on
+ * this page, so the row shows both: a header line (the face at the header's box
+ * beside a title bar) and a turn head (the face at the turn head's box above the
+ * first line). Each draws the same boxes and the same gap the shipped surfaces
+ * read from `agent-avatar-size.ts`, on the neutral plate every picture sits on,
+ * so the sample cannot drift from the surface. It is decoration: `aria-hidden`
+ * and wordless, so it adds no copy to translate and nothing to announce - the
+ * tabs are the control.
+ */
+const SizeSample: FC<{ size: AgentAvatarSize }> = ({ size }) => {
+	const header = HEADER_AVATAR_BOX[size];
+	const turn = TURN_AVATAR_BOX[size];
+	const gap = TURN_AVATAR_GAP[size];
+	const face = (box: string, glyph: string) => (
+		<AgentAvatar
+			className={cn("items-center justify-center text-ink-muted", box)}
+		>
+			<User className={glyph} aria-hidden="true" />
+		</AgentAvatar>
+	);
+	return (
+		<div
+			aria-hidden="true"
+			data-agent-size-sample={size}
+			className="mt-3 flex items-start gap-6 rounded-md border border-control bg-surface p-3"
+		>
+			<div className="flex h-10 items-center gap-2">
+				{face(header.className, header.glyphClassName)}
+				<span className="h-2 w-16 rounded-full bg-sunken" />
+			</div>
+			<div className="flex flex-col">
+				<span className={cn("flex", gap.className)}>
+					{face(turn.className, turn.glyphClassName)}
+				</span>
+				<span className="h-2 w-28 rounded-full bg-sunken" />
+			</div>
+		</div>
+	);
+};
 
 export const AgentAvatarSizeSetting: FC<AgentAvatarSizeSettingProps> = ({
 	value,
@@ -66,6 +114,7 @@ export const AgentAvatarSizeSetting: FC<AgentAvatarSizeSettingProps> = ({
 						`${BASE}.how_large_the_agent_s_picture_appears_in_the_chat_window_and_the_chat`,
 					)}
 				</p>
+				<SizeSample size={parseAgentAvatarSize(value)} />
 			</div>
 			{/* Fixed height, matching `ToggleSetting`, so the row's baseline holds. */}
 			<div className="flex h-6 shrink-0 items-center">

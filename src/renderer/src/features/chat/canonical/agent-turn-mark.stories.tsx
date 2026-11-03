@@ -196,10 +196,13 @@ const Panel = ({
 	agentId,
 	owned = true,
 	height = PANE_HEIGHT,
+	transcript = TRANSCRIPT,
 }: {
 	frame: string;
 	width: number;
 	agentId: string | null;
+	/** The records to draw; the short three-turn fixture by default. */
+	transcript?: TranscriptState;
 	/** Whether the viewer owns the agent: the placeholder's door needs it. */
 	owned?: boolean;
 	height?: number;
@@ -230,7 +233,7 @@ const Panel = ({
 			>
 				<CanonicalTranscript
 					frontend={{} as CanonicalFrontendState}
-					transcript={TRANSCRIPT}
+					transcript={transcript}
 					gate={null}
 					waiting={false}
 					starting={false}
@@ -357,13 +360,25 @@ const PicturePane = ({
 	frame,
 	width,
 	agentId = STORY_AGENT_ID,
+	transcript,
+	height,
 }: {
 	frame: string;
 	width: number;
 	agentId?: string | null;
+	transcript?: TranscriptState;
+	height?: number;
 }) => {
 	useStoredPicture();
-	return <Panel frame={frame} width={width} agentId={agentId} />;
+	return (
+		<Panel
+			frame={frame}
+			width={width}
+			agentId={agentId}
+			transcript={transcript}
+			height={height}
+		/>
+	);
 };
 
 /** Just the wide picture pane, for a frame a reviewer can read at 1:1. */
@@ -481,6 +496,95 @@ export const SizeLargePlaceholder: Story = {
 	render: () => (
 		<div className="bg-canvas p-6">
 			<SizedPane size="large" agentId={BARE_AGENT_ID} />
+		</div>
+	),
+};
+
+/**
+ * A LONG TRANSCRIPT, WITH THE DOM WINDOW ON (QA round 1, Q3).
+ *
+ * The short fixtures never reach the windowing path, so they cannot show the
+ * thing the size setting must not break: the window ESTIMATES an entry it has
+ * not mounted, and the estimate for a turn head reads `turnMarkHeight(size)`.
+ * 60 turns (120 records, a mark on each turn's head) is well past what a pane
+ * mounts at once, and the story switches the window on the way the app does
+ * (`canonicalTranscriptDomWindow` = "on", read once at mount, so it is set before
+ * the transcript mounts). A probe in the rig reads `[data-turn-mark-count]`-style
+ * facts off the DOM: how many marks are mounted against how many turns, and the
+ * region's `scrollHeight` at the top, middle and bottom.
+ */
+const LONG_TURNS = 60;
+const LONG_RECORDS: TranscriptRecord[] = Array.from(
+	{ length: LONG_TURNS },
+	(_, turn) => [
+		user(
+			`lu${turn}`,
+			`Question ${turn + 1}: what did the retry budget become?`,
+		),
+		assistant(
+			`la${turn}`,
+			`Answer ${turn + 1}: it moved into the gateway client and is read from one constant per route, so a route cannot carry a second copy.`,
+		),
+	],
+).flat();
+const LONG_TRANSCRIPT = transcriptOf(LONG_RECORDS);
+
+const LongPane = ({
+	size,
+	agentId,
+}: {
+	size: AgentAvatarSize;
+	/** `null` draws no marks at all: the control for the mark's own cost. */
+	agentId?: string | null;
+}) => {
+	// The window is read once per transcript mount; state it before the mount.
+	try {
+		window.localStorage.setItem("canonicalTranscriptDomWindow", "on");
+	} catch {
+		// A host without storage draws the full DOM; the probe then reports it.
+	}
+	/*
+	 * THE STEP IS STATED DURING RENDER, NOT IN AN EFFECT: the app persists it long
+	 * before a conversation mounts, so a transcript's FIRST render already reads
+	 * the reader's step. An effect would render the first frame at the previous
+	 * step and carry its measured heights into the estimates, a drift no session
+	 * can produce.
+	 */
+	useUiPreferencesStore.setState({ agentAvatarSize: size });
+	useLayoutEffect(
+		() => () => useUiPreferencesStore.setState({ agentAvatarSize: "small" }),
+		[],
+	);
+	return (
+		<PicturePane
+			frame={`long-${size}`}
+			width={1024}
+			agentId={agentId}
+			transcript={LONG_TRANSCRIPT}
+			height={560}
+		/>
+	);
+};
+
+export const LongWindowedSmall: Story = {
+	render: () => (
+		<div className="bg-canvas p-6">
+			<LongPane size="small" />
+		</div>
+	),
+};
+export const LongWindowedLarge: Story = {
+	render: () => (
+		<div className="bg-canvas p-6">
+			<LongPane size="large" />
+		</div>
+	),
+};
+/** The control: the same long transcript at the large step with NO marks drawn. */
+export const LongWindowedLargeNoMarks: Story = {
+	render: () => (
+		<div className="bg-canvas p-6">
+			<LongPane size="large" agentId={null} />
 		</div>
 	),
 };

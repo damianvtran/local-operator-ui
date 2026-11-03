@@ -422,8 +422,8 @@
 	"ui.settings.appearance.agent_avatar_size_setting.how_large_the_agent_s_picture_appears_in_the_chat_window_and_the_chat": {
 		"role": "Help paragraph under the picture size tabs",
 		"tone": "Helpful explanatory prose.",
-		"length": "Wrapping paragraph in the settings content column; no length cap, keep every fact. English is 105 characters.",
-		"note": "Two sentences: what the control sizes (the picture in the chat window and the chat header), and that the sidebar is unaffected."
+		"length": "Wrapping paragraph in the settings content column; no length cap, keep every fact. English is 100 characters.",
+		"note": "Two sentences: what the control sizes (agent pictures in the transcript and the chat header; \"transcript\" is the name the sibling Transcript display row uses), and that the sidebar rows are unaffected. A live sample of the sizes sits beside this text."
 	},
 	"ui.settings.appearance.agent_avatar_size_setting.small": {
 		"role": "Tab label (left of three)",

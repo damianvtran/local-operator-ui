@@ -69,7 +69,7 @@
 	"ui.settings.appearance.theme.tron": "Mạch điện cyan trên nền đen xanh của Grid.",
 	"ui.settings.appearance.theme.vaporwave": "Pastel hồng phai và xanh mòng két nhạt trên nền tím trung tâm thương mại đậm.",
 	"ui.settings.appearance.agent_avatar_size_setting.agent_picture_size": "Kích thước ảnh tác nhân",
-	"ui.settings.appearance.agent_avatar_size_setting.how_large_the_agent_s_picture_appears_in_the_chat_window_and_the_chat": "Kích thước ảnh tác nhân trong cửa sổ trò chuyện và phần đầu cuộc trò chuyện. Thanh bên giữ nguyên kích thước.",
+	"ui.settings.appearance.agent_avatar_size_setting.how_large_the_agent_s_picture_appears_in_the_chat_window_and_the_chat": "Kích thước ảnh tác nhân trong nội dung cuộc trò chuyện và trên thanh tiêu đề cuộc trò chuyện. Các hàng ở thanh bên giữ nguyên kích thước.",
 	"ui.settings.appearance.agent_avatar_size_setting.small": "Nhỏ",
 	"ui.settings.appearance.agent_avatar_size_setting.medium": "Vừa",
 	"ui.settings.appearance.agent_avatar_size_setting.large": "Lớn"

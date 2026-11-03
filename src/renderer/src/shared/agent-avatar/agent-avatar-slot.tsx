@@ -17,9 +17,9 @@
  * (`AgentAvatarEditLink` -> `?edit=picture`); nothing here uploads anything.
  *
  * A PLACEHOLDER IS DRAWN ONLY WHERE IT CAN BE ACTED ON (see `avatar-presence.ts`):
- * no door, no placeholder. While a write is in flight the placeholder stays (the
- * box must not reflow) but its door closes and the glyph becomes the busy
- * spinner, so it never offers an editor that is already open.
+ * no door, no placeholder. While a write is in flight the slot keeps its box
+ * (nothing reflows) but becomes a solid plate with the busy spinner - no dashed
+ * ring, no door - so it never offers an editor that is already open.
  */
 
 import {
@@ -43,6 +43,11 @@ export type AgentAvatarSlotProps = {
 	/** The glyph size inside the placeholder, from the same table. */
 	glyphClassName: string;
 	/**
+	 * Extra classes for the door's link (the size table's 24px hit halo). Never
+	 * applied to a mark with no door, and never moves a layout box.
+	 */
+	hitClassName?: string;
+	/**
 	 * The image's accessible name. Empty draws the picture as decoration (the
 	 * header, whose title names the conversation beside it).
 	 */
@@ -56,6 +61,7 @@ export const AgentAvatarSlot: FC<AgentAvatarSlotProps> = ({
 	mark,
 	boxClassName,
 	glyphClassName,
+	hitClassName,
 	alt = "",
 	agentName,
 	className,
@@ -86,18 +92,46 @@ export const AgentAvatarSlot: FC<AgentAvatarSlotProps> = ({
 				agentName={mark.door.agentName}
 				agentId={mark.door.agentId}
 				owned={true}
-				className={boxClassName}
+				className={cn(boxClassName, hitClassName)}
 				pencilClassName={glyphClassName}
 			>
 				{picture}
 			</AgentAvatarEditLink>
 		);
 	}
+	/*
+	 * UPLOADING IS A PLATE WITH A SPINNER, NOT A DASHED RING (design review D2).
+	 * The dashed edge is the repo's "empty slot, fill me" grammar and the door's
+	 * whole signal; a write in flight is neither empty nor offering anything, so
+	 * it keeps the box (nothing reflows) in the same solid plate every picture
+	 * sits on and says "working" with the spinner alone.
+	 */
+	if (mark.busy) {
+		return (
+			<AgentAvatar
+				aria-hidden="true"
+				data-agent-mark="placeholder"
+				data-busy=""
+				className={cn(
+					"items-center justify-center text-ink-muted",
+					boxClassName,
+					className,
+				)}
+			>
+				<LoaderCircle
+					className={cn(
+						glyphClassName,
+						"animate-spin motion-reduce:animate-none",
+					)}
+					aria-hidden="true"
+				/>
+			</AgentAvatar>
+		);
+	}
 	const face = (
 		<span
 			aria-hidden="true"
 			data-agent-mark="placeholder"
-			data-busy={mark.busy ? "" : undefined}
 			className={cn(
 				"flex shrink-0 items-center justify-center rounded-full",
 				"border border-dashed border-control bg-transparent text-ink-muted",
@@ -108,17 +142,7 @@ export const AgentAvatarSlot: FC<AgentAvatarSlotProps> = ({
 				className,
 			)}
 		>
-			{mark.busy ? (
-				<LoaderCircle
-					className={cn(
-						glyphClassName,
-						"animate-spin motion-reduce:animate-none",
-					)}
-					aria-hidden="true"
-				/>
-			) : (
-				<Camera className={glyphClassName} aria-hidden="true" />
-			)}
+			<Camera className={glyphClassName} aria-hidden="true" />
 		</span>
 	);
 	if (!mark.door) return face;
@@ -131,7 +155,7 @@ export const AgentAvatarSlot: FC<AgentAvatarSlotProps> = ({
 			label={t("ui.agents.avatar.add_link", {
 				name: agentName ?? mark.door.agentName,
 			})}
-			className={boxClassName}
+			className={cn(boxClassName, hitClassName)}
 		>
 			{face}
 		</AgentAvatarEditLink>
@@ -156,7 +180,10 @@ export function useAgentSlotMark(input: {
 	owned: boolean;
 	pictureDoor: boolean;
 }): AvatarMark | null {
-	const { url, settled } = useAgentAvatarState(input.agentId, input.sha256Hint);
+	const { url, settled, unreadable } = useAgentAvatarState(
+		input.agentId,
+		input.sha256Hint,
+	);
 	const uploading = useAgentAvatarWriting(input.agentId);
 	const mark = decideAvatarMark({
 		agentId: input.agentId,
@@ -165,6 +192,7 @@ export function useAgentSlotMark(input: {
 		settled,
 		claimed: Boolean(input.sha256Hint),
 		uploading,
+		unreadable,
 		owned: input.owned,
 	});
 	if (mark?.kind === "picture" && !input.pictureDoor)

@@ -62,6 +62,12 @@ export type AvatarPresenceFacts = {
 	claimed?: boolean;
 	/** This window is writing (or clearing) the agent's picture right now. */
 	uploading?: boolean;
+	/**
+	 * The agents list could not be read, so "no picture" is unknown, not an
+	 * answer (agent review m-3). Without a `src` it draws nothing: a placeholder
+	 * would invite an upload over a picture that may exist.
+	 */
+	unreadable?: boolean;
 	/** The viewer may change this picture (`sessionPictureEditable`). */
 	owned: boolean;
 };
@@ -87,6 +93,7 @@ export function decideAvatarMark(
 			: null;
 	if (facts.src) return { kind: "picture", src: facts.src, door };
 	if (!facts.agentId || !facts.owned) return null;
+	if (facts.unreadable && !busy) return null;
 	if (!facts.settled && !busy) return { kind: "plate" };
 	return { kind: "placeholder", door, busy };
 }

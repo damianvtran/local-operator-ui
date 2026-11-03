@@ -1,7 +1,12 @@
+import {
+	type AgentAvatarSize,
+	parseAgentAvatarSize,
+} from "@features/chat/agent-avatar-size";
 import { parseTranscriptDisplayMode } from "@features/chat/transcript-display-mode";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import type { Meta, StoryObj } from "@storybook/react";
 import { Contrast } from "lucide-react";
+import { useLayoutEffect } from "react";
 import { AgentAvatarSizeSetting } from "./agent-avatar-size-setting";
 import { SettingsSection } from "./settings-section";
 import { TranscriptDisplayModeSetting } from "./transcript-display-mode-setting";
@@ -14,9 +19,13 @@ import { TranscriptDisplayModeSetting } from "./transcript-display-mode-setting"
  * rendered inside the shipped `SettingsSection` so the row's width and the
  * segmented control's place against its neighbour are the page's own.
  */
-const Frame = () => {
+const Frame = ({ startAt }: { startAt?: AgentAvatarSize }) => {
 	const size = useUiPreferencesStore((state) => state.agentAvatarSize);
 	const setSize = useUiPreferencesStore((state) => state.setAgentAvatarSize);
+	// The store persists, so a frame states its step instead of inheriting one.
+	useLayoutEffect(() => {
+		setSize(startAt ?? "small");
+	}, [setSize, startAt]);
 	const mode = useUiPreferencesStore((state) => state.transcriptDisplayMode);
 	const setMode = useUiPreferencesStore(
 		(state) => state.setTranscriptDisplayMode,
@@ -34,7 +43,10 @@ const Frame = () => {
 						value={parseTranscriptDisplayMode(mode)}
 						onChange={setMode}
 					/>
-					<AgentAvatarSizeSetting value={size} onChange={setSize} />
+					<AgentAvatarSizeSetting
+						value={parseAgentAvatarSize(size)}
+						onChange={setSize}
+					/>
 				</div>
 			</SettingsSection>
 		</div>
@@ -52,3 +64,8 @@ type Story = StoryObj<typeof meta>;
 
 /** The row at its default step (small), directly under the transcript display row. */
 export const Default: Story = {};
+
+/** The same row at the largest step, so the live sample's growth is on a frame. */
+export const Large: Story = {
+	render: () => <Frame startAt="large" />,
+};

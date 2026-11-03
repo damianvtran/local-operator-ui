@@ -6565,9 +6565,15 @@ test("the turn mark's own classes cannot narrow, float or absolutely place it", 
 			offences,
 		)}). The mark is a line of its own above the turn, never beside it: a float, an absolute offset or a gutter inside this component narrows the prose exactly as D11's 40px gutter did, and the call-site pin cannot see it`,
 	);
+	/*
+	 * The line under the mark is no longer a literal here: it grows with the box
+	 * (4/6/8px, design review D5) and is read from `TURN_AVATAR_GAP`, the table the
+	 * height estimate reads, so the class and the estimate cannot drift. The table
+	 * still opens on today's 4px `mb-1` (asserted in `agent-avatar-presence`).
+	 */
 	assert.ok(
-		tokens.includes("mb-1"),
-		"and the mark still states its own 4px line",
+		/TURN_AVATAR_GAP\[size\]/.test(mark) && /gap\.className/.test(mark),
+		"and the mark still states its own line, from the size table",
 	);
 	assert.ok(
 		/TURN_AVATAR_BOX\[size\]/.test(mark) &&

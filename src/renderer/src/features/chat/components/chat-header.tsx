@@ -352,18 +352,31 @@ const PATH_CHIP_CHARS = 40;
  */
 export const ChatHeaderAvatar: FC<{
 	agent: NonNullable<ChatHeaderProps["agentAvatar"]>;
-}> = ({ agent }) => {
+}> = ({ agent }) => (
+	<ChatHeaderAvatarMark
+		mark={useHeaderAvatarMark(agent)}
+		agentName={agent.agentName}
+	/>
+);
+
+/** The header's mark decision, hoisted so the title row can ask whether one is drawn. */
+const useHeaderAvatarMark = (agent: ChatHeaderProps["agentAvatar"]) =>
+	useAgentSlotMark({
+		agentId: agent?.agentId ?? null,
+		agentName: agent?.agentName ?? null,
+		sha256Hint: agent?.sha256,
+		owned: agent?.owned ?? false,
+		pictureDoor: true,
+	});
+
+const ChatHeaderAvatarMark: FC<{
+	mark: ReturnType<typeof useHeaderAvatarMark>;
+	agentName?: string | null;
+}> = ({ mark, agentName }) => {
 	const size = parseAgentAvatarSize(
 		useUiPreferencesStore((state) => state.agentAvatarSize),
 	);
 	const box = HEADER_AVATAR_BOX[size];
-	const mark = useAgentSlotMark({
-		agentId: agent.agentId,
-		agentName: agent.agentName,
-		sha256Hint: agent.sha256,
-		owned: agent.owned,
-		pictureDoor: true,
-	});
 	if (!mark) return null;
 	return (
 		<span className="me-1 flex shrink-0 items-center">
@@ -371,7 +384,8 @@ export const ChatHeaderAvatar: FC<{
 				mark={mark}
 				boxClassName={box.className}
 				glyphClassName={box.glyphClassName}
-				agentName={agent.agentName}
+				hitClassName={box.hitClassName}
+				agentName={agentName}
 			/>
 		</span>
 	);
@@ -446,7 +460,14 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 	const avatarSize = parseAgentAvatarSize(
 		useUiPreferencesStore((s) => s.agentAvatarSize),
 	);
-	const avatarRowClass = agentAvatar
+	/*
+	 * The title row is sized from the table only when a mark is DRAWN (agent review
+	 * n-2): a header whose agent draws nothing (not owned, no picture; or a list
+	 * read that failed) keeps the historical 20px line, not a 32px one for a mark
+	 * that is not there.
+	 */
+	const headerMark = useHeaderAvatarMark(agentAvatar);
+	const avatarRowClass = headerMark
 		? HEADER_AVATAR_BOX[avatarSize].rowClassName
 		: "h-5";
 	const isCanvasOpen = useUiPreferencesStore((s) => s.isCanvasOpen);
@@ -961,7 +982,12 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 							 * both). An agent the viewer does not own with no picture draws
 							 * nothing, the header main drew.
 							 */}
-							{agentAvatar ? <ChatHeaderAvatar agent={agentAvatar} /> : null}
+							{agentAvatar ? (
+								<ChatHeaderAvatarMark
+									mark={headerMark}
+									agentName={agentAvatar.agentName}
+								/>
+							) : null}
 							<h2
 								ref={renameTitleRef}
 								data-header-title=""

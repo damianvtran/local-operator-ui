@@ -216,6 +216,11 @@ export type AgentAvatarState = {
 	 * plate for.
 	 */
 	settled: boolean;
+	/**
+	 * The agents list could not be read, so "no picture" is not known. Only an
+	 * unhinted read can be unreadable.
+	 */
+	unreadable?: boolean;
 };
 
 /**
@@ -229,7 +234,9 @@ export function useAgentAvatarState(
 	sha256Hint?: string | null,
 ): AgentAvatarState {
 	const hinted = sha256Hint !== undefined;
-	const { data, isPending } = useAgentAvatarMap(Boolean(agentId) && !hinted);
+	const { data, isPending, isError } = useAgentAvatarMap(
+		Boolean(agentId) && !hinted,
+	);
 	const sha256 = hinted
 		? sha256Hint && SHA256.test(sha256Hint)
 			? sha256Hint
@@ -244,7 +251,19 @@ export function useAgentAvatarState(
 	 * is why the term is gated on the same condition that enabled it.
 	 */
 	const mapSettled = hinted || !agentId || !isPending;
-	return { url: bytes.url, settled: mapSettled && bytes.settled };
+	/*
+	 * A FAILED LIST READ IS NOT "NO PICTURE" (agent review m-3). With the map in
+	 * error and no data, every agent looks pictureless, and the placeholder would
+	 * invite an upload over a picture that exists. `unreadable` lets the presence
+	 * decision draw nothing instead; a hinted read never consults the map, so it
+	 * cannot be unreadable.
+	 */
+	const unreadable = !hinted && Boolean(agentId) && isError && !data;
+	return {
+		url: bytes.url,
+		settled: mapSettled && bytes.settled,
+		unreadable,
+	};
 }
 
 /**
@@ -371,9 +390,29 @@ export function useAgentAvatarWriting(
  * rows carry `avatar_sha256`). One function so a local write and a feed frame
  * cannot refresh different sets.
  */
-function refreshAvatarReaders(): void {
-	void client().invalidateQueries({ queryKey: ["agents"] });
-	void useCanonicalSessionsStore.getState().fetchSessions();
+function refreshAvatarReaders(): Promise<unknown> {
+	return Promise.allSettled([
+		client().invalidateQueries({ queryKey: ["agents"] }),
+		useCanonicalSessionsStore.getState().fetchSessions(),
+	]);
+}
+
+/**
+ * The longest a finished write keeps `writing` up while the readers re-read.
+ * A slow or hung refresh must not leave the door closed for good; the feed
+ * frame and the next read repair the picture either way.
+ */
+const WRITE_SETTLE_MS = 5000;
+
+/** Resolves when the readers have re-read, or after `WRITE_SETTLE_MS`. */
+function refreshAndSettle(): Promise<void> {
+	return new Promise((resolve) => {
+		const timer = setTimeout(resolve, WRITE_SETTLE_MS);
+		void refreshAvatarReaders().then(() => {
+			clearTimeout(timer);
+			resolve();
+		});
+	});
 }
 
 /**
@@ -382,6 +421,15 @@ function refreshAvatarReaders(): void {
  *
  * Resolves with the new record when core answers with one, and throws a
  * readable error otherwise - the editor states it beside its buttons.
+ *
+ * `writing` STAYS UP UNTIL THE READERS HAVE RE-READ (agent review m-2). It used
+ * to drop the moment the bytes were accepted, but the session row still carried
+ * the OLD digest (none, for a first picture) until the catalogue refetched, so a
+ * slot read "settled, no picture, door open" for a beat: the placeholder flashed
+ * between the upload finishing and the face. Held to the refresh, the slot goes
+ * from the busy placeholder to the picture and never offers the door in between.
+ * The promise this returns does NOT wait for that: the editor's own "saved"
+ * state must not lag a catalogue read.
  */
 export async function setAgentAvatar(
 	agentId: string,
@@ -392,15 +440,19 @@ export async function setAgentAvatar(
 	let result: Awaited<ReturnType<typeof desktopMedia>>;
 	try {
 		result = await desktopMedia({ op: "agent.avatar.put", agentId }, bytes);
-	} finally {
+	} catch (error) {
 		setWriting(agentId, false);
+		throw error;
 	}
 	/*
 	 * Core's refusal sentence (unsupported_type, too_large, too_many_pixels,
 	 * undecodable) arrives as the relay's `detail`; `mediaError` carries it as
 	 * the message, which is the one place the server's own reason is readable.
 	 */
-	if (result.status >= 400 || result.kind === "error") throw mediaError(result);
+	if (result.status >= 400 || result.kind === "error") {
+		setWriting(agentId, false);
+		throw mediaError(result);
+	}
 	const meta =
 		result.kind === "json"
 			? avatarMetaOf(
@@ -413,7 +465,7 @@ export async function setAgentAvatar(
 			[agentId]: meta,
 		}));
 	}
-	refreshAvatarReaders();
+	void refreshAndSettle().then(() => setWriting(agentId, false));
 	return meta;
 }
 
@@ -423,21 +475,26 @@ export async function clearAgentAvatar(agentId: string): Promise<void> {
 	let result: Awaited<ReturnType<typeof desktopMedia>>;
 	try {
 		result = await desktopMedia({ op: "agent.avatar.delete", agentId }, null);
-	} finally {
+	} catch (error) {
 		setWriting(agentId, false);
+		throw error;
 	}
 	// 404 is "already unset": the state the user asked for, not a failure.
 	if (
 		result.status !== 404 &&
 		(result.status >= 400 || result.kind === "error")
-	)
+	) {
+		setWriting(agentId, false);
 		throw mediaError(result);
+	}
 	client().setQueryData<AgentAvatarMap>(agentAvatarsQueryKey, (map) => {
 		if (!map) return map;
 		const { [agentId]: _removed, ...rest } = map;
 		return rest;
 	});
-	refreshAvatarReaders();
+	// Held like the write above: a cleared picture whose row still claims a digest
+	// must not flash a live door over the old face either.
+	void refreshAndSettle().then(() => setWriting(agentId, false));
 }
 
 /**
@@ -466,7 +523,7 @@ export function applyAgentAvatarFrame(payload: {
 			},
 		};
 	});
-	refreshAvatarReaders();
+	void refreshAvatarReaders();
 }
 
 /* ------------------------------------------------------------------ *

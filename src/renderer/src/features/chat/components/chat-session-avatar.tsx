@@ -84,15 +84,30 @@ export const SESSION_MARK_BOX = "size-4";
 export function ChatSessionAvatar({
 	row,
 	nowSeconds,
+	reservePicture = false,
 }: {
 	row: CanonicalSessionRow;
 	nowSeconds?: number;
+	/**
+	 * True when ANY row in the list draws a picture: a row that has none then
+	 * holds the picture's box empty, so every title in the list starts on one x
+	 * (design review D1). False - the whole list is pictureless, which is every
+	 * list before this feature and every backend that publishes no digest - draws
+	 * the cell main drew, byte for byte.
+	 */
+	reservePicture?: boolean;
 }) {
 	const agentId = row.agent_id ?? null;
 	const sha256 = row.avatar_sha256 ?? null;
 	if (!agentId || !sha256) {
 		// No picture to draw: the cell main drew, with its own subscription.
-		return <ChatSessionStatus row={row} nowSeconds={nowSeconds} />;
+		return (
+			<BareSessionStatus
+				row={row}
+				nowSeconds={nowSeconds}
+				reserve={reservePicture}
+			/>
+		);
 	}
 	return (
 		<PicturedSessionAvatar
@@ -100,7 +115,40 @@ export function ChatSessionAvatar({
 			agentId={agentId}
 			sha256={sha256}
 			nowSeconds={nowSeconds}
+			reservePicture={reservePicture}
 		/>
+	);
+}
+
+/**
+ * The status cell of a row with no picture, plus - only when the list has
+ * pictures elsewhere - an empty box where the picture would be, in the SAME
+ * cluster geometry a pictured row uses (`gap-1.5`), so the title's x is the
+ * pictured row's. The box is `aria-hidden` and carries no text: the row's one
+ * status sentence is still the status cell's.
+ */
+function BareSessionStatus({
+	row,
+	nowSeconds,
+	reserve,
+}: {
+	row: CanonicalSessionRow;
+	nowSeconds?: number;
+	reserve: boolean;
+}) {
+	if (!reserve) return <ChatSessionStatus row={row} nowSeconds={nowSeconds} />;
+	return (
+		<span
+			data-session-mark="reserved"
+			className="relative flex shrink-0 items-center gap-1.5"
+		>
+			<ChatSessionStatus row={row} nowSeconds={nowSeconds} />
+			<span
+				aria-hidden="true"
+				data-session-picture-slot=""
+				className={cn("shrink-0", SESSION_MARK_BOX)}
+			/>
+		</span>
 	);
 }
 
@@ -119,15 +167,23 @@ function PicturedSessionAvatar({
 	agentId,
 	sha256,
 	nowSeconds,
+	reservePicture,
 }: {
 	row: CanonicalSessionRow;
 	agentId: string;
 	sha256: string;
 	nowSeconds?: number;
+	reservePicture: boolean;
 }) {
 	const { url, settled } = useAgentAvatarState(agentId, sha256);
 	if (settled && !url)
-		return <ChatSessionStatus row={row} nowSeconds={nowSeconds} />;
+		return (
+			<BareSessionStatus
+				row={row}
+				nowSeconds={nowSeconds}
+				reserve={reservePicture}
+			/>
+		);
 	const picture = (
 		<span className={cn("relative flex shrink-0", SESSION_MARK_BOX)}>
 			<AgentMark
@@ -253,6 +309,19 @@ export function ChatSessionAvatarEdit({
 }) {
 	const target = sessionAvatarTarget(row);
 	/*
+	 * A DOOR ONLY ONTO A PICTURE THAT DRAWS (agent review m-1). A stale digest, a
+	 * removed file or a 404 settles with no bytes, and the row then draws the bare
+	 * status cell (`PicturedSessionAvatar`): an overlay mounted anyway would put a
+	 * hover-revealed pencil over the title of a row that shows no picture. The read
+	 * is the same shared one the row's own picture makes (one fetch, one cache
+	 * key), and while it is still cold the overlay stays mounted over the plate,
+	 * which is about to become the picture.
+	 */
+	const { url, settled } = useAgentAvatarState(
+		target?.agentId ?? null,
+		target?.sha256 ?? null,
+	);
+	/*
 	 * A REMOTE ROW MOUNTS NOTHING (agent review round 2, m-B). The link's unowned
 	 * arm draws a positioned 16px span over the mark; on top of the row's
 	 * non-positioned button that span would take the press on the mark, a dead
@@ -260,6 +329,7 @@ export function ChatSessionAvatarEdit({
 	 * A row with no bound agent name has no address for the door either.
 	 */
 	if (!target?.owned || !target.agentName) return null;
+	if (settled && !url) return null;
 	const { agentId, agentName, owned } = target;
 	return (
 		<AgentAvatarEditLink

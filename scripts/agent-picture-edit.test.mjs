@@ -518,7 +518,17 @@ test("the header takes its agent from the row's binding, never from the title", 
 		"src/renderer/src/features/chat/components/chat-header.tsx",
 		"utf8",
 	);
-	assert.doesNotMatch(header, /<ChatHeaderAvatar[^>]*agentName=/);
+	/*
+	 * The mark may be handed a name, but only the BOUND AGENT's (`agentAvatar.
+	 * agentName`); the `agentName` prop is the conversation's title and must never
+	 * reach it. The header's mark is now a hoisted hook plus `ChatHeaderAvatarMark`
+	 * (so the title row can ask whether a mark is drawn), hence the `\w*` suffix.
+	 */
+	assert.doesNotMatch(
+		header,
+		/<ChatHeaderAvatar\w*[^>]*agentName=\{agentName\}/,
+	);
+	assert.match(header, /agentName=\{agentAvatar\.agentName\}/);
 });
 
 /* ------------------------------------------- the placeholder door (presence) --- */

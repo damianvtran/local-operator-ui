@@ -50,16 +50,55 @@ export type AvatarBox = {
 	px: number;
 	className: string;
 	glyphClassName: string;
+	/**
+	 * Extra classes for a DOOR on this box. The 20px mark is under the 24px target
+	 * floor, so its link grows an invisible 2px margin on every side (a
+	 * pseudo-element, so no layout box moves); the larger steps already clear it.
+	 */
+	hitClassName: string;
 };
+
+/** The 2px halo that lifts a 20px door to a 24px target. Literal for Tailwind. */
+const HIT_HALO = "before:absolute before:-inset-0.5 before:content-['']";
 
 /** The header's box also names the height of the title line that holds it. */
 export type HeaderAvatarBox = AvatarBox & { rowClassName: string };
 
 /** The turn head's box per step. */
 export const TURN_AVATAR_BOX: Record<AgentAvatarSize, AvatarBox> = {
-	small: { px: 20, className: "size-5", glyphClassName: "size-2.5" },
-	medium: { px: 28, className: "size-7", glyphClassName: "size-3.5" },
-	large: { px: 36, className: "size-9", glyphClassName: "size-4" },
+	small: {
+		px: 20,
+		className: "size-5",
+		glyphClassName: "size-2.5",
+		hitClassName: HIT_HALO,
+	},
+	medium: {
+		px: 28,
+		className: "size-7",
+		glyphClassName: "size-3.5",
+		hitClassName: "",
+	},
+	large: {
+		px: 36,
+		className: "size-9",
+		glyphClassName: "size-4",
+		hitClassName: "",
+	},
+};
+
+/**
+ * The gap under the turn-head mark per step, in px, with the class that draws
+ * it (D5). A fixed 4px under a 36px face reads as a mark stuck to its line, so
+ * the air grows with the box. One table: the component's class and the
+ * transcript's height estimate both read it. Literal classes for Tailwind.
+ */
+export const TURN_AVATAR_GAP: Record<
+	AgentAvatarSize,
+	{ px: number; className: string }
+> = {
+	small: { px: 4, className: "mb-1" },
+	medium: { px: 6, className: "mb-1.5" },
+	large: { px: 8, className: "mb-2" },
 };
 
 /** The header's box per step; capped at 32 so the 40px bar does not grow. */
@@ -68,28 +107,24 @@ export const HEADER_AVATAR_BOX: Record<AgentAvatarSize, HeaderAvatarBox> = {
 		px: 20,
 		className: "size-5",
 		glyphClassName: "size-2.5",
+		hitClassName: HIT_HALO,
 		rowClassName: "h-5",
 	},
 	medium: {
 		px: 24,
 		className: "size-6",
 		glyphClassName: "size-3",
+		hitClassName: "",
 		rowClassName: "h-6",
 	},
 	large: {
 		px: 32,
 		className: "size-8",
 		glyphClassName: "size-4",
+		hitClassName: "",
 		rowClassName: "h-8",
 	},
 };
-
-/**
- * The gap the mark leaves under itself in the transcript (`mb-1`): the mark
- * belongs to the line under it, and anything wider would read as a block of its
- * own. One number, read by the component's class and by the height estimate.
- */
-export const TURN_AVATAR_GAP_PX = 4;
 
 /**
  * Judge a stored or hand-built value, answering the default for anything that is
@@ -110,5 +145,5 @@ export function parseAgentAvatarSize(value: unknown): AgentAvatarSize {
  * not mounted from this, so the estimate follows the setting.
  */
 export function turnMarkHeight(size: AgentAvatarSize): number {
-	return TURN_AVATAR_BOX[size].px + TURN_AVATAR_GAP_PX;
+	return TURN_AVATAR_BOX[size].px + TURN_AVATAR_GAP[size].px;
 }

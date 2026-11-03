@@ -69,7 +69,7 @@
 	"ui.settings.appearance.theme.tron": "Circuitos cian eléctricos sobre el negro azulado de la Grid.",
 	"ui.settings.appearance.theme.vaporwave": "Pasteles rosa empolvado y verde azulado desteñido sobre un morado profundo de centro comercial.",
 	"ui.settings.appearance.agent_avatar_size_setting.agent_picture_size": "Tamaño de la foto del agente",
-	"ui.settings.appearance.agent_avatar_size_setting.how_large_the_agent_s_picture_appears_in_the_chat_window_and_the_chat": "Qué tan grande se ve la foto del agente en la ventana de chat y en su encabezado. La barra lateral mantiene su tamaño.",
+	"ui.settings.appearance.agent_avatar_size_setting.how_large_the_agent_s_picture_appears_in_the_chat_window_and_the_chat": "Tamaño de las fotos de los agentes en la transcripción y en la cabecera del chat. Las filas de la barra lateral mantienen su tamaño.",
 	"ui.settings.appearance.agent_avatar_size_setting.small": "Pequeño",
 	"ui.settings.appearance.agent_avatar_size_setting.medium": "Mediano",
 	"ui.settings.appearance.agent_avatar_size_setting.large": "Grande"

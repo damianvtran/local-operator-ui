@@ -11,6 +11,7 @@
  */
 
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { build } from "esbuild";
 
@@ -63,7 +64,7 @@ const {
 	AGENT_AVATAR_SIZE_OPTIONS,
 	TURN_AVATAR_BOX,
 	HEADER_AVATAR_BOX,
-	TURN_AVATAR_GAP_PX,
+	TURN_AVATAR_GAP,
 	turnMarkHeight,
 	entrySlotSignature,
 	sessionAgentTarget,
@@ -127,6 +128,21 @@ test("a failed digest draws exactly what an absent one draws, claimed or not", (
 		decideAvatarMark({ ...base, claimed: true, owned: false }),
 		null,
 		"a failed digest on a not-owned agent is the unowned no-picture case: nothing",
+	);
+});
+
+test("a failed list read draws nothing, never the placeholder (m-3)", () => {
+	/* Unreadable is not "no picture": an upload invitation over a picture that may exist. */
+	assert.equal(decideAvatarMark({ ...base, unreadable: true }), null);
+	/* A picture that resolved anyway still draws; the flag is about the absence of one. */
+	assert.equal(
+		decideAvatarMark({ ...base, src: "blob:x", unreadable: true })?.kind,
+		"picture",
+	);
+	/* A write in flight keeps its box even then (the busy slot is this window's own fact). */
+	assert.equal(
+		decideAvatarMark({ ...base, unreadable: true, uploading: true })?.kind,
+		"placeholder",
 	);
 });
 
@@ -260,12 +276,44 @@ test("the pixel tables grow with the step, spell their own class, and respect th
 	}
 });
 
+test("the gap under the turn head grows with the box and its class spells the pixels (D5)", () => {
+	const gaps = AGENT_AVATAR_SIZE_OPTIONS.map((size) => TURN_AVATAR_GAP[size]);
+	assert.deepEqual(
+		gaps.map((g) => g.px),
+		[4, 6, 8],
+	);
+	for (const g of gaps) {
+		/* `mb-1.5` is 1.5 * 4 = 6px: the class must say the pixels beside it. */
+		assert.equal(Number(g.className.replace("mb-", "")) * 4, g.px, g.className);
+	}
+});
+
+test("only the 20px steps carry the hit halo, and it lifts them to 24px (D3)", () => {
+	for (const table of [TURN_AVATAR_BOX, HEADER_AVATAR_BOX]) {
+		for (const size of AGENT_AVATAR_SIZE_OPTIONS) {
+			const box = table[size];
+			if (box.px >= 24) {
+				assert.equal(box.hitClassName, "", `${size} already clears 24px`);
+			} else {
+				/* A pseudo-element inset by 2px on every side: 20 + 4 = 24. */
+				assert.match(box.hitClassName, /before:-inset-0\.5/);
+				assert.equal(box.px + 2 * 2, 24);
+			}
+		}
+	}
+});
+
 test("the transcript's height estimate follows the setting", () => {
-	assert.equal(TURN_AVATAR_GAP_PX, 4, "mb-1");
+	assert.equal(TURN_AVATAR_GAP.small.px, 4, "mb-1: today's gap");
 	/* Small is the 24px every estimate used before the setting existed. */
 	assert.equal(turnMarkHeight("small"), 24);
-	assert.equal(turnMarkHeight("medium"), TURN_AVATAR_BOX.medium.px + 4);
-	assert.equal(turnMarkHeight("large"), TURN_AVATAR_BOX.large.px + 4);
+	for (const size of ["medium", "large"]) {
+		assert.equal(
+			turnMarkHeight(size),
+			TURN_AVATAR_BOX[size].px + TURN_AVATAR_GAP[size].px,
+			`${size}: the estimate reads the same table the class does`,
+		);
+	}
 	assert.ok(turnMarkHeight("small") < turnMarkHeight("medium"));
 	assert.ok(turnMarkHeight("medium") < turnMarkHeight("large"));
 	/* And the cache key moves when only the size changes, so a cached height is not reused. */
@@ -330,4 +378,85 @@ test("the choice survives a relaunch, and a bad stored token reads back as small
 	blob.state.agentAvatarSize = undefined;
 	assert.equal(parseAgentAvatarSize(blob.state.agentAvatarSize), "small");
 	store.getState().setAgentAvatarSize("small");
+});
+
+/* ------------------------------------------------------------------ *
+ * REMEDIATION PINS (review round 1): the logic that lives in components and
+ * in the write path, asked of the SOURCE because Node has no DOM here. Each
+ * asserts the code, not a comment (comments are blanked first).
+ * ------------------------------------------------------------------ */
+
+const code = (path) =>
+	readFileSync(path, "utf8")
+		.replace(/\/\*[\s\S]*?\*\//g, (c) => " ".repeat(c.length))
+		.replace(/\/\/.*$/gm, "");
+const AV = "src/renderer/src/shared/agent-avatar";
+const CH = "src/renderer/src/features/chat/components";
+
+test("uploading is a solid plate with a spinner, never the dashed ring (D2)", () => {
+	const slot = code(`${AV}/agent-avatar-slot.tsx`);
+	const busyArm = slot.slice(
+		slot.indexOf("if (mark.busy)"),
+		slot.indexOf("const face ="),
+	);
+	assert.ok(busyArm.length > 0, "the busy arm returns before the dashed face");
+	assert.match(busyArm, /<AgentAvatar\b/);
+	assert.match(busyArm, /LoaderCircle/);
+	assert.doesNotMatch(busyArm, /border-dashed/);
+	/* The dashed ring exists once, on the door's face. */
+	assert.equal(slot.match(/border-dashed/g)?.length, 1);
+});
+
+test("a write holds `writing` until the readers have re-read (m-2)", () => {
+	const src = code(`${AV}/agent-avatar.ts`);
+	for (const fn of ["setAgentAvatar", "clearAgentAvatar"]) {
+		const body = src.slice(src.indexOf(`export async function ${fn}`));
+		const upto = body.slice(0, body.indexOf("\n}\n"));
+		assert.match(
+			upto,
+			/refreshAndSettle\(\)\.then\(\(\) => setWriting\(agentId, false\)\)/,
+			`${fn} releases after the refresh`,
+		);
+		/* Failure paths release at once: nothing is coming to wait for. */
+		assert.ok(
+			(upto.match(/setWriting\(agentId, false\)/g) ?? []).length >= 3,
+			`${fn} releases on every failure path too`,
+		);
+	}
+	/* The hold is bounded, so a hung refresh cannot close the door for good. */
+	assert.match(src, /WRITE_SETTLE_MS = 5000/);
+});
+
+test("an unreadable agents list is reported by the state hook (m-3)", () => {
+	const src = code(`${AV}/agent-avatar.ts`);
+	assert.match(src, /isError && !data/);
+	const slot = code(`${AV}/agent-avatar-slot.tsx`);
+	assert.match(slot, /unreadable,\s*\n\s*owned: input\.owned/);
+});
+
+test("the session row's overlay mounts only for a picture that draws (m-1)", () => {
+	const row = code(`${CH}/chat-session-avatar.tsx`);
+	const edit = row.slice(row.indexOf("export function ChatSessionAvatarEdit"));
+	assert.match(edit, /useAgentAvatarState\(/);
+	assert.match(edit, /if \(settled && !url\) return null;/);
+});
+
+test("the header sizes its title row from the table only when a mark is drawn (n-2)", () => {
+	const header = code(`${CH}/chat-header.tsx`);
+	assert.match(
+		header,
+		/const avatarRowClass = headerMark\s*\?\s*HEADER_AVATAR_BOX\[avatarSize\]\.rowClassName\s*:\s*"h-5";/,
+	);
+});
+
+test("a list with pictures reserves the box on every row; a list without draws main's cell (D1)", () => {
+	const row = code(`${CH}/chat-session-avatar.tsx`);
+	assert.match(row, /reservePicture = false/);
+	/* The reserved box is the picture's own size and inert. */
+	assert.match(row, /data-session-picture-slot/);
+	const bare = row.slice(row.indexOf("function BareSessionStatus"));
+	assert.match(bare, /if \(!reserve\) return <ChatSessionStatus/);
+	const sidebar = code(`${CH}/chat-sidebar.tsx`);
+	assert.match(sidebar, /reservePicture=\{anyRowPictured\}/);
+	assert.match(sidebar, /row\.agent_id && row\.avatar_sha256/);
 });

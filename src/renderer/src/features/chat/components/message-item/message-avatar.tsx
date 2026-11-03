@@ -40,7 +40,7 @@ import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import type { FC } from "react";
 import {
 	TURN_AVATAR_BOX,
-	TURN_AVATAR_GAP_PX,
+	TURN_AVATAR_GAP,
 	parseAgentAvatarSize,
 } from "../../agent-avatar-size";
 
@@ -67,16 +67,18 @@ export const MessageAvatar: FC<MessageAvatarProps> = ({
 		useUiPreferencesStore((state) => state.agentAvatarSize),
 	);
 	const box = TURN_AVATAR_BOX[size];
+	const gap = TURN_AVATAR_GAP[size];
 	/*
-	 * `TURN_AVATAR_GAP_PX` (4px, `mb-1`) is the same gap the row's own meta caption
-	 * takes from its chunk: the mark belongs to the line under it. It is read from
-	 * the table the transcript's height estimate reads, so the class and the
-	 * estimate cannot drift; the literal class below is what Tailwind scans.
+	 * The gap under the mark (4px at the default, the same `mb-1` the row's own
+	 * meta caption takes from its chunk) grows with the box - 6 and 8px at the
+	 * larger steps - so a big face is not stuck to its line. It is read from the
+	 * table the transcript's height estimate reads, so the class and the estimate
+	 * cannot drift; the literal classes in that table are what Tailwind scans.
 	 */
 	return (
 		<div
-			className={cn("mb-1 flex", className)}
-			data-turn-avatar-gap={TURN_AVATAR_GAP_PX}
+			className={cn("flex", gap.className, className)}
+			data-turn-avatar-gap={gap.px}
 		>
 			{/*
 			 * `alt` NAMES THE SPEAKER, AND ONLY WHEN THERE IS A NAME (review round 1,
@@ -91,6 +93,7 @@ export const MessageAvatar: FC<MessageAvatarProps> = ({
 				mark={mark}
 				boxClassName={box.className}
 				glyphClassName={box.glyphClassName}
+				hitClassName={box.hitClassName}
 				alt={name ?? ""}
 				agentName={name}
 			/>
