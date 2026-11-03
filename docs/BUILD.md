@@ -218,6 +218,29 @@ checks above (`bundledPythonCheck`, `privatePythonSeedCheck`,
 `bundledUvToolCheck`) each hold one NAMED thing to an architecture; this is the
 sweep that catches the component under a name nobody enumerated.
 
+**Supported architectures, and why the verifier will not exec an x64 bundle
+locally.** Apple silicon gets the arm64 build, native; the x64 build stays only
+for Intel Macs (macOS 26 and earlier), and an Apple-silicon user never receives
+it. The arm64 app must carry no foreign-only Mach-O, which
+`app-native-components` already enforces. The notice an operator saw on
+2026-11-02 (macOS 27.2, "App Update Required: This version of "Local Operator"
+includes a component that will not open in macOS 28", logged by `ecosystemd` as
+`[NOTIFICATION_SENT] decision=launch … bundle=com.local-operator`) did not come
+from the shipped app: a local QA rig ran `pnpm verify-macos-artifacts` against
+the x64 artifact on an arm64 Mac, and its exec checks (`app-spawn`,
+`app-bytecode-loadable`, `app-seed-python-version`) launched the x86_64 launcher
+under Rosetta, which macOS attributes to the bundle and warns about (at most once
+per 86400 s, re-armed by every such launch). So `refusesLocalRosettaExec` now
+withholds any exec this host would translate (a launcher or interpreter with no
+arm64 slice, thin or fat, on Apple silicon - including when the verifier's own
+`node` is x64 under Rosetta, read from `sysctl.proc_translated`) unless the run
+is a GitHub-hosted runner (`GITHUB_ACTIONS=true` and
+`RUNNER_ENVIRONMENT=github-hosted`, the gate `verify-signed-update.mjs` already
+uses; `CI=true` alone, or a self-hosted runner, does not count) or the operator
+sets `LOCAL_OPERATOR_ALLOW_ROSETTA_EXEC=1`; a withheld check reports FAILED
+rather than passing unproven, and every static check still runs. Prove the x64
+artifact's exec checks on the hosted `macos-latest` release jobs.
+
 **What `uv` is doing in the bundle.** The install scripts create the backend venv
 and install `local-operator` into it, and that install is the dominant cost of a
 first run. Measured on this host (three cold runs each, same interpreter and

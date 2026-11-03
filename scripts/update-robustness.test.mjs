@@ -4882,7 +4882,9 @@ test("an unsigned or unnotarized disk image fails the release assertions", () =>
 	};
 
 	const failing = summarize(
-		runChecks({ appPath: APP, dmgPath: DMG, run: shippedV0170 }),
+		// `env` is explicit so the result cannot depend on the shell's CI variables
+		// (the local-Rosetta exec guard reads them; see `refusesLocalRosettaExec`).
+		runChecks({ appPath: APP, dmgPath: DMG, run: shippedV0170, env: {} }),
 	);
 	assert.equal(failing.ok, false);
 	assert.deepEqual(
@@ -4935,7 +4937,8 @@ test("an unsigned or unnotarized disk image fails the release assertions", () =>
 		};
 	};
 	assert.equal(
-		summarize(runChecks({ appPath: APP, dmgPath: DMG, run: fixed })).ok,
+		summarize(runChecks({ appPath: APP, dmgPath: DMG, run: fixed, env: {} }))
+			.ok,
 		true,
 	);
 });
@@ -5301,6 +5304,8 @@ test("the spawn probe owns its env, whatever signature the runner has", () => {
 		appPath: app,
 		dmgPath: null,
 		run: threeArgumentRunner,
+		// Explicit, so the probe's run cannot depend on the shell's CI variables.
+		env: {},
 	});
 	assert.ok(rows.length > 0, "the checks did not run at all");
 	// Exactly once, and with the switch: the probe is the only check that carries it,
@@ -5420,6 +5425,10 @@ test("the seed's version ask is bounded by the same rule as the probe", () => {
 		const seen = [];
 		const row = seedVersionCheck(app, {
 			hostArch,
+			// The x86_64 ask on an arm64 host is exactly what the local-Rosetta guard
+			// withholds off a GitHub-hosted runner; this case measures the BOUND, so it
+			// opts in explicitly rather than depending on the shell's CI variables.
+			env: { LOCAL_OPERATOR_ALLOW_ROSETTA_EXEC: "1" },
 			run: (command, args, input, env, timeoutMs) => {
 				void input;
 				void env;
