@@ -41,7 +41,7 @@
 	"ui.chat.pickers.destination_pickers.signed_in": "साइन इन किया गया",
 	"ui.chat.pickers.destination_pickers.needs_sign_in660cb8": "साइन इन करना होगा",
 	"ui.chat.pickers.destination_pickers.the_default_was_not_saved": "डिफ़ॉल्ट सहेजा नहीं गया",
-	"ui.chat.pickers.destination_pickers.this_pane_has_not_resolved_a_model_to_change": "{refused} इस पेन ने बदलने के लिए कोई मॉडल तय नहीं किया है।",
+	"ui.chat.pickers.destination_pickers.this_pane_has_not_resolved_a_model_to_change": "{refused} इस पैनल ने बदलने के लिए कोई मॉडल तय नहीं किया है।",
 	"ui.chat.pickers.destination_pickers.show_all_supported_models": "सभी समर्थित मॉडल दिखाएँ",
 	"ui.chat.pickers.destination_pickers.default_for_new_sessions": "नए सत्रों के लिए डिफ़ॉल्ट: {modelname}",
 	"ui.chat.pickers.destination_pickers.the_model_was_not_changed": "मॉडल नहीं बदला गया।",
@@ -737,5 +737,7 @@
 	"ui.chat.pickers.slash.click.stages": "क्लिक करने पर /{label} ड्राफ़्ट में डाल दिया जाता है।",
 	"ui.chat.pickers.slash.enter_needs_a_pick": "Enter के लिए आपको कोई पंक्ति चुननी होगी: ↓ फिर Enter · Tab इस पंक्ति को पूरा करता है।",
 	"ui.chat.pickers.slash.phase.arguments": "आर्ग्युमेंट",
-	"ui.chat.pickers.slash.region_label": "स्लैश कमांड"
+	"ui.chat.pickers.slash.region_label": "स्लैश कमांड",
+	"ui.chat.pickers.destination_pickers.no_agents_are_registered": "कोई एजेंट रजिस्टर नहीं है।",
+	"ui.chat.pickers.destination_pickers.applies_to_the_conversation_this_chat_starts": "यह उस बातचीत पर लागू होता है जो यह चैट शुरू करती है।"
 }

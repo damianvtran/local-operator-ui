@@ -12,5 +12,8 @@
 	"ui.agents.detail.read_state.class_on": "آن",
 	"ui.agents.detail.read_state.class_off": "آف",
 	"ui.agents.detail.read_state.class_switching": "تبدیل کیا جا رہا ہے…",
-	"ui.agents.detail.read_state.effort_inherit": "سیشن کی کوشش کا درجہ استعمال کریں"
+	"ui.agents.detail.read_state.effort_inherit": "سیشن کی کوشش کا درجہ استعمال کریں",
+	"ui.agents.detail.read_state.list_failed_teams": "ٹیمیں پڑھی نہیں جا سکیں",
+	"ui.agents.detail.read_state.list_failed_agents": "ایجنٹس پڑھے نہیں جا سکے",
+	"ui.agents.detail.read_state.list_failed_meaning": "کچھ ضائع نہیں ہوا۔ یہ پڑھنے کی ناکامی ہے — بیک اینڈ نے خرابی کا جواب دیا، جو بیک اینڈ کے پرانے ہونے سے مختلف بات ہے۔"
 }

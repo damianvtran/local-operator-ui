@@ -27,5 +27,7 @@
 	"ui.agents.upload.title.published_org": "Опубликовано «{name}» в организации {destination}",
 	"ui.agents.upload.title.published_public": "Опубликовано «{name}» в Хаб агентов",
 	"ui.agents.upload.title.republished": "Обновлена публикация «{name}» в Хабе агентов",
-	"ui.agents.upload.title.update_listing": "Обновить публикацию «{name}» в Хабе агентов?"
+	"ui.agents.upload.title.update_listing": "Обновить публикацию «{name}» в Хабе агентов?",
+	"ui.agents.upload.sign_in.title_continue": "Войдите, чтобы продолжить",
+	"ui.agents.upload.sign_in.title_again": "Войдите снова"
 }

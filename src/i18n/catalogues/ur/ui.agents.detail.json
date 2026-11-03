@@ -49,5 +49,21 @@
 	"ui.agents.detail.tools.every_tool_aria": "اس ایجنٹ کو ہر ٹول دیں",
 	"ui.agents.detail.tools.may_use_any": "یہ ایجنٹ جو بھی سیشن فراہم کرے، استعمال کر سکتا ہے۔",
 	"ui.agents.detail.tools.placeholder": "ٹول کا نام",
-	"ui.agents.detail.origin.created_locally": "اس مشین پر بنایا گیا۔"
+	"ui.agents.detail.origin.created_locally": "اس مشین پر بنایا گیا۔",
+	"ui.agents.detail.tools.remove_aria": "{tool} ہٹائیں",
+	"ui.agents.detail.tools.add_label": "ٹول شامل کریں",
+	"ui.agents.detail.field.when_to_use": "یہ ایجنٹ کب استعمال کریں",
+	"ui.agents.detail.field.when_to_use_hint": "ایک جملہ جسے ماڈل پڑھ کر طے کرتا ہے کہ یہ ایجنٹ کب موزوں ہے۔",
+	"ui.agents.detail.field.instructions_hint": "ایجنٹ کو کیا کرنے کو کہا گیا ہے۔ یہی ایجنٹ کا پورا رویہ ہے۔",
+	"ui.agents.detail.section.delegation_hint": "آیا یہ ایجنٹ ذیلی ایجنٹس کو کام تفویض کر سکتا ہے، اور کس کوشش کے درجے پر چلتا ہے۔",
+	"ui.agents.detail.field.effort_loading": "کوشش کے درجے لوڈ ہو رہے ہیں",
+	"ui.agents.detail.field.effort_helper": "درجے بیک اینڈ کی ذیلی ایجنٹ ماڈل کی ترتیبات سے آتے ہیں۔",
+	"ui.agents.detail.field.effort_inherit_hint": "سیشن کی اپنی کوشش کا درجہ استعمال کریں",
+	"ui.agents.detail.field.effort_configured_hint": "ترتیبات میں طے کیا گیا درجہ",
+	"ui.agents.detail.field.how_it_works": "دوسروں کے ساتھ یہ کیسے کام کرتا ہے",
+	"ui.agents.detail.empty.description": "ابھی کوئی تفصیل نہیں — ایک شامل کریں تاکہ ماڈل جان سکے کہ یہ ایجنٹ کب منتخب کرنا ہے۔",
+	"ui.agents.detail.empty.instructions": "ابھی کوئی ہدایات نہیں۔",
+	"ui.agents.detail.action.create_copy": "نقل بنائیں",
+	"ui.agents.detail.action.creating": "بنایا جا رہا ہے…",
+	"ui.agents.detail.action.discard_new_agent": "یہ نیا ایجنٹ رد کریں؟"
 }

@@ -21,5 +21,22 @@
 	"ui.agents.teams.section.members": "Miembros",
 	"ui.agents.teams.section.members_aria": "Miembros",
 	"ui.agents.teams.section.project_brief": "Contexto del proyecto",
-	"ui.agents.teams.section.what_for": "Para qué sirve"
+	"ui.agents.teams.section.what_for": "Para qué sirve",
+	"ui.agents.teams.field.name_hint": "El nombre con el que se mencionará este equipo, por ti y en tus chats.",
+	"ui.agents.teams.field.name_label": "Nombre del equipo",
+	"ui.agents.teams.section.manager_hint": "El agente que dirige el chat y decide quién trabaja en qué.",
+	"ui.agents.teams.field.manager_label": "Agente responsable",
+	"ui.agents.teams.field.manager_list_notice": "Agentes y equipos de esta máquina",
+	"ui.agents.teams.section.members_hint": "A quién puede delegar el responsable, cuántos de cada uno y en qué modelo se ejecuta cada uno.",
+	"ui.agents.teams.field.loading_agents": "Cargando agentes",
+	"ui.agents.teams.field.member_aria": "Miembro {index, number, ::group-off}",
+	"ui.agents.teams.field.member_kind_aria": "Tipo del miembro {index, number, ::group-off}",
+	"ui.agents.teams.action.fewer_aria": "Uno menos de {role}",
+	"ui.agents.teams.action.more_aria": "Uno más de {role}",
+	"ui.agents.teams.field.count_aria": "{count, number, ::group-off} de {role}",
+	"ui.agents.teams.field.what_for_label": "Para qué sirve este equipo",
+	"ui.agents.teams.action.create": "Crear equipo",
+	"ui.agents.teams.action.creating": "Creando…",
+	"ui.agents.teams.action.discard_question": "¿Descartar este equipo?",
+	"ui.agents.teams.empty.description": "Aún no hay descripción."
 }
