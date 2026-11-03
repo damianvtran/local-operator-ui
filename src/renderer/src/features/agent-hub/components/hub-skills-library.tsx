@@ -43,6 +43,7 @@ import { Search } from "lucide-react";
 import { useId, useMemo, useRef, useState } from "react";
 import {
 	type HubSkillScope,
+	type PullHubSkillInput,
 	usePullHubSkill,
 	useRemoteSkill,
 	useRemoteSkills,
@@ -58,6 +59,7 @@ import {
 	skillSubscribeAct,
 } from "../hub-skill-state";
 import { HubPager } from "./hub-pager";
+import { HubSkillAdoption } from "./hub-skill-adoption";
 import { SkillMarkChip, skillMark, stateSentence } from "./hub-skill-mark";
 import { HubSkillPublication } from "./hub-skill-publication";
 
@@ -138,6 +140,9 @@ export function HubSkillsLibrary({
 	const supported = hubSkillsSupported(catalogue.data?.contract);
 	const detail = useRemoteSkill(scope, selected, supported && accessible);
 	const pull = usePullHubSkill();
+	const [adoptionInput, setAdoptionInput] = useState<PullHubSkillInput | null>(
+		null,
+	);
 	const subscribe = useSubscribeHubSkill();
 	const unpull = useUnpullHubSkill();
 	const policy = useHubLinkPolicy();
@@ -570,7 +575,10 @@ export function HubSkillsLibrary({
 			<Dialog
 				open={!!selected && supported}
 				onOpenChange={(open) => {
-					if (!open) setSelected(null);
+					if (!open) {
+						setSelected(null);
+						setAdoptionInput(null);
+					}
 				}}
 			>
 				<DialogContent
@@ -717,7 +725,7 @@ export function HubSkillsLibrary({
 									enabled={updatesEnabled}
 								/>
 							)}
-							{pull.error && (
+							{pull.error && !adoptionInput && (
 								<p
 									role="alert"
 									className="text-body-sm text-danger"
@@ -730,6 +738,26 @@ export function HubSkillsLibrary({
 									)}
 								</p>
 							)}
+							{!adoptionInput &&
+								aliasConflict(pull.error) &&
+								pull.variables && (
+									<Button
+										variant="outline"
+										onClick={() => setAdoptionInput(pull.variables ?? null)}
+									>
+										{t("ui.hub.adoption.review")}
+									</Button>
+								)}
+							{adoptionInput && (
+								<HubSkillAdoption
+									input={adoptionInput}
+									onClose={() => {
+										setAdoptionInput(null);
+										pull.reset();
+									}}
+								/>
+							)}
+
 							{pull.data &&
 								!pull.data.reports?.some(
 									(report) => report.applied || report.outcome === "unchanged",
@@ -802,7 +830,7 @@ export function HubSkillsLibrary({
 							 * only when there is nothing to update: an unlinked skill or
 							 * one whose copy is absent.
 							 */}
-							{(!selectedLink || !hasCopy) && (
+							{!adoptionInput && (!selectedLink || !hasCopy) && (
 								<DialogFooter className="flex-row flex-wrap justify-start gap-2">
 									<Button
 										data-testid="hub-skill-download"
@@ -858,7 +886,7 @@ export function HubSkillsLibrary({
 							 * follows the same condition — an update state has no Download and the
 							 * update panel owns that action (design round 3, D12).
 							 */}
-							{(!selectedLink || !hasCopy) && (
+							{!adoptionInput && (!selectedLink || !hasCopy) && (
 								<p className="text-meta text-ink-muted">
 									{selectedLink?.policy.subscribe
 										? t("ui.hub.skills.download_help")

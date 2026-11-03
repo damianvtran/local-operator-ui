@@ -1500,6 +1500,12 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			subscribe: z.boolean().optional(),
 			autoPush: z.boolean().optional(),
 			confirmPublicEgress: z.boolean().optional(),
+			// Adoption is receipt-bound: previews cannot authorize a later overwrite.
+			dryRun: z.boolean().optional(),
+			adoptionStrategy: z.enum(["merge", "keep-local", "take-hub"]).optional(),
+			allowLlm: z.boolean().optional(),
+			confirm: z.boolean().optional(),
+			adoptionReceipt: z.string().min(16).max(128).optional(),
 		})
 		.strict(),
 	/*
@@ -8241,6 +8247,19 @@ export function desktopEndpoint(request: DesktopRequest): {
 						: {}),
 					...(request.confirmPublicEgress !== undefined
 						? { confirm_public_egress: request.confirmPublicEgress }
+						: {}),
+					...(request.dryRun !== undefined ? { dry_run: request.dryRun } : {}),
+					...(request.adoptionStrategy !== undefined
+						? { adoption_strategy: request.adoptionStrategy }
+						: {}),
+					...(request.allowLlm !== undefined
+						? { allow_llm: request.allowLlm }
+						: {}),
+					...(request.confirm !== undefined
+						? { confirm: request.confirm }
+						: {}),
+					...(request.adoptionReceipt !== undefined
+						? { adoption_receipt: request.adoptionReceipt }
 						: {}),
 				},
 			};

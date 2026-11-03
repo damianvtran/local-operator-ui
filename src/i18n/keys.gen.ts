@@ -90,6 +90,7 @@ import enUiCommonUpdates from "./catalogues/en/ui.common.updates.json";
 import enUiCommonViewer from "./catalogues/en/ui.common.viewer.json";
 import enUiConsoleErrors from "./catalogues/en/ui.console.errors.json";
 import enUiConsole from "./catalogues/en/ui.console.json";
+import enUiHubAdoption from "./catalogues/en/ui.hub.adoption.json";
 import enUiHubCard from "./catalogues/en/ui.hub.card.json";
 import enUiHubComments from "./catalogues/en/ui.hub.comments.json";
 import enUiHubDetail from "./catalogues/en/ui.hub.detail.json";
@@ -209,6 +210,7 @@ import esUiCommonUpdates from "./catalogues/es/ui.common.updates.json";
 import esUiCommonViewer from "./catalogues/es/ui.common.viewer.json";
 import esUiConsoleErrors from "./catalogues/es/ui.console.errors.json";
 import esUiConsole from "./catalogues/es/ui.console.json";
+import esUiHubAdoption from "./catalogues/es/ui.hub.adoption.json";
 import esUiHubCard from "./catalogues/es/ui.hub.card.json";
 import esUiHubComments from "./catalogues/es/ui.hub.comments.json";
 import esUiHubDetail from "./catalogues/es/ui.hub.detail.json";
@@ -328,6 +330,7 @@ import frUiCommonUpdates from "./catalogues/fr/ui.common.updates.json";
 import frUiCommonViewer from "./catalogues/fr/ui.common.viewer.json";
 import frUiConsoleErrors from "./catalogues/fr/ui.console.errors.json";
 import frUiConsole from "./catalogues/fr/ui.console.json";
+import frUiHubAdoption from "./catalogues/fr/ui.hub.adoption.json";
 import frUiHubCard from "./catalogues/fr/ui.hub.card.json";
 import frUiHubComments from "./catalogues/fr/ui.hub.comments.json";
 import frUiHubDetail from "./catalogues/fr/ui.hub.detail.json";
@@ -447,6 +450,7 @@ import hiUiCommonUpdates from "./catalogues/hi/ui.common.updates.json";
 import hiUiCommonViewer from "./catalogues/hi/ui.common.viewer.json";
 import hiUiConsoleErrors from "./catalogues/hi/ui.console.errors.json";
 import hiUiConsole from "./catalogues/hi/ui.console.json";
+import hiUiHubAdoption from "./catalogues/hi/ui.hub.adoption.json";
 import hiUiHubCard from "./catalogues/hi/ui.hub.card.json";
 import hiUiHubComments from "./catalogues/hi/ui.hub.comments.json";
 import hiUiHubDetail from "./catalogues/hi/ui.hub.detail.json";
@@ -566,6 +570,7 @@ import ruUiCommonUpdates from "./catalogues/ru/ui.common.updates.json";
 import ruUiCommonViewer from "./catalogues/ru/ui.common.viewer.json";
 import ruUiConsoleErrors from "./catalogues/ru/ui.console.errors.json";
 import ruUiConsole from "./catalogues/ru/ui.console.json";
+import ruUiHubAdoption from "./catalogues/ru/ui.hub.adoption.json";
 import ruUiHubCard from "./catalogues/ru/ui.hub.card.json";
 import ruUiHubComments from "./catalogues/ru/ui.hub.comments.json";
 import ruUiHubDetail from "./catalogues/ru/ui.hub.detail.json";
@@ -685,6 +690,7 @@ import urUiCommonUpdates from "./catalogues/ur/ui.common.updates.json";
 import urUiCommonViewer from "./catalogues/ur/ui.common.viewer.json";
 import urUiConsoleErrors from "./catalogues/ur/ui.console.errors.json";
 import urUiConsole from "./catalogues/ur/ui.console.json";
+import urUiHubAdoption from "./catalogues/ur/ui.hub.adoption.json";
 import urUiHubCard from "./catalogues/ur/ui.hub.card.json";
 import urUiHubComments from "./catalogues/ur/ui.hub.comments.json";
 import urUiHubDetail from "./catalogues/ur/ui.hub.detail.json";
@@ -804,6 +810,7 @@ import viUiCommonUpdates from "./catalogues/vi/ui.common.updates.json";
 import viUiCommonViewer from "./catalogues/vi/ui.common.viewer.json";
 import viUiConsoleErrors from "./catalogues/vi/ui.console.errors.json";
 import viUiConsole from "./catalogues/vi/ui.console.json";
+import viUiHubAdoption from "./catalogues/vi/ui.hub.adoption.json";
 import viUiHubCard from "./catalogues/vi/ui.hub.card.json";
 import viUiHubComments from "./catalogues/vi/ui.hub.comments.json";
 import viUiHubDetail from "./catalogues/vi/ui.hub.detail.json";
@@ -923,6 +930,7 @@ import zhCNUiCommonUpdates from "./catalogues/zh-CN/ui.common.updates.json";
 import zhCNUiCommonViewer from "./catalogues/zh-CN/ui.common.viewer.json";
 import zhCNUiConsoleErrors from "./catalogues/zh-CN/ui.console.errors.json";
 import zhCNUiConsole from "./catalogues/zh-CN/ui.console.json";
+import zhCNUiHubAdoption from "./catalogues/zh-CN/ui.hub.adoption.json";
 import zhCNUiHubCard from "./catalogues/zh-CN/ui.hub.card.json";
 import zhCNUiHubComments from "./catalogues/zh-CN/ui.hub.comments.json";
 import zhCNUiHubDetail from "./catalogues/zh-CN/ui.hub.detail.json";
@@ -1045,6 +1053,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiCommonViewer,
 	...enUiConsoleErrors,
 	...enUiConsole,
+	...enUiHubAdoption,
 	...enUiHubCard,
 	...enUiHubComments,
 	...enUiHubDetail,
@@ -1172,6 +1181,7 @@ export const bundledCatalogues: Readonly<
 		...esUiCommonViewer,
 		...esUiConsoleErrors,
 		...esUiConsole,
+		...esUiHubAdoption,
 		...esUiHubCard,
 		...esUiHubComments,
 		...esUiHubDetail,
@@ -1293,6 +1303,7 @@ export const bundledCatalogues: Readonly<
 		...frUiCommonViewer,
 		...frUiConsoleErrors,
 		...frUiConsole,
+		...frUiHubAdoption,
 		...frUiHubCard,
 		...frUiHubComments,
 		...frUiHubDetail,
@@ -1414,6 +1425,7 @@ export const bundledCatalogues: Readonly<
 		...hiUiCommonViewer,
 		...hiUiConsoleErrors,
 		...hiUiConsole,
+		...hiUiHubAdoption,
 		...hiUiHubCard,
 		...hiUiHubComments,
 		...hiUiHubDetail,
@@ -1535,6 +1547,7 @@ export const bundledCatalogues: Readonly<
 		...ruUiCommonViewer,
 		...ruUiConsoleErrors,
 		...ruUiConsole,
+		...ruUiHubAdoption,
 		...ruUiHubCard,
 		...ruUiHubComments,
 		...ruUiHubDetail,
@@ -1656,6 +1669,7 @@ export const bundledCatalogues: Readonly<
 		...urUiCommonViewer,
 		...urUiConsoleErrors,
 		...urUiConsole,
+		...urUiHubAdoption,
 		...urUiHubCard,
 		...urUiHubComments,
 		...urUiHubDetail,
@@ -1777,6 +1791,7 @@ export const bundledCatalogues: Readonly<
 		...viUiCommonViewer,
 		...viUiConsoleErrors,
 		...viUiConsole,
+		...viUiHubAdoption,
 		...viUiHubCard,
 		...viUiHubComments,
 		...viUiHubDetail,
@@ -1898,6 +1913,7 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiCommonViewer,
 		...zhCNUiConsoleErrors,
 		...zhCNUiConsole,
+		...zhCNUiHubAdoption,
 		...zhCNUiHubCard,
 		...zhCNUiHubComments,
 		...zhCNUiHubDetail,
@@ -6442,6 +6458,43 @@ export type MessageParams = {
 	"ui.console.unavailable.pty.detail": undefined;
 	"ui.console.unavailable.title": undefined;
 	"ui.console.unavailable.unknown.detail": undefined;
+	"ui.hub.adoption.applied": undefined;
+	"ui.hub.adoption.cancel": undefined;
+	"ui.hub.adoption.confirm": undefined;
+	"ui.hub.adoption.diff_hub": undefined;
+	"ui.hub.adoption.diff_local": undefined;
+	"ui.hub.adoption.done": undefined;
+	"ui.hub.adoption.failed": undefined;
+	"ui.hub.adoption.file_aside": undefined;
+	"ui.hub.adoption.file_carried": undefined;
+	"ui.hub.adoption.file_choice": undefined;
+	"ui.hub.adoption.file_hub": undefined;
+	"ui.hub.adoption.file_local": undefined;
+	"ui.hub.adoption.file_merged": undefined;
+	"ui.hub.adoption.file_not_adopted": undefined;
+	"ui.hub.adoption.file_review": undefined;
+	"ui.hub.adoption.file_same": undefined;
+	"ui.hub.adoption.keep_local": undefined;
+	"ui.hub.adoption.kept_combined": undefined;
+	"ui.hub.adoption.kept_hub": undefined;
+	"ui.hub.adoption.kept_local": undefined;
+	"ui.hub.adoption.kept_unresolved": undefined;
+	"ui.hub.adoption.loading": undefined;
+	"ui.hub.adoption.local_path": { path: string };
+	"ui.hub.adoption.model": { model: string };
+	"ui.hub.adoption.model_consent": undefined;
+	"ui.hub.adoption.needs_choice": undefined;
+	"ui.hub.adoption.no_difference": undefined;
+	"ui.hub.adoption.no_proposal": undefined;
+	"ui.hub.adoption.preservation": undefined;
+	"ui.hub.adoption.preview": undefined;
+	"ui.hub.adoption.proposed": undefined;
+	"ui.hub.adoption.repreview": undefined;
+	"ui.hub.adoption.review": undefined;
+	"ui.hub.adoption.snapshot": { path: string };
+	"ui.hub.adoption.stale": undefined;
+	"ui.hub.adoption.take_hub": undefined;
+	"ui.hub.adoption.title": undefined;
 	"ui.hub.card.download_named": { name: string };
 	"ui.hub.card.downloads_tooltip": undefined;
 	"ui.hub.card.get": undefined;
