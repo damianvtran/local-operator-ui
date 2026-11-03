@@ -1,0 +1,151 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "openai/gpt-6.1-sol",
+  "instance": "54cb9d3782eb",
+  "locale": "vi",
+  "commit": "c44e9e8be8eb5a134a97acd87e7015f54b82c13d",
+  "parent": "6dd43fd7494f651fd99b3fe926606fc7ba35fd82",
+  "scope": "Only five new keys; hashes bind whole namespace files, not a full namespace re-audit.",
+  "actual_model_source": "Runtime model-switch message: openai/gpt-6.1-sol; temporary quota fallback from anthropic/claude-sonnet-5-5, after an intermediate anthropic/claude-opus-5-5 switch.",
+  "audit_date": "2026-11-03",
+  "namespaces": {
+    "ui.chat": {
+      "status": "passed",
+      "sha256": {
+        "vi": "40ba9c3761d9e5fed84b2a1bb5289cfd2baf402984f351559dee348511fe24ea",
+        "en": "270fc752791e2960006b560ec9616c2010dab80e92af19f075f7e04a3055bd27"
+      },
+      "findings": [],
+      "keys_reviewed": [
+        "ui.chat.session_status.effort_level.low",
+        "ui.chat.session_status.effort_level.medium",
+        "ui.chat.session_status.effort_level.high"
+      ],
+      "context": {
+        "path": "src/i18n/catalogues/en/ui.chat.context.json",
+        "sha256": "efcf4d1872974b6fc7456e753a2e10010ab896fffede262ae7c19d96c35ecee1"
+      }
+    },
+    "ui.chat.run_details": {
+      "status": "passed",
+      "sha256": {
+        "vi": "a7ff21ae3033644e02cb029ae6382222a13cc79e7026a4d202e63c55ef0da5c8",
+        "en": "f8184d5f41b359364e47747871988bbb731d79c12bc3b9ec755f3db73e5db6ab"
+      },
+      "findings": [],
+      "keys_reviewed": [
+        "ui.chat.run_details.wake.armed_count",
+        "ui.chat.run_details.wake.cadence_once"
+      ],
+      "context": {
+        "path": "src/i18n/catalogues/en/ui.chat.run_details.context.json",
+        "sha256": "da588f521188a2bcba1d0aeb7a265c3474b16673b8f653a021fa7e9e7075e911"
+      }
+    }
+  },
+  "limitations": [
+    "No native rendered proof, pseudo-localized rendered frames, or measured UI layout. Static length/NFC checks only.",
+    "No complete repository validator CLI/scanner/typecheck/build; invoked committed generator messageArguments validator plus existing ICU parser on the five scoped keys, per allocation.",
+    "Independent audit only; no ledger writes, repo edits, commits, posts or translation services. Translator session identity not supplied."
+  ],
+  "checks": [
+    {
+      "key": "ui.chat.session_status.effort_level.low",
+      "en": "Low",
+      "vi": "Thấp",
+      "arguments": [],
+      "cf": 0,
+      "nfc": true,
+      "unicode_codepoints": 4,
+      "context": {
+        "role": "display name of one reasoning-effort level, in the status strip's effort reading, the effort picker rows, the default-effort select and the /effort argument rows",
+        "tone": "single plain word, capitalised as a menu item",
+        "length": "One word; the status strip reading is a few cells wide.",
+        "note": "The name of a rung on a model's effort ladder, ordered None < Minimal < Low < Medium < High < xHigh < Max. Use the word a reader would expect on a speed/quality scale, and keep the levels distinct from one another. The wire value behind it stays the lowercase English token and is never shown through this key.",
+        "placeholders": {}
+      }
+    },
+    {
+      "key": "ui.chat.session_status.effort_level.medium",
+      "en": "Medium",
+      "vi": "Trung bình",
+      "arguments": [],
+      "cf": 0,
+      "nfc": true,
+      "unicode_codepoints": 10,
+      "context": {
+        "role": "display name of one reasoning-effort level, in the status strip's effort reading, the effort picker rows, the default-effort select and the /effort argument rows",
+        "tone": "single plain word, capitalised as a menu item",
+        "length": "One word; the status strip reading is a few cells wide.",
+        "note": "The name of a rung on a model's effort ladder, ordered None < Minimal < Low < Medium < High < xHigh < Max. Use the word a reader would expect on a speed/quality scale, and keep the levels distinct from one another. The wire value behind it stays the lowercase English token and is never shown through this key.",
+        "placeholders": {}
+      }
+    },
+    {
+      "key": "ui.chat.session_status.effort_level.high",
+      "en": "High",
+      "vi": "Cao",
+      "arguments": [],
+      "cf": 0,
+      "nfc": true,
+      "unicode_codepoints": 3,
+      "context": {
+        "role": "display name of one reasoning-effort level, in the status strip's effort reading, the effort picker rows, the default-effort select and the /effort argument rows",
+        "tone": "single plain word, capitalised as a menu item",
+        "length": "One word; the status strip reading is a few cells wide.",
+        "note": "The name of a rung on a model's effort ladder, ordered None < Minimal < Low < Medium < High < xHigh < Max. Use the word a reader would expect on a speed/quality scale, and keep the levels distinct from one another. The wire value behind it stays the lowercase English token and is never shown through this key.",
+        "placeholders": {}
+      }
+    },
+    {
+      "key": "ui.chat.run_details.wake.armed_count",
+      "en": "{count, plural, =1 {{count_display} wake armed} other {{count_display} wakes armed}}",
+      "vi": "{count, plural, other {{count_display} lịch thức dậy đã đặt}}",
+      "arguments": [
+        [
+          "count",
+          "number"
+        ],
+        [
+          "count_display",
+          "string"
+        ]
+      ],
+      "cf": 0,
+      "nfc": true,
+      "unicode_codepoints": 61,
+      "context": {
+        "role": "count clause naming how many scheduled wakes are armed, on the composer's wakes chip and as the trailing tally of the run panel's Wakes section",
+        "tone": "short status clause, lowercase after the number, no trailing punctuation",
+        "length_hint": "Three words",
+        "note": "A wake is a scheduled follow-up the agent set for itself; armed means it is set and will fire. One string serves both surfaces so they cannot drift. Provide every CLDR plural category the language needs.",
+        "placeholders": {
+          "count": "Numeric selector for CLDR plural categories. English uses exact =1 to preserve the original strict count === 1 branch; translators add their CLDR arms.",
+          "count_display": "Raw String(count), preserving the former JavaScript interpolation without rounding or grouping. Print this, not count."
+        }
+      }
+    },
+    {
+      "key": "ui.chat.run_details.wake.cadence_once",
+      "en": "once",
+      "vi": "một lần",
+      "arguments": [],
+      "cf": 0,
+      "nfc": true,
+      "unicode_codepoints": 7,
+      "context": {
+        "role": "cadence of a wake that fires a single time, in a wake row and inside the schedule sentences that quote a wake's repeat",
+        "tone": "single lowercase word, no punctuation",
+        "length_hint": "One word",
+        "note": "Opposite of 'every {duration}'. It is embedded mid-sentence by other strings (for example 'keep as once'), so it must read as a lowercase adverb.",
+        "placeholders": {}
+      }
+    }
+  ],
+  "semantic_review": {
+    "effort": "Thấp / Trung bình / Cao are idiomatic ordered display labels; not wire identifiers, so glossary config-token retention does not apply.",
+    "wake_armed": "lịch thức dậy uses glossary intransitive wake; đã đặt means the schedule is set, not a delivered wake.",
+    "cadence_once": "một lần is natural lowercase cadence. Existing keep-as-once sentence is separately keyed as Giữ: chạy một lần; repeat formatter only reaches repeating branch there.",
+    "fit": "Display labels have 4 / 10 / 3 Unicode codepoints; cadence has 7. No numeric maxCells/maxChars contract found in these five sidecars; linguistic multiword equivalents preserve meaning. No actual layout-fit proof."
+  }
+}
