@@ -28,6 +28,10 @@ import type {
 import { teamBridgeAttachmentCapabilitySchema } from "../../../../shared/team-bridge-contract";
 import { onDraftRevocation } from "../../shared/store/team-bridge-draft-account";
 import {
+	clipboardFileNames,
+	pastedTextIsOnlyFileNames,
+} from "../../shared/utils/paste-utils";
+import {
 	IMAGE_JPEG_QUALITY,
 	IMAGE_MAX_EDGE,
 	type WireImageMime,
@@ -361,6 +365,24 @@ export function imageFiles(list: DataTransfer | null | undefined): File[] {
 	for (const file of Array.from(list.files ?? []))
 		if (isImageCandidate(file)) files.push(file);
 	return files;
+}
+
+/**
+ * Whether a paste whose images were just taken should also cancel the
+ * browser's text insert. Yes when it carried no `text/plain` at all (the
+ * original rule), and yes when that text is only the pasted files' names - a
+ * Finder file copy, which otherwise typed "shot.png" beside its own chip
+ * (issue #1573). Real prose alongside the images is the reader's and is kept.
+ * One predicate for both bridge paste handlers, so they cannot drift.
+ */
+export function imagePasteCancelsText(
+	data: Pick<DataTransfer, "types" | "getData" | "items" | "files">,
+): boolean {
+	if (!Array.from(data.types ?? []).includes("text/plain")) return true;
+	return pastedTextIsOnlyFileNames(
+		data.getData("text/plain"),
+		clipboardFileNames(data),
+	);
 }
 
 /*

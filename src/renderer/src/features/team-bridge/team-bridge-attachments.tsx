@@ -59,6 +59,7 @@ import {
 	type AttachmentFailure,
 	attachmentView,
 	imageFiles,
+	imagePasteCancelsText,
 	uploadPreview,
 } from "./team-bridge-attachments-model";
 import type {
@@ -854,19 +855,18 @@ export const TeamBridgeScheduledAttachments: FC<{
 
 /**
  * Paste and drop on the composer box. Only IMAGE files are taken; text in the
- * same paste flows into the field untouched (the default is prevented only
- * when the clipboard carried nothing but images). A paste of images on a hub
- * without the capability falls through to the hook's "unsupported" note.
+ * same paste flows into the field untouched, UNLESS that text is nothing but
+ * the pasted files' names - the `text/plain` a Finder file copy carries, which
+ * used to be typed into the reply beside its chip (issue #1573,
+ * `pastedTextIsOnlyFileNames`). A paste of images on a hub without the
+ * capability falls through to the hook's "unsupported" note.
  */
 export function attachmentPasteHandlers(state: TeamBridgeAttachmentsState) {
 	return {
 		onPaste: (event: ClipboardEvent<HTMLElement>) => {
 			const files = imageFiles(event.clipboardData);
 			if (files.length === 0) return;
-			const hasText = Array.from(event.clipboardData.types).includes(
-				"text/plain",
-			);
-			if (!hasText) event.preventDefault();
+			if (imagePasteCancelsText(event.clipboardData)) event.preventDefault();
 			state.add(files);
 		},
 		onDragOver: (event: DragEvent<HTMLElement>) => {

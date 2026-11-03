@@ -419,3 +419,66 @@ test("a refusing box takes no drop, exactly as it takes no paste", async () => {
 		"neither route attached anything: the drop reads the same isInputDisabled term the paste does",
 	);
 });
+
+/* ------------------------------------------------------------------ */
+/* A pasted FILE is not also pasted as its NAME (issue #1573)          */
+/* ------------------------------------------------------------------ */
+
+/*
+ * THE PAYLOAD SHAPE IS THE REPORT'S, not a guess. A file copied in Finder reaches
+ * Chromium's paste as one `kind: "file"` item AND a `text/plain` flavour holding
+ * the file's NAME (several names, one per line, for a multi-file copy). The
+ * handler attached the item and never cancelled the event, so the browser also
+ * inserted that name into the prompt. jsdom has no default paste action, so the
+ * insert is read where the browser would read it: `defaultPrevented`.
+ */
+const pasteWithText = async (file, text) => {
+	const field = window.document.querySelector('textarea[aria-label="Message"]');
+	const event = new window.Event("paste", { bubbles: true, cancelable: true });
+	Object.defineProperty(event, "clipboardData", {
+		value: {
+			types: ["Files", "text/plain"],
+			items: [
+				{ kind: "file", type: file.type, getAsFile: () => file },
+				{ kind: "string", type: "text/plain", getAsFile: () => null },
+			],
+			files: [file],
+			getData: (type) => (type === "text/plain" ? text : ""),
+		},
+	});
+	await act(async () => {
+		field.dispatchEvent(event);
+	});
+	await act(async () => {
+		await new Promise((resolve) => realSetTimeout(resolve, 0));
+	});
+	return event;
+};
+
+test("a Finder-copied file attaches WITHOUT its name being pasted as text (#1573)", async () => {
+	const conversationId = await mount();
+	const event = await pasteWithText(
+		rigFile("word.txt", "text/plain"),
+		"word.txt",
+	);
+	assert.equal(staged(conversationId).length, 1, "the file attached once");
+	assert.equal(
+		event.defaultPrevented,
+		true,
+		"the text/plain flavour is only the file's name, so the browser must not insert it",
+	);
+});
+
+test("intentional text pasted alongside a file is KEPT (#1573 control)", async () => {
+	const conversationId = await mount();
+	const event = await pasteWithText(
+		rigFile("word.txt", "text/plain"),
+		"please review this",
+	);
+	assert.equal(staged(conversationId).length, 1, "the file still attached");
+	assert.equal(
+		event.defaultPrevented,
+		false,
+		"real prose is not the file's name; the browser's own insert stays",
+	);
+});
