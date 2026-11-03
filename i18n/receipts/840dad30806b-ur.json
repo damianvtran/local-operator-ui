@@ -1,0 +1,44 @@
+{
+  "schema": 1,
+  "receipt_kind": "locale-audit (addition delta)",
+  "auditor": "translation-auditor",
+  "model": "openai/gpt-6.1-terra",
+  "instance": "840dad30806b-ur",
+  "audit_session": "840dad30806b",
+  "date": "2026-10-31",
+  "status": "passed",
+  "namespace": "ui.ownerAudit",
+  "sha256": {
+    "en": "345d5403a39bf3963e64e31965887b58185be091c47c3fe1e9ea471c2591c5c0",
+    "ur": "49589c949a299778d6174242340967f1b7e1c42b5f6fb147741017304716318a"
+  },
+  "context_sha256": "b7ee4423098a1105e6f276771d4a8d47781c3e9d1fc1a4e8a5cbe9548ec8972c",
+  "findings": [],
+  "scope": "Five added keys only; previous values are carried from the prior audit, not re-audited.",
+  "report_source": "Manager relayed independent translation-auditor session 840dad30806b: textual review clean for all seven locales, context parity passed, placeholders matched.",
+  "translator": {
+    "agent": "coder",
+    "model": "openai/gpt-6.1-terra",
+    "date": "2026-10-31"
+  },
+  "visual_checks": [
+    {
+      "file": "/Users/damian/.local-operator/sessions/1e496a833bcb/scratchpad/receipt-ur-rtl.png",
+      "sha256": "269623b526d84a25d013970ab06ee7e728ad743c660880d0005d1113d11deae8",
+      "observer": "coder; Storybook at 1280x720",
+      "scope": "Explicit RTL ancestor; does not prove application locale direction wiring"
+    },
+    {
+      "file": "/Users/damian/.local-operator/sessions/1e496a833bcb/scratchpad/receipt-ur-open.png",
+      "sha256": "8fa13a91b7f04eb52221eab8f0c31d64d60bef0ff6b7006f16c8d5dc4eb82294",
+      "observer": "coder; Storybook at 1280x720",
+      "scope": "Explicit RTL ancestor; does not prove application locale direction wiring"
+    }
+  ],
+  "limitations": [
+    "Prior unchanged translations retain their earlier audit.",
+    "Auditor report was relayed by the team manager; no native-speaker attestation or glossary revision was supplied.",
+    "Pagination fit for French and Spanish was not separately captured.",
+    "Visual frames are session scratch artifacts and should be attached to the review."
+  ]
+}
