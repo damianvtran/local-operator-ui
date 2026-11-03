@@ -34,7 +34,7 @@ import {
 } from "./team-bridge-model";
 
 /** The watcher's cadence. One number, so the hook and the tests agree. */
-export const TEAM_BRIDGE_NOTIFY_POLL_MS = 30_000;
+export { TEAM_BRIDGE_NOTIFY_POLL_MS } from "../../../../shared/team-bridge-poll";
 
 /**
  * How many organizations one poll may fan out to.

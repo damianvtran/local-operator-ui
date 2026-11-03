@@ -489,34 +489,66 @@ relaunch it — while `codesign --verify --deep --strict`, `spctl -a -vvv -t exe
 and `stapler validate` all passed on the same bundle, because none of them asks
 whether a claimed entitlement is authorized.
 
-So until a profile exists, **the release path ships no group at all**:
+**Status (2026-11-02): the profile exists and the release path signs the group
+in.** Until then the release path shipped no group at all — the shape described in
+the history paragraph below — and the switch-on is the "one secret wide" path that
+paragraph names, wired as documented:
 
-- `publish.yml` builds with the committed, group-free
-  `build/entitlements.mac.plist` and passes no entitlements override, so the group
-  cannot reach the app *or the helpers it inherits*.
-- Passkeys are inert in that build by design, not by accident: the gate reports
+- `publish.yml` and `signed-update-candidate.yml` decode `MACOS_APP_PROFILE_BASE64`
+  (the Radient Inc. organization's Developer ID profile for
+  `<TEAM_ID>.com.local-operator`) to `$RUNNER_TEMP/embedded.provisionprofile`, run
+  `scripts/render-mac-entitlements.mjs --profile` on it, and pass
+  `-c.mac.provisioningProfile` plus `-c.mac.entitlements=<rendered plist>` on both
+  per-architecture passes. `entitlementsInherit` stays the committed, group-free
+  plist, so helpers and ShipIt carry no restricted claim.
+- **A real Developer ID profile does not list the group.** Measured with
+  `security cms -D` on both of the organization's profiles: `keychain-access-groups`
+  is the single team wildcard `<TEAM_ID>.*`, which is how the portal issues every
+  Developer ID profile. The exact-match check the renderer and the gate first had
+  would have refused it, so both now ask through one implementation of Apple's
+  matching rule (`profileEntryAuthorizes` in
+  `scripts/macos-entitlement-policy.mjs`): equal, or a dotted team-stem wildcard
+  that prefixes the value. Another team's wildcard and a bare `*` are refusals.
+- **The main executable also carries `com.apple.application-identifier`
+  (`<TEAM_ID>.<BUNDLE_ID>`) and `com.apple.developer.team-identifier`**, as Xcode
+  signs every profile-backed Developer ID app: the keychain's access-group
+  machinery keys on the application identifier. `@electron/osx-sign` does not add
+  them for a non-sandboxed app (`preAutoEntitlements` returns early without
+  `com.apple.security.app-sandbox`), so the renderer does — each only when the
+  profile authorizes that exact value, and all three or none.
+- Proven before wiring on the released v0.47.7 arm64 bundle re-signed through this
+  tree's own `@electron/osx-sign` with the organization identity: `app-spawn`,
+  `app-profile-authorization` and `app-webauthn-entitlement` pass, the helpers
+  carry no group, and the notarized result passes `spctl`/`stapler`.
+
+History — the group-free interim (0.29.6 to the switch-on):
+
+- `publish.yml` built with the committed, group-free
+  `build/entitlements.mac.plist` and passed no entitlements override, so the group
+  could not reach the app *or the helpers it inherits*.
+- Passkeys were inert in that build by design, not by accident: the gate reports
   the entitlement absent, `src/main/webauthn.ts` logs one line and never calls
   `configureWebAuthn`, and a site that feature-detects simply never offers a
-  passkey. Nothing is shown to the user (§3.1).
+  passkey. Nothing is shown to the user (§3.1). A build without the profile secret
+  still gets exactly that.
 - `scripts/render-mac-entitlements.mjs` is the door back, and it cannot be opened
   half way: without `--profile` it writes the committed plist unchanged, and with
-  one it refuses unless the profile's own `keychain-access-groups` contains the
-  exact group being signed in. Enabling passkeys is one secret wide — a Developer
-  ID profile with Keychain Sharing on the App ID — and the three steps are written
-  at the Build macOS app step in `publish.yml`. The group must go on
-  `-c.mac.entitlements` **only**, never `entitlementsInherit`: Chromium reads the
-  *main executable's* entitlement and osx-sign embeds the profile in the main
-  bundle only, so a helper or ShipIt carrying the group holds a claim no profile
-  authorizes — which is exactly how this incident took the relaunch leg down with
-  it.
+  one it refuses unless the profile covers every claim being signed in. The group
+  must go on `-c.mac.entitlements` **only**, never `entitlementsInherit`: Chromium
+  reads the *main executable's* entitlement and osx-sign embeds the profile in the
+  main bundle only, so a helper or ShipIt carrying the group holds a claim no
+  profile authorizes — which is exactly how this incident took the relaunch leg
+  down with it.
 
 A local build renders nothing: `pnpm dist:mac` keeps the committed plist, stays
 ad-hoc signed, and the app stays inert, logging `unpackaged`. That is the intended
 behaviour and the reason the OS sheet cannot be verified here (§4).
 
-`scripts/test-publish-workflow.mjs` asserts that shape: no render step, no
-`ENTITLEMENTS_PLIST`, no entitlements override, `provisioningProfile` **absent**
-(documented rather than wired), and the committed plist carries no
+`scripts/test-publish-workflow.mjs` and `scripts/mac-build-arch.test.mjs` assert
+the wired shape: the profile is staged and the plist rendered with it before
+either pass, both passes carry `provisioningProfile` and the rendered
+`entitlements` (checked through electron-builder's real argv parser), nothing
+overrides `entitlementsInherit`, and the committed plist carries no
 `keychain-access-groups` at all.
 
 **The gate asserts two things about a built artifact, and one of them is a spawn.**
@@ -540,8 +572,9 @@ status or a child that never returns is still red under either bound.
 `app-profile-authorization` names the *cause* rather than
 the symptom — every profile-backed entitlement the signature claims must appear in
 an embedded profile's own `Entitlements` — and `app-webauthn-entitlement` is
-bidirectional: absent is the shipped default, and present is only acceptable when
-the profile authorizes that exact group for that bundle id. `app-spawn` is
+bidirectional: absent (a build without the profile) is inert and passes, and
+present is only acceptable when the profile authorizes that group — by Apple's
+rule, so the team wildcard counts — for that bundle id. `app-spawn` is
 deliberately absent from `SIGNATURE_CHECK_IDS` in `scripts/verify-signed-update.mjs`:
 a failure there is a defect in the artifact, not a capability the runner lacks.
 
@@ -620,7 +653,7 @@ stderr fix (§3.2). `PublicKeyCredential.isConditionalMediationAvailable()` is
 
 | Capability | Status | Why (source) |
 | --- | --- | --- |
-| Touch ID platform passkeys | **Not available in the shipped build; enablement is gated, not impossible** | Needs the `keychain-access-groups` entitlement `<TEAM_ID>.<BUNDLE_ID>.webauthn`, which is a *restricted* entitlement: it must be authorized by an embedded Developer ID provisioning profile, and no such profile exists (the 0.29.6 incident, §3.4). Chromium's Touch ID path checks only that entitlement, then uses `LAContext` and the Secure Enclave: `device/fido/mac/touch_id_context.mm` `TouchIdAvailableImpl`. Credentials would be device-bound (no iCloud sync) |
+| Touch ID platform passkeys | **Enabled in release builds from the switch-on (2026-11-02); verify on the first signed release (§3.7 step 5)** | Needs the `keychain-access-groups` entitlement `<TEAM_ID>.<BUNDLE_ID>.webauthn`, a *restricted* entitlement that must be authorized by an embedded Developer ID provisioning profile (the 0.29.6 incident, §3.4). The Radient Inc. organization's profile now authorizes it (as the team wildcard) and both release workflows embed it on the main executable only. Chromium's Touch ID path checks only that entitlement, then uses `LAContext` and the Secure Enclave: `device/fido/mac/touch_id_context.mm` `TouchIdAvailableImpl`. Credentials are device-bound (no iCloud sync) |
 | Apple Passwords / iCloud Keychain / 1Password sheet | **Not available, and no flag or entitlement alone changes it** | Chromium's iCloud-keychain discovery is added only when an `NSWindow` is set (`device/fido/fido_discovery_factory.cc` `MaybeCreatePlatformDiscovery`, ~202-212), and `set_nswindow` is called only from //chrome (`chrome/browser/webauthn/chrome_authenticator_request_delegate.cc` ~1206); Electron 44's WebAuthn files (`shell/browser/webauthn/`) contain no `NSWindow` handoff. It would also need Apple's `com.apple.developer.web-browser.public-key-credential` entitlement (applied for, reviewed by Apple, profile-backed) and Local Operator to declare `http`/`https` URL schemes (it does not today, so it is not selectable as a browser) |
 | Hybrid ("use a phone", QR) | **Not available** | The QR key and cable data are set only by //chrome's `ConfigureDiscoveries`; `FidoDiscoveryFactory::Create(kHybrid)` returns nothing without them, and Electron never sets them (C1-C3). A CDP *virtual* hybrid device "works" only because it bypasses discovery (B11) |
 | Bluetooth LE and NFC security keys | **Not available** | `Create(kBluetoothLowEnergy)` returns nothing in Electron's configuration; NFC is a TODO upstream (C3) |
@@ -737,46 +770,40 @@ methods; it then only loses a courtesy. (4) The line is also a `logs`-action ent
 for the tab (a nonce, no page data). (5) The copy is deliberately provisional:
 *Touch ID passkeys are planned* promises no date.
 
-### 3.7 Enablement runbook (NOT DONE: waiting on the Organization Apple Developer account)
+### 3.7 Enablement runbook (steps 1-3 DONE 2026-11-02; step 5 pending the first signed release)
 
-Every step below is **not done**. The operator is upgrading to an Organization
-Apple Developer account, and the team id (and so the keychain group) may change
-with it, so nothing here is wired. Do not create a profile, add a secret or touch
-signing/notarization config until that lands; then, in order:
+The Organization account landed with the team id unchanged (the individual account
+was converted), so the keychain group's value did not change.
 
-1. **Apple side (not done, waiting on the Organization account).** In the
-   Developer account for the Organization team: register or confirm the App ID
-   `com.local-operator`, enable the **Keychain Sharing** capability on it, and
-   create a **Developer ID provisioning profile** for that App ID that authorizes
-   the keychain group `<TEAM_ID>.com.local-operator.webauthn`. (Apple's capability
-   table lists Keychain Sharing as supported for Developer ID; TN3125 says the
-   restricted `keychain-access-groups` entitlement must be authorized by an
-   embedded profile. What happens at launch once a profile expires is
-   **UNVERIFIED**.)
-2. **CI secrets (not done, waiting on the Organization account).** The existing
-   names (read from `.github/workflows/publish.yml` and
-   `scripts/render-mac-entitlements.mjs`; none are new): `APPLE_TEAM_ID`,
-   `CSC_CONTENT`, `CSC_KEY_PASSWORD`, `APPLE_ID`, `APPLE_ID_PASSWORD`. These all
-   change with a new team/certificate and must be re-issued for the Organization.
-   The profile itself has **no secret name yet**: add one (base64 of the
-   `.provisionprofile`), decode it to `$RUNNER_TEMP/embedded.provisionprofile`
-   in the Build macOS app step.
-3. **Where the workflow consumes them (not done).** In `publish.yml`'s
-   `Build macOS app` step, add `-c.mac.provisioningProfile=$RUNNER_TEMP/embedded.provisionprofile`
-   to the `dist:mac` line and render the group with the profile:
-   `node scripts/render-mac-entitlements.mjs --out <plist> --profile <profile>`
-   (it refuses to emit the group without a profile that lists it), passing the
-   result to `-c.mac.entitlements` **only**. The group must stay out of
-   `entitlementsInherit`: Chromium reads the MAIN executable's entitlement,
-   osx-sign embeds the profile in the main bundle only, and a helper or ShipIt that
-   carried the group would be refused at exec (the 0.29.6 failure). The comment
-   above that step in `publish.yml` is the authority.
+1. **Apple side (done).** App ID `<TEAM_ID>.com.local-operator` with Keychain
+   Sharing, and a Developer ID provisioning profile for it ("Local Operator desktop
+   passkeys (Developer ID, Radient Inc)"). Its `keychain-access-groups` is the team
+   wildcard `<TEAM_ID>.*`, which covers `<TEAM_ID>.com.local-operator.webauthn`;
+   it also carries `com.apple.application-identifier` and
+   `com.apple.developer.team-identifier` for the app. The profile embeds the
+   Developer ID Application certificate, which expires 2027-12-02: a new
+   certificate needs a NEW profile. What happens at launch once a profile expires
+   is still **UNVERIFIED**.
+2. **CI secrets (done).** `MACOS_DEVID_APP_P12_BASE64`,
+   `MACOS_DEVID_APP_P12_PASSWORD`, `MACOS_APP_PROFILE_BASE64`,
+   `APPLE_API_KEY_P8_BASE64`, `APPLE_API_KEY_ID`, `APPLE_API_ISSUER`,
+   `APPLE_TEAM_ID`. Notarization moved from the Apple ID to an App Store Connect
+   API key at the same time. The individual-account secrets (`CSC_CONTENT`,
+   `CSC_KEY_PASSWORD`, `APPLE_ID`, `APPLE_ID_PASSWORD`) stay for rollback and are
+   read by nothing.
+3. **Where the workflow consumes them (done).** `publish.yml`'s "Stage the
+   provisioning profile, entitlements and notarization key" step (and the same
+   step in `signed-update-candidate.yml`) decodes the profile, renders the plist
+   with `--profile`, and both `dist:mac` passes carry
+   `-c.mac.provisioningProfile` and `-c.mac.entitlements`; `entitlementsInherit`
+   is untouched. The comment above that step in `publish.yml` is the authority,
+   including rotation.
 4. **How the value is derived.** `<TEAM_ID>.<BUNDLE_ID>.webauthn`, built in one
    place per side: `webauthnKeychainAccessGroup` in `src/main/webauthn.ts` (read
    from the running signature) and in `scripts/render-mac-entitlements.mjs` (from
    `APPLE_TEAM_ID` and `build.appId`). A new team id changes the value everywhere
    at once; nothing is hand-typed.
-5. **Verify in a signed build (not done).** In order: `pnpm verify-macos-artifacts`
+5. **Verify in a signed build (pending the first release; the pre-wiring re-sign of v0.47.7 is §3.4).** In order: `pnpm verify-macos-artifacts`
    (its `app-webauthn-entitlement` check, and the spawn check that guards the
    0.29.6 brick); on the installed `.app`,
    `codesign -d --entitlements - --xml '<app>'` showing the group under

@@ -1,0 +1,18 @@
+{
+	"schema": 1,
+	"receipt_kind": "locale-audit (manager-relayed independent recheck)",
+	"audit_id": "native-badge-2220591debf9",
+	"date": "2026-11-02",
+	"instance": "2220591debf9-fr",
+	"agent": "task",
+	"model": "anthropic/claude-opus-5-5",
+	"status": "passed",
+	"result": "clean",
+	"locale": "fr",
+	"namespace": "ui.nativeBadge",
+	"source_sha256": "f34add839ee407fb0468184330099db692da3bb8823f14babbd9d3811a8793de",
+	"target_sha256": "5e01b516dfb1e0fc0b08ac24c0dcfe905628c3bf127c93a5378f80266b55239e",
+	"findings": [],
+	"scope": "All three ui.nativeBadge keys at the recorded English and target hashes; corrected fr/es/zh-CN/vi/hi rechecked; ru/ur unchanged. Source-language audit, not native rendered or screen-reader evidence.",
+	"note": "Serialized by implementer 8896fc073206 from the independent auditor recheck values explicitly relayed and authorized by manager bee3c0da539c in this task. This receipt records that audit, not a new audit performed by the implementer."
+}

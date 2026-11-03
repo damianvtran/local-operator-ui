@@ -19,6 +19,7 @@ import { ChatDeviceSlot as GeometryDeviceSlot } from "../../chat/device/chat-dev
  */
 
 import {
+	agentAvatarPath,
 	agentAvatarsQueryKey,
 	useAgentAvatarMap,
 } from "@shared/agent-avatar/agent-avatar";
@@ -28,8 +29,11 @@ import type { AgentAvatarMeta } from "@shared/api/local-operator/types";
 import type { AgentDetails } from "@shared/api/local-operator/types";
 import { queryClient } from "@shared/api/query-client";
 import { TooltipProvider } from "@shared/components/ui";
+import { t } from "@shared/i18n";
+import { peek as peekBlobUrl } from "@shared/lib/blob-url-cache";
 import type { CanonicalSessionRow } from "@shared/store/canonical-sessions-store";
 import type { Meta, StoryObj } from "@storybook/react";
+import { useQueryClient } from "@tanstack/react-query";
 import {
 	type FC,
 	useEffect,
@@ -44,6 +48,8 @@ import {
 } from "../../chat/components/chat-session-avatar";
 import { AgentAvatarCropper } from "./agent-avatar-cropper";
 import { AgentAvatarField } from "./agent-avatar-field";
+import { makeProfile } from "./agent-class.stories";
+import { AgentDetail } from "./agent-detail";
 import { AgentsSidebarItem } from "./agents-sidebar";
 
 /* ------------------------------------------------------------------ *
@@ -634,3 +640,407 @@ async function assertHeaderGeometry(element: HTMLElement): Promise<number> {
 		);
 	return spread;
 }
+
+/**
+ * Summary portraits use the shipped detail pane and local media seam, never an
+ * account/Bridge photo. Distinct ids per state keep a prior successful cache
+ * entry from making the loading/error stories accidentally show a picture.
+ * Their play checks run in the Storybook preview; read pass/fail from the
+ * preview's state, since the checks are raw DOM assertions, not instrumented steps.
+ */
+type SummaryPictureState = "populated" | "no-image" | "loading" | "error";
+type SummaryPictureEvidence = {
+	requests: number;
+	inFlight: number;
+	bytesDelivered: boolean;
+	decodeErrorSource: string | null;
+};
+const summaryPictureEvidence = new WeakMap<
+	HTMLElement,
+	SummaryPictureEvidence
+>();
+
+const SummaryPortraitScene: FC<{
+	state: SummaryPictureState;
+	width?: number;
+	longName?: boolean;
+}> = ({ state, width = 960, longName = false }) => {
+	const client = useQueryClient();
+	const rootRef = useRef<HTMLDivElement>(null);
+	const [ready, setReady] = useState(false);
+	// Per-mount local ids prevent an earlier story's immutable blob cache from
+	// satisfying this story without its own discriminating media request.
+	const id = useMemo(
+		() => `summary-portrait-${state}-${crypto.randomUUID()}`,
+		[state],
+	);
+	useLayoutEffect(() => {
+		const root = rootRef.current;
+		if (!root) return;
+		const evidence: SummaryPictureEvidence = {
+			requests: 0,
+			inFlight: 0,
+			bytesDelivered: false,
+			decodeErrorSource: null,
+		};
+		summaryPictureEvidence.set(root, evidence);
+		const avatar: AgentAvatarMeta = {
+			sha256: SHA,
+			mime: "image/png",
+			bytes: PNG.byteLength,
+			updated_at: "2026-10-30T00:00:00.000Z",
+		};
+		const map = state === "no-image" ? {} : { [id]: avatar };
+		// Preview owns a client per story. Seed that provider, not the app's
+		// imported singleton, BEFORE mounting a reader that can start a query.
+		client.setQueryData(agentAvatarsQueryKey, map);
+		const api = window as unknown as {
+			api: {
+				desktop: {
+					media: (request: {
+						op?: string;
+						agentId?: string;
+					}) => Promise<unknown>;
+					request: (request: { op?: string }) => Promise<unknown>;
+				};
+			};
+		};
+		const previousMedia = api.api.desktop.media;
+		const previousRequest = api.api.desktop.request;
+		const request: typeof previousRequest = async (input) => {
+			// A later stale/refetch read must reproduce this same local catalogue,
+			// never replace the seed through preview's unconfigured transport.
+			if (input.op !== "legacy.agents.list") return previousRequest(input);
+			return {
+				status: 200,
+				body: {
+					result: {
+						agents: [
+							{
+								id,
+								name: `summary-${state}`,
+								...(state === "no-image" ? {} : { avatar }),
+							},
+						],
+					},
+				},
+			};
+		};
+		const media: typeof previousMedia = async (input) => {
+			if (input.op !== "agent.avatar") return previousMedia(input);
+			if (input.agentId !== id)
+				throw new Error("Summary requested another identity's image");
+			evidence.requests++;
+			evidence.inFlight++;
+			root.dataset.summaryMediaPhase = "in-flight";
+			if (state === "loading") {
+				// Keep a REAL requested read pending; an early empty glyph alone is
+				// not evidence that the loading arm was reached.
+				return new Promise<never>(() => {
+					/* Deliberately held transport. */
+				});
+			}
+			evidence.inFlight--;
+			evidence.bytesDelivered = true;
+			root.dataset.summaryMediaPhase = "bytes-delivered";
+			return {
+				status: 200,
+				kind: "bytes",
+				mimeType: "image/png",
+				data: state === "error" ? new Uint8Array([0, 1, 2]) : PNG,
+			};
+		};
+		// Radix loads a detached native Image before mounting its <img>. A DOM
+		// error listener cannot see that event. Observe the REAL native decoder,
+		// without synthesising an error, replacing a result or touching production.
+		// The Proxy wraps EVERY `new Image()` while the error story is mounted, not
+		// only Radix's; that is harmless because `onError` records evidence only
+		// for an image whose src is THIS story's agent-avatar blob URL, so an
+		// unrelated image failing elsewhere on the page cannot satisfy the check.
+		const NativeImage = window.Image;
+		const observedImages = new Map<HTMLImageElement, () => void>();
+		const ObservedImage = new Proxy(NativeImage, {
+			construct(target, args) {
+				const image = Reflect.construct(target, args) as HTMLImageElement;
+				const onError = () => {
+					if (
+						state === "error" &&
+						evidence.bytesDelivered &&
+						image.src === peekBlobUrl(agentAvatarPath(id, SHA))
+					) {
+						evidence.decodeErrorSource = image.src;
+						root.dataset.summaryMediaPhase = "decode-error";
+					}
+				};
+				observedImages.set(image, onError);
+				image.addEventListener("error", onError, { once: true });
+				return image;
+			},
+		});
+		api.api.desktop.request = request;
+		api.api.desktop.media = media;
+		if (state === "error") window.Image = ObservedImage;
+		setReady(true);
+		return () => {
+			summaryPictureEvidence.delete(root);
+			for (const [image, onError] of observedImages)
+				image.removeEventListener("error", onError);
+			if (api.api.desktop.media === media)
+				api.api.desktop.media = previousMedia;
+			if (api.api.desktop.request === request)
+				api.api.desktop.request = previousRequest;
+			if (window.Image === ObservedImage) window.Image = NativeImage;
+		};
+	}, [client, state, id]);
+	const profile = useMemo(
+		() =>
+			makeProfile({
+				name: `summary-${state}`,
+				agent_id: id,
+				source: "custom",
+				description: "A local agent whose summary shows its own picture.",
+			}),
+		[state, id],
+	);
+	return (
+		<div
+			ref={rootRef}
+			className="bg-surface p-6"
+			style={{ width, maxWidth: "100%" }}
+			data-summary-picture-state={state}
+		>
+			{ready ? (
+				<AgentDetail
+					key={id}
+					profile={profile}
+					displayedName={
+						longName
+							? "An unusually long selected agent name that must not crowd its actions"
+							: "Local summary agent"
+					}
+					classNotice={null}
+					onClassNotice={noop}
+					teams={[]}
+					effortTiers={[]}
+					askEnabled={false}
+					onSaved={noop}
+					onDuplicate={noop}
+					onOpenTeam={noop}
+					onAskAgent={noop}
+				/>
+			) : null}
+		</div>
+	);
+};
+
+export const SummaryPortraitPopulated: Story = {
+	render: () => <SummaryPortraitScene state="populated" />,
+	play: async ({ canvasElement }) => {
+		await assertSummaryPortrait(canvasElement);
+	},
+};
+export const SummaryPortraitNoImage: Story = {
+	render: () => <SummaryPortraitScene state="no-image" />,
+	play: async ({ canvasElement }) => {
+		await assertSummaryPortrait(canvasElement);
+	},
+};
+export const SummaryPortraitLoading: Story = {
+	render: () => <SummaryPortraitScene state="loading" />,
+	play: async ({ canvasElement }) => {
+		await assertSummaryPortrait(canvasElement);
+	},
+};
+export const SummaryPortraitError: Story = {
+	render: () => <SummaryPortraitScene state="error" />,
+	play: async ({ canvasElement }) => {
+		await assertSummaryPortrait(canvasElement);
+	},
+};
+export const SummaryPortraitPopulatedNarrow: Story = {
+	render: () => <SummaryPortraitScene state="populated" width={360} longName />,
+	play: async ({ canvasElement }) => {
+		await assertSummaryPortrait(canvasElement);
+	},
+};
+export const SummaryPortraitNoImageNarrow: Story = {
+	render: () => <SummaryPortraitScene state="no-image" width={360} longName />,
+	play: async ({ canvasElement }) => {
+		await assertSummaryPortrait(canvasElement);
+	},
+};
+export const SummaryPortraitLoadingNarrow: Story = {
+	render: () => <SummaryPortraitScene state="loading" width={360} longName />,
+	play: async ({ canvasElement }) => {
+		await assertSummaryPortrait(canvasElement);
+	},
+};
+export const SummaryPortraitErrorNarrow: Story = {
+	render: () => <SummaryPortraitScene state="error" width={360} longName />,
+	play: async ({ canvasElement }) => {
+		await assertSummaryPortrait(canvasElement);
+	},
+};
+
+/**
+ * Proves the state from its request/decoder evidence, then checks geometry, in
+ * a real renderer (the Storybook preview); it cannot run under node.
+ */
+async function assertSummaryPortrait(canvas: HTMLElement): Promise<void> {
+	await document.fonts.ready;
+	const root = canvas.querySelector<HTMLElement>(
+		"[data-summary-picture-state]",
+	);
+	if (!root) throw new Error("Summary fixture is missing");
+	const state = root.dataset.summaryPictureState;
+	let settled = false;
+	for (let attempt = 0; attempt < 100; attempt++) {
+		const portrait = root.querySelector("[data-agent-summary-portrait]");
+		const image = portrait?.querySelector("img");
+		const glyph = Boolean(portrait?.querySelector("svg"));
+		const evidence = summaryPictureEvidence.get(root);
+		settled = Boolean(
+			evidence &&
+				(state === "populated"
+					? evidence.requests > 0 &&
+						evidence.bytesDelivered &&
+						image?.complete &&
+						image.naturalWidth > 0
+					: state === "loading"
+						? evidence.requests > 0 &&
+							evidence.inFlight > 0 &&
+							!evidence.bytesDelivered &&
+							glyph
+						: state === "error"
+							? evidence.requests > 0 &&
+								evidence.bytesDelivered &&
+								evidence.decodeErrorSource &&
+								glyph
+							: state === "no-image" && evidence.requests === 0 && glyph),
+		);
+		if (settled) break;
+		await new Promise((resolve) => setTimeout(resolve, 50));
+	}
+	if (!settled)
+		throw new Error(`Summary never reached its discriminating ${state} state`);
+	// These frames follow the observed request/decoder event, rather than being
+	// used as a substitute for proving the event happened.
+	await new Promise((resolve) =>
+		requestAnimationFrame(() => requestAnimationFrame(resolve)),
+	);
+	const portrait = root.querySelector<HTMLElement>(
+		"[data-agent-summary-portrait]",
+	);
+	const header = root.querySelector<HTMLElement>("[data-agent-summary-header]");
+	if (!portrait || !header)
+		throw new Error("Summary did not render its identity");
+	if (state !== "populated") {
+		if (!portrait.querySelector("svg"))
+			throw new Error(
+				"Missing/loading/failed picture lost the local agent glyph",
+			);
+		/*
+		 * Design D1: no-image, loading and decode-error are ONE treatment - the
+		 * shared filled plate, borderless. Compare against the shared surface's
+		 * own computed colour rather than a pinned value, so a theme change keeps
+		 * the check honest and a bare glyph (transparent) still fails.
+		 */
+		const plate = portrait.querySelector<HTMLElement>("[data-agent-mark]");
+		const fill = plate?.querySelector<HTMLElement>("span");
+		const probe = document.createElement("span");
+		probe.className = "bg-sunken";
+		document.body.append(probe);
+		const sunken = getComputedStyle(probe).backgroundColor;
+		probe.remove();
+		if (
+			!plate ||
+			!fill ||
+			getComputedStyle(fill).backgroundColor !== sunken ||
+			getComputedStyle(plate).borderTopWidth !== "0px"
+		)
+			throw new Error(
+				`Summary ${state} plate is not the shared borderless filled disc`,
+			);
+	}
+	const box = portrait.getBoundingClientRect();
+	const edge =
+		Number.parseFloat(getComputedStyle(document.documentElement).fontSize) * 5;
+	if (Math.abs(box.width - edge) > 0.1 || Math.abs(box.height - edge) > 0.1)
+		throw new Error(
+			"Summary portrait no longer reserves its comfortable square",
+		);
+	const titleBlock = portrait.nextElementSibling?.getBoundingClientRect();
+	if (
+		!titleBlock ||
+		Math.abs(box.y + box.height / 2 - titleBlock.y - titleBlock.height / 2) >
+			0.1
+	)
+		throw new Error(
+			"Summary portrait and name/status lost shared centre alignment",
+		);
+	/*
+	 * The trailing ghost button deliberately bleeds its hover box into the gutter
+	 * by its own negative right margin, so its GLYPH sits on the column edge
+	 * (design D1, `-mr-2` in agent-detail). Allow exactly that measured margin -
+	 * read from computed style, not a fixed slack - so any other overflow fails.
+	 */
+	const bounds = header.getBoundingClientRect();
+	const buttons = Array.from(
+		header.querySelectorAll<HTMLElement>("[data-agent-summary-actions] button"),
+	);
+	const trailing = buttons.at(-1);
+	const bleed = trailing
+		? Math.max(0, -Number.parseFloat(getComputedStyle(trailing).marginRight))
+		: 0;
+	if (header.scrollWidth > header.clientWidth + bleed + 1)
+		throw new Error("Summary header overflows the narrow pane");
+	// The bleed belongs to the trailing button alone (review m2): the portrait
+	// and name block gets no slack, so overflow from either fails here.
+	const identity = portrait.parentElement?.getBoundingClientRect();
+	if (
+		!identity ||
+		identity.left < bounds.left - 1 ||
+		identity.right > bounds.right + 1 ||
+		box.right > bounds.right + 1 ||
+		titleBlock.right > bounds.right + 1
+	)
+		throw new Error("Summary portrait or name escaped its responsive header");
+	for (const button of buttons) {
+		const action = button.getBoundingClientRect();
+		const allowed = button === trailing ? bleed : 0;
+		if (
+			action.left < bounds.left - 1 ||
+			action.right > bounds.right + allowed + 1
+		)
+			throw new Error("Summary action escaped its responsive header");
+	}
+}
+
+/** The existing Edit button, not a new portrait-specific settings route. */
+export const SummaryPortraitExistingEdit: Story = {
+	render: () => <SummaryPortraitScene state="populated" width={360} longName />,
+	play: async ({ canvasElement }) => {
+		await assertSummaryPortrait(canvasElement);
+		const url = window.location.href;
+		const edit = Array.from(
+			canvasElement.querySelectorAll<HTMLButtonElement>(
+				"[data-agent-summary-actions] button",
+			),
+		).find(
+			(button) =>
+				button.textContent?.trim() === t("ui.agents.detail.action.edit"),
+		);
+		if (!edit) throw new Error("Existing Edit button is missing");
+		edit.click();
+		await new Promise((resolve) =>
+			requestAnimationFrame(() => requestAnimationFrame(resolve)),
+		);
+		if (
+			!canvasElement.querySelector("#agent-picture") ||
+			canvasElement.querySelector("[data-agent-summary-portrait]")
+		)
+			throw new Error("Edit did not open the existing agent picture field");
+		if (window.location.href !== url)
+			throw new Error("Edit navigated to a redundant settings route");
+	},
+};

@@ -284,15 +284,19 @@ jobs:
     # because this workflow's `exact-update` job exists to run on a fresh VM with no
     # Apple credentials at all.
     #
-    # The three `APPLE_*` credentials are NOT here. They are secrets, and at job
+    # The notarization credentials (`APPLE_API_KEY`, `APPLE_API_KEY_ID`,
+    # `APPLE_API_ISSUER` - the App Store Connect API key) are NOT here. They are
+    # secrets (the first is the path of a decoded one), and at job
     # scope they would sit in the environment of all fourteen steps below - `pnpm
     # install --frozen-lockfile` postinstall scripts and marketplace actions
     # included - where they buy nothing. At step scope they reach exactly the three
     # steps that notarise a bundle or an image, which is `publish.yml`'s shape.
     #
-    # BOTH GATES SKIP QUIETLY when the flag or a credential is absent: one log line,
-    # exit 0 - 'Skipping notarization: NOTARIZE not set to true' - and
-    # `scripts/require-report.sh` cannot tell that from a pass, since its check is
+    # BOTH GATES SKIP QUIETLY when the flag is absent: one log line, exit 0 -
+    # 'Skipping notarization: NOTARIZE not set to true' - and (off GitHub Actions
+    # only) when a credential is; on Actions a missing credential under
+    # NOTARIZE=true now throws (`missingNotarizationCredentialIsFatal`). A skip is
+    # something `scripts/require-report.sh` cannot tell from a pass, since its check is
     # emptiness rather than meaning. What refuses an unnotarised image is the
     # artifact verification, and in run 35846109424 that was the SAME step as the
     # skip: the notarisation was still the first lines of the verification step's own
@@ -375,10 +379,12 @@ jobs:
         with:
           node-version: '22.13.1'
       - run: pnpm install --frozen-lockfile
+      # The Radient Inc. organization's Developer ID Application identity, the
+      # same secrets `publish.yml` imports; the step-local names are unchanged.
       - name: Prepare job-local signing keychain
         env:
-          CSC_CONTENT: ${{ secrets.CSC_CONTENT }}
-          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          CSC_CONTENT: ${{ secrets.MACOS_DEVID_APP_P12_BASE64 }}
+          CSC_KEY_PASSWORD: ${{ secrets.MACOS_DEVID_APP_P12_PASSWORD }}
         run: |
           KEYCHAIN_PASSWORD="$(openssl rand -hex 32)"
           echo "::add-mask::$KEYCHAIN_PASSWORD"
@@ -406,6 +412,28 @@ jobs:
           security import "$CERTIFICATE" -k "$CSC_KEYCHAIN" -P "$CSC_KEY_PASSWORD" -T /usr/bin/codesign
           security set-key-partition-list -S apple-tool:,apple:,codesign:,notarize: -s -k "$KEYCHAIN_PASSWORD" "$CSC_KEYCHAIN"
       - run: pnpm setup-python
+      # The candidate is built the way a release is or its verdict is about a
+      # bundle nobody ships: same profile, same rendered main-executable
+      # entitlements (the WebAuthn group plus the app's identity claims, refused
+      # unless the profile authorizes all three), same notary key. `publish.yml`'s
+      # comment above its staging step is the authority for why and how to rotate.
+      - name: Stage the provisioning profile, entitlements and notarization key
+        env:
+          MACOS_APP_PROFILE_BASE64: ${{ secrets.MACOS_APP_PROFILE_BASE64 }}
+          APPLE_API_KEY_P8_BASE64: ${{ secrets.APPLE_API_KEY_P8_BASE64 }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          umask 077
+          mkdir -p "$RUNNER_TEMP/notary"
+          printf '%s' "$APPLE_API_KEY_P8_BASE64" | base64 --decode > "$RUNNER_TEMP/notary/AuthKey.p8"
+          test -s "$RUNNER_TEMP/notary/AuthKey.p8"
+          printf '%s' "$MACOS_APP_PROFILE_BASE64" | base64 --decode > "$RUNNER_TEMP/embedded.provisionprofile"
+          test -s "$RUNNER_TEMP/embedded.provisionprofile"
+          # osx-sign copies this file into the bundle mode and all, so it must not
+          # keep the umask's 0600: a bundle file only its builder can read is not
+          # what an installed app should carry. The profile is not a secret.
+          chmod 0644 "$RUNNER_TEMP/embedded.provisionprofile"
+          node scripts/render-mac-entitlements.mjs --out "$RUNNER_TEMP/entitlements.mac.rendered.plist" --profile "$RUNNER_TEMP/embedded.provisionprofile"
       # ONE BUILD CANNOT SERVE BOTH MAC ARCHITECTURES, and this workflow has to
       # build the shape a release builds or its verdict is about a bundle nobody
       # ships.
@@ -435,14 +463,15 @@ jobs:
       # otherwise silently reuse pass one's runtime and reintroduce the bug.
       - name: Build signed candidate (arm64)
         env:
-          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          CSC_KEY_PASSWORD: ${{ secrets.MACOS_DEVID_APP_P12_PASSWORD }}
           # The app bundle this pass builds is notarised by `scripts/notarize.js`
           # from `afterSign`, so these three are the credential half of what the
           # job's `NOTARIZE` arms. Bound here rather than at the job so they reach
-          # no other step - see the note above the job's `env`.
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          # no other step - see the note above the job's `env`. APPLE_API_KEY is
+          # the PATH of the .p8 the staging step decoded.
+          APPLE_API_KEY: ${{ runner.temp }}/notary/AuthKey.p8
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
           # The four variables the vite plugin requires, taken from the same
           # repository secrets every release build uses. They are not decoration:
           # `scripts/vite-plugins/replace-backend-config.ts` throws
@@ -484,7 +513,7 @@ jobs:
           # regresses, in either workflow.
           rm -rf node_modules/electron/dist
           npm_config_arch=arm64 node ./bin/ensure-electron.js
-          npm_config_arch=arm64 pnpm dist:mac -c.forceCodeSigning=true --arm64
+          npm_config_arch=arm64 pnpm dist:mac -c.forceCodeSigning=true -c.mac.provisioningProfile="$RUNNER_TEMP/embedded.provisionprofile" -c.mac.entitlements="$RUNNER_TEMP/entitlements.mac.rendered.plist" --arm64
 
       # `latest-mac.yml` describes BOTH architectures in one file, and
       # electron-builder rewrites it from scratch at the end of every run listing
@@ -497,11 +526,11 @@ jobs:
 
       - name: Build signed candidate (x64)
         env:
-          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          CSC_KEY_PASSWORD: ${{ secrets.MACOS_DEVID_APP_P12_PASSWORD }}
           # Same credential binding as the arm64 pass above, for the same reason.
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_API_KEY: ${{ runner.temp }}/notary/AuthKey.p8
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
           # Same four bindings as the arm64 pass above, and the same names: a
           # step that builds without them dies in `loadConfig` before compiling
           # anything, and `scripts/check-build-env.mjs` fails the release
@@ -520,7 +549,7 @@ jobs:
           # directory - which is what lets them assert BOTH architectures.
           rm -rf node_modules/electron/dist
           npm_config_arch=x64 node ./bin/ensure-electron.js
-          npm_config_arch=x64 pnpm dist:mac -c.forceCodeSigning=true --x64
+          npm_config_arch=x64 pnpm dist:mac -c.forceCodeSigning=true -c.mac.provisioningProfile="$RUNNER_TEMP/embedded.provisionprofile" -c.mac.entitlements="$RUNNER_TEMP/entitlements.mac.rendered.plist" --x64
 
       # Put the arm64 entries back beside the x64 ones electron-builder just
       # wrote, so the candidate's artifact set matches the set a release ships.
@@ -551,9 +580,9 @@ jobs:
       # itself rather than leaving it to the verification one step later.
       - name: Notarize and staple the disk images
         env:
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_API_KEY: ${{ runner.temp }}/notary/AuthKey.p8
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
         run: |
           # Two gates, two questions: `require-report.sh` refuses a SILENT success,
           # and `require-notarized-dmg.sh` refuses a SKIP - which the wrapper cannot
@@ -598,6 +627,10 @@ jobs:
             dist/*-mac*.yml
           if-no-files-found: error
           retention-days: 7
+      # The notary key is a live credential: removed whatever happened above.
+      - name: Remove the notarization key
+        if: always()
+        run: rm -rf "$RUNNER_TEMP/notary" "$RUNNER_TEMP/embedded.provisionprofile" "$RUNNER_TEMP/entitlements.mac.rendered.plist"
 
   exact-update:
     needs: [derive, build]

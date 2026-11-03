@@ -1507,6 +1507,44 @@ jobs:
           LOCAL_OPERATOR_CORE_PYTHON="$CORE_VENV/bin/python" \
           node scripts/notifications-app-scene.mjs
 
+      # Headless deliberately hides the Dock tile. This proves the real native
+      # getBadge() API through main CDP, NOT Dock pixels; renderer frames are
+      # uploaded separately alongside hidden/unfocused window facts. Never reuse
+      # or widen the notifications lane's shown-window exception for this scene.
+      - name: Prove native app-icon badge API readback without showing a window
+        id: app_icon_badge_native
+        if: runner.os == 'macOS' && github.event_name == 'pull_request'
+        timeout-minutes: 12
+        env:
+          # Merged core PR #3320, including approval baseline remediation.
+          # The scene verifies the installed commit against this merged pin.
+          LOCAL_OPERATOR_CORE_REF: 3a001653fa1f08d434ca7582ca68581c792369d7
+          VITE_DISABLE_BACKEND_MANAGER: 'true'
+          LOCAL_OPERATOR_UI_NO_BYTECODE: 'true'
+          LOCAL_OPERATOR_UI_TELEMETRY: 'off'
+          LOCAL_OPERATOR_NO_NOTIFICATIONS: '1'
+        run: |
+          set -euo pipefail
+          CORE_VENV="$RUNNER_TEMP/app-icon-badge-core-venv"
+          python3 -m venv "$CORE_VENV"
+          "$CORE_VENV/bin/pip" install --quiet --upgrade pip
+          "$CORE_VENV/bin/pip" install --quiet \
+            "local-operator[server] @ git+https://github.com/damianvtran/local-operator@${LOCAL_OPERATOR_CORE_REF}"
+          # Cross-check this build hash against native-scene.json, not a source ref.
+          shasum -a 256 out/main/index.js
+          LOCAL_OPERATOR_CORE_BIN="$CORE_VENV/bin/local-operator" \
+          LOCAL_OPERATOR_CORE_PYTHON="$CORE_VENV/bin/python" \
+          node scripts/app-icon-badge-scene.mjs
+
+      - name: Upload native app-icon badge API and renderer evidence
+        if: ${{ always() && (steps.app_icon_badge_native.outcome == 'success' || steps.app_icon_badge_native.outcome == 'failure') }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-icon-badge-native-${{ github.event.pull_request.number }}-${{ github.run_id }}
+          path: artifacts/app-icon-badge-native/
+          if-no-files-found: error
+          retention-days: 7
+
       - name: Upload notifications native foreground evidence
         if: ${{ always() && steps.notifications_native.conclusion != 'skipped' }}
         uses: actions/upload-artifact@v4

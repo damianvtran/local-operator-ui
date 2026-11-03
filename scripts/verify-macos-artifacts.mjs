@@ -43,7 +43,10 @@ import {
 import { isEntryPoint } from "./entry-point.mjs";
 import {
 	EMBEDDED_PROVISIONING_PROFILE_PATH,
+	plistStringValues,
+	profileAllowlistAuthorizes,
 	profileBackedEntitlementKeys,
+	unauthorizedClaims,
 } from "./macos-entitlement-policy.mjs";
 import {
 	MACH_O_CPUTYPE,
@@ -227,13 +230,35 @@ export function profileAuthorizes(
 	 * granularities: with a `group` in hand the profile has to authorize THAT
 	 * value (the WebAuthn case, where a profile carrying a different group is a
 	 * passkey feature that can never work), and with only a `key` the profile has
-	 * to carry the entitlement at all (the general case, where the value is not
-	 * something this gate can judge).
+	 * to carry the entitlement at all. The bundle-wide walk no longer asks the
+	 * key-only form: it judges every claimed VALUE through
+	 * `unauthorizedEntitlementKeys` (agent review round 1, R3).
+	 */
+	/*
+	 * Through Apple's matching rule, not `===`: a real Developer ID profile
+	 * authorizes keychain groups as the team wildcard `<TEAM_ID>.*` and never
+	 * lists the WebAuthn group by name, so an exact comparison failed the one
+	 * profile that does authorize it. `profileAllowlistAuthorizes` is the copy the
+	 * renderer uses too (`scripts/macos-entitlement-policy.mjs`), and it still
+	 * refuses another team's wildcard and a bare `*`. The bundle id stays part of
+	 * the question: a group for a different app is a refusal even when a wildcard
+	 * would cover it.
 	 */
 	if (group != null && key === "keychain-access-groups") {
-		return webauthnEntitlementGroup(profileEntitlements, bundleId) === group;
+		if (bundleId && !group.endsWith(`.${bundleId}.webauthn`)) return false;
+		return profileAllowlistAuthorizes(
+			plistStringValues(profileEntitlements, key),
+			group,
+		);
 	}
 	return profileDeclaresKey(profileEntitlements, key);
+}
+
+/** Every `<key>` an entitlements plist names, in order, without values. */
+function entitlementKeyNames(plistText) {
+	return [...String(plistText ?? "").matchAll(/<key>([^<]+)<\/key>/g)].map(
+		([, key]) => key,
+	);
 }
 
 /** Whether a plist declares an entitlement key at all, whatever its value. */
@@ -290,7 +315,10 @@ export function mainExecutablePath(appPath) {
  * keeps the tight bound. `hostArch` is a parameter so the rule can be asserted on
  * a host other than the one running the test.
  */
-export function hostTranslatesExecutable(executable, hostArch = process.arch) {
+export function hostTranslatesExecutable(
+	executable,
+	hostArch = hostArchitecture(),
+) {
 	return (
 		hostArch === "arm64" && machOCpuType(executable) === MACH_O_CPUTYPE.X86_64
 	);
@@ -304,11 +332,128 @@ export function hostTranslatesExecutable(executable, hostArch = process.arch) {
  * so the rule is written once rather than twice as a ternary. Every other check
  * here reads files and needs no bound at all.
  */
-export function execBound(executable, hostArch = process.arch) {
+export function execBound(executable, hostArch = hostArchitecture()) {
 	return hostTranslatesExecutable(executable, hostArch)
 		? SPAWN_PROBE_TRANSLATED_TIMEOUT_MS
 		: SPAWN_PROBE_TIMEOUT_MS;
 }
+
+/**
+ * Why a check that would exec a TRANSLATED child refuses to, off hosted CI.
+ *
+ * EVIDENCE. On 2026-11-02 at 18:35:36 macOS 27.2 showed the operator "App Update
+ * Required: This version of "Local Operator" includes a component that will not
+ * open in macOS 28", and ecosystemd logged `[NOTIFICATION_SENT] decision=launch
+ * name=/Users/<user>/Local Operator.app bundle=com.local-operator`. The shipped arm64
+ * app was clean (0 Intel-only Mach-O; `app-native-components` enforces that). The
+ * launch that fired it was a local QA rig running `pnpm verify-macos-artifacts`
+ * against the x64 0.47.7 bundle on an arm64 Mac: `app-spawn`,
+ * `app-bytecode-loadable` and `app-seed-python-version` exec the bundle's
+ * x86_64 launcher / interpreter, the kernel hands them to Rosetta, and macOS
+ * attributes a Rosetta launch to the bundle's identifier and warns the operator
+ * against Local Operator. The notice is rate-limited to one per 86400 s, so every
+ * such run re-arms it for another day.
+ *
+ * THE RULE. A GitHub-hosted runner (`isGitHubHostedRunner`) has no operator to
+ * warn, so it still runs these probes - that is where the x64 artifact is
+ * proven. `CI=true` alone does not count (see `isGitHubHostedRunner`). Anywhere else the exec needs an explicit
+ * `LOCAL_OPERATOR_ALLOW_ROSETTA_EXEC=1`. A refused probe is a FAILED result, not
+ * a skip: this is a release gate and an unproven check must never read green.
+ * Static checks are unaffected - only the exec is withheld.
+ *
+ * `env` and `hostArch` are parameters so the rule is asserted without touching
+ * the real environment or needing a particular host.
+ */
+export function refusesLocalRosettaExec(
+	executable,
+	{ hostArch = hostArchitecture(), env = process.env } = {},
+) {
+	if (!hostLacksNativeSlice(executable, hostArch)) return false;
+	if (isGitHubHostedRunner(env)) return false;
+	return env.LOCAL_OPERATOR_ALLOW_ROSETTA_EXEC !== "1";
+}
+
+/**
+ * Whether `env` is a GitHub-HOSTED runner, the one place an exec under Rosetta
+ * has no operator to warn.
+ *
+ * The same two-variable test `verify-signed-update.mjs` gates its own launch on
+ * (review round 1, F4): `GITHUB_ACTIONS=true` alone also matches a self-hosted
+ * runner, which may be an operator's own Mac, and `CI=true` alone is set by local
+ * scripts (`asks-app-regression.mjs` exports it for `pnpm install`) and by agent
+ * shells, so neither suffices on its own. Both macOS jobs that run this gate
+ * (`publish.yml`, `signed-update-candidate.yml`) are `runs-on: macos-latest`,
+ * where the runner sets `RUNNER_ENVIRONMENT=github-hosted`, so CI keeps exec'ing.
+ */
+export function isGitHubHostedRunner(env = process.env) {
+	return (
+		env.GITHUB_ACTIONS === "true" && env.RUNNER_ENVIRONMENT === "github-hosted"
+	);
+}
+
+/**
+ * Whether an arm64 host would have to translate `executable`: it is Mach-O and
+ * carries no arm64 slice.
+ *
+ * WHY NOT `hostTranslatesExecutable`. That predicate decides a TIMEOUT and reads
+ * only thin headers, so a fat file answers "not translated" and keeps the tight
+ * bound - the safe direction for a bound. For a refusal the safe direction is the
+ * opposite: a fat launcher whose only slice is x86_64 still runs under Rosetta
+ * and still fires the notice (review round 1, F2), so this reads every slice. An
+ * unreadable file (`null`) is not refused: there is no evidence it is x86_64,
+ * and the gate's other checks already fail a bundle whose launcher is not
+ * Mach-O.
+ */
+function hostLacksNativeSlice(executable, hostArch) {
+	if (hostArch !== "arm64") return false;
+	const slices = machOArchitectures(executable);
+	return slices != null && !slices.includes(MACH_O_CPUTYPE.ARM64);
+}
+
+/**
+ * The architecture of the HARDWARE this verifier runs on, not of its `node`.
+ *
+ * An x64 `node` on Apple silicon reports `process.arch === "x64"` while every
+ * x86_64 child it starts still runs under Rosetta (review round 1, F3), so a
+ * translated process is asked `sysctl.proc_translated`, which is 1 exactly when
+ * Rosetta is running it. The ask is made only when it can change the answer
+ * (darwin, non-arm64 node) and at most once per process, so a native host pays
+ * nothing. Any failure - no sysctl, a non-zero exit, unexpected output - answers
+ * "not translated": on an Intel Mac the key does not exist, and that is the host
+ * where `process.arch` is already right. `arch`, `platform` and
+ * `readTranslated` are parameters so each branch is asserted on any host.
+ */
+export function hostArchitecture({
+	arch = process.arch,
+	platform = process.platform,
+	readTranslated = processIsTranslated,
+} = {}) {
+	if (arch === "arm64" || platform !== "darwin") return arch;
+	return readTranslated() ? "arm64" : arch;
+}
+
+let translatedAnswer = null;
+
+/** `sysctl -n sysctl.proc_translated` is 1, asked once; false on any failure. */
+export function processIsTranslated() {
+	if (translatedAnswer == null) {
+		try {
+			const result = spawnSync(
+				"/usr/sbin/sysctl",
+				["-n", "sysctl.proc_translated"],
+				{ encoding: "utf8", timeout: 5_000 },
+			);
+			translatedAnswer = result.status === 0 && result.stdout.trim() === "1";
+		} catch {
+			translatedAnswer = false;
+		}
+	}
+	return translatedAnswer;
+}
+
+/** The failure a refused exec check reports, written once for all three. */
+export const ROSETTA_EXEC_REFUSAL =
+	"Not executed: exec of an x86_64 bundle on an arm64 host runs under Rosetta and can make macOS show the macOS-28 'App Update Required' notice against Local Operator; run on a GitHub-hosted runner or set LOCAL_OPERATOR_ALLOW_ROSETTA_EXEC=1";
 
 /**
  * The entitlements an embedded provisioning profile authorizes, if it has one.
@@ -342,7 +487,8 @@ export function artifactChecks({
 	appPath,
 	dmgPath,
 	profile = null,
-	hostArch = process.arch,
+	hostArch = hostArchitecture(),
+	env = process.env,
 }) {
 	const checks = [];
 	const bundleId = appPath ? bundleIdentifierFromInfoPlist(appPath) : null;
@@ -350,6 +496,12 @@ export function artifactChecks({
 	// The launcher the checks exec, resolved once: the spawn probe's bound depends
 	// on the architecture in ITS header, and both are read from one path lookup.
 	const executable = appPath ? mainExecutablePath(appPath) : null;
+	// Decided once for both exec checks; `runChecks` reports a refused check as
+	// failed without running it. See `refusesLocalRosettaExec`.
+	const refusal =
+		executable && refusesLocalRosettaExec(executable, { hostArch, env })
+			? ROSETTA_EXEC_REFUSAL
+			: null;
 	if (appPath) {
 		checks.push(
 			{
@@ -408,6 +560,7 @@ export function artifactChecks({
 				id: "app-spawn",
 				scope: "app",
 				target: executable,
+				refusal,
 				description:
 					"the app's main executable really spawns (run in Electron's node mode, which exits immediately unless the OS refuses the exec)",
 				command: executable,
@@ -455,6 +608,7 @@ export function artifactChecks({
 				id: "app-bytecode-loadable",
 				scope: "app",
 				target: executable,
+				refusal,
 				description:
 					"the app's own Electron accepts the V8 bytecode it ships (arm64 bytecode in an x64 bundle is refused at load, and every signature check passes on it)",
 				command: executable,
@@ -516,6 +670,13 @@ export function artifactChecks({
 				// default here — the group absent, passkeys inert — and a PASS.
 				command: CODESIGN,
 				args: ["-d", "--entitlements", "-", "--xml", appPath],
+				// Key names only, never the plist: every restricted value embeds the
+				// team id, which the renderer never prints either, and the whole XML
+				// is noise in a CI row (QA round 1, Q2).
+				report: (result) =>
+					result.status === 0
+						? `entitlement keys: ${entitlementKeyNames(result.stdout).join(", ") || "(none)"}`
+						: null,
 				expect: (result) => {
 					// "We could not ask" is not "nothing is claimed", and an empty
 					// plist must not pass just because `[].every()` is true: a read
@@ -1065,7 +1226,7 @@ export function seedBootstrapCheck(appPath) {
  */
 export function seedVersionCheck(
 	appPath,
-	{ run = spawnRunner, hostArch = process.arch } = {},
+	{ run = spawnRunner, hostArch = hostArchitecture(), env = process.env } = {},
 ) {
 	return appCheck(
 		"app-seed-python-version",
@@ -1080,6 +1241,8 @@ export function seedVersionCheck(
 			const python = join(root, "bin", "python3");
 			if (!existsSync(python))
 				throw new Error(`The seed has no bin/python3 to ask: ${python}`);
+			if (refusesLocalRosettaExec(python, { hostArch, env }))
+				throw new Error(ROSETTA_EXEC_REFUSAL);
 			const result = run(
 				python,
 				["-I", "-B", "--version"],
@@ -1256,6 +1419,54 @@ export function nativeComponentsCheck(appPath, { run = spawnRunner } = {}) {
 }
 
 /**
+ * The nested `.app` (relative to the outer bundle) whose MAIN executable
+ * `executable` is, or null — for `ShipIt`, the crashpad handler, the bundled
+ * python and anything else that is not a nested bundle's own launcher.
+ *
+ * Only a bundle's `CFBundleExecutable` is covered by that bundle's embedded
+ * profile, so an executable that merely sits somewhere inside a helper `.app`
+ * is not given the helper's profile: the strict reading, because the lenient one
+ * is how a claim with no profile behind it gets past this gate.
+ */
+export function nestedAppBundle(appPath, executable) {
+	const parts = executable.split("/");
+	for (let index = parts.length - 1; index > 0; index -= 1) {
+		if (!parts[index - 1].endsWith(".app")) continue;
+		const bundle = parts.slice(0, index).join("/");
+		const launcher = mainExecutablePath(join(appPath, bundle));
+		return launcher === join(appPath, executable) ? bundle : null;
+	}
+	return null;
+}
+
+/**
+ * The keys of `keys` (restricted claims read off one signature) that `profile`
+ * does not authorize.
+ *
+ * VALUES, not key presence (agent review round 1, R3; QA round 1, Q1): a string
+ * or array claim is judged value by value through `unauthorizedClaims`, the same
+ * helper the renderer refuses a profile with, so a profile issued for another
+ * app id (the key agent's `<TEAM>.com.local-operator.lopkeyagent` under a
+ * `<TEAM>.com.local-operator` signature) is a failure here too. A claim with no
+ * string value (a boolean, an empty array) has nothing to match, so the profile
+ * has to declare the key — the only question that can be asked of it. No
+ * profile authorizes nothing.
+ */
+export function unauthorizedEntitlementKeys(profile, signature, keys) {
+	if (!profile) return [...keys];
+	return keys.filter((key) => {
+		const values = plistStringValues(signature, key);
+		if (values.length === 0) return !profileDeclaresKey(profile, key);
+		return (
+			unauthorizedClaims(
+				profile,
+				values.map((value) => [key, value]),
+			).length > 0
+		);
+	});
+}
+
+/**
  * Every restricted entitlement ANY executable in the bundle claims, judged
  * against the profile the bundle embeds.
  *
@@ -1278,7 +1489,6 @@ export function profileAuthorizationCheck(
 	{ run = spawnRunner, profile = null } = {},
 ) {
 	const embedded = profile ?? readEmbeddedProfileEntitlements(appPath, run);
-	const bundleId = bundleIdentifierFromInfoPlist(appPath);
 	// A walk that cannot run is a third outcome, and it must not escape as a stack
 	// trace: the gate reports rows, and `require-report.sh` wants a report even when
 	// the thing it was pointed at could not be read.
@@ -1289,6 +1499,19 @@ export function profileAuthorizationCheck(
 	} catch (error) {
 		walkError = error.message ?? String(error);
 	}
+	const mainRelative = mainExecutablePath(appPath).slice(appPath.length + 1);
+	// One `security cms -D` per nested bundle, however many executables it holds.
+	const nestedProfiles = new Map();
+	const nestedBundleProfile = (executable) => {
+		const bundle = nestedAppBundle(appPath, executable);
+		if (bundle == null) return { present: false, entitlements: null };
+		if (!nestedProfiles.has(bundle))
+			nestedProfiles.set(
+				bundle,
+				readEmbeddedProfileEntitlements(join(appPath, bundle), run),
+			);
+		return nestedProfiles.get(bundle);
+	};
 	const unauthorized = [];
 	const unreadable = [];
 	for (const relative of executables) {
@@ -1303,16 +1526,29 @@ export function profileAuthorizationCheck(
 			unreadable.push(relative);
 			continue;
 		}
-		for (const key of profileBackedEntitlementKeys(result.stdout)) {
-			const group =
-				key === "keychain-access-groups"
-					? webauthnEntitlementGroup(result.stdout, bundleId)
-					: null;
-			if (!profileAuthorizes(embedded.entitlements, key, bundleId, group))
-				unauthorized.push(
-					`${relative} claims ${key}${group ? ` (${group})` : ""}`,
-				);
-		}
+		const keys = profileBackedEntitlementKeys(result.stdout);
+		if (keys.length === 0) continue;
+		/*
+		 * WHICH profile judges this executable. macOS authorizes a restricted claim
+		 * against the profile of the bundle the executable belongs to, so the main
+		 * bundle's profile covers `CFBundleExecutable` and nothing else: a helper
+		 * `.app` is judged by its OWN `Contents/embedded.provisionprofile`, and
+		 * `ShipIt` (inside `Squirrel.framework`, which no profile can sit in) by
+		 * none. Judging every executable against the main bundle's profile was the
+		 * hole: once a team-wildcard profile is always embedded, the 0.29.6 shape —
+		 * the group on `ShipIt` and the helpers — passed (agent review round 1, R1).
+		 */
+		const owner =
+			relative === mainRelative ? embedded : nestedBundleProfile(relative);
+		const denied = unauthorizedEntitlementKeys(
+			owner.entitlements,
+			result.stdout,
+			keys,
+		);
+		for (const key of denied)
+			unauthorized.push(
+				`${relative} claims ${key}${owner === embedded ? "" : owner.present ? " (its own bundle's profile does not authorize it)" : " (it has no profile of its own; the main bundle's does not extend to it)"}`,
+			);
 	}
 	const reasons = [];
 	if (walkError != null)
@@ -1429,46 +1665,72 @@ function withCheckEnv(env, work) {
  * different reads — which is why the read happens once here when the caller has
  * none to hand in (review round 1, finding 5).
  */
-export function runChecks({ appPath, dmgPath, run, profile = null }) {
+export function runChecks({
+	appPath,
+	dmgPath,
+	run,
+	profile = null,
+	hostArch = hostArchitecture(),
+	env = process.env,
+}) {
 	const embedded = appPath
 		? (profile ?? readEmbeddedProfileEntitlements(appPath, run))
 		: { present: false, entitlements: null };
-	return artifactChecks({ appPath, dmgPath, profile: embedded }).map(
-		(check) => {
-			const result = withCheckEnv(check.env, () =>
-				run(check.command, check.args, check.input, check.env, check.timeoutMs),
-			);
-			const passed = check.expect(result);
-			const output = [result.stdout, result.stderr]
+	return artifactChecks({
+		appPath,
+		dmgPath,
+		profile: embedded,
+		hostArch,
+		env,
+	}).map((check) => {
+		// Refused before `run`: the exec itself is what fires the notice, so the
+		// child must never start (see `refusesLocalRosettaExec`).
+		if (check.refusal)
+			return {
+				id: check.id,
+				scope: check.scope,
+				description: check.description,
+				target: check.target,
+				passed: false,
+				output: check.refusal,
+			};
+		const result = withCheckEnv(check.env, () =>
+			run(check.command, check.args, check.input, check.env, check.timeoutMs),
+		);
+		const passed = check.expect(result);
+		// A check that knows what its raw output must not leak says so through
+		// `report`; null falls back to the generic trim below (stderr included).
+		const output =
+			check.report?.(result) ??
+			[result.stdout, result.stderr]
 				.join("\n")
 				.trim()
 				.split("\n")
 				.filter((line) => line.trim().length > 0)
 				.slice(0, 4)
 				.join(" | ");
-			return {
-				id: check.id,
-				scope: check.scope,
-				description: check.description,
-				target: check.target,
-				passed,
-				// A check that died without printing anything — the shape an OS refusal
-				// takes, since the process never ran — would otherwise report an empty
-				// reason, which reads as "no detail" rather than "killed at spawn".
-				output:
-					output ||
-					[
-						result.status === null
-							? "no exit status (the child never ran to an exit)"
-							: `exit ${result.status}`,
-						result.signal ? `killed by ${result.signal}` : null,
-						result.timedOut ? "did not exit within the check's bound" : null,
-					]
-						.filter(Boolean)
-						.join("; "),
-			};
-		},
-	);
+		return {
+			id: check.id,
+			scope: check.scope,
+			description: check.description,
+			target: check.target,
+			passed,
+			// A check that died without printing anything — the shape an OS refusal
+			// takes, since the process never ran — would otherwise report an empty
+			// reason, which reads as "no detail" rather than "killed at spawn".
+			output:
+				output ||
+				[
+					result.status === null
+						? "no exit status (the child never ran to an exit)"
+						: `exit ${result.status}`,
+					result.signal ? `killed by ${result.signal}` : null,
+					result.timedOut ? "did not exit within the check's bound" : null,
+				]
+					.filter(Boolean)
+					.join("; "),
+		};
+	});
 }
 
 export function summarize(results) {
