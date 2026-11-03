@@ -22,6 +22,7 @@ import type {
 	OwnerAuditConversation,
 	OwnerAuditMessage,
 } from "../../../../shared/team-bridge-owner-audit-contract";
+import { toBridgeFileDescriptor } from "./attachments/attachment-model";
 import { AuditAttachmentGroup } from "./attachments/audit-attachment-group";
 import { auditMessageScope } from "./attachments/audit-attachment-scope";
 import { TeamBridgeMessageList } from "./team-bridge-message-list";
@@ -348,6 +349,8 @@ function AuditTranscript({
 				const verdict = delivery === "own" ? null : VERDICT[delivery];
 				const attachmentCount =
 					message.attachments?.length || message.attachment_count || 0;
+				const files = (message.files ?? []).map(toBridgeFileDescriptor);
+				const fileCount = Math.max(files.length, message.file_count ?? 0);
 				return {
 					badge: verdict && (
 						<Badge variant={verdict.variant}>{t(verdict.copy)}</Badge>
@@ -363,7 +366,7 @@ function AuditTranscript({
 					   no read markers, drafts or agent feed. */
 					withheldCopy: t("ui.ownerAudit.body_unavailable"),
 					attachments:
-						attachmentCount > 0 ? (
+						attachmentCount > 0 || fileCount > 0 ? (
 							<AuditAttachmentGroup
 								key={JSON.stringify([
 									attachmentScope?.accountId,
@@ -379,6 +382,8 @@ function AuditTranscript({
 								attachments={message.attachments ?? []}
 								count={attachmentCount}
 								compact={density === "compact"}
+								files={files}
+								fileCount={fileCount}
 							/>
 						) : undefined,
 					after:

@@ -337,5 +337,7 @@
 	"ui.teamBridge.attachmentCard.file": "File",
 	"ui.teamBridge.attachmentCard.bytes": "{size, number} bytes",
 	"ui.teamBridge.attachmentCard.metadata_only": "Preview unavailable in this view",
-	"ui.teamBridge.attachmentCard.unavailable": "Attachment unavailable"
+	"ui.teamBridge.attachmentCard.unavailable": "Attachment unavailable",
+	"ui.teamBridge.fileCard.list": "{count, plural, one {# file} other {# files}}",
+	"ui.teamBridge.fileCard.kind": "{kind, select, pdf {PDF} text {Text file} container {ZIP} other {File}}"
 }
