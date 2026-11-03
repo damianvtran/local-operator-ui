@@ -2597,8 +2597,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.chat.composer",
-			"source_sha256": "1770509f4dfefe58b931db662622e2cddbaa38323be792ec045947d9e6b3d204",
-			"target_sha256": "916b7e8b760c5df95dba90b48cbb82738a8f6295f39473269890ab27541d98eb",
+			"source_sha256": "54dacbce2bd8f60835ef73e0687746bdf7bcaba2da5294b90a71c8bcc16fa1d2",
+			"target_sha256": "0ed17d59b44e608440d5fe6b3c8f09f0e41e0d5a5de1d4bb2c6ee86464483015",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -2606,21 +2606,20 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-10-24",
+					"agent": "reviewer-session",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-03",
 					"result": "clean",
-					"instance": "es-extract-a815d841bd5d-r2",
+					"instance": "54ec32ab1ef8-composer-es-r2",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/es-extract-a815d841bd5d-r2.json",
-					"receipt_sha256": "b37f2739657032c91a518679588dcd44e37ac6f5c75f6afe74db65ebd3ec150a",
-					"scope": "round-2 extraction audit at PR #1403 head d082bd9595 (scope and delta as recorded in the receipt)",
-					"note": "Actual model deepseek/deepseek-flash as named in the receipt; no fallback disclosed."
+					"receipt": "i18n/receipts/54ec32ab1ef8-composer-es-r2.json",
+					"receipt_sha256": "ab4587f71a123cccbf7417c54c2cf4dbaa782577f30c21072aa8c7feb083db33",
+					"scope": "Delta audit of the 5 ui.chat.composer keys added by the composer button-slot change (insert_transcript, insert_transcript_hint, send_recording, send_recording_hint, steer_hint); previously unchanged messages retain prior provenance"
 				}
 			],
 			"status": "audited",
@@ -2701,6 +2700,30 @@
 					"source_sha256": "12ebdb50d49dfe5e7101fc29293485d5366f5a52ae7ac3c7dca9ef985fcde8c9",
 					"status": "audited",
 					"target_sha256": "809cb71b2b6394758f0f2a3814b8350c7c5647b54342691b4c1b55f0c0c88917"
+				},
+				{
+					"source_sha256": "1770509f4dfefe58b931db662622e2cddbaa38323be792ec045947d9e6b3d204",
+					"target_sha256": "916b7e8b760c5df95dba90b48cbb82738a8f6295f39473269890ab27541d98eb",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-24",
+							"result": "clean",
+							"instance": "es-extract-a815d841bd5d-r2",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/es-extract-a815d841bd5d-r2.json",
+							"receipt_sha256": "b37f2739657032c91a518679588dcd44e37ac6f5c75f6afe74db65ebd3ec150a",
+							"scope": "round-2 extraction audit at PR #1403 head d082bd9595 (scope and delta as recorded in the receipt)",
+							"note": "Actual model deepseek/deepseek-flash as named in the receipt; no fallback disclosed."
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
@@ -12272,8 +12295,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.chat.composer",
-			"source_sha256": "1770509f4dfefe58b931db662622e2cddbaa38323be792ec045947d9e6b3d204",
-			"target_sha256": "64b9c66fc88c54d51235c558cb4b424d907f4ba0f04123e949980531d76d4c86",
+			"source_sha256": "54dacbce2bd8f60835ef73e0687746bdf7bcaba2da5294b90a71c8bcc16fa1d2",
+			"target_sha256": "0bca1253521f285780dc1bf1e091a1f3fbdc2125e4c34e738ee3ef929064167a",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -12281,19 +12304,20 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-10-25",
-					"result": "clean-with-findings",
-					"instance": "fr-bind-64b9c66fc88c",
+					"agent": "reviewer-session",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-03",
+					"result": "clean",
+					"instance": "54ec32ab1ef8-composer-fr-r2",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 2,
+						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/fr-bind-64b9c66fc88c.json",
-					"receipt_sha256": "692538d5e2b11eb5d27c07040b12ddfc5fee3f6a07d91e468d02f258fd241a50"
+					"receipt": "i18n/receipts/54ec32ab1ef8-composer-fr-r2.json",
+					"receipt_sha256": "52a18aeb2768c4a3e7e26cb04bb64f4bcfab89227e5feca97222ca6c2cb86aee",
+					"scope": "Delta audit of the 5 ui.chat.composer keys added by the composer button-slot change (insert_transcript, insert_transcript_hint, send_recording, send_recording_hint, steer_hint); previously unchanged messages retain prior provenance"
 				}
 			],
 			"status": "audited",
@@ -12395,6 +12419,28 @@
 							"receipt_sha256": "c56cf3241e239dc06441c5cff8c944ab04f7b81584390228b0c497e1d956842d",
 							"scope": "round-2 extraction audit at PR #1403 head d082bd9595 (scope and delta as recorded in the receipt)",
 							"note": "Actual model deepseek/deepseek-flash as named in the receipt; no fallback disclosed."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "1770509f4dfefe58b931db662622e2cddbaa38323be792ec045947d9e6b3d204",
+					"target_sha256": "64b9c66fc88c54d51235c558cb4b424d907f4ba0f04123e949980531d76d4c86",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-25",
+							"result": "clean-with-findings",
+							"instance": "fr-bind-64b9c66fc88c",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 2,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/fr-bind-64b9c66fc88c.json",
+							"receipt_sha256": "692538d5e2b11eb5d27c07040b12ddfc5fee3f6a07d91e468d02f258fd241a50"
 						}
 					],
 					"status": "audited"
@@ -22317,8 +22363,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.chat.composer",
-			"source_sha256": "1770509f4dfefe58b931db662622e2cddbaa38323be792ec045947d9e6b3d204",
-			"target_sha256": "2d7873a7ab5a8c793cbed81509369d26e8e4c2406d25a54ed5259443c67bed14",
+			"source_sha256": "54dacbce2bd8f60835ef73e0687746bdf7bcaba2da5294b90a71c8bcc16fa1d2",
+			"target_sha256": "f8b397961b777680c2f672ca9d4480555d3b948411f06f7559f2151c1c062b88",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -22326,21 +22372,20 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-10-24",
-					"result": "clean",
-					"instance": "hi-extract-a51f5b96d24e-r2",
+					"agent": "reviewer-session",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-03",
+					"result": "clean-with-findings",
+					"instance": "54ec32ab1ef8-composer-hi-r2",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 0
+						"minor": 1,
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/hi-extract-a51f5b96d24e-r2.json",
-					"receipt_sha256": "2cd6dd756cad65fa3c640189bcb0db1c158de53f19e93ded83de29eb610e4684",
-					"scope": "round-2 extraction audit at PR #1403 head d082bd9595 (scope and delta as recorded in the receipt)",
-					"note": "Actual model deepseek/deepseek-flash as named in the receipt; no fallback disclosed."
+					"receipt": "i18n/receipts/54ec32ab1ef8-composer-hi-r2.json",
+					"receipt_sha256": "d59e8c44b621899744637e34569b5cd8710910a7b5efe37419510f1b5d215491",
+					"scope": "Delta audit of the 5 ui.chat.composer keys added by the composer button-slot change (insert_transcript, insert_transcript_hint, send_recording, send_recording_hint, steer_hint); previously unchanged messages retain prior provenance"
 				}
 			],
 			"status": "audited",
@@ -22421,6 +22466,30 @@
 					"source_sha256": "12ebdb50d49dfe5e7101fc29293485d5366f5a52ae7ac3c7dca9ef985fcde8c9",
 					"status": "audited",
 					"target_sha256": "b23713ea4a4f1c0ce0fbd624bfa41386437079644fca0784d66aa357c2e79b22"
+				},
+				{
+					"source_sha256": "1770509f4dfefe58b931db662622e2cddbaa38323be792ec045947d9e6b3d204",
+					"target_sha256": "2d7873a7ab5a8c793cbed81509369d26e8e4c2406d25a54ed5259443c67bed14",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-24",
+							"result": "clean",
+							"instance": "hi-extract-a51f5b96d24e-r2",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/hi-extract-a51f5b96d24e-r2.json",
+							"receipt_sha256": "2cd6dd756cad65fa3c640189bcb0db1c158de53f19e93ded83de29eb610e4684",
+							"scope": "round-2 extraction audit at PR #1403 head d082bd9595 (scope and delta as recorded in the receipt)",
+							"note": "Actual model deepseek/deepseek-flash as named in the receipt; no fallback disclosed."
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
@@ -32032,8 +32101,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.chat.composer",
-			"source_sha256": "1770509f4dfefe58b931db662622e2cddbaa38323be792ec045947d9e6b3d204",
-			"target_sha256": "1f6d86a128e758f04a6bd4cf6323ecdde8120e2d64a83148677dc89a3f7d090f",
+			"source_sha256": "54dacbce2bd8f60835ef73e0687746bdf7bcaba2da5294b90a71c8bcc16fa1d2",
+			"target_sha256": "e7ab27e9942a5a996c9f98af58f26882a7d051ab0cc204f09800eb434093793a",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -32042,19 +32111,20 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-10-25",
+					"agent": "reviewer-session",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-03",
 					"result": "clean-with-findings",
-					"instance": "ru-bind-1f6d86a128e7",
+					"instance": "54ec32ab1ef8-composer-ru-r2",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 2,
-						"nit": 2
+						"minor": 1,
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/ru-bind-1f6d86a128e7.json",
-					"receipt_sha256": "34376d9d0b170280675d15c951158a4b687d66050d039c250b95a054b430fb8a"
+					"receipt": "i18n/receipts/54ec32ab1ef8-composer-ru-r2.json",
+					"receipt_sha256": "97ee4cf6c1c9d043fb718c81c928ff2a25329794df133851902d0717aad9b4d9",
+					"scope": "Delta audit of the 5 ui.chat.composer keys added by the composer button-slot change (insert_transcript, insert_transcript_hint, send_recording, send_recording_hint, steer_hint); previously unchanged messages retain prior provenance"
 				}
 			],
 			"status": "audited",
@@ -32157,6 +32227,28 @@
 							"receipt_sha256": "ec704d008434a3ae6048b6914d7e34a380262b0b6cf64de3c940bb2a1fa52759",
 							"scope": "round-2 extraction audit at PR #1403 head d082bd9595 (scope and delta as recorded in the receipt)",
 							"note": "Actual model deepseek/deepseek-flash as named in the receipt; no fallback disclosed."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "1770509f4dfefe58b931db662622e2cddbaa38323be792ec045947d9e6b3d204",
+					"target_sha256": "1f6d86a128e758f04a6bd4cf6323ecdde8120e2d64a83148677dc89a3f7d090f",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-25",
+							"result": "clean-with-findings",
+							"instance": "ru-bind-1f6d86a128e7",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 2,
+								"nit": 2
+							},
+							"receipt": "i18n/receipts/ru-bind-1f6d86a128e7.json",
+							"receipt_sha256": "34376d9d0b170280675d15c951158a4b687d66050d039c250b95a054b430fb8a"
 						}
 					],
 					"status": "audited"
@@ -41746,8 +41838,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.chat.composer",
-			"source_sha256": "1770509f4dfefe58b931db662622e2cddbaa38323be792ec045947d9e6b3d204",
-			"target_sha256": "73b1d6ee3b51609d1571611a2c588171d2be01816dfaea71f1585eb9f568d270",
+			"source_sha256": "54dacbce2bd8f60835ef73e0687746bdf7bcaba2da5294b90a71c8bcc16fa1d2",
+			"target_sha256": "6775be2196b44119e897b7efdf3098ebc262025dd01c5f72a8cf32da430867c9",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -41755,21 +41847,20 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-10-24",
-					"result": "clean",
-					"instance": "ur-extract-d082bd9595-r2",
+					"agent": "reviewer-session",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-03",
+					"result": "clean-with-findings",
+					"instance": "54ec32ab1ef8-composer-ur-r2",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 0
+						"minor": 1,
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/ur-extract-d082bd9595-r2.json",
-					"receipt_sha256": "44374566d4590f979488fc37452f1d1a9756b5da8629bdd74a240e1950e54757",
-					"scope": "round-2 extraction audit at PR #1403 head d082bd9595 (scope and delta as recorded in the receipt)",
-					"note": "Actual model deepseek/deepseek-flash as named in the receipt; no fallback disclosed."
+					"receipt": "i18n/receipts/54ec32ab1ef8-composer-ur-r2.json",
+					"receipt_sha256": "e803737cd11954480184dd8b9965efb0fed434b7d28da4139f69e10191fdf3b2",
+					"scope": "Delta audit of the 5 ui.chat.composer keys added by the composer button-slot change (insert_transcript, insert_transcript_hint, send_recording, send_recording_hint, steer_hint); previously unchanged messages retain prior provenance"
 				}
 			],
 			"status": "audited",
@@ -41874,6 +41965,30 @@
 					"source_sha256": "12ebdb50d49dfe5e7101fc29293485d5366f5a52ae7ac3c7dca9ef985fcde8c9",
 					"status": "audited",
 					"target_sha256": "c8fef2ffb838ab3e8ec564768d66c3484ab007784fca1f44ba21f925b78da9a5"
+				},
+				{
+					"source_sha256": "1770509f4dfefe58b931db662622e2cddbaa38323be792ec045947d9e6b3d204",
+					"target_sha256": "73b1d6ee3b51609d1571611a2c588171d2be01816dfaea71f1585eb9f568d270",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-24",
+							"result": "clean",
+							"instance": "ur-extract-d082bd9595-r2",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/ur-extract-d082bd9595-r2.json",
+							"receipt_sha256": "44374566d4590f979488fc37452f1d1a9756b5da8629bdd74a240e1950e54757",
+							"scope": "round-2 extraction audit at PR #1403 head d082bd9595 (scope and delta as recorded in the receipt)",
+							"note": "Actual model deepseek/deepseek-flash as named in the receipt; no fallback disclosed."
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
@@ -51346,8 +51461,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.chat.composer",
-			"source_sha256": "1770509f4dfefe58b931db662622e2cddbaa38323be792ec045947d9e6b3d204",
-			"target_sha256": "a6bc2d8119b3fabeb915560fac9ba7ae3ff342696b3acbe187675c21fba53a6b",
+			"source_sha256": "54dacbce2bd8f60835ef73e0687746bdf7bcaba2da5294b90a71c8bcc16fa1d2",
+			"target_sha256": "a8e59cfdc1b931e5aaf02cab9868d2066a9dc9df97792d3342608d91eea9ba38",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -51355,21 +51470,20 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-10-24",
-					"result": "clean",
-					"instance": "vi-extract-517c59bfdfe3-r2",
+					"agent": "reviewer-session",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-03",
+					"result": "clean-with-findings",
+					"instance": "54ec32ab1ef8-composer-vi-r2",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
+						"minor": 1,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/vi-extract-517c59bfdfe3-r2.json",
-					"receipt_sha256": "d7ce2a90d7e6378933cf8d95f27ca5b9471499432507c93bfc8cfd396962e502",
-					"scope": "round-2 extraction audit at PR #1403 head d082bd9595 (scope and delta as recorded in the receipt)",
-					"note": "Actual model deepseek/deepseek-flash as named in the receipt; no fallback disclosed."
+					"receipt": "i18n/receipts/54ec32ab1ef8-composer-vi-r2.json",
+					"receipt_sha256": "ae400cfa38271257382412287ad644bf841b30c1c1bbb72fe1ae3ba45c2db37a",
+					"scope": "Delta audit of the 5 ui.chat.composer keys added by the composer button-slot change (insert_transcript, insert_transcript_hint, send_recording, send_recording_hint, steer_hint); previously unchanged messages retain prior provenance"
 				}
 			],
 			"status": "audited",
@@ -51450,6 +51564,30 @@
 					"source_sha256": "12ebdb50d49dfe5e7101fc29293485d5366f5a52ae7ac3c7dca9ef985fcde8c9",
 					"status": "audited",
 					"target_sha256": "f4fca37afff69f7c56b407cd5eb7d95a8a5afeb24fc726127d0938a6230ad2af"
+				},
+				{
+					"source_sha256": "1770509f4dfefe58b931db662622e2cddbaa38323be792ec045947d9e6b3d204",
+					"target_sha256": "a6bc2d8119b3fabeb915560fac9ba7ae3ff342696b3acbe187675c21fba53a6b",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-24",
+							"result": "clean",
+							"instance": "vi-extract-517c59bfdfe3-r2",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/vi-extract-517c59bfdfe3-r2.json",
+							"receipt_sha256": "d7ce2a90d7e6378933cf8d95f27ca5b9471499432507c93bfc8cfd396962e502",
+							"scope": "round-2 extraction audit at PR #1403 head d082bd9595 (scope and delta as recorded in the receipt)",
+							"note": "Actual model deepseek/deepseek-flash as named in the receipt; no fallback disclosed."
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
@@ -61634,8 +61772,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.chat.composer",
-			"source_sha256": "1770509f4dfefe58b931db662622e2cddbaa38323be792ec045947d9e6b3d204",
-			"target_sha256": "68cb70b7a354d4cbc622b0f69d4603d4fd58bcd512c8a574478ef10a46f8c0fd",
+			"source_sha256": "54dacbce2bd8f60835ef73e0687746bdf7bcaba2da5294b90a71c8bcc16fa1d2",
+			"target_sha256": "1ed41ca433cea51ba10c8a01d38852325472cf978af926c082d3fc8f07abd586",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -61644,21 +61782,20 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-10-24",
-					"result": "clean",
-					"instance": "zh-cn-extract-734dc4749c3d-r2",
+					"agent": "reviewer-session",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-03",
+					"result": "clean-with-findings",
+					"instance": "54ec32ab1ef8-composer-zh-cn-r2",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
+						"minor": 2,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/zh-cn-extract-734dc4749c3d-r2.json",
-					"receipt_sha256": "b450f3650b62cd22fbfd25ab914b24064faa002ca8d0a016fe31aadd00d3a265",
-					"scope": "round-2 extraction audit at PR #1403 head d082bd9595 (scope and delta as recorded in the receipt)",
-					"note": "Actual model deepseek/deepseek-flash as named in the receipt; no fallback disclosed."
+					"receipt": "i18n/receipts/54ec32ab1ef8-composer-zh-cn-r2.json",
+					"receipt_sha256": "e96e9a540c97eec027192601f5c03fab87812fec74c2c2e5a4cbd3cd5f747928",
+					"scope": "Delta audit of the 5 ui.chat.composer keys added by the composer button-slot change (insert_transcript, insert_transcript_hint, send_recording, send_recording_hint, steer_hint); previously unchanged messages retain prior provenance"
 				}
 			],
 			"status": "audited",
@@ -61764,6 +61901,30 @@
 					"source_sha256": "12ebdb50d49dfe5e7101fc29293485d5366f5a52ae7ac3c7dca9ef985fcde8c9",
 					"status": "audited",
 					"target_sha256": "ad6aa6e0381c1da74c12396f2ace960f575f09214d83180bfc7e1bc645f416b4"
+				},
+				{
+					"source_sha256": "1770509f4dfefe58b931db662622e2cddbaa38323be792ec045947d9e6b3d204",
+					"target_sha256": "68cb70b7a354d4cbc622b0f69d4603d4fd58bcd512c8a574478ef10a46f8c0fd",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-24",
+							"result": "clean",
+							"instance": "zh-cn-extract-734dc4749c3d-r2",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/zh-cn-extract-734dc4749c3d-r2.json",
+							"receipt_sha256": "b450f3650b62cd22fbfd25ab914b24064faa002ca8d0a016fe31aadd00d3a265",
+							"scope": "round-2 extraction audit at PR #1403 head d082bd9595 (scope and delta as recorded in the receipt)",
+							"note": "Actual model deepseek/deepseek-flash as named in the receipt; no fallback disclosed."
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
