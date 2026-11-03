@@ -7,6 +7,31 @@ import { build } from "esbuild";
 import { JSDOM } from "jsdom";
 import React, { act } from "react";
 
+// Shared, non-global matchers keep this touched test file lint-ratchet clean.
+const BOUND_ATTACHMENT_ID = /batt_a/;
+const INLINE_BYTES = /base64|data:|iVBOR/;
+const PREVIEW_BLOB_URL = /^blob:test\//;
+const TERMINAL_REASON = /expired|deleted|withheld/i;
+const ATTACHMENT_ID_PREFIX = /batt_/;
+const MARKDOWN_ALT = /shot/;
+const UNTRUSTED_IMAGE_URL = /https:\/\/evil\.example\/p\.png/;
+const RENDER_LIMIT_ERROR = /rendered more than 3 times/;
+const SETTLE_LIMIT_ERROR = /did not settle within 20 ms/;
+const STORAGE_REFUSAL = /browser storage denied/;
+const ACCOUNT_CHANGED_COPY =
+	/Signed-in account has changed since this message was started/i;
+const SIGNED_OUT_COPY = /signed out/i;
+const IMAGE_QUOTA_COPY = /too many images/i;
+const RETRY_COPY = /retry/i;
+const OPAQUE_ID = /opaque/;
+const COUNT_ONLY_COPY = /3 attachments/;
+const PRIVATE_TERMINAL_METADATA =
+	/expired|withheld|deleted|unknown|revoked|opaque|2,048/;
+const GENERIC_FILE_COPY = /File/;
+const LOCALIZED_BYTE_COUNT = /2,048 bytes/;
+const PRIVATE_FILE_METADATA = /secret|script|private/;
+const TINY_RESERVED_BOX = /width: 64px; height: 64px/;
+
 /*
  * Team Bridge image attachments: wire contract, pure model, staging hook,
  * draft persistence and message rendering - exercising the SHIPPED modules
@@ -891,8 +916,8 @@ test("drafts persist descriptors only, restore them, and the logout fence clears
 	const raw = Object.entries(localStorage).find(([key]) =>
 		key.startsWith("team-bridge-authored-drafts:v1:"),
 	)[1];
-	assert.match(raw, /batt_a/);
-	assert.doesNotMatch(raw, /base64|data:|iVBOR/, "no image bytes in storage");
+	assert.match(raw, BOUND_ATTACHMENT_ID);
+	assert.doesNotMatch(raw, INLINE_BYTES, "no image bytes in storage");
 	// A tampered entry carrying bytes is dropped on read, never restored.
 	const key = Object.keys(localStorage).find((k) =>
 		k.startsWith("team-bridge-authored-drafts:v1:"),
@@ -1025,7 +1050,7 @@ test("bubble: images render ONLY from attachments[], fetched member-gated; place
 	}
 	const imgs = [...view.element.querySelectorAll("img")];
 	assert.equal(imgs.length, 1);
-	assert.match(imgs[0].getAttribute("src"), /^blob:test\//);
+	assert.match(imgs[0].getAttribute("src"), PREVIEW_BLOB_URL);
 	const placeholders = [
 		...view.element.querySelectorAll("[data-attachment-placeholder]"),
 	].map((node) => node.getAttribute("data-attachment-placeholder"));
@@ -1035,7 +1060,7 @@ test("bubble: images render ONLY from attachments[], fetched member-gated; place
 			.length,
 		2,
 	);
-	assert.doesNotMatch(view.element.textContent, /expired|deleted|withheld/i);
+	assert.doesNotMatch(view.element.textContent, TERMINAL_REASON);
 	assert.equal(
 		view.element.querySelectorAll("button").length,
 		1,
@@ -1048,7 +1073,7 @@ test("bubble: images render ONLY from attachments[], fetched member-gated; place
 	);
 	assert.doesNotMatch(
 		view.element.textContent,
-		/batt_/,
+		ATTACHMENT_ID_PREFIX,
 		"ids never reach the screen",
 	);
 	await view.close();
@@ -1067,8 +1092,8 @@ test("markdown images in a body stay alt text and fetch nothing", async () => {
 		}),
 	]);
 	assert.equal(view.element.querySelectorAll("img").length, 0);
-	assert.match(view.element.textContent, /shot/);
-	assert.match(view.element.textContent, /https:\/\/evil\.example\/p\.png/);
+	assert.match(view.element.textContent, MARKDOWN_ALT);
+	assert.match(view.element.textContent, UNTRUSTED_IMAGE_URL);
 	assert.equal(mediaCalls.length, 0);
 	await view.close();
 });
@@ -1872,10 +1897,10 @@ test("fail-fast guards: the render budget and the settle bound turn a runaway in
 	budget.tick();
 	budget.tick();
 	assert.equal(budget.count, 3);
-	assert.throws(() => budget.tick(), /rendered more than 3 times/);
+	assert.throws(() => budget.tick(), RENDER_LIMIT_ERROR);
 	await assert.rejects(
 		within(20, new Promise(() => {}), "a step that never settles"),
-		/did not settle within 20 ms/,
+		SETTLE_LIMIT_ERROR,
 	);
 	assert.equal(
 		await within(1000, Promise.resolve("ok"), "a settled step"),
@@ -2005,15 +2030,15 @@ test("denied browser storage: attachment draft and descriptor paths render, read
 		// Harness self-check: a bare `localStorage` read (what the pre-fix
 		// status clients did) now throws, so a reintroduced bare read fails
 		// the identity() assertion below instead of finding a working store.
-		assert.throws(() => localStorage, /browser storage denied/);
-		assert.throws(() => globalThis.localStorage, /browser storage denied/);
-		assert.throws(() => window.localStorage, /browser storage denied/);
+		assert.throws(() => localStorage, STORAGE_REFUSAL);
+		assert.throws(() => globalThis.localStorage, STORAGE_REFUSAL);
+		assert.throws(() => window.localStorage, STORAGE_REFUSAL);
 		// And the pre-fix status-client shape, called through the real
 		// reconcileDraftAccount, now rejects: the harness would catch it.
 		await assert.rejects(
 			(async () =>
 				m.reconcileDraftAccount(localStorage, { state: "signed_out" }))(),
-			/browser storage denied/,
+			STORAGE_REFUSAL,
 		);
 		assert.equal(
 			m.browserDraftStorage(),
@@ -2631,23 +2656,23 @@ test("R1-01: an account change is its own sentence — never a quota, never a si
 		const text = element.textContent;
 		assert.match(
 			text,
-			/Signed-in account has changed since this message was started/i,
+			ACCOUNT_CHANGED_COPY,
 			"the account-change sentence is shown",
 		);
 		assert.equal(
-			/signed out/i.test(text),
+			SIGNED_OUT_COPY.test(text),
 			false,
 			"a sign-out is a different fact and must not be claimed",
 		);
 		assert.equal(
-			/too many images/i.test(text),
+			IMAGE_QUOTA_COPY.test(text),
 			false,
 			"the quota sentence is reserved for the actual limit refusal",
 		);
 		// A retry would 409 again until the account is resolved.
 		assert.equal(
 			[...element.querySelectorAll("button")].some((button) =>
-				/retry/i.test(button.textContent ?? ""),
+				RETRY_COPY.test(button.textContent ?? ""),
 			),
 			false,
 			"no Retry on an account mismatch",
@@ -2729,9 +2754,9 @@ test("shared audit cards: bound descriptors and count-only receipts never fetch"
 		const view = await renderAttachmentGroup(props);
 		assert.equal(view.element.querySelectorAll("li").length, 1);
 		assert.equal(view.element.querySelectorAll("button,img,a").length, 0);
-		assert.doesNotMatch(view.element.textContent, /opaque/);
+		assert.doesNotMatch(view.element.textContent, OPAQUE_ID);
 		if (props.count === 3)
-			assert.match(view.element.textContent, /3 attachments/);
+			assert.match(view.element.textContent, COUNT_ONLY_COPY);
 		assert.equal(mediaCalls.length, 0);
 		await view.close();
 	}
@@ -2758,7 +2783,7 @@ test("shared cards: every terminal state is generic and cannot commission a prev
 		})),
 		renderPreview: () => {
 			commissioned++;
-			return React.createElement("button", null, "forbidden");
+			return React.createElement("button", { type: "button" }, "forbidden");
 		},
 	});
 	assert.equal(commissioned, 0);
@@ -2767,10 +2792,7 @@ test("shared cards: every terminal state is generic and cannot commission a prev
 			.length,
 		6,
 	);
-	assert.doesNotMatch(
-		view.element.textContent,
-		/expired|withheld|deleted|unknown|revoked|opaque|2,048/,
-	);
+	assert.doesNotMatch(view.element.textContent, PRIVATE_TERMINAL_METADATA);
 	assert.equal(view.element.querySelectorAll("button,img,a").length, 0);
 	await view.close();
 });
@@ -2793,9 +2815,9 @@ test("shared file metadata: generic safe name, no raw descriptor text or inline 
 		},
 	});
 	assert.equal(commissioned, 0);
-	assert.match(view.element.textContent, /File/);
-	assert.match(view.element.textContent, /2,048 bytes/);
-	assert.doesNotMatch(view.element.textContent, /secret|script|private/);
+	assert.match(view.element.textContent, GENERIC_FILE_COPY);
+	assert.match(view.element.textContent, LOCALIZED_BYTE_COUNT);
+	assert.doesNotMatch(view.element.textContent, PRIVATE_FILE_METADATA);
 	assert.equal(view.element.querySelectorAll("button,img,a,script").length, 0);
 	await view.close();
 });
@@ -2868,7 +2890,7 @@ test("member resource: authenticated refusal is terminal; 503 alone offers expli
 				null,
 				"ready preview replaces reserved loading frame",
 			);
-			assert.match(box, /width: 64px; height: 64px/);
+			assert.match(box, TINY_RESERVED_BOX);
 		}
 		await view.close();
 	}
