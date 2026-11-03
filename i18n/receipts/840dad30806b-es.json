@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "receipt_kind": "locale-audit (addition delta)",
+  "auditor": "translation-auditor",
+  "model": "openai/gpt-6.1-terra",
+  "instance": "840dad30806b-es",
+  "audit_session": "840dad30806b",
+  "date": "2026-10-31",
+  "status": "passed",
+  "namespace": "ui.ownerAudit",
+  "sha256": {
+    "en": "345d5403a39bf3963e64e31965887b58185be091c47c3fe1e9ea471c2591c5c0",
+    "es": "4458f22020b195036418e5c17532b971034a691248dc7380781d4afc3684bc67"
+  },
+  "context_sha256": "b7ee4423098a1105e6f276771d4a8d47781c3e9d1fc1a4e8a5cbe9548ec8972c",
+  "findings": [],
+  "scope": "Five added keys only; previous values are carried from the prior audit, not re-audited.",
+  "report_source": "Manager relayed independent translation-auditor session 840dad30806b: textual review clean for all seven locales, context parity passed, placeholders matched.",
+  "translator": {
+    "agent": "coder",
+    "model": "openai/gpt-6.1-terra",
+    "date": "2026-10-31"
+  },
+  "visual_checks": [
+    {
+      "file": "/Users/damian/.local-operator/sessions/1e496a833bcb/scratchpad/receipt-es.png",
+      "sha256": "1b28b7e0e20e7d112a2a1b653f7eee34ec789dfdd73be829c2a496d32e7a4667",
+      "observer": "coder; Storybook at 1280x720",
+      "scope": "Collapsed fixture copy fit"
+    }
+  ],
+  "limitations": [
+    "Prior unchanged translations retain their earlier audit.",
+    "Auditor report was relayed by the team manager; no native-speaker attestation or glossary revision was supplied.",
+    "Pagination fit for French and Spanish was not separately captured.",
+    "Visual frames are session scratch artifacts and should be attached to the review."
+  ]
+}

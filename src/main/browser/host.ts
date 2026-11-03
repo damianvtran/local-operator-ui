@@ -18,6 +18,7 @@ import * as networkActions from "./actions/network";
 import * as pageActions from "./actions/page";
 import * as queryActions from "./actions/query";
 import * as recordingActions from "./actions/recording";
+import * as selectActions from "./actions/select";
 import * as tabActions from "./actions/tabs";
 import * as uploadActions from "./actions/upload";
 import { collectAddressHistory, mergeAddressHistory } from "./address-history";
@@ -84,6 +85,7 @@ const DOCUMENT_SCOPED: ReadonlySet<string> = new Set([
 	// `hover` dispatches page events at the CURRENT document and reports its hit
 	// stack, so it is authorized on entry and on the result exactly like `click`.
 	"hover",
+	"select",
 	"scroll",
 	"logs",
 	// `download` names a control on the CURRENT document (the link or button that
@@ -149,6 +151,10 @@ const NAVIGATING_ACTIONS: ReadonlySet<string> = new Set([
 	// `changed`). It is deliberately NOT in NAVIGATION_ACTIONS: no per-hop `Fetch`
 	// gate, for the reason that set's comment gives.
 	"hover",
+	// A select change handler can navigate just like hover: adopt/authorize the
+	// landing on success OR throw, and restore if unapproved. No native popup,
+	// no agent-initiated document request to intercept with Fetch.
+	"select",
 	"download",
 	"upload",
 ]);
@@ -216,6 +222,7 @@ const TAB_SCOPED: ReadonlySet<string> = new Set([
 	"type",
 	"press",
 	"hover",
+	"select",
 	"scroll",
 	"logs",
 	"close",
@@ -791,6 +798,8 @@ export class BrowserHost implements BrowserActionContext {
 				return inputActions.press(this, params);
 			case "hover":
 				return inputActions.hover(this, params);
+			case "select":
+				return selectActions.select(this, params);
 			case "download":
 				return downloadActions.download(this, params);
 			case "upload":

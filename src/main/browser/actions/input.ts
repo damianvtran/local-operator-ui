@@ -85,7 +85,7 @@ import { describeRefusedKey, parsePressChord } from "./press-chord";
  * dispatch has no native mousedown focus default, so emulate that default BEFORE
  * click handlers run; a trailing focus would undo an application's destination.
  * This is not trusted compositor input or a full pointer compatibility emulator. */
-const CLICK_FUNCTION = `function () {
+export const CLICK_FUNCTION = `function () {
   const r = this.getBoundingClientRect();
   const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
   const opts = { bubbles: true, cancelable: true, view: window, clientX: cx, clientY: cy, button: 0 };

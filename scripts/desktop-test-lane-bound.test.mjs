@@ -193,11 +193,19 @@ test("diagnostic normal completion retains exit zero and start/end identity", as
 test("diagnostic ledger exposes normal worker exit while its TAP is buffered", async () => {
 	const rig = diagnosticFixture([blockSource, normalSource]);
 	try {
-		await until(() =>
-			rig
-				.events()
-				.some((e) => e.event === "worker-exit" && e.file === rig.files[1]),
-		);
+		// Each worker appends synchronously, but independent processes have no
+		// cross-file start order. The normal worker can exit before the blocked
+		// worker reaches its preload; wait for both facts before probing buffering
+		// or sending SIGTERM, so the snapshot still has a live blocked worker.
+		await until(() => {
+			const events = rig.events();
+			return (
+				events.some(
+					(e) => e.event === "worker-start" && e.file === rig.files[0],
+				) &&
+				events.some((e) => e.event === "worker-exit" && e.file === rig.files[1])
+			);
+		});
 		assert.ok(
 			rig
 				.events()

@@ -214,7 +214,7 @@ const notarizeStepBundle = await build({
 					loader: "js",
 					contents: `
 							export const notarize = async (opts) => {
-								globalThis.__loNotarizeCalls.push({ appPath: opts.appPath, tool: opts.tool });
+								globalThis.__loNotarizeCalls.push({ appPath: opts.appPath, tool: opts.tool, appleApiKey: opts.appleApiKey, appleApiKeyId: opts.appleApiKeyId, appleApiIssuer: opts.appleApiIssuer, appleId: opts.appleId });
 								const behavior = globalThis.__loNotarizeBehavior;
 								if (behavior) await behavior(opts);
 							};
@@ -4882,7 +4882,9 @@ test("an unsigned or unnotarized disk image fails the release assertions", () =>
 	};
 
 	const failing = summarize(
-		runChecks({ appPath: APP, dmgPath: DMG, run: shippedV0170 }),
+		// `env` is explicit so the result cannot depend on the shell's CI variables
+		// (the local-Rosetta exec guard reads them; see `refusesLocalRosettaExec`).
+		runChecks({ appPath: APP, dmgPath: DMG, run: shippedV0170, env: {} }),
 	);
 	assert.equal(failing.ok, false);
 	assert.deepEqual(
@@ -4935,7 +4937,8 @@ test("an unsigned or unnotarized disk image fails the release assertions", () =>
 		};
 	};
 	assert.equal(
-		summarize(runChecks({ appPath: APP, dmgPath: DMG, run: fixed })).ok,
+		summarize(runChecks({ appPath: APP, dmgPath: DMG, run: fixed, env: {} }))
+			.ok,
 		true,
 	);
 });
@@ -4961,6 +4964,19 @@ test("an unsigned or unnotarized disk image fails the release assertions", () =>
  * have to ask a different question than the ones already in this file.
  */
 const V0296_SIGNATURE_ENTITLEMENTS = `<plist version="1.0"><dict><key>com.apple.security.cs.allow-dyld-environment-variables</key><true/><key>com.apple.security.cs.allow-jit</key><true/><key>com.apple.security.cs.allow-unsigned-executable-memory</key><true/><key>com.apple.security.cs.disable-library-validation</key><true/><key>com.apple.security.device.audio-input</key><true/><key>com.apple.security.device.camera</key><true/><key>com.apple.security.device.microphone</key><true/><key>com.apple.security.device.screen-capture</key><true/><key>com.apple.security.files.bookmarks.app-scope</key><true/><key>com.apple.security.files.downloads.read-write</key><true/><key>com.apple.security.files.user-selected.read-write</key><true/><key>com.apple.security.network.client</key><true/><key>com.apple.security.network.server</key><true/><key>keychain-access-groups</key><array><string>AB12CD34EF.com.local-operator.webauthn</string></array></dict></plist>`;
+
+/** What this PR signs the MAIN executable with: the group plus the app's
+ * identity claims, rendered by `render-mac-entitlements.mjs --profile`. */
+const ORG_SIGNATURE_ENTITLEMENTS = V0296_SIGNATURE_ENTITLEMENTS.replace(
+	"</dict></plist>",
+	"<key>com.apple.application-identifier</key><string>AB12CD34EF.com.local-operator</string><key>com.apple.developer.team-identifier</key><string>AB12CD34EF</string></dict></plist>",
+);
+
+/** The shape of the real Radient Inc. desktop profile's `Entitlements` (measured
+ * with `security cms -D`): the app id for THIS bundle, the team, and the team
+ * wildcard for keychain groups — never the WebAuthn group by name. */
+const ORG_PROFILE_DUMP =
+	"<plist><dict><key>Entitlements</key><dict><key>com.apple.application-identifier</key><string>AB12CD34EF.com.local-operator</string><key>keychain-access-groups</key><array><string>AB12CD34EF.*</string></array><key>com.apple.developer.team-identifier</key><string>AB12CD34EF</string></dict></dict></plist>";
 
 /** A bundle laid out enough for the gate: an Info.plist naming the executable and
  * the bundle id, and a file where that executable would be.
@@ -5138,20 +5154,78 @@ test("every executable's claim is judged, not only the launcher's", () => {
 	assert.equal(groupFree.passed, true);
 	assert.match(groupFree.output, /2 executable\(s\) inspected/);
 
-	// A profile that authorizes the claim: the passkey arrangement done right, and
-	// the one state in which `ShipIt` may carry the group.
-	const authorized = gateFixtureBundle("lo-gate-auth-", {
-		helpers: [helper],
+	// The main bundle's profile does NOT extend to nested code: macOS judges a
+	// restricted claim against the profile of the bundle the executable belongs to,
+	// and `ShipIt` (inside `Squirrel.framework`) and a helper `.app` with no
+	// embedded profile of their own have none. So the 0.29.6 shape — the group on
+	// ShipIt and the helpers — is red even when the main bundle embeds the real
+	// team-wildcard Developer ID profile, which this PR now always does (agent
+	// review round 1, R1: before this, the walk judged every executable against
+	// the main bundle's profile and passed exactly that bundle).
+	const helperApp =
+		"Contents/Frameworks/Local Operator Helper.app/Contents/MacOS/Local Operator Helper";
+	const everywhere = gateFixtureBundle("lo-gate-auth-", {
+		helpers: [helper, helperApp],
 		profile: "synthetic\n",
 	});
-	const [withProfile] = profileAuthorizationCheck(authorized, {
+	const [nestedClaims] = profileAuthorizationCheck(everywhere, {
 		run: gateRunner({
-			entitlements: V0296_SIGNATURE_ENTITLEMENTS,
-			profileDump:
-				"<plist><dict><key>Entitlements</key><dict><key>keychain-access-groups</key><array><string>AB12CD34EF.com.local-operator.webauthn</string></array></dict></dict></plist>",
+			entitlements: ORG_SIGNATURE_ENTITLEMENTS,
+			profileDump: ORG_PROFILE_DUMP,
 		}),
 	});
-	assert.equal(withProfile.passed, true);
+	assert.equal(nestedClaims.passed, false);
+	assert.match(
+		nestedClaims.output,
+		/ShipIt claims keychain-access-groups \(it has no profile of its own/,
+	);
+	assert.match(
+		nestedClaims.output,
+		/Local Operator Helper claims keychain-access-groups \(it has no profile of its own/,
+	);
+	assert.doesNotMatch(nestedClaims.output, /MacOS\/Local Operator claims/);
+	// No value is printed: every one embeds the team id.
+	assert.doesNotMatch(nestedClaims.output, /AB12CD34EF/);
+
+	// The arrangement this PR ships: the claims on the main executable ONLY,
+	// authorized by the main bundle's profile, and nested code group-free.
+	const [mainOnly] = profileAuthorizationCheck(everywhere, {
+		run: gateRunner({
+			entitlements: (path) =>
+				path.endsWith("MacOS/Local Operator")
+					? ORG_SIGNATURE_ENTITLEMENTS
+					: clean,
+			profileDump: ORG_PROFILE_DUMP,
+		}),
+	});
+	assert.equal(mainOnly.passed, true, mainOnly.output);
+	assert.match(mainOnly.output, /3 executable\(s\) inspected/);
+
+	// A nested bundle that embeds its OWN profile authorizing the value is the
+	// one state in which nested code may carry a restricted claim — judged by
+	// that profile, not the main bundle's.
+	writeFileSync(
+		join(
+			everywhere,
+			"Contents/Frameworks/Local Operator Helper.app/Contents/Info.plist",
+		),
+		"<key>CFBundleIdentifier</key><string>com.local-operator.helper</string><key>CFBundleExecutable</key><string>Local Operator Helper</string>",
+	);
+	writeFileSync(
+		join(
+			everywhere,
+			"Contents/Frameworks/Local Operator Helper.app/Contents/embedded.provisionprofile",
+		),
+		"synthetic\n",
+	);
+	const [helperOwnProfile] = profileAuthorizationCheck(everywhere, {
+		run: gateRunner({
+			entitlements: (path) =>
+				path.endsWith("ShipIt") ? clean : V0296_SIGNATURE_ENTITLEMENTS,
+			profileDump: ORG_PROFILE_DUMP,
+		}),
+	});
+	assert.equal(helperOwnProfile.passed, true, helperOwnProfile.output);
 
 	// "We could not ask" is not "nothing is claimed": a signature whose
 	// entitlements cannot be read is red here rather than an empty plist that
@@ -5230,6 +5304,8 @@ test("the spawn probe owns its env, whatever signature the runner has", () => {
 		appPath: app,
 		dmgPath: null,
 		run: threeArgumentRunner,
+		// Explicit, so the probe's run cannot depend on the shell's CI variables.
+		env: {},
 	});
 	assert.ok(rows.length > 0, "the checks did not run at all");
 	// Exactly once, and with the switch: the probe is the only check that carries it,
@@ -5349,6 +5425,10 @@ test("the seed's version ask is bounded by the same rule as the probe", () => {
 		const seen = [];
 		const row = seedVersionCheck(app, {
 			hostArch,
+			// The x86_64 ask on an arm64 host is exactly what the local-Rosetta guard
+			// withholds off a GitHub-hosted runner; this case measures the BOUND, so it
+			// opts in explicitly rather than depending on the shell's CI variables.
+			env: { LOCAL_OPERATOR_ALLOW_ROSETTA_EXEC: "1" },
 			run: (command, args, input, env, timeoutMs) => {
 				void input;
 				void env;
@@ -5654,6 +5734,81 @@ test("the gate refuses the 0.29.6 signature and passes the group-free one", () =
 		profileAuthorizes("", "com.apple.developer.associated-domains"),
 		false,
 	);
+});
+
+test("the gate judges every claimed VALUE, not only that the profile declares the key", () => {
+	/*
+	 * QA round 1, Q1 / agent review round 1, R3. The key agent's real profile has
+	 * app id `<TEAM>.com.local-operator.lopkeyagent` and the same `<TEAM>.*`
+	 * keychain wildcard as the desktop app's. Embedded under a signature claiming
+	 * `<TEAM>.com.local-operator`, every KEY is declared and the group is covered,
+	 * so a key-presence check passed it; amfid does not (`-413`, measured), and
+	 * passkeys would silently never work. The renderer already refuses that pair
+	 * through `unauthorizedClaims`; the gate now asks the same question with the
+	 * same helper.
+	 */
+	const keyagentProfile = ORG_PROFILE_DUMP.replace(
+		"AB12CD34EF.com.local-operator</string>",
+		"AB12CD34EF.com.local-operator.lopkeyagent</string>",
+	);
+	assert.notEqual(keyagentProfile, ORG_PROFILE_DUMP);
+	const app = gateFixtureBundle("lo-gate-appid-", { profile: "synthetic\n" });
+	const [mismatched] = profileAuthorizationCheck(app, {
+		run: gateRunner({
+			entitlements: ORG_SIGNATURE_ENTITLEMENTS,
+			profileDump: keyagentProfile,
+		}),
+	});
+	assert.equal(mismatched.passed, false);
+	assert.match(
+		mismatched.output,
+		/MacOS\/Local Operator claims com\.apple\.application-identifier/,
+	);
+	// Only the claim the profile does not cover: the team and the group are fine.
+	assert.doesNotMatch(
+		mismatched.output,
+		/team-identifier|keychain-access-groups/,
+	);
+	assert.doesNotMatch(mismatched.output, /AB12CD34EF/);
+
+	// Another team's id, by value, is the same refusal for the team claim.
+	const [otherTeam] = profileAuthorizationCheck(app, {
+		run: gateRunner({
+			entitlements: ORG_SIGNATURE_ENTITLEMENTS,
+			profileDump: ORG_PROFILE_DUMP.replace(
+				"<string>AB12CD34EF</string>",
+				"<string>ZZ99YY88XX</string>",
+			),
+		}),
+	});
+	assert.equal(otherTeam.passed, false);
+	assert.match(
+		otherTeam.output,
+		/claims com\.apple\.developer\.team-identifier/,
+	);
+
+	// The correctly paired profile passes, so the refusals above are about the
+	// values and not about the keys.
+	const [paired] = profileAuthorizationCheck(app, {
+		run: gateRunner({
+			entitlements: ORG_SIGNATURE_ENTITLEMENTS,
+			profileDump: ORG_PROFILE_DUMP,
+		}),
+	});
+	assert.equal(paired.passed, true, paired.output);
+
+	// QA round 1, Q2: the WebAuthn row reports key NAMES, never the plist (each
+	// restricted value embeds the team id).
+	const webauthn = runChecks({
+		appPath: app,
+		dmgPath: null,
+		run: gateRunner({
+			entitlements: ORG_SIGNATURE_ENTITLEMENTS,
+			profileDump: ORG_PROFILE_DUMP,
+		}),
+	}).find((row) => row.id === "app-webauthn-entitlement");
+	assert.match(webauthn.output, /^entitlement keys: .*keychain-access-groups/);
+	assert.doesNotMatch(webauthn.output, /AB12CD34EF|<plist|<string>/);
 });
 
 test("the update pre-flight refuses the artifact macOS would not launch", () => {
@@ -6228,9 +6383,9 @@ test("the notarization step hands the notarizer an absolute path", async () => {
 	const platform = Object.getOwnPropertyDescriptor(process, "platform");
 	const savedEnv = {
 		NOTARIZE: process.env.NOTARIZE,
-		APPLE_ID: process.env.APPLE_ID,
-		APPLE_ID_PASSWORD: process.env.APPLE_ID_PASSWORD,
-		APPLE_TEAM_ID: process.env.APPLE_TEAM_ID,
+		APPLE_API_KEY: process.env.APPLE_API_KEY,
+		APPLE_API_KEY_ID: process.env.APPLE_API_KEY_ID,
+		APPLE_API_ISSUER: process.env.APPLE_API_ISSUER,
 	};
 	try {
 		// The step is darwin-only and `test:desktop` runs on Linux CI, but the bug
@@ -6241,9 +6396,11 @@ test("the notarization step hands the notarizer an absolute path", async () => {
 			configurable: true,
 		});
 		process.env.NOTARIZE = "true";
-		process.env.APPLE_ID = "test@example.invalid";
-		process.env.APPLE_ID_PASSWORD = "test-app-specific-password";
-		process.env.APPLE_TEAM_ID = "TESTTEAM01";
+		// The App Store Connect API key form, which is what both release workflows
+		// bind since the move to the organization identity.
+		process.env.APPLE_API_KEY = "/nonexistent/AuthKey_TEST.p8";
+		process.env.APPLE_API_KEY_ID = "TESTKEY001";
+		process.env.APPLE_API_ISSUER = "00000000-0000-0000-0000-000000000000";
 		globalThis.__loNotarizeCalls = [];
 		// biome-ignore lint/performance/noDelete: teardown of a fixture global; every reader uses `?.`/`??`/truthiness, and ABSENT is what "no override for this case" means - `= undefined` would leave the property present.
 		delete globalThis.__loNotarizeBehavior;
@@ -6254,6 +6411,18 @@ test("the notarization step hands the notarizer an absolute path", async () => {
 		await notarizeArtifacts({ dist: relativeDist, log: () => {} });
 		assert.equal(globalThis.__loNotarizeCalls.length, 1);
 		assert.equal(globalThis.__loNotarizeCalls[0].tool, "notarytool");
+		// The API key reached the notarizer in the option names @electron/notarize
+		// 2.x reads (`isNotaryToolApiKeyCredentials`), and no Apple ID did.
+		assert.equal(
+			globalThis.__loNotarizeCalls[0].appleApiKey,
+			"/nonexistent/AuthKey_TEST.p8",
+		);
+		assert.equal(globalThis.__loNotarizeCalls[0].appleApiKeyId, "TESTKEY001");
+		assert.equal(
+			globalThis.__loNotarizeCalls[0].appleApiIssuer,
+			"00000000-0000-0000-0000-000000000000",
+		);
+		assert.equal(globalThis.__loNotarizeCalls[0].appleId, undefined);
 		assert.equal(
 			isAbsolute(globalThis.__loNotarizeCalls[0].appPath),
 			true,
@@ -6328,9 +6497,9 @@ test("a rejected notarization fails the step and exits non-zero", async () => {
 	const platform = Object.getOwnPropertyDescriptor(process, "platform");
 	const savedEnv = {
 		NOTARIZE: process.env.NOTARIZE,
-		APPLE_ID: process.env.APPLE_ID,
-		APPLE_ID_PASSWORD: process.env.APPLE_ID_PASSWORD,
-		APPLE_TEAM_ID: process.env.APPLE_TEAM_ID,
+		APPLE_API_KEY: process.env.APPLE_API_KEY,
+		APPLE_API_KEY_ID: process.env.APPLE_API_KEY_ID,
+		APPLE_API_ISSUER: process.env.APPLE_API_ISSUER,
 	};
 	try {
 		Object.defineProperty(process, "platform", {
@@ -6338,9 +6507,11 @@ test("a rejected notarization fails the step and exits non-zero", async () => {
 			configurable: true,
 		});
 		process.env.NOTARIZE = "true";
-		process.env.APPLE_ID = "test@example.invalid";
-		process.env.APPLE_ID_PASSWORD = "test-app-specific-password";
-		process.env.APPLE_TEAM_ID = "TESTTEAM01";
+		// The App Store Connect API key form, which is what both release workflows
+		// bind since the move to the organization identity.
+		process.env.APPLE_API_KEY = "/nonexistent/AuthKey_TEST.p8";
+		process.env.APPLE_API_KEY_ID = "TESTKEY001";
+		process.env.APPLE_API_ISSUER = "00000000-0000-0000-0000-000000000000";
 		globalThis.__loNotarizeCalls = [];
 		globalThis.__loNotarizeBehavior = async () => {
 			throw new Error("stubbed notarization rejected");
@@ -6423,9 +6594,9 @@ test("a rejected notarization fails the step and exits non-zero", async () => {
 			env: {
 				...process.env,
 				NOTARIZE: "true",
-				APPLE_ID: "test@example.invalid",
-				APPLE_ID_PASSWORD: "test-app-specific-password",
-				APPLE_TEAM_ID: "TESTTEAM01",
+				APPLE_API_KEY: "/nonexistent/AuthKey_TEST.p8",
+				APPLE_API_KEY_ID: "TESTKEY001",
+				APPLE_API_ISSUER: "00000000-0000-0000-0000-000000000000",
 				LO_NOTARIZE_PROBE_FILE: probeFile,
 			},
 		},
@@ -18511,4 +18682,87 @@ test("the offer carries whether this press restarts the server", async () => {
 	} finally {
 		inPlace.dispose();
 	}
+});
+
+/**
+ * A missing notarization credential under NOTARIZE=true FAILS on GitHub Actions
+ * and stays a skip locally.
+ *
+ * The skip used to be the only behaviour: one line, exit 0, and only the
+ * skip-refusing gate (`require-notarized-dmg.sh`) or the artifact verification
+ * noticed. On a release runner that is a misbound secret, and the move to the App
+ * Store Connect API key changed every credential name at once, which is exactly
+ * when a binding is most likely to be wrong. So on Actions both hooks throw at
+ * the step that cannot do its job; a developer's ad-hoc build keeps the skip.
+ * Through the real entrypoint, with the same module-hook stub as the test above,
+ * so the exit status is the one the workflow reads.
+ */
+test("a missing notarization credential fails on Actions and skips locally", () => {
+	const root = tempDir("lo-notarize-missing-");
+	const dist = join(root, "dist");
+	mkdirSync(dist, { recursive: true });
+	writeFileSync(join(dist, "local-operator-ui-0.18.0-arm64.dmg"), "disk image");
+	const hookDir = join(root, "hook");
+	mkdirSync(hookDir);
+	writeFileSync(
+		join(hookDir, "register.mjs"),
+		[
+			'import { register } from "node:module";',
+			'Object.defineProperty(process, "platform", { value: "darwin", configurable: true });',
+			'register("./resolve.mjs", import.meta.url);',
+			"",
+		].join("\n"),
+	);
+	writeFileSync(
+		join(hookDir, "resolve.mjs"),
+		[
+			"export async function resolve(specifier, context, next) {",
+			'\tif (specifier === "@electron/notarize") {',
+			'\t\treturn { url: new URL("./stub.mjs", import.meta.url).href, shortCircuit: true };',
+			"\t}",
+			"\treturn next(specifier, context);",
+			"}",
+			"",
+		].join("\n"),
+	);
+	writeFileSync(
+		join(hookDir, "stub.mjs"),
+		'export async function notarize() { throw new Error("must not be reached"); }\n',
+	);
+	const env = { ...process.env, NOTARIZE: "true" };
+	for (const key of [
+		"APPLE_API_KEY",
+		"APPLE_API_KEY_ID",
+		"APPLE_API_ISSUER",
+		"APPLE_ID",
+		"APPLE_ID_PASSWORD",
+		"APPLE_TEAM_ID",
+	])
+		delete env[key];
+	const run = (extra) =>
+		spawnSync(
+			process.execPath,
+			[
+				"--import",
+				join(hookDir, "register.mjs"),
+				join(process.cwd(), "scripts", "notarize-artifacts.mjs"),
+				"--dist",
+				dist,
+			],
+			// cwd is the fixture root, so no developer's `.env.build` is loaded.
+			{ cwd: root, encoding: "utf8", env: { ...env, ...extra } },
+		);
+	// Two of three API-key values is still "missing": a partial binding is the
+	// misbound-secret case this exists for.
+	const onActions = run({
+		GITHUB_ACTIONS: "true",
+		APPLE_API_KEY_ID: "TESTKEY001",
+		APPLE_API_ISSUER: "00000000-0000-0000-0000-000000000000",
+	});
+	assert.notEqual(onActions.status, 0, onActions.stdout);
+	assert.match(onActions.stderr, /notarization credentials missing/);
+	assert.doesNotMatch(onActions.stderr, /must not be reached/);
+	const local = run({ GITHUB_ACTIONS: "" });
+	assert.equal(local.status, 0, local.stderr);
+	assert.match(local.stdout, /^Skipping disk image notarization: /m);
 });
