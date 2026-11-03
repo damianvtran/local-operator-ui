@@ -35,8 +35,8 @@
 	"ui.ownerAudit.unavailable": "审计服务无法加载这些消息。重试。",
 	"ui.ownerAudit.sign_in": "登录",
 	"ui.ownerAudit.inspect_body": "检查消息文本",
-	"ui.ownerAudit.inline_image_receipt": "内嵌图像数据 · {mime} · {count} 个字符",
+	"ui.ownerAudit.inline_image_receipt": "内嵌图像数据 · {mime} · {count}个字符",
 	"ui.ownerAudit.previous_chunk": "上一部分",
 	"ui.ownerAudit.next_chunk": "下一部分",
-	"ui.ownerAudit.chunk_number": "第 {page} 部分，共 {count} 部分"
+	"ui.ownerAudit.chunk_number": "第{page}部分，共{count}部分"
 }

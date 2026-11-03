@@ -249,7 +249,7 @@
 		"tone": "Short, neutral imperative",
 		"length": "Short action label",
 		"placeholders": {},
-		"note": "Opens a rejected, unscreened, or unknown audit message as inert plaintext; it does not download or preview attachments."
+		"note": "Summary of a collapsed disclosure that hides a long run of text which may be encoded data (it follows an inline image data URI but cannot be confirmed as image bytes). Opening it shows that run as inert plaintext, one bounded segment at a time; it never decodes, downloads or previews anything."
 	},
 	"ui.ownerAudit.inline_image_receipt": {
 		"role": "Collapsed disclosure summary for a legacy inline image data URI",
