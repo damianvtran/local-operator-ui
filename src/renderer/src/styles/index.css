@@ -2317,19 +2317,9 @@ html[data-glass] {
 		var(--lo-canvas) calc(var(--lo-glass-a-canvas) * 100%),
 		transparent
 	);
-	/* The raw alpha a pane is painted at: its own, or the canvas's plus the scale's lift
-	 * when higher - the same target `glassPaintFor` nets into `--lo-glass-in-pane`, so a
-	 * stop drawn from the lane meets the pane without a seam. */
 	--lo-glass-g-elevated: color-mix(
 		in srgb,
-		var(--lo-elevated)
-			calc(
-				max(
-					var(--lo-glass-a-elevated),
-					min(0.96, var(--lo-glass-a-canvas) + var(--lo-glass-pane-lift))
-				) *
-				100%
-			),
+		var(--lo-elevated) calc(var(--lo-glass-a-elevated) * 100%),
 		transparent
 	);
 }

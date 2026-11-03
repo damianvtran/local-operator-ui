@@ -8468,9 +8468,9 @@ for (const row of ROW_STATE_MEASURED_SHORTFALL) {
  *       still clears AA (`inkDim` on an overlay: the stated 3.5 relaxation), and the
  *       worst pair per scheme is NAMED so the margin is a number, not a tick;
  *   (d) the committed numbers are not below the derived ones.
- * It also reads the stylesheet: the pane rule must read the lifted var, and the one
- * `backdrop-filter` in the file must stay one (a second would be the "blur it
- * harder" fix this scale exists to avoid).
+ * It also reads the stylesheet: the pane rule must read the lifted var, the seam rule
+ * must read the edge mix, and the one `backdrop-filter` in the file must stay one (a
+ * second would be the "blur it harder" fix this scale exists to avoid).
  */
 {
 	const file = JSON.parse(
@@ -8544,6 +8544,18 @@ for (const row of ROW_STATE_MEASURED_SHORTFALL) {
 	if (!edgeRule || Number(edgeRule[1]) !== Math.round(PANEL_SEAM_ALPHA * 100))
 		fail(
 			`glass scale: the glass \`[data-panel-edge]\` rule does not paint at ${Math.round(PANEL_SEAM_ALPHA * 100)}% (read ${edgeRule?.[1] ?? "no rule"}) - it must match PANEL_SEAM_ALPHA and the derivation's GLASS_SEAM_ALPHA`,
+		);
+	/* The edge rule must READ the mix: a rule that stops reading `--lo-glass-edge-mix`
+	 * paints the plain hairline (seam 1.68 on rosePineDawn) with every number above still
+	 * green, because those are computed from the JSON, not from the stylesheet. */
+	assertions++;
+	if (
+		!/html\[data-glass\]\s*\[data-panel-edge\]\s*\{[^}]*var\(--lo-ink\)\s*calc\(var\(--lo-glass-edge-mix\)\s*\*\s*100%\)\s*,\s*var\(--lo-hairline\)/.test(
+			css,
+		)
+	)
+		fail(
+			"glass scale: the glass `[data-panel-edge]` rule no longer mixes `--lo-ink` into `--lo-hairline` by `--lo-glass-edge-mix`, so the seam recolour is not painted",
 		);
 	const blurs = (css.match(/backdrop-filter\s*:\s*[^n;][^;]*;/g) ?? []).length;
 	if (blurs > 1)

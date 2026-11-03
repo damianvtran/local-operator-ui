@@ -519,8 +519,16 @@ export function deriveControlMix(floors) {
  * `paneLift` (light): the smallest lift, added to the canvas alpha to form the
  * pane's target, at which the pane steps `GLASS_PANE_STEP` off the canvas for every
  * light palette, slider 40..100 and both light material greys. Below slider 40 the
- * canvas is nearly opaque, so the flat `canvas` -> `elevated` gap already carries
- * the step.
+ * canvas is nearly opaque and the pane is not held to the floor (sliders 5..39 step
+ * 1.54+ over grey 199; sliders 0..4 are not lifted enough: net 0 at 0-1, step
+ * 0.93-0.99 at 2-4, as before the scale).
+ *
+ * WHY 1.5: `GLASS_PANE_STEP` reuses `GLASS_LANE_STEP`, the repo's floor for a
+ * translucent plane that must read as structure against its neighbour (below it the
+ * plane is not structure). With 0.14 the tightest light pane step is 1.53
+ * (`tokyoNightDay`, slider 91, grey 224). It is held at the under-window greys; the
+ * menu and popover tiers, measured at their own greys (171 / 143, slider 40..100,
+ * light), step 3.42 and 2.87 at the tightest, both above the floor.
  * `edgeMix` (light): the smallest `ink` share mixed into `hairline` at which the
  * 75% panel seam steps `GLASS_SEAM_STEP` off each of the three glass grounds at
  * their floors. It recolours the existing seam; it adds no line.

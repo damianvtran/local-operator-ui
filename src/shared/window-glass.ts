@@ -894,8 +894,8 @@ export function glassPaintFor(input: {
 		"--lo-glass-in-surface": String(net(raw.surface)),
 		"--lo-glass-in-elevated": String(net(raw.elevated)),
 		/* The pane inside <main> paints THIS, not `in-elevated` (see the scale note above
-		 * `glassPaintFor`). `in-elevated` stays published for the rules that want the
-		 * unlifted net. */
+		 * `glassPaintFor`). `in-elevated` is still published but no stylesheet rule reads
+		 * it now: only the CDP test and the unit tests do. */
 		"--lo-glass-in-pane": String(net(paneTarget)),
 		"--lo-glass-pane-lift": String(lift),
 		"--lo-glass-edge-mix": String(

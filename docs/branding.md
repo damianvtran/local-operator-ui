@@ -1242,7 +1242,8 @@ weaker than the dark one for a structural reason, not a taste one: a pane inside
 `<main>` is painted at the NET alpha (`1 - (1 - target) / (1 - backing)`), and on light
 the pane's target (`elevated`, 0.55 at 80%) is below the canvas backing (0.68), so the net
 clamped to 0 and the pane was the canvas - canvas -> pane ΔE00 0.0 on every light
-palette, against 2.5 to 5.4 on dark. The scale moves the two things the app owns:
+palette, against a median of 3.3 on dark (range 1.2 to 8.4 across the 41 dark palettes at
+slider 80). The scale moves the two things the app owns:
 
 | Tier | Pane lift (light / dark) | Panel edge mix (light / dark) | Status |
 |---|---|---|---|
@@ -1256,14 +1257,21 @@ palette, against 2.5 to 5.4 on dark. The scale moves the two things the app owns
   paints net 0.44 over the 0.68 backing (effective 0.82 against 0.68 before) and steps
   ΔE00 2.76 off the canvas (it was 0.00). The tightest step over all 18 light palettes,
   slider 40 to 100 and both light material greys (199 and 224), is ΔE00 1.53
-  (`tokyoNightDay`). Below slider 40 the canvas is nearly opaque and the flat
-  `canvas` -> `elevated` gap already carries the step. The titlebar lane re-points at the
-  same target, so the lane does not show a seam against the pane.
+  (`tokyoNightDay`). Below slider 40 the canvas is nearly opaque and the pane is not
+  held to the floor: sliders 5 to 39 step ΔE00 1.54 or more over grey 199 (1.39 over 224),
+  and sliders 0 to 4 are not lifted enough (the net is 0 at sliders 0 and 1, so the pane is
+  the canvas; the step is 0.93 to 0.99 at 2 to 4). That is how it was before the scale, and the `.96`
+  ceiling is what caps it. Only the pane inside `<main>` takes the lift; the titlebar lane
+  paints nothing since `e18174b0df` (the pane's own `panel-top-pad` ground draws the strip
+  and gets the lift), so no lane variable was changed.
 - `--lo-glass-edge-mix`: the share of `ink` mixed into the panel seam's `hairline` on
   glass only (`html[data-glass] [data-panel-edge]`). It recolours the existing 1px
   `PanelEdge` and keeps its 75% alpha; it adds no line. The seam steps at least ΔE00 3.0
-  off each of the three glass grounds on every light palette; the tightest is `rosePineDawn`
-  against `canvas`, 3.19 (1.68 before).
+  off each of the three glass grounds on every light palette at the floors (slider 100);
+  the tightest there is `rosePineDawn` against `canvas`, 3.19 (1.68 before). Over every
+  slider 0 to 100 the minimum is 2.79 (`rosePineDawn` against `canvas`, sliders 93 to 95,
+  grey 199), still above the 2.0 seam row; holding 3.0 at every slider would take an
+  `edgeMix` of 0.08.
 - **Text keeps AA.** `scripts/contrast-contract.mjs` holds `ink`, `inkMuted` and `inkDim`
   over the raw canvas, surface and elevated grounds and the lifted pane, with and without
   each state overlay, every slider position (steps of 5) and both light material greys
@@ -1280,7 +1288,18 @@ palette, against 2.5 to 5.4 on dark. The scale moves the two things the app owns
   would blur and saturate our own canvas, not the desktop, and cost a compositor layer
   per region. A shadow is elevation by another name, and this system allows one shadow,
   for things that leave the flow. Dark is byte-identical: both numbers are 0 there and
-  `scripts/window-glass.test.mjs` (G-8b) pins every dark variable to its pre-scale value.
+  `scripts/window-glass.test.mjs` (G-8b) pins every dark variable to its pre-scale value
+  at six sliders for one material (vibrancy, window, full app); the other dark materials
+  and sliders are held to lift 0, edge mix 0 and `in-pane == in-elevated`.
+- **The Library dock is measured by hand, not by the audit.** `library-page.tsx` marks its
+  dock `data-glass-region="pane"` inside a `data-glass-split` page, so it paints the NET
+  pane alpha over the bare desktop. The lift raises it (over grey 199, 54 palette-ink
+  pairs): text clears 4.5:1 at sliders 8 to 81 (4.54 is the tightest at 40 to 80); the worst
+  measured pair at sliders 85 to 100 is `rosePineDawn` `inkDim` 4.36 (`localOperatorLight`
+  `inkDim` 4.48 at 99 to 100); sliders 0 to 7 still have 2 to 16 pairs under 4.5 (worst
+  `rosePineDawn` `inkDim` 3.61 at 0 to 1). Before the change 16 of the 54 pairs were under
+  4.5 at every slider. Behaviour is unchanged and `auditGlassText` does not cover this
+  surface.
 - Numbers are derived (`node scripts/derive-glass-floors.mjs`; `--check` fails when the
   committed values are below it, `--report` prints the text audit) and never hand-set.
 
