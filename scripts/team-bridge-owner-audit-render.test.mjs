@@ -2748,7 +2748,7 @@ test("a list ended by a block does not keep its column for a later opener", asyn
  * overlapping `data:image/` headers was rescanned once per match there
  * (reviewer: 2,023 ms against main's 4 ms on ~1M characters). Bounded by the
  * scanner's own regex-test count, which is deterministic on a shared host:
- * the per-match rescan is ~90x this bound. The wall-time bound is loose and
+ * the per-match rescan is ~89 tests per character, ~30x this bound. The wall-time bound is loose and
  * only a backstop.
  */
 test("overlapping image headers in a code receipt are scanned once", () => {
@@ -2774,6 +2774,80 @@ test("overlapping image headers in a code receipt are scanned once", () => {
 		`${checks} checks for ${body.length} characters`,
 	);
 	assert.ok(elapsed < 500, `${body.length} characters took ${elapsed} ms`);
+});
+
+/* PR #1622 round 2 R2-1: lazy continuation requires the item's last block
+ * to be a paragraph, and cannot outlive the item's quote. These are the four
+ * review repros. A stale item column ended the real fence early on its closer,
+ * then re-read that closer as an opener hiding Done/Tail behind the receipt. */
+test("non-paragraph item blocks and dropped quotes do not leave stale fence columns", async () => {
+	const uri = `data:image/png;base64,${"A".repeat(3000)}`;
+	for (const [id, source] of [
+		["heading_item", "- ## Install\nRun this:\n  ```sh\n  make\n```"],
+		[
+			"item_closed_then_text",
+			"1. Run:\n   ```sh\n   make\n   ```\nThen do this:\n   ```sh\n   make install\n```",
+		],
+		["hr_item", "- ***\nplain\n  ```\n  y\n```"],
+		["quote_item_drop", "> - quoted item\n  ```sh\nmake\n```"],
+	]) {
+		const body = `${source}\n\nDone prose.\n\n${uri}\n\nTail prose.`;
+		const { view, row } = await renderAuditBody(id, body);
+		assert.equal(row.querySelectorAll("details").length, 1, id);
+		for (const text of ["Done prose.", "Tail prose."])
+			assert.ok(
+				[...row.querySelectorAll("p")].some((p) => p.textContent === text),
+				`${id}: ${text} stays visible`,
+			);
+		const spans = m.inlineImageSpans(body);
+		assert.equal(spans[0].start, body.indexOf(uri), `${id}: no phantom fence`);
+		assert.equal(spans[0].end, body.indexOf(uri) + uri.length, id);
+		await view.close();
+	}
+});
+
+/* R2-2: an end-of-line marker is an empty item, with its content column one
+ * past the marker. No paragraph is open, so dedented prose ends the item. */
+test("an empty list marker gives its fence an item container", async () => {
+	const uri = `data:image/png;base64,${"A".repeat(3000)}`;
+	for (const [id, source] of [
+		["empty_dash", "-\n  ```\n  x"],
+		["empty_ordered", "1.\n   ```sh\n   make"],
+		["empty_dash_fence4", "-\n    ```js\n    x\n  ```"],
+	]) {
+		const body = `${source}\n\nDone prose.\n\n${uri}\n\nTail prose.`;
+		const { view, row } = await renderAuditBody(id, body);
+		for (const text of ["Done prose.", "Tail prose."])
+			assert.ok(
+				[...row.querySelectorAll("p")].some((p) => p.textContent === text),
+				`${id}: ${text} stays visible`,
+			);
+		assert.equal(m.inlineImageSpans(body)[0].start, body.indexOf(uri), id);
+		await view.close();
+	}
+});
+
+/* The round-2 fuzz's direct neighbours pin the distinction between an empty
+ * item, a bare marker after indented code, a quote-local item and a thematic
+ * break which resembles a marker. They all put the tail URI outside code in
+ * remark-gfm, and must not acquire a phantom opener. */
+test("empty markers and fence closers preserve their surrounding block context", () => {
+	const uri = `data:image/png;base64,${"A".repeat(3000)}`;
+	for (const source of [
+		"         ```\n```\n===\n> ````\n````",
+		"   \tPROSEa\n-\n  ```\n\t***\n````",
+		"-\n   > ```\n  ```",
+		"- 10. d\n* ***\n   ````\n    ~~~\n===\n````",
+		"+ c\n-\n-\n   > ````\n  ````",
+		"\t-\n> 10. d\n     ```\n-\n   ```\n> q",
+		" * # h\n> PROSEa\n\t  ```\n-\n   ```",
+		"> - ***\n\t\t- b\n-\n     ```\n  ```",
+	]) {
+		const body = `${source}\n\nDone prose.\n\n${uri}\n\nTail prose.`;
+		const spans = m.inlineImageSpans(body);
+		assert.equal(spans.length, 1, source);
+		assert.equal(spans[0].start, body.indexOf(uri), source);
+	}
 });
 
 test("a receipt for a code region totals every large URI in it", async () => {
@@ -2899,6 +2973,8 @@ test("backtick- and fence-heavy bodies keep the code-region scan linear", () => 
 		`${"123456789012. ```\n".repeat(55000)}data:image/png;base64,${"A".repeat(3000)}`,
 		`${"- ".repeat(250000)}x\n${"a\n\n".repeat(160000)}data:image/png;base64,${"A".repeat(3000)}`,
 		`${"     ```\n\n".repeat(90000)}data:image/png;base64,${"A".repeat(3000)}`,
+		// Thematic-break candidates must not rescan at each nested marker.
+		`${"- ".repeat(250000)}x\ndata:image/png;base64,${"A".repeat(3000)}`,
 		// Many large URIs in one fence, each totalled (R2-3), and small ones.
 		`\`\`\`\n${`data:image/png;base64,${"A".repeat(2100)}\ndata:image/gif;base64,R0==\n`.repeat(450)}`,
 	]) {

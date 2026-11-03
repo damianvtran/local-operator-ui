@@ -79,8 +79,9 @@ type Region = { start: number; end: number };
  *    (the next item, the paragraph after the list), closes it at the previous
  *    line end. Fenced code has no lazy continuation, so no exception applies.
  *    Without this, `- ```` with no closer stayed open to the end of the body.
- *    The closer keeps the looser prefix (spaces, tabs, `>`): inside a fence only
- *    "does this line close it" matters, and a list marker there is content.
+ *    Closers strip only the opener's quote levels and allow at most 3 columns
+ *    beyond its item content column. Extra `>` or deeper indent is code, not a
+ *    closer: an early close can turn a later real closer into a phantom opener.
  *  - inline code spans: a backtick run closed by the next run of EXACTLY its
  *    length within the same paragraph (a blank line ends one), an escaped opener
  *    losing its first backtick. Matching keeps one forward-only pointer per run
@@ -89,7 +90,10 @@ type Region = { start: number; end: number };
  * far is only ruled out as a fence opener. A small URI in one is untouched by the
  * floor; a large one splits as before, which degrades only that block.
  * List tracking is just enough for fence columns: a stack of the open items'
- * content columns, popped when a line sits left of them after a blank line, or
+ * content columns and quote depths. An item's last block must be a paragraph
+ * to take a lazy continuation: headings, thematic breaks, empty items and
+ * fenced blocks cannot. Items are popped on a dropped quote level, or when a
+ * line sits left of them after a non-paragraph block or a blank line, or
  * starts a block that cannot continue a paragraph lazily (an ATX heading, a
  * thematic break, a fence run, a blockquote marker; R1-2). Other item-ending
  * rules (HTML blocks, setext underlines, the finer lazy-continuation cases)
@@ -112,8 +116,9 @@ function indentAt(body: string, from: number, lineEnd: number, startCol = 0) {
 }
 
 /** Length of a list marker at `i` (`-`/`*`/`+`, or 1-9 digits then `.`/`)`),
- * or 0. CommonMark requires a space or tab after it, which also keeps `---`
- * and `***` (thematic breaks) and `-x` prose from reading as markers. */
+ * or 0. CommonMark requires whitespace or end-of-line after it, keeping `---`
+ * and `***` (thematic breaks) and `-x` prose from reading as markers. End-of-line
+ * markers are empty items with a content column one past the marker (R2-2). */
 function listMarkerAt(body: string, i: number, lineEnd: number): number {
 	let j = i;
 	if (body[j] === "-" || body[j] === "*" || body[j] === "+") j++;
@@ -122,22 +127,39 @@ function listMarkerAt(body: string, i: number, lineEnd: number): number {
 		if (j === i || (body[j] !== "." && body[j] !== ")")) return 0;
 		j++;
 	}
-	return body[j] === " " || body[j] === "\t" ? j - i : 0;
+	return j === lineEnd ||
+		body[j] === "\r" ||
+		body[j] === " " ||
+		body[j] === "\t"
+		? j - i
+		: 0;
 }
 
+type ListItem = { col: number; quote: number; lazy: boolean };
+
 /** The content column of the deepest open list item at or left of `col`, or 0.
- * `items` is strictly increasing (a child's content starts right of its
- * parent's), so a binary search finds it: O(log depth) per line, which keeps a
- * hostile 250K-deep nest followed by 250K short lines linear-ish, not quadratic. */
-function containerColumn(items: number[], col: number): number {
+ * `items` is ordered by quote depth then content column: entering a quote
+ * starts a new coordinate space; items at the same quote depth are nested
+ * right of their parents. A binary search finds the matching container:
+ * O(log depth) per line, keeping a hostile 250K-deep nest followed by 250K
+ * short lines linear-ish, not quadratic. */
+function containerColumn(
+	items: ListItem[],
+	col: number,
+	quote: number,
+): number {
 	let low = 0;
 	let high = items.length;
 	while (low < high) {
 		const mid = (low + high) >> 1;
-		if (items[mid] <= col) low = mid + 1;
+		if (
+			items[mid].quote < quote ||
+			(items[mid].quote === quote && items[mid].col <= col)
+		)
+			low = mid + 1;
 		else high = mid;
 	}
-	return low ? items[low - 1] : 0;
+	return low && items[low - 1].quote === quote ? items[low - 1].col : 0;
 }
 
 /** Where a fence opener's run would start on this line, or -1 when the prefix
@@ -149,8 +171,9 @@ function fenceStart(
 	body: string,
 	lineStart: number,
 	lineEnd: number,
-	items: number[],
+	items: ListItem[],
 	afterBlank: boolean,
+	previousIndented: boolean,
 ): { at: number; blank: boolean; quote: number; item: number } {
 	let i = lineStart;
 	let quote = 0;
@@ -162,11 +185,19 @@ function fenceStart(
 		const ws = indentAt(body, i, lineEnd);
 		if (ws.col > 3 || body[ws.i] !== ">") break;
 		if (!quote)
-			while (items.length && items[items.length - 1] > ws.col) items.pop();
+			while (
+				items.length &&
+				items[items.length - 1].quote === quote &&
+				items[items.length - 1].col > ws.col
+			)
+				items.pop();
 		i = ws.i + 1;
 		if (body[i] === " " || body[i] === "\t") i++;
 		quote++;
 	}
+	// A list cannot survive the quote that contains it (R2-1). Pop on a
+	// dropped quote depth before measuring indent in the new container.
+	while (items.length && items[items.length - 1].quote > quote) items.pop();
 	let { i: at, col } = indentAt(body, i, lineEnd);
 	const blank = at === lineEnd || (body[at] === "\r" && at + 1 === lineEnd);
 	if (blank) return { at: -1, blank, quote, item: 0 };
@@ -176,31 +207,61 @@ function fenceStart(
 	// stays open: a later `  ```` under it is still the item's fence.
 	if (
 		items.length &&
-		items[items.length - 1] > col &&
-		(afterBlank || interruptsParagraph(body, at, lineEnd))
+		items[items.length - 1].quote === quote &&
+		items[items.length - 1].col > col &&
+		(afterBlank ||
+			!items[items.length - 1].lazy ||
+			interruptsParagraph(body, at, lineEnd))
 	)
-		while (items.length && items[items.length - 1] > col) items.pop();
+		while (
+			items.length &&
+			items[items.length - 1].quote === quote &&
+			items[items.length - 1].col > col
+		)
+			items.pop();
+	// Cache the thematic-break suffix once. Checking the whole remaining line
+	// at every nested marker (`- - ... - x`) would rescan suffixes quadratically.
+	const thematic = thematicSuffix(body, at, lineEnd);
 	// List markers, possibly nested on one line (`- 1. ```` ). A marker is one
 	// only within 3 columns of its container; its content starts after 1-4
 	// spaces, and with 5+ one space after the marker (the rest is indented code,
 	// so the run cannot be an opener: it is 4+ columns into the content).
 	for (;;) {
-		const base = containerColumn(items, col);
+		const base = containerColumn(items, col, quote);
 		if (col - base > 3) return { at: -1, blank, quote, item: base };
-		const marker = listMarkerAt(body, at, lineEnd);
+		const marker =
+			(previousIndented && at + listMarkerAt(body, at, lineEnd) === lineEnd) ||
+			(thematic >= 0 && at >= thematic)
+				? 0
+				: listMarkerAt(body, at, lineEnd);
 		if (!marker) break;
 		const after = indentAt(body, at + marker, lineEnd, col + marker);
 		const gap = after.col - col - marker;
-		const content = col + marker + (gap > 4 ? 1 : gap);
-		while (items.length && items[items.length - 1] > col) items.pop();
-		items.push(content);
+		const content = col + marker + (gap === 0 || gap > 4 ? 1 : gap);
+		while (
+			items.length &&
+			items[items.length - 1].quote === quote &&
+			items[items.length - 1].col > col
+		)
+			items.pop();
+		if (items.length) items[items.length - 1].lazy = false;
+		items.push({ col: content, quote, lazy: false });
 		if (gap > 4) return { at: -1, blank, quote, item: content };
 		at = after.i;
 		col = after.col;
 	}
-	// The item a fence on this line would belong to: the deepest open item at
-	// or left of the run's column (0 outside any list).
-	return { at, blank, quote, item: containerColumn(items, col) };
+	// Only an open paragraph accepts lazy continuation. An item's heading,
+	// thematic break, empty marker or fenced block cannot carry the item across
+	// the next dedented line (R2-1 / R2-2). Update only the deepest item; parents
+	// whose last block is a child list remain non-lazy.
+	if (items.length && items[items.length - 1].quote === quote) {
+		const last = items[items.length - 1];
+		last.lazy =
+			at < lineEnd &&
+			body[at] !== "\r" &&
+			!interruptsParagraph(body, at, lineEnd);
+	}
+	return { at, blank, quote, item: containerColumn(items, col, quote) };
 }
 
 /** Whether the line from `at` starts a block that ends a paragraph instead of
@@ -220,6 +281,29 @@ function interruptsParagraph(body: string, at: number, lineEnd: number) {
 		);
 	}
 	if (char === "`" || char === "~") return run >= 3;
+	return isThematicBreak(body, at, lineEnd);
+}
+
+/** Earliest start of a homogeneous trailing thematic-break run, or -1.
+ * The marker loop stops the first time it reaches this suffix, so no suffix
+ * needs to be counted again after a marker is consumed. */
+function thematicSuffix(body: string, from: number, lineEnd: number) {
+	let char = "";
+	let count = 0;
+	let start = lineEnd;
+	for (let i = lineEnd - 1; i >= from; i--) {
+		const c = body[i];
+		if (c === " " || c === "\t" || c === "\r") continue;
+		if (!char && (c === "*" || c === "-" || c === "_")) char = c;
+		if (!char || c !== char) break;
+		count++;
+		start = i;
+	}
+	return count >= 3 ? start : -1;
+}
+
+function isThematicBreak(body: string, at: number, lineEnd: number) {
+	const char = body[at];
 	if (char !== "*" && char !== "-" && char !== "_") return false;
 	let count = 0;
 	for (let j = at; j < lineEnd; j++) {
@@ -265,8 +349,13 @@ function codeRegions(body: string): Region[] {
 		item: number;
 	} | null = null;
 	let lineStart = 0;
-	const items: number[] = [];
+	const items: ListItem[] = [];
 	let afterBlank = false;
+	// A bare marker cannot interrupt an existing indented-code block. Keep that
+	// context only within the same root container: an indented-looking lazy
+	// continuation after a quote must not suppress a following empty item.
+	let previousIndented = false;
+	let previousQuote = 0;
 	for (;;) {
 		let lineEnd = body.indexOf("\n", lineStart);
 		if (lineEnd < 0) lineEnd = body.length;
@@ -282,17 +371,23 @@ function codeRegions(body: string): Region[] {
 		}
 		if (fence) {
 			let i = lineStart;
-			while (
-				i < lineEnd &&
-				(body[i] === " " || body[i] === "\t" || body[i] === ">")
-			)
-				i++;
+			// Strip precisely the opener's quotes, not arbitrary `>` markers:
+			// inside code another quote marker is content. A premature closer
+			// can otherwise be followed by a phantom opener (R2-1 fuzz controls).
+			for (let q = 0; q < fence.quote; q++) {
+				i = indentAt(body, i, lineEnd).i + 1;
+				if (body[i] === " " || body[i] === "\t") i++;
+			}
+			const lead = indentAt(body, i, lineEnd);
+			i = lead.i;
 			let run = 0;
-			while (i + run < lineEnd && body[i + run] === fence.char) run++;
+			if (lead.col - fence.item <= 3)
+				while (i + run < lineEnd && body[i + run] === fence.char) run++;
 			if (run >= fence.size && !body.slice(i + run, lineEnd).trim()) {
 				regions.push({ start: fence.start, end: lineEnd });
 				fence = null;
 				segment = lineEnd;
+				if (items.length) items[items.length - 1].lazy = false;
 			}
 		} else {
 			const line = fenceStart(
@@ -301,6 +396,7 @@ function codeRegions(body: string): Region[] {
 				lineEnd,
 				items,
 				afterBlank || containerEnded,
+				previousIndented,
 			);
 			const i = line.at;
 			const char = i < 0 ? "" : body[i];
@@ -312,6 +408,7 @@ function codeRegions(body: string): Region[] {
 				!(char === "`" && body.slice(i + run, lineEnd).includes("`"))
 			) {
 				inlineCodeRegions(body, segment, lineStart, regions);
+				if (items.length) items[items.length - 1].lazy = false;
 				fence = {
 					char,
 					size: run,
@@ -324,6 +421,12 @@ function codeRegions(body: string): Region[] {
 				segment = lineEnd;
 			}
 			afterBlank = line.blank;
+			previousIndented =
+				!line.blank &&
+				line.at < 0 &&
+				previousQuote === line.quote &&
+				items.length === 0;
+			previousQuote = line.quote;
 		}
 		if (lineEnd === body.length) break;
 		lineStart = lineEnd + 1;
