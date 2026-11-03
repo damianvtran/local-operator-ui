@@ -7425,8 +7425,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.settings.appearance",
-			"source_sha256": "6993e23a7d9607a033159d72344f21058c8232a16de96ae1f3bb63bdd45e82dd",
-			"target_sha256": "de8f3d7173274f6ff493135d8466e35f6f13a1a9ef198020066648d10f9cc8e0",
+			"source_sha256": "a93e96ba361ee402bf080c9cc79e9971f86634cb4c5607e74cb6597623fee8d1",
+			"target_sha256": "8bc1ee9dc814cf0de3dd9f2bc61f47d553798526019ad821b0792548112667f0",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -7437,18 +7437,18 @@
 					"agent": "reviewer",
 					"model": "anthropic/claude-sonnet-5-5",
 					"date": "2026-11-03",
-					"result": "clean-with-findings",
-					"instance": "44ad14bfaf17-avatar-copy-es",
+					"result": "clean",
+					"instance": "f89e1c48e249-avatar-size-copy-es",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
+						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/44ad14bfaf17-avatar-copy-es.json",
-					"receipt_sha256": "41da4c8dc31e0d2167665278cf22eb413533d6b335539ba5d0d7354c10efb15d",
-					"scope": "ui.settings.appearance: new keys only (add_link / agent_avatar_size_setting) read against English, glossary, es style guide and namespace siblings; remaining keys rest on prior audits.",
-					"note": "Independent audit on PR head ffa3a3d83c; placeholders, key parity and ur bidi checked mechanically. No rendered-fit or native-reader claim."
+					"receipt": "i18n/receipts/f89e1c48e249-avatar-size-copy-es.json",
+					"receipt_sha256": "76dff5a8a0c7d3dcff7c9700c9cbf932083db22c12ec263e1e941abe705387b1",
+					"scope": "ui.settings.appearance: the reworded agent picture size description (one key) read against English, glossary, style guide and namespace siblings; other keys rest on prior audits.",
+					"note": "Independent audit on PR head 91e5e14186; placeholders, key parity and (ur) bidi checked mechanically. No rendered-fit or native-reader claim."
 				}
 			],
 			"status": "audited",
@@ -7494,6 +7494,30 @@
 							},
 							"receipt": "i18n/receipts/9a6273e11154.json",
 							"receipt_sha256": "8a3c92eaaa3444b1fbb51d621f3299e4874474cc300fc4d4a3407b0d247c9522"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "6993e23a7d9607a033159d72344f21058c8232a16de96ae1f3bb63bdd45e82dd",
+					"target_sha256": "de8f3d7173274f6ff493135d8466e35f6f13a1a9ef198020066648d10f9cc8e0",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-03",
+							"result": "clean-with-findings",
+							"instance": "44ad14bfaf17-avatar-copy-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/44ad14bfaf17-avatar-copy-es.json",
+							"receipt_sha256": "41da4c8dc31e0d2167665278cf22eb413533d6b335539ba5d0d7354c10efb15d",
+							"scope": "ui.settings.appearance: new keys only (add_link / agent_avatar_size_setting) read against English, glossary, es style guide and namespace siblings; remaining keys rest on prior audits.",
+							"note": "Independent audit on PR head ffa3a3d83c; placeholders, key parity and ur bidi checked mechanically. No rendered-fit or native-reader claim."
 						}
 					],
 					"status": "audited"
@@ -17258,8 +17282,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.settings.appearance",
-			"source_sha256": "6993e23a7d9607a033159d72344f21058c8232a16de96ae1f3bb63bdd45e82dd",
-			"target_sha256": "b19f210f658a2f6b506fca21825261eb211d850515c069c8a1fb854ce9874b71",
+			"source_sha256": "a93e96ba361ee402bf080c9cc79e9971f86634cb4c5607e74cb6597623fee8d1",
+			"target_sha256": "57fc8416c093481dc563ea4e72b6f4b0554a8918453598b91eb79450259fb657",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -17271,18 +17295,18 @@
 					"agent": "reviewer",
 					"model": "anthropic/claude-sonnet-5-5",
 					"date": "2026-11-03",
-					"result": "clean-with-findings",
-					"instance": "44ad14bfaf17-avatar-copy-fr",
+					"result": "clean",
+					"instance": "f89e1c48e249-avatar-size-copy-fr",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 1
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/44ad14bfaf17-avatar-copy-fr.json",
-					"receipt_sha256": "81f562da15cf57f16d747ea38dd082936dbd6404a9bd2efac509f40b4758edb5",
-					"scope": "ui.settings.appearance: new keys only (add_link / agent_avatar_size_setting) read against English, glossary, fr style guide and namespace siblings; remaining keys rest on prior audits.",
-					"note": "Independent audit on PR head ffa3a3d83c; placeholders, key parity and ur bidi checked mechanically. No rendered-fit or native-reader claim."
+					"receipt": "i18n/receipts/f89e1c48e249-avatar-size-copy-fr.json",
+					"receipt_sha256": "bdb81c50335264e87dc46edf8556285e4abe7db3761eaf54d67ee14ad9730920",
+					"scope": "ui.settings.appearance: the reworded agent picture size description (one key) read against English, glossary, style guide and namespace siblings; other keys rest on prior audits.",
+					"note": "Independent audit on PR head 91e5e14186; placeholders, key parity and (ur) bidi checked mechanically. No rendered-fit or native-reader claim."
 				}
 			],
 			"status": "audited",
@@ -17352,6 +17376,30 @@
 							},
 							"receipt": "i18n/receipts/d94011de0dc0-surfaces.json",
 							"receipt_sha256": "cdab18d3bc3b8c91215c07a178c64af0c5a1b44bf181c0b6d31e4bad14be3e8f"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "6993e23a7d9607a033159d72344f21058c8232a16de96ae1f3bb63bdd45e82dd",
+					"target_sha256": "b19f210f658a2f6b506fca21825261eb211d850515c069c8a1fb854ce9874b71",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-03",
+							"result": "clean-with-findings",
+							"instance": "44ad14bfaf17-avatar-copy-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/44ad14bfaf17-avatar-copy-fr.json",
+							"receipt_sha256": "81f562da15cf57f16d747ea38dd082936dbd6404a9bd2efac509f40b4758edb5",
+							"scope": "ui.settings.appearance: new keys only (add_link / agent_avatar_size_setting) read against English, glossary, fr style guide and namespace siblings; remaining keys rest on prior audits.",
+							"note": "Independent audit on PR head ffa3a3d83c; placeholders, key parity and ur bidi checked mechanically. No rendered-fit or native-reader claim."
 						}
 					],
 					"status": "audited"
@@ -27305,8 +27353,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.settings.appearance",
-			"source_sha256": "6993e23a7d9607a033159d72344f21058c8232a16de96ae1f3bb63bdd45e82dd",
-			"target_sha256": "65b8c0f85af8acd03efaad628df4c90a63b53c733313b33464251d72d57c700d",
+			"source_sha256": "a93e96ba361ee402bf080c9cc79e9971f86634cb4c5607e74cb6597623fee8d1",
+			"target_sha256": "b38e38eaffaea453b7c0a02eef97eeb10db28a1cb8db76e7759b5968f867f74c",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -27318,17 +27366,17 @@
 					"model": "anthropic/claude-sonnet-5-5",
 					"date": "2026-11-03",
 					"result": "clean",
-					"instance": "44ad14bfaf17-avatar-copy-hi",
+					"instance": "f89e1c48e249-avatar-size-copy-hi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/44ad14bfaf17-avatar-copy-hi.json",
-					"receipt_sha256": "7e0beee3a82a04459ab813256dd8290572041a1c1bdaf3e17fc213ad6ea9ffb2",
-					"scope": "ui.settings.appearance: new keys only (add_link / agent_avatar_size_setting) read against English, glossary, hi style guide and namespace siblings; remaining keys rest on prior audits.",
-					"note": "Independent audit on PR head ffa3a3d83c; placeholders, key parity and ur bidi checked mechanically. No rendered-fit or native-reader claim."
+					"receipt": "i18n/receipts/f89e1c48e249-avatar-size-copy-hi.json",
+					"receipt_sha256": "a000ebd8b9eee2910a03532d5e23a9f0772782bdc1ba33970ab74ffdcabb5aad",
+					"scope": "ui.settings.appearance: the reworded agent picture size description (one key) read against English, glossary, style guide and namespace siblings; other keys rest on prior audits.",
+					"note": "Independent audit on PR head 91e5e14186; placeholders, key parity and (ur) bidi checked mechanically. No rendered-fit or native-reader claim."
 				}
 			],
 			"status": "audited",
@@ -27399,6 +27447,30 @@
 							},
 							"receipt": "i18n/receipts/dab47dfc690a-surfaces.json",
 							"receipt_sha256": "ef467c191feb9a91c8e4ada0c2814ec7a710506dcfd5fe0a8a4d964dc5738290"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "6993e23a7d9607a033159d72344f21058c8232a16de96ae1f3bb63bdd45e82dd",
+					"target_sha256": "65b8c0f85af8acd03efaad628df4c90a63b53c733313b33464251d72d57c700d",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-03",
+							"result": "clean",
+							"instance": "44ad14bfaf17-avatar-copy-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/44ad14bfaf17-avatar-copy-hi.json",
+							"receipt_sha256": "7e0beee3a82a04459ab813256dd8290572041a1c1bdaf3e17fc213ad6ea9ffb2",
+							"scope": "ui.settings.appearance: new keys only (add_link / agent_avatar_size_setting) read against English, glossary, hi style guide and namespace siblings; remaining keys rest on prior audits.",
+							"note": "Independent audit on PR head ffa3a3d83c; placeholders, key parity and ur bidi checked mechanically. No rendered-fit or native-reader claim."
 						}
 					],
 					"status": "audited"
@@ -36965,8 +37037,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.settings.appearance",
-			"source_sha256": "6993e23a7d9607a033159d72344f21058c8232a16de96ae1f3bb63bdd45e82dd",
-			"target_sha256": "57a7a3f05f543f94c1ff9e648739753dc7581c5e459f985717bf78fe62178991",
+			"source_sha256": "a93e96ba361ee402bf080c9cc79e9971f86634cb4c5607e74cb6597623fee8d1",
+			"target_sha256": "5dc3eee511b01c3557281c1a48dc34547199ca20cff7d2a0b15e43dbee828924",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -36978,18 +37050,18 @@
 					"agent": "reviewer",
 					"model": "anthropic/claude-sonnet-5-5",
 					"date": "2026-11-03",
-					"result": "clean-with-findings",
-					"instance": "44ad14bfaf17-avatar-copy-ru",
+					"result": "clean",
+					"instance": "f89e1c48e249-avatar-size-copy-ru",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 2
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/44ad14bfaf17-avatar-copy-ru.json",
-					"receipt_sha256": "7cc0942377b07af1483f6562b48d1feb3b16ae3bf85257268927e74809cb076d",
-					"scope": "ui.settings.appearance: new keys only (add_link / agent_avatar_size_setting) read against English, glossary, ru style guide and namespace siblings; remaining keys rest on prior audits.",
-					"note": "Independent audit on PR head ffa3a3d83c; placeholders, key parity and ur bidi checked mechanically. No rendered-fit or native-reader claim."
+					"receipt": "i18n/receipts/f89e1c48e249-avatar-size-copy-ru.json",
+					"receipt_sha256": "e67f6e45d1ba9149f94ce0ff7cf5378ef629403260b82e13f76f1dd3ec6042ef",
+					"scope": "ui.settings.appearance: the reworded agent picture size description (one key) read against English, glossary, style guide and namespace siblings; other keys rest on prior audits.",
+					"note": "Independent audit on PR head 91e5e14186; placeholders, key parity and (ur) bidi checked mechanically. No rendered-fit or native-reader claim."
 				}
 			],
 			"status": "audited",
@@ -37037,6 +37109,30 @@
 							"receipt": "i18n/receipts/23463a773a32-surfaces.json",
 							"receipt_sha256": "ffb00483f5a5b874782f3512f5de45836a54200b23fad9579f69d5803171188b",
 							"scope": "Remediation delta only: every ru value this remediation changed in the audited namespaces, plus the round-1 findings themselves. Unchanged keys are not re-audited; their round-1 coverage stands on the byte-identical English/context hashes and the per-namespace target hashes recor"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "6993e23a7d9607a033159d72344f21058c8232a16de96ae1f3bb63bdd45e82dd",
+					"target_sha256": "57a7a3f05f543f94c1ff9e648739753dc7581c5e459f985717bf78fe62178991",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-03",
+							"result": "clean-with-findings",
+							"instance": "44ad14bfaf17-avatar-copy-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 2
+							},
+							"receipt": "i18n/receipts/44ad14bfaf17-avatar-copy-ru.json",
+							"receipt_sha256": "7cc0942377b07af1483f6562b48d1feb3b16ae3bf85257268927e74809cb076d",
+							"scope": "ui.settings.appearance: new keys only (add_link / agent_avatar_size_setting) read against English, glossary, ru style guide and namespace siblings; remaining keys rest on prior audits.",
+							"note": "Independent audit on PR head ffa3a3d83c; placeholders, key parity and ur bidi checked mechanically. No rendered-fit or native-reader claim."
 						}
 					],
 					"status": "audited"
@@ -46709,8 +46805,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.settings.appearance",
-			"source_sha256": "6993e23a7d9607a033159d72344f21058c8232a16de96ae1f3bb63bdd45e82dd",
-			"target_sha256": "c7cab3e1d0958d5969e34288b226e32ff7edd485919dd6d3bbbdb66b9b52e921",
+			"source_sha256": "a93e96ba361ee402bf080c9cc79e9971f86634cb4c5607e74cb6597623fee8d1",
+			"target_sha256": "399a945d7df534937d013c6b7134f8af592c6ccea29440d526d876c5f9013145",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -46721,18 +46817,18 @@
 					"agent": "reviewer",
 					"model": "anthropic/claude-sonnet-5-5",
 					"date": "2026-11-03",
-					"result": "clean-with-findings",
-					"instance": "44ad14bfaf17-avatar-copy-ur",
+					"result": "clean",
+					"instance": "f89e1c48e249-avatar-size-copy-ur",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
+						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/44ad14bfaf17-avatar-copy-ur.json",
-					"receipt_sha256": "153735c75b6d0817ab54eb35ca6cd9ce13f3d4dcbc71c9ebee702e106062702f",
-					"scope": "ui.settings.appearance: new keys only (add_link / agent_avatar_size_setting) read against English, glossary, ur style guide and namespace siblings; remaining keys rest on prior audits.",
-					"note": "Independent audit on PR head ffa3a3d83c; placeholders, key parity and ur bidi checked mechanically. No rendered-fit or native-reader claim."
+					"receipt": "i18n/receipts/f89e1c48e249-avatar-size-copy-ur.json",
+					"receipt_sha256": "e8b61f6176d51f64183b38a005d8ab3524487d67849f321397da7b1aac458f43",
+					"scope": "ui.settings.appearance: the reworded agent picture size description (one key) read against English, glossary, style guide and namespace siblings; other keys rest on prior audits.",
+					"note": "Independent audit on PR head 91e5e14186; placeholders, key parity and (ur) bidi checked mechanically. No rendered-fit or native-reader claim."
 				}
 			],
 			"status": "audited",
@@ -46780,6 +46876,30 @@
 							"receipt": "i18n/receipts/21fe6c635cf3-surfaces.json",
 							"receipt_sha256": "c8a545503607c32407442b73c7b61ccb33fd68447cdf9c01d3a3415fcb578086",
 							"scope": "Remediation delta only: every value this remediation changed in the audited namespaces, plus the round-1 findings themselves. Unchanged keys are not re-audited; their round-1 coverage stands on the byte-identical hashes recorded below."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "6993e23a7d9607a033159d72344f21058c8232a16de96ae1f3bb63bdd45e82dd",
+					"target_sha256": "c7cab3e1d0958d5969e34288b226e32ff7edd485919dd6d3bbbdb66b9b52e921",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-03",
+							"result": "clean-with-findings",
+							"instance": "44ad14bfaf17-avatar-copy-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/44ad14bfaf17-avatar-copy-ur.json",
+							"receipt_sha256": "153735c75b6d0817ab54eb35ca6cd9ce13f3d4dcbc71c9ebee702e106062702f",
+							"scope": "ui.settings.appearance: new keys only (add_link / agent_avatar_size_setting) read against English, glossary, ur style guide and namespace siblings; remaining keys rest on prior audits.",
+							"note": "Independent audit on PR head ffa3a3d83c; placeholders, key parity and ur bidi checked mechanically. No rendered-fit or native-reader claim."
 						}
 					],
 					"status": "audited"
@@ -56673,8 +56793,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.settings.appearance",
-			"source_sha256": "6993e23a7d9607a033159d72344f21058c8232a16de96ae1f3bb63bdd45e82dd",
-			"target_sha256": "5abbb20d61fcd9e0d252b65c04e9e8c07a1da5faad41183dedf8b1890cabc323",
+			"source_sha256": "a93e96ba361ee402bf080c9cc79e9971f86634cb4c5607e74cb6597623fee8d1",
+			"target_sha256": "3c9f34a3157dec78d0689c9c2d2ef46e70fc04c3231b435757ec2581a232178c",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -56686,17 +56806,17 @@
 					"model": "anthropic/claude-sonnet-5-5",
 					"date": "2026-11-03",
 					"result": "clean-with-findings",
-					"instance": "44ad14bfaf17-avatar-copy-vi",
+					"instance": "f89e1c48e249-avatar-size-copy-vi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
-						"nit": 0
+						"minor": 0,
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/44ad14bfaf17-avatar-copy-vi.json",
-					"receipt_sha256": "f89dba67f901ea6484d3d4b4a73827a4bb045746d47c4bde23f10ce3c72b3a4c",
-					"scope": "ui.settings.appearance: new keys only (add_link / agent_avatar_size_setting) read against English, glossary, vi style guide and namespace siblings; remaining keys rest on prior audits.",
-					"note": "Independent audit on PR head ffa3a3d83c; placeholders, key parity and ur bidi checked mechanically. No rendered-fit or native-reader claim."
+					"receipt": "i18n/receipts/f89e1c48e249-avatar-size-copy-vi.json",
+					"receipt_sha256": "e4a3771e38ea870f011afe5cfc0d5f47080dee600a3764d6fe8edb570c19c34e",
+					"scope": "ui.settings.appearance: the reworded agent picture size description (one key) read against English, glossary, style guide and namespace siblings; other keys rest on prior audits.",
+					"note": "Independent audit on PR head 91e5e14186; placeholders, key parity and (ur) bidi checked mechanically. No rendered-fit or native-reader claim."
 				}
 			],
 			"status": "audited",
@@ -56743,6 +56863,30 @@
 							},
 							"receipt": "i18n/receipts/b928c7f0c96d-surfaces.json",
 							"receipt_sha256": "3f79234f1f321130c46e9a6532ee7b90826101c21da47314852c169711c070fe"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "6993e23a7d9607a033159d72344f21058c8232a16de96ae1f3bb63bdd45e82dd",
+					"target_sha256": "5abbb20d61fcd9e0d252b65c04e9e8c07a1da5faad41183dedf8b1890cabc323",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-03",
+							"result": "clean-with-findings",
+							"instance": "44ad14bfaf17-avatar-copy-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/44ad14bfaf17-avatar-copy-vi.json",
+							"receipt_sha256": "f89dba67f901ea6484d3d4b4a73827a4bb045746d47c4bde23f10ce3c72b3a4c",
+							"scope": "ui.settings.appearance: new keys only (add_link / agent_avatar_size_setting) read against English, glossary, vi style guide and namespace siblings; remaining keys rest on prior audits.",
+							"note": "Independent audit on PR head ffa3a3d83c; placeholders, key parity and ur bidi checked mechanically. No rendered-fit or native-reader claim."
 						}
 					],
 					"status": "audited"
@@ -67252,8 +67396,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.settings.appearance",
-			"source_sha256": "6993e23a7d9607a033159d72344f21058c8232a16de96ae1f3bb63bdd45e82dd",
-			"target_sha256": "4a5b62d86db21063fe7ec23cc1b3b5b0a03103deb2aa34d7ca3accea382e4671",
+			"source_sha256": "a93e96ba361ee402bf080c9cc79e9971f86634cb4c5607e74cb6597623fee8d1",
+			"target_sha256": "6a84a52bb2285d1748b2aaf695a876cbb41ae8aa5fe99b24e698f2fd926bb605",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -67265,17 +67409,17 @@
 					"model": "anthropic/claude-sonnet-5-5",
 					"date": "2026-11-03",
 					"result": "clean",
-					"instance": "44ad14bfaf17-avatar-copy-zh-cn",
+					"instance": "f89e1c48e249-avatar-size-copy-zh-cn",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/44ad14bfaf17-avatar-copy-zh-cn.json",
-					"receipt_sha256": "858e5a03b41062830c46b1c51721addca6a6f39177b66d844cf6a29dac0521e9",
-					"scope": "ui.settings.appearance: new keys only (add_link / agent_avatar_size_setting) read against English, glossary, zh-CN style guide and namespace siblings; remaining keys rest on prior audits.",
-					"note": "Independent audit on PR head ffa3a3d83c; placeholders, key parity and ur bidi checked mechanically. No rendered-fit or native-reader claim."
+					"receipt": "i18n/receipts/f89e1c48e249-avatar-size-copy-zh-cn.json",
+					"receipt_sha256": "046d861d5f53df02a930eb990af2f067b4b95f4b720f5549170c7d1ca012c898",
+					"scope": "ui.settings.appearance: the reworded agent picture size description (one key) read against English, glossary, style guide and namespace siblings; other keys rest on prior audits.",
+					"note": "Independent audit on PR head 91e5e14186; placeholders, key parity and (ur) bidi checked mechanically. No rendered-fit or native-reader claim."
 				}
 			],
 			"status": "audited",
@@ -67322,6 +67466,30 @@
 							},
 							"receipt": "i18n/receipts/5e4bc8838c01-surfaces-zh-cn-r1.json",
 							"receipt_sha256": "11f672f8fa16f25cea4e723052c6f80dadc42be4d9fc458158b32f208d42194a"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "6993e23a7d9607a033159d72344f21058c8232a16de96ae1f3bb63bdd45e82dd",
+					"target_sha256": "4a5b62d86db21063fe7ec23cc1b3b5b0a03103deb2aa34d7ca3accea382e4671",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-03",
+							"result": "clean",
+							"instance": "44ad14bfaf17-avatar-copy-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/44ad14bfaf17-avatar-copy-zh-cn.json",
+							"receipt_sha256": "858e5a03b41062830c46b1c51721addca6a6f39177b66d844cf6a29dac0521e9",
+							"scope": "ui.settings.appearance: new keys only (add_link / agent_avatar_size_setting) read against English, glossary, zh-CN style guide and namespace siblings; remaining keys rest on prior audits.",
+							"note": "Independent audit on PR head ffa3a3d83c; placeholders, key parity and ur bidi checked mechanically. No rendered-fit or native-reader claim."
 						}
 					],
 					"status": "audited"
