@@ -556,3 +556,52 @@ test("the selection and organization persist across an app restart", async () =>
 		await app.close();
 	}
 });
+
+/*
+ * REVIEW ROUND 1, R4. With storage refusing the view write (private mode, a
+ * full quota), the in-memory carry is the click's ONLY record. It used to be
+ * dropped as soon as an owner with an account mounted, so a later auth
+ * remount (`key={account.token}`) restored the pre-click view. The carry now
+ * survives until a write actually lands.
+ */
+test("a notification click survives an auth remount when storage refuses the write", async () => {
+	const app = await open();
+	let saved;
+	try {
+		await pick(app, "launch_shared");
+		await until(() => selected(app) === "launch_shared", "launch selected");
+		await app.leave();
+		saved = { ...localStorage };
+	} finally {
+		await app.close();
+	}
+	const setItem = Object.getPrototypeOf(localStorage).setItem;
+	const clicked = await mount({
+		lifecycle: [],
+		path: "/team-bridge?tenant=org_shared&conversation=grp_shared",
+		waitReady: false,
+		seed: ({ fixture }) => {
+			for (const [key, value] of Object.entries(saved))
+				localStorage.setItem(key, value);
+			scenario(fixture);
+			Object.getPrototypeOf(localStorage).setItem = function (key, value) {
+				if (key === "lo.teamBridge.view.v1")
+					throw new Error("QuotaExceededError");
+				return setItem.call(this, key, value);
+			};
+		},
+	});
+	try {
+		await until(() => selected(clicked) === "grp_shared", "click target");
+		await clicked.changeAuth("acct_a");
+		await until(() => selected(clicked) !== null, "remounted owner landed");
+		assert.equal(
+			selected(clicked),
+			"grp_shared",
+			"the click is still the view after the auth remount",
+		);
+	} finally {
+		Object.getPrototypeOf(localStorage).setItem = setItem;
+		await clicked.close();
+	}
+});

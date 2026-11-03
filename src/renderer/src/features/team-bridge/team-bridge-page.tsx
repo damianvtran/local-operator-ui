@@ -4266,9 +4266,22 @@ const TeamBridgeOwnedPage: FC<{
 				: null,
 	);
 	const scopeChosen = useRef(Boolean(requestedTenant || carriedClick));
-	// Consumed once this owner exists; its view reports (and so persists) it.
+	/*
+	 * Consumed once this owner can PERSIST it (review round 1, R4). Clearing it on
+	 * mere existence lost the click when storage refused the write (private
+	 * mode, quota): the carry was the only record, so a second auth remount
+	 * restored the pre-click view. Until a write lands, the in-memory carry stays
+	 * the record; it lives in the route-level container, so leaving Team Bridge
+	 * still drops it.
+	 */
 	useEffect(() => {
-		if (carriedClick && accountId) clickCarry.current = null;
+		if (!carriedClick || !accountId) return;
+		const storage = browserDraftStorage();
+		if (
+			storage &&
+			writeViewMemory(storage, accountId, carriedClick.scope, carriedClick.view)
+		)
+			clickCarry.current = null;
 	}, [carriedClick, accountId, clickCarry]);
 	/*
 	 * THE OPENING SNAPSHOT (tb-instant-open, mechanism 1 as far as it honestly
@@ -4598,9 +4611,13 @@ const TeamBridgeOwnedPage: FC<{
 		const remembered = { target: clicked, thread: clickedThread };
 		if (viewMemory.current.scope === clickedScope)
 			viewMemory.current.view = remembered;
-		if (storage && accountId)
-			writeViewMemory(storage, accountId, clickedScope, remembered);
-		else clickCarry.current = { scope: clickedScope, view: remembered };
+		/* No account yet, or storage refused the write (R4): carry it in memory. */
+		const persisted =
+			storage && accountId
+				? writeViewMemory(storage, accountId, clickedScope, remembered)
+				: false;
+		if (!persisted)
+			clickCarry.current = { scope: clickedScope, view: remembered };
 		restoredTarget.current = null;
 		setTarget(clicked);
 		setThreadLink(clickedThread);
@@ -4815,14 +4832,16 @@ const TeamBridgeOwnedPage: FC<{
 	const rememberView = (
 		patch: Partial<TeamBridgeViewMemory> & { target: TeamBridgeTarget },
 	) => {
-		const storage = browserDraftStorage();
 		if (!accountId) return;
+		const storage = browserDraftStorage();
 		const view: TeamBridgeViewMemory = {
 			target: patch.target,
 			thread: patch.thread ?? null,
 			quickView: patch.quickView ?? null,
 			scroll: patch.scroll ?? null,
 		};
+		/* The in-session record updates even without storage (R3): within this
+		   mount the reader's place still holds; only cross-mount memory is lost. */
 		if (viewMemory.current.scope === scope) viewMemory.current.view = view;
 		if (storage)
 			writeViewMemory(storage, accountId, scope, view, currentScope.current);

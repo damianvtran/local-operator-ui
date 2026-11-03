@@ -204,7 +204,10 @@ export function readViewMemory(
  * position: that position belongs to the scope it was taken in, while "where
  * the reader is" has already moved on.
  * Silent on failure, like every other preference write in this feature:
- * losing a convenience must never surface as an error.
+ * losing a convenience must never surface as an error. The boolean says
+ * whether the record actually landed, so a caller with something it must not
+ * lose (a notification click about to survive a remount) can keep an in-memory
+ * copy when storage refused it (private mode, quota).
  */
 export function writeViewMemory(
 	storage: Storage,
@@ -212,7 +215,7 @@ export function writeViewMemory(
 	scope: TeamBridgeScope,
 	view: TeamBridgeViewMemory,
 	current: TeamBridgeScope = scope,
-): void {
+): boolean {
 	try {
 		const all = readAll(storage);
 		const entry = isRecord(all[accountId]) ? all[accountId] : {};
@@ -224,8 +227,10 @@ export function writeViewMemory(
 				[accountId]: { scope: current, scopes: { ...scopes, [scope]: view } },
 			}),
 		);
+		return true;
 	} catch {
 		/* Not persisted; the in-session view still holds. */
+		return false;
 	}
 }
 
