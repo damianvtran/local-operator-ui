@@ -1,0 +1,14 @@
+{
+  "baseline_source": "retained independent earlier QA manifest r3-tier2-manifest.json",
+  "baseline_head": "e42a6d69154cfb847987fa9981ee514c44eca508",
+  "baseline_original_path": "/Users/damian/.local-operator/sessions/79b74ef4f711/scratchpad/r3-tier2-frames/ur-browser-reload-tooltip-pointer.png",
+  "baseline_sha256": "f7589248246fb7777f53081de724ebf72111034bbf4e15f498f990c4a098e858",
+  "head": "6fe683b6d7aae8c80e4faeb215139d057b1e1400",
+  "same_site": "BrowserUrlBar reload tooltip; git diff e42..HEAD changes t(shortcut:reload.glyph) to ShortcutText with isolateLtr(reload.glyph), no other changes in this file beyond corresponding back/forward wrappers",
+  "matched_css_width": 800,
+  "baseline_and_head_native_pixels": [
+    2760,
+    1800
+  ],
+  "limitation": "Native bitmap contains wider black backing while renderer viewport is800; compare only matching tooltip native region. Baseline was not captured by this current execution."
+}
