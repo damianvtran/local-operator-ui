@@ -1,0 +1,87 @@
+{
+  "schema": 1,
+  "auditor": "reviewer",
+  "model": "anthropic/claude-sonnet-5-5",
+  "instance": "f93eb129057e-u1-es",
+  "session": "f93eb129057e",
+  "date": "2026-11-03",
+  "model_provenance": {
+    "actual_audit_model": "anthropic/claude-sonnet-5-5",
+    "fallback_this_round": null,
+    "prior_auditor_models": "Retained verbatim in inherited proof; not renamed to the current model."
+  },
+  "status": "passed",
+  "result": "clean",
+  "locale": "es",
+  "namespace": "ui.teamBridge",
+  "sha256": {
+    "en": "a69a3343c59d704aa5ff435c733d7789c4a3171e5099b643be0008ab5a294dd3",
+    "es": "aaf723367e871b4c2bf53cc4d9655cdbd9ff816dae68971b75055ff1aefec362"
+  },
+  "findings": [],
+  "scope": {
+    "base": "e6a9b59b8d906fed65cc2c604282c59109236386",
+    "previous_reviewed_head": "9c44d8b2fd31271d5617925f73f39b0992077b3e",
+    "head": "59d88d72dbc5577deca43ce4528654e9b965febd",
+    "keys": [
+      "ui.teamBridge.fileCard.list",
+      "ui.teamBridge.fileCard.kind"
+    ],
+    "kind": "Independent two-key SOURCE linguistic audit; corrected es/fr many arms verified; unchanged language inherits proved prior coverage.",
+    "prior_auditors": [
+      {
+        "agent": "reviewer",
+        "model": "openai/gpt-6.1-sol",
+        "date": "2026-11-03",
+        "result": "clean",
+        "instance": "f93eb129057e-es",
+        "findings": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 0,
+          "nit": 0
+        },
+        "receipt": "i18n/receipts/f93eb129057e-es.json",
+        "receipt_sha256": "4fe558aa7e29b4b535148887365af91eb277eac6cab6de31dcd979f4f2c43dcd",
+        "scope": "Five attachmentCard keys; older values identical to ledger-bound base 47e06bc7"
+      }
+    ],
+    "not_audited": [
+      "Unchanged namespace semantics",
+      "Runtime ICU formatting",
+      "Rendered fit and RTL layout",
+      "Pseudo-localization",
+      "Transport, runtime security and UI design"
+    ]
+  },
+  "independence": "Auditor session f93eb129057e did not author these translations; coder f0f044d6705e authored them per delegation. Locale suffix identifies this audit scope, not an additional independent auditor.",
+  "context": {
+    "path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+    "sha256": "20833fb39f8f0eea19af6d5a8fcc96e497553a6c0ffade5fd4d84d0af3d33164",
+    "delta_entries_present": true
+  },
+  "reference_repository_revision": "b42471d3935cb7e95d64428af27c32626665f4c0",
+  "reference_hashes": {
+    "i18n/glossary.md": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+    "i18n/style-guides/es.md": "77b9227213802d14c74d4298d6b346ad842bbf2a5ca3b9d46fc6144430d26c3e"
+  },
+  "ui_procedure": {
+    "path": "docs/I18N.md",
+    "revision": "59d88d72dbc5577deca43ce4528654e9b965febd",
+    "sha256": "9a4bde8d1c161286160be4a4ae1c7655615dbf39047052550b725a3da2eb00e2"
+  },
+  "per_key_verdict": {
+    "ui.teamBridge.fileCard.list": "PASS — independently reviewed semantics, terminology and static ICU structure",
+    "ui.teamBridge.fileCard.kind": "PASS — independently reviewed semantics, terminology and static ICU structure"
+  },
+  "artifacts": [
+    {
+      "path": "i18n/audits/evidence/es/ui.teamBridge/f93eb129057e-u1-es/notes.json",
+      "sha256": "7df9337719a2df287eaabd893a0eee8394cf1d07995fbccc4d42c3b1e07d0463",
+      "kind": "static source audit notes; not execution evidence"
+    }
+  ],
+  "canonical_record": "i18n/audits/evidence/es/ui.teamBridge/f93eb129057e-u1-es/record.json",
+  "portable_receipt": "i18n/receipts/f93eb129057e-u1-es.json",
+  "execution_limitations": "Source/git-object/data inspection only. No tests, builds, browser, ICU runtime formatter, pseudo-localization, rendered fit or RTL execution. Ledger writer not run."
+}

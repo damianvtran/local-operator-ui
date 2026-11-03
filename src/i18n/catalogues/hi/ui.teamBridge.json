@@ -337,5 +337,7 @@
 	"ui.teamBridge.attachmentCard.file": "फ़ाइल",
 	"ui.teamBridge.attachmentCard.bytes": "{size, number} बाइट",
 	"ui.teamBridge.attachmentCard.metadata_only": "इस दृश्य में पूर्वावलोकन उपलब्ध नहीं है",
-	"ui.teamBridge.attachmentCard.unavailable": "अटैचमेंट उपलब्ध नहीं है"
+	"ui.teamBridge.attachmentCard.unavailable": "अटैचमेंट उपलब्ध नहीं है",
+	"ui.teamBridge.fileCard.list": "{count, plural, one {# फ़ाइल} other {# फ़ाइलें}}",
+	"ui.teamBridge.fileCard.kind": "{kind, select, pdf {PDF} text {टेक्स्ट फ़ाइल} container {ZIP} other {फ़ाइल}}"
 }

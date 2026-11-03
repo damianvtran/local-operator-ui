@@ -10198,6 +10198,8 @@ export type MessageParams = {
 	"ui.teamBridge.events.removed": { actor: string; targets: string };
 	"ui.teamBridge.events.unknown": undefined;
 	"ui.teamBridge.events.withdrawn": { actor: string; targets: string };
+	"ui.teamBridge.fileCard.kind": { kind: string };
+	"ui.teamBridge.fileCard.list": { count: number };
 	"ui.teamBridge.group.more": undefined;
 	"ui.teamBridge.invitations.accept": undefined;
 	"ui.teamBridge.invitations.accepted": { agent: string };
