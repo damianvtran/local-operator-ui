@@ -72,6 +72,13 @@ type Region = { start: number; end: number };
  *    is NOT a safe side: a phantom unclosed fence makes everything after it one
  *    region, and a later large URI then puts the rest of the message, prose
  *    included, behind the receipt.
+ *    A fence opened inside a list item or a blockquote also ENDS WITH ITS
+ *    CONTAINER, as in CommonMark (PR #1622 round 1, R1-1 / Q1): the fence keeps
+ *    the opener's quote depth and item content column, and the first line that
+ *    drops a `>` level (blank or not), or a non-blank line left of that column
+ *    (the next item, the paragraph after the list), closes it at the previous
+ *    line end. Fenced code has no lazy continuation, so no exception applies.
+ *    Without this, `- ```` with no closer stayed open to the end of the body.
  *    The closer keeps the looser prefix (spaces, tabs, `>`): inside a fence only
  *    "does this line close it" matters, and a list marker there is content.
  *  - inline code spans: a backtick run closed by the next run of EXACTLY its
@@ -81,10 +88,17 @@ type Region = { start: number; end: number };
  * Not modelled: indented (4-space) code blocks as regions. A line indented that
  * far is only ruled out as a fence opener. A small URI in one is untouched by the
  * floor; a large one splits as before, which degrades only that block.
- * List tracking is just enough for the opener's column: a stack of the open
- * items' content columns, popped when a line after a blank sits left of them.
- * Lazy continuation and the finer item-ending rules are approximated; a miss
- * there misjudges one opener's indent, never the scan's cost. */
+ * List tracking is just enough for fence columns: a stack of the open items'
+ * content columns, popped when a line sits left of them after a blank line, or
+ * starts a block that cannot continue a paragraph lazily (an ATX heading, a
+ * thematic break, a fence run, a blockquote marker; R1-2). Other item-ending
+ * rules (HTML blocks, setext underlines, the finer lazy-continuation cases)
+ * are approximated. A miss never changes the scan's cost, but it CAN hide
+ * prose (R1-4): a stale column can accept a 4-space line as an opener, or
+ * keep a fence open past the end of its item, and a later large URI in that
+ * phantom region then puts the prose between them behind the receipt. The
+ * prose stays reachable through inspection; the render tests and the
+ * remark-gfm differential pin the shapes known to matter. */
 /** Columns of spaces/tabs from `i` (a tab advances to the next multiple of 4,
  * counted from `col`), and where they end. */
 function indentAt(body: string, from: number, lineEnd: number, startCol = 0) {
@@ -137,22 +151,34 @@ function fenceStart(
 	lineEnd: number,
 	items: number[],
 	afterBlank: boolean,
-): { at: number; blank: boolean } {
+): { at: number; blank: boolean; quote: number; item: number } {
 	let i = lineStart;
-	// Blockquote markers: up to 3 spaces, `>`, and one optional space.
+	let quote = 0;
+	// Blockquote markers: up to 3 spaces, `>`, and one optional space. A quote
+	// marker left of an open item's content column starts a block outside that
+	// item, so the item ends (R1-2: `- a` then `>     ```` is indented code in a
+	// quote, not a fence under a stale column 2).
 	for (;;) {
 		const ws = indentAt(body, i, lineEnd);
 		if (ws.col > 3 || body[ws.i] !== ">") break;
+		if (!quote)
+			while (items.length && items[items.length - 1] > ws.col) items.pop();
 		i = ws.i + 1;
 		if (body[i] === " " || body[i] === "\t") i++;
+		quote++;
 	}
 	let { i: at, col } = indentAt(body, i, lineEnd);
 	const blank = at === lineEnd || (body[at] === "\r" && at + 1 === lineEnd);
-	if (blank) return { at: -1, blank };
-	// A line left of an item's content column after a blank line ends that item.
-	// Without the blank it may be a lazy paragraph continuation, so the item
+	if (blank) return { at: -1, blank, quote, item: 0 };
+	// A line left of an item's content column ends that item after a blank
+	// line, or when it starts a block that cannot be a lazy paragraph
+	// continuation (R1-2). Otherwise it may be a lazy continuation, so the item
 	// stays open: a later `  ```` under it is still the item's fence.
-	if (afterBlank)
+	if (
+		items.length &&
+		items[items.length - 1] > col &&
+		(afterBlank || interruptsParagraph(body, at, lineEnd))
+	)
 		while (items.length && items[items.length - 1] > col) items.pop();
 	// List markers, possibly nested on one line (`- 1. ```` ). A marker is one
 	// only within 3 columns of its container; its content starts after 1-4
@@ -160,7 +186,7 @@ function fenceStart(
 	// so the run cannot be an opener: it is 4+ columns into the content).
 	for (;;) {
 		const base = containerColumn(items, col);
-		if (col - base > 3) return { at: -1, blank };
+		if (col - base > 3) return { at: -1, blank, quote, item: base };
 		const marker = listMarkerAt(body, at, lineEnd);
 		if (!marker) break;
 		const after = indentAt(body, at + marker, lineEnd, col + marker);
@@ -168,23 +194,92 @@ function fenceStart(
 		const content = col + marker + (gap > 4 ? 1 : gap);
 		while (items.length && items[items.length - 1] > col) items.pop();
 		items.push(content);
-		if (gap > 4) return { at: -1, blank };
+		if (gap > 4) return { at: -1, blank, quote, item: content };
 		at = after.i;
 		col = after.col;
 	}
-	return { at, blank };
+	// The item a fence on this line would belong to: the deepest open item at
+	// or left of the run's column (0 outside any list).
+	return { at, blank, quote, item: containerColumn(items, col) };
+}
+
+/** Whether the line from `at` starts a block that ends a paragraph instead of
+ * lazily continuing it: an ATX heading (1-6 `#`, then a space, tab or end), a
+ * fence run (3+ backticks or tildes), or a thematic break (3+ of one of `*`,
+ * `-`, `_`, with only spaces or tabs between). One forward pass over the line,
+ * called at most once per line, so the scan stays linear. */
+function interruptsParagraph(body: string, at: number, lineEnd: number) {
+	const char = body[at];
+	let run = 0;
+	while (at + run < lineEnd && body[at + run] === char) run++;
+	if (char === "#") {
+		const next = body[at + run];
+		return (
+			run <= 6 &&
+			(at + run === lineEnd || next === " " || next === "\t" || next === "\r")
+		);
+	}
+	if (char === "`" || char === "~") return run >= 3;
+	if (char !== "*" && char !== "-" && char !== "_") return false;
+	let count = 0;
+	for (let j = at; j < lineEnd; j++) {
+		if (body[j] === char) count++;
+		else if (body[j] !== " " && body[j] !== "\t" && body[j] !== "\r")
+			return false;
+	}
+	return count >= 3;
+}
+
+/** Whether this line ends the container an open fence sits in (R1-1 / Q1): it
+ * has fewer `>` markers than the opener (a blank line without them ends the
+ * quote too), or it is a non-blank line left of the opener's item content
+ * column. Reads only the line's prefix. */
+function fenceContainerEnded(
+	body: string,
+	lineStart: number,
+	lineEnd: number,
+	fence: { quote: number; item: number },
+) {
+	let i = lineStart;
+	for (let depth = 0; depth < fence.quote; depth++) {
+		const ws = indentAt(body, i, lineEnd);
+		if (ws.col > 3 || body[ws.i] !== ">") return true;
+		i = ws.i + 1;
+		if (body[i] === " " || body[i] === "\t") i++;
+	}
+	if (!fence.item) return false;
+	const lead = indentAt(body, i, lineEnd);
+	const blank =
+		lead.i === lineEnd || (body[lead.i] === "\r" && lead.i + 1 === lineEnd);
+	return !blank && lead.col < fence.item;
 }
 
 function codeRegions(body: string): Region[] {
 	const regions: Region[] = [];
 	let segment = 0;
-	let fence: { char: string; size: number; start: number } | null = null;
+	let fence: {
+		char: string;
+		size: number;
+		start: number;
+		quote: number;
+		item: number;
+	} | null = null;
 	let lineStart = 0;
 	const items: number[] = [];
 	let afterBlank = false;
 	for (;;) {
 		let lineEnd = body.indexOf("\n", lineStart);
 		if (lineEnd < 0) lineEnd = body.length;
+		// The container ended: close the fence at the previous line's end, then
+		// read this line as an ordinary one (it may open the next item's fence),
+		// with the ended item popped as after a blank line.
+		let containerEnded = false;
+		if (fence && fenceContainerEnded(body, lineStart, lineEnd, fence)) {
+			regions.push({ start: fence.start, end: lineStart - 1 });
+			fence = null;
+			segment = lineStart - 1;
+			containerEnded = true;
+		}
 		if (fence) {
 			let i = lineStart;
 			while (
@@ -200,7 +295,13 @@ function codeRegions(body: string): Region[] {
 				segment = lineEnd;
 			}
 		} else {
-			const line = fenceStart(body, lineStart, lineEnd, items, afterBlank);
+			const line = fenceStart(
+				body,
+				lineStart,
+				lineEnd,
+				items,
+				afterBlank || containerEnded,
+			);
 			const i = line.at;
 			const char = i < 0 ? "" : body[i];
 			let run = 0;
@@ -211,7 +312,13 @@ function codeRegions(body: string): Region[] {
 				!(char === "`" && body.slice(i + run, lineEnd).includes("`"))
 			) {
 				inlineCodeRegions(body, segment, lineStart, regions);
-				fence = { char, size: run, start: lineStart };
+				fence = {
+					char,
+					size: run,
+					start: lineStart,
+					quote: line.quote,
+					item: line.item,
+				};
 			} else if (line.blank) {
 				inlineCodeRegions(body, segment, lineStart, regions);
 				segment = lineEnd;
@@ -280,10 +387,13 @@ export function inlineImageSpans(body: string): Span[] {
 	// per closing tag serves every match before it (no rescan per match).
 	let lineEnd = -1;
 	let svgEnd: RegExpExecArray | null | undefined;
-	// End of the last large URI. Inside a code-region receipt, later matches are
-	// still scanned so their sizes join its total (R2-3), but never one that
-	// starts inside a URI already measured: that keeps each character in at most
-	// one URI scan, so the pass stays linear.
+	// End of the last URI scanned inside code, large or not. Inside a code-region
+	// receipt, later matches are still scanned so their sizes join its total
+	// (R2-3), but never one that starts inside a URI or header already scanned:
+	// that keeps each character in at most one URI scan, so the pass stays
+	// linear. Below-floor scans count too (PR #1622 round 1, R1-3): a run of
+	// overlapping `data:image/` headers is otherwise rescanned once per match,
+	// which a fence used to shield the renderer from entirely.
 	let uriEnd = -1;
 	for (const match of body.matchAll(IMAGE_START)) {
 		const start = match.index;
@@ -300,6 +410,10 @@ export function inlineImageSpans(body: string): Span[] {
 			region < regions.length && regions[region].start <= start
 				? regions[region]
 				: undefined;
+		// A match starting inside a header or URI already scanned in this code
+		// region ends where that one did, so it can only be a shorter copy of it:
+		// skip it, whether or not a receipt exists yet (R1-3).
+		if (code && start < uriEnd) continue;
 		// Outside code, a span never runs into the next code region (defensive:
 		// every URI end below already stops at a backtick or a line start).
 		const limit = code ? body.length : (regions[region]?.start ?? body.length);
@@ -311,6 +425,7 @@ export function inlineImageSpans(body: string): Span[] {
 		)
 			cursor++;
 		const comma = cursor < body.length && body[cursor] === ",";
+		if (code) uriEnd = Math.max(uriEnd, cursor);
 		if (!comma && cursor - start <= 64) continue;
 		const header = body.slice(start, cursor);
 		const mimeEnd = header.search(MIME_END);
@@ -397,8 +512,8 @@ export function inlineImageSpans(body: string): Span[] {
 		cursor = Math.min(cursor, limit);
 		uncertainEnd = Math.min(uncertainEnd, limit);
 		const end = Math.max(cursor, uncertainEnd);
+		if (code) uriEnd = Math.max(uriEnd, end);
 		if (end - start < RECEIPT_FLOOR) continue;
-		uriEnd = end;
 		// Lower-cased for display only (QA N1): MIME types are case-insensitive.
 		const mime = header
 			.slice(

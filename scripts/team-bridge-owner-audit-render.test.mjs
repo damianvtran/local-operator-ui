@@ -2577,7 +2577,9 @@ test("a fence opened on a list-marker line is one receipt, prose after it", asyn
 		["list_star_tilde", "* ~~~", "~~~", "  "],
 		["list_ordered_info", "1. ```html", "```", "   "],
 		["list_paren_nested", "2) - ```", "```", "     "],
-		["quote_list", "> - ```", "```", "> "],
+		// The item's content sits 2 columns into the quote: `>` + optional space
+		// + 2. With only `> `, the line is left of the item and ends it (R1-1).
+		["quote_list", "> - ```", "```", ">   "],
 	]) {
 		const body = `Steps:\n\n${open}\n${indent}<img src="${uri}">\n${indent}${close}\n\nafter prose`;
 		const { view, row } = await renderAuditBody(id, body);
@@ -2635,6 +2637,145 @@ test("a 4-space indented fence line is indented code, not an opener", async () =
  * states the TOTAL of those URIs. A URI below the floor is not counted, so the
  * total does not depend on which comes first.
  */
+/*
+ * PR #1622 round 1, R1-1 / QA Q1. A fence opened inside a list item or a
+ * blockquote ends with its container, as in CommonMark. Without that, an
+ * unclosed `- ```` stayed open to the end of the body and a later large URI
+ * put every paragraph after the list behind the receipt. The bodies are the
+ * reviewer's and QA's reproductions; the last two (quote, own-line fence under
+ * an item) were already wrong on main.
+ */
+test("a fence inside a list item or quote closes when its container ends", async () => {
+	const uri = `data:image/png;base64,${"A".repeat(3000)}`;
+	for (const [id, body, visible] of [
+		[
+			"item_end",
+			`- \`\`\`\n  code\n\nVisible prose after the list.\n\n${uri}\n\nThanks.`,
+			["Visible prose after the list.", "Thanks."],
+		],
+		[
+			"next_item",
+			`- \`\`\` opens a fence\n- ~~~ also\n\nVisible prose after the list. ${uri}\n\nThanks.`,
+			["Visible prose after the list.", "Thanks."],
+		],
+		[
+			"truncated_item_fence",
+			`- \`\`\`js\n  let a\n\nPROSE1 text.\n\n${uri}\n\nPROSE2 text.`,
+			["PROSE1 text.", "PROSE2 text."],
+		],
+		[
+			"qa_ordered_next_item",
+			`1. \`\`\`sh\n   make\n2. Then the image:\n\n${uri}\n\nImportant prose after.`,
+			["Then the image:", "Important prose after."],
+		],
+		[
+			"qa_dash_paragraph",
+			`- \`\`\`sh\n  make\n\nThen the image: ${uri}\n\nImportant prose after.`,
+			["Then the image:", "Important prose after."],
+		],
+		[
+			"qa_quote_list",
+			`> - \`\`\`\n>   code\n\nThen the image: ${uri}\n\nImportant prose after.`,
+			["Then the image:", "Important prose after."],
+		],
+		[
+			"quote_fence_main",
+			`> \`\`\`\n> code\n\nPROSE1 text.\n\n${uri}\n\nPROSE2 text.`,
+			["PROSE1 text.", "PROSE2 text."],
+		],
+		[
+			"own_line_fence_next_item_main",
+			`1. Install:\n   \`\`\`bash\n   npm i\n2. PROSE1 text.\n\n${uri}\n\nPROSE2 text.`,
+			["PROSE1 text.", "PROSE2 text."],
+		],
+	]) {
+		const { view, row } = await renderAuditBody(id, body);
+		assert.equal(row.querySelectorAll("details").length, 1, id);
+		assert.ok(
+			row
+				.querySelector("summary")
+				.textContent.includes(m.formatNumber(uri.length)),
+			`${id}: the receipt is the URI's alone`,
+		);
+		for (const text of visible)
+			assert.ok(
+				[...row.querySelectorAll("p, li")].some((node) =>
+					node.textContent.includes(text),
+				),
+				`${id}: "${text}" stays visible`,
+			);
+		assert.ok(row.querySelector("pre"), `${id}: the fence renders as code`);
+		await view.close();
+	}
+});
+
+/*
+ * R1-2: a list also ends at a block that cannot lazily continue a paragraph
+ * (a heading, a thematic break, a blockquote, a fence at column 0), not only
+ * after a blank line. A stale item column let a 4-space ``` open a phantom
+ * fence again (the R2-2 failure). All four were already wrong on main.
+ */
+test("a list ended by a block does not keep its column for a later opener", async () => {
+	const uri = `data:image/png;base64,${"A".repeat(3000)}`;
+	for (const [id, between] of [
+		["after_heading", "# PROSE0 heading\n    ```"],
+		["after_hr", "***\n    ```"],
+		["after_quote", ">     ```"],
+		["after_fence", "```\nx\n```\n    ```"],
+	]) {
+		const body = `- a\n${between}\n\nPROSE1 text\n\n${uri}\n\nPROSE2`;
+		const { view, row } = await renderAuditBody(id, body);
+		assert.equal(row.querySelectorAll("details").length, 1, id);
+		assert.ok(
+			row
+				.querySelector("summary")
+				.textContent.includes(m.formatNumber(uri.length)),
+			`${id}: the receipt is the URI's alone`,
+		);
+		for (const text of ["PROSE1 text", "PROSE2"])
+			assert.ok(
+				[...row.querySelectorAll("p")].some(
+					(node) => node.textContent === text,
+				),
+				`${id}: "${text}" stays a paragraph`,
+			);
+		await view.close();
+	}
+});
+
+/*
+ * R1-3: the R2-3 total scans URIs inside a code receipt, and a run of
+ * overlapping `data:image/` headers was rescanned once per match there
+ * (reviewer: 2,023 ms against main's 4 ms on ~1M characters). Bounded by the
+ * scanner's own regex-test count, which is deterministic on a shared host:
+ * the per-match rescan is ~90x this bound. The wall-time bound is loose and
+ * only a backstop.
+ */
+test("overlapping image headers in a code receipt are scanned once", () => {
+	const unit = `${"data:image/".repeat(180)} `;
+	const body = `\`\`\`\ndata:image/png;base64,${"A".repeat(3000)}\n${unit.repeat(Math.ceil(1000000 / unit.length))}\n\`\`\`\nafter`;
+	const original = RegExp.prototype.test;
+	let checks = 0;
+	let spans;
+	const started = performance.now();
+	try {
+		RegExp.prototype.test = function (value) {
+			checks++;
+			return original.call(this, value);
+		};
+		spans = m.inlineImageSpans(body);
+	} finally {
+		RegExp.prototype.test = original;
+	}
+	const elapsed = performance.now() - started;
+	assert.equal(spans.length, 1);
+	assert.ok(
+		checks <= 3 * body.length + 100,
+		`${checks} checks for ${body.length} characters`,
+	);
+	assert.ok(elapsed < 500, `${body.length} characters took ${elapsed} ms`);
+});
+
 test("a receipt for a code region totals every large URI in it", async () => {
 	const first = `data:image/png;base64,${"A".repeat(3000)}`;
 	const second = `data:image/jpeg;base64,${"B".repeat(4000)}`;
