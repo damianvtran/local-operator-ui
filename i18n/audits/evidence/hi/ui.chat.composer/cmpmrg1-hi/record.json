@@ -1,0 +1,92 @@
+{
+  "record_type": "audit_record",
+  "schema": 1,
+  "audit_id": "cmpmrg1-hi",
+  "locale": "hi",
+  "namespace": "ui.chat.composer",
+  "audit_date": "2026-11-04",
+  "audit_kind": "delta audit of six keys in the merged (branch ∪ main) file; unchanged keys read only for glossary/register consistency",
+  "key_count": 6,
+  "delta_keys": [
+    "ui.chat.composer.secret_closure_notice",
+    "ui.chat.composer.insert_transcript",
+    "ui.chat.composer.insert_transcript_hint",
+    "ui.chat.composer.send_recording",
+    "ui.chat.composer.send_recording_hint",
+    "ui.chat.composer.steer_hint"
+  ],
+  "total_keys_in_file": 72,
+  "head": "801b1ad29d47bbb89a0768e0ea1f193892db953d",
+  "branch": "fix/i18n-four-flow-defects",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "482065669a31",
+    "model": "anthropic/claude-sonnet-5-5",
+    "independent_from_translator_session": true,
+    "actual_model_source": "session header (Model: anthropic/claude-sonnet-5-5); no provider fallback observed or used",
+    "fallback": "none"
+  },
+  "input_hashes": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.chat.composer.json",
+      "sha256": "1abe3bc2730635d6eae484b49bfafa1743dee3be1f0ca60863576632acb95f14"
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.chat.composer.context.json",
+      "sha256": "de9e346489f6df64bc3ff08abd1f8e0550e95e54e44b7c0ddda47897ff50e2dc"
+    },
+    "hi": {
+      "path": "src/i18n/catalogues/hi/ui.chat.composer.json",
+      "sha256": "ce5666e842d6bbc8e7768523a8caade2f5df6cf7132f5fa02d91d6cbaff2210b"
+    },
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md (checkout at b42471d3935c)",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/hi.md (checkout at b42471d3935c)",
+      "sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+    }
+  },
+  "artifacts": [
+    {
+      "path": "i18n/audits/evidence/hi/ui.chat.composer/cmpmrg1-hi/report.md",
+      "note": "report written alongside; hash not self-embedded"
+    },
+    {
+      "path": "i18n/audits/evidence/hi/ui.chat.composer/cmpmrg1-hi/receipt.json",
+      "note": "ledger-assemble receipt; instance 482065669a31-cmpmrg1-hi"
+    }
+  ],
+  "checks_run": [
+    "python json load of en/context/hi (valid JSON; hi key set == en key set, 72 keys)",
+    "placeholder scan: none of the six English values contains a placeholder, ICU plural/select or markup; hi values likewise none",
+    "unicode: all six NFC, no Cf/Cc characters, no leading/trailing or double spaces",
+    "display width (combining marks excluded) vs context maxCells: insert_transcript 13/24, insert_transcript_hint 32/48, send_recording 11/24, send_recording_hint 30/48, steer_hint 49/64; secret_closure_notice 95 cells, no hint",
+    "node scripts/i18n/ledger-check.mjs (read-only): reports the expected stale source/target and unnamed-bytes findings for hi/ui.chat.composer before this receipt is assembled"
+  ],
+  "audit_notes_not_execution_log": "Linguistic judgement is the auditor's own native-reader reasoning; no translation/MT service was used. The checks above were run in-session with python3 and node; no tsc/vitest/build was run.",
+  "current_report_verdict": {
+    "status": "passed",
+    "unresolved_blocker_major_count": 0,
+    "finding_ids": [
+      "CMPMRG1-HI-M1"
+    ]
+  },
+  "findings": [
+    {
+      "id": "CMPMRG1-HI-M1",
+      "severity": "MINOR",
+      "key": "ui.chat.composer.send_recording_hint",
+      "current": "अभी ट्रांसक्राइब करके भेजें, बिना जाँचे",
+      "problem": "Meaning is correct (transcribe and send at once, user does not check). The context note asks to say plainly that there is no review step; 'बिना जाँचे' is a terse colloquial adverbial that a reader can parse as 'sent unchecked' without realising the user loses the chance to review. Not wrong, so does not gate.",
+      "suggested": "अभी ट्रांसक्राइब करके भेजें, जाँचने का मौका नहीं मिलेगा  (or the shorter 'अभी ट्रांसक्राइब करके भेजें — बिना जाँच के'); both fit the 48-cell hint.",
+      "gates": false
+    }
+  ],
+  "not_audited": [
+    "unchanged keys of the namespace",
+    "rendered fit in the live UI",
+    "runtime ICU formatting"
+  ]
+}

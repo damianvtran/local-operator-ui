@@ -1,0 +1,99 @@
+{
+	"audit_id": "cmpmrg1-zh-CN",
+	"audit_kind": "delta audit of 6 keys in the merged ui.chat.composer file (1 key from branch, 5 from main); other 66 keys read only for glossary/register consistency",
+	"audit_date": "2026-11-04",
+	"locale": "zh-CN",
+	"namespace": "ui.chat.composer",
+	"key_count": 72,
+	"delta_keys": [
+		"ui.chat.composer.secret_closure_notice",
+		"ui.chat.composer.insert_transcript",
+		"ui.chat.composer.insert_transcript_hint",
+		"ui.chat.composer.send_recording",
+		"ui.chat.composer.send_recording_hint",
+		"ui.chat.composer.steer_hint"
+	],
+	"source_commit": "801b1ad29d47bbb89a0768e0ea1f193892db953d",
+	"branch": "fix/i18n-four-flow-defects",
+	"auditor": {
+		"agent": "i18n-auditor",
+		"session": "aa5cc6461961",
+		"model": "anthropic/claude-sonnet-5-5",
+		"independent_from_translator_session": true,
+		"actual_model_source": "session header 'Model: anthropic/claude-sonnet-5-5'; no fallback observed; the model cannot be verified independently from inside the session.",
+		"instance": "aa5cc6461961-cmpmrg1-zh-CN"
+	},
+	"input_hashes": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.chat.composer.json",
+			"sha256": "1abe3bc2730635d6eae484b49bfafa1743dee3be1f0ca60863576632acb95f14"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.chat.composer.context.json",
+			"sha256": "de9e346489f6df64bc3ff08abd1f8e0550e95e54e44b7c0ddda47897ff50e2dc"
+		},
+		"zh-CN": {
+			"path": "src/i18n/catalogues/zh-CN/ui.chat.composer.json",
+			"sha256": "fe9428ec142e4fb8100c2b525caed8e1467d616aa3b1a2d411e72e096d9a3846"
+		}
+	},
+	"reference_docs": [
+		"~/local-operator/i18n/glossary.md",
+		"~/local-operator/i18n/style-guides/zh-CN.md (the UI worktree carries no copy; main-repo files read)"
+	],
+	"artifacts": [
+		{
+			"path": "i18n/audits/evidence/zh-CN/ui.chat.composer/cmpmrg1-zh-CN/report.md",
+			"sha256": "672467e0ce2d881d9d4b07a5e3be5edde8aaf10a8afa8b1d9a2d86d45866ebc8"
+		},
+		{
+			"path": "i18n/audits/evidence/zh-CN/ui.chat.composer/cmpmrg1-zh-CN/receipt.json",
+			"sha256": "24d15102a601415c1e8f16887989001e91b15e9c9c7217873099d3a968bc6d6c"
+		}
+	],
+	"audit_notes_not_execution_log": "Mechanical checks (key-set parity 72=72, no placeholders/ICU/markup in the six values, NFC, no Cf/Cc chars, no edge/double spaces, display width vs maxCells) were run in a Python kernel on the files at HEAD; width: insert_transcript 12/24, insert_transcript_hint 29/48, send_recording 8/24, send_recording_hint 24/48, steer_hint 36/64. Merge provenance checked via git show of HEAD^1/HEAD^2: HEAD^1 lacked exactly the five main keys, HEAD^2 lacked exactly secret_closure_notice. node scripts/i18n/ledger-check.mjs (read-only) reports the 3 expected zh-CN/ui.chat.composer stale/unnamed-bytes findings. No MT service used.",
+	"current_report_verdict": {
+		"status": "passed",
+		"unresolved_blocker_major_count": 0,
+		"finding_ids": [
+			"Z1",
+			"Z2",
+			"Z3",
+			"Z4"
+		]
+	},
+	"findings": [
+		{
+			"id": "Z1",
+			"severity": "MINOR",
+			"key": "ui.chat.composer.send_recording_hint",
+			"current": "转写并立即发送，无需查看",
+			"proposed": "转写并立即发送，不经查看",
+			"reason": "Context sidecar: 'no chance to review them ... say plainly that there is no review step'. 无需查看 means 'no need to look' (optional); 不经查看 states that the review step is absent. Meaning is not inverted, so not MAJOR."
+		},
+		{
+			"id": "Z2",
+			"severity": "MINOR",
+			"key": "ui.chat.composer.secret_closure_notice",
+			"current": "请在请求面板中回复这条敏感信息请求——在它得到答复前，此输入框暂停使用，草稿已保留。",
+			"proposed": "在请求面板中回复这条敏感信息请求——在它得到回复前，此输入框暂停使用，草稿已保留。",
+			"reason": "zh-CN style guide, Formality & tone: '请' only where the English says 'please'; the English is a bare imperative. Sibling secret_ask_notice / secret_fill_* already use 请 for non-'please' source, so this is consistent with shipped copy; the notice is not a dialog. Drop 请 if the guide is applied strictly."
+		},
+		{
+			"id": "Z3",
+			"severity": "NIT",
+			"key": "ui.chat.composer.secret_closure_notice",
+			"current": "回复 ... 得到答复",
+			"proposed": "回复 ... 得到回复",
+			"reason": "Same English word 'answered' rendered 回复 then 答复 in one sentence; the whole secret_* family uses 回复/填写. Optional unification (included in the Z2 wording)."
+		},
+		{
+			"id": "Z4",
+			"severity": "NIT",
+			"key": "ui.chat.composer.send_recording",
+			"current": "发送录音",
+			"proposed": "KEEP",
+			"reason": "录音 alone can read as sending the audio file; this faithfully mirrors the English 'Send recording' and the adjacent hint 转写并立即发送 disambiguates. No change required."
+		}
+	]
+}

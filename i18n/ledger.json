@@ -2597,8 +2597,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.chat.composer",
-			"source_sha256": "67b5bc499440a52a727774876e13ee4ed9eaef20b439c4f5ec97466ae8b238cd",
-			"target_sha256": "b56a81abf1f43378fa337d81fd9bb2a7cbf37b96e60c8ecffe29e5e674c28890",
+			"source_sha256": "1abe3bc2730635d6eae484b49bfafa1743dee3be1f0ca60863576632acb95f14",
+			"target_sha256": "abe170ed1ff28951ea07eccc52af6f3c46fb987bdad3cdb7269c59eb03a2561e",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -2607,20 +2607,20 @@
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"model": "radient/auto",
-					"date": "2026-11-03",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-04",
 					"result": "clean-with-findings",
-					"instance": "011cfb1876fd",
+					"instance": "bf2b29ee9a07-cmpmrg1-es",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
+						"minor": 1,
 						"nit": 1
 					},
-					"receipt": "i18n/receipts/011cfb1876fd.json",
-					"receipt_sha256": "36208c1eeee350587f0be36c2762a5ee4c31e64274f71e2f5f38334eb6e62c5d",
-					"scope": "12-key new-source delta (C1 notice + 11 slash headings); None/None keys reviewed in this namespace, carried keys keep prior approval on byte identity",
-					"note": "Served underlying model UNKNOWN; route requested radient/auto. Second independent reader receipt retained beside this one."
+					"receipt": "i18n/receipts/bf2b29ee9a07-cmpmrg1-es.json",
+					"receipt_sha256": "bba1421baa99908048d9aa06d48d9526adf29cdab101a7b9df3876e6a266db98",
+					"scope": "Merge delta for ui.chat.composer: our 1 new key (secret_closure_notice) plus main's 5 (insert_transcript, insert_transcript_hint, send_recording, send_recording_hint, steer_hint); merged file audited as a whole",
+					"note": "Audited on merge commit 801b1ad29d47. Session model anthropic/claude-sonnet-5-5, no fallback observed. MINOR/NIT wording suggestions deferred so the audited bytes stay exact."
 				}
 			],
 			"status": "audited",
@@ -2722,6 +2722,30 @@
 							"receipt_sha256": "b37f2739657032c91a518679588dcd44e37ac6f5c75f6afe74db65ebd3ec150a",
 							"scope": "round-2 extraction audit at PR #1403 head d082bd9595 (scope and delta as recorded in the receipt)",
 							"note": "Actual model deepseek/deepseek-flash as named in the receipt; no fallback disclosed."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "67b5bc499440a52a727774876e13ee4ed9eaef20b439c4f5ec97466ae8b238cd",
+					"target_sha256": "b56a81abf1f43378fa337d81fd9bb2a7cbf37b96e60c8ecffe29e5e674c28890",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-11-03",
+							"result": "clean-with-findings",
+							"instance": "011cfb1876fd",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/011cfb1876fd.json",
+							"receipt_sha256": "36208c1eeee350587f0be36c2762a5ee4c31e64274f71e2f5f38334eb6e62c5d",
+							"scope": "12-key new-source delta (C1 notice + 11 slash headings); None/None keys reviewed in this namespace, carried keys keep prior approval on byte identity",
+							"note": "Served underlying model UNKNOWN; route requested radient/auto. Second independent reader receipt retained beside this one."
 						}
 					],
 					"status": "audited"
@@ -12461,8 +12485,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.chat.composer",
-			"source_sha256": "67b5bc499440a52a727774876e13ee4ed9eaef20b439c4f5ec97466ae8b238cd",
-			"target_sha256": "e2706876a2be7c60db269d89b56d4c990be137fde1efcd52c1789a8e3265f080",
+			"source_sha256": "1abe3bc2730635d6eae484b49bfafa1743dee3be1f0ca60863576632acb95f14",
+			"target_sha256": "d40ca3b6771c39fd126e481f7e4c4b4065edbc68877307441b54336093ac2a93",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -12471,20 +12495,20 @@
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"model": "radient/auto",
-					"date": "2026-11-03",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-04",
 					"result": "clean-with-findings",
-					"instance": "98ccefba2b01",
+					"instance": "9a8cf2fffd64-cmpmrg1-fr",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 1,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/98ccefba2b01.json",
-					"receipt_sha256": "a52cf92c610d91c47493f31fbd3725770964a772a8090c4b7811d26fbf768e4c",
-					"scope": "12-key new-source delta (C1 notice + 11 slash headings); None/None keys reviewed in this namespace, carried keys keep prior approval on byte identity",
-					"note": "Served underlying model UNKNOWN; route requested radient/auto. Second independent reader receipt retained beside this one."
+					"receipt": "i18n/receipts/9a8cf2fffd64-cmpmrg1-fr.json",
+					"receipt_sha256": "f7eefdfe3663586cbba2795348e94a43682d684abea95f202cb8c3af4b411fab",
+					"scope": "Merge delta for ui.chat.composer: our 1 new key (secret_closure_notice) plus main's 5 (insert_transcript, insert_transcript_hint, send_recording, send_recording_hint, steer_hint); merged file audited as a whole",
+					"note": "Audited on merge commit 801b1ad29d47. Session model anthropic/claude-sonnet-5-5, no fallback observed. MINOR/NIT wording suggestions deferred so the audited bytes stay exact."
 				}
 			],
 			"status": "audited",
@@ -12608,6 +12632,30 @@
 							},
 							"receipt": "i18n/receipts/fr-bind-64b9c66fc88c.json",
 							"receipt_sha256": "692538d5e2b11eb5d27c07040b12ddfc5fee3f6a07d91e468d02f258fd241a50"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "67b5bc499440a52a727774876e13ee4ed9eaef20b439c4f5ec97466ae8b238cd",
+					"target_sha256": "e2706876a2be7c60db269d89b56d4c990be137fde1efcd52c1789a8e3265f080",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-11-03",
+							"result": "clean-with-findings",
+							"instance": "98ccefba2b01",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/98ccefba2b01.json",
+							"receipt_sha256": "a52cf92c610d91c47493f31fbd3725770964a772a8090c4b7811d26fbf768e4c",
+							"scope": "12-key new-source delta (C1 notice + 11 slash headings); None/None keys reviewed in this namespace, carried keys keep prior approval on byte identity",
+							"note": "Served underlying model UNKNOWN; route requested radient/auto. Second independent reader receipt retained beside this one."
 						}
 					],
 					"status": "audited"
@@ -22695,8 +22743,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.chat.composer",
-			"source_sha256": "67b5bc499440a52a727774876e13ee4ed9eaef20b439c4f5ec97466ae8b238cd",
-			"target_sha256": "ab9d9382b6978977b0b336dede0fd969db0d7f635ec8488b2c95b7bd00d9a3fa",
+			"source_sha256": "1abe3bc2730635d6eae484b49bfafa1743dee3be1f0ca60863576632acb95f14",
+			"target_sha256": "ce5666e842d6bbc8e7768523a8caade2f5df6cf7132f5fa02d91d6cbaff2210b",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -22705,20 +22753,20 @@
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"model": "radient/auto",
-					"date": "2026-11-03",
-					"result": "clean",
-					"instance": "3ca686ae5183",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-04",
+					"result": "clean-with-findings",
+					"instance": "482065669a31-cmpmrg1-hi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
+						"minor": 1,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/3ca686ae5183.json",
-					"receipt_sha256": "6d5fa1c5ee2716ebb399b323a30508f2e152833db85e1a6dd936d5fd1374ea0f",
-					"scope": "12-key new-source delta (C1 notice + 11 slash headings); None/None keys reviewed in this namespace, carried keys keep prior approval on byte identity",
-					"note": "Served underlying model UNKNOWN; route requested radient/auto. Second independent reader receipt retained beside this one."
+					"receipt": "i18n/receipts/482065669a31-cmpmrg1-hi.json",
+					"receipt_sha256": "8dc0b7db9c4e5d4bd539fb11c24113f8a4058a3ba9aab0636c21f0b5ebbbaff1",
+					"scope": "Merge delta for ui.chat.composer: our 1 new key (secret_closure_notice) plus main's 5 (insert_transcript, insert_transcript_hint, send_recording, send_recording_hint, steer_hint); merged file audited as a whole",
+					"note": "Audited on merge commit 801b1ad29d47. Session model anthropic/claude-sonnet-5-5, no fallback observed. MINOR/NIT wording suggestions deferred so the audited bytes stay exact."
 				}
 			],
 			"status": "audited",
@@ -22820,6 +22868,30 @@
 							"receipt_sha256": "2cd6dd756cad65fa3c640189bcb0db1c158de53f19e93ded83de29eb610e4684",
 							"scope": "round-2 extraction audit at PR #1403 head d082bd9595 (scope and delta as recorded in the receipt)",
 							"note": "Actual model deepseek/deepseek-flash as named in the receipt; no fallback disclosed."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "67b5bc499440a52a727774876e13ee4ed9eaef20b439c4f5ec97466ae8b238cd",
+					"target_sha256": "ab9d9382b6978977b0b336dede0fd969db0d7f635ec8488b2c95b7bd00d9a3fa",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-11-03",
+							"result": "clean",
+							"instance": "3ca686ae5183",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/3ca686ae5183.json",
+							"receipt_sha256": "6d5fa1c5ee2716ebb399b323a30508f2e152833db85e1a6dd936d5fd1374ea0f",
+							"scope": "12-key new-source delta (C1 notice + 11 slash headings); None/None keys reviewed in this namespace, carried keys keep prior approval on byte identity",
+							"note": "Served underlying model UNKNOWN; route requested radient/auto. Second independent reader receipt retained beside this one."
 						}
 					],
 					"status": "audited"
@@ -32599,8 +32671,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.chat.composer",
-			"source_sha256": "67b5bc499440a52a727774876e13ee4ed9eaef20b439c4f5ec97466ae8b238cd",
-			"target_sha256": "21db848209b6959b43ef97ce3c70a282c964e89d8ea9b18d680b31ab02567511",
+			"source_sha256": "1abe3bc2730635d6eae484b49bfafa1743dee3be1f0ca60863576632acb95f14",
+			"target_sha256": "96126dd7d640c3fd21768d478dfb32147e8a1c878f68b4d892f9631a74efaf7b",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -32610,20 +32682,20 @@
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"model": "radient/auto",
-					"date": "2026-11-03",
-					"result": "clean",
-					"instance": "946b1d87f1ee",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-04",
+					"result": "clean-with-findings",
+					"instance": "d0f873a0bc82-cmpmrg1-ru",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 0
+						"minor": 1,
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/946b1d87f1ee.json",
-					"receipt_sha256": "c80a52c7a337905dba14c790344f3b062e830070af0d523cd12e28117759f6be",
-					"scope": "12-key new-source delta (C1 notice + 11 slash headings); None/None keys reviewed in this namespace, carried keys keep prior approval on byte identity",
-					"note": "Served underlying model UNKNOWN; route requested radient/auto. Second independent reader receipt retained beside this one."
+					"receipt": "i18n/receipts/d0f873a0bc82-cmpmrg1-ru.json",
+					"receipt_sha256": "1b53d9e4edeabef1fec28b8676a48920476eece061f01a4e58fe9f0af2417c1c",
+					"scope": "Merge delta for ui.chat.composer: our 1 new key (secret_closure_notice) plus main's 5 (insert_transcript, insert_transcript_hint, send_recording, send_recording_hint, steer_hint); merged file audited as a whole",
+					"note": "Audited on merge commit 801b1ad29d47. Session model anthropic/claude-sonnet-5-5, no fallback observed. MINOR/NIT wording suggestions deferred so the audited bytes stay exact."
 				}
 			],
 			"status": "audited",
@@ -32748,6 +32820,30 @@
 							},
 							"receipt": "i18n/receipts/ru-bind-1f6d86a128e7.json",
 							"receipt_sha256": "34376d9d0b170280675d15c951158a4b687d66050d039c250b95a054b430fb8a"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "67b5bc499440a52a727774876e13ee4ed9eaef20b439c4f5ec97466ae8b238cd",
+					"target_sha256": "21db848209b6959b43ef97ce3c70a282c964e89d8ea9b18d680b31ab02567511",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-11-03",
+							"result": "clean",
+							"instance": "946b1d87f1ee",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/946b1d87f1ee.json",
+							"receipt_sha256": "c80a52c7a337905dba14c790344f3b062e830070af0d523cd12e28117759f6be",
+							"scope": "12-key new-source delta (C1 notice + 11 slash headings); None/None keys reviewed in this namespace, carried keys keep prior approval on byte identity",
+							"note": "Served underlying model UNKNOWN; route requested radient/auto. Second independent reader receipt retained beside this one."
 						}
 					],
 					"status": "audited"
@@ -42501,8 +42597,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.chat.composer",
-			"source_sha256": "67b5bc499440a52a727774876e13ee4ed9eaef20b439c4f5ec97466ae8b238cd",
-			"target_sha256": "cae05ff415a66a5ea03be958a8361700b0a7d798cbe6ff0dcff9d733c6baebe3",
+			"source_sha256": "1abe3bc2730635d6eae484b49bfafa1743dee3be1f0ca60863576632acb95f14",
+			"target_sha256": "8f17e07b180ed3c76c6beb71dba1aa2e241f32c084253a8337205681dd843efe",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -42511,20 +42607,20 @@
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"model": "radient/auto",
-					"date": "2026-11-03",
-					"result": "clean",
-					"instance": "175ea85de12c",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-04",
+					"result": "clean-with-findings",
+					"instance": "e95f3f697724-cmpmrg1-ur",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 0
+						"minor": 1,
+						"nit": 2
 					},
-					"receipt": "i18n/receipts/175ea85de12c.json",
-					"receipt_sha256": "c862a7b775925aed60ab2e2ea5f442493073362cf96e1dbc76ddf6e270078b81",
-					"scope": "12-key new-source delta (C1 notice + 11 slash headings); None/None keys reviewed in this namespace, carried keys keep prior approval on byte identity",
-					"note": "Served underlying model UNKNOWN; route requested radient/auto. Second independent reader receipt retained beside this one."
+					"receipt": "i18n/receipts/e95f3f697724-cmpmrg1-ur.json",
+					"receipt_sha256": "6456129fd4115dd83c424809bfc0eb74a71e969cee08aff9701c68fedd261cd1",
+					"scope": "Merge delta for ui.chat.composer: our 1 new key (secret_closure_notice) plus main's 5 (insert_transcript, insert_transcript_hint, send_recording, send_recording_hint, steer_hint); merged file audited as a whole",
+					"note": "Audited on merge commit 801b1ad29d47. Session model anthropic/claude-sonnet-5-5, no fallback observed. MINOR/NIT wording suggestions deferred so the audited bytes stay exact."
 				}
 			],
 			"status": "audited",
@@ -42650,6 +42746,30 @@
 							"receipt_sha256": "44374566d4590f979488fc37452f1d1a9756b5da8629bdd74a240e1950e54757",
 							"scope": "round-2 extraction audit at PR #1403 head d082bd9595 (scope and delta as recorded in the receipt)",
 							"note": "Actual model deepseek/deepseek-flash as named in the receipt; no fallback disclosed."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "67b5bc499440a52a727774876e13ee4ed9eaef20b439c4f5ec97466ae8b238cd",
+					"target_sha256": "cae05ff415a66a5ea03be958a8361700b0a7d798cbe6ff0dcff9d733c6baebe3",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-11-03",
+							"result": "clean",
+							"instance": "175ea85de12c",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/175ea85de12c.json",
+							"receipt_sha256": "c862a7b775925aed60ab2e2ea5f442493073362cf96e1dbc76ddf6e270078b81",
+							"scope": "12-key new-source delta (C1 notice + 11 slash headings); None/None keys reviewed in this namespace, carried keys keep prior approval on byte identity",
+							"note": "Served underlying model UNKNOWN; route requested radient/auto. Second independent reader receipt retained beside this one."
 						}
 					],
 					"status": "audited"
@@ -52290,8 +52410,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.chat.composer",
-			"source_sha256": "67b5bc499440a52a727774876e13ee4ed9eaef20b439c4f5ec97466ae8b238cd",
-			"target_sha256": "c114864cc373fb1b996752d4624a5ed987f4c86746038e9411c0efba7b809888",
+			"source_sha256": "1abe3bc2730635d6eae484b49bfafa1743dee3be1f0ca60863576632acb95f14",
+			"target_sha256": "fdf0b4669e2145757db34286fe415d957bf5d0bdc71007d2f57a535d677313fb",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -52300,20 +52420,20 @@
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"model": "radient/auto",
-					"date": "2026-11-03",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-04",
 					"result": "clean-with-findings",
-					"instance": "de88a495f99c",
+					"instance": "23222fa5deec-cmpmrg1-vi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 1
+						"minor": 1,
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/de88a495f99c.json",
-					"receipt_sha256": "53a727368d8610e3a5c797204c1e489549d0d591ab977c15dc1d954423671b1f",
-					"scope": "12-key new-source delta (C1 notice + 11 slash headings); None/None keys reviewed in this namespace, carried keys keep prior approval on byte identity",
-					"note": "Served underlying model UNKNOWN; route requested radient/auto. Second independent reader receipt retained beside this one."
+					"receipt": "i18n/receipts/23222fa5deec-cmpmrg1-vi.json",
+					"receipt_sha256": "b81399c8d58b6c710398933586bc541c8f45c31121f242361960366972aeed59",
+					"scope": "Merge delta for ui.chat.composer: our 1 new key (secret_closure_notice) plus main's 5 (insert_transcript, insert_transcript_hint, send_recording, send_recording_hint, steer_hint); merged file audited as a whole",
+					"note": "Audited on merge commit 801b1ad29d47. Session model anthropic/claude-sonnet-5-5, no fallback observed. MINOR/NIT wording suggestions deferred so the audited bytes stay exact."
 				}
 			],
 			"status": "audited",
@@ -52415,6 +52535,30 @@
 							"receipt_sha256": "d7ce2a90d7e6378933cf8d95f27ca5b9471499432507c93bfc8cfd396962e502",
 							"scope": "round-2 extraction audit at PR #1403 head d082bd9595 (scope and delta as recorded in the receipt)",
 							"note": "Actual model deepseek/deepseek-flash as named in the receipt; no fallback disclosed."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "67b5bc499440a52a727774876e13ee4ed9eaef20b439c4f5ec97466ae8b238cd",
+					"target_sha256": "c114864cc373fb1b996752d4624a5ed987f4c86746038e9411c0efba7b809888",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-11-03",
+							"result": "clean-with-findings",
+							"instance": "de88a495f99c",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/de88a495f99c.json",
+							"receipt_sha256": "53a727368d8610e3a5c797204c1e489549d0d591ab977c15dc1d954423671b1f",
+							"scope": "12-key new-source delta (C1 notice + 11 slash headings); None/None keys reviewed in this namespace, carried keys keep prior approval on byte identity",
+							"note": "Served underlying model UNKNOWN; route requested radient/auto. Second independent reader receipt retained beside this one."
 						}
 					],
 					"status": "audited"

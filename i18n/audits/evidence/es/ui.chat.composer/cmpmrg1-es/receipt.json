@@ -1,0 +1,51 @@
+{
+ "schema": 1,
+ "auditor": "i18n-auditor",
+ "agent": "i18n-auditor",
+ "model": "anthropic/claude-sonnet-5-5",
+ "fallback": "none",
+ "model_provenance": "Harness session header 'Model: anthropic/claude-sonnet-5-5' for session bf2b29ee9a07; no provider fallback observed.",
+ "independence": "Separate session from every translator of these values; ours (secret_closure_notice) and main's five keys were judged fresh against the en source, context sidecar, glossary and es style guide. No MT service used.",
+ "instance": "bf2b29ee9a07-cmpmrg1-es",
+ "session": "bf2b29ee9a07",
+ "locale": "es",
+ "namespace": "ui.chat.composer",
+ "branch": "fix/i18n-four-flow-defects",
+ "head": "801b1ad29d47bbb89a0768e0ea1f193892db953d",
+ "date": "2026-11-04",
+ "status": "passed",
+ "result": "clean-with-findings",
+ "audit_kind": "delta audit of 6 keys in the merged file (secret_closure_notice + 5 keys from main); other keys read for consistency only",
+ "delta_keys_audited": [
+  "ui.chat.composer.insert_transcript",
+  "ui.chat.composer.insert_transcript_hint",
+  "ui.chat.composer.send_recording",
+  "ui.chat.composer.send_recording_hint",
+  "ui.chat.composer.steer_hint",
+  "ui.chat.composer.secret_closure_notice"
+ ],
+ "scope": "ui.chat.composer six delta keys of the merge",
+ "sha256": {
+  "en": "1abe3bc2730635d6eae484b49bfafa1743dee3be1f0ca60863576632acb95f14",
+  "es": "abe170ed1ff28951ea07eccc52af6f3c46fb987bdad3cdb7269c59eb03a2561e",
+  "context": "de9e346489f6df64bc3ff08abd1f8e0550e95e54e44b7c0ddda47897ff50e2dc"
+ },
+ "evidence": "i18n/audits/evidence/es/ui.chat.composer/cmpmrg1-es/record.json",
+ "findings": [
+  {
+   "id": "S1",
+   "severity": "MINOR",
+   "key": "ui.chat.composer.insert_transcript_hint",
+   "also": [
+    "ui.chat.composer.steer_hint"
+   ],
+   "note": "Intro vs sidecar 'keep Enter'; accepted, consistent with sibling es composer keys; not gating"
+  },
+  {
+   "id": "N1",
+   "severity": "NIT",
+   "key": "ui.chat.composer.send_recording_hint",
+   "suggestion": "Transcribir y enviar ahora, sin revisión previa"
+  }
+ ]
+}
