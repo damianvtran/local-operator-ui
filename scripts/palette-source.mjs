@@ -21,6 +21,7 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { applyContrast } from "../src/shared/theme-engine/contrast.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 export const PALETTE_DIR = join(
@@ -92,7 +93,7 @@ const stripComments = (src) => {
  * available option: the file says two things, and the build quietly believes
  * one of them. Refusing is the only honest response.
  */
-export const loadPalettes = () => {
+export const loadPalettes = ({ contrast = 0 } = {}) => {
 	const out = [];
 	for (const file of readdirSync(PALETTE_DIR).filter((f) =>
 		f.endsWith(".ts"),
@@ -119,5 +120,33 @@ export const loadPalettes = () => {
 			out.push({ id, file, palette });
 		}
 	}
-	return out.sort((a, b) => a.id.localeCompare(b.id));
+	out.sort((a, b) => a.id.localeCompare(b.id));
+	/* Composing here, not in each caller, is what lets the contract run over a
+	   preset unchanged: it reads palettes from this function either way. The
+	   default stays the AUTHORED palettes, so `generate-theme-css.mjs` and every
+	   other caller that passes nothing is untouched. */
+	if (contrast === 0) return out;
+	return out.map((e) => ({
+		...e,
+		palette: applyContrast(e.palette, contrast, { id: e.id }).palette,
+	}));
+};
+
+/**
+ * The contrast value a gate run was asked for, from `LO_CONTRAST_PRESET`.
+ *
+ * Fails closed: anything that is not an integer in -100..100 throws rather than
+ * quietly running the authored pass, because a preset leg that silently measured
+ * Standard would report green about palettes it never looked at.
+ */
+export const contrastPresetFromEnv = (env = process.env) => {
+	const raw = env.LO_CONTRAST_PRESET;
+	if (raw === undefined || raw === "") return 0;
+	const n = Number(raw);
+	if (!Number.isInteger(n) || n < -100 || n > 100) {
+		throw new Error(
+			`LO_CONTRAST_PRESET=${JSON.stringify(raw)} is not an integer in -100..100`,
+		);
+	}
+	return n;
 };
