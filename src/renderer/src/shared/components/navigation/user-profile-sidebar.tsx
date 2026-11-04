@@ -150,7 +150,11 @@ export const UserProfileSidebar: FC<UserProfileSidebarProps> = React.memo(
 		 * initials: no photo, signed out, a failed read, or a core older than
 		 * 0.90.13, whose avatar relay 404s.
 		 */
-		const avatarUrl = useOwnAccountAvatar(user?.radientUser.account, 64);
+		const avatarUrl = useOwnAccountAvatar(
+			user?.radientUser.account,
+			// The plate is `size-7`: 28 CSS px, variant picked per DPR.
+			28,
+		);
 
 		const row = (
 			<button

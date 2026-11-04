@@ -196,6 +196,33 @@ export const teamBridgeAttachmentSchema = z
 	.passthrough();
 export type TeamBridgeAttachment = z.infer<typeof teamBridgeAttachmentSchema>;
 
+/*
+ * A GENERIC FILE on a message (agent-server S3b, `docs/bridge-files-s3b-binding.md`).
+ * Deliberately its own schema, not a widened `teamBridgeAttachmentSchema`: the
+ * server keeps images and files in separate fields precisely so a client that
+ * validates the image descriptor (64-char MIME, required dimensions) never sees
+ * a PDF there. `class` is the server's byte-sniffed LABEL (pdf/text/container/
+ * other), never a safety claim; `mime` is always `application/octet-stream`.
+ * `display_name` is the cleaned uploader name (<= 120 Unicode scalars server-
+ * side, so <= 240 UTF-16 units) and is MESSAGE CONTENT: it may be shown as text
+ * to the authorized human reader, never put in an aria-label, id, key or log.
+ * Only `bound` is a live file; `expired` (and any state this client does not
+ * know) renders as an unavailable card.
+ */
+export const teamBridgeFileSchema = z
+	.object({
+		id: attachmentId,
+		class: z.string().max(32).optional(),
+		mime: z.string().max(128).optional(),
+		size: z.number().int().nonnegative(),
+		display_name: z.string().max(512).optional(),
+		state: z.string().max(32).optional(),
+		expires_at: z.string().optional(),
+		download_only: z.boolean().optional(),
+	})
+	.passthrough();
+export type TeamBridgeFile = z.infer<typeof teamBridgeFileSchema>;
+
 /** The upload answer: `201 {attachment}` - a STAGED id the send then binds. */
 export const teamBridgeAttachmentUploadSchema = z
 	.object({ attachment: teamBridgeAttachmentSchema })
@@ -285,6 +312,12 @@ export const teamBridgeMessageSchema = z
 		reply_participants: z.array(z.string()).optional(),
 		/* Image attachments, send order. Absent on text-only messages and old hubs. */
 		attachments: z.array(teamBridgeAttachmentSchema).max(16).optional(),
+		/* Generic files (S3b), send order; absent on file-less messages and pre-S3b
+		 * hubs, so an old page parses exactly as before. `.catch(undefined)`: a
+		 * malformed descriptor list costs the descriptors, never the message, and
+		 * `file_count` (sent to every reader) still yields a count-only receipt. */
+		files: z.array(teamBridgeFileSchema).max(10).optional().catch(undefined),
+		file_count: z.number().int().nonnegative().optional().catch(undefined),
 		/* Agent recipients' delivery states; absent for third members, agent
 		 * reads and old hubs. `.catch(undefined)`: a malformed annotation costs
 		 * the annotation, never the message. */

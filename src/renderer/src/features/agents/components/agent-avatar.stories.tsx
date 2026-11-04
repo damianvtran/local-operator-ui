@@ -25,6 +25,7 @@ import {
 } from "@shared/agent-avatar/agent-avatar";
 import { AgentAvatarEditLink } from "@shared/agent-avatar/agent-avatar-edit-link";
 import { AgentMark } from "@shared/agent-avatar/agent-mark";
+import { desktopKeys } from "@shared/api/local-operator/desktop-hooks";
 import type { AgentAvatarMeta } from "@shared/api/local-operator/types";
 import type { AgentDetails } from "@shared/api/local-operator/types";
 import { queryClient } from "@shared/api/query-client";
@@ -33,7 +34,7 @@ import { t } from "@shared/i18n";
 import { peek as peekBlobUrl } from "@shared/lib/blob-url-cache";
 import type { CanonicalSessionRow } from "@shared/store/canonical-sessions-store";
 import type { Meta, StoryObj } from "@storybook/react";
-import { useQueryClient } from "@tanstack/react-query";
+import { type QueryClient, useQueryClient } from "@tanstack/react-query";
 import {
 	type FC,
 	useEffect,
@@ -104,6 +105,30 @@ const installMedia = () => {
 };
 installMedia();
 
+/*
+ * `?agentAvatarSizes=1` on a story URL seeds the capability answer of a core
+ * that serves right-sized pictures (`agent_avatar_sizes`, local-operator
+ * #3381), so the retina evidence rig can photograph the sized reads. Absent,
+ * every story stays the pre-feature behaviour: the original, no `size`.
+ */
+const advertisesAgentAvatarSizes = () =>
+	new URLSearchParams(window.location.search).get("agentAvatarSizes") === "1";
+const capabilityFeatures = () =>
+	advertisesAgentAvatarSizes() ? { agent_avatar_sizes: 1 } : {};
+/* Seeded during the FIRST render (a state initializer), not an effect: the app
+   has the capability answer long before a picture mounts, and seeding it after
+   paint would photograph a cold-start read of the original instead. */
+const useSeedAvatarSizes = (client: QueryClient = queryClient) => {
+	useState(() => {
+		if (!advertisesAgentAvatarSizes()) return null;
+		client.setQueryData(desktopKeys.capabilities, {
+			desktop_available: true,
+			features: capabilityFeatures(),
+		});
+		return null;
+	});
+};
+
 /** Seed the agents' picture records the way a real agents read would. */
 const useSeedPictures = (ids: readonly string[]) => {
 	useEffect(() => {
@@ -170,6 +195,7 @@ const Rows: FC<{
 	pictured: readonly string[];
 }> = ({ rows, pictured }) => {
 	useSeedPictures(pictured);
+	useSeedAvatarSizes();
 	return (
 		<TooltipProvider>
 			<div className="w-80 bg-surface p-2">
@@ -421,6 +447,7 @@ const row = (
 
 const ChatRows: FC = () => {
 	useSeedPictures([CODER.id]);
+	useSeedAvatarSizes();
 	const rows = useMemo(
 		() => [
 			row("s-busy-a", "busy", "Running", true),
@@ -519,6 +546,7 @@ const HeaderGeometryFixture: FC = () => {
 	const missing = params.get("missing") === "1";
 	const wrap = params.get("wrap") === "1";
 	useSeedPictures([CODER.id]);
+	useSeedAvatarSizes();
 	useLayoutEffect(() => {
 		document.documentElement.style.fontSize = `${16 * scale}px`;
 		const api = window as unknown as {
@@ -531,7 +559,11 @@ const HeaderGeometryFixture: FC = () => {
 				op === "capabilities"
 					? {
 							desktop_available: true,
-							features: { peers: 1, session_transfer: 1 },
+							features: {
+								peers: 1,
+								session_transfer: 1,
+								...capabilityFeatures(),
+							},
 						}
 					: op === "peers.list"
 						? { self_device_id: "d_fixture", peers: [] }
@@ -666,6 +698,7 @@ const SummaryPortraitScene: FC<{
 	longName?: boolean;
 }> = ({ state, width = 960, longName = false }) => {
 	const client = useQueryClient();
+	useSeedAvatarSizes(client);
 	const rootRef = useRef<HTMLDivElement>(null);
 	const [ready, setReady] = useState(false);
 	// Per-mount local ids prevent an earlier story's immutable blob cache from

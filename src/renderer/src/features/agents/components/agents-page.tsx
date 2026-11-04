@@ -1833,6 +1833,7 @@ const RosterMark = ({ agentId }: { agentId: string | null }) => (
 	<AgentMark
 		agentId={agentId}
 		className="size-4"
+		cssPx={16}
 		fallback={
 			<Bot aria-hidden="true" className="size-4 shrink-0 text-ink-dim" />
 		}

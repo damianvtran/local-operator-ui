@@ -3092,6 +3092,10 @@ test("attachments are named, never fetched, through the shared list", async () =
  * was captured from the shared list on the base commit (eecfb71a3bb), BEFORE any
  * prop existed; regenerate only with a reviewed reason:
  *     UPDATE_PARITY_GOLDEN=1 node --test scripts/team-bridge-owner-audit-render.test.mjs
+ * Regenerated once since (PR #1645, retina avatars): the agent mark moved from
+ * `size-[max(8px,32%)]` / `size-[calc(100%-1px)]` to inline integer px
+ * (`agentMarkPx`), so the channel and audit sides both changed together; the
+ * golden diff is exactly those two class removals and two `style` additions.
  * Clock text and the `title` date depend on the machine's time zone, so both are
  * normalised; the structure, classes, names and bodies are compared verbatim.
  */

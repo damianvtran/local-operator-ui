@@ -571,6 +571,12 @@ const CHROME_LAUNCH_SITES = [
 		1,
 		"measures the Library preview states' claims from the live DOM - each case navigating the real Storybook story, waiting for its hook and driving the gesture through CDP pointer and key events - one private headless Chrome for the whole run, its profile under the system temp dir and its process group reaped by exact pid (registered by this PR's review remediation: an unlisted launch site fails Desktop Tests)",
 	),
+	guarded(
+		"docs/evidence/team-bridge-avatar-retina/harness/shoot.mjs",
+		"spawn",
+		1,
+		"the retina avatar pair - every avatar surface at deviceScaleFactor 2 from the shipped stories, with each sized relay read answered by the matching 64/128/256 derivative of a synthetic pattern, recording naturalWidth against device px - one private headless Chrome per run through the same helper, reaped by exact pid before its profile is removed (registered by its PR's CI catch-up: an unlisted launch site fails Desktop Tests)",
+	),
 ];
 
 const key = (row) => `${row.file}#${row.name}#${row.index}`;

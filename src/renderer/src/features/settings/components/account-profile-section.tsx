@@ -87,7 +87,8 @@ export function AccountProfileSection() {
 		data && hash && AVATAR_HASH.test(hash)
 			? { accountId: data.profile.account_id, hash }
 			: null,
-		256,
+		// The editor's photo plate is `size-16`: 64 CSS px, variant per DPR.
+		64,
 	);
 	useEffect(() => {
 		if (!data || !consumeAccountProfileFocus(profile.authority.token)) return;

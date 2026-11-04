@@ -124,6 +124,36 @@
 		"note": "Resolved during render; retain the existing control meaning and do not alter key-binding labels. maxCells is an advisory translation target, not measured fit.",
 		"maxCells": 80
 	},
+	"ui.chat.composer.insert_transcript": {
+		"role": "control accessible name",
+		"tone": "short imperative action, sentence case; no trailing punctuation",
+		"note": "Names the control that puts the dictated words into the message box for the user to read before sending. Resolved during render; the control is a check mark. Do not translate as 'confirm'. maxCells is an advisory translation target, not measured fit.",
+		"maxCells": 24
+	},
+	"ui.chat.composer.insert_transcript_hint": {
+		"role": "control tooltip with keyboard binding",
+		"tone": "short imperative action, sentence case",
+		"note": "Tooltip of the insert-transcript control. Keep the key name in parentheses exactly as written (Enter). maxCells is an advisory translation target, not measured fit.",
+		"maxCells": 48
+	},
+	"ui.chat.composer.send_recording": {
+		"role": "control tooltip and/or accessible name",
+		"tone": "short imperative action, sentence case; no trailing punctuation",
+		"note": "Names the control that stops the recording, transcribes it and sends the words as a message in one step. maxCells is an advisory translation target, not measured fit.",
+		"maxCells": 24
+	},
+	"ui.chat.composer.send_recording_hint": {
+		"role": "control tooltip",
+		"tone": "short imperative sentence, sentence case",
+		"note": "Tooltip of the send-recording control: the words are transcribed and sent at once, with no chance to review them. Say plainly that there is no review step. maxCells is an advisory translation target, not measured fit.",
+		"maxCells": 48
+	},
+	"ui.chat.composer.steer_hint": {
+		"role": "tooltip of the send control while an agent turn is running",
+		"tone": "short imperative sentence with one keyboard binding",
+		"note": "Shown on the send control while the agent works and the box holds text: sending steers the running turn, and the Esc key (the only route to Stop while text is typed) stops it. Keep the key names Enter and Esc exactly as written. maxCells is an advisory translation target, not measured fit.",
+		"maxCells": 64
+	},
 	"ui.chat.composer.stop": {
 		"role": "control tooltip and/or accessible name",
 		"tone": "short imperative action, sentence case; no trailing punctuation",

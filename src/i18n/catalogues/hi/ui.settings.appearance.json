@@ -67,5 +67,10 @@
 	"ui.settings.appearance.theme.tokyo_night_storm": "उजली रात — उसी नीयॉन एक्सेंट के नीचे इंडिगो तूफ़ानी आसमान।",
 	"ui.settings.appearance.theme.tokyo_night": "चमकीले नीले एक्सेंट के साथ गहरी नीली-बैंगनी रात।",
 	"ui.settings.appearance.theme.tron": "Grid की नीली-काली पृष्ठभूमि पर बिजली जैसी सायन सर्किटरी।",
-	"ui.settings.appearance.theme.vaporwave": "गहरे मॉल-पर्पल पर धुँधले गुलाबी और फीके टील पेस्टल।"
+	"ui.settings.appearance.theme.vaporwave": "गहरे मॉल-पर्पल पर धुँधले गुलाबी और फीके टील पेस्टल।",
+	"ui.settings.appearance.agent_avatar_size_setting.agent_picture_size": "एजेंट की तस्वीर का आकार",
+	"ui.settings.appearance.agent_avatar_size_setting.how_large_the_agent_s_picture_appears_in_the_chat_window_and_the_chat": "ट्रांसक्रिप्ट और चैट हेडर में एजेंट की तस्वीरें कितनी बड़ी दिखें। साइडबार की पंक्तियों का आकार नहीं बदलता।",
+	"ui.settings.appearance.agent_avatar_size_setting.small": "छोटा",
+	"ui.settings.appearance.agent_avatar_size_setting.medium": "मध्यम",
+	"ui.settings.appearance.agent_avatar_size_setting.large": "बड़ा"
 }

@@ -2093,6 +2093,7 @@ export type MessageParams = {
 	"ui.agentMessages.settings.state.read_only": undefined;
 	"ui.agentMessages.settings.state.turned_off_org": undefined;
 	"ui.agentMessages.settings.state.turned_off_title": undefined;
+	"ui.agents.avatar.add_link": { name: string };
 	"ui.agents.avatar.edit_link": { name: string };
 	"ui.agents.avatar.editor.crop_area": undefined;
 	"ui.agents.avatar.editor.error_decode": undefined;
@@ -3769,6 +3770,8 @@ export type MessageParams = {
 	"ui.chat.composer.delivery_remedies_hint": undefined;
 	"ui.chat.composer.dictation_failed_transient": undefined;
 	"ui.chat.composer.dictation_failed_transient_take_kept": undefined;
+	"ui.chat.composer.insert_transcript": undefined;
+	"ui.chat.composer.insert_transcript_hint": undefined;
 	"ui.chat.composer.message": undefined;
 	"ui.chat.composer.placeholder.answer": undefined;
 	"ui.chat.composer.placeholder.aside": undefined;
@@ -3799,6 +3802,8 @@ export type MessageParams = {
 	"ui.chat.composer.secret_fill_refused": undefined;
 	"ui.chat.composer.secret_fill_unavailable": undefined;
 	"ui.chat.composer.send_message": undefined;
+	"ui.chat.composer.send_recording": undefined;
+	"ui.chat.composer.send_recording_hint": undefined;
 	"ui.chat.composer.start_recording": undefined;
 	"ui.chat.composer.start_recording_hint": {
 		shortcut: string;
@@ -3806,6 +3811,7 @@ export type MessageParams = {
 	};
 	"ui.chat.composer.starting": undefined;
 	"ui.chat.composer.starting_recording": undefined;
+	"ui.chat.composer.steer_hint": undefined;
 	"ui.chat.composer.stop": undefined;
 	"ui.chat.composer.stop_agent": undefined;
 	"ui.chat.composer.stop_work_hint": undefined;
@@ -3836,6 +3842,7 @@ export type MessageParams = {
 	"ui.chat.composer_media.preview_failed": undefined;
 	"ui.chat.composer_media.recording": undefined;
 	"ui.chat.composer_media.remove_attachment": undefined;
+	"ui.chat.composer_media.sends_now": undefined;
 	"ui.chat.device.check_again": undefined;
 	"ui.chat.device.fact.this_device": undefined;
 	"ui.chat.device.footer.move_deletes_copy": undefined;
@@ -9003,6 +9010,11 @@ export type MessageParams = {
 	"ui.settings.account.settings_usage_chart.credits_summary": { days: number };
 	"ui.settings.account.settings_usage_chart.tokens_summary": { days: number };
 	"ui.settings.account.settings_usage_chart.tokens_used": undefined;
+	"ui.settings.appearance.agent_avatar_size_setting.agent_picture_size": undefined;
+	"ui.settings.appearance.agent_avatar_size_setting.how_large_the_agent_s_picture_appears_in_the_chat_window_and_the_chat": undefined;
+	"ui.settings.appearance.agent_avatar_size_setting.large": undefined;
+	"ui.settings.appearance.agent_avatar_size_setting.medium": undefined;
+	"ui.settings.appearance.agent_avatar_size_setting.small": undefined;
 	"ui.settings.appearance.settings_page.adds_the_agent_s_reasoning_and_thinking_rows_to_conversations_the": undefined;
 	"ui.settings.appearance.settings_page.appearance": undefined;
 	"ui.settings.appearance.settings_page.customize_the_look_and_feel_of_local_operator": undefined;
@@ -10210,6 +10222,8 @@ export type MessageParams = {
 	"ui.teamBridge.events.removed": { actor: string; targets: string };
 	"ui.teamBridge.events.unknown": undefined;
 	"ui.teamBridge.events.withdrawn": { actor: string; targets: string };
+	"ui.teamBridge.fileCard.kind": { kind: string };
+	"ui.teamBridge.fileCard.list": { count: number };
 	"ui.teamBridge.group.more": undefined;
 	"ui.teamBridge.invitations.accept": undefined;
 	"ui.teamBridge.invitations.accepted": { agent: string };

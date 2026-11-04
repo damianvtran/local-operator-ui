@@ -154,6 +154,10 @@ export interface CdpPoolOptions {
  * attachments must be creatable and destroyable together, and a module-level map
  * is how a test or a second host instance inherits a stale attachment.
  */
+/** The pool's own event to `subscribe` handlers after a `Page.disable` it sent.
+ * Not a CDP event: Chromium says nothing when the screencast it ends goes quiet. */
+export const PAGE_DISABLED_EVENT = "LocalOperator.pageDisabled";
+
 export class CdpPool {
 	private readonly attachments = new Map<number, Attachment>();
 	/** Per-view CDP event subscribers, by webContents id. See `subscribe`. */
@@ -397,12 +401,39 @@ export class CdpPool {
 				"that browser tab is gone; dropped the handle. Use 'open' with a URL to get a new tab",
 			);
 		}
-		return this.sendTo<T>(
+		const sent = this.sendTo<T>(
 			contents,
 			method,
 			params,
 			options.deadlineMs ?? CDP_DEADLINE_MS,
 			options.sessionId,
+		);
+		if (method !== "Page.disable" || options.sessionId) return sent;
+		// DISABLING `Page` ENDS A RUNNING SCREENCAST, and enabling it again does not
+		// restart one (measured on Electron 45, QA round 1 Q1: a `Page.disable` mid
+		// clip froze a `quality:"high"` recording at that instant while the clip kept
+		// its wall-clock length). The origin gate sends exactly that after every
+		// click, type, press and goto. A subscriber that owns a screencast cannot see
+		// the stop on the wire, so the pool says so, once the command has been
+		// attempted (a timed-out disable may still have landed).
+		const announce = (): void => {
+			for (const listener of [...(this.subscribers.get(contents.id) ?? [])]) {
+				try {
+					listener(PAGE_DISABLED_EVENT, {});
+				} catch {
+					// A subscriber's fault is not the disable's outcome.
+				}
+			}
+		};
+		return sent.then(
+			(value) => {
+				announce();
+				return value;
+			},
+			(error: unknown) => {
+				announce();
+				throw error;
+			},
 		);
 	}
 

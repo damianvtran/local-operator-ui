@@ -521,8 +521,18 @@ test("the send control is pressable while a send is in flight", () => {
 		!code.includes("isLoading"),
 		"the send control is disabled for the whole flight again, so the press the send lock exists to answer cannot reach it",
 	);
+	/*
+	 * The control's predicate is its slot role's `enabled`; a box that refuses input
+	 * reaches the role through `refused`, and an in-flight send reaches it only as
+	 * `sendBusy` (which never disables a Send that has text - see composer-slots).
+	 */
 	assert.ok(
-		code.includes("isInputDisabled"),
+		code.includes("disabled={!slotB.enabled}"),
+		"the send control disables on its slot role",
+	);
+	assert.match(
+		composer,
+		/refused: isInputDisabled \|\| sendRefused,/,
 		"a box that refuses input must still disable the press",
 	);
 });

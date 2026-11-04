@@ -872,8 +872,11 @@ const MessageRowView: FC<MessageRowProps> = ({
 					</p>
 				)}
 				<TeamBridgeDeliveryAnnotation message={message} />
-				{/* Images come ONLY from the structured list, never from the body. */}
-				{(message.attachments?.length ?? 0) > 0 && (
+				{/* Images and files come ONLY from the structured lists, never from
+				    the body. A file-less message keeps the pre-S3b condition. */}
+				{((message.attachments?.length ?? 0) > 0 ||
+					(message.files?.length ?? 0) > 0 ||
+					(message.file_count ?? 0) > 0) && (
 					<TeamBridgeMessageAttachments
 						key={JSON.stringify([
 							accountId,

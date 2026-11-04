@@ -168,11 +168,24 @@ const h = React.createElement;
 
 /*
  * The call site and its import, as patterns hoisted to module scope (a regex literal in
- * a test body is rebuilt per call). The call is matched whole - three named arguments -
- * so a rewiring that dropped one (the composer key, say) is a failure, not a pass.
+ * a test body is rebuilt per call). The call is matched whole - four named arguments -
+ * so a rewiring that dropped one (the composer key, say, or the presentation fact that
+ * keeps an auto-open off the sheet) is a failure, not a pass.
  */
 const HOOK_CALL =
-	/useAskOpenPolicy\(\{\s*sessionId,\s*composerId: conversationId,\s*view: sessionAsksView,\s*\}\)/;
+	/useAskOpenPolicy\(\{\s*sessionId,\s*composerId: conversationId,\s*view: sessionAsksView,/;
+/*
+ * THE PRESENTATION FACT (design 2026-11-03, D5). Matched apart from the three wiring
+ * arguments because the call site carries a long comment between them, and a pinned
+ * gap would fail on the prose rather than on the fact.
+ */
+const HOOK_OVERLAY = /overlayPresentation:\s*inOverlayPresentation,/;
+/*
+ * ...AND THE READER ITSELF: the live presentation fact, from the measured row through
+ * the one predicate (`canvasPaneMode`), not a boolean captured at render.
+ */
+const HOOK_OVERLAY_READER =
+	/const inOverlayPresentation = useCallback\(\s*\(\) =>[\s\S]{0,200}?canvasPaneMode\(paneRowWidthRef\.current[\s\S]{0,120}?"overlay"/;
 const HOOK_IMPORT =
 	/import \{ useAskOpenPolicy \} from "\.\.\/use-ask-open-policy";/;
 /** The call site CAPTURES the return (the live region's sentence; design review round 1, D1). */
@@ -227,6 +240,9 @@ const Pane = ({ sessionId, frontend }) => {
 		sessionId,
 		composerId: sessionId,
 		view,
+		/* The harness is the DOCKED presentation: a sheet auto-open is
+		 * `ask-open-policy`'s own arm, driven there as a pure input. */
+		overlayPresentation: () => false,
 	});
 	/*
 	 * THE COMPOSER'S REAL REGISTRATION (`registerComposerFocus`), not a stub that focuses the
@@ -1300,6 +1316,7 @@ test("U8 - the live region speaks the settled clause when the queue empties with
 			sessionId: "c-u8",
 			composerId: "c-u8",
 			view,
+			overlayPresentation: () => false,
 		});
 		return h("output", { "data-u8-announcer": "" }, text);
 	};
@@ -1380,6 +1397,16 @@ test("ChatContent calls the hook with the conversation, the composer key and the
 		source,
 		HOOK_CALL,
 		"the open policy is no longer wired at the mount that owns the drawer",
+	);
+	assert.match(
+		source,
+		HOOK_OVERLAY,
+		"the mount no longer hands the policy its presentation fact: below the dock breakpoint an auto-open would cover and inert the conversation",
+	);
+	assert.match(
+		source,
+		HOOK_OVERLAY_READER,
+		"the presentation fact no longer reads the measured row through `canvasPaneMode`; a render-time boolean would answer with the pre-measurement row",
 	);
 	assert.match(source, HOOK_IMPORT);
 	const wired = source.indexOf("useAskOpenPolicy({");
@@ -1503,4 +1530,99 @@ test("the same claimless frame resolves to the aggregate's rows and renders the 
 	);
 	assert.doesNotMatch(container.textContent, /Reading the asks…/);
 	assert.doesNotMatch(container.textContent, /doesn't support queued asks/);
+});
+
+/*
+ * D5 / m2, DRIVEN THROUGH THE HOOK (review round 1): the sheet presentation is a
+ * FACT the view decides on, so both consequences are observable here - the refusal
+ * with the sentence that stands in for the open, and the carried-open close.
+ */
+test("D5 - the sheet presentation leaves the drawer shut, speaks the queue's clause, and widening later does not open it", async () => {
+	const Harness = ({ view, overlay }) => {
+		const text = useAskOpenPolicy({
+			sessionId: "c-sheet",
+			composerId: "c-sheet",
+			view,
+			overlayPresentation: () => overlay,
+		});
+		return h("output", { "data-sheet-announcer": "" }, text);
+	};
+	useUiPreferencesStore.getState().setAskDrawerOpen(false, "session");
+	const container = document.createElement("div");
+	document.body.append(container);
+	const root = createRoot(container);
+	const render = async (view, overlay) =>
+		act(async () => root.render(h(Harness, { view, overlay })));
+	const region = () => container.querySelector("output")?.textContent;
+	await render(askQueueView(withRows([ask("open")])), true);
+	assert.equal(
+		useUiPreferencesStore.getState().isAskDrawerOpen,
+		false,
+		"an auto-open must not cover and inert the conversation",
+	);
+	assert.equal(
+		region(),
+		"1 question waiting.",
+		"the refusal still tells a reader who cannot see the chip that asks are waiting",
+	);
+	/*
+	 * THE LEAVE IS FINAL FOR THE VIEW: a wider row is not a user asking for the
+	 * drawer, so the decision is not un-spent (the policy comment says why).
+	 */
+	await render(askQueueView(withRows([ask("open")])), false);
+	assert.equal(useUiPreferencesStore.getState().isAskDrawerOpen, false);
+	/*
+	 * AND THE SENTENCE GOES WHEN THE WAITING DOES (agent review round 2, m-r2-3): the
+	 * refusal speaks over a SHUT drawer, so neither the close watch nor the open-drawer
+	 * settle can ever end it - a queue that emptied left "1 question waiting." standing
+	 * for the rest of the mount.
+	 */
+	await render(askQueueView(withRows([])), false);
+	assert.equal(
+		region(),
+		"",
+		"nothing is waiting and nothing is up: the region has nothing true left to say",
+	);
+	await act(async () => root.unmount());
+	container.remove();
+});
+
+test("m2 - a carried open is closed as a withdrawal under the sheet, and kept when docked", async () => {
+	const Harness = ({ view, overlay }) => {
+		const text = useAskOpenPolicy({
+			sessionId: "c-carried",
+			composerId: "c-carried",
+			view,
+			overlayPresentation: () => overlay,
+		});
+		return h("output", {}, text);
+	};
+	const mount = async (overlay) => {
+		const container = document.createElement("div");
+		document.body.append(container);
+		const root = createRoot(container);
+		await act(async () =>
+			root.render(
+				h(Harness, { view: askQueueView(withRows([ask("open")])), overlay }),
+			),
+		);
+		return { root, container };
+	};
+	/* The sheet: the flag outlived the conversation switch, so the view closes it. */
+	useUiPreferencesStore.getState().setAskDrawerOpen(true, "session");
+	const sheet = await mount(true);
+	assert.equal(
+		useUiPreferencesStore.getState().isAskDrawerOpen,
+		false,
+		"a modal sheet must not be carried onto a view with the keyboard on <body>",
+	);
+	await act(async () => sheet.root.unmount());
+	sheet.container.remove();
+	/* Docked: the same carried flag follows the user, as it always did. */
+	useUiPreferencesStore.getState().setAskDrawerOpen(true, "session");
+	const docked = await mount(false);
+	assert.equal(useUiPreferencesStore.getState().isAskDrawerOpen, true);
+	useUiPreferencesStore.getState().setAskDrawerOpen(false, "session");
+	await act(async () => docked.root.unmount());
+	docked.container.remove();
 });
