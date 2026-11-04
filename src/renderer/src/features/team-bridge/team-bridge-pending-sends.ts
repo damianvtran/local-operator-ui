@@ -1,3 +1,4 @@
+import type { TeamBridgeMentionRow } from "@shared/api/local-operator/team-bridge-api";
 import { onDraftRevocation } from "@shared/store/team-bridge-draft-account";
 import { create } from "zustand";
 import {
@@ -74,6 +75,20 @@ export type PendingSend = {
 	status: PendingSendStatus;
 	/** The one automatic 409 retry this message may spend (PR #1512's rule). */
 	autoRetried?: boolean;
+	/**
+	 * The wire `mentions[]` this message was SENT WITH, captured from the composer's
+	 * staged outbox at the press, for `conversationId` only (a first message has no
+	 * conversation and no mention source, so it never carries any).
+	 *
+	 * WHY ON THE ROW AND NOT READ FROM THE OUTBOX AT DELIVERY. The outbox is module
+	 * memory keyed by (conversation, body) and capped at 32 entries, and this row
+	 * outlives it: a Retry can come after other sends evicted or replaced that entry,
+	 * or after the page remounted. Reading the outbox late would send a retried
+	 * message without the mentions it was typed with (or with another press's), so
+	 * the receivers fall back to name matching. Already serialised: silent ("mention
+	 * without notifying") pills are absent here by construction.
+	 */
+	mentions?: readonly TeamBridgeMentionRow[];
 };
 
 type PendingSendsState = {
