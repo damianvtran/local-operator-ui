@@ -1172,5 +1172,52 @@
 		"tone": "Single noun, sentence case",
 		"length_hint": "One word",
 		"note": "Single noun; the disclosure holds model, attempts and similar run facts."
+	},
+	"ui.chat.canonical.supplement.withheld.line": {
+		"role": "quiet muted line under a highlights block saying some files the agent pointed at were not shown, and why",
+		"tone": "plain statement, sentence case, no trailing punctuation",
+		"length": "One short line.",
+		"note": "Shown only when files the agent pinned or named were refused. The reason is one or more already-translated reason phrases joined by the locale's list conjunction; never translate file names (they appear only in the tooltip).",
+		"placeholders": {
+			"count": "number of files not shown; CLDR plural selector, rendered with #",
+			"reason": "one or more translated reason phrases, already joined by Intl.ListFormat"
+		}
+	},
+	"ui.chat.canonical.supplement.withheld.line_no_reason": {
+		"role": "the same withheld line when no reason this build knows was given",
+		"tone": "plain statement, sentence case, no trailing punctuation",
+		"length": "One short clause.",
+		"note": "Must match the first half of ui.chat.canonical.supplement.withheld.line exactly.",
+		"placeholders": {
+			"count": "number of files not shown; CLDR plural selector, rendered with #"
+		}
+	},
+	"ui.chat.canonical.supplement.withheld.reason_outside": {
+		"role": "reason phrase: the file lives outside the folders highlights may show",
+		"tone": "noun phrase, lower case",
+		"length": "A few words.",
+		"note": "One reason phrase, lower case because it follows a colon in the withheld line. Several distinct reasons are joined with the locale's own list conjunction (Intl.ListFormat), so do not add a word for 'and'.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.supplement.withheld.reason_sensitive": {
+		"role": "reason phrase: the file looks like a credential or other secret, so it is never shown",
+		"tone": "noun phrase, lower case",
+		"length": "Two words.",
+		"note": "One reason phrase, lower case because it follows a colon in the withheld line. Several distinct reasons are joined with the locale's own list conjunction (Intl.ListFormat), so do not add a word for 'and'.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.supplement.withheld.reason_missing": {
+		"role": "reason phrase: the file was deleted or moved before it could be shown",
+		"tone": "short clause, lower case",
+		"length": "A few words.",
+		"note": "One reason phrase, lower case because it follows a colon in the withheld line. Several distinct reasons are joined with the locale's own list conjunction (Intl.ListFormat), so do not add a word for 'and'.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.supplement.withheld.reason_too_large": {
+		"role": "reason phrase: the file is larger than the inline preview limit",
+		"tone": "short phrase, lower case",
+		"length": "A few words.",
+		"note": "One reason phrase, lower case because it follows a colon in the withheld line. Several distinct reasons are joined with the locale's own list conjunction (Intl.ListFormat), so do not add a word for 'and'.",
+		"placeholders": {}
 	}
 }

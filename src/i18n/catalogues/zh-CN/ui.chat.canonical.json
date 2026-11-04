@@ -176,5 +176,11 @@
 	"ui.chat.canonical.image_gen.batch_summary": "{count, plural, other {{count_display}项}}",
 	"ui.chat.canonical.lightbox.filmstrip_aria": "{count, plural, other {{count_display}张图片}}",
 	"ui.chat.canonical.lightbox.show_image": "显示第{index, number, ::group-off}张图片（共{count, number, ::group-off}张）",
-	"ui.chat.canonical.supplement.details.summary": "详情"
+	"ui.chat.canonical.supplement.details.summary": "详情",
+	"ui.chat.canonical.supplement.withheld.line": "{count, plural, other {# 个文件未显示}}：{reason}",
+	"ui.chat.canonical.supplement.withheld.line_no_reason": "{count, plural, other {# 个文件未显示}}",
+	"ui.chat.canonical.supplement.withheld.reason_outside": "不在允许的位置",
+	"ui.chat.canonical.supplement.withheld.reason_sensitive": "敏感文件",
+	"ui.chat.canonical.supplement.withheld.reason_missing": "文件已不存在",
+	"ui.chat.canonical.supplement.withheld.reason_too_large": "文件过大，无法预览"
 }

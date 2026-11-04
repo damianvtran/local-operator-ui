@@ -176,5 +176,11 @@
 	"ui.chat.canonical.image_gen.batch_summary": "{count, plural, other {{count_display} mục}}",
 	"ui.chat.canonical.lightbox.filmstrip_aria": "{count, plural, other {{count_display} hình ảnh}}",
 	"ui.chat.canonical.lightbox.show_image": "Hiện hình ảnh {index, number, ::group-off}/{count, number, ::group-off}",
-	"ui.chat.canonical.supplement.details.summary": "Chi tiết"
+	"ui.chat.canonical.supplement.details.summary": "Chi tiết",
+	"ui.chat.canonical.supplement.withheld.line": "{count, plural, other {# tệp không được hiển thị}}: {reason}",
+	"ui.chat.canonical.supplement.withheld.line_no_reason": "{count, plural, other {# tệp không được hiển thị}}",
+	"ui.chat.canonical.supplement.withheld.reason_outside": "nằm ngoài các vị trí được phép",
+	"ui.chat.canonical.supplement.withheld.reason_sensitive": "tệp nhạy cảm",
+	"ui.chat.canonical.supplement.withheld.reason_missing": "tệp không còn tồn tại",
+	"ui.chat.canonical.supplement.withheld.reason_too_large": "quá lớn để xem trước"
 }
