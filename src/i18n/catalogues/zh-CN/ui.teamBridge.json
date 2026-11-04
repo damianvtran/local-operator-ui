@@ -352,7 +352,7 @@
 	"ui.teamBridge.members_panel.decline_tooltip": "拒绝邀请",
 	"ui.teamBridge.members_panel.confirm.remove_title": "要将{name}移出{conversation}吗？",
 	"ui.teamBridge.members_panel.confirm.remove_body": "对方将不再收到此对话的消息。之后你仍可再次邀请对方。",
-	"ui.teamBridge.members_panel.confirm.remove_invited_body": "对对方的邀请将被撤回。之后你仍可再次邀请对方。",
+	"ui.teamBridge.members_panel.confirm.remove_invited_body": "发给对方的邀请将被撤回。之后你仍可再次邀请对方。",
 	"ui.teamBridge.members_panel.confirm.withdraw_body": "你的智能体将不再收到这里的消息。之后仍可再次添加。",
 	"ui.teamBridge.members_panel.confirm.leave_title": "要退出{conversation}吗？",
 	"ui.teamBridge.members_panel.confirm.leave_body": "你将不再收到此对话的消息。如需返回，可从频道列表重新加入，或请成员邀请你。",

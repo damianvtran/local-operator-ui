@@ -8318,8 +8318,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "28aed4e764637f920fa2fa67f089cffe1bcf250c3840f19bc47babeaae360352",
-			"target_sha256": "71cad12b6013d1f660520d3d8b764d2294446e3e3577cc46d0af84890e4423d2",
+			"source_sha256": "81fdc6ce881aab2e606a04d88d734741542f62ad090220e40951692fab6b913b",
+			"target_sha256": "aa0cdffe6a21bfc3e34fa6a561e613b757acc310f1fb4a1fbb57b504c6d00e33",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -8337,18 +8337,18 @@
 					"agent": "translation-auditor",
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-04",
-					"result": "clean-with-findings",
-					"instance": "7c739a6246b4-pr1670-es",
+					"result": "clean",
+					"instance": "bf2ddf2b6fb3-pr1670-r2-es",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 2,
-						"nit": 1
+						"minor": 0,
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/7c739a6246b4-pr1670-es.json",
-					"receipt_sha256": "a12baa113a5340a088a9a282f240cff83fb1f01245ba2f5fd63c3e347bcbd18d",
-					"scope": "PR #1670 delta (a70a761ae47..4397967ebe0): 23 members_panel keys read and composed; auditor fixes in this commit; other 342 values byte-identical to the prior audited bytes",
-					"note": "PR #1670 members_panel delta audit, translation-auditor 7c739a6246b4; ES-M1 fixed, ES-M2 fixed, ES-N1 open. Evidence: i18n/audits/evidence/es/ui.teamBridge/tb1670-7c739a6246b4-es/record.json"
+					"receipt": "i18n/receipts/bf2ddf2b6fb3-pr1670-r2-es.json",
+					"receipt_sha256": "6c4a7eade45d5f3b893fc1e834676861942d9c1caf959a98edbf37acc65a4f07",
+					"scope": "PR #1670 round-2 delta (1acab5915d98..a5d95f8359b7): 6 changed members_panel keys read and composed; other 360 values byte-identical to the round-1 audited bytes",
+					"note": "PR #1670 round-2 delta audit (1acab59..a5d95f8), translation-auditor bf2ddf2b6fb3; 6 keys. Evidence: i18n/audits/evidence/es/ui.teamBridge/tb1670-r2-bf2ddf2b6fb3-es/record.json"
 				}
 			],
 			"status": "audited",
@@ -9934,6 +9934,30 @@
 							"receipt_sha256": "0c840d8ff2686bd2fdc9762126f057ce15890f819858bda8c213ca48e5b7b432",
 							"scope": "Post-merge re-audit of 8f18b76: 14 delta keys (11 from 1f66d89, 3 from 81df7db) re-read; other 328 values byte-identical to both audited parents",
 							"note": "Post-merge re-audit (#1643 + main 81df7db), i18n-auditor session 66bfac56f929; 14 delta keys re-read, rest byte-identical. Evidence: i18n/audits/evidence/es/ui.teamBridge/tb-merge1643-66bfac56f929-es/record.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "28aed4e764637f920fa2fa67f089cffe1bcf250c3840f19bc47babeaae360352",
+					"target_sha256": "71cad12b6013d1f660520d3d8b764d2294446e3e3577cc46d0af84890e4423d2",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-04",
+							"result": "clean-with-findings",
+							"instance": "7c739a6246b4-pr1670-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 2,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/7c739a6246b4-pr1670-es.json",
+							"receipt_sha256": "a12baa113a5340a088a9a282f240cff83fb1f01245ba2f5fd63c3e347bcbd18d",
+							"scope": "PR #1670 delta (a70a761ae47..4397967ebe0): 23 members_panel keys read and composed; auditor fixes in this commit; other 342 values byte-identical to the prior audited bytes",
+							"note": "PR #1670 members_panel delta audit, translation-auditor 7c739a6246b4; ES-M1 fixed, ES-M2 fixed, ES-N1 open. Evidence: i18n/audits/evidence/es/ui.teamBridge/tb1670-7c739a6246b4-es/record.json"
 						}
 					],
 					"status": "audited"
@@ -18737,8 +18761,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "28aed4e764637f920fa2fa67f089cffe1bcf250c3840f19bc47babeaae360352",
-			"target_sha256": "5251e202a8e37b0f6797777568c39a30cc363a7e2de0d6f58525b6dc900f09df",
+			"source_sha256": "81fdc6ce881aab2e606a04d88d734741542f62ad090220e40951692fab6b913b",
+			"target_sha256": "7a69f084aa35b75d1e7476bc6c85c82ade8ba166351c8335a87b1b4f133d0e1a",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -18757,18 +18781,18 @@
 					"agent": "translation-auditor",
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-04",
-					"result": "clean-with-findings",
-					"instance": "7c739a6246b4-pr1670-fr",
+					"result": "clean",
+					"instance": "bf2ddf2b6fb3-pr1670-r2-fr",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 3,
-						"nit": 1
+						"minor": 0,
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/7c739a6246b4-pr1670-fr.json",
-					"receipt_sha256": "6fab45faa9eb96402ffea3f399736200e365192ab3232fd48f825477d0c38f07",
-					"scope": "PR #1670 delta (a70a761ae47..4397967ebe0): 23 members_panel keys read and composed; auditor fixes in this commit; other 342 values byte-identical to the prior audited bytes",
-					"note": "PR #1670 members_panel delta audit, translation-auditor 7c739a6246b4; FR-M1 fixed, FR-M2 fixed, FR-M3 fixed, FR-N1 open. Evidence: i18n/audits/evidence/fr/ui.teamBridge/tb1670-7c739a6246b4-fr/record.json"
+					"receipt": "i18n/receipts/bf2ddf2b6fb3-pr1670-r2-fr.json",
+					"receipt_sha256": "0f634cfac9a90c27080f4bcbdb1b7dd41a91450b7203a24ae7c9fca077068824",
+					"scope": "PR #1670 round-2 delta (1acab5915d98..a5d95f8359b7): 6 changed members_panel keys read and composed; other 360 values byte-identical to the round-1 audited bytes",
+					"note": "PR #1670 round-2 delta audit (1acab59..a5d95f8), translation-auditor bf2ddf2b6fb3; 6 keys. Evidence: i18n/audits/evidence/fr/ui.teamBridge/tb1670-r2-bf2ddf2b6fb3-fr/record.json"
 				}
 			],
 			"status": "audited",
@@ -20378,6 +20402,30 @@
 							"receipt_sha256": "3f95a01789a7edd0b6f934a3411c977f7e5dfd463b85b57a9ba96cb31438b3fd",
 							"scope": "PR #1666 remediation delta (f11ee9d vs 649d45c): changed keys re-read in composed sentences; other values byte-identical to the 66bfac56f929-merge1643 audited parent",
 							"note": "PR #1666 f11ee9d delta re-audit, i18n-auditor 828e525994e6; 0 findings; FR1, FR-N1 fixed. Evidence: i18n/audits/evidence/fr/ui.teamBridge/tb1666-828e525994e6-fr/record.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "28aed4e764637f920fa2fa67f089cffe1bcf250c3840f19bc47babeaae360352",
+					"target_sha256": "5251e202a8e37b0f6797777568c39a30cc363a7e2de0d6f58525b6dc900f09df",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-04",
+							"result": "clean-with-findings",
+							"instance": "7c739a6246b4-pr1670-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 3,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/7c739a6246b4-pr1670-fr.json",
+							"receipt_sha256": "6fab45faa9eb96402ffea3f399736200e365192ab3232fd48f825477d0c38f07",
+							"scope": "PR #1670 delta (a70a761ae47..4397967ebe0): 23 members_panel keys read and composed; auditor fixes in this commit; other 342 values byte-identical to the prior audited bytes",
+							"note": "PR #1670 members_panel delta audit, translation-auditor 7c739a6246b4; FR-M1 fixed, FR-M2 fixed, FR-M3 fixed, FR-N1 open. Evidence: i18n/audits/evidence/fr/ui.teamBridge/tb1670-7c739a6246b4-fr/record.json"
 						}
 					],
 					"status": "audited"
@@ -29036,8 +29084,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "28aed4e764637f920fa2fa67f089cffe1bcf250c3840f19bc47babeaae360352",
-			"target_sha256": "bd3571766f03aeafc8ea69caf1e916cb9047827c9041022c42a6ad2c47f1aeb4",
+			"source_sha256": "81fdc6ce881aab2e606a04d88d734741542f62ad090220e40951692fab6b913b",
+			"target_sha256": "8d09c5dedc4b8e87bb59aa8d66da0c2e46fbc1a3e09ba9f9fdd3afcd4560c284",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -29055,18 +29103,18 @@
 					"agent": "translation-auditor",
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-04",
-					"result": "clean-with-findings",
-					"instance": "7c739a6246b4-pr1670-hi",
+					"result": "clean",
+					"instance": "bf2ddf2b6fb3-pr1670-r2-hi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
+						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/7c739a6246b4-pr1670-hi.json",
-					"receipt_sha256": "fbf23c730d190415be95cb75ecd8893c1cb8b1138915b7404ad126b83eecd00e",
-					"scope": "PR #1670 delta (a70a761ae47..4397967ebe0): 23 members_panel keys read and composed; auditor fixes in this commit; other 342 values byte-identical to the prior audited bytes",
-					"note": "PR #1670 members_panel delta audit, translation-auditor 7c739a6246b4; HI-M1 fixed. Evidence: i18n/audits/evidence/hi/ui.teamBridge/tb1670-7c739a6246b4-hi/record.json"
+					"receipt": "i18n/receipts/bf2ddf2b6fb3-pr1670-r2-hi.json",
+					"receipt_sha256": "f5437281d7a89e9c37aa234724170924be629987c489b380e39dd4b4253cf80a",
+					"scope": "PR #1670 round-2 delta (1acab5915d98..a5d95f8359b7): 6 changed members_panel keys read and composed; other 360 values byte-identical to the round-1 audited bytes",
+					"note": "PR #1670 round-2 delta audit (1acab59..a5d95f8), translation-auditor bf2ddf2b6fb3; 6 keys. Evidence: i18n/audits/evidence/hi/ui.teamBridge/tb1670-r2-bf2ddf2b6fb3-hi/record.json"
 				}
 			],
 			"status": "audited",
@@ -30558,6 +30606,30 @@
 							"receipt_sha256": "ad525cd5c69338406297c0e17ec5d2b57ebda079294821aaa19e05443149b0ae",
 							"scope": "Post-merge re-audit of 8f18b76: 14 delta keys (11 from 1f66d89, 3 from 81df7db) re-read; other 328 values byte-identical to both audited parents",
 							"note": "Post-merge re-audit (#1643 + main 81df7db), i18n-auditor session 66bfac56f929; 14 delta keys re-read, rest byte-identical. Evidence: i18n/audits/evidence/hi/ui.teamBridge/tb-merge1643-66bfac56f929-hi/record.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "28aed4e764637f920fa2fa67f089cffe1bcf250c3840f19bc47babeaae360352",
+					"target_sha256": "bd3571766f03aeafc8ea69caf1e916cb9047827c9041022c42a6ad2c47f1aeb4",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-04",
+							"result": "clean-with-findings",
+							"instance": "7c739a6246b4-pr1670-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/7c739a6246b4-pr1670-hi.json",
+							"receipt_sha256": "fbf23c730d190415be95cb75ecd8893c1cb8b1138915b7404ad126b83eecd00e",
+							"scope": "PR #1670 delta (a70a761ae47..4397967ebe0): 23 members_panel keys read and composed; auditor fixes in this commit; other 342 values byte-identical to the prior audited bytes",
+							"note": "PR #1670 members_panel delta audit, translation-auditor 7c739a6246b4; HI-M1 fixed. Evidence: i18n/audits/evidence/hi/ui.teamBridge/tb1670-7c739a6246b4-hi/record.json"
 						}
 					],
 					"status": "audited"
@@ -38988,8 +39060,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "28aed4e764637f920fa2fa67f089cffe1bcf250c3840f19bc47babeaae360352",
-			"target_sha256": "fd1a615aa146bab37116189382733ac2fff14cf0bae2bc5ce1ffa9973d88f455",
+			"source_sha256": "81fdc6ce881aab2e606a04d88d734741542f62ad090220e40951692fab6b913b",
+			"target_sha256": "7bc18ba2ad513091dbd30d124d990bdb33db28f548b706667205c76c5e1f7cd5",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -39008,18 +39080,18 @@
 					"agent": "translation-auditor",
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-04",
-					"result": "clean-with-findings",
-					"instance": "7c739a6246b4-pr1670-ru",
+					"result": "clean",
+					"instance": "bf2ddf2b6fb3-pr1670-r2-ru",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 1
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/7c739a6246b4-pr1670-ru.json",
-					"receipt_sha256": "c2081b3e6feed43a0e8d5e28d16c3976cc0651b337ffbcf4306ef7b1c95ac1c2",
-					"scope": "PR #1670 delta (a70a761ae47..4397967ebe0): 23 members_panel keys read and composed; auditor fixes in this commit; other 342 values byte-identical to the prior audited bytes",
-					"note": "PR #1670 members_panel delta audit, translation-auditor 7c739a6246b4; RU-N1 fixed. Evidence: i18n/audits/evidence/ru/ui.teamBridge/tb1670-7c739a6246b4-ru/record.json"
+					"receipt": "i18n/receipts/bf2ddf2b6fb3-pr1670-r2-ru.json",
+					"receipt_sha256": "5ab6837b19aac1fbfbefeca7193fcf05b3ef2c82a80d0706fd108e29541c9791",
+					"scope": "PR #1670 round-2 delta (1acab5915d98..a5d95f8359b7): 6 changed members_panel keys read and composed; other 360 values byte-identical to the round-1 audited bytes",
+					"note": "PR #1670 round-2 delta audit (1acab59..a5d95f8), translation-auditor bf2ddf2b6fb3; 6 keys. Evidence: i18n/audits/evidence/ru/ui.teamBridge/tb1670-r2-bf2ddf2b6fb3-ru/record.json"
 				}
 			],
 			"status": "audited",
@@ -40600,6 +40672,30 @@
 							"receipt_sha256": "d172e1f126fa5589d057057f3181c8988b9e8559fab1c9c26b0c921a31862739",
 							"scope": "Post-merge re-audit of 8f18b76: 14 delta keys (11 from 1f66d89, 3 from 81df7db) re-read; other 328 values byte-identical to both audited parents",
 							"note": "Post-merge re-audit (#1643 + main 81df7db), i18n-auditor session 66bfac56f929; 14 delta keys re-read, rest byte-identical. Evidence: i18n/audits/evidence/ru/ui.teamBridge/tb-merge1643-66bfac56f929-ru/record.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "28aed4e764637f920fa2fa67f089cffe1bcf250c3840f19bc47babeaae360352",
+					"target_sha256": "fd1a615aa146bab37116189382733ac2fff14cf0bae2bc5ce1ffa9973d88f455",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-04",
+							"result": "clean-with-findings",
+							"instance": "7c739a6246b4-pr1670-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/7c739a6246b4-pr1670-ru.json",
+							"receipt_sha256": "c2081b3e6feed43a0e8d5e28d16c3976cc0651b337ffbcf4306ef7b1c95ac1c2",
+							"scope": "PR #1670 delta (a70a761ae47..4397967ebe0): 23 members_panel keys read and composed; auditor fixes in this commit; other 342 values byte-identical to the prior audited bytes",
+							"note": "PR #1670 members_panel delta audit, translation-auditor 7c739a6246b4; RU-N1 fixed. Evidence: i18n/audits/evidence/ru/ui.teamBridge/tb1670-7c739a6246b4-ru/record.json"
 						}
 					],
 					"status": "audited"
@@ -49069,8 +49165,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "28aed4e764637f920fa2fa67f089cffe1bcf250c3840f19bc47babeaae360352",
-			"target_sha256": "eefb5c3f3246d5d3e19ecbbb4d540d3492d41cf65a7644f067ed1d3894f79c38",
+			"source_sha256": "81fdc6ce881aab2e606a04d88d734741542f62ad090220e40951692fab6b913b",
+			"target_sha256": "5dc017a84270461474c56d3c59e2fe18ed418948fb9602e26f96a85d72b689ef",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -49088,18 +49184,18 @@
 					"agent": "translation-auditor",
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-04",
-					"result": "clean-with-findings",
-					"instance": "7c739a6246b4-pr1670-ur",
+					"result": "clean",
+					"instance": "bf2ddf2b6fb3-pr1670-r2-ur",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 3,
+						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/7c739a6246b4-pr1670-ur.json",
-					"receipt_sha256": "93468ecd75b478f48991c0dd29d7b965ef59f1ad57efe7a5d13b247fe65bf037",
-					"scope": "PR #1670 delta (a70a761ae47..4397967ebe0): 23 members_panel keys read and composed; auditor fixes in this commit; other 342 values byte-identical to the prior audited bytes",
-					"note": "PR #1670 members_panel delta audit, translation-auditor 7c739a6246b4; UR-M1 fixed, UR-M2 fixed, UR-M3 deferred. Evidence: i18n/audits/evidence/ur/ui.teamBridge/tb1670-7c739a6246b4-ur/record.json"
+					"receipt": "i18n/receipts/bf2ddf2b6fb3-pr1670-r2-ur.json",
+					"receipt_sha256": "5f244b35ef3c957228988deaff2b36cc3b79b56275d32b9432a68bc4da10b6e7",
+					"scope": "PR #1670 round-2 delta (1acab5915d98..a5d95f8359b7): 6 changed members_panel keys read and composed; other 360 values byte-identical to the round-1 audited bytes",
+					"note": "PR #1670 round-2 delta audit, translation-auditor bf2ddf2b6fb3; round-1 UR-M3 resolved ({channel} isolated LTR). Evidence: i18n/audits/evidence/ur/ui.teamBridge/tb1670-r2-bf2ddf2b6fb3-ur/record.json"
 				}
 			],
 			"status": "audited",
@@ -50591,6 +50687,30 @@
 							"receipt_sha256": "baf244e024b66a603e4aed416424cc4fd729b8880e45c18a35b7f8b1bd9f1a67",
 							"scope": "Post-merge re-audit of 8f18b76: 14 delta keys (11 from 1f66d89, 3 from 81df7db) re-read; other 328 values byte-identical to both audited parents",
 							"note": "Post-merge re-audit (#1643 + main 81df7db), i18n-auditor session 66bfac56f929; 14 delta keys re-read, rest byte-identical. Evidence: i18n/audits/evidence/ur/ui.teamBridge/tb-merge1643-66bfac56f929-ur/record.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "28aed4e764637f920fa2fa67f089cffe1bcf250c3840f19bc47babeaae360352",
+					"target_sha256": "eefb5c3f3246d5d3e19ecbbb4d540d3492d41cf65a7644f067ed1d3894f79c38",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-04",
+							"result": "clean-with-findings",
+							"instance": "7c739a6246b4-pr1670-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 3,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/7c739a6246b4-pr1670-ur.json",
+							"receipt_sha256": "93468ecd75b478f48991c0dd29d7b965ef59f1ad57efe7a5d13b247fe65bf037",
+							"scope": "PR #1670 delta (a70a761ae47..4397967ebe0): 23 members_panel keys read and composed; auditor fixes in this commit; other 342 values byte-identical to the prior audited bytes",
+							"note": "PR #1670 members_panel delta audit, translation-auditor 7c739a6246b4; UR-M1 fixed, UR-M2 fixed, UR-M3 deferred. Evidence: i18n/audits/evidence/ur/ui.teamBridge/tb1670-7c739a6246b4-ur/record.json"
 						}
 					],
 					"status": "audited"
@@ -59482,8 +59602,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "28aed4e764637f920fa2fa67f089cffe1bcf250c3840f19bc47babeaae360352",
-			"target_sha256": "44ccf3f5613026f417173192085c9948d330eb7e08f6ba7214b57bd9fe40b74b",
+			"source_sha256": "81fdc6ce881aab2e606a04d88d734741542f62ad090220e40951692fab6b913b",
+			"target_sha256": "c217c192106c89ab5e5bd22b3a6fd85a7ef17d9634704d519dd16aaeb94c42a0",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -59501,18 +59621,18 @@
 					"agent": "translation-auditor",
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-04",
-					"result": "clean-with-findings",
-					"instance": "7c739a6246b4-pr1670-vi",
+					"result": "clean",
+					"instance": "bf2ddf2b6fb3-pr1670-r2-vi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 1
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/7c739a6246b4-pr1670-vi.json",
-					"receipt_sha256": "7aa5cf043866bdf4924a78ea5ed319601440f87c5a72ad458d0dcc6c7c0f8f22",
-					"scope": "PR #1670 delta (a70a761ae47..4397967ebe0): 23 members_panel keys read and composed; auditor fixes in this commit; other 342 values byte-identical to the prior audited bytes",
-					"note": "PR #1670 members_panel delta audit, translation-auditor 7c739a6246b4; VI-N1 fixed. Evidence: i18n/audits/evidence/vi/ui.teamBridge/tb1670-7c739a6246b4-vi/record.json"
+					"receipt": "i18n/receipts/bf2ddf2b6fb3-pr1670-r2-vi.json",
+					"receipt_sha256": "0cad5b9460c6cbabec78cc12d438de7dc4fd92d4179fef2a4461df85e864d75a",
+					"scope": "PR #1670 round-2 delta (1acab5915d98..a5d95f8359b7): 6 changed members_panel keys read and composed; other 360 values byte-identical to the round-1 audited bytes",
+					"note": "PR #1670 round-2 delta audit (1acab59..a5d95f8), translation-auditor bf2ddf2b6fb3; 6 keys. Evidence: i18n/audits/evidence/vi/ui.teamBridge/tb1670-r2-bf2ddf2b6fb3-vi/record.json"
 				}
 			],
 			"status": "audited",
@@ -61083,6 +61203,30 @@
 							"receipt_sha256": "b63bc2a2962a164df672e04e360da4c99e85a0c328304c05bddce19bf184792e",
 							"scope": "PR #1666 remediation delta (f11ee9d vs 649d45c): changed keys re-read in composed sentences; other values byte-identical to the 66bfac56f929-merge1643 audited parent",
 							"note": "PR #1666 f11ee9d delta re-audit, i18n-auditor 828e525994e6; 1 MINOR VI-R1 (họ→tác nhân); VI1 term fixed. Evidence: i18n/audits/evidence/vi/ui.teamBridge/tb1666-828e525994e6-vi/record.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "28aed4e764637f920fa2fa67f089cffe1bcf250c3840f19bc47babeaae360352",
+					"target_sha256": "44ccf3f5613026f417173192085c9948d330eb7e08f6ba7214b57bd9fe40b74b",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-04",
+							"result": "clean-with-findings",
+							"instance": "7c739a6246b4-pr1670-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/7c739a6246b4-pr1670-vi.json",
+							"receipt_sha256": "7aa5cf043866bdf4924a78ea5ed319601440f87c5a72ad458d0dcc6c7c0f8f22",
+							"scope": "PR #1670 delta (a70a761ae47..4397967ebe0): 23 members_panel keys read and composed; auditor fixes in this commit; other 342 values byte-identical to the prior audited bytes",
+							"note": "PR #1670 members_panel delta audit, translation-auditor 7c739a6246b4; VI-N1 fixed. Evidence: i18n/audits/evidence/vi/ui.teamBridge/tb1670-7c739a6246b4-vi/record.json"
 						}
 					],
 					"status": "audited"
@@ -70567,8 +70711,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "28aed4e764637f920fa2fa67f089cffe1bcf250c3840f19bc47babeaae360352",
-			"target_sha256": "5927e039cb8d8b94a96510313f4203f08480aa47ec7fbf6badd12f36fc506405",
+			"source_sha256": "81fdc6ce881aab2e606a04d88d734741542f62ad090220e40951692fab6b913b",
+			"target_sha256": "a884e994447bdd70d9f88c5201d0ed7c47b7a1840fba7436301b9b829fd45156",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -70587,17 +70731,17 @@
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-04",
 					"result": "clean-with-findings",
-					"instance": "7c739a6246b4-pr1670-zh-cn",
+					"instance": "bf2ddf2b6fb3-pr1670-r2-zh-cn",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 2,
+						"minor": 0,
 						"nit": 1
 					},
-					"receipt": "i18n/receipts/7c739a6246b4-pr1670-zh-cn.json",
-					"receipt_sha256": "8966ebef488a4a3015d12ed1a868fc9342ce4bf3f86401b0e3cfb6d2f2db48c2",
-					"scope": "PR #1670 delta (a70a761ae47..4397967ebe0): 23 members_panel keys read and composed; auditor fixes in this commit; other 342 values byte-identical to the prior audited bytes",
-					"note": "PR #1670 members_panel delta audit, translation-auditor 7c739a6246b4; ZH-M1 fixed, ZH-M2 fixed, ZH-N1 fixed. Evidence: i18n/audits/evidence/zh-CN/ui.teamBridge/tb1670-7c739a6246b4-zh-cn/record.json"
+					"receipt": "i18n/receipts/bf2ddf2b6fb3-pr1670-r2-zh-cn.json",
+					"receipt_sha256": "8cf23b4eec612c58a5454215fe7cb19930b595448ffc97745b709ad3d41bca17",
+					"scope": "PR #1670 round-2 delta (1acab5915d98..a5d95f8359b7): 6 changed members_panel keys read and composed; other 360 values byte-identical to the round-1 audited bytes",
+					"note": "PR #1670 round-2 delta audit, translation-auditor bf2ddf2b6fb3; ZH-N2 fixed. Evidence: i18n/audits/evidence/zh-CN/ui.teamBridge/tb1670-r2-bf2ddf2b6fb3-zh-cn/record.json"
 				}
 			],
 			"status": "audited",
@@ -72166,6 +72310,30 @@
 							"receipt_sha256": "a20d47cfec88806ede6c4cf4ccf364572bf692d459bddea00d7da56ed546989c",
 							"scope": "PR #1666 remediation delta (f11ee9d vs 649d45c): changed keys re-read in composed sentences; other values byte-identical to the 66bfac56f929-merge1643 audited parent",
 							"note": "PR #1666 f11ee9d delta re-audit, i18n-auditor 828e525994e6; 0 findings; ZH1, ZH2 fixed. Evidence: i18n/audits/evidence/zh-CN/ui.teamBridge/tb1666-828e525994e6-zh-cn/record.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "28aed4e764637f920fa2fa67f089cffe1bcf250c3840f19bc47babeaae360352",
+					"target_sha256": "5927e039cb8d8b94a96510313f4203f08480aa47ec7fbf6badd12f36fc506405",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-04",
+							"result": "clean-with-findings",
+							"instance": "7c739a6246b4-pr1670-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 2,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/7c739a6246b4-pr1670-zh-cn.json",
+							"receipt_sha256": "8966ebef488a4a3015d12ed1a868fc9342ce4bf3f86401b0e3cfb6d2f2db48c2",
+							"scope": "PR #1670 delta (a70a761ae47..4397967ebe0): 23 members_panel keys read and composed; auditor fixes in this commit; other 342 values byte-identical to the prior audited bytes",
+							"note": "PR #1670 members_panel delta audit, translation-auditor 7c739a6246b4; ZH-M1 fixed, ZH-M2 fixed, ZH-N1 fixed. Evidence: i18n/audits/evidence/zh-CN/ui.teamBridge/tb1670-7c739a6246b4-zh-cn/record.json"
 						}
 					],
 					"status": "audited"
