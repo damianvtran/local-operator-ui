@@ -27,10 +27,10 @@ test("header siblings share centre alignment and interactive rows can grow", () 
 		source.includes("@container/chathdr flex min-h-10 shrink-0 items-center"),
 	);
 	assert.ok(source.includes("flex min-w-0 flex-1 items-center gap-x-2"));
-	assert.ok(
-		source.includes(
-			'identity ? "min-h-5" : cn(avatarRowClass, "flex-wrap overflow-clip")',
-		),
+	/* Whitespace-tolerant: the formatter may break this ternary across lines. */
+	assert.match(
+		source,
+		/identity\s*\?\s*"min-h-5"\s*:\s*cn\(rowClassName, "flex-wrap overflow-clip"\)/,
 	);
 	assert.ok(!source.includes("items-baseline"));
 	assert.ok(!source.includes("overflow-clip-margin"));

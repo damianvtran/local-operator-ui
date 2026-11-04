@@ -58,6 +58,14 @@ const stepLabel = (size: AgentAvatarSize): string =>
  * and wordless, so it adds no copy to translate and nothing to announce - the
  * tabs are the control.
  */
+/**
+ * The sidebar row's picture, which the setting does not touch: `size-4` in
+ * `chat-session-avatar.tsx` (`SESSION_MARK_BOX`) and the rail's 16px disc. Named
+ * here so the sample draws the same box; `scripts/agent-avatar-presence.test.mjs`
+ * pins it to the row's own constant.
+ */
+const SIDEBAR_AVATAR_BOX = { className: "size-4", glyphClassName: "size-2" };
+
 const SizeSample: FC<{ size: AgentAvatarSize }> = ({ size }) => {
 	const header = HEADER_AVATAR_BOX[size];
 	const turn = TURN_AVATAR_BOX[size];
@@ -73,7 +81,7 @@ const SizeSample: FC<{ size: AgentAvatarSize }> = ({ size }) => {
 		<div
 			aria-hidden="true"
 			data-agent-size-sample={size}
-			className="mt-3 flex items-start gap-6 rounded-md border border-control bg-surface p-3"
+			className="mt-3 flex items-start gap-6 rounded-md border border-hairline bg-surface p-3"
 		>
 			<div className="flex h-10 items-center gap-2">
 				{face(header.className, header.glyphClassName)}
@@ -84,6 +92,19 @@ const SizeSample: FC<{ size: AgentAvatarSize }> = ({ size }) => {
 					{face(turn.className, turn.glyphClassName)}
 				</span>
 				<span className="h-2 w-28 rounded-full bg-sunken" />
+			</div>
+			{/*
+			 * THE REFERENCE FOR "SIDEBAR ROWS KEEP THEIR SIZE" (design review D8): the
+			 * sidebar's own fixed 16px mark beside a title bar, which does not move
+			 * with the step. Wordless and aria-hidden like the rest of the sample, so
+			 * the sentence above it is the only copy.
+			 */}
+			<div
+				data-agent-size-sample-fixed=""
+				className="flex h-10 items-center gap-2"
+			>
+				{face(SIDEBAR_AVATAR_BOX.className, SIDEBAR_AVATAR_BOX.glyphClassName)}
+				<span className="h-2 w-12 rounded-full bg-sunken" />
 			</div>
 		</div>
 	);

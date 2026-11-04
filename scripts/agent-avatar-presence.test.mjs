@@ -441,12 +441,33 @@ test("the session row's overlay mounts only for a picture that draws (m-1)", () 
 	assert.match(edit, /if \(settled && !url\) return null;/);
 });
 
-test("the header sizes its title row from the table only when a mark is drawn (n-2)", () => {
+test("the header sizes its title row from the table only when a mark is drawn, from the same call as the mark (n-2, M1)", () => {
 	const header = code(`${CH}/chat-header.tsx`);
-	assert.match(
-		header,
-		/const avatarRowClass = headerMark\s*\?\s*HEADER_AVATAR_BOX\[avatarSize\]\.rowClassName\s*:\s*"h-5";/,
+	/* One hook returns BOTH the mark and the row class, so they cannot disagree. */
+	const hook = header.slice(
+		header.indexOf("const useHeaderAvatar = ("),
+		header.indexOf("const NO_MARK_ROW"),
 	);
+	assert.match(
+		hook,
+		/if \(!mark\) return \{ avatar: null, rowClassName: NO_MARK_ROW \}/,
+	);
+	assert.match(hook, /rowClassName: box\.rowClassName/);
+	assert.match(header, /const NO_MARK_ROW = "h-5"/);
+	/* M1: the hook is never called in ChatHeader's own body, only under a component. */
+	const body = header.slice(
+		header.indexOf("export const ChatHeader: FC<ChatHeaderProps>"),
+	);
+	assert.doesNotMatch(body, /useHeaderAvatar\(|useAgentSlotMark\(/);
+	assert.match(body, /<HeaderAvatarScope agent=\{agentAvatar\}>/);
+	/* ...and the scope renders the no-agent case without touching the hook. */
+	const scope = header.slice(header.indexOf("const HeaderAvatarScope"));
+	assert.match(
+		scope,
+		/agent \?\s*\(\s*<WithHeaderAvatar[\s\S]*:\s*\(\s*children\(\{ avatar: null, rowClassName: NO_MARK_ROW \}\)/,
+	);
+	/* The title row reads the scope's class, not a constant of its own. */
+	assert.match(header, /cn\(rowClassName, "flex-wrap overflow-clip"\)/);
 });
 
 test("a list with pictures reserves the box on every row; a list without draws main's cell (D1)", () => {
@@ -459,4 +480,27 @@ test("a list with pictures reserves the box on every row; a list without draws m
 	const sidebar = code(`${CH}/chat-sidebar.tsx`);
 	assert.match(sidebar, /reservePicture=\{anyRowPictured\}/);
 	assert.match(sidebar, /row\.agent_id && row\.avatar_sha256/);
+});
+
+test("the settings sample draws the sidebar's fixed 16px box beside the stepped ones (D8), on a hairline edge (D7)", () => {
+	const sample = code(
+		"src/renderer/src/features/settings/components/agent-avatar-size-setting.tsx",
+	);
+	const row = readFileSync(`${CH}/chat-session-avatar.tsx`, "utf8");
+	const fixed = /SESSION_MARK_BOX = "(size-\d+)"/.exec(row)?.[1];
+	assert.ok(fixed, "the row's mark box is a literal class");
+	assert.ok(
+		sample.includes(`SIDEBAR_AVATAR_BOX = { className: "${fixed}"`),
+		`the sample's fixed box is the row's own ${fixed}`,
+	);
+	assert.match(sample, /data-agent-size-sample-fixed/);
+	/* The fixed group takes no step: its box is not read from either size table. */
+	const group = sample.slice(sample.indexOf("data-agent-size-sample-fixed"));
+	assert.doesNotMatch(group.slice(0, 200), /TURN_AVATAR_BOX|HEADER_AVATAR_BOX/);
+	/* Wordless and inert, so it adds no copy to translate or announce. */
+	assert.match(sample, /aria-hidden="true"\s*\n\s*data-agent-size-sample=/);
+	assert.doesNotMatch(sample, /t\(`\$\{BASE\}\.sample/);
+	/* D7: the sample's box is a hairline, not the control edge. */
+	assert.match(sample, /border border-hairline bg-surface/);
+	assert.doesNotMatch(sample, /border-control bg-surface/);
 });

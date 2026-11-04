@@ -3,7 +3,8 @@
  * surface that draws it.
  *
  * ROWS are the four states an agent's picture slot can be in - no picture, a
- * picture, a picture being uploaded, and a picture whose bytes failed - and
+ * picture, a picture being uploaded, and a picture whose bytes are unreadable (the
+ * row claims a digest and the relay answers 404; NOT a refused upload) - and
  * COLUMNS are the surfaces: the chat turn head, the chat header, the session row
  * and the agents rail's row. The turn head and the header follow the reader's
  * size setting (`size` arg); the session row and the rail stay at 16px by design.
@@ -49,7 +50,7 @@ const AGENTS: Record<State, { id: string; name: string; label: string }> = {
 	none: { id: "agent-none", name: "scout", label: "No picture" },
 	picture: { id: "agent-picture", name: "coder", label: "Picture set" },
 	uploading: { id: "agent-up", name: "reviewer", label: "Uploading" },
-	failed: { id: "agent-fail", name: "manager", label: "Failed upload" },
+	failed: { id: "agent-fail", name: "manager", label: "Picture unreadable" },
 };
 
 /** A flat two-tone figure: synthetic, so no frame is a claim about a palette. */
@@ -224,6 +225,21 @@ const Matrix: FC<{ size: AgentAvatarSize; owned: boolean }> = ({
 				<p className="mt-3 text-ink-muted">
 					Header box {HEADER_AVATAR_BOX[size].px}px; session row and rail stay
 					16px.
+				</p>
+				{/*
+				 * WHAT THE LAST ROW IS. "Picture unreadable" is a digest the row claims
+				 * whose bytes answer 404 - not an upload that failed (a refused upload
+				 * leaves the previous picture or none, and is the editor's error line).
+				 * It draws what NO picture draws on each surface, which is the contract:
+				 * the turn head and the header draw the placeholder door; the session row
+				 * and the rail draw the bare status or glyph, because those two surfaces
+				 * never draw a placeholder. The Uploading row is the one place the door is
+				 * closed on purpose (a plate and a spinner).
+				 */}
+				<p className="mt-1 max-w-xl text-ink-muted">
+					Picture unreadable draws the same as No picture on every surface: the
+					door on the turn head and header, the bare status on the session row,
+					the glyph on the rail.
 				</p>
 			</div>
 		</>

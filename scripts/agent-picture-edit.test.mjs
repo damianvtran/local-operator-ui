@@ -521,14 +521,77 @@ test("the header takes its agent from the row's binding, never from the title", 
 	/*
 	 * The mark may be handed a name, but only the BOUND AGENT's (`agentAvatar.
 	 * agentName`); the `agentName` prop is the conversation's title and must never
-	 * reach it. The header's mark is now a hoisted hook plus `ChatHeaderAvatarMark`
-	 * (so the title row can ask whether a mark is drawn), hence the `\w*` suffix.
+	 * reach it. Two forms would break that: a JSX prop on the avatar components
+	 * (`agentName={agentName}`, or the header's destructured title under any other
+	 * local name), and the hook's input object. Both are asked of the code, with
+	 * comments blanked, so an explanation cannot satisfy or trip a pin.
 	 */
+	const code = header
+		.replace(/\/\*[\s\S]*?\*\//g, (c) => " ".repeat(c.length))
+		.replace(/\/\/[^\n]*/g, (c) => " ".repeat(c.length));
 	assert.doesNotMatch(
-		header,
-		/<ChatHeaderAvatar\w*[^>]*agentName=\{agentName\}/,
+		code,
+		/<(?:ChatHeaderAvatar\w*|AgentAvatarSlot)\b[^>]*agentName=\{(?:agentName|title)\}/,
+		"the conversation's title reaches the avatar's name",
 	);
-	assert.match(header, /agentName=\{agentAvatar\.agentName\}/);
+	assert.doesNotMatch(
+		code,
+		/useAgentSlotMark\(\{[^}]*agentName:\s*(?:agentName|title)\b/,
+		"the conversation's title reaches the mark decision",
+	);
+	/* The one name the avatar takes is the bound agent's, in both places it is read. */
+	assert.match(code, /agentName: agent\.agentName/);
+	assert.match(code, /agentName=\{agent\.agentName\}/);
+	/* A negative control: the pin does fire on the form it forbids. */
+	assert.match(
+		"<ChatHeaderAvatar agentName={title} />",
+		/<(?:ChatHeaderAvatar\w*|AgentAvatarSlot)\b[^>]*agentName=\{(?:agentName|title)\}/,
+	);
+});
+
+/*
+ * A HEADER WITH NO BOUND AGENT NEEDS NO QUERY CLIENT (agent review M1). The mark
+ * reads the agents list through `useQueryClient`, which throws outside a
+ * provider, and a draft or a packaged profile has no agent to read. The hook
+ * lives in a component rendered only when there is one, so this mount - the
+ * shape of every panel-rail header test - must not throw. It is rendered through
+ * `renderToStaticMarkup` directly, NOT through this file's `render` helper,
+ * because that helper supplies the provider this case is about the absence of.
+ * (Wrapping a test in a provider is exactly how the regression would be hidden.)
+ */
+test("a header with no bound agent mounts with no QueryClientProvider", () => {
+	for (const agentAvatar of [undefined, null]) {
+		const markup = renderToStaticMarkup(
+			createElement(
+				MemoryRouter,
+				{ initialEntries: ["/"] },
+				createElement(ChatHeader, { agentName: TITLE, agentAvatar }),
+			),
+		);
+		assert.match(markup, new RegExp(TITLE), "the header drew its title");
+		assert.doesNotMatch(markup, /data-agent-mark/, "and no avatar");
+		/* The title row keeps the historical 20px line when no mark is drawn. */
+		assert.match(markup, /\bh-5\b[^"]*flex-wrap overflow-clip/);
+	}
+});
+
+test("a header WITH an agent still needs the query client, so the guard is the absence of one", () => {
+	assert.throws(
+		() =>
+			renderToStaticMarkup(
+				createElement(
+					MemoryRouter,
+					{ initialEntries: ["/"] },
+					createElement(ChatHeader, {
+						agentName: TITLE,
+						agentAvatar: sessionAgentTarget(
+							row({ binding: { agent: "Scout" } }),
+						),
+					}),
+				),
+			),
+		/QueryClient/,
+	);
 });
 
 /* ------------------------------------------- the placeholder door (presence) --- */
