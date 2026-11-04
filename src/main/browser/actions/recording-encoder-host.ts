@@ -33,7 +33,9 @@ import type {
  *
  * MAIN PINS EVERY MESSAGE TO THE WINDOW IT CREATED. One `ipcMain` listener serves
  * every window and routes by the sender's `webContents.id`; a message from any
- * other sender, or from a subframe, is dropped.
+ * other sender, or from a subframe, is dropped. What the window then says is
+ * checked for shape (chunk bytes, a finite timestamp) and for honesty (the
+ * configured size must be the one asked for) before it reaches the session.
  */
 
 /** A hidden encoder that stops answering is a dead clip, but a busy 4K encode is
@@ -131,6 +133,8 @@ async function openWindow(
 	const contents = window.webContents;
 	const windowId = contents.id;
 	let disposed = false;
+	/** What each configure asked for, to hold the answer to it. */
+	const requested = new Map<number, { width: number; height: number }>();
 	let unresponsiveTimer: ReturnType<typeof setTimeout> | null = null;
 
 	const waiters = {
@@ -199,6 +203,24 @@ async function openWindow(
 					const resolve = waiters.configure.get(event.id);
 					waiters.configure.delete(event.id);
 					if (!resolve) return;
+					// The answer must describe what was asked for: a coded size that is
+					// not the requested one would be written into the file's headers.
+					const asked = requested.get(event.id);
+					requested.delete(event.id);
+					if (
+						event.ok &&
+						(!asked ||
+							event.width !== asked.width ||
+							event.height !== asked.height ||
+							(event.encoder !== "hardware" && event.encoder !== "software"))
+					) {
+						resolve({
+							ok: false,
+							why: "encoder_start",
+							detail: "the encoder answered with a size that was not asked for",
+						});
+						return;
+					}
 					resolve(
 						event.ok
 							? {
@@ -208,11 +230,28 @@ async function openWindow(
 									width: event.width,
 									height: event.height,
 								}
-							: { ok: false, why: event.why, detail: event.detail },
+							: {
+									ok: false,
+									why: event.why,
+									detail: String(event.detail).slice(0, 300),
+								},
 					);
 					return;
 				}
-				case "chunk":
+				case "chunk": {
+					// The document is the app's own, but a message is only as trusted as
+					// its shape: the cap sums `data.length`, so a non-bytes payload would
+					// make it `NaN` and the cap would never fire.
+					if (
+						!(event.data instanceof Uint8Array) ||
+						!Number.isFinite(event.ts) ||
+						typeof event.key !== "boolean" ||
+						(event.description !== undefined &&
+							!(event.description instanceof Uint8Array))
+					) {
+						died("the encoder sent a malformed chunk");
+						return;
+					}
 					sink.onChunk({
 						data: event.data,
 						ts: event.ts,
@@ -220,7 +259,9 @@ async function openWindow(
 						description: event.description,
 					});
 					return;
+				}
 				case "frame-done":
+					if (!Number.isInteger(event.seq)) return;
 					sink.onFrameDone(event.seq);
 					return;
 				case "flushed": {
@@ -285,6 +326,7 @@ async function openWindow(
 			const id = configureId;
 			return new Promise<ConfigureAnswer>((resolve) => {
 				waiters.configure.set(id, resolve);
+				requested.set(id, { width: request.width, height: request.height });
 				send({ cmd: "configure", id, ...request });
 			});
 		},

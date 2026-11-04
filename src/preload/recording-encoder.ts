@@ -7,8 +7,8 @@
  * channel name in the document's world and no `sendSync`. The document is the
  * app's own bundled page, loaded with navigation, permissions and popups denied,
  * so what this bridge exposes is the whole of what a compromised frame could say
- * to main: a chunk, a status or an error, each re-validated by main against the
- * window it created.
+ * to main: a chunk, a status or an error. Main routes each by the window it
+ * created and checks its shape before using it (`recording-encoder-host.ts`).
  */
 
 import { contextBridge, ipcRenderer } from "electron";

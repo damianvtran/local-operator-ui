@@ -5430,6 +5430,10 @@ app.on("before-quit", async (event) => {
 	 * that is the difference between a shutdown and an app that refuses to close
 	 * without saying so.
 	 */
+	// Encoder windows go down in the synchronous part, ahead of every await below:
+	// Electron closes the windows when this listener's synchronous part returns, and
+	// a hidden renderer left running past that is a process the quit has to wait for.
+	disposeAllRecordingEncoders();
 	if (await holdQuitForSessionCookieSnapshot(event)) return;
 
 	quitExitDeadline.phase("after the session-cookie hold");
@@ -5510,10 +5514,10 @@ app.on("before-quit", async (event) => {
 	// file, so a session stopping at the same moment does not read a record naming
 	// a process that is already gone. Not awaited: `before-quit` is synchronous,
 	// and each of these steps is also safe to lose (see `stopBrowserHost`).
-	// A hidden recording-encoder window is destroyed HERE, synchronously, and not
-	// left to the stop above: that one is not awaited, and a window that outlives
-	// `before-quit` is a renderer process the quit has to wait for (D21). A
-	// recording in flight is lost with the app, exactly as the standard path's is.
+	// Encoder windows were already destroyed at the top of this handler, in its
+	// synchronous part (D21); a recording in flight is lost with the app, exactly as
+	// the standard path's is. A second pass here is the idempotent backstop for a
+	// quit that re-entered after the hold.
 	disposeAllRecordingEncoders();
 	void stopBrowserHost();
 	/*
