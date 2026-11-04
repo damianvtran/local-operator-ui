@@ -268,6 +268,7 @@ export class HqSession {
 	private gotFrame = false;
 	private onFirstFrame: (() => void) | null = null;
 	private restarting = false;
+	private restartAgain = false;
 	private lastSentAt: number | null = null;
 
 	private firstWallMs: number | null = null;
@@ -546,7 +547,9 @@ export class HqSession {
 	 * keeping its wall-clock length. The pool announces each `Page.disable` it sent
 	 * (`PAGE_DISABLED_EVENT`) and the screencast is started again here. A watchdog on
 	 * "no frames lately" could not do this job: a static page legitimately produces
-	 * none. Restarts are coalesced, and a restart that fails fails the recording
+	 * none. A burst is coalesced to one start in flight plus one queued (a disable
+	 * that lands after the in-flight start was sent ends THAT screencast too, so it
+	 * cannot simply be dropped), and a restart that fails fails the recording
 	 * instead of leaving a clip that silently stopped moving.
 	 *
 	 * Chromium's frame-in-flight count restarts with the screencast, so an ack that
@@ -554,14 +557,26 @@ export class HqSession {
 	 * alone because the encoder, not Chromium, is what releases it.
 	 */
 	private restartScreencast(): void {
-		if (!this.captureRequested || this.restarting) return;
+		if (!this.captureRequested) return;
+		if (this.restarting) {
+			// A `Page.disable` that lands after the in-flight start was SENT ends that
+			// screencast too, so it cannot be dropped; it is remembered, and a burst
+			// still costs one start in flight plus one more, not one per disable.
+			this.restartAgain = true;
+			return;
+		}
 		this.restarting = true;
 		void this.startScreencast().then(
 			() => {
 				this.restarting = false;
+				if (this.restartAgain) {
+					this.restartAgain = false;
+					if (!this.disposed && !this.stopping) this.restartScreencast();
+				}
 			},
 			(error: unknown) => {
 				this.restarting = false;
+				this.restartAgain = false;
 				if (this.disposed || this.stopping) return;
 				if (error instanceof BrowserHostError && error.code === "tab_closed")
 					return;
