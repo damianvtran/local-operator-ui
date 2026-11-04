@@ -39,7 +39,7 @@ import {
 	observeDisplayedThreadReplies,
 } from "./team-bridge-thread-read";
 import { useStickToBottom } from "./use-stick-to-bottom";
-import { teamBridgeKeys, useMarkTeamBridgeRead } from "./use-team-bridge";
+import { teamBridgeKeys, useMarkTeamBridgeThreadRead } from "./use-team-bridge";
 import { useTeamBridgeAttachments } from "./use-team-bridge-attachments";
 import {
 	type ReplyWindowMode,
@@ -321,8 +321,10 @@ function TeamBridgeThreadPaneBody({
 			   leading edge (`relative` is the seam's containing block). It was
 			   `canvas`, the same ground as the timeline it sits beside, so only the
 			   seam separated two reading planes. Rows inside it hover to `elevated`
-			   (`density="compact"`), the next step up from this ground. */
-			className="panel-top-pad relative flex h-full min-h-0 w-full min-w-0 shrink-0 flex-col bg-surface"
+			   (`density="compact"`), the next step up from this ground.
+			   `--thread-row-host` / `--thread-row-message-hover` hand both grounds to
+			   the thread row's facepile ring (`team-bridge-thread-row.tsx`). */
+			className="panel-top-pad relative flex h-full min-h-0 w-full min-w-0 shrink-0 flex-col bg-surface [--thread-row-host:var(--color-surface)] [--thread-row-message-hover:var(--color-elevated)]"
 		>
 			<PanelEdge side="start" />
 			<header className="flex h-12 shrink-0 items-center justify-between px-4">
@@ -611,7 +613,20 @@ function TeamBridgeThreadPaneMount({
 }: ThreadPaneMountProps) {
 	const client = useQueryClient();
 	const { tenantId, conversationId, rootId } = target;
-	const read = useMarkTeamBridgeRead(conversationId, tenantId);
+	/* The newest reply this pane can know of: the root's rollup `last` seq is not
+	   on the wire, so it is the newest admitted reply row - but only when the
+	   window holds the live edge: a backward window paged into the middle, or
+	   an oldest-first window with pages left, has newer replies it has not
+	   loaded. `undefined` keeps the
+	   badge (see `threadUnreadAfterRead`). Read at settlement through a ref
+	   because the query below is declared after this hook. */
+	const newestReplyRef = useRef<number | undefined>(undefined);
+	const read = useMarkTeamBridgeThreadRead(
+		conversationId,
+		tenantId,
+		rootId,
+		() => newestReplyRef.current,
+	);
 	// Observer recreation (paging/refetch) must not turn a successful read into a
 	// second mutation loop. This ref belongs to the keyed tenant/conversation/root.
 	const acknowledged = useRef(-1);
@@ -661,6 +676,15 @@ function TeamBridgeThreadPaneMount({
 		poll: true,
 	});
 	const replies = query.replies;
+	newestReplyRef.current =
+		(query.mode === "desc" && query.latestPageAvailable) ||
+		(query.mode !== "desc" && !query.hasNextPage)
+			? replies.reduce<number | undefined>(
+					(max, reply) =>
+						max === undefined || reply.seq > max ? reply.seq : max,
+					undefined,
+				)
+			: undefined;
 
 	const send = useMutation({
 		mutationFn: ({

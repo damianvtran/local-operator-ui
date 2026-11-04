@@ -2192,6 +2192,9 @@ const threadTarget = {
 
 export const ThreadSummaryRow: Story = {
 	args: {
+		/* Without the capability the timeline draws no thread row at all, so this
+		   story showed nothing it is named for (design round 1 on #1672, D1). */
+		threadsCapabilityState: "enabled",
 		target: { type: "conversation", id: channel.id },
 		messages: [threadRoot],
 	},

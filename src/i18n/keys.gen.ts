@@ -141,6 +141,7 @@ import enUiShellRail from "./catalogues/en/ui.shell.rail.json";
 import enUiTeamBridgeArchive from "./catalogues/en/ui.teamBridge.archive.json";
 import enUiTeamBridge from "./catalogues/en/ui.teamBridge.json";
 import enUiTeamBridgeLeave from "./catalogues/en/ui.teamBridge.leave.json";
+import enUiTeamBridgeThreadRow from "./catalogues/en/ui.teamBridge.threadRow.json";
 import enUiUpdatesPanel from "./catalogues/en/ui.updates.panel.json";
 import esUiAgentMessages from "./catalogues/es/ui.agentMessages.json";
 import esUiAgentMessagesSettings from "./catalogues/es/ui.agentMessages.settings.json";
@@ -262,6 +263,7 @@ import esUiShellRail from "./catalogues/es/ui.shell.rail.json";
 import esUiTeamBridgeArchive from "./catalogues/es/ui.teamBridge.archive.json";
 import esUiTeamBridge from "./catalogues/es/ui.teamBridge.json";
 import esUiTeamBridgeLeave from "./catalogues/es/ui.teamBridge.leave.json";
+import esUiTeamBridgeThreadRow from "./catalogues/es/ui.teamBridge.threadRow.json";
 import esUiUpdatesPanel from "./catalogues/es/ui.updates.panel.json";
 import frUiAgentMessages from "./catalogues/fr/ui.agentMessages.json";
 import frUiAgentMessagesSettings from "./catalogues/fr/ui.agentMessages.settings.json";
@@ -383,6 +385,7 @@ import frUiShellRail from "./catalogues/fr/ui.shell.rail.json";
 import frUiTeamBridgeArchive from "./catalogues/fr/ui.teamBridge.archive.json";
 import frUiTeamBridge from "./catalogues/fr/ui.teamBridge.json";
 import frUiTeamBridgeLeave from "./catalogues/fr/ui.teamBridge.leave.json";
+import frUiTeamBridgeThreadRow from "./catalogues/fr/ui.teamBridge.threadRow.json";
 import frUiUpdatesPanel from "./catalogues/fr/ui.updates.panel.json";
 import hiUiAgentMessages from "./catalogues/hi/ui.agentMessages.json";
 import hiUiAgentMessagesSettings from "./catalogues/hi/ui.agentMessages.settings.json";
@@ -504,6 +507,7 @@ import hiUiShellRail from "./catalogues/hi/ui.shell.rail.json";
 import hiUiTeamBridgeArchive from "./catalogues/hi/ui.teamBridge.archive.json";
 import hiUiTeamBridge from "./catalogues/hi/ui.teamBridge.json";
 import hiUiTeamBridgeLeave from "./catalogues/hi/ui.teamBridge.leave.json";
+import hiUiTeamBridgeThreadRow from "./catalogues/hi/ui.teamBridge.threadRow.json";
 import hiUiUpdatesPanel from "./catalogues/hi/ui.updates.panel.json";
 import ruUiAgentMessages from "./catalogues/ru/ui.agentMessages.json";
 import ruUiAgentMessagesSettings from "./catalogues/ru/ui.agentMessages.settings.json";
@@ -625,6 +629,7 @@ import ruUiShellRail from "./catalogues/ru/ui.shell.rail.json";
 import ruUiTeamBridgeArchive from "./catalogues/ru/ui.teamBridge.archive.json";
 import ruUiTeamBridge from "./catalogues/ru/ui.teamBridge.json";
 import ruUiTeamBridgeLeave from "./catalogues/ru/ui.teamBridge.leave.json";
+import ruUiTeamBridgeThreadRow from "./catalogues/ru/ui.teamBridge.threadRow.json";
 import ruUiUpdatesPanel from "./catalogues/ru/ui.updates.panel.json";
 import urUiAgentMessages from "./catalogues/ur/ui.agentMessages.json";
 import urUiAgentMessagesSettings from "./catalogues/ur/ui.agentMessages.settings.json";
@@ -746,6 +751,7 @@ import urUiShellRail from "./catalogues/ur/ui.shell.rail.json";
 import urUiTeamBridgeArchive from "./catalogues/ur/ui.teamBridge.archive.json";
 import urUiTeamBridge from "./catalogues/ur/ui.teamBridge.json";
 import urUiTeamBridgeLeave from "./catalogues/ur/ui.teamBridge.leave.json";
+import urUiTeamBridgeThreadRow from "./catalogues/ur/ui.teamBridge.threadRow.json";
 import urUiUpdatesPanel from "./catalogues/ur/ui.updates.panel.json";
 import viUiAgentMessages from "./catalogues/vi/ui.agentMessages.json";
 import viUiAgentMessagesSettings from "./catalogues/vi/ui.agentMessages.settings.json";
@@ -867,6 +873,7 @@ import viUiShellRail from "./catalogues/vi/ui.shell.rail.json";
 import viUiTeamBridgeArchive from "./catalogues/vi/ui.teamBridge.archive.json";
 import viUiTeamBridge from "./catalogues/vi/ui.teamBridge.json";
 import viUiTeamBridgeLeave from "./catalogues/vi/ui.teamBridge.leave.json";
+import viUiTeamBridgeThreadRow from "./catalogues/vi/ui.teamBridge.threadRow.json";
 import viUiUpdatesPanel from "./catalogues/vi/ui.updates.panel.json";
 import zhCNUiAgentMessages from "./catalogues/zh-CN/ui.agentMessages.json";
 import zhCNUiAgentMessagesSettings from "./catalogues/zh-CN/ui.agentMessages.settings.json";
@@ -988,6 +995,7 @@ import zhCNUiShellRail from "./catalogues/zh-CN/ui.shell.rail.json";
 import zhCNUiTeamBridgeArchive from "./catalogues/zh-CN/ui.teamBridge.archive.json";
 import zhCNUiTeamBridge from "./catalogues/zh-CN/ui.teamBridge.json";
 import zhCNUiTeamBridgeLeave from "./catalogues/zh-CN/ui.teamBridge.leave.json";
+import zhCNUiTeamBridgeThreadRow from "./catalogues/zh-CN/ui.teamBridge.threadRow.json";
 import zhCNUiUpdatesPanel from "./catalogues/zh-CN/ui.updates.panel.json";
 
 /** The bundled en catalogue: every `src/i18n/catalogues/en` message, flat. */
@@ -1112,6 +1120,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiTeamBridgeArchive,
 	...enUiTeamBridge,
 	...enUiTeamBridgeLeave,
+	...enUiTeamBridgeThreadRow,
 	...enUiUpdatesPanel,
 };
 
@@ -1241,6 +1250,7 @@ export const bundledCatalogues: Readonly<
 		...esUiTeamBridgeArchive,
 		...esUiTeamBridge,
 		...esUiTeamBridgeLeave,
+		...esUiTeamBridgeThreadRow,
 		...esUiUpdatesPanel,
 	},
 	fr: {
@@ -1364,6 +1374,7 @@ export const bundledCatalogues: Readonly<
 		...frUiTeamBridgeArchive,
 		...frUiTeamBridge,
 		...frUiTeamBridgeLeave,
+		...frUiTeamBridgeThreadRow,
 		...frUiUpdatesPanel,
 	},
 	hi: {
@@ -1487,6 +1498,7 @@ export const bundledCatalogues: Readonly<
 		...hiUiTeamBridgeArchive,
 		...hiUiTeamBridge,
 		...hiUiTeamBridgeLeave,
+		...hiUiTeamBridgeThreadRow,
 		...hiUiUpdatesPanel,
 	},
 	ru: {
@@ -1610,6 +1622,7 @@ export const bundledCatalogues: Readonly<
 		...ruUiTeamBridgeArchive,
 		...ruUiTeamBridge,
 		...ruUiTeamBridgeLeave,
+		...ruUiTeamBridgeThreadRow,
 		...ruUiUpdatesPanel,
 	},
 	ur: {
@@ -1733,6 +1746,7 @@ export const bundledCatalogues: Readonly<
 		...urUiTeamBridgeArchive,
 		...urUiTeamBridge,
 		...urUiTeamBridgeLeave,
+		...urUiTeamBridgeThreadRow,
 		...urUiUpdatesPanel,
 	},
 	vi: {
@@ -1856,6 +1870,7 @@ export const bundledCatalogues: Readonly<
 		...viUiTeamBridgeArchive,
 		...viUiTeamBridge,
 		...viUiTeamBridgeLeave,
+		...viUiTeamBridgeThreadRow,
 		...viUiUpdatesPanel,
 	},
 	"zh-CN": {
@@ -1979,6 +1994,7 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiTeamBridgeArchive,
 		...zhCNUiTeamBridge,
 		...zhCNUiTeamBridgeLeave,
+		...zhCNUiTeamBridgeThreadRow,
 		...zhCNUiUpdatesPanel,
 	},
 };
@@ -10475,6 +10491,14 @@ export type MessageParams = {
 	"ui.teamBridge.leave.back_shortcut": { shortcut: string };
 	"ui.teamBridge.leave.name": undefined;
 	"ui.teamBridge.leave.name_attention": { count: number };
+	"ui.teamBridge.threadRow.label": {
+		count: number;
+		unread: number;
+		hasLast: string;
+		last: string;
+	};
+	"ui.teamBridge.threadRow.last": { when: string; time: string };
+	"ui.teamBridge.threadRow.unread_badge": { count: number; label: string };
 	"ui.updates.panel.artifact.damaged.message": undefined;
 	"ui.updates.panel.artifact.damaged.message_version": { version: string };
 	"ui.updates.panel.artifact.metadata_missing.message": undefined;

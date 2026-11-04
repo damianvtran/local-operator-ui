@@ -4051,6 +4051,24 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			muted: z.boolean().optional(),
 		})
 		.strict(),
+	/*
+	 * THREAD READ (hub slice TR1; server PR pending). A separate op rather than
+	 * a `message_id` on `team_bridge.read`: the conversation cursor and a thread
+	 * cursor are different rows on the hub, and a combined op would let a thread
+	 * acknowledgement advance the channel's cursor past unseen timeline rows.
+	 * Callers dispatch it only when `features.team_bridge_thread_reads >= 1`;
+	 * an older runtime never sees it.
+	 */
+	z
+		.object({
+			op: z.literal("team_bridge.thread_read"),
+			expected_account_id: id,
+			conversation_id: id,
+			message_id: id,
+			tenant_id: id,
+			seq: z.number().int().nonnegative(),
+		})
+		.strict(),
 	z
 		.object({
 			op: z.literal("team_bridge.unread"),
@@ -10016,6 +10034,16 @@ export function desktopEndpoint(request: DesktopRequest): {
 					...(request.tenant_id ? { tenant_id: request.tenant_id } : {}),
 					...(request.seq === undefined ? {} : { seq: request.seq }),
 					...(request.muted === undefined ? {} : { muted: request.muted }),
+				},
+			};
+		case "team_bridge.thread_read":
+			return {
+				path: `/v1/desktop/team-bridge/conversations/${encodeURIComponent(request.conversation_id)}/messages/${encodeURIComponent(request.message_id)}/read`,
+				method: "POST",
+				body: {
+					expected_account_id: request.expected_account_id,
+					tenant_id: request.tenant_id,
+					seq: request.seq,
 				},
 			};
 		case "team_bridge.unread": {

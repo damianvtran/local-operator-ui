@@ -308,6 +308,14 @@ export type DesktopFeature =
 	 */
 	| "team_bridge_send_mentions"
 	/**
+	 * Per-thread read cursors (hub slice TR1): `team_bridge.thread_read`
+	 * acknowledges replies against the thread's own cursor. Absent: the thread
+	 * pane keeps acknowledging through the conversation read, which the hub's
+	 * compat rule (replies count against max(conversation, thread) cursor)
+	 * still clears.
+	 */
+	| "team_bridge_thread_reads"
+	/**
 	 * The owner's own agent's per-conversation wake level: the conversation
 	 * menu's "Wake your agent for" group, writing
 	 * `PUT /v1/desktop/team-bridge/conversations/{id}/agent-notify`.
