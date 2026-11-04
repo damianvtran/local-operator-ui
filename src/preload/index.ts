@@ -61,7 +61,10 @@ import {
 	isMiniViewRegistrationState,
 	isMiniViewSummonedPayload,
 } from "../shared/mini-view";
-import { NOTIFICATION_SOUND_PLAY_CHANNEL } from "../shared/notification-sound";
+import {
+	NOTIFICATION_SOUND_PLAY_CHANNEL,
+	NOTIFICATION_TEST_CHANNEL,
+} from "../shared/notification-sound";
 import { readLaunchTarget, readOpenSessionArgv } from "../shared/open-session";
 import type {
 	TeamBridgeNotificationSender,
@@ -533,6 +536,13 @@ const api = {
 			ipcRenderer.removeListener(NOTIFICATION_SOUND_PLAY_CHANNEL, handler);
 		};
 	},
+	/**
+	 * Raise one real banner with the configured notification sound (Settings'
+	 * "Send test notification"; `main/notification-test.ts`).
+	 */
+	sendTestNotification: (): Promise<
+		{ shown: true } | { shown: false; reason: "unsupported" | "suppressed" }
+	> => ipcRenderer.invoke(NOTIFICATION_TEST_CHANNEL),
 	showItemInFolder: (filePath: string): Promise<FileActionOutcome> =>
 		ipcRenderer.invoke("show-item-in-folder", filePath),
 

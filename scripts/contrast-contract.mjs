@@ -626,6 +626,40 @@ const CONTROLS = [
 	 * count are the content and the target - which these rows assert at 4.5:1 on
 	 * every palette, at rest and in the hover step.
 	 */
+	/*
+	 * THE NOTIFICATION-SOUND RADIO (`shared/components/ui/radio-group.tsx`;
+	 * notification-sound settings spec §3.4, §9). The ring is the radio's whole
+	 * boundary, so it is a control edge with the 3:1 floor, on each ground the
+	 * row paints: `canvas` at rest and `rowHover` under the pointer. The row's
+	 * label (`ink`) sits on the same ground, which is what the ink half asserts.
+	 * There is no selected-row ground by design: `accent` and `borderControl`
+	 * both fall under 3:1 on `rowSelected` in several palettes (spec §9).
+	 *
+	 * The hover row is why the ring steps to `inkMuted` while hovered:
+	 * `borderControl` on `rowHover` is under 3:1 in five palettes, so the
+	 * component swaps the role rather than this file pinning five exceptions.
+	 */
+	{
+		name: "notification sound radio ring",
+		on: ["canvas"],
+		fill: null,
+		border: "borderControl",
+		ink: "ink",
+	},
+	{
+		name: "notification sound radio ring (hover)",
+		on: ["rowHover"],
+		fill: null,
+		border: "inkMuted",
+		ink: "ink",
+	},
+	{
+		name: "notification sound radio ring (checked)",
+		on: ["canvas", "rowHover"],
+		fill: null,
+		border: "accent",
+		ink: "ink",
+	},
 	{
 		name: "team bridge reaction pill",
 		on: ["surface", "canvas", "rowHover"],

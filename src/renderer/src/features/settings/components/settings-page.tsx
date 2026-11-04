@@ -107,6 +107,7 @@ import { GeneralLanguageSetting } from "./language-dialog";
 
 import { KeyboardShortcutsSection } from "./keyboard-shortcuts-section";
 import { McpManagementSection } from "./mcp-management-section";
+import { NotificationsSection } from "./notifications-section";
 import { RadientAccountSection } from "./radient-account-section";
 import {
 	SettingsSearch,
@@ -559,6 +560,7 @@ export const SettingsPage: FC = () => {
 		radient: useRef<HTMLDivElement>(null),
 		integrations: useRef<HTMLDivElement>(null),
 		appearance: useRef<HTMLDivElement>(null),
+		notifications: useRef<HTMLDivElement>(null),
 		speech: useRef<HTMLDivElement>(null),
 		keyboard: useRef<HTMLDivElement>(null),
 		providers: useRef<HTMLDivElement>(null),
@@ -1809,6 +1811,13 @@ export const SettingsPage: FC = () => {
 						 * this machine, and what to do when none can. See its module docstring for
 						 * why it carries no credential field.
 						 */}
+						{/*
+						 * Notifications sits between Appearance and Speech because the rail
+						 * lists it there (document order follows the rail). It owns the
+						 * promoted master switch and the Sound group; see its module
+						 * docstring for why the switch moved out of Backend settings.
+						 */}
+						<NotificationsSection sectionRef={sectionRefs.notifications} />
 						<SpeechSection sectionRef={sectionRefs.speech} />
 						<KeyboardShortcutsSection
 							sectionRef={sectionRefs.keyboard}
@@ -2020,6 +2029,7 @@ export const SettingsPage: FC = () => {
 								hideModelEffort
 								hideAgentMessages
 								hideSpeechShortcuts
+								hideNotifications
 								focusKey={
 									/*
 									 * A search jump outranks a URL deep link: it is the most recent

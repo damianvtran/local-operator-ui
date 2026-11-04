@@ -6,3 +6,9 @@
  * main module (it reads the filesystem) into its bundle.
  */
 export const NOTIFICATION_SOUND_PLAY_CHANNEL = "notification-sound:play";
+
+/**
+ * The IPC channel Settings invokes to raise one real test banner
+ * (`main/notification-test.ts`). Here for the same reason as the play channel.
+ */
+export const NOTIFICATION_TEST_CHANNEL = "notification-sound:test";

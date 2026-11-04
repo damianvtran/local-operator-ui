@@ -65,6 +65,7 @@ import {
 	opensOnArrival,
 	tierFor,
 } from "../backend-settings-tiers";
+import { NOTIFICATIONS_SECTION_KEYS } from "../notification-sound-model";
 import {
 	MODEL_EFFORT_SETTING_KEY,
 	TEAM_BRIDGE_ENABLED_SETTING_KEY,
@@ -146,6 +147,12 @@ type BackendSettingsSectionProps = {
 	 * one key is the defect every promotion here exists to prevent.
 	 */
 	hideSpeechShortcuts?: boolean;
+	/**
+	 * Settings -> Notifications owns the master switch, the session-name row
+	 * and the three `notifications.sound.*` keys; the registry editor would be
+	 * a second control writing the same key.
+	 */
+	hideNotifications?: boolean;
 	/** Initial search filter, e.g. "web-search" from /search. */
 	initialFilter?: string;
 };
@@ -183,6 +190,7 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 	hideModelEffort = false,
 	hideAgentMessages = false,
 	hideSpeechShortcuts = false,
+	hideNotifications = false,
 	initialFilter = "",
 }) => {
 	useI18nLocale();
@@ -354,12 +362,14 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 					setting.key === TEAM_BRIDGE_SESSION_SETTING_KEY)) ||
 			(hideSpeechShortcuts &&
 				(setting.key === START_RECORDING_SETTING_KEY ||
-					setting.key === PUSH_TO_TALK_SETTING_KEY)),
+					setting.key === PUSH_TO_TALK_SETTING_KEY)) ||
+			(hideNotifications && NOTIFICATIONS_SECTION_KEYS.includes(setting.key)),
 		[
 			hideInterfaceLanguage,
 			hideModelEffort,
 			hideAgentMessages,
 			hideSpeechShortcuts,
+			hideNotifications,
 		],
 	);
 

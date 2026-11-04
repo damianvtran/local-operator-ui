@@ -131,6 +131,7 @@ import enUiSettingsModelDefaultEffort from "./catalogues/en/ui.settings.model.de
 import enUiSettingsModel from "./catalogues/en/ui.settings.model.json";
 import enUiSettingsModelProviderCallout from "./catalogues/en/ui.settings.model.provider_callout.json";
 import enUiSettingsNavigation from "./catalogues/en/ui.settings.navigation.json";
+import enUiSettingsNotifications from "./catalogues/en/ui.settings.notifications.json";
 import enUiSettingsSearch from "./catalogues/en/ui.settings.search.json";
 import enUiSettingsShortcuts from "./catalogues/en/ui.settings.shortcuts.json";
 import enUiSettingsSpeech from "./catalogues/en/ui.settings.speech.json";
@@ -1094,6 +1095,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiSettingsModel,
 	...enUiSettingsModelProviderCallout,
 	...enUiSettingsNavigation,
+	...enUiSettingsNotifications,
 	...enUiSettingsSearch,
 	...enUiSettingsShortcuts,
 	...enUiSettingsSpeech,
@@ -9762,6 +9764,88 @@ export type MessageParams = {
 	"ui.settings.navigation.settings_sidebar.settings_sections": undefined;
 	"ui.settings.navigation.settings_sidebar.speech_voicing": undefined;
 	"ui.settings.navigation.settings_sidebar.system": undefined;
+	"ui.settings.notifications.backend_older": undefined;
+	"ui.settings.notifications.custom.add": undefined;
+	"ui.settings.notifications.custom.added_many": { count: number };
+	"ui.settings.notifications.custom.added_one": { name: string };
+	"ui.settings.notifications.custom.cancel": undefined;
+	"ui.settings.notifications.custom.cancel_upload": { file: string };
+	"ui.settings.notifications.custom.empty": undefined;
+	"ui.settings.notifications.custom.full": { count: number };
+	"ui.settings.notifications.custom.hint": {
+		seconds: number;
+		megabytes: number;
+	};
+	"ui.settings.notifications.custom.more": { name: string };
+	"ui.settings.notifications.custom.processing": undefined;
+	"ui.settings.notifications.custom.remove": undefined;
+	"ui.settings.notifications.custom.remove_action": undefined;
+	"ui.settings.notifications.custom.remove_confirm": { name: string };
+	"ui.settings.notifications.custom.remove_confirm_selected": { name: string };
+	"ui.settings.notifications.custom.remove_failed": {
+		name: string;
+		reason: string;
+	};
+	"ui.settings.notifications.custom.removed": { name: string };
+	"ui.settings.notifications.custom.removed_reset": { name: string };
+	"ui.settings.notifications.custom.rename": undefined;
+	"ui.settings.notifications.custom.rename_empty": undefined;
+	"ui.settings.notifications.custom.rename_failed": { reason: string };
+	"ui.settings.notifications.custom.rename_label": undefined;
+	"ui.settings.notifications.custom.rename_long": { max: number };
+	"ui.settings.notifications.custom.uploading": { percent: number };
+	"ui.settings.notifications.error.choose_another": undefined;
+	"ui.settings.notifications.error.dismiss": undefined;
+	"ui.settings.notifications.error.network": { file: string };
+	"ui.settings.notifications.error.too_large": {
+		file: string;
+		megabytes: number;
+	};
+	"ui.settings.notifications.error.too_long": {
+		file: string;
+		seconds: string;
+		limit: number;
+	};
+	"ui.settings.notifications.error.undecodable": { file: string };
+	"ui.settings.notifications.error.unsupported_codec": { file: string };
+	"ui.settings.notifications.error.unsupported_format": { file: string };
+	"ui.settings.notifications.list.builtin": undefined;
+	"ui.settings.notifications.list.custom": undefined;
+	"ui.settings.notifications.list.custom_count": { count: number; max: number };
+	"ui.settings.notifications.list.default_tag": undefined;
+	"ui.settings.notifications.list.label": undefined;
+	"ui.settings.notifications.list.system_description": undefined;
+	"ui.settings.notifications.list.system_name": undefined;
+	"ui.settings.notifications.load.failed": { reason: string };
+	"ui.settings.notifications.load.loading": undefined;
+	"ui.settings.notifications.missing_rows": { count: number; rows: string };
+	"ui.settings.notifications.preview.failed": undefined;
+	"ui.settings.notifications.preview.play": { name: string };
+	"ui.settings.notifications.preview.stop": { name: string };
+	"ui.settings.notifications.retry": undefined;
+	"ui.settings.notifications.save.failed": { reason: string };
+	"ui.settings.notifications.save.failed_generic": undefined;
+	"ui.settings.notifications.section.description": undefined;
+	"ui.settings.notifications.section.title": undefined;
+	"ui.settings.notifications.sound.enabled_description": undefined;
+	"ui.settings.notifications.sound.enabled_label": undefined;
+	"ui.settings.notifications.sound.enabled_off_note": undefined;
+	"ui.settings.notifications.sound.gated": undefined;
+	"ui.settings.notifications.sound.gated_action": undefined;
+	"ui.settings.notifications.sound.heading": undefined;
+	"ui.settings.notifications.test.action": undefined;
+	"ui.settings.notifications.test.banner_body": undefined;
+	"ui.settings.notifications.test.banner_title": undefined;
+	"ui.settings.notifications.test.failed": undefined;
+	"ui.settings.notifications.test.sent": undefined;
+	"ui.settings.notifications.volume.description": undefined;
+	"ui.settings.notifications.volume.label": undefined;
+	"ui.settings.notifications.volume.muted": undefined;
+	"ui.settings.notifications.volume.readout": { value: number };
+	"ui.settings.notifications.volume.readout_default": { value: number };
+	"ui.settings.notifications.volume.reset": undefined;
+	"ui.settings.notifications.volume.system": undefined;
+	"ui.settings.notifications.volume.valuetext": { value: number };
 	"ui.settings.search.empty.shortcut": { shortcut: string };
 	"ui.settings.search.empty.summary": undefined;
 	"ui.settings.search.field.label": undefined;

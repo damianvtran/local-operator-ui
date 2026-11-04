@@ -6,6 +6,7 @@ import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import {
 	AudioLines,
+	Bell,
 	Download,
 	FolderInput,
 	Keyboard,
@@ -89,13 +90,15 @@ const SECTION_GROUPS: { label: string; ids: string[] }[] = [
 	 * of destination: how the app behaves for the reader, as opposed to what it
 	 * talks to (Account) or what its backend stores (Backend). Keyboard shortcuts
 	 * joined it for the same reason (issue #928) - and its document position
-	 * follows this list, per the rule below.
+	 * follows this list, per the rule below. Notifications sits after Appearance
+	 * (notification-sound settings spec §2.1): it is a preference about how the
+	 * app behaves for the reader, and it owns the promoted master switch.
 	 */
 	{
 		get label() {
 			return t("ui.settings.navigation.settings_sidebar.general");
 		},
-		ids: ["general", "appearance", "speech", "keyboard"],
+		ids: ["general", "appearance", "notifications", "speech", "keyboard"],
 	},
 	/*
 	 * Model providers first (design audit section 2 / D13): it is the section a
@@ -377,6 +380,13 @@ export const DEFAULT_SETTINGS_SECTIONS: SettingsSection[] = [
 			return t("ui.settings.navigation.settings_sidebar.appearance");
 		},
 		icon: Paintbrush,
+	},
+	{
+		id: "notifications",
+		get label() {
+			return t("ui.settings.notifications.section.title");
+		},
+		icon: Bell,
 	},
 	{
 		id: "speech",

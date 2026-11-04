@@ -46,7 +46,13 @@ import { Spinner } from "@shared/components/common/spinner";
 import { Input } from "@shared/components/ui";
 import type { LucideIcon } from "lucide-react";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
-import type { CSSProperties, ChangeEvent, FC, KeyboardEvent } from "react";
+import type {
+	CSSProperties,
+	ChangeEvent,
+	FC,
+	KeyboardEvent,
+	ReactNode,
+} from "react";
 
 type SliderSettingProps = {
 	/**
@@ -99,6 +105,37 @@ type SliderSettingProps = {
 	 * Whether the setting is currently being saved
 	 */
 	isSaving?: boolean;
+
+	/**
+	 * READ-ONLY READOUT MODE (notification-sound settings spec §4.1). When set,
+	 * the label row shows this string (machine voice, `aria-hidden`) instead of
+	 * the typed number input and unit, and the `min … max` bounds row is
+	 * dropped. For a control where typing an exact value is not a task anyone
+	 * has, the box and the bounds are chrome that make a two-second control
+	 * look like a form; the number stays because other surfaces (the TUI, the
+	 * agent's `setting` tool) speak in it. Callers that omit it are unchanged.
+	 */
+	readout?: (value: number) => string;
+
+	/**
+	 * The range's `aria-valuetext`. Required in practice with `readout`: the
+	 * readout is hidden from assistive tech, so the range must say the value in
+	 * words ("70 percent") rather than as a bare number.
+	 */
+	valueText?: (value: number) => string;
+
+	/**
+	 * Travel for PageUp / PageDown. Chromium's own page step is a tenth of the
+	 * range, which is not the step the caller chose; set this to own it. Also
+	 * makes a PageUp/PageDown release commit, as an arrow release does.
+	 */
+	pageStep?: number;
+
+	/** The range cannot be moved (a colour step, never opacity). */
+	disabled?: boolean;
+
+	/** Rendered after the readout on the label row (for example a Reset link). */
+	trailing?: ReactNode;
 };
 
 /**
@@ -120,6 +157,11 @@ export const SliderSetting: FC<SliderSettingProps> = ({
 	onChange,
 	icon: Icon,
 	isSaving = false,
+	readout,
+	valueText,
+	pageStep,
+	disabled = false,
+	trailing,
 }) => {
 	useI18nLocale();
 	const [sliderValue, setSliderValue] = useState<number>(value);
@@ -196,9 +238,27 @@ export const SliderSetting: FC<SliderSettingProps> = ({
 	 * Commits after an arrow-key adjustment once the key is released.
 	 */
 	const handleSliderKeyUp = (e: KeyboardEvent<HTMLInputElement>) => {
-		if (e.key.startsWith("Arrow") || e.key === "Home" || e.key === "End") {
+		if (
+			e.key.startsWith("Arrow") ||
+			e.key === "Home" ||
+			e.key === "End" ||
+			(pageStep !== undefined && (e.key === "PageUp" || e.key === "PageDown"))
+		) {
 			void commitValue();
 		}
+	};
+
+	// Owns PageUp/PageDown only when the caller named a page step; otherwise the
+	// browser's default stays, so existing callers are unchanged.
+	const handleSliderKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+		if (pageStep === undefined) return;
+		if (e.key !== "PageUp" && e.key !== "PageDown") return;
+		e.preventDefault();
+		const delta = e.key === "PageUp" ? pageStep : -pageStep;
+		const next = Math.max(min, Math.min(max, latestValue.current + delta));
+		setSliderValue(next);
+		setInputValue(next.toString());
+		latestValue.current = next;
 	};
 
 	/**
@@ -299,7 +359,17 @@ export const SliderSetting: FC<SliderSettingProps> = ({
 				</label>
 
 				<div className="flex shrink-0 items-center gap-2">
-					{isSaving ? (
+					{readout && !isSaving ? (
+						<>
+							<span
+								aria-hidden="true"
+								className="font-mono text-mono-sm text-ink-muted"
+							>
+								{readout(sliderValue)}
+							</span>
+							{trailing}
+						</>
+					) : isSaving ? (
 						<Spinner
 							size="md"
 							label={t("ui.common.forms.slider_setting.saving", {
@@ -348,10 +418,12 @@ export const SliderSetting: FC<SliderSettingProps> = ({
 				min={min}
 				max={max}
 				step={step}
-				disabled={isSaving}
+				disabled={isSaving || disabled}
 				onChange={handleSliderChange}
 				onPointerDown={handleSliderPointerDown}
+				onKeyDown={handleSliderKeyDown}
 				onKeyUp={handleSliderKeyUp}
+				aria-valuetext={valueText ? valueText(sliderValue) : undefined}
 				onBlur={() => void commitValue()}
 				aria-labelledby={labelId}
 				aria-describedby={description ? descriptionId : undefined}
@@ -373,11 +445,14 @@ export const SliderSetting: FC<SliderSettingProps> = ({
 					"disabled:[&::-webkit-slider-thumb]:bg-ink-disabled"
 				}
 			/>
-			{/* The bounds are counts, so they are machine voice. */}
-			<div className="flex justify-between font-mono text-mono-sm text-ink-dim">
-				<span>{min}</span>
-				<span>{max}</span>
-			</div>
+			{/* The bounds are counts, so they are machine voice. Dropped in readout
+			    mode, where the readout already states the value. */}
+			{!readout && (
+				<div className="flex justify-between font-mono text-mono-sm text-ink-dim">
+					<span>{min}</span>
+					<span>{max}</span>
+				</div>
+			)}
 		</div>
 	);
 };

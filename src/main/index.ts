@@ -139,6 +139,10 @@ import {
 	NOTIFICATION_SOUND_PLAY_CHANNEL,
 	configureNotificationSound,
 } from "./notification-sound";
+import {
+	NOTIFICATION_TEST_CHANNEL,
+	sendTestNotification,
+} from "./notification-test";
 import { paletteDoorChannel } from "./palette-door";
 import {
 	rememberPickedDirectory,
@@ -3431,6 +3435,25 @@ app
 				? []
 				: [{ window: miniView.window, url: miniViewUrlFor(rendererUrl) }]),
 		];
+		/*
+		 * Settings' "Send test notification" (`notification-test.ts`): one real
+		 * banner through the shared sound helper. Only the main window's main
+		 * frame may ask; a headless run answers `suppressed` and raises nothing.
+		 */
+		ipcMain.removeHandler(NOTIFICATION_TEST_CHANNEL);
+		ipcMain.handle(NOTIFICATION_TEST_CHANNEL, (event) => {
+			const owner = mainWindow;
+			if (
+				!owner ||
+				owner.isDestroyed() ||
+				!isAdmittedSender(event, [{ window: owner, url: rendererUrl }])
+			)
+				throw new Error("This window cannot send a test notification.");
+			return sendTestNotification({
+				windowRaise: windowLaunch.show,
+				sound: () => notificationSound,
+			});
+		});
 		ipcMain.removeHandler("recording-shortcut:get");
 		ipcMain.handle("recording-shortcut:get", (event) => {
 			if (!isAdmittedSender(event, recordingSenders()))
