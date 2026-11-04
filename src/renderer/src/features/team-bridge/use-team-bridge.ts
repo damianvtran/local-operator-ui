@@ -624,6 +624,12 @@ export function useSendTeamBridgeMessage(
 		tenantId,
 	}));
 }
+/** A join naming its conversation (a rail row's menu, not the selection). */
+export type TeamBridgeJoinVariables = {
+	conversationId: string;
+	tenantId: string;
+};
+
 /**
  * Join a discoverable channel (or accept an invitation).
  *
@@ -636,27 +642,33 @@ export function useSendTeamBridgeMessage(
 export function useJoinTeamBridgeConversation(
 	conversationId: string,
 	tenantId?: string,
-): UseMutationResult<unknown, Error, void> {
+): UseMutationResult<unknown, Error, TeamBridgeJoinVariables | undefined> {
 	const client = useQueryClient();
 	const owner = useBridgeOwner();
 	const mutation = useMutation<
 		unknown,
 		Error,
-		CapturedBridgeMutation<void, BridgeWriteTarget>
+		CapturedBridgeMutation<
+			TeamBridgeJoinVariables | undefined,
+			BridgeWriteTarget
+		>
 	>({
-		mutationFn: ({ target }) => {
+		/* A rail row's menu joins a row that is NOT the selection, so the
+		   conversation may ride in the variables; absent, it is the selection the
+		   hook was mounted for (the preview banner's Join). */
+		mutationFn: ({ input, target }) => {
 			target.assertCurrent();
 			return TeamBridgeApi.join(
-				target.conversationId,
-				target.tenantId,
+				input?.conversationId ?? target.conversationId,
+				input ? input.tenantId : target.tenantId,
 				target.accountId,
 			);
 		},
-		onSuccess: (_data, { target }) =>
+		onSuccess: (_data, { input, target }) =>
 			refreshAfterSend(
 				client,
-				target.conversationId,
-				target.tenantId,
+				input?.conversationId ?? target.conversationId,
+				input ? input.tenantId : target.tenantId,
 				target.isCurrent,
 			),
 	});

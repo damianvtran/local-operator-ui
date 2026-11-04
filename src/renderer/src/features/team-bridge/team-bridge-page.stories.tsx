@@ -3516,3 +3516,31 @@ export const MemberCountFocused: Story = {
 export const MembersPanelOpen: Story = {
 	args: { ...ChannelSelected.args, initialMembersPanelOpen: true },
 };
+
+/*
+ * THE CONVERSATION MENU ON THE PAGE (operator 2026-11-04). The header "…" with
+ * the new membership and departure items, wired the way the container wires
+ * them; and the partial-leave line: the reader left, the follow-up withdraw of
+ * their own agent failed, so the page states the true state with a retry.
+ */
+/* The same room as `AgentWakeMenu` (the operator's screenshot state: wake
+   group, no Leave), now wired with the menu's new writes: the before/after pair. */
+const conversationMenuArgs = {
+	...ownAgentArgs,
+	onAddMembers: () => Promise.resolve(),
+	onMenuLeave: () => Promise.resolve({ status: "left" as const }),
+	onMenuOwnAgent: () => Promise.resolve(),
+	onMenuJoin: () => {},
+	onOpenMembersFor: () => {},
+};
+export const ConversationMenuHeader: Story = {
+	args: { ...conversationMenuArgs, defaultMenuOpen: true },
+};
+export const ConversationMenuPartialLeave: Story = {
+	args: {
+		...ChannelSelected.args,
+		partialLeave: { name: "#launch", retrying: false, retryFailed: false },
+		onRetryPartialLeave: () => {},
+		onDismissPartialLeave: () => {},
+	},
+};

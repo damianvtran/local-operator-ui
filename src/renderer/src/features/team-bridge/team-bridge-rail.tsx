@@ -11,7 +11,6 @@ import { formatRelativeTime, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import {
-	Archive,
 	AtSign,
 	BellOff,
 	Eye,
@@ -22,7 +21,7 @@ import {
 	Users,
 } from "lucide-react";
 import type { FC, ReactNode } from "react";
-import { useId } from "react";
+import { useId, useState } from "react";
 import type {
 	TeamBridgeConversation,
 	TeamBridgeDirectoryMember,
@@ -40,6 +39,11 @@ import {
 	unreadRegister,
 } from "./team-bridge-model";
 
+import {
+	type TeamBridgeConversationMenuHandlers,
+	TeamBridgeConversationMenuItems,
+} from "./team-bridge-conversation-menu";
+import type { TeamBridgeConversationMenuItem } from "./team-bridge-conversation-menu-model";
 import {
 	TeamBridgeAvatar,
 	TeamBridgeProfileCard,
@@ -419,11 +423,14 @@ export const ConversationRailRow: FC<{
 	organizationName?: string;
 	onSelect: () => void;
 	/**
-	 * Offered only when the caller may archive this channel (the page decides from
-	 * the server's `can_administer`). Opens the confirm dialog; the row itself
-	 * never archives.
+	 * The conversation menu, the SAME item list the header "…" draws
+	 * (`conversationMenuSections`); absent or empty, the row has no "…" and no
+	 * right-click menu. Archive is one of its items now, offered only with the
+	 * server's `can_administer`.
 	 */
-	onArchive?: () => void;
+	menu?: TeamBridgeRowMenu;
+	/** Story/capture seed only: opens the row's menu on mount. */
+	initialMenuOpen?: boolean;
 }> = ({
 	hasDraft = false,
 	conversation,
@@ -432,8 +439,11 @@ export const ConversationRailRow: FC<{
 	title,
 	organizationName,
 	onSelect,
-	onArchive,
+	menu,
+	initialMenuOpen = false,
 }) => {
+	const [menuOpen, setMenuOpen] = useState(initialMenuOpen);
+	const hasMenu = (menu?.sections.length ?? 0) > 0;
 	const locale = useI18nLocale();
 	const name =
 		title ??
@@ -447,6 +457,19 @@ export const ConversationRailRow: FC<{
 			<button
 				type="button"
 				onClick={onSelect}
+				/* RIGHT-CLICK OPENS THE ROW'S OWN MENU (operator 2026-11-04). This
+				   used to be left to the desktop shell; a Team Bridge row now has a
+				   menu of its own acts, so the gesture every sidebar teaches opens it.
+				   `preventDefault` only when there IS a menu, so a row without one
+				   still gets the platform's menu. */
+				onContextMenu={
+					hasMenu
+						? (event) => {
+								event.preventDefault();
+								setMenuOpen(true);
+							}
+						: undefined
+				}
 				/* The row carries no visible time (it clipped at narrow widths, #1293);
 				   the relative+absolute pair lives in the tooltip and the header. */
 				title={lastActive || undefined}
@@ -487,9 +510,7 @@ export const ConversationRailRow: FC<{
 						<span className="sr-only">{t("ui.teamBridge.preview.chip")}</span>
 					</span>
 				)}
-				{showsMutedGlyph(conversation) && (
-					<MuteGlyph yieldsToMenu={Boolean(onArchive)} />
-				)}
+				{showsMutedGlyph(conversation) && <MuteGlyph yieldsToMenu={hasMenu} />}
 				{hasDraft && (
 					<span
 						title={t("ui.teamBridge.drafts.indicator")}
@@ -503,13 +524,28 @@ export const ConversationRailRow: FC<{
 				)}
 				<Unread
 					count={unread}
-					yieldsToMenu={Boolean(onArchive)}
+					yieldsToMenu={hasMenu}
 					register={unreadRegister(conversation)}
 				/>
 			</button>
-			{onArchive && <ChannelRowMenu name={name} onArchive={onArchive} />}
+			{menu && hasMenu && (
+				<ConversationRowMenu
+					name={name}
+					menu={menu}
+					open={menuOpen}
+					onOpenChange={setMenuOpen}
+				/>
+			)}
 		</li>
 	);
+};
+
+/** What a conversation row's menu draws: the shared sections and their writes. */
+export type TeamBridgeRowMenu = {
+	sections: TeamBridgeConversationMenuItem[][];
+	conversation: { notify?: TeamBridgeConversation["notify"]; muted: boolean };
+	agentNotify?: TeamBridgeConversation["notify"] | null;
+	handlers: TeamBridgeConversationMenuHandlers;
 };
 
 /*
@@ -519,23 +555,36 @@ export const ConversationRailRow: FC<{
  * the edge - on the line of the badge or mute bell it yields its slot to.
  * `end-1.5` put it 3px inside that line, so the mark jumped on hover.
  */
+/**
+ * The class that places a row's "…". Exported so the no-shift claim is pinned
+ * by test: the trigger is ABSOLUTE in the row's trailing slot (it takes no
+ * flow space, so revealing it cannot move the label), and the unread count and
+ * bell yield that slot (`yieldsToMenu`) while the row is hovered or focused.
+ * Same slot, reveal and chrome as the person row's menu, so the rail has one
+ * hover affordance.
+ */
+export const ROW_MENU_TRIGGER =
+	"absolute end-[3px] top-[3px] flex size-6 items-center justify-center rounded-sm text-ink-dim opacity-0 transition-opacity duration-fast hover:bg-row-hover hover:text-ink focus-visible:opacity-100 group-hover/row:opacity-100 group-focus-within/row:opacity-100 data-[state=open]:opacity-100";
 
 /**
- * The "…" on a channel row you may archive. Same slot, reveal and chrome as the
- * person row's menu, so the rail has one hover affordance. A right-click is not
- * bound (the desktop shell owns the native context menu), which is why the
- * request for "right-click/hover" is met by the hover/focus form only.
+ * A conversation row's "…" and right-click menu. CONTROLLED so the row's
+ * `onContextMenu` can open the same dropdown the trigger opens: one menu, two
+ * gestures, anchored at the trigger either way (Radix returns focus there on
+ * Escape, which is also where a keyboard reader expects it).
  */
-const ChannelRowMenu: FC<{ name: string; onArchive: () => void }> = ({
-	name,
-	onArchive,
-}) => (
-	<DropdownMenu>
+const ConversationRowMenu: FC<{
+	name: string;
+	menu: TeamBridgeRowMenu;
+	open: boolean;
+	onOpenChange: (open: boolean) => void;
+}> = ({ name, menu, open, onOpenChange }) => (
+	<DropdownMenu open={open} onOpenChange={onOpenChange}>
 		<DropdownMenuTrigger asChild>
 			<button
 				type="button"
 				aria-label={t("ui.teamBridge.row.menu", { name })}
-				className="absolute end-[3px] top-[3px] flex size-6 items-center justify-center rounded-sm text-ink-dim opacity-0 transition-opacity duration-fast hover:bg-row-hover hover:text-ink focus-visible:opacity-100 group-hover/row:opacity-100 group-focus-within/row:opacity-100 data-[state=open]:opacity-100"
+				data-row-menu-trigger=""
+				className={ROW_MENU_TRIGGER}
 			>
 				<MoreHorizontal size={14} aria-hidden="true" />
 			</button>
@@ -543,12 +592,15 @@ const ChannelRowMenu: FC<{ name: string; onArchive: () => void }> = ({
 		<DropdownMenuContent
 			align="start"
 			side="right"
-			className="border-transparent shadow-lg"
+			/* Borderless chrome (design round 1, D3): the menu rises on its shadow. */
+			className="w-64 border-transparent shadow-lg"
 		>
-			<DropdownMenuItem onSelect={onArchive}>
-				<Archive size={14} aria-hidden="true" />
-				{t("ui.teamBridge.archive.menu.archive")}
-			</DropdownMenuItem>
+			<TeamBridgeConversationMenuItems
+				sections={menu.sections}
+				conversation={menu.conversation}
+				agentNotify={menu.agentNotify}
+				handlers={menu.handlers}
+			/>
 		</DropdownMenuContent>
 	</DropdownMenu>
 );

@@ -1,0 +1,143 @@
+[
+	{
+		"name": "row-menu-channel__localOperatorDark",
+		"story": "team-bridge-conversation-menu--row-menu-channel",
+		"theme": "localOperatorDark"
+	},
+	{
+		"name": "row-menu-general__localOperatorDark",
+		"story": "team-bridge-conversation-menu--row-menu-general",
+		"theme": "localOperatorDark"
+	},
+	{
+		"name": "row-menu-agents__localOperatorDark",
+		"story": "team-bridge-conversation-menu--row-menu-agents",
+		"theme": "localOperatorDark"
+	},
+	{
+		"name": "rows-at-rest__localOperatorDark",
+		"story": "team-bridge-conversation-menu--rows-at-rest",
+		"theme": "localOperatorDark"
+	},
+	{
+		"name": "row-hover__localOperatorDark",
+		"story": "team-bridge-conversation-menu--rows-at-rest",
+		"theme": "localOperatorDark",
+		"action": "hover:[data-conversation-id=\"bcv_launch\"]"
+	},
+	{
+		"name": "row-focus__localOperatorDark",
+		"story": "team-bridge-conversation-menu--rows-at-rest",
+		"theme": "localOperatorDark",
+		"action": "focus-kbd:[data-conversation-id=\"bcv_launch\"]"
+	},
+	{
+		"name": "row-right-click__localOperatorDark",
+		"story": "team-bridge-conversation-menu--rows-at-rest",
+		"theme": "localOperatorDark",
+		"action": "context:[data-conversation-id=\"bcv_launch\"]"
+	},
+	{
+		"name": "leave-confirm__localOperatorDark",
+		"story": "team-bridge-conversation-menu--leave-confirm",
+		"theme": "localOperatorDark"
+	},
+	{
+		"name": "remove-agent-confirm__localOperatorDark",
+		"story": "team-bridge-conversation-menu--remove-agent-confirm",
+		"theme": "localOperatorDark"
+	},
+	{
+		"name": "remove-agent-not-in-general__localOperatorDark",
+		"story": "team-bridge-conversation-menu--remove-agent-not-in-general",
+		"theme": "localOperatorDark"
+	},
+	{
+		"name": "row-menu-channel__localOperatorLight",
+		"story": "team-bridge-conversation-menu--row-menu-channel",
+		"theme": "localOperatorLight"
+	},
+	{
+		"name": "row-menu-general__localOperatorLight",
+		"story": "team-bridge-conversation-menu--row-menu-general",
+		"theme": "localOperatorLight"
+	},
+	{
+		"name": "row-menu-agents__localOperatorLight",
+		"story": "team-bridge-conversation-menu--row-menu-agents",
+		"theme": "localOperatorLight"
+	},
+	{
+		"name": "rows-at-rest__localOperatorLight",
+		"story": "team-bridge-conversation-menu--rows-at-rest",
+		"theme": "localOperatorLight"
+	},
+	{
+		"name": "row-hover__localOperatorLight",
+		"story": "team-bridge-conversation-menu--rows-at-rest",
+		"theme": "localOperatorLight",
+		"action": "hover:[data-conversation-id=\"bcv_launch\"]"
+	},
+	{
+		"name": "row-focus__localOperatorLight",
+		"story": "team-bridge-conversation-menu--rows-at-rest",
+		"theme": "localOperatorLight",
+		"action": "focus-kbd:[data-conversation-id=\"bcv_launch\"]"
+	},
+	{
+		"name": "row-right-click__localOperatorLight",
+		"story": "team-bridge-conversation-menu--rows-at-rest",
+		"theme": "localOperatorLight",
+		"action": "context:[data-conversation-id=\"bcv_launch\"]"
+	},
+	{
+		"name": "leave-confirm__localOperatorLight",
+		"story": "team-bridge-conversation-menu--leave-confirm",
+		"theme": "localOperatorLight"
+	},
+	{
+		"name": "remove-agent-confirm__localOperatorLight",
+		"story": "team-bridge-conversation-menu--remove-agent-confirm",
+		"theme": "localOperatorLight"
+	},
+	{
+		"name": "remove-agent-not-in-general__localOperatorLight",
+		"story": "team-bridge-conversation-menu--remove-agent-not-in-general",
+		"theme": "localOperatorLight"
+	},
+	{
+		"name": "row-menu-channel__dracula",
+		"story": "team-bridge-conversation-menu--row-menu-channel",
+		"theme": "dracula"
+	},
+	{
+		"name": "row-hover__dracula",
+		"story": "team-bridge-conversation-menu--rows-at-rest",
+		"theme": "dracula",
+		"action": "hover:[data-conversation-id=\"bcv_launch\"]"
+	},
+	{
+		"name": "header-menu__localOperatorDark",
+		"story": "team-bridge-page--conversation-menu-header",
+		"theme": "localOperatorDark",
+		"width": 1440
+	},
+	{
+		"name": "partial-leave__localOperatorDark",
+		"story": "team-bridge-page--conversation-menu-partial-leave",
+		"theme": "localOperatorDark",
+		"width": 1440
+	},
+	{
+		"name": "header-menu__localOperatorLight",
+		"story": "team-bridge-page--conversation-menu-header",
+		"theme": "localOperatorLight",
+		"width": 1440
+	},
+	{
+		"name": "partial-leave__localOperatorLight",
+		"story": "team-bridge-page--conversation-menu-partial-leave",
+		"theme": "localOperatorLight",
+		"width": 1440
+	}
+]
