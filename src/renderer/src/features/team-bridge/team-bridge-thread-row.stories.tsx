@@ -4,6 +4,7 @@ import type {
 	TeamBridgeDirectoryMember,
 	TeamBridgeMessage,
 } from "../../../../shared/team-bridge-contract";
+import { MentionSourceContext } from "./mentions/mention-context";
 import { TeamBridgeMessageList } from "./team-bridge-message-list";
 import { TeamBridgeThreadRow } from "./team-bridge-thread-row";
 
@@ -263,5 +264,33 @@ export const InThreadPaneHost: Story = {
 				density="compact"
 			/>
 		</div>
+	),
+};
+
+/*
+ * A thread root that MENTIONS THE READER (#1672 round 3, D6): #1668 paints its
+ * inset box `accent-wash` at rest and on hover, and the facepile ring must read
+ * that wash rather than the timeline's canvas. A minimal mention source names
+ * the reader so the list's own mention highlighting decides the wash.
+ */
+const readerMentionSource = {
+	conversationId: "bcv_story",
+	candidates: [],
+	conversationKind: "channel" as const,
+	sendMentions: true,
+	self: { accountId: "acct_me", label: "Damian", labelUnique: true },
+};
+export const ListMentionedUnread: Story = {
+	args: {
+		message: root({
+			body: "@Damian can you confirm the Q3 renewal list before I send it out?",
+			mentions: [{ kind: "human", account_id: "acct_me" }],
+			thread_unread_count: 2,
+		}),
+	},
+	render: (args) => (
+		<MentionSourceContext.Provider value={readerMentionSource}>
+			<ListFrame message={args.message} />
+		</MentionSourceContext.Provider>
 	),
 };

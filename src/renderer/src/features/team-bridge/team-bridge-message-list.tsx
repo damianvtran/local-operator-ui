@@ -885,8 +885,10 @@ const MessageRowView: FC<MessageRowProps> = ({
 				"before:pointer-events-none before:absolute before:inset-x-2 before:inset-y-0 before:-z-10 before:rounded-sm before:transition-colors before:duration-fast before:ease-out-quart",
 				mentionsViewer
 					? /* C3: a row that mentions the reader keeps its wash at rest and
-					     under the pointer; the bar below says why. */
-						"before:bg-accent-wash"
+					     under the pointer; the bar below says why. The thread row's
+					     facepile ring reads the same wash in both states, or each
+					     plate wears a canvas/surface halo on it (#1672 round 3, D6). */
+						"before:bg-accent-wash [--thread-row-host:var(--color-accent-wash)] [--thread-row-message-hover:var(--color-accent-wash)]"
 					: density === "compact"
 						? "hover:before:bg-elevated"
 						: "hover:before:bg-surface",
