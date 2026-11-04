@@ -30,3 +30,5 @@ to those grounds and these after-frames were re-captured: `after-{read,unread}-{
 `after-thread-pane-host-dark.png`. Measured on `list-unread` (LO dark): row background transparent, facepile ring `#1d1b17`
 (= canvas), height 32px. The before frames and the other after frames are unchanged (they predate #1668's grounds; the
 before set is origin/main `a70a761` as recorded above).
+
+Round 3 (D6): `after-mentioned-unread-{dark,light}.png` - story `list-mentioned-unread`, a thread root that mentions the reader (#1668 accent-wash). Measured in LO dark: facepile ring `#13241A` = `--lo-accent-wash`.
