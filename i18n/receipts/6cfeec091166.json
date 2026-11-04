@@ -1,0 +1,12 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "openai/gpt-6.1-sol (fallback after anthropic/claude-sonnet-5-5 and anthropic/claude-opus-5-5 quota failures)",
+  "instance": "6cfeec091166",
+  "status": "passed",
+  "namespace": "ui.chat.pickers",
+  "sha256": {
+    "fr": "3ce94acfc194d594a99ddcdf4cc8bf3966a03694d64c48c4aab1c23cea8628c9",
+    "en": "88d81780ea0cf598689a73b5b0206da020ccfe1b847631214f87f40791b684c7"
+  },
+  "findings": []
+}

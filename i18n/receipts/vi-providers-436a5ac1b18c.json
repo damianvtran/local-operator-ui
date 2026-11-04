@@ -1,0 +1,23 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "anthropic/claude-sonnet-5-5",
+  "instance": "vi-providers-436a5ac1b18c",
+  "status": "passed",
+  "namespace": "ui.providers",
+  "sha256": {
+    "vi": "94c1e270b14536e143565b01b28e86e4f2c8e4ae42a72f8d2360d9bd3d2955d5",
+    "en": "126a999fb9b26d8f3e2e17231b5d5d5b430d55cd2d468c8b3323d3a041a86632"
+  },
+  "findings": [
+    {
+      "severity": "NIT",
+      "key": "ui.providers.provider_detail.checking_whether",
+      "note": "'Đang kiểm tra xem ' + brand + shared 'đang chạy' omits có/không; accepted colloquial, cannot add 'có' because is_running is shared with the success line. Not blocking."
+    },
+    {
+      "severity": "NIT",
+      "key": "ui.providers.provider_catalog.use_your_chatgpt_plan_signing_in_with",
+      "note": "Unchanged (pre-existing, out of scope): still says 'của bạn' while the two Claude/ChatGPT plan strings now use 'đang có'; trivial pronoun inconsistency."
+    }
+  ]
+}

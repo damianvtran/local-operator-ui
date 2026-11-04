@@ -1,0 +1,23 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "anthropic/claude-sonnet-5-5",
+  "instance": "c124ae957985",
+  "status": "passed",
+  "namespace": "ui.chat.pickers",
+  "sha256": {
+    "vi": "96ff802c86cd9d24ad7ac5378f32c2d4c25642692277b5e1447f41de86621997",
+    "en": "88d81780ea0cf598689a73b5b0206da020ccfe1b847631214f87f40791b684c7"
+  },
+  "findings": [
+    {
+      "severity": "NIT",
+      "key": "N1 info_model.mobile_relay",
+      "note": "Bare 'Chuyển tiếp di động' can read as a verb; optional 'Dịch vụ chuyển tiếp di động'. Unchanged, carried."
+    },
+    {
+      "severity": "NIT",
+      "key": "N4 analytics_panel/analytics_session_state/analytics_model 'trong khoảng này' (18 values)",
+      "note": "Terse; 'khoảng thời gian này' clearer but guide says tighten. No change needed. Carried."
+    }
+  ]
+}
