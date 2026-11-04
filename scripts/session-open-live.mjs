@@ -58,6 +58,8 @@ const FRAMES = flag("frames", null);
  * the rest is the renderer's main thread, which only a profile apportions.
  */
 const PROFILE = flag("profile", null);
+/* How long to wait, after a paint, for the open's slower requests to settle. */
+const OPS_DRAIN_MS = Number(flag("ops-drain", "15000"));
 const WIDTH = Number(flag("width", "1280"));
 const HEIGHT = Number(flag("height", "900"));
 const BUDGET_MS = 300;
@@ -300,13 +302,34 @@ const main = async () => {
 				const pressedState = await cdp.eval("window.__lopOpen.state()");
 				early = { typed, before, pressedState };
 			}
-			const run = await pending;
-			if (PROFILE) {
-				const { profile } = await cdp.send("Profiler.stop");
-				writeFileSync(
-					join(PROFILE, `${id}-${round}.cpuprofile`),
-					JSON.stringify(profile),
-				);
+			let run;
+			try {
+				run = await pending;
+			} finally {
+				// Stopped on EVERY path (review #1680 R1-2): a rejected open would
+				// otherwise leave the sampler running into the next one.
+				if (PROFILE) {
+					const { profile } = await cdp.send("Profiler.stop");
+					writeFileSync(
+						join(PROFILE, `${id}-${round}.cpuprofile`),
+						JSON.stringify(profile),
+					);
+				}
+			}
+			/*
+			 * Requests the open issued that outlived its paint are still in flight in
+			 * `run.ops` (QA #3446 Q2). Wait for them - bounded by OPS_DRAIN_MS, so a
+			 * hung route is reported as `settle: null`, not waited on - then re-read
+			 * them with their settle times. Only ops the open had already issued are
+			 * kept (cut at its last recorded start), so the drain's own background
+			 * traffic is not credited to the open.
+			 */
+			const cutoff = Math.max(-1, ...run.ops.map((op) => op.start));
+			for (let waited = 0; waited < OPS_DRAIN_MS; waited += 50) {
+				const now = await cdp.eval(`window.__lopOpen.settledOps(${cutoff})`);
+				run.ops = now;
+				if (now.every((op) => op.settle !== null)) break;
+				await sleep(50);
 			}
 			const endState = await cdp.eval("window.__lopOpen.state()");
 			if (early) {

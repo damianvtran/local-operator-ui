@@ -124,7 +124,14 @@ w.api.desktop = {
 			}
 			query.set("supplements", "1");
 			if (args.journalOrder === true)
-				appendJournalOrderIds(query, "/__desktop/stream", args.orderIds ?? []);
+				// Sized against the path MAIN sends (review #1680 R1-1): the id budget is
+				// a byte count over path + query, so the dev proxy's own path would keep
+				// a slightly different id set from the packaged app's.
+				appendJournalOrderIds(
+					query,
+					`/v1/desktop/sessions/${args.sessionId}/events`,
+					args.orderIds ?? [],
+				);
 			/*
 			 * The stream is not a `/__desktop` op, so the op log below cannot see it;
 			 * logging it here is what lets a run say how long the click took to reach
@@ -283,6 +290,26 @@ const typeAndSend = (text: string) => {
 	return true;
 };
 
+/*
+ * The ops one open issued, relative to its click. Read at PAINT the list freezes
+ * every request still in flight as `settle: null` - which on a slow route is
+ * exactly the request whose share the bench exists to attribute (QA #3446 round 1,
+ * Q2: `sessions.userAttachments` unsettled on 9/10 runs, because it outlived the
+ * paint). So the driver reads it again through `settledOps()` once those requests
+ * land (bounded), and the paint-time numbers are untouched.
+ */
+const opsSince = (before: number, clickAt: number) =>
+	ops.slice(before).map((entry) => ({
+		op: entry.op,
+		start: Math.round((entry.startedAt - clickAt) * 10) / 10,
+		settle:
+			entry.settledAt > 0
+				? Math.round((entry.settledAt - clickAt) * 10) / 10
+				: null,
+		...(entry.bytes ? { bytes: entry.bytes } : {}),
+	}));
+let lastRun: { before: number; clickAt: number } | null = null;
+
 type Run = {
 	target: string;
 	clickAt: number;
@@ -330,15 +357,8 @@ const open = (target: string, deadlineMs = 30_000) =>
 		const finish = (timedOut: boolean) => {
 			unsubscribe();
 			run.timedOut = timedOut;
-			run.ops = ops.slice(before).map((entry) => ({
-				op: entry.op,
-				start: Math.round((entry.startedAt - run.clickAt) * 10) / 10,
-				settle:
-					entry.settledAt > 0
-						? Math.round((entry.settledAt - run.clickAt) * 10) / 10
-						: null,
-				...(entry.bytes ? { bytes: entry.bytes } : {}),
-			}));
+			run.ops = opsSince(before, run.clickAt);
+			lastRun = { before, clickAt: run.clickAt };
 			resolve(run);
 		};
 		const tick = () => {
@@ -364,6 +384,17 @@ const open = (target: string, deadlineMs = 30_000) =>
 	ready: false,
 	open,
 	typeAndSend,
+	/**
+	 * The last open's ops re-read now, so a request that outlived the paint carries
+	 * its settle time. Only ops issued before `cutoffMs` (ms after that click) are
+	 * kept: later ones belong to the drain wait, not to the open.
+	 */
+	settledOps: (cutoffMs: number) =>
+		lastRun
+			? opsSince(lastRun.before, lastRun.clickAt).filter(
+					(op) => op.start <= cutoffMs,
+				)
+			: [],
 	/** Every `sessions.message` this page has issued, with its settle time. */
 	messages: () =>
 		ops
