@@ -239,6 +239,17 @@ export const UpdateFootIconView: FC<{
 							{(summarySurface.offer.summary ?? "").trim()}
 						</span>
 					) : null}
+					{/*
+					 * The reassurance rides in the tooltip, the first place a person
+					 * meets an update, so "do I have to stop everything first?" is
+					 * answered before the card opens. True for BOTH surfaces: an app
+					 * install restarts only the window, and a server move leaves the
+					 * detached session runtimes running (`server/reload.py`). Wraps
+					 * rather than truncates: it is a sentence, not a label.
+					 */}
+					<span className="text-ink-muted">
+						{t("ui.common.updates.update_foot_icon.sessions_keep_running")}
+					</span>
 					<span className="whitespace-nowrap text-ink-muted">
 						{t("ui.common.updates.update_foot_icon.show_the_update_notice")}
 					</span>
