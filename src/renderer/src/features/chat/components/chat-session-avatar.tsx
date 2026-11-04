@@ -27,10 +27,9 @@
  *
  * NO PICTURE, NO CHANGE - AND NO PLACEHOLDER HERE. Without a picture this renders
  * exactly the cell main drew, so every row that has no picture is byte-identical.
- * The no-picture session row deliberately does NOT gain the camera placeholder:
- * a conversation list repeats the row dozens of times, the sidebar's pictureless
- * rows must stay as they are (the operator's ask), and the door is already one
- * press away in the header and the first turn of the open conversation. A digest
+ * No chat surface draws an empty-picture mark (operator, 2026-11-04): a
+ * conversation list repeats the row dozens of times, and the place to set a
+ * picture is the agent editor. A digest
  * whose bytes FAIL draws the same no-picture row (`PicturedSessionAvatar`), so
  * failed and absent cannot disagree here either.
  *
@@ -84,30 +83,15 @@ export const SESSION_MARK_BOX = "size-4";
 export function ChatSessionAvatar({
 	row,
 	nowSeconds,
-	reservePicture = false,
 }: {
 	row: CanonicalSessionRow;
 	nowSeconds?: number;
-	/**
-	 * True when ANY row in the list draws a picture: a row that has none then
-	 * holds the picture's box empty, so every title in the list starts on one x
-	 * (design review D1). False - the whole list is pictureless, which is every
-	 * list before this feature and every backend that publishes no digest - draws
-	 * the cell main drew, byte for byte.
-	 */
-	reservePicture?: boolean;
 }) {
 	const agentId = row.agent_id ?? null;
 	const sha256 = row.avatar_sha256 ?? null;
 	if (!agentId || !sha256) {
 		// No picture to draw: the cell main drew, with its own subscription.
-		return (
-			<BareSessionStatus
-				row={row}
-				nowSeconds={nowSeconds}
-				reserve={reservePicture}
-			/>
-		);
+		return <ChatSessionStatus row={row} nowSeconds={nowSeconds} />;
 	}
 	return (
 		<PicturedSessionAvatar
@@ -115,42 +99,17 @@ export function ChatSessionAvatar({
 			agentId={agentId}
 			sha256={sha256}
 			nowSeconds={nowSeconds}
-			reservePicture={reservePicture}
 		/>
 	);
 }
 
-/**
- * The status cell of a row with no picture, plus - only when the list has
- * pictures elsewhere - an empty box where the picture would be, in the SAME
- * cluster geometry a pictured row uses (`gap-1.5`), so the title's x is the
- * pictured row's. The box is `aria-hidden` and carries no text: the row's one
- * status sentence is still the status cell's.
+/*
+ * NO RESERVED BOX FOR A PICTURELESS ROW (operator, 2026-11-04). #1651 held an
+ * empty 16px box on every pictureless row whenever another row in the list had
+ * a picture, so all titles started on one x (its design review D1). That box is
+ * exactly the "occupy space" the operator asked to remove: a pictureless row is
+ * the status cell alone, as on main, and only a pictured row's title moves.
  */
-function BareSessionStatus({
-	row,
-	nowSeconds,
-	reserve,
-}: {
-	row: CanonicalSessionRow;
-	nowSeconds?: number;
-	reserve: boolean;
-}) {
-	if (!reserve) return <ChatSessionStatus row={row} nowSeconds={nowSeconds} />;
-	return (
-		<span
-			data-session-mark="reserved"
-			className="relative flex shrink-0 items-center gap-1.5"
-		>
-			<ChatSessionStatus row={row} nowSeconds={nowSeconds} />
-			<span
-				aria-hidden="true"
-				data-session-picture-slot=""
-				className={cn("shrink-0", SESSION_MARK_BOX)}
-			/>
-		</span>
-	);
-}
 
 /**
  * THE ROW'S ANSWER FOR A CLAIMED DIGEST. While the bytes are cold the plate holds
@@ -159,31 +118,22 @@ function BareSessionStatus({
  * draws exactly what a row with no picture draws, the status cell alone. Before
  * this, a failed digest kept a Bot plate in the row that an absent picture never
  * drew: the one surface where "failed" and "no picture" disagreed. The row never
- * draws the placeholder mark itself (see the module note): that door lives in the
- * header and the transcript, and the sidebar row stays as it is.
+ * draws an empty-picture mark (see the module note).
  */
 function PicturedSessionAvatar({
 	row,
 	agentId,
 	sha256,
 	nowSeconds,
-	reservePicture,
 }: {
 	row: CanonicalSessionRow;
 	agentId: string;
 	sha256: string;
 	nowSeconds?: number;
-	reservePicture: boolean;
 }) {
 	const { url, settled } = useAgentAvatarState(agentId, sha256, 16);
 	if (settled && !url)
-		return (
-			<BareSessionStatus
-				row={row}
-				nowSeconds={nowSeconds}
-				reserve={reservePicture}
-			/>
-		);
+		return <ChatSessionStatus row={row} nowSeconds={nowSeconds} />;
 	const picture = (
 		<span className={cn("relative flex shrink-0", SESSION_MARK_BOX)}>
 			<AgentMark

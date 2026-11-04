@@ -98,22 +98,38 @@ export const matrix: ThemeDefinition = {
 		 * lifting a dark ground raises the luminance every ink is measured against, so
 		 * the inks in this file were re-seated on the same commit rather than after it.
 		 */
-		canvas: "#1C211D",
-		surface: "#1F2822",
-		elevated: "#212E24",
-		sunken: "#1B1D1B",
+		/*
+		 * THE DARKER-GROUNDS PASS (2026-11-03, `docs/branding.md` § 2) supersedes the
+		 * earlier L* 12 dark floor: the dark band is now L* 9-15 (target 9-13), and
+		 * the canvas maps by `L*_new = 9 + 0.6 x (L*_old - 12)`, a map that preserves
+		 * the fleet's order (re-solves may move a canvas off it, up to +-1.04 L*).
+		 * Here every ground-class role (the grounds, the row states, the two fills,
+		 * the washes and the hairlines) moved by the canvas's own ΔL* holding its `a`
+		 * and `b`; inks, accents and `borderControl` did not move.
+		 * Measured:
+		 * canvas #1C211D -> #161B17 (L* 12.11 -> 9.13)
+		 * surface #1F2822 -> #19221C (L* 15.09 -> 12.19)
+		 * elevated #212E24 -> #1B281E (L* 17.48 -> 14.65)
+		 * sunken #1B1D1B -> #131613 (L* 10.49 -> 6.86)
+		 * Re-solved off the uniform shift, because a contract floor refused it there:
+		 * `sunken`. `pnpm check-themes` is the measurement for each.
+		 */
+		canvas: "#161B17",
+		surface: "#19221C",
+		elevated: "#1B281E",
+		sunken: "#131613",
 
 		// The user block's fill: ΔE00 4.13 off the canvas, where `surface` alone
 		// measures 3.20 - a step toward `elevated` to clear the role's 4.0 floor,
 		// which the block carries because the fill IS its boundary.
-		messageSurface: "#202a23",
+		messageSurface: "#1a241d",
 		// The media slot's well: ΔE00 5.10 off the canvas, where `sunken` alone
 		// measures 2.71 - a step away from the canvas to clear the role's 4.0
 		// floor, which the tile carries because the fill IS its resting extent.
 		// The LIGHTNESS half gates the stop here: a ΔE00-clearing candidate
 		// (`#1B1B1A`, 2.38 L*) comes earlier on the line, so the walk carries it
 		// one step further to this value, which clears both halves (2.85 L*).
-		mediaSurface: "#1a1a1a",
+		mediaSurface: "#131414",
 
 		/*
 		 * ROW STATES, and `highlight` retired in the same change. Both roles are a
@@ -132,8 +148,8 @@ export const matrix: ThemeDefinition = {
 		 *                       `rowHover`; the pair ranks 1.68 `L*` and 7.0 `C*`,
 		 *                       `inkDim` 5.02:1.
 		 */
-		rowHover: "#282D2A",
-		rowSelected: "#233329",
+		rowHover: "#222724",
+		rowSelected: "#1C2C22",
 
 		ink: "#D4E6D6",
 		inkMuted: "#99BD9F",
@@ -163,10 +179,10 @@ export const matrix: ThemeDefinition = {
 		 * 1.15-2.0:1 band, because a separator that shouted would be a border.
 		 * `elevated` is the tightest ground at ΔE00 7.14.
 		 */
-		hairline: "#263F2D",
+		hairline: "#1F3826",
 		// `hairline` stepped toward `inkDim`, so it reads on this palette's own
 		// `sunken`: 1.59:1 there against `hairline`'s 1.48:1.
-		hairlineStrong: "#2A4431",
+		hairlineStrong: "#233D2A",
 		// The TUI `edge-hi` 2A4A33 lifted in L* until it clears 3:1 on `elevated`; the
 		// TUI bounded nothing with it.
 		/*
@@ -188,7 +204,7 @@ export const matrix: ThemeDefinition = {
 		// The palette's own `info`, which is the role this composer's command
 		// word already resolved to: the tint moves no pixel the palette did not
 		// already choose. The role and its floors are in `palette-contract.ts`.
-		accentWash: "#092814",
+		accentWash: "#03220D",
 		onAccent: "#000701",
 		/*
 		 * The theme's own second hue, and the port had dropped it: the TUI's
@@ -204,12 +220,12 @@ export const matrix: ThemeDefinition = {
 		 * 2.0), 5.67:1 for `accentAlt` on it, and 17.44 from the nearest ground it
 		 * is painted on.
 		 */
-		accentAltWash: "#241E3A",
+		accentAltWash: "#1D1732",
 
 		// 3ECF74, the TUI's own green — deliberately a second green rather than a copy
 		// of the accent, which the semantic separation floor forces apart.
 		success: "#3ECF74",
-		successWash: "#0C2615",
+		successWash: "#05200E",
 		/*
 		 * Legibility pass: `successBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
@@ -218,7 +234,7 @@ export const matrix: ThemeDefinition = {
 		successBorder: "#428656",
 
 		warning: "#D8C24A",
-		warningWash: "#202510",
+		warningWash: "#1B1F07",
 		/*
 		 * Legibility pass: `warningBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
@@ -227,7 +243,7 @@ export const matrix: ThemeDefinition = {
 		warningBorder: "#817A3F",
 
 		danger: "#FF6B5E",
-		dangerWash: "#261912",
+		dangerWash: "#201208",
 		/*
 		 * Legibility pass: `dangerBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
@@ -238,7 +254,7 @@ export const matrix: ThemeDefinition = {
 		// 3FD0C9, the TUI's `signal`, desaturated to sit in the rain rather than
 		// beside it.
 		info: "#3FD0C9",
-		infoWash: "#0D2620",
+		infoWash: "#07201A",
 		/*
 		 * Legibility pass: `infoBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered

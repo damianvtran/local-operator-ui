@@ -942,7 +942,12 @@ const App: FC = () => {
 						 * unmounted, so the chat list and Aida's marks are current the moment
 						 * the reader goes back (its own note says what it keeps alive).
 						 */
-						routeSidebar={routeOwnsSidebar && { keeper: <StripFeedKeeper /> }}
+						routeSidebar={
+							routeOwnsSidebar && {
+								keeper: <StripFeedKeeper />,
+								label: t("ui.teamBridge.page.title"),
+							}
+						}
 						content={
 							/*
 							 * ORDINARY ROUTE CONTENT GETS THE STRIP'S PAD ONCE, HERE.

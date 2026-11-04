@@ -50,9 +50,11 @@ const message = (
 const Thread: FC<{
 	states: TeamBridgeDeliveryState[] | undefined;
 	senderKind?: "human" | "agent";
-}> = ({ states, senderKind = "human" }) => (
+	/* Pane width in px; the default is the desktop thread column. */
+	width?: number;
+}> = ({ states, senderKind = "human", width = 760 }) => (
 	// Top padding leaves room for the tooltip panel, which opens above.
-	<div className="flex w-[760px] flex-col bg-surface pt-24 text-ink">
+	<div className="flex flex-col bg-surface pt-24 text-ink" style={{ width }}>
 		<TeamBridgeMessageList
 			messages={[message(states, senderKind)]}
 			labelFor={(sender) => sender.display_label}
@@ -186,6 +188,34 @@ export const AgentMixedPartialDelivery: Story = {
  * Refused, held and pending are drawn together because all three templates
  * take the one composed `{recipient}`.
  */
+/*
+ * WRAPPED LINES AT A NARROW PANE (design review D2 on #1643). Every delivery
+ * template at once, in a column narrow enough that each wraps, so the info
+ * glyph's position on the LAST line can be judged: it must sit after the
+ * sentence's final word, never alone on a continuation line. Pin a locale with
+ * `?args=locale:ru` (the locale D2 was found in) and nudge `width` to move the
+ * break; the glyph travels with the last word at every width.
+ */
+export const NarrowWrappedLines: Story = {
+	args: {
+		width: 340,
+		states: [
+			state({
+				endpoint_id: "bep_scope",
+				recipient_label: "Ben Tran",
+				recipient_owner_label: "Ben Tran",
+				refusal_class: "out_of_scope",
+			}),
+			state({ endpoint_id: "bep_generic" }),
+			state({
+				endpoint_id: "bep_held",
+				state: "held",
+				hold_class: "screening_unavailable",
+			}),
+		],
+	},
+};
+
 export const LegacyComposedRecipientLabels: Story = {
 	args: {
 		states: [

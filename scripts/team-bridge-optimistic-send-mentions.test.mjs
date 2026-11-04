@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { act } from "react";
 import {
+	deferred,
 	mount,
 	send,
 	type,
@@ -181,6 +182,92 @@ test("a silent (notify: false) mention keeps its flag: it is never put on the wi
 			"only the notifying mention is sent",
 		);
 		assert.ok(sends(app)[0].body.includes("@acct_b and @Peer"));
+	} finally {
+		await app.close();
+	}
+});
+
+/* A Finder drop onto the composer: the preload names the file's path and the
+   chip is staged; nothing is uploaded until a send binds it. */
+async function dropImage(host) {
+	const box = host.querySelector("textarea").parentElement;
+	const file = new File([new Uint8Array([0x89, 0x50, 0x4e, 0x47])], "", {
+		type: "image/png",
+	});
+	const event = new window.Event("drop", { bubbles: true, cancelable: true });
+	event.dataTransfer = {
+		types: ["Files"],
+		items: [{ kind: "file", getAsFile: () => file }],
+		files: [file],
+	};
+	await act(async () => box.dispatchEvent(event));
+	await until(
+		() => host.querySelector("[data-attachment-id]"),
+		"the dropped picture's chip",
+	);
+}
+
+test("a picture send keeps the mentions it was pressed with when an identical text send lands during its upload", async () => {
+	/*
+	 * Review MINOR-1 on #1663. The picture path is awaited and builds its request
+	 * only after the upload; the optimistic text lane clears the shared outbox
+	 * entry for (conversation, body) when ITS send lands. So: send "ok @Bea"
+	 * (text, in flight), then "ok @Bea" again with a picture, and let the text
+	 * send land while the picture uploads. Read late, the picture went out with
+	 * no `mentions` at all.
+	 */
+	ui.resetPendingSendsForTest();
+	const app = await mount({ sendMentions: true, attachments: true });
+	app.fixture.refuse = false;
+	try {
+		await openComposer(app);
+		await mention(app, "ok @acct", "human:acct_b");
+		const body = app.host.querySelector("textarea").value.trim();
+		/* The text send is held at the hub until the picture's upload starts. */
+		const textPost = deferred();
+		app.fixture.postGate = textPost;
+		await send(app.host);
+		await until(() => sends(app).length === 1, "the text send dispatched");
+		assert.deepEqual(sends(app)[0].mentions, BEA);
+
+		/* The same words, picked the same way, now with a picture. */
+		await mention(app, "ok @acct", "human:acct_b");
+		assert.equal(app.host.querySelector("textarea").value.trim(), body);
+		await dropImage(app.host);
+		const upload = deferred();
+		app.fixture.mediaGate = upload;
+		await send(app.host);
+		await until(
+			() => app.fixture.uploadStarts === 1,
+			"the picture's upload is in flight",
+		);
+		assert.equal(sends(app).length, 1, "the picture has not posted yet");
+
+		/* The text send lands mid-upload and retires the outbox entry. */
+		app.fixture.postGate = null;
+		textPost.resolve();
+		await until(
+			() =>
+				ui.usePendingSends
+					.getState()
+					.entries.every((row) => row.status === "sent"),
+			"the text send settles",
+		);
+		assert.equal(
+			ui.stagedMentions("bcv_shared", body),
+			undefined,
+			"the landed text send cleared the shared outbox entry",
+		);
+
+		upload.resolve();
+		await until(() => sends(app).length === 2, "the picture send");
+		const picture = sends(app)[1];
+		assert.deepEqual(picture.attachment_ids, ["batt_1"]);
+		assert.deepEqual(
+			picture.mentions,
+			BEA,
+			"the picture send carries the mentions captured at its press",
+		);
 	} finally {
 		await app.close();
 	}

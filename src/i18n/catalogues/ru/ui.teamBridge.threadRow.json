@@ -1,0 +1,5 @@
+{
+	"ui.teamBridge.threadRow.label": "Открыть ветку, {count, plural, one {# ответ} few {# ответа} many {# ответов} other {# ответа}}{unread, plural, =0 {} one {, # непрочитанный} few {, # непрочитанных} many {, # непрочитанных} other {, # непрочитанного}}{hasLast, select, yes {. {last}} other {}}",
+	"ui.teamBridge.threadRow.last": "Последний ответ {when, select, today {сегодня в {time}} yesterday {вчера в {time}} other {{time}}}",
+	"ui.teamBridge.threadRow.unread_badge": "{count, plural, one {{label} новый} few {{label} новых} many {{label} новых} other {{label} новых}}"
+}

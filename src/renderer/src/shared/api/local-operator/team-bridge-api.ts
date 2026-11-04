@@ -29,6 +29,7 @@ import {
 	type TeamBridgeReadScope,
 	type TeamBridgeReadState,
 	type TeamBridgeThreadPage,
+	type TeamBridgeThreadReadState,
 	type TeamBridgeUnread,
 	teamBridgeAttachmentUploadSchema,
 	teamBridgeConversationListSchema,
@@ -41,6 +42,7 @@ import {
 	teamBridgeScheduledListSchema,
 	teamBridgeScheduledMessageSchema,
 	teamBridgeThreadPageSchema,
+	teamBridgeThreadReadStateSchema,
 	teamBridgeUnreadSchema,
 } from "../../../../../shared/team-bridge-contract";
 import {
@@ -536,6 +538,30 @@ export const TeamBridgeApi = {
 			...(input.muted === undefined ? {} : { muted: input.muted }),
 		});
 		return teamBridgeReadStateSchema.parse(answer);
+	},
+
+	/**
+	 * Acknowledge a THREAD's replies up to `seq` (hub slice TR1). Owner-guarded
+	 * like every write: the receipt is required, so the hub refuses a read
+	 * replayed under another signed-in account. The answer is the viewer's new
+	 * thread state, parsed leniently (see `teamBridgeThreadReadStateSchema`):
+	 * its count is what the thread row shows the moment the read lands.
+	 */
+	async markThreadRead(
+		conversationId: string,
+		rootId: string,
+		input: { seq: number; tenantId: string; expectedAccountId: string },
+	): Promise<TeamBridgeThreadReadState> {
+		const answer = await desktopResult<unknown>({
+			op: "team_bridge.thread_read",
+			conversation_id: conversationId,
+			message_id: rootId,
+			tenant_id: input.tenantId,
+			expected_account_id: input.expectedAccountId,
+			seq: input.seq,
+		});
+		const parsed = teamBridgeThreadReadStateSchema.safeParse(answer ?? {});
+		return parsed.success ? parsed.data : {};
 	},
 
 	/**

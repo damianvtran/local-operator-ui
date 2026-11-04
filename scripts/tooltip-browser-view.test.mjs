@@ -169,7 +169,12 @@ test("BrowserSafeTooltip keeps ONE tree and uses the Tooltip's suppressed prop (
 		wrapper,
 		/suppressed=\{viewPresent \|\| Boolean\(props\.suppressed\)\}/,
 	);
-	assert.match(wrapper, /discardWhileSuppressed=\{viewPresent\}/);
+	/* Discard follows the view, OR the caller's own opt-in (Team Bridge's Back,
+	   #1668 agent review round 1 m2): the wrapper must not override it. */
+	assert.match(
+		wrapper,
+		/discardWhileSuppressed=\{\s*viewPresent \|\| Boolean\(props\.discardWhileSuppressed\)\s*\}/,
+	);
 	assert.doesNotMatch(
 		wrapper,
 		/<\/>/,

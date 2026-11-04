@@ -68,19 +68,33 @@ export const rosewood: ThemeDefinition = {
 		 * lifting a dark ground raises the luminance every ink is measured against, so
 		 * the inks in this file were re-seated on the same commit rather than after it.
 		 */
-		canvas: "#302122",
-		surface: "#392A2B",
-		elevated: "#403232",
-		sunken: "#251C1D",
+		/*
+		 * THE DARKER-GROUNDS PASS (2026-11-03, `docs/branding.md` § 2) supersedes the
+		 * earlier L* 12 dark floor: the dark band is now L* 9-15 (target 9-13), and
+		 * the canvas maps by `L*_new = 9 + 0.6 x (L*_old - 12)`, a map that preserves
+		 * the fleet's order (re-solves may move a canvas off it, up to +-1.04 L*).
+		 * Here every ground-class role (the grounds, the row states, the two fills,
+		 * the washes and the hairlines) moved by the canvas's own ΔL* holding its `a`
+		 * and `b`; inks, accents and `borderControl` did not move.
+		 * Measured:
+		 * canvas #302122 -> #28191A (L* 14.58 -> 10.71)
+		 * surface #392A2B -> #302122 (L* 18.80 -> 14.58)
+		 * elevated #403232 -> #372929 (L* 22.31 -> 18.18)
+		 * sunken #251C1D -> #1D1415 (L* 11.36 -> 7.37)
+		 */
+		canvas: "#28191A",
+		surface: "#302122",
+		elevated: "#372929",
+		sunken: "#1D1415",
 
 		// The user block's fill: ΔE00 4.13 off the canvas, where `surface` alone
 		// measures 2.84 - a step toward `elevated` to clear the role's 4.0 floor,
 		// which the block carries because the fill IS its boundary.
-		messageSurface: "#3c2e2e",
+		messageSurface: "#342626",
 		// The media slot's well: ΔE00 4.26 off the canvas, where `sunken` alone
 		// measures 3.72 - a step away from the canvas to clear the role's 4.0
 		// floor, which the tile carries because the fill IS its resting extent.
-		mediaSurface: "#241c1d",
+		mediaSurface: "#1c1415",
 
 		/*
 		 * ROW STATES, and `highlight` retired in the same change. Both roles are a
@@ -99,8 +113,8 @@ export const rosewood: ThemeDefinition = {
 		 *                       `rowHover`; the pair ranks 1.31 `L*` and 6.9 `C*`,
 		 *                       `inkDim` 5.03:1.
 		 */
-		rowHover: "#3B3232",
-		rowSelected: "#483133",
+		rowHover: "#322929",
+		rowSelected: "#3F282A",
 
 		ink: "#EEE0DC",
 		/*
@@ -165,11 +179,11 @@ export const rosewood: ThemeDefinition = {
 		 * border (2:1), and the window is walked at the role's own hue. Its ratio
 		 * lands at 1.16:1 against `elevated` at its tightest.
 		 */
-		hairline: "#4F3A39",
+		hairline: "#463130",
 
 		// `hairline` stepped toward `inkDim`, so it reads on this palette's own
 		// `sunken`: 1.71:1 there against `hairline`'s 1.58:1.
-		hairlineStrong: "#543F3E",
+		hairlineStrong: "#4B3635",
 		// Derived, and the one role the TUI cannot supply. Upstream `edge-hi` is a
 		// decorative edge at about 2:1; here it is the only boundary an input, select
 		// or outlined button has, so it is lifted until it clears 3:1 on every ground
@@ -206,7 +220,7 @@ export const rosewood: ThemeDefinition = {
 
 		// The TUI's own selection tint, which is where this accent is already spent
 		// faintly.
-		accentWash: "#31281D",
+		accentWash: "#282015",
 
 		// The theme's own deepest ground, at 7.34:1 on all three accent fills.
 		onAccent: "#170C0D",
@@ -227,7 +241,7 @@ export const rosewood: ThemeDefinition = {
 		 * 2.0), 6.27:1 for `accentAlt` on it, and 7.30 from the nearest ground it
 		 * is painted on.
 		 */
-		accentAltWash: "#2D2733",
+		accentAltWash: "#251F2B",
 
 		// Upstream success, clearing 5.73:1 at its tightest ground.
 		success: "#94BD80",
@@ -235,7 +249,7 @@ export const rosewood: ThemeDefinition = {
 		// The TUI has no success or warning tint, so both are the state hue at 13%
 		// over the ground — the fraction the TUI's own tints measure at. The hue
 		// clears 6.00:1 on this fill.
-		successWash: "#38312A",
+		successWash: "#2F2821",
 
 		// The state hue pulled toward `canvas` as far as it can go and still read as
 		// an edge: 3.46:1 at its tightest ground.
@@ -252,7 +266,7 @@ export const rosewood: ThemeDefinition = {
 		 */
 		successBorder: "#718460",
 		warning: "#D8AB58",
-		warningWash: "#412F25",
+		warningWash: "#38271D",
 		/*
 		 * Legibility pass: `warningBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
@@ -268,7 +282,7 @@ export const rosewood: ThemeDefinition = {
 		danger: "#EA8378",
 
 		// The TUI's own danger tint.
-		dangerWash: "#371C1C",
+		dangerWash: "#2E1414",
 
 		// This one is also drawn on a dialog's ground, where the delete control's edge
 		// IS the control: 3.35:1 at its tightest.
@@ -289,7 +303,7 @@ export const rosewood: ThemeDefinition = {
 		info: "#82B1D4",
 
 		// The TUI's own attachment tint, and the ground every marker reads on.
-		infoWash: "#263140",
+		infoWash: "#1D2837",
 		/*
 		 * Legibility pass: `infoBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered

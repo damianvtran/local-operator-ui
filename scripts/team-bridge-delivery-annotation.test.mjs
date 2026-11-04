@@ -107,6 +107,12 @@ const INFO_REFUSED_CONSTANT = /t\("ui\.teamBridge\.delivery\.info_refused"\)/;
 const INFO_HELD_CONSTANT = /t\("ui\.teamBridge\.delivery\.info_held"\)/;
 const REFUSED_TIP_TEXT = /A refused message wasn't passed to the agent/;
 const BUTTON_MARKUP = /<button[\s\S]*?<\/button>/;
+const NOWRAP_RUN = /<span class="whitespace-nowrap">([\s\S]*?)<\/span><\/li>/;
+const NOWRAP_ANY = /whitespace-nowrap/;
+const BOUND_PERIOD = /^\. <button/;
+const BOUND_ELLIPSIS = /<span class="whitespace-nowrap">… <button/;
+const BUTTON_TAIL = /<button[\s\S]*$/;
+const HINDI_GRAPHEMES = new Intl.Segmenter("hi", { granularity: "grapheme" });
 
 const entry = (over = {}) => ({
 	endpoint_id: "bep_1",
@@ -500,6 +506,125 @@ test("an unlisted self-composed agent with a bracketed name is that person's chi
 	);
 	// A bracket inside a name is not a composition.
 	assert.equal(unlisted("Ana (she/her)"), "Ana (she/her)");
+});
+
+/*
+ * UNBALANCED BRACKETS (QA O1 on #1643), defined rather than incidental. With
+ * the owner KNOWN, only a label ending in exactly that owner's group is
+ * split; anything else is the agent's name verbatim and the owner is
+ * composed once after it, never dropped. With the owner UNKNOWN, an
+ * unbalanced group is never "X (X)", so the label reads verbatim.
+ */
+const UNBALANCED_MATRIX = [
+	// Not ending in the owner's group: the stored text verbatim, owner once.
+	["Aida (Ben", "Ben", "Aida (Ben (Ben)"],
+	["Aida (Ben) (x", "Ben", "Aida (Ben) (x (Ben)"],
+	["Aida (Ben Tran))", "Ben Tran", "Aida (Ben Tran)) (Ben Tran)"],
+	// Ending in the owner's group: the head verbatim, unbalanced or not.
+	["Aida ((Ben Tran)", "Ben Tran", "Aida ( (Ben Tran)"],
+	// An owner whose own name is unbalanced is matched by comparison.
+	["Aida (Ben (Sales)", "Ben (Sales", "Aida (Ben (Sales)"],
+	["Aida (Ben) (x)", "Ben) (x", "Aida (Ben) (x)"],
+	["Aida (Aida (Ben)", "Aida (Ben", "Aida (Aida (Ben)"],
+	// Owner unknown: an unbalanced group is never a self-composition.
+	["Aida (Ben", "", "Aida (Ben"],
+	["Ben (Ben", "", "Ben (Ben"],
+	["Ben ((Ben)", "", "Ben ((Ben)"],
+];
+for (const [stored, owner, expected] of UNBALANCED_MATRIX) {
+	const name = `${JSON.stringify(stored)} owned by ${JSON.stringify(owner)}`;
+	test(`unbalanced brackets, delivery line and row agree: ${name}`, () => {
+		assert.equal(
+			recipientLabel(
+				{ kind: "agent", label: stored, ownerLabel: owner },
+				EN_CHIEF,
+			),
+			expected,
+		);
+		assert.equal(rowLabel(stored, owner), expected);
+	});
+}
+
+test("an over-long label is read verbatim, not scanned (m1-r4 on #1643)", () => {
+	// 257 characters: one past the scanners' bound. The same shape at 256 is
+	// still recognised, so the bound is exact and not a blanket refusal.
+	const atBound = `${"A".repeat(256 - " (Ben)".length)} (Ben)`;
+	const overBound = `A${atBound}`;
+	assert.equal(atBound.length, 256);
+	assert.equal(
+		recipientLabel(
+			{ kind: "agent", label: atBound, ownerLabel: "Ben" },
+			EN_CHIEF,
+		),
+		atBound,
+	);
+	assert.equal(
+		recipientLabel(
+			{ kind: "agent", label: overBound, ownerLabel: "Ben" },
+			EN_CHIEF,
+		),
+		`${overBound} (Ben)`,
+	);
+	const selfComposed = `${"B".repeat(130)} (${"B".repeat(130)})`;
+	assert.equal(
+		unlistedMemberLabel(
+			{ kind: "agent", display_label: selfComposed },
+			EN_CHIEF,
+		),
+		selfComposed,
+	);
+	/*
+	 * The cost the bound exists for: a pathological 10,000-character label of
+	 * nested brackets took ~0.6 s per call before it. Generous ceiling so a
+	 * slow CI host does not flake; unbounded it is three orders above this.
+	 */
+	const nested = `${"(".repeat(5000)}x${")".repeat(5000)}`;
+	const started = performance.now();
+	recipientLabel(
+		{ kind: "agent", label: `${nested} (Ben)`, ownerLabel: "Ben" },
+		EN_CHIEF,
+	);
+	unlistedMemberLabel({ kind: "agent", display_label: nested }, EN_CHIEF);
+	assert.ok(performance.now() - started < 50);
+});
+
+test("the info glyph is bound to the sentence's last character, never alone (D2 on #1643)", () => {
+	const nowrap = (html) => html.match(NOWRAP_RUN)?.[1];
+	// The bound run is the final grapheme, a space and the button, so a wrap
+	// takes the last word with the glyph rather than stranding the glyph.
+	const refused = render([entry()]);
+	const run = nowrap(refused);
+	assert.ok(run, refused);
+	assert.match(run, BOUND_PERIOD);
+	assert.match(run, INFO_LABEL);
+	assert.match(render([entry({ state: "held" })]), BOUND_ELLIPSIS);
+	// The sentence itself is unchanged by the split.
+	assert.deepEqual(lineTexts(refused), [
+		"Not delivered to Aida (Sam). Refused by moderation.",
+	]);
+	// Only the last grapheme is bound: a long unspaced name keeps its
+	// emergency breaks (`overflow-wrap:anywhere`) outside the nowrap run.
+	const long = "A".repeat(120);
+	const held = render([
+		entry({ state: "held", recipient_label: long, recipient_owner_label: "" }),
+	]);
+	assert.equal(nowrap(held)?.includes(long), false);
+	// A combining mark is never cut off its base (hi ends in "।", ur in "۔";
+	// a Devanagari vowel sign before the danda must stay with its consonant).
+	try {
+		setLocale("hi");
+		const hindi = render([entry({ state: "held" })]);
+		const bound = nowrap(hindi) ?? "";
+		const text = bound.replace(BUTTON_TAIL, "").trimEnd();
+		assert.equal([...HINDI_GRAPHEMES.segment(text)].length, 1, text);
+	} finally {
+		setLocale("en");
+	}
+	// The pending line has no glyph and so nothing to bind.
+	assert.doesNotMatch(
+		render([entry({ state: "held", hold_class: "delivery_pending" })]),
+		NOWRAP_ANY,
+	);
 });
 
 test("an unnamed recipient takes the delivery-scoped in-sentence form, not the rail label", () => {

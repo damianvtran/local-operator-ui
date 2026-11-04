@@ -172,7 +172,7 @@ const SOURCE_BUILD_REMEDY =
  * the idle switch replaced the wait on 2026-09-29.
  */
 const MANAGED_OFFER_REMEDY =
-	"The app publishes the new build beside the one the server is using and then moves the server onto it, so nothing in flight is cut off. Sessions that are still working move onto the new build when they next stop or go idle. This can take a minute or two.";
+	"Running sessions aren't interrupted. The app publishes the new build beside the one the server is using and then moves the server onto it. Sessions that are still working move onto the new build when they next stop or go idle. This can take a minute or two.";
 
 const OFFER_DETAIL =
 	"local-operator resolves to /Users/operator/.local/bin/local-operator (/Users/operator/.local/share/uv/tools/local-operator/bin/local-operator), classified as uv-tool. source build of this machine's checkout; an in-place rebuild.";

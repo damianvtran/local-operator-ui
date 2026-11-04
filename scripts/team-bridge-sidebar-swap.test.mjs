@@ -52,11 +52,12 @@ const bundle = await build({
 			import { useUiPreferencesStore } from "./src/renderer/src/shared/store/ui-preferences-store";
 			import { teamBridgeLeaveTarget } from "./src/renderer/src/features/team-bridge/team-bridge-leave";
 			import { TeamBridgeBackRow } from "./src/renderer/src/features/team-bridge/team-bridge-route-column";
+			import { TooltipProvider } from "./src/renderer/src/shared/components/ui/tooltip";
 			import { useNavigationGestures } from "./src/renderer/src/shared/hooks/use-navigation-gestures";
 			import { onTeamBridgeRoute } from "./src/renderer/src/features/team-bridge/use-team-bridge-notification-open";
 			import { teamBridgeOpenPath } from "./src/shared/team-bridge-notify";
 			import { HashRouter, Routes, Route, useLocation, useNavigate, useSearchParams } from "react-router-dom";
-			export { ChatLayout, InLeftSidebarHost, useUiPreferencesStore, teamBridgeLeaveTarget, TeamBridgeBackRow, useNavigationGestures, onTeamBridgeRoute, teamBridgeOpenPath, HashRouter, Routes, Route, useLocation, useNavigate, useSearchParams, MemoryRouter, QueryClient, QueryClientProvider };
+			export { TooltipProvider, ChatLayout, InLeftSidebarHost, useUiPreferencesStore, teamBridgeLeaveTarget, TeamBridgeBackRow, useNavigationGestures, onTeamBridgeRoute, teamBridgeOpenPath, HashRouter, Routes, Route, useLocation, useNavigate, useSearchParams, MemoryRouter, QueryClient, QueryClientProvider };
 		`,
 		resolveDir: process.cwd(),
 	},
@@ -82,6 +83,7 @@ const bundle = await build({
 const bundlePath = new URL("./_tb-sidebar-swap.bundle.mjs", import.meta.url);
 await writeFile(bundlePath, bundle.outputFiles[0].text);
 const {
+	TooltipProvider,
 	ChatLayout,
 	InLeftSidebarHost,
 	useUiPreferencesStore,
@@ -431,17 +433,32 @@ test("focus follows the swap when it was in the column, and only then (U2/Q3)", 
 		el(ChatLayout, {
 			sidebar: el(FocusNav),
 			content: el(Route),
-			routeSidebar: routed ? {} : false,
+			routeSidebar: routed ? { label: "Team Bridge" } : false,
 		});
 	const app = await mount(shell(false));
 	try {
 		const doc = app.document;
 		doc.querySelector('[data-test-row="chat"]').focus();
 		await app.rerender(shell(true));
+		/* The COLUMN takes focus on entry, not its first control: a scripted
+		   focus on Back drew its ring and opened its tooltip on every mouse entry
+		   (operator, 2026-11-04). Focus is still not on <body> (U2/Q3). */
 		assert.equal(
-			doc.activeElement?.getAttribute("data-test-rail"),
-			"",
-			"entry: the route column's first control has focus, not <body>",
+			doc.activeElement?.hasAttribute("data-route-sidebar-host"),
+			true,
+			"entry: the route column itself has focus, not <body> and not Back",
+		);
+		assert.equal(
+			doc.activeElement.tabIndex,
+			-1,
+			"the host is never a Tab stop",
+		);
+		/* Named, so the landing is announced (design D1 / review R5). */
+		assert.equal(doc.activeElement.getAttribute("role"), "region");
+		assert.equal(doc.activeElement.getAttribute("aria-label"), "Team Bridge");
+		assert.ok(
+			doc.activeElement.querySelector("[data-test-rail]"),
+			"and the route's first control is inside it, one Tab away",
 		);
 		await app.rerender(shell(false));
 		assert.equal(
@@ -457,6 +474,198 @@ test("focus follows the swap when it was in the column, and only then (U2/Q3)", 
 		assert.equal(doc.activeElement, outside);
 	} finally {
 		await app.teardown();
+	}
+});
+
+/* Radix's trigger reads `delayed-open` or `instant-open` once its panel shows. */
+const TOOLTIP_OPEN = /open$/;
+
+test("entering from the navigation leaves Back unringed and its tooltip closed; Tab still reaches both", async () => {
+	/* The real Back row (and its real Radix tooltip) as the route's rail. */
+	const BridgeRoute = () =>
+		el(InLeftSidebarHost, { fallback: null }, el(TeamBridgeBackRow));
+	const EntryNav = () =>
+		el(
+			"nav",
+			null,
+			el(
+				"button",
+				{ type: "button", "data-test-row": "bridge" },
+				"Team Bridge",
+			),
+		);
+	const shell = (routed) =>
+		el(
+			TooltipProvider,
+			{ delayDuration: 0 },
+			el(ChatLayout, {
+				sidebar: el(EntryNav),
+				content: routed ? el(BridgeRoute) : null,
+				routeSidebar: routed ? {} : false,
+			}),
+		);
+	const app = await mount(shell(false));
+	/* Radix announces an opening tooltip with `new CustomEvent(...)` on the
+	   document; Node's own CustomEvent is a different realm from jsdom's and its
+	   dispatch throws, which no other suite here reaches (none opens a tooltip). */
+	const realmCustomEvent = globalThis.CustomEvent;
+	globalThis.CustomEvent = globalThis.window.CustomEvent;
+	try {
+		const doc = app.document;
+		/* A mouse press on the nav row: pointerdown and focus, as a click does. */
+		const row = doc.querySelector('[data-test-row="bridge"]');
+		/* jsdom has no PointerEvent constructor; a MouseEvent of that type is what
+		   React's synthetic pointerdown listens for here. */
+		row.dispatchEvent(
+			new globalThis.window.MouseEvent("pointerdown", { bubbles: true }),
+		);
+		row.focus();
+		await app.rerender(shell(true));
+		await act(async () => new Promise((resolve) => setTimeout(resolve, 30)));
+		const back = doc.querySelector("[data-team-bridge-back]");
+		assert.ok(back, "the real Back row is in the column");
+		assert.notEqual(doc.activeElement, back, "entry does not focus Back");
+		assert.equal(
+			back.matches(":focus-visible"),
+			false,
+			"so Back carries no focus-visible ring",
+		);
+		assert.equal(
+			back.getAttribute("data-state"),
+			"closed",
+			"and its tooltip is closed",
+		);
+		assert.equal(doc.querySelector('[role="tooltip"]'), null);
+
+		/* Keyboard: Tab from the parked column moves focus to Back. jsdom has no
+		   Tab default action, so the browser's move is done by hand: a focus with
+		   no pointerdown before it, which is what a keyboard focus is to Radix. */
+		assert.ok(doc.activeElement.hasAttribute("data-route-sidebar-host"));
+		await act(async () => {
+			back.focus();
+			await new Promise((resolve) => setTimeout(resolve, 30));
+		});
+		assert.equal(doc.activeElement, back, "Tab reaches Back");
+		assert.equal(back.matches(":focus-visible"), true, "with its ring");
+		assert.match(
+			back.getAttribute("data-state") ?? "",
+			TOOLTIP_OPEN,
+			"and its tooltip opens on keyboard focus",
+		);
+	} finally {
+		globalThis.CustomEvent = realmCustomEvent;
+		await app.teardown();
+	}
+});
+
+/*
+ * #1660 QA Q5: a first open draws the EARLY column (Back + title) and then swaps
+ * it for the full rail. The Back that took focus is unmounted, so focus must be
+ * re-homed on the new first control rather than falling to <body>. And Q6/U6:
+ * on leave, a staged-draft `New chat` (and a disabled current row) also carries
+ * `aria-current="page"` ahead of the destination row - focus goes to the
+ * destination, never to the control that stages a chat.
+ */
+test("entry focus survives the early -> full column swap (#1660 Q5)", async () => {
+	const Staged = ({ full }) =>
+		el(
+			"div",
+			null,
+			el(
+				InLeftSidebarHost,
+				{ fallback: null },
+				full
+					? el("button", { type: "button", "data-test-full": "" }, "Back")
+					: el("button", { type: "button", "data-test-early": "" }, "Back"),
+			),
+		);
+	const shell = (routed, full) =>
+		el(ChatLayout, {
+			sidebar: el(
+				"nav",
+				null,
+				el("button", { type: "button", "data-test-row": "chat" }, "Chat"),
+			),
+			content: routed ? el(Staged, { full }) : el("main"),
+			routeSidebar: routed ? {} : false,
+		});
+	const app = await mount(shell(false, false));
+	try {
+		const doc = app.document;
+		doc.querySelector('[data-test-row="chat"]').focus();
+		await app.rerender(shell(true, false));
+		/* Entry parks focus on the column host, not on Back (#1671): that is
+		   what keeps Back unringed and its tooltip shut on entry, which #1660 U7
+		   had handled with a `data-focus-handoff` mark on Back. */
+		const host = doc.activeElement;
+		assert.equal(
+			host?.hasAttribute("data-route-sidebar-host"),
+			true,
+			"entry: the column host has focus",
+		);
+		assert.ok(
+			host.querySelector("[data-test-early]"),
+			"the early column is in it",
+		);
+		await app.rerender(shell(true, true));
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		/* The host is the shell's element and survives the early -> full swap,
+		   so focus never falls to <body> (Q5's actual failure). */
+		assert.equal(
+			doc.activeElement === host,
+			true,
+			`focus stays on the host across the swap, not <body> (got ${doc.activeElement?.tagName})`,
+		);
+		assert.ok(
+			host.querySelector("[data-test-full]"),
+			"the full column replaced it",
+		);
+	} finally {
+		await app.teardown();
+	}
+});
+
+test("leave focus picks the destination row, not a staged New chat or a disabled row (#1660 Q6/U6)", async () => {
+	const nav = (newChatDisabled) =>
+		el(
+			"nav",
+			null,
+			el(
+				"button",
+				{
+					type: "button",
+					"aria-current": "page",
+					"data-new-chat-row": "",
+					disabled: newChatDisabled,
+				},
+				"New chat",
+			),
+			el(
+				"button",
+				{ type: "button", "aria-current": "page", "data-test-row": "library" },
+				"Library",
+			),
+		);
+	const shell = (routed, newChatDisabled) =>
+		el(ChatLayout, {
+			sidebar: nav(newChatDisabled),
+			content: el(Route),
+			routeSidebar: routed ? {} : false,
+		});
+	for (const disabled of [false, true]) {
+		const app = await mount(shell(true, disabled));
+		try {
+			const doc = app.document;
+			doc.querySelector("[data-test-rail]").focus();
+			await app.rerender(shell(false, disabled));
+			assert.equal(
+				doc.activeElement?.getAttribute("data-test-row"),
+				"library",
+				`leave (New chat ${disabled ? "disabled" : "enabled"}): focus is on the destination row`,
+			);
+		} finally {
+			await app.teardown();
+		}
 	}
 });
 
@@ -495,8 +704,9 @@ const PIN_13 = /<AttentionBadge\s+count=\{attention\}/;
 const PIN_14 = /<SidebarFoot \/>/;
 const PIN_15 =
 	/const routeOwnsSidebar =\s*bridgeState === "enabled" && pathname\.startsWith\(TEAM_BRIDGE_PATH\);/;
+/* The keeper, and the host's region name from the route's EXISTING title. */
 const PIN_16 =
-	/routeSidebar=\{routeOwnsSidebar && \{ keeper: <StripFeedKeeper \/> \}\}/;
+	/routeSidebar=\{\s*routeOwnsSidebar && \{\s*keeper: <StripFeedKeeper \/>,\s*label: t\("ui\.teamBridge\.page\.title"\),\s*\}\s*\}/;
 const PIN_17 = /isSidebarCollapsed && !routeOwnsSidebar \? "true" : "false"/;
 
 const read = (path) => readFileSync(path, "utf8");

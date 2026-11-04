@@ -148,25 +148,6 @@ const over = (fg, bg, alpha) => {
 		.join("")}`;
 };
 
-/*
- * `color-mix(in srgb, a share%, b)` as the browser computes it: a straight
- * interpolation of the sRGB-ENCODED channels (CSS Color 5 "in srgb"), rounded
- * to the 8-bit value the compositor paints. Used for fills a component derives
- * from two roles rather than naming one, so the contract measures the colour
- * on screen instead of a role it does not wear.
- */
-const srgbMix = (a, b, share) => {
-	if (!isHex(a) || !isHex(b) || a.length !== 7 || b.length !== 7) return null;
-	const ch = (h, i) => Number.parseInt(h.slice(i, i + 2), 16);
-	return `#${[1, 3, 5]
-		.map((i) =>
-			Math.round(ch(a, i) * share + ch(b, i) * (1 - share))
-				.toString(16)
-				.padStart(2, "0"),
-		)
-		.join("")}`;
-};
-
 /* ---- 3. loading the palettes ------------------------------------------- */
 
 /* Palette loading lives in palette-source.mjs so this gate and the CSS
@@ -240,25 +221,46 @@ const GROUNDS6 = [
  * The ground contract, authored as L* offsets from the lifted canvas.
  *
  * `canvas` is the page - the furthest-back surface, and the one the operator
- * reads for hours - so it has a hard FLOOR rather than a band with discretion:
- * no page ground in this app sits below L* 12. Measured, 20 of the 41 dark
- * palettes were below L* 10 and 8 below L* 5 (`obsidian` 2.51 at the bottom),
- * which is the "background behind the main text is too dark/black" report.
+ * reads for hours - so a dark theme's page sits in a hard BAND, L* 9-15, with
+ * 9-13 as the target. Both ends were set by a report from the operator.
  *
- * 12.0 is one rung above GitHub Dark's #0D1117 (L* 4.95) and exactly VS Code
- * Dark+'s #1E1E1E (L* 11.26) - deliberately ABOVE GitHub's default, because
- * that is the departure the operator asked for; `docs/branding.md` § 2 records
- * the cost to the near-black palettes rather than hiding it behind a "best
- * practice" claim. The ladder's own budget is why 12 and not 8: at
- * canvas 12 / surface 17 / elevated 24 the three inks solve to L* 78 / 74 / 71
- * with every floor and every step intact, and below that the ladder and the ink
- * steps stop fitting together.
+ * The FLOOR answered "the background behind the main text is too dark/black":
+ * 20 of the 41 dark palettes once sat below L* 10 and 8 below L* 5 (`obsidian`
+ * 2.51 at the bottom). It was L* 12 until 2026-11-03, when the opposite report
+ * arrived ("dark mode isn't that dark, it shouldn't be overly dark but it should
+ * be maybe a bit darker in tone"), and the median dark canvas measured L* 15.1.
+ * The floor is now 9: between Discord's 2025 chat ground #1A1A1E (L* 9.42) and
+ * Slack's dark #1A1D21 (L* 10.62), the two apps the request names, still nearly
+ * double GitHub Dark's #0D1117 (L* 4.95), and below VS Code Dark+'s #1E1E1E
+ * (L* 11.26). Nothing below 9 is a page ground, so the near-black report stays
+ * closed; only `sunken` and `mediaSurface` go lower, as recesses.
  *
- * The top of the ladder is capped at `elevated` 30 because an unbounded top
- * step is what makes the ink budget unaffordable: at `elevated` L* 34 an
- * `inkDim` at 5.0:1 needs L* 85 and the ink/hover distinction disappears into
- * the top of the ramp. The light side is capped at `canvas` 94 for the same
- * arithmetic from the other end: `elevated` at L* 100 is the end of sRGB's
+ * The CEILING of 15 is the old [12, 22] band compressed by ONE proportional map,
+ * `L*_new = 9 + 0.6 x (L*_old - 12)`, rather than clamped: a clamp would stack
+ * every palette that sat above the new top onto it, which is the "the themes
+ * have all gone the same grey" regression the fleet section (5b) exists for. The
+ * map preserves order and relative spacing; the hand re-solves move 34
+ * canvases off it by up to +-1.04 L* (45 of 820 pairs invert, all held apart by
+ * the fleet's pair rules), so theme identity is carried by hue and chroma at
+ * the darker L*, not by a shared altitude. The
+ * design spec proposed 9-13; 15 is the manager's widening for that reason, and
+ * 9-13 remains the target the median (L* 10.96 after the map) sits in.
+ *
+ * The ladder's ink budget is why the floor can drop without moving an ink:
+ * darker grounds only RAISE ink contrast, and at canvas 9 / surface 13 /
+ * elevated 18 every ink in the fleet clears its floor unchanged - measured
+ * across all 41 dark palettes with this file (0 ink failures after the re-light).
+ *
+ * The top of the ladder is capped at `elevated` 22 (it was 30) because an
+ * unbounded top step is what makes the ink budget unaffordable: at `elevated`
+ * L* 34 an `inkDim` at 5.0:1 needs L* 85 and the ink/hover distinction
+ * disappears into the top of the ramp, and with the canvas at most 15 the
+ * largest legal ladder (+5 then +6) still ends below 26, so 22 holds the ladder
+ * to the band's own proportions rather than letting one rung climb back to the
+ * old altitude.
+ *
+ * The light side is capped at `canvas` 94 for the same arithmetic from the
+ * other end: `elevated` at L* 100 is the end of sRGB's
  * ramp (four light palettes already sit there), the minimum canvas-to-elevated
  * spread is 2.5 + 2.5, so a canvas above 95 has no room for both steps - 94
  * leaves 1 L* of headroom for 8-bit rounding. `sunken` 80 is the same floor read
@@ -266,7 +268,7 @@ const GROUNDS6 = [
  * being painted on a well that is not there.
  */
 const LIFT = {
-	dark: { canvasMin: 12.0, canvasMax: 22.0, elevatedMax: 30.0 },
+	dark: { canvasMin: 9.0, canvasMax: 15.0, elevatedMax: 22.0 },
 	light: { canvasMax: 94.0, sunkenMin: 80.0 },
 };
 
@@ -643,6 +645,58 @@ const CONTROLS = [
 		edge: false,
 	},
 	/*
+	 * TEAM BRIDGE THREAD ROW (`team-bridge-thread-row.tsx`, design round 1 on
+	 * #1672, D1/D2). Transparent at rest, so at rest its fill IS the host. Since
+	 * the visual refresh (#1668) the hosts are the channel timeline's `canvas`,
+	 * the thread pane's `surface`, and the parent message row's inset hover tint
+	 * under the pointer: `surface` on the timeline, `elevated` in the compact
+	 * pane. `rowHover` stays listed for any host that still paints the old band,
+	 * and `accentWash` is the inset box of a row that mentions the reader (#1668
+	 * C3), at rest and under the pointer (#1672 round 3, D7).
+	 * Hover is `sunken` on all of them.
+	 * Its inks are the accent "N replies" count and the `inkMuted` "Last reply"
+	 * clause; one row per ink, because the checker reads one ink per row.
+	 *
+	 * `edge: false` for the same reason as the reaction pills above: a fill-only,
+	 * borderless bar cannot promise a 3:1 boundary off `rowHover` in every
+	 * palette, and the operator asked for no border. What makes the row usable is
+	 * its ink on whatever fill it has, which these rows assert at 4.5:1. The
+	 * accent-on-`sunken` pair is the tightest (design round 1 measured
+	 * solarizedLight at 4.50:1), which is why it has its own row.
+	 */
+	{
+		name: "team bridge thread row (rest, count)",
+		on: ["canvas", "surface", "elevated", "rowHover", "accentWash"],
+		fill: null,
+		border: null,
+		ink: "accent",
+		edge: false,
+	},
+	{
+		name: "team bridge thread row (rest, last reply)",
+		on: ["canvas", "surface", "elevated", "rowHover", "accentWash"],
+		fill: null,
+		border: null,
+		ink: "inkMuted",
+		edge: false,
+	},
+	{
+		name: "team bridge thread row (hover, count)",
+		on: ["canvas", "surface", "elevated", "rowHover", "accentWash"],
+		fill: "sunken",
+		border: null,
+		ink: "accent",
+		edge: false,
+	},
+	{
+		name: "team bridge thread row (hover, last reply)",
+		on: ["canvas", "surface", "elevated", "rowHover", "accentWash"],
+		fill: "sunken",
+		border: null,
+		ink: "inkMuted",
+		edge: false,
+	},
+	/*
 	 * TEAM BRIDGE ATTACHMENT CHIPS (inline-image refresh, SPEC §3.1 / D1). A
 	 * file, a non-image descriptor or a count-only receipt is a borderless
 	 * Slack-style chip: `mediaSurface` fill, `ink` name, `inkDim` meta line, an
@@ -707,9 +761,88 @@ const CONTROLS = [
 		ink: "ink",
 		edge: false,
 	},
-	/* The reader's OWN pill is not a role but a derived fill (accent mixed over
-	   surface), so it cannot be a CONTROLS row: it is asserted by
-	   `REACTION_OWN_PILL` below, which mixes the fill per palette. */
+	{
+		/*
+		 * THE READER'S OWN REACTION PILL (visual refresh D11, 2026-11-04):
+		 * `accent` on `accent-wash`, in place of the 26% accent-over-surface
+		 * `color-mix` it used to derive - a colour no palette authored, mixed
+		 * against `surface` even where the pill sat on the `canvas` timeline.
+		 * Two roles now, so it is an ordinary triple. Borderless like the
+		 * others' pill (operator, 2026-10-30), so `edge: false`: the hue step
+		 * off the others' `elevated` pill and the accent count are what read as
+		 * "mine". 4.51:1 worst (everforest). The hover is an ink step to
+		 * `accentHover` on the same wash (row below).
+		 */
+		name: "team bridge own reaction pill",
+		on: ["canvas", "surface", "rowHover"],
+		fill: "accentWash",
+		border: null,
+		ink: "accent",
+		edge: false,
+	},
+	{
+		name: "team bridge own reaction pill (hover)",
+		on: ["canvas", "surface", "rowHover"],
+		fill: "accentWash",
+		border: null,
+		ink: "accentHover",
+		edge: false,
+	},
+	{
+		/*
+		 * TEAM BRIDGE IDENTITY PLATES (visual refresh D4, contract C2 in
+		 * `docs/branding.md` § 2 "The second accent"). Every Team Bridge plate -
+		 * person, agent, unknown sender, and the workspace tile - is the one
+		 * `accentAltWash` disc; kind reads from the INK: `accentAlt` initial for a
+		 * person, the `accent` Bot (plus the dog-ear) for an agent, `inkMuted` for
+		 * an unknown sender's glyph. The disc is borderless, so its EXTENT is
+		 * asserted as well as its inks: the `team bridge identity plate wash`
+		 * PERCEPTIBLE row holds the wash ΔE00 >= 3.0 off every ground it sits on
+		 * (design round 1, D1 on #1668 - it measured 1.24-2.75 on eight palettes,
+		 * radient 1.78, until those washes were lifted on L*). `accentWash` is not
+		 * used for agents: it sits within ΔE00 1.4-2.6 of a ground on 15 palettes
+		 * and has 60+ other consumers. A SELECTED rail row's plate takes `surface`
+		 * instead (`TeamBridgeAvatar`'s `selected`), measured by the inks' own
+		 * `surface` floors.
+		 */
+		name: "team bridge person identity plate",
+		on: ["canvas", "surface", "elevated", "rowHover"],
+		fill: "accentAltWash",
+		border: null,
+		ink: "accentAlt",
+		edge: false,
+	},
+	{
+		name: "team bridge agent identity plate",
+		on: ["canvas", "surface", "elevated", "rowHover"],
+		fill: "accentAltWash",
+		border: null,
+		ink: "accent",
+		edge: false,
+	},
+	{
+		/* The unknown sender's `UserRound` glyph on the same disc (agent review
+		   round 1, m4a): 5.65:1 worst (kanagawaLotus). */
+		name: "team bridge unknown sender plate",
+		on: ["canvas", "surface", "elevated", "rowHover"],
+		fill: "accentAltWash",
+		border: null,
+		ink: "inkMuted",
+		edge: false,
+	},
+	{
+		/*
+		 * THE "NEW" UNREAD DIVIDER'S PILL (visual refresh D10): `onAccent` on a
+		 * solid `accent` label at the end of a 1px accent rule, drawn on the
+		 * message pane's `canvas` (and the thread pane's `surface`). The fill
+		 * IS the label's extent, so the edge is asserted (accent vs ground).
+		 */
+		name: "team bridge new messages divider pill",
+		on: ["canvas", "surface"],
+		fill: "accent",
+		border: null,
+		ink: "onAccent",
+	},
 	{
 		/*
 		 * The pills' `+`: a transparent `inkDim` glyph at rest (asserted on the
@@ -2254,12 +2387,38 @@ const ADJACENT = [
 const GRAPHICS = [
 	{
 		/*
+		 * THE MENTION ROW'S LEADING BAR (visual refresh, contract C3): a 2px
+		 * `accent` bar at the start edge of a message row that mentions the
+		 * reader, painted over that row's `accentWash` inset box. A graphic
+		 * object read at a glance, so it owes 3:1 against the wash it sits on
+		 * (4.51:1 worst, everforest) - and against the pane grounds, where the
+		 * bar's ends meet them at the box's rounded corners.
+		 */
+		name: "team bridge mention row bar",
+		on: ["accentWash", "canvas", "surface"],
+		fg: "accent",
+	},
+	{
+		/*
+		 * THE SELECTED RAIL ROW'S GLYPH (contract C4): the kind glyph (`#`,
+		 * people, `@`) in `accent` on `rowSelected`, the Settings navigation's
+		 * local exception extended to the Team Bridge rail. 4.24:1 worst
+		 * (tokyoNight) - a 16px glyph, so the 3:1 non-text floor.
+		 */
+		name: "team bridge selected rail glyph",
+		on: ["rowSelected"],
+		fg: "accent",
+	},
+	{
+		/*
 		 * Team Bridge's agent plate draws a Bot GLYPH, not a text initial, so
 		 * this is the 3:1 icon-on-fill pair rather than a control-label row.
 		 * Its fill's separation from the hovered row is asserted below.
 		 */
 		name: "team bridge agent plate glyph",
-		on: ["mediaSurface"],
+		/* `accentAltWash` is the plate's fill since the visual refresh (agent
+		   review round 1, m4b); `mediaSurface` is kept for the account plate. */
+		on: ["mediaSurface", "accentAltWash"],
 		fg: "accent",
 	},
 	{
@@ -2285,7 +2444,7 @@ const GRAPHICS = [
 		   `bg-surface` and still carries the mark (round 3, D3/F9). Worst on
 		   `surface` today is 4.98:1, so the row was a coverage gap rather than a
 		   failure. */
-		on: ["mediaSurface", "surface"],
+		on: ["mediaSurface", "surface", "accentAltWash"],
 		fg: "accent",
 		floor: 4.0,
 	},
@@ -2669,6 +2828,21 @@ const GRAPHICS = [
 const PERCEPTIBLE = [
 	{
 		/*
+		 * THE IDENTITY PLATE'S EXTENT (design round 1, D1 on #1668). The Team
+		 * Bridge person/agent disc is borderless `accentAltWash`, so this step IS
+		 * its boundary on every ground a plate rests on: the rail and thread pane
+		 * (`surface`), the timeline (`canvas`), a hovered row or option
+		 * (`rowHover`), a popover (`elevated`). 3.0 is the floor the `mediaSurface`
+		 * plate it replaced was held to. Eight palettes were lifted on L* (hue and
+		 * chroma held) to clear it; their comments carry the before/after.
+		 */
+		name: "team bridge identity plate wash",
+		role: "accentAltWash",
+		on: ["canvas", "surface", "elevated", "rowHover"],
+		minDeltaE: 3.0,
+	},
+	{
+		/*
 		 * The no-border replacement for the message avatar's ring: this is the
 		 * assertion the old `border-control` was standing in for. In particular,
 		 * `rowHover` is a STATE ground, not a rung of the elevation ladder. The
@@ -2677,8 +2851,9 @@ const PERCEPTIBLE = [
 		 *
 		 * THE FLOOR IS THE FILE'S PERCEPTUAL ONE (review round 1, M3: this row shipped
 		 * at 1.5, weaker than every sibling). The measured minima across 59 palettes
-		 * are `canvas` 4.00 (oneDark), `surface` 5.96 (iceberg), `elevated` 7.89
-		 * (rosewood) and `rowHover` 3.70 (iceberg). The row used to quote 3.70 as THE
+		 * (re-measured after the darker grounds, #1658) are `canvas` 4.00
+		 * (ayuMirage), `surface` 5.81 (obsidian), `elevated` 7.60 (rosewood) and
+		 * `rowHover` 3.70 (iceberg). The row used to quote 3.70 as THE
 		 * worst case; 3.70 is the worst of the hosts a plate actually rests on, and the
 		 * true worst pairing the role reaches is 1.83 against `rowSelected` on the
 		 * brand light palette - which is why a selected rail row takes `surface`
@@ -2687,6 +2862,12 @@ const PERCEPTIBLE = [
 		 * The rail's account plate (`user-profile-sidebar.tsx`) is the same fill
 		 * on `surface` and `rowHover` since design review round 1 of the
 		 * own-avatar change, D2; it replaced that plate's `border-control` ring.
+		 *
+		 * SINCE THE TEAM BRIDGE VISUAL REFRESH (2026-11-04, contract C2) the Team
+		 * Bridge person and agent plates wear the identity washes instead - the
+		 * "team bridge person/agent identity plate" CONTROLS rows - so this row now
+		 * holds for the account plate and for the image wells and chips that still
+		 * paint `mediaSurface`. The name is kept so its history stays findable.
 		 */
 		name: "team bridge borderless person and agent plates",
 		role: "mediaSurface",
@@ -2703,9 +2884,10 @@ const PERCEPTIBLE = [
 		 * THE ATTACHMENT CHIP'S EXTENT (agent review round 1, minor 1): the chip is
 		 * borderless, so its fill's step off each ground a message row paints IS
 		 * its boundary, `rowHover` included. Same fill and floor as the plates
-		 * above; fleet minima canvas 4.00 (oneDark), surface 5.96 (iceberg),
-		 * rowHover 3.70 (iceberg). The kind tile inside it is `elevated`, 7.89
-		 * at worst off this fill (rosewood).
+		 * above; fleet minima canvas 4.00 (ayuMirage), surface 5.81 (obsidian),
+		 * rowHover 3.70 (iceberg), re-measured after the darker grounds (#1658).
+		 * The kind tile inside it is `elevated`, 7.60 at worst off this fill
+		 * (rosewood).
 		 */
 		name: "team bridge attachment chip",
 		role: "mediaSurface",
@@ -3164,56 +3346,15 @@ const PERCEPTIBLE = [
  *     let a merged slab through - which is why it is acceptable rather than
  *     worth a parser.
  */
-/*
- * The own reaction pill's derived fills (`team-bridge-reactions.tsx`), asserted
- * in the palette loop. The shares are the call site's `color-mix` percentages;
- * the pin "team bridge own reaction pill fill" below holds the call site to
- * them.
- *
- * THE REST FLOOR IS 8.0 ΔE00 OFF THE OTHERS' PILL (design review round 2, D6).
- * "Clearly brighter" is the operator's headline ask, and the round-1 mix (20%,
- * floor 5.0) measured 5.83 in tokyoNight - the operator's own theme - which is
- * the thinnest margin in the fleet, not a clear one. 26% measures >= 8.50
- * (tokyoNight again) with `ink` >= 4.72:1 (ayuMirage); 22% and 24% still sit
- * under 8 (6.90 / 7.68), so 26% is the smallest share that clears it on all 59.
- *
- * WHY THE HOVER ROW KEEPS 5.0 AND DOES NOT TAKE 8.0. The hover fill goes DOWN to
- * 20% - darker, the direction the others' pills take to `sunken` (D5, restated
- * by D6) - so it necessarily steps TOWARD the others' resting `elevated` pill:
- * at 20% it is 5.83 from it, and NO share clears 8.0 while still being a step
- * down from the 26% rest (clearing 8.0 needs the same 26%). The two states are
- * never compared side by side anyway; what the hover must keep is its own
- * legibility (`ink` >= 5.44:1) and its separation from the grounds it is
- * painted on, and those are asserted here. The step itself measures ΔE00 2.44
- * worst (sage).
- */
-const REACTION_OWN_PILL = [
-	{
-		name: "team bridge own reaction pill",
-		accentShare: 0.26,
-		apartFrom: {
-			elevated: 8.0,
-			sunken: 3.0,
-			surface: 3.0,
-			canvas: 3.0,
-			rowHover: 3.0,
-		},
-	},
-	{
-		name: "team bridge own reaction pill (hover)",
-		accentShare: 0.2,
-		apartFrom: { elevated: 5.0, surface: 3.0, rowHover: 3.0 },
-	},
-];
 
 const STRUCTURAL_CALL_SITES = [
 	{
 		/*
 		 * THE REACTION PILLS WEAR THE FILLS THEIR CONTRACT ROWS MEASURE.
 		 *
-		 * The CONTROLS rows "team bridge reaction pill" (+ hover) and
-		 * `REACTION_OWN_PILL` prove the VALUES on every palette; only this pin can
-		 * see the edit that moves a pill to another role or another mix share,
+		 * The CONTROLS rows "team bridge reaction pill" (+ hover) and "team
+		 * bridge own reaction pill" (+ hover) prove the VALUES on every palette;
+		 * only this pin can see the edit that moves a pill to another role,
 		 * which would leave every ratio above green. (The ring the operator asked
 		 * to remove is held by the base-class pin below.)
 		 *
@@ -3225,8 +3366,8 @@ const STRUCTURAL_CALL_SITES = [
 		 */
 		what: "team bridge reaction pills wear their measured fills",
 		file: "src/renderer/src/features/team-bridge/team-bridge-reactions.tsx",
-		must: '? "bg-[color-mix(in_srgb,var(--color-accent)_26%,var(--color-surface))] font-medium text-ink hover:bg-[color-mix(in_srgb,var(--color-accent)_20%,var(--color-surface))]"\n\t\t\t\t\t\t\t\t: "bg-elevated text-ink-muted hover:bg-sunken hover:text-ink",',
-		why: "the pill rows assert `elevated`/`sunken` and the own pill's 26% rest / 20% hover accent-over-surface mixes with their inks; a pill moved to another role or share would leave those rows green about a component that no longer wears them",
+		must: '? "bg-accent-wash font-semibold text-accent hover:text-accent-hover"\n\t\t\t\t\t\t\t\t: "bg-elevated text-ink-muted hover:bg-sunken hover:text-ink",',
+		why: "the pill rows assert `elevated`/`sunken` for the others' pill and `accent`/`accentHover` on `accentWash` for the reader's own; a pill moved to another role would leave those rows green about a component that no longer wears them",
 	},
 	{
 		what: "team bridge reaction pills stay borderless",
@@ -4311,68 +4452,24 @@ const TERMINAL_ANSI = [
  */
 const EXCEPTIONS = [
 	/*
-	 * FOUR ENTRIES, ALL ONE PAIRING (design review round 1, D4): the model-access
-	 * band's `text-accent` link actions on `warningWash` (the row that asserts it
-	 * is beside the deep-linked-row pair above; its sibling callout has shipped
-	 * the same ink on the same wash unasserted). These four palettes' warm washes
-	 * sit close to their dark grounds, so the accent clears neither 4.5 as text
-	 * on them. The alternative to pinning was a palette move or a different ink
-	 * for links two shipped bands share - a design-system decision, recorded here
-	 * instead of made here, at the floors the row asks.
+	 * EMPTY AGAIN since the darker-grounds pass (2026-11-03). It held four entries,
+	 * all one pairing: the model-access band's `text-accent` link on `warningWash`
+	 * in catppuccinMocha (4.01), nord (3.6), oneDark (3.46) and tokyoNightStorm
+	 * (3.67), whose warm washes sat close to their dark grounds. Lowering the dark
+	 * band re-lit those washes downward by the same `L*` as their grounds, while
+	 * the accent stayed put, so all four pairs now clear 4.5:1 and the
+	 * never-consulted guard required the pins to go. A future ground move
+	 * re-measures; add an entry only with its measured ratio and its reason.
 	 *
-	 * THE TABLE WAS EMPTY BEFORE THIS PASS, and that emptiness had its own lesson,
-	 * kept here because the mechanism depends on it: it carried one entry for most
-	 * of an earlier pass - `catppuccinMacchiato`'s `inkDim` on `rowSelected`,
-	 * recorded at 4.98:1 against the 5.0 ink floor - and the row/hover commit
-	 * re-authored that fill #3D2E51 -> #38323E, which lifted the pair to
-	 * 5.0260:1. Nothing deleted the entry, so the run reported an exemption the
-	 * fleet no longer took. It survived because `assertPair` returns as soon as
-	 * `raw >= floor`, so a pin that has stopped being needed is never CONSULTED,
-	 * and the summary counted a static `EXCEPTIONS.length`. The guard the three
-	 * sibling pin tables already had is what closed it, and this table has it:
-	 * an entry that is never asked about fails the run with "delete the pin, the
-	 * palette clears it now". A pin is a DECISION, not a mute - every entry
-	 * records its measured ratio and its reason, and a palette edit that moves
-	 *
-	 * THE FOLD ALSO CARRIES FIVE DELETED PINS FROM THE CODE-REVIEW BRANCH (that
-	 * branch's remediation round 1, D1/U4): five pins stood here for the "verdict
-	 * not stated" round mark's outline on a `rowHover` ground, where it measured
-	 * 2.918-2.998:1 against the 3:1 floor in five palettes. That remediation moved
-	 * the row's hover to the run-detail rows' own `surface` step, and on that
-	 * ground the outline CLEARS the floor in all fifty-nine palettes - so its pins
-	 * were deleted rather than re-pointed (the run's own never-consulted rule is
-	 * how this list stays honest). A future ground move re-measures; add an entry
-	 * only with its measured ratio and its reason.
-	 * one stops matching and fails the run until a human re-approves it.
+	 * THE TABLE WAS EMPTY BEFORE that earlier pass too, and that emptiness had
+	 * its own lesson, kept here because the mechanism depends on it: an entry for
+	 * `catppuccinMacchiato`'s `inkDim` on `rowSelected` survived after its fill
+	 * was re-authored, because `assertPair` returns as soon as `raw >= floor`, so
+	 * a pin that has stopped being needed is never CONSULTED. The guard the three
+	 * sibling pin tables already had is what closed it: an entry that is never
+	 * asked about fails the run with "delete the pin, the palette clears it now".
+	 * A pin is a DECISION, not a mute.
 	 */
-	{
-		theme: "catppuccinMocha",
-		fg: "accent",
-		bg: "warningWash",
-		got: 4.01,
-		why: "the band's link ink on its own wash; the palette's warm wash is dark enough that lavender clears 4.01 - the design-system alternative (a different ink for two shipped bands' links) is not this change's to make",
-	},
-	{
-		theme: "nord",
-		fg: "accent",
-		bg: "warningWash",
-		got: 3.6,
-		why: "same pairing; the frost accent on this wash measures 3.6",
-	},
-	{
-		theme: "oneDark",
-		fg: "accent",
-		bg: "warningWash",
-		got: 3.46,
-		why: "same pairing; the lowest of the four at 3.46",
-	},
-	{
-		theme: "tokyoNightStorm",
-		fg: "accent",
-		bg: "warningWash",
-		got: 3.67,
-		why: "same pairing; 3.67 on this palette",
-	},
 ];
 
 /**
@@ -6292,41 +6389,6 @@ for (const { id, palette: p } of palettes) {
 	}
 
 	/*
-	 * TEAM BRIDGE OWN REACTION PILL (design review round 1, D1 on #1524). The
-	 * fill is `color-mix(in srgb, accent N%, surface)`, mixed here per palette
-	 * exactly as the browser mixes it (sRGB-encoded channels), and asserted three
-	 * ways on every palette:
-	 *   1. SEPARATION from the others' pill (`elevated`) and from their hover
-	 *      (`sunken`): the operator asked for "clearly brighter", and the first
-	 *      cut (`accentWash`) measured ΔE00 2.04 / 1.01:1 off `elevated` in
-	 *      tokyoNight, the operator's own theme, and was DARKER in 54 of 59.
-	 *   2. A visible step off the grounds the row is painted on, including the
-	 *      hovered row (`rowHover`), where `accentWash` hit 1.00:1 on dracula.
-	 *   3. `ink` on the fill at 4.5:1, at rest and on the hover step.
-	 * Separation is ΔE00, the file's perceptual instrument; a luminance ratio
-	 * cannot see a hue step, and hue IS the accent tint's job.
-	 */
-	for (const row of REACTION_OWN_PILL) {
-		const fill = srgbMix(p.accent, p.surface, row.accentShare);
-		if (!fill) continue;
-		assertions++;
-		const inkOn = ratio(p.ink, fill);
-		if (inkOn < FLOOR.text)
-			fail(
-				`${id}: ${row.name} — ink ${p.ink} on fill ${fill} = ${r2(inkOn)}:1, need ${FLOOR.text}:1`,
-			);
-		for (const [other, min] of Object.entries(row.apartFrom)) {
-			if (!isHex(p[other])) continue;
-			assertions++;
-			const got = deltaE(fill, p[other]);
-			if (got < min)
-				fail(
-					`${id}: ${row.name} — fill ${fill} is ΔE00 ${r2(got)} from \`${other}\` ${p[other]}, need ${min}`,
-				);
-		}
-	}
-
-	/*
 	 * The console terminal's own pair (§9.3), after the component triples because
 	 * it is a pair between two ROLES rather than a control's boundary: the block
 	 * cursor's ink on the block cursor.
@@ -6807,7 +6869,7 @@ for (const { id, palette: p } of palettes) {
 		assertions++;
 		if (dark && (lc < LIFT.dark.canvasMin || lc > LIFT.dark.canvasMax)) {
 			fail(
-				`${id}: dark \`canvas\` ${p.canvas} sits at L* ${r2(lc)} — the band is [${LIFT.dark.canvasMin}, ${LIFT.dark.canvasMax}] in L*. Below the floor the three ink weights and the three ladder steps stop fitting above each other without one of them breaking its own floor; above the ceiling the canvas is no longer off-black, which is the whole of what the operator asked for`,
+				`${id}: dark \`canvas\` ${p.canvas} sits at L* ${r2(lc)} — the band is [${LIFT.dark.canvasMin}, ${LIFT.dark.canvasMax}] in L*. Below the floor the three ink weights and the three ladder steps stop fitting above each other without one of them breaking its own floor; above the ceiling the canvas is no longer the darker tone the operator asked for (2026-11-03), and a palette above it was not re-lit by the band's proportional map`,
 			);
 		}
 		assertions++;
@@ -7393,23 +7455,59 @@ for (const { id, palette: p } of palettes) {
 
 /** The width of the register window the fleet is counted in, in `L*`. */
 const FLEET_WINDOW = 1.5;
-/** Measured 14; the spec's ceiling is also 14, so this one has no headroom. */
+/*
+ * THE DARK REGISTER WAS RE-BASELINED WHEN THE BAND MOVED (2026-11-03, the
+ * darker-grounds pass, `docs/branding.md` § 2). The dark canvas band went from
+ * [12, 22] to [9, 15], and every canvas was re-lit by ONE proportional map,
+ * `L*_new = 9 + 0.6 x (L*_old - 12)`, rather than clamped into the new band. A
+ * clamp would have stacked every palette above L* 15 on the ceiling, which is
+ * the "everything went the same grey" report this section exists for. The map
+ * itself preserves each palette's order and multiplies every gap by 0.6; the
+ * hand re-solves then move 34 canvases off it by up to +-1.04 L* (radient
+ * +1.04, gruvbox +0.89, rosePine +0.82), which inverts 45 of the 820 dark
+ * pairs, the widest by 0.96 L* (radient/outrun). Every inverted pair is held
+ * at least ΔE00 1.0 apart, except the counted sub-1.0 pairs below.
+ *
+ * So the dark rules below are the old rules read through the same map, not new
+ * targets: an `L*` WIDTH scales by 0.6 (the 1.5 window is 0.9, the 9.5 spread
+ * floor is 5.7), an `L*` POSITION maps through the formula (13.5 is 9.9), and a
+ * COUNT keeps its ceiling, because the map preserves which palettes share a
+ * window. Measured at the darker-grounds head: 14 in the widest 0.9 window (max
+ * 14), 13 below L* 9.9 (max 14), spread 5.87, 6 in the mapped upper register. The identity rules that are about pairs
+ * of colours rather than altitude (sub-1.0 pairs, byte-identical pairs, the
+ * near-neutral ladder, the chroma guard on moved values) are unchanged and hold
+ * at their old ceilings, so "two themes became the same grey" is still red.
+ */
+const FLEET_DARK_LIFT_SCALE = 0.6;
+/** 1.5 x 0.6: the same register, read through the proportional map. */
+const FLEET_DARK_WINDOW = FLEET_WINDOW * FLEET_DARK_LIFT_SCALE;
+/** Measured 14 in a 0.9 window at the re-lit head (14 in 1.5 before); no headroom. */
 const FLEET_DARK_WINDOW_CEILING = 14;
-/** A dark page ground below this is the register the pass emptied. */
-const FLEET_DARK_DEEP_L = 13.5;
-/** Measured 14; the spec's ceiling is 14. */
+/** 13.5 mapped: 9 + 0.6 x (13.5 - 12). The register the identity pass emptied. */
+const FLEET_DARK_DEEP_L = 9 + FLEET_DARK_LIFT_SCALE * (13.5 - 12);
+/** Measured 13 below L* 9.9 at the re-lit head; the ceiling stays the old 14. */
 const FLEET_DARK_DEEP_CEILING = 14;
 /** Measured 5 (`origin/main` 7); the spec's target is 0. */
 const FLEET_DARK_SUB1_CEILING = 5;
 /** Measured 2 (`origin/main` 3); the spec's target is 0. */
 const FLEET_DARK_IDENTICAL_CEILING = 2;
-/** The register the near-neutral palette's identity is carried by. */
-const FLEET_DARK_UPPER_LO = 18;
-const FLEET_DARK_UPPER_HI = 22;
-/** Measured 4; the spec's target is `>= 5`. */
+/*
+ * The register the near-neutral palettes' identity is carried by, read through
+ * the same map as every rule above: the old L* 18-22 maps to
+ * 9 + 0.6 x (18 - 12) = 12.6 and 9 + 0.6 x (22 - 12) = 15.0, which is the top of
+ * the new band. The map preserves which palettes share a register, so the four
+ * that held it before (catppuccinFrappe, everforest, nord, palenight) still do,
+ * now joined by oneDark and rosePine: measured 6 at the darker-grounds head.
+ * The floor stays at 4 (the spec's target is 5), because the count ceilings
+ * and the spread floor cannot see this register draining: with at most 14 per
+ * 0.9 window and a 5.7 spread, the top could fall to one canvas and stay green.
+ */
+const FLEET_DARK_UPPER_LO = 9 + FLEET_DARK_LIFT_SCALE * (18 - 12);
+const FLEET_DARK_UPPER_HI = 9 + FLEET_DARK_LIFT_SCALE * (22 - 12);
+/** Measured 6 at the darker-grounds head (4 in L* 18-22 before it); the spec's target is `>= 5`. */
 const FLEET_DARK_UPPER_FLOOR = 4;
-/** Measured 9.95 this pass, 9.99 before it; a floor, not a target. */
-const FLEET_DARK_SPREAD_FLOOR = 9.5;
+/** 9.5 x 0.6, measured 5.87 at the darker-grounds head (9.95 before); a floor, not a target. */
+const FLEET_DARK_SPREAD_FLOOR = 9.5 * FLEET_DARK_LIFT_SCALE;
 /** Measured 10 of 18 light canvases; the spec's ceiling is 8 (D14). */
 const FLEET_LIGHT_WINDOW_CEILING = 10;
 /** The light ceiling's own squeezing window. */
@@ -7850,7 +7948,7 @@ const widestRegister = (rows, width) => {
 };
 
 const state = {
-	darkWindow: widestRegister(darkFleet, FLEET_WINDOW),
+	darkWindow: widestRegister(darkFleet, FLEET_DARK_WINDOW),
 	darkDeep: darkFleet.filter((r) => r.L < FLEET_DARK_DEEP_L).length,
 	darkSub1: pairsWithin(darkFleet, 1),
 	darkIdenticalPairs: pairsWithin(darkFleet, Number.EPSILON),
@@ -7874,19 +7972,19 @@ const state = {
 assertions++;
 if (state.darkWindow > FLEET_DARK_WINDOW_CEILING) {
 	fail(
-		`the fleet: ${state.darkWindow} dark canvases sit inside one ${FLEET_WINDOW} L* window (max ${FLEET_DARK_WINDOW_CEILING}; it was 25 before the identity re-solve) - the fleet has been flattened toward one grey band again, which every per-palette assertion above will still pass`,
+		`the fleet: ${state.darkWindow} dark canvases sit inside one ${r2(FLEET_DARK_WINDOW)} L* window (max ${FLEET_DARK_WINDOW_CEILING}; it was 25 in a 1.5 window before the identity re-solve) - the fleet has been flattened toward one grey band again, which every per-palette assertion above will still pass`,
 	);
 }
 assertions++;
 if (state.darkDeep > FLEET_DARK_DEEP_CEILING) {
 	fail(
-		`the fleet: ${state.darkDeep} dark canvases are below L* ${FLEET_DARK_DEEP_L} (max ${FLEET_DARK_DEEP_CEILING}, was 25 before the identity re-solve) - the deep register is the one the pass emptied, and refilling it is how the operator's "a lot more grey now" comes back`,
+		`the fleet: ${state.darkDeep} dark canvases are below L* ${r2(FLEET_DARK_DEEP_L)} (max ${FLEET_DARK_DEEP_CEILING}, was 25 before the identity re-solve) - the deep register is the one the pass emptied, and refilling it is how the operator's "a lot more grey now" comes back`,
 	);
 }
 assertions++;
 if (state.darkSpread < FLEET_DARK_SPREAD_FLOOR) {
 	fail(
-		`the fleet: the dark canvases span ${r2(state.darkSpread)} L* (floor ${FLEET_DARK_SPREAD_FLOOR}, measured ${r2(state.darkSpread)} this pass against 9.99 before it) - the spread is the fleet's depth, and a per-palette gate cannot see it narrowing`,
+		`the fleet: the dark canvases span ${r2(state.darkSpread)} L* (floor ${r2(FLEET_DARK_SPREAD_FLOOR)}, measured 5.87 at the darker-grounds head, against 9.95 before it) - the spread is the fleet's depth, and a per-palette gate cannot see it narrowing`,
 	);
 }
 assertions++;
@@ -7901,10 +7999,11 @@ if (state.darkIdenticalPairs.length > FLEET_DARK_IDENTICAL_CEILING) {
 		`the fleet: ${state.darkIdenticalPairs.length} dark canvas pairs are BYTE-IDENTICAL (max ${FLEET_DARK_IDENTICAL_CEILING}, was 3 before the identity re-solve; the spec's target is 0): ${state.darkIdenticalPairs.map((pair) => `${pair.a}/${pair.b} ${pair.hex}`).join(", ")} - a palette that ships another palette's exact canvas has no depth of its own`,
 	);
 }
+
 assertions++;
 if (state.darkUpper < FLEET_DARK_UPPER_FLOOR) {
 	fail(
-		`the fleet: ${state.darkUpper} dark canvases sit in the L* ${FLEET_DARK_UPPER_LO}-${FLEET_DARK_UPPER_HI} register (floor ${FLEET_DARK_UPPER_FLOOR}, the spec's target is 5) - this is the register the near-neutral palettes' identity is carried by, and losing recruits to it is the same flattening seen from the other end`,
+		`the fleet: ${state.darkUpper} dark canvases sit in the L* ${r2(FLEET_DARK_UPPER_LO)}-${r2(FLEET_DARK_UPPER_HI)} register (floor ${FLEET_DARK_UPPER_FLOOR}, measured 6 at the darker-grounds head; the spec's target is 5) - this is the register the near-neutral palettes' identity is carried by, and losing recruits to it is the same flattening seen from the other end`,
 	);
 }
 
@@ -8791,5 +8890,5 @@ console.log(
  * moved.
  */
 console.log(
-	`Fleet: ${state.darkWindow} dark canvas(es) in a ${FLEET_WINDOW} L* window (max ${FLEET_DARK_WINDOW_CEILING}), ${state.darkDeep} below L* ${FLEET_DARK_DEEP_L}, spread ${r2(state.darkSpread)} L*; ${state.darkSub1.length} sub-1.0 and ${state.darkIdenticalPairs.length} identical dark canvas pair(s); light ${state.lightWindow} in a ${FLEET_WINDOW} L* window, ${state.lightHigh} at or above L* ${FLEET_LIGHT_HIGH_L}, ${state.lightSub1} sub-1.0 pair(s); ${hueOverPinByLattice} moved value(s) over the ${HUE_PIN_DEGREES} degree hue pin and inside the 8-bit envelope.`,
+	`Fleet: ${state.darkWindow} dark canvas(es) in a ${r2(FLEET_DARK_WINDOW)} L* window (max ${FLEET_DARK_WINDOW_CEILING}), ${state.darkDeep} below L* ${r2(FLEET_DARK_DEEP_L)}, spread ${r2(state.darkSpread)} L*; ${state.darkSub1.length} sub-1.0 and ${state.darkIdenticalPairs.length} identical dark canvas pair(s); light ${state.lightWindow} in a ${FLEET_WINDOW} L* window, ${state.lightHigh} at or above L* ${FLEET_LIGHT_HIGH_L}, ${state.lightSub1} sub-1.0 pair(s); ${hueOverPinByLattice} moved value(s) over the ${HUE_PIN_DEGREES} degree hue pin and inside the 8-bit envelope.`,
 );

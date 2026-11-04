@@ -272,6 +272,9 @@ export function InlineImageFailure({
 				"flex flex-col items-center justify-center gap-1 break-words bg-media-surface px-2 text-center text-[12px] text-ink-muted",
 				box ? "rounded-md" : "size-full rounded-xs",
 			)}
+			/* The `+N` overlay reads this to step aside to a corner (see
+			   `InlineImageOverflow`). */
+			data-image-failure=""
 			{...attributes}
 		>
 			{/*
@@ -284,6 +287,10 @@ export function InlineImageFailure({
 				role="img"
 				aria-label={label}
 				aria-describedby={copyId}
+				/* A glyph-only cell keeps its sentence for a sighted pointer too: the
+				   copy is screen-reader-only there, and the bare glyph left no way to
+				   tell "unavailable" from "expired" but its shape (#1659 design D4). */
+				title={roomy ? undefined : copy}
 				className="flex flex-col items-center gap-1"
 			>
 				<Icon size={20} aria-hidden="true" className="shrink-0 text-ink-dim" />
@@ -313,13 +320,19 @@ export function InlineImageFailure({
  * scrim: there is no scrim role, and the picture under it stays legible as
  * the set's fourth image. `aria-hidden`: the ready tile's name already says
  * "+N more images" (label in name), and a failed one keeps its own name.
+ *
+ * ON A FAILED FOURTH TILE IT MOVES TO THE TOP-END CORNER (#1659 review minor
+ * 1). Centred, it covered the failure glyph and the top half of a retryable
+ * tile's "Retry" text - the one recovery control in the cell. The slot's `<li>`
+ * is the `group/slot`; `data-image-failure` on the failure tile is what the
+ * corner placement keys on, so a picture keeps the centred label.
  */
 export function InlineImageOverflow({ count }: { count: number }) {
 	return (
 		<span
 			aria-hidden="true"
 			data-attachment-overflow={String(count)}
-			className="pointer-events-none absolute inset-0 flex items-center justify-center"
+			className="pointer-events-none absolute inset-0 flex items-center justify-center group-has-[[data-image-failure]]/slot:items-start group-has-[[data-image-failure]]/slot:justify-end group-has-[[data-image-failure]]/slot:p-1"
 		>
 			<span className="rounded-sm bg-elevated px-2 py-1 font-semibold text-[13px] text-ink">
 				{`+${count}`}

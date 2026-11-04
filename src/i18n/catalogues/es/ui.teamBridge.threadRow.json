@@ -1,0 +1,5 @@
+{
+	"ui.teamBridge.threadRow.label": "Ver hilo, {count, plural, one {# respuesta} many {# de respuestas} other {# respuestas}}{unread, plural, =0 {} other {, # sin leer}}{hasLast, select, yes {. {last}} other {}}",
+	"ui.teamBridge.threadRow.last": "Última respuesta: {when, select, today {hoy a las {time}} yesterday {ayer a las {time}} other {{time}}}",
+	"ui.teamBridge.threadRow.unread_badge": "{count, plural, other {{label} sin leer}}"
+}

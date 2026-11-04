@@ -1,8 +1,10 @@
+import { Skeleton } from "@shared/components/ui/skeleton";
 import { formatDate, formatTime, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { Bot, UserRound } from "lucide-react";
 import {
+	Fragment,
 	useCallback,
 	useEffect,
 	useLayoutEffect,
@@ -17,6 +19,7 @@ import type {
 } from "../../../../shared/team-bridge-contract";
 import { TeamBridgeMessageAttachments } from "./attachments/member-attachments";
 import { InlineDataBody } from "./inline-data-receipt";
+import { splitMentions } from "./mentions/message-mentions";
 import { useMessageMentions } from "./mentions/use-message-mentions";
 import {
 	type TeamBridgeArrivalIdentity,
@@ -38,7 +41,11 @@ import {
 	teamBridgeEventAnchors,
 } from "./team-bridge-member-events-model";
 import { TeamBridgeMessageToolbar } from "./team-bridge-message-toolbar";
-import { type ThreadItem, threadItems } from "./team-bridge-model";
+import {
+	type ThreadItem,
+	chronological,
+	threadItems,
+} from "./team-bridge-model";
 import {
 	TeamBridgeAvatar,
 	TeamBridgeProfileCard,
@@ -49,6 +56,7 @@ import {
 	useTeamBridgeReactionState,
 } from "./team-bridge-reactions";
 import { TEAM_BRIDGE_THREADS_SHIPPED_IN_THIS_BUILD } from "./team-bridge-thread-gate";
+import { TeamBridgeThreadRow } from "./team-bridge-thread-row";
 import { threadSummary } from "./team-bridge-threads-model";
 
 /**
@@ -285,6 +293,13 @@ export const TeamBridgeMessageList: FC<{
 	highlightId?: string | null;
 	/** Optimistic rows: identity and delivery state (see `TeamBridgeRowPresentation`). */
 	presentationOf?: (message: TeamBridgeMessage) => TeamBridgeRowPresentation;
+	/*
+	 * The reader's read watermark AS IT WAS WHEN THEY OPENED the conversation
+	 * (the page freezes it on entry, because reading advances the live one).
+	 * The "N new messages" divider sits above the first message past it that
+	 * someone else sent. Absent = no divider (the thread pane, the audit).
+	 */
+	unreadAfterSeq?: number;
 }> = ({
 	messages,
 	labelFor,
@@ -306,6 +321,7 @@ export const TeamBridgeMessageList: FC<{
 	events,
 	highlightId = null,
 	presentationOf,
+	unreadAfterSeq,
 }) => {
 	const locale = useI18nLocale();
 	const present = (message: TeamBridgeMessage): TeamBridgeRowPresentation =>
@@ -324,6 +340,25 @@ export const TeamBridgeMessageList: FC<{
 	);
 	const arriving = useArrivingRows(arrivalKey, identities, arrivalsEnabled);
 	const items = threadItems(messages, new Date());
+	/*
+	 * THE UNREAD DIVIDER (visual refresh D10) - Slack's and Discord's strongest
+	 * orientation cue. Only the hub's rows count (a local row's seq is a display
+	 * order) and only other people's: what the reader sent themselves is not news.
+	 */
+	const unseen =
+		unreadAfterSeq === undefined
+			? []
+			: messages.filter(
+					(message) =>
+						message.seq > unreadAfterSeq &&
+						message.sender.account_id !== accountId &&
+						!present(message).local,
+				);
+	/* The OLDEST unseen message, by seq, never by array position: the hub's
+	   timeline page arrives newest-first and only `threadItems` sorts it, so
+	   `unseen[0]` was the newest - the divider sat above the last of three
+	   (agent review round 1, M1). */
+	const firstUnreadId = chronological(unseen)[0]?.id;
 	const eventLabel: TeamBridgeEventLabel = (party) =>
 		labelFor(party) ??
 		(party.kind === "agent"
@@ -380,52 +415,65 @@ export const TeamBridgeMessageList: FC<{
 		   `display: table`; see their ScrollArea class names. */
 		<ol className="mt-auto flex w-full min-w-0 flex-col pt-4 pb-2">
 			{eventSlot(TEAM_BRIDGE_EVENTS_LEADING)}
-			{withEventsAfterRows(
+			{groupedByDay(
 				items,
 				eventSlot,
+				locale,
 				/*
 				 * ROW IDENTITY, NOT MESSAGE IDENTITY (the optimistic row). `present`
 				 * answers the row this message is drawn as: the server row's own id
 				 * until an optimistic sibling exists, then the local key that SURVIVES
 				 * the replacement, so reconciliation is a prop change on one mounted
 				 * subtree rather than an unmount. The event lines stay keyed by the
-				 * STORED message id (`withEventsAfterRows` reads `items`), because an
+				 * STORED message id (`groupedByDay` reads `items`), because an
 				 * event belongs to the hub's history and never to a draft.
 				 */
 				items.map((item) => {
-					if (item.type === "day")
-						return (
-							<DayDivider key={`day:${item.key}`} item={item} locale={locale} />
-						);
+					/* The day's pill is drawn by `groupedByDay`, which owns the day's
+					   containing block; this slot stays so `rows[i]` is `items[i]`. */
+					if (item.type === "day") return null;
 					const row = present(item.message);
+					const divider =
+						item.message.id === firstUnreadId ? (
+							<UnreadDivider count={unseen.length} />
+						) : null;
 					return (
-						<MessageRow
-							key={row.key}
-							rowKey={row.key}
-							local={row.local}
-							delivery={row.delivery}
-							message={item.message}
-							continuation={item.continuation}
-							label={labelFor(item.message.sender)}
-							member={profileFor?.(item.message.sender)}
-							onMessagePerson={onMessagePerson}
-							canMessagePerson={canMessagePerson}
-							locale={locale}
-							reactionContext={reactionContext}
-							onReply={onReply}
-							forceToolbar={forceToolbar}
-							tenantId={tenantId}
-							accountId={accountId}
-							density={density}
-							/* TWO IDENTITIES, TWO QUESTIONS. `arriving` follows the ROW key, which
+						<Fragment key={row.key}>
+							{divider}
+							<MessageRow
+								key={row.key}
+								rowKey={row.key}
+								local={row.local}
+								delivery={row.delivery}
+								message={item.message}
+								/* The divider restarts the run: the first message under "N new
+								   messages" always shows its author, as Slack and Discord do
+								   (agent review round 1, m1). */
+								continuation={
+									item.continuation && item.message.id !== firstUnreadId
+								}
+								label={labelFor(item.message.sender)}
+								member={profileFor?.(item.message.sender)}
+								profileFor={profileFor}
+								onMessagePerson={onMessagePerson}
+								canMessagePerson={canMessagePerson}
+								locale={locale}
+								reactionContext={reactionContext}
+								onReply={onReply}
+								forceToolbar={forceToolbar}
+								tenantId={tenantId}
+								accountId={accountId}
+								density={density}
+								/* TWO IDENTITIES, TWO QUESTIONS. `arriving` follows the ROW key, which
 							   survives an optimistic row's replacement; `highlighted` follows the
 							   STORED message id, because a notification names a hub message and a
 							   local row can never be one - so a pending row never wears the wash. */
-							arriving={arriving.has(row.key)}
-							highlighted={highlightId === item.message.id}
-							onArrivalEnd={arriving.end}
-							decoration={decorate?.(item.message)}
-						/>
+								arriving={arriving.has(row.key)}
+								highlighted={highlightId === item.message.id}
+								onArrivalEnd={arriving.end}
+								decoration={decorate?.(item.message)}
+							/>
+						</Fragment>
 					);
 				}),
 			)}
@@ -434,60 +482,166 @@ export const TeamBridgeMessageList: FC<{
 };
 
 /*
- * The row map's output with each message's event lines placed right after it.
+ * The row map's output, with each message's event lines placed right after it,
+ * grouped into one list item PER DAY.
  *
  * WHY A WRAPPER RATHER THAN A FRAGMENT IN THE MAP: the row map (and its React
- * keys) is shared with other in-flight changes; leaving it byte-identical keeps
- * every rebase textual. `rows[i]` is `items[i]`'s element by construction.
- * Event slots key in their own `events:` namespace (each line inside keys as
- * `event:<id>`), so they can never collide with a message or day key.
+ * keys) is shared with other in-flight changes; leaving it shaped like `items`
+ * keeps every rebase textual. `rows[i]` is `items[i]`'s element by
+ * construction (a day item's slot is null). Event slots key in their own
+ * `events:` namespace (each line inside keys as `event:<id>`), so they can never
+ * collide with a message or day key.
+ *
+ * WHY EACH DAY IS ITS OWN CONTAINING BLOCK (QA round 1, Q2). A sticky element
+ * sticks within its containing block. With every pill a sibling in the one
+ * list, every earlier pill stayed stuck at the same `top-2` under the later
+ * one, and since the labels differ in width the older one's ends showed on
+ * both sides ("Mor · Today · er 2"). Inside its own day's `<li>`, a pill is
+ * pushed off by the end of its day, so exactly one pill is ever stuck -
+ * Slack's floating date. Messages with no valid date (no day item before
+ * them) render in a pill-less group.
  */
-function withEventsAfterRows(
+function groupedByDay(
 	items: readonly ThreadItem[],
 	slot: (anchor: string) => ReactNode,
+	locale: string,
 	rows: ReactNode[],
 ): ReactNode[] {
 	const out: ReactNode[] = [];
+	let day: Extract<ThreadItem, { type: "day" }> | null = null;
+	let body: ReactNode[] = [];
+	const flush = () => {
+		if (day === null && body.length === 0) return;
+		out.push(
+			<DayGroup
+				key={day ? `day:${day.key}` : "day:none"}
+				item={day}
+				locale={locale}
+			>
+				{body}
+			</DayGroup>,
+		);
+		body = [];
+	};
 	rows.forEach((row, index) => {
-		out.push(row);
 		const item = items[index];
+		if (item?.type === "day") {
+			flush();
+			day = item;
+			return;
+		}
+		body.push(row);
 		if (item?.type === "message") {
 			const after = slot(item.message.id);
-			if (after) out.push(after);
+			if (after) body.push(after);
 		}
 	});
+	flush();
 	return out;
 }
 
 /*
- * A full-width hairline-free divider: the label sits in the middle of a
- * divider drawn as background value (`bg-hairline` at 1px is a ground, not a
- * border on a panel), matching Slack's centred day pill without its outline.
+ * ONE DAY: a hairline across the top, the sticky pill, then the day's rows.
+ * The hairline does NOT travel: a rule floating over messages would strike
+ * through them, so it is absolutely positioned at the group's top, behind the
+ * pill's resting position ("line - pill - line"). The pill sticks 8px under
+ * the pane's top while its day scrolls beneath it, and its day's end pushes it
+ * off (see `groupedByDay`). It is `elevated` (ΔE00 >= 4.17 off the `canvas`
+ * pane on every palette), so it occludes the text it floats over.
  */
-const DayDivider: FC<{
-	item: Extract<ThreadItem, { type: "day" }>;
+const DayGroup: FC<{
+	item: Extract<ThreadItem, { type: "day" }> | null;
 	locale: string;
-}> = ({ item, locale }) => {
+	children: ReactNode;
+}> = ({ item, locale, children }) => {
 	const label =
-		item.relative === "today"
-			? t("ui.teamBridge.thread.today")
-			: item.relative === "yesterday"
-				? t("ui.teamBridge.thread.yesterday")
-				: formatDate(
-						item.date,
-						{ weekday: "long", month: "long", day: "numeric" },
-						locale,
-					);
+		item === null
+			? null
+			: item.relative === "today"
+				? t("ui.teamBridge.thread.today")
+				: item.relative === "yesterday"
+					? t("ui.teamBridge.thread.yesterday")
+					: formatDate(
+							item.date,
+							{ weekday: "long", month: "long", day: "numeric" },
+							locale,
+						);
 	return (
-		<li className="flex items-center gap-3 px-5 py-2" aria-label={label}>
-			<span aria-hidden="true" className="h-px flex-1 bg-hairline" />
-			<span className="shrink-0 rounded-full bg-elevated px-2.5 py-0.5 font-medium text-[12px] text-ink-muted">
-				{label}
-			</span>
-			<span aria-hidden="true" className="h-px flex-1 bg-hairline" />
+		/* The group is the day's labelled list item (the label used to sit on the
+		   pill's own `<li>`); the pill and the rule are drawing, hidden from AT. */
+		<li data-day-group="" aria-label={label ?? undefined} className="relative">
+			{label !== null && (
+				<>
+					<span
+						aria-hidden="true"
+						data-day-rule=""
+						className="absolute inset-x-5 top-5 h-px bg-hairline"
+					/>
+					<div
+						aria-hidden="true"
+						data-day-divider=""
+						className="pointer-events-none sticky top-2 z-[5] flex justify-center py-2"
+					>
+						<span className="flex h-6 items-center rounded-full bg-elevated px-2.5 font-medium text-[12px] text-ink-muted">
+							{label}
+						</span>
+					</div>
+				</>
+			)}
+			<ol className="flex w-full min-w-0 flex-col">{children}</ol>
 		</li>
 	);
 };
+
+/*
+ * "N NEW MESSAGES" (visual refresh D10): a 1px accent rule above the first
+ * unread message, ending in a solid accent label. Accent is spent here on
+ * purpose - it is one of the screen's attention marks, beside the rail's
+ * badges - and the pair (`onAccent` on `accent`, edge `accent` on `canvas`)
+ * is a `CONTROLS` row. The label reuses the thread pane's translated count
+ * ("3 new messages") rather than a new bare "New", so no new copy ships.
+ */
+const UnreadDivider: FC<{ count: number }> = ({ count }) => (
+	<li
+		data-unread-divider=""
+		className="relative mx-5 mt-3 mb-1 flex h-4 items-center"
+	>
+		<span aria-hidden="true" className="h-px flex-1 bg-accent" />
+		<span className="shrink-0 rounded-xs bg-accent px-1.5 font-semibold text-[11px] text-on-accent leading-4">
+			{t("ui.teamBridge.notify.count", { count })}
+		</span>
+	</li>
+);
+
+/*
+ * Message rows while the read is in flight (visual refresh §3.2 States): the
+ * row's own anatomy - a 36px circle, a name bar, a body bar - so the timeline
+ * keeps its shape and nothing jumps when the read lands. A centred spinner in
+ * an empty pane read as "nothing here". The label is the status a screen
+ * reader hears.
+ */
+const SKELETON_ROWS = [
+	["28%", "64%"],
+	["22%", "48%"],
+	["30%", "72%"],
+	["18%", "40%"],
+] as const;
+export const TeamBridgeMessageSkeleton: FC<{ label: string }> = ({ label }) => (
+	<output
+		aria-label={label}
+		className="mt-auto flex w-full flex-col gap-4 px-5 pt-4 pb-2"
+	>
+		{SKELETON_ROWS.map(([name, body]) => (
+			<div key={`${name}:${body}`} aria-hidden="true" className="flex gap-3">
+				<Skeleton className="size-9 shrink-0 rounded-full" />
+				<div className="flex flex-1 flex-col gap-2 pt-1">
+					<Skeleton className="h-3 rounded-xs" style={{ width: name }} />
+					<Skeleton className="h-3 rounded-xs" style={{ width: body }} />
+				</div>
+			</div>
+		))}
+	</output>
+);
 
 type ReactionContext = {
 	accountId: string;
@@ -505,6 +659,10 @@ const MessageRow: FC<{
 	continuation: boolean;
 	label: string | null;
 	member?: TeamBridgeDirectoryMember;
+	/* The thread row's facepile resolves repliers through the same lookup. */
+	profileFor?: (
+		sender: TeamBridgeMessage["sender"],
+	) => TeamBridgeDirectoryMember | undefined;
 	onMessagePerson?: (sender: TeamBridgeMessage["sender"]) => void;
 	canMessagePerson?: (sender: TeamBridgeMessage["sender"]) => boolean;
 	locale: string;
@@ -574,6 +732,9 @@ type MessageRowProps = {
 	continuation: boolean;
 	label: string | null;
 	member?: TeamBridgeDirectoryMember;
+	profileFor?: (
+		sender: TeamBridgeMessage["sender"],
+	) => TeamBridgeDirectoryMember | undefined;
 	onMessagePerson?: (sender: TeamBridgeMessage["sender"]) => void;
 	canMessagePerson?: (sender: TeamBridgeMessage["sender"]) => boolean;
 	locale: string;
@@ -597,6 +758,7 @@ const MessageRowView: FC<MessageRowProps> = ({
 	continuation,
 	label: known,
 	member,
+	profileFor,
 	onMessagePerson,
 	canMessagePerson,
 	locale,
@@ -617,6 +779,24 @@ const MessageRowView: FC<MessageRowProps> = ({
 	// @-mentions in the body: `message.mentions` when the hub sends it, else
 	// `@Name` matching (mentions/message-mentions.ts says why both).
 	const mentionRuns = useMessageMentions(message);
+	/*
+	 * Whether the BODY names the reader - not whether a viewer run exists: the
+	 * name fallback lists every roster label as a candidate run, so the
+	 * question is answered by the same splitter the renderer highlights with.
+	 * Code spans are not excluded here (the renderer skips them), so a literal
+	 * "@Me" inside backticks would still wash the row - acceptable, and rare.
+	 */
+	const mentionsViewer = useMemo(
+		() =>
+			Boolean(
+				message.body &&
+					mentionRuns?.some((run) => run.viewer) &&
+					splitMentions(message.body, mentionRuns).some(
+						(segment) => segment.kind === "mention" && segment.viewer,
+					),
+			),
+		[message.body, mentionRuns],
+	);
 	/* One-level threads: only a timeline root can open a thread - and none can
 	   while the thread surface is held. `canReply` is therefore the ONE term the
 	   toolbar button and the "N replies" summary both read, so the affordance
@@ -659,7 +839,7 @@ const MessageRowView: FC<MessageRowProps> = ({
 		>
 			<button
 				type="button"
-				className="mt-0.5 block size-9 shrink-0 rounded-md text-start"
+				className="mt-0.5 block size-9 shrink-0 rounded-full text-start"
 			>
 				<TeamBridgeAvatar
 					member={member}
@@ -670,7 +850,7 @@ const MessageRowView: FC<MessageRowProps> = ({
 					   `text-ink-muted` for a person), and a host that restated the
 					   muted ink beat `text-accent` through tailwind-merge — one agent
 					   with two inks in one frame (agent review round 2, F4). */
-					className="size-9 rounded-md bg-media-surface text-[14px]"
+					className="size-9 text-[14px]"
 					fallback={
 						known === null ? (
 							<UserRound size={18} />
@@ -690,14 +870,53 @@ const MessageRowView: FC<MessageRowProps> = ({
 			data-delivery={delivery?.status}
 			onAnimationEnd={arriving ? onArrivalEnd : undefined}
 			className={cn(
-				"group/message relative flex w-full min-w-0 gap-3 px-5 transition-colors duration-fast ease-out-quart hover:bg-row-hover",
+				"group/message relative isolate flex w-full min-w-0 gap-3 px-5",
+				/*
+				 * THE HOVER IS AN INSET TINT, NOT A BAND (visual refresh D7). The old
+				 * `row-hover` ran edge to edge of the pane and measured ΔE00 2.3-3.2 off
+				 * it - the loudest thing on a resting screen. Discord's hover is a
+				 * rounded box inset from the pane's edges, one ground step up. The box
+				 * is a `::before` 8px in from each side (`inset-x-2`), BEHIND the row's
+				 * content (`-z-10` inside the row's own `isolate` stacking context), so
+				 * the row keeps its `px-5` and no text moves. The step is the pane's
+				 * next ground: `surface` on the canvas timeline, `elevated` in the
+				 * compact thread pane whose own ground is `surface`. Colour only.
+				 */
+				"before:pointer-events-none before:absolute before:inset-x-2 before:inset-y-0 before:-z-10 before:rounded-sm before:transition-colors before:duration-fast before:ease-out-quart",
+				mentionsViewer
+					? /* C3: a row that mentions the reader keeps its wash at rest and
+					     under the pointer; the bar below says why. The thread row's
+					     facepile ring reads the same wash in both states, or each
+					     plate wears a canvas/surface halo on it (#1672 round 3, D6). */
+						"before:bg-accent-wash [--thread-row-host:var(--color-accent-wash)] [--thread-row-message-hover:var(--color-accent-wash)]"
+					: density === "compact"
+						? "hover:before:bg-elevated"
+						: "hover:before:bg-surface",
 				// Transform/opacity only: the row reserves its final layout box
 				// immediately, so arrival cannot move the scroll geometry.
 				arriving && "lo-team-bridge-arrival",
 				highlighted && "lo-team-bridge-target",
-				continuation ? "py-0.5" : "mt-2 pt-1.5 pb-0.5",
+				/* Groups breathe, runs stay tight (Slack/Discord rhythm): 12px above a
+				   sender's first message, 1px between their continuations. */
+				continuation ? "py-px" : "mt-3 pt-1 pb-0.5",
 			)}
 		>
+			{/*
+			 * A ROW THAT MENTIONS THE READER (visual refresh, contract C3): Discord's
+			 * gold row, in this app's accent - the wash on the inset box plus a 2px
+			 * leading bar on its edge. The bar sits in the 12px gutter between the
+			 * box's edge and the text, so it covers nothing. Selection lost its bar
+			 * long ago (branding § 2); this is an ATTENTION mark, the same class as
+			 * the accent badge, and it is drawn only for the reader's own mention -
+			 * the inline token keeps #1656's viewer ink, which is what says "you".
+			 */}
+			{mentionsViewer && (
+				<span
+					aria-hidden="true"
+					data-mention-bar=""
+					className="pointer-events-none absolute inset-y-0 start-2 w-0.5 rounded-full bg-accent"
+				/>
+			)}
 			{/* The 36px gutter holds the avatar on a run's first message and the
 			    hover clock on its continuations, so bodies share one left edge. */}
 			<div className="w-9 shrink-0">
@@ -706,7 +925,17 @@ const MessageRowView: FC<MessageRowProps> = ({
 							<time
 								dateTime={message.created_at}
 								title={full}
-								className="block pt-0.5 text-right text-[11px] text-ink-dim opacity-0 group-hover/message:opacity-100"
+								/* ONE LINE, END-ALIGNED, OVERHANGING THE START (UX round 1, U1).
+								   "10:02 AM" is ~52px at 11px and the gutter is 36px, so a
+								   wrapping clock made every one-line continuation 39px tall and
+								   read "10:02 / AM". `whitespace-nowrap` plus `justify-end` on a
+								   flex box lets it run leftward into the row's 20px start
+								   padding instead (36 + 20 = 56px of room, and the gap to the
+								   body stays 12px), so a continuation is one 24px line. 11px
+								   (`text-meta-sm`) is the gutter's own register: it shows only
+								   under the pointer, beside the header row's 12px clock.
+								   Dropping the meridiem is not locale-safe, so it stays. */
+								className="flex justify-end whitespace-nowrap pt-0.5 text-meta-sm text-ink-dim leading-5 tabular-nums opacity-0 group-hover/message:opacity-100"
 							>
 								{clock}
 							</time>
@@ -718,27 +947,22 @@ const MessageRowView: FC<MessageRowProps> = ({
 									agent ? "agent" : known === null ? "unknown" : "initial"
 								}
 								className={cn(
-									// A rounded SQUARE, as the operator's reference draws it:
-									// Slack's people are squares, and a circle here would read as
-									// the app's own account avatar.
-									// Fixed box, clipped: an account picture can replace the
-									// initial later without moving a pixel of the row.
-									"mt-0.5 flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-md font-medium text-[14px]",
-									/* BORDERLESS, SEPARATED BY VALUE (operator ask, 2026-10-26).
-							   The plate used to need a `border-control` ring because
-							   `sunken` lands on the row-hover rung on some palettes
-							   (ΔE00 1.86 on iceberg) and vanished into a hovered row.
-							   `media-surface` is the app's borderless-tile fill: it
-							   deepens AWAY from the ground, so it clears `canvas`
-							   (ΔE00 >= 4.0, its contract floor), `surface` (>= 5.96)
-							   AND `row-hover` (>= 3.70) on all 59 palettes. Agents use
-							   the SAME fill with an accent Bot glyph: `accent-wash` is
-							   not a safe substitute, since it sits within ΔE00 1.38 of
-							   row-hover on obsidian and 1.56 on oneLight. The fill and
-							   glyph pair is registered in `scripts/contrast-contract.mjs`. */
+									/* ROUND, ON THE IDENTITY WASHES - the same plate
+									   `TeamBridgeAvatar` draws, for a sender the directory
+									   cannot picture (visual refresh D4, contract C2). The
+									   square `media-surface` plate read as a black hole beside
+									   every name (L* 2.4 in the operator's radient frame).
+									   One borderless wash for every identity, >= ΔE00 3.0 off
+									   each ground it sits on (design round 1, D1); kind reads
+									   from the ink - accent Bot vs accent-alt initial. The
+									   pairs are rows in `scripts/contrast-contract.mjs`. */
+									"mt-0.5 flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-full font-semibold text-[14px]",
+									"bg-accent-alt-wash",
 									agent
-										? "bg-media-surface text-accent"
-										: "bg-media-surface text-ink-muted",
+										? "text-accent"
+										: known === null
+											? "text-ink-muted"
+											: "text-accent-alt",
 								)}
 							>
 								{agent ? (
@@ -752,7 +976,7 @@ const MessageRowView: FC<MessageRowProps> = ({
 						))}
 			</div>
 			<div className="min-w-0 flex-1">
-				{/* First in the column so it floats beside the first line; see
+				{/* An overlay positioned on the row (`<li>`), not the column; see
 				    `team-bridge-message-toolbar.tsx` for why one toolbar exists. */}
 				<TeamBridgeMessageToolbar
 					reactions={reactions}
@@ -760,7 +984,7 @@ const MessageRowView: FC<MessageRowProps> = ({
 					forceVisible={forceToolbar}
 				/>
 				{!continuation && (
-					<div className="flex items-baseline gap-2">
+					<div className="flex items-baseline gap-2 leading-5">
 						{member ? (
 							<TeamBridgeProfileCard
 								member={member}
@@ -794,7 +1018,7 @@ const MessageRowView: FC<MessageRowProps> = ({
 							<time
 								dateTime={message.created_at}
 								title={full}
-								className="shrink-0 text-[12px] text-ink-dim"
+								className="shrink-0 text-meta text-ink-dim tabular-nums"
 							>
 								{clock}
 							</time>
@@ -930,37 +1154,12 @@ const MessageRowView: FC<MessageRowProps> = ({
 					</div>
 				)}
 				{canReply && summary.count > 0 && (
-					<button
-						type="button"
-						onClick={() => onReply(message)}
-						className="mt-1 flex items-center gap-2 rounded-md py-1 text-[12px] text-accent hover:bg-row-hover"
-					>
-						<span aria-hidden="true" className="flex gap-0.5">
-							{summary.participants.map((name, index) => (
-								<span
-									key={`${index}:${name}`}
-									// Initials are ink, not plates: the summary button already owns
-									// the row-hover state, so nesting a ladder fill loses its edge.
-									className="flex size-5 items-center justify-center text-[10px] text-ink-muted"
-								>
-									{name.trim().charAt(0).toUpperCase()}
-								</span>
-							))}
-						</span>
-						{t("ui.teamBridge.replies.count", { count: summary.count })}
-						{summary.lastReply && (
-							<span className="text-ink-dim">
-								·{" "}
-								{t("ui.teamBridge.replies.last", {
-									time: formatTime(
-										summary.lastReply,
-										{ hour: "numeric", minute: "2-digit" },
-										locale,
-									),
-								})}
-							</span>
-						)}
-					</button>
+					<TeamBridgeThreadRow
+						message={message}
+						onOpen={() => onReply(message)}
+						profileFor={profileFor}
+						locale={locale}
+					/>
 				)}
 				{decoration?.after}
 			</div>
