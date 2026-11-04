@@ -64,11 +64,11 @@ export const kanagawaWave: ThemeDefinition = {
 		/*
 		 * THE DARKER-GROUNDS PASS (2026-11-03, `docs/branding.md` § 2) supersedes the
 		 * earlier L* 12 dark floor: the dark band is now L* 9-15 (target 9-13), and
-		 * the canvas maps by `L*_new = 9 + 0.6 x (L*_old - 12)`, which keeps this
-		 * palette's place in the fleet. Here every ground-class role (the grounds, the
-		 * row states, the two fills, the washes and the hairlines) moved by the
-		 * canvas's own ΔL* holding its `a` and `b`; inks, accents and `borderControl` did
-		 * not move.
+		 * the canvas maps by `L*_new = 9 + 0.6 x (L*_old - 12)`, a map that preserves
+		 * the fleet's order (re-solves may move a canvas off it, up to +-1.04 L*).
+		 * Here every ground-class role (the grounds, the row states, the two fills,
+		 * the washes and the hairlines) moved by the canvas's own ΔL* holding its `a`
+		 * and `b`; inks, accents and `borderControl` did not move.
 		 * Measured:
 		 * canvas #1F1F28 -> #191922 (L* 12.12 -> 9.14)
 		 * surface #292936 -> #22222F (L* 17.10 -> 13.76)
@@ -92,7 +92,10 @@ export const kanagawaWave: ThemeDefinition = {
 		// The media slot's well: ΔE00 4.25 off the canvas, where `sunken` alone
 		// measures 3.06 - a step away from the canvas to clear the role's 4.0
 		// floor, which the tile carries because the fill IS its resting extent.
-		mediaSurface: "#0A0B13",
+		// Lifted #0A0B13 -> #0C0D14 (L* 3.17 -> 3.76) once Team Bridge's
+		// inline images and file chips began to paint this well (#1659): as far
+		// toward L* 6 as the media floor allows (ΔE00 4.20 off canvas; chip hosts >= 3.0).
+		mediaSurface: "#0C0D14",
 
 		/*
 		 * ROW STATES, and `highlight` retired in the same change. Both roles are a

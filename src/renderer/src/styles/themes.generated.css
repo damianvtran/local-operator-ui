@@ -58,7 +58,7 @@
 	--lo-elevated: #28282C;
 	--lo-sunken: #141515;
 	--lo-message-surface: #26262A;
-	--lo-media-surface: #0C0E0B;
+	--lo-media-surface: #10120F;
 	--lo-row-hover: #28282C;
 	--lo-row-selected: #2A2A33;
 	--lo-ink: #E8E8E4;
@@ -99,7 +99,7 @@
 	--lo-elevated: #233040;
 	--lo-sunken: #0A141F;
 	--lo-message-surface: #1E2A39;
-	--lo-media-surface: #040D1B;
+	--lo-media-surface: #070F1D;
 	--lo-row-hover: #282E37;
 	--lo-row-selected: #213247;
 	--lo-ink: #E3ECF4;
@@ -181,7 +181,7 @@
 	--lo-elevated: #252B37;
 	--lo-sunken: #111216;
 	--lo-message-surface: #202531;
-	--lo-media-surface: #101215;
+	--lo-media-surface: #111315;
 	--lo-row-hover: #262930;
 	--lo-row-selected: #242D3E;
 	--lo-ink: #C6C4BC;
@@ -468,7 +468,7 @@
 	--lo-elevated: #282135;
 	--lo-sunken: #17161C;
 	--lo-message-surface: #221D2C;
-	--lo-media-surface: #0F0F16;
+	--lo-media-surface: #101016;
 	--lo-row-hover: #25222B;
 	--lo-row-selected: #292338;
 	--lo-ink: #EAE5F2;
@@ -591,7 +591,7 @@
 	--lo-elevated: #2F261E;
 	--lo-sunken: #151313;
 	--lo-message-surface: #28231f;
-	--lo-media-surface: #100E11;
+	--lo-media-surface: #141215;
 	--lo-row-hover: #2C2826;
 	--lo-row-selected: #332A23;
 	--lo-ink: #F8F3EC;
@@ -632,7 +632,7 @@
 	--lo-elevated: #2F2B4B;
 	--lo-sunken: #120F1F;
 	--lo-message-surface: #26233e;
-	--lo-media-surface: #120F1F;
+	--lo-media-surface: #131120;
 	--lo-row-hover: #2D2A3B;
 	--lo-row-selected: #302C4D;
 	--lo-ink: #E0DEF4;
@@ -1042,7 +1042,7 @@
 	--lo-elevated: #2A2A39;
 	--lo-sunken: #0F0E17;
 	--lo-message-surface: #232331;
-	--lo-media-surface: #0A0B13;
+	--lo-media-surface: #0C0D14;
 	--lo-row-hover: #2A2931;
 	--lo-row-selected: #2C2C40;
 	--lo-ink: #DCD7BA;
@@ -1329,7 +1329,7 @@
 	--lo-elevated: #2F2E25;
 	--lo-sunken: #151610;
 	--lo-message-surface: #2c2b23;
-	--lo-media-surface: #10110b;
+	--lo-media-surface: #11120d;
 	--lo-row-hover: #2B2C28;
 	--lo-row-selected: #2D3022;
 	--lo-ink: #F8F8F2;
@@ -1370,7 +1370,7 @@
 	--lo-elevated: #202840;
 	--lo-sunken: #151519;
 	--lo-message-surface: #1B2131;
-	--lo-media-surface: #100F16;
+	--lo-media-surface: #111016;
 	--lo-row-hover: #242731;
 	--lo-row-selected: #222B41;
 	--lo-ink: #E0E0E0;
@@ -1534,7 +1534,7 @@
 	--lo-elevated: #2E2D31;
 	--lo-sunken: #141418;
 	--lo-message-surface: #252428;
-	--lo-media-surface: #0E0E15;
+	--lo-media-surface: #111118;
 	--lo-row-hover: #2A2A2E;
 	--lo-row-selected: #2D2D36;
 	--lo-ink: #FAFAFA;
@@ -1821,7 +1821,7 @@
 	--lo-elevated: #242A44;
 	--lo-sunken: #141619;
 	--lo-message-surface: #212536;
-	--lo-media-surface: #0C0E14;
+	--lo-media-surface: #0E0F15;
 	--lo-row-hover: #292B36;
 	--lo-row-selected: #262D44;
 	--lo-ink: #F2F7FC;
@@ -1944,7 +1944,7 @@
 	--lo-elevated: #292540;
 	--lo-sunken: #151223;
 	--lo-message-surface: #28243f;
-	--lo-media-surface: #131020;
+	--lo-media-surface: #131120;
 	--lo-row-hover: #2B2837;
 	--lo-row-selected: #2E2A48;
 	--lo-ink: #e0def4;
@@ -2190,7 +2190,7 @@
 	--lo-elevated: #2A2640;
 	--lo-sunken: #161322;
 	--lo-message-surface: #28253d;
-	--lo-media-surface: #130f1d;
+	--lo-media-surface: #15111e;
 	--lo-row-hover: #2A2836;
 	--lo-row-selected: #2D2946;
 	--lo-ink: #F2EFF8;
@@ -2313,7 +2313,7 @@
 	--lo-elevated: #262D48;
 	--lo-sunken: #131728;
 	--lo-message-surface: #232942;
-	--lo-media-surface: #0D0E22;
+	--lo-media-surface: #101125;
 	--lo-row-hover: #2C2E3C;
 	--lo-row-selected: #28304E;
 	--lo-ink: #CAD4FF;
@@ -2354,7 +2354,7 @@
 	--lo-elevated: #1D2737;
 	--lo-sunken: #131418;
 	--lo-message-surface: #19212E;
-	--lo-media-surface: #121011;
+	--lo-media-surface: #151314;
 	--lo-row-hover: #21262E;
 	--lo-row-selected: #1D293C;
 	--lo-ink: #D8E6F2;
@@ -2395,7 +2395,7 @@
 	--lo-elevated: #302648;
 	--lo-sunken: #1B152D;
 	--lo-message-surface: #2f2546;
-	--lo-media-surface: #150f26;
+	--lo-media-surface: #151026;
 	--lo-row-hover: #322A3D;
 	--lo-row-selected: #372B4E;
 	--lo-ink: #EDE8F2;

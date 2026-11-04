@@ -75,10 +75,11 @@ export const localOperatorDark: ThemeDefinition = {
 		/*
 		 * THE DARKER-GROUNDS PASS (2026-11-03, `docs/branding.md` § 2) supersedes the
 		 * earlier L* 12 dark floor: the dark band is now L* 9-15 (target 9-13), and
-		 * the canvas maps by `L*_new = 9 + 0.6 x (L*_old - 12)`, which keeps this
-		 * palette's place in the fleet. Here the grounds are hand-tuned to the ladder
-		 * in the design spec (SPEC § 2.2) rather than by the rule alone; the roles it
-		 * does not name moved by the canvas's own ΔL* holding their `a` and `b`.
+		 * the canvas maps by `L*_new = 9 + 0.6 x (L*_old - 12)`, a map that preserves
+		 * the fleet's order (re-solves may move a canvas off it, up to +-1.04 L*).
+		 * Here the grounds are hand-tuned to the ladder in the design spec (SPEC §
+		 * 2.2) rather than by the rule alone; the roles it does not name moved by the
+		 * canvas's own ΔL* holding their `a` and `b`.
 		 * Measured:
 		 * canvas #22201c -> #1d1b17 (L* 12.33 -> 9.85)
 		 * surface #2b2721 -> #26221c (L* 15.87 -> 13.47)

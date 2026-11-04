@@ -136,8 +136,10 @@ grounds only raise ink contrast, and the re-light measured 0 ink-floor failures
 across the 41 dark palettes.
 
 The ceiling of 15 is not a clamp. Every dark palette was re-lit by one
-proportional map, `L*_new = 9 + 0.6 × (L*_old − 12)` (12 → 9, 22 → 15), so each
-theme keeps its place in the fleet and its spacing from its neighbours. A clamp
+proportional map, `L*_new = 9 + 0.6 × (L*_old − 12)` (12 → 9, 22 → 15). The map
+preserves each theme's order and spacing; the hand re-solves move 34 canvases
+off it by up to ±1.04 L\*, which inverts 45 of the 820 dark pairs (the widest by
+0.96 L\*). Every inverted pair is still held apart by the fleet's pair rules. A clamp
 into 9–13 would have stacked a third of the fleet on the ceiling. That is the
 "the themes have all gone the same grey" regression the contract's fleet section
 guards. The design spec proposed 9–13; the 15 ceiling is that widening, and
@@ -713,7 +715,7 @@ the weakest pair anywhere in the system is sage at 8.4.
 
 | Assertion | Floor |
 |---|---|
-| dark `canvas` / dark `elevated` / light `canvas` / light `sunken` | L\* 12–22 / ≤ 30 / ≤ 94 / ≥ 80 |
+| dark `canvas` / dark `elevated` / light `canvas` / light `sunken` | L\* 9–15 / ≤ 22 / ≤ 94 / ≥ 80 |
 | `canvas`→`surface` / `surface`→`elevated` / `canvas`→`sunken` | +2.5–5.0 / +2.5–6.0 / 1.5–6.0 `L*` |
 | `ink` on each of the eight grounds | 7:1 |
 | `ink` on `canvas` | 8:1 |

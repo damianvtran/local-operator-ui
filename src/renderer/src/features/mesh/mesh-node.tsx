@@ -430,7 +430,8 @@ export const MeshDeviceNode: FC<DeviceNodeProps> = ({
 				 * Re-measured on the same head with the repo's own `deltaE`, that pair is
 				 * **9.19 / 4.80** - the hairline is VISIBLE, and the frame agrees (the stripe
 				 * renders as a band of `#dad5cb` against the `#fefdfa` fill in light, `#403b2c`
-				 * against `#322D22` in dark). The edge is chosen for the ratio above, not for the
+				 * against `#322D22` in dark; after the 2026-11-03 darker grounds the dark pair
+				 * is `#3b3627` against `#2F2A1F`, ΔE00 4.20). The edge is chosen for the ratio above, not for the
 				 * hairline's invisibility, and the resting stripe is a deliberate quiet bar
 				 * rather than nothing.
 				 *

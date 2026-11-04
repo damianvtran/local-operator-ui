@@ -68,11 +68,11 @@ export const rosePineMoon: ThemeDefinition = {
 		/*
 		 * THE DARKER-GROUNDS PASS (2026-11-03, `docs/branding.md` § 2) supersedes the
 		 * earlier L* 12 dark floor: the dark band is now L* 9-15 (target 9-13), and
-		 * the canvas maps by `L*_new = 9 + 0.6 x (L*_old - 12)`, which keeps this
-		 * palette's place in the fleet. Here every ground-class role (the grounds, the
-		 * row states, the two fills, the washes and the hairlines) moved by the
-		 * canvas's own ΔL* holding its `a` and `b`; inks, accents and `borderControl` did
-		 * not move.
+		 * the canvas maps by `L*_new = 9 + 0.6 x (L*_old - 12)`, a map that preserves
+		 * the fleet's order (re-solves may move a canvas off it, up to +-1.04 L*).
+		 * Here every ground-class role (the grounds, the row states, the two fills,
+		 * the washes and the hairlines) moved by the canvas's own ΔL* holding its `a`
+		 * and `b`; inks, accents and `borderControl` did not move.
 		 * Measured:
 		 * canvas #232136 -> #1C1A2F (L* 13.89 -> 10.49)
 		 * surface #2a273f -> #232038 (L* 17.00 -> 13.68)
@@ -81,8 +81,9 @@ export const rosePineMoon: ThemeDefinition = {
 		 * Re-solved off the uniform shift, because a contract floor refused it there:
 		 * `elevated`, `messageSurface`. `pnpm check-themes` is the measurement for
 		 * each.
-		 * accent #eaaca9 -> #ea9a97: the scheme's own `love` family's light tint
-		 * #ea9a97, in place of the palest rose: C* 24.6 -> 32.7.
+		 * accent #eaaca9 -> #ea9a97: Moon's own named `rose` #ea9a97 (rose-pine
+		 * palette; Moon's `love` is #eb6f92), where the file carried a lightened
+		 * main-variant rose before: C* 24.6 -> 32.7.
 		 * `accentActive` steps 5 L* below the new accent on the same cast, so the
 		 * press stays ΔE00 >= 2 from rest.
 		 */
@@ -98,7 +99,10 @@ export const rosePineMoon: ThemeDefinition = {
 		// The media slot's well: ΔE00 4.14 off the canvas, where `sunken` alone
 		// measures 3.05 - a step away from the canvas to clear the role's 4.0
 		// floor, which the tile carries because the fill IS its resting extent.
-		mediaSurface: "#131020",
+		// Lifted #131020 -> #131120 (L* 5.54 -> 5.81) once Team Bridge's
+		// inline images and file chips began to paint this well (#1659): as far
+		// toward L* 6 as the media floor allows (ΔE00 4.26 off canvas; chip hosts >= 3.0).
+		mediaSurface: "#131120",
 
 		/*
 		 * ROW STATES, and `highlight` retired in the same change. Both roles are a

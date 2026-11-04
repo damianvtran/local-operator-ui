@@ -38,11 +38,11 @@ export const duskfox: ThemeDefinition = {
 		/*
 		 * THE DARKER-GROUNDS PASS (2026-11-03, `docs/branding.md` § 2) supersedes the
 		 * earlier L* 12 dark floor: the dark band is now L* 9-15 (target 9-13), and
-		 * the canvas maps by `L*_new = 9 + 0.6 x (L*_old - 12)`, which keeps this
-		 * palette's place in the fleet. Here every ground-class role (the grounds, the
-		 * row states, the two fills, the washes and the hairlines) moved by the
-		 * canvas's own ΔL* holding its `a` and `b`; inks, accents and `borderControl` did
-		 * not move.
+		 * the canvas maps by `L*_new = 9 + 0.6 x (L*_old - 12)`, a map that preserves
+		 * the fleet's order (re-solves may move a canvas off it, up to +-1.04 L*).
+		 * Here every ground-class role (the grounds, the row states, the two fills,
+		 * the washes and the hairlines) moved by the canvas's own ΔL* holding its `a`
+		 * and `b`; inks, accents and `borderControl` did not move.
 		 * Measured:
 		 * canvas #232136 -> #1B192E (L* 13.89 -> 10.00)
 		 * surface #2D2A45 -> #25223C (L* 18.56 -> 14.75)
@@ -64,7 +64,10 @@ export const duskfox: ThemeDefinition = {
 		messageSurface: "#26233e",
 		// The media slot's well: `sunken` itself, which already clears the
 		// role's floor off this canvas (measured ΔE00 4.14, 5.24 L*).
-		mediaSurface: "#120F1F",
+		// Lifted #120F1F -> #131120 (L* 5.14 -> 5.81) once Team Bridge's
+		// inline images and file chips began to paint this well (#1659): as far
+		// toward L* 6 as the media floor allows (ΔE00 4.10 off canvas; chip hosts >= 3.0).
+		mediaSurface: "#131120",
 
 		/*
 		 * ROW STATES, and `highlight` retired in the same change. Both roles are a

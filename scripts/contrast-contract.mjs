@@ -258,8 +258,10 @@ const GROUNDS6 = [
  * `L*_new = 9 + 0.6 x (L*_old - 12)`, rather than clamped: a clamp would stack
  * every palette that sat above the new top onto it, which is the "the themes
  * have all gone the same grey" regression the fleet section (5b) exists for. The
- * map keeps each palette's order and its relative spacing, so theme identity
- * is carried by hue and chroma at the darker L*, not by a shared altitude. The
+ * map preserves order and relative spacing; the hand re-solves move 34
+ * canvases off it by up to +-1.04 L* (45 of 820 pairs invert, all held apart by
+ * the fleet's pair rules), so theme identity is carried by hue and chroma at
+ * the darker L*, not by a shared altitude. The
  * design spec proposed 9-13; 15 is the manager's widening for that reason, and
  * 9-13 remains the target the median (L* 10.96 after the map) sits in.
  *
@@ -7374,16 +7376,19 @@ const FLEET_WINDOW = 1.5;
  * [12, 22] to [9, 15], and every canvas was re-lit by ONE proportional map,
  * `L*_new = 9 + 0.6 x (L*_old - 12)`, rather than clamped into the new band. A
  * clamp would have stacked every palette above L* 15 on the ceiling, which is
- * the "everything went the same grey" report this section exists for; the
- * proportional map keeps each palette's ORDER and its relative spacing, and
- * multiplies every gap by 0.6.
+ * the "everything went the same grey" report this section exists for. The map
+ * itself preserves each palette's order and multiplies every gap by 0.6; the
+ * hand re-solves then move 34 canvases off it by up to +-1.04 L* (radient
+ * +1.04, gruvbox +0.89, rosePine +0.82), which inverts 45 of the 820 dark
+ * pairs, the widest by 0.96 L* (radient/outrun). Every inverted pair is held
+ * at least ΔE00 1.0 apart, except the counted sub-1.0 pairs below.
  *
  * So the dark rules below are the old rules read through the same map, not new
  * targets: an `L*` WIDTH scales by 0.6 (the 1.5 window is 0.9, the 9.5 spread
  * floor is 5.7), an `L*` POSITION maps through the formula (13.5 is 9.9), and a
  * COUNT keeps its ceiling, because the map preserves which palettes share a
- * window. Measured at the re-lit head: 14 in the widest 0.9 window (max 14), 13
- * below L* 9.9 (max 14), spread 5.91. The identity rules that are about pairs
+ * window. Measured at the darker-grounds head: 14 in the widest 0.9 window (max
+ * 14), 13 below L* 9.9 (max 14), spread 5.87, 6 in the mapped upper register. The identity rules that are about pairs
  * of colours rather than altitude (sub-1.0 pairs, byte-identical pairs, the
  * near-neutral ladder, the chroma guard on moved values) are unchanged and hold
  * at their old ceilings, so "two themes became the same grey" is still red.
@@ -7402,15 +7407,21 @@ const FLEET_DARK_SUB1_CEILING = 5;
 /** Measured 2 (`origin/main` 3); the spec's target is 0. */
 const FLEET_DARK_IDENTICAL_CEILING = 2;
 /*
- * RETIRED: the "at least 4 dark canvases in L* 18-22" register floor. It said
- * that the near-neutral palettes' identity was carried by sitting HIGH, and the
- * accepted contract change (C1) makes L* 15 the hard ceiling, so the register no
- * longer exists inside the band and no proportional reading of it is possible
- * (18-22 maps to 12.6-15, which is simply the top of the band). What it guarded,
- * near-neutral canvases being told apart, is still asserted by the near-neutral
- * pair ceiling below, which measures the gaps between them directly.
+ * The register the near-neutral palettes' identity is carried by, read through
+ * the same map as every rule above: the old L* 18-22 maps to
+ * 9 + 0.6 x (18 - 12) = 12.6 and 9 + 0.6 x (22 - 12) = 15.0, which is the top of
+ * the new band. The map preserves which palettes share a register, so the four
+ * that held it before (catppuccinFrappe, everforest, nord, palenight) still do,
+ * now joined by oneDark and rosePine: measured 6 at the darker-grounds head.
+ * The floor stays at 4 (the spec's target is 5), because the count ceilings
+ * and the spread floor cannot see this register draining: with at most 14 per
+ * 0.9 window and a 5.7 spread, the top could fall to one canvas and stay green.
  */
-/** 9.5 x 0.6, measured 5.91 at the re-lit head (9.95 before); a floor, not a target. */
+const FLEET_DARK_UPPER_LO = 9 + FLEET_DARK_LIFT_SCALE * (18 - 12);
+const FLEET_DARK_UPPER_HI = 9 + FLEET_DARK_LIFT_SCALE * (22 - 12);
+/** Measured 6 at the darker-grounds head (4 in L* 18-22 before it); the spec's target is `>= 5`. */
+const FLEET_DARK_UPPER_FLOOR = 4;
+/** 9.5 x 0.6, measured 5.87 at the darker-grounds head (9.95 before); a floor, not a target. */
 const FLEET_DARK_SPREAD_FLOOR = 9.5 * FLEET_DARK_LIFT_SCALE;
 /** Measured 10 of 18 light canvases; the spec's ceiling is 8 (D14). */
 const FLEET_LIGHT_WINDOW_CEILING = 10;
@@ -7856,6 +7867,9 @@ const state = {
 	darkDeep: darkFleet.filter((r) => r.L < FLEET_DARK_DEEP_L).length,
 	darkSub1: pairsWithin(darkFleet, 1),
 	darkIdenticalPairs: pairsWithin(darkFleet, Number.EPSILON),
+	darkUpper: darkFleet.filter(
+		(r) => r.L >= FLEET_DARK_UPPER_LO && r.L <= FLEET_DARK_UPPER_HI,
+	).length,
 	darkSpread:
 		Math.max(...darkFleet.map((r) => r.L)) -
 		Math.min(...darkFleet.map((r) => r.L)),
@@ -7885,7 +7899,7 @@ if (state.darkDeep > FLEET_DARK_DEEP_CEILING) {
 assertions++;
 if (state.darkSpread < FLEET_DARK_SPREAD_FLOOR) {
 	fail(
-		`the fleet: the dark canvases span ${r2(state.darkSpread)} L* (floor ${r2(FLEET_DARK_SPREAD_FLOOR)}, measured 5.91 at the darker-grounds pass, which mapped 9.95 by x 0.6) - the spread is the fleet's depth, and a per-palette gate cannot see it narrowing`,
+		`the fleet: the dark canvases span ${r2(state.darkSpread)} L* (floor ${r2(FLEET_DARK_SPREAD_FLOOR)}, measured 5.87 at the darker-grounds head, against 9.95 before it) - the spread is the fleet's depth, and a per-palette gate cannot see it narrowing`,
 	);
 }
 assertions++;
@@ -7898,6 +7912,13 @@ assertions++;
 if (state.darkIdenticalPairs.length > FLEET_DARK_IDENTICAL_CEILING) {
 	fail(
 		`the fleet: ${state.darkIdenticalPairs.length} dark canvas pairs are BYTE-IDENTICAL (max ${FLEET_DARK_IDENTICAL_CEILING}, was 3 before the identity re-solve; the spec's target is 0): ${state.darkIdenticalPairs.map((pair) => `${pair.a}/${pair.b} ${pair.hex}`).join(", ")} - a palette that ships another palette's exact canvas has no depth of its own`,
+	);
+}
+
+assertions++;
+if (state.darkUpper < FLEET_DARK_UPPER_FLOOR) {
+	fail(
+		`the fleet: ${state.darkUpper} dark canvases sit in the L* ${r2(FLEET_DARK_UPPER_LO)}-${r2(FLEET_DARK_UPPER_HI)} register (floor ${FLEET_DARK_UPPER_FLOOR}, measured 6 at the darker-grounds head; the spec's target is 5) - this is the register the near-neutral palettes' identity is carried by, and losing recruits to it is the same flattening seen from the other end`,
 	);
 }
 

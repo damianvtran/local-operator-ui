@@ -45,11 +45,11 @@ export const palenight: ThemeDefinition = {
 		/*
 		 * THE DARKER-GROUNDS PASS (2026-11-03, `docs/branding.md` § 2) supersedes the
 		 * earlier L* 12 dark floor: the dark band is now L* 9-15 (target 9-13), and
-		 * the canvas maps by `L*_new = 9 + 0.6 x (L*_old - 12)`, which keeps this
-		 * palette's place in the fleet. Here every ground-class role (the grounds, the
-		 * row states, the two fills, the washes and the hairlines) moved by the
-		 * canvas's own ΔL* holding its `a` and `b`; inks, accents and `borderControl` did
-		 * not move.
+		 * the canvas maps by `L*_new = 9 + 0.6 x (L*_old - 12)`, a map that preserves
+		 * the fleet's order (re-solves may move a canvas off it, up to +-1.04 L*).
+		 * Here every ground-class role (the grounds, the row states, the two fills,
+		 * the washes and the hairlines) moved by the canvas's own ΔL* holding its `a`
+		 * and `b`; inks, accents and `borderControl` did not move.
 		 * Measured:
 		 * canvas #292D3E -> #1D2132 (L* 18.78 -> 13.10)
 		 * surface #2F3446 -> #23283A (L* 21.95 -> 16.41)

@@ -71,11 +71,11 @@ export const rosewood: ThemeDefinition = {
 		/*
 		 * THE DARKER-GROUNDS PASS (2026-11-03, `docs/branding.md` § 2) supersedes the
 		 * earlier L* 12 dark floor: the dark band is now L* 9-15 (target 9-13), and
-		 * the canvas maps by `L*_new = 9 + 0.6 x (L*_old - 12)`, which keeps this
-		 * palette's place in the fleet. Here every ground-class role (the grounds, the
-		 * row states, the two fills, the washes and the hairlines) moved by the
-		 * canvas's own ΔL* holding its `a` and `b`; inks, accents and `borderControl` did
-		 * not move.
+		 * the canvas maps by `L*_new = 9 + 0.6 x (L*_old - 12)`, a map that preserves
+		 * the fleet's order (re-solves may move a canvas off it, up to +-1.04 L*).
+		 * Here every ground-class role (the grounds, the row states, the two fills,
+		 * the washes and the hairlines) moved by the canvas's own ΔL* holding its `a`
+		 * and `b`; inks, accents and `borderControl` did not move.
 		 * Measured:
 		 * canvas #302122 -> #28191A (L* 14.58 -> 10.71)
 		 * surface #392A2B -> #302122 (L* 18.80 -> 14.58)

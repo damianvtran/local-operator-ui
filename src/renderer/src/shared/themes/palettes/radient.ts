@@ -57,10 +57,11 @@ export const radient: ThemeDefinition = {
 		/*
 		 * THE DARKER-GROUNDS PASS (2026-11-03, `docs/branding.md` § 2) supersedes the
 		 * earlier L* 12 dark floor: the dark band is now L* 9-15 (target 9-13), and
-		 * the canvas maps by `L*_new = 9 + 0.6 x (L*_old - 12)`, which keeps this
-		 * palette's place in the fleet. Here the grounds are the ones the design spec
-		 * gives this palette (SPEC § 2.3), and every other ground-class role moved by
-		 * the canvas's ΔL* holding its `a` and `b`.
+		 * the canvas maps by `L*_new = 9 + 0.6 x (L*_old - 12)`, a map that preserves
+		 * the fleet's order (re-solves may move a canvas off it, up to +-1.04 L*).
+		 * Here the grounds are the ones the design spec gives this palette (SPEC §
+		 * 2.3), and every other ground-class role moved by the canvas's ΔL* holding
+		 * its `a` and `b`.
 		 * Measured:
 		 * canvas #1B2027 -> #171C23 (L* 12.04 -> 10.06)
 		 * surface #25293A -> #1E2333 (L* 16.92 -> 13.93)
@@ -84,7 +85,10 @@ export const radient: ThemeDefinition = {
 		// The media slot's well: ΔE00 4.15 off the canvas, where `sunken` alone
 		// measures 3.17 - a step away from the canvas to clear the role's 4.0
 		// floor, which the tile carries because the fill IS its resting extent.
-		mediaSurface: "#0C0E14",
+		// Lifted #0C0E14 -> #0E0F15 (L* 4.00 -> 4.42) once Team Bridge's
+		// inline images and file chips began to paint this well (#1659): as far
+		// toward L* 6 as the media floor allows (ΔE00 4.20 off canvas; chip hosts >= 3.0).
+		mediaSurface: "#0E0F15",
 
 		/*
 		 * ROW STATES, and `highlight` retired in the same change. Both roles are a

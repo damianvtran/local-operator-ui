@@ -87,8 +87,9 @@ export type ThemePalette = {
 	 * because `elevated` at L\* 100 is the end of sRGB's ramp and the minimum
 	 * canvas-to-elevated spread is 2.5 + 2.5 L\*. The band was [12, 22] until the
 	 * 2026-11-03 "dark mode isn't that dark" report; every dark palette was re-lit
-	 * by one proportional map, `L*_new = 9 + 0.6 x (L*_old - 12)`, so the fleet
-	 * kept its order and spacing rather than stacking on a clamp. The top of the
+	 * by one proportional map, `L*_new = 9 + 0.6 x (L*_old - 12)`, which preserves
+	 * the fleet's order and spacing rather than stacking it on a clamp (hand
+	 * re-solves move 34 canvases off the map by up to +-1.04 L*). The top of the
 	 * ladder is capped at **`elevated` L\* 22**, because at `elevated` L\* 34 an
 	 * `inkDim` at its floor needs L\* 85 and the ink/hover distinction disappears
 	 * into the top of the ramp. `docs/branding.md` § 2 carries the measurements.

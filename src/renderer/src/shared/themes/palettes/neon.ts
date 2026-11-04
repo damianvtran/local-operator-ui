@@ -57,11 +57,11 @@ export const neon: ThemeDefinition = {
 		/*
 		 * THE DARKER-GROUNDS PASS (2026-11-03, `docs/branding.md` § 2) supersedes the
 		 * earlier L* 12 dark floor: the dark band is now L* 9-15 (target 9-13), and
-		 * the canvas maps by `L*_new = 9 + 0.6 x (L*_old - 12)`, which keeps this
-		 * palette's place in the fleet. Here every ground-class role (the grounds, the
-		 * row states, the two fills, the washes and the hairlines) moved by the
-		 * canvas's own ΔL* holding its `a` and `b`; inks, accents and `borderControl` did
-		 * not move.
+		 * the canvas maps by `L*_new = 9 + 0.6 x (L*_old - 12)`, a map that preserves
+		 * the fleet's order (re-solves may move a canvas off it, up to +-1.04 L*).
+		 * Here every ground-class role (the grounds, the row states, the two fills,
+		 * the washes and the hairlines) moved by the canvas's own ΔL* holding its `a`
+		 * and `b`; inks, accents and `borderControl` did not move.
 		 * Measured:
 		 * canvas #1C2029 -> #161A23 (L* 12.22 -> 9.24)
 		 * surface #212737 -> #1B2131 (L* 15.75 -> 12.88)
@@ -87,7 +87,10 @@ export const neon: ThemeDefinition = {
 		// The LIGHTNESS half gates the stop here: a ΔE00-clearing candidate
 		// (`#1B1B1E`, 2.34 L*) comes earlier on the line, so the walk carries it
 		// one step further to this value, which clears both halves (2.70 L*).
-		mediaSurface: "#100F16",
+		// Lifted #100F16 -> #111016 (L* 4.60 -> 4.95) once Team Bridge's
+		// inline images and file chips began to paint this well (#1659): as far
+		// toward L* 6 as the media floor allows (ΔE00 4.10 off canvas; chip hosts >= 3.0).
+		mediaSurface: "#111016",
 
 		/*
 		 * ROW STATES, and `highlight` retired in the same change. Both roles are a
