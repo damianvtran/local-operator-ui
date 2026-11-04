@@ -179,10 +179,17 @@ export function useAgentSlotMark(input: {
 	sha256Hint?: string | null;
 	owned: boolean;
 	pictureDoor: boolean;
+	/**
+	 * The CSS size the caller's box draws the mark at, so the byte read asks for
+	 * the right-sized derivative (`useAgentAvatarState`'s third parameter).
+	 * Omitted by callers whose box is not a single fixed size.
+	 */
+	cssPx?: number;
 }): AvatarMark | null {
 	const { url, settled, unreadable } = useAgentAvatarState(
 		input.agentId,
 		input.sha256Hint,
+		input.cssPx,
 	);
 	const uploading = useAgentAvatarWriting(input.agentId);
 	const mark = decideAvatarMark({

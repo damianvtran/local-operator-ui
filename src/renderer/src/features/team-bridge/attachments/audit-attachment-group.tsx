@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import { AttachmentFrame } from "../../chat/components/message-item/attachment-frame";
 import {
 	type BridgeAttachmentDescriptor,
+	type BridgeFileDescriptor,
 	attachmentBox,
 } from "./attachment-model";
 import {
@@ -134,9 +135,16 @@ export function AuditAttachmentGroup({
 	count,
 	scope,
 	compact = false,
+	files = [],
+	fileCount = files.length,
 }: {
 	attachments: readonly BridgeAttachmentDescriptor[];
 	count: number;
+	/* S3b files: metadata cards only. The audit grants the owner file bytes
+	 * server-side, but this client offers no download, so `scope` is never
+	 * consulted for a file and no audit media read is commissioned. */
+	files?: readonly BridgeFileDescriptor[];
+	fileCount?: number;
 	scope:
 		| (OwnerAuditScope & { conversationId: string; messageId: string })
 		| null;
@@ -208,6 +216,8 @@ export function AuditAttachmentGroup({
 				}))}
 				count={count}
 				compact={compact}
+				files={files}
+				fileCount={fileCount}
 				renderPreview={
 					scope
 						? (attachment) =>

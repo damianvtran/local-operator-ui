@@ -1612,17 +1612,26 @@ export const EMPTY_RIGHT_SLOT_MEMORY: RightSlotMemory = Object.freeze([]);
  * below a pane's floor lifts to it here, where all three writers of the value
  * are covered at once - see the floor constants below.
  *
- * THE CANVAS'S `overlay` MODE IS THE CASE TO STATE EXPLICITLY, because it is the
- * one where the mode and the arithmetic are easiest to get out of step: when the
- * row cannot host the pane beside the conversation, chat-content stops drawing
- * the divider and the pane draws at the leftover — `min(preference, row - 480)` —
- * because the conversation keeps its 480 floor beside it exactly as it does at
- * every other row, which is why this function needs no branch for the mode. (The
- * mode's NAME is historical: since `1e88f7fc167` removed the pane's `absolute`
- * positioning the pane no longer covers the conversation — the mode withholds the
- * divider and the data attribute; `canvasPaneMode` carries the note.) At the rows
- * where a naive reading would disagree (a preference smaller than the leftover),
- * the pane draws at its preference and this function says so.
+ * THE OVERLAY MODE, PER OCCUPANT, because the mode and the arithmetic are easiest
+ * to get out of step. The CANVAS: when the row cannot host it beside the
+ * conversation, chat-content stops drawing the divider and the canvas draws at the
+ * leftover — `min(preference, row - 480)` - because the conversation keeps its 480px
+ * floor beside it; this function's answer is that width. (The canvas's name for the
+ * mode is historical: since `1e88f7fc167` removed the pane's `absolute` positioning
+ * the canvas no longer covers the conversation - the mode withholds the divider and
+ * the data attribute; `canvasPaneMode` carries the note.) At the rows where a naive
+ * reading would disagree (a preference smaller than the leftover), the canvas draws
+ * at its preference and this function says so.
+ *
+ * THE ASK DRAWER IS THE EXCEPTION, and it is deliberate: below the breakpoint it
+ * draws a right-anchored SHEET (`askPanePresentation`, `chat-sidebar-layout.ts`),
+ * and this function keeps answering the DOCKED arithmetic (`row - 480`), which is
+ * not the sheet's width. No mount draws this number for the sheet: the lane's stop
+ * and `data-slot-edge` read the presentation's width in `chat-layout.tsx`, the drawer
+ * draws it (`chat-content.tsx` / `chat-layout.tsx`), and this answer is only the width
+ * a docked drawer would have had. A story arm that draws the sheet must read
+ * `askPanePresentation` for the same reason. Two readings of one pane, each with its
+ * own reader, rather than a mode branch in the width resolver.
  *
  * UNMEASURED IS NOT ZERO. `rowWidth` is 0 for the frame before the row's first
  * measurement, and answering 0 there would tell the lane the slot has no pixels —

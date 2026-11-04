@@ -175,7 +175,7 @@ function PicturedSessionAvatar({
 	nowSeconds?: number;
 	reservePicture: boolean;
 }) {
-	const { url, settled } = useAgentAvatarState(agentId, sha256);
+	const { url, settled } = useAgentAvatarState(agentId, sha256, 16);
 	if (settled && !url)
 		return (
 			<BareSessionStatus
@@ -190,6 +190,8 @@ function PicturedSessionAvatar({
 				agentId={agentId}
 				sha256={sha256}
 				className={cn(SESSION_MARK_BOX, "rounded-full")}
+				// `SESSION_MARK_BOX` is `size-4`: 16 CSS px.
+				cssPx={16}
 				/*
 				 * A PLATE, NEVER A SECOND STATUS (agent review round 2, MAJOR-1). While the
 				 * bytes are cold - every pictured row until its fetch lands, and for good
@@ -320,6 +322,8 @@ export function ChatSessionAvatarEdit({
 	const { url, settled } = useAgentAvatarState(
 		target?.agentId ?? null,
 		target?.sha256 ?? null,
+		// The same 16 CSS px box the row's mark and this overlay share.
+		16,
 	);
 	/*
 	 * A REMOTE ROW MOUNTS NOTHING (agent review round 2, m-B). The link's unowned

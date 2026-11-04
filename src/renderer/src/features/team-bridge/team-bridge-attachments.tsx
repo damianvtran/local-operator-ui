@@ -53,7 +53,10 @@ import type {
 	TeamBridgeMessage,
 } from "../../../../shared/team-bridge-contract";
 import { AttachmentFrame } from "../chat/components/message-item/attachment-frame";
-import { attachmentBox } from "./attachments/attachment-model";
+import {
+	attachmentBox,
+	toBridgeFileDescriptor,
+} from "./attachments/attachment-model";
 import { BridgeAttachmentGroup } from "./attachments/bridge-attachment-group";
 import {
 	type AttachmentFailure,
@@ -693,11 +696,15 @@ export const TeamBridgeMessageAttachments: FC<{
 }> = ({ message, tenantId, density = "regular", accountId }) => {
 	useI18nLocale();
 	const attachments = message.attachments ?? [];
+	/* S3b generic files ride beside the images as metadata-only cards; they
+	 * never enter this component's byte relay, cache or lightbox. */
+	const files = (message.files ?? []).map(toBridgeFileDescriptor);
+	const fileCount = Math.max(files.length, message.file_count ?? 0);
 	const [open, setOpen] = useState<number | null>(null);
 	const [urls, setUrls] = useState<(string | null)[]>([]);
 	const buttons = useRef<(HTMLButtonElement | null)[]>([]);
 	const restore = useRef<HTMLElement | null>(null);
-	if (attachments.length === 0) return null;
+	if (attachments.length === 0 && fileCount === 0) return null;
 	const count = attachments.length;
 	const register = (index: number, url: string | null) =>
 		setUrls((previous) => {
@@ -722,6 +729,8 @@ export const TeamBridgeMessageAttachments: FC<{
 			<BridgeAttachmentGroup
 				attachments={attachments}
 				compact={density === "compact"}
+				files={files}
+				fileCount={fileCount}
 				renderPreview={(attachment, index) => (
 					<MessageImage
 						message={message}

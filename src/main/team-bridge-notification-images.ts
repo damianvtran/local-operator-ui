@@ -52,13 +52,31 @@ export const TEAM_BRIDGE_IMAGE_TTL_MS = 15 * 60_000;
  * TTL is only a ceiling for a session that never changes.
  */
 export const TEAM_BRIDGE_INITIALS_TTL_MS = 12 * 60 * 60_000;
-/** Two variants (initials + photo) per sender and kind; the byte budget below
- * is the real ceiling (~21 KiB charged per entry, so ~390 fit in 8 MiB). */
+/**
+ * Two variants (initials + photo) per sender and kind. The ENTRY cap is the
+ * binding one; the byte budget is sized so 128 entries of the 256 px composite
+ * fit with headroom.
+ *
+ * Per-entry charge at 256 px = encoded PNG + the 256x256 RGBA bitmap (256 KiB).
+ * Measured with core's own `notification_avatar.compose` (2026-11-03, a
+ * high-frequency synthetic photo, the worst case for PNG): photo ~109 KiB,
+ * initials 15-20 KiB encoded, so ~365 KiB / ~276 KiB charged. Core caps the
+ * encode at 256 KiB, so the absolute worst entry is 512 KiB. 48 MiB holds 128
+ * typical photo entries (~46 MiB) and any realistic photo/initials mix; a
+ * pathological all-worst-case roster evicts by bytes at ~96 entries instead,
+ * which only costs the oldest pre-warm, never a banner. Memory-only, cleared on
+ * every auth transition (see the file header).
+ */
 export const TEAM_BRIDGE_IMAGE_MAX_ENTRIES = 128;
-export const TEAM_BRIDGE_IMAGE_MAX_BYTES = 8 * 1024 * 1024;
-/** The size the OS banner actually shows. Asking core for 256 px would decode
- * and retain 16x the bitmap only to have the platform scale it back down. */
-export const TEAM_BRIDGE_IMAGE_SIZE = 64;
+export const TEAM_BRIDGE_IMAGE_MAX_BYTES = 48 * 1024 * 1024;
+/**
+ * 256, not 64 (operator report 2026-11-03, retina blur). The banner thumbnail
+ * is ~40 pt on macOS (80 device px on a 2x panel) and Windows' appLogoOverride
+ * draws up to 96 device px, so a 64 px composite was upscaled by the OS and
+ * looked soft. Core's renderer offers only 64 or 256 (`SIZES`), so 256 is the
+ * smallest size that covers every banner; the platform downsamples it.
+ */
+export const TEAM_BRIDGE_IMAGE_SIZE = 256;
 /**
  * A capability flip replays at most this many tenant rosters, in map insertion
  * order - the first tenants synced this session.
@@ -159,8 +177,8 @@ export function validNotificationPng(data: Uint8Array): boolean {
 	return (
 		view.getUint32(8) === 13 &&
 		view.getUint32(12) === 0x49484452 &&
-		view.getUint32(16) === 64 &&
-		view.getUint32(20) === 64
+		view.getUint32(16) === TEAM_BRIDGE_IMAGE_SIZE &&
+		view.getUint32(20) === TEAM_BRIDGE_IMAGE_SIZE
 	);
 }
 
@@ -397,7 +415,7 @@ export class TeamBridgeNotificationImages
 				for (const [oldKey, entry] of this.entries)
 					if (entry.expires <= now) this.drop(oldKey);
 				this.drop(key);
-				// Charge both encoded bytes and the fixed 64x64 RGBA native bitmap.
+				// Charge both encoded bytes and the fixed SIZE x SIZE RGBA native bitmap.
 				const bytes = result.data.byteLength + TEAM_BRIDGE_IMAGE_SIZE ** 2 * 4;
 				this.entries.set(key, {
 					icon,

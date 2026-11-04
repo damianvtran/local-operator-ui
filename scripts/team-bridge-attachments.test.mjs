@@ -142,7 +142,9 @@ const bundle = await build({
  export * from "./src/renderer/src/features/team-bridge/team-bridge-drafts";
  export * from "./src/renderer/src/features/team-bridge/team-bridge-scheduling";
  export {OwnerAuditPanelView} from "./src/renderer/src/features/team-bridge/team-bridge-owner-audit";
- export {BridgeAttachmentGroup} from "./src/renderer/src/features/team-bridge/attachments/bridge-attachment-group";
+ export {BridgeAttachmentGroup, BridgeFileGroup} from "./src/renderer/src/features/team-bridge/attachments/bridge-attachment-group";
+ export {middleTruncateFileName, splitFileNameTail, toBridgeFileDescriptor} from "./src/renderer/src/features/team-bridge/attachments/attachment-model";
+ export {ownerAuditMessageSchema} from "./src/shared/team-bridge-owner-audit-contract";
  export {attachmentBox} from "./src/renderer/src/features/team-bridge/attachments/attachment-model";
  export {TeamBridgeMessageList} from "./src/renderer/src/features/team-bridge/team-bridge-message-list";
  export {TeamBridgeMarkdown} from "./src/renderer/src/features/team-bridge/team-bridge-markdown";
@@ -3138,3 +3140,389 @@ for (const [text, prevented, label, onEvent] of [
 		await app.close();
 	});
 }
+
+/*
+ * S3b GENERIC FILES (UI slice U1). The fixture copies the message-view shape of
+ * agent-server `docs/bridge-files-s3b-binding.md` ("Message view" table) and
+ * `internal/responses/bridge_file.go`: id, class, mime=application/octet-stream,
+ * size, display_name, state bound|expired, expires_at, download_only=true; plus
+ * `file_count` for every reader. DOM/state proof under JSDOM only: there is no
+ * layout engine here, so "wraps without overflow" is asserted as the bounded
+ * card widths + wrapping container, and the rendered-frame proof is QA's.
+ */
+const S3B_NAME = "Q4 board report (signed).pdf";
+const RTL_NAME = "تقرير الربع الرابع.csv";
+const s3bFile = (overrides = {}) => ({
+	id: "bfile_0f8a",
+	class: "pdf",
+	mime: "application/octet-stream",
+	size: 184320,
+	display_name: S3B_NAME,
+	state: "bound",
+	expires_at: "0001-01-01T00:00:00Z",
+	download_only: true,
+	...overrides,
+});
+const s3bMessage = (overrides = {}) =>
+	message({
+		id: "bmsg_s3b",
+		body: null,
+		files: [
+			s3bFile(),
+			s3bFile({
+				id: "bfile_csv",
+				class: "text",
+				size: 920,
+				display_name: RTL_NAME,
+			}),
+			s3bFile({
+				id: "bfile_gone",
+				state: "expired",
+				size: 0,
+				display_name: undefined,
+				class: "",
+			}),
+		],
+		file_count: 3,
+		...overrides,
+	});
+const NAME_LEAK = /Q4 board|تقرير|secret-name/;
+const PDF_META = /PDF · 184 KB/;
+const CSV_META = /CSV · 920 B/;
+const FILE_ID_PREFIX = /bfile_/;
+const WRAPS = /flex-wrap/;
+const SHRINKS = /min-w-0/;
+const CAPPED = /max-w-full/;
+const TRUNCATES = /truncate/;
+const LONE_SURROGATE = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])/;
+const NO_SHRINK = /shrink-0/;
+const EXTENSION_TAIL = /^\.(pdf|bin)$/;
+
+function attributeText(element) {
+	return [...element.querySelectorAll("*")]
+		.flatMap((node) => [...node.attributes].map((a) => `${a.name}=${a.value}`))
+		.join("\n");
+}
+
+test("S3b files: member thread renders one noninteractive card per descriptor", async () => {
+	mediaCalls = [];
+	const logged = [];
+	const original = {
+		log: console.log,
+		warn: console.warn,
+		error: console.error,
+		info: console.info,
+		debug: console.debug,
+	};
+	for (const level of Object.keys(original))
+		console[level] = (...args) => {
+			logged.push(args.map(String).join(" "));
+			original[level](...args);
+		};
+	const wire = m.teamBridgeMessageSchema.parse(s3bMessage());
+	assert.equal(wire.files.length, 3);
+	assert.equal(wire.file_count, 3);
+	let view;
+	try {
+		view = await renderList([wire]);
+	} finally {
+		Object.assign(console, original);
+	}
+	const cards = view.element.querySelectorAll("[data-bridge-file-card]");
+	assert.equal(cards.length, 3);
+	assert.equal(
+		view.element.querySelectorAll('[data-bridge-file-card="metadata"]').length,
+		2,
+	);
+	assert.equal(
+		view.element.querySelectorAll('[data-bridge-file-card="unavailable"]')
+			.length,
+		1,
+	);
+	// No download/open/Save As control exists on a file card, and no bytes move.
+	for (const card of cards)
+		assert.equal(card.querySelectorAll("button,a,img,input").length, 0);
+	assert.equal(mediaCalls.length, 0);
+	// The name is visible text, bidi-isolated by its own direction ...
+	assert.ok(view.element.textContent.includes(S3B_NAME));
+	const rtl = [...view.element.querySelectorAll('[dir="auto"]')].find(
+		(n) => n.textContent === RTL_NAME,
+	);
+	assert.ok(rtl, "RTL name rendered inside dir=auto");
+	assert.match(view.element.textContent, PDF_META);
+	assert.match(view.element.textContent, CSV_META);
+	assert.ok(
+		view.element.textContent.includes(
+			m.t("ui.teamBridge.attachmentCard.unavailable"),
+		),
+	);
+	// ... and never an aria-label, id, key, data attribute or log line (D9).
+	assert.doesNotMatch(attributeText(view.element), NAME_LEAK);
+	assert.doesNotMatch(attributeText(view.element), FILE_ID_PREFIX);
+	assert.doesNotMatch(logged.join("\n"), NAME_LEAK);
+	const list = view.element.querySelector('ul[aria-label="3 files"]');
+	assert.ok(list, "accessible name is a count, not a name");
+	await view.close();
+});
+
+test("S3b files: count-only receipt from file_count when no descriptors (agent-shaped read)", async () => {
+	const wire = m.teamBridgeMessageSchema.parse(
+		message({ id: "bmsg_count", file_count: 2 }),
+	);
+	const view = await renderList([wire]);
+	const cards = view.element.querySelectorAll("[data-bridge-file-card]");
+	assert.equal(cards.length, 1);
+	assert.equal(cards[0].dataset.bridgeFileCard, "count-only");
+	assert.ok(
+		cards[0].textContent.includes(
+			m.t("ui.teamBridge.fileCard.list", { count: 2 }),
+		),
+	);
+	assert.equal(
+		view.element.querySelectorAll(
+			"[data-bridge-file-card] button, [data-bridge-file-card] a",
+		).length,
+		0,
+	);
+	await view.close();
+});
+
+test("S3b files: malformed files[] costs the descriptors, never the message", () => {
+	const wire = m.teamBridgeMessageSchema.parse(
+		message({
+			id: "bmsg_bad",
+			files: [{ id: "bad id!", size: -1 }],
+			file_count: 1,
+		}),
+	);
+	assert.equal(wire.files, undefined);
+	assert.equal(wire.file_count, 1);
+	const audit = m.ownerAuditMessageSchema.parse({
+		...message({ id: "bmsg_bad_audit" }),
+		files: "nope",
+		file_count: "x",
+	});
+	assert.equal(audit.files, undefined);
+	assert.equal(audit.file_count, undefined);
+	// A state-less descriptor fails closed to unavailable.
+	assert.equal(m.toBridgeFileDescriptor({ id: "bfile_x", size: 3 }).state, "");
+});
+
+test("S3b files: mixed 4 images + 6 files at compact density stays bounded and wrapping", async () => {
+	const images = [0, 1, 2, 3].map((index) => ({
+		id: `batt_mix${index}`,
+		mime: "image/png",
+		size: 2048,
+		width: 4000,
+		height: 3000,
+		state: "expired",
+	}));
+	const files = ["pdf", "text", "container", "other", "pdf", "text"].map(
+		(cls, index) =>
+			m.toBridgeFileDescriptor(
+				s3bFile({
+					id: `bfile_mix${index}`,
+					class: cls,
+					display_name: `${"very-long-file-name-".repeat(6)}${index}.${cls === "pdf" ? "pdf" : "bin"}`,
+				}),
+			),
+	);
+	const view = await renderAttachmentGroup({
+		attachments: images,
+		compact: true,
+		files,
+		fileCount: 6,
+	});
+	const lists = view.element.querySelectorAll("ul");
+	assert.equal(lists.length, 2);
+	for (const list of lists) {
+		assert.match(list.className, WRAPS);
+		assert.match(list.className, SHRINKS);
+	}
+	const cards = view.element.querySelectorAll("[data-bridge-file-card]");
+	assert.equal(cards.length, 6);
+	for (const card of cards) {
+		assert.equal(card.style.width, "208px");
+		assert.match(card.className, CAPPED);
+		const name = card.querySelector('[dir="auto"]');
+		const head = name.querySelector('[data-file-name-part="head"]');
+		const tail = name.querySelector('[data-file-name-part="tail"]');
+		// Only the head may ellipsise; the extension sits in its own
+		// non-shrinking element, so CSS cannot clip what middle truncation kept.
+		assert.match(head.className, TRUNCATES);
+		assert.match(head.className, SHRINKS);
+		assert.match(tail.className, NO_SHRINK);
+		assert.doesNotMatch(tail.className, TRUNCATES);
+		assert.match(tail.textContent, EXTENSION_TAIL);
+		assert.ok(Array.from(name.textContent).length <= 28, name.textContent);
+		assert.ok(head.textContent.includes("…"));
+	}
+	assert.equal(view.element.querySelectorAll("button,a").length, 0);
+	await view.close();
+});
+
+test("S3b files: middle truncation keeps both ends and never splits a code point", () => {
+	assert.equal(m.middleTruncateFileName("short.pdf", 28), "short.pdf");
+	const cut = m.middleTruncateFileName(`${"a".repeat(40)}.pdf`, 11);
+	assert.equal(cut, "aaaaa…a.pdf");
+	const emoji = m.middleTruncateFileName("😀".repeat(30), 9);
+	assert.equal(Array.from(emoji).length, 9);
+	assert.ok(!LONE_SURROGATE.test(emoji));
+});
+
+test("S3b files: owner audit renders file cards with no audit media read", async () => {
+	mediaCalls = [];
+	const element = document.createElement("div");
+	document.body.append(element);
+	const root = createRoot(element);
+	const conversation = {
+		id: "bcv_audit_files",
+		tenant_id: "tnt_audit_files",
+		kind: "dm",
+		title: null,
+		visibility: "private",
+		status: "active",
+		builtin: null,
+		members: [],
+		member_count: 0,
+		viewers: [],
+		agent: {
+			account_id: "acct_audit_agent",
+			display_label: "Synthetic agent",
+			state: "active",
+			joined_seq: 0,
+			left_seq: null,
+		},
+		created_at: "2026-10-23T10:00:00Z",
+		last_message_at: null,
+		latest_seq: 2,
+		last_thread_root_id: null,
+	};
+	const base = {
+		conversation_id: conversation.id,
+		body_hash: null,
+		agent_label: null,
+		thread_root_id: null,
+		reply_count: null,
+		last_reply_at: null,
+		reply_participants: null,
+		agent_delivery_status: "admitted",
+		agent_verdict_at: null,
+	};
+	const rows = [
+		m.ownerAuditMessageSchema.parse({
+			...s3bMessage({ id: "audit_files", body: "with files" }),
+			...base,
+			seq: 1,
+		}),
+		m.ownerAuditMessageSchema.parse({
+			...message({ id: "audit_file_count", body: "count only" }),
+			...base,
+			seq: 2,
+			file_count: 4,
+		}),
+	];
+	await act(async () =>
+		root.render(
+			React.createElement(
+				m.QueryClientProvider,
+				{ client: new m.QueryClient() },
+				React.createElement(m.OwnerAuditPanelView, {
+					conversation,
+					messages: rows,
+					state: "ready",
+					retry: () => {},
+					readerAccountId: "acct_audit_owner",
+					people: [],
+				}),
+			),
+		),
+	);
+	await settle();
+	await settle();
+	const byId = (id) => element.querySelector(`[data-message-id="${id}"]`);
+	assert.equal(
+		byId("audit_files").querySelectorAll("[data-bridge-file-card]").length,
+		3,
+	);
+	assert.equal(
+		byId("audit_files").querySelectorAll(
+			'[data-bridge-file-card="unavailable"]',
+		).length,
+		1,
+	);
+	assert.equal(
+		byId("audit_files").querySelectorAll(
+			"[data-bridge-file-card] button, [data-bridge-file-card] a",
+		).length,
+		0,
+	);
+	assert.ok(byId("audit_files").textContent.includes(S3B_NAME));
+	assert.doesNotMatch(attributeText(byId("audit_files")), NAME_LEAK);
+	assert.equal(
+		byId("audit_file_count").querySelector("[data-bridge-file-card]").dataset
+			.bridgeFileCard,
+		"count-only",
+	);
+	assert.equal(mediaCalls.length, 0);
+	await act(async () => root.unmount());
+	element.remove();
+});
+
+test("S3b files: the tail is a protected element; only the head ellipsises (Q1/D1/U2)", async () => {
+	assert.deepEqual(m.splitFileNameTail("Customer onboarding…list v12.docx"), {
+		head: "Customer onboarding…list v12",
+		tail: ".docx",
+	});
+	// No short extension: the last code points are protected, emoji intact.
+	const emoji = m.splitFileNameTail("会议记录最终版😀😀😀😀");
+	assert.equal(emoji.tail, "😀😀😀😀");
+	assert.doesNotMatch(emoji.head + emoji.tail, LONE_SURROGATE);
+	// The tail never starts before the inserted ellipsis.
+	const cut = m.splitFileNameTail("abcdefgh…xyz");
+	assert.ok(cut.head.endsWith("…"));
+	assert.equal(cut.tail, "xyz");
+	assert.deepEqual(m.splitFileNameTail("README"), { head: "README", tail: "" });
+
+	const names = [
+		"Customer onboarding checklist v12.docx",
+		"تقرير الربع الرابع.csv",
+		"四半期の取締役会報告書と議事録の最終版.pdf",
+	];
+	const view = await renderAttachmentGroup({
+		attachments: [],
+		files: names.map((displayName, index) =>
+			m.toBridgeFileDescriptor({
+				id: `bfile_tail${index}`,
+				class: "pdf",
+				size: 2048,
+				display_name: displayName,
+				state: "bound",
+			}),
+		),
+	});
+	const rows = view.element.querySelectorAll("[data-bridge-file-card]");
+	assert.equal(rows.length, 3);
+	for (const [index, card] of [...rows].entries()) {
+		const label = card.querySelector('[dir="auto"]');
+		const head = label.querySelector('[data-file-name-part="head"]');
+		const tail = label.querySelector('[data-file-name-part="tail"]');
+		assert.equal(head.parentElement, label);
+		assert.equal(tail.parentElement, label);
+		assert.match(head.className, TRUNCATES);
+		assert.match(tail.className, NO_SHRINK);
+		assert.equal(head.style.unicodeBidi, "isolate");
+		assert.equal(tail.style.unicodeBidi, "isolate");
+		assert.equal(tail.textContent, `.${names[index].split(".").pop()}`);
+	}
+	// D9 holds for the split label: no name fragment in any attribute.
+	const attrs = attributeText(view.element);
+	for (const name of names)
+		for (const part of [name, name.slice(0, 8), name.split(".").shift()])
+			assert.ok(!attrs.includes(part), part);
+	assert.equal(
+		view.element.querySelectorAll("[title],[aria-label] [aria-label]").length,
+		0,
+	);
+	await view.close();
+});

@@ -143,7 +143,7 @@
 	"ui.teamBridge.composer.placeholder_to": "{name} को संदेश लिखें",
 	"ui.teamBridge.thread.today": "आज",
 	"ui.teamBridge.thread.yesterday": "कल",
-	"ui.teamBridge.builtin.general_topic": "पूरा संगठन: सभी लोग और उनके एजेंट। एजेंट केवल उल्लेख किए जाने पर जवाब देते हैं।",
+	"ui.teamBridge.builtin.general_topic": "पूरा संगठन: सभी लोग और उनके एजेंट। एजेंट हर संदेश देखते हैं और @ से उल्लेख होने पर या अपने फ़ॉलो किए गए थ्रेड में जवाब देते हैं।",
 	"ui.teamBridge.builtin.humans_topic": "केवल लोग, कोई एजेंट नहीं। यहाँ के संदेशों की सूचना हर व्यक्ति को जाती है।",
 	"ui.teamBridge.builtin.agents_topic": "हर टीम सदस्य का चीफ़ ऑफ़ स्टाफ़। एजेंट हर संदेश देखते हैं और प्रासंगिक होने पर या @ से उल्लेख होने पर जवाब देते हैं।",
 	"ui.teamBridge.section.channels_add": "चैनल बनाएँ",
@@ -337,5 +337,7 @@
 	"ui.teamBridge.attachmentCard.file": "फ़ाइल",
 	"ui.teamBridge.attachmentCard.bytes": "{size, number} बाइट",
 	"ui.teamBridge.attachmentCard.metadata_only": "इस दृश्य में पूर्वावलोकन उपलब्ध नहीं है",
-	"ui.teamBridge.attachmentCard.unavailable": "अटैचमेंट उपलब्ध नहीं है"
+	"ui.teamBridge.attachmentCard.unavailable": "अटैचमेंट उपलब्ध नहीं है",
+	"ui.teamBridge.fileCard.list": "{count, plural, one {# फ़ाइल} other {# फ़ाइलें}}",
+	"ui.teamBridge.fileCard.kind": "{kind, select, pdf {PDF} text {टेक्स्ट फ़ाइल} container {ZIP} other {फ़ाइल}}"
 }

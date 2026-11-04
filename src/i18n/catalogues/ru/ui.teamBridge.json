@@ -143,7 +143,7 @@
 	"ui.teamBridge.composer.placeholder_to": "Написать: {name}",
 	"ui.teamBridge.thread.today": "Сегодня",
 	"ui.teamBridge.thread.yesterday": "Вчера",
-	"ui.teamBridge.builtin.general_topic": "Вся организация: люди и их агенты. Агенты отвечают только на упоминания.",
+	"ui.teamBridge.builtin.general_topic": "Вся организация: люди и их агенты. Агенты видят все сообщения и отвечают, когда их упоминают через @ или в ветках, за которыми они следят.",
 	"ui.teamBridge.builtin.humans_topic": "Только люди, без агентов. Уведомления о сообщениях здесь получает каждый.",
 	"ui.teamBridge.builtin.agents_topic": "Координаторы всех участников команды. Агенты видят все сообщения и отвечают, когда это уместно или когда их упоминают через @.",
 	"ui.teamBridge.section.channels_add": "Создать канал",
@@ -337,5 +337,7 @@
 	"ui.teamBridge.attachmentCard.file": "Файл",
 	"ui.teamBridge.attachmentCard.bytes": "{size, number} байт",
 	"ui.teamBridge.attachmentCard.metadata_only": "Предпросмотр недоступен в этом представлении",
-	"ui.teamBridge.attachmentCard.unavailable": "Вложение недоступно"
+	"ui.teamBridge.attachmentCard.unavailable": "Вложение недоступно",
+	"ui.teamBridge.fileCard.list": "{count, plural, one {# файл} few {# файла} many {# файлов} other {# файла}}",
+	"ui.teamBridge.fileCard.kind": "{kind, select, pdf {PDF} text {Текстовый файл} container {ZIP} other {Файл}}"
 }

@@ -143,7 +143,7 @@
 	"ui.teamBridge.composer.placeholder_to": "Écrire à {name}",
 	"ui.teamBridge.thread.today": "Aujourd’hui",
 	"ui.teamBridge.thread.yesterday": "Hier",
-	"ui.teamBridge.builtin.general_topic": "Toute l’organisation : les personnes et leurs agents. Les agents ne répondent qu’aux mentions.",
+	"ui.teamBridge.builtin.general_topic": "Toute l’organisation : les personnes et leurs agents. Les agents voient chaque message et répondent quand on les mentionne avec @ ou dans les fils qu’ils suivent.",
 	"ui.teamBridge.builtin.humans_topic": "Personnes uniquement, sans agents. Les messages envoyés ici notifient chaque personne.",
 	"ui.teamBridge.builtin.agents_topic": "Les chefs de cabinet de toute l’équipe. Les agents voient chaque message et répondent quand c’est pertinent ou quand on les mentionne avec @.",
 	"ui.teamBridge.section.channels_add": "Créer un canal",
@@ -337,5 +337,7 @@
 	"ui.teamBridge.attachmentCard.file": "Fichier",
 	"ui.teamBridge.attachmentCard.bytes": "{size, number} octets",
 	"ui.teamBridge.attachmentCard.metadata_only": "Aperçu indisponible dans cette vue",
-	"ui.teamBridge.attachmentCard.unavailable": "Pièce jointe indisponible"
+	"ui.teamBridge.attachmentCard.unavailable": "Pièce jointe indisponible",
+	"ui.teamBridge.fileCard.list": "{count, plural, one {# fichier} many {# de fichiers} other {# fichiers}}",
+	"ui.teamBridge.fileCard.kind": "{kind, select, pdf {PDF} text {Fichier texte} container {ZIP} other {Fichier}}"
 }

@@ -379,6 +379,8 @@ const useHeaderAvatar = (
 		sha256Hint: agent.sha256,
 		owned: agent.owned,
 		pictureDoor: true,
+		// The box below is what the picture is drawn at, so it is what to ask for.
+		cssPx: box.px,
 	});
 	if (!mark) return { avatar: null, rowClassName: NO_MARK_ROW };
 	return {

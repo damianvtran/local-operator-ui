@@ -1505,6 +1505,12 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			subscribe: z.boolean().optional(),
 			autoPush: z.boolean().optional(),
 			confirmPublicEgress: z.boolean().optional(),
+			// Adoption is receipt-bound: previews cannot authorize a later overwrite.
+			dryRun: z.boolean().optional(),
+			adoptionStrategy: z.enum(["merge", "keep-local", "take-hub"]).optional(),
+			allowLlm: z.boolean().optional(),
+			confirm: z.boolean().optional(),
+			adoptionReceipt: z.string().min(16).max(128).optional(),
 		})
 		.strict(),
 	/*
@@ -7185,7 +7191,16 @@ export type DesktopMediaRequest =
 	 * the blob under the same digest. The PUT carries the cropped image as a raw
 	 * body (core sniffs and re-normalises it); the DELETE carries nothing.
 	 */
-	| { op: "agent.avatar"; agentId: string; sha256: string }
+	| {
+			op: "agent.avatar";
+			agentId: string;
+			sha256: string;
+			/**
+			 * A downscaled derivative (core `agent_avatar_sizes`). Sent only when
+			 * core advertises the feature; absent, the 512 px original as before.
+			 */
+			size?: 64 | 128 | 256;
+	  }
 	// Human profile operations are intentionally disjoint from local agents.
 	// The opaque scope binds writes to the login that commissioned the editor.
 	| { op: "account.profile"; expectedAccountId: string }
@@ -8259,6 +8274,19 @@ export function desktopEndpoint(request: DesktopRequest): {
 						: {}),
 					...(request.confirmPublicEgress !== undefined
 						? { confirm_public_egress: request.confirmPublicEgress }
+						: {}),
+					...(request.dryRun !== undefined ? { dry_run: request.dryRun } : {}),
+					...(request.adoptionStrategy !== undefined
+						? { adoption_strategy: request.adoptionStrategy }
+						: {}),
+					...(request.allowLlm !== undefined
+						? { allow_llm: request.allowLlm }
+						: {}),
+					...(request.confirm !== undefined
+						? { confirm: request.confirm }
+						: {}),
+					...(request.adoptionReceipt !== undefined
+						? { adoption_receipt: request.adoptionReceipt }
 						: {}),
 				},
 			};

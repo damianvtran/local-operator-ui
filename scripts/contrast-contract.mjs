@@ -4892,8 +4892,14 @@ const SYNTAX_COMMENT_FLOOR = 8;
 const COMMAND_TOKEN = "tokenCommand";
 /* The syntax block's floor, used here as a ΔE00 separation between two inks. */
 const COMMAND_TOKEN_FLOOR = SYNTAX_COMMENT_FLOOR;
-/* The field it is painted in, and the popup that opens over it. */
-const COMMAND_TOKEN_GROUNDS = ["surface", "elevated"];
+/*
+ * The field it is painted in, the popup that opens over it, and the user message
+ * block, where the same role inks a `$skill` in a sent turn
+ * (`markdown.css`'s `.lo-skill-token`). `messageSurface` is a different fill from
+ * `surface`, so the floor is asserted on it rather than inherited from the
+ * composer's.
+ */
+const COMMAND_TOKEN_GROUNDS = ["surface", "elevated", "messageSurface"];
 /*
  * Obsidian is the one pinned exception, and it is the app's recorded monochrome
  * case rather than a mute button: `info` IS its `ink` IS its `accent`
@@ -6526,7 +6532,7 @@ for (const { id, palette: p } of palettes) {
 			const got = ratio(p[COMMAND_TOKEN], p[ground]);
 			if (got < 4.5) {
 				fail(
-					`${id}: the command token \`tokenCommand\` ${p[COMMAND_TOKEN]} reads ${r2(got)}:1 on \`${ground}\` (need 4.5) - the leading /word is text a user is typing, not decoration`,
+					`${id}: the command token \`tokenCommand\` ${p[COMMAND_TOKEN]} reads ${r2(got)}:1 on \`${ground}\` (need 4.5) - the token is text a user typed (the composer's leading /word, or the sent \`$skill\` mention), not decoration`,
 				);
 			}
 		}
