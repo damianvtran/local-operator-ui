@@ -6,6 +6,8 @@ import {
 	type EncoderEvent,
 	RECORDING_ENCODER_CMD_CHANNEL,
 	RECORDING_ENCODER_EVT_CHANNEL,
+	answersTheRequest,
+	isWellFormedChunk,
 } from "../../../shared/recording-encoder";
 import { BrowserHostError } from "../errors";
 import type {
@@ -203,17 +205,9 @@ async function openWindow(
 					const resolve = waiters.configure.get(event.id);
 					waiters.configure.delete(event.id);
 					if (!resolve) return;
-					// The answer must describe what was asked for: a coded size that is
-					// not the requested one would be written into the file's headers.
 					const asked = requested.get(event.id);
 					requested.delete(event.id);
-					if (
-						event.ok &&
-						(!asked ||
-							event.width !== asked.width ||
-							event.height !== asked.height ||
-							(event.encoder !== "hardware" && event.encoder !== "software"))
-					) {
+					if (event.ok && !answersTheRequest(event, asked)) {
 						resolve({
 							ok: false,
 							why: "encoder_start",
@@ -239,16 +233,7 @@ async function openWindow(
 					return;
 				}
 				case "chunk": {
-					// The document is the app's own, but a message is only as trusted as
-					// its shape: the cap sums `data.length`, so a non-bytes payload would
-					// make it `NaN` and the cap would never fire.
-					if (
-						!(event.data instanceof Uint8Array) ||
-						!Number.isFinite(event.ts) ||
-						typeof event.key !== "boolean" ||
-						(event.description !== undefined &&
-							!(event.description instanceof Uint8Array))
-					) {
+					if (!isWellFormedChunk(event)) {
 						died("the encoder sent a malformed chunk");
 						return;
 					}

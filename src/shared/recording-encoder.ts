@@ -77,3 +77,34 @@ export type EncoderEvent =
 	| { evt: "frame-done"; seq: number }
 	| { evt: "flushed"; id: number }
 	| { evt: "error"; message: string };
+
+/**
+ * Main's check on what the encoder window says, kept here (no `electron` import) so
+ * a node test can call it. The window is the app's own document, but a message is
+ * only as trusted as its shape: the byte cap sums `data.length`, so a payload that
+ * is not bytes would make it `NaN` and the cap would never fire.
+ */
+export function isWellFormedChunk(
+	event: Extract<EncoderEvent, { evt: "chunk" }>,
+): boolean {
+	return (
+		event.data instanceof Uint8Array &&
+		Number.isFinite(event.ts) &&
+		typeof event.key === "boolean" &&
+		(event.description === undefined || event.description instanceof Uint8Array)
+	);
+}
+
+/** Whether a successful `configured` answer describes what was asked for: a coded
+ * size that is not the requested one would be written into the file's headers. */
+export function answersTheRequest(
+	event: Extract<EncoderEvent, { evt: "configured"; ok: true }>,
+	asked: { width: number; height: number } | undefined,
+): boolean {
+	return (
+		asked !== undefined &&
+		event.width === asked.width &&
+		event.height === asked.height &&
+		(event.encoder === "hardware" || event.encoder === "software")
+	);
+}
