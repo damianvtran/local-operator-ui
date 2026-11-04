@@ -20,6 +20,7 @@
  *     `@` carried no `mentions`).
  * `source` says which one answered, for tests and for the reader of this code.
  */
+import { nameKey } from "../team-bridge-model";
 import type { MentionCandidate } from "./matcher";
 
 export type MessageMentionRun = {
@@ -104,8 +105,9 @@ export function messageMentionSpec(input: {
 	 * the one resolved from the AUTHENTICATED account's own row (never a
 	 * spelling the author typed), the provider found no other account in the
 	 * directory or this conversation showing it (`labelUnique`), and no other
-	 * candidate here carries it either. A namesake therefore still renders as
-	 * "other" for both of them. Agents keep #1589's rule: only a wire
+	 * candidate here carries it either (compared by `nameKey`, and never
+	 * counting the reader's own rows: see `mentionSelf`). A namesake therefore
+	 * still renders as "other" for both of them. Agents keep #1589's rule: only a wire
 	 * account_id selects the viewer for the reader's own agent, because its
 	 * composed label ("Aida (Damian Tran)") names the owner, not the reader.
 	 */
@@ -116,12 +118,22 @@ export function messageMentionSpec(input: {
 		p.accountId === self.accountId &&
 		!candidates.some(
 			(c) =>
-				c.label === p.label &&
-				!(c.kind === "human" && c.accountId === self.accountId),
+				c.accountId !== self.accountId && nameKey(c.label) === nameKey(p.label),
 		);
-	const runs = people
-		.filter((p) => p.label !== "" && body.includes(`@${p.label}`))
-		.map((p) => ({ label: p.label, viewer: fallbackViewer(p) }));
+	/*
+	 * ONE RUN PER LABEL. The reader's own legacy agent member can carry the
+	 * owner's bare name, so it and the reader share a label; `splitMentions`
+	 * takes the first equal-length run, and the agent's `viewer: false` (it
+	 * sits before `self` in `people`) hid the reader's yellow (review R1 M2).
+	 * Letting a viewer run win is safe because `fallbackViewer` is true only
+	 * when no OTHER account carries the label.
+	 */
+	const byLabel = new Map<string, boolean>();
+	for (const p of people) {
+		if (p.label === "" || !body.includes(`@${p.label}`)) continue;
+		byLabel.set(p.label, (byLabel.get(p.label) ?? false) || fallbackViewer(p));
+	}
+	const runs = [...byLabel].map(([label, viewer]) => ({ label, viewer }));
 	/*
 	 * The fallback is a HEURISTIC and says so: it matches `@<display name>`
 	 * EXACTLY as the name is spelled (case-sensitive, review R1-06), which is

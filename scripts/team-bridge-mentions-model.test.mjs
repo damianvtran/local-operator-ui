@@ -547,6 +547,31 @@ test("viewer: the fallback never marks a label someone else also carries (c)", (
 	assert.equal(notUnique.runs[0].viewer, false);
 });
 
+test("viewer: candidate namesakes compare by name key; the reader's own rows never block (M1, M2)", () => {
+	for (const twin of ["damian tran", "Damian  Tran"]) {
+		const spec = m.messageMentionSpec({
+			body: "@Damian Tran ping",
+			mentions: undefined,
+			candidates: [
+				...roster,
+				{ kind: "human", accountId: "a_twin", label: twin },
+			],
+			self: uniqueSelf,
+		});
+		assert.deepEqual(spec.runs, [{ label: "Damian Tran", viewer: false }]);
+	}
+	const ownAgent = m.messageMentionSpec({
+		body: "@Damian Tran ping",
+		mentions: undefined,
+		candidates: [
+			...roster,
+			{ kind: "agent", accountId: self.accountId, label: "Damian Tran" },
+		],
+		self: uniqueSelf,
+	});
+	assert.ok(ownAgent.runs.some((r) => r.viewer === true));
+});
+
 test("viewer: the reader's own agent follows the wire-id rule only (f)", () => {
 	const candidates = [
 		...roster,

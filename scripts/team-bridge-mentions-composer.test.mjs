@@ -1026,6 +1026,42 @@ test("rendered: a namesake in the directory or the room keeps the fallback 'othe
 	assert.equal(wire["@Damian Tran"].kind, "viewer");
 });
 
+test("rendered: a case- or space-variant twin is still a namesake (review R1 M1)", () => {
+	for (const twin of ["damian tran", "Damian  Tran", " DAMIAN TRAN "]) {
+		for (const [people, room] of [
+			[[...directory, directoryRow("acct_twin", twin)], members],
+			[directory, [...members, participant("acct_twin", twin)]],
+		]) {
+			const marks = renderThroughProvider({
+				people,
+				members: room,
+				message: { body: "@Damian Tran ping" },
+			});
+			assert.deepEqual(
+				marks,
+				{ "@Damian Tran": { kind: "other", className: OTHER_CLASS } },
+				`twin ${JSON.stringify(twin)} keeps the fallback 'other'`,
+			);
+		}
+	}
+});
+
+test("rendered: the reader's own agent row never counts as a namesake (review R1 M2)", () => {
+	// A legacy agent participant stored under the owner's bare name.
+	const marks = renderThroughProvider({
+		people: directory,
+		members: [
+			...members,
+			{ ...participant("acct_self", "Damian Tran"), kind: "agent" },
+		],
+		message: { body: "@Damian Tran and @Ben Tran" },
+	});
+	assert.deepEqual(marks, {
+		"@Damian Tran": { kind: "viewer", className: VIEWER_CLASS },
+		"@Ben Tran": { kind: "other", className: OTHER_CLASS },
+	});
+});
+
 /* A first send changes a person draft into an open conversation. Context is
  * inert again when leaving it, but the provider must not remount the timeline
  * merely because mention availability changed (the optimistic ninth case). */
