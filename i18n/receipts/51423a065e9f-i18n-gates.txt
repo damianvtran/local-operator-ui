@@ -1,0 +1,37 @@
+# Actual output, translation audit round 8 (session 51423a065e9f), worktree at f3a758d5da6 + ledger/receipt changes, each command run alone with NODE_OPTIONS=--max-old-space-size=2048 timeout 120 (2 GiB heap ceiling, 120 s wall)
+## Pre-audit node scripts/i18n/ledger-check.mjs (head bytes f3a758d5da6, before re-pinning)
+$ node scripts/i18n/ledger-check.mjs
+ledger-check: es/ui.mesh: stale target_sha256 (ledger f7330e8ec185…, file 7658a8e0b1fb…) — the translated file changed since it was audited
+ledger-check: es/ui.mesh: auditor 1: the receipt does not name the target bytes on disk - it audited a different file
+ledger-check: FAILED — 2 finding(s) across 826 ledger entr(ies)
+exit=1
+## node scripts/i18n/ledger-assemble.mjs (es only; the other six ui.mesh rows name byte-identical files and are untouched)
+$ node scripts/i18n/ledger-assemble.mjs --locale es --file src/i18n/catalogues/es/ui.mesh.json --auditor-instance 51423a065e9f-es --auditor-model [redacted]/claude-opus-5-5 --result clean --receipt .r8/51423a065e9f-es.json --scope PR #1604 translation audit round 8 at f3a758d; delta f93c4be..f3a758d (es expires_window, typed_review_unavailable) --note Round 8 (session 51423a065e9f) at f3a758d5: clean, 0 findings; R7A-ES-01/R7B-1 (tarjeta) and R7A-ES-02/R7B-2 (Deniégala) resolved. Source-only; rendered fit unverified. --date 2026-11-02
+ledger-assemble: es/ui.mesh -> status audited (prior audits were of older bytes: moved to superseded) | clean, 0 blocker, 0 major, 0 minor, 0 nit
+exit=0
+## node scripts/i18n/ledger-check.mjs (after re-pinning)
+$ node scripts/i18n/ledger-check.mjs
+ledger-check: ok — 826 entr(ies) complete, fresh and independently audited
+exit=0
+## pnpm check-i18n, its seven gates run one at a time (each alone: NODE_OPTIONS=--max-old-space-size=2048 timeout 120)
+$ node scripts/i18n/generate.mjs --check
+/Users/damian/local-operator-ui-worktrees/ui1604-r8-audit/src/i18n/keys.gen.ts is byte-identical to a fresh generation.
+exit=0
+$ node scripts/i18n/check-duplicates.mjs
+check-duplicates: ok — 1067 file(s) scanned, 0 duplicate key(s)
+exit=0
+$ node scripts/i18n/check-strings.mjs
+check-strings.mjs: ok — 1493 file(s) scanned, 0 literal(s) at or below the baseline
+exit=0
+$ node scripts/i18n/ledger-check.mjs
+ledger-check: ok — 826 entr(ies) complete, fresh and independently audited
+exit=0
+$ node scripts/i18n/context-parity.mjs
+context-parity: ok — every English key is covered, apart from 131 allowed gap(s) in 4 namespace(s) (shrink-only; see i18n/context-allowance.json).
+exit=0
+$ node scripts/i18n/check-added-strings.mjs
+PASS: no newly added literal copy in 6 changed file(s) against 2c5c462ab881eb16ad4505108b9cc16d3d72d426.
+exit=0
+$ node scripts/i18n/check-coverage.mjs
+coverage-check: ok — 7 gated language(s) over 118 namespace(s); 0 allowed key(s) remain across 0 pair(s) (shrink-only; see i18n/coverage-allowance.json).
+exit=0

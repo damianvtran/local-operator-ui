@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, relative } from "node:path";
 import { after, test } from "node:test";
@@ -9,11 +9,13 @@ import {
 	findAddedCopyViolations,
 	parseAddedLines,
 	resolveComparisonBase,
+	runAddedCheck,
 } from "./check-added-strings.mjs";
 import { openSnapshot } from "./check-strings.mjs";
 
 const REPO = new URL("../..", import.meta.url).pathname;
 const HUNK_ERROR_RE = /hunk header/;
+const DISAPPEARED_RE = /Changed file disappeared: src\/a\.tsx/;
 const BASE_ERROR_RE = /git merge-base/;
 const FIXTURE = "scripts/i18n/fixtures/scan/added-copy.tsx";
 const CHECKER = join(REPO, "scripts/i18n/check-added-strings.mjs");
@@ -168,5 +170,91 @@ test("the real CLI rejects logical and JSX text in untracked and staged-new file
 			rmSync(probe, { force: true });
 			rmSync(scratch, { recursive: true, force: true });
 		}
+	}
+});
+
+/* The vanished-file race (CI runs 41603855749 / 41595469149): a sibling test's
+ * transient `_*.bundle.mjs` is listed as untracked and deleted before the
+ * checker reads it. `afterListing` opens that window deterministically in a
+ * scratch git repo, so no timing luck and no touching of this checkout. */
+function scratchRepo() {
+	const dir = mkdtempSync(join(tmpdir(), "i18n-vanish-"));
+	// An inherited GIT_DIR/GIT_INDEX_FILE would aim these setup commands (and
+	// the checker's own git calls) at the caller's repo instead of the scratch one.
+	const env = Object.fromEntries(
+		Object.entries(process.env).filter(([key]) => !key.startsWith("GIT_")),
+	);
+	for (const key of Object.keys(process.env)) {
+		if (key.startsWith("GIT_")) delete process.env[key];
+	}
+	const run = (...args) =>
+		spawnSync("git", args, { cwd: dir, env, encoding: "utf8" });
+	mkdirSync(join(dir, "src"), { recursive: true });
+	mkdirSync(join(dir, "scripts/i18n"), { recursive: true });
+	mkdirSync(join(dir, "i18n"), { recursive: true });
+	for (const name of ["tsconfig.app.json", "tsconfig.node.json"]) {
+		writeFileSync(
+			join(dir, name),
+			JSON.stringify({
+				compilerOptions: { jsx: "preserve" },
+				include: ["src"],
+			}),
+		);
+	}
+	writeFileSync(join(dir, "i18n/allowlist.json"), '{"entries":[]}');
+	writeFileSync(join(dir, "src/a.tsx"), "export const a = 1;\n");
+	run("init", "-q");
+	run("add", ".");
+	run("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "init");
+	return dir;
+}
+
+test("an untracked file deleted after listing is skipped, not an error", () => {
+	const dir = scratchRepo();
+	try {
+		const transient = join(dir, "scripts/i18n/_x.bundle.mjs");
+		writeFileSync(transient, 'export const x = "Some copy";\n');
+		const result = runAddedCheck({
+			repo: dir,
+			base: "HEAD",
+			afterListing: () => rmSync(transient, { force: true }),
+		});
+		assert.deepEqual(result.findings, []);
+	} finally {
+		rmSync(dir, { recursive: true, force: true });
+	}
+});
+
+test("the same untracked file, still present, is reported (the skip depends on absence)", () => {
+	const dir = scratchRepo();
+	try {
+		writeFileSync(
+			join(dir, "src/b.tsx"),
+			'export const b = <i title={x && "Present copy"} />;\n',
+		);
+		const result = runAddedCheck({ repo: dir, base: "HEAD" });
+		assert.equal(result.findings.length, 1);
+		assert.equal(result.findings[0].path, "src/b.tsx");
+	} finally {
+		rmSync(dir, { recursive: true, force: true });
+	}
+});
+
+test("a tracked changed file deleted after listing still fails closed", () => {
+	const dir = scratchRepo();
+	try {
+		const tracked = join(dir, "src/a.tsx");
+		writeFileSync(tracked, 'export const a = <b title={x && "Copy"} />;\n');
+		assert.throws(
+			() =>
+				runAddedCheck({
+					repo: dir,
+					base: "HEAD",
+					afterListing: () => rmSync(tracked, { force: true }),
+				}),
+			DISAPPEARED_RE,
+		);
+	} finally {
+		rmSync(dir, { recursive: true, force: true });
 	}
 });

@@ -10,8 +10,17 @@ import {
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { after, test } from "node:test";
+import { PYTHON_VERSION } from "./bundled-runtime-layout.mjs";
 import { MACH_O_CPUTYPE, MACH_O_FILETYPE } from "./prune-python-seed.mjs";
-import { nativeComponentsCheck } from "./verify-macos-artifacts.mjs";
+import {
+	ROSETTA_EXEC_REFUSAL,
+	hostArchitecture,
+	isGitHubHostedRunner,
+	nativeComponentsCheck,
+	refusesLocalRosettaExec,
+	runChecks,
+	seedVersionCheck,
+} from "./verify-macos-artifacts.mjs";
 
 /*
  * Coverage for the release gate's native-component check - the one that answers
@@ -353,4 +362,241 @@ test("a bundle with no readable component at all fails rather than passing vacuo
 	const fail = nativeComponentsCheck(app, { run: lipo("arm64") });
 	assert.equal(fail.passed, false);
 	assert.match(fail.output, /No Mach-O component at all under the bundle/);
+});
+
+/*
+ * The local-Rosetta exec guard (`refusesLocalRosettaExec`).
+ *
+ * WHY: on 2026-11-02 a local run of this gate against the x64 bundle on an
+ * arm64 Mac exec'd its x86_64 launcher under Rosetta, and macOS showed the
+ * operator the macOS-28 "App Update Required" notice against Local Operator.
+ * These cases pin that the exec checks never START such a child off hosted CI
+ * unless opted in, that the refusal is a FAILED result (never a silent pass),
+ * and that CI, the opt-in and a native child all still run. The runner is
+ * injected and records every command, so "no spawn" is observed, not assumed.
+ */
+
+const EXEC_CHECK_IDS = ["app-spawn", "app-bytecode-loadable"];
+
+/** An app whose launcher and seed interpreter are thin Mach-O of `cpuType`. */
+function makeExecApp(cpuType) {
+	const dir = tempDir("verify-rosetta-");
+	const app = join(dir, "Local Operator.app");
+	mkdirSync(join(app, "Contents"), { recursive: true });
+	writeFileSync(
+		join(app, "Contents", "Info.plist"),
+		"<plist><dict><key>CFBundleExecutable</key><string>Local Operator</string></dict></plist>",
+	);
+	const executable = join(app, "Contents", "MacOS", "Local Operator");
+	writeThin(executable, cpuType);
+	const python = join(
+		app,
+		"Contents",
+		"Resources",
+		"python-runtime-seed",
+		cpuType === MACH_O_CPUTYPE.X86_64 ? "x64" : "arm64",
+		"bin",
+		"python3",
+	);
+	writeThin(python, cpuType);
+	return { app, executable, python };
+}
+
+/** A runner that records each command and answers like a healthy child. */
+function recordingRunner() {
+	const calls = [];
+	const run = (command) => {
+		calls.push(command);
+		return {
+			status: 0,
+			signal: null,
+			stdout: `Python ${PYTHON_VERSION}\n`,
+			stderr: "",
+		};
+	};
+	return { run, calls };
+}
+
+/** Every row and command of one run, before the exec rows are picked out. */
+function runAllChecks(cpuType, env) {
+	const { app, executable, python } = makeExecApp(cpuType);
+	const { run, calls } = recordingRunner();
+	const rows = runChecks({
+		appPath: app,
+		dmgPath: null,
+		run,
+		profile: { present: false, entitlements: null },
+		hostArch: "arm64",
+		env,
+	});
+	const seed = seedVersionCheck(app, { run, hostArch: "arm64", env });
+	return { executable, python, calls, rows, seed };
+}
+
+function runExecChecks(cpuType, env) {
+	const { rows, ...rest } = runAllChecks(cpuType, env);
+	return {
+		...rest,
+		results: rows.filter((result) => EXEC_CHECK_IDS.includes(result.id)),
+	};
+}
+
+const GITHUB_HOSTED = {
+	GITHUB_ACTIONS: "true",
+	RUNNER_ENVIRONMENT: "github-hosted",
+};
+
+test("arm64 host, x64 bundle, no CI: the exec checks fail closed and never spawn", () => {
+	const { executable, python, calls, results, seed } = runExecChecks(
+		MACH_O_CPUTYPE.X86_64,
+		{},
+	);
+	assert.deepEqual(
+		results.map((result) => result.id).sort(),
+		[...EXEC_CHECK_IDS].sort(),
+	);
+	for (const result of [...results, seed]) {
+		assert.equal(result.passed, false, result.id);
+		assert.match(result.output, /Rosetta/);
+		assert.match(result.output, /LOCAL_OPERATOR_ALLOW_ROSETTA_EXEC=1/);
+	}
+	assert.equal(seed.output, ROSETTA_EXEC_REFUSAL);
+	assert.ok(!calls.includes(executable), "the x64 launcher was exec'd");
+	assert.ok(!calls.includes(python), "the x64 interpreter was exec'd");
+});
+
+test("a GitHub-hosted runner still runs the translated exec checks", () => {
+	for (const env of [GITHUB_HOSTED, { ...GITHUB_HOSTED, CI: "true" }]) {
+		const { executable, python, calls, results, seed } = runExecChecks(
+			MACH_O_CPUTYPE.X86_64,
+			env,
+		);
+		assert.ok(results.every((result) => result.passed));
+		assert.equal(seed.passed, true);
+		assert.equal(calls.filter((command) => command === executable).length, 2);
+		assert.ok(calls.includes(python));
+	}
+});
+
+test("LOCAL_OPERATOR_ALLOW_ROSETTA_EXEC=1 opts a local run in", () => {
+	const { executable, python, calls, results, seed } = runExecChecks(
+		MACH_O_CPUTYPE.X86_64,
+		{ LOCAL_OPERATOR_ALLOW_ROSETTA_EXEC: "1" },
+	);
+	assert.ok(results.every((result) => result.passed));
+	assert.equal(seed.passed, true);
+	assert.equal(calls.filter((command) => command === executable).length, 2);
+	assert.ok(calls.includes(python));
+});
+
+test("a native child runs locally without any opt-in", () => {
+	const { executable, python, calls, results, seed } = runExecChecks(
+		MACH_O_CPUTYPE.ARM64,
+		{},
+	);
+	assert.ok(results.every((result) => result.passed));
+	assert.equal(seed.passed, true);
+	assert.equal(calls.filter((command) => command === executable).length, 2);
+	assert.ok(calls.includes(python));
+});
+
+test("the predicate: only an untranslated host, CI or the exact opt-in lets it exec", () => {
+	const { executable } = makeExecApp(MACH_O_CPUTYPE.X86_64);
+	const refuses = (hostArch, env) =>
+		refusesLocalRosettaExec(executable, { hostArch, env });
+	assert.equal(refuses("arm64", {}), true);
+	assert.equal(refuses("arm64", { CI: "1" }), true);
+	assert.equal(
+		refuses("arm64", { LOCAL_OPERATOR_ALLOW_ROSETTA_EXEC: "true" }),
+		true,
+	);
+	// CI=true alone, and a self-hosted runner, are not a GitHub-hosted runner.
+	assert.equal(refuses("arm64", { CI: "true" }), true);
+	assert.equal(refuses("arm64", { GITHUB_ACTIONS: "true" }), true);
+	assert.equal(
+		refuses("arm64", {
+			GITHUB_ACTIONS: "true",
+			RUNNER_ENVIRONMENT: "self-hosted",
+		}),
+		true,
+	);
+	assert.equal(refuses("arm64", GITHUB_HOSTED), false);
+	assert.equal(refuses("x64", {}), false);
+	assert.equal(
+		isGitHubHostedRunner({ RUNNER_ENVIRONMENT: "github-hosted" }),
+		false,
+	);
+});
+
+test("a refused run still returns every static row, untouched by the refusal", () => {
+	const refused = runAllChecks(MACH_O_CPUTYPE.X86_64, {});
+	const allowed = runAllChecks(MACH_O_CPUTYPE.X86_64, GITHUB_HOSTED);
+	// The same rows in the same order: the refusal withholds an exec, never a check.
+	assert.deepEqual(
+		refused.rows.map((row) => row.id),
+		allowed.rows.map((row) => row.id),
+	);
+	const statics = refused.rows.filter(
+		(row) => !EXEC_CHECK_IDS.includes(row.id),
+	);
+	assert.ok(statics.length > 0, "no static rows at all");
+	for (const id of ["app-codesign", "app-spctl", "app-stapler"])
+		assert.ok(
+			statics.some((row) => row.id === id),
+			`${id} missing from a refused run`,
+		);
+	for (const row of statics) {
+		assert.notEqual(row.output, ROSETTA_EXEC_REFUSAL, row.id);
+		const twin = allowed.rows.find((other) => other.id === row.id);
+		// `target` names each run's own temp bundle, so it is the one field that
+		// legitimately differs between the two.
+		const { target: _, ...shape } = row;
+		const { target: __, ...twinShape } = twin;
+		assert.deepEqual(shape, twinShape, `${row.id} changed under the refusal`);
+	}
+});
+
+test("a fat launcher with no arm64 slice is refused like a thin x86_64 one", () => {
+	const { app, executable } = makeExecApp(MACH_O_CPUTYPE.ARM64);
+	writeFat(executable, [MACH_O_CPUTYPE.X86_64]);
+	const { run, calls } = recordingRunner();
+	assert.equal(
+		refusesLocalRosettaExec(executable, { hostArch: "arm64", env: {} }),
+		true,
+	);
+	const rows = runChecks({
+		appPath: app,
+		dmgPath: null,
+		run,
+		profile: { present: false, entitlements: null },
+		hostArch: "arm64",
+		env: {},
+	}).filter((row) => EXEC_CHECK_IDS.includes(row.id));
+	assert.ok(rows.every((row) => row.output === ROSETTA_EXEC_REFUSAL));
+	assert.ok(
+		!calls.includes(executable),
+		"the x86_64-only fat launcher was exec'd",
+	);
+	// A universal launcher carries arm64 and runs natively: not refused.
+	writeFat(executable, [MACH_O_CPUTYPE.X86_64, MACH_O_CPUTYPE.ARM64]);
+	assert.equal(
+		refusesLocalRosettaExec(executable, { hostArch: "arm64", env: {} }),
+		false,
+	);
+});
+
+test("an x64 node on Apple silicon counts as an arm64 host", () => {
+	const ask = (arch, platform, translated) =>
+		hostArchitecture({
+			arch,
+			platform,
+			readTranslated: () => {
+				if (translated instanceof Error) throw translated;
+				return translated;
+			},
+		});
+	assert.equal(ask("x64", "darwin", true), "arm64");
+	assert.equal(ask("x64", "darwin", false), "x64");
+	assert.equal(ask("arm64", "darwin", new Error("never asked")), "arm64");
+	assert.equal(ask("x64", "linux", new Error("never asked")), "x64");
 });

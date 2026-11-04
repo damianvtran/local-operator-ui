@@ -187,5 +187,6 @@
 	"ui.providers.provider_detail.the_sign_in_page": "登录页面",
 	"ui.providers.provider_grid.row_action": "{action}：{brand}",
 	"ui.providers.provider_detail.code_expiry": "验证码将在{minutes, plural, other {{minutes, number, ::group-off} min}}后过期",
-	"ui.providers.provider_detail.link_expiry": "链接将在{minutes, plural, other {{minutes, number, ::group-off} min}}后过期"
+	"ui.providers.provider_detail.link_expiry": "链接将在{minutes, plural, other {{minutes, number, ::group-off} min}}后过期",
+	"ui.providers.provider_detail.sign_in_again": "重新登录"
 }

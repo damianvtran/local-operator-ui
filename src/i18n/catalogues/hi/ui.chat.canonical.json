@@ -166,5 +166,22 @@
 	"ui.chat.canonical.tool_row.bridge.verb.take_up.settled": "कार्य लिया",
 	"ui.chat.canonical.tool_row.bridge.verb.unknown.failed": "Team Bridge का उपयोग नहीं कर सका",
 	"ui.chat.canonical.tool_row.bridge.verb.unknown.running": "Team Bridge का उपयोग कर रहा है",
-	"ui.chat.canonical.tool_row.bridge.verb.unknown.settled": "Team Bridge का उपयोग किया"
+	"ui.chat.canonical.tool_row.bridge.verb.unknown.settled": "Team Bridge का उपयोग किया",
+	"ui.chat.canonical.transcript.hub_from": "{name} की ओर से",
+	"ui.chat.canonical.image_label": "तस्वीर",
+	"ui.chat.canonical.fold.images_aria": "{count, plural, =1 {इस रन की {count_display} तस्वीर} one {इस रन की {count_display} तस्वीर} other {इस रन की {count_display} तस्वीरें}}",
+	"ui.chat.canonical.fold.more_images": "{count, plural, =1 {+{count_display} और तस्वीर} one {+{count_display} और तस्वीर} other {+{count_display} और तस्वीरें}}",
+	"ui.chat.canonical.image_gen.control.stop_hint_queued": "प्रोवाइडर को कॉल किए जाने से पहले रोक देता है।",
+	"ui.chat.canonical.image_gen.control.stop_hint_running": "रोकने का अनुरोध भेजता है; प्रोवाइडर फिर भी इसे पूरा कर सकता है।",
+	"ui.chat.canonical.image_gen.batch_summary": "{count, plural, =1 {{count_display} आइटम} one {{count_display} आइटम} other {{count_display} आइटम}}",
+	"ui.chat.canonical.lightbox.filmstrip_aria": "{count, plural, =1 {{count_display} तस्वीर} one {{count_display} तस्वीर} other {{count_display} तस्वीरें}}",
+	"ui.chat.canonical.lightbox.show_image": "कुल {count, number, ::group-off} में से तस्वीर {index, number, ::group-off} दिखाएँ",
+	"ui.chat.canonical.supplement.details.summary": "विवरण",
+	"ui.chat.canonical.supplement.withheld.line": "{count, plural, one {# फ़ाइल नहीं दिखाई गई} other {# फ़ाइलें नहीं दिखाई गईं}}: {reason}",
+	"ui.chat.canonical.supplement.withheld.line_no_reason": "{count, plural, one {# फ़ाइल नहीं दिखाई गई} other {# फ़ाइलें नहीं दिखाई गईं}}",
+	"ui.chat.canonical.supplement.withheld.reason_outside": "अनुमत स्थानों से बाहर",
+	"ui.chat.canonical.supplement.withheld.reason_sensitive": "संवेदनशील फ़ाइल",
+	"ui.chat.canonical.supplement.withheld.reason_missing": "फ़ाइल अब मौजूद नहीं है",
+	"ui.chat.canonical.supplement.withheld.reason_too_large": "पूर्वावलोकन के लिए बहुत बड़ी",
+	"ui.chat.canonical.supplement.withheld.reason_separator": ", "
 }

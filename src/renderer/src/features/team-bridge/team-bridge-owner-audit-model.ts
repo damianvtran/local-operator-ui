@@ -8,6 +8,7 @@ import type {
 } from "../../../../shared/team-bridge-owner-audit-contract";
 import {
 	type ChiefLabels,
+	memberStoredName,
 	participantLabel,
 	storedLabel,
 } from "./team-bridge-model";
@@ -36,9 +37,19 @@ export function ownerAuditTitle(
 ) {
 	return (
 		conversation.name?.trim() ||
+		/*
+		 * Through `memberStoredName`, as `conversationTitle` reads the same rows:
+		 * a raw stored label titled a thread "Ana, Ben Tran (Ben Tran), Member"
+		 * (review m1 on #1643). An unknown kind reads as a human label.
+		 */
 		conversation.members
-			.map((member) => member.display_label.trim())
-			.filter(Boolean)
+			.map((member) =>
+				memberStoredName({
+					kind: member.kind === "agent" ? "agent" : "human",
+					display_label: member.display_label,
+				}),
+			)
+			.filter((label): label is string => label !== null)
 			.join(", ") ||
 		fallback
 	);
@@ -119,15 +130,25 @@ export function ownerAuditToBridgeMessage(
 		},
 		body: message.body ?? null,
 		body_hash: message.body_hash ?? undefined,
+		/* A missing, empty or future origin is NOT evidence of a person. The
+		   delivery annotation discloses a coarse refusal class only for an
+		   explicit `human` origin (the anti-oracle rule: agent-origin and
+		   unknown-origin senders never get a category), so falling back to the
+		   sender kind here used to turn an unknown origin into a human one and
+		   leak the class. `system` is the closed vocabulary's only non-person,
+		   non-agent value, so an unrecognised origin fails closed to it. */
 		origin:
 			message.origin === "human" ||
 			message.origin === "agent" ||
 			message.origin === "system"
 				? message.origin
-				: (kind ?? "human"),
+				: "system",
 		agent_label: message.agent_label ?? undefined,
 		created_at: message.created_at,
 		thread_root_id: message.thread_root_id ?? undefined,
+		// Carried so the owner sees why their agent refused or is holding a
+		// message (`TeamBridgeDeliveryAnnotation`); the hub scopes the entries.
+		delivery_states: message.delivery_states ?? undefined,
 	};
 }
 

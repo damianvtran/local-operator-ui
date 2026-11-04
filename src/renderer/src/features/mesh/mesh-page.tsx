@@ -59,6 +59,7 @@ import {
 import {
 	type ApprovalDecision,
 	type MeshApprovalRow,
+	approvalDecisionRequest,
 	approvalErrorMessage,
 	approvalRefusal,
 	useMeshApprovalDecision,
@@ -194,9 +195,13 @@ export const MeshSurface: FC<{
 		 */
 		decisionRefusal: {
 			approvalId: string | null;
+			submittedAt?: number;
 			code: string;
 			sentence: string;
+			retryable?: boolean;
 		} | null;
+		/** `features.credential_approvals`: whether a credential card may be approved here. */
+		credentialApprovals: boolean;
 	};
 	/** The conversations the reads returned, and what each device holds. */
 	sessions: readonly MeshSessionRow[];
@@ -523,6 +528,7 @@ export const MeshSurface: FC<{
 				onDecide={approvals.onDecide}
 				onRetry={approvals.onRetry}
 				nowSeconds={approvals.nowSeconds}
+				credentialApprovals={approvals.credentialApprovals}
 				/*
 				 * The name the canvas already shows for a network, so the consent chip
 				 * does not name it twice (UX round 1, U1). `graph` is null until the mesh
@@ -873,6 +879,14 @@ export const MeshPage: FC<{ initialPresentation?: Presentation }> = ({
 	});
 	const decideApproval = useMeshApprovalDecision();
 	/*
+	 * THE TYPED CREDENTIAL ROUTES have their own key (`credential_approvals`), not
+	 * a bump of `approvals`: without it the backend serves no route that accepts a
+	 * reviewed-digest body, so a credential card keeps its Deny-only shape.
+	 */
+	const credentialApprovals =
+		desktopFeatureState(capabilities.data, "credential_approvals") ===
+		"enabled";
+	/*
 	 * A REFUSED DECISION RENDERS ITS AUTHORED SENTENCE (agent review round 1,
 	 * finding 1): the store's refusals are the ones a waiting surface MUST carry
 	 * - a host with no signing surface ("ask Local Operator to set up operator
@@ -886,6 +900,7 @@ export const MeshPage: FC<{ initialPresentation?: Presentation }> = ({
 	const decisionRefusal = decideApproval.isError
 		? {
 				approvalId: decideApproval.variables?.approvalId ?? null,
+				submittedAt: decideApproval.submittedAt,
 				...approvalRefusal(decideApproval.error),
 			}
 		: null;
@@ -1103,8 +1118,30 @@ export const MeshPage: FC<{ initialPresentation?: Presentation }> = ({
 					? (decideApproval.variables ?? null)
 					: null,
 				decisionRefusal,
-				onDecide: (approvalId, decision) =>
-					decideApproval.mutate({ approvalId, decision }),
+				credentialApprovals,
+				/*
+				 * The decision is resolved against the row it was drawn from and turned
+				 * into a request by `approvalDecisionRequest`, the one builder - so a
+				 * credential row can only reach its typed route with the digests the
+				 * card showed, and never the bodiless `/approve`. A decision the row
+				 * cannot send (a stale click after the row moved on) sends nothing.
+				 */
+				onDecide: (approvalId, decision) => {
+					const row = approvals.data?.find(
+						(entry) => entry.approvalId === approvalId,
+					);
+					const request = row
+						? approvalDecisionRequest(
+								row,
+								decision,
+								{ credentialApprovals },
+								decisionRefusal?.approvalId === approvalId
+									? decisionRefusal.retryable
+									: undefined,
+							)
+						: null;
+					if (request) decideApproval.mutate({ approvalId, decision, request });
+				},
 				onRetry: () => void approvals.refetch(),
 				nowSeconds: approvalsNowSeconds,
 			}}

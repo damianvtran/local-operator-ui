@@ -158,8 +158,9 @@ const bundle = await build({
  export { useOwnerAuditConversations } from "./src/renderer/src/features/team-bridge/use-team-bridge-owner-audit";
 			export { radientUserKeys, beginRadientAuthoritySignOut } from "./src/renderer/src/shared/hooks/radient-account-authority";
 			export { teamBridgeKeys } from "./src/renderer/src/features/team-bridge/team-bridge-keys";
-			export { t, formatDate, formatDateTime } from "./src/renderer/src/shared/i18n";
+			export { t, formatDate, formatDateTime, formatNumber } from "./src/renderer/src/shared/i18n";
 			export { TeamBridgeMessageList } from "./src/renderer/src/features/team-bridge/team-bridge-message-list";
+			export { inlineImageSpans } from "./src/renderer/src/features/team-bridge/inline-data-receipt";
 		`,
 		resolveDir: process.cwd(),
 	},
@@ -1328,8 +1329,18 @@ test("the surface offers no way to write: no composer, no reaction, no admit", a
 test("a message with attachments names them without fetching bytes", async () => {
 	const view = await renderView(panel({ messages: [admitted] }));
 	const text = view.text();
-	assert.ok(text.includes(m.t("ui.ownerAudit.attachment_expired")));
-	assert.ok(text.includes(m.t("ui.ownerAudit.attachment_unavailable")));
+	/* The non-bound text file is a chip that says the attachment is
+	 * unavailable; the expired PNG keeps its picture-shaped box and says the
+	 * IMAGE is unavailable, the member transcript's wording (inline-image
+	 * refresh, SPEC §3.1). Both are named; neither fetches. */
+	assert.equal(
+		text.split(m.t("ui.teamBridge.attachmentCard.unavailable")).length - 1,
+		1,
+	);
+	assert.equal(
+		text.split(m.t("ui.teamBridge.attachments.unavailable")).length - 1,
+		1,
+	);
 	/* No image tag, no byte URL: this text-only surface never loads a private
 	 * attachment into a renderer. */
 	assert.equal(view.host.querySelectorAll("img").length, 0);
@@ -2190,6 +2201,801 @@ test("an unadmitted body wears the same body treatment as an admitted one", asyn
 });
 
 /*
+ * THE OPERATOR'S REPRODUCTION SHAPE (attachments lane, PR #1554 convergence):
+ * a one-line legacy receipt header, then the data URI on the SAME line,
+ * `[image ...; jpeg ...; sha256 ...] data:image/jpeg;base64,<large payload>`.
+ * The payload is synthetic JPEG-looking base64 (`/9j/` magic, `+` and `/`,
+ * `=` padding) at ~600 KB so the bound is measured at a realistic size, not
+ * against a toy string. The header must stay readable prose; the URI must be
+ * a receipt, never an <img> and never the base64 in the default DOM.
+ */
+const LEGACY_RECEIPT_HEADER =
+	"[image 1/1: photo.jpg; jpeg 1600x1200; 452118 bytes; sha256 3f1c9a0e5b7d2f4a6c8e0b1d3f5a7c9e1b3d5f7a9c0e2b4d6f8a0c2e4b6d8f0a]";
+const LEGACY_JPEG_URI = `data:image/jpeg;base64,/9j/4AAQSkZJRgABAQ${"Qk+/x9Zp".repeat(75000)}AB==`;
+
+test("the operator's single-line receipt + data URI is a bounded receipt in the audit", async () => {
+	const body = `${LEGACY_RECEIPT_HEADER} ${LEGACY_JPEG_URI}`;
+	const view = await renderView(
+		panel({ messages: [auditRow({ id: "operator_repro", body })] }),
+	);
+	const row = rowOf(view.host, "operator_repro");
+	assert.ok(row.textContent.includes(LEGACY_RECEIPT_HEADER), "header readable");
+	assert.ok(
+		row.textContent.includes(
+			m.t("ui.ownerAudit.inline_image_receipt", {
+				mime: "image/jpeg",
+				/* Locale-grouped (design D1): "600,045", not "600045". */
+				count: m.formatNumber(LEGACY_JPEG_URI.length),
+			}),
+		),
+		"receipt names the MIME type and the encoded length",
+	);
+	assert.ok(
+		row.textContent.length < 1000,
+		`default DOM ${row.textContent.length} characters for a ${body.length}-character body`,
+	);
+	assert.equal(row.textContent.includes("Qk+/x9Zp"), false, "no base64 run");
+	assert.equal(row.querySelector("img"), null);
+	assert.equal(row.querySelectorAll("details").length, 1);
+	const details = row.querySelector("details");
+	await act(async () => {
+		details.open = true;
+		details.dispatchEvent(new dom.window.Event("toggle"));
+	});
+	/* Inspection stays inert and one bounded page at a time. */
+	assert.equal(row.querySelector("pre").textContent.length, 2048);
+	assert.ok(
+		row
+			.querySelector("pre")
+			.textContent.startsWith("data:image/jpeg;base64,/9j/"),
+	);
+	assert.equal(row.querySelector("img"), null);
+	await view.close();
+});
+
+test("legacy image data stays bounded and inert until inspected", async () => {
+	const data = `data:image/jpeg;base64,${"A".repeat(10000)}`;
+	const body = `Before\n[image 1/1: example.jpg]\n${data}\nAfter`;
+	const view = await renderView(
+		panel({ messages: [auditRow({ id: "legacy_image", body })] }),
+	);
+	const row = rowOf(view.host, "legacy_image");
+	assert.ok(row.textContent.includes("Before"));
+	assert.ok(row.textContent.includes("After"));
+	assert.ok(row.textContent.includes("image/jpeg"));
+	assert.equal(row.textContent.includes("A".repeat(64)), false);
+	assert.equal(row.querySelector("img"), null);
+	const details = row.querySelector("details");
+	await act(async () => {
+		details.open = true;
+		details.dispatchEvent(new dom.window.Event("toggle"));
+	});
+	assert.equal(row.querySelector("pre").textContent.length, 2048);
+	assert.ok(
+		row.querySelector("pre").textContent.startsWith("data:image/jpeg;base64,"),
+	);
+	await click(BUTTON_TEXT(row, m.t("ui.ownerAudit.next_chunk")));
+	assert.equal(row.querySelector("pre").textContent, "A".repeat(2048));
+	/* The page counter is a polite live region (agent review R1-4), so a page
+	   change is announced while focus stays on the button. */
+	const counter = row.querySelector('[aria-live="polite"]');
+	assert.equal(
+		counter?.textContent,
+		m.t("ui.ownerAudit.chunk_number", { page: "2", count: "5" }),
+	);
+	await view.close();
+});
+
+test("delimiter-heavy image data uses linearly bounded character checks", () => {
+	// Count the actual scanner's regex tests rather than timing a shared host.
+	// The former 257-character lookahead per delimiter exceeds this bound by
+	// orders of magnitude, so the test must fail if that loop is restored.
+	for (const [unit, count] of [
+		["]", 1000000],
+		["**", 50000],
+		[")", 100000],
+	]) {
+		const body = `data:image/svg+xml,%3Csvg%3E${unit.repeat(count)}\nAfter`;
+		const original = RegExp.prototype.test;
+		let checks = 0;
+		let spans;
+		try {
+			RegExp.prototype.test = function (value) {
+				checks++;
+				return original.call(this, value);
+			};
+			spans = m.inlineImageSpans(body);
+		} finally {
+			RegExp.prototype.test = original;
+		}
+		assert.equal(spans.length, 1);
+		// The scanner leaves at most the short, ambiguous suffix as prose.
+		assert.ok(spans[0].end >= body.indexOf("\n") - 260);
+		assert.ok(
+			checks <= 3 * body.length + 100,
+			`${unit}: ${checks} checks for ${body.length} characters`,
+		);
+	}
+});
+
+test("a million image data delimiters remain bounded in the rendered audit", async () => {
+	const body = `Before\ndata:image/svg+xml,%3Csvg%3E${"]".repeat(1000000)}\nAfter`;
+	const view = await renderView(
+		panel({ messages: [auditRow({ id: "million_delimiters", body })] }),
+	);
+	const row = rowOf(view.host, "million_delimiters");
+	assert.ok(row.textContent.includes("Before"));
+	assert.ok(row.textContent.includes("After"));
+	assert.ok(
+		row.textContent.length < 1000,
+		`rendered ${row.textContent.length} characters`,
+	);
+	assert.equal(row.querySelectorAll("details").length, 1);
+	assert.equal(row.querySelector("img"), null);
+	await view.close();
+});
+
+test("parameterized and percent-encoded image URIs are bounded without swallowing prose", async () => {
+	const variants = [
+		`data:image/svg+xml;charset=utf-8;base64,${"A".repeat(9000)}%2F${"B".repeat(9000)}`,
+		`data:image/svg+xml;charset=utf-8,%3Csvg%3E${"C".repeat(18000)}%3C%2Fsvg%3E`,
+		`data:image/${"x".repeat(9000)};name=${"y".repeat(9000)},${"D".repeat(9000)}`,
+		`data:image/svg+xml,begin(embedded)${"E".repeat(18000)}.`,
+		`data:image/svg+xml,%3Csvg%3E]${"F".repeat(10000)}`,
+		`data:image/svg+xml,%3Csvg%3E}${"G".repeat(10000)}`,
+		`data:image/svg+xml,%3Csvg%3E**${"H".repeat(10000)}`,
+	];
+	for (const [index, data] of variants.entries()) {
+		const body = `Before data:image/png is a type.\n${data}\nAfter`;
+		const view = await renderView(
+			panel({ messages: [auditRow({ id: `variant_${index}`, body })] }),
+		);
+		const row = rowOf(view.host, `variant_${index}`);
+		assert.ok(row.textContent.includes("Before data:image/png is a type."));
+		assert.ok(row.textContent.includes("After"));
+		assert.ok(
+			row.textContent.length < 1000,
+			`variant ${index}: bounded default DOM`,
+		);
+		assert.equal(row.querySelectorAll("details").length, 1);
+		assert.equal(row.querySelector("img"), null);
+		await view.close();
+	}
+});
+
+test("wrapped base64 is bounded while adjacent Markdown and prose survive", async () => {
+	const data = `data:image/png;base64,${"A".repeat(100)}\r\n${"B".repeat(10000)}`;
+	const body = `Before ${data})**important**\nordinary next line`;
+	const view = await renderView(
+		panel({ messages: [auditRow({ id: "wrapped_data", body })] }),
+	);
+	const row = rowOf(view.host, "wrapped_data");
+	assert.ok(row.textContent.includes("Before"));
+	assert.ok(row.textContent.includes("important"));
+	assert.ok(row.textContent.includes("ordinary next line"));
+	assert.ok(row.textContent.length < 1000);
+	assert.equal(row.textContent.includes("B".repeat(100)), false);
+	assert.equal(row.querySelector("strong")?.textContent, "important");
+	assert.equal(row.querySelectorAll("details").length, 2);
+	assert.ok(row.textContent.includes(m.t("ui.ownerAudit.inspect_body")));
+	await view.close();
+});
+
+test("a long wrapped token remains bounded before same-line prose", async () => {
+	const body = `data:image/png;base64,${"A".repeat(100)}\n${"B".repeat(10000)} ordinary prose`;
+	const view = await renderView(
+		panel({ messages: [auditRow({ id: "wrapped_prose", body })] }),
+	);
+	const row = rowOf(view.host, "wrapped_prose");
+	assert.ok(row.textContent.includes("ordinary prose"));
+	assert.ok(row.textContent.length < 1000);
+	await view.close();
+});
+
+test("many short encoded continuation lines are bounded", async () => {
+	const data = `data:image/png;base64,${"A".repeat(100)}\n${Array(400).fill("B".repeat(32)).join("\n")}`;
+	const view = await renderView(
+		panel({
+			messages: [
+				auditRow({
+					id: "short_wrap",
+					body: `${data}\nordinary prose survives`,
+				}),
+			],
+		}),
+	);
+	const row = rowOf(view.host, "short_wrap");
+	assert.ok(row.textContent.includes("ordinary prose survives"));
+	assert.ok(row.textContent.length < 1000);
+	assert.equal(row.textContent.includes("B".repeat(32)), false);
+	await view.close();
+});
+
+test("eight short alphabet-only prose lines remain visible", async () => {
+	const lines = [
+		"ordinary",
+		"neighbor",
+		"families",
+		"morningx",
+		"tomorrow",
+		"pleasant",
+		"research",
+		"complete",
+	];
+	/* The URI clears the receipt floor, so the question stays the one this test
+	   asks: do the prose lines after a receipt survive as prose? */
+	const body = `data:image/png;base64,${"A".repeat(3000)}\n${lines.join("\n")}`;
+	const view = await renderView(
+		panel({ messages: [auditRow({ id: "prose_lines", body })] }),
+	);
+	const row = rowOf(view.host, "prose_lines");
+	for (const line of lines) assert.ok(row.textContent.includes(line), line);
+	assert.equal(row.querySelectorAll("details").length, 1);
+	await view.close();
+});
+
+test("large ambiguous continuations disclose bounded plaintext, not an image", async () => {
+	const data = `data:image/png;base64,${"A".repeat(100)}\n${Array(400).fill("B".repeat(32)).join("\n")}`;
+	const view = await renderView(
+		panel({ messages: [auditRow({ id: "ambiguous_lines", body: data })] }),
+	);
+	const row = rowOf(view.host, "ambiguous_lines");
+	const details = row.querySelectorAll("details");
+	assert.equal(details.length, 2);
+	assert.equal(
+		details[1].querySelector("summary").textContent,
+		m.t("ui.ownerAudit.inspect_body"),
+	);
+	assert.equal(row.textContent.includes("B".repeat(32)), false);
+	await act(async () => {
+		details[1].open = true;
+		details[1].dispatchEvent(new dom.window.Event("toggle"));
+	});
+	assert.ok(
+		details[1].querySelector("pre").textContent.includes("B".repeat(32)),
+	);
+	assert.equal(details[1].querySelector("pre").textContent.length, 2048);
+	await view.close();
+});
+
+test("plain prose adjacent to a closing delimiter remains visible", async () => {
+	const body = `data:image/png;base64,${"A".repeat(10000)})plain prose`;
+	const view = await renderView(
+		panel({ messages: [auditRow({ id: "adjacent_plain", body })] }),
+	);
+	const row = rowOf(view.host, "adjacent_plain");
+	assert.ok(row.textContent.includes(")plain prose"));
+	assert.equal(row.textContent.includes("A".repeat(100)), false);
+	await view.close();
+});
+
+test("short encoded-looking next line remains ordinary prose", async () => {
+	const body = `data:image/png;base64,${"A".repeat(100)}\nordinary`;
+	const view = await renderView(
+		panel({ messages: [auditRow({ id: "short_line", body })] }),
+	);
+	const row = rowOf(view.host, "short_line");
+	assert.ok(row.textContent.includes("ordinary"));
+	await view.close();
+});
+
+/*
+ * PR #1554 agent review round 1 R1-1 / QA round 1 Q1. The body is split around a
+ * receipt BEFORE Markdown parses it, so a receipt must never stand in for a SHORT
+ * mention of a data URI (prose, an inline code span, an HTML example in a fence)
+ * and must never split inside code. Each case renders exactly as main's whole-body
+ * Markdown does: no <details>, the code intact, the prose after it still prose.
+ */
+const renderAuditBody = async (id, body) => {
+	const view = await renderView(panel({ messages: [auditRow({ id, body })] }));
+	return { view, row: rowOf(view.host, id) };
+};
+
+test("an inline code span naming a data URI prefix stays inline code", async () => {
+	const { view, row } = await renderAuditBody(
+		"inline_code_prefix",
+		"Strip the `data:image/jpeg;base64,` prefix before decoding.",
+	);
+	assert.equal(row.querySelectorAll("details").length, 0, "no receipt");
+	assert.equal(
+		row.querySelector("p code")?.textContent,
+		"data:image/jpeg;base64,",
+	);
+	assert.ok(
+		row.querySelector("p").textContent.includes(" prefix before decoding."),
+	);
+	assert.equal(row.textContent.includes("`"), false, "no stray backticks");
+	await view.close();
+});
+
+test("prose mentioning a data URI prefix stays prose", async () => {
+	const prose =
+		"The legacy body starts with data:image/png;base64, and then the bytes.";
+	const { view, row } = await renderAuditBody("prose_prefix", prose);
+	assert.equal(row.querySelectorAll("details").length, 0);
+	assert.ok(row.textContent.includes(prose));
+	await view.close();
+});
+
+test("a fenced HTML example with a data URI stays one code block, prose after it", async () => {
+	const html = '<img src="data:image/png;base64,iVBORw0KGgo=">';
+	const body = `Example:\n\n\`\`\`html\n${html}\n\`\`\`\n\nand inline \`data:image/gif;base64,R0lGOD==\` too. The end.`;
+	const { view, row } = await renderAuditBody("fenced_small", body);
+	assert.equal(row.querySelectorAll("details").length, 0);
+	const blocks = row.querySelectorAll("pre");
+	assert.equal(blocks.length, 1, "exactly one code block");
+	assert.equal(blocks[0].textContent.trim(), html);
+	const after = [...row.querySelectorAll("p")].find((p) =>
+		p.textContent.includes("The end."),
+	);
+	assert.ok(after, "the prose after the fence is a paragraph");
+	assert.equal(after.closest("pre"), null, "and not code");
+	assert.equal(
+		after.querySelector("code")?.textContent,
+		"data:image/gif;base64,R0lGOD==",
+	);
+	await view.close();
+});
+
+/*
+ * A LARGE payload inside a fence. Decided behaviour (see `inlineImageSpans`): the
+ * receipt replaces the WHOLE code region, so the split lands on the fence's own
+ * edges. The prose after the fence stays prose, no empty code block is left on
+ * either side, the receipt counts the URI (not the fence), and inspection pages
+ * through the region exactly as authored, fence lines included.
+ */
+test("a large data URI inside a fence becomes one receipt for the whole block", async () => {
+	const uri = `data:image/png;base64,${"Qk+/x9Zp".repeat(2500)}`;
+	const fenced = `\`\`\`\n${uri}\n\`\`\``;
+	const body = `Fenced big:\n\n${fenced}\n\nThe line after the fence.`;
+	const { view, row } = await renderAuditBody("fenced_large", body);
+	assert.equal(row.querySelectorAll("details").length, 1);
+	assert.equal(row.querySelectorAll("pre").length, 0, "no empty code block");
+	assert.ok(
+		row
+			.querySelector("summary")
+			.textContent.includes(m.formatNumber(uri.length)),
+		"the receipt counts the URI",
+	);
+	const after = [...row.querySelectorAll("p")].find((p) =>
+		p.textContent.includes("The line after the fence."),
+	);
+	assert.ok(after, "the prose after the fence is a paragraph");
+	assert.ok(row.textContent.includes("Fenced big:"));
+	assert.ok(row.textContent.length < 1000);
+	const details = row.querySelector("details");
+	await act(async () => {
+		details.open = true;
+		details.dispatchEvent(new dom.window.Event("toggle"));
+	});
+	assert.ok(
+		row.querySelector("pre").textContent.startsWith("```\ndata:image/"),
+	);
+	await view.close();
+});
+
+/*
+ * PR #1554 round 2, R2-1: a fence can open on the same line as a list marker
+ * (`- ```` , `* ~~~`, `1. ```html`), and inside a blockquote. Unrecognised, a
+ * large URI in one split the fence and the prose after it rendered as code.
+ * The prefix after the marker is CommonMark's: the item's content column.
+ */
+test("a fence opened on a list-marker line is one receipt, prose after it", async () => {
+	const uri = `data:image/png;base64,${"Qk+/x9Zp".repeat(400)}`;
+	for (const [id, open, close, indent] of [
+		["list_dash", "- ```", "```", "  "],
+		["list_star_tilde", "* ~~~", "~~~", "  "],
+		["list_ordered_info", "1. ```html", "```", "   "],
+		["list_paren_nested", "2) - ```", "```", "     "],
+		// The item's content sits 2 columns into the quote: `>` + optional space
+		// + 2. With only `> `, the line is left of the item and ends it (R1-1).
+		["quote_list", "> - ```", "```", ">   "],
+	]) {
+		const body = `Steps:\n\n${open}\n${indent}<img src="${uri}">\n${indent}${close}\n\nafter prose`;
+		const { view, row } = await renderAuditBody(id, body);
+		assert.equal(row.querySelectorAll("details").length, 1, id);
+		assert.equal(row.querySelectorAll("pre").length, 0, `${id}: no code block`);
+		const after = [...row.querySelectorAll("p")].find(
+			(p) => p.textContent === "after prose",
+		);
+		assert.ok(after, `${id}: the prose after the fence is a paragraph`);
+		assert.ok(row.textContent.includes("Steps:"), id);
+		assert.ok(row.textContent.length < 1000, id);
+		await view.close();
+	}
+});
+
+/*
+ * R2-2: with no list or quote container, 4+ spaces before ``` make an indented
+ * code line, not a fence opener. Read as one, it opened an unclosed fence, and
+ * a later large URI put everything to the end of the body behind the receipt.
+ * The same holds 4+ columns into a list item's content.
+ */
+test("a 4-space indented fence line is indented code, not an opener", async () => {
+	const uri = `data:image/png;base64,${"A".repeat(3000)}`;
+	for (const [id, prefix] of [
+		["indent4_top", "To write a fence:\n\n    ```"],
+		["indent_tab_top", "To write a fence:\n\n\t```"],
+		["indent4_in_item", "- To write a fence:\n\n      ```"],
+		["indent4_after_marker", "-      ```"],
+	]) {
+		const body = `${prefix}\n\nThen the image: ${uri}\n\nMore important prose.`;
+		const { view, row } = await renderAuditBody(id, body);
+		assert.equal(row.querySelectorAll("details").length, 1, id);
+		assert.ok(
+			row
+				.querySelector("summary")
+				.textContent.includes(m.formatNumber(uri.length)),
+			`${id}: the receipt covers the URI, not the rest of the body`,
+		);
+		const more = [...row.querySelectorAll("p")].find(
+			(p) => p.textContent === "More important prose.",
+		);
+		assert.ok(more, `${id}: the prose after the URI stays visible`);
+		assert.ok(
+			[...row.querySelectorAll("pre")].some((pre) =>
+				pre.textContent.includes("```"),
+			),
+			`${id}: the indented line renders as code, as authored`,
+		);
+		await view.close();
+	}
+});
+
+/*
+ * R2-3: one code region holding several large URIs is one receipt, and it
+ * states the TOTAL of those URIs. A URI below the floor is not counted, so the
+ * total does not depend on which comes first.
+ */
+/*
+ * PR #1622 round 1, R1-1 / QA Q1. A fence opened inside a list item or a
+ * blockquote ends with its container, as in CommonMark. Without that, an
+ * unclosed `- ```` stayed open to the end of the body and a later large URI
+ * put every paragraph after the list behind the receipt. The bodies are the
+ * reviewer's and QA's reproductions; the last two (quote, own-line fence under
+ * an item) were already wrong on main.
+ */
+test("a fence inside a list item or quote closes when its container ends", async () => {
+	const uri = `data:image/png;base64,${"A".repeat(3000)}`;
+	for (const [id, body, visible] of [
+		[
+			"item_end",
+			`- \`\`\`\n  code\n\nVisible prose after the list.\n\n${uri}\n\nThanks.`,
+			["Visible prose after the list.", "Thanks."],
+		],
+		[
+			"next_item",
+			`- \`\`\` opens a fence\n- ~~~ also\n\nVisible prose after the list. ${uri}\n\nThanks.`,
+			["Visible prose after the list.", "Thanks."],
+		],
+		[
+			"truncated_item_fence",
+			`- \`\`\`js\n  let a\n\nPROSE1 text.\n\n${uri}\n\nPROSE2 text.`,
+			["PROSE1 text.", "PROSE2 text."],
+		],
+		[
+			"qa_ordered_next_item",
+			`1. \`\`\`sh\n   make\n2. Then the image:\n\n${uri}\n\nImportant prose after.`,
+			["Then the image:", "Important prose after."],
+		],
+		[
+			"qa_dash_paragraph",
+			`- \`\`\`sh\n  make\n\nThen the image: ${uri}\n\nImportant prose after.`,
+			["Then the image:", "Important prose after."],
+		],
+		[
+			"qa_quote_list",
+			`> - \`\`\`\n>   code\n\nThen the image: ${uri}\n\nImportant prose after.`,
+			["Then the image:", "Important prose after."],
+		],
+		[
+			"quote_fence_main",
+			`> \`\`\`\n> code\n\nPROSE1 text.\n\n${uri}\n\nPROSE2 text.`,
+			["PROSE1 text.", "PROSE2 text."],
+		],
+		[
+			"own_line_fence_next_item_main",
+			`1. Install:\n   \`\`\`bash\n   npm i\n2. PROSE1 text.\n\n${uri}\n\nPROSE2 text.`,
+			["PROSE1 text.", "PROSE2 text."],
+		],
+	]) {
+		const { view, row } = await renderAuditBody(id, body);
+		assert.equal(row.querySelectorAll("details").length, 1, id);
+		assert.ok(
+			row
+				.querySelector("summary")
+				.textContent.includes(m.formatNumber(uri.length)),
+			`${id}: the receipt is the URI's alone`,
+		);
+		for (const text of visible)
+			assert.ok(
+				[...row.querySelectorAll("p, li")].some((node) =>
+					node.textContent.includes(text),
+				),
+				`${id}: "${text}" stays visible`,
+			);
+		assert.ok(row.querySelector("pre"), `${id}: the fence renders as code`);
+		await view.close();
+	}
+});
+
+/*
+ * R1-2: a list also ends at a block that cannot lazily continue a paragraph
+ * (a heading, a thematic break, a blockquote, a fence at column 0), not only
+ * after a blank line. A stale item column let a 4-space ``` open a phantom
+ * fence again (the R2-2 failure). All four were already wrong on main.
+ */
+test("a list ended by a block does not keep its column for a later opener", async () => {
+	const uri = `data:image/png;base64,${"A".repeat(3000)}`;
+	for (const [id, between] of [
+		["after_heading", "# PROSE0 heading\n    ```"],
+		["after_hr", "***\n    ```"],
+		["after_quote", ">     ```"],
+		["after_fence", "```\nx\n```\n    ```"],
+	]) {
+		const body = `- a\n${between}\n\nPROSE1 text\n\n${uri}\n\nPROSE2`;
+		const { view, row } = await renderAuditBody(id, body);
+		assert.equal(row.querySelectorAll("details").length, 1, id);
+		assert.ok(
+			row
+				.querySelector("summary")
+				.textContent.includes(m.formatNumber(uri.length)),
+			`${id}: the receipt is the URI's alone`,
+		);
+		for (const text of ["PROSE1 text", "PROSE2"])
+			assert.ok(
+				[...row.querySelectorAll("p")].some(
+					(node) => node.textContent === text,
+				),
+				`${id}: "${text}" stays a paragraph`,
+			);
+		await view.close();
+	}
+});
+
+/*
+ * R1-3: the R2-3 total scans URIs inside a code receipt, and a run of
+ * overlapping `data:image/` headers was rescanned once per match there
+ * (reviewer: 2,023 ms against main's 4 ms on ~1M characters). Bounded by the
+ * scanner's own regex-test count, which is deterministic on a shared host:
+ * the per-match rescan is ~89 tests per character, ~30x this bound. The wall-time bound is loose and
+ * only a backstop.
+ */
+test("overlapping image headers in a code receipt are scanned once", () => {
+	const unit = `${"data:image/".repeat(180)} `;
+	const body = `\`\`\`\ndata:image/png;base64,${"A".repeat(3000)}\n${unit.repeat(Math.ceil(1000000 / unit.length))}\n\`\`\`\nafter`;
+	const original = RegExp.prototype.test;
+	let checks = 0;
+	let spans;
+	const started = performance.now();
+	try {
+		RegExp.prototype.test = function (value) {
+			checks++;
+			return original.call(this, value);
+		};
+		spans = m.inlineImageSpans(body);
+	} finally {
+		RegExp.prototype.test = original;
+	}
+	const elapsed = performance.now() - started;
+	assert.equal(spans.length, 1);
+	assert.ok(
+		checks <= 3 * body.length + 100,
+		`${checks} checks for ${body.length} characters`,
+	);
+	assert.ok(elapsed < 500, `${body.length} characters took ${elapsed} ms`);
+});
+
+/* PR #1622 round 2 R2-1: lazy continuation requires the item's last block
+ * to be a paragraph, and cannot outlive the item's quote. These are the four
+ * review repros. A stale item column ended the real fence early on its closer,
+ * then re-read that closer as an opener hiding Done/Tail behind the receipt. */
+test("non-paragraph item blocks and dropped quotes do not leave stale fence columns", async () => {
+	const uri = `data:image/png;base64,${"A".repeat(3000)}`;
+	for (const [id, source] of [
+		["heading_item", "- ## Install\nRun this:\n  ```sh\n  make\n```"],
+		[
+			"item_closed_then_text",
+			"1. Run:\n   ```sh\n   make\n   ```\nThen do this:\n   ```sh\n   make install\n```",
+		],
+		["hr_item", "- ***\nplain\n  ```\n  y\n```"],
+		["quote_item_drop", "> - quoted item\n  ```sh\nmake\n```"],
+	]) {
+		const body = `${source}\n\nDone prose.\n\n${uri}\n\nTail prose.`;
+		const { view, row } = await renderAuditBody(id, body);
+		assert.equal(row.querySelectorAll("details").length, 1, id);
+		for (const text of ["Done prose.", "Tail prose."])
+			assert.ok(
+				[...row.querySelectorAll("p")].some((p) => p.textContent === text),
+				`${id}: ${text} stays visible`,
+			);
+		const spans = m.inlineImageSpans(body);
+		assert.equal(spans[0].start, body.indexOf(uri), `${id}: no phantom fence`);
+		assert.equal(spans[0].end, body.indexOf(uri) + uri.length, id);
+		await view.close();
+	}
+});
+
+/* R2-2: an end-of-line marker is an empty item, with its content column one
+ * past the marker. No paragraph is open, so dedented prose ends the item. */
+test("an empty list marker gives its fence an item container", async () => {
+	const uri = `data:image/png;base64,${"A".repeat(3000)}`;
+	for (const [id, source] of [
+		["empty_dash", "-\n  ```\n  x"],
+		["empty_ordered", "1.\n   ```sh\n   make"],
+		["empty_dash_fence4", "-\n    ```js\n    x\n  ```"],
+	]) {
+		const body = `${source}\n\nDone prose.\n\n${uri}\n\nTail prose.`;
+		const { view, row } = await renderAuditBody(id, body);
+		for (const text of ["Done prose.", "Tail prose."])
+			assert.ok(
+				[...row.querySelectorAll("p")].some((p) => p.textContent === text),
+				`${id}: ${text} stays visible`,
+			);
+		assert.equal(m.inlineImageSpans(body)[0].start, body.indexOf(uri), id);
+		await view.close();
+	}
+});
+
+/* The round-2 fuzz's direct neighbours pin the distinction between an empty
+ * item, a bare marker after indented code, a quote-local item and a thematic
+ * break which resembles a marker. They all put the tail URI outside code in
+ * remark-gfm, and must not acquire a phantom opener. */
+test("empty markers and fence closers preserve their surrounding block context", () => {
+	const uri = `data:image/png;base64,${"A".repeat(3000)}`;
+	for (const source of [
+		"         ```\n```\n===\n> ````\n````",
+		"   \tPROSEa\n-\n  ```\n\t***\n````",
+		"-\n   > ```\n  ```",
+		"- 10. d\n* ***\n   ````\n    ~~~\n===\n````",
+		"+ c\n-\n-\n   > ````\n  ````",
+		"\t-\n> 10. d\n     ```\n-\n   ```\n> q",
+		" * # h\n> PROSEa\n\t  ```\n-\n   ```",
+		"> - ***\n\t\t- b\n-\n     ```\n  ```",
+	]) {
+		const body = `${source}\n\nDone prose.\n\n${uri}\n\nTail prose.`;
+		const spans = m.inlineImageSpans(body);
+		assert.equal(spans.length, 1, source);
+		assert.equal(spans[0].start, body.indexOf(uri), source);
+	}
+});
+
+test("a receipt for a code region totals every large URI in it", async () => {
+	const first = `data:image/png;base64,${"A".repeat(3000)}`;
+	const second = `data:image/jpeg;base64,${"B".repeat(4000)}`;
+	const small = "data:image/gif;base64,R0lGOD==";
+	for (const [id, inner, total] of [
+		["two_large", `${first}\n${second}`, first.length + second.length],
+		[
+			"small_first",
+			`${small}\n${first}\n${second}`,
+			first.length + second.length,
+		],
+		[
+			"three_with_small",
+			`${first}\n${small}\n${second}\n${first}`,
+			2 * first.length + second.length,
+		],
+	]) {
+		const body = `Before\n\n\`\`\`\n${inner}\n\`\`\`\n\nAfter`;
+		const { view, row } = await renderAuditBody(id, body);
+		assert.equal(row.querySelectorAll("details").length, 1, id);
+		assert.ok(
+			row.querySelector("summary").textContent.includes(m.formatNumber(total)),
+			`${id}: expected ${total} in "${row.querySelector("summary").textContent}"`,
+		);
+		assert.ok(row.textContent.includes("After"), id);
+		await view.close();
+	}
+});
+
+test("a large data URI inside an inline code span takes the span, not the paragraph", async () => {
+	const uri = `data:image/png;base64,${"A".repeat(5000)}`;
+	const { view, row } = await renderAuditBody(
+		"inline_code_large",
+		`Before \`${uri}\` after **bold**.`,
+	);
+	assert.equal(row.querySelectorAll("details").length, 1);
+	assert.ok(row.textContent.includes("Before"));
+	assert.equal(row.querySelector("strong")?.textContent, "bold");
+	assert.equal(row.textContent.includes("`"), false, "no stray backticks");
+	assert.equal(row.textContent.includes("A".repeat(64)), false);
+	await view.close();
+});
+
+test("a short whole data URI below the receipt floor stays copyable text", async () => {
+	const uri =
+		"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==";
+	const { view, row } = await renderAuditBody(
+		"short_uri",
+		`${uri} is a 1x1 pixel.`,
+	);
+	assert.equal(row.querySelectorAll("details").length, 0);
+	assert.ok(row.textContent.includes(`${uri} is a 1x1 pixel.`));
+	await view.close();
+});
+
+/* QA round 1 Q2 / agent review R1-2: two legacy shapes leaked their payload. */
+test("base64url and raw SVG payloads above the floor are bounded too", async () => {
+	const cases = [
+		[
+			"b64url",
+			`U: data:image/png;base64,${"Qk-_x9Zp".repeat(68750)} end.`,
+			"image/png",
+		],
+		[
+			"raw_svg",
+			`X: data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1"><path d="${"M0 0 L1 1 ".repeat(2000)}"/></svg> end.`,
+			"image/svg+xml",
+		],
+		[
+			"raw_svg_unclosed",
+			`X: data:image/svg+xml,<svg width='1'>${"<g>x</g>".repeat(2000)}\nnext line survives.`,
+			"image/svg+xml",
+		],
+	];
+	for (const [id, body, mime] of cases) {
+		const { view, row } = await renderAuditBody(id, body);
+		assert.equal(row.querySelectorAll("details").length, 1, id);
+		assert.ok(row.querySelector("summary").textContent.includes(mime), id);
+		assert.ok(
+			row.textContent.length < 1000,
+			`${id}: ${row.textContent.length}`,
+		);
+		assert.ok(
+			row.textContent.includes(
+				id === "raw_svg_unclosed" ? "next line survives." : "end.",
+			),
+			`${id}: the prose after the payload survives`,
+		);
+		await view.close();
+	}
+});
+
+/* QA round 1 N1: MIME types are case-insensitive; the receipt shows them lowered. */
+test("an upper-case data URI names its MIME type in lower case", async () => {
+	const { view, row } = await renderAuditBody(
+		"upper_mime",
+		`DATA:IMAGE/PNG;BASE64,${"A".repeat(5000)}`,
+	);
+	assert.ok(row.querySelector("summary").textContent.includes("image/png"));
+	assert.equal(row.textContent.includes("IMAGE/PNG"), false);
+	await view.close();
+});
+
+/*
+ * The code-region model is char comparisons only (no RegExp), so the regex-count
+ * bound above cannot see it. Bound it by wall time with a margin of orders of
+ * magnitude: one pass over 1M characters is milliseconds, while the quadratic
+ * failure mode (rescanning to a closer per unmatched backtick run) is ~10^11
+ * steps and cannot finish inside it on any host.
+ */
+test("backtick- and fence-heavy bodies keep the code-region scan linear", () => {
+	for (const body of [
+		`data:image/png;base64,${"A".repeat(3000)} ${"` x ".repeat(250000)}`,
+		`data:image/png;base64,${"A".repeat(3000)} ${"`".repeat(1)}${" ``x".repeat(250000)}`,
+		`${"```\nx\n".repeat(150000)}data:image/png;base64,${"A".repeat(3000)}`,
+		// List/quote/indent prefixes (R2-1 / R2-2), ~1M characters each: marker
+		// runs, nested markers, long digit runs, deep one-line nesting followed
+		// by many short lines (the container stack), and indented fence lines.
+		`${"- ```\n  x\n  ```\n".repeat(55000)}data:image/png;base64,${"A".repeat(3000)}`,
+		`${"> 1. - * + ~~~\n".repeat(70000)}data:image/png;base64,${"A".repeat(3000)}`,
+		`${"123456789012. ```\n".repeat(55000)}data:image/png;base64,${"A".repeat(3000)}`,
+		`${"- ".repeat(250000)}x\n${"a\n\n".repeat(160000)}data:image/png;base64,${"A".repeat(3000)}`,
+		`${"     ```\n\n".repeat(90000)}data:image/png;base64,${"A".repeat(3000)}`,
+		// Thematic-break candidates must not rescan at each nested marker.
+		`${"- ".repeat(250000)}x\ndata:image/png;base64,${"A".repeat(3000)}`,
+		// Many large URIs in one fence, each totalled (R2-3), and small ones.
+		`\`\`\`\n${`data:image/png;base64,${"A".repeat(2100)}\ndata:image/gif;base64,R0==\n`.repeat(450)}`,
+	]) {
+		const started = performance.now();
+		m.inlineImageSpans(body);
+		const elapsed = performance.now() - started;
+		assert.ok(elapsed < 3000, `${body.length} characters took ${elapsed} ms`);
+	}
+});
+
+/*
  * Agent review round 1, R1-2. The wire allows `""` (`z.string().nullish()`); an
  * audit row with a blank body and nothing attached must say the text is
  * unavailable, as a null body does, never draw an empty prose block. It held
@@ -2274,7 +3080,9 @@ test("attachments are named, never fetched, through the shared list", async () =
 	await settleTimes();
 	const row = rowOf(view.host, admitted.id);
 	assert.ok(row, "rendered by the shared list");
-	assert.ok(row.textContent.includes(m.t("ui.ownerAudit.attachment_expired")));
+	assert.ok(
+		row.textContent.includes(m.t("ui.teamBridge.attachmentCard.unavailable")),
+	);
 	assert.equal(row.querySelectorAll("img").length, 0);
 	assert.equal(
 		requests.filter((request) => String(request.op).includes("attachment"))
@@ -2291,6 +3099,10 @@ test("attachments are named, never fetched, through the shared list", async () =
  * was captured from the shared list on the base commit (eecfb71a3bb), BEFORE any
  * prop existed; regenerate only with a reviewed reason:
  *     UPDATE_PARITY_GOLDEN=1 node --test scripts/team-bridge-owner-audit-render.test.mjs
+ * Regenerated once since (PR #1645, retina avatars): the agent mark moved from
+ * `size-[max(8px,32%)]` / `size-[calc(100%-1px)]` to inline integer px
+ * (`agentMarkPx`), so the channel and audit sides both changed together; the
+ * golden diff is exactly those two class removals and two `style` additions.
  * Clock text and the `title` date depend on the machine's time zone, so both are
  * normalised; the structure, classes, names and bodies are compared verbatim.
  */

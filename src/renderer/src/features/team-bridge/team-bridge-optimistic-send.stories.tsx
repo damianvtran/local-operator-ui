@@ -1,3 +1,7 @@
+/* The page mounts the shared dictation chord, which reads the preload bridge;
+   without this shim a standalone `iframe.html?id=` load of these stories threw
+   on `ipcRenderer` (design review round 3, D4). */
+import "../chat/components/story-electron-shim";
 import type { Meta, StoryObj } from "@storybook/react";
 import { useEffect, useState } from "react";
 import type {

@@ -210,6 +210,26 @@ test("the title prefers the name, then the members, then the caller's fallback",
 		"Aida",
 	);
 	assert.equal(model.ownerAuditTitle({ members: [] }, "Untitled"), "Untitled");
+	// Stored labels are read the way the conversation title reads them (review
+	// m1 on #1643): a self-composed "X (X)" is no name and the legacy "Member"
+	// placeholder is nobody, so neither reaches the title verbatim.
+	assert.equal(
+		model.ownerAuditTitle(
+			{
+				members: [
+					{ account_id: "a", kind: "human", display_label: "Ana" },
+					{
+						account_id: "b",
+						kind: "agent",
+						display_label: "Ben Tran (Ben Tran)",
+					},
+					{ account_id: "c", kind: "human", display_label: "Member" },
+				],
+			},
+			"fallback",
+		),
+		"Ana",
+	);
 });
 
 test("chronology de-duplicates an overlapping boundary and sorts by seq", () => {
@@ -333,7 +353,9 @@ test("the adapter keeps a null body null and carries no bytes or actions", () =>
 	assert.equal(row.reply_count, undefined);
 	assert.equal(row.reply_participants, undefined);
 	assert.equal(row.thread_root_id, undefined);
-	assert.equal(row.origin, "human", "an unknown origin falls back to the kind");
+	// S1: an unknown origin is not evidence of a person; it fails closed to
+	// `system` so the delivery annotation never discloses a refusal class.
+	assert.equal(row.origin, "system", "an unknown origin never becomes human");
 	assert.deepEqual(row.sender, {
 		account_id: "acct_ben",
 		kind: "human",

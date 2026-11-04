@@ -24,7 +24,8 @@ import {
 	setDictationActive,
 	useSpeechToTextManager,
 } from "@shared/hooks/use-speech-to-text-manager";
-import { t } from "@shared/i18n";
+import { isolateLtr, t } from "@shared/i18n";
+import { ShortcutText } from "@shared/i18n/shortcut-text";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { speechUnavailableReason } from "@shared/lib/speech-gate";
 import { cn } from "@shared/lib/utils";
@@ -1079,14 +1080,21 @@ export const InlineEdit: FC<InlineEditProps> = ({
 							{!isRecording && !isTranscribing && !isLoading && (
 								<Tooltip
 									content={
-										!canEnableRecordingFeature
-											? speechUnavailableReason("recording", speechBlock)
-											: shortcutText === null
-												? t("ui.canvas.inline_edit.start_recording")
-												: t("ui.canvas.inline_edit.start_recording_or_hold", {
-														shortcuttext: shortcutText,
-														label: resolvePushToTalkBinding().label,
-													})
+										<ShortcutText
+											text={
+												!canEnableRecordingFeature
+													? speechUnavailableReason("recording", speechBlock)
+													: shortcutText === null
+														? t("ui.canvas.inline_edit.start_recording")
+														: t(
+																"ui.canvas.inline_edit.start_recording_or_hold",
+																{
+																	shortcuttext: isolateLtr(shortcutText),
+																	label: resolvePushToTalkBinding().label,
+																},
+															)
+											}
+										/>
 									}
 								>
 									<span>

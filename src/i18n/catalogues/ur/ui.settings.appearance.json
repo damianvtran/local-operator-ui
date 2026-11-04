@@ -67,5 +67,10 @@
 	"ui.settings.appearance.theme.tokyo_night_storm": "روشن تر رات — وہی نیون نمایاں رنگ، نیلے طوفانی آسمان کے نیچے۔",
 	"ui.settings.appearance.theme.tokyo_night": "گہری نیلی بنفشی رات، روشن نیلے نمایاں رنگ کے ساتھ۔",
 	"ui.settings.appearance.theme.tron": "Grid کے نیلے سیاہ پر برقی سایان سرکٹری۔",
-	"ui.settings.appearance.theme.vaporwave": "گہرے مال جیسے بنفشی رنگ پر دھندلے گلابی اور مند ٹیل پیسٹل۔"
+	"ui.settings.appearance.theme.vaporwave": "گہرے مال جیسے بنفشی رنگ پر دھندلے گلابی اور مند ٹیل پیسٹل۔",
+	"ui.settings.appearance.agent_avatar_size_setting.agent_picture_size": "ایجنٹ کی تصویر کا سائز",
+	"ui.settings.appearance.agent_avatar_size_setting.how_large_the_agent_s_picture_appears_in_the_chat_window_and_the_chat": "ٹرانسکرپٹ اور چیٹ ہیڈر میں ایجنٹ کی تصویریں کتنی بڑی نظر آئیں۔ سائیڈ بار کی قطاروں کا سائز وہی رہتا ہے۔",
+	"ui.settings.appearance.agent_avatar_size_setting.small": "چھوٹا",
+	"ui.settings.appearance.agent_avatar_size_setting.medium": "درمیانہ",
+	"ui.settings.appearance.agent_avatar_size_setting.large": "بڑا"
 }

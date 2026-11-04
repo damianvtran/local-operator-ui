@@ -16,5 +16,10 @@
 	"ui.chat.attachments.playback_position": "Position de lecture",
 	"ui.chat.attachments.playback_rate": "Vitesse de lecture",
 	"ui.chat.attachments.playback_rate_option": "{rate}x",
-	"ui.chat.attachments.volume": "Volume"
+	"ui.chat.attachments.volume": "Volume",
+	"ui.chat.attachments.open_named": "Ouvrir {name}",
+	"ui.chat.attachments.expand_aria": "Agrandir {name}",
+	"ui.chat.attachments.expand_title": "Cliquez pour agrandir {name}",
+	"ui.chat.attachments.open_title": "Cliquez pour ouvrir {name}",
+	"ui.chat.attachments.not_viewable": "Fichier non affichable : {name}"
 }

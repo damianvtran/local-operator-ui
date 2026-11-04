@@ -1,0 +1,66 @@
+{
+  "locale": "hi",
+  "namespace": [
+    "ui.chat",
+    "ui.chat.run_details"
+  ],
+  "audit_date": "2026-11-03",
+  "key_count": 5,
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "786d3d9ff0bb",
+    "model": "openai/gpt-6.1-sol",
+    "instance": "786d3d9ff0bb-hi-census-r2",
+    "independent_from_translator_session": true,
+    "actual_model_source": "Host model-switch notice: current fallback openai/gpt-6.1-sol after provider quota failure; originally anthropic/claude-sonnet-5-5, intermediate switch notice anthropic/claude-opus-5-5. Audit reasoning and execution completed under current fallback."
+  },
+  "input_hashes": [
+    {
+      "path": "src/i18n/catalogues/en/ui.chat.json",
+      "sha256": "270fc752791e2960006b560ec9616c2010dab80e92af19f075f7e04a3055bd27"
+    },
+    {
+      "path": "src/i18n/catalogues/en/ui.chat.context.json",
+      "sha256": "efcf4d1872974b6fc7456e753a2e10010ab896fffede262ae7c19d96c35ecee1"
+    },
+    {
+      "path": "src/i18n/catalogues/hi/ui.chat.json",
+      "sha256": "7baae2daa30893954e19d0b3465f539bf8053c2aed8dbac4beb4ed9266ec939a"
+    },
+    {
+      "path": "src/i18n/catalogues/en/ui.chat.run_details.json",
+      "sha256": "f8184d5f41b359364e47747871988bbb731d79c12bc3b9ec755f3db73e5db6ab"
+    },
+    {
+      "path": "src/i18n/catalogues/en/ui.chat.run_details.context.json",
+      "sha256": "da588f521188a2bcba1d0aeb7a265c3474b16673b8f653a021fa7e9e7075e911"
+    },
+    {
+      "path": "src/i18n/catalogues/hi/ui.chat.run_details.json",
+      "sha256": "af866c4e536679f7445e8c5c2cb748590f1fe56dc5313c22ebda82a0482a9b4e"
+    }
+  ],
+  "current_report_verdict": {
+    "status": "passed",
+    "unresolved_blocker_major_count": 0,
+    "finding_ids": []
+  },
+  "provenance_reference": "hi-census-r2-receipt.json",
+  "artifacts": [
+    {
+      "path": "/Users/damian/.local-operator/sessions/786d3d9ff0bb/scratchpad/hi-census-r2-receipt.json",
+      "sha256": "0e7893e85078c0a4cb231f7da4e9f55b31cfa97ee8dfdfbf11492be71212750a"
+    },
+    {
+      "path": "/Users/damian/.local-operator/sessions/786d3d9ff0bb/scratchpad/hi-census-r2-audit.log",
+      "sha256": "b3b5b565b3e46c6187ab6883480f7cbc9f02f51f45719e2653c9a43198293740"
+    },
+    {
+      "path": "/Users/damian/.local-operator/sessions/786d3d9ff0bb/scratchpad/audit-hi.mjs",
+      "sha256": "208e5f70f9bf67dc7ff99bc47bffb51a307559e7f632997017e70e2943668f4f"
+    }
+  ],
+  "retention": "Temporary session evidence only: manager must retain this record, single byte-identical receipt and log under tracked canonical evidence root; this audit did not edit the repository.",
+  "execution": "node --max-old-space-size=256 \"$LOCAL_OPERATOR_SCRATCHPAD/audit-hi.mjs\"; exit 0; process memory ceiling 256 MB",
+  "notes_are_not_execution_logs": true
+}

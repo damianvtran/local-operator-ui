@@ -116,6 +116,7 @@
 	"ui.providers.provider_detail.it_opens_in_your_browser": "Откроется в браузере.",
 	"ui.providers.provider_detail.key_saved": "Ключ {brand} сохранён",
 	"ui.providers.provider_detail.link_expiry": "Ссылка истекает через {minutes, plural, one {{minutes, number, ::group-off} мин} few {{minutes, number, ::group-off} мин} many {{minutes, number, ::group-off} мин} other {{minutes, number, ::group-off} мин}}",
+	"ui.providers.provider_detail.sign_in_again": "Войти снова",
 	"ui.providers.provider_detail.on_the_sign_in_page": "на странице входа",
 	"ui.providers.provider_detail.open_browser_again": "Снова открыть браузер",
 	"ui.providers.provider_detail.open_sign_in_page": "Открыть страницу входа",

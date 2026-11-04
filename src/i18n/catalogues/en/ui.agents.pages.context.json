@@ -156,5 +156,11 @@
 		"note": "The other half of the agent/team switch; pairs with tab.agents and shares its count slot.",
 		"role": "tab label",
 		"tone": "plain, one word"
+	},
+	"ui.agents.pages.blocked_edit": {
+		"role": "Reason the ask composer is disabled while an edit is dirty",
+		"tone": "Short imperative, sentence case",
+		"length_hint": "Six words",
+		"note": "Explains why the ask box next to an open edit form cannot be used yet."
 	}
 }

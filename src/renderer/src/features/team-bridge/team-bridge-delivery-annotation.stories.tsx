@@ -1,0 +1,217 @@
+import { t } from "@shared/i18n";
+import type { Meta, StoryObj } from "@storybook/react";
+import { expect, screen, userEvent, waitFor, within } from "@storybook/test";
+import type { FC } from "react";
+import type {
+	TeamBridgeDeliveryState,
+	TeamBridgeMessage,
+} from "../../../../shared/team-bridge-contract";
+import { TeamBridgeMessageList } from "./team-bridge-message-list";
+
+/*
+ * Team Bridge per-recipient delivery annotation (delivery-state contract v1),
+ * drawn inside the real message list so the muted line is judged against the
+ * body and header it sits under. Every state a reviewer has to see: refused
+ * with and without a class, held as the sender sees it (no reason) and as the
+ * recipient's owner sees it (with the reason, and the separate "screened,
+ * delivery pending" line), several recipients at once, delivered (nothing),
+ * and each of the two tooltip texts OPEN (design review round 1, D6). Switch
+ * the toolbar theme to check light and dark.
+ *
+ * WHAT IS MOCKED: the `delivery_states` arrays are synthetic hub answers; no
+ * hub or runtime is involved, so these frames show the renderer's states, not
+ * which viewer the hub sends them to.
+ */
+
+const state = (
+	over: Partial<TeamBridgeDeliveryState>,
+): TeamBridgeDeliveryState => ({
+	endpoint_id: "bep_aida",
+	recipient_label: "Aida",
+	recipient_owner_label: "Sam Rivera",
+	state: "refused",
+	...over,
+});
+
+const message = (
+	delivery_states: TeamBridgeDeliveryState[] | undefined,
+	senderKind: "human" | "agent",
+): TeamBridgeMessage => ({
+	id: "bcmsg_delivery01",
+	conversation_id: "bcv_delivery01",
+	seq: 1,
+	sender: { account_id: "acct_me", kind: senderKind, display_label: "Ada" },
+	body: "Can you pull the customer list for the Q3 renewal and send it over?",
+	origin: senderKind,
+	created_at: new Date().toISOString(),
+	delivery_states,
+});
+
+const Thread: FC<{
+	states: TeamBridgeDeliveryState[] | undefined;
+	senderKind?: "human" | "agent";
+}> = ({ states, senderKind = "human" }) => (
+	// Top padding leaves room for the tooltip panel, which opens above.
+	<div className="flex w-[760px] flex-col bg-surface pt-24 text-ink">
+		<TeamBridgeMessageList
+			messages={[message(states, senderKind)]}
+			labelFor={(sender) => sender.display_label}
+			tenantId="tnt_story"
+		/>
+	</div>
+);
+
+const meta = {
+	title: "Team Bridge/Delivery annotation",
+	component: Thread,
+	parameters: { layout: "centered" },
+} satisfies Meta<typeof Thread>;
+export default meta;
+type Story = StoryObj<typeof meta>;
+
+export const RefusedWithClass: Story = {
+	args: { states: [state({ refusal_class: "personal_info" })] },
+};
+
+export const RefusedWithoutClass: Story = {
+	args: { states: [state({})] },
+};
+
+export const HeldSenderView: Story = {
+	args: { states: [state({ state: "held" })] },
+};
+
+export const HeldOwnerView: Story = {
+	args: {
+		states: [state({ state: "held", hold_class: "screening_unavailable" })],
+	},
+};
+
+export const DeliveryPendingOwnerView: Story = {
+	args: {
+		states: [state({ state: "held", hold_class: "delivery_pending" })],
+	},
+};
+
+export const MultiRecipient: Story = {
+	args: {
+		states: [
+			state({ refusal_class: "out_of_scope" }),
+			state({
+				endpoint_id: "bep_bo",
+				recipient_label: "Bo's assistant",
+				recipient_owner_label: "Bo Chen",
+				state: "delivered",
+			}),
+			state({
+				endpoint_id: "bep_cy",
+				recipient_label: "Cy",
+				recipient_owner_label: "Cyrus Patel",
+			}),
+			state({
+				endpoint_id: "bep_dee",
+				recipient_label: "Dee",
+				recipient_owner_label: "Dana Ortiz",
+				state: "held",
+			}),
+		],
+	},
+};
+
+export const Delivered: Story = {
+	args: { states: [state({ state: "delivered" })] },
+};
+
+/*
+ * The tooltip OPEN, through the path a click-first user takes (D3): the play
+ * function presses the info button and waits for the panel, which is what the
+ * shared trigger used to close. No forced `defaultOpen` (see `TooltipProps`).
+ */
+const openInfo =
+	(panelText: () => string) =>
+	async ({ canvasElement }: { canvasElement: HTMLElement }) => {
+		const [button] = within(canvasElement).getAllByRole("button", {
+			name: t("ui.teamBridge.delivery.info_label"),
+		});
+		await userEvent.click(button);
+		await waitFor(() =>
+			expect(screen.getByRole("tooltip")).toHaveTextContent(panelText()),
+		);
+	};
+
+export const RefusedTooltipOpen: Story = {
+	args: { states: [state({ refusal_class: "out_of_scope" })] },
+	play: openInfo(() => t("ui.teamBridge.delivery.info_refused")),
+};
+
+export const HeldTooltipOpen: Story = {
+	args: { states: [state({ state: "held" })] },
+	play: openInfo(() => t("ui.teamBridge.delivery.info_held")),
+};
+
+// Even deliberately over-disclosed wire fixtures must render generic agent
+// non-delivery. The same state still retains a coarse hint for known humans.
+export const AgentRefusalWithSuppliedClass: Story = {
+	args: {
+		senderKind: "agent",
+		states: [state({ refusal_class: "abusive" })],
+	},
+};
+
+export const AgentMixedPartialDelivery: Story = {
+	args: {
+		senderKind: "agent",
+		states: [
+			state({ refusal_class: "personal_info" }),
+			state({
+				endpoint_id: "bep_bo",
+				recipient_label: "Bo",
+				state: "delivered",
+			}),
+			state({
+				endpoint_id: "bep_cy",
+				recipient_label: "Cy",
+				state: "held",
+			}),
+		],
+	},
+};
+
+/*
+ * The recipient label as older clients stored it (operator report,
+ * 2026-11-03). An agent member written before the composition fix holds the
+ * already composed "Aida (Ben Tran)", and an endpoint enrolled without an agent
+ * name holds its owner's name. Each line must name its recipient the way the
+ * message rows do: the owner exactly once, or "Ben Tran's chief of staff".
+ * Refused, held and pending are drawn together because all three templates
+ * take the one composed `{recipient}`.
+ */
+export const LegacyComposedRecipientLabels: Story = {
+	args: {
+		states: [
+			state({
+				endpoint_id: "bep_aida",
+				recipient_label: "Aida (Ben Tran)",
+				recipient_owner_label: "Ben Tran",
+			}),
+			state({
+				endpoint_id: "bep_orion",
+				recipient_label: "Orion (Sherman Lee)",
+				recipient_owner_label: "Sherman Lee",
+				state: "held",
+			}),
+			state({
+				endpoint_id: "bep_cy",
+				recipient_label: "Cy (Cyrus Patel)",
+				recipient_owner_label: "Cyrus Patel",
+				state: "held",
+				hold_class: "delivery_pending",
+			}),
+			state({
+				endpoint_id: "bep_dana",
+				recipient_label: "Dana Ortiz",
+				recipient_owner_label: "Dana Ortiz",
+			}),
+		],
+	},
+};

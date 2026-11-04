@@ -405,9 +405,10 @@ the slash word the app is about to RUN, the desktop twin of the TUI's
 `$lo-signal` — so its job is to be distinct from the three inks it is read
 against IN ONE LINE (`ink` for the instruction, `accent` for a live turn,
 `success` for a roster name) rather than to sit at a step in a hierarchy. Floors
-are per-palette and measured on the composer's own ground: at least 4.5:1 on
-`surface` and on `elevated`, and at least **ΔE00 8 from `ink`, `accent` and
-`success`**. `obsidian` is the one pinned exception — its `info` IS its `ink`, so
+are per-palette and measured on the grounds the role is painted on: at least
+4.5:1 on `surface` and `elevated` (the composer and its popup) and on
+`messageSurface` (the sent turn, below), and at least **ΔE00 8 from `ink`,
+`accent` and `success`**. `obsidian` is the one pinned exception — its `info` IS its `ink`, so
 there the run is separated by the painted weight step alone.
 
 Beside the ink, the run carries that weight step (`slash-run-bold`, a 0.5px
@@ -418,6 +419,22 @@ two layers have to wrap at the same character, and a real weight change moves
 the advances — which wrapped the mirror earlier than the textarea and hid the
 tail of the user's draft behind the mirror's own overflow (measured: 65 of 78
 typed characters). Add a run ink here and give it the same treatment.
+
+The same role also inks a `$skill` token in a sent turn: `.lo-skill-token` in
+`markdown.css` paints it in `tokenCommand`, so it is the same colour role the
+composer showed and the sealed row shows. The weight is the same step but NOT
+the same mechanism: the composer and the sealed row use the 0.5px
+`slash-run-bold` stroke because their mirror must not move an advance, while the
+transcript uses a real `font-weight: 600` (measured +3.5px on the one-line
+bubble). A real weight is right here because there is no mirror to keep aligned
+and `.lo-markdown strong` is also 600, so a token and bold prose share one
+weight. It is this role and not `accent` (budgeted at about three per screen,
+and a message can hold several tokens) or `accentAlt` (barred from links and
+syntax tokens, § The second accent), and a new role would cost every palette a
+value. Because the bubble's fill is `messageSurface`, that ground is asserted for
+the role too. In `obsidian` `tokenCommand` equals `ink`, so there a `$skill` and
+`**bold**` are pixel-identical and the weight is the only separation from plain
+prose; that is the accepted trade-off of the monochrome palette.
 
 ### The two lines — the distinction people get wrong
 
@@ -564,7 +581,13 @@ popover.
 - **Narrow windows replace, they do not overlay.** A detail rail that cannot
   fit beside the content at its minimum width becomes the full-width route view;
   the content and filter rail step aside. The filter rail collapses into its
-  sheet below 1200px. A panel never floats over another panel's content.
+  sheet below 1200px. A panel never floats over another panel's content. The one
+  exception is the transient Ask drawer below its dock breakpoint: replacing the
+  transcript there would take the question's context away with it, so the drawer
+  is a right-anchored sheet over the chat row - scrim over the row only, an
+  opaque `elevated` ground, the covered content `inert` while it is up, and the
+  sidebar and panel rail still reachable - and it is the case the one drawer
+  shadow is for.
 
 The Library route is the reference: a flush `bg-canvas` page root, a
 full-height `bg-surface` filter rail and `bg-surface` asset-details dock, both

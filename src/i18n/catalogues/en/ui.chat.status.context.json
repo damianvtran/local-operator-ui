@@ -26,5 +26,16 @@
 		"length": "Ten words.",
 		"note": "Covers both 'no server is there' and 'a daemon is there that this app did not attach to': the reader's position is the same, and main's own detail line says which path was taken.",
 		"placeholders": {}
+	},
+	"ui.chat.status.pill_aria": {
+		"role": "Accessible name of the collapsed connection-status pill",
+		"tone": "Label, then statements, then an imperative",
+		"length_hint": "One line",
+		"note": "Reads the strip's title, then Retry's outcome when there is one, then the action the pill performs.",
+		"placeholders": {
+			"title": "The strip's already-localised title; interpolate as-is.",
+			"hasOutcome": "'yes' when Retry left an outcome sentence, otherwise 'no'; a select selector, never translate.",
+			"outcome": "Retry's already-localised outcome sentence; interpolate as-is."
+		}
 	}
 }

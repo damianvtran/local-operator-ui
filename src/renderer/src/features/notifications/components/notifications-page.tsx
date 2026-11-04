@@ -2413,17 +2413,22 @@ const Toolbar: FC<ToolbarProps> = ({
 		>
 			{/* Always present: selection must be discoverable without hovering a row.
 			 * The indeterminate state describes a partial filtered selection. */}
-			<Checkbox
-				className="size-6"
-				checked={allChecked}
-				aria-label={t("ui.notifications.select.all")}
-				disabled={!bulkEnabled || !loaded || writesPaused}
-				title={
-					!bulkEnabled ? t("ui.notifications.bulk.update_required") : undefined
-				}
-				onCheckedChange={onSelectAll}
-				data-notifications-select-all=""
-			/>
+			{/* Preserve the existing24px toolbar slot; reserve coarse-input space. */}
+			<span className="inline-flex size-6 shrink-0 items-center justify-center pointer-coarse:size-11">
+				<Checkbox
+					hitArea="comfortable"
+					checked={allChecked}
+					aria-label={t("ui.notifications.select.all")}
+					disabled={!bulkEnabled || !loaded || writesPaused}
+					title={
+						!bulkEnabled
+							? t("ui.notifications.bulk.update_required")
+							: undefined
+					}
+					onCheckedChange={onSelectAll}
+					data-notifications-select-all=""
+				/>
+			</span>
 			{selecting ? (
 				<>
 					<span

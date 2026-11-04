@@ -1,5 +1,6 @@
 import { Button, Input, Tooltip } from "@shared/components/ui";
-import { t } from "@shared/i18n";
+import { isolateLtr, t } from "@shared/i18n";
+import { ShortcutText } from "@shared/i18n/shortcut-text";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { chordCaption } from "@shared/keymap/keymap-chord";
 import { ChevronDown, ChevronUp, X } from "lucide-react";
@@ -121,9 +122,13 @@ export function BrowserFindRow({
 			<div className="order-2 flex shrink-0 items-center gap-2 @max-[480px]/bfind:order-1">
 				<Tooltip
 					side="top"
-					content={t("ui.browser.browser_find_row.previous_match_shortcut", {
-						shortcut: previousChord.glyph,
-					})}
+					content={
+						<ShortcutText
+							text={t("ui.browser.browser_find_row.previous_match_shortcut", {
+								shortcut: isolateLtr(previousChord.glyph),
+							})}
+						/>
+					}
 				>
 					<Button
 						variant="ghost"
@@ -138,9 +143,13 @@ export function BrowserFindRow({
 				</Tooltip>
 				<Tooltip
 					side="top"
-					content={t("ui.browser.browser_find_row.next_match_shortcut", {
-						shortcut: nextChord.glyph,
-					})}
+					content={
+						<ShortcutText
+							text={t("ui.browser.browser_find_row.next_match_shortcut", {
+								shortcut: isolateLtr(nextChord.glyph),
+							})}
+						/>
+					}
 				>
 					<Button
 						variant="ghost"
@@ -155,9 +164,13 @@ export function BrowserFindRow({
 				</Tooltip>
 				<Tooltip
 					side="top"
-					content={t("ui.browser.browser_find_row.close_find_shortcut", {
-						shortcut: closeChord.glyph,
-					})}
+					content={
+						<ShortcutText
+							text={t("ui.browser.browser_find_row.close_find_shortcut", {
+								shortcut: isolateLtr(closeChord.glyph),
+							})}
+						/>
+					}
 				>
 					<Button
 						variant="ghost"

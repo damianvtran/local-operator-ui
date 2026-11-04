@@ -7,6 +7,12 @@
 			"sidebartogglecap": "Dynamic value supplied by the product; retain verbatim unless it is a user-facing number already formatted by the caller."
 		}
 	},
+	"ui.common.layout.chat_layout.resize_the_sidebar_plain": {
+		"role": "accessible name of the sidebar resize handle",
+		"tone": "Plain, concise product language.",
+		"note": "The same handle as resize_the_sidebar, without the keyboard chord: used where the sidebar cannot be toggled (on Team Bridge the left column always stays open), so the chord would name a key that does nothing. Keep the wording identical to resize_the_sidebar minus the chord.",
+		"placeholders": {}
+	},
 	"ui.common.layout.chat_layout.resize_asks_double_click_resets_the_shared_pane_width": {
 		"role": "interface copy",
 		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
@@ -50,5 +56,35 @@
 		"length": "One word.",
 		"note": "The toaster appends the keyboard shortcut to this name, so it must read as a region label on its own and carry no punctuation or shortcut of its own.",
 		"placeholders": {}
+	},
+	"ui.common.layout.chat_layout.resize_canvas_double_click_resets_the_shared_pane_width": {
+		"role": "Accessible name and tooltip of the drag handle that resizes the canvas pane",
+		"tone": "Imperative plus a one-line gesture hint",
+		"length_hint": "Two short sentences",
+		"note": "Names the pane being resized, then the double-click reset gesture; the pane word matches the pane's own title."
+	},
+	"ui.common.layout.chat_layout.resize_run_details_double_click_resets_the_shared_pane_width": {
+		"role": "Accessible name and tooltip of the drag handle that resizes the run details pane",
+		"tone": "Imperative plus a one-line gesture hint",
+		"length_hint": "Two short sentences",
+		"note": "Names the pane being resized, then the double-click reset gesture; the pane word matches the pane's own title."
+	},
+	"ui.common.layout.chat_layout.resize_browser_double_click_resets_the_shared_pane_width": {
+		"role": "Accessible name and tooltip of the drag handle that resizes the browser pane",
+		"tone": "Imperative plus a one-line gesture hint",
+		"length_hint": "Two short sentences",
+		"note": "Names the pane being resized, then the double-click reset gesture; the pane word matches the pane's own title."
+	},
+	"ui.common.layout.chat_layout.resize_console_double_click_resets_the_shared_pane_width": {
+		"role": "Accessible name and tooltip of the drag handle that resizes the console pane",
+		"tone": "Imperative plus a one-line gesture hint",
+		"length_hint": "Two short sentences",
+		"note": "Names the pane being resized, then the double-click reset gesture; the pane word matches the pane's own title."
+	},
+	"ui.common.layout.chat_layout.resize_code_review_double_click_resets_the_shared_pane_width": {
+		"role": "Accessible name and tooltip of the drag handle that resizes the code review pane",
+		"tone": "Imperative plus a one-line gesture hint",
+		"length_hint": "Two short sentences",
+		"note": "Names the pane being resized, then the double-click reset gesture; the pane word matches the pane's own title."
 	}
 }

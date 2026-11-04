@@ -162,6 +162,12 @@ const SUITE_SHAPES = {
 		"Bp Bp Ba",
 		"Bp Ba Rd T",
 		"U Bp Ba Bp Ba A",
+		// Incoming metadata receipts interleave with, but never become, tools.
+		"U Bi Ba Bi Bp T A",
+		"U A Bi Ba Bi Bp T",
+		"Bi Bi",
+		"Bi T Bi T T",
+		"Bi T A Bi T U A",
 	],
 };
 

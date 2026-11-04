@@ -154,7 +154,18 @@ const DRAG_IN_SLOT = /<PaneSlot[\s\S]{0,400}?data-titlebar-drag/;
 /* The drawer slot's own two reads (agent review round 1, N3), at module scope for
  * the reason the note above the other shapes gives: a literal rebuilt per call is
  * work `useTopLevelRegex` is right to refuse. */
-const ASK_SLOT_MODE = /data-ask-mode=\{canvasDocked \? "docked" : "overlay"\}/;
+const ASK_SLOT_MODE = /data-ask-mode=\{askPresentation\.mode\}/;
+/*
+ * THE ASK SHEET'S TWO MOUNTS, in the shape the geometry decision gives them
+ * (2026-11-03): `absolute inset-y-0 end-0 z-40 max-w-full shadow-overlay` with an
+ * inline width from `askPanePresentation`, and NO `absolute inset-0` - the
+ * full-row cover that hid the conversation with no seam and no press target.
+ */
+const ASK_SHEET_CLASS =
+	/"absolute inset-y-0 end-0 z-40 max-w-full shadow-overlay"/;
+const ASK_SLOT_WIDTH = /width=\{askPresentation\.width\}/;
+const ASK_SCRIM =
+	/askPresentation\.scrimmed[\s\S]{0,400}?data-ask-scrim=""[\s\S]{0,200}?bg-scrim/;
 const RIGHT_SLOT_OCCUPIED = /const rightSlotOccupied =([\s\S]{0,400}?);/;
 /* #868's publisher and mount-gate reads, at module scope for the same reason.
  * The publisher's shape shrank to `{mounted, session}` with the always-visible
@@ -632,8 +643,55 @@ test("the drawer's slot is readable, and the header's OS corner is reserved for 
 	const mode = source.match(ASK_SLOT_MODE);
 	assert.ok(
 		mode,
-		`${CHAT_CONTENT} no longer writes the drawer slot's \`data-ask-mode\` from \`canvasDocked\`. The canvas dock's \`data-canvas-mode\` is what a rig reads to tell a docked pane from one that has stopped docking; the drawer's slot is read the same way or a rig cannot tell them apart either.`,
+		`${CHAT_CONTENT} no longer writes the drawer slot's \`data-ask-mode\` from \`askPresentation.mode\`. The canvas dock's \`data-canvas-mode\` is what a rig reads to tell a docked pane from one that has stopped docking; the drawer's slot is read the same way or a rig cannot tell them apart either.`,
 	);
+	/*
+	 * THE PRESENTATION'S TWO HALVES, pinned at BOTH mounts: the sheet class list and
+	 * the presentation's width, the scrim that closes it, and the absence of the
+	 * `absolute inset-0` cover this change replaced. A sheet that lost its width would
+	 * be the over-constrained box `pane-slot.tsx` warns about; one that lost its
+	 * `max-w-full` could overrun a row one reflow old; and one that kept `inset-0`
+	 * would hide the conversation again with no seam and no press target.
+	 */
+	for (const [mount, file] of [
+		["session", CHAT_CONTENT],
+		["fleet", CHAT_LAYOUT],
+	]) {
+		const text = withoutComments(read(file));
+		assert.match(
+			text,
+			ASK_SHEET_CLASS,
+			`the ${mount} ask mount no longer draws the sheet's class list (\`absolute inset-y-0 end-0 z-40 max-w-full shadow-overlay\`). Below the dock breakpoint the drawer is a right-anchored sheet over the row; a full-row \`inset-0\` box is the cover the operator reported.`,
+		);
+		assert.match(
+			text,
+			ASK_SLOT_WIDTH,
+			`the ${mount} ask mount no longer draws \`askPresentation.width\`. The width and the mode come from one function so the pane, the scrim and \`data-ask-mode\` cannot disagree.`,
+		);
+		assert.match(
+			text,
+			ASK_SCRIM,
+			`the ${mount} ask mount no longer draws the scrim that closes the sheet. The strip of conversation beside the sheet is the press target; Escape alone leaves a pointer user with no question mark over what covers them.`,
+		);
+		/*
+		 * AND THE COVER IS GONE, read from the slot's own attributes rather than
+		 * from the file: the scrim legitimately spells `absolute inset-0`, so a
+		 * whole-file scan would refuse the fix along with the defect.
+		 */
+		const slotTag = new RegExp(
+			mount === "session"
+				? '<PaneSlot[\\s\\S]{0,800}?tourTag="ask-drawer-slot"'
+				: '<PaneSlot[\\s\\S]{0,800}?tourTag="ask-fleet-slot"',
+		).exec(text)?.[0];
+		assert.ok(
+			slotTag,
+			`the ${mount} ask mount no longer names its slot (tourTag)`,
+		);
+		assert.ok(
+			!slotTag.includes('"absolute inset-0"'),
+			`the ${mount} ask mount pins its slot to \`absolute inset-0\` again: the drawer would cover the whole row with no seam and no press target`,
+		);
+	}
 	const reservation = source.match(RIGHT_SLOT_OCCUPIED);
 	assert.ok(
 		reservation,
@@ -733,5 +791,72 @@ test("the shell's sidebar yield reads the drawable-aware derivation (#868)", () 
 	assert.ok(
 		!SIDEBAR_BARE_FLAGS.test(layout),
 		`${CHAT_LAYOUT} restates the canvas/asks disjunction again - the second copy #868 removed`,
+	);
+});
+
+test("the covered content is inert while the sheet is up, on both mounts", () => {
+	/*
+	 * THE PR'S HEADLINE BEHAVIOUR, pinned as source because the property is an
+	 * attribute a layout effect writes, not a class: the content behind the scrim
+	 * must not be tabbable or readable by a screen reader.
+	 *
+	 * M1 (review round 1) / Q1 (QA round 1): the FLEET mount had no equivalent of
+	 * the session's chat column, so Tab walked nine stops into the covered chat. It
+	 * now inerts a `display: contents` wrapper around `{content}` - no box, so the
+	 * flex row and the lane's stop do not move.
+	 *
+	 * m5: each assignment is read with its presentation gate in ONE expression, so
+	 * an edit that drops the mode check (and inerts a docked pane) fails here
+	 * rather than in a keyboard pass; both are written from layout effects, the
+	 * phase that lands before paint. m2's programmatic-open guard is pinned too:
+	 * the sheet must not be opened as a RESULT over an inert composer.
+	 */
+	const session = withoutComments(read(CHAT_CONTENT));
+	const shell = withoutComments(read(CHAT_LAYOUT));
+	for (const [mount, text, assignment, label] of [
+		[
+			"session",
+			session,
+			/column\.inert = sessionAsksOpen && askPresentation\.mode === "overlay"/,
+			"the chat column",
+		],
+		[
+			"fleet",
+			shell,
+			/element\.inert = fleetAsksOpen && askPresentation\.mode === "overlay"/,
+			"the covered content wrapper",
+		],
+	]) {
+		assert.match(
+			text,
+			assignment,
+			`the ${mount} mount no longer inerts ${label} while the sheet is up`,
+		);
+		assert.match(
+			text,
+			/useLayoutEffect\(\(\) => \{[\s\S]{0,600}?\.inert =/,
+			`the ${mount} mount no longer sets inert from a layout effect (a passive effect paints inert content first)`,
+		);
+	}
+	assert.match(
+		shell,
+		/data-ask-covered-content=""[\s\S]{0,120}?className="contents"/,
+		`${CHAT_LAYOUT} no longer wraps the covered content in the display:contents marker the rig reads`,
+	);
+	/*
+	 * PRESS VERSUS RESULT (review round 2, M2-r2). A press must open in both
+	 * presentations; a LANDED result must not open the sheet; and a refused result
+	 * must be allowed to land there, because the composer it would leave the caret in
+	 * is inert. The three arms are pinned as the one expression that decides them.
+	 */
+	assert.match(
+		session,
+		/if \(sheet && options\?\.focus === false && options\.openInSheet === false\)\s*\n?\s*return false;/,
+		`${CHAT_CONTENT} opens the sheet for a landed result again: that arm exists to leave the caret in the composer, which the sheet inerts`,
+	);
+	assert.match(
+		session,
+		/const takesFocus = options\?\.focus !== false \|\| sheet;/,
+		`${CHAT_CONTENT} no longer answers whether an open took the keyboard, so the composer cannot know whether to take the caret back`,
 	);
 });

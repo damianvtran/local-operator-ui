@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { teamBridgeDeliveryStateSchema } from "./team-bridge-contract";
 
 /** Human-only wire shapes from core's desktop_team_bridge_owner_audit models.
  * Keep these separate from member history: auditing never produces read state,
@@ -82,6 +83,22 @@ export const ownerAuditAttachmentSchema = z
 	})
 	.passthrough();
 
+/* S3b generic-file descriptor as the owner auditor receives it (the server
+ * grants the auditor names and bytes; see `teamBridgeFileSchema` for the field
+ * contract). Audit rows default loosely like `ownerAuditAttachmentSchema`; an
+ * absent state defaults to "" and therefore renders unavailable, fail closed. */
+export const ownerAuditFileSchema = z
+	.object({
+		id,
+		class: z.string().default(""),
+		mime: z.string().default(""),
+		size: z.number().int().default(0),
+		display_name: nullableText,
+		state: z.string().default(""),
+		expires_at: nullableText,
+	})
+	.passthrough();
+
 export const ownerAuditMessageSchema = z
 	.object({
 		id,
@@ -105,8 +122,21 @@ export const ownerAuditMessageSchema = z
 		reply_participants: z.array(z.string()).nullish(),
 		attachments: z.array(ownerAuditAttachmentSchema).nullish(),
 		attachment_count: nullableSeq,
+		/* `.catch`: a malformed file list costs the list, never the audit row;
+		 * `file_count` then still renders a count-only receipt. */
+		files: z.array(ownerAuditFileSchema).max(10).nullish().catch(undefined),
+		file_count: nullableSeq.catch(undefined),
 		agent_delivery_status: nullableText,
 		agent_verdict_at: nullableText,
+		/* The audited agent's endpoint entry of the delivery-state contract v1
+		 * (the owner owns that recipient, so it may carry `hold_class` and
+		 * `refusal_class`). Same entry shape as a member read; `.catch` so a
+		 * malformed annotation costs the annotation, never the audit row. */
+		delivery_states: z
+			.array(teamBridgeDeliveryStateSchema)
+			.max(64)
+			.nullish()
+			.catch(undefined),
 	})
 	.passthrough();
 export type OwnerAuditMessage = z.infer<typeof ownerAuditMessageSchema>;

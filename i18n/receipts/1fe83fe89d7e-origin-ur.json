@@ -1,0 +1,74 @@
+{
+  "schema": 1,
+  "auditor": "i18n-auditor (lopdev team; session 1fe83fe89d7e; independent ur linguistic auditor, not the translator)",
+  "agent": "i18n-auditor (lopdev team; session 1fe83fe89d7e; independent ur linguistic auditor, not the translator)",
+  "model": "anthropic/claude-sonnet-5-5",
+  "model_provenance": "Model as shown in this session's runtime header (anthropic/claude-sonnet-5-5). No fallback used or claimed; not independently verified beyond the runtime header.",
+  "fallback": "none",
+  "session": "1fe83fe89d7e",
+  "job_id": null,
+  "job_identity_note": "Delegated lopdev i18n-auditor task; no separate background job id was supplied. The session id identifies this auditor.",
+  "role": "i18n-auditor / independent translation auditor",
+  "independence": "I did not author or edit this translation. I read the ur style guide, glossary, English source with its context sidecar, the committed ur target, and neighbouring ur keys (ui.agents.starters, ui.agents.detail, refusals) for terminology.",
+  "locale": "ur",
+  "branch": "fix/agent-transport-copy",
+  "head": "30bdd7aedbce47dc0c0c1506103368e8225fb839",
+  "audited_at_commit": "82ad0474cf93ead782300311a5b42e8f6f77d276",
+  "audited_at_commit_note": "Linguistic audit performed on 82ad0474cf9; the ur file is byte-identical at 30bdd7aedbc (hashes re-derived from git show at 30bdd7aedbc and equal to those derived at 82ad0474cf9).",
+  "pr": "damianvtran/local-operator-ui#1594",
+  "date": "2026-11-02",
+  "status": "passed",
+  "instance": "1fe83fe89d7e-origin-ur",
+  "namespace": "ui.agents.detail.origin",
+  "result": "clean-with-findings",
+  "source_sha256": "bbb0eeac68c5ccd14988bffab2502698cb14ff6871a0a2b2212dd779fd67efb4",
+  "context_sha256": "470e2004a28b867981fe7ae6bd55ce81bec490cab63553490548503ff181b8f5",
+  "target_sha256": "d616dbcaf1782e8b8c5b4c1078033c84c94983dd3ece9faa1a643d42820d9530",
+  "paths": {
+    "source": "src/i18n/catalogues/en/ui.agents.detail.origin.json",
+    "context": "src/i18n/catalogues/en/ui.agents.detail.origin.context.json",
+    "target": "src/i18n/catalogues/ur/ui.agents.detail.origin.json"
+  },
+  "keys_read": 3,
+  "keys_in_file": 3,
+  "linguistic_scope_keys": [
+    "ui.agents.detail.origin.shipped_with_app",
+    "ui.agents.detail.origin.installed_starter",
+    "ui.agents.detail.origin.compare_packaged"
+  ],
+  "starter_question": {
+    "chosen": "Transliterated loanword اسٹارٹر in installed_starter: 'ایپ کے ساتھ آنے والے اسٹارٹر سے انسٹال کیا گیا۔'",
+    "existing_catalogue": "ui.agents.starters.* has no word for 'starter'; it uses شامل ایجنٹ (all_builtins, available, progress.accessible). ui.agents.detail.alert.builtin_title is بلٹ ان ایجنٹ. اسٹارٹر appears nowhere else in the ur catalogues; no ٹیمپلیٹ/سانچہ either.",
+    "verdict": "Defensible; keep. Does not contradict an existing word and does not read as a sample, a server or another agent. Reusing شامل ایجنٹ would blur it with shipped_with_app."
+  },
+  "findings": [
+    {
+      "id": "A-1",
+      "severity": "minor",
+      "key": "ui.agents.detail.origin.installed_starter",
+      "text": "ایپ کے ساتھ آنے والے اسٹارٹر سے انسٹال کیا گیا۔",
+      "note": "اسٹارٹر is a bare loanword not tied to 'agent'; out of context it could read as 'something that starts'. Optional hardening: ایپ کے ساتھ آنے والے اسٹارٹر ایجنٹ سے انسٹال کیا گیا۔ Current wording can ship."
+    },
+    {
+      "id": "A-2",
+      "severity": "minor",
+      "key": "ui.agents.detail.origin.shipped_with_app",
+      "text": "ایپ کے ساتھ فراہم کیا گیا۔",
+      "note": "Slightly bureaucratic; sibling strings (alert.builtin_body, refusals.class.install_disclosure) say 'یہ ایپ کے ساتھ آتا ہے'. Suggested: ایپ کے ساتھ آتا ہے۔ or ایپ کے ساتھ شامل ہے۔ Current wording is accurate and still distinguishable from installed_starter."
+    },
+    {
+      "id": "A-3",
+      "severity": "nit",
+      "key": "ui.agents.detail.origin.compare_packaged",
+      "text": "ایپ کے ساتھ آنے والی ہدایات سے موازنہ",
+      "note": "Valid noun-phrase label per the sidecar; English is imperative, so 'موازنہ کریں' would match the style guide's respectful imperative. Preference only."
+    }
+  ],
+  "scope": "WHOLE-NAMESPACE LINGUISTIC AUDIT of the three keys in ui.agents.detail.origin (shipped_with_app, installed_starter, compare_packaged); the key set equals English (3 keys, valid JSON, no placeholders or plural arms, ends: sentences with ۔, label without). Zero Unicode Cf/bidi control characters found in the ur file. This clears the catalogue linguistically only; it is NOT a rendered-layout, RTL-mirroring or fit audit and no rendered frame was inspected.",
+  "verified": [
+    "Source, context and target SHA-256 re-derived from git show 30bdd7aedbc:<path> and equal to those derived earlier at 82ad0474cf9 (ur file byte-identical across the two commits).",
+    "'Packaged' renders consistently as ایپ کے ساتھ آنے والی/والے across origin.changed, installed_starter and compare_packaged; ہدایات matches section.instructions.",
+    "Gender/case agreement checked: masculine singular elided subject (ایجنٹ) with کیا گیا; oblique آنے والے اسٹارٹر سے; feminine plural آنے والی ہدایات.",
+    "I ran no repo validator for the audit itself (mechanical checks were my own script plus manual reading); deriveReceiptAudit was run on this receipt afterwards."
+  ]
+}

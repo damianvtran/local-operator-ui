@@ -82,5 +82,12 @@
 	"ui.chat.run_details.chip.mcp_attention": "{count, plural, one {# MCP सर्वर को ध्यान चाहिए} other {# MCP सर्वरों को ध्यान चाहिए}}",
 	"ui.chat.run_details.mcp.cold_label": "कोई सत्र नहीं चल रहा — सर्वर की स्थिति जाँची नहीं जा सकती।",
 	"ui.chat.run_details.nothing_in_flight": "अभी कुछ नहीं चल रहा।",
-	"ui.chat.run_details.nothing_to_show_yet": "अभी दिखाने के लिए कुछ नहीं।"
+	"ui.chat.run_details.nothing_to_show_yet": "अभी दिखाने के लिए कुछ नहीं।",
+	"ui.chat.run_details.subagents_of_aria": "{owner} के उप-एजेंट",
+	"ui.chat.run_details.job_cancel_aria": "{label} रद्द करें",
+	"ui.chat.run_details.monitors.cancel_aria": "मॉनिटर {name} रद्द करें",
+	"ui.chat.run_details.monitors.more": "{count, plural, =1 {{count_display} और मॉनिटर} one {{count_display} और मॉनिटर} other {{count_display} और मॉनिटर}}",
+	"ui.chat.run_details.wake.more": "{count, plural, =1 {{count_display} और जागृति} one {{count_display} और जागृति} other {{count_display} और जागृतियाँ}}",
+	"ui.chat.run_details.wake.armed_count": "{count, plural, =1 {{count_display} जागृति सक्रिय} one {{count_display} जागृति सक्रिय} other {{count_display} जागृतियाँ सक्रिय}}",
+	"ui.chat.run_details.wake.cadence_once": "एक बार"
 }

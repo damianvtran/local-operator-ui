@@ -36,6 +36,8 @@
  */
 
 import { TextSelectionControls } from "@shared/components/common/text-selection-controls";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import React, { type FC, useMemo, useRef } from "react";
 import type { Message } from "../../types/message";
@@ -89,6 +91,7 @@ export const MessagePaper: FC<MessagePaperProps> = React.memo(
 		isSmallView,
 		metadataMode = "default",
 	}) => {
+		useI18nLocale();
 		const messageContentRef = useRef<HTMLDivElement>(null);
 		const shouldRenderDefaultMetadata = metadataMode === "default";
 		const { replies, remainingContent } = useMemo(
@@ -168,7 +171,10 @@ export const MessagePaper: FC<MessagePaperProps> = React.memo(
 			>
 				{replies.length > 0 && <ReplyPreview replies={replies} />}
 				{message.thinking && !isUser && (
-					<AgentReasoning label="Thinking" content={message.thinking} />
+					<AgentReasoning
+						label={t("ui.chat.message_controls.thinking_label")}
+						content={message.thinking}
+					/>
 				)}
 				{cloneContentChildren(children, remainingContent, markdownStyleProps)}
 				{resolvedConversationId && (

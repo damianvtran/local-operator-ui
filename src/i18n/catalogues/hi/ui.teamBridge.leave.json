@@ -1,0 +1,6 @@
+{
+	"ui.teamBridge.leave.back": "पीछे",
+	"ui.teamBridge.leave.back_shortcut": "पीछे ({shortcut})",
+	"ui.teamBridge.leave.name": "पीछे, Team Bridge से बाहर निकलें",
+	"ui.teamBridge.leave.name_attention": "{count, plural, one {पीछे, Team Bridge से बाहर निकलें, कहीं और # आइटम इंतज़ार में है} other {पीछे, Team Bridge से बाहर निकलें, कहीं और # आइटम इंतज़ार में हैं}}"
+}

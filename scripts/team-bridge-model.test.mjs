@@ -1067,11 +1067,11 @@ test("participantLabel reads existing bad rows: 'X (X)' and the person's own nam
 			"Ada's chief of staff",
 		true,
 	);
-	// Person not in the directory: the stored agent name stands; a doubled one is absent.
+	// Person not in the directory: the stored agent name stands; a self-composed one reads as the unnamed form.
 	assert.equal(model.participantLabel(agent("Aida"), [], chiefCopy), "Aida");
 	assert.equal(
 		model.participantLabel(agent("Ben Tran (Ben Tran)"), [], chiefCopy),
-		null,
+		"Ben Tran's chief of staff",
 	);
 });
 

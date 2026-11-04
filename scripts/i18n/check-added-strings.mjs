@@ -39,6 +39,7 @@ import {
 	loadAllowlist,
 	openSnapshot,
 	pragmaLines,
+	staticTextNodes,
 } from "./check-strings.mjs";
 
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
@@ -48,9 +49,21 @@ const HUNK_RE = /^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@/;
 const TEST_DIRECTORY_RE = /(?:^|\/)(?:__tests__|tests?)\//;
 const TEST_FILE_RE = /\.(?:test|spec)\.[^.]+$/;
 
-/** Property names whose string values are product copy, not arbitrary data. */
+/**
+ * Property names whose string values are product copy, not arbitrary data.
+ *
+ * The four native attributes are spelled out rather than spread from
+ * `COPY_ATTRIBUTES`: that set also holds component-prop names (`content`,
+ * `summary`, `empty`, `header`...) which are prose as JSX props but are
+ * ordinary data keys in object literals elsewhere, and widening this guard
+ * with them would flag unrelated added lines. Widening object-literal
+ * coverage is its own measured change.
+ */
 export const COPY_PROPERTIES = new Set([
-	...COPY_ATTRIBUTES,
+	"aria-label",
+	"placeholder",
+	"title",
+	"alt",
 	"label",
 	"description",
 	"message",
@@ -110,44 +123,6 @@ function propertyName(node) {
 		return node.text;
 	}
 	return undefined;
-}
-
-/** Return only literal text nodes whose value is statically present in copy. */
-function staticTextNodes(node) {
-	switch (node.kind) {
-		case SyntaxKind.StringLiteral:
-		case SyntaxKind.NoSubstitutionTemplateLiteral:
-			return [node];
-		case SyntaxKind.TemplateExpression:
-			return [node.head, ...node.templateSpans.map((span) => span.literal)];
-		case SyntaxKind.ConditionalExpression:
-			return [
-				...staticTextNodes(node.whenTrue),
-				...staticTextNodes(node.whenFalse),
-			];
-		case SyntaxKind.BinaryExpression: {
-			const operator = node.operatorToken.kind;
-			if (operator === SyntaxKind.AmpersandAmpersandToken) {
-				// Only the right arm of && can become copy; the left is its guard.
-				return staticTextNodes(node.right);
-			}
-			if (
-				operator === SyntaxKind.PlusToken ||
-				operator === SyntaxKind.BarBarToken ||
-				operator === SyntaxKind.QuestionQuestionToken
-			) {
-				return [...staticTextNodes(node.left), ...staticTextNodes(node.right)];
-			}
-			return [];
-		}
-		case SyntaxKind.ParenthesizedExpression:
-		case SyntaxKind.AsExpression:
-		case SyntaxKind.SatisfiesExpression:
-		case SyntaxKind.NonNullExpression:
-			return staticTextNodes(node.expression);
-		default:
-			return [];
-	}
 }
 
 /**
@@ -248,7 +223,24 @@ function changedFiles(repo, base) {
 	};
 }
 
-export function runAddedCheck({ repo = REPO, base = "origin/main" } = {}) {
+/**
+ * `afterListing` is a test seam fired between listing changed files and
+ * reading them: it is the exact window in which a concurrent process can
+ * delete a file, so tests can open that window deterministically.
+ *
+ * Why vanished UNTRACKED files are skipped but TRACKED ones still throw: many
+ * sibling tests write a transient `_*.bundle.mjs` into scripts/i18n, import it
+ * and unlink it, and under `node --test` concurrency the checker can list it
+ * and then lose it (CI runs 41603855749 / 41595469149, exit 2 instead of 1).
+ * A file that existed only as untracked scratch and is gone can never be
+ * committed, so it holds no copy to guard. A tracked file that vanishes is a
+ * real working-tree change the check cannot vouch for, so it stays fail-closed.
+ */
+export function runAddedCheck({
+	repo = REPO,
+	base = "origin/main",
+	afterListing,
+} = {}) {
 	const comparisonBase = resolveComparisonBase(repo, base);
 	const { tracked, untracked } = changedFiles(repo, comparisonBase);
 	const allowlist = loadAllowlist(join(repo, "i18n", "allowlist.json"));
@@ -269,6 +261,7 @@ export function runAddedCheck({ repo = REPO, base = "origin/main" } = {}) {
 	for (const rel of untracked) {
 		if (!allowlistReason(rel, allowlist)) additions.set(rel, null);
 	}
+	afterListing?.();
 	const files = [...additions.keys()];
 	if (files.length === 0) {
 		return { base: comparisonBase, files, findings: [] };
@@ -282,9 +275,22 @@ export function runAddedCheck({ repo = REPO, base = "origin/main" } = {}) {
 		const findings = [];
 		for (const rel of files) {
 			const abs = join(repo, rel);
-			if (!existsSync(abs)) throw new Error(`Changed file disappeared: ${rel}`);
+			const isUntracked = additions.get(rel) === null;
+			if (!existsSync(abs)) {
+				if (isUntracked) {
+					// Named on stderr so a skip is never silent; stdout and the exit
+					// code keep their meaning.
+					console.error(
+						`check-added-strings.mjs: skipped untracked file that vanished before it was read: ${rel}`,
+					);
+					continue;
+				}
+				throw new Error(`Changed file disappeared: ${rel}`);
+			}
 			const project = snapshot.getDefaultProjectForFile(abs);
 			const sourceFile = project.program.getSourceFile(abs);
+			// Vanished between existsSync and parse: same untracked-only rule.
+			if (!sourceFile && isUntracked && !existsSync(abs)) continue;
 			if (!sourceFile) throw new Error(`TypeScript could not parse ${rel}`);
 			for (const finding of findAddedCopyViolations(
 				sourceFile,

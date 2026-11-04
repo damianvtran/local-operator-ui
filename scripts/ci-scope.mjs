@@ -515,15 +515,15 @@ export const JOB_COMMANDS = {
 	"check-types": [
 		"pnpm check-types",
 		"pnpm check-edit-diffs",
-		// The release-contract step of that job, as one plain run and two
-		// `node --test` invocations, in the order ci.yml runs them.
+		// The release-contract spellings must retain the checkpoint unit in
+		// the same real command as CI, or local check-changed silently omits it.
 		// `ci-scope.test.mjs` rides in the first list so this classifier's own
 		// assertions CANNOT stop running: a suite that leaves the job list and is
 		// not noticed is the "guard nothing runs" defect this change is about.
 		"node scripts/test-validate-release.mjs",
 		"node --test scripts/test-release-safety.mjs scripts/test-publish-workflow.mjs scripts/test-version-bump-guard.mjs scripts/ci-scope.test.mjs",
 		"node --test scripts/appimage-update-info.test.mjs",
-		"node --test scripts/release-baseline.test.mjs scripts/release-candidate.test.mjs scripts/entry-point.test.mjs scripts/require-report.test.mjs",
+		"node --test scripts/release-baseline.test.mjs scripts/release-candidate.test.mjs scripts/entry-point.test.mjs scripts/require-report.test.mjs scripts/desktop-suite-checkpoints.test.mjs",
 		'bash scripts/require-report.sh "Build environment contracts" node scripts/check-build-env.mjs',
 	],
 	test: ["pnpm test:desktop"],

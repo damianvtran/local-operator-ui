@@ -6,6 +6,7 @@ import { after, test } from "node:test";
 import { build } from "esbuild";
 import { JSDOM } from "jsdom";
 import { Profiler, createElement as h } from "react";
+const HELLO_COPY = /hello/;
 const I18N_SEAM = /^@shared\/i18n(?:\/use-locale)?$/;
 const API_SEAM = /^@shared\/api\/local-operator\/team-bridge-api$/;
 const PROSE_SEAM = /^\.\/team-bridge-markdown$/;
@@ -90,10 +91,10 @@ const bundle = await build({
 					contents: args.path.includes("emoji-support")
 						? "export const canRenderEmoji=(emoji)=>!globalThis.__unsupportedGlyphs?.has(emoji); export const warmEmojiProbeCache=()=>{globalThis.__warmCalls=(globalThis.__warmCalls??0)+1; return ()=>{}};"
 						: args.path.includes("api/")
-							? "export const TeamBridgeApi={react:(...args)=>globalThis.__reactionApi(...args)}; export const requireBridgeWriteAccount=(accountId)=>{if(!accountId) throw new Error('Team Bridge write account required'); return accountId;};"
+							? "export class TeamBridgeAttachmentError extends Error { constructor(status, code) { super('team bridge attachment request failed'); this.name='TeamBridgeAttachmentError'; this.status=status; this.code=code; } } export const TeamBridgeApi={react:(...args)=>globalThis.__reactionApi(...args)}; export const requireBridgeWriteAccount=(accountId)=>{if(!accountId) throw new Error('Team Bridge write account required'); return accountId;};"
 							: args.path.includes("markdown")
 								? "export const TeamBridgeMarkdown=({children})=>children;"
-								: 'export const t=(key)=>key; export const useI18nLocale=()=>"en";export const formatDate=()=>"today";export const formatTime=()=>"12:00";',
+								: 'export const t=(key)=>key; export const useI18nLocale=()=>"en";export const formatDate=()=>"today";export const formatTime=()=>"12:00";export const formatNumber=(value)=>String(value);',
 					loader: "js",
 				}));
 			},
@@ -110,7 +111,7 @@ const {
 	TeamBridgeMessageList,
 	TeamBridgeThreadPaneView,
 	TeamBridgeEmojiPicker,
-	useReactionPreferences,
+	useReactionPreferences: _useReactionPreferences,
 } = await import(file.href);
 await unlink(file);
 after(() => dom.window.close());
@@ -126,7 +127,7 @@ const reaction = {
 	reacted_by_me: false,
 	sample_labels: ["Bea"],
 };
-const visibleText = (node) =>
+const _visibleText = (node) =>
 	[...node.querySelectorAll("span")]
 		.filter((span) => !span.classList.contains("sr-only"))
 		.map((span) => span.textContent)
@@ -325,11 +326,11 @@ test("a shipped message list mounts reaction controls for the captured account",
 		);
 		assert.ok(m.host.querySelector('[role="toolbar"]'), accountId);
 	}
-	assert.match(m.host.textContent, /hello/);
+	assert.match(m.host.textContent, HELLO_COPY);
 	await m.close();
 });
 
-async function search(host, value) {
+async function _search(host, value) {
 	const input = host.querySelector("input");
 	const set = Object.getOwnPropertyDescriptor(
 		window.HTMLInputElement.prototype,
@@ -362,7 +363,7 @@ test("a row without a reaction context stays inert while an owned row draws chip
 		),
 	);
 	assert.ok(m.host.querySelector('[data-reaction-layout="chips"]'));
-	assert.match(m.host.textContent, /hello/);
+	assert.match(m.host.textContent, HELLO_COPY);
 	await m.close();
 });
 
@@ -374,7 +375,7 @@ test("a row without a reaction context stays inert while an owned row draws chip
  */
 /* A border or a shadow on the toolbar would break docs/branding.md: borderless
    chrome, and the one shadow only for objects that leave the flow. */
-const CHROME_EDGE = /\b(border|shadow)/;
+const _CHROME_EDGE = /\b(border|shadow)/;
 const rowMessage = {
 	id: "bcmsg_toolbar01",
 	conversation_id: "bcv_example1",
@@ -435,7 +436,7 @@ test("the shipped thread pane renders its root and reply", async () => {
 	);
 	assert.ok(m.host.querySelector('[role="toolbar"]'));
 	assert.equal(named(m.host, "ui.teamBridge.replies.action").length, 0);
-	assert.match(m.host.textContent, /hello/);
+	assert.match(m.host.textContent, HELLO_COPY);
 	await m.close();
 });
 

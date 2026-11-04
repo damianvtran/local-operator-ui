@@ -122,6 +122,7 @@ import {
 } from "./detail-parts";
 import { HubLinksPanel } from "./hub-links-panel";
 import { HubUpdatePanel } from "./hub-update-panel";
+import { MissingDefinitionError } from "./missing-definition-error";
 import {
 	SKILL_SCOPE_LABEL,
 	SkillDetail,
@@ -1361,15 +1362,17 @@ export function AgentsPage() {
 									<PaneError
 										title={
 											teamMode
-												? "Teams could not be read"
-												: "Agents could not be read"
+												? t("ui.agents.detail.read_state.list_failed_teams")
+												: t("ui.agents.detail.read_state.list_failed_agents")
 										}
 										what={
 											listError instanceof Error
 												? listError.message
-												: "The request did not complete."
+												: t("ui.agents.detail.read_state.request_failed")
 										}
-										meaning="Nothing is lost. This is a read that failed — the backend answered an error, which is different from the backend being out of date."
+										meaning={t(
+											"ui.agents.detail.read_state.list_failed_meaning",
+										)}
 										onRetry={refreshAll}
 										retrying={profiles.isFetching || teams.isFetching}
 									/>
@@ -1378,18 +1381,9 @@ export function AgentsPage() {
 						   definition" while something is on its way (D4). */
 									<DetailSkeleton />
 								) : selected && detailError ? (
-									<PaneError
-										title={
-											teamMode
-												? `“${selected}” could not be read`
-												: `“${selected}” could not be read`
-										}
-										what={
-											detailError instanceof Error
-												? detailError.message
-												: "The request did not complete."
-										}
-										meaning="The definition may have been removed, or the backend refused the read."
+									<MissingDefinitionError
+										name={selected}
+										error={detailError}
 										onRetry={() => {
 											void profileDetail.refetch();
 											void teamDetail.refetch();
@@ -1598,7 +1592,7 @@ export function AgentsPage() {
 							focusToken={skillMode ? skillAskFocus : 0}
 							blockedReason={
 								editDirty
-									? "Finish or cancel your edit first."
+									? t("ui.agents.pages.blocked_edit")
 									: skillMode && skillGate !== null
 										? t(SKILL_GATE_KEY[skillGate])
 										: null
@@ -1839,6 +1833,7 @@ const RosterMark = ({ agentId }: { agentId: string | null }) => (
 	<AgentMark
 		agentId={agentId}
 		className="size-4"
+		cssPx={16}
 		fallback={
 			<Bot aria-hidden="true" className="size-4 shrink-0 text-ink-dim" />
 		}

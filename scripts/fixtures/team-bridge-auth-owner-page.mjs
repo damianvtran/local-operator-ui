@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import Module from "node:module";
-import { relative } from "node:path";
+import { relative, resolve } from "node:path";
 import { after } from "node:test";
 import { build } from "esbuild";
 import { JSDOM } from "jsdom";
@@ -70,6 +71,41 @@ after(() => dom.window.close());
 const SIDEBAR = /chat\/components\/chat-sidebar$/;
 const ANY = /.*/;
 const SOURCE = /\/src\/.*\.(?:tsx?|json)$/;
+const laneSource = resolve(
+	"src/renderer/src/features/team-bridge/team-bridge-pending-sends.ts",
+);
+// Re-pinned when `PendingSend` gained its captured `mentions` field (a type-only
+// import and property; the lane code the observer hooks is unchanged).
+const laneHash =
+	"16ba46b7d74205a219b0d19c9b86297aa485a31fc1a7261b1757d4f598e529d6";
+const hash = (value) => createHash("sha256").update(value).digest("hex");
+const laneAttempts = [];
+let laneObserverError = false;
+let laneLoads = 0;
+let transformedLaneHash;
+// Keep the exact job promise even when auth revocation clears its lane map.
+// Observers cannot alter the job or expose lane keys, errors or message data.
+// Adding observers can still change microtask order; this is instrumented proof.
+globalThis[Symbol.for("teamBridgeTestTrackLane")] = (run) => {
+	try {
+		const attempt = { id: laneAttempts.length + 1, run, state: "pending" };
+		laneAttempts.push(attempt);
+		void run
+			.then(
+				() => {
+					attempt.state = "fulfilled";
+				},
+				() => {
+					attempt.state = "rejected";
+				},
+			)
+			.catch(() => {
+				laneObserverError = true;
+			});
+	} catch {
+		laneObserverError = true;
+	}
+};
 const role = readFileSync(
 	"src/renderer/src/features/chat/components/chat-sidebar.tsx",
 	"utf8",
@@ -91,7 +127,8 @@ const bundle = await build({
  export {teamBridgeViewingConversation} from './src/renderer/src/features/team-bridge/team-bridge-viewing';
  export {QueryClient,QueryClientProvider} from '@tanstack/react-query';
  export {MemoryRouter} from 'react-router-dom';
- export {usePendingSends, resetPendingSendsForTest} from './src/renderer/src/features/team-bridge/team-bridge-pending-sends';`,
+ export {usePendingSends, resetPendingSendsForTest} from './src/renderer/src/features/team-bridge/team-bridge-pending-sends';
+ export {stageMentions, stagedMentions} from './src/renderer/src/features/team-bridge/mentions/mention-outbox';`,
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -125,6 +162,7 @@ const bundle = await build({
 	},
 	tsconfig: "tsconfig.app.json",
 	write: false,
+	metafile: true,
 	plugins: [
 		{
 			name: "unrelated-boundaries",
@@ -132,6 +170,7 @@ const bundle = await build({
 				// Exact, isolated RED control: compile only changed source files from the
 				// original release ref; never replace files in this or another worktree.
 				const baselineRef = process.env.TEAM_BRIDGE_AUTH_BASELINE;
+				const baseline = new Map();
 				if (baselineRef) {
 					assert.equal(baselineRef, "39164868fc15bd7971a1df625ef99e53c209e08f");
 					const git = (...args) =>
@@ -145,24 +184,44 @@ const bundle = await build({
 							.trim()
 							.split("\n"),
 					);
-					const baseline = new Map(
-						paths
-							.filter((path) => baseFiles.has(path))
-							.map((path) => [path, git("show", `${baselineRef}:${path}`)]),
-					);
-					b.onLoad({ filter: SOURCE }, ({ path }) => {
-						const contents = baseline.get(relative(process.cwd(), path));
-						if (contents === undefined) return;
-						return {
-							contents,
-							loader: path.endsWith(".tsx")
-								? "tsx"
-								: path.endsWith(".json")
-									? "json"
-									: "ts",
-						};
-					});
+					for (const path of paths.filter((item) => baseFiles.has(item)))
+						baseline.set(path, git("show", `${baselineRef}:${path}`));
 				}
+				// Compose baseline selection and the exact observer in ONE loader: an
+				// earlier generic onLoad must not silently bypass the tracker.
+				b.onLoad({ filter: SOURCE }, ({ path }) => {
+					let contents = baseline.get(relative(process.cwd(), path));
+					if (resolve(path) === laneSource) {
+						laneLoads += 1;
+						assert.equal(laneLoads, 1, "lane source must load exactly once");
+						contents ??= readFileSync(path, "utf8");
+						assert.equal(
+							hash(contents),
+							laneHash,
+							"actual loaded lane source must match pinned bytes",
+						);
+						const needle = "\treturn run;\n}\n\n/** A draft lane";
+						assert.equal(
+							contents.split(needle).length,
+							2,
+							"lane hook must match exactly once",
+						);
+						contents = contents.replace(
+							needle,
+							`\tglobalThis[Symbol.for("teamBridgeTestTrackLane")](run);\n${needle}`,
+						);
+						transformedLaneHash = hash(contents);
+					}
+					if (contents === undefined) return;
+					return {
+						contents,
+						loader: path.endsWith(".tsx")
+							? "tsx"
+							: path.endsWith(".json")
+								? "json"
+								: "ts",
+					};
+				});
 				// sonner is the toast manager's one edge. The shipped manager (dedupe,
 				// transport-text rewrite) runs for real and lands here, so a test can read
 				// exactly what a person would be shown.
@@ -201,13 +260,33 @@ export const DropdownMenuTrigger=({children,asChild})=>{const c=React.useContext
 export const DropdownMenuContent=({children})=>{const c=React.useContext(Ctx);return c.open?React.createElement("div",{role:"menu"},children):null;};
 export const DropdownMenuItem=({children,onSelect,onClick})=>{const c=React.useContext(Ctx);return React.createElement("div",{role:"menuitem",onClick:(e)=>{onClick?.(e);onSelect?.(e);c.setOpen(false);}},children);};
 const Pass=({children})=>React.createElement(React.Fragment,null,children);
-export const DropdownMenuGroup=Pass,DropdownMenuPortal=Pass,DropdownMenuSub=Pass,DropdownMenuRadioGroup=Pass,DropdownMenuSubTrigger=Pass,DropdownMenuSubContent=Pass,DropdownMenuCheckboxItem=DropdownMenuItem,DropdownMenuRadioItem=DropdownMenuItem,DropdownMenuLabel=Pass,DropdownMenuSeparator=()=>null,DropdownMenuShortcut=Pass;`
+const Radio=React.createContext(null);
+export const DropdownMenuRadioGroup=({children,onValueChange})=>React.createElement(Radio.Provider,{value:onValueChange},children);
+export const DropdownMenuRadioItem=({children,value,onSelect})=>{const pick=React.useContext(Radio);return React.createElement(DropdownMenuItem,{onSelect:(e)=>{onSelect?.(e);pick?.(value);}},children);};
+export const DropdownMenuGroup=Pass,DropdownMenuPortal=Pass,DropdownMenuSub=Pass,DropdownMenuSubTrigger=Pass,DropdownMenuSubContent=Pass,DropdownMenuCheckboxItem=DropdownMenuItem,DropdownMenuLabel=Pass,DropdownMenuSeparator=()=>null,DropdownMenuShortcut=Pass;`
 								: `export const rowCurrent=${role};`,
 				}));
 			},
 		},
 	],
 });
+assert.equal(laneLoads, 1, "the actual lane source must be instrumented once");
+assert.ok(transformedLaneHash, "the transformed source must be identified");
+assert.ok(
+	Object.keys(bundle.metafile.inputs).some(
+		(path) => resolve(path) === laneSource,
+	),
+	"bundle must include the intended lane source",
+);
+assert.ok(
+	bundle.outputFiles[0].text.includes("teamBridgeTestTrackLane"),
+	"bundle must contain the observer marker",
+);
+const laneBuildIdentity = {
+	source: laneHash,
+	transformed: transformedLaneHash,
+	bundle: hash(bundle.outputFiles[0].text),
+};
 const compiled = new Module(
 	`${process.cwd()}/scripts/pending-owner-container-runtime.cjs`,
 );
@@ -271,6 +350,8 @@ function deferred() {
  *   waitReady   - false when the scenario holds the gate open on purpose.
  *   statusGate  - replaces the fixture's own null status gate, so a caller can
  *                 hold the eligibility verdict open from before the first render.
+ *   sendMentions- advertises `team_bridge_send_mentions`, so the composer's
+ *                 @-mentions are serialised onto the wire (off by default).
  * The remaining holds are installed on the returned fixture by the scenario that
  * needs them: `fixture.listGate` (the conversation list) and `fixture.unreadGate`
  * (the account unread aggregate).
@@ -284,8 +365,18 @@ async function mount({
 	seed = null,
 	waitReady = true,
 	statusGate = null,
+	sendMentions = false,
 } = {}) {
+	// A revoked attempt can outlive its cleared lane and store entry. A later
+	// fixture must not reset shared state while that earlier job can still run.
+	assert.equal(laneObserverError, false, "an earlier lane observer failed");
+	assert.equal(
+		laneAttempts.some((entry) => entry.state === "pending"),
+		false,
+		"a previous fixture still owns a pending lane",
+	);
 	localStorage.clear();
+	const laneStart = laneAttempts.length;
 	const fixture = {
 		account: "acct_a",
 		tenant: "org_shared",
@@ -328,7 +419,13 @@ async function mount({
 		   another route unmounts the container while module state (lanes, pending
 		   rows) and the shared QueryClient live on. */
 		created: null,
+		// A create receipt can be malformed or name another tenant; tests must
+		// prove the view never treats either as authority to retain another scope.
+		createReceiptTenant: undefined,
+		createListTenant: undefined,
+		createReceipts: [],
 		away: false,
+		listFor: null,
 	};
 	window.api = {
 		desktop: {
@@ -350,6 +447,9 @@ async function mount({
 								team_bridge_threads: 1,
 								team_bridge_reactions: 1,
 								team_bridge_conversation_owner_guard: fixture.ownerGuard,
+								/* Opt-in: only the mention suites type an `@`, and the other
+								   suites' request shapes predate the field. */
+								...(sendMentions ? { team_bridge_send_mentions: 1 } : {}),
 							},
 						});
 					case "radient.request":
@@ -412,6 +512,10 @@ async function mount({
 						});
 					case "team_bridge.conversations.list":
 						if (fixture.listGate) await fixture.listGate.promise;
+						/* PER-SCOPE ROWS (view restore): a scenario that needs each organization
+						   to answer its own list - and the account read to answer the union -
+						   supplies them here; every older suite leaves it null. */
+						if (fixture.listFor) return reply(fixture.listFor(request));
 						if (fixture.lifecycle) {
 							const wanted = request.status ?? "open";
 							return reply({
@@ -514,8 +618,20 @@ async function mount({
 									})),
 								],
 							};
-							fixture.created.push(row);
-							return reply(row);
+							// The transport receipt and subsequent list may disagree; keep
+							// them independently controllable instead of testing a fallback.
+							fixture.created.push(
+								fixture.createListTenant === undefined
+									? row
+									: { ...row, tenant_id: fixture.createListTenant },
+							);
+							const receipt = { ...row };
+							if (fixture.createReceiptTenant === null)
+								receipt.tenant_id = undefined;
+							else if (fixture.createReceiptTenant !== undefined)
+								receipt.tenant_id = fixture.createReceiptTenant;
+							fixture.createReceipts.push(receipt);
+							return reply(receipt);
 						}
 						return reply({
 							...conversation(`created-${generation}`),
@@ -543,6 +659,15 @@ async function mount({
 						if (fixture.created)
 							return reply(fixture.messages.get(ownerKey)[0]);
 						return reply({ id: `msg_${owner}` });
+					/* A thread read answers its root out of the scenario's history, so a
+					   reopened thread pane renders rather than erroring (view restore). */
+					case "team_bridge.messages.replies": {
+						const root = (
+							fixture.historyByConversation.get(request.conversation_id) ?? []
+						).find((row) => row.id === request.message_id);
+						if (!root) return reply({});
+						return reply({ root, replies: [], has_more: false });
+					}
 					case "team_bridge.read":
 						return reply({
 							conversation_id: request.conversation_id,
@@ -550,6 +675,13 @@ async function mount({
 							unread_count: 0,
 							muted: false,
 						});
+					/* The page reads the speech probe for its composer's microphone
+					   (`useRadientCredentialProbe`), whose connectivity gate reads the
+					   config's hosting provider. The catch-all's `{}` has no `values`,
+					   which the real backend always sends, so it is answered here with
+					   the shape `connectivity-banner-notice.test.mjs` stubs. */
+					case "config.get":
+						return reply({ values: { hosting: "local" } });
 					default:
 						return reply({});
 				}
@@ -561,7 +693,7 @@ async function mount({
 	const root = createRoot(host);
 	const client = ui.queryClient;
 	client.clear();
-	seed?.({ client, ui });
+	seed?.({ client, ui, fixture });
 	const ownedQueries = new Set();
 	const stopTracking = client
 		.getQueryCache()
@@ -602,6 +734,12 @@ async function mount({
 									auth: client.getQueryData(ui.radientUserKeys.user())?.account
 										?.id,
 									tenant: status?.tenant_id,
+									selectedId:
+										host
+											.querySelector(
+												'[data-conversation-id][aria-current="page"]',
+											)
+											?.getAttribute("data-conversation-id") ?? null,
 									nav: host.querySelector("[data-nav-attention]")?.textContent,
 									text: host.textContent,
 									draft: host.querySelector("textarea")?.value ?? "",
@@ -632,6 +770,9 @@ async function mount({
 		fixture,
 		client,
 		frames,
+		laneBuildIdentity,
+		laneAttempts: () => laneAttempts.slice(laneStart),
+		laneObserverFailed: () => laneObserverError,
 		render,
 		async changeAuth(accountId) {
 			fixture.account = accountId;
@@ -653,7 +794,8 @@ async function mount({
 			await act(async () => render());
 		},
 		async close() {
-			await act(async () => root.unmount());
+			// Held transport must settle before unmount; otherwise old continuations
+			// can leak into the next test after its singleton store has been reset.
 			fixture.authGate?.resolve();
 			fixture.statusGate?.resolve();
 			fixture.listGate?.resolve();
@@ -661,17 +803,51 @@ async function mount({
 			fixture.unreadGate?.resolve();
 			fixture.createGate?.resolve();
 			fixture.postGate?.resolve();
-			await act(async () => client.cancelQueries());
-			await delay();
-			for (const mutation of client.getMutationCache().getAll())
-				mutation.destroy();
-			client.clear();
-			// A cancelled Query.fetch finally can schedule GC after removal. Destroy
-			// every owned query after its cancellation settles, including removed ones.
-			await delay();
-			for (const query of ownedQueries) query.destroy();
-			stopTracking();
-			host.remove();
+			const errors = [];
+			const attemptCleanup = async (fn) => {
+				try {
+					await fn();
+				} catch (error) {
+					errors.push(error);
+				}
+			};
+			try {
+				await until(
+					() =>
+						laneAttempts
+							.slice(laneStart)
+							.every((entry) => entry.state !== "pending") &&
+						!laneObserverError,
+					"observed lane attempts settle before unmount",
+				);
+			} catch (error) {
+				errors.push(error);
+			} finally {
+				// Attempt every teardown step even if the lane or an earlier step failed.
+				await attemptCleanup(() => act(async () => root.unmount()));
+				await attemptCleanup(() => act(async () => client.cancelQueries()));
+				await attemptCleanup(delay);
+				await attemptCleanup(async () => {
+					for (const mutation of client.getMutationCache().getAll())
+						mutation.destroy();
+				});
+				await attemptCleanup(async () => client.clear());
+				await attemptCleanup(delay);
+				await attemptCleanup(async () => {
+					for (const query of ownedQueries) query.destroy();
+				});
+				await attemptCleanup(async () => stopTracking());
+				await attemptCleanup(async () => host.remove());
+			}
+			// Never discard a still-running job just to make the next test look clean.
+			if (
+				laneAttempts
+					.slice(laneStart)
+					.every((entry) => entry.state !== "pending")
+			)
+				laneAttempts.splice(laneStart);
+			if (errors.length)
+				throw new AggregateError(errors, "owner fixture cleanup failed");
 		},
 	};
 }

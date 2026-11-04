@@ -137,5 +137,6 @@
 	"ui.common.errors.agent_publish": "The agent could not be published.",
 	"ui.common.errors.conversation_messages_fetch": "Failed to fetch conversation messages",
 	"ui.common.errors.conversation_messages_fetch_unknown": "An unknown error occurred while fetching conversation messages",
-	"ui.common.errors.session_id_required": "A session id is required to read code memory."
+	"ui.common.errors.session_id_required": "A session id is required to read code memory.",
+	"ui.common.errors.desktop_transport_failed": "The backend could not complete this request. Check its connection and try again."
 }

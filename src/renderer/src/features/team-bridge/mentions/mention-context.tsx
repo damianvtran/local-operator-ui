@@ -15,6 +15,9 @@ import type { MentionCandidateRow } from "./candidates";
 export type MentionSource = {
 	/** The hub conversation a send from here lands in (the outbox key). */
 	conversationId: string;
+	/** Draft ownership is independent of directory labels/reader highlighting.
+	 * Unresolved ownership must not read or persist a mention sidecar. */
+	draftOwner?: { accountId: string; tenantId: string } | null;
 	candidates: readonly MentionCandidateRow[];
 	/** The open conversation's kind; null while composing a new message. */
 	conversationKind: "dm" | "group" | "channel" | null;
@@ -24,8 +27,12 @@ export type MentionSource = {
 	 * `mentions[]`, because an older backend refuses an unknown field.
 	 */
 	sendMentions: boolean;
-	/** The reader, for the stronger "mentions you" highlight in message bodies. */
-	self: { accountId: string; label: string } | null;
+	/**
+	 * The reader, for the stronger "mentions you" highlight in message bodies.
+	 * Non-null whenever the authenticated account is known; `labelUnique` is
+	 * set by `mention-source.tsx` (absent reads as false).
+	 */
+	self: { accountId: string; label: string; labelUnique?: boolean } | null;
 	/** Invite a non-member; absent where the reader cannot invite (or in a DM). */
 	onInvite?: (candidate: MentionCandidateRow) => Promise<unknown>;
 	/** Whether Invite is offered for this row (see `mention-source.tsx`). */

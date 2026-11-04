@@ -449,14 +449,14 @@ export const MessageItem: FC<MessageItemProps> = memo(
 						<CodeBlock
 							code={message.content}
 							isUser={isUser}
-							header="Content"
+							header={t("ui.chat.message_controls.content_header")}
 						/>
 					)}
 					{message.replacements && (
 						<CodeBlock
 							code={message.replacements}
 							isUser={isUser}
-							header="Replacements"
+							header={t("ui.chat.message_controls.replacements_header")}
 						/>
 					)}
 					{stdout && <OutputBlock output={stdout} isUser={isUser} />}

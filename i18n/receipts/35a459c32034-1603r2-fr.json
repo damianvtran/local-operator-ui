@@ -1,0 +1,83 @@
+{
+  "schema": 1,
+  "instance": "35a459c32034-1603r2-fr",
+  "locale": "fr",
+  "pr": "damianvtran/local-operator-ui#1603",
+  "branch": "feat/i18n-uncounted-props",
+  "head": "011c0f4f4caaf5a388a67ba2eda3f615ac676d3c",
+  "date": "2026-11-02",
+  "status": "passed",
+  "model": "anthropic/claude-sonnet-5-5",
+  "audit_kind": "round-1 full review at ab45351362a + round-2 delta re-audit at 011c0f4f4ca",
+  "author": "Written by coder session 92f609a7042a (lopdev team, PR #1603 receipts slice) on the auditors' behalf, transcribed from each auditor session's final report (the auditors wrote no receipt and no ledger row). Hashes were re-derived by the coder from git objects (git show <rev>:<path> | sha256) and every full hash an auditor reported was matched against them; the writer re-derives them again from disk. The coder did not translate or remediate any string and is not the auditor.",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "35a459c32034",
+    "model": "anthropic/claude-sonnet-5-5",
+    "model_note": "Instance is the ROUND-2 delta auditor's session; the round-1 full auditor is the separate session c09dbedc5d8a. Both are agent i18n-auditor, model anthropic/claude-sonnet-5-5 per their session headers; neither auditor can verify the runtime provider and neither claims a fallback; none was verified or ruled out.",
+    "independent_from_translator": true,
+    "role": "round-2 delta auditor (second pass on the final bytes); round-1 full auditor = c09dbedc5d8a"
+  },
+  "sessions": {
+    "round1_auditor": "c09dbedc5d8a",
+    "round2_auditor": "35a459c32034",
+    "round2_job": "c7c39038db89"
+  },
+  "independence": "The auditor(s) are separate i18n-auditor sessions from the translator (session 7bf560d5dcc5, job f3024578bae5) and from the remediation translator (session 3945da4d65a0, job f67ec92231e4); neither auditor translated, edited or remediated any string, and neither wrote a receipt or ledger row. The translator, remediator and auditors share one model (anthropic/claude-sonnet-5-5), so independence is by agent and session, not by model family; a shared blind spot is possible (the hi round-1 auditor states this explicitly). Independence is attested by the auditors' own reports and the session transcripts; it is not provable from this file alone. Job-to-session mapping for round 2 (job -> auditor session) was read from the parent transcript, where each delta report follows its launching job id; round-1 jobs are identified by session id only.",
+  "locale_level_round1_verdict": {
+    "verdict": "changes_requested",
+    "pin": "ab45351362a",
+    "majors": [
+      "A-1 (ui.chat)"
+    ],
+    "note": "Locale-level verdict covered all 17 namespaces of the locale. Each namespace block below carries its own status derived from its own findings."
+  },
+  "round2_delta": {
+    "pin": "011c0f4f4ca",
+    "verdict": "passed",
+    "blocker": 0,
+    "major": 0,
+    "job": "c7c39038db89",
+    "session": "35a459c32034",
+    "range": "5af81c6b78a..011c0f4f4ca"
+  },
+  "reported_hash_check": "Every full sha256 the round-2 delta auditor reported for this locale matched the git-object hash recomputed by the coder; round-1 auditors reported 16-hex prefixes that matched at ab45351362a.",
+  "finding_attribution": "Findings are split per namespace and key so each ledger row counts its own; one auditor finding spanning several namespaces is counted once per namespace it touches, so the sum can exceed the auditor's headline totals. Only OPEN findings (unapplied at 011c0f4f4ca, or raised by the round-2 auditor on the new text) are counted; fixed ones are listed under resolved_findings.",
+  "namespaces": {
+    "ui.chat": {
+      "ledger_scope": "Round-1 full review (c09dbedc5d8a) at ab45351362a of the 29 keys PR #1603 added + round-2 delta re-audit (35a459c32034) at 011c0f4f4ca of the 5 changed key(s). Round-1 MAJOR here: A-1, verified fixed. Counts are open findings only.",
+      "status": "passed",
+      "audit_kind": "round-1 full review at ab45351362a + round-2 delta re-audit at 011c0f4f4ca",
+      "scope": "round-1 full review at ab45351362a (session c09dbedc5d8a, covered the 29 keys PR #1603 added; everything except the remediated keys is reviewed there) + round-2 delta re-audit at 011c0f4f4ca (session 35a459c32034, scoped to the 5 changed key(s) of this file: session_status.context_click_breakdown_held, session_status.context_click_breakdown_held_plain, session_status.context_measured_now, session_status.context_estimated_now, session_status.context_click_breakdown). Round-1 MAJOR(s) in this namespace: A-1 ui.chat.session_status.context_click_breakdown_held... - verified FIXED by the delta auditor. Only OPEN findings are counted. Pre-existing keys not touched by the PR were not re-reviewed (earlier audits are in superseded).",
+      "keys_added_by_pr": 29,
+      "sha256": {
+        "en": "290277f882b88cd790fe842c8022b463a29dfadbaa81d1691dc5e5b79b4515a3",
+        "fr": "c04fe66212b987a75cba207d2252fbd2c740dc4f661627f5914399c64b0d0348"
+      },
+      "context_sha256": "f3c01742228783c28ac291c892625ec99b7bdbc4cf3cdf1fa13c8ebfb438dc01",
+      "bytes_checked_at": "011c0f4f4ca",
+      "findings": [],
+      "resolved_findings": [
+        {
+          "id": "A-1",
+          "severity": "MAJOR",
+          "keys": [
+            "ui.chat.session_status.context_click_breakdown_held",
+            "ui.chat.session_status.context_click_breakdown_held_plain",
+            "ui.chat.session_status.context_measured_now",
+            "ui.chat.session_status.context_estimated_now",
+            "ui.chat.session_status.context_click_breakdown"
+          ],
+          "round": 1,
+          "text": "\"détail complet\" is a second word for \"breakdown\", already \"répartition\" in the catalogue and in the panel title the hint opens.",
+          "resolution": {
+            "state": "fixed",
+            "fixed_in": "011c0f4f4ca",
+            "remediation_translator_job": "f67ec92231e4",
+            "verified_by_round2_session": "35a459c32034"
+          }
+        }
+      ]
+    }
+  }
+}

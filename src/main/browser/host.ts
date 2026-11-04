@@ -18,6 +18,7 @@ import * as networkActions from "./actions/network";
 import * as pageActions from "./actions/page";
 import * as queryActions from "./actions/query";
 import * as recordingActions from "./actions/recording";
+import * as selectActions from "./actions/select";
 import * as tabActions from "./actions/tabs";
 import * as uploadActions from "./actions/upload";
 import { collectAddressHistory, mergeAddressHistory } from "./address-history";
@@ -81,6 +82,10 @@ const DOCUMENT_SCOPED: ReadonlySet<string> = new Set([
 	"click",
 	"type",
 	"press",
+	// `hover` dispatches page events at the CURRENT document and reports its hit
+	// stack, so it is authorized on entry and on the result exactly like `click`.
+	"hover",
+	"select",
 	"scroll",
 	"logs",
 	// `download` names a control on the CURRENT document (the link or button that
@@ -137,6 +142,19 @@ const NAVIGATING_ACTIONS: ReadonlySet<string> = new Set([
 	"click",
 	"type",
 	"press",
+	// `hover` cannot navigate by ITSELF, but the page's own `mouseenter`/`mouseover`
+	// handler can (menus and router links do exactly that), and measured against the
+	// built app (scripts/browser-hover-press-proof.mjs, `/navhover`) a hover whose
+	// handler sent the tab to an unapproved origin was refused with `origin_not_allowed`
+	// while the tab STAYED on the unapproved page. Membership here is what restores it
+	// to the entry document (and adopts an approved landing instead of reporting
+	// `changed`). It is deliberately NOT in NAVIGATION_ACTIONS: no per-hop `Fetch`
+	// gate, for the reason that set's comment gives.
+	"hover",
+	// A select change handler can navigate just like hover: adopt/authorize the
+	// landing on success OR throw, and restore if unapproved. No native popup,
+	// no agent-initiated document request to intercept with Fetch.
+	"select",
 	"download",
 	"upload",
 ]);
@@ -176,6 +194,13 @@ const NAVIGATING_ACTIONS: ReadonlySet<string> = new Set([
  * which is judged by the same pair. Arming `Fetch.enable` around an attach would
  * intercept that form's own POST and its subresources for no consent gain, which
  * is the side effect this set exists to avoid.
+ *
+ * `hover` IS IN NAVIGATING_ACTIONS BUT NOT THIS SET, deliberately: it sends one
+ * pointer move with no button, which cannot follow a link or submit a form, so there
+ * is no agent-initiated hop for the per-hop gate to decide (and arming `Fetch.enable`
+ * would fail the page's own subresource loads for no consent gain). A page whose own
+ * hover handler navigates away is judged and, if unapproved, reverted by the
+ * entry/result pair in `authorizedPerform` that NAVIGATING_ACTIONS selects.
  */
 const NAVIGATION_ACTIONS: ReadonlySet<string> = new Set([
 	"click",
@@ -196,6 +221,8 @@ const TAB_SCOPED: ReadonlySet<string> = new Set([
 	"click",
 	"type",
 	"press",
+	"hover",
+	"select",
 	"scroll",
 	"logs",
 	"close",
@@ -397,6 +424,10 @@ export interface BrowserHostOptions {
 	 * `will-download` handler that feeds it is installed on the SESSION, which this
 	 * module deliberately does not own. */
 	downloads: BrowserActionContext["downloads"];
+	/** The hidden H.264 encoder window for `record_start {quality: "high"}`
+	 * (`actions/recording-encoder-host.ts`). Absent in a test or a story: `high` is
+	 * then refused `record_quality_unavailable` and `standard` is unaffected. */
+	recordingEncoder?: BrowserActionContext["recordingEncoder"];
 	log: (message: string) => void;
 	onChanged: () => void;
 	facts: () => HostFacts;
@@ -468,6 +499,7 @@ export class BrowserHost implements BrowserActionContext {
 	readonly approvals: BrowserActionContext["approvals"];
 	readonly ownership: BrowserActionContext["ownership"];
 	readonly downloads: BrowserActionContext["downloads"];
+	readonly recordingEncoder?: BrowserActionContext["recordingEncoder"];
 	readonly log: (message: string) => void;
 	readonly onChanged: () => void;
 	readonly facts: () => HostFacts;
@@ -515,6 +547,7 @@ export class BrowserHost implements BrowserActionContext {
 		this.approvals = options.approvals;
 		this.ownership = options.ownership;
 		this.downloads = options.downloads;
+		this.recordingEncoder = options.recordingEncoder;
 		this.log = options.log;
 		this.onChanged = options.onChanged;
 		// See the field's doc comment: an arrow in a class-property initialiser is
@@ -658,7 +691,21 @@ export class BrowserHost implements BrowserActionContext {
 		// `NAVIGATION_ACTIONS` for why the others are deliberately not wrapped in it.
 		const operation = async (): Promise<Record<string, unknown>> => {
 			assertDocument();
-			const result = await this.perform(method, params, requestId);
+			let result: Record<string, unknown>;
+			try {
+				result = await this.perform(method, params, requestId);
+			} catch (error) {
+				// Input can land successfully and THEN fail reading the changed page:
+				// hover's mouseenter navigates, for example, and hitAt finds no element
+				// (or its execution context was destroyed). A return-only check leaves
+				// that unapproved landing open and reports the incidental read error.
+				// Judge/restore the landing even when perform throws; authorization
+				// takes precedence, but an approved document keeps the original error.
+				// Restrict this to actions that can move the page: a non-navigating
+				// read keeps its existing error semantics. No additional Fetch gate.
+				if (NAVIGATING_ACTIONS.has(method)) assertDocument();
+				throw error;
+			}
 			try {
 				assertDocument();
 			} catch (error) {
@@ -755,6 +802,10 @@ export class BrowserHost implements BrowserActionContext {
 				return inputActions.type(this, params);
 			case "press":
 				return inputActions.press(this, params);
+			case "hover":
+				return inputActions.hover(this, params);
+			case "select":
+				return selectActions.select(this, params);
 			case "download":
 				return downloadActions.download(this, params);
 			case "upload":
@@ -968,7 +1019,14 @@ export class BrowserHost implements BrowserActionContext {
 				.map((entry, displayOrder) => ({
 					...(this.chromeTabOrder.hasCustomOrder ? { displayOrder } : {}),
 					tabId: entry.tabId,
-					title: this.titleForChrome(entry.title) || "New tab",
+					// MAIN OWNS THIS WORD: the projection hands the strip a ready title, so
+					// the renderer's own fallback never runs and a literal here shows in
+					// English under every locale. Reuses the strip's key, which every
+					// shipped locale already translates, rather than minting a twin that
+					// would have to be translated and audited again.
+					title:
+						this.titleForChrome(entry.title) ||
+						t("ui.browser.browser_tab_strip.new_tab"),
 					url: entry.url,
 					owner: entry.owner,
 					// WHICH CONVERSATION THIS TAB BELONGS TO, and the ONLY new field this

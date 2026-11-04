@@ -48,10 +48,12 @@ import {
 	FlagLinesProvider,
 	useFlaggedItem,
 } from "@features/notifications/components/flag-line";
+import { useNotificationReveal } from "@features/notifications/drawer-tab-store";
 import {
 	NO_PROVIDER_NOTICE,
 	useConnectProviderStore,
 } from "@features/providers/connect-provider-store";
+import type { AvatarMark } from "@shared/agent-avatar/avatar-presence";
 import {
 	desktopFeatureEnabled,
 	useDesktopCapabilities,
@@ -61,7 +63,7 @@ import { TextSelectionControls } from "@shared/components/common/text-selection-
 import { Button } from "@shared/components/ui";
 import { Disclosure } from "@shared/components/ui/disclosure";
 import { useCompletionView } from "@shared/hooks/use-completion-view";
-import { t } from "@shared/i18n";
+import { formatDateTime, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import {
@@ -110,6 +112,7 @@ import type {
 	PendingDesktopGate,
 } from "../../../../../shared/desktop-session-contract";
 import type { SessionFailureNotice } from "../../../../../shared/desktop-stream-notice";
+import { parseAgentAvatarSize, turnMarkHeight } from "../agent-avatar-size";
 import { askResponseSummary, askTimeoutSummary } from "../ask-queue";
 import { CHAT_COLUMN_CONTAINER, CHAT_MEASURE } from "../chat-measure";
 import { chatRegionLabel } from "../chat-regions";
@@ -123,7 +126,9 @@ import { MessageAvatar } from "../components/message-item/message-avatar";
 import { MessageContainer } from "../components/message-item/message-container";
 import { TurnTimestamp } from "../components/message-item/turn-timestamp";
 import { ReplyPreview } from "../components/reply-preview";
+import { skillBlockNames } from "../components/skill-invocation";
 import { DiffBlock, TraceLine } from "../components/trace";
+import { bridgeReceiptOf } from "../components/trace/bridge-receipt-model";
 import {
 	type BridgeLabelResolver,
 	type BridgeRowView,
@@ -388,15 +393,15 @@ export const dbgChatEntriesRebuilds = { count: 0 };
  */
 const WINDOW_ALIGN_MAX_EXTRA = 300;
 
-/**
- * The height the agent's turn-head picture adds to the entry it opens, in px.
- *
- * `message-avatar.tsx` draws `size-5` (20) plus `mb-1` (4). The DOM window's
- * estimate needs it because an entry the window has not mounted has no measured
+/*
+ * The height the agent's turn-head mark adds to the entry it opens is
+ * `turnMarkHeight(size)` (`agent-avatar-size.ts`): the box the setting picks
+ * plus `mb-1`, from the SAME table `message-avatar.tsx` draws its class from, so
+ * the DOM window's estimate cannot keep a 24px belief while the mark is 40. The
+ * estimate is needed because an entry the window has not mounted has no measured
  * box, and the mark is only there when the turn has a head and the pane has a
- * picture (review round 1, R-5).
+ * mark (review round 1, R-5).
  */
-const TURN_MARK_HEIGHT = 24;
 
 /**
  * The head set for a pane with no picture: no mark is drawn, so there is nothing
@@ -693,7 +698,7 @@ export type CanonicalTranscriptProps = {
 	 * Omitted/nulled is every existing caller and every story: nothing new
 	 * renders, and the transcript is byte-for-byte the one D11 left.
 	 */
-	agentAvatar?: string | null;
+	agentMark?: AvatarMark | null;
 	/**
 	 * The speaking agent's NAME, beside the picture it belongs to.
 	 *
@@ -1091,6 +1096,16 @@ const UserRow = memo(function UserRow({
 	 * reader of the record already share.
 	 */
 	const seal = record.skill;
+	/*
+	 * The skills this turn attached, read off the RECORD's text: `bodyText` above
+	 * has the `<operator-skills>` block stripped, so the painted string no longer
+	 * says which tokens fired. A legacy seal paints its own `seal.token` in the
+	 * same ink, so it passes none - one ink per token, never two.
+	 */
+	const attachedSkills = useMemo(
+		() => (seal ? [] : skillBlockNames(record.text)),
+		[seal, record.text],
+	);
 	const instructionsLabel = t("ui.chat.skill_invocation.instructions_label");
 	/*
 	 * U2: the transcript is BOTTOM-ANCHORED, so opening the last row's body grows
@@ -1450,6 +1465,7 @@ const UserRow = memo(function UserRow({
 							<MarkdownRenderer
 								content={seal ? seal.request : remainingContent}
 								credentialCitations
+								skillNames={attachedSkills}
 							/>
 							{clamped && (
 								/*
@@ -2926,6 +2942,84 @@ const NoticeRow = memo(function NoticeRow({
  * collapsed summary verbatim, at the cost of a click (design D5, UX U2).
  */
 /** A structured receipt stays agent-to-agent, including historical reply intent. */
+/** Incoming and outgoing Bridge use the same ledger glyph and detail pane.
+ * A legacy envelope is retained under Details, never reinterpreted as its body.
+ */
+const BridgeIncomingRow = memo(function BridgeIncomingRow({
+	record,
+	isSmallView,
+	scope,
+}: {
+	record: Extract<TranscriptRecord, { kind: "custom" }>;
+	isSmallView: boolean;
+	scope: AttachmentScope | null;
+}) {
+	useI18nLocale();
+	const receipt = record.bridgeReceipt ?? bridgeReceiptOf({});
+	const sender = receipt.sender.name || t("ui.teamBridge.page.title");
+	const received = t("ui.chat.bridgeReceipt.received", { sender });
+	const target =
+		receipt.conversation.label ||
+		(receipt.conversation.kind === "dm" ? t("ui.teamBridge.kind.dm") : "");
+	const attachments = receipt.attachmentCount
+		? t("ui.teamBridge.attachments.in_message", {
+				count: receipt.attachmentCount,
+			})
+		: "";
+	const summary = [received, target, attachments].filter(Boolean).join(" · ");
+	return (
+		<MessageContainer isUser={false} isSmallView={isSmallView}>
+			<ToolLedgerRow
+				toolName="bridge"
+				verbless
+				summary={summary}
+				outcome="receipt"
+				durationS={null}
+				details={
+					<BridgeDetailPane
+						isError={false}
+						view={{
+							headline: [received, target].filter(Boolean).join(" · "),
+							body: null,
+							outcome: t("ui.chat.bridgeReceipt.unavailable"),
+							internals: [],
+							raw: record.text,
+						}}
+					>
+						<div className="flex flex-wrap items-center justify-between gap-2 text-ink-dim text-meta">
+							<p data-bridge-provenance="">
+								{t("ui.chat.bridgeReceipt.provenance")}
+							</p>
+							{Number.isFinite(record.ts) ? (
+								<time dateTime={new Date(record.ts).toISOString()}>
+									{formatDateTime(record.ts, {
+										year: "numeric",
+										month: "short",
+										day: "numeric",
+										hour: "numeric",
+										minute: "2-digit",
+									})}
+								</time>
+							) : null}
+						</div>
+					</BridgeDetailPane>
+				}
+			/>
+			{(record.images ?? []).filter(isPictureRef).map((image) => (
+				<CanonicalImage
+					key={image.id}
+					image={image}
+					scope={scope}
+					label={
+						image.name ??
+						t("ui.teamBridge.attachments.in_message", { count: 1 })
+					}
+				/>
+			))}
+		</MessageContainer>
+	);
+});
+
 const HubRow = memo(function HubRow({
 	record,
 	isSmallView,
@@ -2935,6 +3029,7 @@ const HubRow = memo(function HubRow({
 	isSmallView: boolean;
 	scope: AttachmentScope | null;
 }) {
+	useI18nLocale();
 	const receipt = record.receipt;
 	if (!receipt) return <NoticeRow record={record} isSmallView={isSmallView} />;
 	return (
@@ -2942,7 +3037,9 @@ const HubRow = memo(function HubRow({
 			<ToolLedgerRow
 				toolName="hub"
 				verbless
-				summary={`From ${hubIdentity(receipt)}`}
+				summary={t("ui.chat.canonical.transcript.hub_from", {
+					name: hubIdentity(receipt),
+				})}
 				outcome="receipt"
 				durationS={null}
 				details={
@@ -2972,7 +3069,7 @@ const HubRow = memo(function HubRow({
 					key={image.id}
 					image={image}
 					scope={scope}
-					label={image.name ?? "Image"}
+					label={image.name ?? t("ui.chat.canonical.image_label")}
 				/>
 			))}
 		</MessageContainer>
@@ -3401,7 +3498,7 @@ const TranscriptRow = memo(function TranscriptRow({
 	settledSound = false,
 	supplementCondensed = false,
 	opensTurn = false,
-	agentAvatar = null,
+	agentMark = null,
 	agentName = null,
 	onInterruptTurn,
 }: {
@@ -3471,7 +3568,7 @@ const TranscriptRow = memo(function TranscriptRow({
 	 */
 	opensTurn?: boolean;
 	/** The picture to draw when `opensTurn`; null draws nothing (D11). */
-	agentAvatar?: string | null;
+	agentMark?: AvatarMark | null;
 	/** The speaker's name, for the picture's accessible name (R-3). */
 	agentName?: string | null;
 	/**
@@ -3612,11 +3709,18 @@ const TranscriptRow = memo(function TranscriptRow({
 			);
 			break;
 		case "custom":
-			body = record.receipt ? (
-				<HubRow record={record} isSmallView={isSmallView} scope={scope} />
-			) : (
-				<NoticeRow record={record} isSmallView={isSmallView} />
-			);
+			body =
+				record.customType === "team_bridge_message" ? (
+					<BridgeIncomingRow
+						record={record}
+						isSmallView={isSmallView}
+						scope={scope}
+					/>
+				) : record.receipt ? (
+					<HubRow record={record} isSmallView={isSmallView} scope={scope} />
+				) : (
+					<NoticeRow record={record} isSmallView={isSmallView} />
+				);
 			break;
 		case "peer":
 			body = <PeerRow record={record} isSmallView={isSmallView} />;
@@ -3729,8 +3833,8 @@ const TranscriptRow = memo(function TranscriptRow({
 				 * every line in the row, which is the gutter D11 measured and deleted.
 				 * Same wrapper, so the 32px turn gap still sits above the mark.
 				 */}
-				{opensTurn && agentAvatar ? (
-					<MessageAvatar src={agentAvatar} name={agentName} />
+				{opensTurn && agentMark ? (
+					<MessageAvatar mark={agentMark} name={agentName} />
 				) : null}
 				{body}
 			</div>
@@ -3831,7 +3935,7 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 	openFrame,
 	containerRef,
 	isSmallView,
-	agentAvatar = null,
+	agentMark = null,
 	agentName = null,
 	status,
 	failure,
@@ -4021,10 +4125,24 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 	 * token. A picture-less agent is the common case and the one D11 left
 	 * untouched, so it pays nothing: the empty set is the same render.
 	 */
-	const turnHeads = useMemo(
-		() => (agentAvatar ? agentTurnHeads(rows) : NO_TURN_HEADS),
-		[rows, agentAvatar],
+	const markKind = agentMark?.kind ?? null;
+	const turnHeads = useMemo(() => {
+		if (!markKind) return NO_TURN_HEADS;
+		const heads = agentTurnHeads(rows);
+		/*
+		 * A PLACEHOLDER IS DRAWN ONCE, at the first turn head of the loaded rows
+		 * (see `message-avatar.tsx`): it exists to be found, and a dashed door per
+		 * turn is the repetition D11 deleted. A picture or a plate holds a box on
+		 * every head, as before. `agentTurnHeads` fills the set in row order.
+		 */
+		if (markKind !== "placeholder" || heads.size <= 1) return heads;
+		const [first] = heads;
+		return new Set([first]);
+	}, [rows, markKind]);
+	const avatarSize = parseAgentAvatarSize(
+		useUiPreferencesStore((state) => state.agentAvatarSize),
 	);
+	const markHeight = turnMarkHeight(avatarSize);
 	/*
 	 * WHICH STOPPED SOUND CALLS HAVE ALREADY SETTLED (design D7, UX U9).
 	 *
@@ -5183,6 +5301,24 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 		(id: string) => jumpTo(id, THREAD_SEARCH_JUMP_MISS_COPY),
 		[jumpTo],
 	);
+	/*
+	 * The notifications drawer's "Show in conversation": the same near path, for
+	 * the `notify` call's row (`tool:<call id>`), so a flag line inside a collapsed
+	 * turn or in history not yet loaded is reached instead of silently missed.
+	 */
+	const notificationReveal = useNotificationReveal((state) => state.request);
+	const settleNotificationReveal = useNotificationReveal(
+		(state) => state.settle,
+	);
+	useEffect(() => {
+		if (!notificationReveal || sessionId === null) return;
+		if (notificationReveal.sessionId !== sessionId) return;
+		settleNotificationReveal(notificationReveal.nonce);
+		void jumpTo(
+			`tool:${notificationReveal.anchorId}`,
+			THREAD_SEARCH_JUMP_MISS_COPY,
+		);
+	}, [notificationReveal, sessionId, jumpTo, settleNotificationReveal]);
 	/*
 	 * The rail's naming warm (D2): `onHover` already fires on the CARD's own
 	 * intent-delayed open, not on a fly-over, so each call here is one the
@@ -6370,13 +6506,14 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 		 * so the signature cannot claim a mark the row does not draw.
 		 */
 		const marksHead =
-			Boolean(agentAvatar) && slotCarriesTurnHead(entryRows, turnHeads);
+			Boolean(agentMark) && slotCarriesTurnHead(entryRows, turnHeads);
 		const userExpanded =
 			first.record.kind === "user" &&
 			viewState.current.store.read(first.record.id);
 		return {
 			key,
 			marksHead,
+			markHeight,
 			renderSignature: entryRows
 				.map((row) => entryRecordRevision(row.record))
 				.join(","),
@@ -6430,7 +6567,7 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 								fact.text,
 								{ first: 0, trace: 2, item: 12, turn: 32 }[fact.gap],
 								containerRef.current?.clientWidth || 810,
-							) + (fact.marksHead ? TURN_MARK_HEIGHT : 0)),
+							) + (fact.marksHead ? fact.markHeight : 0)),
 				0,
 			),
 			estimateKind: `${facts[0].type}:${facts[0].bucket}:${facts[0].open}:${facts[0].userExpanded}`,
@@ -6558,7 +6695,7 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 					stopping={stopping === true}
 					settledSound={settledSoundRowIds.has(row.record.id)}
 					opensTurn={opensTurn && index === 0}
-					agentAvatar={agentAvatar}
+					agentMark={agentMark}
 					agentName={agentName}
 					onInterruptTurn={onInterruptTurn}
 				/>
@@ -6590,8 +6727,8 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 					 * (`opensTurn` is not passed to them), so opening the fold does
 					 * not produce a second copy.
 					 */}
-					{opensTurn && agentAvatar ? (
-						<MessageAvatar src={agentAvatar} name={agentName} />
+					{opensTurn && agentMark ? (
+						<MessageAvatar mark={agentMark} name={agentName} />
 					) : null}
 					<TraceFold
 						/*
@@ -6735,7 +6872,7 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 				settledSound={settledSoundRowIds.has(group.row.record.id)}
 				supplementCondensed={supplementCondensed}
 				opensTurn={opensTurn}
-				agentAvatar={agentAvatar}
+				agentMark={agentMark}
 				agentName={agentName}
 				onInterruptTurn={onInterruptTurn}
 			/>
@@ -6769,9 +6906,8 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 					 * groups rendered inside the bar never draw it, so opening the bar
 					 * does not add a second copy.
 					 */}
-					{slotCarriesTurnHead(entrySlotRows(entry), turnHeads) &&
-					agentAvatar ? (
-						<MessageAvatar src={agentAvatar} name={agentName} />
+					{slotCarriesTurnHead(entrySlotRows(entry), turnHeads) && agentMark ? (
+						<MessageAvatar mark={agentMark} name={agentName} />
 					) : null}
 					<TurnSummary
 						/*

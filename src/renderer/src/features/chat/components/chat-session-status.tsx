@@ -1,3 +1,5 @@
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import {
 	type CanonicalSessionRow,
@@ -107,6 +109,7 @@ export function ChatAsksOutstanding({
 	 * and `null` is the same absence - neither is a claim of zero. */
 	open?: number | null;
 }) {
+	useI18nLocale();
 	const count = typeof open === "number" ? open : row.asks_open;
 	if (typeof count !== "number" || !Number.isFinite(count) || count <= 0)
 		return null;
@@ -122,7 +125,9 @@ export function ChatAsksOutstanding({
 		 */
 		<span
 			role="img"
-			aria-label={`${asksOutstandingLabel(count)} outstanding. The agent is not blocked on you.`}
+			aria-label={t("ui.chat.asks.outstanding_aria", {
+				label: asksOutstandingLabel(count),
+			})}
 			className={cn("inline-flex shrink-0 items-center gap-0.5")}
 		>
 			{/*

@@ -1,0 +1,103 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "openai/gpt-6.1-sol",
+  "instance": "917e940202d4",
+  "locale": "ru",
+  "audit_date": "2026-11-03",
+  "head": "c44e9e8be8eb5a134a97acd87e7015f54b82c13d",
+  "base": "6dd43fd7494f651fd99b3fe926606fc7ba35fd82",
+  "scope": "Only the five new Russian keys: ui.chat.session_status.effort_level.{low,medium,high}, ui.chat.run_details.wake.{armed_count,cadence_once}; no full-namespace or rendered sign-off.",
+  "namespaces": {
+    "ui.chat": {
+      "status": "passed",
+      "sha256": {
+        "en": "270fc752791e2960006b560ec9616c2010dab80e92af19f075f7e04a3055bd27",
+        "ru": "38f94585db7544c4fe167ecd2f06d0b557b3632d660bfb57bcf3b527290fe705"
+      },
+      "findings": [],
+      "key_count": 3
+    },
+    "ui.chat.run_details": {
+      "status": "passed",
+      "sha256": {
+        "en": "f8184d5f41b359364e47747871988bbb731d79c12bc3b9ec755f3db73e5db6ab",
+        "ru": "d94b8ef3237d22f0db3539511045c08e8e4b85c57b6c8cb14a8cfaf51a9ed651"
+      },
+      "findings": [],
+      "key_count": 2
+    }
+  },
+  "input_hashes": {
+    "ui.chat": {
+      "en": {
+        "path": "src/i18n/catalogues/en/ui.chat.json",
+        "sha256": "270fc752791e2960006b560ec9616c2010dab80e92af19f075f7e04a3055bd27"
+      },
+      "ru": {
+        "path": "src/i18n/catalogues/ru/ui.chat.json",
+        "sha256": "38f94585db7544c4fe167ecd2f06d0b557b3632d660bfb57bcf3b527290fe705"
+      },
+      "context": {
+        "path": "src/i18n/catalogues/en/ui.chat.context.json",
+        "sha256": "efcf4d1872974b6fc7456e753a2e10010ab896fffede262ae7c19d96c35ecee1"
+      }
+    },
+    "ui.chat.run_details": {
+      "en": {
+        "path": "src/i18n/catalogues/en/ui.chat.run_details.json",
+        "sha256": "f8184d5f41b359364e47747871988bbb731d79c12bc3b9ec755f3db73e5db6ab"
+      },
+      "ru": {
+        "path": "src/i18n/catalogues/ru/ui.chat.run_details.json",
+        "sha256": "d94b8ef3237d22f0db3539511045c08e8e4b85c57b6c8cb14a8cfaf51a9ed651"
+      },
+      "context": {
+        "path": "src/i18n/catalogues/en/ui.chat.run_details.context.json",
+        "sha256": "da588f521188a2bcba1d0aeb7a265c3474b16673b8f653a021fa7e9e7075e911"
+      }
+    }
+  },
+  "provenance": {
+    "actual_model_source": "This session transcript payload.usage and payload.details.last_identity identify provider openai, model_id gpt-6.1-sol on resumed calls.",
+    "requested_model": "anthropic/claude-sonnet-5-5",
+    "actual_fallback": "openai/gpt-6.1-sol",
+    "incident": "Transient overload interrupted previous attempt; resumed without treating it as a test failure.",
+    "independent_from_translator_session": "Task delegates an independent audit; this session made no translations or repository edits. Translator session ID not supplied."
+  },
+  "audit_notes_not_execution_log": [
+    "All five keys read against English/context and relevant callers at committed head.",
+    "Низкий / Средний / Высокий are idiomatic masculine level labels (implicit уровень); display lookup does not change wire values.",
+    "Пробуждение follows the glossary; запланировано conveys an armed scheduled follow-up. one/few/many/other agree with noun case, with fractional other retained defensively.",
+    "однократно is a lowercase adverb suitable for cadence rows. keepRepeatLabel handles the once branch separately; the new key is not incorrectly inserted into the existing keep_as_once sentence.",
+    "No maxCells/maxChars numeric limit is present on these five keys. Static lengths: effort 6/7/7 Cyrillic characters; cadence 10; tested count clauses 27–29 codepoints. These are static facts, not pixel-fit proof.",
+    "The explicit count_display contract preserves raw String(count), including 1.5; do not replace it with locale number formatting despite the general glossary preference."
+  ],
+  "limitations": [
+    "No native rendered frame, Electron, browser, pseudo-layout, or overflow proof; these require separate QA/design evidence.",
+    "No full repo validator, scanner, build, typecheck, install or worktree. Ran the repository exact argumentNames validator extracted from committed locale-parity.test.mjs against the five scoped keys, with its installed ICU parser, plus type/CLDR/Cf/format checks and negative controls in plain Node under 256MB.",
+    "No ledger mutation: task explicitly prohibits repository edits. Manager must retain this scratch receipt and execution companions in the canonical tracked evidence location before assembling ledger entries.",
+    "Unrelated pre-existing translations are outside this verdict."
+  ],
+  "artifacts": {
+    "audit-ru-census.mjs": {
+      "path": "/Users/damian/.local-operator/sessions/917e940202d4/scratchpad/audit-ru-census.mjs",
+      "sha256": "f605e6cdc402d6fb474fc9dc97a82bda375e4000a38fbf42bbb7eeca3204a833"
+    },
+    "ru-census-mechanical.json": {
+      "path": "/Users/damian/.local-operator/sessions/917e940202d4/scratchpad/ru-census-mechanical.json",
+      "sha256": "e3ac62f221dd5fcd4349376033cbf0575be385dd412746dc88a0d618abc43306"
+    },
+    "ru-census-audit.log": {
+      "path": "/Users/damian/.local-operator/sessions/917e940202d4/scratchpad/ru-census-audit.log",
+      "sha256": "24b477f1f724f14bb3aca4aedf1505a2439e0d2ad7b73d60e1c19ec24343cf96"
+    },
+    "ru-census-input-hashes.json": {
+      "path": "/Users/damian/.local-operator/sessions/917e940202d4/scratchpad/ru-census-input-hashes.json",
+      "sha256": "59459aa639e6e4b4f8cfbb318a015619285170c99d2b8447031f92e739fabb2c"
+    }
+  },
+  "guidance_hashes": {
+    "/Users/damian/local-operator/i18n/style-guides/ru.md": "f20e1cafaf70578c17ce072c71725628808d228e4be5604329f8da30386f1fb5",
+    "/Users/damian/local-operator/i18n/glossary.md": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+  }
+}

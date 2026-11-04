@@ -926,12 +926,13 @@ const RowMenuOwner: FC<{
  * KIND - `Users` for a team, `Bot` for an agent - and the name truncates, so the
  * kind is the one thing that survives the ellipsis.
  */
-const EntityMark: FC<{
+export const EntityMark: FC<{
 	/** The agent's id, or null for a team (which has no picture). */
 	agentId: string | null;
 	glyph: LucideIcon;
 }> = ({ agentId, glyph: Glyph }) => {
-	const avatar = useAgentAvatar(agentId);
+	// 16 = the `size-4` plate below.
+	const avatar = useAgentAvatar(agentId, undefined, 16);
 	if (avatar === null) return <Glyph className="size-4 shrink-0" />;
 	return (
 		/*
@@ -1060,6 +1061,16 @@ export function ChatSidebar({
 	 * conditional, so the order is a readability choice rather than a hooks rule.
 	 */
 	const sessions = useCanonicalSessionsStore((s) => s.sessions);
+	/*
+	 * Whether any conversation in the list claims a picture: the one fact a
+	 * pictureless row needs to hold the picture's box empty, so every title in a
+	 * list that mixes both starts on one x (design review D1). A list with none
+	 * draws exactly what main drew.
+	 */
+	const anyRowPictured = useMemo(
+		() => sessions.some((row) => Boolean(row.agent_id && row.avatar_sha256)),
+		[sessions],
+	);
 	const error = useCanonicalSessionsStore((s) => s.error);
 	/*
 	 * The TRI-STATE, because the gate owes two different sentences and can only pick
@@ -4849,7 +4860,11 @@ export function ChatSidebar({
 				 * One component so the two arms cannot disagree about the state, and so
 				 * a row without a picture is exactly the cell this file drew before.
 				 */}
-				<ChatSessionAvatar row={row} nowSeconds={listNow / 1000} />
+				<ChatSessionAvatar
+					row={row}
+					nowSeconds={listNow / 1000}
+					reservePicture={anyRowPictured}
+				/>
 				{/*
 				 * THE OUTSTANDING-ASKS MARK, beside the status mark and BEFORE the title.
 				 * A leading fact rather than a trailing one, for the reason the archived
@@ -5370,7 +5385,7 @@ export function ChatSidebar({
 					 * nothing at all unless the row's agent has a picture and this device
 					 * owns it.
 					 */}
-					<ChatSessionAvatarEdit row={row} />
+					<ChatSessionAvatarEdit row={row} nested={nested} />
 					{silentRemedy}
 					{readAckRemedy}
 				</div>,
@@ -6138,7 +6153,7 @@ export function ChatSidebar({
 				{rowButton}
 				{/* The picture's pencil - a sibling of the row button, as in the
 				    no-menu arm above; it draws nothing without a picture. */}
-				<ChatSessionAvatarEdit row={row} />
+				<ChatSessionAvatarEdit row={row} nested={nested} />
 				{silentRemedy}
 				{readAckRemedy}
 				{menuRemedy}
@@ -7461,8 +7476,14 @@ export function ChatSidebar({
 									 * evidenced by read.
 									 */
 									data-entity-more={key}
-									aria-label={`${foot.aria} in ${displayName}`}
-									title={`${foot.aria} in ${displayName}`}
+									aria-label={t("ui.chat.sidebar.entity.more_in", {
+										label: foot.aria,
+										name: displayName,
+									})}
+									title={t("ui.chat.sidebar.entity.more_in", {
+										label: foot.aria,
+										name: displayName,
+									})}
 									className="block w-full py-1 ps-7 text-start text-meta text-ink-dim underline hover:text-ink"
 									onClick={pressEntityMore}
 								>
@@ -7498,7 +7519,11 @@ export function ChatSidebar({
 			className="text-meta tabular-nums"
 			title={
 				query
-					? `${clipped ? "At least " : ""}${count} ${count === 1 ? "chat matches" : "chats match"} this search${clipped ? "; the list stops there" : ""}`
+					? t("ui.chat.sidebar.search.count_tooltip", {
+							clipped: clipped ? "yes" : "no",
+							count_display: String(count),
+							count,
+						})
 					: undefined
 			}
 		>
@@ -9282,7 +9307,9 @@ export function ChatSidebar({
 									type="button"
 									data-chat-row
 									data-draft-row={row.key}
-									aria-label={`Open ${row.label}`}
+									aria-label={t("ui.chat.sidebar.row.open_draft", {
+										label: row.label,
+									})}
 									title={row.label}
 									onClick={() => {
 										openDraft(row.key);
@@ -9505,7 +9532,7 @@ export function ChatSidebar({
 							title={
 								clearableDraftRows.length === 0
 									? CLEAR_ALL_WHY
-									: "Clear all drafts"
+									: t("ui.chat.sidebar.drafts.clear_all_label")
 							}
 							onClick={(event) => {
 								/*
@@ -10007,7 +10034,7 @@ export function ChatSidebar({
 						data-sidebar-band
 						className="mb-2 flex h-7 shrink-0 items-center justify-end gap-0.5"
 					>
-						<Tooltip content="Search chats and agents">
+						<Tooltip content={t("ui.chat.sidebar.header.search")}>
 							<Button
 								variant="ghost"
 								size="icon-sm"
@@ -10031,7 +10058,7 @@ export function ChatSidebar({
 							</Button>
 						</Tooltip>
 						<Popover open={viewOpen} onOpenChange={setViewOpen}>
-							<Tooltip content="View options">
+							<Tooltip content={t("ui.chat.sidebar.header.view_options")}>
 								<PopoverTrigger asChild>
 									<Button
 										variant="ghost"
@@ -10102,7 +10129,7 @@ export function ChatSidebar({
 							</PopoverContent>
 						</Popover>
 						<Popover open={createOpen} onOpenChange={setCreateOpen}>
-							<Tooltip content="New agent or team">
+							<Tooltip content={t("ui.chat.sidebar.header.create")}>
 								<PopoverTrigger asChild>
 									<Button
 										variant="ghost"
@@ -10159,7 +10186,7 @@ export function ChatSidebar({
 								</button>
 							</PopoverContent>
 						</Popover>
-						<Tooltip content="Open agent…">
+						<Tooltip content={t("ui.chat.sidebar.header.open_agent")}>
 							{/*
 							 * THE FOURTH BAND CONTROL (issue #663): the roster's jump. The
 							 * section filter above survives a cap-bound roster, but a reader

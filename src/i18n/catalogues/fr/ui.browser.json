@@ -237,6 +237,7 @@
 	"ui.browser.webauthn_chooser.this_passkey_request_expired": "Cette demande de clé d’accès a expiré",
 	"ui.browser.webauthn_chooser.nobody_chose_a_passkey_within_a_minute": "Personne n’a choisi de clé d’accès dans la minute ; la demande du site a donc été annulée. Redemandez une clé d’accès au site.",
 	"ui.browser.webauthn_chooser.this_passkey_request_was_cancelled": "Cette demande de clé d’accès a été annulée",
+	"ui.browser.browser_url_bar.reload_shortcut": "Recharger ({shortcut})",
 	"ui.browser.webauthn_chooser.the_browser_tab_that_asked_went_away": "L’onglet de navigateur demandeur a disparu avant le choix d’une clé d’accès ; la demande a donc été annulée.",
 	"ui.browser.webauthn_chooser.that_passkey_was_not_offered": "Cette clé d’accès n’a pas été proposée",
 	"ui.browser.webauthn_chooser.the_choice_did_not_name_a_passkey": "Le choix ne désignait pas une clé d’accès proposée par ce site ; la demande a donc été annulée. Réessayez depuis le site.",

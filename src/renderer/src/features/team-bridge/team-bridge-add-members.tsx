@@ -14,7 +14,7 @@ import { Tooltip } from "@shared/components/ui/tooltip";
 import { formatNumber, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
-import { Bot, Search, UserRoundX } from "lucide-react";
+import { Search, UserRoundX } from "lucide-react";
 import {
 	useCallback,
 	useEffect,
@@ -44,7 +44,11 @@ import {
 	matchesMemberQuery,
 	memberCandidates,
 } from "./team-bridge-members-model";
-import { recipientKey, recipientMemberInput } from "./team-bridge-model";
+import {
+	composeChiefLabel,
+	recipientKey,
+	recipientMemberInput,
+} from "./team-bridge-model";
 import { TeamBridgeAvatar } from "./team-bridge-profile-card";
 
 export type TeamBridgeAddMembersViewProps = {
@@ -122,13 +126,12 @@ function MemberAvatar({
 	return (
 		<TeamBridgeAvatar
 			member={member}
+			/* The plate draws an agent as the Bot glyph and never as its owner's
+			   photo (see `TeamBridgeAvatar`); a person falls back to their initial. */
+			kind={kind}
 			label={label}
 			size={24}
 			className="size-6 rounded-md text-meta"
-			/* The message list's agent treatment: the owner's directory row with a
-			   Bot glyph as the fallback plate, so an agent reads as an agent in
-			   every Team Bridge surface. A person falls back to their initial. */
-			fallback={kind === "agent" ? <Bot size={14} /> : undefined}
 		/>
 	);
 }
@@ -177,11 +180,23 @@ export function TeamBridgeAddMembersView({
 		}
 	}, [open]);
 
+	/*
+	 * Through `composeChiefLabel`, not a local "named unless blank" branch: an
+	 * agent the directory names after its owner is no name of its own, and the
+	 * local branch rendered it "Ben Tran (Ben Tran)" in this roster while the
+	 * current-members list beside it read "Ben Tran's chief of staff".
+	 */
 	const chiefLabel = useCallback(
 		(agent: string, person: string) =>
-			agent.trim()
-				? t("ui.teamBridge.chief.label", { agent, person })
-				: t("ui.teamBridge.chief.unnamed", { person }),
+			composeChiefLabel(agent, person, {
+				named: (agentName, personName) =>
+					t("ui.teamBridge.chief.label", {
+						agent: agentName,
+						person: personName,
+					}),
+				unnamed: (personName) =>
+					t("ui.teamBridge.chief.unnamed", { person: personName }),
+			}),
 		[],
 	);
 	/*

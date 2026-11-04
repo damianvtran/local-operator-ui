@@ -1,3 +1,8 @@
+import {
+	type BridgeReceipt,
+	bridgeReceiptOf,
+} from "../components/trace/bridge-receipt-model";
+
 /**
  * Canonical transcript reducer.
  *
@@ -74,6 +79,7 @@ import {
 	type SupplementFile,
 	type SupplementRowState,
 	type SupplementSound,
+	type SupplementWithheld,
 	mergeSupplement,
 	supplementKeyForEntry,
 	supplementPatchFromEvent,
@@ -612,6 +618,8 @@ type TranscriptPayloadRecord =
 			customType: string;
 			/** Structured hub facts survive replay without becoming a human turn. */
 			receipt?: HubReceipt;
+			/** Display-only Bridge facts; never a model-context admission grant. */
+			bridgeReceipt?: BridgeReceipt;
 			images?: TranscriptImage[];
 			/** The row's rendered body, as persisted. */
 			text: string;
@@ -840,6 +848,14 @@ type TranscriptPayloadRecord =
 			 * when it did).
 			 */
 			sounds: readonly SupplementSound[];
+			/**
+			 * Pinned or answer-named deliverables the core refused (name + reason,
+			 * never a path), plus the count past the core's 10-entry bound. Optional
+			 * because rows and fixtures older than 2026-11-03 carry neither; both
+			 * read as "nothing withheld".
+			 */
+			withheld?: readonly SupplementWithheld[];
+			withheldMore?: number;
 			/** `superseded` renders nothing; a job-level failure renders its line. */
 			error: string;
 			/**
@@ -3449,6 +3465,11 @@ function durableRecord(
 			ts,
 			customType,
 			text,
+			...(customType === "team_bridge_message"
+				? {
+						bridgeReceipt: bridgeReceiptOf(details),
+					}
+				: {}),
 			attribution:
 				(payload.attribution as "user" | "agent" | "system") ?? "system",
 			...customRow(customType, text, details),

@@ -33,5 +33,10 @@
 	"ui.ownerAudit.permission_refused": "Bạn không có quyền truy cập lịch sử kiểm tra này.",
 	"ui.ownerAudit.not_found": "Không tìm thấy cuộc trò chuyện được kiểm tra này.",
 	"ui.ownerAudit.unavailable": "Dịch vụ kiểm tra không tải được những tin nhắn này. Hãy thử lại.",
-	"ui.ownerAudit.sign_in": "Đăng nhập"
+	"ui.ownerAudit.sign_in": "Đăng nhập",
+	"ui.ownerAudit.inspect_body": "Kiểm tra văn bản tin nhắn",
+	"ui.ownerAudit.inline_image_receipt": "Dữ liệu hình ảnh nội tuyến · {mime} · {count} ký tự",
+	"ui.ownerAudit.previous_chunk": "Trước",
+	"ui.ownerAudit.next_chunk": "Tiếp",
+	"ui.ownerAudit.chunk_number": "Phần {page} trên {count}"
 }

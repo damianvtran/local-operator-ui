@@ -41,7 +41,9 @@ export const InvalidAttachment: FC<InvalidAttachmentProps> = ({
 	return (
 		<div
 			className="mt-2 flex w-fit max-w-full items-center rounded-sm border border-warning-border bg-warning-wash px-3 py-2 text-warning"
-			title={`File not viewable: ${getFileName(file)}`}
+			title={t("ui.chat.attachments.not_viewable", {
+				name: getFileName(file),
+			})}
 		>
 			<span className="me-2 flex shrink-0 items-center">
 				<CircleAlert size={14} />

@@ -8,7 +8,7 @@ import {
 	parseLocator,
 	resolveLocator,
 } from "../vendor/driver/ax-locator";
-import { type BrowserActionContext, stringParam } from "./context";
+import { type BrowserActionContext, numberParam, stringParam } from "./context";
 import {
 	CONTENTEDITABLE_SELECTOR,
 	EDITABLE_SELECTOR,
@@ -28,26 +28,36 @@ import {
 	sendIn,
 } from "./frames";
 import { pageOf } from "./gate";
+import { hitAt } from "./geometry";
 import { nodeIdForSelector, readAccessibilityTree } from "./page";
+import { describeRefusedKey, parsePressChord } from "./press-chord";
 
 /**
  * The interaction actions: `click`, `type`, and trusted `press`.
  * Design: docs/design/ui-browser-tab.md 4 (`click`, `type` rows), 6.4.
  *
  * THE CONSTRAINT THAT SHAPES EVERY LINE HERE: an agent tab is intentionally NOT
- * the active tab, and Chromium drops synthetic compositor input — CDP
- * `Input.dispatchMouseEvent`, and key events — on a view that is not visible.
- * Real-Chrome testing of the extension showed the press never reached the page
- * and no handler fired. So a `click` is dispatched ON THE RESOLVED NODE through
- * our own debugger session: a full pointer/mouse event sequence at the element,
- * which fires handlers and default actions (link navigation, form submit) without
- * the tab ever becoming visible, and therefore without touching the operator's
- * focus.
+ * the active tab, and the extension's real-Chrome testing showed that Chromium
+ * drops synthetic compositor input on a view that is not visible (the press never
+ * reached the page, no handler fired). So `click` is dispatched ON THE RESOLVED
+ * NODE through our own debugger session: a full pointer/mouse event sequence at the
+ * element, which fires handlers and default actions (link navigation, form
+ * submit) without the tab ever becoming visible, and therefore without touching
+ * the operator's focus. That path is shipped and is kept.
+ *
+ * WHAT WAS MEASURED ON THIS APP (scripts/browser-hover-press-proof.mjs --ladder,
+ * under `headless` and `inactive`): the premise does not hold for THESE views.
+ * They are detached from the window (`view-presentation.ts`) yet sized and
+ * composited, and report `visibilityState: "visible"`; a real
+ * `Input.dispatchMouseEvent` mouseMoved and `Input.dispatchKeyEvent` reach the
+ * page, with focus emulation on (`cdp.ts` enables it at attach) and off alike.
+ * So `hover` and `press` use the real input, which `:hover` and Chromium's native
+ * key defaults require, and neither activates the window or the tab. Delivery on a
+ * different Electron/Chromium build is a claim to re-measure with that ladder, and
+ * a failure must never be "fixed" by activating the operator's window.
  *
  * `press` deliberately has no DOM-event fallback: keyboard focus traversal and
  * activation must be Chromium defaults, not an imitation scripted in the page.
- * Delivery to a hidden view therefore needs native QA on the supported runtime;
- * it must never be "fixed" by activating the operator's window.
  *
  * `type` is the one action where the design and the extension differ, and this
  * file follows the design while keeping the extension's fallback:
@@ -75,7 +85,7 @@ import { nodeIdForSelector, readAccessibilityTree } from "./page";
  * dispatch has no native mousedown focus default, so emulate that default BEFORE
  * click handlers run; a trailing focus would undo an application's destination.
  * This is not trusted compositor input or a full pointer compatibility emulator. */
-const CLICK_FUNCTION = `function () {
+export const CLICK_FUNCTION = `function () {
   const r = this.getBoundingClientRect();
   const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
   const opts = { bubbles: true, cancelable: true, view: window, clientX: cx, clientY: cy, button: 0 };
@@ -648,57 +658,58 @@ export async function click(
 	};
 }
 
-/** Named commands, not a modifier API: no caller-controlled CDP fields or held
- * modifiers can escape this table. Virtual key codes make Chromium perform the
- * native focus/activation defaults; insertText cannot express those defaults. */
-const PRESS_KEYS = new Map([
-	["Tab", { key: "Tab", code: "Tab", virtualKeyCode: 9, modifiers: 0 }],
-	["Shift+Tab", { key: "Tab", code: "Tab", virtualKeyCode: 9, modifiers: 8 }],
-	["Enter", { key: "Enter", code: "Enter", virtualKeyCode: 13, modifiers: 0 }],
-	[
-		"Escape",
-		{ key: "Escape", code: "Escape", virtualKeyCode: 27, modifiers: 0 },
-	],
-	[
-		"ArrowUp",
-		{ key: "ArrowUp", code: "ArrowUp", virtualKeyCode: 38, modifiers: 0 },
-	],
-	[
-		"ArrowDown",
-		{ key: "ArrowDown", code: "ArrowDown", virtualKeyCode: 40, modifiers: 0 },
-	],
-	[
-		"ArrowLeft",
-		{ key: "ArrowLeft", code: "ArrowLeft", virtualKeyCode: 37, modifiers: 0 },
-	],
-	[
-		"ArrowRight",
-		{ key: "ArrowRight", code: "ArrowRight", virtualKeyCode: 39, modifiers: 0 },
-	],
-]);
+/** The page function `press` runs on its optional `selector` target: focus it
+ * and report whether it kept focus. UNLIKE `type`'s FOCUS_AND_SELECT_FUNCTION it
+ * does not require an editable: the point of `press` + `selector` is a keyboard
+ * shortcut handled by a focusable non-editable element (a `tabindex` list item
+ * listening for `e`). `preventScroll` because the resolver already scrolled it. */
+const FOCUS_FUNCTION = `function () {
+  const focusFn = this.focus;
+  if (typeof focusFn === 'function') focusFn.call(this, { preventScroll: true });
+  return this.getRootNode().activeElement === this;
+}`;
 
+/**
+ * `press`: ONE key chord to the page's focused element (or to `selector`, focused
+ * first). The grammar and its closed tables live in `press-chord.ts`; everything
+ * this function sends to Chromium is read out of those tables, never from the
+ * request. Design: docs/design/ui-browser-tab.md 4 (`press`).
+ *
+ * MEASURED (scripts/browser-hover-press-proof.mjs --ladder, ladder rows E, F, H):
+ * a raw `Input.dispatchKeyEvent` DOES reach the page's `keydown` listener on an
+ * agent view that is not the presented tab, for a plain character on a focused
+ * non-editable element and for Control+K, with `Emulation.setFocusEmulationEnabled`
+ * on (which `cdp.ts` turns on at attach) and with it switched off again in a
+ * foreign session. The file header's "Chromium drops synthetic key input on a
+ * non-visible view" is therefore not what this app's agent views do: they are
+ * detached from the window (`view-presentation.ts`) but still sized and
+ * composited, and the page reports `visibilityState: "visible"`.
+ */
 export async function press(
 	ctx: BrowserActionContext,
 	params: Record<string, unknown>,
 ): Promise<Record<string, unknown>> {
-	const named =
-		typeof params.key === "string" ? PRESS_KEYS.get(params.key) : undefined;
-	if (!named) {
+	// Parsed before ANY page work: a refused chord must have touched nothing.
+	const chord = parsePressChord(params.key);
+	if (!chord) {
 		throw new BrowserHostError(
 			"unsupported_key",
-			`unsupported key: ${String(params.key)}`,
+			`unsupported key: ${describeRefusedKey(params.key)}`,
 			{
-				key: params.key ?? null,
+				key:
+					typeof params.key === "string"
+						? describeRefusedKey(params.key)
+						: (params.key ?? null),
 			},
 		);
 	}
 	const record = ctx.registry.requireSurface(params.tab);
 	const contents = record.view.webContents;
 	const event = {
-		key: named.key,
-		code: named.code,
-		windowsVirtualKeyCode: named.virtualKeyCode,
-		modifiers: named.modifiers,
+		key: chord.key,
+		code: chord.code,
+		windowsVirtualKeyCode: chord.windowsVirtualKeyCode,
+		modifiers: chord.modifiers,
 	};
 	// The host's owned-tab lane and per-hop origin gate wrap this operation just
 	// like click/type. Never focus/show the view or choose a caller-supplied target.
@@ -709,17 +720,55 @@ export async function press(
 	};
 	contents.on("did-start-navigation", onStart);
 	try {
+		// ELEMENT focus inside the page, never window activation: it is what lets a
+		// shortcut aimed at one element land on it, and it is the same call `click`
+		// makes. A target that will not hold focus is refused before any key is
+		// sent, since the key would otherwise go to whatever else held focus.
+		const target =
+			stringParam(params, "ref") || stringParam(params, "selector");
+		let node: ResolvedNode | null = null;
+		if (target) {
+			node = await resolveNode(ctx, record, target);
+			if (node.sessionId) {
+				throw new BrowserHostError(
+					"element_not_found",
+					`${target} is inside a cross-origin frame, which press cannot focus; click it, then press without a selector`,
+				);
+			}
+			const focus = await sendIn<{ result?: { value?: unknown } }>(
+				ctx,
+				contents,
+				node.sessionId,
+				"Runtime.callFunctionOn",
+				{
+					objectId: node.objectId,
+					functionDeclaration: FOCUS_FUNCTION,
+					returnByValue: true,
+				},
+			);
+			if (focus?.result?.value !== true) {
+				throw new BrowserHostError(
+					"element_not_found",
+					`${target} cannot take focus (it is not focusable, e.g. a non-interactive element with no tabindex), so nothing was pressed`,
+				);
+			}
+		}
 		let keyDownFailed = true;
 		try {
 			await ctx.cdp.send(contents, "Input.dispatchKeyEvent", {
 				...event,
 				type: "keyDown",
-				...(named.key === "Enter" ? { text: "\r", unmodifiedText: "\r" } : {}),
+				// Only a character press with no Control/Meta/Alt held carries text (the
+				// chord parser decides); a shortcut with `text` would also fire
+				// `keypress` and type into an editable.
+				...(chord.text !== undefined
+					? { text: chord.text, unmodifiedText: chord.unmodifiedText }
+					: {}),
 			});
 			keyDownFailed = false;
 		} finally {
-			// Release even when dispatch fails, so the atomic Shift+Tab command cannot
-			// leave a modifier behind. A lost debugger keeps its original typed error.
+			// Release even when dispatch fails, so the atomic chord cannot leave a
+			// modifier behind. A lost debugger keeps its original typed error.
 			const release = ctx.cdp.send(contents, "Input.dispatchKeyEvent", {
 				...event,
 				type: "keyUp",
@@ -735,13 +784,173 @@ export async function press(
 		ctx.registry.touch(record);
 		const after = pageOf(record.view);
 		return {
-			key: params.key,
+			key: chord.canonical,
 			navigated: navigationSeen || after.url !== before,
+			...(node ? { ...frameFields(node), ...resolvedFields(node) } : {}),
 			...after,
 		};
 	} finally {
 		contents.removeListener("did-start-navigation", onStart);
 	}
+}
+
+/** Where the pointer goes for a selector target: the centre of its box, from the
+ * page itself after the resolver has scrolled it into view. `null` for an element
+ * with no box (`display:none`, detached, zero-sized): nothing to point at. */
+const CENTER_FUNCTION = `function () {
+  const r = this.getBoundingClientRect();
+  if (!(r.width > 0 && r.height > 0)) return null;
+  return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+}`;
+
+/** Whether the topmost element at (x, y) is in the `:hover` state: the honest
+ * verdict `hover` reports, so a pointer move the page ignored is not reported as a
+ * hover. Numbers only are interpolated, so no caller text reaches the page. */
+function hoveredAt(x: number, y: number): string {
+	return `(() => { const el = document.elementFromPoint(${x}, ${y}); return !!el && el.matches(':hover'); })()`;
+}
+
+/** Quiet time after the pointer move for the page to apply `:hover` styles and run
+ * its `mouseenter`/`mouseover` handlers before the hit stack is read. */
+const HOVER_SETTLE_MS = 150;
+
+/**
+ * `hover`: move the pointer to a target and leave it there, so `:hover` styles and
+ * JS hover handlers (a row action revealed on hover, a menu opened on
+ * `mouseenter`) take effect and become visible to the next `snapshot`/`click`.
+ *
+ * Result: `x`, `y`, `hit` (the `hit_test` result, `{count, elements}`, topmost
+ * first) and `hovered`. `hovered` is ADVISORY and optional for a caller: it is the
+ * host's own `:hover` verdict at the point, an additional signal and not part of
+ * the minimal contract a harness may rely on (an older host never sends it).
+ *
+ * Params: `tab`, and EITHER `selector` (CSS, snapshot ref or a11y locator,
+ * resolved exactly as `click` resolves it; scrolled into view first, never
+ * activating the tab) OR both `x` and `y` (viewport pixels). Naming both, or only
+ * one coordinate, or neither, is refused with `internal` + `data.reason:
+ * "invalid_arguments"` BEFORE any page work (no `invalid_arguments` code exists in
+ * the closed `ERROR_CODES`, and an unknown code is dropped by a released session,
+ * so the reason rides `data` on a code the wire has).
+ *
+ * MECHANISM, chosen by measurement (scripts/browser-hover-press-proof.mjs
+ * --ladder, rows A-D, G) rather than inferred from the file header: a real
+ * `Input.dispatchMouseEvent` `mouseMoved` on this app's unpresented agent view
+ * sets the genuine `:hover` state AND fires `pointerenter`, `mouseenter`,
+ * `mousemove` (and `mouseleave` on the element it leaves), where the two
+ * alternatives the brief listed each deliver half: `CSS.forcePseudoState` applies
+ * the style but fires NO event (row C), and dispatching synthetic pointer/mouse
+ * events fires handlers but sets NO `:hover` (row D). A real move is also the only
+ * one of the three that is stateful the way a hover is — it leaves the previous
+ * element, so a menu on the old row closes. The header's premise that Chromium
+ * drops compositor input on a non-visible view does not hold for these views: they
+ * are detached from the window yet sized and composited, and report
+ * `visibilityState: "visible"`. It also held with focus emulation switched off in
+ * the foreign session (row G), so it does not depend on `cdp.ts`'s attach.
+ *
+ * The move is a single `mouseMoved` with no buttons: it cannot press, drag or
+ * click, and no caller-controlled CDP field is passed. Not in NAVIGATION_ACTIONS:
+ * it cannot start a navigation of its own, so the per-hop gate has nothing to
+ * decide (see that set's comment); the entry and result document authorization
+ * in `authorizedPerform` still apply.
+ */
+export async function hover(
+	ctx: BrowserActionContext,
+	params: Record<string, unknown>,
+): Promise<Record<string, unknown>> {
+	const target = stringParam(params, "ref") || stringParam(params, "selector");
+	const px = numberParam(params, "x");
+	const py = numberParam(params, "y");
+	const refuse = (message: string, param: string): never => {
+		throw new BrowserHostError("internal", message, {
+			reason: "invalid_arguments",
+			param,
+		});
+	};
+	if (target && (params.x !== undefined || params.y !== undefined)) {
+		refuse(
+			"hover takes a selector OR x and y, not both; nothing was moved",
+			"selector",
+		);
+	}
+	if (!target && (px === undefined || py === undefined)) {
+		refuse(
+			"hover needs a selector, or both numeric x and y (viewport pixels); nothing was moved",
+			params.x === undefined && params.y === undefined ? "selector" : "x,y",
+		);
+	}
+	const record = ctx.registry.requireSurface(params.tab);
+	const contents = record.view.webContents;
+
+	let x = px as number;
+	let y = py as number;
+	let node: ResolvedNode | null = null;
+	if (target) {
+		// `resolveNode` scrolls the element into view with `DOM.scrollIntoViewIfNeeded`
+		// on the page's own session: layout, not window activation.
+		node = await resolveNode(ctx, record, target);
+		if (node.frame) {
+			// A frame-local rect is not a top-level viewport point; the move below is
+			// in top-level coordinates. x/y reaches into a frame by position.
+			throw new BrowserHostError(
+				"element_not_found",
+				`${target} is inside a frame; hover it by position with x and y (take them from hit_test)`,
+			);
+		}
+		const centre = await sendIn<{ result?: { value?: unknown } }>(
+			ctx,
+			contents,
+			node.sessionId,
+			"Runtime.callFunctionOn",
+			{
+				objectId: node.objectId,
+				functionDeclaration: CENTER_FUNCTION,
+				returnByValue: true,
+			},
+		);
+		const point = centre?.result?.value as { x?: number; y?: number } | null;
+		if (!point || typeof point.x !== "number" || typeof point.y !== "number") {
+			throw new BrowserHostError(
+				"element_not_found",
+				`${target} has no box to point at (display:none, detached or zero-sized), so the pointer was not moved`,
+			);
+		}
+		x = Math.round(point.x * 100) / 100;
+		y = Math.round(point.y * 100) / 100;
+	}
+
+	await ctx.cdp.send(contents, "Input.dispatchMouseEvent", {
+		type: "mouseMoved",
+		x,
+		y,
+		button: "none",
+		buttons: 0,
+		pointerType: "mouse",
+	});
+	await sleep(HOVER_SETTLE_MS);
+
+	const stack = await hitAt(record, x, y);
+	if (stack === null || stack === undefined) {
+		throw new BrowserHostError(
+			"element_not_found",
+			`no element at point (${x}, ${y}); the pointer was moved there but nothing is under it`,
+		);
+	}
+	const hovered = await sendIn<{ result?: { value?: unknown } }>(
+		ctx,
+		contents,
+		undefined,
+		"Runtime.evaluate",
+		{ expression: hoveredAt(x, y), returnByValue: true },
+	);
+	ctx.registry.touch(record);
+	return {
+		x,
+		y,
+		hit: stack,
+		hovered: hovered?.result?.value === true,
+		...(node ? { ...frameFields(node), ...resolvedFields(node) } : {}),
+		...pageOf(record.view),
+	};
 }
 
 export async function type(

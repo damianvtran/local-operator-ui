@@ -42,7 +42,7 @@ import {
 } from "react";
 import { useNavigate } from "react-router-dom";
 import type { DesktopNotificationItem } from "../../../../../shared/desktop-control-contract";
-import { useDrawerBackToTop } from "../drawer-tab-store";
+import { useDrawerBackToTop, useNotificationReveal } from "../drawer-tab-store";
 import {
 	notificationKeys,
 	readSessionUnreadCount,
@@ -396,18 +396,14 @@ export const DrawerUpdates: FC<{
 			restoreRow.current = { id: focused.id, action: handoffAction.current };
 		listElement.current?.querySelector<HTMLElement>(selector)?.focus();
 	}, [shown]);
+	/*
+	 * HAND THE JUMP TO THE TRANSCRIPT. It opens a collapsed turn, pages in older
+	 * history and flashes the row; a `querySelector` here found nothing once the
+	 * flag line's turn was collapsed, so the press did nothing.
+	 */
+	const reveal = useNotificationReveal((state) => state.reveal);
 	const showInConversation = (item: DesktopNotificationItem) => {
-		const line = document.querySelector<HTMLElement>(
-			`[data-notification-flag="${CSS.escape(item.id)}"]`,
-		);
-		line?.scrollIntoView({ block: "center", behavior: "smooth" });
-		line?.animate?.(
-			[
-				{ backgroundColor: "var(--color-accent-wash)" },
-				{ backgroundColor: "transparent" },
-			],
-			{ duration: 900, easing: "ease-out" },
-		);
+		if (item.anchor_id) reveal(item.session.id, item.anchor_id);
 	};
 	if (list.isLoading)
 		return (

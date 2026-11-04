@@ -171,7 +171,9 @@ export const ChildSubagents = ({
 			 * agree, because it is the only spelling that keeps the WHOLE owner: the
 			 * visible one truncates (below).
 			 */
-			aria-label={`Subagents of ${ownerLabel}`}
+			aria-label={t("ui.chat.run_details.subagents_of_aria", {
+				owner: ownerLabel,
+			})}
 			/*
 			 * The list's own hook, distinct from the roster's `data-run-panel-row`
 			 * on purpose (see `SubagentRowView.rowHook`): this is the READER's page

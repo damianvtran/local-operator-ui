@@ -17,5 +17,7 @@
 	"ui.chat.header.saving_conversation_name": "Đang lưu tên cuộc trò chuyện",
 	"ui.chat.header.session_model_connect": "Kết nối",
 	"ui.chat.header.session_model_switch": "Đổi mô hình",
-	"ui.chat.header.transcript_display": "Hiển thị bản ghi"
+	"ui.chat.header.transcript_display": "Hiển thị bản ghi",
+	"ui.chat.header.starting_session": "Đang bắt đầu phiên",
+	"ui.chat.header.canonical_chat": "Cuộc trò chuyện chuẩn"
 }

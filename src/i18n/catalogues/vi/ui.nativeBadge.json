@@ -1,0 +1,5 @@
+{
+	"ui.nativeBadge.attention": "{count, plural, other {Local Operator: có # mục cần chú ý}}",
+	"ui.nativeBadge.attentionPending": "{count, plural, other {Local Operator: có # mục cần chú ý; vẫn còn yêu cầu đang chờ xử lý}}",
+	"ui.nativeBadge.pending": "Local Operator: vẫn còn yêu cầu đang chờ xử lý"
+}

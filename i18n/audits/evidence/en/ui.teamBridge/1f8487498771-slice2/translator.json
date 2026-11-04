@@ -1,0 +1,97 @@
+{
+  "schema": 1,
+  "kind": "translation-source-provenance-not-audit",
+  "date": "2026-11-03",
+  "translator_agent": "coder",
+  "session": "1f8487498771",
+  "model": "anthropic/claude-sonnet-5-5",
+  "model_source": "Current host descriptor for this resumed slice. Historical S3 openai/gpt-6.1-sol attribution remains unchanged; no new fallback notice was supplied for this source wave.",
+  "keys": [
+    "ui.teamBridge.attachmentCard.download",
+    "ui.teamBridge.attachmentCard.saved"
+  ],
+  "base": "1364eb5fcab8aa0871304a7f644cf43cebbd1acc",
+  "note": "Assembler retains original namespace translator metadata. This companion attributes ONLY the two new keys; it does not relabel inherited translations or auditor evidence.",
+  "locales": [
+    {
+      "locale": "en",
+      "path": "src/i18n/catalogues/en/ui.teamBridge.json",
+      "sha256": "911d5928e6b206e9d60aca25c081383f0f2564661646d43d45f746af06e6d858",
+      "values": {
+        "ui.teamBridge.attachmentCard.download": "Download file",
+        "ui.teamBridge.attachmentCard.saved": "File saved"
+      },
+      "inherited_values_byte_content_unchanged": true
+    },
+    {
+      "locale": "es",
+      "path": "src/i18n/catalogues/es/ui.teamBridge.json",
+      "sha256": "c2432a0b4a8652a585489cead9c8cea9f9c58571758e0c025afbc7daf31b64d5",
+      "values": {
+        "ui.teamBridge.attachmentCard.download": "Descargar archivo",
+        "ui.teamBridge.attachmentCard.saved": "Archivo guardado"
+      },
+      "inherited_values_byte_content_unchanged": true
+    },
+    {
+      "locale": "fr",
+      "path": "src/i18n/catalogues/fr/ui.teamBridge.json",
+      "sha256": "fbebd106e893b083ccb59b68be8f0312e548def67717c1d59f2bbf8a0a147386",
+      "values": {
+        "ui.teamBridge.attachmentCard.download": "Télécharger le fichier",
+        "ui.teamBridge.attachmentCard.saved": "Fichier enregistré"
+      },
+      "inherited_values_byte_content_unchanged": true
+    },
+    {
+      "locale": "hi",
+      "path": "src/i18n/catalogues/hi/ui.teamBridge.json",
+      "sha256": "8aafab2e2660a74faec6d68d2cd8ca36787ff650d075e8815d723e2cf51c9e7f",
+      "values": {
+        "ui.teamBridge.attachmentCard.download": "फ़ाइल डाउनलोड करें",
+        "ui.teamBridge.attachmentCard.saved": "फ़ाइल सेव हो गई"
+      },
+      "inherited_values_byte_content_unchanged": true
+    },
+    {
+      "locale": "ru",
+      "path": "src/i18n/catalogues/ru/ui.teamBridge.json",
+      "sha256": "22ff02fd0157fbf3c7075b40313d411ed38c34143adde60ab57c78964ad7e16d",
+      "values": {
+        "ui.teamBridge.attachmentCard.download": "Скачать файл",
+        "ui.teamBridge.attachmentCard.saved": "Файл сохранён"
+      },
+      "inherited_values_byte_content_unchanged": true
+    },
+    {
+      "locale": "ur",
+      "path": "src/i18n/catalogues/ur/ui.teamBridge.json",
+      "sha256": "e47e5bfde22e942c2e7c41aa3c5bd8758283df0f73e2e2b8ddf652143df436a1",
+      "values": {
+        "ui.teamBridge.attachmentCard.download": "فائل ڈاؤن لوڈ کریں",
+        "ui.teamBridge.attachmentCard.saved": "فائل محفوظ ہو گئی"
+      },
+      "inherited_values_byte_content_unchanged": true
+    },
+    {
+      "locale": "vi",
+      "path": "src/i18n/catalogues/vi/ui.teamBridge.json",
+      "sha256": "cfb0e0442a6859a877b7b52bc92b15e301bc58d3a059a04cc9b86cd7c732248b",
+      "values": {
+        "ui.teamBridge.attachmentCard.download": "Tải tệp xuống",
+        "ui.teamBridge.attachmentCard.saved": "Đã lưu tệp"
+      },
+      "inherited_values_byte_content_unchanged": true
+    },
+    {
+      "locale": "zh-CN",
+      "path": "src/i18n/catalogues/zh-CN/ui.teamBridge.json",
+      "sha256": "f5c5ae8d118b28b84e029f431d2f998dd07dacee3f30013950d225ed2f8bfa81",
+      "values": {
+        "ui.teamBridge.attachmentCard.download": "下载文件",
+        "ui.teamBridge.attachmentCard.saved": "文件已保存"
+      },
+      "inherited_values_byte_content_unchanged": true
+    }
+  ]
+}

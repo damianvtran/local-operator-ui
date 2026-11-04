@@ -1,0 +1,140 @@
+{
+  "schema": 1,
+  "instance": "c86525720075-1603r2-es",
+  "locale": "es",
+  "pr": "damianvtran/local-operator-ui#1603",
+  "branch": "feat/i18n-uncounted-props",
+  "head": "011c0f4f4caaf5a388a67ba2eda3f615ac676d3c",
+  "date": "2026-11-02",
+  "status": "passed",
+  "model": "anthropic/claude-sonnet-5-5",
+  "audit_kind": "round-1 full review at ab45351362a + round-2 delta re-audit at 011c0f4f4ca",
+  "author": "Written by coder session 92f609a7042a (lopdev team, PR #1603 receipts slice) on the auditors' behalf, transcribed from each auditor session's final report (the auditors wrote no receipt and no ledger row). Hashes were re-derived by the coder from git objects (git show <rev>:<path> | sha256) and every full hash an auditor reported was matched against them; the writer re-derives them again from disk. The coder did not translate or remediate any string and is not the auditor.",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "c86525720075",
+    "model": "anthropic/claude-sonnet-5-5",
+    "model_note": "Instance is the ROUND-2 delta auditor's session; the round-1 full auditor is the separate session 62bb649752be. Both are agent i18n-auditor, model anthropic/claude-sonnet-5-5 per their session headers; neither auditor can verify the runtime provider and neither claims a fallback; none was verified or ruled out.",
+    "independent_from_translator": true,
+    "role": "round-2 delta auditor (second pass on the final bytes); round-1 full auditor = 62bb649752be"
+  },
+  "sessions": {
+    "round1_auditor": "62bb649752be",
+    "round2_auditor": "c86525720075",
+    "round2_job": "e594fc8236a4"
+  },
+  "independence": "The auditor(s) are separate i18n-auditor sessions from the translator (session 9d6c2bba4d3b, job e76e3cc7e513) and from the remediation translator (session ca4082b95928, job 5f8f0fcc0ba4); neither auditor translated, edited or remediated any string, and neither wrote a receipt or ledger row. The translator, remediator and auditors share one model (anthropic/claude-sonnet-5-5), so independence is by agent and session, not by model family; a shared blind spot is possible (the hi round-1 auditor states this explicitly). Independence is attested by the auditors' own reports and the session transcripts; it is not provable from this file alone. Job-to-session mapping for round 2 (job -> auditor session) was read from the parent transcript, where each delta report follows its launching job id; round-1 jobs are identified by session id only.",
+  "locale_level_round1_verdict": {
+    "verdict": "changes_requested",
+    "pin": "ab45351362a",
+    "majors": [
+      "A-1 (ui.chat)"
+    ],
+    "note": "Locale-level verdict covered all 17 namespaces of the locale. Each namespace block below carries its own status derived from its own findings."
+  },
+  "round2_delta": {
+    "pin": "011c0f4f4ca",
+    "verdict": "passed",
+    "blocker": 0,
+    "major": 0,
+    "job": "e594fc8236a4",
+    "session": "c86525720075",
+    "range": "5af81c6b78a..011c0f4f4ca"
+  },
+  "reported_hash_check": "Every full sha256 the round-2 delta auditor reported for this locale matched the git-object hash recomputed by the coder; round-1 auditors reported 16-hex prefixes that matched at ab45351362a.",
+  "finding_attribution": "Findings are split per namespace and key so each ledger row counts its own; one auditor finding spanning several namespaces is counted once per namespace it touches, so the sum can exceed the auditor's headline totals. Only OPEN findings (unapplied at 011c0f4f4ca, or raised by the round-2 auditor on the new text) are counted; fixed ones are listed under resolved_findings.",
+  "namespaces": {
+    "ui.agents.teams": {
+      "ledger_scope": "Round-1 full review (62bb649752be) at ab45351362a of the 17 keys PR #1603 added + round-2 delta re-audit (c86525720075) at 011c0f4f4ca of the 1 changed key(s). No round-1 MAJOR here (changed for MINOR/NIT wording). Counts are open findings only.",
+      "status": "passed",
+      "audit_kind": "round-1 full review at ab45351362a + round-2 delta re-audit at 011c0f4f4ca",
+      "scope": "round-1 full review at ab45351362a (session 62bb649752be, covered the 17 keys PR #1603 added; everything except the remediated keys is reviewed there) + round-2 delta re-audit at 011c0f4f4ca (session c86525720075, scoped to the 1 changed key(s) of this file: teams.field.name_hint). Round-1 MAJOR(s) in this namespace: none (the namespace was changed for MINOR/NIT wording only) - verified FIXED by the delta auditor. Only OPEN findings are counted. Pre-existing keys not touched by the PR were not re-reviewed (earlier audits are in superseded).",
+      "keys_added_by_pr": 17,
+      "sha256": {
+        "en": "6a05f539a9a7f3157fe42b5ed9bc5ec89f9a94f86df64b3c752a1bc115335220",
+        "es": "e408ffe1307e836c19ee6e86ff46654614deccdf2a06081ea96cc91ad219e97f"
+      },
+      "context_sha256": "cc6a3a4797479595fe6aceea348b88b79e6aaa62d8169097cc833efd6c9918e0",
+      "bytes_checked_at": "011c0f4f4ca",
+      "findings": [
+        {
+          "id": "A-9",
+          "severity": "NIT",
+          "keys": [
+            "ui.agents.teams.section.members_hint"
+          ],
+          "round": 1,
+          "text": "\"cada uno ... cada uno\" repeats; suggests \"cuántos de cada uno\"."
+        },
+        {
+          "id": "B-1",
+          "severity": "MINOR",
+          "keys": [
+            "ui.agents.teams.field.name_hint"
+          ],
+          "round": 2,
+          "text": "Round 2 on the NEW text \"El nombre con el que se mencionará este equipo, por ti y en tus chats.\": passive \"se\" with an agent phrase is discouraged by prescriptive grammar; reads fine as UI copy."
+        }
+      ],
+      "resolved_findings": [
+        {
+          "id": "A-2",
+          "severity": "MINOR",
+          "keys": [
+            "ui.agents.teams.field.name_hint"
+          ],
+          "round": 1,
+          "text": "\"se referirán ... tú y tus chats\" is stiff formal third person next to the tuteo guide.",
+          "resolution": {
+            "state": "fixed",
+            "fixed_in": "011c0f4f4ca",
+            "remediation_translator_job": "5f8f0fcc0ba4",
+            "verified_by_round2_session": "c86525720075"
+          }
+        }
+      ]
+    },
+    "ui.chat": {
+      "ledger_scope": "Round-1 full review (62bb649752be) at ab45351362a of the 29 keys PR #1603 added + round-2 delta re-audit (c86525720075) at 011c0f4f4ca of the 1 changed key(s). Round-1 MAJOR here: A-1, verified fixed. Counts are open findings only.",
+      "status": "passed",
+      "audit_kind": "round-1 full review at ab45351362a + round-2 delta re-audit at 011c0f4f4ca",
+      "scope": "round-1 full review at ab45351362a (session 62bb649752be, covered the 29 keys PR #1603 added; everything except the remediated keys is reviewed there) + round-2 delta re-audit at 011c0f4f4ca (session c86525720075, scoped to the 1 changed key(s) of this file: message_controls.thinking_label). Round-1 MAJOR(s) in this namespace: A-1 ui.chat.message_controls.thinking_label - verified FIXED by the delta auditor. Only OPEN findings are counted. Pre-existing keys not touched by the PR were not re-reviewed (earlier audits are in superseded).",
+      "keys_added_by_pr": 29,
+      "sha256": {
+        "en": "290277f882b88cd790fe842c8022b463a29dfadbaa81d1691dc5e5b79b4515a3",
+        "es": "6a4eb321f736c5bdd4e5f4614a67f8f87a4e5013f68c7907a8a4f9170c8c48a8"
+      },
+      "context_sha256": "f3c01742228783c28ac291c892625ec99b7bdbc4cf3cdf1fa13c8ebfb438dc01",
+      "bytes_checked_at": "011c0f4f4ca",
+      "findings": [
+        {
+          "id": "A-5",
+          "severity": "MINOR",
+          "keys": [
+            "ui.chat.scroll_to_bottom.label",
+            "ui.chat.scroll_to_bottom.label_new_activity"
+          ],
+          "round": 1,
+          "text": "\"Ir al final\": the end of what is not stated; auditor would keep it (flagged choice, not a MAJOR)."
+        }
+      ],
+      "resolved_findings": [
+        {
+          "id": "A-1",
+          "severity": "MAJOR",
+          "keys": [
+            "ui.chat.message_controls.thinking_label"
+          ],
+          "round": 1,
+          "text": "\"Pensando\" is a second word for the \"Thinking\" row that the settings copy already calls \"Pensamiento\"; also reads as in-progress on a finished block.",
+          "resolution": {
+            "state": "fixed",
+            "fixed_in": "011c0f4f4ca",
+            "remediation_translator_job": "5f8f0fcc0ba4",
+            "verified_by_round2_session": "c86525720075"
+          }
+        }
+      ]
+    }
+  }
+}

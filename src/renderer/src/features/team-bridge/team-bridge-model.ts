@@ -8,6 +8,18 @@ import type {
 	TeamBridgeNotify,
 	TeamBridgeTenantId,
 } from "../../../../shared/team-bridge-contract";
+import {
+	type ChiefLabels,
+	composeChiefLabel,
+	nameKey,
+} from "../../../../shared/team-bridge-labels";
+
+/*
+ * Re-exported so every renderer caller keeps one import site; the definitions
+ * live in `src/shared` because the main-process banner composes the same label
+ * (`team-bridge-notifier.ts`) and main cannot import renderer modules.
+ */
+export { type ChiefLabels, composeChiefLabel, nameKey };
 
 /**
  * The Team Bridge list's scope: one organization's tenant id, or every
@@ -53,8 +65,15 @@ export type TeamBridgeOrganization = {
  * header come to disagree about what a conversation is called.
  */
 
-/** A member's stored name; an agent's never repeats its owner ("X (X)"). */
-function memberStoredName(member: {
+/**
+ * A member's stored name; an agent's never repeats its owner ("X (X)").
+ *
+ * For surfaces holding a conversation's member rows but no directory (the
+ * owner-audit title, the mention fallback for unlisted members): with no owner
+ * to compare against, a self-composed "X (X)" is no name and the legacy
+ * "Member" placeholder is nobody, exactly as `conversationTitle` reads them.
+ */
+export function memberStoredName(member: {
 	kind: "human" | "agent";
 	display_label: string;
 }): string | null {
@@ -1508,10 +1527,7 @@ export function targetConversation(
 
 /** "X (X)" collapses to "X"; any other label is returned unchanged. */
 function dedupedAgentLabel(label: string): string {
-	const twice = COMPOSED_LABEL.exec(label.trim());
-	return twice && nameKey(twice[1]) === nameKey(twice[2])
-		? twice[1].trim()
-		: label;
+	return selfComposedName(label.trim()) ?? label;
 }
 
 /**
@@ -1650,23 +1666,82 @@ export function storedLabel(label: string): string | null {
 }
 
 /**
- * The two catalogue strings a chief-of-staff label is composed from. Injected
- * because both are translatable ("{agent} ({person})" and "{person}'s chief of
- * staff" reorder and re-punctuate per locale).
- */
-export type ChiefLabels = {
-	/** "Aida (Ben Tran)": the agent's own name, the person as context. */
-	named: (agent: string, person: string) => string;
-	/** "Ben Tran's chief of staff": used when the agent has no name of its own. */
-	unnamed: (person: string) => string;
-};
-
-/**
  * "Agent (Owner)": the composed display form. Older clients stored it as the
  * agent member's `display_label`, so the read path must recognise it (and "X
  * (X)") in existing rows; this client now stores a bare name (`storedAgentLabel`).
+ *
+ * WHY NOT A REGEX (review M1-r3 on #1643, the second regression on this
+ * function). A single pattern has to guess where the owner's bracket opens,
+ * and any guess is wrong for some real label: a lazy head mis-split "Aida (v2)
+ * (Ben Tran)", and a bracket-free tail refused an owner "Ana (she/her)" or
+ * "Damian Tran (Minerva)", so the owner was composed a second time. The two
+ * questions the read path asks are answered directly instead:
+ * - owner KNOWN (`stripOwnerSuffix`): does the label END with that owner in
+ *   brackets? A comparison, so whatever the owner's name contains is matched;
+ * - owner UNKNOWN (`selfComposedName`): is the label "X (X)"? Every split
+ *   whose trailing group is one balanced bracket pair is tried, so a bracket
+ *   inside a name ("(she/her)") never splits it.
+ * Both bracket forms are recognised because the zh-CN `chief.label` is
+ * "{agent}（{person}）".
  */
-const COMPOSED_LABEL = /^(.+?)\s*\((.+)\)$/;
+const BRACKET_PAIRS: Readonly<Record<string, string>> = {
+	"(": ")",
+	"（": "）",
+};
+
+/**
+ * The head of `label` when it ends with `(owner)` / `（owner）` (optional
+ * whitespace before the bracket), or null. The owner is compared by `nameKey`,
+ * so case, spacing and NFKC width do not matter.
+ */
+function stripOwnerSuffix(label: string, owner: string): string | null {
+	const ownerKey = nameKey(owner);
+	if (ownerKey === "") return null;
+	for (let open = 0; open < label.length; open += 1) {
+		const close = BRACKET_PAIRS[label[open]];
+		if (close === undefined || !label.endsWith(close)) continue;
+		const inner = label.slice(open + 1, label.length - close.length);
+		const head = label.slice(0, open).trim();
+		if (head !== "" && bracketsBalance(inner) && nameKey(inner) === ownerKey)
+			return head;
+	}
+	return null;
+}
+
+/** True when `text` opens and closes its brackets (either form) in order. */
+function bracketsBalance(text: string): boolean {
+	const closers = new Set(Object.values(BRACKET_PAIRS));
+	const stack: string[] = [];
+	for (const char of text) {
+		const close = BRACKET_PAIRS[char];
+		if (close !== undefined) stack.push(close);
+		else if (closers.has(char) && stack.pop() !== char) return false;
+	}
+	return stack.length === 0;
+}
+
+/**
+ * X when `label` is "X (X)" / "X（X）" (the self-composition older clients
+ * stored for an unnamed agent), else null. Only a trailing group that is ONE
+ * balanced pair counts as the tail, so "Ana (she/her) (Ana (she/her))" is
+ * "Ana (she/her)" twice and "Ana (she/her)" alone is not a composition.
+ */
+function selfComposedName(label: string): string | null {
+	for (let open = 0; open < label.length; open += 1) {
+		const close = BRACKET_PAIRS[label[open]];
+		if (close === undefined || !label.endsWith(close)) continue;
+		const inner = label.slice(open + 1, label.length - close.length);
+		const head = label.slice(0, open).trim();
+		if (
+			head !== "" &&
+			bracketsBalance(inner) &&
+			nameKey(head) === nameKey(inner)
+		) {
+			return head;
+		}
+	}
+	return null;
+}
 
 /**
  * The stored tails of an unnamed agent's label. The ASCII form is the only
@@ -1704,36 +1779,6 @@ function hubTruncatedPerson(personName: string): string {
 	if (bytes.length <= cut) return person;
 	while (cut > 0 && (bytes[cut] & 0xc0) === 0x80) cut -= 1;
 	return new TextDecoder().decode(bytes.subarray(0, cut)).trim();
-}
-
-/** Case-, space- and accent-insensitive form for "is this the same name". */
-function nameKey(name: string): string {
-	return name.normalize("NFKC").trim().replace(/\s+/g, " ").toLocaleLowerCase();
-}
-
-/**
- * THE ONE PLACE a chief-of-staff label is composed (operator report,
- * 2026-10-22: "Ben Tran (Ben Tran)" on the rail, the thread header and the
- * composer placeholder, and persisted by the server verbatim as the agent
- * member's `display_label`).
- *
- * WHY IT HAPPENED. The directory's `agent.name` is the endpoint's agent name,
- * else its label, and an endpoint enrolled without an agent name was labelled
- * with its OWNER's name. Composing "{agent} ({person})" from that repeated the
- * person. So an agent name that is empty, or the same as the person's
- * (normalised), is no name at all: the label is then "{person}'s chief of
- * staff", and the person's name never appears twice.
- */
-export function composeChiefLabel(
-	agentName: string,
-	personName: string,
-	labels: ChiefLabels,
-): string {
-	const agent = agentName.trim();
-	const person = personName.trim();
-	return agent === "" || nameKey(agent) === nameKey(person)
-		? labels.unnamed(person)
-		: labels.named(agent, person);
 }
 
 /**
@@ -1778,15 +1823,81 @@ export function storedAgentName(
 	) {
 		return null;
 	}
-	const composed = COMPOSED_LABEL.exec(stored);
-	if (composed) {
-		const [, agent, owner] = composed;
-		if (nameKey(agent) === nameKey(owner)) return null;
-		if (personName !== null && nameKey(owner) === nameKey(personName)) {
-			return agent.trim();
+	if (personName !== null) {
+		const agent = stripOwnerSuffix(stored, personName);
+		if (agent !== null) {
+			return nameKey(agent) === nameKey(personName) ? null : agent;
 		}
 	}
+	if (selfComposedName(stored) !== null) return null;
 	return stored;
+}
+
+/**
+ * The label for a conversation member the directory does not list (a guest, or
+ * a roster that has not answered yet), or null when the stored label names
+ * nobody.
+ *
+ * Like `memberStoredName`, except that a self-composed agent "X (X)" is NOT
+ * nobody here (review m2-r2 on #1643): with no directory row it is still X's
+ * unnamed agent, a real mention target, so it reads "X's chief of staff"
+ * through the same `chiefLabels.unnamed` form every other surface uses.
+ */
+export function unlistedMemberLabel(
+	member: { kind: "human" | "agent"; display_label: string },
+	chiefLabels: ChiefLabels,
+): string | null {
+	const stored = memberStoredName(member);
+	if (stored !== null || member.kind !== "agent") return stored;
+	const label = storedLabel(member.display_label);
+	const owner = label === null ? null : selfComposedName(label);
+	return owner === null ? null : chiefLabels.unnamed(owner);
+}
+
+/**
+ * The display label for a recipient known only by its wire labels (no account
+ * id to look up in the directory), or null when the labels name nobody.
+ *
+ * WHY (operator report, 2026-11-03: "Not delivered to Aida (Ben Tran) (Ben
+ * Tran). Refused by moderation."). The hub's delivery-state entries carry the
+ * agent MEMBER's stored label and its owner's name as two strings, and the
+ * annotation used to splice them into "{agent} ({owner})". A member row written
+ * by an older client already holds the composed "Aida (Ben Tran)", so the owner
+ * appeared twice. Routing the pair through `storedAgentName` and
+ * `composeChiefLabel` gives these lines exactly the label the message rows and
+ * the rail paint: "Aida (Ben Tran)", or "Ben Tran's chief of staff" for an
+ * agent with no name of its own, and the owner never twice.
+ *
+ * - A human is named by their own label alone; no owner applies.
+ * - An agent whose owner label is blank is read as an unlisted member
+ *   (`unlistedMemberLabel`): its stored label as-is (which may already carry
+ *   its owner), or "X's chief of staff" for a self-composed "X (X)", whose X is
+ *   the owner (review M1-r3 matrix on #1643). A parenthetical with nothing in
+ *   it would say less.
+ *
+ * NULL IS THE CALLER'S TO PAINT, as with `participantLabel`: the shared
+ * "Unknown agent" / "Unknown person" copy, never an invented name.
+ */
+export function recipientLabel(
+	recipient: {
+		kind: "human" | "agent";
+		label: string;
+		ownerLabel: string;
+	},
+	chiefLabels: ChiefLabels,
+): string | null {
+	if (recipient.kind === "human") return storedLabel(recipient.label);
+	const owner = recipient.ownerLabel.trim();
+	if (owner === "")
+		return unlistedMemberLabel(
+			{ kind: "agent", display_label: recipient.label },
+			chiefLabels,
+		);
+	return composeChiefLabel(
+		storedAgentName(recipient.label, owner) ?? "",
+		owner,
+		chiefLabels,
+	);
 }
 
 /** The signed-in reader, when the account read has answered with a name. */
@@ -1844,7 +1955,16 @@ export function participantLabel(
 			: storedAgentName(participant.display_label, personName);
 	if (personName)
 		return composeChiefLabel(agentName ?? "", personName, chiefLabels);
-	return agentName;
+	// An owner the directory does not list: read as an unlisted member, so a
+	// self-composed "X (X)" is X's chief of staff on the rows exactly as on the
+	// delivery line and in mentions (review M1-r3 matrix on #1643).
+	return (
+		agentName ??
+		unlistedMemberLabel(
+			{ kind: "agent", display_label: participant.display_label },
+			chiefLabels,
+		)
+	);
 }
 
 export type ThreadItem =
@@ -1910,6 +2030,15 @@ export function threadItems(
 	return items;
 }
 
+const FOREIGN_TENANT_REFUSAL = "Team Bridge create answered for another tenant";
+/*
+ * Drafts whose create was answered for another organization, keyed by the
+ * caller's `remembered` map so the marker shares its owner scope (the page keeps
+ * one map per account) and is collected with it. A WeakMap keeps the function's
+ * signature unchanged for every caller.
+ */
+const refusedForeignDrafts = new WeakMap<object, Set<string>>();
+
 /**
  * A draft's FIRST SEND: create the conversation, then post into it.
  *
@@ -1949,10 +2078,36 @@ export async function sendFirstMessage(args: {
 	 */
 	onCreated?: (created: { id: string; tenantId: string | undefined }) => void;
 }): Promise<{ id: string; tenantId: string | undefined }> {
+	if (refusedForeignDrafts.get(args.remembered)?.has(args.draftKey))
+		throw new Error(FOREIGN_TENANT_REFUSAL);
 	let created = args.remembered.get(args.draftKey);
 	if (created === undefined) {
 		const response = await args.create(args.input);
 		if (!response.id) throw new Error("create returned no conversation id");
+		/*
+		 * A RECEIPT FROM ANOTHER ORGANIZATION IS REFUSED (#1511, review round 7
+		 * M1). The draft was written in `tenantId` and the create asked for that
+		 * one; a receipt naming a different tenant would otherwise move the view
+		 * into that organization's conversation and post - or SCHEDULE, which runs
+		 * through here too - the author's words there. Refused before `onCreated`
+		 * and `post`, so nothing moves and nothing is written. All organizations
+		 * passes no `tenantId`, so it has nothing to compare against.
+		 *
+		 * The refusal is remembered per draft (m2) so Retry fails again without
+		 * creating another group. The foreign id is deliberately NOT put in
+		 * `remembered`: a remembered id skips `create`, so Retry would never reach
+		 * this check and would post into the other organization.
+		 */
+		if (
+			args.tenantId !== undefined &&
+			typeof response.tenant_id === "string" &&
+			response.tenant_id !== args.tenantId
+		) {
+			const refused = refusedForeignDrafts.get(args.remembered) ?? new Set();
+			refused.add(args.draftKey);
+			refusedForeignDrafts.set(args.remembered, refused);
+			throw new Error(FOREIGN_TENANT_REFUSAL);
+		}
 		created = {
 			id: response.id,
 			tenantId: response.tenant_id ?? args.tenantId,

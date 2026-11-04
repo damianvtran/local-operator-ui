@@ -51,6 +51,11 @@ import {
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { t } from "../../../../i18n/messages";
+import {
+	type UnreadCompletionKind,
+	isUnreadAckableCompletion,
+	unreadCompletionKind,
+} from "../../../../shared/completion-attention";
 import type { TagRef } from "../../../../shared/desktop-contract";
 import {
 	DESKTOP_DEADLINE_EXCEEDED_CODE,
@@ -4970,17 +4975,9 @@ function mergeRow(
  * no mark, and neither does an ABSENT status (a locally created row carries
  * none until the next catalogue read): unknown is not unread.
  */
-export type UnreadMarkKind = "complete" | "error" | "interrupted";
+export type UnreadMarkKind = UnreadCompletionKind;
 
-export const unreadMarkKind = (
-	row: CanonicalSessionRow,
-): UnreadMarkKind | null => {
-	if (row.attention?.unseen !== true) return null;
-	const code = row.status?.code;
-	return code === "complete" || code === "error" || code === "interrupted"
-		? code
-		: null;
-};
+export const unreadMarkKind = unreadCompletionKind;
 
 /**
  * The rows a bulk acknowledgement can NAME, in the store's own terms.
@@ -5005,12 +5002,7 @@ export const unreadMarkKind = (
  */
 export const unreadAckableRows = (
 	rows: CanonicalSessionRow[],
-): CanonicalSessionRow[] =>
-	rows.filter((row) => {
-		if (unreadMarkKind(row) === null) return false;
-		const token = row.attention?.completion_token;
-		return typeof token === "string" && token.length > 0;
-	});
+): CanonicalSessionRow[] => rows.filter(isUnreadAckableCompletion);
 
 /** How many rows a click would name; zero hides the control entirely. */
 export const unreadAckableCount = (rows: CanonicalSessionRow[]): number =>

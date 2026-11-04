@@ -676,6 +676,7 @@ the reasoning, probe costs and constants are in
   node_modules` (~0 bytes). pnpm refuses a symlinked `node_modules`, so scripts in
   such a worktree must call `node_modules/.bin/<tool>` directly rather than
   `pnpm <tool>`.
+- **Where worktrees live.** Prefer `<repo>/.worktrees/<name>` sharing the primary dependency tree; a sibling `../<repo>-<topic>` is tolerated with APFS-cloned deps or an absolute link; never session scratchpads, /tmp or `$TMPDIR` dirs, `$HOME` top level or ad-hoc sibling roots. `git worktree remove` (clean only, never discard unpushed work) once the PR merges or the lane closes; `~/local-operator/scripts/worktree_janitor.py --repo ~/local-operator-ui` lists stragglers.
 
 **Anything that spawns `node --test` must drop `NODE_TEST_CONTEXT`.** Node
 exports it into every test-file process, and a nested `node --test` that inherits
@@ -2144,6 +2145,21 @@ with no manual step on the pipeline. So **merging is not releasing**: a merged P
 that has not been released yet is the normal state of `main`, not a problem to fix,
 and a request to *implement* something is not a request to *release* it.
 
+**What the macOS build signs and notarizes with.** Both `publish.yml` and
+`signed-update-candidate.yml` sign with the Radient Inc. organization's Developer ID
+Application identity (`MACOS_DEVID_APP_P12_BASE64` / `_PASSWORD`), embed its
+Developer ID provisioning profile (`MACOS_APP_PROFILE_BASE64`) so the main
+executable can carry the passkey keychain group, and notarize with an App Store
+Connect API key (`APPLE_API_KEY_P8_BASE64`, `APPLE_API_KEY_ID`, `APPLE_API_ISSUER`).
+The team id did not change in the move off the individual account, so installed
+apps' designated requirements still accept the new signature. The retired secrets
+(`CSC_CONTENT`, `CSC_KEY_PASSWORD`, `APPLE_ID`, `APPLE_ID_PASSWORD`) stay for
+rollback and nothing may read them (`scripts/mac-build-arch.test.mjs`). Renewal is
+a pair: the certificate expires 2027-12-02, and a Developer ID profile embeds its
+certificate, so a new p12 always ships with a NEW profile — the comment above
+`publish.yml`'s staging step is the runbook. Never put the WebAuthn group on
+`entitlementsInherit` (the 0.29.6 brick; `docs/design/browser-challenges-and-passkeys.md` §3.4).
+
 That used to be the other way round, and the history is worth keeping because it
 explains why the trigger is a *published Release* and nothing else. The deleted
 `.github/workflows/auto-release.yml` derived a version from merged commit subjects,
@@ -2355,7 +2371,12 @@ one that ships the wrong tree.
 #    version change and retitles this same PR, so the lock's number never moves.
 #    Push the branch and open the PR only after step 1 of *The window, and the
 #    release owner's procedure* has found no open chore(release) PR.
-WT="$(mktemp -d)/release-next"   # scratch, and session-unique: nothing else owns it
+# In-repo and at a STABLE path, never mktemp -d: eight $TMPDIR release cuts were
+# stranded after their releases. No `trap` and no `$$`: this recipe spans many
+# separate shell invocations (claim, edit, review round, merge, publish), so an
+# EXIT trap would fire after the first one and `$$` would differ in each.
+# If the release aborts, run the step-5 removal below (clean tree only) first.
+WT=~/local-operator-ui/.worktrees/release-next
 git fetch origin --tags
 git worktree add "$WT" origin/main
 git -C "$WT" switch -c release-next
@@ -2481,7 +2502,7 @@ gh run list --workflow=publish.yml --limit 3 && gh run watch <id>
 #    modified inside it — read that before forcing, because it means the tree the
 #    release came out of was not the one the review round read (the commit itself
 #    was still `package.json` only, which `-o` guarantees).
-git worktree remove "$WT"
+git -C ~/local-operator-ui worktree remove "$WT"
 ```
 
 **Why `--target` and not `git tag vX.Y.Z && git push --tags`.** A bare tag
@@ -2909,9 +2930,19 @@ write access is silently ignored by an approval rule. Tagging a person in a
 
 ### Desktop CI capacity partitions
 
-The `test` job uses four deterministic file-count partitions of the explicit
-`package.json` `test:desktop` inventory. Local `pnpm test:desktop` still runs the
-whole inventory once through the existing guarded runner. CI delegates each
+The `test` job uses four deterministic file-count partitions of the desktop
+inventory, which is DERIVED rather than listed: every `*.test.mjs` under
+`scripts/` (recursively) minus the explained `EXEMPT` table in
+`scripts/desktop-test-inventory.mjs` (`node scripts/desktop-test-inventory.mjs
+list` prints it), plus that module's explicit `EXTERNAL_TESTS` registrations
+preserving main's existing colocated desktop coverage. Adding a test file under
+`scripts/` edits nothing shared; a suite that must not
+run in the shared lanes (display-bound, its own CI step, too heavy) is exempted
+in the PR that adds it, with its reason. The old literal `test:desktop` line was
+rewritten by every PR that added a test, so any two conflicted - #1466 was
+re-conflicted seven times in about five hours on 2026-10-31. Local
+`pnpm test:desktop` still runs the whole inventory once through the existing
+guarded runner. CI delegates each
 partition to that same runner with the same concurrency, memory and lane caps;
 four workers are extra capacity and per-shard memory headroom, not measured
 runtime balancing, a hung-lane cure, or a memory-leak fix. The fourth shard was

@@ -737,5 +737,7 @@
 	"ui.chat.pickers.slash.click.stages": "Nhấp để đưa /{label} vào bản nháp.",
 	"ui.chat.pickers.slash.enter_needs_a_pick": "Enter cần một dòng bạn chọn: ↓ rồi Enter · Tab hoàn thành dòng này.",
 	"ui.chat.pickers.slash.phase.arguments": "Tham số",
-	"ui.chat.pickers.slash.region_label": "Lệnh gạch chéo"
+	"ui.chat.pickers.slash.region_label": "Lệnh gạch chéo",
+	"ui.chat.pickers.destination_pickers.no_agents_are_registered": "Không có tác nhân nào được đăng ký.",
+	"ui.chat.pickers.destination_pickers.applies_to_the_conversation_this_chat_starts": "Áp dụng cho cuộc trò chuyện sẽ được tạo từ bản nháp này."
 }

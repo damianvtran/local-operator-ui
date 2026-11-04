@@ -1,0 +1,1113 @@
+{
+	"provenance": "Actual serialized loopback FastAPI desktop responses; real core service/merge/storage; synthetic external Hub + qa/faithful-resolver only. No hand-invented supported states. Fields retain isolated scratch paths/receipts; sanitize path roots when committing public fixture.",
+	"cases": [
+		{
+			"name": "equal/equal",
+			"core_head": "bb4a930b184f188b6076c030472e51735e2be986",
+			"request": {
+				"request_id": "9da2d521-7bd1-4d20-b876-6f0346ee158d",
+				"hub_id": "qa-equal",
+				"hub_source": "https://api.radienthq.com/v1",
+				"visibility": "public",
+				"tenant_id": null,
+				"local_alias": "qa-municipal-equal",
+				"subscribe": true,
+				"auto_push": false,
+				"confirm_public_egress": false,
+				"dry_run": true,
+				"adoption_strategy": "merge",
+				"allow_llm": false
+			},
+			"http_status": 200,
+			"response": {
+				"status": 200,
+				"message": "Desktop session result.",
+				"result": {
+					"reports": [
+						{
+							"kind": "skill",
+							"local_id": "skl-0edaaf8cc4688f2af4b7930baf8cd3a6",
+							"name": "qa-municipal-equal",
+							"hub_id": "qa-equal",
+							"outcome": "needs-review",
+							"applied": false
+						}
+					],
+					"adoption": {
+						"alias": "qa-municipal-equal",
+						"state": "equal",
+						"strategy": "equal",
+						"local_tree_hash": "7ab3e150a6f561fcac842fd4886061deb49edabe06cec880e0e3af794d0814d0",
+						"proposed_fingerprint": "12ba1b612f9b2b5421feb04761bcab0d6b00bcd4dbab946b7fd9dea4c52d89ab",
+						"files": [
+							{
+								"path": "SKILL.md",
+								"action": "same",
+								"local_path": null,
+								"reason": "",
+								"proposed": "---\nname: qa-municipal-equal\ndescription: Isolated synthetic municipal procurement guidance.\n---\n\n# Municipal procurement\n\nRead `references/requirements.md` and `references/rubric.md`.\n\n## Quality\nVerify every municipal procurement deadline against the official notice. Preserve the named Hub audit evidence before the pilot.\n",
+								"diff_vs_local": "--- local/SKILL.md\n+++ proposed/SKILL.md\n@@ -5,7 +5,7 @@\n \n # Municipal procurement\n \n-Read `requirements.md` and `rubric.md`.\n+Read `references/requirements.md` and `references/rubric.md`.\n \n ## Quality\n Verify every municipal procurement deadline against the official notice. Preserve the named Hub audit evidence before the pilot.\n",
+								"diff_vs_hub": ""
+							},
+							{
+								"path": "references/requirements.md",
+								"action": "relocated",
+								"local_path": "requirements.md",
+								"reason": "",
+								"proposed": "# Requirements\nKeep a dated procurement notice and named approval owner.\n",
+								"diff_vs_local": "",
+								"diff_vs_hub": ""
+							},
+							{
+								"path": "references/rubric.md",
+								"action": "relocated",
+								"local_path": "rubric.md",
+								"reason": "",
+								"proposed": "# Rubric\nScore official evidence, not inferred eligibility.\n",
+								"diff_vs_local": "",
+								"diff_vs_hub": ""
+							}
+						],
+						"set_aside": [],
+						"unresolved": [],
+						"description_source": "hub",
+						"model": null,
+						"failure_class": null,
+						"warnings": [],
+						"local_files": [
+							{
+								"path": "SKILL.md",
+								"sha256": "3c5f5715e028105e4cd1247be7d365ecac80d9545ac50ce8df7cd4b4d08436f8",
+								"bytes": 304,
+								"mode": 420
+							},
+							{
+								"path": "requirements.md",
+								"sha256": "2c727ac5062ebd31a11fc9ae44924a7b49c94ed5b46820748548a9fe627e9abe",
+								"bytes": 73,
+								"mode": 420
+							},
+							{
+								"path": "rubric.md",
+								"sha256": "2fcc0bd38d119c2a0087063bf17e4f0a5b9259d877aaeb5a29e96c3ffe94fe8a",
+								"bytes": 60,
+								"mode": 420
+							}
+						]
+					},
+					"adoption_receipt": "EY_ZSzptA0zt-AHPJ7kCmD7reiV5nfRr",
+					"snapshot": {
+						"path": "~/fixture/config/hub/backups/skill-adopt-qa-municipal-equal-15351e529b994756be9a96a349351fbb",
+						"tree_hash": "7ab3e150a6f561fcac842fd4886061deb49edabe06cec880e0e3af794d0814d0",
+						"manifest": [
+							{
+								"path": "SKILL.md",
+								"sha256": "3c5f5715e028105e4cd1247be7d365ecac80d9545ac50ce8df7cd4b4d08436f8",
+								"bytes": 304,
+								"mode": 420
+							},
+							{
+								"path": "requirements.md",
+								"sha256": "2c727ac5062ebd31a11fc9ae44924a7b49c94ed5b46820748548a9fe627e9abe",
+								"bytes": 73,
+								"mode": 420
+							},
+							{
+								"path": "rubric.md",
+								"sha256": "2fcc0bd38d119c2a0087063bf17e4f0a5b9259d877aaeb5a29e96c3ffe94fe8a",
+								"bytes": 60,
+								"mode": 420
+							}
+						]
+					},
+					"confirmation_required": true,
+					"dry_run": true,
+					"form": "document",
+					"link": null,
+					"links": {
+						"generated_at": "2026-11-03T09:10:01Z",
+						"capability": "hub_links:1",
+						"links": [
+							{
+								"bundle_confirmation": null,
+								"link_id": "c62ed649649a35c154184335df39d738ef28f78c266ad1b32b7c73bd89ee5af0",
+								"kind": "skill",
+								"local_id": "skl-cafeb2dba41e99139741d2e6a3437292",
+								"name": "qa-municipal-other-origin",
+								"hub_id": "qa-seed-owner",
+								"hub_source": "https://api.radienthq.com/v1",
+								"visibility": "public",
+								"tenant_id": null,
+								"tenant_name": null,
+								"policy": {
+									"subscribe": false,
+									"auto_push": false,
+									"revision": "9a593bdc364e128391e9348045ad8e1ee10df3e5c8eb4958b6983327145652bd"
+								},
+								"eligibility": {
+									"can_auto_push": false,
+									"reason": "unsupported-precondition"
+								},
+								"local_path": "~/fixture/config/skills/qa-municipal-other-origin",
+								"content_state": "present",
+								"form": "document",
+								"auto_will_apply": false,
+								"auto_will_push": false,
+								"baseline_state": "adopt-keep-local",
+								"remote_revision": "\"qa-other-origin-1\"",
+								"pull": {
+									"state": "idle",
+									"classification": "local-only",
+									"enabled": false,
+									"last_checked_at": "2026-11-03T09:09:35Z",
+									"last_success_at": null,
+									"attempts": 0,
+									"next_retry_at": null,
+									"error_class": null,
+									"error_subclass": null,
+									"safe_message": null,
+									"operation_id": null,
+									"model_used": null,
+									"summary": {},
+									"backup_receipt": null
+								},
+								"push": {
+									"state": "idle",
+									"classification": "local-only",
+									"enabled": false,
+									"last_checked_at": "2026-11-03T09:09:35Z",
+									"last_success_at": null,
+									"attempts": 0,
+									"next_retry_at": null,
+									"error_class": null,
+									"error_subclass": null,
+									"safe_message": null,
+									"operation_id": null,
+									"model_used": null,
+									"summary": {},
+									"backup_receipt": null
+								}
+							}
+						],
+						"unresolved": []
+					}
+				}
+			}
+		},
+		{
+			"name": "needs-choice/None",
+			"core_head": "bb4a930b184f188b6076c030472e51735e2be986",
+			"request": {
+				"request_id": "99841b57-3104-41c1-b53a-8147590633f3",
+				"hub_id": "qa-different",
+				"hub_source": "https://api.radienthq.com/v1",
+				"visibility": "public",
+				"tenant_id": null,
+				"local_alias": "qa-municipal-different",
+				"subscribe": true,
+				"auto_push": false,
+				"dry_run": true,
+				"adoption_strategy": "merge",
+				"allow_llm": false
+			},
+			"http_status": 200,
+			"response": {
+				"status": 200,
+				"message": "Desktop session result.",
+				"result": {
+					"reports": [
+						{
+							"kind": "skill",
+							"local_id": "skl-ddfd55ad28847b2b6445325e912ee023",
+							"name": "qa-municipal-different",
+							"hub_id": "qa-different",
+							"outcome": "needs-review",
+							"applied": false
+						}
+					],
+					"adoption": {
+						"alias": "qa-municipal-different",
+						"state": "needs-choice",
+						"strategy": null,
+						"local_tree_hash": "290c2ae341d2c3e04cc17a538a603d54db274a06b5b057aef70f25eccf026557",
+						"proposed_fingerprint": null,
+						"files": [
+							{
+								"path": "SKILL.md",
+								"action": "needs-choice",
+								"local_path": null,
+								"reason": "model merge disabled",
+								"proposed": null,
+								"diff_vs_local": "--- local/SKILL.md\n+++ /dev/null\n@@ -1,11 +0,0 @@\n----\n-name: qa-municipal-different\n-description: Isolated synthetic municipal procurement guidance.\n----\n-\n-# Municipal procurement\n-\n-Read `requirements.md` and `rubric.md`.\n-\n-## Quality\n-Verify every municipal procurement deadline against the official notice. Preserve the unique local clerk sign-off before the pilot.\n",
+								"diff_vs_hub": "--- hub/SKILL.md\n+++ /dev/null\n@@ -1,11 +0,0 @@\n----\n-name: qa-municipal-different\n-description: Isolated synthetic municipal procurement guidance.\n----\n-\n-# Municipal procurement\n-\n-Read `references/requirements.md` and `references/rubric.md`.\n-\n-## Quality\n-Verify every municipal procurement deadline against the official notice. Preserve the named Hub audit evidence before the pilot.\n"
+							},
+							{
+								"path": "references/requirements.md",
+								"action": "relocated",
+								"local_path": "requirements.md",
+								"reason": "",
+								"proposed": "# Requirements\nKeep a dated procurement notice and named approval owner.\n",
+								"diff_vs_local": "",
+								"diff_vs_hub": ""
+							},
+							{
+								"path": "references/rubric.md",
+								"action": "relocated",
+								"local_path": "rubric.md",
+								"reason": "",
+								"proposed": "# Rubric\nScore official evidence, not inferred eligibility.\n",
+								"diff_vs_local": "",
+								"diff_vs_hub": ""
+							},
+							{
+								"path": "private.bin",
+								"action": "carried",
+								"local_path": "private.bin",
+								"reason": "path not carried by hub skills (skill files must be SKILL.md or references/scripts/assets text)",
+								"proposed": null,
+								"diff_vs_local": "",
+								"diff_vs_hub": ""
+							}
+						],
+						"set_aside": [],
+						"unresolved": ["SKILL.md"],
+						"description_source": "hub",
+						"model": null,
+						"failure_class": null,
+						"warnings": [],
+						"local_files": [
+							{
+								"path": "SKILL.md",
+								"sha256": "7ae599a158cd930316306e39e3c19fe25d3e876f3abee5d1702cbb88a0089b6b",
+								"bytes": 311,
+								"mode": 420
+							},
+							{
+								"path": "private.bin",
+								"sha256": "c38eff4026793860e653af0e282041ad97d37b3f1aace1fd1cf83a150734597e",
+								"bytes": 23,
+								"mode": 420
+							},
+							{
+								"path": "requirements.md",
+								"sha256": "2c727ac5062ebd31a11fc9ae44924a7b49c94ed5b46820748548a9fe627e9abe",
+								"bytes": 73,
+								"mode": 420
+							},
+							{
+								"path": "rubric.md",
+								"sha256": "2fcc0bd38d119c2a0087063bf17e4f0a5b9259d877aaeb5a29e96c3ffe94fe8a",
+								"bytes": 60,
+								"mode": 420
+							}
+						]
+					},
+					"adoption_receipt": "yFlPQPfVUfzG-hPT2cPfOgKaGkO1OlsW",
+					"snapshot": {
+						"path": "~/fixture/config/hub/backups/skill-adopt-qa-municipal-different-bf360d7baa2c491cad1f6f32af0612f5",
+						"tree_hash": "290c2ae341d2c3e04cc17a538a603d54db274a06b5b057aef70f25eccf026557",
+						"manifest": [
+							{
+								"path": "SKILL.md",
+								"sha256": "7ae599a158cd930316306e39e3c19fe25d3e876f3abee5d1702cbb88a0089b6b",
+								"bytes": 311,
+								"mode": 420
+							},
+							{
+								"path": "private.bin",
+								"sha256": "c38eff4026793860e653af0e282041ad97d37b3f1aace1fd1cf83a150734597e",
+								"bytes": 23,
+								"mode": 420
+							},
+							{
+								"path": "requirements.md",
+								"sha256": "2c727ac5062ebd31a11fc9ae44924a7b49c94ed5b46820748548a9fe627e9abe",
+								"bytes": 73,
+								"mode": 420
+							},
+							{
+								"path": "rubric.md",
+								"sha256": "2fcc0bd38d119c2a0087063bf17e4f0a5b9259d877aaeb5a29e96c3ffe94fe8a",
+								"bytes": 60,
+								"mode": 420
+							}
+						]
+					},
+					"confirmation_required": true,
+					"dry_run": true,
+					"form": "document",
+					"link": null,
+					"links": {
+						"generated_at": "2026-11-03T09:14:25Z",
+						"capability": "hub_links:1",
+						"links": [
+							{
+								"bundle_confirmation": null,
+								"link_id": "c62ed649649a35c154184335df39d738ef28f78c266ad1b32b7c73bd89ee5af0",
+								"kind": "skill",
+								"local_id": "skl-cafeb2dba41e99139741d2e6a3437292",
+								"name": "qa-municipal-other-origin",
+								"hub_id": "qa-seed-owner",
+								"hub_source": "https://api.radienthq.com/v1",
+								"visibility": "public",
+								"tenant_id": null,
+								"tenant_name": null,
+								"policy": {
+									"subscribe": false,
+									"auto_push": false,
+									"revision": "9a593bdc364e128391e9348045ad8e1ee10df3e5c8eb4958b6983327145652bd"
+								},
+								"eligibility": {
+									"can_auto_push": false,
+									"reason": "unsupported-precondition"
+								},
+								"local_path": "~/fixture/config/skills/qa-municipal-other-origin",
+								"content_state": "present",
+								"form": "document",
+								"auto_will_apply": false,
+								"auto_will_push": false,
+								"baseline_state": "adopt-keep-local",
+								"remote_revision": "\"qa-other-origin-1\"",
+								"pull": {
+									"state": "idle",
+									"classification": "local-only",
+									"enabled": false,
+									"last_checked_at": "2026-11-03T09:09:35Z",
+									"last_success_at": null,
+									"attempts": 0,
+									"next_retry_at": null,
+									"error_class": null,
+									"error_subclass": null,
+									"safe_message": null,
+									"operation_id": null,
+									"model_used": null,
+									"summary": {},
+									"backup_receipt": null
+								},
+								"push": {
+									"state": "idle",
+									"classification": "local-only",
+									"enabled": false,
+									"last_checked_at": "2026-11-03T09:09:35Z",
+									"last_success_at": null,
+									"attempts": 0,
+									"next_retry_at": null,
+									"error_class": null,
+									"error_subclass": null,
+									"safe_message": null,
+									"operation_id": null,
+									"model_used": null,
+									"summary": {},
+									"backup_receipt": null
+								}
+							}
+						],
+						"unresolved": []
+					}
+				}
+			}
+		},
+		{
+			"name": "ready/merge",
+			"core_head": "bb4a930b184f188b6076c030472e51735e2be986",
+			"request": {
+				"request_id": "951c18d5-74bd-4dc4-a105-01f89f514f2b",
+				"hub_id": "qa-different",
+				"hub_source": "https://api.radienthq.com/v1",
+				"visibility": "public",
+				"tenant_id": null,
+				"local_alias": "qa-municipal-different",
+				"subscribe": true,
+				"auto_push": false,
+				"dry_run": true,
+				"adoption_strategy": "merge",
+				"allow_llm": true
+			},
+			"http_status": 200,
+			"response": {
+				"status": 200,
+				"message": "Desktop session result.",
+				"result": {
+					"reports": [
+						{
+							"kind": "skill",
+							"local_id": "skl-ddfd55ad28847b2b6445325e912ee023",
+							"name": "qa-municipal-different",
+							"hub_id": "qa-different",
+							"outcome": "needs-review",
+							"applied": false
+						}
+					],
+					"adoption": {
+						"alias": "qa-municipal-different",
+						"state": "ready",
+						"strategy": "merge",
+						"local_tree_hash": "290c2ae341d2c3e04cc17a538a603d54db274a06b5b057aef70f25eccf026557",
+						"proposed_fingerprint": "3d1626c38b61d801da46047364cc0ccad1aaa51ed8f6295807b2df76a90e7a1d",
+						"files": [
+							{
+								"path": "SKILL.md",
+								"action": "merged",
+								"local_path": null,
+								"reason": "",
+								"proposed": "---\nname: qa-municipal-different\ndescription: Isolated synthetic municipal procurement guidance.\n---\n\n# Municipal procurement\n\nRead `references/requirements.md` and `references/rubric.md`.\n\n## Quality\nVerify every municipal procurement deadline against the official notice. Preserve the unique local clerk sign-off before the pilot.\n\nPreserve the named Hub audit evidence before the pilot.",
+								"diff_vs_local": "--- local/SKILL.md\n+++ proposed/SKILL.md\n@@ -5,7 +5,9 @@\n \n # Municipal procurement\n \n-Read `requirements.md` and `rubric.md`.\n+Read `references/requirements.md` and `references/rubric.md`.\n \n ## Quality\n Verify every municipal procurement deadline against the official notice. Preserve the unique local clerk sign-off before the pilot.\n+\n+Preserve the named Hub audit evidence before the pilot.\n",
+								"diff_vs_hub": "--- hub/SKILL.md\n+++ proposed/SKILL.md\n@@ -8,4 +8,6 @@\n Read `references/requirements.md` and `references/rubric.md`.\n \n ## Quality\n-Verify every municipal procurement deadline against the official notice. Preserve the named Hub audit evidence before the pilot.\n+Verify every municipal procurement deadline against the official notice. Preserve the unique local clerk sign-off before the pilot.\n+\n+Preserve the named Hub audit evidence before the pilot.\n",
+								"kept": {
+									"local": [],
+									"hub": [],
+									"combined": ["(top)"],
+									"unresolved": []
+								},
+								"engine": {
+									"mode": "llm",
+									"model": "qa/faithful-resolver",
+									"failure_class": null
+								}
+							},
+							{
+								"path": "references/requirements.md",
+								"action": "relocated",
+								"local_path": "requirements.md",
+								"reason": "",
+								"proposed": "# Requirements\nKeep a dated procurement notice and named approval owner.\n",
+								"diff_vs_local": "",
+								"diff_vs_hub": ""
+							},
+							{
+								"path": "references/rubric.md",
+								"action": "relocated",
+								"local_path": "rubric.md",
+								"reason": "",
+								"proposed": "# Rubric\nScore official evidence, not inferred eligibility.\n",
+								"diff_vs_local": "",
+								"diff_vs_hub": ""
+							},
+							{
+								"path": "private.bin",
+								"action": "carried",
+								"local_path": "private.bin",
+								"reason": "path not carried by hub skills (skill files must be SKILL.md or references/scripts/assets text)",
+								"proposed": null,
+								"diff_vs_local": "",
+								"diff_vs_hub": ""
+							}
+						],
+						"set_aside": [],
+						"unresolved": [],
+						"description_source": "hub",
+						"model": "qa/faithful-resolver",
+						"failure_class": null,
+						"warnings": [],
+						"local_files": [
+							{
+								"path": "SKILL.md",
+								"sha256": "7ae599a158cd930316306e39e3c19fe25d3e876f3abee5d1702cbb88a0089b6b",
+								"bytes": 311,
+								"mode": 420
+							},
+							{
+								"path": "private.bin",
+								"sha256": "c38eff4026793860e653af0e282041ad97d37b3f1aace1fd1cf83a150734597e",
+								"bytes": 23,
+								"mode": 420
+							},
+							{
+								"path": "requirements.md",
+								"sha256": "2c727ac5062ebd31a11fc9ae44924a7b49c94ed5b46820748548a9fe627e9abe",
+								"bytes": 73,
+								"mode": 420
+							},
+							{
+								"path": "rubric.md",
+								"sha256": "2fcc0bd38d119c2a0087063bf17e4f0a5b9259d877aaeb5a29e96c3ffe94fe8a",
+								"bytes": 60,
+								"mode": 420
+							}
+						]
+					},
+					"adoption_receipt": "xiv0hD47WRn54Za8fChX2_BgVUeJW4JC",
+					"snapshot": {
+						"path": "~/fixture/config/hub/backups/skill-adopt-qa-municipal-different-f70e05471e7e448196e2c4d522ec4308",
+						"tree_hash": "290c2ae341d2c3e04cc17a538a603d54db274a06b5b057aef70f25eccf026557",
+						"manifest": [
+							{
+								"path": "SKILL.md",
+								"sha256": "7ae599a158cd930316306e39e3c19fe25d3e876f3abee5d1702cbb88a0089b6b",
+								"bytes": 311,
+								"mode": 420
+							},
+							{
+								"path": "private.bin",
+								"sha256": "c38eff4026793860e653af0e282041ad97d37b3f1aace1fd1cf83a150734597e",
+								"bytes": 23,
+								"mode": 420
+							},
+							{
+								"path": "requirements.md",
+								"sha256": "2c727ac5062ebd31a11fc9ae44924a7b49c94ed5b46820748548a9fe627e9abe",
+								"bytes": 73,
+								"mode": 420
+							},
+							{
+								"path": "rubric.md",
+								"sha256": "2fcc0bd38d119c2a0087063bf17e4f0a5b9259d877aaeb5a29e96c3ffe94fe8a",
+								"bytes": 60,
+								"mode": 420
+							}
+						]
+					},
+					"confirmation_required": true,
+					"dry_run": true,
+					"form": "document",
+					"link": null,
+					"links": {
+						"generated_at": "2026-11-03T09:14:25Z",
+						"capability": "hub_links:1",
+						"links": [
+							{
+								"bundle_confirmation": null,
+								"link_id": "c62ed649649a35c154184335df39d738ef28f78c266ad1b32b7c73bd89ee5af0",
+								"kind": "skill",
+								"local_id": "skl-cafeb2dba41e99139741d2e6a3437292",
+								"name": "qa-municipal-other-origin",
+								"hub_id": "qa-seed-owner",
+								"hub_source": "https://api.radienthq.com/v1",
+								"visibility": "public",
+								"tenant_id": null,
+								"tenant_name": null,
+								"policy": {
+									"subscribe": false,
+									"auto_push": false,
+									"revision": "9a593bdc364e128391e9348045ad8e1ee10df3e5c8eb4958b6983327145652bd"
+								},
+								"eligibility": {
+									"can_auto_push": false,
+									"reason": "unsupported-precondition"
+								},
+								"local_path": "~/fixture/config/skills/qa-municipal-other-origin",
+								"content_state": "present",
+								"form": "document",
+								"auto_will_apply": false,
+								"auto_will_push": false,
+								"baseline_state": "adopt-keep-local",
+								"remote_revision": "\"qa-other-origin-1\"",
+								"pull": {
+									"state": "idle",
+									"classification": "local-only",
+									"enabled": false,
+									"last_checked_at": "2026-11-03T09:09:35Z",
+									"last_success_at": null,
+									"attempts": 0,
+									"next_retry_at": null,
+									"error_class": null,
+									"error_subclass": null,
+									"safe_message": null,
+									"operation_id": null,
+									"model_used": null,
+									"summary": {},
+									"backup_receipt": null
+								},
+								"push": {
+									"state": "idle",
+									"classification": "local-only",
+									"enabled": false,
+									"last_checked_at": "2026-11-03T09:09:35Z",
+									"last_success_at": null,
+									"attempts": 0,
+									"next_retry_at": null,
+									"error_class": null,
+									"error_subclass": null,
+									"safe_message": null,
+									"operation_id": null,
+									"model_used": null,
+									"summary": {},
+									"backup_receipt": null
+								}
+							}
+						],
+						"unresolved": []
+					}
+				}
+			}
+		},
+		{
+			"name": "ready/keep-local",
+			"core_head": "bb4a930b184f188b6076c030472e51735e2be986",
+			"request": {
+				"request_id": "2e99e4ae-1215-4eac-9e88-2178dd9781fb",
+				"hub_id": "qa-different",
+				"hub_source": "https://api.radienthq.com/v1",
+				"visibility": "public",
+				"tenant_id": null,
+				"local_alias": "qa-municipal-different",
+				"subscribe": true,
+				"auto_push": false,
+				"dry_run": true,
+				"adoption_strategy": "keep-local",
+				"allow_llm": false
+			},
+			"http_status": 200,
+			"response": {
+				"status": 200,
+				"message": "Desktop session result.",
+				"result": {
+					"reports": [
+						{
+							"kind": "skill",
+							"local_id": "skl-ddfd55ad28847b2b6445325e912ee023",
+							"name": "qa-municipal-different",
+							"hub_id": "qa-different",
+							"outcome": "needs-review",
+							"applied": false
+						}
+					],
+					"adoption": {
+						"alias": "qa-municipal-different",
+						"state": "ready",
+						"strategy": "keep-local",
+						"local_tree_hash": "290c2ae341d2c3e04cc17a538a603d54db274a06b5b057aef70f25eccf026557",
+						"proposed_fingerprint": "095c38e160a2a56fb2c979f7c06c4982e9ea99e1d8612034eba96dc2efc95f07",
+						"files": [
+							{
+								"path": "SKILL.md",
+								"action": "kept-local",
+								"local_path": "SKILL.md",
+								"reason": "",
+								"proposed": "---\nname: qa-municipal-different\ndescription: Isolated synthetic municipal procurement guidance.\n---\n\n# Municipal procurement\n\nRead `requirements.md` and `rubric.md`.\n\n## Quality\nVerify every municipal procurement deadline against the official notice. Preserve the unique local clerk sign-off before the pilot.\n",
+								"diff_vs_local": "",
+								"diff_vs_hub": "--- hub/SKILL.md\n+++ proposed/SKILL.md\n@@ -5,7 +5,7 @@\n \n # Municipal procurement\n \n-Read `references/requirements.md` and `references/rubric.md`.\n+Read `requirements.md` and `rubric.md`.\n \n ## Quality\n-Verify every municipal procurement deadline against the official notice. Preserve the named Hub audit evidence before the pilot.\n+Verify every municipal procurement deadline against the official notice. Preserve the unique local clerk sign-off before the pilot.\n"
+							},
+							{
+								"path": "private.bin",
+								"action": "carried",
+								"local_path": "private.bin",
+								"reason": "",
+								"proposed": null,
+								"diff_vs_local": "",
+								"diff_vs_hub": ""
+							},
+							{
+								"path": "requirements.md",
+								"action": "kept-local",
+								"local_path": "requirements.md",
+								"reason": "",
+								"proposed": "# Requirements\nKeep a dated procurement notice and named approval owner.\n",
+								"diff_vs_local": "",
+								"diff_vs_hub": "--- /dev/null\n+++ proposed/requirements.md\n@@ -0,0 +1,2 @@\n+# Requirements\n+Keep a dated procurement notice and named approval owner.\n"
+							},
+							{
+								"path": "rubric.md",
+								"action": "kept-local",
+								"local_path": "rubric.md",
+								"reason": "",
+								"proposed": "# Rubric\nScore official evidence, not inferred eligibility.\n",
+								"diff_vs_local": "",
+								"diff_vs_hub": "--- /dev/null\n+++ proposed/rubric.md\n@@ -0,0 +1,2 @@\n+# Rubric\n+Score official evidence, not inferred eligibility.\n"
+							},
+							{
+								"path": "references/requirements.md",
+								"action": "not-installed",
+								"local_path": null,
+								"reason": "keep-local leaves the original folder unchanged",
+								"proposed": null,
+								"diff_vs_local": "",
+								"diff_vs_hub": "--- hub/references/requirements.md\n+++ /dev/null\n@@ -1,2 +0,0 @@\n-# Requirements\n-Keep a dated procurement notice and named approval owner.\n"
+							},
+							{
+								"path": "references/rubric.md",
+								"action": "not-installed",
+								"local_path": null,
+								"reason": "keep-local leaves the original folder unchanged",
+								"proposed": null,
+								"diff_vs_local": "",
+								"diff_vs_hub": "--- hub/references/rubric.md\n+++ /dev/null\n@@ -1,2 +0,0 @@\n-# Rubric\n-Score official evidence, not inferred eligibility.\n"
+							}
+						],
+						"set_aside": [],
+						"unresolved": [],
+						"description_source": "keep-local",
+						"model": null,
+						"failure_class": null,
+						"warnings": [],
+						"local_files": [
+							{
+								"path": "SKILL.md",
+								"sha256": "7ae599a158cd930316306e39e3c19fe25d3e876f3abee5d1702cbb88a0089b6b",
+								"bytes": 311,
+								"mode": 420
+							},
+							{
+								"path": "private.bin",
+								"sha256": "c38eff4026793860e653af0e282041ad97d37b3f1aace1fd1cf83a150734597e",
+								"bytes": 23,
+								"mode": 420
+							},
+							{
+								"path": "requirements.md",
+								"sha256": "2c727ac5062ebd31a11fc9ae44924a7b49c94ed5b46820748548a9fe627e9abe",
+								"bytes": 73,
+								"mode": 420
+							},
+							{
+								"path": "rubric.md",
+								"sha256": "2fcc0bd38d119c2a0087063bf17e4f0a5b9259d877aaeb5a29e96c3ffe94fe8a",
+								"bytes": 60,
+								"mode": 420
+							}
+						]
+					},
+					"adoption_receipt": "FsSuaQ1tqNgu7or-solWBhG2W_hccBS8",
+					"snapshot": {
+						"path": "~/fixture/config/hub/backups/skill-adopt-qa-municipal-different-2f42e75d3cc3485fb166830fdfd5e83d",
+						"tree_hash": "290c2ae341d2c3e04cc17a538a603d54db274a06b5b057aef70f25eccf026557",
+						"manifest": [
+							{
+								"path": "SKILL.md",
+								"sha256": "7ae599a158cd930316306e39e3c19fe25d3e876f3abee5d1702cbb88a0089b6b",
+								"bytes": 311,
+								"mode": 420
+							},
+							{
+								"path": "private.bin",
+								"sha256": "c38eff4026793860e653af0e282041ad97d37b3f1aace1fd1cf83a150734597e",
+								"bytes": 23,
+								"mode": 420
+							},
+							{
+								"path": "requirements.md",
+								"sha256": "2c727ac5062ebd31a11fc9ae44924a7b49c94ed5b46820748548a9fe627e9abe",
+								"bytes": 73,
+								"mode": 420
+							},
+							{
+								"path": "rubric.md",
+								"sha256": "2fcc0bd38d119c2a0087063bf17e4f0a5b9259d877aaeb5a29e96c3ffe94fe8a",
+								"bytes": 60,
+								"mode": 420
+							}
+						]
+					},
+					"confirmation_required": true,
+					"dry_run": true,
+					"form": "document",
+					"link": null,
+					"links": {
+						"generated_at": "2026-11-03T09:14:25Z",
+						"capability": "hub_links:1",
+						"links": [
+							{
+								"bundle_confirmation": null,
+								"link_id": "c62ed649649a35c154184335df39d738ef28f78c266ad1b32b7c73bd89ee5af0",
+								"kind": "skill",
+								"local_id": "skl-cafeb2dba41e99139741d2e6a3437292",
+								"name": "qa-municipal-other-origin",
+								"hub_id": "qa-seed-owner",
+								"hub_source": "https://api.radienthq.com/v1",
+								"visibility": "public",
+								"tenant_id": null,
+								"tenant_name": null,
+								"policy": {
+									"subscribe": false,
+									"auto_push": false,
+									"revision": "9a593bdc364e128391e9348045ad8e1ee10df3e5c8eb4958b6983327145652bd"
+								},
+								"eligibility": {
+									"can_auto_push": false,
+									"reason": "unsupported-precondition"
+								},
+								"local_path": "~/fixture/config/skills/qa-municipal-other-origin",
+								"content_state": "present",
+								"form": "document",
+								"auto_will_apply": false,
+								"auto_will_push": false,
+								"baseline_state": "adopt-keep-local",
+								"remote_revision": "\"qa-other-origin-1\"",
+								"pull": {
+									"state": "idle",
+									"classification": "local-only",
+									"enabled": false,
+									"last_checked_at": "2026-11-03T09:09:35Z",
+									"last_success_at": null,
+									"attempts": 0,
+									"next_retry_at": null,
+									"error_class": null,
+									"error_subclass": null,
+									"safe_message": null,
+									"operation_id": null,
+									"model_used": null,
+									"summary": {},
+									"backup_receipt": null
+								},
+								"push": {
+									"state": "idle",
+									"classification": "local-only",
+									"enabled": false,
+									"last_checked_at": "2026-11-03T09:09:35Z",
+									"last_success_at": null,
+									"attempts": 0,
+									"next_retry_at": null,
+									"error_class": null,
+									"error_subclass": null,
+									"safe_message": null,
+									"operation_id": null,
+									"model_used": null,
+									"summary": {},
+									"backup_receipt": null
+								}
+							}
+						],
+						"unresolved": []
+					}
+				}
+			}
+		},
+		{
+			"name": "ready/take-hub",
+			"core_head": "bb4a930b184f188b6076c030472e51735e2be986",
+			"request": {
+				"request_id": "c9b785cc-efce-4742-baa4-523409133119",
+				"hub_id": "qa-different",
+				"hub_source": "https://api.radienthq.com/v1",
+				"visibility": "public",
+				"tenant_id": null,
+				"local_alias": "qa-municipal-different",
+				"subscribe": true,
+				"auto_push": false,
+				"dry_run": true,
+				"adoption_strategy": "take-hub",
+				"allow_llm": false
+			},
+			"http_status": 200,
+			"response": {
+				"status": 200,
+				"message": "Desktop session result.",
+				"result": {
+					"reports": [
+						{
+							"kind": "skill",
+							"local_id": "skl-ddfd55ad28847b2b6445325e912ee023",
+							"name": "qa-municipal-different",
+							"hub_id": "qa-different",
+							"outcome": "needs-review",
+							"applied": false
+						}
+					],
+					"adoption": {
+						"alias": "qa-municipal-different",
+						"state": "ready",
+						"strategy": "take-hub",
+						"local_tree_hash": "290c2ae341d2c3e04cc17a538a603d54db274a06b5b057aef70f25eccf026557",
+						"proposed_fingerprint": "8815c83d14a1eba61d3df5165806e8ba11ffaae878e4f83dd8a6b3cfa0f129f5",
+						"files": [
+							{
+								"path": "SKILL.md",
+								"action": "taken-hub",
+								"local_path": null,
+								"reason": "",
+								"proposed": "---\nname: qa-municipal-different\ndescription: Isolated synthetic municipal procurement guidance.\n---\n\n# Municipal procurement\n\nRead `references/requirements.md` and `references/rubric.md`.\n\n## Quality\nVerify every municipal procurement deadline against the official notice. Preserve the named Hub audit evidence before the pilot.\n",
+								"diff_vs_local": "--- local/SKILL.md\n+++ proposed/SKILL.md\n@@ -5,7 +5,7 @@\n \n # Municipal procurement\n \n-Read `requirements.md` and `rubric.md`.\n+Read `references/requirements.md` and `references/rubric.md`.\n \n ## Quality\n-Verify every municipal procurement deadline against the official notice. Preserve the unique local clerk sign-off before the pilot.\n+Verify every municipal procurement deadline against the official notice. Preserve the named Hub audit evidence before the pilot.\n",
+								"diff_vs_hub": ""
+							},
+							{
+								"path": "references/requirements.md",
+								"action": "relocated",
+								"local_path": "requirements.md",
+								"reason": "",
+								"proposed": "# Requirements\nKeep a dated procurement notice and named approval owner.\n",
+								"diff_vs_local": "",
+								"diff_vs_hub": ""
+							},
+							{
+								"path": "references/rubric.md",
+								"action": "relocated",
+								"local_path": "rubric.md",
+								"reason": "",
+								"proposed": "# Rubric\nScore official evidence, not inferred eligibility.\n",
+								"diff_vs_local": "",
+								"diff_vs_hub": ""
+							},
+							{
+								"path": "private.bin",
+								"action": "set-aside",
+								"local_path": "private.bin",
+								"reason": "path not carried by hub skills (skill files must be SKILL.md or references/scripts/assets text)",
+								"proposed": null,
+								"diff_vs_local": "",
+								"diff_vs_hub": ""
+							}
+						],
+						"set_aside": ["private.bin"],
+						"unresolved": [],
+						"description_source": "take-hub",
+						"model": null,
+						"failure_class": null,
+						"warnings": [],
+						"local_files": [
+							{
+								"path": "SKILL.md",
+								"sha256": "7ae599a158cd930316306e39e3c19fe25d3e876f3abee5d1702cbb88a0089b6b",
+								"bytes": 311,
+								"mode": 420
+							},
+							{
+								"path": "private.bin",
+								"sha256": "c38eff4026793860e653af0e282041ad97d37b3f1aace1fd1cf83a150734597e",
+								"bytes": 23,
+								"mode": 420
+							},
+							{
+								"path": "requirements.md",
+								"sha256": "2c727ac5062ebd31a11fc9ae44924a7b49c94ed5b46820748548a9fe627e9abe",
+								"bytes": 73,
+								"mode": 420
+							},
+							{
+								"path": "rubric.md",
+								"sha256": "2fcc0bd38d119c2a0087063bf17e4f0a5b9259d877aaeb5a29e96c3ffe94fe8a",
+								"bytes": 60,
+								"mode": 420
+							}
+						]
+					},
+					"adoption_receipt": "SivLwt_psxV8a247JNU0r1J1JuYfSjNz",
+					"snapshot": {
+						"path": "~/fixture/config/hub/backups/skill-adopt-qa-municipal-different-4d43a35e97644c0299b97bb042bef1f9",
+						"tree_hash": "290c2ae341d2c3e04cc17a538a603d54db274a06b5b057aef70f25eccf026557",
+						"manifest": [
+							{
+								"path": "SKILL.md",
+								"sha256": "7ae599a158cd930316306e39e3c19fe25d3e876f3abee5d1702cbb88a0089b6b",
+								"bytes": 311,
+								"mode": 420
+							},
+							{
+								"path": "private.bin",
+								"sha256": "c38eff4026793860e653af0e282041ad97d37b3f1aace1fd1cf83a150734597e",
+								"bytes": 23,
+								"mode": 420
+							},
+							{
+								"path": "requirements.md",
+								"sha256": "2c727ac5062ebd31a11fc9ae44924a7b49c94ed5b46820748548a9fe627e9abe",
+								"bytes": 73,
+								"mode": 420
+							},
+							{
+								"path": "rubric.md",
+								"sha256": "2fcc0bd38d119c2a0087063bf17e4f0a5b9259d877aaeb5a29e96c3ffe94fe8a",
+								"bytes": 60,
+								"mode": 420
+							}
+						]
+					},
+					"confirmation_required": true,
+					"dry_run": true,
+					"form": "document",
+					"link": null,
+					"links": {
+						"generated_at": "2026-11-03T09:14:25Z",
+						"capability": "hub_links:1",
+						"links": [
+							{
+								"bundle_confirmation": null,
+								"link_id": "c62ed649649a35c154184335df39d738ef28f78c266ad1b32b7c73bd89ee5af0",
+								"kind": "skill",
+								"local_id": "skl-cafeb2dba41e99139741d2e6a3437292",
+								"name": "qa-municipal-other-origin",
+								"hub_id": "qa-seed-owner",
+								"hub_source": "https://api.radienthq.com/v1",
+								"visibility": "public",
+								"tenant_id": null,
+								"tenant_name": null,
+								"policy": {
+									"subscribe": false,
+									"auto_push": false,
+									"revision": "9a593bdc364e128391e9348045ad8e1ee10df3e5c8eb4958b6983327145652bd"
+								},
+								"eligibility": {
+									"can_auto_push": false,
+									"reason": "unsupported-precondition"
+								},
+								"local_path": "~/fixture/config/skills/qa-municipal-other-origin",
+								"content_state": "present",
+								"form": "document",
+								"auto_will_apply": false,
+								"auto_will_push": false,
+								"baseline_state": "adopt-keep-local",
+								"remote_revision": "\"qa-other-origin-1\"",
+								"pull": {
+									"state": "idle",
+									"classification": "local-only",
+									"enabled": false,
+									"last_checked_at": "2026-11-03T09:09:35Z",
+									"last_success_at": null,
+									"attempts": 0,
+									"next_retry_at": null,
+									"error_class": null,
+									"error_subclass": null,
+									"safe_message": null,
+									"operation_id": null,
+									"model_used": null,
+									"summary": {},
+									"backup_receipt": null
+								},
+								"push": {
+									"state": "idle",
+									"classification": "local-only",
+									"enabled": false,
+									"last_checked_at": "2026-11-03T09:09:35Z",
+									"last_success_at": null,
+									"attempts": 0,
+									"next_retry_at": null,
+									"error_class": null,
+									"error_subclass": null,
+									"safe_message": null,
+									"operation_id": null,
+									"model_used": null,
+									"summary": {},
+									"backup_receipt": null
+								}
+							}
+						],
+						"unresolved": []
+					}
+				}
+			}
+		},
+		{
+			"name": "error/alias-occupied",
+			"core_head": "bb4a930b184f188b6076c030472e51735e2be986",
+			"request": {
+				"request_id": "f5bb0282-8047-4c9e-bdac-c04266a05e83",
+				"hub_id": "qa-different",
+				"hub_source": "https://api.radienthq.com/v1",
+				"visibility": "public",
+				"tenant_id": null,
+				"local_alias": "qa-municipal-different"
+			},
+			"http_status": 422,
+			"response": {
+				"detail": {
+					"code": "alias-occupied",
+					"message": "This local skill needs a merge preview before it can be linked. Run `lop skills pull` with the same skill ID, scope and options plus `--dry-run`. Review both diffs, then repeat those options with `--adopt-receipt <receipt> --yes` to confirm."
+				}
+			}
+		}
+	],
+	"capture_provenance": {
+		"core_head": "bb4a930b184f188b6076c030472e51735e2be986",
+		"source_artifact": "actual-core-adoption-contract-table.json",
+		"source_artifact_sha256": "26013816cd80c2d4990067776a2a39e2b4c4480c24b7efa89b27623236deb903",
+		"source_kind": "QA actual loopback FastAPI HTTP captures with real core service/merge/storage and synthetic external Hub + qa/faithful-resolver",
+		"transformation": {
+			"fields": [
+				"cases[*].response.result.snapshot.path",
+				"cases[*].response.result.links.links[*].local_path"
+			],
+			"rule": "Replace only the isolated profile root before /config/ with ~/fixture to remove personal machine paths; preserve suffix and all structural fields, guidance, request/receipt values. JSON whitespace reserialized.",
+			"replacements": 10
+		},
+		"capture_owner_session": "bb2af2cc91da"
+	}
+}

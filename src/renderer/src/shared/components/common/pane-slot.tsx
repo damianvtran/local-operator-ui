@@ -4,27 +4,34 @@ import { PanelEdge } from "./panel-edge";
 
 type PaneSlotProps = HTMLAttributes<HTMLDivElement> & {
 	/**
-	 * The pane's width in pixels, from the store that owns the drag.
+	 * The pane's width in pixels: the store's answer for a dragged pane, or
+	 * `askPanePresentation`'s for the ask sheet.
 	 *
-	 * OMITTED MEANS "THE BOX THIS PANE IS PINNED TO", and that is a different claim
-	 * from a measured number rather than a default for one. A DOCKED pane has a
-	 * width a person chose, so only the store knows it. An OVERLAY pane has no
-	 * width of its own: it covers the row it is pinned to (`absolute inset-0`), and
-	 * that row's width is a fact only the browser has after the row has been laid
-	 * out - after a zoom, a sidebar drag or a rail mount settles.
+	 * WHICH NUMBER A PANE DRAWS, and the two answers are different claims rather
+	 * than a default for one.
 	 *
-	 * MEASURED, and it cost a design round (D8). Passing the measured row width
-	 * into an `inset-0` box is over-constrained - the direction decides which inset
-	 * is ignored, so in RTL the box keeps its trailing inset and a WIDER number
-	 * pushes its leading edge past the containing block. The number is one reflow
-	 * old for a frame or two after 200 % zoom (measured: 956 px of row state in a
-	 * 456 px row while the width transition ran), and in those frames the pane is
-	 * wider than the row it is clipped by: it gives the `overflow-hidden` row a
-	 * horizontal scroll range it does not have once settled, and any programmatic
-	 * scroll of a control inside that row (a `scrollIntoView`, a focus scroll) then
-	 * consumes it and drags the pinned pane with it - 24 px in RTL, off the window.
-	 * Left unstated, the box resolves to its own insets at paint time, which is the
-	 * only width an overlay can be correct at.
+	 *  - A DOCKED pane (and, since 2026-11-03, the ask sheet) passes the width it
+	 *    draws: a number a person chose or a presentation function answered
+	 *    (`askPanePresentation`, `chat-sidebar-layout.ts`). The sheet also carries
+	 *    `max-w-full`, so a row number one reflow old cannot overrun the row it is
+	 *    pinned to.
+	 *
+	 *  - AN OVERLAY PANE THAT OWNS NO WIDTH omits it and the box resolves against
+	 *    the row it is pinned to (`absolute inset-0`). MEASURED, and it cost a
+	 *    design round (D8): passing the measured row width into an `inset-0` box is
+	 *    over-constrained - the direction decides which inset is ignored, so in RTL
+	 *    the box keeps its trailing inset and a WIDER number pushes its leading edge
+	 *    past the containing block. The number is one reflow old for a frame or two
+	 *    after 200 % zoom (measured: 956 px of row state in a 456 px row while the
+	 *    width transition ran), and in those frames the pane is wider than the row it
+	 *    is clipped by: it gives the `overflow-hidden` row a horizontal scroll range
+	 *    it does not have once settled, and any programmatic scroll of a control
+	 *    inside that row (a `scrollIntoView`, a focus scroll) then consumes it and
+	 *    drags the pinned pane with it - 24 px in RTL, off the window.
+	 *
+	 * THE ASK SHEET NEVER USES THAT SECOND SHAPE: it is `inset-y-0 end-0`, one
+	 * inline inset plus one inline width, so it is not over-constrained and its
+	 * drawn edge is a number a rig can compare with `data-slot-edge`.
 	 */
 	width?: number;
 	/**

@@ -166,5 +166,22 @@
 	"ui.chat.canonical.tool_row.bridge.verb.take_up.settled": "Took up",
 	"ui.chat.canonical.tool_row.bridge.verb.unknown.failed": "Couldn't use Team Bridge",
 	"ui.chat.canonical.tool_row.bridge.verb.unknown.running": "Using Team Bridge",
-	"ui.chat.canonical.tool_row.bridge.verb.unknown.settled": "Used Team Bridge"
+	"ui.chat.canonical.tool_row.bridge.verb.unknown.settled": "Used Team Bridge",
+	"ui.chat.canonical.transcript.hub_from": "From {name}",
+	"ui.chat.canonical.image_label": "Image",
+	"ui.chat.canonical.fold.images_aria": "{count, plural, =1 {{count_display} image from this run} other {{count_display} images from this run}}",
+	"ui.chat.canonical.fold.more_images": "{count, plural, =1 {+{count_display} more image} other {+{count_display} more images}}",
+	"ui.chat.canonical.image_gen.control.stop_hint_queued": "Stops before the provider is called.",
+	"ui.chat.canonical.image_gen.control.stop_hint_running": "Requests a stop; the provider may finish anyway.",
+	"ui.chat.canonical.image_gen.batch_summary": "{count, plural, =1 {{count_display} items} other {{count_display} items}}",
+	"ui.chat.canonical.lightbox.filmstrip_aria": "{count, plural, =1 {{count_display} images} other {{count_display} images}}",
+	"ui.chat.canonical.lightbox.show_image": "Show image {index, number, ::group-off} of {count, number, ::group-off}",
+	"ui.chat.canonical.supplement.details.summary": "Details",
+	"ui.chat.canonical.supplement.withheld.line": "{count, plural, one {# file not shown} other {# files not shown}}: {reason}",
+	"ui.chat.canonical.supplement.withheld.line_no_reason": "{count, plural, one {# file not shown} other {# files not shown}}",
+	"ui.chat.canonical.supplement.withheld.reason_outside": "outside allowed locations",
+	"ui.chat.canonical.supplement.withheld.reason_sensitive": "sensitive file",
+	"ui.chat.canonical.supplement.withheld.reason_missing": "file no longer exists",
+	"ui.chat.canonical.supplement.withheld.reason_too_large": "too large to preview",
+	"ui.chat.canonical.supplement.withheld.reason_separator": ", "
 }

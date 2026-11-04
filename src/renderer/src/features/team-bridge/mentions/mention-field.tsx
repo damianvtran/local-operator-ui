@@ -1,9 +1,13 @@
+import { t } from "@shared/i18n";
 import type {
 	KeyboardEvent as ReactKeyboardEvent,
 	ReactNode,
 	RefObject,
 } from "react";
 import { useId, useLayoutEffect, useState } from "react";
+import { routeAutocompleteKey } from "../emoji/emoji-autocomplete-controller";
+import { EmojiAutocompletePopover } from "../emoji/emoji-autocomplete-popover";
+import { useEmojiAutocomplete } from "../emoji/use-emoji-autocomplete";
 import { caretRect } from "./caret-coordinates";
 import { MentionHighlightOverlay } from "./mention-highlight-overlay";
 import { MentionNotice } from "./mention-notice";
@@ -30,6 +34,7 @@ export function useComposerMentions(input: {
 	setText: (next: string) => void;
 	fieldRef: RefObject<HTMLTextAreaElement | null>;
 }): MentionAutocomplete & {
+	emoji: ReturnType<typeof useEmojiAutocomplete>;
 	/**
 	 * Call with the body just before submitting: stages this draft's
 	 * `mentions[]` for the send of exactly that text (`mention-outbox`).
@@ -41,6 +46,7 @@ export function useComposerMentions(input: {
 	}) => {
 		onKeyDown: (event: ReactKeyboardEvent<HTMLTextAreaElement>) => void;
 		onSelect?: MentionAutocomplete["onSelect"];
+		onBlur?: () => void;
 		role?: "combobox";
 		"aria-expanded"?: boolean;
 		"aria-controls"?: string;
@@ -50,20 +56,43 @@ export function useComposerMentions(input: {
 } {
 	const listboxId = useId().replace(/:/g, "");
 	const mentions = useMentionAutocomplete({ ...input, listboxId });
+	const emoji = useEmojiAutocomplete({
+		draftKey: mentions.inputScopeKey,
+		text: input.text,
+		enabled: mentions.enabled,
+		fieldRef: input.fieldRef,
+		listboxId: `${listboxId}-emoji`,
+		mentionQueryStart: mentions.open ? mentions.anchorIndex : null,
+		mentionRanges: mentions.tokens,
+		intent: mentions.emojiIntent,
+		isComposing: mentions.isComposing,
+		onEdit: mentions.applyTextEdit,
+	});
 	return {
 		...mentions,
+		open: mentions.open && emoji.owner === "mention",
+		emoji,
 		stage: (body) => {
 			if (mentions.source)
 				stageMentions(mentions.source.conversationId, body, mentions.payload());
 		},
 		bindField: (own) => ({
 			onKeyDown: (event) => {
-				if (mentions.onKeyDown(event)) return;
-				own.onKeyDown?.(event);
+				routeAutocompleteKey(emoji.owner, event, {
+					mention: mentions.onKeyDown,
+					emoji: emoji.onKeyDown,
+					composer: (key) => {
+						// With no popup, the mention owner still protects pill deletion
+						// and caret traversal before the composer's ordinary send path.
+						if (emoji.owner === "none" && mentions.onKeyDown(key)) return;
+						own.onKeyDown?.(key);
+					},
+				});
 			},
 			...(mentions.enabled
 				? {
 						onSelect: mentions.onSelect,
+						onBlur: mentions.clearEmojiIntent,
 						role: "combobox" as const,
 						"aria-expanded": mentions.open,
 						"aria-controls": mentions.open ? listboxId : undefined,
@@ -74,6 +103,7 @@ export function useComposerMentions(input: {
 								: undefined,
 					}
 				: {}),
+			...(emoji.owner === "emoji" ? emoji.aria : {}),
 		}),
 	};
 }
@@ -94,7 +124,9 @@ export function MentionField({
 	text,
 	children,
 }: {
-	mentions: MentionAutocomplete;
+	mentions: MentionAutocomplete & {
+		emoji?: ReturnType<typeof useEmojiAutocomplete>;
+	};
 	fieldRef: RefObject<HTMLTextAreaElement | null>;
 	text: string;
 	children: ReactNode;
@@ -154,13 +186,26 @@ export function MentionField({
 	}, [open, anchorIndex, fieldRef]);
 	if (!mentions.enabled) return <>{children}</>;
 	return (
-		<div className="relative flex min-w-0 flex-1">
+		<div className="group/mention-field relative flex min-w-0 flex-1">
 			<MentionHighlightOverlay
 				fieldRef={fieldRef}
 				text={text}
 				tokens={mentions.tokens}
 			/>
 			{children}
+			{mentions.emoji?.open && mentions.emoji.query && (
+				<EmojiAutocompletePopover
+					fieldRef={fieldRef}
+					anchorIndex={mentions.emoji.query.start}
+					listboxId={mentions.emoji.listboxId}
+					rows={mentions.emoji.rows}
+					active={mentions.emoji.active}
+					label={t("ui.teamBridge.reactions.choose")}
+					emptyLabel={t("ui.teamBridge.reactions.noResults")}
+					onActive={mentions.emoji.setActive}
+					onPick={mentions.emoji.pick}
+				/>
+			)}
 			{open && position && (
 				<MentionPopover
 					listboxId={mentions.listboxId}

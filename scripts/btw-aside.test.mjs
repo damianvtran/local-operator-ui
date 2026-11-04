@@ -452,7 +452,7 @@ const RE_PANEL_REASON_ID = /<p id=\{blockedId\}/;
  * comment sits between the brace and the expression, hence the optional block.
  */
 const RE_SEND_VERB =
-	/content=\{\s*(?:\/\*[\s\S]*?\*\/\s*)?aside !== null && !awaitingAnswer\s*\?\s*t\("ui\.chat\.composer\.ask_aside"\)\s*:\s*t\("ui\.chat\.composer\.send_message"\)\s*\}/;
+	/content=\{\s*(?:\/\*[\s\S]*?\*\/\s*)?aside !== null && !awaitingAnswer\s*\?\s*t\("ui\.chat\.composer\.ask_aside"\)\s*:\s*slotB\.role === "steer"\s*\?\s*(?:\/\*[\s\S]*?\*\/\s*)?t\("ui\.chat\.composer\.steer_hint"\)\s*:\s*t\("ui\.chat\.composer\.send_message"\)\s*\}/;
 const RE_SEND_LABEL =
 	/aria-label=\{\s*aside !== null && !awaitingAnswer\s*\?\s*t\("ui\.chat\.composer\.ask_aside"\)\s*:\s*t\("ui\.chat\.composer\.send_message"\)\s*\}/;
 /*
@@ -2946,7 +2946,11 @@ test("the panel names its chord's verb, describes its blocked control, and annou
 	// term (R5-3).
 	assert.match(input, RE_SEND_VERB);
 	assert.match(input, RE_SEND_LABEL);
-	assert.match(panel, /content="Add the aside to the conversation"/);
+	// The sentence is a catalogue message now; the tooltip must still be that one.
+	assert.match(
+		panel,
+		/content=\{t\("ui\.chat\.aside\.add_to_conversation_tooltip"\)\}/,
+	);
 
 	// The announcement: one sentence per phase, and the answer ONCE, at settle.
 	assert.equal(asideAnnouncement(undefined), null);

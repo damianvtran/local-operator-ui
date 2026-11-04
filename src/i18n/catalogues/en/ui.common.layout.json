@@ -1,5 +1,6 @@
 {
 	"ui.common.layout.chat_layout.resize_the_sidebar": "Resize the sidebar ({sidebartogglecap})",
+	"ui.common.layout.chat_layout.resize_the_sidebar_plain": "Resize the sidebar",
 	"ui.common.layout.chat_layout.resize_asks_double_click_resets_the_shared_pane_width": "Resize asks. Double-click resets the shared pane width.",
 	"ui.common.layout.sidebar_header.search_agents": "Search agents",
 	"ui.common.layout.sidebar_header.create_a_new_agent": "Create a new agent",
@@ -7,5 +8,10 @@
 	"ui.common.layout.sidebar_header.import_agent": "Import agent",
 	"ui.common.layout.sidebar_header.new_agent": "New agent",
 	"ui.common.layout.toasts.dismiss": "Close toast",
-	"ui.common.layout.toasts.notifications": "Notifications"
+	"ui.common.layout.toasts.notifications": "Notifications",
+	"ui.common.layout.chat_layout.resize_canvas_double_click_resets_the_shared_pane_width": "Resize canvas. Double-click resets the shared pane width.",
+	"ui.common.layout.chat_layout.resize_run_details_double_click_resets_the_shared_pane_width": "Resize run details. Double-click resets the shared pane width.",
+	"ui.common.layout.chat_layout.resize_browser_double_click_resets_the_shared_pane_width": "Resize browser. Double-click resets the shared pane width.",
+	"ui.common.layout.chat_layout.resize_console_double_click_resets_the_shared_pane_width": "Resize console. Double-click resets the shared pane width.",
+	"ui.common.layout.chat_layout.resize_code_review_double_click_resets_the_shared_pane_width": "Resize code review. Double-click resets the shared pane width."
 }

@@ -1,0 +1,30 @@
+{
+  "ui.chat": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.chat.json",
+      "sha256": "270fc752791e2960006b560ec9616c2010dab80e92af19f075f7e04a3055bd27"
+    },
+    "es": {
+      "path": "src/i18n/catalogues/es/ui.chat.json",
+      "sha256": "dd04b82640bc328970f7e0a0856ffe5f01728b2c64a58256cf1a6a4623bf4a4e"
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.chat.context.json",
+      "sha256": "efcf4d1872974b6fc7456e753a2e10010ab896fffede262ae7c19d96c35ecee1"
+    }
+  },
+  "ui.chat.run_details": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.chat.run_details.json",
+      "sha256": "f8184d5f41b359364e47747871988bbb731d79c12bc3b9ec755f3db73e5db6ab"
+    },
+    "es": {
+      "path": "src/i18n/catalogues/es/ui.chat.run_details.json",
+      "sha256": "0cf25b8ae5735cf180991454e751ce1389d0cf36f4242df70131ad06fb2d3b48"
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.chat.run_details.context.json",
+      "sha256": "da588f521188a2bcba1d0aeb7a265c3474b16673b8f653a021fa7e9e7075e911"
+    }
+  }
+}

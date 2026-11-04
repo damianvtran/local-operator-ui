@@ -1,0 +1,83 @@
+{
+	"schema": 1,
+	"receipt_kind": "translation-delta",
+	"namespace": "ui.hub.adoption",
+	"date": "2026-11-03",
+	"translator": {
+		"agent": "hub-skill-adoption-ui-coder (translation drafting role)",
+		"session": "e24a2cdfdbcd",
+		"model": "openai/gpt-6.1-sol",
+		"identity_evidence": "Parsed structural provider/model_id transcript records only: 311 observed records identify openai/gpt-6.1-sol. No inference from requested/startup labels."
+	},
+	"source_sha256": "d42c558c063e34ef16223f220ad58f44b7334baab45782a09c411e2f17f6e7e1",
+	"context_sha256": "139530f14306647b39ac21c4a744a6cf3d969d9b4f398836d88a415c37bfef24",
+	"scope": {
+		"new_key": "ui.hub.adoption.file_relocated",
+		"changed_target_keys": {
+			"zh-CN": [
+				"ui.hub.adoption.review"
+			],
+			"ur": [
+				"ui.hub.adoption.review"
+			],
+			"hi": [
+				"ui.hub.adoption.review"
+			],
+			"fr": [
+				"ui.hub.adoption.preservation",
+				"ui.hub.adoption.snapshot",
+				"ui.hub.adoption.model",
+				"ui.hub.adoption.local_path",
+				"ui.hub.adoption.no_proposal",
+				"ui.hub.adoption.applied",
+				"ui.hub.adoption.file_aside"
+			]
+		},
+		"total_keys": 38
+	},
+	"glossary": {
+		"path": "~/local-operator/i18n/glossary.md",
+		"sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+	},
+	"locales": {
+		"en": {
+			"catalogue_sha256": "d42c558c063e34ef16223f220ad58f44b7334baab45782a09c411e2f17f6e7e1",
+			"style_guide_sha256": "c967c91037be79a7b184b3288b8c0326a261e4adae95b7db06d83e96f8ea6ec7"
+		},
+		"fr": {
+			"catalogue_sha256": "914cfd5724ed1773d750ec1354de45dd53f02bb763d26215e41533a2d15456e8",
+			"style_guide_sha256": "ae1519ab7617d19aa826918d607de1d018595094166edbc18aa58f6a8f0a4226"
+		},
+		"es": {
+			"catalogue_sha256": "40fb35285c7662ee278a418a43cf781163e3286e6b1110b2439431901226e2a1",
+			"style_guide_sha256": "77b9227213802d14c74d4298d6b346ad842bbf2a5ca3b9d46fc6144430d26c3e"
+		},
+		"zh-CN": {
+			"catalogue_sha256": "3ebd1b9f969ed8e2e37765c8c628a376d03ff097215f5229b5f37af46d5f432d",
+			"style_guide_sha256": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+		},
+		"ru": {
+			"catalogue_sha256": "9c6b302b79d2a42b4b9d67cc523a0bae27e4af69e7c1ace11c04cad9e558badf",
+			"style_guide_sha256": "f20e1cafaf70578c17ce072c71725628808d228e4be5604329f8da30386f1fb5"
+		},
+		"vi": {
+			"catalogue_sha256": "99886b4c6c6701a786769fe0cc90f85b3ce2d1eebaa9ce4954242c9a913c9991",
+			"style_guide_sha256": "e4901497ed553e2b2ae4a2660bf776adb787b89e11d7eb0f8d08f3da4b227888"
+		},
+		"ur": {
+			"catalogue_sha256": "3a2ada3dca9490aee8c3d758fa9e12e419e4078c29ab13d73148c691aab28c24",
+			"style_guide_sha256": "c0eecf7f7b5e89956b7de9ab7a9eb647ff1a7ef701ccf2a7f0264d5eea15ca60"
+		},
+		"hi": {
+			"catalogue_sha256": "4945856a7aab9d74681e06583e38789bd271137dded3e496eff7729d2ceed3aa",
+			"style_guide_sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+		}
+	},
+	"audit_status": "pending independent new-key/delta audit arranged by parent; no self-audit or clean verdict claimed",
+	"notes": [
+		"Drafted by the actual serving LLM without translation APIs/SDKs/MT.",
+		"Core relocated means preserved local guidance moved to the displayed destination; local_path remains original path. No filesystem mutation is implied by preview.",
+		"Latin merge preserved in reviewed zh-CN, Urdu and Hindi review labels. French prose colons/semicolons use U+202F; placeholders unchanged.",
+		"Original 37-key audit and actual-model correction receipts remain immutable; this delta requires fresh independent source/target/context hash binding."
+	]
+}

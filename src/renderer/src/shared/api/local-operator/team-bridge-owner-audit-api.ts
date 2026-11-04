@@ -1,9 +1,10 @@
+import { t } from "../../../../../i18n/messages";
 import {
 	ownerAuditConversationPageSchema,
 	ownerAuditMessagePageSchema,
 	ownerAuditThreadSchema,
 } from "../../../../../shared/team-bridge-owner-audit-contract";
-import { desktopResult } from "./desktop-api";
+import { desktopMedia, desktopResult } from "./desktop-api";
 
 export type OwnerAuditScope = { accountId: string; tenantId: string };
 const owner = ({ accountId, tenantId }: OwnerAuditScope) => ({
@@ -11,11 +12,47 @@ const owner = ({ accountId, tenantId }: OwnerAuditScope) => ({
 	tenant_id: tenantId,
 });
 
+export class OwnerAuditAttachmentError extends Error {
+	constructor(readonly status: number | null) {
+		super(t("ui.teamBridge.attachmentCard.unavailable"));
+		this.name = "OwnerAuditAttachmentError";
+	}
+}
+
+export type OwnerAuditAttachmentInput = OwnerAuditScope & {
+	conversationId: string;
+	messageId: string;
+	attachmentId: string;
+};
+const attachmentTuple = (scope: OwnerAuditAttachmentInput) => ({
+	tenantId: scope.tenantId,
+	expectedAccountId: scope.accountId,
+	conversationId: scope.conversationId,
+	messageId: scope.messageId,
+	attachmentId: scope.attachmentId,
+});
+
 /** Deliberately no member-history or agent-tool fallback. A refusal must remain
  * a refusal, not become a read under different authority. Attachment metadata
- * is shown as unavailable in this text-only surface; no private byte URL is
- * handed to a browser, markdown renderer, agent, or persisted store. */
+ * uses only the dedicated owner-audit relay. Generic files remain metadata-only; no download path or opaque byte transport is exposed. */
 export const TeamBridgeOwnerAuditApi = {
+	async attachmentBytes(
+		scope: OwnerAuditAttachmentInput,
+	): Promise<{ data: Uint8Array; mimeType: string }> {
+		const result = await desktopMedia(
+			{ op: "team_bridge.owner_audit.attachment", ...attachmentTuple(scope) },
+			null,
+		);
+		if (
+			result.kind !== "bytes" ||
+			result.status !== 200 ||
+			(result.mimeType !== "image/png" && result.mimeType !== "image/jpeg")
+		)
+			throw new OwnerAuditAttachmentError(
+				result.kind === "error" ? result.status : 422,
+			);
+		return { data: result.data, mimeType: result.mimeType };
+	},
 	async conversations(scope: OwnerAuditScope, cursor?: string) {
 		return ownerAuditConversationPageSchema.parse(
 			await desktopResult<unknown>({

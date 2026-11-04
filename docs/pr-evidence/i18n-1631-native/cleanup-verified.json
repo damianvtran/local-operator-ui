@@ -1,0 +1,11 @@
+{
+  "owned_daemon_pid": 51601,
+  "daemon_exit": -15,
+  "driver_pid": 51708,
+  "finish_command_seq": 127,
+  "finish_response": "finishing",
+  "bounded_exit": 0,
+  "native_duration_seconds": 427.7,
+  "process_matches_after_cleanup": [],
+  "method": "ps readback matched owned user-data-dir plus Electron executable, driver path plus node executable, and daemon port plus Python executable; excluded inspection-shell false positive"
+}

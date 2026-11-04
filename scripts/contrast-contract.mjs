@@ -642,6 +642,71 @@ const CONTROLS = [
 		ink: "ink",
 		edge: false,
 	},
+	/*
+	 * TEAM BRIDGE ATTACHMENT CHIPS (inline-image refresh, SPEC §3.1 / D1). A
+	 * file, a non-image descriptor or a count-only receipt is a borderless
+	 * Slack-style chip: `mediaSurface` fill, `ink` name, `inkDim` meta line, an
+	 * `elevated` kind tile with an `inkMuted` glyph (`bridge-attachment-group.tsx`,
+	 * `CHIP_CLASS`). The operator asked for the bordered card to go, so the fill
+	 * is the extent, and the chip is not a control (no hover step, no action).
+	 *
+	 * THE EXTENT IS A ΔE00 STEP, NOT A 3:1 EDGE, so `edge: false` here and the
+	 * claim lives where a ground step is measured: `PERCEPTIBLE`'s "team bridge
+	 * attachment chip" row holds the fill ΔE00 3.0 off all three hosts a message
+	 * row paints - `rowHover` included. Round 1 shipped an `elevated` fill whose
+	 * comment claimed it read on a hovered row; it measured ΔE00 0.00 (arcade),
+	 * 1.14 (gruvbox), 1.21 (obsidian), 1.90 (everforest) there and nothing
+	 * asserted it (agent review round 1, minor 1). The meta line's `inkDim` is a
+	 * caption at 11px, so it is held to the text floor too.
+	 */
+	{
+		name: "team bridge attachment chip name",
+		on: ["surface", "canvas", "rowHover"],
+		fill: "mediaSurface",
+		border: null,
+		ink: "ink",
+		edge: false,
+	},
+	{
+		name: "team bridge attachment chip meta",
+		on: ["surface", "canvas", "rowHover"],
+		fill: "mediaSurface",
+		border: null,
+		ink: "inkDim",
+		edge: false,
+	},
+	{
+		name: "team bridge attachment chip kind tile",
+		on: ["mediaSurface"],
+		fill: "elevated",
+		border: null,
+		ink: "inkMuted",
+		edge: false,
+	},
+	/*
+	 * THE INLINE IMAGE ACTION CLUSTER: Open and Save float over the picture's
+	 * top corner on hover/focus, an overlay (`shadow-overlay`), so its ground is
+	 * the PICTURE - unknowable - and the cluster's own `elevated` fill is what
+	 * the icons are read on. Asserted as ink on that fill at rest (`inkMuted`)
+	 * and under the pointer (`ink` on `rowHover`); `on: ["mediaSurface"]` is
+	 * the tile's own letterbox ground, the one ground the role system knows.
+	 */
+	{
+		name: "team bridge image action cluster",
+		on: ["mediaSurface"],
+		fill: "elevated",
+		border: null,
+		ink: "inkMuted",
+		edge: false,
+	},
+	{
+		name: "team bridge image action cluster (hover)",
+		on: ["elevated"],
+		fill: "rowHover",
+		border: null,
+		ink: "ink",
+		edge: false,
+	},
 	/* The reader's OWN pill is not a role but a derived fill (accent mixed over
 	   surface), so it cannot be a CONTROLS row: it is asserted by
 	   `REACTION_OWN_PILL` below, which mixes the fill per palette. */
@@ -817,6 +882,45 @@ const CONTROLS = [
 		border: null,
 		edge: false,
 		ink: "inkDim",
+	},
+	{
+		/*
+		 * The composer's "Insert transcript" control while a dictation records: the
+		 * outline button FILLED with `successWash` (design round 1, D4: an empty
+		 * bordered square read as a checked checkbox, not a press), wearing
+		 * `successBorder` and `success` ink so it reads as the affirmative of
+		 * the recording trio, left of a Cancel with a red glyph and the accent Send
+		 * recording.
+		 * Colour is never the only carrier - the glyph is a check and the name says
+		 * "Insert transcript" - so this row holds the ink and edge the pairing
+		 * actually draws rather than a state the reader has to decode.
+		 */
+		name: "composer insert transcript (success outline)",
+		on: ["surface"],
+		fill: "successWash",
+		border: "successBorder",
+		ink: "success",
+	},
+	{
+		/*
+		 * The composer's "Cancel recording" control: a neutral `borderControl`
+		 * outline with the glyph in `danger` (the one colour cue that says this
+		 * throws the take away), on the card's `surface` ground. Its hover and
+		 * focus face fills with `dangerWash`; both are measured, because the red
+		 * fill is the state a pointer is on when it presses.
+		 */
+		name: "composer cancel recording (danger glyph on outline)",
+		on: ["surface"],
+		fill: "surface",
+		border: "borderControl",
+		ink: "danger",
+	},
+	{
+		name: "composer cancel recording (hover / focus, danger wash)",
+		on: ["surface"],
+		fill: "dangerWash",
+		border: "borderControl",
+		ink: "danger",
 	},
 	{
 		name: "success callout",
@@ -2160,6 +2264,33 @@ const GRAPHICS = [
 	},
 	{
 		/*
+		 * THE AGENT MARK'S OWN BOUNDARY (design review round 2, D3). The plate
+		 * carries a corner notch in `accent` — the mark that survives a picture —
+		 * and nothing measured it: a `bg-accent` -> `bg-hairline` edit, or a plate
+		 * fill moved off `mediaSurface`, would have left every row green while the
+		 * mark flattened into the plate.
+		 *
+		 * The floor is the MEASURED worst case, not the 3:1 non-text floor it
+		 * clears with room: across the 59 palettes accent against `mediaSurface`
+		 * bottoms at 4.17:1 (`catppuccinLatte`), then 4.26 (`tokyoNightDay`,
+		 * `oneLight`), 4.27 (`githubLight`), 4.29 (`localOperatorLight`, 4.23 as
+		 * rendered); median 7.27, max 17.11. 4.0 is half a step below the worst so
+		 * a palette edit that eats the margin fails here rather than silently
+		 * becoming the smallest mark in the app. The class string itself is pinned
+		 * by the `data-agent-mark` call-site row below, and the glyph's ink stays
+		 * the row above.
+		 */
+		name: "team bridge agent mark (corner notch)",
+		/* `surface` as well as `mediaSurface`: a SELECTED rail plate paints
+		   `bg-surface` and still carries the mark (round 3, D3/F9). Worst on
+		   `surface` today is 4.98:1, so the row was a coverage gap rather than a
+		   failure. */
+		on: ["mediaSurface", "surface"],
+		fg: "accent",
+		floor: 4.0,
+	},
+	{
+		/*
 		 * The completion mark on a follow-up turn bar (`turn-summary.tsx`'s
 		 * `CircleCheck`): `success` ink drawn straight on the transcript's canvas,
 		 * the pair the checkpoint rail already paints for `complete`.
@@ -2565,6 +2696,20 @@ const PERCEPTIBLE = [
 		   claim about a pairing the app never renders, and it would fail on the eight
 		   palettes where the wash and the selection share a rung. */
 		on: ["canvas", "surface", "elevated", "rowHover"],
+		minDeltaE: 3.0,
+	},
+	{
+		/*
+		 * THE ATTACHMENT CHIP'S EXTENT (agent review round 1, minor 1): the chip is
+		 * borderless, so its fill's step off each ground a message row paints IS
+		 * its boundary, `rowHover` included. Same fill and floor as the plates
+		 * above; fleet minima canvas 4.00 (oneDark), surface 5.96 (iceberg),
+		 * rowHover 3.70 (iceberg). The kind tile inside it is `elevated`, 7.89
+		 * at worst off this fill (rosewood).
+		 */
+		name: "team bridge attachment chip",
+		role: "mediaSurface",
+		on: ["canvas", "surface", "rowHover", "elevated"],
 		minDeltaE: 3.0,
 	},
 	{
@@ -3169,6 +3314,27 @@ const STRUCTURAL_CALL_SITES = [
 		file: "src/renderer/src/features/chat/components/at-mention-overlay.tsx",
 		must: 'MENTION_CHIP_ROLE = "rounded-sm bg-sunken"',
 		why: "the fill IS the chip's boundary - it takes no edge by design - so repainting it as the ground it sits on erases every mention in a sentence with no palette assertion able to see it",
+	},
+	{
+		/*
+		 * THE AGENT MARK'S CLASS STRING, at its call site (design review round 2,
+		 * D3). The palette row above measures accent against `mediaSurface`; only
+		 * this pin can see the edit that stops the plate painting it — swapping the
+		 * notch for `bg-hairline`, a ring on the perimeter (which is the app's
+		 * FOCUS channel and was round 2's D1 major), or dropping the element
+		 * altogether. It is the one part of an agent plate a future endpoint
+		 * picture cannot cover, so losing it silently re-opens the visual half of
+		 * 2026-10-30's defect with every ratio still green.
+		 */
+		what: "team bridge agent mark corner notch",
+		file: "src/renderer/src/features/team-bridge/team-bridge-profile-card.tsx",
+		must: "const AGENT_MARK_SHAPE =",
+		/* Pin the shape's VALUE too, not only that the constant exists: the
+		   dog-ear, its mirror and its logical anchoring are the mark. */
+		also: [
+			"[clip-path:polygon(100%_100%,0_100%,100%_0)] rtl:[clip-path:polygon(0_100%,100%_100%,0_0)]",
+		],
+		why: "the notch is the only agent signal that survives a picture; `data-agent-mark` plus the accent fill and the shape are what make it one, and no palette row can see a plate that stops drawing it",
 	},
 	{
 		/*
@@ -4844,8 +5010,14 @@ const SYNTAX_COMMENT_FLOOR = 8;
 const COMMAND_TOKEN = "tokenCommand";
 /* The syntax block's floor, used here as a ΔE00 separation between two inks. */
 const COMMAND_TOKEN_FLOOR = SYNTAX_COMMENT_FLOOR;
-/* The field it is painted in, and the popup that opens over it. */
-const COMMAND_TOKEN_GROUNDS = ["surface", "elevated"];
+/*
+ * The field it is painted in, the popup that opens over it, and the user message
+ * block, where the same role inks a `$skill` in a sent turn
+ * (`markdown.css`'s `.lo-skill-token`). `messageSurface` is a different fill from
+ * `surface`, so the floor is asserted on it rather than inherited from the
+ * composer's.
+ */
+const COMMAND_TOKEN_GROUNDS = ["surface", "elevated", "messageSurface"];
 /*
  * Obsidian is the one pinned exception, and it is the app's recorded monochrome
  * case rather than a mute button: `info` IS its `ink` IS its `accent`
@@ -6163,10 +6335,13 @@ for (const { id, palette: p } of palettes) {
 		assertPair(id, p, row.fg, row.on, row.floor, row.name);
 	}
 
-	/* Graphic objects against the ground they are drawn on. */
+	/* Graphic objects against the ground they are drawn on. `floor` is per row
+	   where a row's own measured worst case is tighter than the 3:1 non-text
+	   floor: pinning it at 3.0 would let a token move that halves the margin
+	   still pass. */
 	for (const g of GRAPHICS) {
 		for (const ground of g.on) {
-			assertPair(id, p, g.fg, ground, FLOOR.nonText, g.name);
+			assertPair(id, p, g.fg, ground, g.floor ?? FLOOR.nonText, g.name);
 		}
 	}
 
@@ -6475,7 +6650,7 @@ for (const { id, palette: p } of palettes) {
 			const got = ratio(p[COMMAND_TOKEN], p[ground]);
 			if (got < 4.5) {
 				fail(
-					`${id}: the command token \`tokenCommand\` ${p[COMMAND_TOKEN]} reads ${r2(got)}:1 on \`${ground}\` (need 4.5) - the leading /word is text a user is typing, not decoration`,
+					`${id}: the command token \`tokenCommand\` ${p[COMMAND_TOKEN]} reads ${r2(got)}:1 on \`${ground}\` (need 4.5) - the token is text a user typed (the composer's leading /word, or the sent \`$skill\` mention), not decoration`,
 				);
 			}
 		}
@@ -8416,12 +8591,17 @@ if (failures > 0) {
 let callSiteFailures = 0;
 for (const site of STRUCTURAL_CALL_SITES) {
 	const source = readFileSync(join(ROOT, site.file), "utf8");
-	assertions += 1;
-	if (!source.includes(site.must)) {
-		callSiteFailures += 1;
-		console.error(
-			`FAIL  ${site.what}: ${site.file} no longer contains \`${site.must}\`\n      ${site.why}`,
-		);
+	/* `also` pins the VALUE of a constant the site names, for the cases where the
+	   name surviving is not the claim - a flipped direction or a dropped mirror
+	   keeps `const NAME =` intact (design review round 3, D1). */
+	for (const fragment of [site.must, ...(site.also ?? [])]) {
+		assertions += 1;
+		if (!source.includes(fragment)) {
+			callSiteFailures += 1;
+			console.error(
+				`FAIL  ${site.what}: ${site.file} no longer contains \`${fragment}\`\n      ${site.why}`,
+			);
+		}
 	}
 }
 if (callSiteFailures > 0) {

@@ -1,0 +1,130 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "openai/gpt-6.1-sol",
+  "instance": "97bb3462a65c-ru-census-r2",
+  "session": "97bb3462a65c",
+  "locale": "ru",
+  "audit_date": "2026-11-03",
+  "status": "passed",
+  "key_count": 5,
+  "audit_kind": "independent second high-visibility five-key delta",
+  "operator_request": "Make sure to continue the work all the way for all languages to get the entire UI completely translated",
+  "scope": {
+    "head": "19868532b9cd2bca0eca468dbf22572d8dd78a5b",
+    "base": "6dd43fd7494",
+    "keys": [
+      "ui.chat.session_status.effort_level.low",
+      "ui.chat.session_status.effort_level.medium",
+      "ui.chat.session_status.effort_level.high",
+      "ui.chat.run_details.wake.armed_count",
+      "ui.chat.run_details.wake.cadence_once"
+    ],
+    "non_goals": [
+      "unrelated namespace wording",
+      "wire token translation",
+      "style redesign"
+    ]
+  },
+  "provenance": {
+    "agent": "i18n-auditor",
+    "session": "97bb3462a65c",
+    "model": "openai/gpt-6.1-sol",
+    "independent_from_translator_session": true,
+    "independence_source": "Delegation states this auditor is neither translator nor first auditor. No first-audit findings or receipts read.",
+    "actual_model_source": "Host model-switch notice: openai/gpt-6.1-sol fallback after provider quota failures. Original model anthropic/claude-sonnet-5-5; intermediate switch anthropic/claude-opus-5-5.",
+    "fallback": true
+  },
+  "namespaces": {
+    "ui.chat": {
+      "status": "passed",
+      "key_count": 3,
+      "sha256": {
+        "en": "270fc752791e2960006b560ec9616c2010dab80e92af19f075f7e04a3055bd27",
+        "ru": "38f94585db7544c4fe167ecd2f06d0b557b3632d660bfb57bcf3b527290fe705"
+      },
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.chat.json",
+          "sha256": "270fc752791e2960006b560ec9616c2010dab80e92af19f075f7e04a3055bd27"
+        },
+        "ru": {
+          "path": "src/i18n/catalogues/ru/ui.chat.json",
+          "sha256": "38f94585db7544c4fe167ecd2f06d0b557b3632d660bfb57bcf3b527290fe705"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.chat.context.json",
+          "sha256": "efcf4d1872974b6fc7456e753a2e10010ab896fffede262ae7c19d96c35ecee1"
+        }
+      },
+      "findings": []
+    },
+    "ui.chat.run_details": {
+      "status": "passed",
+      "key_count": 2,
+      "sha256": {
+        "en": "f8184d5f41b359364e47747871988bbb731d79c12bc3b9ec755f3db73e5db6ab",
+        "ru": "d94b8ef3237d22f0db3539511045c08e8e4b85c57b6c8cb14a8cfaf51a9ed651"
+      },
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.chat.run_details.json",
+          "sha256": "f8184d5f41b359364e47747871988bbb731d79c12bc3b9ec755f3db73e5db6ab"
+        },
+        "ru": {
+          "path": "src/i18n/catalogues/ru/ui.chat.run_details.json",
+          "sha256": "d94b8ef3237d22f0db3539511045c08e8e4b85c57b6c8cb14a8cfaf51a9ed651"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.chat.run_details.context.json",
+          "sha256": "da588f521188a2bcba1d0aeb7a265c3474b16673b8f653a021fa7e9e7075e911"
+        }
+      },
+      "findings": []
+    }
+  },
+  "findings": [],
+  "current_report_verdict": {
+    "status": "passed",
+    "unresolved_blocker_major_count": 0,
+    "finding_ids": []
+  },
+  "retention": {
+    "status": "temporary staging; not tracked or on main",
+    "canonical_destination": "i18n/audits/evidence/ru/<namespace>/census2-97bb3462/record.json",
+    "instruction": "Manager must preserve this single byte-identical receipt for both namespace ledger rows and promote evidence into the canonical tracked root; this auditor was explicitly forbidden repo edits."
+  },
+  "artifacts": [
+    {
+      "path": "report.json",
+      "sha256": "5d85aba2ed5a869c25174b0051691d57c5872798895adab3639979cba684e178"
+    },
+    {
+      "path": "validator.log",
+      "sha256": "8b77318325a54cf957552e87a29056c237d09c74b088c215a90bd6697fd470c5"
+    },
+    {
+      "path": "audit.mjs",
+      "sha256": "fff4e919608edc29c2836f59a2c3953e07064d2eb77406c000c9957a6fff18db"
+    },
+    {
+      "path": "scripts/i18n/locale-parity.test.mjs",
+      "sha256": "660f6454b56cc124c91260627edcd69a7e3229315261dd9ca1ef0d5c40ffa55f"
+    },
+    {
+      "path": "scripts/i18n/ledger-rules.mjs",
+      "sha256": "199816433c5a2ce0b0c0d107f8bca2afef13c329b18051a84c1f824824c91aa6"
+    }
+  ],
+  "limits": {
+    "native_app": false,
+    "pseudolocale": false,
+    "pixels": false,
+    "build": false,
+    "tsc": false,
+    "scanner": false,
+    "installs": false,
+    "repo_writes": false,
+    "fit": "Static character/cell-risk inspection only; no measured pixel fit. No numeric maxCells/maxChars hints on the five keys.",
+    "validator": "Pinned repository locale-parity.test.mjs, byte-identical, on scratch snapshots of only the two assigned namespace files. 6 Russian tests passed; not a whole-repository gate."
+  }
+}

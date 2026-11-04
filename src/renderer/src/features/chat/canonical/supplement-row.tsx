@@ -99,6 +99,7 @@ import {
 	type SupplementFile,
 	type SupplementRecord,
 	type SupplementSound,
+	type SupplementWithheld,
 	causePhrase,
 	diagnosticDisplay,
 	displayText,
@@ -111,9 +112,62 @@ import {
 	showAllText,
 	supplementDisposition,
 } from "./supplement-model";
+import {
+	SupplementVideoTile,
+	VIDEO_TILE_MAX_BYTES,
+} from "./supplement-video-tile";
 import { useAttachmentSource } from "./use-attachment-url";
 import { useSupplementDocument } from "./use-supplement-document";
 import { useWaveform } from "./use-waveform";
+
+const WITHHELD_REASON_KEYS = {
+	outside: "ui.chat.canonical.supplement.withheld.reason_outside",
+	sensitive: "ui.chat.canonical.supplement.withheld.reason_sensitive",
+	missing: "ui.chat.canonical.supplement.withheld.reason_missing",
+	"too-large": "ui.chat.canonical.supplement.withheld.reason_too_large",
+} as const;
+
+/**
+ * The withheld notice's one line: `2 files not shown: outside allowed
+ * locations` (contract copy). The count is every refused deliverable, the
+ * listed ones plus `withheld_more`; the reasons are the DISTINCT reasons of the
+ * listed entries, in first-seen order, joined by the
+ * catalogue's list separator (never a hard-coded ", ", never "and"). `""` when nothing was withheld.
+ * A count with no known reason (only `withheld_more`, or reasons this build
+ * does not know) still paints the count alone, because the line exists so a
+ * refusal is never silent.
+ */
+export function withheldText(
+	withheld: readonly SupplementWithheld[],
+	withheldMore: number,
+): string {
+	const count = withheld.length + Math.max(0, Math.floor(withheldMore));
+	if (count <= 0) return "";
+	const reasons: string[] = [];
+	for (const item of withheld) {
+		const phrase = t(WITHHELD_REASON_KEYS[item.reason]);
+		if (!reasons.includes(phrase)) reasons.push(phrase);
+	}
+	// No reason this build can name: the count alone, never a guessed reason.
+	if (reasons.length === 0)
+		return t("ui.chat.canonical.supplement.withheld.line_no_reason", {
+			count,
+		});
+	return t("ui.chat.canonical.supplement.withheld.line", {
+		count,
+		/*
+		 * A TRANSLATED SEPARATOR, never "and" (design round 1, D2): the reasons
+		 * are separate causes, and "too large and sensitive" read as one
+		 * compound cause; the phone joins with a comma. `Intl.ListFormat` `unit`
+		 * was measured and refused: zh-CN joins with NO separator ("AB"), ru
+		 * with bare spaces, and fr still says "et" — so the locale's list comma
+		 * is catalogue copy, as `ui.agents.starters.summary.separator` already is.
+		 */
+		reason: reasons.join(
+			t("ui.chat.canonical.supplement.withheld.reason_separator"),
+		),
+	});
+}
 
 /**
  * One callout row: the file's NAME is the content, and everything else lives in
@@ -200,10 +254,29 @@ const SupplementFileLine = memo(function SupplementFileLine({
 const SupplementSoundLine = memo(function SupplementSoundLine({
 	sound,
 	sessionId,
+	cwd,
+	pane,
 }: {
 	sound: SupplementSound;
 	sessionId: string | null;
+	cwd?: string | null;
+	pane: CanvasPane | null;
 }) {
+	/*
+	 * A WRITTEN audio file (`origin: "file"`, 2026-11-03) plays from its
+	 * attachment digest exactly like a generated one — the core copied the bytes
+	 * into the same store, so `sessions.attachment` serves both — and keeps its
+	 * display `path` so the reader can still reach the file on disk. The TITLE
+	 * OPENS the file (the file row's own primary press: canvas when it can show
+	 * it, the OS otherwise, `useFileTargets`); it does not reveal it in Finder.
+	 * No menu button, because a 24px trigger beside a meta-sized title would
+	 * grow every collage cell, and the contract allows the affordance only at no
+	 * layout cost. The path is the tooltip.
+	 */
+	const filePath = sound.origin === "file" ? (sound.path ?? "") : "";
+	const { press } = useFileTargets(filePath, cwd, pane);
+	const title =
+		sound.title || (filePath ? (filePath.split("/").pop() ?? "") : "");
 	// One scope object per session, so the resolver's effect does not see a new
 	// identity per render (it reads the ids, but the object is cheap to keep).
 	const scope = useMemo(
@@ -219,7 +292,7 @@ const SupplementSoundLine = memo(function SupplementSoundLine({
 		scope,
 	);
 	const peaks = useWaveform(sound.attachment, scope);
-	const label = sound.title || "Generated sound";
+	const label = title || "Generated sound";
 	/*
 	 * THE NAME DOES NOT WAIT FOR THE BYTES. A sound's title is known the moment
 	 * the record arrives (it is the producer's own string), so it is drawn over
@@ -229,15 +302,29 @@ const SupplementSoundLine = memo(function SupplementSoundLine({
 	 */
 	return (
 		<div data-supplement-sound="" className="flex min-w-0 flex-col gap-0.5">
-			{sound.title && (
-				<span
-					data-supplement-sound-title=""
-					title={sound.title}
-					className="truncate text-meta text-ink-muted"
-				>
-					{displayText(sound.title)}
-				</span>
-			)}
+			{title &&
+				(filePath ? (
+					<button
+						type="button"
+						data-supplement-sound-title=""
+						data-supplement-sound-file=""
+						title={filePath}
+						className="truncate text-start text-meta text-ink-muted hover:text-ink"
+						onClick={() => {
+							void press();
+						}}
+					>
+						{displayText(title)}
+					</button>
+				) : (
+					<span
+						data-supplement-sound-title=""
+						title={title}
+						className="truncate text-meta text-ink-muted"
+					>
+						{displayText(title)}
+					</span>
+				))}
 			{source.state === "missing" ? (
 				<BrokenAttachment name={label} detail={AUDIO_UNAVAILABLE_COPY} />
 			) : source.state === "resolving" ? (
@@ -258,6 +345,7 @@ const SupplementSoundLine = memo(function SupplementSoundLine({
 					label={label}
 					peaks={peaks}
 					durationHint={sound.durationS}
+					hideUnknownTotal={true}
 				/>
 			)}
 		</div>
@@ -406,7 +494,22 @@ export const SupplementRow = memo(function SupplementRow({
 	 */
 	const failedCause = causePhrase(record.cause);
 
-	const files = record.files;
+	/*
+	 * PINNED FIRST, stable otherwise (2026-11-03). The core already counts pins
+	 * against the featured cap first, so in a well-formed row every pin is in
+	 * `files` and none is in `more`; this reader ordering is the belt to that
+	 * brace — within each kind section (image grid, video tiles, rows) a pin is
+	 * never laid out after an unpinned file of that section; across sections
+	 * the kind order wins, so a pinned row still sits under unpinned images. No badge: the
+	 * operator asked for deliverables to show, not for another marker.
+	 */
+	const files = useMemo(() => {
+		if (!record.files.some((file) => file.pinned)) return record.files;
+		return [
+			...record.files.filter((file) => file.pinned),
+			...record.files.filter((file) => !file.pinned),
+		];
+	}, [record.files]);
 	const moreCount = record.filesMore;
 	const components = record.components;
 	/*
@@ -661,9 +764,15 @@ export const SupplementRow = memo(function SupplementRow({
 	let filesSection: JSX.Element | null = null;
 	if (files.length > 0 || moreCount > 0) {
 		const imageFiles: SupplementFile[] = [];
+		const videoFiles: SupplementFile[] = [];
 		const rowFiles: SupplementFile[] = [];
 		for (const file of files) {
-			if (fileKind(file.path) === "image") imageFiles.push(file);
+			const kind = fileKind(file.path);
+			if (kind === "image") imageFiles.push(file);
+			// Over the inline ceiling (review R3) a clip is an ordinary row:
+			// it still opens (canvas streams it), it just is not buffered here.
+			else if (kind === "video" && file.sizeBytes <= VIDEO_TILE_MAX_BYTES)
+				videoFiles.push(file);
 			else rowFiles.push(file);
 		}
 		const summaryArm =
@@ -684,10 +793,26 @@ export const SupplementRow = memo(function SupplementRow({
 						cwd={cwd}
 						pane={pane}
 						className={
-							rowFiles.length > 0 || moreCount > 0 ? "mb-1" : undefined
+							videoFiles.length > 0 || rowFiles.length > 0 || moreCount > 0
+								? "mb-1"
+								: undefined
 						}
 					/>
 				)}
+				{/*
+				 * Video-kind files as inline preview tiles (2026-11-03), after the
+				 * pictures and before the rows: the same "judge it by looking" rule
+				 * the grid follows, in both fold states because this section is
+				 * shared by both. See `supplement-video-tile.tsx` for the read path.
+				 */}
+				{videoFiles.map((file) => (
+					<SupplementVideoTile
+						key={`${file.path}:${file.name}`}
+						file={file}
+						cwd={cwd}
+						pane={pane}
+					/>
+				))}
 				{rowFiles.map((file) => {
 					const { name, path, size } = fileRowParts(file);
 					return (
@@ -773,15 +898,47 @@ export const SupplementRow = memo(function SupplementRow({
 						: "flex flex-col gap-1"
 				}
 			>
-				{sounds.map((sound) => (
+				{sounds.map((sound, index) => (
 					<SupplementSoundLine
-						key={sound.attachment}
+						// Content-addressed digests collide for two written files with
+						// identical bytes (review R5), so the key carries the path or the
+						// position as well.
+						key={`${sound.attachment}:${sound.path ?? index}`}
 						sound={sound}
 						sessionId={sessionId}
+						cwd={cwd}
+						pane={pane}
 					/>
 				))}
 			</div>
 		) : null;
+
+	/*
+	 * THE WITHHELD LINE (2026-11-03, "never silent"): a pinned or answer-named
+	 * deliverable the core refused is stated as ONE quiet muted line under the
+	 * block's media — count plus the distinct reasons, never a path and no icon.
+	 * It is outside every fold-dependent branch, so the condensed and expanded
+	 * forms both paint it, and the disposition counts it as content so a
+	 * withheld-only row still reaches this line.
+	 */
+	const withheldLine = withheldText(
+		record.withheld ?? [],
+		record.withheldMore ?? 0,
+	);
+	const withheldSection = withheldLine ? (
+		<p
+			className="text-meta text-ink-muted"
+			data-supplement-withheld=""
+			// One name per tooltip line: the names are what the reader needs to go
+			// looking, and a newline needs no locale-specific separator.
+			title={(record.withheld ?? [])
+				.map((item) => displayText(item.name))
+				.filter(Boolean)
+				.join("\n")}
+		>
+			{withheldLine}
+		</p>
+	) : null;
 
 	/*
 	 * Keep the answer's media in ONE durable strip, outside the graphics-only
@@ -865,7 +1022,7 @@ export const SupplementRow = memo(function SupplementRow({
 								onOpenChange={setDetailsOpen}
 								rowClassName="min-h-6 py-0"
 								chevronClassName="text-ink-dim"
-								summary="Details"
+								summary={t("ui.chat.canonical.supplement.details.summary")}
 							>
 								<div className="max-h-[min(320px,40vh)] overflow-auto break-words font-mono text-ink-dim">
 									{record.model && (
@@ -928,6 +1085,7 @@ export const SupplementRow = memo(function SupplementRow({
 				) : (
 					graphicsBody
 				))}
+			{withheldSection}
 		</div>
 	);
 });

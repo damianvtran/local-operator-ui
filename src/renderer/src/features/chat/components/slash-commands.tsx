@@ -2382,7 +2382,7 @@ function argumentRowContent(
 							? t("ui.chat.tags.remove_named", { name: value.name })
 							: t("ui.chat.tags.add")
 						: value.current
-							? "Current"
+							? t("ui.chat.pickers.picker_host.current")
 							: undefined
 				}
 				className={cn(

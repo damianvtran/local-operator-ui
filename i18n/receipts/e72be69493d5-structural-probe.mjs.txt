@@ -1,0 +1,91 @@
+// Structural + render probe for PR #1604 i18n audit round 6 (session e72be69493d5).
+// (c) byte identity: every locale's ui.mesh.json at HEAD vs R5 (5405030d027, the bytes the
+//     round-5 audits found clean), the only allowed delta being ru expires_window; English
+//     catalogue identical; context delta limited to duration_* and named_refusal notes.
+// (a) ru expires_window rendered for EVERY duration approvalAnswerWindowLabel can produce:
+//     under a minute, minutes 1..89 (ceil, <90), hours ceil(m/60) for m>=90 => 2..N; the
+//     plural category and the noun form are printed so the case (genitive after
+//     "в течение") can be graded branch by branch. Other locales rendered at sample counts.
+// Run from the worktree root: node <this file>
+import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
+import { createRequire } from "node:module";
+import { resolve } from "node:path";
+const require = createRequire(resolve("package.json"));
+const { IntlMessageFormat } = require("intl-messageformat");
+const { parse, TYPE } = require("@formatjs/icu-messageformat-parser");
+const R5 = "5405030d0270b1aeddfe0366bed3f5200800b1cb";
+const HEAD = "318ce5c4804c5d736b8c6f77b44a5735640a55db";
+const L = ["es", "fr", "ru", "hi", "ur", "vi", "zh-CN"];
+const show = (rev, p) => execFileSync("git", ["show", `${rev}:${p}`]);
+const sha = (b) => createHash("sha256").update(b).digest("hex");
+const BIDI = /[\u200E\u200F\u202A-\u202E\u2066-\u2069]/;
+let fail = 0;
+const enp = "src/i18n/catalogues/en/ui.mesh.json";
+const enR5 = show(R5, enp), enH = show(HEAD, enp);
+console.log(`en ui.mesh r5=${sha(enR5)} head=${sha(enH)} identical=${enR5.equals(enH)}`);
+if (!enR5.equals(enH)) fail++;
+const en = JSON.parse(enH);
+const ctxp = "src/i18n/catalogues/en/ui.mesh.context.json";
+const cB = JSON.parse(show(R5, ctxp)), cH = JSON.parse(show(HEAD, ctxp));
+const ctxChanged = Object.keys({ ...cB, ...cH }).filter((k) => JSON.stringify(cB[k]) !== JSON.stringify(cH[k])).sort();
+console.log(`context r5=${sha(show(R5, ctxp))} head=${sha(show(HEAD, ctxp))} changed=${JSON.stringify(ctxChanged)}`);
+const ctxExpect = ["ui.mesh.approval.duration_hours", "ui.mesh.approval.duration_minutes", "ui.mesh.approval.duration_under_minute", "ui.mesh.approval.named_refusal"];
+if (JSON.stringify(ctxChanged) !== JSON.stringify(ctxExpect)) fail++;
+for (const k of ctxChanged) for (const f of ["role", "tone"]) if (cB[k][f] !== cH[k][f]) { console.log(`  context ${k}.${f} changed`); fail++; }
+const cat = {};
+console.log("\n(c) locale bytes, R5 -> HEAD");
+for (const l of L) {
+  const p = `src/i18n/catalogues/${l}/ui.mesh.json`;
+  const b = show(R5, p), h = show(HEAD, p);
+  const B = JSON.parse(b), H = JSON.parse(h);
+  cat[l] = H;
+  const changed = Object.keys({ ...B, ...H }).filter((k) => B[k] !== H[k]).sort();
+  const keysEq = JSON.stringify(Object.keys(H).sort()) === JSON.stringify(Object.keys(en).sort());
+  const expect = l === "ru" ? ["ui.mesh.approval.expires_window"] : [];
+  const ok = keysEq && JSON.stringify(changed) === JSON.stringify(expect);
+  // A line-level diff proves nothing else moved (formatting, ordering, trailing newline).
+  const diffLines = execFileSync("git", ["diff", "--numstat", R5, HEAD, "--", p]).toString().trim() || "0\t0\t" + p;
+  console.log(`${ok ? "PASS" : "FAIL"} ${l}: r5=${sha(b)} head=${sha(h)} bytes_identical=${b.equals(h)} keyset_matches_en=${keysEq} changed=${JSON.stringify(changed)} numstat=${diffLines.split("\t").slice(0, 2).join("/")}`);
+  for (const k of changed) console.log(`    ${k}\n      r5:   ${B[k]}\n      head: ${H[k]}`);
+  if (!ok) fail++;
+}
+// Structural checks on the one changed value.
+const v = cat.ru["ui.mesh.approval.expires_window"];
+const args = new Set(); for (const n of parse(v, { ignoreTag: true })) if (n.type === TYPE.argument) args.add(n.value);
+console.log(`\nru expires_window structural: args=${[...args]} en_args=duration nfc=${v === v.normalize("NFC")} bidi_free=${!BIDI.test(v)}`);
+if ([...args].join() !== "duration" || v !== v.normalize("NFC") || BIDI.test(v)) fail++;
+// Mirror of approvalAnswerWindowLabel (mesh-approvals.ts) for one locale.
+const fmt = (l, k, a) => new IntlMessageFormat(cat[l][k], l).format(a);
+function windowLabel(l, seconds, outer) {
+  const minutes = Math.ceil(seconds / 60);
+  const duration = seconds < 60 ? fmt(l, "ui.mesh.approval.duration_under_minute")
+    : minutes < 90 ? fmt(l, "ui.mesh.approval.duration_minutes", { count: minutes })
+    : fmt(l, "ui.mesh.approval.duration_hours", { count: Math.ceil(minutes / 60) });
+  return fmt(l, outer, { duration });
+}
+const pr = new Intl.PluralRules("ru");
+console.log("\n(a) ru expires_window, every reachable duration (category: rendered)");
+console.log(`  under-minute (1..59 s): ${windowLabel("ru", 30, "ui.mesh.approval.expires_window")}`);
+const seen = {};
+for (let m = 1; m <= 89; m++) {
+  const s = windowLabel("ru", m * 60, "ui.mesh.approval.expires_window");
+  const noun = s.split(" ").pop(); const c = pr.select(m);
+  (seen[`min:${c}:${noun}`] ??= []).push(m);
+}
+for (let h = 2; h <= 200; h++) {
+  const s = windowLabel("ru", h * 3600, "ui.mesh.approval.expires_window");
+  const noun = s.split(" ").pop(); const c = pr.select(h);
+  (seen[`hour:${c}:${noun}`] ??= []).push(h);
+}
+for (const [k, ns] of Object.entries(seen)) console.log(`  ${k} counts=${ns.length > 12 ? ns.slice(0, 12).join(",") + ",…(" + ns.length + ")" : ns.join(",")}`);
+const GEN = { "min:one": "минуты", "min:few": "минут", "min:many": "минут", "hour:one": "часа", "hour:few": "часов", "hour:many": "часов" };
+for (const k of Object.keys(seen)) { const [u, c, noun] = k.split(":"); if (GEN[`${u}:${c}`] !== noun) { console.log(`  FAIL genitive expected ${GEN[`${u}:${c}`]} for ${u}:${c}, got ${noun}`); fail++; } }
+console.log("  samples: " + [1, 2, 5, 11, 21, 22, 25, 89].map((m) => windowLabel("ru", m * 60, "ui.mesh.approval.expires_window")).join(" | "));
+console.log("  samples: " + [2, 3, 5, 21, 22, 24, 25, 101].map((h) => windowLabel("ru", h * 3600, "ui.mesh.approval.expires_window")).join(" | "));
+console.log("  boundary 89 min + 1 s (ceil 90 -> 2 h): " + windowLabel("ru", 89 * 60 + 1, "ui.mesh.approval.expires_window"));
+console.log("  same frame in answer_window (unchanged): " + windowLabel("ru", 120, "ui.mesh.approval.answer_window"));
+console.log("\nother locales unchanged since R5, sample render (expires_window | answer_window)");
+for (const l of L) console.log(`  ${l}: ${[30, 60, 21 * 60, 2 * 3600].map((s) => windowLabel(l, s, "ui.mesh.approval.expires_window")).join(" | ")} || ${windowLabel(l, 2 * 3600, "ui.mesh.approval.answer_window")}`);
+console.log(`\nprobe failures=${fail}`);
+process.exit(fail ? 1 : 0);

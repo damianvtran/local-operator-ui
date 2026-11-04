@@ -29,14 +29,28 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 import {
+	plistStringValues,
+	profileAllowlistAuthorizes,
+	profileEntryAuthorizes,
+} from "./macos-entitlement-policy.mjs";
+import {
+	APPLICATION_IDENTIFIER_KEY,
+	KEYCHAIN_ACCESS_GROUPS_KEY,
+	TEAM_IDENTIFIER_KEY,
 	assertBundleId,
 	assertTeamId,
 	bundleIdFromPackage,
+	profileBackedClaims,
 	profileKeychainGroups,
 	renderEntitlementsPlist,
+	renderProfileBackedEntitlements,
+	unauthorizedClaims,
 	webauthnKeychainAccessGroup,
 } from "./render-mac-entitlements.mjs";
-import { hasWebauthnEntitlement } from "./verify-macos-artifacts.mjs";
+import {
+	hasWebauthnEntitlement,
+	profileAuthorizes,
+} from "./verify-macos-artifacts.mjs";
 
 const COMMITTED = readFileSync(
 	new URL("../build/entitlements.mac.plist", import.meta.url),
@@ -311,5 +325,227 @@ test("the release gate accepts a rendered group and refuses a signature without 
 			"com.local-operator",
 		),
 		true,
+	);
+});
+
+/**
+ * A profile dump in the shape `security cms -D` prints for a Developer ID
+ * profile: the authorizations live in the `Entitlements` dict, with keychain
+ * groups as an array and the two identity claims as strings.
+ */
+function developerIdProfileDump({
+	groups = [`${TEAM_ID}.*`],
+	applicationIdentifier = `${TEAM_ID}.com.local-operator`,
+	teamIdentifier = TEAM_ID,
+} = {}) {
+	const entries = [];
+	if (applicationIdentifier !== null)
+		entries.push(
+			`<key>${APPLICATION_IDENTIFIER_KEY}</key><string>${applicationIdentifier}</string>`,
+		);
+	if (groups !== null)
+		entries.push(
+			`<key>${KEYCHAIN_ACCESS_GROUPS_KEY}</key><array>${groups.map((g) => `<string>${g}</string>`).join("")}</array>`,
+		);
+	if (teamIdentifier !== null)
+		entries.push(
+			`<key>${TEAM_IDENTIFIER_KEY}</key><string>${teamIdentifier}</string>`,
+		);
+	return `<plist><dict><key>Name</key><string>synthetic</string><key>Entitlements</key><dict>${entries.join("")}</dict></dict></plist>`;
+}
+
+test("Apple's allowlist rule: exact or team-scoped wildcard, nothing wider", () => {
+	/*
+	 * Measured on the Radient Inc. organization's real Developer ID profiles: the
+	 * only `keychain-access-groups` entry is `<TEAM_ID>.*`. The WebAuthn group is
+	 * never listed by name, so the exact-match rule this replaced refused the one
+	 * profile that authorizes it. The negatives are what keep the 0.29.6 brick
+	 * out: another team's wildcard, a bare `*`, and wildcards that are not a
+	 * dotted team stem are all refusals.
+	 */
+	const group = webauthnKeychainAccessGroup(TEAM_ID, "com.local-operator");
+	assert.equal(profileEntryAuthorizes(group, group), true, "exact");
+	assert.equal(profileEntryAuthorizes(`${TEAM_ID}.*`, group), true, "wildcard");
+	assert.equal(
+		profileEntryAuthorizes(`${TEAM_ID}.com.local-operator.*`, group),
+		true,
+		"a narrower wildcard still covers its own subtree",
+	);
+	assert.equal(
+		profileEntryAuthorizes("ZZ99YY88XX.*", group),
+		false,
+		"another team's wildcard",
+	);
+	assert.equal(profileEntryAuthorizes("*", group), false, "bare *");
+	assert.equal(profileEntryAuthorizes(".*", group), false, "bare .*");
+	assert.equal(
+		profileEntryAuthorizes(`${TEAM_ID}*`, group),
+		false,
+		"a wildcard that is not a dotted stem",
+	);
+	assert.equal(
+		profileEntryAuthorizes(`${TEAM_ID}.*.*`, group),
+		false,
+		"a stem that itself carries a wildcard",
+	);
+	assert.equal(
+		profileEntryAuthorizes(`${TEAM_ID}.*`, `${TEAM_ID}.*`),
+		true,
+		"a wildcard claim is matched only by the identical entry",
+	);
+	assert.equal(
+		profileEntryAuthorizes(`${TEAM_ID}.com.*`, `${TEAM_ID}.*`),
+		false,
+	);
+	assert.equal(profileEntryAuthorizes(`${TEAM_ID}.*`, `${TEAM_ID}.`), false);
+	assert.equal(profileEntryAuthorizes(`${TEAM_ID}.*`, ""), false);
+	assert.equal(profileEntryAuthorizes(undefined, group), false);
+	assert.equal(profileAllowlistAuthorizes([], group), false);
+	assert.equal(profileAllowlistAuthorizes(undefined, group), false);
+	assert.equal(
+		profileAllowlistAuthorizes(["ZZ99YY88XX.*", `${TEAM_ID}.*`], group),
+		true,
+	);
+});
+
+test("plistStringValues reads one key's strings, bounded at that key's value", () => {
+	const dump = developerIdProfileDump({ groups: [`${TEAM_ID}.*`, "X.y"] });
+	assert.deepEqual(plistStringValues(dump, KEYCHAIN_ACCESS_GROUPS_KEY), [
+		`${TEAM_ID}.*`,
+		"X.y",
+	]);
+	assert.deepEqual(plistStringValues(dump, TEAM_IDENTIFIER_KEY), [TEAM_ID]);
+	assert.deepEqual(plistStringValues(dump, "com.apple.nope"), []);
+	assert.deepEqual(plistStringValues("", KEYCHAIN_ACCESS_GROUPS_KEY), []);
+	// The array's own close bounds the read: strings under the NEXT key are not
+	// members of this one (agent review round 2, R4 on the release gate).
+	assert.deepEqual(
+		plistStringValues(
+			"<key>keychain-access-groups</key><array></array><key>other</key><array><string>A.*</string></array>",
+			KEYCHAIN_ACCESS_GROUPS_KEY,
+		),
+		[],
+	);
+});
+
+test("a real Developer ID profile authorizes all three claims, and anything less renders nothing", () => {
+	const claims = profileBackedClaims(TEAM_ID, "com.local-operator");
+	assert.deepEqual(
+		claims.map(([key]) => key),
+		[
+			KEYCHAIN_ACCESS_GROUPS_KEY,
+			APPLICATION_IDENTIFIER_KEY,
+			TEAM_IDENTIFIER_KEY,
+		],
+	);
+	assert.deepEqual(unauthorizedClaims(developerIdProfileDump(), claims), []);
+
+	// Each half-open door, refused by name and never by value.
+	for (const [label, dump, expected] of [
+		[
+			"another team's wildcard",
+			developerIdProfileDump({ groups: ["ZZ99YY88XX.*"] }),
+			[KEYCHAIN_ACCESS_GROUPS_KEY],
+		],
+		[
+			"a bare *",
+			developerIdProfileDump({ groups: ["*"] }),
+			[KEYCHAIN_ACCESS_GROUPS_KEY],
+		],
+		[
+			"no keychain groups at all",
+			developerIdProfileDump({ groups: null }),
+			[KEYCHAIN_ACCESS_GROUPS_KEY],
+		],
+		[
+			"a profile for another app",
+			developerIdProfileDump({
+				applicationIdentifier: `${TEAM_ID}.com.somebody-else`,
+			}),
+			[APPLICATION_IDENTIFIER_KEY],
+		],
+		[
+			"a profile for another team",
+			developerIdProfileDump({
+				groups: ["ZZ99YY88XX.*"],
+				applicationIdentifier: "ZZ99YY88XX.com.local-operator",
+				teamIdentifier: "ZZ99YY88XX",
+			}),
+			[
+				KEYCHAIN_ACCESS_GROUPS_KEY,
+				APPLICATION_IDENTIFIER_KEY,
+				TEAM_IDENTIFIER_KEY,
+			],
+		],
+		[
+			"no identity claims",
+			developerIdProfileDump({
+				applicationIdentifier: null,
+				teamIdentifier: null,
+			}),
+			[APPLICATION_IDENTIFIER_KEY, TEAM_IDENTIFIER_KEY],
+		],
+	]) {
+		const missing = unauthorizedClaims(dump, claims);
+		assert.deepEqual(missing, expected, label);
+		for (const key of missing) assert.doesNotMatch(key, new RegExp(TEAM_ID));
+	}
+
+	// The render: all three land in the MAIN plist, the committed keys survive,
+	// and it is still one well-formed dict.
+	const rendered = renderProfileBackedEntitlements(COMMITTED, claims);
+	assert.deepEqual(plistStringValues(rendered, KEYCHAIN_ACCESS_GROUPS_KEY), [
+		`${TEAM_ID}.com.local-operator.webauthn`,
+	]);
+	assert.deepEqual(plistStringValues(rendered, APPLICATION_IDENTIFIER_KEY), [
+		`${TEAM_ID}.com.local-operator`,
+	]);
+	assert.deepEqual(plistStringValues(rendered, TEAM_IDENTIFIER_KEY), [TEAM_ID]);
+	assert.match(rendered, /com\.apple\.security\.cs\.allow-jit/);
+	assert.equal((rendered.match(/<\/dict>/g) ?? []).length, 1);
+	// Idempotent, like the group render.
+	assert.equal(renderProfileBackedEntitlements(rendered, claims), rendered);
+	if (process.platform === "darwin") {
+		const dir = mkdtempSync(join(tmpdir(), "render-entitlements-"));
+		try {
+			const out = join(dir, "rendered.plist");
+			writeFileSync(out, rendered);
+			const lint = spawnSync("/usr/bin/plutil", ["-lint", out], {
+				encoding: "utf8",
+			});
+			assert.equal(lint.status, 0, `${lint.stdout}${lint.stderr}`);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	}
+});
+
+test("the release gate reads the profile by the same rule the renderer does", () => {
+	const group = webauthnKeychainAccessGroup(TEAM_ID, "com.local-operator");
+	const ask = (dump, bundleId = "com.local-operator", value = group) =>
+		profileAuthorizes(dump, KEYCHAIN_ACCESS_GROUPS_KEY, bundleId, value);
+	assert.equal(ask(developerIdProfileDump()), true, "team wildcard");
+	assert.equal(
+		ask(developerIdProfileDump({ groups: [group] })),
+		true,
+		"exact entry",
+	);
+	assert.equal(
+		ask(developerIdProfileDump({ groups: ["ZZ99YY88XX.*"] })),
+		false,
+		"another team's wildcard",
+	);
+	assert.equal(ask(developerIdProfileDump({ groups: ["*"] })), false, "bare *");
+	assert.equal(ask(developerIdProfileDump({ groups: [] })), false, "empty");
+	assert.equal(ask(null), false, "no profile");
+	// A wildcard covers every group of the team, but the gate still asks about
+	// THIS app's group: a claim for another bundle is not this app's passkeys.
+	assert.equal(
+		ask(
+			developerIdProfileDump(),
+			"com.local-operator",
+			`${TEAM_ID}.com.somebody-else.webauthn`,
+		),
+		false,
 	);
 });

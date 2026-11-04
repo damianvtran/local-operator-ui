@@ -82,5 +82,12 @@
 	"ui.chat.run_details.chip.mcp_attention": "{count, plural, other {# máy chủ MCP cần chú ý}}",
 	"ui.chat.run_details.mcp.cold_label": "Không có phiên nào đang chạy — không kiểm tra được trạng thái máy chủ.",
 	"ui.chat.run_details.nothing_in_flight": "Không có gì đang chạy.",
-	"ui.chat.run_details.nothing_to_show_yet": "Chưa có gì để hiển thị."
+	"ui.chat.run_details.nothing_to_show_yet": "Chưa có gì để hiển thị.",
+	"ui.chat.run_details.subagents_of_aria": "Tác nhân con của {owner}",
+	"ui.chat.run_details.job_cancel_aria": "Hủy {label}",
+	"ui.chat.run_details.monitors.cancel_aria": "Hủy mục giám sát {name}",
+	"ui.chat.run_details.monitors.more": "{count, plural, other {{count_display} mục giám sát nữa}}",
+	"ui.chat.run_details.wake.more": "{count, plural, other {{count_display} lịch đánh thức nữa}}",
+	"ui.chat.run_details.wake.armed_count": "{count, plural, other {{count_display} lịch thức dậy đã đặt}}",
+	"ui.chat.run_details.wake.cadence_once": "một lần"
 }

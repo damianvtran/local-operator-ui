@@ -1,14 +1,18 @@
+import { desktopKeys } from "@shared/api/local-operator/desktop-hooks";
 import {
 	beginRadientAuthorityTransition,
 	radientUserKeys,
 } from "@shared/hooks/radient-account-authority";
 import { t } from "@shared/i18n";
+import { useDocumentDirection } from "@shared/i18n/use-document-direction";
 import type { Meta, StoryObj } from "@storybook/react";
 import { expect, fireEvent, userEvent, waitFor, within } from "@storybook/test";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
 	type CSSProperties,
 	type ComponentProps,
+	type FC,
+	type ReactNode,
 	useEffect,
 	useLayoutEffect,
 	useState,
@@ -39,8 +43,10 @@ import type { OwnerAuditConversation } from "../../../../shared/team-bridge-owne
 import "../chat/components/story-electron-shim";
 import { useConversationInputStore } from "@shared/store/conversation-input-store";
 import { teamBridgeComposerKey } from "@shared/store/team-bridge-composer-rows";
+import agentPortrait from "../../assets/images/storybook-avatar-portrait.jpg";
 import profileImage from "../../assets/radient-icon-1024x1024.png";
 import { ChatLayout } from "../../shared/components/common/chat-layout";
+import { useUiPreferencesStore } from "../../shared/store/ui-preferences-store";
 import { draftStorageKey, draftTargetKey } from "./team-bridge-drafts";
 import {
 	TEAM_BRIDGE_ALL_SCOPE,
@@ -101,6 +107,61 @@ const useMacChromeSimulation = () => {
 			}
 		};
 	}, []);
+};
+
+/**
+ * THE PAGE IN THE APP'S SHELL ON ITS OWN ROUTE (the sidebar swap, operator
+ * 2026-11-03): `ChatLayout` in route mode, exactly as `app.tsx` mounts it on
+ * `/team-bridge`. The navigation passed as `sidebar` is a marker element rather
+ * than `SidebarNavigation` (which needs the whole desktop bridge) - route mode
+ * does not mount it, and a frame that showed it would be the regression. The
+ * rail is portaled into the shell's column with its Back row and foot.
+ * `collapsed` sets the user's strip preference, which route mode overrides.
+ */
+const InTheShell: FC<{
+	collapsed?: boolean;
+	/** Open the fleet asks drawer: the yield that once squeezed the column (M1). */
+	fleetDrawer?: boolean;
+	children: ReactNode;
+}> = ({ collapsed = false, fleetDrawer = false, children }) => {
+	useMacChromeSimulation();
+	/* The app writes `<html dir>` from the locale (`app.tsx`); Storybook does not,
+	   so the Urdu frame would keep the column on the LTR side without this. */
+	useDocumentDirection();
+	const [ready, setReady] = useState(false);
+	useLayoutEffect(() => {
+		const before = useUiPreferencesStore.getState();
+		const restore = {
+			isSidebarCollapsed: before.isSidebarCollapsed,
+			isAskDrawerOpen: before.isAskDrawerOpen,
+			askDrawerScope: before.askDrawerScope,
+		};
+		useUiPreferencesStore.getState().setSidebarCollapsed(collapsed);
+		if (fleetDrawer)
+			useUiPreferencesStore.setState({
+				isAskDrawerOpen: true,
+				askDrawerScope: "fleet",
+			});
+		setReady(true);
+		return () => useUiPreferencesStore.setState(restore);
+	}, [collapsed, fleetDrawer]);
+	if (!ready) return null;
+	return (
+		<div
+			className="relative flex h-screen flex-col overflow-hidden"
+			style={{ "--chrome-strip-h": "32px" } as CSSProperties}
+		>
+			<ChatLayout
+				sidebar={<nav data-story-app-nav="">app navigation</nav>}
+				routeSidebar={{}}
+				content={
+					<main className="panel-top-pad flex min-w-0 grow flex-col overflow-hidden bg-canvas">
+						{children}
+					</main>
+				}
+			/>
+		</div>
+	);
 };
 
 const dm: TeamBridgeConversation = {
@@ -1107,38 +1168,90 @@ export const EmptyAllOrganizations: Story = {
  * native window chrome; the production value comes from the same property.
  */
 export const FlushToTheWindowTop: Story = {
-	render: () => {
-		useMacChromeSimulation();
-		return (
-			<div
-				className="relative flex h-screen flex-col overflow-hidden"
-				style={{ "--chrome-strip-h": "32px" } as CSSProperties}
-			>
-				<ChatLayout
-					sidebar={<div className="panel-top-pad h-full bg-surface" />}
-					content={
-						<main className="panel-top-pad flex min-w-0 grow flex-col overflow-hidden bg-canvas">
-							<TeamBridgePageView
-								listState="ready"
-								messageState="ready"
-								conversations={[channel, group, dm]}
-								target={{ type: "conversation", id: channel.id }}
-								messages={messages}
-								organizations={[minervaOrganization, northwindOrganization]}
-								scope={asTeamBridgeTenantId("tnt_1")}
-								totalUnread={3}
-								selfAccountId={self}
-								onTarget={() => {}}
-								onSend={() => undefined}
-								onNewChannel={() => {}}
-								onScopeChange={() => {}}
-							/>
-						</main>
-					}
-				/>
-			</div>
-		);
+	render: () => (
+		<InTheShell>
+			<TeamBridgePageView
+				listState="ready"
+				messageState="ready"
+				conversations={[channel, group, dm]}
+				target={{ type: "conversation", id: channel.id }}
+				messages={messages}
+				organizations={[minervaOrganization, northwindOrganization]}
+				scope={asTeamBridgeTenantId("tnt_1")}
+				totalUnread={3}
+				selfAccountId={self}
+				onTarget={() => {}}
+				onSend={() => undefined}
+				onNewChannel={() => {}}
+				onScopeChange={() => {}}
+			/>
+		</InTheShell>
+	),
+};
+
+/**
+ * ONE SIDEBAR (the swap's main frame): the bridge rail fills the app's left
+ * column, with Back on top and the account foot below, and no second column.
+ */
+export const InShellChannelSelected: Story = {
+	args: {
+		target: { type: "conversation", id: channel.id },
+		messages: messages.map((message) => ({
+			...message,
+			conversation_id: channel.id,
+		})),
 	},
+	render: (args) => (
+		<InTheShell>
+			<TeamBridgePageView {...args} />
+		</InTheShell>
+	),
+};
+
+/**
+ * The user's collapsed-strip preference on this route: the column still docks,
+ * because the rail has no 56px form; the preference is kept for the way back.
+ */
+export const InShellCollapsedPreference: Story = {
+	...InShellChannelSelected,
+	render: (args) => (
+		<InTheShell collapsed>
+			<TeamBridgePageView {...args} />
+		</InTheShell>
+	),
+};
+
+/**
+ * The fleet asks drawer open (round 1, M1/Q2): at ~936-1139px the nav would
+ * yield to its 56px strip, but the bridge column has no strip form and stays
+ * docked. Capture at 1000px wide.
+ */
+export const InShellFleetDrawerOpen: Story = {
+	...InShellChannelSelected,
+	render: (args) => (
+		<InTheShell fleetDrawer>
+			<TeamBridgePageView {...args} />
+		</InTheShell>
+	),
+};
+
+/** Urdu: the column is on the right, and Back's arrow points right. */
+export const InShellUrdu: Story = {
+	...InShellChannelSelected,
+	args: { ...InShellChannelSelected.args, locale: "ur" } as Story["args"],
+};
+
+/**
+ * An early state (the eligibility gate) still owns the column: the Back row
+ * and a quiet title, so a gated reader always has a way out.
+ */
+export const InShellEligibilityGate: Story = {
+	args: { eligibility: "plan_required" },
+	render: (args) => (
+		<InTheShell>
+			<TeamBridgePageView {...args} />
+		</InTheShell>
+	),
 };
 
 /**
@@ -2042,6 +2155,34 @@ export const ThreadAtMinimumWindow: Story = {
 	),
 };
 
+/** The thread takeover below a 1024px conversation region, in the shell. */
+export const InShellThreadAtMinimumWindow: Story = {
+	args: {
+		/* The thread capability, so the pane really mounts and the takeover's
+		   start edge is in the frame (the inline board leaves it unset). */
+		threadsCapabilityState: "enabled",
+		target: { type: "conversation", id: channel.id },
+		messages: [threadRoot],
+		threadLink: threadTarget,
+		renderThreadPane: (_target, close) => (
+			<TeamBridgeThreadPaneView
+				root={threadRoot}
+				replies={[threadReply]}
+				state="ready"
+				labelFor={(sender) => sender.display_label}
+				onClose={close}
+				onRetry={() => {}}
+				onSend={async () => {}}
+			/>
+		),
+	},
+	render: (args) => (
+		<InTheShell>
+			<TeamBridgePageView {...args} />
+		</InTheShell>
+	),
+};
+
 /**
  * A deep link opens the thread on the route's first paint. The simulated `<main>`
  * carries the shell's own `panel-top-pad` (app.tsx spells it unconditionally now
@@ -2081,6 +2222,7 @@ export const ThreadDeepLinkFromSearch: Story = {
 			>
 				<ChatLayout
 					sidebar={<div className="panel-top-pad h-full bg-surface" />}
+					routeSidebar={{}}
 					content={
 						<main className="panel-top-pad flex min-w-0 grow flex-col overflow-hidden bg-canvas">
 							<TeamBridgePageView {...args} />
@@ -2311,16 +2453,27 @@ export const LegacyMemberLabelsAllOrganizations: Story = {
 function ProfileDirectoryStory({
 	avatarState,
 	longFields = false,
+	agentPicture = false,
 	...args
 }: ComponentProps<typeof TeamBridgePageView> & {
 	avatarState: "ready" | "loading" | "error" | "decode-error" | "empty";
 	longFields?: boolean;
+	/** Aida publishes her OWN picture (hub `agent.avatar_url`), served only
+	 * through the endpoint relay op — a distinct portrait from Bea's photo, so
+	 * a regression to the owner's face is unmistakable. */
+	agentPicture?: boolean;
 }) {
 	const [client] = useState(() => {
 		const value = new QueryClient({
 			defaultOptions: { queries: { retry: false } },
 		});
 		value.setQueryData(radientUserKeys.user(), { account: { id: self } });
+		// A core serving agent pictures: plates read them only when advertised.
+		if (agentPicture)
+			value.setQueryData(desktopKeys.capabilities, {
+				desktop_available: true,
+				features: { team_bridge_endpoint_avatar: 1 },
+			});
 		return value;
 	});
 	const [target, setTarget] = useState(args.target);
@@ -2330,6 +2483,19 @@ function ProfileDirectoryStory({
 		const media = async (
 			input: DesktopMediaRequest,
 		): Promise<DesktopMediaResponse> => {
+			if (
+				agentPicture &&
+				input.op === "team_bridge.endpoint_avatar" &&
+				input.endpointId === "ep_bea"
+			) {
+				const bytes = await (await fetch(agentPortrait)).arrayBuffer();
+				return {
+					status: 200,
+					kind: "bytes",
+					mimeType: "image/jpeg",
+					data: new Uint8Array(bytes),
+				};
+			}
 			if (input.op !== "team_bridge.avatar")
 				return {
 					status: 404,
@@ -2367,7 +2533,7 @@ function ProfileDirectoryStory({
 			beginRadientAuthorityTransition(client);
 			client.clear();
 		};
-	}, [avatarState, client]);
+	}, [agentPicture, avatarState, client]);
 	const people = directoryPeople.map((member) =>
 		member.account_id !== "acct_bea" || avatarState === "empty"
 			? {
@@ -2382,6 +2548,12 @@ function ProfileDirectoryStory({
 						name: "Aida",
 						endpoint_id: "ep_bea",
 						state: "active" as const,
+						...(agentPicture
+							? {
+									avatar_url:
+										"/v1/messaging/endpoints/ep_bea/avatar?v=a1a1a1a1a1a1a1a1",
+								}
+							: {}),
 					},
 					profile: {
 						display_name: "Bea",
@@ -3042,5 +3214,146 @@ export const LongContentRowsStayInColumn: Story = {
 				await expect(tb.right).toBeLessThanOrEqual(r.right + EDGE_TOLERANCE);
 			}
 		}
+	},
+};
+
+/*
+ * AN AGENT NEVER WEARS ITS OWNER'S FACE (2026-10-30). Bea has a real photo,
+ * and her chief of staff "Aida" rides on the same directory row. Before the
+ * fix every Aida surface showed Bea's photo, because the plate looked the
+ * picture up by the owner's account id. These boards show each surface with
+ * the photo READY, so a regression shows Bea's face where the Bot glyph
+ * belongs. Bea's own (human) plate is the control: it must still show her
+ * photo.
+ */
+const agentAvatarChannel: TeamBridgeConversation = {
+	...channel,
+	members: [
+		...channel.members.map((member) =>
+			member.account_id === "acct_bea"
+				? { ...member, account_id: "acc_bea" }
+				: member,
+		),
+		{
+			account_id: "acc_bea",
+			kind: "agent",
+			display_label: "Aida",
+			role: "member",
+			state: "active",
+		},
+	],
+};
+const agentAvatarArgs = {
+	...profileArgs,
+	conversations: [agentAvatarChannel, profileArgs.conversations[0]],
+	target: { type: "conversation" as const, id: agentAvatarChannel.id },
+	messages: [
+		{
+			...messages[0],
+			id: "agent-avatar-human",
+			conversation_id: agentAvatarChannel.id,
+			sender: {
+				account_id: "acc_bea",
+				kind: "human" as const,
+				display_label: "Bea",
+			},
+			body: "Aida, can you summarise the launch checklist?",
+		},
+		{
+			...messages[1],
+			id: "agent-avatar-agent",
+			conversation_id: agentAvatarChannel.id,
+			seq: 2,
+			sender: {
+				account_id: "acc_bea",
+				kind: "agent" as const,
+				display_label: "Aida",
+			},
+			body: "Two items remain open: the pricing copy and the status page.",
+		},
+	],
+};
+export const AgentAvatarMessages: Story = {
+	args: agentAvatarArgs,
+	render: (args) => <ProfileDirectoryStory {...args} avatarState="ready" />,
+};
+export const AgentAvatarProfileCard: Story = {
+	args: agentAvatarArgs,
+	render: (args) => <ProfileDirectoryStory {...args} avatarState="ready" />,
+	play: async ({ canvasElement }) => {
+		const row = canvasElement.querySelector(
+			'[data-message-id="agent-avatar-agent"]',
+		);
+		const trigger = row?.querySelector<HTMLButtonElement>("button");
+		if (!trigger) throw new Error("Agent message avatar missing");
+		trigger.focus();
+		await within(canvasElement.ownerDocument.body).findByRole("dialog");
+	},
+};
+export const AgentAvatarMembersDialog: Story = {
+	args: { ...agentAvatarArgs, initialMembersOpen: true },
+	render: (args) => <ProfileDirectoryStory {...args} avatarState="ready" />,
+};
+export const AgentAvatarChiefDraft: Story = {
+	args: {
+		...agentAvatarArgs,
+		target: { type: "chief" as const, accountId: "acc_bea" },
+		messages: [],
+		messageState: "idle" as const,
+	},
+	render: (args) => <ProfileDirectoryStory {...args} avatarState="ready" />,
+};
+export const AgentAvatarComposeChips: Story = {
+	args: {
+		...agentAvatarArgs,
+		target: {
+			type: "compose" as const,
+			recipients: [
+				{
+					kind: "agent" as const,
+					accountId: "acc_bea",
+					endpointId: "ep_bea",
+					label: "Aida (Bea)",
+				},
+			],
+		},
+		messages: [],
+		messageState: "idle" as const,
+	},
+	render: (args) => <ProfileDirectoryStory {...args} avatarState="ready" />,
+	play: async ({ canvasElement }) => {
+		const field = within(canvasElement).getByRole("combobox");
+		field.focus();
+	},
+};
+
+/*
+ * AN AGENT WEARS ITS OWN PICTURE (2026-10-31). The same boards with Aida's
+ * hub-published picture (`agent.avatar_url`, read through the endpoint relay):
+ * every Aida surface shows HER portrait with the agent mark painted over it,
+ * and Bea's own plate still shows Bea's photo. Before this change these were
+ * the Bot glyph, by design, because no endpoint relay existed.
+ */
+const agentPictureRender = (
+	args: ComponentProps<typeof TeamBridgePageView>,
+) => <ProfileDirectoryStory {...args} avatarState="ready" agentPicture />;
+export const AgentOwnPictureMessages: Story = {
+	args: agentAvatarArgs,
+	render: agentPictureRender,
+};
+export const AgentOwnPictureProfileCard: Story = {
+	...AgentAvatarProfileCard,
+	render: agentPictureRender,
+};
+export const AgentOwnPictureMembersDialog: Story = {
+	...AgentAvatarMembersDialog,
+	render: agentPictureRender,
+};
+export const AgentOwnPictureMention: Story = {
+	args: agentAvatarArgs,
+	render: agentPictureRender,
+	play: async ({ canvasElement }) => {
+		const field = await within(canvasElement).findByRole("combobox");
+		await userEvent.type(field, "@Ai");
 	},
 };

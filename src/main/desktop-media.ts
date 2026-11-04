@@ -1,3 +1,4 @@
+import { readOwnerAuditAttachment } from "./team-bridge-audit-media";
 /**
  * Authenticated binary/multipart relay for the legacy media routes.
  *
@@ -20,6 +21,8 @@ import {
 	desktopRefusalCodeForStatus,
 	isDesktopRefusalCode,
 } from "../shared/desktop-contract";
+
+const NOTIFICATION_INITIALS = /^[\p{L}\p{N}]{0,2}$/u;
 
 const id = z
 	.string()
@@ -48,7 +51,60 @@ const TEAM_BRIDGE_ATTACHMENT_TYPES: ReadonlySet<string> = new Set([
 ]);
 const MAX_DOWNLOAD_BYTES = 32 * 1024 * 1024;
 
+const profileScope = z.string().regex(/^[a-f0-9]{64}$/);
+const profileFields = z
+	.object({
+		display_name: z.string().max(128).optional(),
+		title: z.string().max(160).optional(),
+		description: z.string().max(1000).optional(),
+		timezone: z.string().max(64).optional(),
+	})
+	.strict()
+	.refine((fields) => Object.keys(fields).length > 0);
+
+// Owner audit is a different authority domain. Keep the tuple closed and
+// explicit even though several ids also appear in member attachment requests.
+const ownerAuditAttachmentTupleSchema = z
+	.object({
+		tenantId: id,
+		conversationId: id,
+		messageId: id,
+		attachmentId: id,
+		expectedAccountId: id,
+	})
+	.strict();
+
 const mediaRequestSchema = z.discriminatedUnion("op", [
+	ownerAuditAttachmentTupleSchema
+		.extend({ op: z.literal("team_bridge.owner_audit.attachment") })
+		.strict(),
+	z
+		.object({ op: z.literal("account.profile"), expectedAccountId: id })
+		.strict(),
+	z
+		.object({
+			op: z.literal("account.profile.update"),
+			expectedAccountId: id,
+			scope: profileScope,
+			fields: profileFields,
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("account.avatar.put"),
+			expectedAccountId: id,
+			scope: profileScope,
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("account.avatar.delete"),
+			expectedAccountId: id,
+			scope: profileScope,
+			mode: z.enum(["uploaded", "provider"]),
+			confirmed: z.literal(true),
+		})
+		.strict(),
 	z
 		.object({
 			op: z.literal("speech.create"),
@@ -95,6 +151,9 @@ const mediaRequestSchema = z.discriminatedUnion("op", [
 			op: z.literal("agent.avatar"),
 			agentId: id,
 			sha256: z.string().regex(/^[0-9a-f]{64}$/),
+			// Closed to core's three derivatives (`agent_avatar_sizes`), so the
+			// renderer cannot make main build an arbitrary query.
+			size: z.union([z.literal(64), z.literal(128), z.literal(256)]).optional(),
 		})
 		.strict(),
 	z.object({ op: z.literal("agent.avatar.put"), agentId: id }).strict(),
@@ -206,6 +265,20 @@ const mediaRequestSchema = z.discriminatedUnion("op", [
 			size: z.union([z.literal(64), z.literal(256)]),
 		})
 		.strict(),
+	/*
+	 * An agent's own picture, by endpoint (core's closed endpoint relay). The id
+	 * is the transport-safe subset the resolver and core both enforce, so a
+	 * renderer value can never reshape the path.
+	 */
+	z
+		.object({
+			op: z.literal("team_bridge.endpoint_avatar"),
+			expectedAccountId: id,
+			endpointId: z.string().regex(/^[A-Za-z0-9_-]{1,128}$/),
+			hash: z.string().regex(/^[0-9a-f]{16}$/),
+			size: z.union([z.literal(64), z.literal(256)]),
+		})
+		.strict(),
 	// Sender composites stay on the private avatar authority: never a URL.
 	z
 		.object({
@@ -219,9 +292,21 @@ const mediaRequestSchema = z.discriminatedUnion("op", [
 			initials: z
 				.string()
 				.max(4)
-				.refine((value) => /^[\p{L}\p{N}]{0,2}$/u.test(value.normalize("NFC"))),
+				.refine((value) => NOTIFICATION_INITIALS.test(value.normalize("NFC"))),
 			avatar: z
 				.object({ account_id: id, hash: z.string().regex(/^[0-9a-f]{16}$/) })
+				.strict()
+				.optional(),
+			/*
+			 * A `person_agent`'s OWN picture (core capability
+			 * `team_bridge_endpoint_avatar`). Never alongside `avatar`, and never
+			 * for a person: refused below before anything is sent.
+			 */
+			endpointAvatar: z
+				.object({
+					endpoint_id: z.string().regex(/^[A-Za-z0-9_-]{1,128}$/),
+					hash: z.string().regex(/^[0-9a-f]{16}$/),
+				})
 				.strict()
 				.optional(),
 		})
@@ -275,6 +360,12 @@ export type DesktopMediaResponse =
 			mimeType: string;
 			data: Uint8Array;
 			cacheControl?: string;
+			/**
+			 * Core drew the agent glyph where the agent's own picture was asked for
+			 * (`X-Avatar-Fallback: glyph`, local-operator #3228). Main keeps such a
+			 * composite only for its failure TTL (code review round 1, F1).
+			 */
+			fallback?: true;
 	  }
 	| { status: number; kind: "json"; body: unknown }
 	| {
@@ -301,9 +392,29 @@ export type DesktopMediaResponse =
 
 function endpoint(request: DesktopMediaRequest): {
 	path: string;
-	method: "POST" | "GET" | "PUT" | "DELETE";
+	method: "POST" | "GET" | "PUT" | "DELETE" | "PATCH";
 } {
 	switch (request.op) {
+		case "account.profile":
+			return {
+				path: `/v1/desktop/account/profile?${new URLSearchParams({ expected_account_id: request.expectedAccountId })}`,
+				method: "GET",
+			};
+		case "account.profile.update":
+			return {
+				path: `/v1/desktop/account/profile?${new URLSearchParams({ expected_account_id: request.expectedAccountId, scope: request.scope })}`,
+				method: "PATCH",
+			};
+		case "account.avatar.put":
+			return {
+				path: `/v1/desktop/account/avatar?${new URLSearchParams({ expected_account_id: request.expectedAccountId, scope: request.scope })}`,
+				method: "PUT",
+			};
+		case "account.avatar.delete":
+			return {
+				path: `/v1/desktop/account/avatar?${new URLSearchParams({ expected_account_id: request.expectedAccountId, scope: request.scope, mode: request.mode, confirmed: "true" })}`,
+				method: "DELETE",
+			};
 		case "speech.create":
 			return { path: "/v1/tools/speech", method: "POST" };
 		case "speech.agent":
@@ -316,7 +427,10 @@ function endpoint(request: DesktopMediaRequest): {
 			return { path: `/v1/agents/${request.agentId}/export`, method: "GET" };
 		case "agent.avatar":
 			return {
-				path: `/v1/agents/${request.agentId}/avatar?${new URLSearchParams({ v: request.sha256 })}`,
+				path: `/v1/agents/${request.agentId}/avatar?${new URLSearchParams({
+					v: request.sha256,
+					...(request.size ? { size: String(request.size) } : {}),
+				})}`,
 				method: "GET",
 			};
 		case "agent.avatar.put":
@@ -363,6 +477,11 @@ function endpoint(request: DesktopMediaRequest): {
 				path: `/v1/desktop/team-bridge/conversations/${request.conversationId}/attachments?${new URLSearchParams({ tenant_id: request.tenantId, expected_account_id: request.expectedAccountId })}`,
 				method: "POST",
 			};
+		case "team_bridge.owner_audit.attachment":
+			return {
+				path: `/v1/desktop/team-bridge/owner-audit/conversations/${request.conversationId}/messages/${request.messageId}/attachments/${request.attachmentId}?${new URLSearchParams({ tenant_id: request.tenantId, expected_account_id: request.expectedAccountId })}`,
+				method: "GET",
+			};
 		case "team_bridge.attachment":
 			return {
 				path: `/v1/desktop/team-bridge/conversations/${request.conversationId}/messages/${request.messageId}/attachments/${request.attachmentId}?${new URLSearchParams({ tenant_id: request.tenantId, expected_account_id: request.expectedAccountId })}`,
@@ -380,12 +499,20 @@ function endpoint(request: DesktopMediaRequest): {
 			if (request.avatar) {
 				query.set("v", request.avatar.hash);
 				query.set("avatar_account_id", request.avatar.account_id);
+			} else if (request.endpointAvatar) {
+				query.set("v", request.endpointAvatar.hash);
+				query.set("avatar_endpoint_id", request.endpointAvatar.endpoint_id);
 			}
 			return {
 				path: `/v1/desktop/team-bridge/accounts/${request.accountId}/notification-avatar?${query}`,
 				method: "GET",
 			};
 		}
+		case "team_bridge.endpoint_avatar":
+			return {
+				path: `/v1/desktop/team-bridge/endpoints/${request.endpointId}/avatar?${new URLSearchParams({ v: request.hash, size: String(request.size), expected_account_id: request.expectedAccountId })}`,
+				method: "GET",
+			};
 		case "team_bridge.avatar":
 			return {
 				path: `/v1/desktop/team-bridge/accounts/${request.accountId}/avatar?${new URLSearchParams({ v: request.hash, size: String(request.size), expected_account_id: request.expectedAccountId })}`,
@@ -420,8 +547,12 @@ export async function requestDesktopMediaOutcome(
 	if (
 		!parsed.success ||
 		(parsed.data.op === "team_bridge.notification_avatar" &&
-			parsed.data.avatar &&
-			parsed.data.avatar.account_id !== parsed.data.accountId)
+			((parsed.data.avatar &&
+				parsed.data.avatar.account_id !== parsed.data.accountId) ||
+				// An agent's picture is never drawn on a person, and one banner
+				// never names both pictures (core refuses either; so do we, first).
+				(parsed.data.endpointAvatar &&
+					(parsed.data.kind !== "person_agent" || parsed.data.avatar))))
 	) {
 		// Never sent.
 		return {
@@ -459,9 +590,13 @@ export async function requestDesktopMediaOutcome(
 		};
 	}
 	if (
-		request.op === "team_bridge.attachment.upload" &&
+		(request.op === "team_bridge.attachment.upload" ||
+			request.op === "account.avatar.put") &&
 		bytes &&
-		bytes.byteLength > TEAM_BRIDGE_ATTACHMENT_MAX_BYTES
+		bytes.byteLength >
+			(request.op === "account.avatar.put"
+				? 1024 * 1024
+				: TEAM_BRIDGE_ATTACHMENT_MAX_BYTES)
 	) {
 		// Never sent: the hub would answer 413 for the same bytes.
 		return {
@@ -478,6 +613,8 @@ export async function requestDesktopMediaOutcome(
 	let body: BodyInit | undefined;
 	let contentType: string | undefined;
 	if (
+		request.op === "account.profile" ||
+		request.op === "account.avatar.delete" ||
 		request.op === "agent.export" ||
 		request.op === "agent.avatar" ||
 		request.op === "agent.avatar.delete" ||
@@ -489,13 +626,16 @@ export async function requestDesktopMediaOutcome(
 		request.op === "library.thumbnail" ||
 		request.op === "library.waveform" ||
 		request.op === "team_bridge.attachment" ||
+		request.op === "team_bridge.owner_audit.attachment" ||
 		request.op === "team_bridge.avatar" ||
+		request.op === "team_bridge.endpoint_avatar" ||
 		request.op === "team_bridge.notification_avatar"
 	) {
 		// A GET carries no body; `fetch` rejects one outright.
 		body = undefined;
 	} else if (
 		request.op === "team_bridge.attachment.upload" ||
+		request.op === "account.avatar.put" ||
 		request.op === "agent.avatar.put"
 	) {
 		/*
@@ -515,6 +655,9 @@ export async function requestDesktopMediaOutcome(
 		}
 		body = new Blob([bytes]);
 		contentType = "application/octet-stream";
+	} else if (request.op === "account.profile.update") {
+		body = JSON.stringify(request.fields);
+		contentType = "application/json";
 	} else if (request.op === "speech.create" || request.op === "speech.agent") {
 		body = JSON.stringify(request.request);
 		contentType = "application/json";
@@ -547,14 +690,19 @@ export async function requestDesktopMediaOutcome(
 		const response = await fetch(new URL(target.path, backendUrl), {
 			method: target.method,
 			headers: {
-				Accept: "application/json, audio/*, image/*, application/octet-stream",
+				Accept:
+					request.op === "team_bridge.owner_audit.attachment"
+						? "image/png, image/jpeg"
+						: "application/json, audio/*, image/*, application/octet-stream",
 				...(contentType ? { "Content-Type": contentType } : {}),
 				Authorization: `Bearer ${token}`,
 			},
 			body,
 			// Private avatars are cached only as authority-scoped renderer blobs.
 			// Neither Electron nor an intermediary may persist them across login.
-			...(request.op === "team_bridge.avatar" ||
+			...(request.op === "team_bridge.owner_audit.attachment" ||
+			request.op === "team_bridge.avatar" ||
+			request.op === "team_bridge.endpoint_avatar" ||
 			request.op === "team_bridge.notification_avatar"
 				? { cache: "no-store" as const }
 				: {}),
@@ -565,8 +713,15 @@ export async function requestDesktopMediaOutcome(
 		});
 		answered = true;
 		const responseType = response.headers.get("content-type") ?? "";
+		if (request.op === "team_bridge.owner_audit.attachment") {
+			return {
+				response: await readOwnerAuditAttachment(response),
+				answered: true,
+			};
+		}
 		if (
 			request.op === "team_bridge.avatar" ||
+			request.op === "team_bridge.endpoint_avatar" ||
 			request.op === "team_bridge.notification_avatar"
 		) {
 			const composite = request.op === "team_bridge.notification_avatar";
@@ -669,6 +824,9 @@ export async function requestDesktopMediaOutcome(
 					status: response.status,
 					mimeType: mime,
 					data,
+					...(composite && response.headers.get("x-avatar-fallback") === "glyph"
+						? { fallback: true as const }
+						: {}),
 				},
 				answered: true,
 			};

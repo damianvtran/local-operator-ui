@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { ENDPOINT_AVATAR_URL } from "./identity-avatar";
 
 /**
  * The Team Bridge conversation wire shapes (docs/TEAM-BRIDGE-CONVERSATIONS.md).
@@ -195,6 +196,33 @@ export const teamBridgeAttachmentSchema = z
 	.passthrough();
 export type TeamBridgeAttachment = z.infer<typeof teamBridgeAttachmentSchema>;
 
+/*
+ * A GENERIC FILE on a message (agent-server S3b, `docs/bridge-files-s3b-binding.md`).
+ * Deliberately its own schema, not a widened `teamBridgeAttachmentSchema`: the
+ * server keeps images and files in separate fields precisely so a client that
+ * validates the image descriptor (64-char MIME, required dimensions) never sees
+ * a PDF there. `class` is the server's byte-sniffed LABEL (pdf/text/container/
+ * other), never a safety claim; `mime` is always `application/octet-stream`.
+ * `display_name` is the cleaned uploader name (<= 120 Unicode scalars server-
+ * side, so <= 240 UTF-16 units) and is MESSAGE CONTENT: it may be shown as text
+ * to the authorized human reader, never put in an aria-label, id, key or log.
+ * Only `bound` is a live file; `expired` (and any state this client does not
+ * know) renders as an unavailable card.
+ */
+export const teamBridgeFileSchema = z
+	.object({
+		id: attachmentId,
+		class: z.string().max(32).optional(),
+		mime: z.string().max(128).optional(),
+		size: z.number().int().nonnegative(),
+		display_name: z.string().max(512).optional(),
+		state: z.string().max(32).optional(),
+		expires_at: z.string().optional(),
+		download_only: z.boolean().optional(),
+	})
+	.passthrough();
+export type TeamBridgeFile = z.infer<typeof teamBridgeFileSchema>;
+
 /** The upload answer: `201 {attachment}` - a STAGED id the send then binds. */
 export const teamBridgeAttachmentUploadSchema = z
 	.object({ attachment: teamBridgeAttachmentSchema })
@@ -217,6 +245,39 @@ export const teamBridgeAttachmentCapabilitySchema = z
 	.passthrough();
 export type TeamBridgeAttachmentCapability = z.infer<
 	typeof teamBridgeAttachmentCapabilitySchema
+>;
+
+/*
+ * PER-RECIPIENT DELIVERY STATE (Team Bridge delivery-state contract v1). The hub
+ * attaches one entry per AGENT recipient to a human member's read of a message:
+ * `delivered`, `held` (the recipient's screening has not finished) or `refused`
+ * (the recipient's moderation declined it). The vocabularies are closed and
+ * server-validated, but the strings are parsed as strings here and narrowed in
+ * `team-bridge-delivery-annotation-model.ts`: a newer hub's added value must
+ * degrade to the generic line, never fail the message the annotation sits under.
+ *
+ * WHAT IS DELIBERATELY NOT HERE: no score, reason, body, model or timestamp —
+ * the hub never sends them, and a schema that named them would invite a renderer
+ * to show them. `hold_class` reaches only the recipient's owner; the sender sees
+ * every hold as "waiting to be screened". `refusal_class` is withheld from the
+ * sender once the hub suspects probing. Both are optional for that reason.
+ */
+export const teamBridgeDeliveryStateSchema = z
+	.object({
+		endpoint_id: id,
+		recipient_label: z.string().max(64),
+		recipient_owner_label: z.string().max(64),
+		state: z.string().max(32),
+		hold_class: z.string().max(32).optional(),
+		refusal_class: z.string().max(32).optional(),
+	})
+	/* Deliberately NOT `.passthrough()`, unlike the rest of this file: an
+	 * extra field on a delivery entry (a score, a reason, a raw category) is
+	 * exactly what must never sit in the query cache or reach a spread, so
+	 * zod's default strip drops it at the boundary (review round 1, R1). */
+	.strip();
+export type TeamBridgeDeliveryState = z.infer<
+	typeof teamBridgeDeliveryStateSchema
 >;
 
 export const teamBridgeMessageSchema = z
@@ -251,6 +312,20 @@ export const teamBridgeMessageSchema = z
 		reply_participants: z.array(z.string()).optional(),
 		/* Image attachments, send order. Absent on text-only messages and old hubs. */
 		attachments: z.array(teamBridgeAttachmentSchema).max(16).optional(),
+		/* Generic files (S3b), send order; absent on file-less messages and pre-S3b
+		 * hubs, so an old page parses exactly as before. `.catch(undefined)`: a
+		 * malformed descriptor list costs the descriptors, never the message, and
+		 * `file_count` (sent to every reader) still yields a count-only receipt. */
+		files: z.array(teamBridgeFileSchema).max(10).optional().catch(undefined),
+		file_count: z.number().int().nonnegative().optional().catch(undefined),
+		/* Agent recipients' delivery states; absent for third members, agent
+		 * reads and old hubs. `.catch(undefined)`: a malformed annotation costs
+		 * the annotation, never the message. */
+		delivery_states: z
+			.array(teamBridgeDeliveryStateSchema)
+			.max(64)
+			.optional()
+			.catch(undefined),
 	})
 	.passthrough();
 export type TeamBridgeMessage = z.infer<typeof teamBridgeMessageSchema>;
@@ -484,6 +559,25 @@ export const teamBridgeDirectoryAgentSchema = z
 		endpoint_id: id,
 		name: z.string().max(128),
 		state: z.string().min(1).max(32),
+		/*
+		 * THE ENDPOINT'S OWN PICTURE, validated where it enters the app rather
+		 * than handed to the resolver as `unknown`. The hub publishes it from
+		 * `BridgeEndpointAvatarPointer` (agent-server #260) when the owner's
+		 * desktop has published a picture; `src/shared/identity-avatar.ts`
+		 * parses it and the endpoint relay reads the bytes. Optional and
+		 * `.catch(undefined)` — an older or newer hub must never cost a person
+		 * their agent row over a picture.
+		 */
+		avatar_url: z
+			.string()
+			.max(512)
+			/* THE RESOLVER'S OWN PATTERN, not a copy: two literals that drift turn a
+			   picture the hub does send into a silently missing one
+			   (`.catch(undefined)`) - round 1's F1 failure mode one layer up (round 2,
+			   F6). */
+			.regex(ENDPOINT_AVATAR_URL)
+			.optional()
+			.catch(undefined),
 	})
 	.passthrough();
 export type TeamBridgeDirectoryAgent = z.infer<

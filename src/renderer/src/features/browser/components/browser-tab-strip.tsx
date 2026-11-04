@@ -1,5 +1,6 @@
 import { Button, Tooltip } from "@shared/components/ui";
-import { t } from "@shared/i18n";
+import { isolateLtr, t } from "@shared/i18n";
+import { ShortcutText } from "@shared/i18n/shortcut-text";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { chordCaption } from "@shared/keymap/keymap-chord";
 import { cn } from "@shared/lib/utils";
@@ -1542,11 +1543,18 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 										   shortcut that closes a different tab. */}
 									<Tooltip
 										content={
-											active
-												? t("ui.browser.browser_tab_strip.close_tab_shortcut", {
-														shortcut: closeChord.glyph,
-													})
-												: t("ui.browser.browser_tab_strip.close_tab")
+											<ShortcutText
+												text={
+													active
+														? t(
+																"ui.browser.browser_tab_strip.close_tab_shortcut",
+																{
+																	shortcut: isolateLtr(closeChord.glyph),
+																},
+															)
+														: t("ui.browser.browser_tab_strip.close_tab")
+												}
+											/>
 										}
 									>
 										<Button
@@ -1691,7 +1699,11 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 				)}
 				{tabs.length > 0 && (
 					<Tooltip
-						content={`${newTabLabel} (${newChord.glyph})`}
+						content={
+							<ShortcutText
+								text={`${newTabLabel} (${isolateLtr(newChord.glyph)})`}
+							/>
+						}
 						collisionPadding={{ right: 8 }}
 						side="top"
 					>

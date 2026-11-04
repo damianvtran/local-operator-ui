@@ -1,0 +1,11 @@
+{
+  "measurements": {
+    "load": 25.01,
+    "memory_free_percent": 99,
+    "disk_GiB": 100,
+    "active_heavy_groups": 0,
+    "synthetic_negative_control": true
+  },
+  "launch_called": false,
+  "exit": 75
+}

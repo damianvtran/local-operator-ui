@@ -67,5 +67,10 @@
 	"ui.settings.appearance.theme.tokyo_night_storm": "La nuit la plus lumineuse — ciel d’orage indigo sous les mêmes accents néon.",
 	"ui.settings.appearance.theme.tokyo_night": "Nuit bleu-violet profond avec un accent bleu vif.",
 	"ui.settings.appearance.theme.tron": "Circuits cyan électrique sur le bleu-noir de la Grid.",
-	"ui.settings.appearance.theme.vaporwave": "Pastels rose poudré et bleu-vert délavé sur un violet de galerie marchande."
+	"ui.settings.appearance.theme.vaporwave": "Pastels rose poudré et bleu-vert délavé sur un violet de galerie marchande.",
+	"ui.settings.appearance.agent_avatar_size_setting.agent_picture_size": "Taille de la photo de l’agent",
+	"ui.settings.appearance.agent_avatar_size_setting.how_large_the_agent_s_picture_appears_in_the_chat_window_and_the_chat": "Taille des photos des agents dans la transcription et dans l’en-tête de conversation. Les lignes de la barre latérale gardent leur taille.",
+	"ui.settings.appearance.agent_avatar_size_setting.small": "Petit",
+	"ui.settings.appearance.agent_avatar_size_setting.medium": "Moyen",
+	"ui.settings.appearance.agent_avatar_size_setting.large": "Grand"
 }

@@ -135,7 +135,8 @@ export const AgentsSidebarItem: FC<AgentsSidebarItemProps> = ({
 }) => {
 	// Refresh translated copy without resetting the current selection or action.
 	useI18nLocale();
-	const avatar = useAgentAvatar(agent.id);
+	// 32 = the `size-8` plate this row draws.
+	const avatar = useAgentAvatar(agent.id, undefined, 32);
 	const description =
 		agent.description || t("ui.agents.navigation.sidebar.no_description");
 

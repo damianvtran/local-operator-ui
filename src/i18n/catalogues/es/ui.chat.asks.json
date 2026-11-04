@@ -28,5 +28,8 @@
 	"ui.chat.asks.all_asks": "Todas las consultas",
 	"ui.chat.asks.conversation_asks": "Consultas de esta conversación",
 	"ui.chat.asks.status.withdrawn": "Retirada — el agente ya no necesita respuesta",
-	"ui.chat.asks.status.withdrawn_label": "Retirada"
+	"ui.chat.asks.status.withdrawn_label": "Retirada",
+	"ui.chat.asks.outstanding_count": "{count, plural, one {{count_display} consulta} many {{count_display} de consultas} other {{count_display} consultas}}",
+	"ui.chat.asks.outstanding_aria": "{label} sin responder. El agente no está bloqueado esperando tu respuesta.",
+	"ui.chat.asks.answer_aria": "Tu respuesta a: {question}"
 }

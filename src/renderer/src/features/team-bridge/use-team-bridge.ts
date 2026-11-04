@@ -1271,6 +1271,14 @@ export function useCreateTeamBridgeConversation(
 		Error,
 		CapturedBridgeMutation<Input, BridgeWriteTarget>
 	>({
+		/*
+		 * NEVER RETRIED (#1511 review round 7 m1 / QA round 5 Q1). A group create is
+		 * not find-or-create, so the shared client's `retry: 1` turns any failure
+		 * after the server committed - a receipt that fails to parse, a transport
+		 * error on the way back - into a second group. The failed row's Retry is
+		 * the explicit second attempt.
+		 */
+		retry: 0,
 		mutationFn: ({ input, target }) => {
 			target.assertCurrent();
 			if (!target.isCurrent())
