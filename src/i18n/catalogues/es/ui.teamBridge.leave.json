@@ -1,6 +1,6 @@
 {
 	"ui.teamBridge.leave.back": "Atrás",
 	"ui.teamBridge.leave.back_shortcut": "Atrás ({shortcut})",
-	"ui.teamBridge.leave.name": "Salir de Team Bridge",
-	"ui.teamBridge.leave.name_attention": "{count, plural, one {Salir de Team Bridge, # elemento pendiente en otro lugar} many {Salir de Team Bridge, # de elementos pendientes en otro lugar} other {Salir de Team Bridge, # elementos pendientes en otro lugar}}"
+	"ui.teamBridge.leave.name": "Atrás, salir de Team Bridge",
+	"ui.teamBridge.leave.name_attention": "{count, plural, one {Atrás, salir de Team Bridge, # elemento pendiente en otro lugar} many {Atrás, salir de Team Bridge, # de elementos pendientes en otro lugar} other {Atrás, salir de Team Bridge, # elementos pendientes en otro lugar}}"
 }

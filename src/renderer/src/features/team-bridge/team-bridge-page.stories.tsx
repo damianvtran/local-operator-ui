@@ -118,21 +118,33 @@ const useMacChromeSimulation = () => {
  * rail is portaled into the shell's column with its Back row and foot.
  * `collapsed` sets the user's strip preference, which route mode overrides.
  */
-const InTheShell: FC<{ collapsed?: boolean; children: ReactNode }> = ({
-	collapsed = false,
-	children,
-}) => {
+const InTheShell: FC<{
+	collapsed?: boolean;
+	/** Open the fleet asks drawer: the yield that once squeezed the column (M1). */
+	fleetDrawer?: boolean;
+	children: ReactNode;
+}> = ({ collapsed = false, fleetDrawer = false, children }) => {
 	useMacChromeSimulation();
 	/* The app writes `<html dir>` from the locale (`app.tsx`); Storybook does not,
 	   so the Urdu frame would keep the column on the LTR side without this. */
 	useDocumentDirection();
 	const [ready, setReady] = useState(false);
 	useLayoutEffect(() => {
-		const before = useUiPreferencesStore.getState().isSidebarCollapsed;
+		const before = useUiPreferencesStore.getState();
+		const restore = {
+			isSidebarCollapsed: before.isSidebarCollapsed,
+			isAskDrawerOpen: before.isAskDrawerOpen,
+			askDrawerScope: before.askDrawerScope,
+		};
 		useUiPreferencesStore.getState().setSidebarCollapsed(collapsed);
+		if (fleetDrawer)
+			useUiPreferencesStore.setState({
+				isAskDrawerOpen: true,
+				askDrawerScope: "fleet",
+			});
 		setReady(true);
-		return () => useUiPreferencesStore.getState().setSidebarCollapsed(before);
-	}, [collapsed]);
+		return () => useUiPreferencesStore.setState(restore);
+	}, [collapsed, fleetDrawer]);
 	if (!ready) return null;
 	return (
 		<div
@@ -1204,6 +1216,20 @@ export const InShellCollapsedPreference: Story = {
 	...InShellChannelSelected,
 	render: (args) => (
 		<InTheShell collapsed>
+			<TeamBridgePageView {...args} />
+		</InTheShell>
+	),
+};
+
+/**
+ * The fleet asks drawer open (round 1, M1/Q2): at ~936-1139px the nav would
+ * yield to its 56px strip, but the bridge column has no strip form and stays
+ * docked. Capture at 1000px wide.
+ */
+export const InShellFleetDrawerOpen: Story = {
+	...InShellChannelSelected,
+	render: (args) => (
+		<InTheShell fleetDrawer>
 			<TeamBridgePageView {...args} />
 		</InTheShell>
 	),

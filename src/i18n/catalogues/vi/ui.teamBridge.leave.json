@@ -1,6 +1,6 @@
 {
 	"ui.teamBridge.leave.back": "Quay lại",
 	"ui.teamBridge.leave.back_shortcut": "Quay lại ({shortcut})",
-	"ui.teamBridge.leave.name": "Rời Team Bridge",
-	"ui.teamBridge.leave.name_attention": "{count, plural, other {Rời Team Bridge, # mục đang chờ ở nơi khác}}"
+	"ui.teamBridge.leave.name": "Quay lại, rời Team Bridge",
+	"ui.teamBridge.leave.name_attention": "{count, plural, other {Quay lại, rời Team Bridge, # mục đang chờ ở nơi khác}}"
 }

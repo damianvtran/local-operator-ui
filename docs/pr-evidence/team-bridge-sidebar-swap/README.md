@@ -46,3 +46,11 @@ view and then there's an arrow back", so the window no longer shows two sidebars
 - At 800 the two-sidebar `main` gave the conversation 800 − 280 − 288 = 232px
   (nav `rect 0,0 280x600`, `<main>` `rect 280,0 520x600` holding the 288px rail).
   The swap gives it 520px.
+
+## Round 1 remediation frames (1000x800, Storybook dev, harness `browser`, one tab)
+
+| Frame | What it shows |
+|---|---|
+| `after-1000-fleet-drawer-radient` | M1/Q2 fixed: `InShellFleetDrawerOpen` at 1000px, column measured `rect 0,0 280x800` (docked), the fleet drawer laid out as its own sheet. Back's name read from the DOM: "Back, leave Team Bridge". |
+| `control-1000-fleet-drawer-old-yield-radient` | Control: the same story with the old `slotYieldsSidebar` input temporarily restored (reverted before commit): column `rect 0,0 56x800`, the rail clipped. |
+| `after-1000-back-tooltip-breakdown-radient` | U4: Back hovered with Aida 1 / Notifications 6 / Browser 2 / Mesh 1 seeded (the attention-badges fixture, temporarily mounted in route mode, reverted). Tooltip read from the DOM: "Back (⌘[) · Aida, 1 missed message · Notifications, 6 unread · Browser, 2 waiting · Mesh, 1 waiting"; name "Back, leave Team Bridge, 10 items waiting elsewhere". |

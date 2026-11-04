@@ -52,7 +52,8 @@ export const TeamBridgeBackRow: FC = () => {
 	 * collapse chevrons state).
 	 */
 	const Arrow = useTextDirection() === "rtl" ? ArrowRight : ArrowLeft;
-	const attention = useOtherSurfacesAttention();
+	const { total: attention, lines: attentionLines } =
+		useOtherSurfacesAttention();
 	const chord = navigationShortcutLabel(
 		"back",
 		MAC_PLATFORM.test(navigator.platform),
@@ -107,12 +108,25 @@ export const TeamBridgeBackRow: FC = () => {
 			className="flex h-10 shrink-0 items-center px-2"
 		>
 			<BrowserSafeTooltip
+				/*
+				 * The chord, then what is waiting elsewhere, one source per line (UX
+				 * round 1, U4): the badge says how many, this says what - so a
+				 * time-limited browser approval is told apart from notification
+				 * backlog without leaving. Each line is the nav row's own name.
+				 */
 				content={
-					<ShortcutText
-						text={t("ui.teamBridge.leave.back_shortcut", {
-							shortcut: isolateLtr(chord),
-						})}
-					/>
+					<span className="flex flex-col">
+						<span>
+							<ShortcutText
+								text={t("ui.teamBridge.leave.back_shortcut", {
+									shortcut: isolateLtr(chord),
+								})}
+							/>
+						</span>
+						{attentionLines.map((line) => (
+							<span key={line}>{line}</span>
+						))}
+					</span>
 				}
 				side="bottom"
 			>
@@ -170,3 +184,26 @@ export const TeamBridgeRouteColumn: FC<{
 		<SidebarFoot />
 	</InLeftSidebarHost>
 );
+
+/**
+ * The column with no rail yet: Back, a quiet title naming where the reader is,
+ * and the foot. Drawn by the page's early states (the eligibility hold, a gate)
+ * AND by the shell while the lazy page chunk loads (round 1, m2) - in both, the
+ * app navigation is already gone, and an empty `surface` slab with no way out
+ * is what this replaces. Outside the shell it renders nothing: the page alone
+ * draws exactly the panel it always did.
+ *
+ * The title is visible here (the populated rail's heading is `sr-only`) because
+ * this column has nothing else that names the surface.
+ */
+export const TeamBridgeEarlyColumn: FC = () => {
+	useI18nLocale();
+	return (
+		<TeamBridgeRouteColumn inline={null}>
+			<h1 className="flex h-10 shrink-0 items-center px-4 text-body-sm font-semibold text-ink">
+				{t("ui.teamBridge.page.title")}
+			</h1>
+			<div className="min-h-0 flex-1" />
+		</TeamBridgeRouteColumn>
+	);
+};

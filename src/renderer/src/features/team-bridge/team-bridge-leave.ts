@@ -20,7 +20,13 @@
  * before this one" exactly.
  *
  * Every entry before this one is in-app: the renderer is a hash-routed Electron
- * window, so there is no foreign page in its history to fall back into.
+ * window, so there is no foreign page in its history to fall back into. In-app
+ * is not enough on its own, though: the entry before could be ANOTHER
+ * `/team-bridge` entry, and then `navigate(-1)` would leave the reader where
+ * they are (round 1, M2). The rule therefore relies on one entry per visit:
+ * in-route navigation is state, deep-link params are cleared with a replace,
+ * and a notification opened while already here replaces rather than pushes
+ * (`use-team-bridge-notification-open.ts`).
  */
 export type TeamBridgeLeaveTarget = "history" | "/chat";
 

@@ -198,10 +198,10 @@ const notifyRow = (conversationId, latestSeq) => ({
 	muted: false,
 });
 
-const mount = async ({ Extra = null } = {}) => {
+const mount = async ({ Extra = null, url = "http://localhost/" } = {}) => {
 	const dom = new JSDOM("<!doctype html><div id='root'></div>", {
 		pretendToBeVisual: true,
-		url: "http://localhost/",
+		url,
 	});
 	const previous = {
 		window: globalThis.window,
@@ -216,10 +216,14 @@ const mount = async ({ Extra = null } = {}) => {
 	const cacheAtNotify = [];
 	const authorities = [];
 	const routes = [];
+	const routeOptions = [];
 	let pendingOpen = null;
 	let openListener;
 	let routeEnabled = true;
-	const navigate = (path) => routes.push(path);
+	const navigate = (path, options) => {
+		routes.push(path);
+		routeOptions.push(options);
+	};
 	dom.window.api = {
 		desktop: {
 			teamBridge: {
@@ -298,6 +302,7 @@ const mount = async ({ Extra = null } = {}) => {
 		host: dom.window.document.getElementById("root"),
 		authorities,
 		routes,
+		routeOptions,
 		emitOpen: (target) => {
 			pendingOpen = target;
 			openListener?.();
@@ -1044,6 +1049,34 @@ for (const account of ["acct_bob", undefined]) {
 		}
 	});
 }
+
+test("a click while already on Team Bridge REPLACES the entry, elsewhere it pushes (round 1, M2/Q1)", async () => {
+	/*
+	 * A push on the bridge stacks a second `/team-bridge` entry, and the column's
+	 * Back then spends a press moving between two bridge entries. The end-to-end
+	 * history walk is in `team-bridge-sidebar-swap.test.mjs`; this pins the hook.
+	 */
+	for (const [url, expected] of [
+		["http://localhost/#/team-bridge", { replace: true }],
+		[
+			"http://localhost/#/team-bridge?tenant=t&conversation=c",
+			{ replace: true },
+		],
+		["http://localhost/#/settings", undefined],
+		["http://localhost/#/team-bridge-elsewhere", undefined],
+	]) {
+		resetFixture();
+		const mounted = await mount({ url });
+		try {
+			await act(async () => mounted.emitOpen(clickTarget()));
+			await settle();
+			assert.equal(mounted.routes.length, 1, url);
+			assert.deepEqual(mounted.routeOptions[0], expected, url);
+		} finally {
+			await mounted.teardown();
+		}
+	}
+});
 
 test("capability-delayed click is discarded on owner change, while matching owner routes once", async () => {
 	resetFixture();

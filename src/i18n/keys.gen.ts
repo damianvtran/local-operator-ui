@@ -6079,6 +6079,7 @@ export type MessageParams = {
 	"ui.common.layout.chat_layout.resize_the_sidebar": {
 		sidebartogglecap: string;
 	};
+	"ui.common.layout.chat_layout.resize_the_sidebar_plain": undefined;
 	"ui.common.layout.sidebar_header.create_a_new_agent": undefined;
 	"ui.common.layout.sidebar_header.import_agent": undefined;
 	"ui.common.layout.sidebar_header.import_an_agent_from_a_zip_file": undefined;

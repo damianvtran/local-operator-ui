@@ -40,6 +40,7 @@ import { SessionSwitcher } from "@features/session-switcher/components/session-s
 import { useSyncRecordingClaims } from "@features/settings/components/keyboard-shortcuts-section";
 import { LanguageDialog } from "@features/settings/components/language-dialog";
 import { TEAM_BRIDGE_PATH } from "@features/team-bridge/team-bridge-nav";
+import { TeamBridgeEarlyColumn } from "@features/team-bridge/team-bridge-route-column";
 import { useTeamBridgeNotificationOpen } from "@features/team-bridge/use-team-bridge-notification-open";
 import { useTeamBridgeNotifications } from "@features/team-bridge/use-team-bridge-notifications";
 import {
@@ -990,9 +991,20 @@ const App: FC = () => {
 								)}
 								<Suspense
 									fallback={
-										<div className="flex grow items-center justify-center">
-											<Spinner size="lg" label={t("ui.common.loading.page")} />
-										</div>
+										<>
+											{/*
+											 * The lazy Team Bridge chunk is still loading, but the shell has
+											 * already swapped the navigation out: draw Back in the column
+											 * now (round 1, m2) rather than an empty slab with no way out.
+											 */}
+											{routeOwnsSidebar && <TeamBridgeEarlyColumn />}
+											<div className="flex grow items-center justify-center">
+												<Spinner
+													size="lg"
+													label={t("ui.common.loading.page")}
+												/>
+											</div>
+										</>
 									}
 								>
 									<Routes>

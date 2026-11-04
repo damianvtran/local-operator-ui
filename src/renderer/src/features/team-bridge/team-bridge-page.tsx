@@ -187,7 +187,10 @@ import {
 	isTargetRow,
 } from "./team-bridge-rail";
 import { teamBridgeReactionsAvailable } from "./team-bridge-reaction-gate";
-import { TeamBridgeRouteColumn } from "./team-bridge-route-column";
+import {
+	TeamBridgeEarlyColumn,
+	TeamBridgeRouteColumn,
+} from "./team-bridge-route-column";
 import {
 	TeamBridgeScheduleDialog,
 	TeamBridgeScheduledList,
@@ -2270,14 +2273,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	 * quiet title naming where the reader is. Outside the shell the inline copy is
 	 * nothing: the page alone renders exactly the panel it always did.
 	 */
-	const earlyColumn = (
-		<TeamBridgeRouteColumn inline={null}>
-			<h1 className="flex h-11 shrink-0 items-center px-4 text-body-sm font-semibold text-ink">
-				{t("ui.teamBridge.page.title")}
-			</h1>
-			<div className="min-h-0 flex-1" />
-		</TeamBridgeRouteColumn>
-	);
+	const earlyColumn = <TeamBridgeEarlyColumn />;
 	if (gatePending)
 		return (
 			<>

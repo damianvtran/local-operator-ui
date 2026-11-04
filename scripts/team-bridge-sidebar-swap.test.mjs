@@ -53,8 +53,10 @@ const bundle = await build({
 			import { teamBridgeLeaveTarget } from "./src/renderer/src/features/team-bridge/team-bridge-leave";
 			import { TeamBridgeBackRow } from "./src/renderer/src/features/team-bridge/team-bridge-route-column";
 			import { useNavigationGestures } from "./src/renderer/src/shared/hooks/use-navigation-gestures";
+			import { onTeamBridgeRoute } from "./src/renderer/src/features/team-bridge/use-team-bridge-notification-open";
+			import { teamBridgeOpenPath } from "./src/shared/team-bridge-notify";
 			import { HashRouter, Routes, Route, useLocation, useNavigate, useSearchParams } from "react-router-dom";
-			export { ChatLayout, InLeftSidebarHost, useUiPreferencesStore, teamBridgeLeaveTarget, TeamBridgeBackRow, useNavigationGestures, HashRouter, Routes, Route, useLocation, useNavigate, useSearchParams, MemoryRouter, QueryClient, QueryClientProvider };
+			export { ChatLayout, InLeftSidebarHost, useUiPreferencesStore, teamBridgeLeaveTarget, TeamBridgeBackRow, useNavigationGestures, onTeamBridgeRoute, teamBridgeOpenPath, HashRouter, Routes, Route, useLocation, useNavigate, useSearchParams, MemoryRouter, QueryClient, QueryClientProvider };
 		`,
 		resolveDir: process.cwd(),
 	},
@@ -86,6 +88,8 @@ const {
 	teamBridgeLeaveTarget,
 	TeamBridgeBackRow,
 	useNavigationGestures,
+	onTeamBridgeRoute,
+	teamBridgeOpenPath,
 	HashRouter,
 	Routes,
 	Route: RouterRoute,
@@ -143,7 +147,10 @@ const Route = () => {
 	);
 };
 
-const mount = async (tree, { collapsed = false } = {}) => {
+const mount = async (
+	tree,
+	{ collapsed = false, width = 1380, fleetDrawer = false } = {},
+) => {
 	const dom = new JSDOM("<!doctype html><div id='root'></div>", {
 		pretendToBeVisual: true,
 		url: "http://localhost/#/team-bridge",
@@ -178,10 +185,14 @@ const mount = async (tree, { collapsed = false } = {}) => {
 		removeListener: () => {},
 	});
 	Object.defineProperty(dom.window, "innerWidth", {
-		value: 1380,
+		value: width,
 		configurable: true,
 	});
-	useUiPreferencesStore.setState({ isSidebarCollapsed: collapsed });
+	useUiPreferencesStore.setState({
+		isSidebarCollapsed: collapsed,
+		isAskDrawerOpen: fleetDrawer,
+		askDrawerScope: fleetDrawer ? "fleet" : "session",
+	});
 	const client = new QueryClient({
 		defaultOptions: { queries: { retry: false } },
 	});
@@ -195,6 +206,14 @@ const mount = async (tree, { collapsed = false } = {}) => {
 	await act(async () => {});
 	return {
 		document: dom.window.document,
+		rerender: async (next) => {
+			await act(async () => {
+				root.render(
+					el(QueryClientProvider, { client }, el(MemoryRouter, null, next)),
+				);
+			});
+			await act(async () => {});
+		},
 		teardown: async () => {
 			await act(async () => root.unmount());
 			client.clear();
@@ -339,6 +358,108 @@ test("route mode docks over a collapsed preference, and leaves the preference al
 	}
 });
 
+test("the fleet asks drawer never squeezes a route-owned column to the strip (round 1, M1/Q2)", async () => {
+	/*
+	 * 1000px is inside the band (~936-1139px with no right rail) where an open
+	 * fleet drawer makes the NAV yield to its 56px strip; the bridge rail has no
+	 * strip form, so in route mode the column must stay docked.
+	 */
+	const routed = await mount(
+		el(ChatLayout, { sidebar: el(Nav), content: el(Route), routeSidebar: {} }),
+		{ width: 1000, fleetDrawer: true },
+	);
+	try {
+		assert.equal(sidebarColumn(routed.document).style.width, "260px");
+		assert.ok(routed.document.querySelector("[data-test-rail]"));
+	} finally {
+		await routed.teardown();
+	}
+	const nav = await mount(
+		el(ChatLayout, { sidebar: el(Nav), content: el(Route) }),
+		{ width: 1000, fleetDrawer: true },
+	);
+	try {
+		assert.equal(
+			sidebarColumn(nav.document).style.width,
+			"56px",
+			"control: on a nav route the same drawer still makes the nav yield",
+		);
+	} finally {
+		await nav.teardown();
+	}
+});
+
+test("⌘B is a no-op on a route-owned column, and its handle does not advertise it (U1)", async () => {
+	const { document, teardown } = await mount(
+		el(ChatLayout, { sidebar: el(Nav), content: el(Route), routeSidebar: {} }),
+	);
+	try {
+		await act(async () => {
+			document.dispatchEvent(
+				new document.defaultView.KeyboardEvent("keydown", {
+					key: "b",
+					metaKey: true,
+					ctrlKey: true,
+					bubbles: true,
+					cancelable: true,
+				}),
+			);
+		});
+		assert.equal(useUiPreferencesStore.getState().isSidebarCollapsed, false);
+		const handle = document.querySelector('[role="separator"]');
+		assert.ok(handle, "the column is still resizable");
+		assert.equal(handle.getAttribute("aria-label"), "Resize the sidebar");
+	} finally {
+		await teardown();
+	}
+});
+
+test("focus follows the swap when it was in the column, and only then (U2/Q3)", async () => {
+	/* A nav with a focusable current row, as the real nav marks its destination. */
+	const FocusNav = () =>
+		el(
+			"nav",
+			null,
+			el("button", { type: "button", "data-test-row": "chat" }, "Chat"),
+			el(
+				"button",
+				{ type: "button", "aria-current": "page", "data-test-row": "current" },
+				"Current",
+			),
+		);
+	const shell = (routed) =>
+		el(ChatLayout, {
+			sidebar: el(FocusNav),
+			content: el(Route),
+			routeSidebar: routed ? {} : false,
+		});
+	const app = await mount(shell(false));
+	try {
+		const doc = app.document;
+		doc.querySelector('[data-test-row="chat"]').focus();
+		await app.rerender(shell(true));
+		assert.equal(
+			doc.activeElement?.getAttribute("data-test-rail"),
+			"",
+			"entry: the route column's first control has focus, not <body>",
+		);
+		await app.rerender(shell(false));
+		assert.equal(
+			doc.activeElement?.getAttribute("data-test-row"),
+			"current",
+			"leave: the nav's current destination row has focus",
+		);
+		// Control: focus outside the column is never taken.
+		const outside = doc.createElement("input");
+		doc.body.appendChild(outside);
+		outside.focus();
+		await app.rerender(shell(true));
+		assert.equal(doc.activeElement, outside);
+	} finally {
+		await app.teardown();
+	}
+});
+
 test("Back goes through history only when this window has an entry before this one", () => {
 	assert.equal(teamBridgeLeaveTarget({ idx: 3, key: "k" }), "history");
 	assert.equal(teamBridgeLeaveTarget({ idx: 1 }), "history");
@@ -365,8 +486,7 @@ const PIN_6 =
 	/if \(gatePending\)\s*return \(\s*<>\s*\{earlyColumn\}\s*<TeamBridgeGateLoading \/>/;
 const PIN_7 =
 	/if \(eligibility\)\s*return \(\s*<>\s*\{earlyColumn\}\s*<TeamBridgeEligibilityPanel/;
-const PIN_8 =
-	/const earlyColumn = \(\s*<TeamBridgeRouteColumn inline=\{null\}>/;
+const PIN_8 = /const earlyColumn = <TeamBridgeEarlyColumn \/>;/;
 const PIN_9 = /useTextDirection\(\) === "rtl" \? ArrowRight : ArrowLeft/;
 const PIN_10 = /aria-keyshortcuts=\{chord\}/;
 const PIN_11 = /navigationShortcutLabel\(\s*"back"/;
@@ -502,8 +622,8 @@ const mountApp = async (url) => {
 	return {
 		window: dom.window,
 		where: () => dom.window.document.querySelector("[data-where]").textContent,
-		navigate: async (to) => {
-			await act(async () => go(to));
+		navigate: async (to, options) => {
+			await act(async () => go(to, options));
 		},
 		press: async (target) => {
 			await act(async () => {
@@ -562,6 +682,34 @@ test("Back returns to the route the reader came from (button and ⌘[ alike)", a
 	}
 });
 
+test("a notification opened while on Team Bridge does not cost Back a press (round 1, M2/Q1)", async () => {
+	/* chat -> settings -> bridge -> notification-open -> Back = settings. */
+	const app = await mountApp("http://localhost/#/chat");
+	try {
+		await app.navigate("/settings");
+		await app.navigate("/team-bridge");
+		const path = teamBridgeOpenPath({
+			tenantId: "tnt_1",
+			conversationId: "bcv_1",
+		});
+		// The opener's own decision, read from the live hash as the hook reads it.
+		const replace = onTeamBridgeRoute(app.window.location.hash);
+		assert.equal(replace, true);
+		await app.navigate(path, replace ? { replace: true } : undefined);
+		await app.press(() => {});
+		assert.equal(app.where(), "/team-bridge");
+		assert.equal(
+			app.window.location.hash,
+			"#/team-bridge",
+			"the page consumed the params with its own replace",
+		);
+		await app.press(() => backButton(app).click());
+		assert.equal(app.where(), "/settings", "one press leaves");
+	} finally {
+		await app.teardown();
+	}
+});
+
 test("Back on a deep link (the window opened on the route) goes to /chat, and so does ⌘[", async () => {
 	const deepLink =
 		"http://localhost/#/team-bridge?tenant=tnt_1&conversation=bcv_1";
@@ -591,7 +739,10 @@ test("the Back row names the action, carries the chord, and uses the leave keys"
 	const app = await mountApp("http://localhost/#/team-bridge");
 	try {
 		const button = backButton(app);
-		assert.equal(button.getAttribute("aria-label"), "Leave Team Bridge");
+		const name = button.getAttribute("aria-label");
+		assert.equal(name, "Back, leave Team Bridge");
+		// WCAG 2.5.3 Label in Name: the name starts with what is on screen.
+		assert.ok(name.startsWith(button.textContent.trim()));
 		assert.match(button.getAttribute("aria-keyshortcuts"), BACK_CHORD);
 		assert.equal(button.textContent.trim(), "Back");
 	} finally {

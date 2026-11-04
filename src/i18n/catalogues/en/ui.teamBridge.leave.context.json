@@ -20,7 +20,7 @@
 		"tone": "plain, states the action",
 		"length": "One short phrase.",
 		"placeholders": {},
-		"note": "Says what the control does whatever page it returns to. \"Team Bridge\" is the product name; keep it as the locale's Team Bridge catalogue spells it."
+		"note": "Says what the control does whatever page it returns to. \"Team Bridge\" is the product name; keep it as the locale's Team Bridge catalogue spells it. MUST START with the exact visible label (ui.teamBridge.leave.back) so voice control matches it (WCAG 2.5.3 Label in Name)."
 	},
 	"ui.teamBridge.leave.name_attention": {
 		"role": "accessible name of the Back control when other parts of the app are waiting on the reader",
@@ -29,6 +29,6 @@
 		"placeholders": {
 			"count": "number of things waiting outside Team Bridge (missed messages, notifications, approvals); a positive integer"
 		},
-		"note": "The count is shown as a badge on the control; the name states it because a badge is only visual. Plural forms matter. \"elsewhere\" means outside Team Bridge, elsewhere in the app."
+		"note": "The count is shown as a badge on the control; the name states it because a badge is only visual. Plural forms matter. \"elsewhere\" means outside Team Bridge, elsewhere in the app. MUST START with the exact visible label (ui.teamBridge.leave.back) so voice control matches it (WCAG 2.5.3 Label in Name)."
 	}
 }

@@ -13,6 +13,7 @@ import {
 	desktopFeatureState,
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
+import { t } from "@shared/i18n";
 
 /**
  * The attention the app navigation carries for surfaces OTHER than the route
@@ -38,7 +39,15 @@ import {
  *
  * Team Bridge's own unread is NOT included: it is on screen in the rail.
  */
-export function useOtherSurfacesAttention(): number {
+/**
+ * The total, and one line per source that is waiting, worded by the SAME keys
+ * the navigation's rows use for their own names (so the tooltip says exactly
+ * what the row would have said, in every locale, with no new copy). Ordered as
+ * the rows are. Empty `lines` when nothing waits.
+ */
+export type OtherSurfacesAttention = { total: number; lines: string[] };
+
+export function useOtherSurfacesAttention(): OtherSurfacesAttention {
 	const capabilities = useDesktopCapabilities();
 
 	const aidaEnabled = desktopFeatureEnabled(capabilities.data, "aida", 1);
@@ -64,12 +73,46 @@ export function useOtherSurfacesAttention(): number {
 		{ poll: true },
 	);
 
-	return (
-		(aidaVisible ? aidaMissed : 0) +
-		(notificationsEnabled ? badgeCountOf(notificationsCount.data) : 0) +
-		browserApprovals +
-		(meshMembership === "member"
+	const aidaCount = aidaVisible ? aidaMissed : 0;
+	const notifications = notificationsEnabled
+		? badgeCountOf(notificationsCount.data)
+		: 0;
+	const mesh =
+		meshMembership === "member"
 			? waitingApprovalCount(meshApprovals.data ?? [])
-			: 0)
-	);
+			: 0;
+	const lines: string[] = [];
+	if (aidaCount > 0)
+		lines.push(
+			t("ui.shell.sidebar_navigation.aida_missed", {
+				// The nav's own fallback for a backend that predates her name.
+				name: aida.data?.name ?? "Aida",
+				count: aidaCount,
+			}),
+		);
+	if (notifications > 0)
+		lines.push(
+			t("ui.notifications.nav.unread", {
+				count: notifications,
+				countText: String(notifications),
+			}),
+		);
+	if (browserApprovals > 0)
+		lines.push(
+			t("ui.shell.sidebar_navigation.browser_waiting", {
+				count: browserApprovals,
+				countText: String(browserApprovals),
+			}),
+		);
+	if (mesh > 0)
+		lines.push(
+			t("ui.shell.sidebar_navigation.mesh_waiting", {
+				count: mesh,
+				countText: String(mesh),
+			}),
+		);
+	return {
+		total: aidaCount + notifications + browserApprovals + mesh,
+		lines,
+	};
 }
