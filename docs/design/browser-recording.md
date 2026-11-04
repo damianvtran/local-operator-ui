@@ -60,7 +60,8 @@ the real-path driver recorded in the PR's evidence matrix.
 ### High quality is opt-in and separate (D15-D22)
 
 - `record_start` takes an optional `quality: "standard" | "high"`. Absent and
-  `"standard"` are the same request and run everything above, unchanged: the same
+  `"standard"` (and an explicit `null`, which a JSON client sends for "unset" and is
+  pinned by a test) are the same request and run everything above, unchanged: the same
   CDP calls, the same AV1 clip, the same result keys (a golden test pins the call
   list). Any other value is refused `record_quality` (`why: "value"`) before a CDP
   call. The host advertises the `record_quality` capability token (not a method,
@@ -93,6 +94,13 @@ the real-path driver recorded in the PR's evidence matrix.
   `record_too_large` discard, because its bytes only exist at stop.) Memory is
   bounded by that cap, and nothing touches the disk until the stop, so a hard kill
   still leaves no file.
+- Page actions do not freeze a high clip. `Page.disable` ends a running screencast
+  and `Page.enable` does not restart it (measured), and the origin gate sends
+  exactly that after every click, type, press and goto. The CDP pool announces each
+  `Page.disable` it sends to its subscribers, and the session starts the screencast
+  again. The gate itself is untouched (it must still disable what it enabled), and
+  the standard engine, which does not use the Page domain's screencast, is not
+  affected.
 - The encoder window dying or hanging fails the recording `record_failed`; every
   exit (stop, abort at any debugger boundary, replace, a failed start, app quit)
   destroys the window, drops the chunks, clears the timers and restores the
@@ -176,7 +184,7 @@ not a wire method.
 | **D16** | **Question:** Wire surface. **Taken:** `quality:"standard"|"high"` on `record_start`; token `record_quality`; `high` emits H.264 only; default path byte-identical (golden test); harness echo-checks `codec:"h264"`. **Rejected:** a bitrate or fps arg (probe: target 4–32 Mbps made no visible difference, actual 1–2.6 Mbps); making `high` the default. **Commits us to:** `quality`, `record_quality`, `record_quality`/`record_quality_unavailable` reasons, `stop_reason`. **Overturned by:** a measured need for an fps arg (needs a 60 fps 4K CPU measurement first). **Owner:** coder. |
 | **D17** | **Question:** Frame timing. **Taken:** variable frame rate from screencast timestamps, key frame every 2 s, no B-frames, first frame nudged by `Page.captureScreenshot` after 300 ms, refuse after 3 s, hold last frame. **Rejected:** fixed-rate hold (re-encodes unchanged frames, costs CPU). **Commits us to:** a monotone timestamp assertion. **Overturned by:** a static-page screencast test showing a reliable first frame (drops the nudge). **Owner:** coder. |
 | **D18** | **Question:** Muxing. **Taken:** own writer extending `mp4.cjs`, faststart, `colr` box, in-memory chunks bounded by the cap, graceful cap finish with `stop_reason`. **Rejected:** mp4-muxer (deprecated), mediabunny (MPL-2.0, 724 KB, daily releases), fragmented MP4 (editor support), incremental disk writes (breaks "nothing touches disk until stop"). **Commits us to:** 32-bit offsets, no B-frames, `.part`/`linkSync` publish unchanged. **Overturned by:** a failed Chromium `<video>` decode of our output (switch to mediabunny). **Owner:** coder. |
-| **D19** | **Question:** Bitrate, level, hardware vs software, concurrency. **Taken:** High profile, 4/8/16 Mbps by area, `avc1.640033` (plus `avc1.640028` at ≤1080p once measured), hardware preferred, software ≤1080p only, concurrency rules unchanged. **Rejected:** `latencyMode:"quality"` (2.4x bitrate for +0.5 dB), software 4K (1.38 GB RSS, 88% CPU), HEVC/VP9. **Commits us to:** `record_limit` counts both modes. **Overturned by:** two-4K-encoder measurement; software 4K under ~600 MB. **Owner:** coder. |
+| **D19** | **Question:** Bitrate, level, hardware vs software, concurrency. **Taken:** High profile, 4/8/16 Mbps by area, `avc1.640028` (High @ 4.0) when the frame is at most 1920x1088, else `avc1.640033` (High @ 5.1); both measured, and the 1080p clips ship level 4.0, hardware preferred, software ≤1080p only, concurrency rules unchanged. **Rejected:** `latencyMode:"quality"` (2.4x bitrate for +0.5 dB), software 4K (1.38 GB RSS, 88% CPU), HEVC/VP9. **Commits us to:** `record_limit` counts both modes. **Overturned by:** two-4K-encoder measurement; software 4K under ~600 MB. **Owner:** coder. |
 | **D20** | **Question:** Non-macOS behaviour. **Taken:** `isConfigSupported` hardware → software (≤1080p) → refuse `record_quality_unavailable`; never silent fallback. **Rejected:** silent fallback to the old path (gives the smeared clip). **Commits us to:** the guide must say 4K hardware is only measured on macOS. **Overturned by:** a Windows or Linux run showing the signal is unreliable. **Owner:** coder, then QA. |
 | **D21** | **Question:** Failure and exit paths. **Taken:** engine handle on `Recording`; dispose in `abortRecording`; `await Page.stopScreencast` where the tab survives; encoder crash settles `record_failed`; `before-quit` disposes. **Rejected:** a new hook in `cdp.ts` (the four boundaries already reach `abortRecording`). **Commits us to:** `Recording`/`Stoppable` gain `engine` and `encoder`. **Overturned by:** a fifth boundary found that bypasses `dropCaptures`. **Owner:** coder, reviewer. |
 | **D22** | **Question:** Test plan and PR split. **Taken:** UI PR first (golden default, fake-encoder lifecycle, mux unit tests, real-path matrix), harness PR second (token gate, echo check, docs, ledger). **Rejected:** a single combined PR (two repos); ffprobe-based checks (not installed). **Commits us to:** QA needs both worktrees for the end-to-end pass. **Overturned by:** none expected. **Owner:** manager. |
