@@ -1690,11 +1690,37 @@ const BRACKET_PAIRS: Readonly<Record<string, string>> = {
 };
 
 /**
+ * The longest label either scanner below will split (review m1-r4 on #1643).
+ *
+ * Both scans try every opening bracket and normalise a slice per try, so they
+ * are quadratic in the label: about 1 ms at the hub's 64-byte member label,
+ * but about 0.6 s per rendered row at 10,000 characters. Delivery labels and
+ * conversation member labels are schema-capped at 64, yet owner-audit member
+ * labels and directory names are not, so the bound is the scanners' own
+ * rather than the caller's. 256 is four times anything the hub stores; a
+ * longer label cannot be a composition this client or an older one wrote, so
+ * it is read verbatim (no split) instead of scanned.
+ */
+const OWNER_SCAN_MAX_LENGTH = 256;
+
+/**
  * The head of `label` when it ends with `(owner)` / `（owner）` (optional
  * whitespace before the bracket), or null. The owner is compared by `nameKey`,
  * so case, spacing and NFKC width do not matter.
+ *
+ * UNBALANCED BRACKETS (QA O1 on #1643). The owner is KNOWN here, so the tail
+ * is recognised by comparison alone, whatever brackets the owner's own name
+ * holds: an owner "Ben (Sales" strips from "Aida (Ben (Sales)" exactly as a
+ * balanced owner does. A label whose trailing group is not that owner in one
+ * closing bracket ("Aida (Ben", "Aida (Ben) (x", "Aida (Ben Tran))") is never
+ * split: malformed text is not guessed at, it is the agent's name verbatim and
+ * the caller composes the owner after it. When the label DOES end with the
+ * owner's group, whatever precedes it is the head verbatim, unbalanced or not
+ * ("Aida ((Ben Tran)" -> "Aida ("). The owner is never dropped, because it is
+ * the only part of the line that says whose agent this is.
  */
 function stripOwnerSuffix(label: string, owner: string): string | null {
+	if (label.length > OWNER_SCAN_MAX_LENGTH) return null;
 	const ownerKey = nameKey(owner);
 	if (ownerKey === "") return null;
 	for (let open = 0; open < label.length; open += 1) {
@@ -1702,8 +1728,7 @@ function stripOwnerSuffix(label: string, owner: string): string | null {
 		if (close === undefined || !label.endsWith(close)) continue;
 		const inner = label.slice(open + 1, label.length - close.length);
 		const head = label.slice(0, open).trim();
-		if (head !== "" && bracketsBalance(inner) && nameKey(inner) === ownerKey)
-			return head;
+		if (head !== "" && nameKey(inner) === ownerKey) return head;
 	}
 	return null;
 }
@@ -1725,8 +1750,13 @@ function bracketsBalance(text: string): boolean {
  * stored for an unnamed agent), else null. Only a trailing group that is ONE
  * balanced pair counts as the tail, so "Ana (she/her) (Ana (she/her))" is
  * "Ana (she/her)" twice and "Ana (she/her)" alone is not a composition.
+ *
+ * With no owner to compare against, an unbalanced group is never a tail
+ * (QA O1 on #1643): "Ben (Ben" and "Ben ((Ben)" are not "X (X)" and read
+ * verbatim, rather than being guessed into somebody's chief of staff.
  */
 function selfComposedName(label: string): string | null {
+	if (label.length > OWNER_SCAN_MAX_LENGTH) return null;
 	for (let open = 0; open < label.length; open += 1) {
 		const close = BRACKET_PAIRS[label[open]];
 		if (close === undefined || !label.endsWith(close)) continue;

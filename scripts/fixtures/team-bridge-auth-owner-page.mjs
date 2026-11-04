@@ -319,6 +319,18 @@ const conversation = (id = "bcv_shared") => ({
 	muted: false,
 });
 const reply = (result) => ({ status: 200, body: { result } });
+/* The `attachments` mode's hub capability and its one 1x1 PNG (a drop yields a
+   path; the send reads these bytes through `readFile` when it binds them). */
+const IMAGE_CAPABILITY = {
+	enabled: true,
+	max_count: 4,
+	max_bytes: 5 * 1024 * 1024,
+	max_pixels: 16_777_216,
+	mime_types: ["image/png", "image/jpeg"],
+};
+const PNG_BASE64 =
+	"iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
+let droppedSeq = 0;
 const delay = () =>
 	act(async () => new Promise((resolve) => setTimeout(resolve, 10)));
 async function until(predicate, label) {
@@ -352,6 +364,13 @@ function deferred() {
  *                 hold the eligibility verdict open from before the first render.
  *   sendMentions- advertises `team_bridge_send_mentions`, so the composer's
  *                 @-mentions are serialised onto the wire (off by default).
+ *   attachments - advertises the hub's image capability and answers the
+ *                 preload's file calls (`getPathForFile`, `readFile`) and the
+ *                 media relay's upload, so a dropped picture takes the page's
+ *                 REAL awaited picture path. Off by default: the other suites'
+ *                 request shapes predate it. `fixture.mediaGate` holds the
+ *                 upload open; `fixture.uploadStarts` counts
+ *                 uploads begun and `fixture.uploads` each one answered.
  * The remaining holds are installed on the returned fixture by the scenario that
  * needs them: `fixture.listGate` (the conversation list) and `fixture.unreadGate`
  * (the account unread aggregate).
@@ -366,6 +385,7 @@ async function mount({
 	waitReady = true,
 	statusGate = null,
 	sendMentions = false,
+	attachments = false,
 } = {}) {
 	// A revoked attempt can outlive its cleared lane and store entry. A later
 	// fixture must not reset shared state while that earlier job can still run.
@@ -387,6 +407,9 @@ async function mount({
 		messages: new Map(),
 		createGate: null,
 		postGate: null,
+		mediaGate: null,
+		uploadStarts: 0,
+		uploads: [],
 		empty,
 		generation: "A",
 		enabled: true,
@@ -428,7 +451,38 @@ async function mount({
 		listFor: null,
 	};
 	window.api = {
+		...(attachments
+			? {
+					getPathForFile: () => `/fixtures/dropped-${++droppedSeq}.png`,
+					readFile: async () => ({ success: true, data: PNG_BASE64 }),
+				}
+			: {}),
 		desktop: {
+			...(attachments
+				? {
+						media: async (request) => {
+							fixture.uploadStarts += 1;
+							if (fixture.mediaGate) await fixture.mediaGate.promise;
+							const id = `batt_${fixture.uploads.length + 1}`;
+							fixture.uploads.push({ id, request });
+							return {
+								status: 201,
+								kind: "json",
+								body: {
+									result: {
+										attachment: {
+											id,
+											mime: "image/png",
+											size: 67,
+											width: 1,
+											height: 1,
+										},
+									},
+								},
+							};
+						},
+					}
+				: {}),
 			request: async (request) => {
 				// The fake server captures ownership at dispatch, just as an authenticated
 				// request does. A late A reply must not silently become B's server history.
@@ -492,6 +546,7 @@ async function mount({
 								session: "present",
 							},
 							status: {
+								...(attachments ? { attachments: IMAGE_CAPABILITY } : {}),
 								tenants: fixture.tenants ?? [
 									{
 										tenant_id: "org_shared",
@@ -803,6 +858,7 @@ async function mount({
 			fixture.unreadGate?.resolve();
 			fixture.createGate?.resolve();
 			fixture.postGate?.resolve();
+			fixture.mediaGate?.resolve();
 			const errors = [];
 			const attemptCleanup = async (fn) => {
 				try {

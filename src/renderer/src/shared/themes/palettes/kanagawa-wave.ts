@@ -61,19 +61,41 @@ export const kanagawaWave: ThemeDefinition = {
 		 * lifting a dark ground raises the luminance every ink is measured against, so
 		 * the inks in this file were re-seated on the same commit rather than after it.
 		 */
-		canvas: "#1F1F28",
-		surface: "#292936",
-		elevated: "#313140",
-		sunken: "#16161D",
+		/*
+		 * THE DARKER-GROUNDS PASS (2026-11-03, `docs/branding.md` § 2) supersedes the
+		 * earlier L* 12 dark floor: the dark band is now L* 9-15 (target 9-13), and
+		 * the canvas maps by `L*_new = 9 + 0.6 x (L*_old - 12)`, a map that preserves
+		 * the fleet's order (re-solves may move a canvas off it, up to +-1.04 L*).
+		 * Here every ground-class role (the grounds, the row states, the two fills,
+		 * the washes and the hairlines) moved by the canvas's own ΔL* holding its `a`
+		 * and `b`; inks, accents and `borderControl` did not move.
+		 * Measured:
+		 * canvas #1F1F28 -> #191922 (L* 12.12 -> 9.14)
+		 * surface #292936 -> #22222F (L* 17.10 -> 13.76)
+		 * elevated #313140 -> #2A2A39 (L* 20.90 -> 17.66)
+		 * sunken #16161D -> #0F0E17 (L* 7.53 -> 4.31)
+		 * accent #94ADDF -> #7E9CD8: the scheme's own `crystalBlue` #7E9CD8
+		 * unmodified, which the darker grounds now carry at 5.13:1 on `elevated` (the
+		 * 4.5 solve the old note describes is no longer needed): C* 28.1 -> 34.2.
+		 * `accentActive` steps 5 L* below the new accent on the same cast, so the
+		 * press stays ΔE00 >= 2 from rest.
+		 */
+		canvas: "#191922",
+		surface: "#22222F",
+		elevated: "#2A2A39",
+		sunken: "#0F0E17",
 
 		// The user block's fill: ΔE00 4.15 off the canvas, where `surface` alone
 		// measures 3.83 - a step toward `elevated` to clear the role's 4.0 floor,
 		// which the block carries because the fill IS its boundary.
-		messageSurface: "#292937",
+		messageSurface: "#232331",
 		// The media slot's well: ΔE00 4.25 off the canvas, where `sunken` alone
 		// measures 3.06 - a step away from the canvas to clear the role's 4.0
 		// floor, which the tile carries because the fill IS its resting extent.
-		mediaSurface: "#131319",
+		// Lifted #0A0B13 -> #0C0D14 (L* 3.17 -> 3.76) once Team Bridge's
+		// inline images and file chips began to paint this well (#1659): as far
+		// toward L* 6 as the media floor allows (ΔE00 4.20 off canvas; chip hosts >= 3.0).
+		mediaSurface: "#0C0D14",
 
 		/*
 		 * ROW STATES, and `highlight` retired in the same change. Both roles are a
@@ -92,8 +114,8 @@ export const kanagawaWave: ThemeDefinition = {
 		 *                       `rowHover`; the pair ranks 1.79 `L*` and 8.0 `C*`,
 		 *                       `inkDim` 5.13:1.
 		 */
-		rowHover: "#313038",
-		rowSelected: "#333347",
+		rowHover: "#2A2931",
+		rowSelected: "#2C2C40",
 
 		// fujiWhite, 8.16:1 on the lightest ground.
 		ink: "#DCD7BA",
@@ -117,18 +139,18 @@ export const kanagawaWave: ThemeDefinition = {
 
 		// sumiInk5 is `elevated` itself; sumiInk6 54546D is 1.62:1 on it — a
 		// ground colour, not a rule. Lifted along the same violet-grey.
-		hairline: "#424353",
+		hairline: "#3B3C4C",
 		// `hairline` stepped toward `inkDim`, so it reads on this palette's own
 		// `sunken`: 2.00:1 there against `hairline`'s 1.85:1.
-		hairlineStrong: "#474858",
+		hairlineStrong: "#404151",
 		borderControl: "#7E7E9C",
 
 		// crystalBlue 7E9CD8 is 4.31:1 on `elevated`, and solving at the 4.5
 		// floor leaves no room for a darker `accentActive`. Lifted to 5.25:1 so
 		// all three accent states separate.
-		accent: "#94ADDF",
+		accent: "#7E9CD8",
 		accentHover: "#AFC2E7",
-		accentActive: "#83A0DA",
+		accentActive: "#708FCA",
 		// ΔE00 10.5 from `accent` and 9.6:1 on surface, where the accent is
 		// 6.3:1.
 		chartBarHover: "#BBD6FF",
@@ -136,7 +158,7 @@ export const kanagawaWave: ThemeDefinition = {
 		// The palette's own `info`, which is the role this composer's command
 		// word already resolved to: the tint moves no pixel the palette did not
 		// already choose. The role and its floors are in `palette-contract.ts`.
-		accentWash: "#2A2D3A",
+		accentWash: "#242734",
 		onAccent: "#1F1F28",
 		/*
 		 * The theme's own second hue, from the TUI's `label` token (`#957FB8`,
@@ -173,27 +195,27 @@ export const kanagawaWave: ThemeDefinition = {
 		 * `accentWash` (the field floor is 2.0), 4.54:1 for `accentAlt` on it, and
 		 * 2.73 from the nearest ground it is painted on.
 		 */
-		accentAltWash: "#2D2835",
+		accentAltWash: "#27222F",
 
 		// springGreen.
 		success: "#98BB6C",
-		successWash: "#2A2D2E",
+		successWash: "#242728",
 		successBorder: "#98BB6C",
 
 		// carpYellow.
 		warning: "#E6C384",
-		warningWash: "#343032",
+		warningWash: "#2D292B",
 		warningBorder: "#E6C384",
 
 		// peachRed FF5D62 is 3.94:1 on `elevated`; lifted on-hue.
 		danger: "#FF777A",
-		dangerWash: "#32262F",
+		dangerWash: "#2C2029",
 		dangerBorder: "#FF7478",
 
 		// waveAqua2 7AA89F clears the floor at 4.47:1 on `elevated`, a hair
 		// under 4.5; nudged on-hue to 4.59:1.
 		info: "#7DAAA1",
-		infoWash: "#2C3238",
+		infoWash: "#252B31",
 		infoBorder: "#7CA9A0",
 
 		overlayShadow: "0 12px 32px -12px rgb(12 12 17 / 0.72)",

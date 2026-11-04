@@ -67,19 +67,38 @@ export const synthwave: ThemeDefinition = {
 	palette: {
 		mode: "dark",
 
-		canvas: "#262335",
-		surface: "#2D2A41",
-		elevated: "#332F4A",
-		sunken: "#1E1B2A",
+		/*
+		 * THE DARKER-GROUNDS PASS (2026-11-03, `docs/branding.md` § 2) supersedes the
+		 * earlier L* 12 dark floor: the dark band is now L* 9-15 (target 9-13), and
+		 * the canvas maps by `L*_new = 9 + 0.6 x (L*_old - 12)`, a map that preserves
+		 * the fleet's order (re-solves may move a canvas off it, up to +-1.04 L*).
+		 * Here every ground-class role (the grounds, the row states, the two fills,
+		 * the washes and the hairlines) moved by the canvas's own ΔL* holding its `a`
+		 * and `b`; inks, accents and `borderControl` did not move.
+		 * Measured:
+		 * canvas #262335 -> #1E1B2D (L* 14.80 -> 10.92)
+		 * surface #2D2A41 -> #242138 (L* 18.34 -> 14.11)
+		 * elevated #332F4A -> #2A2640 (L* 20.95 -> 16.74)
+		 * sunken #1E1B2A -> #161322 (L* 10.76 -> 6.79)
+		 * Re-solved off the uniform shift, because a contract floor refused it there:
+		 * `messageSurface`. `pnpm check-themes` is the measurement for each.
+		 */
+		canvas: "#1E1B2D",
+		surface: "#242138",
+		elevated: "#2A2640",
+		sunken: "#161322",
 
 		// The user block's fill: ΔE00 4.10 off the canvas, where `surface` alone
 		// measures 3.08 - a step toward `elevated` to clear the role's 4.0 floor,
 		// which the block carries because the fill IS its boundary.
-		messageSurface: "#2f2c45",
+		messageSurface: "#28253d",
 		// The media slot's well: ΔE00 4.18 off the canvas, where `sunken` alone
 		// measures 2.86 - a step away from the canvas to clear the role's 4.0
 		// floor, which the tile carries because the fill IS its resting extent.
-		mediaSurface: "#1b1825",
+		// Lifted #130f1d -> #15111e (L* 5.14 -> 5.91) once Team Bridge's
+		// inline images and file chips began to paint this well (#1659): as far
+		// toward L* 6 as the media floor allows (ΔE00 4.06 off canvas; chip hosts >= 3.0).
+		mediaSurface: "#15111e",
 		/*
 		 * ROW STATES, and `highlight` retired in the same change. Both roles are a
 		 * step of THIS palette's own panel at the panel's own hue; they used to be
@@ -97,8 +116,8 @@ export const synthwave: ThemeDefinition = {
 		 *                       `rowHover`; the pair ranks 1.41 `L*` and 10.7 `C*`,
 		 *                       `inkDim` 5.04:1.
 		 */
-		rowHover: "#33313F",
-		rowSelected: "#363250",
+		rowHover: "#2A2836",
+		rowSelected: "#2D2946",
 
 		ink: "#F2EFF8",
 		inkMuted: "#BCB3D4",
@@ -120,10 +139,10 @@ export const synthwave: ThemeDefinition = {
 
 		// The TUI `edge` 443F5E, already inside the hairline's 1.15-2.0:1 band and
 		// clear of its ΔE00 4.0 floor on all four grounds.
-		hairline: "#443F5E",
+		hairline: "#3B3654",
 		// `hairline` stepped toward `inkDim`, so it reads on this palette's own
 		// `sunken`: 1.84:1 there against `hairline`'s 1.70:1.
-		hairlineStrong: "#484464",
+		hairlineStrong: "#3F3B5A",
 		// The TUI `edge-hi` 544E72 lifted in L* until it clears 3:1 on `elevated`, the
 		// lightest ground it is drawn against.
 		borderControl: "#837CA2",
@@ -138,7 +157,7 @@ export const synthwave: ThemeDefinition = {
 		// The palette's own `info`, which is the role this composer's command
 		// word already resolved to: the tint moves no pixel the palette did not
 		// already choose. The role and its floors are in `palette-contract.ts`.
-		accentWash: "#422F4B",
+		accentWash: "#392641",
 		// The canvas at 42% of its L*: this accent is far too light for a light label
 		// to clear 4.5:1 on it.
 		onAccent: "#151123",
@@ -160,16 +179,16 @@ export const synthwave: ThemeDefinition = {
 		 * `accentWash` (the field floor is 2.0), 5.08:1 for `accentAlt` on it, and
 		 * 2.06 from the nearest ground it is painted on.
 		 */
-		accentAltWash: "#302B48",
+		accentAltWash: "#27223E",
 
 		// 72F1B8, published — the same value the TUI uses for `string`.
 		success: "#72F1B8",
-		successWash: "#303E46",
+		successWash: "#27353D",
 		successBorder: "#538B7A",
 
 		// FEDE5D, published.
 		warning: "#FEDE5D",
-		warningWash: "#423B3A",
+		warningWash: "#393231",
 		warningBorder: "#90804F",
 
 		// The published red FE4450 measures 3.63:1 as text on `elevated`, the dialog
@@ -186,13 +205,13 @@ export const synthwave: ThemeDefinition = {
 		 * legibility, is what the ramp change was allowed to keep.
 		 */
 		danger: "#FF7173",
-		dangerWash: "#422D3D",
+		dangerWash: "#392434",
 		dangerBorder: "#B36D76",
 
 		// 36F9F6, the TUI's `signal` — the published scheme's cyan, and the only other
 		// bright hue it names that is not the accent.
 		info: "#36F9F6",
-		infoWash: "#283F4E",
+		infoWash: "#1E3645",
 		infoBorder: "#378C95",
 
 		overlayShadow: "0 12px 32px -12px rgb(15 14 21 / 0.75)",

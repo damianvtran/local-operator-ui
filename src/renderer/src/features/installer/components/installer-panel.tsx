@@ -316,8 +316,10 @@ const PhaseRow: React.FC<{
 					 * of the same four stops the markers already are, and the previous
 					 * round measured what a recessed track looks like on this ground when
 					 * it is the only progress object on the screen (#1d1b19 on #22201c,
-					 * 1.06:1 - design D4). The markers carry the stops; the line carries
-					 * what has been walked.
+					 * 1.06:1 - design D4, measured on the pre-2026-11-03 ground). The
+					 * darker-grounds pass left that reading where it was: `sunken` #171512
+					 * on `canvas` #1d1b17 is again 1.06:1. The markers carry the stops; the
+					 * line carries what has been walked.
 					 */
 					<span
 						aria-hidden="true"
