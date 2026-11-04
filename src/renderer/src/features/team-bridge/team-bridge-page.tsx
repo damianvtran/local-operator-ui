@@ -66,6 +66,16 @@ import type {
 } from "../../../../shared/team-bridge-contract";
 import { browserDraftStorage } from "../../shared/store/team-bridge-draft-account";
 import { rowCurrent } from "../chat/components/chat-sidebar";
+import { TeamBridgeTrialEmpty } from "../team-bridge-trial/team-bridge-trial-empty";
+import {
+	teamBridgeReadOnly,
+	trialEndedOrg,
+	trialReplacesPanel,
+} from "../team-bridge-trial/team-bridge-trial-model";
+import {
+	TeamBridgeTrialEndedPanel,
+	useTeamBridgeTrialNote,
+} from "../team-bridge-trial/team-bridge-trial-paused";
 import { TeamBridgeMentionProvider } from "./mentions";
 import { clearStagedMentions, stagedMentions } from "./mentions/mention-outbox";
 import { TeamBridgeAddMembersView } from "./team-bridge-add-members";
@@ -768,6 +778,15 @@ export type TeamBridgePageViewProps = {
 	 * reads and writes, which live in its container.
 	 */
 	notice?: ReactNode;
+	/** Replaces the plan-required panel for an account in no Team organization
+	 * (the Team trial empty state, `features/team-bridge-trial`). */
+	noOrgPanel?: ReactNode;
+	/**
+	 * The `notice` slot already explains why the page is read-only (the ended
+	 * Team trial band), so the composer's generic read-only line is dropped
+	 * rather than said twice (design review D7).
+	 */
+	readOnlyExplained?: boolean;
 	onTarget: (target: TeamBridgeTarget | null) => void;
 	/**
 	 * Send `body`. For a target with no conversation yet the container creates
@@ -904,6 +923,8 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	gatePending = false,
 	readOnly = false,
 	notice = null,
+	noOrgPanel,
+	readOnlyExplained = false,
 	onTarget,
 	onSend,
 	onSchedule,
@@ -2365,6 +2386,13 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 			<>
 				{earlyColumn}
 				<TeamBridgeGateLoading />
+			</>
+		);
+	if (trialReplacesPanel(eligibility) && noOrgPanel)
+		return (
+			<>
+				{earlyColumn}
+				{noOrgPanel}
 			</>
 		);
 	if (eligibility)
@@ -3873,9 +3901,11 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 									{t("ui.teamBridge.archive.composer.note")}
 								</p>
 							) : readOnly ? (
-								<p className="shrink-0 px-5 pb-4 text-[12px] text-ink-dim leading-snug">
-									{t("ui.teamBridge.read_only.composer")}
-								</p>
+								readOnlyExplained ? null : (
+									<p className="shrink-0 px-5 pb-4 text-[12px] text-ink-dim leading-snug">
+										{t("ui.teamBridge.read_only.composer")}
+									</p>
+								)
 							) : (
 								<div
 									className="flex min-w-0 shrink-0 flex-col gap-2 px-4 pt-1 pb-4"
@@ -4706,7 +4736,19 @@ const TeamBridgeOwnedPage: FC<{
 		eligibility === null &&
 		status.data?.account_id === accountId;
 	const selfAccountId = readsEnabled ? accountId : undefined;
-	const readOnly = status.data?.read_only === true || !ownerGuard;
+	// An ended Team trial pauses the organization: history stays readable and
+	// posting is off (the hub refuses it too, 403 `team_trial_ended`).
+	const trialNote = useTeamBridgeTrialNote(
+		readsEnabled ? status.data?.tenant_id : null,
+	);
+	// Q5: an ended trial reads surface A with no tenant; the runtime's marker
+	// names the organization so the no-org branch shows its paused band.
+	const trialEnded = trialEndedOrg(status.data);
+	const readOnly = teamBridgeReadOnly({
+		statusReadOnly: status.data?.read_only === true,
+		ownerGuard,
+		trialPaused: trialNote.paused,
+	});
 	const owner = useBridgeOwner(accountId);
 	const isCurrentOwner = () => owner.isCurrent() && ownerGuard;
 	/* The same fence minus "this page is still mounted": for the first-message post
@@ -6038,7 +6080,25 @@ const TeamBridgeOwnedPage: FC<{
 				eligibility={eligibility}
 				gatePending={gatePending && !cachedPaint}
 				readOnly={readOnly}
-				notice={<TeamBridgeDefaultOnBanner status={status.data} />}
+				readOnlyExplained={trialNote.paused}
+				notice={
+					<>
+						{trialNote.note}
+						<TeamBridgeDefaultOnBanner status={status.data} />
+					</>
+				}
+				noOrgPanel={
+					trialEnded ? (
+						<TeamBridgeTrialEndedPanel
+							tenantId={trialEnded.tenantId}
+							endedAt={trialEnded.endedAt}
+						/>
+					) : (
+						<TeamBridgeTrialEmpty
+							fallback={<TeamBridgeEligibilityPanel reason="plan_required" />}
+						/>
+					)
+				}
 				onRetry={() => {
 					void list.refetch();
 					if (memberships.isError) void memberships.refetch();
