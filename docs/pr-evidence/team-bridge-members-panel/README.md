@@ -31,3 +31,15 @@ native-Electron evidence; the page stories are transport-free.
 | `panel-builtin-general__*`, `panel-builtin-agents__*` | quiet explanatory line; no remove (Leave only on #agents). Round 0 frames (English copy unchanged in meaning) |
 | `panel-builtin-general-ur__localOperatorLight` | round 1, UR-M3: the channel arrives as `{channel}` wrapped in U+2066…U+2069 (DOM codepoints read at the shutter). Storybook sets no `<html dir>` (QA N2), so this frame's paragraph is LTR; the RTL reorder proof is `fribidi --rtl`: literal → `general#`, isolated → `#general` |
 | `panel-remove-confirm-open__*` | round 1 copy: "They’ll stop getting this conversation’s messages…" (N3/D5) |
+
+## Round 3 (post-#1668) — convergence frames
+
+`r3-*__after.png` frames come from the merge head that integrates origin/main c58127c (#1668 restyle, #1625, 0.48.16). They were captured through the harness browser tool against `with-storybook.mjs` on port 6871, with Storybook reaped by exact pid afterwards. These are Storybook frames, not native Electron.
+
+| Frame | What it shows |
+| --- | --- |
+| `r3-header-count__{localOperatorDark,localOperatorLight}` | #1668's one-line header: name │ count button │ topic. The count is the button ("View 2 active members, 1 invited", `aria-expanded=false` read from the a11y tree) and stays quiet `ink-muted` text at rest |
+| `r3-header-count-hover__*` | the D1 hover fill, now `surface` on the pane's `canvas` ground (#1668 moved the conversation pane to canvas), plus an ink step. Light measures surface/canvas 1.070:1 |
+| `r3-page-panel-docked__localOperatorDark` | panel docked in the thread slot at 1440px |
+| `r3-panel-populated__{localOperatorDark,localOperatorLight}` | the panel on `surface` with the `PanelEdge` seam, matching the thread pane after #1668 (R4); round `TeamBridgeAvatar` wash plates |
+| `r3-panel-row-hover__localOperatorLight` | row hover is now `elevated` on `surface` (the thread's compact-row step): 1.072:1 in localOperatorLight, min 1.062:1 across 59 palettes (cyberpunk), light min 1.065:1 (mintLight) |
