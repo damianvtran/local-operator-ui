@@ -8197,8 +8197,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "160d5a0bbb71761ccd20e5bf861d478b85572226fcde55008c7c91edc4d37d02",
-			"target_sha256": "1918ce35fd906a9200f1b6fcbde1b100554498f91620e6663aced687e1bc0eb2",
+			"source_sha256": "d06d4b8e8292b006364c800f24719c0f569b36bb86e2c81cba194de9f8b005ab",
+			"target_sha256": "ac4135c34d91ad6a4db27d30627d8a00b1708250089d301f4a6d19cefc313f5f",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -8214,18 +8214,20 @@
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"model": "anthropic/claude-sonnet-5-5",
-					"date": "2026-11-03",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-04",
 					"result": "clean",
-					"instance": "06af958924d2-gt2-es",
+					"instance": "66bfac56f929-merge1643-es",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/06af958924d2-gt2-es.json",
-					"receipt_sha256": "f67f6718b03b3a584c44a0a240d0ffe61f0983b9214df86b6ef7dc9f7b509f6c"
+					"receipt": "i18n/receipts/66bfac56f929-merge1643-es.json",
+					"receipt_sha256": "0c840d8ff2686bd2fdc9762126f057ce15890f819858bda8c213ca48e5b7b432",
+					"scope": "Post-merge re-audit of 8f18b76: 14 delta keys (11 from 1f66d89, 3 from 81df7db) re-read; other 328 values byte-identical to both audited parents",
+					"note": "Post-merge re-audit (#1643 + main 81df7db), i18n-auditor session 66bfac56f929; 14 delta keys re-read, rest byte-identical. Evidence: i18n/audits/evidence/es/ui.teamBridge/tb-merge1643-66bfac56f929-es/record.json"
 				}
 			],
 			"status": "audited",
@@ -9765,6 +9767,28 @@
 							"receipt_sha256": "9d98dc730e38ee723b6c2f620b81ee8642b7294df8907e7e50fc893f336d912a",
 							"scope": "Round 3: remediation 4dbd846d of delivery.* with both recipient forms (PR #1643 head 4dbd846d)",
 							"note": "Round 3: C5 fixed (\"Mensaje para {recipient}\", no a+el in any of ten); no new findings. Receipt i18n/receipts/122b7f54cbdc-es.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "160d5a0bbb71761ccd20e5bf861d478b85572226fcde55008c7c91edc4d37d02",
+					"target_sha256": "1918ce35fd906a9200f1b6fcbde1b100554498f91620e6663aced687e1bc0eb2",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-03",
+							"result": "clean",
+							"instance": "06af958924d2-gt2-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/06af958924d2-gt2-es.json",
+							"receipt_sha256": "f67f6718b03b3a584c44a0a240d0ffe61f0983b9214df86b6ef7dc9f7b509f6c"
 						}
 					],
 					"status": "audited"
@@ -18453,8 +18477,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "160d5a0bbb71761ccd20e5bf861d478b85572226fcde55008c7c91edc4d37d02",
-			"target_sha256": "44fd3e3b1ce8067ccaa4b56ea5364584c6734fa6bf439be6c3634466ef5f71bf",
+			"source_sha256": "d06d4b8e8292b006364c800f24719c0f569b36bb86e2c81cba194de9f8b005ab",
+			"target_sha256": "65e5c4be341d0450a4d1eb3a3313af471d0cb648efb65aba8ff391de72d6ee8a",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -18471,18 +18495,20 @@
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"model": "anthropic/claude-sonnet-5-5",
-					"date": "2026-11-03",
-					"result": "clean",
-					"instance": "06af958924d2-gt2-fr",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-04",
+					"result": "clean-with-findings",
+					"instance": "66bfac56f929-merge1643-fr",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 0
+						"minor": 1,
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/06af958924d2-gt2-fr.json",
-					"receipt_sha256": "ca8b8077d1394d041a5bc21ba641bdb41ba1cfb55a9f372a7f83ae965f842183"
+					"receipt": "i18n/receipts/66bfac56f929-merge1643-fr.json",
+					"receipt_sha256": "433b2a994534044f99fcf7f6790a37079460d74e9884053a2b719e8d6e735c9a",
+					"scope": "Post-merge re-audit of 8f18b76: 14 delta keys (11 from 1f66d89, 3 from 81df7db) re-read; other 328 values byte-identical to both audited parents",
+					"note": "Post-merge re-audit (#1643 + main 81df7db), i18n-auditor session 66bfac56f929; 14 delta keys re-read, rest byte-identical. Evidence: i18n/audits/evidence/fr/ui.teamBridge/tb-merge1643-66bfac56f929-fr/record.json"
 				}
 			],
 			"status": "audited",
@@ -20022,6 +20048,28 @@
 							"receipt_sha256": "4295eb6e75b56b69d2e01be8f819c72191cff56f77800aaa739dca93a4050dd6",
 							"scope": "Round 2: new ui.teamBridge.delivery.recipient_unnamed + the ten delivery.* sentences with both recipient forms (PR #1643 head 70646b20)",
 							"note": "Round 2: C3 fixed (\"à la cheffe de cabinet\"); no new findings. Receipt i18n/receipts/2fd8346bf635-fr.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "160d5a0bbb71761ccd20e5bf861d478b85572226fcde55008c7c91edc4d37d02",
+					"target_sha256": "44fd3e3b1ce8067ccaa4b56ea5364584c6734fa6bf439be6c3634466ef5f71bf",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-03",
+							"result": "clean",
+							"instance": "06af958924d2-gt2-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/06af958924d2-gt2-fr.json",
+							"receipt_sha256": "ca8b8077d1394d041a5bc21ba641bdb41ba1cfb55a9f372a7f83ae965f842183"
 						}
 					],
 					"status": "audited"
@@ -28565,8 +28613,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "160d5a0bbb71761ccd20e5bf861d478b85572226fcde55008c7c91edc4d37d02",
-			"target_sha256": "07f067f9d4fb7eb6c2ef99b15b14a6dd3bc2f8ca547a4ed34a1a5eff0a1256aa",
+			"source_sha256": "d06d4b8e8292b006364c800f24719c0f569b36bb86e2c81cba194de9f8b005ab",
+			"target_sha256": "436439c418f2db27753827bc4db2dc9450e369d6dfe4c853b73fe65ff5eaa0e5",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -28582,18 +28630,20 @@
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"model": "anthropic/claude-sonnet-5-5",
-					"date": "2026-11-03",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-04",
 					"result": "clean",
-					"instance": "06af958924d2-gt2-hi",
+					"instance": "66bfac56f929-merge1643-hi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/06af958924d2-gt2-hi.json",
-					"receipt_sha256": "36ffb96822555f881cc81c9beddd02c2d6fce0da18701f7e73c62d384f1c8302"
+					"receipt": "i18n/receipts/66bfac56f929-merge1643-hi.json",
+					"receipt_sha256": "ad525cd5c69338406297c0e17ec5d2b57ebda079294821aaa19e05443149b0ae",
+					"scope": "Post-merge re-audit of 8f18b76: 14 delta keys (11 from 1f66d89, 3 from 81df7db) re-read; other 328 values byte-identical to both audited parents",
+					"note": "Post-merge re-audit (#1643 + main 81df7db), i18n-auditor session 66bfac56f929; 14 delta keys re-read, rest byte-identical. Evidence: i18n/audits/evidence/hi/ui.teamBridge/tb-merge1643-66bfac56f929-hi/record.json"
 				}
 			],
 			"status": "audited",
@@ -30039,6 +30089,28 @@
 							"receipt_sha256": "d649b1dd08b95b52165e0613498946c0b15d123aa7ed5b56bcfe55946ecfec8f",
 							"scope": "Round 2: new ui.teamBridge.delivery.recipient_unnamed + the ten delivery.* sentences with both recipient forms (PR #1643 head 70646b20)",
 							"note": "Round 2: C1 fixed (oblique के before तक / द्वारा); no new findings. Receipt i18n/receipts/2fd8346bf635-hi.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "160d5a0bbb71761ccd20e5bf861d478b85572226fcde55008c7c91edc4d37d02",
+					"target_sha256": "07f067f9d4fb7eb6c2ef99b15b14a6dd3bc2f8ca547a4ed34a1a5eff0a1256aa",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-03",
+							"result": "clean",
+							"instance": "06af958924d2-gt2-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/06af958924d2-gt2-hi.json",
+							"receipt_sha256": "36ffb96822555f881cc81c9beddd02c2d6fce0da18701f7e73c62d384f1c8302"
 						}
 					],
 					"status": "audited"
@@ -38354,8 +38426,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "160d5a0bbb71761ccd20e5bf861d478b85572226fcde55008c7c91edc4d37d02",
-			"target_sha256": "186c966af125a1e092be3b5c13bc3a04649c43a38226814c5bce9143f2e5931f",
+			"source_sha256": "d06d4b8e8292b006364c800f24719c0f569b36bb86e2c81cba194de9f8b005ab",
+			"target_sha256": "dfe38705c2ba2a10be24fd7f43f5c42624c218de9c4e4ed096b5c69c9a8e336e",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -38372,18 +38444,20 @@
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"model": "anthropic/claude-sonnet-5-5",
-					"date": "2026-11-03",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-04",
 					"result": "clean",
-					"instance": "06af958924d2-gt2-ru",
+					"instance": "66bfac56f929-merge1643-ru",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/06af958924d2-gt2-ru.json",
-					"receipt_sha256": "4394a260cb45de00a1ab9cb1424e8fa4114ed5dc56fb21dda4ec5e20c81eecac"
+					"receipt": "i18n/receipts/66bfac56f929-merge1643-ru.json",
+					"receipt_sha256": "d172e1f126fa5589d057057f3181c8988b9e8559fab1c9c26b0c921a31862739",
+					"scope": "Post-merge re-audit of 8f18b76: 14 delta keys (11 from 1f66d89, 3 from 81df7db) re-read; other 328 values byte-identical to both audited parents",
+					"note": "Post-merge re-audit (#1643 + main 81df7db), i18n-auditor session 66bfac56f929; 14 delta keys re-read, rest byte-identical. Evidence: i18n/audits/evidence/ru/ui.teamBridge/tb-merge1643-66bfac56f929-ru/record.json"
 				}
 			],
 			"status": "audited",
@@ -39918,6 +39992,28 @@
 							"receipt_sha256": "234817cd3381a4abcc91bc8134bba88b33355325ae750a73b47d752a37d3e6fb",
 							"scope": "Round 2: new ui.teamBridge.delivery.recipient_unnamed + the ten delivery.* sentences with both recipient forms (PR #1643 head 70646b20)",
 							"note": "Round 2: new key copies audited chief.unnamed; all ten sentences natural. Receipt i18n/receipts/2fd8346bf635-ru.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "160d5a0bbb71761ccd20e5bf861d478b85572226fcde55008c7c91edc4d37d02",
+					"target_sha256": "186c966af125a1e092be3b5c13bc3a04649c43a38226814c5bce9143f2e5931f",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-03",
+							"result": "clean",
+							"instance": "06af958924d2-gt2-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/06af958924d2-gt2-ru.json",
+							"receipt_sha256": "4394a260cb45de00a1ab9cb1424e8fa4114ed5dc56fb21dda4ec5e20c81eecac"
 						}
 					],
 					"status": "audited"
@@ -48272,8 +48368,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "160d5a0bbb71761ccd20e5bf861d478b85572226fcde55008c7c91edc4d37d02",
-			"target_sha256": "4ac3ad78dabe67a74472ffcb339a2bd455a33e47cf950c4a0b0d3dc59282be77",
+			"source_sha256": "d06d4b8e8292b006364c800f24719c0f569b36bb86e2c81cba194de9f8b005ab",
+			"target_sha256": "f6a941a20d3ba528c8a6d79efcb33b0695a35d3f018067e4588a384f59ab5407",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -48289,18 +48385,20 @@
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"model": "anthropic/claude-sonnet-5-5",
-					"date": "2026-11-03",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-04",
 					"result": "clean",
-					"instance": "06af958924d2-gt2-ur",
+					"instance": "66bfac56f929-merge1643-ur",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/06af958924d2-gt2-ur.json",
-					"receipt_sha256": "f90833b15bc1c22eb1ab470c721a5aa8235346a62735d702f38916160c40f6da"
+					"receipt": "i18n/receipts/66bfac56f929-merge1643-ur.json",
+					"receipt_sha256": "baf244e024b66a603e4aed416424cc4fd729b8880e45c18a35b7f8b1bd9f1a67",
+					"scope": "Post-merge re-audit of 8f18b76: 14 delta keys (11 from 1f66d89, 3 from 81df7db) re-read; other 328 values byte-identical to both audited parents",
+					"note": "Post-merge re-audit (#1643 + main 81df7db), i18n-auditor session 66bfac56f929; 14 delta keys re-read, rest byte-identical. Evidence: i18n/audits/evidence/ur/ui.teamBridge/tb-merge1643-66bfac56f929-ur/record.json"
 				}
 			],
 			"status": "audited",
@@ -49746,6 +49844,28 @@
 							"receipt_sha256": "199def967058629b47ebf8979c0261d0d6ede3391422db577535c7f90fea5055",
 							"scope": "Round 2: new ui.teamBridge.delivery.recipient_unnamed + the ten delivery.* sentences with both recipient forms (PR #1643 head 70646b20)",
 							"note": "Round 2: C2 fixed (oblique کے before تک / کی جانب سے); no new findings. Receipt i18n/receipts/2fd8346bf635-ur.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "160d5a0bbb71761ccd20e5bf861d478b85572226fcde55008c7c91edc4d37d02",
+					"target_sha256": "4ac3ad78dabe67a74472ffcb339a2bd455a33e47cf950c4a0b0d3dc59282be77",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-03",
+							"result": "clean",
+							"instance": "06af958924d2-gt2-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/06af958924d2-gt2-ur.json",
+							"receipt_sha256": "f90833b15bc1c22eb1ab470c721a5aa8235346a62735d702f38916160c40f6da"
 						}
 					],
 					"status": "audited"
@@ -58522,8 +58642,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "160d5a0bbb71761ccd20e5bf861d478b85572226fcde55008c7c91edc4d37d02",
-			"target_sha256": "b1173e51429c455f3a81a8984dacdff0027ea5b2c42052b5403a6eb1e676da6f",
+			"source_sha256": "d06d4b8e8292b006364c800f24719c0f569b36bb86e2c81cba194de9f8b005ab",
+			"target_sha256": "3fbf6eed08cead8e66c239a5192398c082f9ceecb174469d3c696f85cd969ab6",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -58539,18 +58659,20 @@
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"model": "anthropic/claude-sonnet-5-5",
-					"date": "2026-11-03",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-04",
 					"result": "clean-with-findings",
-					"instance": "06af958924d2-gt2-vi",
+					"instance": "66bfac56f929-merge1643-vi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 1,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/06af958924d2-gt2-vi.json",
-					"receipt_sha256": "87546b31d24309c5807e55f5f0b68869de320a961b5a35012084f4ea05adad58"
+					"receipt": "i18n/receipts/66bfac56f929-merge1643-vi.json",
+					"receipt_sha256": "e2767ed221585a9539504f821aa304a81738e2376d59e12cf64a67cf866a7668",
+					"scope": "Post-merge re-audit of 8f18b76: 14 delta keys (11 from 1f66d89, 3 from 81df7db) re-read; other 328 values byte-identical to both audited parents",
+					"note": "Post-merge re-audit (#1643 + main 81df7db), i18n-auditor session 66bfac56f929; 14 delta keys re-read, rest byte-identical. Evidence: i18n/audits/evidence/vi/ui.teamBridge/tb-merge1643-66bfac56f929-vi/record.json"
 				}
 			],
 			"status": "audited",
@@ -60051,6 +60173,28 @@
 							"receipt_sha256": "fc0d5d9bb389d0509f328da2136e47025be3355d3216546634af3f34a7f24ef4",
 							"scope": "Round 3: remediation 4dbd846d of delivery.* with both recipient forms (PR #1643 head 4dbd846d)",
 							"note": "Round 3: C6 fixed (\"chánh văn phòng của {person}\"); no new findings. Receipt i18n/receipts/122b7f54cbdc-vi.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "160d5a0bbb71761ccd20e5bf861d478b85572226fcde55008c7c91edc4d37d02",
+					"target_sha256": "b1173e51429c455f3a81a8984dacdff0027ea5b2c42052b5403a6eb1e676da6f",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-03",
+							"result": "clean-with-findings",
+							"instance": "06af958924d2-gt2-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/06af958924d2-gt2-vi.json",
+							"receipt_sha256": "87546b31d24309c5807e55f5f0b68869de320a961b5a35012084f4ea05adad58"
 						}
 					],
 					"status": "audited"
@@ -69420,8 +69564,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "160d5a0bbb71761ccd20e5bf861d478b85572226fcde55008c7c91edc4d37d02",
-			"target_sha256": "806cf1da72801d0c5b725d09e95d6a522b53d42d41541b7dc51d5431cf74e852",
+			"source_sha256": "d06d4b8e8292b006364c800f24719c0f569b36bb86e2c81cba194de9f8b005ab",
+			"target_sha256": "365c5b2503d6111f9a0811cbd93f6d5463b40875b3cf5faf64178eb7500593ba",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -69437,18 +69581,20 @@
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"model": "anthropic/claude-sonnet-5-5",
-					"date": "2026-11-03",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-04",
 					"result": "clean-with-findings",
-					"instance": "06af958924d2-gt2-zh-cn",
+					"instance": "66bfac56f929-merge1643-zh-cn",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
+						"minor": 2,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/06af958924d2-gt2-zh-cn.json",
-					"receipt_sha256": "3a9b71000bf775ca1c3b43585a08c45ee52976314edce1b35273dea18517eddb"
+					"receipt": "i18n/receipts/66bfac56f929-merge1643-zh-cn.json",
+					"receipt_sha256": "5d57740082acc1b44e774f23c0542704d8f68376faf29761b60db938991a5a75",
+					"scope": "Post-merge re-audit of 8f18b76: 14 delta keys (11 from 1f66d89, 3 from 81df7db) re-read; other 328 values byte-identical to both audited parents",
+					"note": "Post-merge re-audit (#1643 + main 81df7db), i18n-auditor session 66bfac56f929; 14 delta keys re-read, rest byte-identical. Evidence: i18n/audits/evidence/zh-CN/ui.teamBridge/tb-merge1643-66bfac56f929-zh-cn/record.json"
 				}
 			],
 			"status": "audited",
@@ -70947,6 +71093,28 @@
 							"receipt_sha256": "53a20e8940af495a74280632ee054e7a86b43eb7970130da3bab0faa18bd1b07",
 							"scope": "Round 2: new ui.teamBridge.delivery.recipient_unnamed + the ten delivery.* sentences with both recipient forms (PR #1643 head 70646b20)",
 							"note": "Round 2: new key copies audited chief.unnamed; all ten sentences natural. Receipt i18n/receipts/2fd8346bf635-zh-cn.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "160d5a0bbb71761ccd20e5bf861d478b85572226fcde55008c7c91edc4d37d02",
+					"target_sha256": "806cf1da72801d0c5b725d09e95d6a522b53d42d41541b7dc51d5431cf74e852",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-03",
+							"result": "clean-with-findings",
+							"instance": "06af958924d2-gt2-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/06af958924d2-gt2-zh-cn.json",
+							"receipt_sha256": "3a9b71000bf775ca1c3b43585a08c45ee52976314edce1b35273dea18517eddb"
 						}
 					],
 					"status": "audited"
