@@ -1359,6 +1359,9 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 			id: shown.id,
 			seq: shown.unread_count > 0 ? shown.last_read_seq : undefined,
 		});
+	/* Leaving for an empty pane is a leave too: coming back to the same
+	   conversation takes a fresh copy (agent review round 1, m5). */
+	if (!shown && entryWatermark !== null) setEntryWatermark(null);
 	const unreadAfterSeq =
 		shown && entryWatermark?.id === shown.id ? entryWatermark.seq : undefined;
 	const shownTopicKey = builtinTopicKey(shown?.builtin);
@@ -2639,9 +2642,11 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 						/* ONE COPY OF A FAILURE (visual refresh N4). With no conversation
 						   open, the pane states it and holds Try again, so the rail
 						   says nothing more. With one open (a deep link into a failed
-						   list), the pane is busy with that conversation, so the rail
-						   keeps a single quiet line and the retry. */
-						target !== null && (
+						   list), or with a quick view or the owner audit in the pane
+						   (they take precedence over the empty pane), the pane is busy
+						   with something else, so the rail keeps a single quiet line and
+						   the retry (agent review round 1, m3). */
+						(target !== null || quickView !== null || ownerAudit?.active) && (
 							<div className="flex flex-col items-start gap-1 px-4 py-3">
 								<p className="text-meta text-ink-dim">
 									{t("ui.teamBridge.list.error")}
@@ -3352,15 +3357,19 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 											className="h-4 w-px shrink-0 bg-hairline"
 										/>
 										<span className="min-w-0 truncate text-[13px] text-ink-muted">
-											{shownTopicKey
-												? t(shownTopicKey)
-												: membershipCounts.invited > 0
-													? t("ui.teamBridge.member.active_count", {
-															count: membershipCounts.active,
-														})
-													: t("ui.teamBridge.member.count", {
-															count: conversationMemberCount(shown),
-														})}
+											{/* A user-set topic first, then a built-in channel's
+											    translated one (design round 1, D2). */}
+											{shown.topic?.trim()
+												? shown.topic.trim()
+												: shownTopicKey
+													? t(shownTopicKey)
+													: membershipCounts.invited > 0
+														? t("ui.teamBridge.member.active_count", {
+																count: membershipCounts.active,
+															})
+														: t("ui.teamBridge.member.count", {
+																count: conversationMemberCount(shown),
+															})}
 										</span>
 									</>
 								)}
@@ -3548,9 +3557,10 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 															"flex size-14 items-center justify-center overflow-hidden rounded-full font-semibold text-[22px]",
 															// The same borderless identity washes as the message
 															// rows' plates, so one person reads alike everywhere.
+															"bg-accent-alt-wash",
 															target.type === "chief"
-																? "bg-accent-wash text-accent"
-																: "bg-accent-alt-wash text-accent-alt",
+																? "text-accent"
+																: "text-accent-alt",
 														)}
 													>
 														{target.type === "chief" ? (

@@ -195,7 +195,14 @@ export const kanagawaWave: ThemeDefinition = {
 		 * `accentWash` (the field floor is 2.0), 4.54:1 for `accentAlt` on it, and
 		 * 2.73 from the nearest ground it is painted on.
 		 */
-		accentAltWash: "#27222F",
+		/*
+		 * LIFTED #27222F -> #2A2432 (L* 14.29 -> 15.40, hue and chroma held) for
+		 * Team Bridge's person plates (visual refresh, contract C2; design round 1,
+		 * D1): the plate is borderless, so its fill must clear ΔE00 3.0 off every
+		 * ground it sits on. It measured 2.75; it now measures 3.47 at worst
+		 * (`surface`), with `accentAlt` 5.39:1 on it.
+		 */
+		accentAltWash: "#2A2432",
 
 		// springGreen.
 		success: "#98BB6C",

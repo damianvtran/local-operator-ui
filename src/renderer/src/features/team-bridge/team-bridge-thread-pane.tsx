@@ -545,7 +545,9 @@ function TeamBridgeThreadPaneBody({
 							/>
 							<Button
 								size="icon-sm"
-								variant="primary"
+								/* Ghost at rest, accent while sendable: the composer's rule
+								   (design round 1, D3; `team-bridge-composer.tsx`). */
+								variant={hasContent || sending ? "primary" : "ghost"}
 								className="rounded-sm"
 								disabled={
 									!hasContent || images.busy || sending || state !== "ready"

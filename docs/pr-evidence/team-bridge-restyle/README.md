@@ -25,11 +25,59 @@ File name: `<state>__<theme>__<before|after>.webp`.
 | `error` | Team Bridge/Page › ErrorState (one copy of the failure, one Try again) |
 | `in-shell-1380` / `in-shell-800` | Team Bridge/Page › InShellChannelSelected at 1380×900 and 800×700 |
 
-The unread state (bold name, accent badge only for mentions/DMs, `#` channel
-unread = weight only) is visible in every rail frame: `launch` has 3 unread and
-`Ada's agent` has 2.
+The unread state is visible in every rail frame: `launch` has 3 unread and
+`Ada's agent` has 2. Both rows are semibold and both carry the accent count.
+SPEC §3.2 asks for weight-only plain-channel unread, with the badge reserved for
+mentions and DMs. That is NOT implemented: the conversation contract carries no
+mention count, so dropping a channel's count would also hide a channel
+@-mention. The count register is `origin/main`'s `unreadRegister`, unchanged
+here. See Deviations in the PR body (UX round 1, U3).
 
 Themes: localOperatorDark, radient, localOperatorLight, dracula, nord.
+
+### Round-1 remediation frames
+
+All `__after` frames above were re-captured on the round-1 remediation head:
+every plate is now the one `accent-alt-wash` disc (D1), Send is a ghost glyph at
+rest (D3), the header shows the user-set topic (D2), and empty-section lines are
+one truncated line (D4). Added:
+
+- `r1-sticky-pill-grouped-runs__<theme>.webp`: Team Bridge/Page ›
+  MultiDayGroupedRuns at 1380×360, scrolled to the newest. "Yesterday" is the one
+  stuck pill; Monday's pill has been pushed off with its day (Q2). Measured: pill
+  y = −103 / 56 / 111 for Monday / Yesterday / Today against a timeline top of 48,
+  identical in all five themes. Continuation rows are 24.4px tall, down from 38.8,
+  because the hover clock no longer wraps (U1).
+- `r1-u2-tucked__radient.webp`: Team Bridge/Reactions › ToolbarAtScrollTop. The
+  hovered row starts 5.9px under its scroller's top, and its toolbar sits 4px
+  inside the edge (`data-tucked`) instead of at −16px, where it was clipped. A
+  hovered row lower in the list keeps the resting −16px (U2).
+
+M2 was checked with `hit_test` on RealRowReactions: while the toolbar is hidden,
+the point in its box above the row (540, 98) hits the list (`ol`), not the
+wrapper. On hover the toolbar's own button is the topmost hit.
+
+## Identity plate wash lifts (design round 1, D1)
+
+The plate is borderless `accentAltWash` on every Team Bridge identity, people and
+agents alike. Its extent is the `team bridge identity plate wash` row in
+`PERCEPTIBLE`: ΔE00 ≥ 3.0 off canvas, surface, elevated and rowHover. Eight
+palettes failed it and were lifted on `L*` alone, with hue and chroma held:
+
+| palette | mode | wash | L* | min ΔE00 before | min ΔE00 after (ground) | accentAlt on it |
+|---|---|---|---|---|---|---|
+| cyberpunk | dark | `#271E32` → `#332A3E` | 13.17 → 18.83 | 1.24 | 3.08 (`elevated`) | 5.28:1 |
+| kanagawaWave | dark | `#27222F` → `#2A2432` | 14.29 → 15.40 | 2.75 | 3.47 (`surface`) | 5.39:1 |
+| oneLight | light | `#E9E5E8` → `#FBF6F9` | 91.32 → 97.33 | 1.84 | 3.22 (`surface`) | 5.72:1 |
+| palenight | dark | `#161D30` → `#30364B` | 11.01 → 22.91 | 1.90 | 3.07 (`elevated`) | 5.21:1 |
+| radient | dark | `#212330` → `#323341` | 14.05 → 21.68 | 1.78 | 3.19 (`rowHover`) | 8.75:1 |
+| rosePine | dark | `#2a2431` → `#362F3D` | 15.36 → 20.65 | 2.27 | 3.20 (`rowHover`) | 6.15:1 |
+| rosePineMoon | dark | `#2C2534` → `#352D3D` | 16.04 → 19.93 | 2.17 | 3.16 (`rowHover`) | 6.29:1 |
+| synthwave | dark | `#27223E` → `#342E4C` | 15.08 → 20.85 | 1.52 | 3.13 (`elevated`) | 4.85:1 |
+
+Fleet after the lifts: the minimum is 3.07 (palenight, `elevated`). The inks on
+the wash, worst case: `accentAlt` 4.53:1 (ayuLight), `accent` 4.58:1 (duskfox),
+`inkMuted` 5.65:1 (kanagawaLotus).
 
 `operator-live-vs-after__radient.webp`: the operator's live radient frame (left;
 a DM with production data) beside the after InShell 1380 radient frame (right).

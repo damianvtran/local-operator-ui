@@ -2031,7 +2031,9 @@ test("days get a divider and rows get a clock, never a per-row medium date", asy
 		day: "numeric",
 	});
 	assert.ok(
-		view.host.querySelector(`li[aria-label="${divider}"]`),
+		/* The day group carries the label since the sticky-pill fix
+		   (#1668 QA round 1, Q2): one day group per day, one pill each. */
+		view.host.querySelector(`[data-day-group][aria-label="${divider}"]`),
 		"the day is a divider row",
 	);
 	for (const message of [admitted, rejected, unscreenedEmpty, own])

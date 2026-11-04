@@ -243,12 +243,13 @@ export const TeamBridgeComposeBar: FC<{
 										aria-hidden="true"
 										className={cn(
 											"flex size-5 shrink-0 items-center justify-center overflow-hidden rounded-full text-[10px] font-semibold",
-											/* Borderless and round, on the identity washes every
-									   Team Bridge plate wears (visual refresh D4, C2). The
-									   glyph carries the plate on a `row-hover` option. */
+											/* Borderless and round, on the identity wash every Team
+									   Bridge plate wears (visual refresh D4, C2), >= ΔE00 3.0
+									   off a `row-hover` option (design round 1, D1). */
+											"bg-accent-alt-wash",
 											option.kind === "agent"
-												? "bg-accent-wash text-accent"
-												: "bg-accent-alt-wash text-accent-alt",
+												? "text-accent"
+												: "text-accent-alt",
 										)}
 									>
 										{option.kind === "agent" ? (

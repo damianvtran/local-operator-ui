@@ -829,6 +829,68 @@ export const ChannelSelected: Story = {
 };
 
 /**
+ * THREE DAYS OF HISTORY, SCROLLED TO THE NEWEST (#1668 QA round 1 Q2, UX
+ * round 1 U1). Each day is its own sticky containing block, so exactly one
+ * day pill is stuck under the pane's top at any scroll offset - the stacked
+ * "Mor · Today · er 2" pill is the regression this frame guards. Each day is
+ * a same-sender run inside the five-minute window, so the grouped rows (one
+ * 24px line each, hover clock on one line) render too.
+ */
+const dayRun = (
+	dayOffset: number,
+	startSeq: number,
+	sender: TeamBridgeMessage["sender"],
+	bodies: string[],
+): TeamBridgeMessage[] =>
+	bodies.map((body, index) => {
+		const at = new Date();
+		at.setDate(at.getDate() - dayOffset);
+		at.setHours(10, index, 0, 0);
+		return {
+			id: `bcmsg_day${dayOffset}_${index}`,
+			conversation_id: channel.id,
+			seq: startSeq + index,
+			sender,
+			body,
+			origin: sender.kind,
+			created_at: at.toISOString(),
+		};
+	});
+const multiDayAda = {
+	account_id: "acct_agent",
+	kind: "agent",
+	display_label: "Ada's agent",
+} as const;
+const multiDaySelf = {
+	account_id: "acct_self",
+	kind: "human",
+	display_label: "Damian",
+} as const;
+export const MultiDayGroupedRuns: Story = {
+	args: {
+		target: { type: "conversation", id: channel.id },
+		messages: [
+			...dayRun(2, 1, multiDaySelf, [
+				"Kicking off the launch checklist.",
+				"Owners are in the doc.",
+				"Ping me with blockers.",
+			]),
+			...dayRun(1, 4, multiDayAda, [
+				"Two items are still open.",
+				"The migration dry run passed.",
+				"Release notes are drafted.",
+				"Waiting on the final copy review.",
+			]),
+			...dayRun(0, 8, multiDaySelf, [
+				"Copy review is done.",
+				"Ship it after lunch.",
+				"Thanks, everyone.",
+			]),
+		],
+	},
+};
+
+/**
  * The preview state: header metadata and the join banner, never a body.
  *
  * The messages are deliberately attached to the preview conversation in this

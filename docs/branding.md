@@ -684,8 +684,13 @@ Team Bridge's letter avatars and its workspace tile paint the initial in
 remit. That is text on the WASH, not on a solid `bg-accent-alt`, so the hard
 rule below holds; the pair is the `team bridge person identity plate` row in
 `CONTROLS` (4.53:1 worst, `ayuLight`). An agent's plate is the `accent` Bot
-glyph on `accent-wash` instead (`team bridge agent identity plate`), so kind
-reads from hue as well as from the glyph.
+glyph on the SAME wash (`team bridge agent identity plate`), so kind reads from
+the ink's hue and the glyph. The disc is borderless, so the wash is also its
+extent: `team bridge identity plate wash` in `PERCEPTIBLE` holds it ΔE00 3.0 off
+`canvas`, `surface`, `elevated` and `row-hover`. Eight palettes' washes were
+lifted on `L*` alone to clear that (design round 1 on #1668: radient measured
+1.78). `accent-wash` is not an identity plate: it sits within ΔE00 1.4–2.6 of a
+ground on fifteen palettes and has too many other consumers to re-seat.
 
 **What may not, and this list is the rule:** every selection and hover ground,
 the focus ring and the caret, primary/ghost/outline buttons and chips, links, the
@@ -756,6 +761,7 @@ the weakest pair anywhere in the system is sage at 8.4.
 | `info` against `accent`, the settled `read` ink against the liveness ink | ΔE00 8, with five palettes pinned at 0–5.87 |
 | `accent-alt`'s chroma | C\* 15 |
 | `accent-alt-wash` against `accent-wash` | ΔE00 2.0 |
+| `accent-alt-wash`, the identity plate, against each of the four grounds | ΔE00 3.0 |
 | `on-accent` on the accent fill | 4.5:1 |
 | The alt wash chip: `accent-alt` on `accent-alt-wash`, with `accent-alt` as its edge | 4.5:1 ink, 3:1 edge |
 | `border-control`, `accent` and each semantic `-border` on each of the four grounds | 3:1 |

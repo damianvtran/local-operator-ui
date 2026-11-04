@@ -41,7 +41,11 @@ import {
 	teamBridgeEventAnchors,
 } from "./team-bridge-member-events-model";
 import { TeamBridgeMessageToolbar } from "./team-bridge-message-toolbar";
-import { type ThreadItem, threadItems } from "./team-bridge-model";
+import {
+	type ThreadItem,
+	chronological,
+	threadItems,
+} from "./team-bridge-model";
 import {
 	TeamBridgeAvatar,
 	TeamBridgeProfileCard,
@@ -349,7 +353,11 @@ export const TeamBridgeMessageList: FC<{
 						message.sender.account_id !== accountId &&
 						!present(message).local,
 				);
-	const firstUnreadId = unseen[0]?.id;
+	/* The OLDEST unseen message, by seq, never by array position: the hub's
+	   timeline page arrives newest-first and only `threadItems` sorts it, so
+	   `unseen[0]` was the newest - the divider sat above the last of three
+	   (agent review round 1, M1). */
+	const firstUnreadId = chronological(unseen)[0]?.id;
 	const eventLabel: TeamBridgeEventLabel = (party) =>
 		labelFor(party) ??
 		(party.kind === "agent"
@@ -406,23 +414,23 @@ export const TeamBridgeMessageList: FC<{
 		   `display: table`; see their ScrollArea class names. */
 		<ol className="mt-auto flex w-full min-w-0 flex-col pt-4 pb-2">
 			{eventSlot(TEAM_BRIDGE_EVENTS_LEADING)}
-			{withEventsAfterRows(
+			{groupedByDay(
 				items,
 				eventSlot,
+				locale,
 				/*
 				 * ROW IDENTITY, NOT MESSAGE IDENTITY (the optimistic row). `present`
 				 * answers the row this message is drawn as: the server row's own id
 				 * until an optimistic sibling exists, then the local key that SURVIVES
 				 * the replacement, so reconciliation is a prop change on one mounted
 				 * subtree rather than an unmount. The event lines stay keyed by the
-				 * STORED message id (`withEventsAfterRows` reads `items`), because an
+				 * STORED message id (`groupedByDay` reads `items`), because an
 				 * event belongs to the hub's history and never to a draft.
 				 */
 				items.map((item) => {
-					if (item.type === "day")
-						return (
-							<DayDivider key={`day:${item.key}`} item={item} locale={locale} />
-						);
+					/* The day's pill is drawn by `groupedByDay`, which owns the day's
+					   containing block; this slot stays so `rows[i]` is `items[i]`. */
+					if (item.type === "day") return null;
 					const row = present(item.message);
 					const divider =
 						item.message.id === firstUnreadId ? (
@@ -437,7 +445,12 @@ export const TeamBridgeMessageList: FC<{
 								local={row.local}
 								delivery={row.delivery}
 								message={item.message}
-								continuation={item.continuation}
+								/* The divider restarts the run: the first message under "N new
+								   messages" always shows its author, as Slack and Discord do
+								   (agent review round 1, m1). */
+								continuation={
+									item.continuation && item.message.id !== firstUnreadId
+								}
 								label={labelFor(item.message.sender)}
 								member={profileFor?.(item.message.sender)}
 								onMessagePerson={onMessagePerson}
@@ -467,73 +480,114 @@ export const TeamBridgeMessageList: FC<{
 };
 
 /*
- * The row map's output with each message's event lines placed right after it.
+ * The row map's output, with each message's event lines placed right after it,
+ * grouped into one list item PER DAY.
  *
  * WHY A WRAPPER RATHER THAN A FRAGMENT IN THE MAP: the row map (and its React
- * keys) is shared with other in-flight changes; leaving it byte-identical keeps
- * every rebase textual. `rows[i]` is `items[i]`'s element by construction.
- * Event slots key in their own `events:` namespace (each line inside keys as
- * `event:<id>`), so they can never collide with a message or day key.
+ * keys) is shared with other in-flight changes; leaving it shaped like `items`
+ * keeps every rebase textual. `rows[i]` is `items[i]`'s element by
+ * construction (a day item's slot is null). Event slots key in their own
+ * `events:` namespace (each line inside keys as `event:<id>`), so they can never
+ * collide with a message or day key.
+ *
+ * WHY EACH DAY IS ITS OWN CONTAINING BLOCK (QA round 1, Q2). A sticky element
+ * sticks within its containing block. With every pill a sibling in the one
+ * list, every earlier pill stayed stuck at the same `top-2` under the later
+ * one, and since the labels differ in width the older one's ends showed on
+ * both sides ("Mor · Today · er 2"). Inside its own day's `<li>`, a pill is
+ * pushed off by the end of its day, so exactly one pill is ever stuck -
+ * Slack's floating date. Messages with no valid date (no day item before
+ * them) render in a pill-less group.
  */
-function withEventsAfterRows(
+function groupedByDay(
 	items: readonly ThreadItem[],
 	slot: (anchor: string) => ReactNode,
+	locale: string,
 	rows: ReactNode[],
 ): ReactNode[] {
 	const out: ReactNode[] = [];
+	let day: Extract<ThreadItem, { type: "day" }> | null = null;
+	let body: ReactNode[] = [];
+	const flush = () => {
+		if (day === null && body.length === 0) return;
+		out.push(
+			<DayGroup
+				key={day ? `day:${day.key}` : "day:none"}
+				item={day}
+				locale={locale}
+			>
+				{body}
+			</DayGroup>,
+		);
+		body = [];
+	};
 	rows.forEach((row, index) => {
-		out.push(row);
 		const item = items[index];
+		if (item?.type === "day") {
+			flush();
+			day = item;
+			return;
+		}
+		body.push(row);
 		if (item?.type === "message") {
 			const after = slot(item.message.id);
-			if (after) out.push(after);
+			if (after) body.push(after);
 		}
 	});
+	flush();
 	return out;
 }
 
 /*
- * THE DAY DIVIDER, STICKY (visual refresh N3). Two list items: an in-flow
- * hairline that marks where the day starts, and the pill, which sticks 8px
- * under the pane's top while that day's messages scroll beneath it - Slack's
- * floating date. A sticky element sticks within its containing block, which is
- * the whole list, so each later day's pill paints over the earlier one as it
- * arrives (later in the DOM, same `top`), and the label always names the day
- * on screen. The hairline does NOT travel: a rule floating over messages would
- * strike through them, so only the in-flow copy has one (it sits behind the
- * pill's resting position and reads as "line - pill - line"). The pill is
- * `elevated` (ΔE00 >= 4.17 off the `canvas` pane on every palette), so it
- * occludes the text it floats over.
+ * ONE DAY: a hairline across the top, the sticky pill, then the day's rows.
+ * The hairline does NOT travel: a rule floating over messages would strike
+ * through them, so it is absolutely positioned at the group's top, behind the
+ * pill's resting position ("line - pill - line"). The pill sticks 8px under
+ * the pane's top while its day scrolls beneath it, and its day's end pushes it
+ * off (see `groupedByDay`). It is `elevated` (ΔE00 >= 4.17 off the `canvas`
+ * pane on every palette), so it occludes the text it floats over.
  */
-const DayDivider: FC<{
-	item: Extract<ThreadItem, { type: "day" }>;
+const DayGroup: FC<{
+	item: Extract<ThreadItem, { type: "day" }> | null;
 	locale: string;
-}> = ({ item, locale }) => {
+	children: ReactNode;
+}> = ({ item, locale, children }) => {
 	const label =
-		item.relative === "today"
-			? t("ui.teamBridge.thread.today")
-			: item.relative === "yesterday"
-				? t("ui.teamBridge.thread.yesterday")
-				: formatDate(
-						item.date,
-						{ weekday: "long", month: "long", day: "numeric" },
-						locale,
-					);
+		item === null
+			? null
+			: item.relative === "today"
+				? t("ui.teamBridge.thread.today")
+				: item.relative === "yesterday"
+					? t("ui.teamBridge.thread.yesterday")
+					: formatDate(
+							item.date,
+							{ weekday: "long", month: "long", day: "numeric" },
+							locale,
+						);
 	return (
-		<>
-			<li aria-hidden="true" data-day-rule="" className="relative h-0">
-				<span className="absolute inset-x-5 top-5 h-px bg-hairline" />
-			</li>
-			<li
-				aria-label={label}
-				data-day-divider=""
-				className="pointer-events-none sticky top-2 z-[5] flex justify-center py-2"
-			>
-				<span className="flex h-6 items-center rounded-full bg-elevated px-2.5 font-medium text-[12px] text-ink-muted">
-					{label}
-				</span>
-			</li>
-		</>
+		/* The group is the day's labelled list item (the label used to sit on the
+		   pill's own `<li>`); the pill and the rule are drawing, hidden from AT. */
+		<li data-day-group="" aria-label={label ?? undefined} className="relative">
+			{label !== null && (
+				<>
+					<span
+						aria-hidden="true"
+						data-day-rule=""
+						className="absolute inset-x-5 top-5 h-px bg-hairline"
+					/>
+					<div
+						aria-hidden="true"
+						data-day-divider=""
+						className="pointer-events-none sticky top-2 z-[5] flex justify-center py-2"
+					>
+						<span className="flex h-6 items-center rounded-full bg-elevated px-2.5 font-medium text-[12px] text-ink-muted">
+							{label}
+						</span>
+					</div>
+				</>
+			)}
+			<ol className="flex w-full min-w-0 flex-col">{children}</ol>
+		</li>
 	);
 };
 
@@ -859,9 +913,17 @@ const MessageRowView: FC<MessageRowProps> = ({
 							<time
 								dateTime={message.created_at}
 								title={full}
-								/* `text-meta` (12px): the app's meta floor; 11px read as
-								   noise beside a 14px body (visual refresh N2). */
-								className="block pt-0.5 text-right text-meta text-ink-dim tabular-nums opacity-0 group-hover/message:opacity-100"
+								/* ONE LINE, END-ALIGNED, OVERHANGING THE START (UX round 1, U1).
+								   "10:02 AM" is ~52px at 11px and the gutter is 36px, so a
+								   wrapping clock made every one-line continuation 39px tall and
+								   read "10:02 / AM". `whitespace-nowrap` plus `justify-end` on a
+								   flex box lets it run leftward into the row's 20px start
+								   padding instead (36 + 20 = 56px of room, and the gap to the
+								   body stays 12px), so a continuation is one 24px line. 11px
+								   (`text-meta-sm`) is the gutter's own register: it shows only
+								   under the pointer, beside the header row's 12px clock.
+								   Dropping the meridiem is not locale-safe, so it stays. */
+								className="flex justify-end whitespace-nowrap pt-0.5 text-meta-sm text-ink-dim leading-5 tabular-nums opacity-0 group-hover/message:opacity-100"
 							>
 								{clock}
 							</time>
@@ -878,17 +940,17 @@ const MessageRowView: FC<MessageRowProps> = ({
 									   cannot picture (visual refresh D4, contract C2). The
 									   square `media-surface` plate read as a black hole beside
 									   every name (L* 2.4 in the operator's radient frame).
-									   An agent's `accent-wash` can sit within ΔE00 1.4 of a
-									   hovered row (obsidian, oneLight); the wash is a tint,
-									   not the plate's boundary - the accent glyph, >= 4.5:1
-									   on the wash on every palette, is what carries it. Both
-									   ink/wash pairs are rows in `scripts/contrast-contract.mjs`. */
+									   One borderless wash for every identity, >= ΔE00 3.0 off
+									   each ground it sits on (design round 1, D1); kind reads
+									   from the ink - accent Bot vs accent-alt initial. The
+									   pairs are rows in `scripts/contrast-contract.mjs`. */
 									"mt-0.5 flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-full font-semibold text-[14px]",
+									"bg-accent-alt-wash",
 									agent
-										? "bg-accent-wash text-accent"
+										? "text-accent"
 										: known === null
-											? "bg-accent-alt-wash text-ink-muted"
-											: "bg-accent-alt-wash text-accent-alt",
+											? "text-ink-muted"
+											: "text-accent-alt",
 								)}
 							>
 								{agent ? (

@@ -2188,7 +2188,7 @@ const TEAM_BRIDGE_PROFILE =
 const CARRIED_GROUNDS = {
 	// Extraction must not make the rail's shared avatar invisible to the sweep.
 	TeamBridgeAvatar: {
-		ground: "bg-surface,bg-accent-wash,bg-accent-alt-wash",
+		ground: "bg-surface,bg-accent-alt-wash",
 		file: TEAM_BRIDGE_PROFILE,
 		anchor: "export function TeamBridgeAvatar",
 	},
@@ -2524,7 +2524,7 @@ const PLATES_INSIDE_ROW_STATES = [
 		what: "the Team Bridge compose suggestion's initial",
 		file: TEAM_BRIDGE_COMPOSE,
 		element: "span",
-		ground: "bg-accent-alt-wash,bg-accent-wash",
+		ground: "bg-accent-alt-wash",
 		edge: false,
 		fact: "rounded-full",
 	},
@@ -2536,7 +2536,7 @@ const PLATES_INSIDE_ROW_STATES = [
 		what: "the Team Bridge compose suggestion's shared avatar",
 		file: TEAM_BRIDGE_COMPOSE,
 		element: "TeamBridgeAvatar",
-		ground: "bg-surface,bg-accent-wash,bg-accent-alt-wash",
+		ground: "bg-surface,bg-accent-alt-wash",
 		edge: false,
 		fact: "rounded-full",
 	},
@@ -2547,11 +2547,12 @@ const PLATES_INSIDE_ROW_STATES = [
 		what: "the Team Bridge rail shared avatar",
 		file: TEAM_BRIDGE_RAIL,
 		element: "TeamBridgeAvatar",
-		/* THREE GROUNDS, the shape this table already allows: the plate takes an
-		   identity wash on a plain row (person `accent-alt-wash`, agent
-		   `accent-wash`) and `surface` on the SELECTED row, where the washes sit
-		   within ΔE00 1.4-2.3 of `rowSelected` on a few palettes. */
-		ground: "bg-surface,bg-accent-wash,bg-accent-alt-wash",
+		/* TWO GROUNDS, the shape this table already allows: the plate takes the
+		   identity wash `accent-alt-wash` on a plain row (every kind since design
+		   round 1 D1 on #1668; agent kind reads from its accent ink) and `surface`
+		   on the SELECTED row, where the wash sits close to `rowSelected` on a few
+		   palettes. */
+		ground: "bg-surface,bg-accent-alt-wash",
 		edge: false,
 		fact: "rounded-full",
 	},
@@ -2647,12 +2648,13 @@ const TEAM_BRIDGE_PLATE_SITES = [
 	{
 		what: "the shared rail avatar's initial plate",
 		file: TEAM_BRIDGE_PROFILE,
-		anchor: '? "bg-accent-wash"',
+		anchor:
+			'selected ? "bg-surface" : "bg-accent-alt-wash",\n\t\t\t\tclassName,',
 	},
 	{
 		what: "the message row's sender plate",
 		file: "src/renderer/src/features/team-bridge/team-bridge-message-list.tsx",
-		anchor: '? "bg-accent-wash text-accent"',
+		anchor: '"bg-accent-alt-wash",',
 	},
 	{
 		what: "the rail's person plate",
@@ -2667,12 +2669,12 @@ const TEAM_BRIDGE_PLATE_SITES = [
 	{
 		what: "the compose suggestion's initial",
 		file: "src/renderer/src/features/team-bridge/team-bridge-compose-bar.tsx",
-		anchor: '? "bg-accent-wash text-accent"',
+		anchor: '"bg-accent-alt-wash",',
 	},
 	{
 		what: "the thread intro's header plate",
 		file: "src/renderer/src/features/team-bridge/team-bridge-page.tsx",
-		anchor: '? "bg-accent-wash text-accent"',
+		anchor: '"bg-accent-alt-wash",',
 	},
 ];
 
@@ -2698,7 +2700,7 @@ function assertRailAvatarContract(rail, expression) {
 	}
 	assert.match(
 		expression,
-		/selected\s*\?\s*"bg-surface"\s*:\s*kind === "agent"\s*\?\s*"bg-accent-wash"\s*:\s*"bg-accent-alt-wash"/,
+		/selected\s*\?\s*"bg-surface"\s*:\s*"bg-accent-alt-wash"/,
 		"the selected avatar must retain its distinct fill",
 	);
 	assert.doesNotMatch(
@@ -2729,7 +2731,7 @@ test("shared rail avatars preserve selection and reject broken paint contracts",
 		() =>
 			assertRailAvatarContract(
 				rail,
-				expression.replace('"bg-surface"', '"bg-accent-wash"'),
+				expression.replace('"bg-surface"', '"bg-accent-alt-wash"'),
 			),
 		/selected avatar must retain its distinct fill/,
 	);

@@ -739,16 +739,19 @@ const CONTROLS = [
 	{
 		/*
 		 * TEAM BRIDGE IDENTITY PLATES (visual refresh D4, contract C2 in
-		 * `docs/branding.md` § 2 "The second accent"). A person's letter avatar
-		 * and the workspace tile are `accentAlt` on `accentAltWash`; an agent's
-		 * plate is the `accent` Bot glyph on `accentWash`. Round, borderless:
-		 * the wash is a tint, not a boundary (it can sit within ΔE00 2 of a
-		 * hovered row), so `edge: false` and the GLYPH carries the plate - which
-		 * is why the ink is asserted here at the text floor on every ground the
-		 * plate is drawn over. Worst: 4.53:1 (ayuLight) person, 4.51:1
-		 * (everforest) agent. A SELECTED rail row's plate takes `surface`
-		 * instead (`TeamBridgeAvatar`'s `selected`), asserted by the agent-mark
-		 * graphic row and the inks' own `surface` floors.
+		 * `docs/branding.md` § 2 "The second accent"). Every Team Bridge plate -
+		 * person, agent, unknown sender, and the workspace tile - is the one
+		 * `accentAltWash` disc; kind reads from the INK: `accentAlt` initial for a
+		 * person, the `accent` Bot (plus the dog-ear) for an agent, `inkMuted` for
+		 * an unknown sender's glyph. The disc is borderless, so its EXTENT is
+		 * asserted as well as its inks: the `team bridge identity plate wash`
+		 * PERCEPTIBLE row holds the wash ΔE00 >= 3.0 off every ground it sits on
+		 * (design round 1, D1 on #1668 - it measured 1.24-2.75 on eight palettes,
+		 * radient 1.78, until those washes were lifted on L*). `accentWash` is not
+		 * used for agents: it sits within ΔE00 1.4-2.6 of a ground on 15 palettes
+		 * and has 60+ other consumers. A SELECTED rail row's plate takes `surface`
+		 * instead (`TeamBridgeAvatar`'s `selected`), measured by the inks' own
+		 * `surface` floors.
 		 */
 		name: "team bridge person identity plate",
 		on: ["canvas", "surface", "elevated", "rowHover"],
@@ -760,9 +763,19 @@ const CONTROLS = [
 	{
 		name: "team bridge agent identity plate",
 		on: ["canvas", "surface", "elevated", "rowHover"],
-		fill: "accentWash",
+		fill: "accentAltWash",
 		border: null,
 		ink: "accent",
+		edge: false,
+	},
+	{
+		/* The unknown sender's `UserRound` glyph on the same disc (agent review
+		   round 1, m4a): 5.65:1 worst (kanagawaLotus). */
+		name: "team bridge unknown sender plate",
+		on: ["canvas", "surface", "elevated", "rowHover"],
+		fill: "accentAltWash",
+		border: null,
+		ink: "inkMuted",
 		edge: false,
 	},
 	{
@@ -2351,7 +2364,9 @@ const GRAPHICS = [
 		 * Its fill's separation from the hovered row is asserted below.
 		 */
 		name: "team bridge agent plate glyph",
-		on: ["mediaSurface"],
+		/* `accentAltWash` is the plate's fill since the visual refresh (agent
+		   review round 1, m4b); `mediaSurface` is kept for the account plate. */
+		on: ["mediaSurface", "accentAltWash"],
 		fg: "accent",
 	},
 	{
@@ -2377,7 +2392,7 @@ const GRAPHICS = [
 		   `bg-surface` and still carries the mark (round 3, D3/F9). Worst on
 		   `surface` today is 4.98:1, so the row was a coverage gap rather than a
 		   failure. */
-		on: ["mediaSurface", "surface"],
+		on: ["mediaSurface", "surface", "accentAltWash"],
 		fg: "accent",
 		floor: 4.0,
 	},
@@ -2759,6 +2774,21 @@ const GRAPHICS = [
  * same element at different times.
  */
 const PERCEPTIBLE = [
+	{
+		/*
+		 * THE IDENTITY PLATE'S EXTENT (design round 1, D1 on #1668). The Team
+		 * Bridge person/agent disc is borderless `accentAltWash`, so this step IS
+		 * its boundary on every ground a plate rests on: the rail and thread pane
+		 * (`surface`), the timeline (`canvas`), a hovered row or option
+		 * (`rowHover`), a popover (`elevated`). 3.0 is the floor the `mediaSurface`
+		 * plate it replaced was held to. Eight palettes were lifted on L* (hue and
+		 * chroma held) to clear it; their comments carry the before/after.
+		 */
+		name: "team bridge identity plate wash",
+		role: "accentAltWash",
+		on: ["canvas", "surface", "elevated", "rowHover"],
+		minDeltaE: 3.0,
+	},
 	{
 		/*
 		 * The no-border replacement for the message avatar's ring: this is the

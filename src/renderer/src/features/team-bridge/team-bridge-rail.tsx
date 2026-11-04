@@ -371,12 +371,18 @@ export const RailSection: FC<{
 					<button
 						type="button"
 						onClick={empty.onCreate}
-						className="w-full rounded-md px-2 py-1 text-start text-meta text-ink-dim leading-snug transition-colors duration-fast ease-out-quart hover:bg-row-hover hover:text-ink-muted"
+						title={empty.text}
+						className="w-full truncate rounded-md px-2 py-1 text-start text-meta text-ink-dim leading-snug transition-colors duration-fast ease-out-quart hover:bg-row-hover hover:text-ink-muted"
 					>
 						{empty.text}
 					</button>
 				) : (
-					<p className="px-2 py-1 text-meta text-ink-dim leading-snug">
+					/* One line, truncated with `title` (SPEC §3.2; design round 1, D4):
+					   the wrapped sentence made the empty sections the tallest rows. */
+					<p
+						title={empty.text}
+						className="truncate px-2 py-1 text-meta text-ink-dim leading-snug"
+					>
 						{empty.text}
 					</p>
 				)

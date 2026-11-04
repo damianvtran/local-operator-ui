@@ -8,6 +8,7 @@ import {
 	type KeyboardEvent as ReactKeyboardEvent,
 	type ReactNode,
 	forwardRef,
+	useEffect,
 	useRef,
 	useState,
 } from "react";
@@ -94,6 +95,47 @@ export function TeamBridgeMessageToolbar({
 	const [pickerOpen, setPickerOpen] = useState(false);
 	const [roving, setRoving] = useState(0);
 	const root = useRef<HTMLDivElement>(null);
+	/* A callback-ref STATE, not a ref: the wrapper mounts only while the
+	   toolbar renders, and the listeners below must follow it. */
+	const [anchor, setAnchor] = useState<HTMLDivElement | null>(null);
+	/*
+	 * TUCKED INSIDE THE ROW WHEN THE ROW IS AT THE PANE'S TOP (UX round 1, U2).
+	 * The overlay sits 16px above its row, so a row that starts within 16px of
+	 * the scroll viewport's top edge had the toolbar's top cut off by the pane.
+	 * On the row's hover or focus (when it is about to show), the row's top is
+	 * measured against its scroll container, and the toolbar is placed 4px
+	 * below that edge instead - inside the row, or lower still when the row's
+	 * own top is already scrolled out (a `top-1` alone would still clip there).
+	 * Measured on demand, not on scroll: it only matters at the moment it
+	 * appears. `null` is the resting overlay (`-top-4`).
+	 */
+	const [tuck, setTuck] = useState<number | null>(null);
+	useEffect(() => {
+		const row = anchor?.closest<HTMLElement>("[data-message-id]");
+		if (!row) return;
+		const measure = () => {
+			/* The clipping edge is the nearest SCROLL container (the page's and
+			   the thread pane's Radix viewports), else the window - never the
+			   row's own list: a day group's `<ol>` starts just above its first
+			   row, and measuring against it tucked every day's first toolbar. */
+			let clip: HTMLElement | null = row.parentElement;
+			while (clip) {
+				if (clip.hasAttribute("data-radix-scroll-area-viewport")) break;
+				const { overflowY } = getComputedStyle(clip);
+				if (overflowY === "auto" || overflowY === "scroll") break;
+				clip = clip.parentElement;
+			}
+			const edge = clip ? clip.getBoundingClientRect().top : 0;
+			const rowTop = row.getBoundingClientRect().top;
+			setTuck(rowTop - edge < 16 ? Math.max(4, edge - rowTop + 4) : null);
+		};
+		row.addEventListener("pointerenter", measure);
+		row.addEventListener("focusin", measure);
+		return () => {
+			row.removeEventListener("pointerenter", measure);
+			row.removeEventListener("focusin", measure);
+		};
+	}, [anchor]);
 	/* THE REACTIONS HOLD COVERS THE TOOLBAR CONTROL TOO. The picker is guarded
 	   itself, but a counted-but-absent button would leave the roving tab stop
 	   pointing at nothing, so the control is dropped here as well. */
@@ -156,11 +198,22 @@ export function TeamBridgeMessageToolbar({
 
 	return (
 		<div
+			ref={setAnchor}
 			data-message-toolbar=""
+			data-tucked={tuck !== null || undefined}
+			style={tuck !== null ? { top: tuck } : undefined}
 			/* Positioned against the row (`relative` on the `<li>`), 16px above its
 			   top and 16px in from its end edge. `z-10` lifts it over the row above,
-			   whose own inset hover box is `-z-10` inside its own stacking context. */
-			className="absolute -top-4 end-4 z-10 flex"
+			   whose own inset hover box is `-z-10` inside its own stacking context.
+			   `pointer-events-none` HERE, not only on the inner toolbar (agent review
+			   round 1, M2): a `none` child passes its hit to a hit-testable parent,
+			   so the wrapper's box swallowed clicks and selection on the row above
+			   and made the pointer on message N count as hovering N+1. The inner
+			   toolbar re-enables itself while it is visible. */
+			className={cn(
+				"pointer-events-none absolute end-4 z-10 flex",
+				tuck === null && "-top-4",
+			)}
 		>
 			<div
 				ref={root}
@@ -169,10 +222,12 @@ export function TeamBridgeMessageToolbar({
 				aria-orientation="horizontal"
 				onKeyDown={onKeyDown}
 				className={cn(
-					"flex h-8 items-center gap-0.5 rounded-sm bg-elevated p-0.5 shadow-lg",
+					/* `shadow-overlay`: the contract's one shadow, for what leaves the
+					   flow (design round 1, D5). */
+					"flex h-8 items-center gap-0.5 rounded-sm bg-elevated p-0.5 shadow-overlay",
 					"transition-opacity duration-fast ease-out-quart",
 					forceVisible || pickerOpen
-						? "opacity-100"
+						? "pointer-events-auto opacity-100"
 						: /* Hidden means unhittable too: the overlay sits over the row
 						     ABOVE, and an invisible toolbar must not eat its clicks. */
 							"pointer-events-none opacity-0 group-focus-within/message:pointer-events-auto group-focus-within/message:opacity-100 group-hover/message:pointer-events-auto group-hover/message:opacity-100",
