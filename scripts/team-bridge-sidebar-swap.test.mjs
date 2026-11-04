@@ -52,11 +52,12 @@ const bundle = await build({
 			import { useUiPreferencesStore } from "./src/renderer/src/shared/store/ui-preferences-store";
 			import { teamBridgeLeaveTarget } from "./src/renderer/src/features/team-bridge/team-bridge-leave";
 			import { TeamBridgeBackRow } from "./src/renderer/src/features/team-bridge/team-bridge-route-column";
+			import { TooltipProvider } from "./src/renderer/src/shared/components/ui/tooltip";
 			import { useNavigationGestures } from "./src/renderer/src/shared/hooks/use-navigation-gestures";
 			import { onTeamBridgeRoute } from "./src/renderer/src/features/team-bridge/use-team-bridge-notification-open";
 			import { teamBridgeOpenPath } from "./src/shared/team-bridge-notify";
 			import { HashRouter, Routes, Route, useLocation, useNavigate, useSearchParams } from "react-router-dom";
-			export { ChatLayout, InLeftSidebarHost, useUiPreferencesStore, teamBridgeLeaveTarget, TeamBridgeBackRow, useNavigationGestures, onTeamBridgeRoute, teamBridgeOpenPath, HashRouter, Routes, Route, useLocation, useNavigate, useSearchParams, MemoryRouter, QueryClient, QueryClientProvider };
+			export { TooltipProvider, ChatLayout, InLeftSidebarHost, useUiPreferencesStore, teamBridgeLeaveTarget, TeamBridgeBackRow, useNavigationGestures, onTeamBridgeRoute, teamBridgeOpenPath, HashRouter, Routes, Route, useLocation, useNavigate, useSearchParams, MemoryRouter, QueryClient, QueryClientProvider };
 		`,
 		resolveDir: process.cwd(),
 	},
@@ -82,6 +83,7 @@ const bundle = await build({
 const bundlePath = new URL("./_tb-sidebar-swap.bundle.mjs", import.meta.url);
 await writeFile(bundlePath, bundle.outputFiles[0].text);
 const {
+	TooltipProvider,
 	ChatLayout,
 	InLeftSidebarHost,
 	useUiPreferencesStore,
@@ -438,10 +440,22 @@ test("focus follows the swap when it was in the column, and only then (U2/Q3)", 
 		const doc = app.document;
 		doc.querySelector('[data-test-row="chat"]').focus();
 		await app.rerender(shell(true));
+		/* The COLUMN takes focus on entry, not its first control: a scripted
+		   focus on Back drew its ring and opened its tooltip on every mouse entry
+		   (operator, 2026-11-04). Focus is still not on <body> (U2/Q3). */
 		assert.equal(
-			doc.activeElement?.getAttribute("data-test-rail"),
-			"",
-			"entry: the route column's first control has focus, not <body>",
+			doc.activeElement?.hasAttribute("data-route-sidebar-host"),
+			true,
+			"entry: the route column itself has focus, not <body> and not Back",
+		);
+		assert.equal(
+			doc.activeElement.tabIndex,
+			-1,
+			"the host is never a Tab stop",
+		);
+		assert.ok(
+			doc.activeElement.querySelector("[data-test-rail]"),
+			"and the route's first control is inside it, one Tab away",
 		);
 		await app.rerender(shell(false));
 		assert.equal(
@@ -456,6 +470,87 @@ test("focus follows the swap when it was in the column, and only then (U2/Q3)", 
 		await app.rerender(shell(true));
 		assert.equal(doc.activeElement, outside);
 	} finally {
+		await app.teardown();
+	}
+});
+
+/* Radix's trigger reads `delayed-open` or `instant-open` once its panel shows. */
+const TOOLTIP_OPEN = /open$/;
+
+test("entering from the navigation leaves Back unringed and its tooltip closed; Tab still reaches both", async () => {
+	/* The real Back row (and its real Radix tooltip) as the route's rail. */
+	const BridgeRoute = () =>
+		el(InLeftSidebarHost, { fallback: null }, el(TeamBridgeBackRow));
+	const EntryNav = () =>
+		el(
+			"nav",
+			null,
+			el(
+				"button",
+				{ type: "button", "data-test-row": "bridge" },
+				"Team Bridge",
+			),
+		);
+	const shell = (routed) =>
+		el(
+			TooltipProvider,
+			{ delayDuration: 0 },
+			el(ChatLayout, {
+				sidebar: el(EntryNav),
+				content: routed ? el(BridgeRoute) : null,
+				routeSidebar: routed ? {} : false,
+			}),
+		);
+	const app = await mount(shell(false));
+	/* Radix announces an opening tooltip with `new CustomEvent(...)` on the
+	   document; Node's own CustomEvent is a different realm from jsdom's and its
+	   dispatch throws, which no other suite here reaches (none opens a tooltip). */
+	const realmCustomEvent = globalThis.CustomEvent;
+	globalThis.CustomEvent = globalThis.window.CustomEvent;
+	try {
+		const doc = app.document;
+		/* A mouse press on the nav row: pointerdown and focus, as a click does. */
+		const row = doc.querySelector('[data-test-row="bridge"]');
+		/* jsdom has no PointerEvent constructor; a MouseEvent of that type is what
+		   React's synthetic pointerdown listens for here. */
+		row.dispatchEvent(
+			new globalThis.window.MouseEvent("pointerdown", { bubbles: true }),
+		);
+		row.focus();
+		await app.rerender(shell(true));
+		await act(async () => new Promise((resolve) => setTimeout(resolve, 30)));
+		const back = doc.querySelector("[data-team-bridge-back]");
+		assert.ok(back, "the real Back row is in the column");
+		assert.notEqual(doc.activeElement, back, "entry does not focus Back");
+		assert.equal(
+			back.matches(":focus-visible"),
+			false,
+			"so Back carries no focus-visible ring",
+		);
+		assert.equal(
+			back.getAttribute("data-state"),
+			"closed",
+			"and its tooltip is closed",
+		);
+		assert.equal(doc.querySelector('[role="tooltip"]'), null);
+
+		/* Keyboard: Tab from the parked column moves focus to Back. jsdom has no
+		   Tab default action, so the browser's move is done by hand: a focus with
+		   no pointerdown before it, which is what a keyboard focus is to Radix. */
+		assert.ok(doc.activeElement.hasAttribute("data-route-sidebar-host"));
+		await act(async () => {
+			back.focus();
+			await new Promise((resolve) => setTimeout(resolve, 30));
+		});
+		assert.equal(doc.activeElement, back, "Tab reaches Back");
+		assert.equal(back.matches(":focus-visible"), true, "with its ring");
+		assert.match(
+			back.getAttribute("data-state") ?? "",
+			TOOLTIP_OPEN,
+			"and its tooltip opens on keyboard focus",
+		);
+	} finally {
+		globalThis.CustomEvent = realmCustomEvent;
 		await app.teardown();
 	}
 });

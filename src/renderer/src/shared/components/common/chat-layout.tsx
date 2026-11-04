@@ -305,7 +305,17 @@ export const ChatLayout: FC<ChatLayoutProps> = ({
 	/*
 	 * Entry: the route's rail arrives through a portal a commit or more later
 	 * (the host ref, then the lazy page), so the column is watched until its
-	 * first control exists, and that is focused once.
+	 * first control exists, and then focus goes to the COLUMN, not the control.
+	 *
+	 * WHY NOT THE FIRST CONTROL (operator, 2026-11-04: "when you click Team
+	 * Bridge it has the back button highlighted and tooltip open"). Focusing Back
+	 * from script is a programmatic focus Chromium paints as `:focus-visible`
+	 * (the ring), and Radix's tooltip trigger opens on any focus that did not
+	 * follow a pointerdown ON it - so every mouse entry arrived with Back ringed
+	 * and "Back (⌘[)" open. The host takes focus instead (`tabIndex={-1}`,
+	 * `focusVisible: false`): focus still does not fall to `<body>` (U2/Q3), and
+	 * the next Tab lands on Back, where a real keyboard focus draws the ring and
+	 * opens the tooltip as it should.
 	 */
 	useEffect(() => {
 		if (!routeOwnsSidebar || !leftHost || !focusWasInColumn.current) return;
@@ -315,7 +325,12 @@ export const ChatLayout: FC<ChatLayoutProps> = ({
 			);
 			if (!first) return false;
 			focusWasInColumn.current = false;
-			first.focus();
+			/* `focusVisible` is a newer FocusOptions member TypeScript's DOM lib
+			   may not carry yet; the panel rail's story passes it the same way. */
+			leftHost.focus({
+				preventScroll: true,
+				focusVisible: false,
+			} as FocusOptions);
 			return true;
 		};
 		if (focusFirst()) return;
@@ -611,6 +626,9 @@ export const ChatLayout: FC<ChatLayoutProps> = ({
 							 */}
 							<div
 								ref={setLeftHost}
+								/* Focusable by script only: the entry handoff above parks
+								   focus here so Tab starts in the column; never a Tab stop. */
+								tabIndex={-1}
 								data-route-sidebar-host=""
 								data-glass-region="sidebar"
 								className="panel-top-pad flex h-full min-h-0 flex-col overflow-hidden bg-surface"
