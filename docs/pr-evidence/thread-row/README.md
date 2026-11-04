@@ -24,3 +24,9 @@ Extra after-frames (round 1 remediation):
 - `after-thread-pane-host-dark.png`: the thread pane's `canvas` host, with the facepile ring following it (D1).
 
 Each Storybook ran alone under `scripts/with-storybook.mjs` from its own tree (`NODE_OPTIONS=--max-old-space-size=1024`), and was reaped before the next started.
+
+Convergence with #1668 (2026-11-04): the channel timeline is now `canvas` and the thread pane `surface`, so the stories moved
+to those grounds and these after-frames were re-captured: `after-{read,unread}-{dark,light}.png`, `after-unread-hover-dark.png`,
+`after-thread-pane-host-dark.png`. Measured on `list-unread` (LO dark): row background transparent, facepile ring `#1d1b17`
+(= canvas), height 32px. The before frames and the other after frames are unchanged (they predate #1668's grounds; the
+before set is origin/main `a70a761` as recorded above).
