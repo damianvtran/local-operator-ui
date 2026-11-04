@@ -129,6 +129,7 @@ const bundle = await build({
  export {MemoryRouter} from 'react-router-dom';
  export {usePendingSends, resetPendingSendsForTest} from './src/renderer/src/features/team-bridge/team-bridge-pending-sends';
  export {resetHeldRailScrollForTest} from './src/renderer/src/features/team-bridge/team-bridge-rail-scroll';
+ export {LeftSidebarHostContext} from './src/renderer/src/shared/components/navigation/left-sidebar-host';
  export {stageMentions, stagedMentions} from './src/renderer/src/features/team-bridge/mentions/mention-outbox';`,
 		resolveDir: process.cwd(),
 	},
@@ -341,6 +342,26 @@ async function until(predicate, label) {
 	}
 	assert.fail(`timed out: ${label}`);
 }
+/*
+ * THE SHELL'S HOSTED COLUMN, opt-in (`hostedRail`). In the app the rail is
+ * portaled into a host `div` the shell publishes through
+ * `LeftSidebarHostContext`; the host is React state set by a ref callback, so
+ * on the commit that mounts the route the host is still null and
+ * `InLeftSidebarHost` renders NOTHING - the rail arrives a commit later. Leaving
+ * the route unmounts the host with it, as the shell's swap does. A suite that
+ * needs that first rail-less commit (QA round 1, Q2) asks for this; every other
+ * suite keeps the inline rail it always had.
+ */
+function HostedRail({ children }) {
+	const [host, setHost] = React.useState(null);
+	const slot = React.useMemo(() => ({ host }), [host]);
+	return React.createElement(
+		ui.LeftSidebarHostContext.Provider,
+		{ value: slot },
+		React.createElement("div", { ref: setHost, "data-test-route-host": "" }),
+		children,
+	);
+}
 function deferred() {
 	let resolve;
 	const promise = new Promise((done) => {
@@ -387,6 +408,7 @@ async function mount({
 	statusGate = null,
 	sendMentions = false,
 	attachments = false,
+	hostedRail = false,
 } = {}) {
 	// A revoked attempt can outlive its cleared lane and store entry. A later
 	// fixture must not reset shared state while that earlier job can still run.
@@ -823,7 +845,15 @@ async function mount({
 							React.Fragment,
 							null,
 							React.createElement(ui.AuthPrincipal),
-							fixture.away ? null : React.createElement(ui.TeamBridgePage),
+							fixture.away
+								? null
+								: hostedRail
+									? React.createElement(
+											HostedRail,
+											null,
+											React.createElement(ui.TeamBridgePage),
+										)
+									: React.createElement(ui.TeamBridgePage),
 						),
 					),
 				),

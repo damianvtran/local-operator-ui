@@ -2294,12 +2294,13 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	 * to restart at scrollTop 0 - measured 640 -> 0 on a click below the fold.
 	 * `useHeldRailScroll` carries the offset across that remount, per account
 	 * and scope; the why and the reveal rule live in `team-bridge-rail-scroll`.
-	 * Above the early returns below: it is a hook.
+	 * Above the early returns below: it is a hook. No hold until the account is
+	 * known (review R3): a `[null, scope]` key would be one entry shared by
+	 * every account, and its flip to the real account could move a rail the
+	 * reader is already scrolling.
 	 */
-	const railScrollRoot = useRef<HTMLDivElement>(null);
 	const railScroll = useHeldRailScroll(
-		railScrollRoot,
-		JSON.stringify([selfAccountId ?? null, scope]),
+		selfAccountId ? JSON.stringify([selfAccountId, scope]) : null,
 		target ? draftTargetKey(target) : null,
 	);
 
@@ -2632,7 +2633,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 					)}
 			</nav>
 			<ScrollArea
-				ref={railScrollRoot}
+				ref={railScroll.ref}
 				data-team-bridge-rail-scroll=""
 				onClickCapture={railScroll.onClickCapture}
 				className="min-h-0 flex-1 [&_[data-radix-scroll-area-viewport]>div]:block!"

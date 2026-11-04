@@ -164,10 +164,11 @@ async function scrollRail(app, top) {
 const selectedRow = (app) =>
 	viewport(app)?.querySelector('[aria-current="page"]') ?? null;
 
-async function open(path = "/team-bridge?tenant=org_shared") {
+async function open(path = "/team-bridge?tenant=org_shared", options = {}) {
 	const app = await mount({
 		lifecycle: [],
 		path,
+		...options,
 		waitReady: false,
 		seed: ({ fixture }) => scenario(fixture),
 	});
@@ -183,9 +184,9 @@ async function open(path = "/team-bridge?tenant=org_shared") {
  * Click a rail row with the rail scrolled to 480, and assert the remounted
  * rail reads 480 - the operator's exact gesture, for one conversation kind.
  */
-async function pickHolds(app, selector, label) {
+async function pickHolds(app, selector, label, at = 480) {
 	await until(() => viewport(app)?.querySelector(selector), `${label} listed`);
-	const before = await scrollRail(app, 480);
+	const before = await scrollRail(app, at);
 	const target = viewport(app).querySelector(selector);
 	await act(async () => target.click());
 	await until(
@@ -194,8 +195,8 @@ async function pickHolds(app, selector, label) {
 	);
 	await delay();
 	const after = viewport(app);
-	assert.notEqual(after, before, `${label}: the pick remounted the rail`);
-	assert.equal(after.scrollTop, 480, `${label}: rail scrollTop held`);
+	assert.ok(after !== before, `${label}: the pick remounted the rail`);
+	assert.equal(after.scrollTop, at, `${label}: rail scrollTop held`);
 }
 
 let restoreGeometry = null;
@@ -231,6 +232,150 @@ function stubGeometry() {
 	};
 	return calls;
 }
+
+/*
+ * REAL-ENOUGH GEOMETRY (review R1 / QA Q1). jsdom gives every box a zero rect,
+ * so a `scrollIntoView({block:"nearest"})` can never move anything and a test
+ * of the org round trip passes on a no-op. This models a 400px rail viewport
+ * whose rows stack 44px apart IN DOCUMENT ORDER, positioned from the live
+ * `scrollTop`, with `nearest` implemented the way the browser does it - so a
+ * reveal that should not run actually moves the rail, and the test sees it.
+ */
+const VIEWPORT_H = 400;
+const ROW_H = 44;
+function modelGeometry() {
+	const proto = window.HTMLElement.prototype;
+	const rect = proto.getBoundingClientRect;
+	const into = proto.scrollIntoView;
+	const box = (top) => ({
+		top,
+		bottom: top + ROW_H,
+		left: 0,
+		right: 288,
+		height: ROW_H,
+		width: 288,
+	});
+	const railOf = (el) => el.closest?.("[data-radix-scroll-area-viewport]");
+	const offsetIn = (rail, el) => {
+		const rows = [...rail.querySelectorAll("button")];
+		const index = rows.indexOf(el);
+		return index < 0 ? null : index * ROW_H;
+	};
+	const calls = [];
+	proto.getBoundingClientRect = function () {
+		if (this.hasAttribute("data-radix-scroll-area-viewport"))
+			return {
+				top: 0,
+				bottom: VIEWPORT_H,
+				left: 0,
+				right: 288,
+				height: VIEWPORT_H,
+				width: 288,
+			};
+		const rail = railOf(this);
+		const at = rail ? offsetIn(rail, this) : null;
+		if (at !== null) return box(at - rail.scrollTop);
+		return rect.call(this);
+	};
+	proto.scrollIntoView = function (options) {
+		calls.push({ id: this.getAttribute("data-conversation-id"), options });
+		const rail = railOf(this);
+		const at = rail ? offsetIn(rail, this) : null;
+		if (at === null) return;
+		if (at < rail.scrollTop) rail.scrollTop = at;
+		else if (at + ROW_H > rail.scrollTop + VIEWPORT_H)
+			rail.scrollTop = at + ROW_H - VIEWPORT_H;
+	};
+	restoreGeometry = () => {
+		proto.getBoundingClientRect = rect;
+		proto.scrollIntoView = into;
+	};
+	return calls;
+}
+
+const orgSwitcher = (app) => {
+	const switcher = () =>
+		app.host.querySelector('button[aria-label^="Organization:"]');
+	return async (label) => {
+		await act(async () => switcher().click());
+		const item = [...app.host.querySelectorAll('[role="menuitem"]')].find(
+			(entry) => entry.textContent.trim().startsWith(label),
+		);
+		assert.ok(item, `menu ${label}`);
+		await act(async () => item.click());
+		await until(
+			() => switcher().textContent.trim().startsWith(label),
+			`${label} shown`,
+		);
+		await until(() => selectedRow(app), `${label}: a row is selected`);
+		await delay();
+		await delay();
+	};
+};
+
+test("an org round trip restores a rail scrolled past its off-screen selected row (R1/Q1)", async () => {
+	const app = await open("/team-bridge");
+	const calls = modelGeometry();
+	try {
+		const choose = orgSwitcher(app);
+		await choose("Shared");
+		/* Default #general selected at the top; scroll far past it (QA 3c). */
+		await scrollRail(app, 516);
+		await choose("Other");
+		await choose("Shared");
+		assert.equal(
+			viewport(app).scrollTop,
+			516,
+			`scroll-only: A -> B -> A restores 516 (scrollIntoView calls: ${JSON.stringify(calls)})`,
+		);
+		/* Pick a row, then scroll on past it so it is off screen (QA 3b). */
+		await pickHolds(app, '[data-conversation-id="ch20_org_shared"]', "ch20");
+		await scrollRail(app, 1200);
+		await choose("Other");
+		await choose("Shared");
+		assert.equal(
+			viewport(app).scrollTop,
+			1200,
+			`picked then scrolled on: A -> B -> A restores 1200 (calls: ${JSON.stringify(calls)})`,
+		);
+	} finally {
+		await app.close();
+	}
+});
+
+test("after leaving and returning, the reader's next scroll is held (Q2)", async () => {
+	/* The shell's hosted column: on every return the rail is absent for the
+	   commit that mounts the page, and portaled in a commit later. */
+	const app = await open(undefined, { hostedRail: true });
+	modelGeometry();
+	try {
+		await scrollRail(app, 816);
+		await app.leave();
+		await app.back();
+		await until(
+			() => viewport(app)?.scrollTop === 816,
+			"the return restores 816",
+		);
+
+		/* The reader keeps sifting: a new offset, then a pick (QA 4c). */
+		await scrollRail(app, 126);
+		await pickHolds(app, '[data-conversation-id="ch3_org_shared"]', "ch3", 126);
+		/* And a further scroll survives another leave/return (QA 4b). */
+		await scrollRail(app, 246);
+		await app.leave();
+		await app.back();
+		await until(() => selectedRow(app), "rail back after the second return");
+		await delay();
+		await delay();
+		assert.equal(
+			viewport(app).scrollTop,
+			246,
+			"the reader's 246 is restored, not the stale 816",
+		);
+	} finally {
+		await app.close();
+	}
+});
 
 test("picking a channel, group or DM below the fold keeps the rail where it was", async () => {
 	const app = await open();
@@ -307,7 +452,7 @@ test("a list refresh (new message, unread badge, presence) keeps the rail where 
 			"the unread badge rendered",
 		);
 		await delay();
-		assert.equal(viewport(app), held, "a refresh does not remount the rail");
+		assert.ok(viewport(app) === held, "a refresh does not remount the rail");
 		assert.equal(viewport(app).scrollTop, 520, "refresh: scrollTop held");
 	} finally {
 		await app.close();

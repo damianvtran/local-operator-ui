@@ -126,8 +126,12 @@ type ChatLayoutProps = {
 	 * sidebar was keeping alive that the rest of the app still reads (the
 	 * catalogue feed - see `StripFeedKeeper`). Default off, so every other
 	 * caller lays out exactly as before.
+	 *
+	 * `label` names the host as a region (design D1 / review R5): entry parks
+	 * focus on the host itself, so a screen reader announces the route rather
+	 * than nothing. The route supplies its own title, already translated.
 	 */
-	routeSidebar?: { keeper?: ReactNode } | false;
+	routeSidebar?: { keeper?: ReactNode; label?: string } | false;
 };
 
 /**
@@ -629,6 +633,8 @@ export const ChatLayout: FC<ChatLayoutProps> = ({
 								/* Focusable by script only: the entry handoff above parks
 								   focus here so Tab starts in the column; never a Tab stop. */
 								tabIndex={-1}
+								role={routeSidebar.label ? "region" : undefined}
+								aria-label={routeSidebar.label}
 								data-route-sidebar-host=""
 								data-glass-region="sidebar"
 								className="panel-top-pad flex h-full min-h-0 flex-col overflow-hidden bg-surface"

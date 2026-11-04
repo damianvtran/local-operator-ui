@@ -433,7 +433,7 @@ test("focus follows the swap when it was in the column, and only then (U2/Q3)", 
 		el(ChatLayout, {
 			sidebar: el(FocusNav),
 			content: el(Route),
-			routeSidebar: routed ? {} : false,
+			routeSidebar: routed ? { label: "Team Bridge" } : false,
 		});
 	const app = await mount(shell(false));
 	try {
@@ -453,6 +453,9 @@ test("focus follows the swap when it was in the column, and only then (U2/Q3)", 
 			-1,
 			"the host is never a Tab stop",
 		);
+		/* Named, so the landing is announced (design D1 / review R5). */
+		assert.equal(doc.activeElement.getAttribute("role"), "region");
+		assert.equal(doc.activeElement.getAttribute("aria-label"), "Team Bridge");
 		assert.ok(
 			doc.activeElement.querySelector("[data-test-rail]"),
 			"and the route's first control is inside it, one Tab away",
@@ -590,8 +593,9 @@ const PIN_13 = /<AttentionBadge\s+count=\{attention\}/;
 const PIN_14 = /<SidebarFoot \/>/;
 const PIN_15 =
 	/const routeOwnsSidebar =\s*bridgeState === "enabled" && pathname\.startsWith\(TEAM_BRIDGE_PATH\);/;
+/* The keeper, and the host's region name from the route's EXISTING title. */
 const PIN_16 =
-	/routeSidebar=\{routeOwnsSidebar && \{ keeper: <StripFeedKeeper \/> \}\}/;
+	/routeSidebar=\{\s*routeOwnsSidebar && \{\s*keeper: <StripFeedKeeper \/>,\s*label: t\("ui\.teamBridge\.page\.title"\),\s*\}\s*\}/;
 const PIN_17 = /isSidebarCollapsed && !routeOwnsSidebar \? "true" : "false"/;
 
 const read = (path) => readFileSync(path, "utf8");
