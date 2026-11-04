@@ -179,7 +179,14 @@ export const synthwave: ThemeDefinition = {
 		 * `accentWash` (the field floor is 2.0), 5.08:1 for `accentAlt` on it, and
 		 * 2.06 from the nearest ground it is painted on.
 		 */
-		accentAltWash: "#27223E",
+		/*
+		 * LIFTED #27223E -> #342E4C (L* 15.08 -> 20.85, hue and chroma held) for
+		 * Team Bridge's person plates (visual refresh, contract C2; design round 1,
+		 * D1): the plate is borderless, so its fill must clear ΔE00 3.0 off every
+		 * ground it sits on. It measured 1.52; it now measures 3.13 at worst
+		 * (`elevated`), with `accentAlt` 4.85:1 on it.
+		 */
+		accentAltWash: "#342E4C",
 
 		// 72F1B8, published — the same value the TUI uses for `string`.
 		success: "#72F1B8",

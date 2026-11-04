@@ -460,6 +460,106 @@ test("focus follows the swap when it was in the column, and only then (U2/Q3)", 
 	}
 });
 
+/*
+ * #1660 QA Q5: a first open draws the EARLY column (Back + title) and then swaps
+ * it for the full rail. The Back that took focus is unmounted, so focus must be
+ * re-homed on the new first control rather than falling to <body>. And Q6/U6:
+ * on leave, a staged-draft `New chat` (and a disabled current row) also carries
+ * `aria-current="page"` ahead of the destination row - focus goes to the
+ * destination, never to the control that stages a chat.
+ */
+test("entry focus survives the early -> full column swap (#1660 Q5)", async () => {
+	const Staged = ({ full }) =>
+		el(
+			"div",
+			null,
+			el(
+				InLeftSidebarHost,
+				{ fallback: null },
+				full
+					? el("button", { type: "button", "data-test-full": "" }, "Back")
+					: el("button", { type: "button", "data-test-early": "" }, "Back"),
+			),
+		);
+	const shell = (routed, full) =>
+		el(ChatLayout, {
+			sidebar: el(
+				"nav",
+				null,
+				el("button", { type: "button", "data-test-row": "chat" }, "Chat"),
+			),
+			content: routed ? el(Staged, { full }) : el("main"),
+			routeSidebar: routed ? {} : false,
+		});
+	const app = await mount(shell(false, false));
+	try {
+		const doc = app.document;
+		doc.querySelector('[data-test-row="chat"]').focus();
+		await app.rerender(shell(true, false));
+		assert.equal(
+			doc.activeElement?.hasAttribute("data-test-early"),
+			true,
+			"entry: the early column's Back has focus",
+		);
+		/* The shell marked that focus as its own, which is what keeps Back's
+		   tooltip shut on entry (#1660 U7). */
+		assert.equal(doc.activeElement?.hasAttribute("data-focus-handoff"), true);
+		await app.rerender(shell(true, true));
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		assert.equal(
+			doc.activeElement?.hasAttribute("data-test-full"),
+			true,
+			`the full column's Back takes the focus the early one held, not <body> (got ${doc.activeElement?.tagName})`,
+		);
+	} finally {
+		await app.teardown();
+	}
+});
+
+test("leave focus picks the destination row, not a staged New chat or a disabled row (#1660 Q6/U6)", async () => {
+	const nav = (newChatDisabled) =>
+		el(
+			"nav",
+			null,
+			el(
+				"button",
+				{
+					type: "button",
+					"aria-current": "page",
+					"data-new-chat-row": "",
+					disabled: newChatDisabled,
+				},
+				"New chat",
+			),
+			el(
+				"button",
+				{ type: "button", "aria-current": "page", "data-test-row": "library" },
+				"Library",
+			),
+		);
+	const shell = (routed, newChatDisabled) =>
+		el(ChatLayout, {
+			sidebar: nav(newChatDisabled),
+			content: el(Route),
+			routeSidebar: routed ? {} : false,
+		});
+	for (const disabled of [false, true]) {
+		const app = await mount(shell(true, disabled));
+		try {
+			const doc = app.document;
+			doc.querySelector("[data-test-rail]").focus();
+			await app.rerender(shell(false, disabled));
+			assert.equal(
+				doc.activeElement?.getAttribute("data-test-row"),
+				"library",
+				`leave (New chat ${disabled ? "disabled" : "enabled"}): focus is on the destination row`,
+			);
+		} finally {
+			await app.teardown();
+		}
+	}
+});
+
 test("Back goes through history only when this window has an entry before this one", () => {
 	assert.equal(teamBridgeLeaveTarget({ idx: 3, key: "k" }), "history");
 	assert.equal(teamBridgeLeaveTarget({ idx: 1 }), "history");

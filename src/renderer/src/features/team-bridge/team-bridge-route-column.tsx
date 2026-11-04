@@ -15,7 +15,13 @@ import {
 	navigationShortcutLabel,
 } from "@shared/navigation-gesture";
 import { ArrowLeft, ArrowRight } from "lucide-react";
-import { type FC, type ReactNode, useCallback, useEffect } from "react";
+import {
+	type FC,
+	type ReactNode,
+	useCallback,
+	useEffect,
+	useState,
+} from "react";
 import { useNavigate } from "react-router-dom";
 import { teamBridgeLeaveTarget } from "./team-bridge-leave";
 
@@ -52,6 +58,13 @@ export const TeamBridgeBackRow: FC = () => {
 	 * collapse chevrons state).
 	 */
 	const Arrow = useTextDirection() === "rtl" ? ArrowRight : ArrowLeft;
+	/*
+	 * True while Back holds focus the SHELL put there on entry (it marks that
+	 * focus with `data-focus-handoff`, `chat-layout.tsx`). Any reader gesture -
+	 * pointer over Back, a key on it, or focus leaving - ends it, so the tooltip
+	 * still opens for a reader who tabs or points to Back (#1660 UX U7).
+	 */
+	const [handoff, setHandoff] = useState(false);
 	const { total: attention, lines: attentionLines } =
 		useOtherSurfacesAttention();
 	const chord = navigationShortcutLabel(
@@ -100,8 +113,8 @@ export const TeamBridgeBackRow: FC = () => {
 		/*
 		 * 40px, the app's toolbar step, and the same row the navigation's brand
 		 * sat in - so the eye finds the way out where the column's first row
-		 * always was. `ps-2` + the control's own `px-2` puts the arrow on the
-		 * 16px line every rail row's leading mark sits on.
+		 * always was. `px-2` + the control's own `px-2` puts the arrow on the
+		 * 16px line the org tile and every rail row's leading mark sit on.
 		 */
 		<div
 			data-team-bridge-back-row=""
@@ -129,10 +142,27 @@ export const TeamBridgeBackRow: FC = () => {
 					</span>
 				}
 				side="bottom"
+				/* Start-aligned on Back and kept 8px off the window edge: centred on
+				   a 68px trigger at x=8, the 153px breakdown was clamped flush against
+				   the window in both directions (#1660 design D4). */
+				align="start"
+				collisionPadding={8}
+				/* Controlled from the first render (the prop's own rule): only the
+				   shell's entry handoff suppresses it, never a reader's focus. */
+				suppressed={handoff}
+				discardWhileSuppressed
 			>
 				<button
 					type="button"
 					data-team-bridge-back=""
+					onFocus={(event) => {
+						if (!event.currentTarget.hasAttribute("data-focus-handoff")) return;
+						event.currentTarget.removeAttribute("data-focus-handoff");
+						setHandoff(true);
+					}}
+					onBlur={() => setHandoff(false)}
+					onPointerEnter={() => setHandoff(false)}
+					onKeyDown={() => setHandoff(false)}
 					onClick={leave}
 					aria-label={leaveName}
 					aria-keyshortcuts={chord}

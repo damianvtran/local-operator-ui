@@ -102,6 +102,24 @@ an accent glyph and a small decorative accent dot in the existing gutter;
 collapsed icon rail and takes no layout space. This keeps the requested
 continuous, borderless surface without weakening chat's selected-row treatment.
 
+**The Team Bridge rail extends that exception to its glyph (C4, 2026-11-04).**
+A selected rail row keeps the shared `rowSelected` ground (`rowCurrent`) and
+its leading kind glyph (`#`, people, `@`) turns `text-accent`, so the current
+conversation is found by a glance down a rail of twenty rows rather than by a
+4 ΔE00 fill alone. Ground, not hue, is still the state; the glyph is the
+accent's "active state" spend on that screen. Asserted as the `team bridge
+selected rail glyph` graphic row (accent on `rowSelected`, 3:1).
+
+**A message that mentions the reader takes a leading accent bar (C3,
+2026-11-04).** The bar left *selection* long ago (see the state roles below);
+this is a different class of mark - attention, the accent badge's class - and
+it is drawn only on a Team Bridge message row that @-mentions the reader: a 2px
+`accent` bar at the start edge of the row's inset `accentWash` box, Discord's
+highlighted row in the theme's own accent. The inline token keeps the viewer's
+`warning` ink; the bar and wash say "this row is about you" from across the
+pane. Asserted as the `team bridge mention row bar` graphic row (accent on
+`accentWash`, `canvas` and `surface`, 3:1).
+
 ### The four grounds
 
 `canvas` (page) → `surface` (cards, panels, inputs) → `elevated` (menus,
@@ -649,7 +667,7 @@ semantic or `info`. The seven desktop-only palettes have no `label` and take a
 rotation of their accent's own `L*` and `C*` instead. Each palette file carries
 its own derivation and the measurement it was authored against.
 
-**What may spend it** — three sites today: the theme picker's miniature (a
+**What may spend it** — four sites today: the theme picker's miniature (a
 `bg-accent-alt` bar beside the accent fill, so a two-hue theme advertises both of
 its colours), mermaid's categorical fills (`accent-alt-wash` at index 1 of the
 wash cycle, ahead of the semantics), and the settled trace row's IDENTITY ink —
@@ -660,7 +678,19 @@ the row to `elevated`, so the ink is painted there, and the role — seated at i
 4.5:1 floor on `surface` — had no headroom for it. Ten palettes were re-seated on
 their own hue's lightness (chroma rising with it only where the lift would
 otherwise walk into `info`); the run's `Identity pairs:` line reports the tightest
-pair the fleet holds after the move.
+pair the fleet holds after the move. And **avatar identity (C2, 2026-11-04)**:
+Team Bridge's letter avatars and its workspace tile paint the initial in
+`accent-alt` on `accent-alt-wash` - identity, which is exactly the role's
+remit. That is text on the WASH, not on a solid `bg-accent-alt`, so the hard
+rule below holds; the pair is the `team bridge person identity plate` row in
+`CONTROLS` (4.53:1 worst, `ayuLight`). An agent's plate is the `accent` Bot
+glyph on the SAME wash (`team bridge agent identity plate`), so kind reads from
+the ink's hue and the glyph. The disc is borderless, so the wash is also its
+extent: `team bridge identity plate wash` in `PERCEPTIBLE` holds it ΔE00 3.0 off
+`canvas`, `surface`, `elevated` and `row-hover`. Eight palettes' washes were
+lifted on `L*` alone to clear that (design round 1 on #1668: radient measured
+1.78). `accent-wash` is not an identity plate: it sits within ΔE00 1.4–2.6 of a
+ground on fifteen palettes and has too many other consumers to re-seat.
 
 **What may not, and this list is the rule:** every selection and hover ground,
 the focus ring and the caret, primary/ghost/outline buttons and chips, links, the
@@ -675,7 +705,7 @@ two hues' relationship.
 **And one hard rule until `on-accent-alt` exists:** `bg-accent-alt` may not
 become a text-bearing fill anywhere. Ink on a solid alt fill is an unmeasured
 pair — no palette authors a value for it and no `CONTROLS` row asserts it — and
-neither of the two sites above paints text.
+none of the sites above paints text on it (the avatar initial is on the wash).
 
 **The floors** are in § 3: 4.5:1 as text on `canvas`, `surface` and `sunken`;
 ΔE00 15 from `accent`; ΔE00 15 from `success`, `warning` and `danger`; ΔE00 8
@@ -731,6 +761,7 @@ the weakest pair anywhere in the system is sage at 8.4.
 | `info` against `accent`, the settled `read` ink against the liveness ink | ΔE00 8, with five palettes pinned at 0–5.87 |
 | `accent-alt`'s chroma | C\* 15 |
 | `accent-alt-wash` against `accent-wash` | ΔE00 2.0 |
+| `accent-alt-wash`, the identity plate, against each of the four grounds | ΔE00 3.0 |
 | `on-accent` on the accent fill | 4.5:1 |
 | The alt wash chip: `accent-alt` on `accent-alt-wash`, with `accent-alt` as its edge | 4.5:1 ink, 3:1 edge |
 | `border-control`, `accent` and each semantic `-border` on each of the four grounds | 3:1 |
