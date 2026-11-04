@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "kind": "source inspection notes, NOT an execution log",
+  "locale": "zh-CN",
+  "head": "ad12808392882707cbcbdeee56d82f68b3f82209",
+  "checks": [
+    "ICU arms = CLDR categories required by the style guide (es/fr one/many/other; ru one/few/many/other; hi/ur one/other; vi/zh-CN other only)",
+    "{count} via # and {reason} preserved; no extra/missing arguments",
+    "line_no_reason is a byte-exact prefix of line (context note)",
+    "reason phrases lower-case, no conjunction words (Intl.ListFormat joins them)",
+    "terminology matched against existing catalogue uses (file/preview/location) and core glossary/style guide",
+    "no bidi control characters"
+  ],
+  "per_key_verdict": {
+    "ui.chat.canonical.supplement.withheld.line": "PASS — idiomatic; placeholders, plural arms and glossary/style conform",
+    "ui.chat.canonical.supplement.withheld.line_no_reason": "PASS — idiomatic; placeholders, plural arms and glossary/style conform",
+    "ui.chat.canonical.supplement.withheld.reason_outside": "PASS — idiomatic; placeholders, plural arms and glossary/style conform",
+    "ui.chat.canonical.supplement.withheld.reason_sensitive": "PASS — idiomatic; placeholders, plural arms and glossary/style conform",
+    "ui.chat.canonical.supplement.withheld.reason_missing": "PASS — idiomatic; placeholders, plural arms and glossary/style conform",
+    "ui.chat.canonical.supplement.withheld.reason_too_large": "PASS — after auditor fix"
+  },
+  "values": {
+    "ui.chat.canonical.supplement.withheld.line": "{count, plural, other {# 个文件未显示}}：{reason}",
+    "ui.chat.canonical.supplement.withheld.line_no_reason": "{count, plural, other {# 个文件未显示}}",
+    "ui.chat.canonical.supplement.withheld.reason_outside": "不在允许的位置",
+    "ui.chat.canonical.supplement.withheld.reason_sensitive": "敏感文件",
+    "ui.chat.canonical.supplement.withheld.reason_missing": "文件已不存在",
+    "ui.chat.canonical.supplement.withheld.reason_too_large": "超出预览大小上限"
+  },
+  "english_values": {
+    "ui.chat.canonical.supplement.withheld.line": "{count, plural, one {# file not shown} other {# files not shown}}: {reason}",
+    "ui.chat.canonical.supplement.withheld.line_no_reason": "{count, plural, one {# file not shown} other {# files not shown}}",
+    "ui.chat.canonical.supplement.withheld.reason_outside": "outside allowed locations",
+    "ui.chat.canonical.supplement.withheld.reason_sensitive": "sensitive file",
+    "ui.chat.canonical.supplement.withheld.reason_missing": "file no longer exists",
+    "ui.chat.canonical.supplement.withheld.reason_too_large": "too large to preview"
+  },
+  "unchanged_keys_identical_to_ledger_bound_base": 178
+}

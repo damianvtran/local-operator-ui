@@ -3636,6 +3636,16 @@ export type MessageParams = {
 	"ui.chat.canonical.supplement.frame.source": { name: string };
 	"ui.chat.canonical.supplement.preview_unavailable": undefined;
 	"ui.chat.canonical.supplement.send": undefined;
+	"ui.chat.canonical.supplement.withheld.line": {
+		count: number;
+		reason: string;
+	};
+	"ui.chat.canonical.supplement.withheld.line_no_reason": { count: number };
+	"ui.chat.canonical.supplement.withheld.reason_missing": undefined;
+	"ui.chat.canonical.supplement.withheld.reason_outside": undefined;
+	"ui.chat.canonical.supplement.withheld.reason_sensitive": undefined;
+	"ui.chat.canonical.supplement.withheld.reason_separator": undefined;
+	"ui.chat.canonical.supplement.withheld.reason_too_large": undefined;
 	"ui.chat.canonical.this_chat": undefined;
 	"ui.chat.canonical.tool_row.bridge.delivery.awaiting_acceptance.label": undefined;
 	"ui.chat.canonical.tool_row.bridge.delivery.awaiting_acceptance.note": undefined;

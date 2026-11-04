@@ -95,6 +95,14 @@ export type SoundPlayerProps = {
 	peaks: readonly number[] | null;
 	/** The record's stated duration, shown until metadata can speak instead. */
 	durationHint?: number | null;
+	/**
+	 * Blank the total clock while the length is unknown (no hint, no metadata
+	 * yet) instead of printing `0:00` (design review PR #1652, D1): a written
+	 * MP3's hint is 0, and ten cells of `0:00 0:00` read as empty audio. The
+	 * slot keeps its width (`invisible`), so the clock landing causes no
+	 * reflow. Opt-in, so every other seat keeps today's rendering.
+	 */
+	hideUnknownTotal?: boolean;
 	variant?: SoundPlayerVariant;
 	className?: string;
 };
@@ -114,6 +122,7 @@ export const SoundPlayer = ({
 	label,
 	peaks,
 	durationHint = null,
+	hideUnknownTotal = false,
 	variant = "full",
 	className,
 }: SoundPlayerProps) => {
@@ -550,8 +559,11 @@ export const SoundPlayer = ({
 			</span>
 			{
 				<span
+					data-sound-total=""
+					aria-hidden={hideUnknownTotal && duration <= 0 ? true : undefined}
 					className={cn(
 						"min-w-10 shrink-0 text-center text-meta text-ink-dim tabular-nums",
+						hideUnknownTotal && duration <= 0 && "invisible",
 					)}
 				>
 					{formatClock(duration)}
