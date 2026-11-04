@@ -25,5 +25,6 @@
 	"ui.agents.avatar.editor.zoom": "Zoom",
 	"ui.agents.avatar.editor.zoom_in": "Zoom in",
 	"ui.agents.avatar.editor.zoom_out": "Zoom out",
-	"ui.agents.avatar.editor.zoom_value": "{value}×"
+	"ui.agents.avatar.editor.zoom_value": "{value}×",
+	"ui.agents.avatar.add_link": "Add a picture for {name}"
 }

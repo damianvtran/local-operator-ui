@@ -25,5 +25,6 @@
 	"ui.agents.avatar.editor.zoom": "زوم",
 	"ui.agents.avatar.editor.zoom_in": "زوم بڑھائیں",
 	"ui.agents.avatar.editor.zoom_out": "زوم گھٹائیں",
-	"ui.agents.avatar.editor.zoom_value": "{value}×"
+	"ui.agents.avatar.editor.zoom_value": "{value}×",
+	"ui.agents.avatar.add_link": "{name} کے لیے تصویر شامل کریں"
 }

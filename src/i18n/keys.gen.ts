@@ -2093,6 +2093,7 @@ export type MessageParams = {
 	"ui.agentMessages.settings.state.read_only": undefined;
 	"ui.agentMessages.settings.state.turned_off_org": undefined;
 	"ui.agentMessages.settings.state.turned_off_title": undefined;
+	"ui.agents.avatar.add_link": { name: string };
 	"ui.agents.avatar.edit_link": { name: string };
 	"ui.agents.avatar.editor.crop_area": undefined;
 	"ui.agents.avatar.editor.error_decode": undefined;
@@ -8991,6 +8992,11 @@ export type MessageParams = {
 	"ui.settings.account.settings_usage_chart.credits_summary": { days: number };
 	"ui.settings.account.settings_usage_chart.tokens_summary": { days: number };
 	"ui.settings.account.settings_usage_chart.tokens_used": undefined;
+	"ui.settings.appearance.agent_avatar_size_setting.agent_picture_size": undefined;
+	"ui.settings.appearance.agent_avatar_size_setting.how_large_the_agent_s_picture_appears_in_the_chat_window_and_the_chat": undefined;
+	"ui.settings.appearance.agent_avatar_size_setting.large": undefined;
+	"ui.settings.appearance.agent_avatar_size_setting.medium": undefined;
+	"ui.settings.appearance.agent_avatar_size_setting.small": undefined;
 	"ui.settings.appearance.settings_page.adds_the_agent_s_reasoning_and_thinking_rows_to_conversations_the": undefined;
 	"ui.settings.appearance.settings_page.appearance": undefined;
 	"ui.settings.appearance.settings_page.customize_the_look_and_feel_of_local_operator": undefined;

@@ -36,8 +36,14 @@ export type SlotSignatureFact = {
 	userExpanded: boolean;
 	media: boolean;
 	unsafe: boolean;
-	/** Whether this slot draws the turn's mark (24px the estimate adds). */
+	/** Whether this slot draws the turn's mark. */
 	marksHead: boolean;
+	/**
+	 * The px that mark adds (`turnMarkHeight`): in the key because the reader's
+	 * size setting changes it under an unchanged `marksHead`, and a cached height
+	 * keyed without it would keep the old size's estimate.
+	 */
+	markHeight: number;
 	renderSignature: string;
 };
 
@@ -60,7 +66,7 @@ export function entrySlotSignature(
 	return `${facts
 		.map(
 			(fact) =>
-				`${fact.key}:${fact.ids.join(",")}:${fact.representation}:${fact.gap}:${fact.userExpanded}:${fact.media}:${fact.unsafe}:${fact.marksHead ? 1 : 0}:${fact.renderSignature}`,
+				`${fact.key}:${fact.ids.join(",")}:${fact.representation}:${fact.gap}:${fact.userExpanded}:${fact.media}:${fact.unsafe}:${fact.marksHead ? fact.markHeight : 0}:${fact.renderSignature}`,
 		)
 		.join("|")}:${isSmallView}`;
 }
