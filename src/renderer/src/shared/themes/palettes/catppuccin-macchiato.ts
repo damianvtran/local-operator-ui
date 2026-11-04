@@ -48,19 +48,35 @@ export const catppuccinMacchiato: ThemeDefinition = {
 	palette: {
 		mode: "dark",
 
-		canvas: "#24273A",
-		surface: "#2A2D42",
-		elevated: "#30334A",
-		sunken: "#1E2132",
+		/*
+		 * THE DARKER-GROUNDS PASS (2026-11-03, `docs/branding.md` § 2) supersedes the
+		 * earlier L* 12 dark floor: the dark band is now L* 9-15 (target 9-13), and
+		 * the canvas maps by `L*_new = 9 + 0.6 x (L*_old - 12)`, which keeps this
+		 * palette's place in the fleet. Here every ground-class role (the grounds, the
+		 * row states, the two fills, the washes and the hairlines) moved by the
+		 * canvas's own ΔL* holding its `a` and `b`; inks, accents and `borderControl` did
+		 * not move.
+		 * Measured:
+		 * canvas #24273A -> #1A1E31 (L* 16.16 -> 11.76)
+		 * surface #2A2D42 -> #212439 (L* 19.07 -> 14.85)
+		 * elevated #30334A -> #282B41 (L* 21.91 -> 18.19)
+		 * sunken #1E2132 -> #141829 (L* 13.19 -> 8.67)
+		 * Re-solved off the uniform shift, because a contract floor refused it there:
+		 * `elevated`, `hairline`. `pnpm check-themes` is the measurement for each.
+		 */
+		canvas: "#1A1E31",
+		surface: "#212439",
+		elevated: "#282B41",
+		sunken: "#141829",
 
 		// The user block's fill: ΔE00 4.02 off the canvas, where `surface` alone
 		// measures 2.08 - a step toward `elevated` to clear the role's 4.0 floor,
 		// which the block carries because the fill IS its boundary.
-		messageSurface: "#303349",
+		messageSurface: "#272A40",
 		// The media slot's well: ΔE00 4.19 off the canvas, where `sunken` alone
 		// measures 2.09 - a step away from the canvas to clear the role's 4.0
 		// floor, which the tile carries because the fill IS its resting extent.
-		mediaSurface: "#181b2a",
+		mediaSurface: "#0f1221",
 
 		/*
 		 * ROW STATES, and `highlight` retired in the same change. Both roles are a
@@ -86,8 +102,8 @@ export const catppuccinMacchiato: ThemeDefinition = {
 		 * ΔE00 6.96 and ranks 4.9 C*, so the marks are told apart by cast on the one
 		 * palette where lightness has no room.
 		 */
-		rowHover: "#30313D",
-		rowSelected: "#2E324E",
+		rowHover: "#272834",
+		rowSelected: "#252944",
 
 		ink: "#CAD3F5",
 		/*
@@ -117,13 +133,13 @@ export const catppuccinMacchiato: ThemeDefinition = {
 		inkDim: "#9DA4C1",
 		inkDisabled: "#6E738D",
 
-		hairline: "#3C4056",
+		hairline: "#34384E",
 
 		// `hairline` stepped toward `inkDim`, so it reads on this palette's own
 
 		// `sunken`: 1.69:1 there against `hairline`'s 1.56:1.
 
-		hairlineStrong: "#41455B",
+		hairlineStrong: "#363A50",
 		borderControl: "#939AB7",
 
 		accent: "#C6A0F6",
@@ -144,7 +160,7 @@ export const catppuccinMacchiato: ThemeDefinition = {
 		 * `canvas` is the tightest base at ΔE00 2.08. Lightness only, at the
 		 * wash's own hue.
 		 */
-		accentWash: "#212339",
+		accentWash: "#16192F",
 		onAccent: "#24273A",
 		/*
 		 * The theme's own second hue, from the TUI's `label` token (`#b7bdf8`,
@@ -163,22 +179,22 @@ export const catppuccinMacchiato: ThemeDefinition = {
 		 * 2.0), 8.64:1 for `accentAlt` on it, and 9.09 from the nearest ground it
 		 * is painted on.
 		 */
-		accentAltWash: "#0B273A",
+		accentAltWash: "#001D2F",
 
 		success: "#A6DA95",
-		successWash: "#292D3D",
+		successWash: "#1F2333",
 		successBorder: "#88CD71",
 
 		warning: "#F5A97F",
-		warningWash: "#2B2C3C",
+		warningWash: "#212232",
 		warningBorder: "#F2925D",
 
 		danger: "#ED8796",
-		dangerWash: "#2B2A3D",
+		dangerWash: "#212033",
 		dangerBorder: "#E96C7F",
 
 		info: "#8AADF4",
-		infoWash: "#292E43",
+		infoWash: "#1F2439",
 		infoBorder: "#6E99F1",
 
 		// The shadow and scrim are the ground tinted, as in every palette here.

@@ -61,24 +61,38 @@ export const dune: ThemeDefinition = {
 		 * lifting a dark ground raises the luminance every ink is measured against, so
 		 * the inks in this file were re-seated on the same commit rather than after it.
 		 */
-		canvas: "#21201E",
-		surface: "#2C2825",
-		elevated: "#362D25",
+		/*
+		 * THE DARKER-GROUNDS PASS (2026-11-03, `docs/branding.md` § 2) supersedes the
+		 * earlier L* 12 dark floor: the dark band is now L* 9-15 (target 9-13), and
+		 * the canvas maps by `L*_new = 9 + 0.6 x (L*_old - 12)`, which keeps this
+		 * palette's place in the fleet. Here every ground-class role (the grounds, the
+		 * row states, the two fills, the washes and the hairlines) moved by the
+		 * canvas's own ΔL* holding its `a` and `b`; inks, accents and `borderControl` did
+		 * not move.
+		 * Measured:
+		 * canvas #21201E -> #1B1A18 (L* 12.29 -> 9.30)
+		 * surface #2C2825 -> #26221F (L* 16.44 -> 13.56)
+		 * elevated #362D25 -> #2F261E (L* 19.20 -> 15.92)
+		 * sunken #1B1A1A -> #151313 (L* 9.37 -> 6.07)
+		 */
+		canvas: "#1B1A18",
+		surface: "#26221F",
+		elevated: "#2F261E",
 		// The old theme had no recessed ground at all; this one was authored as
 		// 050403, a step far enough below the canvas to stay distinguishable, and
 		// the legibility pass then moved it with the rest of the ramp (see the
 		// block above). It keeps that job: at this darkness a step of one or two
 		// levels measures under the 1.03:1 separation floor.
-		sunken: "#1B1A1A",
+		sunken: "#151313",
 
 		// The user block's fill: ΔE00 4.06 off the canvas, where `surface` alone
 		// measures 3.35 - a step toward `elevated` to clear the role's 4.0 floor,
 		// which the block carries because the fill IS its boundary.
-		messageSurface: "#2e2925",
+		messageSurface: "#28231f",
 		// The media slot's well: ΔE00 4.31 off the canvas, where `sunken` alone
 		// measures 2.38 - a step away from the canvas to clear the role's 4.0
 		// floor, which the tile carries because the fill IS its resting extent.
-		mediaSurface: "#171618",
+		mediaSurface: "#100E11",
 
 		/*
 		 * ROW STATES, and `highlight` retired in the same change. Both roles are a
@@ -107,8 +121,8 @@ export const dune: ThemeDefinition = {
 		 * 1.0 floor), so 2.85 is the lift, and it keeps the panel's own cast rather
 		 * than spending the cap slack to buy a wider band.
 		 */
-		rowHover: "#322E2C",
-		rowSelected: "#393029",
+		rowHover: "#2C2826",
+		rowSelected: "#332A23",
 
 		// The old primary text was F9FAFB, a blue-white. Every other neutral here
 		// holds R greater than G greater than B, and one cool value in an otherwise
@@ -145,10 +159,10 @@ export const dune: ThemeDefinition = {
 		 * 1.15-2.0:1 band, because a separator that shouted would be a border.
 		 * `elevated` is the tightest ground at ΔE00 9.14.
 		 */
-		hairline: "#49391E",
+		hairline: "#413217",
 		// `hairline` stepped toward `inkDim`, so it reads on this palette's own
 		// `sunken`: 1.69:1 there against `hairline`'s 1.56:1.
-		hairlineStrong: "#4E3E24",
+		hairlineStrong: "#46371D",
 		// Derived. The old theme bounded inputs with orange at 10 percent alpha,
 		// which measured about 1.1:1 on the page ground.
 		borderControl: "#8A7D6E",
@@ -163,7 +177,7 @@ export const dune: ThemeDefinition = {
 		tokenCommand: "#E8C15A",
 		/* This palette's second hue: its `info` IS its accent, so the token takes
 		   the hue the same palette's editor already paints string literals in. */
-		accentWash: "#2C1C10",
+		accentWash: "#261606",
 		// The old theme paired white with this orange, which measures 2.32:1 — a
 		// primary button nobody could read. Ink on the accent fill is the page
 		// ground instead, at 8.4:1.
@@ -184,13 +198,13 @@ export const dune: ThemeDefinition = {
 		 * 2.0), 7.10:1 for `accentAlt` on it, and 13.34 from the nearest ground it
 		 * is painted on.
 		 */
-		accentAltWash: "#002427",
+		accentAltWash: "#011E20",
 
 		// Dune has no semantic hues at all. These three are derived inside the
 		// theme's own desert range — olive for success, amber for warning, burnt
 		// red for danger — so none of them reads as a foreign import.
 		success: "#A3C46B",
-		successWash: "#212317",
+		successWash: "#1B1D10",
 		/*
 		 * Legibility pass: `successBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
@@ -199,7 +213,7 @@ export const dune: ThemeDefinition = {
 		successBorder: "#6E814E",
 
 		warning: "#E8C15A",
-		warningWash: "#292314",
+		warningWash: "#231D0D",
 		/*
 		 * Legibility pass: `warningBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
@@ -216,7 +230,7 @@ export const dune: ThemeDefinition = {
 		 * legibility, is what the ramp change was allowed to keep.
 		 */
 		danger: "#F66F59",
-		dangerWash: "#291713",
+		dangerWash: "#23110A",
 		/*
 		 * Legibility pass: `dangerBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
@@ -227,7 +241,7 @@ export const dune: ThemeDefinition = {
 		// Dune has no informational hue, and a blue would be the only cool colour
 		// in the theme. Info is the accent triple, as in the brand palettes.
 		info: "#FF8C38",
-		infoWash: "#2C1C10",
+		infoWash: "#261606",
 		/*
 		 * Legibility pass: `infoBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered

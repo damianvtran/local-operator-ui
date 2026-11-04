@@ -88,22 +88,36 @@ export const outrun: ThemeDefinition = {
 		 * lifting a dark ground raises the luminance every ink is measured against, so
 		 * the inks in this file were re-seated on the same commit rather than after it.
 		 */
-		canvas: "#1A1E37",
-		surface: "#232543",
-		elevated: "#262B4B",
-		sunken: "#171A2B",
+		/*
+		 * THE DARKER-GROUNDS PASS (2026-11-03, `docs/branding.md` § 2) supersedes the
+		 * earlier L* 12 dark floor: the dark band is now L* 9-15 (target 9-13), and
+		 * the canvas maps by `L*_new = 9 + 0.6 x (L*_old - 12)`, which keeps this
+		 * palette's place in the fleet. Here every ground-class role (the grounds, the
+		 * row states, the two fills, the washes and the hairlines) moved by the
+		 * canvas's own ΔL* holding its `a` and `b`; inks, accents and `borderControl` did
+		 * not move.
+		 * Measured:
+		 * canvas #1A1E37 -> #131831 (L* 12.12 -> 9.10)
+		 * surface #232543 -> #1C1E3B (L* 15.93 -> 12.55)
+		 * elevated #262B4B -> #1F2544 (L* 18.57 -> 15.65)
+		 * sunken #171A2B -> #111425 (L* 9.76 -> 6.80)
+		 */
+		canvas: "#131831",
+		surface: "#1C1E3B",
+		elevated: "#1F2544",
+		sunken: "#111425",
 
 		// The user block's fill: ΔE00 4.10 off the canvas, where `surface` alone
 		// measures 3.08 - a step toward `elevated` to clear the role's 4.0 floor,
 		// which the block carries because the fill IS its boundary.
-		messageSurface: "#252848",
+		messageSurface: "#1F2342",
 		// The media slot's well: ΔE00 4.23 off the canvas, where `sunken` alone
 		// measures 3.75 - a step away from the canvas to clear the role's 4.0
 		// floor, which the tile carries because the fill IS its resting extent.
 		// The LIGHTNESS half gates the stop here: a ΔE00-clearing candidate
 		// (`#171A2A`, 2.41 L*) comes earlier on the line, so the walk carries it
 		// one step further to this value, which clears both halves (2.82 L*).
-		mediaSurface: "#171929",
+		mediaSurface: "#111323",
 
 		/*
 		 * ROW STATES, and `highlight` retired in the same change. Both roles are a
@@ -122,8 +136,8 @@ export const outrun: ThemeDefinition = {
 		 *                       `rowHover`; the pair ranks 1.25 `L*` and 12.1 `C*`,
 		 *                       `inkDim` 5.02:1.
 		 */
-		rowHover: "#2C2C3E",
-		rowSelected: "#2B2D51",
+		rowHover: "#262638",
+		rowSelected: "#24274A",
 
 		ink: "#E6E6F2",
 		/*
@@ -163,10 +177,10 @@ export const outrun: ThemeDefinition = {
 		 * 1.15-2.0:1 band, because a separator that shouted would be a border.
 		 * `elevated` is the tightest ground at ΔE00 5.11.
 		 */
-		hairline: "#323762",
+		hairline: "#2A305A",
 		// `hairline` stepped toward `inkDim`, so it reads on this palette's own
 		// `sunken`: 1.64:1 there against `hairline`'s 1.52:1.
-		hairlineStrong: "#373C67",
+		hairlineStrong: "#30355F",
 		// The TUI `edge-hi` 343B6E lifted in L* until it clears 3:1 on `elevated`.
 		/*
 		 * Legibility pass: `borderControl` is the sole boundary of every input in the
@@ -219,7 +233,7 @@ export const outrun: ThemeDefinition = {
 		// The palette's own `info`, which is the role this composer's command
 		// word already resolved to: the tint moves no pixel the palette did not
 		// already choose. The role and its floors are in `palette-contract.ts`.
-		accentWash: "#2C1230",
+		accentWash: "#250B29",
 		onAccent: "#050522",
 		/*
 		 * The theme's own second hue, and the port had dropped it: the TUI's
@@ -235,10 +249,10 @@ export const outrun: ThemeDefinition = {
 		 * 2.0), 6.41:1 for `accentAlt` on it, and 4.66 from the nearest ground it
 		 * is painted on.
 		 */
-		accentAltWash: "#1D1838",
+		accentAltWash: "#161231",
 
 		success: "#3FE0A0",
-		successWash: "#142B38",
+		successWash: "#0D2532",
 		/*
 		 * Legibility pass: `successBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
@@ -249,7 +263,7 @@ export const outrun: ThemeDefinition = {
 		// F9C80E, the sun yellow, and no red in the palette for it to be confused
 		// with.
 		warning: "#F9C80E",
-		warningWash: "#2C2825",
+		warningWash: "#26221F",
 		/*
 		 * Legibility pass: `warningBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
@@ -260,7 +274,7 @@ export const outrun: ThemeDefinition = {
 		// FF6C11, the sunset orange: the only danger in this family that is not a red.
 		// It clears the 15 ΔE00 separation from the sun yellow by hue, not lightness.
 		danger: "#FF6C11",
-		dangerWash: "#2C1C26",
+		dangerWash: "#261620",
 		/*
 		 * Legibility pass: `dangerBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
@@ -270,7 +284,7 @@ export const outrun: ThemeDefinition = {
 
 		// 2DE2E6, the TUI's `signal` — the grid the whole theme is racing on.
 		info: "#2DE2E6",
-		infoWash: "#112B42",
+		infoWash: "#08253C",
 		/*
 		 * Legibility pass: `infoBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered

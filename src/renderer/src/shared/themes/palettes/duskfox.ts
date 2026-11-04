@@ -35,18 +35,36 @@ export const duskfox: ThemeDefinition = {
 	palette: {
 		mode: "dark",
 
-		canvas: "#232136",
-		surface: "#2D2A45",
-		elevated: "#373354",
-		sunken: "#191726",
+		/*
+		 * THE DARKER-GROUNDS PASS (2026-11-03, `docs/branding.md` § 2) supersedes the
+		 * earlier L* 12 dark floor: the dark band is now L* 9-15 (target 9-13), and
+		 * the canvas maps by `L*_new = 9 + 0.6 x (L*_old - 12)`, which keeps this
+		 * palette's place in the fleet. Here every ground-class role (the grounds, the
+		 * row states, the two fills, the washes and the hairlines) moved by the
+		 * canvas's own ΔL* holding its `a` and `b`; inks, accents and `borderControl` did
+		 * not move.
+		 * Measured:
+		 * canvas #232136 -> #1B192E (L* 13.89 -> 10.00)
+		 * surface #2D2A45 -> #25223C (L* 18.56 -> 14.75)
+		 * elevated #373354 -> #2F2B4B (L* 23.07 -> 19.39)
+		 * sunken #191726 -> #120F1F (L* 8.65 -> 5.14)
+		 * accent #72AFC6 -> #569FBA: the scheme's own `blue` (#569fba,
+		 * EdenEast/nightfox duskfox palette): C* 22.5 -> 25.8.
+		 * `accentActive` steps 5 L* below the new accent on the same cast, so the
+		 * press stays ΔE00 >= 2 from rest.
+		 */
+		canvas: "#1B192E",
+		surface: "#25223C",
+		elevated: "#2F2B4B",
+		sunken: "#120F1F",
 
 		// The user block's fill: ΔE00 4.06 off the canvas, where `surface` alone
 		// measures 3.80 - a step toward `elevated` to clear the role's 4.0 floor,
 		// which the block carries because the fill IS its boundary.
-		messageSurface: "#2d2a46",
+		messageSurface: "#26233e",
 		// The media slot's well: `sunken` itself, which already clears the
 		// role's floor off this canvas (measured ΔE00 4.14, 5.24 L*).
-		mediaSurface: "#191726",
+		mediaSurface: "#120F1F",
 
 		/*
 		 * ROW STATES, and `highlight` retired in the same change. Both roles are a
@@ -65,8 +83,8 @@ export const duskfox: ThemeDefinition = {
 		 *                       `rowHover`; the pair ranks 1.83 `L*` and 11.2 `C*`,
 		 *                       `inkDim` 5.33:1.
 		 */
-		rowHover: "#353243",
-		rowSelected: "#383456",
+		rowHover: "#2D2A3B",
+		rowSelected: "#302C4D",
 
 		ink: "#E0DEF4",
 		inkMuted: "#CDCBE0",
@@ -83,19 +101,19 @@ export const duskfox: ThemeDefinition = {
 		inkDim: "#B1ABCC",
 		inkDisabled: "#6E6A86",
 
-		hairline: "#463F5C",
+		hairline: "#3E3754",
 
 		// `hairline` stepped toward `inkDim`, so it reads on this palette's own
 
 		// `sunken`: 1.93:1 there against `hairline`'s 1.78:1.
 
-		hairlineStrong: "#4B4462",
+		hairlineStrong: "#423B59",
 		borderControl: "#887BA3",
 
 		// the scheme's teal-blue accent, shared with Nightfox.
-		accent: "#72AFC6",
+		accent: "#569FBA",
 		accentHover: "#8BBDD0",
-		accentActive: "#68A9C2",
+		accentActive: "#4892AC",
 		// ΔE00 10.5 from `accent` and 8.7:1 on surface, where the accent is
 		// 5.7:1.
 		chartBarHover: "#98D7EE",
@@ -103,7 +121,7 @@ export const duskfox: ThemeDefinition = {
 		// The palette's own `info`, which is the role this composer's command
 		// word already resolved to: the tint moves no pixel the palette did not
 		// already choose. The role and its floors are in `palette-contract.ts`.
-		accentWash: "#2E354A",
+		accentWash: "#262D42",
 		onAccent: "#191726",
 		/*
 		 * The theme's own second hue, and the port had dropped it: the TUI's
@@ -119,14 +137,14 @@ export const duskfox: ThemeDefinition = {
 		 * 2.0), 5.79:1 for `accentAlt` on it, and 4.71 from the nearest ground it
 		 * is painted on.
 		 */
-		accentAltWash: "#3B3246",
+		accentAltWash: "#332A3E",
 
 		success: "#A3BE8C",
-		successWash: "#31323F",
+		successWash: "#292A37",
 		successBorder: "#A3BE8C",
 
 		warning: "#F6C177",
-		warningWash: "#38313C",
+		warningWash: "#302934",
 		warningBorder: "#F6C177",
 
 		/*
@@ -138,11 +156,11 @@ export const duskfox: ThemeDefinition = {
 		 * legibility, is what the ramp change was allowed to keep.
 		 */
 		danger: "#F2809F",
-		dangerWash: "#3C2C43",
+		dangerWash: "#34243B",
 		dangerBorder: "#ED7C9C",
 
 		info: "#9CCFD8",
-		infoWash: "#323649",
+		infoWash: "#2A2E41",
 		infoBorder: "#9CCFD8",
 
 		overlayShadow: "0 12px 32px -12px rgb(14 12 22 / 0.75)",

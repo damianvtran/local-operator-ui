@@ -68,18 +68,32 @@ export const ocean: ThemeDefinition = {
 		 * lifting a dark ground raises the luminance every ink is measured against, so
 		 * the inks in this file were re-seated on the same commit rather than after it.
 		 */
-		canvas: "#1D2A31",
-		surface: "#223540",
-		elevated: "#273B45",
-		sunken: "#1A2228",
+		/*
+		 * THE DARKER-GROUNDS PASS (2026-11-03, `docs/branding.md` § 2) supersedes the
+		 * earlier L* 12 dark floor: the dark band is now L* 9-15 (target 9-13), and
+		 * the canvas maps by `L*_new = 9 + 0.6 x (L*_old - 12)`, which keeps this
+		 * palette's place in the fleet. Here every ground-class role (the grounds, the
+		 * row states, the two fills, the washes and the hairlines) moved by the
+		 * canvas's own ΔL* holding its `a` and `b`; inks, accents and `borderControl` did
+		 * not move.
+		 * Measured:
+		 * canvas #1D2A31 -> #132027 (L* 16.20 -> 11.40)
+		 * surface #223540 -> #172A35 (L* 21.04 -> 15.98)
+		 * elevated #273B45 -> #1D313B (L* 23.63 -> 19.11)
+		 * sunken #1A2228 -> #11191F (L* 12.71 -> 8.25)
+		 */
+		canvas: "#132027",
+		surface: "#172A35",
+		elevated: "#1D313B",
+		sunken: "#11191F",
 
 		// The user block's fill: `surface` itself, which already clears the
 		// role's ΔE00 4.0 floor off this canvas (measured 4.00).
-		messageSurface: "#223540",
+		messageSurface: "#192C37",
 		// The media slot's well: ΔE00 4.42 off the canvas, where `sunken` alone
 		// measures 3.09 - a step away from the canvas to clear the role's 4.0
 		// floor, which the tile carries because the fill IS its resting extent.
-		mediaSurface: "#191f25",
+		mediaSurface: "#10161c",
 
 		/*
 		 * ROW STATES, and `highlight` retired in the same change. Both roles are a
@@ -98,8 +112,8 @@ export const ocean: ThemeDefinition = {
 		 *                       `rowHover`; the pair ranks 1.35 `L*` and 8.0 `C*`,
 		 *                       `inkDim` 5.02:1.
 		 */
-		rowHover: "#303A41",
-		rowSelected: "#223F4F",
+		rowHover: "#263037",
+		rowSelected: "#173545",
 
 		ink: "#DCEBEE",
 		/*
@@ -158,11 +172,11 @@ export const ocean: ThemeDefinition = {
 		 * border (2:1), and the window is walked at the role's own hue. Its ratio
 		 * lands at 1.16:1 against `elevated` at its tightest.
 		 */
-		hairline: "#2B464F",
+		hairline: "#213C45",
 
 		// `hairline` stepped toward `inkDim`, so it reads on this palette's own
 		// `sunken`: 1.76:1 there against `hairline`'s 1.60:1.
-		hairlineStrong: "#304C54",
+		hairlineStrong: "#254149",
 		// Derived, and the one role the TUI cannot supply. Upstream `edge-hi` is a
 		// decorative edge at about 2:1; here it is the only boundary an input, select
 		// or outlined button has, so it is lifted until it clears 3:1 on every ground
@@ -199,7 +213,7 @@ export const ocean: ThemeDefinition = {
 
 		// The TUI's own selection tint, which is where this accent is already spent
 		// faintly.
-		accentWash: "#1B3935",
+		accentWash: "#112F2B",
 
 		// The theme's own deepest ground, at 10.59:1 on all three accent fills.
 		onAccent: "#081218",
@@ -217,7 +231,7 @@ export const ocean: ThemeDefinition = {
 		 * 2.0), 5.11:1 for `accentAlt` on it, and 12.42 from the nearest ground it
 		 * is painted on.
 		 */
-		accentAltWash: "#363142",
+		accentAltWash: "#2C2738",
 
 		// Upstream success, clearing 5.82:1 at its tightest ground.
 		success: "#6CC99B",
@@ -225,7 +239,7 @@ export const ocean: ThemeDefinition = {
 		// The TUI has no success or warning tint, so both are the state hue at 13%
 		// over the ground — the fraction the TUI's own tints measure at. The hue
 		// clears 5.97:1 on this fill.
-		successWash: "#1F3B3E",
+		successWash: "#153134",
 
 		// The state hue pulled toward `canvas` as far as it can go and still read as
 		// an edge: 3.50:1 at its tightest ground.
@@ -242,7 +256,7 @@ export const ocean: ThemeDefinition = {
 		 */
 		successBorder: "#508E74",
 		warning: "#D9B45C",
-		warningWash: "#2D3836",
+		warningWash: "#232E2C",
 		/*
 		 * Legibility pass: `warningBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
@@ -258,7 +272,7 @@ export const ocean: ThemeDefinition = {
 		danger: "#EF8B85",
 
 		// The TUI's own danger tint.
-		dangerWash: "#26212A",
+		dangerWash: "#1D1821",
 
 		// This one is also drawn on a dialog's ground, where the delete control's edge
 		// IS the control: 3.31:1 at its tightest.
@@ -279,7 +293,7 @@ export const ocean: ThemeDefinition = {
 		info: "#72B6E4",
 
 		// The TUI's own attachment tint, and the ground every marker reads on.
-		infoWash: "#1A2C42",
+		infoWash: "#0F2237",
 		/*
 		 * Legibility pass: `infoBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered

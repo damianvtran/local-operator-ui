@@ -55,18 +55,34 @@ export const synth: ThemeDefinition = {
 		 * lifting a dark ground raises the luminance every ink is measured against, so
 		 * the inks in this file were re-seated on the same commit rather than after it.
 		 */
-		canvas: "#231C32",
-		surface: "#2E1D42",
-		elevated: "#36274D",
-		sunken: "#1C1A20",
+		/*
+		 * THE DARKER-GROUNDS PASS (2026-11-03, `docs/branding.md` § 2) supersedes the
+		 * earlier L* 12 dark floor: the dark band is now L* 9-15 (target 9-13), and
+		 * the canvas maps by `L*_new = 9 + 0.6 x (L*_old - 12)`, which keeps this
+		 * palette's place in the fleet. Here every ground-class role (the grounds, the
+		 * row states, the two fills, the washes and the hairlines) moved by the
+		 * canvas's own ΔL* holding its `a` and `b`; inks, accents and `borderControl` did
+		 * not move.
+		 * Measured:
+		 * canvas #231C32 -> #1D162C (L* 12.08 -> 9.13)
+		 * surface #2E1D42 -> #27173B (L* 14.70 -> 11.69)
+		 * elevated #36274D -> #2F2146 (L* 19.10 -> 16.18)
+		 * sunken #1C1A20 -> #17141A (L* 9.72 -> 6.84)
+		 * Re-solved off the uniform shift, because a contract floor refused it there:
+		 * `mediaSurface`. `pnpm check-themes` is the measurement for each.
+		 */
+		canvas: "#1D162C",
+		surface: "#27173B",
+		elevated: "#2F2146",
+		sunken: "#17141A",
 
 		// The user block's fill: `surface` itself, which already clears the
 		// role's ΔE00 4.0 floor off this canvas (measured 6.23).
-		messageSurface: "#2E1D42",
+		messageSurface: "#27173B",
 		// The media slot's well: `sunken` stepped deeper until it clears the
 		// role's lightness half - the well already carries ΔE00 9.03 off this canvas,
 		// where `sunken` alone sits at 2.36 L* (under the role's 2.5).
-		mediaSurface: "#1b1a1f",
+		mediaSurface: "#141218",
 
 		/*
 		 * ROW STATES, and `highlight` retired in the same change. Both roles are a
@@ -92,8 +108,8 @@ export const synth: ThemeDefinition = {
 		 * `ROW_STATE_FLOOR_UNREACHABLE` with the flat cap as the constraint that
 		 * refuses it, and it is re-measured every run.
 		 */
-		rowHover: "#32273E",
-		rowSelected: "#39294A",
+		rowHover: "#2C2138",
+		rowSelected: "#322243",
 
 		// The old file borrowed the generic dark theme's F9FAFB and 9CA3AF for its
 		// text, which is a cool grey ramp sitting on a purple one. The inks here are
@@ -132,10 +148,10 @@ export const synth: ThemeDefinition = {
 		 * 1.15-2.0:1 band, because a separator that shouted would be a border.
 		 * `elevated` is the tightest ground at ΔE00 13.03.
 		 */
-		hairline: "#64224E",
+		hairline: "#5C1A47",
 		// `hairline` stepped toward `inkDim`, so it reads on this palette's own
 		// `sunken`: 1.66:1 there against `hairline`'s 1.54:1.
-		hairlineStrong: "#682854",
+		hairlineStrong: "#60214D",
 		// Derived. The old theme bounded inputs with neon blue at 25 percent alpha,
 		// about 1.5:1.
 		borderControl: "#8A7BA0",
@@ -167,7 +183,7 @@ export const synth: ThemeDefinition = {
 		chartBarHover: "#FF92B5",
 		tokenCommand: "#00E5FF",
 		/* The wire's own `info`, so the command word's rendering does not move. */
-		accentWash: "#2E0E2C",
+		accentWash: "#270625",
 		// The old theme paired white with this pink, which measures 3.2:1. Ink on
 		// the accent fill is the page ground instead, at 4.8:1.
 		onAccent: "#120720",
@@ -188,12 +204,12 @@ export const synth: ThemeDefinition = {
 		 * 6.04:1 for `accentAlt` on it, and 20.40 from the nearest ground it is
 		 * painted on.
 		 */
-		accentAltWash: "#002010",
+		accentAltWash: "#00190B",
 
 		// Synth has no green. A mint, placed between the theme's pink and its neon
 		// blue so it belongs to the same neon family.
 		success: "#4DE8A8",
-		successWash: "#192230",
+		successWash: "#131C2A",
 		/*
 		 * Legibility pass: `successBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
@@ -203,7 +219,7 @@ export const synth: ThemeDefinition = {
 
 		// The bright orange the old file used for its ask highlights.
 		warning: "#FFA500",
-		warningWash: "#2E1A1C",
+		warningWash: "#281416",
 		/*
 		 * Legibility pass: `warningBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
@@ -215,7 +231,7 @@ export const synth: ThemeDefinition = {
 		// must not read as the primary one. This is the smallest hue rotation that
 		// separates them.
 		danger: "#FF6B6B",
-		dangerWash: "#2E1329",
+		dangerWash: "#280D23",
 		/*
 		 * Legibility pass: `dangerBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
@@ -225,7 +241,7 @@ export const synth: ThemeDefinition = {
 
 		// The theme's neon blue, an authentic informational hue.
 		info: "#00E5FF",
-		infoWash: "#10223B",
+		infoWash: "#071C34",
 		/*
 		 * Legibility pass: `infoBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered

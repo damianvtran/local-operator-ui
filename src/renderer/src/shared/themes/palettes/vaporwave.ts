@@ -92,19 +92,33 @@ export const vaporwave: ThemeDefinition = {
 		 * lifting a dark ground raises the luminance every ink is measured against, so
 		 * the inks in this file were re-seated on the same commit rather than after it.
 		 */
-		canvas: "#2E2540",
-		surface: "#372C4B",
-		elevated: "#3C3154",
-		sunken: "#261F38",
+		/*
+		 * THE DARKER-GROUNDS PASS (2026-11-03, `docs/branding.md` § 2) supersedes the
+		 * earlier L* 12 dark floor: the dark band is now L* 9-15 (target 9-13), and
+		 * the canvas maps by `L*_new = 9 + 0.6 x (L*_old - 12)`, which keeps this
+		 * palette's place in the fleet. Here every ground-class role (the grounds, the
+		 * row states, the two fills, the washes and the hairlines) moved by the
+		 * canvas's own ΔL* holding its `a` and `b`; inks, accents and `borderControl` did
+		 * not move.
+		 * Measured:
+		 * canvas #2E2540 -> #231B35 (L* 16.86 -> 11.95)
+		 * surface #372C4B -> #2B213F (L* 20.52 -> 15.28)
+		 * elevated #3C3154 -> #302648 (L* 22.99 -> 17.84)
+		 * sunken #261F38 -> #1B152D (L* 13.69 -> 8.64)
+		 */
+		canvas: "#231B35",
+		surface: "#2B213F",
+		elevated: "#302648",
+		sunken: "#1B152D",
 
 		// The user block's fill: ΔE00 4.17 off the canvas, where `surface` alone
 		// measures 2.82 - a step toward `elevated` to clear the role's 4.0 floor,
 		// which the block carries because the fill IS its boundary.
-		messageSurface: "#3a2f51",
+		messageSurface: "#2f2546",
 		// The media slot's well: ΔE00 4.26 off the canvas, where `sunken` alone
 		// measures 2.26 - a step away from the canvas to clear the role's 4.0
 		// floor, which the tile carries because the fill IS its resting extent.
-		mediaSurface: "#1f1a31",
+		mediaSurface: "#150f26",
 
 		/*
 		 * ROW STATES, and `highlight` retired in the same change. Both roles are a
@@ -123,8 +137,8 @@ export const vaporwave: ThemeDefinition = {
 		 *                       `rowHover`; the pair ranks 1.78 `L*` and 11.1 `C*`,
 		 *                       `inkDim` 5.04:1.
 		 */
-		rowHover: "#3D3548",
-		rowSelected: "#43365A",
+		rowHover: "#322A3D",
+		rowSelected: "#372B4E",
 
 		ink: "#EDE8F2",
 		/*
@@ -189,10 +203,10 @@ export const vaporwave: ThemeDefinition = {
 		 * border (2:1), and the window is walked at the role's own hue. Its ratio
 		 * lands at 1.21:1 against `elevated` at its tightest.
 		 */
-		hairline: "#483D65",
+		hairline: "#3D335A",
 		// `hairline` stepped toward `inkDim`, so it reads on this palette's own
 		// `sunken`: 1.73:1 there against `hairline`'s 1.60:1.
-		hairlineStrong: "#4E426B",
+		hairlineStrong: "#42375F",
 		// The TUI `edge-hi` 4C3F6C lifted in L* until it clears 3:1 on `elevated`.
 		/*
 		 * Legibility pass: `borderControl` is the sole boundary of every input in the
@@ -218,7 +232,7 @@ export const vaporwave: ThemeDefinition = {
 		// The palette's own `info`, which is the role this composer's command
 		// word already resolved to: the tint moves no pixel the palette did not
 		// already choose. The role and its floors are in `palette-contract.ts`.
-		accentWash: "#463552",
+		accentWash: "#3A2A46",
 		onAccent: "#150824",
 		/*
 		 * The theme's own second hue, from the TUI's `label` token (`#c5a3f0`),
@@ -237,10 +251,10 @@ export const vaporwave: ThemeDefinition = {
 		 * 2.0), 5.12:1 for `accentAlt` on it, and 4.84 from the nearest ground it
 		 * is painted on.
 		 */
-		accentAltWash: "#383958",
+		accentAltWash: "#2C2D4B",
 
 		success: "#8FE6C0",
-		successWash: "#2E3243",
+		successWash: "#232738",
 		/*
 		 * Legibility pass: `successBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
@@ -255,7 +269,7 @@ export const vaporwave: ThemeDefinition = {
 		successBorder: "#628783",
 
 		warning: "#F0CD8A",
-		warningWash: "#3A2F3C",
+		warningWash: "#2F2431",
 		/*
 		 * Legibility pass: `warningBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
@@ -270,7 +284,7 @@ export const vaporwave: ThemeDefinition = {
 		warningBorder: "#917D6A",
 
 		danger: "#F6838D",
-		dangerWash: "#3A253C",
+		dangerWash: "#2F1B32",
 		/*
 		 * Legibility pass: `dangerBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
@@ -290,7 +304,7 @@ export const vaporwave: ThemeDefinition = {
 		// keeps the template sunset's faded-teal identity and cannot be confused with
 		// a mint.
 		info: "#7BD7E3",
-		infoWash: "#2B3047",
+		infoWash: "#20253B",
 		/*
 		 * Legibility pass: `infoBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered

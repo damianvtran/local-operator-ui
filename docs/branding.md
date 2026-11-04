@@ -115,24 +115,41 @@ for hours, so it has a floor rather than a band with discretion:
 
 | Rule | Value |
 |---|---|
-| dark `canvas` | **hard floor L\* 12**, **hard ceiling L\* 22**, target band 12–20 — three palettes sit above the target inside the ceiling, at `catppuccinFrappe` 21.99, `everforest` 21.65, `nord` 21.60 |
+| dark `canvas` | **hard floor L\* 9**, **hard ceiling L\* 15**, target band 9–13 — three palettes sit above the target inside the ceiling, at `catppuccinFrappe` 14.97, `nord` 14.60, `everforest` 14.17 |
 | light `canvas` | **ceiling L\* 94** |
-| dark `elevated` | **ceiling L\* 30** |
+| dark `elevated` | **ceiling L\* 22** |
 | light `sunken` | **floor L\* 80** |
 | `canvas` → `surface` | **+2.5 to +5.0 `L*`** |
 | `surface` → `elevated` | **+2.5 to +6.0 `L*`** |
 | `canvas` → `sunken` (down) | **1.5 to 6.0 `L*`** |
 
-Why 12 and not 8: at canvas 12 / surface 17 / elevated 24 the three ink weights
-solve to L\* 78 / 74 / 71 with every floor and every step intact, and below that
-the ladder and the ink steps stop fitting together — measured, 8 of the 41 dark
-palettes were below L\* 5, `obsidian` at 2.51 the lowest. 12 is one rung above
-GitHub Dark's `#0D1117` (4.95) and exactly VS Code Dark+'s `#1E1E1E`, i.e.
-deliberately above GitHub's default. Why the maximums as well: an unbounded top
-step is what makes the ink budget unaffordable — at `elevated` L\* 34 an `ink-dim`
-at 5:1 needs L\* 85, and the ink/hover distinction disappears into the top of the
-ramp — and the light cap is the same arithmetic from the other end (`elevated` at
-L\* 100 is the end of sRGB's ramp, and the minimum spread is 2.5 + 2.5).
+Why 9 to 15 (2026-11-03). The floor was L\* 12 until the operator reported the
+opposite of the report that set it: "dark mode isn't that dark, it shouldn't be
+overly dark but it should be maybe a bit darker in tone". The median dark canvas
+then measured L\* 15.1. The floor of 9 sits between the two apps the request
+names, measured from their own grounds: Discord's 2025 chat `#1A1A1E` (L\* 9.42)
+and Slack's dark `#1A1D21` (L\* 10.62). That is still nearly double GitHub Dark's
+`#0D1117` (4.95), so the earlier near-black report (8 of the 41 dark palettes
+below L\* 5, `obsidian` at 2.51) stays closed; only `sunken` and `media-surface`
+go lower, as recesses. The ink budget allows it without moving an ink: darker
+grounds only raise ink contrast, and the re-light measured 0 ink-floor failures
+across the 41 dark palettes.
+
+The ceiling of 15 is not a clamp. Every dark palette was re-lit by one
+proportional map, `L*_new = 9 + 0.6 × (L*_old − 12)` (12 → 9, 22 → 15), so each
+theme keeps its place in the fleet and its spacing from its neighbours. A clamp
+into 9–13 would have stacked a third of the fleet on the ceiling. That is the
+"the themes have all gone the same grey" regression the contract's fleet section
+guards. The design spec proposed 9–13; the 15 ceiling is that widening, and
+the median lands at L\* 10.96, inside the 9–13 target. Theme identity at the
+darker `L*` is carried by hue and chroma, which the map holds.
+
+Why the maximums as well: an unbounded top step is what makes the ink budget
+unaffordable. At `elevated` L\* 34 an `ink-dim` at 5:1 needs L\* 85, and the
+ink/hover distinction disappears into the top of the ramp. With the canvas at
+most 15, `elevated` 22 holds the ladder to the band's proportions. The light cap
+is the same arithmetic from the other end (`elevated` at L\* 100 is the end of
+sRGB's ramp, and the minimum spread is 2.5 + 2.5).
 
 **Lifting a ramp moves lightness only.** A ground is re-solved by holding its own
 `a` and `b` at a new `L*`, so a theme keeps its hue and its chroma class and
@@ -140,7 +157,7 @@ changes only how light it is; chroma is scaled only where sRGB forces it. The co
 is real and recorded rather than argued away: the four palettes whose upstream
 identity *is* near-black — `obsidian`, `tron`, `matrix`, `dune` — lose the black
 and keep the family. `obsidian` is the clearest case: zinc 950 becomes
-zinc-900-ish monochrome at L\* 12, with its h290 blue lean and no manufactured
+zinc-900-ish monochrome (L\* 12 at the legibility pass, 9.3 after the darker-grounds re-light), with its h290 blue lean and no manufactured
 chroma.
 
 **The grounds never move alone.** Raising a dark ground raises the luminance every

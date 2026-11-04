@@ -64,19 +64,36 @@ export const localOperatorDark: ThemeDefinition = {
 	palette: {
 		mode: "dark",
 
-		canvas: "#22201c",
-		surface: "#2b2721",
-		elevated: "#322D22",
-		sunken: "#1d1b19",
+		/*
+		 * THE DARKER-GROUNDS PASS (2026-11-03, `docs/branding.md` § 2) supersedes the
+		 * earlier L* 12 dark floor: the dark band is now L* 9-15 (target 9-13), and
+		 * the canvas maps by `L*_new = 9 + 0.6 x (L*_old - 12)`, which keeps this
+		 * palette's place in the fleet. Here the grounds are hand-tuned to the ladder
+		 * in the design spec (SPEC § 2.2) rather than by the rule alone; the roles it
+		 * does not name moved by the canvas's own ΔL* holding their `a` and `b`.
+		 * Measured:
+		 * canvas #22201c -> #1d1b17 (L* 12.33 -> 9.85)
+		 * surface #2b2721 -> #26221c (L* 15.87 -> 13.47)
+		 * elevated #322D22 -> #2F2A1F (L* 18.67 -> 17.27)
+		 * sunken #1d1b19 -> #171512 (L* 9.92 -> 6.88)
+		 * One departure from the spec's ladder: `rowSelected` ships #32291E rather
+		 * than its #33291b, because the selection's chroma cap (the panel's cast
+		 * plus 4) refuses C* 11.14 on this panel; #32291E is the nearest value the
+		 * cap allows, at the same L*.
+		 */
+		canvas: "#1d1b17",
+		surface: "#26221c",
+		elevated: "#2F2A1F",
+		sunken: "#171512",
 
 		// The user block's fill: ΔE00 4.30 off the canvas, where `surface` alone
 		// measures 2.77 - a step toward `elevated` to clear the role's 4.0 floor,
 		// which the block carries because the fill IS its boundary.
-		messageSurface: "#2e2a21",
+		messageSurface: "#2a261d",
 		// The media slot's well: ΔE00 4.02 off the canvas, where `sunken` alone
 		// measures 2.07 - a step away from the canvas to clear the role's 4.0
 		// floor, which the tile carries because the fill IS its resting extent.
-		mediaSurface: "#191717",
+		mediaSurface: "#131010",
 
 		/*
 		 * ROW STATES, and `highlight` retired in the same change. Both roles are a
@@ -95,21 +112,21 @@ export const localOperatorDark: ThemeDefinition = {
 		 *                       `rowHover`; the pair ranks 1.28 `L*` and 5.4 `C*`,
 		 *                       `inkDim` 5.05:1.
 		 */
-		rowHover: "#302D29",
-		rowSelected: "#372F24",
+		rowHover: "#292723",
+		rowSelected: "#32291E",
 
 		ink: "#f1eee6",
 		inkMuted: "#c2bcaf",
 		inkDim: "#a6a091",
 		inkDisabled: "#5f5a4e",
 
-		hairline: "#403b2c",
+		hairline: "#3b3627",
 
 		// `hairline` stepped toward `inkDim`, so it reads on this palette's own
 
 		// `sunken`: 1.66:1 there against `hairline`'s 1.54:1.
 
-		hairlineStrong: "#454031",
+		hairlineStrong: "#403B2C",
 		borderControl: "#837c6d",
 
 		/*
@@ -157,7 +174,7 @@ export const localOperatorDark: ThemeDefinition = {
 		chartBarHover: "#85DEA3",
 		tokenCommand: "#86b3f2",
 		/* The wire's own `info`, so the command word's rendering does not move. */
-		accentWash: "#16281d",
+		accentWash: "#13241A",
 		onAccent: "#16130e",
 		/*
 		 * No second hue to carry: this palette is desktop-only, so it has no TUI
@@ -175,16 +192,16 @@ export const localOperatorDark: ThemeDefinition = {
 		 * 2.0), 7.19:1 for `accentAlt` on it, and 11.95 from the nearest ground it
 		 * is painted on.
 		 */
-		accentAltWash: "#242233",
+		accentAltWash: "#1F1D2E",
 
 		success: "#57c785",
-		successWash: "#16281d",
+		successWash: "#13241A",
 		successBorder: "#4f8465",
 		warning: "#e0b04b",
-		warningWash: "#2a2213",
+		warningWash: "#251d0d",
 		warningBorder: "#8c773c",
 		danger: "#ef8078",
-		dangerWash: "#2e1b18",
+		dangerWash: "#291613",
 		dangerBorder: "#ac675d",
 		/*
 		 * The kit has no `info` role: on the site, "informational" is carried by
@@ -214,7 +231,7 @@ export const localOperatorDark: ThemeDefinition = {
 		 * wash; ΔE00 41.0 from `success`, 46.1 from `accent`.
 		 */
 		info: "#86b3f2",
-		infoWash: "#192332",
+		infoWash: "#141E2D",
 		infoBorder: "#5a7ba8",
 
 		overlayShadow: "0 12px 32px -12px rgb(0 0 0 / 0.6)",

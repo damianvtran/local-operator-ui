@@ -68,19 +68,39 @@ export const nightfox: ThemeDefinition = {
 		 * lifting a dark ground raises the luminance every ink is measured against, so
 		 * the inks in this file were re-seated on the same commit rather than after it.
 		 */
-		canvas: "#192330",
-		surface: "#202D3E",
-		elevated: "#243449",
-		sunken: "#131A24",
+		/*
+		 * THE DARKER-GROUNDS PASS (2026-11-03, `docs/branding.md` § 2) supersedes the
+		 * earlier L* 12 dark floor: the dark band is now L* 9-15 (target 9-13), and
+		 * the canvas maps by `L*_new = 9 + 0.6 x (L*_old - 12)`, which keeps this
+		 * palette's place in the fleet. Here every ground-class role (the grounds, the
+		 * row states, the two fills, the washes and the hairlines) moved by the
+		 * canvas's own ΔL* holding its `a` and `b`; inks, accents and `borderControl` did
+		 * not move.
+		 * Measured:
+		 * canvas #192330 -> #111B28 (L* 13.36 -> 9.45)
+		 * surface #202D3E -> #172536 (L* 18.06 -> 14.24)
+		 * elevated #243449 -> #1A2B40 (L* 21.25 -> 17.07)
+		 * sunken #131A24 -> #08121C (L* 9.03 -> 5.13)
+		 * Re-solved off the uniform shift, because a contract floor refused it there:
+		 * `sunken`, `mediaSurface`. `pnpm check-themes` is the measurement for each.
+		 * accent #8FB1DF -> #719CD6: the scheme's own `blue` (#719cd6,
+		 * EdenEast/nightfox palette), in place of the pale azure: C* 26.8 -> 34.1.
+		 * `accentActive` steps 5 L* below the new accent on the same cast, so the
+		 * press stays ΔE00 >= 2 from rest.
+		 */
+		canvas: "#111B28",
+		surface: "#172536",
+		elevated: "#1A2B40",
+		sunken: "#08121C",
 
 		// The user block's fill: ΔE00 4.04 off the canvas, where `surface` alone
 		// measures 3.54 - a step toward `elevated` to clear the role's 4.0 floor,
 		// which the block carries because the fill IS its boundary.
-		messageSurface: "#212e40",
+		messageSurface: "#192739",
 		// The media slot's well: ΔE00 4.04 off the canvas, where `sunken` alone
 		// measures 3.13 - a step away from the canvas to clear the role's 4.0
 		// floor, which the tile carries because the fill IS its resting extent.
-		mediaSurface: "#111721",
+		mediaSurface: "#040C19",
 
 		/*
 		 * ROW STATES, and `highlight` retired in the same change. Both roles are a
@@ -99,8 +119,8 @@ export const nightfox: ThemeDefinition = {
 		 *                       `rowHover`; the pair ranks 1.51 `L*` and 9.1 `C*`,
 		 *                       `inkDim` 5.10:1.
 		 */
-		rowHover: "#2D343E",
-		rowSelected: "#25384F",
+		rowHover: "#242B35",
+		rowSelected: "#1B2F46",
 
 		ink: "#CDCECF",
 		/*
@@ -128,20 +148,20 @@ export const nightfox: ThemeDefinition = {
 		inkDim: "#9BABBE",
 		inkDisabled: "#738091",
 
-		hairline: "#35465C",
+		hairline: "#2C3D53",
 
 		// `hairline` stepped toward `inkDim`, so it reads on this palette's own
 
 		// `sunken`: 1.96:1 there against `hairline`'s 1.82:1.
 
-		hairlineStrong: "#3A4B61",
+		hairlineStrong: "#314258",
 		// the scheme's own border blue 6483ad, which is already at 3:1.
 		borderControl: "#6483AD",
 
 		// the scheme's pale azure.
-		accent: "#8FB1DF",
+		accent: "#719CD6",
 		accentHover: "#ABC4E7",
-		accentActive: "#7AA3D9",
+		accentActive: "#638FC8",
 		// ΔE00 10.5 from `accent` and 9.5:1 on surface, where the accent is
 		// 6.2:1.
 		chartBarHover: "#B6DAFF",
@@ -149,7 +169,7 @@ export const nightfox: ThemeDefinition = {
 		// The palette's own `info`, which is the role this composer's command
 		// word already resolved to: the tint moves no pixel the palette did not
 		// already choose. The role and its floors are in `palette-contract.ts`.
-		accentWash: "#20304A",
+		accentWash: "#162740",
 		onAccent: "#131A24",
 		/*
 		 * The theme's own second hue, from the TUI's `label` token (`#9D79D6`,
@@ -186,23 +206,23 @@ export const nightfox: ThemeDefinition = {
 		 * `accentWash` (the field floor is 2.0), 4.55:1 for `accentAlt` on it, and
 		 * 12.26 from the nearest ground it is painted on.
 		 */
-		accentAltWash: "#312740",
+		accentAltWash: "#291F38",
 
 		success: "#81B29A",
-		successWash: "#26353D",
+		successWash: "#1D2C34",
 		successBorder: "#81B29A",
 
 		warning: "#DBC074",
-		warningWash: "#2B3236",
+		warningWash: "#22292D",
 		warningBorder: "#DBC074",
 
 		danger: "#DD8B9F",
-		dangerWash: "#302F3D",
+		dangerWash: "#272634",
 		dangerBorder: "#DB899D",
 
 		// the scheme's cyan, lifted; see the header.
 		info: "#6FD8DA",
-		infoWash: "#213541",
+		infoWash: "#182C38",
 		infoBorder: "#63CDCF",
 
 		overlayShadow: "0 12px 32px -12px rgb(10 14 20 / 0.75)",

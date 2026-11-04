@@ -69,19 +69,33 @@ export const desert: ThemeDefinition = {
 		 * lifting a dark ground raises the luminance every ink is measured against, so
 		 * the inks in this file were re-seated on the same commit rather than after it.
 		 */
-		canvas: "#342A1F",
-		surface: "#3E3426",
-		elevated: "#463B2C",
-		sunken: "#29221A",
+		/*
+		 * THE DARKER-GROUNDS PASS (2026-11-03, `docs/branding.md` § 2) supersedes the
+		 * earlier L* 12 dark floor: the dark band is now L* 9-15 (target 9-13), and
+		 * the canvas maps by `L*_new = 9 + 0.6 x (L*_old - 12)`, which keeps this
+		 * palette's place in the fleet. Here every ground-class role (the grounds, the
+		 * row states, the two fills, the washes and the hairlines) moved by the
+		 * canvas's own ΔL* holding its `a` and `b`; inks, accents and `borderControl` did
+		 * not move.
+		 * Measured:
+		 * canvas #342A1F -> #281F14 (L* 17.85 -> 12.49)
+		 * surface #3E3426 -> #32291B (L* 22.37 -> 17.19)
+		 * elevated #463B2C -> #392F20 (L* 25.60 -> 20.07)
+		 * sunken #29221A -> #1E170D (L* 13.77 -> 8.29)
+		 */
+		canvas: "#281F14",
+		surface: "#32291B",
+		elevated: "#392F20",
+		sunken: "#1E170D",
 
 		// The user block's fill: ΔE00 4.00 off the canvas, where `surface` alone
 		// measures 3.50 - a step toward `elevated` to clear the role's 4.0 floor,
 		// which the block carries because the fill IS its boundary.
-		messageSurface: "#3f3526",
+		messageSurface: "#342b1c",
 		// The media slot's well: ΔE00 4.01 off the canvas, where `sunken` alone
 		// measures 3.32 - a step away from the canvas to clear the role's 4.0
 		// floor, which the tile carries because the fill IS its resting extent.
-		mediaSurface: "#272019",
+		mediaSurface: "#1C150C",
 
 		/*
 		 * ROW STATES, and `highlight` retired in the same change. Both roles are a
@@ -100,8 +114,8 @@ export const desert: ThemeDefinition = {
 		 *                       `rowHover`; the pair ranks 1.52 `L*` and 7.7 `C*`,
 		 *                       `inkDim` 5.06:1.
 		 */
-		rowHover: "#423C33",
-		rowSelected: "#4C3E2B",
+		rowHover: "#363027",
+		rowSelected: "#3F321F",
 
 		ink: "#F0E6D5",
 
@@ -163,11 +177,11 @@ export const desert: ThemeDefinition = {
 		 * border (2:1), and the window is walked at the role's own hue. Its ratio
 		 * lands at 1.20:1 against `elevated` at its tightest.
 		 */
-		hairline: "#554634",
+		hairline: "#483A28",
 
 		// `hairline` stepped toward `inkDim`, so it reads on this palette's own
 		// `sunken`: 1.89:1 there against `hairline`'s 1.73:1.
-		hairlineStrong: "#5A4C39",
+		hairlineStrong: "#4D402D",
 		// Derived, and the one role the TUI cannot supply. Upstream `edge-hi` is a
 		// decorative edge at about 2:1; here it is the only boundary an input, select
 		// or outlined button has, so it is lifted until it clears 3:1 on every ground
@@ -198,7 +212,7 @@ export const desert: ThemeDefinition = {
 
 		// The TUI's own selection tint, which is where this accent is already spent
 		// faintly.
-		accentWash: "#3D3B24",
+		accentWash: "#312F18",
 
 		// The theme's own deepest ground, at 6.83:1 on all three accent fills.
 		onAccent: "#1D160C",
@@ -216,7 +230,7 @@ export const desert: ThemeDefinition = {
 		 * 2.0), 5.13:1 for `accentAlt` on it, and 18.11 from the nearest ground it
 		 * is painted on.
 		 */
-		accentAltWash: "#433549",
+		accentAltWash: "#37293C",
 
 		// Upstream success, clearing 5.38:1 at its tightest ground.
 		success: "#9AC275",
@@ -224,7 +238,7 @@ export const desert: ThemeDefinition = {
 		// The TUI has no success or warning tint, so both are the state hue at 13%
 		// over the ground — the fraction the TUI's own tints measure at. The hue
 		// clears 5.55:1 on this fill.
-		successWash: "#3F3B26",
+		successWash: "#332F1A",
 
 		// The state hue pulled toward `canvas` as far as it can go and still read as
 		// an edge: 3.37:1 at its tightest ground.
@@ -236,7 +250,7 @@ export const desert: ThemeDefinition = {
 		 */
 		successBorder: "#7A8E5A",
 		warning: "#E2B148",
-		warningWash: "#483920",
+		warningWash: "#3B2D14",
 		/*
 		 * Register re-solve: `warningBorder`
 		 * Structural, so it keeps the 3:1 floor on all four grounds and moves with
@@ -247,7 +261,7 @@ export const desert: ThemeDefinition = {
 		danger: "#F88586",
 
 		// The TUI's own danger tint.
-		dangerWash: "#3B2419",
+		dangerWash: "#2F190D",
 
 		// This one is also drawn on a dialog's ground, where the delete control's edge
 		// IS the control: 3.31:1 at its tightest.
@@ -263,7 +277,7 @@ export const desert: ThemeDefinition = {
 		info: "#84BAD8",
 
 		// The TUI's own attachment tint, and the ground every marker reads on.
-		infoWash: "#2C3843",
+		infoWash: "#202C37",
 		/*
 		 * Legibility pass: `infoBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered

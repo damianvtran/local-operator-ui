@@ -46,23 +46,39 @@ export const solarizedDark: ThemeDefinition = {
 	palette: {
 		mode: "dark",
 
-		canvas: "#002B36",
+		/*
+		 * THE DARKER-GROUNDS PASS (2026-11-03, `docs/branding.md` § 2) supersedes the
+		 * earlier L* 12 dark floor: the dark band is now L* 9-15 (target 9-13), and
+		 * the canvas maps by `L*_new = 9 + 0.6 x (L*_old - 12)`, which keeps this
+		 * palette's place in the fleet. Here every ground-class role (the grounds, the
+		 * row states, the two fills, the washes and the hairlines) moved by the
+		 * canvas's own ΔL* holding its `a` and `b`; inks, accents and `borderControl` did
+		 * not move.
+		 * Measured:
+		 * canvas #002B36 -> #00212A (L* 15.46 -> 10.96)
+		 * surface #05333F -> #002934 (L* 19.05 -> 14.59)
+		 * elevated #093A46 -> #00303B (L* 22.04 -> 17.60)
+		 * sunken #00252E -> #001B22 (L* 12.74 -> 8.12)
+		 * Re-solved off the uniform shift, because a contract floor refused it there:
+		 * `accentWash`. `pnpm check-themes` is the measurement for each.
+		 */
+		canvas: "#00212A",
 		// A step between base03 and base02, because the scheme's own two ground tones are
 		// ΔE00 3.4 apart and this ladder needs a rung in between.
-		surface: "#05333F",
+		surface: "#002934",
 		// A step ABOVE base02: base03 to base02 measures ΔE00 3.4 in total, so two 2.0
 		// steps cannot fit inside upstream's ramp and the top ground is derived.
-		elevated: "#093A46",
-		sunken: "#00252E",
+		elevated: "#00303B",
+		sunken: "#001B22",
 
 		// The user block's fill: ΔE00 4.05 off the canvas, where `surface` alone
 		// measures 2.47 - a step toward `elevated` to clear the role's 4.0 floor,
 		// which the block carries because the fill IS its boundary.
-		messageSurface: "#073844",
+		messageSurface: "#002E39",
 		// The media slot's well: ΔE00 4.09 off the canvas, where `sunken` alone
 		// measures 2.03 - a step away from the canvas to clear the role's 4.0
 		// floor, which the tile carries because the fill IS its resting extent.
-		mediaSurface: "#001f26",
+		mediaSurface: "#01161a",
 
 		/*
 		 * ROW STATES, and `highlight` retired in the same change. Both roles are a
@@ -81,8 +97,8 @@ export const solarizedDark: ThemeDefinition = {
 		 *                       `rowHover`; the pair ranks 1.18 `L*` and 8.9 `C*`,
 		 *                       `inkDim` 5.05:1.
 		 */
-		rowHover: "#22373E",
-		rowSelected: "#003C4C",
+		rowHover: "#182D34",
+		rowSelected: "#003240",
 
 		// Upstream base1 93A1A1 — the tone the scheme paints body text with — is 6.13:1 on
 		// `elevated`, under the 7:1 floor. Lifted along the same grey-teal.
@@ -129,10 +145,10 @@ export const solarizedDark: ThemeDefinition = {
 
 		// Derived: the scheme's recessed tones are panel fills, not 1px lines. Holds ΔE00
 		// 4.2 from every ground and 1.22-1.64:1 against them.
-		hairline: "#1E4955",
+		hairline: "#123F4B",
 		// `hairline` stepped toward `inkDim`, so it reads on this palette's own
 		// `sunken`: 1.77:1 there against `hairline`'s 1.64:1.
-		hairlineStrong: "#244E59",
+		hairlineStrong: "#18444F",
 		// Base01 586E75 is 1.14:1 against the grounds — an inactive-tone value in a
 		// structural role. Lifted along the same grey-teal to 3.1:1 on the lightest
 		// ground.
@@ -172,7 +188,7 @@ export const solarizedDark: ThemeDefinition = {
 		 * `surface` is the tightest base at ΔE00 2.22. Lightness only, at the
 		 * wash's own hue.
 		 */
-		accentWash: "#00323B",
+		accentWash: "#003640",
 		onAccent: "#00252E",
 		/*
 		 * The theme's own second hue, from the TUI's `label` token (`#8489d4`),
@@ -208,7 +224,7 @@ export const solarizedDark: ThemeDefinition = {
 		 * 2.0), 4.64:1 for `accentAlt` on it, and 17.32 from the nearest ground it
 		 * is painted on.
 		 */
-		accentAltWash: "#2A2B41",
+		accentAltWash: "#202136",
 
 		// Upstream green 859900 is 3.72:1 on `elevated` (< 4.5). Lifted along the same
 		// olive.
@@ -221,20 +237,20 @@ export const solarizedDark: ThemeDefinition = {
 		 * legibility, is what the ramp change was allowed to keep.
 		 */
 		success: "#94A91F",
-		successWash: "#0B3338",
+		successWash: "#00292E",
 		successBorder: "#778A01",
 
 		// Upstream yellow B58900 is 3.72:1 on `elevated` (< 4.5). Lifted along the same
 		// amber.
 		warning: "#C79A27",
-		warningWash: "#223B3A",
+		warningWash: "#183130",
 		warningBorder: "#A37B02",
 
 		// The scheme's red DC322F is unreadable as UI text on this ground (2.58:1); lifted
 		// along the same red, which is the one hue Solarized uses for a warning about real
 		// failure.
 		danger: "#FF776B",
-		dangerWash: "#2A2028",
+		dangerWash: "#21171F",
 		dangerBorder: "#DA554C",
 
 		// Upstream blue 268BD2 is 3.24:1 on `elevated` (< 4.5). Lifted along the same blue,
@@ -249,7 +265,7 @@ export const solarizedDark: ThemeDefinition = {
 		 * legibility, is what the ramp change was allowed to keep.
 		 */
 		info: "#49A6EC",
-		infoWash: "#023241",
+		infoWash: "#002835",
 		infoBorder: "#2087CB",
 
 		// The shadow and scrim are the ground tinted, as in every palette here.

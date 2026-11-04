@@ -63,19 +63,35 @@ export const rosePine: ThemeDefinition = {
 		 * Lightness only, at each value's own `a` and `b`: the ladder ships at
 		 * surface +3.16, elevated +5.31, sunken -3.09 L* from the canvas.
 		 */
-		canvas: "#2b2936",
-		surface: "#322f42",
-		elevated: "#37334b",
-		sunken: "#24232d",
+		/*
+		 * THE DARKER-GROUNDS PASS (2026-11-03, `docs/branding.md` § 2) supersedes the
+		 * earlier L* 12 dark floor: the dark band is now L* 9-15 (target 9-13), and
+		 * the canvas maps by `L*_new = 9 + 0.6 x (L*_old - 12)`, which keeps this
+		 * palette's place in the fleet. Here every ground-class role (the grounds, the
+		 * row states, the two fills, the washes and the hairlines) moved by the
+		 * canvas's own ΔL* holding its `a` and `b`; inks, accents and `borderControl` did
+		 * not move.
+		 * Measured:
+		 * canvas #2b2936 -> #22202d (L* 17.30 -> 13.00)
+		 * surface #322f42 -> #282538 (L* 20.46 -> 15.80)
+		 * elevated #37334b -> #2d2940 (L* 22.61 -> 17.98)
+		 * sunken #24232d -> #1b1a24 (L* 14.21 -> 9.79)
+		 * Re-solved off the uniform shift, because a contract floor refused it there:
+		 * `canvas`, `hairline`. `pnpm check-themes` is the measurement for each.
+		 */
+		canvas: "#22202d",
+		surface: "#282538",
+		elevated: "#2d2940",
+		sunken: "#1b1a24",
 
 		// The user block's fill: ΔE00 4.12 off the canvas, where `surface` alone
 		// measures 3.57 - a step toward `elevated` to clear the role's 4.0 floor,
 		// which the block carries because the fill IS its boundary.
-		messageSurface: "#332f43",
+		messageSurface: "#292539",
 		// The media slot's well: ΔE00 4.17 off the canvas, where `sunken` alone
 		// measures 2.65 - a step away from the canvas to clear the role's 4.0
 		// floor, which the tile carries because the fill IS its resting extent.
-		mediaSurface: "#212129",
+		mediaSurface: "#181820",
 		/*
 		 * ROW STATES, and `highlight` retired in the same change. Both roles are a
 		 * step of THIS palette's own panel at the panel's own hue; they used to be
@@ -93,8 +109,8 @@ export const rosePine: ThemeDefinition = {
 		 *                       `rowHover`; the pair ranks 1.17 `L*` and 9.3 `C*`,
 		 *                       `inkDim` 5.06:1.
 		 */
-		rowHover: "#36333F",
-		rowSelected: "#38344E",
+		rowHover: "#2C2935",
+		rowSelected: "#2E2A43",
 
 		ink: "#e0def4",
 		// subtle, lifted; see the header. Canonical muted 6e6a86 is the inert
@@ -134,10 +150,10 @@ export const rosePine: ThemeDefinition = {
 		 * border (2:1), and the window is walked at the role's own hue. Its ratio
 		 * lands at 1.15:1 against `elevated` at its tightest.
 		 */
-		hairline: "#3e3e4d",
+		hairline: "#353544",
 		// `hairline` stepped toward `inkDim`, so it reads on this palette's own
 		// `sunken`: 1.60:1 there against `hairline`'s 1.48:1.
-		hairlineStrong: "#434353",
+		hairlineStrong: "#383848",
 		// highlight-med 403d52 lifted to clear 3:1 on `elevated`.
 		borderControl: "#8b87a3",
 
@@ -151,7 +167,7 @@ export const rosePine: ThemeDefinition = {
 		// The palette's own `info`, which is the role this composer's command
 		// word already resolved to: the tint moves no pixel the palette did not
 		// already choose. The role and its floors are in `palette-contract.ts`.
-		accentWash: "#392e3a",
+		accentWash: "#2f2430",
 		onAccent: "#191724",
 		/*
 		 * The theme's own second hue, and the port had dropped it: the TUI's
@@ -167,12 +183,12 @@ export const rosePine: ThemeDefinition = {
 		 * 2.0), 6.18:1 for `accentAlt` on it, and 2.99 from the nearest ground it
 		 * is painted on.
 		 */
-		accentAltWash: "#352f3c",
+		accentAltWash: "#2a2431",
 
 		// pine #31748f measures 3.38:1 on base and 3.16:1 on surface — the only
 		// canonical accent under the floor on this ground. Lifted on-hue.
 		success: "#6aa6c3",
-		successWash: "#1a2730",
+		successWash: "#101d26",
 		/*
 		 * Register re-solve: `successBorder`
 		 * Structural, so it keeps the 3:1 floor on all four grounds and moves with
@@ -183,7 +199,7 @@ export const rosePine: ThemeDefinition = {
 
 		// gold, upstream's warnings colour.
 		warning: "#f6c177",
-		warningWash: "#2b2419",
+		warningWash: "#221b0f",
 		/*
 		 * Register re-solve: `warningBorder`
 		 * Structural, so it keeps the 3:1 floor on all four grounds and moves with
@@ -195,7 +211,7 @@ export const rosePine: ThemeDefinition = {
 		// love, upstream's terminal red. The border is the danger button's only
 		// edge until hover, so it clears 3:1 on the dialog ground too.
 		danger: "#f37699",
-		dangerWash: "#2e1c26",
+		dangerWash: "#24131d",
 		/*
 		 * Register re-solve: `dangerBorder`
 		 * Structural, so it keeps the 3:1 floor on all four grounds and moves with
@@ -206,7 +222,7 @@ export const rosePine: ThemeDefinition = {
 
 		// foam, upstream's "object keys, info, git add" hue.
 		info: "#a4d7e0",
-		infoWash: "#1a2a2e",
+		infoWash: "#102024",
 		/*
 		 * Register re-solve: `infoBorder`
 		 * Structural, so it keeps the 3:1 floor on all four grounds and moves with

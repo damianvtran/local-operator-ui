@@ -240,25 +240,44 @@ const GROUNDS6 = [
  * The ground contract, authored as L* offsets from the lifted canvas.
  *
  * `canvas` is the page - the furthest-back surface, and the one the operator
- * reads for hours - so it has a hard FLOOR rather than a band with discretion:
- * no page ground in this app sits below L* 12. Measured, 20 of the 41 dark
- * palettes were below L* 10 and 8 below L* 5 (`obsidian` 2.51 at the bottom),
- * which is the "background behind the main text is too dark/black" report.
+ * reads for hours - so a dark theme's page sits in a hard BAND, L* 9-15, with
+ * 9-13 as the target. Both ends were set by a report from the operator.
  *
- * 12.0 is one rung above GitHub Dark's #0D1117 (L* 4.95) and exactly VS Code
- * Dark+'s #1E1E1E (L* 11.26) - deliberately ABOVE GitHub's default, because
- * that is the departure the operator asked for; `docs/branding.md` § 2 records
- * the cost to the near-black palettes rather than hiding it behind a "best
- * practice" claim. The ladder's own budget is why 12 and not 8: at
- * canvas 12 / surface 17 / elevated 24 the three inks solve to L* 78 / 74 / 71
- * with every floor and every step intact, and below that the ladder and the ink
- * steps stop fitting together.
+ * The FLOOR answered "the background behind the main text is too dark/black":
+ * 20 of the 41 dark palettes once sat below L* 10 and 8 below L* 5 (`obsidian`
+ * 2.51 at the bottom). It was L* 12 until 2026-11-03, when the opposite report
+ * arrived ("dark mode isn't that dark, it shouldn't be overly dark but it should
+ * be maybe a bit darker in tone"), and the median dark canvas measured L* 15.1.
+ * The floor is now 9: between Discord's 2025 chat ground #1A1A1E (L* 9.42) and
+ * Slack's dark #1A1D21 (L* 10.62), the two apps the request names, still nearly
+ * double GitHub Dark's #0D1117 (L* 4.95), and below VS Code Dark+'s #1E1E1E
+ * (L* 11.26). Nothing below 9 is a page ground, so the near-black report stays
+ * closed; only `sunken` and `mediaSurface` go lower, as recesses.
  *
- * The top of the ladder is capped at `elevated` 30 because an unbounded top
- * step is what makes the ink budget unaffordable: at `elevated` L* 34 an
- * `inkDim` at 5.0:1 needs L* 85 and the ink/hover distinction disappears into
- * the top of the ramp. The light side is capped at `canvas` 94 for the same
- * arithmetic from the other end: `elevated` at L* 100 is the end of sRGB's
+ * The CEILING of 15 is the old [12, 22] band compressed by ONE proportional map,
+ * `L*_new = 9 + 0.6 x (L*_old - 12)`, rather than clamped: a clamp would stack
+ * every palette that sat above the new top onto it, which is the "the themes
+ * have all gone the same grey" regression the fleet section (5b) exists for. The
+ * map keeps each palette's order and its relative spacing, so theme identity
+ * is carried by hue and chroma at the darker L*, not by a shared altitude. The
+ * design spec proposed 9-13; 15 is the manager's widening for that reason, and
+ * 9-13 remains the target the median (L* 10.96 after the map) sits in.
+ *
+ * The ladder's ink budget is why the floor can drop without moving an ink:
+ * darker grounds only RAISE ink contrast, and at canvas 9 / surface 13 /
+ * elevated 18 every ink in the fleet clears its floor unchanged - measured
+ * across all 41 dark palettes with this file (0 ink failures after the re-light).
+ *
+ * The top of the ladder is capped at `elevated` 22 (it was 30) because an
+ * unbounded top step is what makes the ink budget unaffordable: at `elevated`
+ * L* 34 an `inkDim` at 5.0:1 needs L* 85 and the ink/hover distinction
+ * disappears into the top of the ramp, and with the canvas at most 15 the
+ * largest legal ladder (+5 then +6) still ends below 26, so 22 holds the ladder
+ * to the band's own proportions rather than letting one rung climb back to the
+ * old altitude.
+ *
+ * The light side is capped at `canvas` 94 for the same arithmetic from the
+ * other end: `elevated` at L* 100 is the end of sRGB's
  * ramp (four light palettes already sit there), the minimum canvas-to-elevated
  * spread is 2.5 + 2.5, so a canvas above 95 has no room for both steps - 94
  * leaves 1 L* of headroom for 8-bit rounding. `sunken` 80 is the same floor read
@@ -266,7 +285,7 @@ const GROUNDS6 = [
  * being painted on a well that is not there.
  */
 const LIFT = {
-	dark: { canvasMin: 12.0, canvasMax: 22.0, elevatedMax: 30.0 },
+	dark: { canvasMin: 9.0, canvasMax: 15.0, elevatedMax: 22.0 },
 	light: { canvasMax: 94.0, sunkenMin: 80.0 },
 };
 
@@ -4193,68 +4212,24 @@ const TERMINAL_ANSI = [
  */
 const EXCEPTIONS = [
 	/*
-	 * FOUR ENTRIES, ALL ONE PAIRING (design review round 1, D4): the model-access
-	 * band's `text-accent` link actions on `warningWash` (the row that asserts it
-	 * is beside the deep-linked-row pair above; its sibling callout has shipped
-	 * the same ink on the same wash unasserted). These four palettes' warm washes
-	 * sit close to their dark grounds, so the accent clears neither 4.5 as text
-	 * on them. The alternative to pinning was a palette move or a different ink
-	 * for links two shipped bands share - a design-system decision, recorded here
-	 * instead of made here, at the floors the row asks.
+	 * EMPTY AGAIN since the darker-grounds pass (2026-11-03). It held four entries,
+	 * all one pairing: the model-access band's `text-accent` link on `warningWash`
+	 * in catppuccinMocha (4.01), nord (3.6), oneDark (3.46) and tokyoNightStorm
+	 * (3.67), whose warm washes sat close to their dark grounds. Lowering the dark
+	 * band re-lit those washes downward by the same `L*` as their grounds, while
+	 * the accent stayed put, so all four pairs now clear 4.5:1 and the
+	 * never-consulted guard required the pins to go. A future ground move
+	 * re-measures; add an entry only with its measured ratio and its reason.
 	 *
-	 * THE TABLE WAS EMPTY BEFORE THIS PASS, and that emptiness had its own lesson,
-	 * kept here because the mechanism depends on it: it carried one entry for most
-	 * of an earlier pass - `catppuccinMacchiato`'s `inkDim` on `rowSelected`,
-	 * recorded at 4.98:1 against the 5.0 ink floor - and the row/hover commit
-	 * re-authored that fill #3D2E51 -> #38323E, which lifted the pair to
-	 * 5.0260:1. Nothing deleted the entry, so the run reported an exemption the
-	 * fleet no longer took. It survived because `assertPair` returns as soon as
-	 * `raw >= floor`, so a pin that has stopped being needed is never CONSULTED,
-	 * and the summary counted a static `EXCEPTIONS.length`. The guard the three
-	 * sibling pin tables already had is what closed it, and this table has it:
-	 * an entry that is never asked about fails the run with "delete the pin, the
-	 * palette clears it now". A pin is a DECISION, not a mute - every entry
-	 * records its measured ratio and its reason, and a palette edit that moves
-	 *
-	 * THE FOLD ALSO CARRIES FIVE DELETED PINS FROM THE CODE-REVIEW BRANCH (that
-	 * branch's remediation round 1, D1/U4): five pins stood here for the "verdict
-	 * not stated" round mark's outline on a `rowHover` ground, where it measured
-	 * 2.918-2.998:1 against the 3:1 floor in five palettes. That remediation moved
-	 * the row's hover to the run-detail rows' own `surface` step, and on that
-	 * ground the outline CLEARS the floor in all fifty-nine palettes - so its pins
-	 * were deleted rather than re-pointed (the run's own never-consulted rule is
-	 * how this list stays honest). A future ground move re-measures; add an entry
-	 * only with its measured ratio and its reason.
-	 * one stops matching and fails the run until a human re-approves it.
+	 * THE TABLE WAS EMPTY BEFORE that earlier pass too, and that emptiness had
+	 * its own lesson, kept here because the mechanism depends on it: an entry for
+	 * `catppuccinMacchiato`'s `inkDim` on `rowSelected` survived after its fill
+	 * was re-authored, because `assertPair` returns as soon as `raw >= floor`, so
+	 * a pin that has stopped being needed is never CONSULTED. The guard the three
+	 * sibling pin tables already had is what closed it: an entry that is never
+	 * asked about fails the run with "delete the pin, the palette clears it now".
+	 * A pin is a DECISION, not a mute.
 	 */
-	{
-		theme: "catppuccinMocha",
-		fg: "accent",
-		bg: "warningWash",
-		got: 4.01,
-		why: "the band's link ink on its own wash; the palette's warm wash is dark enough that lavender clears 4.01 - the design-system alternative (a different ink for two shipped bands' links) is not this change's to make",
-	},
-	{
-		theme: "nord",
-		fg: "accent",
-		bg: "warningWash",
-		got: 3.6,
-		why: "same pairing; the frost accent on this wash measures 3.6",
-	},
-	{
-		theme: "oneDark",
-		fg: "accent",
-		bg: "warningWash",
-		got: 3.46,
-		why: "same pairing; the lowest of the four at 3.46",
-	},
-	{
-		theme: "tokyoNightStorm",
-		fg: "accent",
-		bg: "warningWash",
-		got: 3.67,
-		why: "same pairing; 3.67 on this palette",
-	},
 ];
 
 /**
@@ -6689,7 +6664,7 @@ for (const { id, palette: p } of palettes) {
 		assertions++;
 		if (dark && (lc < LIFT.dark.canvasMin || lc > LIFT.dark.canvasMax)) {
 			fail(
-				`${id}: dark \`canvas\` ${p.canvas} sits at L* ${r2(lc)} — the band is [${LIFT.dark.canvasMin}, ${LIFT.dark.canvasMax}] in L*. Below the floor the three ink weights and the three ladder steps stop fitting above each other without one of them breaking its own floor; above the ceiling the canvas is no longer off-black, which is the whole of what the operator asked for`,
+				`${id}: dark \`canvas\` ${p.canvas} sits at L* ${r2(lc)} — the band is [${LIFT.dark.canvasMin}, ${LIFT.dark.canvasMax}] in L*. Below the floor the three ink weights and the three ladder steps stop fitting above each other without one of them breaking its own floor; above the ceiling the canvas is no longer the darker tone the operator asked for (2026-11-03), and a palette above it was not re-lit by the band's proportional map`,
 			);
 		}
 		assertions++;
@@ -7275,23 +7250,50 @@ for (const { id, palette: p } of palettes) {
 
 /** The width of the register window the fleet is counted in, in `L*`. */
 const FLEET_WINDOW = 1.5;
-/** Measured 14; the spec's ceiling is also 14, so this one has no headroom. */
+/*
+ * THE DARK REGISTER WAS RE-BASELINED WHEN THE BAND MOVED (2026-11-03, the
+ * darker-grounds pass, `docs/branding.md` § 2). The dark canvas band went from
+ * [12, 22] to [9, 15], and every canvas was re-lit by ONE proportional map,
+ * `L*_new = 9 + 0.6 x (L*_old - 12)`, rather than clamped into the new band. A
+ * clamp would have stacked every palette above L* 15 on the ceiling, which is
+ * the "everything went the same grey" report this section exists for; the
+ * proportional map keeps each palette's ORDER and its relative spacing, and
+ * multiplies every gap by 0.6.
+ *
+ * So the dark rules below are the old rules read through the same map, not new
+ * targets: an `L*` WIDTH scales by 0.6 (the 1.5 window is 0.9, the 9.5 spread
+ * floor is 5.7), an `L*` POSITION maps through the formula (13.5 is 9.9), and a
+ * COUNT keeps its ceiling, because the map preserves which palettes share a
+ * window. Measured at the re-lit head: 14 in the widest 0.9 window (max 14), 13
+ * below L* 9.9 (max 14), spread 5.91. The identity rules that are about pairs
+ * of colours rather than altitude (sub-1.0 pairs, byte-identical pairs, the
+ * near-neutral ladder, the chroma guard on moved values) are unchanged and hold
+ * at their old ceilings, so "two themes became the same grey" is still red.
+ */
+const FLEET_DARK_LIFT_SCALE = 0.6;
+/** 1.5 x 0.6: the same register, read through the proportional map. */
+const FLEET_DARK_WINDOW = FLEET_WINDOW * FLEET_DARK_LIFT_SCALE;
+/** Measured 14 in a 0.9 window at the re-lit head (14 in 1.5 before); no headroom. */
 const FLEET_DARK_WINDOW_CEILING = 14;
-/** A dark page ground below this is the register the pass emptied. */
-const FLEET_DARK_DEEP_L = 13.5;
-/** Measured 14; the spec's ceiling is 14. */
+/** 13.5 mapped: 9 + 0.6 x (13.5 - 12). The register the identity pass emptied. */
+const FLEET_DARK_DEEP_L = 9 + FLEET_DARK_LIFT_SCALE * (13.5 - 12);
+/** Measured 13 below L* 9.9 at the re-lit head; the ceiling stays the old 14. */
 const FLEET_DARK_DEEP_CEILING = 14;
 /** Measured 5 (`origin/main` 7); the spec's target is 0. */
 const FLEET_DARK_SUB1_CEILING = 5;
 /** Measured 2 (`origin/main` 3); the spec's target is 0. */
 const FLEET_DARK_IDENTICAL_CEILING = 2;
-/** The register the near-neutral palette's identity is carried by. */
-const FLEET_DARK_UPPER_LO = 18;
-const FLEET_DARK_UPPER_HI = 22;
-/** Measured 4; the spec's target is `>= 5`. */
-const FLEET_DARK_UPPER_FLOOR = 4;
-/** Measured 9.95 this pass, 9.99 before it; a floor, not a target. */
-const FLEET_DARK_SPREAD_FLOOR = 9.5;
+/*
+ * RETIRED: the "at least 4 dark canvases in L* 18-22" register floor. It said
+ * that the near-neutral palettes' identity was carried by sitting HIGH, and the
+ * accepted contract change (C1) makes L* 15 the hard ceiling, so the register no
+ * longer exists inside the band and no proportional reading of it is possible
+ * (18-22 maps to 12.6-15, which is simply the top of the band). What it guarded,
+ * near-neutral canvases being told apart, is still asserted by the near-neutral
+ * pair ceiling below, which measures the gaps between them directly.
+ */
+/** 9.5 x 0.6, measured 5.91 at the re-lit head (9.95 before); a floor, not a target. */
+const FLEET_DARK_SPREAD_FLOOR = 9.5 * FLEET_DARK_LIFT_SCALE;
 /** Measured 10 of 18 light canvases; the spec's ceiling is 8 (D14). */
 const FLEET_LIGHT_WINDOW_CEILING = 10;
 /** The light ceiling's own squeezing window. */
@@ -7732,13 +7734,10 @@ const widestRegister = (rows, width) => {
 };
 
 const state = {
-	darkWindow: widestRegister(darkFleet, FLEET_WINDOW),
+	darkWindow: widestRegister(darkFleet, FLEET_DARK_WINDOW),
 	darkDeep: darkFleet.filter((r) => r.L < FLEET_DARK_DEEP_L).length,
 	darkSub1: pairsWithin(darkFleet, 1),
 	darkIdenticalPairs: pairsWithin(darkFleet, Number.EPSILON),
-	darkUpper: darkFleet.filter(
-		(r) => r.L >= FLEET_DARK_UPPER_LO && r.L <= FLEET_DARK_UPPER_HI,
-	).length,
 	darkSpread:
 		Math.max(...darkFleet.map((r) => r.L)) -
 		Math.min(...darkFleet.map((r) => r.L)),
@@ -7756,19 +7755,19 @@ const state = {
 assertions++;
 if (state.darkWindow > FLEET_DARK_WINDOW_CEILING) {
 	fail(
-		`the fleet: ${state.darkWindow} dark canvases sit inside one ${FLEET_WINDOW} L* window (max ${FLEET_DARK_WINDOW_CEILING}; it was 25 before the identity re-solve) - the fleet has been flattened toward one grey band again, which every per-palette assertion above will still pass`,
+		`the fleet: ${state.darkWindow} dark canvases sit inside one ${r2(FLEET_DARK_WINDOW)} L* window (max ${FLEET_DARK_WINDOW_CEILING}; it was 25 in a 1.5 window before the identity re-solve) - the fleet has been flattened toward one grey band again, which every per-palette assertion above will still pass`,
 	);
 }
 assertions++;
 if (state.darkDeep > FLEET_DARK_DEEP_CEILING) {
 	fail(
-		`the fleet: ${state.darkDeep} dark canvases are below L* ${FLEET_DARK_DEEP_L} (max ${FLEET_DARK_DEEP_CEILING}, was 25 before the identity re-solve) - the deep register is the one the pass emptied, and refilling it is how the operator's "a lot more grey now" comes back`,
+		`the fleet: ${state.darkDeep} dark canvases are below L* ${r2(FLEET_DARK_DEEP_L)} (max ${FLEET_DARK_DEEP_CEILING}, was 25 before the identity re-solve) - the deep register is the one the pass emptied, and refilling it is how the operator's "a lot more grey now" comes back`,
 	);
 }
 assertions++;
 if (state.darkSpread < FLEET_DARK_SPREAD_FLOOR) {
 	fail(
-		`the fleet: the dark canvases span ${r2(state.darkSpread)} L* (floor ${FLEET_DARK_SPREAD_FLOOR}, measured ${r2(state.darkSpread)} this pass against 9.99 before it) - the spread is the fleet's depth, and a per-palette gate cannot see it narrowing`,
+		`the fleet: the dark canvases span ${r2(state.darkSpread)} L* (floor ${r2(FLEET_DARK_SPREAD_FLOOR)}, measured 5.91 at the darker-grounds pass, which mapped 9.95 by x 0.6) - the spread is the fleet's depth, and a per-palette gate cannot see it narrowing`,
 	);
 }
 assertions++;
@@ -7781,12 +7780,6 @@ assertions++;
 if (state.darkIdenticalPairs.length > FLEET_DARK_IDENTICAL_CEILING) {
 	fail(
 		`the fleet: ${state.darkIdenticalPairs.length} dark canvas pairs are BYTE-IDENTICAL (max ${FLEET_DARK_IDENTICAL_CEILING}, was 3 before the identity re-solve; the spec's target is 0): ${state.darkIdenticalPairs.map((pair) => `${pair.a}/${pair.b} ${pair.hex}`).join(", ")} - a palette that ships another palette's exact canvas has no depth of its own`,
-	);
-}
-assertions++;
-if (state.darkUpper < FLEET_DARK_UPPER_FLOOR) {
-	fail(
-		`the fleet: ${state.darkUpper} dark canvases sit in the L* ${FLEET_DARK_UPPER_LO}-${FLEET_DARK_UPPER_HI} register (floor ${FLEET_DARK_UPPER_FLOOR}, the spec's target is 5) - this is the register the near-neutral palettes' identity is carried by, and losing recruits to it is the same flattening seen from the other end`,
 	);
 }
 
@@ -8673,5 +8666,5 @@ console.log(
  * moved.
  */
 console.log(
-	`Fleet: ${state.darkWindow} dark canvas(es) in a ${FLEET_WINDOW} L* window (max ${FLEET_DARK_WINDOW_CEILING}), ${state.darkDeep} below L* ${FLEET_DARK_DEEP_L}, spread ${r2(state.darkSpread)} L*; ${state.darkSub1.length} sub-1.0 and ${state.darkIdenticalPairs.length} identical dark canvas pair(s); light ${state.lightWindow} in a ${FLEET_WINDOW} L* window, ${state.lightHigh} at or above L* ${FLEET_LIGHT_HIGH_L}, ${state.lightSub1} sub-1.0 pair(s); ${hueOverPinByLattice} moved value(s) over the ${HUE_PIN_DEGREES} degree hue pin and inside the 8-bit envelope.`,
+	`Fleet: ${state.darkWindow} dark canvas(es) in a ${r2(FLEET_DARK_WINDOW)} L* window (max ${FLEET_DARK_WINDOW_CEILING}), ${state.darkDeep} below L* ${r2(FLEET_DARK_DEEP_L)}, spread ${r2(state.darkSpread)} L*; ${state.darkSub1.length} sub-1.0 and ${state.darkIdenticalPairs.length} identical dark canvas pair(s); light ${state.lightWindow} in a ${FLEET_WINDOW} L* window, ${state.lightHigh} at or above L* ${FLEET_LIGHT_HIGH_L}, ${state.lightSub1} sub-1.0 pair(s); ${hueOverPinByLattice} moved value(s) over the ${HUE_PIN_DEGREES} degree hue pin and inside the 8-bit envelope.`,
 );

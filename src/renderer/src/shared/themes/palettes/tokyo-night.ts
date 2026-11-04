@@ -58,20 +58,36 @@ export const tokyoNight: ThemeDefinition = {
 		 * lifting a dark ground raises the luminance every ink is measured against, so
 		 * the inks in this file were re-seated on the same commit rather than after it.
 		 */
-		canvas: "#2A2A35",
-		surface: "#313448",
-		elevated: "#363A55",
+		/*
+		 * THE DARKER-GROUNDS PASS (2026-11-03, `docs/branding.md` § 2) supersedes the
+		 * earlier L* 12 dark floor: the dark band is now L* 9-15 (target 9-13), and
+		 * the canvas maps by `L*_new = 9 + 0.6 x (L*_old - 12)`, which keeps this
+		 * palette's place in the fleet. Here every ground-class role (the grounds, the
+		 * row states, the two fills, the washes and the hairlines) moved by the
+		 * canvas's own ΔL* holding its `a` and `b`; inks, accents and `borderControl` did
+		 * not move.
+		 * Measured:
+		 * canvas #2A2A35 -> #1F1F2A (L* 17.48 -> 12.21)
+		 * surface #313448 -> #26293D (L* 22.22 -> 17.15)
+		 * elevated #363A55 -> #2B2F49 (L* 25.16 -> 20.15)
+		 * sunken #23232A -> #191920 (L* 13.98 -> 9.04)
+		 * Re-solved off the uniform shift, because a contract floor refused it there:
+		 * `accentWash`. `pnpm check-themes` is the measurement for each.
+		 */
+		canvas: "#1F1F2A",
+		surface: "#26293D",
+		elevated: "#2B2F49",
 		// Upstream bg_dark is 16161E, which measures 1.05:1 against canvas. Two
 		// levels deeper for a little more separation.
-		sunken: "#23232A",
+		sunken: "#191920",
 
 		// The user block's fill: `surface` itself, which already clears the
 		// role's ΔE00 4.0 floor off this canvas (measured 5.22).
-		messageSurface: "#313448",
+		messageSurface: "#26293D",
 		// The media slot's well: ΔE00 4.09 off the canvas, where `sunken` alone
 		// measures 3.20 - a step away from the canvas to clear the role's 4.0
 		// floor, which the tile carries because the fill IS its resting extent.
-		mediaSurface: "#212127",
+		mediaSurface: "#16161C",
 
 		/*
 		 * ROW STATES, and `highlight` retired in the same change. Both roles are a
@@ -90,8 +106,8 @@ export const tokyoNight: ThemeDefinition = {
 		 *                       `rowHover`; the pair ranks 1.68 `L*` and 9.1 `C*`,
 		 *                       `inkDim` 5.04:1.
 		 */
-		rowHover: "#3A3B48",
-		rowSelected: "#3A3E59",
+		rowHover: "#2F303D",
+		rowSelected: "#2E324C",
 
 		/*
 		 * Register re-solve: `ink`
@@ -155,10 +171,10 @@ export const tokyoNight: ThemeDefinition = {
 		 * border (2:1), and the window is walked at the role's own hue. Its ratio
 		 * lands at 1.20:1 against `elevated` at its tightest.
 		 */
-		hairline: "#3F4664",
+		hairline: "#343B58",
 		// `hairline` stepped toward `inkDim`, so it reads on this palette's own
 		// `sunken`: 1.83:1 there against `hairline`'s 1.69:1.
-		hairlineStrong: "#444B6A",
+		hairlineStrong: "#383F5D",
 		// The comment blue lightened again. The old theme used it at 30 percent
 		// alpha for both the decorative rule and the input boundary, which put
 		// every input at about 1.3:1.
@@ -186,7 +202,7 @@ export const tokyoNight: ThemeDefinition = {
 		 * `surface` is the tightest base at ΔE00 2.04. Lightness only, at the
 		 * wash's own hue.
 		 */
-		accentWash: "#363A50",
+		accentWash: "#2B3045",
 		onAccent: "#1A1B26",
 		/*
 		 * The theme's own second hue, and the port had dropped it: the TUI's
@@ -203,11 +219,11 @@ export const tokyoNight: ThemeDefinition = {
 		 * 2.0), 4.85:1 for `accentAlt` on it, and 5.77 from the nearest ground it
 		 * is painted on.
 		 */
-		accentAltWash: "#40374D",
+		accentAltWash: "#342B40",
 
 		// Upstream Tokyo Night green.
 		success: "#9ECE6A",
-		successWash: "#2A302E",
+		successWash: "#1F2523",
 		/*
 		 * Legibility pass: `successBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
@@ -223,7 +239,7 @@ export const tokyoNight: ThemeDefinition = {
 
 		// Upstream yellow.
 		warning: "#E0AF68",
-		warningWash: "#322D2E",
+		warningWash: "#272223",
 		/*
 		 * Legibility pass: `warningBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
@@ -239,7 +255,7 @@ export const tokyoNight: ThemeDefinition = {
 
 		// Upstream red.
 		danger: "#FE7C94",
-		dangerWash: "#352632",
+		dangerWash: "#291B27",
 		/*
 		 * Legibility pass: `dangerBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
@@ -255,7 +271,7 @@ export const tokyoNight: ThemeDefinition = {
 
 		// Upstream cyan, so this theme needs no invented informational hue.
 		info: "#7DCFFF",
-		infoWash: "#263140",
+		infoWash: "#1B2635",
 		/*
 		 * Legibility pass: `infoBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered

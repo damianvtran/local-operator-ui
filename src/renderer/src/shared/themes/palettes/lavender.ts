@@ -67,19 +67,35 @@ export const lavender: ThemeDefinition = {
 		 * lifting a dark ground raises the luminance every ink is measured against, so
 		 * the inks in this file were re-seated on the same commit rather than after it.
 		 */
-		canvas: "#292633",
-		surface: "#322E3F",
-		elevated: "#393345",
-		sunken: "#212029",
+		/*
+		 * THE DARKER-GROUNDS PASS (2026-11-03, `docs/branding.md` § 2) supersedes the
+		 * earlier L* 12 dark floor: the dark band is now L* 9-15 (target 9-13), and
+		 * the canvas maps by `L*_new = 9 + 0.6 x (L*_old - 12)`, which keeps this
+		 * palette's place in the fleet. Here every ground-class role (the grounds, the
+		 * row states, the two fills, the washes and the hairlines) moved by the
+		 * canvas's own ΔL* holding its `a` and `b`; inks, accents and `borderControl` did
+		 * not move.
+		 * Measured:
+		 * canvas #292633 -> #201D2A (L* 15.99 -> 11.64)
+		 * surface #322E3F -> #282435 (L* 20.01 -> 15.33)
+		 * elevated #393345 -> #2F293B (L* 22.54 -> 17.95)
+		 * sunken #212029 -> #181720 (L* 12.71 -> 8.23)
+		 * Re-solved off the uniform shift, because a contract floor refused it there:
+		 * `messageSurface`. `pnpm check-themes` is the measurement for each.
+		 */
+		canvas: "#201D2A",
+		surface: "#282435",
+		elevated: "#2F293B",
+		sunken: "#181720",
 
 		// The user block's fill: ΔE00 4.01 off the canvas, where `surface` alone
 		// measures 3.31 - a step toward `elevated` to clear the role's 4.0 floor,
 		// which the block carries because the fill IS its boundary.
-		messageSurface: "#342f41",
+		messageSurface: "#2c2739",
 		// The media slot's well: ΔE00 4.13 off the canvas, where `sunken` alone
 		// measures 3.31 - a step away from the canvas to clear the role's 4.0
 		// floor, which the tile carries because the fill IS its resting extent.
-		mediaSurface: "#202028",
+		mediaSurface: "#17171F",
 
 		/*
 		 * ROW STATES, and `highlight` retired in the same change. Both roles are a
@@ -98,8 +114,8 @@ export const lavender: ThemeDefinition = {
 		 *                       `rowHover`; the pair ranks 1.34 `L*` and 9.3 `C*`,
 		 *                       `inkDim` 5.03:1.
 		 */
-		rowHover: "#37353F",
-		rowSelected: "#3B364E",
+		rowHover: "#2D2B35",
+		rowSelected: "#312C44",
 
 		ink: "#E6E2F0",
 		/*
@@ -167,11 +183,11 @@ export const lavender: ThemeDefinition = {
 		 * border (2:1), and the window is walked at the role's own hue. Its ratio
 		 * lands at 1.16:1 against `elevated` at its tightest.
 		 */
-		hairline: "#413B5B",
+		hairline: "#383251",
 
 		// `hairline` stepped toward `inkDim`, so it reads on this palette's own
 		// `sunken`: 1.66:1 there against `hairline`'s 1.54:1.
-		hairlineStrong: "#464060",
+		hairlineStrong: "#3C3655",
 		// Derived, and the one role the TUI cannot supply. Upstream `edge-hi` is a
 		// decorative edge at about 2:1; here it is the only boundary an input, select
 		// or outlined button has, so it is lifted until it clears 3:1 on every ground
@@ -208,7 +224,7 @@ export const lavender: ThemeDefinition = {
 
 		// The TUI's own selection tint, which is where this accent is already spent
 		// faintly.
-		accentWash: "#272B3B",
+		accentWash: "#1D2131",
 
 		// The theme's own deepest ground, at 7.33:1 on all three accent fills.
 		onAccent: "#110F19",
@@ -229,7 +245,7 @@ export const lavender: ThemeDefinition = {
 		 * 2.0), 7.94:1 for `accentAlt` on it, and 7.00 from the nearest ground it
 		 * is painted on.
 		 */
-		accentAltWash: "#382632",
+		accentAltWash: "#2E1D29",
 
 		// Upstream success, clearing 6.15:1 at its tightest ground.
 		success: "#7FC98F",
@@ -237,7 +253,7 @@ export const lavender: ThemeDefinition = {
 		// The TUI has no success or warning tint, so both are the state hue at 13%
 		// over the ground — the fraction the TUI's own tints measure at. The hue
 		// clears 6.40:1 on this fill.
-		successWash: "#2D343B",
+		successWash: "#232A31",
 
 		// The state hue pulled toward `canvas` as far as it can go and still read as
 		// an edge: 3.66:1 at its tightest ground.
@@ -254,7 +270,7 @@ export const lavender: ThemeDefinition = {
 		 */
 		successBorder: "#5D896B",
 		warning: "#DCAE54",
-		warningWash: "#393133",
+		warningWash: "#2F2729",
 		/*
 		 * Legibility pass: `warningBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
@@ -270,7 +286,7 @@ export const lavender: ThemeDefinition = {
 		danger: "#EF8595",
 
 		// The TUI's own danger tint.
-		dangerWash: "#2B1A26",
+		dangerWash: "#21111D",
 
 		// This one is also drawn on a dialog's ground, where the delete control's edge
 		// IS the control: 3.35:1 at its tightest.
@@ -291,7 +307,7 @@ export const lavender: ThemeDefinition = {
 		info: "#7DB2E2",
 
 		// The TUI's own attachment tint, and the ground every marker reads on.
-		infoWash: "#1C2740",
+		infoWash: "#121E36",
 		/*
 		 * Legibility pass: `infoBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered

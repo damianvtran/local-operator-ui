@@ -45,19 +45,33 @@ export const arctic: ThemeDefinition = {
 	descriptionKey: "ui.settings.appearance.theme.arctic",
 	palette: {
 		mode: "dark",
-		canvas: "#1A2431",
-		surface: "#232E3D",
-		elevated: "#2A3747",
-		sunken: "#121A25",
+		/*
+		 * THE DARKER-GROUNDS PASS (2026-11-03, `docs/branding.md` § 2) supersedes the
+		 * earlier L* 12 dark floor: the dark band is now L* 9-15 (target 9-13), and
+		 * the canvas maps by `L*_new = 9 + 0.6 x (L*_old - 12)`, which keeps this
+		 * palette's place in the fleet. Here every ground-class role (the grounds, the
+		 * row states, the two fills, the washes and the hairlines) moved by the
+		 * canvas's own ΔL* holding its `a` and `b`; inks, accents and `borderControl` did
+		 * not move.
+		 * Measured:
+		 * canvas #1A2431 -> #131D2A (L* 13.84 -> 10.44)
+		 * surface #232E3D -> #1C2736 (L* 18.58 -> 15.30)
+		 * elevated #2A3747 -> #233040 (L* 22.58 -> 19.40)
+		 * sunken #121A25 -> #0A141F (L* 9.00 -> 6.00)
+		 */
+		canvas: "#131D2A",
+		surface: "#1C2736",
+		elevated: "#233040",
+		sunken: "#0A141F",
 
 		// The user block's fill: ΔE00 4.13 off the canvas, where `surface` alone
 		// measures 3.23 - a step toward `elevated` to clear the role's 4.0 floor,
 		// which the block carries because the fill IS its boundary.
-		messageSurface: "#253140",
+		messageSurface: "#1E2A39",
 		// The media slot's well: ΔE00 4.17 off the canvas, where `sunken` alone
 		// measures 3.22 - a step away from the canvas to clear the role's 4.0
 		// floor, which the tile carries because the fill IS its resting extent.
-		mediaSurface: "#101722",
+		mediaSurface: "#040D1B",
 
 		/*
 		 * ROW STATES, and `highlight` retired in the same change. Both roles are a
@@ -76,8 +90,8 @@ export const arctic: ThemeDefinition = {
 		 *                       `rowHover`; the pair ranks 1.56 `L*` and 8.4 `C*`,
 		 *                       `inkDim` 5.12:1.
 		 */
-		rowHover: "#2F353E",
-		rowSelected: "#29394E",
+		rowHover: "#282E37",
+		rowSelected: "#213247",
 
 		ink: "#E3ECF4",
 
@@ -117,11 +131,11 @@ export const arctic: ThemeDefinition = {
 		// The TUI's decorative edge, moved ΔE00 0.66 into this contract's two-sided
 		// window: a rule has to be SEEN (ΔE00 4+ on every ground) without becoming a
 		// border (2:1 at most). Here it is 1.20:1 at its quietest.
-		hairline: "#33455C",
+		hairline: "#2B3E55",
 
 		// `hairline` stepped toward `inkDim`, so it reads on this palette's own
 		// `sunken`: 1.93:1 there against `hairline`'s 1.79:1.
-		hairlineStrong: "#384A61",
+		hairlineStrong: "#304259",
 		// Derived, and the one role the TUI cannot supply. Upstream `edge-hi` is a
 		// decorative edge at about 2:1; here it is the only boundary an input, select
 		// or outlined button has, so it is lifted until it clears 3:1 on every ground
@@ -146,7 +160,7 @@ export const arctic: ThemeDefinition = {
 
 		// The TUI's own selection tint, which is where this accent is already spent
 		// faintly.
-		accentWash: "#1C332F",
+		accentWash: "#152C28",
 
 		// The theme's own deepest ground, at 9.24:1 on all three accent fills.
 		onAccent: "#121A25",
@@ -164,7 +178,7 @@ export const arctic: ThemeDefinition = {
 		 * 2.0), 5.89:1 for `accentAlt` on it, and 7.48 from the nearest ground it
 		 * is painted on.
 		 */
-		accentAltWash: "#302D3C",
+		accentAltWash: "#292635",
 
 		// Upstream success, clearing 6.84:1 at its tightest ground.
 		success: "#6CC99B",
@@ -172,7 +186,7 @@ export const arctic: ThemeDefinition = {
 		// The TUI has no success or warning tint, so both are the state hue at 13%
 		// over the ground — the fraction the TUI's own tints measure at. The hue
 		// clears 5.28:1 on this fill.
-		successWash: "#2C4249",
+		successWash: "#253B42",
 
 		// The state hue pulled toward `canvas` as far as it can go and still read as
 		// an edge: 3.35:1 at its tightest ground.
@@ -183,7 +197,7 @@ export const arctic: ThemeDefinition = {
 		 */
 		successBorder: "#4F8D75",
 		warning: "#DCB45E",
-		warningWash: "#3B3F41",
+		warningWash: "#34383A",
 		/*
 		 * Legibility pass: `warningBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
@@ -193,7 +207,7 @@ export const arctic: ThemeDefinition = {
 		danger: "#F08D90",
 
 		// The TUI's own danger tint.
-		dangerWash: "#32262E",
+		dangerWash: "#2B1F27",
 
 		// This one is also drawn on a dialog's ground, where the delete control's edge
 		// IS the control: 3.32:1 at its tightest.
@@ -203,7 +217,7 @@ export const arctic: ThemeDefinition = {
 		info: "#7FBDE8",
 
 		// The TUI's own attachment tint, and the ground every marker reads on.
-		infoWash: "#22344C",
+		infoWash: "#1A2D45",
 		/*
 		 * Legibility pass: `infoBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered

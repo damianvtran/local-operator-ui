@@ -49,23 +49,39 @@ export const nord: ThemeDefinition = {
 	palette: {
 		mode: "dark",
 
-		canvas: "#2E3440",
+		/*
+		 * THE DARKER-GROUNDS PASS (2026-11-03, `docs/branding.md` § 2) supersedes the
+		 * earlier L* 12 dark floor: the dark band is now L* 9-15 (target 9-13), and
+		 * the canvas maps by `L*_new = 9 + 0.6 x (L*_old - 12)`, which keeps this
+		 * palette's place in the fleet. Here every ground-class role (the grounds, the
+		 * row states, the two fills, the washes and the hairlines) moved by the
+		 * canvas's own ΔL* holding its `a` and `b`; inks, accents and `borderControl` did
+		 * not move.
+		 * Measured:
+		 * canvas #2E3440 -> #1F2531 (L* 21.60 -> 14.60)
+		 * surface #343B49 -> #252C3A (L* 24.76 -> 17.92)
+		 * elevated #3A4150 -> #2C3342 (L* 27.46 -> 21.19)
+		 * sunken #272C36 -> #191E28 (L* 17.91 -> 11.19)
+		 * Re-solved off the uniform shift, because a contract floor refused it there:
+		 * `mediaSurface`. `pnpm check-themes` is the measurement for each.
+		 */
+		canvas: "#1F2531",
 		// A step between nord0 and nord1: nord2 434C5E sits above nord1 and a fifth ground
 		// would only cost every ink headroom.
-		surface: "#343B49",
-		elevated: "#3A4150",
+		surface: "#252C3A",
+		elevated: "#2C3342",
 		// A step under nord0. Nord has no recessed tone of its own — nord2 is lighter than
 		// nord1 — so the well is derived, and nord3 4C566A is far too light to be a well.
-		sunken: "#272C36",
+		sunken: "#191E28",
 
 		// The user block's fill: ΔE00 4.12 off the canvas, where `surface` alone
 		// measures 2.42 - a step toward `elevated` to clear the role's 4.0 floor,
 		// which the block carries because the fill IS its boundary.
-		messageSurface: "#39404f",
+		messageSurface: "#2a3140",
 		// The media slot's well: ΔE00 4.04 off the canvas, where `sunken` alone
 		// measures 2.70 - a step away from the canvas to clear the role's 4.0
 		// floor, which the tile carries because the fill IS its resting extent.
-		mediaSurface: "#242831",
+		mediaSurface: "#141821",
 
 		/*
 		 * ROW STATES, and `highlight` retired in the same change. Both roles are a
@@ -84,8 +100,8 @@ export const nord: ThemeDefinition = {
 		 *                       `rowHover`; the pair ranks 1.23 `L*` and 8.0 `C*`,
 		 *                       `inkDim` 5.04:1.
 		 */
-		rowHover: "#3C3F48",
-		rowSelected: "#384257",
+		rowHover: "#2D3039",
+		rowSelected: "#293347",
 
 		ink: "#ECEFF4",
 		inkMuted: "#D8DEE9",
@@ -107,10 +123,10 @@ export const nord: ThemeDefinition = {
 
 		// Nord has no rule colour. This holds ΔE00 4.1 from every ground and 1.21-1.68:1
 		// against them: a 1px line, not a border.
-		hairline: "#474E5F",
+		hairline: "#383F50",
 		// `hairline` stepped toward `inkDim`, so it reads on this palette's own
 		// `sunken`: 1.82:1 there against `hairline`'s 1.68:1.
-		hairlineStrong: "#4C5364",
+		hairlineStrong: "#3C4354",
 		// Nord3 4C566A is 1.36:1 against the grounds — an inactive-tone value in a
 		// structural role. Lifted along the same blue-grey to 3.1:1 on the lightest
 		// ground.
@@ -125,7 +141,7 @@ export const nord: ThemeDefinition = {
 		tokenCommand: "#91B3D4",
 		// The signal lifted in L* to clear 4.5:1 on `elevated` (it measured 4.10), at a
 		// cost of ΔE00 2.86 from the signal itself; 5.14:1 on `surface`.
-		accentWash: "#2E3D40",
+		accentWash: "#1F2E31",
 		onAccent: "#272C36",
 		/*
 		 * The theme's own second hue, from the TUI's `label` token (`#b48ead`,
@@ -162,20 +178,20 @@ export const nord: ThemeDefinition = {
 		 * 2.0), 4.55:1 for `accentAlt` on it, and 8.54 from the nearest ground it
 		 * is painted on.
 		 */
-		accentAltWash: "#41383F",
+		accentAltWash: "#322930",
 
 		success: "#A3BE8C",
-		successWash: "#3E484C",
+		successWash: "#2F393D",
 		successBorder: "#7C9665",
 
 		warning: "#EBCB8B",
-		warningWash: "#595754",
+		warningWash: "#494744",
 		warningBorder: "#A88A4B",
 
 		// Aurora nord11 BF616A is 2.46:1 on `elevated` — the widest miss here. Lifted along
 		// the same red, which is what the aurora red is for.
 		danger: "#F3959F",
-		dangerWash: "#3D323C",
+		dangerWash: "#2E232D",
 		dangerBorder: "#CE747E",
 
 		// Frost nord9 81A1C1 is 3.74:1 on the binding ground; lifted along the same blue to
@@ -189,7 +205,7 @@ export const nord: ThemeDefinition = {
 		 * legibility, is what the ramp change was allowed to keep.
 		 */
 		info: "#90B1D1",
-		infoWash: "#2B3B4E",
+		infoWash: "#1B2C3E",
 		infoBorder: "#7191B1",
 
 		// The shadow and scrim are the ground tinted, as in every palette here.

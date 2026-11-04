@@ -58,22 +58,39 @@ export const dracula: ThemeDefinition = {
 		 * lifting a dark ground raises the luminance every ink is measured against, so
 		 * the inks in this file were re-seated on the same commit rather than after it.
 		 */
-		canvas: "#282A36",
-		surface: "#2F3146",
+		/*
+		 * THE DARKER-GROUNDS PASS (2026-11-03, `docs/branding.md` § 2) supersedes the
+		 * earlier L* 12 dark floor: the dark band is now L* 9-15 (target 9-13), and
+		 * the canvas maps by `L*_new = 9 + 0.6 x (L*_old - 12)`, which keeps this
+		 * palette's place in the fleet. Here every ground-class role (the grounds, the
+		 * row states, the two fills, the washes and the hairlines) moved by the
+		 * canvas's own ΔL* holding its `a` and `b`; inks, accents and `borderControl` did
+		 * not move.
+		 * Measured:
+		 * canvas #282A36 -> #1D1F2B (L* 17.34 -> 12.06)
+		 * surface #2F3146 -> #232539 (L* 20.99 -> 15.36)
+		 * elevated #383B50 -> #2D3045 (L* 25.41 -> 20.45)
+		 * sunken #21222C -> #171822 (L* 13.53 -> 8.58)
+		 * Re-solved off the uniform shift, because a contract floor refused it there:
+		 * `rowSelected`, `mediaSurface`. `pnpm check-themes` is the measurement for
+		 * each.
+		 */
+		canvas: "#1D1F2B",
+		surface: "#232539",
 		// The old theme used selection 44475A as its tooltip ground. Nothing that
 		// light can carry a third ink weight — inkDim would have to land within a
 		// hair of inkMuted to clear 4.5:1 on it — so elevated steps one stop back
 		// down the same blue-grey ramp and selection stays available for hovers.
-		elevated: "#383B50",
-		sunken: "#21222C",
+		elevated: "#2D3045",
+		sunken: "#171822",
 
 		// The user block's fill: `surface` itself, which already clears the
 		// role's ΔE00 4.0 floor off this canvas (measured 4.94).
-		messageSurface: "#2F3146",
+		messageSurface: "#232539",
 		// The media slot's well: ΔE00 4.05 off the canvas, where `sunken` alone
 		// measures 2.69 - a step away from the canvas to clear the role's 4.0
 		// floor, which the tile carries because the fill IS its resting extent.
-		mediaSurface: "#1e1e27",
+		mediaSurface: "#12121c",
 
 		/*
 		 * ROW STATES, and `highlight` retired in the same change. Both roles are a
@@ -92,8 +109,8 @@ export const dracula: ThemeDefinition = {
 		 *                       `rowHover`; the pair ranks 1.78 `L*` and 9.1 `C*`,
 		 *                       `inkDim` 5.20:1.
 		 */
-		rowHover: "#383946",
-		rowSelected: "#393C57",
+		rowHover: "#2C2D3A",
+		rowSelected: "#2C2F49",
 
 		ink: "#F8F8F2",
 		inkMuted: "#BFBFBF",
@@ -113,13 +130,13 @@ export const dracula: ThemeDefinition = {
 		inkDim: "#ABB4D1",
 		inkDisabled: "#6272A4",
 
-		hairline: "#4A4C5E",
+		hairline: "#3E4052",
 
 		// `hairline` stepped toward `inkDim`, so it reads on this palette's own
 
 		// `sunken`: 2.03:1 there against `hairline`'s 1.87:1.
 
-		hairlineStrong: "#4F5164",
+		hairlineStrong: "#434558",
 		// The same comment blue lightened further. The old theme bounded every
 		// input with white at 10 percent alpha, which measured about 1.2:1.
 		borderControl: "#7D8BB4",
@@ -147,7 +164,7 @@ export const dracula: ThemeDefinition = {
 		chartBarHover: "#D6BBFE",
 		tokenCommand: "#8BE9FD",
 		/* The wire's own `info`, so the command word's rendering does not move. */
-		accentWash: "#3A374D",
+		accentWash: "#2E2B40",
 		onAccent: "#282A36",
 		/*
 		 * The theme's own second hue, and the port had dropped it: the TUI's
@@ -164,16 +181,16 @@ export const dracula: ThemeDefinition = {
 		 * 2.0), 4.79:1 for `accentAlt` on it, and 12.43 from the nearest ground it
 		 * is painted on.
 		 */
-		accentAltWash: "#4C3240",
+		accentAltWash: "#402735",
 
 		success: "#50FA7B",
-		successWash: "#2D433E",
+		successWash: "#213732",
 		successBorder: "#3E9C5C",
 
 		// Dracula's orange. The scheme's yellow F1FA8C also clears the floors but
 		// reads as a highlighter next to the green, not as a caution.
 		warning: "#FFB86C",
-		warningWash: "#423B3C",
+		warningWash: "#373031",
 		/*
 		 * Legibility pass: `warningBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
@@ -194,7 +211,7 @@ export const dracula: ThemeDefinition = {
 		 * re-pick of the palette's colour.
 		 */
 		danger: "#FF8784",
-		dangerWash: "#422F3A",
+		dangerWash: "#36242F",
 		/*
 		 * Legibility pass: `dangerBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
@@ -204,7 +221,7 @@ export const dracula: ThemeDefinition = {
 
 		// Dracula's cyan, an upstream hue, so this theme needs no invented blue.
 		info: "#8BE9FD",
-		infoWash: "#34414E",
+		infoWash: "#293643",
 		infoBorder: "#5E93A3",
 
 		overlayShadow: "0 12px 32px -12px rgb(13 14 20 / 0.65)",

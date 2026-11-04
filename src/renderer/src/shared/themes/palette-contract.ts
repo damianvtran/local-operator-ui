@@ -80,15 +80,18 @@ export type ThemePalette = {
 	 * ## The legibility floors, which bind all four grounds
 	 *
 	 * A page ground is not a taste call. It is the surface the transcript is read
-	 * on for hours, so it is FLOORED at **L\* 12 in a dark theme** - one rung above
-	 * GitHub Dark's `#0D1117` (L\* 4.95) and exactly VS Code Dark+'s `#1E1E1E`, and
-	 * deliberately above GitHub's default - and **CAPPED at L\* 94 in a light one**,
+	 * on for hours, so a dark theme's page sits in a hard BAND of **L\* 9 to 15**
+	 * (target 9-13) - between Discord's 2025 chat ground `#1A1A1E` (L\* 9.42) and
+	 * Slack's dark `#1A1D21` (L\* 10.62) at the floor, and still nearly double
+	 * GitHub Dark's `#0D1117` (L\* 4.95) - and a light one is **CAPPED at L\* 94**,
 	 * because `elevated` at L\* 100 is the end of sRGB's ramp and the minimum
-	 * canvas-to-elevated spread is 2.5 + 2.5 L\*. The top of the ladder is capped at
-	 * **`elevated` L\* 30** (a dark theme's `canvas` also has a hard ceiling of
-	 * L\* 22, past which it stops being off-black), because at `elevated` L\* 34 an
+	 * canvas-to-elevated spread is 2.5 + 2.5 L\*. The band was [12, 22] until the
+	 * 2026-11-03 "dark mode isn't that dark" report; every dark palette was re-lit
+	 * by one proportional map, `L*_new = 9 + 0.6 x (L*_old - 12)`, so the fleet
+	 * kept its order and spacing rather than stacking on a clamp. The top of the
+	 * ladder is capped at **`elevated` L\* 22**, because at `elevated` L\* 34 an
 	 * `inkDim` at its floor needs L\* 85 and the ink/hover distinction disappears
-	 * into the top of the ramp.
+	 * into the top of the ramp. `docs/branding.md` § 2 carries the measurements.
 	 *
 	 * The four grounds are then authored as L\* OFFSETS FROM THE CANVAS, and both
 	 * ends of each step are asserted:
@@ -128,7 +131,8 @@ export type ThemePalette = {
 	 * ## The identity band, and the ceiling note this replaces (2026-09-18)
 	 *
 	 * The "some themes feel a lot more grey now" report is real and it is
-	 * measured: the pass above solved 23 palettes onto the same L* 12 floor, so
+	 * measured: the pass above solved 23 palettes onto the same L* 12 floor (the
+	 * floor of the time; the band is now 9-15, see above), so
 	 * 9.47 L* of authored depth came to occupy 0.46 L*, and the dark fleet's
 	 * `canvas` spread fell from 19.5 to 10.0 L*. The previous revision of this
 	 * note recorded that the fleet could not pay to undo it - the band's own

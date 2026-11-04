@@ -65,19 +65,40 @@ export const rosePineMoon: ThemeDefinition = {
 		 * lifting a dark ground raises the luminance every ink is measured against, so
 		 * the inks in this file were re-seated on the same commit rather than after it.
 		 */
-		canvas: "#232136",
-		surface: "#2a273f",
-		elevated: "#2F2B47",
-		sunken: "#1b192a",
+		/*
+		 * THE DARKER-GROUNDS PASS (2026-11-03, `docs/branding.md` § 2) supersedes the
+		 * earlier L* 12 dark floor: the dark band is now L* 9-15 (target 9-13), and
+		 * the canvas maps by `L*_new = 9 + 0.6 x (L*_old - 12)`, which keeps this
+		 * palette's place in the fleet. Here every ground-class role (the grounds, the
+		 * row states, the two fills, the washes and the hairlines) moved by the
+		 * canvas's own ΔL* holding its `a` and `b`; inks, accents and `borderControl` did
+		 * not move.
+		 * Measured:
+		 * canvas #232136 -> #1C1A2F (L* 13.89 -> 10.49)
+		 * surface #2a273f -> #232038 (L* 17.00 -> 13.68)
+		 * elevated #2F2B47 -> #292540 (L* 19.17 -> 16.33)
+		 * sunken #1b192a -> #151223 (L* 9.76 -> 6.44)
+		 * Re-solved off the uniform shift, because a contract floor refused it there:
+		 * `elevated`, `messageSurface`. `pnpm check-themes` is the measurement for
+		 * each.
+		 * accent #eaaca9 -> #ea9a97: the scheme's own `love` family's light tint
+		 * #ea9a97, in place of the palest rose: C* 24.6 -> 32.7.
+		 * `accentActive` steps 5 L* below the new accent on the same cast, so the
+		 * press stays ΔE00 >= 2 from rest.
+		 */
+		canvas: "#1C1A2F",
+		surface: "#232038",
+		elevated: "#292540",
+		sunken: "#151223",
 
 		// The user block's fill: ΔE00 4.18 off the canvas, where `surface` alone
 		// measures 2.36 - a step toward `elevated` to clear the role's 4.0 floor,
 		// which the block carries because the fill IS its boundary.
-		messageSurface: "#2e2a46",
+		messageSurface: "#28243f",
 		// The media slot's well: ΔE00 4.14 off the canvas, where `sunken` alone
 		// measures 3.05 - a step away from the canvas to clear the role's 4.0
 		// floor, which the tile carries because the fill IS its resting extent.
-		mediaSurface: "#191726",
+		mediaSurface: "#131020",
 
 		/*
 		 * ROW STATES, and `highlight` retired in the same change. Both roles are a
@@ -96,26 +117,26 @@ export const rosePineMoon: ThemeDefinition = {
 		 *                       `rowHover`; the pair ranks 1.78 `L*` and 10.6 `C*`,
 		 *                       `inkDim` 5.29:1.
 		 */
-		rowHover: "#322F3E",
-		rowSelected: "#353150",
+		rowHover: "#2B2837",
+		rowSelected: "#2E2A48",
 
 		ink: "#e0def4",
 		inkMuted: "#c9c6e0",
 		inkDim: "#aaa7c3",
 		inkDisabled: "#6e6a86",
 
-		hairline: "#414057",
+		hairline: "#3A3950",
 
 		// `hairline` stepped toward `inkDim`, so it reads on this palette's own
 
 		// `sunken`: 1.86:1 there against `hairline`'s 1.72:1.
 
-		hairlineStrong: "#46455C",
+		hairlineStrong: "#3E3D54",
 		borderControl: "#8f8ba9",
 
-		accent: "#eaaca9",
+		accent: "#ea9a97",
 		accentHover: "#f2c2bf",
-		accentActive: "#d69793",
+		accentActive: "#db8d8a",
 		// ΔE00 10.3 from `accent` and 10.8:1 on surface, where the accent is
 		// 7.5:1.
 		chartBarHover: "#FFD6D2",
@@ -123,7 +144,7 @@ export const rosePineMoon: ThemeDefinition = {
 		// The palette's own `info`, which is the role this composer's command
 		// word already resolved to: the tint moves no pixel the palette did not
 		// already choose. The role and its floors are in `palette-contract.ts`.
-		accentWash: "#382b38",
+		accentWash: "#312431",
 		onAccent: "#232136",
 		/*
 		 * The theme's own second hue, and the port had dropped it: the TUI's
@@ -139,26 +160,26 @@ export const rosePineMoon: ThemeDefinition = {
 		 * 2.0), 6.41:1 for `accentAlt` on it, and 4.62 from the nearest ground it
 		 * is painted on.
 		 */
-		accentAltWash: "#332C3B",
+		accentAltWash: "#2C2534",
 
 		// pine, lifted for `elevated`.
 		success: "#4eadd9",
-		successWash: "#22303c",
+		successWash: "#1b2935",
 		successBorder: "#4B8AA9",
 
 		warning: "#f6c177",
-		warningWash: "#37301f",
+		warningWash: "#302918",
 		warningBorder: "#9A8050",
 
 		// The danger border is the danger button's only edge until hover, so it
 		// clears 3:1 on the dialog ground as well as on canvas and surface.
 		danger: "#f97a9e",
-		dangerWash: "#38222e",
+		dangerWash: "#301b27",
 		dangerBorder: "#B86C85",
 
 		// foam, lifted off 9ccfd8 to clear ΔE00 15 from the lifted pine above.
 		info: "#A0D4DD",
-		infoWash: "#23343a",
+		infoWash: "#1c2d33",
 		infoBorder: "#5B8A94",
 
 		overlayShadow: "0 12px 32px -12px rgb(20 18 32 / 0.7)",
