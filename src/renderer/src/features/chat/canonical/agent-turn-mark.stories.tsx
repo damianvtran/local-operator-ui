@@ -590,3 +590,54 @@ export const LongWindowedLargeNoMarks: Story = {
 		</div>
 	),
 };
+
+/**
+ * THE OPERATOR'S CASE (2026-11-04): an agent turn that opens straight into tool
+ * rows, the shape of most delegated sessions. Without a picture its first tool
+ * row must sit directly under the user's turn, at the turn gap and nothing more;
+ * with one, the picture's line sits between them. `data-frame` is the measure
+ * hook for the y offset of the first tool row.
+ */
+const TOOL_FIRST = transcriptOf([
+	user("tu1", "Run the checks on the avatar branch."),
+	tool({
+		id: "tt1",
+		ts: TS + 500,
+		toolName: "bash",
+		args: { command: "pnpm check-types" },
+	}),
+	tool({
+		id: "tt2",
+		ts: TS + 600,
+		toolName: "read",
+		args: { path: "src/renderer/src/shared/agent-avatar/avatar-presence.ts" },
+	}),
+	assistant("ta1", "Types are clean and the presence table reads as intended."),
+]);
+
+export const ToolFirstNoPicture: Story = {
+	render: () => (
+		<div className="bg-canvas p-6">
+			<PicturePane
+				frame="tool-first-no-picture"
+				width={720}
+				agentId={BARE_AGENT_ID}
+				transcript={TOOL_FIRST}
+				height={320}
+			/>
+		</div>
+	),
+};
+
+export const ToolFirstPicture: Story = {
+	render: () => (
+		<div className="bg-canvas p-6">
+			<PicturePane
+				frame="tool-first-picture"
+				width={720}
+				transcript={TOOL_FIRST}
+				height={320}
+			/>
+		</div>
+	),
+};
