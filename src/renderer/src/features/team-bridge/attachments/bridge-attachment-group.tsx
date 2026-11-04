@@ -137,7 +137,7 @@ export function BridgeAttachmentGroup<T extends BridgeAttachmentDescriptor>({
 				hidden={hidden || undefined}
 				data-bridge-attachment-card={preview ? "preview" : "unavailable"}
 				className={cn(
-					"relative min-w-0",
+					"group/slot relative min-w-0",
 					!single && !hidden && cellClass(position, visible),
 				)}
 			>

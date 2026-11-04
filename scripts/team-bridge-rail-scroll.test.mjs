@@ -304,7 +304,7 @@ const orgSwitcher = (app) => {
 		assert.ok(item, `menu ${label}`);
 		await act(async () => item.click());
 		await until(
-			() => switcher().textContent.trim().startsWith(label),
+			() => switcher().getAttribute("aria-label")?.includes(label),
 			`${label} shown`,
 		);
 		await until(() => selectedRow(app), `${label}: a row is selected`);
@@ -472,7 +472,7 @@ test("each organization keeps its own rail position, and leaving Team Bridge kee
 			assert.ok(item, `menu ${label}`);
 			await act(async () => item.click());
 			await until(
-				() => switcher().textContent.trim().startsWith(label),
+				() => switcher().getAttribute("aria-label")?.includes(label),
 				`${label} shown`,
 			);
 			await until(() => selectedRow(app), `${label}: a row is selected`);

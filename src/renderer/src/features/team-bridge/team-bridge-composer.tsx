@@ -530,7 +530,7 @@ export const TeamBridgeComposer: FC<TeamBridgeComposerProps> = ({
 						 * reserved for anything - dictation included. `relative` so the field
 						 * paints above the mention overlay `MentionField` positions under it.
 						 */
-						className="relative block min-h-9 w-full resize-none bg-transparent px-3 py-2 text-[14px] leading-5 text-ink outline-none placeholder:text-ink-dim disabled:cursor-not-allowed disabled:text-ink-dim"
+						className="relative block min-h-9 w-full resize-none bg-transparent px-3 pt-2.5 pb-1.5 text-[14px] leading-5 text-ink outline-none placeholder:text-ink-dim disabled:cursor-not-allowed disabled:text-ink-dim"
 					/>
 				</MentionField>
 				{/*
@@ -545,7 +545,7 @@ export const TeamBridgeComposer: FC<TeamBridgeComposerProps> = ({
 				 */}
 				<div
 					data-composer-controls=""
-					className="flex h-9 min-w-0 items-center gap-1 px-2 pb-2"
+					className="flex h-9 min-w-0 items-center gap-1 px-1.5 pb-1.5"
 				>
 					{dictation.isRecording || dictation.isPreparing ? (
 						<>
@@ -753,10 +753,18 @@ export const TeamBridgeComposer: FC<TeamBridgeComposerProps> = ({
 							{trailing}
 							<Button
 								size="icon-sm"
-								variant="primary"
-								// The circular arrow the pane reads as a send, not the square the
-								// chat composer's icon size gives.
-								className="shrink-0 rounded-full"
+								/* A 28px accent key with the controls' own 6px corner (visual
+								   refresh §3.2 Composer): the circle read as a floating badge
+								   beside square ghost controls in the same toolbar row.
+								   AT REST IT IS A GHOST GLYPH, NOT A WELL (design round 1, D3):
+								   `primary`'s disabled state paints `sunken`, which in the
+								   raised `elevated` card was the darkest, most saturated object
+								   in an empty composer. Accent only while there is something to
+								   send (or it is sending); otherwise the `ghost` disabled state,
+								   a transparent ground with `ink-disabled`, as Slack and Discord
+								   show an idle send. */
+								variant={hasContent || showSpinner ? "primary" : "ghost"}
+								className="shrink-0 rounded-sm"
 								disabled={!hasContent || blocked || sendDisabled || showSpinner}
 								aria-label={t("ui.teamBridge.composer.send")}
 								onClick={() => void handleSubmit()}

@@ -62,11 +62,10 @@ export const duskfox: ThemeDefinition = {
 		// measures 3.80 - a step toward `elevated` to clear the role's 4.0 floor,
 		// which the block carries because the fill IS its boundary.
 		messageSurface: "#26233e",
-		// The media slot's well: `sunken` itself, which already clears the
-		// role's floor off this canvas (measured ΔE00 4.14, 5.24 L*).
-		// Lifted #120F1F -> #131120 (L* 5.14 -> 5.81) once Team Bridge's
-		// inline images and file chips began to paint this well (#1659): as far
-		// toward L* 6 as the media floor allows (ΔE00 4.10 off canvas; chip hosts >= 3.0).
+		// The media slot's well. It was `sunken` itself (#120F1F) until Team
+		// Bridge's inline images and file chips began to paint it (#1659), then
+		// lifted #120F1F -> #131120 (L* 5.14 -> 5.81): as far toward L* 6 as the
+		// media floor allows (ΔE00 4.10 off canvas; chip hosts >= 3.0).
 		mediaSurface: "#131120",
 
 		/*

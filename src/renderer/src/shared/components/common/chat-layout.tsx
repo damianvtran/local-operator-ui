@@ -302,9 +302,23 @@ export const ChatLayout: FC<ChatLayoutProps> = ({
 		if (!column) return;
 		if (routeOwnsSidebar) return; // entry is the effect below
 		focusWasInColumn.current = false;
-		// No current row for this destination (a route with no nav row): leave
-		// focus where the browser put it rather than guess a control.
-		column.querySelector<HTMLElement>('[aria-current="page"]')?.focus();
+		/*
+		 * THE DESTINATION ROW, NOT THE FIRST CURRENT ONE (#1660 QA Q6 / UX U6).
+		 * `New chat` also wears `aria-current="page"` whenever an untargeted
+		 * draft is staged - on every route - and it precedes the destination
+		 * rows, so the first match parked a reader who just left for Library on
+		 * a control that stages a chat. A disabled control (New chat before the
+		 * catalogue is ready) cannot take focus at all, so it is skipped too.
+		 * `/chat` itself has no row of its own, so New chat is still the answer
+		 * there, through the second query. No current row at all (a route with
+		 * no nav row): leave focus where the browser put it.
+		 */
+		(
+			column.querySelector<HTMLElement>(
+				'[aria-current="page"]:not([data-new-chat-row]):not(:disabled)',
+			) ??
+			column.querySelector<HTMLElement>('[aria-current="page"]:not(:disabled)')
+		)?.focus();
 	}, [routeOwnsSidebar]);
 	/*
 	 * Entry: the route's rail arrives through a portal a commit or more later
@@ -313,13 +327,20 @@ export const ChatLayout: FC<ChatLayoutProps> = ({
 	 *
 	 * WHY NOT THE FIRST CONTROL (operator, 2026-11-04: "when you click Team
 	 * Bridge it has the back button highlighted and tooltip open"). Focusing Back
-	 * from script is a programmatic focus Chromium paints as `:focus-visible`
+	 * from script is a programmatic focus Chromium can paint as `:focus-visible`
 	 * (the ring), and Radix's tooltip trigger opens on any focus that did not
-	 * follow a pointerdown ON it - so every mouse entry arrived with Back ringed
-	 * and "Back (⌘[)" open. The host takes focus instead (`tabIndex={-1}`,
-	 * `focusVisible: false`): focus still does not fall to `<body>` (U2/Q3), and
-	 * the next Tab lands on Back, where a real keyboard focus draws the ring and
-	 * opens the tooltip as it should.
+	 * follow a pointerdown ON it. #1660 U7 answered the tooltip half by marking
+	 * that focus `data-focus-handoff` so Back suppressed its tooltip; the ring
+	 * stayed. The host takes focus instead (`tabIndex={-1}`, `focusVisible:
+	 * false`, named as a region): no ring and no tooltip, focus still does not
+	 * fall to `<body>` (U2/Q3), and the next Tab lands on Back, where a real
+	 * keyboard focus draws the ring and opens the tooltip.
+	 *
+	 * THE HANDOFF OUTLIVES THE FIRST COLUMN (#1660 QA Q5 / review m1) for free:
+	 * a first open draws the EARLY column (Back + title) and then replaces it with
+	 * the full rail, which unmounted a focused Back and dropped focus to `<body>`.
+	 * The host is the shell's own element and survives that swap, so the parked
+	 * focus does too; the watch only waits for the first control to exist.
 	 */
 	useEffect(() => {
 		if (!routeOwnsSidebar || !leftHost || !focusWasInColumn.current) return;
@@ -337,8 +358,12 @@ export const ChatLayout: FC<ChatLayoutProps> = ({
 			} as FocusOptions);
 			return true;
 		};
+		/* The host's own realm: the column is a portal target, and a static-markup
+		   or jsdom host has no global `MutationObserver` of its own. */
+		const Observer =
+			leftHost.ownerDocument.defaultView?.MutationObserver ?? MutationObserver;
 		if (focusFirst()) return;
-		const observer = new MutationObserver(() => {
+		const observer = new Observer(() => {
 			if (focusFirst()) observer.disconnect();
 		});
 		observer.observe(leftHost, { childList: true, subtree: true });
@@ -351,8 +376,8 @@ export const ChatLayout: FC<ChatLayoutProps> = ({
 		 * A ROUTE-OWNED COLUMN IS ALWAYS DOCKED. The route's rail (org switcher,
 		 * titles, sections) has no 56px form, and a strip with nothing in it is the
 		 * dead control this codebase removes elsewhere. The preference is NOT
-		 * rewritten: ⌘B still toggles it here, and it applies the moment the user
-		 * leaves the route - the column they come back to is the one they chose.
+		 * rewritten: ⌘B does nothing here (see `onToggle`), and the preference is
+		 * untouched - the column the user comes back to is the one they chose.
 		 * The capacity cap still applies, so an 800px window keeps its 480px content
 		 * floor (the yield below is switched off for the same no-56px-form reason).
 		 */

@@ -558,6 +558,117 @@ test("entering from the navigation leaves Back unringed and its tooltip closed; 
 	}
 });
 
+/*
+ * #1660 QA Q5: a first open draws the EARLY column (Back + title) and then swaps
+ * it for the full rail. The Back that took focus is unmounted, so focus must be
+ * re-homed on the new first control rather than falling to <body>. And Q6/U6:
+ * on leave, a staged-draft `New chat` (and a disabled current row) also carries
+ * `aria-current="page"` ahead of the destination row - focus goes to the
+ * destination, never to the control that stages a chat.
+ */
+test("entry focus survives the early -> full column swap (#1660 Q5)", async () => {
+	const Staged = ({ full }) =>
+		el(
+			"div",
+			null,
+			el(
+				InLeftSidebarHost,
+				{ fallback: null },
+				full
+					? el("button", { type: "button", "data-test-full": "" }, "Back")
+					: el("button", { type: "button", "data-test-early": "" }, "Back"),
+			),
+		);
+	const shell = (routed, full) =>
+		el(ChatLayout, {
+			sidebar: el(
+				"nav",
+				null,
+				el("button", { type: "button", "data-test-row": "chat" }, "Chat"),
+			),
+			content: routed ? el(Staged, { full }) : el("main"),
+			routeSidebar: routed ? {} : false,
+		});
+	const app = await mount(shell(false, false));
+	try {
+		const doc = app.document;
+		doc.querySelector('[data-test-row="chat"]').focus();
+		await app.rerender(shell(true, false));
+		/* Entry parks focus on the column host, not on Back (#1671): that is
+		   what keeps Back unringed and its tooltip shut on entry, which #1660 U7
+		   had handled with a `data-focus-handoff` mark on Back. */
+		const host = doc.activeElement;
+		assert.equal(
+			host?.hasAttribute("data-route-sidebar-host"),
+			true,
+			"entry: the column host has focus",
+		);
+		assert.ok(
+			host.querySelector("[data-test-early]"),
+			"the early column is in it",
+		);
+		await app.rerender(shell(true, true));
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		/* The host is the shell's element and survives the early -> full swap,
+		   so focus never falls to <body> (Q5's actual failure). */
+		assert.equal(
+			doc.activeElement === host,
+			true,
+			`focus stays on the host across the swap, not <body> (got ${doc.activeElement?.tagName})`,
+		);
+		assert.ok(
+			host.querySelector("[data-test-full]"),
+			"the full column replaced it",
+		);
+	} finally {
+		await app.teardown();
+	}
+});
+
+test("leave focus picks the destination row, not a staged New chat or a disabled row (#1660 Q6/U6)", async () => {
+	const nav = (newChatDisabled) =>
+		el(
+			"nav",
+			null,
+			el(
+				"button",
+				{
+					type: "button",
+					"aria-current": "page",
+					"data-new-chat-row": "",
+					disabled: newChatDisabled,
+				},
+				"New chat",
+			),
+			el(
+				"button",
+				{ type: "button", "aria-current": "page", "data-test-row": "library" },
+				"Library",
+			),
+		);
+	const shell = (routed, newChatDisabled) =>
+		el(ChatLayout, {
+			sidebar: nav(newChatDisabled),
+			content: el(Route),
+			routeSidebar: routed ? {} : false,
+		});
+	for (const disabled of [false, true]) {
+		const app = await mount(shell(true, disabled));
+		try {
+			const doc = app.document;
+			doc.querySelector("[data-test-rail]").focus();
+			await app.rerender(shell(false, disabled));
+			assert.equal(
+				doc.activeElement?.getAttribute("data-test-row"),
+				"library",
+				`leave (New chat ${disabled ? "disabled" : "enabled"}): focus is on the destination row`,
+			);
+		} finally {
+			await app.teardown();
+		}
+	}
+});
+
 test("Back goes through history only when this window has an entry before this one", () => {
 	assert.equal(teamBridgeLeaveTarget({ idx: 3, key: "k" }), "history");
 	assert.equal(teamBridgeLeaveTarget({ idx: 1 }), "history");

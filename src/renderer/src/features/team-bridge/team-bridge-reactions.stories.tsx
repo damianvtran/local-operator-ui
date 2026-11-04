@@ -504,6 +504,72 @@ export const MessageToolbar: Story = {
  * PR) paints `row-hover` under the pills and reveals it. The play pins the
  * rest half, which needs no pointer.
  */
+/**
+ * THE OVERLAY TOOLBAR AT A SCROLLER'S TOP EDGE (#1668 UX round 1, U2). The
+ * toolbar floats 16px above its row, so a row that starts within 16px of the
+ * scroll container's top had its toolbar's top cut off. Here a 240px scroller
+ * is scrolled so the second row sits at its top; hovering that row must tuck
+ * the toolbar 4px INSIDE the row (`data-tucked`) rather than clip it.
+ */
+export const ToolbarAtScrollTop: Story = {
+	parameters: { layout: "fullscreen", realRows: true },
+	decorators: [
+		(Story) => (
+			<div
+				data-u2-scroller=""
+				className="h-60 w-[560px] overflow-y-auto bg-surface text-ink"
+			>
+				<Story />
+			</div>
+		),
+	],
+	render: () => (
+		<TeamBridgeMessageList
+			labelFor={(sender) => sender.display_label}
+			reactionContext={storyReactionContext}
+			onReply={() => {}}
+			messages={[
+				"Shipping today.",
+				"Second row.",
+				"Third row.",
+				"Fourth row.",
+				"Fifth row.",
+				"Sixth row.",
+				"Seventh row.",
+			].map((body, index) => ({
+				...toolbarRoot,
+				id: `${toolbarRoot.id}_${index}`,
+				seq: index + 1,
+				/* Ten minutes apart: four group headers, so each row is tall
+					   enough to scroll to the top edge. */
+				created_at: new Date(
+					Date.parse(toolbarRoot.created_at) + index * 600_000,
+				).toISOString(),
+				body,
+				attachments: undefined,
+				reply_count: undefined,
+				reply_participants: undefined,
+				last_reply_at: undefined,
+				reactions: index === 1 ? MIXED_REACTIONS : undefined,
+			}))}
+		/>
+	),
+	play: async ({ canvasElement }) => {
+		const scroller =
+			canvasElement.querySelector<HTMLElement>("[data-u2-scroller]");
+		const row =
+			canvasElement.querySelectorAll<HTMLElement>("[data-message-id]")[1];
+		if (!scroller || !row) throw new Error("rig missing");
+		// After fonts and layout settle, so the offset is the final one.
+		await document.fonts.ready;
+		await new Promise((resolve) => requestAnimationFrame(resolve));
+		scroller.scrollTop +=
+			row.getBoundingClientRect().top -
+			scroller.getBoundingClientRect().top -
+			6;
+	},
+};
+
 export const RealRowReactions: Story = {
 	parameters: { layout: "fullscreen", realRows: true },
 	decorators: [
