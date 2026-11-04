@@ -83,8 +83,9 @@ export const CONTRAST_PRESETS = Object.freeze({
  * and palettes authored there (githubLight, localOperatorLight, ayuLight) cannot
  * lift their paper at all. So light High spends itself where it can: the paper
  * rises as far as the compressed ladder allows (never below Standard), and the
- * body ink takes the rest (`tensionInk`) - fleet-wide, ink/canvas rises 12-30%
- * from Standard to High on light. The presets gate's order leg holds that.
+ * body ink takes the rest (`tensionInk`) - fleet-wide, ink/canvas rises 5.4-26.5%
+ * from Standard to High on light (measured over the 18 light palettes:
+ * highContrastLight 5.4%, kanagawaLotus 26.5%). The presets gate's order leg holds that.
  */
 export const CONTRAST_ANCHORS = Object.freeze({
 	dark: Object.freeze({ high: 5, soft: 20 }),
