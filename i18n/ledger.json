@@ -8077,8 +8077,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "a69a3343c59d704aa5ff435c733d7789c4a3171e5099b643be0008ab5a294dd3",
-			"target_sha256": "aaf723367e871b4c2bf53cc4d9655cdbd9ff816dae68971b75055ff1aefec362",
+			"source_sha256": "160d5a0bbb71761ccd20e5bf861d478b85572226fcde55008c7c91edc4d37d02",
+			"target_sha256": "1918ce35fd906a9200f1b6fcbde1b100554498f91620e6663aced687e1bc0eb2",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -8093,20 +8093,19 @@
 			},
 			"auditors": [
 				{
-					"agent": "reviewer",
+					"agent": "i18n-auditor",
 					"model": "anthropic/claude-sonnet-5-5",
 					"date": "2026-11-03",
 					"result": "clean",
-					"instance": "f93eb129057e-u1-es",
+					"instance": "06af958924d2-gt2-es",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/f93eb129057e-u1-es.json",
-					"receipt_sha256": "22bf197426ac053a87d1d716dd58eb1d2b95a89e7077b8db0f5e20dd7f2b3814",
-					"scope": "U1 fileCard.list/kind; unchanged prior coverage inherited by exact compatibility; source-only audit; Russian R2 retained where applicable"
+					"receipt": "i18n/receipts/06af958924d2-gt2-es.json",
+					"receipt_sha256": "f67f6718b03b3a584c44a0a240d0ffe61f0983b9214df86b6ef7dc9f7b509f6c"
 				}
 			],
 			"status": "audited",
@@ -9551,6 +9550,29 @@
 							"receipt": "i18n/receipts/f93eb129057e-es.json",
 							"receipt_sha256": "4fe558aa7e29b4b535148887365af91eb277eac6cab6de31dcd979f4f2c43dcd",
 							"scope": "Five attachmentCard keys; older values identical to ledger-bound base 47e06bc7"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "a69a3343c59d704aa5ff435c733d7789c4a3171e5099b643be0008ab5a294dd3",
+					"target_sha256": "aaf723367e871b4c2bf53cc4d9655cdbd9ff816dae68971b75055ff1aefec362",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-03",
+							"result": "clean",
+							"instance": "f93eb129057e-u1-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/f93eb129057e-u1-es.json",
+							"receipt_sha256": "22bf197426ac053a87d1d716dd58eb1d2b95a89e7077b8db0f5e20dd7f2b3814",
+							"scope": "U1 fileCard.list/kind; unchanged prior coverage inherited by exact compatibility; source-only audit; Russian R2 retained where applicable"
 						}
 					],
 					"status": "audited"
@@ -18119,8 +18141,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "a69a3343c59d704aa5ff435c733d7789c4a3171e5099b643be0008ab5a294dd3",
-			"target_sha256": "297ce14c1357b3e67a949032aa27b8ab202600966b1d4602f75fc592455de52e",
+			"source_sha256": "160d5a0bbb71761ccd20e5bf861d478b85572226fcde55008c7c91edc4d37d02",
+			"target_sha256": "44fd3e3b1ce8067ccaa4b56ea5364584c6734fa6bf439be6c3634466ef5f71bf",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -18136,20 +18158,19 @@
 			},
 			"auditors": [
 				{
-					"agent": "reviewer",
+					"agent": "i18n-auditor",
 					"model": "anthropic/claude-sonnet-5-5",
 					"date": "2026-11-03",
 					"result": "clean",
-					"instance": "f93eb129057e-u1-fr",
+					"instance": "06af958924d2-gt2-fr",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/f93eb129057e-u1-fr.json",
-					"receipt_sha256": "68918cc0458c574dd6f973c196dfc1a2e4c69d3311714e2898b24197b6afde58",
-					"scope": "U1 fileCard.list/kind; unchanged prior coverage inherited by exact compatibility; source-only audit; Russian R2 retained where applicable"
+					"receipt": "i18n/receipts/06af958924d2-gt2-fr.json",
+					"receipt_sha256": "ca8b8077d1394d041a5bc21ba641bdb41ba1cfb55a9f372a7f83ae965f842183"
 				}
 			],
 			"status": "audited",
@@ -19618,6 +19639,29 @@
 							"receipt": "i18n/receipts/f93eb129057e-fr.json",
 							"receipt_sha256": "60a61625870414586e08c9a4a1bc5b0969d42024c2527c7de474733ecf6d09eb",
 							"scope": "Five attachmentCard keys; older values identical to ledger-bound base 47e06bc7"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "a69a3343c59d704aa5ff435c733d7789c4a3171e5099b643be0008ab5a294dd3",
+					"target_sha256": "297ce14c1357b3e67a949032aa27b8ab202600966b1d4602f75fc592455de52e",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-03",
+							"result": "clean",
+							"instance": "f93eb129057e-u1-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/f93eb129057e-u1-fr.json",
+							"receipt_sha256": "68918cc0458c574dd6f973c196dfc1a2e4c69d3311714e2898b24197b6afde58",
+							"scope": "U1 fileCard.list/kind; unchanged prior coverage inherited by exact compatibility; source-only audit; Russian R2 retained where applicable"
 						}
 					],
 					"status": "audited"
@@ -28041,8 +28085,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "a69a3343c59d704aa5ff435c733d7789c4a3171e5099b643be0008ab5a294dd3",
-			"target_sha256": "ba0fd8a88578fb79e2425f61b600f869919d2effe9f8c25832b2d5d094c57e8b",
+			"source_sha256": "160d5a0bbb71761ccd20e5bf861d478b85572226fcde55008c7c91edc4d37d02",
+			"target_sha256": "07f067f9d4fb7eb6c2ef99b15b14a6dd3bc2f8ca547a4ed34a1a5eff0a1256aa",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -28057,20 +28101,19 @@
 			},
 			"auditors": [
 				{
-					"agent": "reviewer",
+					"agent": "i18n-auditor",
 					"model": "anthropic/claude-sonnet-5-5",
 					"date": "2026-11-03",
 					"result": "clean",
-					"instance": "f93eb129057e-u1-hi",
+					"instance": "06af958924d2-gt2-hi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/f93eb129057e-u1-hi.json",
-					"receipt_sha256": "c0788d5e2117b5d424258aee42a38674e62bd6c8a3bbd16e42a793d51350f47f",
-					"scope": "U1 fileCard.list/kind; unchanged prior coverage inherited by exact compatibility; source-only audit; Russian R2 retained where applicable"
+					"receipt": "i18n/receipts/06af958924d2-gt2-hi.json",
+					"receipt_sha256": "36ffb96822555f881cc81c9beddd02c2d6fce0da18701f7e73c62d384f1c8302"
 				}
 			],
 			"status": "audited",
@@ -29445,6 +29488,29 @@
 							"receipt": "i18n/receipts/f93eb129057e-hi.json",
 							"receipt_sha256": "0daccb8bf6333a03e284ad1139e83016e84f10f0205d55002cd847c098609294",
 							"scope": "Five attachmentCard keys; older values identical to ledger-bound base 47e06bc7"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "a69a3343c59d704aa5ff435c733d7789c4a3171e5099b643be0008ab5a294dd3",
+					"target_sha256": "ba0fd8a88578fb79e2425f61b600f869919d2effe9f8c25832b2d5d094c57e8b",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-03",
+							"result": "clean",
+							"instance": "f93eb129057e-u1-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/f93eb129057e-u1-hi.json",
+							"receipt_sha256": "c0788d5e2117b5d424258aee42a38674e62bd6c8a3bbd16e42a793d51350f47f",
+							"scope": "U1 fileCard.list/kind; unchanged prior coverage inherited by exact compatibility; source-only audit; Russian R2 retained where applicable"
 						}
 					],
 					"status": "audited"
@@ -37642,8 +37708,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "a69a3343c59d704aa5ff435c733d7789c4a3171e5099b643be0008ab5a294dd3",
-			"target_sha256": "866c60249976a1b492fc7d3c7c636682097217e94449a28cbc2344be748160e4",
+			"source_sha256": "160d5a0bbb71761ccd20e5bf861d478b85572226fcde55008c7c91edc4d37d02",
+			"target_sha256": "186c966af125a1e092be3b5c13bc3a04649c43a38226814c5bce9143f2e5931f",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -37659,20 +37725,19 @@
 			},
 			"auditors": [
 				{
-					"agent": "reviewer",
+					"agent": "i18n-auditor",
 					"model": "anthropic/claude-sonnet-5-5",
 					"date": "2026-11-03",
-					"result": "clean-with-findings",
-					"instance": "f93eb129057e-u1-ru",
+					"result": "clean",
+					"instance": "06af958924d2-gt2-ru",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
+						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/f93eb129057e-u1-ru.json",
-					"receipt_sha256": "e3151712cb2989574630823d245f78bb629072bc9f6679275671815d3b444675",
-					"scope": "U1 fileCard.list/kind; unchanged prior coverage inherited by exact compatibility; source-only audit; Russian R2 retained where applicable"
+					"receipt": "i18n/receipts/06af958924d2-gt2-ru.json",
+					"receipt_sha256": "4394a260cb45de00a1ab9cb1424e8fa4114ed5dc56fb21dda4ec5e20c81eecac"
 				}
 			],
 			"status": "audited",
@@ -39136,6 +39201,29 @@
 							"receipt": "i18n/receipts/f93eb129057e-ru.json",
 							"receipt_sha256": "fe09d7e37c58de32411de72a9931c77987ae8ef8429777982b98153d426e71b5",
 							"scope": "Five attachmentCard keys; older values identical to ledger-bound base 47e06bc7"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "a69a3343c59d704aa5ff435c733d7789c4a3171e5099b643be0008ab5a294dd3",
+					"target_sha256": "866c60249976a1b492fc7d3c7c636682097217e94449a28cbc2344be748160e4",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-03",
+							"result": "clean-with-findings",
+							"instance": "f93eb129057e-u1-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/f93eb129057e-u1-ru.json",
+							"receipt_sha256": "e3151712cb2989574630823d245f78bb629072bc9f6679275671815d3b444675",
+							"scope": "U1 fileCard.list/kind; unchanged prior coverage inherited by exact compatibility; source-only audit; Russian R2 retained where applicable"
 						}
 					],
 					"status": "audited"
@@ -47370,8 +47458,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "a69a3343c59d704aa5ff435c733d7789c4a3171e5099b643be0008ab5a294dd3",
-			"target_sha256": "4472018e940917220d921e04dd0014b7d6d1bf4b08b4488c4735a4e6e972fe76",
+			"source_sha256": "160d5a0bbb71761ccd20e5bf861d478b85572226fcde55008c7c91edc4d37d02",
+			"target_sha256": "4ac3ad78dabe67a74472ffcb339a2bd455a33e47cf950c4a0b0d3dc59282be77",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -47386,20 +47474,19 @@
 			},
 			"auditors": [
 				{
-					"agent": "reviewer",
+					"agent": "i18n-auditor",
 					"model": "anthropic/claude-sonnet-5-5",
 					"date": "2026-11-03",
 					"result": "clean",
-					"instance": "f93eb129057e-u1-ur",
+					"instance": "06af958924d2-gt2-ur",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/f93eb129057e-u1-ur.json",
-					"receipt_sha256": "3388b95708635b10b8ffa04fe522247549ad1f5f3feec9913cb815ffdfacf35f",
-					"scope": "U1 fileCard.list/kind; unchanged prior coverage inherited by exact compatibility; source-only audit; Russian R2 retained where applicable"
+					"receipt": "i18n/receipts/06af958924d2-gt2-ur.json",
+					"receipt_sha256": "f90833b15bc1c22eb1ab470c721a5aa8235346a62735d702f38916160c40f6da"
 				}
 			],
 			"status": "audited",
@@ -48774,6 +48861,29 @@
 							"receipt": "i18n/receipts/f93eb129057e-ur.json",
 							"receipt_sha256": "99c4ad13393194f3939f88fd8587b9014d0b721b80722db6353bcfe4d27b04f0",
 							"scope": "Five attachmentCard keys; older values identical to ledger-bound base 47e06bc7"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "a69a3343c59d704aa5ff435c733d7789c4a3171e5099b643be0008ab5a294dd3",
+					"target_sha256": "4472018e940917220d921e04dd0014b7d6d1bf4b08b4488c4735a4e6e972fe76",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-03",
+							"result": "clean",
+							"instance": "f93eb129057e-u1-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/f93eb129057e-u1-ur.json",
+							"receipt_sha256": "3388b95708635b10b8ffa04fe522247549ad1f5f3feec9913cb815ffdfacf35f",
+							"scope": "U1 fileCard.list/kind; unchanged prior coverage inherited by exact compatibility; source-only audit; Russian R2 retained where applicable"
 						}
 					],
 					"status": "audited"
@@ -57431,8 +57541,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "a69a3343c59d704aa5ff435c733d7789c4a3171e5099b643be0008ab5a294dd3",
-			"target_sha256": "8489bae444742fa6a191c1157e210ad14ebe2dff596214c78d5b8ad779ca7004",
+			"source_sha256": "160d5a0bbb71761ccd20e5bf861d478b85572226fcde55008c7c91edc4d37d02",
+			"target_sha256": "b1173e51429c455f3a81a8984dacdff0027ea5b2c42052b5403a6eb1e676da6f",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -57447,20 +57557,19 @@
 			},
 			"auditors": [
 				{
-					"agent": "reviewer",
+					"agent": "i18n-auditor",
 					"model": "anthropic/claude-sonnet-5-5",
 					"date": "2026-11-03",
-					"result": "clean",
-					"instance": "f93eb129057e-u1-vi",
+					"result": "clean-with-findings",
+					"instance": "06af958924d2-gt2-vi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
+						"minor": 1,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/f93eb129057e-u1-vi.json",
-					"receipt_sha256": "ca59fa2ef6081f281831fe9c96447e28e2576bb36264d95e5748fd8bee159e46",
-					"scope": "U1 fileCard.list/kind; unchanged prior coverage inherited by exact compatibility; source-only audit; Russian R2 retained where applicable"
+					"receipt": "i18n/receipts/06af958924d2-gt2-vi.json",
+					"receipt_sha256": "87546b31d24309c5807e55f5f0b68869de320a961b5a35012084f4ea05adad58"
 				}
 			],
 			"status": "audited",
@@ -58866,6 +58975,29 @@
 							"receipt": "i18n/receipts/f93eb129057e-vi.json",
 							"receipt_sha256": "3fdd568a4cea5597e607d28e2bdd78fd8520da97f4a1ba2a0f92c5db5b2722e3",
 							"scope": "Five attachmentCard keys; older values identical to ledger-bound base 47e06bc7"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "a69a3343c59d704aa5ff435c733d7789c4a3171e5099b643be0008ab5a294dd3",
+					"target_sha256": "8489bae444742fa6a191c1157e210ad14ebe2dff596214c78d5b8ad779ca7004",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-03",
+							"result": "clean",
+							"instance": "f93eb129057e-u1-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/f93eb129057e-u1-vi.json",
+							"receipt_sha256": "ca59fa2ef6081f281831fe9c96447e28e2576bb36264d95e5748fd8bee159e46",
+							"scope": "U1 fileCard.list/kind; unchanged prior coverage inherited by exact compatibility; source-only audit; Russian R2 retained where applicable"
 						}
 					],
 					"status": "audited"
@@ -68116,8 +68248,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "a69a3343c59d704aa5ff435c733d7789c4a3171e5099b643be0008ab5a294dd3",
-			"target_sha256": "b391090007ed109c8a736234711d78dc7f7d2a78512f41f555fe6d40f4f5790b",
+			"source_sha256": "160d5a0bbb71761ccd20e5bf861d478b85572226fcde55008c7c91edc4d37d02",
+			"target_sha256": "806cf1da72801d0c5b725d09e95d6a522b53d42d41541b7dc51d5431cf74e852",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -68132,20 +68264,19 @@
 			},
 			"auditors": [
 				{
-					"agent": "reviewer",
+					"agent": "i18n-auditor",
 					"model": "anthropic/claude-sonnet-5-5",
 					"date": "2026-11-03",
-					"result": "clean",
-					"instance": "f93eb129057e-u1-zh-cn",
+					"result": "clean-with-findings",
+					"instance": "06af958924d2-gt2-zh-cn",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
+						"minor": 1,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/f93eb129057e-u1-zh-cn.json",
-					"receipt_sha256": "5dc4d3200e6e1ed19ae0b3864829be2db2e6a34191f8c09d846c9b2ebead32e4",
-					"scope": "U1 fileCard.list/kind; unchanged prior coverage inherited by exact compatibility; source-only audit; Russian R2 retained where applicable"
+					"receipt": "i18n/receipts/06af958924d2-gt2-zh-cn.json",
+					"receipt_sha256": "3a9b71000bf775ca1c3b43585a08c45ee52976314edce1b35273dea18517eddb"
 				}
 			],
 			"status": "audited",
@@ -69573,6 +69704,29 @@
 							"receipt": "i18n/receipts/f93eb129057e-zh-cn.json",
 							"receipt_sha256": "3080a67ffe533a151a201f7871cd40e6ccab40caaa48331fe7bc65992671c2e0",
 							"scope": "Five attachmentCard keys; older values identical to ledger-bound base 47e06bc7"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "a69a3343c59d704aa5ff435c733d7789c4a3171e5099b643be0008ab5a294dd3",
+					"target_sha256": "b391090007ed109c8a736234711d78dc7f7d2a78512f41f555fe6d40f4f5790b",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-03",
+							"result": "clean",
+							"instance": "f93eb129057e-u1-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/f93eb129057e-u1-zh-cn.json",
+							"receipt_sha256": "5dc4d3200e6e1ed19ae0b3864829be2db2e6a34191f8c09d846c9b2ebead32e4",
+							"scope": "U1 fileCard.list/kind; unchanged prior coverage inherited by exact compatibility; source-only audit; Russian R2 retained where applicable"
 						}
 					],
 					"status": "audited"

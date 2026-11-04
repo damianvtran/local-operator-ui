@@ -216,6 +216,17 @@ import {
 	useTeamBridgeUnreadView,
 	withSharedUnread,
 } from "./team-bridge-unread-sync";
+import {
+	type TeamBridgeQuickView,
+	type TeamBridgeScrollAnchor,
+	type TeamBridgeViewMemory,
+	readLastScope,
+	readViewMemory,
+	rememberedScroll,
+	rememberedThread,
+	writeLastScope,
+	writeViewMemory,
+} from "./team-bridge-view-memory";
 import { useReportTeamBridgeViewing } from "./team-bridge-viewing";
 import { useStickToBottom } from "./use-stick-to-bottom";
 import {
@@ -667,8 +678,25 @@ export type TeamBridgePageViewProps = {
 	onLoadMoreArchived?: () => void;
 	onOpenArchived?: () => void;
 	onRetryArchived?: () => void;
-	/** Story/test seeds: open the view, or a confirm dialog, in its resting state. */
-	initialQuickView?: "archived";
+	/**
+	 * Opens the view in a quick view: a story/test seed, and the container's
+	 * restore of the quick view the reader left open (`team-bridge-view-memory`).
+	 */
+	initialQuickView?: TeamBridgeQuickView | null;
+	/**
+	 * The reading position to restore once the timeline has its rows; `null`
+	 * opens at the newest message as before. Applied once per mount.
+	 */
+	initialScroll?: TeamBridgeScrollAnchor | null;
+	/**
+	 * Reports the view-local parts of "where the reader is" (thread pane, quick
+	 * view, reading position) so the container can persist them: this view
+	 * unmounts when the reader leaves the page, and that unmount is exactly what
+	 * used to lose them.
+	 */
+	onViewMemory?: (
+		view: Partial<TeamBridgeViewMemory> & { target: TeamBridgeTarget },
+	) => void;
 	initialDialog?: { kind: "archive" | "delete"; conversationId: string };
 	/**
 	 * The `team_bridge_threads` capability answer, computed by the container from
@@ -843,6 +871,8 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	onOpenArchived,
 	onRetryArchived,
 	initialQuickView,
+	initialScroll = null,
+	onViewMemory,
 	initialDialog,
 	threadsCapabilityState = "unknown",
 	reactionsCapabilityState = "unknown",
@@ -880,9 +910,9 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	onRetryMemberships,
 }) => {
 	const locale = useI18nLocale();
-	const [quickView, setQuickView] = useState<
-		"drafts" | "scheduled" | "invitations" | "archived" | null
-	>(initialQuickView ?? null);
+	const [quickView, setQuickView] = useState<TeamBridgeQuickView | null>(
+		initialQuickView ?? null,
+	);
 	/* The confirm dialogs name the conversation they were opened for, not "the
 	   selected one": the selection can change under an open dialog. */
 	const [dialog, setDialog] = useState<{
@@ -1557,8 +1587,9 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 		() => messages.reduce((max, row) => Math.max(max, row.seq), -1),
 		[messages],
 	);
+	const timelineResetKey = `${shown?.tenant_id ?? ""}:${shown?.id ?? ""}:${messageState}:${quickView ?? ""}`;
 	const timeline = useStickToBottom({
-		resetKey: `${shown?.tenant_id ?? ""}:${shown?.id ?? ""}:${messageState}:${quickView ?? ""}`,
+		resetKey: timelineResetKey,
 		/* The DRAWN rows, not the server page: the author's own message is on screen
 	   before the page carries it, and pinning must count it as content or the row
 	   lands just below the fold of a view the press had already pinned. */
@@ -1585,6 +1616,124 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 		timeline.hold();
 		row.scrollIntoView?.({ block: "center" });
 	}, [highlightMessageId, timeline.hold, timeline.rootRef]);
+	/*
+	 * THE READING POSITION THE READER LEFT AT (`team-bridge-view-memory`).
+	 *
+	 * Declared after both scrolls above for the same reason the highlight is: the
+	 * stick-to-bottom reset has already put the timeline at the newest message, so
+	 * this is the last scroll before paint. It runs ONCE per mount, when the
+	 * remembered row is on screen, then `hold()`s like a reader who scrolled up by
+	 * hand so the next arrival or resize does not yank them down. A remembered row
+	 * the loaded page no longer holds leaves the timeline at the newest message,
+	 * which is the default. A notification's highlight outranks it.
+	 */
+	const scrollRestored = useRef(false);
+	// Captured at mount: the container stops passing it once the restore resolves,
+	// which can be before this conversation's history has answered.
+	const restoreScroll = useRef(initialScroll);
+	useLayoutEffect(() => {
+		const initialScroll = restoreScroll.current;
+		if (scrollRestored.current || !initialScroll || highlightMessageId) return;
+		if (messageState !== "ready" || merged.messages.length === 0) return;
+		scrollRestored.current = true;
+		const viewport = timeline.rootRef.current?.querySelector<HTMLElement>(
+			"[data-radix-scroll-area-viewport]",
+		);
+		const row = Array.from(
+			viewport?.querySelectorAll<HTMLElement>("[data-message-id]") ?? [],
+		).find((element) => element.dataset.messageId === initialScroll.messageId);
+		if (!viewport || !row) return;
+		timeline.hold();
+		viewport.scrollTop +=
+			row.getBoundingClientRect().top -
+			viewport.getBoundingClientRect().top -
+			initialScroll.offset;
+	}, [
+		highlightMessageId,
+		messageState,
+		merged.messages.length,
+		timeline.hold,
+		timeline.rootRef,
+	]);
+	/*
+	 * REPORT WHERE THE READER IS, so the container can persist it. The view owns
+	 * the thread pane, the quick view and the scroll offset, and it unmounts when
+	 * the reader leaves the page - that unmount is what used to lose all three.
+	 *
+	 * The reading position is the first visible message and its offset (not a raw
+	 * `scrollTop`, which a prepended page would invalidate), or `null` within the
+	 * stick-to-bottom threshold so a reader at the newest message returns to the
+	 * newest message. Scroll reports are coalesced (one write per idle burst) and
+	 * flushed on unmount, because leaving the page is exactly the moment the last
+	 * position matters. The seed is the restored position, so the mount report
+	 * cannot overwrite a position this mount has not applied yet.
+	 */
+	const scrollAnchor = useRef<TeamBridgeScrollAnchor | null>(
+		restoreScroll.current,
+	);
+	const reportView = useRef<() => void>(() => {});
+	reportView.current = () => {
+		if (!onViewMemory || target === null) return;
+		onViewMemory({
+			target,
+			/* The selection, not `threadIsOpen`: before the account resolves the
+			   pane cannot open yet, and reporting "closed" then would erase a
+			   restored thread the reader never closed. */
+			thread: threadSelection ?? threadLink ?? null,
+			quickView,
+			scroll: scrollAnchor.current
+				? { ...scrollAnchor.current, targetKey: draftTargetKey(target) }
+				: null,
+		});
+	};
+	// biome-ignore lint/correctness/useExhaustiveDependencies: these are the triggers; the report reads them through `reportView`.
+	useEffect(() => {
+		reportView.current();
+	}, [target, threadSelection, threadLink, quickView]);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: the reset key re-binds the listener - a new conversation can mount a new viewport.
+	useEffect(() => {
+		const viewport = timeline.rootRef.current?.querySelector<HTMLElement>(
+			"[data-radix-scroll-area-viewport]",
+		);
+		if (!viewport) return;
+		/* Measured on every scroll event (the browser already coalesces those to
+		   one per frame, and this reads a handful of rects), WRITTEN on a short
+		   idle and flushed on cleanup - by then the viewport is detached, so the
+		   cleanup cannot measure. The view is keyed by its target, so one mount
+		   only ever measures one conversation. */
+		let pending: ReturnType<typeof setTimeout> | undefined;
+		const flush = () => {
+			pending = undefined;
+			reportView.current();
+		};
+		const onScroll = () => {
+			const box = viewport.getBoundingClientRect();
+			const atNewest =
+				viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight <=
+				48;
+			const row = atNewest
+				? undefined
+				: Array.from(
+						viewport.querySelectorAll<HTMLElement>("[data-message-id]"),
+					).find((element) => element.getBoundingClientRect().bottom > box.top);
+			scrollAnchor.current = row?.dataset.messageId
+				? {
+						messageId: row.dataset.messageId,
+						offset: row.getBoundingClientRect().top - box.top,
+					}
+				: null;
+			if (pending !== undefined) clearTimeout(pending);
+			pending = setTimeout(flush, 250);
+		};
+		viewport.addEventListener("scroll", onScroll, { passive: true });
+		return () => {
+			viewport.removeEventListener("scroll", onScroll);
+			if (pending !== undefined) {
+				clearTimeout(pending);
+				flush();
+			}
+		};
+	}, [timelineResetKey, timeline.rootRef]);
 	/*
 	 * ONE AUTO-RETRY PER ATTEMPT, never one per reader gesture. A manual retry of an
 	 * attempt that already spent its automatic retry keeps the key that retry minted (so
@@ -3925,6 +4074,15 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 	 * resolves under it, and it is cleared once handled.
 	 */
 	const messageLink = useRef<TeamBridgeMessageLink | null>(null);
+	/*
+	 * The CONVERSATION a notification click named, carried across the same owner
+	 * remount for the same reason: the click's parameters are consumed on the
+	 * first owned render, and the remount reads the remembered view - which,
+	 * before the click was written there, is the conversation the reader had
+	 * BEFORE the click. Ids only; a conversation the next owner cannot resolve
+	 * falls back silently like any other remembered target.
+	 */
+	const clickCarry = useRef<ClickCarry | null>(null);
 	// Remount immediately at the real auth transition, before stale TB status can
 	// render. Retain only original-owner data; never carry an A callback into B.
 	return (
@@ -3934,9 +4092,12 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 			drafts={drafts.current}
 			receipts={receipts.current}
 			messageLinkCarry={messageLink}
+			clickCarry={clickCarry}
 		/>
 	);
 };
+
+type ClickCarry = { scope: TeamBridgeScope; view: TeamBridgeViewMemory };
 
 type TeamBridgeMessageLink = {
 	conversationId: string;
@@ -3969,12 +4130,13 @@ const viewKeyFor = (
 const TeamBridgeOwnedPage: FC<{
 	accountId?: string;
 	messageLinkCarry: { current: TeamBridgeMessageLink | null };
+	clickCarry: { current: ClickCarry | null };
 	drafts: Map<string, OwnedDraft>;
 	receipts: Map<
 		string,
 		Map<string, { id: string; tenantId: string | undefined }>
 	>;
-}> = ({ accountId, drafts, receipts, messageLinkCarry }) => {
+}> = ({ accountId, drafts, receipts, messageLinkCarry, clickCarry }) => {
 	/* The feature's one cache reader: the opening snapshot below is read from it, and
 	   the writes that patch cached pages run through it. */
 	const client = useQueryClient();
@@ -4035,34 +4197,92 @@ const TeamBridgeOwnedPage: FC<{
 			}),
 		[messageLinkCarry],
 	);
+	/*
+	 * THE READER'S LAST SCOPE seeds the first paint, synchronously, so a
+	 * multi-organization account lands where it left off rather than on the union
+	 * and then correcting. "Last" is the scope they were LOOKING AT when they left
+	 * (`team-bridge-view-memory`), else their last switcher pick. The stored value
+	 * only decides this page's START: `resolveOpeningScope` still validates it
+	 * against the memberships once they answer, and only an explicit switcher pick
+	 * writes the preference.
+	 */
+	const storedScope = useMemo(() => {
+		const storage = browserDraftStorage();
+		return storage && accountId
+			? (readLastScope(storage, accountId) ??
+					readScopePreference(storage, accountId))
+			: undefined;
+	}, [accountId]);
+	/* A click a previous owner consumed (see `clickCarry`) opens like the click. */
+	const carriedClick = useRef(
+		requestedConversation ? null : clickCarry.current,
+	).current;
+	const [scope, setScope] = useState<TeamBridgeScope>(() =>
+		requestedTenant
+			? asTeamBridgeTenantId(requestedTenant)
+			: (carriedClick?.scope ?? storedScope ?? TEAM_BRIDGE_ALL_SCOPE),
+	);
+	/*
+	 * WHERE THE READER WAS IN THIS SCOPE (the operator's "it always defaults back
+	 * to general"). This container is a route element and unmounts whenever the
+	 * reader leaves Team Bridge, so its `target` used to restart at `null` and the
+	 * landing effect below picked #general on every return. The record is read
+	 * here, during render, so the initialisers below paint the remembered
+	 * conversation in the FIRST frame - no #general flash and no request beyond
+	 * the ones the page already makes. A ref, re-read whenever the scope changes:
+	 * each organization, and "All organizations", keeps its own record.
+	 */
+	const viewMemory = useRef<{
+		scope: TeamBridgeScope | null;
+		view: TeamBridgeViewMemory | null;
+	}>({ scope: null, view: null });
+	if (viewMemory.current.scope !== scope) {
+		const storage = browserDraftStorage();
+		viewMemory.current = {
+			scope,
+			view:
+				storage && accountId ? readViewMemory(storage, accountId, scope) : null,
+		};
+	}
+	/*
+	 * A notification click or deep link (`?conversation=`) outranks the memory:
+	 * the reader asked for THAT conversation, and the write-through below then
+	 * makes it the new remembered one.
+	 */
+	const restoreOnOpen = requestedConversation
+		? null
+		: (carriedClick?.view ?? viewMemory.current.view);
 	const [threadLink, setThreadLink] = useState<ThreadTarget | null>(() =>
 		/* THE HOLD: a `?thread=` deep link (a notification click, a shared link)
 		   must not become a thread target in this build. The conversation still
 		   opens - that is the click's other half - and no selection is left
 		   behind for a later render to mount. */
-		TEAM_BRIDGE_THREADS_SHIPPED_IN_THIS_BUILD
-			? threadTargetFromSearch(searchParams)
-			: null,
+		requestedConversation
+			? TEAM_BRIDGE_THREADS_SHIPPED_IN_THIS_BUILD
+				? threadTargetFromSearch(searchParams)
+				: null
+			: TEAM_BRIDGE_THREADS_SHIPPED_IN_THIS_BUILD
+				? rememberedThread(restoreOnOpen)
+				: null,
 	);
+	const scopeChosen = useRef(Boolean(requestedTenant || carriedClick));
 	/*
-	 * THE READER'S LAST SWITCHER PICK seeds the first paint, synchronously, so a
-	 * multi-organization account lands where it left off rather than on the union
-	 * and then correcting. The stored value only decides this page's START:
-	 * `resolveOpeningScope` still validates it against the memberships once they
-	 * answer, and only an explicit switcher pick writes it.
+	 * Consumed once this owner can PERSIST it (review round 1, R4). Clearing it on
+	 * mere existence lost the click when storage refused the write (private
+	 * mode, quota): the carry was the only record, so a second auth remount
+	 * restored the pre-click view. Until a write lands, the in-memory carry stays
+	 * the record; it lives in the route-level container, so leaving Team Bridge
+	 * still drops it.
 	 */
-	const storedScope = useMemo(() => {
+	useEffect(() => {
+		if (!carriedClick || !accountId) return;
 		const storage = browserDraftStorage();
-		return storage && accountId
-			? readScopePreference(storage, accountId)
-			: undefined;
-	}, [accountId]);
-	const [scope, setScope] = useState<TeamBridgeScope>(() =>
-		requestedTenant
-			? asTeamBridgeTenantId(requestedTenant)
-			: (storedScope ?? TEAM_BRIDGE_ALL_SCOPE),
-	);
-	const scopeChosen = useRef(Boolean(requestedTenant));
+		if (
+			storage &&
+			writeViewMemory(storage, accountId, carriedClick.scope, carriedClick.view)
+		)
+			clickCarry.current = null;
+	}, [carriedClick, accountId, clickCarry]);
 	/*
 	 * THE OPENING SNAPSHOT (tb-instant-open, mechanism 1 as far as it honestly
 	 * reaches). The shell's notification watcher has been polling this account's
@@ -4285,8 +4505,48 @@ const TeamBridgeOwnedPage: FC<{
 	const [target, setTarget] = useState<TeamBridgeTarget | null>(() =>
 		requestedConversation
 			? { type: "conversation", id: requestedConversation }
-			: null,
+			: (restoreOnOpen?.target ?? null),
 	);
+	/*
+	 * A REMEMBERED TARGET IS A CLAIM, NOT A FACT, until the reads confirm it: the
+	 * conversation may have been deleted, archived away or had the reader removed
+	 * since. While this holds the remembered target, the validation effect below
+	 * falls back to the default landing - silently - when the reads that could
+	 * resolve it have answered without it.
+	 */
+	const restoredTarget = useRef<TeamBridgeTarget | null>(
+		requestedConversation ? null : (restoreOnOpen?.target ?? null),
+	);
+	/*
+	 * The scopes whose remembered view has already been offered this mount. The
+	 * landing effect restores a scope's record ONCE - on the first landing after
+	 * the page opens or the switcher moves to it - and lands on the default ever
+	 * after: a `null` target from a removal (archive, delete, leave) must never
+	 * re-land on the remembered conversation, which may be the one just removed.
+	 * A scope that opened already restored, or opened on a notification click,
+	 * starts spent.
+	 */
+	const restoredScopes = useRef(
+		new Set<TeamBridgeScope>(
+			requestedConversation || restoreOnOpen ? [scope] : [],
+		),
+	);
+	/*
+	 * A REMEMBERED LANDING STAYS ISSUED UNTIL A RENDER SHOWS IT. `setTarget` from
+	 * the landing effect is a passive-effect update, and a more urgent render (a
+	 * query result arriving through React Query's external store) can commit
+	 * first WITHOUT it - `target` still `null` - and re-run the landing effect.
+	 * Measured in the Storybook flow: that re-run found the scope already spent
+	 * and landed on #general over the restore. The pending landing is re-issued
+	 * instead, and cleared by the first render whose target is not `null`.
+	 */
+	const pendingLanding = useRef<{
+		scope: TeamBridgeScope;
+		target: TeamBridgeTarget;
+	} | null>(null);
+	// The scope this render shows, for a write from a view that is unmounting.
+	const currentScope = useRef(scope);
+	currentScope.current = scope;
 	const [channelFormOpen, setChannelFormOpen] = useState(false);
 	/*
 	 * The slot's callbacks are recreated every render, so the deep-link effect
@@ -4314,6 +4574,9 @@ const TeamBridgeOwnedPage: FC<{
 	useEffect(() => {
 		if (!requestedConversation || !requestedTenant) return;
 		scopeChosen.current = true;
+		// The click's conversation wins; this scope's memory is not re-offered.
+		restoredScopes.current.add(asTeamBridgeTenantId(requestedTenant));
+		pendingLanding.current = null;
 		setScope(asTeamBridgeTenantId(requestedTenant));
 		/*
 		 * A deep link or notification click is a HUMAN target: it must take the
@@ -4322,18 +4585,42 @@ const TeamBridgeOwnedPage: FC<{
 		 * underneath it (agent review round 1, m2).
 		 */
 		clearOwnerAudit.current();
-		setTarget({ type: "conversation", id: requestedConversation });
-		setThreadLink(
-			TEAM_BRIDGE_THREADS_SHIPPED_IN_THIS_BUILD
-				? threadTargetFromSearch(
-						new URLSearchParams({
-							tenant: requestedTenant,
-							conversation: requestedConversation,
-							...(requestedRoot ? { thread: requestedRoot } : {}),
-						}),
-					)
-				: null,
-		);
+		const clicked: TeamBridgeTarget = {
+			type: "conversation",
+			id: requestedConversation,
+		};
+		const clickedThread = TEAM_BRIDGE_THREADS_SHIPPED_IN_THIS_BUILD
+			? threadTargetFromSearch(
+					new URLSearchParams({
+						tenant: requestedTenant,
+						conversation: requestedConversation,
+						...(requestedRoot ? { thread: requestedRoot } : {}),
+					}),
+				)
+			: null;
+		/*
+		 * THE CLICK BECOMES THE REMEMBERED VIEW NOW, not when the view next reports.
+		 * The parameters are cleared below, and an auth settlement can remount this
+		 * container (`key={account.token}`) before the view has reported anything:
+		 * that remount reads the memory, so without this write it restored the
+		 * conversation the reader had BEFORE the click (measured in
+		 * `team-bridge-view-restore.test.mjs`).
+		 */
+		const clickedScope = asTeamBridgeTenantId(requestedTenant);
+		const storage = browserDraftStorage();
+		const remembered = { target: clicked, thread: clickedThread };
+		if (viewMemory.current.scope === clickedScope)
+			viewMemory.current.view = remembered;
+		/* No account yet, or storage refused the write (R4): carry it in memory. */
+		const persisted =
+			storage && accountId
+				? writeViewMemory(storage, accountId, clickedScope, remembered)
+				: false;
+		if (!persisted)
+			clickCarry.current = { scope: clickedScope, view: remembered };
+		restoredTarget.current = null;
+		setTarget(clicked);
+		setThreadLink(clickedThread);
 		setMessageLink(
 			requestedMessage && !requestedRoot
 				? {
@@ -4352,12 +4639,19 @@ const TeamBridgeOwnedPage: FC<{
 		requestedMessage,
 		setSearchParams,
 		setMessageLink,
+		accountId,
+		clickCarry,
 	]);
 
 	// A conversation id and a person both belong to one organization; a scope
 	// change clears the target so a stale thread is never shown under a new title.
 	const changeScope = (next: TeamBridgeScope) => {
 		scopeChosen.current = true;
+		// The new scope's own remembered conversation lands (see the landing effect).
+		restoredScopes.current.delete(next);
+		pendingLanding.current = null;
+		const storage = browserDraftStorage();
+		if (storage && accountId) writeLastScope(storage, accountId, next);
 		setScope(next);
 		setThreadLink(null);
 		setTarget(null);
@@ -4403,19 +4697,48 @@ const TeamBridgeOwnedPage: FC<{
 
 	// Land on the first rail row once (built-ins lead), not on every refetch:
 	// a poll must not move the reader out of the thread they are reading.
+	//
+	// The REMEMBERED view for this scope lands first: this is the path a switcher
+	// pick takes (`changeScope` clears the target), so each organization reopens
+	// on its own last conversation. The default is only for a scope with no
+	// record; a record that no longer resolves is caught by the validation below.
 	useEffect(() => {
 		if (
 			!ownerAudit?.active &&
 			target === null &&
 			visibleConversations.length > 0
 		) {
+			const pending = pendingLanding.current;
+			if (pending?.scope === scope) {
+				setTarget(pending.target);
+				return;
+			}
+			const remembered = restoredScopes.current.has(scope)
+				? null
+				: viewMemory.current.view;
+			restoredScopes.current.add(scope);
+			if (remembered) {
+				pendingLanding.current = { scope, target: remembered.target };
+				restoredTarget.current = remembered.target;
+				if (remembered.quickView === "archived") setArchivedOpened(true);
+				setTarget(remembered.target);
+				setThreadLink(
+					TEAM_BRIDGE_THREADS_SHIPPED_IN_THIS_BUILD
+						? rememberedThread(remembered)
+						: null,
+				);
+				return;
+			}
 			const first = defaultLandingConversation(
 				visibleConversations,
 				organizations.map((row) => row.tenantId),
 			);
 			if (first) setTarget({ type: "conversation", id: first.id });
 		}
-	}, [visibleConversations, organizations, target, ownerAudit?.active]);
+	}, [visibleConversations, organizations, target, ownerAudit?.active, scope]);
+	useEffect(() => {
+		if (target !== null) pendingLanding.current = null;
+	}, [target]);
 
 	/*
 	 * ARCHIVE / UNARCHIVE / DELETE. The archived read stays OFF until the
@@ -4425,7 +4748,9 @@ const TeamBridgeOwnedPage: FC<{
 	 * a selection the live list does not hold (a deep link or a notification
 	 * naming an archived channel), so that selection can resolve.
 	 */
-	const [archivedOpened, setArchivedOpened] = useState(false);
+	const [archivedOpened, setArchivedOpened] = useState(
+		() => restoreOnOpen?.quickView === "archived",
+	);
 	const selectionOutsideLive =
 		list.isSuccess &&
 		target?.type === "conversation" &&
@@ -4436,6 +4761,91 @@ const TeamBridgeOwnedPage: FC<{
 		accountId,
 	);
 	const archivedRows = archivedList.data?.conversations ?? [];
+	/*
+	 * A REMEMBERED TARGET THAT NO LONGER RESOLVES FALLS BACK, SILENTLY. Only once
+	 * every read that could hold it has answered: the live list (and, for a
+	 * conversation, the archived read `selectionOutsideLive` turns on), or the
+	 * organization's directory for a person/chief. Until then the remembered
+	 * target stands - it is usually right, and correcting it early would be the
+	 * #general flash this restore exists to remove. Identity, not equality: a
+	 * target the reader picked since is never second-guessed.
+	 *
+	 * "Answered" means SETTLED, not merely cached: on a return the list cache
+	 * still holds the rows from before the reader left, and confirming against
+	 * them would bless a channel deleted while they were away - the refetch the
+	 * page already makes on mount is the answer that counts.
+	 */
+	useEffect(() => {
+		const remembered = restoredTarget.current;
+		if (
+			!remembered ||
+			target !== remembered ||
+			!list.isSuccess ||
+			list.isFetching
+		)
+			return;
+		const archivedSettled = !archivedList.isFetching;
+		let resolved: boolean | undefined;
+		if (remembered.type === "conversation") {
+			if (visibleConversations.some((row) => row.id === remembered.id))
+				resolved = true;
+			else if (archivedList.isSuccess && archivedSettled)
+				resolved = archivedRows.some((row) => row.id === remembered.id);
+			else if (archivedList.isError && archivedSettled) resolved = false;
+		} else if (remembered.type === "person" || remembered.type === "chief") {
+			if (mergedView) resolved = false;
+			else if (directory.isFetching) resolved = undefined;
+			else if (directory.isSuccess)
+				resolved = (directory.data?.members ?? []).some(
+					(row) => row.account_id === remembered.accountId,
+				);
+			else if (directory.isError) resolved = true;
+		} else resolved = true;
+		if (resolved === undefined) return;
+		restoredTarget.current = null;
+		if (resolved) return;
+		viewMemory.current = { scope, view: null };
+		setThreadLink(null);
+		setTarget(null);
+	}, [
+		target,
+		list.isSuccess,
+		list.isFetching,
+		visibleConversations,
+		archivedList.isSuccess,
+		archivedList.isError,
+		archivedList.isFetching,
+		archivedRows,
+		directory.isFetching,
+		directory.isSuccess,
+		directory.isError,
+		directory.data,
+		mergedView,
+		scope,
+	]);
+	/*
+	 * WRITE-THROUGH. The view reports where the reader is (target, thread pane,
+	 * quick view, reading position) and this persists it under the scope it was
+	 * reported in - the closure's `scope`, so a view unmounting across a scope
+	 * change flushes into its OWN organization's record, never the next one's.
+	 */
+	const rememberView = (
+		patch: Partial<TeamBridgeViewMemory> & { target: TeamBridgeTarget },
+	) => {
+		if (!accountId) return;
+		const storage = browserDraftStorage();
+		const view: TeamBridgeViewMemory = {
+			target: patch.target,
+			thread: patch.thread ?? null,
+			quickView: patch.quickView ?? null,
+			scroll: patch.scroll ?? null,
+		};
+		/* The in-session record updates even without storage (R3): within this
+		   mount the reader's place still holds; only cross-mount memory is lost. */
+		if (viewMemory.current.scope === scope) viewMemory.current.view = view;
+		if (storage)
+			writeViewMemory(storage, accountId, scope, view, currentScope.current);
+	};
 	/*
 	 * THE SELECTION RESOLVES AGAINST LIVE + ARCHIVED, through the SAME helper the
 	 * view uses (review round 1, U1/D1). This used the live list alone, so an
@@ -4956,6 +5366,9 @@ const TeamBridgeOwnedPage: FC<{
 		else if (handoff.arrived || draftKey !== handoff.viewKey)
 			createHandoff.current = null;
 	}
+	const rememberedTargetKey = viewMemory.current.view
+		? draftTargetKey(viewMemory.current.view.target)
+		: null;
 	const viewKey =
 		createHandoff.current?.key === draftKey
 			? createHandoff.current.viewKey
@@ -4985,6 +5398,18 @@ const TeamBridgeOwnedPage: FC<{
 					"team_bridge_agent_notify",
 				)}
 				onCloseThread={() => setThreadLink(null)}
+				/* The remembered quick view and reading position apply only to the
+				   target they were recorded on: a view mounted for any other target
+				   opens as before (timeline at the newest message). */
+				initialQuickView={
+					rememberedTargetKey !== null &&
+					target !== null &&
+					rememberedTargetKey === draftTargetKey(target)
+						? (viewMemory.current.view?.quickView ?? null)
+						: null
+				}
+				initialScroll={rememberedScroll(viewMemory.current.view, target)}
+				onViewMemory={rememberView}
 				listState={
 					list.isPending || (mergedView && organizationsPending)
 						? paintedRows
@@ -5139,6 +5564,9 @@ const TeamBridgeOwnedPage: FC<{
 							: null
 				}
 				onTarget={(next) => {
+					/* A union row calls `changeScope` then this in one handler: the
+					   reader's pick wins over the scope's remembered landing. */
+					if (next) restoredScopes.current.add(scope);
 					setThreadLink(null);
 					setChannelFormOpen(false);
 					/* `null` is a landing with nothing left to land on: the default-landing

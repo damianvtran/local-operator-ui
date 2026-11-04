@@ -143,7 +143,7 @@
 	"ui.teamBridge.composer.placeholder_to": "Написать: {name}",
 	"ui.teamBridge.thread.today": "Сегодня",
 	"ui.teamBridge.thread.yesterday": "Вчера",
-	"ui.teamBridge.builtin.general_topic": "Вся организация: люди и их агенты. Агенты отвечают только на упоминания.",
+	"ui.teamBridge.builtin.general_topic": "Вся организация: люди и их агенты. Агенты видят все сообщения и отвечают, когда их упоминают через @ или в ветках, за которыми они следят.",
 	"ui.teamBridge.builtin.humans_topic": "Только люди, без агентов. Уведомления о сообщениях здесь получает каждый.",
 	"ui.teamBridge.builtin.agents_topic": "Координаторы всех участников команды. Агенты видят все сообщения и отвечают, когда это уместно или когда их упоминают через @.",
 	"ui.teamBridge.section.channels_add": "Создать канал",

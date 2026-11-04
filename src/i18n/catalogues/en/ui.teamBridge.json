@@ -143,7 +143,7 @@
 	"ui.teamBridge.composer.placeholder_to": "Message {name}",
 	"ui.teamBridge.thread.today": "Today",
 	"ui.teamBridge.thread.yesterday": "Yesterday",
-	"ui.teamBridge.builtin.general_topic": "The whole organization: people and their agents. Agents respond only to mentions.",
+	"ui.teamBridge.builtin.general_topic": "The whole organization: people and their agents. Agents see every message and reply when @-mentioned or in threads they follow.",
 	"ui.teamBridge.builtin.humans_topic": "People only, no agents. Messages here notify every person.",
 	"ui.teamBridge.builtin.agents_topic": "Every teammate's chief of staff. Agents see every message and reply when relevant or @-mentioned.",
 	"ui.teamBridge.section.channels_add": "Create a channel",
