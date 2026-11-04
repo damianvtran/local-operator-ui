@@ -42,6 +42,7 @@ import {
 	desktopFeatureEnabled,
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { useMemo } from "react";
 import { t } from "../../../../i18n/messages";
 import {
@@ -156,22 +157,45 @@ export function usePaletteTeamBridge({
 	const directories = useTeamBridgeDirectories(tenantIds, ready, accountId);
 	const unread = useTeamBridgeUnreadView(ready ? accountId : undefined);
 
-	const destination = routed
-		? teamBridgeDestinationItem(destinationOrder)
-		: null;
-	if (!ready || !wantsRows || !accountId || !list.data) {
-		return { destination, rows: [] };
-	}
-	return {
-		destination,
-		rows: paletteTeamBridgeItems({
-			conversations: list.data.conversations,
-			directories: directories.members,
+	const destination = useMemo(
+		() => (routed ? teamBridgeDestinationItem(destinationOrder) : null),
+		[routed, destinationOrder],
+	);
+	/*
+	 * Rebuilt only when the cached reads change, not on every keystroke (agent
+	 * review round 1, n1): the query is not an input here, so typing re-renders
+	 * this hook with the same data and gets the same array back. `locale` is a
+	 * dependency because the rows carry translated hints and chief labels.
+	 */
+	const locale = useI18nLocale();
+	const conversations = list.data?.conversations;
+	// biome-ignore lint/correctness/useExhaustiveDependencies: `locale` is a re-translate TRIGGER; the body reads it through `t()`.
+	const rows = useMemo(
+		() =>
+			!ready || !wantsRows || !accountId || !conversations
+				? NO_ROWS
+				: paletteTeamBridgeItems({
+						conversations,
+						directories: directories.members,
+						organizations,
+						selfAccountId: accountId,
+						chiefLabels: chiefLabelCopy(),
+						unreadOf: (tenantId, conversationId) =>
+							unread.rows.get(teamBridgeUnreadKey(tenantId, conversationId))
+								?.unread,
+					}),
+		[
+			ready,
+			wantsRows,
+			accountId,
+			conversations,
+			directories.members,
 			organizations,
-			selfAccountId: accountId,
-			chiefLabels: chiefLabelCopy(),
-			unreadOf: (tenantId, conversationId) =>
-				unread.rows.get(teamBridgeUnreadKey(tenantId, conversationId))?.unread,
-		}),
-	};
+			unread.rows,
+			locale,
+		],
+	);
+	return { destination, rows };
 }
+
+const NO_ROWS: PaletteItem[] = [];

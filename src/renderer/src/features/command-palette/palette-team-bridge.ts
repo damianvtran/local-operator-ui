@@ -78,6 +78,20 @@ const KIND_ICON: Record<TeamBridgeConversation["kind"], PaletteIconName> = {
 	dm: "at-sign",
 };
 
+/*
+ * The short words people type for each KIND (UX round 1, U4): "dm", "channels",
+ * "people" used to reach only the destination row, so "dm ola" found nothing.
+ * English, as every palette keyword list is (`use-palette-sources.ts`'s pages):
+ * the localized kind noun is already in each row's hint, so a non-English
+ * reader's own word ("Mensaje directo") matches through that field.
+ */
+const KIND_WORDS: Record<TeamBridgeConversation["kind"], readonly string[]> = {
+	channel: ["channel", "channels"],
+	group: ["group", "groups"],
+	dm: ["dm", "dms", "direct message"],
+};
+const PERSON_WORDS: readonly string[] = [...KIND_WORDS.dm, "people", "person"];
+
 const kindHint = (kind: TeamBridgeConversation["kind"]): string =>
 	kind === "dm"
 		? t("ui.teamBridge.kind.dm")
@@ -141,7 +155,10 @@ export function paletteTeamBridgeItems(
 				t("ui.teamBridge.list.untitled"),
 			hint: hintFor(kindHint(conversation.kind), conversation.tenant_id),
 			icon: KIND_ICON[conversation.kind],
-			keywords: conversation.topic ? [conversation.topic] : undefined,
+			bridgeChannel: conversation.kind === "channel" || undefined,
+			keywords: conversation.topic
+				? [conversation.topic, ...KIND_WORDS[conversation.kind]]
+				: [...KIND_WORDS[conversation.kind]],
 			attention: attentionOf(conversation),
 			link: {
 				tenantId: conversation.tenant_id,
@@ -171,6 +188,7 @@ export function paletteTeamBridgeItems(
 				 */
 				hint: hintFor(t("ui.teamBridge.kind.dm"), tenantId),
 				icon: "person",
+				keywords: [...PERSON_WORDS],
 				attention: attentionOf(dm),
 				link: {
 					tenantId,

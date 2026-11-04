@@ -322,3 +322,19 @@ export const Scoped: Story = {
 export const SingleOrg: Story = {
 	render: () => <BridgeFrame query="general" orgs={[MINERVA]} />,
 };
+
+/**
+ * The word scope with nothing to show: it backs out with its own word, the way
+ * a glyph scope does (UX round 1, U2 on #1673).
+ */
+export const ScopedEmpty: Story = {
+	render: () => <BridgeFrame query="tb zzz" />,
+};
+
+/**
+ * `#general` the Slack way: no local chat answers, so the bridge channels that
+ * match do, under their own heading (UX round 1, U3 on #1673).
+ */
+export const HashChannel: Story = {
+	render: () => <BridgeFrame query="#general" />,
+};

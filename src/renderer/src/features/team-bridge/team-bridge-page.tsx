@@ -4813,7 +4813,17 @@ const TeamBridgeOwnedPage: FC<{
 				: false;
 		if (!persisted)
 			clickCarry.current = { scope: clickedScope, view: remembered };
-		restoredTarget.current = null;
+		/*
+		 * A PERSON OR CHIEF LINK IS CHECKED LIKE A REMEMBERED TARGET (agent review
+		 * round 1, m1 on #1673). The palette builds these from a roster that can be
+		 * stale by the time the page reads it - a member removed, a link from the
+		 * other organization - and an unchecked one lands on an "Untitled" pane
+		 * with nothing to send to. Handing it to the directory validation below
+		 * falls back to the default view the way a stale remembered target does. A
+		 * conversation link keeps the shipped behaviour (null): a notification's
+		 * conversation is one the hub just told us about.
+		 */
+		restoredTarget.current = requestedConversation ? null : clicked;
 		setTarget(clicked);
 		setThreadLink(clickedThread);
 		setMessageLink(

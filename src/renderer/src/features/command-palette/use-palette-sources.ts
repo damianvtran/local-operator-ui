@@ -232,6 +232,12 @@ export type PaletteChatState = {
 export type PaletteSources = {
 	items: PaletteItem[];
 	chats: PaletteChatState;
+	/**
+	 * Whether the `tb` word scope exists on this backend (the route's own
+	 * capability). The view's `searchPalette` call must parse the query the way
+	 * this hook did, or the two would disagree about which rows were asked for.
+	 */
+	bridgeScope: boolean;
 };
 
 export type PaletteSourceInput = {
@@ -258,7 +264,13 @@ export function usePaletteItems({
 	isCanvasOpen,
 }: PaletteSourceInput): PaletteSources {
 	useI18nLocale();
-	const { scope, terms } = parsePaletteQuery(query);
+	const capabilities = useDesktopCapabilities();
+	/* The `tb` scope exists only where the destination does (agent review round 1, M1). */
+	const bridgeScope = desktopFeatureEnabled(
+		capabilities.data,
+		"team_bridge_conversations",
+	);
+	const { scope, terms } = parsePaletteQuery(query, { bridgeScope });
 	const wantsChats = scope === null || scope === "chat";
 	const wantsAgents = scope === null || scope === "agent";
 	/*
@@ -272,13 +284,15 @@ export function usePaletteItems({
 	const wantsSettings = scope === null || scope === "setting";
 	/*
 	 * Team Bridge rows answer the default search as well as their own scope
-	 * (`bridge`/`tb`): a reader typing a channel's or a person's name should not
-	 * first have to know which surface it lives on (operator, 2026-11-04). They
-	 * stay out of `#`, `@`, `>` and `,`, each of which names a different store.
+	 * (`tb`): a reader typing a channel's or a person's name should not first
+	 * have to know which surface it lives on (operator, 2026-11-04). They stay out
+	 * of `@`, `>` and `,`, each of which names a different store. `#` carries
+	 * them only for its no-chat-matched fallback (UX round 1, U3; the scope's
+	 * groups still exclude them, see `searchPalette`).
 	 */
-	const wantsTeamBridge = scope === null || scope === "bridge";
+	const wantsTeamBridge =
+		scope === null || scope === "bridge" || scope === "chat";
 
-	const capabilities = useDesktopCapabilities();
 	const chatSearchSupported = desktopFeatureEnabled(
 		capabilities.data,
 		"session_search",
@@ -974,6 +988,7 @@ export function usePaletteItems({
 
 	return {
 		items,
+		bridgeScope,
 		chats: {
 			/*
 			 * Every term of this is a state the panel has to be able to explain:

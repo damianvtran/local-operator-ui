@@ -83,8 +83,8 @@ const bundled = await build({
 		contents: `
 			export { paletteTeamBridgeItems } from "./src/renderer/src/features/command-palette/palette-team-bridge";
 			export { usePaletteTeamBridge, teamBridgeDestinationItem } from "./src/renderer/src/features/command-palette/use-palette-team-bridge";
-			export { searchPalette, parsePaletteQuery, WORD_ONLY_SCOPES, SCOPE_LEGEND } from "./src/renderer/src/features/command-palette/palette-search";
-			export { teamBridgeTargetFromSearch, teamBridgeTargetPath } from "./src/renderer/src/features/team-bridge/team-bridge-deep-link";
+			export { searchPalette, parsePaletteQuery, paletteEmptyStateCopy, WORD_ONLY_SCOPES, SCOPE_LEGEND } from "./src/renderer/src/features/command-palette/palette-search";
+			export { teamBridgeTargetFromSearch, teamBridgeTargetPath, teamBridgeNavigation } from "./src/renderer/src/features/team-bridge/team-bridge-deep-link";
 			export { teamBridgeOpenPath } from "./src/shared/team-bridge-notify";
 			export { fixture } from "@shared/api/local-operator/team-bridge-api";
 		`,
@@ -408,8 +408,11 @@ const MANAGER = {
 	target: { type: "draft", kind: "agent", name: "manager" },
 };
 const pool = () => [api.teamBridgeDestinationItem(7), MANAGER, ...rows()];
+/* Every search below runs where the route capability is on, as the palette passes it. */
+const search = (raw, items = pool(), extra = {}) =>
+	api.searchPalette({ items, raw, bridgeScope: true, ...extra });
 const top = (raw) => {
-	const outcome = api.searchPalette({ items: pool(), raw });
+	const outcome = search(raw);
 	return outcome.sections.flatMap((section) =>
 		section.items.map((match) => match.item.name),
 	);
@@ -455,30 +458,182 @@ test("exact and prefix name matches lead the Team Bridge section", () => {
 	assert.equal(top("launch")[0], "Launch crew");
 });
 
-test("the bridge scope words narrow to the Team Bridge group alone", () => {
-	assert.deepEqual(api.parsePaletteQuery("tb ola"), {
+test("the tb scope word narrows to the Team Bridge group alone", () => {
+	assert.deepEqual(api.parsePaletteQuery("tb ola", { bridgeScope: true }), {
 		scope: "bridge",
 		terms: "ola",
 	});
-	assert.equal(api.parsePaletteQuery("bridge general").scope, "bridge");
-	const outcome = api.searchPalette({ items: pool(), raw: "tb general" });
+	const outcome = search("tb general");
 	assert.deepEqual(
 		outcome.sections.map((section) => section.group),
 		["teamBridge"],
 	);
 	// A bare word is still a search for it (SCOPE_WORDS' "only when something follows").
-	assert.equal(api.parsePaletteQuery("bridge").scope, null);
+	assert.equal(api.parsePaletteQuery("tb", { bridgeScope: true }).scope, null);
 	// Word-only: the footer legend (the glyph table) is unchanged.
 	assert.ok(!api.SCOPE_LEGEND.some((entry) => entry.scope === "bridge"));
+	const entry = api.WORD_ONLY_SCOPES.find((row) => row.scope === "bridge");
+	assert.equal(entry.label, "Team Bridge");
+	assert.equal(entry.word, "tb");
+});
+
+/*
+ * Agent review round 1, M1: the reviewer's table, against local rows a scope
+ * word must not hide. `bridge` is no longer a scope word at all; `tb` is one
+ * only with the capability on, and even then a row outside the scope whose name
+ * contains the whole query as typed still answers.
+ */
+const CHAT = {
+	id: "chat-bridge-design",
+	kind: "chat",
+	group: "chats",
+	name: "Bridge design review",
+	icon: "conversation",
+	target: { type: "session", sessionId: "s1" },
+};
+const TB_HELPER = {
+	...MANAGER,
+	id: "agent-chat-tb-helper",
+	name: "tb-helper",
+	keywords: [],
+	target: { type: "draft", kind: "agent", name: "tb-helper" },
+};
+const localPool = () => [...pool(), CHAT, TB_HELPER];
+const names = (outcome) =>
+	outcome.sections.flatMap((section) =>
+		section.items.map((match) => match.item.name),
+	);
+
+for (const [raw, bridgeScope, scope, mustFind] of [
+	["bridge design", true, null, "Bridge design review"],
+	["bridge design", false, null, "Bridge design review"],
+	["Bridge design review", true, null, "Bridge design review"],
+	["tb helper", true, "bridge", "tb-helper"],
+	["tb helper", false, null, "tb-helper"],
+	// One whitespace token: never a scope word (SCOPE_WORDS needs a following term).
+	["tb-helper", true, null, "tb-helper"],
+]) {
+	test(`M1: "${raw}" (capability ${bridgeScope ? "on" : "off"}) still finds ${mustFind}`, () => {
+		const outcome = api.searchPalette({
+			items: localPool(),
+			raw,
+			bridgeScope,
+		});
+		assert.equal(outcome.scope, scope);
+		assert.ok(names(outcome).includes(mustFind), names(outcome).join(", "));
+	});
+}
+
+test("M1: with the capability off, tb is an ordinary term, as on main", () => {
+	assert.deepEqual(api.parsePaletteQuery("tb general"), {
+		scope: null,
+		terms: "tb general",
+	});
+	assert.deepEqual(
+		api.parsePaletteQuery("tb general", { bridgeScope: false }),
+		{
+			scope: null,
+			terms: "tb general",
+		},
+	);
+	// And `bridge` is never a scope word, capability or not.
 	assert.equal(
-		api.WORD_ONLY_SCOPES.find((entry) => entry.scope === "bridge").label,
-		"Team Bridge",
+		api.parsePaletteQuery("bridge general", { bridgeScope: true }).scope,
+		null,
 	);
 });
 
+test("M1: the literal fallback is narrow: a row merely sharing the scoped terms stays out", () => {
+	// "tb general": local rows named "general..." do not contain "tb general".
+	const generalChat = { ...CHAT, id: "chat-general", name: "general notes" };
+	const outcome = search("tb general", [...pool(), generalChat]);
+	assert.ok(!names(outcome).includes("general notes"));
+});
+
+test("U2: the word scope's empty state backs out with its own word", () => {
+	const copy = api.paletteEmptyStateCopy({
+		scope: "bridge",
+		hasTerms: true,
+		terms: "zzz",
+		awaiting: false,
+		catalogue: "loaded",
+	});
+	assert.equal(
+		copy.hint,
+		"Try another word, or backspace tb to search everything.",
+	);
+});
+
+test("U3: a # query no chat answers offers the matching bridge channels", () => {
+	const outcome = search("#general");
+	assert.equal(outcome.scope, "chat");
+	assert.deepEqual(
+		outcome.sections.map((section) => section.group),
+		["teamBridge"],
+	);
+	assert.ok(
+		outcome.sections[0].items.every(
+			(match) => match.item.bridgeChannel === true,
+		),
+		"channels only: no DMs, groups, people or chiefs",
+	);
+	assert.equal(
+		outcome.sections[0].items.length,
+		2,
+		"both organizations' #general",
+	);
+});
+
+test("U3: a # query a chat DOES answer reads exactly as before", () => {
+	const chat = { ...CHAT, id: "chat-general", name: "general notes" };
+	const outcome = search("#general", [...pool(), chat]);
+	assert.deepEqual(
+		outcome.sections.map((section) => section.group),
+		["chats"],
+	);
+	// And a chat search still in flight is the empty state's, not the fallback's.
+	assert.equal(search("#general", pool(), { chatsAwaiting: true }).total, 0);
+});
+
+test("U4: kind short-words reach the rows, not only the destination", () => {
+	const bridgeNames = (raw) =>
+		search(raw)
+			.sections.filter((section) => section.group === "teamBridge")
+			.flatMap((section) => section.items.map((match) => match.item.name));
+	assert.ok(bridgeNames("dm ola").includes("Ola Fagbemi"));
+	assert.ok(bridgeNames("ola dm").includes("Ola Fagbemi"));
+	assert.ok(bridgeNames("channels").includes("retention-analysis"));
+	assert.ok(bridgeNames("people").includes("Ben Tran"));
+	assert.ok(bridgeNames("dms").length > 0);
+});
+
+const SAM_IN_ORDER = /s.*a.*m/;
+test("U5: a hint segment is its own haystack: 'sam' no longer threads through 'Direct message · Minerva'", () => {
+	const outcome = search("sam");
+	const bridge = outcome.sections
+		.filter((section) => section.group === "teamBridge")
+		.flatMap((section) => section.items.map((match) => match.item.name));
+	for (const name of bridge)
+		assert.match(
+			name.toLowerCase(),
+			SAM_IN_ORDER,
+			`${name} matched on its own text`,
+		);
+});
+
+test("m2: a pick pushes from another route and replaces on Team Bridge", () => {
+	const path = "/team-bridge?tenant=tnt_minerva&conversation=c_general";
+	assert.deepEqual(api.teamBridgeNavigation(path, false), [path, undefined]);
+	assert.deepEqual(api.teamBridgeNavigation(path, true), [
+		path,
+		{ replace: true },
+	]);
+});
+
 test("bridge rows stay out of the other scopes", () => {
-	for (const raw of ["#general", "@general", ">general", ",general"]) {
-		const outcome = api.searchPalette({ items: pool(), raw });
+	// `#` is covered by U3's fallback below; the other three never offer them.
+	for (const raw of ["@general", ">general", ",general"]) {
+		const outcome = search(raw);
 		assert.ok(
 			!outcome.sections.some((section) => section.group === "teamBridge"),
 			`${raw} must not answer with bridge rows`,

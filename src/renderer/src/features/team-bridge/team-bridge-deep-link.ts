@@ -71,3 +71,20 @@ export function teamBridgeTargetPath(link: TeamBridgeLink): string {
 	else query.set(target.type, target.accountId);
 	return `${TEAM_BRIDGE_PATH}?${query.toString()}`;
 }
+
+/**
+ * The history shape of opening a Team Bridge address from wherever the window
+ * is: PUSH from another route, so Back returns there; REPLACE when already on
+ * Team Bridge, so the column's Back still leaves in one press (one entry per
+ * visit, #1660's invariant `team-bridge-leave.ts` relies on). The same rule
+ * `use-team-bridge-notification-open.ts` applies to a notification click; a
+ * function of its own so the palette's pick is testable without a router
+ * (agent review round 1, m2 on #1673). `onBridge` is read by the caller from
+ * the live hash at the moment of the pick (`onTeamBridgeRoute`).
+ */
+export function teamBridgeNavigation(
+	path: string,
+	onBridge: boolean,
+): [path: string, options: { replace: true } | undefined] {
+	return [path, onBridge ? { replace: true } : undefined];
+}

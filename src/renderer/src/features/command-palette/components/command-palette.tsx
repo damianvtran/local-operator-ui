@@ -7,6 +7,8 @@ import { openConversation } from "@features/chat/open-conversation";
 import { destinationNeedsSession } from "@features/chat/pickers/picker-registry";
 import { useConnectProviderStore } from "@features/providers/connect-provider-store";
 import { useLanguageDialogStore } from "@features/settings/components/language-dialog-store";
+import { requestTeamBridgeComposerFocus } from "@features/team-bridge/team-bridge-composer-focus";
+import { teamBridgeNavigation } from "@features/team-bridge/team-bridge-deep-link";
 import { onTeamBridgeRoute } from "@features/team-bridge/use-team-bridge-notification-open";
 import { ConfirmationModal } from "@shared/components/common/confirmation-modal";
 import { KeyboardShortcut } from "@shared/components/common/keyboard-shortcut";
@@ -249,7 +251,7 @@ export const CommandPalette: FC = () => {
 	const isOnChatPage = location.pathname.startsWith("/chat");
 	const effectiveAgentId = currentAgentIdFromRoute || getLastAgentId("chat");
 
-	const { items, chats } = usePaletteItems({
+	const { items, chats, bridgeScope } = usePaletteItems({
 		open: isCommandPaletteOpen,
 		query: deferredQuery,
 		isOnChatPage,
@@ -258,8 +260,14 @@ export const CommandPalette: FC = () => {
 	});
 
 	const outcome = useMemo(
-		() => searchPalette({ items, raw: deferredQuery }),
-		[items, deferredQuery],
+		() =>
+			searchPalette({
+				items,
+				raw: deferredQuery,
+				bridgeScope,
+				chatsAwaiting: chats.awaiting,
+			}),
+		[items, deferredQuery, bridgeScope, chats.awaiting],
 	);
 
 	/*
@@ -288,7 +296,7 @@ export const CommandPalette: FC = () => {
 			? null
 			: (SCOPE_LEGEND.find((entry) => entry.scope === outcome.scope) ?? null);
 	/*
-	 * A scope reached by a WORD only (`bridge`, `tb`) has no glyph to show, but the
+	 * A scope reached by a WORD only (`tb`) has no glyph to show, but the
 	 * chip still names it, so a reader who typed `tb ola` sees why the list is
 	 * Team Bridge rows alone.
 	 */
@@ -441,6 +449,13 @@ export const CommandPalette: FC = () => {
 	 * moved, on the one door where it moved furthest.
 	 */
 	const identityAtOpen = useRef<string | undefined>(undefined);
+	/*
+	 * Whether this open ended in a Team Bridge pick. The pane identity above is
+	 * the CHAT store's, which a bridge pick never changes, so without this the
+	 * close read "nothing moved" and put the caret back on the rail button the
+	 * pick was made from (UX round 1, U1 on #1673).
+	 */
+	const bridgePicked = useRef(false);
 
 	const runItem = useCallback(
 		(item: PaletteItem) => {
@@ -459,8 +474,15 @@ export const CommandPalette: FC = () => {
 					 * hash at the moment of the pick, the same way that hook does.
 					 */
 					const onBridge = onTeamBridgeRoute(window.location.hash);
+					/*
+					 * A VIEW MOVE, for the caret (U1): the close hands it to the bridge
+					 * composer when one is up, and the request covers the one that mounts
+					 * after the close (a pick from another route).
+					 */
+					bridgePicked.current = true;
+					requestTeamBridgeComposerFocus();
 					closeCommandPalette();
-					navigate(item.target.path, onBridge ? { replace: true } : undefined);
+					navigate(...teamBridgeNavigation(item.target.path, onBridge));
 					return;
 				}
 				case "session": {
@@ -548,6 +570,7 @@ export const CommandPalette: FC = () => {
 		const active = document.activeElement;
 		returnFocusTo.current = active instanceof HTMLElement ? active : null;
 		identityAtOpen.current = currentPanelIdentity();
+		bridgePicked.current = false;
 	}, [isCommandPaletteOpen]);
 
 	/*
@@ -587,7 +610,9 @@ export const CommandPalette: FC = () => {
 	const restoreFocus = useCallback(() => {
 		const previous = returnFocusTo.current;
 		const outcome = closeTimeFocusOutcome({
-			viewMoved: identityAtOpen.current !== currentPanelIdentity(),
+			viewMoved:
+				bridgePicked.current ||
+				identityAtOpen.current !== currentPanelIdentity(),
 			/*
 			 * `body` means "nothing was focused when this opened", which is not the
 			 * same as "focus was on a control". Returning focus there is the

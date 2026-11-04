@@ -130,7 +130,9 @@ const bundle = await build({
  export {usePendingSends, resetPendingSendsForTest} from './src/renderer/src/features/team-bridge/team-bridge-pending-sends';
  export {resetHeldRailScrollForTest} from './src/renderer/src/features/team-bridge/team-bridge-rail-scroll';
  export {LeftSidebarHostContext} from './src/renderer/src/shared/components/navigation/left-sidebar-host';
- export {stageMentions, stagedMentions} from './src/renderer/src/features/team-bridge/mentions/mention-outbox';`,
+ export {stageMentions, stagedMentions} from './src/renderer/src/features/team-bridge/mentions/mention-outbox';
+ export {requestTeamBridgeComposerFocus, teamBridgeComposerFocusPending, clearTeamBridgeComposerFocusRequest} from './src/renderer/src/features/team-bridge/team-bridge-composer-focus';
+ export {handCaretToComposer} from './src/renderer/src/features/chat/composer-caret';`,
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
