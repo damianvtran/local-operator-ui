@@ -190,10 +190,12 @@ export async function sceneNotificationSounds({
 	);
 	await wait(1600);
 
-	/* 3. VOLUME: keyboard on the slider, written on commit. */
-	await cdp.evaluate(
-		`(() => { const r = document.querySelector('${LIST} input[type="range"]'); r.focus(); return true; })()`,
-	);
+	/* 3. VOLUME: keyboard on the slider. Each step commits, and focus STAYS
+	 *    on the range across all of them (QA Q1 / UX U1: it used to fall to
+	 *    <body> after the first, so the second press did nothing). */
+	const RANGE = `${LIST} input[type="range"]`;
+	await cdp.evaluate(`document.querySelector('${RANGE}').focus(); true`);
+	const focusTrail = [];
 	for (let i = 0; i < 4; i += 1) {
 		await cdp.send("Input.dispatchKeyEvent", {
 			type: "keyDown",
@@ -207,26 +209,106 @@ export async function sceneNotificationSounds({
 			code: "ArrowLeft",
 			windowsVirtualKeyCode: 37,
 		});
+		await wait(250);
+		focusTrail.push(
+			await cdp.evaluate(
+				`document.activeElement === document.querySelector('${RANGE}')`,
+			),
+		);
 	}
-	await cdp.send("Input.dispatchKeyEvent", {
-		type: "keyUp",
-		key: "Tab",
-		code: "Tab",
-		windowsVirtualKeyCode: 9,
-	});
-	await cdp.evaluate(
-		`(() => { const r = document.querySelector('${LIST} input[type="range"]'); r.blur(); return true; })()`,
-	);
-	await waitForCondition(cdp, "true", 1500);
 	await wait(1500);
 	const vol = (await listing())?.volume;
-	note("daemon volume after four ArrowLeft", String(vol));
-	check(
-		"the volume moved below 70 and was written",
-		typeof vol === "number" && vol < 70,
-		String(vol),
+	note(
+		"focus on the range after each ArrowLeft; daemon volume",
+		JSON.stringify({ focusTrail, vol }),
 	);
+	check(
+		"focus stayed on the volume slider across four key steps",
+		focusTrail.every(Boolean),
+		JSON.stringify(focusTrail),
+	);
+	check("all four steps of 5 were written: 70 -> 50", vol === 50, String(vol));
 	frames.push(await capture(cdp, "live-04-volume"));
+
+	/* 3b. SWITCH: Space twice on Play a sound keeps focus; both writes land. */
+	const SWITCH = `[data-search-row="notifications.sound.enabled"] [role="switch"]`;
+	await cdp.evaluate(`document.querySelector('${SWITCH}').focus(); true`);
+	const switchTrail = [];
+	for (let i = 0; i < 2; i += 1) {
+		await cdp.send("Input.dispatchKeyEvent", {
+			type: "keyDown",
+			key: " ",
+			code: "Space",
+			windowsVirtualKeyCode: 32,
+			text: " ",
+		});
+		await cdp.send("Input.dispatchKeyEvent", {
+			type: "keyUp",
+			key: " ",
+			code: "Space",
+			windowsVirtualKeyCode: 32,
+		});
+		await wait(400);
+		switchTrail.push(
+			await cdp.evaluate(
+				`document.activeElement === document.querySelector('${SWITCH}')`,
+			),
+		);
+	}
+	await wait(800);
+	const enabledAfter = (await listing())?.enabled;
+	note(
+		"focus on the switch after each Space; daemon enabled",
+		JSON.stringify({ switchTrail, enabledAfter }),
+	);
+	check(
+		"focus stayed on Play a sound across two Space presses",
+		switchTrail.every(Boolean),
+		JSON.stringify(switchTrail),
+	);
+	check(
+		"two toggles land back on enabled",
+		enabledAfter === true,
+		String(enabledAfter),
+	);
+
+	/* 3c. LIVE CONFIG (UX U2): an outside write reaches the open page. */
+	const outsideWrite = await api("/v1/settings/notifications.sound.id", {
+		method: "PATCH",
+		headers: { "content-type": "application/json" },
+		body: JSON.stringify({ value: "airy-whistle" }),
+	});
+	note(
+		"outside write",
+		JSON.stringify({
+			status: outsideWrite.status,
+			daemonSelected: (await listing())?.selected,
+		}),
+	);
+	const { ok: followed } = await waitForCondition(
+		cdp,
+		`(document.querySelector('[data-sound-row="airy-whistle"] [role="radio"]') || {}).getAttribute?.('data-state') === 'checked'`,
+		5000,
+	);
+	check(
+		"an outside selection moved the radio without leaving the page",
+		followed === true,
+		"",
+	);
+	if (followed !== true)
+		note(
+			"radio states after the outside write",
+			await cdp.evaluate(
+				`JSON.stringify([...document.querySelectorAll('${LIST} [role="radio"][data-state="checked"]')].map((n) => n.id))`,
+			),
+		);
+	const outsidePlays = await cdp.evaluate("window.__nsPlayed.length");
+	await wait(300);
+	check(
+		"and it did not play",
+		(await cdp.evaluate("window.__nsPlayed.length")) === outsidePlays,
+		"",
+	);
 
 	/* 4. UPLOAD OK: one file -> added, selected, played. */
 	await setFiles(soundOk);
