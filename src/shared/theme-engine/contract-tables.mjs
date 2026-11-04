@@ -2269,19 +2269,6 @@ export const ADJACENT = [
 export const GRAPHICS = [
 	{
 		/*
-		 * THE MENTION ROW'S LEADING BAR (visual refresh, contract C3): a 2px
-		 * `accent` bar at the start edge of a message row that mentions the
-		 * reader, painted over that row's `accentWash` inset box. A graphic
-		 * object read at a glance, so it owes 3:1 against the wash it sits on
-		 * (4.51:1 worst, everforest) - and against the pane grounds, where the
-		 * bar's ends meet them at the box's rounded corners.
-		 */
-		name: "team bridge mention row bar",
-		on: ["accentWash", "canvas", "surface"],
-		fg: "accent",
-	},
-	{
-		/*
 		 * THE SELECTED RAIL ROW'S GLYPH (contract C4): the kind glyph (`#`,
 		 * people, `@`) in `accent` on `rowSelected`, the Settings navigation's
 		 * local exception extended to the Team Bridge rail. 4.24:1 worst
