@@ -43,7 +43,9 @@ import {
 } from "./supplement-model";
 
 /*
- * 16:9 at the answer column's comfortable reading width: big enough to judge a
+ * 16:9 at the answer column's comfortable reading width (the receipt spells
+ * the same three utilities out as a literal: the sidebar-selection scan must
+ * read every element that paints `bg-sunken`, so that class is never built): big enough to judge a
  * clip, small enough that a two-video finish does not push the answer away.
  * One box for the reserved, playing and failed states, so a tile never reflows
  * when its bytes land.
@@ -153,7 +155,7 @@ export const SupplementVideoTile = memo(function SupplementVideoTile({
 		>
 			{receipt ? (
 				<span
-					className={`flex ${TILE_BOX} items-center justify-center rounded-sm border border-control bg-sunken text-ink-dim`}
+					className="flex aspect-video w-full max-w-80 items-center justify-center rounded-sm border border-control bg-sunken text-ink-dim"
 					data-supplement-video-fallback=""
 				>
 					<FileGlyph path={file.path} />

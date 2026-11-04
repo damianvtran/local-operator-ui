@@ -284,6 +284,10 @@ const IDENTICAL_OK = new Map([
 		"Language-neutral list separator (comma and space), identical across shipped locales.",
 	],
 	[
+		"ui.chat.canonical.supplement.withheld.reason_separator",
+		"List separator (comma and space) for the withheld reasons; zh-CN and ur carry their own commas, the rest share English's.",
+	],
+	[
 		"ui.agents.settings.chat.top_k",
 		"Model sampling parameter name kept English by the fr, ru and es style guides.",
 	],
