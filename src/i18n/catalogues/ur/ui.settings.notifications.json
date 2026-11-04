@@ -33,7 +33,6 @@
   "ui.settings.notifications.custom.hint": "WAV، FLAC، MP3 یا OGG، زیادہ سے زیادہ {seconds, number} سیکنڈ اور {megabytes, number} MB۔ آواز کی بلندی بلٹ اِن آوازوں کے برابر کر دی جاتی ہے۔",
   "ui.settings.notifications.custom.full": "آپ کے پاس {count, number} آوازیں ہیں، جو زیادہ سے زیادہ حد ہے۔ نئی شامل کرنے کے لیے ایک ہٹائیں۔",
   "ui.settings.notifications.custom.uploading": "اپ لوڈ ہو رہی ہے… {percent, number}%",
-  "ui.settings.notifications.custom.processing": "آواز کی بلندی برابر کی جا رہی ہے…",
   "ui.settings.notifications.custom.cancel_upload": "{file} شامل کرنا منسوخ کریں",
   "ui.settings.notifications.custom.added_one": "{name} شامل کر کے منتخب کر دی گئی۔",
   "ui.settings.notifications.custom.added_many": "{count, plural, one {# آواز شامل کی گئی۔} other {# آوازیں شامل کی گئیں۔}}",

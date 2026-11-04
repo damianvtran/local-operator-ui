@@ -45,12 +45,13 @@ import { SliderSetting } from "@shared/components/common/slider-setting";
 import { Spinner } from "@shared/components/common/spinner";
 import { ToggleSetting } from "@shared/components/common/toggle-setting";
 import { Alert, Button } from "@shared/components/ui";
+import { useDesktopFeed } from "@shared/hooks/use-desktop-feed";
 import { usePairingCause } from "@shared/hooks/use-pairing-cause";
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Bell, RotateCw } from "lucide-react";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { FC, RefObject } from "react";
 import type { FallbackProps } from "react-error-boundary";
 import {
@@ -204,24 +205,43 @@ export const NotificationsSection: FC<NotificationsSectionProps> = ({
 		]);
 	}, [queryClient]);
 
+	/*
+	 * WRITES ARE SERIALIZED PER KEY. The switches and the slider stay focused
+	 * and live while they save (`savingInPlace`, QA Q1 / UX U1), so a second
+	 * press can arrive before the first write lands. Each key keeps one chain:
+	 * a write waits for the previous one, so the daemon sees them in the order
+	 * the user made them and the last one wins.
+	 */
+	const writeChains = useRef(new Map<string, Promise<unknown>>());
+	const inFlight = useRef(new Map<string, number>());
 	const writeSetting = useCallback(
-		async (key: string, value: string | number | boolean) => {
+		(key: string, value: string | number | boolean) => {
+			const previous = writeChains.current.get(key) ?? Promise.resolve();
+			inFlight.current.set(key, (inFlight.current.get(key) ?? 0) + 1);
 			markSaving(key, true);
 			setWriteError(key, null);
-			try {
-				await desktopResult({ op: "settings.edit", key, value });
-				await refreshAll();
-			} catch (error) {
-				setWriteError(
-					key,
-					error instanceof Error && error.message
-						? error.message
-						: t("ui.settings.notifications.save.failed_generic"),
-				);
-				throw error;
-			} finally {
-				markSaving(key, false);
-			}
+			const run = previous
+				.catch(() => {})
+				.then(async () => {
+					try {
+						await desktopResult({ op: "settings.edit", key, value });
+						await refreshAll();
+					} catch (error) {
+						setWriteError(
+							key,
+							error instanceof Error && error.message
+								? error.message
+								: t("ui.settings.notifications.save.failed_generic"),
+						);
+						throw error;
+					} finally {
+						const left = (inFlight.current.get(key) ?? 1) - 1;
+						inFlight.current.set(key, left);
+						if (left === 0) markSaving(key, false);
+					}
+				});
+			writeChains.current.set(key, run);
+			return run;
 		},
 		[refreshAll, markSaving, setWriteError],
 	);
@@ -246,6 +266,46 @@ export const NotificationsSection: FC<NotificationsSectionProps> = ({
 		},
 		[refreshAll, markSaving, setWriteError],
 	);
+
+	/*
+	 * LIVE CHANGES FROM ELSEWHERE (UX round 1, U2). An agent or the TUI can add
+	 * a sound or select one while this page is open. A `config` frame names
+	 * TOP-LEVEL keys (core `desktop_feed.py`), so a sound setting arrives as
+	 * `notifications` (main's `observeConfigChange` reads the same frame);
+	 * `display` covers the promoted master switch. Adding a custom sound writes
+	 * no config at all, so the listing is also re-read when the window regains
+	 * focus, which is when a user comes back from the terminal. Deduped by the
+	 * frame's own identity, as `locale-sync.ts` does.
+	 */
+	const feed = useDesktopFeed();
+	const handledFrame = useRef<string | null>(null);
+	useEffect(() => {
+		const change = feed.configChange;
+		if (!change) return;
+		const stamp = `${change.epoch}:${change.seq}`;
+		if (handledFrame.current === stamp) return;
+		handledFrame.current = stamp;
+		if (
+			change.changedKeys.some(
+				(key) =>
+					key === "notifications" ||
+					key.startsWith("notifications.") ||
+					key === "display" ||
+					key === NOTIFICATIONS_ENABLED_KEY ||
+					key === NOTIFICATION_SESSION_NAME_KEY,
+			)
+		)
+			void refreshAll();
+	}, [feed.configChange, refreshAll]);
+	useEffect(() => {
+		const onFocus = () => {
+			void queryClient.invalidateQueries({
+				queryKey: notificationSoundKeys.list,
+			});
+		};
+		window.addEventListener("focus", onFocus);
+		return () => window.removeEventListener("focus", onFocus);
+	}, [queryClient]);
 
 	const listRef = useRef<NotificationSoundListHandle>(null);
 
@@ -289,6 +349,7 @@ export const NotificationsSection: FC<NotificationsSectionProps> = ({
 					description={notificationsRow.help || undefined}
 					value={notificationsOn}
 					isSaving={Boolean(savingKeys[NOTIFICATIONS_ENABLED_KEY])}
+					savingInPlace
 					onChange={(value) =>
 						writeSetting(NOTIFICATIONS_ENABLED_KEY, value).catch(() => {})
 					}
@@ -300,6 +361,7 @@ export const NotificationsSection: FC<NotificationsSectionProps> = ({
 					description={sessionNameRow.help || undefined}
 					value={boolValue(sessionNameRow, true)}
 					isSaving={Boolean(savingKeys[NOTIFICATION_SESSION_NAME_KEY])}
+					savingInPlace
 					onChange={(value) =>
 						writeSetting(NOTIFICATION_SESSION_NAME_KEY, value).catch(() => {})
 					}
@@ -331,13 +393,30 @@ export const NotificationsSection: FC<NotificationsSectionProps> = ({
 			t("ui.settings.notifications.load.failed", { reason: "" }).trim(),
 			settingsQuery.error,
 		);
-		return sectionFrame(<Alert variant="warning">{sentence}</Alert>);
+		// Retry, as Speech offers beside the same reason (QA round 1, Q3).
+		return sectionFrame(
+			<Alert variant="warning">
+				<div className="flex flex-col items-start gap-3">
+					<span>{sentence}</span>
+					<Button
+						variant="secondary"
+						size="sm"
+						onClick={() => {
+							void settingsQuery.refetch();
+						}}
+					>
+						<RotateCw aria-hidden="true" />
+						{t("ui.settings.notifications.retry")}
+					</Button>
+				</div>
+			</Alert>,
+		);
 	}
 
 	/* ---------------------------------------------------- the Sound group */
 
 	const soundHeading = (
-		<h3 className="text-body text-ink">
+		<h3 className="text-body font-medium text-ink">
 			{t("ui.settings.notifications.sound.heading")}
 		</h3>
 	);
@@ -403,12 +482,15 @@ export const NotificationsSection: FC<NotificationsSectionProps> = ({
 				{enabledRow && (
 					<div className="flex flex-col gap-1">
 						<ToggleSetting
+							searchRow="notifications.sound.enabled"
+							searchTerms={t("ui.settings.notifications.search_terms")}
 							label={t("ui.settings.notifications.sound.enabled_label")}
 							description={t(
 								"ui.settings.notifications.sound.enabled_description",
 							)}
 							value={soundOn}
 							isSaving={Boolean(savingKeys["notifications.sound.enabled"])}
+							savingInPlace
 							onChange={(value) =>
 								writeSetting("notifications.sound.enabled", value).catch(
 									() => {},
@@ -451,13 +533,20 @@ export const NotificationsSection: FC<NotificationsSectionProps> = ({
 							}
 							disabled={selectedId === SYSTEM_SOUND_ID}
 							isSaving={Boolean(savingKeys["notifications.sound.volume"])}
+							savingInPlace
 							trailing={
 								Math.round(volume) !== Math.round(volumeDefault) ? (
 									<Button
 										variant="link"
 										size="sm"
+										// Reset moves a control that is disabled for System,
+										// so it is disabled with it (QA Q6 / UX U12).
+										disabled={selectedId === SYSTEM_SOUND_ID}
 										onClick={() => {
-											void resetSetting("notifications.sound.volume");
+											void resetSetting("notifications.sound.volume").then(() =>
+												// Hear the default you went back to (UX U11).
+												listRef.current?.previewSelected(volumeDefault),
+											);
 										}}
 									>
 										{t("ui.settings.notifications.volume.reset")}

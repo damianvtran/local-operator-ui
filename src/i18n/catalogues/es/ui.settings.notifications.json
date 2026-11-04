@@ -33,7 +33,6 @@
   "ui.settings.notifications.custom.hint": "WAV, FLAC, MP3 u OGG, de hasta {seconds, number} segundos y {megabytes, number} MB. El volumen se iguala al de los sonidos integrados.",
   "ui.settings.notifications.custom.full": "Tienes {count, number} sonidos, el máximo permitido. Elimina uno para añadir otro.",
   "ui.settings.notifications.custom.uploading": "Subiendo… {percent, number} %",
-  "ui.settings.notifications.custom.processing": "Igualando el volumen…",
   "ui.settings.notifications.custom.cancel_upload": "Cancelar la adición de {file}",
   "ui.settings.notifications.custom.added_one": "Se añadió {name} y quedó seleccionado.",
   "ui.settings.notifications.custom.added_many": "{count, plural, one {Se añadió # sonido.} many {Se añadieron # de sonidos.} other {Se añadieron # sonidos.}}",

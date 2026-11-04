@@ -357,7 +357,12 @@ export const CustomSoundRow: FC<CustomSoundRowProps> = ({
 					{sound.label}
 				</span>
 				{duration && (
-					<span className="hidden shrink-0 font-mono text-mono-sm text-ink-dim @[420px]:inline">
+					// Hidden from the radio's name: the label wraps this span, and
+					// "My clip 0:02" is not the sound's name (review round 1, m2).
+					<span
+						aria-hidden="true"
+						className="hidden shrink-0 font-mono text-mono-sm text-ink-dim @[420px]:inline"
+					>
 						{duration}
 					</span>
 				)}
@@ -446,6 +451,25 @@ const RenameField: FC<RenameFieldProps> = ({
 		return () => clearTimeout(timer);
 	}, []);
 	const error = localError ?? serverError;
+	/* Set once Enter/Esc/blur has decided, so the blur after Esc is not a save. */
+	const settled = useRef(false);
+	// A failed save reopens the field (saving -> false with an error): live again.
+	useEffect(() => {
+		if (!saving) settled.current = false;
+	}, [saving]);
+	const submit = () => {
+		const invalid = renameError(draft, maxNameChars);
+		if (invalid) {
+			setLocalError(
+				invalid === "ui.settings.notifications.custom.rename_long"
+					? t(invalid, { max: maxNameChars })
+					: t("ui.settings.notifications.custom.rename_empty"),
+			);
+			return;
+		}
+		settled.current = true;
+		void onSave(draft.trim());
+	};
 	return (
 		<div className="flex min-w-0 flex-1 flex-col gap-1">
 			<Input
@@ -465,20 +489,27 @@ const RenameField: FC<RenameFieldProps> = ({
 					if (event.key === "Escape") {
 						event.preventDefault();
 						event.stopPropagation();
+						settled.current = true;
 						onCancel();
 					} else if (event.key === "Enter") {
 						event.preventDefault();
-						const invalid = renameError(draft, maxNameChars);
-						if (invalid) {
-							setLocalError(
-								invalid === "ui.settings.notifications.custom.rename_long"
-									? t(invalid, { max: maxNameChars })
-									: t("ui.settings.notifications.custom.rename_empty"),
-							);
-							return;
-						}
-						void onSave(draft.trim());
+						submit();
 					}
+				}}
+				/*
+				 * BLUR SAVES A VALID DRAFT, as `InlineEditText` does everywhere else
+				 * (UX round 1, U7): clicking away used to drop the edit silently. An
+				 * unchanged draft is a cancel; an invalid one stays open with its
+				 * error, rather than closing on a value the user cannot keep.
+				 */
+				onBlur={() => {
+					if (saving || settled.current) return;
+					if (draft.trim() === initial.trim()) {
+						settled.current = true;
+						onCancel();
+						return;
+					}
+					submit();
 				}}
 			/>
 			{error && (

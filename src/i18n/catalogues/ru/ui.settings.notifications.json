@@ -33,7 +33,6 @@
   "ui.settings.notifications.custom.hint": "WAV, FLAC, MP3 или OGG, не длиннее {seconds, number} с и не больше {megabytes, number} МБ. Громкость выравнивается по встроенным звукам.",
   "ui.settings.notifications.custom.full": "У вас уже {count, number} звуков — это максимум. Удалите один, чтобы добавить новый.",
   "ui.settings.notifications.custom.uploading": "Загрузка… {percent, number} %",
-  "ui.settings.notifications.custom.processing": "Выравнивание громкости…",
   "ui.settings.notifications.custom.cancel_upload": "Отменить добавление «{file}»",
   "ui.settings.notifications.custom.added_one": "Звук «{name}» добавлен и выбран.",
   "ui.settings.notifications.custom.added_many": "{count, plural, one {Добавлен # звук.} few {Добавлено # звука.} many {Добавлено # звуков.} other {Добавлено # звука.}}",

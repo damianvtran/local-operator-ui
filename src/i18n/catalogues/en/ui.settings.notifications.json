@@ -33,7 +33,6 @@
 	"ui.settings.notifications.custom.hint": "WAV, FLAC, MP3 or OGG, up to {seconds, number} seconds and {megabytes, number} MB. Loudness is matched to the built-in sounds.",
 	"ui.settings.notifications.custom.full": "You have {count, number} sounds, the most allowed. Remove one to add another.",
 	"ui.settings.notifications.custom.uploading": "Uploading… {percent, number}%",
-	"ui.settings.notifications.custom.processing": "Matching loudness…",
 	"ui.settings.notifications.custom.cancel_upload": "Cancel adding {file}",
 	"ui.settings.notifications.custom.added_one": "Added {name} and selected it.",
 	"ui.settings.notifications.custom.added_many": "{count, plural, one {Added # sound.} other {Added # sounds.}}",
@@ -67,5 +66,8 @@
 	"ui.settings.notifications.load.failed": "Couldn't load notification sounds. {reason}",
 	"ui.settings.notifications.load.loading": "Loading notification sounds…",
 	"ui.settings.notifications.backend_older": "Notification sounds need a newer Local Operator. Update it to choose a sound.",
-	"ui.settings.notifications.missing_rows": "{count, plural, one {This backend does not register {rows} yet, so that control is not shown.} other {This backend does not register {rows} yet, so those controls are not shown.}}"
+	"ui.settings.notifications.missing_rows": "{count, plural, one {This backend does not register {rows} yet, so that control is not shown.} other {This backend does not register {rows} yet, so those controls are not shown.}}",
+	"ui.settings.notifications.custom.finishing": "Finishing…",
+	"ui.settings.notifications.error.silent": "{file} is silent. Choose a clip you can hear.",
+	"ui.settings.notifications.search_terms": "sound, chime, notification sound, volume, alert"
 }

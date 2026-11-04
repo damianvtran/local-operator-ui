@@ -203,12 +203,6 @@
 		"length": "Very short.",
 		"note": "{percent} is 0-100."
 	},
-	"ui.settings.notifications.custom.processing": {
-		"role": "Label while the server processes the file",
-		"tone": "Short.",
-		"length": "Very short. English is 18 characters.",
-		"note": "The server is adjusting the file's loudness."
-	},
 	"ui.settings.notifications.custom.cancel_upload": {
 		"role": "Accessible name of the cancel button on a pending row",
 		"tone": "Short imperative.",
@@ -412,5 +406,23 @@
 		"tone": "Plain.",
 		"length": "Wraps.",
 		"note": "{rows} is a list of setting keys; never translate them."
+	},
+	"ui.settings.notifications.custom.finishing": {
+		"role": "Label while the server matches loudness; the upload can no longer be cancelled",
+		"tone": "Short status.",
+		"length": "Very short, next to a progress bar. English is 10 characters.",
+		"note": "Replaces \"Matching loudness…\": the file has been sent and is being finished. No Cancel is offered in this state."
+	},
+	"ui.settings.notifications.error.silent": {
+		"role": "Upload error for a file with no audible sound",
+		"tone": "Plain, no blame; gives the remedy.",
+		"length": "Wraps in a list row. English is about 45 characters plus the file name.",
+		"note": "{file} is the file name. The file was read successfully but contains only silence. A \"Choose another file\" button follows."
+	},
+	"ui.settings.notifications.search_terms": {
+		"role": "Hidden search keywords for this section (not displayed)",
+		"tone": "Comma-separated words people would type.",
+		"length": "Not displayed.",
+		"note": "Settings search matches these words to the notification sound controls. Translate each into the words a user would search for; keep it a comma-separated list."
 	}
 }

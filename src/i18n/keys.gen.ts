@@ -9785,13 +9785,13 @@ export type MessageParams = {
 	"ui.settings.notifications.custom.cancel": undefined;
 	"ui.settings.notifications.custom.cancel_upload": { file: string };
 	"ui.settings.notifications.custom.empty": undefined;
+	"ui.settings.notifications.custom.finishing": undefined;
 	"ui.settings.notifications.custom.full": { count: number };
 	"ui.settings.notifications.custom.hint": {
 		seconds: number;
 		megabytes: number;
 	};
 	"ui.settings.notifications.custom.more": { name: string };
-	"ui.settings.notifications.custom.processing": undefined;
 	"ui.settings.notifications.custom.remove": undefined;
 	"ui.settings.notifications.custom.remove_action": undefined;
 	"ui.settings.notifications.custom.remove_confirm": { name: string };
@@ -9811,6 +9811,7 @@ export type MessageParams = {
 	"ui.settings.notifications.error.choose_another": undefined;
 	"ui.settings.notifications.error.dismiss": undefined;
 	"ui.settings.notifications.error.network": { file: string };
+	"ui.settings.notifications.error.silent": { file: string };
 	"ui.settings.notifications.error.too_large": {
 		file: string;
 		megabytes: number;
@@ -9839,6 +9840,7 @@ export type MessageParams = {
 	"ui.settings.notifications.retry": undefined;
 	"ui.settings.notifications.save.failed": { reason: string };
 	"ui.settings.notifications.save.failed_generic": undefined;
+	"ui.settings.notifications.search_terms": undefined;
 	"ui.settings.notifications.section.description": undefined;
 	"ui.settings.notifications.section.title": undefined;
 	"ui.settings.notifications.sound.enabled_description": undefined;

@@ -33,7 +33,6 @@
   "ui.settings.notifications.custom.hint": "支持WAV、FLAC、MP3或OGG，最长{seconds, number}秒，最大{megabytes, number} MB。响度会与内置声音保持一致。",
   "ui.settings.notifications.custom.full": "你已有{count, number}个声音，已达上限。删除一个后才能添加新的。",
   "ui.settings.notifications.custom.uploading": "正在上传……{percent, number}%",
-  "ui.settings.notifications.custom.processing": "正在匹配响度……",
   "ui.settings.notifications.custom.cancel_upload": "取消添加{file}",
   "ui.settings.notifications.custom.added_one": "已添加{name}并将其选中。",
   "ui.settings.notifications.custom.added_many": "{count, plural, other {已添加 # 个声音。}}",

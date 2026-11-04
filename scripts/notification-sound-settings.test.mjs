@@ -294,6 +294,7 @@ const makeDaemon = (options = {}) => {
 					desktop_auth: "bearer",
 					features: {
 						settings: 1,
+						desktop_feed: 1,
 						...(options.older ? {} : { notification_sounds: 1 }),
 					},
 				});
@@ -353,6 +354,9 @@ const makeDaemon = (options = {}) => {
 	};
 	const mediaHandler = async (input, bytes) => {
 		media.push({ request: input, bytes: bytes?.byteLength ?? 0 });
+		// A test can hold the upload open to reach the "processing" phase.
+		if (input.op === "notification_sounds.upload" && options.uploadGate)
+			await options.uploadGate;
 		if (input.op === "notification_sounds.audio")
 			return {
 				status: 200,
@@ -382,9 +386,33 @@ const makeDaemon = (options = {}) => {
 	return { state, asked, media, edits, request, media_: mediaHandler };
 };
 
+/** The desktop feed, faked: a test pushes frames through `emitFrame`. */
+const feedListeners = new Set();
+let feedSeq = 0;
+const emitFrame = async (changedKeys) => {
+	await act(async () => {
+		for (const listener of feedListeners)
+			listener({
+				type: "config",
+				epoch: "e1",
+				seq: ++feedSeq,
+				payload: { changed_keys: changedKeys, language: "en" },
+			});
+	});
+};
 const installBridge = (daemon) => {
 	globalThis.window.api.desktop.request = daemon.request;
 	globalThis.window.api.desktop.media = daemon.media_;
+	globalThis.window.api.desktop.feed = {
+		subscribe: (onFrame) => {
+			feedListeners.add(onFrame);
+			return () => feedListeners.delete(onFrame);
+		},
+		watchState: (onState) => {
+			onState({ connected: true });
+			return () => {};
+		},
+	};
 };
 
 const settle = async (turns = 4, ms = 0) => {
@@ -811,4 +839,308 @@ test("the Backend list no longer renders the promoted keys", async (t) => {
 		assert.ok(!keys.includes(key), `${key} is not a Backend row`);
 		assert.equal(sectionForSettingKey(key, "backend"), "notifications");
 	}
+});
+
+/* ------------------------------------------------- round 1 remediation */
+
+/* Radix's roving focus moves focus in a `setTimeout`, so wait one turn. */
+const keyOn = async (node, key, init = {}) => {
+	await act(async () => {
+		node.dispatchEvent(
+			new window.KeyboardEvent("keydown", { key, bubbles: true, ...init }),
+		);
+		await new Promise((resolve) => setTimeout(resolve, 0));
+	});
+};
+const keyUpOn = async (node, key) => {
+	await act(async () => {
+		node.dispatchEvent(
+			new window.KeyboardEvent("keyup", { key, bubbles: true }),
+		);
+	});
+};
+const slider = (container) =>
+	container.querySelector(
+		'[data-notification-sound-group] input[type="range"]',
+	);
+const soundSwitch = (container) =>
+	container.querySelector(
+		'[data-search-row="notifications.sound.enabled"] [role="switch"]',
+	);
+
+test("A: keyboard volume keeps focus across three steps, each written in order (QA Q1 / UX U1)", async (t) => {
+	const daemon = makeDaemon();
+	const { container } = await mount(t, daemon);
+	const range = slider(container);
+	range.focus();
+	const setValue = Object.getOwnPropertyDescriptor(
+		window.HTMLInputElement.prototype,
+		"value",
+	).set;
+	for (const next of [65, 60, 55]) {
+		await keyOn(range, "ArrowLeft");
+		await act(async () => {
+			setValue.call(range, String(next));
+			range.dispatchEvent(new window.Event("input", { bubbles: true }));
+		});
+		await keyUpOn(range, "ArrowLeft");
+		await settle(1);
+		assert.equal(document.activeElement, range, `focus kept after ${next}`);
+		assert.equal(range.disabled, false, "the range is never disabled mid-save");
+	}
+	await waitFor(() => daemon.state.volume === 55, 3000);
+	assert.deepEqual(
+		daemon.edits
+			.filter((e) => e.key === "notifications.sound.volume")
+			.map((e) => e.value),
+		[65, 60, 55],
+		"three writes, in the order made",
+	);
+});
+
+test("A: Space twice on Play a sound keeps focus and lands both writes (QA Q1 / UX U1)", async (t) => {
+	const daemon = makeDaemon();
+	const { container } = await mount(t, daemon);
+	const sw = soundSwitch(container);
+	sw.focus();
+	await click(sw);
+	await settle(1);
+	assert.equal(
+		document.activeElement,
+		soundSwitch(container),
+		"focus kept after first press",
+	);
+	await click(soundSwitch(container));
+	await waitFor(
+		() =>
+			daemon.edits.filter((e) => e.key === "notifications.sound.enabled")
+				.length === 2,
+		3000,
+	);
+	await settle(4);
+	assert.equal(
+		document.activeElement,
+		soundSwitch(container),
+		"focus kept after second press",
+	);
+	assert.deepEqual(
+		daemon.edits
+			.filter((e) => e.key === "notifications.sound.enabled")
+			.map((e) => e.value),
+		[false, true],
+	);
+	assert.equal(daemon.state.soundOn, true);
+	assert.equal(soundSwitch(container).getAttribute("aria-checked"), "true");
+});
+
+test("B: Turn on notifications flips the promoted switch above it (QA Q2 / UX U3)", async (t) => {
+	const daemon = makeDaemon({ notificationsOn: false });
+	const { container } = await mount(t, daemon);
+	const master = () => [...container.querySelectorAll('[role="switch"]')][0];
+	assert.equal(master().getAttribute("aria-checked"), "false");
+	const turnOn = [...container.querySelectorAll("button")].find(
+		(b) => b.textContent === "Turn on notifications",
+	);
+	await click(turnOn);
+	await waitFor(() => daemon.state.notificationsOn === true, 3000);
+	await settle(6);
+	assert.equal(
+		master().getAttribute("aria-checked"),
+		"true",
+		"switch follows the write",
+	);
+});
+
+test("C: a config frame from elsewhere moves the radio and adds the row, silently (UX U2)", async (t) => {
+	const daemon = makeDaemon();
+	const { container } = await mount(t, daemon);
+	daemon.state.custom.push({
+		id: "custom-made-by-aida-1",
+		label: "Made by Aida",
+		duration_s: 1,
+	});
+	daemon.state.selected = "custom-made-by-aida-1";
+	await emitFrame(["notifications"]);
+	await waitFor(
+		() =>
+			radio(container, "custom-made-by-aida-1")?.getAttribute("data-state") ===
+			"checked",
+		3000,
+	);
+	assert.equal(
+		radio(container, "custom-made-by-aida-1").getAttribute("data-state"),
+		"checked",
+	);
+	assert.deepEqual(audioAsks(daemon), [], "a feed-driven change never plays");
+});
+
+test("C: an unrelated config frame does not re-read", async (t) => {
+	const daemon = makeDaemon();
+	const { container } = await mount(t, daemon);
+	const before = daemon.asked.filter(
+		(op) => op === "notification_sounds.list",
+	).length;
+	await emitFrame(["theme"]);
+	await settle(4, 20);
+	assert.equal(
+		daemon.asked.filter((op) => op === "notification_sounds.list").length,
+		before,
+	);
+	assert.ok(container);
+});
+
+test("D: leaving within the debounce still saves the choice (review M1)", async (t) => {
+	const daemon = makeDaemon();
+	const client = new QueryClient({
+		defaultOptions: { queries: { retry: false, gcTime: 0 } },
+	});
+	installBridge(daemon);
+	const container = document.createElement("div");
+	document.body.appendChild(container);
+	const root = createRoot(container);
+	t.after(async () => {
+		await act(async () => client.clear());
+		container.remove();
+	});
+	await act(async () => {
+		root.render(
+			createElement(
+				QueryClientProvider,
+				{ client },
+				createElement(NotificationsSection, {}),
+			),
+		);
+	});
+	await waitFor(() => radio(container, "felt-marimba") !== null);
+	await settle(3);
+	await click(radio(container, "felt-marimba"));
+	await settle(1, 50);
+	await act(async () => root.unmount());
+	await settle(4, 50);
+	assert.deepEqual(
+		daemon.edits.map((e) => [e.key, e.value]),
+		[["notifications.sound.id", "felt-marimba"]],
+	);
+});
+
+test("E: once sent, the upload row offers no Cancel and says Finishing… (review M2 / UX U5)", async (t) => {
+	let release;
+	const uploadGate = new Promise((resolve) => {
+		release = resolve;
+	});
+	const daemon = makeDaemon({ uploadGate });
+	const { container } = await mount(t, daemon);
+	await addFiles(container, [
+		new window.File([new Uint8Array(16)], "knock.wav"),
+	]);
+	await waitFor(
+		() => container.querySelector('[data-pending-phase="processing"]') !== null,
+		3000,
+	);
+	const row = container.querySelector('[data-pending-phase="processing"]');
+	assert.match(row.textContent, /Finishing…/);
+	assert.equal(
+		row.querySelector("button"),
+		null,
+		"no Cancel once the bytes are sent",
+	);
+	release();
+	await waitFor(() => radio(container, "custom-knock-000001") !== null, 3000);
+	assert.ok(
+		radio(container, "custom-knock-000001"),
+		"the sound the daemon stored is shown",
+	);
+});
+
+test("Q7: the first arrow after a click selects and plays", async (t) => {
+	const daemon = makeDaemon();
+	const { container } = await mount(t, daemon);
+	await click(radio(container, "soft-pulse"));
+	radio(container, "soft-pulse").focus();
+	await settle(2);
+	const asksBefore = audioAsks(daemon).length;
+	await keyOn(radio(container, "soft-pulse"), "ArrowDown");
+	await keyUpOn(document.activeElement, "ArrowDown");
+	await settle(3);
+	assert.equal(
+		radio(container, "two-note-chime").getAttribute("data-state"),
+		"checked",
+	);
+	assert.equal(audioAsks(daemon).length, asksBefore + 1, "and it played once");
+});
+
+test("U4: an auto-repeat selects silently and plays only the row it stops on", async (t) => {
+	const daemon = makeDaemon();
+	const { container } = await mount(t, daemon);
+	radio(container, "soft-pulse").focus();
+	await settle(1);
+	// soft-pulse -> two-note-chime (a press) -> felt-marimba (a repeat).
+	await keyOn(radio(container, "soft-pulse"), "ArrowDown");
+	await keyOn(document.activeElement, "ArrowDown", { repeat: true });
+	const during = audioAsks(daemon).map((m) => m.request.soundId);
+	await keyUpOn(document.activeElement, "ArrowDown");
+	await settle(3);
+	const after = audioAsks(daemon).map((m) => m.request.soundId);
+	assert.deepEqual(
+		during,
+		["two-note-chime"],
+		"only the first, non-repeat press played",
+	);
+	assert.deepEqual(
+		after,
+		["two-note-chime", "felt-marimba"],
+		"the row the repeat stopped on plays once, on release",
+	);
+	assert.equal(
+		radio(container, "felt-marimba").getAttribute("data-state"),
+		"checked",
+	);
+});
+
+test("U7: clicking away from a valid rename saves it", async (t) => {
+	const daemon = makeDaemon();
+	const { container } = await mount(t, daemon, {
+		listPresets: {
+			initialMode: {
+				id: CUSTOM_ID,
+				mode: { kind: "renaming", saving: false, error: null },
+			},
+		},
+	});
+	const field = container.querySelector('[data-row-mode="renaming"] input');
+	const setValue = Object.getOwnPropertyDescriptor(
+		window.HTMLInputElement.prototype,
+		"value",
+	).set;
+	await act(async () => {
+		setValue.call(field, "Brass ping 2");
+		field.dispatchEvent(new window.Event("input", { bubbles: true }));
+	});
+	await act(async () => {
+		field.dispatchEvent(new window.FocusEvent("focusout", { bubbles: true }));
+		field.dispatchEvent(new window.FocusEvent("blur"));
+	});
+	await waitFor(() => daemon.state.custom[0].label === "Brass ping 2", 3000);
+	assert.equal(daemon.state.custom[0].label, "Brass ping 2");
+});
+
+test("m5: a silent clip gets its own sentence", async (t) => {
+	const daemon = makeDaemon();
+	const { container } = await mount(t, daemon, {
+		listPresets: {
+			initialPending: [
+				{
+					key: "e",
+					fileName: "quiet.wav",
+					stem: "quiet",
+					phase: "error",
+					refusal: { code: "silent" },
+				},
+			],
+		},
+	});
+	assert.match(
+		container.textContent,
+		/quiet\.wav is silent\. Choose a clip you can hear\./,
+	);
 });

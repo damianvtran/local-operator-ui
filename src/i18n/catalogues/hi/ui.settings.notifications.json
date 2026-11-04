@@ -33,7 +33,6 @@
   "ui.settings.notifications.custom.hint": "WAV, FLAC, MP3 या OGG, अधिकतम {seconds, number} सेकंड और {megabytes, number} MB। लाउडनेस बिल्ट-इन ध्वनियों के बराबर कर दी जाती है।",
   "ui.settings.notifications.custom.full": "आपके पास {count, number} ध्वनियाँ हैं, जो अधिकतम सीमा है। नई जोड़ने के लिए एक हटाएँ।",
   "ui.settings.notifications.custom.uploading": "अपलोड हो रहा है… {percent, number}%",
-  "ui.settings.notifications.custom.processing": "लाउडनेस मिलाई जा रही है…",
   "ui.settings.notifications.custom.cancel_upload": "{file} जोड़ना रद्द करें",
   "ui.settings.notifications.custom.added_one": "{name} जोड़ी गई और चुनी गई।",
   "ui.settings.notifications.custom.added_many": "{count, plural, one {# ध्वनि जोड़ी गई।} other {# ध्वनियाँ जोड़ी गईं।}}",

@@ -41,6 +41,7 @@ import { createBlobUrl, revokeBlobUrl } from "@shared/lib/blob-url-cache";
 import { useAudioEngineStore } from "@shared/store/audio-engine-store";
 import { AlertCircle, Plus, X } from "lucide-react";
 import {
+	type FocusEvent,
 	forwardRef,
 	useCallback,
 	useEffect,
@@ -55,6 +56,7 @@ import {
 	DEFAULT_SOUND_ID,
 	type NotificationSound,
 	type NotificationSoundListing,
+	PREVIEW_LATE_MS,
 	PREVIEW_OWNER_ID,
 	SELECTION_WRITE_DEBOUNCE_MS,
 	SYSTEM_SOUND_ID,
@@ -179,7 +181,12 @@ export const NotificationSoundList = forwardRef<
 			initialFailedChoice ?? null,
 		);
 		const writeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+		/* The id the pending debounced write is for (flushed, never dropped). */
+		const pendingWrite = useRef<string | null>(null);
 		const shown = pendingChoice ?? selectedId;
+		/* The row an auto-repeat stopped on, read on key release (U4). */
+		const shownRef = useRef(shown);
+		shownRef.current = shown;
 
 		useEffect(() => {
 			if (pendingChoice !== null && pendingChoice === selectedId)
@@ -205,13 +212,41 @@ export const NotificationSoundList = forwardRef<
 		const scheduleWrite = useCallback(
 			(id: string) => {
 				if (writeTimer.current) clearTimeout(writeTimer.current);
+				pendingWrite.current = id;
 				writeTimer.current = setTimeout(() => {
 					writeTimer.current = null;
+					pendingWrite.current = null;
 					void flushChoice(id);
 				}, SELECTION_WRITE_DEBOUNCE_MS);
 			},
 			[flushChoice],
 		);
+		/*
+		 * FLUSH, NEVER DROP (review round 1, M1). Leaving Settings or tabbing out
+		 * of the list inside the 400ms window used to clear the timer, so the user
+		 * heard the sound, saw the radio move, and nothing was saved.
+		 */
+		const flushPendingWrite = useCallback(() => {
+			if (!writeTimer.current) return;
+			clearTimeout(writeTimer.current);
+			writeTimer.current = null;
+			const id = pendingWrite.current;
+			pendingWrite.current = null;
+			if (id) void flushChoice(id);
+		}, [flushChoice]);
+		/*
+		 * DROP, when a later act decides the selection instead (review m3): an
+		 * upload that selects its sound, or a remove that reset it. Firing the
+		 * older arrow choice afterwards would overwrite theirs.
+		 */
+		const cancelPendingWrite = () => {
+			if (writeTimer.current) clearTimeout(writeTimer.current);
+			writeTimer.current = null;
+			pendingWrite.current = null;
+		};
+		/* The unmount flush reads the latest callback through a ref. */
+		const flushRef = useRef(flushPendingWrite);
+		flushRef.current = flushPendingWrite;
 
 		/* ----------------------------------------------------------- preview */
 
@@ -250,6 +285,7 @@ export const NotificationSoundList = forwardRef<
 			async (id: string, atVolume: number) => {
 				if (id === SYSTEM_SOUND_ID) return;
 				const generation = ++previewGeneration.current;
+				const askedAt = Date.now();
 				setPreview({ id, state: "loading" });
 				try {
 					const response = await desktopMedia(
@@ -261,6 +297,15 @@ export const NotificationSoundList = forwardRef<
 						null,
 					);
 					if (generation !== previewGeneration.current) return;
+					/*
+					 * A LATE PREVIEW IS DROPPED (UX round 1, U10): a daemon that answers
+					 * seconds after the click would sound at a moment the user did not
+					 * choose. The row returns to idle; pressing again asks again.
+					 */
+					if (Date.now() - askedAt > PREVIEW_LATE_MS) {
+						setPreview(null);
+						return;
+					}
 					if (response.kind !== "bytes") throw new Error("no audio");
 					releaseUrl();
 					const url = createBlobUrl(
@@ -272,6 +317,9 @@ export const NotificationSoundList = forwardRef<
 						.getState()
 						.play(PREVIEW_OWNER_ID, url, {
 							onEnded: () => setPreview(null),
+							// The bytes carry the banner's gain; the chat player's
+							// volume or mute must not scale them (review m1).
+							fixedOutput: { volume: 1, playbackRate: 1 },
 							onError: () => setPreview({ id, state: "failed" }),
 						});
 					if (generation !== previewGeneration.current) return;
@@ -307,7 +355,7 @@ export const NotificationSoundList = forwardRef<
 		/* Leaving Settings stops the preview and frees its bytes (§3.3). */
 		useEffect(
 			() => () => {
-				if (writeTimer.current) clearTimeout(writeTimer.current);
+				flushRef.current();
 				useAudioEngineStore.getState().stop(PREVIEW_OWNER_ID);
 				releaseUrl();
 			},
@@ -317,6 +365,8 @@ export const NotificationSoundList = forwardRef<
 		/* ---------------------------------------------------- the live region */
 
 		const [announcement, setAnnouncement] = useState("");
+		/* The visible multi-add confirmation, cleared by the next Add. */
+		const [addedNotice, setAddedNotice] = useState<string | null>(null);
 
 		/* ------------------------------------------------------- custom rows */
 
@@ -386,7 +436,10 @@ export const NotificationSoundList = forwardRef<
 				if (preview?.id === sound.id) stopPreview();
 				const reset = result?.selection_reset === true;
 				// The reset is not the user's choice of Soft pulse: it does not play.
-				if (reset) setPendingChoice(DEFAULT_SOUND_ID);
+				if (reset) {
+					cancelPendingWrite();
+					setPendingChoice(DEFAULT_SOUND_ID);
+				}
 				setAnnouncement(
 					reset
 						? t("ui.settings.notifications.custom.removed_reset", {
@@ -514,6 +567,7 @@ export const NotificationSoundList = forwardRef<
 
 		const startUploads = (files: File[]) => {
 			if (files.length === 0) return;
+			setAddedNotice(null);
 			const customCount =
 				groups.custom.length +
 				pending.filter((row) => row.phase !== "error").length;
@@ -547,36 +601,39 @@ export const NotificationSoundList = forwardRef<
 				}
 				if (added.length === 0) return;
 				if (toSend.length === 1 && added.length === 1) {
-					// One file: it becomes your sound and plays once (§5.1).
-					const [only] = added;
-					setPendingChoice(only.id);
-					void flushChoice(only.id);
-					void play(only.id, volume);
-					setAnnouncement(
-						t("ui.settings.notifications.custom.added_one", {
-							name: only.name,
-						}),
-					);
+					selectAdded(added[0]);
 				} else {
-					setAnnouncement(
-						t("ui.settings.notifications.custom.added_many", {
-							count: added.length,
-						}),
-					);
+					const sentence = t("ui.settings.notifications.custom.added_many", {
+						count: added.length,
+					});
+					setAnnouncement(sentence);
+					// Rows appearing is not a confirmation a sighted user can read
+					// back (UX round 1, U9): the count also shows beside Add.
+					setAddedNotice(sentence);
 				}
 				addRef.current?.focus();
 			});
+		};
+
+		/*
+		 * One added file becomes your sound and plays once (§5.1). Shared by the
+		 * first try and Retry, which used to differ (QA round 1, Q4).
+		 */
+		const selectAdded = (only: { id: string; name: string }) => {
+			cancelPendingWrite();
+			setPendingChoice(only.id);
+			void flushChoice(only.id);
+			void play(only.id, volume);
+			setAnnouncement(
+				t("ui.settings.notifications.custom.added_one", { name: only.name }),
+			);
 		};
 
 		const retryUpload = (row: PendingUpload) => {
 			patchPending(row.key, { phase: "queued", refusal: undefined });
 			uploadQueue.current = uploadQueue.current.then(async () => {
 				const id = await uploadOne({ ...row, phase: "queued" });
-				if (id) {
-					setAnnouncement(
-						t("ui.settings.notifications.custom.added_many", { count: 1 }),
-					);
-				}
+				if (id) selectAdded({ id, name: row.stem });
 			});
 		};
 
@@ -592,6 +649,43 @@ export const NotificationSoundList = forwardRef<
 		const playing = (id: string): PreviewState =>
 			preview?.id === id ? preview.state : "idle";
 
+		/*
+		 * ARROW NAVIGATION, owned here rather than left to Radix's heuristic.
+		 *
+		 * - Q7 (QA round 1): Radix selects the newly focused radio only when its
+		 *   own document-level arrow flag is set, and after a pointer click the
+		 *   first arrow moved focus without selecting (3/3 trials). The flag
+		 *   below is set in the CAPTURE phase, before the roving focus moves, so
+		 *   the focus handler can select the radio the arrow landed on.
+		 * - U4 (UX round 1): holding an arrow auto-repeats, and every row passed
+		 *   used to start its clip. A repeat selects silently; the row the user
+		 *   stops on plays once, on key release.
+		 */
+		const arrowNav = useRef<{ active: boolean; repeated: boolean }>({
+			active: false,
+			repeated: false,
+		});
+		const ARROWS = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"];
+		const onGroupKeyDownCapture = (event: KeyboardEvent) => {
+			if (!ARROWS.includes(event.key)) return;
+			arrowNav.current.active = true;
+			if (event.repeat) arrowNav.current.repeated = true;
+		};
+		const onGroupKeyUp = (event: KeyboardEvent) => {
+			if (!ARROWS.includes(event.key)) return;
+			const repeated = arrowNav.current.repeated;
+			arrowNav.current = { active: false, repeated: false };
+			if (repeated) void play(shownRef.current, volume);
+		};
+		const onGroupFocusCapture = (event: FocusEvent) => {
+			if (!arrowNav.current.active) return;
+			const target = event.target as HTMLElement | null;
+			if (
+				target?.getAttribute("role") === "radio" &&
+				target.getAttribute("data-state") !== "checked"
+			)
+				target.click();
+		};
 		const onGroupKeyDown = (event: KeyboardEvent) => {
 			// Esc anywhere in the group stops the preview (§3.3).
 			if (event.key === "Escape" && preview) {
@@ -612,11 +706,27 @@ export const NotificationSoundList = forwardRef<
 					loop
 					disabled={!canSelect}
 					onValueChange={(id) => {
+						/*
+						 * One act, one play: when Radix's own arrow-focus click and the
+						 * Q7 one below both land on the same radio (its flag can be set
+						 * too), the second is the same choice and changes nothing.
+						 */
+						if (id === shownRef.current) return;
 						// The user's own act: select, play once, write later.
 						setPendingChoice(id);
+						shownRef.current = id;
 						setSaveError(null);
-						void play(id, volume);
+						if (!arrowNav.current.repeated) void play(id, volume);
 						scheduleWrite(id);
+					}}
+					onKeyDownCapture={onGroupKeyDownCapture}
+					onKeyUp={onGroupKeyUp}
+					onFocusCapture={onGroupFocusCapture}
+					// Tabbing out of the list writes now rather than after the
+					// debounce (review round 1, M1).
+					onBlur={(event) => {
+						if (!event.currentTarget.contains(event.relatedTarget as Node))
+							flushPendingWrite();
 					}}
 				>
 					<p className="px-2 pb-1 text-meta text-ink-dim">
@@ -788,6 +898,16 @@ export const NotificationSoundList = forwardRef<
 					</p>
 				</div>
 
+				{addedNotice && (
+					// Visible only: the live region below already speaks it.
+					<p
+						className="px-2 text-body-sm text-ink-muted"
+						aria-hidden="true"
+						data-added-notice=""
+					>
+						{addedNotice}
+					</p>
+				)}
 				<output aria-live="polite" className="sr-only">
 					{announcement}
 				</output>
@@ -826,6 +946,7 @@ function uploadErrorSentence(
 		case "ui.settings.notifications.error.unsupported_codec":
 		case "ui.settings.notifications.error.unsupported_format":
 		case "ui.settings.notifications.error.undecodable":
+		case "ui.settings.notifications.error.silent":
 		case "ui.settings.notifications.error.network":
 			return t(key, { file: facts.file });
 		default:
@@ -899,7 +1020,10 @@ const PendingRow = ({
 		});
 		return (
 			<div
-				className="flex min-h-11 flex-wrap items-center gap-x-3 gap-y-1 border-b border-hairline px-2 py-1.5"
+				/* No vertical padding: `min-h-11` centres one line, so the error row
+				   is the pending row's 44px and nothing below it shifts (design
+				   round 1, D1); only a sentence that wraps grows it. */
+				className="flex min-h-11 flex-wrap items-center gap-x-3 gap-y-1 border-b border-hairline px-2"
 				data-pending-row={row.key}
 				data-pending-phase="error"
 			>
@@ -949,21 +1073,31 @@ const PendingRow = ({
 			</span>
 			<span className="flex shrink-0 items-center gap-2 text-meta text-ink-muted">
 				{processing
-					? t("ui.settings.notifications.custom.processing")
+					? t("ui.settings.notifications.custom.finishing")
 					: t("ui.settings.notifications.custom.uploading", { percent })}
 				<ProgressBar value={processing ? null : percent} />
 			</span>
-			<Button
-				variant="ghost"
-				size="icon"
-				className="size-11 shrink-0 text-ink-muted hover:text-ink"
-				aria-label={t("ui.settings.notifications.custom.cancel_upload", {
-					file,
-				})}
-				onClick={onCancel}
-			>
-				<X aria-hidden="true" />
-			</Button>
+			{/*
+			 * NO CANCEL ONCE SENT (review M2 / UX U5). The daemon has the bytes
+			 * and the request cannot be aborted, so a Cancel here hid a sound the
+			 * daemon then stored. Before the send, Cancel is honest; after it,
+			 * the row says "Finishing…" and the 44px slot stays so nothing moves.
+			 */}
+			{processing ? (
+				<span className="size-11 shrink-0" aria-hidden="true" />
+			) : (
+				<Button
+					variant="ghost"
+					size="icon"
+					className="size-11 shrink-0 text-ink-muted hover:text-ink"
+					aria-label={t("ui.settings.notifications.custom.cancel_upload", {
+						file,
+					})}
+					onClick={onCancel}
+				>
+					<X aria-hidden="true" />
+				</Button>
+			)}
 		</div>
 	);
 };

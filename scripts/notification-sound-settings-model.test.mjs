@@ -240,7 +240,7 @@ test("each upload refusal code earns its own sentence and remedy (§5.2)", () =>
 			"choose_another",
 		],
 		[{ code: "undecodable" }, "error.undecodable", "choose_another"],
-		[{ code: "silent" }, "error.undecodable", "choose_another"],
+		[{ code: "silent" }, "error.silent", "choose_another"],
 		[{ code: "limit_reached" }, "custom.full", "choose_another"],
 		[{ code: null }, "error.network", "retry"],
 		[{ code: "store_failed" }, "error.network", "retry"],
@@ -319,6 +319,7 @@ test("after a removal focus goes next, else previous, else Add", () => {
 test("the constants the spec fixes", () => {
 	assert.equal(model.PREVIEW_OWNER_ID, "notification-sound-preview");
 	assert.equal(model.SELECTION_WRITE_DEBOUNCE_MS, 400);
+	assert.equal(model.PREVIEW_LATE_MS, 3000);
 	assert.equal(model.VOLUME_STEP, 5);
 	assert.equal(model.VOLUME_PAGE_STEP, 20);
 	assert.equal(model.DEFAULT_VOLUME, 70);

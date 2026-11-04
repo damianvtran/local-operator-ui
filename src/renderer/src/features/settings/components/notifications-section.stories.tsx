@@ -65,6 +65,8 @@ type StoryState = {
 	longNames?: boolean;
 	backendOlder?: boolean;
 	listingFails?: boolean;
+	/** The registry read itself fails: the backend is down (QA Q3). */
+	settingsFail?: boolean;
 	missingVolumeKey?: boolean;
 	saveFails?: boolean;
 	presets?: NotificationSoundListPresets;
@@ -225,6 +227,11 @@ const installBridge = (state: StoryState) => {
 					},
 				});
 			case "settings.list":
+				if (state.settingsFail)
+					return {
+						status: 503,
+						body: { detail: "The Local Operator server is not answering." },
+					};
 				return ok(registryFor(state));
 			case "settings.edit":
 				if (state.saveFails) {
@@ -415,6 +422,8 @@ export const UploadErrorTooLong = errorStory("too_long", "favourite-song.mp3", {
 });
 /** `undecodable` (422). */
 export const UploadErrorUndecodable = errorStory("undecodable", "notes.ogg");
+/** `silent` (422): its own sentence, not "damaged" (review m5 / D3). */
+export const UploadErrorSilent = errorStory("silent", "quiet-room.wav");
 /** `limit_reached` (422). */
 export const UploadErrorLimit = errorStory("limit_reached", "one-more.wav");
 /** Network / 5xx: Retry instead of Choose another file. */
@@ -566,4 +575,9 @@ export const RemoveConfirmSelected: Story = {
 /** ~560px content (48px rail at the 1040px breakpoint): truncation, no duration. */
 export const Narrow: Story = {
 	args: { state: { customCount: 3, longNames: true, width: 560 } },
+};
+
+/** The registry read failed (backend down): the reason, with Retry (QA Q3). */
+export const BackendDown: Story = {
+	args: { state: { settingsFail: true } },
 };

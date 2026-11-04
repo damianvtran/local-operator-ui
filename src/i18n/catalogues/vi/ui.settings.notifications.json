@@ -33,7 +33,6 @@
   "ui.settings.notifications.custom.hint": "WAV, FLAC, MP3 hoặc OGG, tối đa {seconds, number} giây và {megabytes, number} MB. Độ lớn được cân bằng với các âm thanh có sẵn.",
   "ui.settings.notifications.custom.full": "Bạn đã có {count, number} âm thanh, mức tối đa cho phép. Hãy xóa một âm thanh để thêm âm thanh khác.",
   "ui.settings.notifications.custom.uploading": "Đang tải lên… {percent, number}%",
-  "ui.settings.notifications.custom.processing": "Đang cân bằng độ lớn…",
   "ui.settings.notifications.custom.cancel_upload": "Hủy thêm {file}",
   "ui.settings.notifications.custom.added_one": "Đã thêm {name} và chọn âm thanh này.",
   "ui.settings.notifications.custom.added_many": "{count, plural, other {Đã thêm # âm thanh.}}",

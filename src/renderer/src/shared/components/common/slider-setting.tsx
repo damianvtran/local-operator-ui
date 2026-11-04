@@ -136,6 +136,17 @@ type SliderSettingProps = {
 
 	/** Rendered after the readout on the label row (for example a Reset link). */
 	trailing?: ReactNode;
+
+	/**
+	 * SAVE IN PLACE (opt-in; readout mode only). By default a save disables the
+	 * range, and a focused range that becomes disabled drops keyboard focus to
+	 * <body>, so a second arrow press lands nowhere (notification-sound QA
+	 * round 1, Q1 / UX U1). With this set the range stays enabled and focused,
+	 * the readout stays, a small spinner sits beside it, and each release still
+	 * commits: the CALLER orders its writes. Off by default because existing
+	 * callers rely on a save being exclusive.
+	 */
+	savingInPlace?: boolean;
 };
 
 /**
@@ -162,6 +173,7 @@ export const SliderSetting: FC<SliderSettingProps> = ({
 	pageStep,
 	disabled = false,
 	trailing,
+	savingInPlace = false,
 }) => {
 	useI18nLocale();
 	const [sliderValue, setSliderValue] = useState<number>(value);
@@ -192,8 +204,10 @@ export const SliderSetting: FC<SliderSettingProps> = ({
 	 * on blur, so a release that lands outside the input after a drag is not
 	 * lost.
 	 */
+	// In place, a commit during a save is allowed: the caller serializes.
+	const blocked = isSaving && !savingInPlace;
 	const commitValue = useCallback(async () => {
-		if (isSaving) return;
+		if (blocked) return;
 
 		const clampedValue = Math.max(min, Math.min(max, latestValue.current));
 
@@ -210,7 +224,7 @@ export const SliderSetting: FC<SliderSettingProps> = ({
 				setInputValue(value.toString());
 			}
 		}
-	}, [isSaving, min, max, value, onChange]);
+	}, [blocked, min, max, value, onChange]);
 
 	/**
 	 * Handles slider change events (live, while dragging or pressing arrows)
@@ -359,8 +373,16 @@ export const SliderSetting: FC<SliderSettingProps> = ({
 				</label>
 
 				<div className="flex shrink-0 items-center gap-2">
-					{readout && !isSaving ? (
+					{readout && !blocked ? (
 						<>
+							{isSaving && (
+								<Spinner
+									size="xs"
+									label={t("ui.common.forms.slider_setting.saving", {
+										label: label,
+									})}
+								/>
+							)}
 							<span
 								aria-hidden="true"
 								className="font-mono text-mono-sm text-ink-muted"
@@ -418,7 +440,8 @@ export const SliderSetting: FC<SliderSettingProps> = ({
 				min={min}
 				max={max}
 				step={step}
-				disabled={isSaving || disabled}
+				disabled={blocked || disabled}
+				aria-busy={savingInPlace && isSaving ? true : undefined}
 				onChange={handleSliderChange}
 				onPointerDown={handleSliderPointerDown}
 				onKeyDown={handleSliderKeyDown}
@@ -436,7 +459,11 @@ export const SliderSetting: FC<SliderSettingProps> = ({
 					"mt-3 h-4 w-full cursor-pointer appearance-none bg-transparent bg-center bg-no-repeat " +
 					"bg-[length:100%_6px] " +
 					"bg-[linear-gradient(to_right,var(--color-accent)_0_var(--fill),var(--color-sunken)_var(--fill)_100%)] " +
-					"disabled:cursor-not-allowed disabled:bg-none disabled:bg-sunken " +
+					// Disabled keeps the 6px track geometry (design round 1, D2): a
+					// flat sunken background-colour filled the whole 16px hit area
+					// and read as a grey slab, so the gradient becomes one flat
+					// sunken stop at the same size instead.
+					"disabled:cursor-not-allowed disabled:bg-[linear-gradient(var(--color-sunken),var(--color-sunken))] " +
 					// rounded-full on the thumb: the same status-dot exception the
 					// Switch primitive takes — a squared slider thumb reads as a bug.
 					"[&::-webkit-slider-thumb]:size-4 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-accent " +

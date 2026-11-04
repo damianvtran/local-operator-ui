@@ -82,6 +82,12 @@ export const VOLUME_PAGE_STEP = 20;
 export const SELECTION_WRITE_DEBOUNCE_MS = 400;
 
 /**
+ * A preview whose audio arrives later than this is not played (UX round 1,
+ * U10): a sound the user asked for three seconds ago lands as a surprise.
+ */
+export const PREVIEW_LATE_MS = 3000;
+
+/**
  * The daemon's limits, used only when the listing omits them (an older #3403
  * build). The listing's own `limits` always wins: these mirror
  * `custom_sounds.MAX_*` and exist so a missing field cannot disable Add.
@@ -308,9 +314,9 @@ const UNREADABLE_CODECS = new Set(["opus", "m4a", "aac"]);
  *
  * The client never parses the server's `text`: these are the fallbacks keyed by
  * code, so a reworded server sentence cannot change which remedy is offered.
- * `silent` and `invalid_name` are #3403 codes the spec's table predates; they
- * read as "this file cannot be used" (`undecodable`) because the remedy is the
- * same one: choose another file.
+ * `silent` has its own sentence: the file WAS read, so "damaged" would send the
+ * user looking for the wrong fault (review m5, design D3). `invalid_name` reads
+ * as "this file cannot be used" (`undecodable`); the remedy is the same one.
  */
 export function uploadErrorCopyKey(refusal: UploadRefusal): UploadErrorCopy {
 	switch (refusal.code) {
@@ -334,8 +340,12 @@ export function uploadErrorCopyKey(refusal: UploadRefusal): UploadErrorCopy {
 				key: "ui.settings.notifications.error.too_long",
 				action: "choose_another",
 			};
-		case "undecodable":
 		case "silent":
+			return {
+				key: "ui.settings.notifications.error.silent",
+				action: "choose_another",
+			};
+		case "undecodable":
 		case "invalid_name":
 			return {
 				key: "ui.settings.notifications.error.undecodable",

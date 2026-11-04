@@ -574,6 +574,28 @@ export type DesktopMediaOutcome = {
 	answered: boolean;
 };
 
+/**
+ * A refusal's `params`, kept only as SHORT SCALARS (review round 1, n2): the
+ * renderer interpolates them into copy (`{seconds}`, `format`), so nothing
+ * else is needed, and the daemon being trusted is no reason to pass an
+ * arbitrarily large or nested object across IPC. At most 8 keys of at most 64
+ * characters; strings are cut to 128; objects, arrays and non-finite numbers
+ * are dropped.
+ */
+export function scalarParams(
+	params: Record<string, unknown>,
+): Record<string, string | number | boolean> | undefined {
+	const out: Record<string, string | number | boolean> = {};
+	for (const [key, value] of Object.entries(params).slice(0, 8)) {
+		if (key.length > 64) continue;
+		if (typeof value === "string") out[key] = value.slice(0, 128);
+		else if (typeof value === "number" && Number.isFinite(value))
+			out[key] = value;
+		else if (typeof value === "boolean") out[key] = value;
+	}
+	return Object.keys(out).length > 0 ? out : undefined;
+}
+
 export async function requestDesktopMediaOutcome(
 	input: unknown,
 	// ArrayBuffer-backed by contract: `Blob`, which this relay builds the
@@ -923,7 +945,7 @@ export async function requestDesktopMediaOutcome(
 							params !== null &&
 							!Array.isArray(params)
 						) {
-							declaredParams = params as Record<string, unknown>;
+							declaredParams = scalarParams(params as Record<string, unknown>);
 						}
 					}
 				} catch {
