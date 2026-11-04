@@ -3805,6 +3805,27 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			tenant_id: id.optional(),
 		})
 		.strict(),
+	/*
+	 * LEAVE, as its own op beside `join` (members panel, 2026-11-04). The
+	 * `lifecycle` op's `leave` action reaches the same core route, but this one
+	 * is shaped for the panel's "Leave" row. The row's organization is sent as
+	 * `tenant_id` for core's owner receipt, but the hub's leave handler does NOT
+	 * read a tenant today: it resolves the caller's first active membership, so
+	 * a leave on a conversation in another organization is refused as not found
+	 * (shown inline) rather than routed there (review round 1, R2). Both
+	 * halves of the owner receipt ride the QUERY, which is where core's
+	 * `POST .../leave` reads them (`_conversation_owner_query`; the route has
+	 * no body model). Leaving is the leave/re-add boundary: re-entry needs a
+	 * fresh invitation, which is why the panel confirms first.
+	 */
+	z
+		.object({
+			op: z.literal("team_bridge.conversations.leave"),
+			expected_account_id: id.optional(),
+			conversation_id: id,
+			tenant_id: id.optional(),
+		})
+		.strict(),
 	z
 		.object({
 			op: z.literal("team_bridge.conversations.notify"),
@@ -3886,8 +3907,19 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			expected_account_id: id.optional(),
 			conversation_id: id,
 			account_id: id,
-			decision: z.enum(["accept", "decline"]),
-			consent_version: z.string().min(1).max(128),
+			/*
+			 * `withdraw` takes an ACTIVE own agent out (agent-server #227; core
+			 * `ConversationConsentIn`). Only accept/decline answer an invitation,
+			 * so only they carry `consent_version`: leaving is not consenting,
+			 * and core refuses a version on withdraw. The pairing is enforced on
+			 * the union's `superRefine` below, because a refined member is a
+			 * `ZodEffects` the discriminated union refuses.
+			 */
+			decision: z.enum(["accept", "decline", "withdraw"]),
+			consent_version: z.string().min(1).max(128).optional(),
+			/* Pins ONE of the caller's agent rows (an owner may have several
+			   endpoints); the hub owns the "is this one of yours" rule. */
+			endpoint_id: id.optional(),
 			tenant_id: id.optional(),
 		})
 		.strict(),
@@ -4830,6 +4862,20 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
  */
 export const desktopRequestSchema = desktopRequestUnion.superRefine(
 	(request, ctx) => {
+		/* Consent: accept/decline carry the participation version, withdraw
+		   never does (core `ConversationConsentIn._version_per_decision`). */
+		if (
+			request.op === "team_bridge.conversations.consent" &&
+			(request.decision === "withdraw") !==
+				(request.consent_version === undefined)
+		) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message:
+					"accept and decline require consent_version; withdraw carries none", // i18n: ignore wire validation diagnostic
+				path: ["consent_version"],
+			});
+		}
 		if (
 			(request.op === "notifications.read" ||
 				request.op === "notifications.dismiss") &&
@@ -9808,6 +9854,11 @@ export function desktopEndpoint(request: DesktopRequest): {
 						}
 					: {}),
 			};
+		case "team_bridge.conversations.leave":
+			return {
+				path: `/v1/desktop/team-bridge/conversations/${encodeURIComponent(request.conversation_id)}/leave${conversationOwnerQuery(request)}`,
+				method: "POST",
+			};
 		case "team_bridge.conversations.notify":
 			return {
 				/* The read route's notify field (agent-server #148); no `seq`, so
@@ -9871,7 +9922,10 @@ export function desktopEndpoint(request: DesktopRequest): {
 						: {}),
 					...(request.tenant_id ? { tenant_id: request.tenant_id } : {}),
 					decision: request.decision,
-					consent_version: request.consent_version,
+					...(request.consent_version
+						? { consent_version: request.consent_version }
+						: {}),
+					...(request.endpoint_id ? { endpoint_id: request.endpoint_id } : {}),
 				},
 			};
 		case "team_bridge.owner_audit.conversations":

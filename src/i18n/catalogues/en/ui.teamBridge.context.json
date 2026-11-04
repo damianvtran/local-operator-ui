@@ -2565,5 +2565,196 @@
 			"kind": "Server file class: pdf, text, container (ZIP-based, including Office documents) or other. Keep every select arm."
 		},
 		"note": "PDF and ZIP are format names and normally stay untranslated. The class is a label from byte sniffing, not a safety or scan claim; do not imply the file was checked."
+	},
+	"ui.teamBridge.members_panel.title": {
+		"role": "panel heading",
+		"tone": "plain noun",
+		"length": "one word",
+		"placeholders": {},
+		"note": "Heading of the right-hand panel that lists everyone in the open conversation."
+	},
+	"ui.teamBridge.members_panel.close": {
+		"role": "accessible name of the panel's close icon button",
+		"tone": "imperative",
+		"length": "2-3 words",
+		"placeholders": {},
+		"note": "Closes the members panel. Screen-reader and tooltip text."
+	},
+	"ui.teamBridge.members_panel.open_label": {
+		"role": "accessible name of the header member-count button",
+		"tone": "imperative",
+		"length": "short verb phrase",
+		"placeholders": {
+			"count": "number of active members; a non-negative integer"
+		},
+		"note": "The visible text is just the count (\"9 members\"); this name says pressing it opens the member list."
+	},
+	"ui.teamBridge.members_panel.open_label_invited": {
+		"role": "accessible name of the header member-count button when invitations are pending",
+		"tone": "imperative",
+		"length": "short phrase",
+		"placeholders": {
+			"active": "number of active members",
+			"invited": "number of pending invitations"
+		},
+		"note": "Same button as open_label, used when some members are still invited. Both counts are plural arguments."
+	},
+	"ui.teamBridge.members_panel.state.pending_approval": {
+		"role": "status chip on an agent row",
+		"tone": "neutral",
+		"length": "1-2 words",
+		"placeholders": {},
+		"note": "An agent was invited but its owner has not yet approved it joining. Distinct from \"Invited\" (a person who has not joined yet)."
+	},
+	"ui.teamBridge.members_panel.leave_label": {
+		"role": "accessible name of the leave icon button on the reader's own row",
+		"tone": "imperative",
+		"length": "short verb phrase",
+		"placeholders": {},
+		"note": "The reader removes themselves from the conversation."
+	},
+	"ui.teamBridge.members_panel.leave_tooltip": {
+		"role": "tooltip on the leave icon button",
+		"tone": "imperative",
+		"length": "2-3 words",
+		"placeholders": {},
+		"note": "Tooltip for leave_label."
+	},
+	"ui.teamBridge.members_panel.decline_label": {
+		"role": "accessible name of the decline icon button on the reader's own invited agent",
+		"tone": "imperative",
+		"length": "short verb phrase plus agent name",
+		"placeholders": {
+			"name": "display name of the reader's own agent"
+		},
+		"note": "The reader is the agent's owner and refuses the invitation on its behalf."
+	},
+	"ui.teamBridge.members_panel.decline_tooltip": {
+		"role": "tooltip on the decline icon button",
+		"tone": "imperative",
+		"length": "2 words",
+		"placeholders": {},
+		"note": "Tooltip for decline_label."
+	},
+	"ui.teamBridge.members_panel.confirm.remove_title": {
+		"role": "confirm dialog title",
+		"tone": "question",
+		"length": "one line",
+		"placeholders": {
+			"name": "display name of the member",
+			"conversation": "conversation name as shown in its header"
+		},
+		"note": "Removing a person or the reader's own agent from this conversation only, not from the organization."
+	},
+	"ui.teamBridge.members_panel.confirm.remove_body": {
+		"role": "confirm dialog body",
+		"tone": "plain, reassuring",
+		"length": "one sentence",
+		"placeholders": {},
+		"note": "Explains the effect of removing a person who is an active member of this conversation."
+	},
+	"ui.teamBridge.members_panel.confirm.remove_invited_body": {
+		"role": "confirm dialog body",
+		"tone": "plain, reassuring",
+		"length": "one or two short sentences",
+		"placeholders": {},
+		"note": "Shown instead of remove_body when the person being removed has only been invited and has not joined: removing them withdraws the invitation."
+	},
+	"ui.teamBridge.members_panel.confirm.withdraw_body": {
+		"role": "confirm dialog body",
+		"tone": "plain, reassuring",
+		"length": "one sentence",
+		"placeholders": {},
+		"note": "The reader is removing their own agent from this conversation; the reader stays a member."
+	},
+	"ui.teamBridge.members_panel.confirm.leave_title": {
+		"role": "confirm dialog title",
+		"tone": "question",
+		"length": "one line",
+		"placeholders": {
+			"conversation": "conversation name as shown in its header"
+		},
+		"note": "The reader is leaving the conversation."
+	},
+	"ui.teamBridge.members_panel.confirm.leave_body": {
+		"role": "confirm dialog body",
+		"tone": "plain",
+		"length": "one or two sentences",
+		"placeholders": {},
+		"note": "Explains how to return after leaving: rejoin a channel from the channel list, or be invited back."
+	},
+	"ui.teamBridge.members_panel.confirm.decline_title": {
+		"role": "confirm dialog title",
+		"tone": "question",
+		"length": "one line",
+		"placeholders": {
+			"name": "display name of the reader's own agent"
+		},
+		"note": "The reader is the agent's owner."
+	},
+	"ui.teamBridge.members_panel.confirm.decline_body": {
+		"role": "confirm dialog body",
+		"tone": "plain",
+		"length": "one sentence",
+		"placeholders": {
+			"name": "display name of the reader's own agent",
+			"conversation": "conversation name as shown in its header"
+		},
+		"note": "Effect of declining an agent invitation."
+	},
+	"ui.teamBridge.members_panel.confirm.remove": {
+		"role": "destructive confirm button",
+		"tone": "imperative verb",
+		"length": "one word",
+		"placeholders": {},
+		"note": "Confirms removing the member."
+	},
+	"ui.teamBridge.members_panel.confirm.leave": {
+		"role": "destructive confirm button",
+		"tone": "imperative verb",
+		"length": "one word",
+		"placeholders": {},
+		"note": "Confirms leaving the conversation."
+	},
+	"ui.teamBridge.members_panel.confirm.decline": {
+		"role": "confirm button",
+		"tone": "imperative verb",
+		"length": "one word",
+		"placeholders": {},
+		"note": "Confirms declining the agent invitation."
+	},
+	"ui.teamBridge.members_panel.note.general": {
+		"role": "quiet explanatory line in the members panel",
+		"tone": "plain, helpful",
+		"length": "one or two sentences",
+		"placeholders": {
+			"channel": "the built-in channel name, always the literal #general, inserted by the app (keep it as one unit; never translate or reorder its characters)"
+		},
+		"note": "#general is a built-in channel; its name arrives through {channel} so the app can keep it left-to-right inside right-to-left text."
+	},
+	"ui.teamBridge.members_panel.note.humans": {
+		"role": "quiet explanatory line in the members panel",
+		"tone": "plain, helpful",
+		"length": "one or two sentences",
+		"placeholders": {
+			"channel": "the built-in channel name, always the literal #humans, inserted by the app (keep it as one unit; never translate or reorder its characters)"
+		},
+		"note": "#humans is a built-in channel; its name arrives through {channel} so the app can keep it left-to-right inside right-to-left text."
+	},
+	"ui.teamBridge.members_panel.note.agents": {
+		"role": "quiet explanatory line in the members panel",
+		"tone": "plain, helpful",
+		"length": "one or two sentences",
+		"placeholders": {
+			"channel": "the built-in channel name, always the literal #agents, inserted by the app (keep it as one unit; never translate or reorder its characters)"
+		},
+		"note": "#agents is a built-in channel; its name arrives through {channel} so the app can keep it left-to-right inside right-to-left text."
+	},
+	"ui.teamBridge.members_panel.note.dm": {
+		"role": "quiet explanatory line in the members panel",
+		"tone": "plain",
+		"length": "one sentence",
+		"placeholders": {},
+		"note": "Shown for a one-to-one direct message instead of any member controls."
 	}
 }

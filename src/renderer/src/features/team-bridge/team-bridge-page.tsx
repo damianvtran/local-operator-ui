@@ -106,6 +106,7 @@ import {
 	canInviteMembers,
 	canRemoveMembers,
 } from "./team-bridge-members-model";
+import { TeamBridgeMembersPanel } from "./team-bridge-members-panel";
 import {
 	TeamBridgeMessageList,
 	TeamBridgeMessageSkeleton,
@@ -246,11 +247,13 @@ import {
 	teamBridgeKeys,
 	teamBridgeMessagesQueryOptions,
 	useAddTeamBridgeMembers,
+	useAnswerTeamBridgeInvitation,
 	useArchiveTeamBridgeConversation,
 	useArchivedTeamBridgeConversations,
 	useCreateTeamBridgeConversation,
 	useDeleteTeamBridgeConversation,
 	useJoinTeamBridgeConversation,
+	useLeaveTeamBridgeConversation,
 	useLoadMoreArchivedTeamBridgeConversations,
 	useMarkTeamBridgeRead,
 	useRemoveTeamBridgeMember,
@@ -264,6 +267,7 @@ import {
 	useTeamBridgeStatus,
 	useTeamBridgeUnread,
 	useUnarchiveTeamBridgeConversation,
+	useWithdrawTeamBridgeAgent,
 } from "./use-team-bridge";
 import { useTeamBridgeDrafts } from "./use-team-bridge-drafts";
 
@@ -646,6 +650,18 @@ export type TeamBridgePageViewProps = {
 	/** Story/test seed only: opens membership administration on mount. */
 	initialMembersOpen?: boolean;
 	/**
+	 * The members panel's self-scoped writes: leave (own human row), withdraw
+	 * or decline (own agent row). Removing ANOTHER person still goes through
+	 * `onRemoveMember`. Absent, those rows draw no control.
+	 */
+	onMemberSelfAction?: (
+		conversation: TeamBridgeConversation,
+		action: "leave" | "withdraw" | "decline",
+		endpointId?: string,
+	) => Promise<unknown>;
+	/** Story/test seed only: opens the members panel on mount. */
+	initialMembersPanelOpen?: boolean;
+	/**
 	 * ARCHIVE / PERMANENT DELETE. Each is optional so a mount that does not wire
 	 * them (a story, an older container) simply draws none of the controls.
 	 * `onArchive` is optimistic and fire-and-forget; `onDelete` resolves only when
@@ -845,6 +861,8 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	onRemoveMember,
 	memberMutationKey = null,
 	initialMembersOpen = false,
+	onMemberSelfAction,
+	initialMembersPanelOpen = false,
 	onArchive,
 	onUnarchive,
 	onDelete,
@@ -909,6 +927,10 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 		conversationId: string;
 	} | null>(initialDialog ?? null);
 	const [membersOpen, setMembersOpen] = useState(initialMembersOpen);
+	/* The members panel shares the thread pane's slot; one closes the other. */
+	const [membersPanelOpen, setMembersPanelOpen] = useState(
+		initialMembersPanelOpen,
+	);
 	const [memberActionFailed, setMemberActionFailed] = useState(false);
 	const [deleting, setDeleting] = useState(false);
 	const [deleteFailed, setDeleteFailed] = useState<"error" | "gone" | null>(
@@ -1132,7 +1154,10 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 		threadsAvailable ? (threadLink ?? null) : null,
 	);
 	useEffect(() => {
-		if (threadsAvailable && threadLink) setThreadSelection(threadLink);
+		if (threadsAvailable && threadLink) {
+			setMembersPanelOpen(false);
+			setThreadSelection(threadLink);
+		}
 	}, [threadLink, threadsAvailable]);
 	const mergedView = scope === TEAM_BRIDGE_ALL_SCOPE;
 	const identityKnown = selfAccountId !== undefined;
@@ -1384,9 +1409,33 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 			setThreadSelection(null);
 			onCloseThread?.();
 		}
+		setMembersPanelOpen(false);
 		ownerAudit?.clear();
 		setQuickView(next);
 	};
+	/*
+	 * THE PANEL BELONGS TO THE ROOM IT WAS OPENED FOR (review round 1, R1). The
+	 * panel is keyed by conversation, so a selection change while it is open
+	 * would remount it, and its mount moves focus to Close - every rail click
+	 * would pull the reader's focus into the drawer. Focus may move only on an
+	 * explicit open from the count, so a new room closes the panel instead.
+	 * Adjusted DURING RENDER, not in an effect: a child's effects run before
+	 * the parent's, so an effect here would let the remounted panel take focus
+	 * first. Keyed on the room, not the object, so a refetch of the same room
+	 * leaves it open.
+	 */
+	const shownRoomKey = shown ? `${shown.tenant_id}:${shown.id}` : null;
+	const [membersPanelRoom, setMembersPanelRoom] = useState(shownRoomKey);
+	if (membersPanelRoom !== shownRoomKey) {
+		setMembersPanelRoom(shownRoomKey);
+		if (membersPanelOpen) setMembersPanelOpen(false);
+	}
+	/* The panel needs a listed room: not a preview, not an unknown org. */
+	const membersPanelShown =
+		membersPanelOpen &&
+		shown !== null &&
+		!previewSelected &&
+		!selectedOrganizationUnknown;
 	const threadIsOpen = Boolean(
 		threadsAvailable &&
 			threadSelection &&
@@ -1402,6 +1451,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	   it (see the `onReply` site), never mounted from stale state. */
 	const openThreadFor = (message: TeamBridgeMessage) => {
 		if (!shown) return;
+		setMembersPanelOpen(false);
 		setThreadSelection({
 			tenantId: shown.tenant_id,
 			conversationId: shown.id,
@@ -3138,7 +3188,8 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 			<section
 				className={cn(
 					"panel-top-pad flex min-w-0 flex-1 flex-col bg-canvas",
-					threadIsOpen && "@max-[1024px]/bridge:invisible",
+					(threadIsOpen || membersPanelShown) &&
+						"@max-[1024px]/bridge:invisible",
 				)}
 			>
 				{notice}
@@ -3378,21 +3429,88 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 											aria-hidden="true"
 											className="h-4 w-px shrink-0 bg-hairline"
 										/>
-										<span className="min-w-0 truncate text-[13px] text-ink-muted">
-											{/* A user-set topic first, then a built-in channel's
-											    translated one (design round 1, D2). */}
-											{shown.topic?.trim()
-												? shown.topic.trim()
-												: shownTopicKey
-													? t(shownTopicKey)
-													: membershipCounts.invited > 0
-														? t("ui.teamBridge.member.active_count", {
-																count: membershipCounts.active,
-															})
-														: t("ui.teamBridge.member.count", {
-																count: conversationMemberCount(shown),
-															})}
-										</span>
+										{/*
+										 * THE COUNT OPENS THE ROOM (operator 2026-11-04: the count was
+										 * inert, and there was "no great way to see all the members").
+										 * A real button so it is in the tab order with the outline focus
+										 * ring; hover is a colour step only. The visible text stays the
+										 * count, and the accessible name says what pressing it does.
+										 * A preview has no member rows to list, so it stays text there.
+										 */}
+										<button
+											type="button"
+											disabled={previewSelected}
+											aria-expanded={membersPanelShown}
+											aria-label={
+												membershipCounts.invited > 0
+													? t(
+															"ui.teamBridge.members_panel.open_label_invited",
+															{
+																active: membershipCounts.active,
+																invited: membershipCounts.invited,
+															},
+														)
+													: t("ui.teamBridge.members_panel.open_label", {
+															count: conversationMemberCount(shown),
+														})
+											}
+											onClick={() => {
+												if (membersPanelOpen) {
+													setMembersPanelOpen(false);
+													return;
+												}
+												if (threadSelection) {
+													setThreadSelection(null);
+													onCloseThread?.();
+												}
+												setMembersPanelOpen(true);
+											}}
+											className={cn(
+												"shrink-0 rounded-sm px-1 py-0.5 text-start text-[13px] text-ink-muted transition-colors duration-fast",
+												/* A FILL ON HOVER, not only ink (design review round 1, D1): an ink
+												   change alone left the count looking inert, the operator's original
+												   complaint. #1668 moved this header onto the pane's `canvas`
+												   ground, where `row-hover` (tuned against `surface`) measures
+												   ~1.01:1 in light themes; `surface` is one role step up from
+												   `canvas` on every palette, the same reasoning as the members
+												   panel's row hover (design review round 1, D2). At rest it stays
+												   quiet text, so the header does not grow a pill. */
+												"enabled:hover:bg-surface enabled:hover:text-ink disabled:cursor-default",
+											)}
+										>
+											{/* ONE LINE, as #1668's D8 header set it: with invitees the
+											    headline says "active" outright (an invitation is not
+											    active access, design review D2 on #1336); the invited
+											    count lives in the members panel this opens and in the
+											    accessible name above. Never infer the breakdown from a
+											    preview's aggregate `member_count`: a preview has no rows. */}
+											{membershipCounts.invited > 0
+												? t("ui.teamBridge.member.active_count", {
+														count: membershipCounts.active,
+													})
+												: t("ui.teamBridge.member.count", {
+														count: conversationMemberCount(shown),
+													})}
+										</button>
+										{/* A user-set topic first, then a built-in channel's translated
+									    one (#1668 design round 1, D2). It follows the count rather
+									    than replacing it: the count is the members panel's opener, so
+									    a channel with a topic must not lose its only way in. */}
+										{(shown.topic?.trim() || shownTopicKey) && (
+											<>
+												<span
+													aria-hidden="true"
+													className="h-4 w-px shrink-0 bg-hairline"
+												/>
+												<span className="min-w-0 truncate text-[13px] text-ink-muted">
+													{shown.topic?.trim()
+														? shown.topic.trim()
+														: shownTopicKey
+															? t(shownTopicKey)
+															: null}
+												</span>
+											</>
+										)}
 									</>
 								)}
 								{/*
@@ -4023,6 +4141,78 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 						)}
 					</div>
 				)}
+			{/* MEMBERS: the thread pane's slot and geometry (see the comment above),
+			    and mutually exclusive with it - opening either closes the other. */}
+			{membersPanelShown && shown && !threadIsOpen && (
+				<div
+					className={cn(
+						"absolute inset-y-0 end-0 z-20 min-w-0 @min-[1024px]/bridge:static @min-[1024px]/bridge:w-[min(26rem,45%)] @min-[1024px]/bridge:min-w-72 @min-[1024px]/bridge:shrink-0",
+						railHosted ? "start-0" : "start-72",
+					)}
+				>
+					<TeamBridgeMembersPanel
+						key={`${shown.tenant_id}:${shown.id}`}
+						conversation={shown}
+						people={rosterFor(shown.tenant_id)}
+						selfAccountId={selfAccountId}
+						conversationName={paneTitle ?? t("ui.teamBridge.list.untitled")}
+						onAddMembers={
+							!readOnly &&
+							onAddMembers &&
+							canInviteMembers(shown, selfAccountId)
+								? () => {
+										setMemberActionFailed(false);
+										setMembersOpen(true);
+									}
+								: undefined
+						}
+						onAction={
+							readOnly
+								? undefined
+								: (row, action) => {
+										if (action === "remove") {
+											if (
+												!onRemoveMember ||
+												!canRemoveMembers(shown, selfAccountId)
+											)
+												return Promise.reject(
+													new Error("Team Bridge write authority changed"),
+												);
+											return onRemoveMember(shown, row.member.account_id);
+										}
+										if (!onMemberSelfAction)
+											return Promise.reject(
+												new Error("Team Bridge write authority changed"),
+											);
+										const endpoint = (row.member as { endpoint_id?: unknown })
+											.endpoint_id;
+										return onMemberSelfAction(
+											shown,
+											action,
+											typeof endpoint === "string" ? endpoint : undefined,
+										).then((result) => {
+											/* LEAVING MOVES THE SELECTION the way archive does: the
+											   room is no longer the reader's, so land on the next
+											   channel in the rail (else the previous, else the
+											   default) and close the panel. */
+											if (action === "leave") {
+												setMembersPanelOpen(false);
+												selectTarget(
+													landingAfterRemoval(
+														sidebarRows,
+														shown.id,
+														organizationOrder,
+													),
+												);
+											}
+											return result;
+										});
+									}
+						}
+						onClose={() => setMembersPanelOpen(false)}
+					/>
+				</div>
+			)}
 			{(() => {
 				/* The dialogs name the conversation they were opened for. A row that left
 				   the cache (archived, or deleted by someone else) closes its own dialog. */
@@ -5048,6 +5238,9 @@ const TeamBridgeOwnedPage: FC<{
 	);
 	const addMembers = useAddTeamBridgeMembers();
 	const removeMember = useRemoveTeamBridgeMember();
+	const leaveConversation = useLeaveTeamBridgeConversation();
+	const withdrawAgent = useWithdrawTeamBridgeAgent();
+	const answerInvitation = useAnswerTeamBridgeInvitation();
 	const create = useCreateTeamBridgeConversation(
 		mergedView ? undefined : scope,
 		isCurrentOwner,
@@ -5755,6 +5948,30 @@ const TeamBridgeOwnedPage: FC<{
 						tenantId: conversation.tenant_id,
 						accountId: memberAccountId,
 						key: `remove:${memberAccountId}`,
+					});
+				}}
+				onMemberSelfAction={(conversation, action, endpointId) => {
+					/* Self-scoped: the hub checks the row is the caller's own, so the
+					   only client fence is the captured owner. */
+					if (!isCurrentOwner())
+						return Promise.reject(
+							new Error("Team Bridge write authority changed"),
+						);
+					const input = {
+						conversationId: conversation.id,
+						tenantId: conversation.tenant_id,
+					};
+					if (action === "leave") return leaveConversation.mutateAsync(input);
+					if (action === "withdraw")
+						return withdrawAgent.mutateAsync({
+							...input,
+							endpointId,
+							key: `withdraw:${endpointId ?? ""}`,
+						});
+					return answerInvitation.mutateAsync({
+						...input,
+						decision: "decline",
+						endpointId,
 					});
 				}}
 				memberMutationKey={
