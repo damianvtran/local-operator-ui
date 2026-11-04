@@ -125,6 +125,7 @@ const bundled = await build({
 			export { TeamBridgePageView } from "./src/renderer/src/features/team-bridge/team-bridge-page";
 			export { memberPanelNote, memberPanelRows, memberRowAction, otherAgentRemovable, MEMBER_PANEL_SEARCH_THRESHOLD } from "./src/renderer/src/features/team-bridge/team-bridge-members-model";
 			export { desktopRequestSchema, desktopEndpoint } from "./src/shared/desktop-contract";
+			export { setLocale } from "./src/renderer/src/shared/i18n";
 		`,
 		resolveDir: ROOT,
 		sourcefile: "team-bridge-members-panel.mjs",
@@ -501,13 +502,20 @@ test("the panel lists People then Agents with their chips", async (t) => {
 	);
 	assert.deepEqual(headings, ["People", "Agents"]);
 	assert.deepEqual(rowNames(container), [
-		"Damian Tran (you)",
+		"Damian Tran (you) · Owner",
 		"Ben Tran",
 		"Aida (Damian Tran)",
 		"Juno (Ben Tran)",
 	]);
 	assert.match(container.textContent, /Owner/);
 	assert.match(container.textContent, /Pending approval/);
+	/* Owner is a role in quiet text after the name (design round 1, D4), not
+	   one more status chip beside Invited / Pending approval. */
+	const owner = [...container.querySelectorAll("li p span")].find((s) =>
+		/Owner/.test(s.textContent),
+	);
+	assert.ok(owner, "Owner sits inside the name line");
+	assert.match(owner.className, /text-ink-dim/);
 	// Eight or fewer members: no search box.
 	assert.equal(container.querySelector("input"), null);
 	// Add members is offered because the page passed it.
@@ -533,7 +541,7 @@ test("live update: a refreshed conversation re-renders the rows in place", async
 	});
 	assert.equal(container.querySelector("aside"), before, "not remounted");
 	assert.deepEqual(rowNames(container), [
-		"Damian Tran (you)",
+		"Damian Tran (you) · Owner",
 		"Ada Okafor",
 		"Aida (Damian Tran)",
 	]);
@@ -578,6 +586,92 @@ test("remove asks first, naming the member and the conversation", async (t) => {
 	);
 	await act(async () => confirm.click());
 	assert.deepEqual(calls.at(-1), ["remove", "human:acct_ben"]);
+});
+
+test("removing an invited person says the invitation is withdrawn", async (t) => {
+	const { container, body } = await mountPanel(t, {
+		conversation: conversation({
+			members: [
+				...conversation().members,
+				human("acct_ivy", "Ivy Invited", "member", "invited"),
+			],
+		}),
+	});
+	const dialogBody = async (label) => {
+		await act(async () =>
+			container.querySelector(`button[aria-label="${label}"]`).click(),
+		);
+		const text = body.querySelector('[role="dialog"] p').textContent;
+		const cancel = [...body.querySelectorAll('[role="dialog"] button')].find(
+			(b) => b.textContent === "Cancel",
+		);
+		await act(async () => cancel.click());
+		return text;
+	};
+	assert.equal(
+		await dialogBody("Remove Ivy Invited from conversation"),
+		"Their invitation will be withdrawn. You can invite them again later.",
+	);
+	assert.equal(
+		await dialogBody("Remove Ben Tran from conversation"),
+		"They’ll stop getting this conversation’s messages. You can invite them again later.",
+	);
+});
+
+test("ur: the built-in channel name is isolated LTR inside the RTL note", async (t) => {
+	view.setLocale("ur");
+	t.after(() => view.setLocale("en"));
+	const { container } = await mountPanel(t, {
+		conversation: conversation({
+			kind: "channel",
+			builtin: "general",
+			name: "general",
+		}),
+		onAddMembers: undefined,
+	});
+	const note = [...container.querySelectorAll("aside p")].find((p) =>
+		p.textContent.includes("general"),
+	);
+	assert.ok(note, "the #general note renders");
+	// FSI ... PDI around the whole name, so `#` cannot resolve to the RTL run.
+	assert.ok(
+		note.textContent.includes("\u2066#general\u2069"),
+		JSON.stringify(note.textContent),
+	);
+});
+
+test("after Cancel, one Escape closes the panel (no tooltip in the way)", async (t) => {
+	const { calls, container, body } = await mountPanel(t);
+	const action = container.querySelector(
+		'button[aria-label="Remove Ben Tran from conversation"]',
+	);
+	// A real click focuses the button; jsdom's `click()` does not.
+	await act(async () => {
+		action.focus();
+		action.click();
+	});
+	const cancel = [...body.querySelectorAll('[role="dialog"] button')].find(
+		(b) => b.textContent === "Cancel",
+	);
+	await act(async () => cancel.click());
+	/* Where focus lands in a real browser (QA round 1 row 18). jsdom's dialog
+	   teardown leaves it on BODY, so it is placed here, after that teardown. */
+	await act(async () => new Promise((resolve) => setTimeout(resolve, 20)));
+	await act(async () => action.focus());
+	assert.ok(
+		body.querySelector('[role="tooltip"]') === null,
+		"returned focus does not open the label",
+	);
+	await act(async () => {
+		action.dispatchEvent(
+			new dom.window.KeyboardEvent("keydown", {
+				key: "Escape",
+				bubbles: true,
+				cancelable: true,
+			}),
+		);
+	});
+	assert.deepEqual(calls.at(-1), ["close"]);
 });
 
 test("a refused action is stated inline and the panel stays open", async (t) => {
@@ -741,4 +835,61 @@ test("leaving through the page moves the selection off the room", async (t) => {
 		targets.some((next) => next && next.id === "bcv_general"),
 		JSON.stringify(targets),
 	);
+});
+
+test("withdraw through the page hands the row's endpoint to the callback", async (t) => {
+	const calls = [];
+	const { container, body } = await mountPage(t, {
+		onMemberSelfAction: async (_c, action, endpoint) => {
+			calls.push([action, endpoint]);
+		},
+		initialMembersPanelOpen: true,
+	});
+	await act(async () =>
+		container
+			.querySelector(
+				'button[aria-label="Remove Aida (Damian Tran) from conversation"]',
+			)
+			.click(),
+	);
+	const remove = [...body.querySelectorAll('[role="dialog"] button')].find(
+		(b) => b.textContent === "Remove",
+	);
+	await act(async () => remove.click());
+	assert.deepEqual(calls, [["withdraw", "bep_aida"]]);
+});
+
+test("a new selection closes the panel and leaves focus where the reader put it", async (t) => {
+	const other = conversation({ id: "bcv_other", name: "other-room" });
+	const { container, body, render } = await mountPage(t, {
+		conversations: [conversation(), other],
+	});
+	const count = () => container.querySelector('button[aria-label^="View "]');
+	await act(async () => {
+		count().focus();
+		count().click();
+	});
+	assert.ok(container.querySelector('aside[aria-label="Members"]'));
+	assert.equal(body.activeElement?.getAttribute("aria-label"), "Close members");
+	// The reader moves to another rail row: that control holds focus.
+	const elsewhere = body.createElement("button");
+	body.body.append(elsewhere);
+	t.after(() => elsewhere.remove());
+	elsewhere.focus();
+	await render({ target: { type: "conversation", id: "bcv_other" } });
+	/* Booleans, not nodes: a failing `assert.equal` on a jsdom element inspects
+	   the whole document and exhausts the heap before it can report. */
+	assert.ok(
+		container.querySelector('aside[aria-label="Members"]') === null,
+		"the panel does not follow the reader into another room",
+	);
+	assert.ok(body.activeElement === elsewhere, "focus was not pulled");
+	assert.equal(count().getAttribute("aria-expanded"), "false");
+	// A refetch of the same room (a new object, same id) keeps an open panel.
+	await act(async () => count().click());
+	await render({
+		conversations: [conversation(), { ...other }],
+		target: { type: "conversation", id: "bcv_other" },
+	});
+	assert.ok(container.querySelector('aside[aria-label="Members"]'));
 });

@@ -10314,6 +10314,7 @@ export type MessageParams = {
 	"ui.teamBridge.members_panel.confirm.leave_title": { conversation: string };
 	"ui.teamBridge.members_panel.confirm.remove": undefined;
 	"ui.teamBridge.members_panel.confirm.remove_body": undefined;
+	"ui.teamBridge.members_panel.confirm.remove_invited_body": undefined;
 	"ui.teamBridge.members_panel.confirm.remove_title": {
 		name: string;
 		conversation: string;
@@ -10323,10 +10324,10 @@ export type MessageParams = {
 	"ui.teamBridge.members_panel.decline_tooltip": undefined;
 	"ui.teamBridge.members_panel.leave_label": undefined;
 	"ui.teamBridge.members_panel.leave_tooltip": undefined;
-	"ui.teamBridge.members_panel.note.agents": undefined;
+	"ui.teamBridge.members_panel.note.agents": { channel: string };
 	"ui.teamBridge.members_panel.note.dm": undefined;
-	"ui.teamBridge.members_panel.note.general": undefined;
-	"ui.teamBridge.members_panel.note.humans": undefined;
+	"ui.teamBridge.members_panel.note.general": { channel: string };
+	"ui.teamBridge.members_panel.note.humans": { channel: string };
 	"ui.teamBridge.members_panel.open_label": { count: number };
 	"ui.teamBridge.members_panel.open_label_invited": {
 		active: number;

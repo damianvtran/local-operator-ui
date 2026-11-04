@@ -3808,8 +3808,11 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 	/*
 	 * LEAVE, as its own op beside `join` (members panel, 2026-11-04). The
 	 * `lifecycle` op's `leave` action reaches the same core route, but this one
-	 * is shaped for the panel's "Leave" row: the tenant is the conversation's
-	 * own organization (a merged-view row is not the default tenant), and both
+	 * is shaped for the panel's "Leave" row. The row's organization is sent as
+	 * `tenant_id` for core's owner receipt, but the hub's leave handler does NOT
+	 * read a tenant today: it resolves the caller's first active membership, so
+	 * a leave on a conversation in another organization is refused as not found
+	 * (shown inline) rather than routed there (review round 1, R2). Both
 	 * halves of the owner receipt ride the QUERY, which is where core's
 	 * `POST .../leave` reads them (`_conversation_owner_query`; the route has
 	 * no body model). Leaving is the leave/re-add boundary: re-entry needs a

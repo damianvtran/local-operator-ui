@@ -1277,6 +1277,14 @@ export function useLeaveTeamBridgeConversation(): UseMutationResult<
 		Error,
 		CapturedBridgeMutation<TeamBridgeLeaveVariables, MemberWriteTarget>
 	>({
+		/*
+		 * NEVER RETRIED (QA round 1, Q2), like group create below: one click is
+		 * one request. The shared client's `retry: 1` re-sent a refused leave, and
+		 * a retry after a committed leave whose answer was lost draws a
+		 * not-a-member refusal, so the panel would say "not saved" for a change
+		 * the hub made.
+		 */
+		retry: 0,
 		mutationFn: ({ input, target }) => {
 			target.assertCurrent();
 			return TeamBridgeApi.leaveConversation({
@@ -1321,6 +1329,9 @@ export function useWithdrawTeamBridgeAgent(): UseMutationResult<
 		Error,
 		CapturedBridgeMutation<TeamBridgeWithdrawAgentVariables, MemberWriteTarget>
 	>({
+		/* NEVER RETRIED (QA round 1, Q2): a retried withdraw after a lost answer
+		   draws `409 not_active` for a change that was saved. */
+		retry: 0,
 		mutationFn: ({ input, target }) => {
 			target.assertCurrent();
 			if (!target.accountId)

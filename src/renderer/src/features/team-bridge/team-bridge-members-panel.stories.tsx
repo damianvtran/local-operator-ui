@@ -232,20 +232,3 @@ export const BuiltinAgents: Story = {
 		onAddMembers: undefined,
 	},
 };
-
-/** A DM: read-only. */
-export const DirectMessage: Story = {
-	args: {
-		conversation: {
-			...base,
-			kind: "dm",
-			name: undefined,
-			members: [
-				human("acct_self", "Damian Tran"),
-				human("acct_ben", "Ben Tran"),
-			],
-		},
-		conversationName: "Ben Tran",
-		onAddMembers: undefined,
-	},
-};

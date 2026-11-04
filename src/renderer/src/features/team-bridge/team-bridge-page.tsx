@@ -957,7 +957,6 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	const [membersPanelOpen, setMembersPanelOpen] = useState(
 		initialMembersPanelOpen,
 	);
-	const membersCountRef = useRef<HTMLButtonElement>(null);
 	const [memberActionFailed, setMemberActionFailed] = useState(false);
 	const [deleting, setDeleting] = useState(false);
 	const [deleteFailed, setDeleteFailed] = useState<"error" | "gone" | null>(
@@ -1418,6 +1417,23 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 		ownerAudit?.clear();
 		setQuickView(next);
 	};
+	/*
+	 * THE PANEL BELONGS TO THE ROOM IT WAS OPENED FOR (review round 1, R1). The
+	 * panel is keyed by conversation, so a selection change while it is open
+	 * would remount it, and its mount moves focus to Close - every rail click
+	 * would pull the reader's focus into the drawer. Focus may move only on an
+	 * explicit open from the count, so a new room closes the panel instead.
+	 * Adjusted DURING RENDER, not in an effect: a child's effects run before
+	 * the parent's, so an effect here would let the remounted panel take focus
+	 * first. Keyed on the room, not the object, so a refetch of the same room
+	 * leaves it open.
+	 */
+	const shownRoomKey = shown ? `${shown.tenant_id}:${shown.id}` : null;
+	const [membersPanelRoom, setMembersPanelRoom] = useState(shownRoomKey);
+	if (membersPanelRoom !== shownRoomKey) {
+		setMembersPanelRoom(shownRoomKey);
+		if (membersPanelOpen) setMembersPanelOpen(false);
+	}
 	/* The panel needs a listed room: not a preview, not an unknown org. */
 	const membersPanelShown =
 		membersPanelOpen &&
@@ -3307,10 +3323,9 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 									 * A preview has no member rows to list, so it stays text there.
 									 */
 									<button
-										ref={membersCountRef}
 										type="button"
 										disabled={previewSelected}
-										aria-expanded={membersPanelOpen}
+										aria-expanded={membersPanelShown}
 										aria-label={
 											membershipCounts.invited > 0
 												? t("ui.teamBridge.members_panel.open_label_invited", {
@@ -3334,7 +3349,12 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 										}}
 										className={cn(
 											"group/count flex shrink-0 flex-col rounded-sm px-1 text-start text-meta-sm text-ink-dim transition-colors duration-fast",
-											"enabled:hover:text-ink disabled:cursor-default",
+											/* A FILL ON HOVER, not only ink (design review round 1, D1): an ink
+											   change alone left the count looking inert, the operator's original
+											   complaint. `row-hover` is the step tuned for this `surface`
+											   header and the one glass translates to its ink overlay; at rest
+											   it stays quiet text, so the header does not grow a pill. */
+											"enabled:hover:bg-row-hover enabled:hover:text-ink disabled:cursor-default",
 										)}
 									>
 										{/* A current invitation is membership, not active access, so

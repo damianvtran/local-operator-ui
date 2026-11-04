@@ -10,7 +10,7 @@ import {
 import { Input } from "@shared/components/ui/input";
 import { ScrollArea } from "@shared/components/ui/scroll-area";
 import { Tooltip } from "@shared/components/ui/tooltip";
-import { t } from "@shared/i18n";
+import { isolateLtr, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { LogOut, Search, UserPlus, UserRoundX, X } from "lucide-react";
@@ -233,6 +233,16 @@ export function TeamBridgeMembersPanel({
 	   or a refusal, so the keyboard reader is not dropped at the top. */
 	const actionButtons = useRef(new Map<string, HTMLButtonElement>());
 	const returnTo = useRef<string | null>(null);
+	/*
+	 * THE ROW WHOSE TOOLTIP STAYS SHUT after focus is handed back to it (QA
+	 * round 1, N1). Radix's trigger opens its tooltip on ANY focus, and the
+	 * confirm (or `settleFocus`) returning focus to the row action is not a
+	 * reader asking for the label; the open tooltip is then the topmost
+	 * dismissable layer, swallows the next Escape (`preventDefault`), and the
+	 * panel took two Escapes to close. Held until the pointer arrives or focus
+	 * leaves, so a real hover or a fresh Tab still shows the label.
+	 */
+	const [quietTooltip, setQuietTooltip] = useState<string | null>(null);
 	/* The armed row left the room (a refetch removed it): its question is moot. */
 	useEffect(() => {
 		if (confirm && !rows.some((row) => row.key === confirm.row.key))
@@ -255,7 +265,9 @@ export function TeamBridgeMembersPanel({
 	}, []);
 
 	const settleFocus = (key: string | null) => {
-		if (key) queueMicrotask(() => actionButtons.current.get(key)?.focus());
+		if (!key) return;
+		setQuietTooltip(key);
+		queueMicrotask(() => actionButtons.current.get(key)?.focus());
 	};
 	const runConfirmed = () => {
 		if (!confirm || !onAction || pending) return;
@@ -318,7 +330,7 @@ export function TeamBridgeMembersPanel({
 					<Search
 						size={14}
 						aria-hidden="true"
-						className="pointer-events-none absolute start-8 top-1/2 -translate-y-[calc(50%-2px)] text-ink-dim"
+						className="pointer-events-none absolute start-8 top-1/2 -translate-y-1/2 text-ink-dim"
 					/>
 					<Input
 						value={query}
@@ -331,7 +343,15 @@ export function TeamBridgeMembersPanel({
 			)}
 			{note && (
 				<p className={cn("shrink-0 px-5 pb-2 text-meta text-ink-dim")}>
-					{t(`ui.teamBridge.members_panel.note.${note}`)}
+					{note === "dm"
+						? t("ui.teamBridge.members_panel.note.dm")
+						: /* The channel name rides as an argument, isolated LTR (i18n audit
+						     UR-M3): `#` is a weak bidi character, so a literal "#general"
+						     inside an RTL sentence displays as "general#". The catalogue may
+						     not carry bidi controls, so the isolate is added here. */
+							t(`ui.teamBridge.members_panel.note.${note}`, {
+								channel: isolateLtr(`#${note}`),
+							})}
 				</p>
 			)}
 			{failed && (
@@ -366,9 +386,17 @@ export function TeamBridgeMembersPanel({
 											<li
 												key={row.key}
 												/* `group` scopes the action's reveal to this row;
-												   hover is a colour step only, nothing moves. */
+												   hover is a colour step only, nothing moves.
+												   THE STEP IS UP FROM THIS GROUND (design review round 1,
+												   D2): `row-hover` is tuned against `surface` and measured
+												   1.01:1 on this `canvas` ground in light (under 1.03:1 on
+												   18 of 59 palettes); `surface` is one role step up from
+												   `canvas` on every palette (min 1.057:1), the same step
+												   `row-hover` makes on `surface`. It is coupled to the
+												   aside's `bg-canvas`: if the ground becomes `surface`
+												   (the #1668 restyle), this goes back to `row-hover`. */
 												className={cn(
-													"group flex min-h-10 items-center gap-2.5 px-5 py-1.5 hover:bg-row-hover",
+													"group flex min-h-10 items-center gap-2.5 px-5 py-1.5 hover:bg-surface",
 												)}
 											>
 												<MemberAvatar row={row} people={people} />
@@ -380,14 +408,18 @@ export function TeamBridgeMembersPanel({
 															{t("ui.teamBridge.members.you")}
 														</span>
 													)}
+													{/* OWNER IS A ROLE, NOT A STATE (design review round 1, D4):
+													    quiet text after the name, the way "(you)" reads, so the
+													    end column's chips are only the states that want action. */}
+													{row.member.role === "owner" && (
+														<span className="text-ink-dim">
+															{" · "}
+															{t("ui.teamBridge.members.role.owner")}
+														</span>
+													)}
 												</p>
 												{row.member.kind === "agent" &&
 													agentIdentityChip?.(row)}
-												{row.member.role === "owner" && (
-													<Badge variant="neutral" className="shrink-0">
-														{t("ui.teamBridge.members.role.owner")}
-													</Badge>
-												)}
 												{row.state === "invited" && (
 													<Badge variant="neutral" className="shrink-0">
 														{t("ui.teamBridge.members.state.invited_short")}
@@ -411,7 +443,11 @@ export function TeamBridgeMembersPanel({
 																actionRowVisibility(armed),
 															)}
 														>
-															<Tooltip content={presentation.tooltip}>
+															<Tooltip
+																content={presentation.tooltip}
+																suppressed={quietTooltip === row.key}
+																discardWhileSuppressed
+															>
 																<Button
 																	ref={(node) => {
 																		if (node)
@@ -424,6 +460,14 @@ export function TeamBridgeMembersPanel({
 																	disabled={pending}
 																	aria-label={presentation.name}
 																	aria-haspopup="dialog"
+																	onPointerEnter={() => {
+																		if (quietTooltip === row.key)
+																			setQuietTooltip(null);
+																	}}
+																	onBlur={() => {
+																		if (quietTooltip === row.key)
+																			setQuietTooltip(null);
+																	}}
 																	onClick={() => {
 																		returnTo.current = row.key;
 																		setFailed(false);
@@ -514,10 +558,15 @@ export function TeamBridgeMemberConfirmDialog({
 							name,
 							conversation: conversationName,
 						}),
+						/* Removing an INVITED person takes back an invitation, not a seat
+						   (review round 1, N3), so that row says so; the hub's DELETE
+						   accepts either state. */
 						body:
 							action === "withdraw"
 								? t("ui.teamBridge.members_panel.confirm.withdraw_body")
-								: t("ui.teamBridge.members_panel.confirm.remove_body"),
+								: subject?.row.state === "invited"
+									? t("ui.teamBridge.members_panel.confirm.remove_invited_body")
+									: t("ui.teamBridge.members_panel.confirm.remove_body"),
 						confirm: t("ui.teamBridge.members_panel.confirm.remove"),
 					};
 	return (

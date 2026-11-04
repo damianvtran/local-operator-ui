@@ -678,9 +678,12 @@ export const TeamBridgeApi = {
 	/**
 	 * Leave one conversation as the signed-in person (members panel "Leave").
 	 *
-	 * Its own op rather than `leave()` above (the lifecycle action): the panel
-	 * names the row's own organization, and the answer is the conversation's
-	 * post-state, parsed here so a refusal and a success cannot be confused.
+	 * Its own op rather than `leave()` above (the lifecycle action), so the
+	 * panel's answer and refusal have one shape. `tenantId` feeds core's owner
+	 * receipt only: the hub's leave handler ignores a tenant and resolves the
+	 * caller's first active membership, so leaving a conversation in another
+	 * organization comes back as a not-found refusal, not a routed leave
+	 * (review round 1, R2).
 	 * Re-entry after leaving needs a fresh invitation (core's route docstring).
 	 */
 	async leaveConversation(input: {

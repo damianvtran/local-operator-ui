@@ -2651,7 +2651,14 @@
 		"tone": "plain, reassuring",
 		"length": "one sentence",
 		"placeholders": {},
-		"note": "Explains the effect of removing a person from a conversation."
+		"note": "Explains the effect of removing a person who is an active member of this conversation."
+	},
+	"ui.teamBridge.members_panel.confirm.remove_invited_body": {
+		"role": "confirm dialog body",
+		"tone": "plain, reassuring",
+		"length": "one or two short sentences",
+		"placeholders": {},
+		"note": "Shown instead of remove_body when the person being removed has only been invited and has not joined: removing them withdraws the invitation."
 	},
 	"ui.teamBridge.members_panel.confirm.withdraw_body": {
 		"role": "confirm dialog body",
@@ -2674,7 +2681,7 @@
 		"tone": "plain",
 		"length": "one or two sentences",
 		"placeholders": {},
-		"note": "Explains how to return after leaving."
+		"note": "Explains how to return after leaving: rejoin a channel from the channel list, or be invited back."
 	},
 	"ui.teamBridge.members_panel.confirm.decline_title": {
 		"role": "confirm dialog title",
@@ -2720,22 +2727,28 @@
 		"role": "quiet explanatory line in the members panel",
 		"tone": "plain, helpful",
 		"length": "one or two sentences",
-		"placeholders": {},
-		"note": "#general is a built-in channel; keep the literal channel name #general untranslated."
+		"placeholders": {
+			"channel": "the built-in channel name, always the literal #general, inserted by the app (keep it as one unit; never translate or reorder its characters)"
+		},
+		"note": "#general is a built-in channel; its name arrives through {channel} so the app can keep it left-to-right inside right-to-left text."
 	},
 	"ui.teamBridge.members_panel.note.humans": {
 		"role": "quiet explanatory line in the members panel",
 		"tone": "plain, helpful",
 		"length": "one or two sentences",
-		"placeholders": {},
-		"note": "#humans is a built-in channel; keep the literal channel name #humans untranslated."
+		"placeholders": {
+			"channel": "the built-in channel name, always the literal #humans, inserted by the app (keep it as one unit; never translate or reorder its characters)"
+		},
+		"note": "#humans is a built-in channel; its name arrives through {channel} so the app can keep it left-to-right inside right-to-left text."
 	},
 	"ui.teamBridge.members_panel.note.agents": {
 		"role": "quiet explanatory line in the members panel",
 		"tone": "plain, helpful",
 		"length": "one or two sentences",
-		"placeholders": {},
-		"note": "#agents is a built-in channel; keep the literal channel name #agents untranslated."
+		"placeholders": {
+			"channel": "the built-in channel name, always the literal #agents, inserted by the app (keep it as one unit; never translate or reorder its characters)"
+		},
+		"note": "#agents is a built-in channel; its name arrives through {channel} so the app can keep it left-to-right inside right-to-left text."
 	},
 	"ui.teamBridge.members_panel.note.dm": {
 		"role": "quiet explanatory line in the members panel",
