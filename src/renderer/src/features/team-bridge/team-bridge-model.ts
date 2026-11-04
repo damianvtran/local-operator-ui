@@ -19,7 +19,7 @@ import {
  * live in `src/shared` because the main-process banner composes the same label
  * (`team-bridge-notifier.ts`) and main cannot import renderer modules.
  */
-export { type ChiefLabels, composeChiefLabel };
+export { type ChiefLabels, composeChiefLabel, nameKey };
 
 /**
  * The Team Bridge list's scope: one organization's tenant id, or every

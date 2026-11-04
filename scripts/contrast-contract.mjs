@@ -642,6 +642,71 @@ const CONTROLS = [
 		ink: "ink",
 		edge: false,
 	},
+	/*
+	 * TEAM BRIDGE ATTACHMENT CHIPS (inline-image refresh, SPEC §3.1 / D1). A
+	 * file, a non-image descriptor or a count-only receipt is a borderless
+	 * Slack-style chip: `mediaSurface` fill, `ink` name, `inkDim` meta line, an
+	 * `elevated` kind tile with an `inkMuted` glyph (`bridge-attachment-group.tsx`,
+	 * `CHIP_CLASS`). The operator asked for the bordered card to go, so the fill
+	 * is the extent, and the chip is not a control (no hover step, no action).
+	 *
+	 * THE EXTENT IS A ΔE00 STEP, NOT A 3:1 EDGE, so `edge: false` here and the
+	 * claim lives where a ground step is measured: `PERCEPTIBLE`'s "team bridge
+	 * attachment chip" row holds the fill ΔE00 3.0 off all three hosts a message
+	 * row paints - `rowHover` included. Round 1 shipped an `elevated` fill whose
+	 * comment claimed it read on a hovered row; it measured ΔE00 0.00 (arcade),
+	 * 1.14 (gruvbox), 1.21 (obsidian), 1.90 (everforest) there and nothing
+	 * asserted it (agent review round 1, minor 1). The meta line's `inkDim` is a
+	 * caption at 11px, so it is held to the text floor too.
+	 */
+	{
+		name: "team bridge attachment chip name",
+		on: ["surface", "canvas", "rowHover"],
+		fill: "mediaSurface",
+		border: null,
+		ink: "ink",
+		edge: false,
+	},
+	{
+		name: "team bridge attachment chip meta",
+		on: ["surface", "canvas", "rowHover"],
+		fill: "mediaSurface",
+		border: null,
+		ink: "inkDim",
+		edge: false,
+	},
+	{
+		name: "team bridge attachment chip kind tile",
+		on: ["mediaSurface"],
+		fill: "elevated",
+		border: null,
+		ink: "inkMuted",
+		edge: false,
+	},
+	/*
+	 * THE INLINE IMAGE ACTION CLUSTER: Open and Save float over the picture's
+	 * top corner on hover/focus, an overlay (`shadow-overlay`), so its ground is
+	 * the PICTURE - unknowable - and the cluster's own `elevated` fill is what
+	 * the icons are read on. Asserted as ink on that fill at rest (`inkMuted`)
+	 * and under the pointer (`ink` on `rowHover`); `on: ["mediaSurface"]` is
+	 * the tile's own letterbox ground, the one ground the role system knows.
+	 */
+	{
+		name: "team bridge image action cluster",
+		on: ["mediaSurface"],
+		fill: "elevated",
+		border: null,
+		ink: "inkMuted",
+		edge: false,
+	},
+	{
+		name: "team bridge image action cluster (hover)",
+		on: ["elevated"],
+		fill: "rowHover",
+		border: null,
+		ink: "ink",
+		edge: false,
+	},
 	/* The reader's OWN pill is not a role but a derived fill (accent mixed over
 	   surface), so it cannot be a CONTROLS row: it is asserted by
 	   `REACTION_OWN_PILL` below, which mixes the fill per palette. */
@@ -2631,6 +2696,20 @@ const PERCEPTIBLE = [
 		   claim about a pairing the app never renders, and it would fail on the eight
 		   palettes where the wash and the selection share a rung. */
 		on: ["canvas", "surface", "elevated", "rowHover"],
+		minDeltaE: 3.0,
+	},
+	{
+		/*
+		 * THE ATTACHMENT CHIP'S EXTENT (agent review round 1, minor 1): the chip is
+		 * borderless, so its fill's step off each ground a message row paints IS
+		 * its boundary, `rowHover` included. Same fill and floor as the plates
+		 * above; fleet minima canvas 4.00 (oneDark), surface 5.96 (iceberg),
+		 * rowHover 3.70 (iceberg). The kind tile inside it is `elevated`, 7.89
+		 * at worst off this fill (rosewood).
+		 */
+		name: "team bridge attachment chip",
+		role: "mediaSurface",
+		on: ["canvas", "surface", "rowHover", "elevated"],
 		minDeltaE: 3.0,
 	},
 	{

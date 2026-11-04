@@ -1329,10 +1329,17 @@ test("the surface offers no way to write: no composer, no reaction, no admit", a
 test("a message with attachments names them without fetching bytes", async () => {
 	const view = await renderView(panel({ messages: [admitted] }));
 	const text = view.text();
-	assert.ok(text.includes(m.t("ui.teamBridge.attachmentCard.unavailable")));
+	/* The non-bound text file is a chip that says the attachment is
+	 * unavailable; the expired PNG keeps its picture-shaped box and says the
+	 * IMAGE is unavailable, the member transcript's wording (inline-image
+	 * refresh, SPEC §3.1). Both are named; neither fetches. */
 	assert.equal(
 		text.split(m.t("ui.teamBridge.attachmentCard.unavailable")).length - 1,
-		2,
+		1,
+	);
+	assert.equal(
+		text.split(m.t("ui.teamBridge.attachments.unavailable")).length - 1,
+		1,
 	);
 	/* No image tag, no byte URL: this text-only surface never loads a private
 	 * attachment into a renderer. */
