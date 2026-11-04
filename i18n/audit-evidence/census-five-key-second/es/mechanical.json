@@ -1,0 +1,94 @@
+{
+  "checked": 5,
+  "results": {
+    "ui.chat": {
+      "key_count": 3,
+      "namespace_total_keys": 206,
+      "keys": {
+        "ui.chat.session_status.effort_level.low": {
+          "text": "Bajo",
+          "codepoints": 4,
+          "arguments": []
+        },
+        "ui.chat.session_status.effort_level.medium": {
+          "text": "Medio",
+          "codepoints": 5,
+          "arguments": []
+        },
+        "ui.chat.session_status.effort_level.high": {
+          "text": "Alto",
+          "codepoints": 4,
+          "arguments": []
+        }
+      }
+    },
+    "ui.chat.run_details": {
+      "key_count": 2,
+      "namespace_total_keys": 91,
+      "keys": {
+        "ui.chat.run_details.wake.armed_count": {
+          "text": "{count, plural, one {{count_display} despertar activado} many {{count_display} de despertares activados} other {{count_display} despertares activados}}",
+          "codepoints": 151,
+          "arguments": [
+            [
+              "count",
+              "number"
+            ],
+            [
+              "count_display",
+              "string"
+            ]
+          ]
+        },
+        "ui.chat.run_details.wake.cadence_once": {
+          "text": "una vez",
+          "codepoints": 7,
+          "arguments": []
+        }
+      }
+    }
+  },
+  "categories": [
+    "one",
+    "many",
+    "other"
+  ],
+  "rendered": [
+    {
+      "count": 0,
+      "category": "other",
+      "value": "0 despertares activados"
+    },
+    {
+      "count": 1,
+      "category": "one",
+      "value": "1 despertar activado"
+    },
+    {
+      "count": 2,
+      "category": "other",
+      "value": "2 despertares activados"
+    },
+    {
+      "count": 1.5,
+      "category": "other",
+      "value": "1.5 despertares activados"
+    },
+    {
+      "count": 1000000,
+      "category": "many",
+      "value": "1000000 de despertares activados"
+    },
+    {
+      "count": 1500000,
+      "category": "other",
+      "value": "1500000 despertares activados"
+    }
+  ],
+  "counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+  }
+}

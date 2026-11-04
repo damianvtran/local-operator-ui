@@ -1,7 +1,9 @@
 /** Shared by the sidebar receipt set and the native app projection. A stored
  * unseen watermark alone is not an ackable completion: a running/gated status
- * takes precedence and a missing token cannot name a read. Aida presents this
- * same session set, so it must never be added as another attention source.
+ * takes precedence and a missing token cannot name a read. App-icon counts
+ * equal the rail pills: the whole-feed isUnreadAckableCompletion set
+ * deliberately does NOT reach the badge. Only the visible Aida rail subset
+ * contributes a completion number; ordinary session marks are not rail pills.
  */
 export type UnreadCompletionKind = "complete" | "error" | "interrupted";
 
@@ -18,6 +20,19 @@ export function unreadCompletionKind(
 	return code === "complete" || code === "error" || code === "interrupted"
 		? code
 		: null;
+}
+
+/** The Aida rail pill, shared with app-main: ordinary session unread marks
+ * are not rail pills and must not silently inflate the app-icon number. */
+export function aidaMissedMessages(
+	rows: (CompletionAttentionRow & { session_id: string })[],
+	sessionId: string | null | undefined,
+): number {
+	return sessionId
+		? rows.filter(
+				(row) => row.session_id === sessionId && isUnreadAckableCompletion(row),
+			).length
+		: 0;
 }
 
 export function isUnreadAckableCompletion(

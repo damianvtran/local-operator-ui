@@ -2221,7 +2221,7 @@ export const EffortPicker: FC<PickerContext> = ({
 	draft,
 	note,
 }) => {
-	useI18nLocale();
+	const locale = useI18nLocale();
 	/*
 	 * A session's rungs come from the owner (`command-entities?command=effort`),
 	 * which is the list `/effort <rung>` itself validates against. A DRAFT pane has
@@ -2363,18 +2363,18 @@ export const EffortPicker: FC<PickerContext> = ({
 	 */
 	const rungInForce = acceptedRung ?? currentRung;
 
-	const options = useMemo<PickerOption[]>(
-		() =>
-			rungs.map((value) => ({
-				value,
-				// `value` stays the raw lowercase rung -- it is what `/effort <rung>`
-				// is sent and what `currentRung === value` compares. Only the LABEL
-				// is the title-cased human form, matching the chip and the model name.
-				label: effortDisplay(value),
-				current: rungInForce === value,
-			})),
-		[rungs, rungInForce],
-	);
+	const options = useMemo<PickerOption[]>(() => {
+		// t() reads at call time; locale invalidates the display-only labels.
+		void locale;
+		return rungs.map((value) => ({
+			value,
+			// `value` stays the raw lowercase rung -- it is what `/effort <rung>`
+			// is sent and what `currentRung === value` compares. Only the LABEL
+			// is the title-cased human form, matching the chip and the model name.
+			label: effortDisplay(value),
+			current: rungInForce === value,
+		}));
+	}, [rungs, rungInForce, locale]);
 	const label = model
 		? `${model.provider}/${model.model_id}`
 		: t("ui.chat.pickers.destination_pickers.the_current_model");

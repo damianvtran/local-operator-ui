@@ -201,5 +201,8 @@
 	"ui.chat.session_status.context_aria_no_reading": "संदर्भ: अभी कोई रीडिंग नहीं। {hint}",
 	"ui.chat.session_status.context_aria_reading": "संदर्भ: {spelling}{estimate, select, yes {, अनुमानित} other {}}। {hint}",
 	"ui.chat.session_status.active_time_aria": "सक्रिय समय: {duration}। {explanation}",
-	"ui.chat.session_status.duration_explanation": "काम में लगा समय; इंतज़ार की अवधि नहीं गिनी जाती।"
+	"ui.chat.session_status.duration_explanation": "काम में लगा समय; इंतज़ार की अवधि नहीं गिनी जाती।",
+	"ui.chat.session_status.effort_level.low": "कम",
+	"ui.chat.session_status.effort_level.medium": "मध्यम",
+	"ui.chat.session_status.effort_level.high": "उच्च"
 }

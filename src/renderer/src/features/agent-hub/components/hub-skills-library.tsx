@@ -43,6 +43,7 @@ import { Search } from "lucide-react";
 import { useId, useMemo, useRef, useState } from "react";
 import {
 	type HubSkillScope,
+	type PullHubSkillInput,
 	usePullHubSkill,
 	useRemoteSkill,
 	useRemoteSkills,
@@ -58,6 +59,7 @@ import {
 	skillSubscribeAct,
 } from "../hub-skill-state";
 import { HubPager } from "./hub-pager";
+import { HubSkillAdoption } from "./hub-skill-adoption";
 import { SkillMarkChip, skillMark, stateSentence } from "./hub-skill-mark";
 import { HubSkillPublication } from "./hub-skill-publication";
 
@@ -138,9 +140,25 @@ export function HubSkillsLibrary({
 	const supported = hubSkillsSupported(catalogue.data?.contract);
 	const detail = useRemoteSkill(scope, selected, supported && accessible);
 	const pull = usePullHubSkill();
+	const [adoptionInput, setAdoptionInput] = useState<PullHubSkillInput | null>(
+		null,
+	);
 	const subscribe = useSubscribeHubSkill();
 	const unpull = useUnpullHubSkill();
 	const policy = useHubLinkPolicy();
+	// An occupied authored folder needs the same receipt review for either act,
+	// but recovery must retain Subscribe's intent rather than become Download.
+	const adoptionCandidate: PullHubSkillInput | null =
+		aliasConflict(subscribe.error) && subscribe.variables
+			? {
+					...subscribe.variables,
+					subscribe: true,
+					autoPush: false,
+					consent: false,
+				}
+			: aliasConflict(pull.error) && pull.variables
+				? pull.variables
+				: null;
 	// The local inventory is a desktop read, not a hub read: it answers for the
 	// public scope without a credential, and a signed-out person still sees which
 	// skills this machine already holds.
@@ -245,9 +263,12 @@ export function HubSkillsLibrary({
 		if (!selected || !ready || !signedIn) return;
 		const localAlias = forLink?.name ?? selectedRow?.name ?? "";
 		if (!localAlias) return;
+		// Reset detaches the old mutation observer, including late responses:
+		// review must recover the current Download, not a prior Subscribe intent.
+		subscribe.reset();
 		// Download does NOT subscribe, and never edits the subscription an
 		// existing link already has: content and membership are separate facts.
-		const subscribe = forLink ? forLink.policy.subscribe : false;
+		const subscribed = forLink ? forLink.policy.subscribe : false;
 		const autoPush = forLink?.policy.auto_push ?? false;
 		// Consent is an affirmative act, never re-asserted by a download.
 		const consent = false;
@@ -263,7 +284,7 @@ export function HubSkillsLibrary({
 					selected,
 					scope,
 					localAlias,
-					subscribe,
+					subscribe: subscribed,
 					autoPush,
 					consent,
 				}),
@@ -271,7 +292,7 @@ export function HubSkillsLibrary({
 			remoteId: selected,
 			scope,
 			alias: localAlias,
-			subscribe,
+			subscribe: subscribed,
 			autoPush,
 			consent,
 		});
@@ -293,6 +314,7 @@ export function HubSkillsLibrary({
 		}
 		const localAlias = selectedRow?.name ?? "";
 		if (!localAlias) return;
+		pull.reset();
 		subscribe.mutate({
 			requestId: requestIdFor(
 				JSON.stringify({ op: "subscribe", selected, scope, localAlias }),
@@ -570,7 +592,12 @@ export function HubSkillsLibrary({
 			<Dialog
 				open={!!selected && supported}
 				onOpenChange={(open) => {
-					if (!open) setSelected(null);
+					if (!open) {
+						setSelected(null);
+						setAdoptionInput(null);
+						pull.reset();
+						subscribe.reset();
+					}
 				}}
 			>
 				<DialogContent
@@ -717,7 +744,7 @@ export function HubSkillsLibrary({
 									enabled={updatesEnabled}
 								/>
 							)}
-							{pull.error && (
+							{pull.error && !adoptionInput && (
 								<p
 									role="alert"
 									className="text-body-sm text-danger"
@@ -730,6 +757,25 @@ export function HubSkillsLibrary({
 									)}
 								</p>
 							)}
+							{!adoptionInput && adoptionCandidate && (
+								<Button
+									variant="outline"
+									onClick={() => setAdoptionInput(adoptionCandidate)}
+								>
+									{t("ui.hub.adoption.review")}
+								</Button>
+							)}
+							{adoptionInput && (
+								<HubSkillAdoption
+									input={adoptionInput}
+									onClose={() => {
+										setAdoptionInput(null);
+										pull.reset();
+										subscribe.reset();
+									}}
+								/>
+							)}
+
 							{pull.data &&
 								!pull.data.reports?.some(
 									(report) => report.applied || report.outcome === "unchanged",
@@ -768,7 +814,7 @@ export function HubSkillsLibrary({
 									{t("ui.hub.skills.unpull_failed")}
 								</p>
 							)}
-							{subscribe.error && (
+							{subscribe.error && !adoptionInput && (
 								<p
 									role="alert"
 									className="text-body-sm text-danger"
@@ -802,7 +848,7 @@ export function HubSkillsLibrary({
 							 * only when there is nothing to update: an unlinked skill or
 							 * one whose copy is absent.
 							 */}
-							{(!selectedLink || !hasCopy) && (
+							{!adoptionInput && (!selectedLink || !hasCopy) && (
 								<DialogFooter className="flex-row flex-wrap justify-start gap-2">
 									<Button
 										data-testid="hub-skill-download"
@@ -858,7 +904,7 @@ export function HubSkillsLibrary({
 							 * follows the same condition — an update state has no Download and the
 							 * update panel owns that action (design round 3, D12).
 							 */}
-							{(!selectedLink || !hasCopy) && (
+							{!adoptionInput && (!selectedLink || !hasCopy) && (
 								<p className="text-meta text-ink-muted">
 									{selectedLink?.policy.subscribe
 										? t("ui.hub.skills.download_help")

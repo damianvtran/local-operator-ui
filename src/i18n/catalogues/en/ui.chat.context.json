@@ -1031,5 +1031,26 @@
 		"tone": "Plain clause pair",
 		"length_hint": "One sentence",
 		"note": "Spoken in one breath after the number, so it is a single clause with a semicolon."
+	},
+	"ui.chat.session_status.effort_level.low": {
+		"role": "display name of one reasoning-effort level, in the status strip's effort reading, the effort picker rows, the default-effort select and the /effort argument rows",
+		"tone": "single plain word, capitalised as a menu item",
+		"length": "One word; the status strip reading is a few cells wide.",
+		"note": "The name of a rung on a model's effort ladder, ordered None < Minimal < Low < Medium < High < xHigh < Max. Use the word a reader would expect on a speed/quality scale, and keep the levels distinct from one another. The wire value behind it stays the lowercase English token and is never shown through this key.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.effort_level.medium": {
+		"role": "display name of one reasoning-effort level, in the status strip's effort reading, the effort picker rows, the default-effort select and the /effort argument rows",
+		"tone": "single plain word, capitalised as a menu item",
+		"length": "One word; the status strip reading is a few cells wide.",
+		"note": "The name of a rung on a model's effort ladder, ordered None < Minimal < Low < Medium < High < xHigh < Max. Use the word a reader would expect on a speed/quality scale, and keep the levels distinct from one another. The wire value behind it stays the lowercase English token and is never shown through this key.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.effort_level.high": {
+		"role": "display name of one reasoning-effort level, in the status strip's effort reading, the effort picker rows, the default-effort select and the /effort argument rows",
+		"tone": "single plain word, capitalised as a menu item",
+		"length": "One word; the status strip reading is a few cells wide.",
+		"note": "The name of a rung on a model's effort ladder, ordered None < Minimal < Low < Medium < High < xHigh < Max. Use the word a reader would expect on a speed/quality scale, and keep the levels distinct from one another. The wire value behind it stays the lowercase English token and is never shown through this key.",
+		"placeholders": {}
 	}
 }

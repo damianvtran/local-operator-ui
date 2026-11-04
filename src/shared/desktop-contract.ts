@@ -29,6 +29,10 @@ import type {
 	TeamBridgeOpenResult,
 } from "./team-bridge-notify";
 
+const DOT_ONLY_VARIABLE_KEY = /^\.+$/;
+const PUBLICATION_FORMAT_POINT = /\p{Cf}/u;
+const PUBLICATION_PATH_SEPARATOR = /[/\\:]/;
+
 const id = z
 	.string()
 	.min(1)
@@ -577,7 +581,7 @@ const scheduleUnit = z.enum(["minutes", "hours", "days"]);
  * cannot answer this (review round 1, C-03).
  */
 export function isAddressableVariableKey(key: string): boolean {
-	return !/^\.+$/.test(key);
+	return !DOT_ONLY_VARIABLE_KEY.test(key);
 }
 
 /**
@@ -850,7 +854,7 @@ const isPublicationControl = (point: number): boolean =>
  * different keys — the shadowing an exact local name lookup cannot see.
  */
 const isPublicationFormat = (point: number): boolean =>
-	/\p{Cf}/u.test(String.fromCodePoint(point));
+	PUBLICATION_FORMAT_POINT.test(String.fromCodePoint(point));
 
 /** The bidi overrides a rendered name would use to differ from its bytes. */
 const isPublicationBidiOverride = (point: number): boolean =>
@@ -943,7 +947,8 @@ export function publicationNameRule(name: string): string | null {
 	if (!trimmed) return "must not be empty";
 	if (publicationCharCount(trimmed) > PUBLICATION_NAME_MAX_CHARS)
 		return `must be at most ${PUBLICATION_NAME_MAX_CHARS} characters`;
-	if (/[/\\:]/.test(trimmed)) return 'must not contain "/", "\\" or ":"';
+	if (PUBLICATION_PATH_SEPARATOR.test(trimmed))
+		return 'must not contain "/", "\\" or ":"';
 	if (publicationHasCodePoint(trimmed, isPublicationBidiOverride))
 		return "must not contain Unicode bidirectional override characters";
 	if (publicationHasCodePoint(trimmed, isPublicationControlWhitespace))
@@ -1500,6 +1505,12 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			subscribe: z.boolean().optional(),
 			autoPush: z.boolean().optional(),
 			confirmPublicEgress: z.boolean().optional(),
+			// Adoption is receipt-bound: previews cannot authorize a later overwrite.
+			dryRun: z.boolean().optional(),
+			adoptionStrategy: z.enum(["merge", "keep-local", "take-hub"]).optional(),
+			allowLlm: z.boolean().optional(),
+			confirm: z.boolean().optional(),
+			adoptionReceipt: z.string().min(16).max(128).optional(),
 		})
 		.strict(),
 	/*
@@ -7145,7 +7156,19 @@ export type DesktopStreamSubscription = {
  * (`desktop-media.ts`); this is the renderer-facing type so preload and callers
  * agree on the shape.
  */
+/** Captured human-owner receipt; no URL, destination path, MIME or filename. */
+export type DesktopOwnerAuditAttachmentScope = {
+	tenantId: string;
+	conversationId: string;
+	messageId: string;
+	attachmentId: string;
+	expectedAccountId: string;
+};
+
 export type DesktopMediaRequest =
+	| ({
+			op: "team_bridge.owner_audit.attachment";
+	  } & DesktopOwnerAuditAttachmentScope)
 	| { op: "speech.create"; request: Record<string, unknown> }
 	| { op: "speech.agent"; agentId: string; request: Record<string, unknown> }
 	| {
@@ -7359,6 +7382,7 @@ export type DesktopAPI = {
 		request: DesktopMediaRequest,
 		bytes: Uint8Array | null,
 	) => Promise<DesktopMediaResponse>;
+
 	/**
 	 * Arm ONE supplement-frame mount (turn-supplements memo §4.1, lane U-b).
 	 *
@@ -8241,6 +8265,19 @@ export function desktopEndpoint(request: DesktopRequest): {
 						: {}),
 					...(request.confirmPublicEgress !== undefined
 						? { confirm_public_egress: request.confirmPublicEgress }
+						: {}),
+					...(request.dryRun !== undefined ? { dry_run: request.dryRun } : {}),
+					...(request.adoptionStrategy !== undefined
+						? { adoption_strategy: request.adoptionStrategy }
+						: {}),
+					...(request.allowLlm !== undefined
+						? { allow_llm: request.allowLlm }
+						: {}),
+					...(request.confirm !== undefined
+						? { confirm: request.confirm }
+						: {}),
+					...(request.adoptionReceipt !== undefined
+						? { adoption_receipt: request.adoptionReceipt }
 						: {}),
 				},
 			};

@@ -58,3 +58,8 @@ export {
 	renegotiateLanguage,
 	withinLocalLanguageWrite,
 } from "./language-writes";
+
+/* A shortcut glyph run kept left-to-right inside RTL copy; renderer-half, like
+ * the writes module above, because it is a presentation rule and not catalogue
+ * machinery. */
+export { isolateLtr } from "./isolate-ltr";

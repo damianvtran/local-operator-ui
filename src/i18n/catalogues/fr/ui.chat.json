@@ -201,5 +201,8 @@
 	"ui.chat.session_status.context_aria_no_reading": "Contexte : aucun relevé pour l’instant. {hint}",
 	"ui.chat.session_status.context_aria_reading": "Contexte : {spelling}{estimate, select, yes {, estimé} other {}}. {hint}",
 	"ui.chat.session_status.active_time_aria": "Temps actif : {duration}. {explanation}",
-	"ui.chat.session_status.duration_explanation": "Temps passé à travailler ; l’attente n’est pas comptée."
+	"ui.chat.session_status.duration_explanation": "Temps passé à travailler ; l’attente n’est pas comptée.",
+	"ui.chat.session_status.effort_level.low": "Faible",
+	"ui.chat.session_status.effort_level.medium": "Moyen",
+	"ui.chat.session_status.effort_level.high": "Élevé"
 }

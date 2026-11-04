@@ -38,6 +38,7 @@ import {
 	runJobs,
 } from "./ci-scope.mjs";
 import { OVERRIDE_ENV } from "./desktop-test-concurrency.mjs";
+import { discoverDesktopTests } from "./desktop-test-inventory.mjs";
 
 /*
  * The contract of the change-scope classifier, in the form CI and
@@ -673,7 +674,9 @@ test("renderer-only and i18n-only signals select the complete language gate", ()
 
 	// This suite already runs in CI independently of the new guard suite, so it
 	// is the durable place to prove that guard suite remains enumerated.
-	const desktop = pkg.scripts["test:desktop"].split(/\s+/);
+	// The desktop inventory is derived (desktop-test-inventory.mjs), so read
+	// the derivation rather than the package.json line, which no longer lists.
+	const desktop = discoverDesktopTests(repoRoot);
 	assert.ok(desktop.includes("scripts/i18n/check-added-strings.test.mjs"));
 });
 
@@ -2400,10 +2403,9 @@ test("A18: this suite is wired into a CI step and the desktop list", () => {
 		contracts.includes("scripts/ci-scope.test.mjs"),
 		"the release-contract step does not run this suite, so nothing would notice it becoming a guard nothing runs",
 	);
-	const desktopList = String(pkg.scripts["test:desktop"]);
 	assert.ok(
-		desktopList.includes("scripts/ci-scope.test.mjs"),
-		"`test:desktop` does not list this suite",
+		discoverDesktopTests(repoRoot).includes("scripts/ci-scope.test.mjs"),
+		"the derived `test:desktop` inventory does not include this suite (is it in EXEMPT?)",
 	);
 	assert.ok(
 		contracts.includes("node scripts/check-build-env.mjs"),

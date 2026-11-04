@@ -1019,32 +1019,34 @@ function SessionPanel({
 	 * roster on screen past the stream it describes.
 	 */
 	const runFrontend = canonical.frontend ?? canonical.heldFrontend;
-	const runDetails = useMemo(
-		() =>
-			sessionId && runFrontend
-				? deriveRunDetails({
-						jobs: runFrontend.jobs,
-						todos: runFrontend.todos,
-						/*
-						 * The armed wake schedules ride the same derivation, which is what puts the
-						 * composer's wake chip, the pane's Wakes section and the section's tally on
-						 * ONE list: the chip is gated on `runDetails.wakes.length` and the section
-						 * renders those same rows, so a second read of the wire here would be a
-						 * second source of truth for a count the user can see twice on one screen.
-						 */
-						wakes: runFrontend.wakes,
-						/*
-						 * The armed monitors ride the same derivation, which is what puts the
-						 * composer's monitor chip, the pane's Monitors section and the section's
-						 * trailing tally on ONE list — the wake wiring's own argument, one count
-						 * over: a second read of the wire here would be a second source of truth
-						 * for a count the user can see twice on one screen.
-						 */
-						monitors: runFrontend.monitors,
-					})
-				: null,
-		[sessionId, runFrontend],
-	);
+	const runDetailsLocale = useI18nLocale();
+	const runDetails = useMemo(() => {
+		// Cadence labels are derived copy. A retained frontend is unchanged when
+		// language moves, so locale must invalidate these rows without a new frame.
+		void runDetailsLocale;
+		return sessionId && runFrontend
+			? deriveRunDetails({
+					jobs: runFrontend.jobs,
+					todos: runFrontend.todos,
+					/*
+					 * The armed wake schedules ride the same derivation, which is what puts the
+					 * composer's wake chip, the pane's Wakes section and the section's tally on
+					 * ONE list: the chip is gated on `runDetails.wakes.length` and the section
+					 * renders those same rows, so a second read of the wire here would be a
+					 * second source of truth for a count the user can see twice on one screen.
+					 */
+					wakes: runFrontend.wakes,
+					/*
+					 * The armed monitors ride the same derivation, which is what puts the
+					 * composer's monitor chip, the pane's Monitors section and the section's
+					 * trailing tally on ONE list — the wake wiring's own argument, one count
+					 * over: a second read of the wire here would be a second source of truth
+					 * for a count the user can see twice on one screen.
+					 */
+					monitors: runFrontend.monitors,
+				})
+			: null;
+	}, [sessionId, runFrontend, runDetailsLocale]);
 	/*
 	 * The run panel's MCP half, read here for the reason the model is derived here:
 	 * this is the component that owns the session identity and the capabilities, and

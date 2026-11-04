@@ -1,0 +1,89 @@
+{
+  "schema": 1,
+  "auditor": "reviewer",
+  "model": "openai/gpt-6.1-sol",
+  "instance": "f93eb129057e-ur",
+  "session": "f93eb129057e",
+  "date": "2026-11-03",
+  "model_provenance": {
+    "actual_audit_model": "openai/gpt-6.1-sol",
+    "initial_model": "anthropic/claude-sonnet-5-5",
+    "announced_fallbacks": [
+      "anthropic/claude-opus-5-5",
+      "openai/gpt-6.1-sol"
+    ],
+    "reason": "Provider quota failures announced by host before substantive review; completed audit performed on openai/gpt-6.1-sol."
+  },
+  "status": "passed",
+  "result": "clean",
+  "locale": "ur",
+  "namespace": "ui.teamBridge",
+  "sha256": {
+    "en": "00a4cb6150b71677766c8527369527497cf29ec3ccb91cb5e2b8a3d1c65baffd",
+    "ur": "81bb71ab4c38818d6af5a1c8475c80e1bacea89c5dcb991eb79a40748d032c19"
+  },
+  "findings": [],
+  "scope": {
+    "base": "47e06bc7bcdcd008ffbb5907c540670a18c2d7df",
+    "head": "c162569e8ff8bceb32d7a011c5fa52c17c07b61c",
+    "keys": [
+      "ui.teamBridge.attachmentCard.list",
+      "ui.teamBridge.attachmentCard.file",
+      "ui.teamBridge.attachmentCard.bytes",
+      "ui.teamBridge.attachmentCard.metadata_only",
+      "ui.teamBridge.attachmentCard.unavailable"
+    ],
+    "kind": "Independent linguistic review of exactly five new attachmentCard keys; unchanged namespace content is inherited, not re-audited.",
+    "unchanged_proof": "All base key/value pairs remain identical in English and this target; exactly the five scoped keys were added. Base namespace raw-byte hashes equal the existing ledger source and target hashes.",
+    "prior_auditors": [
+      {
+        "agent": "task",
+        "model": "anthropic/claude-opus-5-5",
+        "date": "2026-11-02",
+        "result": "clean",
+        "instance": "439bcc181f80",
+        "findings": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 0,
+          "nit": 0
+        },
+        "receipt": "i18n/receipts/439bcc181f80.json",
+        "receipt_sha256": "d0fd89319774cf7d40c49760876dc3b97c271908fab7d569f6b9422ac199468d",
+        "scope": "ui.teamBridge.delivery.{refused,refused_manipulation,refused_personal_info,refused_abusive,refused_unsafe_content,refused_out_of_scope,held,held_screening_unavailable,held_awaiting_review,pending,info_refused,info_held,info_label} (PR #1521 copy delta)",
+        "note": "Independent copy-delta audit of #1521's 13 delivery keys by session 439bcc181f80, clean 0/0/0/0. Evidence: i18n/receipts/439bcc181f80.json (sha256 d0fd8931...468d)."
+      }
+    ],
+    "not_audited": [
+      "Unchanged namespace language",
+      "Runtime ICU execution",
+      "Rendered fit and RTL layout",
+      "Pseudo-localization"
+    ]
+  },
+  "independence": "Session f93eb129057e did not author the implementation or translations and modified no repository file; locale suffix identifies this real session audit scope, not a separate auditor.",
+  "context": {
+    "path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+    "sha256": "3545d3a8da3eb8e35b069e3f0d46940f977e851c6a8ae46d040e2a7b55e73cb6",
+    "delta_entries_present": false
+  },
+  "reference_hashes": {
+    "i18n/glossary.md": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+    "i18n/style-guides/ur.md": "c0eecf7f7b5e89956b7de9ab7a9eb647ff1a7ef701ccf2a7f0264d5eea15ca60"
+  },
+  "per_key_verdict": {
+    "ui.teamBridge.attachmentCard.list": "PASS: semantic meaning, terminology, placeholder use and static ICU structure reviewed",
+    "ui.teamBridge.attachmentCard.file": "PASS: semantic meaning, terminology, placeholder use and static ICU structure reviewed",
+    "ui.teamBridge.attachmentCard.bytes": "PASS: semantic meaning, terminology, placeholder use and static ICU structure reviewed",
+    "ui.teamBridge.attachmentCard.metadata_only": "PASS: semantic meaning, terminology, placeholder use and static ICU structure reviewed",
+    "ui.teamBridge.attachmentCard.unavailable": "PASS: semantic meaning, terminology, placeholder use and static ICU structure reviewed"
+  },
+  "static_data_checks": {
+    "all_prior_values_unchanged": true,
+    "exact_five_added_keys": true,
+    "nfc": true,
+    "no_manual_bidi_controls": true,
+    "count_size_argument_names_preserved": true
+  },
+  "execution_limitations": "Read-only source review. No tests, builds, browser or ledger writer executed, as instructed."
+}

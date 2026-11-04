@@ -1,0 +1,297 @@
+{
+  "head": "19868532b9cd2bca0eca468dbf22572d8dd78a5b",
+  "base": "6dd43fd7494",
+  "locale": "ru",
+  "key_count": 5,
+  "namespace_count": 2,
+  "input_hashes": {
+    "ui.chat": {
+      "en": {
+        "path": "src/i18n/catalogues/en/ui.chat.json",
+        "sha256": "270fc752791e2960006b560ec9616c2010dab80e92af19f075f7e04a3055bd27"
+      },
+      "ru": {
+        "path": "src/i18n/catalogues/ru/ui.chat.json",
+        "sha256": "38f94585db7544c4fe167ecd2f06d0b557b3632d660bfb57bcf3b527290fe705"
+      },
+      "context": {
+        "path": "src/i18n/catalogues/en/ui.chat.context.json",
+        "sha256": "efcf4d1872974b6fc7456e753a2e10010ab896fffede262ae7c19d96c35ecee1"
+      }
+    },
+    "ui.chat.run_details": {
+      "en": {
+        "path": "src/i18n/catalogues/en/ui.chat.run_details.json",
+        "sha256": "f8184d5f41b359364e47747871988bbb731d79c12bc3b9ec755f3db73e5db6ab"
+      },
+      "ru": {
+        "path": "src/i18n/catalogues/ru/ui.chat.run_details.json",
+        "sha256": "d94b8ef3237d22f0db3539511045c08e8e4b85c57b6c8cb14a8cfaf51a9ed651"
+      },
+      "context": {
+        "path": "src/i18n/catalogues/en/ui.chat.run_details.context.json",
+        "sha256": "da588f521188a2bcba1d0aeb7a265c3474b16673b8f653a021fa7e9e7075e911"
+      }
+    }
+  },
+  "namespaces": {
+    "ui.chat": {
+      "key_count": 3,
+      "total_namespace_keys": 206,
+      "key_reviews": [
+        {
+          "key": "ui.chat.session_status.effort_level.low",
+          "en": "Low",
+          "ru": "Низкий",
+          "context": {
+            "role": "display name of one reasoning-effort level, in the status strip's effort reading, the effort picker rows, the default-effort select and the /effort argument rows",
+            "tone": "single plain word, capitalised as a menu item",
+            "length": "One word; the status strip reading is a few cells wide.",
+            "note": "The name of a rung on a model's effort ladder, ordered None < Minimal < Low < Medium < High < xHigh < Max. Use the word a reader would expect on a speed/quality scale, and keep the levels distinct from one another. The wire value behind it stays the lowercase English token and is never shown through this key.",
+            "placeholders": {}
+          },
+          "status": "passed",
+          "text_characters": 6,
+          "combining_marks": false,
+          "format_controls": false
+        },
+        {
+          "key": "ui.chat.session_status.effort_level.medium",
+          "en": "Medium",
+          "ru": "Средний",
+          "context": {
+            "role": "display name of one reasoning-effort level, in the status strip's effort reading, the effort picker rows, the default-effort select and the /effort argument rows",
+            "tone": "single plain word, capitalised as a menu item",
+            "length": "One word; the status strip reading is a few cells wide.",
+            "note": "The name of a rung on a model's effort ladder, ordered None < Minimal < Low < Medium < High < xHigh < Max. Use the word a reader would expect on a speed/quality scale, and keep the levels distinct from one another. The wire value behind it stays the lowercase English token and is never shown through this key.",
+            "placeholders": {}
+          },
+          "status": "passed",
+          "text_characters": 7,
+          "combining_marks": false,
+          "format_controls": false
+        },
+        {
+          "key": "ui.chat.session_status.effort_level.high",
+          "en": "High",
+          "ru": "Высокий",
+          "context": {
+            "role": "display name of one reasoning-effort level, in the status strip's effort reading, the effort picker rows, the default-effort select and the /effort argument rows",
+            "tone": "single plain word, capitalised as a menu item",
+            "length": "One word; the status strip reading is a few cells wide.",
+            "note": "The name of a rung on a model's effort ladder, ordered None < Minimal < Low < Medium < High < xHigh < Max. Use the word a reader would expect on a speed/quality scale, and keep the levels distinct from one another. The wire value behind it stays the lowercase English token and is never shown through this key.",
+            "placeholders": {}
+          },
+          "status": "passed",
+          "text_characters": 7,
+          "combining_marks": false,
+          "format_controls": false
+        }
+      ],
+      "catalogue_bytes_match_c44e9e8be8e": true
+    },
+    "ui.chat.run_details": {
+      "key_count": 2,
+      "total_namespace_keys": 91,
+      "key_reviews": [
+        {
+          "key": "ui.chat.run_details.wake.armed_count",
+          "en": "{count, plural, =1 {{count_display} wake armed} other {{count_display} wakes armed}}",
+          "ru": "{count, plural, =1 {{count_display} пробуждение запланировано} one {{count_display} пробуждение запланировано} few {{count_display} пробуждения запланированы} many {{count_display} пробуждений запланировано} other {{count_display} пробуждения запланировано}}",
+          "context": {
+            "role": "count clause naming how many scheduled wakes are armed, on the composer's wakes chip and as the trailing tally of the run panel's Wakes section",
+            "tone": "short status clause, lowercase after the number, no trailing punctuation",
+            "length_hint": "Three words",
+            "note": "A wake is a scheduled follow-up the agent set for itself; armed means it is set and will fire. One string serves both surfaces so they cannot drift. Provide every CLDR plural category the language needs.",
+            "placeholders": {
+              "count": "Numeric selector for CLDR plural categories. English uses exact =1 to preserve the original strict count === 1 branch; translators add their CLDR arms.",
+              "count_display": "Raw String(count), preserving the former JavaScript interpolation without rounding or grouping. Print this, not count."
+            }
+          },
+          "status": "passed",
+          "text_characters": 258,
+          "combining_marks": false,
+          "format_controls": false
+        },
+        {
+          "key": "ui.chat.run_details.wake.cadence_once",
+          "en": "once",
+          "ru": "однократно",
+          "context": {
+            "role": "cadence of a wake that fires a single time, in a wake row and inside the schedule sentences that quote a wake's repeat",
+            "tone": "single lowercase word, no punctuation",
+            "length_hint": "One word",
+            "note": "Opposite of 'every {duration}'. It is embedded mid-sentence by other strings (for example 'keep as once'), so it must read as a lowercase adverb.",
+            "placeholders": {}
+          },
+          "status": "passed",
+          "text_characters": 10,
+          "combining_marks": false,
+          "format_controls": false
+        }
+      ],
+      "catalogue_bytes_match_c44e9e8be8e": true
+    }
+  },
+  "samples": [
+    {
+      "count": 0,
+      "cldr_category": "many",
+      "output": "0 пробуждений запланировано"
+    },
+    {
+      "count": 1,
+      "cldr_category": "one",
+      "output": "1 пробуждение запланировано"
+    },
+    {
+      "count": 2,
+      "cldr_category": "few",
+      "output": "2 пробуждения запланированы"
+    },
+    {
+      "count": 3,
+      "cldr_category": "few",
+      "output": "3 пробуждения запланированы"
+    },
+    {
+      "count": 4,
+      "cldr_category": "few",
+      "output": "4 пробуждения запланированы"
+    },
+    {
+      "count": 5,
+      "cldr_category": "many",
+      "output": "5 пробуждений запланировано"
+    },
+    {
+      "count": 11,
+      "cldr_category": "many",
+      "output": "11 пробуждений запланировано"
+    },
+    {
+      "count": 21,
+      "cldr_category": "one",
+      "output": "21 пробуждение запланировано"
+    },
+    {
+      "count": 22,
+      "cldr_category": "few",
+      "output": "22 пробуждения запланированы"
+    },
+    {
+      "count": 25,
+      "cldr_category": "many",
+      "output": "25 пробуждений запланировано"
+    },
+    {
+      "count": 101,
+      "cldr_category": "one",
+      "output": "101 пробуждение запланировано"
+    },
+    {
+      "count": 1.5,
+      "cldr_category": "other",
+      "output": "1.5 пробуждения запланировано"
+    },
+    {
+      "count": 2.1,
+      "cldr_category": "other",
+      "output": "2.1 пробуждения запланировано"
+    },
+    {
+      "count": 1000,
+      "cldr_category": "many",
+      "output": "1000 пробуждений запланировано"
+    },
+    {
+      "count": 1000000000000000100,
+      "cldr_category": "many",
+      "output": "1000000000000000100 пробуждений запланировано"
+    }
+  ],
+  "checks": [
+    {
+      "name": "count selects; count_display prints",
+      "status": "PASS",
+      "negative_distinguishing_probe": "count=2, count_display=RAW_COUNT => RAW_COUNT пробуждения запланированы",
+      "categories": [
+        "one",
+        "few",
+        "many",
+        "other"
+      ],
+      "arms": [
+        "=1",
+        "one",
+        "few",
+        "many",
+        "other"
+      ]
+    },
+    {
+      "name": "pinned repository parity validator",
+      "status": "PASS",
+      "command": "node --max-old-space-size=128 --test --test-name-pattern='\\[ru\\]' scripts/i18n/locale-parity.test.mjs",
+      "actual": "6 tests; 6 pass; 0 fail",
+      "log_sha256": "8b77318325a54cf957552e87a29056c237d09c74b088c215a90bd6697fd470c5"
+    }
+  ],
+  "limits": {
+    "native_app": false,
+    "pseudolocale": false,
+    "pixels": false,
+    "build": false,
+    "tsc": false,
+    "scanner": false,
+    "installs": false,
+    "repo_writes": false,
+    "fit": "Static character/cell-risk inspection only; no measured pixel fit. No numeric maxCells/maxChars hints on the five keys.",
+    "validator": "Pinned repository locale-parity.test.mjs, byte-identical, on scratch snapshots of only the two assigned namespace files. 6 Russian tests passed; not a whole-repository gate."
+  },
+  "semantic_review": {
+    "status": "passed",
+    "findings": [],
+    "effort": "Низкий / Средний / Высокий are idiomatic masculine level labels, ordered correctly; six/seven/seven Cyrillic characters, no combining or wide-script glyphs. Raw picker and slash values remain English tokens.",
+    "armed_count": "Запланировано/запланированы correctly communicates an armed scheduled follow-up, not a completed wake. Пробуждение follows the glossary. Exact =1 plus one/few/many/other all preserve appropriate noun case and predicate agreement, including fractional other.",
+    "cadence_once": "однократно is a lowercase adverb meaning one-time, natural standalone after the due-label separator. Read all direct call sites: wake cadence, monitor interval, schedules. keepRepeatLabel takes a separate keep_as_once branch for null intervals; repeating legacy schedule cadence uses non-null intervals, so no newly broken keep/starts/until embedding.",
+    "copy_constraints": "No markup, Rich tags, backtick code, flags, commands or identifiers occur in these five values; no translator-authored Cf characters. Five target keys present and non-English; no fallback required at the catalogue boundary."
+  },
+  "call_sites": [
+    [
+      "src/renderer/src/features/chat/session-status/session-model.ts",
+      "444-464 display lookup only"
+    ],
+    [
+      "src/renderer/src/features/chat/pickers/destination-pickers.tsx",
+      "2273-2282 value unchanged; display-only label"
+    ],
+    [
+      "src/renderer/src/features/chat/components/slash-argument-rows.ts",
+      "1140-1152 raw value/current unchanged"
+    ],
+    [
+      "src/renderer/src/features/chat/components/run-details/run-detail-model.ts",
+      "1688-1690 cadence;1715-1719 count;1932-1935 monitor interval"
+    ],
+    [
+      "src/renderer/src/features/chat/components/run-details/run-detail-wakes.tsx",
+      "180-190 due label separator plus cadence"
+    ],
+    [
+      "src/renderer/src/features/schedules/scheduled-task-model.ts",
+      "202-208 separate one-time keep label;718-739 repeating legacy cadence"
+    ]
+  ],
+  "provenance": {
+    "agent": "i18n-auditor",
+    "session": "97bb3462a65c",
+    "model": "openai/gpt-6.1-sol",
+    "independent_from_translator_session": true,
+    "independence_source": "Delegation states this auditor is neither translator nor first auditor. No first-audit findings or receipts read.",
+    "actual_model_source": "Host model-switch notice: openai/gpt-6.1-sol fallback after provider quota failures. Original model anthropic/claude-sonnet-5-5; intermediate switch anthropic/claude-opus-5-5.",
+    "fallback": true
+  },
+  "audit_notes_not_execution_log": false,
+  "execution_note": "Mechanical and formatter facts generated by this executed script; linguistic judgments written by the independent auditor. validator.log is the actual repository-validator stdout/stderr."
+}

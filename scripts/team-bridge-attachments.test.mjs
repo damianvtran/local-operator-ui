@@ -7,6 +7,31 @@ import { build } from "esbuild";
 import { JSDOM } from "jsdom";
 import React, { act } from "react";
 
+// Shared, non-global matchers keep this touched test file lint-ratchet clean.
+const BOUND_ATTACHMENT_ID = /batt_a/;
+const INLINE_BYTES = /base64|data:|iVBOR/;
+const PREVIEW_BLOB_URL = /^blob:test\//;
+const TERMINAL_REASON = /expired|deleted|withheld/i;
+const ATTACHMENT_ID_PREFIX = /batt_/;
+const MARKDOWN_ALT = /shot/;
+const UNTRUSTED_IMAGE_URL = /https:\/\/evil\.example\/p\.png/;
+const RENDER_LIMIT_ERROR = /rendered more than 3 times/;
+const SETTLE_LIMIT_ERROR = /did not settle within 20 ms/;
+const STORAGE_REFUSAL = /browser storage denied/;
+const ACCOUNT_CHANGED_COPY =
+	/Signed-in account has changed since this message was started/i;
+const SIGNED_OUT_COPY = /signed out/i;
+const IMAGE_QUOTA_COPY = /too many images/i;
+const RETRY_COPY = /retry/i;
+const OPAQUE_ID = /opaque/;
+const COUNT_ONLY_COPY = /3 attachments/;
+const PRIVATE_TERMINAL_METADATA =
+	/expired|withheld|deleted|unknown|revoked|opaque|2,048/;
+const GENERIC_FILE_COPY = /File/;
+const LOCALIZED_BYTE_COUNT = /2,048 bytes/;
+const PRIVATE_FILE_METADATA = /secret|script|private/;
+const TINY_RESERVED_BOX = /width: 64px; height: 64px/;
+
 /*
  * Team Bridge image attachments: wire contract, pure model, staging hook,
  * draft persistence and message rendering - exercising the SHIPPED modules
@@ -116,6 +141,11 @@ const bundle = await build({
  export * from "./src/renderer/src/features/team-bridge/use-team-bridge-drafts";
  export * from "./src/renderer/src/features/team-bridge/team-bridge-drafts";
  export * from "./src/renderer/src/features/team-bridge/team-bridge-scheduling";
+ export {OwnerAuditPanelView} from "./src/renderer/src/features/team-bridge/team-bridge-owner-audit";
+ export {BridgeAttachmentGroup, BridgeFileGroup} from "./src/renderer/src/features/team-bridge/attachments/bridge-attachment-group";
+ export {middleTruncateFileName, splitFileNameTail, toBridgeFileDescriptor} from "./src/renderer/src/features/team-bridge/attachments/attachment-model";
+ export {ownerAuditMessageSchema} from "./src/shared/team-bridge-owner-audit-contract";
+ export {attachmentBox} from "./src/renderer/src/features/team-bridge/attachments/attachment-model";
  export {TeamBridgeMessageList} from "./src/renderer/src/features/team-bridge/team-bridge-message-list";
  export {TeamBridgeMarkdown} from "./src/renderer/src/features/team-bridge/team-bridge-markdown";
  export {TeamBridgeScheduledAttachments} from "./src/renderer/src/features/team-bridge/team-bridge-attachments";
@@ -128,7 +158,7 @@ const bundle = await build({
  export {QueryClient, QueryClientProvider} from "@tanstack/react-query";
  export {useStickToBottom} from "./src/renderer/src/features/team-bridge/use-stick-to-bottom";
  export {TeamBridgeThreadPaneView} from "./src/renderer/src/features/team-bridge/team-bridge-thread-pane";
- export {TeamBridgeAttachmentChip} from "./src/renderer/src/features/team-bridge/team-bridge-attachments";
+ export {TeamBridgeAttachmentChip, attachmentPasteHandlers} from "./src/renderer/src/features/team-bridge/team-bridge-attachments";
  export {t} from "./src/renderer/src/shared/i18n";
  export {browserDraftStorage} from "./src/renderer/src/shared/store/team-bridge-draft-account";
  export {TeamBridgeApi} from "./src/renderer/src/shared/api/local-operator/team-bridge-api";
@@ -602,10 +632,13 @@ let mediaAnswer = () => ({ status: 404, kind: "error", detail: "no" });
  * (`readFile`); a fixture without them sends the composer down its "dragged out of
  * another page" data-URL route and cannot answer the upload at all.
  */
+let pasteboardText = "";
 const PNG_BASE64 =
 	"iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
 window.api = {
 	getPathForFile: () => `/fixtures/dropped-${++droppedSeq}.png`,
+	// The preload's synchronous pasteboard read (#1573), set per paste case.
+	readPasteTextSync: () => pasteboardText,
 	readFile: async () => ({ success: true, data: PNG_BASE64 }),
 	desktop: {
 		media: async (request, bytes) => {
@@ -889,8 +922,8 @@ test("drafts persist descriptors only, restore them, and the logout fence clears
 	const raw = Object.entries(localStorage).find(([key]) =>
 		key.startsWith("team-bridge-authored-drafts:v1:"),
 	)[1];
-	assert.match(raw, /batt_a/);
-	assert.doesNotMatch(raw, /base64|data:|iVBOR/, "no image bytes in storage");
+	assert.match(raw, BOUND_ATTACHMENT_ID);
+	assert.doesNotMatch(raw, INLINE_BYTES, "no image bytes in storage");
 	// A tampered entry carrying bytes is dropped on read, never restored.
 	const key = Object.keys(localStorage).find((k) =>
 		k.startsWith("team-bridge-authored-drafts:v1:"),
@@ -1023,11 +1056,22 @@ test("bubble: images render ONLY from attachments[], fetched member-gated; place
 	}
 	const imgs = [...view.element.querySelectorAll("img")];
 	assert.equal(imgs.length, 1);
-	assert.match(imgs[0].getAttribute("src"), /^blob:test\//);
+	assert.match(imgs[0].getAttribute("src"), PREVIEW_BLOB_URL);
 	const placeholders = [
 		...view.element.querySelectorAll("[data-attachment-placeholder]"),
 	].map((node) => node.getAttribute("data-attachment-placeholder"));
-	assert.deepEqual(placeholders.sort(), ["expired", "failed", "unavailable"]);
+	assert.deepEqual(placeholders.sort(), ["unavailable"]);
+	assert.equal(
+		view.element.querySelectorAll('[data-bridge-attachment-card="unavailable"]')
+			.length,
+		2,
+	);
+	assert.doesNotMatch(view.element.textContent, TERMINAL_REASON);
+	assert.equal(
+		view.element.querySelectorAll("button").length,
+		1,
+		"404 and terminal descriptors expose no retry",
+	);
 	assert.equal(
 		view.element.querySelector(".team-bridge-message-body"),
 		null,
@@ -1035,7 +1079,7 @@ test("bubble: images render ONLY from attachments[], fetched member-gated; place
 	);
 	assert.doesNotMatch(
 		view.element.textContent,
-		/batt_/,
+		ATTACHMENT_ID_PREFIX,
 		"ids never reach the screen",
 	);
 	await view.close();
@@ -1054,8 +1098,8 @@ test("markdown images in a body stay alt text and fetch nothing", async () => {
 		}),
 	]);
 	assert.equal(view.element.querySelectorAll("img").length, 0);
-	assert.match(view.element.textContent, /shot/);
-	assert.match(view.element.textContent, /https:\/\/evil\.example\/p\.png/);
+	assert.match(view.element.textContent, MARKDOWN_ALT);
+	assert.match(view.element.textContent, UNTRUSTED_IMAGE_URL);
 	assert.equal(mediaCalls.length, 0);
 	await view.close();
 });
@@ -1859,10 +1903,10 @@ test("fail-fast guards: the render budget and the settle bound turn a runaway in
 	budget.tick();
 	budget.tick();
 	assert.equal(budget.count, 3);
-	assert.throws(() => budget.tick(), /rendered more than 3 times/);
+	assert.throws(() => budget.tick(), RENDER_LIMIT_ERROR);
 	await assert.rejects(
 		within(20, new Promise(() => {}), "a step that never settles"),
-		/did not settle within 20 ms/,
+		SETTLE_LIMIT_ERROR,
 	);
 	assert.equal(
 		await within(1000, Promise.resolve("ok"), "a settled step"),
@@ -1992,15 +2036,15 @@ test("denied browser storage: attachment draft and descriptor paths render, read
 		// Harness self-check: a bare `localStorage` read (what the pre-fix
 		// status clients did) now throws, so a reintroduced bare read fails
 		// the identity() assertion below instead of finding a working store.
-		assert.throws(() => localStorage, /browser storage denied/);
-		assert.throws(() => globalThis.localStorage, /browser storage denied/);
-		assert.throws(() => window.localStorage, /browser storage denied/);
+		assert.throws(() => localStorage, STORAGE_REFUSAL);
+		assert.throws(() => globalThis.localStorage, STORAGE_REFUSAL);
+		assert.throws(() => window.localStorage, STORAGE_REFUSAL);
 		// And the pre-fix status-client shape, called through the real
 		// reconcileDraftAccount, now rejects: the harness would catch it.
 		await assert.rejects(
 			(async () =>
 				m.reconcileDraftAccount(localStorage, { state: "signed_out" }))(),
-			/browser storage denied/,
+			STORAGE_REFUSAL,
 		);
 		assert.equal(
 			m.browserDraftStorage(),
@@ -2618,23 +2662,23 @@ test("R1-01: an account change is its own sentence — never a quota, never a si
 		const text = element.textContent;
 		assert.match(
 			text,
-			/Signed-in account has changed since this message was started/i,
+			ACCOUNT_CHANGED_COPY,
 			"the account-change sentence is shown",
 		);
 		assert.equal(
-			/signed out/i.test(text),
+			SIGNED_OUT_COPY.test(text),
 			false,
 			"a sign-out is a different fact and must not be claimed",
 		);
 		assert.equal(
-			/too many images/i.test(text),
+			IMAGE_QUOTA_COPY.test(text),
 			false,
 			"the quota sentence is reserved for the actual limit refusal",
 		);
 		// A retry would 409 again until the account is resolved.
 		assert.equal(
 			[...element.querySelectorAll("button")].some((button) =>
-				/retry/i.test(button.textContent ?? ""),
+				RETRY_COPY.test(button.textContent ?? ""),
 			),
 			false,
 			"no Retry on an account mismatch",
@@ -2675,4 +2719,810 @@ test("R1-02: the delete receipt is required by the shipped schema", () => {
 			.success,
 		true,
 	);
+});
+
+/* Shared presentation: these probe the actual shipped group, not a copy. Audit
+ * supplies metadata only; a renderPreview spy is the negative control proving
+ * terminal metadata cannot even commission a member resource component. */
+async function renderAttachmentGroup(props) {
+	const element = document.createElement("div");
+	document.body.append(element);
+	const root = createRoot(element);
+	await act(async () =>
+		root.render(React.createElement(m.BridgeAttachmentGroup, props)),
+	);
+	return {
+		element,
+		close: async () => {
+			await act(async () => root.unmount());
+			element.remove();
+		},
+	};
+}
+
+test("shared audit cards: bound descriptors and count-only receipts never fetch", async () => {
+	mediaCalls = [];
+	for (const props of [
+		{
+			attachments: [
+				{
+					id: "opaque",
+					mime: "image/png",
+					size: 2048,
+					width: null,
+					height: null,
+					state: "bound",
+				},
+			],
+		},
+		{ attachments: [], count: 3 },
+	]) {
+		const view = await renderAttachmentGroup(props);
+		assert.equal(view.element.querySelectorAll("li").length, 1);
+		assert.equal(view.element.querySelectorAll("button,img,a").length, 0);
+		assert.doesNotMatch(view.element.textContent, OPAQUE_ID);
+		if (props.count === 3)
+			assert.match(view.element.textContent, COUNT_ONLY_COPY);
+		assert.equal(mediaCalls.length, 0);
+		await view.close();
+	}
+	const empty = await renderAttachmentGroup({ attachments: [] });
+	assert.equal(empty.element.innerHTML, "");
+	await empty.close();
+});
+
+test("shared cards: every terminal state is generic and cannot commission a preview", async () => {
+	let commissioned = 0;
+	const view = await renderAttachmentGroup({
+		attachments: [
+			"expired",
+			"withheld",
+			"deleted",
+			"unknown",
+			"revoked",
+			"",
+		].map((state, index) => ({
+			id: `opaque-${index}`,
+			mime: "image/png",
+			size: 2048,
+			state,
+		})),
+		renderPreview: () => {
+			commissioned++;
+			return React.createElement("button", { type: "button" }, "forbidden");
+		},
+	});
+	assert.equal(commissioned, 0);
+	assert.equal(
+		view.element.querySelectorAll('[data-bridge-attachment-card="unavailable"]')
+			.length,
+		6,
+	);
+	assert.doesNotMatch(view.element.textContent, PRIVATE_TERMINAL_METADATA);
+	assert.equal(view.element.querySelectorAll("button,img,a").length, 0);
+	await view.close();
+});
+
+test("shared file metadata: generic safe name, no raw descriptor text or inline bytes", async () => {
+	let commissioned = 0;
+	const view = await renderAttachmentGroup({
+		attachments: [
+			{
+				id: "private/id",
+				mime: "<script>alert(1)</script>",
+				size: 2048,
+				state: "bound",
+				filename: "/private/home/secret.txt",
+			},
+		],
+		renderPreview: () => {
+			commissioned++;
+			return null;
+		},
+	});
+	assert.equal(commissioned, 0);
+	assert.match(view.element.textContent, GENERIC_FILE_COPY);
+	assert.match(view.element.textContent, LOCALIZED_BYTE_COUNT);
+	assert.doesNotMatch(view.element.textContent, PRIVATE_FILE_METADATA);
+	assert.equal(view.element.querySelectorAll("button,img,a,script").length, 0);
+	await view.close();
+});
+
+test("shared geometry: nullable, invalid and huge dimensions stay finite and bounded", () => {
+	for (const width of [
+		null,
+		0,
+		-1,
+		Number.NaN,
+		Number.POSITIVE_INFINITY,
+		1e300,
+	]) {
+		for (const compact of [false, true]) {
+			const box = m.attachmentBox({ width, height: width }, true, compact);
+			assert.ok(Number.isFinite(box.width) && Number.isFinite(box.height));
+			assert.ok(box.width > 0 && box.width <= (compact ? 264 : 360));
+			assert.ok(box.height > 0 && box.height <= (compact ? 176 : 240));
+		}
+	}
+	assert.deepEqual(m.attachmentBox(null, false, true), {
+		width: 128,
+		height: 88,
+	});
+});
+
+test("member resource: authenticated refusal is terminal; 503 alone offers explicit retry", async () => {
+	for (const status of [401, 403, 404, 410, 503]) {
+		mediaCalls = [];
+		let ready = false;
+		mediaAnswer = () =>
+			ready
+				? { status: 200, kind: "bytes", mimeType: "image/png", data: PNG }
+				: { status, kind: "error" };
+		const view = await renderList([
+			message({
+				id: `refusal-${status}`,
+				attachments: [
+					{
+						id: `resource-${status}`,
+						mime: "image/png",
+						size: 10,
+						width: 4,
+						height: 3,
+						state: "bound",
+					},
+				],
+			}),
+		]);
+		assert.equal(mediaCalls.length, 1);
+		assert.equal(mediaCalls[0].request.expectedAccountId, "acct_a");
+		const retry = [...view.element.querySelectorAll("button")].find(
+			(node) =>
+				node.textContent === m.t("ui.teamBridge.attachments.retry_load"),
+		);
+		assert.equal(Boolean(retry), status === 503);
+		if (retry) {
+			const box = view.element
+				.querySelector("[data-attachment-placeholder]")
+				.getAttribute("style");
+			ready = true;
+			await act(async () => retry.click());
+			await settle();
+			await settle();
+			assert.equal(mediaCalls.length, 2);
+			assert.equal(view.element.querySelectorAll("img").length, 1);
+			const reserved = view.element.querySelector("[data-attachment-reserved]");
+			assert.equal(
+				reserved,
+				null,
+				"ready preview replaces reserved loading frame",
+			);
+			assert.match(box, TINY_RESERVED_BOX);
+		}
+		await view.close();
+	}
+});
+
+// Exercise the production audit decoration, not just the standalone group:
+// a null-rendering React element still counts as a supplied list decoration.
+test("audit attachment presence: zero blank bodies keep fallback; descriptors/count-only stay nonfetchable", async () => {
+	mediaCalls = [];
+	const element = document.createElement("div");
+	document.body.append(element);
+	const root = createRoot(element);
+	const conversation = {
+		id: "bcv_audit_presence",
+		tenant_id: "tnt_audit_presence",
+		kind: "dm",
+		title: null,
+		visibility: "private",
+		status: "active",
+		builtin: null,
+		members: [],
+		member_count: 0,
+		viewers: [],
+		agent: {
+			account_id: "acct_audit_agent",
+			display_label: "Synthetic agent",
+			state: "active",
+			joined_seq: 0,
+			left_seq: null,
+		},
+		created_at: "2026-10-23T10:00:00Z",
+		last_message_at: null,
+		latest_seq: 6,
+		last_thread_root_id: null,
+	};
+	const attachment = {
+		id: "opaque_audit_image",
+		mime: "image/png",
+		size: 2048,
+		width: 640,
+		height: 480,
+		state: "bound",
+	};
+	const cases = [
+		{ id: "audit_blank", body: "", attachments: [], attachment_count: 0 },
+		{
+			id: "audit_whitespace",
+			body: " \n\t",
+			attachments: [],
+			attachment_count: 0,
+		},
+		{
+			id: "audit_text",
+			body: "No attachments",
+			attachments: [],
+			attachment_count: 0,
+		},
+		{
+			id: "audit_metadata",
+			body: "Image and file metadata",
+			attachments: [
+				attachment,
+				{ ...attachment, id: "opaque_file", mime: "application/octet-stream" },
+			],
+			attachment_count: 2,
+		},
+		{
+			id: "audit_revoked",
+			body: "Terminal receipt",
+			attachments: [{ ...attachment, state: "revoked" }],
+			attachment_count: 1,
+		},
+		{
+			id: "audit_count",
+			body: "Count only",
+			attachments: [],
+			attachment_count: 3,
+		},
+	];
+	const rows = cases.map((item, seq) => ({
+		...message({}),
+		conversation_id: conversation.id,
+		seq: seq + 1,
+		body_hash: null,
+		agent_label: null,
+		thread_root_id: null,
+		reply_count: null,
+		last_reply_at: null,
+		reply_participants: null,
+		agent_delivery_status: "admitted",
+		agent_verdict_at: null,
+		...item,
+	}));
+	await act(async () =>
+		root.render(
+			React.createElement(
+				m.QueryClientProvider,
+				{ client: new m.QueryClient() },
+				React.createElement(m.OwnerAuditPanelView, {
+					conversation,
+					messages: rows,
+					state: "ready",
+					retry: () => {},
+					readerAccountId: "acct_audit_owner",
+					people: [],
+				}),
+			),
+		),
+	);
+	await settle();
+	await settle();
+	for (const id of ["audit_blank", "audit_whitespace"]) {
+		const row = element.querySelector(`[data-message-id="${id}"]`);
+		assert.ok(
+			row.textContent.includes(m.t("ui.ownerAudit.body_unavailable")),
+			`${id} retains unavailable body`,
+		);
+		assert.equal(
+			row.querySelectorAll("[data-bridge-attachment-card]").length,
+			0,
+		);
+	}
+	const byId = (id) => element.querySelector(`[data-message-id="${id}"]`);
+	assert.equal(
+		byId("audit_text").querySelectorAll("[data-bridge-attachment-card]").length,
+		0,
+	);
+	assert.equal(
+		byId("audit_metadata").querySelectorAll(
+			'[data-bridge-attachment-card="metadata"]',
+		).length,
+		2,
+	);
+	assert.equal(
+		byId("audit_revoked").querySelectorAll(
+			'[data-bridge-attachment-card="unavailable"]',
+		).length,
+		1,
+	);
+	assert.ok(
+		byId("audit_count").textContent.includes(
+			m.t("ui.teamBridge.attachmentCard.list", { count: 3 }),
+		),
+	);
+	assert.equal(
+		byId("audit_count").querySelectorAll("[data-bridge-attachment-card]")
+			.length,
+		1,
+	);
+	assert.equal(element.querySelectorAll("img").length, 0);
+	assert.equal(
+		mediaCalls.filter((call) => call.request.op === "team_bridge.attachment")
+			.length,
+		0,
+	);
+	await act(async () => root.unmount());
+	element.remove();
+});
+
+/*
+ * A PASTED IMAGE FILE IS NOT ALSO PASTED AS ITS NAME (issue #1573).
+ *
+ * Both bridge paste handlers kept the browser's default whenever the clipboard
+ * carried `text/plain`, on the reading that the reader was pasting prose. A file
+ * copied in Finder carries `text/plain` too - its NAME - so that rule inserted
+ * "shot.png" beside the chip. The rule is now "keep the default only for text
+ * that is more than the pasted files' names"; the controls pin the prose arm.
+ *
+ * MEASURED SHAPE FIRST (QA round 1, Electron 45.1.0 on macOS): a file paste
+ * reaches the handler as `types: ["Files"]` with no `text/plain`, and the
+ * pasteboard's plain string is read through the preload's `readPasteTextSync`
+ * (`pasteboardText` here). The `["Files","text/plain"]` shape is kept too.
+ */
+const finderPaste = (file, text, { onEvent = true } = {}) => {
+	const event = new window.Event("paste", { bubbles: true, cancelable: true });
+	pasteboardText = text;
+	Object.defineProperty(event, "clipboardData", {
+		value: {
+			types: onEvent ? ["Files", "text/plain"] : ["Files"],
+			items: [
+				{ kind: "file", type: file.type, getAsFile: () => file },
+				...(onEvent
+					? [{ kind: "string", type: "text/plain", getAsFile: () => null }]
+					: []),
+			],
+			files: [file],
+			getData: (type) => (onEvent && type === "text/plain" ? text : ""),
+		},
+	});
+	return event;
+};
+
+for (const [text, prevented, label, onEvent] of [
+	["shot.png", true, "only the file's name: no text insert", true],
+	["look at this", false, "real prose alongside the file: kept", true],
+	[
+		"shot.png",
+		true,
+		'types ["Files"], name on the pasteboard: no insert',
+		false,
+	],
+	[
+		"look at this",
+		false,
+		'types ["Files"], prose on the pasteboard: kept',
+		false,
+	],
+	["", true, 'types ["Files"], empty pasteboard: cancelled as before', false],
+]) {
+	test(`#1573 thread-pane paste handler: ${label}`, () => {
+		const added = [];
+		const handlers = m.attachmentPasteHandlers({
+			add: (files) => added.push(...files),
+		});
+		const file = new File([PNG], "shot.png", { type: "image/png" });
+		const event = finderPaste(file, text, { onEvent });
+		handlers.onPaste(event);
+		pasteboardText = "";
+		assert.equal(added.length, 1, "the image was taken either way");
+		assert.equal(event.defaultPrevented, prevented);
+	});
+
+	test(`#1573 page composer paste: ${label}`, async () => {
+		localStorage.clear();
+		const app = await mountPage(
+			pageProps({ target: { type: "person", accountId: "acct_b" } }),
+		);
+		const field = app.element.querySelector("textarea");
+		assert.ok(field, "composer field is mounted");
+		const file = new File([PNG], "shot.png", { type: "image/png" });
+		const event = finderPaste(file, text, { onEvent });
+		await act(async () => field.dispatchEvent(event));
+		pasteboardText = "";
+		for (let i = 0; i < 5; i += 1) await settle();
+		assert.equal(
+			app.element.querySelectorAll("[data-attachment-id]").length,
+			1,
+			"the image staged on the bar",
+		);
+		assert.equal(event.defaultPrevented, prevented);
+		await app.close();
+	});
+}
+
+/*
+ * S3b GENERIC FILES (UI slice U1). The fixture copies the message-view shape of
+ * agent-server `docs/bridge-files-s3b-binding.md` ("Message view" table) and
+ * `internal/responses/bridge_file.go`: id, class, mime=application/octet-stream,
+ * size, display_name, state bound|expired, expires_at, download_only=true; plus
+ * `file_count` for every reader. DOM/state proof under JSDOM only: there is no
+ * layout engine here, so "wraps without overflow" is asserted as the bounded
+ * card widths + wrapping container, and the rendered-frame proof is QA's.
+ */
+const S3B_NAME = "Q4 board report (signed).pdf";
+const RTL_NAME = "تقرير الربع الرابع.csv";
+const s3bFile = (overrides = {}) => ({
+	id: "bfile_0f8a",
+	class: "pdf",
+	mime: "application/octet-stream",
+	size: 184320,
+	display_name: S3B_NAME,
+	state: "bound",
+	expires_at: "0001-01-01T00:00:00Z",
+	download_only: true,
+	...overrides,
+});
+const s3bMessage = (overrides = {}) =>
+	message({
+		id: "bmsg_s3b",
+		body: null,
+		files: [
+			s3bFile(),
+			s3bFile({
+				id: "bfile_csv",
+				class: "text",
+				size: 920,
+				display_name: RTL_NAME,
+			}),
+			s3bFile({
+				id: "bfile_gone",
+				state: "expired",
+				size: 0,
+				display_name: undefined,
+				class: "",
+			}),
+		],
+		file_count: 3,
+		...overrides,
+	});
+const NAME_LEAK = /Q4 board|تقرير|secret-name/;
+const PDF_META = /PDF · 184 KB/;
+const CSV_META = /CSV · 920 B/;
+const FILE_ID_PREFIX = /bfile_/;
+const WRAPS = /flex-wrap/;
+const SHRINKS = /min-w-0/;
+const CAPPED = /max-w-full/;
+const TRUNCATES = /truncate/;
+const LONE_SURROGATE = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])/;
+const NO_SHRINK = /shrink-0/;
+const EXTENSION_TAIL = /^\.(pdf|bin)$/;
+
+function attributeText(element) {
+	return [...element.querySelectorAll("*")]
+		.flatMap((node) => [...node.attributes].map((a) => `${a.name}=${a.value}`))
+		.join("\n");
+}
+
+test("S3b files: member thread renders one noninteractive card per descriptor", async () => {
+	mediaCalls = [];
+	const logged = [];
+	const original = {
+		log: console.log,
+		warn: console.warn,
+		error: console.error,
+		info: console.info,
+		debug: console.debug,
+	};
+	for (const level of Object.keys(original))
+		console[level] = (...args) => {
+			logged.push(args.map(String).join(" "));
+			original[level](...args);
+		};
+	const wire = m.teamBridgeMessageSchema.parse(s3bMessage());
+	assert.equal(wire.files.length, 3);
+	assert.equal(wire.file_count, 3);
+	let view;
+	try {
+		view = await renderList([wire]);
+	} finally {
+		Object.assign(console, original);
+	}
+	const cards = view.element.querySelectorAll("[data-bridge-file-card]");
+	assert.equal(cards.length, 3);
+	assert.equal(
+		view.element.querySelectorAll('[data-bridge-file-card="metadata"]').length,
+		2,
+	);
+	assert.equal(
+		view.element.querySelectorAll('[data-bridge-file-card="unavailable"]')
+			.length,
+		1,
+	);
+	// No download/open/Save As control exists on a file card, and no bytes move.
+	for (const card of cards)
+		assert.equal(card.querySelectorAll("button,a,img,input").length, 0);
+	assert.equal(mediaCalls.length, 0);
+	// The name is visible text, bidi-isolated by its own direction ...
+	assert.ok(view.element.textContent.includes(S3B_NAME));
+	const rtl = [...view.element.querySelectorAll('[dir="auto"]')].find(
+		(n) => n.textContent === RTL_NAME,
+	);
+	assert.ok(rtl, "RTL name rendered inside dir=auto");
+	assert.match(view.element.textContent, PDF_META);
+	assert.match(view.element.textContent, CSV_META);
+	assert.ok(
+		view.element.textContent.includes(
+			m.t("ui.teamBridge.attachmentCard.unavailable"),
+		),
+	);
+	// ... and never an aria-label, id, key, data attribute or log line (D9).
+	assert.doesNotMatch(attributeText(view.element), NAME_LEAK);
+	assert.doesNotMatch(attributeText(view.element), FILE_ID_PREFIX);
+	assert.doesNotMatch(logged.join("\n"), NAME_LEAK);
+	const list = view.element.querySelector('ul[aria-label="3 files"]');
+	assert.ok(list, "accessible name is a count, not a name");
+	await view.close();
+});
+
+test("S3b files: count-only receipt from file_count when no descriptors (agent-shaped read)", async () => {
+	const wire = m.teamBridgeMessageSchema.parse(
+		message({ id: "bmsg_count", file_count: 2 }),
+	);
+	const view = await renderList([wire]);
+	const cards = view.element.querySelectorAll("[data-bridge-file-card]");
+	assert.equal(cards.length, 1);
+	assert.equal(cards[0].dataset.bridgeFileCard, "count-only");
+	assert.ok(
+		cards[0].textContent.includes(
+			m.t("ui.teamBridge.fileCard.list", { count: 2 }),
+		),
+	);
+	assert.equal(
+		view.element.querySelectorAll(
+			"[data-bridge-file-card] button, [data-bridge-file-card] a",
+		).length,
+		0,
+	);
+	await view.close();
+});
+
+test("S3b files: malformed files[] costs the descriptors, never the message", () => {
+	const wire = m.teamBridgeMessageSchema.parse(
+		message({
+			id: "bmsg_bad",
+			files: [{ id: "bad id!", size: -1 }],
+			file_count: 1,
+		}),
+	);
+	assert.equal(wire.files, undefined);
+	assert.equal(wire.file_count, 1);
+	const audit = m.ownerAuditMessageSchema.parse({
+		...message({ id: "bmsg_bad_audit" }),
+		files: "nope",
+		file_count: "x",
+	});
+	assert.equal(audit.files, undefined);
+	assert.equal(audit.file_count, undefined);
+	// A state-less descriptor fails closed to unavailable.
+	assert.equal(m.toBridgeFileDescriptor({ id: "bfile_x", size: 3 }).state, "");
+});
+
+test("S3b files: mixed 4 images + 6 files at compact density stays bounded and wrapping", async () => {
+	const images = [0, 1, 2, 3].map((index) => ({
+		id: `batt_mix${index}`,
+		mime: "image/png",
+		size: 2048,
+		width: 4000,
+		height: 3000,
+		state: "expired",
+	}));
+	const files = ["pdf", "text", "container", "other", "pdf", "text"].map(
+		(cls, index) =>
+			m.toBridgeFileDescriptor(
+				s3bFile({
+					id: `bfile_mix${index}`,
+					class: cls,
+					display_name: `${"very-long-file-name-".repeat(6)}${index}.${cls === "pdf" ? "pdf" : "bin"}`,
+				}),
+			),
+	);
+	const view = await renderAttachmentGroup({
+		attachments: images,
+		compact: true,
+		files,
+		fileCount: 6,
+	});
+	const lists = view.element.querySelectorAll("ul");
+	assert.equal(lists.length, 2);
+	for (const list of lists) {
+		assert.match(list.className, WRAPS);
+		assert.match(list.className, SHRINKS);
+	}
+	const cards = view.element.querySelectorAll("[data-bridge-file-card]");
+	assert.equal(cards.length, 6);
+	for (const card of cards) {
+		assert.equal(card.style.width, "208px");
+		assert.match(card.className, CAPPED);
+		const name = card.querySelector('[dir="auto"]');
+		const head = name.querySelector('[data-file-name-part="head"]');
+		const tail = name.querySelector('[data-file-name-part="tail"]');
+		// Only the head may ellipsise; the extension sits in its own
+		// non-shrinking element, so CSS cannot clip what middle truncation kept.
+		assert.match(head.className, TRUNCATES);
+		assert.match(head.className, SHRINKS);
+		assert.match(tail.className, NO_SHRINK);
+		assert.doesNotMatch(tail.className, TRUNCATES);
+		assert.match(tail.textContent, EXTENSION_TAIL);
+		assert.ok(Array.from(name.textContent).length <= 28, name.textContent);
+		assert.ok(head.textContent.includes("…"));
+	}
+	assert.equal(view.element.querySelectorAll("button,a").length, 0);
+	await view.close();
+});
+
+test("S3b files: middle truncation keeps both ends and never splits a code point", () => {
+	assert.equal(m.middleTruncateFileName("short.pdf", 28), "short.pdf");
+	const cut = m.middleTruncateFileName(`${"a".repeat(40)}.pdf`, 11);
+	assert.equal(cut, "aaaaa…a.pdf");
+	const emoji = m.middleTruncateFileName("😀".repeat(30), 9);
+	assert.equal(Array.from(emoji).length, 9);
+	assert.ok(!LONE_SURROGATE.test(emoji));
+});
+
+test("S3b files: owner audit renders file cards with no audit media read", async () => {
+	mediaCalls = [];
+	const element = document.createElement("div");
+	document.body.append(element);
+	const root = createRoot(element);
+	const conversation = {
+		id: "bcv_audit_files",
+		tenant_id: "tnt_audit_files",
+		kind: "dm",
+		title: null,
+		visibility: "private",
+		status: "active",
+		builtin: null,
+		members: [],
+		member_count: 0,
+		viewers: [],
+		agent: {
+			account_id: "acct_audit_agent",
+			display_label: "Synthetic agent",
+			state: "active",
+			joined_seq: 0,
+			left_seq: null,
+		},
+		created_at: "2026-10-23T10:00:00Z",
+		last_message_at: null,
+		latest_seq: 2,
+		last_thread_root_id: null,
+	};
+	const base = {
+		conversation_id: conversation.id,
+		body_hash: null,
+		agent_label: null,
+		thread_root_id: null,
+		reply_count: null,
+		last_reply_at: null,
+		reply_participants: null,
+		agent_delivery_status: "admitted",
+		agent_verdict_at: null,
+	};
+	const rows = [
+		m.ownerAuditMessageSchema.parse({
+			...s3bMessage({ id: "audit_files", body: "with files" }),
+			...base,
+			seq: 1,
+		}),
+		m.ownerAuditMessageSchema.parse({
+			...message({ id: "audit_file_count", body: "count only" }),
+			...base,
+			seq: 2,
+			file_count: 4,
+		}),
+	];
+	await act(async () =>
+		root.render(
+			React.createElement(
+				m.QueryClientProvider,
+				{ client: new m.QueryClient() },
+				React.createElement(m.OwnerAuditPanelView, {
+					conversation,
+					messages: rows,
+					state: "ready",
+					retry: () => {},
+					readerAccountId: "acct_audit_owner",
+					people: [],
+				}),
+			),
+		),
+	);
+	await settle();
+	await settle();
+	const byId = (id) => element.querySelector(`[data-message-id="${id}"]`);
+	assert.equal(
+		byId("audit_files").querySelectorAll("[data-bridge-file-card]").length,
+		3,
+	);
+	assert.equal(
+		byId("audit_files").querySelectorAll(
+			'[data-bridge-file-card="unavailable"]',
+		).length,
+		1,
+	);
+	assert.equal(
+		byId("audit_files").querySelectorAll(
+			"[data-bridge-file-card] button, [data-bridge-file-card] a",
+		).length,
+		0,
+	);
+	assert.ok(byId("audit_files").textContent.includes(S3B_NAME));
+	assert.doesNotMatch(attributeText(byId("audit_files")), NAME_LEAK);
+	assert.equal(
+		byId("audit_file_count").querySelector("[data-bridge-file-card]").dataset
+			.bridgeFileCard,
+		"count-only",
+	);
+	assert.equal(mediaCalls.length, 0);
+	await act(async () => root.unmount());
+	element.remove();
+});
+
+test("S3b files: the tail is a protected element; only the head ellipsises (Q1/D1/U2)", async () => {
+	assert.deepEqual(m.splitFileNameTail("Customer onboarding…list v12.docx"), {
+		head: "Customer onboarding…list v12",
+		tail: ".docx",
+	});
+	// No short extension: the last code points are protected, emoji intact.
+	const emoji = m.splitFileNameTail("会议记录最终版😀😀😀😀");
+	assert.equal(emoji.tail, "😀😀😀😀");
+	assert.doesNotMatch(emoji.head + emoji.tail, LONE_SURROGATE);
+	// The tail never starts before the inserted ellipsis.
+	const cut = m.splitFileNameTail("abcdefgh…xyz");
+	assert.ok(cut.head.endsWith("…"));
+	assert.equal(cut.tail, "xyz");
+	assert.deepEqual(m.splitFileNameTail("README"), { head: "README", tail: "" });
+
+	const names = [
+		"Customer onboarding checklist v12.docx",
+		"تقرير الربع الرابع.csv",
+		"四半期の取締役会報告書と議事録の最終版.pdf",
+	];
+	const view = await renderAttachmentGroup({
+		attachments: [],
+		files: names.map((displayName, index) =>
+			m.toBridgeFileDescriptor({
+				id: `bfile_tail${index}`,
+				class: "pdf",
+				size: 2048,
+				display_name: displayName,
+				state: "bound",
+			}),
+		),
+	});
+	const rows = view.element.querySelectorAll("[data-bridge-file-card]");
+	assert.equal(rows.length, 3);
+	for (const [index, card] of [...rows].entries()) {
+		const label = card.querySelector('[dir="auto"]');
+		const head = label.querySelector('[data-file-name-part="head"]');
+		const tail = label.querySelector('[data-file-name-part="tail"]');
+		assert.equal(head.parentElement, label);
+		assert.equal(tail.parentElement, label);
+		assert.match(head.className, TRUNCATES);
+		assert.match(tail.className, NO_SHRINK);
+		assert.equal(head.style.unicodeBidi, "isolate");
+		assert.equal(tail.style.unicodeBidi, "isolate");
+		assert.equal(tail.textContent, `.${names[index].split(".").pop()}`);
+	}
+	// D9 holds for the split label: no name fragment in any attribute.
+	const attrs = attributeText(view.element);
+	for (const name of names)
+		for (const part of [name, name.slice(0, 8), name.split(".").shift()])
+			assert.ok(!attrs.includes(part), part);
+	assert.equal(
+		view.element.querySelectorAll("[title],[aria-label] [aria-label]").length,
+		0,
+	);
+	await view.close();
 });

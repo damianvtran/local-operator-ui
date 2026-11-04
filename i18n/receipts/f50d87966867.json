@@ -1,0 +1,141 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "openai/gpt-6.1-sol",
+  "instance": "f50d87966867",
+  "locale": "es",
+  "commit": "c44e9e8be8eb5a134a97acd87e7015f54b82c13d",
+  "base_commit": "6dd43fd7494f651fd99b3fe926606fc7ba35fd82",
+  "audit_date": "2026-11-03",
+  "actual_model_source": "Host model-switch notice: anthropic/claude-sonnet-5-5 -> anthropic/claude-opus-5-5 -> openai/gpt-6.1-sol; provider quota fallback. All audit judgments and execution after fallback use openai/gpt-6.1-sol.",
+  "independent_from_translator_session": true,
+  "scope": "Only five new keys; no assessment of unchanged namespace copy",
+  "namespaces": {
+    "ui.chat": {
+      "status": "passed",
+      "sha256": {
+        "es": "dd04b82640bc328970f7e0a0856ffe5f01728b2c64a58256cf1a6a4623bf4a4e",
+        "en": "270fc752791e2960006b560ec9616c2010dab80e92af19f075f7e04a3055bd27"
+      },
+      "findings": [],
+      "key_count": 3,
+      "keys": [
+        "ui.chat.session_status.effort_level.low",
+        "ui.chat.session_status.effort_level.medium",
+        "ui.chat.session_status.effort_level.high"
+      ],
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.chat.json",
+          "sha256": "270fc752791e2960006b560ec9616c2010dab80e92af19f075f7e04a3055bd27"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.chat.context.json",
+          "sha256": "efcf4d1872974b6fc7456e753a2e10010ab896fffede262ae7c19d96c35ecee1"
+        },
+        "es": {
+          "path": "src/i18n/catalogues/es/ui.chat.json",
+          "sha256": "dd04b82640bc328970f7e0a0856ffe5f01728b2c64a58256cf1a6a4623bf4a4e"
+        }
+      },
+      "checks": {
+        "cf_count_entire_target": 0,
+        "source_key_parity": "passed for both full catalogues",
+        "parent_delta": "exact assigned additions; every prior key/value unchanged",
+        "icu": [
+          {
+            "key": "ui.chat.session_status.effort_level.low",
+            "placeholder_types": "match English",
+            "static_codepoints": {
+              "en": 3,
+              "es": 4
+            },
+            "fit": "ASCII Spanish letters/spaces only; no combining/wide glyphs; hints not hard limits"
+          },
+          {
+            "key": "ui.chat.session_status.effort_level.medium",
+            "placeholder_types": "match English",
+            "static_codepoints": {
+              "en": 6,
+              "es": 5
+            },
+            "fit": "ASCII Spanish letters/spaces only; no combining/wide glyphs; hints not hard limits"
+          },
+          {
+            "key": "ui.chat.session_status.effort_level.high",
+            "placeholder_types": "match English",
+            "static_codepoints": {
+              "en": 4,
+              "es": 4
+            },
+            "fit": "ASCII Spanish letters/spaces only; no combining/wide glyphs; hints not hard limits"
+          }
+        ]
+      },
+      "audit_notes_not_execution_log": "Bajo/Medio/Alto agree in masculine with esfuerzo or nivel; natural distinct scale labels, sentence case. effortDisplay maps display labels only; raw wire values stay English."
+    },
+    "ui.chat.run_details": {
+      "status": "passed",
+      "sha256": {
+        "es": "0cf25b8ae5735cf180991454e751ce1389d0cf36f4242df70131ad06fb2d3b48",
+        "en": "f8184d5f41b359364e47747871988bbb731d79c12bc3b9ec755f3db73e5db6ab"
+      },
+      "findings": [],
+      "key_count": 2,
+      "keys": [
+        "ui.chat.run_details.wake.armed_count",
+        "ui.chat.run_details.wake.cadence_once"
+      ],
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.chat.run_details.json",
+          "sha256": "f8184d5f41b359364e47747871988bbb731d79c12bc3b9ec755f3db73e5db6ab"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.chat.run_details.context.json",
+          "sha256": "da588f521188a2bcba1d0aeb7a265c3474b16673b8f653a021fa7e9e7075e911"
+        },
+        "es": {
+          "path": "src/i18n/catalogues/es/ui.chat.run_details.json",
+          "sha256": "0cf25b8ae5735cf180991454e751ce1389d0cf36f4242df70131ad06fb2d3b48"
+        }
+      },
+      "checks": {
+        "cf_count_entire_target": 0,
+        "source_key_parity": "passed for both full catalogues",
+        "parent_delta": "exact assigned additions; every prior key/value unchanged",
+        "icu": [
+          {
+            "key": "ui.chat.run_details.wake.armed_count",
+            "placeholder_types": "match English",
+            "plural_categories": "one,many,other",
+            "count_display": "preserved; raw sentinel output asserted",
+            "format_samples": [
+              0,
+              1,
+              2,
+              1.5,
+              1000000,
+              1500000,
+              2000000
+            ]
+          },
+          {
+            "key": "ui.chat.run_details.wake.cadence_once",
+            "placeholder_types": "match English",
+            "static_codepoints": {
+              "en": 4,
+              "es": 7
+            },
+            "fit": "ASCII Spanish letters/spaces only; no combining/wide glyphs; hints not hard limits"
+          }
+        ]
+      },
+      "audit_notes_not_execution_log": "despertar/despertares matches glossary and existing wake.more; activado describes a set/enabled wake, consistent with schedules activada. All Spanish CLDR arms are supplied; many naturally inserts de. una vez is standard lower-case adverbial cadence, matching existing schedules once; Spanish requires two words despite English one-word hint."
+    }
+  },
+  "limitations": [
+    "No native rendered proof, screenshots, live UI flow, actual pseudo render, font metrics, or terminal geometry. Static source fit only.",
+    "Repo locale-parity validator executed unchanged against committed fixtures for only the two assigned namespaces, es/en; 6 tests passed.",
+    "No ledger assembly or repo write: scratch receipt for requesting manager to retain and assemble."
+  ]
+}

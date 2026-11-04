@@ -332,5 +332,12 @@
 	"ui.teamBridge.delivery.pending": "जाँच हो गई; {agent} तक डिलीवरी बाकी है",
 	"ui.teamBridge.delivery.info_refused": "हर एजेंट आने वाले संदेशों को अपने मालिक के मॉडरेशन से जाँचता है। अस्वीकार किया गया संदेश एजेंट तक नहीं पहुँचाया गया। अनुरोध को दोबारा लिखना आमतौर पर मदद करता है।",
 	"ui.teamBridge.delivery.info_held": "हर एजेंट आने वाले संदेशों को आगे पहुँचाने से पहले अपने मालिक के मॉडरेशन से जाँचता है। इस संदेश की जाँच अभी नहीं हुई है; यह अपने-आप पहुँचा दिया जाएगा या अस्वीकार कर दिया जाएगा।",
-	"ui.teamBridge.delivery.info_label": "संदेश जाँच के बारे में"
+	"ui.teamBridge.delivery.info_label": "संदेश जाँच के बारे में",
+	"ui.teamBridge.attachmentCard.list": "{count, plural, one {# अटैचमेंट} other {# अटैचमेंट}}",
+	"ui.teamBridge.attachmentCard.file": "फ़ाइल",
+	"ui.teamBridge.attachmentCard.bytes": "{size, number} बाइट",
+	"ui.teamBridge.attachmentCard.metadata_only": "इस दृश्य में पूर्वावलोकन उपलब्ध नहीं है",
+	"ui.teamBridge.attachmentCard.unavailable": "अटैचमेंट उपलब्ध नहीं है",
+	"ui.teamBridge.fileCard.list": "{count, plural, one {# फ़ाइल} other {# फ़ाइलें}}",
+	"ui.teamBridge.fileCard.kind": "{kind, select, pdf {PDF} text {टेक्स्ट फ़ाइल} container {ZIP} other {फ़ाइल}}"
 }
