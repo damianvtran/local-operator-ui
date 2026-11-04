@@ -2,7 +2,7 @@
 
 Auditor: i18n-auditor, session aa5cc6461961, model anthropic/claude-sonnet-5-5 (from session header; not independently verifiable). Independent of all translators. HEAD 801b1ad29d47.
 Hashes: en `1abe3bc2730635d6eae484b49bfafa1743dee3be1f0ca60863576632acb95f14` · context `de9e346489f6df64bc3ff08abd1f8e0550e95e54e44b7c0ddda47897ff50e2dc` · zh-CN `fe9428ec142e4fb8100c2b525caed8e1467d616aa3b1a2d411e72e096d9a3846`.
-Verdict: **passed** — 0 BLOCKER, 0 MAJOR, 2 MINOR, 2 NIT. Receipt instance `aa5cc6461961-cmpmrg1-zh-CN`.
+Verdict: **passed** — 0 BLOCKER, 0 MAJOR, 2 MINOR, 2 NIT. Receipt instance `aa5cc6461961-cmpmrg1-zh-cn`.
 
 ## Mechanical
 Keys 72 = 72 (en = zh-CN). None of the six values has placeholders, ICU, markup or code. Key names Enter/Esc are kept byte-exact, with the parenthetical `（Enter）` that the sidecar asks for. NFC, no format/control characters, no edge or double spaces. Widths (CJK=2): insert_transcript 12/24, insert_transcript_hint 29/48, send_recording 8/24, send_recording_hint 24/48, steer_hint 36/64. `secret_closure_notice` has no maxCells (82 cells; a notice sentence). The merge is a clean disjoint union (HEAD^1 lacked only the five main keys, HEAD^2 lacked only secret_closure_notice).

@@ -62910,8 +62910,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.chat.composer",
-			"source_sha256": "67b5bc499440a52a727774876e13ee4ed9eaef20b439c4f5ec97466ae8b238cd",
-			"target_sha256": "609143031f3ff78bbc5f8070edc07f65a7c760fb23e039f9adc2146129111663",
+			"source_sha256": "1abe3bc2730635d6eae484b49bfafa1743dee3be1f0ca60863576632acb95f14",
+			"target_sha256": "fe9428ec142e4fb8100c2b525caed8e1467d616aa3b1a2d411e72e096d9a3846",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -62921,20 +62921,20 @@
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"model": "radient/auto",
-					"date": "2026-11-03",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-04",
 					"result": "clean-with-findings",
-					"instance": "856096021108",
+					"instance": "aa5cc6461961-cmpmrg1-zh-cn",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
-						"nit": 1
+						"minor": 2,
+						"nit": 2
 					},
-					"receipt": "i18n/receipts/856096021108.json",
-					"receipt_sha256": "f49a42b64583915e742305cf79f000642284dc897e6b1151800b9a52051ea81b",
-					"scope": "12-key new-source delta (C1 notice + 11 slash headings); 1/67 keys reviewed in this namespace, carried keys keep prior approval on byte identity",
-					"note": "Served underlying model UNKNOWN; route requested radient/auto. Second independent reader receipt retained beside this one."
+					"receipt": "i18n/receipts/aa5cc6461961-cmpmrg1-zh-cn.json",
+					"receipt_sha256": "e8e0c72ca89a9ff5746eb08e83751020592fb305849e0524b06e36d0afd2ee16",
+					"scope": "Merge delta for ui.chat.composer: our 1 new key (secret_closure_notice) plus main's 5 (insert_transcript, insert_transcript_hint, send_recording, send_recording_hint, steer_hint); merged file audited as a whole",
+					"note": "Audited on merge commit 801b1ad29d47. Session model anthropic/claude-sonnet-5-5, no fallback observed. MINOR/NIT wording suggestions deferred so the audited bytes stay exact. Run id lowercased for the ledger id-shape rule."
 				}
 			],
 			"status": "audited",
@@ -63061,6 +63061,30 @@
 							"receipt_sha256": "b450f3650b62cd22fbfd25ab914b24064faa002ca8d0a016fe31aadd00d3a265",
 							"scope": "round-2 extraction audit at PR #1403 head d082bd9595 (scope and delta as recorded in the receipt)",
 							"note": "Actual model deepseek/deepseek-flash as named in the receipt; no fallback disclosed."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "67b5bc499440a52a727774876e13ee4ed9eaef20b439c4f5ec97466ae8b238cd",
+					"target_sha256": "609143031f3ff78bbc5f8070edc07f65a7c760fb23e039f9adc2146129111663",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-11-03",
+							"result": "clean-with-findings",
+							"instance": "856096021108",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/856096021108.json",
+							"receipt_sha256": "f49a42b64583915e742305cf79f000642284dc897e6b1151800b9a52051ea81b",
+							"scope": "12-key new-source delta (C1 notice + 11 slash headings); 1/67 keys reviewed in this namespace, carried keys keep prior approval on byte identity",
+							"note": "Served underlying model UNKNOWN; route requested radient/auto. Second independent reader receipt retained beside this one."
 						}
 					],
 					"status": "audited"

@@ -6,7 +6,7 @@
 	"fallback": "none",
 	"model_provenance": "Session aa5cc6461961 header: anthropic/claude-sonnet-5-5; no fallback observed; not independently verifiable.",
 	"independence": "Separate session from the translators of all six keys (branch-side secret_closure_notice and main-side five keys) and from earlier auditors 54ec32ab1ef8/809c7b5c7328; verdict rebuilt from en source+context sidecar, glossary and zh-CN style guide, and sibling keys.",
-	"instance": "aa5cc6461961-cmpmrg1-zh-CN",
+	"instance": "aa5cc6461961-cmpmrg1-zh-cn",
 	"session": "aa5cc6461961",
 	"locale": "zh-CN",
 	"namespace": "ui.chat.composer",
@@ -64,5 +64,6 @@
 			"proposed": "KEEP",
 			"reason": "录音 alone can read as sending the audio file; this faithfully mirrors the English 'Send recording' and the adjacent hint 转写并立即发送 disambiguates. No change required."
 		}
-	]
+	],
+	"instance_note": "Instance id lowercased from aa5cc6461961-cmpmrg1-zh-CN to aa5cc6461961-cmpmrg1-zh-cn only to satisfy the ledger id-shape rule (/^[a-z0-9_-]+$/ in scripts/i18n/ledger-rules.mjs); not a re-audit, not backdated; audit_date, HEAD 801b1ad29d47 audited bytes and all hashes unchanged; verdict and findings Z1-Z4 unchanged. Hashes re-verified 2026-11-04 against worktree HEAD 5326ef5a8a4 (en, context, zh-CN files identical)."
 }

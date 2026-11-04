@@ -21,7 +21,7 @@
 		"model": "anthropic/claude-sonnet-5-5",
 		"independent_from_translator_session": true,
 		"actual_model_source": "session header 'Model: anthropic/claude-sonnet-5-5'; no fallback observed; the model cannot be verified independently from inside the session.",
-		"instance": "aa5cc6461961-cmpmrg1-zh-CN"
+		"instance": "aa5cc6461961-cmpmrg1-zh-cn"
 	},
 	"input_hashes": {
 		"en": {
@@ -44,11 +44,11 @@
 	"artifacts": [
 		{
 			"path": "i18n/audits/evidence/zh-CN/ui.chat.composer/cmpmrg1-zh-CN/report.md",
-			"sha256": "672467e0ce2d881d9d4b07a5e3be5edde8aaf10a8afa8b1d9a2d86d45866ebc8"
+			"sha256": "9f17cecae819f9cce47ef981bd762efc685a40998f3b40934cafa1889484a215"
 		},
 		{
 			"path": "i18n/audits/evidence/zh-CN/ui.chat.composer/cmpmrg1-zh-CN/receipt.json",
-			"sha256": "24d15102a601415c1e8f16887989001e91b15e9c9c7217873099d3a968bc6d6c"
+			"sha256": "e8e0c72ca89a9ff5746eb08e83751020592fb305849e0524b06e36d0afd2ee16"
 		}
 	],
 	"audit_notes_not_execution_log": "Mechanical checks (key-set parity 72=72, no placeholders/ICU/markup in the six values, NFC, no Cf/Cc chars, no edge/double spaces, display width vs maxCells) were run in a Python kernel on the files at HEAD; width: insert_transcript 12/24, insert_transcript_hint 29/48, send_recording 8/24, send_recording_hint 24/48, steer_hint 36/64. Merge provenance checked via git show of HEAD^1/HEAD^2: HEAD^1 lacked exactly the five main keys, HEAD^2 lacked exactly secret_closure_notice. node scripts/i18n/ledger-check.mjs (read-only) reports the 3 expected zh-CN/ui.chat.composer stale/unnamed-bytes findings. No MT service used.",
@@ -95,5 +95,6 @@
 			"proposed": "KEEP",
 			"reason": "录音 alone can read as sending the audio file; this faithfully mirrors the English 'Send recording' and the adjacent hint 转写并立即发送 disambiguates. No change required."
 		}
-	]
+	],
+	"instance_note": "Instance id lowercased from aa5cc6461961-cmpmrg1-zh-CN to aa5cc6461961-cmpmrg1-zh-cn only to satisfy the ledger id-shape rule (/^[a-z0-9_-]+$/ in scripts/i18n/ledger-rules.mjs); not a re-audit, not backdated; audit_date, HEAD 801b1ad29d47 audited bytes and all hashes unchanged; verdict and findings Z1-Z4 unchanged. Hashes re-verified 2026-11-04 against worktree HEAD 5326ef5a8a4 (en, context, zh-CN files identical)."
 }
