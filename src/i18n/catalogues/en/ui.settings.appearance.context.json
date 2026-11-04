@@ -412,5 +412,35 @@
 		"tone": "Evocative but concise description of the palette appearance.",
 		"length": "One sentence in a wrapping tooltip beside the theme tile.",
 		"note": "Describes the vaporwave theme in its picker tooltip. Theme and editor-family names are proper names; preserve their established spelling."
+	},
+	"ui.settings.appearance.agent_avatar_size_setting.agent_picture_size": {
+		"role": "Row label for the agent picture size control",
+		"tone": "Neutral noun phrase in sentence case.",
+		"length": "Field or row label above/beside a control; one line. English is 18 characters.",
+		"note": "Names the segmented control that chooses how large an agent's profile picture is drawn in the chat window and header. \"Agent\" is the AI agent; \"picture\" is its profile image."
+	},
+	"ui.settings.appearance.agent_avatar_size_setting.how_large_the_agent_s_picture_appears_in_the_chat_window_and_the_chat": {
+		"role": "Help paragraph under the picture size tabs",
+		"tone": "Helpful explanatory prose.",
+		"length": "Wrapping paragraph in the settings content column; no length cap, keep every fact. English is 100 characters.",
+		"note": "Two sentences: what the control sizes (agent pictures in the transcript and the chat header; \"transcript\" is the name the sibling Transcript display row uses), and that the sidebar rows are unaffected. A live sample of the sizes sits beside this text."
+	},
+	"ui.settings.appearance.agent_avatar_size_setting.small": {
+		"role": "Tab label (left of three)",
+		"tone": "Neutral adjective.",
+		"length": "Segmented-tab label; the strip shares one row with two siblings. English is 5 characters; stay within ~1.5x.",
+		"note": "Smallest picture size; the default. Pairs with Medium and Large."
+	},
+	"ui.settings.appearance.agent_avatar_size_setting.medium": {
+		"role": "Tab label (middle of three)",
+		"tone": "Neutral adjective.",
+		"length": "Segmented-tab label; the strip shares one row with two siblings. English is 6 characters; stay within ~1.5x.",
+		"note": "Middle picture size. Pairs with Small and Large."
+	},
+	"ui.settings.appearance.agent_avatar_size_setting.large": {
+		"role": "Tab label (right of three)",
+		"tone": "Neutral adjective.",
+		"length": "Segmented-tab label; the strip shares one row with two siblings. English is 5 characters; stay within ~1.5x.",
+		"note": "Largest picture size. Pairs with Small and Medium."
 	}
 }

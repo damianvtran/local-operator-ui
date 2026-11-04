@@ -1,0 +1,33 @@
+PR #1604 — independent translation audit source-gate execution
+Date: 2026-11-02
+Audited source: 42f20ecbd929b64b7da75423e93b9cfaba605ff1
+All commands ran sequentially with NODE_OPTIONS=--max-old-space-size=2048 timeout 120.
+No full suite, typecheck, Electron, Storybook, Chrome, or dependency install was run.
+
+node scripts/i18n/ledger-check.mjs (before): EXIT=1
+ledger-check: FAILED — 35 finding(s) across 826 ledger entr(ies)
+Full baseline output: 1f7797b807b7-structural-evidence.txt
+
+node scripts/i18n/ledger-check.mjs (after assembly): EXIT=0
+ledger-check: ok — 826 entr(ies) complete, fresh and independently audited
+This checker result does not establish the separately required second high-visibility audit.
+
+node scripts/i18n/generate.mjs --check: EXIT=0
+/Users/damian/local-operator-ui/.worktrees/i18n-audit-1604/src/i18n/keys.gen.ts is byte-identical to a fresh generation.
+
+node scripts/i18n/check-duplicates.mjs: EXIT=0
+check-duplicates: ok — 1067 file(s) scanned, 0 duplicate key(s)
+
+node scripts/i18n/check-strings.mjs: EXIT=0
+check-strings.mjs: ok — 1493 file(s) scanned, 0 literal(s) at or below the baseline
+
+node scripts/i18n/context-parity.mjs: EXIT=0
+context-parity: ok — every English key is covered, apart from 131 allowed gap(s) in 4 namespace(s) (shrink-only; see i18n/context-allowance.json).
+
+node scripts/i18n/check-added-strings.mjs: EXIT=0
+PASS: no newly added literal copy in 6 changed file(s) against 2c5c462ab881eb16ad4505108b9cc16d3d72d426.
+
+node scripts/i18n/check-coverage.mjs: EXIT=0
+coverage-check: ok — 7 gated language(s) over 118 namespace(s); 0 allowed key(s) remain across 0 pair(s) (shrink-only; see i18n/coverage-allowance.json).
+
+Verification scope: original semantic delta audit plus source-only structural and ledger gates. Rendered fit/RTL/font/pseudo-localization evidence and the second high-visibility audit are not claimed. Nonblocking findings remain recorded for the implementer's unified remediation; target catalogue bytes were not edited.

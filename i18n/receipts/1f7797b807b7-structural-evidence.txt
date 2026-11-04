@@ -1,0 +1,53 @@
+PR #1604 independent translation audit: command output, not rendered proof
+
+BASELINE: NODE_OPTIONS=--max-old-space-size=2048 timeout 120 node scripts/i18n/ledger-check.mjs
+ledger-check: es/ui.mesh: stale source_sha256 (ledger 74f7394cd1ba…, file 14428f2aa934…) — the English source moved since translation
+ledger-check: es/ui.mesh: stale target_sha256 (ledger 80e484a6c968…, file 1f79b22f4186…) — the translated file changed since it was audited
+ledger-check: es/ui.mesh: auditor 1: the receipt does not name the English source bytes on disk - it audited a different file
+ledger-check: es/ui.mesh: auditor 2: the receipt does not name the English source bytes on disk - it audited a different file
+ledger-check: es/ui.mesh: auditor 3: the receipt does not name the English source bytes on disk - it audited a different file
+ledger-check: fr/ui.mesh: stale source_sha256 (ledger 74f7394cd1ba…, file 14428f2aa934…) — the English source moved since translation
+ledger-check: fr/ui.mesh: stale target_sha256 (ledger 40eb019d9da6…, file 26a35122971f…) — the translated file changed since it was audited
+ledger-check: fr/ui.mesh: auditor 1: the receipt does not name the English source bytes on disk - it audited a different file
+ledger-check: fr/ui.mesh: auditor 2: the receipt does not name the English source bytes on disk - it audited a different file
+ledger-check: fr/ui.mesh: auditor 3: the receipt does not name the English source bytes on disk - it audited a different file
+ledger-check: hi/ui.mesh: stale source_sha256 (ledger 74f7394cd1ba…, file 14428f2aa934…) — the English source moved since translation
+ledger-check: hi/ui.mesh: stale target_sha256 (ledger 8ccf6a6786d0…, file 4cc40fa0f117…) — the translated file changed since it was audited
+ledger-check: hi/ui.mesh: auditor 1: the receipt does not name the English source bytes on disk - it audited a different file
+ledger-check: hi/ui.mesh: auditor 2: the receipt does not name the English source bytes on disk - it audited a different file
+ledger-check: hi/ui.mesh: auditor 3: the receipt does not name the English source bytes on disk - it audited a different file
+ledger-check: ru/ui.mesh: stale source_sha256 (ledger 74f7394cd1ba…, file 14428f2aa934…) — the English source moved since translation
+ledger-check: ru/ui.mesh: stale target_sha256 (ledger f1733ffba01c…, file 25e6540676f3…) — the translated file changed since it was audited
+ledger-check: ru/ui.mesh: auditor 1: the receipt does not name the English source bytes on disk - it audited a different file
+ledger-check: ru/ui.mesh: auditor 2: the receipt does not name the English source bytes on disk - it audited a different file
+ledger-check: ru/ui.mesh: auditor 3: the receipt does not name the English source bytes on disk - it audited a different file
+ledger-check: ur/ui.mesh: stale source_sha256 (ledger 74f7394cd1ba…, file 14428f2aa934…) — the English source moved since translation
+ledger-check: ur/ui.mesh: stale target_sha256 (ledger f64e14c82e93…, file 25102e5c3f30…) — the translated file changed since it was audited
+ledger-check: ur/ui.mesh: auditor 1: the receipt does not name the English source bytes on disk - it audited a different file
+ledger-check: ur/ui.mesh: auditor 2: the receipt does not name the English source bytes on disk - it audited a different file
+ledger-check: ur/ui.mesh: auditor 3: the receipt does not name the English source bytes on disk - it audited a different file
+ledger-check: vi/ui.mesh: stale source_sha256 (ledger 74f7394cd1ba…, file 14428f2aa934…) — the English source moved since translation
+ledger-check: vi/ui.mesh: stale target_sha256 (ledger ae1fe8a0e656…, file b90e3af178bd…) — the translated file changed since it was audited
+ledger-check: vi/ui.mesh: auditor 1: the receipt does not name the English source bytes on disk - it audited a different file
+ledger-check: vi/ui.mesh: auditor 2: the receipt does not name the English source bytes on disk - it audited a different file
+ledger-check: vi/ui.mesh: auditor 3: the receipt does not name the English source bytes on disk - it audited a different file
+ledger-check: zh-CN/ui.mesh: stale source_sha256 (ledger 74f7394cd1ba…, file 14428f2aa934…) — the English source moved since translation
+ledger-check: zh-CN/ui.mesh: stale target_sha256 (ledger a39306d69217…, file cab7351d35a1…) — the translated file changed since it was audited
+ledger-check: zh-CN/ui.mesh: auditor 1: the receipt does not name the English source bytes on disk - it audited a different file
+ledger-check: zh-CN/ui.mesh: auditor 2: the receipt does not name the English source bytes on disk - it audited a different file
+ledger-check: zh-CN/ui.mesh: auditor 3: the receipt does not name the English source bytes on disk - it audited a different file
+ledger-check: FAILED — 35 finding(s) across 826 ledger entr(ies)
+EXIT=1
+
+ICU: NODE_OPTIONS=--max-old-space-size=2048 timeout 120 node $LOCAL_OPERATOR_SCRATCHPAD/audit-icu.mjs
+es: 19 ICU/placeholder/CLDR/bidi/NFC checks PASS
+fr: 19 ICU/placeholder/CLDR/bidi/NFC checks PASS
+hi: 19 ICU/placeholder/CLDR/bidi/NFC checks PASS
+ru: 19 ICU/placeholder/CLDR/bidi/NFC checks PASS
+ur: 19 ICU/placeholder/CLDR/bidi/NFC checks PASS
+vi: 19 ICU/placeholder/CLDR/bidi/NFC checks PASS
+zh-CN: 19 ICU/placeholder/CLDR/bidi/NFC checks PASS
+TOTAL 133 messages PASS
+EXIT=0
+
+Probe correction disclosure: initial temporary ICU probe incorrectly expected style.pattern; FormatJS parses number skeletons as style.tokens. Inspected the actual AST, corrected the probe to require [{stem:group-off,options:[]}], then reran all 133 messages. The initial probe failure was a rig error, not a translation failure.

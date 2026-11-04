@@ -22,6 +22,9 @@ import type {
 	OwnerAuditConversation,
 	OwnerAuditMessage,
 } from "../../../../shared/team-bridge-owner-audit-contract";
+import { toBridgeFileDescriptor } from "./attachments/attachment-model";
+import { AuditAttachmentGroup } from "./attachments/audit-attachment-group";
+import { auditMessageScope } from "./attachments/audit-attachment-scope";
 import { TeamBridgeMessageList } from "./team-bridge-message-list";
 import type { ChiefLabels } from "./team-bridge-model";
 import {
@@ -298,20 +301,22 @@ const VERDICT = {
  * THE OLD "NEVER INVOKE MARKDOWN" RULE is still met in substance: the list's
  * body renderer (`TeamBridgeMarkdown`) emits no raw HTML, draws images as text
  * and links only http(s)/mailto, which is the same guarantee a member's channel
- * relies on for the same bodies. What this surface must never do — load an
- * attachment's bytes, offer a reaction, a reply or a "Message" action — is
- * withheld by omission: the adapter drops `attachments`, and none of
- * `reactionContext` / `onReply` / `onMessagePerson` is passed, so the toolbar
- * (which renders nothing without one of the first two) and the profile card's
- * Message button do not exist here.
+ * relies on for the same bodies. The member adapter still drops attachments:
+ * audit bytes require their own captured HUMAN owner/tenant query receipt and
+ * dedicated relay, never the member renderer's authority. Reaction/reply/write
+ * actions stay absent: none of `reactionContext` / `onReply` / `onMessagePerson`
+ * is passed, so the toolbar and profile card's Message button do not exist here.
+ * Without a query receipt this presentation remains metadata-only.
  */
 function AuditTranscript({
+	attachmentScope,
 	conversation,
 	messages,
 	people,
 	renderReplies,
 	density,
 }: {
+	attachmentScope: OwnerAuditScope | null;
 	conversation: OwnerAuditConversation;
 	messages: OwnerAuditMessage[];
 	people: readonly TeamBridgeDirectoryMember[];
@@ -343,7 +348,9 @@ function AuditTranscript({
 				);
 				const verdict = delivery === "own" ? null : VERDICT[delivery];
 				const attachmentCount =
-					message.attachments?.length ?? message.attachment_count ?? 0;
+					message.attachments?.length || message.attachment_count || 0;
+				const files = (message.files ?? []).map(toBridgeFileDescriptor);
+				const fileCount = Math.max(files.length, message.file_count ?? 0);
 				return {
 					badge: verdict && (
 						<Badge variant={verdict.variant}>{t(verdict.copy)}</Badge>
@@ -359,20 +366,25 @@ function AuditTranscript({
 					   no read markers, drafts or agent feed. */
 					withheldCopy: t("ui.ownerAudit.body_unavailable"),
 					attachments:
-						attachmentCount > 0 ? (
-							<ul className="mt-1 space-y-0.5 text-[12px] text-ink-muted">
-								{message.attachments?.length ? (
-									message.attachments.map((attachment) => (
-										<li key={attachment.id}>
-											{attachment.state === "expired"
-												? t("ui.ownerAudit.attachment_expired")
-												: t("ui.ownerAudit.attachment_unavailable")}
-										</li>
-									))
-								) : (
-									<li>{t("ui.ownerAudit.attachment_unavailable")}</li>
+						attachmentCount > 0 || fileCount > 0 ? (
+							<AuditAttachmentGroup
+								key={JSON.stringify([
+									attachmentScope?.accountId,
+									attachmentScope?.tenantId,
+									conversation.id,
+									message.id,
+								])}
+								scope={auditMessageScope(
+									attachmentScope,
+									conversation,
+									message,
 								)}
-							</ul>
+								attachments={message.attachments ?? []}
+								count={attachmentCount}
+								compact={density === "compact"}
+								files={files}
+								fileCount={fileCount}
+							/>
 						) : undefined,
 					after:
 						renderReplies && (message.reply_count ?? 0) > 0
@@ -481,6 +493,7 @@ function OwnerAuditViewers({
 }
 
 export function OwnerAuditPanelView({
+	attachmentScope = null,
 	conversation,
 	messages,
 	state,
@@ -494,6 +507,9 @@ export function OwnerAuditPanelView({
 	latestPageAvailable = true,
 	scrollHostRef,
 }: {
+	/** The same captured human account/tenant used by the owning query. No
+	 * receipt means metadata-only; never infer byte authority from a sender. */
+	attachmentScope?: OwnerAuditScope | null;
 	conversation: OwnerAuditConversation;
 	messages: OwnerAuditMessage[];
 	state: ReadState;
@@ -657,6 +673,11 @@ export function OwnerAuditPanelView({
 							) : (
 								<AuditTimelineHoldContext.Provider value={timeline.hold}>
 									<AuditTranscript
+										attachmentScope={
+											attachmentScope?.accountId === readerAccountId
+												? attachmentScope
+												: null
+										}
 										conversation={conversation}
 										messages={messages}
 										people={people}
@@ -771,6 +792,7 @@ function AuditReplies({
 					</p>
 				) : (
 					<AuditTranscript
+						attachmentScope={scope}
 						conversation={conversation}
 						messages={query.replies}
 						people={people}
@@ -889,6 +911,7 @@ function OwnerAuditPanel({
 	const people = directory.data?.members ?? EMPTY_PEOPLE;
 	return (
 		<OwnerAuditPanelView
+			attachmentScope={scope}
 			conversation={conversation}
 			messages={ownerAuditChronology(
 				query.data?.pages.map((page) => page.messages) ?? [],

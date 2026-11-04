@@ -97,6 +97,8 @@ const Stage: FC<{
 	inflightBackend?: boolean;
 	downloadPercent?: number;
 	strip?: boolean;
+	/** The server offer's route rewrites the install in place (rebuild/legacy). */
+	backendInPlace?: boolean;
 }> = ({
 	ui,
 	backend,
@@ -106,6 +108,7 @@ const Stage: FC<{
 	inflightBackend,
 	downloadPercent,
 	strip,
+	backendInPlace,
 }) => {
 	useLayoutEffect(() => {
 		const store = useUpdateNoticeStore.getState();
@@ -120,11 +123,13 @@ const Stage: FC<{
 			store.noteQuietOffer(UpdateType.UI, {
 				version: ui,
 				summary: uiSummary ?? null,
+				nonDisruptive: true,
 			});
 		if (backend)
 			store.noteQuietOffer(UpdateType.BACKEND, {
 				version: backend,
 				summary: backendSummary ?? null,
+				nonDisruptive: backendInPlace !== true,
 			});
 		store.noteInFlight(UpdateType.UI, inflightUi === true);
 		store.noteInFlight(UpdateType.BACKEND, inflightBackend === true);
@@ -140,6 +145,7 @@ const Stage: FC<{
 		inflightUi,
 		inflightBackend,
 		downloadPercent,
+		backendInPlace,
 	]);
 	return (
 		<>
@@ -181,6 +187,15 @@ export const ServerUpdate: Story = {
 /** Both surfaces waiting: still ONE icon; both versions live in the tooltip. */
 export const BothSurfaces: Story = {
 	args: { ui: "0.30.1", backend: "0.55.10" },
+};
+
+/**
+ * Review M1's negative control: a server offer whose route rewrites the install
+ * in place (the checkout rebuild, or a legacy installer). Its card warns that a
+ * turn can be interrupted, so the tooltip drops "won't interrupt running agents".
+ */
+export const ServerInPlaceRoute: Story = {
+	args: { ui: "0.30.1", backend: "0.55.10", backendInPlace: true },
 };
 
 /** The in-flight arm the server update shows: an arc, non-interactive. */

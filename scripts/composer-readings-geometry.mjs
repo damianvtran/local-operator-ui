@@ -77,6 +77,12 @@ const PORT = Number(flag("port") ?? 5431);
  * a widened capture can never overwrite or be mistaken for a default-810 one.
  */
 const MEASURE = flag("measure") ?? null;
+/**
+ * `--crop=form` photographs the whole composer card instead of the control row,
+ * for the states whose evidence is OUTSIDE the row: the "Processing audio"
+ * caption and waveform under the field, the recording lane above the controls.
+ */
+const CROP = flag("crop") === "form" ? "form" : "row";
 /*
  * THE ROW'S DIRECTION, for the locale case. `dir="rtl"` mirrors which edge the
  * duration's anchor and gap are measured from, and a physical rule passes every
@@ -85,6 +91,10 @@ const MEASURE = flag("measure") ?? null;
  * overwrite each other's numbers.
  */
 const DIR = flag("dir") === "rtl" ? "rtl" : null;
+/** `--locale=fr`: the composer copy in that language (see the harness). */
+const LOCALE = flag("locale") ?? null;
+/** `--anchor=top`: mount the composer from the top of the pane (see the harness). */
+const ANCHOR = flag("anchor") === "top" ? "top" : null;
 const ORIGIN = `http://127.0.0.1:${PORT}`;
 const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 
@@ -115,7 +125,19 @@ const WIDTHS = flag("widths")
 	: [700, 800, 840, 860, 880, 900, 1024];
 
 /** The two states the row can be photographed in. */
-const STATES = ["idle", "running"];
+/** States whose presses the page scripts; the driver waits for the page to say it is done. */
+const SCRIPTED = [
+	"stop-cleared",
+	"stop-after-send",
+	"preparing",
+	"recording",
+	"sendrec-ok",
+	"sendrec-empty",
+	"sendrec-error",
+	"sendrec-hang",
+	"sendrec-running",
+];
+const STATES = flag("states") ? flag("states").split(",") : ["idle", "running"];
 
 /**
  * The readings fixtures: the cheap end (`plain`), the issue #788 repro and its
@@ -199,7 +221,7 @@ const PROBE = `(() => {
 	const controls =
 		items.find((el) =>
 			el.querySelector(
-				'button[aria-label="Send message"], button[aria-label="Stop"], button[aria-label="Stop agent"]',
+				'button[aria-label="Send message"], button[aria-label="Send recording"], button[aria-label="Confirm recording"], button[aria-label="Stop"], button[aria-label="Stop agent"], button[aria-label="Sending your message"]',
 			),
 		) ?? null;
 	const attach = items.find((el) => el !== strip && el !== controls) ?? null;
@@ -335,6 +357,15 @@ const PROBE = `(() => {
 					].length,
 				}
 			: null,
+		formBox: rect(form),
+		// The lane (preparing or recording) and the field, so a card-height delta can
+		// be attributed to the block the press opens or to the field's own height.
+		laneBox: rect(
+			document.querySelector(
+				"[data-recording-indicator], [data-preparing-lane]",
+			),
+		),
+		fieldBox: rect(form ? form.querySelector("textarea") : null),
 		form: form
 			? {
 					scrollWidth: form.scrollWidth,
@@ -399,6 +430,34 @@ const PROBE = `(() => {
 		readings,
 		durationShown: duration !== null && isBox(duration),
 		durationBox: rect(duration),
+		/*
+		 * THE SLOT POSITIONS, which are the claim of the button-slot change: the
+		 * mic's press point (slot A) and the primary slot (B) hold the same x in every
+		 * state. Left edges and widths, in document order = visual order.
+		 */
+		slots: controls
+			? [...controls.querySelectorAll("button")].map((b) => {
+					const r = b.getBoundingClientRect();
+					return {
+						// null on a tree that predates the slot markers (the BEFORE run).
+						slot: b.getAttribute("data-composer-slot"),
+						label: b.getAttribute("aria-label"),
+						left: round(r.left),
+						right: round(r.right),
+						width: round(r.width),
+						height: round(r.height),
+						disabled: b.disabled || b.getAttribute("aria-disabled") === "true",
+					};
+				})
+			: [],
+		bOpacity: (() => {
+			const b = controls?.querySelector('[data-composer-slot="b"]');
+			return b ? Number(getComputedStyle(b).opacity) : null;
+		})(),
+		sent: window.__sent ?? null,
+		bTimeline: window.__bTimeline ?? null,
+		transcriptionCalls: window.__transcriptionCalls ?? null,
+		boxValue: document.querySelector("textarea")?.value ?? null,
 		controlNames: controls
 			? [...controls.querySelectorAll("button")].map(
 					(b) => b.getAttribute("aria-label") ?? "(unnamed)",
@@ -566,10 +625,18 @@ const waitForRow = async (cdp) => {
 				const strip = document.querySelector("[data-lo-session-strip]");
 				if (!strip) return false;
 				const row = strip.parentElement;
+				// Base trees carry no slot markers: fall back to the labelled primary.
 				const send = row.querySelector(
-					'button[aria-label="Send message"], button[aria-label="Stop"], button[aria-label="Stop agent"]',
+					'[data-composer-slot="b"], button[aria-label="Send message"], button[aria-label="Stop"], button[aria-label="Confirm recording"]',
 				);
-				return !!send && send.getBoundingClientRect().width > 0;
+				if (!send || send.getBoundingClientRect().width <= 0) return false;
+				// The scripted states (recording, send-recording) mark themselves
+				// ready when their presses are done; "error: ..." is a failed script.
+				const ready = document.documentElement.dataset.loReady;
+				if (ready && ready.startsWith("error")) throw new Error(ready);
+				return (${JSON.stringify(SCRIPTED)}).includes(new URLSearchParams(location.search).get("state"))
+					? ready === "1"
+					: true;
 			})()`,
 		});
 		if (result.value === true) return;
@@ -594,9 +661,19 @@ const main = async () => {
 	for (const state of STATES) {
 		for (const readings of READING_FIXTURES) {
 			for (const width of WIDTHS) {
-				const id = `${state}-${readings}-w${width}${MEASURE ? `-m${MEASURE}` : ""}${DIR ? `-${DIR}` : ""}`;
+				const id = `${state}-${readings}-w${width}${MEASURE ? `-m${MEASURE}` : ""}${DIR ? `-${DIR}` : ""}${LOCALE ? `-${LOCALE}` : ""}${ANCHOR ? `-${ANCHOR}` : ""}`;
 				if (ONLY && !ONLY.some((needle) => id.includes(needle))) continue;
-				cases.push({ id, state, readings, width, measure: MEASURE, dir: DIR });
+				// `fixture` is the readings fixture's NAME: the probe's own `readings` (an
+				// array of what rendered) overwrites the entry's field of that name below.
+				cases.push({
+					id,
+					state,
+					readings,
+					fixture: readings,
+					width,
+					measure: MEASURE,
+					dir: DIR,
+				});
 			}
 		}
 	}
@@ -614,7 +691,7 @@ const main = async () => {
 			await cdp.send("Page.navigate", { url: "about:blank" });
 			await sleep(120);
 			await cdp.send("Page.navigate", {
-				url: `${ORIGIN}/composer-readings-geometry.html?w=${entry.width}&state=${entry.state}&readings=${entry.readings}&theme=${theme}${MEASURE ? `&measure=${MEASURE}` : ""}${DIR ? `&dir=${DIR}` : ""}`,
+				url: `${ORIGIN}/composer-readings-geometry.html?w=${entry.width}&state=${entry.state}&readings=${entry.readings}&theme=${theme}${MEASURE ? `&measure=${MEASURE}` : ""}${DIR ? `&dir=${DIR}` : ""}${LOCALE ? `&locale=${LOCALE}` : ""}${ANCHOR ? `&anchor=${ANCHOR}` : ""}`,
 			});
 			await waitForRow(cdp);
 			await sleep(180);
@@ -640,7 +717,12 @@ const main = async () => {
 				 * layout rather than two.
 				 */
 				const column = probe.containerBox;
-				const rowBox = probe.row ? probe.row.box : null;
+				const rowBox =
+					CROP === "form" && probe.formBox
+						? probe.formBox
+						: probe.row
+							? probe.row.box
+							: null;
 				const shot = await cdp.send("Page.captureScreenshot", {
 					format: "png",
 					clip: {
@@ -652,7 +734,10 @@ const main = async () => {
 					},
 				});
 				writeFileSync(
-					join(OUT_DIR, `${LABEL}-${entry.id}-${theme}.png`),
+					join(
+						OUT_DIR,
+						`${LABEL}-${entry.id}${CROP === "form" ? "-card" : ""}-${theme}.png`,
+					),
 					Buffer.from(shot.data, "base64"),
 				);
 			}

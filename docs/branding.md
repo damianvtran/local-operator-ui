@@ -115,24 +115,43 @@ for hours, so it has a floor rather than a band with discretion:
 
 | Rule | Value |
 |---|---|
-| dark `canvas` | **hard floor L\* 12**, **hard ceiling L\* 22**, target band 12–20 — three palettes sit above the target inside the ceiling, at `catppuccinFrappe` 21.99, `everforest` 21.65, `nord` 21.60 |
+| dark `canvas` | **hard floor L\* 9**, **hard ceiling L\* 15**, target band 9–13 — three palettes sit above the target inside the ceiling, at `catppuccinFrappe` 14.97, `nord` 14.60, `everforest` 14.17 |
 | light `canvas` | **ceiling L\* 94** |
-| dark `elevated` | **ceiling L\* 30** |
+| dark `elevated` | **ceiling L\* 22** |
 | light `sunken` | **floor L\* 80** |
 | `canvas` → `surface` | **+2.5 to +5.0 `L*`** |
 | `surface` → `elevated` | **+2.5 to +6.0 `L*`** |
 | `canvas` → `sunken` (down) | **1.5 to 6.0 `L*`** |
 
-Why 12 and not 8: at canvas 12 / surface 17 / elevated 24 the three ink weights
-solve to L\* 78 / 74 / 71 with every floor and every step intact, and below that
-the ladder and the ink steps stop fitting together — measured, 8 of the 41 dark
-palettes were below L\* 5, `obsidian` at 2.51 the lowest. 12 is one rung above
-GitHub Dark's `#0D1117` (4.95) and exactly VS Code Dark+'s `#1E1E1E`, i.e.
-deliberately above GitHub's default. Why the maximums as well: an unbounded top
-step is what makes the ink budget unaffordable — at `elevated` L\* 34 an `ink-dim`
-at 5:1 needs L\* 85, and the ink/hover distinction disappears into the top of the
-ramp — and the light cap is the same arithmetic from the other end (`elevated` at
-L\* 100 is the end of sRGB's ramp, and the minimum spread is 2.5 + 2.5).
+Why 9 to 15 (2026-11-03). The floor was L\* 12 until the operator reported the
+opposite of the report that set it: "dark mode isn't that dark, it shouldn't be
+overly dark but it should be maybe a bit darker in tone". The median dark canvas
+then measured L\* 15.1. The floor of 9 sits between the two apps the request
+names, measured from their own grounds: Discord's 2025 chat `#1A1A1E` (L\* 9.42)
+and Slack's dark `#1A1D21` (L\* 10.62). That is still nearly double GitHub Dark's
+`#0D1117` (4.95), so the earlier near-black report (8 of the 41 dark palettes
+below L\* 5, `obsidian` at 2.51) stays closed; only `sunken` and `media-surface`
+go lower, as recesses. The ink budget allows it without moving an ink: darker
+grounds only raise ink contrast, and the re-light measured 0 ink-floor failures
+across the 41 dark palettes.
+
+The ceiling of 15 is not a clamp. Every dark palette was re-lit by one
+proportional map, `L*_new = 9 + 0.6 × (L*_old − 12)` (12 → 9, 22 → 15). The map
+preserves each theme's order and spacing; the hand re-solves move 34 canvases
+off it by up to ±1.04 L\*, which inverts 45 of the 820 dark pairs (the widest by
+0.96 L\*). Every inverted pair is still held apart by the fleet's pair rules. A clamp
+into 9–13 would have stacked a third of the fleet on the ceiling. That is the
+"the themes have all gone the same grey" regression the contract's fleet section
+guards. The design spec proposed 9–13; the 15 ceiling is that widening, and
+the median lands at L\* 10.96, inside the 9–13 target. Theme identity at the
+darker `L*` is carried by hue and chroma, which the map holds.
+
+Why the maximums as well: an unbounded top step is what makes the ink budget
+unaffordable. At `elevated` L\* 34 an `ink-dim` at 5:1 needs L\* 85, and the
+ink/hover distinction disappears into the top of the ramp. With the canvas at
+most 15, `elevated` 22 holds the ladder to the band's proportions. The light cap
+is the same arithmetic from the other end (`elevated` at L\* 100 is the end of
+sRGB's ramp, and the minimum spread is 2.5 + 2.5).
 
 **Lifting a ramp moves lightness only.** A ground is re-solved by holding its own
 `a` and `b` at a new `L*`, so a theme keeps its hue and its chroma class and
@@ -140,7 +159,7 @@ changes only how light it is; chroma is scaled only where sRGB forces it. The co
 is real and recorded rather than argued away: the four palettes whose upstream
 identity *is* near-black — `obsidian`, `tron`, `matrix`, `dune` — lose the black
 and keep the family. `obsidian` is the clearest case: zinc 950 becomes
-zinc-900-ish monochrome at L\* 12, with its h290 blue lean and no manufactured
+zinc-900-ish monochrome (L\* 12 at the legibility pass, 9.3 after the darker-grounds re-light), with its h290 blue lean and no manufactured
 chroma.
 
 **The grounds never move alone.** Raising a dark ground raises the luminance every
@@ -405,9 +424,10 @@ the slash word the app is about to RUN, the desktop twin of the TUI's
 `$lo-signal` — so its job is to be distinct from the three inks it is read
 against IN ONE LINE (`ink` for the instruction, `accent` for a live turn,
 `success` for a roster name) rather than to sit at a step in a hierarchy. Floors
-are per-palette and measured on the composer's own ground: at least 4.5:1 on
-`surface` and on `elevated`, and at least **ΔE00 8 from `ink`, `accent` and
-`success`**. `obsidian` is the one pinned exception — its `info` IS its `ink`, so
+are per-palette and measured on the grounds the role is painted on: at least
+4.5:1 on `surface` and `elevated` (the composer and its popup) and on
+`messageSurface` (the sent turn, below), and at least **ΔE00 8 from `ink`,
+`accent` and `success`**. `obsidian` is the one pinned exception — its `info` IS its `ink`, so
 there the run is separated by the painted weight step alone.
 
 Beside the ink, the run carries that weight step (`slash-run-bold`, a 0.5px
@@ -418,6 +438,22 @@ two layers have to wrap at the same character, and a real weight change moves
 the advances — which wrapped the mirror earlier than the textarea and hid the
 tail of the user's draft behind the mirror's own overflow (measured: 65 of 78
 typed characters). Add a run ink here and give it the same treatment.
+
+The same role also inks a `$skill` token in a sent turn: `.lo-skill-token` in
+`markdown.css` paints it in `tokenCommand`, so it is the same colour role the
+composer showed and the sealed row shows. The weight is the same step but NOT
+the same mechanism: the composer and the sealed row use the 0.5px
+`slash-run-bold` stroke because their mirror must not move an advance, while the
+transcript uses a real `font-weight: 600` (measured +3.5px on the one-line
+bubble). A real weight is right here because there is no mirror to keep aligned
+and `.lo-markdown strong` is also 600, so a token and bold prose share one
+weight. It is this role and not `accent` (budgeted at about three per screen,
+and a message can hold several tokens) or `accentAlt` (barred from links and
+syntax tokens, § The second accent), and a new role would cost every palette a
+value. Because the bubble's fill is `messageSurface`, that ground is asserted for
+the role too. In `obsidian` `tokenCommand` equals `ink`, so there a `$skill` and
+`**bold**` are pixel-identical and the weight is the only separation from plain
+prose; that is the accepted trade-off of the monochrome palette.
 
 ### The two lines — the distinction people get wrong
 
@@ -564,7 +600,13 @@ popover.
 - **Narrow windows replace, they do not overlay.** A detail rail that cannot
   fit beside the content at its minimum width becomes the full-width route view;
   the content and filter rail step aside. The filter rail collapses into its
-  sheet below 1200px. A panel never floats over another panel's content.
+  sheet below 1200px. A panel never floats over another panel's content. The one
+  exception is the transient Ask drawer below its dock breakpoint: replacing the
+  transcript there would take the question's context away with it, so the drawer
+  is a right-anchored sheet over the chat row - scrim over the row only, an
+  opaque `elevated` ground, the covered content `inert` while it is up, and the
+  sidebar and panel rail still reachable - and it is the case the one drawer
+  shadow is for.
 
 The Library route is the reference: a flush `bg-canvas` page root, a
 full-height `bg-surface` filter rail and `bg-surface` asset-details dock, both
@@ -673,7 +715,7 @@ the weakest pair anywhere in the system is sage at 8.4.
 
 | Assertion | Floor |
 |---|---|
-| dark `canvas` / dark `elevated` / light `canvas` / light `sunken` | L\* 12–22 / ≤ 30 / ≤ 94 / ≥ 80 |
+| dark `canvas` / dark `elevated` / light `canvas` / light `sunken` | L\* 9–15 / ≤ 22 / ≤ 94 / ≥ 80 |
 | `canvas`→`surface` / `surface`→`elevated` / `canvas`→`sunken` | +2.5–5.0 / +2.5–6.0 / 1.5–6.0 `L*` |
 | `ink` on each of the eight grounds | 7:1 |
 | `ink` on `canvas` | 8:1 |

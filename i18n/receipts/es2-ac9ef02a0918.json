@@ -1,0 +1,58 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "openai/gpt-6.1-sol",
+  "instance": "es2-ac9ef02a0918",
+  "session": "ac9ef02a0918",
+  "locale": "es",
+  "audit_date": "2026-11-03T09:22:34.134552+00:00",
+  "audit_kind": "second-independent-five-key-delta",
+  "status": "passed",
+  "base": "6dd43fd7494",
+  "head": "19868532b9cd2bca0eca468dbf22572d8dd78a5b",
+  "auditor_provenance": {
+    "agent": "i18n-auditor",
+    "session": "ac9ef02a0918",
+    "instance": "es2-ac9ef02a0918",
+    "model": "openai/gpt-6.1-sol",
+    "independent_from_translator_session": true,
+    "independence_source": "Task explicitly identifies this session as second independent auditor, not translator or first auditor; no first-audit receipts or findings were read. Translator session ID was not supplied.",
+    "actual_model_source": "Host model-switch event: temporary fallback to openai/gpt-6.1-sol following provider quota failure. Prior event announced anthropic/claude-opus-5-5; original model anthropic/claude-sonnet-5-5. All locale findings and execution in this report were produced after the openai/gpt-6.1-sol switch."
+  },
+  "scope_keys": [
+    "ui.chat.session_status.effort_level.low",
+    "ui.chat.session_status.effort_level.medium",
+    "ui.chat.session_status.effort_level.high",
+    "ui.chat.run_details.wake.armed_count",
+    "ui.chat.run_details.wake.cadence_once"
+  ],
+  "key_count": 5,
+  "namespaces": {
+    "ui.chat": {
+      "status": "passed",
+      "sha256": {
+        "en": "270fc752791e2960006b560ec9616c2010dab80e92af19f075f7e04a3055bd27",
+        "es": "dd04b82640bc328970f7e0a0856ffe5f01728b2c64a58256cf1a6a4623bf4a4e"
+      },
+      "key_count": 3,
+      "findings": []
+    },
+    "ui.chat.run_details": {
+      "status": "passed",
+      "sha256": {
+        "en": "f8184d5f41b359364e47747871988bbb731d79c12bc3b9ec755f3db73e5db6ab",
+        "es": "0cf25b8ae5735cf180991454e751ce1389d0cf36f4242df70131ad06fb2d3b48"
+      },
+      "key_count": 2,
+      "findings": []
+    }
+  },
+  "findings": [],
+  "limits": [
+    "Independent linguistic/source-only audit, not native application validation or pseudolocale/pixel/layout proof.",
+    "No installs, worktrees, builds, tsc, scanners, translation services, repository edits, posts, commits or pushes.",
+    "Repository exported validators messageArguments and namespaceGap run on committed input copies under 256 MB process ceiling / 192 MB V8 heap. Not the full repository validation suite.",
+    "Six unrelated ui.chat context gaps exist identically at base and head; no assigned key lacks context.",
+    "One receipt byte sequence must be reused for both namespace ledger rows; passed is scoped to five listed keys, not a new whole-namespace linguistic audit.",
+    "Receipt/artifacts currently in session scratch because task forbids repository edits; manager must retain byte-identical receipt and audit bundle at tracked canonical evidence root and ledger receipt location before merge."
+  ]
+}

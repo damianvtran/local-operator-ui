@@ -70,20 +70,30 @@
  * anything.
  */
 
-import { Alert, Button } from "@shared/components/ui";
+import { Button } from "@shared/components/ui";
 import { Disclosure } from "@shared/components/ui/disclosure";
+import { useTextDirection } from "@shared/i18n/use-document-direction";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { ShieldCheck } from "lucide-react";
 import type { FC } from "react";
-import { Fragment, useLayoutEffect, useMemo, useRef, useState } from "react";
+import {
+	Fragment,
+	useId,
+	useLayoutEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import { t } from "../../../../i18n/messages";
 import {
 	type ApprovalDecision,
 	type MeshApprovalRow,
+	approvalAnswerWindowLabel,
 	approvalHead,
+	approvalHeadUsesBackendSummary,
 	approvalHostKeyLabel,
-	approvalRemainingLabel,
+	approvalRefusalPartDirection,
 	approvalRequesterLabel,
 	approvalScopeEntries,
 	approvalStateLabel,
@@ -91,7 +101,15 @@ import {
 	approvalWhereLabel,
 	canApproveApproval,
 	canDenyApproval,
+	canRetryCredentialApply,
+	credentialConsequences,
+	credentialRecipientLabel,
+	credentialVisibleConsequences,
+	deliverApprovalRefusal,
+	hasPermanentCredentialOutcome,
+	isAttentionApproval,
 	isWaitingApproval,
+	namedApprovalRefusalParts,
 } from "./mesh-approvals";
 
 /**
@@ -209,11 +227,21 @@ export interface MeshApprovalsTrayProps {
 	 */
 	refusal: {
 		approvalId: string | null;
+		/** Mutation attempt identity, stable across parent renders. */
+		submittedAt?: number;
 		code: string;
 		sentence: string;
+		/** An apply-phase refusal after which the same signed card can still succeed. */
+		retryable?: boolean;
 	} | null;
 	onDecide: (approvalId: string, decision: ApprovalDecision) => void;
 	onRetry: () => void;
+	/**
+	 * `features.credential_approvals >= 1`: the backend serves the typed
+	 * credential routes. Absent or false, a credential card keeps its Deny-only
+	 * shape - there is no route here that could carry its Approve.
+	 */
+	credentialApprovals?: boolean;
 	/** The read's own stamp, for the expiry lines (the page owns the clock reading). */
 	nowSeconds: number;
 	/**
@@ -234,6 +262,7 @@ export const MeshApprovalsTray: FC<MeshApprovalsTrayProps> = ({
 	onRetry,
 	nowSeconds,
 	networkNames,
+	credentialApprovals = false,
 }) => {
 	useI18nLocale();
 	/*
@@ -246,17 +275,30 @@ export const MeshApprovalsTray: FC<MeshApprovalsTrayProps> = ({
 	 * gesture at a time, on the whole tray.
 	 */
 	const busy = pending !== null;
+	const [refusalAnnouncement, setRefusalAnnouncement] = useState("");
+	const focusedRefusal = useRef<string | null>(null);
+	// Content identity survives query refetches; pending clears it for another
+	// explicit attempt that receives the same refusal again.
+	const refusalKey = refusal
+		? JSON.stringify([refusal.approvalId, refusal.code, refusal.sentence])
+		: null;
 	/*
 	 * THE TWO SETS, in the store's own order (oldest first) and nothing re-sorted:
 	 * the oldest record is the first to expire, and a surface that re-sorted would
 	 * disagree with the CLI's listing.
 	 */
 	const waiting = useMemo(
-		() => rows.filter((row) => isWaitingApproval(row.state)),
+		() =>
+			rows.filter(
+				(row) => isWaitingApproval(row.state) || isAttentionApproval(row),
+			),
 		[rows],
 	);
 	const records = useMemo(
-		() => rows.filter((row) => !isWaitingApproval(row.state)),
+		() =>
+			rows.filter(
+				(row) => !isWaitingApproval(row.state) && !isAttentionApproval(row),
+			),
 		[rows],
 	);
 
@@ -282,17 +324,18 @@ export const MeshApprovalsTray: FC<MeshApprovalsTrayProps> = ({
 	const deniedFocus = useRef<{
 		id: string;
 		origin: Element | null;
-		sawPending: boolean;
+		rowAtStart: MeshApprovalRow | undefined;
+		refusalSubmittedAtStart: number;
 	} | null>(null);
 	const decide = (id: string, decision: ApprovalDecision) => {
 		if (
-			decision === "deny" &&
 			waiting.some((row) => row.approvalId === id && row.kind === "credential")
 		) {
 			deniedFocus.current = {
 				id,
 				origin: document.activeElement,
-				sawPending: false,
+				rowAtStart: rows.find((row) => row.approvalId === id),
+				refusalSubmittedAtStart: refusal?.submittedAt ?? 0,
 			};
 		}
 		onDecide(id, decision);
@@ -300,34 +343,87 @@ export const MeshApprovalsTray: FC<MeshApprovalsTrayProps> = ({
 	useLayoutEffect(() => {
 		const handoff = deniedFocus.current;
 		if (!handoff) return;
-		if (pending?.approvalId === handoff.id) handoff.sawPending = true;
-		if (refusal?.approvalId === handoff.id) {
-			deniedFocus.current = null;
-			return;
-		}
+
 		const row = rows.find((entry) => entry.approvalId === handoff.id);
-		if (row?.state === "requested") {
-			if (!pending && handoff.sawPending) deniedFocus.current = null;
+		// A fast decision may settle before React ever renders pending. Completion
+		// is the new row/refusal, not whether an intermediate frame was observed.
+		if (pending) return;
+		// Mutation settlement can precede its invalidated read. Wait for the new
+		// row (or the refusal) before focusing a control a refetch will remove.
+		const newRefusal =
+			refusal?.approvalId === handoff.id &&
+			(refusal.submittedAt ?? 0) > handoff.refusalSubmittedAtStart;
+		if (row === handoff.rowAtStart && !newRefusal) return;
+		deniedFocus.current = null;
+		// Only an outcome on the current live card takes precedence. Otherwise
+		// continue to another live card, then the settled toggle. Requested
+		// neighbours receive focus on their summary, NEVER Approve: repeated Enter
+		// after a fast completion must not consent to an unread second request.
+		// Already-approved neighbours retain their actionable control target.
+		const nextLive = waiting.find((entry) => entry.approvalId !== handoff.id);
+		const nextTarget = nextLive
+			? trayRef.current?.querySelector<HTMLElement>(
+					`[data-tour-tag="mesh-approvals-live"] [data-approval-id="${CSS.escape(nextLive.approvalId)}"] ${isWaitingApproval(nextLive.state) ? '[data-tour-tag="mesh-approval-summary"]' : '[data-tour-tag="mesh-approval-controls"] button:not(:disabled)'}`,
+				)
+			: null;
+		const target =
+			(waiting.some((entry) => entry.approvalId === handoff.id)
+				? trayRef.current?.querySelector<HTMLElement>(
+						`[data-approval-id="${CSS.escape(handoff.id)}"] [data-tour-tag="mesh-approval-refusal"]`,
+					)
+				: null) ??
+			nextTarget ??
+			recordsRef.current?.querySelector<HTMLButtonElement>("button");
+		const refusalTarget = refusal
+			? (trayRef.current?.querySelector<HTMLElement>(
+					`[data-approval-refusal-id="${CSS.escape(refusal.approvalId ?? "")}"]`,
+				) ?? null)
+			: null;
+		const delivery = deliverApprovalRefusal({
+			document,
+			target: target ?? null,
+			refusalTarget,
+			origin: handoff.origin,
+			allowFocus: true,
+			sentence: refusal?.sentence ?? "",
+		});
+		if (delivery.focused) focusedRefusal.current = refusalKey;
+	}, [rows, pending, refusal, waiting, refusalKey]);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: row replacement can move/unmount the refusal DOM node without changing its text
+	useLayoutEffect(() => {
+		if (!refusal || pending) {
+			focusedRefusal.current = null;
+			setRefusalAnnouncement("");
 			return;
 		}
-		if (row?.state === "denied" && pending) return;
-		deniedFocus.current = null;
-		// The successful Deny removes its focused control. Hand it to the next
-		// live request, or to CLOSED history, without opening records or taking
-		// focus back from a person who moved elsewhere while the RPC was pending.
-		if (
-			row?.state !== "denied" ||
-			(document.activeElement !== document.body &&
-				document.activeElement !== handoff.origin)
-		)
+		if (focusedRefusal.current === refusalKey) {
+			setRefusalAnnouncement("");
 			return;
-		const target = waiting.length
-			? trayRef.current?.querySelector<HTMLButtonElement>(
-					'[data-tour-tag="mesh-approval-controls"] button:not(:disabled)',
-				)
-			: recordsRef.current?.querySelector<HTMLButtonElement>("button");
-		target?.focus({ preventScroll: true });
-	}, [rows, pending, refusal, waiting.length]);
+		}
+		// Runs AFTER the focus handoff. When focus was preserved elsewhere, a
+		// refusal card vanished, or focusing failed, announce the sentence here.
+		const refusalTarget =
+			trayRef.current?.querySelector<HTMLElement>(
+				`[data-approval-refusal-id="${CSS.escape(refusal.approvalId ?? "")}"]`,
+			) ?? null;
+		const delivery = deliverApprovalRefusal({
+			document,
+			target: null,
+			refusalTarget,
+			origin: null,
+			allowFocus: false,
+			sentence: refusal.sentence,
+		});
+		if (delivery.focused) focusedRefusal.current = refusalKey;
+		setRefusalAnnouncement(delivery.announcement);
+	}, [refusal, refusalKey, pending, rows]);
+	const waitingCount = waiting.filter((row) =>
+		isWaitingApproval(row.state),
+	).length;
+	const attentionCount = waiting.filter(isAttentionApproval).length;
+	const sharedCount = records.filter(
+		(row) => row.kind === "credential" && row.state === "connected",
+	).length;
 	const recordsSignalled = records.some((row) => row.state === "failed");
 	/** How many settled records carry the state the store says not to miss. */
 	const failedCount = records.filter((row) => row.state === "failed").length;
@@ -343,8 +439,12 @@ export const MeshApprovalsTray: FC<MeshApprovalsTrayProps> = ({
 		rows.some(
 			(row) =>
 				row.approvalId === refusal.approvalId &&
-				(isWaitingApproval(row.state) || recordsOpen),
+				(isWaitingApproval(row.state) ||
+					isAttentionApproval(row) ||
+					recordsOpen),
 		);
+
+	const refusedRow = rows.find((row) => row.approvalId === refusal?.approvalId);
 
 	// Nothing to say, say nothing: no prompt, no record, no failure, no refusal.
 	if (waiting.length === 0 && records.length === 0 && !error && !refusal)
@@ -372,16 +472,35 @@ export const MeshApprovalsTray: FC<MeshApprovalsTrayProps> = ({
 			data-tour-tag="mesh-approvals-tray"
 			className="flex flex-col gap-3"
 		>
+			<output aria-live="polite" aria-atomic="true" className="sr-only">
+				{t("ui.mesh.approval.result_status", {
+					shared: sharedCount,
+					attention: attentionCount,
+				})}
+			</output>
+			<output
+				aria-live="polite"
+				aria-atomic="true"
+				className="sr-only"
+				data-tour-tag="mesh-approval-announcement"
+			>
+				<bdi dir="auto">{refusalAnnouncement}</bdi>
+			</output>
 			<div className="flex flex-wrap items-center gap-2">
 				<ShieldCheck aria-hidden="true" className="size-4 text-ink-muted" />
 				<h2 className="text-body-sm text-ink">
 					{t("ui.mesh.mesh_approvals_tray.approvals")}
 				</h2>
-				{waiting.length > 0 && (
+				{waitingCount > 0 && (
 					<span className="text-meta text-ink-dim">
 						{t("ui.mesh.mesh_approvals_tray.waiting_count", {
-							count: waiting.length,
+							count: waitingCount,
 						})}
+					</span>
+				)}
+				{attentionCount > 0 && (
+					<span className="text-meta text-warning">
+						{t("ui.mesh.approval.needs_attention", { count: attentionCount })}
 					</span>
 				)}
 			</div>
@@ -396,7 +515,10 @@ export const MeshApprovalsTray: FC<MeshApprovalsTrayProps> = ({
 			)}
 
 			{waiting.length > 0 && (
-				<ul className="flex flex-col divide-y divide-hairline">
+				<ul
+					className="flex flex-col divide-y divide-hairline"
+					data-tour-tag="mesh-approvals-live"
+				>
 					{waiting.map((row) => (
 						<MeshApprovalCard
 							key={row.approvalId}
@@ -407,12 +529,26 @@ export const MeshApprovalsTray: FC<MeshApprovalsTrayProps> = ({
 							onDecide={decide}
 							nowSeconds={nowSeconds}
 							networkNames={networkNames}
+							credentialApprovals={credentialApprovals}
 						/>
 					))}
 				</ul>
 			)}
 
-			{refusal && !refusalAttached && <MeshDecisionRefusal refusal={refusal} />}
+			{refusal && !refusalAttached && (
+				<MeshDecisionRefusal
+					approvalId={refusal.approvalId ?? ""}
+					requestIsBackendSummary={
+						refusedRow ? approvalHeadUsesBackendSummary(refusedRow) : false
+					}
+					refusal={refusal}
+					request={
+						refusedRow
+							? approvalHead(refusedRow)
+							: t("ui.mesh.approval.credential_title")
+					}
+				/>
+			)}
 
 			{/*
 			 * THE SETTLED SECTION IS NAMED FOR WHAT IT HOLDS. It read `Records (N)`
@@ -440,7 +576,7 @@ export const MeshApprovalsTray: FC<MeshApprovalsTrayProps> = ({
 			 * reader" mark and costs the summary nothing.
 			 */}
 			{records.length > 0 && (
-				<div ref={recordsRef}>
+				<div ref={recordsRef} data-tour-tag="mesh-approvals-settled">
 					<Disclosure
 						open={recordsOpen}
 						onOpenChange={setRecordsOpen}
@@ -467,6 +603,11 @@ export const MeshApprovalsTray: FC<MeshApprovalsTrayProps> = ({
 										aria-hidden="true"
 										className="size-1.5 rounded-full bg-danger"
 									/>
+								)}
+								{sharedCount > 0 && (
+									<span className="text-ink-muted">
+										{t("ui.mesh.approval.shared_count", { count: sharedCount })}
+									</span>
 								)}
 								{failedCount > 0 && (
 									<span className="text-danger">
@@ -496,6 +637,7 @@ export const MeshApprovalsTray: FC<MeshApprovalsTrayProps> = ({
 									onDecide={decide}
 									nowSeconds={nowSeconds}
 									networkNames={networkNames}
+									credentialApprovals={credentialApprovals}
 								/>
 							))}
 						</ul>
@@ -514,32 +656,102 @@ const MeshApprovalCard: FC<{
 	/** Whether ANY decision is in flight: the gate the surface owns (see the tray). */
 	busy: boolean;
 	/** This record's refusal, or `null` when the last one was about another record. */
-	refusal: { code: string; sentence: string } | null;
+	refusal: { code: string; sentence: string; retryable?: boolean } | null;
 	onDecide: (approvalId: string, decision: ApprovalDecision) => void;
 	nowSeconds: number;
 	/** Id -> name, for the summary's join clause (UX round 1, U1); absent until the mesh read lands. */
 	networkNames?: ReadonlyMap<string, string>;
-}> = ({ row, pending, busy, refusal, onDecide, nowSeconds, networkNames }) => {
+	/** `features.credential_approvals`: see the tray's own prop. */
+	credentialApprovals: boolean;
+}> = ({
+	row,
+	pending,
+	busy,
+	refusal,
+	onDecide,
+	nowSeconds,
+	networkNames,
+	credentialApprovals,
+}) => {
 	useI18nLocale();
 	const waiting = isWaitingApproval(row.state);
+	const permanentOutcome = hasPermanentCredentialOutcome(
+		row,
+		refusal?.retryable,
+	);
+	const summaryId = useId();
+	const criticalId = useId();
 	const head = approvalHead(row);
 	const summary = approvalSummary(row, networkNames);
 	const entries = approvalScopeEntries(row, networkNames);
 	const where = approvalWhereLabel(row);
 	const hostKey = approvalHostKeyLabel(row);
 	const requester = approvalRequesterLabel(row);
-	const remaining = approvalRemainingLabel(row.expiresAt, nowSeconds);
+	const remaining = approvalAnswerWindowLabel(
+		row.expiresAt,
+		nowSeconds,
+		isAttentionApproval(row),
+	);
 	const opaque = row.kind === "credential" || row.kind === "unknown";
 	const restricted = opaque || row.canApproveHere === false;
 	// Generic signing/install hints are false for opaque typed intent. The
 	// server's full disclosure is the only description of what would be signed.
 	const hints = restricted ? [] : stateHints(row.state);
-	const canApprove = canApproveApproval(row);
+	const capabilities = { credentialApprovals };
+	const canApprove = canApproveApproval(row, capabilities);
 	const canDeny = canDenyApproval(row.state);
+	const canRetryApply = canRetryCredentialApply(
+		row,
+		capabilities,
+		refusal?.retryable,
+	);
+	/*
+	 * A TYPED CARD speaks from the structured disclosure: the head line names the
+	 * credential and the device, and Details lists the consequences in words. The
+	 * backend's CLI-shaped `details` lines stay the fallback for a row without one.
+	 */
+	const typed = credentialApprovals ? row.typed : undefined;
+	const consequences = typed ? credentialConsequences(row) : [];
+	const recipient = typed?.disclosure ? credentialRecipientLabel(row) : null;
+	/*
+	 * THE FILE-KEY DISCLOSURE (backend `typed_approval.unproven_human`, operator
+	 * decision a-b492: "the UI MUST render this disclosure when true"). On a
+	 * file-only operator key any program running as the operator can sign, so an
+	 * approval from here cannot prove a person pressed it. This remains true on
+	 * refused and settled records as well as signable requests. Shown in the card's
+	 * quiet meta register - a fact to know, not an alarm, because the operator
+	 * already accepted that residual.
+	 */
+	const fileKeyNote = row.typed?.unprovenHuman === true;
+	const signed =
+		row.kind === "credential" &&
+		["approved", "failed", "connecting", "connected"].includes(row.state);
+	const outcomeSentence =
+		refusal?.sentence ||
+		(typed?.applyOutcome
+			? [typed.applyOutcome.reason, typed.applyOutcome.remedy]
+					.filter(Boolean)
+					.join(" ")
+			: "");
+	const refusalCode =
+		refusal?.code || typed?.applyOutcome?.code || typed?.refusal;
+	const visibleConsequences = credentialVisibleConsequences(row);
+	/*
+	 * WHY THIS CARD CANNOT BE APPROVED HERE, in the order of who knows best: the
+	 * typed block's own refusal sentence, or a non-CLI safety explanation if it
+	 * cannot disclose the request. The legacy remedy can contain a terminal
+	 * command and is only for untyped rows. An approvable card shows neither.
+	 */
+	const restrictedRemedy =
+		(row.typed?.refusalMessage ?? "") ||
+		(row.typed
+			? t("ui.mesh.approval.typed_review_unavailable")
+			: row.approveRemedy || t("ui.mesh.approval.cli_review"));
 	return (
 		<li
 			className="flex flex-col gap-2 py-3 first:pt-0 last:pb-0"
 			data-tour-tag="mesh-approval-card"
+			data-approval-id={row.approvalId}
 		>
 			<div className="flex flex-wrap items-center gap-2">
 				{/*
@@ -549,27 +761,30 @@ const MeshApprovalCard: FC<{
 				 * unchanged — this is the same `approvalStateLabel` — so nothing a screen
 				 * reader hears depends on which register the words are painted in.
 				 */}
-				<span className={cn("text-meta", stateInk(row.state))}>
-					{row.kind === "credential" && row.state === "approved"
-						? t("ui.mesh.approval.approved_pending_apply")
-						: approvalStateLabel(row.state)}
+				<span
+					className={cn(
+						"text-meta",
+						isAttentionApproval(row) ? "text-warning" : stateInk(row.state),
+					)}
+				>
+					{permanentOutcome
+						? t("ui.mesh.approval.could_not_apply")
+						: row.kind === "credential" && row.state === "connected"
+							? t("ui.mesh.approval.shared")
+							: row.kind === "credential" &&
+									(row.state === "approved" || row.state === "failed")
+								? t("ui.mesh.approval.approved_not_applied")
+								: approvalStateLabel(row.state)}
 				</span>
 				<div className="grow" />
-				{/*
-				 * THE WINDOW PRINTS ONLY WHILE IT IS THE READER'S TO ACT ON (design
-				 * round 1, D3; UX round 1, U3): a countdown is a prompt, and a settled
-				 * record wears none — on `approved`/`connecting` the decision is made,
-				 * and on `failed` the runner has stopped. The store keeps `expires_at`
-				 * on the record whatever its state (`badge_row` passes it raw; only
-				 * `presented()` reads it), so the gate is the SURFACE's, by state.
-				 */}
-				{waiting && remaining && (
-					<span className="text-meta text-ink-dim">
-						{row.kind === "credential"
-							? t("ui.mesh.approval.request_window", { remaining })
-							: remaining}
-					</span>
-				)}
+				{/* Requested cards show the answer window; approved cards show the
+				    remaining apply window. A permanent outcome has no countdown:
+				    waiting cannot make the same card applicable again. */}
+				{!permanentOutcome &&
+					(waiting || isAttentionApproval(row)) &&
+					remaining && (
+						<span className="text-meta text-ink-dim">{remaining}</span>
+					)}
 			</div>
 
 			{/*
@@ -585,9 +800,20 @@ const MeshApprovalCard: FC<{
 			<p
 				className="text-body-sm text-ink [overflow-wrap:anywhere]"
 				data-tour-tag="mesh-approval-summary"
+				tabIndex={-1}
+				id={summaryId}
 			>
 				{waiting ? summary : head}
 			</p>
+			{visibleConsequences && (
+				<p
+					id={criticalId}
+					className="text-meta text-ink-muted"
+					data-tour-tag="mesh-approval-critical-facts"
+				>
+					{visibleConsequences}
+				</p>
+			)}
 
 			{/*
 			 * A STOPPED RUNNER SAYS WHAT HAPPENED AND WHAT CAN BE DONE (UX round 1,
@@ -620,32 +846,86 @@ const MeshApprovalCard: FC<{
 			{/* Optional false is a generic restriction, not just an inheritance
 			    special case. Commands are authenticated backend TEXT, never actions.
 			    Only pending cards repeat the approval remedy: approved is not applied. */}
-			{waiting && restricted && (
+			{waiting && restricted && !canApprove && (
 				<p
 					className="text-meta text-ink-muted whitespace-pre-wrap [overflow-wrap:anywhere]"
 					data-tour-tag="mesh-approval-cli-remedy"
 				>
-					{row.approveRemedy || t("ui.mesh.approval.cli_review")}
+					{restrictedRemedy}
 				</p>
 			)}
-			{row.kind === "credential" && row.state === "approved" && (
+			{row.kind === "credential" && !row.typed && row.state === "approved" && (
 				<p
 					className="text-meta text-ink-muted"
 					data-tour-tag="mesh-approval-apply-hint"
 				>
-					{row.details?.length
-						? t("ui.mesh.approval.approved_apply_hint")
-						: t("ui.mesh.approval.approved_details_missing")}
+					{t(
+						row.details?.length
+							? "ui.mesh.approval.approved_apply_hint"
+							: "ui.mesh.approval.approved_details_missing",
+					)}
 				</p>
 			)}
 
-			{(canApprove || canDeny) && (
-				<div className="flex flex-wrap items-center gap-2">
+			{fileKeyNote && (
+				<p
+					className="text-meta text-ink-dim"
+					data-tour-tag="mesh-approval-file-key"
+				>
+					{t(
+						signed
+							? "ui.mesh.approval.file_key_recorded"
+							: "ui.mesh.approval.file_key_disclosure",
+					)}
+				</p>
+			)}
+			{outcomeSentence && (
+				<MeshDecisionRefusal
+					approvalId={row.approvalId}
+					refusal={{ code: refusalCode ?? "", sentence: outcomeSentence }}
+				/>
+			)}
+			{canRetryApply && (
+				<p className="text-meta text-ink-muted">
+					{t("ui.mesh.approval.retry_hint")}
+				</p>
+			)}
+			{signed && canDeny && (
+				<p className="text-meta text-ink-muted">
+					{t("ui.mesh.approval.cancel_hint")}
+				</p>
+			)}
+
+			{(canApprove || canDeny || canRetryApply) && (
+				<div
+					className="flex flex-wrap items-center gap-2"
+					data-tour-tag="mesh-approval-controls"
+				>
+					{canRetryApply && (
+						/* Only on a retryable outcome: a permanent refusal retried is a loop
+						   a person cannot leave (backend `approval_copy`, UX U2). It sends the
+						   SAME reviewed digests to `apply-credential`; nothing is signed. */
+						<Button
+							variant="primary"
+							size="sm"
+							disabled={busy}
+							aria-describedby={
+								visibleConsequences ? `${summaryId} ${criticalId}` : summaryId
+							}
+							onClick={() => onDecide(row.approvalId, "apply")}
+							data-tour-tag="mesh-approval-retry-apply"
+						>
+							{t("ui.mesh.approval.try_again")}
+						</Button>
+					)}
 					{canApprove && (
 						<Button
 							variant="primary"
 							size="sm"
 							disabled={busy}
+							aria-describedby={
+								visibleConsequences ? `${summaryId} ${criticalId}` : summaryId
+							}
 							onClick={() => onDecide(row.approvalId, "approve")}
 							data-tour-tag="mesh-approval-approve"
 						>
@@ -657,6 +937,9 @@ const MeshApprovalCard: FC<{
 							variant="ghost"
 							size="sm"
 							disabled={busy}
+							aria-describedby={
+								visibleConsequences ? `${summaryId} ${criticalId}` : summaryId
+							}
 							onClick={() => onDecide(row.approvalId, "deny")}
 							/* The record's one remaining write, named by its consequence (see
 							   `recordActionLabel`): `Deny` only while the record still WAITS. */
@@ -666,16 +949,22 @@ const MeshApprovalCard: FC<{
 						>
 							{waiting
 								? t("ui.mesh.mesh_approvals_tray.deny")
-								: recordActionLabel(row.state)}
+								: row.kind === "credential"
+									? t("ui.mesh.approval.cancel_sharing")
+									: recordActionLabel(row.state)}
 						</Button>
 					)}
 					{pending && (
 						<span className="text-meta text-ink-dim">
 							{pending.decision === "approve"
-								? t(
-										"ui.mesh.mesh_approvals_tray.waiting_for_the_signing_prompt",
-									)
-								: t("ui.mesh.mesh_approvals_tray.writing_the_decision")}
+								? row.typed?.unprovenHuman
+									? t("ui.mesh.approval.signing_applying")
+									: t(
+											"ui.mesh.mesh_approvals_tray.waiting_for_the_signing_prompt",
+										)
+								: pending.decision === "apply"
+									? t("ui.mesh.approval.applying")
+									: t("ui.mesh.mesh_approvals_tray.writing_the_decision")}
 						</span>
 					)}
 				</div>
@@ -696,7 +985,46 @@ const MeshApprovalCard: FC<{
 					</span>
 				}
 			>
+				{consequences.length > 0 && (
+					<ul
+						className="flex flex-col gap-1.5 text-meta text-ink-muted [overflow-wrap:anywhere]"
+						data-tour-tag="mesh-approval-credential-consequences"
+					>
+						{consequences.map((line) => (
+							<li key={line}>{line}</li>
+						))}
+					</ul>
+				)}
+				{recipient && typed?.disclosure?.recipient.keyFingerprint && (
+					<p className="text-meta text-ink-dim [overflow-wrap:anywhere]">
+						{t("ui.mesh.approval.recipient_key", { device: recipient })}{" "}
+						<span className="font-mono">
+							{typed.disclosure.recipient.keyFingerprint}
+						</span>
+					</p>
+				)}
+				{refusalCode && (
+					<p className="text-meta text-ink-dim font-mono">{refusalCode}</p>
+				)}
+				{typed?.disclosure && (
+					<Disclosure
+						summary={
+							<span className="text-meta">
+								{t("ui.mesh.approval.technical_request")}
+							</span>
+						}
+					>
+						<pre
+							className="max-h-48 overflow-auto whitespace-pre-wrap text-meta text-ink-dim [overflow-wrap:anywhere]"
+							data-tour-tag="mesh-approval-signed-evidence"
+						>
+							{typed.disclosure.evidence}
+						</pre>
+					</Disclosure>
+				)}
+
 				{opaque &&
+					consequences.length === 0 &&
 					(row.details?.length ? (
 						<ul
 							className="flex flex-col gap-1.5 text-meta text-ink-muted [overflow-wrap:anywhere]"
@@ -754,40 +1082,48 @@ const MeshApprovalCard: FC<{
 					</dl>
 				)}
 			</Disclosure>
-
-			{refusal && <MeshDecisionRefusal refusal={refusal} />}
 		</li>
 	);
 };
 
-/**
- * One refused decision, rendered where the record it was about stands (or, for a
- * refusal whose record sits inside the CLOSED records section, under the list —
- * the case a naive attach would swallow; `refusalAttached` above decides which).
- *
- * The warning register is the house's for a write refusal (`RemoveMemberDialog`'s
- * own), and the code travels BESIDE the sentence, the way the move refusals
- * carry theirs (`MoveNotice`): one wrapped row, the sentence first, the code
- * trailing on the same line where it fits. The Alert's body is a flex COLUMN,
- * so the two spans stack unless they arrive as one row — design round 1 (D7)
- * measured that the old markup did not carry the parity its comment claimed.
- * No `role="alert"` - the tray is already in the reader's flow; this is a
- * state, not an interruption.
- */
+/** Quiet, focusable outcome; raw machine codes stay in the owning card's Details. */
 const MeshDecisionRefusal: FC<{
 	refusal: { code: string; sentence: string };
-}> = ({ refusal }) => {
+	request?: string;
+	requestIsBackendSummary?: boolean;
+	approvalId: string;
+}> = ({ refusal, request, approvalId, requestIsBackendSummary = false }) => {
 	useI18nLocale();
+	const direction = useTextDirection();
 	return (
-		<Alert
-			variant="warning"
-			className="text-meta"
+		<p
+			tabIndex={-1}
+			className="text-meta text-warning [overflow-wrap:anywhere]"
 			data-tour-tag="mesh-approval-refusal"
+			data-approval-refusal-id={approvalId}
 		>
-			<span className="flex min-w-0 flex-wrap items-center gap-2">
-				<span className="min-w-0 flex-1">{refusal.sentence}</span>
-				<span className="shrink-0 font-mono text-ink-dim">{refusal.code}</span>
-			</span>
-		</Alert>
+			{request ? (
+				namedApprovalRefusalParts(request, refusal.sentence).map(
+					(part, index) =>
+						part.kind === "literal" ? (
+							// biome-ignore lint/suspicious/noArrayIndexKey: locale-authored static punctuation can repeat
+							<Fragment key={`literal:${index}`}>{part.text}</Fragment>
+						) : (
+							<bdi
+								dir={approvalRefusalPartDirection(
+									part.kind,
+									direction,
+									requestIsBackendSummary,
+								)}
+								key={part.kind}
+							>
+								{part.text}
+							</bdi>
+						),
+				)
+			) : (
+				<bdi dir="auto">{refusal.sentence}</bdi>
+			)}
+		</p>
 	);
 };

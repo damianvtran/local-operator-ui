@@ -29,6 +29,10 @@ import type {
 	TeamBridgeOpenResult,
 } from "./team-bridge-notify";
 
+const DOT_ONLY_VARIABLE_KEY = /^\.+$/;
+const PUBLICATION_FORMAT_POINT = /\p{Cf}/u;
+const PUBLICATION_PATH_SEPARATOR = /[/\\:]/;
+
 const id = z
 	.string()
 	.min(1)
@@ -156,6 +160,23 @@ const meshId = z.string().regex(/^[A-Za-z0-9_-]{1,128}$/);
  * is refused HERE, by name, rather than by the daemon's generic 422.
  */
 const approvalId = z.string().regex(/^ap_[0-9a-hjkmnp-tv-z]{1,64}$/);
+/**
+ * What a typed credential decision echoes back: the backend's
+ * `CredentialApprovalAcknowledgment`, field for field. The two credential
+ * operations are the model's own `Literal`, and both digests its
+ * `^sha256:[0-9a-f]{64}$` pattern, so a malformed echo is refused HERE, by
+ * name, instead of by the daemon's generic 422.
+ */
+export const CREDENTIAL_APPROVAL_OPERATIONS = [
+	"credential_finite_share",
+	"credential_inheritance",
+] as const;
+export const CREDENTIAL_APPROVAL_DIGEST = /^sha256:[0-9a-f]{64}$/;
+const credentialApprovalAcknowledgment = {
+	operation: z.enum(CREDENTIAL_APPROVAL_OPERATIONS),
+	requestDigest: z.string().regex(CREDENTIAL_APPROVAL_DIGEST),
+	disclosureDigest: z.string().regex(CREDENTIAL_APPROVAL_DIGEST),
+};
 /**
  * The Library's two opaque identifiers, bounded at the boundary.
  *
@@ -560,7 +581,7 @@ const scheduleUnit = z.enum(["minutes", "hours", "days"]);
  * cannot answer this (review round 1, C-03).
  */
 export function isAddressableVariableKey(key: string): boolean {
-	return !/^\.+$/.test(key);
+	return !DOT_ONLY_VARIABLE_KEY.test(key);
 }
 
 /**
@@ -833,7 +854,7 @@ const isPublicationControl = (point: number): boolean =>
  * different keys — the shadowing an exact local name lookup cannot see.
  */
 const isPublicationFormat = (point: number): boolean =>
-	/\p{Cf}/u.test(String.fromCodePoint(point));
+	PUBLICATION_FORMAT_POINT.test(String.fromCodePoint(point));
 
 /** The bidi overrides a rendered name would use to differ from its bytes. */
 const isPublicationBidiOverride = (point: number): boolean =>
@@ -926,7 +947,8 @@ export function publicationNameRule(name: string): string | null {
 	if (!trimmed) return "must not be empty";
 	if (publicationCharCount(trimmed) > PUBLICATION_NAME_MAX_CHARS)
 		return `must be at most ${PUBLICATION_NAME_MAX_CHARS} characters`;
-	if (/[/\\:]/.test(trimmed)) return 'must not contain "/", "\\" or ":"';
+	if (PUBLICATION_PATH_SEPARATOR.test(trimmed))
+		return 'must not contain "/", "\\" or ":"';
 	if (publicationHasCodePoint(trimmed, isPublicationBidiOverride))
 		return "must not contain Unicode bidirectional override characters";
 	if (publicationHasCodePoint(trimmed, isPublicationControlWhitespace))
@@ -1483,6 +1505,12 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			subscribe: z.boolean().optional(),
 			autoPush: z.boolean().optional(),
 			confirmPublicEgress: z.boolean().optional(),
+			// Adoption is receipt-bound: previews cannot authorize a later overwrite.
+			dryRun: z.boolean().optional(),
+			adoptionStrategy: z.enum(["merge", "keep-local", "take-hub"]).optional(),
+			allowLlm: z.boolean().optional(),
+			confirm: z.boolean().optional(),
+			adoptionReceipt: z.string().min(16).max(128).optional(),
 		})
 		.strict(),
 	/*
@@ -4226,6 +4254,39 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 	z.object({ op: z.literal("approvals.approve"), approvalId }).strict(),
 	z.object({ op: z.literal("approvals.deny"), approvalId }).strict(),
 	/*
+	 * THE TYPED CREDENTIAL DECISIONS (`features.credential_approvals`). A credential
+	 * permission cannot ride the bodiless `approve` above: that request proves
+	 * nothing about which disclosure was on screen, so the backend refuses it for
+	 * these records on purpose (`network/credentials/desktop_approval.py`, "WHY THE
+	 * GENERIC /approve STAYS REFUSED"). These two carry what the card REVIEWED - the
+	 * operation and the two digests the row served - and the server recomputes both
+	 * from the record on disk and refuses a mismatch before any signer runs.
+	 *
+	 * THE DIGESTS ARE ECHOED, NEVER COMPUTED HERE. The renderer has no canonical
+	 * JSON encoder that matches the backend's byte for byte, and a digest this app
+	 * minted would be a claim about a disclosure the server did not serve. So the
+	 * shape is pinned to the backend model's own pattern
+	 * (`CredentialApprovalAcknowledgment`, strict, `extra: forbid`) and the value is
+	 * whatever the list row carried.
+	 *
+	 * `approveCredential` is review -> sign -> apply in one call;
+	 * `applyCredential` is the retry of a signed card whose apply did not finish.
+	 */
+	z
+		.object({
+			op: z.literal("approvals.approveCredential"),
+			approvalId,
+			...credentialApprovalAcknowledgment,
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("approvals.applyCredential"),
+			approvalId,
+			...credentialApprovalAcknowledgment,
+		})
+		.strict(),
+	/*
 	 * THE FLEET ASKS READ (`GET /v1/desktop/asks`), the cross-session companion of
 	 * the per-session queue the canonical frame carries. A GET with no parameters
 	 * at all: the route answers from the DERIVED ask index under the config dir,
@@ -6630,7 +6691,10 @@ export function desktopRequestDeadlineMs(
 	// Op-keyed rather than request-keyed, because the gesture's bound is a property
 	// of the op alone: a caller holding only the op string (a story, a test) gets
 	// the same number the transport uses.
-	if (op === "approvals.approve") return APPROVAL_APPROVE_DEADLINE_MS;
+	// The typed approve signs through the same presence-gated signer before it
+	// applies, so it waits on the same human gesture. Its retry never signs.
+	if (op === "approvals.approve" || op === "approvals.approveCredential")
+		return APPROVAL_APPROVE_DEADLINE_MS;
 	if (op === "tunnel.setup.run") return PHONE_SETUP_RUN_DEADLINE_MS;
 	if (op === "tunnel.setup.plan") return PHONE_SETUP_PLAN_DEADLINE_MS;
 	const hub = hubWriteDeadlineMs(op);
@@ -6899,7 +6963,7 @@ export function desktopRequestDeadlineDetail(
 	 * half: answering again is SAFE, because the store keeps the first decision and
 	 * refuses a second rather than repeating one (write-once, F3).
 	 */
-	if (op === "approvals.approve") {
+	if (op === "approvals.approve" || op === "approvals.approveCredential") {
 		return {
 			code,
 			message: `The app waits up to ${seconds} seconds for an approval, and the signing prompt was still open when it stopped waiting. The request was sent, so the decision may or may not have landed: read the approvals again — if the record still waits, answering it again is safe, because the store keeps the first decision and refuses a second.`,
@@ -7092,7 +7156,19 @@ export type DesktopStreamSubscription = {
  * (`desktop-media.ts`); this is the renderer-facing type so preload and callers
  * agree on the shape.
  */
+/** Captured human-owner receipt; no URL, destination path, MIME or filename. */
+export type DesktopOwnerAuditAttachmentScope = {
+	tenantId: string;
+	conversationId: string;
+	messageId: string;
+	attachmentId: string;
+	expectedAccountId: string;
+};
+
 export type DesktopMediaRequest =
+	| ({
+			op: "team_bridge.owner_audit.attachment";
+	  } & DesktopOwnerAuditAttachmentScope)
 	| { op: "speech.create"; request: Record<string, unknown> }
 	| { op: "speech.agent"; agentId: string; request: Record<string, unknown> }
 	| {
@@ -7115,7 +7191,16 @@ export type DesktopMediaRequest =
 	 * the blob under the same digest. The PUT carries the cropped image as a raw
 	 * body (core sniffs and re-normalises it); the DELETE carries nothing.
 	 */
-	| { op: "agent.avatar"; agentId: string; sha256: string }
+	| {
+			op: "agent.avatar";
+			agentId: string;
+			sha256: string;
+			/**
+			 * A downscaled derivative (core `agent_avatar_sizes`). Sent only when
+			 * core advertises the feature; absent, the 512 px original as before.
+			 */
+			size?: 64 | 128 | 256;
+	  }
 	// Human profile operations are intentionally disjoint from local agents.
 	// The opaque scope binds writes to the login that commissioned the editor.
 	| { op: "account.profile"; expectedAccountId: string }
@@ -7306,6 +7391,7 @@ export type DesktopAPI = {
 		request: DesktopMediaRequest,
 		bytes: Uint8Array | null,
 	) => Promise<DesktopMediaResponse>;
+
 	/**
 	 * Arm ONE supplement-frame mount (turn-supplements memo §4.1, lane U-b).
 	 *
@@ -8070,6 +8156,26 @@ export function desktopEndpoint(request: DesktopRequest): {
 				path: `/v1/desktop/approvals/${encodeURIComponent(request.approvalId)}/deny`,
 				method: "POST",
 			};
+		/*
+		 * The typed pair: the body is the backend model's three fields and nothing
+		 * else (the model forbids extras), each copied from the request unchanged so
+		 * the digests reach the server exactly as the list row served them.
+		 */
+		case "approvals.approveCredential":
+		case "approvals.applyCredential":
+			return {
+				path: `/v1/desktop/approvals/${encodeURIComponent(request.approvalId)}/${
+					request.op === "approvals.approveCredential"
+						? "approve-credential"
+						: "apply-credential"
+				}`,
+				method: "POST",
+				body: {
+					operation: request.operation,
+					request_digest: request.requestDigest,
+					disclosure_digest: request.disclosureDigest,
+				},
+			};
 		case "profiles.list":
 			return { path: "/v1/desktop/profiles", method: "GET" };
 		case "profiles.get":
@@ -8168,6 +8274,19 @@ export function desktopEndpoint(request: DesktopRequest): {
 						: {}),
 					...(request.confirmPublicEgress !== undefined
 						? { confirm_public_egress: request.confirmPublicEgress }
+						: {}),
+					...(request.dryRun !== undefined ? { dry_run: request.dryRun } : {}),
+					...(request.adoptionStrategy !== undefined
+						? { adoption_strategy: request.adoptionStrategy }
+						: {}),
+					...(request.allowLlm !== undefined
+						? { allow_llm: request.allowLlm }
+						: {}),
+					...(request.confirm !== undefined
+						? { confirm: request.confirm }
+						: {}),
+					...(request.adoptionReceipt !== undefined
+						? { adoption_receipt: request.adoptionReceipt }
 						: {}),
 				},
 			};

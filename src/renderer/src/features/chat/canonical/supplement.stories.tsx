@@ -45,6 +45,7 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { useEffect, useRef } from "react";
 import "../../../styles/index.css";
+import sampleMp4Url from "../../../../../../scripts/fixtures/library/sample.mp4?url";
 import type { CanonicalFrontendState } from "../../../../../shared/desktop-session-contract";
 import { CanonicalTranscript } from "./canonical-transcript";
 import CLOSEOUT_GENERATED_DOCUMENT from "./supplement-closeout.generated.html?raw";
@@ -215,6 +216,16 @@ function installSupplementFileReads(): void {
 				outsideWorkspace: false,
 			})),
 		readFileBytes: async (filePath: string) => {
+			/*
+			 * The video tile (2026-11-03) reads its clip over this same bridge, so
+			 * an `.mp4` answers the real two-second sample the library stories
+			 * already decode; a stand-in that does not decode would photograph the
+			 * tile's fallback, not the player.
+			 */
+			if (filePath.endsWith(".mp4")) {
+				const data = await sampleMp4Bytes();
+				return { success: true as const, data, sizeBytes: data.byteLength };
+			}
 			if (!filePath.endsWith(".png")) {
 				return {
 					success: false as const,
@@ -227,6 +238,17 @@ function installSupplementFileReads(): void {
 		},
 	});
 }
+
+/** The library stories' real 320x180 mp4, fetched once per story session. */
+const sampleMp4Bytes = (() => {
+	let promise: Promise<Uint8Array> | null = null;
+	return () => {
+		promise ??= fetch(sampleMp4Url).then(
+			async (response) => new Uint8Array(await response.arrayBuffer()),
+		);
+		return promise;
+	};
+})();
 
 const file = (
 	path: string,
@@ -1359,6 +1381,171 @@ export const FoldedCondensedSoundsCollage: StoryObj = {
 				turnCall("c1"),
 				answer("m1", "Fourteen takes came out of this run."),
 				supplement({ id: "s1", sounds: COLLAGE_SOUNDS }),
+			]}
+		/>
+	),
+};
+
+/*
+ * HIGHLIGHTS DELIVERABLES (2026-11-03): the operator's repro and the states the
+ * design review judges. A turn wrote ten audio files and one HTML page into the
+ * scratchpad; before this change the block showed none of them and the user
+ * went looking on disk. The core now copies written audio into the attachment
+ * store (`sounds[]`, `origin: "file"`) so it plays in the same collage as a
+ * generated sound, and the page is an html-kind row with open-in-canvas.
+ */
+const WRITTEN_AUDIO: SupplementSound[] = Array.from(
+	{ length: 10 },
+	(_, index) => ({
+		...sound(`written-${index}`, `storm-take-${index + 1}.mp3`, 0),
+		origin: "file" as const,
+		path: `picks/storm-take-${index + 1}.mp3`,
+	}),
+);
+const WRITTEN_PAGE = [file("picks/index.html", "index.html", 4_812, "html")];
+const reproRecords = (): TranscriptRecord[] => [
+	prompt(
+		"u0",
+		"Pick the ten best storm takes and make me a page to compare them.",
+	),
+	turnCall("c1"),
+	answer("m1", "I picked ten takes and wrote a comparison page."),
+	supplement({ id: "s1", files: WRITTEN_PAGE, sounds: WRITTEN_AUDIO }),
+];
+
+/** The repro, expanded: ten written-audio cells plus the html row. */
+export const DeliverablesAudioHtmlExpanded: StoryObj = {
+	name: "Deliverables: 10 audio + html (expanded)",
+	render: () => (
+		<Frame
+			height={720}
+			cwd="~/workspace/project"
+			records={reproRecords().slice(2)}
+		/>
+	),
+};
+
+/** The same repro under a condensed run: the identical media, folded work. */
+export const DeliverablesAudioHtmlFold: StoryObj = {
+	name: "Deliverables: 10 audio + html (condensed)",
+	render: () => (
+		<Frame height={720} cwd="~/workspace/project" records={reproRecords()} />
+	),
+};
+
+/**
+ * A pinned file among unpinned ones past the featured cap: no badge, but the
+ * pin leads the section and is never one of the `N more files`.
+ */
+export const DeliverablesPinned: StoryObj = {
+	name: "Deliverables: pinned file",
+	render: () => (
+		<Frame
+			height={460}
+			cwd="~/workspace/project"
+			records={[
+				answer("m1", "The summary you asked for is pinned below."),
+				supplement({
+					id: "s1",
+					files: [
+						file("reports/q1.md", "q1.md", 1_204),
+						file("reports/q2.md", "q2.md", 980),
+						{
+							...file("SUMMARY.html", "SUMMARY.html", 6_400, "html"),
+							pinned: true,
+						},
+					],
+					filesMore: 3,
+					more: ["reports/q3.md", "reports/q4.md", "reports/q5.md"],
+				}),
+			]}
+		/>
+	),
+};
+
+/** Every pinned deliverable was refused: the row still paints its one line. */
+export const DeliverablesWithheldOnly: StoryObj = {
+	name: "Deliverables: withheld only",
+	render: () => (
+		<Frame
+			height={300}
+			records={[
+				answer("m1", "I exported the key pair you asked for."),
+				supplement({
+					id: "s1",
+					withheld: [{ name: "deploy.key", reason: "sensitive" }],
+				}),
+			]}
+		/>
+	),
+};
+
+/** Files that showed plus refused ones: the quiet line sits under the block. */
+export const DeliverablesWithheldMixed: StoryObj = {
+	name: "Deliverables: withheld + files",
+	render: () => (
+		<ImagesFrame
+			height={460}
+			cwd="~/workspace/project"
+			records={[
+				prompt("u0", "Render the charts and copy the raw dumps next to them."),
+				turnCall("c1"),
+				answer("m1", "Charts rendered; the raw dumps are listed below."),
+				supplement({
+					id: "s1",
+					files: [
+						IMAGES[0],
+						IMAGES[1],
+						file("reports/notes.md", "notes.md", 812),
+					],
+					withheld: [
+						{ name: "dump-a.parquet", reason: "too-large" },
+						{ name: "dump-b.parquet", reason: "too-large" },
+						{ name: "secrets.env", reason: "sensitive" },
+					],
+					withheldMore: 1,
+				}),
+			]}
+		/>
+	),
+};
+
+/** A video the turn wrote: a muted, click-to-play preview tile. */
+export const DeliverablesVideo: StoryObj = {
+	name: "Deliverables: video file",
+	render: () => (
+		<ImagesFrame
+			height={480}
+			cwd="~/workspace/project"
+			records={[
+				answer("m1", "Here is the two-second preview render."),
+				supplement({
+					id: "s1",
+					files: [
+						file("renders/preview.mp4", "preview.mp4", 2_309, "video"),
+						file("renders/preview-notes.md", "preview-notes.md", 412),
+					],
+				}),
+			]}
+		/>
+	),
+};
+
+/** The video tile under a condensed run: the same tile, folded work. */
+export const DeliverablesVideoFold: StoryObj = {
+	name: "Deliverables: video file (condensed)",
+	render: () => (
+		<ImagesFrame
+			height={580}
+			cwd="~/workspace/project"
+			records={[
+				prompt("u0", "Render a short preview."),
+				turnCall("c1"),
+				answer("m1", "Here is the two-second preview render."),
+				supplement({
+					id: "s1",
+					files: [file("renders/preview.mp4", "preview.mp4", 2_309, "video")],
+				}),
 			]}
 		/>
 	),

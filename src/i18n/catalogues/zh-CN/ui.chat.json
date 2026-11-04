@@ -201,5 +201,8 @@
 	"ui.chat.session_status.context_aria_no_reading": "上下文：暂无读数。{hint}",
 	"ui.chat.session_status.context_aria_reading": "上下文：{spelling}{estimate, select, yes {，估算值} other {}}。{hint}",
 	"ui.chat.session_status.active_time_aria": "活跃时间：{duration}。{explanation}",
-	"ui.chat.session_status.duration_explanation": "工作所用的时间；等待不计入。"
+	"ui.chat.session_status.duration_explanation": "工作所用的时间；等待不计入。",
+	"ui.chat.session_status.effort_level.low": "低",
+	"ui.chat.session_status.effort_level.medium": "中",
+	"ui.chat.session_status.effort_level.high": "高"
 }

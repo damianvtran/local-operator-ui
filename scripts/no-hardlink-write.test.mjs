@@ -13,6 +13,10 @@ import {
 import { tmpdir } from "node:os";
 import { join, relative } from "node:path";
 import { test } from "node:test";
+import {
+	DESKTOP_COMMAND,
+	discoverDesktopTests,
+} from "./desktop-test-inventory.mjs";
 
 /*
  * The shared-inode write guard, and the wiring that arms it for the whole
@@ -113,7 +117,6 @@ const ORIGINAL = "ORIGINAL SHARED CONTENT";
 const LINK_COUNT = /link count (\d+), shared inode (\d+)/;
 const GUARDING = /no-hardlink-write: guarding \d+ fs entry points/;
 const STANDING_DOWN = /STANDING DOWN/;
-const TEST_DESKTOP = /^node scripts\/run-desktop-tests\.mjs (.*)$/;
 const REPORTS_THE_LINK = /declared inside the temp ground/;
 const IMPORT_FLAG = /--import=\$\{GUARD_PRELOAD\.href\}/;
 const NAMES_THE_PATH = /refusing writeFileSync on /;
@@ -128,7 +131,7 @@ const SHARED_INTACT = /SHARED=ORIGINAL SHARED CONTENT/;
 const SIBLING_INTACT = /SIBLING=ORIGINAL SHARED CONTENT/;
 const SHARED_STUBBED = /SHARED=STUB VIA TEMP GROUND/;
 const BOUND_NAMED = /larger than this guard checks/;
-const WHITESPACE = /\s+/;
+const ONE_SPAWN = /runNode\(\[RUNNER, \.\.\.rest, \.\.\.files\], ROOT\)/;
 
 /**
  * The surfaces that can retruncate the target, each one exercised through the
@@ -562,22 +565,30 @@ test("the desktop runner arms the guard for every file in the test:desktop list"
 		readFileSync(join(REPO, "package.json"), "utf8"),
 	).scripts;
 	const command = scripts["test:desktop"];
-	const match = command.match(TEST_DESKTOP);
-	assert.ok(match, `test:desktop must go through the runner; got ${command}`);
+	assert.equal(
+		command,
+		DESKTOP_COMMAND,
+		`test:desktop must go through the derived inventory and the runner; got ${command}`,
+	);
 	assert.match(
 		readFileSync(RUNNER, "utf8"),
 		IMPORT_FLAG,
 		"the runner must pass --import to the child; dropping it disarms every file below",
 	);
+	assert.match(
+		readFileSync(join(REPO, "scripts", "desktop-test-inventory.mjs"), "utf8"),
+		ONE_SPAWN,
+		"the inventory must reach the runner in ONE spawn, so one --import covers every file",
+	);
 
 	/*
-	 * EVERY file the list runs is enumerated here rather than a sample, and the
-	 * runner spawns ONE child for the whole list (a single `spawn` call whose argv
-	 * carries every file), so that one `--import` covers all of them. A new test
-	 * file therefore cannot arrive unguarded: it joins this list, and this list is
-	 * what the runner arms.
+	 * EVERY file the inventory runs is enumerated here rather than a sample, and
+	 * the runner spawns ONE child for the whole list (a single `spawn` call whose
+	 * argv carries every file), so that one `--import` covers all of them. A new
+	 * test file therefore cannot arrive unguarded: it joins the derived
+	 * inventory, and that inventory is what the runner arms.
 	 */
-	const files = match[1].trim().split(WHITESPACE);
+	const files = discoverDesktopTests(REPO);
 	assert.ok(
 		files.length > 200,
 		`expected the whole desktop list, got ${files.length}`,

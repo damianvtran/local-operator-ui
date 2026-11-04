@@ -30,3 +30,37 @@ export const useDrawerBackToTop = create<{
 	backToTop: null,
 	publish: (count, backToTop) => set({ count, backToTop }),
 }));
+
+/**
+ * "Show in conversation" from the drawer's Updates tab: a request for the open
+ * transcript to bring one `notify` call into view.
+ *
+ * WHY A STORE. The drawer and the transcript are siblings in `chat-content.tsx`,
+ * and only the transcript owns what a jump needs: the row model, the render
+ * window, paging older history and the collapse walk. The drawer used to
+ * `querySelector` the flag line instead, which finds nothing the moment the
+ * line's turn is collapsed or its history is not loaded, so the press did nothing.
+ * `nonce` makes a second press on the same row a new request.
+ */
+export type NotificationRevealRequest = {
+	sessionId: string;
+	/** The `notify` call id (`item.anchor_id`); its transcript row is `tool:<id>`. */
+	anchorId: string;
+	nonce: number;
+};
+
+export const useNotificationReveal = create<{
+	request: NotificationRevealRequest | null;
+	reveal: (sessionId: string, anchorId: string) => void;
+	/** The transcript took the request; clear it unless a newer one replaced it. */
+	settle: (nonce: number) => void;
+}>((set, get) => ({
+	request: null,
+	reveal: (sessionId, anchorId) =>
+		set({
+			request: { sessionId, anchorId, nonce: (get().request?.nonce ?? 0) + 1 },
+		}),
+	settle: (nonce) => {
+		if (get().request?.nonce === nonce) set({ request: null });
+	},
+}));

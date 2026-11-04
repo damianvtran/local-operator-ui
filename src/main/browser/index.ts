@@ -39,6 +39,10 @@ import {
 	presentPopupWindow,
 } from "../window-raise";
 import {
+	createRecordingEncoderService,
+	disposeAllRecordingEncoders,
+} from "./actions/recording-encoder-host";
+import {
 	AddressOverlayController,
 	type AddressOverlayFacts,
 } from "./address-overlay";
@@ -53,6 +57,7 @@ import {
 	browserPageOwnsChord,
 	createBrowserChordRouter,
 } from "./browser-chord";
+import { observeBrowserLocale } from "./browser-locale";
 import { CdpPool } from "./cdp";
 import {
 	type ConsentAttentionPayload,
@@ -296,6 +301,16 @@ export interface StartBrowserHostOptions {
 		enabled: boolean;
 		documentUrl: string;
 		/** S6b's purpose-built preload for the card document. */
+		preloadPath: string;
+	};
+	/**
+	 * The hidden H.264 encoder window behind `record_start {quality: "high"}`. Both
+	 * values are the app's own bundled files, derived from the trusted renderer URL
+	 * and `__dirname` in `src/main/index.ts`, never caller-supplied. Absent means
+	 * `high` is refused `record_quality_unavailable` and `standard` is unchanged.
+	 */
+	recordingEncoder?: {
+		documentUrl: string;
 		preloadPath: string;
 	};
 	log: (message: string) => void;
@@ -1281,6 +1296,13 @@ async function initializeBrowserHost(
 			approvals,
 			ownership,
 			downloads,
+			recordingEncoder: options.recordingEncoder
+				? createRecordingEncoderService({
+						documentUrl: options.recordingEncoder.documentUrl,
+						preloadPath: options.recordingEncoder.preloadPath,
+						log,
+					})
+				: undefined,
 			log,
 			onChanged: notifyChanged,
 			facts: () => facts,
@@ -1307,6 +1329,10 @@ async function initializeBrowserHost(
 					}
 				: undefined,
 		});
+		// Main can resolve language after renderer renegotiation. Publish from the
+		// actual locale owner, not from the renderer's earlier request or a timer.
+		const stopLocaleUpdates = observeBrowserLocale(options.window);
+		rollback.add(stopLocaleUpdates);
 		respondToConsent = (entryId, decision) =>
 			host.respondToConsent(entryId, decision);
 		// The store exists from here on; every later clear reaches it. Assigned
@@ -1681,6 +1707,7 @@ async function initializeBrowserHost(
 			sessionCookies: () => restoreReport,
 			...(addressOverlay ? { addressOverlay: probeAddressOverlay } : {}),
 			stop: async () => {
+				stopLocaleUpdates();
 				detachChords();
 				host.flushHistory();
 				/*
@@ -1727,6 +1754,10 @@ async function initializeBrowserHost(
 					approvalsExpiryTimer = null;
 				}
 				approvalsOverlay?.dispose("host-stop");
+				// Every hidden encoder window, before the views: a recording's own abort
+				// reaches the same dispose through `cdp.close()`, and this is the one that
+				// does not depend on a tab still being attached (D21).
+				disposeAllRecordingEncoders();
 				registry.destroyAll();
 				await Promise.allSettled([...releases]);
 				await cdp.close();

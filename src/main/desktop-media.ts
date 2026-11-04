@@ -1,3 +1,4 @@
+import { readOwnerAuditAttachment } from "./team-bridge-audit-media";
 /**
  * Authenticated binary/multipart relay for the legacy media routes.
  *
@@ -20,6 +21,8 @@ import {
 	desktopRefusalCodeForStatus,
 	isDesktopRefusalCode,
 } from "../shared/desktop-contract";
+
+const NOTIFICATION_INITIALS = /^[\p{L}\p{N}]{0,2}$/u;
 
 const id = z
 	.string()
@@ -59,7 +62,22 @@ const profileFields = z
 	.strict()
 	.refine((fields) => Object.keys(fields).length > 0);
 
+// Owner audit is a different authority domain. Keep the tuple closed and
+// explicit even though several ids also appear in member attachment requests.
+const ownerAuditAttachmentTupleSchema = z
+	.object({
+		tenantId: id,
+		conversationId: id,
+		messageId: id,
+		attachmentId: id,
+		expectedAccountId: id,
+	})
+	.strict();
+
 const mediaRequestSchema = z.discriminatedUnion("op", [
+	ownerAuditAttachmentTupleSchema
+		.extend({ op: z.literal("team_bridge.owner_audit.attachment") })
+		.strict(),
 	z
 		.object({ op: z.literal("account.profile"), expectedAccountId: id })
 		.strict(),
@@ -133,6 +151,9 @@ const mediaRequestSchema = z.discriminatedUnion("op", [
 			op: z.literal("agent.avatar"),
 			agentId: id,
 			sha256: z.string().regex(/^[0-9a-f]{64}$/),
+			// Closed to core's three derivatives (`agent_avatar_sizes`), so the
+			// renderer cannot make main build an arbitrary query.
+			size: z.union([z.literal(64), z.literal(128), z.literal(256)]).optional(),
 		})
 		.strict(),
 	z.object({ op: z.literal("agent.avatar.put"), agentId: id }).strict(),
@@ -271,7 +292,7 @@ const mediaRequestSchema = z.discriminatedUnion("op", [
 			initials: z
 				.string()
 				.max(4)
-				.refine((value) => /^[\p{L}\p{N}]{0,2}$/u.test(value.normalize("NFC"))),
+				.refine((value) => NOTIFICATION_INITIALS.test(value.normalize("NFC"))),
 			avatar: z
 				.object({ account_id: id, hash: z.string().regex(/^[0-9a-f]{16}$/) })
 				.strict()
@@ -406,7 +427,10 @@ function endpoint(request: DesktopMediaRequest): {
 			return { path: `/v1/agents/${request.agentId}/export`, method: "GET" };
 		case "agent.avatar":
 			return {
-				path: `/v1/agents/${request.agentId}/avatar?${new URLSearchParams({ v: request.sha256 })}`,
+				path: `/v1/agents/${request.agentId}/avatar?${new URLSearchParams({
+					v: request.sha256,
+					...(request.size ? { size: String(request.size) } : {}),
+				})}`,
 				method: "GET",
 			};
 		case "agent.avatar.put":
@@ -452,6 +476,11 @@ function endpoint(request: DesktopMediaRequest): {
 			return {
 				path: `/v1/desktop/team-bridge/conversations/${request.conversationId}/attachments?${new URLSearchParams({ tenant_id: request.tenantId, expected_account_id: request.expectedAccountId })}`,
 				method: "POST",
+			};
+		case "team_bridge.owner_audit.attachment":
+			return {
+				path: `/v1/desktop/team-bridge/owner-audit/conversations/${request.conversationId}/messages/${request.messageId}/attachments/${request.attachmentId}?${new URLSearchParams({ tenant_id: request.tenantId, expected_account_id: request.expectedAccountId })}`,
+				method: "GET",
 			};
 		case "team_bridge.attachment":
 			return {
@@ -597,6 +626,7 @@ export async function requestDesktopMediaOutcome(
 		request.op === "library.thumbnail" ||
 		request.op === "library.waveform" ||
 		request.op === "team_bridge.attachment" ||
+		request.op === "team_bridge.owner_audit.attachment" ||
 		request.op === "team_bridge.avatar" ||
 		request.op === "team_bridge.endpoint_avatar" ||
 		request.op === "team_bridge.notification_avatar"
@@ -660,14 +690,18 @@ export async function requestDesktopMediaOutcome(
 		const response = await fetch(new URL(target.path, backendUrl), {
 			method: target.method,
 			headers: {
-				Accept: "application/json, audio/*, image/*, application/octet-stream",
+				Accept:
+					request.op === "team_bridge.owner_audit.attachment"
+						? "image/png, image/jpeg"
+						: "application/json, audio/*, image/*, application/octet-stream",
 				...(contentType ? { "Content-Type": contentType } : {}),
 				Authorization: `Bearer ${token}`,
 			},
 			body,
 			// Private avatars are cached only as authority-scoped renderer blobs.
 			// Neither Electron nor an intermediary may persist them across login.
-			...(request.op === "team_bridge.avatar" ||
+			...(request.op === "team_bridge.owner_audit.attachment" ||
+			request.op === "team_bridge.avatar" ||
 			request.op === "team_bridge.endpoint_avatar" ||
 			request.op === "team_bridge.notification_avatar"
 				? { cache: "no-store" as const }
@@ -679,6 +713,12 @@ export async function requestDesktopMediaOutcome(
 		});
 		answered = true;
 		const responseType = response.headers.get("content-type") ?? "";
+		if (request.op === "team_bridge.owner_audit.attachment") {
+			return {
+				response: await readOwnerAuditAttachment(response),
+				answered: true,
+			};
+		}
 		if (
 			request.op === "team_bridge.avatar" ||
 			request.op === "team_bridge.endpoint_avatar" ||

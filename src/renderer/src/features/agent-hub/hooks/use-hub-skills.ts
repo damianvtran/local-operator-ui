@@ -8,13 +8,17 @@ import {
 	desktopKeys,
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
-import type { HubDirectionalReport } from "@shared/api/local-operator/hub-link-actions";
 import { hubLinksKey } from "@shared/api/local-operator/hub-link-hooks";
 import type { HubLink, HubLinks } from "@shared/api/local-operator/hub-links";
 import type {
 	SkillPublicationDraft,
 	SkillPublicationResult,
 } from "@shared/api/local-operator/hub-publication";
+import {
+	type SkillAdoptionStrategy,
+	type SkillPullResult,
+	skillPullDidWrite,
+} from "@shared/api/local-operator/hub-skill-adoption";
 import {
 	getOrgSkill,
 	getPublicSkill,
@@ -173,6 +177,21 @@ function settleSkillLinkWrite(client: QueryClient) {
 	void client.invalidateQueries({ queryKey: ["desktop", "skills"] });
 }
 
+export type PullHubSkillInput = {
+	requestId: string;
+	remoteId: string;
+	scope: HubSkillScope;
+	alias: string;
+	subscribe: boolean;
+	autoPush: boolean;
+	consent: boolean;
+	dryRun?: boolean;
+	adoptionStrategy?: SkillAdoptionStrategy;
+	allowLlm?: boolean;
+	confirm?: boolean;
+	adoptionReceipt?: string;
+};
+
 export function usePullHubSkill(
 	/*
 	 * `retry: 0` for the Skills tab's Download (#1458 QA r2 Q11 / review r3 m2):
@@ -185,21 +204,9 @@ export function usePullHubSkill(
 	const client = useQueryClient();
 	return useMutation({
 		...(options.retry === undefined ? {} : { retry: options.retry }),
-		mutationFn: (input: {
-			requestId: string;
-			remoteId: string;
-			scope: HubSkillScope;
-			alias: string;
-			subscribe: boolean;
-			autoPush: boolean;
-			consent: boolean;
-		}) => {
+		mutationFn: (input: PullHubSkillInput) => {
 			requireSkillsAdapter(client);
-			return desktopResult<{
-				reports: HubDirectionalReport[];
-				link: HubLink;
-				links: HubLinks;
-			}>({
+			return desktopResult<SkillPullResult>({
 				op: "hub.skillPull",
 				requestId: input.requestId,
 				hubId: input.remoteId,
@@ -210,13 +217,29 @@ export function usePullHubSkill(
 				subscribe: input.subscribe,
 				autoPush: input.autoPush,
 				confirmPublicEgress: input.consent,
+				...(input.dryRun !== undefined ? { dryRun: input.dryRun } : {}),
+				...(input.adoptionStrategy !== undefined
+					? { adoptionStrategy: input.adoptionStrategy }
+					: {}),
+				...(input.allowLlm !== undefined ? { allowLlm: input.allowLlm } : {}),
+				...(input.confirm !== undefined ? { confirm: input.confirm } : {}),
+				...(input.adoptionReceipt !== undefined
+					? { adoptionReceipt: input.adoptionReceipt }
+					: {}),
 			});
 		},
-		onSuccess: (result) => {
-			seedSkillLinkWrite(client, result);
+		onSuccess: (result, input) => {
+			// A dry run may return links, but cannot seed an installed-state cache.
+			if (skillPullDidWrite(result, input.dryRun)) {
+				seedSkillLinkWrite(client, result);
+			}
 		},
-		onSettled: () => {
-			settleSkillLinkWrite(client);
+		onSettled: (result, _error, input) => {
+			// Preserve the ordinary pull's read-back, including uncertain failures,
+			// but a preview must not masquerade as an install cache transition.
+			if (!input.dryRun && !result?.dry_run && !result?.confirmation_required) {
+				settleSkillLinkWrite(client);
+			}
 		},
 	});
 }

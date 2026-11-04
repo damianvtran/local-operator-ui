@@ -444,13 +444,16 @@ export function effortChosenRung(
 export function effortDisplay(level: string): string {
 	const trimmed = level.trim();
 	if (!trimmed) return trimmed;
+	// These display words are copy, not wire values. Keep the shared formatter
+	// as their owner so the status strip and both effort pickers agree; the
+	// lowercase rung and raw `inherit` never go through this display lookup.
 	const known: Record<string, string> = {
 		auto: "Auto",
 		none: "None",
 		minimal: "Minimal",
-		low: "Low",
-		medium: "Medium",
-		high: "High",
+		low: t("ui.chat.session_status.effort_level.low"),
+		medium: t("ui.chat.session_status.effort_level.medium"),
+		high: t("ui.chat.session_status.effort_level.high"),
 		xhigh: "xHigh",
 		max: "Max",
 	};

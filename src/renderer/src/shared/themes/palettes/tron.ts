@@ -97,21 +97,40 @@ export const tron: ThemeDefinition = {
 		 * lifting a dark ground raises the luminance every ink is measured against, so
 		 * the inks in this file were re-seated on the same commit rather than after it.
 		 */
-		canvas: "#1D2025",
-		surface: "#1F2734",
-		elevated: "#232D3D",
+		/*
+		 * THE DARKER-GROUNDS PASS (2026-11-03, `docs/branding.md` § 2) supersedes the
+		 * earlier L* 12 dark floor: the dark band is now L* 9-15 (target 9-13), and
+		 * the canvas maps by `L*_new = 9 + 0.6 x (L*_old - 12)`, a map that preserves
+		 * the fleet's order (re-solves may move a canvas off it, up to +-1.04 L*).
+		 * Here every ground-class role (the grounds, the row states, the two fills,
+		 * the washes and the hairlines) moved by the canvas's own ΔL* holding its `a`
+		 * and `b`; inks, accents and `borderControl` did not move.
+		 * Measured:
+		 * canvas #1D2025 -> #171A1F (L* 12.14 -> 9.16)
+		 * surface #1F2734 -> #19212E (L* 15.44 -> 12.55)
+		 * elevated #232D3D -> #1D2737 (L* 18.24 -> 15.42)
+		 * sunken #1A1B1E -> #131418 (L* 9.78 -> 6.37)
+		 * Re-solved off the uniform shift, because a contract floor refused it there:
+		 * `sunken`. `pnpm check-themes` is the measurement for each.
+		 */
+		canvas: "#171A1F",
+		surface: "#19212E",
+		elevated: "#1D2737",
 		// The TUI's 03060B darkened one step to clear the four-ground separation
 		// floor: against `canvas` it measured 1.029:1, under the contract's 1.03. The
 		// cast is unchanged, so the Grid still reads blue-black.
-		sunken: "#1A1B1E",
+		sunken: "#131418",
 
 		// The user block's fill: `surface` itself, which already clears the
 		// role's ΔE00 4.0 floor off this canvas (measured 4.93).
-		messageSurface: "#1F2734",
+		messageSurface: "#19212E",
 		// The media slot's well: ΔE00 4.22 off the canvas, where `sunken` alone
 		// measures 2.12 - a step away from the canvas to clear the role's 4.0
 		// floor, which the tile carries because the fill IS its resting extent.
-		mediaSurface: "#181718",
+		// Lifted #121011 -> #151314 (L* 4.87 -> 6.10) once Team Bridge's
+		// inline images and file chips began to paint this well (#1659): as far
+		// toward L* 6 as the media floor allows (ΔE00 4.19 off canvas; chip hosts >= 3.0).
+		mediaSurface: "#151314",
 
 		/*
 		 * ROW STATES, and `highlight` retired in the same change. Both roles are a
@@ -130,8 +149,8 @@ export const tron: ThemeDefinition = {
 		 *                       `rowHover`; the pair ranks 1.32 `L*` and 7.7 `C*`,
 		 *                       `inkDim` 5.08:1.
 		 */
-		rowHover: "#282D35",
-		rowSelected: "#243043",
+		rowHover: "#21262E",
+		rowSelected: "#1D293C",
 
 		ink: "#D8E6F2",
 		/*
@@ -171,10 +190,10 @@ export const tron: ThemeDefinition = {
 		 * 1.15-2.0:1 band, because a separator that shouted would be a border.
 		 * `elevated` is the tightest ground at ΔE00 5.69.
 		 */
-		hairline: "#283C4F",
+		hairline: "#213548",
 		// `hairline` stepped toward `inkDim`, so it reads on this palette's own
 		// `sunken`: 1.64:1 there against `hairline`'s 1.52:1.
-		hairlineStrong: "#2D4155",
+		hairlineStrong: "#263A4E",
 		// The TUI `edge-hi` 2A4660 lifted in L* until it clears 3:1 on `elevated`.
 		/*
 		 * Legibility pass: `borderControl` is the sole boundary of every input in the
@@ -194,7 +213,7 @@ export const tron: ThemeDefinition = {
 		// The palette's own `info`, which is the role this composer's command
 		// word already resolved to: the tint moves no pixel the palette did not
 		// already choose. The role and its floors are in `palette-contract.ts`.
-		accentWash: "#052631",
+		accentWash: "#00202B",
 		onAccent: "#00050D",
 		/*
 		 * The theme's own second hue, and the port had dropped it: the TUI's
@@ -210,10 +229,10 @@ export const tron: ThemeDefinition = {
 		 * 2.0), 6.33:1 for `accentAlt` on it, and 7.56 from the nearest ground it
 		 * is painted on.
 		 */
-		accentAltWash: "#232032",
+		accentAltWash: "#1D1A2C",
 
 		success: "#3FE0B0",
-		successWash: "#0D2727",
+		successWash: "#072121",
 		/*
 		 * Legibility pass: `successBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
@@ -224,7 +243,7 @@ export const tron: ThemeDefinition = {
 		// E8C14A, the TUI's gold: with an orange danger, a second warm state can only
 		// be distinguished by hue, and gold clears the 15 ΔE00 semantic separation.
 		warning: "#E8C14A",
-		warningWash: "#232319",
+		warningWash: "#1D1D13",
 		/*
 		 * Legibility pass: `warningBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
@@ -235,7 +254,7 @@ export const tron: ThemeDefinition = {
 		// FF7A2F — orange, not red. The Grid's own error colour, and the reason this
 		// theme does not need a red at all.
 		danger: "#FF7A2F",
-		dangerWash: "#261916",
+		dangerWash: "#20130F",
 		/*
 		 * Legibility pass: `dangerBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
@@ -246,7 +265,7 @@ export const tron: ThemeDefinition = {
 		// 7AB8FF, the TUI's `signal` — the Grid's day-cycle blue, distinct from the
 		// cyan accent by hue rather than by lightness.
 		info: "#7AB8FF",
-		infoWash: "#152131",
+		infoWash: "#0E1B2B",
 		/*
 		 * Legibility pass: `infoBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered

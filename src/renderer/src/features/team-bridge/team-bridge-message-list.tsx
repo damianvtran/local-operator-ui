@@ -15,6 +15,7 @@ import type {
 	TeamBridgeEvent,
 	TeamBridgeMessage,
 } from "../../../../shared/team-bridge-contract";
+import { TeamBridgeMessageAttachments } from "./attachments/member-attachments";
 import { InlineDataBody } from "./inline-data-receipt";
 import { useMessageMentions } from "./mentions/use-message-mentions";
 import {
@@ -24,7 +25,6 @@ import {
 	teamBridgeObserveArrivals,
 	teamBridgeSuspendArrivals,
 } from "./team-bridge-arrival-model";
-import { TeamBridgeMessageAttachments } from "./team-bridge-attachments";
 import { TeamBridgeDeliveryAnnotation } from "./team-bridge-delivery-annotation";
 import { EMOJI_ENTRIES } from "./team-bridge-emoji-model";
 import { warmEmojiProbeCache } from "./team-bridge-emoji-support";
@@ -872,9 +872,18 @@ const MessageRowView: FC<MessageRowProps> = ({
 					</p>
 				)}
 				<TeamBridgeDeliveryAnnotation message={message} />
-				{/* Images come ONLY from the structured list, never from the body. */}
-				{(message.attachments?.length ?? 0) > 0 && (
+				{/* Images and files come ONLY from the structured lists, never from
+				    the body. A file-less message keeps the pre-S3b condition. */}
+				{((message.attachments?.length ?? 0) > 0 ||
+					(message.files?.length ?? 0) > 0 ||
+					(message.file_count ?? 0) > 0) && (
 					<TeamBridgeMessageAttachments
+						key={JSON.stringify([
+							accountId,
+							tenantId,
+							message.conversation_id,
+							message.id,
+						])}
 						message={message}
 						tenantId={tenantId ?? null}
 						density={density}

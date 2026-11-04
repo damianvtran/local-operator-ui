@@ -49,21 +49,38 @@ export const oneDark: ThemeDefinition = {
 		mode: "dark",
 
 		// Upstream mono-1, the page.
-		canvas: "#282C34",
+		/*
+		 * THE DARKER-GROUNDS PASS (2026-11-03, `docs/branding.md` § 2) supersedes the
+		 * earlier L* 12 dark floor: the dark band is now L* 9-15 (target 9-13), and
+		 * the canvas maps by `L*_new = 9 + 0.6 x (L*_old - 12)`, a map that preserves
+		 * the fleet's order (re-solves may move a canvas off it, up to +-1.04 L*).
+		 * Here every ground-class role (the grounds, the row states, the two fills,
+		 * the washes and the hairlines) moved by the canvas's own ΔL* holding its `a`
+		 * and `b`; inks, accents and `borderControl` did not move.
+		 * Measured:
+		 * canvas #282C34 -> #1D2129 (L* 17.92 -> 12.67)
+		 * surface #2F343D -> #232831 (L* 21.57 -> 15.99)
+		 * elevated #353B46 -> #292F3A (L* 24.72 -> 19.27)
+		 * sunken #21252B -> #161A20 (L* 14.52 -> 9.10)
+		 * Re-solved off the uniform shift, because a contract floor refused it there:
+		 * `mediaSurface`, `warningWash`. `pnpm check-themes` is the measurement for
+		 * each.
+		 */
+		canvas: "#1D2129",
 		// Upstream mono-2, and `elevated` is mono-3: the scheme's own two raised tones.
 		// ΔE00 2.2 and 2.4 up the ladder, with the well one step under mono-0.
-		surface: "#2F343D",
-		elevated: "#353B46",
-		sunken: "#21252B",
+		surface: "#232831",
+		elevated: "#292F3A",
+		sunken: "#161A20",
 
 		// The user block's fill: ΔE00 4.12 off the canvas, where `surface` alone
 		// measures 2.58 - a step toward `elevated` to clear the role's 4.0 floor,
 		// which the block carries because the fill IS its boundary.
-		messageSurface: "#333843",
+		messageSurface: "#282D38",
 		// The media slot's well: ΔE00 4.00 off the canvas, where `sunken` alone
 		// measures 2.57 - a step away from the canvas to clear the role's 4.0
 		// floor, which the tile carries because the fill IS its resting extent.
-		mediaSurface: "#1d2126",
+		mediaSurface: "#10151a",
 
 		/*
 		 * ROW STATES, and `highlight` retired in the same change. Both roles are a
@@ -82,8 +99,8 @@ export const oneDark: ThemeDefinition = {
 		 *                       `rowHover`; the pair ranks 1.62 `L*` and 6.2 `C*`,
 		 *                       `inkDim` 5.11:1.
 		 */
-		rowHover: "#383B41",
-		rowSelected: "#363F4E",
+		rowHover: "#2C2F35",
+		rowSelected: "#2A3342",
 
 		// Canonical mono-4 BEC4D0 is 5.95:1 on `elevated` — the 7:1 body floor is more than a
 		// reach for a syntax foreground. Lifted along the same cool neutral.
@@ -128,10 +145,10 @@ export const oneDark: ThemeDefinition = {
 
 		// Derived: the scheme has no rule colour. Holds ΔE00 4.1 from every ground and
 		// 1.21-1.79:1 against them, so it divides rather than bounds.
-		hairline: "#464C58",
+		hairline: "#3A404C",
 		// `hairline` stepped toward `inkDim`, so it reads on this palette's own
 		// `sunken`: 1.93:1 there against `hairline`'s 1.79:1.
-		hairlineStrong: "#4B515D",
+		hairlineStrong: "#3F4551",
 		// Upstream gutter 4B5263 is 1.36:1 against the grounds — a decorative value in
 		// a structural role. Lifted along the same neutral to 3.1:1 on the lightest
 		// ground.
@@ -160,7 +177,7 @@ export const oneDark: ThemeDefinition = {
 		tokenCommand: "#5ABAC6",
 		// The signal lifted in L* to clear 4.5:1 on `elevated` (it measured 4.40), at a
 		// cost of ΔE00 1.12 from the signal itself; 5.52:1 on `surface`.
-		accentWash: "#28333C",
+		accentWash: "#1D2831",
 		onAccent: "#21252B",
 		/*
 		 * The theme's own second hue, from the TUI's `label` token (`#c678dd`,
@@ -196,20 +213,20 @@ export const oneDark: ThemeDefinition = {
 		 * 2.0), 4.67:1 for `accentAlt` on it, and 7.53 from the nearest ground it
 		 * is painted on.
 		 */
-		accentAltWash: "#372F39",
+		accentAltWash: "#2C242E",
 
 		success: "#98C379",
-		successWash: "#3E4943",
+		successWash: "#323D37",
 		successBorder: "#6E974E",
 
 		warning: "#E5C07B",
-		warningWash: "#555048",
+		warningWash: "#443F37",
 		warningBorder: "#A98641",
 
 		// Canonical red E06C75 is 3.26:1 on `elevated` (< 4.5), the widest miss here. Lifted
 		// along the same red, which keeps it a syntax token and a danger callout at once.
 		danger: "#FF8990",
-		dangerWash: "#362A31",
+		dangerWash: "#2B1F26",
 		dangerBorder: "#DA6870",
 
 		/*
@@ -221,7 +238,7 @@ export const oneDark: ThemeDefinition = {
 		 * legibility, is what the ramp change was allowed to keep.
 		 */
 		info: "#58B8C4",
-		infoWash: "#263647",
+		infoWash: "#192A3A",
 		infoBorder: "#3498A4",
 
 		// The shadow and scrim are the ground tinted, as in every palette here.

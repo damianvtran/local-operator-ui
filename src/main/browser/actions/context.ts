@@ -3,6 +3,7 @@ import type { CdpPool } from "../cdp";
 import type { DownloadArmer } from "../downloads";
 import type { OwnershipLedger } from "../ownership";
 import type { TabRegistry } from "../registry";
+import type { RecordingEncoderService } from "./recording-hq";
 
 /**
  * What every action is given, and the two identity helpers they all use.
@@ -22,6 +23,11 @@ export interface BrowserActionContext {
 	 * the capture owns an Electron `DownloadItem`'s lifecycle, which is knowledge
 	 * the registry deliberately does not have. */
 	readonly downloads: DownloadArmer;
+	/** The hidden H.264 encoder window behind `record_start {quality: "high"}`
+	 * (`recording-encoder-host.ts`). Optional: a host or test built without it
+	 * answers `high` with `record_quality_unavailable` and records `standard`
+	 * exactly as before. */
+	readonly recordingEncoder?: RecordingEncoderService;
 	/** Put a line in the app's log. Never model-facing. */
 	readonly log: (message: string) => void;
 	/** Ask the chrome surface to re-render (tabs changed, a prompt moved). */

@@ -9,6 +9,7 @@ import {
 	Menu,
 	type NativeImage,
 	app,
+	clipboard,
 	dialog,
 	globalShortcut,
 	ipcMain,
@@ -87,6 +88,7 @@ import {
 	startBrowserHost,
 	stopBrowserHost,
 } from "./browser";
+import { disposeAllRecordingEncoders } from "./browser/actions/recording-encoder-host";
 import {
 	ADDRESS_OVERLAY_VISIBLE_MAX_MS,
 	addressListDocumentUrlFor,
@@ -398,7 +400,8 @@ app.setName("Local Operator");
  * two byte-identical relaunches came up regular and accessory — so the policy
  * is asserted here, where the mode is already known, instead of trusted from
  * whatever the launch context handed the process. The dock-policy show call is
- * idempotent for an app that is already regular, and it is NOT a window raise:
+ * must be gated on isVisible(): Electron's DockShow can transfer activation
+ * even for an already-regular active app. It is NOT an ordinary window raise:
  * the dock show/hide pair sets the app's DOCK participation, which is the policy
  * `windowLaunch.hideDock` already decides — the raise-family ban in
  * `scripts/window-mode.test.mjs` is about windows (show/focus/maximize), so its
@@ -416,7 +419,9 @@ if (process.platform === "darwin" && app.dock) {
 	if (windowLaunch.hideDock) {
 		app.dock.hide();
 	} else {
-		app.dock.show();
+		if (!app.dock.isVisible()) {
+			app.dock.show();
+		}
 		app.dock.setIcon(image);
 	}
 }
@@ -451,6 +456,9 @@ if (process.platform === "darwin" && app.dock) {
 function reassertDockParticipation(): void {
 	if (process.platform !== "darwin" || !app.dock) return;
 	if (windowLaunch.hideDock) return;
+	// DockShow can hand activation to the Dock and then take it back. Only
+	// repair accessory policy; never bounce an already-regular active app.
+	if (app.dock.isVisible()) return;
 	app.dock.show();
 }
 
@@ -2594,6 +2602,9 @@ app
 		// builds and Cmd/Ctrl+minus by default, so the Console never saw reverse
 		// search and Zoom Out never fired (#1085).
 		app.on("browser-window-created", (_, window) => {
+			// Update relaunch can detach Dock participation after startup. Healing
+			// on real window events never shows/focuses a window of its own.
+			window.on("show", () => refreshAppIconBadge());
 			window.webContents.on("before-input-event", (event, input) => {
 				if (!shouldToggleDevTools(input, is.dev)) return;
 				event.preventDefault();
@@ -2664,6 +2675,42 @@ app
 			};
 			sceneGlobal.__lopAppIconBadgeSceneRead = () => nativeBadge.readForScene();
 		}
+		if (process.platform === "darwin") {
+			logger.info(
+				"[app-badge] notificationAuthorization=unknown (no supported Electron badge permission query)",
+				LogFileType.BACKEND,
+			);
+		}
+		let lastBadgeLog: string | undefined;
+		const publishBadge = (
+			snapshot: { unreadCount: number; pending: boolean },
+			enabled?: boolean,
+			reassert = true,
+		) => {
+			// Keep the existing headless guard in the one Dock policy helper.
+			// setBadge alone succeeds even with no running tile after ShipIt.
+			if (reassert) reassertDockParticipation();
+			nativeBadge.update(snapshot, enabled);
+			const state = nativeBadge.readForScene();
+			// isVisible reports regular activation policy, not painted Dock pixels
+			// or notification authorization. Read after the gated show decision;
+			// an asynchronous repair can still report accessory until it completes.
+			const policy =
+				process.platform === "darwin" && app.dock
+					? app.dock.isVisible()
+						? "regular"
+						: "accessory"
+					: "unavailable";
+			const label =
+				process.platform === "darwin" && app.dock
+					? app.dock.getBadge()
+					: "platform-native";
+			const line = `[app-badge] label=${label} count=${state.unreadCount} pending=${state.pending} policy=${policy} enabled=${enabled !== false}`;
+			if (line !== lastBadgeLog) {
+				lastBadgeLog = line;
+				logger.info(line, LogFileType.BACKEND);
+			}
+		};
 		const appAttention = new AppAttentionService({
 			request: (input) => backendService.requestDesktop(input),
 			supportsUnreadEvents: desktopRequestSchema.safeParse({
@@ -2671,16 +2718,15 @@ app
 				after: "0",
 				wait: 20,
 			}).success,
-			publish: (snapshot, enabled) => {
-				nativeBadge.update(snapshot, enabled);
-			},
+			publish: publishBadge,
 			clear: () => {
+				// Quit/reset clears must never request Dock activation-policy repair.
+				publishBadge({ unreadCount: 0, pending: false }, undefined, false);
 				nativeBadge.reset();
 			},
 		});
 		refreshAppIconBadge = () => {
-			if (process.platform !== "win32") return;
-			nativeBadge.invalidateOverlayTarget();
+			if (process.platform === "win32") nativeBadge.invalidateOverlayTarget();
 			appAttention.projection.refresh();
 		};
 		const stopBadgeLocale = subscribeLocale(() =>
@@ -2901,6 +2947,12 @@ app
 		const approvalsOverlayDocumentUrl = documentUrlFor(
 			rendererUrl,
 			"browser-approvals-overlay.html",
+		);
+		// The hidden H.264 encoder document (`record_start {quality: "high"}`),
+		// derived from the same trusted URL for the same reason.
+		const recordingEncoderDocumentUrl = documentUrlFor(
+			rendererUrl,
+			"recording-encoder.html",
 		);
 		/*
 		 * The machine-wide feed's two consumers, and the split between them is the
@@ -3374,6 +3426,37 @@ app
 				return;
 			}
 			recordingShortcut.setClaims(rev, claims);
+		});
+		/*
+		 * THE PASTE'S PLAIN TEXT, SYNCHRONOUSLY (issue #1573). On macOS a paste
+		 * whose pasteboard holds a file hands the renderer's `paste` event only
+		 * `types: ["Files"]` with `getData("text/plain") === ""`, yet Chromium's
+		 * default insert still types the pasteboard's plain string - the file's
+		 * name - into the composer (measured on Electron 45.1.0, QA round 1). The
+		 * handler must decide inside the event whether to cancel that insert, so
+		 * it asks here with `sendSync`; the reply waits for Electron 45's
+		 * promise-only `clipboard.readText()`, and the renderer stays blocked only
+		 * for that one read.
+		 *
+		 * The same two documents that mount the chat composer may ask (main window
+		 * and mini view). A refused or failed read STILL answers `""`: a `sendSync`
+		 * with no `returnValue` never returns, which would freeze the renderer, and
+		 * `""` is the fail-safe answer (the paste keeps its default insert).
+		 */
+		ipcMain.removeAllListeners("clipboard:paste-plain-text");
+		ipcMain.on("clipboard:paste-plain-text", (event) => {
+			if (!isAdmittedSender(event, recordingSenders())) {
+				event.returnValue = "";
+				return;
+			}
+			clipboard.readText().then(
+				(text) => {
+					event.returnValue = text;
+				},
+				() => {
+					event.returnValue = "";
+				},
+			);
 		});
 		ipcMain.removeAllListeners("recording-shortcut:pending");
 		ipcMain.on("recording-shortcut:pending", (event, value) => {
@@ -4600,6 +4683,13 @@ app
 							"../preload/browser-approvals-overlay.js",
 						),
 					},
+					// The hidden H.264 encoder behind `record_start {quality: "high"}`:
+					// the app's own bundled document and preload, derived like the
+					// documents above and never caller-supplied.
+					recordingEncoder: {
+						documentUrl: recordingEncoderDocumentUrl,
+						preloadPath: join(__dirname, "../preload/recording-encoder.js"),
+					},
 					preloadPath: join(__dirname, "../preload/index.js"),
 					/*
 					 * The console's surfaces are handed the user's own PATH, from the same
@@ -5340,6 +5430,10 @@ app.on("before-quit", async (event) => {
 	 * that is the difference between a shutdown and an app that refuses to close
 	 * without saying so.
 	 */
+	// Encoder windows go down in the synchronous part, ahead of every await below:
+	// Electron closes the windows when this listener's synchronous part returns, and
+	// a hidden renderer left running past that is a process the quit has to wait for.
+	disposeAllRecordingEncoders();
 	if (await holdQuitForSessionCookieSnapshot(event)) return;
 
 	quitExitDeadline.phase("after the session-cookie hold");
@@ -5420,6 +5514,11 @@ app.on("before-quit", async (event) => {
 	// file, so a session stopping at the same moment does not read a record naming
 	// a process that is already gone. Not awaited: `before-quit` is synchronous,
 	// and each of these steps is also safe to lose (see `stopBrowserHost`).
+	// Encoder windows were already destroyed at the top of this handler, in its
+	// synchronous part (D21); a recording in flight is lost with the app, exactly as
+	// the standard path's is. A second pass here is the idempotent backstop for a
+	// quit that re-entered after the hold.
+	disposeAllRecordingEncoders();
 	void stopBrowserHost();
 	/*
 	 * The synchronous tail is done. What remains is the window close Electron

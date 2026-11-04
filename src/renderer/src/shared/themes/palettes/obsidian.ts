@@ -65,25 +65,44 @@ export const obsidian: ThemeDefinition = {
 		 * lifting a dark ground raises the luminance every ink is measured against, so
 		 * the inks in this file were re-seated on the same commit rather than after it.
 		 */
-		canvas: "#202021",
-		surface: "#2A2A2D",
-		elevated: "#353438",
+		/*
+		 * THE DARKER-GROUNDS PASS (2026-11-03, `docs/branding.md` § 2) supersedes the
+		 * earlier L* 12 dark floor: the dark band is now L* 9-15 (target 9-13), and
+		 * the canvas maps by `L*_new = 9 + 0.6 x (L*_old - 12)`, a map that preserves
+		 * the fleet's order (re-solves may move a canvas off it, up to +-1.04 L*).
+		 * Here every ground-class role (the grounds, the row states, the two fills,
+		 * the washes and the hairlines) moved by the canvas's own ΔL* holding its `a`
+		 * and `b`; inks, accents and `borderControl` did not move.
+		 * Measured:
+		 * canvas #202021 -> #1A1A1B (L* 12.29 -> 9.30)
+		 * surface #2A2A2D -> #232326 (L* 17.17 -> 13.82)
+		 * elevated #353438 -> #2E2D31 (L* 21.94 -> 18.71)
+		 * sunken #1B1B1E -> #141418 (L* 9.88 -> 6.46)
+		 * Re-solved off the uniform shift, because a contract floor refused it there:
+		 * `sunken`, `mediaSurface`. `pnpm check-themes` is the measurement for each.
+		 */
+		canvas: "#1A1A1B",
+		surface: "#232326",
+		elevated: "#2E2D31",
 		// The old file already used a near-black 060609 for its message view, which
 		// measures 1.02:1 against zinc 950 — too close to read as a separate
 		// ground. This is two levels lower on the same blue-leaning zinc lean
 		// (h290, the hue every other neutral here carries) at 1.03:1. True black
 		// would clear the separation floor more easily and was what this held, but
 		// a C0 value is the absence of the ramp rather than its bottom rung.
-		sunken: "#1B1B1E",
+		sunken: "#141418",
 
 		// The user block's fill: ΔE00 4.01 off the canvas, where `surface` alone
 		// measures 3.48 - a step toward `elevated` to clear the role's 4.0 floor,
 		// which the block carries because the fill IS its boundary.
-		messageSurface: "#2b2a2e",
+		messageSurface: "#252428",
 		// The media slot's well: ΔE00 4.04 off the canvas, where `sunken` alone
 		// measures 2.14 - a step away from the canvas to clear the role's 4.0
 		// floor, which the tile carries because the fill IS its resting extent.
-		mediaSurface: "#17171c",
+		// Lifted #0E0E15 -> #111118 (L* 4.17 -> 5.29) once Team Bridge's
+		// inline images and file chips began to paint this well (#1659): as far
+		// toward L* 6 as the media floor allows (ΔE00 4.47 off canvas; chip hosts >= 3.0).
+		mediaSurface: "#111118",
 
 		/*
 		 * ROW STATES, and `highlight` retired in the same change. Both roles are a
@@ -109,8 +128,8 @@ export const obsidian: ThemeDefinition = {
 		 * anywhere in this palette with which to separate two near-neutral fills.
 		 * Named in `contrast-contract.mjs`'s `ROW_STATE_MEASURED_SHORTFALL`.
 		 */
-		rowHover: "#313135",
-		rowSelected: "#34343D",
+		rowHover: "#2A2A2E",
+		rowSelected: "#2D2D36",
 
 		ink: "#FAFAFA",
 		/*
@@ -145,10 +164,10 @@ export const obsidian: ThemeDefinition = {
 		 * 1.15-2.0:1 band, because a separator that shouted would be a border.
 		 * `elevated` is the tightest ground at ΔE00 4.75.
 		 */
-		hairline: "#424244",
+		hairline: "#3B3B3D",
 		// `hairline` stepped toward `inkDim`, so it reads on this palette's own
 		// `sunken`: 1.85:1 there against `hairline`'s 1.71:1.
-		hairlineStrong: "#474749",
+		hairlineStrong: "#404042",
 		// Zinc 500 measures 2.86:1 on zinc 800, a hair under the structural floor,
 		// so it is lifted by one level. The old theme bounded inputs with zinc 50 at
 		// 20 percent alpha, about 1.8:1.
@@ -189,7 +208,7 @@ export const obsidian: ThemeDefinition = {
 		 * `surface` is the tightest base at ΔE00 2.02. Lightness only, at the
 		 * wash's own hue.
 		 */
-		accentWash: "#303032",
+		accentWash: "#29292B",
 		onAccent: "#09090B",
 		/*
 		 * No second hue to carry: this palette is desktop-only, so it has no TUI
@@ -210,13 +229,13 @@ export const obsidian: ThemeDefinition = {
 		 * 2.0), 12.66:1 for `accentAlt` on it, and 4.03 from the nearest ground it
 		 * is painted on.
 		 */
-		accentAltWash: "#30302E",
+		accentAltWash: "#292927",
 
 		// Low-chroma by design: about 30 percent saturation, so the semantic states
 		// stay legible without turning a deliberately grey theme into a colourful
 		// one.
 		success: "#86BFA1",
-		successWash: "#181F1D",
+		successWash: "#111917",
 		/*
 		 * Legibility pass: `successBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
@@ -225,7 +244,7 @@ export const obsidian: ThemeDefinition = {
 		successBorder: "#668777",
 
 		warning: "#CBAF7E",
-		warningWash: "#201D19",
+		warningWash: "#1A1712",
 		/*
 		 * Legibility pass: `warningBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
@@ -234,7 +253,7 @@ export const obsidian: ThemeDefinition = {
 		warningBorder: "#8E7D61",
 
 		danger: "#DE9391",
-		dangerWash: "#231A1B",
+		dangerWash: "#1D1415",
 		/*
 		 * Legibility pass: `dangerBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
@@ -245,7 +264,7 @@ export const obsidian: ThemeDefinition = {
 		// Info stays the mono accent. Adding a blue here would be the only hue in
 		// the theme, which is the opposite of what Obsidian is for.
 		info: "#FAFAFA",
-		infoWash: "#262628",
+		infoWash: "#202022",
 		infoBorder: "#8E8E8E",
 
 		// Tinted to the ramp for the same reason the grounds are: a pure black

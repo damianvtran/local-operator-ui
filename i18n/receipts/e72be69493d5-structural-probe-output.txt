@@ -1,0 +1,41 @@
+en ui.mesh r5=04a6ef2c573f30f595d1bb9d4882866f2aa777b833e0faceb9ed56f5e2e6d6a5 head=04a6ef2c573f30f595d1bb9d4882866f2aa777b833e0faceb9ed56f5e2e6d6a5 identical=true
+context r5=34ae367414a475196b54a977793b4128e76ef5b368422f7b510ef5ad51f8a704 head=c3b5f7137facbf0bfb2cada7faef5f13300e899de3d379c42b5862056cacf257 changed=["ui.mesh.approval.duration_hours","ui.mesh.approval.duration_minutes","ui.mesh.approval.duration_under_minute","ui.mesh.approval.named_refusal"]
+
+(c) locale bytes, R5 -> HEAD
+PASS es: r5=a280294e5d3321c1ddc5c6f7762de0fb1e9d6ec7bf4a55be6473f599c761f561 head=a280294e5d3321c1ddc5c6f7762de0fb1e9d6ec7bf4a55be6473f599c761f561 bytes_identical=true keyset_matches_en=true changed=[] numstat=0/0
+PASS fr: r5=310ec4a045b28fff27c310a2fe8930f4c234e17a7a2a78d2693a6407dbc07101 head=310ec4a045b28fff27c310a2fe8930f4c234e17a7a2a78d2693a6407dbc07101 bytes_identical=true keyset_matches_en=true changed=[] numstat=0/0
+PASS ru: r5=768afe319e8f3413f020b8dee788c40fe4138c67ffd20bdd08b9a92d95aa9c47 head=45802baf1a570db87984df3e21f4a25928a8cff9e2f9ce34cc54388775c787de bytes_identical=false keyset_matches_en=true changed=["ui.mesh.approval.expires_window"] numstat=1/1
+    ui.mesh.approval.expires_window
+      r5:   Истекает через {duration}
+      head: Истекает в течение {duration}
+PASS hi: r5=15b4b290aea1c8881a794892a8a87ec243e314c73c1dd2ba69cb2ea057465b4f head=15b4b290aea1c8881a794892a8a87ec243e314c73c1dd2ba69cb2ea057465b4f bytes_identical=true keyset_matches_en=true changed=[] numstat=0/0
+PASS ur: r5=ef55d34be69610be76db15f3afde10b754eba1233317bced94f9664279a8bd0a head=ef55d34be69610be76db15f3afde10b754eba1233317bced94f9664279a8bd0a bytes_identical=true keyset_matches_en=true changed=[] numstat=0/0
+PASS vi: r5=35019250a1201677b1ac034ca2fcc3afba4d5b43239d3e75910fc4ff782797d7 head=35019250a1201677b1ac034ca2fcc3afba4d5b43239d3e75910fc4ff782797d7 bytes_identical=true keyset_matches_en=true changed=[] numstat=0/0
+PASS zh-CN: r5=e3c1e7e2e26ea99c9ae0b42aac47b46dd808a9a6ad03dc5d444f3c8b854cf539 head=e3c1e7e2e26ea99c9ae0b42aac47b46dd808a9a6ad03dc5d444f3c8b854cf539 bytes_identical=true keyset_matches_en=true changed=[] numstat=0/0
+
+ru expires_window structural: args=duration en_args=duration nfc=true bidi_free=true
+
+(a) ru expires_window, every reachable duration (category: rendered)
+  under-minute (1..59 s): Истекает в течение менее минуты
+  min:one:минуты counts=1,21,31,41,51,61,71,81
+  min:few:минут counts=2,3,4,22,23,24,32,33,34,42,43,44,…(24)
+  min:many:минут counts=5,6,7,8,9,10,11,12,13,14,15,16,…(57)
+  hour:few:часов counts=2,3,4,22,23,24,32,33,34,42,43,44,…(54)
+  hour:many:часов counts=5,6,7,8,9,10,11,12,13,14,15,16,…(128)
+  hour:one:часа counts=21,31,41,51,61,71,81,91,101,121,131,141,…(17)
+  samples: Истекает в течение 1 минуты | Истекает в течение 2 минут | Истекает в течение 5 минут | Истекает в течение 11 минут | Истекает в течение 21 минуты | Истекает в течение 22 минут | Истекает в течение 25 минут | Истекает в течение 89 минут
+  samples: Истекает в течение 2 часов | Истекает в течение 3 часов | Истекает в течение 5 часов | Истекает в течение 21 часа | Истекает в течение 22 часов | Истекает в течение 24 часов | Истекает в течение 25 часов | Истекает в течение 101 часа
+  boundary 89 min + 1 s (ceil 90 -> 2 h): Истекает в течение 2 часов
+  same frame in answer_window (unchanged): Ответьте в течение 2 минут
+
+other locales unchanged since R5, sample render (expires_window | answer_window)
+  es: Caduca en menos de un minuto | Caduca en 1 minuto | Caduca en 21 minutos | Caduca en 2 horas || Responde en un plazo de 2 horas
+  fr: Expire dans moins d’une minute | Expire dans 1 minute | Expire dans 21 minutes | Expire dans 2 heures || Répondre sous 2 heures
+  ru: Истекает в течение менее минуты | Истекает в течение 1 минуты | Истекает в течение 21 минуты | Истекает в течение 2 часов || Ответьте в течение 2 часов
+  hi: एक मिनट से कम में समय-सीमा समाप्त होगी | 1 मिनट में समय-सीमा समाप्त होगी | 21 मिनट में समय-सीमा समाप्त होगी | 2 घंटे में समय-सीमा समाप्त होगी || 2 घंटे के भीतर जवाब दें
+  ur: ایک منٹ سے کم میں میعاد ختم ہو گی | 1 منٹ میں میعاد ختم ہو گی | 21 منٹ میں میعاد ختم ہو گی | 2 گھنٹے میں میعاد ختم ہو گی || 2 گھنٹے کے اندر جواب دیں
+  vi: Hết hạn sau chưa đến một phút | Hết hạn sau 1 phút | Hết hạn sau 21 phút | Hết hạn sau 2 giờ || Trả lời trong 2 giờ
+  zh-CN: 不到一分钟后到期 | 1分钟后到期 | 21分钟后到期 | 2小时后到期 || 请在2小时内答复
+
+probe failures=0
+exit=0

@@ -1,0 +1,103 @@
+{
+	"schema": 1,
+	"receipt_kind": "independent copy-delta re-audit (in-sentence unnamed recipient), one locale",
+	"audit_id": "delivery-recipient-unnamed-reaudit-2fd8346bf635",
+	"date": "2026-11-03",
+	"agent": "copy-reviewer",
+	"model": "anthropic/claude-opus-5-5",
+	"model_provenance": "Served model as announced by the harness system prompt for session 2fd8346bf635 (Model: anthropic/claude-opus-5-5); no fallback announced or observed during the run.",
+	"model_fallback": {
+		"announced": false,
+		"observed": false
+	},
+	"instance": "2fd8346bf635-ur",
+	"session": "2fd8346bf635",
+	"status": "passed",
+	"result": "clean",
+	"locale": "ur",
+	"namespace": "ui.teamBridge",
+	"sha256": {
+		"en": "0fc05324f1284ff6f7f37f8fe9dc8aa78d0f17f03640f300e02b3e37c3ca954b",
+		"ur": "44534b830238d01356a2d256172653eede029631129e13d6bfd04ca7c67e650a"
+	},
+	"context": {
+		"path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+		"sha256": "c1545312b0378ded7100b626653a8e401d959b86ad4afb8d39c86833af6538f7",
+		"delta_entries_present": true,
+		"note": "Exactly one context entry changed vs ca038334dcf: the new ui.teamBridge.delivery.recipient_unnamed (role: recipient name inside a delivery status sentence; oblique case / article / lower case as the grammar needs; must not repeat the person)."
+	},
+	"reference_hashes": {
+		"~/local-operator/i18n/glossary.md": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+		"~/local-operator/i18n/style-guides/ur.md": "c0eecf7f7b5e89956b7de9ab7a9eb647ff1a7ef701ccf2a7f0264d5eea15ca60",
+		"core_commit": "b42471d3935cb7e95d64428af27c32626665f4c0"
+	},
+	"integration": {
+		"pr": 1643,
+		"branch": "fix/delivery-recipient-label",
+		"reviewed_head": "70646b20d3ab9078135ee4356764fb1c2f4a08d1",
+		"previous_audit_head": "0ce7d254d234513a2d522965e6170a6944239f4d",
+		"remediation_commit": "70646b20d3ab9078135ee4356764fb1c2f4a08d1",
+		"author_job": "da8eee3a55f2",
+		"remediation_job": "8f0b8996f1e1",
+		"round": 2,
+		"prior_round_receipt": "i18n/receipts/7fc20c1e3809-ur.json"
+	},
+	"scope": {
+		"keys": [
+			"ui.teamBridge.delivery.recipient_unnamed",
+			"ui.teamBridge.delivery.refused",
+			"ui.teamBridge.delivery.refused_manipulation",
+			"ui.teamBridge.delivery.refused_personal_info",
+			"ui.teamBridge.delivery.refused_abusive",
+			"ui.teamBridge.delivery.refused_unsafe_content",
+			"ui.teamBridge.delivery.refused_out_of_scope",
+			"ui.teamBridge.delivery.held",
+			"ui.teamBridge.delivery.held_screening_unavailable",
+			"ui.teamBridge.delivery.held_awaiting_review",
+			"ui.teamBridge.delivery.pending"
+		],
+		"kind": "Round-2 independent audit of the new delivery-only key ui.teamBridge.delivery.recipient_unnamed (placeholder, in-sentence grammar after every preposition/postposition the ten delivery sentences use, glossary/style conformance) and each of the ten ui.teamBridge.delivery.{refused*,held*,pending} sentences composed with BOTH recipient forms (ui.teamBridge.chief.label and the new key), checking round-1 C1-C4 and regressions. Unchanged namespace content is inherited, not re-audited.",
+		"unchanged_proof": "Parsed ca038334dcf and head catalogues: the only key added or changed in this catalogue is ui.teamBridge.delivery.recipient_unnamed; the ten delivery values and chief.label/chief.unnamed are byte-identical to the round-1-audited values. Base file hash equals the existing ledger target hash.",
+		"base_target_sha256_prefix": "e816f39bc0de"
+	},
+	"independence": "copy-reviewer session 2fd8346bf635 on the radientdev team. Authored none of PR #1643 (author coder job da8eee3a55f2, remediation job 8f0b8996f1e1), none of the translations, and is not the round-1 auditor (session 7fc20c1e3809); round-1 verdicts were re-derived from the catalogue bytes, not copied. Edited no catalogue value; its only writes are these receipts and the ledger rows ledger-assemble derives from them.",
+	"placeholder_check": {
+		"key": "ui.teamBridge.delivery.recipient_unnamed",
+		"placeholders": [
+			"person"
+		],
+		"exactly_person": true,
+		"delivery_sentences_placeholders": [
+			"recipient"
+		]
+	},
+	"prior_findings": {
+		"C2": "fixed"
+	},
+	"per_key_verdict": {
+		"ui.teamBridge.delivery.recipient_unnamed": "PASS: \"{person} کے چیف آف اسٹاف\"; {person} only; oblique کے correct before تک and کی جانب سے; term matches chief.unnamed.",
+		"ui.teamBridge.delivery.refused": "PASS: Aida (Ben Tran) تک نہیں پہنچا۔ ماڈریشن نے مسترد کر دیا۔ | Ben Tran کے چیف آف اسٹاف تک نہیں پہنچا۔ ماڈریشن نے مسترد کر دیا۔",
+		"ui.teamBridge.delivery.refused_manipulation": "PASS: Aida (Ben Tran) تک نہیں پہنچا: ان کی ماڈریشن نے مسترد کر دیا (ایجنٹ کو ورغلانے کی کوشش جیسا لگا) | Ben Tran کے چیف آف اسٹاف تک نہیں پہنچا: ان کی ماڈریشن نے مسترد کر دیا (ایجنٹ کو ورغلانے کی کوشش جیسا لگا)",
+		"ui.teamBridge.delivery.refused_personal_info": "PASS: Aida (Ben Tran) تک نہیں پہنچا: ان کی ماڈریشن نے مسترد کر دیا (ذاتی معلومات کی درخواست جیسا لگا) | Ben Tran کے چیف آف اسٹاف تک نہیں پہنچا: ان کی ماڈریشن نے مسترد کر دیا (ذاتی معلومات کی درخواست جیسا لگا)",
+		"ui.teamBridge.delivery.refused_abusive": "PASS: Aida (Ben Tran) تک نہیں پہنچا: ان کی ماڈریشن نے مسترد کر دیا (توہین آمیز مواد جیسا لگا) | Ben Tran کے چیف آف اسٹاف تک نہیں پہنچا: ان کی ماڈریشن نے مسترد کر دیا (توہین آمیز مواد جیسا لگا)",
+		"ui.teamBridge.delivery.refused_unsafe_content": "PASS: Aida (Ben Tran) تک نہیں پہنچا: ان کی ماڈریشن نے مسترد کر دیا (غیر محفوظ مواد یا لنکس جیسا لگا) | Ben Tran کے چیف آف اسٹاف تک نہیں پہنچا: ان کی ماڈریشن نے مسترد کر دیا (غیر محفوظ مواد یا لنکس جیسا لگا)",
+		"ui.teamBridge.delivery.refused_out_of_scope": "PASS: Aida (Ben Tran) تک نہیں پہنچا: ان کی ماڈریشن نے مسترد کر دیا (اس ایجنٹ کے دائرۂ کار سے باہر کی درخواست جیسا لگا) | Ben Tran کے چیف آف اسٹاف تک نہیں پہنچا: ان کی ماڈریشن نے مسترد کر دیا (اس ایجنٹ کے دائرۂ کار سے باہر کی درخواست جیسا لگا)",
+		"ui.teamBridge.delivery.held": "PASS: Aida (Ben Tran) کی جانب سے جانچ کا انتظار ہے… | Ben Tran کے چیف آف اسٹاف کی جانب سے جانچ کا انتظار ہے…",
+		"ui.teamBridge.delivery.held_screening_unavailable": "PASS: Aida (Ben Tran) کی جانب سے جانچ کا انتظار ہے۔ جانچ عارضی طور پر دستیاب نہیں ہے۔ | Ben Tran کے چیف آف اسٹاف کی جانب سے جانچ کا انتظار ہے۔ جانچ عارضی طور پر دستیاب نہیں ہے۔",
+		"ui.teamBridge.delivery.held_awaiting_review": "PASS: Aida (Ben Tran) کی جانب سے جانچ کا انتظار ہے۔ پیغام جائزے کا منتظر ہے۔ | Ben Tran کے چیف آف اسٹاف کی جانب سے جانچ کا انتظار ہے۔ پیغام جائزے کا منتظر ہے۔",
+		"ui.teamBridge.delivery.pending": "PASS: جانچ ہو گئی؛ Aida (Ben Tran) تک ترسیل باقی ہے | جانچ ہو گئی؛ Ben Tran کے چیف آف اسٹاف تک ترسیل باقی ہے"
+	},
+	"composition_notes": "C2 fixed: \"Ben Tran کے چیف آف اسٹاف تک نہیں پہنچا۔\", \"Ben Tran کے چیف آف اسٹاف کی جانب سے جانچ کا انتظار ہے…\", \"… Ben Tran کے چیف آف اسٹاف تک ترسیل باقی ہے\": oblique genitive before تک and کی جانب سے is correct. Term چیف آف اسٹاف matches chief.unnamed. Named form unchanged.",
+	"findings": [],
+	"out_of_scope_observations": [
+		"Pre-existing on main, not counted (carried from round 1): other keys that embed chief.unnamed before a postposition (e.g. ui.teamBridge.composer.placeholder_to \"{name} को/کو …\") carry the same oblique-case issue for the unnamed form."
+	],
+	"copy_scan": "design-qa copy_scan.py over src/i18n/catalogues/{en,fr,es,ru,vi,ur,hi,zh-CN}/ui.teamBridge.json: scanned 8 files, 3704 candidate strings; 0 findings",
+	"not_audited": [
+		"Unchanged namespace language",
+		"Runtime ICU execution",
+		"Rendered fit and RTL layout",
+		"Pseudo-localization"
+	],
+	"execution_limitations": "Source and composition review (values substituted with Aida / Ben Tran); no rendered frames captured by this auditor."
+}

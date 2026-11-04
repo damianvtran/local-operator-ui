@@ -1,6 +1,7 @@
 import { Spinner } from "@shared/components/common/spinner";
 import { Button, Input, Tooltip } from "@shared/components/ui";
-import { t } from "@shared/i18n";
+import { isolateLtr, t } from "@shared/i18n";
+import { ShortcutText } from "@shared/i18n/shortcut-text";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { chordCaption } from "@shared/keymap/keymap-chord";
 import { cn } from "@shared/lib/utils";
@@ -1524,9 +1525,13 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 			data-tour-tag="browser-url-bar"
 		>
 			<Tooltip
-				content={t("ui.browser.browser_url_bar.back_shortcut", {
-					shortcut: backChord,
-				})}
+				content={
+					<ShortcutText
+						text={t("ui.browser.browser_url_bar.back_shortcut", {
+							shortcut: isolateLtr(backChord),
+						})}
+					/>
+				}
 			>
 				<Button
 					variant="ghost"
@@ -1542,9 +1547,13 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 			</Tooltip>
 			{!hideForward && (
 				<Tooltip
-					content={t("ui.browser.browser_url_bar.forward_shortcut", {
-						shortcut: forwardChord,
-					})}
+					content={
+						<ShortcutText
+							text={t("ui.browser.browser_url_bar.forward_shortcut", {
+								shortcut: isolateLtr(forwardChord),
+							})}
+						/>
+					}
 				>
 					<Button
 						variant="ghost"
@@ -1574,9 +1583,13 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 				</Tooltip>
 			) : (
 				<Tooltip
-					content={t("ui.browser.browser_url_bar.reload_shortcut", {
-						shortcut: reload.glyph,
-					})}
+					content={
+						<ShortcutText
+							text={t("ui.browser.browser_url_bar.reload_shortcut", {
+								shortcut: isolateLtr(reload.glyph),
+							})}
+						/>
+					}
 				>
 					<Button
 						variant="ghost"

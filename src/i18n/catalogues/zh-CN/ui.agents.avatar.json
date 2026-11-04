@@ -25,5 +25,6 @@
 	"ui.agents.avatar.editor.zoom": "缩放",
 	"ui.agents.avatar.editor.zoom_in": "放大",
 	"ui.agents.avatar.editor.zoom_out": "缩小",
-	"ui.agents.avatar.editor.zoom_value": "{value}×"
+	"ui.agents.avatar.editor.zoom_value": "{value}×",
+	"ui.agents.avatar.add_link": "为 {name} 添加头像"
 }

@@ -44,21 +44,40 @@ export const gruvbox: ThemeDefinition = {
 	palette: {
 		mode: "dark",
 
-		canvas: "#282828",
+		/*
+		 * THE DARKER-GROUNDS PASS (2026-11-03, `docs/branding.md` § 2) supersedes the
+		 * earlier L* 12 dark floor: the dark band is now L* 9-15 (target 9-13), and
+		 * the canvas maps by `L*_new = 9 + 0.6 x (L*_old - 12)`, a map that preserves
+		 * the fleet's order (re-solves may move a canvas off it, up to +-1.04 L*).
+		 * Here every ground-class role (the grounds, the row states, the two fills,
+		 * the washes and the hairlines) moved by the canvas's own ΔL* holding its `a`
+		 * and `b`; inks, accents and `borderControl` did not move.
+		 * Measured:
+		 * canvas #282828 -> #212020 (L* 16.11 -> 12.36)
+		 * surface #32302F -> #2A2827 (L* 20.03 -> 16.29)
+		 * elevated #3C3836 -> #34302E (L* 23.85 -> 20.21)
+		 * sunken #1D2021 -> #16191A (L* 11.98 -> 8.48)
+		 * Re-solved off the uniform shift, because a contract floor refused it there:
+		 * `canvas`, `surface`, `elevated`, `sunken`, `rowHover`, `messageSurface`,
+		 * `mediaSurface`, `accentWash`, `accentAltWash`, `successWash`, `warningWash`,
+		 * `dangerWash`, `infoWash`, `hairline`, `hairlineStrong`. `pnpm check-themes`
+		 * is the measurement for each.
+		 */
+		canvas: "#212020",
 		// Seated between bg0 and bg1: bg2 504945 is a step this ladder does not need, and
 		// spending it here would cost every ink headroom on the binding ground.
-		surface: "#32302F",
-		elevated: "#3C3836",
-		sunken: "#1D2021",
+		surface: "#2A2827",
+		elevated: "#34302E",
+		sunken: "#16191A",
 
 		// The user block's fill: ΔE00 4.22 off the canvas, where `surface` alone
 		// measures 2.97 - a step toward `elevated` to clear the role's 4.0 floor,
 		// which the block carries because the fill IS its boundary.
-		messageSurface: "#363331",
+		messageSurface: "#2F2C2A",
 		// The media slot's well: ΔE00 4.24 off the canvas, where `sunken` alone
 		// measures 3.32 - a step away from the canvas to clear the role's 4.0
 		// floor, which the tile carries because the fill IS its resting extent.
-		mediaSurface: "#1a1e1f",
+		mediaSurface: "#121718",
 
 		/*
 		 * ROW STATES, and `highlight` retired in the same change. Both roles are a
@@ -78,8 +97,8 @@ export const gruvbox: ThemeDefinition = {
 		 *                       `rowHover`; the pair ranks 1.89 `L*` and 2.7 `C*`,
 		 *                       `inkDim` 5.38:1.
 		 */
-		rowHover: "#3A3734",
-		rowSelected: "#403B34",
+		rowHover: "#322F2C",
+		rowSelected: "#37322B",
 
 		ink: "#EBDBB2",
 		// Canonical fg2 D5C4A1 is 6.76:1 on `elevated` and only ΔE00 6.3 from fg3, which is
@@ -112,10 +131,10 @@ export const gruvbox: ThemeDefinition = {
 		// A rule seated in the window a 1px line has: ΔE00 4.1 from every ground and
 		// 1.21-1.71:1 against them. It divides rather than bounds, which is what keeps it
 		// from competing with the edge below.
-		hairline: "#494442",
+		hairline: "#423D3B",
 		// `hairline` stepped toward `inkDim`, so it reads on this palette's own
 		// `sunken`: 1.87:1 there against `hairline`'s 1.71:1.
-		hairlineStrong: "#4F4A46",
+		hairlineStrong: "#46413D",
 		// Bg2 504945 is 1.31:1 against the grounds, far under the 3:1 a control's only
 		// edge is asked for. Lifted along the same warm grey to 3.1:1 on the lightest
 		// ground.
@@ -130,7 +149,7 @@ export const gruvbox: ThemeDefinition = {
 		tokenCommand: "#88AB9E",
 		// The signal lifted in L* to clear 4.5:1 on `elevated` (it measured 4.31), at a
 		// cost of ΔE00 1.79 from the signal itself; 5.23:1 on `surface`.
-		accentWash: "#32321C",
+		accentWash: "#2A2A14",
 		onAccent: "#1D2021",
 		/*
 		 * The theme's own second hue, and the port had dropped it: the TUI's
@@ -165,10 +184,10 @@ export const gruvbox: ThemeDefinition = {
 		 * 2.0), 4.74:1 for `accentAlt` on it, and 13.11 from the nearest ground it
 		 * is painted on.
 		 */
-		accentAltWash: "#452930",
+		accentAltWash: "#3C2128",
 
 		success: "#B8BB26",
-		successWash: "#464730",
+		successWash: "#3E3F28",
 		successBorder: "#868902",
 
 		/*
@@ -182,7 +201,7 @@ export const gruvbox: ThemeDefinition = {
 		 * re-pick of the palette's colour.
 		 */
 		warning: "#FF8A32",
-		warningWash: "#45352C",
+		warningWash: "#3C2D24",
 		warningBorder: "#D06503",
 
 		// Upstream bright red FB4934 is 3.37:1 on `elevated` — the largest miss in the
@@ -199,7 +218,7 @@ export const gruvbox: ThemeDefinition = {
 		 * re-pick of the palette's colour.
 		 */
 		danger: "#FF8671",
-		dangerWash: "#3B2723",
+		dangerWash: "#331F1B",
 		dangerBorder: "#DA5B48",
 
 		/*
@@ -211,7 +230,7 @@ export const gruvbox: ThemeDefinition = {
 		 * legibility, is what the ramp change was allowed to keep.
 		 */
 		info: "#8EB0A3",
-		infoWash: "#28353A",
+		infoWash: "#202D32",
 		infoBorder: "#698B7E",
 
 		// The shadow and scrim are the ground tinted, as in every palette here.

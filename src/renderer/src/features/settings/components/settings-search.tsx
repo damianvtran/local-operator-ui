@@ -1,3 +1,4 @@
+import { ShortcutText } from "@shared/i18n/shortcut-text";
 /**
  * @file settings-search.tsx
  * @description
@@ -35,7 +36,7 @@
  */
 
 import { Input } from "@shared/components/ui";
-import { t } from "@shared/i18n";
+import { isolateLtr, t } from "@shared/i18n";
 import type { MessageKey } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
@@ -463,9 +464,11 @@ export const SettingsSearch = forwardRef<
 								{t("ui.settings.search.empty.summary")}
 							</p>
 							<p className="text-meta text-ink-dim">
-								{t("ui.settings.search.empty.shortcut", {
-									shortcut: shortcutLabel(),
-								})}
+								<ShortcutText
+									text={t("ui.settings.search.empty.shortcut", {
+										shortcut: isolateLtr(shortcutLabel()),
+									})}
+								/>
 							</p>
 						</div>
 					) : results.length === 0 ? (

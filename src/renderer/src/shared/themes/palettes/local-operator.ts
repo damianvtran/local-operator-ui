@@ -15,10 +15,11 @@ import type { ThemeDefinition } from "../palette-contract";
  *
  * `docs/branding.md` settles the precedence: on the *brand* the kit wins, on
  * *how a desktop app should behave* this repo wins, "because a tool read for
- * hours at arm's length is not a page read once". Exactly two things invoke
- * that second clause. No hue the kit owns has been retuned to buy contrast
- * headroom — a brand colour changes in the kit and is followed here, never
- * the other way round.
+ * hours at arm's length is not a page read once". Three things invoke that
+ * second clause, and the kit's `divergences.json` (vendored under
+ * `docs/design-kit/`) is the checked list of every sanctioned difference. No
+ * hue the kit owns has been retuned to buy contrast headroom — a brand colour
+ * changes in the kit and is followed here, never the other way round.
  *
  * 1. **The light ground ramp** is wider than the site's. A page renders one
  *    surface; this app stacks four, and the kit's near-white ladder made a
@@ -27,6 +28,13 @@ import type { ThemeDefinition } from "../palette-contract";
  * 2. **`info` is not a kit role at all.** The site has no fourth semantic, so
  *    there is nothing here to be faithful to; see the `info` comment in
  *    `localOperatorDark`.
+ * 3. **The dark ground ramp follows this app's dark band** (L* 9-15 since the
+ *    2026-11-03 darker-grounds pass, `docs/branding.md` § 2), not the site's
+ *    page ladder. The site's dark paper was never this canvas (L* 6.03 against
+ *    12.33 before the pass). The four washes the two shared byte-for-byte
+ *    (accent, success, warning, danger) moved with the grounds, and the kit
+ *    records that as its `dark-ground-ramp` divergence. Hues, inks and the
+ *    accent are unchanged.
  *
  * ## The warm neutral rule
  *
@@ -64,19 +72,37 @@ export const localOperatorDark: ThemeDefinition = {
 	palette: {
 		mode: "dark",
 
-		canvas: "#22201c",
-		surface: "#2b2721",
-		elevated: "#322D22",
-		sunken: "#1d1b19",
+		/*
+		 * THE DARKER-GROUNDS PASS (2026-11-03, `docs/branding.md` § 2) supersedes the
+		 * earlier L* 12 dark floor: the dark band is now L* 9-15 (target 9-13), and
+		 * the canvas maps by `L*_new = 9 + 0.6 x (L*_old - 12)`, a map that preserves
+		 * the fleet's order (re-solves may move a canvas off it, up to +-1.04 L*).
+		 * Here the grounds are hand-tuned to the ladder in the design spec (SPEC §
+		 * 2.2) rather than by the rule alone; the roles it does not name moved by the
+		 * canvas's own ΔL* holding their `a` and `b`.
+		 * Measured:
+		 * canvas #22201c -> #1d1b17 (L* 12.33 -> 9.85)
+		 * surface #2b2721 -> #26221c (L* 15.87 -> 13.47)
+		 * elevated #322D22 -> #2F2A1F (L* 18.67 -> 17.27)
+		 * sunken #1d1b19 -> #171512 (L* 9.92 -> 6.88)
+		 * One departure from the spec's ladder: `rowSelected` ships #32291E rather
+		 * than its #33291b, because the selection's chroma cap (the panel's cast
+		 * plus 4) refuses C* 11.14 on this panel; #32291E is the nearest value the
+		 * cap allows, at the same L*.
+		 */
+		canvas: "#1d1b17",
+		surface: "#26221c",
+		elevated: "#2F2A1F",
+		sunken: "#171512",
 
 		// The user block's fill: ΔE00 4.30 off the canvas, where `surface` alone
 		// measures 2.77 - a step toward `elevated` to clear the role's 4.0 floor,
 		// which the block carries because the fill IS its boundary.
-		messageSurface: "#2e2a21",
+		messageSurface: "#2a261d",
 		// The media slot's well: ΔE00 4.02 off the canvas, where `sunken` alone
 		// measures 2.07 - a step away from the canvas to clear the role's 4.0
 		// floor, which the tile carries because the fill IS its resting extent.
-		mediaSurface: "#191717",
+		mediaSurface: "#131010",
 
 		/*
 		 * ROW STATES, and `highlight` retired in the same change. Both roles are a
@@ -95,21 +121,21 @@ export const localOperatorDark: ThemeDefinition = {
 		 *                       `rowHover`; the pair ranks 1.28 `L*` and 5.4 `C*`,
 		 *                       `inkDim` 5.05:1.
 		 */
-		rowHover: "#302D29",
-		rowSelected: "#372F24",
+		rowHover: "#292723",
+		rowSelected: "#32291E",
 
 		ink: "#f1eee6",
 		inkMuted: "#c2bcaf",
 		inkDim: "#a6a091",
 		inkDisabled: "#5f5a4e",
 
-		hairline: "#403b2c",
+		hairline: "#3b3627",
 
 		// `hairline` stepped toward `inkDim`, so it reads on this palette's own
 
 		// `sunken`: 1.66:1 there against `hairline`'s 1.54:1.
 
-		hairlineStrong: "#454031",
+		hairlineStrong: "#403B2C",
 		borderControl: "#837c6d",
 
 		/*
@@ -157,7 +183,7 @@ export const localOperatorDark: ThemeDefinition = {
 		chartBarHover: "#85DEA3",
 		tokenCommand: "#86b3f2",
 		/* The wire's own `info`, so the command word's rendering does not move. */
-		accentWash: "#16281d",
+		accentWash: "#13241A",
 		onAccent: "#16130e",
 		/*
 		 * No second hue to carry: this palette is desktop-only, so it has no TUI
@@ -170,21 +196,23 @@ export const localOperatorDark: ThemeDefinition = {
 		accentAlt: "#B0A7F7",
 		/*
 		 * `accentAlt`'s faintest tint, mirroring the treatment the wash above
-		 * receives: `accentWash`'s own L* 14.27 and C* 11.65, with the hue moved to
-		 * `accentAlt`'s. Measured: ΔE00 21.01 from `accentWash` (the field floor is
-		 * 2.0), 7.19:1 for `accentAlt` on it, and 11.95 from the nearest ground it
-		 * is painted on.
+		 * receives: `accentWash`'s own L* and C*, with the hue moved to
+		 * `accentAlt`'s. Re-measured at the darker-grounds pass (2026-11-03), where
+		 * both washes moved down with the grounds: `accentWash` is now L* 12.45 /
+		 * C* 10.96 (it was 14.27 / 11.65) and this wash L* 11.74 / C* 12.42.
+		 * Measured: ΔE00 20.71 from `accentWash` (the field floor is 2.0), 7.63:1
+		 * for `accentAlt` on it, and 12.78 from the nearest ground (`sunken`).
 		 */
-		accentAltWash: "#242233",
+		accentAltWash: "#1F1D2E",
 
 		success: "#57c785",
-		successWash: "#16281d",
+		successWash: "#13241A",
 		successBorder: "#4f8465",
 		warning: "#e0b04b",
-		warningWash: "#2a2213",
+		warningWash: "#251d0d",
 		warningBorder: "#8c773c",
 		danger: "#ef8078",
-		dangerWash: "#2e1b18",
+		dangerWash: "#291613",
 		dangerBorder: "#ac675d",
 		/*
 		 * The kit has no `info` role: on the site, "informational" is carried by
@@ -214,7 +242,7 @@ export const localOperatorDark: ThemeDefinition = {
 		 * wash; ΔE00 41.0 from `success`, 46.1 from `accent`.
 		 */
 		info: "#86b3f2",
-		infoWash: "#192332",
+		infoWash: "#141E2D",
 		infoBorder: "#5a7ba8",
 
 		overlayShadow: "0 12px 32px -12px rgb(0 0 0 / 0.6)",

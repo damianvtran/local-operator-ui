@@ -50,9 +50,11 @@ const message = (
 const Thread: FC<{
 	states: TeamBridgeDeliveryState[] | undefined;
 	senderKind?: "human" | "agent";
-}> = ({ states, senderKind = "human" }) => (
+	/* Pane width in px; the default is the desktop thread column. */
+	width?: number;
+}> = ({ states, senderKind = "human", width = 760 }) => (
 	// Top padding leaves room for the tooltip panel, which opens above.
-	<div className="flex w-[760px] flex-col bg-surface pt-24 text-ink">
+	<div className="flex flex-col bg-surface pt-24 text-ink" style={{ width }}>
 		<TeamBridgeMessageList
 			messages={[message(states, senderKind)]}
 			labelFor={(sender) => sender.display_label}
@@ -172,6 +174,73 @@ export const AgentMixedPartialDelivery: Story = {
 				endpoint_id: "bep_cy",
 				recipient_label: "Cy",
 				state: "held",
+			}),
+		],
+	},
+};
+
+/*
+ * The recipient label as older clients stored it (operator report,
+ * 2026-11-03). An agent member written before the composition fix holds the
+ * already composed "Aida (Ben Tran)", and an endpoint enrolled without an agent
+ * name holds its owner's name. Each line must name its recipient the way the
+ * message rows do: the owner exactly once, or "Ben Tran's chief of staff".
+ * Refused, held and pending are drawn together because all three templates
+ * take the one composed `{recipient}`.
+ */
+/*
+ * WRAPPED LINES AT A NARROW PANE (design review D2 on #1643). Every delivery
+ * template at once, in a column narrow enough that each wraps, so the info
+ * glyph's position on the LAST line can be judged: it must sit after the
+ * sentence's final word, never alone on a continuation line. Pin a locale with
+ * `?args=locale:ru` (the locale D2 was found in) and nudge `width` to move the
+ * break; the glyph travels with the last word at every width.
+ */
+export const NarrowWrappedLines: Story = {
+	args: {
+		width: 340,
+		states: [
+			state({
+				endpoint_id: "bep_scope",
+				recipient_label: "Ben Tran",
+				recipient_owner_label: "Ben Tran",
+				refusal_class: "out_of_scope",
+			}),
+			state({ endpoint_id: "bep_generic" }),
+			state({
+				endpoint_id: "bep_held",
+				state: "held",
+				hold_class: "screening_unavailable",
+			}),
+		],
+	},
+};
+
+export const LegacyComposedRecipientLabels: Story = {
+	args: {
+		states: [
+			state({
+				endpoint_id: "bep_aida",
+				recipient_label: "Aida (Ben Tran)",
+				recipient_owner_label: "Ben Tran",
+			}),
+			state({
+				endpoint_id: "bep_orion",
+				recipient_label: "Orion (Sherman Lee)",
+				recipient_owner_label: "Sherman Lee",
+				state: "held",
+			}),
+			state({
+				endpoint_id: "bep_cy",
+				recipient_label: "Cy (Cyrus Patel)",
+				recipient_owner_label: "Cyrus Patel",
+				state: "held",
+				hold_class: "delivery_pending",
+			}),
+			state({
+				endpoint_id: "bep_dana",
+				recipient_label: "Dana Ortiz",
+				recipient_owner_label: "Dana Ortiz",
 			}),
 		],
 	},

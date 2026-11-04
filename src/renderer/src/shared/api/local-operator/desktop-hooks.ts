@@ -326,6 +326,12 @@ export type DesktopFeature =
 	 * same key, so a plate and a banner agree.
 	 */
 	| "team_bridge_endpoint_avatar"
+	/**
+	 * `GET /v1/agents/{id}/avatar?size=64|128|256` (local-operator #3381): a
+	 * downscaled derivative of the local agent picture. Absent: the renderer
+	 * omits `size` and core serves the 512 px original, as before.
+	 */
+	| "agent_avatar_sizes"
 	| "auth"
 	| "settings"
 	| "commands"
@@ -927,6 +933,17 @@ export type DesktopFeature =
 	 * body, so there is nothing else to negotiate).
 	 */
 	| "approvals"
+	/**
+	 * Typed credential approval (`features.credential_approvals`): the
+	 * `typed_approval` block on a credential row plus `approve-credential` /
+	 * `apply-credential`, the two posts that carry the reviewed digests.
+	 *
+	 * ITS OWN KEY, not a bump of `approvals`, mirroring the backend's reasoning: a
+	 * backend without it has no route that accepts the body, so a renderer that
+	 * offered Approve there would POST into a 404. Absent ⇒ the credential card
+	 * keeps its Deny-and-remedy shape, exactly as before.
+	 */
+	| "credential_approvals"
 	/*
 	 * AIDA'S CONTROL PLANE (`features.aida`): the read and the control op the
 	 * sidebar's row and the composer's `/aida` share. ITS OWN KEY rather than a

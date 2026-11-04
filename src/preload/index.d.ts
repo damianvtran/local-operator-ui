@@ -505,6 +505,15 @@ declare global {
 			 */
 			getPathForFile: (file: File) => string;
 			/**
+			 * The clipboard's plain text, synchronously, for a composer `paste`
+			 * handler deciding whether to cancel the browser's insert (issue
+			 * #1573): a macOS file paste omits `text/plain` from the event while
+			 * Chromium still inserts the file's name. Blocks the renderer for one
+			 * main-process read; call it only from inside a paste handler. `""`
+			 * when there is nothing to read or the read failed.
+			 */
+			readPasteTextSync: () => string;
+			/**
 			 * Bytes for the in-app viewers (PDF, image, audio). The failure case is a
 			 * discriminant rather than an `Error`, because structured clone strips a
 			 * custom Error's prototype and `instanceof` would never be true here.
@@ -631,6 +640,8 @@ declare global {
 						detail?: string;
 						/** True when the install follows a source tree, not the release. */
 						sourceBuild?: boolean;
+						/** Whether the press cannot interrupt a running session (`entry-point` route only). */
+						nonDisruptive?: boolean;
 						/**
 						 * The version the daemon SERVING this app reports, when it was
 						 * readable. `currentVersion` above is the install on disk, which an

@@ -1,0 +1,137 @@
+{
+  "schema": 1,
+  "auditor": "i18n-auditor (independent team lopdev task, session 1f7797b807b7)",
+  "model": "anthropic/claude-opus-5-5 + openai/gpt-6.1-sol",
+  "model_provenance": "Initial semantic first pass, English/context/locale reads and glossary/style comparison ran as anthropic/claude-opus-5-5. Runtime then reported auth HTTP 401 fallbacks to anthropic/claude-sonnet-5-5 and then openai/gpt-6.1-sol; subsequent structural verification, classification and receipt recording ran under the latter announced route. No independent second auditor is represented by these model changes.",
+  "instance": "1f7797b807b7-zh-cn",
+  "audit_session": "1f7797b807b7",
+  "locale": "zh-CN",
+  "namespace": "ui.mesh",
+  "date": "2026-11-02",
+  "scope": "Delta audit of all 19 newly added ui.mesh.approval.* messages; no other catalogue value changed or was removed versus origin/main. Meaning, consent consequences, placeholders/ICU/CLDR, glossary, native locale style, logical RTL storage and absence of manual bidi controls. Unchanged namespace values retain historical audits; this is not a new full-namespace semantic review.",
+  "audited_head": "42f20ecbd929b64b7da75423e93b9cfaba605ff1",
+  "status": "passed",
+  "sha256": {
+    "en": "14428f2aa934af49f6c9d34a09696a3ba29505f653894a1c69b3fb8a22a261e4",
+    "zh-CN": "cab7351d35a12432679b506ab74eafea80a91cd3e3cad05106e6eeca943e5f83"
+  },
+  "findings": [
+    {
+      "id": "TA-ZH-01",
+      "severity": "nit",
+      "key": "ui.mesh.approval.head_finite_share",
+      "keys": [
+        "ui.mesh.approval.head_finite_share",
+        "ui.mesh.approval.head_inheritance",
+        "ui.mesh.approval.scope_device",
+        "ui.mesh.approval.scope_session",
+        "ui.mesh.approval.org_limited",
+        "ui.mesh.approval.not_copied",
+        "ui.mesh.approval.needs_broker",
+        "ui.mesh.approval.undoes_withdrawals",
+        "ui.mesh.approval.recipient_key",
+        "ui.mesh.approval.file_key_disclosure"
+      ],
+      "verbatim": "Ten new messages insert spaces between Chinese and placeholder/Latin runs. The zh-CN guide Punctuation & typography disallows added spaces between Chinese and Latin/digit runs. The unchanged ui.mesh namespace has 86 unspaced placeholder boundaries and zero spaced ones. Do not remove the internal space in the product name Touch ID.",
+      "recommendation": "Remove only added boundary spaces around placeholder/Latin runs; preserve placeholder contents, ICU syntax, and Touch ID verbatim.",
+      "disposition": "not applied: collected for the implementer’s unified remediation; target catalogue bytes are unchanged. Nonblocking terminology/typography finding; no consent consequence is reversed or omitted."
+    },
+    {
+      "id": "TA-ZH-02",
+      "severity": "nit",
+      "key": "ui.mesh.approval.applying",
+      "keys": [
+        "ui.mesh.approval.applying"
+      ],
+      "verbatim": "正在应用… uses one U+2026, whereas the zh-CN guide specifies …… (two marks). A source-side context note asks to keep an ellipsis; the localized two-mark ellipsis preserves the in-progress meaning.",
+      "recommendation": "Use 正在应用……, preserving the in-progress status.",
+      "disposition": "not applied: collected for the implementer’s unified remediation; target catalogue bytes are unchanged. Nonblocking terminology/typography finding; no consent consequence is reversed or omitted."
+    }
+  ],
+  "audited_keys": [
+    "ui.mesh.approval.head_finite_share",
+    "ui.mesh.approval.head_inheritance",
+    "ui.mesh.approval.scope_device",
+    "ui.mesh.approval.scope_session",
+    "ui.mesh.approval.org_limited",
+    "ui.mesh.approval.org_any",
+    "ui.mesh.approval.not_copied",
+    "ui.mesh.approval.until_revoked",
+    "ui.mesh.approval.future_logins_covered",
+    "ui.mesh.approval.future_logins_not_shared",
+    "ui.mesh.approval.installs_something",
+    "ui.mesh.approval.installs_nothing",
+    "ui.mesh.approval.needs_broker",
+    "ui.mesh.approval.undoes_withdrawals",
+    "ui.mesh.approval.recipient_key",
+    "ui.mesh.approval.file_key_disclosure",
+    "ui.mesh.approval.approved_not_applied",
+    "ui.mesh.approval.try_again",
+    "ui.mesh.approval.applying"
+  ],
+  "verbatim_values": {
+    "ui.mesh.approval.head_finite_share": "与 {device} 共享你的 {credential} 登录",
+    "ui.mesh.approval.head_inheritance": "允许 {device} 使用你的 {provider} 账号 {account}",
+    "ui.mesh.approval.scope_device": "{device} 上的任何会话都可以使用。",
+    "ui.mesh.approval.scope_session": "只有 {device} 上发出请求的那个会话可以使用。",
+    "ui.mesh.approval.org_limited": "仅限 {org} 组织。",
+    "ui.mesh.approval.org_any": "适用于此账号的任何组织。",
+    "ui.mesh.approval.not_copied": "你的登录不会被复制到 {device}。",
+    "ui.mesh.approval.until_revoked": "持续有效，直到你撤销。",
+    "ui.mesh.approval.future_logins_covered": "以后登录此账号也会被涵盖，无需再次询问。",
+    "ui.mesh.approval.future_logins_not_shared": "以后的登录不会被共享。",
+    "ui.mesh.approval.installs_something": "批准后也可能安装或加入某些内容。",
+    "ui.mesh.approval.installs_nothing": "不会安装或加入任何内容。",
+    "ui.mesh.approval.needs_broker": "{device} 还需要借用登录的权限，而此批准不授予该权限。",
+    "ui.mesh.approval.undoes_withdrawals": "{count, plural, other {撤销此前为 {device} 撤回此登录的 {count, number, ::group-off} 次操作。}}",
+    "ui.mesh.approval.recipient_key": "{device} 的密钥：",
+    "ui.mesh.approval.file_key_disclosure": "这台机器使用密钥文件签名，而不是 Touch ID，因此此批准无法证明是由人做出的。",
+    "ui.mesh.approval.approved_not_applied": "已批准，但尚未应用。",
+    "ui.mesh.approval.try_again": "重试",
+    "ui.mesh.approval.applying": "正在应用…"
+  },
+  "context_sidecar": {
+    "path": "src/i18n/catalogues/en/ui.mesh.context.json",
+    "sha256": "853d41789baa773984f386bbd25c93ca0beb1490b14a7d5b70948793473c0e90",
+    "read": "All 19 new context records read; no numeric maxCells budget is specified for these new records."
+  },
+  "standards": {
+    "root": "~/local-operator/i18n",
+    "glossary": "Read all 173 lines including continued truncated spans; native locale guide read completely.",
+    "sha256": {
+      "glossary.md": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+      "style-guides/zh-CN.md": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+    }
+  },
+  "translator": {
+    "agent": "coder",
+    "job": "job07291411b980",
+    "draft_commit": "42f20ecbd929b64b7da75423e93b9cfaba605ff1",
+    "attribution": "Parent reports coder launched as anthropic/claude-opus-5-5; actual served model at translation step is unverified. Commit message explicitly labels these seven target catalogues as draft translations for independent audit."
+  },
+  "independence": "This auditor session did not author or edit any target catalogue value. Translator coder job07291411b980 is a different agent/run. This receipt is ONE independent auditor instance, not the required second high-visibility audit.",
+  "semantic_checks": [
+    "Device scope includes every session; session scope excludes other sessions.",
+    "Any-organization scope is not narrowed; organization-limited scope preserves the identifier.",
+    "No credential copy; duration lasts until operator revocation.",
+    "Later sign-ins covered without renewed approval versus future sign-ins not shared are distinct.",
+    "Install/join fallback preserves may; installs-nothing preserves both negations.",
+    "Broker permission is separately required and is not granted here.",
+    "Withdrawal count restores earlier withdrawn login access; all locale plural branches retain count and device.",
+    "File signing versus Touch ID and inability to prove a human approval remain explicit.",
+    "Approved-but-not-applied status does not claim access is already effective."
+  ],
+  "evidence": {
+    "log": "i18n/receipts/1f7797b807b7-structural-evidence.txt",
+    "log_sha256": "b6d54cf295eaa3b56cf7bedb42e7348888d23fdc09eb222ca871162e28f8e239",
+    "probe": "i18n/receipts/1f7797b807b7-structural-probe.txt",
+    "probe_sha256": "46586b82f143cecd1b37759e8f1b21b25498f57181ae5772f1f895600e20653e",
+    "verdict_location": "This receipt findings, status and semantic_checks are the auditor’s original review record; companion log is actual structural execution output only."
+  },
+  "non_claims": [
+    "No second independent high-visibility audit has been performed by this session. Parent is arranging it.",
+    "No rendered/compiled-native, width/fit, pseudo-localization, font shaping or visual RTL validation. Host load hold forbids heavy/native/browser dispatch.",
+    "No translation edits: all findings are handed to the implementer for one unified remediation. Changed target bytes will require fresh delta receipts."
+  ],
+  "notes": "Original independent audit receipt recorded in the same auditor session. Model fallback disclosed. This passing individual audit has zero blocker/major findings; it does not waive separate high-visibility or design/UX gates."
+}

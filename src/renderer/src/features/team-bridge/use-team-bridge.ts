@@ -27,6 +27,7 @@
  */
 import {
 	TeamBridgeApi,
+	type TeamBridgeMentionRow,
 	requireBridgeWriteAccount,
 } from "@shared/api/local-operator/team-bridge-api";
 import { observedRadientAuthority } from "@shared/hooks/radient-account-authority";
@@ -562,7 +563,12 @@ export function useSendTeamBridgeMessage(
 ): UseMutationResult<
 	unknown,
 	Error,
-	{ clientRef: string; body: string; attachmentIds?: readonly string[] }
+	{
+		clientRef: string;
+		body: string;
+		attachmentIds?: readonly string[];
+		mentions?: readonly TeamBridgeMentionRow[];
+	}
 > {
 	const client = useQueryClient();
 	const owner = useBridgeOwner();
@@ -571,6 +577,16 @@ export function useSendTeamBridgeMessage(
 		body: string;
 		/* A staged image set this message binds; omitted (never `[]`) for text. */
 		attachmentIds?: readonly string[];
+		/*
+		 * The @-mentions the caller captured at the PRESS (review MINOR-1 on #1663).
+		 * A picture send reaches this request only after its upload, and while it
+		 * uploads an optimistic text send of the same words can land and clear the
+		 * shared outbox entry, so a read here would post the picture without its
+		 * mentions. The key being PRESENT is the capture, even when its value is
+		 * undefined (nothing was staged); only an input without the key falls back
+		 * to the outbox, for a caller that never captured.
+		 */
+		mentions?: readonly TeamBridgeMentionRow[];
 	};
 	const mutation = useMutation<
 		unknown,
@@ -584,7 +600,10 @@ export function useSendTeamBridgeMessage(
 				tenantId: target.tenantId,
 				expectedAccountId: requireBridgeWriteAccount(target.accountId),
 				// The composer's @-mentions for exactly this text (`mention-outbox`).
-				mentions: stagedMentions(target.conversationId, input.body),
+				mentions:
+					"mentions" in input
+						? input.mentions
+						: stagedMentions(target.conversationId, input.body),
 			});
 		},
 		onSuccess: (_data, { input, target }) => {

@@ -87,5 +87,7 @@
 	"ui.chat.run_details.job_cancel_aria": "Cancel {label}",
 	"ui.chat.run_details.monitors.cancel_aria": "Cancel monitor {name}",
 	"ui.chat.run_details.monitors.more": "{count, plural, =1 {{count_display} more monitor} other {{count_display} more monitors}}",
-	"ui.chat.run_details.wake.more": "{count, plural, =1 {{count_display} more wake} other {{count_display} more wakes}}"
+	"ui.chat.run_details.wake.more": "{count, plural, =1 {{count_display} more wake} other {{count_display} more wakes}}",
+	"ui.chat.run_details.wake.armed_count": "{count, plural, =1 {{count_display} wake armed} other {{count_display} wakes armed}}",
+	"ui.chat.run_details.wake.cadence_once": "once"
 }

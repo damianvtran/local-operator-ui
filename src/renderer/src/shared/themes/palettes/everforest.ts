@@ -44,19 +44,36 @@ export const everforest: ThemeDefinition = {
 	palette: {
 		mode: "dark",
 
-		canvas: "#2D353B",
-		surface: "#343F44",
-		elevated: "#3D484D",
-		sunken: "#232A2E",
+		/*
+		 * THE DARKER-GROUNDS PASS (2026-11-03, `docs/branding.md` § 2) supersedes the
+		 * earlier L* 12 dark floor: the dark band is now L* 9-15 (target 9-13), and
+		 * the canvas maps by `L*_new = 9 + 0.6 x (L*_old - 12)`, a map that preserves
+		 * the fleet's order (re-solves may move a canvas off it, up to +-1.04 L*).
+		 * Here every ground-class role (the grounds, the row states, the two fills,
+		 * the washes and the hairlines) moved by the canvas's own ΔL* holding its `a`
+		 * and `b`; inks, accents and `borderControl` did not move.
+		 * Measured:
+		 * canvas #2D353B -> #1D252B (L* 21.65 -> 14.17)
+		 * surface #343F44 -> #242F34 (L* 25.87 -> 18.61)
+		 * elevated #3D484D -> #2B363B (L* 29.82 -> 21.83)
+		 * sunken #232A2E -> #141B1F (L* 16.56 -> 9.25)
+		 * Re-solved off the uniform shift, because a contract floor refused it there:
+		 * `elevated`, `mediaSurface`, `accentWash`. `pnpm check-themes` is the
+		 * measurement for each.
+		 */
+		canvas: "#1D252B",
+		surface: "#242F34",
+		elevated: "#2B363B",
+		sunken: "#141B1F",
 
 		// The user block's fill: ΔE00 4.27 off the canvas, where `surface` alone
 		// measures 3.54 - a step toward `elevated` to clear the role's 4.0 floor,
 		// which the block carries because the fill IS its boundary.
-		messageSurface: "#354146",
+		messageSurface: "#253136",
 		// The media slot's well: ΔE00 4.22 off the canvas, where `sunken` alone
 		// measures 3.66 - a step away from the canvas to clear the role's 4.0
 		// floor, which the tile carries because the fill IS its resting extent.
-		mediaSurface: "#22292c",
+		mediaSurface: "#12191c",
 
 		/*
 		 * ROW STATES, and `highlight` retired in the same change. Both roles are a
@@ -75,8 +92,8 @@ export const everforest: ThemeDefinition = {
 		 *                       `rowHover`; the pair ranks 1.76 `L*` and 6.2 `C*`,
 		 *                       `inkDim` 5.29:1.
 		 */
-		rowHover: "#3F4649",
-		rowSelected: "#374C55",
+		rowHover: "#2F3639",
+		rowSelected: "#263B44",
 
 		// fg D3C6AA is 5.57:1 on `elevated`, under the 7:1 floor; lifted.
 		/*
@@ -124,10 +141,10 @@ export const everforest: ThemeDefinition = {
 		 * 1.15-2.0:1 band, because a separator that shouted would be a border.
 		 * `elevated` is the tightest ground at ΔE00 4.64.
 		 */
-		hairline: "#4A555C",
+		hairline: "#39444B",
 		// `hairline` stepped toward `inkDim`, so it reads on this palette's own
 		// `sunken`: 2.09:1 there against `hairline`'s 1.90:1.
-		hairlineStrong: "#505B61",
+		hairlineStrong: "#3F4A50",
 		// bg4 4F585E is 1.29:1 on `elevated` — a ground colour doing a
 		// boundary's job. Lifted along the same cool grey.
 		borderControl: "#89949C",
@@ -166,7 +183,7 @@ export const everforest: ThemeDefinition = {
 		 * `elevated` is the tightest base at ΔE00 2.1. Lightness only, at the
 		 * wash's own hue.
 		 */
-		accentWash: "#434E52",
+		accentWash: "#313D41",
 		onAccent: "#2D353B",
 		/*
 		 * The theme's own second hue, from the TUI's `label` token (`#D699B6`,
@@ -204,7 +221,7 @@ export const everforest: ThemeDefinition = {
 		 * `accentWash` (the field floor is 2.0), 4.54:1 for `accentAlt` on it, and
 		 * 10.44 from the nearest ground it is painted on.
 		 */
-		accentAltWash: "#463E44",
+		accentAltWash: "#362E34",
 
 		/*
 		 * Legibility pass: `success` is drawn as text on all six grounds, so it keeps
@@ -215,12 +232,12 @@ export const everforest: ThemeDefinition = {
 		 * legibility, is what the ramp change was allowed to keep.
 		 */
 		success: "#ABC584",
-		successWash: "#3A4442",
+		successWash: "#2A3432",
 		successBorder: "#A7C080",
 
 		// canonical yellow.
 		warning: "#DBBC7F",
-		warningWash: "#454842",
+		warningWash: "#353832",
 		warningBorder: "#DBBC7F",
 
 		// canonical red E67E80, lifted for `elevated`.
@@ -233,14 +250,14 @@ export const everforest: ThemeDefinition = {
 		 * legibility, is what the ramp change was allowed to keep.
 		 */
 		danger: "#F5A8A8",
-		dangerWash: "#434147",
+		dangerWash: "#333137",
 		dangerBorder: "#ECA0A1",
 
 		// The blue-teal the TUI port maps to `signal`, so `info` is the same role
 		// here; Everforest's purple is left to the callout's border rather than
 		// doubling the green family in a second hue.
 		info: "#9ACAC3",
-		infoWash: "#42424C",
+		infoWash: "#32323C",
 		infoBorder: "#DEA3C6",
 
 		overlayShadow: "0 12px 32px -12px rgb(20 25 27 / 0.7)",

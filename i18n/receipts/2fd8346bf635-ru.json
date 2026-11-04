@@ -1,0 +1,99 @@
+{
+	"schema": 1,
+	"receipt_kind": "independent copy-delta re-audit (in-sentence unnamed recipient), one locale",
+	"audit_id": "delivery-recipient-unnamed-reaudit-2fd8346bf635",
+	"date": "2026-11-03",
+	"agent": "copy-reviewer",
+	"model": "anthropic/claude-opus-5-5",
+	"model_provenance": "Served model as announced by the harness system prompt for session 2fd8346bf635 (Model: anthropic/claude-opus-5-5); no fallback announced or observed during the run.",
+	"model_fallback": {
+		"announced": false,
+		"observed": false
+	},
+	"instance": "2fd8346bf635-ru",
+	"session": "2fd8346bf635",
+	"status": "passed",
+	"result": "clean",
+	"locale": "ru",
+	"namespace": "ui.teamBridge",
+	"sha256": {
+		"en": "0fc05324f1284ff6f7f37f8fe9dc8aa78d0f17f03640f300e02b3e37c3ca954b",
+		"ru": "baaa2c7e9a146f5e01cf3099e64ef503d9e461e7e1d6456044450b9423635949"
+	},
+	"context": {
+		"path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+		"sha256": "c1545312b0378ded7100b626653a8e401d959b86ad4afb8d39c86833af6538f7",
+		"delta_entries_present": true,
+		"note": "Exactly one context entry changed vs ca038334dcf: the new ui.teamBridge.delivery.recipient_unnamed (role: recipient name inside a delivery status sentence; oblique case / article / lower case as the grammar needs; must not repeat the person)."
+	},
+	"reference_hashes": {
+		"~/local-operator/i18n/glossary.md": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+		"~/local-operator/i18n/style-guides/ru.md": "f20e1cafaf70578c17ce072c71725628808d228e4be5604329f8da30386f1fb5",
+		"core_commit": "b42471d3935cb7e95d64428af27c32626665f4c0"
+	},
+	"integration": {
+		"pr": 1643,
+		"branch": "fix/delivery-recipient-label",
+		"reviewed_head": "70646b20d3ab9078135ee4356764fb1c2f4a08d1",
+		"previous_audit_head": "0ce7d254d234513a2d522965e6170a6944239f4d",
+		"remediation_commit": "70646b20d3ab9078135ee4356764fb1c2f4a08d1",
+		"author_job": "da8eee3a55f2",
+		"remediation_job": "8f0b8996f1e1",
+		"round": 2,
+		"prior_round_receipt": "i18n/receipts/7fc20c1e3809-ru.json"
+	},
+	"scope": {
+		"keys": [
+			"ui.teamBridge.delivery.recipient_unnamed",
+			"ui.teamBridge.delivery.refused",
+			"ui.teamBridge.delivery.refused_manipulation",
+			"ui.teamBridge.delivery.refused_personal_info",
+			"ui.teamBridge.delivery.refused_abusive",
+			"ui.teamBridge.delivery.refused_unsafe_content",
+			"ui.teamBridge.delivery.refused_out_of_scope",
+			"ui.teamBridge.delivery.held",
+			"ui.teamBridge.delivery.held_screening_unavailable",
+			"ui.teamBridge.delivery.held_awaiting_review",
+			"ui.teamBridge.delivery.pending"
+		],
+		"kind": "Round-2 independent audit of the new delivery-only key ui.teamBridge.delivery.recipient_unnamed (placeholder, in-sentence grammar after every preposition/postposition the ten delivery sentences use, glossary/style conformance) and each of the ten ui.teamBridge.delivery.{refused*,held*,pending} sentences composed with BOTH recipient forms (ui.teamBridge.chief.label and the new key), checking round-1 C1-C4 and regressions. Unchanged namespace content is inherited, not re-audited.",
+		"unchanged_proof": "Parsed ca038334dcf and head catalogues: the only key added or changed in this catalogue is ui.teamBridge.delivery.recipient_unnamed; the ten delivery values and chief.label/chief.unnamed are byte-identical to the round-1-audited values. Base file hash equals the existing ledger target hash.",
+		"base_target_sha256_prefix": "a454f8f89ece"
+	},
+	"independence": "copy-reviewer session 2fd8346bf635 on the radientdev team. Authored none of PR #1643 (author coder job da8eee3a55f2, remediation job 8f0b8996f1e1), none of the translations, and is not the round-1 auditor (session 7fc20c1e3809); round-1 verdicts were re-derived from the catalogue bytes, not copied. Edited no catalogue value; its only writes are these receipts and the ledger rows ledger-assemble derives from them.",
+	"placeholder_check": {
+		"key": "ui.teamBridge.delivery.recipient_unnamed",
+		"placeholders": [
+			"person"
+		],
+		"exactly_person": true,
+		"delivery_sentences_placeholders": [
+			"recipient"
+		]
+	},
+	"prior_findings": {},
+	"per_key_verdict": {
+		"ui.teamBridge.delivery.recipient_unnamed": "PASS: \"Координатор ({person})\"; {person} only; copy of audited chief.unnamed; apposition after агенту/агентом keeps the nominative label, capitalised as a label-name.",
+		"ui.teamBridge.delivery.refused": "PASS: Не доставлено агенту Aida (Ben Tran). Отклонено модерацией. | Не доставлено агенту Координатор (Ben Tran). Отклонено модерацией.",
+		"ui.teamBridge.delivery.refused_manipulation": "PASS: Не доставлено агенту Aida (Ben Tran): отклонено его модерацией (похоже на попытку манипулировать агентом) | Не доставлено агенту Координатор (Ben Tran): отклонено его модерацией (похоже на попытку манипулировать агентом)",
+		"ui.teamBridge.delivery.refused_personal_info": "PASS: Не доставлено агенту Aida (Ben Tran): отклонено его модерацией (похоже на запрос личной информации) | Не доставлено агенту Координатор (Ben Tran): отклонено его модерацией (похоже на запрос личной информации)",
+		"ui.teamBridge.delivery.refused_abusive": "PASS: Не доставлено агенту Aida (Ben Tran): отклонено его модерацией (похоже на оскорбительный контент) | Не доставлено агенту Координатор (Ben Tran): отклонено его модерацией (похоже на оскорбительный контент)",
+		"ui.teamBridge.delivery.refused_unsafe_content": "PASS: Не доставлено агенту Aida (Ben Tran): отклонено его модерацией (похоже на небезопасный контент или ссылки) | Не доставлено агенту Координатор (Ben Tran): отклонено его модерацией (похоже на небезопасный контент или ссылки)",
+		"ui.teamBridge.delivery.refused_out_of_scope": "PASS: Не доставлено агенту Aida (Ben Tran): отклонено его модерацией (похоже на запрос вне задач этого агента) | Не доставлено агенту Координатор (Ben Tran): отклонено его модерацией (похоже на запрос вне задач этого агента)",
+		"ui.teamBridge.delivery.held": "PASS: Ожидает проверки агентом Aida (Ben Tran)… | Ожидает проверки агентом Координатор (Ben Tran)…",
+		"ui.teamBridge.delivery.held_screening_unavailable": "PASS: Ожидает проверки агентом Aida (Ben Tran). Проверка временно недоступна. | Ожидает проверки агентом Координатор (Ben Tran). Проверка временно недоступна.",
+		"ui.teamBridge.delivery.held_awaiting_review": "PASS: Ожидает проверки агентом Aida (Ben Tran). Сообщение ожидает рассмотрения. | Ожидает проверки агентом Координатор (Ben Tran). Сообщение ожидает рассмотрения.",
+		"ui.teamBridge.delivery.pending": "PASS: Проверено; ожидается доставка агенту Aida (Ben Tran) | Проверено; ожидается доставка агенту Координатор (Ben Tran)"
+	},
+	"composition_notes": "Value equals the audited chief.unnamed. Nominative apposition after the declined head noun (\"агенту Координатор (Ben Tran)\", \"проверки агентом Координатор (Ben Tran)\") is the standard pattern for an undeclined label; the capital marks it as the label and is what licenses the nominative. Reads naturally.",
+	"findings": [],
+	"out_of_scope_observations": [],
+	"copy_scan": "design-qa copy_scan.py over src/i18n/catalogues/{en,fr,es,ru,vi,ur,hi,zh-CN}/ui.teamBridge.json: scanned 8 files, 3704 candidate strings; 0 findings",
+	"not_audited": [
+		"Unchanged namespace language",
+		"Runtime ICU execution",
+		"Rendered fit and RTL layout",
+		"Pseudo-localization"
+	],
+	"execution_limitations": "Source and composition review (values substituted with Aida / Ben Tran); no rendered frames captured by this auditor."
+}

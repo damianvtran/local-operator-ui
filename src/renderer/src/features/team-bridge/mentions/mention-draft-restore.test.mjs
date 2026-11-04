@@ -15,6 +15,7 @@ const bundle = await build({
 			export {useMentionDraftStore} from './src/renderer/src/features/team-bridge/mentions/mention-draft-store';
 			export {stagedMentions} from './src/renderer/src/features/team-bridge/mentions/mention-outbox';
 			export {createRoot} from 'react-dom/client';
+			export {flushSync} from 'react-dom';
 			export {QueryClient, QueryClientProvider} from '@tanstack/react-query';
 			export {act, createElement, useRef, StrictMode, Fragment} from 'react';`,
 		resolveDir: process.cwd(),
@@ -99,7 +100,12 @@ async function mount({
 	list = [human, agent],
 	failSend = false,
 	owner = defaultOwner,
+	// Dev builds mount under <React.StrictMode> (main.tsx), which renders every
+	// component twice; render-phase logic must give the same answer both times.
 	strictMode = false,
+	// An owner may refuse a field value (a length cap, a read-only state):
+	// React then puts its controlled value back without re-rendering.
+	accept = () => true,
 } = {}) {
 	let storageKey = scopedKey(key, owner);
 	const host = document.createElement("div");
@@ -138,7 +144,9 @@ async function mount({
 				ref: fieldRef,
 				value,
 				autoFocus: true,
-				onChange: (event) => acceptText(event.target.value),
+				onChange: (event) => {
+					if (accept(event.target.value)) acceptText(event.target.value);
+				},
 				...controller.bindField({}),
 			}),
 			m.createElement(
@@ -240,8 +248,15 @@ async function mount({
 		 * is not used there on purpose: its async flush yields a macrotask, which
 		 * lets unrelated timers re-render between the phases - a browser never
 		 * does that between two listeners of one event.
+		 *
+		 * `singleDispatch` models the same checkpoint the other way (review
+		 * R1-02 on #1600): ONE bubbling input, with a `flushSync` run by a field
+		 * listener registered after the hook's own, standing in for the
+		 * checkpoint. The split dispatch loses every key; this one reproduces the
+		 * reported signature exactly (an equal setState bails out, so a repeated
+		 * key survives: "aab" -> "a", "hello" -> "l").
 		 */
-		async keystrokes(chars) {
+		async keystrokes(chars, { singleDispatch = false } = {}) {
 			const reverted = [];
 			for (const ch of chars) {
 				const field = host.querySelector("textarea");
@@ -252,15 +267,29 @@ async function mount({
 					field.focus();
 					setValue.call(field, next);
 					field.setSelectionRange(next.length, next.length);
-					field.dispatchEvent(
-						new InputEvent("input", { ...init, bubbles: false }),
-					);
-					for (let i = 0; i < 3; i += 1) await Promise.resolve();
-					if (field.value !== next)
-						reverted.push({ key: ch, expected: next, field: field.value });
-					field.dispatchEvent(
-						new InputEvent("input", { ...init, bubbles: true }),
-					);
+					if (singleDispatch) {
+						const checkpoint = () => m.flushSync(() => {});
+						field.addEventListener("input", checkpoint);
+						try {
+							field.dispatchEvent(
+								new InputEvent("input", { ...init, bubbles: true }),
+							);
+						} finally {
+							field.removeEventListener("input", checkpoint);
+						}
+						if (field.value !== next)
+							reverted.push({ key: ch, expected: next, field: field.value });
+					} else {
+						field.dispatchEvent(
+							new InputEvent("input", { ...init, bubbles: false }),
+						);
+						for (let i = 0; i < 3; i += 1) await Promise.resolve();
+						if (field.value !== next)
+							reverted.push({ key: ch, expected: next, field: field.value });
+						field.dispatchEvent(
+							new InputEvent("input", { ...init, bubbles: true }),
+						);
+					}
 				} finally {
 					globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 				}
@@ -735,7 +764,15 @@ test("R1: shipped provider derives ownership from IDs even before the directory 
 				),
 			),
 		);
-		assert.equal(source.self, null);
+		// Identity comes from the authenticated account id, not the roster: with
+		// no directory or member row the reader is still known, only unlabeled.
+		// An empty label never matches a mention, and it is never unique, so the
+		// name fallback cannot select the viewer from it.
+		assert.deepEqual(source.self, {
+			accountId: defaultOwner.accountId,
+			label: "",
+			labelUnique: false,
+		});
 		assert.deepEqual(source.draftOwner, defaultOwner);
 	} finally {
 		await m.act(async () => root.unmount());
@@ -751,11 +788,32 @@ test("R1: shipped provider derives ownership from IDs even before the directory 
  * string), which is why "hello" came out as "l".
  */
 for (const word of ["abc", "aab", "hello"])
-	test(`browser-ordered keystrokes land every key: ${JSON.stringify(word)}`, async () => {
+	for (const strict of [false, true])
+		test(`browser-ordered keystrokes land every key: ${JSON.stringify(word)}${strict ? " (StrictMode)" : ""}`, async () => {
+			m.useMentionDraftStore.setState({ drafts: {} });
+			const c = await mount({ strictMode: strict });
+			try {
+				const reverted = await c.keystrokes(word);
+				assert.deepEqual(reverted, [], "no keystroke may be reverted");
+				assert.equal(c.text, word);
+				assert.equal(c.host.querySelector("textarea").value, word);
+			} finally {
+				await c.dispose();
+			}
+		});
+
+/*
+ * THE REPORTED SIGNATURE ITSELF (review R1-02 on #1600): one bubbling input
+ * with the checkpoint flushed between listeners. The broken listener let only
+ * a key equal to the previous one survive, so "aab" came out as "a" and
+ * "hello" as "l" - not merely "some key was lost".
+ */
+for (const word of ["aab", "hello"])
+	test(`single-dispatch keystrokes keep more than the repeated key: ${JSON.stringify(word)}`, async () => {
 		m.useMentionDraftStore.setState({ drafts: {} });
 		const c = await mount();
 		try {
-			const reverted = await c.keystrokes(word);
+			const reverted = await c.keystrokes(word, { singleDispatch: true });
 			assert.deepEqual(reverted, [], "no keystroke may be reverted");
 			assert.equal(c.text, word);
 			assert.equal(c.host.querySelector("textarea").value, word);
@@ -863,20 +921,53 @@ test("optimistic clear and identical refused-send restore cannot resurrect old e
 	}
 });
 
-test("browser-ordered '@' into an empty composer opens the popover on that keystroke", async () => {
+/*
+ * A refused input leaves no trace (review R1-03 on #1600). The owner drops the
+ * typed '@', React reverts the field without a render, and the owner later
+ * delivers that same text as a restore. That restore is not a keystroke, so it
+ * must not arm the query.
+ */
+test("a refused native input cannot mark a later restore of the same text as typed", async () => {
 	m.useMentionDraftStore.setState({ drafts: {} });
-	const c = await mount();
+	let refuse = true;
+	const c = await mount({ accept: () => !refuse });
 	try {
-		assert.deepEqual(await c.keystrokes("@"), []);
+		await c.type("@");
+		assert.equal(c.text, "", "the owner refused the edit");
+		assert.equal(c.host.querySelector("textarea").value, "");
+		refuse = false;
+		await c.restore("@");
 		assert.equal(c.text, "@");
-		assert.equal(c.controller.open, true, "the very keystroke arms the query");
-		// The popover portals to the document body, not into the host.
-		assert.notEqual(document.querySelector('[role="listbox"]'), null);
-		assert.equal(
-			c.host.querySelector("textarea").getAttribute("aria-expanded"),
-			"true",
-		);
+		assert.equal(c.controller.open, false, "a restore never opens a query");
 	} finally {
 		await c.dispose();
 	}
 });
+
+/*
+ * StrictMode renders twice in dev (main.tsx). Adoption that consumed the
+ * native-edit ref during render left the second render with nothing to adopt,
+ * so the popover only opened on the following keyup (review R1-01 on #1600).
+ */
+for (const strict of [false, true])
+	test(`browser-ordered '@' into an empty composer opens the popover on that keystroke${strict ? " (StrictMode)" : ""}`, async () => {
+		m.useMentionDraftStore.setState({ drafts: {} });
+		const c = await mount({ strictMode: strict });
+		try {
+			assert.deepEqual(await c.keystrokes("@"), []);
+			assert.equal(c.text, "@");
+			assert.equal(
+				c.controller.open,
+				true,
+				"the very keystroke arms the query",
+			);
+			// The popover portals to the document body, not into the host.
+			assert.notEqual(document.querySelector('[role="listbox"]'), null);
+			assert.equal(
+				c.host.querySelector("textarea").getAttribute("aria-expanded"),
+				"true",
+			);
+		} finally {
+			await c.dispose();
+		}
+	});
