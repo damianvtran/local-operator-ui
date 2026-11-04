@@ -78,7 +78,7 @@ const Frame: FC<{ message: TeamBridgeMessage; width?: number }> = ({
 	message,
 	width = 640,
 }) => (
-	<div className="bg-canvas p-4 text-ink" style={{ width }}>
+	<div className="bg-surface p-4 text-ink" style={{ width }}>
 		<div className="text-[12px] text-ink-dim">Message content column</div>
 		<TeamBridgeThreadRow
 			message={message}
@@ -124,6 +124,11 @@ export const UnreadTwelve: Story = {
 };
 
 /* Five repliers: the hub caps its list at three, and so does the facepile. */
+/* Past the badge cap: `99+ unread` (QA round 1, Q2). */
+export const UnreadOverCap: Story = {
+	args: { message: root({ reply_count: 180, thread_unread_count: 150 }) },
+};
+
 export const ManyParticipants: Story = {
 	args: {
 		message: root({
@@ -179,10 +184,11 @@ export const OlderHub: Story = {
 	},
 };
 
-/* The row in its real message-list context: a read thread above an unread one. */
+/* The row in its real message-list context: a read thread above an unread one,
+   on the channel column's own `surface` ground (design round 1, D1). */
 export const InMessageList: Story = {
 	render: () => (
-		<div className="flex w-[760px] flex-col bg-canvas text-ink">
+		<div className="flex w-[760px] flex-col bg-surface text-ink">
 			<TeamBridgeMessageList
 				messages={[
 					root({ id: "bcmsg_a", seq: 1 }),
@@ -220,8 +226,10 @@ export const InMessageList: Story = {
  * under the same story names a capture of origin/main uses for the old pill,
  * so each evidence pair differs only by the change under review.
  */
+/* `bg-surface`: the channel timeline's real ground (`team-bridge-page.tsx`), so
+   a transparent row is judged where operators see it (design round 1, D1). */
 const ListFrame: FC<{ message: TeamBridgeMessage }> = ({ message }) => (
-	<div className="flex w-[760px] flex-col bg-canvas text-ink">
+	<div className="flex w-[760px] flex-col bg-surface text-ink">
 		<TeamBridgeMessageList
 			messages={[message]}
 			labelFor={(sender) => sender.display_label}
@@ -239,3 +247,20 @@ export const ListNoReplies = inList(NoReplies);
 export const ListRead = inList(Read);
 export const ListUnread = inList(UnreadTwelve);
 export const ListManyParticipants = inList(ManyParticipants);
+
+/* The thread pane's `canvas` host: the second ground the row lives on, with the
+   pane's `--thread-row-host` so the facepile ring matches it. */
+export const InThreadPaneHost: Story = {
+	args: { message: root({ thread_unread_count: 2 }) },
+	render: (args) => (
+		<div className="flex w-[480px] flex-col bg-canvas text-ink [--thread-row-host:var(--color-canvas)]">
+			<TeamBridgeMessageList
+				messages={[args.message]}
+				labelFor={(sender) => sender.display_label}
+				profileFor={profileFor}
+				onReply={() => {}}
+				tenantId="tnt_story"
+			/>
+		</div>
+	),
+};

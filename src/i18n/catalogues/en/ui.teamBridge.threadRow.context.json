@@ -6,7 +6,7 @@
 		"placeholders": {
 			"count": "Number of replies",
 			"unread": "Replies in this thread the reader has not read; 0 drops the clause",
-			"last": "The complete, already-localized ui.teamBridge.thread_row.last sentence",
+			"last": "The complete, already-localized ui.teamBridge.threadRow.last sentence",
 			"hasLast": "yes when a last-reply moment is known"
 		},
 		"note": "Slack-style one-level conversation thread; reply is a message inside the thread, not a channel post. The row opens the thread."

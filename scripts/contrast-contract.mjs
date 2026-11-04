@@ -664,6 +664,53 @@ const CONTROLS = [
 		edge: false,
 	},
 	/*
+	 * TEAM BRIDGE THREAD ROW (`team-bridge-thread-row.tsx`, design round 1 on
+	 * #1672, D1/D2). Transparent at rest, so at rest its fill IS the host: the
+	 * channel column's `surface`, the thread pane's `canvas`, and the parent
+	 * message row's `rowHover` under the pointer. Hover is `sunken` on all three.
+	 * Its inks are the accent "N replies" count and the `inkMuted` "Last reply"
+	 * clause; one row per ink, because the checker reads one ink per row.
+	 *
+	 * `edge: false` for the same reason as the reaction pills above: a fill-only,
+	 * borderless bar cannot promise a 3:1 boundary off `rowHover` in every
+	 * palette, and the operator asked for no border. What makes the row usable is
+	 * its ink on whatever fill it has, which these rows assert at 4.5:1. The
+	 * accent-on-`sunken` pair is the tightest (design round 1 measured
+	 * solarizedLight at 4.50:1), which is why it has its own row.
+	 */
+	{
+		name: "team bridge thread row (rest, count)",
+		on: ["surface", "canvas", "rowHover"],
+		fill: null,
+		border: null,
+		ink: "accent",
+		edge: false,
+	},
+	{
+		name: "team bridge thread row (rest, last reply)",
+		on: ["surface", "canvas", "rowHover"],
+		fill: null,
+		border: null,
+		ink: "inkMuted",
+		edge: false,
+	},
+	{
+		name: "team bridge thread row (hover, count)",
+		on: ["surface", "canvas", "rowHover"],
+		fill: "sunken",
+		border: null,
+		ink: "accent",
+		edge: false,
+	},
+	{
+		name: "team bridge thread row (hover, last reply)",
+		on: ["surface", "canvas", "rowHover"],
+		fill: "sunken",
+		border: null,
+		ink: "inkMuted",
+		edge: false,
+	},
+	/*
 	 * TEAM BRIDGE ATTACHMENT CHIPS (inline-image refresh, SPEC §3.1 / D1). A
 	 * file, a non-image descriptor or a count-only receipt is a borderless
 	 * Slack-style chip: `mediaSurface` fill, `ink` name, `inkDim` meta line, an

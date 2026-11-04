@@ -336,9 +336,14 @@ export const teamBridgeMessageSchema = z
 		 * label without an id still renders as its initial. */
 		reply_participant_ids: z
 			.array(
+				/* Caught PER ENTRY: one replier of a kind this build does not know,
+				   or one malformed id, costs that plate its avatar (it falls back to
+				   the label's initial), never the other two plates. */
 				z
 					.object({ account_id: id, kind: z.enum(["human", "agent"]) })
-					.passthrough(),
+					.passthrough()
+					.nullable()
+					.catch(null),
 			)
 			.max(16)
 			.optional()
@@ -783,6 +788,35 @@ export const teamBridgeIdentitySchema = z
 	.object({ account_id: z.string().min(1).nullable().optional() })
 	.passthrough();
 export type TeamBridgeIdentity = z.infer<typeof teamBridgeIdentitySchema>;
+
+/*
+ * The answer to a THREAD read (hub slice TR1): the viewer's new thread state.
+ * Every field optional and caught, because the server PR is not merged yet and
+ * the client must not fail a successful write over its echo: an answer it
+ * cannot read costs only the immediate badge update, and the timeline refetch
+ * that follows every read supplies the hub's count instead. `unread_count` is
+ * accepted as a spelling of the same number so either TR1 draft parses.
+ */
+export const teamBridgeThreadReadStateSchema = z
+	.object({
+		thread_unread_count: z
+			.number()
+			.int()
+			.nonnegative()
+			.optional()
+			.catch(undefined),
+		unread_count: z.number().int().nonnegative().optional().catch(undefined),
+		thread_last_read_seq: z
+			.number()
+			.int()
+			.nonnegative()
+			.optional()
+			.catch(undefined),
+	})
+	.passthrough();
+export type TeamBridgeThreadReadState = z.infer<
+	typeof teamBridgeThreadReadStateSchema
+>;
 
 export const teamBridgeReadStateSchema = z
 	.object({

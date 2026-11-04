@@ -32,7 +32,7 @@ const bundle = await build({
 			export * from './src/renderer/src/features/team-bridge/team-bridge-threads-model';
 			export { TeamBridgeThreadRow, lastReplyLabel } from './src/renderer/src/features/team-bridge/team-bridge-thread-row';
 			export { TeamBridgeMessageList } from './src/renderer/src/features/team-bridge/team-bridge-message-list';
-			export { useMarkTeamBridgeThreadRead, clearCachedThreadUnread, teamBridgeKeys } from './src/renderer/src/features/team-bridge/use-team-bridge';
+			export { useMarkTeamBridgeThreadRead, setCachedThreadUnread, threadUnreadAfterRead, teamBridgeKeys } from './src/renderer/src/features/team-bridge/use-team-bridge';
 			export { TeamBridgeApi } from './src/renderer/src/shared/api/local-operator/team-bridge-api';
 			export { desktopKeys } from './src/renderer/src/shared/api/local-operator/desktop-hooks';
 			export { teamBridgeMessageSchema } from './src/shared/team-bridge-contract';
@@ -97,6 +97,9 @@ try {
 const NOW = new Date(2026, 10, 4, 15, 0);
 const FULL_WIDTH = /\bw-full\b/;
 const SEMIBOLD = /\bfont-semibold\b/;
+const REST_FILL = /(^|\s)bg-(surface|elevated|canvas|sunken)\b/;
+const HOVER_SUNKEN = /\bhover:bg-sunken\b/;
+const PLATE_Z = /\bz-\[(\d)\]/;
 const LIST_ROW_NAME = /^View thread, 4 replies, 1 unread/;
 const root = {
 	id: "bcmsg_root0001",
@@ -119,22 +122,18 @@ test("last reply phrasing follows the calendar day, not elapsed hours", () => {
 		"yesterday",
 	);
 	assert.equal(mod.lastReplyWhen(new Date(2026, 10, 2, 12), NOW), "older");
-	assert.equal(
-		mod.lastReplyLabel(new Date(2026, 10, 4, 10, 39), "en", NOW),
-		"Last reply today at 10:39 AM",
-	);
-	assert.equal(
-		mod.lastReplyLabel(new Date(2026, 10, 3, 9, 5), "en", NOW),
-		"Last reply yesterday at 9:05 AM",
-	);
-	assert.equal(
-		mod.lastReplyLabel(new Date(2026, 9, 12, 9, 5), "en", NOW),
-		"Last reply Oct 12",
-	);
-	assert.equal(
-		mod.lastReplyLabel(new Date(2025, 9, 12, 9, 5), "en", NOW),
-		"Last reply Oct 12, 2025",
-	);
+	// Full form, and the narrow form that keeps the moment (design round 1, D3).
+	for (const [at, full, short] of [
+		[new Date(2026, 10, 4, 10, 39), "Last reply today at 10:39 AM", "10:39 AM"],
+		[
+			new Date(2026, 10, 3, 9, 5),
+			"Last reply yesterday at 9:05 AM",
+			"Yesterday 9:05 AM",
+		],
+		[new Date(2026, 9, 12, 9, 5), "Last reply Oct 12", "Oct 12"],
+		[new Date(2025, 9, 12, 9, 5), "Last reply Oct 12, 2025", "Oct 12, 2025"],
+	])
+		assert.deepEqual(mod.lastReplyLabel(at, "en", NOW), { full, short });
 });
 
 test("unread: absent means cannot-tell, 0 and N are the hub's answer", () => {
@@ -238,7 +237,12 @@ test("the row is ONE full-width button with the whole row as its name", () => {
 			row.querySelector("[data-attention-badge]").textContent,
 			"2 unread",
 		);
-		assert.match(row.className, SEMIBOLD);
+		// D4: only the count is bold, so the badge does not slide between states.
+		assert.doesNotMatch(row.className, SEMIBOLD);
+		assert.match(row.querySelector(".text-accent").className, SEMIBOLD);
+		// D1: transparent at rest (no ground utility), `sunken` on hover.
+		assert.doesNotMatch(row.className, REST_FILL);
+		assert.match(row.className, HOVER_SUNKEN);
 		row.click();
 		assert.deepEqual(view.opened, [root.id]);
 	} finally {
@@ -354,7 +358,7 @@ test("the message list draws the row in place of the old pill", () => {
 	}
 });
 
-async function readWith(capability) {
+async function readWith(capability, { answer = {}, newest, seq = 5 } = {}) {
 	const api = mod.TeamBridgeApi;
 	const saved = { markRead: api.markRead, markThreadRead: api.markThreadRead };
 	const calls = [];
@@ -364,6 +368,7 @@ async function readWith(capability) {
 	};
 	api.markThreadRead = async (...args) => {
 		calls.push(["markThreadRead", ...args]);
+		return answer;
 	};
 	const client = new mod.QueryClient({
 		defaultOptions: {
@@ -403,6 +408,7 @@ async function readWith(capability) {
 			root.conversation_id,
 			"tenant_a",
 			root.id,
+			() => newest,
 		);
 		return null;
 	}
@@ -417,7 +423,7 @@ async function readWith(capability) {
 				),
 			);
 		});
-		await mod.act(() => hook.mutateAsync({ seq: 5 }));
+		await mod.act(() => hook.mutateAsync({ seq }));
 		return { calls, cached: client.getQueryData(key).messages[0] };
 	} finally {
 		mod.act(() => app.unmount());
@@ -427,44 +433,104 @@ async function readWith(capability) {
 }
 
 test("thread read: the TR1 route with the capability, today's conversation read without", async () => {
-	const on = await readWith(true);
+	// The hub's echo wins (F1): a partial read shows its remainder, not 0.
+	const on = await readWith(true, { answer: { thread_unread_count: 2 } });
 	assert.equal(on.calls[0][0], "markThreadRead");
 	assert.equal(on.calls[0][1], root.conversation_id);
 	assert.equal(on.calls[0][2], root.id);
 	assert.equal(on.calls[0][3].seq, 5);
 	assert.equal(on.calls[0][3].tenantId, "tenant_a");
-	assert.equal(on.cached.thread_unread_count, 0, "cache zeroed on success");
+	assert.equal(on.cached.thread_unread_count, 2, "the hub's remainder");
 	assert.equal(on.cached.thread_last_read_seq, 5);
 
-	const off = await readWith(false);
+	const off = await readWith(false, { newest: 5 });
 	assert.deepEqual(
 		off.calls.map((call) => call[0]),
 		["markRead"],
 		"no thread-read call without the capability",
 	);
 	assert.equal(off.calls[0][2].seq, 5);
-	assert.equal(off.cached.thread_unread_count, 0);
+	assert.equal(off.cached.thread_unread_count, 0, "read to the tail: 0");
 });
 
-test("clearing the cache never invents a count an older hub did not send", () => {
+test("no optimistic zero on a partial read without an echo (F1)", async () => {
+	const partial = await readWith(true, { newest: 9, seq: 5 });
+	assert.equal(partial.cached.thread_unread_count, 3, "left to the refetch");
+	const unknownTail = await readWith(false, { newest: undefined });
+	assert.equal(unknownTail.cached.thread_unread_count, 3);
+	assert.equal(mod.threadUnreadAfterRead(undefined, 9, 9), 0);
+	assert.equal(mod.threadUnreadAfterRead(undefined, 8, 9), undefined);
+	assert.equal(mod.threadUnreadAfterRead({ unread_count: 4 }, 8, 9), 4);
+});
+
+test("the cache write is owner-scoped and never invents a count (F2)", () => {
 	const client = new mod.QueryClient({
 		defaultOptions: { queries: { gcTime: 0 } },
 	});
-	const key = mod.teamBridgeKeys.messages(root.conversation_id, "tenant_a");
-	const page = { messages: [root] };
-	client.setQueryData(key, page);
-	mod.clearCachedThreadUnread(
-		client,
+	const mine = mod.teamBridgeKeys.messages(
 		root.conversation_id,
 		"tenant_a",
-		root.id,
-		9,
+		"acct_me",
 	);
-	assert.equal(client.getQueryData(key), page, "untouched, same reference");
+	const theirs = mod.teamBridgeKeys.messages(
+		root.conversation_id,
+		"tenant_a",
+		"acct_other",
+	);
+	const old = { messages: [root] };
+	client.setQueryData(mine, {
+		messages: [{ ...root, thread_unread_count: 4 }],
+	});
+	client.setQueryData(theirs, {
+		messages: [{ ...root, thread_unread_count: 4 }],
+	});
+	const target = {
+		conversationId: root.conversation_id,
+		tenantId: "tenant_a",
+		rootId: root.id,
+	};
+	mod.setCachedThreadUnread(client, { ...target, accountId: "acct_me" }, 0, 9);
+	assert.equal(client.getQueryData(mine).messages[0].thread_unread_count, 0);
+	assert.equal(client.getQueryData(theirs).messages[0].thread_unread_count, 4);
+	client.setQueryData(mine, old);
+	mod.setCachedThreadUnread(client, { ...target, accountId: "acct_me" }, 0, 9);
 	assert.equal(
-		client.getQueryData(key).messages[0].thread_unread_count,
+		client.getQueryData(mine).messages[0].thread_unread_count,
 		undefined,
+		"an older hub's absent count stays absent",
 	);
+});
+
+test("one unreadable participant id costs only its own plate (F3)", () => {
+	const parsed = mod.teamBridgeMessageSchema.parse({
+		...root,
+		reply_participants: ["Ben", "Robo", "Cora"],
+		reply_participant_ids: [
+			{ account_id: "acct_ben", kind: "human" },
+			{ account_id: "acct_robo", kind: "robot" },
+			{ account_id: "acct_cora", kind: "agent" },
+		],
+	});
+	assert.deepEqual(mod.threadParticipants(parsed), [
+		{ label: "Ben", accountId: "acct_ben", kind: "human" },
+		{ label: "Robo" },
+		{ label: "Cora", accountId: "acct_cora", kind: "agent" },
+	]);
+});
+
+test("earlier plates paint on top, so a leading agent keeps its mark (Q1)", () => {
+	const view = mount({
+		...root,
+		reply_participants: ["Aida", "Ben", "Cora"],
+	});
+	try {
+		const z = [
+			...view.host.querySelectorAll("button > span:first-child > *"),
+		].map((plate) => Number(plate.className.match(PLATE_Z)?.[1]));
+		assert.deepEqual(z, [3, 2, 1]);
+	} finally {
+		view.unmount();
+	}
 });
 
 test("the desktop op is strict and maps to the TR1 route", () => {

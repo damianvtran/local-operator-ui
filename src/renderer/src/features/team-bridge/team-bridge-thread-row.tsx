@@ -15,6 +15,24 @@ import {
 	threadSummary,
 } from "./team-bridge-threads-model";
 
+/** One constant for the class and the test hook, so the hook cannot drift from the geometry. */
+const THREAD_ROW_HEIGHT = "h-8";
+
+/*
+ * THE FACEPILE RING IS THE ROW'S OWN FILL, whatever that is right now (design
+ * round 1, D1). The row is transparent at rest, so its fill is the HOST's
+ * ground: the channel column's `surface` by default, the thread pane's
+ * `canvas` (it sets `--thread-row-host`), the parent message row's `row-hover`
+ * while the pointer is over the message, and the row's own `sunken` hover.
+ * A hard-coded `ring-surface` drew a halo on every other ground. The combined
+ * `group-hover/message:hover:` variant outranks the bare `group-hover` one on
+ * specificity, so the row's own hover always wins when both match.
+ */
+const RING_FOLLOWS_FILL =
+	"[--thread-row-ring:var(--thread-row-host,var(--color-surface))] group-hover/message:[--thread-row-ring:var(--color-row-hover)] hover:[--thread-row-ring:var(--color-sunken)] group-hover/message:hover:[--thread-row-ring:var(--color-sunken)]";
+
+const PLATE_LAYER = ["z-[3]", "z-[2]", "z-[1]"];
+
 /** Facepile plate size. 20px is the smallest plate `TeamBridgeAvatar` sizes its glyph and agent mark for. */
 const FACE_PX = 20;
 
@@ -33,18 +51,20 @@ const FACE_PX = 20;
  * NO LAYOUT SHIFT BETWEEN READ AND UNREAD. The row's height is pinned (`h-8`)
  * and the badge is the shared `AttentionBadge`, whose `size="count"` geometry is
  * a fixed `h-4`, shorter than the row's line box, so it never grows the line.
- * Unread ALSO sets the text semibold; that widens glyphs, which is why the
- * relative-time clause truncates (`min-w-0 truncate`) instead of wrapping, and
- * the chevron is `ml-auto` so it never moves. `data-thread-row-height` names
- * the height class so a test asserts it is the same class in both states.
+ * Unread sets ONLY the "N replies" count semibold: bolding the whole row
+ * widened the muted clause and slid the badge sideways between states (design
+ * round 1, D4). The clause truncates (`min-w-0 truncate`) instead of wrapping
+ * and the chevron is `ml-auto`, so neither moves the height.
  *
- * CHROME IS A LIGHTNESS STEP, NOT A BORDER (docs/branding.md: elevation is a
- * lightness step; hover is a colour step; focus is `outline`). Rest is
- * `bg-surface` one ground up from the timeline's `canvas`, hover steps to
- * `bg-elevated`. Not `row-hover`: the enclosing message row already paints
- * `row-hover` while the pointer is over it, so a `row-hover` row would vanish
- * into its own parent exactly when it is being aimed at. Focus is the global
- * `:focus-visible` outline; nothing here sets a box-shadow.
+ * TRANSPARENT AT REST, `sunken` ON HOVER (design round 1, D1/D2). The row takes
+ * its host's ground — the channel column is `surface`, the thread pane
+ * `canvas`, and under the pointer the parent message row's `row-hover` — the
+ * way Slack's bar has no fill until aimed at. A rest fill of `surface` was
+ * ΔE00 0 on the channel column, so it read as a fill only in the pane. Hover
+ * is `sunken`, the step the reaction pills already take against the same
+ * parents: `elevated` equals `row-hover` in arcade. Both pairs are rows in
+ * `scripts/contrast-contract.mjs`. No border; focus is the global
+ * `:focus-visible` outline, never a box-shadow.
  *
  * UNREAD IS FEATURE-DETECTED. `thread_unread_count` is absent on hubs before
  * slice TR1, and absent means "cannot tell", so the row draws no badge and no
@@ -79,7 +99,7 @@ export function TeamBridgeThreadRow({
 	const name = t("ui.teamBridge.threadRow.label", {
 		count: summary.count,
 		unread,
-		last: last ?? "",
+		last: last?.full ?? "",
 		hasLast: last ? "yes" : "no",
 	});
 	return (
@@ -88,22 +108,39 @@ export function TeamBridgeThreadRow({
 			onClick={onOpen}
 			aria-label={name}
 			data-thread-row=""
-			data-thread-row-height="h-8"
+			data-thread-row-height={THREAD_ROW_HEIGHT}
 			data-unread={unread > 0 ? String(unread) : undefined}
 			className={cn(
-				"group/thread-row mt-1 flex h-8 w-full min-w-0 items-center gap-2 rounded-md bg-surface px-1.5 text-start text-[13px] transition-colors duration-fast ease-out-quart hover:bg-elevated",
-				unread > 0 && "font-semibold",
+				"group/thread-row @container/thread-row mt-1 flex w-full min-w-0 items-center gap-2 rounded-md px-2 text-start text-[13px] transition-colors duration-fast ease-out-quart hover:bg-sunken",
+				THREAD_ROW_HEIGHT,
+				RING_FOLLOWS_FILL,
 				className,
 			)}
 		>
 			<Facepile participants={summary.participants} profileFor={profileFor} />
-			<span aria-hidden="true" className="shrink-0 text-accent">
+			<span
+				aria-hidden="true"
+				className={cn("shrink-0 text-accent", unread > 0 && "font-semibold")}
+			>
 				{count}
 			</span>
 			{last && (
-				<span aria-hidden="true" className="min-w-0 truncate text-ink-muted">
-					{last}
-				</span>
+				<>
+					<span
+						aria-hidden="true"
+						data-thread-row-last="full"
+						className="hidden min-w-0 truncate text-ink-muted @[420px]/thread-row:inline"
+					>
+						{last.full}
+					</span>
+					<span
+						aria-hidden="true"
+						data-thread-row-last="short"
+						className="min-w-0 truncate text-ink-muted @[420px]/thread-row:hidden"
+					>
+						{last.short}
+					</span>
+				</>
 			)}
 			<AttentionBadge
 				aria-hidden="true"
@@ -141,7 +178,15 @@ export function lastReplyLabel(at: Date, locale: string, now = new Date()) {
 					locale,
 				)
 			: formatTime(at, { hour: "numeric", minute: "2-digit" }, locale);
-	return t("ui.teamBridge.threadRow.last", { when, time });
+	return {
+		full: t("ui.teamBridge.threadRow.last", { when, time }),
+		/* The narrow form drops the "Last reply" prefix, keeping the moment, so the
+		   date (the reason an old reply's clause exists) is the last thing a short
+		   row loses (design round 1, D3). Reuses the chat stamp's audited
+		   "Yesterday {time}", so the narrow form needs no new copy. */
+		short:
+			when === "yesterday" ? t("ui.common.time.yesterday_at", { time }) : time,
+	};
 }
 
 /**
@@ -189,8 +234,13 @@ function Facepile({
 						: undefined);
 				/* The ring is the row's own fill, so overlapping plates read as
 				   separate discs without a border role. */
-				const plate =
-					"rounded-full text-[10px] ring-2 ring-surface group-hover/thread-row:ring-elevated";
+				/* Earlier plates paint ON TOP (Slack's order), so each plate's
+				   bottom-end corner - where the agent mark sits - is never under
+				   its successor (QA round 1, Q1). */
+				const plate = cn(
+					"relative rounded-full text-[10px] ring-2 ring-[var(--thread-row-ring)]",
+					PLATE_LAYER[index],
+				);
 				const key = `${index}:${participant.accountId ?? participant.label}`;
 				return member ? (
 					<TeamBridgeAvatar

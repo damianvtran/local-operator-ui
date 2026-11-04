@@ -315,7 +315,9 @@ function TeamBridgeThreadPaneBody({
 		<aside
 			ref={pane}
 			aria-label={t("ui.teamBridge.replies.title")}
-			className="panel-top-pad flex h-full min-h-0 w-full min-w-0 shrink-0 flex-col bg-canvas"
+			/* `--thread-row-host`: this column's ground, for the thread row's facepile
+			   ring (`team-bridge-thread-row.tsx`); the channel column needs none. */
+			className="panel-top-pad flex h-full min-h-0 w-full min-w-0 shrink-0 flex-col bg-canvas [--thread-row-host:var(--color-canvas)]"
 		>
 			<header className="flex h-11 shrink-0 items-center justify-between px-5">
 				<h2 className="font-semibold text-[15px] text-ink">
@@ -601,7 +603,20 @@ function TeamBridgeThreadPaneMount({
 }: ThreadPaneMountProps) {
 	const client = useQueryClient();
 	const { tenantId, conversationId, rootId } = target;
-	const read = useMarkTeamBridgeThreadRead(conversationId, tenantId, rootId);
+	/* The newest reply this pane can know of: the root's rollup `last` seq is not
+	   on the wire, so it is the newest admitted reply row - but only when the
+	   window holds the live edge: a backward window paged into the middle, or
+	   an oldest-first window with pages left, has newer replies it has not
+	   loaded. `undefined` keeps the
+	   badge (see `threadUnreadAfterRead`). Read at settlement through a ref
+	   because the query below is declared after this hook. */
+	const newestReplyRef = useRef<number | undefined>(undefined);
+	const read = useMarkTeamBridgeThreadRead(
+		conversationId,
+		tenantId,
+		rootId,
+		() => newestReplyRef.current,
+	);
 	// Observer recreation (paging/refetch) must not turn a successful read into a
 	// second mutation loop. This ref belongs to the keyed tenant/conversation/root.
 	const acknowledged = useRef(-1);
@@ -651,6 +666,15 @@ function TeamBridgeThreadPaneMount({
 		poll: true,
 	});
 	const replies = query.replies;
+	newestReplyRef.current =
+		(query.mode === "desc" && query.latestPageAvailable) ||
+		(query.mode !== "desc" && !query.hasNextPage)
+			? replies.reduce<number | undefined>(
+					(max, reply) =>
+						max === undefined || reply.seq > max ? reply.seq : max,
+					undefined,
+				)
+			: undefined;
 
 	const send = useMutation({
 		mutationFn: ({

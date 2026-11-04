@@ -51,7 +51,8 @@ export function threadParticipants(
 	return (message.reply_participants ?? [])
 		.slice(0, THREAD_FACEPILE_MAX)
 		.map((label, index) => {
-			const id = ids[index];
+			// A null entry is one the contract could not read (per-entry catch).
+			const id = ids[index] ?? undefined;
 			return id
 				? { label, accountId: id.account_id, kind: id.kind }
 				: { label };
