@@ -5116,14 +5116,31 @@
 			"locale": "es",
 			"namespace": "ui.common.updates",
 			"source_sha256": "b05e5d98f09d9dfde3a44bf131e7823dd612c3f09db81d19f9eebf0da33f088b",
-			"target_sha256": "30f823c25a53dd7a917ed15db4cc393f178561fe8d59cbea2e391c6f746fa7ba",
+			"target_sha256": "f38cf4605434cfefc1d61f0e56381f34210c44b472999501c6ab460bfe9f8f91",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
 				"date": "2026-10-18"
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-04",
+					"result": "clean-with-findings",
+					"instance": "c6a7b830880b-update-notice-r2-es",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/c6a7b830880b-update-notice-r2-es.json",
+					"receipt_sha256": "a79797e1d1426b340058af4de364059a9b73886b4d760f7e33780278d7a5a025",
+					"scope": "Round-2 delta audit (PR #1655 bc41d2ce3f0): 5 changed values + 2 restored please_wait values"
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "de3e083efe40d06b2947c1ef661ec0328b8984214f015a1133521d9d683cb3cd",
@@ -5262,6 +5279,12 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "b05e5d98f09d9dfde3a44bf131e7823dd612c3f09db81d19f9eebf0da33f088b",
+					"target_sha256": "30f823c25a53dd7a917ed15db4cc393f178561fe8d59cbea2e391c6f746fa7ba",
+					"auditors": [],
+					"status": "pending"
 				}
 			]
 		},
@@ -14882,8 +14905,25 @@
 				"model": "deepseek/deepseek-flash",
 				"date": "2026-10-18"
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-04",
+					"result": "clean",
+					"instance": "c6a7b830880b-update-notice-r2-fr",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/c6a7b830880b-update-notice-r2-fr.json",
+					"receipt_sha256": "6db18000ea18e2da75fd2c6330bf278f404415bcd54b2355be0a71ee68d70a52",
+					"scope": "Round-2 delta audit (PR #1655 bc41d2ce3f0): 5 changed values + 2 restored please_wait values"
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "de3e083efe40d06b2947c1ef661ec0328b8984214f015a1133521d9d683cb3cd",
@@ -24967,8 +25007,25 @@
 				"model": "openai/gpt-6.1-sol",
 				"date": "2026-10-19"
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-04",
+					"result": "clean",
+					"instance": "c6a7b830880b-update-notice-r2-hi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/c6a7b830880b-update-notice-r2-hi.json",
+					"receipt_sha256": "66805918d086c6ac2d7e467e2a5f9212512b90e05cf788b9afcb3af3cec87a80",
+					"scope": "Round-2 delta audit (PR #1655 bc41d2ce3f0): 5 changed values + 2 restored please_wait values"
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "de3e083efe40d06b2947c1ef661ec0328b8984214f015a1133521d9d683cb3cd",
@@ -34725,8 +34782,25 @@
 				"model": "deepseek/deepseek-flash",
 				"date": "2026-10-18"
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-04",
+					"result": "clean",
+					"instance": "c6a7b830880b-update-notice-r2-ru",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/c6a7b830880b-update-notice-r2-ru.json",
+					"receipt_sha256": "b2cb7ccb521778369739abe86f98b74b1d936f7872e37b01a5c7aee0ceed6af8",
+					"scope": "Round-2 delta audit (PR #1655 bc41d2ce3f0): 5 changed values + 2 restored please_wait values"
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "de3e083efe40d06b2947c1ef661ec0328b8984214f015a1133521d9d683cb3cd",
@@ -44498,8 +44572,25 @@
 				"model": "openai/gpt-6.1-sol",
 				"date": "2026-10-19"
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-04",
+					"result": "clean",
+					"instance": "c6a7b830880b-update-notice-r2-ur",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/c6a7b830880b-update-notice-r2-ur.json",
+					"receipt_sha256": "e9f83ae9452896af9e7e278de5f85fe3a3ab8a318f3cb5b4a954b9c5d28b8127",
+					"scope": "Round-2 delta audit (PR #1655 bc41d2ce3f0): 5 changed values + 2 restored please_wait values"
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "de3e083efe40d06b2947c1ef661ec0328b8984214f015a1133521d9d683cb3cd",
@@ -54262,8 +54353,25 @@
 				"model": "openai/gpt-6.1-sol",
 				"date": "2026-10-18"
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-04",
+					"result": "clean",
+					"instance": "c6a7b830880b-update-notice-r2-vi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/c6a7b830880b-update-notice-r2-vi.json",
+					"receipt_sha256": "cc6610130f2b8b3aade66ab3bd2c98a90040d691f629576a0fdb7eb879181dff",
+					"scope": "Round-2 delta audit (PR #1655 bc41d2ce3f0): 5 changed values + 2 restored please_wait values"
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "de3e083efe40d06b2947c1ef661ec0328b8984214f015a1133521d9d683cb3cd",
@@ -64624,8 +64732,25 @@
 				"date": "2026-10-18",
 				"note": "Reworded by the implementing coder (deepseek/deepseek-flash) on 2026-10-18 for the 您→你 register correction, PR #1205, not a translator: 6 strings, 7 您 occurrences. Register-only audit 4c6c213dd0d8 covers the new bytes; prior full audits stay in superseded."
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-04",
+					"result": "clean",
+					"instance": "c6a7b830880b-update-notice-r2-zh-cn",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/c6a7b830880b-update-notice-r2-zh-cn.json",
+					"receipt_sha256": "c02a56c3de0c7ed7aacfa0d159f645b461d64f8bb89dbd8c5d1e66dccccb6b2a",
+					"scope": "Round-2 delta audit (PR #1655 bc41d2ce3f0): 5 changed values + 2 restored please_wait values"
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "de3e083efe40d06b2947c1ef661ec0328b8984214f015a1133521d9d683cb3cd",
