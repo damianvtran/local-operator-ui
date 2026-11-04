@@ -3544,6 +3544,14 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 						 * reads as "degrade to the verification-page link".
 						 */
 						"signup.resend",
+						/*
+						 * The Team free trial ops (teams-trial §3; core PR #3386).
+						 * Named here and in `shared/api/radient/proxy.ts` for the
+						 * reason above.
+						 */
+						"team_trial.eligibility",
+						"team_trial.start",
+						"team_trial.status",
 					]),
 					request_id: requestId.optional(),
 					tenant_id: id.optional(),

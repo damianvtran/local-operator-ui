@@ -62,6 +62,8 @@ import type {
 } from "../../../../shared/team-bridge-contract";
 import { browserDraftStorage } from "../../shared/store/team-bridge-draft-account";
 import { rowCurrent } from "../chat/components/chat-sidebar";
+import { TeamBridgeTrialEmpty } from "../team-bridge-trial/team-bridge-trial-empty";
+import { useTeamBridgeTrialNote } from "../team-bridge-trial/team-bridge-trial-paused";
 import { TeamBridgeMentionProvider } from "./mentions";
 import { TeamBridgeAddMembersView } from "./team-bridge-add-members";
 import {
@@ -736,6 +738,9 @@ export type TeamBridgePageViewProps = {
 	 * reads and writes, which live in its container.
 	 */
 	notice?: ReactNode;
+	/** Replaces the plan-required panel for an account in no Team organization
+	 * (the Team trial empty state, `features/team-bridge-trial`). */
+	noOrgPanel?: ReactNode;
 	onTarget: (target: TeamBridgeTarget | null) => void;
 	/**
 	 * Send `body`. For a target with no conversation yet the container creates
@@ -868,6 +873,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	gatePending = false,
 	readOnly = false,
 	notice = null,
+	noOrgPanel,
 	onTarget,
 	onSend,
 	onSchedule,
@@ -2109,6 +2115,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	};
 
 	if (gatePending) return <TeamBridgeGateLoading />;
+	if (eligibility === "plan_required" && noOrgPanel) return noOrgPanel;
 	if (eligibility) return <TeamBridgeEligibilityPanel reason={eligibility} />;
 
 	const isSelectedConversation = (conversation: TeamBridgeConversation) =>
@@ -4114,7 +4121,13 @@ const TeamBridgeOwnedPage: FC<{
 		eligibility === null &&
 		status.data?.account_id === accountId;
 	const selfAccountId = readsEnabled ? accountId : undefined;
-	const readOnly = status.data?.read_only === true || !ownerGuard;
+	// An ended Team trial pauses the organization: history stays readable and
+	// posting is off (the hub refuses it too, 403 `team_trial_ended`).
+	const trialNote = useTeamBridgeTrialNote(
+		readsEnabled ? status.data?.tenant_id : null,
+	);
+	const readOnly =
+		status.data?.read_only === true || !ownerGuard || trialNote.paused;
 	const owner = useBridgeOwner(accountId);
 	const isCurrentOwner = () => owner.isCurrent() && ownerGuard;
 	/* The same fence minus "this page is still mounted": for the first-message post
@@ -5184,7 +5197,17 @@ const TeamBridgeOwnedPage: FC<{
 				eligibility={eligibility}
 				gatePending={gatePending && !cachedPaint}
 				readOnly={readOnly}
-				notice={<TeamBridgeDefaultOnBanner status={status.data} />}
+				notice={
+					<>
+						{trialNote.note}
+						<TeamBridgeDefaultOnBanner status={status.data} />
+					</>
+				}
+				noOrgPanel={
+					<TeamBridgeTrialEmpty
+						fallback={<TeamBridgeEligibilityPanel reason="plan_required" />}
+					/>
+				}
 				onRetry={() => {
 					void list.refetch();
 					if (memberships.isError) void memberships.refetch();
