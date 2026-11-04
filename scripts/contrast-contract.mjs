@@ -67,7 +67,6 @@ import {
 	over,
 	r2,
 	ratio,
-	srgbMix,
 	toLab,
 } from "../src/shared/theme-engine/color.mjs";
 import {
@@ -114,7 +113,6 @@ import {
 	PANEL_SEAM_ALPHA,
 	PERCEPTIBLE,
 	PERCEPTIBLE_EXCEPTIONS,
-	REACTION_OWN_PILL,
 	REGION_SEPARATION_FLOOR,
 	REQUIRED_ROLES,
 	ROW_HOVER_CAST_FLOOR_SHARE,
@@ -210,9 +208,9 @@ const STRUCTURAL_CALL_SITES = [
 		/*
 		 * THE REACTION PILLS WEAR THE FILLS THEIR CONTRACT ROWS MEASURE.
 		 *
-		 * The CONTROLS rows "team bridge reaction pill" (+ hover) and
-		 * `REACTION_OWN_PILL` prove the VALUES on every palette; only this pin can
-		 * see the edit that moves a pill to another role or another mix share,
+		 * The CONTROLS rows "team bridge reaction pill" (+ hover) and "team
+		 * bridge own reaction pill" (+ hover) prove the VALUES on every palette;
+		 * only this pin can see the edit that moves a pill to another role,
 		 * which would leave every ratio above green. (The ring the operator asked
 		 * to remove is held by the base-class pin below.)
 		 *
@@ -224,8 +222,8 @@ const STRUCTURAL_CALL_SITES = [
 		 */
 		what: "team bridge reaction pills wear their measured fills",
 		file: "src/renderer/src/features/team-bridge/team-bridge-reactions.tsx",
-		must: '? "bg-[color-mix(in_srgb,var(--color-accent)_26%,var(--color-surface))] font-medium text-ink hover:bg-[color-mix(in_srgb,var(--color-accent)_20%,var(--color-surface))]"\n\t\t\t\t\t\t\t\t: "bg-elevated text-ink-muted hover:bg-sunken hover:text-ink",',
-		why: "the pill rows assert `elevated`/`sunken` and the own pill's 26% rest / 20% hover accent-over-surface mixes with their inks; a pill moved to another role or share would leave those rows green about a component that no longer wears them",
+		must: '? "bg-accent-wash font-semibold text-accent hover:text-accent-hover"\n\t\t\t\t\t\t\t\t: "bg-elevated text-ink-muted hover:bg-sunken hover:text-ink",',
+		why: "the pill rows assert `elevated`/`sunken` for the others' pill and `accent`/`accentHover` on `accentWash` for the reader's own; a pill moved to another role would leave those rows green about a component that no longer wears them",
 	},
 	{
 		what: "team bridge reaction pills stay borderless",

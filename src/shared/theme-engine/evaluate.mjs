@@ -25,7 +25,7 @@
  *  - The body was moved mechanically and kept as written, including its
  *    comments, so a later edit to a floor's reasoning has one place to go.
  */
-import { deltaE, isHex, over, r2, ratio, srgbMix, toLab } from "./color.mjs";
+import { deltaE, isHex, over, r2, ratio, toLab } from "./color.mjs";
 import {
 	ADJACENT,
 	ALT_ACCENT_CHROMA_FLOOR,
@@ -70,7 +70,6 @@ import {
 	PANEL_SEAM_ALPHA,
 	PERCEPTIBLE,
 	PERCEPTIBLE_EXCEPTIONS,
-	REACTION_OWN_PILL,
 	REGION_SEPARATION_FLOOR,
 	REQUIRED_ROLES,
 	ROW_HOVER_CAST_FLOOR_SHARE,
@@ -1105,41 +1104,6 @@ export const evaluatePalette = (run, entry) => {
 						}
 					}
 				}
-			}
-		}
-
-		/*
-		 * TEAM BRIDGE OWN REACTION PILL (design review round 1, D1 on #1524). The
-		 * fill is `color-mix(in srgb, accent N%, surface)`, mixed here per palette
-		 * exactly as the browser mixes it (sRGB-encoded channels), and asserted three
-		 * ways on every palette:
-		 *   1. SEPARATION from the others' pill (`elevated`) and from their hover
-		 *      (`sunken`): the operator asked for "clearly brighter", and the first
-		 *      cut (`accentWash`) measured ΔE00 2.04 / 1.01:1 off `elevated` in
-		 *      tokyoNight, the operator's own theme, and was DARKER in 54 of 59.
-		 *   2. A visible step off the grounds the row is painted on, including the
-		 *      hovered row (`rowHover`), where `accentWash` hit 1.00:1 on dracula.
-		 *   3. `ink` on the fill at 4.5:1, at rest and on the hover step.
-		 * Separation is ΔE00, the file's perceptual instrument; a luminance ratio
-		 * cannot see a hue step, and hue IS the accent tint's job.
-		 */
-		for (const row of REACTION_OWN_PILL) {
-			const fill = srgbMix(p.accent, p.surface, row.accentShare);
-			if (!fill) continue;
-			run.assertions++;
-			const inkOn = ratio(p.ink, fill);
-			if (inkOn < FLOOR.text)
-				fail(
-					`${id}: ${row.name} — ink ${p.ink} on fill ${fill} = ${r2(inkOn)}:1, need ${FLOOR.text}:1`,
-				);
-			for (const [other, min] of Object.entries(row.apartFrom)) {
-				if (!isHex(p[other])) continue;
-				run.assertions++;
-				const got = deltaE(fill, p[other]);
-				if (got < min)
-					fail(
-						`${id}: ${row.name} — fill ${fill} is ΔE00 ${r2(got)} from \`${other}\` ${p[other]}, need ${min}`,
-					);
 			}
 		}
 

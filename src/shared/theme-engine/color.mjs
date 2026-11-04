@@ -192,22 +192,3 @@ export const over = (fg, bg, alpha) => {
 		.map((v) => v.toString(16).padStart(2, "0"))
 		.join("")}`;
 };
-
-/*
- * `color-mix(in srgb, a share%, b)` as the browser computes it: a straight
- * interpolation of the sRGB-ENCODED channels (CSS Color 5 "in srgb"), rounded
- * to the 8-bit value the compositor paints. Used for fills a component derives
- * from two roles rather than naming one, so the contract measures the colour
- * on screen instead of a role it does not wear.
- */
-export const srgbMix = (a, b, share) => {
-	if (!isHex(a) || !isHex(b) || a.length !== 7 || b.length !== 7) return null;
-	const ch = (h, i) => Number.parseInt(h.slice(i, i + 2), 16);
-	return `#${[1, 3, 5]
-		.map((i) =>
-			Math.round(ch(a, i) * share + ch(b, i) * (1 - share))
-				.toString(16)
-				.padStart(2, "0"),
-		)
-		.join("")}`;
-};

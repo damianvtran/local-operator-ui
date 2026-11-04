@@ -643,9 +643,88 @@ export const CONTROLS = [
 		ink: "ink",
 		edge: false,
 	},
-	/* The reader's OWN pill is not a role but a derived fill (accent mixed over
-	   surface), so it cannot be a CONTROLS row: it is asserted by
-	   `REACTION_OWN_PILL` below, which mixes the fill per palette. */
+	{
+		/*
+		 * THE READER'S OWN REACTION PILL (visual refresh D11, 2026-11-04):
+		 * `accent` on `accent-wash`, in place of the 26% accent-over-surface
+		 * `color-mix` it used to derive - a colour no palette authored, mixed
+		 * against `surface` even where the pill sat on the `canvas` timeline.
+		 * Two roles now, so it is an ordinary triple. Borderless like the
+		 * others' pill (operator, 2026-10-30), so `edge: false`: the hue step
+		 * off the others' `elevated` pill and the accent count are what read as
+		 * "mine". 4.51:1 worst (everforest). The hover is an ink step to
+		 * `accentHover` on the same wash (row below).
+		 */
+		name: "team bridge own reaction pill",
+		on: ["canvas", "surface", "rowHover"],
+		fill: "accentWash",
+		border: null,
+		ink: "accent",
+		edge: false,
+	},
+	{
+		name: "team bridge own reaction pill (hover)",
+		on: ["canvas", "surface", "rowHover"],
+		fill: "accentWash",
+		border: null,
+		ink: "accentHover",
+		edge: false,
+	},
+	{
+		/*
+		 * TEAM BRIDGE IDENTITY PLATES (visual refresh D4, contract C2 in
+		 * `docs/branding.md` § 2 "The second accent"). Every Team Bridge plate -
+		 * person, agent, unknown sender, and the workspace tile - is the one
+		 * `accentAltWash` disc; kind reads from the INK: `accentAlt` initial for a
+		 * person, the `accent` Bot (plus the dog-ear) for an agent, `inkMuted` for
+		 * an unknown sender's glyph. The disc is borderless, so its EXTENT is
+		 * asserted as well as its inks: the `team bridge identity plate wash`
+		 * PERCEPTIBLE row holds the wash ΔE00 >= 3.0 off every ground it sits on
+		 * (design round 1, D1 on #1668 - it measured 1.24-2.75 on eight palettes,
+		 * radient 1.78, until those washes were lifted on L*). `accentWash` is not
+		 * used for agents: it sits within ΔE00 1.4-2.6 of a ground on 15 palettes
+		 * and has 60+ other consumers. A SELECTED rail row's plate takes `surface`
+		 * instead (`TeamBridgeAvatar`'s `selected`), measured by the inks' own
+		 * `surface` floors.
+		 */
+		name: "team bridge person identity plate",
+		on: ["canvas", "surface", "elevated", "rowHover"],
+		fill: "accentAltWash",
+		border: null,
+		ink: "accentAlt",
+		edge: false,
+	},
+	{
+		name: "team bridge agent identity plate",
+		on: ["canvas", "surface", "elevated", "rowHover"],
+		fill: "accentAltWash",
+		border: null,
+		ink: "accent",
+		edge: false,
+	},
+	{
+		/* The unknown sender's `UserRound` glyph on the same disc (agent review
+		   round 1, m4a): 5.65:1 worst (kanagawaLotus). */
+		name: "team bridge unknown sender plate",
+		on: ["canvas", "surface", "elevated", "rowHover"],
+		fill: "accentAltWash",
+		border: null,
+		ink: "inkMuted",
+		edge: false,
+	},
+	{
+		/*
+		 * THE "NEW" UNREAD DIVIDER'S PILL (visual refresh D10): `onAccent` on a
+		 * solid `accent` label at the end of a 1px accent rule, drawn on the
+		 * message pane's `canvas` (and the thread pane's `surface`). The fill
+		 * IS the label's extent, so the edge is asserted (accent vs ground).
+		 */
+		name: "team bridge new messages divider pill",
+		on: ["canvas", "surface"],
+		fill: "accent",
+		border: null,
+		ink: "onAccent",
+	},
 	{
 		/*
 		 * The pills' `+`: a transparent `inkDim` glyph at rest (asserted on the
@@ -2190,12 +2269,38 @@ export const ADJACENT = [
 export const GRAPHICS = [
 	{
 		/*
+		 * THE MENTION ROW'S LEADING BAR (visual refresh, contract C3): a 2px
+		 * `accent` bar at the start edge of a message row that mentions the
+		 * reader, painted over that row's `accentWash` inset box. A graphic
+		 * object read at a glance, so it owes 3:1 against the wash it sits on
+		 * (4.51:1 worst, everforest) - and against the pane grounds, where the
+		 * bar's ends meet them at the box's rounded corners.
+		 */
+		name: "team bridge mention row bar",
+		on: ["accentWash", "canvas", "surface"],
+		fg: "accent",
+	},
+	{
+		/*
+		 * THE SELECTED RAIL ROW'S GLYPH (contract C4): the kind glyph (`#`,
+		 * people, `@`) in `accent` on `rowSelected`, the Settings navigation's
+		 * local exception extended to the Team Bridge rail. 4.24:1 worst
+		 * (tokyoNight) - a 16px glyph, so the 3:1 non-text floor.
+		 */
+		name: "team bridge selected rail glyph",
+		on: ["rowSelected"],
+		fg: "accent",
+	},
+	{
+		/*
 		 * Team Bridge's agent plate draws a Bot GLYPH, not a text initial, so
 		 * this is the 3:1 icon-on-fill pair rather than a control-label row.
 		 * Its fill's separation from the hovered row is asserted below.
 		 */
 		name: "team bridge agent plate glyph",
-		on: ["mediaSurface"],
+		/* `accentAltWash` is the plate's fill since the visual refresh (agent
+		   review round 1, m4b); `mediaSurface` is kept for the account plate. */
+		on: ["mediaSurface", "accentAltWash"],
 		fg: "accent",
 	},
 	{
@@ -2221,7 +2326,7 @@ export const GRAPHICS = [
 		   `bg-surface` and still carries the mark (round 3, D3/F9). Worst on
 		   `surface` today is 4.98:1, so the row was a coverage gap rather than a
 		   failure. */
-		on: ["mediaSurface", "surface"],
+		on: ["mediaSurface", "surface", "accentAltWash"],
 		fg: "accent",
 		floor: 4.0,
 	},
@@ -2605,6 +2710,21 @@ export const GRAPHICS = [
 export const PERCEPTIBLE = [
 	{
 		/*
+		 * THE IDENTITY PLATE'S EXTENT (design round 1, D1 on #1668). The Team
+		 * Bridge person/agent disc is borderless `accentAltWash`, so this step IS
+		 * its boundary on every ground a plate rests on: the rail and thread pane
+		 * (`surface`), the timeline (`canvas`), a hovered row or option
+		 * (`rowHover`), a popover (`elevated`). 3.0 is the floor the `mediaSurface`
+		 * plate it replaced was held to. Eight palettes were lifted on L* (hue and
+		 * chroma held) to clear it; their comments carry the before/after.
+		 */
+		name: "team bridge identity plate wash",
+		role: "accentAltWash",
+		on: ["canvas", "surface", "elevated", "rowHover"],
+		minDeltaE: 3.0,
+	},
+	{
+		/*
 		 * The no-border replacement for the message avatar's ring: this is the
 		 * assertion the old `border-control` was standing in for. In particular,
 		 * `rowHover` is a STATE ground, not a rung of the elevation ladder. The
@@ -2613,8 +2733,9 @@ export const PERCEPTIBLE = [
 		 *
 		 * THE FLOOR IS THE FILE'S PERCEPTUAL ONE (review round 1, M3: this row shipped
 		 * at 1.5, weaker than every sibling). The measured minima across 59 palettes
-		 * are `canvas` 4.00 (oneDark), `surface` 5.96 (iceberg), `elevated` 7.89
-		 * (rosewood) and `rowHover` 3.70 (iceberg). The row used to quote 3.70 as THE
+		 * (re-measured after the darker grounds, #1658) are `canvas` 4.00
+		 * (ayuMirage), `surface` 5.81 (obsidian), `elevated` 7.60 (rosewood) and
+		 * `rowHover` 3.70 (iceberg). The row used to quote 3.70 as THE
 		 * worst case; 3.70 is the worst of the hosts a plate actually rests on, and the
 		 * true worst pairing the role reaches is 1.83 against `rowSelected` on the
 		 * brand light palette - which is why a selected rail row takes `surface`
@@ -2623,6 +2744,12 @@ export const PERCEPTIBLE = [
 		 * The rail's account plate (`user-profile-sidebar.tsx`) is the same fill
 		 * on `surface` and `rowHover` since design review round 1 of the
 		 * own-avatar change, D2; it replaced that plate's `border-control` ring.
+		 *
+		 * SINCE THE TEAM BRIDGE VISUAL REFRESH (2026-11-04, contract C2) the Team
+		 * Bridge person and agent plates wear the identity washes instead - the
+		 * "team bridge person/agent identity plate" CONTROLS rows - so this row now
+		 * holds for the account plate and for the image wells and chips that still
+		 * paint `mediaSurface`. The name is kept so its history stays findable.
 		 */
 		name: "team bridge borderless person and agent plates",
 		role: "mediaSurface",
@@ -2639,9 +2766,10 @@ export const PERCEPTIBLE = [
 		 * THE ATTACHMENT CHIP'S EXTENT (agent review round 1, minor 1): the chip is
 		 * borderless, so its fill's step off each ground a message row paints IS
 		 * its boundary, `rowHover` included. Same fill and floor as the plates
-		 * above; fleet minima canvas 4.00 (oneDark), surface 5.96 (iceberg),
-		 * rowHover 3.70 (iceberg). The kind tile inside it is `elevated`, 7.89
-		 * at worst off this fill (rosewood).
+		 * above; fleet minima canvas 4.00 (ayuMirage), surface 5.81 (obsidian),
+		 * rowHover 3.70 (iceberg), re-measured after the darker grounds (#1658).
+		 * The kind tile inside it is `elevated`, 7.60 at worst off this fill
+		 * (rosewood).
 		 */
 		name: "team bridge attachment chip",
 		role: "mediaSurface",
@@ -3100,47 +3228,6 @@ export const PERCEPTIBLE = [
  *     let a merged slab through - which is why it is acceptable rather than
  *     worth a parser.
  */
-/*
- * The own reaction pill's derived fills (`team-bridge-reactions.tsx`), asserted
- * in the palette loop. The shares are the call site's `color-mix` percentages;
- * the pin "team bridge own reaction pill fill" below holds the call site to
- * them.
- *
- * THE REST FLOOR IS 8.0 ΔE00 OFF THE OTHERS' PILL (design review round 2, D6).
- * "Clearly brighter" is the operator's headline ask, and the round-1 mix (20%,
- * floor 5.0) measured 5.83 in tokyoNight - the operator's own theme - which is
- * the thinnest margin in the fleet, not a clear one. 26% measures >= 8.50
- * (tokyoNight again) with `ink` >= 4.72:1 (ayuMirage); 22% and 24% still sit
- * under 8 (6.90 / 7.68), so 26% is the smallest share that clears it on all 59.
- *
- * WHY THE HOVER ROW KEEPS 5.0 AND DOES NOT TAKE 8.0. The hover fill goes DOWN to
- * 20% - darker, the direction the others' pills take to `sunken` (D5, restated
- * by D6) - so it necessarily steps TOWARD the others' resting `elevated` pill:
- * at 20% it is 5.83 from it, and NO share clears 8.0 while still being a step
- * down from the 26% rest (clearing 8.0 needs the same 26%). The two states are
- * never compared side by side anyway; what the hover must keep is its own
- * legibility (`ink` >= 5.44:1) and its separation from the grounds it is
- * painted on, and those are asserted here. The step itself measures ΔE00 2.44
- * worst (sage).
- */
-export const REACTION_OWN_PILL = [
-	{
-		name: "team bridge own reaction pill",
-		accentShare: 0.26,
-		apartFrom: {
-			elevated: 8.0,
-			sunken: 3.0,
-			surface: 3.0,
-			canvas: 3.0,
-			rowHover: 3.0,
-		},
-	},
-	{
-		name: "team bridge own reaction pill (hover)",
-		accentShare: 0.2,
-		apartFrom: { elevated: 5.0, surface: 3.0, rowHover: 3.0 },
-	},
-];
 
 /**
  * Roles that must clear the structural 3:1 floor on all four grounds.
