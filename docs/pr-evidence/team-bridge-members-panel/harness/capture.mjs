@@ -6,7 +6,7 @@
 //   REPO=$PWD OUT=<dir> LABEL=<before|after> SHOTS=<json file> \
 //     node scripts/with-storybook.mjs -- node <this file>
 //
-// SHOTS is a JSON array of { name, story, theme, width?, height?, action? }.
+// SHOTS is a JSON array of { name, story, theme, locale?, width?, height?, action? }.
 // `action` is one of: "hover:<css>", "focus-kbd:<css>" (focus, then a
 // Shift+Tab/Tab pair so :focus-visible paints), "click:<css>", or absent.
 import { spawn } from "node:child_process";
@@ -151,7 +151,7 @@ try {
 			mobile: false,
 		});
 		await send("Page.navigate", {
-			url: `${ORIGIN}/iframe.html?id=${shot.story}&viewMode=story&args=theme:${shot.theme}`,
+			url: `${ORIGIN}/iframe.html?id=${shot.story}&viewMode=story&args=theme:${shot.theme}${shot.locale ? `;locale:${shot.locale}` : ""}`,
 		});
 		await until(
 			`document.documentElement.getAttribute('data-theme') === ${JSON.stringify(shot.theme)} && document.querySelector('#storybook-root')?.children.length > 0`,
