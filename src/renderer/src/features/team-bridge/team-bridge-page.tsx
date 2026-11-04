@@ -91,6 +91,7 @@ import {
 } from "./team-bridge-composer";
 import { TeamBridgeConversationMenu } from "./team-bridge-conversation-menu";
 import { TeamBridgeCreateDialog } from "./team-bridge-create-dialog";
+import { teamBridgeTargetFromSearch } from "./team-bridge-deep-link";
 import { TeamBridgeDefaultOnBanner } from "./team-bridge-default-on-banner";
 import { draftTargetKey } from "./team-bridge-drafts";
 import type { TeamBridgeDraft } from "./team-bridge-drafts";
@@ -4240,6 +4241,25 @@ const TeamBridgeOwnedPage: FC<{
 	const requestedRoot = searchParams.get("thread");
 	const requestedMessage = searchParams.get("message");
 	/*
+	 * A PERSON OR CHIEF-OF-STAFF ROW named by the link (`?tenant=&person=` or
+	 * `&chief=`, the command palette's door, `team-bridge-deep-link.ts`). It opens
+	 * the way a click on that rail row does - the person is selected and the pane
+	 * shows their DM, or an empty draft addressed to them - so nothing is created
+	 * by the link itself. Parsed by the module that builds it, and only when no
+	 * conversation is named: a conversation link keeps every rule below as shipped.
+	 */
+	const requestedLink = teamBridgeTargetFromSearch(searchParams);
+	const requestedRow =
+		!requestedConversation &&
+		requestedLink &&
+		requestedLink.target.type !== "conversation"
+			? requestedLink.target
+			: null;
+	const requestedRowType = requestedRow?.type ?? null;
+	const requestedRowAccount = requestedRow?.accountId ?? null;
+	/* Any link that names a row outranks the remembered view, as a click does. */
+	const requestedAny = Boolean(requestedConversation || requestedRow);
+	/*
 	 * THE MESSAGE A NOTIFICATION CLICK NAMED (`?message=`), held past the param
 	 * clear below until the timeline has landed on it. Timeline-only: a reply's
 	 * banner also names its thread, and the thread pane opens on that thread
@@ -4255,7 +4275,7 @@ const TeamBridgeOwnedPage: FC<{
 							messageId: requestedMessage,
 							fetched: false,
 						}
-					: requestedConversation
+					: requestedAny
 						? null
 						: messageLinkCarry.current;
 			/*
@@ -4303,9 +4323,7 @@ const TeamBridgeOwnedPage: FC<{
 			: undefined;
 	}, [accountId]);
 	/* A click a previous owner consumed (see `clickCarry`) opens like the click. */
-	const carriedClick = useRef(
-		requestedConversation ? null : clickCarry.current,
-	).current;
+	const carriedClick = useRef(requestedAny ? null : clickCarry.current).current;
 	const [scope, setScope] = useState<TeamBridgeScope>(() =>
 		requestedTenant
 			? asTeamBridgeTenantId(requestedTenant)
@@ -4338,7 +4356,7 @@ const TeamBridgeOwnedPage: FC<{
 	 * the reader asked for THAT conversation, and the write-through below then
 	 * makes it the new remembered one.
 	 */
-	const restoreOnOpen = requestedConversation
+	const restoreOnOpen = requestedAny
 		? null
 		: (carriedClick?.view ?? viewMemory.current.view);
 	const [threadLink, setThreadLink] = useState<ThreadTarget | null>(() =>
@@ -4594,7 +4612,7 @@ const TeamBridgeOwnedPage: FC<{
 	const [target, setTarget] = useState<TeamBridgeTarget | null>(() =>
 		requestedConversation
 			? { type: "conversation", id: requestedConversation }
-			: (restoreOnOpen?.target ?? null),
+			: (requestedRow ?? restoreOnOpen?.target ?? null),
 	);
 	/*
 	 * A REMEMBERED TARGET IS A CLAIM, NOT A FACT, until the reads confirm it: the
@@ -4604,7 +4622,7 @@ const TeamBridgeOwnedPage: FC<{
 	 * resolve it have answered without it.
 	 */
 	const restoredTarget = useRef<TeamBridgeTarget | null>(
-		requestedConversation ? null : (restoreOnOpen?.target ?? null),
+		requestedAny ? null : (restoreOnOpen?.target ?? null),
 	);
 	/*
 	 * The scopes whose remembered view has already been offered this mount. The
@@ -4616,9 +4634,7 @@ const TeamBridgeOwnedPage: FC<{
 	 * starts spent.
 	 */
 	const restoredScopes = useRef(
-		new Set<TeamBridgeScope>(
-			requestedConversation || restoreOnOpen ? [scope] : [],
-		),
+		new Set<TeamBridgeScope>(requestedAny || restoreOnOpen ? [scope] : []),
 	);
 	/*
 	 * A REMEMBERED LANDING STAYS ISSUED UNTIL A RENDER SHOWS IT. `setTarget` from
@@ -4661,7 +4677,8 @@ const TeamBridgeOwnedPage: FC<{
 	clearOwnerAudit.current = () => ownerAudit?.clear();
 
 	useEffect(() => {
-		if (!requestedConversation || !requestedTenant) return;
+		if (!(requestedConversation || requestedRowType) || !requestedTenant)
+			return;
 		scopeChosen.current = true;
 		// The click's conversation wins; this scope's memory is not re-offered.
 		restoredScopes.current.add(asTeamBridgeTenantId(requestedTenant));
@@ -4674,19 +4691,23 @@ const TeamBridgeOwnedPage: FC<{
 		 * underneath it (agent review round 1, m2).
 		 */
 		clearOwnerAudit.current();
-		const clicked: TeamBridgeTarget = {
-			type: "conversation",
-			id: requestedConversation,
-		};
-		const clickedThread = TEAM_BRIDGE_THREADS_SHIPPED_IN_THIS_BUILD
-			? threadTargetFromSearch(
-					new URLSearchParams({
-						tenant: requestedTenant,
-						conversation: requestedConversation,
-						...(requestedRoot ? { thread: requestedRoot } : {}),
-					}),
-				)
-			: null;
+		const clicked: TeamBridgeTarget = requestedConversation
+			? { type: "conversation", id: requestedConversation }
+			: {
+					type: requestedRowType as "person" | "chief",
+					accountId: requestedRowAccount as string,
+				};
+		// A thread and a message live in a conversation; a person row names neither.
+		const clickedThread =
+			TEAM_BRIDGE_THREADS_SHIPPED_IN_THIS_BUILD && requestedConversation
+				? threadTargetFromSearch(
+						new URLSearchParams({
+							tenant: requestedTenant,
+							conversation: requestedConversation,
+							...(requestedRoot ? { thread: requestedRoot } : {}),
+						}),
+					)
+				: null;
 		/*
 		 * THE CLICK BECOMES THE REMEMBERED VIEW NOW, not when the view next reports.
 		 * The parameters are cleared below, and an auth settlement can remount this
@@ -4711,7 +4732,7 @@ const TeamBridgeOwnedPage: FC<{
 		setTarget(clicked);
 		setThreadLink(clickedThread);
 		setMessageLink(
-			requestedMessage && !requestedRoot
+			requestedConversation && requestedMessage && !requestedRoot
 				? {
 						conversationId: requestedConversation,
 						messageId: requestedMessage,
@@ -4723,6 +4744,8 @@ const TeamBridgeOwnedPage: FC<{
 		setSearchParams({}, { replace: true });
 	}, [
 		requestedConversation,
+		requestedRowType,
+		requestedRowAccount,
 		requestedTenant,
 		requestedRoot,
 		requestedMessage,

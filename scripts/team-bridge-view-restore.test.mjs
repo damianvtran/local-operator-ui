@@ -532,6 +532,53 @@ test("a notification click wins over the saved selection and becomes the saved o
 	}
 });
 
+test("a person link (the command palette's door) selects that person's row, over the saved selection", async () => {
+	/*
+	 * `?tenant=&person=` (`team-bridge-deep-link.ts`) opens the way a click on the
+	 * person's rail row does: the PERSON is selected and the pane shows the DM
+	 * they already share. Nothing is created by the link - the DM in the fixture
+	 * already exists, and a person with none would open an empty draft - and the
+	 * saved selection never paints first, the rule a conversation link keeps.
+	 */
+	const app = await open();
+	let saved;
+	try {
+		await pick(app, "launch_shared");
+		await until(() => selected(app) === "launch_shared", "launch selected");
+		await app.leave();
+		saved = { ...localStorage };
+	} finally {
+		await app.close();
+	}
+	const linked = await mount({
+		lifecycle: [],
+		path: "/team-bridge?tenant=org_shared&person=acct_peer_0",
+		waitReady: false,
+		seed: ({ fixture }) => {
+			for (const [key, value] of Object.entries(saved))
+				localStorage.setItem(key, value);
+			scenario(fixture);
+		},
+	});
+	try {
+		await until(
+			() => selected(linked) === "person:acct_peer_0",
+			"the linked person is selected",
+		);
+		assert.ok(
+			!selections(linked, 0).includes("launch_shared"),
+			"the saved selection never painted over the link",
+		);
+		await roundTrip(linked);
+		await until(
+			() => selected(linked) === "person:acct_peer_0",
+			"the linked person is the new saved selection",
+		);
+	} finally {
+		await linked.close();
+	}
+});
+
 test("the selection and organization persist across an app restart", async () => {
 	let app = await open();
 	try {

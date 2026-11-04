@@ -7,6 +7,7 @@ import { openConversation } from "@features/chat/open-conversation";
 import { destinationNeedsSession } from "@features/chat/pickers/picker-registry";
 import { useConnectProviderStore } from "@features/providers/connect-provider-store";
 import { useLanguageDialogStore } from "@features/settings/components/language-dialog-store";
+import { onTeamBridgeRoute } from "@features/team-bridge/use-team-bridge-notification-open";
 import { ConfirmationModal } from "@shared/components/common/confirmation-modal";
 import { KeyboardShortcut } from "@shared/components/common/keyboard-shortcut";
 import {
@@ -15,6 +16,7 @@ import {
 	DialogContent,
 	DialogTitle,
 } from "@shared/components/ui";
+import { AttentionBadge } from "@shared/components/ui/attention-badge";
 import { useClearAgentConversation } from "@shared/hooks/use-clear-agent-conversation";
 import { useDebouncedValue } from "@shared/hooks/use-debounced-value";
 import { useAgentRouteParam } from "@shared/hooks/use-route-params";
@@ -46,6 +48,7 @@ import {
 	type PaletteItem,
 	type PaletteMatch,
 	SCOPE_LEGEND,
+	WORD_ONLY_SCOPES,
 	paletteEmptyStateCopy,
 	searchPalette,
 } from "../palette-search";
@@ -87,6 +90,9 @@ const KIND_VERBS: Record<PaletteItem["kind"], string> = {
 	// A team row opens a chat too (issue #849), so the same verb: what the row does
 	// is unchanged by the entity class, and the HINT is where the class is said.
 	get team() {
+		return t("ui.command_palette.command_palette.open");
+	},
+	get bridge() {
 		return t("ui.command_palette.command_palette.open");
 	},
 	get "settings-section"() {
@@ -281,6 +287,16 @@ export const CommandPalette: FC = () => {
 		outcome.scope === null
 			? null
 			: (SCOPE_LEGEND.find((entry) => entry.scope === outcome.scope) ?? null);
+	/*
+	 * A scope reached by a WORD only (`bridge`, `tb`) has no glyph to show, but the
+	 * chip still names it, so a reader who typed `tb ola` sees why the list is
+	 * Team Bridge rows alone.
+	 */
+	const wordScope =
+		outcome.scope === null || scopeLegend
+			? null
+			: (WORD_ONLY_SCOPES.find((entry) => entry.scope === outcome.scope) ??
+				null);
 	const emptyCopy = paletteEmptyStateCopy({
 		scope: outcome.scope,
 		hasTerms,
@@ -433,6 +449,20 @@ export const CommandPalette: FC = () => {
 					closeCommandPalette();
 					navigate(item.target.path);
 					return;
+				case "bridge": {
+					/*
+					 * THE NOTIFICATION-OPEN CONTRACT (`use-team-bridge-notification-open.ts`):
+					 * push from anywhere else, so Back returns to where the reader was;
+					 * REPLACE when the window is already on Team Bridge, so the column's
+					 * Back still leaves in one press (one entry per visit, #1660's
+					 * invariant that `team-bridge-leave.ts` relies on). Read from the live
+					 * hash at the moment of the pick, the same way that hook does.
+					 */
+					const onBridge = onTeamBridgeRoute(window.location.hash);
+					closeCommandPalette();
+					navigate(item.target.path, onBridge ? { replace: true } : undefined);
+					return;
+				}
 				case "session": {
 					/*
 					 * The palette's finger on the switch: `openConversation` owns the
@@ -900,6 +930,11 @@ export const CommandPalette: FC = () => {
 								{scopeLegend.label}
 							</span>
 						)}
+						{wordScope && (
+							<span className="flex shrink-0 items-center text-ink-dim text-meta">
+								{wordScope.label}
+							</span>
+						)}
 						{localQuery && (
 							<Button
 								variant="ghost"
@@ -1253,6 +1288,22 @@ const PaletteRow: FC<{
 				</span>
 			)}
 			{!item.hint && <span className="flex-1" />}
+			{/*
+			 * The rail's unread mark, on Team Bridge rows only (the only rows that
+			 * carry `attention`), and in the rail's own register: the shared
+			 * attention badge, so the palette and the rail show one mark for one
+			 * fact. It sits before the Enter label so the active row's verb keeps
+			 * the trailing edge it has on every other row.
+			 */}
+			{item.attention !== undefined && (
+				<AttentionBadge
+					count={item.attention}
+					className="shrink-0"
+					aria-label={t("ui.teamBridge.unread.count", {
+						count: item.attention,
+					})}
+				/>
+			)}
 			{/* What Enter does, on the active row only. */}
 			{isActive && (
 				<span className="flex shrink-0 items-center gap-1.5 text-ink-dim text-meta">
