@@ -1,0 +1,44 @@
+{
+	"schema": 1,
+	"receipt_kind": "locale-audit",
+	"audit_id": "ui-hub-adoption-5ad13f38d6e6",
+	"date": "2026-11-03",
+	"instance": "5ad13f38d6e6-ui-adoption-vi",
+	"agent": "reviewer",
+	"session": "5ad13f38d6e6",
+	"model": "anthropic/claude-opus-5-5",
+	"status": "passed",
+	"result": "clean",
+	"locale": "vi",
+	"namespace": "ui.hub.adoption",
+	"source_sha256": "10f5a091608b8366bb7f8b32a9f0d0d0cc83854fb2752112e5feb86f8dd46854",
+	"target_sha256": "6f2c026fee33bf052c453fa84d2046425ca8d6c63a63466aa1dfd2676f822a34",
+	"context_sha256": "c0865a1f229439cf5905e41e4b25f204048180eec8c505d15b99d71d3c911dc5",
+	"glossary": {
+		"path": "~/local-operator/i18n/glossary.md",
+		"sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+	},
+	"style_guide_sha256": "e4901497ed553e2b2ae4a2660bf776adb787b89e11d7eb0f8d08f3da4b227888",
+	"translator": {
+		"agent": "hub-skill-adoption-ui-coder (translation drafting role)",
+		"session": "e24a2cdfdbcd",
+		"model": "openai/gpt-6.1-sol",
+		"fallback_from": "anthropic/claude-opus-5-5",
+		"fallback_reason": "provider quota failure before implementation",
+		"date": "2026-11-03"
+	},
+	"translator_receipt": "i18n/receipts/hub-skill-adoption-translation-e24a2cdfdbcd.json",
+	"independence": "Auditor session 5ad13f38d6e6 differs from translator session e24a2cdfdbcd; no catalogue authorship/edits by auditor. Model is the current runtime-declared serving model.",
+	"scope": "All 37 ui.hub.adoption values independently audited against frozen English and context; semantic review of consent, cancellation, snapshots, local/Hub distinction, preview/confirm boundary and file dispositions. No rendered fit, native RTL or second safety audit claimed.",
+	"findings": [],
+	"checks": {
+		"source_target_context_hashes": "match frozen translator receipt",
+		"key_parity": "37 of 37",
+		"placeholder_parity": "passed",
+		"stored_bidi_controls": "none",
+		"semantic_review": "complete",
+		"english_safety_copy": "no blocking issue found",
+		"visual_rtl_second_safety_audit": "pending separate designer/auditor"
+	},
+	"terminal": true
+}

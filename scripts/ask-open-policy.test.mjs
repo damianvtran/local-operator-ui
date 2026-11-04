@@ -70,6 +70,7 @@ const {
 	askOpenAnnouncement,
 	askOpenFacts,
 	askSettledAnnouncement,
+	askWaitingAnnouncement,
 	askQueueView,
 	createAskDismissals,
 	createAskOpenView,
@@ -169,6 +170,7 @@ const frame = (frontend, over = {}) => ({
 	keyboardOnDoor: false,
 	drawerOpen: false,
 	sessionDrawerOpen: false,
+	overlayPresentation: false,
 	...over,
 });
 
@@ -181,6 +183,54 @@ const pane = (dismissals = createAskDismissals()) => ({
 const opened = { drawerOpen: true, sessionDrawerOpen: true };
 
 /* ======================================================= the four states ==== */
+
+test("D5 - pending on open in the SHEET presentation: left alone, once, and a later dock does not re-open it", () => {
+	/*
+	 * THE PRESENTATION IS PART OF THE DECISION (design 2026-11-03, D5): below the dock
+	 * breakpoint the drawer is a sheet over the row and the conversation is `inert`, so
+	 * an auto-open would cover and disable the thing the user opened. The chip and the
+	 * badge still announce the queue.
+	 *
+	 * ONCE, and the resize does not bring it back: the view has decided, so a row that
+	 * grows while the pane is mounted is `already-decided`, not a new chance to jump.
+	 */
+	const { view } = pane();
+	const first = view.observe(
+		frame(withRows([ask("open")]), { overlayPresentation: true }),
+	);
+	assert.equal(first.verdict.action, "leave");
+	assert.equal(first.verdict.reason, "covers-conversation");
+	assert.equal(
+		first.verdict.settled,
+		true,
+		"the sheet is a decision, not a wait",
+	);
+	const widened = view.observe(frame(withRows([ask("open")])));
+	assert.equal(widened.verdict.action, "leave");
+	assert.equal(widened.verdict.reason, "already-decided");
+});
+
+/*
+ * m3 (review round 1): the refusal speaks, and it speaks the QUEUE'S clause rather
+ * than an "opened" claim - the drawer stayed shut. Same builder as the settled
+ * sentence, because it is the same statement about the queue.
+ */
+test("D5 - the sheet refusal's sentence claims nothing about a surface", () => {
+	assert.equal(
+		askWaitingAnnouncement(askQueueView(withRows([ask("open")]))),
+		"1 question waiting.",
+	);
+	assert.equal(
+		askWaitingAnnouncement(askQueueView(withRows([ask("open"), ask("open")]))),
+		"2 questions waiting.",
+	);
+	assert.ok(
+		!askWaitingAnnouncement(askQueueView(withRows([ask("open")]))).startsWith(
+			"Opened",
+		),
+		"the drawer did not open, so the region must not say it did",
+	);
+});
 
 test("state 1 - no asks on open: closed, and an ask that arrives later does not open it", () => {
 	for (const empty of [liveEmpty(), withRows([])]) {
@@ -1153,6 +1203,7 @@ test("the reason a verdict names is the first thing that kept the drawer shut", 
 		composerHasText: false,
 		keyboardOnDoor: false,
 		drawerOpen: false,
+		overlayPresentation: false,
 	};
 	const reason = (over) => decideAskAutoOpen({ ...base, ...over }).reason;
 	assert.equal(reason({}), "pending-on-open");
@@ -1199,6 +1250,32 @@ test("the reason a verdict names is the first thing that kept the drawer shut", 
 		"door-focused",
 	);
 	assert.equal(reason({ drawerOpen: true }), "drawer-open");
+	/*
+	 * THE SHEET REFUSAL (design 2026-11-03, D5), last of the overrides: a row that is
+	 * both narrow and busy keeps the more specific sentence, and a wide window's
+	 * reasons keep their precedence. `overlayPresentation` is the drawer's own mode
+	 * (`askPanePresentation`), where the conversation behind it is covered and inert.
+	 */
+	assert.equal(reason({ overlayPresentation: true }), "covers-conversation");
+	assert.equal(
+		reason({
+			overlayPresentation: true,
+			composerHasText: true,
+			keyboardOnDoor: true,
+			drawerOpen: true,
+		}),
+		"composer-has-text",
+		"a row that is both narrow and busy keeps the more specific sentence",
+	);
+	assert.equal(
+		reason({ overlayPresentation: true, drawerOpen: true }),
+		"drawer-open",
+	);
+	assert.equal(
+		reason({ overlayPresentation: true, pendingRows: 0, outstanding: 0 }),
+		"nothing-pending",
+		"a settled queue in the sheet's conversation says the truer thing",
+	);
 	assert.equal(
 		reason({ pendingRows: 0, outstanding: 0, dismissed: { has: () => true } }),
 		"nothing-pending",

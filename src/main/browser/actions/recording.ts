@@ -16,6 +16,7 @@ import { BrowserHostError } from "../errors";
 import { CDP_DEADLINE_MS } from "../vendor/driver/deadline";
 import type { BrowserActionContext } from "./context";
 import { requesterOf, stringParam } from "./context";
+import { type HqClip, HqSession } from "./recording-hq";
 
 /**
  * `record_start` / `record_stop`: a video recording of one driven tab, written
@@ -57,6 +58,15 @@ import { requesterOf, stringParam } from "./context";
  * boundaries (the detach event, `forget`, `detach`, and `close` through
  * `detach`); only the DevTools detach leaves a tombstone, because it is the one
  * case where the tab survives and a later `record_stop` can still be answered.
+ *
+ * TWO ENGINES (D15). `quality` absent or `"standard"` is everything above, unchanged:
+ * `Page.startScreenRecording`, Chromium's AV1 encoder, bytes read back with
+ * `IO.read`. `quality: "high"` is a SEPARATE engine in `recording-hq.ts`
+ * (screencast frames -> a hidden WebCodecs H.264 encoder -> `recording-mux.ts`), and
+ * this file only BRANCHES to it at the points where the two differ: start, finalize,
+ * the cap and every exit path. `Recording.engine` is the discriminator, and the
+ * publish (`.part` -> fsync -> `linkSync`) is shared, so both engines write the
+ * same way and a reported path is a complete file either way.
  *
  * THE ENCODER IS A CHILD PROCESS of the app (`DevTools Media Encoding Service`),
  * one per recording. `MAX_CONCURRENT_RECORDINGS` bounds how many run at once;
@@ -147,6 +157,11 @@ export const RECORD_READ_BYTES = 1024 * 1024;
  * the first classifier and Chromium's own message the second. */
 const RECORD_FIRST_CHROMIUM_MAJOR = 153;
 
+/** `quality` on `record_start`: `"standard"` is the AV1 path this file was written
+ * for, `"high"` is the H.264 screencast path (D15). */
+export type RecordQuality = "standard" | "high";
+type RecordEngine = RecordQuality;
+
 /** One running recording. */
 interface Recording {
 	/** `requesterOf(...)`: `session:<id>`, or the request id when the caller
@@ -177,6 +192,14 @@ interface Recording {
 	/** Set by `abortRecording`: a finalize that lands afterwards must not write a
 	 * settled result over the abort. */
 	aborted: boolean;
+	/** Which engine captures this clip (D21). `"high"` owns `encoder`. */
+	engine: RecordEngine;
+	/** The high-quality session: screencast subscription, encoder window, buffered
+	 * chunks. Every exit path disposes it (`abortRecording`, `endReplaced`). */
+	encoder?: HqSession;
+	/** Why the clip ended, when something other than the caller decided: the byte
+	 * cap sets `"max_bytes"` before it finalises. */
+	stopReason?: "stop" | "max_duration" | "max_bytes";
 }
 
 /**
@@ -208,7 +231,15 @@ const settled = new Map<number, Settled>();
  */
 const reservations = new Map<
 	string,
-	{ webContentsId: number; path: string; cancelled: boolean; large: boolean }
+	{
+		webContentsId: number;
+		path: string;
+		cancelled: boolean;
+		large: boolean;
+		/** A high-quality start's teardown, registered before its first `await` so an
+		 * abort that lands while the encoder window is still opening can destroy it. */
+		dispose?: () => void;
+	}
 >();
 /**
  * The viewport override each tab currently carries, keyed by view id.
@@ -382,6 +413,24 @@ function maxBytesOf(params: Record<string, unknown>): number {
 interface RecordSize {
 	width: number;
 	height: number;
+}
+
+/**
+ * D15's `quality`: absent and `"standard"` are the same request, and anything else
+ * is refused before a single CDP call. The refusal is tagged `record_quality`, the
+ * capability's own name, with `why: "value"`, so the harness renders its own copy.
+ */
+function qualityOf(params: Record<string, unknown>): RecordQuality {
+	const raw = params.quality;
+	if (raw === undefined || raw === null || raw === "standard") {
+		return "standard";
+	}
+	if (raw === "high") return "high";
+	throw new BrowserHostError(
+		"internal",
+		`record_start quality must be "standard" or "high": got ${JSON.stringify(raw)}. Nothing was started.`,
+		{ reason: "record_quality", param: "quality", why: "value" },
+	);
 }
 
 /** A refusal that must arrive before any side effect, tagged with the field and
@@ -800,6 +849,19 @@ function captureShape(size?: RecordSize | null): Record<string, unknown> {
 	};
 }
 
+/** The high-quality counterpart: always H.264 and always MEASURED, because the
+ * encoder is configured from the frames it was actually given, so even an unsized
+ * clip knows its size (D15). */
+function highShape(session: HqSession): Record<string, unknown> {
+	return {
+		fps: session.fps,
+		container: "mp4",
+		codec: session.codec,
+		width: session.width,
+		height: session.height,
+	};
+}
+
 /**
  * Read the stream into the part file, or refuse.
  *
@@ -859,6 +921,34 @@ async function readStream(
 }
 
 /**
+ * Publish a finished `.part` to the approved path: a hard link, so it is atomic and
+ * cannot replace a file that appeared while the clip was recording. Shared by both
+ * engines, which is what keeps "a reported path names a complete clip" one rule.
+ */
+function publishPart(partPath: string, path: string): void {
+	try {
+		// `linkSync` fails `EEXIST`, which is the overwrite refusal: the target
+		// was absent at start but something claimed the name during the clip.
+		linkSync(partPath, path);
+	} catch (error) {
+		const code = (error as NodeJS.ErrnoException)?.code;
+		if (code === "EEXIST") {
+			throw pathRefusal(
+				path,
+				`the recording path appeared while recording and is never overwritten: ${path}`,
+			);
+		}
+		throw error;
+	}
+	try {
+		unlinkSync(partPath);
+	} catch {
+		// The clip is published; a stray dotfile is not worth failing a saved
+		// recording over.
+	}
+}
+
+/**
  * Stop the stream, write the approved file, and report what landed.
  *
  * The publish is a hard link from the part inode, so it is atomic and cannot
@@ -870,6 +960,8 @@ async function runFinalize(
 	recording: Recording,
 	autoStopped: boolean,
 ): Promise<Record<string, unknown>> {
+	if (recording.engine === "high")
+		return runFinalizeHigh(recording, autoStopped);
 	const { contents, cdp, path, partPath } = recording;
 	const budgetAt = Date.now() + RECORD_STOP_BUDGET_MS;
 	let handle = "";
@@ -923,26 +1015,7 @@ async function runFinalize(
 		fsyncSync(fd);
 		closeSync(fd);
 		fd = null;
-		try {
-			// `linkSync` fails `EEXIST`, which is the overwrite refusal: the target
-			// was absent at start but something claimed the name during the clip.
-			linkSync(partPath, path);
-		} catch (error) {
-			const code = (error as NodeJS.ErrnoException)?.code;
-			if (code === "EEXIST") {
-				throw pathRefusal(
-					path,
-					`the recording path appeared while recording and is never overwritten: ${path}`,
-				);
-			}
-			throw error;
-		}
-		try {
-			unlinkSync(partPath);
-		} catch {
-			// The clip is published; a stray dotfile is not worth failing a saved
-			// recording over.
-		}
+		publishPart(partPath, path);
 		return {
 			path,
 			bytes,
@@ -989,6 +1062,93 @@ async function runFinalize(
 	}
 }
 
+/** Write every part, however many `write` calls that takes. */
+function writeAll(fd: number, buffer: Buffer): void {
+	let offset = 0;
+	while (offset < buffer.length) {
+		offset += writeSync(fd, buffer, offset, buffer.length - offset);
+	}
+}
+
+/**
+ * The high-quality counterpart of `runFinalize` (D18, D21): the clip is already
+ * boxed in memory, so there is no stream to read, only the same `.part` -> fsync ->
+ * `linkSync` publish. Nothing has touched the disk until here, which is what keeps
+ * "a hard kill leaves no file" true for this engine too.
+ *
+ * ORDER: stop and drain the encoder (`finish` also stops the screencast, awaited,
+ * because this tab survives), THEN restore the viewport, so the last frames are
+ * not rescaled; the session is disposed on every path out.
+ */
+async function runFinalizeHigh(
+	recording: Recording,
+	autoStopped: boolean,
+): Promise<Record<string, unknown>> {
+	const { contents, cdp, path, partPath } = recording;
+	const session = recording.encoder;
+	let fd: number | null = null;
+	let createdPart = false;
+	let viewportCleared = false;
+	try {
+		if (!session) throw abortedWhileSaving();
+		const clip: HqClip = await session.finish();
+		if (recording.viewportToken) {
+			await clearViewport(cdp, contents, recording.viewportToken);
+			viewportCleared = true;
+		}
+		if (recording.aborted) throw abortedWhileSaving();
+		// 0600 and `wx`, for the reasons the standard path gives.
+		fd = openSync(partPath, "wx", 0o600);
+		createdPart = true;
+		let bytes = 0;
+		for (const part of clip.parts) {
+			writeAll(fd, part);
+			bytes += part.length;
+		}
+		if (recording.aborted) throw abortedWhileSaving();
+		fsyncSync(fd);
+		closeSync(fd);
+		fd = null;
+		publishPart(partPath, path);
+		return {
+			path,
+			bytes,
+			duration_ms: clip.endedAt - recording.startedAt,
+			auto_stopped: autoStopped,
+			...highShape(session),
+			quality: "high",
+			encoder: clip.encoder,
+			frames: clip.frames,
+			measured_fps: clip.measuredFps,
+			avg_bitrate_kbps: clip.avgBitrateKbps,
+			stop_reason:
+				recording.stopReason ?? (autoStopped ? "max_duration" : "stop"),
+		};
+	} catch (error) {
+		throw typedFailure(error);
+	} finally {
+		if (recording.viewportToken && !viewportCleared) {
+			await clearViewport(cdp, contents, recording.viewportToken);
+		}
+		if (fd !== null) {
+			try {
+				closeSync(fd);
+			} catch {
+				// Already closed, or the descriptor went with the failure.
+			}
+		}
+		if (createdPart) {
+			try {
+				unlinkSync(partPath);
+			} catch {
+				// The publish already consumed it.
+			}
+		}
+		// The window, the subscription and the chunks go with the clip, saved or not.
+		session?.dispose();
+	}
+}
+
 /** Record the outcome once and clear the entry, whichever caller got there
  * first (the duration timer or the agent's own `record_stop`). */
 function settle(
@@ -1012,6 +1172,9 @@ function settle(
 /** What ending a stream needs: the attachment and the target, nothing else. */
 type Stoppable = Pick<Recording, "cdp" | "contents" | "width" | "height"> & {
 	viewportToken?: object;
+	/** A high-quality recording's session: its screencast is stopped (awaited, where
+	 * the tab survives) instead of `Page.stopScreenRecording` (D21). */
+	encoder?: HqSession;
 };
 
 /**
@@ -1031,6 +1194,14 @@ export async function endReplaced(recording: Stoppable): Promise<void> {
 		// forgotten, so the attachment is re-opened best-effort (a closed tab throws
 		// and is caught below).
 		await recording.cdp.attach(recording.contents).catch(() => undefined);
+		if (recording.encoder) {
+			// The other engine: there is no recorder or stream, only a screencast
+			// Chromium keeps running until it is told to stop. Awaited, bounded, and
+			// followed by a dispose that is a no-op when an abort already ran it.
+			await recording.encoder.stopCapture(true);
+			recording.encoder.dispose();
+			return;
+		}
 		const stopped = await recording.cdp.send<{ stream?: string }>(
 			recording.contents,
 			"Page.stopScreenRecording",
@@ -1139,6 +1310,21 @@ export async function recordStart(
 	// The size is validated before anything with a side effect: a refusal must
 	// cost the tab no CDP call (RS1/RS2).
 	const size = sizeOf(params);
+	// Same rule for `quality`: an unknown value costs the tab nothing, and neither
+	// does a host that has no encoder window to give (a test, a story): that is the
+	// typed "unavailable" a caller can answer by retrying without `quality`.
+	const quality = qualityOf(params);
+	if (quality === "high" && !ctx.recordingEncoder) {
+		throw new BrowserHostError(
+			"internal",
+			"high-quality recording is not available here (this host was built without its encoder window). Retry without quality for the standard recording; nothing was started.",
+			{
+				reason: "record_quality_unavailable",
+				why: "no_h264_encoder",
+				detail: "no encoder window",
+			},
+		);
+	}
 	if (size && tab.presented) {
 		throw sizeRefusal(
 			"visible",
@@ -1219,7 +1405,13 @@ export async function recordStart(
 		abortRecording(id, "replaced_by_another_owner");
 	}
 	const reservation = `${Date.now()}-${Math.random()}`;
-	const entry = {
+	const entry: {
+		webContentsId: number;
+		path: string;
+		cancelled: boolean;
+		large: boolean;
+		dispose?: () => void;
+	} = {
 		webContentsId: id,
 		path,
 		cancelled: false,
@@ -1232,6 +1424,12 @@ export async function recordStart(
 	/** The token of THIS start's viewport claim, once one is installed. */
 	let viewportToken: object | undefined;
 	let started = false;
+	/** The high-quality session, from the moment its window starts opening. */
+	let hq: HqSession | undefined;
+	/** The cap fired before the recording below existed (a first frame bigger than
+	 * the limit): finalised as soon as there is a recording to finalise. */
+	let capEarly = false;
+	let capHandler: (() => void) | null = null;
 	try {
 		// The abort above drops our state; this ends the recorder itself, which is
 		// what lets the next start succeed on the same target.
@@ -1247,24 +1445,55 @@ export async function recordStart(
 			// frame at it, which is what the encoder's first frame must show (Q1).
 			await waitForCompositedFrame(ctx.cdp, contents, measured);
 		}
-		try {
-			await ctx.cdp.send(
-				contents,
-				"Page.startScreenRecording",
+		if (quality === "high" && ctx.recordingEncoder) {
+			const service = ctx.recordingEncoder;
+			await HqSession.start(
 				{
-					audio: false,
+					cdp: ctx.cdp,
+					contents,
+					service,
 					maxWidth: measured?.width ?? RECORD_WIDTH,
 					maxHeight: measured?.height ?? RECORD_HEIGHT,
-					frameRate: RECORD_FPS,
+					size: measured,
+					maxBytes,
+					onCap: () => {
+						if (capHandler) capHandler();
+						else capEarly = true;
+					},
 				},
-				{ deadlineMs: RECORD_START_DEADLINE_MS },
+				(session) => {
+					// Before the window's first await: an abort that lands while it is
+					// still opening finds the session through the reservation and
+					// destroys it.
+					hq = session;
+					entry.dispose = () => session.dispose();
+				},
 			);
 			started = true;
-		} catch (error) {
-			throw classifyStartFailure(error);
+		} else {
+			try {
+				await ctx.cdp.send(
+					contents,
+					"Page.startScreenRecording",
+					{
+						audio: false,
+						maxWidth: measured?.width ?? RECORD_WIDTH,
+						maxHeight: measured?.height ?? RECORD_HEIGHT,
+						frameRate: RECORD_FPS,
+					},
+					{ deadlineMs: RECORD_START_DEADLINE_MS },
+				);
+				started = true;
+			} catch (error) {
+				throw classifyStartFailure(error);
+			}
 		}
 	} catch (error) {
 		reservations.delete(reservation);
+		// A failed high-quality start disposed its session already (window,
+		// subscription, timers); this waits for the screencast's stop, bounded, so
+		// the tab is quiet before the viewport goes back.
+		if (hq) await hq.stopCapture().catch(() => undefined);
 		// Every failed start restores the viewport; clearViewport is best effort
 		// and never masks the error this start is about to report.
 		if (size && viewportToken) {
@@ -1287,6 +1516,7 @@ export async function recordStart(
 				width: measured?.width,
 				height: measured?.height,
 				viewportToken,
+				encoder: hq,
 			});
 		} else if (size && viewportToken) {
 			await clearViewport(ctx.cdp, contents, viewportToken);
@@ -1311,6 +1541,8 @@ export async function recordStart(
 		timer: undefined,
 		finishing: null,
 		aborted: false,
+		engine: quality,
+		...(hq ? { encoder: hq } : {}),
 	};
 	recordings.set(id, recording);
 	// The entry now carries the slot; the reservation has done its job.
@@ -1322,6 +1554,31 @@ export async function recordStart(
 		void finish(id, recording, true).catch(() => undefined);
 	}, maxDurationS * 1000);
 	recording.timer.unref?.();
+	if (hq) {
+		const session = hq;
+		// The byte cap ends a high-quality clip GRACEFULLY: what is in memory is a
+		// complete clip, so it is finalised and published rather than discarded
+		// (standard keeps `record_too_large`, because its bytes only exist at stop).
+		capHandler = () => {
+			if (recording.aborted || recording.finishing) return;
+			recording.stopReason = "max_bytes";
+			void finish(id, recording, true).catch(() => undefined);
+		};
+		// An encoder window that dies mid-clip is a failed clip, reported by the
+		// next `record_stop` like any other auto-stop failure (D21).
+		session.onFailure((error) => failHigh(id, recording, error));
+		if (capEarly) capHandler();
+		return {
+			recording: true,
+			path,
+			max_duration_s: maxDurationS,
+			max_bytes: maxBytes,
+			quality: "high",
+			...highShape(session),
+			encoder: session.encoder,
+			bitrate_bps: session.bitrate,
+		};
+	}
 	return {
 		recording: true,
 		path,
@@ -1329,6 +1586,37 @@ export async function recordStart(
 		max_bytes: maxBytes,
 		...captureShape(measured),
 	};
+}
+
+/**
+ * A high-quality recording whose encoder died, or failed on its own.
+ *
+ * It settles like an auto-stop that failed: the entry is released and the NEXT
+ * `record_stop` gets the typed `record_failed`. The screencast is stopped (the tab
+ * survives an encoder crash, and Chromium would keep producing frames into nothing)
+ * and the viewport restored, on this path as on every other exit. A finalize already
+ * in flight reports the same failure itself, so it is left alone.
+ */
+function failHigh(
+	webContentsId: number,
+	recording: Recording,
+	error: BrowserHostError,
+): void {
+	if (recording.aborted || recording.finishing) return;
+	if (recordings.get(webContentsId) !== recording) return;
+	const session = recording.encoder;
+	settle(webContentsId, recording, { error });
+	session?.dispose();
+	void (async () => {
+		await session?.stopCapture().catch(() => undefined);
+		if (recording.viewportToken) {
+			await clearViewport(
+				recording.cdp,
+				recording.contents,
+				recording.viewportToken,
+			);
+		}
+	})();
 }
 
 /**
@@ -1408,11 +1696,18 @@ export function abortRecording(
 		if (entry.webContentsId === webContentsId) {
 			entry.cancelled = true;
 			reservations.delete(token);
+			// A high-quality start still opening its window: destroy it now.
+			entry.dispose?.();
 		}
 	}
 	const recording = recordings.get(webContentsId);
 	if (recording) {
 		recording.aborted = true;
+		// The other engine's teardown, synchronous (D21): unsubscribe, destroy the
+		// encoder window, drop the chunks, clear the timers, and ask Chromium to stop
+		// the screencast best effort. Where the tab survives, the caller awaits the
+		// stop itself (`endReplaced`).
+		recording.encoder?.dispose();
 		if (recording.timer !== undefined) {
 			clearTimeout(recording.timer);
 			recording.timer = undefined;

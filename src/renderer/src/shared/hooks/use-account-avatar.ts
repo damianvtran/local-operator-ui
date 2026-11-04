@@ -1,9 +1,8 @@
-import type { DesktopCapabilities } from "@shared/api/local-operator/desktop-api";
-import {
-	desktopFeatureEnabled,
-	desktopKeys,
-} from "@shared/api/local-operator/desktop-hooks";
 import { TeamBridgeApi } from "@shared/api/local-operator/team-bridge-api";
+import {
+	useDevicePixelRatio,
+	usePassiveDesktopFeature,
+} from "@shared/hooks/display-density";
 import {
 	observedRadientAuthority,
 	radientAuthoritySnapshot,
@@ -12,14 +11,11 @@ import {
 } from "@shared/hooks/radient-account-authority";
 import { createBlobUrl, revokeBlobUrl } from "@shared/lib/blob-url-cache";
 import { type QueryClient, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
-	useCallback,
-	useEffect,
-	useMemo,
-	useRef,
-	useState,
-	useSyncExternalStore,
-} from "react";
+	type AvatarVariant,
+	pickAvatarVariant,
+} from "../../../../shared/avatar-variant";
 import {
 	ACCOUNT_AVATAR_URL,
 	type AvatarIdentity,
@@ -129,8 +125,10 @@ const AVATAR_PATTERN = ACCOUNT_AVATAR_URL;
  */
 export function useIdentityAvatar(
 	identity: AvatarIdentity | undefined,
-	size: 64 | 256,
+	/** The plate's CSS size; the variant is picked for this display's DPR. */
+	cssPx: number,
 ): string | undefined {
+	const size = useAvatarVariant(cssPx);
 	/*
 	 * THE SAME GATE AS THE BANNER (code review round 1, F2). An endpoint picture
 	 * is requested only from a core that advertises `team_bridge_endpoint_avatar`
@@ -173,29 +171,12 @@ export function useIdentityAvatar(
 	return usePrivateAvatar(version, size);
 }
 
+function useAvatarVariant(cssPx: number): AvatarVariant {
+	return pickAvatarVariant(cssPx, useDevicePixelRatio());
+}
+
 function useEndpointPicturesAdvertised(): boolean {
-	const client = useQueryClient();
-	const subscribe = useCallback(
-		(listener: () => void) =>
-			client.getQueryCache().subscribe((event) => {
-				if (
-					(event.type === "updated" || event.type === "removed") &&
-					event.query.queryKey[0] === desktopKeys.capabilities[0] &&
-					event.query.queryKey[1] === desktopKeys.capabilities[1]
-				)
-					listener();
-			}),
-		[client],
-	);
-	const snapshot = useCallback(
-		() =>
-			desktopFeatureEnabled(
-				client.getQueryData<DesktopCapabilities>(desktopKeys.capabilities),
-				"team_bridge_endpoint_avatar",
-			),
-		[client],
-	);
-	return useSyncExternalStore(subscribe, snapshot, snapshot);
+	return usePassiveDesktopFeature("team_bridge_endpoint_avatar");
 }
 
 /** One hash-pinned avatar: whose, and which content version. */
@@ -259,7 +240,8 @@ export function radientAccountAvatarVersion(
  */
 export function useOwnAccountAvatar(
 	account: RadientAccountAvatarFields | undefined | null,
-	size: 64 | 256,
+	/** The plate's CSS size; the variant is picked for this display's DPR. */
+	cssPx: number,
 ): string | undefined {
 	const authority = useObservedRadientAuthority();
 	// Keyed on the primitives, not the object: a refetch returns a new account
@@ -280,7 +262,7 @@ export function useOwnAccountAvatar(
 	);
 	return useAccountAvatar(
 		version && version.accountId === authority.accountId ? version : null,
-		size,
+		cssPx,
 		// Always mounted, so it never recovers by remount the way a Team Bridge
 		// row does: see `FAILED_READ_RETRY_MS`.
 		{ retryOnce: true },
@@ -289,9 +271,11 @@ export function useOwnAccountAvatar(
 
 export function useAccountAvatar(
 	version: AccountAvatarVersion | null,
-	size: 64 | 256,
+	/** The plate's CSS size; the variant is picked for this display's DPR. */
+	cssPx: number,
 	options: { retryOnce?: boolean } = {},
 ): string | undefined {
+	const size = useAvatarVariant(cssPx);
 	const typed = useMemo<AvatarVersion | null>(
 		() => (version ? { type: "account", ...version } : null),
 		[version],
@@ -307,7 +291,7 @@ export function useAccountAvatar(
  */
 function usePrivateAvatar(
 	version: AvatarVersion | null,
-	size: 64 | 256,
+	size: AvatarVariant,
 	options: { retryOnce?: boolean } = {},
 ): string | undefined {
 	const retryOnce = options.retryOnce === true;

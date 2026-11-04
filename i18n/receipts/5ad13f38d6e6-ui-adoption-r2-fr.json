@@ -1,0 +1,64 @@
+{
+	"schema": 1,
+	"receipt_kind": "locale-delta-audit",
+	"date": "2026-11-03",
+	"instance": "5ad13f38d6e6-ui-adoption-r2-fr",
+	"agent": "reviewer",
+	"session": "5ad13f38d6e6",
+	"model": "openai/gpt-6.1-sol",
+	"status": "passed",
+	"result": "clean",
+	"locale": "fr",
+	"namespace": "ui.hub.adoption",
+	"source_sha256": "d42c558c063e34ef16223f220ad58f44b7334baab45782a09c411e2f17f6e7e1",
+	"target_sha256": "914cfd5724ed1773d750ec1354de45dd53f02bb763d26215e41533a2d15456e8",
+	"context_sha256": "139530f14306647b39ac21c4a744a6cf3d969d9b4f398836d88a415c37bfef24",
+	"translator": {
+		"agent": "hub-skill-adoption-ui-coder (translation drafting role)",
+		"session": "e24a2cdfdbcd",
+		"model": "openai/gpt-6.1-sol",
+		"identity_evidence": "Parsed structural provider/model_id transcript records only: 311 observed records identify openai/gpt-6.1-sol. No inference from requested/startup labels."
+	},
+	"translator_receipt": "i18n/receipts/hub-skill-adoption-remediation-translation-e24a2cdfdbcd.json",
+	"prior_receipt": "i18n/receipts/5ad13f38d6e6-ui-adoption-fr-model-corrected.json",
+	"prior_receipt_sha256": "d949c85f5ca95e9f3ef256c3a50a5e8df22f373040f9632d754ab38900a1862e",
+	"prior_source_sha256": "10f5a091608b8366bb7f8b32a9f0d0d0cc83854fb2752112e5feb86f8dd46854",
+	"prior_target_sha256": "fda42f1cd47e303b186415ab5d9a34136935edb88466bb3c7a14976344f8c660",
+	"scope": "Delta only: new file_relocated in all seven locales, Latin merge in zh-CN/ur/hi review, French seven U+202F fixes. Prior completed 37-key semantic audit retained; all other values byte-equivalent after JSON parsing, with prior catalogue hash compatibility proved against HEAD. No rendered-fit/RTL/second independent safety sign-off.",
+	"changed_existing_keys": [
+		"ui.hub.adoption.preservation",
+		"ui.hub.adoption.snapshot",
+		"ui.hub.adoption.model",
+		"ui.hub.adoption.local_path",
+		"ui.hub.adoption.no_proposal",
+		"ui.hub.adoption.applied",
+		"ui.hub.adoption.file_aside"
+	],
+	"new_keys": [
+		"ui.hub.adoption.file_relocated"
+	],
+	"findings": [],
+	"resolved_findings": [
+		"UIA-I18N-002"
+	],
+	"checks": {
+		"frozen_source_context_target_hashes": "passed",
+		"prior_complete_audit_compatibility": "HEAD bytes match original translator source/target pins; only authorized delta present",
+		"38_key_placeholder_parity": "passed",
+		"no_stored_bidi_controls": "passed",
+		"semantic_delta": "file_relocated accurately describes pending move of local guidance to displayed destination, not deletion or completed mutation"
+	},
+	"model_identity_evidence": {
+		"method": "Parsed only structural provider/model_id records, excluding textual model names and message/tool contents",
+		"records": 155,
+		"unique_models": [
+			{
+				"provider": "openai",
+				"model_id": "gpt-6.1-sol"
+			}
+		],
+		"transcript_observed_prefix_sha256": "62e1dff9cf09361a23723cf7960a0ffcd9c63070944cfc09ad66c910125e6572",
+		"prior_correction": "i18n/receipts/5ad13f38d6e6-model-correction.json"
+	},
+	"terminal": true
+}

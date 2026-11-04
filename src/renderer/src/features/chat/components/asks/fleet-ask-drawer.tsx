@@ -138,6 +138,8 @@ const EMPTY_ASK_DRAFTS: Record<string, AskDraft> = {};
 
 export const FleetAskDrawer = ({
 	onClose,
+	ground,
+	presentation,
 }: {
 	/*
 	 * THE SAME TWO-KIND SEAM AS THE DRAWER'S (#1079), forwarded untouched: the X inside
@@ -146,6 +148,19 @@ export const FleetAskDrawer = ({
 	 * `AskDrawerCloseOptions`.
 	 */
 	onClose: (options?: AskDrawerCloseOptions) => void;
+	/**
+	 * WHICH GROUND THE SHELL'S SLOT RESOLVED (2026-11-03), forwarded to the drawer:
+	 * `glass` while the pane docks, `solid` while it is the sheet drawn over a row it
+	 * cannot dock in. See `AskDrawerProps.ground`.
+	 */
+	ground?: "glass" | "solid";
+	/**
+	 * WHETHER THE SLOT IS THE SHEET OR THE DOCKED PANE (agent review round 3,
+	 * MINOR-1), forwarded untouched: only the sheet's commit inerts the route content
+	 * it covers, so only there may a press on someone else's control be latched and
+	 * followed. See `AskDrawerProps.presentation`.
+	 */
+	presentation?: "docked" | "overlay";
 }) => {
 	const { rows, frontend } = useFleetAsks();
 	const currentSessionId =
@@ -389,6 +404,8 @@ export const FleetAskDrawer = ({
 		<AskDrawer
 			frontend={frontend}
 			scope="fleet"
+			ground={ground}
+			presentation={presentation}
 			tabs={
 				notificationsEnabled
 					? {

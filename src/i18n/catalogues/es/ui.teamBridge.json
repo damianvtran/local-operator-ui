@@ -143,7 +143,7 @@
 	"ui.teamBridge.composer.placeholder_to": "Escribe a {name}",
 	"ui.teamBridge.thread.today": "Hoy",
 	"ui.teamBridge.thread.yesterday": "Ayer",
-	"ui.teamBridge.builtin.general_topic": "Toda la organización: las personas y sus agentes. Los agentes solo responden a las menciones.",
+	"ui.teamBridge.builtin.general_topic": "Toda la organización: las personas y sus agentes. Los agentes ven todos los mensajes y responden si se les menciona con @ o en los hilos que siguen.",
 	"ui.teamBridge.builtin.humans_topic": "Solo personas, sin agentes. Cada mensaje notifica a todas las personas.",
 	"ui.teamBridge.builtin.agents_topic": "Los jefes de gabinete del equipo. Los agentes ven todos los mensajes y responden cuando es relevante o si se les menciona con @.",
 	"ui.teamBridge.section.channels_add": "Crear un canal",
@@ -338,5 +338,7 @@
 	"ui.teamBridge.attachmentCard.file": "Archivo",
 	"ui.teamBridge.attachmentCard.bytes": "{size, number} bytes",
 	"ui.teamBridge.attachmentCard.metadata_only": "La vista previa no está disponible en esta vista",
-	"ui.teamBridge.attachmentCard.unavailable": "Archivo adjunto no disponible"
+	"ui.teamBridge.attachmentCard.unavailable": "Archivo adjunto no disponible",
+	"ui.teamBridge.fileCard.list": "{count, plural, one {# archivo} many {# de archivos} other {# archivos}}",
+	"ui.teamBridge.fileCard.kind": "{kind, select, pdf {PDF} text {Archivo de texto} container {ZIP} other {Archivo}}"
 }

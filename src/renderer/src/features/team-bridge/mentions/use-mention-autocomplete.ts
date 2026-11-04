@@ -201,6 +201,19 @@ export function useMentionAutocomplete(input: {
 		},
 		[],
 	);
+	/*
+	 * Whether this render's text is the field's own edit rather than text the
+	 * owner delivered. A pure read taken during render, so both StrictMode passes
+	 * agree, and the layout effect below acts on this captured value. Re-reading
+	 * there would be too late: React has written `text` into the field by then.
+	 * The announcement alone is not enough. When an owner refuses an input, React
+	 * puts the old controlled value back without rendering, so nothing retires
+	 * the ref, and a later restore of that same string would pass as typed and
+	 * arm the query (review R1-03 on #1600). A real edit is still in the field
+	 * when its text renders. A refused one is not.
+	 */
+	const typedText =
+		nativeEditText.current === text && fieldRef.current?.value === text;
 	const keyRef = useRef(tokenKey);
 	if (keyRef.current !== tokenKey) {
 		// A different draft: its own sidecar, never the previous draft's pills.
@@ -223,14 +236,15 @@ export function useMentionAutocomplete(input: {
 		// A field edit is `edited` whichever way it was announced: an ordinary
 		// keystroke must never take the `restored` branch below (which would also
 		// disarm caretInteraction when the previous text was empty).
-		const typed = nativeEditText.current === text;
-		nativeEditText.current = null;
+		// READ, never consume: render must stay pure. StrictMode (dev, main.tsx)
+		// renders twice and React may discard a render, so clearing the ref here
+		// left the second pass reading null, resetting interactionText and arming
+		// '@' only on keyup (review R1-01 on #1600). The layout effect below
+		// adopts and retires it once per committed text.
+		const typed = typedText;
 		const edited = interactionText === text || typed;
 		const jumped = historyJump.current === text;
 		historyJump.current = null;
-		// Adopt the native edit in this same render (like setTokens below), so a
-		// query arms on the very keystroke: '@' into an empty composer opens now.
-		if (typed && interactionText !== text) setInteractionText(text);
 		// A refused optimistic send restores text without a DOM edit. Its
 		// identities come from this mounted draft's history, never name matching.
 		const restored =
@@ -249,6 +263,20 @@ export function useMentionAutocomplete(input: {
 		lastText.current = text;
 		setTokens(next);
 	}
+	/*
+	 * ADOPT AND RETIRE THE NATIVE EDIT AFTER COMMIT, not during render (see the
+	 * render-phase read above). A layout effect runs once per commit, after both
+	 * StrictMode render passes and before paint, so the query still arms on the
+	 * very keystroke ('@' into an empty composer opens before the frame) and the
+	 * next keystroke's listener always writes a fresh value. Its setState runs
+	 * with the committed `text`, never from a native `input` listener, so it
+	 * cannot revert a key (see `nativeEditText`).
+	 */
+	// biome-ignore lint/correctness/useExhaustiveDependencies: once per committed `text`; `typedText` is that commit's own reading.
+	useLayoutEffect(() => {
+		if (typedText) setInteractionText(text);
+		nativeEditText.current = null;
+	}, [text]);
 	useEffect(() => {
 		if (pendingRestore.current) return;
 		persistDraft(text, tokens);
