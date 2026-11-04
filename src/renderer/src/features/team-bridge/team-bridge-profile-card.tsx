@@ -48,6 +48,23 @@ import { personDisplayLabel, personInitial } from "./team-bridge-model";
  * end-anchored utilities, so a mark pinned to the physical right would sit
  * opposite every other one in Urdu.
  */
+/*
+ * THE MARK'S SIZE IN WHOLE CSS PIXELS (operator report 2026-11-03, retina
+ * blur). It used to be `max(8px, 32%)` with a `calc(100% - 1px)` inner, which
+ * lands on fractions at the real plate sizes (36 -> 11.52 px, 64 -> 20.48 px):
+ * the clip-path's diagonal and both straight edges then fall between device
+ * pixels and are antialiased into a soft fringe, worst on the 1 px surface
+ * hairline that separates the accent from a picture. Integer CSS px are whole
+ * device px at every integer DPR, so the straight edges are crisp and only the
+ * diagonal is (unavoidably) antialiased. Same proportion and 8 px floor as the
+ * old rule, so the mark's look is unchanged; the inner stays exactly 1 px
+ * smaller, which is the hairline.
+ */
+export function agentMarkPx(size: number): { outer: number; inner: number } {
+	const outer = Math.max(8, Math.round(size * 0.32));
+	return { outer, inner: outer - 1 };
+}
+
 const AGENT_MARK_SHAPE =
 	"[clip-path:polygon(100%_100%,0_100%,100%_0)] rtl:[clip-path:polygon(0_100%,100%_100%,0_0)]";
 
@@ -98,10 +115,13 @@ export function TeamBridgeAvatar({
 	fallback?: ReactNode;
 	selected?: boolean;
 }) {
+	// CSS size in; the hook picks the server variant for this display's DPR
+	// (`pickAvatarVariant`), so a 36 px row on a 2x panel gets the 256 file.
 	const image = useIdentityAvatar(
 		directoryIdentity(member, kind, endpointId),
-		size <= 64 ? 64 : 256,
+		size,
 	);
+	const mark = agentMarkPx(size);
 	const [failedImage, setFailedImage] = useState<string>();
 	const placeholder =
 		kind === "agent" ? (
@@ -191,15 +211,17 @@ export function TeamBridgeAvatar({
 			{kind === "agent" && (
 				<span
 					data-agent-mark=""
+					style={{ width: mark.outer, height: mark.outer }}
 					className={cn(
-						"pointer-events-none absolute end-0 bottom-0 size-[max(8px,32%)]",
+						"pointer-events-none absolute end-0 bottom-0",
 						selected ? "bg-surface" : "bg-media-surface",
 						AGENT_MARK_SHAPE,
 					)}
 				>
 					<span
+						style={{ width: mark.inner, height: mark.inner }}
 						className={cn(
-							"absolute end-0 bottom-0 block size-[calc(100%-1px)] bg-accent",
+							"absolute end-0 bottom-0 block bg-accent",
 							AGENT_MARK_SHAPE,
 						)}
 					/>

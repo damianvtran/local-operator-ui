@@ -346,7 +346,8 @@ const PATH_CHIP_CHARS = 40;
 const ChatHeaderAvatar: FC<{
 	agent: NonNullable<ChatHeaderProps["agentAvatar"]>;
 }> = ({ agent }) => {
-	const present = useHasAgentPicture(agent.agentId, agent.sha256);
+	// 20 = the `size-5` plate below; the same size keeps the mark on this read.
+	const present = useHasAgentPicture(agent.agentId, agent.sha256, 20);
 	/*
 	 * NO PICTURE, NO PLATE, NO DOOR - and that covers the digest whose bytes do not
 	 * resolve, not just the agent that never had one. `AgentMark` renders the
@@ -369,6 +370,7 @@ const ChatHeaderAvatar: FC<{
 					agentId={agent.agentId}
 					sha256={agent.sha256}
 					className="size-5"
+					cssPx={20}
 					fallback={null}
 				/>
 			</AgentAvatarEditLink>

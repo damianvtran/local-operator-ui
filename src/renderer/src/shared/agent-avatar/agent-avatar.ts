@@ -48,6 +48,10 @@ import type {
 } from "@shared/api/local-operator/types";
 import { queryClient } from "@shared/api/query-client";
 import {
+	useDevicePixelRatio,
+	usePassiveDesktopFeature,
+} from "@shared/hooks/display-density";
+import {
 	createBlobUrl,
 	peek,
 	publish,
@@ -61,6 +65,10 @@ import {
 	useQueryClient,
 } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
+import {
+	type AgentAvatarSize,
+	pickAgentAvatarSize,
+} from "../../../../shared/avatar-variant";
 import {
 	type AgentAvatarMap,
 	SHA256,
@@ -200,6 +208,13 @@ export function useAgentAvatarMeta(
 export function useAgentAvatar(
 	agentId: string | null | undefined,
 	sha256Hint?: string | null,
+	/**
+	 * The CSS size the picture is drawn at. With core's `agent_avatar_sizes`
+	 * the read asks for the smallest derivative covering `cssPx x DPR`
+	 * (`pickAgentAvatarSize`); omitted (the editor's crop preview, which must
+	 * see the stored original) or without the feature, the 512 px original.
+	 */
+	cssPx?: number,
 ): string | null {
 	const hinted = sha256Hint !== undefined;
 	const { data } = useAgentAvatarMap(Boolean(agentId) && !hinted);
@@ -210,7 +225,24 @@ export function useAgentAvatar(
 		: agentId
 			? (data?.[agentId]?.sha256 ?? null)
 			: null;
-	return useAvatarBytes(agentId ?? null, sha256);
+	const size = useAgentAvatarSize(cssPx);
+	return useAvatarBytes(agentId ?? null, sha256, size);
+}
+
+/*
+ * RIGHT-SIZED LOCAL AGENT PICTURES (operator report 2026-11-03, retina
+ * avatars: "keep bandwidth sensible"). Every surface used to read the 512 px
+ * original (~240 KB for a photo) to draw it at 16-80 CSS px. A core that
+ * advertises `agent_avatar_sizes` serves 64/128/256 derivatives, so the read
+ * asks for the smallest one that still covers the device pixels - sharp on a
+ * retina panel, a fraction of the bytes. Live in both inputs: the DPR store
+ * re-picks when the window changes display, and the passive capability read
+ * re-picks when the capability answer lands after first paint.
+ */
+function useAgentAvatarSize(cssPx: number | undefined): AgentAvatarSize | null {
+	const served = usePassiveDesktopFeature("agent_avatar_sizes");
+	const dpr = useDevicePixelRatio();
+	return served && cssPx !== undefined ? pickAgentAvatarSize(cssPx, dpr) : null;
 }
 
 /**
@@ -224,8 +256,18 @@ export function useAgentAvatar(
 function useAvatarBytes(
 	agentId: string | null,
 	sha256: string | null,
+	size: AgentAvatarSize | null,
 ): string | null {
-	const key = agentId && sha256 ? agentAvatarPath(agentId, sha256) : null;
+	/*
+	 * The size is part of the key: a 64 and a 256 of one digest are different
+	 * bytes, and surfaces drawing the same size share one read and one blob.
+	 * Unsized keeps the contract address unchanged, so the original's cache
+	 * entry is the one it always was.
+	 */
+	const key =
+		agentId && sha256
+			? `${agentAvatarPath(agentId, sha256)}${size ? `&size=${size}` : ""}`
+			: null;
 	/*
 	 * THE KEY TRAVELS WITH THE URL, so a render can tell a fresh answer from the
 	 * previous key's (agent review round 1, m1). `url` alone was seeded once by a
@@ -257,7 +299,10 @@ function useAvatarBytes(
 		setDrawn({ key, url: null });
 		let cancelled = false;
 		let held = false;
-		void desktopMedia({ op: "agent.avatar", agentId, sha256 }, null)
+		void desktopMedia(
+			{ op: "agent.avatar", agentId, sha256, ...(size ? { size } : {}) },
+			null,
+		)
 			.then((result) => {
 				if (cancelled || result.kind !== "bytes") return;
 				publish(key, createBlobUrl(result.data as BlobPart, result.mimeType));
@@ -272,7 +317,7 @@ function useAvatarBytes(
 			cancelled = true;
 			if (held) release(key);
 		};
-	}, [key, agentId, sha256]);
+	}, [key, agentId, sha256, size]);
 	if (!key) return null;
 	if (drawn.key === key) return drawn.url;
 	return peek(key) ?? null;

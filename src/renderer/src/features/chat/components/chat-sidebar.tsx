@@ -931,7 +931,8 @@ const EntityMark: FC<{
 	agentId: string | null;
 	glyph: LucideIcon;
 }> = ({ agentId, glyph: Glyph }) => {
-	const avatar = useAgentAvatar(agentId);
+	// 16 = the `size-4` plate below.
+	const avatar = useAgentAvatar(agentId, undefined, 16);
 	if (avatar === null) return <Glyph className="size-4 shrink-0" />;
 	return (
 		/*
