@@ -214,3 +214,28 @@ export const InMessageList: Story = {
 	),
 	args: { message: root() },
 };
+
+/*
+ * THE BEFORE/AFTER PAIRS. The same root, drawn through the real message list,
+ * under the same story names a capture of origin/main uses for the old pill,
+ * so each evidence pair differs only by the change under review.
+ */
+const ListFrame: FC<{ message: TeamBridgeMessage }> = ({ message }) => (
+	<div className="flex w-[760px] flex-col bg-canvas text-ink">
+		<TeamBridgeMessageList
+			messages={[message]}
+			labelFor={(sender) => sender.display_label}
+			profileFor={profileFor}
+			onReply={() => {}}
+			tenantId="tnt_story"
+		/>
+	</div>
+);
+const inList = (story: Story): Story => ({
+	...story,
+	render: (args) => <ListFrame message={args.message} />,
+});
+export const ListNoReplies = inList(NoReplies);
+export const ListRead = inList(Read);
+export const ListUnread = inList(UnreadTwelve);
+export const ListManyParticipants = inList(ManyParticipants);
