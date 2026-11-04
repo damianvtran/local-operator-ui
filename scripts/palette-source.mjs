@@ -109,9 +109,7 @@ export const loadPalettes = () => {
 			for (const m of chunk.slice(pStart).matchAll(/(\w+):\s*"([^"]+)"/g)) {
 				if (m[1] in palette && palette[m[1]] !== m[2]) {
 					throw new Error(
-						`${file}: palette "${id}" declares role "${m[1]}" twice, as ` +
-							`"${palette[m[1]]}" and "${m[2]}". Remove one; the parser ` +
-							`cannot know which you meant.`,
+						`${file}: palette "${id}" declares role "${m[1]}" twice, as "${palette[m[1]]}" and "${m[2]}". Remove one; the parser cannot know which you meant.`,
 					);
 				}
 				palette[m[1]] = m[2];
@@ -120,4 +118,26 @@ export const loadPalettes = () => {
 		}
 	}
 	return out.sort((a, b) => a.id.localeCompare(b.id));
+};
+
+/**
+ * The contrast value a gate run was asked for, from `LO_CONTRAST_PRESET`.
+ *
+ * Fails closed: anything that is not an integer in -100..100 throws rather than
+ * quietly running the authored pass, because a preset leg that silently measured
+ * Standard would report green about palettes it never looked at. Composing the
+ * palettes at that value is the CONTRACT's job (it imports the engine); this
+ * module stays a parser, so the evidence gate that also imports it does not pull
+ * the composition engine into its closure.
+ */
+export const contrastPresetFromEnv = (env = process.env) => {
+	const raw = env.LO_CONTRAST_PRESET;
+	if (raw === undefined || raw === "") return 0;
+	const n = Number(raw);
+	if (!Number.isInteger(n) || n < -100 || n > 100) {
+		throw new Error(
+			`LO_CONTRAST_PRESET=${JSON.stringify(raw)} is not an integer in -100..100`,
+		);
+	}
+	return n;
 };

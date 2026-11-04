@@ -836,7 +836,8 @@ separating them by lightness costs every ink measured against them.
 **Component triples are the assertion that matters most.** A pair checker passes
 a control whose fill is 1.06:1 and whose border is 1.20:1 — each token is
 "fine", and the control has no perceivable edge. Adding a component to the app
-means adding a row to `CONTROLS` in that script; green output about a component
+means adding a row to `CONTROLS` (the contract's tables, in
+`src/shared/theme-engine/contract-tables.mjs`); green output about a component
 nobody listed is not evidence about that component.
 
 **Exemptions are pinned, not muted.** An accepted sub-floor pair records its

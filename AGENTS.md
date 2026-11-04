@@ -72,8 +72,13 @@ hand-edit `styles/themes.generated.css`.
 `pnpm check-themes` enforces both freshness and the contrast floors, asserting
 over component triples (ground + fill + border + ink) rather than token pairs.
 **Adding a component with its own fill and border means adding a row to
-`CONTROLS` in `scripts/contrast-contract.mjs`** — green output about a
-component nobody listed is not evidence about that component.
+`CONTROLS` in `src/shared/theme-engine/contract-tables.mjs`** (the contract's
+tables live there so the renderer's composition engine holds composed palettes to
+the same floors; `scripts/contrast-contract.mjs` imports them) — green output
+about a component nobody listed is not evidence about that component.
+`pnpm check-themes` also runs the contract at the four non-Standard contrast
+presets (`scripts/check-contrast-presets.mjs`), so a new row must hold on every
+palette at Soft, Gentle, Strong and High too.
 
 ### Panels run to the window edge
 

@@ -211,6 +211,7 @@ const stubs = {
 	 */
 	"@shared/themes": `
 		export const DEFAULT_THEME = "localOperatorDark";
+		export const isThemeName = (id) => id === "localOperatorDark";
 		export const themes = {};
 	`,
 };
