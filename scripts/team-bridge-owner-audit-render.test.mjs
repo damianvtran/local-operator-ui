@@ -793,7 +793,9 @@ test("rail: loading, error with a working retry, empty, populated", async () => 
 		error.host
 			.querySelector('[role="alert"]')
 			.className.split(" ")
-			.includes("px-3"),
+			/* `px-2` inside the audit section's SIDEBAR_INSET puts the text on the
+			   rail's 16px line (team-bridge-sidebar-inset.test.mjs). */
+			.includes("px-2"),
 		"the rail's failure keeps the rail rows' inset",
 	);
 	assert.ok(error.text().includes(m.t("ui.ownerAudit.error")));

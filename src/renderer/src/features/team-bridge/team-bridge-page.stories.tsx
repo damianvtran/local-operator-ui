@@ -1,10 +1,12 @@
 import { desktopKeys } from "@shared/api/local-operator/desktop-hooks";
+import { SIDEBAR_INSET } from "@shared/components/navigation/sidebar-inset";
 import {
 	beginRadientAuthorityTransition,
 	radientUserKeys,
 } from "@shared/hooks/radient-account-authority";
 import { t } from "@shared/i18n";
 import { useDocumentDirection } from "@shared/i18n/use-document-direction";
+import { cn } from "@shared/lib/utils";
 import type { Meta, StoryObj } from "@storybook/react";
 import { expect, fireEvent, userEvent, waitFor, within } from "@storybook/test";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -1300,6 +1302,62 @@ export const InShellFleetDrawerOpen: Story = {
 	),
 };
 
+/**
+ * ONE INLINE INSET, BOTH SIDES (operator, 2026-11-04): every trailing mark the
+ * rail can draw at rest - the organization chevron and "+", a count beside a
+ * mute bell, a mute bell alone, the Invitations count, the audit list - in the
+ * docked column, so the capture shows each band's leading mark on the 16px line
+ * and each row's last mark ending 16px from the column's end edge.
+ * `scripts/team-bridge-sidebar-inset.test.mjs` pins the classes behind it.
+ */
+export const InShellSidebarInset: Story = {
+	args: {
+		organizations: [minervaOrganization],
+		totalUnread: minervaOrganization.unread,
+		conversations: [
+			{
+				...channel,
+				members: [
+					...channel.members,
+					{
+						account_id: self,
+						kind: "agent",
+						display_label: "Robo Damian",
+						role: "member",
+						state: "invited",
+					},
+				],
+			},
+			mutedChannel,
+			{
+				...mutedChannel,
+				id: "bcv_ch_muted_read",
+				name: "qa-coordination",
+				unread_count: 0,
+				last_read_seq: 12,
+			},
+			group,
+			dm,
+		],
+		target: { type: "conversation", id: channel.id },
+		messages: messages.map((message) => ({
+			...message,
+			conversation_id: channel.id,
+		})),
+		people: directoryPeople,
+		onOpenArchived: () => {},
+		archivedConversations: [
+			{ ...channel, id: "bcv_ch_old", name: "old-launch", status: "archived" },
+		],
+		ownerAudit: staticOwnerAudit([minervaOrganization], "ready"),
+	},
+	render: (args) => (
+		<InTheShell>
+			<TeamBridgePageView {...args} />
+		</InTheShell>
+	),
+};
+
 /** Urdu: the column is on the right, and Back's arrow points right. */
 export const InShellUrdu: Story = {
 	...InShellChannelSelected,
@@ -1463,7 +1521,10 @@ function staticOwnerAudit(
 		clear: () => {},
 		panel: null,
 		rail: () => (
-			<section className="mt-4" aria-label={t("ui.ownerAudit.title")}>
+			<section
+				className={cn("mt-4", SIDEBAR_INSET)}
+				aria-label={t("ui.ownerAudit.title")}
+			>
 				<OwnerAuditSectionHeader />
 				{organizations.map((organization, index) => (
 					<div key={organization.tenantId}>
@@ -1474,7 +1535,6 @@ function staticOwnerAudit(
 							<RailGroupHeader
 								id={`owner-audit-${organization.tenantId}`}
 								name={organization.name}
-								inset="bare"
 								first={index === 0}
 							/>
 						)}

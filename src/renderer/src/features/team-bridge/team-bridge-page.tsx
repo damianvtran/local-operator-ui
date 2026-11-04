@@ -11,6 +11,7 @@ import {
 } from "@shared/api/local-operator/team-bridge-api";
 import { Spinner } from "@shared/components/common/spinner";
 import { useLeftSidebarHosted } from "@shared/components/navigation/left-sidebar-host";
+import { SIDEBAR_INSET } from "@shared/components/navigation/sidebar-inset";
 import { AttentionBadge } from "@shared/components/ui/attention-badge";
 import { Button } from "@shared/components/ui/button";
 import { ScrollArea } from "@shared/components/ui/scroll-area";
@@ -2531,7 +2532,9 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 			    the sections all inset `px-2`, and each control pads its own `px-2`,
 			    so Back's arrow, the org tile, the Drafts glyph and every row's mark
 			    start at x=16. It was 16 / 20 / 20 / 12 - three lines in one column. */}
-			<header className="flex h-12 shrink-0 items-center gap-1 px-2">
+			<header
+				className={cn("flex h-12 shrink-0 items-center gap-1", SIDEBAR_INSET)}
+			>
 				<TeamBridgeOrgSwitcher
 					organizations={organizations}
 					scope={scope}
@@ -2541,6 +2544,43 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 					organizationsFailed={organizationsFailed}
 					unreadRefreshing={refreshingUnread}
 					onRetry={onRetryMemberships}
+				/>
+				{/*
+				 * STALE-WHILE-REVALIDATE, VISIBLY (tb-instant-open). Cached rows stay
+				 * on screen while the reads behind them settle, so the rail says they
+				 * are being re-read rather than presenting a stale list as a current
+				 * one. The slot is always in the flow and only its colour role changes,
+				 * so a poll cannot reflow the rail under the reader. `data-rail-refreshing`
+				 * names which read is behind it.
+				 *
+				 * BEFORE THE "+", NOT AFTER IT (operator, 2026-11-04): the header's last
+				 * item ends on the rail's trailing line (16px from the edge, where every
+				 * badge and bell ends), and an always-present 6px slot after the "+"
+				 * pushed that glyph to 26px. No new copy: this is a state of the
+				 * rail, and what a screen reader needs to hear is the affected regions'
+				 * own `aria-busy`.
+				 *
+				 * AND NEITHER READ WEARS THE ATTENTION HUE (design round 1, D2). Green in
+				 * this rail is the mark of a count the reader owes attention to: every
+				 * row's `AttentionBadge` sits beside this dot, and so does the collapsed
+				 * sidebar's More badge. A green dot four rows above those badges reads as
+				 * a count of unread, and makes the one mark readers trust mean the
+				 * opposite kind of thing. Attention is a count; liveness is plumbing. So
+				 * both refresh states are `ink-dim`, and which read is behind the dot
+				 * stays in `data-rail-refreshing` - for instruments and tests rather than
+				 * for eyes, because a difference no reader can act on does not earn a hue.
+				 */}
+				<span
+					data-rail-refreshing={
+						refreshingUnread ? "unread" : refreshingRows ? "rows" : undefined
+					}
+					aria-hidden="true"
+					className={cn(
+						"size-1.5 shrink-0 rounded-full",
+						refreshingUnread || refreshingRows
+							? "bg-ink-dim"
+							: "bg-transparent",
+					)}
 				/>
 				{/* "New message" opens an empty To: draft: a DM or a group is
 				    decided by how many people the reader adds, as in Slack. */}
@@ -2567,42 +2607,10 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 				>
 					<Plus size={16} />
 				</Button>
-				{/*
-				 * STALE-WHILE-REVALIDATE, VISIBLY (tb-instant-open). Cached rows stay
-				 * on screen while the reads behind them settle, so the rail says they
-				 * are being re-read rather than presenting a stale list as a current
-				 * one. The slot is always in the flow and only its colour role changes,
-				 * so a poll cannot reflow the rail under the reader. `data-rail-refreshing`
-				 * names which read is behind it. No new copy: this is a state of the
-				 * rail, and what a screen reader needs to hear is the affected regions'
-				 * own `aria-busy`.
-				 *
-				 * AND NEITHER READ WEARS THE ATTENTION HUE (design round 1, D2). Green in
-				 * this rail is the mark of a count the reader owes attention to: every
-				 * row's `AttentionBadge` sits beside this dot, and so does the collapsed
-				 * sidebar's More badge. A green dot four rows above those badges reads as
-				 * a count of unread, and makes the one mark readers trust mean the
-				 * opposite kind of thing. Attention is a count; liveness is plumbing. So
-				 * both refresh states are `ink-dim`, and which read is behind the dot
-				 * stays in `data-rail-refreshing` - for instruments and tests rather than
-				 * for eyes, because a difference no reader can act on does not earn a hue.
-				 */}
-				<span
-					data-rail-refreshing={
-						refreshingUnread ? "unread" : refreshingRows ? "rows" : undefined
-					}
-					aria-hidden="true"
-					className={cn(
-						"size-1.5 shrink-0 rounded-full",
-						refreshingUnread || refreshingRows
-							? "bg-ink-dim"
-							: "bg-transparent",
-					)}
-				/>
 			</header>
 			<nav
 				aria-label={t("ui.teamBridge.drafts.navigation")}
-				className="flex flex-col px-2 pb-1"
+				className={cn("flex flex-col pb-1", SIDEBAR_INSET)}
 			>
 				<button
 					type="button"

@@ -1,4 +1,5 @@
 import { UpdateFootIcon } from "@shared/components/common/update-foot-icon";
+import { SIDEBAR_INSET } from "@shared/components/navigation/sidebar-inset";
 import { UserProfileSidebar } from "@shared/components/navigation/user-profile-sidebar";
 import { BrowserSafeTooltip } from "@shared/components/ui/browser-safe-tooltip";
 import { useCurrentView } from "@shared/hooks/use-route-params";
@@ -62,7 +63,12 @@ export const SettingsGear: FC = () => {
  * away on a route that hides this navigation (see `SettingsGear`).
  */
 export const SidebarFoot: FC = () => (
-	<div className="flex min-h-10 shrink-0 items-center justify-between gap-1 px-2 pb-2">
+	<div
+		className={cn(
+			"flex min-h-10 shrink-0 items-center justify-between gap-1 pb-2",
+			SIDEBAR_INSET,
+		)}
+	>
 		<UserProfileSidebar expanded />
 		{/*
 		 * THE CLUSTER, AND WHY IT IS ONE CHILD (design consult §3.1): three
