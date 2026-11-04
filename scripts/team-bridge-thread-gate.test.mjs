@@ -265,7 +265,7 @@ test("the page's thread state, reply handler and pane mount are all held", () =>
 	// match inside the guarded block, so the hold must still enclose the seed.
 	assert.match(
 		page,
-		/if \(threadsAvailable && threadLink\)\s*\{?[^}]*?setThreadSelection\(threadLink\)/,
+		/if \(threadsAvailable && threadLink\)\s*(?:\{[^}]*?)?setThreadSelection\(threadLink\)/,
 	);
 	// The wide-viewport rule that hides the timeline while a thread is open
 	// must also require the hold, or a stale selection blanks the pane.

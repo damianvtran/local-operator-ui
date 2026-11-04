@@ -1,3 +1,4 @@
+import { PanelEdge } from "@shared/components/common/panel-edge";
 import { Badge } from "@shared/components/ui/badge";
 import { Button } from "@shared/components/ui/button";
 import {
@@ -130,7 +131,9 @@ function MemberAvatar({
 			endpointId={typeof endpoint === "string" ? endpoint : undefined}
 			label={row.label}
 			size={28}
-			className="size-7 rounded-md text-meta"
+			/* No radius here: the plate is `rounded-full` since #1668 (§ 5's avatar
+			   shape), and a host radius would win through tailwind-merge. */
+			className="size-7 text-meta"
 		/>
 	);
 }
@@ -292,11 +295,17 @@ export function TeamBridgeMembersPanel({
 		<aside
 			ref={pane}
 			aria-label={t("ui.teamBridge.members_panel.title")}
-			/* The box that paints the ground wears `panel-top-pad`, so the ground
-			   reaches the window edge and only the content clears the titlebar;
-			   separation from the conversation is the ground step, never a border. */
-			className="panel-top-pad flex h-full min-h-0 w-full min-w-0 shrink-0 flex-col bg-canvas"
+			/* THE PANEL IS THE THIRD PLANE, like the thread pane it alternates with
+			   (#1668, visual refresh § 3.2): `surface` beside the `canvas` timeline,
+			   with the one sanctioned `PanelEdge` seam on its leading edge (`relative`
+			   is the seam's containing block). Before #1668 both side panes were
+			   `canvas`; keeping this one there would make the members panel and the
+			   thread read as two different planes in the same slot. The box that
+			   paints the ground wears `panel-top-pad`, so the ground reaches the
+			   window edge and only the content clears the titlebar. */
+			className="panel-top-pad relative flex h-full min-h-0 w-full min-w-0 shrink-0 flex-col bg-surface"
 		>
+			<PanelEdge side="start" />
 			<header className="flex h-11 shrink-0 items-center justify-between px-5">
 				<h2 className="font-semibold text-[15px] text-ink">
 					{t("ui.teamBridge.members_panel.title")}
@@ -388,15 +397,15 @@ export function TeamBridgeMembersPanel({
 												/* `group` scopes the action's reveal to this row;
 												   hover is a colour step only, nothing moves.
 												   THE STEP IS UP FROM THIS GROUND (design review round 1,
-												   D2): `row-hover` is tuned against `surface` and measured
-												   1.01:1 on this `canvas` ground in light (under 1.03:1 on
-												   18 of 59 palettes); `surface` is one role step up from
-												   `canvas` on every palette (min 1.057:1), the same step
-												   `row-hover` makes on `surface`. It is coupled to the
-												   aside's `bg-canvas`: if the ground becomes `surface`
-												   (the #1668 restyle), this goes back to `row-hover`. */
+												   D2: fill vs ground >= ~1.05:1 in light). The aside is
+												   `surface` since #1668, so the step is `elevated` - the
+												   same hover the thread pane's compact rows make on the same
+												   ground. `elevated` on `surface` measures min 1.062:1 across
+												   all 59 palettes (cyberpunk; light min mintLight 1.065:1),
+												   where `row-hover` on `surface` dips to 1.045:1 (rosePine).
+												   Coupled to the aside's `bg-surface`: change them together. */
 												className={cn(
-													"group flex min-h-10 items-center gap-2.5 px-5 py-1.5 hover:bg-surface",
+													"group flex min-h-10 items-center gap-2.5 px-5 py-1.5 hover:bg-elevated",
 												)}
 											>
 												<MemberAvatar row={row} people={people} />

@@ -298,30 +298,76 @@ export const ChatLayout: FC<ChatLayoutProps> = ({
 		if (!column) return;
 		if (routeOwnsSidebar) return; // entry is the effect below
 		focusWasInColumn.current = false;
-		// No current row for this destination (a route with no nav row): leave
-		// focus where the browser put it rather than guess a control.
-		column.querySelector<HTMLElement>('[aria-current="page"]')?.focus();
+		/*
+		 * THE DESTINATION ROW, NOT THE FIRST CURRENT ONE (#1660 QA Q6 / UX U6).
+		 * `New chat` also wears `aria-current="page"` whenever an untargeted
+		 * draft is staged - on every route - and it precedes the destination
+		 * rows, so the first match parked a reader who just left for Library on
+		 * a control that stages a chat. A disabled control (New chat before the
+		 * catalogue is ready) cannot take focus at all, so it is skipped too.
+		 * `/chat` itself has no row of its own, so New chat is still the answer
+		 * there, through the second query. No current row at all (a route with
+		 * no nav row): leave focus where the browser put it.
+		 */
+		(
+			column.querySelector<HTMLElement>(
+				'[aria-current="page"]:not([data-new-chat-row]):not(:disabled)',
+			) ??
+			column.querySelector<HTMLElement>('[aria-current="page"]:not(:disabled)')
+		)?.focus();
 	}, [routeOwnsSidebar]);
 	/*
 	 * Entry: the route's rail arrives through a portal a commit or more later
 	 * (the host ref, then the lazy page), so the column is watched until its
-	 * first control exists, and that is focused once.
+	 * first control exists, and that is focused.
+	 *
+	 * THE HANDOFF OUTLIVES THE FIRST COLUMN (#1660 QA Q5 / review m1). A first
+	 * open usually draws the EARLY column (Back + title) while the page chunk or
+	 * its gate is pending, and then replaces it with the full rail: the Back the
+	 * reader was handed is unmounted and focus fell to `<body>` ~50ms later. So
+	 * the watch continues after the first focus, and whenever the control it
+	 * handed focus to leaves the document while focus is on `<body>`, the new
+	 * first control takes it. It stops the moment focus is anywhere else (the
+	 * reader moved on, which this must never undo) and with the route.
+	 *
+	 * `data-focus-handoff` marks the focus as the shell's, not the reader's:
+	 * Back's tooltip opens on focus, and a five-line tooltip over the rail on
+	 * every entry was noise nobody asked for (#1660 UX U7). The Back row reads
+	 * and clears the mark (`team-bridge-route-column.tsx`).
 	 */
 	useEffect(() => {
 		if (!routeOwnsSidebar || !leftHost || !focusWasInColumn.current) return;
+		let handed: HTMLElement | null = null;
 		const focusFirst = () => {
 			const first = leftHost.querySelector<HTMLElement>(
 				"button, a[href], [tabindex]:not([tabindex='-1'])",
 			);
 			if (!first) return false;
 			focusWasInColumn.current = false;
+			handed = first;
+			first.setAttribute("data-focus-handoff", "");
 			first.focus();
 			return true;
 		};
-		if (focusFirst()) return;
-		const observer = new MutationObserver(() => {
-			if (focusFirst()) observer.disconnect();
+		/* The host's own realm: the column is a portal target, and a static-markup
+		   or jsdom host has no global `MutationObserver` of its own. */
+		const Observer =
+			leftHost.ownerDocument.defaultView?.MutationObserver ?? MutationObserver;
+		const observer = new Observer(() => {
+			if (handed === null) {
+				focusFirst();
+				return;
+			}
+			const doc = leftHost.ownerDocument;
+			const active = doc.activeElement;
+			const parked = active === null || active === doc.body;
+			if (!parked && !leftHost.contains(active)) {
+				observer.disconnect(); // the reader has moved on
+				return;
+			}
+			if (parked && !handed.isConnected) focusFirst();
 		});
+		focusFirst();
 		observer.observe(leftHost, { childList: true, subtree: true });
 		return () => observer.disconnect();
 	}, [routeOwnsSidebar, leftHost]);
@@ -332,8 +378,8 @@ export const ChatLayout: FC<ChatLayoutProps> = ({
 		 * A ROUTE-OWNED COLUMN IS ALWAYS DOCKED. The route's rail (org switcher,
 		 * titles, sections) has no 56px form, and a strip with nothing in it is the
 		 * dead control this codebase removes elsewhere. The preference is NOT
-		 * rewritten: ⌘B still toggles it here, and it applies the moment the user
-		 * leaves the route - the column they come back to is the one they chose.
+		 * rewritten: ⌘B does nothing here (see `onToggle`), and the preference is
+		 * untouched - the column the user comes back to is the one they chose.
 		 * The capacity cap still applies, so an 800px window keeps its 480px content
 		 * floor (the yield below is switched off for the same no-56px-form reason).
 		 */

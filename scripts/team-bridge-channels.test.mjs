@@ -257,7 +257,30 @@ test("a preview shows the join banner and never a message body", () => {
 	assert.match(html, /You’re previewing this channel/);
 	assert.match(html, /Join to see its history and get notifications/);
 	assert.match(html, />Join</);
-	assert.match(html, /24 members/);
+	/* The header's one quiet fact is the channel's own topic when it has one
+	   (design round 1 on #1668, D2), else the plain member count, which a
+	   preview reads from the aggregate since it has no member rows. */
+	assert.match(html, /Design critiques/);
+	const untopiced = conversation({
+		discoverable: true,
+		member: false,
+		member_count: 24,
+		members: [],
+		topic: null,
+	});
+	assert.match(
+		renderToStaticMarkup(
+			createElement(
+				ui.TeamBridgePageView,
+				viewProps({
+					target: { type: "conversation", id: untopiced.id },
+					conversations: [untopiced],
+					messageState: "ready",
+				}),
+			),
+		),
+		/24 members/,
+	);
 	// The cached body and the composer are both wrong on a non-member pane.
 	assert.doesNotMatch(html, /SECRET PREVIEW BODY/);
 	assert.doesNotMatch(html, /Message this conversation/);

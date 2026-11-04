@@ -164,7 +164,14 @@ export const rosePineMoon: ThemeDefinition = {
 		 * 2.0), 6.41:1 for `accentAlt` on it, and 4.62 from the nearest ground it
 		 * is painted on.
 		 */
-		accentAltWash: "#2C2534",
+		/*
+		 * LIFTED #2C2534 -> #352D3D (L* 16.04 -> 19.93, hue and chroma held) for
+		 * Team Bridge's person plates (visual refresh, contract C2; design round 1,
+		 * D1): the plate is borderless, so its fill must clear ΔE00 3.0 off every
+		 * ground it sits on. It measured 2.17; it now measures 3.16 at worst
+		 * (`rowHover`), with `accentAlt` 6.29:1 on it.
+		 */
+		accentAltWash: "#352D3D",
 
 		// pine, lifted for `elevated`.
 		success: "#4eadd9",
