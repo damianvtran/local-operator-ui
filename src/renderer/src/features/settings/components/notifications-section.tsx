@@ -412,8 +412,15 @@ export const NotificationsSection: FC<NotificationsSectionProps> = ({
 						size="sm"
 						onClick={() => {
 							// One cause, one Retry: the listing failed with the registry
-							// read, so both come back together (QA round 2, Q8).
-							void refreshAll();
+							// read, so both come back together (QA round 2, Q8). Row
+							// errors from that outage are stale once it answers again
+							// (review r3 m2 / QA Q10); a failed retry keeps them.
+							void refreshAll().then(() => {
+								const registry = queryClient.getQueryState(
+									backendSettingsKeys.all,
+								);
+								if (registry?.status === "success") setWriteErrors({});
+							});
 						}}
 					>
 						<RotateCw aria-hidden="true" />

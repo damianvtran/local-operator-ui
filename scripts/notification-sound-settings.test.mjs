@@ -307,6 +307,16 @@ const makeDaemon = (options = {}) => {
 				return ok(settings());
 			case "settings.edit": {
 				edits.push({ key: input.key, value: input.value });
+				if (options.failEdits)
+					return {
+						status: 503,
+						body: {
+							detail: {
+								code: "backend_unavailable",
+								text: "The backend could not complete this request.",
+							},
+						},
+					};
 				// A test can hold the FIRST write of a key open (review r2, M3).
 				if (
 					options.holdFirstEdit?.key === input.key &&
@@ -1321,5 +1331,74 @@ test("Q8: the section-level Retry also reloads the sound list", async (t) => {
 	assert.ok(
 		!container.textContent.includes("Couldn't load"),
 		"one Retry recovers both reads",
+	);
+});
+
+/* ------------------------------------------------- round 3 remediation */
+
+test("M4: a step still held when the first save settles is kept and written (70 -> 65 -> 70)", async (t) => {
+	const { hold, release } = held("notifications.sound.volume");
+	const daemon = makeDaemon({ holdFirstEdit: hold });
+	const { container } = await mount(t, daemon);
+	const range = slider(container);
+	range.focus();
+	const setValue = Object.getOwnPropertyDescriptor(
+		window.HTMLInputElement.prototype,
+		"value",
+	).set;
+	// ← pressed and released: 65 is committed (its save is held open).
+	await setRange(range, 65);
+	// → pressed and HELD: the thumb shows 70, nothing committed yet.
+	await keyOn(range, "ArrowRight");
+	await act(async () => {
+		setValue.call(range, "70");
+		range.dispatchEvent(new window.Event("input", { bubbles: true }));
+	});
+	// The first save settles while → is still down; its refetch reports 65.
+	release();
+	await waitFor(() => daemon.state.volume === 65, 3000);
+	await settle(8, 20);
+	assert.equal(
+		slider(container).value,
+		"70",
+		"the unreleased step is not pulled back to the daemon's 65",
+	);
+	// → released: 70 is written.
+	await keyUpOn(range, "ArrowRight");
+	await waitFor(() => daemon.state.volume === 70, 3000);
+	await settle(8, 20);
+	assert.deepEqual(
+		daemon.edits
+			.filter((e) => e.key === "notifications.sound.volume")
+			.map((e) => e.value),
+		[65, 70],
+	);
+	assert.equal(slider(container).value, "70");
+});
+
+test("m2 (r3): a section Retry that recovers clears stale row write errors", async (t) => {
+	const daemon = makeDaemon();
+	const { container } = await mount(t, daemon);
+	daemon.options.failEdits = true;
+	await click(soundSwitch(container));
+	await waitFor(
+		() => container.querySelector("output.text-danger") !== null,
+		3000,
+	);
+	daemon.options.failEdits = false;
+	daemon.options.settingsFail = true;
+	await emitFrame(["notifications"]);
+	await waitFor(() => container.textContent.includes("Couldn't load"), 3000);
+	daemon.options.settingsFail = false;
+	const retry = [...container.querySelectorAll("button")].find(
+		(b) => b.textContent.trim() === "Retry",
+	);
+	await click(retry);
+	await waitFor(() => radio(container, "soft-pulse") !== null, 3000);
+	await settle(6, 20);
+	assert.equal(
+		container.querySelectorAll("output.text-danger").length,
+		0,
+		"no row keeps the outage's write error",
 	);
 });

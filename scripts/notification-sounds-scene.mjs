@@ -137,6 +137,83 @@ export async function sceneNotificationSounds({
 	);
 	frames.push(await capture(cdp, "live-01-rest"));
 
+	/*
+	 * VOLUME BURSTS (review/QA round 3, M4 / Q9), with the reviewer's timing:
+	 * each key is held 80 ms and released, then the next follows after `gap`.
+	 * A step still held when the previous save lands used to be undone. Run
+	 * only when NS_BURSTS=1, so the standard scene stays as it was.
+	 */
+	if (process.env.NS_BURSTS === "1") {
+		const RANGE = `${LIST} input[type="range"]`;
+		const press = async (key, code, vk) => {
+			await cdp.send("Input.dispatchKeyEvent", {
+				type: "keyDown",
+				key,
+				code,
+				windowsVirtualKeyCode: vk,
+			});
+			await wait(80);
+			await cdp.send("Input.dispatchKeyEvent", {
+				type: "keyUp",
+				key,
+				code,
+				windowsVirtualKeyCode: vk,
+			});
+		};
+		const LEFT = ["ArrowLeft", "ArrowLeft", 37];
+		const RIGHT = ["ArrowRight", "ArrowRight", 39];
+		const settleTo = async () => {
+			await wait(1500);
+			return {
+				daemon: (await listing())?.volume,
+				thumb: Number(
+					await cdp.evaluate(`document.querySelector('${RANGE}').value`),
+				),
+			};
+		};
+		const setDaemon = async (v) => {
+			await api("/v1/settings/notifications.sound.volume", {
+				method: "PATCH",
+				headers: { "content-type": "application/json" },
+				body: JSON.stringify({ value: v }),
+			});
+			await wait(1500);
+		};
+		const results = [];
+		for (let run = 1; run <= 5; run += 1) {
+			await setDaemon(70);
+			await cdp.evaluate(`document.querySelector('${RANGE}').focus(); true`);
+			await press(...LEFT);
+			await wait(50);
+			await press(...RIGHT);
+			const end = await settleTo();
+			results.push({
+				run,
+				pattern: "<- then -> (50 ms gap)",
+				want: 70,
+				...end,
+			});
+		}
+		for (let run = 1; run <= 3; run += 1) {
+			await setDaemon(10);
+			await cdp.evaluate(`document.querySelector('${RANGE}').focus(); true`);
+			for (let i = 0; i < 4; i += 1) {
+				await press(...RIGHT);
+				if (i < 3) await wait(70);
+			}
+			const end = await settleTo();
+			results.push({ run, pattern: "-> x4 (70 ms gap)", want: 30, ...end });
+		}
+		for (const r of results)
+			note(`burst ${r.pattern} run ${r.run}`, JSON.stringify(r));
+		check(
+			"every burst ends at the value the user left (daemon and thumb)",
+			results.every((r) => r.daemon === r.want && r.thumb === r.want),
+			JSON.stringify(results.map((r) => [r.daemon, r.thumb, r.want])),
+		);
+		return frames;
+	}
+
 	/* 1. SELECT: plays once, writes once after the debounce. */
 	await clickAt(cdp, '[data-sound-row="felt-marimba"]');
 	await wait(1200);

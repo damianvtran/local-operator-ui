@@ -201,11 +201,20 @@ export const SliderSetting: FC<SliderSettingProps> = ({
 	const committed = useRef(value);
 	const pendingWrites = useRef(0);
 	const [settled, setSettled] = useState(0);
+	/*
+	 * MID-GESTURE: a commit key is down or a pointer is dragging, so the thumb
+	 * shows a step the user has not released yet (review round 3, M4). An
+	 * earlier save settling then must not pull the thumb back to the daemon's
+	 * value: that overwrote the unreleased step, and its keyup committed the
+	 * daemon's own number back to it, so a quick 70 -> 65 -> 70 kept 65.
+	 */
+	const inGesture = useRef(false);
 
 	// Update local state when the external value prop changes
 	useEffect(() => {
 		void settled;
-		if (savingInPlace && pendingWrites.current > 0) return;
+		if (savingInPlace && (pendingWrites.current > 0 || inGesture.current))
+			return;
 		committed.current = value;
 		// Only update if not currently editing the input to avoid overriding user input
 		if (!isEditing) {
@@ -231,7 +240,13 @@ export const SliderSetting: FC<SliderSettingProps> = ({
 		setInputValue(clampedValue.toString());
 
 		if (savingInPlace) {
-			if (clampedValue === committed.current) return;
+			inGesture.current = false;
+			// The release decides from what the user sees (the thumb), against
+			// what was last sent; nothing to send still re-runs the held sync.
+			if (clampedValue === committed.current) {
+				if (pendingWrites.current === 0) setSettled((n) => n + 1);
+				return;
+			}
 			committed.current = clampedValue;
 			pendingWrites.current += 1;
 			try {
@@ -273,6 +288,7 @@ export const SliderSetting: FC<SliderSettingProps> = ({
 	 * can land anywhere once the thumb is captured, so the listener is global.
 	 */
 	const handleSliderPointerDown = () => {
+		inGesture.current = true;
 		const onPointerUp = () => {
 			window.removeEventListener("pointerup", onPointerUp);
 			void commitValue();
@@ -284,19 +300,13 @@ export const SliderSetting: FC<SliderSettingProps> = ({
 	 * Commits after an arrow-key adjustment once the key is released.
 	 */
 	const handleSliderKeyUp = (e: KeyboardEvent<HTMLInputElement>) => {
-		if (
-			e.key.startsWith("Arrow") ||
-			e.key === "Home" ||
-			e.key === "End" ||
-			(pageStep !== undefined && (e.key === "PageUp" || e.key === "PageDown"))
-		) {
-			void commitValue();
-		}
+		if (isCommitKey(e.key, pageStep)) void commitValue();
 	};
 
 	// Owns PageUp/PageDown only when the caller named a page step; otherwise the
 	// browser's default stays, so existing callers are unchanged.
 	const handleSliderKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+		if (isCommitKey(e.key, pageStep)) inGesture.current = true;
 		if (pageStep === undefined) return;
 		if (e.key !== "PageUp" && e.key !== "PageDown") return;
 		e.preventDefault();
@@ -515,3 +525,13 @@ export const SliderSetting: FC<SliderSettingProps> = ({
 		</div>
 	);
 };
+
+/** The keys whose release commits a step (and whose press starts a gesture). */
+function isCommitKey(key: string, pageStep: number | undefined): boolean {
+	return (
+		key.startsWith("Arrow") ||
+		key === "Home" ||
+		key === "End" ||
+		(pageStep !== undefined && (key === "PageUp" || key === "PageDown"))
+	);
+}
