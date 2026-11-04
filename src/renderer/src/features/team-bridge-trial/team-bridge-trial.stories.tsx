@@ -215,7 +215,8 @@ const RetryAfterRefusal: FC = () => {
 	if (presses >= 2)
 		return (
 			<TeamBridgePageView
-				{...(PopulatedDirectMessage.args as TeamBridgePageViewProps)}
+				// The page meta carries the populated arguments; the story itself is `{}`.
+				{...(pageMeta.args as TeamBridgePageViewProps)}
 				notice={
 					<TeamBridgeTrialNoteView
 						kind="active"
