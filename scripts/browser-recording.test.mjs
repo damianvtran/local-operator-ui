@@ -1946,6 +1946,7 @@ function fakeEncoder(options = {}) {
 			return {
 				configure: async (request) => {
 					log.configured = request;
+					if (options.configureDelay) await sleep(options.configureDelay);
 					if (options.configureAnswer) return options.configureAnswer;
 					return {
 						ok: true,
@@ -2006,8 +2007,21 @@ function hqFixture(options = {}) {
 	const path = join(dir, "clip.mp4");
 	const size = options.size ?? { width: 1280, height: 720 };
 	let layout = null;
+	const marks = {};
 	const handler = (call) => {
 		options.onCommand?.(call);
+		if (call.method === "Emulation.clearDeviceMetricsOverride") {
+			marks.clearedAt = Date.now();
+		}
+		if (call.method === "Page.stopScreencast" && options.stopDelay) {
+			return sleep(options.stopDelay).then(() => {
+				marks.stopDoneAt = Date.now();
+				return {};
+			});
+		}
+		if (call.method === "Page.startScreencast" && options.startDelay) {
+			return sleep(options.startDelay).then(() => ({}));
+		}
 		if (call.method === "Emulation.setDeviceMetricsOverride") {
 			layout = { width: call.params.width, height: call.params.height };
 			return {};
@@ -2039,6 +2053,7 @@ function hqFixture(options = {}) {
 		path,
 		id,
 		size,
+		marks,
 		/** One screencast frame, `index` * 100 ms after the page's t0. */
 		frame: (index, shot = size) =>
 			fx.emit(id, "Page.screencastFrame", {
@@ -2890,4 +2905,304 @@ test("the encoder document and preload are build inputs, and main points at what
 		entry,
 		/disposeAllRecordingEncoders\(\);\s*void stopBrowserHost\(\);/,
 	);
+});
+
+// -- remediation round 1 -------------------------------------------------------
+
+/** A debugger that behaves like Chromium where it matters here: a screencast runs
+ * from `Page.startScreencast` until `Page.stopScreencast` OR `Page.disable`, and
+ * `Page.enable` does NOT restart it (measured on Electron 45, QA round 1 Q1). */
+class ScreencastDebugger extends EventEmitter {
+	attached = false;
+	screencasting = false;
+	calls = [];
+	failStart = false;
+	attach() {
+		this.attached = true;
+	}
+	detach() {
+		this.attached = false;
+	}
+	isAttached() {
+		return this.attached;
+	}
+	async sendCommand(method, params) {
+		this.calls.push(method);
+		if (method === "Page.startScreencast") {
+			if (this.failStart && this.calls.filter((m) => m === method).length > 1)
+				throw new Error("start refused");
+			this.screencasting = true;
+		}
+		if (method === "Page.stopScreencast" || method === "Page.disable") {
+			this.screencasting = false;
+		}
+		if (method === "Page.captureScreenshot") {
+			return { data: png(1280, 720) };
+		}
+		if (method === "Page.stopScreenRecording") return { stream: "s" };
+		if (method === "IO.read") {
+			return {
+				data: Buffer.from("av1").toString("base64"),
+				base64Encoded: true,
+				eof: true,
+			};
+		}
+		void params;
+		return {};
+	}
+	/** One frame, only if Chromium would still be producing them. */
+	tick(index) {
+		if (!this.screencasting) return false;
+		this.emit("message", {}, "Page.screencastFrame", {
+			data: png(1280, 720),
+			sessionId: index + 1,
+			metadata: { timestamp: 5000 + index * 0.1 },
+		});
+		return true;
+	}
+}
+
+async function screencastPool(encoderOptions) {
+	const encoder = fakeEncoder(encoderOptions);
+	const cdp = new mod.CdpPool();
+	const dbg = new ScreencastDebugger();
+	const contents = contentsFor(9500 + nextViewId++, { debugger: dbg });
+	createdIds.push(contents.id);
+	const ctx = {
+		cdp,
+		recordingEncoder: encoder.service,
+		registry: { requireSurface: () => ({ view: { webContents: contents } }) },
+	};
+	await cdp.attach(contents);
+	return { encoder, cdp, dbg, contents, ctx, dir: scratchDir() };
+}
+
+test("Q1: a Page.disable (the origin gate's, after every click/type/press/goto) does not freeze a high clip", async () => {
+	const { encoder, cdp, dbg, contents, ctx, dir } = await screencastPool();
+	const path = join(dir, "gated.mp4");
+	const starting = mod.recordStart(
+		ctx,
+		{ tab: "tab", requester: "session:a", path, quality: "high" },
+		"r",
+	);
+	await until(() => dbg.screencasting, "the screencast");
+	dbg.tick(0);
+	await starting;
+	assert.equal(dbg.calls.filter((m) => m === "Page.startScreencast").length, 1);
+	// What `withOriginGate` does around a gated action.
+	await cdp.send(contents, "Page.enable", {});
+	await cdp.send(contents, "Page.disable", {});
+	await until(
+		() => dbg.calls.filter((m) => m === "Page.startScreencast").length === 2,
+		"the screencast to be started again",
+	);
+	assert.equal(dbg.screencasting, true, "Chromium produces frames again");
+	const before = encoder.windows[0].frames.length;
+	await sleep(120);
+	assert.equal(dbg.tick(1), true);
+	await until(
+		() => encoder.windows[0].frames.length > before,
+		"a frame after the action to reach the encoder",
+	);
+	// Several gated actions in a row each restart it, and a burst coalesces.
+	await Promise.all([
+		cdp.send(contents, "Page.disable", {}),
+		cdp.send(contents, "Page.disable", {}),
+	]);
+	await until(() => dbg.screencasting, "the screencast after a burst");
+	const stopped = await mod.recordStop(
+		ctx,
+		{ tab: "tab", requester: "session:a" },
+		"r",
+	);
+	assert.equal(stopped.quality, "high");
+	assert.ok(stopped.frames >= 2);
+	// A disable AFTER the stop must not start anything.
+	const starts = dbg.calls.filter((m) => m === "Page.startScreencast").length;
+	await cdp.send(contents, "Page.disable", {});
+	await sleep(30);
+	assert.equal(
+		dbg.calls.filter((m) => m === "Page.startScreencast").length,
+		starts,
+	);
+});
+
+test("Q1: a frame session's Page.disable and a standard clip's are not announced", async () => {
+	const { cdp, dbg, contents, ctx, dir } = await screencastPool();
+	const path = join(dir, "std.mp4");
+	await mod.recordStart(ctx, { tab: "tab", requester: "session:a", path }, "r");
+	await cdp.send(contents, "Page.disable", {});
+	await sleep(30);
+	assert.equal(
+		dbg.calls.filter((m) => m === "Page.startScreencast").length,
+		0,
+		"the standard engine has no screencast to restart",
+	);
+	await mod.recordStop(ctx, { tab: "tab", requester: "session:a" }, "r");
+});
+
+test("Q1: a screencast that cannot be restarted fails the recording instead of freezing it", async () => {
+	const { cdp, dbg, contents, ctx, dir } = await screencastPool();
+	const path = join(dir, "norestart.mp4");
+	const starting = mod.recordStart(
+		ctx,
+		{ tab: "tab", requester: "session:a", path, quality: "high" },
+		"r",
+	);
+	await until(() => dbg.screencasting, "the screencast");
+	dbg.tick(0);
+	await starting;
+	dbg.failStart = true;
+	await cdp.send(contents, "Page.disable", {});
+	const error = await until(() => false, "never", 30).catch(() =>
+		mod
+			.recordStop(ctx, { tab: "tab", requester: "session:a" }, "r")
+			.catch((r) => r),
+	);
+	assert.equal(error.data?.reason, "record_failed");
+	assert.match(error.message, /could not be restarted/);
+	assert.equal(existsSync(path), false);
+});
+
+test("M1: a window that opens after the start's bound is destroyed, and the timeout is encoder_start", async () => {
+	const h = hqFixture({
+		encoderOptions: { openDelay: 300, timing: { encoderStartMs: 60 } },
+	});
+	const error = await h
+		.start({ path: h.path, quality: "high" })
+		.catch((r) => r);
+	assert.equal(error.data?.reason, "record_quality_unavailable");
+	assert.equal(error.data?.why, "encoder_start");
+	await until(() => h.windows.length === 1, "the late window");
+	assert.equal(h.windows[0].disposed, true, "the late window is destroyed");
+	assert.equal(h.methods().includes("Page.startScreencast"), false);
+});
+
+test("M1: a configure that outlasts its bound is encoder_start too", async () => {
+	const h = hqFixture({
+		encoderOptions: { configureDelay: 300, timing: { encoderStartMs: 60 } },
+		size: { width: 1920, height: 1080 },
+	});
+	const error = await h
+		.start({ path: h.path, quality: "high", width: 1920, height: 1080 })
+		.catch((r) => r);
+	assert.equal(error.data?.reason, "record_quality_unavailable");
+	assert.equal(error.data?.why, "encoder_start");
+	assert.equal(h.windows[0].disposed, true);
+});
+
+test("m1: an abort during Page.startScreencast ends the start at once, without the first-frame wait", async () => {
+	const h = hqFixture({ startDelay: 120 });
+	const began = Date.now();
+	const starting = h.start({ path: h.path, quality: "high" }).catch((r) => r);
+	await until(() => h.methods().includes("Page.startScreencast"), "the start");
+	h.abort(h.id, "forget");
+	const error = await starting;
+	const took = Date.now() - began;
+	assert.ok(error instanceof Error);
+	// startDelay 120 + the 250 ms first-frame bound would be ~370 ms.
+	assert.ok(took < 250, `ended in ${took} ms, not after the first-frame bound`);
+	assert.equal(h.windows[0].disposed, true);
+	assert.equal(h.subscriberCount(h.id), 0);
+});
+
+test("m1: an abort during a sized configure never subscribes or starts a screencast", async () => {
+	const h = hqFixture({
+		encoderOptions: { configureDelay: 100 },
+		size: { width: 1920, height: 1080 },
+	});
+	const starting = h
+		.start({ path: h.path, quality: "high", width: 1920, height: 1080 })
+		.catch((r) => r);
+	await until(() => h.windows[0]?.configured, "the configure");
+	h.abort(h.id, "forget");
+	await starting;
+	assert.equal(h.methods().includes("Page.startScreencast"), false);
+	assert.equal(h.subscriberCount(h.id), 0);
+	assert.equal(h.windows[0].disposed, true);
+});
+
+test("mutant guard: an abort while the window opens fails the start quickly and never starts a screencast", async () => {
+	const h = hqFixture({ encoderOptions: { openDelay: 60 } });
+	const began = Date.now();
+	const starting = h.start({ path: h.path, quality: "high" }).catch((r) => r);
+	await sleep(10);
+	h.abort(h.id, "forget");
+	await starting;
+	assert.ok(Date.now() - began < 200, "not the 250 ms first-frame wait");
+	assert.equal(h.methods().includes("Page.startScreencast"), false);
+});
+
+test("mutant guard: nothing is acked after a dispose, even with an ack already scheduled", async () => {
+	const h = hqFixture();
+	const starting = h.start({ path: h.path, quality: "high" });
+	await until(() => h.subscriberCount(h.id) > 0, "the subscription");
+	h.frame(0);
+	await starting;
+	// The frame is with the encoder; its ack waits out the 100 ms interval.
+	await sleep(20);
+	h.abort(h.id, "test");
+	const before = h.acks().length;
+	await sleep(200);
+	assert.equal(h.acks().length, before);
+});
+
+test("mutant guard: the byte cap counts the container's overhead, not only the payload", async () => {
+	// Three 9000-byte samples are 27000 payload bytes. A cap 100 bytes above that
+	// admits them on payload alone, but the boxes around them do not fit: the clip
+	// must end at the samples that fit WITH their overhead, as a finished clip, and
+	// never as a `record_too_large` discovered at the end.
+	const h = hqFixture({ encoderOptions: { chunkBytes: 9000 } });
+	const cap = 27_100;
+	const starting = h.start({ path: h.path, quality: "high", max_bytes: cap });
+	await until(() => h.subscriberCount(h.id) > 0, "the subscription");
+	for (let i = 0; i < 8; i += 1) {
+		h.frame(i);
+		await sleep(110);
+	}
+	await starting;
+	await until(() => existsSync(h.path), "the capped clip");
+	const stopped = await h.stop();
+	assert.equal(stopped.stop_reason, "max_bytes");
+	assert.ok(stopped.bytes <= cap, `${stopped.bytes} fits the cap`);
+	assert.ok(
+		stopped.frames < 3,
+		"the third sample did not fit with its overhead",
+	);
+});
+
+test("mutant guard: a failed high clip restores the viewport only after the screencast has stopped", async () => {
+	const h = hqFixture({
+		stopDelay: 90,
+		size: { width: 1920, height: 1080 },
+	});
+	await h.start({ path: h.path, quality: "high", width: 1920, height: 1080 });
+	h.windows[0].sink.onFailure("the encoder process exited (crashed)");
+	await until(() => h.marks.clearedAt, "the viewport to be restored");
+	assert.ok(h.marks.stopDoneAt, "the stop finished");
+	assert.ok(
+		h.marks.clearedAt >= h.marks.stopDoneAt,
+		"the tab is not resized under a screencast that is still running",
+	);
+});
+
+test("mutant guard: two frames with one page timestamp get strictly increasing media time", async () => {
+	const h = hqFixture();
+	const starting = h.start({ path: h.path, quality: "high" });
+	await until(() => h.subscriberCount(h.id) > 0, "the subscription");
+	const same = (id) =>
+		h.emit(h.id, "Page.screencastFrame", {
+			data: png(1280, 720),
+			sessionId: id,
+			metadata: { timestamp: 7000 },
+		});
+	same(1);
+	await starting;
+	await until(() => h.windows[0].frames.length === 1, "frame 1");
+	await sleep(120);
+	same(2);
+	await until(() => h.windows[0].frames.length === 2, "frame 2");
+	const [a, b] = h.windows[0].frames;
+	assert.ok(b.ts - a.ts >= 1000, `${b.ts} follows ${a.ts} by at least 1 ms`);
+	await h.stop();
 });
