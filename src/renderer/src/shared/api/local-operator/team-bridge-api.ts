@@ -539,6 +539,28 @@ export const TeamBridgeApi = {
 	},
 
 	/**
+	 * Acknowledge a THREAD's replies up to `seq` (hub slice TR1). Owner-guarded
+	 * like every write: the receipt is required, so the hub refuses a read
+	 * replayed under another signed-in account. The answer is the viewer's new
+	 * thread state; only the conversation-wide read state is reconciled from a
+	 * refetch, so the body is not parsed into a shape this build relies on.
+	 */
+	async markThreadRead(
+		conversationId: string,
+		rootId: string,
+		input: { seq: number; tenantId: string; expectedAccountId: string },
+	): Promise<void> {
+		await desktopResult<unknown>({
+			op: "team_bridge.thread_read",
+			conversation_id: conversationId,
+			message_id: rootId,
+			tenant_id: input.tenantId,
+			expected_account_id: input.expectedAccountId,
+			seq: input.seq,
+		});
+	},
+
+	/**
 	 * The signed-in hub account id, from the existing status read. The page
 	 * needs it to tell "mine" from "theirs" (own-message alignment and a DM's
 	 * title); it is the one identity the bridge surface already publishes, and

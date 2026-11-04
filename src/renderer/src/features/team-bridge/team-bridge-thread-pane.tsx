@@ -38,7 +38,7 @@ import {
 	observeDisplayedThreadReplies,
 } from "./team-bridge-thread-read";
 import { useStickToBottom } from "./use-stick-to-bottom";
-import { teamBridgeKeys, useMarkTeamBridgeRead } from "./use-team-bridge";
+import { teamBridgeKeys, useMarkTeamBridgeThreadRead } from "./use-team-bridge";
 import { useTeamBridgeAttachments } from "./use-team-bridge-attachments";
 import {
 	type ReplyWindowMode,
@@ -601,7 +601,7 @@ function TeamBridgeThreadPaneMount({
 }: ThreadPaneMountProps) {
 	const client = useQueryClient();
 	const { tenantId, conversationId, rootId } = target;
-	const read = useMarkTeamBridgeRead(conversationId, tenantId);
+	const read = useMarkTeamBridgeThreadRead(conversationId, tenantId, rootId);
 	// Observer recreation (paging/refetch) must not turn a successful read into a
 	// second mutation loop. This ref belongs to the keyed tenant/conversation/root.
 	const acknowledged = useRef(-1);

@@ -310,6 +310,39 @@ export const teamBridgeMessageSchema = z
 		last_reply_at: z.string().optional(),
 		/* Up to three distinct repliers' display labels — a facepile, not a roster. */
 		reply_participants: z.array(z.string()).optional(),
+		/*
+		 * Thread reads (hub slice TR1, server PR pending). VIEWER-SCOPED: the
+		 * hub computes these for the account reading the page, so they are a
+		 * statement about "me", never about the thread. All optional and each
+		 * `.catch(undefined)`: an older hub sends none of them, and a malformed
+		 * value costs the thread-row badge, never the message. ABSENT is not 0 —
+		 * absent means "this hub cannot tell", so the row draws no badge rather
+		 * than claiming the thread is read.
+		 */
+		thread_unread_count: z
+			.number()
+			.int()
+			.nonnegative()
+			.optional()
+			.catch(undefined),
+		thread_last_read_seq: z
+			.number()
+			.int()
+			.nonnegative()
+			.optional()
+			.catch(undefined),
+		/* Parallel to `reply_participants` (same order, same cap of three): the
+		 * ids let the facepile resolve a real avatar and keep the agent mark. A
+		 * label without an id still renders as its initial. */
+		reply_participant_ids: z
+			.array(
+				z
+					.object({ account_id: id, kind: z.enum(["human", "agent"]) })
+					.passthrough(),
+			)
+			.max(16)
+			.optional()
+			.catch(undefined),
 		/* Image attachments, send order. Absent on text-only messages and old hubs. */
 		attachments: z.array(teamBridgeAttachmentSchema).max(16).optional(),
 		/* Generic files (S3b), send order; absent on file-less messages and pre-S3b

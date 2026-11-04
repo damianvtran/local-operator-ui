@@ -340,5 +340,8 @@
 	"ui.teamBridge.attachmentCard.metadata_only": "此视图不支持预览",
 	"ui.teamBridge.attachmentCard.unavailable": "附件不可用",
 	"ui.teamBridge.fileCard.list": "{count, number}个文件",
-	"ui.teamBridge.fileCard.kind": "{kind, select, pdf {PDF} text {文本文件} container {ZIP} other {文件}}"
+	"ui.teamBridge.fileCard.kind": "{kind, select, pdf {PDF} text {文本文件} container {ZIP} other {文件}}",
+	"ui.teamBridge.thread_row.label": "查看讨论串，{count, plural, other {#条回复}}{unread, plural, =0 {} other {，#条未读}}{hasLast, select, yes {。{last}} other {}}",
+	"ui.teamBridge.thread_row.last": "最后回复于{when, select, today {今天 {time}} yesterday {昨天 {time}} other {{time}}}",
+	"ui.teamBridge.thread_row.unread_badge": "{count, plural, other {{label}条未读}}"
 }

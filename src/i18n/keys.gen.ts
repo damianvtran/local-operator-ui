@@ -10470,6 +10470,14 @@ export type MessageParams = {
 	"ui.teamBridge.thread.today": undefined;
 	"ui.teamBridge.thread.withheld": undefined;
 	"ui.teamBridge.thread.yesterday": undefined;
+	"ui.teamBridge.thread_row.label": {
+		count: number;
+		unread: number;
+		hasLast: string;
+		last: string;
+	};
+	"ui.teamBridge.thread_row.last": { when: string; time: string };
+	"ui.teamBridge.thread_row.unread_badge": { count: number; label: string };
 	"ui.teamBridge.unread.count": { count: number };
 	"ui.teamBridge.leave.back": undefined;
 	"ui.teamBridge.leave.back_shortcut": { shortcut: string };

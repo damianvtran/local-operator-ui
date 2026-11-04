@@ -340,5 +340,8 @@
 	"ui.teamBridge.attachmentCard.metadata_only": "Không thể xem trước trong chế độ xem này",
 	"ui.teamBridge.attachmentCard.unavailable": "Tệp đính kèm không khả dụng",
 	"ui.teamBridge.fileCard.list": "{count, number} tệp",
-	"ui.teamBridge.fileCard.kind": "{kind, select, pdf {PDF} text {Tệp văn bản} container {ZIP} other {Tệp}}"
+	"ui.teamBridge.fileCard.kind": "{kind, select, pdf {PDF} text {Tệp văn bản} container {ZIP} other {Tệp}}",
+	"ui.teamBridge.thread_row.label": "Xem luồng trò chuyện, {count, plural, other {# câu trả lời}}{unread, plural, =0 {} other {, # chưa đọc}}{hasLast, select, yes {. {last}} other {}}",
+	"ui.teamBridge.thread_row.last": "Trả lời gần nhất {when, select, today {hôm nay lúc {time}} yesterday {hôm qua lúc {time}} other {{time}}}",
+	"ui.teamBridge.thread_row.unread_badge": "{count, plural, other {{label} chưa đọc}}"
 }

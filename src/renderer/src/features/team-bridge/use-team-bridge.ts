@@ -30,6 +30,7 @@ import {
 	type TeamBridgeMentionRow,
 	requireBridgeWriteAccount,
 } from "@shared/api/local-operator/team-bridge-api";
+import { usePassiveDesktopFeature } from "@shared/hooks/display-density";
 import { observedRadientAuthority } from "@shared/hooks/radient-account-authority";
 import {
 	type QueryClient,
@@ -42,7 +43,7 @@ import {
 	useQuery,
 	useQueryClient,
 } from "@tanstack/react-query";
-import { useMemo, useRef } from "react";
+import { useCallback, useMemo, useRef } from "react";
 import type { AgentMessagesStatus } from "../../../../shared/agent-messages-contract";
 import type {
 	TeamBridgeConversation,
@@ -1156,6 +1157,141 @@ export function useMarkTeamBridgeRead(
 		tenantId,
 	}));
 }
+/**
+ * Zero one root's viewer-scoped thread unread in every cached timeline page
+ * of its conversation, in one synchronous pass, so the thread row's badge
+ * clears the moment the read lands instead of on the next 8s poll.
+ *
+ * ABSENT STAYS ABSENT: a root whose page came from a hub without thread reads
+ * carries no `thread_unread_count`, and writing a 0 there would invent a claim
+ * ("you have read this") the hub never made. The count is set to 0 rather than
+ * recomputed because the timeline page does not carry reply seqs; the messages
+ * invalidation that follows replaces the guess with the hub's number, so a
+ * partial read (the reader saw only the first replies of a long thread)
+ * reappears within one fetch.
+ */
+export function clearCachedThreadUnread(
+	client: QueryClient,
+	conversationId: string,
+	tenantId: string,
+	rootId: string,
+	seq: number,
+) {
+	client.setQueriesData<TeamBridgeMessagePage>(
+		{ queryKey: teamBridgeKeys.messages(conversationId, tenantId) },
+		(page) => {
+			if (!page) return page;
+			let changed = false;
+			const messages = page.messages.map((message) => {
+				if (
+					message.id !== rootId ||
+					message.thread_unread_count === undefined ||
+					message.thread_unread_count === 0
+				)
+					return message;
+				changed = true;
+				return {
+					...message,
+					thread_unread_count: 0,
+					thread_last_read_seq: Math.max(
+						seq,
+						message.thread_last_read_seq ?? 0,
+					),
+				};
+			});
+			return changed ? { ...page, messages } : page;
+		},
+	);
+}
+
+/**
+ * THE THREAD PANE'S ONE READ CALL SITE. Isolated so the hub's thread-read
+ * route (slice TR1) swaps in here and nowhere else.
+ *
+ * - `features.team_bridge_thread_reads >= 1` (the same `>= 1` key test the
+ *   attention service applies to `team_bridge_unread_events`): acknowledge against the
+ *   THREAD's cursor. The hub rolls that into the conversation unread and bumps
+ *   the unread revision, so the conversation list and the rail badge are
+ *   invalidated to recompute.
+ * - Otherwise: exactly today's behaviour, the conversation read with the reply
+ *   seq (`useMarkTeamBridgeRead`, optimistic rail clear included). The hub's
+ *   compat rule counts replies against max(conversation, thread cursor), so
+ *   this still clears a TR1 hub's thread count for a build that never posts a
+ *   thread read.
+ *
+ * Either way, success zeroes the root's cached `thread_unread_count`.
+ */
+export function useMarkTeamBridgeThreadRead(
+	conversationId: string,
+	tenantId: string,
+	rootId: string,
+): { mutateAsync: (input: { seq: number }) => Promise<unknown> } {
+	const client = useQueryClient();
+	const owner = useBridgeOwner();
+	/* PASSIVE: the app root already owns the capabilities poll; a pane adding
+	   its own observer would add a refetch interval per open thread for an
+	   answer already in the cache. Absent/unknown reads false = today's path. */
+	const threadReads = usePassiveDesktopFeature("team_bridge_thread_reads");
+	const conversationRead = useMarkTeamBridgeRead(conversationId, tenantId);
+	const threadRead = useMutation<
+		void,
+		Error,
+		CapturedBridgeMutation<{ seq: number }, BridgeWriteTarget>
+	>({
+		mutationFn: ({ input, target }) => {
+			target.assertCurrent();
+			if (!target.accountId || !target.tenantId)
+				throw new Error("Team Bridge write owner and tenant required");
+			return TeamBridgeApi.markThreadRead(target.conversationId, rootId, {
+				seq: input.seq,
+				tenantId: target.tenantId,
+				expectedAccountId: target.accountId,
+			});
+		},
+		onSuccess: async (_data, { target }) => {
+			if (!target.isCurrent() || !target.accountId) return;
+			cancelTeamBridgeUnreadReads(client, target.accountId);
+			await client.invalidateQueries({
+				queryKey: teamBridgeKeys.conversationsPrefix,
+			});
+			if (!target.isCurrent()) return;
+			await client.invalidateQueries({ queryKey: teamBridgeKeys.unreadPrefix });
+		},
+	});
+	const boundThreadRead = bindBridgeMutation(threadRead, () => ({
+		...owner,
+		conversationId,
+		tenantId,
+	}));
+	/* Latest-ref, so `mutateAsync` keeps one identity: the pane's viewport
+	   observer is keyed on it, and a fresh closure per render would tear the
+	   observer down and re-observe every reply on each poll. */
+	const latest = useRef({ threadReads, boundThreadRead, conversationRead });
+	latest.current = { threadReads, boundThreadRead, conversationRead };
+	const mutateAsync = useCallback(
+		async (input: { seq: number }) => {
+			const current = latest.current;
+			const answer = await (current.threadReads
+				? current.boundThreadRead.mutateAsync(input)
+				: current.conversationRead.mutateAsync(input));
+			clearCachedThreadUnread(
+				client,
+				conversationId,
+				tenantId,
+				rootId,
+				input.seq,
+			);
+			// Reconcile the guess above with the hub's own per-viewer count.
+			void client.invalidateQueries({
+				queryKey: teamBridgeKeys.messages(conversationId, tenantId),
+			});
+			return answer;
+		},
+		[client, conversationId, tenantId, rootId],
+	);
+	return useMemo(() => ({ mutateAsync }), [mutateAsync]);
+}
+
 /** The member routes need the captured owner and nothing else: the
  * conversation and tenant travel in the variables, so one hook can serve any
  * conversation the dialog is opened on. */

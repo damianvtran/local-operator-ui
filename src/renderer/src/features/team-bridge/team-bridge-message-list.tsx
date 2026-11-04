@@ -49,6 +49,7 @@ import {
 	useTeamBridgeReactionState,
 } from "./team-bridge-reactions";
 import { TEAM_BRIDGE_THREADS_SHIPPED_IN_THIS_BUILD } from "./team-bridge-thread-gate";
+import { TeamBridgeThreadRow } from "./team-bridge-thread-row";
 import { threadSummary } from "./team-bridge-threads-model";
 
 /**
@@ -408,6 +409,7 @@ export const TeamBridgeMessageList: FC<{
 							continuation={item.continuation}
 							label={labelFor(item.message.sender)}
 							member={profileFor?.(item.message.sender)}
+							profileFor={profileFor}
 							onMessagePerson={onMessagePerson}
 							canMessagePerson={canMessagePerson}
 							locale={locale}
@@ -505,6 +507,10 @@ const MessageRow: FC<{
 	continuation: boolean;
 	label: string | null;
 	member?: TeamBridgeDirectoryMember;
+	/* The thread row's facepile resolves repliers through the same lookup. */
+	profileFor?: (
+		sender: TeamBridgeMessage["sender"],
+	) => TeamBridgeDirectoryMember | undefined;
 	onMessagePerson?: (sender: TeamBridgeMessage["sender"]) => void;
 	canMessagePerson?: (sender: TeamBridgeMessage["sender"]) => boolean;
 	locale: string;
@@ -574,6 +580,9 @@ type MessageRowProps = {
 	continuation: boolean;
 	label: string | null;
 	member?: TeamBridgeDirectoryMember;
+	profileFor?: (
+		sender: TeamBridgeMessage["sender"],
+	) => TeamBridgeDirectoryMember | undefined;
 	onMessagePerson?: (sender: TeamBridgeMessage["sender"]) => void;
 	canMessagePerson?: (sender: TeamBridgeMessage["sender"]) => boolean;
 	locale: string;
@@ -597,6 +606,7 @@ const MessageRowView: FC<MessageRowProps> = ({
 	continuation,
 	label: known,
 	member,
+	profileFor,
 	onMessagePerson,
 	canMessagePerson,
 	locale,
@@ -930,37 +940,12 @@ const MessageRowView: FC<MessageRowProps> = ({
 					</div>
 				)}
 				{canReply && summary.count > 0 && (
-					<button
-						type="button"
-						onClick={() => onReply(message)}
-						className="mt-1 flex items-center gap-2 rounded-md py-1 text-[12px] text-accent hover:bg-row-hover"
-					>
-						<span aria-hidden="true" className="flex gap-0.5">
-							{summary.participants.map((name, index) => (
-								<span
-									key={`${index}:${name}`}
-									// Initials are ink, not plates: the summary button already owns
-									// the row-hover state, so nesting a ladder fill loses its edge.
-									className="flex size-5 items-center justify-center text-[10px] text-ink-muted"
-								>
-									{name.trim().charAt(0).toUpperCase()}
-								</span>
-							))}
-						</span>
-						{t("ui.teamBridge.replies.count", { count: summary.count })}
-						{summary.lastReply && (
-							<span className="text-ink-dim">
-								·{" "}
-								{t("ui.teamBridge.replies.last", {
-									time: formatTime(
-										summary.lastReply,
-										{ hour: "numeric", minute: "2-digit" },
-										locale,
-									),
-								})}
-							</span>
-						)}
-					</button>
+					<TeamBridgeThreadRow
+						message={message}
+						onOpen={() => onReply(message)}
+						profileFor={profileFor}
+						locale={locale}
+					/>
 				)}
 				{decoration?.after}
 			</div>
