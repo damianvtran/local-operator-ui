@@ -7343,6 +7343,12 @@ export type DesktopMediaRequest =
 	 */
 	| { op: "library.waveform"; assetId: string }
 	/*
+	 * One notification sound as gain-baked `audio/wav` (core
+	 * `features.notification_sounds`). Main uses it to stage the banner sound;
+	 * `volume` is 0-100 and goes through the backend's own gain curve.
+	 */
+	| { op: "notification_sounds.audio"; soundId: string; volume: number }
+	/*
 	 * One supplement component's assembled HTML document (turn-supplements memo
 	 * §2.7, lane U-b), as `{ html }` JSON from
 	 * `/v1/desktop/sessions/{id}/supplements/{digest}/document`.

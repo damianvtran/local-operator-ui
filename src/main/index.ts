@@ -135,6 +135,10 @@ import {
 } from "./local-config";
 import { createMainLocale } from "./main-locale";
 import { type MiniView, createMiniView, miniViewUrlFor } from "./mini-view";
+import {
+	NOTIFICATION_SOUND_PLAY_CHANNEL,
+	configureNotificationSound,
+} from "./notification-sound";
 import { paletteDoorChannel } from "./palette-door";
 import {
 	rememberPickedDirectory,
@@ -2742,6 +2746,24 @@ app
 				return response;
 			},
 		);
+		/*
+		 * The configured notification sound for all four banner owners
+		 * (`notification-sound.ts`). Configured BEFORE any of them can raise a
+		 * banner; until its first read settles every banner keeps today's OS
+		 * chime. The renderer fallback (Windows/Linux, or macOS when staging
+		 * failed) needs a window; with none the banner simply goes out silent.
+		 */
+		const notificationSound = configureNotificationSound({
+			request: (input) => backendService.requestDesktop(input),
+			media: (input) => backendService.requestDesktopMedia(input, null),
+			playInRenderer: (bytes) => {
+				const window = mainWindow;
+				if (!window || window.isDestroyed()) return false;
+				window.webContents.send(NOTIFICATION_SOUND_PLAY_CHANNEL, bytes);
+				return true;
+			},
+			log: (line) => logger.info(line, LogFileType.BACKEND),
+		});
 		const desktopNotifier = new DesktopNotifier(
 			() => mainWindow,
 			sendDesktop,
@@ -2895,6 +2917,9 @@ app
 			 * draw time.
 			 */
 			void mainLocale.refresh();
+			// Same transitions: a different backend can carry a different sound
+			// setting, or none (an older core drops back to today's chime).
+			void notificationSound?.refresh();
 			void desktopNotifier.refreshNotificationContract();
 			// The feed's own gate: it reads `features.desktop_feed` and opens
 			// nothing without it, so an older backend keeps the per-session path and
@@ -2983,6 +3008,10 @@ app
 				) {
 					void mainLocale.refresh();
 				}
+				// Same reasoning for the sound settings: main owns the banners, so
+				// the re-read must not depend on a window existing.
+				if (frame.type === "config")
+					notificationSound?.observeConfigChange(frame.payload.changed_keys);
 				const window = mainWindow;
 				if (!window || window.isDestroyed()) return;
 				window.webContents.send("desktop-feed-frame", frame);
