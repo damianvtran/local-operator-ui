@@ -160,7 +160,8 @@ const FOREGROUND = {
    value cannot land it a thousandth under. */
 const HEADROOM = 0.05;
 
-const isFlatHex = (v) => typeof v === "string" && /^#[0-9A-Fa-f]{6}$/.test(v);
+const FLAT_HEX = /^#[0-9A-Fa-f]{6}$/;
+const isFlatHex = (v) => typeof v === "string" && FLAT_HEX.test(v);
 const norm = (h) => h.slice(0, 7).toUpperCase();
 
 /**
