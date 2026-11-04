@@ -260,9 +260,12 @@ test("the page asks the capability and hands the answer to the view", () => {
 test("the page's thread state, reply handler and pane mount are all held", () => {
 	// Selection cannot be seeded or updated while held.
 	assert.match(page, /threadsAvailable \? \(threadLink \?\? null\) : null/);
+	// The seed may be a one-line `if` or a block (opening a thread also
+	// closes the members panel), so accept either shape; `[^}]` keeps the
+	// match inside the guarded block, so the hold must still enclose the seed.
 	assert.match(
 		page,
-		/if \(threadsAvailable && threadLink\) setThreadSelection\(threadLink\)/,
+		/if \(threadsAvailable && threadLink\)\s*\{?[^}]*?setThreadSelection\(threadLink\)/,
 	);
 	// The wide-viewport rule that hides the timeline while a thread is open
 	// must also require the hold, or a stale selection blanks the pane.
