@@ -177,7 +177,7 @@
 	"ui.chat.canonical.lightbox.filmstrip_aria": "{count, plural, one {{count_display} image} many {{count_display} d’images} other {{count_display} images}}",
 	"ui.chat.canonical.lightbox.show_image": "Afficher l’image {index, number, ::group-off} sur {count, number, ::group-off}",
 	"ui.chat.canonical.supplement.details.summary": "Détails",
-	"ui.chat.canonical.supplement.withheld.line": "{count, plural, one {# fichier non affiché} many {# de fichiers non affichés} other {# fichiers non affichés}} : {reason}",
+	"ui.chat.canonical.supplement.withheld.line": "{count, plural, one {# fichier non affiché} many {# de fichiers non affichés} other {# fichiers non affichés}} : {reason}",
 	"ui.chat.canonical.supplement.withheld.line_no_reason": "{count, plural, one {# fichier non affiché} many {# de fichiers non affichés} other {# fichiers non affichés}}",
 	"ui.chat.canonical.supplement.withheld.reason_outside": "hors des emplacements autorisés",
 	"ui.chat.canonical.supplement.withheld.reason_sensitive": "fichier sensible",
