@@ -51,3 +51,17 @@ and after "Release synthetic preview bytes" was pressed, then compared with
 `magick compare` on the binary diff mask. In both, the only changed regions are the
 image box and the focused release button. The following message's band did not
 change.
+
+## Round 1 remediation re-capture
+
+I re-captured the 18 pairs whose right-hand frame changed, with the same rig and the same "before" frames. The changes:
+
+- the `+N` label is drawn by the group
+- chips use the `mediaSurface` fill
+- failed grid cells show the glyph only
+- `BubblePanorama` now uses a true 450x100 bitmap
+- the narrow and wide grid stories carry an `accountId`
+
+That last change means the right half of `attachments--narrow-four-image-grid-*` now shows images. The left half still shows "Image unavailable", because the story on `origin/main` has the same gap; that is not a product regression.
+
+`attachments--bubble-four-images-grid-focus-localOperatorDark.webp` shows grid tile 2 keyboard-focused. The ring is inset and drawn on all four edges, including the group's outer top edge (y=345 at 2560 wide) and outer right edge (x=1752). In QA round 1 both of those were canvas pixels.

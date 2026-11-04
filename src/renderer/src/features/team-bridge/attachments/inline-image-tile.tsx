@@ -99,7 +99,11 @@ export function InlineImageTile({
 	/** Omitted where this client offers no download (owner audit, #1634). */
 	onDownload?: () => void;
 	buttonRef?: Ref<HTMLButtonElement>;
-	/** Images past the 2×2 grid; the last visible tile carries `+N`. */
+	/**
+	 * Images past the 2×2 grid. The group draws the visible `+N` label over
+	 * the slot (so it survives a failed fourth tile); the tile uses the count
+	 * only for its accessible name and to drop the action cluster.
+	 */
 	overflow?: number;
 	/** `aria-busy` while loading, for the audit tile's existing contract. */
 	busy?: boolean;
@@ -144,12 +148,15 @@ export function InlineImageTile({
 					/*
 					 * OUTSET on a single image: there is no border to sit the ring
 					 * inside any more. INSET in a grid, whose shared 10px corner is an
-					 * `overflow-hidden` group that would clip an outset ring.
+					 * `overflow-hidden` group that would clip an outset ring. The inset
+					 * needs `!`: `html :focus-visible`'s 2px offset in `styles/index.css`
+					 * is unlayered, so it beats any `@layer utilities` class (QA round 1,
+					 * Q1; the same fix as `browser-tab-strip.tsx`).
 					 */
 					"focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus",
 					single
 						? "focus-visible:outline-offset-2"
-						: "focus-visible:-outline-offset-2",
+						: "focus-visible:-outline-offset-2!",
 				)}
 				data-attachment-reserved={url ? undefined : ""}
 			>
@@ -186,26 +193,16 @@ export function InlineImageTile({
 						)}
 					</span>
 				)}
-				{more > 0 && (
-					<span
-						aria-hidden="true"
-						/* A raised label, not an alpha scrim: there is no scrim role, and
-						   the picture under it stays legible as the set's fourth image. */
-						className="absolute inset-0 flex items-center justify-center"
-					>
-						<span className="rounded-sm bg-elevated px-2 py-1 font-semibold text-[13px] text-ink">
-							{`+${more}`}
-						</span>
-					</span>
-				)}
 			</button>
 			{url && !more && (
 				<div className={CLUSTER_CLASS} data-attachment-actions="">
-					{/* Out of the tab order: the tile itself is the keyboard's open
-					    control, and two stops with one name would read twice. */}
+					{/* Out of the tab order AND the accessibility tree: the tile itself
+					    is the open control, and a second node with its name would be
+					    read twice by a virtual cursor (agent review round 1, nit 2). */}
 					<button
 						type="button"
 						tabIndex={-1}
+						aria-hidden="true"
 						aria-label={openLabel}
 						title={openLabel}
 						onClick={onOpen}
@@ -216,7 +213,15 @@ export function InlineImageTile({
 					{onDownload && (
 						<button
 							type="button"
-							aria-label={t("ui.chat.image_actions.save_as")}
+							/*
+							 * NAMED PER IMAGE (agent review round 1, minor 5): in a set,
+							 * a screen reader's button list must tell the Saves apart, so
+							 * the name carries the picture's own label ("Save Image 2 of
+							 * 4"); the tooltip stays the menu's plain "Save as…".
+							 */
+							aria-label={t("ui.common.forms.autocomplete_field.save", {
+								label,
+							})}
 							title={t("ui.chat.image_actions.save_as")}
 							onClick={onDownload}
 							className={CLUSTER_BUTTON_CLASS}
@@ -254,15 +259,14 @@ export function InlineImageFailure({
 	attributes?: Partial<Record<`data-${string}`, string>>;
 }) {
 	const copyId = useId();
-	/* A tiny source keeps its 64px box; there the glyph alone carries the
-	   state and the sentence stays the accessible description. */
-	const roomy = !box || (box.width >= 120 && box.height >= 88);
+	/* A tiny source keeps its 64px box, and a grid cell (`box: null`) is one of
+	   several: in both the glyph alone carries the state and the sentence stays
+	   the accessible description (design round 1, D2: four cells each repeating
+	   "Image unavailable" was the heaviest frame in the set). */
+	const roomy = box !== null && box.width >= 120 && box.height >= 88;
 	const Icon = kind === "expired" ? Clock : ImageOff;
 	return (
 		<div
-			role="img"
-			aria-label={label}
-			aria-describedby={copyId}
 			style={boxStyle(box)}
 			className={cn(
 				"flex flex-col items-center justify-center gap-1 break-words bg-media-surface px-2 text-center text-[12px] text-ink-muted",
@@ -270,9 +274,22 @@ export function InlineImageFailure({
 			)}
 			{...attributes}
 		>
-			<Icon size={20} aria-hidden="true" className="shrink-0 text-ink-dim" />
-			<span id={copyId} className={roomy ? undefined : "sr-only"}>
-				{copy}
+			{/*
+			 * `role="img"` wraps the glyph and the sentence only: an `img` has
+			 * presentational children, so a Retry inside it could be flattened
+			 * away by assistive tech (agent review round 1, minor 4). Retry is
+			 * the image's sibling, a real button.
+			 */}
+			<span
+				role="img"
+				aria-label={label}
+				aria-describedby={copyId}
+				className="flex flex-col items-center gap-1"
+			>
+				<Icon size={20} aria-hidden="true" className="shrink-0 text-ink-dim" />
+				<span id={copyId} className={roomy ? undefined : "sr-only"}>
+					{copy}
+				</span>
 			</span>
 			{onRetry && (
 				<button
@@ -285,5 +302,28 @@ export function InlineImageFailure({
 				</button>
 			)}
 		</div>
+	);
+}
+
+/**
+ * The `+N` on the last visible grid tile (agent review round 1, M1). Drawn by
+ * the GROUP over the slot rather than by the tile, so it shows whatever state
+ * the fourth picture is in - a refused, expired or failed fourth tile used to
+ * drop it and hide images 5+ with no cue. A raised label rather than an alpha
+ * scrim: there is no scrim role, and the picture under it stays legible as
+ * the set's fourth image. `aria-hidden`: the ready tile's name already says
+ * "+N more images" (label in name), and a failed one keeps its own name.
+ */
+export function InlineImageOverflow({ count }: { count: number }) {
+	return (
+		<span
+			aria-hidden="true"
+			data-attachment-overflow={String(count)}
+			className="pointer-events-none absolute inset-0 flex items-center justify-center"
+		>
+			<span className="rounded-sm bg-elevated px-2 py-1 font-semibold text-[13px] text-ink">
+				{`+${count}`}
+			</span>
+		</span>
 	);
 }

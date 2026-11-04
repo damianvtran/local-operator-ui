@@ -10,6 +10,7 @@ import { TeamBridgeAttachmentStrip } from "./team-bridge-attachments";
 import { rememberUploadPreview } from "./team-bridge-attachments-model";
 import {
 	SHOT_GREEN_B64,
+	SHOT_PANORAMA_B64,
 	SHOT_RED_B64,
 	SHOT_TALL_B64,
 	SHOT_WIDE_B64,
@@ -41,7 +42,7 @@ const BYTES: Record<string, string> = {
 	   synthetic pixels under distinct ids, because an id is a list key. */
 	batt_fifth: SHOT_GREEN_B64,
 	batt_sixth: SHOT_WIDE_B64,
-	batt_pano: SHOT_WIDE_B64,
+	batt_pano: SHOT_PANORAMA_B64,
 	batt_tall: SHOT_TALL_B64,
 	batt_green: SHOT_GREEN_B64,
 	batt_red: SHOT_RED_B64,
@@ -458,7 +459,7 @@ export const BubblePanorama: StoryObj<typeof Thread> = {
 			messages={[
 				message({
 					body: "Panorama:",
-					attachments: [descriptor("batt_pano", 900, 200)],
+					attachments: [descriptor("batt_pano", 450, 100)],
 				}),
 			]}
 		/>
@@ -673,6 +674,9 @@ const widthStories = (width: number) => ({
 					messages={[fourImages]}
 					labelFor={(sender) => sender.display_label}
 					tenantId="tnt_story"
+					/* The byte route needs the captured account; without it every
+					   tile drew "Image unavailable" (QA round 1, Q2). */
+					accountId="acct_story_reader"
 				/>
 			</AtWidth>
 		),

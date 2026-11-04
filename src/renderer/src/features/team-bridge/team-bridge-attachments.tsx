@@ -556,11 +556,11 @@ const Placeholder: FC<{
  * (`downloadBlob`), so no new byte route, authority or path exists. Owner
  * audit tiles do not get this (no download from the audit, #1634).
  * The image contract carries no file name, so the dialog proposes a generic
- * one with the extension the mime implies.
+ * one with the extension the mime implies. The caller offers Save only while
+ * `blobAt` still has the bytes, so the control never silently does nothing
+ * (agent review round 1, nit 1).
  */
-function saveBridgeImage(url: string, mime: string, index: number) {
-	const blob = blobAt(url);
-	if (!blob) return;
+function saveBridgeImage(blob: Blob, mime: string, index: number) {
 	const extension = mime === "image/jpeg" ? "jpg" : "png";
 	downloadBlob(blob, `image-${index + 1}.${extension}`);
 }
@@ -622,6 +622,7 @@ const MessageImage: FC<{
 	const url = source.state === "ready" ? source.url : null;
 	// biome-ignore lint/correctness/useExhaustiveDependencies: publish the URL to the lightbox set when it changes.
 	useEffect(() => register(index, url), [url, index]);
+	const saveBlob = url ? blobAt(url) : null;
 	if (view !== "fetch" || source.state === "unavailable")
 		return <Placeholder kind="unavailable" label={label} box={slot.box} />;
 	if (source.state === "failed")
@@ -647,7 +648,9 @@ const MessageImage: FC<{
 			buttonRef={buttonRef}
 			onOpen={() => onOpen(index)}
 			onDownload={
-				url ? () => saveBridgeImage(url, attachment.mime, index) : undefined
+				saveBlob
+					? () => saveBridgeImage(saveBlob, attachment.mime, index)
+					: undefined
 			}
 		/>
 	);

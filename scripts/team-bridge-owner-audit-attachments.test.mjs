@@ -616,3 +616,33 @@ test("bound generic descriptors expose only metadata, with zero byte/save calls 
 	assert.equal(view.node.querySelectorAll("img").length, 0);
 	await view.close();
 });
+
+/*
+ * #1634's rule on the inline tile (agent review round 1, minor 3): a READY
+ * audit picture gets Open and nothing else - no Save, no download anchor - while
+ * the member tile beside it does offer Save. Asserted on the rendered cluster,
+ * not by inspection.
+ */
+test("ready audit image offers Open only: no Save control and no download anchor", async () => {
+	window.api = {
+		desktop: {
+			media: async () => ({
+				status: 200,
+				kind: "bytes",
+				mimeType: "image/png",
+				data: bytes,
+			}),
+		},
+	};
+	const view = await renderAudit({
+		attachments: [attachment],
+		count: 1,
+		scope,
+	});
+	assert.equal(view.node.querySelectorAll("img").length, 1);
+	const cluster = view.node.querySelector("[data-attachment-actions]");
+	assert.ok(cluster, "the ready tile has its hover cluster");
+	assert.equal(cluster.querySelectorAll("button").length, 1, "Open only");
+	assert.equal(view.node.querySelectorAll("a[download]").length, 0);
+	await view.close();
+});

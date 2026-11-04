@@ -31,7 +31,11 @@ import {
 	middleTruncateFileName,
 	splitFileNameTail,
 } from "./attachment-model";
-import { type InlineImageBox, InlineImageFailure } from "./inline-image-tile";
+import {
+	type InlineImageBox,
+	InlineImageFailure,
+	InlineImageOverflow,
+} from "./inline-image-tile";
 
 /**
  * Where the group puts one picture: a reserved single box, or a grid cell
@@ -133,7 +137,7 @@ export function BridgeAttachmentGroup<T extends BridgeAttachmentDescriptor>({
 				hidden={hidden || undefined}
 				data-bridge-attachment-card={preview ? "preview" : "unavailable"}
 				className={cn(
-					"min-w-0",
+					"relative min-w-0",
 					!single && !hidden && cellClass(position, visible),
 				)}
 			>
@@ -149,6 +153,7 @@ export function BridgeAttachmentGroup<T extends BridgeAttachmentDescriptor>({
 						copy={t("ui.teamBridge.attachments.unavailable")}
 					/>
 				)}
+				{slot.overflow > 0 && <InlineImageOverflow count={slot.overflow} />}
 			</li>
 		);
 	};
@@ -178,6 +183,7 @@ export function BridgeAttachmentGroup<T extends BridgeAttachmentDescriptor>({
 						key={attachment?.id ?? "count-only"}
 						attachment={attachment}
 						count={count}
+						compact={compact}
 					/>
 				))}
 			</ul>
@@ -203,22 +209,28 @@ const IMAGE_TYPE = new Map([
  * THE CHIP (SPEC §3.1 "Non-image files", Slack-style): a 48px row, a kind
  * tile, a name and a `TYPE · size` line. Borderless; the fill is the extent.
  *
- * FILL IS `elevated`, NOT THE SPEC'S `surface`. The spec measured the chip on
- * the channel pane once that pane moves to `canvas` (§3.2, a separate PR);
+ * FILL IS `mediaSurface`, NOT THE SPEC'S `surface`. The spec measured the chip
+ * on the channel pane once that pane moves to `canvas` (§3.2, a separate PR);
  * today the pane, and the thread pane permanently, paint `surface`, where a
- * `surface` chip would be the ground itself and vanish. `elevated` reads on
- * all three grounds a message row takes (canvas, surface, rowHover), and the
- * kind tile steps the other way, to `mediaSurface`, so it still separates
- * inside the chip. `scripts/contrast-contract.mjs` carries the row.
+ * `surface` chip would be the ground itself and vanish. Round 1 shipped
+ * `elevated`, which merged into a HOVERED row (ΔE00 0.00 arcade, 1.14 gruvbox,
+ * 1.21 obsidian, 1.90 everforest; agent review round 1, minor 1).
+ * `mediaSurface` is the borderless-tile role the Team Bridge avatar plates
+ * already rest on, held to ΔE00 3.0 off canvas, surface, elevated and rowHover
+ * by `PERCEPTIBLE`'s "team bridge borderless person and agent plates" row
+ * (fleet minima 4.00 / 5.96 / 7.89 / 3.70), so the chip keeps its extent on
+ * every ground a message row takes. The kind tile steps the other way, to
+ * `elevated` (7.89 minimum off the chip). `scripts/contrast-contract.mjs`
+ * carries the ink rows and the ground-step row.
  *
  * NO HOVER STEP and NO CONTROL: a descriptor chip offers nothing to do (no
  * byte route; owner decision after #1634), and a hover colour step is this
  * app's promise that something is pressable.
  */
 const CHIP_CLASS =
-	"flex h-12 min-w-0 max-w-full items-center gap-2.5 rounded-md bg-elevated px-2.5";
+	"flex h-12 min-w-0 max-w-full items-center gap-2.5 rounded-md bg-media-surface px-2.5";
 const CHIP_TILE_CLASS =
-	"flex size-8 shrink-0 items-center justify-center rounded-sm bg-media-surface";
+	"flex size-8 shrink-0 items-center justify-center rounded-sm bg-elevated";
 
 /**
  * A descriptor that will not be drawn inline: an available image this view
@@ -230,9 +242,11 @@ const CHIP_TILE_CLASS =
 function AttachmentChip({
 	attachment,
 	count,
+	compact,
 }: {
 	attachment: BridgeAttachmentDescriptor | null;
 	count: number;
+	compact: boolean;
 }) {
 	const available = attachment !== null && isAvailableAttachment(attachment);
 	const type = attachment ? IMAGE_TYPE.get(attachment.mime) : undefined;
@@ -257,7 +271,8 @@ function AttachmentChip({
 		attachment === null || type ? ImageIcon : available ? FileIcon : FileX;
 	return (
 		<li
-			style={{ width: fileCardWidth(false) }}
+			/* The file chips' own width, so both chip kinds line up in a column. */
+			style={{ width: fileCardWidth(compact) }}
 			data-bridge-attachment-card={
 				attachment === null || available ? "metadata" : "unavailable"
 			}
