@@ -1,0 +1,6 @@
+{
+	"ui.teamBridge.leave.back": "پیچھے",
+	"ui.teamBridge.leave.back_shortcut": "پیچھے ({shortcut})",
+	"ui.teamBridge.leave.name": "Team Bridge سے نکلیں",
+	"ui.teamBridge.leave.name_attention": "{count, plural, one {Team Bridge سے نکلیں، کہیں اور # آئٹم منتظر ہے} other {Team Bridge سے نکلیں، کہیں اور # آئٹمز منتظر ہیں}}"
+}

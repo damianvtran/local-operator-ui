@@ -4,12 +4,15 @@ import {
 	radientUserKeys,
 } from "@shared/hooks/radient-account-authority";
 import { t } from "@shared/i18n";
+import { useDocumentDirection } from "@shared/i18n/use-document-direction";
 import type { Meta, StoryObj } from "@storybook/react";
 import { expect, fireEvent, userEvent, waitFor, within } from "@storybook/test";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
 	type CSSProperties,
 	type ComponentProps,
+	type FC,
+	type ReactNode,
 	useEffect,
 	useLayoutEffect,
 	useState,
@@ -43,6 +46,7 @@ import { teamBridgeComposerKey } from "@shared/store/team-bridge-composer-rows";
 import agentPortrait from "../../assets/images/storybook-avatar-portrait.jpg";
 import profileImage from "../../assets/radient-icon-1024x1024.png";
 import { ChatLayout } from "../../shared/components/common/chat-layout";
+import { useUiPreferencesStore } from "../../shared/store/ui-preferences-store";
 import { draftStorageKey, draftTargetKey } from "./team-bridge-drafts";
 import {
 	TEAM_BRIDGE_ALL_SCOPE,
@@ -103,6 +107,49 @@ const useMacChromeSimulation = () => {
 			}
 		};
 	}, []);
+};
+
+/**
+ * THE PAGE IN THE APP'S SHELL ON ITS OWN ROUTE (the sidebar swap, operator
+ * 2026-11-03): `ChatLayout` in route mode, exactly as `app.tsx` mounts it on
+ * `/team-bridge`. The navigation passed as `sidebar` is a marker element rather
+ * than `SidebarNavigation` (which needs the whole desktop bridge) - route mode
+ * does not mount it, and a frame that showed it would be the regression. The
+ * rail is portaled into the shell's column with its Back row and foot.
+ * `collapsed` sets the user's strip preference, which route mode overrides.
+ */
+const InTheShell: FC<{ collapsed?: boolean; children: ReactNode }> = ({
+	collapsed = false,
+	children,
+}) => {
+	useMacChromeSimulation();
+	/* The app writes `<html dir>` from the locale (`app.tsx`); Storybook does not,
+	   so the Urdu frame would keep the column on the LTR side without this. */
+	useDocumentDirection();
+	const [ready, setReady] = useState(false);
+	useLayoutEffect(() => {
+		const before = useUiPreferencesStore.getState().isSidebarCollapsed;
+		useUiPreferencesStore.getState().setSidebarCollapsed(collapsed);
+		setReady(true);
+		return () => useUiPreferencesStore.getState().setSidebarCollapsed(before);
+	}, [collapsed]);
+	if (!ready) return null;
+	return (
+		<div
+			className="relative flex h-screen flex-col overflow-hidden"
+			style={{ "--chrome-strip-h": "32px" } as CSSProperties}
+		>
+			<ChatLayout
+				sidebar={<nav data-story-app-nav="">app navigation</nav>}
+				routeSidebar={{}}
+				content={
+					<main className="panel-top-pad flex min-w-0 grow flex-col overflow-hidden bg-canvas">
+						{children}
+					</main>
+				}
+			/>
+		</div>
+	);
 };
 
 const dm: TeamBridgeConversation = {
@@ -1109,38 +1156,76 @@ export const EmptyAllOrganizations: Story = {
  * native window chrome; the production value comes from the same property.
  */
 export const FlushToTheWindowTop: Story = {
-	render: () => {
-		useMacChromeSimulation();
-		return (
-			<div
-				className="relative flex h-screen flex-col overflow-hidden"
-				style={{ "--chrome-strip-h": "32px" } as CSSProperties}
-			>
-				<ChatLayout
-					sidebar={<div className="panel-top-pad h-full bg-surface" />}
-					content={
-						<main className="panel-top-pad flex min-w-0 grow flex-col overflow-hidden bg-canvas">
-							<TeamBridgePageView
-								listState="ready"
-								messageState="ready"
-								conversations={[channel, group, dm]}
-								target={{ type: "conversation", id: channel.id }}
-								messages={messages}
-								organizations={[minervaOrganization, northwindOrganization]}
-								scope={asTeamBridgeTenantId("tnt_1")}
-								totalUnread={3}
-								selfAccountId={self}
-								onTarget={() => {}}
-								onSend={() => undefined}
-								onNewChannel={() => {}}
-								onScopeChange={() => {}}
-							/>
-						</main>
-					}
-				/>
-			</div>
-		);
+	render: () => (
+		<InTheShell>
+			<TeamBridgePageView
+				listState="ready"
+				messageState="ready"
+				conversations={[channel, group, dm]}
+				target={{ type: "conversation", id: channel.id }}
+				messages={messages}
+				organizations={[minervaOrganization, northwindOrganization]}
+				scope={asTeamBridgeTenantId("tnt_1")}
+				totalUnread={3}
+				selfAccountId={self}
+				onTarget={() => {}}
+				onSend={() => undefined}
+				onNewChannel={() => {}}
+				onScopeChange={() => {}}
+			/>
+		</InTheShell>
+	),
+};
+
+/**
+ * ONE SIDEBAR (the swap's main frame): the bridge rail fills the app's left
+ * column, with Back on top and the account foot below, and no second column.
+ */
+export const InShellChannelSelected: Story = {
+	args: {
+		target: { type: "conversation", id: channel.id },
+		messages: messages.map((message) => ({
+			...message,
+			conversation_id: channel.id,
+		})),
 	},
+	render: (args) => (
+		<InTheShell>
+			<TeamBridgePageView {...args} />
+		</InTheShell>
+	),
+};
+
+/**
+ * The user's collapsed-strip preference on this route: the column still docks,
+ * because the rail has no 56px form; the preference is kept for the way back.
+ */
+export const InShellCollapsedPreference: Story = {
+	...InShellChannelSelected,
+	render: (args) => (
+		<InTheShell collapsed>
+			<TeamBridgePageView {...args} />
+		</InTheShell>
+	),
+};
+
+/** Urdu: the column is on the right, and Back's arrow points right. */
+export const InShellUrdu: Story = {
+	...InShellChannelSelected,
+	args: { ...InShellChannelSelected.args, locale: "ur" } as Story["args"],
+};
+
+/**
+ * An early state (the eligibility gate) still owns the column: the Back row
+ * and a quiet title, so a gated reader always has a way out.
+ */
+export const InShellEligibilityGate: Story = {
+	args: { eligibility: "plan_required" },
+	render: (args) => (
+		<InTheShell>
+			<TeamBridgePageView {...args} />
+		</InTheShell>
+	),
 };
 
 /**
@@ -2044,6 +2129,34 @@ export const ThreadAtMinimumWindow: Story = {
 	),
 };
 
+/** The thread takeover below a 1024px conversation region, in the shell. */
+export const InShellThreadAtMinimumWindow: Story = {
+	args: {
+		/* The thread capability, so the pane really mounts and the takeover's
+		   start edge is in the frame (the inline board leaves it unset). */
+		threadsCapabilityState: "enabled",
+		target: { type: "conversation", id: channel.id },
+		messages: [threadRoot],
+		threadLink: threadTarget,
+		renderThreadPane: (_target, close) => (
+			<TeamBridgeThreadPaneView
+				root={threadRoot}
+				replies={[threadReply]}
+				state="ready"
+				labelFor={(sender) => sender.display_label}
+				onClose={close}
+				onRetry={() => {}}
+				onSend={async () => {}}
+			/>
+		),
+	},
+	render: (args) => (
+		<InTheShell>
+			<TeamBridgePageView {...args} />
+		</InTheShell>
+	),
+};
+
 /**
  * A deep link opens the thread on the route's first paint. The simulated `<main>`
  * carries the shell's own `panel-top-pad` (app.tsx spells it unconditionally now
@@ -2083,6 +2196,7 @@ export const ThreadDeepLinkFromSearch: Story = {
 			>
 				<ChatLayout
 					sidebar={<div className="panel-top-pad h-full bg-surface" />}
+					routeSidebar={{}}
 					content={
 						<main className="panel-top-pad flex min-w-0 grow flex-col overflow-hidden bg-canvas">
 							<TeamBridgePageView {...args} />

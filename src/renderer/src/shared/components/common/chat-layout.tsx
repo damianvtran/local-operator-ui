@@ -41,9 +41,11 @@ import {
 	useContext,
 	useEffect,
 	useLayoutEffect,
+	useMemo,
 	useRef,
 	useState,
 } from "react";
+import { LeftSidebarHostContext } from "../navigation/left-sidebar-host";
 import { PanelRailHostContext } from "../navigation/panel-rail-host";
 import { PaneSlot } from "./pane-slot";
 import { PanelEdge } from "./panel-edge";
@@ -114,6 +116,18 @@ function useMeasuredBox(
 type ChatLayoutProps = {
 	sidebar: ReactNode;
 	content: ReactNode;
+	/**
+	 * The route owns the left column (Team Bridge, operator 2026-11-03). The
+	 * shell then mounts an empty host where `sidebar` would be and the route
+	 * portals its own rail into it (`left-sidebar-host.tsx`); `sidebar` is NOT
+	 * mounted at all, so the window has one sidebar rather than two.
+	 *
+	 * `keeper` is what must stay mounted in its place: whatever the unmounted
+	 * sidebar was keeping alive that the rest of the app still reads (the
+	 * catalogue feed - see `StripFeedKeeper`). Default off, so every other
+	 * caller lays out exactly as before.
+	 */
+	routeSidebar?: { keeper?: ReactNode } | false;
 };
 
 /**
@@ -149,7 +163,11 @@ export const useSidebarFrame = (): SidebarFrame => {
 	return frame;
 };
 
-export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
+export const ChatLayout: FC<ChatLayoutProps> = ({
+	sidebar,
+	content,
+	routeSidebar = false,
+}) => {
 	/*
 	 * The measured boxes and pane stop are physical coordinates, while the
 	 * sidebar's leading edge is logical: inline-start is left in LTR and right in
@@ -244,10 +262,25 @@ export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
 	const railMounted = useUiPreferencesStore((s) => s.rightSlotRoute.mounted);
 	const railWidth = railMounted ? PANEL_RAIL_WIDTH_PX : 0;
 	const [railHost, setRailHost] = useState<HTMLElement | null>(null);
+	const [leftHost, setLeftHost] = useState<HTMLElement | null>(null);
+	const routeOwnsSidebar = routeSidebar !== false;
+	const leftSlot = useMemo(
+		() => (routeOwnsSidebar ? { host: leftHost } : null),
+		[routeOwnsSidebar, leftHost],
+	);
 
 	const layout: SidebarLayout = resolveSidebarLayout(
 		viewportWidth,
-		collapsedPref,
+		/*
+		 * A ROUTE-OWNED COLUMN IS ALWAYS DOCKED. The route's rail (org switcher,
+		 * titles, sections) has no 56px form, and a strip with nothing in it is the
+		 * dead control this codebase removes elsewhere. The preference is NOT
+		 * rewritten: ⌘B still toggles it here, and it applies the moment the user
+		 * leaves the route - the column they come back to is the one they chose.
+		 * The capacity cap and the canvas fit-yield still apply, so an 800px window
+		 * keeps its 480px content floor.
+		 */
+		routeOwnsSidebar ? false : collapsedPref,
 		savedWidth,
 		/*
 		 * THE SIDEBAR YIELDS TO THE ASK DRAWER AS IT DOES TO THE CANVAS, in EITHER
@@ -491,14 +524,37 @@ export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
 					className={cn("relative h-full shrink-0")}
 					style={{ width: columnWidth }}
 				>
-					<SidebarFrameContext.Provider
-						value={{
-							expanded: layout.mode === "docked",
-							onCollapse: toggleSidebar,
-						}}
-					>
-						{sidebar}
-					</SidebarFrameContext.Provider>
+					{routeOwnsSidebar ? (
+						<>
+							{routeSidebar.keeper}
+							{/*
+							 * THE ROUTE'S RAIL HOST. It carries what `SidebarNavigation`'s
+							 * root carries - the `surface` ground from y0, `panel-top-pad`
+							 * so the first row clears the OS controls, and the `sidebar`
+							 * glass region - so the column reads as the same panel with
+							 * different contents, and whatever is portaled in paints no
+							 * ground or glass of its own (a second `page-sidebar` alpha over
+							 * this one is the double layer `styles/index.css` forbids).
+							 * `overflow-hidden` because the column never scrolls; the rail's
+							 * own sections do.
+							 */}
+							<div
+								ref={setLeftHost}
+								data-route-sidebar-host=""
+								data-glass-region="sidebar"
+								className="panel-top-pad flex h-full min-h-0 flex-col overflow-hidden bg-surface"
+							/>
+						</>
+					) : (
+						<SidebarFrameContext.Provider
+							value={{
+								expanded: layout.mode === "docked",
+								onCollapse: toggleSidebar,
+							}}
+						>
+							{sidebar}
+						</SidebarFrameContext.Provider>
+					)}
 					{/*
 					 * THE SIDEBAR'S SEAM, drawn by the shell's column rather than by either
 					 * sidebar root. The column is the same box as the panel in both modes
@@ -571,7 +627,17 @@ export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
 								data-ask-covered-content=""
 								className="contents"
 							>
-								{content}
+								{/*
+								 * THE LEFT HOST REACHES THE ROUTE, which is the portal's
+								 * SOURCE: the host element lives in the column above, the
+								 * rail that fills it is rendered by the route in here. Null
+								 * when no route owns the column, which is what makes
+								 * `InLeftSidebarHost` render inline. Memoised so a shell
+								 * re-render does not re-render every consumer.
+								 */}
+								<LeftSidebarHostContext.Provider value={leftSlot}>
+									{content}
+								</LeftSidebarHostContext.Provider>
 							</div>
 							{/*
 							 * THE FLEET ASKS PANE: the same three pieces the route's occupants

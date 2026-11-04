@@ -1,0 +1,6 @@
+{
+	"ui.teamBridge.leave.back": "Back",
+	"ui.teamBridge.leave.back_shortcut": "Back ({shortcut})",
+	"ui.teamBridge.leave.name": "Leave Team Bridge",
+	"ui.teamBridge.leave.name_attention": "{count, plural, one {Leave Team Bridge, # item waiting elsewhere} other {Leave Team Bridge, # items waiting elsewhere}}"
+}

@@ -39,6 +39,7 @@ import { ConnectProviderDialog } from "@features/providers/connect-provider-dial
 import { SessionSwitcher } from "@features/session-switcher/components/session-switcher";
 import { useSyncRecordingClaims } from "@features/settings/components/keyboard-shortcuts-section";
 import { LanguageDialog } from "@features/settings/components/language-dialog";
+import { TEAM_BRIDGE_PATH } from "@features/team-bridge/team-bridge-nav";
 import { useTeamBridgeNotificationOpen } from "@features/team-bridge/use-team-bridge-notification-open";
 import { useTeamBridgeNotifications } from "@features/team-bridge/use-team-bridge-notifications";
 import {
@@ -64,7 +65,10 @@ import { LowCreditsDialog } from "@shared/components/common/low-credits-dialog";
 import { ModelsInitializer } from "@shared/components/common/models-initializer";
 import { Spinner } from "@shared/components/common/spinner";
 import { UpdateNotification } from "@shared/components/common/update-notification";
-import { SidebarNavigation } from "@shared/components/navigation/sidebar-navigation";
+import {
+	SidebarNavigation,
+	StripFeedKeeper,
+} from "@shared/components/navigation/sidebar-navigation";
 import { useCheckFirstTimeUser } from "@shared/hooks/use-check-first-time-user";
 import { useLowCreditsDialog } from "@shared/hooks/use-low-credits-dialog";
 import { useNavigationGestures } from "@shared/hooks/use-navigation-gestures";
@@ -315,6 +319,17 @@ const App: FC = () => {
 		capabilities.data,
 		"team_bridge_conversations",
 	);
+	/*
+	 * TEAM BRIDGE TAKES THE LEFT COLUMN (operator, 2026-11-03: "the left sidebar
+	 * becomes the team bridge view" - two sidebars side by side were unpopular).
+	 * The shell keeps the column and hosts the bridge rail in it instead of the app
+	 * navigation; `left-sidebar-host.tsx` states the mechanics. Keyed on the same
+	 * capability state as the route itself, so while capabilities load (the route
+	 * is not mounted yet) the shell keeps the navigation and never shows an empty
+	 * host.
+	 */
+	const routeOwnsSidebar =
+		bridgeState === "enabled" && pathname.startsWith(TEAM_BRIDGE_PATH);
 	/*
 	 * Team Bridge banners, watched in the SHELL because the page is the one place
 	 * a banner is not needed. The capability gate is the same one the route and
@@ -744,7 +759,13 @@ const App: FC = () => {
 				 * Root-level also lets the attribute rules reach PORTALED elements, which the
 				 * command palette's Radix dialog is.
 				 */
-				data-titlebar-sidebar-collapsed={isSidebarCollapsed ? "true" : "false"}
+				/*
+				 * A route-owned column is always docked (`ChatLayout`), whatever the
+				 * preference says, so the titlebar must lay out for a docked column there.
+				 */
+				data-titlebar-sidebar-collapsed={
+					isSidebarCollapsed && !routeOwnsSidebar ? "true" : "false"
+				}
 			>
 				{/*
 				 * THE TWO FULL-BLEED BANDS ARE THE SHELL'S FIRST CHILDREN, and this
@@ -915,6 +936,12 @@ const App: FC = () => {
 
 					<ChatLayout
 						sidebar={<SidebarNavigation />}
+						/*
+						 * `StripFeedKeeper` replaces the navigation's catalogue feed while it is
+						 * unmounted, so the chat list and Aida's marks are current the moment
+						 * the reader goes back (its own note says what it keeps alive).
+						 */
+						routeSidebar={routeOwnsSidebar && { keeper: <StripFeedKeeper /> }}
 						content={
 							/*
 							 * ORDINARY ROUTE CONTENT GETS THE STRIP'S PAD ONCE, HERE.

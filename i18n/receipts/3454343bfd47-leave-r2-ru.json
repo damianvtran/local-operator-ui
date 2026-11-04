@@ -1,0 +1,36 @@
+{
+ "schema": 1,
+ "auditor": "copy-reviewer (lopdev team copy-reviewer session 3454343bfd47; independent i18n auditor, not the translator agent coder of session 568d933e34b1)",
+ "agent": "copy-reviewer (lopdev team copy-reviewer session 3454343bfd47; independent i18n auditor, not the translator agent coder of session 568d933e34b1)",
+ "model": "anthropic/claude-opus-5-5",
+ "model_provenance": "Every read and verdict in this receipt ran on anthropic/claude-opus-5-5 (session header); no fallback occurred.",
+ "fallback": "none",
+ "independence": "Separate session (3454343bfd47) and agent (copy-reviewer) from the translator (agent coder, session 568d933e34b1, anthropic/claude-opus-5-5). Same model family as the translator: not a cross-family audit. Verdict rebuilt from the en source, en context, render site, sibling precedents, glossary and locale style guide.",
+ "instance": "3454343bfd47-leave-r2-ru",
+ "session": "3454343bfd47",
+ "locale": "ru",
+ "branch": "feat/team-bridge-sidebar-swap",
+ "base_head": "34b61d19316c825303e5c4e1b0c0717c32b0023d (files uncommitted in worktree; audited by blob hash)",
+ "date": "2026-11-04",
+ "status": "passed",
+ "namespace": "ui.teamBridge.leave",
+ "sha256": {
+  "ru": "6695715c35e659926c606b2539b3b7d7e1a1a85bcee4d1128f887d8bfe8c6aee",
+  "en": "e39e315b40d3fa766597b7d9d2845d98e9e2602e1a4716ae203e0977f6638ad7"
+ },
+ "inputs_sha256": {
+  "en_context (ui.teamBridge.leave.context.json)": "8f61f476d77c6428a67df9362910859e3dccce5d83516735601dd44d2aaf8560",
+  "glossary (local-operator/i18n/glossary.md)": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+  "style guide (local-operator/i18n/style-guides/ru.md)": "f20e1cafaf70578c17ce072c71725628808d228e4be5604329f8da30386f1fb5"
+ },
+ "scope": "ui.teamBridge.leave round 2: remediation of C3 (MINOR) from receipt 3454343bfd47-leave-ru; all 4 keys re-checked",
+ "verified": [
+  "target sha256 6695715c35e659926c606b2539b3b7d7e1a1a85bcee4d1128f887d8bfe8c6aee, en e39e315b40d3fa766597b7d9d2845d98e9e2602e1a4716ae203e0977f6638ad7 and en context 8f61f476… match the worktree",
+  "C3 applied exactly: 'в другом разделе' → 'в другом месте' in all four arms; reversing that substitution on the new file reproduces the round-1 audited bytes (sha256 a4eafcaaf8e35a398ab5532c89531f08f8097b673980338616e551d00661e8e2), so nothing else changed",
+  "key set equals en (4 keys); {shortcut}, {count} and # preserved; CLDR arms unchanged and formatted with intl-messageformat at 0,1,2,3,5,21,22,1000000 without error",
+  "NFC, no bidi/zero-width controls, no edge or double spaces",
+  "design-qa copy_scan.py over es/zh-CN/ru/hi leave files: 'scanned 4 files, 12 candidate strings; 0 findings'"
+ ],
+ "findings": [],
+ "previous_receipt": "3454343bfd47-leave-ru (target sha256 a4eafcaaf8e35a398ab5532c89531f08f8097b673980338616e551d00661e8e2)"
+}

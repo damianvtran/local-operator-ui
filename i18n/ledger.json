@@ -74062,6 +74062,216 @@
 					}
 				}
 			]
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.teamBridge.leave",
+			"source_sha256": "e39e315b40d3fa766597b7d9d2845d98e9e2602e1a4716ae203e0977f6638ad7",
+			"target_sha256": "030ca4a1c734038b11c856945b46159ef69842d48928544ea503e1d363b837e9",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-04"
+			},
+			"auditors": [
+				{
+					"agent": "copy-reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-04",
+					"result": "clean",
+					"instance": "3454343bfd47-leave-fr",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/3454343bfd47-leave-fr.json",
+					"receipt_sha256": "61ac41b0ac391db4a5bb09f8ba3e6ea353aaf07e2e80417264e029aa2474a6e5",
+					"scope": "New namespace ui.teamBridge.leave (4 keys): Team Bridge sidebar swap Back row"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "vi",
+			"namespace": "ui.teamBridge.leave",
+			"source_sha256": "e39e315b40d3fa766597b7d9d2845d98e9e2602e1a4716ae203e0977f6638ad7",
+			"target_sha256": "9573754303b5c01e4c4df5168d5402745368538b6bc43813ac7fc093f20fec74",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-04"
+			},
+			"auditors": [
+				{
+					"agent": "copy-reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-04",
+					"result": "clean",
+					"instance": "3454343bfd47-leave-vi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/3454343bfd47-leave-vi.json",
+					"receipt_sha256": "ac9634bd01d639ff0d1fd5596f95e429cef05cdb3bc6ffbb2b0b20fff27bde18",
+					"scope": "New namespace ui.teamBridge.leave (4 keys): Team Bridge sidebar swap Back row"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.teamBridge.leave",
+			"source_sha256": "e39e315b40d3fa766597b7d9d2845d98e9e2602e1a4716ae203e0977f6638ad7",
+			"target_sha256": "fb3af2917c89fdf67f12a84e9642db4e9844efea69c9be9dcf603a5861ec3cad",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-04"
+			},
+			"auditors": [
+				{
+					"agent": "copy-reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-04",
+					"result": "clean",
+					"instance": "3454343bfd47-leave-ur",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/3454343bfd47-leave-ur.json",
+					"receipt_sha256": "4f11359c0703c0edd938332d3ccf0632a04b8e8850d79bfe1d8579f6e5640b61",
+					"scope": "New namespace ui.teamBridge.leave (4 keys): Team Bridge sidebar swap Back row"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "es",
+			"namespace": "ui.teamBridge.leave",
+			"source_sha256": "e39e315b40d3fa766597b7d9d2845d98e9e2602e1a4716ae203e0977f6638ad7",
+			"target_sha256": "9536f4487eeaede86df77f11ba29bc65bca15c88e3338070aef70940ddb8ee6b",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-04"
+			},
+			"auditors": [
+				{
+					"agent": "copy-reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-04",
+					"result": "clean",
+					"instance": "3454343bfd47-leave-r2-es",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/3454343bfd47-leave-r2-es.json",
+					"receipt_sha256": "5cda2387217293d3c6fa03c85d415cc0def49a7857be04cdc78a0f14c543118a",
+					"scope": "New namespace ui.teamBridge.leave (4 keys), round 2 after C1-C4"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.teamBridge.leave",
+			"source_sha256": "e39e315b40d3fa766597b7d9d2845d98e9e2602e1a4716ae203e0977f6638ad7",
+			"target_sha256": "1d534d47bd97e6a1d5c5c2c8dd6482ffe831b1e2af8702780a097d2e285ef544",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-04"
+			},
+			"auditors": [
+				{
+					"agent": "copy-reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-04",
+					"result": "clean",
+					"instance": "3454343bfd47-leave-r2-zh-cn",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/3454343bfd47-leave-r2-zh-cn.json",
+					"receipt_sha256": "8b98160c3f1a011d01e8d1ab3ff55266c64666f16f5d9ddeed6a63f193e7aa47",
+					"scope": "New namespace ui.teamBridge.leave (4 keys), round 2 after C1-C4"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ru",
+			"namespace": "ui.teamBridge.leave",
+			"source_sha256": "e39e315b40d3fa766597b7d9d2845d98e9e2602e1a4716ae203e0977f6638ad7",
+			"target_sha256": "6695715c35e659926c606b2539b3b7d7e1a1a85bcee4d1128f887d8bfe8c6aee",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-04"
+			},
+			"auditors": [
+				{
+					"agent": "copy-reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-04",
+					"result": "clean",
+					"instance": "3454343bfd47-leave-r2-ru",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/3454343bfd47-leave-r2-ru.json",
+					"receipt_sha256": "fd0308883b2fb8e4851bad0746cea4c7be322319e87d190a026231988bc22c41",
+					"scope": "New namespace ui.teamBridge.leave (4 keys), round 2 after C1-C4"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.teamBridge.leave",
+			"source_sha256": "e39e315b40d3fa766597b7d9d2845d98e9e2602e1a4716ae203e0977f6638ad7",
+			"target_sha256": "f7622715b62ab9111366ac43ab533df6e139d868f0703cb197394967a0c13269",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-04"
+			},
+			"auditors": [
+				{
+					"agent": "copy-reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-04",
+					"result": "clean",
+					"instance": "3454343bfd47-leave-r2-hi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/3454343bfd47-leave-r2-hi.json",
+					"receipt_sha256": "f3da2f12f6afb629d9da851c0664036e164662c1c43267717ac0222741a9871f",
+					"scope": "New namespace ui.teamBridge.leave (4 keys), round 2 after C1-C4"
+				}
+			],
+			"status": "audited"
 		}
 	]
 }

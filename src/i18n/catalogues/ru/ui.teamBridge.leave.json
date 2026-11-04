@@ -1,0 +1,6 @@
+{
+	"ui.teamBridge.leave.back": "Назад",
+	"ui.teamBridge.leave.back_shortcut": "Назад ({shortcut})",
+	"ui.teamBridge.leave.name": "Выйти из Team Bridge",
+	"ui.teamBridge.leave.name_attention": "{count, plural, one {Выйти из Team Bridge, # элемент ждёт в другом месте} few {Выйти из Team Bridge, # элемента ждут в другом месте} many {Выйти из Team Bridge, # элементов ждут в другом месте} other {Выйти из Team Bridge, # элемента ждут в другом месте}}"
+}
