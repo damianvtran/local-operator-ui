@@ -766,8 +766,10 @@ export const modelUncertaintyCase = {
 			const popup = await cdp.evaluate(
 				`Boolean(document.querySelector('[role="listbox"][aria-label="Command arguments"], [role="listbox"][aria-label="Slash commands"]'))`,
 			);
-			if (popup) await pressEscape();
-			await enter();
+			if (popup) {
+				await pressEscape();
+				await enter();
+			}
 		}
 		await wait(
 			`[...document.querySelectorAll('[role="dialog"] [role="option"]')].some(e=>e.textContent.includes("mock-model-b"))`,
@@ -776,14 +778,14 @@ export const modelUncertaintyCase = {
 		await cdp.evaluate(
 			`/* model-case: mark-targets */ (()=>{const row=[...document.querySelectorAll('[role="dialog"] [role="option"]')].find(e=>e.textContent.includes('mock-model-b'));if(!row)throw Error('real B option absent');row.setAttribute('data-model-case-b','');const check=[...document.querySelectorAll('[role=dialog] [role=checkbox]')].find(e=>/default/i.test(e.parentElement?.textContent||''));if(!check)throw Error('real default checkbox absent');check.setAttribute('data-model-case-default','')})()`,
 		);
-		const geometry = async (label) => {
+		const geometry = async (label, record = true) => {
 			const value = await cdp.evaluate(
 				`/* model-case: geometry */ (()=>{const e=document.querySelector('[data-model-case-default]'),d=document.querySelector('[role=dialog]');if(!e||!d)throw Error('real model dialog missing');const r=e.getBoundingClientRect(),b=d.getBoundingClientRect();const description=(d.getAttribute('aria-describedby')||'').split(/\\s+/).map(id=>document.getElementById(id)?.textContent||'').join(' ');return{disabled:e.disabled===true||e.getAttribute('aria-disabled')==='true',checked:e.getAttribute('aria-checked'),current:description.match(/test\\/mock-model-[ab]/)?.[0]||null,box:{x:r.x,y:r.y,w:r.width,h:r.height},dialog:{w:b.width,h:b.height},neutral:/could not be confirmed/i.test(document.body.innerText)}})()`,
 			);
-			stamp(label, value);
+			if (record) stamp(`post-frame:${label}`, value);
 			return value;
 		};
-		const before = await geometry("before-geometry");
+		const before = await geometry("before-geometry", false);
 		assert.equal(
 			before.current,
 			"test/mock-model-a",
@@ -791,6 +793,7 @@ export const modelUncertaintyCase = {
 		);
 		assert.equal(before.checked, "false");
 		await frame("model-before");
+		stamp("captured-before-geometry", before);
 		const noWrites = async () => {
 			const observed = await trace();
 			assert.equal(
@@ -838,7 +841,9 @@ export const modelUncertaintyCase = {
 				receipt,
 				`released ${carrier} was dropped/unconsumed; no frame substitutes for completion`,
 			);
-			stamp(`consumer-${carrier}`, receipt);
+			// This receipt describes a transition AFTER the most recent frame,
+			// not authority already depicted by that frame.
+			stamp(`post-frame-transition:consumer-${carrier}`, receipt);
 		};
 		const fence = async (label) => {
 			await frame(label);
@@ -908,6 +913,12 @@ export const modelUncertaintyCase = {
 			);
 			await noWrites();
 		};
+		// Receipt completion precedes React commit. Only a DOM read can prove
+		// B is rendered and the checkbox is enabled; waitFor's facts are not it.
+		await wait(
+			`/* model-case: settled-B */ (()=>{const d=document.querySelector('[role="dialog"]'),e=document.querySelector('[data-model-case-default]');if(!d||!e)return false;const text=(d.getAttribute('aria-describedby')||'').split(/\\s+/).map(id=>document.getElementById(id)?.textContent||'').join(' ');return text.includes('test/mock-model-b')&&e.disabled!==true&&e.getAttribute('aria-disabled')!=='true'&&!/could not be confirmed/i.test(document.body.innerText)})()`,
+			`JSON.stringify({description:document.querySelector('[role="dialog"]')?.getAttribute('aria-describedby'),disabled:document.querySelector('[data-model-case-default]')?.getAttribute('aria-disabled')})`,
+		);
 		await assertB("fresh-consumed-geometry");
 		const pending = await backend.state();
 		await backend.control("configure", {
@@ -973,8 +984,14 @@ export const modelUncertaintyCase = {
 			2,
 			"late extra PATCH after saved frame",
 		);
-		stamp("real-model-traffic", afterFrame);
-		await backend.control("release");
+		stamp("post-frame:real-model-traffic", afterFrame);
+		// Catalogue responses are deliberately irrelevant to this acceptance
+		// cell. Keep them held until the app is drained; backend.close releases
+		// them for cleanup only, after no renderer can issue a late mutation.
+		stamp("post-frame:held-through-app-drain", {
+			carrier: "catalogue",
+			consumptionClaim: false,
+		});
 	},
 };
 

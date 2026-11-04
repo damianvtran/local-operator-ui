@@ -356,7 +356,7 @@ function oracleContext(mode = "happy") {
 		disabled,
 		checked: "false",
 		current,
-		neutral: phase !== "before",
+		neutral: phase === "unknown" || phase === "stale",
 		box: { x: 1, y: 1, w: 20, h: 20 },
 		dialog: { w: 400, h: 300 },
 	});
@@ -406,9 +406,13 @@ function oracleContext(mode = "happy") {
 				// popup-retry branch is exercised by its own test below.
 				if (source === `Boolean(document.querySelector('[role="dialog"]'))`) {
 					calls.push(["dialog-probe"]);
-					return mode !== "popup-first" || calls.some((x) => x[0] === "escape");
+					return (
+						!["popup-first", "no-popup"].includes(mode) ||
+						calls.some((x) => x[0] === "escape")
+					);
 				}
-				if (source.includes('aria-label="Slash commands"')) return true;
+				if (source.includes('aria-label="Slash commands"'))
+					return mode !== "no-popup";
 				if (
 					source.includes("model-case: mark-targets") ||
 					source.includes("model-case: mark-save")
@@ -431,6 +435,21 @@ function oracleContext(mode = "happy") {
 				`[...document.querySelectorAll('[role="dialog"] [role="option"]')].some(e=>e.textContent.includes("mock-model-b"))`
 			)
 				return;
+			if (predicate.includes("model-case: settled-B")) {
+				calls.push(["dom-settled"]);
+				if (mode === "delayed-dom") {
+					assert.equal(
+						current,
+						"test/mock-model-a",
+						"receipt must precede DOM commit",
+					);
+					current = "test/mock-model-b";
+					disabled = false;
+				}
+				assert.equal(current, "test/mock-model-b");
+				assert.equal(disabled, false);
+				return;
+			}
 			if (
 				predicate === "/could not be confirmed/i.test(document.body.innerText)"
 			) {
@@ -517,6 +536,8 @@ function oracleContext(mode = "happy") {
 		},
 		frame: async (label) => {
 			assert(allowedFrames.has(label), "unknown fake frame");
+			// Host only publishes an entry after asynchronous capture completes.
+			await Promise.resolve();
 			frames.push(label);
 			if (mode === "during-stale-frame" && label === "model-stale-sse")
 				disabled = false;
@@ -525,7 +546,10 @@ function oracleContext(mode = "happy") {
 			if (mode === "late-saved-frame" && label === "model-default-saved")
 				addPatch();
 		},
-		stamp: (label, value) => stamps.push({ label, value }),
+		stamp: (label, value) => {
+			assert(frames.length > 0, `stamp(${label}) with no frame captured yet`);
+			stamps.push({ label, value, frame: frames.at(-1) });
+		},
 		realBackend: {
 			sessionId: sid,
 			readTemplates: [],
@@ -548,7 +572,10 @@ function oracleContext(mode = "happy") {
 					"unknown fake backend op",
 				);
 				if (op === "configure") return;
-				if (!arg.indices) return;
+				if (!arg.indices) {
+					if (mode === "terminal-release-write") addPatch();
+					assert.fail("unobserved terminal carrier release after census");
+				}
 				for (const id of arg.indices) {
 					if (released.has(id)) continue;
 					released.add(id);
@@ -574,7 +601,9 @@ function oracleContext(mode = "happy") {
 								disposition: "live",
 							});
 						disabled = false;
-						if (mode !== "rendered-A") current = "test/mock-model-b";
+						if (mode !== "rendered-A" && mode !== "delayed-dom")
+							current = "test/mock-model-b";
+						if (mode === "delayed-dom") disabled = true;
 					} else assert.fail("unknown fake release id");
 				}
 			},
@@ -801,6 +830,55 @@ test("native drive opens /model from the textarea with Enter, retrying once past
 		esc >= 0 && esc < lastEnter,
 		"the popup is dismissed before the retry Enter",
 	);
+});
+
+test("native host frame/stamp contract attributes only completed frames", async () => {
+	const ctx = oracleContext();
+	assert.throws(() => ctx.stamp("premature", {}), /no frame captured yet/);
+	const pending = ctx.frame("model-before");
+	assert.throws(() => ctx.stamp("still-pending", {}), /no frame captured yet/);
+	await pending;
+	ctx.stamp("finished", {});
+	assert.equal(ctx.stamps.at(-1).frame, "model-before");
+	const real = oracleContext();
+	await modelUncertaintyCase.drive(real);
+	assert.equal(
+		real.stamps.find((x) => x.label === "captured-before-geometry").frame,
+		"model-before",
+	);
+	assert(
+		real.stamps.every(
+			(x) =>
+				x.frame &&
+				(x.label === "captured-before-geometry" ||
+					x.label.startsWith("post-frame")),
+		),
+		"transition facts must be labelled as after their frame",
+	);
+});
+
+test("receipt before DOM commit waits for rendered B before settled frames", async () => {
+	const ctx = oracleContext("delayed-dom");
+	await modelUncertaintyCase.drive(ctx);
+	assert(ctx.calls.some((x) => x[0] === "dom-settled"));
+});
+
+test("terminal carriers stay held through app drain, not released after the last mutation census", async () => {
+	const ctx = oracleContext("terminal-release-write");
+	await modelUncertaintyCase.drive(ctx);
+	assert(
+		ctx.stamps.some((x) => x.label === "post-frame:held-through-app-drain"),
+	);
+});
+
+test("no-dialog no-popup never sends an unobserved retry Enter", async () => {
+	const ctx = oracleContext("no-popup");
+	await modelUncertaintyCase.drive(ctx);
+	assert.equal(
+		ctx.calls.filter((x) => x[0] === "key" && x[1] === "Enter").length,
+		1,
+	);
+	assert(!ctx.calls.some((x) => x[0] === "escape"));
 });
 
 test("observer is ordinary-mode NOOP and armed receipts retain only bounded metadata", async () => {
