@@ -15,10 +15,11 @@ import type { ThemeDefinition } from "../palette-contract";
  *
  * `docs/branding.md` settles the precedence: on the *brand* the kit wins, on
  * *how a desktop app should behave* this repo wins, "because a tool read for
- * hours at arm's length is not a page read once". Exactly two things invoke
- * that second clause. No hue the kit owns has been retuned to buy contrast
- * headroom — a brand colour changes in the kit and is followed here, never
- * the other way round.
+ * hours at arm's length is not a page read once". Three things invoke that
+ * second clause, and the kit's `divergences.json` (vendored under
+ * `docs/design-kit/`) is the checked list of every sanctioned difference. No
+ * hue the kit owns has been retuned to buy contrast headroom — a brand colour
+ * changes in the kit and is followed here, never the other way round.
  *
  * 1. **The light ground ramp** is wider than the site's. A page renders one
  *    surface; this app stacks four, and the kit's near-white ladder made a
@@ -27,6 +28,13 @@ import type { ThemeDefinition } from "../palette-contract";
  * 2. **`info` is not a kit role at all.** The site has no fourth semantic, so
  *    there is nothing here to be faithful to; see the `info` comment in
  *    `localOperatorDark`.
+ * 3. **The dark ground ramp follows this app's dark band** (L* 9-15 since the
+ *    2026-11-03 darker-grounds pass, `docs/branding.md` § 2), not the site's
+ *    page ladder. The site's dark paper was never this canvas (L* 6.03 against
+ *    12.33 before the pass). The four washes the two shared byte-for-byte
+ *    (accent, success, warning, danger) moved with the grounds, and the kit
+ *    records that as its `dark-ground-ramp` divergence. Hues, inks and the
+ *    accent are unchanged.
  *
  * ## The warm neutral rule
  *
@@ -187,10 +195,12 @@ export const localOperatorDark: ThemeDefinition = {
 		accentAlt: "#B0A7F7",
 		/*
 		 * `accentAlt`'s faintest tint, mirroring the treatment the wash above
-		 * receives: `accentWash`'s own L* 14.27 and C* 11.65, with the hue moved to
-		 * `accentAlt`'s. Measured: ΔE00 21.01 from `accentWash` (the field floor is
-		 * 2.0), 7.19:1 for `accentAlt` on it, and 11.95 from the nearest ground it
-		 * is painted on.
+		 * receives: `accentWash`'s own L* and C*, with the hue moved to
+		 * `accentAlt`'s. Re-measured at the darker-grounds pass (2026-11-03), where
+		 * both washes moved down with the grounds: `accentWash` is now L* 12.45 /
+		 * C* 10.96 (it was 14.27 / 11.65) and this wash L* 11.74 / C* 12.42.
+		 * Measured: ΔE00 20.71 from `accentWash` (the field floor is 2.0), 7.63:1
+		 * for `accentAlt` on it, and 12.78 from the nearest ground (`sunken`).
 		 */
 		accentAltWash: "#1F1D2E",
 
