@@ -1,12 +1,11 @@
-import { Spinner } from "@shared/components/common/spinner";
 import { AttentionBadge } from "@shared/components/ui/attention-badge";
-import { Badge } from "@shared/components/ui/badge";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
 	DropdownMenuTrigger,
 } from "@shared/components/ui/dropdown-menu";
+import { Skeleton } from "@shared/components/ui/skeleton";
 import { formatRelativeTime, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
@@ -14,6 +13,7 @@ import {
 	Archive,
 	AtSign,
 	BellOff,
+	Eye,
 	Hash,
 	MoreHorizontal,
 	Pencil,
@@ -65,12 +65,34 @@ import {
  * recipient. A right-click is deliberately NOT bound: the desktop shell owns
  * the native context menu, and a second one would fight it.
  *
- * Geometry is the docked sidebar's (30px rows, 20px marks, 13px labels) and
- * every colour is a token role, so no section draws its own frame.
+ * GEOMETRY (visual refresh, 2026-11-04): 32px rows, 20px marks, 14px labels -
+ * Slack's and Discord's sidebar density, one step roomier than the 30/13 the
+ * docked chat sidebar uses, because this column is the page's whole navigation
+ * now that it replaces the app sidebar. Every colour is a token role, so no
+ * section draws its own frame.
+ *
+ * THREE ROW STATES, EACH WITH ITS OWN CHANNEL, so no two read alike:
+ *  - selected: `rowCurrent`'s ground step + the glyph in `text-accent` (C4);
+ *  - unread:   weight (`semibold`) + full `ink`; a count only when it asks for
+ *              attention (`Unread` below);
+ *  - read:     `ink-muted`, regular weight.
+ * Before this, selected and unread were both `font-medium text-ink`, so the only
+ * cue between "I am here" and "something new" was a 4 ΔE00 fill.
  */
 
 export const RAIL_ROW =
-	"group/row relative flex h-[30px] w-full items-center gap-2 rounded-md px-2 text-start text-[13px] transition-colors duration-fast ease-out-quart";
+	"group/row relative flex h-8 w-full items-center gap-2 rounded-md px-2 text-start text-[14px] transition-colors duration-fast ease-out-quart";
+
+/*
+ * THE SELECTED ROW'S GLYPH TURNS ACCENT (contract C4, docs/branding.md § 2).
+ * The Settings navigation's local exception, extended to this rail: the ground
+ * stays `rowCurrent`'s `rowSelected` (the one state vocabulary), and the leading
+ * mark - the kind glyph - takes the accent (`[&>svg:first-child]:text-accent`),
+ * which is what a glance down a 20-row rail finds; avatars carry their own ink.
+ * The three state strings are spelled out at each row rather than shared as
+ * constants, because the row-state sweep (`scripts/chat-sidebar-selection.test.mjs`)
+ * evaluates each row's own class expression and must see the literals.
+ */
 
 /**
  * THE ORGANIZATION SUBHEADER OF THE UNION RAIL.
@@ -90,10 +112,11 @@ export const RAIL_ROW =
  * than retuned here.
  *
  * `inset` is the parent's horizontal inset, and it is the reason this is not a
- * copied `px-3`: a `RailSection` already pads its children by `px-1` and its
- * header by `ps-2`, so a group header inside it must use `ps-2` (12px from the
- * rail edge, on the section header's axis) rather than `px-3` (16px, visibly
- * indented). A section that carries no inset of its own passes `bare`.
+ * copied `px-3`: a `RailSection` already pads its children by `px-2` and its
+ * header by `ps-2`, so a group header inside it must use `ps-2` (16px from the
+ * rail edge, on the section header's axis and every row's leading mark) rather
+ * than `px-3` (20px, visibly indented). A section that carries no inset of its
+ * own passes `bare`.
  *
  * A GROUP THAT IS NOT FIRST GETS 8px OF AIR ABOVE IT (design round 1, D2).
  * Measured from the frames, the header sat 29 device px below the previous
@@ -111,7 +134,7 @@ export const RAIL_ROW =
 export const RailGroupHeader: FC<{
 	id: string;
 	name: string;
-	/** "rail" = inside a RailSection (which carries px-1); "bare" = no inset. */
+	/** "rail" = inside a RailSection (which carries px-2); "bare" = no inset. */
 	inset?: "rail" | "bare";
 	/** The first group in a section sits directly under the section header. */
 	first?: boolean;
@@ -293,11 +316,14 @@ export const RailSection: FC<{
 }> = ({ id, title, children, empty, add, menu }) => {
 	useI18nLocale();
 	return (
-		<section aria-labelledby={id} className="px-1 pb-1">
-			<div className="group/section flex items-center pt-3 pe-1 pb-1 ps-2">
+		<section aria-labelledby={id} className="px-2 pb-1">
+			{/* SECTION HEADERS ARE CHROME (visual refresh, §3.2): 12px semibold
+			    `ink-dim`, tracked, with 16px of air above so each section reads as a
+			    group rather than as one long list. */}
+			<div className="group/section flex h-7 items-center pt-4 pe-1 pb-1 ps-2">
 				<h2
 					id={id}
-					className="min-w-0 flex-1 truncate font-medium text-meta text-ink-dim tracking-wide"
+					className="min-w-0 flex-1 truncate font-semibold text-meta text-ink-dim tracking-wide"
 				>
 					{title}
 				</h2>
@@ -345,12 +371,18 @@ export const RailSection: FC<{
 					<button
 						type="button"
 						onClick={empty.onCreate}
-						className="w-full rounded-md px-2 py-1 text-start text-[12px] text-ink-dim leading-snug transition-colors duration-fast ease-out-quart hover:bg-row-hover hover:text-ink-muted"
+						title={empty.text}
+						className="w-full truncate rounded-md px-2 py-1 text-start text-meta text-ink-dim leading-snug transition-colors duration-fast ease-out-quart hover:bg-row-hover hover:text-ink-muted"
 					>
 						{empty.text}
 					</button>
 				) : (
-					<p className="px-2 py-1 text-[12px] text-ink-dim leading-snug">
+					/* One line, truncated with `title` (SPEC §3.2; design round 1, D4):
+					   the wrapped sentence made the empty sections the tallest rows. */
+					<p
+						title={empty.text}
+						className="truncate px-2 py-1 text-meta text-ink-dim leading-snug"
+					>
 						{empty.text}
 					</p>
 				)
@@ -368,7 +400,7 @@ export const RailSection: FC<{
  */
 export const ConversationKindIcon: FC<{ kind: string }> = ({ kind }) => {
 	const Icon = kind === "group" ? Users : kind === "dm" ? AtSign : Hash;
-	return <Icon size={15} aria-hidden="true" className="shrink-0" />;
+	return <Icon size={16} aria-hidden="true" className="shrink-0" />;
 };
 
 /** A channel or group row (and an orphaned DM under Direct messages). */
@@ -423,10 +455,12 @@ export const ConversationRailRow: FC<{
 					RAIL_ROW,
 					organizationName && "h-auto min-h-[38px] py-1",
 					selected
-						? rowCurrent
+						? cn(rowCurrent, "[&>svg:first-child]:text-accent")
 						: unread > 0
-							? "font-medium text-ink hover:bg-row-hover"
-							: "text-ink-muted hover:bg-row-hover hover:text-ink",
+							? "font-semibold text-ink hover:bg-row-hover"
+							: preview
+								? "text-ink-dim hover:bg-row-hover hover:text-ink"
+								: "text-ink-muted hover:bg-row-hover hover:text-ink",
 				)}
 			>
 				<ConversationKindIcon kind={conversation.kind} />
@@ -439,9 +473,17 @@ export const ConversationRailRow: FC<{
 					)}
 				</span>
 				{preview && (
-					<Badge variant="attentionQuiet" className="shrink-0">
-						{t("ui.teamBridge.preview.chip")}
-					</Badge>
+					/* A QUIET MARK, NOT A SECOND PILL (visual refresh D5). The chip sat
+					   beside the unread badge - two pills of one size meaning different
+					   things. The name already dims (`text-ink-dim` below) and the
+					   channel header carries the Join action; the eye glyph says why. */
+					<span
+						title={t("ui.teamBridge.preview.chip")}
+						className="shrink-0 text-ink-dim"
+					>
+						<Eye size={14} aria-hidden="true" />
+						<span className="sr-only">{t("ui.teamBridge.preview.chip")}</span>
+					</span>
 				)}
 				{showsMutedGlyph(conversation) && (
 					<MuteGlyph yieldsToMenu={Boolean(onArchive)} />
@@ -578,7 +620,7 @@ export const PersonRailRow: FC<{
 			label={label}
 			size={20}
 			selected={selected}
-			className="rounded-[5px] text-[10px]"
+			className="text-[10px]"
 		/>
 	);
 
@@ -645,7 +687,7 @@ export const PersonRailRow: FC<{
 						 */
 						className={cn(
 							RAIL_ROW,
-							"h-auto min-h-[30px] cursor-default py-1 text-ink-muted",
+							"h-auto min-h-8 cursor-default py-1 text-ink-muted",
 						)}
 					>
 						<span className="opacity-60">{avatar}</span>
@@ -686,9 +728,9 @@ export const PersonRailRow: FC<{
 					className={cn(
 						RAIL_ROW,
 						selected
-							? rowCurrent
+							? cn(rowCurrent, "[&>svg:first-child]:text-accent")
 							: unread > 0
-								? "font-medium text-ink hover:bg-row-hover"
+								? "font-semibold text-ink hover:bg-row-hover"
 								: "text-ink-muted hover:bg-row-hover hover:text-ink",
 					)}
 				>
@@ -773,9 +815,9 @@ export const ChiefRailRow: FC<{
 					className={cn(
 						RAIL_ROW,
 						selected
-							? rowCurrent
+							? cn(rowCurrent, "[&>svg:first-child]:text-accent")
 							: unread > 0
-								? "font-medium text-ink hover:bg-row-hover"
+								? "font-semibold text-ink hover:bg-row-hover"
 								: "text-ink-muted hover:bg-row-hover hover:text-ink",
 					)}
 				>
@@ -786,7 +828,7 @@ export const ChiefRailRow: FC<{
 						label={label}
 						size={20}
 						selected={selected}
-						className="rounded-[5px] text-accent"
+						className="text-accent"
 					/>
 					<span className="min-w-0 flex-1 truncate">{label}</span>
 					{chief.paused && (
@@ -832,11 +874,29 @@ export const ChiefRailRow: FC<{
 	);
 };
 
-/** The rail's loading line for a section whose read is in flight. */
+/**
+ * The rail's loading rows for a section whose read is in flight.
+ *
+ * SKELETON BARS, NOT A SPINNER (visual refresh, §3.2 States). A hollow spinner
+ * per section read as a broken icon in an empty rail; bars at the rows' own
+ * pitch say "rows are coming here" and keep the rail's shape, so nothing jumps
+ * when the read lands. The widths vary so the column does not read as a table.
+ * The label stays as the status a screen reader hears.
+ */
+const SKELETON_WIDTHS = ["72%", "58%", "80%", "64%"] as const;
 export const RailLoading: FC<{ label: string }> = ({ label }) => (
-	<div className="flex h-[30px] items-center px-2">
-		<Spinner size="sm" label={label} />
-	</div>
+	<output aria-label={label} className="block">
+		{SKELETON_WIDTHS.map((width) => (
+			<div
+				key={width}
+				aria-hidden="true"
+				className="flex h-8 items-center gap-2 px-2"
+			>
+				<Skeleton className="size-4 shrink-0 rounded-xs" />
+				<Skeleton className="h-3 rounded-xs" style={{ width }} />
+			</div>
+		))}
+	</output>
 );
 
 /** Whether a target names this row (the rail's one selection rule). */

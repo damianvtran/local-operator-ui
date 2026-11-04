@@ -183,7 +183,14 @@ export const rosePine: ThemeDefinition = {
 		 * 2.0), 6.18:1 for `accentAlt` on it, and 2.99 from the nearest ground it
 		 * is painted on.
 		 */
-		accentAltWash: "#2a2431",
+		/*
+		 * LIFTED #2a2431 -> #362F3D (L* 15.36 -> 20.65, hue and chroma held) for
+		 * Team Bridge's person plates (visual refresh, contract C2; design round 1,
+		 * D1): the plate is borderless, so its fill must clear ΔE00 3.0 off every
+		 * ground it sits on. It measured 2.27; it now measures 3.20 at worst
+		 * (`rowHover`), with `accentAlt` 6.15:1 on it.
+		 */
+		accentAltWash: "#362F3D",
 
 		// pine #31748f measures 3.38:1 on base and 3.16:1 on surface — the only
 		// canonical accent under the floor on this ground. Lifted on-hue.

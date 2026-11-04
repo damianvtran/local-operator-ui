@@ -20,16 +20,18 @@ const THREAD_ROW_HEIGHT = "h-8";
 
 /*
  * THE FACEPILE RING IS THE ROW'S OWN FILL, whatever that is right now (design
- * round 1, D1). The row is transparent at rest, so its fill is the HOST's
- * ground: the channel column's `surface` by default, the thread pane's
- * `canvas` (it sets `--thread-row-host`), the parent message row's `row-hover`
- * while the pointer is over the message, and the row's own `sunken` hover.
- * A hard-coded `ring-surface` drew a halo on every other ground. The combined
+ * round 1, D1). The row is transparent at rest, so its fill is whatever is
+ * under it. Since the visual refresh (#1668) that is: the channel timeline's
+ * `canvas` (the default here), whose message rows hover to an inset `surface`
+ * tint; and the thread pane's `surface`, whose compact rows hover to
+ * `elevated` - the pane hands both through `--thread-row-host` and
+ * `--thread-row-message-hover`. The row's own hover is `sunken` everywhere.
+ * A hard-coded ring drew a halo on every other ground. The combined
  * `group-hover/message:hover:` variant outranks the bare `group-hover` one on
  * specificity, so the row's own hover always wins when both match.
  */
 const RING_FOLLOWS_FILL =
-	"[--thread-row-ring:var(--thread-row-host,var(--color-surface))] group-hover/message:[--thread-row-ring:var(--color-row-hover)] hover:[--thread-row-ring:var(--color-sunken)] group-hover/message:hover:[--thread-row-ring:var(--color-sunken)]";
+	"[--thread-row-ring:var(--thread-row-host,var(--color-canvas))] group-hover/message:[--thread-row-ring:var(--thread-row-message-hover,var(--color-surface))] hover:[--thread-row-ring:var(--color-sunken)] group-hover/message:hover:[--thread-row-ring:var(--color-sunken)]";
 
 const PLATE_LAYER = ["z-[3]", "z-[2]", "z-[1]"];
 
@@ -57,13 +59,12 @@ const FACE_PX = 20;
  * and the chevron is `ml-auto`, so neither moves the height.
  *
  * TRANSPARENT AT REST, `sunken` ON HOVER (design round 1, D1/D2). The row takes
- * its host's ground — the channel column is `surface`, the thread pane
- * `canvas`, and under the pointer the parent message row's `row-hover` — the
- * way Slack's bar has no fill until aimed at. A rest fill of `surface` was
- * ΔE00 0 on the channel column, so it read as a fill only in the pane. Hover
- * is `sunken`, the step the reaction pills already take against the same
- * parents: `elevated` equals `row-hover` in arcade. Both pairs are rows in
- * `scripts/contrast-contract.mjs`. No border; focus is the global
+ * its host's ground - since #1668 the channel timeline is `canvas` and the
+ * thread pane `surface`, and under the pointer the parent message row's inset
+ * tint (`surface` / `elevated`) - the way Slack's bar has no fill until aimed
+ * at. Hover is `sunken`, a step DOWN from every one of those grounds, so it
+ * never coincides with the parent's hover tint (a step up). Every pair is a
+ * row in `scripts/contrast-contract.mjs`. No border; focus is the global
  * `:focus-visible` outline, never a box-shadow.
  *
  * UNREAD IS FEATURE-DETECTED. `thread_unread_count` is absent on hubs before

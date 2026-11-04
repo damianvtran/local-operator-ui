@@ -509,3 +509,101 @@ test("the real list puts arrival only on the newly arrived row", async () => {
 		await teardown();
 	}
 });
+
+/*
+ * THE UNREAD DIVIDER (visual refresh D10; agent review round 1 on #1668, M1
+ * and m1). The hub's timeline page arrives NEWEST-FIRST and only the list's
+ * own `threadItems` sorts it, so the divider has to be placed by seq, not by
+ * array position: it sat above the last of three unread rows before. The
+ * first unread row also restarts its sender's run, so the row under "N new
+ * messages" always names its author.
+ */
+test("the unread divider sits above the OLDEST unseen row, from a newest-first page", async () => {
+	const { container, renderElement, teardown } = domList();
+	const at = (minute) => `2026-10-26T10:0${minute}:00Z`;
+	const me = { account_id: "me", kind: "human", display_label: "Me" };
+	// Seq 1 is the reader's own; 2-4 are Ada's, one run inside five minutes.
+	const page = [
+		message("m4", 4, { created_at: at(3) }),
+		message("m3", 3, { created_at: at(2) }),
+		message("m2", 2, { created_at: at(1) }),
+		message("m1", 1, { created_at: at(0), sender: me }),
+	];
+	try {
+		for (const messages of [page, [...page].reverse()]) {
+			await renderElement(
+				createElement(TeamBridgeMessageList, {
+					messages,
+					labelFor: (sender) => sender.display_label,
+					arrivalKey: key,
+					accountId: "me",
+					unreadAfterSeq: 1,
+				}),
+			);
+			const order = [
+				...container.querySelectorAll(
+					"[data-message-id], [data-unread-divider]",
+				),
+			].map((node) => node.dataset.messageId ?? "DIVIDER");
+			assert.deepEqual(order, ["m1", "DIVIDER", "m2", "m3", "m4"]);
+			assert.match(
+				container.querySelector("[data-unread-divider]").textContent,
+				/3/,
+			);
+		}
+		// m1: three Ada rows in one run, unread after seq 1, so the divider
+		// falls INSIDE her run.
+		const run = [
+			message("a3", 3, { created_at: at(2) }),
+			message("a2", 2, { created_at: at(1) }),
+			message("a1", 1, { created_at: at(0) }),
+		];
+		await renderElement(
+			createElement(TeamBridgeMessageList, {
+				messages: run,
+				labelFor: (sender) => sender.display_label,
+				arrivalKey: key,
+				accountId: "me",
+				unreadAfterSeq: 1,
+			}),
+		);
+		const named = (id) =>
+			container
+				.querySelector(`[data-message-id="${id}"]`)
+				.textContent.includes("Ada");
+		assert.equal(named("a1"), true);
+		assert.equal(named("a2"), true, "the first unread row restarts the run");
+		assert.equal(named("a3"), false, "the run continues after it");
+	} finally {
+		await teardown();
+	}
+});
+
+/*
+ * ONE STICKY DAY PILL AT A TIME (QA round 1 on #1668, Q2): each day's pill
+ * lives in its own day group, so its containing block ends with its day and a
+ * later pill never stacks on an earlier one.
+ */
+test("each day's sticky pill is scoped to its own day group", async () => {
+	const { container, render, teardown } = domList();
+	try {
+		await render([
+			message("d1", 1, { created_at: "2026-10-24T10:00:00Z" }),
+			message("d2", 2, { created_at: "2026-10-25T10:00:00Z" }),
+			message("d3", 3, { created_at: "2026-10-26T10:00:00Z" }),
+		]);
+		const groups = [...container.querySelectorAll("[data-day-group]")];
+		assert.equal(groups.length, 3);
+		for (const [index, group] of groups.entries()) {
+			assert.equal(group.querySelectorAll("[data-day-divider]").length, 1);
+			assert.deepEqual(
+				[...group.querySelectorAll("[data-message-id]")].map(
+					(row) => row.dataset.messageId,
+				),
+				[`d${index + 1}`],
+			);
+		}
+	} finally {
+		await teardown();
+	}
+});
