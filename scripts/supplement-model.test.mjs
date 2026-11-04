@@ -978,3 +978,38 @@ test("a live done beat without withheld keeps the durable row's notice (R1 probe
 	assert.deepEqual(replaced.withheld, [{ name: "y.key", reason: "sensitive" }]);
 	assert.equal(replaced.withheldMore, 1);
 });
+
+test("a live decided beat states the withheld notice; running keeps it (R7)", () => {
+	const decided = model.supplementPatchFromEvent({
+		anchor: "a1",
+		job: "j",
+		version: 1,
+		state: "decided",
+		files: [],
+		withheld: [{ name: "x.key", reason: "outside" }],
+		withheld_more: 2,
+	});
+	assert.deepEqual(decided.withheld, [{ name: "x.key", reason: "outside" }]);
+	assert.equal(decided.withheldMore, 2);
+	const held = model.mergeSupplement(null, decided, 1);
+	// A running beat states neither files nor the notice: both stay.
+	const running = model.supplementPatchFromEvent({
+		anchor: "a1",
+		job: "j",
+		version: 1,
+		state: "running",
+	});
+	assert.equal("withheld" in running, false);
+	const after = model.mergeSupplement(held, running, 2);
+	assert.equal(after.withheld, held.withheld);
+	assert.equal(after.withheldMore, 2);
+	// A decided beat without the keys does not clear it either (R1's rule).
+	const bare = model.supplementPatchFromEvent({
+		anchor: "a1",
+		job: "j",
+		version: 1,
+		state: "decided",
+		files: [],
+	});
+	assert.equal("withheld" in bare, false);
+});

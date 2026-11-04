@@ -1108,22 +1108,26 @@ export function supplementPatchFromEvent(
 		// it on the same `done` beat (and on the durable row's `details`), and a
 		// beat that does not state it leaves whatever the row already held.
 		...(state === "decided" || state === "done"
-			? { files: filesFrom(event.files) }
+			? {
+					files: filesFrom(event.files),
+					/*
+					 * The withheld notice rides `files`' states, not `components`':
+					 * the producer (core #3392) states it on `decided` as well as
+					 * `done`, because the refusals are known when the files are
+					 * (review round 2, R7). ONLY WHEN STATED (round 1, R1): a beat
+					 * that does not carry the keys must not restate "nothing
+					 * withheld" over the row's list; the merge keeps an undefined
+					 * field.
+					 */
+					...("withheld" in event || "withheld_more" in event
+						? withheldFrom(event.withheld, event.withheld_more)
+						: {}),
+				}
 			: {}),
 		...(state === "done"
 			? {
 					components: componentsFrom(event.components),
 					sounds: soundsFrom(event.sounds),
-					/*
-					 * ONLY WHEN STATED (agent review round 1, R1): a done beat from a
-					 * producer that does not carry the notice must not restate
-					 * "nothing withheld" over the durable row's list. The merge keeps
-					 * a field the patch leaves undefined, the rule `files` and
-					 * `components` already ride.
-					 */
-					...("withheld" in event || "withheld_more" in event
-						? withheldFrom(event.withheld, event.withheld_more)
-						: {}),
 				}
 			: {}),
 		...(typeof event.error === "string" && event.error
