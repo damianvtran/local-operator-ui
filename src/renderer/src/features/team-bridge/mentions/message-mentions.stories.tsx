@@ -2,8 +2,9 @@ import { useDocumentDirection } from "@shared/i18n/use-document-direction";
 import type { Meta, StoryObj } from "@storybook/react";
 import { TeamBridgeMessageList } from "../team-bridge-message-list";
 import { MentionSourceContext } from "./mention-context";
+import { TeamBridgeMentionProvider } from "./mention-source";
 
-/** Authoritative account IDs select viewer ink; fallback names never do. */
+/** Authoritative account IDs select viewer ink; a fallback name only when unique to the reader. */
 const source = {
 	conversationId: "bcv_story",
 	candidates: [
@@ -87,6 +88,93 @@ function Harness() {
 		</MentionSourceContext.Provider>
 	);
 }
+
+/*
+ * THE OPERATOR'S CASE (2026-11-03), through the REAL provider rather than a
+ * hand-built context: Sherman's message carries no `mentions` key (most hub
+ * messages do not), so the reader's mention is found by the name fallback and
+ * must still take the viewer ink, while another person keeps the accent.
+ */
+const member = (account_id: string, display_label: string) => ({
+	account_id,
+	kind: "human" as const,
+	display_label,
+	role: "member" as const,
+	state: "active" as const,
+});
+const person = (account_id: string, display_label: string) => ({
+	account_id,
+	display_label,
+	role: "member",
+	bridge_enabled: true,
+	bridge_state: "active" as const,
+});
+const general = {
+	id: "bcv_general",
+	tenant_id: "tnt_story",
+	kind: "channel" as const,
+	name: "general",
+	visibility: "tenant" as const,
+	agent_capable: false,
+	status: "open" as const,
+	created_by: "acct_sher",
+	last_message_at: "2026-11-02T16:17:44Z",
+	latest_seq: 2,
+	last_read_seq: 2,
+	unread_count: 0,
+	muted: false,
+	members: [
+		member("acct_me", "Damian Tran"),
+		member("acct_sher", "Sherman Tsui"),
+		member("acct_ben", "Ben Tran"),
+	],
+};
+
+function ProviderHarness() {
+	useDocumentDirection();
+	return (
+		<TeamBridgeMentionProvider
+			conversation={general}
+			people={[
+				person("acct_me", "Damian Tran"),
+				person("acct_sher", "Sherman Tsui"),
+				person("acct_ben", "Ben Tran"),
+			]}
+			selfAccountId="acct_me"
+			sendMentions
+		>
+			<div className="w-[720px] bg-canvas p-4">
+				<TeamBridgeMessageList
+					messages={[
+						{
+							id: "m1",
+							conversation_id: "bcv_general",
+							seq: 1,
+							sender: {
+								account_id: "acct_sher",
+								kind: "human",
+								display_label: "Sherman Tsui",
+							},
+							body: "@Damian Tran Yeah, I've been noticing that too. @Ben Tran can you take a look at the theming?",
+							origin: "human",
+							created_at: "2026-11-02T16:17:44Z",
+						},
+					]}
+					labelFor={(sender) => sender.display_label}
+				/>
+			</div>
+		</TeamBridgeMentionProvider>
+	);
+}
+
+export const NoWireMentionsLight: StoryObj<typeof ProviderHarness> = {
+	render: () => <ProviderHarness />,
+	args: { theme: "localOperatorLight" } as object,
+};
+export const NoWireMentionsDark: StoryObj<typeof ProviderHarness> = {
+	render: () => <ProviderHarness />,
+	args: { theme: "localOperatorDark" } as object,
+};
 
 const meta = {
 	title: "Team Bridge/Message mentions",

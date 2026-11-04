@@ -764,7 +764,15 @@ test("R1: shipped provider derives ownership from IDs even before the directory 
 				),
 			),
 		);
-		assert.equal(source.self, null);
+		// Identity comes from the authenticated account id, not the roster: with
+		// no directory or member row the reader is still known, only unlabeled.
+		// An empty label never matches a mention, and it is never unique, so the
+		// name fallback cannot select the viewer from it.
+		assert.deepEqual(source.self, {
+			accountId: defaultOwner.accountId,
+			label: "",
+			labelUnique: false,
+		});
 		assert.deepEqual(source.draftOwner, defaultOwner);
 	} finally {
 		await m.act(async () => root.unmount());

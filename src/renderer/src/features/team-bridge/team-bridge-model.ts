@@ -1707,7 +1707,7 @@ function hubTruncatedPerson(personName: string): string {
 }
 
 /** Case-, space- and accent-insensitive form for "is this the same name". */
-function nameKey(name: string): string {
+export function nameKey(name: string): string {
 	return name.normalize("NFKC").trim().replace(/\s+/g, " ").toLocaleLowerCase();
 }
 

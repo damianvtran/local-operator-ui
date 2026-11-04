@@ -477,3 +477,132 @@ test("viewer identity requires an authoritative account id for humans and agents
 	});
 	assert.ok(fallback.runs.every((run) => run.viewer === false));
 });
+
+/*
+ * THE VIEWER IN THE FALLBACK (operator report 2026-11-03). Most messages carry
+ * no `mentions[]`, so the name path must still mark the reader's own mention,
+ * but only through the label the provider resolved from the authenticated
+ * account (`labelUnique`), and never when anyone else could own the name.
+ */
+const uniqueSelf = { ...self, labelUnique: true };
+
+test("viewer: a wire mentions[] row for the reader is the viewer treatment (a)", () => {
+	const spec = m.messageMentionSpec({
+		body: "@Damian Tran ping",
+		mentions: [{ kind: "human", account_id: "a_me" }],
+		candidates: roster,
+		self: uniqueSelf,
+	});
+	assert.deepEqual(spec.runs, [{ label: "Damian Tran", viewer: true }]);
+});
+
+test("viewer: the fallback marks the reader's own unique label, others stay other (b, d)", () => {
+	const spec = m.messageMentionSpec({
+		body: "@Damian Tran and @Ben Tran, see this",
+		mentions: undefined,
+		candidates: roster,
+		self: uniqueSelf,
+	});
+	assert.equal(spec.source, "fallback");
+	assert.deepEqual(
+		spec.runs.map((r) => [r.label, r.viewer]),
+		[
+			["Ben Tran", false],
+			["Ben", false],
+			["Damian Tran", true],
+		],
+	);
+});
+
+test("viewer: the fallback never marks a label someone else also carries (c)", () => {
+	// The provider found no namesake, but a candidate of this conversation has one.
+	const namesakeCandidate = m.messageMentionSpec({
+		body: "@Damian Tran ping",
+		mentions: undefined,
+		candidates: [
+			...roster,
+			{ kind: "human", accountId: "a_twin", label: "Damian Tran" },
+		],
+		self: uniqueSelf,
+	});
+	assert.ok(namesakeCandidate.runs.every((run) => run.viewer === false));
+	// An agent whose composed label equals the reader's is still not the reader.
+	const namesakeAgent = m.messageMentionSpec({
+		body: "@Damian Tran ping",
+		mentions: undefined,
+		candidates: [
+			...roster,
+			{ kind: "agent", accountId: "a_twin", label: "Damian Tran" },
+		],
+		self: uniqueSelf,
+	});
+	assert.ok(namesakeAgent.runs.every((run) => run.viewer === false));
+	// The provider saw a namesake in the directory or the member list.
+	const notUnique = m.messageMentionSpec({
+		body: "@Damian Tran ping",
+		mentions: undefined,
+		candidates: roster,
+		self: { ...self, labelUnique: false },
+	});
+	assert.equal(notUnique.runs[0].viewer, false);
+});
+
+test("viewer: candidate namesakes compare by name key; the reader's own rows never block (M1, M2)", () => {
+	for (const twin of ["damian tran", "Damian  Tran"]) {
+		const spec = m.messageMentionSpec({
+			body: "@Damian Tran ping",
+			mentions: undefined,
+			candidates: [
+				...roster,
+				{ kind: "human", accountId: "a_twin", label: twin },
+			],
+			self: uniqueSelf,
+		});
+		assert.deepEqual(spec.runs, [{ label: "Damian Tran", viewer: false }]);
+	}
+	const ownAgent = m.messageMentionSpec({
+		body: "@Damian Tran ping",
+		mentions: undefined,
+		candidates: [
+			...roster,
+			{ kind: "agent", accountId: self.accountId, label: "Damian Tran" },
+		],
+		self: uniqueSelf,
+	});
+	assert.ok(ownAgent.runs.some((r) => r.viewer === true));
+});
+
+test("viewer: the reader's own agent follows the wire-id rule only (f)", () => {
+	const candidates = [
+		...roster,
+		{ kind: "agent", accountId: self.accountId, label: "Aida (Damian Tran)" },
+	];
+	const wire = m.messageMentionSpec({
+		body: "@Aida (Damian Tran) go",
+		mentions: [{ kind: "agent", account_id: self.accountId }],
+		candidates,
+		self: uniqueSelf,
+	});
+	assert.deepEqual(wire.runs, [{ label: "Aida (Damian Tran)", viewer: true }]);
+	const fallback = m.messageMentionSpec({
+		body: "@Aida (Damian Tran) go",
+		mentions: undefined,
+		candidates,
+		self: uniqueSelf,
+	});
+	assert.deepEqual(fallback.runs, [
+		{ label: "Aida (Damian Tran)", viewer: false },
+	]);
+});
+
+test("viewer: an identity with no label highlights nothing on the wire path", () => {
+	assert.equal(
+		m.messageMentionSpec({
+			body: "@ hello",
+			mentions: [{ kind: "human", account_id: "a_me" }],
+			candidates: [],
+			self: { accountId: "a_me", label: "", labelUnique: false },
+		}),
+		null,
+	);
+});
