@@ -882,6 +882,150 @@ test("message bodies highlight mentions; the reader's own is the stronger token"
 	);
 });
 
+/*
+ * THE READER'S MENTION THROUGH THE REAL PROVIDER (operator report 2026-11-03:
+ * "@Damian Tran" in Sherman's message rendered in the "other" accent). The
+ * provider, not a hand-built context value, decides `self`, so these drive
+ * `TeamBridgeMentionProvider` with directory/member shapes the hub returns.
+ */
+const viewerConversation = (members) => ({
+	id: CONVERSATION,
+	tenant_id: "tnt_viewer",
+	kind: "channel",
+	name: "general",
+	members,
+	visibility: "public",
+	agent_capable: false,
+	status: "open",
+	created_by: "acct_sher",
+	latest_seq: 1,
+	last_read_seq: 1,
+	unread_count: 0,
+	muted: false,
+	last_message_at: null,
+});
+const participant = (account_id, display_label) => ({
+	account_id,
+	kind: "human",
+	display_label,
+	role: "member",
+	state: "active",
+});
+const directoryRow = (account_id, display_label) => ({
+	account_id,
+	display_label,
+	email: `${account_id}@example.invalid`,
+	bridge_enabled: true,
+	bridge_state: "active",
+});
+const renderThroughProvider = ({ people, members, message }) => {
+	const html = mod.renderToStaticMarkup(
+		mod.createElement(
+			mod.TeamBridgeMentionProvider,
+			{
+				conversation: viewerConversation(members),
+				people,
+				selfAccountId: "acct_self",
+				sendMentions: true,
+			},
+			mod.createElement(mod.TeamBridgeMessageList, {
+				messages: [
+					{
+						...rootMessage,
+						id: "bcmsg_viewer",
+						sender: {
+							account_id: "acct_sher",
+							kind: "human",
+							display_label: "Sherman Tsui",
+						},
+						...message,
+					},
+				],
+				labelFor: (s) => s.display_label,
+			}),
+		),
+	);
+	const doc = new JSDOM(html).window.document;
+	return Object.fromEntries(
+		[...doc.querySelectorAll("[data-mention]")].map((el) => [
+			el.textContent,
+			{ kind: el.getAttribute("data-mention"), className: el.className },
+		]),
+	);
+};
+const VIEWER_CLASS =
+	"team-bridge-mention rounded-sm px-0.5 font-medium bg-warning-wash text-warning";
+const OTHER_CLASS =
+	"team-bridge-mention rounded-sm px-0.5 font-medium bg-accent-wash text-accent";
+const members = [
+	participant("acct_self", "Damian Tran"),
+	participant("acct_sher", "Sherman Tsui"),
+	participant("acct_ben", "Ben Tran"),
+];
+const directory = [
+	directoryRow("acct_self", "Damian Tran"),
+	directoryRow("acct_sher", "Sherman Tsui"),
+	directoryRow("acct_ben", "Ben Tran"),
+];
+
+test("rendered: wire mentions pin viewer and other even with no self row in the directory", () => {
+	const marks = renderThroughProvider({
+		// The regression's shape: the roster lacks the reader, the account is known.
+		people: directory.filter((row) => row.account_id !== "acct_self"),
+		members,
+		message: {
+			body: "@Damian Tran and @Ben Tran, take a look",
+			mentions: [
+				{ kind: "human", account_id: "acct_self" },
+				{ kind: "human", account_id: "acct_ben" },
+			],
+		},
+	});
+	assert.deepEqual(marks, {
+		"@Damian Tran": { kind: "viewer", className: VIEWER_CLASS },
+		"@Ben Tran": { kind: "other", className: OTHER_CLASS },
+	});
+});
+
+test("rendered: a message without mentions[] marks the reader by their own unique label", () => {
+	// Sherman's real message shape: no `mentions` key at all.
+	const marks = renderThroughProvider({
+		people: directory,
+		members,
+		message: { body: "@Damian Tran Yeah, and @Ben Tran too" },
+	});
+	assert.deepEqual(marks, {
+		"@Damian Tran": { kind: "viewer", className: VIEWER_CLASS },
+		"@Ben Tran": { kind: "other", className: OTHER_CLASS },
+	});
+});
+
+test("rendered: a namesake in the directory or the room keeps the fallback 'other'", () => {
+	for (const [people, room] of [
+		[[...directory, directoryRow("acct_twin", "Damian Tran")], members],
+		[directory, [...members, participant("acct_twin", "Damian Tran")]],
+	]) {
+		const marks = renderThroughProvider({
+			people,
+			members: room,
+			message: { body: "@Damian Tran ping" },
+		});
+		assert.deepEqual(marks, {
+			"@Damian Tran": { kind: "other", className: OTHER_CLASS },
+		});
+	}
+	// The wire still names the reader by account, namesake or not.
+	const wire = renderThroughProvider({
+		people: [...directory, directoryRow("acct_twin", "Damian Tran")],
+		members,
+		message: {
+			body: "@Damian Tran ping",
+			mentions: [{ kind: "human", account_id: "acct_self" }],
+		},
+	});
+	assert.equal(wire["@Damian Tran"].kind, "viewer");
+});
+
 /* A first send changes a person draft into an open conversation. Context is
  * inert again when leaving it, but the provider must not remount the timeline
  * merely because mention availability changed (the optimistic ninth case). */

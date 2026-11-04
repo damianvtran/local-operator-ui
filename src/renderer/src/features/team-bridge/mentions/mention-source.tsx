@@ -20,6 +20,49 @@ const chiefLabels = (): ChiefLabels => ({
 });
 
 /**
+ * The reader as message highlighting sees them.
+ *
+ * IDENTITY IS THE AUTHENTICATED ACCOUNT, never the directory. `self` used to
+ * be built only when the directory held the reader's own row, so a directory
+ * that had not answered (or a merged view whose tenant roster is absent) left
+ * `self` null and every wire `mentions[]` row naming the reader rendered in
+ * the "other" accent. The account id is known whenever `selfAccountId` is;
+ * only the LABEL depends on a roster, and it falls back from the directory row
+ * to the conversation's own participant row, then to "" (identity known, no
+ * text to match - the wire path then highlights nothing for it rather than
+ * guessing a spelling).
+ *
+ * `labelUnique` is the one input the name-matching fallback may use to choose
+ * the viewer treatment (see `message-mentions.ts`): it is true only when no
+ * OTHER account in the directory and no other participant of this
+ * conversation, in any state, displays the same label. A departed member
+ * still counts, because their old messages may mention them.
+ */
+function mentionSelf(
+	conversation: TeamBridgeConversation,
+	people: readonly TeamBridgeDirectoryMember[],
+	selfAccountId: string,
+): NonNullable<MentionSource["self"]> {
+	const isSelfHuman = (row: { kind: string; account_id: string }) =>
+		row.kind === "human" && row.account_id === selfAccountId;
+	const directoryRow = people.find((row) => row.account_id === selfAccountId);
+	const memberRow = conversation.members.find(isSelfHuman);
+	const label = directoryRow
+		? personDisplayLabel(directoryRow)
+		: (memberRow?.display_label.trim() ?? "");
+	const labelUnique =
+		label !== "" &&
+		!people.some(
+			(row) =>
+				row.account_id !== selfAccountId && personDisplayLabel(row) === label,
+		) &&
+		!conversation.members.some(
+			(member) => !isSelfHuman(member) && member.display_label.trim() === label,
+		);
+	return { accountId: selfAccountId, label, labelUnique };
+}
+
+/**
  * Provides @-mentions for every composer under it (the channel composer and
  * the thread pane's), from the page's cached reads.
  *
@@ -82,9 +125,6 @@ export function TeamBridgeMentionProvider({
 							),
 						])
 				: undefined;
-		const selfRow = selfAccountId
-			? people.find((row) => row.account_id === selfAccountId)
-			: undefined;
 		return {
 			conversationId: conversation.id,
 			// Ownership cannot depend on the directory having loaded a self row:
@@ -92,10 +132,9 @@ export function TeamBridgeMentionProvider({
 			draftOwner: selfAccountId
 				? { accountId: selfAccountId, tenantId: conversation.tenant_id }
 				: null,
-			self:
-				selfAccountId && selfRow
-					? { accountId: selfAccountId, label: personDisplayLabel(selfRow) }
-					: null,
+			self: selfAccountId
+				? mentionSelf(conversation, people, selfAccountId)
+				: null,
 			candidates,
 			conversationKind: conversation.kind,
 			sendMentions,

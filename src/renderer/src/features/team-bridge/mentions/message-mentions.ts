@@ -10,11 +10,14 @@
  *     the label the reader sees (the same candidate labels the composer
  *     inserts), and only those `@label` runs are highlighted. A row whose
  *     label cannot be resolved highlights nothing rather than guessing.
- *  2. absent (every hub today): fall back to matching `@<display name>`
- *     against the conversation's members and the directory. This is a
- *     heuristic. It can highlight an `@Name` typed without the popover, which
- *     is also what the reader would read as a mention, and it cannot see a
- *     mention the author spelled differently.
+ *  2. absent: fall back to matching `@<display name>` against the
+ *     conversation's members and the directory. This is a heuristic. It can
+ *     highlight an `@Name` typed without the popover, which is also what the
+ *     reader would read as a mention, and it cannot see a mention the author
+ *     spelled differently. The hub returns `mentions` on reads now, but only
+ *     for messages SENT with them, so this path still answers for most
+ *     messages (measured 2026-11-03 in a live tenant: 3 of 4 messages with an
+ *     `@` carried no `mentions`).
  * `source` says which one answered, for tests and for the reader of this code.
  */
 import type { MentionCandidate } from "./matcher";
@@ -41,7 +44,7 @@ export function messageMentionSpec(input: {
 	body: string | null;
 	mentions: unknown;
 	candidates: readonly Pick<MentionCandidate, "kind" | "accountId" | "label">[];
-	self: { accountId: string; label: string } | null;
+	self: { accountId: string; label: string; labelUnique?: boolean } | null;
 }): MessageMentionSpec | null {
 	const { body, candidates, self } = input;
 	if (!body || !body.includes("@")) return null;
@@ -79,7 +82,9 @@ export function messageMentionSpec(input: {
 			const match = people.find(
 				(p) => p.kind === row.kind && p.accountId === row.account_id,
 			);
-			if (match)
+			// An identity with no label (the reader before any roster names them)
+			// has no spelling to find; "" would otherwise highlight a bare "@".
+			if (match && match.label !== "")
 				runs.push({
 					label: match.label,
 					viewer: isViewer(row.account_id),
@@ -89,11 +94,34 @@ export function messageMentionSpec(input: {
 			? { source: "message", runs, caseSensitive: true }
 			: null;
 	}
+	/*
+	 * THE VIEWER IN THE FALLBACK. A display name alone is not proof of
+	 * identity, so #1589 made this path never choose the viewer treatment. But
+	 * messages without `mentions[]` are the common case (3 of 4 measured, see
+	 * the header), and that blanket `viewer: false` turned the reader's own
+	 * mentions the "other" blue (operator report, 2026-11-03). The name may
+	 * stand in for identity only when it cannot mean anyone else: the label is
+	 * the one resolved from the AUTHENTICATED account's own row (never a
+	 * spelling the author typed), the provider found no other account in the
+	 * directory or this conversation showing it (`labelUnique`), and no other
+	 * candidate here carries it either. A namesake therefore still renders as
+	 * "other" for both of them. Agents keep #1589's rule: only a wire
+	 * account_id selects the viewer for the reader's own agent, because its
+	 * composed label ("Aida (Damian Tran)") names the owner, not the reader.
+	 */
+	const fallbackViewer = (p: (typeof people)[number]) =>
+		self !== null &&
+		self.labelUnique === true &&
+		p.kind === "human" &&
+		p.accountId === self.accountId &&
+		!candidates.some(
+			(c) =>
+				c.label === p.label &&
+				!(c.kind === "human" && c.accountId === self.accountId),
+		);
 	const runs = people
 		.filter((p) => p.label !== "" && body.includes(`@${p.label}`))
-		// A matching display name is not proof of account identity: only an
-		// authoritative wire account_id may select the viewer treatment.
-		.map((p) => ({ label: p.label, viewer: false }));
+		.map((p) => ({ label: p.label, viewer: fallbackViewer(p) }));
 	/*
 	 * The fallback is a HEURISTIC and says so: it matches `@<display name>`
 	 * EXACTLY as the name is spelled (case-sensitive, review R1-06), which is
