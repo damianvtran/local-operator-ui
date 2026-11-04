@@ -1740,6 +1740,31 @@ test("cold sender enrichment posts within its deadline; completion never re-aler
 	}
 });
 
+test("an agent banner title composes through the shared chief rule: owner exactly once", async () => {
+	// The main process used to splice "{agent} ({person})" itself, so an agent
+	// the directory names after its owner titled the banner "Ben Tran (Ben
+	// Tran)" while the app read "Ben Tran's chief of staff" (2026-11-03 sweep).
+	const cases = [
+		["Aida", "Aida (Ben Tran)"],
+		["Ben Tran", "Ben Tran’s chief of staff"],
+		["ben  tran", "Ben Tran’s chief of staff"],
+	];
+	for (const [agentName, expected] of cases) {
+		const { dir, file } = tempFile();
+		try {
+			const h = harness({ file });
+			await h.notifier.notify(
+				request({
+					sender: personSender({ kind: "person_agent", agent_name: agentName }),
+				}),
+			);
+			assert.equal(h.banners[0].options.title, expected, agentName);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	}
+});
+
 test("warm composite follows the person source kind; agent title names its owner and agent", async () => {
 	const { dir, file } = tempFile();
 	const images = {

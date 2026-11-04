@@ -796,6 +796,32 @@ test("the picker lists People and Agents as separate groups", async (t) => {
 	);
 });
 
+test("an agent the directory names after its owner is offered as the owner's chief of staff, never 'X (X)'", async (t) => {
+	// The picker's own chief composition used to name any non-blank agent, so
+	// an endpoint labelled with its owner's name read "Sherman Lee (Sherman
+	// Lee)" here while every other surface read the chief-of-staff form
+	// (2026-11-03 recipient-label sweep). It now goes through composeChiefLabel.
+	const people = directory.map((person) =>
+		person.account_id === "acct_sherman"
+			? { ...person, agent: { ...person.agent, name: "Sherman Lee" } }
+			: person,
+	);
+	const { document: body } = await mount(t, { people });
+	const titles = rows(body).map(rowTitle);
+	assert.ok(
+		titles.includes("Sherman Lee’s chief of staff"),
+		`the unnamed agent reads as the owner's chief of staff: ${titles}`,
+	);
+	assert.ok(
+		!titles.includes("Sherman Lee (Sherman Lee)"),
+		"the owner's name never appears twice",
+	);
+	assert.ok(
+		titles.includes("Aida (Damian Tran)"),
+		"a named agent keeps its own name with its owner once",
+	);
+});
+
 test("a peer whose bridge is off renders disabled with the reason", async (t) => {
 	const { document: body } = await mount(t);
 	const row = rowFor(body, "Ada Okafor");

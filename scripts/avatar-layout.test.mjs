@@ -27,8 +27,10 @@ test("header siblings share centre alignment and interactive rows can grow", () 
 		source.includes("@container/chathdr flex min-h-10 shrink-0 items-center"),
 	);
 	assert.ok(source.includes("flex min-w-0 flex-1 items-center gap-x-2"));
-	assert.ok(
-		source.includes('identity ? "min-h-5" : "h-5 flex-wrap overflow-clip"'),
+	/* Whitespace-tolerant: the formatter may break this ternary across lines. */
+	assert.match(
+		source,
+		/identity\s*\?\s*"min-h-5"\s*:\s*cn\(rowClassName, "flex-wrap overflow-clip"\)/,
 	);
 	assert.ok(!source.includes("items-baseline"));
 	assert.ok(!source.includes("overflow-clip-margin"));
@@ -164,4 +166,36 @@ test("summary state checks require requested loading and native decode error evi
 	);
 	assert.ok(source.includes('image.removeEventListener("error", onError)'));
 	assert.ok(source.includes("window.Image = NativeImage"));
+});
+
+/*
+ * THE SESSION ROW'S PENCIL LANDS ON THE PICTURE (presence round). The status cell
+ * now leads the cluster, so the picture sits 22px right of where it did and the
+ * old `start-1` put the pencil on the locality cell (measured 18px left of the
+ * picture on main). The offset is the sum of the row's own box, and a change to
+ * any term has to move the class: `px-1` 4 + locality cell `size-3.5` 14 + the
+ * row's `gap-1` 4 + status cell 16 + the cluster's `gap-1.5` 6 = 44 = `start-11`;
+ * a nested row's `ps-7` is 28 not 4, so +24 = 68 = `start-17`.
+ */
+test("the session row's pencil offset is the sum of the row's own boxes", () => {
+	const avatar = read(
+		"src/renderer/src/features/chat/components/chat-session-avatar.tsx",
+	);
+	const sidebar = read(
+		"src/renderer/src/features/chat/components/chat-sidebar.tsx",
+	);
+	assert.ok(avatar.includes('nested ? "start-17" : "start-11"'));
+	assert.ok(
+		sidebar.includes('"flex h-8 min-w-0 items-center gap-1 rounded-md px-1'),
+	);
+	assert.ok(sidebar.includes('nested && "ps-7"'));
+	assert.ok(
+		sidebar.includes(
+			'className="flex size-3.5 shrink-0 items-center justify-center"',
+		),
+	);
+	assert.ok(avatar.includes('"relative flex shrink-0 items-center gap-1.5"'));
+	assert.equal(4 + 14 + 4 + 16 + 6, 44);
+	assert.equal(44 / 4, 11);
+	assert.equal((28 + 14 + 4 + 16 + 6) / 4, 17);
 });

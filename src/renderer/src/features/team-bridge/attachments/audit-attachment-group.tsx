@@ -2,20 +2,21 @@ import type { OwnerAuditScope } from "@shared/api/local-operator/team-bridge-own
 import { ImageLightbox } from "@shared/components/common/image-lightbox";
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
-import { ImageOff } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { AttachmentFrame } from "../../chat/components/message-item/attachment-frame";
-import {
-	type BridgeAttachmentDescriptor,
-	type BridgeFileDescriptor,
-	attachmentBox,
+import type {
+	BridgeAttachmentDescriptor,
+	BridgeFileDescriptor,
 } from "./attachment-model";
 import {
 	type AuditAttachmentScope,
 	auditAttachmentAction,
 	auditAttachmentKey,
 } from "./audit-attachment-scope";
-import { BridgeAttachmentGroup } from "./bridge-attachment-group";
+import {
+	BridgeAttachmentGroup,
+	type BridgeImageSlot,
+} from "./bridge-attachment-group";
+import { InlineImageFailure, InlineImageTile } from "./inline-image-tile";
 import {
 	type AuditImageState,
 	useAuditAttachment,
@@ -24,7 +25,7 @@ import {
 function AuditImage({
 	scope,
 	attachment,
-	box,
+	slot,
 	index,
 	count,
 	register,
@@ -33,7 +34,7 @@ function AuditImage({
 }: {
 	scope: AuditAttachmentScope;
 	attachment: BridgeAttachmentDescriptor;
-	box: { width: number; height: number };
+	slot: BridgeImageSlot;
 	index: number;
 	count: number;
 	register: (id: string, value: AuditImageState) => void;
@@ -60,70 +61,49 @@ function AuditImage({
 				opener.current?.focus({ preventScroll: true });
 		}
 	}, [source.state]);
+	const label = t("ui.teamBridge.attachments.position", {
+		index: String(index + 1),
+		count: String(count),
+	});
+	/* The member transcript's tile and failure, so an owner reading the audit
+	 * sees the same picture a member does. No download control: this client
+	 * offers none from the audit (#1634). */
 	if (source.state === "failed" || source.state === "unavailable")
 		return (
-			<div
-				style={{ width: box.width, height: box.height, maxWidth: "100%" }}
-				className="flex flex-col items-center justify-center gap-1 break-words bg-sunken p-1 text-center text-[12px] text-ink-muted"
-			>
-				{box.width < 128 || box.height < 96 ? (
-					<span
-						role="img"
-						aria-label={t("ui.teamBridge.attachmentCard.unavailable")}
-					>
-						<ImageOff size={16} aria-hidden="true" />
-					</span>
-				) : (
-					<span>{t("ui.teamBridge.attachmentCard.unavailable")}</span>
-				)}
-				{source.state === "failed" && (
-					<button
-						type="button"
-						className="min-h-6 rounded-sm px-2 text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
-						onClick={() => {
-							retryFocus.current = true;
-							setAttempt((value) => value + 1);
-						}}
-					>
-						{t("ui.teamBridge.attachments.retry_load")}
-					</button>
-				)}
-			</div>
+			<InlineImageFailure
+				box={slot.box}
+				label={label}
+				copy={t("ui.teamBridge.attachmentCard.unavailable")}
+				kind={source.state}
+				retryLabel={t("ui.teamBridge.attachments.retry_load")}
+				onRetry={
+					source.state === "failed"
+						? () => {
+								retryFocus.current = true;
+								setAttempt((value) => value + 1);
+							}
+						: undefined
+				}
+			/>
 		);
 	return (
-		<button
-			type="button"
-			disabled={!url}
-			aria-busy={!url}
-			aria-label={t("ui.teamBridge.attachments.open", {
+		<InlineImageTile
+			url={url}
+			box={slot.box}
+			fit={slot.fit}
+			overflow={slot.overflow}
+			label={label}
+			busy={!url}
+			openLabel={t("ui.teamBridge.attachments.open", {
 				index: String(index + 1),
 				count: String(count),
 			})}
-			ref={(node) => {
+			buttonRef={(node) => {
 				opener.current = node;
 				openerRef(node);
 			}}
-			onClick={onOpen}
-			className="group/tile block max-w-full cursor-zoom-in rounded-sm leading-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus disabled:cursor-progress"
-		>
-			<AttachmentFrame
-				boundary="control"
-				style={{ ...box, maxWidth: "100%" }}
-				data-attachment-reserved={url ? undefined : ""}
-			>
-				{url && (
-					<img
-						src={url}
-						draggable={false}
-						className="size-full object-cover"
-						alt={t("ui.teamBridge.attachments.position", {
-							index: String(index + 1),
-							count: String(count),
-						})}
-					/>
-				)}
-			</AttachmentFrame>
-		</button>
+			onOpen={onOpen}
+		/>
 	);
 }
 
@@ -220,7 +200,7 @@ export function AuditAttachmentGroup({
 				fileCount={fileCount}
 				renderPreview={
 					scope
-						? (attachment) =>
+						? (attachment, _index, slot) =>
 								auditAttachmentAction(attachment) === "preview" ? (
 									<AuditImage
 										key={auditAttachmentKey({
@@ -229,11 +209,7 @@ export function AuditAttachmentGroup({
 										})}
 										scope={{ ...scope, attachmentId: attachment.id }}
 										attachment={attachment}
-										box={attachmentBox(
-											attachment,
-											attachments.length === 1,
-											compact,
-										)}
+										slot={slot}
 										index={images.findIndex(
 											(item) => item.id === attachment.id,
 										)}

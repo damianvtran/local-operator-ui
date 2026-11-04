@@ -80,6 +80,18 @@ export type AgentAvatarEditLinkProps = {
 	 * caller that addresses agents differently passes its own.
 	 */
 	editHref?: string;
+	/**
+	 * The link's accessible name, when "Change {name}'s picture" is not true: a
+	 * placeholder door onto an agent with NO picture names the act it offers
+	 * ("Add a picture for {name}"). Defaults to the change sentence.
+	 */
+	label?: string;
+	/**
+	 * Whether the hover/focus scrim and pencil are drawn over the mark. A mark
+	 * that already carries its own edit glyph (the placeholder's camera) turns it
+	 * off: a pencil painted over a camera is two glyphs for one act.
+	 */
+	scrim?: boolean;
 	/** The picture as the surface draws it. */
 	children: ReactNode;
 	className?: string;
@@ -92,6 +104,8 @@ export function AgentAvatarEditLink({
 	agentId,
 	owned,
 	editHref,
+	label: labelOverride,
+	scrim = true,
 	children,
 	className,
 	pencilClassName = "size-2",
@@ -107,7 +121,8 @@ export function AgentAvatarEditLink({
 		);
 	}
 	const href = editHref ?? agentPictureEditorHref({ agentName, agentId });
-	const label = t("ui.agents.avatar.edit_link", { name: agentName });
+	const label =
+		labelOverride ?? t("ui.agents.avatar.edit_link", { name: agentName });
 	return (
 		<a
 			href={`#${href}`}
@@ -152,18 +167,20 @@ export function AgentAvatarEditLink({
 			 * the one fill/ink pair the contrast contract guarantees on every
 			 * palette, so its legibility never depends on the picture or the scrim.
 			 */}
-			<span
-				aria-hidden="true"
-				className={cn(
-					"pointer-events-none absolute inset-0 flex items-center justify-center rounded-full bg-scrim opacity-0",
-					"transition-opacity duration-fast ease-out-quart",
-					"group-hover/avatar-edit:opacity-100 group-focus-visible/avatar-edit:opacity-100",
-				)}
-			>
-				<span className="flex items-center justify-center rounded-full bg-accent p-px text-on-accent">
-					<Pencil className={pencilClassName} strokeWidth={2.5} />
+			{scrim ? (
+				<span
+					aria-hidden="true"
+					className={cn(
+						"pointer-events-none absolute inset-0 flex items-center justify-center rounded-full bg-scrim opacity-0",
+						"transition-opacity duration-fast ease-out-quart",
+						"group-hover/avatar-edit:opacity-100 group-focus-visible/avatar-edit:opacity-100",
+					)}
+				>
+					<span className="flex items-center justify-center rounded-full bg-accent p-px text-on-accent">
+						<Pencil className={pencilClassName} strokeWidth={2.5} />
+					</span>
 				</span>
-			</span>
+			) : null}
 		</a>
 	);
 }

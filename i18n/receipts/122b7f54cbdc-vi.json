@@ -1,0 +1,105 @@
+{
+	"schema": 1,
+	"receipt_kind": "independent copy-delta re-audit (in-sentence unnamed recipient, round 3), one locale",
+	"audit_id": "delivery-recipient-unnamed-reaudit-r3-122b7f54cbdc",
+	"date": "2026-11-03",
+	"agent": "copy-reviewer",
+	"model": "anthropic/claude-opus-5-5",
+	"model_provenance": "Served model as announced by the harness system prompt for session 122b7f54cbdc (Model: anthropic/claude-opus-5-5); no fallback announced or observed during the run.",
+	"model_fallback": {
+		"announced": false,
+		"observed": false
+	},
+	"instance": "122b7f54cbdc-vi",
+	"session": "122b7f54cbdc",
+	"status": "passed",
+	"result": "clean",
+	"locale": "vi",
+	"namespace": "ui.teamBridge",
+	"sha256": {
+		"en": "0fc05324f1284ff6f7f37f8fe9dc8aa78d0f17f03640f300e02b3e37c3ca954b",
+		"vi": "0e202c413fc8251e166ff099e0955b2f5654358d96cc70ddd9deeae8413b0790"
+	},
+	"context": {
+		"path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+		"sha256": "c1545312b0378ded7100b626653a8e401d959b86ad4afb8d39c86833af6538f7",
+		"delta_entries_present": true,
+		"note": "Context catalogue byte-identical to cebd8e90785; the ui.teamBridge.delivery.recipient_unnamed entry (recipient name inside a delivery status sentence; lower case where the language allows; must not repeat the person) governs this delta."
+	},
+	"reference_hashes": {
+		"~/local-operator/i18n/glossary.md": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+		"~/local-operator/i18n/style-guides/vi.md": "e4901497ed553e2b2ae4a2660bf776adb787b89e11d7eb0f8d08f3da4b227888",
+		"core_commit": "b42471d3935cb7e95d64428af27c32626665f4c0"
+	},
+	"integration": {
+		"pr": 1643,
+		"branch": "fix/delivery-recipient-label",
+		"reviewed_head": "4dbd846d54140336419ff3c393e12a2ed79e83dd",
+		"previous_audit_head": "70646b20d3ab9078135ee4356764fb1c2f4a08d1",
+		"remediation_commit": "4dbd846d54140336419ff3c393e12a2ed79e83dd",
+		"author_job": "da8eee3a55f2",
+		"remediation_jobs": [
+			"8f0b8996f1e1",
+			"f43f06d59eea"
+		],
+		"round": 3,
+		"prior_round_receipt": "i18n/receipts/2fd8346bf635-vi.json"
+	},
+	"scope": {
+		"keys": [
+			"ui.teamBridge.delivery.recipient_unnamed",
+			"ui.teamBridge.delivery.refused",
+			"ui.teamBridge.delivery.refused_manipulation",
+			"ui.teamBridge.delivery.refused_personal_info",
+			"ui.teamBridge.delivery.refused_abusive",
+			"ui.teamBridge.delivery.refused_unsafe_content",
+			"ui.teamBridge.delivery.refused_out_of_scope",
+			"ui.teamBridge.delivery.held",
+			"ui.teamBridge.delivery.held_screening_unavailable",
+			"ui.teamBridge.delivery.held_awaiting_review",
+			"ui.teamBridge.delivery.pending"
+		],
+		"kind": "Round-3 independent audit of the remediation delta of 4dbd846d vs cebd8e90785 in this catalogue, plus each of the ten ui.teamBridge.delivery.{refused*,held*,pending} sentences composed with BOTH recipient forms (ui.teamBridge.chief.label 'Aida (Ben Tran)' and ui.teamBridge.delivery.recipient_unnamed), checking round-2 findings and regressions. Unchanged namespace content is inherited, not re-audited.",
+		"base_target_sha256_prefix": "c9f1118a1ea2",
+		"unchanged_proof": "Parsed cebd8e90785 and head catalogues: identical key sets; the only value changed is ui.teamBridge.delivery.recipient_unnamed ('Chánh' -> 'chánh'). The ten delivery sentences and chief.label/chief.unnamed are byte-identical. en and the fr/hi/ur/ru/zh-CN catalogues are byte-identical to cebd8e90785."
+	},
+	"independence": "copy-reviewer session 122b7f54cbdc on the radientdev team. Authored none of PR #1643 (author coder job da8eee3a55f2, remediation jobs 8f0b8996f1e1 and f43f06d59eea), none of the translations, and is neither the round-1 auditor (session 7fc20c1e3809) nor the round-2 auditor (session 2fd8346bf635); prior receipts were read for their findings only and every verdict here was re-derived from the catalogue bytes at the reviewed head. Edited no catalogue value; its only writes are these receipts and the ledger rows ledger-assemble derives from them.",
+	"placeholder_check": {
+		"key": "ui.teamBridge.delivery.recipient_unnamed",
+		"placeholders": [
+			"person"
+		],
+		"exactly_person": true,
+		"delivery_sentences_placeholders": [
+			"recipient"
+		],
+		"recipient_exactly_once_in_each_of_ten": true
+	},
+	"out_of_scope_observations": [],
+	"copy_scan": "design-qa copy_scan.py over src/i18n/catalogues/{es,vi}/ui.teamBridge.json: scanned 2 files, 948 candidate strings; 0 findings",
+	"not_audited": [
+		"Unchanged namespace language",
+		"Runtime ICU execution",
+		"Rendered fit and RTL layout",
+		"Pseudo-localization"
+	],
+	"execution_limitations": "Source and composition review (values substituted with agent Aida / person Ben Tran, and the sender.unknown_agent fallback); no rendered frames captured by this auditor.",
+	"findings": [],
+	"prior_findings": {
+		"C6": "fixed in 4dbd846d: recipient_unnamed is now 'chánh văn phòng của {person}', lowercase mid-sentence per the vi sentence-case rule and the glossary term «chánh văn phòng»; the standalone chief.unnamed keeps its initial capital, correctly, as a label."
+	},
+	"per_key_verdict": {
+		"ui.teamBridge.delivery.refused": "PASS: Không được chuyển tới Aida (Ben Tran). Bị bộ kiểm duyệt từ chối. | Không được chuyển tới chánh văn phòng của Ben Tran. Bị bộ kiểm duyệt từ chối.",
+		"ui.teamBridge.delivery.refused_manipulation": "PASS: Không được chuyển tới Aida (Ben Tran): bị bộ kiểm duyệt của họ từ chối (có vẻ là một nỗ lực thao túng tác nhân) | Không được chuyển tới chánh văn phòng của Ben Tran: bị bộ kiểm duyệt của họ từ chối (có vẻ là một nỗ lực thao túng tác nhân)",
+		"ui.teamBridge.delivery.refused_personal_info": "PASS: Không được chuyển tới Aida (Ben Tran): bị bộ kiểm duyệt của họ từ chối (có vẻ là một yêu cầu thông tin cá nhân) | Không được chuyển tới chánh văn phòng của Ben Tran: bị bộ kiểm duyệt của họ từ chối (có vẻ là một yêu cầu thông tin cá nhân)",
+		"ui.teamBridge.delivery.refused_abusive": "PASS: Không được chuyển tới Aida (Ben Tran): bị bộ kiểm duyệt của họ từ chối (có vẻ là nội dung lăng mạ) | Không được chuyển tới chánh văn phòng của Ben Tran: bị bộ kiểm duyệt của họ từ chối (có vẻ là nội dung lăng mạ)",
+		"ui.teamBridge.delivery.refused_unsafe_content": "PASS: Không được chuyển tới Aida (Ben Tran): bị bộ kiểm duyệt của họ từ chối (có vẻ là nội dung hoặc liên kết không an toàn) | Không được chuyển tới chánh văn phòng của Ben Tran: bị bộ kiểm duyệt của họ từ chối (có vẻ là nội dung hoặc liên kết không an toàn)",
+		"ui.teamBridge.delivery.refused_out_of_scope": "PASS: Không được chuyển tới Aida (Ben Tran): bị bộ kiểm duyệt của họ từ chối (có vẻ là một yêu cầu nằm ngoài phạm vi của tác nhân này) | Không được chuyển tới chánh văn phòng của Ben Tran: bị bộ kiểm duyệt của họ từ chối (có vẻ là một yêu cầu nằm ngoài phạm vi của tác nhân này)",
+		"ui.teamBridge.delivery.held": "PASS: Đang chờ Aida (Ben Tran) sàng lọc… | Đang chờ chánh văn phòng của Ben Tran sàng lọc…",
+		"ui.teamBridge.delivery.held_screening_unavailable": "PASS: Đang chờ Aida (Ben Tran) sàng lọc. Tính năng sàng lọc tạm thời không khả dụng. | Đang chờ chánh văn phòng của Ben Tran sàng lọc. Tính năng sàng lọc tạm thời không khả dụng.",
+		"ui.teamBridge.delivery.held_awaiting_review": "PASS: Đang chờ Aida (Ben Tran) sàng lọc. Tin nhắn đang chờ xem xét. | Đang chờ chánh văn phòng của Ben Tran sàng lọc. Tin nhắn đang chờ xem xét.",
+		"ui.teamBridge.delivery.pending": "PASS: Đã sàng lọc; đang chờ chuyển tới Aida (Ben Tran) | Đã sàng lọc; đang chờ chuyển tới chánh văn phòng của Ben Tran",
+		"ui.teamBridge.delivery.recipient_unnamed": "PASS: 'chánh văn phòng của {person}'; {person} only; glossary «chánh văn phòng»; lowercase mid-sentence, consistent with ui.agentMessages.settings / ui.onboarding / ui.ownerAudit in-sentence usage."
+	},
+	"composition_notes": "Both forms read naturally after 'tới' and 'chờ' in all ten sentences; no word starts a sentence with the value, so lowercase never lands sentence-initial. Fallback 'Tác nhân không xác định' composes cleanly."
+}

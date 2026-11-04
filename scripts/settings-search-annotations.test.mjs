@@ -71,11 +71,12 @@ const bundle = await build({
 			import { KeyboardShortcutsSection } from "./src/renderer/src/features/settings/components/keyboard-shortcuts-section";
 			import { ToggleSetting } from "./src/renderer/src/shared/components/common/toggle-setting";
 			import { TranscriptDisplayModeSetting } from "./src/renderer/src/features/settings/components/transcript-display-mode-setting";
+			import { AgentAvatarSizeSetting } from "./src/renderer/src/features/settings/components/agent-avatar-size-setting";
 			import { WindowGlassSetting } from "./src/renderer/src/features/settings/components/window-glass-setting";
 			import { EditableField } from "./src/renderer/src/shared/components/common/editable-field";
 			export {
 				createElement, KeyboardShortcutsSection, ToggleSetting,
-				TranscriptDisplayModeSetting, WindowGlassSetting, EditableField,
+				TranscriptDisplayModeSetting, AgentAvatarSizeSetting, WindowGlassSetting, EditableField,
 			};
 		`,
 		resolveDir: process.cwd(),
@@ -257,6 +258,21 @@ test("a shared row component's searchRow prop is what paints the markers", async
 		}),
 	);
 	assertEveryControlCovered(mode);
+
+	const size = await mount(
+		t,
+		components.createElement(components.AgentAvatarSizeSetting, {
+			searchRow: "appearance.agent-picture-size",
+			value: "small",
+			onChange: () => {},
+		}),
+	);
+	assertEveryControlCovered(size);
+	assert.equal(
+		size.querySelector("[data-search-row='appearance.agent-picture-size']") !==
+			null,
+		true,
+	);
 
 	const field = await mount(
 		t,

@@ -63,6 +63,7 @@ import type {
 import { browserDraftStorage } from "../../shared/store/team-bridge-draft-account";
 import { rowCurrent } from "../chat/components/chat-sidebar";
 import { TeamBridgeMentionProvider } from "./mentions";
+import { clearStagedMentions, stagedMentions } from "./mentions/mention-outbox";
 import { TeamBridgeAddMembersView } from "./team-bridge-add-members";
 import {
 	TeamBridgeArchiveDialog,
@@ -573,6 +574,13 @@ export function relative(iso: string, locale: string): string {
 export type TeamBridgeDelivery = {
 	into?: { conversationId: string; tenantId: string | undefined };
 	onCreated?: (conversationId: string, tenantId: string | undefined) => void;
+	/**
+	 * The `mentions[]` captured onto the optimistic row at the press
+	 * (`PendingSend.mentions`). Carried here rather than read from the outbox at
+	 * delivery because this send runs later than the press, possibly as a Retry
+	 * long after the outbox entry was evicted or cleared.
+	 */
+	mentions?: PendingSend["mentions"];
 };
 
 type OwnedDraft = {
@@ -1808,6 +1816,9 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 			const send = (clientRef: string) =>
 				onSend(row.body, clientRef, undefined, {
 					into,
+					/* The row's own captured mentions, on the first attempt, the 409
+					   re-key and a Retry alike: one message, one recipient list. */
+					mentions: row.mentions,
 					/*
 					 * THE VIEW MOVES ONTO THE CONVERSATION AS SOON AS IT EXISTS. The row
 					 * was drawn in the lane the reader is looking at; the create answering
@@ -2024,8 +2035,19 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 					row.clientRef === clientRef &&
 					row.owner === (selfAccountId ?? ""),
 			);
+			/*
+			 * @-MENTIONS ARE CAPTURED AT THE PRESS. The composer staged this text's
+			 * `mentions[]` in the outbox a moment ago (`useComposerMentions().stage`),
+			 * but this lane never reaches the selected conversation's mutation, the
+			 * only other reader of that outbox - so without this capture a text-only
+			 * send went out with NO wire `mentions` and the receivers fell back to
+			 * matching names (regressed when the optimistic lane bypassed the mutation).
+			 * The row keeps them so a Retry sends the same list. A message with no
+			 * conversation yet has no mention source, so nothing is staged for it.
+			 */
+			const mentions = selected ? stagedMentions(selected.id, body) : undefined;
 			/* A press that retries a FAILED row is that row, not a second one: same
-			   key, same place, back to pending. */
+			   key, same place, same mentions, back to pending. */
 			const row: PendingSend = held
 				? { ...held, body, status: "pending" }
 				: {
@@ -2042,6 +2064,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 							(draftTenant === TEAM_BRIDGE_ALL_SCOPE ? undefined : draftTenant),
 						baselineSeq: timelineTop,
 						status: "pending",
+						mentions,
 					};
 			if (held)
 				usePendingSends.getState().patch(row.localId, { status: "pending" });
@@ -5025,7 +5048,13 @@ const TeamBridgeOwnedPage: FC<{
 					into.conversationId,
 					into.tenantId,
 				),
+				/* Captured at the press (`PendingSend.mentions`), never re-read from
+				   the outbox here: see `TeamBridgeDelivery.mentions`. */
+				mentions: delivery.mentions,
 			});
+			/* Accepted: retire the staged entry as the mutation path does, so an
+			   abandoned copy does not hold one of the outbox's 32 slots. */
+			clearStagedMentions(into.conversationId, body);
 			await refreshAfterSend(
 				client,
 				into.conversationId,
@@ -5151,6 +5180,13 @@ const TeamBridgeOwnedPage: FC<{
 				 * conversation already finishes in the background; this one now does too.
 				 * An account switch or sign-out still refuses the post: that is the part
 				 * that keeps one account's words out of another's conversations.
+				 */
+				/*
+				 * NO `mentions` ON A FIRST MESSAGE, by construction rather than omission:
+				 * the mention source is null until a conversation exists
+				 * (`TeamBridgeMentionProvider`), so nothing was staged for this text, and
+				 * an optimistic row only captures mentions when it already names a
+				 * conversation - which routes it through the `into` branch above instead.
 				 */
 				post: async (id, message) => {
 					if (!isWriteAuthorityCurrent())

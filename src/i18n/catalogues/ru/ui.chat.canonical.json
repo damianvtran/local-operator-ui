@@ -176,5 +176,12 @@
 	"ui.chat.canonical.image_gen.batch_summary": "{count, plural, =1 {{count_display} элемент} one {{count_display} элемент} few {{count_display} элемента} many {{count_display} элементов} other {{count_display} элемента}}",
 	"ui.chat.canonical.lightbox.filmstrip_aria": "{count, plural, =1 {{count_display} изображение} one {{count_display} изображение} few {{count_display} изображения} many {{count_display} изображений} other {{count_display} изображения}}",
 	"ui.chat.canonical.lightbox.show_image": "Показать изображение {index, number, ::group-off} из {count, number, ::group-off}",
-	"ui.chat.canonical.supplement.details.summary": "Подробности"
+	"ui.chat.canonical.supplement.details.summary": "Подробности",
+	"ui.chat.canonical.supplement.withheld.line": "{count, plural, one {# файл не показан} few {# файла не показаны} many {# файлов не показано} other {# файла не показано}}: {reason}",
+	"ui.chat.canonical.supplement.withheld.line_no_reason": "{count, plural, one {# файл не показан} few {# файла не показаны} many {# файлов не показано} other {# файла не показано}}",
+	"ui.chat.canonical.supplement.withheld.reason_outside": "вне разрешённых расположений",
+	"ui.chat.canonical.supplement.withheld.reason_sensitive": "конфиденциальный файл",
+	"ui.chat.canonical.supplement.withheld.reason_missing": "файл больше не существует",
+	"ui.chat.canonical.supplement.withheld.reason_too_large": "слишком большой для предпросмотра",
+	"ui.chat.canonical.supplement.withheld.reason_separator": ", "
 }

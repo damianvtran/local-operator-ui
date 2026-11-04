@@ -18,7 +18,8 @@ import {
 import { useNotificationDrawerTab } from "@features/notifications/drawer-tab-store";
 import { useNotificationsEnabled } from "@features/notifications/notifications-api";
 import { useProviderStatus } from "@features/providers/use-provider-status";
-import { sessionAvatarTarget } from "@shared/agent-avatar/agent-avatar-meta";
+import { sessionAgentTarget } from "@shared/agent-avatar/agent-avatar-meta";
+import type { AvatarMark } from "@shared/agent-avatar/avatar-presence";
 import {
 	desktopFeatureEnabled,
 	desktopFeatureState,
@@ -235,7 +236,7 @@ type ChatContentProps = {
 	 * `CanonicalTranscriptProps.agentAvatar` for why the page resolves it and this
 	 * pane only forwards it.
 	 */
-	agentAvatar?: string | null;
+	agentAvatar?: AvatarMark | null;
 	/**
 	 * The speaking agent's name, beside its picture, for the transcript mark's
 	 * accessible name. NOT this pane's `agentName`, which is the conversation's
@@ -1162,7 +1163,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 			state: ReturnType<typeof useCanonicalSessionsStore.getState>,
 		) =>
 			sessionId
-				? sessionAvatarTarget(
+				? sessionAgentTarget(
 						state.sessions.find((row) => row.session_id === sessionId),
 					)
 				: null;
@@ -2592,7 +2593,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 						<ChatHeader
 							agentName={agentName}
 							agentAvatar={
-								avatarAgentId && agentAvatarSha
+								avatarAgentId
 									? {
 											agentId: avatarAgentId,
 											agentName: avatarAgentName,
@@ -2823,7 +2824,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 										frontend={canonical.view.frontend}
 										transcript={canonical.view.transcript}
 										openFrame={openFrameForPane}
-										agentAvatar={agentAvatar}
+										agentMark={agentAvatar}
 										agentName={agentSpeakerName}
 										undelivered={undeliveredOnScreen}
 										/*
@@ -3353,18 +3354,6 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								asideSessionId={sessionId}
 								asideStreaming={canonical.turnAlive}
 								asideAdoptQueue={asideAdoptQueue}
-								/*
-								 * The capability itself, not just its busy half: the composer
-								 * holds the control's SLOT while a turn runs and for a grace
-								 * window after it ends, so the dictation control cannot take the
-								 * centre a reflex second press lands on (UX round 1's U1 / QA's
-								 * Q1) - and once the row has settled the slot is empty, so
-								 * dictation sits beside Send rather than behind a standing gap
-								 * (the operator's report on that fix). Without the capability
-								 * there is nothing to hold either way: a gap that nothing will
-								 * ever fill is not a reservation.
-								 */
-								canonicalStopAvailable={canonical?.stopAvailable ?? false}
 								interruptNotice={canonical?.stopNotice ?? null}
 								isFarFromBottom={isFarFromBottom}
 								hasNewActivity={hasNewActivity}
