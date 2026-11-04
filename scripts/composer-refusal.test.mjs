@@ -185,9 +185,24 @@ test("every path that TYPES INTO or SUBMITS the composer answers to the refusal"
 		"and it refuses before the pick writes the completion anywhere",
 	);
 
+	/*
+	 * The Send control's `disabled` is the SLOT ROLE's (`composer-slots.ts`), and the
+	 * refusal reaches the role as the pair `isInputDisabled || sendRefused`, so the
+	 * pin is on both halves: the control reads the role, the role is fed the refusal.
+	 */
 	assert.match(
 		source,
-		/type="submit"[\s\S]{0,400}?disabled=\{\s*isInputDisabled \|\|\s*sendRefused/,
+		/type="submit"[\s\S]{0,400}?disabled=\{!slotB\.enabled\}/,
+		"the Send control disables on its slot role",
+	);
+	assert.match(
+		source,
+		/refused: isInputDisabled \|\| sendRefused,/,
+		"and the role is told about the refusal",
+	);
+	assert.match(
+		source,
+		/type="submit"[\s\S]{0,400}?disabled=\{!slotB\.enabled\}/,
 		"the Send control carries the refusal itself, so the band does not offer a live primary action beside a box that takes nothing - and so the first control a refused keyboard user reaches is not the destructive one",
 	);
 	/*

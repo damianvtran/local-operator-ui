@@ -1,0 +1,40 @@
+{
+  "schema": 1,
+  "auditor": "reviewer-session (independent of coder-desktop)",
+  "agent": "reviewer-session (independent of coder-desktop)",
+  "model": "anthropic/claude-sonnet-5-5",
+  "fallback": "none",
+  "model_provenance": "Session 0b2a6fefb140 header: anthropic/claude-sonnet-5-5; no provider fallback occurred.",
+  "independence": "Separate session from coder-desktop, who authored the key in all seven locales. Verdict rebuilt from the en source and context sidecar, the render site, sibling keys, origin/main i18n/glossary.md and i18n/style-guides/<locale>.md; the coder's commit text was not read.",
+  "instance": "0b2a6fefb140-composer-media-es",
+  "session": "0b2a6fefb140",
+  "locale": "es",
+  "namespace": "ui.chat.composer_media",
+  "branch": "feat/composer-send-stop-slot",
+  "base": "origin/main 2ff3187db64d36fa42bd0b97b24ef5f184ac8145",
+  "date": "2026-11-03",
+  "status": "passed",
+  "result": "clean",
+  "audit_kind": "delta audit of 1 added key; the other 7 keys are byte-identical to the previously audited row (HEAD blob hash == ledger target_sha256)",
+  "delta_keys_audited": [
+    "ui.chat.composer_media.sends_now"
+  ],
+  "scope": "ui.chat.composer_media: sends_now",
+  "sha256": {
+    "en": "02732c4406f9727405a3a9a7a98de3c9f604913cd7651350b4e29048f80cc1a4",
+    "es": "e842571c503e82287f55df3e3cb5f312fd9a3ded9619d883fa1f5a02bcfc07c2",
+    "context": "64931cf891e1cd80a25ec63928a644423d6eebb03897092858d98a23987d002b"
+  },
+  "reference_sha256": {
+    "glossary": "0eb34437a8c3d6f5 (prefix; sha256 of origin/main:i18n/glossary.md, fetched 2026-11-03)",
+    "style_guide": "origin/main:i18n/style-guides/es.md"
+  },
+  "verified": [
+    "key present in en and in the locale; locale key set of ui.chat.composer_media equals en (node scripts/i18n/locale-parity.test.mjs + context-parity + typed-keys: 58/58 pass); keys.gen.ts carries the key; git diff of each locale file against HEAD shows sends_now as the ONLY changed line",
+    "no placeholders/ICU/tags in the en string and none introduced; NFC; no edge/double spaces; no bidi, zero-width or other format characters (ur/hi included; the render layer adds FSI/PDI per the ur guide)",
+    "meaning: the hint-line item after the paper-plane icon says the primary button transcribes and sends the recording at once, with no review (render site audio-recording-indicator.tsx:353-360, message-input.tsx:9730); every locale reads as immediate (now/immediately/сразу/ngay)",
+    "sibling parity read against confirms/cancels in the same locale file and against placeholder.waiting + send_recording_hint in ui.chat.composer",
+    "advisory maxCells 16 from the en context sidecar (display width, CJK=2): en 9, es 11, fr 17 (over by 1, see finding), zh-CN 8, ru 16 (at budget), vi 8, ur 14, hi 10"
+  ],
+  "findings": []
+}

@@ -1,3 +1,4 @@
+import { parseAgentAvatarSize } from "@features/chat/agent-avatar-size";
 import { openConversation } from "@features/chat/open-conversation";
 import { formatDayBucket } from "@features/chat/pickers/panels/formatters";
 import { parseTranscriptDisplayMode } from "@features/chat/transcript-display-mode";
@@ -105,6 +106,7 @@ import { DefaultEffortSelect } from "./default-effort-select";
 import { ImportSettingsSection } from "./import-settings-section";
 import { GeneralLanguageSetting } from "./language-dialog";
 
+import { AgentAvatarSizeSetting } from "./agent-avatar-size-setting";
 import { KeyboardShortcutsSection } from "./keyboard-shortcuts-section";
 import { McpManagementSection } from "./mcp-management-section";
 import { RadientAccountSection } from "./radient-account-section";
@@ -385,6 +387,14 @@ export const SettingsPage: FC = () => {
 	);
 	const setTranscriptDisplayMode = useUiPreferencesStore(
 		(state) => state.setTranscriptDisplayMode,
+	);
+	// The agent picture size, read raw and parsed where it is consumed (the
+	// rehydration rule `transcriptDisplayMode` above follows).
+	const agentAvatarSize = useUiPreferencesStore(
+		(state) => state.agentAvatarSize,
+	);
+	const setAgentAvatarSize = useUiPreferencesStore(
+		(state) => state.setAgentAvatarSize,
 	);
 	const {
 		data: config,
@@ -1784,6 +1794,17 @@ export const SettingsPage: FC = () => {
 									searchRow="appearance.transcript"
 									value={parseTranscriptDisplayMode(transcriptDisplayMode)}
 									onChange={(next) => setTranscriptDisplayMode(next)}
+								/>
+								{/*
+								 * The agent picture's size: an app-level choice about how the chat
+								 * window and its header draw the picture, beside the other
+								 * transcript-appearance row. Not an agent setting, so it is not in
+								 * Settings > General or on an agent's page.
+								 */}
+								<AgentAvatarSizeSetting
+									searchRow="appearance.agent-picture-size"
+									value={parseAgentAvatarSize(agentAvatarSize)}
+									onChange={(next) => setAgentAvatarSize(next)}
 								/>
 								{/*
 								 * OPTIONAL WINDOW TRANSLUCENCY, default off. Owned by the main process

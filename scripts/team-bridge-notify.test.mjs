@@ -1783,8 +1783,9 @@ const compositePng = (tag = "untagged") => {
 	Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]).copy(data);
 	data.writeUInt32BE(13, 8);
 	data.write("IHDR", 12);
-	data.writeUInt32BE(64, 16);
-	data.writeUInt32BE(64, 20);
+	// The composite size main asks core for (256: covers a 2x/Windows banner).
+	data.writeUInt32BE(256, 16);
+	data.writeUInt32BE(256, 20);
 	data.write(tag, 33);
 	return data;
 };
@@ -1912,7 +1913,7 @@ test("single-flight shares one request and photo is requested at banner size", a
 	const first = cache.read(r, 250);
 	const second = cache.read(r, 250);
 	assert.equal(calls.length, 1);
-	assert.equal(calls[0].size, 64);
+	assert.equal(calls[0].size, 256);
 	release({
 		kind: "bytes",
 		status: 200,

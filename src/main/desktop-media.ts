@@ -151,6 +151,9 @@ const mediaRequestSchema = z.discriminatedUnion("op", [
 			op: z.literal("agent.avatar"),
 			agentId: id,
 			sha256: z.string().regex(/^[0-9a-f]{64}$/),
+			// Closed to core's three derivatives (`agent_avatar_sizes`), so the
+			// renderer cannot make main build an arbitrary query.
+			size: z.union([z.literal(64), z.literal(128), z.literal(256)]).optional(),
 		})
 		.strict(),
 	z.object({ op: z.literal("agent.avatar.put"), agentId: id }).strict(),
@@ -424,7 +427,10 @@ function endpoint(request: DesktopMediaRequest): {
 			return { path: `/v1/agents/${request.agentId}/export`, method: "GET" };
 		case "agent.avatar":
 			return {
-				path: `/v1/agents/${request.agentId}/avatar?${new URLSearchParams({ v: request.sha256 })}`,
+				path: `/v1/agents/${request.agentId}/avatar?${new URLSearchParams({
+					v: request.sha256,
+					...(request.size ? { size: String(request.size) } : {}),
+				})}`,
 				method: "GET",
 			};
 		case "agent.avatar.put":

@@ -173,5 +173,14 @@
 		},
 		"role": "Formatted magnification value",
 		"tone": "Numeric, no sentence"
+	},
+	"ui.agents.avatar.add_link": {
+		"length_hint": "One short label",
+		"note": "Accessible name of the link drawn over an agent that has NO picture yet (a dashed ring with a camera). It opens the same picture editor as the change link. The name is user data and is not translated.",
+		"placeholders": {
+			"name": "The agent's display name."
+		},
+		"role": "Accessible name of the add-picture link on a picture placeholder",
+		"tone": "Action phrasing, name interpolated"
 	}
 }

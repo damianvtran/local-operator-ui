@@ -67,5 +67,10 @@
 	"ui.settings.appearance.theme.tokyo_night_storm": "The brighter night — indigo storm skies under the same neon accents.",
 	"ui.settings.appearance.theme.tokyo_night": "Deep blue-purple night with a bright blue accent.",
 	"ui.settings.appearance.theme.tron": "Electric cyan circuitry on the Grid's blue-black.",
-	"ui.settings.appearance.theme.vaporwave": "Dusty pink and faded teal pastels on deep mall-purple."
+	"ui.settings.appearance.theme.vaporwave": "Dusty pink and faded teal pastels on deep mall-purple.",
+	"ui.settings.appearance.agent_avatar_size_setting.agent_picture_size": "Agent picture size",
+	"ui.settings.appearance.agent_avatar_size_setting.how_large_the_agent_s_picture_appears_in_the_chat_window_and_the_chat": "How large agent pictures appear in the transcript and the chat header. Sidebar rows keep their size.",
+	"ui.settings.appearance.agent_avatar_size_setting.small": "Small",
+	"ui.settings.appearance.agent_avatar_size_setting.medium": "Medium",
+	"ui.settings.appearance.agent_avatar_size_setting.large": "Large"
 }
