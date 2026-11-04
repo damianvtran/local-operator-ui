@@ -2331,8 +2331,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "893aebc1cfa3b40bc95e4425fca9c38263dcfeec7d81bd4b0102264b780521e7",
-			"target_sha256": "aad6379c24f66ae0dc8dbff2556a6149301a886cfae23f2a1b57389cad473670",
+			"source_sha256": "5dd15c346e6dbbcb5c615a9bb1e0acc64d30cd901b213a79e493949d9ef19e3e",
+			"target_sha256": "2b4094c1e7a0b3186fc86646894913d0c975b2a2985fb056605aebd483cdb0bd",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 9d6c2bba4d3b job e76e3cc7e513)",
@@ -2345,16 +2345,16 @@
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-03",
 					"result": "clean",
-					"instance": "3b93a13f3f5b-1652r1-es",
+					"instance": "3b93a13f3f5b-1652r2-es",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/3b93a13f3f5b-1652r1-es.json",
-					"receipt_sha256": "b77ae10d76f05420a1e023d62fe64316bc7159022ec2c9a5933fa27c2036cf30",
-					"scope": "PR #1652 six supplement.withheld.* keys; unchanged keys inherit prior coverage by exact byte identity; source-only audit"
+					"receipt": "i18n/receipts/3b93a13f3f5b-1652r2-es.json",
+					"receipt_sha256": "230c69213dde963a866ff638abdc22f7bab3546335e3b5239dc97a478d573d10",
+					"scope": "PR #1652 round 2: withheld.reason_separator; other keys byte-identical to round-1 audited bytes at a3dfdf7b027; source-only audit"
 				}
 			],
 			"status": "audited",
@@ -2562,6 +2562,29 @@
 							"receipt_sha256": "f5ed0a163dd8c2bf0ec6f55e3ced6bba1795de660c6e9da9a6b1860657d289a3",
 							"scope": "Round-1 full review (62bb649752be) at ab45351362a of the 10 keys PR #1603 added; bytes identical at 011c0f4f4ca. No BLOCKER/MAJOR of its own; locale-level round-1 verdict was changes_requested only for MAJOR(s) in other namespaces (A-1 (ui.chat)), fixed at 011c0f4f4ca and passed by round-2 delta c86525720075. Counts are open findings.",
 							"note": "PR #1603 round-1 full review at ab45351362a; bytes unchanged at 011c0f4f4ca; locale round-1 verdict was changes_requested only for MAJOR(s) now fixed. Detail: i18n/receipts/62bb649752be-1603r1-es.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "893aebc1cfa3b40bc95e4425fca9c38263dcfeec7d81bd4b0102264b780521e7",
+					"target_sha256": "aad6379c24f66ae0dc8dbff2556a6149301a886cfae23f2a1b57389cad473670",
+					"auditors": [
+						{
+							"agent": "coder",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-03",
+							"result": "clean",
+							"instance": "3b93a13f3f5b-1652r1-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/3b93a13f3f5b-1652r1-es.json",
+							"receipt_sha256": "b77ae10d76f05420a1e023d62fe64316bc7159022ec2c9a5933fa27c2036cf30",
+							"scope": "PR #1652 six supplement.withheld.* keys; unchanged keys inherit prior coverage by exact byte identity; source-only audit"
 						}
 					],
 					"status": "audited"
@@ -12054,8 +12077,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "893aebc1cfa3b40bc95e4425fca9c38263dcfeec7d81bd4b0102264b780521e7",
-			"target_sha256": "2bb5a6fb9d1ac743791e1c6542185a7ee39c1df0e99a7efea2a96a89c219b372",
+			"source_sha256": "5dd15c346e6dbbcb5c615a9bb1e0acc64d30cd901b213a79e493949d9ef19e3e",
+			"target_sha256": "39ee59fc80c2d03f9ae1db59a6a983316b8c64fb9815605a7b09596c0a52ce41",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 7bf560d5dcc5 job f3024578bae5)",
@@ -12067,17 +12090,17 @@
 					"agent": "coder",
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-03",
-					"result": "clean-with-findings",
-					"instance": "3b93a13f3f5b-1652r1-fr",
+					"result": "clean",
+					"instance": "3b93a13f3f5b-1652r2-fr",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
+						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/3b93a13f3f5b-1652r1-fr.json",
-					"receipt_sha256": "e842ea2c7745cbf7d9a2c37f53343bc21587e280f4fb5099df263d4f3b936d00",
-					"scope": "PR #1652 six supplement.withheld.* keys; unchanged keys inherit prior coverage by exact byte identity; source-only audit"
+					"receipt": "i18n/receipts/3b93a13f3f5b-1652r2-fr.json",
+					"receipt_sha256": "f360cf766c60e759cbac2a772668b0862b50bfe25064557ee5d65a59286cb1cf",
+					"scope": "PR #1652 round 2: withheld.reason_separator; other keys byte-identical to round-1 audited bytes at a3dfdf7b027; source-only audit"
 				}
 			],
 			"status": "audited",
@@ -12283,6 +12306,29 @@
 							"receipt_sha256": "9f3c0a52d34a38716106cd30627a4b2c35227dce02be2725da37ef3d56033e88",
 							"scope": "Round-1 full review (c09dbedc5d8a) at ab45351362a of the 10 keys PR #1603 added; bytes identical at 011c0f4f4ca. No BLOCKER/MAJOR of its own; locale-level round-1 verdict was changes_requested only for MAJOR(s) in other namespaces (A-1 (ui.chat)), fixed at 011c0f4f4ca and passed by round-2 delta 35a459c32034. Counts are open findings.",
 							"note": "PR #1603 round-1 full review at ab45351362a; bytes unchanged at 011c0f4f4ca; locale round-1 verdict was changes_requested only for MAJOR(s) now fixed. Detail: i18n/receipts/c09dbedc5d8a-1603r1-fr.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "893aebc1cfa3b40bc95e4425fca9c38263dcfeec7d81bd4b0102264b780521e7",
+					"target_sha256": "2bb5a6fb9d1ac743791e1c6542185a7ee39c1df0e99a7efea2a96a89c219b372",
+					"auditors": [
+						{
+							"agent": "coder",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-03",
+							"result": "clean-with-findings",
+							"instance": "3b93a13f3f5b-1652r1-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/3b93a13f3f5b-1652r1-fr.json",
+							"receipt_sha256": "e842ea2c7745cbf7d9a2c37f53343bc21587e280f4fb5099df263d4f3b936d00",
+							"scope": "PR #1652 six supplement.withheld.* keys; unchanged keys inherit prior coverage by exact byte identity; source-only audit"
 						}
 					],
 					"status": "audited"
@@ -22145,8 +22191,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "893aebc1cfa3b40bc95e4425fca9c38263dcfeec7d81bd4b0102264b780521e7",
-			"target_sha256": "51a6f59cab0391f4af56b84631ec41a676cc1c679b8358e16b28a7a4435cbd62",
+			"source_sha256": "5dd15c346e6dbbcb5c615a9bb1e0acc64d30cd901b213a79e493949d9ef19e3e",
+			"target_sha256": "e8250124193edb17d48e0add658e6b04b02affda351a6a3dea3de6701e4015ae",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session fe3e687905c1 job 2296f594b388; remediation of the audited keys at 011c0f4f4ca, session 7a7c1f87c410 job 4e4a10a9e3cc)",
@@ -22159,16 +22205,16 @@
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-03",
 					"result": "clean",
-					"instance": "3b93a13f3f5b-1652r1-hi",
+					"instance": "3b93a13f3f5b-1652r2-hi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/3b93a13f3f5b-1652r1-hi.json",
-					"receipt_sha256": "af2b4c77b0abc9631c47d736876fb9ee0f217e96fbd7c711488172d649098140",
-					"scope": "PR #1652 six supplement.withheld.* keys; unchanged keys inherit prior coverage by exact byte identity; source-only audit"
+					"receipt": "i18n/receipts/3b93a13f3f5b-1652r2-hi.json",
+					"receipt_sha256": "ed1f94f05d18a62d317322e6c44cd777d8c1a7735933d25ba68e5f239a83b6a5",
+					"scope": "PR #1652 round 2: withheld.reason_separator; other keys byte-identical to round-1 audited bytes at a3dfdf7b027; source-only audit"
 				}
 			],
 			"status": "audited",
@@ -22374,6 +22420,29 @@
 							"receipt_sha256": "f28a945b5f0d747ae58e382671f6dafcded1aff9952c9e2e73a07bcfdb507570",
 							"scope": "Round-1 full review (a8b33d269fce) at ab45351362a of the 10 keys PR #1603 added + round-2 delta re-audit (553e1ccbd7b1) at 011c0f4f4ca of the 1 changed key(s). No round-1 MAJOR here (changed for MINOR/NIT wording). Counts are open findings only.",
 							"note": "PR #1603 round-1 full review at ab45351362a + round-2 delta re-audit at 011c0f4f4ca; locale round-1 verdict was changes_requested only for MAJOR(s) now fixed. Detail: i18n/receipts/553e1ccbd7b1-1603r2-hi.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "893aebc1cfa3b40bc95e4425fca9c38263dcfeec7d81bd4b0102264b780521e7",
+					"target_sha256": "51a6f59cab0391f4af56b84631ec41a676cc1c679b8358e16b28a7a4435cbd62",
+					"auditors": [
+						{
+							"agent": "coder",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-03",
+							"result": "clean",
+							"instance": "3b93a13f3f5b-1652r1-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/3b93a13f3f5b-1652r1-hi.json",
+							"receipt_sha256": "af2b4c77b0abc9631c47d736876fb9ee0f217e96fbd7c711488172d649098140",
+							"scope": "PR #1652 six supplement.withheld.* keys; unchanged keys inherit prior coverage by exact byte identity; source-only audit"
 						}
 					],
 					"status": "audited"
@@ -31906,8 +31975,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "893aebc1cfa3b40bc95e4425fca9c38263dcfeec7d81bd4b0102264b780521e7",
-			"target_sha256": "7fed5782d951e8f99b9af89eeea31568b5ff3323ac3efb002d1cf9e26fa86319",
+			"source_sha256": "5dd15c346e6dbbcb5c615a9bb1e0acc64d30cd901b213a79e493949d9ef19e3e",
+			"target_sha256": "f2e1b1aec0b4c1bc0a4a4751a35e0ebebb46b0263b8ccb5b0076f982de555674",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 74a8df6e024e job edb91c63ad6a)",
@@ -31919,17 +31988,17 @@
 					"agent": "coder",
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-03",
-					"result": "clean-with-findings",
-					"instance": "3b93a13f3f5b-1652r1-ru",
+					"result": "clean",
+					"instance": "3b93a13f3f5b-1652r2-ru",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
+						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/3b93a13f3f5b-1652r1-ru.json",
-					"receipt_sha256": "8499336ef3022594b163d97cbd668275876def2c43f7f3ef229e9e6910f2cc0f",
-					"scope": "PR #1652 six supplement.withheld.* keys; unchanged keys inherit prior coverage by exact byte identity; source-only audit"
+					"receipt": "i18n/receipts/3b93a13f3f5b-1652r2-ru.json",
+					"receipt_sha256": "0ec062b9aced1557821a09f2fd6ab1d081f0a9d5404cf62d838b1a933d1baec8",
+					"scope": "PR #1652 round 2: withheld.reason_separator; other keys byte-identical to round-1 audited bytes at a3dfdf7b027; source-only audit"
 				}
 			],
 			"status": "audited",
@@ -32135,6 +32204,29 @@
 							"receipt_sha256": "aa70bf0097fab7022a5e3e47fcd8c5d53127bdc0da10d0fb9cf627e555cd055d",
 							"scope": "Round-1 full review (e74efd41e786) at ab45351362a of the 10 keys PR #1603 added; bytes identical at 011c0f4f4ca. No BLOCKER/MAJOR of its own; locale-level round-1 verdict was changes_requested only for MAJOR(s) in other namespaces (A-1 (ui.common.layout)), fixed at 011c0f4f4ca and passed by round-2 delta ed052586f8fb. Counts are open findings.",
 							"note": "PR #1603 round-1 full review at ab45351362a; bytes unchanged at 011c0f4f4ca; locale round-1 verdict was changes_requested only for MAJOR(s) now fixed. Detail: i18n/receipts/e74efd41e786-1603r1-ru.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "893aebc1cfa3b40bc95e4425fca9c38263dcfeec7d81bd4b0102264b780521e7",
+					"target_sha256": "7fed5782d951e8f99b9af89eeea31568b5ff3323ac3efb002d1cf9e26fa86319",
+					"auditors": [
+						{
+							"agent": "coder",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-03",
+							"result": "clean-with-findings",
+							"instance": "3b93a13f3f5b-1652r1-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/3b93a13f3f5b-1652r1-ru.json",
+							"receipt_sha256": "8499336ef3022594b163d97cbd668275876def2c43f7f3ef229e9e6910f2cc0f",
+							"scope": "PR #1652 six supplement.withheld.* keys; unchanged keys inherit prior coverage by exact byte identity; source-only audit"
 						}
 					],
 					"status": "audited"
@@ -41665,8 +41757,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "893aebc1cfa3b40bc95e4425fca9c38263dcfeec7d81bd4b0102264b780521e7",
-			"target_sha256": "604e6dfe23516ad42930851d50bef07bd07953f81ae5502d4002dd0237b83045",
+			"source_sha256": "5dd15c346e6dbbcb5c615a9bb1e0acc64d30cd901b213a79e493949d9ef19e3e",
+			"target_sha256": "1dcb87f486c45b64b8a4ab3e6819769929163577b2b375a0dd2e3a0f4f367459",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 3c0d98370d76 job f701c763e4bb; remediation of the audited keys at 011c0f4f4ca, session 634c73fee13a job 70c2d5eecc5d)",
@@ -41678,17 +41770,17 @@
 					"agent": "coder",
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-03",
-					"result": "clean-with-findings",
-					"instance": "3b93a13f3f5b-1652r1-ur",
+					"result": "clean",
+					"instance": "3b93a13f3f5b-1652r2-ur",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 1
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/3b93a13f3f5b-1652r1-ur.json",
-					"receipt_sha256": "e7f5043e645bbf8b4e19ebb58444a430929a9ee9c603bba64361e3d09faa400e",
-					"scope": "PR #1652 six supplement.withheld.* keys; unchanged keys inherit prior coverage by exact byte identity; source-only audit"
+					"receipt": "i18n/receipts/3b93a13f3f5b-1652r2-ur.json",
+					"receipt_sha256": "87834b761e7ac5b4fa90af9000b811b788f5f6a10f8e828f4e646abd624bf377",
+					"scope": "PR #1652 round 2: withheld.reason_separator; other keys byte-identical to round-1 audited bytes at a3dfdf7b027; source-only audit"
 				}
 			],
 			"status": "audited",
@@ -41895,6 +41987,29 @@
 							"receipt_sha256": "b437bb6a4466830d946372f6582fef832fbff9d7d3d1d0c2c6fe7271c5c58d75",
 							"scope": "Round-1 full review (7dde05a06499) at ab45351362a of the 10 keys PR #1603 added + round-2 delta re-audit (d83d475c68e1) at 011c0f4f4ca of the 1 changed key(s). No round-1 MAJOR here (changed for MINOR/NIT wording). Counts are open findings only.",
 							"note": "PR #1603 round-1 full review at ab45351362a + round-2 delta re-audit at 011c0f4f4ca; locale round-1 verdict was changes_requested only for MAJOR(s) now fixed. Detail: i18n/receipts/d83d475c68e1-1603r2-ur.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "893aebc1cfa3b40bc95e4425fca9c38263dcfeec7d81bd4b0102264b780521e7",
+					"target_sha256": "604e6dfe23516ad42930851d50bef07bd07953f81ae5502d4002dd0237b83045",
+					"auditors": [
+						{
+							"agent": "coder",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-03",
+							"result": "clean-with-findings",
+							"instance": "3b93a13f3f5b-1652r1-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/3b93a13f3f5b-1652r1-ur.json",
+							"receipt_sha256": "e7f5043e645bbf8b4e19ebb58444a430929a9ee9c603bba64361e3d09faa400e",
+							"scope": "PR #1652 six supplement.withheld.* keys; unchanged keys inherit prior coverage by exact byte identity; source-only audit"
 						}
 					],
 					"status": "audited"
@@ -51312,8 +51427,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "893aebc1cfa3b40bc95e4425fca9c38263dcfeec7d81bd4b0102264b780521e7",
-			"target_sha256": "e29b4de21ff9b68ba823026950f9f6d3d4108c98eda1e178343d4845366d2715",
+			"source_sha256": "5dd15c346e6dbbcb5c615a9bb1e0acc64d30cd901b213a79e493949d9ef19e3e",
+			"target_sha256": "84a6d3916178a18e337e28878b32093d5510ff3b5943bda4e3cb63bf31dd7c79",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 5baf5b219d15 job c798e751c62b; remediation of the audited keys at 011c0f4f4ca, session 85494821af86 job a57492d745b0)",
@@ -51326,16 +51441,16 @@
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-03",
 					"result": "clean",
-					"instance": "3b93a13f3f5b-1652r1-vi",
+					"instance": "3b93a13f3f5b-1652r2-vi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/3b93a13f3f5b-1652r1-vi.json",
-					"receipt_sha256": "c81a722e331f833a77708f7bd8497a91128380d3ac9ac2666d388be038675e17",
-					"scope": "PR #1652 six supplement.withheld.* keys; unchanged keys inherit prior coverage by exact byte identity; source-only audit"
+					"receipt": "i18n/receipts/3b93a13f3f5b-1652r2-vi.json",
+					"receipt_sha256": "2e8896773c24936dfbf478da073f0e9821958f80e3f413eefce3358981b68df5",
+					"scope": "PR #1652 round 2: withheld.reason_separator; other keys byte-identical to round-1 audited bytes at a3dfdf7b027; source-only audit"
 				}
 			],
 			"status": "audited",
@@ -51541,6 +51656,29 @@
 							"receipt_sha256": "4f9a29b67da78dd0e9201ec2669c842b964424f1e9365bfecd5741792779f2d2",
 							"scope": "Round-1 full review (ff1dde7af5b2) at ab45351362a of the 10 keys PR #1603 added + round-2 delta re-audit (b8016304b62d) at 011c0f4f4ca of the 1 changed key(s). No round-1 MAJOR here (changed for MINOR/NIT wording). Counts are open findings only.",
 							"note": "PR #1603 round-1 full review at ab45351362a + round-2 delta re-audit at 011c0f4f4ca; locale round-1 verdict was changes_requested only for MAJOR(s) now fixed. Detail: i18n/receipts/b8016304b62d-1603r2-vi.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "893aebc1cfa3b40bc95e4425fca9c38263dcfeec7d81bd4b0102264b780521e7",
+					"target_sha256": "e29b4de21ff9b68ba823026950f9f6d3d4108c98eda1e178343d4845366d2715",
+					"auditors": [
+						{
+							"agent": "coder",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-03",
+							"result": "clean",
+							"instance": "3b93a13f3f5b-1652r1-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/3b93a13f3f5b-1652r1-vi.json",
+							"receipt_sha256": "c81a722e331f833a77708f7bd8497a91128380d3ac9ac2666d388be038675e17",
+							"scope": "PR #1652 six supplement.withheld.* keys; unchanged keys inherit prior coverage by exact byte identity; source-only audit"
 						}
 					],
 					"status": "audited"
@@ -61646,8 +61784,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "893aebc1cfa3b40bc95e4425fca9c38263dcfeec7d81bd4b0102264b780521e7",
-			"target_sha256": "6af0928818853afee066e88da5d401e2f3cba1d2809518c919b2dbaf24bb5604",
+			"source_sha256": "5dd15c346e6dbbcb5c615a9bb1e0acc64d30cd901b213a79e493949d9ef19e3e",
+			"target_sha256": "3daa14a2de3be7106589e53108bbc15c758f1eba26bd663b19e181a474f43b76",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 2071a6d2f218 job a1a155d78afc; remediation of the audited keys at 011c0f4f4ca, session 969fd4e90925 job bdffc4284eb8)",
@@ -61660,16 +61798,16 @@
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-03",
 					"result": "clean-with-findings",
-					"instance": "3b93a13f3f5b-1652r1-zh-cn",
+					"instance": "3b93a13f3f5b-1652r2-zh-cn",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 1,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/3b93a13f3f5b-1652r1-zh-cn.json",
-					"receipt_sha256": "7b6b5b35831d7e256ca4f9bfc3c1b6425c40f34e1b242c0724230825c80651a2",
-					"scope": "PR #1652 six supplement.withheld.* keys; unchanged keys inherit prior coverage by exact byte identity; source-only audit"
+					"receipt": "i18n/receipts/3b93a13f3f5b-1652r2-zh-cn.json",
+					"receipt_sha256": "17d43fc75842f180eefaf322978bf7ff46c8ef0f3ed1bf6fe8c23acc77420b22",
+					"scope": "PR #1652 round 2: withheld.reason_separator; other keys byte-identical to round-1 audited bytes at a3dfdf7b027; source-only audit"
 				}
 			],
 			"status": "audited",
@@ -61875,6 +62013,29 @@
 							"receipt_sha256": "c2ee481a6a414f727b3e4c87662c88ea91ff6fb041da5176f2828ec5a4720164",
 							"scope": "Round-1 full review (0bb8123f20fc) at ab45351362a of the 10 keys PR #1603 added + round-2 delta re-audit (e98e27ec97a4) at 011c0f4f4ca of the 1 changed key(s). No round-1 MAJOR here (changed for MINOR/NIT wording). Counts are open findings only.",
 							"note": "PR #1603 round-1 full review at ab45351362a + round-2 delta re-audit at 011c0f4f4ca; locale round-1 verdict was changes_requested only for MAJOR(s) now fixed. Detail: i18n/receipts/e98e27ec97a4-1603r2-zh-cn.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "893aebc1cfa3b40bc95e4425fca9c38263dcfeec7d81bd4b0102264b780521e7",
+					"target_sha256": "6af0928818853afee066e88da5d401e2f3cba1d2809518c919b2dbaf24bb5604",
+					"auditors": [
+						{
+							"agent": "coder",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-03",
+							"result": "clean-with-findings",
+							"instance": "3b93a13f3f5b-1652r1-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/3b93a13f3f5b-1652r1-zh-cn.json",
+							"receipt_sha256": "7b6b5b35831d7e256ca4f9bfc3c1b6425c40f34e1b242c0724230825c80651a2",
+							"scope": "PR #1652 six supplement.withheld.* keys; unchanged keys inherit prior coverage by exact byte identity; source-only audit"
 						}
 					],
 					"status": "audited"

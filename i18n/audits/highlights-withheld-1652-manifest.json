@@ -1,103 +1,103 @@
 {
   "schema": 1,
-  "head": "ad12808392882707cbcbdeee56d82f68b3f82209",
-  "scope": "PR #1652 six ui.chat.canonical.supplement.withheld.* keys; static independent linguistic audit; unchanged namespace keys inherit prior ledger-bound coverage (pre-PR bytes at HEAD~1 hash-identical to the superseded row). NOT runtime/rendered evidence.",
+  "head": "0b3d90980efb2b70306f665a10af128a06a421b6",
+  "scope": "PR #1652 round 2: ui.chat.canonical.supplement.withheld.reason_separator; static independent linguistic audit; unchanged namespace keys inherit prior ledger-bound coverage (bytes at a3dfdf7b027 bound by the round-1 rows). NOT runtime/rendered evidence.",
   "records": [
     {
       "locale": "es",
       "namespace": "ui.chat.canonical",
-      "receipt": "i18n/receipts/3b93a13f3f5b-1652r1-es.json",
-      "receipt_sha256": "b77ae10d76f05420a1e023d62fe64316bc7159022ec2c9a5933fa27c2036cf30",
-      "record": "i18n/audits/evidence/es/ui.chat.canonical/3b93a13f3f5b-1652r1-es/record.json",
-      "record_sha256": "b77ae10d76f05420a1e023d62fe64316bc7159022ec2c9a5933fa27c2036cf30",
+      "receipt": "i18n/receipts/3b93a13f3f5b-1652r2-es.json",
+      "receipt_sha256": "230c69213dde963a866ff638abdc22f7bab3546335e3b5239dc97a478d573d10",
+      "record": "i18n/audits/evidence/es/ui.chat.canonical/3b93a13f3f5b-1652r2-es/record.json",
+      "record_sha256": "230c69213dde963a866ff638abdc22f7bab3546335e3b5239dc97a478d573d10",
       "companions": [
         {
-          "path": "i18n/audits/evidence/es/ui.chat.canonical/3b93a13f3f5b-1652r1-es/notes.json",
-          "sha256": "4ba666b75f2c3c260e38a731938fffd5e3c5e5633cfe637782a1959eeac1d078"
+          "path": "i18n/audits/evidence/es/ui.chat.canonical/3b93a13f3f5b-1652r2-es/notes.json",
+          "sha256": "746ad40196fc0d44caa31e92a9a735ff15ec5cb35cfa459053cf3e39f6d31f0f"
         }
       ]
     },
     {
       "locale": "fr",
       "namespace": "ui.chat.canonical",
-      "receipt": "i18n/receipts/3b93a13f3f5b-1652r1-fr.json",
-      "receipt_sha256": "e842ea2c7745cbf7d9a2c37f53343bc21587e280f4fb5099df263d4f3b936d00",
-      "record": "i18n/audits/evidence/fr/ui.chat.canonical/3b93a13f3f5b-1652r1-fr/record.json",
-      "record_sha256": "e842ea2c7745cbf7d9a2c37f53343bc21587e280f4fb5099df263d4f3b936d00",
+      "receipt": "i18n/receipts/3b93a13f3f5b-1652r2-fr.json",
+      "receipt_sha256": "f360cf766c60e759cbac2a772668b0862b50bfe25064557ee5d65a59286cb1cf",
+      "record": "i18n/audits/evidence/fr/ui.chat.canonical/3b93a13f3f5b-1652r2-fr/record.json",
+      "record_sha256": "f360cf766c60e759cbac2a772668b0862b50bfe25064557ee5d65a59286cb1cf",
       "companions": [
         {
-          "path": "i18n/audits/evidence/fr/ui.chat.canonical/3b93a13f3f5b-1652r1-fr/notes.json",
-          "sha256": "8621a249b26fa944a617264fb4af30207d66ec81f156328ee2e13d12139b1f9b"
+          "path": "i18n/audits/evidence/fr/ui.chat.canonical/3b93a13f3f5b-1652r2-fr/notes.json",
+          "sha256": "20c1af989866525803b39587d1dc614292495c2d4b1a628d2b66b6b9a69a1a07"
         }
       ]
     },
     {
       "locale": "hi",
       "namespace": "ui.chat.canonical",
-      "receipt": "i18n/receipts/3b93a13f3f5b-1652r1-hi.json",
-      "receipt_sha256": "af2b4c77b0abc9631c47d736876fb9ee0f217e96fbd7c711488172d649098140",
-      "record": "i18n/audits/evidence/hi/ui.chat.canonical/3b93a13f3f5b-1652r1-hi/record.json",
-      "record_sha256": "af2b4c77b0abc9631c47d736876fb9ee0f217e96fbd7c711488172d649098140",
+      "receipt": "i18n/receipts/3b93a13f3f5b-1652r2-hi.json",
+      "receipt_sha256": "ed1f94f05d18a62d317322e6c44cd777d8c1a7735933d25ba68e5f239a83b6a5",
+      "record": "i18n/audits/evidence/hi/ui.chat.canonical/3b93a13f3f5b-1652r2-hi/record.json",
+      "record_sha256": "ed1f94f05d18a62d317322e6c44cd777d8c1a7735933d25ba68e5f239a83b6a5",
       "companions": [
         {
-          "path": "i18n/audits/evidence/hi/ui.chat.canonical/3b93a13f3f5b-1652r1-hi/notes.json",
-          "sha256": "947e3a91f38d4b44547a9fcd3b59f684e02d886510edf5aa67a70f92c513fe15"
+          "path": "i18n/audits/evidence/hi/ui.chat.canonical/3b93a13f3f5b-1652r2-hi/notes.json",
+          "sha256": "595714b6c0e9388e57d0970e1ccdff163334a7c981b7da92133e6593e6516a58"
         }
       ]
     },
     {
       "locale": "ru",
       "namespace": "ui.chat.canonical",
-      "receipt": "i18n/receipts/3b93a13f3f5b-1652r1-ru.json",
-      "receipt_sha256": "8499336ef3022594b163d97cbd668275876def2c43f7f3ef229e9e6910f2cc0f",
-      "record": "i18n/audits/evidence/ru/ui.chat.canonical/3b93a13f3f5b-1652r1-ru/record.json",
-      "record_sha256": "8499336ef3022594b163d97cbd668275876def2c43f7f3ef229e9e6910f2cc0f",
+      "receipt": "i18n/receipts/3b93a13f3f5b-1652r2-ru.json",
+      "receipt_sha256": "0ec062b9aced1557821a09f2fd6ab1d081f0a9d5404cf62d838b1a933d1baec8",
+      "record": "i18n/audits/evidence/ru/ui.chat.canonical/3b93a13f3f5b-1652r2-ru/record.json",
+      "record_sha256": "0ec062b9aced1557821a09f2fd6ab1d081f0a9d5404cf62d838b1a933d1baec8",
       "companions": [
         {
-          "path": "i18n/audits/evidence/ru/ui.chat.canonical/3b93a13f3f5b-1652r1-ru/notes.json",
-          "sha256": "a2387f4d59855c566c535b4e660c809b821c2d989c33aa5c66419497b74ce7e2"
+          "path": "i18n/audits/evidence/ru/ui.chat.canonical/3b93a13f3f5b-1652r2-ru/notes.json",
+          "sha256": "45f4f44501311dd98aa5cae60eac0f2e99e7d4abd3f767b81883200eecc906c8"
         }
       ]
     },
     {
       "locale": "ur",
       "namespace": "ui.chat.canonical",
-      "receipt": "i18n/receipts/3b93a13f3f5b-1652r1-ur.json",
-      "receipt_sha256": "e7f5043e645bbf8b4e19ebb58444a430929a9ee9c603bba64361e3d09faa400e",
-      "record": "i18n/audits/evidence/ur/ui.chat.canonical/3b93a13f3f5b-1652r1-ur/record.json",
-      "record_sha256": "e7f5043e645bbf8b4e19ebb58444a430929a9ee9c603bba64361e3d09faa400e",
+      "receipt": "i18n/receipts/3b93a13f3f5b-1652r2-ur.json",
+      "receipt_sha256": "87834b761e7ac5b4fa90af9000b811b788f5f6a10f8e828f4e646abd624bf377",
+      "record": "i18n/audits/evidence/ur/ui.chat.canonical/3b93a13f3f5b-1652r2-ur/record.json",
+      "record_sha256": "87834b761e7ac5b4fa90af9000b811b788f5f6a10f8e828f4e646abd624bf377",
       "companions": [
         {
-          "path": "i18n/audits/evidence/ur/ui.chat.canonical/3b93a13f3f5b-1652r1-ur/notes.json",
-          "sha256": "d69a53253b64b2ddb972676c99cc36b8cf706357356b884355e03660c0fcfb0b"
+          "path": "i18n/audits/evidence/ur/ui.chat.canonical/3b93a13f3f5b-1652r2-ur/notes.json",
+          "sha256": "345b354c78b88354dff760961de51695ff4fa4b27ce859454103d9a148741a9f"
         }
       ]
     },
     {
       "locale": "vi",
       "namespace": "ui.chat.canonical",
-      "receipt": "i18n/receipts/3b93a13f3f5b-1652r1-vi.json",
-      "receipt_sha256": "c81a722e331f833a77708f7bd8497a91128380d3ac9ac2666d388be038675e17",
-      "record": "i18n/audits/evidence/vi/ui.chat.canonical/3b93a13f3f5b-1652r1-vi/record.json",
-      "record_sha256": "c81a722e331f833a77708f7bd8497a91128380d3ac9ac2666d388be038675e17",
+      "receipt": "i18n/receipts/3b93a13f3f5b-1652r2-vi.json",
+      "receipt_sha256": "2e8896773c24936dfbf478da073f0e9821958f80e3f413eefce3358981b68df5",
+      "record": "i18n/audits/evidence/vi/ui.chat.canonical/3b93a13f3f5b-1652r2-vi/record.json",
+      "record_sha256": "2e8896773c24936dfbf478da073f0e9821958f80e3f413eefce3358981b68df5",
       "companions": [
         {
-          "path": "i18n/audits/evidence/vi/ui.chat.canonical/3b93a13f3f5b-1652r1-vi/notes.json",
-          "sha256": "f50de6df5264381c3eadfccc2c0476cee3673c3ffe402453d28e64c7c0841cad"
+          "path": "i18n/audits/evidence/vi/ui.chat.canonical/3b93a13f3f5b-1652r2-vi/notes.json",
+          "sha256": "87c9ed097474c55bb1d24565f076cd1bd7c169352548ec61be04835e6a8d43d7"
         }
       ]
     },
     {
       "locale": "zh-CN",
       "namespace": "ui.chat.canonical",
-      "receipt": "i18n/receipts/3b93a13f3f5b-1652r1-zh-cn.json",
-      "receipt_sha256": "7b6b5b35831d7e256ca4f9bfc3c1b6425c40f34e1b242c0724230825c80651a2",
-      "record": "i18n/audits/evidence/zh-CN/ui.chat.canonical/3b93a13f3f5b-1652r1-zh-cn/record.json",
-      "record_sha256": "7b6b5b35831d7e256ca4f9bfc3c1b6425c40f34e1b242c0724230825c80651a2",
+      "receipt": "i18n/receipts/3b93a13f3f5b-1652r2-zh-cn.json",
+      "receipt_sha256": "17d43fc75842f180eefaf322978bf7ff46c8ef0f3ed1bf6fe8c23acc77420b22",
+      "record": "i18n/audits/evidence/zh-CN/ui.chat.canonical/3b93a13f3f5b-1652r2-zh-cn/record.json",
+      "record_sha256": "17d43fc75842f180eefaf322978bf7ff46c8ef0f3ed1bf6fe8c23acc77420b22",
       "companions": [
         {
-          "path": "i18n/audits/evidence/zh-CN/ui.chat.canonical/3b93a13f3f5b-1652r1-zh-cn/notes.json",
-          "sha256": "bbe1e49e034e6e87401cdc8a0e8966c5a2721745293ffe98de7802e928dcda1e"
+          "path": "i18n/audits/evidence/zh-CN/ui.chat.canonical/3b93a13f3f5b-1652r2-zh-cn/notes.json",
+          "sha256": "e2d25a5d647d93f04e91cf595f3596d762890f275e87a152fcea20e6a740ab3d"
         }
       ]
     }
