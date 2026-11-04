@@ -279,8 +279,8 @@ export function useAgentAvatarState(
 	/*
 	 * A FAILED LIST READ IS NOT "NO PICTURE" (agent review m-3). With the map in
 	 * error and no data, every agent looks pictureless, which is not an answer.
-	 * `unreadable` lets the presence decision say so (it draws nothing); a hinted read never consults the map, so it
-	 * cannot be unreadable.
+	 * `unreadable` lets the presence decision say so (it draws nothing); a
+	 * hinted read never consults the map, so it cannot be unreadable.
 	 */
 	const unreadable = !hinted && Boolean(agentId) && isError && !data;
 	return {

@@ -221,6 +221,64 @@ test("suggestPicture: the header of a proactive agent or the chief of staff draw
 	assert.equal(decideAvatarMark({ ...SUGGEST, agentName: null }).door, null);
 });
 
+test("a header whose class read is pending holds a plate, never the door (D1 / m2)", () => {
+	/* Pictureless, settled, class unknown: the box is held so the title does not shift. */
+	assert.deepEqual(decideAvatarMark({ ...base, suggestPending: true }), {
+		kind: "plate",
+	});
+	/* Only where a door could follow: not owned, unbound or unreadable draw nothing. */
+	assert.equal(
+		decideAvatarMark({ ...base, suggestPending: true, owned: false }),
+		null,
+	);
+	assert.equal(
+		decideAvatarMark({ ...base, suggestPending: true, agentId: null }),
+		null,
+	);
+	assert.equal(
+		decideAvatarMark({ ...base, suggestPending: true, unreadable: true }),
+		null,
+	);
+	/* A picture still wins; once the read answers "regular", nothing again. */
+	assert.equal(
+		decideAvatarMark({ ...base, suggestPending: true, src: "blob:x" }).kind,
+		"picture",
+	);
+	assert.equal(decideAvatarMark({ ...base, suggestPending: false }), null);
+	/* The header passes it from the profiles read's own pending state, gated as enabled. */
+	const header = code(`${CH}/chat-header.tsx`);
+	assert.match(header, /const profiles = useProfiles\(readsClass\)/);
+	assert.match(
+		header,
+		/suggestPending: readsClass && profiles\.isPending && !suggestPicture/,
+	);
+});
+
+test("the turn head claims the session row's digest, so a pictured agent holds its plate (Q-1)", () => {
+	/* Unhinted and cold, nothing is claimed and nothing is drawn: the pop-in. */
+	assert.equal(decideAvatarMark({ ...base, settled: false }), null);
+	/* With the row's digest claimed the cold head holds the box. */
+	assert.deepEqual(
+		decideAvatarMark({ ...base, settled: false, claimed: true }),
+		{ kind: "plate" },
+	);
+	const page = code(`${CH}/chat-page.tsx`);
+	const call = page.slice(
+		page.indexOf("const agentAvatar = useAgentSlotMark({"),
+	);
+	assert.match(
+		call.slice(0, 400),
+		/sha256Hint: \(rowSpeaks && boundRow\?\.avatar_sha256\) \|\| undefined/,
+	);
+	/* The row is only the speaker's when it names the same agent id. */
+	assert.match(
+		page,
+		/const rowSpeaks =\s*speakerAgentId !== null && boundRow\?\.agent_id === speakerAgentId/,
+	);
+	/* Still never a suggestion on the transcript. */
+	assert.doesNotMatch(call.slice(0, 400), /suggestP/);
+});
+
 test("agentSuggestsPicture: only the chief of staff and proactive-class agents", () => {
 	const profiles = [
 		{ name: "manager", action_class: "reactive" },
@@ -272,10 +330,8 @@ test("agentSuggestsPicture: only the chief of staff and proactive-class agents",
 
 test("only the chat header passes suggestPicture; the transcript, sidebar and Team Bridge never do", () => {
 	const header = code(`${CH}/chat-header.tsx`);
-	assert.match(
-		header,
-		/suggestPicture: agentSuggestsPicture\(agent\.agentName, profiles\.data\)/,
-	);
+	/* Any spelling of the header's pass (n2); the negative greps carry the weight. */
+	assert.match(header, /suggestPicture/);
 	const callers = [
 		`${CH}/chat-page.tsx`,
 		`${CH}/chat-session-avatar.tsx`,

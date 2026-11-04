@@ -3736,10 +3736,21 @@ function SessionPanel({
 	 * `cssPx` is the box `MessageAvatar` draws it at, from the same size table -
 	 * the read asks for the derivative that covers THAT box, so a `large` mark is
 	 * not served the `small` step's 64 px file on a retina panel.
+	 *
+	 * `sha256Hint` IS THE ROW'S DIGEST, only when the row is about this speaker
+	 * (QA Q-1): unhinted, the read claims nothing until the agents map answers,
+	 * so a pictured agent drew nothing and then popped in 24px. The row's claim
+	 * lets the cold head hold its plate. Not hinted otherwise (`undefined`, look
+	 * it up): a live switch to another agent, or a row with no digest - the map
+	 * also knows a picture set in this window before the row refetches, and a
+	 * `null` hint would never consult it. Unclaimed still draws nothing.
 	 */
+	const rowSpeaks =
+		speakerAgentId !== null && boundRow?.agent_id === speakerAgentId;
 	const agentAvatar = useAgentSlotMark({
 		agentId: speakerAgentId,
 		agentName: speakerAgent,
+		sha256Hint: (rowSpeaks && boundRow?.avatar_sha256) || undefined,
 		owned: sessionPictureEditable({
 			agent_id: speakerAgentId,
 			locality: boundRow?.locality,

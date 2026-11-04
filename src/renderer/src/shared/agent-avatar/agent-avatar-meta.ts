@@ -115,12 +115,13 @@ export function sessionAvatarTarget(
 /**
  * The same address as `sessionAvatarTarget`, for a row that may have NO picture.
  *
- * The chat header reads the agent's address even when the row claims no digest
- * (the agents map may still know one, and a picture set in this window lands
- * before the row refetches). `sha256` is null when the row claims none, and
- * `decideAvatarMark` then draws nothing for it (outside a suggesting header). The sidebar's pencil keeps reading
- * `sessionAvatarTarget`, whose `sha256` is required, so a no-picture sidebar row
- * stays exactly the row main draws.
+ * The chat header reads the agent's address even when the row claims no digest,
+ * because a suggesting header (proactive agent, chief of staff) still needs it
+ * to build the placeholder's door. `sha256` is null when the row claims none;
+ * the header passes it as a `null` hint, so the agents map is NOT consulted, and
+ * `decideAvatarMark` draws nothing for it outside a suggesting header. The
+ * sidebar's pencil keeps reading `sessionAvatarTarget`, whose `sha256` is
+ * required, so a no-picture sidebar row stays exactly the row main draws.
  */
 export function sessionAgentTarget(
 	row:

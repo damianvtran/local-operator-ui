@@ -96,6 +96,16 @@ export type AvatarPresenceFacts = {
 	 * (`agentSuggestsPicture`). Absent is false - every other surface and agent.
 	 */
 	suggestPicture?: boolean;
+	/**
+	 * The header cannot answer `suggestPicture` yet: the profiles read that
+	 * carries the agent's class is still pending (D1 / m2). It holds a PLATE -
+	 * never the door, whose class is unknown - so a pictureless proactive header
+	 * does not draw nothing and then shift its title 24px when the class lands.
+	 * The cost is a regular session's header holding the same plate for that
+	 * read; the query is the turn head's shared `["desktop","profiles"]` key,
+	 * normally warm, so this is a cold-start-only window.
+	 */
+	suggestPending?: boolean;
 };
 
 /**
@@ -128,6 +138,9 @@ export function decideAvatarMark(
 	 * moment ago), busy and closed, so nothing reflows when the face lands.
 	 */
 	if (suggest && busy) return { kind: "placeholder", door, busy };
+	// Class unknown yet: hold the box, offer nothing (see `suggestPending`).
+	if (bound && facts.suggestPending === true && !facts.unreadable)
+		return { kind: "plate" };
 	/*
 	 * A plate only holds the box for a face that is coming: a claimed digest, a
 	 * read not yet settled, and an owned, bound agent (a remote agent's bytes may

@@ -181,6 +181,8 @@ export function useAgentSlotMark(input: {
 	pictureDoor: boolean;
 	/** May this surface suggest a picture when there is none? Header only. */
 	suggestPicture?: boolean;
+	/** The header's class read is still pending: hold a plate (`avatar-presence.ts`). */
+	suggestPending?: boolean;
 	/**
 	 * The CSS size the caller's box draws the mark at, so the byte read asks for
 	 * the right-sized derivative (`useAgentAvatarState`'s third parameter).
@@ -204,6 +206,7 @@ export function useAgentSlotMark(input: {
 		unreadable,
 		owned: input.owned,
 		suggestPicture: input.suggestPicture,
+		suggestPending: input.suggestPending,
 	});
 	if (mark?.kind === "picture" && !input.pictureDoor)
 		return { ...mark, door: null };

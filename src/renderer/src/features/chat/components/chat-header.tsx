@@ -382,21 +382,31 @@ const useHeaderAvatar = (
 	 * shared `profiles.list` query chat already makes for the turn head, so it
 	 * costs no extra request. Only an owned agent can be suggested to (a claimed
 	 * digest whose bytes fail must draw what an absent one draws, so the digest
-	 * does not gate the read). Until it answers, the agent is not proactive and
-	 * nothing is suggested.
+	 * does not gate the read). Until it answers, nothing is suggested.
+	 *
+	 * WHILE IT IS PENDING THE HEADER HOLDS A PLATE (D1 / m2): drawing nothing and
+	 * then the door once `action_class: "proactive"` arrives shifts the title
+	 * 24px on a cold start. The trade is that a regular session's header holds
+	 * the same plate for that read and then drops it - accepted because the key
+	 * is the turn head's shared `["desktop","profiles"]` query (chat-page reads
+	 * it first), so on a warm path it is never pending and no plate is drawn.
+	 * `isPending` is also true for a DISABLED query, hence the same gate as
+	 * `enabled`; the chief of staff is known by name and never waits.
 	 */
 	const capabilities = useDesktopCapabilities();
-	const profiles = useProfiles(
+	const readsClass =
 		agent.owned &&
-			desktopFeatureEnabled(capabilities.data, "profile_catalogue"),
-	);
+		desktopFeatureEnabled(capabilities.data, "profile_catalogue");
+	const profiles = useProfiles(readsClass);
+	const suggestPicture = agentSuggestsPicture(agent.agentName, profiles.data);
 	const mark = useAgentSlotMark({
 		agentId: agent.agentId,
 		agentName: agent.agentName,
 		sha256Hint: agent.sha256,
 		owned: agent.owned,
 		pictureDoor: true,
-		suggestPicture: agentSuggestsPicture(agent.agentName, profiles.data),
+		suggestPicture,
+		suggestPending: readsClass && profiles.isPending && !suggestPicture,
 		// The box below is what the picture is drawn at, so it is what to ask for.
 		cssPx: box.px,
 	});
