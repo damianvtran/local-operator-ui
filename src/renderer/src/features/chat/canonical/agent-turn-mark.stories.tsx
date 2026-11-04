@@ -203,7 +203,7 @@ const Panel = ({
 	agentId: string | null;
 	/** The records to draw; the short three-turn fixture by default. */
 	transcript?: TranscriptState;
-	/** Whether the viewer owns the agent: the placeholder's door needs it. */
+	/** Whether the viewer owns the agent (the picture's ownership answer). */
 	owned?: boolean;
 	height?: number;
 }) => {
@@ -425,16 +425,17 @@ export const PlainNarrow: Story = {
 const BARE_AGENT_ID = "agent-story-bare";
 
 /**
- * THE PLACEHOLDER IN A REAL TRANSCRIPT: an agent with no picture, owned, two
- * turns. The dashed camera door is drawn at the FIRST turn's head only - the
- * second turn is the D11 transcript exactly - which is the repetition decision
- * (`message-avatar.tsx`) made visible. `data-frame` is the measure hook.
+ * AN OWNED AGENT WITH NO PICTURE, in a real transcript: no mark at all (operator,
+ * 2026-11-04). #1651 drew a dashed camera door at the first turn's head here; it
+ * took a line above the first tool row for an agent that never asked for a
+ * picture, so it is gone, and this frame is the D11 transcript exactly - the
+ * same as `PlainWide`. `data-frame` is the measure hook for that comparison.
  */
-export const PlaceholderOnce: Story = {
+export const NoPictureOwned: Story = {
 	render: () => (
 		<div className="bg-canvas p-6">
 			<PicturePane
-				frame="placeholder-wide"
+				frame="no-picture-owned"
 				width={1024}
 				agentId={BARE_AGENT_ID}
 			/>
@@ -442,12 +443,12 @@ export const PlaceholderOnce: Story = {
 	),
 };
 
-/** The same agent when the viewer does not own it: D11's transcript, no mark at all. */
-export const PlaceholderNotOwned: Story = {
+/** The same agent when the viewer does not own it: also no mark at all. */
+export const NoPictureNotOwned: Story = {
 	render: () => (
 		<div className="bg-canvas p-6">
 			<Panel
-				frame="placeholder-not-owned"
+				frame="no-picture-not-owned"
 				width={1024}
 				agentId={BARE_AGENT_ID}
 				owned={false}
@@ -456,7 +457,7 @@ export const PlaceholderNotOwned: Story = {
 	),
 };
 
-/** A pane at one step of the size setting, picture or placeholder. */
+/** A pane at one step of the size setting, with a picture or without. */
 const SizedPane = ({
 	size,
 	agentId,
@@ -492,7 +493,8 @@ export const SizeLarge: Story = {
 		</div>
 	),
 };
-export const SizeLargePlaceholder: Story = {
+/** The large step with no picture: still nothing, at any size. */
+export const SizeLargeNoPicture: Story = {
 	render: () => (
 		<div className="bg-canvas p-6">
 			<SizedPane size="large" agentId={BARE_AGENT_ID} />
@@ -585,6 +587,57 @@ export const LongWindowedLargeNoMarks: Story = {
 	render: () => (
 		<div className="bg-canvas p-6">
 			<LongPane size="large" agentId={null} />
+		</div>
+	),
+};
+
+/**
+ * THE OPERATOR'S CASE (2026-11-04): an agent turn that opens straight into tool
+ * rows, the shape of most delegated sessions. Without a picture its first tool
+ * row must sit directly under the user's turn, at the turn gap and nothing more;
+ * with one, the picture's line sits between them. `data-frame` is the measure
+ * hook for the y offset of the first tool row.
+ */
+const TOOL_FIRST = transcriptOf([
+	user("tu1", "Run the checks on the avatar branch."),
+	tool({
+		id: "tt1",
+		ts: TS + 500,
+		toolName: "bash",
+		args: { command: "pnpm check-types" },
+	}),
+	tool({
+		id: "tt2",
+		ts: TS + 600,
+		toolName: "read",
+		args: { path: "src/renderer/src/shared/agent-avatar/avatar-presence.ts" },
+	}),
+	assistant("ta1", "Types are clean and the presence table reads as intended."),
+]);
+
+export const ToolFirstNoPicture: Story = {
+	render: () => (
+		<div className="bg-canvas p-6">
+			<PicturePane
+				frame="tool-first-no-picture"
+				width={720}
+				agentId={BARE_AGENT_ID}
+				transcript={TOOL_FIRST}
+				height={320}
+			/>
+		</div>
+	),
+};
+
+export const ToolFirstPicture: Story = {
+	render: () => (
+		<div className="bg-canvas p-6">
+			<PicturePane
+				frame="tool-first-picture"
+				width={720}
+				transcript={TOOL_FIRST}
+				height={320}
+			/>
 		</div>
 	),
 };

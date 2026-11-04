@@ -4125,20 +4125,16 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 	 * token. A picture-less agent is the common case and the one D11 left
 	 * untouched, so it pays nothing: the empty set is the same render.
 	 */
-	const markKind = agentMark?.kind ?? null;
-	const turnHeads = useMemo(() => {
-		if (!markKind) return NO_TURN_HEADS;
-		const heads = agentTurnHeads(rows);
-		/*
-		 * A PLACEHOLDER IS DRAWN ONCE, at the first turn head of the loaded rows
-		 * (see `message-avatar.tsx`): it exists to be found, and a dashed door per
-		 * turn is the repetition D11 deleted. A picture or a plate holds a box on
-		 * every head, as before. `agentTurnHeads` fills the set in row order.
-		 */
-		if (markKind !== "placeholder" || heads.size <= 1) return heads;
-		const [first] = heads;
-		return new Set([first]);
-	}, [rows, markKind]);
+	/*
+	 * A picture or the plate of a claimed picture holds a box on every head; with
+	 * no mark (every pictureless agent) the set is empty and no head draws
+	 * anything (see `message-avatar.tsx`).
+	 */
+	const hasMark = agentMark !== null;
+	const turnHeads = useMemo(
+		() => (hasMark ? agentTurnHeads(rows) : NO_TURN_HEADS),
+		[rows, hasMark],
+	);
 	const avatarSize = parseAgentAvatarSize(
 		useUiPreferencesStore((state) => state.agentAvatarSize),
 	);

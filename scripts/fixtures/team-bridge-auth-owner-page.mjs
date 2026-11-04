@@ -128,6 +128,8 @@ const bundle = await build({
  export {QueryClient,QueryClientProvider} from '@tanstack/react-query';
  export {MemoryRouter} from 'react-router-dom';
  export {usePendingSends, resetPendingSendsForTest} from './src/renderer/src/features/team-bridge/team-bridge-pending-sends';
+ export {resetHeldRailScrollForTest} from './src/renderer/src/features/team-bridge/team-bridge-rail-scroll';
+ export {LeftSidebarHostContext} from './src/renderer/src/shared/components/navigation/left-sidebar-host';
  export {stageMentions, stagedMentions} from './src/renderer/src/features/team-bridge/mentions/mention-outbox';`,
 		resolveDir: process.cwd(),
 	},
@@ -340,6 +342,26 @@ async function until(predicate, label) {
 	}
 	assert.fail(`timed out: ${label}`);
 }
+/*
+ * THE SHELL'S HOSTED COLUMN, opt-in (`hostedRail`). In the app the rail is
+ * portaled into a host `div` the shell publishes through
+ * `LeftSidebarHostContext`; the host is React state set by a ref callback, so
+ * on the commit that mounts the route the host is still null and
+ * `InLeftSidebarHost` renders NOTHING - the rail arrives a commit later. Leaving
+ * the route unmounts the host with it, as the shell's swap does. A suite that
+ * needs that first rail-less commit (QA round 1, Q2) asks for this; every other
+ * suite keeps the inline rail it always had.
+ */
+function HostedRail({ children }) {
+	const [host, setHost] = React.useState(null);
+	const slot = React.useMemo(() => ({ host }), [host]);
+	return React.createElement(
+		ui.LeftSidebarHostContext.Provider,
+		{ value: slot },
+		React.createElement("div", { ref: setHost, "data-test-route-host": "" }),
+		children,
+	);
+}
 function deferred() {
 	let resolve;
 	const promise = new Promise((done) => {
@@ -386,6 +408,7 @@ async function mount({
 	statusGate = null,
 	sendMentions = false,
 	attachments = false,
+	hostedRail = false,
 } = {}) {
 	// A revoked attempt can outlive its cleared lane and store entry. A later
 	// fixture must not reset shared state while that earlier job can still run.
@@ -504,6 +527,11 @@ async function mount({
 								/* Opt-in: only the mention suites type an `@`, and the other
 								   suites' request shapes predate the field. */
 								...(sendMentions ? { team_bridge_send_mentions: 1 } : {}),
+								/* Opt-in like mentions: only a suite that seeds
+								   `ownerAuditConversations` draws the read-only history rail. */
+								...(fixture.ownerAuditConversations
+									? { team_bridge_owner_audit: 1 }
+									: {}),
 							},
 						});
 					case "radient.request":
@@ -611,7 +639,19 @@ async function mount({
 							(row) => row.id !== request.conversation_id,
 						);
 						return reply({ deleted: true });
+					/* The chief-of-staff history's own read; answered only when a suite
+					   seeds rows (see the `team_bridge_owner_audit` capability above). */
+					case "team_bridge.owner_audit.conversations":
+						return reply({
+							conversations: (fixture.ownerAuditConversations ?? []).map(
+								(row) => ({ ...row, tenant_id: request.tenant_id }),
+							),
+							has_more: false,
+							next_cursor: null,
+						});
 					case "team_bridge.directory":
+						if (fixture.directoryMembers)
+							return reply({ members: fixture.directoryMembers });
 						return reply({
 							members: ["Peer", "Other peer"].map((name, index) => ({
 								account_id: `acct_peer_${index}`,
@@ -805,7 +845,15 @@ async function mount({
 							React.Fragment,
 							null,
 							React.createElement(ui.AuthPrincipal),
-							fixture.away ? null : React.createElement(ui.TeamBridgePage),
+							fixture.away
+								? null
+								: hostedRail
+									? React.createElement(
+											HostedRail,
+											null,
+											React.createElement(ui.TeamBridgePage),
+										)
+									: React.createElement(ui.TeamBridgePage),
 						),
 					),
 				),

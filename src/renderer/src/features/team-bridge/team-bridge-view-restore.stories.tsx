@@ -5,7 +5,7 @@ import { queryClient } from "@shared/api/query-client";
 import { commissionAccountRead } from "@shared/hooks/use-radient-user-query";
 import type { Meta, StoryObj } from "@storybook/react";
 import { QueryClientProvider } from "@tanstack/react-query";
-import { useLayoutEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 import { Route, Routes, useNavigate } from "react-router-dom";
 import { TeamBridgePage } from "./team-bridge-page";
 
@@ -76,6 +76,26 @@ const ORGS: Record<string, ReturnType<typeof row>[]> = {
 		row("ops", "org_northwind", "ops"),
 	],
 };
+/*
+ * THE OPERATOR'S RAIL (sidebar scroll report: "when I click a channel it
+ * scrolls me back to the top"): long enough that groups, DMs, people and the
+ * chief of staff all sit below the fold, so a capture can scroll down, click a
+ * row there and show whether the rail stayed put.
+ */
+const LONG_ORGS: Record<string, ReturnType<typeof row>[]> = {
+	...ORGS,
+	org_minerva: [
+		...ORGS.org_minerva,
+		...Array.from({ length: 24 }, (_, index) =>
+			row(`ch_${index + 1}`, "org_minerva", `project-${index + 1}`),
+		),
+		row("dm_ada", "org_minerva", undefined, {
+			kind: "dm",
+			visibility: "private",
+			members: [member("acct_me"), member("acct_ada")],
+		}),
+	],
+};
 const history = (conversation: string) =>
 	Array.from({ length: 24 }, (_, index) => ({
 		id: `${conversation}_${index + 1}`,
@@ -87,7 +107,8 @@ const history = (conversation: string) =>
 		created_at: now,
 	}));
 
-function LeaveAndReturn({ reset }: { reset: boolean }) {
+function LeaveAndReturn({ reset, long }: { reset: boolean; long?: boolean }) {
+	const orgs = long ? LONG_ORGS : ORGS;
 	const navigate = useNavigate();
 	const [ready, setReady] = useState(false);
 	const [generation, setGeneration] = useState(0);
@@ -176,18 +197,37 @@ function LeaveAndReturn({ reset }: { reset: boolean }) {
 								request.status === "archived"
 									? []
 									: request.scope === "account"
-										? Object.values(ORGS).flat()
-										: (ORGS[request.tenant_id ?? ""] ?? []),
+										? Object.values(orgs).flat()
+										: (orgs[request.tenant_id ?? ""] ?? []),
 						});
 					case "team_bridge.directory":
 						return reply({
-							members: ["acct_ben", "acct_ada"].map((id) => ({
-								account_id: id,
-								display_label: id.replace("acct_", ""),
-								role: "member",
-								bridge_enabled: true,
-								bridge_state: "active",
-							})),
+							members: [
+								...["acct_ben", "acct_ada"].map((id) => ({
+									account_id: id,
+									display_label: id.replace("acct_", ""),
+									role: "member",
+									bridge_enabled: true,
+									bridge_state: "active",
+								})),
+								/* A chief of staff, so the long rail carries that section. */
+								...(long
+									? [
+											{
+												account_id: "acct_ola",
+												display_label: "Ola",
+												role: "member",
+												bridge_enabled: true,
+												bridge_state: "active",
+												agent: {
+													endpoint_id: "bep_ola",
+													name: "Aida",
+													state: "active",
+												},
+											},
+										]
+									: []),
+							],
 						});
 					case "team_bridge.unread":
 						return reply({ total: 0, organizations: [], conversations: [] });
@@ -222,7 +262,7 @@ function LeaveAndReturn({ reset }: { reset: boolean }) {
 			window.api.desktop = prior;
 			queryClient.clear();
 		};
-	}, [reset]);
+	}, [reset, long]);
 	return (
 		<QueryClientProvider client={queryClient}>
 			<div className="flex h-screen flex-col bg-surface text-ink">
@@ -255,8 +295,12 @@ function LeaveAndReturn({ reset }: { reset: boolean }) {
 					>
 						Restart (keep only localStorage)
 					</button>
+					{long && <RailScrollRig />}
 				</nav>
-				<div className="min-h-0 flex-1">
+				{/* A FLEX COLUMN, as the shell gives the page (see the board in
+				    `team-bridge-page.stories.tsx`): in a block slot the page grows to
+				    its content and the rail never scrolls at all. */}
+				<div className="flex min-h-0 flex-1 flex-col">
 					{ready && (
 						<Routes>
 							<Route
@@ -279,6 +323,71 @@ function LeaveAndReturn({ reset }: { reset: boolean }) {
 	);
 }
 
+/* The rail's viewport, found by its #general row so the rig reads the same
+   element before and after the fix (the fix adds no attribute this needs). */
+const railViewport = () =>
+	document
+		.querySelector('[data-conversation-id="gen_minerva"]')
+		?.closest<HTMLElement>("[data-radix-scroll-area-viewport]") ?? null;
+
+/*
+ * The capture rig for `LongRail`. "Scroll rail down" parks the rail the way a
+ * reader who scrolled would be - with project-22, a row far below the fold,
+ * in the middle of the viewport, so the press that follows lands on painted
+ * pixels - and records the parked offset in `data-parked`. The readout prints
+ * the rail's live scrollTop, so each still carries its own number.
+ */
+const PARK_ROW = '[data-conversation-id="ch_22"]';
+function RailScrollRig() {
+	const [top, setTop] = useState<number | null>(null);
+	const [parked, setParked] = useState<number | null>(null);
+	/* A press can land before the rail's rows do; the park waits for them. */
+	const [park, setPark] = useState(false);
+	const parkNow = () => {
+		const viewport = railViewport();
+		const row = viewport?.querySelector<HTMLElement>(PARK_ROW);
+		if (!viewport || !row || viewport.scrollHeight <= viewport.clientHeight)
+			return false;
+		const offset =
+			row.getBoundingClientRect().top -
+			viewport.getBoundingClientRect().top +
+			viewport.scrollTop;
+		viewport.scrollTop = Math.round(offset - viewport.clientHeight / 2);
+		setParked(viewport.scrollTop);
+		setTop(viewport.scrollTop);
+		return true;
+	};
+	// biome-ignore lint/correctness/useExhaustiveDependencies: parkNow reads live DOM only.
+	useEffect(() => {
+		const timer = setInterval(() => {
+			if (park && parkNow()) setPark(false);
+			setTop(railViewport()?.scrollTop ?? null);
+		}, 100);
+		return () => clearInterval(timer);
+	}, [park]);
+	return (
+		<>
+			<button
+				type="button"
+				data-rig="scroll-rail"
+				onClick={() => {
+					if (!parkNow()) setPark(true);
+				}}
+			>
+				Scroll rail down
+			</button>
+			<output
+				data-rig="rail-scroll-top"
+				data-parked={parked ?? undefined}
+				className="ms-auto font-mono"
+			>
+				rail scrollTop: {top === null ? "-" : Math.round(top)}
+				{parked === null ? "" : ` (parked at ${parked})`}
+			</output>
+		</>
+	);
+}
+
 export default {
 	title: "Team Bridge/Leave and return (live flow)",
 	component: LeaveAndReturn,
@@ -286,3 +395,10 @@ export default {
 	args: { reset: false },
 } satisfies Meta<typeof LeaveAndReturn>;
 export const LiveFlow: StoryObj<typeof LeaveAndReturn> = {};
+/**
+ * The same live page with a rail longer than the window: scroll the rail down,
+ * pick a row below the fold, and the rail must stay where it was.
+ */
+export const LongRail: StoryObj<typeof LeaveAndReturn> = {
+	args: { reset: true, long: true },
+};

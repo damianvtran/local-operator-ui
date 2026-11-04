@@ -181,7 +181,14 @@ export const radient: ThemeDefinition = {
 		 * 2.0), 10.40:1 for `accentAlt` on it, and 2.03 from the nearest ground it
 		 * is painted on.
 		 */
-		accentAltWash: "#212330",
+		/*
+		 * LIFTED #212330 -> #323341 (L* 14.05 -> 21.68, hue and chroma held) for
+		 * Team Bridge's person plates (visual refresh, contract C2; design round 1,
+		 * D1): the plate is borderless, so its fill must clear ΔE00 3.0 off every
+		 * ground it sits on. It measured 1.78; it now measures 3.19 at worst
+		 * (`rowHover`), with `accentAlt` 8.75:1 on it.
+		 */
+		accentAltWash: "#323341",
 
 		// Derived. Radient names no semantic colours, so these three are built to
 		// the theme's own cool cast rather than borrowed from another palette.

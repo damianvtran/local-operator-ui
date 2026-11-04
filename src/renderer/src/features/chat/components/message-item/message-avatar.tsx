@@ -1,6 +1,6 @@
 /**
- * The agent's mark at the head of a turn: its picture, or the quiet placeholder
- * that offers one.
+ * The agent's mark at the head of a turn: its picture (or, for the few frames a
+ * claimed picture's bytes are cold, the plate that holds its box).
  *
  * WHAT CHANGED SINCE D11, and why the deletion was right then and is wrong now.
  * D11 deleted the agent glyph and the 40px gutter it was absolutely positioned
@@ -15,22 +15,19 @@
  * 28-40px, because a photograph is intrinsically louder than a muted glyph and
  * it must not become the loudest thing in the left column.
  *
- * NO PICTURE NOW DRAWS A PLACEHOLDER, AND THAT DOES NOT REPEAT D11. D11's
- * objection was a glyph per message that said nothing the register had not
- * said. The placeholder says something nothing else does ("this agent can have a
- * face, and here is how") and is therefore drawn ONCE - at the first turn of the
- * loaded transcript (`firstTurnHeadOnly` in the transcript) - not per turn, and
- * only for an agent the viewer can edit (`avatar-presence.ts`: no door, no mark).
- * Later turns of an agent with no picture are the D11 transcript exactly. The
- * header carries the permanent door; this one is the reader's chance to find it
- * where they are looking. A pictured agent still draws its face every turn,
- * because identity is the point of a picture.
+ * NO PICTURE MEANS NO MARK - and no line. The look for an agent without a
+ * picture is D11's own: nothing above the turn's first line, so its first tool
+ * row sits exactly where it sat before pictures existed. #1651 briefly drew a
+ * dashed camera placeholder here once per transcript; the operator removed it
+ * (2026-11-04: it occupied a row and attention for an agent with no image). The
+ * transcript never passes `suggestPicture`, so `decideAvatarMark` answers only a
+ * picture, the plate of a claimed picture still loading, or nothing - and a
+ * nothing mounts no wrapper and no gap (callers gate on it).
  *
  * `rounded-full` is one of the three places § 5 permits it. THE EDGE IS THE
  * SHARED ONE (design review round 1, D1 on #1518): the same 1px `border-control`
  * boundary and `sunken` plate as the roster, the rail and the settings field,
- * on the circle's owner (`AgentAvatar`). The placeholder swaps the plate for the
- * dashed form of the same edge (see `agent-avatar-slot.tsx`).
+ * on the circle's owner (`AgentAvatar`).
  */
 
 import { AgentAvatarSlot } from "@shared/agent-avatar/agent-avatar-slot";

@@ -222,7 +222,14 @@ export const cyberpunk: ThemeDefinition = {
 		 * 2.0), 5.73:1 for `accentAlt` on it, and 2.01 from the nearest ground it
 		 * is painted on.
 		 */
-		accentAltWash: "#271E32",
+		/*
+		 * LIFTED #271E32 -> #332A3E (L* 13.17 -> 18.83, hue and chroma held) for
+		 * Team Bridge's person plates (visual refresh, contract C2; design round 1,
+		 * D1): the plate is borderless, so its fill must clear ΔE00 3.0 off every
+		 * ground it sits on. It measured 1.24; it now measures 3.08 at worst
+		 * (`elevated`), with `accentAlt` 5.28:1 on it.
+		 */
+		accentAltWash: "#332A3E",
 
 		success: "#3FE07A",
 		successWash: "#0E201D",

@@ -1,0 +1,16 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "anthropic/claude-sonnet-5-5",
+  "instance": "50028e250948",
+  "status": "passed",
+  "namespace": "ui.chat.pickers",
+  "sha256": {
+    "hi": "583f9807cfc3da12f819828049586986adbfff67819d0d102663369db8e694e7",
+    "en": "88d81780ea0cf598689a73b5b0206da020ccfe1b847631214f87f40791b684c7"
+  },
+  "findings": [
+    {"severity": "MINOR", "key": "ui.chat.pickers.destination_pickers.default_for_all_sessions_that_follow_it", "note": "'डिफ़ॉल्ट इस्तेमाल करने वाले…' can read as 'sessions that use defaults'; optional: 'इसी डिफ़ॉल्ट का इस्तेमाल करने वाले सभी सत्रों के लिए'."},
+    {"severity": "NIT", "key": "ui.chat.pickers.destination_pickers.default_approvals_for_all_sessions_that_follow_it_this_session_follows_i", "note": "Second sentence 'यह भी यही डिफ़ॉल्ट' is ambiguous/redundant; suggest 'तो यह सत्र भी यही डिफ़ॉल्ट इस्तेमाल करता है'."},
+    {"severity": "NIT", "key": "ui.chat.pickers.destination_pickers.default_approvals_for_all_sessions_that_follow_it_this_session_follows_i; use_team; use_profile; uses_the_standing_goal", "note": "Verb register split in-file: इस्तेमाल (new values) vs उपयोग (siblings); catalogue-wide इस्तेमाल dominates (94 vs 11), glossary has no verb call; not a regression."}
+  ]
+}

@@ -16,7 +16,7 @@ import { Button } from "@shared/components/ui/button";
 import { ScrollArea } from "@shared/components/ui/scroll-area";
 import { useRadientCredentialProbe } from "@shared/hooks/use-credentials";
 import { useRadientAuth } from "@shared/hooks/use-radient-auth";
-import { formatRelativeTime, t } from "@shared/i18n";
+import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { JUMP_HIGHLIGHT_MS } from "@shared/lib/jump-highlight";
 import { cn } from "@shared/lib/utils";
@@ -32,8 +32,10 @@ import {
 	Archive,
 	Bot,
 	Clock,
+	CloudOff,
 	Hash,
 	MailPlus,
+	MessagesSquare,
 	Pencil,
 	Plus,
 	UserPlus,
@@ -105,7 +107,10 @@ import {
 	canInviteMembers,
 	canRemoveMembers,
 } from "./team-bridge-members-model";
-import { TeamBridgeMessageList } from "./team-bridge-message-list";
+import {
+	TeamBridgeMessageList,
+	TeamBridgeMessageSkeleton,
+} from "./team-bridge-message-list";
 import {
 	type ChiefLabels,
 	TEAM_BRIDGE_ALL_SCOPE,
@@ -188,6 +193,7 @@ import {
 	RailSection,
 	isTargetRow,
 } from "./team-bridge-rail";
+import { useHeldRailScroll } from "./team-bridge-rail-scroll";
 import { teamBridgeReactionsAvailable } from "./team-bridge-reaction-gate";
 import {
 	TeamBridgeEarlyColumn,
@@ -538,38 +544,6 @@ export const TeamBridgeEligibilityPanel: FC<{
 		</div>
 	);
 };
-
-export function absolute(
-	iso: string | null | undefined,
-	locale: string,
-): string {
-	if (!iso) return "";
-	const then = Date.parse(iso);
-	if (Number.isNaN(then)) return "";
-	return new Intl.DateTimeFormat(locale, {
-		dateStyle: "medium",
-		timeStyle: "short",
-	}).format(new Date(then));
-}
-
-export function relative(iso: string, locale: string): string {
-	const then = Date.parse(iso);
-	if (Number.isNaN(then)) return "";
-	const minutes = Math.round((then - Date.now()) / 60_000);
-	if (Math.abs(minutes) < 60) {
-		return formatRelativeTime(minutes, "minute", { numeric: "auto" }, locale);
-	}
-	const hours = Math.round(minutes / 60);
-	if (Math.abs(hours) < 24) {
-		return formatRelativeTime(hours, "hour", { numeric: "auto" }, locale);
-	}
-	return formatRelativeTime(
-		Math.round(hours / 24),
-		"day",
-		{ numeric: "auto" },
-		locale,
-	);
-}
 
 /**
  * Where a background (optimistic) send goes, decided when it RUNS rather than when
@@ -923,7 +897,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	onChooseOrganization,
 	onRetryMemberships,
 }) => {
-	const locale = useI18nLocale();
+	useI18nLocale();
 	/* Whether the rail is drawn in the shell's column; see the thread takeover. */
 	const railHosted = useLeftSidebarHosted();
 	const [quickView, setQuickView] = useState<TeamBridgeQuickView | null>(
@@ -1370,6 +1344,28 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	// `selected` already resolves a one-recipient draft to its existing DM
 	// (`targetConversation`), so the view and the container agree on it.
 	const shown = selected;
+	/*
+	 * THE READ WATERMARK AS IT WAS ON ENTRY, for the "N new messages" divider
+	 * (visual refresh D10). Opening a conversation marks it read, which moves the
+	 * live `last_read_seq` past everything on screen within a poll - so the
+	 * divider reads a copy taken the first render this conversation is shown,
+	 * and drops it when the reader leaves (a new id takes a new copy). A
+	 * conversation with nothing unread on entry gets no divider at all.
+	 */
+	const [entryWatermark, setEntryWatermark] = useState<{
+		id: string;
+		seq: number | undefined;
+	} | null>(null);
+	if (shown && entryWatermark?.id !== shown.id)
+		setEntryWatermark({
+			id: shown.id,
+			seq: shown.unread_count > 0 ? shown.last_read_seq : undefined,
+		});
+	/* Leaving for an empty pane is a leave too: coming back to the same
+	   conversation takes a fresh copy (agent review round 1, m5). */
+	if (!shown && entryWatermark !== null) setEntryWatermark(null);
+	const unreadAfterSeq =
+		shown && entryWatermark?.id === shown.id ? entryWatermark.seq : undefined;
 	const shownTopicKey = builtinTopicKey(shown?.builtin);
 	const membershipCounts = shown
 		? conversationMembershipCounts(shown)
@@ -2289,6 +2285,22 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	};
 
 	/*
+	 * THE RAIL'S SCROLL OUTLIVES THIS VIEW. The view is keyed by its target (see
+	 * `viewKeyFor`), so every selection remounts the rail and its viewport used
+	 * to restart at scrollTop 0 - measured 640 -> 0 on a click below the fold.
+	 * `useHeldRailScroll` carries the offset across that remount, per account
+	 * and scope; the why and the reveal rule live in `team-bridge-rail-scroll`.
+	 * Above the early returns below: it is a hook. No hold until the account is
+	 * known (review R3): a `[null, scope]` key would be one entry shared by
+	 * every account, and its flip to the real account could move a rail the
+	 * reader is already scrolling.
+	 */
+	const railScroll = useHeldRailScroll(
+		selfAccountId ? JSON.stringify([selfAccountId, scope]) : null,
+		target ? draftTargetKey(target) : null,
+	);
+
+	/*
 	 * THE EARLY STATES STILL OWN THE COLUMN. On this route the shell has already
 	 * unmounted the app navigation, so a hold or a gate that drew only its
 	 * centre panel would leave an empty `surface` slab on the left and no way out
@@ -2466,7 +2478,11 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	const railBody = (
 		<>
 			<h1 className="sr-only">{t("ui.teamBridge.page.title")}</h1>
-			<header className="flex h-11 shrink-0 items-center gap-2 px-3">
+			{/* ONE LEADING LINE (design D2 on #1660): the header, the quick rows and
+			    the sections all inset `px-2`, and each control pads its own `px-2`,
+			    so Back's arrow, the org tile, the Drafts glyph and every row's mark
+			    start at x=16. It was 16 / 20 / 20 / 12 - three lines in one column. */}
+			<header className="flex h-12 shrink-0 items-center gap-1 px-2">
 				<TeamBridgeOrgSwitcher
 					organizations={organizations}
 					scope={scope}
@@ -2480,7 +2496,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 				{/* "New message" opens an empty To: draft: a DM or a group is
 				    decided by how many people the reader adds, as in Slack. */}
 				<Button
-					size="icon-sm"
+					size="icon"
 					variant="ghost"
 					aria-label={t("ui.teamBridge.compose.new")}
 					aria-disabled={createDisabled || undefined}
@@ -2537,15 +2553,15 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 			</header>
 			<nav
 				aria-label={t("ui.teamBridge.drafts.navigation")}
-				className="flex flex-col px-3 pb-2"
+				className="flex flex-col px-2 pb-1"
 			>
 				<button
 					type="button"
 					aria-current={quickView === "drafts" ? "page" : undefined}
 					onClick={() => openQuickView("drafts")}
-					className="flex h-[30px] items-center gap-2 rounded-md px-2 text-sm text-ink-muted hover:bg-row-hover"
+					className="flex h-8 items-center gap-2 rounded-md px-2 text-[14px] text-ink-muted hover:bg-row-hover hover:text-ink"
 				>
-					<Pencil size={14} aria-hidden="true" />
+					<Pencil size={16} aria-hidden="true" />
 					{t("ui.teamBridge.drafts.title")}
 				</button>
 				<button
@@ -2553,9 +2569,9 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 					disabled={!selfAccountId}
 					aria-current={quickView === "scheduled" ? "page" : undefined}
 					onClick={() => openQuickView("scheduled")}
-					className="flex h-[30px] items-center gap-2 rounded-md px-2 text-sm text-ink-muted hover:bg-row-hover disabled:text-ink-disabled"
+					className="flex h-8 items-center gap-2 rounded-md px-2 text-[14px] text-ink-muted hover:bg-row-hover hover:text-ink disabled:text-ink-disabled"
 				>
-					<Clock size={14} aria-hidden="true" />
+					<Clock size={16} aria-hidden="true" />
 					{t("ui.teamBridge.schedule.list")}
 				</button>
 				{invitationsEntry.current && (
@@ -2563,9 +2579,9 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 						type="button"
 						aria-current={quickView === "invitations" ? "page" : undefined}
 						onClick={() => openQuickView("invitations")}
-						className="flex h-[30px] items-center gap-2 rounded-md px-2 text-sm text-ink-muted hover:bg-row-hover"
+						className="flex h-8 items-center gap-2 rounded-md px-2 text-[14px] text-ink-muted hover:bg-row-hover hover:text-ink"
 					>
-						<MailPlus size={14} aria-hidden="true" />
+						<MailPlus size={16} aria-hidden="true" />
 						<span className="min-w-0 flex-1 truncate text-start">
 							{t("ui.teamBridge.invitations.title")}
 						</span>
@@ -2574,10 +2590,10 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 							   attention count, so the shared accent badge (2026-10-28). */
 							<AttentionBadge
 								count={invitations.length}
-								/* ONE BADGE COLUMN (design round 1, D3): nav rows sit
-								   8px further in than conversation rows (px-3 vs px-1),
-								   so the count pulls back out to their x=276 edge. */
-								className="-me-2 shrink-0"
+								/* ONE BADGE COLUMN (design round 1, D3): nav rows and
+								   conversation rows now share the `px-2` inset, so the
+								   count already ends on the rows' badge edge. */
+								className="shrink-0"
 								aria-label={t("ui.teamBridge.invitations.count", {
 									count: invitations.length,
 								})}
@@ -2602,21 +2618,26 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 								openQuickView("archived");
 							}}
 							className={cn(
-								"flex h-[30px] items-center gap-2 rounded-md px-2 text-sm",
+								"flex h-8 items-center gap-2 rounded-md px-2 text-[14px]",
 								/* The selected-row role every sidebar shares; Drafts and Scheduled
 								   mark `aria-current` only, so this is the one entry that is also
 								   visibly current while its view is open (design round 1, D3). */
 								quickView === "archived"
 									? rowCurrent
-									: "text-ink-muted hover:bg-row-hover",
+									: "text-ink-muted hover:bg-row-hover hover:text-ink",
 							)}
 						>
-							<Archive size={14} aria-hidden="true" />
+							<Archive size={16} aria-hidden="true" />
 							{t("ui.teamBridge.archive.section.archived")}
 						</button>
 					)}
 			</nav>
-			<ScrollArea className="min-h-0 flex-1 [&_[data-radix-scroll-area-viewport]>div]:block!">
+			<ScrollArea
+				ref={railScroll.ref}
+				data-team-bridge-rail-scroll=""
+				onClickCapture={railScroll.onClickCapture}
+				className="min-h-0 flex-1 [&_[data-radix-scroll-area-viewport]>div]:block!"
+			>
 				{/*
 				 * THE SENTENCE MUST MATCH WHAT IS UNDER IT (design round 1, D1).
 				 * `listState` is "error" whenever `list.isError`, and `conversations`
@@ -2632,7 +2653,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 				 */}
 				{listState === "error" &&
 					(sidebarRows.length > 0 ? (
-						<div className="space-y-1 px-3 py-3 text-[12px] text-ink-muted">
+						<div className="space-y-1 px-4 py-3 text-[12px] text-ink-muted">
 							<p>{t("ui.teamBridge.list.error_stale")}</p>
 							{onRetry && (
 								<button type="button" className="underline" onClick={onRetry}>
@@ -2641,16 +2662,29 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 							)}
 						</div>
 					) : (
-						<div className="flex flex-col items-start gap-2 px-3 py-3">
-							<p className="text-[12px] text-ink-muted">
-								{t("ui.teamBridge.list.error")}
-							</p>
-							{onRetry && (
-								<Button size="sm" variant="ghost" onClick={onRetry}>
-									{t("ui.teamBridge.list.retry")}
-								</Button>
-							)}
-						</div>
+						/* ONE COPY OF A FAILURE (visual refresh N4). With no conversation
+						   open, the pane states it and holds Try again, so the rail
+						   says nothing more. With one open (a deep link into a failed
+						   list), or with a quick view or the owner audit in the pane
+						   (they take precedence over the empty pane), the pane is busy
+						   with something else, so the rail keeps a single quiet line and
+						   the retry (agent review round 1, m3). */
+						(target !== null || quickView !== null || ownerAudit?.active) && (
+							<div className="flex flex-col items-start gap-1 px-4 py-3">
+								<p className="text-meta text-ink-dim">
+									{t("ui.teamBridge.list.error")}
+								</p>
+								{onRetry && (
+									<button
+										type="button"
+										className="min-h-6 rounded-sm font-medium text-meta text-accent hover:underline"
+										onClick={onRetry}
+									>
+										{t("ui.teamBridge.list.retry")}
+									</button>
+								)}
+							</div>
+						)
 					))}
 				<RailSection
 					id="team-bridge-channels-heading"
@@ -3093,11 +3127,18 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 				</aside>
 			</TeamBridgeRouteColumn>
 
-			{/* The ONE ground split: the rail inherits the page canvas, the thread
-			    carries the surface — two regions read apart without a rule. */}
+			{/* THREE PLANES, NO RULES (design spec D2, 2026-11-04). The rail paints
+			    `surface` (the app sidebar's ground, which it replaces), the message
+			    pane paints `canvas` - the same reading ground as the chat
+			    transcript - and the composer is a raised `elevated` card. Before
+			    this the rail and pane were both `surface` (ΔE00 0.00), so the only
+			    visible step on screen was the hover band. The pane paints its own
+			    `canvas` rather than inheriting the root's because it wears
+			    `panel-top-pad`, and the box that pads must be the box that paints
+			    (AGENTS.md "Panels run to the window edge"). */}
 			<section
 				className={cn(
-					"panel-top-pad flex min-w-0 flex-1 flex-col bg-surface",
+					"panel-top-pad flex min-w-0 flex-1 flex-col bg-canvas",
 					threadIsOpen && "@max-[1024px]/bridge:invisible",
 				)}
 			>
@@ -3197,28 +3238,84 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 							))}
 					</section>
 				) : target === null ? (
-					<div className="flex flex-1 items-center justify-center px-6">
-						{listState === "loading" ? (
-							<Spinner size="sm" label={t("ui.teamBridge.list.loading")} />
-						) : listState === "error" ? (
-							/* A failed read never claims emptiness (design round 1, D7):
-							   the rail already states the failure and offers Try again. */
-							<p className="max-w-sm text-center text-[13px] text-ink-muted">
-								{t("ui.teamBridge.list.error_pane")}
-							</p>
-						) : (
-							<div className="max-w-sm text-center">
-								<p className="font-medium text-[13px] text-ink">
-									{t("ui.teamBridge.list.empty.title")}
-								</p>
-								<p className="mt-1 text-[13px] text-ink-muted">
-									{createDisabled
-										? createHint
-										: t("ui.teamBridge.list.empty.body")}
-								</p>
-							</div>
-						)}
-					</div>
+					/*
+					 * THE PANE'S THREE RESTING STATES (visual refresh §3.2 States).
+					 * Loading draws the timeline's own skeleton rows, so the pane has
+					 * its shape before the read lands. Empty and error are one
+					 * centred block - a 40px glyph, a 15px title, one line, one action
+					 * - and the ERROR carries the only Try again on screen (N4): the
+					 * rail used to say the same sentence and offer its own button, two
+					 * copies of one failure. A failed read never claims emptiness
+					 * (design round 1, D7).
+					 */
+					listState === "loading" ? (
+						<div className="flex min-h-0 flex-1 flex-col">
+							<TeamBridgeMessageSkeleton
+								label={t("ui.teamBridge.list.loading")}
+							/>
+						</div>
+					) : (
+						<div className="flex flex-1 items-center justify-center px-6">
+							{listState === "error" ? (
+								<div
+									role="alert"
+									className="flex max-w-sm flex-col items-center text-center"
+								>
+									<CloudOff
+										size={40}
+										aria-hidden="true"
+										className="text-ink-dim"
+									/>
+									<p className="mt-3 font-semibold text-[15px] text-ink">
+										{t("ui.teamBridge.list.error")}
+									</p>
+									{onRetry && (
+										<button
+											type="button"
+											onClick={onRetry}
+											className="mt-2 min-h-6 rounded-sm px-1.5 font-medium text-[13px] text-accent hover:underline"
+										>
+											{t("ui.teamBridge.list.retry")}
+										</button>
+									)}
+								</div>
+							) : (
+								<div className="flex max-w-sm flex-col items-center text-center">
+									<MessagesSquare
+										size={40}
+										aria-hidden="true"
+										className="text-ink-dim"
+									/>
+									<p className="mt-3 font-semibold text-[15px] text-ink">
+										{t("ui.teamBridge.list.empty.title")}
+									</p>
+									<p className="mt-1 text-[13px] text-ink-muted">
+										{createDisabled
+											? createHint
+											: t("ui.teamBridge.list.empty.body")}
+									</p>
+									{!createDisabled && (
+										<Button
+											size="md"
+											variant="primary"
+											className="mt-4"
+											onClick={() =>
+												selectTarget(
+													draftState.drafts.compose?.target ?? {
+														type: "compose",
+														recipients: [],
+													},
+												)
+											}
+										>
+											<Plus size={16} aria-hidden="true" />
+											{t("ui.teamBridge.compose.new")}
+										</Button>
+									)}
+								</div>
+							)}
+						</div>
+					)
 				) : (
 					<>
 						{target.type === "compose" ? (
@@ -3235,7 +3332,9 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 								}
 							/>
 						) : (
-							<header className="flex h-11 shrink-0 items-center gap-2 px-5">
+							/* `h-12` and the pane's own `canvas`: the header is part of the
+							   reading plane, not a bar over it (visual refresh D8). */
+							<header className="flex h-12 shrink-0 items-center gap-2 bg-canvas px-5">
 								{shown?.kind === "channel" ? (
 									<Hash
 										size={16}
@@ -3263,47 +3362,39 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 										{selectedOrganizationName}
 									</span>
 								)}
+								{/*
+								 * ONE QUIET LINE OF FACTS (visual refresh D8). The header used to
+								 * stack "2 active members / 1 invited" under the name and then add
+								 * "· 4 minutes ago" - the least useful fact a header can carry, and
+								 * the rail's row tooltip already has it. Now: the name, then a 1px
+								 * `hairline` tick and one quiet fact - the built-in channel's topic
+								 * when it has one, else the active member count. The invited count
+								 * lives in the members dialog, where the action on it is. Never
+								 * infer membership from a preview's aggregate `member_count` beyond
+								 * the plain count: a preview has no rows, so `invited` is 0 there.
+								 */}
 								{shown && shown.kind !== "dm" && (
-									<span className="flex shrink-0 flex-col text-meta-sm text-ink-dim">
-										{/* A current invitation is membership, not active access, so
-										    with invitees the headline says "active" outright and the
-										    invited count sits beneath it (design review D2 on #1336:
-										    "1 member" over "1 active · 3 invited" repeated the active
-										    count and left "member" unqualified). Never infer the
-										    breakdown from a preview's aggregate `member_count`:
-										    a preview has no rows, so `invited` is 0 there. */}
-										{membershipCounts.invited > 0 ? (
-											<>
-												{/* The headline takes the stronger ink and the invited line
-												    the subordinate one: the invited count qualifies the
-												    headline and must not outrank it (design review D1 on
-												    #1441). The single-line count below keeps its ink. */}
-												<span className="text-ink-muted">
-													{t("ui.teamBridge.member.active_count", {
-														count: membershipCounts.active,
-													})}
-												</span>
-												<span className="text-ink-dim">
-													{t("ui.teamBridge.member.invited_count", {
-														count: membershipCounts.invited,
-													})}
-												</span>
-											</>
-										) : (
-											t("ui.teamBridge.member.count", {
-												count: conversationMemberCount(shown),
-											})
-										)}
-									</span>
-								)}
-								{shown?.last_message_at && shown.latest_seq > 0 && (
-									<span
-										className="shrink-0 text-meta-sm text-ink-dim"
-										title={absolute(shown.last_message_at, locale)}
-									>
-										<span aria-hidden="true">·</span>{" "}
-										{relative(shown.last_message_at, locale)}
-									</span>
+									<>
+										<span
+											aria-hidden="true"
+											className="h-4 w-px shrink-0 bg-hairline"
+										/>
+										<span className="min-w-0 truncate text-[13px] text-ink-muted">
+											{/* A user-set topic first, then a built-in channel's
+											    translated one (design round 1, D2). */}
+											{shown.topic?.trim()
+												? shown.topic.trim()
+												: shownTopicKey
+													? t(shownTopicKey)
+													: membershipCounts.invited > 0
+														? t("ui.teamBridge.member.active_count", {
+																count: membershipCounts.active,
+															})
+														: t("ui.teamBridge.member.count", {
+																count: conversationMemberCount(shown),
+															})}
+										</span>
+									</>
 								)}
 								{/*
 								 * THE INVITE ACTION WEARS ITS NAME, NEXT TO THE COUNT IT ACTS ON
@@ -3393,11 +3484,6 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 								}}
 							/>
 						)}
-						{shownTopicKey && (
-							<p className="px-5 pb-1 text-[12px] text-ink-dim">
-								{t(shownTopicKey)}
-							</p>
-						)}
 
 						<ScrollArea
 							ref={timeline.rootRef}
@@ -3474,7 +3560,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 														<button
 															type="button"
 															data-draft-avatar=""
-															className="self-start rounded-xl"
+															className="self-start rounded-full"
 														>
 															<TeamBridgeAvatar
 																member={draftPerson}
@@ -3483,7 +3569,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 																}
 																label={paneTitle ?? ""}
 																size={56}
-																className="rounded-xl text-[22px]"
+																className="text-[22px]"
 															/>
 														</button>
 													</TeamBridgeProfileCard>
@@ -3491,12 +3577,13 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 													<span
 														aria-hidden="true"
 														className={cn(
-															"flex size-14 items-center justify-center overflow-hidden rounded-xl font-semibold text-[22px]",
-															// The same borderless fill pair as the message
+															"flex size-14 items-center justify-center overflow-hidden rounded-full font-semibold text-[22px]",
+															// The same borderless identity washes as the message
 															// rows' plates, so one person reads alike everywhere.
+															"bg-accent-alt-wash",
 															target.type === "chief"
-																? "bg-media-surface text-accent"
-																: "bg-media-surface text-ink-muted",
+																? "text-accent"
+																: "text-accent-alt",
 														)}
 													>
 														{target.type === "chief" ? (
@@ -3528,12 +3615,9 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 										)}
 									</div>
 								) : messageState === "loading" && merged.localCount === 0 ? (
-									<div className="flex items-center justify-center py-10">
-										<Spinner
-											size="sm"
-											label={t("ui.teamBridge.thread.loading")}
-										/>
-									</div>
+									<TeamBridgeMessageSkeleton
+										label={t("ui.teamBridge.thread.loading")}
+									/>
 								) : messageState === "error" ? (
 									<p className="px-5 py-8 text-[13px] text-ink-muted">
 										{t("ui.teamBridge.thread.error")}
@@ -3556,6 +3640,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 								) : (
 									<TeamBridgeMessageList
 										messages={merged.messages}
+										unreadAfterSeq={unreadAfterSeq}
 										events={events}
 										presentationOf={(message) => {
 											const local = merged.localOf(message);
