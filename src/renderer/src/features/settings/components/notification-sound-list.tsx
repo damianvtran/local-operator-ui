@@ -113,6 +113,8 @@ export type NotificationSoundListPresets = {
 		Omit<PendingUpload, "file"> & { fileName: string; percent?: number }
 	>;
 	initialSaveError?: string;
+	/** The choice a failed save was for: what Retry re-sends. */
+	initialFailedChoice?: string;
 	initialMode?: { id: string; mode: CustomRowMode };
 };
 
@@ -149,6 +151,7 @@ export const NotificationSoundList = forwardRef<
 			initialPreview,
 			initialPending,
 			initialSaveError,
+			initialFailedChoice,
 			initialMode,
 		},
 		ref,
@@ -173,7 +176,7 @@ export const NotificationSoundList = forwardRef<
 			initialSaveError ?? null,
 		);
 		const [lastFailedChoice, setLastFailedChoice] = useState<string | null>(
-			null,
+			initialFailedChoice ?? null,
 		);
 		const writeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 		const shown = pendingChoice ?? selectedId;
@@ -415,10 +418,12 @@ export const NotificationSoundList = forwardRef<
 		/* ----------------------------------------------------------- uploads */
 
 		const [pending, setPending] = useState<PendingUpload[]>(() =>
-			(initialPending ?? []).map(({ fileName, percent: _percent, ...rest }) => ({
-				...rest,
-				file: new File([], fileName),
-			})),
+			(initialPending ?? []).map(
+				({ fileName, percent: _percent, ...rest }) => ({
+					...rest,
+					file: new File([], fileName),
+				}),
+			),
 		);
 		const [uploadPercent, setUploadPercent] = useState<Record<string, number>>(
 			() =>

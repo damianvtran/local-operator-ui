@@ -26,7 +26,10 @@
  */
 
 import type { BackendSettings } from "@shared/api/local-operator/desktop-api";
-import { installAudioOutputGraph } from "@shared/store/audio-engine-store";
+import {
+	installAudioOutputGraph,
+	useAudioEngineStore,
+} from "@shared/store/audio-engine-store";
 import type { Meta, StoryObj } from "@storybook/react";
 import type { FC } from "react";
 import fixtureJson from "../../../../../../scripts/fixtures/backend-settings-registry.json";
@@ -457,8 +460,21 @@ export const MissingKeys: Story = {
 	args: { state: { missingVolumeKey: true, customCount: 1 } },
 };
 
-/** A preview playing: Stop in accent, `aria-pressed`. */
+/**
+ * A preview playing: Stop in accent, `aria-pressed`. The engine is told the
+ * preview owns it (no element, so nothing sounds): the section resets a Stop
+ * whose owner is not the engine's, which is the right call in production.
+ */
 export const PreviewPlaying: Story = {
+	beforeEach: () => {
+		useAudioEngineStore.setState({
+			ownerId: "notification-sound-preview",
+			status: "playing",
+		});
+		return () => {
+			useAudioEngineStore.setState({ ownerId: null, status: "idle" });
+		};
+	},
 	args: {
 		state: {
 			customCount: 2,
@@ -495,6 +511,7 @@ export const SaveFailed: Story = {
 			saveFails: true,
 			presets: {
 				initialSaveError: "The settings file could not be written.",
+				initialFailedChoice: "felt-marimba",
 			},
 		},
 	},
