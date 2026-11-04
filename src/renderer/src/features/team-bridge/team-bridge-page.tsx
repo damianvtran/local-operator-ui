@@ -5063,10 +5063,23 @@ const TeamBridgeOwnedPage: FC<{
 			);
 			return message;
 		}
-		if (selected !== null)
+		if (selected !== null) {
+			/*
+			 * @-MENTIONS ARE CAPTURED AT THE PRESS HERE TOO (review MINOR-1 on #1663).
+			 * This is the picture path: the request is built only after the upload
+			 * below, and an optimistic text send of the same words that lands during
+			 * that upload clears the shared outbox entry (the `into` branch above), so
+			 * the mutation's own late read posted the picture without its mentions.
+			 * `submit` reaches this line with no await between the Send press and it,
+			 * so reading the outbox BEFORE the upload is reading it at the press, the
+			 * same rule as the optimistic lane. A 409 auto-retry is a new `onSend`
+			 * call and captures again at its own start.
+			 */
+			const mentions = stagedMentions(selected.id, body);
 			return send.mutateAsync({
 				clientRef,
 				body,
+				mentions,
 				// Held images stage into the selected conversation FIRST; a failed
 				// upload throws here, so the text never posts alone (R1-01).
 				attachmentIds: await sendAttachmentIds(
@@ -5075,6 +5088,7 @@ const TeamBridgeOwnedPage: FC<{
 					selected.tenant_id,
 				),
 			});
+		}
 		const recipients = draftRecipients();
 		const input = draftCreateInput(recipients);
 		if (input === null) return undefined;
