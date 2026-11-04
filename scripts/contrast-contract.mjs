@@ -650,9 +650,9 @@ const CONTROLS = [
 	 * the visual refresh (#1668) the hosts are the channel timeline's `canvas`,
 	 * the thread pane's `surface`, and the parent message row's inset hover tint
 	 * under the pointer: `surface` on the timeline, `elevated` in the compact
-	 * pane. `rowHover` stays listed for any host that still paints the old band,
-	 * and `accentWash` is the inset box of a row that mentions the reader (#1668
-	 * C3), at rest and under the pointer (#1672 round 3, D7).
+	 * pane. `rowHover` stays listed for any host that still paints the old band.
+	 * (`accentWash` left the list with the mention-row wash it stood for: the
+	 * operator removed that row highlight on 2026-11-04.)
 	 * Hover is `sunken` on all of them.
 	 * Its inks are the accent "N replies" count and the `inkMuted` "Last reply"
 	 * clause; one row per ink, because the checker reads one ink per row.
@@ -666,7 +666,7 @@ const CONTROLS = [
 	 */
 	{
 		name: "team bridge thread row (rest, count)",
-		on: ["canvas", "surface", "elevated", "rowHover", "accentWash"],
+		on: ["canvas", "surface", "elevated", "rowHover"],
 		fill: null,
 		border: null,
 		ink: "accent",
@@ -674,7 +674,7 @@ const CONTROLS = [
 	},
 	{
 		name: "team bridge thread row (rest, last reply)",
-		on: ["canvas", "surface", "elevated", "rowHover", "accentWash"],
+		on: ["canvas", "surface", "elevated", "rowHover"],
 		fill: null,
 		border: null,
 		ink: "inkMuted",
@@ -682,7 +682,7 @@ const CONTROLS = [
 	},
 	{
 		name: "team bridge thread row (hover, count)",
-		on: ["canvas", "surface", "elevated", "rowHover", "accentWash"],
+		on: ["canvas", "surface", "elevated", "rowHover"],
 		fill: "sunken",
 		border: null,
 		ink: "accent",
@@ -690,7 +690,7 @@ const CONTROLS = [
 	},
 	{
 		name: "team bridge thread row (hover, last reply)",
-		on: ["canvas", "surface", "elevated", "rowHover", "accentWash"],
+		on: ["canvas", "surface", "elevated", "rowHover"],
 		fill: "sunken",
 		border: null,
 		ink: "inkMuted",
@@ -2385,19 +2385,6 @@ const ADJACENT = [
  * set of semantics that passes on average is not a set of semantics.
  */
 const GRAPHICS = [
-	{
-		/*
-		 * THE MENTION ROW'S LEADING BAR (visual refresh, contract C3): a 2px
-		 * `accent` bar at the start edge of a message row that mentions the
-		 * reader, painted over that row's `accentWash` inset box. A graphic
-		 * object read at a glance, so it owes 3:1 against the wash it sits on
-		 * (4.51:1 worst, everforest) - and against the pane grounds, where the
-		 * bar's ends meet them at the box's rounded corners.
-		 */
-		name: "team bridge mention row bar",
-		on: ["accentWash", "canvas", "surface"],
-		fg: "accent",
-	},
 	{
 		/*
 		 * THE SELECTED RAIL ROW'S GLYPH (contract C4): the kind glyph (`#`,

@@ -19,7 +19,6 @@ import type {
 } from "../../../../shared/team-bridge-contract";
 import { TeamBridgeMessageAttachments } from "./attachments/member-attachments";
 import { InlineDataBody } from "./inline-data-receipt";
-import { splitMentions } from "./mentions/message-mentions";
 import { useMessageMentions } from "./mentions/use-message-mentions";
 import {
 	type TeamBridgeArrivalIdentity,
@@ -778,25 +777,15 @@ const MessageRowView: FC<MessageRowProps> = ({
 	const summary = threadSummary(message);
 	// @-mentions in the body: `message.mentions` when the hub sends it, else
 	// `@Name` matching (mentions/message-mentions.ts says why both).
-	const mentionRuns = useMessageMentions(message);
 	/*
-	 * Whether the BODY names the reader - not whether a viewer run exists: the
-	 * name fallback lists every roster label as a candidate run, so the
-	 * question is answered by the same splitter the renderer highlights with.
-	 * Code spans are not excluded here (the renderer skips them), so a literal
-	 * "@Me" inside backticks would still wash the row - acceptable, and rare.
+	 * NO ROW-LEVEL MENTION MARK (operator 2026-11-04: "keep the yellow tag but
+	 * we don't need tagged messages to have this additional highlight"). A row
+	 * naming the reader used to wear an accent wash plus a 2px leading bar
+	 * (contract C3); the inline viewer token (`warning` ink, remark-mentions.ts)
+	 * is now the only "this is about you" signal, so a mentioned row hovers and
+	 * rests exactly like any other. Pinned by scripts/team-bridge-mentions-composer.test.mjs.
 	 */
-	const mentionsViewer = useMemo(
-		() =>
-			Boolean(
-				message.body &&
-					mentionRuns?.some((run) => run.viewer) &&
-					splitMentions(message.body, mentionRuns).some(
-						(segment) => segment.kind === "mention" && segment.viewer,
-					),
-			),
-		[message.body, mentionRuns],
-	);
+	const mentionRuns = useMessageMentions(message);
 	/* One-level threads: only a timeline root can open a thread - and none can
 	   while the thread surface is held. `canReply` is therefore the ONE term the
 	   toolbar button and the "N replies" summary both read, so the affordance
@@ -883,15 +872,9 @@ const MessageRowView: FC<MessageRowProps> = ({
 				 * compact thread pane whose own ground is `surface`. Colour only.
 				 */
 				"before:pointer-events-none before:absolute before:inset-x-2 before:inset-y-0 before:-z-10 before:rounded-sm before:transition-colors before:duration-fast before:ease-out-quart",
-				mentionsViewer
-					? /* C3: a row that mentions the reader keeps its wash at rest and
-					     under the pointer; the bar below says why. The thread row's
-					     facepile ring reads the same wash in both states, or each
-					     plate wears a canvas/surface halo on it (#1672 round 3, D6). */
-						"before:bg-accent-wash [--thread-row-host:var(--color-accent-wash)] [--thread-row-message-hover:var(--color-accent-wash)]"
-					: density === "compact"
-						? "hover:before:bg-elevated"
-						: "hover:before:bg-surface",
+				density === "compact"
+					? "hover:before:bg-elevated"
+					: "hover:before:bg-surface",
 				// Transform/opacity only: the row reserves its final layout box
 				// immediately, so arrival cannot move the scroll geometry.
 				arriving && "lo-team-bridge-arrival",
@@ -901,22 +884,6 @@ const MessageRowView: FC<MessageRowProps> = ({
 				continuation ? "py-px" : "mt-3 pt-1 pb-0.5",
 			)}
 		>
-			{/*
-			 * A ROW THAT MENTIONS THE READER (visual refresh, contract C3): Discord's
-			 * gold row, in this app's accent - the wash on the inset box plus a 2px
-			 * leading bar on its edge. The bar sits in the 12px gutter between the
-			 * box's edge and the text, so it covers nothing. Selection lost its bar
-			 * long ago (branding § 2); this is an ATTENTION mark, the same class as
-			 * the accent badge, and it is drawn only for the reader's own mention -
-			 * the inline token keeps #1656's viewer ink, which is what says "you".
-			 */}
-			{mentionsViewer && (
-				<span
-					aria-hidden="true"
-					data-mention-bar=""
-					className="pointer-events-none absolute inset-y-0 start-2 w-0.5 rounded-full bg-accent"
-				/>
-			)}
 			{/* The 36px gutter holds the avatar on a run's first message and the
 			    hover clock on its continuations, so bodies share one left edge. */}
 			<div className="w-9 shrink-0">
