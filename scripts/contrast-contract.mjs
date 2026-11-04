@@ -2769,8 +2769,9 @@ const PERCEPTIBLE = [
 		 *
 		 * THE FLOOR IS THE FILE'S PERCEPTUAL ONE (review round 1, M3: this row shipped
 		 * at 1.5, weaker than every sibling). The measured minima across 59 palettes
-		 * are `canvas` 4.00 (oneDark), `surface` 5.96 (iceberg), `elevated` 7.89
-		 * (rosewood) and `rowHover` 3.70 (iceberg). The row used to quote 3.70 as THE
+		 * (re-measured after the darker grounds, #1658) are `canvas` 4.00
+		 * (ayuMirage), `surface` 5.81 (obsidian), `elevated` 7.60 (rosewood) and
+		 * `rowHover` 3.70 (iceberg). The row used to quote 3.70 as THE
 		 * worst case; 3.70 is the worst of the hosts a plate actually rests on, and the
 		 * true worst pairing the role reaches is 1.83 against `rowSelected` on the
 		 * brand light palette - which is why a selected rail row takes `surface`
@@ -2779,6 +2780,12 @@ const PERCEPTIBLE = [
 		 * The rail's account plate (`user-profile-sidebar.tsx`) is the same fill
 		 * on `surface` and `rowHover` since design review round 1 of the
 		 * own-avatar change, D2; it replaced that plate's `border-control` ring.
+		 *
+		 * SINCE THE TEAM BRIDGE VISUAL REFRESH (2026-11-04, contract C2) the Team
+		 * Bridge person and agent plates wear the identity washes instead - the
+		 * "team bridge person/agent identity plate" CONTROLS rows - so this row now
+		 * holds for the account plate and for the image wells and chips that still
+		 * paint `mediaSurface`. The name is kept so its history stays findable.
 		 */
 		name: "team bridge borderless person and agent plates",
 		role: "mediaSurface",
@@ -2795,9 +2802,10 @@ const PERCEPTIBLE = [
 		 * THE ATTACHMENT CHIP'S EXTENT (agent review round 1, minor 1): the chip is
 		 * borderless, so its fill's step off each ground a message row paints IS
 		 * its boundary, `rowHover` included. Same fill and floor as the plates
-		 * above; fleet minima canvas 4.00 (oneDark), surface 5.96 (iceberg),
-		 * rowHover 3.70 (iceberg). The kind tile inside it is `elevated`, 7.89
-		 * at worst off this fill (rosewood).
+		 * above; fleet minima canvas 4.00 (ayuMirage), surface 5.81 (obsidian),
+		 * rowHover 3.70 (iceberg), re-measured after the darker grounds (#1658).
+		 * The kind tile inside it is `elevated`, 7.60 at worst off this fill
+		 * (rosewood).
 		 */
 		name: "team bridge attachment chip",
 		role: "mediaSurface",
