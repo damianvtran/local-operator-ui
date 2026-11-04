@@ -972,6 +972,8 @@ export type TeamBridgeInvitationAnswer = {
 	conversationId: string;
 	tenantId: string;
 	decision: "accept" | "decline";
+	/** Pins one of the owner's agent rows (members panel decline); optional. */
+	endpointId?: string;
 };
 
 /**
@@ -1014,11 +1016,12 @@ export function invitationAnswerMutationOptions(
 			query.queryKey.at(-2) === "account",
 	};
 	return {
-		mutationFn: ({ conversationId, tenantId, decision }) =>
+		mutationFn: ({ conversationId, tenantId, decision, endpointId }) =>
 			TeamBridgeApi.answerAgentInvitation({
 				conversationId,
 				tenantId,
 				decision,
+				endpointId,
 				accountId: check(),
 				consentVersion: TEAM_BRIDGE_AGENT_PARTICIPATION_VERSION,
 			}),
@@ -1239,6 +1242,98 @@ export function useRemoveTeamBridgeMember(): UseMutationResult<
 		onSuccess: async (updated, { target }) => {
 			if (!target.isCurrent()) return;
 			replaceCachedConversation(client, target.accountId, updated);
+			await client.invalidateQueries({
+				queryKey: teamBridgeKeys.conversationsPrefix,
+			});
+		},
+	});
+	return bindBridgeMutation(mutation, () => owner);
+}
+
+export type TeamBridgeLeaveVariables = {
+	conversationId: string;
+	tenantId: string;
+};
+
+/**
+ * Leave a conversation as the signed-in person (the members panel's "Leave").
+ *
+ * NOT OPTIMISTIC, unlike archive: leaving changes what the reader may READ,
+ * and only the server knows the post-state (a private group disappears from
+ * the list, a channel turns into a discoverable preview). The page moves the
+ * selection off the room on success, the way remove-self and archive already
+ * do; every conversation and unread read is refetched so the rail and the
+ * badge agree with the server about where the reader still is.
+ */
+export function useLeaveTeamBridgeConversation(): UseMutationResult<
+	unknown,
+	Error,
+	TeamBridgeLeaveVariables
+> {
+	const client = useQueryClient();
+	const owner = useBridgeOwner();
+	const mutation = useMutation<
+		unknown,
+		Error,
+		CapturedBridgeMutation<TeamBridgeLeaveVariables, MemberWriteTarget>
+	>({
+		mutationFn: ({ input, target }) => {
+			target.assertCurrent();
+			return TeamBridgeApi.leaveConversation({
+				conversationId: input.conversationId,
+				tenantId: input.tenantId,
+				expectedAccountId: target.accountId,
+			});
+		},
+		onSuccess: async (_data, { target }) => {
+			if (!target.isCurrent()) return;
+			await client.invalidateQueries({
+				queryKey: teamBridgeKeys.conversationsPrefix,
+			});
+			if (!target.isCurrent()) return;
+			await client.invalidateQueries({ queryKey: teamBridgeKeys.unreadPrefix });
+		},
+	});
+	return bindBridgeMutation(mutation, () => owner);
+}
+
+export type TeamBridgeWithdrawAgentVariables =
+	TeamBridgeMemberMutationVariables & {
+		endpointId?: string;
+	};
+
+/**
+ * Take the reader's OWN ACTIVE agent out of one conversation (consent
+ * `withdraw`). Only that endpoint's row leaves; the owner's own membership is
+ * untouched. The answer is not written into the cache: it is rendered from
+ * the agent's member key on some hubs (see `withServedOwnAgentNotify`), so a
+ * refetch, not the answer, is what the panel re-renders from.
+ */
+export function useWithdrawTeamBridgeAgent(): UseMutationResult<
+	TeamBridgeConversation,
+	Error,
+	TeamBridgeWithdrawAgentVariables
+> {
+	const client = useQueryClient();
+	const owner = useBridgeOwner();
+	const mutation = useMutation<
+		TeamBridgeConversation,
+		Error,
+		CapturedBridgeMutation<TeamBridgeWithdrawAgentVariables, MemberWriteTarget>
+	>({
+		mutationFn: ({ input, target }) => {
+			target.assertCurrent();
+			if (!target.accountId)
+				throw new Error("Team Bridge write authority changed");
+			return TeamBridgeApi.withdrawAgent({
+				conversationId: input.conversationId,
+				tenantId: input.tenantId,
+				accountId: target.accountId,
+				endpointId: input.endpointId,
+			});
+		},
+		onSuccess: async (_updated, { target }) => {
+			if (!target.isCurrent()) return;
 			await client.invalidateQueries({
 				queryKey: teamBridgeKeys.conversationsPrefix,
 			});

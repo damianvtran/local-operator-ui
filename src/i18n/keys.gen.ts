@@ -10302,6 +10302,38 @@ export type MessageParams = {
 	"ui.teamBridge.members.state.invited_short": undefined;
 	"ui.teamBridge.members.title": undefined;
 	"ui.teamBridge.members.you": undefined;
+	"ui.teamBridge.members_panel.close": undefined;
+	"ui.teamBridge.members_panel.confirm.decline": undefined;
+	"ui.teamBridge.members_panel.confirm.decline_body": {
+		name: string;
+		conversation: string;
+	};
+	"ui.teamBridge.members_panel.confirm.decline_title": { name: string };
+	"ui.teamBridge.members_panel.confirm.leave": undefined;
+	"ui.teamBridge.members_panel.confirm.leave_body": undefined;
+	"ui.teamBridge.members_panel.confirm.leave_title": { conversation: string };
+	"ui.teamBridge.members_panel.confirm.remove": undefined;
+	"ui.teamBridge.members_panel.confirm.remove_body": undefined;
+	"ui.teamBridge.members_panel.confirm.remove_title": {
+		name: string;
+		conversation: string;
+	};
+	"ui.teamBridge.members_panel.confirm.withdraw_body": undefined;
+	"ui.teamBridge.members_panel.decline_label": { name: string };
+	"ui.teamBridge.members_panel.decline_tooltip": undefined;
+	"ui.teamBridge.members_panel.leave_label": undefined;
+	"ui.teamBridge.members_panel.leave_tooltip": undefined;
+	"ui.teamBridge.members_panel.note.agents": undefined;
+	"ui.teamBridge.members_panel.note.dm": undefined;
+	"ui.teamBridge.members_panel.note.general": undefined;
+	"ui.teamBridge.members_panel.note.humans": undefined;
+	"ui.teamBridge.members_panel.open_label": { count: number };
+	"ui.teamBridge.members_panel.open_label_invited": {
+		active: number;
+		invited: number;
+	};
+	"ui.teamBridge.members_panel.state.pending_approval": undefined;
+	"ui.teamBridge.members_panel.title": undefined;
 	"ui.teamBridge.mentions.empty": { query: string };
 	"ui.teamBridge.mentions.listbox_label": undefined;
 	"ui.teamBridge.mentions.notice.invite": undefined;

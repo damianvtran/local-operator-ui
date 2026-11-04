@@ -123,6 +123,7 @@ export class AppAttentionService {
 			"team_bridge.read",
 			"team_bridge.conversations.notify",
 			"team_bridge.conversations.join",
+			"team_bridge.conversations.leave",
 			"team_bridge.conversations.delete",
 			"team_bridge.conversations.lifecycle",
 			"team_bridge.conversations.consent",

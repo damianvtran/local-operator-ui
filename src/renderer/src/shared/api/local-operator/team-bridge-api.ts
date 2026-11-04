@@ -676,6 +676,50 @@ export const TeamBridgeApi = {
 	},
 
 	/**
+	 * Leave one conversation as the signed-in person (members panel "Leave").
+	 *
+	 * Its own op rather than `leave()` above (the lifecycle action): the panel
+	 * names the row's own organization, and the answer is the conversation's
+	 * post-state, parsed here so a refusal and a success cannot be confused.
+	 * Re-entry after leaving needs a fresh invitation (core's route docstring).
+	 */
+	async leaveConversation(input: {
+		conversationId: string;
+		tenantId: string;
+		expectedAccountId?: string;
+	}): Promise<unknown> {
+		return desktopResult<unknown>({
+			op: "team_bridge.conversations.leave",
+			...(await teamBridgeWriteOwner(input.expectedAccountId, input.tenantId)),
+			conversation_id: input.conversationId,
+		});
+	},
+
+	/**
+	 * Take the caller's OWN ACTIVE agent out of a conversation (consent
+	 * `withdraw`, agent-server #227). Withdraw is not consent, so it sends no
+	 * `consent_version`. `endpointId` pins which of the owner's agents leaves
+	 * when the participant row carries one; without it the hub resolves the
+	 * owner's single agent row, and refuses `rule=ambiguous` if there are two.
+	 */
+	async withdrawAgent(input: {
+		conversationId: string;
+		accountId: string;
+		tenantId: string;
+		endpointId?: string;
+	}): Promise<TeamBridgeConversation> {
+		const answer = await desktopResult<unknown>({
+			op: "team_bridge.conversations.consent",
+			...(await teamBridgeWriteOwner(input.accountId, input.tenantId)),
+			conversation_id: input.conversationId,
+			account_id: input.accountId,
+			decision: "withdraw",
+			...(input.endpointId ? { endpoint_id: input.endpointId } : {}),
+		});
+		return teamBridgeConversationSchema.parse(answer);
+	},
+
+	/**
 	 * Answer an invitation for the caller's OWN agent (agent-server `Consent`).
 	 *
 	 * An agent added to a channel or group stays `invited` until its owner
@@ -694,6 +738,8 @@ export const TeamBridgeApi = {
 		tenantId: string;
 		decision: "accept" | "decline";
 		consentVersion: string;
+		/** Pins one of the owner's agent rows (members panel); optional. */
+		endpointId?: string;
 	}): Promise<TeamBridgeConversation> {
 		const answer = await desktopResult<unknown>({
 			op: "team_bridge.conversations.consent",
@@ -702,6 +748,7 @@ export const TeamBridgeApi = {
 			account_id: input.accountId,
 			decision: input.decision,
 			consent_version: input.consentVersion,
+			...(input.endpointId ? { endpoint_id: input.endpointId } : {}),
 		});
 		return teamBridgeConversationSchema.parse(answer);
 	},

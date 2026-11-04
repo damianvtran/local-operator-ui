@@ -3357,3 +3357,34 @@ export const AgentOwnPictureMention: Story = {
 		await userEvent.type(field, "@Ai");
 	},
 };
+
+/*
+ * THE MEMBERS PANEL FROM THE HEADER COUNT (operator 2026-11-04). The count is
+ * a button; these frames are the header's hover and keyboard-focus states and
+ * the panel docked in the thread pane's slot on a wide page.
+ */
+export const MemberCountHover: Story = {
+	args: ChannelSelected.args,
+	play: async ({ canvasElement }) => {
+		const count = canvasElement.querySelector<HTMLElement>(
+			'button[aria-label^="View "]',
+		);
+		if (count) await userEvent.hover(count);
+	},
+};
+
+export const MemberCountFocused: Story = {
+	args: ChannelSelected.args,
+	play: async ({ canvasElement }) => {
+		const count = canvasElement.querySelector<HTMLElement>(
+			'button[aria-label^="View "]',
+		);
+		// Keyboard focus, so `:focus-visible` paints the outline ring.
+		count?.focus();
+		await userEvent.keyboard("{Shift>}{Tab}{/Shift}{Tab}");
+	},
+};
+
+export const MembersPanelOpen: Story = {
+	args: { ...ChannelSelected.args, initialMembersPanelOpen: true },
+};
