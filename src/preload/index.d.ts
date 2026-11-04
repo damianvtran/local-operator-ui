@@ -640,6 +640,8 @@ declare global {
 						detail?: string;
 						/** True when the install follows a source tree, not the release. */
 						sourceBuild?: boolean;
+						/** Whether the press cannot interrupt a running session (`entry-point` route only). */
+						nonDisruptive?: boolean;
 						/**
 						 * The version the daemon SERVING this app reports, when it was
 						 * readable. `currentVersion` above is the install on disk, which an

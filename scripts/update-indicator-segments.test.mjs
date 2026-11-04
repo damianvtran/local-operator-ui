@@ -1946,3 +1946,37 @@ test("R3: a not-available answer clears the detail with the offer, on both chann
 	);
 	assert.equal(cardHeadings().length, 0);
 });
+
+test("the tooltip reassures only when every waiting update cannot interrupt a session", async () => {
+	/*
+	 * REVIEW M1 (2026-11-03): the "won't interrupt running sessions" line used to
+	 * render for any waiting surface, but a server offer on the checkout-rebuild or
+	 * legacy route rewrites the install in place and its card says a turn can be
+	 * interrupted. Main states the route as `nonDisruptive` (true only on
+	 * `entry-point`); absent reads as false, so an older main never earns it.
+	 */
+	const REASSURANCE = "Updating won't interrupt running sessions.";
+	const cases = [
+		{ nonDisruptive: true, shows: true },
+		{ nonDisruptive: false, shows: false },
+		{ nonDisruptive: undefined, shows: false },
+	];
+	for (const { nonDisruptive, shows } of cases) {
+		await reset();
+		await mount();
+		await fire("backend-update-available", { ...SERVER_OFFER, nonDisruptive });
+		const tip = await footIconTooltip();
+		assert.ok(tip, "focusing the icon opens its flyout");
+		assert.equal(
+			(tip.textContent ?? "").includes(REASSURANCE),
+			shows,
+			`nonDisruptive=${nonDisruptive}: ${tip.textContent}`,
+		);
+	}
+	/* The app install alone always restarts only this window. */
+	await reset();
+	await mount();
+	await fire("update-available", { version: "0.31.0", releaseNotes: "Fixes." });
+	const appTip = await footIconTooltip();
+	assert.ok(appTip?.textContent?.includes(REASSURANCE), appTip?.textContent);
+});

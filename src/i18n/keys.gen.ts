@@ -6186,6 +6186,7 @@ export type MessageParams = {
 		subject: string;
 		percent: string;
 	};
+	"ui.common.updates.update_foot_icon.sessions_keep_running": undefined;
 	"ui.common.updates.update_foot_icon.show_the_update_notice": undefined;
 	"ui.common.updates.update_foot_icon.subject_join": {
 		left: string;
@@ -6276,6 +6277,8 @@ export type MessageParams = {
 	"ui.common.updates.update_notification.rebuilding_the_server_from_this_machine_s_checkout_the_app_waited_for_th": undefined;
 	"ui.common.updates.update_notification.release_notes": undefined;
 	"ui.common.updates.update_notification.release_notes_caption": undefined;
+	"ui.common.updates.update_notification.remedy_managed_app_owned": undefined;
+	"ui.common.updates.update_notification.remedy_managed_global": undefined;
 	"ui.common.updates.update_notification.restart_local_operator_and_the_server_comes_back_on_the_new_build": undefined;
 	"ui.common.updates.update_notification.restart_the_server": undefined;
 	"ui.common.updates.update_notification.restarting_puts_the_server_offline_while_it_comes_back": {
