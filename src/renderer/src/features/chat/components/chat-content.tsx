@@ -3354,18 +3354,6 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								asideSessionId={sessionId}
 								asideStreaming={canonical.turnAlive}
 								asideAdoptQueue={asideAdoptQueue}
-								/*
-								 * The capability itself, not just its busy half: the composer
-								 * holds the control's SLOT while a turn runs and for a grace
-								 * window after it ends, so the dictation control cannot take the
-								 * centre a reflex second press lands on (UX round 1's U1 / QA's
-								 * Q1) - and once the row has settled the slot is empty, so
-								 * dictation sits beside Send rather than behind a standing gap
-								 * (the operator's report on that fix). Without the capability
-								 * there is nothing to hold either way: a gap that nothing will
-								 * ever fill is not a reservation.
-								 */
-								canonicalStopAvailable={canonical?.stopAvailable ?? false}
 								interruptNotice={canonical?.stopNotice ?? null}
 								isFarFromBottom={isFarFromBottom}
 								hasNewActivity={hasNewActivity}

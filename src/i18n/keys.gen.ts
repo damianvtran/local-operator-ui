@@ -3770,6 +3770,8 @@ export type MessageParams = {
 	"ui.chat.composer.delivery_remedies_hint": undefined;
 	"ui.chat.composer.dictation_failed_transient": undefined;
 	"ui.chat.composer.dictation_failed_transient_take_kept": undefined;
+	"ui.chat.composer.insert_transcript": undefined;
+	"ui.chat.composer.insert_transcript_hint": undefined;
 	"ui.chat.composer.message": undefined;
 	"ui.chat.composer.placeholder.answer": undefined;
 	"ui.chat.composer.placeholder.aside": undefined;
@@ -3799,6 +3801,8 @@ export type MessageParams = {
 	"ui.chat.composer.secret_fill_refused": undefined;
 	"ui.chat.composer.secret_fill_unavailable": undefined;
 	"ui.chat.composer.send_message": undefined;
+	"ui.chat.composer.send_recording": undefined;
+	"ui.chat.composer.send_recording_hint": undefined;
 	"ui.chat.composer.start_recording": undefined;
 	"ui.chat.composer.start_recording_hint": {
 		shortcut: string;
@@ -3806,6 +3810,7 @@ export type MessageParams = {
 	};
 	"ui.chat.composer.starting": undefined;
 	"ui.chat.composer.starting_recording": undefined;
+	"ui.chat.composer.steer_hint": undefined;
 	"ui.chat.composer.stop": undefined;
 	"ui.chat.composer.stop_agent": undefined;
 	"ui.chat.composer.stop_work_hint": undefined;
@@ -3836,6 +3841,7 @@ export type MessageParams = {
 	"ui.chat.composer_media.preview_failed": undefined;
 	"ui.chat.composer_media.recording": undefined;
 	"ui.chat.composer_media.remove_attachment": undefined;
+	"ui.chat.composer_media.sends_now": undefined;
 	"ui.chat.device.check_again": undefined;
 	"ui.chat.device.fact.this_device": undefined;
 	"ui.chat.device.footer.move_deletes_copy": undefined;

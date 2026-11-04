@@ -819,6 +819,45 @@ const CONTROLS = [
 		ink: "inkDim",
 	},
 	{
+		/*
+		 * The composer's "Insert transcript" control while a dictation records: the
+		 * outline button FILLED with `successWash` (design round 1, D4: an empty
+		 * bordered square read as a checked checkbox, not a press), wearing
+		 * `successBorder` and `success` ink so it reads as the affirmative of
+		 * the recording trio, left of a Cancel with a red glyph and the accent Send
+		 * recording.
+		 * Colour is never the only carrier - the glyph is a check and the name says
+		 * "Insert transcript" - so this row holds the ink and edge the pairing
+		 * actually draws rather than a state the reader has to decode.
+		 */
+		name: "composer insert transcript (success outline)",
+		on: ["surface"],
+		fill: "successWash",
+		border: "successBorder",
+		ink: "success",
+	},
+	{
+		/*
+		 * The composer's "Cancel recording" control: a neutral `borderControl`
+		 * outline with the glyph in `danger` (the one colour cue that says this
+		 * throws the take away), on the card's `surface` ground. Its hover and
+		 * focus face fills with `dangerWash`; both are measured, because the red
+		 * fill is the state a pointer is on when it presses.
+		 */
+		name: "composer cancel recording (danger glyph on outline)",
+		on: ["surface"],
+		fill: "surface",
+		border: "borderControl",
+		ink: "danger",
+	},
+	{
+		name: "composer cancel recording (hover / focus, danger wash)",
+		on: ["surface"],
+		fill: "dangerWash",
+		border: "borderControl",
+		ink: "danger",
+	},
+	{
 		name: "success callout",
 		on: ["canvas", "surface"],
 		fill: "successWash",

@@ -1173,7 +1173,7 @@ test("the mic acknowledges the press while the stream is still pending, and the 
 	const micControl = () =>
 		frame.container.querySelector('[aria-label="Start recording"]');
 	const confirm = () =>
-		frame.container.querySelector('[aria-label="Confirm recording"]');
+		frame.container.querySelector('[aria-label="Insert transcript"]');
 
 	assert.ok(micControl(), "the mic control is mounted");
 	await act(async () => {
@@ -1259,7 +1259,7 @@ test("Escape settles the acknowledgment window and the discarded stream never be
 	const micControl = () =>
 		frame.container.querySelector('[aria-label="Start recording"]');
 	const confirm = () =>
-		frame.container.querySelector('[aria-label="Confirm recording"]');
+		frame.container.querySelector('[aria-label="Insert transcript"]');
 
 	await act(async () => {
 		micControl().click();
@@ -1343,7 +1343,7 @@ test("a release inside the window re-opens it: the next press is a fresh attempt
 	const micControl = () =>
 		frame.container.querySelector('[aria-label="Start recording"]');
 	const confirm = () =>
-		frame.container.querySelector('[aria-label="Confirm recording"]');
+		frame.container.querySelector('[aria-label="Insert transcript"]');
 
 	/* The hold door: pressed and released inside the acquisition. */
 	const { code } = resolvePushToTalkBinding();
@@ -1450,7 +1450,7 @@ test("a refusal belonging to an abandoned press leaves the successor's attempt a
 	const micControl = () =>
 		frame.container.querySelector('[aria-label="Start recording"]');
 	const confirm = () =>
-		frame.container.querySelector('[aria-label="Confirm recording"]');
+		frame.container.querySelector('[aria-label="Insert transcript"]');
 	const lane = () =>
 		frame.container.querySelector("[data-recording-indicator]");
 
@@ -1584,7 +1584,7 @@ test("an unmount during a live take stops the recorder rather than leaving the m
 		},
 	});
 	const confirm = () =>
-		frame.container.querySelector('[aria-label="Confirm recording"]');
+		frame.container.querySelector('[aria-label="Insert transcript"]');
 
 	await act(async () => {
 		frame.container.querySelector('[aria-label="Start recording"]').click();
@@ -1635,7 +1635,7 @@ test("the acknowledgment survives the turn going busy, and the deferred take sti
 	const micControl = () =>
 		frame.container.querySelector('[aria-label="Start recording"]');
 	const confirm = () =>
-		frame.container.querySelector('[aria-label="Confirm recording"]');
+		frame.container.querySelector('[aria-label="Insert transcript"]');
 	const lane = () =>
 		frame.container.querySelector("[data-recording-indicator]");
 
@@ -1732,7 +1732,7 @@ test("a release inside the acquisition window clears the acknowledgment without 
 	const micControl = () =>
 		frame.container.querySelector('[aria-label="Start recording"]');
 	const confirm = () =>
-		frame.container.querySelector('[aria-label="Confirm recording"]');
+		frame.container.querySelector('[aria-label="Insert transcript"]');
 
 	/* The hold door: the real manager's capture dispatch, released mid-acquisition. */
 	const { code } = resolvePushToTalkBinding();
@@ -1992,7 +1992,7 @@ test("with autoFocus={false} the end of a dictation take still hands the caret b
 		 * state the hand-back's falling edge is read off.
 		 */
 		assert.ok(
-			frame.container.querySelector('[aria-label="Confirm recording"]'),
+			frame.container.querySelector('[aria-label="Insert transcript"]'),
 			"the hold reached the capture path, so the take this case ends is a real one",
 		);
 		await act(async () => {
@@ -2117,7 +2117,7 @@ test("the push-to-talk chord asks the box to be on screen (agent review round 1,
 		const quiet = async () => {
 			for (let pass = 0; pass < 30; pass++) {
 				const busy = frame.container.querySelector(
-					'[aria-label="Confirm recording"], [data-preparing-indicator], [data-transcribing-indicator]',
+					'[aria-label="Insert transcript"], [data-preparing-indicator], [data-transcribing-indicator]',
 				);
 				if (busy === null) return true;
 				await settle();
@@ -2152,7 +2152,7 @@ test("the push-to-talk chord asks the box to be on screen (agent review round 1,
 			"a box the reader cannot see must not answer the chord",
 		);
 		assert.equal(
-			frame.container.querySelector('[aria-label="Confirm recording"]'),
+			frame.container.querySelector('[aria-label="Insert transcript"]'),
 			null,
 			"and no take's feedback exists off screen",
 		);
@@ -2174,7 +2174,7 @@ test("the push-to-talk chord asks the box to be on screen (agent review round 1,
 			"on screen the chord starts the take - the gate is the box's visibility, not dictation itself",
 		);
 		assert.ok(
-			frame.container.querySelector('[aria-label="Confirm recording"]'),
+			frame.container.querySelector('[aria-label="Insert transcript"]'),
 			"and the take's own feedback is what the gate protects",
 		);
 		await release();
@@ -2274,7 +2274,7 @@ test("the Start recording chord replaces a hold that is already recording", asyn
 		},
 	});
 	const confirm = () =>
-		frame.container.querySelector('[aria-label="Confirm recording"]');
+		frame.container.querySelector('[aria-label="Insert transcript"]');
 	const { code } = resolvePushToTalkBinding();
 	await act(async () => {
 		window.dispatchEvent(
