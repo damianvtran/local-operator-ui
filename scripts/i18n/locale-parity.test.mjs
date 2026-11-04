@@ -49,6 +49,27 @@ const IDENTICAL_OK = new Map([
 		"fr:ui.chat.thread_search.role.agent",
 		"French cognate: the role name for an agent turn is « Agent », same spelling; scoped to fr so other locales still translate it",
 	],
+	/*
+	 * The slash-argument headings the C1/C4 change added (i18n programme). The
+	 * three French words ARE the French UI nouns - « Effort », « Agents »,
+	 * « Options » - and the merged composer/pickers delta passed its independent
+	 * fr audit (instance 9a8cf2fffd64-cmpmrg1-fr, 0 blocker / 0 major) on exactly
+	 * these values. Editing them to differ would only make the gate happy at the
+	 * cost of the audited bytes, so they are named here, fr-scoped, and every other
+	 * locale still has to translate them.
+	 */
+	[
+		"fr:ui.chat.pickers.slash.source.effort",
+		"French UI noun: Effort, same spelling as English; audited as-is (9a8cf2fffd64-cmpmrg1-fr)",
+	],
+	[
+		"fr:ui.chat.pickers.slash.source.agent",
+		"French plural: Agents, same spelling as English; audited as-is (9a8cf2fffd64-cmpmrg1-fr)",
+	],
+	[
+		"fr:ui.chat.pickers.slash.source.title_refresh",
+		"French plural: Options, same spelling as English; audited as-is (9a8cf2fffd64-cmpmrg1-fr)",
+	],
 	// French cognates only: these are the normal French UI nouns, not English
 	// fallbacks. Scope to fr so untranslated nouns in other languages still fail.
 	[
