@@ -187,6 +187,7 @@ import {
 	RailSection,
 	isTargetRow,
 } from "./team-bridge-rail";
+import { useHeldRailScroll } from "./team-bridge-rail-scroll";
 import { teamBridgeReactionsAvailable } from "./team-bridge-reaction-gate";
 import {
 	TeamBridgeEarlyColumn,
@@ -2288,6 +2289,21 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	};
 
 	/*
+	 * THE RAIL'S SCROLL OUTLIVES THIS VIEW. The view is keyed by its target (see
+	 * `viewKeyFor`), so every selection remounts the rail and its viewport used
+	 * to restart at scrollTop 0 - measured 640 -> 0 on a click below the fold.
+	 * `useHeldRailScroll` carries the offset across that remount, per account
+	 * and scope; the why and the reveal rule live in `team-bridge-rail-scroll`.
+	 * Above the early returns below: it is a hook.
+	 */
+	const railScrollRoot = useRef<HTMLDivElement>(null);
+	const railScroll = useHeldRailScroll(
+		railScrollRoot,
+		JSON.stringify([selfAccountId ?? null, scope]),
+		target ? draftTargetKey(target) : null,
+	);
+
+	/*
 	 * THE EARLY STATES STILL OWN THE COLUMN. On this route the shell has already
 	 * unmounted the app navigation, so a hold or a gate that drew only its
 	 * centre panel would leave an empty `surface` slab on the left and no way out
@@ -2615,7 +2631,12 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 						</button>
 					)}
 			</nav>
-			<ScrollArea className="min-h-0 flex-1 [&_[data-radix-scroll-area-viewport]>div]:block!">
+			<ScrollArea
+				ref={railScrollRoot}
+				data-team-bridge-rail-scroll=""
+				onClickCapture={railScroll.onClickCapture}
+				className="min-h-0 flex-1 [&_[data-radix-scroll-area-viewport]>div]:block!"
+			>
 				{/*
 				 * THE SENTENCE MUST MATCH WHAT IS UNDER IT (design round 1, D1).
 				 * `listState` is "error" whenever `list.isError`, and `conversations`

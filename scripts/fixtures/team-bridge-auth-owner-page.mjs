@@ -128,6 +128,7 @@ const bundle = await build({
  export {QueryClient,QueryClientProvider} from '@tanstack/react-query';
  export {MemoryRouter} from 'react-router-dom';
  export {usePendingSends, resetPendingSendsForTest} from './src/renderer/src/features/team-bridge/team-bridge-pending-sends';
+ export {resetHeldRailScrollForTest} from './src/renderer/src/features/team-bridge/team-bridge-rail-scroll';
  export {stageMentions, stagedMentions} from './src/renderer/src/features/team-bridge/mentions/mention-outbox';`,
 		resolveDir: process.cwd(),
 	},
@@ -504,6 +505,11 @@ async function mount({
 								/* Opt-in: only the mention suites type an `@`, and the other
 								   suites' request shapes predate the field. */
 								...(sendMentions ? { team_bridge_send_mentions: 1 } : {}),
+								/* Opt-in like mentions: only a suite that seeds
+								   `ownerAuditConversations` draws the read-only history rail. */
+								...(fixture.ownerAuditConversations
+									? { team_bridge_owner_audit: 1 }
+									: {}),
 							},
 						});
 					case "radient.request":
@@ -611,7 +617,19 @@ async function mount({
 							(row) => row.id !== request.conversation_id,
 						);
 						return reply({ deleted: true });
+					/* The chief-of-staff history's own read; answered only when a suite
+					   seeds rows (see the `team_bridge_owner_audit` capability above). */
+					case "team_bridge.owner_audit.conversations":
+						return reply({
+							conversations: (fixture.ownerAuditConversations ?? []).map(
+								(row) => ({ ...row, tenant_id: request.tenant_id }),
+							),
+							has_more: false,
+							next_cursor: null,
+						});
 					case "team_bridge.directory":
+						if (fixture.directoryMembers)
+							return reply({ members: fixture.directoryMembers });
 						return reply({
 							members: ["Peer", "Other peer"].map((name, index) => ({
 								account_id: `acct_peer_${index}`,
