@@ -1,0 +1,172 @@
+{
+ "transcript-tool-first-no-picture/localOperatorDark": {
+  "firstAgentRowKind": "assistant",
+  "firstAgentRowY": 217,
+  "userBottom": 115,
+  "marks": 1,
+  "markKinds": [
+   "placeholder"
+  ],
+  "gapWrapper": true,
+  "gapWrapperHeight": 20
+ },
+ "transcript-tool-first-no-picture/localOperatorLight": {
+  "firstAgentRowKind": "assistant",
+  "firstAgentRowY": 217,
+  "userBottom": 115,
+  "marks": 1,
+  "markKinds": [
+   "placeholder"
+  ],
+  "gapWrapper": true,
+  "gapWrapperHeight": 20
+ },
+ "transcript-tool-first-picture/localOperatorDark": {
+  "firstAgentRowKind": "assistant",
+  "firstAgentRowY": 217,
+  "userBottom": 115,
+  "marks": 1,
+  "markKinds": [
+   ""
+  ],
+  "gapWrapper": true,
+  "gapWrapperHeight": 20
+ },
+ "transcript-tool-first-picture/localOperatorLight": {
+  "firstAgentRowKind": "assistant",
+  "firstAgentRowY": 217,
+  "userBottom": 115,
+  "marks": 1,
+  "markKinds": [
+   ""
+  ],
+  "gapWrapper": true,
+  "gapWrapperHeight": 20
+ },
+ "matrix/localOperatorDark": {
+  "No picture": {
+   "headerMark": "placeholder",
+   "headerTitleX": 24,
+   "turnHeadMark": "placeholder",
+   "turnHeadH": 44,
+   "sessionRowTitleX": 24,
+   "sessionRowMark": null
+  },
+  "Picture set": {
+   "headerMark": "",
+   "headerTitleX": 24,
+   "turnHeadMark": "",
+   "turnHeadH": 44,
+   "sessionRowTitleX": 46,
+   "sessionRowMark": ""
+  },
+  "Uploading": {
+   "headerMark": "placeholder",
+   "headerTitleX": 24,
+   "turnHeadMark": "placeholder",
+   "turnHeadH": 44,
+   "sessionRowTitleX": 24,
+   "sessionRowMark": null
+  },
+  "Picture unreadable": {
+   "headerMark": "placeholder",
+   "headerTitleX": 24,
+   "turnHeadMark": "placeholder",
+   "turnHeadH": 44,
+   "sessionRowTitleX": 24,
+   "sessionRowMark": null
+  }
+ },
+ "matrix/localOperatorLight": {
+  "No picture": {
+   "headerMark": "placeholder",
+   "headerTitleX": 24,
+   "turnHeadMark": "placeholder",
+   "turnHeadH": 44,
+   "sessionRowTitleX": 24,
+   "sessionRowMark": null
+  },
+  "Picture set": {
+   "headerMark": "",
+   "headerTitleX": 24,
+   "turnHeadMark": "",
+   "turnHeadH": 44,
+   "sessionRowTitleX": 46,
+   "sessionRowMark": ""
+  },
+  "Uploading": {
+   "headerMark": "placeholder",
+   "headerTitleX": 24,
+   "turnHeadMark": "placeholder",
+   "turnHeadH": 44,
+   "sessionRowTitleX": 24,
+   "sessionRowMark": null
+  },
+  "Picture unreadable": {
+   "headerMark": "placeholder",
+   "headerTitleX": 24,
+   "turnHeadMark": "placeholder",
+   "turnHeadH": 44,
+   "sessionRowTitleX": 24,
+   "sessionRowMark": null
+  }
+ },
+ "sidebar-mixed/localOperatorDark": {
+  "clusters": [
+   {
+    "kind": "avatar",
+    "right": 72
+   },
+   {
+    "kind": "reserved",
+    "right": 72
+   },
+   {
+    "kind": "avatar",
+    "right": 72
+   },
+   {
+    "kind": "reserved",
+    "right": 72
+   },
+   {
+    "kind": "avatar",
+    "right": 72
+   },
+   {
+    "kind": "reserved",
+    "right": 72
+   }
+  ],
+  "reservedSlots": 3
+ },
+ "sidebar-mixed/localOperatorLight": {
+  "clusters": [
+   {
+    "kind": "avatar",
+    "right": 72
+   },
+   {
+    "kind": "reserved",
+    "right": 72
+   },
+   {
+    "kind": "avatar",
+    "right": 72
+   },
+   {
+    "kind": "reserved",
+    "right": 72
+   },
+   {
+    "kind": "avatar",
+    "right": 72
+   },
+   {
+    "kind": "reserved",
+    "right": 72
+   }
+  ],
+  "reservedSlots": 3
+ }
+}

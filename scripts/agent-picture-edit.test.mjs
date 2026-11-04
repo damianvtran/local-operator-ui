@@ -597,39 +597,84 @@ test("a header WITH an agent still needs the query client, so the guard is the a
 /* ------------------------------------------- the placeholder door (presence) --- */
 
 /*
- * AN AGENT WITH NO PICTURE STILL DRAWS A DOOR in the header, for an owned agent
- * only: same editor href as the picture's pencil, a name that says "add" rather
- * than "change", and nothing at all where the viewer owns nothing.
+ * A REGULAR SESSION WITH NO PICTURE DRAWS NOTHING in the header (operator,
+ * 2026-11-04): no mark, no box, the 20px title line main always had. The
+ * placeholder door survives only for a proactive-class agent or the chief of
+ * staff (`agentSuggestsPicture`), owned and bound: same editor href as the
+ * picture's pencil, a name that says "add" rather than "change".
+ *
+ * The profiles are SEEDED into the query cache rather than fetched: the class
+ * lives on the profile, and a static render cannot wait for a read.
  */
-const headerFor = (r) =>
-	render(
+const headerFor = (r, profiles = []) => {
+	const client = new QueryClient({
+		defaultOptions: {
+			queries: { retry: false, gcTime: Number.POSITIVE_INFINITY },
+		},
+	});
+	client.setQueryData(["desktop", "profiles"], profiles);
+	return renderToStaticMarkup(
 		createElement(
-			MemoryRouter,
-			{ initialEntries: ["/"] },
-			createElement(ChatHeader, {
-				agentName: TITLE,
-				agentAvatar: sessionAgentTarget(r),
-			}),
+			QueryClientProvider,
+			{ client },
+			createElement(
+				MemoryRouter,
+				{ initialEntries: ["/"] },
+				createElement(ChatHeader, {
+					agentName: TITLE,
+					agentAvatar: sessionAgentTarget(r),
+				}),
+			),
 		),
 	);
+};
 
-test("an owned agent with no picture draws the placeholder door to the same editor", () => {
-	const r = row({ binding: { agent: "Scout" }, avatar_sha256: null });
-	const markup = headerFor(r);
-	assert.match(markup, /data-agent-mark="placeholder"/);
-	const href = hrefOf(markup);
-	assert.ok(href, "the placeholder is a link");
-	const params = new URLSearchParams(href.split("?")[1]);
-	assert.equal(params.get("edit"), "picture");
-	assert.equal(params.get("name"), "Scout");
-	assert.equal(params.get("agent"), "agent-1");
-	assert.match(markup, /aria-label="[^"]*Scout[^"]*"/);
-	assert.doesNotMatch(
-		markup,
-		/aria-label="Change /,
-		"it offers to add, not to change",
-	);
+test("a regular (reactive) agent with no picture draws no mark and no box in the header", () => {
+	for (const profiles of [
+		[],
+		[{ name: "Scout", action_class: "reactive" }],
+		[{ name: "Scout" }],
+		/* Another agent being proactive says nothing about this one. */
+		[{ name: "Other", action_class: "proactive" }],
+	]) {
+		const r = row({ binding: { agent: "Scout" }, avatar_sha256: null });
+		const markup = headerFor(r, profiles);
+		assert.doesNotMatch(markup, /data-agent-mark/, JSON.stringify(profiles));
+		assert.doesNotMatch(markup, /data-agent-avatar-edit/);
+		assert.doesNotMatch(markup, /edit=picture/);
+		/* The title row keeps the pre-#1651 20px line: nothing reserved beside it. */
+		assert.match(markup, /\bh-5\b[^"]*flex-wrap overflow-clip/);
+	}
 });
+
+for (const [label, agent, profiles] of [
+	[
+		"a proactive-class agent",
+		"Scout",
+		[{ name: "Scout", action_class: "proactive" }],
+	],
+	["the chief of staff", "aida", []],
+]) {
+	test(`${label} with no picture still draws the placeholder door in the header`, () => {
+		const r = row({ binding: { agent }, avatar_sha256: null });
+		const markup = headerFor(r, profiles);
+		assert.match(markup, /data-agent-mark="placeholder"/);
+		const href = hrefOf(markup);
+		assert.ok(href, "the placeholder is a link");
+		const params = new URLSearchParams(href.split("?")[1]);
+		assert.equal(params.get("edit"), "picture");
+		assert.equal(params.get("name"), agent);
+		assert.equal(params.get("agent"), "agent-1");
+		assert.doesNotMatch(
+			markup,
+			/aria-label="Change /,
+			"it offers to add, not to change",
+		);
+		/* ...but never for a remote copy of the same agent. */
+		const remote = headerFor({ ...r, locality: "remote" }, profiles);
+		assert.doesNotMatch(remote, /data-agent-mark/);
+	});
+}
 
 test("no picture and nothing to act on draws nothing in the header", () => {
 	for (const over of [

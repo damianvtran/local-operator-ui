@@ -59,6 +59,8 @@ const m = await import(
 );
 const {
 	decideAvatarMark,
+	agentSuggestsPicture,
+	CHIEF_OF_STAFF_SEAT,
 	parseAgentAvatarSize,
 	DEFAULT_AGENT_AVATAR_SIZE,
 	AGENT_AVATAR_SIZE_OPTIONS,
@@ -99,16 +101,33 @@ test("a picture that resolved is drawn, with a door only for an owned agent", ()
 	});
 });
 
-test("no picture draws the placeholder door for an owned, bound agent", () => {
-	assert.deepEqual(decideAvatarMark(base), {
-		kind: "placeholder",
-		door: DOOR,
-		busy: false,
-	});
-});
+/*
+ * NO PICTURE, NO MARK (operator, 2026-11-04). Every pictureless state answers
+ * null - owned or not - unless the surface passes `suggestPicture` (the chat
+ * header, for a proactive agent or the chief of staff).
+ */
+const SUGGEST = { ...base, suggestPicture: true };
 
-test("no picture draws NOTHING where the viewer cannot act on it", () => {
-	assert.equal(decideAvatarMark({ ...base, owned: false }), null, "not owned");
+test("no picture draws NOTHING for a regular agent, owned or not, in every settled state", () => {
+	for (const [label, facts] of [
+		["absent", base],
+		["absent, unclaimed", { ...base, claimed: false }],
+		["failed (claimed, no bytes)", { ...base, claimed: true }],
+		["unreadable list", { ...base, unreadable: true }],
+		["cold, unclaimed", { ...base, settled: false }],
+		["cold, unclaimed, explicit", { ...base, settled: false, claimed: false }],
+		["cold, unreadable", { ...base, settled: false, unreadable: true }],
+		["uploading a first picture", { ...base, uploading: true }],
+		["uploading while cold", { ...base, settled: false, uploading: true }],
+		["no name", { ...base, agentName: null }],
+	]) {
+		assert.equal(decideAvatarMark(facts), null, `owned: ${label}`);
+		assert.equal(
+			decideAvatarMark({ ...facts, owned: false }),
+			null,
+			`not owned: ${label}`,
+		);
+	}
 	assert.equal(decideAvatarMark({ ...base, agentId: null }), null, "unbound");
 	assert.equal(
 		decideAvatarMark({ ...base, agentId: null, agentName: null }),
@@ -118,41 +137,32 @@ test("no picture draws NOTHING where the viewer cannot act on it", () => {
 });
 
 test("a failed digest draws exactly what an absent one draws, claimed or not", () => {
-	const absent = decideAvatarMark({ ...base, claimed: false });
-	const failed = decideAvatarMark({ ...base, claimed: true });
-	assert.deepEqual(failed, absent);
-	assert.equal(failed.kind, "placeholder");
-	/* ...and never a picture mark, so never a pencil door onto an empty plate. */
-	assert.notEqual(failed.kind, "picture");
+	assert.deepEqual(
+		decideAvatarMark({ ...base, claimed: true }),
+		decideAvatarMark({ ...base, claimed: false }),
+	);
+	assert.deepEqual(
+		decideAvatarMark({ ...SUGGEST, claimed: true }),
+		decideAvatarMark({ ...SUGGEST, claimed: false }),
+		"and on a suggesting header too",
+	);
+});
+
+test("a cold read holds a plate only for a CLAIMED digest of an owned agent", () => {
+	assert.deepEqual(
+		decideAvatarMark({ ...base, settled: false, claimed: true }),
+		{
+			kind: "plate",
+		},
+	);
+	/* No digest claimed: no face coming, so no transient box to flash. */
 	assert.equal(
-		decideAvatarMark({ ...base, claimed: true, owned: false }),
+		decideAvatarMark({ ...base, settled: false, claimed: false }),
 		null,
-		"a failed digest on a not-owned agent is the unowned no-picture case: nothing",
 	);
-});
-
-test("a failed list read draws nothing, never the placeholder (m-3)", () => {
-	/* Unreadable is not "no picture": an upload invitation over a picture that may exist. */
-	assert.equal(decideAvatarMark({ ...base, unreadable: true }), null);
-	/* A picture that resolved anyway still draws; the flag is about the absence of one. */
-	assert.equal(
-		decideAvatarMark({ ...base, src: "blob:x", unreadable: true })?.kind,
-		"picture",
-	);
-	/* A write in flight keeps its box even then (the busy slot is this window's own fact). */
-	assert.equal(
-		decideAvatarMark({ ...base, unreadable: true, uploading: true })?.kind,
-		"placeholder",
-	);
-});
-
-test("a read still in flight draws a quiet plate and no door, never the placeholder", () => {
-	assert.deepEqual(decideAvatarMark({ ...base, settled: false }), {
-		kind: "plate",
-	});
 	/* A not-owned agent has nothing to hold a box for. */
 	assert.equal(
-		decideAvatarMark({ ...base, settled: false, owned: false }),
+		decideAvatarMark({ ...base, settled: false, claimed: true, owned: false }),
 		null,
 	);
 	/* A resolved picture wins over an unsettled flag (the bytes are the answer). */
@@ -162,37 +172,183 @@ test("a read still in flight draws a quiet plate and no door, never the placehol
 	);
 });
 
-test("an upload in flight keeps the box, closes the door and shows the busy state", () => {
-	assert.deepEqual(decideAvatarMark({ ...base, uploading: true }), {
-		kind: "placeholder",
-		door: null,
-		busy: true,
-	});
-	/* Even while the agents map is unsettled: the write is the fact. */
-	assert.deepEqual(
-		decideAvatarMark({ ...base, settled: false, uploading: true }),
-		{
-			kind: "placeholder",
-			door: null,
-			busy: true,
-		},
+test("a failed list read draws nothing, never a placeholder (m-3)", () => {
+	assert.equal(decideAvatarMark({ ...SUGGEST, unreadable: true }), null);
+	assert.equal(
+		decideAvatarMark({ ...base, src: "blob:x", unreadable: true })?.kind,
+		"picture",
 	);
-	/* Replacing an existing picture: still the picture, door closed. */
+});
+
+test("a picture being replaced keeps drawing, door closed; a door needs a picture", () => {
 	assert.deepEqual(
 		decideAvatarMark({ ...base, src: "blob:x", uploading: true }),
 		{ kind: "picture", src: "blob:x", door: null },
 	);
-	/* Not owned: no upload could be ours, and nothing is drawn. */
+	/* The pencil door is only ever on a present picture for a regular agent. */
+	for (const facts of [
+		base,
+		{ ...base, claimed: true },
+		{ ...base, settled: false, claimed: true },
+	]) {
+		const mark = decideAvatarMark(facts);
+		assert.ok(mark === null || !("door" in mark) || mark.door === null);
+	}
+});
+
+test("suggestPicture: the header of a proactive agent or the chief of staff draws the placeholder door", () => {
+	assert.deepEqual(decideAvatarMark(SUGGEST), {
+		kind: "placeholder",
+		door: DOOR,
+		busy: false,
+	});
+	/* While the read is cold it holds a plate, so the door never flashes over a face. */
+	assert.deepEqual(decideAvatarMark({ ...SUGGEST, settled: false }), {
+		kind: "plate",
+	});
+	/* A first upload under it keeps the box busy and the door closed. */
+	assert.deepEqual(decideAvatarMark({ ...SUGGEST, uploading: true }), {
+		kind: "placeholder",
+		door: null,
+		busy: true,
+	});
+	/* A picture is still a picture. */
+	assert.equal(decideAvatarMark({ ...SUGGEST, src: "blob:x" }).kind, "picture");
+	/* Never where the viewer cannot act: not owned, unbound. */
+	assert.equal(decideAvatarMark({ ...SUGGEST, owned: false }), null);
+	assert.equal(decideAvatarMark({ ...SUGGEST, agentId: null }), null);
+	/* A door needs a name. */
+	assert.equal(decideAvatarMark({ ...SUGGEST, agentName: null }).door, null);
+});
+
+test("a header whose class read is pending holds a plate, never the door (D1 / m2)", () => {
+	/* Pictureless, settled, class unknown: the box is held so the title does not shift. */
+	assert.deepEqual(decideAvatarMark({ ...base, suggestPending: true }), {
+		kind: "plate",
+	});
+	/* Only where a door could follow: not owned, unbound or unreadable draw nothing. */
 	assert.equal(
-		decideAvatarMark({ ...base, owned: false, uploading: true }),
+		decideAvatarMark({ ...base, suggestPending: true, owned: false }),
 		null,
+	);
+	assert.equal(
+		decideAvatarMark({ ...base, suggestPending: true, agentId: null }),
+		null,
+	);
+	assert.equal(
+		decideAvatarMark({ ...base, suggestPending: true, unreadable: true }),
+		null,
+	);
+	/* A picture still wins; once the read answers "regular", nothing again. */
+	assert.equal(
+		decideAvatarMark({ ...base, suggestPending: true, src: "blob:x" }).kind,
+		"picture",
+	);
+	assert.equal(decideAvatarMark({ ...base, suggestPending: false }), null);
+	/* The header passes it from the profiles read's own pending state, gated as enabled. */
+	const header = code(`${CH}/chat-header.tsx`);
+	assert.match(header, /const profiles = useProfiles\(readsClass\)/);
+	assert.match(
+		header,
+		/suggestPending: readsClass && profiles\.isPending && !suggestPicture/,
 	);
 });
 
-test("a door needs a name: an owned agent with no name draws no door", () => {
-	const mark = decideAvatarMark({ ...base, agentName: null });
-	assert.equal(mark.kind, "placeholder");
-	assert.equal(mark.door, null);
+test("the turn head claims the session row's digest, so a pictured agent holds its plate (Q-1)", () => {
+	/* Unhinted and cold, nothing is claimed and nothing is drawn: the pop-in. */
+	assert.equal(decideAvatarMark({ ...base, settled: false }), null);
+	/* With the row's digest claimed the cold head holds the box. */
+	assert.deepEqual(
+		decideAvatarMark({ ...base, settled: false, claimed: true }),
+		{ kind: "plate" },
+	);
+	const page = code(`${CH}/chat-page.tsx`);
+	const call = page.slice(
+		page.indexOf("const agentAvatar = useAgentSlotMark({"),
+	);
+	assert.match(
+		call.slice(0, 400),
+		/sha256Hint: \(rowSpeaks && boundRow\?\.avatar_sha256\) \|\| undefined/,
+	);
+	/* The row is only the speaker's when it names the same agent id. */
+	assert.match(
+		page,
+		/const rowSpeaks =\s*speakerAgentId !== null && boundRow\?\.agent_id === speakerAgentId/,
+	);
+	/* Still never a suggestion on the transcript. */
+	assert.doesNotMatch(call.slice(0, 400), /suggestP/);
+});
+
+test("agentSuggestsPicture: only the chief of staff and proactive-class agents", () => {
+	const profiles = [
+		{ name: "manager", action_class: "reactive" },
+		{ name: "coder" },
+		{ name: "buddy", action_class: "proactive" },
+		{ name: "odd", action_class: "PROACTIVE" },
+	];
+	assert.equal(
+		agentSuggestsPicture("manager", profiles),
+		false,
+		"reactive role",
+	);
+	assert.equal(
+		agentSuggestsPicture("coder", profiles),
+		false,
+		"unclassified reads reactive",
+	);
+	assert.equal(
+		agentSuggestsPicture("odd", profiles),
+		false,
+		"only the literal proactive",
+	);
+	assert.equal(agentSuggestsPicture("buddy", profiles), true, "proactive");
+	assert.equal(
+		agentSuggestsPicture("nobody", profiles),
+		false,
+		"not in the list",
+	);
+	assert.equal(
+		agentSuggestsPicture("buddy", undefined),
+		false,
+		"list not read yet",
+	);
+	assert.equal(agentSuggestsPicture(null, profiles), false, "no agent");
+	assert.equal(
+		agentSuggestsPicture(CHIEF_OF_STAFF_SEAT, undefined),
+		true,
+		"chief of staff",
+	);
+	/* The seat name is the aida module's, spelled twice only because this one is import-free. */
+	const aida = readFileSync(
+		"src/renderer/src/features/aida/use-aida-target.ts",
+		"utf8",
+	);
+	assert.ok(
+		aida.includes(`export const AIDA_SEAT_NAME = "${CHIEF_OF_STAFF_SEAT}";`),
+	);
+});
+
+test("only the chat header passes suggestPicture; the transcript, sidebar and Team Bridge never do", () => {
+	const header = code(`${CH}/chat-header.tsx`);
+	/* Any spelling of the header's pass (n2); the negative greps carry the weight. */
+	assert.match(header, /suggestPicture/);
+	const callers = [
+		`${CH}/chat-page.tsx`,
+		`${CH}/chat-session-avatar.tsx`,
+		`${CH}/chat-sidebar.tsx`,
+		`${CH}/chat-content.tsx`,
+		"src/renderer/src/features/chat/canonical/canonical-transcript.tsx",
+		`${CH}/message-item/message-avatar.tsx`,
+		"src/renderer/src/features/team-bridge/team-bridge-profile-card.tsx",
+	];
+	for (const file of callers)
+		assert.doesNotMatch(
+			code(file),
+			/suggestPicture/,
+			`${file} must not suggest`,
+		);
+	/* The transcript's own decision: a proactive agent's turn head still draws nothing. */
+	assert.equal(decideAvatarMark({ ...base, suggestPicture: false }), null);
 });
 
 test("the row's ownership answer is the one the sidebar's pencil reads", () => {
@@ -201,7 +357,7 @@ test("the row's ownership answer is the one the sidebar's pencil reads", () => {
 		avatar_sha256: null,
 		binding: { agent: "coder" },
 	};
-	/* A no-picture row has an address for the placeholder door... */
+	/* A no-picture row still has an address (the header's suggesting door)... */
 	assert.deepEqual(sessionAgentTarget(row), {
 		agentId: "agent-1",
 		agentName: "coder",
@@ -470,16 +626,22 @@ test("the header sizes its title row from the table only when a mark is drawn, f
 	assert.match(header, /cn\(rowClassName, "flex-wrap overflow-clip"\)/);
 });
 
-test("a list with pictures reserves the box on every row; a list without draws main's cell (D1)", () => {
+test("a pictureless session row is the status cell alone, never a reserved box", () => {
 	const row = code(`${CH}/chat-session-avatar.tsx`);
-	assert.match(row, /reservePicture = false/);
-	/* The reserved box is the picture's own size and inert. */
-	assert.match(row, /data-session-picture-slot/);
-	const bare = row.slice(row.indexOf("function BareSessionStatus"));
-	assert.match(bare, /if \(!reserve\) return <ChatSessionStatus/);
+	assert.doesNotMatch(
+		row,
+		/reservePicture|data-session-picture-slot|BareSessionStatus/,
+	);
+	assert.match(
+		row,
+		/if \(!agentId \|\| !sha256\) \{[\s\S]*?return <ChatSessionStatus row=\{row\} nowSeconds=\{nowSeconds\} \/>;/,
+	);
+	assert.match(
+		row,
+		/if \(settled && !url\)\s*return <ChatSessionStatus row=\{row\} nowSeconds=\{nowSeconds\} \/>;/,
+	);
 	const sidebar = code(`${CH}/chat-sidebar.tsx`);
-	assert.match(sidebar, /reservePicture=\{anyRowPictured\}/);
-	assert.match(sidebar, /row\.agent_id && row\.avatar_sha256/);
+	assert.doesNotMatch(sidebar, /reservePicture|anyRowPictured/);
 });
 
 test("the settings sample draws the sidebar's fixed 16px box beside the stepped ones (D8), on a hairline edge (D7)", () => {
