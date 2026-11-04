@@ -74,8 +74,10 @@ const SOURCE = /\/src\/.*\.(?:tsx?|json)$/;
 const laneSource = resolve(
 	"src/renderer/src/features/team-bridge/team-bridge-pending-sends.ts",
 );
+// Re-pinned when `PendingSend` gained its captured `mentions` field (a type-only
+// import and property; the lane code the observer hooks is unchanged).
 const laneHash =
-	"9262850c304c39364cc3a88aff63c2dcf6335f4544d9264b07f75b625bd6a729";
+	"16ba46b7d74205a219b0d19c9b86297aa485a31fc1a7261b1757d4f598e529d6";
 const hash = (value) => createHash("sha256").update(value).digest("hex");
 const laneAttempts = [];
 let laneObserverError = false;
@@ -125,7 +127,8 @@ const bundle = await build({
  export {teamBridgeViewingConversation} from './src/renderer/src/features/team-bridge/team-bridge-viewing';
  export {QueryClient,QueryClientProvider} from '@tanstack/react-query';
  export {MemoryRouter} from 'react-router-dom';
- export {usePendingSends, resetPendingSendsForTest} from './src/renderer/src/features/team-bridge/team-bridge-pending-sends';`,
+ export {usePendingSends, resetPendingSendsForTest} from './src/renderer/src/features/team-bridge/team-bridge-pending-sends';
+ export {stageMentions, stagedMentions} from './src/renderer/src/features/team-bridge/mentions/mention-outbox';`,
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -347,6 +350,8 @@ function deferred() {
  *   waitReady   - false when the scenario holds the gate open on purpose.
  *   statusGate  - replaces the fixture's own null status gate, so a caller can
  *                 hold the eligibility verdict open from before the first render.
+ *   sendMentions- advertises `team_bridge_send_mentions`, so the composer's
+ *                 @-mentions are serialised onto the wire (off by default).
  * The remaining holds are installed on the returned fixture by the scenario that
  * needs them: `fixture.listGate` (the conversation list) and `fixture.unreadGate`
  * (the account unread aggregate).
@@ -360,6 +365,7 @@ async function mount({
 	seed = null,
 	waitReady = true,
 	statusGate = null,
+	sendMentions = false,
 } = {}) {
 	// A revoked attempt can outlive its cleared lane and store entry. A later
 	// fixture must not reset shared state while that earlier job can still run.
@@ -441,6 +447,9 @@ async function mount({
 								team_bridge_threads: 1,
 								team_bridge_reactions: 1,
 								team_bridge_conversation_owner_guard: fixture.ownerGuard,
+								/* Opt-in: only the mention suites type an `@`, and the other
+								   suites' request shapes predate the field. */
+								...(sendMentions ? { team_bridge_send_mentions: 1 } : {}),
 							},
 						});
 					case "radient.request":
