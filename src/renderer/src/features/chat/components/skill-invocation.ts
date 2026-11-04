@@ -234,12 +234,39 @@ export function skillMentions(
 	names: readonly string[],
 	opts: { skipSpans?: readonly (readonly [number, number])[] } = {},
 ): SkillMention[] {
+	return resolveMentions(text, names, opts.skipSpans ?? [], true);
+}
+
+/**
+ * EVERY occurrence of a fired `$name`, repeats included — the transcript ink's
+ * read of {@link skillMentions}.
+ *
+ * The submit path dedupes by resolved name because one body is attached per
+ * skill, so `$research … $research` expands once. The ink answers a different
+ * question — which tokens in the sent line are the skill — and a second
+ * `$research` is as much the skill as the first. Same boundary rule, same
+ * vocabulary, same case guard: this is {@link skillMentions} minus the dedupe,
+ * built on the one resolver so the two cannot disagree about what fires.
+ */
+export function skillMentionSpans(
+	text: string,
+	names: readonly string[],
+	opts: { skipSpans?: readonly (readonly [number, number])[] } = {},
+): SkillMention[] {
+	return resolveMentions(text, names, opts.skipSpans ?? [], false);
+}
+
+function resolveMentions(
+	text: string,
+	names: readonly string[],
+	skipSpans: readonly (readonly [number, number])[],
+	dedupe: boolean,
+): SkillMention[] {
 	const exact = new Set(names);
 	const byLower = new Map<string, string>();
 	for (const name of names) {
 		if (!byLower.has(name.toLowerCase())) byLower.set(name.toLowerCase(), name);
 	}
-	const skipSpans = opts.skipSpans ?? [];
 	const mentions: SkillMention[] = [];
 	const seen = new Set<string>();
 	for (const span of skillNameSpans(text)) {
@@ -258,7 +285,7 @@ export function skillMentions(
 			byLower,
 			leading,
 		);
-		if (resolved === null || seen.has(resolved.name)) continue;
+		if (resolved === null || (dedupe && seen.has(resolved.name))) continue;
 		seen.add(resolved.name);
 		mentions.push({
 			start: span.start,
@@ -387,7 +414,7 @@ export function skillBlockSpans(text: string): [number, number][] {
  * documenting this feature, not a second attachment, and the test for that is
  * structural rather than a docstring promise.
  */
-function skillBlockNames(text: string): string[] {
+export function skillBlockNames(text: string): string[] {
 	const names: string[] = [];
 	for (const [start, end] of skillBlockSpans(text)) {
 		let depth = 0;

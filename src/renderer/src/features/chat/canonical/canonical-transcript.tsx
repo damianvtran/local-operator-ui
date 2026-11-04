@@ -123,6 +123,7 @@ import { MessageAvatar } from "../components/message-item/message-avatar";
 import { MessageContainer } from "../components/message-item/message-container";
 import { TurnTimestamp } from "../components/message-item/turn-timestamp";
 import { ReplyPreview } from "../components/reply-preview";
+import { skillBlockNames } from "../components/skill-invocation";
 import { DiffBlock, TraceLine } from "../components/trace";
 import { bridgeReceiptOf } from "../components/trace/bridge-receipt-model";
 import {
@@ -1092,6 +1093,16 @@ const UserRow = memo(function UserRow({
 	 * reader of the record already share.
 	 */
 	const seal = record.skill;
+	/*
+	 * The skills this turn attached, read off the RECORD's text: `bodyText` above
+	 * has the `<operator-skills>` block stripped, so the painted string no longer
+	 * says which tokens fired. A legacy seal paints its own `seal.token` in the
+	 * same ink, so it passes none - one ink per token, never two.
+	 */
+	const attachedSkills = useMemo(
+		() => (seal ? [] : skillBlockNames(record.text)),
+		[seal, record.text],
+	);
 	const instructionsLabel = t("ui.chat.skill_invocation.instructions_label");
 	/*
 	 * U2: the transcript is BOTTOM-ANCHORED, so opening the last row's body grows
@@ -1451,6 +1462,7 @@ const UserRow = memo(function UserRow({
 							<MarkdownRenderer
 								content={seal ? seal.request : remainingContent}
 								credentialCitations
+								skillNames={attachedSkills}
 							/>
 							{clamped && (
 								/*
