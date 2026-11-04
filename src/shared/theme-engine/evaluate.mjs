@@ -13,7 +13,7 @@
  * the move).
  *
  * WHAT STAYS IN THE CONTRACT: everything that is not about ONE palette - the
- * stylesheet-reading sections (arrival band, panel seam class), the §5b fleet
+ * stylesheet-reading checks (the arrival band's alpha and lift, the panel seam class), the §5b fleet
  * rules across palettes, window glass, the staleness checks that read the
  * consulted-pin sets after the run, and the report.
  *
@@ -29,6 +29,7 @@ import { deltaE, isHex, over, r2, ratio, toLab } from "./color.mjs";
 import {
 	ADJACENT,
 	ALT_ACCENT_CHROMA_FLOOR,
+	ARRIVAL_BAND_ALPHA,
 	AS_TEXT,
 	CHART_HOVER_GROUND,
 	CHART_HOVER_SEPARATION_FLOOR,
@@ -2003,5 +2004,41 @@ export const evaluatePalette = (run, entry) => {
 				);
 			}
 		}
+
+		/*
+		 * THE TEAM BRIDGE ARRIVAL BAND (contract section 5a; reasoning at
+		 * `ARRIVAL_BAND_ALPHA`). Moved here from the contract's own palette loop
+		 * (agent review round 1, M1 on #1674) so the composition engine's accent
+		 * and contrast solvers, which use this function as their oracle, honour the
+		 * band's rank over `rowSelected`/`rowHover` - before the move a custom
+		 * accent could be applied that `pnpm check-themes` rejects.
+		 */
+		const band = over(p.accent, p.surface, ARRIVAL_BAND_ALPHA);
+		for (const [role, floor, label] of [
+			["inkMuted", FLOOR.text, "washed row metadata ink"],
+			// Transient ground: see why this is not the strong-text floor above.
+			["ink", FLOOR.text, "washed row body ink"],
+		]) {
+			const ink = p[role];
+			if (!isHex(ink)) continue;
+			run.assertions++;
+			const got = r2(ratio(ink, band));
+			if (got >= floor) continue;
+			fail(
+				`${id}: ${label} — ${role} ${ink} on the arrival band ${band} (accent ${ARRIVAL_BAND_ALPHA} over surface) = ${got}:1, need ${floor}:1`,
+			);
+		}
+		const arrival = ratio(band, p.surface);
+		const hover = ratio(p.rowHover, p.surface);
+		const current = ratio(p.rowSelected, p.surface);
+		run.assertions += 2;
+		if (arrival <= hover)
+			fail(
+				`${id}: the arrival band is ${r2(arrival)}:1 over the pane and the row hover is ${r2(hover)}:1 — the mark the reader was TOLD about cannot be drawn more quietly than one their pointer rests on`,
+			);
+		if (arrival <= current)
+			fail(
+				`${id}: the arrival band is ${r2(arrival)}:1 over the pane and the selected row is ${r2(current)}:1 — the arrival must outrank the row the reader is already on, or the landing reads as a selection`,
+			);
 	}
 };

@@ -28,8 +28,10 @@
 import { spawnSync } from "node:child_process";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { ratio } from "../src/shared/theme-engine/color.mjs";
 import {
 	CONTRAST_PRESETS,
+	INK_ORDER_TOLERANCE,
 	applyContrast,
 } from "../src/shared/theme-engine/contrast.mjs";
 import { loadPalettes } from "./palette-source.mjs";
@@ -39,15 +41,21 @@ const CONTRACT = join(ROOT, "scripts", "contrast-contract.mjs");
 
 const presets = Object.entries(CONTRAST_PRESETS).filter(([, c]) => c !== 0);
 const authored = loadPalettes();
+/* Every palette composed once at every snap point (Standard included, which is
+   the authored palette), shared by the reach and the order legs below. */
+const ladder = Object.entries(CONTRAST_PRESETS).sort(([, a], [, b]) => a - b);
+const composed = new Map(
+	authored.map(({ id, palette }) => [
+		id,
+		new Map(ladder.map(([, c]) => [c, applyContrast(palette, c, { id })])),
+	]),
+);
 let failed = 0;
 for (const [name, c] of presets) {
 	/* Reached, not merely legible: a capped palette is a preset the fleet cannot
 	   offer, and it is reported by name with how far it got. */
 	const capped = authored
-		.map(({ id, palette }) => [
-			id,
-			applyContrast(palette, c, { id }).effectiveContrast,
-		])
+		.map(({ id }) => [id, composed.get(id).get(c).effectiveContrast])
 		.filter(([, got]) => got !== c);
 	const run = spawnSync(process.execPath, [CONTRACT], {
 		encoding: "utf8",
@@ -70,12 +78,42 @@ for (const [name, c] of presets) {
 	}
 	if (!ok) failed++;
 }
+/*
+ * THE ORDER LEG (QA round 1, Q1/Q2 on #1674): reached has to mean the effect
+ * happened. For every palette, `ink` on `canvas` is non-decreasing across
+ * Soft -> Gentle -> Standard -> Strong -> High. Every floor held while light
+ * High landed darker than Standard with less ink contrast (githubLight,
+ * highContrastLight, oneLight), and dark Soft read sharper than Gentle (ayuDark,
+ * nightfox, solarizedDark) - so legibility alone cannot see this. The one slack
+ * is `INK_ORDER_TOLERANCE`, the engine's own: a hundredth of 8-bit quantisation
+ * on palettes authored at the 8.0:1 canvas floor.
+ */
+const disordered = [];
+for (const { id } of authored) {
+	const steps = ladder.map(([name, c]) => {
+		const p = composed.get(id).get(c).palette;
+		return [name, ratio(p.ink, p.canvas)];
+	});
+	for (let i = 1; i < steps.length; i++) {
+		const [[lo, a], [hi, b]] = [steps[i - 1], steps[i]];
+		if (b < a - INK_ORDER_TOLERANCE)
+			disordered.push(
+				`${id}: ink/canvas ${a.toFixed(2)} at ${lo} > ${b.toFixed(2)} at ${hi}`,
+			);
+	}
+}
+console.log(
+	`${disordered.length === 0 ? "ok  " : "FAIL"} order: ink on canvas non-decreasing Soft -> High on ${authored.length - new Set(disordered.map((d) => d.split(":")[0])).size} of ${authored.length} palettes`,
+);
+for (const line of disordered) console.log(`     ${line}`);
+if (disordered.length > 0) failed++;
+
 if (failed > 0) {
 	console.error(
-		`\nContrast presets FAILED: ${failed} of ${presets.length} preset(s).`,
+		`\nContrast presets FAILED: ${failed} of ${presets.length + 1} leg(s).`,
 	);
 	process.exit(1);
 }
 console.log(
-	`Contrast presets hold: ${presets.length} presets x ${authored.length} palettes, all reached uncapped.`,
+	`Contrast presets hold: ${presets.length} presets x ${authored.length} palettes, all reached uncapped and in order.`,
 );

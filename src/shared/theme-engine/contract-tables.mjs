@@ -3989,6 +3989,47 @@ export const LINE_SEPARATION_FLOOR = 4.0;
  */
 export const PANEL_SEAM_ALPHA = 0.75;
 
+/*
+ * THE BAND THE NOTIFICATION CLICK PAINTS (`styles/index.css`,
+ * `.lo-team-bridge-target::after`): the `accent` role at `ARRIVAL_BAND_ALPHA`
+ * over the surface, up for 1400 ms and then gone. It had no row here, which
+ * meant a palette edit could put an 11-12 px `ink-dim`/`ink-muted` timestamp
+ * under the AA floor, or invert the arrival against the row states it lands
+ * beside, with every suite green (design review round 2, D6).
+ *
+ * TWO PROPERTIES, both of them measured facts about this surface rather than
+ * taste:
+ *
+ *  - THE WASHED ROW'S INK. The row's metadata sits on the band, so it is
+ *    measured on the band. `inkDim` was the round-1 candidate and it is NOT
+ *    legal here: on the 12 % mix it is under 4.5:1 in ten of the fifty-nine
+ *    palettes (cyberpunk 4.05:1, from 5.59:1 on the plain pane) — which is why
+ *    the stylesheet lifts the washed row's dim utilities to `inkMuted` for the
+ *    band's lifetime. This row is what holds that lift: `inkMuted` on the band
+ *    clears the text floor in all fifty-nine (floor 5.21:1, nightfox).
+ *
+ *    BODY INK IS HELD AT THE TEXT FLOOR HERE, NOT THE STRONG-TEXT ONE, and that
+ *    is a decision rather than a relaxation: the band is up for 1400 ms and then
+ *    gone, while `ink`'s 7.0 ranking is written for the permanent grounds. On
+ *    the band, 7.0 fails in four palettes (ayuDark 6.58, ayuMirage 6.49,
+ *    catppuccinFrappe 6.58, solarizedDark 6.86) — all above AA, none of them a
+ *    legibility defect — so the honest floor for a transient tint is the one
+ *    that governs text at this size anywhere: 4.5. A palette that dropped body
+ *    ink under THAT would fail here.
+ *  - THE HIERARCHY. Arrival > the row the reader is ON > the row the pointer is
+ *    over, in every palette. The bar is a DESIGN rank, so it is an inequality
+ *    between two measured ratios, not a floor on one: a palette that raised
+ *    `rowSelected` past the band would fail here even though every one of its
+ *    own pairs still cleared its floor.
+ *
+ * THE ALPHA IS PINNED HERE AND READ BACK FROM THE STYLESHEET by the contract
+ * (section 5a), the `PANEL_SEAM_ALPHA` pattern: this file is the authority for
+ * the number, `evaluatePalette` asserts with it (so the composition engine's
+ * solvers honour the band's rank), and the gate fails when `index.css` paints
+ * another one.
+ */
+export const ARRIVAL_BAND_ALPHA = 0.12;
+
 /** The (drawn-on, faces) pair each panel seam can produce, per palette. */
 export const SEAM_PAIRS = [
 	["surface", "canvas"],

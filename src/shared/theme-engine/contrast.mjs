@@ -42,6 +42,7 @@ import {
 	INK_CANVAS_FLOOR,
 	INK_STEP_DELTA_E,
 	INK_STEP_FLOOR,
+	MESSAGE_SURFACE_LIGHTNESS_STEP,
 	ROW_HOVER_CAST_FLOOR_SHARE,
 	ROW_HOVER_CHROMA_FLOOR,
 	ROW_SELECTED_CHROMA_FLOOR,
@@ -159,6 +160,15 @@ const FOREGROUND = {
 /* Headroom over a floor for the pre-solve, so an 8-bit rounding of the solved
    value cannot land it a thousandth under. */
 const HEADROOM = 0.05;
+/* L* kept clear of the white wall by light High's ladder compression, so an
+   8-bit round of the top rung cannot clip to #FFFFFF and merge two planes. */
+const CEILING_HEADROOM = 0.3;
+/* The ΔE00 every pair in light High's compressed upper ladder keeps (or its
+   authored value, if smaller): the contract's ladder floors top out at 4.0
+   (canvas/elevated, the message block), plus 8-bit headroom. */
+const LADDER_KEEP_DELTA_E = 4.1;
+/* How far under the authored ink-side spread Soft draws its ladder at t = 1. */
+const SOFT_SPREAD_EASE = 0.06;
 
 const FLAT_HEX = /^#[0-9A-Fa-f]{6}$/;
 const isFlatHex = (v) => typeof v === "string" && FLAT_HEX.test(v);
@@ -346,6 +356,77 @@ const solveInkLadder = (out) => {
 const inkFloor = (role) => INKS.find(([r]) => r === role)[1];
 
 /*
+ * BODY INK FOLLOWS THE SLIDER (QA round 1, Q1/Q2 on #1674). "Reached" has to
+ * mean the effect happened, not only that no floor failed: ink on the canvas
+ * must not fall from Standard to High, nor rise from Standard to Soft. The ground
+ * ladder alone cannot promise that - light High is pinned under the white wall
+ * (several palettes author `elevated` at L* 100), and on Soft the ink is pushed
+ * by its floor on the farthest ground, whose luminance ratio to the canvas grows
+ * as the ladder moves toward mid-grey. So after the ladder is solved, `ink` is
+ * moved along L* (hue and chroma kept) toward the target ratio on the canvas:
+ *   High side: AWAY from the canvas until ink/canvas >= R0 * (1 + INK_GAIN * t),
+ *              the extreme of the gamut at most - more ink, never less.
+ *   Soft side: TOWARD the canvas until ink/canvas <= R0 * (1 - INK_RELEASE * t),
+ *              never past a floor `solveInkLadder` enforces (so a floor-bound
+ *              palette stays where its floor puts it).
+ * R0 is the AUTHORED ink/canvas ratio, so the targets are monotone in t and the
+ * presets order themselves; the contrast-presets gate asserts that order.
+ */
+const INK_GAIN = 0.15;
+const INK_RELEASE = 0.12;
+const tensionInk = (out, r0, c) => {
+	if (!isFlatHex(out.ink) || !isFlatHex(out.canvas)) return;
+	const t = Math.abs(c) / 100;
+	const away = out.mode === "dark" ? 1 : -1;
+	if (c > 0) {
+		const [l, a, b] = toLab(out.ink);
+		const target = r0 * (1 + INK_GAIN * t);
+		if (ratio(out.ink, out.canvas) >= target) return;
+		for (let s = 0.25; s <= 100; s += 0.25) {
+			const L = l + away * s;
+			if (L < 0 || L > 100) break;
+			const hex = labAtLightness(L, a, b);
+			out.ink = hex;
+			if (ratio(hex, out.canvas) >= target) return;
+		}
+		return;
+	}
+	/* Soft moves the ink LADDER toward the canvas: all three rungs together
+	   first, then the top two, then `ink` alone - `ink` is usually pinned by
+	   `inkMuted` sitting INK_STEP_DELTA_E under it (catppuccinLatte 2.06), and
+	   `inkMuted` by `inkDim` at its own floor, so moving one rung alone moves
+	   nothing. Each stage goes as far as every floor allows, then hands on. */
+	const target = r0 * (1 - INK_RELEASE * t);
+	const all = ["ink", "inkMuted", "inkDim"].filter((r) => isFlatHex(out[r]));
+	const legal = (next) =>
+		all.every(
+			(r) => worstRatio(out, next[r], GROUNDS6) >= inkFloor(r) + HEADROOM,
+		) &&
+		/* No headroom on the canvas floor: `ink` is a final hex here, and the
+		   authored palettes sit within hundredths of 8.0 (rosePineDawn 8.01), so
+		   headroom would hold Soft ABOVE Standard. */
+		ratio(next.ink, out.canvas) >= INK_CANVAS_FLOOR &&
+		(!next.inkMuted ||
+			deltaE(next.ink, next.inkMuted) >= INK_STEP_DELTA_E + HEADROOM) &&
+		(!next.inkMuted ||
+			!next.inkDim ||
+			deltaE(next.inkMuted, next.inkDim) >= INK_STEP_FLOOR + HEADROOM);
+	for (const moving of [all, all.slice(0, 2), all.slice(0, 1)]) {
+		const start = Object.fromEntries(moving.map((r) => [r, toLab(out[r])]));
+		for (let s = 0.25; s <= 60; s += 0.25) {
+			if (ratio(out.ink, out.canvas) <= target) return;
+			const next = { ...out };
+			for (const r of moving) {
+				const [L, A, B] = start[r];
+				next[r] = labAtLightness(L - away * s, A, B);
+			}
+			if (!legal(next)) break;
+			for (const r of moving) out[r] = next[r];
+		}
+	}
+};
+
+/*
  * A follower that has to stay a MEASURED distance from its leader after the
  * leader was solved: `accentHover`/`accentActive` keep the accent's own steps
  * (ΔE00 >= FIELD_SEPARATION_FLOOR pairwise), `chartBarHover` stays
@@ -380,7 +461,11 @@ const separateFrom = (out, role, from, apart, extra = () => true) => {
  * Sl-compensated ladder, larger = more separated rungs). `applyContrast` searches
  * it; nothing else should need to pass it.
  */
-export const contrastCandidate = (p, c, { spread = 1 } = {}) => {
+export const contrastCandidate = (
+	p,
+	c,
+	{ spread = 1, narrow = false, ease = SOFT_SPREAD_EASE, travel = 1 } = {},
+) => {
 	if (c === 0) return p;
 	const side = c > 0 ? "high" : "soft";
 	const t = Math.abs(c) / 100;
@@ -389,13 +474,28 @@ export const contrastCandidate = (p, c, { spread = 1 } = {}) => {
 	const lc = lab("canvas")[0];
 	const anchor = CONTRAST_ANCHORS[p.mode][side];
 	const family = GROUND_FAMILY.filter((r) => isFlatHex(p[r]));
-	let d = (anchor - lc) * t;
-	const lcNew = lc + d;
+	/* A preset never moves the canvas AGAINST its own direction (QA round 1, Q1
+	   on #1674). Light palettes authored darker than the Soft anchor
+	   (kanagawaLotus L* 85.6, linen 88.9) would otherwise be LIFTED by Soft -
+	   more ink contrast for the setting that promises less. Such a palette keeps
+	   its paper at Soft; its chroma still drains. */
+	const towardSide = (side === "high") === (p.mode === "light") ? 1 : -1;
+	let d = Math.max(0, (anchor - lc) * towardSide) * towardSide * t * travel;
+	let lcNew = lc + d;
 	/* Widen the ladder by the ΔE00 compression the move introduced (Sl at the new
 	   canvas over Sl at the old), and by the chroma Soft takes away - never narrow
 	   it, which would spend headroom the authored palette had. */
 	const chroma = side === "soft" ? 1 - 0.4 * t : 1;
-	const k = Math.max(1, sl(lcNew) / sl(lc)) * spread;
+	/* Soft MAY narrow the ladder, by exactly the Sl ratio (QA round 1, Q1/Q2 on
+	   #1674). Soft moves the canvas toward L* 50, where the same L* step is both a
+	   LARGER ΔE00 (Sl falls) and a larger luminance RATIO (the 0.05 flare term
+	   and the cube both weigh less there). Keeping the authored L* offsets then
+	   widened every ground's ratio to the canvas, so the ink - held at its floor
+	   on the farthest ground - rose on the canvas: Soft read sharper than Gentle
+	   (ayuDark 9.70 vs 9.34). Scaling the offsets by Sl keeps each step's ΔE00
+	   and gives back that ratio. High keeps "never narrow". */
+	const slRatio = sl(lcNew) / sl(lc);
+	const k = (side === "soft" ? slRatio : Math.max(1, slRatio)) * spread;
 	const placed = Object.fromEntries(
 		family.map((r) => [r, lcNew + (lab(r)[0] - lc) * k]),
 	);
@@ -429,11 +529,158 @@ export const contrastCandidate = (p, c, { spread = 1 } = {}) => {
 	const hovStep = (lab("rowHover")[0] - ls0) * dirUp;
 	const kRow =
 		selStep > 0 ? Math.min(k, ROW_SELECTED_STEP_CEILING / selStep) : k;
-	placed.rowSelected = placed.surface + dirUp * selStep * Math.max(1, kRow);
-	placed.rowHover = placed.surface + dirUp * hovStep * Math.max(1, kRow);
+	/* Soft narrows the row offsets by the same Sl ratio as the ladder (see `k`);
+	   High still never narrows them. */
+	const kRowUsed = side === "soft" ? kRow : Math.max(1, kRow);
+	placed.rowSelected = placed.surface + dirUp * selStep * kRowUsed;
+	placed.rowHover = placed.surface + dirUp * hovStep * kRowUsed;
 	/* The gamut guard: no family member may leave [0.5, 100], so the whole ladder
 	   is shifted back by the member nearest the wall - a ladder squashed against
 	   black keeps its L* steps on paper and loses them on screen. */
+	/*
+	 * LIGHT HIGH COMPRESSES THE UPPER LADDER INSTEAD OF SINKING IT (QA round 1,
+	 * Q1 on #1674). On light, `surface`/`elevated`/`messageSurface` sit 3-9 L*
+	 * ABOVE the canvas, and several palettes author `elevated` at L* 100 already.
+	 * Translating the family toward the 97 anchor and then shifting it back under
+	 * the white wall cancelled the move - or reversed it: githubLight,
+	 * highContrastLight, oneLight and ayuLight landed DARKER at High than at
+	 * Standard, with less ink contrast, while reporting a full reach. So the
+	 * rungs above the canvas are scaled into the room left under L* 100 (the
+	 * paper rises; the planes on it close up), never below the contract's own
+	 * minimum steps (`STEP.canvasSurface`, `STEP.surfaceElevated`, plus the
+	 * 8-bit headroom the step caps above use). Where even the minimum ladder
+	 * does not fit, the canvas stops short of the anchor - the furthest lift
+	 * that keeps the steps - rather than the whole ladder sliding down.
+	 */
+	if (p.mode === "light" && side === "high") {
+		const base = lc + d;
+		/* The AUTHORED offsets, not the Sl-widened ones: the widening grows
+		   with t, and measuring the trial on it made the highest canvas that
+		   holds FALL as t rose (kanagawaLotus High below Strong). On the
+		   authored ladder the answer is min(anchor move, one ceiling), which
+		   is monotone in t by construction. */
+		const above = Object.keys(placed).filter((r) => lab(r)[0] > lc);
+		const span = Math.max(0, ...above.map((r) => lab(r)[0] - lc));
+		if (span > 0) {
+			/* The rungs at a trial canvas L* `at`, compressed into the room under
+			   the wall, as the hexes the browser would paint. */
+			const trial = (at) => {
+				const s = Math.min(1, (100 - CEILING_HEADROOM - at) / span);
+				const hex = { canvas: labAtLightness(at, ...lab("canvas").slice(1)) };
+				for (const r of above)
+					hex[r] = labAtLightness(
+						at + (lab(r)[0] - lc) * s,
+						...lab(r).slice(1),
+					);
+				return hex;
+			};
+			/* A trial holds when the contract's ladder floors survive near the
+			   wall, in ΔE00 (L* steps are not enough there - Sl is ~1.7, so the
+			   2.5 L* STEP floor is ΔE00 ~1.5): every adjacent pair of the three
+			   planes at FIELD_SEPARATION_FLOOR, canvas -> elevated and the message
+			   block at LADDER_KEEP_DELTA_E, plus headroom. The criterion depends
+			   on `at` alone and only gets harder as `at` rises, so the highest
+			   canvas that holds is monotone in t: High never lands below Strong. */
+			const pairs = [
+				["canvas", "surface", FIELD_SEPARATION_FLOOR],
+				["surface", "elevated", FIELD_SEPARATION_FLOOR],
+				["canvas", "elevated", LADDER_KEEP_DELTA_E],
+				["canvas", "messageSurface", LADDER_KEEP_DELTA_E],
+			].filter(
+				([x, y]) => (x === "canvas" || above.includes(x)) && above.includes(y),
+			);
+			/* And the L* floors, which on a low-chroma ladder bind before ΔE00
+			   does (gruvboxLight: 1.4 L* canvas -> surface at ΔE00 ~2). */
+			const lPairs = [
+				["canvas", "surface", STEP.canvasSurface[0]],
+				["surface", "elevated", STEP.surfaceElevated[0]],
+				["canvas", "messageSurface", MESSAGE_SURFACE_LIGHTNESS_STEP],
+			].filter(
+				([x, y]) => (x === "canvas" || above.includes(x)) && above.includes(y),
+			);
+			const holds = (hex) =>
+				pairs.every(
+					([x, y, floor]) => deltaE(hex[x], hex[y]) >= floor + HEADROOM * 2,
+				) &&
+				lPairs.every(
+					([x, y, floor]) =>
+						toLab(hex[y])[0] - toLab(hex[x])[0] >= floor + 0.15,
+				);
+			/* The highest canvas whose compressed ladder holds, searched down
+			   from the anchor and never below Standard's paper. */
+			let at = base;
+			while (at > lc && !holds(trial(at))) at = Math.max(lc, at - 0.25);
+			/* At Standard's own paper the authored ladder is in gamut by
+			   definition: nothing to compress. */
+			const s =
+				at <= lc ? 1 : Math.min(1, (100 - CEILING_HEADROOM - at) / span);
+			/* Rungs below the canvas are re-placed from the FINAL canvas with the
+			   widening that canvas implies - computed from the anchor they would
+			   carry the anchor's widening down to a canvas that never got there
+			   (highContrastLight High: sunken 6.02 L* under, past the 6.0 cap). */
+			const kAt = Math.max(1, sl(at) / sl(lc)) * spread;
+			/* Row states are measured from `surface`, not the canvas, and were
+			   placed from it above (with the selection's step ceiling): they
+			   follow the compressed panel at that same offset, or a hover
+			   authored a hair above the canvas lands on top of the panel
+			   (catppuccinLatte Strong, ΔE00 1.66 hover/surface). */
+			const rowOff = {
+				rowHover: placed.rowHover - placed.surface,
+				rowSelected: placed.rowSelected - placed.surface,
+			};
+			for (const r of Object.keys(placed))
+				placed[r] = above.includes(r)
+					? at + (lab(r)[0] - lc) * s
+					: at + (placed[r] - base) * (kAt / k);
+			for (const r of ["rowHover", "rowSelected"])
+				if (r in placed && Number.isFinite(rowOff[r]))
+					placed[r] = placed.surface + rowOff[r];
+			lcNew = at;
+			d = at - lc;
+		}
+	}
+	/*
+	 * SOFT DOES NOT WIDEN THE INK'S WORST GROUND (QA round 1, Q2 on #1674).
+	 * Body ink is held at its floor on the ground NEAREST it in luminance (the
+	 * lightest rung on dark, the darkest well on light), so ink/canvas is at
+	 * least that floor times ratio(that ground, canvas). Toward mid-grey the same
+	 * L* offset is a larger luminance ratio, so a translated ladder forced the
+	 * ink UP on the canvas as Soft deepened (ayuDark Soft 9.70 > Gentle 9.34;
+	 * ayuLight Soft above Standard). So on Soft the ink-side rungs are drawn in
+	 * toward the canvas until the widest of those ratios is no more than the
+	 * authored one, eased by SOFT_SPREAD_EASE * t so Soft sits strictly under
+	 * Gentle. Only offsets shrink, never the order; where that breaks a ground
+	 * floor the contract's verdict rejects the candidate, as for any other move.
+	 */
+	if (side === "soft" && narrow) {
+		const inkSide = (L) => (p.mode === "dark" ? L > lcNew : L < lcNew);
+		const lumL = (L) =>
+			L > 8 ? ((L + 16) / 116) ** 3 : Math.max(0, L) / 903.3;
+		const spreadAt = (Lc, L) => {
+			const [x, y] = [lumL(Lc), lumL(L)];
+			return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);
+		};
+		const near = GROUNDS6.filter((r) => r in placed && inkSide(placed[r]));
+		const authoredMax = Math.max(
+			1,
+			...GROUNDS6.filter(
+				(r) =>
+					r in placed && (p.mode === "dark" ? lab(r)[0] > lc : lab(r)[0] < lc),
+			).map((r) => spreadAt(lc, lab(r)[0])),
+		);
+		const cap = authoredMax * (1 - ease * t);
+		const worst = (s) =>
+			Math.max(
+				1,
+				...near.map((r) => spreadAt(lcNew, lcNew + (placed[r] - lcNew) * s)),
+			);
+		if (near.length > 0 && worst(1) > cap) {
+			let s = 1;
+			while (s > 0.3 && worst(s) > cap) s -= 0.01;
+			for (const r of Object.keys(placed))
+				if (inkSide(placed[r])) placed[r] = lcNew + (placed[r] - lcNew) * s;
+		}
+	}
 	const lo = Math.min(...Object.values(placed));
 	const hi = Math.max(...Object.values(placed));
 	const shift = lo < 0.5 ? 0.5 - lo : hi > 100 ? 100 - hi : 0;
@@ -464,6 +711,7 @@ export const contrastCandidate = (p, c, { spread = 1 } = {}) => {
 	for (const r of Object.keys(FOREGROUND))
 		if (isFlatHex(p[r])) out[r] = norm(p[r]);
 	solveInkLadder(out);
+	tensionInk(out, ratio(norm(p.ink), norm(p.canvas)), c);
 	/* On Soft the lifted grounds push the hue roles UP in L* (dark) to keep their
 	   text floors, and two hues pushed toward white converge in ΔE00 - the accent
 	   and its second hue lose the 15 that makes them two accents. The pair is
@@ -659,6 +907,118 @@ const CAP_STEP = 5;
    ladder compressed near black (or drained of chroma on Soft) gets its ΔE00
    separations back without touching a floor. */
 const LADDER_SPREADS = [1, 1.15];
+/* The candidates tried at each value, in order. Soft first tries the ladder
+   drawn in on the ink side (`narrow`, so ink/canvas falls with the slider) and
+   falls back to the plain ladder where that breaks a ground floor - a palette
+   whose Soft cannot be both quieter and legible keeps Soft legible, and the
+   presets gate's monotonic leg names it. */
+const CANDIDATES = [
+	{ spread: 1, narrow: true },
+	/* Palettes authored AT a ground floor cannot afford the full ease. */
+	{ spread: 1, narrow: true, ease: 0 },
+	...LADDER_SPREADS.map((spread) => ({ spread })),
+	/* A light palette whose ink sits at its floor on the darkest well
+	   (tokyoNightDay, rosePineDawn) has to darken that ink to follow a paper
+	   moved toward the Soft anchor - LOUDER text for the quieter setting. Soft
+	   then keeps less (or none) of the paper's travel and spends itself on the
+	   chroma drain and the ink release instead: a softer theme at the value
+	   asked, rather than a cap. High never takes these (`v > 0` skips them). */
+	{ spread: 1, travel: 0.5, soft: true },
+	{ spread: 1, travel: 0, soft: true },
+];
+
+/*
+ * "REACHED" MEANS THE EFFECT HAPPENED (QA round 1, Q1 on #1674). Legible is not
+ * enough: light High once returned a canvas DARKER than Standard with LESS ink
+ * contrast and reported `effectiveContrast: 100`. A value is only reported when,
+ * against the authored palette, ink on the canvas went the slider's way (no
+ * lower on the High side, no higher on the Soft side) and the canvas did not
+ * move against it. Otherwise the search caps toward 0 like any other miss, so a
+ * UI that says "limited to Strong" is telling the truth.
+ */
+/* One 8-bit step of a dark ink at the 8.0:1 canvas floor moves the ratio by
+   ~0.1, so a palette AUTHORED at that floor (rosePineDawn 8.011, tokyoNightDay
+   8.031) has no hex between the floor and its own Standard: its Soft ink lands
+   a hundredth above Standard or under the floor. That hundredth is
+   quantisation, not a direction, and is the only slack either this check or the
+   presets gate's monotonic leg allows (`INK_ORDER_TOLERANCE` is exported so the
+   gate uses the same number). */
+export const INK_ORDER_TOLERANCE = 0.015;
+const movedTheRightWay = (authored, composed, c) => {
+	const r0 = ratio(norm(authored.ink), norm(authored.canvas));
+	const r = ratio(composed.ink, composed.canvas);
+	const l0 = toLab(norm(authored.canvas))[0];
+	const l = toLab(composed.canvas)[0];
+	/* Which way the canvas travels toward this side's anchor. */
+	const toward = c > 0 === (authored.mode === "light") ? 1 : -1;
+	/* The Soft side tests ink only: a light palette authored under the Soft
+	   anchor keeps its paper (see `contrastCandidate`) and the repair may nudge
+	   it a fraction of an L*; quieter ink is the effect Soft promises. */
+	return c > 0
+		? r >= r0 - INK_ORDER_TOLERANCE && (l - l0) * toward >= -0.05
+		: r <= r0 + INK_ORDER_TOLERANCE;
+};
+
+/*
+ * THE SOFT SIDE'S LAST STEP, under the contract's own verdict. The pre-solve
+ * (`tensionInk`) moves the ink ladder with fast proxies for its floors; the
+ * repair then may move grounds again. So once a Soft candidate HOLDS, the ink
+ * rungs are walked toward the canvas in L* (all three, then the top two, then
+ * `ink`), keeping each step only while `composedFindings` stays empty, until
+ * ink/canvas is at or under the target. A palette authored AT its floors (the
+ * light family's ink/canvas sits at 8.0-8.1 in several) stops where the floor
+ * is: equal to Standard, never above it - which is what "non-decreasing" in the
+ * presets gate allows.
+ */
+const releaseInk = (composed, authored, c, id) => {
+	const r0 = ratio(norm(authored.ink), norm(authored.canvas));
+	const target = r0 * (1 - INK_RELEASE * (Math.abs(c) / 100));
+	const toward = composed.mode === "dark" ? -1 : 1;
+	const all = ["ink", "inkMuted", "inkDim"].filter((r) =>
+		isFlatHex(composed[r]),
+	);
+	let out = composed;
+	for (const moving of [all, all.slice(0, 2), all.slice(0, 1)]) {
+		const start = Object.fromEntries(moving.map((r) => [r, toLab(out[r])]));
+		for (let s = 0.25; s <= 20; s += 0.25) {
+			if (ratio(out.ink, out.canvas) <= target) return out;
+			const next = { ...out };
+			for (const r of moving) {
+				const [L, A, B] = start[r];
+				next[r] = labAtLightness(L + toward * s, A, B);
+			}
+			if (composedFindings(finishOnAccent(next, authored), id).length > 0)
+				break;
+			out = finishOnAccent(next, authored);
+		}
+	}
+	/* Finer than an L* step: one sRGB channel at a time. A dark ink at the 8.0
+	   canvas floor moves ~0.1 per whole-grey 8-bit step, so a palette authored
+	   a few hundredths over the floor (kanagawaLotus 8.035) has no L* move
+	   between "above Standard" and "under the floor"; a single channel moves
+	   the ratio by about a third of that. */
+	for (let pass = 0; pass < 6 && ratio(out.ink, out.canvas) > target; pass++) {
+		let best = null;
+		for (const i of [0, 1, 2])
+			for (const delta of [1, -1]) {
+				const ch = Number.parseInt(out.ink.slice(1 + 2 * i, 3 + 2 * i), 16);
+				const v = ch + delta;
+				if (v < 0 || v > 255) continue;
+				const hex = `#${out.ink.slice(1, 1 + 2 * i)}${v
+					.toString(16)
+					.padStart(2, "0")
+					.toUpperCase()}${out.ink.slice(3 + 2 * i)}`;
+				const r = ratio(hex, out.canvas);
+				if (r >= ratio(out.ink, out.canvas)) continue;
+				const next = finishOnAccent({ ...out, ink: hex }, authored);
+				if (composedFindings(next, id).length > 0) continue;
+				if (!best || r > best.r) best = { r, next };
+			}
+		if (!best) break;
+		out = best.next;
+	}
+	return out;
+};
 
 /**
  * Apply contrast `c` to `palette`, VERIFIED.
@@ -681,10 +1041,16 @@ export const applyContrast = (palette, c, { id = "custom" } = {}) => {
 	if (c === 0) return { palette, effectiveContrast: 0 };
 	const sign = Math.sign(c);
 	for (let v = c; v !== 0; v -= sign * Math.min(CAP_STEP, Math.abs(v))) {
-		for (const spread of LADDER_SPREADS) {
-			const candidate = contrastCandidate(palette, v, { spread });
+		for (const opts of CANDIDATES) {
+			if ((opts.narrow || opts.soft) && v > 0) continue;
+			const candidate = contrastCandidate(palette, v, opts);
 			const repaired = repairPalette(candidate, id, palette);
-			if (repaired.findings.length === 0)
+			if (v < 0 && repaired.findings.length === 0)
+				repaired.palette = releaseInk(repaired.palette, palette, v, id);
+			if (
+				repaired.findings.length === 0 &&
+				movedTheRightWay(palette, repaired.palette, v)
+			)
 				return { palette: repaired.palette, effectiveContrast: v };
 		}
 	}
