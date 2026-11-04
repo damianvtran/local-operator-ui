@@ -66,5 +66,8 @@
 	"ui.settings.notifications.load.failed": "اطلاع کی آوازیں لوڈ نہیں ہو سکیں۔ {reason}",
 	"ui.settings.notifications.load.loading": "اطلاع کی آوازیں لوڈ ہو رہی ہیں…",
 	"ui.settings.notifications.backend_older": "اطلاع کی آوازوں کے لیے Local Operator کا نیا ورژن درکار ہے۔ آواز منتخب کرنے کے لیے اسے اپ ڈیٹ کریں۔",
-	"ui.settings.notifications.missing_rows": "{count, plural, one {یہ بیک اینڈ ابھی {rows} درج نہیں کرتا، اس لیے یہ کنٹرول دکھایا نہیں گیا۔} other {یہ بیک اینڈ ابھی {rows} درج نہیں کرتا، اس لیے یہ کنٹرول دکھائے نہیں گئے۔}}"
+	"ui.settings.notifications.missing_rows": "{count, plural, one {یہ بیک اینڈ ابھی {rows} درج نہیں کرتا، اس لیے یہ کنٹرول دکھایا نہیں گیا۔} other {یہ بیک اینڈ ابھی {rows} درج نہیں کرتا، اس لیے یہ کنٹرول دکھائے نہیں گئے۔}}",
+	"ui.settings.notifications.custom.finishing": "مکمل ہو رہا ہے…",
+	"ui.settings.notifications.error.silent": "{file} میں کوئی آواز نہیں ہے۔ ایسا آڈیو کلپ منتخب کریں جس کی آواز سنائی دے۔",
+	"ui.settings.notifications.search_terms": "آواز, گھنٹی, اطلاع کی آواز, آواز کی سطح, الرٹ, sound, chime, notification sound, volume, alert"
 }

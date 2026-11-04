@@ -66,5 +66,8 @@
 	"ui.settings.notifications.load.failed": "Không thể tải âm thanh thông báo. {reason}",
 	"ui.settings.notifications.load.loading": "Đang tải âm thanh thông báo…",
 	"ui.settings.notifications.backend_older": "Âm thanh thông báo cần phiên bản Local Operator mới hơn. Hãy cập nhật để chọn âm thanh.",
-	"ui.settings.notifications.missing_rows": "{count, plural, other {Máy chủ này chưa đăng ký {rows} nên không hiển thị điều khiển tương ứng.}}"
+	"ui.settings.notifications.missing_rows": "{count, plural, other {Máy chủ này chưa đăng ký {rows} nên không hiển thị điều khiển tương ứng.}}",
+	"ui.settings.notifications.custom.finishing": "Đang hoàn tất…",
+	"ui.settings.notifications.error.silent": "{file} không có âm thanh. Chọn một đoạn âm thanh nghe được.",
+	"ui.settings.notifications.search_terms": "âm thanh, tiếng chuông, âm thanh thông báo, âm lượng, cảnh báo, sound, chime, notification sound, volume, alert"
 }

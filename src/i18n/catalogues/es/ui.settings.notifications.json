@@ -66,5 +66,8 @@
 	"ui.settings.notifications.load.failed": "No se pudieron cargar los sonidos de notificación. {reason}",
 	"ui.settings.notifications.load.loading": "Cargando sonidos de notificación…",
 	"ui.settings.notifications.backend_older": "Los sonidos de notificación necesitan una versión más reciente de Local Operator. Actualízalo para elegir un sonido.",
-	"ui.settings.notifications.missing_rows": "{count, plural, one {Este backend aún no registra {rows}, así que ese control no se muestra.} many {Este backend aún no registra {rows}, así que esos controles no se muestran.} other {Este backend aún no registra {rows}, así que esos controles no se muestran.}}"
+	"ui.settings.notifications.missing_rows": "{count, plural, one {Este backend aún no registra {rows}, así que ese control no se muestra.} many {Este backend aún no registra {rows}, así que esos controles no se muestran.} other {Este backend aún no registra {rows}, así que esos controles no se muestran.}}",
+	"ui.settings.notifications.custom.finishing": "Finalizando…",
+	"ui.settings.notifications.error.silent": "{file} no contiene sonido. Elige un fragmento de audio que puedas oír.",
+	"ui.settings.notifications.search_terms": "sonido, campanilla, sonido de notificación, volumen, alerta, sound, chime, notification sound, volume, alert"
 }

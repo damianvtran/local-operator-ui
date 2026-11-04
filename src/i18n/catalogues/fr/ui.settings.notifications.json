@@ -66,5 +66,8 @@
 	"ui.settings.notifications.load.failed": "Impossible de charger les sons de notification. {reason}",
 	"ui.settings.notifications.load.loading": "Chargement des sons de notification…",
 	"ui.settings.notifications.backend_older": "Les sons de notification nécessitent une version plus récente de Local Operator. Mettez-le à jour pour choisir un son.",
-	"ui.settings.notifications.missing_rows": "{count, plural, one {Ce serveur ne reconnaît pas encore {rows}. Ce réglage n’est donc pas affiché.} many {Ce serveur ne reconnaît pas encore {rows}. Ces réglages ne sont donc pas affichés.} other {Ce serveur ne reconnaît pas encore {rows}. Ces réglages ne sont donc pas affichés.}}"
+	"ui.settings.notifications.missing_rows": "{count, plural, one {Ce serveur ne reconnaît pas encore {rows}. Ce réglage n’est donc pas affiché.} many {Ce serveur ne reconnaît pas encore {rows}. Ces réglages ne sont donc pas affichés.} other {Ce serveur ne reconnaît pas encore {rows}. Ces réglages ne sont donc pas affichés.}}",
+	"ui.settings.notifications.custom.finishing": "Finalisation…",
+	"ui.settings.notifications.error.silent": "{file} ne contient aucun son. Choisissez un extrait audible.",
+	"ui.settings.notifications.search_terms": "son, carillon, son de notification, volume, alerte, sound, chime, notification sound, volume, alert"
 }

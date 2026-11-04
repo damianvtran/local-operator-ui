@@ -66,5 +66,8 @@
 	"ui.settings.notifications.load.failed": "Не удалось загрузить звуки уведомлений. {reason}",
 	"ui.settings.notifications.load.loading": "Загрузка звуков уведомлений…",
 	"ui.settings.notifications.backend_older": "Для звуков уведомлений нужна более новая версия Local Operator. Обновите его, чтобы выбрать звук.",
-	"ui.settings.notifications.missing_rows": "{count, plural, one {Этот бэкенд пока не регистрирует {rows}, поэтому элемент управления не показан.} few {Этот бэкенд пока не регистрирует {rows}, поэтому элементы управления не показаны.} many {Этот бэкенд пока не регистрирует {rows}, поэтому элементы управления не показаны.} other {Этот бэкенд пока не регистрирует {rows}, поэтому элементы управления не показаны.}}"
+	"ui.settings.notifications.missing_rows": "{count, plural, one {Этот бэкенд пока не регистрирует {rows}, поэтому элемент управления не показан.} few {Этот бэкенд пока не регистрирует {rows}, поэтому элементы управления не показаны.} many {Этот бэкенд пока не регистрирует {rows}, поэтому элементы управления не показаны.} other {Этот бэкенд пока не регистрирует {rows}, поэтому элементы управления не показаны.}}",
+	"ui.settings.notifications.custom.finishing": "Завершение…",
+	"ui.settings.notifications.error.silent": "{file} не содержит звука. Выберите аудиофрагмент, который слышно.",
+	"ui.settings.notifications.search_terms": "звук, звонок, звук уведомления, громкость, оповещение, sound, chime, notification sound, volume, alert"
 }

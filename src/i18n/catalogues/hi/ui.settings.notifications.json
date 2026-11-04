@@ -66,5 +66,8 @@
 	"ui.settings.notifications.load.failed": "सूचना ध्वनियाँ लोड नहीं हो सकीं। {reason}",
 	"ui.settings.notifications.load.loading": "सूचना ध्वनियाँ लोड हो रही हैं…",
 	"ui.settings.notifications.backend_older": "सूचना ध्वनियों के लिए Local Operator का नया संस्करण चाहिए। ध्वनि चुनने के लिए इसे अपडेट करें।",
-	"ui.settings.notifications.missing_rows": "{count, plural, one {यह बैकएंड अभी {rows} रजिस्टर नहीं करता, इसलिए वह कंट्रोल नहीं दिखाया जाता।} other {यह बैकएंड अभी {rows} रजिस्टर नहीं करता, इसलिए वे कंट्रोल नहीं दिखाए जाते।}}"
+	"ui.settings.notifications.missing_rows": "{count, plural, one {यह बैकएंड अभी {rows} रजिस्टर नहीं करता, इसलिए वह कंट्रोल नहीं दिखाया जाता।} other {यह बैकएंड अभी {rows} रजिस्टर नहीं करता, इसलिए वे कंट्रोल नहीं दिखाए जाते।}}",
+	"ui.settings.notifications.custom.finishing": "पूरा हो रहा है…",
+	"ui.settings.notifications.error.silent": "{file} में कोई आवाज़ नहीं है। ऐसा ऑडियो क्लिप चुनें जिसकी आवाज़ सुनाई दे।",
+	"ui.settings.notifications.search_terms": "ध्वनि, घंटी, सूचना की ध्वनि, वॉल्यूम, अलर्ट, sound, chime, notification sound, volume, alert"
 }

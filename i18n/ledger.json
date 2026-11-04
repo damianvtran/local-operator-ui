@@ -74066,48 +74066,18 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.settings.notifications",
-			"source_sha256": "4bf3f8ffb1daecc09ac44049245bb85fe4c78b2c45ba19062218accc53782d65",
-			"target_sha256": "c8acd58cdfff1623184dde929b20334e012983b642b7af0dc564d6b416733971",
+			"source_sha256": "f9222665b29b8e5ac4317c7a22983fdf439c6ec9108519c1cb0fd819c43e15f1",
+			"target_sha256": "3a2d632c9dd1219cf6a69e92dab201203589c0bd62a1b7260a3fd8d7dce929d8",
 			"translator": {
-				"agent": "coder",
-				"model": "anthropic/claude-opus-5-5",
+				"agent": "D2-r2-translator",
+				"model": "openai/gpt-6.1-sol",
+				"instance": "da5835b00771",
 				"date": "2026-11-04"
 			},
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"instance": "ed833173e70f",
-					"model": "openai/gpt-6.1-sol",
-					"date": "2026-11-04",
-					"result": "clean-with-findings",
-					"findings": {
-						"blocker": 0,
-						"major": 0,
-						"minor": 1,
-						"nit": 0
-					},
-					"receipt": "i18n/receipts/d2-notification-sounds-r1-ed833173e70f-fr.json",
-					"receipt_sha256": "3878cabc28b30ef000caf35effa535d121f57611fd3d8a9515814b18ec27d787",
-					"scope": "Full 69-key namespace; linguistic/ICU audit, not rendered-fit certification.",
-					"note": "D2 r1; 1 corrected minor findings. No fallback. Record: i18n/audits/evidence/fr/ui.settings.notifications/d2-r1-ed833173e70f/record.json"
-				}
-			],
-			"status": "audited"
-		},
-		{
-			"locale": "es",
-			"namespace": "ui.settings.notifications",
-			"source_sha256": "4bf3f8ffb1daecc09ac44049245bb85fe4c78b2c45ba19062218accc53782d65",
-			"target_sha256": "3d6de2e77b7a1eaa3978c130d5977f3c3a2524b1d8a24352ed9847298da2d9fa",
-			"translator": {
-				"agent": "coder",
-				"model": "anthropic/claude-opus-5-5",
-				"date": "2026-11-04"
-			},
-			"auditors": [
-				{
-					"agent": "i18n-auditor",
-					"instance": "ed833173e70f",
+					"instance": "b5bf3a7c1761",
 					"model": "openai/gpt-6.1-sol",
 					"date": "2026-11-04",
 					"result": "clean",
@@ -74117,168 +74087,387 @@
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/d2-notification-sounds-r1-ed833173e70f-es.json",
-					"receipt_sha256": "582c01eef14ccdd0262c76df8280b456c4b84b2370652dc622fe6458b4e74af3",
-					"scope": "Full 69-key namespace; linguistic/ICU audit, not rendered-fit certification.",
-					"note": "D2 r1; 0 corrected minor findings. No fallback. Record: i18n/audits/evidence/es/ui.settings.notifications/d2-r1-ed833173e70f/record.json"
+					"receipt": "i18n/receipts/d2-notification-sounds-r2-b5bf3a7c1761-fr.json",
+					"receipt_sha256": "b19bf347e843d55f3d1fa26c82ad04c4f84efbf1b4ccb0648952c75f9bd4817e",
+					"scope": "3 new keys audited; 68 unchanged strings retained from independent r1; 71-key full-byte rehash.",
+					"note": "Delta-only; no fallback. Canonical evidence: i18n/audits/evidence/fr/ui.settings.notifications/d2-r2-b5bf3a7c1761/record.json"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "4bf3f8ffb1daecc09ac44049245bb85fe4c78b2c45ba19062218accc53782d65",
+					"target_sha256": "c8acd58cdfff1623184dde929b20334e012983b642b7af0dc564d6b416733971",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"instance": "ed833173e70f",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-04",
+							"result": "clean-with-findings",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/d2-notification-sounds-r1-ed833173e70f-fr.json",
+							"receipt_sha256": "3878cabc28b30ef000caf35effa535d121f57611fd3d8a9515814b18ec27d787",
+							"scope": "Full 69-key namespace; linguistic/ICU audit, not rendered-fit certification.",
+							"note": "D2 r1; 1 corrected minor findings. No fallback. Record: i18n/audits/evidence/fr/ui.settings.notifications/d2-r1-ed833173e70f/record.json"
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "es",
+			"namespace": "ui.settings.notifications",
+			"source_sha256": "f9222665b29b8e5ac4317c7a22983fdf439c6ec9108519c1cb0fd819c43e15f1",
+			"target_sha256": "bf1c6d2ffc1e6c1257343bdceacd963c0702f3e7978287c7f948e4880ffd420c",
+			"translator": {
+				"agent": "D2-r2-translator",
+				"model": "openai/gpt-6.1-sol",
+				"instance": "da5835b00771",
+				"date": "2026-11-04"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"instance": "b5bf3a7c1761",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-04",
+					"result": "clean",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/d2-notification-sounds-r2-b5bf3a7c1761-es.json",
+					"receipt_sha256": "bf41d1636f122f55dae5f04141665b88e96abe88e671ec7012297c5eb82f4fa6",
+					"scope": "3 new keys audited; 68 unchanged strings retained from independent r1; 71-key full-byte rehash.",
+					"note": "Delta-only; no fallback. Canonical evidence: i18n/audits/evidence/es/ui.settings.notifications/d2-r2-b5bf3a7c1761/record.json"
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "4bf3f8ffb1daecc09ac44049245bb85fe4c78b2c45ba19062218accc53782d65",
+					"target_sha256": "3d6de2e77b7a1eaa3978c130d5977f3c3a2524b1d8a24352ed9847298da2d9fa",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"instance": "ed833173e70f",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-04",
+							"result": "clean",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/d2-notification-sounds-r1-ed833173e70f-es.json",
+							"receipt_sha256": "582c01eef14ccdd0262c76df8280b456c4b84b2370652dc622fe6458b4e74af3",
+							"scope": "Full 69-key namespace; linguistic/ICU audit, not rendered-fit certification.",
+							"note": "D2 r1; 0 corrected minor findings. No fallback. Record: i18n/audits/evidence/es/ui.settings.notifications/d2-r1-ed833173e70f/record.json"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.settings.notifications",
-			"source_sha256": "4bf3f8ffb1daecc09ac44049245bb85fe4c78b2c45ba19062218accc53782d65",
-			"target_sha256": "d1996466905d2094221a40fb4fdc8f8ab1893cfc0e97fde96e3ba9cf1dc628ec",
+			"source_sha256": "f9222665b29b8e5ac4317c7a22983fdf439c6ec9108519c1cb0fd819c43e15f1",
+			"target_sha256": "6085323160bd845802bcbfc772353b134ea4fd3cfaae660663fdcf54e1d61930",
 			"translator": {
-				"agent": "coder",
-				"model": "anthropic/claude-opus-5-5",
+				"agent": "D2-r2-translator",
+				"model": "openai/gpt-6.1-sol",
+				"instance": "da5835b00771",
 				"date": "2026-11-04"
 			},
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"instance": "ed833173e70f",
+					"instance": "b5bf3a7c1761",
 					"model": "openai/gpt-6.1-sol",
 					"date": "2026-11-04",
-					"result": "clean-with-findings",
+					"result": "clean",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
+						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/d2-notification-sounds-r1-ed833173e70f-zh-cn.json",
-					"receipt_sha256": "afdf9ad72cb78a9b662391561fe80a06efa2ce745c1b0568477f6925c2826e82",
-					"scope": "Full 69-key namespace; linguistic/ICU audit, not rendered-fit certification.",
-					"note": "D2 r1; 1 corrected minor findings. No fallback. Record: i18n/audits/evidence/zh-CN/ui.settings.notifications/d2-r1-ed833173e70f/record.json"
+					"receipt": "i18n/receipts/d2-notification-sounds-r2-b5bf3a7c1761-zh-cn.json",
+					"receipt_sha256": "b2966272f2dbca37079550dfc0a895f0fe41b27ccd3260ab0a8001ee7189f8a7",
+					"scope": "3 new keys audited; 68 unchanged strings retained from independent r1; 71-key full-byte rehash.",
+					"note": "Delta-only; no fallback. Canonical evidence: i18n/audits/evidence/zh-CN/ui.settings.notifications/d2-r2-b5bf3a7c1761/record.json"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "4bf3f8ffb1daecc09ac44049245bb85fe4c78b2c45ba19062218accc53782d65",
+					"target_sha256": "d1996466905d2094221a40fb4fdc8f8ab1893cfc0e97fde96e3ba9cf1dc628ec",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"instance": "ed833173e70f",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-04",
+							"result": "clean-with-findings",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/d2-notification-sounds-r1-ed833173e70f-zh-cn.json",
+							"receipt_sha256": "afdf9ad72cb78a9b662391561fe80a06efa2ce745c1b0568477f6925c2826e82",
+							"scope": "Full 69-key namespace; linguistic/ICU audit, not rendered-fit certification.",
+							"note": "D2 r1; 1 corrected minor findings. No fallback. Record: i18n/audits/evidence/zh-CN/ui.settings.notifications/d2-r1-ed833173e70f/record.json"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "ru",
 			"namespace": "ui.settings.notifications",
-			"source_sha256": "4bf3f8ffb1daecc09ac44049245bb85fe4c78b2c45ba19062218accc53782d65",
-			"target_sha256": "d71fc955d24181d5ff1df4c4dd8b0460fc312bcf7d1f0eb33b6601fb95a08917",
+			"source_sha256": "f9222665b29b8e5ac4317c7a22983fdf439c6ec9108519c1cb0fd819c43e15f1",
+			"target_sha256": "9d8373c01673e57d488a94932dd30b176ecf3496a4340c486cc40b71679e0a8f",
 			"translator": {
-				"agent": "coder",
-				"model": "anthropic/claude-opus-5-5",
+				"agent": "D2-r2-translator",
+				"model": "openai/gpt-6.1-sol",
+				"instance": "da5835b00771",
 				"date": "2026-11-04"
 			},
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"instance": "ed833173e70f",
+					"instance": "b5bf3a7c1761",
 					"model": "openai/gpt-6.1-sol",
 					"date": "2026-11-04",
-					"result": "clean-with-findings",
+					"result": "clean",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
+						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/d2-notification-sounds-r1-ed833173e70f-ru.json",
-					"receipt_sha256": "8375882ec1bd9b20a366db2e7db6835ae1a374d344056a9d1bb785c7c28c927f",
-					"scope": "Full 69-key namespace; linguistic/ICU audit, not rendered-fit certification.",
-					"note": "D2 r1; 1 corrected minor findings. No fallback. Record: i18n/audits/evidence/ru/ui.settings.notifications/d2-r1-ed833173e70f/record.json"
+					"receipt": "i18n/receipts/d2-notification-sounds-r2-b5bf3a7c1761-ru.json",
+					"receipt_sha256": "88eb9acd833bc24ba988baa2c44900e9dd5e3d34c0f8d415bb4c8b811bfcf223",
+					"scope": "3 new keys audited; 68 unchanged strings retained from independent r1; 71-key full-byte rehash.",
+					"note": "Delta-only; no fallback. Canonical evidence: i18n/audits/evidence/ru/ui.settings.notifications/d2-r2-b5bf3a7c1761/record.json"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "4bf3f8ffb1daecc09ac44049245bb85fe4c78b2c45ba19062218accc53782d65",
+					"target_sha256": "d71fc955d24181d5ff1df4c4dd8b0460fc312bcf7d1f0eb33b6601fb95a08917",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"instance": "ed833173e70f",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-04",
+							"result": "clean-with-findings",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/d2-notification-sounds-r1-ed833173e70f-ru.json",
+							"receipt_sha256": "8375882ec1bd9b20a366db2e7db6835ae1a374d344056a9d1bb785c7c28c927f",
+							"scope": "Full 69-key namespace; linguistic/ICU audit, not rendered-fit certification.",
+							"note": "D2 r1; 1 corrected minor findings. No fallback. Record: i18n/audits/evidence/ru/ui.settings.notifications/d2-r1-ed833173e70f/record.json"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "vi",
 			"namespace": "ui.settings.notifications",
-			"source_sha256": "4bf3f8ffb1daecc09ac44049245bb85fe4c78b2c45ba19062218accc53782d65",
-			"target_sha256": "e9e997dbcb684081ec5796616cd88d7eeca73e81d0d1490ac54753c092955e19",
+			"source_sha256": "f9222665b29b8e5ac4317c7a22983fdf439c6ec9108519c1cb0fd819c43e15f1",
+			"target_sha256": "048be5ccdc7e0b4726cbc1aacdc467557d2535cfdf21e37f40f43bc905c5870c",
 			"translator": {
-				"agent": "coder",
-				"model": "anthropic/claude-opus-5-5",
+				"agent": "D2-r2-translator",
+				"model": "openai/gpt-6.1-sol",
+				"instance": "da5835b00771",
 				"date": "2026-11-04"
 			},
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"instance": "ed833173e70f",
+					"instance": "b5bf3a7c1761",
 					"model": "openai/gpt-6.1-sol",
 					"date": "2026-11-04",
-					"result": "clean-with-findings",
+					"result": "clean",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
+						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/d2-notification-sounds-r1-ed833173e70f-vi.json",
-					"receipt_sha256": "5b14c0eababd9e98319ce18399c9bc70e00f92bc518e46a0501e4da75d47806c",
-					"scope": "Full 69-key namespace; linguistic/ICU audit, not rendered-fit certification.",
-					"note": "D2 r1; 1 corrected minor findings. No fallback. Record: i18n/audits/evidence/vi/ui.settings.notifications/d2-r1-ed833173e70f/record.json"
+					"receipt": "i18n/receipts/d2-notification-sounds-r2-b5bf3a7c1761-vi.json",
+					"receipt_sha256": "0ad1ce68a38b302565461b2b3b7b41cfac49d98f84975aded964a0bb7e49b987",
+					"scope": "3 new keys audited; 68 unchanged strings retained from independent r1; 71-key full-byte rehash.",
+					"note": "Delta-only; no fallback. Canonical evidence: i18n/audits/evidence/vi/ui.settings.notifications/d2-r2-b5bf3a7c1761/record.json"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "4bf3f8ffb1daecc09ac44049245bb85fe4c78b2c45ba19062218accc53782d65",
+					"target_sha256": "e9e997dbcb684081ec5796616cd88d7eeca73e81d0d1490ac54753c092955e19",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"instance": "ed833173e70f",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-04",
+							"result": "clean-with-findings",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/d2-notification-sounds-r1-ed833173e70f-vi.json",
+							"receipt_sha256": "5b14c0eababd9e98319ce18399c9bc70e00f92bc518e46a0501e4da75d47806c",
+							"scope": "Full 69-key namespace; linguistic/ICU audit, not rendered-fit certification.",
+							"note": "D2 r1; 1 corrected minor findings. No fallback. Record: i18n/audits/evidence/vi/ui.settings.notifications/d2-r1-ed833173e70f/record.json"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "ur",
 			"namespace": "ui.settings.notifications",
-			"source_sha256": "4bf3f8ffb1daecc09ac44049245bb85fe4c78b2c45ba19062218accc53782d65",
-			"target_sha256": "ee01d73aa30b6338667b86c840a38178425b10f5503021013b3e698a9d6a4353",
+			"source_sha256": "f9222665b29b8e5ac4317c7a22983fdf439c6ec9108519c1cb0fd819c43e15f1",
+			"target_sha256": "cbd38ba29964e8778948b28d766769dc623b0710108b477a14ddacf7c306af1f",
 			"translator": {
-				"agent": "coder",
-				"model": "anthropic/claude-opus-5-5",
+				"agent": "D2-r2-translator",
+				"model": "openai/gpt-6.1-sol",
+				"instance": "da5835b00771",
 				"date": "2026-11-04"
 			},
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"instance": "ed833173e70f",
+					"instance": "b5bf3a7c1761",
 					"model": "openai/gpt-6.1-sol",
 					"date": "2026-11-04",
-					"result": "clean-with-findings",
+					"result": "clean",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 3,
+						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/d2-notification-sounds-r1-ed833173e70f-ur.json",
-					"receipt_sha256": "29e166ed14e6a1d2e3ee03038b6fd1430f9efda905d7ce0611140871ea6b9990",
-					"scope": "Full 69-key namespace; linguistic/ICU audit, not rendered-fit certification.",
-					"note": "D2 r1; 3 corrected minor findings. No fallback. Record: i18n/audits/evidence/ur/ui.settings.notifications/d2-r1-ed833173e70f/record.json"
+					"receipt": "i18n/receipts/d2-notification-sounds-r2-b5bf3a7c1761-ur.json",
+					"receipt_sha256": "94a9ba882c282452c34c4fe02bb38a640fe8a6b3eacb88321672450eb9de6efb",
+					"scope": "3 new keys audited; 68 unchanged strings retained from independent r1; 71-key full-byte rehash.",
+					"note": "Delta-only; no fallback. Canonical evidence: i18n/audits/evidence/ur/ui.settings.notifications/d2-r2-b5bf3a7c1761/record.json"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "4bf3f8ffb1daecc09ac44049245bb85fe4c78b2c45ba19062218accc53782d65",
+					"target_sha256": "ee01d73aa30b6338667b86c840a38178425b10f5503021013b3e698a9d6a4353",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"instance": "ed833173e70f",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-04",
+							"result": "clean-with-findings",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 3,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/d2-notification-sounds-r1-ed833173e70f-ur.json",
+							"receipt_sha256": "29e166ed14e6a1d2e3ee03038b6fd1430f9efda905d7ce0611140871ea6b9990",
+							"scope": "Full 69-key namespace; linguistic/ICU audit, not rendered-fit certification.",
+							"note": "D2 r1; 3 corrected minor findings. No fallback. Record: i18n/audits/evidence/ur/ui.settings.notifications/d2-r1-ed833173e70f/record.json"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "hi",
 			"namespace": "ui.settings.notifications",
-			"source_sha256": "4bf3f8ffb1daecc09ac44049245bb85fe4c78b2c45ba19062218accc53782d65",
-			"target_sha256": "c1711483144ce9709816e73da91f709f9f5fb2394ff232dae93337e920de6dec",
+			"source_sha256": "f9222665b29b8e5ac4317c7a22983fdf439c6ec9108519c1cb0fd819c43e15f1",
+			"target_sha256": "14eed2a51d8c9ad4111ba4fdb1e8d082990ad3981eae70d52431b0d610e7425d",
 			"translator": {
-				"agent": "coder",
-				"model": "anthropic/claude-opus-5-5",
+				"agent": "D2-r2-translator",
+				"model": "openai/gpt-6.1-sol",
+				"instance": "da5835b00771",
 				"date": "2026-11-04"
 			},
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"instance": "ed833173e70f",
+					"instance": "b5bf3a7c1761",
 					"model": "openai/gpt-6.1-sol",
 					"date": "2026-11-04",
-					"result": "clean-with-findings",
+					"result": "clean",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
+						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/d2-notification-sounds-r1-ed833173e70f-hi.json",
-					"receipt_sha256": "eda030263094b66c498df63d174b7d75074bf0e92f482d942a793cbd1f5c5a3c",
-					"scope": "Full 69-key namespace; linguistic/ICU audit, not rendered-fit certification.",
-					"note": "D2 r1; 1 corrected minor findings. No fallback. Record: i18n/audits/evidence/hi/ui.settings.notifications/d2-r1-ed833173e70f/record.json"
+					"receipt": "i18n/receipts/d2-notification-sounds-r2-b5bf3a7c1761-hi.json",
+					"receipt_sha256": "524ebc227217973b76b48ab255ec264ed9e9be3d8f72defa21f4675d32f614f3",
+					"scope": "3 new keys audited; 68 unchanged strings retained from independent r1; 71-key full-byte rehash.",
+					"note": "Delta-only; no fallback. Canonical evidence: i18n/audits/evidence/hi/ui.settings.notifications/d2-r2-b5bf3a7c1761/record.json"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "4bf3f8ffb1daecc09ac44049245bb85fe4c78b2c45ba19062218accc53782d65",
+					"target_sha256": "c1711483144ce9709816e73da91f709f9f5fb2394ff232dae93337e920de6dec",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"instance": "ed833173e70f",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-04",
+							"result": "clean-with-findings",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/d2-notification-sounds-r1-ed833173e70f-hi.json",
+							"receipt_sha256": "eda030263094b66c498df63d174b7d75074bf0e92f482d942a793cbd1f5c5a3c",
+							"scope": "Full 69-key namespace; linguistic/ICU audit, not rendered-fit certification.",
+							"note": "D2 r1; 1 corrected minor findings. No fallback. Record: i18n/audits/evidence/hi/ui.settings.notifications/d2-r1-ed833173e70f/record.json"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		}
 	]
 }

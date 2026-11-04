@@ -66,5 +66,8 @@
 	"ui.settings.notifications.load.failed": "无法加载通知声音。{reason}",
 	"ui.settings.notifications.load.loading": "正在加载通知声音……",
 	"ui.settings.notifications.backend_older": "通知声音需要更新版本的Local Operator。更新后再选择声音。",
-	"ui.settings.notifications.missing_rows": "{count, plural, other {此后端尚未注册{rows}，因此未显示对应控件。}}"
+	"ui.settings.notifications.missing_rows": "{count, plural, other {此后端尚未注册{rows}，因此未显示对应控件。}}",
+	"ui.settings.notifications.custom.finishing": "正在完成……",
+	"ui.settings.notifications.error.silent": "{file}没有声音。选择一段能听到声音的音频。",
+	"ui.settings.notifications.search_terms": "声音, 提示音, 通知声音, 音量, 提醒, sound, chime, notification sound, volume, alert"
 }
