@@ -41,9 +41,11 @@ import {
 	useContext,
 	useEffect,
 	useLayoutEffect,
+	useMemo,
 	useRef,
 	useState,
 } from "react";
+import { LeftSidebarHostContext } from "../navigation/left-sidebar-host";
 import { PanelRailHostContext } from "../navigation/panel-rail-host";
 import { PaneSlot } from "./pane-slot";
 import { PanelEdge } from "./panel-edge";
@@ -114,6 +116,18 @@ function useMeasuredBox(
 type ChatLayoutProps = {
 	sidebar: ReactNode;
 	content: ReactNode;
+	/**
+	 * The route owns the left column (Team Bridge, operator 2026-11-03). The
+	 * shell then mounts an empty host where `sidebar` would be and the route
+	 * portals its own rail into it (`left-sidebar-host.tsx`); `sidebar` is NOT
+	 * mounted at all, so the window has one sidebar rather than two.
+	 *
+	 * `keeper` is what must stay mounted in its place: whatever the unmounted
+	 * sidebar was keeping alive that the rest of the app still reads (the
+	 * catalogue feed - see `StripFeedKeeper`). Default off, so every other
+	 * caller lays out exactly as before.
+	 */
+	routeSidebar?: { keeper?: ReactNode } | false;
 };
 
 /**
@@ -149,7 +163,11 @@ export const useSidebarFrame = (): SidebarFrame => {
 	return frame;
 };
 
-export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
+export const ChatLayout: FC<ChatLayoutProps> = ({
+	sidebar,
+	content,
+	routeSidebar = false,
+}) => {
 	/*
 	 * The measured boxes and pane stop are physical coordinates, while the
 	 * sidebar's leading edge is logical: inline-start is left in LTR and right in
@@ -244,10 +262,82 @@ export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
 	const railMounted = useUiPreferencesStore((s) => s.rightSlotRoute.mounted);
 	const railWidth = railMounted ? PANEL_RAIL_WIDTH_PX : 0;
 	const [railHost, setRailHost] = useState<HTMLElement | null>(null);
+	const [leftHost, setLeftHost] = useState<HTMLElement | null>(null);
+	const routeOwnsSidebar = routeSidebar !== false;
+	const leftSlot = useMemo(
+		() => (routeOwnsSidebar ? { host: leftHost } : null),
+		[routeOwnsSidebar, leftHost],
+	);
+	const leftColumnRef = useRef<HTMLDivElement | null>(null);
+	/*
+	 * FOCUS FOLLOWS THE SWAP (UX round 1, U2 / QA Q3). Swapping the column's
+	 * contents unmounts whatever control had focus in it - the nav row that
+	 * opened the route, or the route's Back - and focus fell to `<body>`, so the
+	 * next Tab started from the top of the document. Only when focus WAS in the
+	 * column does the shell move it, and only to the matching control of the new
+	 * contents: the route column's first control (Back) on entry, the nav's
+	 * current destination row (`aria-current="page"`) on leave. Focus elsewhere
+	 * (a field, the transcript) is never taken. A layout effect, so the move
+	 * lands before paint and a screen reader hears one focus change, not two.
+	 */
+	const focusWasInColumn = useRef(false);
+	const previousRouteOwns = useRef(routeOwnsSidebar);
+	if (previousRouteOwns.current !== routeOwnsSidebar) {
+		// Read during the render that swaps, before the commit unmounts the
+		// focused control and the browser moves focus to `<body>`.
+		const active =
+			typeof document === "undefined" ? null : document.activeElement;
+		focusWasInColumn.current = Boolean(
+			active && leftColumnRef.current?.contains(active),
+		);
+		previousRouteOwns.current = routeOwnsSidebar;
+	}
+	useLayoutEffect(() => {
+		if (!focusWasInColumn.current) return;
+		const column = leftColumnRef.current;
+		if (!column) return;
+		if (routeOwnsSidebar) return; // entry is the effect below
+		focusWasInColumn.current = false;
+		// No current row for this destination (a route with no nav row): leave
+		// focus where the browser put it rather than guess a control.
+		column.querySelector<HTMLElement>('[aria-current="page"]')?.focus();
+	}, [routeOwnsSidebar]);
+	/*
+	 * Entry: the route's rail arrives through a portal a commit or more later
+	 * (the host ref, then the lazy page), so the column is watched until its
+	 * first control exists, and that is focused once.
+	 */
+	useEffect(() => {
+		if (!routeOwnsSidebar || !leftHost || !focusWasInColumn.current) return;
+		const focusFirst = () => {
+			const first = leftHost.querySelector<HTMLElement>(
+				"button, a[href], [tabindex]:not([tabindex='-1'])",
+			);
+			if (!first) return false;
+			focusWasInColumn.current = false;
+			first.focus();
+			return true;
+		};
+		if (focusFirst()) return;
+		const observer = new MutationObserver(() => {
+			if (focusFirst()) observer.disconnect();
+		});
+		observer.observe(leftHost, { childList: true, subtree: true });
+		return () => observer.disconnect();
+	}, [routeOwnsSidebar, leftHost]);
 
 	const layout: SidebarLayout = resolveSidebarLayout(
 		viewportWidth,
-		collapsedPref,
+		/*
+		 * A ROUTE-OWNED COLUMN IS ALWAYS DOCKED. The route's rail (org switcher,
+		 * titles, sections) has no 56px form, and a strip with nothing in it is the
+		 * dead control this codebase removes elsewhere. The preference is NOT
+		 * rewritten: ⌘B still toggles it here, and it applies the moment the user
+		 * leaves the route - the column they come back to is the one they chose.
+		 * The capacity cap still applies, so an 800px window keeps its 480px content
+		 * floor (the yield below is switched off for the same no-56px-form reason).
+		 */
+		routeOwnsSidebar ? false : collapsedPref,
 		savedWidth,
 		/*
 		 * THE SIDEBAR YIELDS TO THE ASK DRAWER AS IT DOES TO THE CANVAS, in EITHER
@@ -256,8 +346,14 @@ export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
 		 * for the fleet pane but not for the session one would make the two scopes of
 		 * one surface lay the window out differently, which is precisely the "which one
 		 * am I looking at" confusion this feature removes.
+		 *
+		 * EXCEPT ON A ROUTE-OWNED COLUMN (round 1, M1/Q2). Yielding means "drop to
+		 * the 56px strip", and the route's rail has no strip form: with the fleet
+		 * drawer open at ~936-1139px it was cut to 56px with its rows clipped. The
+		 * drawer still lays itself out (overlay or docked) from the row's width, as
+		 * it does whenever the sidebar does not yield.
 		 */
-		slotYieldsSidebar,
+		routeOwnsSidebar ? false : slotYieldsSidebar,
 		railWidth,
 	);
 
@@ -267,10 +363,17 @@ export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
 			// A foreign overlay - a dialog, a menu, a listbox - owns its own keys.
 			if (pressLandsOnOverlay(event.target)) return;
 			event.preventDefault();
+			/*
+			 * ⌘B IS A NO-OP ON A ROUTE-OWNED COLUMN (UX round 1, U1). The column
+			 * cannot collapse there, so a toggle would change nothing visible and then
+			 * surprise the reader with a different nav after Back. The chord is still
+			 * claimed (`preventDefault` above) so it cannot fall through to a field.
+			 */
+			if (routeOwnsSidebar) return;
 			/* The chord and the strip control write the same preference at every width. */
 			toggleSidebar();
 		},
-		[toggleSidebar],
+		[toggleSidebar, routeOwnsSidebar],
 	);
 
 	useEffect(() => {
@@ -488,17 +591,41 @@ export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
 			/>
 			<div className="flex min-h-0 flex-1 overflow-hidden">
 				<div
+					ref={leftColumnRef}
 					className={cn("relative h-full shrink-0")}
 					style={{ width: columnWidth }}
 				>
-					<SidebarFrameContext.Provider
-						value={{
-							expanded: layout.mode === "docked",
-							onCollapse: toggleSidebar,
-						}}
-					>
-						{sidebar}
-					</SidebarFrameContext.Provider>
+					{routeOwnsSidebar ? (
+						<>
+							{routeSidebar.keeper}
+							{/*
+							 * THE ROUTE'S RAIL HOST. It carries what `SidebarNavigation`'s
+							 * root carries - the `surface` ground from y0, `panel-top-pad`
+							 * so the first row clears the OS controls, and the `sidebar`
+							 * glass region - so the column reads as the same panel with
+							 * different contents, and whatever is portaled in paints no
+							 * ground or glass of its own (a second `page-sidebar` alpha over
+							 * this one is the double layer `styles/index.css` forbids).
+							 * `overflow-hidden` because the column never scrolls; the rail's
+							 * own sections do.
+							 */}
+							<div
+								ref={setLeftHost}
+								data-route-sidebar-host=""
+								data-glass-region="sidebar"
+								className="panel-top-pad flex h-full min-h-0 flex-col overflow-hidden bg-surface"
+							/>
+						</>
+					) : (
+						<SidebarFrameContext.Provider
+							value={{
+								expanded: layout.mode === "docked",
+								onCollapse: toggleSidebar,
+							}}
+						>
+							{sidebar}
+						</SidebarFrameContext.Provider>
+					)}
 					{/*
 					 * THE SIDEBAR'S SEAM, drawn by the shell's column rather than by either
 					 * sidebar root. The column is the same box as the panel in both modes
@@ -517,9 +644,17 @@ export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
 						minWidth={SIDEBAR_MIN_WIDTH}
 						maxWidth={sidebarDockCapacity(viewportWidth, railWidth)}
 						onDoubleClick={restoreDefaultSidebarWidth}
-						label={t("ui.common.layout.chat_layout.resize_the_sidebar", {
-							sidebartogglecap: sidebarToggleCap(isMacPlatform()),
-						})}
+						/*
+						 * No "(⌘B)" on a route-owned column: the chord is a no-op there
+						 * (see `onToggle`), so naming it would advertise a dead key.
+						 */
+						label={
+							routeOwnsSidebar
+								? t("ui.common.layout.chat_layout.resize_the_sidebar_plain")
+								: t("ui.common.layout.chat_layout.resize_the_sidebar", {
+										sidebartogglecap: sidebarToggleCap(isMacPlatform()),
+									})
+						}
 					/>
 				)}
 				{/*
@@ -571,7 +706,17 @@ export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
 								data-ask-covered-content=""
 								className="contents"
 							>
-								{content}
+								{/*
+								 * THE LEFT HOST REACHES THE ROUTE, which is the portal's
+								 * SOURCE: the host element lives in the column above, the
+								 * rail that fills it is rendered by the route in here. Null
+								 * when no route owns the column, which is what makes
+								 * `InLeftSidebarHost` render inline. Memoised so a shell
+								 * re-render does not re-render every consumer.
+								 */}
+								<LeftSidebarHostContext.Provider value={leftSlot}>
+									{content}
+								</LeftSidebarHostContext.Provider>
 							</div>
 							{/*
 							 * THE FLEET ASKS PANE: the same three pieces the route's occupants

@@ -380,6 +380,7 @@ const TEAM_BRIDGE_PAGE =
 	"src/renderer/src/features/team-bridge/team-bridge-page.tsx";
 const TEAM_BRIDGE_RAIL =
 	"src/renderer/src/features/team-bridge/team-bridge-rail.tsx";
+const CHAT_LAYOUT = "src/renderer/src/shared/components/common/chat-layout.tsx";
 /**
  * The rail's own row base, as the module spells it (stubbed into its `cn`).
  *
@@ -1585,6 +1586,32 @@ const ROW_STATE_GROUNDS = [
 				"after",
 			),
 		groundFile: TEAM_BRIDGE_PAGE,
+	},
+	{
+		/*
+		 * The same rail rows IN THE APP, where the rail is portaled into the shell's
+		 * left column on `/team-bridge` (the sidebar swap, operator 2026-11-03). The
+		 * hosted `<aside>` paints no ground of its own - the shell's route host does,
+		 * exactly as `SidebarNavigation`'s root does - so the ground these rows sit
+		 * on is read from `chat-layout.tsx`'s host, not from the page.
+		 */
+		what: "the Team Bridge rail in the shell's column",
+		rowFile: TEAM_BRIDGE_RAIL,
+		expression: () =>
+			expressionAfter(
+				TEAM_BRIDGE_RAIL,
+				"data-conversation-id={conversation.id}",
+			),
+		stubs: {
+			RAIL_ROW,
+			selected: true,
+			unread: 0,
+			organizationName: "",
+			rowCurrent,
+		},
+		ground: () =>
+			literalClassAt(CHAT_LAYOUT, "data-route-sidebar-host=", "after"),
+		groundFile: CHAT_LAYOUT,
 	},
 	{
 		what: "the agents page's roster row",

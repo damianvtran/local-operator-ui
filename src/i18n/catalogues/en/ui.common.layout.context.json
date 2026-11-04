@@ -7,6 +7,12 @@
 			"sidebartogglecap": "Dynamic value supplied by the product; retain verbatim unless it is a user-facing number already formatted by the caller."
 		}
 	},
+	"ui.common.layout.chat_layout.resize_the_sidebar_plain": {
+		"role": "accessible name of the sidebar resize handle",
+		"tone": "Plain, concise product language.",
+		"note": "The same handle as resize_the_sidebar, without the keyboard chord: used where the sidebar cannot be toggled (on Team Bridge the left column always stays open), so the chord would name a key that does nothing. Keep the wording identical to resize_the_sidebar minus the chord.",
+		"placeholders": {}
+	},
 	"ui.common.layout.chat_layout.resize_asks_double_click_resets_the_shared_pane_width": {
 		"role": "interface copy",
 		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",

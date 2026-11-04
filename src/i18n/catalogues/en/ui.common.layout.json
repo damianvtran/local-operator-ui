@@ -1,5 +1,6 @@
 {
 	"ui.common.layout.chat_layout.resize_the_sidebar": "Resize the sidebar ({sidebartogglecap})",
+	"ui.common.layout.chat_layout.resize_the_sidebar_plain": "Resize the sidebar",
 	"ui.common.layout.chat_layout.resize_asks_double_click_resets_the_shared_pane_width": "Resize asks. Double-click resets the shared pane width.",
 	"ui.common.layout.sidebar_header.search_agents": "Search agents",
 	"ui.common.layout.sidebar_header.create_a_new_agent": "Create a new agent",
