@@ -5,11 +5,17 @@
  * the no-organization branch, the trial note in `notice`, the paused state
  * through `readOnly`), so these stories need no transport.
  *
- * States: signed out, eligible, the dialog (empty and ready to submit, plus a
- * refused start), post-start (trial active), ended/paused, ineligible.
+ * States: signed out, eligible, the dialog (empty and ready to submit, a
+ * refused start, rate limited, and a retry after a refusal that succeeds),
+ * post-start (trial active), ended/paused for an owner and for a disabled
+ * member, ineligible (including not_owner for a member and for an admin).
  */
 import type { Meta, StoryObj } from "@storybook/react";
-import type { TeamBridgePageView } from "../team-bridge/team-bridge-page";
+import { type FC, useState } from "react";
+import {
+	TeamBridgePageView,
+	type TeamBridgePageViewProps,
+} from "../team-bridge/team-bridge-page";
 import pageMeta, {
 	PopulatedDirectMessage,
 } from "../team-bridge/team-bridge-page.stories";
@@ -80,13 +86,14 @@ export const Ineligible: Story = {
 					kind: "ineligible",
 					reason: "trial_used",
 					subscribeUrl: subscribeUrlFor("ten_home"),
+					canSubscribe: true,
 				}}
 			/>
 		),
 	},
 };
 
-/** Not the owner: the sentence names who can act, so there is no button at all. */
+/** Not the owner, a plain member: the sentence names who can act, no button. */
 export const IneligibleNotOwner: Story = {
 	args: {
 		...noOrg,
@@ -96,6 +103,24 @@ export const IneligibleNotOwner: Story = {
 					kind: "ineligible",
 					reason: "not_owner",
 					subscribeUrl: subscribeUrlFor("ten_home"),
+					canSubscribe: false,
+				}}
+			/>
+		),
+	},
+};
+
+/** Not the owner, an admin: cannot start a trial, CAN subscribe (C3). */
+export const IneligibleNotOwnerAdmin: Story = {
+	args: {
+		...noOrg,
+		noOrgPanel: (
+			<TeamBridgeTrialEmptyView
+				view={{
+					kind: "ineligible",
+					reason: "not_owner",
+					subscribeUrl: subscribeUrlFor("ten_home"),
+					canSubscribe: true,
 				}}
 			/>
 		),
@@ -161,6 +186,64 @@ export const DialogTermsOutdated: Story = {
 	},
 };
 
+/** Too many trial requests: the inline sentence, the buttons where they were. */
+export const DialogRateLimited: Story = {
+	args: {
+		...noOrg,
+		noOrgPanel: (
+			<>
+				<TeamBridgeTrialEmptyView view={eligibleView} />
+				<TeamBridgeTrialDialogView
+					{...dialogArgs}
+					termsAccepted
+					failure="rate_limited"
+				/>
+			</>
+		),
+	},
+};
+
+/**
+ * A retry after a refusal, end to end in the view: the first press is refused
+ * (rate limited), the second press starts the trial and lands on the trial
+ * note. The request-id rule behind it (a fresh id per press, R1-1) is pinned in
+ * `scripts/team-bridge-trial.test.mjs`; this story shows the user's half.
+ */
+const RetryAfterRefusal: FC = () => {
+	const [presses, setPresses] = useState(0);
+	const [termsAccepted, setTermsAccepted] = useState(true);
+	if (presses >= 2)
+		return (
+			<TeamBridgePageView
+				{...(PopulatedDirectMessage.args as TeamBridgePageViewProps)}
+				notice={
+					<TeamBridgeTrialNoteView
+						kind="active"
+						at={ENDS_AT}
+						tenantId="ten_home"
+						timeZone={ZONE}
+					/>
+				}
+			/>
+		);
+	return (
+		<>
+			<TeamBridgeTrialEmptyView view={eligibleView} />
+			<TeamBridgeTrialDialogView
+				{...dialogArgs}
+				termsAccepted={termsAccepted}
+				onTermsAcceptedChange={setTermsAccepted}
+				failure={presses === 1 ? "rate_limited" : null}
+				onConfirm={() => setPresses((n) => n + 1)}
+			/>
+		</>
+	);
+};
+
+export const DialogRetrySucceeds: Story = {
+	args: { ...noOrg, noOrgPanel: <RetryAfterRefusal /> },
+};
+
 /** After the start: the org's page with the trial note and Invite teammates. */
 export const PostStart: Story = {
 	args: {
@@ -181,11 +264,33 @@ export const Paused: Story = {
 	args: {
 		...PopulatedDirectMessage.args,
 		readOnly: true,
+		readOnlyExplained: true,
 		notice: (
 			<TeamBridgeTrialNoteView
 				kind="paused"
 				at={ENDED_AT}
 				tenantId="ten_home"
+				timeZone={ZONE}
+			/>
+		),
+	},
+};
+
+/**
+ * The trial ended, seen by a member it disabled (X3): the note names who can
+ * act and offers no Subscribe, because the console would refuse them.
+ */
+export const PausedMember: Story = {
+	args: {
+		...PopulatedDirectMessage.args,
+		readOnly: true,
+		readOnlyExplained: true,
+		notice: (
+			<TeamBridgeTrialNoteView
+				kind="paused"
+				at={ENDED_AT}
+				tenantId="ten_home"
+				audience="member"
 				timeZone={ZONE}
 			/>
 		),

@@ -63,6 +63,10 @@ import type {
 import { browserDraftStorage } from "../../shared/store/team-bridge-draft-account";
 import { rowCurrent } from "../chat/components/chat-sidebar";
 import { TeamBridgeTrialEmpty } from "../team-bridge-trial/team-bridge-trial-empty";
+import {
+	teamBridgeReadOnly,
+	trialReplacesPanel,
+} from "../team-bridge-trial/team-bridge-trial-model";
 import { useTeamBridgeTrialNote } from "../team-bridge-trial/team-bridge-trial-paused";
 import { TeamBridgeMentionProvider } from "./mentions";
 import { TeamBridgeAddMembersView } from "./team-bridge-add-members";
@@ -741,6 +745,12 @@ export type TeamBridgePageViewProps = {
 	/** Replaces the plan-required panel for an account in no Team organization
 	 * (the Team trial empty state, `features/team-bridge-trial`). */
 	noOrgPanel?: ReactNode;
+	/**
+	 * The `notice` slot already explains why the page is read-only (the ended
+	 * Team trial band), so the composer's generic read-only line is dropped
+	 * rather than said twice (design review D7).
+	 */
+	readOnlyExplained?: boolean;
 	onTarget: (target: TeamBridgeTarget | null) => void;
 	/**
 	 * Send `body`. For a target with no conversation yet the container creates
@@ -874,6 +884,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	readOnly = false,
 	notice = null,
 	noOrgPanel,
+	readOnlyExplained = false,
 	onTarget,
 	onSend,
 	onSchedule,
@@ -2115,7 +2126,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	};
 
 	if (gatePending) return <TeamBridgeGateLoading />;
-	if (eligibility === "plan_required" && noOrgPanel) return noOrgPanel;
+	if (trialReplacesPanel(eligibility) && noOrgPanel) return noOrgPanel;
 	if (eligibility) return <TeamBridgeEligibilityPanel reason={eligibility} />;
 
 	const isSelectedConversation = (conversation: TeamBridgeConversation) =>
@@ -3444,9 +3455,11 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 									{t("ui.teamBridge.archive.composer.note")}
 								</p>
 							) : readOnly ? (
-								<p className="shrink-0 px-5 pb-4 text-[12px] text-ink-dim leading-snug">
-									{t("ui.teamBridge.read_only.composer")}
-								</p>
+								readOnlyExplained ? null : (
+									<p className="shrink-0 px-5 pb-4 text-[12px] text-ink-dim leading-snug">
+										{t("ui.teamBridge.read_only.composer")}
+									</p>
+								)
 							) : (
 								<div
 									className="flex min-w-0 shrink-0 flex-col gap-2 px-4 pt-1 pb-4"
@@ -4126,8 +4139,11 @@ const TeamBridgeOwnedPage: FC<{
 	const trialNote = useTeamBridgeTrialNote(
 		readsEnabled ? status.data?.tenant_id : null,
 	);
-	const readOnly =
-		status.data?.read_only === true || !ownerGuard || trialNote.paused;
+	const readOnly = teamBridgeReadOnly({
+		statusReadOnly: status.data?.read_only === true,
+		ownerGuard,
+		trialPaused: trialNote.paused,
+	});
 	const owner = useBridgeOwner(accountId);
 	const isCurrentOwner = () => owner.isCurrent() && ownerGuard;
 	/* The same fence minus "this page is still mounted": for the first-message post
@@ -5197,6 +5213,7 @@ const TeamBridgeOwnedPage: FC<{
 				eligibility={eligibility}
 				gatePending={gatePending && !cachedPaint}
 				readOnly={readOnly}
+				readOnlyExplained={trialNote.paused}
 				notice={
 					<>
 						{trialNote.note}

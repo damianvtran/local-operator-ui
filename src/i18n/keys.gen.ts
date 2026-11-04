@@ -10468,6 +10468,7 @@ export type MessageParams = {
 	"ui.teamBridgeTrial.dialog.confirm": undefined;
 	"ui.teamBridgeTrial.dialog.end_credits": undefined;
 	"ui.teamBridgeTrial.dialog.end_heading": undefined;
+	"ui.teamBridgeTrial.dialog.end_invites": undefined;
 	"ui.teamBridgeTrial.dialog.end_pause": undefined;
 	"ui.teamBridgeTrial.dialog.end_vault": undefined;
 	"ui.teamBridgeTrial.dialog.included_bridge": undefined;
@@ -10496,6 +10497,7 @@ export type MessageParams = {
 	"ui.teamBridgeTrial.ineligible.title": undefined;
 	"ui.teamBridgeTrial.ineligible.trial_used": undefined;
 	"ui.teamBridgeTrial.paused.note": { date: string };
+	"ui.teamBridgeTrial.paused.note_member": { date: string };
 	"ui.teamBridgeTrial.subscribe": undefined;
 	"ui.updates.panel.artifact.damaged.message": undefined;
 	"ui.updates.panel.artifact.damaged.message_version": { version: string };

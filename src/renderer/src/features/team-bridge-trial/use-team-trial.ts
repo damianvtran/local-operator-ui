@@ -74,8 +74,12 @@ export function useTeamTrialEligibility(enabled: boolean) {
 /**
  * The selected organization's trial state, for the paused banner and the
  * "Trial active until" note. Only asked for a single organization the page is
- * showing; a failure (an older server, a member without access) reads as "no
- * trial fact", which leaves the page exactly as it was.
+ * showing. An older server (404/422) reads as "no trial fact" (`null`). Any
+ * other refusal, such as a 403 `not_a_member` for someone who is no longer in
+ * the organization, is a query ERROR; the note hook reads no fact from it
+ * either, so the page stays as it was. Since agent-server #296 (X3) the read
+ * admits active AND disabled members, so a member the trial end disabled
+ * still gets the ended state rather than that 403.
  */
 export function useTeamTrialStatus(tenantId: string | null | undefined) {
 	const client = useQueryClient();

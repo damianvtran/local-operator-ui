@@ -25,7 +25,13 @@ export type TrialEmptyView =
 			termsVersion: string;
 			termsUrl: string;
 	  }
-	| { kind: "ineligible"; reason: IneligibleReason; subscribeUrl: string };
+	| {
+			kind: "ineligible";
+			reason: IneligibleReason;
+			subscribeUrl: string;
+			/** Whether this viewer may subscribe, so whether Subscribe is offered. */
+			canSubscribe: boolean;
+	  };
 
 /** The ineligible reasons with their own sentence; anything else reads `other`. */
 export type IneligibleReason =
@@ -92,8 +98,20 @@ export function trialEmptyView(input: {
 	pending: boolean;
 	unavailable: boolean;
 	eligibility: TrialEligibilityRead | null | undefined;
+	/**
+	 * The account's own membership rows, when read. Optional so a failed or
+	 * absent memberships read never blocks the trial: the server stays the
+	 * authority, and these rows only REMOVE an offer, never add one.
+	 */
+	memberships?: readonly TrialMembershipRow[] | null;
 }): TrialEmptyView {
 	if (input.unavailable) return { kind: "unchanged" };
+	// R1-4: surface A also covers an active member of a PAID org whose Bridge is
+	// killed or scope-excluded, while eligibility judges only the home tenant and
+	// can answer `eligible`. Offering that person a trial is wrong, so a live
+	// team membership keeps the page as it was. A server-side `already_on_team`
+	// for any membership would be the fuller fix; this is the renderer's half.
+	if (memberOfTeamOrg(input.memberships)) return { kind: "unchanged" };
 	if (input.pending || !input.eligibility) return { kind: "checking" };
 	const e = input.eligibility;
 	if (e.eligible)
@@ -118,9 +136,91 @@ export function trialEmptyView(input: {
 				kind: "ineligible",
 				reason,
 				subscribeUrl: subscribeUrlFor(e.tenant_id),
+				// C3: the server's `not_owner` gate covers STARTING a trial only;
+				// owners and admins can both subscribe (the console's
+				// `isBillingManager`), so an admin keeps the button. A plain member
+				// does not: the sentence already names who can act.
+				canSubscribe:
+					reason !== "not_owner" ||
+					canSubscribeIn(input.memberships, e.tenant_id),
 			};
 		}
 	}
+}
+
+/** The fields of a `memberships.list` row these rules read. */
+export type TrialMembershipRow = {
+	tenant_id: string;
+	role: string;
+	status: "active" | "pending" | "disabled";
+	plan?: { status: string } | null;
+};
+
+/**
+ * Whether the account is an ACTIVE member of an organization whose plan
+ * entitles team features (`active` or `past_due`, the same pair agent-server's
+ * `planStatusEntitlesOrgAccess` admits).
+ */
+export function memberOfTeamOrg(
+	memberships: readonly TrialMembershipRow[] | null | undefined,
+): boolean {
+	return (memberships ?? []).some(
+		(m) =>
+			m.status === "active" &&
+			(m.plan?.status === "active" || m.plan?.status === "past_due"),
+	);
+}
+
+/**
+ * Whether the viewer may subscribe for `tenantId`: an ACTIVE owner or admin
+ * there. A disabled member (the trial end disables every non-owner) cannot.
+ */
+export function canSubscribeIn(
+	memberships: readonly TrialMembershipRow[] | null | undefined,
+	tenantId: string | null | undefined,
+): boolean {
+	const row = (memberships ?? []).find((m) => m.tenant_id === tenantId);
+	return (
+		row?.status === "active" && (row.role === "owner" || row.role === "admin")
+	);
+}
+
+/**
+ * Who the paused note speaks to. `billing` (owner or admin) gets "subscribe to
+ * continue" with the Subscribe button; `member` gets who can act and no button,
+ * because the console would refuse them the purchase. X3: a member the trial end
+ * DISABLED still reads the status, so the note reaches them too.
+ *
+ * An unread or failed memberships read answers `billing`, round 1's behaviour:
+ * the console still decides who can pay, and guessing `member` would hide the
+ * button from the owner the note is mostly for.
+ */
+export function trialNoteAudience(
+	memberships: readonly TrialMembershipRow[] | null | undefined,
+	tenantId: string | null | undefined,
+): "billing" | "member" {
+	if (!memberships) return "billing";
+	const row = memberships.find((m) => m.tenant_id === tenantId);
+	if (!row) return "billing";
+	return canSubscribeIn(memberships, tenantId) ? "billing" : "member";
+}
+
+/**
+ * The page wiring the trial owns, as predicates so a test can pin them (R1-3).
+ * The trial panel replaces ONLY the plan-required panel; `signed_out`, `off`,
+ * `off_local`, `update_required` and `unavailable` keep the page's own panels.
+ */
+export function trialReplacesPanel(eligibility: string | null | undefined) {
+	return eligibility === "plan_required";
+}
+
+/** An ended trial is read-only on top of the hub's own `read_only` and guard. */
+export function teamBridgeReadOnly(input: {
+	statusReadOnly: boolean;
+	ownerGuard: boolean;
+	trialPaused: boolean;
+}): boolean {
+	return input.statusReadOnly || !input.ownerGuard || input.trialPaused;
 }
 
 /**
@@ -183,6 +283,42 @@ export function canStartTrial(input: {
 }): boolean {
 	if (!input.termsAccepted || input.pending) return false;
 	return input.orgName.trim().length <= TRIAL_ORG_NAME_MAX;
+}
+
+/**
+ * The start request for ONE press of "Start free trial", with a fresh id.
+ *
+ * WHY A FRESH ID PER PRESS (R1-1). The core proxy wraps the start in its
+ * receipt store keyed by `request_id`; when the upstream refuses (429, 403,
+ * 503) that claim is left without a result, and the store refuses every later
+ * call with the same id ("outcome is indeterminate", or "different input" once
+ * the name changes). Reusing an id after a refusal therefore made every retry
+ * fail until the dialog was reopened. A press is never retried with an old id:
+ * the double-submit guard is the disabled button while one is in flight, and a
+ * lost response is answered by agent-server's own 200 replay of the caller's
+ * live trial, so a second consent cannot be recorded.
+ */
+export function trialStartRequest(
+	input: {
+		tenantId: string;
+		termsVersion: string;
+		orgName: string;
+		defaultOrgName: string;
+	},
+	mintId: () => string,
+): {
+	tenantId: string;
+	termsVersion: string;
+	orgName?: string;
+	requestId: string;
+} {
+	return {
+		tenantId: input.tenantId,
+		termsVersion: input.termsVersion,
+		orgName:
+			input.orgName.trim() === input.defaultOrgName ? undefined : input.orgName,
+		requestId: mintId(),
+	};
 }
 
 /** Which inline sentence a refused start shows. */

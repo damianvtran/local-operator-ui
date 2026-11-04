@@ -1,212 +1,224 @@
 {
 	"ui.teamBridgeTrial.empty.title": {
 		"role": "Team Bridge page empty state (no Team organization)",
-		"tone": "Calm, plain, reassuring. A developer or paying customer deciding whether to try Teams; never salesy, no urgency.",
+		"tone": "Calm, plain, reassuring. A developer or paying customer deciding whether to try the Team plan; never salesy, no urgency.",
 		"length": "Wraps; dialog is max 32rem wide, empty state max 32rem. Buttons should stay short.",
-		"note": "English source: Try Teams free for 30 days Product names Radient, Teams, Team Bridge and Vault stay in English."
+		"note": "English source: Try the Team plan free for 30 days Product names Radient, Team (the plan: 'Team plan', 'Team trial'), Team Bridge and Vault stay in English."
 	},
 	"ui.teamBridgeTrial.empty.body": {
 		"role": "Team Bridge page empty state (no Team organization)",
-		"tone": "Calm, plain, reassuring. A developer or paying customer deciding whether to try Teams; never salesy, no urgency.",
+		"tone": "Calm, plain, reassuring. A developer or paying customer deciding whether to try the Team plan; never salesy, no urgency.",
 		"length": "Wraps; dialog is max 32rem wide, empty state max 32rem. Buttons should stay short.",
-		"note": "English source: Invite teammates, share a credit pool, and let your agents work together in Team Bridge. No credit card required. Product names Radient, Teams, Team Bridge and Vault stay in English."
+		"note": "English source: Invite teammates, share a credit pool, and let your agents work together in Team Bridge. No credit card required. Product names Radient, Team (the plan: 'Team plan', 'Team trial'), Team Bridge and Vault stay in English."
 	},
 	"ui.teamBridgeTrial.empty.start": {
 		"role": "Team Bridge page empty state (no Team organization)",
-		"tone": "Calm, plain, reassuring. A developer or paying customer deciding whether to try Teams; never salesy, no urgency.",
+		"tone": "Calm, plain, reassuring. A developer or paying customer deciding whether to try the Team plan; never salesy, no urgency.",
 		"length": "Wraps; dialog is max 32rem wide, empty state max 32rem. Buttons should stay short.",
 		"note": "English source: Start free 30-day Team trial"
 	},
 	"ui.teamBridgeTrial.empty.checking": {
 		"role": "Team Bridge page empty state (no Team organization)",
-		"tone": "Calm, plain, reassuring. A developer or paying customer deciding whether to try Teams; never salesy, no urgency.",
+		"tone": "Calm, plain, reassuring. A developer or paying customer deciding whether to try the Team plan; never salesy, no urgency.",
 		"length": "Wraps; dialog is max 32rem wide, empty state max 32rem. Buttons should stay short.",
-		"note": "English source: Checking Teams options… Product names Radient, Teams, Team Bridge and Vault stay in English."
+		"note": "English source: Checking Team plan options… Product names Radient, Team (the plan: 'Team plan', 'Team trial'), Team Bridge and Vault stay in English."
 	},
 	"ui.teamBridgeTrial.ineligible.title": {
 		"role": "Team Bridge page empty state when no trial can be offered",
-		"tone": "Calm, plain, reassuring. A developer or paying customer deciding whether to try Teams; never salesy, no urgency.",
+		"tone": "Calm, plain, reassuring. A developer or paying customer deciding whether to try the Team plan; never salesy, no urgency.",
 		"length": "Wraps; dialog is max 32rem wide, empty state max 32rem. Buttons should stay short.",
-		"note": "English source: Team Bridge is part of Radient Teams Product names Radient, Teams, Team Bridge and Vault stay in English."
+		"note": "English source: Team Bridge is part of the Radient Team plan Product names Radient, Team (the plan: 'Team plan', 'Team trial'), Team Bridge and Vault stay in English."
 	},
 	"ui.teamBridgeTrial.ineligible.trial_used": {
 		"role": "Team Bridge page empty state when no trial can be offered",
-		"tone": "Calm, plain, reassuring. A developer or paying customer deciding whether to try Teams; never salesy, no urgency.",
+		"tone": "Calm, plain, reassuring. A developer or paying customer deciding whether to try the Team plan; never salesy, no urgency.",
 		"length": "Wraps; dialog is max 32rem wide, empty state max 32rem. Buttons should stay short.",
-		"note": "English source: You've already used your free Team trial. Subscribe to Teams to keep working together. Product names Radient, Teams, Team Bridge and Vault stay in English."
+		"note": "English source: You've already used your free Team trial. Subscribe to the Team plan to keep working together. Product names Radient, Team (the plan: 'Team plan', 'Team trial'), Team Bridge and Vault stay in English."
 	},
 	"ui.teamBridgeTrial.ineligible.former_subscriber": {
 		"role": "Team Bridge page empty state when no trial can be offered",
-		"tone": "Calm, plain, reassuring. A developer or paying customer deciding whether to try Teams; never salesy, no urgency.",
+		"tone": "Calm, plain, reassuring. A developer or paying customer deciding whether to try the Team plan; never salesy, no urgency.",
 		"length": "Wraps; dialog is max 32rem wide, empty state max 32rem. Buttons should stay short.",
-		"note": "English source: Your organization has had Teams before. Subscribe to turn team features back on; your members and history are kept. Product names Radient, Teams, Team Bridge and Vault stay in English."
+		"note": "English source: Your organization has had the Team plan before. Subscribe to turn team features back on; your members and history are kept. Product names Radient, Team (the plan: 'Team plan', 'Team trial'), Team Bridge and Vault stay in English."
 	},
 	"ui.teamBridgeTrial.ineligible.not_owner": {
 		"role": "Team Bridge page empty state when no trial can be offered",
-		"tone": "Calm, plain, reassuring. A developer or paying customer deciding whether to try Teams; never salesy, no urgency.",
+		"tone": "Calm, plain, reassuring. A developer or paying customer deciding whether to try the Team plan; never salesy, no urgency.",
 		"length": "Wraps; dialog is max 32rem wide, empty state max 32rem. Buttons should stay short.",
-		"note": "English source: Only your organization's owner can start a Team trial or subscribe."
+		"note": "English source: Only an owner can start a Team trial. Owners and admins can subscribe."
 	},
 	"ui.teamBridgeTrial.ineligible.email_unverified": {
 		"role": "Team Bridge page empty state when no trial can be offered",
-		"tone": "Calm, plain, reassuring. A developer or paying customer deciding whether to try Teams; never salesy, no urgency.",
+		"tone": "Calm, plain, reassuring. A developer or paying customer deciding whether to try the Team plan; never salesy, no urgency.",
 		"length": "Wraps; dialog is max 32rem wide, empty state max 32rem. Buttons should stay short.",
-		"note": "English source: Verify your email address to start a free Team trial, or subscribe to Teams now. Product names Radient, Teams, Team Bridge and Vault stay in English."
+		"note": "English source: Verify your email address to start a free Team trial, or subscribe to the Team plan now. Product names Radient, Team (the plan: 'Team plan', 'Team trial'), Team Bridge and Vault stay in English."
 	},
 	"ui.teamBridgeTrial.ineligible.other": {
 		"role": "Team Bridge page empty state when no trial can be offered",
-		"tone": "Calm, plain, reassuring. A developer or paying customer deciding whether to try Teams; never salesy, no urgency.",
+		"tone": "Calm, plain, reassuring. A developer or paying customer deciding whether to try the Team plan; never salesy, no urgency.",
 		"length": "Wraps; dialog is max 32rem wide, empty state max 32rem. Buttons should stay short.",
-		"note": "English source: This account can't start a free Team trial. You can still subscribe to Teams. Product names Radient, Teams, Team Bridge and Vault stay in English."
+		"note": "English source: This account can't start a free Team trial. You can still subscribe to the Team plan. Product names Radient, Team (the plan: 'Team plan', 'Team trial'), Team Bridge and Vault stay in English."
 	},
 	"ui.teamBridgeTrial.subscribe": {
-		"role": "Button opening the console's Teams subscription page",
-		"tone": "Calm, plain, reassuring. A developer or paying customer deciding whether to try Teams; never salesy, no urgency.",
+		"role": "Button opening the console's Team plan subscription page; the one label for the trial-to-paid action everywhere ('Subscribe to Team')",
+		"tone": "Calm, plain, reassuring. A developer or paying customer deciding whether to try the Team plan; never salesy, no urgency.",
 		"length": "Wraps; dialog is max 32rem wide, empty state max 32rem. Buttons should stay short.",
-		"note": "English source: Subscribe to Teams Product names Radient, Teams, Team Bridge and Vault stay in English."
+		"note": "English source: Subscribe to Team Product names Radient, Team (the plan: 'Team plan', 'Team trial'), Team Bridge and Vault stay in English."
 	},
 	"ui.teamBridgeTrial.dialog.title": {
 		"role": "Start-trial confirmation dialog",
-		"tone": "Calm, plain, reassuring. A developer or paying customer deciding whether to try Teams; never salesy, no urgency.",
+		"tone": "Calm, plain, reassuring. A developer or paying customer deciding whether to try the Team plan; never salesy, no urgency.",
 		"length": "Wraps; dialog is max 32rem wide, empty state max 32rem. Buttons should stay short.",
 		"note": "English source: Start your free Team trial"
 	},
 	"ui.teamBridgeTrial.dialog.lead": {
 		"role": "Start-trial confirmation dialog",
-		"tone": "Calm, plain, reassuring. A developer or paying customer deciding whether to try Teams; never salesy, no urgency.",
+		"tone": "Calm, plain, reassuring. A developer or paying customer deciding whether to try the Team plan; never salesy, no urgency.",
 		"length": "Wraps; dialog is max 32rem wide, empty state max 32rem. Buttons should stay short.",
 		"note": "English source: Start your free 30-day Team trial. No credit card required. Your trial runs until {date}. After that, team features pause until you subscribe; nothing is charged automatically. Keep {date} unchanged; it is a full localized date such as 'Thursday, December 3, 2026'. Operator-approved promise the user accepts the Terms against: keep every clause (no card, end date, pause until subscribe, nothing charged automatically)."
 	},
 	"ui.teamBridgeTrial.dialog.org_label": {
 		"role": "Start-trial confirmation dialog",
-		"tone": "Calm, plain, reassuring. A developer or paying customer deciding whether to try Teams; never salesy, no urgency.",
+		"tone": "Calm, plain, reassuring. A developer or paying customer deciding whether to try the Team plan; never salesy, no urgency.",
 		"length": "Wraps; dialog is max 32rem wide, empty state max 32rem. Buttons should stay short.",
 		"note": "English source: Organization name"
 	},
 	"ui.teamBridgeTrial.dialog.included_heading": {
 		"role": "Start-trial confirmation dialog",
-		"tone": "Calm, plain, reassuring. A developer or paying customer deciding whether to try Teams; never salesy, no urgency.",
+		"tone": "Calm, plain, reassuring. A developer or paying customer deciding whether to try the Team plan; never salesy, no urgency.",
 		"length": "Wraps; dialog is max 32rem wide, empty state max 32rem. Buttons should stay short.",
 		"note": "English source: What's included"
 	},
 	"ui.teamBridgeTrial.dialog.included_invites": {
 		"role": "Start-trial confirmation dialog",
-		"tone": "Calm, plain, reassuring. A developer or paying customer deciding whether to try Teams; never salesy, no urgency.",
+		"tone": "Calm, plain, reassuring. A developer or paying customer deciding whether to try the Team plan; never salesy, no urgency.",
 		"length": "Wraps; dialog is max 32rem wide, empty state max 32rem. Buttons should stay short.",
 		"note": "English source: Invite teammates to your organization"
 	},
 	"ui.teamBridgeTrial.dialog.included_credits": {
 		"role": "Start-trial confirmation dialog",
-		"tone": "Calm, plain, reassuring. A developer or paying customer deciding whether to try Teams; never salesy, no urgency.",
+		"tone": "Calm, plain, reassuring. A developer or paying customer deciding whether to try the Team plan; never salesy, no urgency.",
 		"length": "Wraps; dialog is max 32rem wide, empty state max 32rem. Buttons should stay short.",
 		"note": "English source: Pooled credits your members can spend from"
 	},
 	"ui.teamBridgeTrial.dialog.included_bridge": {
 		"role": "Start-trial confirmation dialog",
-		"tone": "Calm, plain, reassuring. A developer or paying customer deciding whether to try Teams; never salesy, no urgency.",
+		"tone": "Calm, plain, reassuring. A developer or paying customer deciding whether to try the Team plan; never salesy, no urgency.",
 		"length": "Wraps; dialog is max 32rem wide, empty state max 32rem. Buttons should stay short.",
-		"note": "English source: Team Bridge for your team's conversations Product names Radient, Teams, Team Bridge and Vault stay in English."
+		"note": "English source: Team Bridge for your team's conversations Product names Radient, Team (the plan: 'Team plan', 'Team trial'), Team Bridge and Vault stay in English."
 	},
 	"ui.teamBridgeTrial.dialog.included_vault": {
 		"role": "Start-trial confirmation dialog",
-		"tone": "Calm, plain, reassuring. A developer or paying customer deciding whether to try Teams; never salesy, no urgency.",
+		"tone": "Calm, plain, reassuring. A developer or paying customer deciding whether to try the Team plan; never salesy, no urgency.",
 		"length": "Wraps; dialog is max 32rem wide, empty state max 32rem. Buttons should stay short.",
-		"note": "English source: Vault team vaults for shared secrets Product names Radient, Teams, Team Bridge and Vault stay in English."
+		"note": "English source: Vault team vaults for shared secrets Product names Radient, Team (the plan: 'Team plan', 'Team trial'), Team Bridge and Vault stay in English."
 	},
 	"ui.teamBridgeTrial.dialog.end_heading": {
 		"role": "Start-trial confirmation dialog",
-		"tone": "Calm, plain, reassuring. A developer or paying customer deciding whether to try Teams; never salesy, no urgency.",
+		"tone": "Calm, plain, reassuring. A developer or paying customer deciding whether to try the Team plan; never salesy, no urgency.",
 		"length": "Wraps; dialog is max 32rem wide, empty state max 32rem. Buttons should stay short.",
 		"note": "English source: When the trial ends"
 	},
 	"ui.teamBridgeTrial.dialog.end_pause": {
 		"role": "Start-trial confirmation dialog",
-		"tone": "Calm, plain, reassuring. A developer or paying customer deciding whether to try Teams; never salesy, no urgency.",
+		"tone": "Calm, plain, reassuring. A developer or paying customer deciding whether to try the Team plan; never salesy, no urgency.",
 		"length": "Wraps; dialog is max 32rem wide, empty state max 32rem. Buttons should stay short.",
-		"note": "English source: Team features pause until you subscribe. Your organization, members and messages are kept."
+		"note": "English source: Team features pause until you subscribe. Your organization and members are kept, and Team Bridge history stays readable (read-only)."
 	},
 	"ui.teamBridgeTrial.dialog.end_vault": {
 		"role": "Start-trial confirmation dialog",
-		"tone": "Calm, plain, reassuring. A developer or paying customer deciding whether to try Teams; never salesy, no urgency.",
+		"tone": "Calm, plain, reassuring. A developer or paying customer deciding whether to try the Team plan; never salesy, no urgency.",
 		"length": "Wraps; dialog is max 32rem wide, empty state max 32rem. Buttons should stay short.",
 		"note": "English source: Team vaults are locked and kept, and unlock again when you subscribe."
 	},
 	"ui.teamBridgeTrial.dialog.end_credits": {
 		"role": "Start-trial confirmation dialog",
-		"tone": "Calm, plain, reassuring. A developer or paying customer deciding whether to try Teams; never salesy, no urgency.",
+		"tone": "Calm, plain, reassuring. A developer or paying customer deciding whether to try the Team plan; never salesy, no urgency.",
 		"length": "Wraps; dialog is max 32rem wide, empty state max 32rem. Buttons should stay short.",
 		"note": "English source: Credits you bought stay on the organization's balance."
 	},
+	"ui.teamBridgeTrial.dialog.end_invites": {
+		"role": "Start-trial confirmation dialog",
+		"tone": "Calm, plain, reassuring. A developer or paying customer deciding whether to try the Team plan; never salesy, no urgency.",
+		"length": "Wraps; dialog is max 32rem wide, empty state max 32rem. Buttons should stay short.",
+		"note": "English source: Pending invitations are withdrawn and not restored. Send them again after you subscribe. States the documented end-of-trial rule: pending invitations are withdrawn when the trial ends and are not restored by subscribing; the owner re-sends them. Keep both halves."
+	},
 	"ui.teamBridgeTrial.dialog.terms_agree": {
 		"role": "Start-trial confirmation dialog",
-		"tone": "Calm, plain, reassuring. A developer or paying customer deciding whether to try Teams; never salesy, no urgency.",
+		"tone": "Calm, plain, reassuring. A developer or paying customer deciding whether to try the Team plan; never salesy, no urgency.",
 		"length": "Wraps; dialog is max 32rem wide, empty state max 32rem. Buttons should stay short.",
 		"note": "English source: I agree to the Terms of Service"
 	},
 	"ui.teamBridgeTrial.dialog.terms_read": {
 		"role": "Start-trial confirmation dialog",
-		"tone": "Calm, plain, reassuring. A developer or paying customer deciding whether to try Teams; never salesy, no urgency.",
+		"tone": "Calm, plain, reassuring. A developer or paying customer deciding whether to try the Team plan; never salesy, no urgency.",
 		"length": "Wraps; dialog is max 32rem wide, empty state max 32rem. Buttons should stay short.",
 		"note": "English source: Read the Terms of Service"
 	},
 	"ui.teamBridgeTrial.dialog.cancel": {
 		"role": "Start-trial confirmation dialog",
-		"tone": "Calm, plain, reassuring. A developer or paying customer deciding whether to try Teams; never salesy, no urgency.",
+		"tone": "Calm, plain, reassuring. A developer or paying customer deciding whether to try the Team plan; never salesy, no urgency.",
 		"length": "Wraps; dialog is max 32rem wide, empty state max 32rem. Buttons should stay short.",
 		"note": "English source: Not now"
 	},
 	"ui.teamBridgeTrial.dialog.confirm": {
 		"role": "Start-trial confirmation dialog",
-		"tone": "Calm, plain, reassuring. A developer or paying customer deciding whether to try Teams; never salesy, no urgency.",
+		"tone": "Calm, plain, reassuring. A developer or paying customer deciding whether to try the Team plan; never salesy, no urgency.",
 		"length": "Wraps; dialog is max 32rem wide, empty state max 32rem. Buttons should stay short.",
 		"note": "English source: Start free trial"
 	},
 	"ui.teamBridgeTrial.dialog.starting": {
 		"role": "Start-trial confirmation dialog",
-		"tone": "Calm, plain, reassuring. A developer or paying customer deciding whether to try Teams; never salesy, no urgency.",
+		"tone": "Calm, plain, reassuring. A developer or paying customer deciding whether to try the Team plan; never salesy, no urgency.",
 		"length": "Wraps; dialog is max 32rem wide, empty state max 32rem. Buttons should stay short.",
 		"note": "English source: Starting…"
 	},
 	"ui.teamBridgeTrial.error.terms_outdated": {
 		"role": "Inline error inside the start-trial dialog",
-		"tone": "Calm, plain, reassuring. A developer or paying customer deciding whether to try Teams; never salesy, no urgency.",
+		"tone": "Calm, plain, reassuring. A developer or paying customer deciding whether to try the Team plan; never salesy, no urgency.",
 		"length": "Wraps; dialog is max 32rem wide, empty state max 32rem. Buttons should stay short.",
 		"note": "English source: The Terms of Service were updated. Review them and agree again to start your trial."
 	},
 	"ui.teamBridgeTrial.error.not_eligible": {
 		"role": "Inline error inside the start-trial dialog",
-		"tone": "Calm, plain, reassuring. A developer or paying customer deciding whether to try Teams; never salesy, no urgency.",
+		"tone": "Calm, plain, reassuring. A developer or paying customer deciding whether to try the Team plan; never salesy, no urgency.",
 		"length": "Wraps; dialog is max 32rem wide, empty state max 32rem. Buttons should stay short.",
 		"note": "English source: This account can't start a free Team trial."
 	},
 	"ui.teamBridgeTrial.error.rate_limited": {
 		"role": "Inline error inside the start-trial dialog",
-		"tone": "Calm, plain, reassuring. A developer or paying customer deciding whether to try Teams; never salesy, no urgency.",
+		"tone": "Calm, plain, reassuring. A developer or paying customer deciding whether to try the Team plan; never salesy, no urgency.",
 		"length": "Wraps; dialog is max 32rem wide, empty state max 32rem. Buttons should stay short.",
 		"note": "English source: Too many trial requests right now. Try again in a few minutes."
 	},
 	"ui.teamBridgeTrial.error.generic": {
 		"role": "Inline error inside the start-trial dialog",
-		"tone": "Calm, plain, reassuring. A developer or paying customer deciding whether to try Teams; never salesy, no urgency.",
+		"tone": "Calm, plain, reassuring. A developer or paying customer deciding whether to try the Team plan; never salesy, no urgency.",
 		"length": "Wraps; dialog is max 32rem wide, empty state max 32rem. Buttons should stay short.",
 		"note": "English source: The trial couldn't be started. Try again in a moment."
 	},
 	"ui.teamBridgeTrial.active.note": {
 		"role": "Quiet one-line note at the top of the Team Bridge page while a trial runs",
-		"tone": "Calm, plain, reassuring. A developer or paying customer deciding whether to try Teams; never salesy, no urgency.",
+		"tone": "Calm, plain, reassuring. A developer or paying customer deciding whether to try the Team plan; never salesy, no urgency.",
 		"length": "Wraps; dialog is max 32rem wide, empty state max 32rem. Buttons should stay short.",
 		"note": "English source: Trial active until {date} Keep {date} unchanged; it is a full localized date such as 'Thursday, December 3, 2026'."
 	},
 	"ui.teamBridgeTrial.active.invite": {
 		"role": "Quiet one-line note at the top of the Team Bridge page while a trial runs",
-		"tone": "Calm, plain, reassuring. A developer or paying customer deciding whether to try Teams; never salesy, no urgency.",
+		"tone": "Calm, plain, reassuring. A developer or paying customer deciding whether to try the Team plan; never salesy, no urgency.",
 		"length": "Wraps; dialog is max 32rem wide, empty state max 32rem. Buttons should stay short.",
 		"note": "English source: Invite teammates"
 	},
 	"ui.teamBridgeTrial.paused.note": {
 		"role": "Quiet one-line notice at the top of a read-only Team Bridge page after the trial ended",
-		"tone": "Calm, plain, reassuring. A developer or paying customer deciding whether to try Teams; never salesy, no urgency.",
+		"tone": "Calm, plain, reassuring. A developer or paying customer deciding whether to try the Team plan; never salesy, no urgency.",
 		"length": "Wraps; dialog is max 32rem wide, empty state max 32rem. Buttons should stay short.",
-		"note": "English source: Your Team trial ended on {date}. Subscribe to continue; your messages are kept. Keep {date} unchanged; it is a full localized date such as 'Thursday, December 3, 2026'."
+		"note": "English source: Your Team trial ended on {date}. Team Bridge history stays readable (read-only); subscribe to continue. Keep {date} unchanged; it is a full localized date such as 'Thursday, December 3, 2026'."
+	},
+	"ui.teamBridgeTrial.paused.note_member": {
+		"role": "Quiet one-line notice at the top of a read-only Team Bridge page after the trial ended",
+		"tone": "Calm, plain, reassuring. A developer or paying customer deciding whether to try the Team plan; never salesy, no urgency.",
+		"length": "Wraps; dialog is max 32rem wide, empty state max 32rem. Buttons should stay short.",
+		"note": "English source: Your organization's Team trial ended on {date}. Team Bridge history stays readable (read-only); an owner or admin can subscribe to continue. Shown to a member who cannot subscribe (not an owner or admin, or a member the trial end disabled), so it names who can act instead of offering a button. Keep {date} unchanged; it is a full localized date. Product names Radient, Team Bridge stay in English."
 	}
 }

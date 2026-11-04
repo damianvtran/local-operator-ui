@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { build } from "esbuild";
 
@@ -107,6 +108,8 @@ for (const [reason, expected] of [
 		});
 		assert.equal(view.kind, "ineligible");
 		assert.equal(view.reason, expected);
+		// Without membership rows only `not_owner` withholds the button.
+		assert.equal(view.canSubscribe, expected !== "not_owner");
 		assert.equal(
 			view.subscribeUrl,
 			"https://console.radienthq.com/dashboard/team?tenant=ten_home&src=lop",
@@ -169,4 +172,149 @@ test("refusal codes map to the sentence the user can act on", () => {
 	assert.equal(model.trialStartFailure("rate_limited"), "rate_limited");
 	assert.equal(model.trialStartFailure("radient_upstream_failed"), "generic");
 	assert.equal(model.trialStartFailure(null), "generic");
+});
+
+const row = (over) => ({
+	tenant_id: "ten_home",
+	role: "member",
+	status: "active",
+	plan: { status: "none" },
+	...over,
+});
+
+test("C3: not_owner keeps Subscribe for an active admin or owner, never for a member", () => {
+	const view = (memberships) =>
+		model.trialEmptyView({
+			pending: false,
+			unavailable: false,
+			eligibility: { ...ELIGIBLE, eligible: false, reason: "not_owner" },
+			memberships,
+		});
+	assert.equal(view([row({ role: "admin" })]).canSubscribe, true);
+	assert.equal(view([row({ role: "owner" })]).canSubscribe, true);
+	assert.equal(view([row({ role: "member" })]).canSubscribe, false);
+	// A disabled admin cannot buy: the console refuses non-active rows.
+	assert.equal(
+		view([row({ role: "admin", status: "disabled" })]).canSubscribe,
+		false,
+	);
+	// An admin elsewhere is not an admin here.
+	assert.equal(
+		view([row({ role: "admin", tenant_id: "ten_other" })]).canSubscribe,
+		false,
+	);
+	assert.equal(view(null).canSubscribe, false);
+});
+
+test("R1-4: an active member of a paid org is never offered a trial", () => {
+	const view = (memberships) =>
+		model.trialEmptyView({
+			pending: false,
+			unavailable: false,
+			eligibility: ELIGIBLE,
+			memberships,
+		}).kind;
+	for (const status of ["active", "past_due"])
+		assert.equal(
+			view([row({ tenant_id: "ten_paid", plan: { status } })]),
+			"unchanged",
+		);
+	// Not entitling: a canceled plan, or a disabled/pending row of a paid org.
+	assert.equal(
+		view([row({ tenant_id: "ten_paid", plan: { status: "canceled" } })]),
+		"eligible",
+	);
+	assert.equal(
+		view([
+			row({
+				tenant_id: "ten_paid",
+				status: "disabled",
+				plan: { status: "active" },
+			}),
+		]),
+		"eligible",
+	);
+	// A failed or absent memberships read never blocks the offer.
+	assert.equal(view(null), "eligible");
+	assert.equal(view(undefined), "eligible");
+});
+
+test("R1-2/X3: the paused note names who can act for a member, and keeps Subscribe for billing roles", () => {
+	const aud = model.trialNoteAudience;
+	assert.equal(aud([row({ role: "owner" })], "ten_home"), "billing");
+	assert.equal(aud([row({ role: "admin" })], "ten_home"), "billing");
+	assert.equal(aud([row({ role: "member" })], "ten_home"), "member");
+	// The trial end disables every non-owner, admins included.
+	assert.equal(
+		aud([row({ role: "admin", status: "disabled" })], "ten_home"),
+		"member",
+	);
+	assert.equal(aud([row({ status: "disabled" })], "ten_home"), "member");
+	// No read, or no row for that org: round 1's behaviour (the console decides).
+	assert.equal(aud(null, "ten_home"), "billing");
+	assert.equal(aud([row({ tenant_id: "ten_other" })], "ten_home"), "billing");
+});
+
+test("R1-1: every press mints a fresh request id, so a refusal never poisons a retry", () => {
+	let n = 0;
+	const mint = () => `req-${++n}`;
+	const input = {
+		tenantId: "ten_home",
+		termsVersion: "2026-07-29",
+		orgName: "Ada's Organization",
+		defaultOrgName: "Ada's Organization",
+	};
+	const first = model.trialStartRequest(input, mint);
+	// The same answer pressed again after a 429: a new id, not the refused one.
+	const retry = model.trialStartRequest(input, mint);
+	assert.notEqual(first.requestId, retry.requestId);
+	// The unchanged default name is not sent ("keep the current name").
+	assert.equal(first.orgName, undefined);
+	const renamed = model.trialStartRequest({ ...input, orgName: "Acme" }, mint);
+	assert.equal(renamed.orgName, "Acme");
+	assert.equal(
+		new Set([first, retry, renamed].map((r) => r.requestId)).size,
+		3,
+	);
+});
+
+test("R1-3: the trial replaces only the plan-required panel, and paused folds into readOnly", () => {
+	assert.equal(model.trialReplacesPanel("plan_required"), true);
+	for (const other of [
+		"signed_out",
+		"off",
+		"off_local",
+		"update_required",
+		"unavailable",
+		null,
+		undefined,
+	])
+		assert.equal(model.trialReplacesPanel(other), false, String(other));
+	const ro = (statusReadOnly, ownerGuard, trialPaused) =>
+		model.teamBridgeReadOnly({ statusReadOnly, ownerGuard, trialPaused });
+	assert.equal(ro(false, true, false), false);
+	assert.equal(ro(false, true, true), true);
+	assert.equal(ro(true, true, false), true);
+	assert.equal(ro(false, false, false), true);
+});
+
+// The page-wiring pins (R1-3), at module scope for biome's useTopLevelRegex.
+const GATE_ROUTES_THROUGH_PREDICATE =
+	/if \(trialReplacesPanel\(eligibility\) && noOrgPanel\) return noOrgPanel;\n\tif \(eligibility\) return <TeamBridgeEligibilityPanel reason=\{eligibility\} \/>;/;
+const OLD_INLINE_GATE = /eligibility === "plan_required" && noOrgPanel/;
+const READ_ONLY_ROUTES_THROUGH_PREDICATE =
+	/const readOnly = teamBridgeReadOnly\(\{\n\t\tstatusReadOnly: status\.data\?\.read_only === true,\n\t\townerGuard,\n\t\ttrialPaused: trialNote\.paused,\n\t\}\);/;
+const PAUSED_EXPLAINS_READ_ONLY = /readOnlyExplained=\{trialNote\.paused\}/;
+
+test("R1-3: the page routes its gate and readOnly through those predicates", () => {
+	// A source pin, the house pattern (team-bridge-composer-ring.test.mjs): the
+	// predicates above prove nothing if the page stops calling them.
+	const page = readFileSync(
+		"src/renderer/src/features/team-bridge/team-bridge-page.tsx",
+		"utf8",
+	);
+	assert.match(page, GATE_ROUTES_THROUGH_PREDICATE);
+	assert.doesNotMatch(page, OLD_INLINE_GATE);
+	assert.match(page, READ_ONLY_ROUTES_THROUGH_PREDICATE);
+	assert.match(page, PAUSED_EXPLAINS_READ_ONLY);
 });

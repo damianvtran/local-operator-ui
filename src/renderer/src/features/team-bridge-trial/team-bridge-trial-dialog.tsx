@@ -15,10 +15,12 @@
  * again rather than retrying silently. The Terms link is pinned
  * (`TERMS_URL`), never taken from a response.
  *
- * ONE PRESS, ONE REQUEST ID. The id is minted when the dialog opens and reused
- * for every retry of the same answer, so a lost response replays the backend's
- * receipt instead of recording consent twice; a refusal that changes the answer
- * (a re-tick after `terms_outdated`) mints a fresh one.
+ * ONE PRESS, ONE REQUEST ID. Every press of "Start free trial" mints a fresh
+ * id (`trialStartRequest`), so a refusal or failure never poisons the next
+ * press, and a changed name or a re-ticked box is a new request by
+ * construction. Reusing an id after a refusal is what made every retry fail in
+ * round 1 (R1-1): the core receipt store leaves a refused claim without a
+ * result and rejects that id from then on.
  *
  * Uses the shared `Dialog` primitives, so it inherits the app's dialog surface,
  * elevation and every theme (light and dark) through role tokens.
@@ -37,13 +39,14 @@ import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { openConsolePage } from "@shared/utils/radient-account-copy";
 import { useQueryClient } from "@tanstack/react-query";
-import { type FC, useEffect, useId, useRef, useState } from "react";
+import { type FC, useEffect, useId, useState } from "react";
 import {
 	TRIAL_ORG_NAME_MAX,
 	type TrialStartFailure,
 	canStartTrial,
 	formatTrialDate,
 	trialStartFailure,
+	trialStartRequest,
 } from "./team-bridge-trial-model";
 import { teamTrialKeys, useStartTeamTrial } from "./use-team-trial";
 
@@ -58,6 +61,8 @@ const AT_END = [
 	"ui.teamBridgeTrial.dialog.end_pause",
 	"ui.teamBridgeTrial.dialog.end_vault",
 	"ui.teamBridgeTrial.dialog.end_credits",
+	// X6: invitations are withdrawn at the end and NOT restored by subscribing.
+	"ui.teamBridgeTrial.dialog.end_invites",
 ] as const;
 
 const FAILURE_COPY = {
@@ -231,13 +236,11 @@ export const TeamBridgeTrialDialog: FC<{
 	const [orgName, setOrgName] = useState(defaultOrgName);
 	const [termsAccepted, setTermsAccepted] = useState(false);
 	const [failure, setFailure] = useState<TrialStartFailure | null>(null);
-	const requestId = useRef<string>("");
 	useEffect(() => {
 		if (!open) return;
 		setOrgName(defaultOrgName);
 		setTermsAccepted(false);
 		setFailure(null);
-		requestId.current = crypto.randomUUID();
 	}, [open, defaultOrgName]);
 
 	return (
@@ -250,8 +253,6 @@ export const TeamBridgeTrialDialog: FC<{
 			onOrgNameChange={setOrgName}
 			termsAccepted={termsAccepted}
 			onTermsAcceptedChange={(value) => {
-				// A changed answer is a new question for the receipt.
-				if (value !== termsAccepted) requestId.current = crypto.randomUUID();
 				setTermsAccepted(value);
 				setFailure(null);
 			}}
@@ -260,12 +261,10 @@ export const TeamBridgeTrialDialog: FC<{
 			onConfirm={() => {
 				setFailure(null);
 				start.mutate(
-					{
-						tenantId,
-						termsVersion,
-						orgName: orgName.trim() === defaultOrgName ? undefined : orgName,
-						requestId: requestId.current,
-					},
+					trialStartRequest(
+						{ tenantId, termsVersion, orgName, defaultOrgName },
+						() => crypto.randomUUID(),
+					),
 					{
 						onSuccess: () => onClose(),
 						onError: (error) => {

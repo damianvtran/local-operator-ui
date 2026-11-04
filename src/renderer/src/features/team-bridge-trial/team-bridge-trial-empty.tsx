@@ -14,6 +14,7 @@
  * already on Teams) the container renders `fallback`: the page's existing panel,
  * unchanged.
  */
+import { useMembershipsQuery } from "@features/agent-hub/hooks/use-memberships-query";
 import { Spinner } from "@shared/components/common/spinner";
 import { Button } from "@shared/components/ui/button";
 import { t } from "@shared/i18n";
@@ -81,9 +82,10 @@ export const TeamBridgeTrialEmptyView: FC<{
 				<p className="mt-2 text-pretty text-[13px] leading-relaxed text-ink-muted">
 					{t(INELIGIBLE_COPY[view.reason])}
 				</p>
-				{/* A person who cannot start OR buy (not the owner) gets no button:
-				    the sentence already names who can act. */}
-				{view.reason !== "not_owner" && (
+				{/* Only a viewer who can buy gets the button (C3: owners AND admins
+				    can subscribe; a plain member cannot, and the sentence names who
+				    can act). */}
+				{view.canSubscribe && (
 					<Button
 						variant="secondary"
 						size="sm"
@@ -129,11 +131,16 @@ export const TeamBridgeTrialEmpty: FC<{ fallback: ReactNode }> = ({
 	fallback,
 }) => {
 	const eligibility = useTeamTrialEligibility(true);
+	// The account's own rows: they decide whether an admin keeps Subscribe and
+	// whether a paid-org member is offered no trial at all (R1-4). A failed read
+	// leaves them null, which the model treats as "no extra fact".
+	const memberships = useMembershipsQuery();
 	const [dialogOpen, setDialogOpen] = useState(false);
 	const view = trialEmptyView({
 		pending: eligibility.isPending,
 		unavailable: eligibility.unavailable,
 		eligibility: eligibility.data,
+		memberships: memberships.data?.memberships ?? null,
 	});
 	if (view.kind === "unchanged") return <>{fallback}</>;
 	return (
