@@ -1,0 +1,97 @@
+{
+ "schema": 1,
+ "receipt_kind": "locale-audit (PR delta audit)",
+ "date": "2026-11-04",
+ "auditor": "translation-auditor",
+ "agent": "translation-auditor",
+ "model": "anthropic/claude-opus-5-5",
+ "model_provenance": "Served model as announced by the harness preamble for session 7c739a6246b4 (anthropic/claude-opus-5-5); no fallback announced or observed.",
+ "model_fallback": {
+  "announced": false,
+  "observed": false
+ },
+ "status": "passed",
+ "result": "clean-with-findings",
+ "namespace": "ui.teamBridge",
+ "locale": "ru",
+ "audit_id": "tb1670-7c739a6246b4-ru",
+ "instance": "7c739a6246b4-pr1670-ru",
+ "session": "7c739a6246b4",
+ "integration": {
+  "pr": 1670,
+  "repo": "damianvtran/local-operator-ui",
+  "branch": "feat/team-bridge-members-panel",
+  "base": "a70a761ae4704a43c60470beed7c5eaeba763e90",
+  "audited_head": "4397967ebe01f60a6a2c8b68b430f36c68fa90fe",
+  "auditor_fix_commit": "the commit that adds this record"
+ },
+ "independence": "Independent auditor: lopdev team translation-auditor, session 7c739a6246b4. Did not translate the 23 members_panel values (they arrived in the implementer's commit 4397967 on PR #1670), wrote no English copy or code in the PR, and is not any prior ui.teamBridge auditor (66bfac56f929-merge1643-ru). It applied only the corrections listed in findings. Same model family as the team coder (anthropic/claude-opus-5-5), separate agent instance; disclosed. No MT service used. Row written by ledger-assemble.mjs.",
+ "sha256": {
+  "ru": "fd1a615aa146bab37116189382733ac2fff14cf0bae2bc5ce1ffa9973d88f455",
+  "en": "28aed4e764637f920fa2fa67f089cffe1bcf250c3840f19bc47babeaae360352"
+ },
+ "context_sha256": "74f1e0353fe96e3d141d9a43b1134308fb4fcf1b57f8c01e73110416fd79c313",
+ "style_guide": {
+  "path": "~/local-operator i18n/style-guides/ru.md",
+  "sha256": "f20e1cafaf70578c17ce072c71725628808d228e4be5604329f8da30386f1fb5",
+  "glossary_sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+  "core_commit": "b42471d3935"
+ },
+ "scope": {
+  "delta_kind": "Delta audit of PR #1670 (a70a761ae47..4397967ebe0): the 23 new ui.teamBridge.members_panel.* values read against en, the en context sidecar, the glossary and the ru style guide, composed with real arguments; existing ui.teamBridge copy read for glossary consistency. No pre-existing value changed in the PR (verified); the other 342 values are byte-identical to the 66bfac56f929-merge1643-ru audited bytes. No rendered fit or native RTL rendering claimed.",
+  "keys_added": [
+   "ui.teamBridge.members_panel.title",
+   "ui.teamBridge.members_panel.close",
+   "ui.teamBridge.members_panel.open_label",
+   "ui.teamBridge.members_panel.open_label_invited",
+   "ui.teamBridge.members_panel.state.pending_approval",
+   "ui.teamBridge.members_panel.leave_label",
+   "ui.teamBridge.members_panel.leave_tooltip",
+   "ui.teamBridge.members_panel.decline_label",
+   "ui.teamBridge.members_panel.decline_tooltip",
+   "ui.teamBridge.members_panel.confirm.remove_title",
+   "ui.teamBridge.members_panel.confirm.remove_body",
+   "ui.teamBridge.members_panel.confirm.withdraw_body",
+   "ui.teamBridge.members_panel.confirm.leave_title",
+   "ui.teamBridge.members_panel.confirm.leave_body",
+   "ui.teamBridge.members_panel.confirm.decline_title",
+   "ui.teamBridge.members_panel.confirm.decline_body",
+   "ui.teamBridge.members_panel.confirm.remove",
+   "ui.teamBridge.members_panel.confirm.leave",
+   "ui.teamBridge.members_panel.confirm.decline",
+   "ui.teamBridge.members_panel.note.general",
+   "ui.teamBridge.members_panel.note.humans",
+   "ui.teamBridge.members_panel.note.agents",
+   "ui.teamBridge.members_panel.note.dm"
+  ],
+  "keys_changed_by_auditor": [
+   "ui.teamBridge.members_panel.note.general",
+   "ui.teamBridge.members_panel.note.humans"
+  ]
+ },
+ "findings": [
+  {
+   "id": "RU-N1",
+   "severity": "nit",
+   "keys": [
+    "ui.teamBridge.members_panel.note.general",
+    "ui.teamBridge.members_panel.note.humans"
+   ],
+   "summary": "'отключите звук' vs the glossary 'Выключить звук' (menu.mute) and 'Звук выключен' (notify.muted) the note points to.",
+   "proposed": "'выключите звук'",
+   "disposition": "fixed by auditor in this commit"
+  }
+ ],
+ "evidence": {
+  "record": "i18n/audits/evidence/ru/ui.teamBridge/tb1670-7c739a6246b4-ru/record.json",
+  "record_sha256": "005103b322050ee595b04d9728543e2ac5e035b8d05aa3b99f1542bcdf47a2f0"
+ },
+ "checks": {
+  "icu_command": "node scripts/verify.mjs (worktree root; @formatjs/icu-messageformat-parser) — all 365 values parse; argument names equal en; CLDR plural arms per style guide on delta keys",
+  "compose_command": "node scripts/compose.mjs (intl-messageformat, real arguments incl. 0/1/2/5/21/10^6)",
+  "unicode": "All values NFC; no bidi controls (U+200E/F, U+061C, U+202A-E, U+2066-9).",
+  "key_set": "365 keys, equal to English, same order.",
+  "execution_log": "i18n/audits/evidence/ru/ui.teamBridge/tb1670-7c739a6246b4-ru/audit.log"
+ },
+ "terminal": true
+}

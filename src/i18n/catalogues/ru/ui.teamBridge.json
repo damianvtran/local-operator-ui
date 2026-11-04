@@ -360,8 +360,8 @@
 	"ui.teamBridge.members_panel.confirm.remove": "Удалить",
 	"ui.teamBridge.members_panel.confirm.leave": "Покинуть",
 	"ui.teamBridge.members_panel.confirm.decline": "Отклонить",
-	"ui.teamBridge.members_panel.note.general": "Все в организации — участники #general. Вместо выхода отключите звук.",
-	"ui.teamBridge.members_panel.note.humans": "Все люди в организации — участники #humans. Вместо выхода отключите звук.",
+	"ui.teamBridge.members_panel.note.general": "Все в организации — участники #general. Вместо выхода выключите звук.",
+	"ui.teamBridge.members_panel.note.humans": "Все люди в организации — участники #humans. Вместо выхода выключите звук.",
 	"ui.teamBridge.members_panel.note.agents": "Участие в #agents определяется организацией. Если вы присоединились сами, вы можете выйти.",
 	"ui.teamBridge.members_panel.note.dm": "Участников личной переписки изменить нельзя."
 }

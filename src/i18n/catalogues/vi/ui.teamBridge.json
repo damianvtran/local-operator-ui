@@ -362,6 +362,6 @@
 	"ui.teamBridge.members_panel.confirm.decline": "Từ chối",
 	"ui.teamBridge.members_panel.note.general": "Mọi người trong tổ chức đều là thành viên của #general. Hãy tắt tiếng thay vì rời đi.",
 	"ui.teamBridge.members_panel.note.humans": "Mọi người trong tổ chức đều là thành viên của #humans. Hãy tắt tiếng thay vì rời đi.",
-	"ui.teamBridge.members_panel.note.agents": "Tư cách thành viên của #agents theo tổ chức. Bạn có thể rời đi nếu đã tự tham gia.",
+	"ui.teamBridge.members_panel.note.agents": "Tư cách thành viên của #agents được xác định theo tổ chức. Bạn có thể rời đi nếu đã tự tham gia.",
 	"ui.teamBridge.members_panel.note.dm": "Không thể thay đổi thành viên của tin nhắn trực tiếp."
 }
