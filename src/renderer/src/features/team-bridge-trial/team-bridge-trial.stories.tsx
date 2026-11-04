@@ -335,3 +335,18 @@ export const PausedNoOrgMember: Story = {
 		),
 	},
 };
+
+/** Memberships still loading: the sentence and date, and no action until the role is known (R2-1). */
+export const PausedNoOrgRolePending: Story = {
+	args: {
+		...noOrg,
+		noOrgPanel: (
+			<TeamBridgeTrialEndedView
+				tenantId="ten_home"
+				endedAt={ENDED_AT}
+				audience="pending"
+				timeZone={ZONE}
+			/>
+		),
+	},
+};

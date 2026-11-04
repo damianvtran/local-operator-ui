@@ -48,10 +48,29 @@ export const TeamBridgeTrialNoteView: FC<{
 	/** The instant the trial ends (active) or ended (paused). */
 	at: string;
 	tenantId: string | null;
-	/** `member`: cannot subscribe, so the note names who can and has no button. */
-	audience?: "billing" | "member";
+	/**
+	 * `member`: cannot subscribe, so the note names who can and has no button.
+	 * `pending`: the role is not known yet, so the note renders NO action rather
+	 * than guess (code review round 2, R2-1): on the standalone ended panel the
+	 * band is the whole canvas, so a Subscribe that a disabled member sees and
+	 * then loses is a visible flash, not a harmless default.
+	 */
+	audience?: "billing" | "member" | "pending";
+	/**
+	 * `ghost` in-page, where the band sits above the history the reader came
+	 * for; `primary` when the band stands alone and the action is the only way
+	 * forward (design round 3, D9).
+	 */
+	actionVariant?: "ghost" | "primary";
 	timeZone?: string;
-}> = ({ kind, at, tenantId, audience = "billing", timeZone }) => {
+}> = ({
+	kind,
+	at,
+	tenantId,
+	audience = "billing",
+	actionVariant = "ghost",
+	timeZone,
+}) => {
 	const locale = useI18nLocale();
 	const date = formatTrialDate(at, locale, timeZone) ?? at;
 	const url = subscribeUrlFor(tenantId);
@@ -71,11 +90,16 @@ export const TeamBridgeTrialNoteView: FC<{
 								? t("ui.teamBridgeTrial.paused.note_member", { date })
 								: t("ui.teamBridgeTrial.paused.note", { date })}
 					</p>
-					{!member && (
+					{!member && audience !== "pending" && (
 						<Button
-							variant="ghost"
+							variant={actionVariant}
 							size="sm"
-							className="shrink-0 text-ink"
+							// `text-ink` lifts the ghost label to full ink; on `primary` it
+							// would override the accent's own `text-on-accent`.
+							className={cn(
+								"shrink-0",
+								actionVariant === "ghost" && "text-ink",
+							)}
 							data-team-bridge-trial-action={
 								kind === "paused" ? "subscribe" : "invite"
 							}
@@ -139,12 +163,16 @@ export function useTeamBridgeTrialNote(tenantId: string | null | undefined): {
  * band above here; it stands alone in the page canvas with the same sentence,
  * date and audience rule (owner/admin get Subscribe, a disabled member reads who
  * can act) as the in-page note. The date is the runtime's `trial_ended_at`, so
- * nothing waits on a second read and nothing else can flash first.
+ * the sentence waits on no second read; the ACTION waits for the role
+ * (`audience="pending"` while memberships load), so a disabled member never
+ * sees a Subscribe that then disappears (R2-1). Subscribe is the primary
+ * button here because it is the owner's only way forward in an otherwise empty
+ * canvas (D9); the in-page note keeps the ghost weight.
  */
 export const TeamBridgeTrialEndedView: FC<{
 	tenantId: string;
 	endedAt: string;
-	audience?: "billing" | "member";
+	audience?: "billing" | "member" | "pending";
 	timeZone?: string;
 }> = ({ tenantId, endedAt, audience = "billing", timeZone }) => (
 	<div
@@ -158,6 +186,7 @@ export const TeamBridgeTrialEndedView: FC<{
 				at={endedAt}
 				tenantId={tenantId}
 				audience={audience}
+				actionVariant="primary"
 				timeZone={timeZone}
 			/>
 		</div>
@@ -169,15 +198,21 @@ export const TeamBridgeTrialEndedPanel: FC<{
 	tenantId: string;
 	endedAt: string;
 }> = ({ tenantId, endedAt }) => {
-	const memberships = useMembershipsQuery();
+	// `enabled` stated rather than defaulted (R2-2), matching the in-page note.
+	const memberships = useMembershipsQuery({ enabled: Boolean(tenantId) });
+	// `isLoading` (pending AND fetching), not `isPending`: a query the hook
+	// disables (signed out, no observed account) stays pending forever, and
+	// would then hold the owner's only action indefinitely. A settled failure
+	// keeps `trialNoteAudience`'s `billing` fallback; the console decides.
 	return (
 		<TeamBridgeTrialEndedView
 			tenantId={tenantId}
 			endedAt={endedAt}
-			audience={trialNoteAudience(
-				memberships.data?.memberships ?? null,
-				tenantId,
-			)}
+			audience={
+				memberships.isLoading
+					? "pending"
+					: trialNoteAudience(memberships.data?.memberships ?? null, tenantId)
+			}
 		/>
 	);
 };

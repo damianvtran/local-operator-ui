@@ -446,3 +446,35 @@ test("Q5: the page mounts the paused band, never the trial on-ramp, for an ended
 	assert.match(page, ENDED_ORG_FROM_STATUS);
 	assert.match(page, ENDED_ORG_REPLACES_ONRAMP);
 });
+
+const ENDED_PANEL_ENABLED =
+	/useMembershipsQuery\(\{ enabled: Boolean\(tenantId\) \}\)/;
+const ENDED_PANEL_PENDING = /memberships\.isLoading\s*\?\s*"pending"/;
+const PENDING_HIDES_ACTION = /\{!member && audience !== "pending" && \(/;
+const STANDALONE_PRIMARY = /actionVariant="primary"/;
+const INPAGE_GHOST_DEFAULT = /actionVariant = "ghost"/;
+
+test("R2-1/R2-2/D9: the standalone ended panel waits for the role and leads with a primary Subscribe", () => {
+	// Source pins (house pattern): the panel is a hook container, so the rules
+	// live in its wiring rather than in a pure predicate.
+	const paused = readFileSync(
+		"src/renderer/src/features/team-bridge-trial/team-bridge-trial-paused.tsx",
+		"utf8",
+	);
+	const panel = paused.slice(
+		paused.indexOf("export const TeamBridgeTrialEndedPanel"),
+	);
+	// R2-2: `enabled` is passed explicitly, as the in-page note does.
+	assert.match(panel, ENDED_PANEL_ENABLED);
+	// R2-1: while memberships load the audience is `pending`, not `billing`.
+	assert.match(panel, ENDED_PANEL_PENDING);
+	// …and a pending audience renders no action at all.
+	assert.match(paused, PENDING_HIDES_ACTION);
+	// D9: the standalone view asks for the primary weight; in-page stays ghost.
+	const view = paused.slice(
+		paused.indexOf("export const TeamBridgeTrialEndedView"),
+		paused.indexOf("export const TeamBridgeTrialEndedPanel"),
+	);
+	assert.match(view, STANDALONE_PRIMARY);
+	assert.match(paused, INPAGE_GHOST_DEFAULT);
+});
