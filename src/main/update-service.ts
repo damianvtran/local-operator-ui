@@ -1409,6 +1409,16 @@ export type BackendUpdateInfo = {
 	 * `server-release-notes.ts`.
 	 */
 	releaseNotes?: ServerReleaseNotes | null;
+	/**
+	 * Whether the press behind this offer cannot interrupt a running session.
+	 *
+	 * True only on the `entry-point` managed route (the generation layout: the
+	 * build lands in a tree no runtime imports, and the server move never signals
+	 * a runtime). The `source-build` rebuild and every by-hand route rewrite the
+	 * install in place, so the renderer must not reassure on them - this is what
+	 * the foot icon's "won't interrupt" line is gated on (review M1, 2026-11-03).
+	 */
+	nonDisruptive?: boolean;
 };
 
 /**
@@ -7452,6 +7462,7 @@ export class UpdateService {
 					remedy: plan.remedy,
 					detail: plan.detail,
 					sourceBuild: plan.sourceBuild,
+					nonDisruptive: plan.managedRoute === "entry-point",
 					/*
 					 * WHO THE APP WOULD RESTART, on the panel where the user decides (UX U9).
 					 *

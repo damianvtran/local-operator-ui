@@ -129,7 +129,7 @@ test("the panel uses these sentences rather than a copy of them", async () => {
 	 * never signals, so the first thing the reader learns is that nothing they
 	 * have running needs stopping. No em dash in the sentence either.
 	 */
-	assert.match(prose, /^Your agents keep running\./);
+	assert.match(prose, /^Your sessions keep running\./);
 	assert.doesNotMatch(prose, /\u2014/);
 });
 

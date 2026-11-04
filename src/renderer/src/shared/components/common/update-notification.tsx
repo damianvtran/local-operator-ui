@@ -242,6 +242,8 @@ type BackendUpdateInfo = {
 	detail?: string;
 	/** True when the install follows a source tree on this machine. */
 	sourceBuild?: boolean;
+	/** Whether the press cannot interrupt a running session - see main's field. */
+	nonDisruptive?: boolean;
 	/**
 	 * The build the server SERVING this app reports, when it was readable.
 	 *
@@ -2366,7 +2368,11 @@ export const UpdateNotification = ({
 					 * this listener is the only door a UI release comes through - the
 					 * periodic, launch and post-wake checks all arrive here.
 					 */
-					noteQuietOffer(UpdateType.UI, { version: info.version });
+					noteQuietOffer(UpdateType.UI, {
+						version: info.version,
+						/* An app install restarts only this window; runtimes are detached. */
+						nonDisruptive: true,
+					});
 				}
 			},
 		);
@@ -2586,6 +2592,8 @@ export const UpdateNotification = ({
 						 * not read it - omitted there rather than guessed from raw notes.
 						 */
 						summary: enhancedInfo.releaseNotes?.summary ?? null,
+						/* Main's reading of the route: true only on `entry-point`. */
+						nonDisruptive: enhancedInfo.nonDisruptive === true,
 					});
 					/*
 					 * A new offer SUPERSEDES the failure notice, exactly as it supersedes

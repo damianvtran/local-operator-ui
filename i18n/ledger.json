@@ -5115,32 +5115,15 @@
 		{
 			"locale": "es",
 			"namespace": "ui.common.updates",
-			"source_sha256": "a78c9e910b2495708c7996123ede2a92ce829845efdc3f00dfb1728f35bd947e",
-			"target_sha256": "0d48b81caeb27dd87c222fcf24decffcd2446448dcde93d9c33e34900fb6591e",
+			"source_sha256": "b05e5d98f09d9dfde3a44bf131e7823dd612c3f09db81d19f9eebf0da33f088b",
+			"target_sha256": "30f823c25a53dd7a917ed15db4cc393f178561fe8d59cbea2e391c6f746fa7ba",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
 				"date": "2026-10-18"
 			},
-			"auditors": [
-				{
-					"agent": "reviewer",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-03",
-					"result": "clean",
-					"instance": "340352200f28-update-notice-es",
-					"findings": {
-						"blocker": 0,
-						"major": 0,
-						"minor": 0,
-						"nit": 0
-					},
-					"receipt": "i18n/receipts/340352200f28-update-notice-es.json",
-					"receipt_sha256": "578437e05afd34b8b26a680cad5ca5e7eb130ba1400465877de12fe2ce948bc8",
-					"scope": "Delta audit of the 12 changed/new values in PR #1655 (update notices reassure running sessions keep running); remaining values byte-identical to previously audited bytes. No rendered fit/RTL claim."
-				}
-			],
-			"status": "audited",
+			"auditors": [],
+			"status": "pending",
 			"superseded": [
 				{
 					"source_sha256": "de3e083efe40d06b2947c1ef661ec0328b8984214f015a1133521d9d683cb3cd",
@@ -5253,6 +5236,29 @@
 							"receipt": "i18n/receipts/es-ui-common-updates-unionbind-039a881e219b.json",
 							"receipt_sha256": "65298e4595cfd293743dd29eb681e272d95cc86c32ea53f3300da41ed8672820",
 							"scope": "convergence re-bind of the merged union bytes at 404902650f"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "a78c9e910b2495708c7996123ede2a92ce829845efdc3f00dfb1728f35bd947e",
+					"target_sha256": "0d48b81caeb27dd87c222fcf24decffcd2446448dcde93d9c33e34900fb6591e",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-03",
+							"result": "clean",
+							"instance": "340352200f28-update-notice-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/340352200f28-update-notice-es.json",
+							"receipt_sha256": "578437e05afd34b8b26a680cad5ca5e7eb130ba1400465877de12fe2ce948bc8",
+							"scope": "Delta audit of the 12 changed/new values in PR #1655 (update notices reassure running sessions keep running); remaining values byte-identical to previously audited bytes. No rendered fit/RTL claim."
 						}
 					],
 					"status": "audited"
@@ -14869,32 +14875,15 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.common.updates",
-			"source_sha256": "a78c9e910b2495708c7996123ede2a92ce829845efdc3f00dfb1728f35bd947e",
-			"target_sha256": "e6062ae4182d709d2f83b0e8f1ec9ee1551ed964d4a9fbb34a6c1452416ac8e9",
+			"source_sha256": "b05e5d98f09d9dfde3a44bf131e7823dd612c3f09db81d19f9eebf0da33f088b",
+			"target_sha256": "dad963a7ee91b5e6b73f7f46b3ecaa489a0d5d38f65c5f9930a7ab0a17d2bc31",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
 				"date": "2026-10-18"
 			},
-			"auditors": [
-				{
-					"agent": "reviewer",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-03",
-					"result": "clean-with-findings",
-					"instance": "340352200f28-update-notice-fr",
-					"findings": {
-						"blocker": 0,
-						"major": 0,
-						"minor": 1,
-						"nit": 0
-					},
-					"receipt": "i18n/receipts/340352200f28-update-notice-fr.json",
-					"receipt_sha256": "004d30bc35d39eae125e51be2ec817eeaec277ef91795d219fde89ae53bf48da",
-					"scope": "Delta audit of the 12 changed/new values in PR #1655 (update notices reassure running sessions keep running); remaining values byte-identical to previously audited bytes. No rendered fit/RTL claim."
-				}
-			],
-			"status": "audited",
+			"auditors": [],
+			"status": "pending",
 			"superseded": [
 				{
 					"source_sha256": "de3e083efe40d06b2947c1ef661ec0328b8984214f015a1133521d9d683cb3cd",
@@ -15008,6 +14997,29 @@
 							"receipt": "i18n/receipts/fr-ui-common-updates-unionbind-28b148e249a8.json",
 							"receipt_sha256": "0d327ba51976223017f795621bbb768a151b646b45a1d2e3719f2f59a50b61f3",
 							"scope": "convergence re-bind of the merged union bytes at 404902650f"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "a78c9e910b2495708c7996123ede2a92ce829845efdc3f00dfb1728f35bd947e",
+					"target_sha256": "e6062ae4182d709d2f83b0e8f1ec9ee1551ed964d4a9fbb34a6c1452416ac8e9",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-03",
+							"result": "clean-with-findings",
+							"instance": "340352200f28-update-notice-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/340352200f28-update-notice-fr.json",
+							"receipt_sha256": "004d30bc35d39eae125e51be2ec817eeaec277ef91795d219fde89ae53bf48da",
+							"scope": "Delta audit of the 12 changed/new values in PR #1655 (update notices reassure running sessions keep running); remaining values byte-identical to previously audited bytes. No rendered fit/RTL claim."
 						}
 					],
 					"status": "audited"
@@ -24948,32 +24960,15 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.common.updates",
-			"source_sha256": "a78c9e910b2495708c7996123ede2a92ce829845efdc3f00dfb1728f35bd947e",
-			"target_sha256": "ad61ce9bdde3e364897e473d28e1991afa3fb16413ce98f8d543279e9b05cc1d",
+			"source_sha256": "b05e5d98f09d9dfde3a44bf131e7823dd612c3f09db81d19f9eebf0da33f088b",
+			"target_sha256": "53cd5c415e01b497c158c8692741dffae12adae4be078006cbade5e6a59fa24c",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
 				"date": "2026-10-19"
 			},
-			"auditors": [
-				{
-					"agent": "reviewer",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-03",
-					"result": "clean-with-findings",
-					"instance": "340352200f28-update-notice-hi",
-					"findings": {
-						"blocker": 0,
-						"major": 0,
-						"minor": 0,
-						"nit": 1
-					},
-					"receipt": "i18n/receipts/340352200f28-update-notice-hi.json",
-					"receipt_sha256": "7e04852d1b3c4f9602ddea033876dfa4a806b733f88928ca26aa15a38a93538c",
-					"scope": "Delta audit of the 12 changed/new values in PR #1655 (update notices reassure running sessions keep running); remaining values byte-identical to previously audited bytes. No rendered fit/RTL claim."
-				}
-			],
-			"status": "audited",
+			"auditors": [],
+			"status": "pending",
 			"superseded": [
 				{
 					"source_sha256": "de3e083efe40d06b2947c1ef661ec0328b8984214f015a1133521d9d683cb3cd",
@@ -25087,6 +25082,29 @@
 							"receipt": "i18n/receipts/hi-ui-common-updates-unionbind-736f2e206a82.json",
 							"receipt_sha256": "77148fe873de4bdf873f4b7dd7df3c98b8f1cda1a7a1c0ef24f2795e3de8c704",
 							"scope": "convergence re-bind of the merged union bytes at 404902650f"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "a78c9e910b2495708c7996123ede2a92ce829845efdc3f00dfb1728f35bd947e",
+					"target_sha256": "ad61ce9bdde3e364897e473d28e1991afa3fb16413ce98f8d543279e9b05cc1d",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-03",
+							"result": "clean-with-findings",
+							"instance": "340352200f28-update-notice-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/340352200f28-update-notice-hi.json",
+							"receipt_sha256": "7e04852d1b3c4f9602ddea033876dfa4a806b733f88928ca26aa15a38a93538c",
+							"scope": "Delta audit of the 12 changed/new values in PR #1655 (update notices reassure running sessions keep running); remaining values byte-identical to previously audited bytes. No rendered fit/RTL claim."
 						}
 					],
 					"status": "audited"
@@ -34700,32 +34718,15 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.common.updates",
-			"source_sha256": "a78c9e910b2495708c7996123ede2a92ce829845efdc3f00dfb1728f35bd947e",
-			"target_sha256": "7e089e5800ee8da3e7790db8c5284039764681b68085c57e2c7c4f5f57a43d88",
+			"source_sha256": "b05e5d98f09d9dfde3a44bf131e7823dd612c3f09db81d19f9eebf0da33f088b",
+			"target_sha256": "884745b5644c652d19500f80fa745e72e477d32873d7c5eab63969e4249a1df2",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
 				"date": "2026-10-18"
 			},
-			"auditors": [
-				{
-					"agent": "reviewer",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-03",
-					"result": "clean-with-findings",
-					"instance": "340352200f28-update-notice-ru",
-					"findings": {
-						"blocker": 0,
-						"major": 0,
-						"minor": 0,
-						"nit": 1
-					},
-					"receipt": "i18n/receipts/340352200f28-update-notice-ru.json",
-					"receipt_sha256": "ddf127792e75f4f4df945192d6b8e4a16a67a894e245458da7a624dd9efd0873",
-					"scope": "Delta audit of the 12 changed/new values in PR #1655 (update notices reassure running sessions keep running); remaining values byte-identical to previously audited bytes. No rendered fit/RTL claim."
-				}
-			],
-			"status": "audited",
+			"auditors": [],
+			"status": "pending",
 			"superseded": [
 				{
 					"source_sha256": "de3e083efe40d06b2947c1ef661ec0328b8984214f015a1133521d9d683cb3cd",
@@ -34839,6 +34840,29 @@
 							"receipt": "i18n/receipts/ru-ui-common-updates-unionbind-26a280119c46.json",
 							"receipt_sha256": "53e8a54ee2ea1203f4fa851fb6961ccfce0db1885407ac2e3b1c02b992ba8cbd",
 							"scope": "convergence re-bind of the merged union bytes at 404902650f"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "a78c9e910b2495708c7996123ede2a92ce829845efdc3f00dfb1728f35bd947e",
+					"target_sha256": "7e089e5800ee8da3e7790db8c5284039764681b68085c57e2c7c4f5f57a43d88",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-03",
+							"result": "clean-with-findings",
+							"instance": "340352200f28-update-notice-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/340352200f28-update-notice-ru.json",
+							"receipt_sha256": "ddf127792e75f4f4df945192d6b8e4a16a67a894e245458da7a624dd9efd0873",
+							"scope": "Delta audit of the 12 changed/new values in PR #1655 (update notices reassure running sessions keep running); remaining values byte-identical to previously audited bytes. No rendered fit/RTL claim."
 						}
 					],
 					"status": "audited"
@@ -44467,32 +44491,15 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.common.updates",
-			"source_sha256": "a78c9e910b2495708c7996123ede2a92ce829845efdc3f00dfb1728f35bd947e",
-			"target_sha256": "f23970ee3260b687d2b163be3af445fa89c4db801ada90b8a61b36f94ecfe21b",
+			"source_sha256": "b05e5d98f09d9dfde3a44bf131e7823dd612c3f09db81d19f9eebf0da33f088b",
+			"target_sha256": "9602efb21024e987ee673d8159836d974472985f13fdc54f822a74e4d4120335",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
 				"date": "2026-10-19"
 			},
-			"auditors": [
-				{
-					"agent": "reviewer",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-03",
-					"result": "clean",
-					"instance": "340352200f28-update-notice-ur",
-					"findings": {
-						"blocker": 0,
-						"major": 0,
-						"minor": 0,
-						"nit": 0
-					},
-					"receipt": "i18n/receipts/340352200f28-update-notice-ur.json",
-					"receipt_sha256": "edda4495c111e6d305ca266ec67944bc3b024c621fad3acb9f4caa612051b744",
-					"scope": "Delta audit of the 12 changed/new values in PR #1655 (update notices reassure running sessions keep running); remaining values byte-identical to previously audited bytes. No rendered fit/RTL claim."
-				}
-			],
-			"status": "audited",
+			"auditors": [],
+			"status": "pending",
 			"superseded": [
 				{
 					"source_sha256": "de3e083efe40d06b2947c1ef661ec0328b8984214f015a1133521d9d683cb3cd",
@@ -44631,6 +44638,29 @@
 							"receipt": "i18n/receipts/ur-ui-common-updates-unionbind-f0544eb53c99.json",
 							"receipt_sha256": "0949a2093dea108f16540eed756655182beb818bee96acfbb54647bb71ce3f67",
 							"scope": "convergence re-bind of the merged union bytes at 404902650f"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "a78c9e910b2495708c7996123ede2a92ce829845efdc3f00dfb1728f35bd947e",
+					"target_sha256": "f23970ee3260b687d2b163be3af445fa89c4db801ada90b8a61b36f94ecfe21b",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-03",
+							"result": "clean",
+							"instance": "340352200f28-update-notice-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/340352200f28-update-notice-ur.json",
+							"receipt_sha256": "edda4495c111e6d305ca266ec67944bc3b024c621fad3acb9f4caa612051b744",
+							"scope": "Delta audit of the 12 changed/new values in PR #1655 (update notices reassure running sessions keep running); remaining values byte-identical to previously audited bytes. No rendered fit/RTL claim."
 						}
 					],
 					"status": "audited"
@@ -54225,32 +54255,15 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.common.updates",
-			"source_sha256": "a78c9e910b2495708c7996123ede2a92ce829845efdc3f00dfb1728f35bd947e",
-			"target_sha256": "b89cda3e72ebe2abcd92c0ef4690fa0f7b28b171510f9834115ed1e6f637c29f",
+			"source_sha256": "b05e5d98f09d9dfde3a44bf131e7823dd612c3f09db81d19f9eebf0da33f088b",
+			"target_sha256": "65cea5e7a64b57b92d041288cd592d53de9f59dcc803a9af590a12b6f4bcb05e",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
 				"date": "2026-10-18"
 			},
-			"auditors": [
-				{
-					"agent": "reviewer",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-03",
-					"result": "clean",
-					"instance": "340352200f28-update-notice-vi",
-					"findings": {
-						"blocker": 0,
-						"major": 0,
-						"minor": 0,
-						"nit": 0
-					},
-					"receipt": "i18n/receipts/340352200f28-update-notice-vi.json",
-					"receipt_sha256": "ac063784e111b7fdf758e275f3182a841a0f9f9d46089c97557b9cee3cdd94d9",
-					"scope": "Delta audit of the 12 changed/new values in PR #1655 (update notices reassure running sessions keep running); remaining values byte-identical to previously audited bytes. No rendered fit/RTL claim."
-				}
-			],
-			"status": "audited",
+			"auditors": [],
+			"status": "pending",
 			"superseded": [
 				{
 					"source_sha256": "de3e083efe40d06b2947c1ef661ec0328b8984214f015a1133521d9d683cb3cd",
@@ -54364,6 +54377,29 @@
 							"receipt": "i18n/receipts/vi-ui-common-updates-unionbind-4560937817ad.json",
 							"receipt_sha256": "df24fdf9433e9a785facec1a492d5afd36de5b904e5d90f9ef55c736bf21f234",
 							"scope": "convergence re-bind of the merged union bytes at 404902650f"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "a78c9e910b2495708c7996123ede2a92ce829845efdc3f00dfb1728f35bd947e",
+					"target_sha256": "b89cda3e72ebe2abcd92c0ef4690fa0f7b28b171510f9834115ed1e6f637c29f",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-03",
+							"result": "clean",
+							"instance": "340352200f28-update-notice-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/340352200f28-update-notice-vi.json",
+							"receipt_sha256": "ac063784e111b7fdf758e275f3182a841a0f9f9d46089c97557b9cee3cdd94d9",
+							"scope": "Delta audit of the 12 changed/new values in PR #1655 (update notices reassure running sessions keep running); remaining values byte-identical to previously audited bytes. No rendered fit/RTL claim."
 						}
 					],
 					"status": "audited"
@@ -64580,33 +64616,16 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.common.updates",
-			"source_sha256": "a78c9e910b2495708c7996123ede2a92ce829845efdc3f00dfb1728f35bd947e",
-			"target_sha256": "0a47c409ef53fce4759e043575c9f3767783ae865a0f090440cacddd4f0ddfac",
+			"source_sha256": "b05e5d98f09d9dfde3a44bf131e7823dd612c3f09db81d19f9eebf0da33f088b",
+			"target_sha256": "89434f178efb47f469728cc5981acb516eb38d3a133c04df60be3621202d018f",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
 				"date": "2026-10-18",
 				"note": "Reworded by the implementing coder (deepseek/deepseek-flash) on 2026-10-18 for the 您→你 register correction, PR #1205, not a translator: 6 strings, 7 您 occurrences. Register-only audit 4c6c213dd0d8 covers the new bytes; prior full audits stay in superseded."
 			},
-			"auditors": [
-				{
-					"agent": "reviewer",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-03",
-					"result": "clean",
-					"instance": "340352200f28-update-notice-zh-cn",
-					"findings": {
-						"blocker": 0,
-						"major": 0,
-						"minor": 0,
-						"nit": 0
-					},
-					"receipt": "i18n/receipts/340352200f28-update-notice-zh-cn.json",
-					"receipt_sha256": "b2b0804f8eac8f0e31bb308e6e6289a4eb84fd6eb794f37b3ba22a1813bc2d68",
-					"scope": "Delta audit of the 12 changed/new values in PR #1655 (update notices reassure running sessions keep running); remaining values byte-identical to previously audited bytes. No rendered fit/RTL claim."
-				}
-			],
-			"status": "audited",
+			"auditors": [],
+			"status": "pending",
 			"superseded": [
 				{
 					"source_sha256": "de3e083efe40d06b2947c1ef661ec0328b8984214f015a1133521d9d683cb3cd",
@@ -64744,6 +64763,29 @@
 							"receipt": "i18n/receipts/zh-cn-ui-common-updates-unionbind-f904a5078bf8.json",
 							"receipt_sha256": "bb70b4aca56965bd9a880da58a2c2f2eb6546e53041c9320690a5004e25eec79",
 							"scope": "convergence re-bind of the merged union bytes at 404902650f"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "a78c9e910b2495708c7996123ede2a92ce829845efdc3f00dfb1728f35bd947e",
+					"target_sha256": "0a47c409ef53fce4759e043575c9f3767783ae865a0f090440cacddd4f0ddfac",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-03",
+							"result": "clean",
+							"instance": "340352200f28-update-notice-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/340352200f28-update-notice-zh-cn.json",
+							"receipt_sha256": "b2b0804f8eac8f0e31bb308e6e6289a4eb84fd6eb794f37b3ba22a1813bc2d68",
+							"scope": "Delta audit of the 12 changed/new values in PR #1655 (update notices reassure running sessions keep running); remaining values byte-identical to previously audited bytes. No rendered fit/RTL claim."
 						}
 					],
 					"status": "audited"

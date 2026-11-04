@@ -251,7 +251,7 @@
 	"ui.common.updates.update_notification.installing_closes_the_app_while_the_update_is_verified_and_put_in": {
 		"role": "confirmation or remedy explanation",
 		"tone": "Factual explanation; preserve stated limits and ownership of the app versus server.",
-		"note": "Shown in update-notification.tsx inside p. Install means the on-disk build; it can differ from the running server build. Lead with the reassurance that running sessions (agents) are not interrupted; agent runtimes are separate processes that keep running through this step. No dashes as separators."
+		"note": "Shown in update-notification.tsx inside p. Lead with the reassurance that running sessions are not interrupted; they are separate processes that keep running while only the desktop app restarts. Use 'sessions' throughout (not 'agents') so the card names one thing."
 	},
 	"ui.common.updates.update_notification.is_available_you_are_currently_using_version": {
 		"role": "status explanation",
@@ -288,12 +288,12 @@
 	"ui.common.updates.update_notification.please_wait_while_the_server_is_being_updated_the_server_will_tem": {
 		"role": "status explanation",
 		"tone": "Factual explanation; preserve stated limits and ownership of the app versus server.",
-		"note": "Shown in update-notification.tsx inside p. Server means the backend daemon, not the desktop app or an agent runtime. Restart is the backend bounce unless this message explicitly names closing the desktop app. Lead with the reassurance that running sessions (agents) are not interrupted; agent runtimes are separate processes that keep running through this step. No dashes as separators."
+		"note": "Shown in update-notification.tsx inside p. Server means the backend daemon, not the desktop app or an agent runtime. Restart is the backend bounce unless this message explicitly names closing the desktop app."
 	},
 	"ui.common.updates.update_notification.please_wait_while_the_server_is_being_updated_the_update_can_t_be": {
 		"role": "status explanation",
 		"tone": "Factual explanation; preserve stated limits and ownership of the app versus server.",
-		"note": "Shown in update-notification.tsx inside p. Server means the backend daemon, not the desktop app or an agent runtime. Lead with the reassurance that running sessions (agents) are not interrupted; agent runtimes are separate processes that keep running through this step. No dashes as separators."
+		"note": "Shown in update-notification.tsx inside p. Server means the backend daemon, not the desktop app or an agent runtime."
 	},
 	"ui.common.updates.update_notification.please_wait_while_we_check_for_available_updates": {
 		"role": "status explanation",
@@ -330,7 +330,7 @@
 	"ui.common.updates.update_notification.restarting_puts_the_server_offline_while_it_comes_back": {
 		"role": "status explanation",
 		"tone": "Factual explanation; preserve stated limits and ownership of the app versus server.",
-		"note": "Shown in update-notification.tsx. Server means the backend daemon, not the desktop app or an agent runtime. Restart is the backend bounce unless this message explicitly names closing the desktop app. Dynamic values are composed within this message so translators can place them; never translate a supplied version, error, command or provider identifier. Lead with the reassurance that running sessions (agents) are not interrupted; agent runtimes are separate processes that keep running through this step. No dashes as separators.",
+		"note": "Shown in update-notification.tsx. Server means the backend daemon, not the desktop app or an agent runtime. Restart is the backend bounce unless this message explicitly names closing the desktop app. Dynamic values are composed within this message so translators can place them; never translate a supplied version, error, command or provider identifier. (The reassurance now leads the sentence this is spliced into; do not repeat it here.) No dashes as separators.",
 		"placeholders": {
 			"restartoutagebound": "Existing display value from RESTART_OUTAGE_BOUND; retain verbatim, never use as a translation key."
 		}
@@ -598,7 +598,7 @@
 	"ui.common.updates.update_notification.this_app_started_that_server_so_it_can_restart_it_onto_the": {
 		"role": "status explanation",
 		"tone": "Factual explanation; preserve stated limits and ownership of the app versus server.",
-		"note": "Shown in update-notification.tsx inside p. Server means the backend daemon, not the desktop app or an agent runtime. Restart is the backend bounce unless this message explicitly names closing the desktop app. Dynamic values are composed within this message so translators can place them; never translate a supplied version, error, command or provider identifier.",
+		"note": "Shown in update-notification.tsx inside p. Server means the backend daemon, not the desktop app or an agent runtime. Restart is the backend bounce unless this message explicitly names closing the desktop app. Dynamic values are composed within this message so translators can place them; never translate a supplied version, error, command or provider identifier. Leads with the reassurance that running sessions are not interrupted (the server restart never stops a session); {restartcostsentence} then prices the outage.",
 		"placeholders": {
 			"restartcostsentence": "Existing display value from RESTART_COST_SENTENCE; retain verbatim, never use as a translation key."
 		}
@@ -1039,7 +1039,7 @@
 		"role": "Hub update ",
 		"tone": "Concise factual status.",
 		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
-		"note": "English source: Starting the installer. The app closes for a moment… Lead with the reassurance that running sessions (agents) are not interrupted; agent runtimes are separate processes that keep running through this step. No dashes as separators."
+		"note": "English source: Starting the installer. The app closes for a moment; your sessions keep running… 'Sessions' are the user's running agent sessions, separate processes that keep running through this step. No dashes as separators."
 	},
 	"ui.common.updates.install.preparing": {
 		"role": "Hub update ",
@@ -1095,7 +1095,7 @@
 	"ui.common.updates.update_foot_icon.sessions_keep_running": {
 		"role": "tooltip",
 		"tone": "Calm reassurance; plain words.",
-		"note": "Third line of the update indicator's tooltip in update-foot-icon.tsx, under the available-version lines. 'Agents' means the user's running sessions. True for both the app and the server update: neither stops a running session.",
+		"note": "Third line of the update indicator's tooltip in update-foot-icon.tsx, under the available-version lines. 'Sessions' are the user's running agent sessions (same word as the update cards). Shown ONLY when every waiting update cannot interrupt them; hidden on the in-place routes.",
 		"length": "One short line in a 256px-wide tooltip; keep compact."
 	},
 	"ui.common.updates.update_notification.remedy_managed_app_owned": {
