@@ -72,6 +72,7 @@ import {
 import {
 	ADJACENT,
 	ALT_ACCENT_CHROMA_FLOOR,
+	ARRIVAL_BAND_ALPHA,
 	AS_TEXT,
 	CHART_HOVER_GROUND,
 	CHART_HOVER_SEPARATION_FLOOR,
@@ -111,7 +112,6 @@ import {
 	MESSAGE_SURFACE_LIGHTNESS_STEP,
 	PAIR_PINS,
 	PANEL_SEAM_ALPHA,
-	ARRIVAL_BAND_ALPHA,
 	PERCEPTIBLE,
 	PERCEPTIBLE_EXCEPTIONS,
 	REGION_SEPARATION_FLOOR,
@@ -1315,9 +1315,10 @@ for (const entry of palettes) evaluatePalette(run, entry);
  * assertions go to a discarded run instead of this one, so the sections still
  * execute - a crash in them still fails the leg - but neither their count nor
  * their verdict is reported as if it were about composed palettes. The
- * consequence is deliberate and recorded in `src/shared/theme-engine/compose.mjs`:
- * a composed appearance has NO glass floor table, so the window must render
- * opaque on one until a composed table is derived and green here.
+ * consequence is deliberate and enforced at runtime in
+ * `src/renderer/src/shared/hooks/use-window-glass.ts` (`composedThemeActive`):
+ * a composed appearance has NO glass floor table, so the window renders opaque
+ * on one until a composed table is derived and green here.
  */
 const authoredRun = COMPOSED ? createRun({ composed: true }) : run;
 

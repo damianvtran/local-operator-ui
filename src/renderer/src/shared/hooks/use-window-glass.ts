@@ -24,7 +24,7 @@ import {
  * stylesheet it always ran.
  *
  * THE SCHEME IS READ FROM THE DOCUMENT (`.dark`, written by
- * `applyThemeToDocument`) because the alpha floors differ by scheme: a dark palette
+ * `applyAppearance`) because the alpha floors differ by scheme: a dark palette
  * over a dark material and a light one over a light material have different worst
  * backdrops. The theme provider calls `syncGlassScheme` in the same layout effect
  * that applies the theme, so the alphas and the palette change in one frame.
@@ -54,7 +54,7 @@ type Applied = {
 	active: boolean;
 	/** The scheme the alphas were derived for. The first paint takes main's
 	 * persisted one (the theme has not been applied yet); every later paint reads
-	 * the document, which `applyThemeToDocument` has already updated. */
+	 * the document, which `applyAppearance` has already updated. */
 	scheme: GlassScheme;
 	mechanism: "vibrancy" | "background-material";
 	settings: Pick<GlassSettings, "coverage" | "intensity" | "material">;
@@ -65,10 +65,26 @@ let applied: Applied | null = null;
 export const documentScheme = (): GlassScheme =>
 	root().classList.contains("dark") ? "dark" : "light";
 
+/*
+ * A COMPOSED THEME PAINTS OPAQUE (agent review round 1, m1 on #1674). The glass
+ * alpha floors in `window-glass-floors.json` are derived from the AUTHORED
+ * palettes, and the contrast contract asserts them on authored palettes only; a
+ * composition (a contrast preset, a borrowed or custom accent) has no floor table,
+ * and the architect's measurements found real glass failures at the presets. So
+ * while `data-theme` names a composition - `lo-<hash>`, the only ids the engine
+ * mints (`compose.mjs`; no built-in id has the `lo-` prefix) - the glass is held
+ * off here, the one place that writes it. `applied` keeps main's state, so the
+ * next identity paint (back to Standard with the theme's accent) restores it.
+ * Lift this when a composed floor table is derived and green in the contract.
+ */
+const COMPOSED_THEME_ID = /^lo-/;
+export const composedThemeActive = (): boolean =>
+	COMPOSED_THEME_ID.test(root().dataset.theme ?? "");
+
 function paint(next: Applied | null): void {
 	applied = next;
 	const el = root();
-	if (!next || !next.active) {
+	if (!next || !next.active || composedThemeActive()) {
 		delete el.dataset.glass;
 		for (const name of GLASS_VARS) el.style.removeProperty(name);
 		return;
@@ -140,6 +156,8 @@ export function applyGlassState(state: WindowGlassState | null): void {
  */
 export function syncGlassScheme(): void {
 	if (!applied || !applied.active) return;
+	/* Also the moment a composition starts or ends: `paint` holds a composed
+	   theme opaque and restores the glass on the way back to identity. */
 	paint({ ...applied, scheme: documentScheme() });
 	void window.api?.windowGlass?.reportScheme?.(documentScheme());
 }

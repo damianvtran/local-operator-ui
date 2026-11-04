@@ -18,13 +18,15 @@ import {
 	sanitizeCustomAccents,
 	sanitizeCustomThemes,
 } from "../src/shared/theme-engine/appearance.mjs";
-import { ratio } from "../src/shared/theme-engine/color.mjs";
+import { over, ratio } from "../src/shared/theme-engine/color.mjs";
 import {
 	composeTheme,
 	paletteHash,
 } from "../src/shared/theme-engine/compose.mjs";
+import { ARRIVAL_BAND_ALPHA } from "../src/shared/theme-engine/contract-tables.mjs";
 import {
 	CONTRAST_PRESETS,
+	INK_ORDER_TOLERANCE,
 	applyContrast,
 	composedFindings,
 	contrastCandidate,
@@ -124,7 +126,7 @@ test("the repair is doing real work: raw candidates fail where the solved ones p
 	assert.ok(rawFailures > 0, "the unrepaired candidate was already clean");
 });
 
-test("High darkens a dark canvas and Soft lifts it; light mode mirrors", () => {
+test("High darkens a dark canvas and Soft lifts it; light High brightens where it can and always sharpens", () => {
 	const L = (hex) => {
 		const v = Number.parseInt(hex.slice(1, 3), 16);
 		return v;
@@ -149,8 +151,52 @@ test("High darkens a dark canvas and Soft lifts it; light mode mirrors", () => {
 	const lSoft = applyContrast(light, -100, {
 		id: "localOperatorLight",
 	}).palette;
-	assert.ok(L(lHigh.canvas) > L(light.canvas), "light High: brighter paper");
+	/* Light High never darkens the paper and always raises ink contrast. It
+	   cannot always LIFT it: the brand light palette authors its message block
+	   4.07 ΔE00 off the canvas on a 4.0 floor, with `elevated` at L* 99.3, so
+	   there is no room under white (see CONTRAST_ANCHORS). Palettes with room
+	   do rise - kanagawaLotus 85.6 -> 94.4 L*. */
+	assert.ok(
+		L(lHigh.canvas) >= L(light.canvas),
+		"light High: never darker paper",
+	);
+	assert.ok(
+		ratio(lHigh.ink, lHigh.canvas) > ratio(light.ink, light.canvas),
+		"light High: more contrast",
+	);
+	const lotus = applyContrast(byId.kanagawaLotus, 100, {
+		id: "kanagawaLotus",
+	}).palette;
+	assert.ok(
+		L(lotus.canvas) > L(byId.kanagawaLotus.canvas) + 15,
+		"light High lifts the paper where the ladder has room",
+	);
 	assert.ok(L(lSoft.canvas) < L(light.canvas), "light Soft: duller paper");
+});
+
+/* The order the presets gate asserts fleet-wide (QA round 1, Q1/Q2), on the
+   palettes QA measured going the wrong way - a fast sample for the desktop suite. */
+test("ink on canvas is non-decreasing Soft -> High on the palettes QA flagged", () => {
+	for (const id of [
+		"githubLight",
+		"oneLight",
+		"ayuDark",
+		"localOperatorLight",
+	]) {
+		const steps = [-100, -50, 0, 50, 100].map((c) => {
+			const p = applyContrast(byId[id], c, { id }).palette;
+			return ratio(p.ink, p.canvas);
+		});
+		for (let i = 1; i < steps.length; i++)
+			assert.ok(
+				steps[i] >= steps[i - 1] - INK_ORDER_TOLERANCE,
+				`${id}: ${steps.map((s) => s.toFixed(2)).join(" -> ")}`,
+			);
+		assert.ok(
+			steps[4] > steps[2],
+			`${id}: High has more ink contrast than Standard`,
+		);
+	}
 });
 
 test("the engine never mutates a built-in palette", () => {
@@ -220,6 +266,43 @@ test("accents: an applied accent always passes the contract; a refused one leave
 		}
 	}
 	assert.ok(applied > 0, "no custom accent was ever applied");
+});
+
+/*
+ * THE ARRIVAL BAND IS INSIDE THE ORACLE (agent review round 1, M1 on #1674).
+ * The contract asserts the Team Bridge arrival band (accent at 12% over
+ * `surface`) must outrank `rowSelected` and `rowHover`; before the band moved
+ * into `evaluatePalette`, these custom accents were APPLIED although
+ * `pnpm check-themes` rejected the result (nightfox: band 1.137 vs selected
+ * 1.138; ocean at High: 1.095 vs 1.127). Each must now be re-solved into a
+ * palette the contract accepts, or refused with the input palette returned.
+ */
+test("accents: the arrival band's rank is honoured (nightfox Standard, ocean High, #FF0000)", () => {
+	for (const [id, contrast] of [
+		["nightfox", 0],
+		["ocean", 100],
+	]) {
+		const r = composeTheme(byId[id], {
+			contrast,
+			accent: { kind: "custom", hex: "#FF0000" },
+			id,
+		});
+		assert.deepEqual(composedFindings(r.palette, id), [], `${id} ${contrast}`);
+		const band = over(r.palette.accent, r.palette.surface, ARRIVAL_BAND_ALPHA);
+		const arrival = ratio(band, r.palette.surface);
+		assert.ok(
+			arrival > ratio(r.palette.rowSelected, r.palette.surface),
+			`${id} ${contrast}: the band outranks the selected row`,
+		);
+		if (!r.accentApplied) {
+			const plain = applyContrast(byId[id], contrast, { id }).palette;
+			assert.equal(
+				r.palette.accent,
+				plain.accent,
+				`${id}: refused leaves the accent`,
+			);
+		}
+	}
 });
 
 test("accents: every same-mode palette's accent applies on the brand palettes at Standard", () => {

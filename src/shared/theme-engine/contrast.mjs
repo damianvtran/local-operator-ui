@@ -74,6 +74,17 @@ export const CONTRAST_PRESETS = Object.freeze({
  * decide where it lands, per palette. Recorded here because moving one inward is
  * the sanctioned response to a preset a palette cannot reach - relaxing a floor is
  * not.
+ *
+ * LIGHT HIGH'S 97 IS NOT REACHABLE UNDER THE CONTRACT, and that is measured, not
+ * assumed (QA round 1, Q1 on #1674). The light ladder rises ABOVE the canvas
+ * (`surface`, `elevated`, `messageSurface`), and the contract holds canvas ->
+ * elevated and the message block at ΔE00 4.0. Near white Sl is ~1.7, so ΔE00 4
+ * takes ~6.7 L*: with `elevated` capped at L* 100 the canvas tops out near 93-95,
+ * and palettes authored there (githubLight, localOperatorLight, ayuLight) cannot
+ * lift their paper at all. So light High spends itself where it can: the paper
+ * rises as far as the compressed ladder allows (never below Standard), and the
+ * body ink takes the rest (`tensionInk`) - fleet-wide, ink/canvas rises 12-30%
+ * from Standard to High on light. The presets gate's order leg holds that.
  */
 export const CONTRAST_ANCHORS = Object.freeze({
 	dark: Object.freeze({ high: 5, soft: 20 }),
@@ -598,9 +609,16 @@ export const contrastCandidate = (
 			].filter(
 				([x, y]) => (x === "canvas" || above.includes(x)) && above.includes(y),
 			);
+			/* The contract's floor plus a hair for 8-bit rounding - not the
+			   pre-solve's full HEADROOM: near white every 0.1 of ΔE00 is ~0.2 L*
+			   of paper, and a palette authored a few hundredths over a floor
+			   (localOperatorLight's message block, 4.07 on 4.0) would otherwise
+			   never lift at all. The repair and the contract's verdict below
+			   settle anything the hair does not cover. */
+			const need = (_x, _y, floor) => floor + 0.02;
 			const holds = (hex) =>
 				pairs.every(
-					([x, y, floor]) => deltaE(hex[x], hex[y]) >= floor + HEADROOM * 2,
+					([x, y, floor]) => deltaE(hex[x], hex[y]) >= need(x, y, floor),
 				) &&
 				lPairs.every(
 					([x, y, floor]) =>

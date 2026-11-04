@@ -9,8 +9,8 @@
  * evaluator would be green about palettes the gate rejects, and vice versa. So
  * the per-palette loop that was the body of `scripts/contrast-contract.mjs`
  * moved here verbatim, and the contract calls `evaluatePalette` once per palette
- * on one shared `run` - its assertion count at Standard is unchanged (190,702 at
- * the move).
+ * on one shared `run` - its Standard output is byte-identical to the pre-move
+ * contract's (192,000 assertions after #1668 was ported in).
  *
  * WHAT STAYS IN THE CONTRACT: everything that is not about ONE palette - the
  * stylesheet-reading checks (the arrival band's alpha and lift, the panel seam class), the §5b fleet

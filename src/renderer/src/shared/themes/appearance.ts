@@ -3,13 +3,12 @@
  * (`themeName` + per-mode contrast + per-mode accent) into what the document
  * paints.
  *
- * STATUS: plumbing only. Nothing in the app calls `applyAppearance` yet -
- * `ThemeProvider` still calls `applyThemeToDocument(themeName)` - so this module
- * changes no rendered frame. The settings picker that writes the v5 preference
- * fields, and the consumers that key on `themeName` instead of the document
+ * STATUS: `ThemeProvider` publishes every theme through `applyAppearance`. No
+ * setting writes the v5 contrast/accent fields yet, so every profile takes the
+ * identity path and no rendered frame changes. The settings picker that writes
+ * them, and the consumers that still key on `themeName` instead of the document
  * (Mermaid's config cache, CodeMirror's mode, the mini-view's storage sync, the
- * approvals overlay's palette name), move onto it in the follow-up. It is a bare
- * internal API here so the engine can be exercised end to end in the built app.
+ * approvals overlay's palette name), move onto it in the follow-up.
  *
  * HOW A COMPOSED THEME REACHES THE PAGE, and why each step is in this order:
  *   1. `composeTheme` (src/shared/theme-engine/compose.mjs) returns the palette.
@@ -36,7 +35,11 @@ import type { Theme } from "@mui/material/styles";
 import type { AccentRef } from "../../../../shared/theme-engine/accent.mjs";
 import type { Composition } from "../../../../shared/theme-engine/compose.mjs";
 import { composeTheme } from "../../../../shared/theme-engine/compose.mjs";
-import { paletteBlock } from "../../../../shared/theme-engine/css.mjs";
+import {
+	isSafePaletteValue,
+	isSafeThemeId,
+	paletteBlock,
+} from "../../../../shared/theme-engine/css.mjs";
 import type { ThemeName } from "../types/theme";
 import { createBaseTheme } from "./base-theme";
 import { definitionOf, getTheme } from "./index";
@@ -60,8 +63,8 @@ export type ResolvedAppearance = Composition<ThemePalette> & {
 
 /*
  * A small cache by `data-theme` id. `createBaseTheme` builds a full MUI theme,
- * and a slider drag recomposes per frame; the last few compositions are what a
- * drag toggles between. Built-ins never enter it - they have their prebuilt
+ * and toggling between a few appearances (snap points, accents) is the common
+ * pattern. Built-ins never enter it - they have their prebuilt
  * theme already.
  */
 const MUI_CACHE_LIMIT = 4;
@@ -87,9 +90,27 @@ const accentOf = (id: string): string | undefined => {
 	return definition?.palette.accent;
 };
 
+/*
+ * Compositions by INPUT (theme, the mode's contrast, the mode's accent ref).
+ * `composeTheme` is deterministic, so the same input always yields the same
+ * palette, and a cache hit is the whole cost of a re-render that did not change
+ * the appearance. Small: the slider's snap points and the last accents tried are
+ * what a session revisits.
+ */
+const COMPOSITION_CACHE_LIMIT = 16;
+const compositionCache = new Map<string, Composition<ThemePalette>>();
+
 /**
- * Compose the appearance without touching the document. Pure apart from the MUI
- * cache; safe to call per frame.
+ * Compose the appearance without touching the document. Pure apart from the
+ * caches.
+ *
+ * NOT CHEAP ON A MISS - NOT A PER-FRAME CALL (agent review round 1, m2 on #1674).
+ * A non-Standard composition runs the contract's evaluator inside a repair search;
+ * measured on the M-series dev host (Node 24, cold): githubLight Soft ~1.6 s,
+ * obsidian Soft ~1.2 s, arcade with a custom accent ~105 ms; the identity path
+ * ~1 ms. Repeats of one input are cache hits. The slider in the follow-up must
+ * commit on release (or debounce, or compose in a worker) - never recompose on
+ * every pointer move.
  */
 export const resolveAppearance = (
 	appearance: Appearance,
@@ -99,12 +120,25 @@ export const resolveAppearance = (
 	if (!definition) throw new Error(`no palette for theme ${option.id}`);
 	const base = definition.palette;
 	const mode = base.mode;
-	const composition = composeTheme(base, {
-		contrast: appearance.contrast[mode] ?? 0,
-		accent: appearance.accent[mode],
-		id: option.id,
-		paletteAccent: accentOf,
-	});
+	const contrast = appearance.contrast[mode] ?? 0;
+	const accent = appearance.accent[mode];
+	const key = JSON.stringify([option.id, contrast, accent ?? null]);
+	let composition = compositionCache.get(key);
+	if (composition) {
+		compositionCache.delete(key);
+	} else {
+		composition = composeTheme(base, {
+			contrast,
+			accent,
+			id: option.id,
+			paletteAccent: accentOf,
+		});
+	}
+	compositionCache.set(key, composition);
+	if (compositionCache.size > COMPOSITION_CACHE_LIMIT) {
+		const oldest = compositionCache.keys().next().value;
+		if (oldest !== undefined) compositionCache.delete(oldest);
+	}
 	if (composition.identity) {
 		return {
 			...composition,
@@ -120,6 +154,23 @@ export const resolveAppearance = (
 	};
 };
 
+/*
+ * THE WRITE IS VALIDATED HERE, NOT TRUSTED FROM THE CALLER (agent review round
+ * 1, m4 on #1674). `paletteBlock` writes values verbatim into a stylesheet, so a
+ * value like `red; } body { display: none` would become a rule. Today every
+ * composed value is a hex the engine produced; a future caller (custom themes)
+ * might not have checked. So before `textContent` is written, the id and every
+ * value must pass the CSS grammar in `css.mjs`; anything else FAILS TO IDENTITY:
+ * the built-in is published exactly as on the Standard path, and the refusal is
+ * logged. Never a partial block.
+ */
+const safeToWrite = (id: string, palette: ThemePalette): boolean =>
+	isSafeThemeId(id) &&
+	Object.entries(palette).every(
+		([role, value]) => role === "mode" || isSafePaletteValue(value),
+	) &&
+	(palette.mode === "dark" || palette.mode === "light");
+
 /**
  * Publish an appearance to `doc`. Returns what it resolved, so a caller can hand
  * the same MUI theme to the provider without composing twice.
@@ -127,8 +178,28 @@ export const resolveAppearance = (
 export const applyAppearance = (
 	appearance: Appearance,
 	doc: Document = document,
+	/* Injected for tests only: the composition to publish. */
+	resolve: (a: Appearance) => ResolvedAppearance = resolveAppearance,
 ): ResolvedAppearance => {
-	const resolved = resolveAppearance(appearance);
+	let resolved = resolve(appearance);
+	if (!resolved.identity && !safeToWrite(resolved.id, resolved.palette)) {
+		console.error(
+			`[theme] refused to publish composed theme ${JSON.stringify(resolved.id).slice(0, 60)}: an id or value is outside the CSS grammar; showing the built-in theme`,
+		);
+		const option = getTheme(appearance.themeName);
+		const definition = definitionOf(option.id);
+		if (!definition) throw new Error(`no palette for theme ${option.id}`);
+		resolved = {
+			identity: true,
+			palette: definition.palette,
+			id: option.id,
+			effectiveContrast: 0,
+			requestedContrast: resolved.requestedContrast,
+			accentApplied: false,
+			accentAdjusted: 0,
+			muiTheme: option.theme,
+		};
+	}
 	const root = doc.documentElement;
 	const existing = doc.getElementById(COMPOSED_STYLE_ID);
 	if (resolved.identity) {
