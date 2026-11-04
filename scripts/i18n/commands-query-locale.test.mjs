@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
-import { readFileSync, readdirSync } from "node:fs";
-import { join } from "node:path";
+import { mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { join, resolve } from "node:path";
 import { test } from "node:test";
+import { pathToFileURL } from "node:url";
 import { build } from "esbuild";
 
 /*
@@ -62,10 +63,21 @@ const bundle = await build({
 	},
 	external: ["react", "react-dom", "react/jsx-runtime", "electron"],
 });
-assert.ok(bundle.outputFiles[0], "the commands-key bundle did not compile");
-const mod = await import(
-	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
-);
+const outputFile = bundle.outputFiles[0];
+assert.ok(outputFile, "the commands-key bundle did not compile");
+/*
+ * COMPILED TO A FILE, NOT TO A `data:` URL. The bundle keeps React external (the
+ * renderer's own copies must not be duplicated into it), and a module loaded from
+ * `data:` has no directory to resolve a bare specifier against - node refuses with
+ * ERR_UNSUPPORTED_RESOLVE_REQUEST before a single assertion runs. Writing the
+ * bundle inside the repo (the cache dir the other harnesses use) gives its
+ * `import "react"` the same node_modules walk every other test gets.
+ */
+const cache = resolve("node_modules/.cache/commands-query-locale");
+mkdirSync(cache, { recursive: true });
+const compiled = resolve(cache, "commands-query-locale.mjs");
+writeFileSync(compiled, outputFile.text);
+const mod = await import(pathToFileURL(compiled).href);
 
 const source = (path) => readFileSync(join(ROOT, path), "utf8");
 

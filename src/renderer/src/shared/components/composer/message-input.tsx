@@ -1661,8 +1661,6 @@ const composerBox = (): HTMLTextAreaElement | null =>
  * C3). The marker is emitted by `reply-preview.tsx` and named once in
  * `composer-field.ts`, where the field's own anchor lives for the same reason.
  */
-const REPLY_CHIP_REMOVE = REPLY_CHIP_REMOVE_SELECTOR;
-
 /**
  * Whether the user has POINTED at the composer since it was last handed focus.
  *
@@ -7983,7 +7981,9 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			const at = pendingChipFocus.current;
 			if (at === null) return;
 			pendingChipFocus.current = null;
-			const chips = document.querySelectorAll<HTMLElement>(REPLY_CHIP_REMOVE);
+			const chips = document.querySelectorAll<HTMLElement>(
+				REPLY_CHIP_REMOVE_SELECTOR,
+			);
 			const next = chips[Math.min(at, chips.length - 1)];
 			if (next) next.focus();
 			else focusInput();

@@ -967,11 +967,12 @@ export function useSlashCompletion({
 	const locale = useI18nLocale();
 	/*
 	 * The tag surface's own capability. The command description reuses the
-	 * audited `ui.chat.tags.label` key; the slash popup itself is an English
-	 * surface today (its rows and footers are literal), so this memo needs no
-	 * locale subscription of its own. The one exception is the `/agent` argument
-	 * list, whose shipped-seed descriptions are catalogue copy: the
-	 * argument-source hook subscribes for that.
+	 * audited `ui.chat.tags.label` key, and THE REGISTRY ITSELF IS PER LANGUAGE
+	 * (C5): the query above is keyed by the resolved locale, so a switch rebuilds
+	 * `query.data` with the rows the backend described in the new language and
+	 * this memo follows it. The popup's own literal footers are still English
+	 * copy, which is why the memo takes no locale subscription of its own - the
+	 * key change is what redraws the rows.
 	 */
 	const tagsEnabled = desktopFeatureEnabled(capabilities.data, "session_tags");
 	/*
