@@ -108,7 +108,7 @@ export const TeamBridgeComposeBar: FC<{
 											}
 											label={recipient.label}
 											size={20}
-											className="rounded-[5px] text-[10px]"
+											className="text-[10px]"
 										/>
 										{recipient.label}
 									</button>
@@ -236,19 +236,19 @@ export const TeamBridgeComposeBar: FC<{
 										}
 										label={option.label}
 										size={20}
-										className="rounded-[5px] text-[10px]"
+										className="text-[10px]"
 									/>
 								) : (
 									<span
 										aria-hidden="true"
 										className={cn(
-											"flex size-5 shrink-0 items-center justify-center overflow-hidden rounded-[5px] text-[10px] font-medium",
-											/* Borderless, as every Team Bridge plate: the active
-									   option paints `row-hover`, and `media-surface` stays
-									   apart from it by value (see the message list's plate). */
+											"flex size-5 shrink-0 items-center justify-center overflow-hidden rounded-full text-[10px] font-semibold",
+											/* Borderless and round, on the identity washes every
+									   Team Bridge plate wears (visual refresh D4, C2). The
+									   glyph carries the plate on a `row-hover` option. */
 											option.kind === "agent"
-												? "bg-media-surface text-accent"
-												: "bg-media-surface text-ink-muted",
+												? "bg-accent-wash text-accent"
+												: "bg-accent-alt-wash text-accent-alt",
 										)}
 									>
 										{option.kind === "agent" ? (

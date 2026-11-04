@@ -185,9 +185,30 @@ export function TeamBridgeAvatar({
 			data-team-bridge-avatar=""
 			style={{ "--profile-avatar-size": `${size}px` } as CSSProperties}
 			className={cn(
-				"relative inline-flex size-[var(--profile-avatar-size)] shrink-0 items-center justify-center overflow-hidden rounded-md font-medium text-body-sm",
-				kind === "agent" ? "text-accent" : "text-ink-muted",
-				selected ? "bg-surface" : "bg-media-surface",
+				"relative inline-flex size-[var(--profile-avatar-size)] shrink-0 items-center justify-center overflow-hidden rounded-full font-semibold text-body-sm",
+				/*
+				 * IDENTITY WASHES, ROUND (Team Bridge visual refresh, D4 + contract C2).
+				 * The plate was a near-black `media-surface` square (L* 2.4 measured in
+				 * the operator's radient frame): a hole beside every name. A person is
+				 * now `accent-alt` on `accent-alt-wash` - the theme's second hue, whose
+				 * contract is "identity and category, never a state" - and an agent is
+				 * the accent Bot glyph on `accent-wash`, so kind reads from hue as well
+				 * as from the glyph. Both inks clear 4.5:1 on their wash on all 59
+				 * palettes (`scripts/contrast-contract.mjs`, "team bridge identity
+				 * plate" rows); the wash itself is a tint, not a boundary, and on a
+				 * hovered row it may sit within ΔE00 2 of the row - the glyph is what
+				 * carries the identity there. `rounded-full` is § 5's avatar shape.
+				 *
+				 * A SELECTED RAIL ROW keeps the `surface` plate it had: the washes sit
+				 * within ΔE00 1.4-2.3 of `rowSelected` on a few palettes, while both inks
+				 * clear 4.9:1 on `surface`.
+				 */
+				kind === "agent" ? "text-accent" : "text-accent-alt",
+				selected
+					? "bg-surface"
+					: kind === "agent"
+						? "bg-accent-wash"
+						: "bg-accent-alt-wash",
 				className,
 				/* AFTER `className`: the host's radius shorthand must not clip the
 				   dog-ear's tip (round 3, D1). */
@@ -214,7 +235,8 @@ export function TeamBridgeAvatar({
 					style={{ width: mark.outer, height: mark.outer }}
 					className={cn(
 						"pointer-events-none absolute end-0 bottom-0",
-						selected ? "bg-surface" : "bg-media-surface",
+						/* The keyline is the plate's OWN fill, so it follows the plate. */
+						selected ? "bg-surface" : "bg-accent-wash",
 						AGENT_MARK_SHAPE,
 					)}
 				>

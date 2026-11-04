@@ -3103,6 +3103,10 @@ test("attachments are named, never fetched, through the shared list", async () =
  * `size-[max(8px,32%)]` / `size-[calc(100%-1px)]` to inline integer px
  * (`agentMarkPx`), so the channel and audit sides both changed together; the
  * golden diff is exactly those two class removals and two `style` additions.
+ * Regenerated again for the Team Bridge visual refresh (2026-11-04): class
+ * strings only - round identity-wash plates, the inset `::before` hover, 12px
+ * meta clocks, and the day divider split into an in-flow rule plus a sticky
+ * pill (one extra `<li>` per day). Structure, names and bodies are unchanged.
  * Clock text and the `title` date depend on the machine's time zone, so both are
  * normalised; the structure, classes, names and bodies are compared verbatim.
  */

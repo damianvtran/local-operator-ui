@@ -256,24 +256,18 @@ function TeamBridgeReactionChipsBody({
 						 * `elevated` on every palette) with the ink stepping to `ink`; it
 						 * never lifts or scales.
 						 *
-						 * THE READER'S OWN REACTION is the brighter state: 26% `accent`
-						 * mixed over `surface`, with an `ink` count at medium weight. NOT
-						 * `accent-wash` (design review round 1, D1): that role sits at the
-						 * ground's depth, so it measured ΔE00 2.04 / 1.01:1 against the
-						 * others' `elevated` pill in tokyoNight - the operator's theme - and
-						 * was darker than it in 54 of 59 palettes. The mix is accent-tinted
-						 * AND clearly apart from every neighbour: ΔE00 >= 8.50 off
-						 * `elevated` (worst tokyoNight; 20% measured only 5.83, which is why
-						 * round 2 raised the share - D6), >= 7.73 off a hovered row,
-						 * `ink` >= 4.72:1 on it (ayuMirage). The count is `ink` rather than
-						 * `accent` because `accent` on a fill this tinted is 3.16:1. Hover
-						 * steps the fill DOWN to 20% - darker, the direction the others'
-						 * pills take to `sunken` (D5/D6), not brighter -- with `ink`
-						 * >= 5.44:1 on it, and it darkens in 41 of 59 palettes.
-						 * `surface` is the thread's ground; on the thread pane's `canvas`
-						 * the same fill is asserted apart too. All of it lives in
-						 * `REACTION_OWN_PILL` in `scripts/contrast-contract.mjs`, which
-						 * mixes the fill per palette as the browser does.
+						 * THE READER'S OWN REACTION is `accent` on `accent-wash` (visual
+						 * refresh D11, 2026-11-04) - Discord's "mine" pill, in two ROLES.
+						 * It was a 26% `color-mix` of accent over `surface`: a colour no
+						 * palette authors and no `CONTROLS` row can name, and on the new
+						 * `canvas` timeline it would have mixed against the wrong ground.
+						 * `accent` on its own wash clears 4.5:1 on all 59 palettes (4.51
+						 * worst, everforest), and the HUE is what separates it from the
+						 * others' `elevated` pill - the reason this pair is now a
+						 * `CONTROLS` row ("team bridge own reaction pill"). Still
+						 * borderless: the operator asked for the ring to go (2026-10-30),
+						 * and its pin below is unchanged. Hover is an ink step to
+						 * `accent-hover` (>= 5.15:1 on the wash), never a lift.
 						 *
 						 * FIXED HEIGHT, NOT `min-h`: `h-6` (24px, the WCAG 2.5.8 target
 						 * floor) on every pill and on the `+`, so a pill with a taller emoji
@@ -285,14 +279,14 @@ function TeamBridgeReactionChipsBody({
 						className={cn(
 							"inline-flex h-6 shrink-0 items-center gap-1 rounded-full px-2 text-[12px] leading-none transition-colors duration-fast ease-out-quart disabled:text-ink-dim",
 							reaction.reacted_by_me
-								? "bg-[color-mix(in_srgb,var(--color-accent)_26%,var(--color-surface))] font-medium text-ink hover:bg-[color-mix(in_srgb,var(--color-accent)_20%,var(--color-surface))]"
+								? "bg-accent-wash font-semibold text-accent hover:text-accent-hover"
 								: "bg-elevated text-ink-muted hover:bg-sunken hover:text-ink",
 						)}
 					>
 						<span
 							className={
 								canRenderEmoji(reaction.emoji)
-									? "text-[14px] leading-none"
+									? "text-[16px] leading-none"
 									: "max-w-40 truncate"
 							}
 						>

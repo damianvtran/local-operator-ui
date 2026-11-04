@@ -148,25 +148,6 @@ const over = (fg, bg, alpha) => {
 		.join("")}`;
 };
 
-/*
- * `color-mix(in srgb, a share%, b)` as the browser computes it: a straight
- * interpolation of the sRGB-ENCODED channels (CSS Color 5 "in srgb"), rounded
- * to the 8-bit value the compositor paints. Used for fills a component derives
- * from two roles rather than naming one, so the contract measures the colour
- * on screen instead of a role it does not wear.
- */
-const srgbMix = (a, b, share) => {
-	if (!isHex(a) || !isHex(b) || a.length !== 7 || b.length !== 7) return null;
-	const ch = (h, i) => Number.parseInt(h.slice(i, i + 2), 16);
-	return `#${[1, 3, 5]
-		.map((i) =>
-			Math.round(ch(a, i) * share + ch(b, i) * (1 - share))
-				.toString(16)
-				.padStart(2, "0"),
-		)
-		.join("")}`;
-};
-
 /* ---- 3. loading the palettes ------------------------------------------- */
 
 /* Palette loading lives in palette-source.mjs so this gate and the CSS
@@ -707,9 +688,75 @@ const CONTROLS = [
 		ink: "ink",
 		edge: false,
 	},
-	/* The reader's OWN pill is not a role but a derived fill (accent mixed over
-	   surface), so it cannot be a CONTROLS row: it is asserted by
-	   `REACTION_OWN_PILL` below, which mixes the fill per palette. */
+	{
+		/*
+		 * THE READER'S OWN REACTION PILL (visual refresh D11, 2026-11-04):
+		 * `accent` on `accent-wash`, in place of the 26% accent-over-surface
+		 * `color-mix` it used to derive - a colour no palette authored, mixed
+		 * against `surface` even where the pill sat on the `canvas` timeline.
+		 * Two roles now, so it is an ordinary triple. Borderless like the
+		 * others' pill (operator, 2026-10-30), so `edge: false`: the hue step
+		 * off the others' `elevated` pill and the accent count are what read as
+		 * "mine". 4.51:1 worst (everforest). The hover is an ink step to
+		 * `accentHover` on the same wash (row below).
+		 */
+		name: "team bridge own reaction pill",
+		on: ["canvas", "surface", "rowHover"],
+		fill: "accentWash",
+		border: null,
+		ink: "accent",
+		edge: false,
+	},
+	{
+		name: "team bridge own reaction pill (hover)",
+		on: ["canvas", "surface", "rowHover"],
+		fill: "accentWash",
+		border: null,
+		ink: "accentHover",
+		edge: false,
+	},
+	{
+		/*
+		 * TEAM BRIDGE IDENTITY PLATES (visual refresh D4, contract C2 in
+		 * `docs/branding.md` § 2 "The second accent"). A person's letter avatar
+		 * and the workspace tile are `accentAlt` on `accentAltWash`; an agent's
+		 * plate is the `accent` Bot glyph on `accentWash`. Round, borderless:
+		 * the wash is a tint, not a boundary (it can sit within ΔE00 2 of a
+		 * hovered row), so `edge: false` and the GLYPH carries the plate - which
+		 * is why the ink is asserted here at the text floor on every ground the
+		 * plate is drawn over. Worst: 4.53:1 (ayuLight) person, 4.51:1
+		 * (everforest) agent. A SELECTED rail row's plate takes `surface`
+		 * instead (`TeamBridgeAvatar`'s `selected`), asserted by the agent-mark
+		 * graphic row and the inks' own `surface` floors.
+		 */
+		name: "team bridge person identity plate",
+		on: ["canvas", "surface", "elevated", "rowHover"],
+		fill: "accentAltWash",
+		border: null,
+		ink: "accentAlt",
+		edge: false,
+	},
+	{
+		name: "team bridge agent identity plate",
+		on: ["canvas", "surface", "elevated", "rowHover"],
+		fill: "accentWash",
+		border: null,
+		ink: "accent",
+		edge: false,
+	},
+	{
+		/*
+		 * THE "NEW" UNREAD DIVIDER'S PILL (visual refresh D10): `onAccent` on a
+		 * solid `accent` label at the end of a 1px accent rule, drawn on the
+		 * message pane's `canvas` (and the thread pane's `surface`). The fill
+		 * IS the label's extent, so the edge is asserted (accent vs ground).
+		 */
+		name: "team bridge new messages divider pill",
+		on: ["canvas", "surface"],
+		fill: "accent",
+		border: null,
+		ink: "onAccent",
+	},
 	{
 		/*
 		 * The pills' `+`: a transparent `inkDim` glyph at rest (asserted on the
@@ -2254,6 +2301,30 @@ const ADJACENT = [
 const GRAPHICS = [
 	{
 		/*
+		 * THE MENTION ROW'S LEADING BAR (visual refresh, contract C3): a 2px
+		 * `accent` bar at the start edge of a message row that mentions the
+		 * reader, painted over that row's `accentWash` inset box. A graphic
+		 * object read at a glance, so it owes 3:1 against the wash it sits on
+		 * (4.51:1 worst, everforest) - and against the pane grounds, where the
+		 * bar's ends meet them at the box's rounded corners.
+		 */
+		name: "team bridge mention row bar",
+		on: ["accentWash", "canvas", "surface"],
+		fg: "accent",
+	},
+	{
+		/*
+		 * THE SELECTED RAIL ROW'S GLYPH (contract C4): the kind glyph (`#`,
+		 * people, `@`) in `accent` on `rowSelected`, the Settings navigation's
+		 * local exception extended to the Team Bridge rail. 4.24:1 worst
+		 * (tokyoNight) - a 16px glyph, so the 3:1 non-text floor.
+		 */
+		name: "team bridge selected rail glyph",
+		on: ["rowSelected"],
+		fg: "accent",
+	},
+	{
+		/*
 		 * Team Bridge's agent plate draws a Bot GLYPH, not a text initial, so
 		 * this is the 3:1 icon-on-fill pair rather than a control-label row.
 		 * Its fill's separation from the hovered row is asserted below.
@@ -3164,56 +3235,15 @@ const PERCEPTIBLE = [
  *     let a merged slab through - which is why it is acceptable rather than
  *     worth a parser.
  */
-/*
- * The own reaction pill's derived fills (`team-bridge-reactions.tsx`), asserted
- * in the palette loop. The shares are the call site's `color-mix` percentages;
- * the pin "team bridge own reaction pill fill" below holds the call site to
- * them.
- *
- * THE REST FLOOR IS 8.0 ΔE00 OFF THE OTHERS' PILL (design review round 2, D6).
- * "Clearly brighter" is the operator's headline ask, and the round-1 mix (20%,
- * floor 5.0) measured 5.83 in tokyoNight - the operator's own theme - which is
- * the thinnest margin in the fleet, not a clear one. 26% measures >= 8.50
- * (tokyoNight again) with `ink` >= 4.72:1 (ayuMirage); 22% and 24% still sit
- * under 8 (6.90 / 7.68), so 26% is the smallest share that clears it on all 59.
- *
- * WHY THE HOVER ROW KEEPS 5.0 AND DOES NOT TAKE 8.0. The hover fill goes DOWN to
- * 20% - darker, the direction the others' pills take to `sunken` (D5, restated
- * by D6) - so it necessarily steps TOWARD the others' resting `elevated` pill:
- * at 20% it is 5.83 from it, and NO share clears 8.0 while still being a step
- * down from the 26% rest (clearing 8.0 needs the same 26%). The two states are
- * never compared side by side anyway; what the hover must keep is its own
- * legibility (`ink` >= 5.44:1) and its separation from the grounds it is
- * painted on, and those are asserted here. The step itself measures ΔE00 2.44
- * worst (sage).
- */
-const REACTION_OWN_PILL = [
-	{
-		name: "team bridge own reaction pill",
-		accentShare: 0.26,
-		apartFrom: {
-			elevated: 8.0,
-			sunken: 3.0,
-			surface: 3.0,
-			canvas: 3.0,
-			rowHover: 3.0,
-		},
-	},
-	{
-		name: "team bridge own reaction pill (hover)",
-		accentShare: 0.2,
-		apartFrom: { elevated: 5.0, surface: 3.0, rowHover: 3.0 },
-	},
-];
 
 const STRUCTURAL_CALL_SITES = [
 	{
 		/*
 		 * THE REACTION PILLS WEAR THE FILLS THEIR CONTRACT ROWS MEASURE.
 		 *
-		 * The CONTROLS rows "team bridge reaction pill" (+ hover) and
-		 * `REACTION_OWN_PILL` prove the VALUES on every palette; only this pin can
-		 * see the edit that moves a pill to another role or another mix share,
+		 * The CONTROLS rows "team bridge reaction pill" (+ hover) and "team
+		 * bridge own reaction pill" (+ hover) prove the VALUES on every palette;
+		 * only this pin can see the edit that moves a pill to another role,
 		 * which would leave every ratio above green. (The ring the operator asked
 		 * to remove is held by the base-class pin below.)
 		 *
@@ -3225,8 +3255,8 @@ const STRUCTURAL_CALL_SITES = [
 		 */
 		what: "team bridge reaction pills wear their measured fills",
 		file: "src/renderer/src/features/team-bridge/team-bridge-reactions.tsx",
-		must: '? "bg-[color-mix(in_srgb,var(--color-accent)_26%,var(--color-surface))] font-medium text-ink hover:bg-[color-mix(in_srgb,var(--color-accent)_20%,var(--color-surface))]"\n\t\t\t\t\t\t\t\t: "bg-elevated text-ink-muted hover:bg-sunken hover:text-ink",',
-		why: "the pill rows assert `elevated`/`sunken` and the own pill's 26% rest / 20% hover accent-over-surface mixes with their inks; a pill moved to another role or share would leave those rows green about a component that no longer wears them",
+		must: '? "bg-accent-wash font-semibold text-accent hover:text-accent-hover"\n\t\t\t\t\t\t\t\t: "bg-elevated text-ink-muted hover:bg-sunken hover:text-ink",',
+		why: "the pill rows assert `elevated`/`sunken` for the others' pill and `accent`/`accentHover` on `accentWash` for the reader's own; a pill moved to another role would leave those rows green about a component that no longer wears them",
 	},
 	{
 		what: "team bridge reaction pills stay borderless",
@@ -6288,41 +6318,6 @@ for (const { id, palette: p } of palettes) {
 					}
 				}
 			}
-		}
-	}
-
-	/*
-	 * TEAM BRIDGE OWN REACTION PILL (design review round 1, D1 on #1524). The
-	 * fill is `color-mix(in srgb, accent N%, surface)`, mixed here per palette
-	 * exactly as the browser mixes it (sRGB-encoded channels), and asserted three
-	 * ways on every palette:
-	 *   1. SEPARATION from the others' pill (`elevated`) and from their hover
-	 *      (`sunken`): the operator asked for "clearly brighter", and the first
-	 *      cut (`accentWash`) measured ΔE00 2.04 / 1.01:1 off `elevated` in
-	 *      tokyoNight, the operator's own theme, and was DARKER in 54 of 59.
-	 *   2. A visible step off the grounds the row is painted on, including the
-	 *      hovered row (`rowHover`), where `accentWash` hit 1.00:1 on dracula.
-	 *   3. `ink` on the fill at 4.5:1, at rest and on the hover step.
-	 * Separation is ΔE00, the file's perceptual instrument; a luminance ratio
-	 * cannot see a hue step, and hue IS the accent tint's job.
-	 */
-	for (const row of REACTION_OWN_PILL) {
-		const fill = srgbMix(p.accent, p.surface, row.accentShare);
-		if (!fill) continue;
-		assertions++;
-		const inkOn = ratio(p.ink, fill);
-		if (inkOn < FLOOR.text)
-			fail(
-				`${id}: ${row.name} — ink ${p.ink} on fill ${fill} = ${r2(inkOn)}:1, need ${FLOOR.text}:1`,
-			);
-		for (const [other, min] of Object.entries(row.apartFrom)) {
-			if (!isHex(p[other])) continue;
-			assertions++;
-			const got = deltaE(fill, p[other]);
-			if (got < min)
-				fail(
-					`${id}: ${row.name} — fill ${fill} is ΔE00 ${r2(got)} from \`${other}\` ${p[other]}, need ${min}`,
-				);
 		}
 	}
 

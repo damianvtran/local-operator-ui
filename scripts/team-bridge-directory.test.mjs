@@ -1010,7 +1010,13 @@ test("a payload whose every row is unrenderable says so, not 'nobody joined'", (
 	assert.doesNotMatch(html, /No one else has joined/);
 });
 
-test("the row time moves to the header and a relative+absolute tooltip", () => {
+/*
+ * THE TIME LIVES IN THE ROW'S TOOLTIP ONLY (Team Bridge visual refresh D8,
+ * 2026-11-04). It used to be repeated in the channel header as "· 10 hours ago";
+ * last-active time is the least useful fact a header can carry, so the header
+ * dropped it and the tooltip is the one place it survives.
+ */
+test("the row time lives in a relative+absolute tooltip, not the row or the header", () => {
 	const at = new Date(Date.now() - 10 * 60 * 60 * 1000).toISOString();
 	const channel = conversation({
 		id: "bcv_time",
@@ -1032,7 +1038,8 @@ test("the row time moves to the header and a relative+absolute tooltip", () => {
 	assert.ok(row && header);
 	assert.doesNotMatch(visible(row), /10 hours ago/);
 	assert.match(row, /title="10 hours ago · [^"]+"/);
-	assert.match(visible(header), /10 hours ago/);
+	assert.doesNotMatch(visible(header), /10 hours ago/);
+	assert.match(visible(header), /release-proof-0\.84\.2/);
 });
 
 test("the merged row also keeps its visible time out of the row", () => {
@@ -1061,12 +1068,12 @@ test("the merged row also keeps its visible time out of the row", () => {
 		/<button[^>]*data-conversation-id="bcv_channel_merged"[\s\S]*?<\/button>/,
 	)?.[0];
 	const header = html
-		.match(/<header[^>]*flex h-11[^>]*>[\s\S]*?<\/header>/g)
+		.match(/<header[^>]*flex h-12[^>]*>[\s\S]*?<\/header>/g)
 		?.at(-1);
 	assert.ok(row, "merged row rendered");
 	assert.ok(header, "merged header rendered");
 	assert.doesNotMatch(visible(row), /10 hours ago/);
-	assert.match(visible(header), /10 hours ago/);
+	assert.doesNotMatch(visible(header), /10 hours ago/);
 	assert.match(visible(row), /Minerva/);
 });
 

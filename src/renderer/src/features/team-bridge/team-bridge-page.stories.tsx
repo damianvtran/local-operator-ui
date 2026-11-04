@@ -690,17 +690,20 @@ export const InvitationWaiting: Story = {
 };
 
 /**
- * The row's real hover FILL, beside the borderless human and agent plates.
- * Synthetic mouse events cannot set the browser's trusted :hover state, so this
- * capture-only rule mirrors the exact production hover declaration; the frame
- * and geometry read the resulting computed background, not just a class.
+ * The row's real hover FILL, beside the round identity plates, with the
+ * overlay toolbar it reveals. Synthetic mouse events cannot set the browser's
+ * trusted :hover state, so this capture-only rule mirrors the exact production
+ * hover declarations (the inset `::before` box on `surface`, the toolbar's
+ * reveal); the frame and geometry read the resulting computed styles.
  */
 export const HoveredMessageRow: Story = {
 	decorators: [
 		(Story) => (
 			<>
 				<style>
-					{"[data-capture-hover] { background-color: var(--color-row-hover); }"}
+					{
+						"[data-capture-hover]::before { background-color: var(--color-surface); } [data-capture-hover] [data-message-toolbar] > div { opacity: 1; pointer-events: auto; }"
+					}
 				</style>
 				<Story />
 			</>

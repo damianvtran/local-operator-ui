@@ -1,4 +1,5 @@
 import { TeamBridgeApi } from "@shared/api/local-operator/team-bridge-api";
+import { PanelEdge } from "@shared/components/common/panel-edge";
 import { Spinner } from "@shared/components/common/spinner";
 import { Button } from "@shared/components/ui/button";
 import { ScrollArea } from "@shared/components/ui/scroll-area";
@@ -315,9 +316,16 @@ function TeamBridgeThreadPaneBody({
 		<aside
 			ref={pane}
 			aria-label={t("ui.teamBridge.replies.title")}
-			className="panel-top-pad flex h-full min-h-0 w-full min-w-0 shrink-0 flex-col bg-canvas"
+			/* THE THREAD IS THE THIRD PLANE (visual refresh §3.2): `surface` beside
+			   the `canvas` timeline, with the one sanctioned `PanelEdge` seam on its
+			   leading edge (`relative` is the seam's containing block). It was
+			   `canvas`, the same ground as the timeline it sits beside, so only the
+			   seam separated two reading planes. Rows inside it hover to `elevated`
+			   (`density="compact"`), the next step up from this ground. */
+			className="panel-top-pad relative flex h-full min-h-0 w-full min-w-0 shrink-0 flex-col bg-surface"
 		>
-			<header className="flex h-11 shrink-0 items-center justify-between px-5">
+			<PanelEdge side="start" />
+			<header className="flex h-12 shrink-0 items-center justify-between px-4">
 				<h2 className="font-semibold text-[15px] text-ink">
 					{t("ui.teamBridge.replies.title")}
 				</h2>
@@ -495,7 +503,7 @@ function TeamBridgeThreadPaneBody({
 						</p>
 					)}
 					<div
-						className="rounded-xl bg-elevated has-[textarea:focus-visible]:outline-2 has-[textarea:focus-visible]:outline-accent has-[textarea:focus-visible]:outline-offset-2 has-[textarea:focus-visible]:outline-solid"
+						className="rounded-md bg-elevated has-[textarea:focus-visible]:outline-2 has-[textarea:focus-visible]:outline-accent has-[textarea:focus-visible]:outline-offset-2 has-[textarea:focus-visible]:outline-solid"
 						{...(state === "ready" ? attachmentPasteHandlers(images) : {})}
 					>
 						<TeamBridgeAttachmentStrip state={images} />
@@ -538,7 +546,7 @@ function TeamBridgeThreadPaneBody({
 							<Button
 								size="icon-sm"
 								variant="primary"
-								className="rounded-lg"
+								className="rounded-sm"
 								disabled={
 									!hasContent || images.busy || sending || state !== "ready"
 								}

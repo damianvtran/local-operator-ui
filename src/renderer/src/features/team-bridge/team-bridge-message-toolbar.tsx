@@ -32,26 +32,22 @@ import { TEAM_BRIDGE_THREADS_SHIPPED_IN_THIS_BUILD } from "./team-bridge-thread-
  * nothing for a message without reactions, and the row no longer renders its
  * own reply button.
  *
- * WHERE IT SITS, AND WHY IT CANNOT OVERLAP. The toolbar is a FLOAT at the end
- * of the message's content column, one line tall (`1lh`), placed before
- * the header and body. Text, the name/time line, reaction chips, the thread
- * summary and attachment thumbnails therefore flow AROUND it: the browser's
- * own float layout guarantees no overlap at every width (1280, 800, the
- * 26rem thread pane), with no measuring and no breakpoints. The slot is
- * reserved at rest and only its opacity changes, so the row never reflows when
- * the pointer arrives — nothing moves on hover (docs/branding.md).
- * A Slack-style overlay that straddles the previous row was rejected for that
- * reason: it covers the previous message's last line.
+ * WHERE IT SITS (visual refresh, 2026-11-04). An OVERLAY on the row's top
+ * end edge, straddling the row above by 16px - Slack's and Discord's toolbar.
+ * It used to be a one-line float in the content column, reserved at rest so
+ * nothing reflowed; the cost was a ragged first line on every message (text
+ * wrapped around an invisible 60px slot) and a toolbar that sat inside the
+ * text rather than on the row. As an overlay it takes no layout at all, so
+ * nothing moves when the pointer arrives - which is the rule the float was
+ * protecting. It covers at most the previous message's last line, and only
+ * while this row is hovered or focused.
  *
  * CHROME (docs/branding.md, "Elevation is a lightness step, not a shadow").
- * Borderless; its ground is `elevated`, one lightness step above the row's
- * `surface`/`row-hover`. NO shadow: the one shadow is reserved for objects that
- * leave the flow (menu, dialog, drawer, popover, tooltip, select), and this
- * toolbar is in the flow — it is a float in the content column. The menu and
- * the picker it opens DO leave the flow and carry the shadow through their
- * primitives. The buttons are the shared `ghost` `icon-sm` control: 28x28 hit
- * targets (the floor is 24x24), the ghost hover step, and the app-wide
- * `:focus-visible` outline (never a box-shadow ring).
+ * Borderless on `elevated`, and it carries the ONE shadow: it now leaves the
+ * flow, which is exactly the class the shadow is reserved for (menu, dialog,
+ * popover, tooltip - and this). The buttons are the shared `ghost` `icon-sm`
+ * control: 28x28 hit targets (the floor is 24x24), the ghost hover step, and
+ * the app-wide `:focus-visible` outline (never a box-shadow ring).
  *
  * KEYBOARD. One tab stop, the repo's roving-toolbar pattern (`panel-rail.tsx`,
  * horizontal here): Tab reaches the toolbar's roving button, ArrowLeft/Right
@@ -161,17 +157,10 @@ export function TeamBridgeMessageToolbar({
 	return (
 		<div
 			data-message-toolbar=""
-			/* The reserved slot: one LINE tall (`1lh`, 21.7px at the body's 14/1.55),
-			   so a one-line message keeps its height and the timeline's rhythm does
-			   not change. The 28px toolbar is centred on it and overhangs 3px above
-			   and 3px below. Below, that is inside the next line's 3.9px
-			   half-leading, above its glyphs. Above, a header row has 6px of
-			   padding (`pt-1.5`) to take it; a CONTINUATION row has only 2px
-			   (`py-0.5`), so there the lighter ground reaches 1px into the row
-			   above (design round 3, D15, deferred: 1px of an `elevated` ground
-			   on hover only). The ground has no padding for that reason: a
-			   padded 32px ground would reach the next line's glyphs. */
-			className="float-end ms-2 flex h-[1lh] items-center"
+			/* Positioned against the row (`relative` on the `<li>`), 16px above its
+			   top and 16px in from its end edge. `z-10` lifts it over the row above,
+			   whose own inset hover box is `-z-10` inside its own stacking context. */
+			className="absolute -top-4 end-4 z-10 flex"
 		>
 			<div
 				ref={root}
@@ -180,11 +169,13 @@ export function TeamBridgeMessageToolbar({
 				aria-orientation="horizontal"
 				onKeyDown={onKeyDown}
 				className={cn(
-					"flex items-center gap-0.5 rounded-md bg-elevated",
+					"flex h-8 items-center gap-0.5 rounded-sm bg-elevated p-0.5 shadow-lg",
 					"transition-opacity duration-fast ease-out-quart",
 					forceVisible || pickerOpen
 						? "opacity-100"
-						: "opacity-0 group-focus-within/message:opacity-100 group-hover/message:opacity-100",
+						: /* Hidden means unhittable too: the overlay sits over the row
+						     ABOVE, and an invisible toolbar must not eat its clicks. */
+							"pointer-events-none opacity-0 group-focus-within/message:pointer-events-auto group-focus-within/message:opacity-100 group-hover/message:pointer-events-auto group-hover/message:opacity-100",
 				)}
 			>
 				{canReact && reactions && (
