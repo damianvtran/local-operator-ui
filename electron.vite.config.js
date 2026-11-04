@@ -81,6 +81,11 @@ export default defineConfig({
 						__dirname,
 						"src/preload/browser-approvals-overlay.ts",
 					),
+					// The hidden H.264 encoder window's own bridge (two channels).
+					"recording-encoder": resolve(
+						__dirname,
+						"src/preload/recording-encoder.ts",
+					),
 				},
 			},
 		},
@@ -148,6 +153,17 @@ export default defineConfig({
 				__dirname,
 				"src/renderer/browser-approvals-overlay.html",
 			),
+			/*
+			 * The hidden H.264 encoder document behind `record_start {quality:
+			 * "high"}`. Listed in BOTH halves for the reason the documents above are:
+			 * this list is what the dev server serves and `rollupOptions.input` is what
+			 * the BUILD emits; a document declared in only one 404s in the other, and
+			 * here that 404 would be a recording that can never start.
+			 */
+			recordingEncoder: resolve(
+				__dirname,
+				"src/renderer/recording-encoder.html",
+			),
 		},
 		build: {
 			// electron-vite defaults the renderer to minify:false on the assumption
@@ -210,6 +226,11 @@ export default defineConfig({
 					approvalsOverlay: resolve(
 						__dirname,
 						"src/renderer/browser-approvals-overlay.html",
+					),
+					/* The encoder document: the BUILD half of the pair above. */
+					recordingEncoder: resolve(
+						__dirname,
+						"src/renderer/recording-encoder.html",
 					),
 				},
 			},

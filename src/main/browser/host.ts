@@ -424,6 +424,10 @@ export interface BrowserHostOptions {
 	 * `will-download` handler that feeds it is installed on the SESSION, which this
 	 * module deliberately does not own. */
 	downloads: BrowserActionContext["downloads"];
+	/** The hidden H.264 encoder window for `record_start {quality: "high"}`
+	 * (`actions/recording-encoder-host.ts`). Absent in a test or a story: `high` is
+	 * then refused `record_quality_unavailable` and `standard` is unaffected. */
+	recordingEncoder?: BrowserActionContext["recordingEncoder"];
 	log: (message: string) => void;
 	onChanged: () => void;
 	facts: () => HostFacts;
@@ -495,6 +499,7 @@ export class BrowserHost implements BrowserActionContext {
 	readonly approvals: BrowserActionContext["approvals"];
 	readonly ownership: BrowserActionContext["ownership"];
 	readonly downloads: BrowserActionContext["downloads"];
+	readonly recordingEncoder?: BrowserActionContext["recordingEncoder"];
 	readonly log: (message: string) => void;
 	readonly onChanged: () => void;
 	readonly facts: () => HostFacts;
@@ -542,6 +547,7 @@ export class BrowserHost implements BrowserActionContext {
 		this.approvals = options.approvals;
 		this.ownership = options.ownership;
 		this.downloads = options.downloads;
+		this.recordingEncoder = options.recordingEncoder;
 		this.log = options.log;
 		this.onChanged = options.onChanged;
 		// See the field's doc comment: an arrow in a class-property initialiser is
