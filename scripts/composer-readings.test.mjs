@@ -1338,7 +1338,7 @@ test("the shed's state comes from the row's own third-box predicate, computed on
 	/*
 	 * THE THIRD BOX IS A LIVE RECORDING AND NOTHING ELSE. The cluster is two
 	 * fixed slots (`[A mic][B Send | Stop]`, 68px) in every state, because Stop
-	 * stands in Send's own slot; only `[Cancel][Confirm][Send recording]` (104px)
+	 * stands in Send's own slot; only `[Insert][Cancel][Send recording]` (104px)
 	 * is wider. The held-box reservation this used to read (`interruptSlotDrawn`,
 	 * `useInterruptSlotHold`) is gone, so a regression that put a running turn
 	 * back on the 780/740/675 arms - or the reservation back in the tree - fails

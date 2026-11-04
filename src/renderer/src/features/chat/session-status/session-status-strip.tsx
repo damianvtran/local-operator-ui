@@ -259,7 +259,7 @@ export type SessionStatusStripProps = {
 	/**
 	 * Whether the composer's controls group is drawing a THIRD box beside the
 	 * two fixed slots while this strip renders: true only while a dictation is
-	 * recording, when `[Cancel][Confirm][Send recording]` is 104px (92px in the
+	 * recording, when `[Insert][Cancel][Send recording]` is 104px (92px in the
 	 * small view) instead of the 68px (60px) `[mic][Send | Stop]` pair.
 	 *
 	 * TOLD, never inferred, for the reason `held` and `readingsDropped` are told

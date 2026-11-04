@@ -148,13 +148,14 @@ test("preparing leaves slot B alone", () => {
 
 /* ----------------------------------------------------- recording and slot A/C */
 
-test("recording is the trio [Cancel][Confirm][Send recording], whatever the turn is doing", () => {
+test("recording is the trio [Insert][Cancel][Send recording], Insert and Cancel in main's own order, whatever the turn is doing", () => {
 	for (const alive of [false, true]) {
 		for (const hasPayload of [false, true]) {
 			const rec = b({ dictation: "recording", alive, hasPayload });
 			assert.equal(rec.role, "send-recording");
-			assert.equal(slotARole("recording"), "confirm");
-			assert.equal(slotCRole("recording"), "cancel");
+			// Cancel keeps the mic's own spot (A); Insert is the box added on the left (C).
+			assert.equal(slotARole("recording"), "cancel");
+			assert.equal(slotCRole("recording"), "confirm");
 		}
 	}
 });
@@ -172,11 +173,11 @@ test("slot C exists only while recording", () => {
 	}
 });
 
-test("slot A: mic, preparing mic, spinner while transcribing, Confirm while recording", () => {
+test("slot A: mic, preparing mic, spinner while transcribing, Cancel while recording", () => {
 	assert.equal(slotARole("idle"), "mic");
 	assert.equal(slotARole("preparing"), "mic-preparing");
 	assert.equal(slotARole("transcribing"), "spinner");
-	assert.equal(slotARole("recording"), "confirm");
+	assert.equal(slotARole("recording"), "cancel");
 });
 
 test("Send recording is refused exactly when a normal Send would be", () => {
@@ -428,22 +429,22 @@ const ROW_SOURCE = readFileSync(
 	"utf8",
 );
 
-test("DOM order is visual order: Cancel, Confirm, then slot B's roles, mic in slot A's place", () => {
+test("DOM order is visual order: Insert, then the mic/spinner/Cancel spot, then slot B's roles", () => {
 	const at = (needle) => {
 		const i = ROW_SOURCE.indexOf(needle);
 		assert.ok(i > -1, `missing ${needle}`);
 		return i;
 	};
-	const cancel = at('slotC === "cancel" && (');
-	const confirm = at('slotA === "confirm" && (');
+	const confirm = at('slotC === "confirm" && (');
+	const cancel = at('slotA === "cancel" && (');
 	const sendRec = at('(slotB.role === "send-recording" ||');
 	const connecting = at('slotB.role === "connecting" && (');
 	const stop = at('slotB.role === "stop-busy") &&');
 	const send = at('(slotB.role === "send" || slotB.role === "steer") &&');
 	const mic = at('(slotA === "mic" || slotA === "mic-preparing")');
-	assert.ok(mic < cancel, "mic/spinner precede the recording trio in the DOM");
-	assert.ok(cancel < confirm, "Cancel is left of Confirm");
-	assert.ok(confirm < sendRec, "Confirm is left of Send recording");
+	assert.ok(confirm < mic, "Insert is the leftmost box, before the mic's spot");
+	assert.ok(mic < cancel, "Cancel stands where the mic did");
+	assert.ok(cancel < sendRec, "Cancel is left of Send recording");
 	assert.ok(sendRec < connecting && connecting < stop && stop < send);
 });
 

@@ -6415,7 +6415,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * ladders ask about it and a second copy of the condition is how they drift.
 		 *
 		 * The group is two fixed slots, `[A][B]` = 68px (60px small view), in every
-		 * state except a live recording, where `[C Cancel][A Confirm][B Send
+		 * state except a live recording, where `[C Insert][A Cancel][B Send
 		 * recording]` draws a third box to the LEFT of the other two = 104px (92px).
 		 * A running turn is NOT a third box any more: Stop stands in Send's own slot.
 		 *
@@ -10080,6 +10080,41 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 									}}
 									className="ms-auto flex order-3 shrink-0 items-center gap-1"
 								>
+									{slotC === "confirm" && (
+										<Tooltip
+											key="confirm"
+											content={t("ui.chat.composer.insert_transcript_hint")}
+										>
+											<span>
+												<Button
+													data-composer-slot="c"
+													variant="outline"
+													size={isSmallView ? "icon-sm" : "icon"}
+													type="button"
+													className={cn(
+														"border-success-border bg-success-wash text-success hover:bg-success-wash",
+														confirmArming && "opacity-72",
+													)}
+													onClick={(event) => {
+														if (ignoreConfirmPress(event.detail)) return;
+														handleConfirmRecording();
+													}}
+													aria-label={t("ui.chat.composer.insert_transcript")}
+													/*
+													 * NO `disabled` HERE, and NOT gated on the composer's refusal either
+													 * (the refusal contract's own test forbids that gate anywhere in this
+													 * file - see composer-refusal.test.mjs): the control must stay
+													 * pressable while a recording exists, including in a box that refuses
+													 * input, because the alternative is a live microphone nothing can
+													 * stop. The handler's own guard keeps it safe (a press with nothing
+													 * recording is a no-op).
+													 */
+												>
+													<Check aria-hidden="true" />
+												</Button>
+											</span>
+										</Tooltip>
+									)}
 									{(slotA === "mic" || slotA === "mic-preparing") &&
 										micControlShown && (
 											<Tooltip
@@ -10193,19 +10228,23 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 											<Spinner size="sm" />
 										</Button>
 									)}
-									{slotC === "cancel" && (
+									{slotA === "cancel" && (
 										<Tooltip
 											key="cancel"
 											content={t("ui.chat.composer.cancel_recording_hint")}
 										>
 											<span>
 												<Button
-													data-composer-slot="c"
+													data-composer-slot="a"
 													variant="outline"
 													size={isSmallView ? "icon-sm" : "icon"}
 													type="button"
 													className={cn(
-														"text-ink-dim hover:bg-elevated hover:text-ink",
+														// A neutral outline body with the glyph in danger red: the
+														// one colour cue that says "this throws the take away", and
+														// not a loud third fill beside the green disc. The red fill
+														// is for hover and focus only.
+														"text-danger hover:bg-danger-wash hover:text-danger focus-visible:bg-danger-wash",
 														cancelArming && "opacity-72",
 													)}
 													onClick={(event) => {
@@ -10219,41 +10258,6 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 													// even where the box refuses input.
 												>
 													<X aria-hidden="true" />
-												</Button>
-											</span>
-										</Tooltip>
-									)}
-									{slotA === "confirm" && (
-										<Tooltip
-											key="confirm"
-											content={t("ui.chat.composer.insert_transcript_hint")}
-										>
-											<span>
-												<Button
-													data-composer-slot="a"
-													variant="outline"
-													size={isSmallView ? "icon-sm" : "icon"}
-													type="button"
-													className={cn(
-														"border-success-border bg-success-wash text-success hover:bg-success-wash",
-														confirmArming && "opacity-72",
-													)}
-													onClick={(event) => {
-														if (ignoreConfirmPress(event.detail)) return;
-														handleConfirmRecording();
-													}}
-													aria-label={t("ui.chat.composer.insert_transcript")}
-													/*
-													 * NO `disabled` HERE, and NOT gated on the composer's refusal either
-													 * (the refusal contract's own test forbids that gate anywhere in this
-													 * file - see composer-refusal.test.mjs): the control must stay
-													 * pressable while a recording exists, including in a box that refuses
-													 * input, because the alternative is a live microphone nothing can
-													 * stop. The handler's own guard keeps it safe (a press with nothing
-													 * recording is a no-op).
-													 */
-												>
-													<Check aria-hidden="true" />
 												</Button>
 											</span>
 										</Tooltip>

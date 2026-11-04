@@ -3,7 +3,8 @@
  * The button-slot claim, read off a `composer-readings-geometry.mjs` capture:
  * in every state the composer can be photographed in, the mic's press point
  * (slot A) and the primary slot (slot B) keep the x they have when idle, and the
- * recording trio only ADDS a box to their left.
+ * recording trio only ADDS a box (Insert) to the left of the mic's own spot; Cancel
+ * keeps that spot, as it does on main.
  *
  *     node scripts/composer-readings-geometry.mjs --label=after \
  *         --states=idle,idle-text,running,running-text,stopping,recording,mic-off,sendrec-hang,sendrec-ok,sendrec-empty,sendrec-error,sendrec-running \
@@ -84,6 +85,47 @@ for (const [key, group] of byGroup) {
 			boxValue: row.boxValue,
 		};
 		states.push(entry);
+		/*
+		 * THE RECORDING ORDER (operator decision): [Insert][Cancel][Send recording],
+		 * main's own relative order. Cancel stands on the mic's spot (slot A, asserted
+		 * equal to idle below), Insert is the one box added, one control plus gap to the
+		 * left of it, and the DOM order is the visual order (lefts ascend). Checked on
+		 * the `after` tree only: the before tree has no slot markers.
+		 */
+		if (row.state === "recording" && TREE !== "before") {
+			const lefts = (row.slots ?? []).map((x) => x.left);
+			const labels = (row.slots ?? []).map((x) => x.label);
+			entry.recordingOrder = labels;
+			const ordered = lefts.every((x, i) => i === 0 || x > lefts[i - 1]);
+			const c = (row.slots ?? []).find((x) => x.slot === "c");
+			const isRtl = row.dir === "rtl";
+			if (
+				labels.length !== 3 ||
+				labels[0] !== "Insert transcript" ||
+				labels[1] !== "Cancel recording" ||
+				labels[2] !== "Send recording"
+			)
+				out.failures.push(
+					`${key} recording: order is ${labels.join(" | ")}, not Insert transcript | Cancel recording | Send recording`,
+				);
+			// Logical order mirrors under RTL: the first control is the rightmost.
+			const mirrored = lefts.every((x, i) => i === 0 || x < lefts[i - 1]);
+			if (isRtl ? !mirrored : !ordered)
+				out.failures.push(
+					`${key} recording: DOM order is not the ${isRtl ? "mirrored " : ""}visual order`,
+				);
+			if (
+				!c ||
+				(a && Math.abs(Math.abs(a.left - c.left) - (a.width + 4)) > 0.5)
+			)
+				out.failures.push(
+					`${key} recording: Insert is not one control plus gap beside Cancel (A ${a?.left}, C ${c?.left})`,
+				);
+			if (a?.label !== "Cancel recording")
+				out.failures.push(
+					`${key} recording: slot A holds ${a?.label}, not Cancel recording`,
+				);
+		}
 		if (entry.rowOverflow !== null && entry.rowOverflow > 0)
 			out.failures.push(
 				`${key} ${row.state}: the row overflows by ${entry.rowOverflow}px`,

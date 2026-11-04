@@ -8,12 +8,21 @@
  * its place - Stop, when a turn started. The old answer held an invisible third
  * box for a grace window; that moved the hazard rather than removing it. Here
  * Send and Stop are ONE slot (never drawn together), the dictation control owns
- * the slot beside it, and the only slot that ever appears (Cancel, while
- * recording) appears to the LEFT of both. So the x of slot A (mic / Confirm)
- * and slot B (Send / Steer / Stop / Send recording) is the same in every state.
+ * the slot beside it, and the only slot that ever appears (Insert transcript,
+ * while recording) appears to the LEFT of both. So the x of slot A (mic /
+ * Cancel) and slot B (Send / Steer / Stop / Send recording) is the same in every
+ * state.
  *
  *     idle, working, stopping:   [A mic][B primary]                    68px
- *     recording:        [C Cancel][A Confirm][B Send recording]        104px
+ *     recording:     [C Insert][A Cancel][B Send recording]            104px
+ *
+ * THE RECORDING ORDER IS main's OWN, with one control added. On main the row was
+ * [Confirm][Cancel] with Cancel on the mic's spot; here Confirm is "Insert
+ * transcript" at the same left spot, Cancel keeps the mic's spot, and Send
+ * recording is new on the right, in Send's spot. The press guard (500 ms, below)
+ * is what covers a reflex second press of the mic landing on Cancel. (Operator
+ * decision after an independent design review; an earlier revision of this
+ * change put Cancel leftmost.)
  *
  * The functions are pure so the matrix can be tested without a browser; the
  * composer reads them and renders one keyed button per role, so a press that
@@ -32,10 +41,10 @@ export type DictationPhase =
 	| "transcribing";
 
 /** Slot A: the mic's own press point. */
-export type SlotARole = "mic" | "mic-preparing" | "confirm" | "spinner";
+export type SlotARole = "mic" | "mic-preparing" | "cancel" | "spinner";
 
 /** Slot C: drawn only while recording, left of A. */
-export type SlotCRole = "cancel";
+export type SlotCRole = "confirm";
 
 /**
  * Slot B: the rightmost, "send" position. `connecting` is the inert busy face
@@ -175,7 +184,7 @@ export function slotARole(
 	dictation: DictationPhase,
 	sendRecording: SendRecordingPhase = "idle",
 ): SlotARole {
-	if (dictation === "recording") return "confirm";
+	if (dictation === "recording") return "cancel";
 	if (dictation === "transcribing" || sendRecording !== "idle")
 		return "spinner";
 	if (dictation === "preparing") return "mic-preparing";
@@ -184,7 +193,7 @@ export function slotARole(
 
 /** Slot C exists only while recording. */
 export function slotCRole(dictation: DictationPhase): SlotCRole | null {
-	return dictation === "recording" ? "cancel" : null;
+	return dictation === "recording" ? "confirm" : null;
 }
 
 /**
