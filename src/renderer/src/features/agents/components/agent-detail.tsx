@@ -954,6 +954,8 @@ export function AgentDetail({
 								<AgentMark
 									agentId={profile.agent_id}
 									className={SUMMARY_PORTRAIT_CLASS}
+									// The `size-20` box this portrait fills: 80 CSS px.
+									cssPx={80}
 									glyph={<Bot className="size-8" aria-hidden="true" />}
 									fallback={<SummaryPortraitPlate />}
 								/>

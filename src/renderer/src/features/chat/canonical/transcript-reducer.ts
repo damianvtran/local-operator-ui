@@ -79,6 +79,7 @@ import {
 	type SupplementFile,
 	type SupplementRowState,
 	type SupplementSound,
+	type SupplementWithheld,
 	mergeSupplement,
 	supplementKeyForEntry,
 	supplementPatchFromEvent,
@@ -847,6 +848,14 @@ type TranscriptPayloadRecord =
 			 * when it did).
 			 */
 			sounds: readonly SupplementSound[];
+			/**
+			 * Pinned or answer-named deliverables the core refused (name + reason,
+			 * never a path), plus the count past the core's 10-entry bound. Optional
+			 * because rows and fixtures older than 2026-11-03 carry neither; both
+			 * read as "nothing withheld".
+			 */
+			withheld?: readonly SupplementWithheld[];
+			withheldMore?: number;
 			/** `superseded` renders nothing; a job-level failure renders its line. */
 			error: string;
 			/**

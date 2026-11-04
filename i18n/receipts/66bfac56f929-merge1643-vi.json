@@ -1,0 +1,168 @@
+{
+ "schema": 1,
+ "receipt_kind": "locale-audit (post-merge re-audit), no value changed",
+ "date": "2026-11-04",
+ "auditor": "i18n-auditor",
+ "agent": "i18n-auditor",
+ "model": "anthropic/claude-opus-5-5",
+ "model_provenance": "Served model as announced by the harness preamble for session 66bfac56f929 (anthropic/claude-opus-5-5); no fallback announced or observed.",
+ "model_fallback": {
+  "announced": false,
+  "observed": false
+ },
+ "status": "passed",
+ "result": "clean-with-findings",
+ "namespace": "ui.teamBridge",
+ "locale": "vi",
+ "audit_id": "tb-merge1643-66bfac56f929-vi",
+ "instance": "66bfac56f929-merge1643-vi",
+ "session": "66bfac56f929",
+ "integration": {
+  "pr": 1643,
+  "repo": "damianvtran/local-operator-ui",
+  "branch": "fix/delivery-recipient-label",
+  "merge_commit": "8f18b76d44dd1230c315b49e05f2004f9765b391",
+  "merge_parents": {
+   "ours": "1f66d899f30181e29636964cf2593bb541cf25e2",
+   "theirs": "81df7db084489569910888efbfd92d07212ec097"
+  },
+  "merge_base": "2ff3187db64d36fa42bd0b97b24ef5f184ac8145"
+ },
+ "independence": "Independent auditor: radientdev team i18n-auditor, session 66bfac56f929. Translated none of these strings, wrote none of PR #1643's code or the merge commit 8f18b76d44d, and is none of the prior teamBridge auditors (7fc20c1e3809, 2fd8346bf635, 122b7f54cbdc on the branch; f93eb129057e, 06af958924d2 on main). Edited no catalogue or context value; no MT/translation service used. Row written by ledger-assemble.mjs.",
+ "sha256": {
+  "vi": "3fbf6eed08cead8e66c239a5192398c082f9ceecb174469d3c696f85cd969ab6",
+  "en": "d06d4b8e8292b006364c800f24719c0f569b36bb86e2c81cba194de9f8b005ab"
+ },
+ "context_sha256": "31535f65e12b7dbb6b907f926be5d60ff80939605d1db538e1160530310ce59c",
+ "style_guide": {
+  "path": "~/local-operator i18n/style-guides/vi.md",
+  "sha256": "e4901497ed553e2b2ae4a2660bf776adb787b89e11d7eb0f8d08f3da4b227888",
+  "glossary_sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+  "core_commit": "b42471d3935"
+ },
+ "scope": {
+  "delta_kind": "Merge of origin/main 81df7db into PR #1643 (8f18b76). No key changed on both sides: 11 keys changed only by the branch (1f66d89), 3 only by main (81df7db); every merged value equals its changing side and the file equals `git merge-file` of ours/base/theirs byte-for-byte (same for en and the en context).",
+  "ours_target_sha256": "0e202c413fc8251e166ff099e0955b2f5654358d96cc70ddd9deeae8413b0790",
+  "ours_audited_by": [
+   "122b7f54cbdc-vi"
+  ],
+  "theirs_target_sha256": "b1173e51429c455f3a81a8984dacdff0027ea5b2c42052b5403a6eb1e676da6f",
+  "theirs_audited_by": [
+   "06af958924d2-gt2-vi"
+  ],
+  "keys_from_ours": [
+   "ui.teamBridge.delivery.held",
+   "ui.teamBridge.delivery.held_awaiting_review",
+   "ui.teamBridge.delivery.held_screening_unavailable",
+   "ui.teamBridge.delivery.pending",
+   "ui.teamBridge.delivery.recipient_unnamed",
+   "ui.teamBridge.delivery.refused",
+   "ui.teamBridge.delivery.refused_abusive",
+   "ui.teamBridge.delivery.refused_manipulation",
+   "ui.teamBridge.delivery.refused_out_of_scope",
+   "ui.teamBridge.delivery.refused_personal_info",
+   "ui.teamBridge.delivery.refused_unsafe_content"
+  ],
+  "keys_from_theirs": [
+   "ui.teamBridge.builtin.general_topic",
+   "ui.teamBridge.fileCard.kind",
+   "ui.teamBridge.fileCard.list"
+  ],
+  "keys_audited_linguistically": [
+   "ui.teamBridge.delivery.held",
+   "ui.teamBridge.delivery.held_awaiting_review",
+   "ui.teamBridge.delivery.held_screening_unavailable",
+   "ui.teamBridge.delivery.pending",
+   "ui.teamBridge.delivery.recipient_unnamed",
+   "ui.teamBridge.delivery.refused",
+   "ui.teamBridge.delivery.refused_abusive",
+   "ui.teamBridge.delivery.refused_manipulation",
+   "ui.teamBridge.delivery.refused_out_of_scope",
+   "ui.teamBridge.delivery.refused_personal_info",
+   "ui.teamBridge.delivery.refused_unsafe_content",
+   "ui.teamBridge.builtin.general_topic",
+   "ui.teamBridge.fileCard.kind",
+   "ui.teamBridge.fileCard.list"
+  ],
+  "whole_file_review": "Keys changed by neither side are byte-identical to base and to both audited parents. The 14 delta values were re-read against English and the merged context, in their composed delivery sentences (named 'Aida (Ben Tran)' and unnamed recipient forms), and against the namespace's surviving copy for term clashes.",
+  "not_audited": "No fresh linguistic audit of the 328 keys neither side changed. No rendered/visual or runtime ICU execution check; no pseudo-localization."
+ },
+ "audited": {
+  "ui.teamBridge.delivery.held": {
+   "en": "Waiting to be screened by {recipient}…",
+   "translation": "Đang chờ {recipient} sàng lọc…"
+  },
+  "ui.teamBridge.delivery.held_awaiting_review": {
+   "en": "Waiting to be screened by {recipient}. Awaiting review.",
+   "translation": "Đang chờ {recipient} sàng lọc. Tin nhắn đang chờ xem xét."
+  },
+  "ui.teamBridge.delivery.held_screening_unavailable": {
+   "en": "Waiting to be screened by {recipient}. Screening is temporarily unavailable.",
+   "translation": "Đang chờ {recipient} sàng lọc. Tính năng sàng lọc tạm thời không khả dụng."
+  },
+  "ui.teamBridge.delivery.pending": {
+   "en": "Screened; delivery to {recipient} is pending",
+   "translation": "Đã sàng lọc; đang chờ chuyển tới {recipient}"
+  },
+  "ui.teamBridge.delivery.recipient_unnamed": {
+   "en": "{person}’s chief of staff",
+   "translation": "chánh văn phòng của {person}"
+  },
+  "ui.teamBridge.delivery.refused": {
+   "en": "Not delivered to {recipient}. Refused by moderation.",
+   "translation": "Không được chuyển tới {recipient}. Bị bộ kiểm duyệt từ chối."
+  },
+  "ui.teamBridge.delivery.refused_abusive": {
+   "en": "Not delivered to {recipient}: refused by their moderation (looked like abusive content)",
+   "translation": "Không được chuyển tới {recipient}: bị bộ kiểm duyệt của họ từ chối (có vẻ là nội dung lăng mạ)"
+  },
+  "ui.teamBridge.delivery.refused_manipulation": {
+   "en": "Not delivered to {recipient}: refused by their moderation (looked like an attempt to manipulate the agent)",
+   "translation": "Không được chuyển tới {recipient}: bị bộ kiểm duyệt của họ từ chối (có vẻ là một nỗ lực thao túng tác nhân)"
+  },
+  "ui.teamBridge.delivery.refused_out_of_scope": {
+   "en": "Not delivered to {recipient}: refused by their moderation (looked like a request outside what this agent handles)",
+   "translation": "Không được chuyển tới {recipient}: bị bộ kiểm duyệt của họ từ chối (có vẻ là một yêu cầu nằm ngoài phạm vi của tác nhân này)"
+  },
+  "ui.teamBridge.delivery.refused_personal_info": {
+   "en": "Not delivered to {recipient}: refused by their moderation (looked like a request for personal information)",
+   "translation": "Không được chuyển tới {recipient}: bị bộ kiểm duyệt của họ từ chối (có vẻ là một yêu cầu thông tin cá nhân)"
+  },
+  "ui.teamBridge.delivery.refused_unsafe_content": {
+   "en": "Not delivered to {recipient}: refused by their moderation (looked like unsafe content or links)",
+   "translation": "Không được chuyển tới {recipient}: bị bộ kiểm duyệt của họ từ chối (có vẻ là nội dung hoặc liên kết không an toàn)"
+  },
+  "ui.teamBridge.builtin.general_topic": {
+   "en": "The whole organization: people and their agents. Agents see every message and reply when @-mentioned or in threads they follow.",
+   "translation": "Toàn bộ tổ chức: mọi người và tác nhân của họ. Tác nhân xem mọi tin nhắn và trả lời khi được nhắc đến bằng @ hoặc trong các chuỗi họ theo dõi."
+  },
+  "ui.teamBridge.fileCard.kind": {
+   "en": "{kind, select, pdf {PDF} text {Text file} container {ZIP} other {File}}",
+   "translation": "{kind, select, pdf {PDF} text {Tệp văn bản} container {ZIP} other {Tệp}}"
+  },
+  "ui.teamBridge.fileCard.list": {
+   "en": "{count, plural, one {# file} other {# files}}",
+   "translation": "{count, number} tệp"
+  }
+ },
+ "linguistic_review": "Delta values faithful. 'chánh văn phòng của {person}' lower-case mid-sentence, glossary/style-guide term; 'Đang chờ chánh văn phòng của Ben Tran sàng lọc…' and 'Không được chuyển tới …' read naturally; 'bộ kiểm duyệt của họ' keeps the recipient's moderation; hedge 'có vẻ là' kept. fileCard.list '{count, number} tệp' is the namespace's established count form (attachmentCard.list) and renders the same as an other-only plural. general_topic: VI1.",
+ "findings": [
+  {
+   "id": "VI1",
+   "severity": "MINOR",
+   "key": "ui.teamBridge.builtin.general_topic",
+   "value_excerpt": "trong các chuỗi họ theo dõi",
+   "issue": "'thread' is 'luồng' in the other 6 thread strings of this file (e.g. agentNotify.mention 'Nhắc @ và luồng đang theo dõi'); 'chuỗi' here breaks the namespace term. 'họ' (a people pronoun) for agents also reads oddly; the file elsewhere repeats 'tác nhân'. Raised first by 06af958924d2-gt2-vi and still unresolved at the merged bytes.",
+   "suggested": "Toàn bộ tổ chức: mọi người và tác nhân của họ. Tác nhân xem mọi tin nhắn và trả lời khi được nhắc đến bằng @ hoặc trong các luồng mà tác nhân theo dõi.",
+   "origin": "theirs (81df7db)",
+   "disposition": "Not edited; left to the implementer. Meaning correct."
+  }
+ ],
+ "checks": {
+  "merge_proof_command": "python3 $LOCAL_OPERATOR_SCRATCHPAD/tb1643/verify_merge.py (worktree root, HEAD 8f18b76)",
+  "icu_command": "node $LOCAL_OPERATOR_SCRATCHPAD/tb1643/verify.mjs (worktree root; Node v24.22.1; @formatjs/icu-messageformat-parser)",
+  "placeholders": "All 342 values parse; argument names per key equal English. Argument kind differs from en only where the locale uses {count, number} for an other-only count (vi, zh-CN: attachmentCard.list, fileCard.list).",
+  "key_set": "342 keys, equal to English.",
+  "unicode": "All values NFC; no bidi controls (U+200E/F, U+061C, U+202A-E, U+2066-9)."
+ }
+}

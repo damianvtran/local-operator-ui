@@ -25,5 +25,6 @@
 	"ui.agents.avatar.editor.zoom": "ज़ूम",
 	"ui.agents.avatar.editor.zoom_in": "ज़ूम बढ़ाएँ",
 	"ui.agents.avatar.editor.zoom_out": "ज़ूम घटाएँ",
-	"ui.agents.avatar.editor.zoom_value": "{value}×"
+	"ui.agents.avatar.editor.zoom_value": "{value}×",
+	"ui.agents.avatar.add_link": "{name} के लिए तस्वीर जोड़ें"
 }

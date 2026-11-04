@@ -326,6 +326,12 @@ export type DesktopFeature =
 	 * same key, so a plate and a banner agree.
 	 */
 	| "team_bridge_endpoint_avatar"
+	/**
+	 * `GET /v1/agents/{id}/avatar?size=64|128|256` (local-operator #3381): a
+	 * downscaled derivative of the local agent picture. Absent: the renderer
+	 * omits `size` and core serves the 512 px original, as before.
+	 */
+	| "agent_avatar_sizes"
 	| "auth"
 	| "settings"
 	| "commands"

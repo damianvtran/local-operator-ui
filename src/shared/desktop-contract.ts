@@ -7199,7 +7199,16 @@ export type DesktopMediaRequest =
 	 * the blob under the same digest. The PUT carries the cropped image as a raw
 	 * body (core sniffs and re-normalises it); the DELETE carries nothing.
 	 */
-	| { op: "agent.avatar"; agentId: string; sha256: string }
+	| {
+			op: "agent.avatar";
+			agentId: string;
+			sha256: string;
+			/**
+			 * A downscaled derivative (core `agent_avatar_sizes`). Sent only when
+			 * core advertises the feature; absent, the 512 px original as before.
+			 */
+			size?: 64 | 128 | 256;
+	  }
 	// Human profile operations are intentionally disjoint from local agents.
 	// The opaque scope binds writes to the login that commissioned the editor.
 	| { op: "account.profile"; expectedAccountId: string }

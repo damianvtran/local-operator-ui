@@ -1329,10 +1329,17 @@ test("the surface offers no way to write: no composer, no reaction, no admit", a
 test("a message with attachments names them without fetching bytes", async () => {
 	const view = await renderView(panel({ messages: [admitted] }));
 	const text = view.text();
-	assert.ok(text.includes(m.t("ui.teamBridge.attachmentCard.unavailable")));
+	/* The non-bound text file is a chip that says the attachment is
+	 * unavailable; the expired PNG keeps its picture-shaped box and says the
+	 * IMAGE is unavailable, the member transcript's wording (inline-image
+	 * refresh, SPEC §3.1). Both are named; neither fetches. */
 	assert.equal(
 		text.split(m.t("ui.teamBridge.attachmentCard.unavailable")).length - 1,
-		2,
+		1,
+	);
+	assert.equal(
+		text.split(m.t("ui.teamBridge.attachments.unavailable")).length - 1,
+		1,
 	);
 	/* No image tag, no byte URL: this text-only surface never loads a private
 	 * attachment into a renderer. */
@@ -3092,6 +3099,10 @@ test("attachments are named, never fetched, through the shared list", async () =
  * was captured from the shared list on the base commit (eecfb71a3bb), BEFORE any
  * prop existed; regenerate only with a reviewed reason:
  *     UPDATE_PARITY_GOLDEN=1 node --test scripts/team-bridge-owner-audit-render.test.mjs
+ * Regenerated once since (PR #1645, retina avatars): the agent mark moved from
+ * `size-[max(8px,32%)]` / `size-[calc(100%-1px)]` to inline integer px
+ * (`agentMarkPx`), so the channel and audit sides both changed together; the
+ * golden diff is exactly those two class removals and two `style` additions.
  * Clock text and the `title` date depend on the machine's time zone, so both are
  * normalised; the structure, classes, names and bodies are compared verbatim.
  */

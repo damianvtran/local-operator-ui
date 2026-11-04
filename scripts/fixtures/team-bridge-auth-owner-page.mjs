@@ -74,8 +74,10 @@ const SOURCE = /\/src\/.*\.(?:tsx?|json)$/;
 const laneSource = resolve(
 	"src/renderer/src/features/team-bridge/team-bridge-pending-sends.ts",
 );
+// Re-pinned when `PendingSend` gained its captured `mentions` field (a type-only
+// import and property; the lane code the observer hooks is unchanged).
 const laneHash =
-	"9262850c304c39364cc3a88aff63c2dcf6335f4544d9264b07f75b625bd6a729";
+	"16ba46b7d74205a219b0d19c9b86297aa485a31fc1a7261b1757d4f598e529d6";
 const hash = (value) => createHash("sha256").update(value).digest("hex");
 const laneAttempts = [];
 let laneObserverError = false;
@@ -125,7 +127,8 @@ const bundle = await build({
  export {teamBridgeViewingConversation} from './src/renderer/src/features/team-bridge/team-bridge-viewing';
  export {QueryClient,QueryClientProvider} from '@tanstack/react-query';
  export {MemoryRouter} from 'react-router-dom';
- export {usePendingSends, resetPendingSendsForTest} from './src/renderer/src/features/team-bridge/team-bridge-pending-sends';`,
+ export {usePendingSends, resetPendingSendsForTest} from './src/renderer/src/features/team-bridge/team-bridge-pending-sends';
+ export {stageMentions, stagedMentions} from './src/renderer/src/features/team-bridge/mentions/mention-outbox';`,
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -257,7 +260,10 @@ export const DropdownMenuTrigger=({children,asChild})=>{const c=React.useContext
 export const DropdownMenuContent=({children})=>{const c=React.useContext(Ctx);return c.open?React.createElement("div",{role:"menu"},children):null;};
 export const DropdownMenuItem=({children,onSelect,onClick})=>{const c=React.useContext(Ctx);return React.createElement("div",{role:"menuitem",onClick:(e)=>{onClick?.(e);onSelect?.(e);c.setOpen(false);}},children);};
 const Pass=({children})=>React.createElement(React.Fragment,null,children);
-export const DropdownMenuGroup=Pass,DropdownMenuPortal=Pass,DropdownMenuSub=Pass,DropdownMenuRadioGroup=Pass,DropdownMenuSubTrigger=Pass,DropdownMenuSubContent=Pass,DropdownMenuCheckboxItem=DropdownMenuItem,DropdownMenuRadioItem=DropdownMenuItem,DropdownMenuLabel=Pass,DropdownMenuSeparator=()=>null,DropdownMenuShortcut=Pass;`
+const Radio=React.createContext(null);
+export const DropdownMenuRadioGroup=({children,onValueChange})=>React.createElement(Radio.Provider,{value:onValueChange},children);
+export const DropdownMenuRadioItem=({children,value,onSelect})=>{const pick=React.useContext(Radio);return React.createElement(DropdownMenuItem,{onSelect:(e)=>{onSelect?.(e);pick?.(value);}},children);};
+export const DropdownMenuGroup=Pass,DropdownMenuPortal=Pass,DropdownMenuSub=Pass,DropdownMenuSubTrigger=Pass,DropdownMenuSubContent=Pass,DropdownMenuCheckboxItem=DropdownMenuItem,DropdownMenuLabel=Pass,DropdownMenuSeparator=()=>null,DropdownMenuShortcut=Pass;`
 								: `export const rowCurrent=${role};`,
 				}));
 			},
@@ -344,6 +350,8 @@ function deferred() {
  *   waitReady   - false when the scenario holds the gate open on purpose.
  *   statusGate  - replaces the fixture's own null status gate, so a caller can
  *                 hold the eligibility verdict open from before the first render.
+ *   sendMentions- advertises `team_bridge_send_mentions`, so the composer's
+ *                 @-mentions are serialised onto the wire (off by default).
  * The remaining holds are installed on the returned fixture by the scenario that
  * needs them: `fixture.listGate` (the conversation list) and `fixture.unreadGate`
  * (the account unread aggregate).
@@ -357,6 +365,7 @@ async function mount({
 	seed = null,
 	waitReady = true,
 	statusGate = null,
+	sendMentions = false,
 } = {}) {
 	// A revoked attempt can outlive its cleared lane and store entry. A later
 	// fixture must not reset shared state while that earlier job can still run.
@@ -416,6 +425,7 @@ async function mount({
 		createListTenant: undefined,
 		createReceipts: [],
 		away: false,
+		listFor: null,
 	};
 	window.api = {
 		desktop: {
@@ -437,6 +447,9 @@ async function mount({
 								team_bridge_threads: 1,
 								team_bridge_reactions: 1,
 								team_bridge_conversation_owner_guard: fixture.ownerGuard,
+								/* Opt-in: only the mention suites type an `@`, and the other
+								   suites' request shapes predate the field. */
+								...(sendMentions ? { team_bridge_send_mentions: 1 } : {}),
 							},
 						});
 					case "radient.request":
@@ -499,6 +512,10 @@ async function mount({
 						});
 					case "team_bridge.conversations.list":
 						if (fixture.listGate) await fixture.listGate.promise;
+						/* PER-SCOPE ROWS (view restore): a scenario that needs each organization
+						   to answer its own list - and the account read to answer the union -
+						   supplies them here; every older suite leaves it null. */
+						if (fixture.listFor) return reply(fixture.listFor(request));
 						if (fixture.lifecycle) {
 							const wanted = request.status ?? "open";
 							return reply({
@@ -642,6 +659,15 @@ async function mount({
 						if (fixture.created)
 							return reply(fixture.messages.get(ownerKey)[0]);
 						return reply({ id: `msg_${owner}` });
+					/* A thread read answers its root out of the scenario's history, so a
+					   reopened thread pane renders rather than erroring (view restore). */
+					case "team_bridge.messages.replies": {
+						const root = (
+							fixture.historyByConversation.get(request.conversation_id) ?? []
+						).find((row) => row.id === request.message_id);
+						if (!root) return reply({});
+						return reply({ root, replies: [], has_more: false });
+					}
 					case "team_bridge.read":
 						return reply({
 							conversation_id: request.conversation_id,
@@ -667,7 +693,7 @@ async function mount({
 	const root = createRoot(host);
 	const client = ui.queryClient;
 	client.clear();
-	seed?.({ client, ui });
+	seed?.({ client, ui, fixture });
 	const ownedQueries = new Set();
 	const stopTracking = client
 		.getQueryCache()

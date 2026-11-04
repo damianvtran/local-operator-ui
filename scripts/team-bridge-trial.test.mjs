@@ -300,7 +300,7 @@ test("R1-3: the trial replaces only the plan-required panel, and paused folds in
 
 // The page-wiring pins (R1-3), at module scope for biome's useTopLevelRegex.
 const GATE_ROUTES_THROUGH_PREDICATE =
-	/if \(trialReplacesPanel\(eligibility\) && noOrgPanel\) return noOrgPanel;\n\tif \(eligibility\) return <TeamBridgeEligibilityPanel reason=\{eligibility\} \/>;/;
+	/if \(trialReplacesPanel\(eligibility\) && noOrgPanel\)\n\t\treturn \(\n\t\t\t<>\n\t\t\t\t\{earlyColumn\}\n\t\t\t\t\{noOrgPanel\}\n\t\t\t<\/>\n\t\t\);\n\tif \(eligibility\)\n\t\treturn \(\n\t\t\t<>\n\t\t\t\t\{earlyColumn\}\n\t\t\t\t<TeamBridgeEligibilityPanel reason=\{eligibility\} \/>/;
 const OLD_INLINE_GATE = /eligibility === "plan_required" && noOrgPanel/;
 const READ_ONLY_ROUTES_THROUGH_PREDICATE =
 	/const readOnly = teamBridgeReadOnly\(\{\n\t\tstatusReadOnly: status\.data\?\.read_only === true,\n\t\townerGuard,\n\t\ttrialPaused: trialNote\.paused,\n\t\}\);/;

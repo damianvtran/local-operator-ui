@@ -210,6 +210,26 @@ test("the title prefers the name, then the members, then the caller's fallback",
 		"Aida",
 	);
 	assert.equal(model.ownerAuditTitle({ members: [] }, "Untitled"), "Untitled");
+	// Stored labels are read the way the conversation title reads them (review
+	// m1 on #1643): a self-composed "X (X)" is no name and the legacy "Member"
+	// placeholder is nobody, so neither reaches the title verbatim.
+	assert.equal(
+		model.ownerAuditTitle(
+			{
+				members: [
+					{ account_id: "a", kind: "human", display_label: "Ana" },
+					{
+						account_id: "b",
+						kind: "agent",
+						display_label: "Ben Tran (Ben Tran)",
+					},
+					{ account_id: "c", kind: "human", display_label: "Member" },
+				],
+			},
+			"fallback",
+		),
+		"Ana",
+	);
 });
 
 test("chronology de-duplicates an overlapping boundary and sorts by seq", () => {

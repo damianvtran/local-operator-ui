@@ -179,6 +179,18 @@ const PANEL_COLUMNS = [
 			'"panel-top-pad flex min-w-0 flex-1 flex-col bg-surface"',
 		],
 	},
+	{
+		/*
+		 * The shell's ROUTE-OWNED left column (the Team Bridge sidebar swap): the
+		 * host the bridge rail is portaled into on `/team-bridge`. It is the panel
+		 * in that mode - the hosted rail carries no pad of its own - so it is the
+		 * element that must clear the traffic lights.
+		 */
+		path: "src/renderer/src/shared/components/common/chat-layout.tsx",
+		classes: [
+			'className="panel-top-pad flex h-full min-h-0 flex-col overflow-hidden bg-surface"',
+		],
+	},
 ];
 
 test("every full-height panel owns the strip and pads its own first row", () => {

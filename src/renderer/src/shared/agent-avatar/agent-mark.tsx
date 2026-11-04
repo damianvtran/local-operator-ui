@@ -51,6 +51,12 @@ export type AgentMarkProps = {
 	 * stored file cannot be decoded.
 	 */
 	glyph?: ReactNode;
+	/**
+	 * The CSS px the picture is drawn at, so the read can ask core for a
+	 * right-sized derivative (`useAgentAvatar`). Omit to read the original -
+	 * the editor's preview does, because it shows the file being edited.
+	 */
+	cssPx?: number;
 	/** Overrides the image URL (stories, the editor's own preview). */
 	src?: string | null;
 	/**
@@ -68,8 +74,13 @@ export function AgentMark({
 	src,
 	glyph = null,
 	onPresence,
+	cssPx,
 }: AgentMarkProps) {
-	const fetched = useAgentAvatar(src === undefined ? agentId : null, sha256);
+	const fetched = useAgentAvatar(
+		src === undefined ? agentId : null,
+		sha256,
+		cssPx,
+	);
 	const url = src === undefined ? fetched : src;
 	const present = Boolean(url);
 	useEffect(() => {
@@ -88,6 +99,8 @@ export function AgentMark({
 export function useHasAgentPicture(
 	agentId: string | null | undefined,
 	sha256?: string | null,
+	/** The same CSS size the mark draws at, so both share one read. */
+	cssPx?: number,
 ): boolean {
-	return useAgentAvatar(agentId, sha256) !== null;
+	return useAgentAvatar(agentId, sha256, cssPx) !== null;
 }

@@ -46648,7 +46648,7 @@ async function sceneMiniView(app, cdp) {
 		return name;
 	};
 	const dictationStartSentence = composerLabel("Start recording");
-	const dictationStopSentence = composerLabel("Confirm recording");
+	const dictationStopSentence = composerLabel("Insert transcript");
 	/*
 	 * The invalid-state sentence is the registrationCopy arm the toast probe
 	 * asserts; it is a `case` return rather than a `key: "…"` entry, so it gets
@@ -46792,7 +46792,7 @@ async function sceneMiniView(app, cdp) {
 		const composerField = `document.querySelector('textarea[aria-label="Message"]')`;
 		const composerSend = `document.querySelector('button[aria-label="Send message"]')`;
 		const composerMicStart = `document.querySelector('button[aria-label="Start recording"]')`;
-		const composerMicConfirm = `document.querySelector('button[aria-label="Confirm recording"]')`;
+		const composerMicConfirm = `document.querySelector('button[aria-label="Insert transcript"]')`;
 		const composerAlert = `document.querySelector('[role="alert"]')`;
 		/*
 		 * THE PALETTE THIS SCENE PHOTOGRAPHS (design N2). `--theme` reached only the MAIN

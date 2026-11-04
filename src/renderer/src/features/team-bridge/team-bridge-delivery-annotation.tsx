@@ -13,6 +13,7 @@ import {
 	type TeamBridgeDeliveryLine,
 	teamBridgeDeliveryLines,
 } from "./team-bridge-delivery-annotation-model";
+import { type ChiefLabels, recipientLabel } from "./team-bridge-model";
 
 /**
  * The muted per-recipient delivery lines under a message: "Not delivered to
@@ -110,15 +111,42 @@ const DeliveryInfo: FC<{ text: string }> = ({ text }) => {
 	);
 };
 
+/**
+ * The chief forms for a recipient named INSIDE a delivery sentence. Module
+ * level because `t()` reads the locale at call time, so one object serves
+ * every render (review n1).
+ *
+ * `named` is the rows' own `chief.label` ("Aida (Ben Tran)"). `unnamed` is NOT
+ * the rows' `chief.unnamed`: that is a standalone label, and mid-sentence after
+ * a preposition or before a postposition several locales need another form
+ * (hi/ur oblique genitive, fr/es the article; i18n audit C1-C4 on #1643). The
+ * composition rule is still the shared `composeChiefLabel`; only the copy of
+ * the unnamed form differs.
+ */
+const DELIVERY_CHIEF_LABELS: ChiefLabels = {
+	named: (agent, person) => t("ui.teamBridge.chief.label", { agent, person }),
+	unnamed: (person) =>
+		t("ui.teamBridge.delivery.recipient_unnamed", { person }),
+};
+
 const DeliveryLineText: FC<{ line: TeamBridgeDeliveryLine }> = ({ line }) => {
-	// A blank wire label falls back to the shared placeholders rather than
-	// rendering "Not delivered to  ()" (review round 1, R2).
+	/*
+	 * ONE composed `{recipient}`, never "{agent} ({owner})" spliced here: an
+	 * agent member stored by an older client already reads "Aida (Ben Tran)",
+	 * and splicing it rendered "Aida (Ben Tran) (Ben Tran)" (operator report,
+	 * 2026-11-03). Every delivery entry is an agent recipient (contract v1). A
+	 * label that names nobody falls back to the shared placeholder rather than
+	 * rendering "Not delivered to  ()" (review round 1, R2).
+	 */
 	const params = {
-		agent: line.agent || t("ui.teamBridge.sender.unknown_agent"),
-		owner: line.owner || t("ui.teamBridge.sender.unknown_person"),
+		recipient:
+			recipientLabel(
+				{ kind: "agent", label: line.agent, ownerLabel: line.owner },
+				DELIVERY_CHIEF_LABELS,
+			) ?? t("ui.teamBridge.sender.unknown_agent"),
 	};
 	if (line.kind === "pending") {
-		return <>{t("ui.teamBridge.delivery.pending", { agent: params.agent })}</>;
+		return <>{t("ui.teamBridge.delivery.pending", params)}</>;
 	}
 	if (line.kind === "held") {
 		switch (line.holdReason) {
