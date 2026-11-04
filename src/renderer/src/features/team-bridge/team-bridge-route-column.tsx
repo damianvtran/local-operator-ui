@@ -59,10 +59,13 @@ export const TeamBridgeBackRow: FC = () => {
 	 */
 	const Arrow = useTextDirection() === "rtl" ? ArrowRight : ArrowLeft;
 	/*
-	 * True while Back holds focus the SHELL put there on entry (it marks that
-	 * focus with `data-focus-handoff`, `chat-layout.tsx`). Any reader gesture -
-	 * pointer over Back, a key on it, or focus leaving - ends it, so the tooltip
-	 * still opens for a reader who tabs or points to Back (#1660 UX U7).
+	 * True while Back holds focus a caller handed it from script and marked
+	 * `data-focus-handoff`. Any reader gesture - pointer over Back, a key on it,
+	 * or focus leaving - ends it, so the tooltip still opens for a reader who
+	 * tabs or points to Back (#1660 UX U7). The shell's entry no longer focuses
+	 * Back at all (#1671: it parks focus on the column host, so neither the ring
+	 * nor this tooltip can appear on entry); the guard stays for any other
+	 * scripted hand-off to Back.
 	 */
 	const [handoff, setHandoff] = useState(false);
 	const { total: attention, lines: attentionLines } =

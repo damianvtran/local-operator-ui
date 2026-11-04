@@ -126,8 +126,12 @@ type ChatLayoutProps = {
 	 * sidebar was keeping alive that the rest of the app still reads (the
 	 * catalogue feed - see `StripFeedKeeper`). Default off, so every other
 	 * caller lays out exactly as before.
+	 *
+	 * `label` names the host as a region (design D1 / review R5): entry parks
+	 * focus on the host itself, so a screen reader announces the route rather
+	 * than nothing. The route supplies its own title, already translated.
 	 */
-	routeSidebar?: { keeper?: ReactNode } | false;
+	routeSidebar?: { keeper?: ReactNode; label?: string } | false;
 };
 
 /**
@@ -319,55 +323,49 @@ export const ChatLayout: FC<ChatLayoutProps> = ({
 	/*
 	 * Entry: the route's rail arrives through a portal a commit or more later
 	 * (the host ref, then the lazy page), so the column is watched until its
-	 * first control exists, and that is focused.
+	 * first control exists, and then focus goes to the COLUMN, not the control.
 	 *
-	 * THE HANDOFF OUTLIVES THE FIRST COLUMN (#1660 QA Q5 / review m1). A first
-	 * open usually draws the EARLY column (Back + title) while the page chunk or
-	 * its gate is pending, and then replaces it with the full rail: the Back the
-	 * reader was handed is unmounted and focus fell to `<body>` ~50ms later. So
-	 * the watch continues after the first focus, and whenever the control it
-	 * handed focus to leaves the document while focus is on `<body>`, the new
-	 * first control takes it. It stops the moment focus is anywhere else (the
-	 * reader moved on, which this must never undo) and with the route.
+	 * WHY NOT THE FIRST CONTROL (operator, 2026-11-04: "when you click Team
+	 * Bridge it has the back button highlighted and tooltip open"). Focusing Back
+	 * from script is a programmatic focus Chromium can paint as `:focus-visible`
+	 * (the ring), and Radix's tooltip trigger opens on any focus that did not
+	 * follow a pointerdown ON it. #1660 U7 answered the tooltip half by marking
+	 * that focus `data-focus-handoff` so Back suppressed its tooltip; the ring
+	 * stayed. The host takes focus instead (`tabIndex={-1}`, `focusVisible:
+	 * false`, named as a region): no ring and no tooltip, focus still does not
+	 * fall to `<body>` (U2/Q3), and the next Tab lands on Back, where a real
+	 * keyboard focus draws the ring and opens the tooltip.
 	 *
-	 * `data-focus-handoff` marks the focus as the shell's, not the reader's:
-	 * Back's tooltip opens on focus, and a five-line tooltip over the rail on
-	 * every entry was noise nobody asked for (#1660 UX U7). The Back row reads
-	 * and clears the mark (`team-bridge-route-column.tsx`).
+	 * THE HANDOFF OUTLIVES THE FIRST COLUMN (#1660 QA Q5 / review m1) for free:
+	 * a first open draws the EARLY column (Back + title) and then replaces it with
+	 * the full rail, which unmounted a focused Back and dropped focus to `<body>`.
+	 * The host is the shell's own element and survives that swap, so the parked
+	 * focus does too; the watch only waits for the first control to exist.
 	 */
 	useEffect(() => {
 		if (!routeOwnsSidebar || !leftHost || !focusWasInColumn.current) return;
-		let handed: HTMLElement | null = null;
 		const focusFirst = () => {
 			const first = leftHost.querySelector<HTMLElement>(
 				"button, a[href], [tabindex]:not([tabindex='-1'])",
 			);
 			if (!first) return false;
 			focusWasInColumn.current = false;
-			handed = first;
-			first.setAttribute("data-focus-handoff", "");
-			first.focus();
+			/* `focusVisible` is a newer FocusOptions member TypeScript's DOM lib
+			   may not carry yet; the panel rail's story passes it the same way. */
+			leftHost.focus({
+				preventScroll: true,
+				focusVisible: false,
+			} as FocusOptions);
 			return true;
 		};
 		/* The host's own realm: the column is a portal target, and a static-markup
 		   or jsdom host has no global `MutationObserver` of its own. */
 		const Observer =
 			leftHost.ownerDocument.defaultView?.MutationObserver ?? MutationObserver;
+		if (focusFirst()) return;
 		const observer = new Observer(() => {
-			if (handed === null) {
-				focusFirst();
-				return;
-			}
-			const doc = leftHost.ownerDocument;
-			const active = doc.activeElement;
-			const parked = active === null || active === doc.body;
-			if (!parked && !leftHost.contains(active)) {
-				observer.disconnect(); // the reader has moved on
-				return;
-			}
-			if (parked && !handed.isConnected) focusFirst();
+			if (focusFirst()) observer.disconnect();
 		});
-		focusFirst();
 		observer.observe(leftHost, { childList: true, subtree: true });
 		return () => observer.disconnect();
 	}, [routeOwnsSidebar, leftHost]);
@@ -657,6 +655,11 @@ export const ChatLayout: FC<ChatLayoutProps> = ({
 							 */}
 							<div
 								ref={setLeftHost}
+								/* Focusable by script only: the entry handoff above parks
+								   focus here so Tab starts in the column; never a Tab stop. */
+								tabIndex={-1}
+								role={routeSidebar.label ? "region" : undefined}
+								aria-label={routeSidebar.label}
 								data-route-sidebar-host=""
 								data-glass-region="sidebar"
 								className="panel-top-pad flex h-full min-h-0 flex-col overflow-hidden bg-surface"
