@@ -3,7 +3,7 @@ import type {
 	EncoderEvent,
 	EncoderUnavailableWhy,
 } from "../../../shared/recording-encoder";
-import type { CdpContents, CdpPool } from "../cdp";
+import { type CdpContents, type CdpPool, PAGE_DISABLED_EVENT } from "../cdp";
 import { BrowserHostError } from "../errors";
 import { type Mp4Sample, muxOverheadBound, writeMp4 } from "./recording-mux";
 
@@ -27,7 +27,9 @@ import { type Mp4Sample, muxOverheadBound, writeMp4 } from "./recording-mux";
  * `Page.screencastFrameAck`, so withholding the ack throttles the SOURCE and skips
  * the PNG encode Chromium would otherwise spend on frames nobody keeps. A frame is
  * acked once the encoder has taken it AND `1/fps` has passed since the previous one
- * was sent. At most one frame waits (`pending`, latest wins; the displaced one is
+ * was sent. That is the normal case: Chromium keeps at most two frames unacked, so
+ * the withheld ack is what holds the rate near 10 fps. If a second frame does arrive
+ * while one waits, at most one is kept (`pending`, latest wins; the displaced one is
  * acked at once), so a slow encoder shows as a lower frame rate, never a growing
  * queue of 4K bitmaps. Timestamps are the page's own, so the clip is variable frame
  * rate and a static page costs nothing.
@@ -177,14 +179,17 @@ function unavailable(
 	);
 }
 
-/** A promise that rejects after `ms`, cleared by whoever wins the race. */
-function bounded<T>(work: Promise<T>, ms: number, what: string): Promise<T> {
+/** A promise that rejects with `onTimeout()` after `ms`, cleared by whoever wins
+ * the race. The work itself is NOT cancelled: a caller that owns something the
+ * work produces must clean it up when it arrives late (see `open`). */
+function bounded<T>(
+	work: Promise<T>,
+	ms: number,
+	onTimeout: () => BrowserHostError,
+): Promise<T> {
 	let timer: ReturnType<typeof setTimeout> | undefined;
 	const timeout = new Promise<never>((_resolve, reject) => {
-		timer = setTimeout(
-			() => reject(failed(`${what} did not finish in ${ms} ms`)),
-			ms,
-		);
+		timer = setTimeout(() => reject(onTimeout()), ms);
 		timer.unref?.();
 	});
 	return Promise.race([work, timeout]).finally(() => {
@@ -262,6 +267,8 @@ export class HqSession {
 	private seq = 0;
 	private gotFrame = false;
 	private onFirstFrame: (() => void) | null = null;
+	private restarting = false;
+	private lastSentAt: number | null = null;
 
 	private firstWallMs: number | null = null;
 	private anchorPageSec: number | undefined;
@@ -324,14 +331,30 @@ export class HqSession {
 			onFrameDone: (seq) => this.frameDone(seq),
 			onFailure: (message) => this.fail(failed(message)),
 		};
+		const opening = options.service.open(sink);
 		try {
-			this.host = await bounded(
-				options.service.open(sink),
-				this.timing.encoderStartMs,
-				"the encoder window",
+			this.host = await bounded(opening, this.timing.encoderStartMs, () =>
+				unavailable(
+					"encoder_start",
+					`the encoder window did not open in ${this.timing.encoderStartMs} ms`,
+				),
 			);
 		} catch (error) {
-			throw error instanceof BrowserHostError && error.data?.reason
+			// A window that opens AFTER the bound has no owner: nothing holds it, so
+			// nothing would ever destroy it, and it is a renderer with throttling off
+			// that would live until the app quits (review round 1, M1).
+			void opening.then(
+				(late) => {
+					try {
+						late.dispose();
+					} catch {
+						// Already gone.
+					}
+				},
+				() => undefined,
+			);
+			throw error instanceof BrowserHostError &&
+				error.data?.reason === "record_quality_unavailable"
 				? error
 				: unavailable(
 						"encoder_start",
@@ -351,6 +374,9 @@ export class HqSession {
 			throw failed("the recording was cancelled while starting");
 		}
 		if (this.sized) await this.configure(this.sized);
+		// An abort during the sized configure must not subscribe or start a
+		// screencast on a session that is already gone (review round 1, m1).
+		this.throwIfDisposed();
 		// The subscription exists before the screencast starts: a first frame that
 		// arrives with the start's own reply must not be missed.
 		this.unsubscribe = this.cdp.subscribe(this.contents.id, (method, params) =>
@@ -360,22 +386,34 @@ export class HqSession {
 			this.onFirstFrame = resolve;
 		});
 		this.captureRequested = true;
-		await this.cdp.send(
-			this.contents,
-			"Page.startScreencast",
-			{
-				format: "png",
-				maxWidth: options.maxWidth,
-				maxHeight: options.maxHeight,
-				everyNthFrame: 1,
-			},
-			{ deadlineMs: 20_000 },
-		);
+		await this.startScreencast();
+		// The failure waiters are registered by the race below, after this await, so
+		// an abort during it would otherwise wait out the whole first-frame bound.
+		this.throwIfDisposed();
 		this.arm(this.timing.nudgeMs, () => void this.nudge());
 		await this.race(first, this.timing.firstFrameMs, () =>
 			failed(
 				`the page produced no frame within ${this.timing.firstFrameMs / 1000} s of the recording starting, so nothing was recorded`,
 			),
+		);
+	}
+
+	private throwIfDisposed(): void {
+		if (this.disposed)
+			throw failed("the recording was cancelled while starting");
+	}
+
+	private startScreencast(): Promise<unknown> {
+		return this.cdp.send(
+			this.contents,
+			"Page.startScreencast",
+			{
+				format: "png",
+				maxWidth: this.maxWidth,
+				maxHeight: this.maxHeight,
+				everyNthFrame: 1,
+			},
+			{ deadlineMs: 20_000 },
 		);
 	}
 
@@ -457,7 +495,11 @@ export class HqSession {
 					keyIntervalUs: KEY_INTERVAL_US,
 				}),
 				this.timing.encoderStartMs,
-				"configuring the encoder",
+				() =>
+					unavailable(
+						"encoder_start",
+						`the encoder did not answer within ${this.timing.encoderStartMs} ms`,
+					),
 			);
 		} catch (error) {
 			throw error instanceof BrowserHostError
@@ -476,6 +518,10 @@ export class HqSession {
 
 	private onEvent(method: string, params: Record<string, unknown>): void {
 		if (this.disposed || this.stopping) return;
+		if (method === PAGE_DISABLED_EVENT) {
+			this.restartScreencast();
+			return;
+		}
 		if (method !== "Page.screencastFrame") return;
 		const data = params.data;
 		if (typeof data !== "string") return;
@@ -491,6 +537,41 @@ export class HqSession {
 					: undefined,
 			arrivedAt: this.now(),
 		});
+	}
+
+	/**
+	 * `Page.disable` ENDS A RUNNING SCREENCAST and `Page.enable` does not bring it
+	 * back (measured, QA round 1 Q1). The origin gate sends exactly that after every
+	 * click, type, press and goto, so a clip would freeze at the first action while
+	 * keeping its wall-clock length. The pool announces each `Page.disable` it sent
+	 * (`PAGE_DISABLED_EVENT`) and the screencast is started again here. A watchdog on
+	 * "no frames lately" could not do this job: a static page legitimately produces
+	 * none. Restarts are coalesced, and a restart that fails fails the recording
+	 * instead of leaving a clip that silently stopped moving.
+	 *
+	 * Chromium's frame-in-flight count restarts with the screencast, so an ack that
+	 * was still owed for the old one is simply ignored by it; `inFlight` is left
+	 * alone because the encoder, not Chromium, is what releases it.
+	 */
+	private restartScreencast(): void {
+		if (!this.captureRequested || this.restarting) return;
+		this.restarting = true;
+		void this.startScreencast().then(
+			() => {
+				this.restarting = false;
+			},
+			(error: unknown) => {
+				this.restarting = false;
+				if (this.disposed || this.stopping) return;
+				if (error instanceof BrowserHostError && error.code === "tab_closed")
+					return;
+				this.fail(
+					failed(
+						`the page's screencast stopped and could not be restarted: ${error instanceof Error ? error.message : String(error)}`,
+					),
+				);
+			},
+		);
 	}
 
 	/** The nudge: a static page may emit no screencast frame until something
@@ -559,8 +640,6 @@ export class HqSession {
 		this.pending = null;
 		this.send(frame);
 	}
-
-	private lastSentAt: number | null = null;
 
 	private send(frame: Pending): void {
 		if (!this.host) return;
@@ -730,15 +809,12 @@ export class HqSession {
 		}
 		if (this.failure) throw this.failure;
 		if (!this.host) throw failed("the encoder is gone");
-		try {
-			await this.race(this.host.flush(), this.timing.flushMs, () =>
-				failed(
-					"the encoder did not finish within its time limit; nothing was saved",
-				),
-			);
-		} finally {
-			// Chunks that arrive during the flush are in; nothing else is coming.
-		}
+		// Chunks that arrive during the flush are in; nothing else is coming.
+		await this.race(this.host.flush(), this.timing.flushMs, () =>
+			failed(
+				"the encoder did not finish within its time limit; nothing was saved",
+			),
+		);
 		if (this.disposed)
 			throw failed("the recording was discarded while it was being saved");
 		if (this.samples.length === 0 || !this.description) {
