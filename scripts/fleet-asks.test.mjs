@@ -926,13 +926,25 @@ test("the drawer's entry move is a bounded one-shot", () => {
 	/* 3. The flag is spent before the user's signal is required, and focus can move
 	 * only after both checks - so a mount with nothing focused resolves, and the
 	 * bounded wait cannot move anything either. */
-	const resolved = block.indexOf("if (door === null && !requested) return;");
+	const pressedGate = block.indexOf(
+		"if (pressedDoor === null && !requested) return;",
+	);
+	/*
+	 * THE PRESS SURVIVES OUR OWN INERT (agent review round 1, m1): the covered column
+	 * is made inert on the same commit, which blurs the chip to `<body>`; the door is
+	 * latched BEFORE the wait so a later commit still knows what was pressed.
+	 */
+	const latch = block.indexOf("pressedDoorRef.current = door;");
 	assert.ok(
-		consume !== -1 && resolved !== -1 && consume < resolved,
+		latch >= 0 && latch < block.indexOf("&& frameUnread) return;"),
+		"the pressed door is not latched before the unread wait: inert can blur it to <body> and the door (and its return target) would be lost",
+	);
+	assert.ok(
+		consume !== -1 && pressedGate !== -1 && consume < pressedGate,
 		"the one-shot is spent only after the door-or-request check; a mounted pane with no user press under focus never resolves and a later Tab onto the rail row can steal focus.",
 	);
 	assert.ok(
-		block.indexOf("landing.focus();") > resolved,
+		block.indexOf("landing.focus();") > pressedGate,
 		"focus can move before the door-or-request check has resolved.",
 	);
 });
