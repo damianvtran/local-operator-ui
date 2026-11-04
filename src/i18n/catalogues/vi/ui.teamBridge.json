@@ -143,7 +143,7 @@
 	"ui.teamBridge.composer.placeholder_to": "Nhắn tin cho {name}",
 	"ui.teamBridge.thread.today": "Hôm nay",
 	"ui.teamBridge.thread.yesterday": "Hôm qua",
-	"ui.teamBridge.builtin.general_topic": "Toàn bộ tổ chức: mọi người và tác nhân của họ. Tác nhân xem mọi tin nhắn và trả lời khi được nhắc đến bằng @ hoặc trong các chuỗi họ theo dõi.",
+	"ui.teamBridge.builtin.general_topic": "Toàn bộ tổ chức: mọi người và tác nhân của họ. Tác nhân xem mọi tin nhắn và trả lời khi được nhắc đến bằng @ hoặc trong các luồng họ theo dõi.",
 	"ui.teamBridge.builtin.humans_topic": "Chỉ con người, không có tác nhân. Tin nhắn ở đây sẽ gửi thông báo đến từng người.",
 	"ui.teamBridge.builtin.agents_topic": "Chánh văn phòng của mọi đồng nghiệp. Tác nhân xem mọi tin nhắn và trả lời khi có liên quan hoặc khi được nhắc đến bằng @.",
 	"ui.teamBridge.section.channels_add": "Tạo kênh",
