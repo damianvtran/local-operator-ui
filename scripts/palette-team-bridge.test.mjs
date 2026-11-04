@@ -500,6 +500,27 @@ const READY_STATUS = {
 	},
 };
 
+/*
+ * Wait in REAL time, not in microtask ticks. The reads go through the auth fence
+ * (`readForBridgeAccount`) and react-query's scheduler, so how many ticks a
+ * read needs before its request is issued depends on the host: CI's shard
+ * measured zero status calls after ten ticks where a local run had one. A
+ * read-count assertion must therefore wait for the client to go quiet, and a
+ * "made no request" assertion must have given the request a real window to
+ * appear in. Quiet = nothing fetching across three consecutive 20 ms looks,
+ * after at least 100 ms; bounded at 5 s so a stuck read fails rather than hangs.
+ */
+const settle = async (client) => {
+	const started = Date.now();
+	let quiet = 0;
+	while (Date.now() - started < 5_000) {
+		await act(() => new Promise((resolve) => setTimeout(resolve, 20)));
+		quiet = client.isFetching() === 0 ? quiet + 1 : 0;
+		if (quiet >= 3 && Date.now() - started >= 100) return;
+	}
+	throw new Error("the palette's Team Bridge reads never settled");
+};
+
 const mount = async ({
 	features = {
 		team_bridge_conversations: 1,
@@ -554,15 +575,14 @@ const mount = async ({
 			),
 		);
 	await render();
-	// Let queued reads settle.
-	for (let i = 0; i < 10; i += 1) await act(async () => {});
+	await settle(client);
 	return {
 		results,
 		latest: () => results[results.length - 1],
 		rerender: async (next) => {
 			props = { ...props, ...next };
 			await render();
-			for (let i = 0; i < 5; i += 1) await act(async () => {});
+			await settle(client);
 		},
 		teardown: async () => {
 			await act(async () => root.unmount());
