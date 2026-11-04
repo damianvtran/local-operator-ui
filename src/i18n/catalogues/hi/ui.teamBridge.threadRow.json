@@ -1,5 +1,5 @@
 {
 	"ui.teamBridge.threadRow.label": "थ्रेड देखें, {count, plural, one {# जवाब} other {# जवाब}}{unread, plural, =0 {} other {, # अपठित}}{hasLast, select, yes {। {last}} other {}}",
-	"ui.teamBridge.threadRow.last": "अंतिम जवाब {when, select, today {आज {time} बजे} yesterday {कल {time} बजे} other {{time}}}",
+	"ui.teamBridge.threadRow.last": "अंतिम जवाब {when, select, today {आज {time}} yesterday {कल {time}} other {{time}}}",
 	"ui.teamBridge.threadRow.unread_badge": "{count, plural, other {{label} अपठित}}"
 }

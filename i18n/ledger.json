@@ -76886,6 +76886,216 @@
 					"status": "audited"
 				}
 			]
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.teamBridge.threadRow",
+			"source_sha256": "a67a9afc1e1fd719cb39821bb98cb7585e2e71008847be00fc28a855cb00b777",
+			"target_sha256": "eb7d4f1ee09a544a174e7c0662c064cf8d637beedf40967318be3d1332ccefc2",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-04"
+			},
+			"auditors": [
+				{
+					"agent": "task",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-04",
+					"result": "clean",
+					"instance": "e2780d8e7d3c-threadrow-fr",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/e2780d8e7d3c-threadrow-fr.json",
+					"receipt_sha256": "83027e70facc7d34ad624862f9c10c585cf7776b72789db3b65c3b15807fc54e",
+					"scope": "New namespace ui.teamBridge.threadRow (3 keys), round 1 on PR #1672"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "es",
+			"namespace": "ui.teamBridge.threadRow",
+			"source_sha256": "a67a9afc1e1fd719cb39821bb98cb7585e2e71008847be00fc28a855cb00b777",
+			"target_sha256": "3d8bb7ca84d3726827add799cc418dce0bbe55c653f772cbc1dd6c9a1ff6e114",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-04"
+			},
+			"auditors": [
+				{
+					"agent": "task",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-04",
+					"result": "clean",
+					"instance": "e2780d8e7d3c-threadrow-es",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/e2780d8e7d3c-threadrow-es.json",
+					"receipt_sha256": "da7983b6d0b6d0c29c217e77fed06b0e86abec57c17b79ce9d702a4b46bf0ca6",
+					"scope": "New namespace ui.teamBridge.threadRow (3 keys), round 1 on PR #1672"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.teamBridge.threadRow",
+			"source_sha256": "a67a9afc1e1fd719cb39821bb98cb7585e2e71008847be00fc28a855cb00b777",
+			"target_sha256": "6e0b370f449d915d49328d7244deba8f88ec9101a210e30d49cc2f9ed1188984",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-04"
+			},
+			"auditors": [
+				{
+					"agent": "task",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-04",
+					"result": "clean",
+					"instance": "e2780d8e7d3c-threadrow-zh-cn",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/e2780d8e7d3c-threadrow-zh-cn.json",
+					"receipt_sha256": "401d2873497b96b4346582fbfffb970eec4a1b8f86b8aef588c51da3dfd210f7",
+					"scope": "New namespace ui.teamBridge.threadRow (3 keys), round 1 on PR #1672"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ru",
+			"namespace": "ui.teamBridge.threadRow",
+			"source_sha256": "a67a9afc1e1fd719cb39821bb98cb7585e2e71008847be00fc28a855cb00b777",
+			"target_sha256": "6ac9cc84f11f995415869e9b93cbfd4f4f84a0035180f6b77d2d16f0c640d223",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-04"
+			},
+			"auditors": [
+				{
+					"agent": "task",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-04",
+					"result": "clean",
+					"instance": "e2780d8e7d3c-threadrow-ru",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/e2780d8e7d3c-threadrow-ru.json",
+					"receipt_sha256": "497a169abea63e13429839c80cfd465ca81ef8dd00fc8efac0a79fcdb589b46b",
+					"scope": "New namespace ui.teamBridge.threadRow (3 keys), round 1 on PR #1672"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "vi",
+			"namespace": "ui.teamBridge.threadRow",
+			"source_sha256": "a67a9afc1e1fd719cb39821bb98cb7585e2e71008847be00fc28a855cb00b777",
+			"target_sha256": "86083087e2371b67cf921193a1804231f81a5c885e6e0f1a96f4648bfe7372f2",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-04"
+			},
+			"auditors": [
+				{
+					"agent": "task",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-04",
+					"result": "clean",
+					"instance": "e2780d8e7d3c-threadrow-vi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/e2780d8e7d3c-threadrow-vi.json",
+					"receipt_sha256": "393370c69052a1b9b132d0d575a13989330aff48e0046f1eb1732ae40ea6efeb",
+					"scope": "New namespace ui.teamBridge.threadRow (3 keys), round 1 on PR #1672"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.teamBridge.threadRow",
+			"source_sha256": "a67a9afc1e1fd719cb39821bb98cb7585e2e71008847be00fc28a855cb00b777",
+			"target_sha256": "081b8942e56599c45978c299d1db2b01094208e51889548ed775035b3cc82183",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-04"
+			},
+			"auditors": [
+				{
+					"agent": "task",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-04",
+					"result": "clean-with-findings",
+					"instance": "e2780d8e7d3c-threadrow-ur",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 2,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/e2780d8e7d3c-threadrow-ur.json",
+					"receipt_sha256": "98f1a6a321c8a763b69a9484417fa3068ab449edd10eba220bc3327e7e1b711a",
+					"scope": "New namespace ui.teamBridge.threadRow (3 keys), round 1 on PR #1672"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.teamBridge.threadRow",
+			"source_sha256": "a67a9afc1e1fd719cb39821bb98cb7585e2e71008847be00fc28a855cb00b777",
+			"target_sha256": "5904c9b01558dea3ec96a0cab416101f39ffaa60729901b573ae8d662543858a",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-04"
+			},
+			"auditors": [
+				{
+					"agent": "task",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-04",
+					"result": "clean-with-findings",
+					"instance": "e2780d8e7d3c-threadrow-hi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/e2780d8e7d3c-threadrow-hi.json",
+					"receipt_sha256": "653878fcb594452659ed0aa6240cfd0ae38734163e7bf8e9375675289f9e3222",
+					"scope": "New namespace ui.teamBridge.threadRow (3 keys), round 1 on PR #1672"
+				}
+			],
+			"status": "audited"
 		}
 	]
 }
