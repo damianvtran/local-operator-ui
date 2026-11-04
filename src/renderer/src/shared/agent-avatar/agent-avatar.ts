@@ -236,13 +236,20 @@ export type AgentAvatarState = {
 	 * unhinted read can be unreadable.
 	 */
 	unreadable?: boolean;
+	/**
+	 * A digest is known for the agent (the caller's hint, or the agents map's
+	 * row): a picture is on its way. The presence decision holds a cold plate
+	 * only for a claimed digest, so a pictureless agent never flashes an empty
+	 * box. An unhinted read claims nothing until the map answers.
+	 */
+	claimed?: boolean;
 };
 
 /**
  * `useAgentAvatar` with the one fact its URL cannot carry: whether `null` is an
  * answer or only the absence of one. The presence decision
- * (`avatar-presence.ts`) needs it so a cold load does not flash a placeholder
- * that a picture is about to replace.
+ * (`avatar-presence.ts`) needs it (with `claimed`) so a cold load holds a
+ * plate only for a picture that is actually coming.
  */
 export function useAgentAvatarState(
 	agentId: string | null | undefined,
@@ -271,9 +278,8 @@ export function useAgentAvatarState(
 	const mapSettled = hinted || !agentId || !isPending;
 	/*
 	 * A FAILED LIST READ IS NOT "NO PICTURE" (agent review m-3). With the map in
-	 * error and no data, every agent looks pictureless, and the placeholder would
-	 * invite an upload over a picture that exists. `unreadable` lets the presence
-	 * decision draw nothing instead; a hinted read never consults the map, so it
+	 * error and no data, every agent looks pictureless, which is not an answer.
+	 * `unreadable` lets the presence decision say so (it draws nothing); a hinted read never consults the map, so it
 	 * cannot be unreadable.
 	 */
 	const unreadable = !hinted && Boolean(agentId) && isError && !data;
@@ -281,6 +287,7 @@ export function useAgentAvatarState(
 		url: bytes.url,
 		settled: mapSettled && bytes.settled,
 		unreadable,
+		claimed: sha256 !== null,
 	};
 }
 
@@ -472,9 +479,10 @@ function refreshAndSettle(): Promise<void> {
  * `writing` STAYS UP UNTIL THE READERS HAVE RE-READ (agent review m-2). It used
  * to drop the moment the bytes were accepted, but the session row still carried
  * the OLD digest (none, for a first picture) until the catalogue refetched, so a
- * slot read "settled, no picture, door open" for a beat: the placeholder flashed
- * between the upload finishing and the face. Held to the refresh, the slot goes
- * from the busy placeholder to the picture and never offers the door in between.
+ * slot read "settled, no picture, door open" for a beat between the upload
+ * finishing and the face. Held to the refresh, a replaced picture keeps its door
+ * closed until the new face is read, and the editor's busy state does not drop
+ * early.
  * The promise this returns does NOT wait for that: the editor's own "saved"
  * state must not lag a catalogue read.
  */

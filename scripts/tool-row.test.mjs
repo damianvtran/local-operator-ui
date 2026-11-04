@@ -1441,11 +1441,11 @@ test("an invisible record does not consume the avatar or a turn boundary", () =>
 	 *      record: `showAvatar` stays deleted (a flag would be the per-message
 	 *      avatar coming back through the model), and the head set is
 	 *      `agentTurnHeads`'s answer.
-	 *   3. THE PLACEHOLDER IS NOT D11'S GLYPH. A pictureless agent now draws the
-	 *      dashed camera door (presence round), but only ONCE - the transcript
-	 *      keeps `turnHeads` to its first head when the mark is a placeholder -
-	 *      and only for an agent the viewer owns. The Bot glyph D11 deleted
-	 *      stays deleted (asserted below, where the mark component is read).
+	 *   3. NO PICTURE, NO MARK. A pictureless agent draws nothing above its
+	 *      first row - no glyph, no placeholder, no gap (operator, 2026-11-04,
+	 *      which removed #1651's once-per-transcript camera door). The Bot glyph
+	 *      D11 deleted stays deleted (asserted below, where the mark component
+	 *      is read).
 	 *
 	 * Asked of the CODE, not the words: the container's own comment explains
 	 * what the `pl-10` indent used to cost, and a token check that read comments
@@ -1692,7 +1692,7 @@ test("the head set is skipped without a mark, and the estimate follows the size 
 	);
 	assert.match(
 		transcript,
-		/if \(!markKind\) return NO_TURN_HEADS;\s*const heads = agentTurnHeads\(rows\);/,
+		/\(hasMark \? agentTurnHeads\(rows\) : NO_TURN_HEADS\)/,
 		"a pane with no mark never walks the turn partition",
 	);
 	assert.match(
@@ -1754,10 +1754,10 @@ test("the entry signature moves when a slot starts drawing the mark", () => {
 	);
 });
 
-test("a pictureless agent's transcript is D11's apart from one placeholder, once", () => {
+test("a pictureless agent's transcript is D11's exactly: no mark, no placeholder, no line", () => {
 	// The mark component takes a DECIDED mark (`decideAvatarMark`), never a bare
-	// `src`, so the only glyph it can draw is the placeholder that decision
-	// returns - owned agents only - and the Bot D11 deleted has not returned.
+	// `src`; the transcript never passes `suggestPicture`, so with no picture
+	// that decision answers null and no head draws anything.
 	const mark = readFileSync(
 		"src/renderer/src/features/chat/components/message-item/message-avatar.tsx",
 		"utf8",
@@ -1774,10 +1774,27 @@ test("a pictureless agent's transcript is D11's apart from one placeholder, once
 		"src/renderer/src/features/chat/canonical/canonical-transcript.tsx",
 		"utf8",
 	);
+	assert.doesNotMatch(
+		transcript,
+		/"placeholder"|suggestPicture/,
+		"the transcript has no placeholder arm of its own",
+	);
+	/* With no mark the head set is empty, so no row is asked to draw one. */
 	assert.match(
 		transcript,
-		/markKind !== "placeholder" \|\| heads\.size <= 1\) return heads;\s*const \[first\] = heads;\s*return new Set\(\[first\]\);/,
-		"a placeholder is drawn at the first turn head only, never once per turn",
+		/const hasMark = agentMark !== null;\s*const turnHeads = useMemo\(\s*\(\) => \(hasMark \? agentTurnHeads\(rows\) : NO_TURN_HEADS\),/,
+	);
+	const page = readFileSync(
+		"src/renderer/src/features/chat/components/chat-page.tsx",
+		"utf8",
+	);
+	const call = page.slice(
+		page.indexOf("const agentAvatar = useAgentSlotMark({"),
+	);
+	assert.doesNotMatch(
+		call.slice(0, call.indexOf("});")),
+		/suggestPicture/,
+		"the turn head's mark never suggests a picture",
 	);
 });
 

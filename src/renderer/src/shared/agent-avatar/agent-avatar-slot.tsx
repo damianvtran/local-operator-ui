@@ -1,25 +1,23 @@
 /**
  * The mark an agent's picture slot draws: the picture, the placeholder that
- * invites one, or the plate that holds the box while the answer is read.
+ * suggests one, or the plate that holds the box while a claimed picture is read.
  *
  * WHAT TO DRAW IS NOT DECIDED HERE. `decideAvatarMark` (pure, executed by a Node
  * test) answers picture / placeholder / plate / nothing and whether there is a
  * door; this file paints the answer, so the chat header and the transcript's
- * turn head - which share the decision - cannot draw two different empty states.
+ * turn head - which share the decision - cannot disagree.
  *
- * THE PLACEHOLDER IS A DOOR THAT LOOKS LIKE ONE. A dashed `border-control` ring
- * is the repo's "empty slot" grammar (a dashed edge is the non-colour channel for
- * "not filled"), and the camera glyph inside names the act. It is the only
- * agent mark in the app that is both dashed and carries a glyph, so it cannot be
- * read as a picture or as a badge. Hover and focus step the ring and the glyph
- * toward `ink` (a colour step, no lift or scale); focus is the link's own
+ * THE PLACEHOLDER IS RARE BY DESIGN (operator, 2026-11-04). An agent with no
+ * picture draws nothing on every chat surface - no mark, no reserved box - with
+ * one exception: the chat header of a proactive-class agent or the chief of
+ * staff (`suggestPicture`, see `avatar-presence.ts`). There it is a door that
+ * looks like one: a dashed `border-control` ring (the repo's "empty slot"
+ * grammar) around a camera glyph that names the act. Hover and focus step the
+ * ring and glyph toward `ink` (a colour step, no lift); focus is the link's own
  * `outline`. It opens the SAME editor every other door opens
  * (`AgentAvatarEditLink` -> `?edit=picture`); nothing here uploads anything.
- *
- * A PLACEHOLDER IS DRAWN ONLY WHERE IT CAN BE ACTED ON (see `avatar-presence.ts`):
- * no door, no placeholder. While a write is in flight the slot keeps its box
- * (nothing reflows) but becomes a solid plate with the busy spinner - no dashed
- * ring, no door - so it never offers an editor that is already open.
+ * While a write is in flight the slot keeps its box as a solid plate with the
+ * busy spinner - no dashed ring, no door.
  */
 
 import {
@@ -169,8 +167,10 @@ export const AgentAvatarSlot: FC<AgentAvatarSlotProps> = ({
  *
  * `pictureDoor` is false for the transcript's turn head, whose PICTURE has never
  * been a link (it repeats every turn; a pencil there would be the per-message
- * noise D11 removed). Only the placeholder - which exists to be found - is a
- * door there. The header keeps the door on both, as it always has.
+ * noise D11 removed). The header keeps the door on its picture, as it always has.
+ *
+ * `suggestPicture` is the header's alone (see `avatar-presence.ts`): no other
+ * caller passes it, so no other surface can draw the placeholder.
  */
 export function useAgentSlotMark(input: {
 	agentId: string | null;
@@ -179,6 +179,8 @@ export function useAgentSlotMark(input: {
 	sha256Hint?: string | null;
 	owned: boolean;
 	pictureDoor: boolean;
+	/** May this surface suggest a picture when there is none? Header only. */
+	suggestPicture?: boolean;
 	/**
 	 * The CSS size the caller's box draws the mark at, so the byte read asks for
 	 * the right-sized derivative (`useAgentAvatarState`'s third parameter).
@@ -186,7 +188,7 @@ export function useAgentSlotMark(input: {
 	 */
 	cssPx?: number;
 }): AvatarMark | null {
-	const { url, settled, unreadable } = useAgentAvatarState(
+	const { url, settled, unreadable, claimed } = useAgentAvatarState(
 		input.agentId,
 		input.sha256Hint,
 		input.cssPx,
@@ -197,10 +199,11 @@ export function useAgentSlotMark(input: {
 		agentName: input.agentName,
 		src: url,
 		settled,
-		claimed: Boolean(input.sha256Hint),
+		claimed,
 		uploading,
 		unreadable,
 		owned: input.owned,
+		suggestPicture: input.suggestPicture,
 	});
 	if (mark?.kind === "picture" && !input.pictureDoor)
 		return { ...mark, door: null };

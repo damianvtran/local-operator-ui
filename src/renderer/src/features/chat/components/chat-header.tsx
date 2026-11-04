@@ -2,10 +2,13 @@ import {
 	AgentAvatarSlot,
 	useAgentSlotMark,
 } from "@shared/agent-avatar/agent-avatar-slot";
+import { agentSuggestsPicture } from "@shared/agent-avatar/avatar-presence";
 import {
+	desktopFeatureEnabled,
 	desktopFeatureState,
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
+import { useProfiles } from "@shared/api/local-operator/profile-hooks";
 import { Spinner } from "@shared/components/common/spinner";
 import {
 	Badge,
@@ -333,19 +336,20 @@ const PATH_CHIP_CHARS = 40;
  * head so the two cannot disagree:
  *
  *  - a picture whose bytes resolved, with the pencil door for an owned agent;
- *  - NO PICTURE (never had one) draws the placeholder - a dashed ring and a
- *    camera - for an owned agent, as the door that makes the feature findable.
- *    This used to draw nothing, which kept a pictureless conversation exactly the
- *    header main drew and left no way to learn pictures exist (the operator's
- *    discoverability ask, which supersedes that choice);
- *  - A DIGEST WHOSE BYTES DO NOT RESOLVE (agent review round 1, m3: a 404, a
- *    removed file, a stale digest, a remote row) is the same case as no picture
- *    and draws the same placeholder - so the failed and the absent state cannot
- *    disagree, and there is never a pencil door onto an empty plate (the defect
- *    m3 fixed);
- *  - while a write is in flight the placeholder keeps its box and closes its door;
- *  - a NOT-OWNED agent (remote, or a row with no bound name) draws the picture if
- *    there is one and otherwise nothing, exactly what it drew before.
+ *  - NO PICTURE - never had one, a digest whose bytes do not resolve, an agents
+ *    list that could not be read - draws NOTHING for a regular session, owned or
+ *    not, and the title row keeps the 20px line main always had (operator,
+ *    2026-11-04: most sessions are simple tasks delegated to a generic role, and
+ *    an empty mark should not cost them space or attention). There is therefore
+ *    never a pencil door onto an empty plate;
+ *  - THE EXCEPTION: an owned, bound PROACTIVE-class agent or the chief of staff
+ *    (`agentSuggestsPicture`) draws the placeholder door - a dashed ring and a
+ *    camera - because those are the agents the operator relates to as someone.
+ *    This header is the only surface that asks for it;
+ *  - while a claimed picture's bytes are still cold, a plain plate holds the box
+ *    so the title does not move when the face lands;
+ *  - a picture being replaced keeps drawing, door closed; a first picture being
+ *    written under the placeholder keeps its box as a busy plate.
  *
  * It is 20px by default and follows the reader's size setting (`agent-avatar-
  * size.ts`), capped at 32px so the 40px bar never grows.
@@ -373,12 +377,26 @@ const useHeaderAvatar = (
 		useUiPreferencesStore((state) => state.agentAvatarSize),
 	);
 	const box = HEADER_AVATAR_BOX[size];
+	/*
+	 * The class lives on the profile, not the session row; the read is the one
+	 * shared `profiles.list` query chat already makes for the turn head, so it
+	 * costs no extra request. Only an owned agent can be suggested to (a claimed
+	 * digest whose bytes fail must draw what an absent one draws, so the digest
+	 * does not gate the read). Until it answers, the agent is not proactive and
+	 * nothing is suggested.
+	 */
+	const capabilities = useDesktopCapabilities();
+	const profiles = useProfiles(
+		agent.owned &&
+			desktopFeatureEnabled(capabilities.data, "profile_catalogue"),
+	);
 	const mark = useAgentSlotMark({
 		agentId: agent.agentId,
 		agentName: agent.agentName,
 		sha256Hint: agent.sha256,
 		owned: agent.owned,
 		pictureDoor: true,
+		suggestPicture: agentSuggestsPicture(agent.agentName, profiles.data),
 		// The box below is what the picture is drawn at, so it is what to ask for.
 		cssPx: box.px,
 	});

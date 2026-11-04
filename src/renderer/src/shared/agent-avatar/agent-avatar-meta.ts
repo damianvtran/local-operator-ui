@@ -115,10 +115,10 @@ export function sessionAvatarTarget(
 /**
  * The same address as `sessionAvatarTarget`, for a row that may have NO picture.
  *
- * The chat header and the transcript draw a placeholder door for an agent with no
- * picture (agent profile pictures, presence), and a door needs only the agent's
- * id, its name and whether the viewer owns it - not a digest. `sha256` is null
- * when the row claims none. The sidebar's pencil keeps reading
+ * The chat header reads the agent's address even when the row claims no digest
+ * (the agents map may still know one, and a picture set in this window lands
+ * before the row refetches). `sha256` is null when the row claims none, and
+ * `decideAvatarMark` then draws nothing for it (outside a suggesting header). The sidebar's pencil keeps reading
  * `sessionAvatarTarget`, whose `sha256` is required, so a no-picture sidebar row
  * stays exactly the row main draws.
  */

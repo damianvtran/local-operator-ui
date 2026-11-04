@@ -3725,13 +3725,13 @@ function SessionPanel({
 		useUiPreferencesStore((state) => state.agentAvatarSize),
 	);
 	/*
-	 * THE TURN HEAD'S MARK: the picture when it resolves, else (for an agent this
-	 * device owns) the placeholder that offers one, else nothing - decided by the
-	 * one function the header also asks (`decideAvatarMark`). Ownership is the
-	 * row's own answer (`sessionPictureEditable`: a remote conversation's agent
-	 * is another device's), and a draft has no row, which is the same "local"
-	 * answer a plain page's rows get. `pictureDoor` is false: the turn's picture
-	 * has never been a link; only the placeholder, which exists to be found, is.
+	 * THE TURN HEAD'S MARK: the picture when it resolves, else nothing - decided by
+	 * the one function the header also asks (`decideAvatarMark`). A pictureless
+	 * agent draws no mark and reserves no line above its first row. Ownership is
+	 * the row's own answer (`sessionPictureEditable`: a remote conversation's
+	 * agent is another device's), and a draft has no row, which is the same
+	 * "local" answer a plain page's rows get. `pictureDoor` is false: the turn's
+	 * picture has never been a link.
 	 *
 	 * `cssPx` is the box `MessageAvatar` draws it at, from the same size table -
 	 * the read asks for the derivative that covers THAT box, so a `large` mark is
