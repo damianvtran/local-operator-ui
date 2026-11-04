@@ -1,0 +1,239 @@
+{
+  "tree": "after",
+  "groups": [
+    {
+      "key": "1024|localOperatorDark|plain",
+      "idleA": 259,
+      "idleB": 223,
+      "states": [
+        {
+          "state": "idle",
+          "boxes": 2,
+          "slotA": {
+            "label": "Start recording",
+            "left": 259
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 223
+          },
+          "clusterWidth": 68,
+          "aEqualsIdle": true,
+          "bEqualsIdle": true,
+          "rowOverflow": 0,
+          "cardHeight": 110,
+          "cardTop": 134,
+          "controlsTop": 196,
+          "sent": 0,
+          "boxValue": "",
+          "cardHeightDelta": 0,
+          "controlsYDelta": 0
+        },
+        {
+          "state": "recording",
+          "boxes": 3,
+          "slotA": {
+            "label": "Cancel recording",
+            "left": 259
+          },
+          "slotB": {
+            "label": "Send recording",
+            "left": 223
+          },
+          "clusterWidth": 104,
+          "aEqualsIdle": true,
+          "bEqualsIdle": true,
+          "rowOverflow": 0,
+          "cardHeight": 194,
+          "cardTop": 50,
+          "controlsTop": 196,
+          "sent": 0,
+          "boxValue": "",
+          "recordingOrder": [
+            "Insert transcript",
+            "Cancel recording",
+            "Send recording"
+          ],
+          "cardHeightDelta": 84,
+          "controlsYDelta": 0
+        }
+      ]
+    },
+    {
+      "key": "1024|localOperatorLight|plain",
+      "idleA": 259,
+      "idleB": 223,
+      "states": [
+        {
+          "state": "idle",
+          "boxes": 2,
+          "slotA": {
+            "label": "Start recording",
+            "left": 259
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 223
+          },
+          "clusterWidth": 68,
+          "aEqualsIdle": true,
+          "bEqualsIdle": true,
+          "rowOverflow": 0,
+          "cardHeight": 110,
+          "cardTop": 134,
+          "controlsTop": 196,
+          "sent": 0,
+          "boxValue": "",
+          "cardHeightDelta": 0,
+          "controlsYDelta": 0
+        },
+        {
+          "state": "recording",
+          "boxes": 3,
+          "slotA": {
+            "label": "Cancel recording",
+            "left": 259
+          },
+          "slotB": {
+            "label": "Send recording",
+            "left": 223
+          },
+          "clusterWidth": 104,
+          "aEqualsIdle": true,
+          "bEqualsIdle": true,
+          "rowOverflow": 0,
+          "cardHeight": 194,
+          "cardTop": 50,
+          "controlsTop": 196,
+          "sent": 0,
+          "boxValue": "",
+          "recordingOrder": [
+            "Insert transcript",
+            "Cancel recording",
+            "Send recording"
+          ],
+          "cardHeightDelta": 84,
+          "controlsYDelta": 0
+        }
+      ]
+    },
+    {
+      "key": "520|localOperatorDark|plain",
+      "idleA": 254,
+      "idleB": 222,
+      "states": [
+        {
+          "state": "idle",
+          "boxes": 2,
+          "slotA": {
+            "label": "Start recording",
+            "left": 254
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 222
+          },
+          "clusterWidth": 60,
+          "aEqualsIdle": true,
+          "bEqualsIdle": true,
+          "rowOverflow": 0,
+          "cardHeight": 90,
+          "cardTop": 166,
+          "controlsTop": 218,
+          "sent": 0,
+          "boxValue": "",
+          "cardHeightDelta": 0,
+          "controlsYDelta": 0
+        },
+        {
+          "state": "recording",
+          "boxes": 3,
+          "slotA": {
+            "label": "Cancel recording",
+            "left": 254
+          },
+          "slotB": {
+            "label": "Send recording",
+            "left": 222
+          },
+          "clusterWidth": 92,
+          "aEqualsIdle": true,
+          "bEqualsIdle": true,
+          "rowOverflow": 0,
+          "cardHeight": 164,
+          "cardTop": 92,
+          "controlsTop": 218,
+          "sent": 0,
+          "boxValue": "",
+          "recordingOrder": [
+            "Insert transcript",
+            "Cancel recording",
+            "Send recording"
+          ],
+          "cardHeightDelta": 74,
+          "controlsYDelta": 0
+        }
+      ]
+    },
+    {
+      "key": "520|localOperatorLight|plain",
+      "idleA": 254,
+      "idleB": 222,
+      "states": [
+        {
+          "state": "idle",
+          "boxes": 2,
+          "slotA": {
+            "label": "Start recording",
+            "left": 254
+          },
+          "slotB": {
+            "label": "Send message",
+            "left": 222
+          },
+          "clusterWidth": 60,
+          "aEqualsIdle": true,
+          "bEqualsIdle": true,
+          "rowOverflow": 0,
+          "cardHeight": 90,
+          "cardTop": 166,
+          "controlsTop": 218,
+          "sent": 0,
+          "boxValue": "",
+          "cardHeightDelta": 0,
+          "controlsYDelta": 0
+        },
+        {
+          "state": "recording",
+          "boxes": 3,
+          "slotA": {
+            "label": "Cancel recording",
+            "left": 254
+          },
+          "slotB": {
+            "label": "Send recording",
+            "left": 222
+          },
+          "clusterWidth": 92,
+          "aEqualsIdle": true,
+          "bEqualsIdle": true,
+          "rowOverflow": 0,
+          "cardHeight": 164,
+          "cardTop": 92,
+          "controlsTop": 218,
+          "sent": 0,
+          "boxValue": "",
+          "recordingOrder": [
+            "Insert transcript",
+            "Cancel recording",
+            "Send recording"
+          ],
+          "cardHeightDelta": 74,
+          "controlsYDelta": 0
+        }
+      ]
+    }
+  ],
+  "failures": [],
+  "verdict": "PASS"
+}
