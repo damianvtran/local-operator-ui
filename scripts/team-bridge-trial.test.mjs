@@ -334,3 +334,115 @@ test("a 200 without the eligibility shape keeps the page unchanged", () => {
 			"unchanged",
 		);
 });
+
+/*
+ * Q5 (QA round 1): the LIVE wire after a trial ends, as captured in
+ * qa-evidence m9-lop-bridge-LM / m9-lop-ended-L2: a READY surface A with
+ * `tenant_id: null` and every org row `eligible:false`, plus the runtime's
+ * additive `trial_ended` marker (core #3386 over agent-server #296).
+ */
+const contract = await load("./src/shared/agent-messages-contract");
+const ENDED_WIRE = {
+	capability: 1,
+	state: "ready",
+	account_id: "acc_member",
+	tenant_id: null,
+	surface_state: "A",
+	visibility: {
+		settings: false,
+		inbox: false,
+		account_door: false,
+		onboarding: false,
+	},
+	update_required: false,
+	local: { enabled: false, onboarding: "", session: "" },
+	status: {
+		api_version: "1",
+		available: false,
+		tenants: [
+			{ tenant_id: "ten_home", eligible: false, endpoint: null },
+			{
+				tenant_id: "ten_trial",
+				eligible: false,
+				endpoint: null,
+				trial_ended_at: "2026-11-02T09:30:00Z",
+			},
+		],
+	},
+	consent: null,
+	error: null,
+	state_note: null,
+	read_only: false,
+	trial_ended: {
+		tenant_id: "ten_trial",
+		trial_ended_at: "2026-11-02T09:30:00Z",
+	},
+};
+
+test("Q5: the ended-trial wire (A, tenant_id null, marker) names the paused org", () => {
+	const parsed = contract.agentMessagesStatusSchema.parse(ENDED_WIRE);
+	assert.deepEqual(parsed.trial_ended, {
+		tenant_id: "ten_trial",
+		trial_ended_at: "2026-11-02T09:30:00Z",
+	});
+	assert.deepEqual(model.trialEndedOrg(parsed), {
+		tenantId: "ten_trial",
+		endedAt: "2026-11-02T09:30:00Z",
+	});
+	// The disabled member reads the member audience for THAT org, not billing.
+	const memberships = [
+		{ tenant_id: "ten_home", role: "owner", status: "active" },
+		{ tenant_id: "ten_trial", role: "member", status: "disabled" },
+	];
+	assert.equal(model.trialNoteAudience(memberships, "ten_trial"), "member");
+	// The owner keeps Subscribe.
+	assert.equal(
+		model.trialNoteAudience(
+			[{ tenant_id: "ten_trial", role: "owner", status: "active" }],
+			"ten_trial",
+		),
+		"billing",
+	);
+});
+
+test("Q5: no marker, a malformed marker, or a non-A letter offers no paused band", () => {
+	const { trial_ended: _drop, ...older } = ENDED_WIRE;
+	// An older runtime: the page keeps today's on-ramp reading.
+	assert.equal(
+		model.trialEndedOrg(contract.agentMessagesStatusSchema.parse(older)),
+		null,
+	);
+	// A malformed block degrades to null without failing the status read.
+	const malformed = contract.agentMessagesStatusSchema.parse({
+		...ENDED_WIRE,
+		trial_ended: { tenant_id: 7 },
+	});
+	assert.equal(malformed.trial_ended, null);
+	assert.equal(model.trialEndedOrg(malformed), null);
+	for (const surface_state of ["B", "C", "D", "E", "F", "G", null])
+		assert.equal(
+			model.trialEndedOrg({ ...ENDED_WIRE, surface_state }),
+			null,
+			String(surface_state),
+		);
+	assert.equal(
+		model.trialEndedOrg({ ...ENDED_WIRE, state: "signed_out" }),
+		null,
+	);
+});
+
+const ENDED_ORG_REPLACES_ONRAMP =
+	/noOrgPanel=\{\n\t+trialEnded \? \(\n\t+<TeamBridgeTrialEndedPanel\n\t+tenantId=\{trialEnded\.tenantId\}\n\t+endedAt=\{trialEnded\.endedAt\}\n\t+\/>\n\t+\) : \(\n\t+<TeamBridgeTrialEmpty/;
+const ENDED_ORG_FROM_STATUS =
+	/const trialEnded = trialEndedOrg\(status\.data\);/;
+
+test("Q5: the page mounts the paused band, never the trial on-ramp, for an ended org", () => {
+	// A source pin (house pattern): the predicate proves nothing if the page
+	// stops routing the no-org branch through it.
+	const page = readFileSync(
+		"src/renderer/src/features/team-bridge/team-bridge-page.tsx",
+		"utf8",
+	);
+	assert.match(page, ENDED_ORG_FROM_STATUS);
+	assert.match(page, ENDED_ORG_REPLACES_ONRAMP);
+});

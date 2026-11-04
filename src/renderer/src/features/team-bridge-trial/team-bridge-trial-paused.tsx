@@ -131,3 +131,53 @@ export function useTeamBridgeTrialNote(tenantId: string | null | undefined): {
 		) : null,
 	};
 }
+
+/**
+ * The no-organization branch when the account's organization's trial ENDED
+ * (QA round 1, Q5): the paused band for that organization, in place of the trial
+ * on-ramp. Surface A gates the page's reads, so there is no history to sit the
+ * band above here; it stands alone in the page canvas with the same sentence,
+ * date and audience rule (owner/admin get Subscribe, a disabled member reads who
+ * can act) as the in-page note. The date is the runtime's `trial_ended_at`, so
+ * nothing waits on a second read and nothing else can flash first.
+ */
+export const TeamBridgeTrialEndedView: FC<{
+	tenantId: string;
+	endedAt: string;
+	audience?: "billing" | "member";
+	timeZone?: string;
+}> = ({ tenantId, endedAt, audience = "billing", timeZone }) => (
+	<div
+		data-glass-region="canvas"
+		data-team-bridge-trial="ended"
+		className="flex h-full min-h-0 w-full items-center justify-center overflow-hidden bg-canvas px-6"
+	>
+		<div className="max-w-lg">
+			<TeamBridgeTrialNoteView
+				kind="paused"
+				at={endedAt}
+				tenantId={tenantId}
+				audience={audience}
+				timeZone={timeZone}
+			/>
+		</div>
+	</div>
+);
+
+/** The container: the audience comes from the account's own memberships. */
+export const TeamBridgeTrialEndedPanel: FC<{
+	tenantId: string;
+	endedAt: string;
+}> = ({ tenantId, endedAt }) => {
+	const memberships = useMembershipsQuery();
+	return (
+		<TeamBridgeTrialEndedView
+			tenantId={tenantId}
+			endedAt={endedAt}
+			audience={trialNoteAudience(
+				memberships.data?.memberships ?? null,
+				tenantId,
+			)}
+		/>
+	);
+};

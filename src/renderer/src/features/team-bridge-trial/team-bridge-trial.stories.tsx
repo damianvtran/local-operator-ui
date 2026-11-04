@@ -8,7 +8,8 @@
  * States: signed out, eligible, the dialog (empty and ready to submit, a
  * refused start, rate limited, and a retry after a refusal that succeeds),
  * post-start (trial active), ended/paused for an owner and for a disabled
- * member, ineligible (including not_owner for a member and for an admin).
+ * member (in-page, and on the no-organization branch the live wire reaches,
+ * QA round 1 Q5), ineligible (including not_owner for a member and for an admin).
  */
 import type { Meta, StoryObj } from "@storybook/react";
 import { type FC, useState } from "react";
@@ -22,7 +23,10 @@ import pageMeta, {
 import { TeamBridgeTrialDialogView } from "./team-bridge-trial-dialog";
 import { TeamBridgeTrialEmptyView } from "./team-bridge-trial-empty";
 import { subscribeUrlFor } from "./team-bridge-trial-model";
-import { TeamBridgeTrialNoteView } from "./team-bridge-trial-paused";
+import {
+	TeamBridgeTrialEndedView,
+	TeamBridgeTrialNoteView,
+} from "./team-bridge-trial-paused";
 
 /** A fixed zone so every frame names the same day (Thursday, December 3, 2026). */
 const ZONE = "UTC";
@@ -291,6 +295,40 @@ export const PausedMember: Story = {
 				kind="paused"
 				at={ENDED_AT}
 				tenantId="ten_home"
+				audience="member"
+				timeZone={ZONE}
+			/>
+		),
+	},
+};
+
+/**
+ * The trial ended and no organization is eligible: the live wire's shape (QA
+ * round 1, Q5) is surface A with `tenant_id: null` plus the runtime's
+ * `trial_ended` marker, so the no-organization branch shows the paused band for
+ * that organization instead of a trial on-ramp. Owner/admin: Subscribe.
+ */
+export const PausedNoOrg: Story = {
+	args: {
+		...noOrg,
+		noOrgPanel: (
+			<TeamBridgeTrialEndedView
+				tenantId="ten_home"
+				endedAt={ENDED_AT}
+				timeZone={ZONE}
+			/>
+		),
+	},
+};
+
+/** The same, for a member the trial end disabled: who can act, no button. */
+export const PausedNoOrgMember: Story = {
+	args: {
+		...noOrg,
+		noOrgPanel: (
+			<TeamBridgeTrialEndedView
+				tenantId="ten_home"
+				endedAt={ENDED_AT}
 				audience="member"
 				timeZone={ZONE}
 			/>

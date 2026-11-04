@@ -219,6 +219,35 @@ export function trialReplacesPanel(eligibility: string | null | undefined) {
 	return eligibility === "plan_required";
 }
 
+/**
+ * The ended-trial organization the no-organization branch must speak about,
+ * or null (QA round 1, Q5).
+ *
+ * After a trial ends the owner and every member it disabled read surface A with
+ * `tenant_id: null`, the same answer as an account that never had Teams. The
+ * runtime's `trial_ended` marker is the positive evidence that tells them apart;
+ * when it is present the branch shows the paused band for THAT organization and
+ * never mounts the trial on-ramp (a disabled member's home org is often still
+ * trial-eligible, so the on-ramp would offer a trial for the wrong org). Read
+ * only on a READY surface-A answer: any other letter is the page's own state.
+ */
+export function trialEndedOrg(
+	status:
+		| {
+				state: string;
+				surface_state: string | null;
+				trial_ended?: { tenant_id: string; trial_ended_at: string } | null;
+		  }
+		| null
+		| undefined,
+): { tenantId: string; endedAt: string } | null {
+	if (!status || status.state !== "ready" || status.surface_state !== "A")
+		return null;
+	const marker = status.trial_ended;
+	if (!marker?.tenant_id || !marker.trial_ended_at) return null;
+	return { tenantId: marker.tenant_id, endedAt: marker.trial_ended_at };
+}
+
 /** An ended trial is read-only on top of the hub's own `read_only` and guard. */
 export function teamBridgeReadOnly(input: {
 	statusReadOnly: boolean;

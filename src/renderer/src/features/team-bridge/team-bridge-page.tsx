@@ -65,9 +65,13 @@ import { rowCurrent } from "../chat/components/chat-sidebar";
 import { TeamBridgeTrialEmpty } from "../team-bridge-trial/team-bridge-trial-empty";
 import {
 	teamBridgeReadOnly,
+	trialEndedOrg,
 	trialReplacesPanel,
 } from "../team-bridge-trial/team-bridge-trial-model";
-import { useTeamBridgeTrialNote } from "../team-bridge-trial/team-bridge-trial-paused";
+import {
+	TeamBridgeTrialEndedPanel,
+	useTeamBridgeTrialNote,
+} from "../team-bridge-trial/team-bridge-trial-paused";
 import { TeamBridgeMentionProvider } from "./mentions";
 import { TeamBridgeAddMembersView } from "./team-bridge-add-members";
 import {
@@ -4139,6 +4143,9 @@ const TeamBridgeOwnedPage: FC<{
 	const trialNote = useTeamBridgeTrialNote(
 		readsEnabled ? status.data?.tenant_id : null,
 	);
+	// Q5: an ended trial reads surface A with no tenant; the runtime's marker
+	// names the organization so the no-org branch shows its paused band.
+	const trialEnded = trialEndedOrg(status.data);
 	const readOnly = teamBridgeReadOnly({
 		statusReadOnly: status.data?.read_only === true,
 		ownerGuard,
@@ -5221,9 +5228,16 @@ const TeamBridgeOwnedPage: FC<{
 					</>
 				}
 				noOrgPanel={
-					<TeamBridgeTrialEmpty
-						fallback={<TeamBridgeEligibilityPanel reason="plan_required" />}
-					/>
+					trialEnded ? (
+						<TeamBridgeTrialEndedPanel
+							tenantId={trialEnded.tenantId}
+							endedAt={trialEnded.endedAt}
+						/>
+					) : (
+						<TeamBridgeTrialEmpty
+							fallback={<TeamBridgeEligibilityPanel reason="plan_required" />}
+						/>
+					)
 				}
 				onRetry={() => {
 					void list.refetch();
