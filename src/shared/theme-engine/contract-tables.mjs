@@ -532,9 +532,10 @@ export const CONTROLS = [
 	 * the visual refresh (#1668) the hosts are the channel timeline's `canvas`,
 	 * the thread pane's `surface`, and the parent message row's inset hover tint
 	 * under the pointer: `surface` on the timeline, `elevated` in the compact
-	 * pane. `rowHover` stays listed for any host that still paints the old band,
-	 * and `accentWash` is the inset box of a row that mentions the reader (#1668
-	 * C3), at rest and under the pointer (#1672 round 3, D7).
+	 * pane. `rowHover` stays listed for any host that still paints the old band.
+	 * `accentWash` is NOT a host: the inset box a row that mentioned the reader
+	 * wore (#1668 C3, #1672 D7) was removed at the operator's request (#1679), so
+	 * a mention row rests on the same grounds as any other.
 	 * Hover is `sunken` on all of them.
 	 * Its inks are the accent "N replies" count and the `inkMuted` "Last reply"
 	 * clause; one row per ink, because the checker reads one ink per row.
@@ -548,7 +549,7 @@ export const CONTROLS = [
 	 */
 	{
 		name: "team bridge thread row (rest, count)",
-		on: ["canvas", "surface", "elevated", "rowHover", "accentWash"],
+		on: ["canvas", "surface", "elevated", "rowHover"],
 		fill: null,
 		border: null,
 		ink: "accent",
@@ -556,7 +557,7 @@ export const CONTROLS = [
 	},
 	{
 		name: "team bridge thread row (rest, last reply)",
-		on: ["canvas", "surface", "elevated", "rowHover", "accentWash"],
+		on: ["canvas", "surface", "elevated", "rowHover"],
 		fill: null,
 		border: null,
 		ink: "inkMuted",
@@ -564,7 +565,7 @@ export const CONTROLS = [
 	},
 	{
 		name: "team bridge thread row (hover, count)",
-		on: ["canvas", "surface", "elevated", "rowHover", "accentWash"],
+		on: ["canvas", "surface", "elevated", "rowHover"],
 		fill: "sunken",
 		border: null,
 		ink: "accent",
@@ -572,7 +573,7 @@ export const CONTROLS = [
 	},
 	{
 		name: "team bridge thread row (hover, last reply)",
-		on: ["canvas", "surface", "elevated", "rowHover", "accentWash"],
+		on: ["canvas", "surface", "elevated", "rowHover"],
 		fill: "sunken",
 		border: null,
 		ink: "inkMuted",
