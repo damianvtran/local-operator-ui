@@ -28,7 +28,10 @@ const COUNT_ONLY_COPY = /3 attachments/;
 const PRIVATE_TERMINAL_METADATA =
 	/expired|withheld|deleted|unknown|revoked|opaque|2,048/;
 const GENERIC_FILE_COPY = /File/;
-const LOCALIZED_BYTE_COUNT = /2,048 bytes/;
+// A human size on the chip (`2 KB`), never the raw "2,048 bytes" receipt the
+// bordered card printed before the inline-image refresh (SPEC §3.1).
+const HUMAN_SIZE = /2 KB/;
+const RAW_BYTE_COUNT = /bytes/;
 const PRIVATE_FILE_METADATA = /secret|script|private/;
 const TINY_RESERVED_BOX = /width: 64px; height: 64px/;
 
@@ -1067,8 +1070,12 @@ test("bubble: images render ONLY from attachments[], fetched member-gated; place
 		2,
 	);
 	assert.doesNotMatch(view.element.textContent, TERMINAL_REASON);
+	/* The ready tile's hover cluster (Open, Save) is not a retry; count the
+	   controls outside it. */
 	assert.equal(
-		view.element.querySelectorAll("button").length,
+		[...view.element.querySelectorAll("button")].filter(
+			(node) => !node.closest("[data-attachment-actions]"),
+		).length,
 		1,
 		"404 and terminal descriptors expose no retry",
 	);
@@ -2822,7 +2829,8 @@ test("shared file metadata: generic safe name, no raw descriptor text or inline 
 	});
 	assert.equal(commissioned, 0);
 	assert.match(view.element.textContent, GENERIC_FILE_COPY);
-	assert.match(view.element.textContent, LOCALIZED_BYTE_COUNT);
+	assert.match(view.element.textContent, HUMAN_SIZE);
+	assert.doesNotMatch(view.element.textContent, RAW_BYTE_COUNT);
 	assert.doesNotMatch(view.element.textContent, PRIVATE_FILE_METADATA);
 	assert.equal(view.element.querySelectorAll("button,img,a,script").length, 0);
 	await view.close();
@@ -2840,13 +2848,18 @@ test("shared geometry: nullable, invalid and huge dimensions stay finite and bou
 		for (const compact of [false, true]) {
 			const box = m.attachmentBox({ width, height: width }, true, compact);
 			assert.ok(Number.isFinite(box.width) && Number.isFinite(box.height));
-			assert.ok(box.width > 0 && box.width <= (compact ? 264 : 360));
-			assert.ok(box.height > 0 && box.height <= (compact ? 176 : 240));
+			assert.ok(box.width > 0 && box.width <= (compact ? 280 : 400));
+			assert.ok(box.height > 0 && box.height <= (compact ? 220 : 320));
 		}
 	}
+	// A grid cell is square at half the group's width less the 4px gutter.
 	assert.deepEqual(m.attachmentBox(null, false, true), {
-		width: 128,
-		height: 88,
+		width: 138,
+		height: 138,
+	});
+	assert.deepEqual(m.attachmentBox(null, false, false), {
+		width: 198,
+		height: 198,
 	});
 });
 
@@ -3191,6 +3204,7 @@ const PDF_META = /PDF · 184 KB/;
 const CSV_META = /CSV · 920 B/;
 const FILE_ID_PREFIX = /bfile_/;
 const WRAPS = /flex-wrap/;
+const GRID_TWO_COLUMNS = /grid-cols-2/;
 const SHRINKS = /min-w-0/;
 const CAPPED = /max-w-full/;
 const TRUNCATES = /truncate/;
@@ -3335,14 +3349,17 @@ test("S3b files: mixed 4 images + 6 files at compact density stays bounded and w
 	});
 	const lists = view.element.querySelectorAll("ul");
 	assert.equal(lists.length, 2);
-	for (const list of lists) {
-		assert.match(list.className, WRAPS);
-		assert.match(list.className, SHRINKS);
-	}
+	/* The images are a bounded 2-column grid (SPEC §3.1), capped at the compact
+	   group width; the file chips still wrap. Both may shrink. */
+	const [imageGrid, fileList] = lists;
+	assert.match(imageGrid.className, GRID_TWO_COLUMNS);
+	assert.equal(imageGrid.style.maxWidth, "280px");
+	assert.match(fileList.className, WRAPS);
+	for (const list of lists) assert.match(list.className, SHRINKS);
 	const cards = view.element.querySelectorAll("[data-bridge-file-card]");
 	assert.equal(cards.length, 6);
 	for (const card of cards) {
-		assert.equal(card.style.width, "208px");
+		assert.equal(card.style.width, "240px");
 		assert.match(card.className, CAPPED);
 		const name = card.querySelector('[dir="auto"]');
 		const head = name.querySelector('[data-file-name-part="head"]');

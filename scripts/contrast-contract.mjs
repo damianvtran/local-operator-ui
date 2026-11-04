@@ -642,6 +642,66 @@ const CONTROLS = [
 		ink: "ink",
 		edge: false,
 	},
+	/*
+	 * TEAM BRIDGE ATTACHMENT CHIPS (inline-image refresh, SPEC §3.1 / D1). A
+	 * file, a non-image descriptor or a count-only receipt is a borderless
+	 * Slack-style chip: `elevated` fill, `ink` name, `inkDim` meta line, a
+	 * `mediaSurface` kind tile with an `inkMuted` glyph
+	 * (`bridge-attachment-group.tsx`, `CHIP_CLASS`). The operator asked for the
+	 * bordered card to go, so the fill is the extent; `edge: false` for the
+	 * reaction pill's reason above (quiet `elevated` fill, ΔE00 0 off `rowHover`
+	 * in arcade), and the chip is not a control - no hover step, no action. The
+	 * three hosts are the grounds a message row paints. The meta line's
+	 * `inkDim` is a caption at 11px, so it is held to the text floor here too.
+	 */
+	{
+		name: "team bridge attachment chip name",
+		on: ["surface", "canvas", "rowHover"],
+		fill: "elevated",
+		border: null,
+		ink: "ink",
+		edge: false,
+	},
+	{
+		name: "team bridge attachment chip meta",
+		on: ["surface", "canvas", "rowHover"],
+		fill: "elevated",
+		border: null,
+		ink: "inkDim",
+		edge: false,
+	},
+	{
+		name: "team bridge attachment chip kind tile",
+		on: ["elevated"],
+		fill: "mediaSurface",
+		border: null,
+		ink: "inkMuted",
+		edge: false,
+	},
+	/*
+	 * THE INLINE IMAGE ACTION CLUSTER: Open and Save float over the picture's
+	 * top corner on hover/focus, an overlay (`shadow-overlay`), so its ground is
+	 * the PICTURE - unknowable - and the cluster's own `elevated` fill is what
+	 * the icons are read on. Asserted as ink on that fill at rest (`inkMuted`)
+	 * and under the pointer (`ink` on `rowHover`); `on: ["mediaSurface"]` is
+	 * the tile's own letterbox ground, the one ground the role system knows.
+	 */
+	{
+		name: "team bridge image action cluster",
+		on: ["mediaSurface"],
+		fill: "elevated",
+		border: null,
+		ink: "inkMuted",
+		edge: false,
+	},
+	{
+		name: "team bridge image action cluster (hover)",
+		on: ["elevated"],
+		fill: "rowHover",
+		border: null,
+		ink: "ink",
+		edge: false,
+	},
 	/* The reader's OWN pill is not a role but a derived fill (accent mixed over
 	   surface), so it cannot be a CONTROLS row: it is asserted by
 	   `REACTION_OWN_PILL` below, which mixes the fill per palette. */
