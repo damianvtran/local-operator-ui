@@ -10173,37 +10173,20 @@ export type MessageParams = {
 	"ui.teamBridge.create.name_placeholder": undefined;
 	"ui.teamBridge.create.title": undefined;
 	"ui.teamBridge.create.topic": undefined;
-	"ui.teamBridge.delivery.held": { agent: string; owner: string };
-	"ui.teamBridge.delivery.held_awaiting_review": {
-		agent: string;
-		owner: string;
-	};
-	"ui.teamBridge.delivery.held_screening_unavailable": {
-		agent: string;
-		owner: string;
-	};
+	"ui.teamBridge.delivery.held": { recipient: string };
+	"ui.teamBridge.delivery.held_awaiting_review": { recipient: string };
+	"ui.teamBridge.delivery.held_screening_unavailable": { recipient: string };
 	"ui.teamBridge.delivery.info_held": undefined;
 	"ui.teamBridge.delivery.info_label": undefined;
 	"ui.teamBridge.delivery.info_refused": undefined;
-	"ui.teamBridge.delivery.pending": { agent: string };
-	"ui.teamBridge.delivery.refused": { agent: string; owner: string };
-	"ui.teamBridge.delivery.refused_abusive": { agent: string; owner: string };
-	"ui.teamBridge.delivery.refused_manipulation": {
-		agent: string;
-		owner: string;
-	};
-	"ui.teamBridge.delivery.refused_out_of_scope": {
-		agent: string;
-		owner: string;
-	};
-	"ui.teamBridge.delivery.refused_personal_info": {
-		agent: string;
-		owner: string;
-	};
-	"ui.teamBridge.delivery.refused_unsafe_content": {
-		agent: string;
-		owner: string;
-	};
+	"ui.teamBridge.delivery.pending": { recipient: string };
+	"ui.teamBridge.delivery.recipient_unnamed": { person: string };
+	"ui.teamBridge.delivery.refused": { recipient: string };
+	"ui.teamBridge.delivery.refused_abusive": { recipient: string };
+	"ui.teamBridge.delivery.refused_manipulation": { recipient: string };
+	"ui.teamBridge.delivery.refused_out_of_scope": { recipient: string };
+	"ui.teamBridge.delivery.refused_personal_info": { recipient: string };
+	"ui.teamBridge.delivery.refused_unsafe_content": { recipient: string };
 	"ui.teamBridge.drafts.empty": undefined;
 	"ui.teamBridge.drafts.indicator": undefined;
 	"ui.teamBridge.drafts.navigation": undefined;
