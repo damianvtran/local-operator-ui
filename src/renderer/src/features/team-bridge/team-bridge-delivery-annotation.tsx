@@ -49,19 +49,7 @@ export const TeamBridgeDeliveryAnnotation: FC<{
 		<ul className="m-0 mt-0.5 flex min-w-0 list-none flex-col gap-1 p-0 text-[12px] text-ink-muted [overflow-wrap:anywhere]">
 			{lines.map((line) => (
 				<li key={line.key}>
-					<DeliveryLineText line={line} />
-					{line.kind !== "pending" && (
-						<>
-							{" "}
-							<DeliveryInfo
-								text={
-									line.kind === "refused"
-										? t("ui.teamBridge.delivery.info_refused")
-										: t("ui.teamBridge.delivery.info_held")
-								}
-							/>
-						</>
-					)}
+					<DeliveryLine line={line} />
 				</li>
 			))}
 		</ul>
@@ -129,7 +117,59 @@ const DELIVERY_CHIEF_LABELS: ChiefLabels = {
 		t("ui.teamBridge.delivery.recipient_unnamed", { person }),
 };
 
-const DeliveryLineText: FC<{ line: TeamBridgeDeliveryLine }> = ({ line }) => {
+/*
+ * ONE grapheme segmenter for every line: the split below must not cut a
+ * combining mark (hi, ur) or an emoji sequence off its base character.
+ */
+const GRAPHEMES = new Intl.Segmenter(undefined, { granularity: "grapheme" });
+
+/** `text` split before its final grapheme cluster: `[head, last]`. */
+function splitLastGrapheme(text: string): [string, string] {
+	let last = "";
+	for (const { segment } of GRAPHEMES.segment(text)) last = segment;
+	return [text.slice(0, text.length - last.length), last];
+}
+
+/**
+ * The sentence, then the info glyph that explains it.
+ *
+ * THE GLYPH NEVER WRAPS ALONE (design review D2 on #1643). The button is an
+ * atomic inline, and a line break is allowed before one, so a sentence that
+ * filled its line pushed the glyph onto a continuation line by itself (ru
+ * `refused_out_of_scope` at the narrow pane width). The sentence's FINAL
+ * grapheme, the space and the glyph now sit in one `whitespace-nowrap` span:
+ * the last word has no break opportunity inside it, so the whole word travels
+ * with the glyph to the next line instead.
+ *
+ * Only the final grapheme is bound, never the whole last word: a nowrap run
+ * cannot take the list's `[overflow-wrap:anywhere]`, so binding a long
+ * unspaced recipient name that ends a template ("…screened by {recipient}…")
+ * would overflow a narrow pane. The head keeps its emergency breaks. CJK
+ * copy has no spaces at all and is covered the same way, since a break is
+ * never allowed between the closing punctuation and the text before it.
+ */
+const DeliveryLine: FC<{ line: TeamBridgeDeliveryLine }> = ({ line }) => {
+	const text = deliveryLineText(line);
+	if (line.kind === "pending") return <>{text}</>;
+	const [head, last] = splitLastGrapheme(text);
+	return (
+		<>
+			{head}
+			<span className="whitespace-nowrap">
+				{last}{" "}
+				<DeliveryInfo
+					text={
+						line.kind === "refused"
+							? t("ui.teamBridge.delivery.info_refused")
+							: t("ui.teamBridge.delivery.info_held")
+					}
+				/>
+			</span>
+		</>
+	);
+};
+
+function deliveryLineText(line: TeamBridgeDeliveryLine): string {
 	/*
 	 * ONE composed `{recipient}`, never "{agent} ({owner})" spliced here: an
 	 * agent member stored by an older client already reads "Aida (Ben Tran)",
@@ -146,32 +186,30 @@ const DeliveryLineText: FC<{ line: TeamBridgeDeliveryLine }> = ({ line }) => {
 			) ?? t("ui.teamBridge.sender.unknown_agent"),
 	};
 	if (line.kind === "pending") {
-		return <>{t("ui.teamBridge.delivery.pending", params)}</>;
+		return t("ui.teamBridge.delivery.pending", params);
 	}
 	if (line.kind === "held") {
 		switch (line.holdReason) {
 			case "screening_unavailable":
-				return (
-					<>{t("ui.teamBridge.delivery.held_screening_unavailable", params)}</>
-				);
+				return t("ui.teamBridge.delivery.held_screening_unavailable", params);
 			case "awaiting_review":
-				return <>{t("ui.teamBridge.delivery.held_awaiting_review", params)}</>;
+				return t("ui.teamBridge.delivery.held_awaiting_review", params);
 			default:
-				return <>{t("ui.teamBridge.delivery.held", params)}</>;
+				return t("ui.teamBridge.delivery.held", params);
 		}
 	}
 	switch (line.refusalClass) {
 		case "manipulation":
-			return <>{t("ui.teamBridge.delivery.refused_manipulation", params)}</>;
+			return t("ui.teamBridge.delivery.refused_manipulation", params);
 		case "personal_info":
-			return <>{t("ui.teamBridge.delivery.refused_personal_info", params)}</>;
+			return t("ui.teamBridge.delivery.refused_personal_info", params);
 		case "abusive":
-			return <>{t("ui.teamBridge.delivery.refused_abusive", params)}</>;
+			return t("ui.teamBridge.delivery.refused_abusive", params);
 		case "unsafe_content":
-			return <>{t("ui.teamBridge.delivery.refused_unsafe_content", params)}</>;
+			return t("ui.teamBridge.delivery.refused_unsafe_content", params);
 		case "out_of_scope":
-			return <>{t("ui.teamBridge.delivery.refused_out_of_scope", params)}</>;
+			return t("ui.teamBridge.delivery.refused_out_of_scope", params);
 		default:
-			return <>{t("ui.teamBridge.delivery.refused", params)}</>;
+			return t("ui.teamBridge.delivery.refused", params);
 	}
-};
+}

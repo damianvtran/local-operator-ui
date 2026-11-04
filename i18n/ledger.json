@@ -18616,7 +18616,7 @@
 			"locale": "fr",
 			"namespace": "ui.teamBridge",
 			"source_sha256": "d06d4b8e8292b006364c800f24719c0f569b36bb86e2c81cba194de9f8b005ab",
-			"target_sha256": "65e5c4be341d0450a4d1eb3a3313af471d0cb648efb65aba8ff391de72d6ee8a",
+			"target_sha256": "95df579590ef4460dd6073faaa704c7a36b1a41dcba18fc4ef36ec7107f4263c",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -18635,18 +18635,18 @@
 					"agent": "i18n-auditor",
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-04",
-					"result": "clean-with-findings",
-					"instance": "66bfac56f929-merge1643-fr",
+					"result": "clean",
+					"instance": "828e525994e6-pr1666-fr",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
-						"nit": 1
+						"minor": 0,
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/66bfac56f929-merge1643-fr.json",
-					"receipt_sha256": "433b2a994534044f99fcf7f6790a37079460d74e9884053a2b719e8d6e735c9a",
-					"scope": "Post-merge re-audit of 8f18b76: 14 delta keys (11 from 1f66d89, 3 from 81df7db) re-read; other 328 values byte-identical to both audited parents",
-					"note": "Post-merge re-audit (#1643 + main 81df7db), i18n-auditor session 66bfac56f929; 14 delta keys re-read, rest byte-identical. Evidence: i18n/audits/evidence/fr/ui.teamBridge/tb-merge1643-66bfac56f929-fr/record.json"
+					"receipt": "i18n/receipts/828e525994e6-pr1666-fr.json",
+					"receipt_sha256": "3f95a01789a7edd0b6f934a3411c977f7e5dfd463b85b57a9ba96cb31438b3fd",
+					"scope": "PR #1666 remediation delta (f11ee9d vs 649d45c): changed keys re-read in composed sentences; other values byte-identical to the 66bfac56f929-merge1643 audited parent",
+					"note": "PR #1666 f11ee9d delta re-audit, i18n-auditor 828e525994e6; 0 findings; FR1, FR-N1 fixed. Evidence: i18n/audits/evidence/fr/ui.teamBridge/tb1666-828e525994e6-fr/record.json"
 				}
 			],
 			"status": "audited",
@@ -20208,6 +20208,30 @@
 							},
 							"receipt": "i18n/receipts/06af958924d2-gt2-fr.json",
 							"receipt_sha256": "ca8b8077d1394d041a5bc21ba641bdb41ba1cfb55a9f372a7f83ae965f842183"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "d06d4b8e8292b006364c800f24719c0f569b36bb86e2c81cba194de9f8b005ab",
+					"target_sha256": "65e5c4be341d0450a4d1eb3a3313af471d0cb648efb65aba8ff391de72d6ee8a",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-04",
+							"result": "clean-with-findings",
+							"instance": "66bfac56f929-merge1643-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/66bfac56f929-merge1643-fr.json",
+							"receipt_sha256": "433b2a994534044f99fcf7f6790a37079460d74e9884053a2b719e8d6e735c9a",
+							"scope": "Post-merge re-audit of 8f18b76: 14 delta keys (11 from 1f66d89, 3 from 81df7db) re-read; other 328 values byte-identical to both audited parents",
+							"note": "Post-merge re-audit (#1643 + main 81df7db), i18n-auditor session 66bfac56f929; 14 delta keys re-read, rest byte-identical. Evidence: i18n/audits/evidence/fr/ui.teamBridge/tb-merge1643-66bfac56f929-fr/record.json"
 						}
 					],
 					"status": "audited"
@@ -59057,7 +59081,7 @@
 			"locale": "vi",
 			"namespace": "ui.teamBridge",
 			"source_sha256": "d06d4b8e8292b006364c800f24719c0f569b36bb86e2c81cba194de9f8b005ab",
-			"target_sha256": "3fbf6eed08cead8e66c239a5192398c082f9ceecb174469d3c696f85cd969ab6",
+			"target_sha256": "1d4fe34c2d2f6da23d5e5c4a9520586af37e99516b502e11c8ca7f348ca5491e",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -59076,17 +59100,17 @@
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-04",
 					"result": "clean-with-findings",
-					"instance": "66bfac56f929-merge1643-vi",
+					"instance": "828e525994e6-pr1666-vi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 1,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/66bfac56f929-merge1643-vi.json",
-					"receipt_sha256": "e2767ed221585a9539504f821aa304a81738e2376d59e12cf64a67cf866a7668",
-					"scope": "Post-merge re-audit of 8f18b76: 14 delta keys (11 from 1f66d89, 3 from 81df7db) re-read; other 328 values byte-identical to both audited parents",
-					"note": "Post-merge re-audit (#1643 + main 81df7db), i18n-auditor session 66bfac56f929; 14 delta keys re-read, rest byte-identical. Evidence: i18n/audits/evidence/vi/ui.teamBridge/tb-merge1643-66bfac56f929-vi/record.json"
+					"receipt": "i18n/receipts/828e525994e6-pr1666-vi.json",
+					"receipt_sha256": "b63bc2a2962a164df672e04e360da4c99e85a0c328304c05bddce19bf184792e",
+					"scope": "PR #1666 remediation delta (f11ee9d vs 649d45c): changed keys re-read in composed sentences; other values byte-identical to the 66bfac56f929-merge1643 audited parent",
+					"note": "PR #1666 f11ee9d delta re-audit, i18n-auditor 828e525994e6; 1 MINOR VI-R1 (họ→tác nhân); VI1 term fixed. Evidence: i18n/audits/evidence/vi/ui.teamBridge/tb1666-828e525994e6-vi/record.json"
 				}
 			],
 			"status": "audited",
@@ -60609,6 +60633,30 @@
 							},
 							"receipt": "i18n/receipts/06af958924d2-gt2-vi.json",
 							"receipt_sha256": "87546b31d24309c5807e55f5f0b68869de320a961b5a35012084f4ea05adad58"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "d06d4b8e8292b006364c800f24719c0f569b36bb86e2c81cba194de9f8b005ab",
+					"target_sha256": "3fbf6eed08cead8e66c239a5192398c082f9ceecb174469d3c696f85cd969ab6",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-04",
+							"result": "clean-with-findings",
+							"instance": "66bfac56f929-merge1643-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/66bfac56f929-merge1643-vi.json",
+							"receipt_sha256": "e2767ed221585a9539504f821aa304a81738e2376d59e12cf64a67cf866a7668",
+							"scope": "Post-merge re-audit of 8f18b76: 14 delta keys (11 from 1f66d89, 3 from 81df7db) re-read; other 328 values byte-identical to both audited parents",
+							"note": "Post-merge re-audit (#1643 + main 81df7db), i18n-auditor session 66bfac56f929; 14 delta keys re-read, rest byte-identical. Evidence: i18n/audits/evidence/vi/ui.teamBridge/tb-merge1643-66bfac56f929-vi/record.json"
 						}
 					],
 					"status": "audited"
@@ -70048,7 +70096,7 @@
 			"locale": "zh-CN",
 			"namespace": "ui.teamBridge",
 			"source_sha256": "d06d4b8e8292b006364c800f24719c0f569b36bb86e2c81cba194de9f8b005ab",
-			"target_sha256": "365c5b2503d6111f9a0811cbd93f6d5463b40875b3cf5faf64178eb7500593ba",
+			"target_sha256": "c02110f8a978e298803f17dc82e0f4ebf6015dde0653eee810a583543981231e",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -70066,18 +70114,18 @@
 					"agent": "i18n-auditor",
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-04",
-					"result": "clean-with-findings",
-					"instance": "66bfac56f929-merge1643-zh-cn",
+					"result": "clean",
+					"instance": "828e525994e6-pr1666-zh-cn",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 2,
+						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/66bfac56f929-merge1643-zh-cn.json",
-					"receipt_sha256": "5d57740082acc1b44e774f23c0542704d8f68376faf29761b60db938991a5a75",
-					"scope": "Post-merge re-audit of 8f18b76: 14 delta keys (11 from 1f66d89, 3 from 81df7db) re-read; other 328 values byte-identical to both audited parents",
-					"note": "Post-merge re-audit (#1643 + main 81df7db), i18n-auditor session 66bfac56f929; 14 delta keys re-read, rest byte-identical. Evidence: i18n/audits/evidence/zh-CN/ui.teamBridge/tb-merge1643-66bfac56f929-zh-cn/record.json"
+					"receipt": "i18n/receipts/828e525994e6-pr1666-zh-cn.json",
+					"receipt_sha256": "a20d47cfec88806ede6c4cf4ccf364572bf692d459bddea00d7da56ed546989c",
+					"scope": "PR #1666 remediation delta (f11ee9d vs 649d45c): changed keys re-read in composed sentences; other values byte-identical to the 66bfac56f929-merge1643 audited parent",
+					"note": "PR #1666 f11ee9d delta re-audit, i18n-auditor 828e525994e6; 0 findings; ZH1, ZH2 fixed. Evidence: i18n/audits/evidence/zh-CN/ui.teamBridge/tb1666-828e525994e6-zh-cn/record.json"
 				}
 			],
 			"status": "audited",
@@ -71598,6 +71646,30 @@
 							},
 							"receipt": "i18n/receipts/06af958924d2-gt2-zh-cn.json",
 							"receipt_sha256": "3a9b71000bf775ca1c3b43585a08c45ee52976314edce1b35273dea18517eddb"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "d06d4b8e8292b006364c800f24719c0f569b36bb86e2c81cba194de9f8b005ab",
+					"target_sha256": "365c5b2503d6111f9a0811cbd93f6d5463b40875b3cf5faf64178eb7500593ba",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-04",
+							"result": "clean-with-findings",
+							"instance": "66bfac56f929-merge1643-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 2,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/66bfac56f929-merge1643-zh-cn.json",
+							"receipt_sha256": "5d57740082acc1b44e774f23c0542704d8f68376faf29761b60db938991a5a75",
+							"scope": "Post-merge re-audit of 8f18b76: 14 delta keys (11 from 1f66d89, 3 from 81df7db) re-read; other 328 values byte-identical to both audited parents",
+							"note": "Post-merge re-audit (#1643 + main 81df7db), i18n-auditor session 66bfac56f929; 14 delta keys re-read, rest byte-identical. Evidence: i18n/audits/evidence/zh-CN/ui.teamBridge/tb-merge1643-66bfac56f929-zh-cn/record.json"
 						}
 					],
 					"status": "audited"

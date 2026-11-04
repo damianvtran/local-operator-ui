@@ -303,6 +303,48 @@ test("serializer: only ACTIVE members are sent, whatever the token says (R1-01)"
 	]);
 });
 
+test("serializer: an ACTIVE member's silent (notify: false) token is left out by its flag alone", () => {
+	/*
+	 * Review NIT-1 on #1663: the page-level silent case picks a NON-member, so
+	 * the active-member filter drops it whether or not the `notify` check works.
+	 * Here both members are active and in the set, so only `notify` can drop
+	 * Sherman; the notifying Ben beside him proves the filter let them through.
+	 */
+	const tokens = [
+		{
+			start: 0,
+			end: 9,
+			kind: "human",
+			accountId: "a_ben",
+			label: "Ben Tran",
+			notify: true,
+		},
+		{
+			start: 10,
+			end: 23,
+			kind: "human",
+			accountId: "a_sherman",
+			label: "Sherman Tsui",
+			notify: false,
+		},
+	];
+	const active = new Set(["human:a_ben", "human:a_sherman"]);
+	assert.deepEqual(m.serializeMentions(tokens, active), [
+		{ kind: "human", account_id: "a_ben" },
+	]);
+	// Control: the same token notifying IS sent, so the set admits Sherman.
+	assert.deepEqual(
+		m.serializeMentions(
+			tokens.map((token) => ({ ...token, notify: true })),
+			active,
+		),
+		[
+			{ kind: "human", account_id: "a_ben" },
+			{ kind: "human", account_id: "a_sherman" },
+		],
+	);
+});
+
 test("serializer: contract shape, dedupe, silent tokens and unaddressable agents left out", () => {
 	let s = m.insertMention("@b", [], { start: 0, end: 2 }, ben);
 	s = m.insertMention(
