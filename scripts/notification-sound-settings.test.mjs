@@ -299,9 +299,29 @@ const makeDaemon = (options = {}) => {
 					},
 				});
 			case "settings.list":
+				if (options.settingsFail)
+					return {
+						status: 503,
+						body: { detail: "The server is not answering." },
+					};
 				return ok(settings());
 			case "settings.edit": {
 				edits.push({ key: input.key, value: input.value });
+				// A test can hold the FIRST write of a key open (review r2, M3).
+				if (
+					options.holdFirstEdit?.key === input.key &&
+					!options.holdFirstEdit.used
+				) {
+					options.holdFirstEdit.used = true;
+					await options.holdFirstEdit.gate;
+				} else if (
+					options.holdFirstEdit?.key === input.key &&
+					options.holdFirstEdit.second
+				) {
+					// The second write waits too, so the first one's refetch lands
+					// in between: the window where a stale prop could flip the switch.
+					await options.holdFirstEdit.second;
+				}
 				if (options.saveFails && input.key === "notifications.sound.id")
 					return {
 						status: 503,
@@ -383,7 +403,7 @@ const makeDaemon = (options = {}) => {
 		}
 		return { status: 404, kind: "error", detail: "not here" };
 	};
-	return { state, asked, media, edits, request, media_: mediaHandler };
+	return { state, asked, media, edits, request, media_: mediaHandler, options };
 };
 
 /** The desktop feed, faked: a test pushes frames through `emitFrame`. */
@@ -1142,5 +1162,164 @@ test("m5: a silent clip gets its own sentence", async (t) => {
 	assert.match(
 		container.textContent,
 		/quiet\.wav is silent\. Choose a clip you can hear\./,
+	);
+});
+
+/* ------------------------------------------------- round 2 remediation */
+
+const held = (key) => {
+	let release;
+	const gate = new Promise((resolve) => {
+		release = resolve;
+	});
+	return { hold: { key, gate, used: false }, release: () => release() };
+};
+const setRange = async (range, next) => {
+	const setValue = Object.getOwnPropertyDescriptor(
+		window.HTMLInputElement.prototype,
+		"value",
+	).set;
+	await keyOn(range, "ArrowLeft");
+	await act(async () => {
+		setValue.call(range, String(next));
+		range.dispatchEvent(new window.Event("input", { bubbles: true }));
+	});
+	await keyUpOn(range, "ArrowLeft");
+	await settle(1);
+};
+
+test("M3: 70 -> 65 -> 70 with the first save held open writes both, thumb ends at 70", async (t) => {
+	const { hold, release } = held("notifications.sound.volume");
+	const daemon = makeDaemon({ holdFirstEdit: hold });
+	const { container } = await mount(t, daemon);
+	const range = slider(container);
+	range.focus();
+	await setRange(range, 65);
+	await setRange(range, 70);
+	release();
+	await waitFor(
+		() =>
+			daemon.edits.filter((e) => e.key === "notifications.sound.volume")
+				.length === 2,
+		3000,
+	);
+	await settle(8, 20);
+	assert.deepEqual(
+		daemon.edits
+			.filter((e) => e.key === "notifications.sound.volume")
+			.map((e) => e.value),
+		[65, 70],
+	);
+	assert.equal(daemon.state.volume, 70, "the daemon ends at 70");
+	assert.equal(slider(container).value, "70", "and so does the thumb");
+});
+
+test("m1 (r2): on -> off -> on with the first save held never flips the switch back", async (t) => {
+	const { hold, release } = held("notifications.sound.enabled");
+	let releaseSecond;
+	hold.second = new Promise((resolve) => {
+		releaseSecond = resolve;
+	});
+	const daemon = makeDaemon({ holdFirstEdit: hold });
+	const { container } = await mount(t, daemon);
+	const sw = soundSwitch(container);
+	sw.focus();
+	await click(sw); // -> off (held)
+	await click(soundSwitch(container)); // -> on (queued)
+	const seen = [];
+	const observer = new window.MutationObserver(() =>
+		seen.push(soundSwitch(container)?.getAttribute("aria-checked")),
+	);
+	observer.observe(container, {
+		attributes: true,
+		subtree: true,
+		attributeFilter: ["aria-checked"],
+	});
+	release();
+	// The first write lands and its refetch reports `false`, with the second
+	// write still in flight.
+	await waitFor(() => daemon.state.soundOn === false, 3000);
+	await settle(8, 20);
+	releaseSecond();
+	await waitFor(() => daemon.state.soundOn === true, 3000);
+	await settle(8, 20);
+	observer.disconnect();
+	assert.ok(
+		!seen.includes("false"),
+		`never shown off after the second press: ${JSON.stringify(seen)}`,
+	);
+	assert.equal(soundSwitch(container).getAttribute("aria-checked"), "true");
+	assert.equal(daemon.state.soundOn, true);
+});
+
+test("U13: Turn on notifications moves focus to the switch it turned on", async (t) => {
+	const daemon = makeDaemon({ notificationsOn: false });
+	const { container } = await mount(t, daemon);
+	const button = [...container.querySelectorAll("button")].find((b) =>
+		b.textContent.includes("Turn on notifications"),
+	);
+	assert.ok(button, "the gated callout offers the action");
+	button.focus();
+	await click(button);
+	await waitFor(() => daemon.state.notificationsOn === true, 3000);
+	await settle(4, 40);
+	const active = document.activeElement;
+	assert.equal(active?.getAttribute("role"), "switch");
+	assert.equal(active?.getAttribute("aria-checked"), "true");
+	assert.equal(
+		active?.getAttribute("aria-labelledby") &&
+			document
+				.getElementById(active.getAttribute("aria-labelledby"))
+				.textContent.trim(),
+		"Desktop notifications",
+	);
+});
+
+test("U13: a successful volume Reset moves focus to the slider", async (t) => {
+	const daemon = makeDaemon({ volume: 40 });
+	const { container } = await mount(t, daemon);
+	const reset = [...container.querySelectorAll("button")].find(
+		(b) => b.textContent.trim() === "Reset",
+	);
+	assert.ok(reset, "Reset shows away from the default");
+	reset.focus();
+	await click(reset);
+	await waitFor(() => daemon.state.volume === 70, 3000);
+	await settle(4, 40);
+	assert.equal(document.activeElement, slider(container));
+});
+
+test("Q8: the section-level Retry also reloads the sound list", async (t) => {
+	const daemon = makeDaemon();
+	const { container } = await mount(t, daemon);
+	const before = daemon.asked.filter(
+		(op) => op === "notification_sounds.list",
+	).length;
+	daemon.options.settingsFail = true;
+	daemon.options.listingFails = true;
+	await act(async () => {
+		window.dispatchEvent(new window.Event("focus"));
+	});
+	await emitFrame(["notifications"]);
+	await waitFor(() => container.textContent.includes("Couldn't load"), 3000);
+	daemon.options.settingsFail = false;
+	daemon.options.listingFails = false;
+	const retry = [...container.querySelectorAll("button")].find(
+		(b) => b.textContent.trim() === "Retry",
+	);
+	await click(retry);
+	await waitFor(
+		() =>
+			radio(container, "soft-pulse") !== null &&
+			!container.textContent.includes("Couldn't load"),
+		3000,
+	);
+	assert.ok(
+		daemon.asked.filter((op) => op === "notification_sounds.list").length >
+			before + 1,
+	);
+	assert.ok(
+		!container.textContent.includes("Couldn't load"),
+		"one Retry recovers both reads",
 	);
 });

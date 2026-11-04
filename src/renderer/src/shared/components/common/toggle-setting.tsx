@@ -19,7 +19,7 @@ import { useI18nLocale } from "@shared/i18n/use-locale";
 import { Spinner } from "@shared/components/common/spinner";
 import { Switch } from "@shared/components/ui";
 import type { LucideIcon } from "lucide-react";
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import type { FC } from "react";
 
 type ToggleSettingProps = {
@@ -109,9 +109,20 @@ export const ToggleSetting: FC<ToggleSettingProps> = ({
 	 * showing the value it mounted with (QA round 1, Q2 / UX U3). Keyed on the
 	 * prop, so an optimistic flip is only overwritten when the prop changes.
 	 */
+	/*
+	 * ...EXCEPT WHILE ITS OWN PRESSES ARE IN FLIGHT (review round 2, m1). Two
+	 * queued presses (on -> off -> on): the first write's refetch brings
+	 * `false`, and syncing then flipped the focused switch back until the
+	 * second landed. In place, the sync waits for the last press to settle;
+	 * `settled` re-runs it then, so a failed write still shows the truth.
+	 */
+	const pendingPresses = useRef(0);
+	const [settled, setSettled] = useState(0);
 	useEffect(() => {
+		void settled;
+		if (savingInPlace && pendingPresses.current > 0) return;
 		setIsOn(value);
-	}, [value]);
+	}, [value, savingInPlace, settled]);
 	const fieldId = useId();
 	const labelId = `${fieldId}-label`;
 	const descriptionId = `${fieldId}-description`;
@@ -123,6 +134,19 @@ export const ToggleSetting: FC<ToggleSettingProps> = ({
 		if ((isSaving && !savingInPlace) || disabled) return;
 
 		setIsOn(checked);
+
+		if (savingInPlace) {
+			pendingPresses.current += 1;
+			try {
+				await onChange(checked);
+			} catch (error) {
+				console.error("Error toggling setting:", error);
+			} finally {
+				pendingPresses.current -= 1;
+				if (pendingPresses.current === 0) setSettled((n) => n + 1);
+			}
+			return;
+		}
 
 		try {
 			await onChange(checked);

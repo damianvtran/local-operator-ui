@@ -31,7 +31,7 @@ import {
 	useAudioEngineStore,
 } from "@shared/store/audio-engine-store";
 import type { Meta, StoryObj } from "@storybook/react";
-import type { FC } from "react";
+import { type FC, useEffect, useState } from "react";
 import fixtureJson from "../../../../../../scripts/fixtures/backend-settings-registry.json";
 import type { NotificationSoundListPresets } from "./notification-sound-list";
 import { NotificationsSection } from "./notifications-section";
@@ -268,7 +268,23 @@ const installBridge = (state: StoryState) => {
 	};
 };
 
-if (typeof window !== "undefined") {
+/*
+ * THE PAGE'S PRELOAD STAND-IN, kept installed while a story is mounted (design
+ * round 2, D6). Storybook imports sibling stories files lazily into the same
+ * preview, and several (`mcp-management-section`, `radient-account-section`)
+ * replace `window.api` / `window.api.desktop` at import time - measured with a
+ * setter probe: both landed AFTER this story had mounted. The next refetch (a
+ * click's preview, a window focus re-reading the listing) then reached their
+ * transport and showed "Desktop controls could not reach the backend process."
+ * So the section re-installs this whenever the request function on the page
+ * is no longer ours.
+ */
+const storyRequest = (request: BridgeRequest) => {
+	if (!bridge) throw new Error("no bridge installed for this story");
+	return bridge(request);
+};
+
+const installPage = () => {
 	const page = window as unknown as {
 		api?: {
 			backend?: Record<string, unknown>;
@@ -285,10 +301,7 @@ if (typeof window !== "undefined") {
 		getStatus: async () => ({ state: "attached", url: "http://127.0.0.1:9/" }),
 	};
 	api.desktop = {
-		request: (request: BridgeRequest) => {
-			if (!bridge) throw new Error("no bridge installed for this story");
-			return bridge(request);
-		},
+		request: storyRequest,
 		// No audio ever leaves a story: every preview fetch is refused.
 		media: async () => ({
 			status: 404,
@@ -310,9 +323,26 @@ if (typeof window !== "undefined") {
 			// No audio context in this host: nothing can play anyway.
 		}
 	});
-}
+};
 
 const Section: FC<{ state: StoryState }> = ({ state }) => {
+	// Installed on mount and re-installed whenever a sibling module has
+	// replaced it since (see `installPage`).
+	useState(() => {
+		installPage();
+		return null;
+	});
+	useEffect(() => {
+		const keep = () => {
+			if (window.api?.desktop?.request !== storyRequest) installPage();
+		};
+		const timer = window.setInterval(keep, 250);
+		window.addEventListener("focus", keep, true);
+		return () => {
+			window.clearInterval(timer);
+			window.removeEventListener("focus", keep, true);
+		};
+	}, []);
 	installBridge(state);
 	return (
 		<div className="min-h-screen bg-canvas p-8">

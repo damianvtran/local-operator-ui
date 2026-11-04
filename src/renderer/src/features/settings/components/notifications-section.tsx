@@ -260,6 +260,8 @@ export const NotificationsSection: FC<NotificationsSectionProps> = ({
 						? error.message
 						: t("ui.settings.notifications.save.failed_generic"),
 				);
+				// Rethrown so a caller's success step (focus, preview) is skipped.
+				throw error;
 			} finally {
 				markSaving(key, false);
 			}
@@ -308,6 +310,13 @@ export const NotificationsSection: FC<NotificationsSectionProps> = ({
 	}, [queryClient]);
 
 	const listRef = useRef<NotificationSoundListHandle>(null);
+	/*
+	 * Focus targets for controls that remove themselves on success (U13). The
+	 * shared rows expose no ref to their input, so the row wrapper is the
+	 * handle and the control is found inside it.
+	 */
+	const masterRowsRef = useRef<HTMLDivElement>(null);
+	const volumeRowRef = useRef<HTMLDivElement>(null);
 
 	/* ------------------------------------------------------------- the copy */
 
@@ -342,7 +351,7 @@ export const NotificationsSection: FC<NotificationsSectionProps> = ({
 	/* --------------------------------------------- the promoted master rows */
 
 	const masterRows = (
-		<div className="flex flex-col gap-1">
+		<div className="flex flex-col gap-1" ref={masterRowsRef}>
 			{notificationsRow && (
 				<ToggleSetting
 					label={notificationsRow.label}
@@ -402,7 +411,9 @@ export const NotificationsSection: FC<NotificationsSectionProps> = ({
 						variant="secondary"
 						size="sm"
 						onClick={() => {
-							void settingsQuery.refetch();
+							// One cause, one Retry: the listing failed with the registry
+							// read, so both come back together (QA round 2, Q8).
+							void refreshAll();
 						}}
 					>
 						<RotateCw aria-hidden="true" />
@@ -468,7 +479,10 @@ export const NotificationsSection: FC<NotificationsSectionProps> = ({
 								size="sm"
 								disabled={Boolean(savingKeys[NOTIFICATIONS_ENABLED_KEY])}
 								onClick={() => {
-									void writeSetting(NOTIFICATIONS_ENABLED_KEY, true).catch(
+									void writeSetting(NOTIFICATIONS_ENABLED_KEY, true).then(
+										// The callout unmounts with its button; focus goes to
+										// the switch it just turned on (UX round 2, U13).
+										() => focusWithin(masterRowsRef.current, '[role="switch"]'),
 										() => {},
 									);
 								}}
@@ -512,6 +526,7 @@ export const NotificationsSection: FC<NotificationsSectionProps> = ({
 
 				{volumeRow && (
 					<div
+						ref={volumeRowRef}
 						className="flex flex-col gap-1"
 						data-search-row="notifications.sound.volume"
 						data-search-control=""
@@ -543,9 +558,18 @@ export const NotificationsSection: FC<NotificationsSectionProps> = ({
 										// so it is disabled with it (QA Q6 / UX U12).
 										disabled={selectedId === SYSTEM_SOUND_ID}
 										onClick={() => {
-											void resetSetting("notifications.sound.volume").then(() =>
-												// Hear the default you went back to (UX U11).
-												listRef.current?.previewSelected(volumeDefault),
+											void resetSetting("notifications.sound.volume").then(
+												() => {
+													// Reset hides itself at the default, so focus moves
+													// to the slider it reset (UX round 2, U13).
+													focusWithin(
+														volumeRowRef.current,
+														'input[type="range"]',
+													);
+													// Hear the default you went back to (UX U11).
+													listRef.current?.previewSelected(volumeDefault);
+												},
+												() => {},
 											);
 										}}
 									>
@@ -668,3 +692,10 @@ const TestNotificationButton: FC = () => {
 		</div>
 	);
 };
+
+/** Focus the first `selector` inside `root`, once React has painted. */
+function focusWithin(root: HTMLElement | null, selector: string) {
+	requestAnimationFrame(() => {
+		root?.querySelector<HTMLElement>(selector)?.focus();
+	});
+}

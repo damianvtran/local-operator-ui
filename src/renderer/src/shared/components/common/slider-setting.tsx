@@ -189,14 +189,30 @@ export const SliderSetting: FC<SliderSettingProps> = ({
 	const latestValue = useRef(sliderValue);
 	latestValue.current = sliderValue;
 
+	/*
+	 * IN-PLACE SAVES COMPARE AGAINST WHAT WAS LAST SENT, not the prop (review
+	 * round 2, M3). With commits allowed mid-save, `value` lags: 70 -> 65 -> 70
+	 * compared the second 70 against the stale prop 70, skipped the write, and
+	 * the first write's refetch then moved the thumb to 65. So, in place,
+	 * `committed` is the last value handed to `onChange`, the prop sync waits
+	 * until every write has settled, and `settled` re-runs it at that moment.
+	 * Outside in-place mode none of this is consulted.
+	 */
+	const committed = useRef(value);
+	const pendingWrites = useRef(0);
+	const [settled, setSettled] = useState(0);
+
 	// Update local state when the external value prop changes
 	useEffect(() => {
+		void settled;
+		if (savingInPlace && pendingWrites.current > 0) return;
+		committed.current = value;
 		// Only update if not currently editing the input to avoid overriding user input
 		if (!isEditing) {
 			setSliderValue(value);
 			setInputValue(value.toString());
 		}
-	}, [value, isEditing]);
+	}, [value, isEditing, savingInPlace, settled]);
 
 	/**
 	 * Commits the current slider position: what MUI's `onChangeCommitted` did.
@@ -214,6 +230,22 @@ export const SliderSetting: FC<SliderSettingProps> = ({
 		setSliderValue(clampedValue);
 		setInputValue(clampedValue.toString());
 
+		if (savingInPlace) {
+			if (clampedValue === committed.current) return;
+			committed.current = clampedValue;
+			pendingWrites.current += 1;
+			try {
+				await onChange(clampedValue);
+			} catch (error) {
+				// The settle below re-reads the prop: what the daemon actually holds.
+				console.error("Error updating setting via slider:", error);
+			} finally {
+				pendingWrites.current -= 1;
+				if (pendingWrites.current === 0) setSettled((n) => n + 1);
+			}
+			return;
+		}
+
 		if (clampedValue !== value) {
 			try {
 				await onChange(clampedValue);
@@ -224,7 +256,7 @@ export const SliderSetting: FC<SliderSettingProps> = ({
 				setInputValue(value.toString());
 			}
 		}
-	}, [blocked, min, max, value, onChange]);
+	}, [blocked, min, max, value, onChange, savingInPlace]);
 
 	/**
 	 * Handles slider change events (live, while dragging or pressing arrows)
