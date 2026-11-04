@@ -1,0 +1,250 @@
+{
+  "schema": 1,
+  "date": "2026-11-04",
+  "agent": "i18n-auditor",
+  "instance": "ed833173e70f",
+  "model": "openai/gpt-6.1-sol",
+  "model_fallback": null,
+  "translator": {
+    "agent": "coder",
+    "model": "anthropic/claude-opus-5-5",
+    "date": "2026-11-04"
+  },
+  "independence": "Auditor is a distinct agent/session from coder/anthropic/claude-opus-5-5; no translation API used.",
+  "locale": "zh-CN",
+  "namespace": "ui.settings.notifications",
+  "status": "passed",
+  "source_sha256": "4bf3f8ffb1daecc09ac44049245bb85fe4c78b2c45ba19062218accc53782d65",
+  "target_sha256": "d1996466905d2094221a40fb4fdc8f8ab1893cfc0e97fde96e3ba9cf1dc628ec",
+  "context_sha256": "aec944a760fd984421ddb0afcb1135d03cb156b844fc88ff8a32ad250385e554",
+  "scope": "All 69 keys; D2 only against base 8a0e688 at 9080108975ba9beb74bedeb91cb33a969fa24568.",
+  "findings": [
+    {
+      "id": "ZH1",
+      "severity": "minor",
+      "disposition": "fixed in supplied audited file",
+      "keys": [
+        "ui.settings.notifications.section.description",
+        "ui.settings.notifications.custom.hint",
+        "ui.settings.notifications.custom.full",
+        "ui.settings.notifications.custom.uploading",
+        "ui.settings.notifications.custom.rename_long",
+        "ui.settings.notifications.error.too_large",
+        "ui.settings.notifications.error.unsupported_format",
+        "ui.settings.notifications.error.unsupported_codec",
+        "ui.settings.notifications.error.too_long",
+        "ui.settings.notifications.error.network",
+        "ui.settings.notifications.test.sent",
+        "ui.settings.notifications.backend_older"
+      ],
+      "reason": "Remove added politeness and Chinese/Latin/argument boundary spaces per zh-CN guide; retain technical-token bytes."
+    }
+  ],
+  "corrections": [
+    {
+      "id": "ZH1",
+      "locale": "zh-CN",
+      "key": "ui.settings.notifications.section.description",
+      "severity": "minor",
+      "disposition": "fixed in supplied audited artifact",
+      "before": "Local Operator 如何在会话完成或需要你时提醒你。",
+      "after": "Local Operator如何在会话完成或需要你时提醒你。",
+      "reason": "Remove added politeness and Chinese/Latin/argument boundary spaces per zh-CN guide; retain technical-token bytes."
+    },
+    {
+      "id": "ZH1",
+      "locale": "zh-CN",
+      "key": "ui.settings.notifications.custom.hint",
+      "severity": "minor",
+      "disposition": "fixed in supplied audited artifact",
+      "before": "支持 WAV、FLAC、MP3 或 OGG，最长 {seconds, number} 秒，最大 {megabytes, number} MB。响度会与内置声音保持一致。",
+      "after": "支持WAV、FLAC、MP3或OGG，最长{seconds, number}秒，最大{megabytes, number} MB。响度会与内置声音保持一致。",
+      "reason": "Remove added politeness and Chinese/Latin/argument boundary spaces per zh-CN guide; retain technical-token bytes."
+    },
+    {
+      "id": "ZH1",
+      "locale": "zh-CN",
+      "key": "ui.settings.notifications.custom.full",
+      "severity": "minor",
+      "disposition": "fixed in supplied audited artifact",
+      "before": "你已有 {count, number} 个声音，已达上限。删除一个后才能添加新的。",
+      "after": "你已有{count, number}个声音，已达上限。删除一个后才能添加新的。",
+      "reason": "Remove added politeness and Chinese/Latin/argument boundary spaces per zh-CN guide; retain technical-token bytes."
+    },
+    {
+      "id": "ZH1",
+      "locale": "zh-CN",
+      "key": "ui.settings.notifications.custom.uploading",
+      "severity": "minor",
+      "disposition": "fixed in supplied audited artifact",
+      "before": "正在上传…… {percent, number}%",
+      "after": "正在上传……{percent, number}%",
+      "reason": "Remove added politeness and Chinese/Latin/argument boundary spaces per zh-CN guide; retain technical-token bytes."
+    },
+    {
+      "id": "ZH1",
+      "locale": "zh-CN",
+      "key": "ui.settings.notifications.custom.rename_long",
+      "severity": "minor",
+      "disposition": "fixed in supplied audited artifact",
+      "before": "名称不能超过 {max, number} 个字符。",
+      "after": "名称不能超过{max, number}个字符。",
+      "reason": "Remove added politeness and Chinese/Latin/argument boundary spaces per zh-CN guide; retain technical-token bytes."
+    },
+    {
+      "id": "ZH1",
+      "locale": "zh-CN",
+      "key": "ui.settings.notifications.error.too_large",
+      "severity": "minor",
+      "disposition": "fixed in supplied audited artifact",
+      "before": "{file}超过 {megabytes, number} MB。请选择更短的片段。",
+      "after": "{file}超过{megabytes, number} MB。选择更短的片段。",
+      "reason": "Remove added politeness and Chinese/Latin/argument boundary spaces per zh-CN guide; retain technical-token bytes."
+    },
+    {
+      "id": "ZH1",
+      "locale": "zh-CN",
+      "key": "ui.settings.notifications.error.unsupported_format",
+      "severity": "minor",
+      "disposition": "fixed in supplied audited artifact",
+      "before": "{file}不是 WAV、FLAC、MP3 或 OGG 格式。请将其转换为 WAV 或 FLAC 后重新添加。",
+      "after": "{file}不是WAV、FLAC、MP3或OGG格式。将其转换为WAV或FLAC后重新添加。",
+      "reason": "Remove added politeness and Chinese/Latin/argument boundary spaces per zh-CN guide; retain technical-token bytes."
+    },
+    {
+      "id": "ZH1",
+      "locale": "zh-CN",
+      "key": "ui.settings.notifications.error.unsupported_codec",
+      "severity": "minor",
+      "disposition": "fixed in supplied audited artifact",
+      "before": "无法读取 Opus 和 M4A 文件。请将{file}转换为 WAV 或 FLAC 后重新添加。",
+      "after": "无法读取Opus和M4A文件。将{file}转换为WAV或FLAC后重新添加。",
+      "reason": "Remove added politeness and Chinese/Latin/argument boundary spaces per zh-CN guide; retain technical-token bytes."
+    },
+    {
+      "id": "ZH1",
+      "locale": "zh-CN",
+      "key": "ui.settings.notifications.error.too_long",
+      "severity": "minor",
+      "disposition": "fixed in supplied audited artifact",
+      "before": "{file}时长 {seconds} 秒。声音最长为 {limit, number} 秒。",
+      "after": "{file}时长{seconds}秒。声音最长为{limit, number}秒。",
+      "reason": "Remove added politeness and Chinese/Latin/argument boundary spaces per zh-CN guide; retain technical-token bytes."
+    },
+    {
+      "id": "ZH1",
+      "locale": "zh-CN",
+      "key": "ui.settings.notifications.error.network",
+      "severity": "minor",
+      "disposition": "fixed in supplied audited artifact",
+      "before": "无法添加{file}。请确认 Local Operator 正在运行，然后重试。",
+      "after": "无法添加{file}。确认Local Operator正在运行，然后重试。",
+      "reason": "Remove added politeness and Chinese/Latin/argument boundary spaces per zh-CN guide; retain technical-token bytes."
+    },
+    {
+      "id": "ZH1",
+      "locale": "zh-CN",
+      "key": "ui.settings.notifications.test.sent",
+      "severity": "minor",
+      "disposition": "fixed in supplied audited artifact",
+      "before": "已发送。没有声音？请检查专注模式或勿扰模式，以及提醒音量。",
+      "after": "已发送。没有声音？检查专注模式或勿扰模式，以及提醒音量。",
+      "reason": "Remove added politeness and Chinese/Latin/argument boundary spaces per zh-CN guide; retain technical-token bytes."
+    },
+    {
+      "id": "ZH1",
+      "locale": "zh-CN",
+      "key": "ui.settings.notifications.backend_older",
+      "severity": "minor",
+      "disposition": "fixed in supplied audited artifact",
+      "before": "通知声音需要更新版本的 Local Operator。请更新后再选择声音。",
+      "after": "通知声音需要更新版本的Local Operator。更新后再选择声音。",
+      "reason": "Remove added politeness and Chinese/Latin/argument boundary spaces per zh-CN guide; retain technical-token bytes."
+    }
+  ],
+  "references": {
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/zh-CN.md",
+      "sha256": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+    }
+  },
+  "core_sound_names": {
+    "path": "/Users/damian/.local-operator/sessions/7c5c172b0e89/scratchpad/notif-sounds/c2-i18n-audit-r1/zh-CN.wire.notification_sound.full.audited.json",
+    "sha256": "e648b4c0e4530ec816aa14238d1a5543fd5c7153530a081c309d76a8e197a6c6"
+  },
+  "checks": {
+    "locales": [
+      {
+        "locale": "fr",
+        "keys": 69,
+        "pluralMessages": 2,
+        "status": "PASS",
+        "count3of50": "3 sur 50"
+      },
+      {
+        "locale": "es",
+        "keys": 69,
+        "pluralMessages": 2,
+        "status": "PASS",
+        "count3of50": "3 de 50"
+      },
+      {
+        "locale": "zh-CN",
+        "keys": 69,
+        "pluralMessages": 2,
+        "status": "PASS",
+        "count3of50": "3/50"
+      },
+      {
+        "locale": "ru",
+        "keys": 69,
+        "pluralMessages": 3,
+        "status": "PASS",
+        "count3of50": "3 из 50"
+      },
+      {
+        "locale": "vi",
+        "keys": 69,
+        "pluralMessages": 2,
+        "status": "PASS",
+        "count3of50": "3/50"
+      },
+      {
+        "locale": "ur",
+        "keys": 69,
+        "pluralMessages": 2,
+        "status": "PASS",
+        "count3of50": "50 میں سے 3"
+      },
+      {
+        "locale": "hi",
+        "keys": 69,
+        "pluralMessages": 2,
+        "status": "PASS",
+        "count3of50": "50 में से 3"
+      }
+    ],
+    "totalKeys": 483,
+    "formatEvaluations": 4830,
+    "checks": [
+      "exact key parity",
+      "ICU AST argument names and types",
+      "all locale CLDR categories",
+      "no manual bidi controls",
+      "Vietnamese NFC",
+      "sample formatting incl 0,1,2,3,5,21,50,100,0.5,1000000"
+    ],
+    "limitations": [
+      "Text/ICU checks only; no rendered layout or native RTL shaping proof"
+    ]
+  },
+  "limitations": [
+    "One independent LLM linguistic audit, not human-native certification or second high-visibility/safety audit.",
+    "No translated rendered-fit, pseudo-localization, RTL visual/shaping proof or audio/runtime QA claimed. English screenshots supplied by implementer do not prove target fit."
+  ],
+  "evidence_record": "i18n/audits/evidence/zh-CN/ui.settings.notifications/d2-r1-ed833173e70f/record.json"
+}

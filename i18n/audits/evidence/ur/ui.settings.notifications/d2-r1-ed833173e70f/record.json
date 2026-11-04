@@ -1,0 +1,66 @@
+{
+  "schema": 1,
+  "locale": "ur",
+  "namespace": "ui.settings.notifications",
+  "date": "2026-11-04",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "instance": "ed833173e70f",
+    "model": "openai/gpt-6.1-sol"
+  },
+  "independence": "Auditor is a distinct agent/session from coder/anthropic/claude-opus-5-5; no translation API used.",
+  "source": {
+    "path": "src/i18n/catalogues/en/ui.settings.notifications.json",
+    "sha256": "4bf3f8ffb1daecc09ac44049245bb85fe4c78b2c45ba19062218accc53782d65"
+  },
+  "context": {
+    "path": "src/i18n/catalogues/en/ui.settings.notifications.context.json",
+    "sha256": "aec944a760fd984421ddb0afcb1135d03cb156b844fc88ff8a32ad250385e554"
+  },
+  "target": {
+    "path": "src/i18n/catalogues/ur/ui.settings.notifications.json",
+    "sha256": "ee01d73aa30b6338667b86c840a38178425b10f5503021013b3e698a9d6a4353"
+  },
+  "artifacts": [
+    {
+      "path": "i18n/receipts/d2-notification-sounds-r1-ed833173e70f-ur.json",
+      "sha256": "29e166ed14e6a1d2e3ee03038b6fd1430f9efda905d7ce0611140871ea6b9990"
+    }
+  ],
+  "findings": [
+    {
+      "id": "UR1",
+      "severity": "minor",
+      "disposition": "fixed in supplied audited file",
+      "keys": [
+        "ui.settings.notifications.list.custom_count"
+      ],
+      "reason": "Natural Urdu part-of-whole order; 3 of 50 must mean 50 میں سے 3, not an ambiguous Persian از construction."
+    },
+    {
+      "id": "UR2",
+      "severity": "minor",
+      "disposition": "fixed in supplied audited file",
+      "keys": [
+        "ui.settings.notifications.custom.rename_long"
+      ],
+      "reason": "Character limit includes digits, punctuation and spaces; حروف is letters-only. Match core audit character terminology."
+    },
+    {
+      "id": "UR3",
+      "severity": "minor",
+      "disposition": "fixed in supplied audited file",
+      "keys": [
+        "ui.settings.notifications.list.builtin",
+        "ui.settings.notifications.custom.hint"
+      ],
+      "reason": "Match core notification-sound label/help terminology rather than introduce a second built-in term."
+    }
+  ],
+  "status": "passed",
+  "notes_not_execution_logs": true,
+  "limitations": [
+    "One independent LLM linguistic audit, not human-native certification or second high-visibility/safety audit.",
+    "No translated rendered-fit, pseudo-localization, RTL visual/shaping proof or audio/runtime QA claimed. English screenshots supplied by implementer do not prove target fit."
+  ]
+}
