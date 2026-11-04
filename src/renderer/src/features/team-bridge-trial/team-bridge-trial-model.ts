@@ -114,6 +114,11 @@ export function trialEmptyView(input: {
 	if (memberOfTeamOrg(input.memberships)) return { kind: "unchanged" };
 	if (input.pending || !input.eligibility) return { kind: "checking" };
 	const e = input.eligibility;
+	// A body without the §3 shape is not an answer: an older or misrouted
+	// backend that replies 200 with something else must leave the page as it was,
+	// not become an "ineligible" screen built from undefined fields.
+	if (typeof e.eligible !== "boolean" || typeof e.tenant_id !== "string")
+		return { kind: "unchanged" };
 	if (e.eligible)
 		return {
 			kind: "eligible",

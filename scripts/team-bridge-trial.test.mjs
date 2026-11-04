@@ -318,3 +318,19 @@ test("R1-3: the page routes its gate and readOnly through those predicates", () 
 	assert.match(page, READ_ONLY_ROUTES_THROUGH_PREDICATE);
 	assert.match(page, PAUSED_EXPLAINS_READ_ONLY);
 });
+
+test("a 200 without the eligibility shape keeps the page unchanged", () => {
+	for (const body of [
+		{ memberships: [] },
+		{ eligible: "yes", tenant_id: "t" },
+		{ eligible: true },
+	])
+		assert.equal(
+			model.trialEmptyView({
+				pending: false,
+				unavailable: false,
+				eligibility: body,
+			}).kind,
+			"unchanged",
+		);
+});
