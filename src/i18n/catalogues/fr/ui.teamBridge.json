@@ -340,8 +340,5 @@
 	"ui.teamBridge.attachmentCard.metadata_only": "Aperçu indisponible dans cette vue",
 	"ui.teamBridge.attachmentCard.unavailable": "Pièce jointe indisponible",
 	"ui.teamBridge.fileCard.list": "{count, plural, one {# fichier} many {# de fichiers} other {# fichiers}}",
-	"ui.teamBridge.fileCard.kind": "{kind, select, pdf {PDF} text {Fichier texte} container {ZIP} other {Fichier}}",
-	"ui.teamBridge.thread_row.label": "Ouvrir le fil, {count, plural, one {# réponse} many {# de réponses} other {# réponses}}{unread, plural, =0 {} one {, # non lue} many {, # de non lues} other {, # non lues}}{hasLast, select, yes {. {last}} other {}}",
-	"ui.teamBridge.thread_row.last": "Dernière réponse {when, select, today {aujourd’hui à {time}} yesterday {hier à {time}} other {le {time}}}",
-	"ui.teamBridge.thread_row.unread_badge": "{count, plural, one {{label} non lue} other {{label} non lues}}"
+	"ui.teamBridge.fileCard.kind": "{kind, select, pdf {PDF} text {Fichier texte} container {ZIP} other {Fichier}}"
 }

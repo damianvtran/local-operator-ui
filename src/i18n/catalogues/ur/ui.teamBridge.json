@@ -340,8 +340,5 @@
 	"ui.teamBridge.attachmentCard.metadata_only": "اس منظر میں پیش نظارہ دستیاب نہیں",
 	"ui.teamBridge.attachmentCard.unavailable": "منسلکہ دستیاب نہیں",
 	"ui.teamBridge.fileCard.list": "{count, plural, one {# فائل} other {# فائلیں}}",
-	"ui.teamBridge.fileCard.kind": "{kind, select, pdf {PDF} text {ٹیکسٹ فائل} container {ZIP} other {فائل}}",
-	"ui.teamBridge.thread_row.label": "تھریڈ دیکھیں، {count, plural, one {# جواب} other {# جوابات}}{unread, plural, =0 {} other {، # غیر پڑھے}}{hasLast, select, yes {۔ {last}} other {}}",
-	"ui.teamBridge.thread_row.last": "آخری جواب {when, select, today {آج {time} بجے} yesterday {کل {time} بجے} other {{time}}}",
-	"ui.teamBridge.thread_row.unread_badge": "{count, plural, other {{label} غیر پڑھے}}"
+	"ui.teamBridge.fileCard.kind": "{kind, select, pdf {PDF} text {ٹیکسٹ فائل} container {ZIP} other {فائل}}"
 }

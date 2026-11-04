@@ -340,8 +340,5 @@
 	"ui.teamBridge.attachmentCard.metadata_only": "इस दृश्य में पूर्वावलोकन उपलब्ध नहीं है",
 	"ui.teamBridge.attachmentCard.unavailable": "अटैचमेंट उपलब्ध नहीं है",
 	"ui.teamBridge.fileCard.list": "{count, plural, one {# फ़ाइल} other {# फ़ाइलें}}",
-	"ui.teamBridge.fileCard.kind": "{kind, select, pdf {PDF} text {टेक्स्ट फ़ाइल} container {ZIP} other {फ़ाइल}}",
-	"ui.teamBridge.thread_row.label": "थ्रेड देखें, {count, plural, one {# जवाब} other {# जवाब}}{unread, plural, =0 {} other {, # अपठित}}{hasLast, select, yes {। {last}} other {}}",
-	"ui.teamBridge.thread_row.last": "अंतिम जवाब {when, select, today {आज {time} बजे} yesterday {कल {time} बजे} other {{time}}}",
-	"ui.teamBridge.thread_row.unread_badge": "{count, plural, other {{label} अपठित}}"
+	"ui.teamBridge.fileCard.kind": "{kind, select, pdf {PDF} text {टेक्स्ट फ़ाइल} container {ZIP} other {फ़ाइल}}"
 }

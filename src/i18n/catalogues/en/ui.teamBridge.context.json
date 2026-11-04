@@ -2565,37 +2565,5 @@
 			"kind": "Server file class: pdf, text, container (ZIP-based, including Office documents) or other. Keep every select arm."
 		},
 		"note": "PDF and ZIP are format names and normally stay untranslated. The class is a label from byte sniffing, not a safety or scan claim; do not imply the file was checked."
-	},
-	"ui.teamBridge.thread_row.label": {
-		"role": "accessible name of the thread summary row under a message",
-		"tone": "plain, concise",
-		"length": "One screen-reader sentence.",
-		"placeholders": {
-			"count": "Number of replies",
-			"unread": "Replies in this thread the reader has not read; 0 drops the clause",
-			"last": "The complete, already-localized ui.teamBridge.thread_row.last sentence",
-			"hasLast": "yes when a last-reply moment is known"
-		},
-		"note": "Slack-style one-level conversation thread; reply is a message inside the thread, not a channel post. The row opens the thread."
-	},
-	"ui.teamBridge.thread_row.last": {
-		"role": "thread summary row status",
-		"tone": "plain, concise",
-		"length": "Short; truncates in a narrow column.",
-		"placeholders": {
-			"when": "today, yesterday or other: which day the last reply was",
-			"time": "Localized clock time for today/yesterday; a short localized date for other"
-		},
-		"note": "Slack-style one-level conversation thread; reply is a message inside the thread, not a channel post."
-	},
-	"ui.teamBridge.thread_row.unread_badge": {
-		"role": "compact unread count badge on the thread summary row",
-		"tone": "plain, terse",
-		"length": "Very short; fits a small pill.",
-		"placeholders": {
-			"count": "Unread replies, for plural agreement only",
-			"label": "The displayed numeral, already capped (may read '99+')"
-		},
-		"note": "Count of replies in this thread the reader has not read yet."
 	}
 }

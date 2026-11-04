@@ -1,0 +1,5 @@
+{
+	"ui.teamBridge.threadRow.label": "تھریڈ دیکھیں، {count, plural, one {# جواب} other {# جوابات}}{unread, plural, =0 {} other {، # غیر پڑھے}}{hasLast, select, yes {۔ {last}} other {}}",
+	"ui.teamBridge.threadRow.last": "آخری جواب {when, select, today {آج {time} بجے} yesterday {کل {time} بجے} other {{time}}}",
+	"ui.teamBridge.threadRow.unread_badge": "{count, plural, other {{label} غیر پڑھے}}"
+}

@@ -76,7 +76,7 @@ export function TeamBridgeThreadRow({
 		? lastReplyLabel(summary.lastReply, locale, now)
 		: null;
 	const count = t("ui.teamBridge.replies.count", { count: summary.count });
-	const name = t("ui.teamBridge.thread_row.label", {
+	const name = t("ui.teamBridge.threadRow.label", {
 		count: summary.count,
 		unread,
 		last: last ?? "",
@@ -109,7 +109,7 @@ export function TeamBridgeThreadRow({
 				aria-hidden="true"
 				count={unread}
 				format={(label) =>
-					t("ui.teamBridge.thread_row.unread_badge", { count: unread, label })
+					t("ui.teamBridge.threadRow.unread_badge", { count: unread, label })
 				}
 				className="shrink-0"
 			/>
@@ -141,7 +141,7 @@ export function lastReplyLabel(at: Date, locale: string, now = new Date()) {
 					locale,
 				)
 			: formatTime(at, { hour: "numeric", minute: "2-digit" }, locale);
-	return t("ui.teamBridge.thread_row.last", { when, time });
+	return t("ui.teamBridge.threadRow.last", { when, time });
 }
 
 /**

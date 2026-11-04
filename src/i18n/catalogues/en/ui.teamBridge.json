@@ -340,8 +340,5 @@
 	"ui.teamBridge.attachmentCard.metadata_only": "Preview unavailable in this view",
 	"ui.teamBridge.attachmentCard.unavailable": "Attachment unavailable",
 	"ui.teamBridge.fileCard.list": "{count, plural, one {# file} other {# files}}",
-	"ui.teamBridge.fileCard.kind": "{kind, select, pdf {PDF} text {Text file} container {ZIP} other {File}}",
-	"ui.teamBridge.thread_row.label": "View thread, {count, plural, one {# reply} other {# replies}}{unread, plural, =0 {} other {, # unread}}{hasLast, select, yes {. {last}} other {}}",
-	"ui.teamBridge.thread_row.last": "Last reply {when, select, today {today at {time}} yesterday {yesterday at {time}} other {{time}}}",
-	"ui.teamBridge.thread_row.unread_badge": "{count, plural, other {{label} unread}}"
+	"ui.teamBridge.fileCard.kind": "{kind, select, pdf {PDF} text {Text file} container {ZIP} other {File}}"
 }

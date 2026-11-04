@@ -340,8 +340,5 @@
 	"ui.teamBridge.attachmentCard.metadata_only": "Предпросмотр недоступен в этом представлении",
 	"ui.teamBridge.attachmentCard.unavailable": "Вложение недоступно",
 	"ui.teamBridge.fileCard.list": "{count, plural, one {# файл} few {# файла} many {# файлов} other {# файла}}",
-	"ui.teamBridge.fileCard.kind": "{kind, select, pdf {PDF} text {Текстовый файл} container {ZIP} other {Файл}}",
-	"ui.teamBridge.thread_row.label": "Открыть ветку, {count, plural, one {# ответ} few {# ответа} many {# ответов} other {# ответа}}{unread, plural, =0 {} one {, # непрочитанный} few {, # непрочитанных} many {, # непрочитанных} other {, # непрочитанного}}{hasLast, select, yes {. {last}} other {}}",
-	"ui.teamBridge.thread_row.last": "Последний ответ {when, select, today {сегодня в {time}} yesterday {вчера в {time}} other {{time}}}",
-	"ui.teamBridge.thread_row.unread_badge": "{count, plural, one {{label} новый} few {{label} новых} many {{label} новых} other {{label} новых}}"
+	"ui.teamBridge.fileCard.kind": "{kind, select, pdf {PDF} text {Текстовый файл} container {ZIP} other {Файл}}"
 }
