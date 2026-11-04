@@ -818,3 +818,118 @@ test("local graphic reveal copy preserves singular/plural and overflow meaning",
 	assert.equal(model.graphicRevealText(3, true), "Hide 3 graphics");
 	assert.equal(model.showAllText(2), "Show all 2 graphics");
 });
+
+/*
+ * HIGHLIGHTS DELIVERABLES (2026-11-03): written audio, pins and the withheld
+ * notice are ADDITIVE on the wire. A row that states none of them must parse
+ * to exactly the shape it always did; one that states them keeps each field.
+ */
+test("written audio keeps origin/path/pinned; generated sounds keep their old shape", () => {
+	const patch = model.supplementPatchFromDetails({
+		...row("done_populated"),
+		sounds: [
+			{
+				attachment: "a".repeat(32),
+				mime: "audio/mpeg",
+				title: "take-1.mp3",
+				duration_s: 0,
+				path: "picks/take-1.mp3",
+				origin: "file",
+				pinned: true,
+			},
+			// A generated sound: no origin, and a stray path is NOT adopted,
+			// because only a written file has a path the reader may open.
+			{ attachment: "b".repeat(32), mime: "audio/wav", path: "x.wav" },
+		],
+	});
+	assert.deepEqual(patch.sounds, [
+		{
+			attachment: "a".repeat(32),
+			mime: "audio/mpeg",
+			title: "take-1.mp3",
+			durationS: 0,
+			origin: "file",
+			path: "picks/take-1.mp3",
+			pinned: true,
+		},
+		{
+			attachment: "b".repeat(32),
+			mime: "audio/wav",
+			title: "",
+			durationS: null,
+		},
+	]);
+});
+
+test("a pinned file says so; an unpinned one parses unchanged", () => {
+	const patch = model.supplementPatchFromDetails({
+		...row("done_populated"),
+		files: [
+			{ path: "a.html", name: "a.html", kind: "html", pinned: true },
+			{ path: "b.md", name: "b.md", kind: "markdown", pinned: "yes" },
+		],
+	});
+	assert.equal(patch.files[0].pinned, true);
+	assert.equal("pinned" in patch.files[1], false, "only a literal true pins");
+});
+
+test("withheld parses bounded, never invents a reason, and counts what it drops", () => {
+	const patch = model.supplementPatchFromDetails({
+		...row("done_populated"),
+		files: [],
+		components: [],
+		withheld: [
+			{ name: "x.key", reason: "sensitive" },
+			{ name: "gone.mp4", reason: "missing" },
+			// A reason this build does not know: dropped from the list but
+			// still COUNTED, because the line exists so a refusal is not silent.
+			{ name: "future.bin", reason: "from-the-future" },
+			"not an object",
+		],
+		withheld_more: 3,
+	});
+	assert.deepEqual(patch.withheld, [
+		{ name: "x.key", reason: "sensitive" },
+		{ name: "gone.mp4", reason: "missing" },
+	]);
+	assert.equal(patch.withheldMore, 4);
+	const bounded = model.withheldFrom(
+		[...Array(15)].map((_, i) => ({ name: `f${i}`, reason: "outside" })),
+		0,
+	);
+	assert.equal(bounded.withheld.length, model.WITHHELD_MAX);
+	// Absent on older rows: nothing withheld.
+	const old = model.supplementPatchFromDetails(row("done_populated"));
+	assert.deepEqual(old.withheld, []);
+	assert.equal(old.withheldMore, 0);
+});
+
+test("a withheld-only done row is a block, not nothing; merge keeps it", () => {
+	const record = model.mergeSupplement(
+		null,
+		{
+			anchor: "a1",
+			job: "j",
+			version: 1,
+			state: "done",
+			files: [],
+			components: [],
+			sounds: [],
+			withheld: [{ name: "x.key", reason: "outside" }],
+			withheldMore: 0,
+		},
+		1,
+	);
+	assert.equal(model.supplementDisposition(record, false), "block");
+	const moreOnly = { ...record, withheld: [], withheldMore: 2 };
+	assert.equal(model.supplementDisposition(moreOnly, false), "block");
+	const empty = { ...record, withheld: [], withheldMore: 0 };
+	assert.equal(model.supplementDisposition(empty, false), "nothing");
+	// A beat that does not restate withheld keeps the held list (identity too).
+	const next = model.mergeSupplement(
+		record,
+		{ anchor: "a1", job: "j", version: 1, state: "done" },
+		2,
+	);
+	assert.equal(next.withheld, record.withheld);
+});
