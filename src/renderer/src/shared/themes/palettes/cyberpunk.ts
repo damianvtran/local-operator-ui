@@ -88,18 +88,37 @@ export const cyberpunk: ThemeDefinition = {
 		 * lifting a dark ground raises the luminance every ink is measured against, so
 		 * the inks in this file were re-seated on the same commit rather than after it.
 		 */
-		canvas: "#211F28",
-		surface: "#282332",
-		elevated: "#2E273B",
-		sunken: "#1D1C22",
+		/*
+		 * THE DARKER-GROUNDS PASS (2026-11-03, `docs/branding.md` § 2) supersedes the
+		 * earlier L* 12 dark floor: the dark band is now L* 9-15 (target 9-13), and
+		 * the canvas maps by `L*_new = 9 + 0.6 x (L*_old - 12)`, a map that preserves
+		 * the fleet's order (re-solves may move a canvas off it, up to +-1.04 L*).
+		 * Here every ground-class role (the grounds, the row states, the two fills,
+		 * the washes and the hairlines) moved by the canvas's own ΔL* holding its `a`
+		 * and `b`; inks, accents and `borderControl` did not move.
+		 * Measured:
+		 * canvas #211F28 -> #1B1922 (L* 12.33 -> 9.35)
+		 * surface #282332 -> #221D2C (L* 14.86 -> 11.96)
+		 * elevated #2E273B -> #282135 (L* 17.22 -> 14.38)
+		 * sunken #1D1C22 -> #17161C (L* 10.61 -> 7.59)
+		 * Re-solved off the uniform shift, because a contract floor refused it there:
+		 * `mediaSurface`. `pnpm check-themes` is the measurement for each.
+		 */
+		canvas: "#1B1922",
+		surface: "#221D2C",
+		elevated: "#282135",
+		sunken: "#17161C",
 
 		// The user block's fill: `surface` itself, which already clears the
 		// role's ΔE00 4.0 floor off this canvas (measured 4.06).
-		messageSurface: "#282332",
+		messageSurface: "#221D2C",
 		// The media slot's well: ΔE00 4.06 off the canvas, where `sunken` alone
 		// measures 2.29 - a step away from the canvas to clear the role's 4.0
 		// floor, which the tile carries because the fill IS its resting extent.
-		mediaSurface: "#1a1a1e",
+		// Lifted #0F0F16 -> #101016 (L* 4.53 -> 4.87) once Team Bridge's
+		// inline images and file chips began to paint this well (#1659): as far
+		// toward L* 6 as the media floor allows (ΔE00 4.19 off canvas; chip hosts >= 3.0).
+		mediaSurface: "#101016",
 		/*
 		 * ROW STATES, and `highlight` retired in the same change. Both roles are a
 		 * step of THIS palette's own panel at the panel's own hue; they used to be
@@ -117,8 +136,8 @@ export const cyberpunk: ThemeDefinition = {
 		 *                       `rowHover`; the pair ranks 1.32 `L*` and 8.3 `C*`,
 		 *                       `inkDim` 5.03:1.
 		 */
-		rowHover: "#2C2932",
-		rowSelected: "#302A3F",
+		rowHover: "#25222B",
+		rowSelected: "#292338",
 
 		ink: "#EAE5F2",
 		/*
@@ -158,10 +177,10 @@ export const cyberpunk: ThemeDefinition = {
 		 * 1.15-2.0:1 band, because a separator that shouted would be a border.
 		 * `elevated` is the tightest ground at ΔE00 5.63.
 		 */
-		hairline: "#3D3250",
+		hairline: "#362B49",
 		// `hairline` stepped toward `inkDim`, so it reads on this palette's own
 		// `sunken`: 1.54:1 there against `hairline`'s 1.43:1.
-		hairlineStrong: "#423756",
+		hairlineStrong: "#3B304F",
 		// The TUI `edge-hi` 3D2F54 lifted in L* until it clears 3:1 on `elevated`.
 		/*
 		 * Legibility pass: `borderControl` is the sole boundary of every input in the
@@ -187,7 +206,7 @@ export const cyberpunk: ThemeDefinition = {
 		// The palette's own `info`, which is the role this composer's command
 		// word already resolved to: the tint moves no pixel the palette did not
 		// already choose. The role and its floors are in `palette-contract.ts`.
-		accentWash: "#2D2814",
+		accentWash: "#26210C",
 		onAccent: "#070312",
 		/*
 		 * The theme's own second hue, and the port had dropped it: the TUI's
@@ -203,10 +222,10 @@ export const cyberpunk: ThemeDefinition = {
 		 * 2.0), 5.73:1 for `accentAlt` on it, and 2.01 from the nearest ground it
 		 * is painted on.
 		 */
-		accentAltWash: "#2D2438",
+		accentAltWash: "#271E32",
 
 		success: "#3FE07A",
-		successWash: "#142623",
+		successWash: "#0E201D",
 		/*
 		 * Legibility pass: `successBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
@@ -215,7 +234,7 @@ export const cyberpunk: ThemeDefinition = {
 		successBorder: "#3E835A",
 
 		warning: "#FF9E3D",
-		warningWash: "#2D1D1B",
+		warningWash: "#271715",
 		/*
 		 * Legibility pass: `warningBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
@@ -237,7 +256,7 @@ export const cyberpunk: ThemeDefinition = {
 		 * re-pick of the palette's colour.
 		 */
 		danger: "#FF5B60",
-		dangerWash: "#2D0D1C",
+		dangerWash: "#270516",
 		/*
 		 * Legibility pass: `dangerBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
@@ -248,7 +267,7 @@ export const cyberpunk: ThemeDefinition = {
 		// 00F0FF, the TUI's `signal` — the glare cyan the marketing artwork pairs with
 		// the yellow.
 		info: "#00F0FF",
-		infoWash: "#0C2834",
+		infoWash: "#04212D",
 		/*
 		 * Legibility pass: `infoBorder` is the edge of a semantic callout, so it keeps the
 		 * structural 3:1 floor on all four grounds - the pair that used to be covered
