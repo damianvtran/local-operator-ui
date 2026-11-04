@@ -51,6 +51,13 @@ const AS_JSON = ARGS.includes("--json");
 /* Keep the paint cache between opens (see `home` in the page). */
 const WARM_CACHE = ARGS.includes("--warm-cache");
 const FRAMES = flag("frames", null);
+/*
+ * `--profile=<dir>`: a CDP CPU profile per open (`<id>-<round>.cpuprofile`, load
+ * it in DevTools' Performance panel). The paint number alone says an open is
+ * slow, not WHERE: on a loaded host the stream answer is tens of milliseconds and
+ * the rest is the renderer's main thread, which only a profile apportions.
+ */
+const PROFILE = flag("profile", null);
 const WIDTH = Number(flag("width", "1280"));
 const HEIGHT = Number(flag("height", "900"));
 const BUDGET_MS = 300;
@@ -249,6 +256,12 @@ const main = async () => {
 			 * `headerLine`).
 			 */
 			let headerAtFirstPaint;
+			if (PROFILE) {
+				mkdirSync(PROFILE, { recursive: true });
+				await cdp.send("Profiler.enable");
+				await cdp.send("Profiler.setSamplingInterval", { interval: 200 });
+				await cdp.send("Profiler.start");
+			}
 			const pending = cdp.eval(
 				`window.__lopOpen.open(${JSON.stringify(id)}, ${DEADLINE_MS})`,
 				true,
@@ -288,6 +301,13 @@ const main = async () => {
 				early = { typed, before, pressedState };
 			}
 			const run = await pending;
+			if (PROFILE) {
+				const { profile } = await cdp.send("Profiler.stop");
+				writeFileSync(
+					join(PROFILE, `${id}-${round}.cpuprofile`),
+					JSON.stringify(profile),
+				);
+			}
 			const endState = await cdp.eval("window.__lopOpen.state()");
 			if (early) {
 				// Long enough for a held send to be released by the snapshot and for
