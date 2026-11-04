@@ -1,3 +1,4 @@
+import { SIDEBAR_INSET } from "@shared/components/navigation/sidebar-inset";
 import { AttentionBadge } from "@shared/components/ui/attention-badge";
 import {
 	DropdownMenu,
@@ -111,12 +112,11 @@ export const RAIL_ROW =
  * panels already ship for their grouped rows, which is why it is reused rather
  * than retuned here.
  *
- * `inset` is the parent's horizontal inset, and it is the reason this is not a
- * copied `px-3`: a `RailSection` already pads its children by `px-2` and its
- * header by `ps-2`, so a group header inside it must use `ps-2` (16px from the
- * rail edge, on the section header's axis and every row's leading mark) rather
- * than `px-3` (20px, visibly indented). A section that carries no inset of its
- * own passes `bare`.
+ * `ps-2`, not a copied `px-3`: every section that holds a group header pads
+ * its children by SIDEBAR_INSET, so `ps-2` lands the name 16px from the rail
+ * edge, on the section header's axis and every row's leading mark. The old
+ * `bare` variant (`px-3`) served the owner-audit section, which had no inset
+ * of its own; it now carries the shared one, so the variant is gone.
  *
  * A GROUP THAT IS NOT FIRST GETS 8px OF AIR ABOVE IT (design round 1, D2).
  * Measured from the frames, the header sat 29 device px below the previous
@@ -134,18 +134,15 @@ export const RAIL_ROW =
 export const RailGroupHeader: FC<{
 	id: string;
 	name: string;
-	/** "rail" = inside a RailSection (which carries px-2); "bare" = no inset. */
-	inset?: "rail" | "bare";
 	/** The first group in a section sits directly under the section header. */
 	first?: boolean;
-}> = ({ id, name, inset = "rail", first = false }) => (
+}> = ({ id, name, first = false }) => (
 	<h3
 		id={id}
 		title={name}
 		className={cn(
 			// Truncation, never wrapping: a wrapped name breaks the 4px rhythm.
-			"truncate py-1 text-xs font-normal text-ink-muted",
-			inset === "bare" ? "px-3" : "ps-2 pe-1",
+			"truncate py-1 ps-2 pe-1 text-xs font-normal text-ink-muted",
 			!first && "mt-2",
 		)}
 	>
@@ -316,11 +313,16 @@ export const RailSection: FC<{
 }> = ({ id, title, children, empty, add, menu }) => {
 	useI18nLocale();
 	return (
-		<section aria-labelledby={id} className="px-2 pb-1">
+		<section aria-labelledby={id} className={cn("pb-1", SIDEBAR_INSET)}>
 			{/* SECTION HEADERS ARE CHROME (visual refresh, §3.2): 12px semibold
 			    `ink-dim`, tracked, with 16px of air above so each section reads as a
 			    group rather than as one long list. */}
-			<div className="group/section flex h-7 items-center pt-4 pe-1 pb-1 ps-2">
+			{/* THE TRAILING LINE (operator, 2026-11-04): `pe-[4.5px]` is arithmetic,
+			    not taste. The section pads 8px (SIDEBAR_INSET) and the 20px button
+			    centres a 13px glyph (3.5px each side), so 8 + 4.5 + 3.5 puts the
+			    "..."/"+" glyph's end 16px from the column edge - the same line every
+			    row's badge and mute bell end on. `pe-1` left it at 15.5px. */}
+			<div className="group/section flex h-7 items-center pt-4 pe-[4.5px] pb-1 ps-2">
 				<h2
 					id={id}
 					className="min-w-0 flex-1 truncate font-semibold text-meta text-ink-dim tracking-wide"
@@ -510,6 +512,14 @@ export const ConversationRailRow: FC<{
 	);
 };
 
+/*
+ * BOTH ROW MENUS SIT AT `end-[3px]` (operator, 2026-11-04): the row spans the
+ * section's content box (8px in from the column edge) and the 24px button
+ * centres a 14px glyph (5px each side), so 8 + 3 + 5 ends the glyph 16px from
+ * the edge - on the line of the badge or mute bell it yields its slot to.
+ * `end-1.5` put it 3px inside that line, so the mark jumped on hover.
+ */
+
 /**
  * The "…" on a channel row you may archive. Same slot, reveal and chrome as the
  * person row's menu, so the rail has one hover affordance. A right-click is not
@@ -525,7 +535,7 @@ const ChannelRowMenu: FC<{ name: string; onArchive: () => void }> = ({
 			<button
 				type="button"
 				aria-label={t("ui.teamBridge.row.menu", { name })}
-				className="absolute end-1.5 top-[3px] flex size-6 items-center justify-center rounded-sm text-ink-dim opacity-0 transition-opacity duration-fast hover:bg-row-hover hover:text-ink focus-visible:opacity-100 group-hover/row:opacity-100 group-focus-within/row:opacity-100 data-[state=open]:opacity-100"
+				className="absolute end-[3px] top-[3px] flex size-6 items-center justify-center rounded-sm text-ink-dim opacity-0 transition-opacity duration-fast hover:bg-row-hover hover:text-ink focus-visible:opacity-100 group-hover/row:opacity-100 group-focus-within/row:opacity-100 data-[state=open]:opacity-100"
 			>
 				<MoreHorizontal size={14} aria-hidden="true" />
 			</button>
@@ -556,7 +566,7 @@ const RowMenu: FC<{ label: string; onStartGroup: () => void }> = ({
 			<button
 				type="button"
 				aria-label={t("ui.teamBridge.row.menu", { name: label })}
-				className="absolute end-1.5 flex size-6 items-center justify-center rounded-sm text-ink-dim opacity-0 transition-opacity duration-fast hover:bg-row-hover hover:text-ink focus-visible:opacity-100 group-hover/row:opacity-100 group-focus-within/row:opacity-100 data-[state=open]:opacity-100"
+				className="absolute end-[3px] flex size-6 items-center justify-center rounded-sm text-ink-dim opacity-0 transition-opacity duration-fast hover:bg-row-hover hover:text-ink focus-visible:opacity-100 group-hover/row:opacity-100 group-focus-within/row:opacity-100 data-[state=open]:opacity-100"
 			>
 				<MoreHorizontal size={14} aria-hidden="true" />
 			</button>

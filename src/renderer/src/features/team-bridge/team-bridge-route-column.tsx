@@ -1,5 +1,6 @@
 import { InLeftSidebarHost } from "@shared/components/navigation/left-sidebar-host";
 import { SidebarFoot } from "@shared/components/navigation/sidebar-foot";
+import { SIDEBAR_INSET } from "@shared/components/navigation/sidebar-inset";
 import { useOtherSurfacesAttention } from "@shared/components/navigation/use-other-surfaces-attention";
 import { AttentionBadge } from "@shared/components/ui/attention-badge";
 import { BrowserSafeTooltip } from "@shared/components/ui/browser-safe-tooltip";
@@ -121,7 +122,7 @@ export const TeamBridgeBackRow: FC = () => {
 		 */
 		<div
 			data-team-bridge-back-row=""
-			className="flex h-10 shrink-0 items-center px-2"
+			className={cn("flex h-10 shrink-0 items-center", SIDEBAR_INSET)}
 		>
 			<BrowserSafeTooltip
 				/*
