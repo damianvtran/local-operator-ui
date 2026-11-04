@@ -45,6 +45,7 @@ import { pathToFileURL } from "node:url";
 import { build } from "esbuild";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { contractSource } from "./contrast-contract-source.mjs";
 
 const ROOT = process.cwd();
 
@@ -263,10 +264,7 @@ test("the pointer's and the in-flight mark carry a floored role, not only a wash
 	// The contract is asserted here as well as in the theme gate, because a
 	// palette edit cannot hide behind a green test and a class edit cannot hide
 	// behind a green colour table: the two halves fail independently.
-	const contract = readFileSync(
-		join(ROOT, "scripts/contrast-contract.mjs"),
-		"utf8",
-	);
+	const contract = contractSource();
 	assert.match(
 		contract,
 		/picker row pointer mark/,
@@ -2208,10 +2206,7 @@ test("the listbox owns the pointer, and clears it on the way out", () => {
 	 * the comment beside it had always claimed.
 	 */
 	assert.match(host, /tabIndex=\{-1\}/);
-	const contract = readFileSync(
-		join(ROOT, "scripts/contrast-contract.mjs"),
-		"utf8",
-	);
+	const contract = contractSource();
 	assert.match(
 		contract,
 		/picker option row selection ground/,

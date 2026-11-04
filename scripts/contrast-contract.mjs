@@ -150,6 +150,7 @@ import {
 	TERMINAL_ANSI,
 	TERMINAL_PAIRS,
 } from "../src/shared/theme-engine/contract-tables.mjs";
+import { applyContrast } from "../src/shared/theme-engine/contrast.mjs";
 import {
 	createRun,
 	evaluatePalette,
@@ -192,9 +193,11 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 /*
  * `LO_CONTRAST_PRESET` runs this gate over the 59 palettes COMPOSED at a contrast
  * value (-100..100; `pnpm check-themes` runs Soft, Gentle, Strong and High after
- * the authored pass) instead of the authored sources. `palette-source.mjs` does
- * the composing, so this file reads the same palettes either way. What changes on
- * a composed run is only what is a claim about the AUTHORED values: the L* band
+ * the authored pass) instead of the authored sources. They are composed right
+ * after loading (`palettes` below), so every assertion reads the same shape
+ * either way; `palette-source.mjs` stays a pure parser, so the evidence gate that
+ * also imports it does not pull the engine into its closure. What changes on a
+ * composed run is only what is a claim about the AUTHORED values: the L* band
  * (`LIFT`), the §5b fleet rules, the ledger and pin staleness checks and the
  * kit pins. A preset leaves the band by design and is not a member of the fleet;
  * every legibility and perceptibility floor still applies, unrelaxed.
@@ -1198,7 +1201,14 @@ const {
 	pinClaims,
 } = run;
 
-const palettes = loadPalettes({ contrast: contrastPresetFromEnv() });
+const CONTRAST = contrastPresetFromEnv();
+const palettes =
+	CONTRAST === 0
+		? loadPalettes()
+		: loadPalettes().map((e) => ({
+				...e,
+				palette: applyContrast(e.palette, CONTRAST, { id: e.id }).palette,
+			}));
 
 if (palettes.length === 0) {
 	console.error(`No palettes found in ${PALETTE_DIR}`);

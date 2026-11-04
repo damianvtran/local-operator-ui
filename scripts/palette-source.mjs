@@ -21,7 +21,6 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { applyContrast } from "../src/shared/theme-engine/contrast.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 export const PALETTE_DIR = join(
@@ -93,7 +92,7 @@ const stripComments = (src) => {
  * available option: the file says two things, and the build quietly believes
  * one of them. Refusing is the only honest response.
  */
-export const loadPalettes = ({ contrast = 0 } = {}) => {
+export const loadPalettes = () => {
 	const out = [];
 	for (const file of readdirSync(PALETTE_DIR).filter((f) =>
 		f.endsWith(".ts"),
@@ -110,9 +109,7 @@ export const loadPalettes = ({ contrast = 0 } = {}) => {
 			for (const m of chunk.slice(pStart).matchAll(/(\w+):\s*"([^"]+)"/g)) {
 				if (m[1] in palette && palette[m[1]] !== m[2]) {
 					throw new Error(
-						`${file}: palette "${id}" declares role "${m[1]}" twice, as ` +
-							`"${palette[m[1]]}" and "${m[2]}". Remove one; the parser ` +
-							`cannot know which you meant.`,
+						`${file}: palette "${id}" declares role "${m[1]}" twice, as "${palette[m[1]]}" and "${m[2]}". Remove one; the parser cannot know which you meant.`,
 					);
 				}
 				palette[m[1]] = m[2];
@@ -120,16 +117,7 @@ export const loadPalettes = ({ contrast = 0 } = {}) => {
 			out.push({ id, file, palette });
 		}
 	}
-	out.sort((a, b) => a.id.localeCompare(b.id));
-	/* Composing here, not in each caller, is what lets the contract run over a
-	   preset unchanged: it reads palettes from this function either way. The
-	   default stays the AUTHORED palettes, so `generate-theme-css.mjs` and every
-	   other caller that passes nothing is untouched. */
-	if (contrast === 0) return out;
-	return out.map((e) => ({
-		...e,
-		palette: applyContrast(e.palette, contrast, { id: e.id }).palette,
-	}));
+	return out.sort((a, b) => a.id.localeCompare(b.id));
 };
 
 /**
@@ -137,7 +125,10 @@ export const loadPalettes = ({ contrast = 0 } = {}) => {
  *
  * Fails closed: anything that is not an integer in -100..100 throws rather than
  * quietly running the authored pass, because a preset leg that silently measured
- * Standard would report green about palettes it never looked at.
+ * Standard would report green about palettes it never looked at. Composing the
+ * palettes at that value is the CONTRACT's job (it imports the engine); this
+ * module stays a parser, so the evidence gate that also imports it does not pull
+ * the composition engine into its closure.
  */
 export const contrastPresetFromEnv = (env = process.env) => {
 	const raw = env.LO_CONTRAST_PRESET;
