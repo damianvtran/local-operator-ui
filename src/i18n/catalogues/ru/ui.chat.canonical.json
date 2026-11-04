@@ -182,5 +182,6 @@
 	"ui.chat.canonical.supplement.withheld.reason_outside": "вне разрешённых расположений",
 	"ui.chat.canonical.supplement.withheld.reason_sensitive": "конфиденциальный файл",
 	"ui.chat.canonical.supplement.withheld.reason_missing": "файл больше не существует",
-	"ui.chat.canonical.supplement.withheld.reason_too_large": "слишком большой для предпросмотра"
+	"ui.chat.canonical.supplement.withheld.reason_too_large": "слишком большой для предпросмотра",
+	"ui.chat.canonical.supplement.withheld.reason_separator": ", "
 }

@@ -182,5 +182,6 @@
 	"ui.chat.canonical.supplement.withheld.reason_outside": "fuera de las ubicaciones permitidas",
 	"ui.chat.canonical.supplement.withheld.reason_sensitive": "archivo confidencial",
 	"ui.chat.canonical.supplement.withheld.reason_missing": "el archivo ya no existe",
-	"ui.chat.canonical.supplement.withheld.reason_too_large": "demasiado grande para la vista previa"
+	"ui.chat.canonical.supplement.withheld.reason_too_large": "demasiado grande para la vista previa",
+	"ui.chat.canonical.supplement.withheld.reason_separator": ", "
 }

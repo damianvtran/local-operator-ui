@@ -1219,5 +1219,12 @@
 		"length": "A few words.",
 		"note": "One reason phrase, lower case because it follows a colon in the withheld line. Several distinct reasons are joined with the locale's own list conjunction (Intl.ListFormat), so do not add a word for 'and'.",
 		"placeholders": {}
+	},
+	"ui.chat.canonical.supplement.withheld.reason_separator": {
+		"role": "Separator joining two or more distinct reason phrases in the withheld line",
+		"tone": "Composition punctuation only, not standalone copy.",
+		"length": "Two characters in English, comma followed by a space.",
+		"note": "Joins separate causes (for example 'too large to preview, sensitive file'). Must NOT be a word for 'and': the reasons are independent, and a conjunction made them read as one compound cause. Use the locale's ordinary list comma, as ui.agents.starters.summary.separator does.",
+		"placeholders": {}
 	}
 }

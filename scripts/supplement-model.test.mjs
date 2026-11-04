@@ -933,3 +933,48 @@ test("a withheld-only done row is a block, not nothing; merge keeps it", () => {
 	);
 	assert.equal(next.withheld, record.withheld);
 });
+
+test("a live done beat without withheld keeps the durable row's notice (R1 probe)", () => {
+	// The reviewer's probe: durable row first, then the backend's done beat,
+	// which (before #3392) carries no withheld keys at all.
+	const durable = model.supplementRecordFromDetails(
+		1,
+		{
+			anchor: "a1",
+			job: "j",
+			version: 1,
+			state: "done",
+			files: [],
+			components: [],
+			withheld: [{ name: "x.key", reason: "outside" }],
+		},
+		undefined,
+	);
+	assert.equal(model.supplementDisposition(durable, false), "block");
+	const beat = model.supplementPatchFromEvent({
+		anchor: "a1",
+		job: "j",
+		version: 1,
+		state: "done",
+		files: [],
+		components: [],
+		sounds: [],
+	});
+	assert.equal("withheld" in beat, false, "an unstated notice is not restated");
+	assert.equal("withheldMore" in beat, false);
+	const after = model.mergeSupplement(durable, beat, 2);
+	assert.deepEqual(after.withheld, [{ name: "x.key", reason: "outside" }]);
+	assert.equal(model.supplementDisposition(after, false), "block");
+	// A beat that DOES state the notice (#3392) still replaces it.
+	const stated = model.supplementPatchFromEvent({
+		anchor: "a1",
+		job: "j",
+		version: 1,
+		state: "done",
+		withheld: [{ name: "y.key", reason: "sensitive" }],
+		withheld_more: 1,
+	});
+	const replaced = model.mergeSupplement(after, stated, 3);
+	assert.deepEqual(replaced.withheld, [{ name: "y.key", reason: "sensitive" }]);
+	assert.equal(replaced.withheldMore, 1);
+});

@@ -278,9 +278,9 @@ export type SupplementSound = {
 	/**
 	 * `"file"` for audio the turn WROTE to disk (highlights deliverables,
 	 * 2026-11-03): the core copies its bytes into the attachment store so it
-	 * plays through this exact player, and keeps the display `path` so the row
-	 * can still reveal/open the file. `""` for a generated sound (the wire
-	 * leaves `origin` absent there).
+	 * plays through this exact player, and keeps the display `path` so the row's
+	 * title can open the file. Absent for a generated sound (the wire leaves
+	 * `origin` absent there).
 	 */
 	origin?: "file" | "";
 	/** Display path of a written audio file (session/`~`-relative); absent otherwise. */
@@ -1114,7 +1114,16 @@ export function supplementPatchFromEvent(
 			? {
 					components: componentsFrom(event.components),
 					sounds: soundsFrom(event.sounds),
-					...withheldFrom(event.withheld, event.withheld_more),
+					/*
+					 * ONLY WHEN STATED (agent review round 1, R1): a done beat from a
+					 * producer that does not carry the notice must not restate
+					 * "nothing withheld" over the durable row's list. The merge keeps
+					 * a field the patch leaves undefined, the rule `files` and
+					 * `components` already ride.
+					 */
+					...("withheld" in event || "withheld_more" in event
+						? withheldFrom(event.withheld, event.withheld_more)
+						: {}),
 				}
 			: {}),
 		...(typeof event.error === "string" && event.error

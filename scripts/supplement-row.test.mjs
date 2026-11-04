@@ -614,10 +614,10 @@ test("the withheld line paints once, muted, in both forms; a withheld-only row p
 			1,
 		);
 		// Four refused (three listed + one more), distinct reasons in first-seen
-		// order, joined by the locale's own conjunction.
+		// order, joined by the catalogue's list comma - never "and" (D2).
 		assert.ok(
 			textOf(markup).includes(
-				"4 files not shown: sensitive file and outside allowed locations",
+				"4 files not shown: sensitive file, outside allowed locations",
 			),
 			textOf(markup),
 		);
@@ -670,4 +670,52 @@ test("a video-kind file renders as a preview tile in both forms; images keep the
 		assert.ok(markup.includes("aspect-video"));
 		assert.equal(markup.includes("<video"), false);
 	}
+});
+
+/* ----------------------- round-1 remediation (2026-11-03) ----------------------- */
+
+test("an over-cap clip is a plain file row, not an inline tile (R3)", () => {
+	const markup = render(
+		supplement({
+			files: [file("renders/huge.mp4", "huge.mp4", 33 * 1024 * 1024, "video")],
+		}),
+	);
+	assert.equal(markup.includes("data-supplement-video-tile"), false);
+	assert.equal((markup.match(/data-supplement-file=""/g) ?? []).length, 1);
+	assert.ok(textOf(markup).includes("huge.mp4"));
+});
+
+test("the video name row carries the path suffix and size like its neighbours (D4)", () => {
+	const markup = render(
+		supplement({
+			files: [file("renders/demo.mp4", "demo.mp4", 2309, "video")],
+		}),
+	);
+	const text = textOf(markup);
+	assert.ok(text.includes("renders/demo.mp4"), text);
+	assert.ok(text.includes("2.3 KB"), text);
+});
+
+test("two written files with identical bytes render two cells (R5)", () => {
+	const twin = (path) => ({
+		...sound("same-bytes", path, 0),
+		origin: "file",
+		path,
+	});
+	const errors = [];
+	const original = console.error;
+	console.error = (...args) => errors.push(args.join(" "));
+	try {
+		const markup = render(
+			supplement({ sounds: [twin("a.mp3"), twin("picks/a.mp3")] }),
+		);
+		assert.equal((markup.match(/data-supplement-sound=""/g) ?? []).length, 2);
+	} finally {
+		console.error = original;
+	}
+	assert.equal(
+		errors.some((line) => line.includes("same key")),
+		false,
+		errors.join("\n"),
+	);
 });

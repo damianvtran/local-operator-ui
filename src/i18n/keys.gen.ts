@@ -3643,6 +3643,7 @@ export type MessageParams = {
 	"ui.chat.canonical.supplement.withheld.reason_missing": undefined;
 	"ui.chat.canonical.supplement.withheld.reason_outside": undefined;
 	"ui.chat.canonical.supplement.withheld.reason_sensitive": undefined;
+	"ui.chat.canonical.supplement.withheld.reason_separator": undefined;
 	"ui.chat.canonical.supplement.withheld.reason_too_large": undefined;
 	"ui.chat.canonical.this_chat": undefined;
 	"ui.chat.canonical.tool_row.bridge.delivery.awaiting_acceptance.label": undefined;

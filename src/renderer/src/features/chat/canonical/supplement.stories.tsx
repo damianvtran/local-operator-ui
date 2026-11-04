@@ -1536,7 +1536,7 @@ export const DeliverablesVideoFold: StoryObj = {
 	name: "Deliverables: video file (condensed)",
 	render: () => (
 		<ImagesFrame
-			height={480}
+			height={580}
 			cwd="~/workspace/project"
 			records={[
 				prompt("u0", "Render a short preview."),

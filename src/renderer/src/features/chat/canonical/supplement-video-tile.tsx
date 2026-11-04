@@ -50,6 +50,16 @@ import {
  */
 const TILE_BOX = "aspect-video w-full max-w-80";
 
+/**
+ * The inline tile's read ceiling (agent review round 1, R3): 32 MiB, half the
+ * bridge's `MAX_FILE_READ_BYTES`. The tile holds the WHOLE clip as a blob while
+ * its row stays mounted (the viewport latch never releases), so four featured
+ * clips at the bridge cap would pin ~256 MiB in the renderer. A clip over this
+ * is not previewed inline at all: it renders as a plain file row, whose open
+ * action hands it to the canvas viewer (Range streaming) or the OS.
+ */
+export const VIDEO_TILE_MAX_BYTES = 32 * 1024 * 1024;
+
 const VideoReader = ({
 	resolved,
 	file,
@@ -63,6 +73,7 @@ const VideoReader = ({
 		mtimeMs: file.mtime ? file.mtime * 1000 : undefined,
 		mimeType: mimeTypeForPath(resolved),
 		sizeBytes: file.sizeBytes || undefined,
+		maxBytes: VIDEO_TILE_MAX_BYTES,
 	});
 	useEffect(() => {
 		if (state.status === "unavailable") onFailed();
@@ -94,7 +105,7 @@ export const SupplementVideoTile = memo(function SupplementVideoTile({
 	pane: CanvasPane | null;
 }) {
 	useI18nLocale();
-	const { name, path } = fileRowParts(file);
+	const { name, path, size } = fileRowParts(file);
 	const displayName = name || path || file.path;
 	const [anchorRef, near] = useEverInView();
 	const [resolved, setResolved] = useState<string | null>(null);
@@ -170,7 +181,13 @@ export const SupplementVideoTile = memo(function SupplementVideoTile({
 					}}
 				>
 					{displayText(displayName)}
+					{/* The file row's own path suffix and size (design D4), so the
+					 * tile's name line reads as one list with the rows under it. */}
+					{path && path !== displayName && (
+						<span className="ms-2 text-ink-muted">{displayText(path)}</span>
+					)}
 				</button>
+				{size && <span className="shrink-0 text-ink-dim">{size}</span>}
 				<FileActionsMenu
 					actionPath={file.path}
 					label={displayName}

@@ -112,22 +112,13 @@ import {
 	showAllText,
 	supplementDisposition,
 } from "./supplement-model";
-import { SupplementVideoTile } from "./supplement-video-tile";
+import {
+	SupplementVideoTile,
+	VIDEO_TILE_MAX_BYTES,
+} from "./supplement-video-tile";
 import { useAttachmentSource } from "./use-attachment-url";
 import { useSupplementDocument } from "./use-supplement-document";
 import { useWaveform } from "./use-waveform";
-
-/*
- * The renderer's TypeScript lib predates ES2021, so `Intl.ListFormat` is
- * untyped although Chromium ships it (the same narrow local type
- * `team-bridge-reactions.tsx` declares, for the same reason).
- */
-type ListFormatCtor = new (
-	locale: string,
-	options: { style: "long" | "narrow"; type: "conjunction" },
-) => { format: (items: readonly string[]) => string };
-const ListFormat = (Intl as unknown as { ListFormat: ListFormatCtor })
-	.ListFormat;
 
 const WITHHELD_REASON_KEYS = {
 	outside: "ui.chat.canonical.supplement.withheld.reason_outside",
@@ -140,8 +131,8 @@ const WITHHELD_REASON_KEYS = {
  * The withheld notice's one line: `2 files not shown: outside allowed
  * locations` (contract copy). The count is every refused deliverable, the
  * listed ones plus `withheld_more`; the reasons are the DISTINCT reasons of the
- * listed entries, in first-seen order, joined by the locale's own conjunction
- * (`Intl.ListFormat`, never a hard-coded ", "). `""` when nothing was withheld.
+ * listed entries, in first-seen order, joined by the
+ * catalogue's list separator (never a hard-coded ", ", never "and"). `""` when nothing was withheld.
  * A count with no known reason (only `withheld_more`, or reasons this build
  * does not know) still paints the count alone, because the line exists so a
  * refusal is never silent.
@@ -149,7 +140,6 @@ const WITHHELD_REASON_KEYS = {
 export function withheldText(
 	withheld: readonly SupplementWithheld[],
 	withheldMore: number,
-	locale: string,
 ): string {
 	const count = withheld.length + Math.max(0, Math.floor(withheldMore));
 	if (count <= 0) return "";
@@ -165,10 +155,17 @@ export function withheldText(
 		});
 	return t("ui.chat.canonical.supplement.withheld.line", {
 		count,
-		reason: new ListFormat(locale, {
-			style: "long",
-			type: "conjunction",
-		}).format(reasons),
+		/*
+		 * A TRANSLATED SEPARATOR, never "and" (design round 1, D2): the reasons
+		 * are separate causes, and "too large and sensitive" read as one
+		 * compound cause; the phone joins with a comma. `Intl.ListFormat` `unit`
+		 * was measured and refused: zh-CN joins with NO separator ("AB"), ru
+		 * with bare spaces, and fr still says "et" — so the locale's list comma
+		 * is catalogue copy, as `ui.agents.starters.summary.separator` already is.
+		 */
+		reason: reasons.join(
+			t("ui.chat.canonical.supplement.withheld.reason_separator"),
+		),
 	});
 }
 
@@ -269,11 +266,12 @@ const SupplementSoundLine = memo(function SupplementSoundLine({
 	 * A WRITTEN audio file (`origin: "file"`, 2026-11-03) plays from its
 	 * attachment digest exactly like a generated one — the core copied the bytes
 	 * into the same store, so `sessions.attachment` serves both — and keeps its
-	 * display `path` so the reader can still reach the file on disk. The reveal
-	 * rides the TITLE: it becomes the file row's own primary press (canvas or
-	 * the OS, `useFileTargets`) instead of gaining a menu button, because a 24px
-	 * trigger beside a meta-sized title would grow every collage cell, and the
-	 * contract allows the affordance only at no layout cost.
+	 * display `path` so the reader can still reach the file on disk. The TITLE
+	 * OPENS the file (the file row's own primary press: canvas when it can show
+	 * it, the OS otherwise, `useFileTargets`); it does not reveal it in Finder.
+	 * No menu button, because a 24px trigger beside a meta-sized title would
+	 * grow every collage cell, and the contract allows the affordance only at no
+	 * layout cost. The path is the tooltip.
 	 */
 	const filePath = sound.origin === "file" ? (sound.path ?? "") : "";
 	const { press } = useFileTargets(filePath, cwd, pane);
@@ -347,6 +345,7 @@ const SupplementSoundLine = memo(function SupplementSoundLine({
 					label={label}
 					peaks={peaks}
 					durationHint={sound.durationS}
+					hideUnknownTotal={true}
 				/>
 			)}
 		</div>
@@ -430,7 +429,7 @@ export const SupplementRow = memo(function SupplementRow({
 	cwd,
 	condensed = false,
 }: SupplementRowProps) {
-	const locale = useI18nLocale();
+	useI18nLocale();
 	const pane = useCanvasPane();
 	const [expandedMore, setExpandedMore] = useState(false);
 	const [detailsOpen, setDetailsOpen] = useState(false);
@@ -499,8 +498,9 @@ export const SupplementRow = memo(function SupplementRow({
 	 * PINNED FIRST, stable otherwise (2026-11-03). The core already counts pins
 	 * against the featured cap first, so in a well-formed row every pin is in
 	 * `files` and none is in `more`; this reader ordering is the belt to that
-	 * brace — a pin is never laid out after an unpinned file, so any cap a
-	 * surface applies to `files` can only ever cut unpinned ones. No badge: the
+	 * brace — within each kind section (image grid, video tiles, rows) a pin is
+	 * never laid out after an unpinned file of that section; across sections
+	 * the kind order wins, so a pinned row still sits under unpinned images. No badge: the
 	 * operator asked for deliverables to show, not for another marker.
 	 */
 	const files = useMemo(() => {
@@ -769,7 +769,10 @@ export const SupplementRow = memo(function SupplementRow({
 		for (const file of files) {
 			const kind = fileKind(file.path);
 			if (kind === "image") imageFiles.push(file);
-			else if (kind === "video") videoFiles.push(file);
+			// Over the inline ceiling (review R3) a clip is an ordinary row:
+			// it still opens (canvas streams it), it just is not buffered here.
+			else if (kind === "video" && file.sizeBytes <= VIDEO_TILE_MAX_BYTES)
+				videoFiles.push(file);
 			else rowFiles.push(file);
 		}
 		const summaryArm =
@@ -895,9 +898,12 @@ export const SupplementRow = memo(function SupplementRow({
 						: "flex flex-col gap-1"
 				}
 			>
-				{sounds.map((sound) => (
+				{sounds.map((sound, index) => (
 					<SupplementSoundLine
-						key={sound.attachment}
+						// Content-addressed digests collide for two written files with
+						// identical bytes (review R5), so the key carries the path or the
+						// position as well.
+						key={`${sound.attachment}:${sound.path ?? index}`}
 						sound={sound}
 						sessionId={sessionId}
 						cwd={cwd}
@@ -918,7 +924,6 @@ export const SupplementRow = memo(function SupplementRow({
 	const withheldLine = withheldText(
 		record.withheld ?? [],
 		record.withheldMore ?? 0,
-		locale,
 	);
 	const withheldSection = withheldLine ? (
 		<p
