@@ -24,6 +24,8 @@ const bundle = await build({
 			'export * from "./src/main/browser/actions/recording-hq";',
 			'export * from "./src/main/browser/protocol";',
 			'export * from "./src/main/browser/cdp";',
+			// Main's checks on the encoder window's messages (pure, no `electron`).
+			'export * from "./src/shared/recording-encoder";',
 			// The typed failure itself, so a case can script the exact code a dead tab
 			// or a DevTools hand-over answers with.
 			'export * from "./src/main/browser/errors";',
@@ -169,7 +171,21 @@ function stream(
  * holding the app-wide cap for the next one. */
 const createdIds = [];
 
+/**
+ * Keeps the test process's event loop alive for the whole file.
+ *
+ * The recording engine's timers are `unref()`'d on purpose (production is
+ * Electron's main process, which stays alive on its own, and a timer must never be
+ * what holds an app open). A test that awaits only such a timer therefore leaves
+ * the runner with nothing pending, and Node 22 (CI) cancels it with "Promise
+ * resolution is still pending but the event loop has already resolved"; Node 26
+ * does not, which hid it. Created at module load, before any test mocks timers,
+ * and `setInterval` is never mocked here.
+ */
+const keepAlive = setInterval(() => {}, 1_000);
+
 after(() => {
+	clearInterval(keepAlive);
 	for (const id of createdIds) mod.abortRecording(id, "test-cleanup");
 });
 
@@ -2900,7 +2916,25 @@ test("the encoder document and preload are build inputs, and main points at what
 	const entry = readFileSync("src/main/index.ts", "utf8");
 	assert.ok(entry.includes('"../preload/recording-encoder.js"'));
 	assert.ok(entry.includes('"recording-encoder.html"'));
-	// `before-quit` destroys every encoder window synchronously.
+	// `before-quit` destroys every encoder window in its SYNCHRONOUS part: the call
+	// must come before the first await in the handler (the session-cookie hold), not
+	// only in the backstop after it (review round 2, m-b).
+	// Comments mention the word, so only code lines count.
+	const handler = entry
+		.slice(entry.indexOf('app.on("before-quit"'))
+		.split("\n")
+		.filter((line) => !/^\s*(\/\/|\/?\*)/.test(line))
+		.join("\n");
+	const early = handler.indexOf("disposeAllRecordingEncoders();");
+	const hold = handler.indexOf("await holdQuitForSessionCookieSnapshot");
+	assert.ok(early >= 0 && hold >= 0, "both sites exist");
+	assert.ok(early < hold, "the dispose is ahead of the first await");
+	assert.equal(
+		handler.slice(0, early).includes("await "),
+		false,
+		"nothing awaits before it",
+	);
+	// ...and the backstop after the hold stays, for a quit that re-enters.
 	assert.match(
 		entry,
 		/disposeAllRecordingEncoders\(\);\s*void stopBrowserHost\(\);/,
@@ -2917,6 +2951,10 @@ class ScreencastDebugger extends EventEmitter {
 	screencasting = false;
 	calls = [];
 	failStart = false;
+	failDisable = false;
+	startDelay = 0;
+	stopDelay = 0;
+	sessions = [];
 	attach() {
 		this.attached = true;
 	}
@@ -2926,15 +2964,28 @@ class ScreencastDebugger extends EventEmitter {
 	isAttached() {
 		return this.attached;
 	}
-	async sendCommand(method, params) {
+	async sendCommand(method, params, sessionId) {
 		this.calls.push(method);
+		if (sessionId) {
+			// A child frame's own session: its Page domain is not the page's, so it
+			// cannot end the page's screencast.
+			this.sessions.push([method, sessionId]);
+			return {};
+		}
 		if (method === "Page.startScreencast") {
 			if (this.failStart && this.calls.filter((m) => m === method).length > 1)
 				throw new Error("start refused");
+			if (this.startDelay) await sleep(this.startDelay);
 			this.screencasting = true;
 		}
-		if (method === "Page.stopScreencast" || method === "Page.disable") {
+		if (method === "Page.stopScreencast") {
+			if (this.stopDelay) await sleep(this.stopDelay);
 			this.screencasting = false;
+		}
+		if (method === "Page.disable") {
+			this.screencasting = false;
+			// A disable that timed out may still have landed.
+			if (this.failDisable) throw new Error("Page.disable timed out");
 		}
 		if (method === "Page.captureScreenshot") {
 			return { data: png(1280, 720) };
@@ -2968,6 +3019,8 @@ async function screencastPool(encoderOptions) {
 	const dbg = new ScreencastDebugger();
 	const contents = contentsFor(9500 + nextViewId++, { debugger: dbg });
 	createdIds.push(contents.id);
+	// A case that leaves its clip running must not hold the app-wide cap for the next.
+	hqIds.push(contents.id);
 	const ctx = {
 		cdp,
 		recordingEncoder: encoder.service,
@@ -3054,11 +3107,10 @@ test("Q1: a screencast that cannot be restarted fails the recording instead of f
 	await starting;
 	dbg.failStart = true;
 	await cdp.send(contents, "Page.disable", {});
-	const error = await until(() => false, "never", 30).catch(() =>
-		mod
-			.recordStop(ctx, { tab: "tab", requester: "session:a" }, "r")
-			.catch((r) => r),
-	);
+	await sleep(30);
+	const error = await mod
+		.recordStop(ctx, { tab: "tab", requester: "session:a" }, "r")
+		.catch((r) => r);
 	assert.equal(error.data?.reason, "record_failed");
 	assert.match(error.message, /could not be restarted/);
 	assert.equal(existsSync(path), false);
@@ -3205,4 +3257,141 @@ test("mutant guard: two frames with one page timestamp get strictly increasing m
 	const [a, b] = h.windows[0].frames;
 	assert.ok(b.ts - a.ts >= 1000, `${b.ts} follows ${a.ts} by at least 1 ms`);
 	await h.stop();
+});
+
+// -- remediation round 2 -------------------------------------------------------
+
+const startsOf = (dbg) =>
+	dbg.calls.filter((m) => m === "Page.startScreencast").length;
+
+async function runningHighClip(options = {}) {
+	const pool = await screencastPool(options.encoderOptions);
+	const path = join(pool.dir, "r2.mp4");
+	const starting = mod.recordStart(
+		pool.ctx,
+		{ tab: "tab", requester: "session:a", path, quality: "high" },
+		"r",
+	);
+	await until(() => pool.dbg.screencasting, "the screencast");
+	pool.dbg.tick(0);
+	await starting;
+	return { ...pool, path };
+}
+
+test("m-c: a burst of Page.disable costs one start in flight plus one queued, and ends with the screencast running", async () => {
+	const { cdp, dbg, contents } = await runningHighClip();
+	assert.equal(startsOf(dbg), 1);
+	dbg.startDelay = 40;
+	// Four gated actions land while the first restart is still being sent.
+	for (let i = 0; i < 4; i += 1) await cdp.send(contents, "Page.disable", {});
+	await until(() => dbg.screencasting, "the screencast after the burst");
+	await sleep(120);
+	// Not one start per disable (5), and not dropped (2): a disable that lands after
+	// the in-flight start was sent ends THAT screencast too, so one more follows.
+	assert.equal(startsOf(dbg), 3);
+	assert.equal(dbg.screencasting, true);
+});
+
+test("m-c: a Page.disable that failed or timed out still restarts the screencast, since it may have landed", async () => {
+	const { cdp, dbg, contents } = await runningHighClip();
+	dbg.failDisable = true;
+	await cdp.send(contents, "Page.disable", {}).then(
+		() => assert.fail("the disable was meant to fail"),
+		(error) => assert.match(error.message, /timed out/),
+	);
+	await until(() => startsOf(dbg) === 2, "the screencast to be started again");
+	assert.equal(dbg.screencasting, true);
+});
+
+test("m-c: a Page.disable on a child frame's session does not touch the recording", async () => {
+	const { cdp, dbg, contents } = await runningHighClip();
+	await cdp.send(contents, "Page.disable", {}, { sessionId: "frame-1" });
+	await sleep(60);
+	assert.equal(startsOf(dbg), 1, "no restart for a frame session");
+	assert.equal(dbg.screencasting, true);
+	assert.deepEqual(dbg.sessions, [["Page.disable", "frame-1"]]);
+});
+
+test("m-d: a Page.disable that lands while the clip is stopping does not start a screencast", async () => {
+	const { cdp, dbg, contents, ctx } = await runningHighClip();
+	dbg.stopDelay = 120;
+	const stopping = mod.recordStop(
+		ctx,
+		{ tab: "tab", requester: "session:a" },
+		"r",
+	);
+	await until(
+		() => dbg.calls.includes("Page.stopScreencast"),
+		"the stop to reach the screencast",
+	);
+	// The session is stopping and not yet disposed: the action's disable arrives now.
+	await cdp.send(contents, "Page.disable", {});
+	await sleep(40);
+	assert.equal(startsOf(dbg), 1, "no screencast is started into a stop");
+	const stopped = await stopping;
+	assert.equal(stopped.quality, "high");
+	assert.equal(startsOf(dbg), 1);
+});
+
+test("m-a: main rejects a chunk that is not bytes, has no finite timestamp or key flag", () => {
+	const good = {
+		evt: "chunk",
+		data: new Uint8Array(4),
+		ts: 1000,
+		key: true,
+	};
+	assert.equal(mod.isWellFormedChunk(good), true);
+	assert.equal(
+		mod.isWellFormedChunk({ ...good, description: new Uint8Array(2) }),
+		true,
+	);
+	for (const bad of [
+		{ ...good, data: "not bytes" },
+		{ ...good, data: { length: 1e12 } },
+		{ ...good, data: [1, 2, 3] },
+		{ ...good, ts: Number.NaN },
+		{ ...good, ts: "5" },
+		{ ...good, ts: Number.POSITIVE_INFINITY },
+		{ ...good, key: 1 },
+		{ ...good, key: undefined },
+		{ ...good, description: "avcC" },
+		{ ...good, description: [1] },
+	]) {
+		assert.equal(mod.isWellFormedChunk(bad), false, JSON.stringify(bad));
+	}
+});
+
+test("m-a: main accepts a configured answer only for the size and encoder it asked for", () => {
+	const asked = { width: 1920, height: 1080 };
+	const answer = {
+		evt: "configured",
+		id: 1,
+		ok: true,
+		encoder: "hardware",
+		codec: "avc1.640028",
+		width: 1920,
+		height: 1080,
+	};
+	assert.equal(mod.answersTheRequest(answer, asked), true);
+	assert.equal(
+		mod.answersTheRequest({ ...answer, encoder: "software" }, asked),
+		true,
+	);
+	assert.equal(mod.answersTheRequest(answer, undefined), false, "never asked");
+	assert.equal(mod.answersTheRequest({ ...answer, width: 1918 }, asked), false);
+	assert.equal(
+		mod.answersTheRequest({ ...answer, height: 1088 }, asked),
+		false,
+	);
+	assert.equal(
+		mod.answersTheRequest({ ...answer, encoder: "gpu" }, asked),
+		false,
+	);
+	// The host really uses both checks (the functions are the pin only if they are called).
+	const host = readFileSync(
+		"src/main/browser/actions/recording-encoder-host.ts",
+		"utf8",
+	);
+	assert.ok(host.includes("isWellFormedChunk(event)"));
+	assert.ok(host.includes("answersTheRequest(event, asked)"));
 });
