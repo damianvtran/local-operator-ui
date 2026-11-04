@@ -29,8 +29,11 @@ import { build } from "esbuild";
  */
 const ELECTRON = /^electron$/;
 const ANY = /.*/;
-const STAGED_TWO_NOTE = /^LocalOperator-two-note-chime-40-[0-9a-f]{8}\.wav$/;
-const STAGED_DEFAULT = /^LocalOperator-soft-pulse-70-[0-9a-f]{8}\.wav$/;
+const STAGED_TWO_NOTE =
+	/^LocalOperator-[0-9a-f]{8}-two-note-chime-40-[0-9a-f]{8}\.wav$/;
+const STAGED_DEFAULT =
+	/^LocalOperator-[0-9a-f]{8}-soft-pulse-70-[0-9a-f]{8}\.wav$/;
+const STAGED_DEFAULT_PREFIX = /^LocalOperator-[0-9a-f]{8}-soft-pulse-70-/;
 const TS_FILE = /\.ts$/;
 const DTS_FILE = /\.d\.ts$/;
 const electronFixture = {
@@ -106,6 +109,8 @@ afterEach(() => {
 function backend({
 	features = { notification_sounds: 1 },
 	settings = {},
+	/* `{ op: response }`: answer that op with this instead (a fault). */
+	faults = {},
 	audio = () => ({
 		status: 200,
 		kind: "bytes",
@@ -118,6 +123,8 @@ function backend({
 		calls,
 		request: async (input) => {
 			calls.push(input);
+			const fault = faults[input.op];
+			if (fault) return typeof fault === "function" ? fault() : fault;
 			if (input.op === "capabilities")
 				return { status: 200, body: { result: { features } } };
 			if (input.op === "settings.list")
@@ -138,6 +145,7 @@ function backend({
 			calls.push(input);
 			return audio(input);
 		},
+		faults,
 	};
 }
 
@@ -165,6 +173,7 @@ function rig({ platform = "darwin", clock = 1_000_000, env, ...options } = {}) {
 	});
 	return {
 		service,
+		faults: fake.faults,
 		soundsDir,
 		configDir,
 		played,
@@ -212,22 +221,30 @@ test("defaults: soft-pulse at 70 when the settings are absent", async () => {
 	assert.match(sound.notificationSoundOptions().sound, STAGED_DEFAULT);
 });
 
-test("macOS: a new staging prunes older LocalOperator files and nothing else", async () => {
+test("macOS: a new staging prunes only its own config dir's stagings and .tmp leftovers", async () => {
 	const r = rig();
+	const scope = sound.stagedScopePrefix({
+		LOCAL_OPERATOR_CONFIG_DIR: r.configDir,
+	});
+	const other = sound.stagedScopePrefix({
+		LOCAL_OPERATOR_CONFIG_DIR: join(r.configDir, "..", "another"),
+	});
+	assert.notEqual(scope, other);
 	mkdirSync(r.soundsDir, { recursive: true });
-	writeFileSync(
-		join(r.soundsDir, "LocalOperator-soft-pulse-50-deadbeef.wav"),
-		"old",
-	);
-	writeFileSync(join(r.soundsDir, "Users Own Sound.aiff"), "mine");
+	const mine = `${scope}soft-pulse-50-deadbeef.wav`;
+	const leftover = `.${scope}soft-pulse-50-deadbeef.wav.123.tmp`;
+	const theirs = `${other}soft-pulse-50-deadbeef.wav`;
+	const theirTmp = `.${other}x.wav.9.tmp`;
+	for (const name of [mine, leftover, theirs, theirTmp, "Users Own Sound.aiff"])
+		writeFileSync(join(r.soundsDir, name), "x");
 	await r.service.refresh();
-	const files = readdirSync(r.soundsDir).sort();
-	assert.equal(files.length, 2);
-	assert.ok(
-		files.includes("Users Own Sound.aiff"),
-		"a file without the prefix is the user's",
-	);
-	assert.ok(!files.includes("LocalOperator-soft-pulse-50-deadbeef.wav"));
+	const files = readdirSync(r.soundsDir);
+	assert.ok(!files.includes(mine), "an older staging of this scope goes");
+	assert.ok(!files.includes(leftover), "a crashed write's .tmp goes");
+	assert.ok(files.includes(theirs), "another instance's staging stays");
+	assert.ok(files.includes(theirTmp), "another instance's .tmp stays");
+	assert.ok(files.includes("Users Own Sound.aiff"), "the user's file stays");
+	assert.equal(files.filter((name) => STAGED_DEFAULT.test(name)).length, 1);
 });
 
 test("Windows/Linux: silent banner, bytes go to the renderer player", async () => {
@@ -362,14 +379,208 @@ test("a failed audio render keeps the last good plan", async () => {
 	assert.deepEqual(sound.notificationSoundOptions(), before);
 });
 
-test("live config: only a notifications.sound.* change re-reads", async () => {
-	const r = rig();
+test('live config: the real feed frame (`changed_keys: ["notifications"]`) re-reads', async () => {
+	const r = rig({ settings: { "notifications.sound.enabled": true } });
+	await r.service.refresh();
+	assert.equal(r.service.current().kind, "file");
+	/*
+	 * The frame exactly as QA captured it from `GET /v1/desktop/events` on a
+	 * #3403 backend after `PATCH /v1/settings/notifications.sound.enabled`:
+	 * core's feed diffs TOP-LEVEL config keys, so the registry key never
+	 * appears. Routed the way `index.ts` routes it.
+	 */
+	const frame = JSON.parse(
+		'{"type":"config","payload":{"changed_keys":["notifications"],"language":"en"}}',
+	);
+	const before = r.calls.length;
 	r.service.observeConfigChange(["language", "display.notifications"]);
 	await new Promise((resolve) => setImmediate(resolve));
-	assert.equal(r.calls.length, 0);
+	assert.equal(r.calls.length, before, "unrelated keys do not re-read");
+	// The user turns sounds off; the next banner must follow.
+	const listing = r.calls.length;
+	r.faults["settings.list"] = {
+		status: 200,
+		body: {
+			result: {
+				settings: [{ key: "notifications.sound.enabled", value: false }],
+			},
+		},
+	};
+	r.service.observeConfigChange(frame.payload.changed_keys);
+	await new Promise((resolve) => setTimeout(resolve, 10));
+	assert.ok(r.calls.length > listing, "the real spelling re-read");
+	assert.equal(r.service.current().kind, "silent");
+	assert.deepEqual(sound.notificationSoundOptions(), { silent: true });
+	// The registry spelling still works, should the feed ever send it.
+	const again = r.calls.length;
 	r.service.observeConfigChange(["notifications.sound.volume"]);
 	await new Promise((resolve) => setTimeout(resolve, 10));
-	assert.ok(r.calls.some((call) => call.op === "notification_sounds.audio"));
+	assert.ok(r.calls.length > again);
+});
+
+/* M1 / Q1: an unanswered read must never change what the user hears. */
+for (const [label, op, fault] of [
+	["settings.list 504", "settings.list", { status: 504, body: null }],
+	[
+		"settings.list 200 without a body",
+		"settings.list",
+		{ status: 200, body: null },
+	],
+	["capabilities status 0", "capabilities", { status: 0, body: null }],
+	[
+		"capabilities 503",
+		"capabilities",
+		{ status: 503, body: { detail: "warming" } },
+	],
+	[
+		"capabilities network error",
+		"capabilities",
+		() => {
+			throw new Error("connect ECONNREFUSED");
+		},
+	],
+]) {
+	test(`an unanswered read keeps 'disabled': ${label}`, async () => {
+		const r = rig({ settings: { "notifications.sound.enabled": false } });
+		await r.service.refresh();
+		assert.deepEqual(sound.notificationSoundOptions(), { silent: true });
+		r.faults[op] = fault;
+		await r.service.refresh();
+		assert.equal(r.service.current().kind, "silent", "plan unchanged");
+		assert.deepEqual(sound.notificationSoundOptions(), { silent: true });
+		assert.ok(
+			!r.calls.some((call) => call.op === "notification_sounds.audio"),
+			"no default sound was fetched",
+		);
+	});
+}
+
+test("an unanswered read keeps a working sound too", async () => {
+	const r = rig();
+	await r.service.refresh();
+	const plan = r.service.current();
+	r.faults.capabilities = { status: 503, body: null };
+	await r.service.refresh();
+	assert.equal(r.service.current(), plan);
+});
+
+test("capabilities 200 WITHOUT the flag is the one answer that means legacy", async () => {
+	const r = rig({ settings: { "notifications.sound.enabled": false } });
+	await r.service.refresh();
+	assert.equal(r.service.current().kind, "silent");
+	r.faults.capabilities = {
+		status: 200,
+		body: { result: { features: { desktop_feed: 1 } } },
+	};
+	await r.service.refresh();
+	assert.equal(r.service.current().kind, "legacy");
+});
+
+test("before any answered read, each banner kicks one read and follows legacy", async () => {
+	const r = rig({ settings: { "notifications.sound.enabled": false } });
+	r.faults.capabilities = { status: 0, body: null };
+	assert.deepEqual(sound.notificationSoundOptions(), { silent: false });
+	await new Promise((resolve) => setTimeout(resolve, 5));
+	assert.equal(r.calls.filter((c) => c.op === "capabilities").length, 1);
+	// Still unsettled: the next banner tries again (one read at a time).
+	r.time.now += 2000;
+	sound.notificationSoundOptions();
+	sound.notificationSoundOptions();
+	await new Promise((resolve) => setTimeout(resolve, 5));
+	assert.equal(r.calls.filter((c) => c.op === "capabilities").length, 2);
+	// The backend answers: the plan settles and banners stop kicking reads.
+	r.faults.capabilities = undefined;
+	r.time.now += 2000;
+	sound.notificationSoundOptions();
+	await new Promise((resolve) => setTimeout(resolve, 10));
+	assert.equal(r.service.current().kind, "silent");
+	const reads = r.calls.length;
+	assert.deepEqual(sound.notificationSoundOptions(), { silent: true });
+	await new Promise((resolve) => setTimeout(resolve, 5));
+	assert.equal(r.calls.length, reads);
+});
+
+test("an unknown or deleted id falls back to soft-pulse, as core does", async () => {
+	for (const status of [404, 422]) {
+		const r = rig({
+			settings: { "notifications.sound.id": "custom-gone-123" },
+			audio: (input) =>
+				input.soundId === "soft-pulse"
+					? { status: 200, kind: "bytes", mimeType: "audio/wav", data: wav() }
+					: { status, kind: "error", detail: "not_found" },
+		});
+		await r.service.refresh();
+		const plan = r.service.current();
+		assert.equal(plan.kind, "file");
+		assert.equal(plan.soundId, "soft-pulse");
+		assert.match(plan.staged, STAGED_DEFAULT);
+	}
+});
+
+test("an oversized audio answer is refused and the last plan kept", async () => {
+	const r = rig({
+		audio: () => ({
+			status: 200,
+			kind: "bytes",
+			mimeType: "audio/wav",
+			data: new Uint8Array(sound.MAX_NOTIFICATION_SOUND_BYTES + 1),
+		}),
+	});
+	await r.service.refresh();
+	assert.equal(r.service.current().kind, "legacy");
+	assert.ok(!existsSync(r.soundsDir) || readdirSync(r.soundsDir).length === 0);
+});
+
+test("a fractional volume is rounded, the way core accepts it", async () => {
+	const r = rig({ settings: { "notifications.sound.volume": 70.4 } });
+	await r.service.refresh();
+	const media = r.calls.find((c) => c.op === "notification_sounds.audio");
+	assert.equal(media.volume, 70);
+	const s = rig({ settings: { "notifications.sound.volume": 40.6 } });
+	await s.service.refresh();
+	assert.equal(
+		s.calls.find((c) => c.op === "notification_sounds.audio").volume,
+		41,
+	);
+});
+
+test("Q3: system and legacy spend the shared slot when they let the OS chime", async () => {
+	for (const options of [
+		{ settings: { "notifications.sound.id": "system" } },
+		{ features: {} },
+	]) {
+		const r = rig(options);
+		await r.service.refresh();
+		assert.deepEqual(sound.notificationSoundOptions(), { silent: false });
+		assert.deepEqual(
+			sound.notificationSoundOptions(),
+			{ silent: true },
+			"inside 1.5 s the second banner is silent",
+		);
+		assert.ok(existsSync(join(r.configDir, "run", "notification-sound.last")));
+		r.time.now += 1600;
+		assert.deepEqual(sound.notificationSoundOptions(), { silent: false });
+	}
+});
+
+test("Q3: with no window to play it, the renderer fallback spends no slot", async () => {
+	const root = mkdtempSync(join(tmpdir(), "notification-sound-nowin-"));
+	scratch.push(root);
+	const fake = backend();
+	const service = sound.configureNotificationSound({
+		request: fake.request,
+		media: fake.media,
+		playInRenderer: () => false,
+		platform: "linux",
+		env: { LOCAL_OPERATOR_CONFIG_DIR: join(root, "config") },
+		soundsDir: join(root, "Sounds"),
+		now: () => 1_000_000,
+	});
+	await service.refresh();
+	assert.deepEqual(sound.notificationSoundOptions(), { silent: true });
+	assert.ok(
+		!existsSync(join(root, "config", "run", "notification-sound.last")),
+	);
 });
 
 test("a slower older read cannot overwrite a newer one", async () => {
@@ -475,7 +686,7 @@ test("site: the completion notifier's banner carries the staged sound", async ()
 	await new Promise((resolve) => setImmediate(resolve));
 	assert.equal(globalThis.__toasts.length, 1);
 	assert.equal(globalThis.__toasts[0].silent, false);
-	assert.match(globalThis.__toasts[0].sound, /^LocalOperator-soft-pulse-70-/);
+	assert.match(globalThis.__toasts[0].sound, STAGED_DEFAULT_PREFIX);
 	mod.configureNotificationSound(null);
 });
 
