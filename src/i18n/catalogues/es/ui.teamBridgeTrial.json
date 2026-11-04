@@ -5,7 +5,7 @@
 	"ui.teamBridgeTrial.empty.checking": "Comprobando las opciones del plan Team…",
 	"ui.teamBridgeTrial.ineligible.title": "Team Bridge forma parte del plan Radient Team",
 	"ui.teamBridgeTrial.ineligible.trial_used": "Ya usaste tu prueba gratuita de Team. Suscríbete al plan Team para seguir trabajando en equipo.",
-	"ui.teamBridgeTrial.ineligible.former_subscriber": "Tu organización ya tuvo el plan Team. Suscríbete para reactivar las funciones de equipo; se conservan tus miembros y tu historial.",
+	"ui.teamBridgeTrial.ineligible.former_subscriber": "Tu organización ya tuvo el plan Team. Suscríbete para reactivar las funciones de equipo; se conservan tus miembros y el historial de Team Bridge sigue disponible para consulta (solo lectura).",
 	"ui.teamBridgeTrial.ineligible.not_owner": "Solo un propietario puede empezar una prueba de Team. Los propietarios y los administradores pueden suscribirse.",
 	"ui.teamBridgeTrial.ineligible.email_unverified": "Verifica tu dirección de correo para empezar una prueba gratuita de Team, o suscríbete al plan Team ahora.",
 	"ui.teamBridgeTrial.ineligible.other": "Esta cuenta no puede empezar una prueba gratuita de Team. Aun así, puedes suscribirte al plan Team.",

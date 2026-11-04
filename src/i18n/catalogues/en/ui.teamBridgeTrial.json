@@ -5,7 +5,7 @@
 	"ui.teamBridgeTrial.empty.checking": "Checking Team plan options…",
 	"ui.teamBridgeTrial.ineligible.title": "Team Bridge is part of the Radient Team plan",
 	"ui.teamBridgeTrial.ineligible.trial_used": "You've already used your free Team trial. Subscribe to the Team plan to keep working together.",
-	"ui.teamBridgeTrial.ineligible.former_subscriber": "Your organization has had the Team plan before. Subscribe to turn team features back on; your members and history are kept.",
+	"ui.teamBridgeTrial.ineligible.former_subscriber": "Your organization has had the Team plan before. Subscribe to turn team features back on; your members are kept and Team Bridge history stays readable (read-only).",
 	"ui.teamBridgeTrial.ineligible.not_owner": "Only an owner can start a Team trial. Owners and admins can subscribe.",
 	"ui.teamBridgeTrial.ineligible.email_unverified": "Verify your email address to start a free Team trial, or subscribe to the Team plan now.",
 	"ui.teamBridgeTrial.ineligible.other": "This account can't start a free Team trial. You can still subscribe to the Team plan.",

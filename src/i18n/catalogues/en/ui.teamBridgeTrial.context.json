@@ -39,7 +39,7 @@
 		"role": "Team Bridge page empty state when no trial can be offered",
 		"tone": "Calm, plain, reassuring. A developer or paying customer deciding whether to try the Team plan; never salesy, no urgency.",
 		"length": "Wraps; dialog is max 32rem wide, empty state max 32rem. Buttons should stay short.",
-		"note": "English source: Your organization has had the Team plan before. Subscribe to turn team features back on; your members and history are kept. Product names Radient, Team (the plan: 'Team plan', 'Team trial'), Team Bridge and Vault stay in English."
+		"note": "English source: Your organization has had the Team plan before. Subscribe to turn team features back on; your members are kept and Team Bridge history stays readable (read-only). Product names Radient, Team (the plan: 'Team plan', 'Team trial'), Team Bridge and Vault stay in English."
 	},
 	"ui.teamBridgeTrial.ineligible.not_owner": {
 		"role": "Team Bridge page empty state when no trial can be offered",

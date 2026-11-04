@@ -5,7 +5,7 @@
 	"ui.teamBridgeTrial.empty.checking": "Проверяем варианты тарифа Team…",
 	"ui.teamBridgeTrial.ineligible.title": "Team Bridge входит в тариф Radient Team",
 	"ui.teamBridgeTrial.ineligible.trial_used": "Вы уже использовали бесплатный пробный период Team. Оформите подписку на тариф Team, чтобы продолжить работать вместе.",
-	"ui.teamBridgeTrial.ineligible.former_subscriber": "У вашей организации уже был тариф Team. Оформите подписку, чтобы снова включить командные функции; участники и история сохранены.",
+	"ui.teamBridgeTrial.ineligible.former_subscriber": "У вашей организации уже был тариф Team. Оформите подписку, чтобы снова включить командные функции; участники сохранены, а история Team Bridge остаётся доступной для просмотра (только чтение).",
 	"ui.teamBridgeTrial.ineligible.not_owner": "Начать пробный период Team может только владелец. Оформить подписку могут владельцы и администраторы.",
 	"ui.teamBridgeTrial.ineligible.email_unverified": "Подтвердите адрес электронной почты, чтобы начать бесплатный пробный период Team, или оформите подписку на тариф Team сейчас.",
 	"ui.teamBridgeTrial.ineligible.other": "Этот аккаунт не может начать бесплатный пробный период Team. Вы по-прежнему можете оформить подписку на тариф Team.",

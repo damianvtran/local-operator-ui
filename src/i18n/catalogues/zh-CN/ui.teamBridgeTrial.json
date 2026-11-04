@@ -5,7 +5,7 @@
 	"ui.teamBridgeTrial.empty.checking": "正在检查Team套餐选项…",
 	"ui.teamBridgeTrial.ineligible.title": "Team Bridge是Radient Team套餐的一部分",
 	"ui.teamBridgeTrial.ineligible.trial_used": "你已使用过免费Team试用。订阅Team套餐即可继续协作。",
-	"ui.teamBridgeTrial.ineligible.former_subscriber": "你的组织曾使用过Team套餐。订阅即可重新启用团队功能；成员和历史记录都会保留。",
+	"ui.teamBridgeTrial.ineligible.former_subscriber": "你的组织曾使用过Team套餐。订阅即可重新启用团队功能；成员会保留，Team Bridge 历史记录仍可查看（只读）。",
 	"ui.teamBridgeTrial.ineligible.not_owner": "只有所有者可以开始Team试用。所有者和管理员可以订阅。",
 	"ui.teamBridgeTrial.ineligible.email_unverified": "验证你的电子邮件地址即可开始免费Team试用，也可以现在订阅Team套餐。",
 	"ui.teamBridgeTrial.ineligible.other": "此账号无法开始免费Team试用。你仍然可以订阅Team套餐。",
