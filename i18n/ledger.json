@@ -7916,8 +7916,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.settings.model",
-			"source_sha256": "a4e80036ccbe9d3e98c15f585648ccc3b83318c708b563b745b82311e2f4b3aa",
-			"target_sha256": "b462649b26b6c5bfd02b141268ab6ee944010857e62191e01e0aeeca73187871",
+			"source_sha256": "a87252a3da19af6caeb6536a75d0b8b2240ab953e76c52c97f2f032de84906f3",
+			"target_sha256": "21d1146006e39c0f548c76ee2d28201f23c8bde69c4de9ec4c8fa07c311ff5af",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -7929,16 +7929,16 @@
 					"model": "openai/gpt-6.1-sol",
 					"date": "2026-11-05",
 					"result": "clean",
-					"instance": "d55a45cddcf5-system-prompt-r1-es",
+					"instance": "d55a45cddcf5-prompt-fidelity-r1-es",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/d55a45cddcf5-system-prompt-r1-es.json",
-					"receipt_sha256": "b3d52507774811a016a4a7e03013ace5830b3a0f9d04a5b3b06f2a4c554b27f1",
-					"scope": "Round 1: three new system-prompt keys; unchanged catalogue entries retained by key/value identity; reviewer session d55a45cddcf5"
+					"receipt": "i18n/receipts/d55a45cddcf5-prompt-fidelity-r1-es.json",
+					"receipt_sha256": "10d99aaeb3134219385852869a0f31b5771c5fa723fd64ad7a941eea117a47d7",
+					"scope": "Two new source-node edit/stale keys; unchanged entries and prior findings retained by identity; auditor session d55a45cddcf5"
 				}
 			],
 			"status": "audited",
@@ -7962,6 +7962,29 @@
 							"receipt": "i18n/receipts/ea3629c2a645.json",
 							"receipt_sha256": "1adcf5201c953c8581cc9ebb888ae927bb4547d324f2ae550e1b8ca27f25874d",
 							"scope": "Full semantic read; exhaustive mechanical checks."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "a4e80036ccbe9d3e98c15f585648ccc3b83318c708b563b745b82311e2f4b3aa",
+					"target_sha256": "b462649b26b6c5bfd02b141268ab6ee944010857e62191e01e0aeeca73187871",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-05",
+							"result": "clean",
+							"instance": "d55a45cddcf5-system-prompt-r1-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/d55a45cddcf5-system-prompt-r1-es.json",
+							"receipt_sha256": "b3d52507774811a016a4a7e03013ace5830b3a0f9d04a5b3b06f2a4c554b27f1",
+							"scope": "Round 1: three new system-prompt keys; unchanged catalogue entries retained by key/value identity; reviewer session d55a45cddcf5"
 						}
 					],
 					"status": "audited"
@@ -18434,8 +18457,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.settings.model",
-			"source_sha256": "a4e80036ccbe9d3e98c15f585648ccc3b83318c708b563b745b82311e2f4b3aa",
-			"target_sha256": "18b0078b6c8d6bba89770bc4688ee68208abdc8d7c0ae217f04e2756e366dc91",
+			"source_sha256": "a87252a3da19af6caeb6536a75d0b8b2240ab953e76c52c97f2f032de84906f3",
+			"target_sha256": "99307d5be3cbbcde883fe04d730feb1c6ec0e7bd279972577d656520b4cd267b",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -18448,16 +18471,16 @@
 					"model": "openai/gpt-6.1-sol",
 					"date": "2026-11-05",
 					"result": "clean",
-					"instance": "d55a45cddcf5-system-prompt-r1-fr",
+					"instance": "d55a45cddcf5-prompt-fidelity-r1-fr",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/d55a45cddcf5-system-prompt-r1-fr.json",
-					"receipt_sha256": "875fb792470e6cd6a7f8c821dc2826b8e5c3bc689d59e8e701d4611e7cdf8692",
-					"scope": "Round 1: three new system-prompt keys; unchanged catalogue entries retained by key/value identity; reviewer session d55a45cddcf5"
+					"receipt": "i18n/receipts/d55a45cddcf5-prompt-fidelity-r1-fr.json",
+					"receipt_sha256": "ba9f0a1c813d3bba72af08601bfbdaa8df2d183b5421591acaf5a4892d6b73cf",
+					"scope": "Two new source-node edit/stale keys; unchanged entries and prior findings retained by identity; auditor session d55a45cddcf5"
 				}
 			],
 			"status": "audited",
@@ -18505,6 +18528,29 @@
 							"receipt_sha256": "569240f5e868624550ea73bfee1fa7df69e3f3ee58c1a707442bdb0cad240618",
 							"scope": "fr ui.settings.model vs en at the #1057 re-pinned sources - full-file re-audit incl. ::group-off token mirror",
 							"note": "Independent re-audit at the re-pinned head; receipt-backed. Prior comment-based audit records retained as history in superseded. Rendered pixel fit remains a separate PR check."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "a4e80036ccbe9d3e98c15f585648ccc3b83318c708b563b745b82311e2f4b3aa",
+					"target_sha256": "18b0078b6c8d6bba89770bc4688ee68208abdc8d7c0ae217f04e2756e366dc91",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-05",
+							"result": "clean",
+							"instance": "d55a45cddcf5-system-prompt-r1-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/d55a45cddcf5-system-prompt-r1-fr.json",
+							"receipt_sha256": "875fb792470e6cd6a7f8c821dc2826b8e5c3bc689d59e8e701d4611e7cdf8692",
+							"scope": "Round 1: three new system-prompt keys; unchanged catalogue entries retained by key/value identity; reviewer session d55a45cddcf5"
 						}
 					],
 					"status": "audited"
@@ -29086,8 +29132,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.settings.model",
-			"source_sha256": "a4e80036ccbe9d3e98c15f585648ccc3b83318c708b563b745b82311e2f4b3aa",
-			"target_sha256": "5ca6a317893aac028a3fe5afb25aa662cb79bf9375339df039a48d61e9b97664",
+			"source_sha256": "a87252a3da19af6caeb6536a75d0b8b2240ab953e76c52c97f2f032de84906f3",
+			"target_sha256": "0edc44d9ffeb71773a634161d1f4e929ecb7640668c6086700f7bfe0a27c9c4c",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -29099,16 +29145,16 @@
 					"model": "openai/gpt-6.1-sol",
 					"date": "2026-11-05",
 					"result": "clean",
-					"instance": "d55a45cddcf5-system-prompt-r1-hi",
+					"instance": "d55a45cddcf5-prompt-fidelity-r1-hi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/d55a45cddcf5-system-prompt-r1-hi.json",
-					"receipt_sha256": "40b03ee2833228f83b1b71b2cbf07403dbc8f01b8f9a2c3b4c90f20483df0c3d",
-					"scope": "Round 1: three new system-prompt keys; unchanged catalogue entries retained by key/value identity; reviewer session d55a45cddcf5"
+					"receipt": "i18n/receipts/d55a45cddcf5-prompt-fidelity-r1-hi.json",
+					"receipt_sha256": "b0e4b1819b06eb1599cf25e0998dbd4b9824fb26d790a692ce3124a0dae078a6",
+					"scope": "Two new source-node edit/stale keys; unchanged entries and prior findings retained by identity; auditor session d55a45cddcf5"
 				}
 			],
 			"status": "audited",
@@ -29133,6 +29179,29 @@
 							"receipt_sha256": "ec989e0af2c264081d50d722bc33a6d7956f94477723b0e330af5e1c2101b07d",
 							"scope": "hi ui.settings.model vs en source — round 1 independent full pass, 32 keys",
 							"note": "Independent audit on openai/gpt-6.1-sol after the pinned anthropic/claude-sonnet-5-5 quota fallback."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "a4e80036ccbe9d3e98c15f585648ccc3b83318c708b563b745b82311e2f4b3aa",
+					"target_sha256": "5ca6a317893aac028a3fe5afb25aa662cb79bf9375339df039a48d61e9b97664",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-05",
+							"result": "clean",
+							"instance": "d55a45cddcf5-system-prompt-r1-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/d55a45cddcf5-system-prompt-r1-hi.json",
+							"receipt_sha256": "40b03ee2833228f83b1b71b2cbf07403dbc8f01b8f9a2c3b4c90f20483df0c3d",
+							"scope": "Round 1: three new system-prompt keys; unchanged catalogue entries retained by key/value identity; reviewer session d55a45cddcf5"
 						}
 					],
 					"status": "audited"
@@ -39258,8 +39327,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.settings.model",
-			"source_sha256": "a4e80036ccbe9d3e98c15f585648ccc3b83318c708b563b745b82311e2f4b3aa",
-			"target_sha256": "36774bdd912ce9b06f862e45bd9be2060df5d9d828c736a81ea0eb14d3ecf0f6",
+			"source_sha256": "a87252a3da19af6caeb6536a75d0b8b2240ab953e76c52c97f2f032de84906f3",
+			"target_sha256": "2f434519c2151e7bf9beae92aca2068aa265f9a3bb1af2323ac0b66958bd487f",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -39272,16 +39341,16 @@
 					"model": "openai/gpt-6.1-sol",
 					"date": "2026-11-05",
 					"result": "clean",
-					"instance": "d55a45cddcf5-system-prompt-r1-ru",
+					"instance": "d55a45cddcf5-prompt-fidelity-r1-ru",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/d55a45cddcf5-system-prompt-r1-ru.json",
-					"receipt_sha256": "17331ae0375f70bd129788fa8ca6ccc1fe9a5e926e83406459313a994f715c12",
-					"scope": "Round 1: three new system-prompt keys; unchanged catalogue entries retained by key/value identity; reviewer session d55a45cddcf5"
+					"receipt": "i18n/receipts/d55a45cddcf5-prompt-fidelity-r1-ru.json",
+					"receipt_sha256": "eec17982521e8984583e76ba4fb18df019f45f896655c24cab5ae3c244dbe42e",
+					"scope": "Two new source-node edit/stale keys; unchanged entries and prior findings retained by identity; auditor session d55a45cddcf5"
 				}
 			],
 			"status": "audited",
@@ -39306,6 +39375,29 @@
 							"receipt_sha256": "8542404943d1e679b2f4d5ff9cd60e29dd499aacae63fdea990be0e608845330",
 							"scope": "Full copy audit, all keys in this namespace, PR #1181 head 65ad12e7675a132e4a677ecf7aef95f227379525",
 							"note": "Actual automatic-fallback model; fresh tranche-2 chunk-D audit-run instance. Copy only, not rendered fit or release eligibility."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "a4e80036ccbe9d3e98c15f585648ccc3b83318c708b563b745b82311e2f4b3aa",
+					"target_sha256": "36774bdd912ce9b06f862e45bd9be2060df5d9d828c736a81ea0eb14d3ecf0f6",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-05",
+							"result": "clean",
+							"instance": "d55a45cddcf5-system-prompt-r1-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/d55a45cddcf5-system-prompt-r1-ru.json",
+							"receipt_sha256": "17331ae0375f70bd129788fa8ca6ccc1fe9a5e926e83406459313a994f715c12",
+							"scope": "Round 1: three new system-prompt keys; unchanged catalogue entries retained by key/value identity; reviewer session d55a45cddcf5"
 						}
 					],
 					"status": "audited"
@@ -49579,8 +49671,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.settings.model",
-			"source_sha256": "a4e80036ccbe9d3e98c15f585648ccc3b83318c708b563b745b82311e2f4b3aa",
-			"target_sha256": "ef4602dcfc68eecbb0b62876a02b1281654cd033e50f59f1e9328dde305f3777",
+			"source_sha256": "a87252a3da19af6caeb6536a75d0b8b2240ab953e76c52c97f2f032de84906f3",
+			"target_sha256": "78559eee23dce3aa3a7d78d8ad37e9e82e35c9503f256598e8786525abbde930",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -49592,16 +49684,16 @@
 					"model": "openai/gpt-6.1-sol",
 					"date": "2026-11-05",
 					"result": "clean",
-					"instance": "d55a45cddcf5-system-prompt-r1-ur",
+					"instance": "d55a45cddcf5-prompt-fidelity-r1-ur",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/d55a45cddcf5-system-prompt-r1-ur.json",
-					"receipt_sha256": "13306609498d2cae4dc01612109f88c1e08bc2f5f8825ae98744e9f64ca6b079",
-					"scope": "Round 1: three new system-prompt keys; unchanged catalogue entries retained by key/value identity; reviewer session d55a45cddcf5"
+					"receipt": "i18n/receipts/d55a45cddcf5-prompt-fidelity-r1-ur.json",
+					"receipt_sha256": "db98b4893e8e66a68a9ae9d204f99968bf92f74269e506ff74f3898861d97777",
+					"scope": "Two new source-node edit/stale keys; unchanged entries and prior findings retained by identity; auditor session d55a45cddcf5"
 				}
 			],
 			"status": "audited",
@@ -49626,6 +49718,29 @@
 							"receipt_sha256": "c0d9e6dfc0abb5d4ff312c2a37b75449529b55e7252eea0eb0739dd005608e3c",
 							"scope": "Remediation delta audit: changed keys and direct composition neighbours; zero findings at the final bytes.",
 							"note": "Independent auditor post-dates the translator; all findings remediated and re-audited to zero. Audit model fell back from anthropic/claude-sonnet-5-5 to openai/gpt-6.1-sol due to provider quota."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "a4e80036ccbe9d3e98c15f585648ccc3b83318c708b563b745b82311e2f4b3aa",
+					"target_sha256": "ef4602dcfc68eecbb0b62876a02b1281654cd033e50f59f1e9328dde305f3777",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-05",
+							"result": "clean",
+							"instance": "d55a45cddcf5-system-prompt-r1-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/d55a45cddcf5-system-prompt-r1-ur.json",
+							"receipt_sha256": "13306609498d2cae4dc01612109f88c1e08bc2f5f8825ae98744e9f64ca6b079",
+							"scope": "Round 1: three new system-prompt keys; unchanged catalogue entries retained by key/value identity; reviewer session d55a45cddcf5"
 						}
 					],
 					"status": "audited"
@@ -60190,8 +60305,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.settings.model",
-			"source_sha256": "a4e80036ccbe9d3e98c15f585648ccc3b83318c708b563b745b82311e2f4b3aa",
-			"target_sha256": "bcbd0ca13128c252035a4f059267f6b04bd83724ba80488a80b3f054d934e4e0",
+			"source_sha256": "a87252a3da19af6caeb6536a75d0b8b2240ab953e76c52c97f2f032de84906f3",
+			"target_sha256": "8f88b62748ff93f59b6a37d5a312c4843c967b83a7170f806a2e2b60514e6924",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -60203,16 +60318,16 @@
 					"model": "openai/gpt-6.1-sol",
 					"date": "2026-11-05",
 					"result": "clean",
-					"instance": "d55a45cddcf5-system-prompt-r1-vi",
+					"instance": "d55a45cddcf5-prompt-fidelity-r1-vi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/d55a45cddcf5-system-prompt-r1-vi.json",
-					"receipt_sha256": "85a6d4b26c3c57a3a24ac2baeabf7f7457f7f020d7b73440e96114f0a375d701",
-					"scope": "Round 1: three new system-prompt keys; unchanged catalogue entries retained by key/value identity; reviewer session d55a45cddcf5"
+					"receipt": "i18n/receipts/d55a45cddcf5-prompt-fidelity-r1-vi.json",
+					"receipt_sha256": "a81b69c5a52ad51a4e91abc157af50f493eac95bb5e802237d9d3954d65ddf0c",
+					"scope": "Two new source-node edit/stale keys; unchanged entries and prior findings retained by identity; auditor session d55a45cddcf5"
 				}
 			],
 			"status": "audited",
@@ -60285,6 +60400,29 @@
 							"receipt_sha256": "0195e0f7cf6af38beb5ca24867f329e1daca5d2963bcd3e9a11f37cec7a32afe",
 							"scope": "review round 2: R2-1 hosting-term split, plus the prompt glossary correction",
 							"note": "Independent audit of the changed bytes. English 'hosting provider' = nhà cung cấp dịch vụ mô hình; 'model provider' = nhà cung cấp mô hình; English 'prompt' stays 'prompt' per the programme glossary. All roles ran on the harness-reported fallback model openai/gpt-6.1-sol."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "a4e80036ccbe9d3e98c15f585648ccc3b83318c708b563b745b82311e2f4b3aa",
+					"target_sha256": "bcbd0ca13128c252035a4f059267f6b04bd83724ba80488a80b3f054d934e4e0",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-05",
+							"result": "clean",
+							"instance": "d55a45cddcf5-system-prompt-r1-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/d55a45cddcf5-system-prompt-r1-vi.json",
+							"receipt_sha256": "85a6d4b26c3c57a3a24ac2baeabf7f7457f7f020d7b73440e96114f0a375d701",
+							"scope": "Round 1: three new system-prompt keys; unchanged catalogue entries retained by key/value identity; reviewer session d55a45cddcf5"
 						}
 					],
 					"status": "audited"
@@ -71425,8 +71563,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.settings.model",
-			"source_sha256": "a4e80036ccbe9d3e98c15f585648ccc3b83318c708b563b745b82311e2f4b3aa",
-			"target_sha256": "9d65ee8ec4889437fa87c32f39ca5efc7fa18fdb08943bd4a7f6e50716f3e625",
+			"source_sha256": "a87252a3da19af6caeb6536a75d0b8b2240ab953e76c52c97f2f032de84906f3",
+			"target_sha256": "963f84b2af6a1fb90e36c2829104ca3cdba433c66686d5cad5795384e0577f52",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -71439,16 +71577,16 @@
 					"model": "openai/gpt-6.1-sol",
 					"date": "2026-11-05",
 					"result": "clean-with-findings",
-					"instance": "d55a45cddcf5-system-prompt-r1-zh-cn",
+					"instance": "d55a45cddcf5-prompt-fidelity-r1-zh-cn",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 1
 					},
-					"receipt": "i18n/receipts/d55a45cddcf5-system-prompt-r1-zh-cn.json",
-					"receipt_sha256": "1e3827d0ae6919071e3da2270a0452d3715ace50f46e90ff3856d3b2df58a041",
-					"scope": "Round 1: three new system-prompt keys; unchanged catalogue entries retained by key/value identity; reviewer session d55a45cddcf5"
+					"receipt": "i18n/receipts/d55a45cddcf5-prompt-fidelity-r1-zh-cn.json",
+					"receipt_sha256": "fd7ac9d10eb684230b0192497e9d97a7ea6322a4a4338cf3ceb642e2d39cbcc9",
+					"scope": "Two new source-node edit/stale keys; unchanged entries and prior findings retained by identity; auditor session d55a45cddcf5"
 				}
 			],
 			"status": "audited",
@@ -71497,6 +71635,29 @@
 							"receipt_sha256": "99e0592c9ae5be34e0f97e6daa70acad9bf13cc65782598311f187ecb8744401",
 							"scope": "Register-only audit of the re-derived zh-CN rows: 141 changed strings read natively, 158 您 -> 0, mechanical key/ICU/punctuation checks; audited bytes are 46420b7eb2's, replayed byte-identically as 30566d8100.",
 							"note": "Receipt 4c6c213dd0d8. Superseded entries retain the prior full audits."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "a4e80036ccbe9d3e98c15f585648ccc3b83318c708b563b745b82311e2f4b3aa",
+					"target_sha256": "9d65ee8ec4889437fa87c32f39ca5efc7fa18fdb08943bd4a7f6e50716f3e625",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-05",
+							"result": "clean-with-findings",
+							"instance": "d55a45cddcf5-system-prompt-r1-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/d55a45cddcf5-system-prompt-r1-zh-cn.json",
+							"receipt_sha256": "1e3827d0ae6919071e3da2270a0452d3715ace50f46e90ff3856d3b2df58a041",
+							"scope": "Round 1: three new system-prompt keys; unchanged catalogue entries retained by key/value identity; reviewer session d55a45cddcf5"
 						}
 					],
 					"status": "audited"

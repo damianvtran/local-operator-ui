@@ -33,5 +33,7 @@
 	"ui.settings.model.system_prompt.load_failed": "No se pudo cargar el prompt del sistema: {reason}",
 	"ui.settings.model.system_prompt.rich_text": "Texto enriquecido",
 	"ui.settings.model.system_prompt.source": "Código Markdown",
-	"ui.settings.model.system_prompt.source_required": "Este documento usa una sintaxis Markdown que el editor visual no puede conservar. Edite el código para mantener todas las instrucciones intactas."
+	"ui.settings.model.system_prompt.source_required": "Este documento usa una sintaxis Markdown que el editor visual no puede conservar. Edite el código para mantener todas las instrucciones intactas.",
+	"ui.settings.model.system_prompt.source_edit": "Editar código fuente",
+	"ui.settings.model.system_prompt.source_stale": "Esta parte cambió mientras la editaba. Cancele y ábrala de nuevo para conservar las instrucciones más recientes."
 }

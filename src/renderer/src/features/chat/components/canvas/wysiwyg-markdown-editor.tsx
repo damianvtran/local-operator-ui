@@ -3,15 +3,18 @@ import {
 	markdownToHtml,
 } from "@features/chat/components/canvas/wysiwyg-utils";
 import type { EditDiff } from "@shared/api/local-operator/types";
+import { BaseDialog } from "@shared/components/common/base-dialog";
 import { FindReplaceWidget } from "@shared/components/common/find-replace-widget";
 import { TextSelectionControls } from "@shared/components/common/text-selection-controls";
 import {
+	Alert,
 	Button,
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
+	Textarea,
 	Tooltip,
 } from "@shared/components/ui";
 import { useDebounce } from "@shared/hooks/use-debounce";
@@ -51,6 +54,7 @@ import {
 } from "./document-buffers";
 import { isDocumentDirty } from "./file-freshness";
 import { InlineEdit } from "./inline-edit";
+import type { MarkdownEditorCodec } from "./source-preserving-markdown";
 import { InsertImageDialog } from "./wysiwyg/insert-image-dialog";
 import type { LinkDialogData } from "./wysiwyg/insert-link-dialog";
 import { InsertLinkDialog } from "./wysiwyg/insert-link-dialog";
@@ -171,8 +175,13 @@ type WysiwygMarkdownEditorProps = {
 	/** Explicit-save hosts own persistence; never enlist their drafts in Canvas buffers. */
 	draft?: {
 		onChange: (markdown: string) => void;
+		onLocalDraftActiveChange?: (active: boolean) => void;
+		sourceVersion?: number;
 		disabled?: boolean;
 		label: string;
+		codec?: MarkdownEditorCodec;
+		sourceLabel?: string;
+		sourceStaleLabel?: string;
 	};
 	document: CanvasDocument;
 	conversationId?: string;
@@ -222,7 +231,7 @@ const editorProseClasses = cn(
 	// say nothing about where typing goes; the caret is the focus indicator, as
 	// it is in every text editor. The exception holds only because this is a
 	// full-pane editing surface - it does not extend to the fields around it.
-	"[&_[contenteditable]]:min-h-50 [&_[contenteditable]]:text-body [&_[contenteditable]]:leading-relaxed [&_[contenteditable]]:text-ink [&_[contenteditable]]:outline-none",
+	"[&_[data-wysiwyg-editor-root]]:min-h-50 [&_[data-wysiwyg-editor-root]]:text-body [&_[data-wysiwyg-editor-root]]:leading-relaxed [&_[data-wysiwyg-editor-root]]:text-ink [&_[data-wysiwyg-editor-root]]:outline-none",
 	// Find/replace, painted through the CSS Custom Highlight API. Highlight
 	// pseudo-elements inherit down the tree, so declaring them on the container
 	// covers every match inside it.
@@ -499,6 +508,55 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 
 	const debouncedContent = useDebouncedValue(content, 3000);
 	const editorRef = useRef<HTMLDivElement>(null);
+	const codec = draft?.codec;
+	const readCurrentMarkdown = useCallback(() => {
+		const root = editorRef.current;
+		return root
+			? codec
+				? codec.read(root)
+				: htmlToMarkdown(root.innerHTML)
+			: "";
+	}, [codec]);
+	const [opaqueEdit, setOpaqueEdit] = useState<{
+		id: string;
+		source: string;
+		expected: string;
+		codec: MarkdownEditorCodec;
+		sourceVersion: number | undefined;
+		insertionRange?: Range;
+	} | null>(null);
+	const [opaqueSource, setOpaqueSource] = useState("");
+	const [opaqueStale, setOpaqueStale] = useState(false);
+	const opaqueIsStale =
+		opaqueStale ||
+		(opaqueEdit !== null && opaqueEdit.sourceVersion !== draft?.sourceVersion);
+	const localDraftActiveChange = draft?.onLocalDraftActiveChange;
+	const openOpaqueEditor = useCallback(
+		(atom: { id: string; source: string }, insertionRange?: Range) => {
+			if (!codec) return;
+			// Ownership begins synchronously, before any refetch can remount the
+			// pristine host. Unapplied source is deliberately NOT an onChange value.
+			localDraftActiveChange?.(true);
+			setOpaqueEdit({
+				...atom,
+				expected: readCurrentMarkdown(),
+				codec,
+				sourceVersion: draft?.sourceVersion,
+				insertionRange,
+			});
+			setOpaqueSource(atom.source);
+			setOpaqueStale(false);
+		},
+		[codec, readCurrentMarkdown, localDraftActiveChange, draft?.sourceVersion],
+	);
+	const closeOpaqueEditor = useCallback(() => {
+		setOpaqueEdit(null);
+		localDraftActiveChange?.(false);
+	}, [localDraftActiveChange]);
+	useEffect(
+		() => () => localDraftActiveChange?.(false),
+		[localDraftActiveChange],
+	);
 	const originalContentRef = useRef(document.content);
 	const isInitialLoadRef = useRef(true);
 	const [canUndo, setCanUndo] = useState(false);
@@ -627,10 +685,15 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 	const handleContentChange = useCallback(() => {
 		if (!editorRef.current) return;
 
-		const htmlContent = editorRef.current.innerHTML;
-		const markdownContent = htmlToMarkdown(htmlContent);
+		const markdownContent = readCurrentMarkdown();
 
 		setContent(markdownContent);
+		// The host must see this event before a subsequent Source/Save click;
+		// waiting for an effect would introduce a lost-last-keystroke boundary.
+		if (codec && reportedContent.current !== markdownContent) {
+			reportedContent.current = markdownContent;
+			draft?.onChange(markdownContent);
+		}
 
 		if (isInitialLoadRef.current) {
 			isInitialLoadRef.current = false;
@@ -649,7 +712,14 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 
 		updateCurrentTextType();
 		updateSelectedFormats();
-	}, [document.id, updateCurrentTextType, updateSelectedFormats, draft]);
+	}, [
+		document.id,
+		updateCurrentTextType,
+		updateSelectedFormats,
+		draft,
+		codec,
+		readCurrentMarkdown,
+	]);
 
 	const clearHighlights = useCallback(() => {
 		if (window.CSS && CSS.highlights) {
@@ -693,7 +763,10 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 			while (node) {
 				const textNode = node as Text;
 				const text = textNode.nodeValue;
-				if (text) {
+				if (
+					text &&
+					!(codec && textNode.parentElement?.closest("[data-prompt-opaque]"))
+				) {
 					let fromIndex = 0;
 					let matchIndex = text
 						.toLowerCase()
@@ -779,7 +852,7 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 
 			return ranges.length;
 		},
-		[clearHighlights],
+		[clearHighlights, codec],
 	);
 
 	const handleNavigate = useCallback(
@@ -864,6 +937,28 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 		(findText: string, replaceText: string) => {
 			if (!findText || !editorRef.current) return;
 			clearHighlights();
+			if (codec) {
+				const walker = window.document.createTreeWalker(
+					editorRef.current,
+					NodeFilter.SHOW_TEXT,
+				);
+				const nodes: Text[] = [];
+				let node: Node | null = walker.nextNode();
+				while (node) {
+					if (!node.parentElement?.closest("[data-prompt-opaque]"))
+						nodes.push(node as Text);
+					node = walker.nextNode();
+				}
+				const expression = new RegExp(
+					findText.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
+					"gi",
+				);
+				for (const text of nodes)
+					text.data = text.data.replace(expression, () => replaceText);
+				handleContentChange();
+				undoManagerRef.current?.saveCurrentState();
+				return;
+			}
 
 			const originalHtml = editorRef.current.innerHTML;
 			const regex = new RegExp(
@@ -881,7 +976,7 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 			setMatchRanges([]);
 			setCurrentMatchIndex(-1);
 		},
-		[clearHighlights],
+		[clearHighlights, codec, handleContentChange],
 	);
 
 	// Initialize editor content
@@ -891,7 +986,7 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 			// A retained draft wins over the file body; see the state initializer.
 			const retained = draft ? null : bufferText(document.id);
 			const shown = retained ?? document.content;
-			const htmlContent = markdownToHtml(shown);
+			const htmlContent = codec ? codec.render(shown) : markdownToHtml(shown);
 
 			if (editorRef.current.innerHTML !== htmlContent) {
 				editorRef.current.innerHTML = htmlContent;
@@ -1210,6 +1305,11 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 
 			selection.removeAllRanges();
 			selection.addRange(selectionRef.current);
+			if (codec) {
+				const source = `[${text.split("[").join("\\[").split("]").join("\\]")}](${url.split(" ").join("%20")})`;
+				executeCommand("insertHTML", codec.insertSource(source));
+				return;
+			}
 
 			const anchor = selection.anchorNode?.parentElement;
 			if (anchor?.nodeName === "A") {
@@ -1222,7 +1322,7 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 
 			handleContentChange();
 		},
-		[executeCommand, handleContentChange],
+		[executeCommand, handleContentChange, codec],
 	);
 
 	// Insert image
@@ -1231,8 +1331,24 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 		if (selection?.rangeCount) {
 			selectionRef.current = selection.getRangeAt(0).cloneRange();
 		}
+		if (codec && editorRef.current) {
+			const root = editorRef.current;
+			let range = selectionRef.current?.cloneRange();
+			if (!range || !root.contains(range.commonAncestorContainer)) {
+				range = window.document.createRange();
+				range.selectNodeContents(root);
+				range.collapse(false);
+			}
+			// Stage creation until Apply: Cancel/Close/Escape must not insert a
+			// placeholder, mark the host dirty, or add an undo transaction.
+			openOpaqueEditor(
+				{ id: "", source: "![](<https://example.invalid/image>)" },
+				range,
+			);
+			return;
+		}
 		setIsImageDialogOpen(true);
-	}, []);
+	}, [codec, openOpaqueEditor]);
 
 	const handleInsertImage = useCallback(
 		(url: string) => {
@@ -1330,27 +1446,43 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 	);
 
 	// Handle double-click on links to open in new tab
-	const handleDoubleClick = useCallback((event: React.MouseEvent) => {
-		const target = event.target as HTMLElement;
+	const handleDoubleClick = useCallback(
+		(event: React.MouseEvent) => {
+			if (codec) {
+				event.preventDefault();
+				return;
+			}
+			const target = event.target as HTMLElement;
 
-		// Check if the clicked element is a link or is within a link
-		let linkElement: HTMLAnchorElement | null = null;
-		if (target.tagName === "A") {
-			linkElement = target as HTMLAnchorElement;
-		} else {
-			// Check if the target is within a link element using closest
-			linkElement = target.closest?.("a") ?? null;
-		}
+			// Check if the clicked element is a link or is within a link
+			let linkElement: HTMLAnchorElement | null = null;
+			if (target.tagName === "A") {
+				linkElement = target as HTMLAnchorElement;
+			} else {
+				// Check if the target is within a link element using closest
+				linkElement = target.closest?.("a") ?? null;
+			}
 
-		if (linkElement?.href) {
-			event.preventDefault();
-			window.open(linkElement.href, "_blank", "noopener,noreferrer");
-		}
-	}, []);
+			if (linkElement?.href) {
+				event.preventDefault();
+				window.open(linkElement.href, "_blank", "noopener,noreferrer");
+			}
+		},
+		[codec],
+	);
 
 	const handleClick = useCallback(
 		(event: React.MouseEvent) => {
 			const target = event.target as HTMLInputElement;
+			if (codec) {
+				if (target.closest("a")) event.preventDefault();
+				const atom = codec.getOpaque(target);
+				if (atom) {
+					event.preventDefault();
+					openOpaqueEditor(atom);
+					return;
+				}
+			}
 			if (target.tagName === "INPUT" && target.type === "checkbox") {
 				// Manually update the 'checked' attribute to reflect the new state.
 				// The 'checked' property gives the current state post-click.
@@ -1365,12 +1497,24 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 				handleContentChange();
 			}
 		},
-		[handleContentChange],
+		[handleContentChange, codec, openOpaqueEditor],
 	);
 
 	// Handle keyboard shortcuts
 	const handleKeyDown = useCallback(
 		(event: React.KeyboardEvent) => {
+			if (
+				codec &&
+				["Enter", " "].includes(event.key) &&
+				codec.getOpaque(event.target as Element)
+			) {
+				event.preventDefault();
+				const atom = codec.getOpaque(event.target as Element);
+				if (atom) {
+					openOpaqueEditor(atom);
+				}
+				return;
+			}
 			if (event.key === "Tab") {
 				/*
 				 * Tab nests a list item, and does nothing anywhere else.
@@ -1529,16 +1673,27 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 						}
 						break;
 					}
+					case "y":
+						if (codec) {
+							event.preventDefault();
+							event.stopPropagation();
+							undoManagerRef.current?.redo();
+							handleContentChange();
+							setCanUndo(undoManagerRef.current?.canUndo() ?? false);
+							setCanRedo(undoManagerRef.current?.canRedo() ?? false);
+						}
+						break;
 					case "z":
+						// The shared manager also listens on document. This codec read owns
+						// prompt history, so do not let the same chord undo a second time.
+						if (codec) event.stopPropagation();
 						if (event.shiftKey) {
 							event.preventDefault();
 							if (undoManagerRef.current?.canRedo()) {
 								undoManagerRef.current.redo();
 								// Update content state after redo
 								if (editorRef.current) {
-									const htmlContent = editorRef.current.innerHTML;
-									const markdownContent = htmlToMarkdown(htmlContent);
-									setContent(markdownContent);
+									handleContentChange();
 									setHasUserChanges(true);
 								}
 								setCanUndo(undoManagerRef.current.canUndo());
@@ -1550,9 +1705,7 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 								undoManagerRef.current.undo();
 								// Update content state after undo
 								if (editorRef.current) {
-									const htmlContent = editorRef.current.innerHTML;
-									const markdownContent = htmlToMarkdown(htmlContent);
-									setContent(markdownContent);
+									handleContentChange();
 									setHasUserChanges(true);
 								}
 								setCanUndo(undoManagerRef.current.canUndo());
@@ -1628,6 +1781,8 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 			content,
 			handleManualSave,
 			handleContentChange,
+			codec,
+			openOpaqueEditor,
 		],
 	);
 
@@ -2104,9 +2259,7 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 									undoManagerRef.current.undo();
 									// Update content state after undo
 									if (editorRef.current) {
-										const htmlContent = editorRef.current.innerHTML;
-										const markdownContent = htmlToMarkdown(htmlContent);
-										setContent(markdownContent);
+										handleContentChange();
 										setHasUserChanges(true);
 									}
 									setCanUndo(undoManagerRef.current.canUndo());
@@ -2130,9 +2283,7 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 									undoManagerRef.current.redo();
 									// Update content state after redo
 									if (editorRef.current) {
-										const htmlContent = editorRef.current.innerHTML;
-										const markdownContent = htmlToMarkdown(htmlContent);
-										setContent(markdownContent);
+										handleContentChange();
 										setHasUserChanges(true);
 									}
 									setCanUndo(undoManagerRef.current.canUndo());
@@ -2174,6 +2325,7 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 				>
 					<div
 						ref={editorRef}
+						data-wysiwyg-editor-root=""
 						/*
 						 * THE SCOPE MARKER. This element is what the undo manager is connected to
 						 * (`getOrCreateManager(document.id, editorRef.current, …)` below), and the
@@ -2197,11 +2349,38 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 						aria-disabled={draft?.disabled}
 						contentEditable={!reviewState && !draft?.disabled}
 						onInput={handleContentChange}
+						onPaste={
+							codec
+								? (event) => {
+										event.preventDefault();
+										window.document.execCommand(
+											"insertText",
+											false,
+											event.clipboardData.getData("text/plain"),
+										);
+										handleContentChange();
+									}
+								: undefined
+						}
+						onDrop={
+							codec
+								? (event) => {
+										event.preventDefault();
+										window.document.execCommand(
+											"insertText",
+											false,
+											event.dataTransfer.getData("text/plain"),
+										);
+										handleContentChange();
+									}
+								: undefined
+						}
 						onKeyDown={handleKeyDown}
 						onClick={handleClick}
 						onDoubleClick={handleDoubleClick}
 						suppressContentEditableWarning
 						onBlur={() => {
+							if (codec) handleContentChange();
 							if (inlineEdit) {
 								selectionRef.current = inlineEdit.range;
 							}
@@ -2328,6 +2507,87 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 				findValue={searchQuery}
 				onFindValueChange={setSearchQuery}
 			/>
+
+			{codec && (
+				<BaseDialog
+					open={opaqueEdit !== null}
+					onClose={closeOpaqueEditor}
+					title={draft?.sourceLabel ?? draft?.label ?? ""}
+					maxWidth="md"
+					fullWidth
+					actions={
+						<>
+							<Button onClick={closeOpaqueEditor}>
+								{t("ui.canvas.insert_link_dialog.cancel")}
+							</Button>
+							<Button
+								variant="primary"
+								disabled={draft?.disabled || opaqueIsStale}
+								onClick={() => {
+									if (!opaqueEdit || !editorRef.current || draft?.disabled)
+										return;
+									if (
+										opaqueEdit.codec !== codec ||
+										opaqueIsStale ||
+										readCurrentMarkdown() !== opaqueEdit.expected
+									) {
+										setOpaqueStale(true);
+										return;
+									}
+									undoManagerRef.current?.saveCurrentState();
+									if (opaqueEdit.insertionRange) {
+										if (
+											!editorRef.current.contains(
+												opaqueEdit.insertionRange.commonAncestorContainer,
+											)
+										) {
+											setOpaqueStale(true);
+											return;
+										}
+										const selection = window.getSelection();
+										selection?.removeAllRanges();
+										selection?.addRange(opaqueEdit.insertionRange);
+										executeCommand(
+											"insertHTML",
+											codec.insertSource(opaqueSource),
+										);
+									} else if (
+										codec.replaceOpaque(
+											editorRef.current,
+											opaqueEdit.id,
+											opaqueEdit.expected,
+											opaqueSource,
+										) === null
+									) {
+										setOpaqueStale(true);
+										return;
+									}
+									handleContentChange();
+									undoManagerRef.current?.saveCurrentState();
+									closeOpaqueEditor();
+								}}
+							>
+								{t("ui.chat.pickers.picker_host.apply")}
+							</Button>
+						</>
+					}
+				>
+					{opaqueIsStale && (
+						<Alert variant="warning" role="alert">
+							{draft?.sourceStaleLabel}
+						</Alert>
+					)}
+					<Textarea
+						autoFocus
+						aria-label={draft?.sourceLabel}
+						value={opaqueSource}
+						onChange={(event) => setOpaqueSource(event.target.value)}
+						className="min-h-48 max-h-[60vh] font-mono"
+						disabled={draft?.disabled}
+					/>
+				</BaseDialog>
+			)}
+
 			<InsertLinkDialog
 				open={isLinkDialogOpen}
 				onClose={() => setIsLinkDialogOpen(false)}
