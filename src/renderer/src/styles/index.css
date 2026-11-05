@@ -2972,9 +2972,19 @@ html[data-glass~="canvas"] [data-glass-lane] {
  * panel the desktop should show through, whatever component it lives in.
  * `scripts/glass-overlay.test.mjs` derives the membership twice - from the primitives
  * that render a Portal, and from the app's own "this leaves the flow" vocabulary
- * (`shadow-overlay` paired with a ground role, out of flow) - and names the few
- * pre-existing panels that stay opaque for now, each with the reason it waits, so the
- * next overlay of either kind fails a test until it is a decision.
+ * (`shadow-overlay` paired with a ground role, out of flow) - and names the pre-existing
+ * panels that stay opaque for now, each with the reason it waits. That vocabulary is
+ * read off the code in both shapes this codebase writes it: a class string on the
+ * element, and a module-level class constant the element wears. So a new panel of that
+ * shape fails a test until marking it or naming it is a decision.
+ *
+ * WHERE THAT GUARANTEE ENDS is the derivation's edge, not the rule's, and it is worth
+ * knowing before trusting the sentence above: a ground or shadow that arrives through an
+ * inline style (`themed-toast-container.tsx` spends `--shadow-overlay` as `boxShadow`,
+ * and a toast may legitimately be a surface of its own), a class string composed at
+ * runtime or through a ternary alias, and a class constant imported from another module
+ * are all outside what the scan can see. Those are gaps in detection, not in the rule: a
+ * panel marked by hand is styled right whether or not the guard found it.
  *
  * THE ALPHA IS ITS OWN DERIVED FLOOR, NOT THE ELEVATED RUNG. `--lo-glass-a-overlay`
  * (`glassOverlayAlpha` in `src/shared/window-glass.ts`) tracks the slider from the

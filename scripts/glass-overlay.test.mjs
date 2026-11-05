@@ -14,19 +14,28 @@
  * WHAT IT CAN AND CANNOT SEE. It asserts the marker's placement per ELEMENT -
  * derived twice, once from the primitives that render a Portal and once from the
  * app's own "this leaves the flow" vocabulary (`shadow-overlay` on a panel with its
- * own ground) - the rule's shape and gate, the ink rebinding that keeps the dim
- * register legible on the translucent panel, and the alpha's arithmetic over the
- * shipped modules. It cannot see pixels: the computed alpha, the blur and
- * legibility over real content are the browser run's evidence
- * (`scripts/window-glass-cdp.test.mjs`'s rig, and the PR's own frames), never this
- * file's.
+ * own ground, whether the class string is written on the element or composed into a
+ * module-level constant it wears) - the rule's shape and gate, the ink rebinding that
+ * keeps the dim register legible on the translucent panel, and the alpha's arithmetic
+ * over the shipped modules. THE DERIVATION HAS EDGES and they are named where it
+ * lives (`moduleLevelClassConstants`): a ground or shadow that arrives through an
+ * inline style, a class string composed at runtime, an alias assigned in a ternary or
+ * a constant imported from another module is outside the walk, so this file does not
+ * promise that no overlay can ever be born invisible - it promises that the two shapes
+ * this codebase actually writes are decisions. It cannot see pixels either: the
+ * computed alpha, the blur and legibility over real content are the browser run's
+ * evidence (`scripts/window-glass-cdp.test.mjs`'s rig, and the PR's own frames), never
+ * this file's.
  */
 import assert from "node:assert/strict";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { test } from "node:test";
 import { build } from "esbuild";
-import { deriveOverlayFloor } from "./derive-glass-floors.mjs";
+import {
+	LANE_ALPHA_CEILING,
+	deriveOverlayFloor,
+} from "./derive-glass-floors.mjs";
 import { openingTags } from "./jsx-opening-tags.mjs";
 
 const ROOT = process.cwd();
@@ -98,6 +107,13 @@ const NAMED_PANELS = {
  * `pointer-events-auto` panel a positioned wrapper carries; two of the three panels
  * this closed are positioned by their parent) - and the class falls out of the code
  * without anyone enumerating it.
+ *
+ * THE SHAPE IS OFTEN NOT ON THE TAG. A panel whose classes were worth factoring out
+ * (`const LARGE_PREVIEW = cn("invisible absolute ... bg-elevated shadow-overlay")`)
+ * is applied as `className={LARGE_PREVIEW}`, so the tag carries a NAME and the answer
+ * is three hundred lines up - which means the tag-level scan misses exactly the tidier
+ * code. `moduleLevelClassConstants` is the second half of this derivation for that
+ * reason, and round 2 of review is what named the gap.
  */
 const FLOATING_PANEL_SIGNATURE = (text) =>
 	/\bshadow-overlay\b/.test(text) &&
@@ -132,11 +148,16 @@ const rendererFeatureFiles = (dir = "src/renderer/src", out = []) => {
  * surface a remediation cycle had no browser run to verify. A panel marked blind is
  * the failure mode this contract exists to prevent.
  *
- * THE BROWSER'S ADDRESS SUGGESTIONS ARE NOT MERELY DEFERRED, they are a different
- * case: they float over the web view - arbitrary page content, not a column the app
- * painted - so `overlayFloor`'s premise does not hold for them and they inherit the
- * band's problem (moving content beneath). Marking them without a derivation of
- * their own would assert a floor that was never measured for that backdrop.
+ * TWO ENTRIES WAIT FOR A STRONGER REASON THAN THE OTHERS. The browser's suggestions
+ * and the inline image tile's action cluster do not float over a column the app
+ * painted - they float over the web view and over the picture itself, i.e. over
+ * arbitrary content - so `overlayFloor`'s premise (a translucent app surface under a
+ * translucent panel) does not hold for them at all, and marking them would assert a
+ * floor nobody derived for that backdrop.
+ *
+ * THE BROWSER'S ADDRESS SUGGESTIONS ARE ALSO A DIFFERENT CASE, and worth stating
+ * separately because they inherit the band's problem (moving content beneath) rather
+ * than this row's.
  */
 const DEFERRED_PANELS = {
 	"src/renderer/src/features/browser/components/browser-url-bar.tsx":
@@ -151,18 +172,119 @@ const DEFERRED_PANELS = {
 		"the message actions toolbar over a Bridge row",
 	"src/renderer/src/shared/components/common/find-replace-widget.tsx":
 		"the find bar floating inside the editor",
+	"src/renderer/src/features/chat/components/attachments-preview.tsx":
+		"the composer tile's dwell preview, a 300px surface that marking blind changes with no browser run in this cycle to look at it",
+	"src/renderer/src/features/chat/components/canvas/inline-edit.tsx":
+		"the canvas inline-edit popover over the CodeMirror surface: the same unverified-pixels reason",
+	"src/renderer/src/features/team-bridge/attachments/inline-image-tile.tsx":
+		"the tile's action cluster floats over the picture itself - arbitrary image content, not a column the app painted - so overlayFloor was never derived against its backdrop",
+};
+
+/** A class constant's opening: a class-combining call or a string literal. */
+const CLASS_STRING_VALUE = /^(cn|clsx|twMerge)\(|^["`]/;
+/** A module-level `const NAME =` (top level, `export` allowed). No `g`: per-call copy. */
+const CLASS_CONSTANT_DECLARATION =
+	/(?:^|\n)(?:export\s+)?const\s+([A-Za-z_$][\w$]*)\s*(?::[^=\n]+)?=/;
+
+/**
+ * MODULE-LEVEL CLASS CONSTANTS: the other half of the class derivation above.
+ *
+ * `const LARGE_PREVIEW = cn("invisible absolute ... bg-elevated shadow-overlay ...")`
+ * reaches its element as `className={LARGE_PREVIEW}`, and `openingTags` reads class
+ * text INSIDE an opening tag only - so a panel whose classes were factored out is
+ * invisible to the tag-level scan no matter how exactly it matches the signature.
+ * That is the wrong way round: factoring the string out is the tidier code and so the
+ * likelier shape for the next overlay too. Round 2 of review named two panels missing
+ * for this reason (`attachments-preview.tsx`, `inline-image-tile.tsx`); running this
+ * resolver on the tree also surfaced a third nobody had named (`inline-edit.tsx`),
+ * which is the evidence that the gap was structural rather than those two files.
+ *
+ * WHAT IT READS, and therefore what it cannot: a `const NAME = <value>` at column 0
+ * (an `export` in front is fine) whose value starts with a `cn(`/`clsx(`/`twMerge(`
+ * call or a string literal, ending at the first `;` outside brackets and strings. A
+ * value that is an object or an inline-style map is NOT a class string and is not
+ * read - which is what keeps `themed-toast-container.tsx`'s
+ * `boxShadow: "var(--shadow-overlay)"` out of the class (toasts may legitimately be a
+ * surface of their own; that is a naming decision, not this row's). Still out of
+ * reach, and stated rather than implied: a constant declared inside a component, an
+ * alias assigned through a ternary, a string concatenated at runtime, and a constant
+ * imported from another module.
+ */
+const moduleLevelClassConstants = (source) => {
+	const stripped = source.replace(/\/\*[\s\S]*?\*\//g, "");
+	const constants = new Map();
+	/* A fresh lastIndex per call: the shared literal carries no `g` on purpose. */
+	const declaration = new RegExp(CLASS_CONSTANT_DECLARATION, "g");
+	let match = declaration.exec(stripped);
+	while (match !== null) {
+		const start = match.index + match[0].length;
+		let depth = 0;
+		let quote = null;
+		let end = -1;
+		for (let i = start; i < stripped.length; i++) {
+			const ch = stripped[i];
+			if (quote !== null) {
+				if (ch === quote && stripped[i - 1] !== "\\") quote = null;
+				continue;
+			}
+			if (ch === '"' || ch === "`") {
+				quote = ch;
+				continue;
+			}
+			if (ch === "(" || ch === "{" || ch === "[") depth += 1;
+			else if (ch === ")" || ch === "}" || ch === "]") depth -= 1;
+			else if (ch === ";" && depth === 0) {
+				end = i;
+				break;
+			}
+		}
+		if (end !== -1) {
+			declaration.lastIndex = end;
+			const value = stripped.slice(start, end).trim();
+			if (CLASS_STRING_VALUE.test(value)) constants.set(match[1], value);
+		}
+		match = declaration.exec(stripped);
+	}
+	return constants;
+};
+
+/**
+ * Every floating panel in one file, marked or not: a tag whose own class text carries
+ * the signature, or a tag wearing a module-level class constant that does.
+ *
+ * The constant is matched by name anywhere in the opening tag rather than only inside
+ * `className={...}`, because a hand-rolled expression parser to find the className
+ * boundary is a worse trade than the one assumption this makes - a constant that
+ * matches the signature is a class string, so a tag naming it is an element wearing
+ * it. The marker is read off the same tag, which is where `data-glass-overlay` has
+ * to be for the rule to paint the panel.
+ */
+const floatingPanelsIn = (file) => {
+	const source = read(file);
+	const constants = moduleLevelClassConstants(source);
+	const panels = [];
+	for (const tag of openingTags(source)) {
+		const marked = tag.text.includes('data-glass-overlay=""');
+		if (FLOATING_PANEL_SIGNATURE(tag.text)) {
+			panels.push({ name: tag.name, marked });
+			continue;
+		}
+		for (const [constant, value] of constants)
+			if (
+				new RegExp(`\\b${constant}\\b`).test(tag.text) &&
+				FLOATING_PANEL_SIGNATURE(value)
+			)
+				panels.push({ name: `${tag.name} className={${constant}}`, marked });
+	}
+	return panels;
 };
 
 /** The feature-level panels the signature finds that are still unmarked. */
 const unmarkedFloatingPanels = () => {
 	const found = [];
 	for (const file of rendererFeatureFiles())
-		for (const tag of openingTags(read(file)))
-			if (
-				FLOATING_PANEL_SIGNATURE(tag.text) &&
-				!tag.text.includes('data-glass-overlay=""')
-			)
-				found.push({ file, name: tag.name });
+		for (const panel of floatingPanelsIn(file))
+			if (!panel.marked) found.push({ file, name: panel.name });
 	return found;
 };
 
@@ -365,10 +487,13 @@ test("O-4b the floor's MEANING: every palette's text registers clear AA at both 
 	 * user can put it in. The default (80) and the clearest (100) are the two the
 	 * contract also measures, so this test and `scripts/contrast-contract.mjs` assert the
 	 * same table through two independent code paths over the same 59 palettes. The
-	 * ceiling here is the model's own (`window-glass.test.mjs` pins
-	 * `LANE_ALPHA_CEILING === GLASS_ALPHA_CEILING`) and `glassOverlayAlpha` is linear.
+	 * ceiling here is the model's own, IMPORTED rather than copied: a literal here would
+	 * keep measuring a panel slightly denser than the real one if the ceiling moved, and
+	 * a denser panel can only get easier to pass - drift that reads as green. The model
+	 * pins `LANE_ALPHA_CEILING === GLASS_ALPHA_CEILING` (`window-glass.test.mjs`) and
+	 * `glassOverlayAlpha` is linear.
 	 */
-	const CEILING = 0.96;
+	const CEILING = LANE_ALPHA_CEILING;
 	const ends = [
 		["the default 80", 80],
 		["max transparency", 100],
@@ -497,7 +622,7 @@ test("O-7 the rest of the class: a floating panel outside the primitive layer is
 	for (const [file, reason] of Object.entries(DEFERRED_PANELS)) {
 		assert.ok(reason.length > 10, `${file}: the listed reason is not a reason`);
 		assert.ok(
-			openingTags(read(file)).some((tag) => FLOATING_PANEL_SIGNATURE(tag.text)),
+			floatingPanelsIn(file).length > 0,
 			`${file}: no panel with the signature is in this file any more; drop the DEFERRED_PANELS entry`,
 		);
 		assert.ok(
