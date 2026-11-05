@@ -129,7 +129,7 @@
 	"ui.settings.appearance.accent.use_theme_accent": "تھیم کا نمایاں رنگ استعمال کریں",
 	"ui.settings.appearance.picker.dialog": "نمایاں رنگ منتخب کریں",
 	"ui.settings.appearance.picker.edit_dialog": "نمایاں رنگ میں ترمیم کریں",
-	"ui.settings.appearance.picker.hex": "Hex",
+	"ui.settings.appearance.picker.hex": "ہیکس کوڈ",
 	"ui.settings.appearance.picker.invalid": "#1A2B3C جیسا hex رنگ درج کریں۔",
 	"ui.settings.appearance.picker.hue": "رنگت",
 	"ui.settings.appearance.picker.hue_value": "رنگت {deg}°، {name}",

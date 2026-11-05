@@ -129,7 +129,7 @@
 	"ui.settings.appearance.accent.use_theme_accent": "थीम का एक्सेंट इस्तेमाल करें",
 	"ui.settings.appearance.picker.dialog": "एक्सेंट रंग चुनें",
 	"ui.settings.appearance.picker.edit_dialog": "एक्सेंट रंग बदलें",
-	"ui.settings.appearance.picker.hex": "Hex",
+	"ui.settings.appearance.picker.hex": "हेक्स कोड",
 	"ui.settings.appearance.picker.invalid": "#1A2B3C जैसा hex रंग डालें।",
 	"ui.settings.appearance.picker.hue": "ह्यू",
 	"ui.settings.appearance.picker.hue_value": "ह्यू {deg}°, {name}",

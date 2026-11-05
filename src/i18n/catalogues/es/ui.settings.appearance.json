@@ -129,7 +129,7 @@
 	"ui.settings.appearance.accent.use_theme_accent": "Usar el acento del tema",
 	"ui.settings.appearance.picker.dialog": "Elige un color de acento",
 	"ui.settings.appearance.picker.edit_dialog": "Editar color de acento",
-	"ui.settings.appearance.picker.hex": "Hex",
+	"ui.settings.appearance.picker.hex": "Hexadecimal",
 	"ui.settings.appearance.picker.invalid": "Introduce un color hexadecimal, como #1A2B3C.",
 	"ui.settings.appearance.picker.hue": "Tono",
 	"ui.settings.appearance.picker.hue_value": "Tono {deg}°, {name}",

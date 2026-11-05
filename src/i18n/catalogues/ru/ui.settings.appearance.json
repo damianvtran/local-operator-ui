@@ -129,7 +129,7 @@
 	"ui.settings.appearance.accent.use_theme_accent": "Акцент темы",
 	"ui.settings.appearance.picker.dialog": "Выбор акцентного цвета",
 	"ui.settings.appearance.picker.edit_dialog": "Изменение акцентного цвета",
-	"ui.settings.appearance.picker.hex": "Hex",
+	"ui.settings.appearance.picker.hex": "HEX-код",
 	"ui.settings.appearance.picker.invalid": "Введите цвет в формате hex, например #1A2B3C.",
 	"ui.settings.appearance.picker.hue": "Оттенок",
 	"ui.settings.appearance.picker.hue_value": "Оттенок {deg}°, {name}",
