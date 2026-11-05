@@ -1,15 +1,16 @@
 import type { SystemPromptUpdate } from "@shared/api/local-operator/types";
 import { Spinner } from "@shared/components/common/spinner";
-import { Alert, Button, Label, Textarea } from "@shared/components/ui";
+import { Alert, Button, Label } from "@shared/components/ui";
 import { useSystemPrompt } from "@shared/hooks/use-system-prompt";
 import { useUpdateSystemPrompt } from "@shared/hooks/use-update-system-prompt";
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { formatCalendarDateTime } from "@shared/utils/date-utils";
 import { NotebookPen, Save } from "lucide-react";
-import { useEffect, useState } from "react";
-import type { ChangeEvent, FC } from "react";
+import { useCallback, useLayoutEffect, useRef, useState } from "react";
+import type { FC } from "react";
 import { SettingsSection } from "./settings-section";
+import { SystemPromptEditor } from "./system-prompt-editor";
 
 /**
  * The prompt prepended to every agent in the environment.
@@ -21,50 +22,62 @@ import { SettingsSection } from "./settings-section";
  */
 export const SystemPrompt: FC = () => {
 	useI18nLocale();
-	const {
-		data: systemPromptData,
-		isLoading,
-		error,
-		refetch,
-	} = useSystemPrompt();
+	const { data: systemPromptData, isLoading, error } = useSystemPrompt();
 	const updateSystemPromptMutation = useUpdateSystemPrompt();
 	const [systemPrompt, setSystemPrompt] = useState("");
 	const [isEdited, setIsEdited] = useState(false);
+	const dirtyRef = useRef(false);
+	const baselineRef = useRef("");
+	const [revision, setRevision] = useState(0);
+	const [saveError, setSaveError] = useState<string | null>(null);
 
-	// Adopts the fetched prompt as the draft. Also clears `isEdited`, so a
-	// refetch that lands while the field is open does not leave save armed
-	// against content the user can no longer see.
-	useEffect(() => {
-		setSystemPrompt(systemPromptData?.content ?? "");
+	// Cache refreshes can arrive while typing (including another consumer's
+	// invalidation). Only pristine drafts may adopt server content implicitly.
+	// Adopt before paint so a fetched tagged prompt never flashes an empty rich
+	// editor (or lets a first interaction target that temporary editor).
+	useLayoutEffect(() => {
+		if (dirtyRef.current) return;
+		baselineRef.current = systemPromptData?.content ?? "";
+		setSystemPrompt(baselineRef.current);
+		setRevision((value) => value + 1);
 		setIsEdited(false);
 	}, [systemPromptData]);
 
-	const handleInputChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
-		const newValue = e.target.value;
+	const handleInputChange = useCallback((newValue: string) => {
 		setSystemPrompt(newValue);
-		// Compared against the fetched content, so an undo by hand disarms save.
-		setIsEdited(newValue !== (systemPromptData?.content ?? ""));
-	};
+		// Compare against the draft's accepted baseline, not a newer refetch.
+		dirtyRef.current = newValue !== baselineRef.current;
+		setIsEdited(dirtyRef.current);
+		setSaveError(null);
+	}, []);
 
 	const handleSave = async () => {
 		if (!isEdited || updateSystemPromptMutation.isPending) return;
 
+		setSaveError(null);
 		try {
 			const update: SystemPromptUpdate = {
 				content: systemPrompt,
 			};
 			await updateSystemPromptMutation.mutateAsync(update);
-			await refetch();
+			baselineRef.current = systemPrompt;
+			dirtyRef.current = false;
 			setIsEdited(false);
 		} catch (err) {
-			// A failed save leaves the draft dirty and only logs, so the user's
-			// text is never lost — but nothing on screen says it failed yet.
-			console.error("Error updating system prompt:", err);
+			setSaveError(
+				err instanceof Error
+					? err.message
+					: t("ui.common.errors.system_prompt_update_unknown"),
+			);
 		}
 	};
 
 	const handleReset = () => {
-		setSystemPrompt(systemPromptData?.content ?? "");
+		dirtyRef.current = false;
+		baselineRef.current = systemPromptData?.content ?? "";
+		setSystemPrompt(baselineRef.current);
+		setRevision((value) => value + 1);
+		setSaveError(null);
 		setIsEdited(false);
 	};
 
@@ -76,19 +89,16 @@ export const SystemPrompt: FC = () => {
 				<Label htmlFor="app-system-prompt">
 					{t("ui.settings.model.system_prompt.instructions")}
 				</Label>
-				<Textarea
-					id="app-system-prompt"
-					name="systemPrompt"
+				<SystemPromptEditor
+					key={revision}
 					value={systemPrompt}
 					onChange={handleInputChange}
-					placeholder={t(
-						"ui.settings.model.system_prompt.enter_instructions_for_how_all_agents_should_behave_and_respond_t",
-					)}
-					className="min-h-50"
+					disabled={isSaving}
 				/>
 			</div>
 
-			<div className="flex gap-3">
+			{saveError && <Alert variant="danger">{saveError}</Alert>}
+			<div className="flex flex-wrap gap-3">
 				<Button
 					variant="primary"
 					onClick={handleSave}
@@ -139,7 +149,7 @@ export const SystemPrompt: FC = () => {
 						label={t("ui.settings.model.system_prompt.loading_system_prompt")}
 					/>
 				</div>
-			) : error ? (
+			) : error && !systemPromptData && !isEdited ? (
 				<Alert variant="danger">
 					{t("ui.settings.model.system_prompt.load_failed", {
 						reason:
