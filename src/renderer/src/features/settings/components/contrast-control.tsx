@@ -46,6 +46,7 @@ export type ContrastControlProps = {
 	mode: "dark" | "light";
 	/** True while the parent composes a committed value. */
 	pending?: boolean;
+	backgroundAtCeiling?: boolean;
 	onDraft: (value: number | null) => void;
 	onCommit: (value: number) => void;
 };
@@ -88,6 +89,7 @@ export const ContrastControl: FC<ContrastControlProps> = ({
 	effective,
 	mode,
 	pending = false,
+	backgroundAtCeiling = false,
 	onDraft,
 	onCommit,
 }) => {
@@ -106,10 +108,19 @@ export const ContrastControl: FC<ContrastControlProps> = ({
 	   ends any local draft: React's "adjust state on a prop change" pattern,
 	   compared during render rather than in an effect, so the thumb never shows
 	   the old draft for a frame. */
-	const [seen, setSeen] = useState({ committed, mode });
-	if (seen.committed !== committed || seen.mode !== mode) {
-		setSeen({ committed, mode });
-		setDraft(null);
+	const [seen, setSeen] = useState({ committed, mode, pending });
+	if (
+		seen.committed !== committed ||
+		seen.mode !== mode ||
+		seen.pending !== pending
+	) {
+		setSeen({ committed, mode, pending });
+		if (
+			seen.committed !== committed ||
+			seen.mode !== mode ||
+			(seen.pending && !pending)
+		)
+			setDraft(null);
 	}
 
 	const move = (next: number) => {
@@ -117,9 +128,15 @@ export const ContrastControl: FC<ContrastControlProps> = ({
 		onDraft(next);
 	};
 	const commit = (next: number) => {
-		setDraft(null);
-		onDraft(null);
-		if (next !== committed) onCommit(next);
+		// Keep the released candidate visible until the parent finishes verified
+		// composition. Clearing here flashes the old palette during its two rAFs.
+		if (next !== committed) {
+			move(next);
+			onCommit(next);
+		} else {
+			setDraft(null);
+			onDraft(null);
+		}
 	};
 
 	const checked = presetAt(value);
@@ -215,7 +232,7 @@ export const ContrastControl: FC<ContrastControlProps> = ({
 						variant="link"
 						size="sm"
 						onClick={() => commit(0)}
-						className="text-meta"
+						className="min-h-6 min-w-6 text-meta"
 					>
 						{t("ui.settings.appearance.contrast.reset")}
 					</Button>
@@ -298,6 +315,9 @@ export const ContrastControl: FC<ContrastControlProps> = ({
 					);
 				})}
 			</div>
+			<output aria-live="polite" aria-atomic="true" className="sr-only">
+				{contrastValueText(value)}
+			</output>
 			<div className="flex items-center gap-3 px-1">
 				<span className="shrink-0 text-meta text-ink-dim">
 					{t("ui.settings.appearance.contrast.softer")}
@@ -316,10 +336,13 @@ export const ContrastControl: FC<ContrastControlProps> = ({
 					onKeyDown={onKeyDown}
 					onKeyUp={onKeyUp}
 					onChange={(event) => {
-						/* Only pointer input reaches here (keys are handled above and
-						   prevented); a drag snaps to presets within the zone. */
-						if (!dragging.current) return;
-						move(snapContrast(Number(event.target.value)));
+						/* Assistive technology changes ranges without pointer/key events.
+						   Those changes are complete actions, unlike a live drag. */
+						const next = snapContrast(Number(event.target.value), {
+							snap: dragging.current,
+						});
+						if (dragging.current) move(next);
+						else commit(next);
 					}}
 					style={{ "--fill": `${fill}%` } as CSSProperties}
 					className={
@@ -345,12 +368,12 @@ export const ContrastControl: FC<ContrastControlProps> = ({
 				{pending
 					? t("ui.settings.appearance.contrast.applying")
 					: capped && effective !== undefined
-						? t("ui.settings.appearance.contrast.capped", {
-								value: contrastValueText(effective),
-							})
-						: mode === "dark"
-							? t("ui.settings.appearance.contrast.applies_dark")
-							: t("ui.settings.appearance.contrast.applies_light")}
+						? t("ui.settings.appearance.contrast.capped_hint")
+						: backgroundAtCeiling
+							? t("ui.settings.appearance.contrast.background_ceiling")
+							: mode === "dark"
+								? t("ui.settings.appearance.contrast.applies_dark")
+								: t("ui.settings.appearance.contrast.applies_light")}
 			</p>
 		</div>
 	);

@@ -157,5 +157,8 @@
 	"ui.settings.appearance.hue.neutral": "न्यूट्रल",
 	"ui.settings.appearance.layers.palette_meta_contrast": "कंट्रास्ट: {contrast}",
 	"ui.settings.appearance.layers.palette_meta_accent": "आपका एक्सेंट",
-	"ui.settings.appearance.layers.palette_meta_both": "कंट्रास्ट: {contrast}, आपका एक्सेंट"
+	"ui.settings.appearance.layers.palette_meta_both": "कंट्रास्ट: {contrast}, आपका एक्सेंट",
+	"ui.settings.appearance.contrast.background_ceiling": "इस थीम की पृष्ठभूमि पहले ही सबसे ज़्यादा चमकीली है, इसलिए कंट्रास्ट और बढ़ाने पर टेक्स्ट गहरा हो जाता है।",
+	"ui.settings.appearance.contrast.capped_hint": "यह थीम उस कंट्रास्ट सीमा तक पहुँच गई है जहाँ टेक्स्ट पढ़ने लायक रहता है, इसलिए सबसे नज़दीकी ऐसी सेटिंग दिखाई गई है जिसमें टेक्स्ट पढ़ा जा सके।",
+	"ui.settings.appearance.accent.palette_override_notice": "एक्सेंट: {theme}"
 }

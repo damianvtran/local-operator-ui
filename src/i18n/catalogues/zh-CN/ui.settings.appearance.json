@@ -157,5 +157,8 @@
 	"ui.settings.appearance.hue.neutral": "中性色",
 	"ui.settings.appearance.layers.palette_meta_contrast": "对比度：{contrast}",
 	"ui.settings.appearance.layers.palette_meta_accent": "自定义强调色",
-	"ui.settings.appearance.layers.palette_meta_both": "对比度：{contrast}，自定义强调色"
+	"ui.settings.appearance.layers.palette_meta_both": "对比度：{contrast}，自定义强调色",
+	"ui.settings.appearance.contrast.background_ceiling": "此主题的背景已达到最高亮度，继续提高对比度会改为加深文字颜色。",
+	"ui.settings.appearance.contrast.capped_hint": "此主题已达到保证文字可读的对比度上限，因此显示最接近所选值且仍清晰可读的设置。",
+	"ui.settings.appearance.accent.palette_override_notice": "强调色：{theme}"
 }

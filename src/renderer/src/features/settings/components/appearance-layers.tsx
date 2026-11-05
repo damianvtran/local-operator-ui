@@ -113,25 +113,42 @@ const usePreviewStyle = (resolved: ResolvedAppearance, themeName: string) => {
 		[themeName],
 	);
 	const overlay = useMemo(() => accentOverlay(resolved), [resolved]);
+	// Preset blocks do not depend on a moving thumb; compose them once per palette.
+	const chipCss = useMemo(
+		() =>
+			base
+				? previewCss(
+						base,
+						PRESET_ORDER.map(({ name, value }) => ({
+							id: PREVIEW_IDS.chip(name),
+							contrast: value,
+						})),
+						overlay,
+					)
+				: "",
+		[base, overlay],
+	);
 	const frame = useRef<number | null>(null);
 	useLayoutEffect(() => {
 		if (!base) return;
 		const write = () => {
 			frame.current = null;
-			const entries = PRESET_ORDER.map(({ name, value }) => ({
-				id: PREVIEW_IDS.chip(name),
-				contrast: value,
-			}));
-			if (currentDraft !== null)
-				entries.push({ id: PREVIEW_IDS.strip, contrast: currentDraft });
-			writePreviewStyle(previewCss(base, entries, overlay));
+			const strip =
+				currentDraft === null
+					? ""
+					: previewCss(
+							base,
+							[{ id: PREVIEW_IDS.strip, contrast: currentDraft }],
+							overlay,
+						);
+			writePreviewStyle(chipCss + strip);
 		};
 		if (frame.current !== null) cancelAnimationFrame(frame.current);
 		/* The first write (mount, theme or accent change) is synchronous so the
 		   chips never paint unscoped; drag updates ride the next frame. */
 		if (draft === null) write();
 		else frame.current = requestAnimationFrame(write);
-	}, [base, overlay, draft]);
+	}, [base, overlay, draft, chipCss]);
 	useEffect(
 		() => () => {
 			if (frame.current !== null) cancelAnimationFrame(frame.current);
@@ -256,24 +273,14 @@ export const AppearanceLayerControls: FC = () => {
 	return (
 		<div className="flex flex-col gap-6">
 			<section data-appearance-layer="contrast">
-				<LayerHeading
-					title={t("ui.settings.appearance.contrast.title")}
-					action={
-						committed !== 0 ? (
-							<Button
-								type="button"
-								variant="link"
-								size="sm"
-								onClick={() => commit(mode, 0)}
-							>
-								{t("ui.settings.appearance.contrast.reset")}
-							</Button>
-						) : null
-					}
-				/>
 				<ContrastControl
 					committed={committed}
 					effective={resolved.effectiveContrast}
+					backgroundAtCeiling={
+						mode === "light" &&
+						committed > 0 &&
+						resolved.palette.canvas.toUpperCase() === base.canvas.toUpperCase()
+					}
 					mode={mode}
 					pending={pending}
 					onDraft={publishDraft}
@@ -289,6 +296,7 @@ export const AppearanceLayerControls: FC = () => {
 								type="button"
 								variant="link"
 								size="sm"
+								className="min-h-6 min-w-6"
 								onClick={() => setAccent(mode, { kind: "theme" })}
 							>
 								{t("ui.settings.appearance.accent.reset")}
@@ -333,24 +341,30 @@ export const AccentOverrideNotice: FC = () => {
 	const setAccent = useUiPreferencesStore((s) => s.setAccent);
 	const mode = definitionOf(themeName)?.palette.mode ?? "dark";
 	const ref = accent[mode];
-	if (!ref || ref.kind !== "custom") return null;
+	const resolved = useResolvedAppearance();
+	if (!ref || ref.kind === "theme" || ref.kind === "theme-alt") return null;
 	return (
 		<p className="flex flex-wrap items-center gap-1.5 text-meta text-ink-muted">
 			<span
 				aria-hidden="true"
-				className="inline-block size-2.5 rounded-full border border-hairline"
-				style={{ backgroundColor: ref.hex }}
+				className="inline-block size-3 rounded-full border border-hairline"
+				style={{ backgroundColor: resolved.palette.accent }}
 			/>
 			<span>
-				{t("ui.settings.appearance.accent.override_notice", {
-					colour: names[ref.hex] ?? ref.hex,
-				})}
+				{ref.kind === "custom"
+					? t("ui.settings.appearance.accent.override_notice", {
+							colour: names[ref.hex] ?? ref.hex,
+						})
+					: t("ui.settings.appearance.accent.palette_override_notice", {
+							theme: themes[ref.id as keyof typeof themes]?.name ?? ref.id,
+						})}
 			</span>
 			<span aria-hidden="true">·</span>
 			<Button
 				type="button"
 				variant="link"
 				size="sm"
+				className="min-h-6 min-w-6"
 				onClick={() => setAccent(mode, { kind: "theme" })}
 			>
 				{t("ui.settings.appearance.accent.use_theme_accent")}

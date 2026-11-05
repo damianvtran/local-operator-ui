@@ -56,15 +56,19 @@ const Seed: FC<{
 
 const Frame: FC<{ layers: Partial<typeof LAYERS_IDENTITY> }> = ({ layers }) => (
 	<Seed layers={layers}>
-		<div className="mx-auto flex w-full max-w-4xl flex-col gap-8 p-6">
-			<SettingsSection
-				title="Appearance"
-				icon={Contrast}
-				description="Customize the look and feel of Local Operator"
-				dataTourTag="settings-appearance-section"
-			>
-				<AppearanceLayers gallery={<ThemeSelector />} />
-			</SettingsSection>
+		{/* The app shell owns scrolling; standalone stories need the same bounded
+		    viewport or its global overflow:hidden clips every lower control. */}
+		<div className="h-screen overflow-y-auto" data-appearance-story-scroll="">
+			<div className="mx-auto flex w-full max-w-4xl flex-col gap-8 p-6">
+				<SettingsSection
+					title="Appearance"
+					icon={Contrast}
+					description="Customize the look and feel of Local Operator"
+					dataTourTag="settings-appearance-section"
+				>
+					<AppearanceLayers gallery={<ThemeSelector />} />
+				</SettingsSection>
+			</div>
 		</div>
 	</Seed>
 );
@@ -286,4 +290,46 @@ export const PreviewStrip: Story = {
 			<AppearancePreviewStrip />
 		</div>
 	),
+};
+
+/** Menu focus scope teardown must finish before opening the next form. Uses the
+ * real store + provider supplied by ThemeFrame, not a mocked menu or callback. */
+const CUSTOM_BLUE_LABEL = /#2563EB/;
+const RENAME_ACTION = /Rename/;
+const EDIT_ACTION = /Edit colour/;
+export const CustomAccentManagement: Story = {
+	render: () => <Frame layers={{ customAccents: ["#2563EB"] }} />,
+	play: async () => {
+		const swatch = await screen.findByRole("radio", {
+			name: CUSTOM_BLUE_LABEL,
+		});
+		swatch.focus();
+		await userEvent.keyboard("{Shift>}{F10}{/Shift}");
+		await userEvent.click(
+			await screen.findByRole("menuitem", { name: RENAME_ACTION }),
+		);
+		const field = await screen.findByRole("textbox", { name: "Name" });
+		await userEvent.clear(field);
+		await userEvent.type(field, "Harbour");
+		await userEvent.click(screen.getByRole("button", { name: "Save" }));
+		await waitFor(() =>
+			expect(
+				useUiPreferencesStore.getState().customAccentNames["#2563EB"],
+			).toBe("Harbour"),
+		);
+		await waitFor(() => expect(swatch).toHaveFocus());
+		await userEvent.keyboard("{ContextMenu}");
+		await userEvent.click(
+			await screen.findByRole("menuitem", { name: EDIT_ACTION }),
+		);
+		await screen.findByRole("textbox", { name: "Hex" });
+		await userEvent.keyboard("{Escape}");
+		await waitFor(() => expect(swatch).toHaveFocus());
+		const add = screen.getByRole("button", { name: "Add a custom accent" });
+		await userEvent.click(add);
+		await screen.findByRole("textbox", { name: "Hex" });
+		await userEvent.keyboard("{Escape}");
+		await waitFor(() => expect(add).toHaveFocus());
+		document.documentElement.dataset.managementRegression = "pass";
+	},
 };

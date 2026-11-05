@@ -21,13 +21,13 @@ import { AuthProviders } from "@renderer/shared/providers/auth";
 import { FeatureFlagProvider } from "@renderer/shared/providers/feature-flags";
 // @ts-ignore Path aliases don't work for Storybook root
 import { useUiPreferencesStore } from "@renderer/shared/store/ui-preferences-store";
+import { ThemeProvider as AppearanceThemeProvider } from "@shared/themes/theme-provider";
 // @ts-ignore Path aliases don't work for Storybook root
 import "@renderer/styles/index.css";
 // @ts-ignore Path aliases don't work for Storybook root
 import { defaultQueryOptions } from "@renderer/shared/api/query-client";
 import {
 	DEFAULT_THEME,
-	applyThemeToDocument,
 	getTheme,
 	themes,
 	// @ts-ignore Path aliases don't work for Storybook root
@@ -175,6 +175,7 @@ const THEME_IDS = Object.keys(themes) as ThemeName[];
  * Moving only one of the three is what produced dark ink on light paper in
  * earlier evidence runs and read as a contrast defect in the product.
  */
+
 const ThemeFrame = ({
 	theme,
 	children,
@@ -190,16 +191,17 @@ const ThemeFrame = ({
 	 */
 	useLayoutEffect(() => {
 		useUiPreferencesStore.setState({ themeName: theme });
-		applyThemeToDocument(theme);
 	}, [theme]);
 
 	/* No teardown restoring the previous theme: every story mounts through this
 	   frame and sets its own, so a restore would only ever paint a palette
 	   nothing asked for between two stories. */
 	return (
-		<div className="min-h-screen bg-canvas font-sans text-body text-ink">
-			{children}
-		</div>
+		<AppearanceThemeProvider>
+			<div className="min-h-screen bg-canvas font-sans text-body text-ink">
+				{children}
+			</div>
+		</AppearanceThemeProvider>
 	);
 };
 

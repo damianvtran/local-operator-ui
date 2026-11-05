@@ -125,6 +125,10 @@ export const AccentRow: FC<AccentRowProps> = (props) => {
 		applied,
 	} = props;
 	const [showAll, setShowAll] = useState(false);
+	const opener = useRef<HTMLElement | null>(null);
+	const menuAction = useRef<{ kind: "edit" | "rename"; hex: string } | null>(
+		null,
+	);
 	const [picker, setPicker] = useState<
 		| { kind: "add" }
 		| { kind: "edit"; hex: string }
@@ -257,14 +261,14 @@ export const AccentRow: FC<AccentRowProps> = (props) => {
 				className={cn(
 					/* A 32px hit target around a 24px circle; selected is a 2px ink
 					   ring at 2px offset PLUS a check (state is never colour alone). */
-					"relative flex size-8 shrink-0 items-center justify-center rounded-full",
+					"group relative flex size-8 shrink-0 items-center justify-center rounded-full",
 				)}
 			>
 				<span
 					aria-hidden="true"
 					style={{ backgroundColor: entry.hex } as CSSProperties}
 					className={cn(
-						"flex size-6 items-center justify-center rounded-full border border-hairline",
+						"flex size-6 items-center justify-center rounded-full border border-hairline transition-colors group-hover:border-hairline-strong",
 						isSelected && "outline-2 outline-ink outline-offset-2",
 					)}
 				>
@@ -301,13 +305,56 @@ export const AccentRow: FC<AccentRowProps> = (props) => {
 		return (
 			<ContextMenu key={entry.key}>
 				<ContextMenuTrigger asChild>
-					<span className="inline-flex">{withTip}</span>
+					<span
+						className="inline-flex"
+						onContextMenuCapture={(event) => {
+							opener.current = event.currentTarget.querySelector("button");
+						}}
+						onKeyDown={(event) => {
+							if (
+								event.key !== "ContextMenu" &&
+								!(event.key === "F10" && event.shiftKey)
+							)
+								return;
+							event.preventDefault();
+							const rect = event.currentTarget.getBoundingClientRect();
+							// Radix's native contextmenu handler owns positioning and focus;
+							// keyboard invocation must enter that same path, not a second menu.
+							event.currentTarget.dispatchEvent(
+								new MouseEvent("contextmenu", {
+									bubbles: true,
+									clientX: rect.left,
+									clientY: rect.bottom,
+								}),
+							);
+						}}
+					>
+						{withTip}
+					</span>
 				</ContextMenuTrigger>
-				<ContextMenuContent>
-					<ContextMenuItem onSelect={() => setPicker({ kind: "edit", hex })}>
+				<ContextMenuContent
+					onCloseAutoFocus={(event) => {
+						const action = menuAction.current;
+						if (!action) return;
+						event.preventDefault();
+						menuAction.current = null;
+						// Wait until the menu focus scope has unmounted. Opening in onSelect
+						// lets its teardown steal focus and dismiss the new popover.
+						requestAnimationFrame(() => setPicker(action));
+					}}
+				>
+					<ContextMenuItem
+						onSelect={() => {
+							menuAction.current = { kind: "edit", hex };
+						}}
+					>
 						{t("ui.settings.appearance.accent.edit_colour")}
 					</ContextMenuItem>
-					<ContextMenuItem onSelect={() => setPicker({ kind: "rename", hex })}>
+					<ContextMenuItem
+						onSelect={() => {
+							menuAction.current = { kind: "rename", hex };
+						}}
+					>
 						{t("ui.settings.appearance.accent.rename")}
 					</ContextMenuItem>
 					<ContextMenuItem destructive onSelect={() => props.onRemove(hex)}>
@@ -355,7 +402,10 @@ export const AccentRow: FC<AccentRowProps> = (props) => {
 										type="button"
 										aria-label={t("ui.settings.appearance.accent.add")}
 										data-accent-add=""
-										onClick={() => setPicker({ kind: "add" })}
+										onClick={(event) => {
+											opener.current = event.currentTarget;
+											setPicker({ kind: "add" });
+										}}
 										className="flex size-8 shrink-0 items-center justify-center rounded-full text-ink-muted hover:text-ink"
 									>
 										<span className="flex size-6 items-center justify-center rounded-full border border-control border-dashed">
@@ -367,6 +417,10 @@ export const AccentRow: FC<AccentRowProps> = (props) => {
 						</PopoverAnchor>
 					</div>
 					<PopoverContent
+						onCloseAutoFocus={(event) => {
+							event.preventDefault();
+							opener.current?.focus();
+						}}
 						align="start"
 						className="w-66"
 						aria-label={

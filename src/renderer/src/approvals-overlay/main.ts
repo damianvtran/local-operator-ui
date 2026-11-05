@@ -1,3 +1,10 @@
+import { setLocale } from "../../../i18n/locale";
+import { t } from "../../../i18n/messages";
+import type {
+	ApprovalsCardDecision,
+	ApprovalsCardModel,
+	ApprovalsCardRequest,
+} from "../../../shared/browser-approvals-overlay";
 /**
  * S6b's approvals card document script.
  *
@@ -19,13 +26,7 @@
  * is a SECOND document: it must follow the app's resolved locale, not re-read
  * the device (UX U2 — `fr-FR`/`ur-PK` fell back to English/LTR here).
  */
-import { setLocale } from "../../../i18n/locale";
-import { t } from "../../../i18n/messages";
-import type {
-	ApprovalsCardDecision,
-	ApprovalsCardModel,
-	ApprovalsCardRequest,
-} from "../../../shared/browser-approvals-overlay";
+import { sanitizePaletteVars } from "../../../shared/theme-engine/roles.mjs";
 
 /** The two verbs the preload exposes. Nothing else exists in this world. */
 interface ApprovalsCardApi {
@@ -99,6 +100,7 @@ if (params.get("opaque") === "1") {
  * naming a built-in (or a different composition) must not inherit stale values.
  */
 const appliedVars = new Set<string>();
+
 const kebabRole = (role: string): string =>
 	role.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`);
 function applyCardPalette(next: ApprovalsCardModel): void {
@@ -107,9 +109,10 @@ function applyCardPalette(next: ApprovalsCardModel): void {
 	appliedVars.clear();
 	const modeName =
 		next.theme === "light" ? "localOperatorLight" : "localOperatorDark";
-	if (next.paletteVars) {
+	const paletteVars = sanitizePaletteVars(next.paletteVars);
+	if (paletteVars) {
 		root.dataset.theme = modeName;
-		for (const [role, value] of Object.entries(next.paletteVars)) {
+		for (const [role, value] of Object.entries(paletteVars)) {
 			const property = `--lo-${kebabRole(role)}`;
 			root.style.setProperty(property, value);
 			appliedVars.add(property);

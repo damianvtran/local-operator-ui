@@ -157,5 +157,8 @@
 	"ui.settings.appearance.hue.neutral": "нейтральный",
 	"ui.settings.appearance.layers.palette_meta_contrast": "Контраст: {contrast}",
 	"ui.settings.appearance.layers.palette_meta_accent": "Ваш акцент",
-	"ui.settings.appearance.layers.palette_meta_both": "Контраст: {contrast}, ваш акцент"
+	"ui.settings.appearance.layers.palette_meta_both": "Контраст: {contrast}, ваш акцент",
+	"ui.settings.appearance.contrast.background_ceiling": "Фон этой темы уже максимально светлый, поэтому при дальнейшем повышении контраста темнеет текст.",
+	"ui.settings.appearance.contrast.capped_hint": "Эта тема достигла предела контраста, при котором текст остаётся читаемым, поэтому показана ближайшая настройка, сохраняющая читаемость.",
+	"ui.settings.appearance.accent.palette_override_notice": "Акцент: {theme}"
 }

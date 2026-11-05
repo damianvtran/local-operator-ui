@@ -209,16 +209,28 @@ const worstRatio = (p, hex, grounds) =>
  * Move `role` along L* only (hue and chroma kept), AWAY from the grounds, until it
  * clears `floor` on every listed ground. Leaves an already-passing value alone, so
  * a palette whose text still clears at the preset keeps its authored text.
+ * `accepts` lets the accent layer also preserve its distinction from body ink;
+ * the default keeps the existing contrast ladder and all its floors unchanged.
  */
-export const solveLightness = (p, role, grounds, floor) => {
+export const solveLightness = (
+	p,
+	role,
+	grounds,
+	floor,
+	accepts = () => true,
+) => {
 	const value = p[role];
-	if (!isFlatHex(value) || worstRatio(p, value, grounds) >= floor + HEADROOM)
+	if (
+		!isFlatHex(value) ||
+		(worstRatio(p, value, grounds) >= floor + HEADROOM && accepts(value))
+	)
 		return value;
 	const [l, a, b] = toLab(value);
 	const dir = p.mode === "dark" ? 1 : -1;
 	for (let s = 0.25; s <= 100; s += 0.25) {
 		const hex = labAtLightness(l + dir * s, a, b);
-		if (worstRatio(p, hex, grounds) >= floor + HEADROOM) return hex;
+		if (worstRatio(p, hex, grounds) >= floor + HEADROOM && accepts(hex))
+			return hex;
 	}
 	return value;
 };

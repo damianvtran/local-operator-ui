@@ -157,5 +157,8 @@
 	"ui.settings.appearance.hue.neutral": "trung tính",
 	"ui.settings.appearance.layers.palette_meta_contrast": "Tương phản: {contrast}",
 	"ui.settings.appearance.layers.palette_meta_accent": "Màu nhấn của bạn",
-	"ui.settings.appearance.layers.palette_meta_both": "Tương phản: {contrast}, màu nhấn của bạn"
+	"ui.settings.appearance.layers.palette_meta_both": "Tương phản: {contrast}, màu nhấn của bạn",
+	"ui.settings.appearance.contrast.background_ceiling": "Nền của giao diện này đã sáng hết mức, nên tăng độ tương phản sẽ làm chữ tối hơn.",
+	"ui.settings.appearance.contrast.capped_hint": "Giao diện này đã đạt giới hạn tương phản mà chữ vẫn dễ đọc, nên thiết lập gần nhất vẫn đảm bảo dễ đọc được hiển thị.",
+	"ui.settings.appearance.accent.palette_override_notice": "Màu nhấn: {theme}"
 }

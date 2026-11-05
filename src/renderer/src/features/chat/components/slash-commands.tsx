@@ -58,6 +58,8 @@ import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { themes } from "@shared/themes";
+import { appearanceLayerSummary } from "@shared/themes/appearance-summary";
+import { useResolvedAppearance } from "@shared/themes/use-resolved-appearance";
 import { useQuery } from "@tanstack/react-query";
 import type { FC, KeyboardEvent } from "react";
 import {
@@ -499,6 +501,12 @@ function useArgumentRows(
 	enabled: boolean,
 ): SlashArgumentListState {
 	const themeName = useUiPreferencesStore((state) => state.themeName);
+	const appearance = useResolvedAppearance();
+	const selectedAccent = useUiPreferencesStore((state) => state.accent);
+	const layerSummary = appearanceLayerSummary(
+		appearance,
+		selectedAccent[appearance.palette.mode],
+	);
 	const { client, provided } = useOptionalQueryClient();
 	// Hooks cannot be called conditionally, so the entity query always runs and
 	// is merely DISABLED for a renderer-local or sessionless source — the entity
@@ -667,7 +675,9 @@ function useArgumentRows(
 		}
 		if (source === "theme") {
 			return {
-				rows: argumentRows("theme", localThemes, current),
+				rows: argumentRows("theme", localThemes, current).map((row) =>
+					row.current && layerSummary ? { ...row, detail: layerSummary } : row,
+				),
 				loading: false,
 				error: null,
 				needsSession: false,
@@ -880,6 +890,7 @@ function useArgumentRows(
 	}, [
 		source,
 		localThemes,
+		layerSummary,
 		entities.data,
 		entities.isLoading,
 		entities.isError,

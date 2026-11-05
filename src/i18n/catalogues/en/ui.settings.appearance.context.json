@@ -995,5 +995,23 @@
 		"placeholders": {
 			"contrast": "A contrast preset name (Soft, Gentle, Strong, High), already translated, or a signed value such as +25."
 		}
+	},
+	"ui.settings.appearance.contrast.background_ceiling": {
+		"role": "Appearance layer status hint",
+		"tone": "Plain, explanatory.",
+		"length": "Wrapping status line; retain all facts.",
+		"note": "Shown only for light themes at positive contrast when the composed canvas equals the authored canvas: the brightness/elevation ceiling prevents a background change, but ink darkens. Do not promise a brighter background."
+	},
+	"ui.settings.appearance.contrast.capped_hint": {
+		"role": "Appearance layer status hint",
+		"tone": "Plain, explanatory.",
+		"length": "Wrapping status line; retain all facts.",
+		"note": "Whole sentence used when contrast was capped by readability floors. No interpolated capitalized slider label or numeric value. Closest readable setting is what the engine actually reached."
+	},
+	"ui.settings.appearance.accent.palette_override_notice": {
+		"role": "Theme-header accent override reminder",
+		"tone": "Plain, explanatory.",
+		"length": "Wrapping status line; retain all facts.",
+		"note": "Theme-header reminder that accent comes from another built-in palette. {theme} is that borrowed palette’s display name, never the current background theme. Not a user-created accent."
 	}
 }

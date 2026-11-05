@@ -6,6 +6,8 @@
  */
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { deltaE } from "../src/shared/theme-engine/color.mjs";
+import { composeTheme } from "../src/shared/theme-engine/compose.mjs";
 import { contrastCandidate } from "../src/shared/theme-engine/contrast.mjs";
 import {
 	ACCENT_ROLES,
@@ -183,4 +185,23 @@ test("PALETTE_ROLES is exactly the roles every shipped palette carries", () => {
 			`${id}: a shipped palette passes its own sanitiser`,
 		);
 	}
+});
+
+// D3: this used to solve Tokyo Night to #D6DFFE against #D5DEFC body ink
+// (reviewer's measured ΔE00 0.4). Readable links still need to look like links.
+test("a borrowed accent indistinguishable from body ink is refused without weakening text floors", () => {
+	const result = composeTheme(byId.catppuccinMocha, {
+		id: "catppuccinMocha",
+		contrast: -100,
+		accent: { kind: "palette", id: "tokyoNight" },
+		paletteAccent: (id) => byId[id]?.accent,
+	});
+	assert.equal(result.accentApplied, false);
+	const distinct = composeTheme(byId.catppuccinMocha, {
+		id: "catppuccinMocha",
+		contrast: -100,
+		accent: { kind: "custom", hex: "#F472B6" },
+	});
+	assert.equal(distinct.accentApplied, true);
+	assert.ok(deltaE(distinct.palette.accent, distinct.palette.ink) >= 3);
 });

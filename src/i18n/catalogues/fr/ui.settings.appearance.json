@@ -157,5 +157,8 @@
 	"ui.settings.appearance.hue.neutral": "neutre",
 	"ui.settings.appearance.layers.palette_meta_contrast": "Contraste : {contrast}",
 	"ui.settings.appearance.layers.palette_meta_accent": "Votre accent",
-	"ui.settings.appearance.layers.palette_meta_both": "Contraste : {contrast}, votre accent"
+	"ui.settings.appearance.layers.palette_meta_both": "Contraste : {contrast}, votre accent",
+	"ui.settings.appearance.contrast.background_ceiling": "Le fond de ce thème est déjà au maximum de luminosité. Augmenter le contraste assombrit donc le texte.",
+	"ui.settings.appearance.contrast.capped_hint": "Ce thème a atteint sa limite de contraste sans nuire à la lisibilité du texte. Le réglage lisible le plus proche est donc affiché.",
+	"ui.settings.appearance.accent.palette_override_notice": "Accent : {theme}"
 }

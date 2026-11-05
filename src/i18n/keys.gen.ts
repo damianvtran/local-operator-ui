@@ -9068,6 +9068,7 @@ export type MessageParams = {
 	"ui.settings.appearance.accent.limit": undefined;
 	"ui.settings.appearance.accent.not_applied": undefined;
 	"ui.settings.appearance.accent.override_notice": { colour: string };
+	"ui.settings.appearance.accent.palette_override_notice": { theme: string };
 	"ui.settings.appearance.accent.remove": undefined;
 	"ui.settings.appearance.accent.rename": undefined;
 	"ui.settings.appearance.accent.reset": undefined;
@@ -9087,7 +9088,9 @@ export type MessageParams = {
 	"ui.settings.appearance.contrast.applies_dark": undefined;
 	"ui.settings.appearance.contrast.applies_light": undefined;
 	"ui.settings.appearance.contrast.applying": undefined;
+	"ui.settings.appearance.contrast.background_ceiling": undefined;
 	"ui.settings.appearance.contrast.capped": { value: string };
+	"ui.settings.appearance.contrast.capped_hint": undefined;
 	"ui.settings.appearance.contrast.deeper": undefined;
 	"ui.settings.appearance.contrast.gentle": undefined;
 	"ui.settings.appearance.contrast.gentle_description": undefined;
