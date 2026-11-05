@@ -189,9 +189,10 @@ const terminalThemeRoles = (
 /**
  * Glass floors protect body inks, not the semantic hues used by ANSI. For example,
  * Light/Gentle danger passed 4.577:1 on sunken but fell to 4.22:1 on the covered
- * canvas. Repair only chromatic slots that already passed AA on the flat ground;
- * black/dim/white and deliberate pre-existing low-contrast slots are not a new
- * palette for this fix. xterm shares indexed foreground/background colours, so a
+ * canvas. Chromatic slots retain their flat contrast, capped at AA: a pre-existing
+ * sub-AA hue is not promoted to AA, but glass must not make it less legible.
+ * Black/dim/white remain deliberate indexed-palette exceptions, not a new palette
+ * for this fix. xterm shares indexed foreground/background colours, so a
  * repaired semantic slot also changes that indexed background; arbitrary SGR
  * truecolour and background/foreground combinations are not rewritten.
  *
@@ -238,13 +239,10 @@ const adaptTerminalGlassInks = (
 		];
 	});
 	const groundRoles = grounds.map((_, index) => `ground${index}`);
-	const repair = (value: string, floor: number): string => {
-		if (
-			!FLAT_TERMINAL_COLOR.test(value ?? "") ||
-			ratio(value, theme.background) < floor ||
-			grounds.every((ground) => ratio(value, ground) >= floor)
-		)
-			return value;
+	const repair = (value: string, requestedFloor: number): string => {
+		if (!FLAT_TERMINAL_COLOR.test(value ?? "")) return value;
+		const floor = Math.min(requestedFloor, ratio(value, theme.background));
+		if (grounds.every((ground) => ratio(value, ground) >= floor)) return value;
 		return solveLightness(
 			{
 				mode,

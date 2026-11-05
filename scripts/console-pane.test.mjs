@@ -1258,6 +1258,23 @@ test("terminal semantic ANSI keeps AA when its legible flat colour meets glass",
 		assert.equal(glass.brightRed, glass.red);
 		assert.equal(glass.selectionBackground, flat.selectionBackground);
 		assert.equal(glass.selectionForeground, flat.selectionForeground);
+		// A deliberately sub-AA semantic hue is not an exemption from regression.
+		// Preserve its own old floor without promoting it to a newly chosen AA ink.
+		vars["--color-danger"] = "#c76660";
+		const dimFlat = readTerminalTheme(root);
+		const dimGlass = readTerminalTheme(root, "live", { closest: () => ({}) });
+		const baseline = ratio(dimFlat.red, dimFlat.background);
+		assert.ok(baseline < 4.5 && ratio(dimFlat.red, ground) < baseline);
+		assert.ok(ratio(dimGlass.red, ground) >= baseline);
+		t.diagnostic(
+			JSON.stringify({
+				subAAFlat: baseline,
+				oldGlass: ratio(dimFlat.red, ground),
+				repairedGlass: ratio(dimGlass.red, ground),
+				old: dimFlat.red,
+				repaired: dimGlass.red,
+			}),
+		);
 	} finally {
 		globalThis.getComputedStyle = previous;
 	}
@@ -1333,17 +1350,11 @@ test("terminal-only glass adaptation covers two schemes, true presets, intensity
 							);
 							for (const slot of chromatic) {
 								for (const ground of [raw, nested]) {
-									if (ratio(flat[slot], flat.background) >= 4.5)
-										assert.ok(
-											ratio(glass[slot], ground) >= 4.5,
-											`${definition.id} ${contrast} ${intensity} ${mode} ${slot}`,
-										);
-									else
-										assert.equal(
-											glass[slot],
-											flat[slot],
-											"pre-existing low-contrast slot is not silently recoloured",
-										);
+									assert.ok(
+										ratio(glass[slot], ground) >=
+											Math.min(4.5, ratio(flat[slot], flat.background)),
+										`${definition.id} ${contrast} ${intensity} ${mode} ${slot} retains its flat floor capped at AA`,
+									);
 								}
 							}
 							if (ratio(flat.cursor, flat.background) >= 3)
