@@ -277,6 +277,14 @@ const IDENTICAL_OK = new Map([
 		"French scope adjective: « global » has the same spelling.",
 	],
 	[
+		"es:ui.mesh.mesh_approvals.profile_scope_global",
+		"Spanish scope adjective: « global » is the normal spelling for account-wide scope; this audited label is a cognate, not an English stub.",
+	],
+	[
+		"fr:ui.mesh.mesh_approvals.profile_scope_global",
+		"French scope adjective: « global » is the normal masculine label for account-wide scope; this audited label is a cognate, not an English stub.",
+	],
+	[
 		"ui.settings.model.system_prompt.instructions",
 		"French cognate: « instructions » has the same spelling.",
 	],
