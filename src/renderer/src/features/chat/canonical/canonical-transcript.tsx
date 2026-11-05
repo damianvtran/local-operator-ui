@@ -204,6 +204,7 @@ import { forkEntryId } from "./message-actions";
 import { AnswerActionRow } from "./message-actions-row";
 import { OLDER_HISTORY_HINT_ID, OlderHistorySlot } from "./older-history-slot";
 import type { OpenFrameFacts } from "./open-frame";
+import { statusAnswerIsBound } from "./profile-revert-status";
 import {
 	type ProviderErrorAction,
 	providerErrorGuidance,
@@ -2511,11 +2512,19 @@ const ToolRow = memo(function ToolRow({
 			descriptor !== null &&
 			descriptor.profile_kind === profileCall.view.kind &&
 			descriptor.profile_name === profileCall.view.name;
+		/*
+		 * THE ANSWER MUST BE ABOUT THIS ACTION (QA round 4). `status.state` alone let a
+		 * hook that had switched identity hand row B an `available` read for row A, and
+		 * the control enabled on evidence gathered for a different record. Binding the
+		 * answer to the row's own identity is the second half of that fix - the hook is
+		 * the first.
+		 */
 		const pressable = Boolean(
 			descriptor &&
 				namesThisRecord &&
 				scope?.sessionId &&
 				approvalEpoch &&
+				statusAnswerIsBound(revertStatus, revertIdentity) &&
 				revertStatus?.state === "available",
 		);
 		const revert = descriptor

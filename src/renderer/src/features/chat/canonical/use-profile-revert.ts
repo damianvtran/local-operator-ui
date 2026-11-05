@@ -29,11 +29,13 @@ import { profileRevertLatch } from "./profile-revert-latch";
 import {
 	type ProfileRevertIdentity,
 	type ProfileRevertStatusAnswer,
+	boundStatusAnswer,
 	profileRevertOutcome,
 	profileRevertStatusCache,
 	readProfileRevertStatus,
 	readProfileRevertStatusFromTransport,
 	runProfileRevertPress,
+	statusIdentityKey,
 } from "./profile-revert-status";
 
 export type ProfileRevertOutcome = {
@@ -125,15 +127,32 @@ export function useProfileRevertStatus(
 	sessionId: string | null,
 	identity: ProfileRevertIdentity | null,
 ): ProfileRevertStatusAnswer | null {
-	const [answer, setAnswer] = useState<ProfileRevertStatusAnswer | null>(null);
-	const actionId = identity?.action_id ?? null;
+	/*
+	 * THE ANSWER REMEMBERS WHICH IDENTITY IT WAS READ FOR (QA round 4).
+	 *
+	 * Holding the answer alone was the leak: a mounted hook that switched to another
+	 * record kept returning A's `available` until B's own read resolved, so row B drew
+	 * an enabled control on A's proof. The entry is kept - a re-render back to the same
+	 * identity should not refetch - but it is RETURNED only for the identity that
+	 * produced it, and only when the answer names that action.
+	 */
+	const [entry, setEntry] = useState<{
+		key: string;
+		answer: ProfileRevertStatusAnswer;
+	} | null>(null);
+	const identityKey =
+		identity === null ? null : statusIdentityKey(sessionId, identity);
+	const answer =
+		identity !== null && entry !== null && entry.key === identityKey
+			? boundStatusAnswer(entry.answer, identity)
+			: null;
 	useEffect(() => {
-		if (!identity || !actionId) return;
+		if (!identity || identityKey === null) return;
 		// Keyed on the whole bound identity, so another row or session cannot
 		// inherit this answer (review R2.2).
 		const cached = profileRevertStatusCache.read(sessionId, identity);
 		if (cached) {
-			setAnswer(cached);
+			setEntry({ key: identityKey, answer: cached });
 			return;
 		}
 		let live = true;
@@ -145,11 +164,11 @@ export function useProfileRevertStatus(
 			if (!live) return;
 			// A LIVE read is what makes a completion real for this identity.
 			profileRevertStatusCache.remember(sessionId, identity, next, "read");
-			setAnswer(next);
+			setEntry({ key: identityKey, answer: next });
 		});
 		return () => {
 			live = false;
 		};
-	}, [identity, actionId, sessionId]);
+	}, [identity, identityKey, sessionId]);
 	return answer;
 }

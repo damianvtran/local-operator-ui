@@ -202,7 +202,7 @@ export function profileRevertAuthority(
  * (review R2.2). An action is answered on the originating conversation's gate, so
  * the session belongs in the key beside the receipt and the tool call.
  */
-function identityKey(
+export function statusIdentityKey(
 	sessionId: string | null,
 	identity: ProfileRevertIdentity,
 ): string {
@@ -243,7 +243,9 @@ export const profileRevertStatusCache = {
 	): ProfileRevertStatusAnswer | null {
 		const parsed = profileRevertIdentitySchema.safeParse(identity);
 		if (!parsed.success) return null;
-		return answers.get(identityKey(sessionId, parsed.data))?.answer ?? null;
+		return (
+			answers.get(statusIdentityKey(sessionId, parsed.data))?.answer ?? null
+		);
 	},
 	/**
 	 * The cached COMPLETION, and only when a READ established it for this identity.
@@ -258,7 +260,7 @@ export const profileRevertStatusCache = {
 	): ProfileRevertStatusAnswer | null {
 		const parsed = profileRevertIdentitySchema.safeParse(identity);
 		if (!parsed.success) return null;
-		const entry = answers.get(identityKey(sessionId, parsed.data));
+		const entry = answers.get(statusIdentityKey(sessionId, parsed.data));
 		if (!entry || entry.source !== "read") return null;
 		return entry.answer.state === "succeeded" ? entry.answer : null;
 	},
@@ -273,7 +275,7 @@ export const profileRevertStatusCache = {
 		if (!parsedIdentity.success || !parsedAnswer.success) return;
 		// An answer for another action is not an answer about this one.
 		if (parsedAnswer.data.action_id !== parsedIdentity.data.action_id) return;
-		answers.set(identityKey(sessionId, parsedIdentity.data), {
+		answers.set(statusIdentityKey(sessionId, parsedIdentity.data), {
 			answer: parsedAnswer.data,
 			source,
 		});
@@ -282,6 +284,32 @@ export const profileRevertStatusCache = {
 		answers.clear();
 	},
 };
+
+/**
+ * Whether a status answer is an answer ABOUT THIS IDENTITY.
+ *
+ * WHY THIS IS ITS OWN FUNCTION (QA round 4, reproduced through a mounted hook): the
+ * answer shape carries no session and no receipt, so the only thing that binds it to
+ * a row is the `action_id` it names. A hook that switched identity and returned the
+ * previous row's `available` looked exactly like a live permission, and the consumer -
+ * which tested `status.state` alone - enabled row B on row A's proof. An answer for
+ * another action is no answer, here and at every caller.
+ */
+export function statusAnswerIsBound(
+	answer: ProfileRevertStatusAnswer | null,
+	identity: ProfileRevertIdentity | null,
+): boolean {
+	if (!answer || !identity) return false;
+	return answer.action_id === identity.action_id;
+}
+
+/** The answer, or `null` when it belongs to some other identity. */
+export function boundStatusAnswer(
+	answer: ProfileRevertStatusAnswer | null,
+	identity: ProfileRevertIdentity | null,
+): ProfileRevertStatusAnswer | null {
+	return statusAnswerIsBound(answer, identity) ? answer : null;
+}
 
 /**
  * The press's answer as the view's outcome shape.
@@ -341,6 +369,15 @@ export async function runProfileRevertPress(input: {
 	 * earlier read, not proof the action finished: only `succeeded` ends the press
 	 * here, and everything else is re-read below.
 	 */
+	/*
+	 * AN ANSWER ABOUT ANOTHER ACTION IS NO PERMISSION. A borrowed `available` would
+	 * dispatch this descriptor's press on evidence gathered for a different one
+	 * (QA round 4), so the binding is checked before the cache and before the gate.
+	 */
+	if (!statusAnswerIsBound(input.status, input.identity))
+		return refuse("unavailable");
+	if (input.identity && input.identity.action_id !== input.descriptor.action_id)
+		return refuse("unavailable");
 	const cached = profileRevertStatusCache.readCompletion(
 		input.sessionId,
 		input.identity,
