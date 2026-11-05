@@ -30,6 +30,12 @@ import type {
 	ReadFileBytesResponse,
 } from "../shared/desktop-contract";
 import type {
+	LinkPreviewImageRequest,
+	LinkPreviewImageResult,
+	LinkPreviewResolveRequest,
+	LinkPreviewResolveResult,
+} from "../shared/link-preview";
+import type {
 	MiniViewDialogPayload,
 	MiniViewDismissReason,
 	MiniViewRegistrationState,
@@ -69,6 +75,21 @@ declare global {
 		 */
 		__loDevDriver?: DevDriverBridge;
 		api: {
+			/**
+			 * Link previews, the same two calls the preload exposes.
+			 *
+			 * Every answer is a STATE: `resolve` refuses rather than throwing, and `image`
+			 * serves bytes this app already fetched, so no third-party image URL is ever
+			 * handed to an `<img>` in the renderer.
+			 */
+			linkPreview: {
+				resolve(
+					request: LinkPreviewResolveRequest,
+				): Promise<LinkPreviewResolveResult>;
+				image(
+					request: LinkPreviewImageRequest,
+				): Promise<LinkPreviewImageResult>;
+			};
 			/**
 			 * Whether THIS launch may report to PostHog.
 			 *

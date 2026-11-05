@@ -128,6 +128,7 @@ import {
 import { type MiniViewRegistrar, createRegistrar } from "./hotkey-registration";
 import { isProcessAlive, startLauncherWatch } from "./launcher-watch";
 import type { LauncherWatch } from "./launcher-watch";
+import { registerLinkPreviewIpc } from "./link-preview/ipc";
 import {
 	type QuickSendWatcher,
 	readQuickSendValue,
@@ -3373,6 +3374,25 @@ app
 			},
 			(m) => logger.warn(m, LogFileType.BACKEND),
 		);
+
+		/*
+		 * Link previews: a third-party fetch owned by MAIN, on its own channels
+		 * (`link-preview:resolve` / `link-preview:image`).
+		 *
+		 * Deliberately NOT part of `registerDesktopIPC`: that plane talks to the managed
+		 * backend with the desktop bearer, and this one talks to arbitrary public
+		 * hosts with no credentials at all. Keeping them separate is what makes the
+		 * security rules obvious - SSRF guards, byte/time caps and magic-byte sniffing
+		 * live in `src/main/link-preview/`, and no backend route can reach them.
+		 *
+		 * Registered BEFORE the first window is created, so a transcript that renders a
+		 * link cannot invoke a channel whose handler does not exist yet.
+		 */
+		registerLinkPreviewIpc({
+			window: () => mainWindow,
+			expectedUrl: rendererUrl,
+			userDataDir: app.getPath("userData"),
+		});
 
 		registerDesktopIPC(
 			() => mainWindow,

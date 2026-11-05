@@ -45,6 +45,12 @@ import {
 } from "../shared/desktop-contract";
 import type { DesktopFeedFrame } from "../shared/desktop-session-contract";
 import { DESKTOP_STREAM_DETAIL } from "../shared/desktop-stream-notice";
+import type {
+	LinkPreviewImageRequest,
+	LinkPreviewImageResult,
+	LinkPreviewResolveRequest,
+	LinkPreviewResolveResult,
+} from "../shared/link-preview";
 import {
 	MINI_VIEW_DIALOG,
 	MINI_VIEW_DISMISS,
@@ -104,6 +110,27 @@ import { installDevDriverBridge } from "./dev-driver";
 
 // Custom APIs for renderer
 const api = {
+	/**
+	 * Link previews (`src/main/link-preview/`): two calls, both of which always
+	 * resolve.
+	 *
+	 * `resolve` answers a card, a stated refusal or a retryable error - never a
+	 * rejection - and refuses an `index` at or past the per-message cap before any
+	 * network call. `image` returns the bytes of an already-fetched icon or picture
+	 * from the main process's own cache, so an `<img>` in the renderer points at a
+	 * blob built from these bytes and NEVER at a third-party origin: the reader's
+	 * IP, referrer and cookies never reach the page being previewed.
+	 */
+	linkPreview: {
+		resolve: (
+			request: LinkPreviewResolveRequest,
+		): Promise<LinkPreviewResolveResult> =>
+			ipcRenderer.invoke("link-preview:resolve", request),
+		image: (
+			request: LinkPreviewImageRequest,
+		): Promise<LinkPreviewImageResult> =>
+			ipcRenderer.invoke("link-preview:image", request),
+	},
 	desktop: {
 		request: (request: DesktopRequest) =>
 			ipcRenderer.invoke("desktop-request", request),
