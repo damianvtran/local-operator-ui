@@ -558,6 +558,14 @@ export const UpdateContainer = ({
 		<div
 			/* The drag-strip opt-out; see the note above. */
 			data-titlebar-no-drag=""
+			/*
+			 * THE FLOATING-LAYER MARKER. This card is `fixed`, not portalled, so the
+			 * derived scan in `scripts/glass-overlay.test.mjs` cannot see it - it is a
+			 * NAMED entry there, kept with this attribute. It belongs to the same class
+			 * as a menu or a dialog: pinned over the app rather than sitting in it, and
+			 * the operator reported it as an opaque plate over glass.
+			 */
+			data-glass-overlay=""
 			{...(onClose ? { "data-release-detail": "" } : {})}
 			ref={cardRef}
 			/*

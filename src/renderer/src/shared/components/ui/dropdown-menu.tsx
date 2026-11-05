@@ -108,6 +108,7 @@ export const DropdownMenuSubContent = forwardRef<
 			 * region is a row that cannot be clicked.
 			 */
 			data-titlebar-no-drag=""
+			data-glass-overlay=""
 			className={cn(panelClasses, className)}
 			{...props}
 		/>
@@ -142,6 +143,7 @@ export const DropdownMenuContent = forwardRef<
 			<DropdownMenuPrimitive.Content
 				ref={composedRef}
 				data-titlebar-no-drag=""
+				data-glass-overlay=""
 				sideOffset={sideOffset}
 				className={cn(panelClasses, className)}
 				{...props}

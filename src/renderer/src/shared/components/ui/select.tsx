@@ -145,6 +145,7 @@ export const SelectContent = forwardRef<
 				 * can flip its list over the chrome strip, and every row in it is a control.
 				 */
 				data-titlebar-no-drag=""
+				data-glass-overlay=""
 				position={position}
 				className={cn(
 					"relative z-50 max-h-96 min-w-32 overflow-hidden rounded-md",

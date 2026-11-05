@@ -23,6 +23,22 @@ import { FeatureFlagProvider } from "@renderer/shared/providers/feature-flags";
 import { useUiPreferencesStore } from "@renderer/shared/store/ui-preferences-store";
 import { ThemeProvider as AppearanceThemeProvider } from "@shared/themes/theme-provider";
 import { BACKDROP_GRAY } from "../src/shared/glass-derivation.mjs";
+/*
+ * RELATIVE, NOT `@shared`. The alias in `.storybook/main.ts` maps `@shared` to
+ * `src/renderer/src/shared`, and this module lives at REPO-ROOT `src/shared/` -
+ * so an aliased specifier resolves to nothing, Vite fails the import, the iframe
+ * never mounts and every story in the repository becomes unreachable. The
+ * neighbouring derivation import is relative for the same reason, and so is
+ * `use-window-glass.ts`'s own `../../../../shared/window-glass`.
+ *
+ * The `@ts-ignore` comments this file carries on its ALIASED imports are why a
+ * broken specifier here is invisible to every local gate: `.storybook/` is in no
+ * tsconfig `include` at all (`tsconfig.app.json` starts at `src/renderer/**`), so
+ * `pnpm check-types` never sees this file, and the ignores would silence the
+ * module-resolution error even if it did. A blank Storybook is the only symptom.
+ */
+import { GLASS_COVERAGES } from "../src/shared/window-glass";
+import type { GlassCoverage } from "../src/shared/window-glass";
 // @ts-ignore Path aliases don't work for Storybook root
 import "@renderer/styles/index.css";
 // @ts-ignore Path aliases don't work for Storybook root
@@ -244,12 +260,22 @@ const ThemeFrame = ({
 const GlassFrame = ({
 	glass,
 	glassIntensity,
+	glassCoverage,
 	ownsGlass,
 	theme,
 	children,
 }: {
 	glass: boolean;
 	glassIntensity: number;
+	/**
+	 * WHICH COLUMNS THE MATERIAL COVERS (`sidebars` or `full`), so an evidence run
+	 * can photograph the Sidebars-only path - QA round 1's row 15, which had no seam
+	 * to reach it at all: this frame hard-coded `full`. The SCHEME is deliberately
+	 * not an argument: it follows `theme`, because a scheme that disagreed with the
+	 * palette would measure the solver's answer against a palette it was not derived
+	 * for, and pinning `theme:` in the same URL sets both.
+	 */
+	glassCoverage: GlassCoverage;
 	/** The story's own meta decorator paints the document (Library's harness). */
 	ownsGlass: boolean;
 	theme: ThemeName;
@@ -267,14 +293,14 @@ const GlassFrame = ({
 			glass
 				? {
 						mechanism: "vibrancy",
-						coverage: "full",
+						coverage: glassCoverage,
 						intensity: Math.min(100, Math.max(0, glassIntensity)),
 						material: "window",
 						scheme,
 					}
 				: null,
 		);
-	}, [glass, glassIntensity, ownsGlass, theme]);
+	}, [glass, glassIntensity, glassCoverage, ownsGlass, theme]);
 	/* A browser document has no OS material. A labelled fixture backdrop uses
 	 * the SAME measured worst under-window tone as the solver; otherwise a
 	 * transparent light story is read over the browser host's arbitrary black
@@ -460,6 +486,7 @@ const preview: Preview = {
 		locale: { control: { type: "select" }, options: LOCALE_IDS },
 		glass: { control: { type: "select" }, options: ["off", "on"] },
 		glassIntensity: { control: { type: "range", min: 0, max: 100, step: 1 } },
+		glassCoverage: { control: { type: "select" }, options: GLASS_COVERAGES },
 		glassContrast: { control: { type: "range", min: -100, max: 100, step: 1 } },
 		chrome: { control: { type: "select" }, options: ["native", "mac32"] },
 	},
@@ -468,6 +495,7 @@ const preview: Preview = {
 		locale: DEFAULT_LOCALE,
 		glass: "off",
 		glassIntensity: 80,
+		glassCoverage: "full",
 		chrome: "native",
 	},
 	decorators: [
@@ -478,6 +506,8 @@ const preview: Preview = {
 				(context.args.locale as string | undefined) ?? DEFAULT_LOCALE;
 			const glass = context.args.glass === "on";
 			const glassIntensity = Number(context.args.glassIntensity ?? 80);
+			const glassCoverage = (context.args.glassCoverage ??
+				"full") as GlassCoverage;
 			const chrome = (context.args.chrome as string | undefined) ?? "native";
 			const storyOwnsGlass = Boolean(context.parameters?.glass) && !glass;
 			const muiTheme = getTheme(theme).theme;
@@ -504,6 +534,7 @@ const preview: Preview = {
 										<GlassFrame
 											glass={glass}
 											glassIntensity={glassIntensity}
+											glassCoverage={glassCoverage}
 											ownsGlass={storyOwnsGlass}
 											theme={theme}
 										>

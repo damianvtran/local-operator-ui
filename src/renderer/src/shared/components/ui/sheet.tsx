@@ -123,6 +123,14 @@ export const SheetContent = forwardRef<
 					 * brand row - reach the pointer only while the rect subtracts.
 					 */
 					data-titlebar-no-drag=""
+					/*
+					 * NOT A GLASS PANEL, for the reason recorded in `dialog.tsx`: a sheet is
+					 * a modal too, so its ground composites the 50-59% fill over the modal
+					 * scrim - the backdrop the overlay floor was not derived against - and
+					 * the semantic inks lose their AA floor there (design round 1, D1,
+					 * measured 3.36-3.80:1 in the light palette). It keeps the opaque
+					 * `elevated` role and its shadow.
+					 */
 					className={cn(sheetVariants({ side }), className)}
 					{...props}
 				>
