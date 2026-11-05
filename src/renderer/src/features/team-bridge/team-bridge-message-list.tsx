@@ -872,8 +872,8 @@ const MessageRowView: FC<MessageRowProps> = ({
 				 * "you", so a mention row rests and hovers exactly like any other.
 				 */
 				density === "compact"
-					? "hover:before:bg-elevated"
-					: "hover:before:bg-surface",
+					? "hover:before:bg-row-hover-elevated focus-within:before:bg-row-hover-elevated"
+					: "hover:before:bg-row-hover-surface focus-within:before:bg-row-hover-surface",
 				// Transform/opacity only: the row reserves its final layout box
 				// immediately, so arrival cannot move the scroll geometry.
 				arriving && "lo-team-bridge-arrival",

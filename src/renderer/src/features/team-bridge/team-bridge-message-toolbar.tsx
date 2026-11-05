@@ -218,13 +218,14 @@ export function TeamBridgeMessageToolbar({
 			<div
 				ref={root}
 				role="toolbar"
+				data-glass-plane="floating"
 				aria-label={t("ui.teamBridge.actions.label")}
 				aria-orientation="horizontal"
 				onKeyDown={onKeyDown}
 				className={cn(
 					/* `shadow-overlay`: the contract's one shadow, for what leaves the
 					   flow (design round 1, D5). */
-					"flex h-8 items-center gap-0.5 rounded-sm bg-elevated p-0.5 shadow-overlay",
+					"flex h-8 items-center gap-0.5 rounded-sm bg-floating p-0.5 shadow-overlay",
 					"transition-opacity duration-fast ease-out-quart",
 					forceVisible || pickerOpen
 						? "pointer-events-auto opacity-100"

@@ -3111,6 +3111,11 @@ test("attachments are named, never fetched, through the shared list", async () =
  * strings only - round identity-wash plates, the inset `::before` hover, 12px
  * meta clocks, and the day divider split into an in-flow rule plus a sticky
  * pill (one extra `<li>` per day). Structure, names and bodies are unchanged.
+ * Regenerated for PR #1700: the shared inset hover now names the central
+ * glass-aware row role and keyboard focus uses that same presentation step.
+ * The PR also classifies floating toolbar planes, but this fixture has none:
+ * its golden diff is exactly four row-class substitutions, not audit-prop
+ * differences. Keep comparing every other byte, including content and structure.
  * Clock text and the `title` date depend on the machine's time zone, so both are
  * normalised; the structure, classes, names and bodies are compared verbatim.
  */
