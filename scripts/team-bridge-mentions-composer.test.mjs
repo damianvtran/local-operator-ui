@@ -151,6 +151,8 @@ const CONVERSATION = "bcv_mentions01";
 const MENTION_OTHER = /data-mention="other"[^>]*>@Ben Tran</;
 const MENTION_VIEWER = /data-mention="viewer"[^>]*>@Damian Tran</;
 const MENTION_ANY = /data-mention="/g;
+/* A mentioned row's wash class or the thread-row ring var it used to set. */
+const ROW_MENTION_WASH = /accent-wash|thread-row-host/;
 const NOT_MEMBER_NOTICE =
 	/Sherman Tsui isn’t in this conversation, so they won’t be notified\./;
 const INVITED_NOTICE =
@@ -1060,6 +1062,66 @@ test("rendered: the reader's own agent row never counts as a namesake (review R1
 		"@Damian Tran": { kind: "viewer", className: VIEWER_CLASS },
 		"@Ben Tran": { kind: "other", className: OTHER_CLASS },
 	});
+});
+
+/*
+ * NO ROW HIGHLIGHT FOR THE READER'S MENTION (operator 2026-11-04, removed in
+ * #1679: "keep the yellow tag but we don't need tagged messages to have this
+ * additional highlight"). The row once wore an `accentWash` inset box and a 2px leading
+ * accent bar (`data-mention-bar`). A mentioned row must now be the same box as
+ * an ordinary one - same class string, so the same insets, padding and hover -
+ * with the yellow viewer pill as the only mark. Rendered through the real
+ * provider so `self` is resolved the way the app resolves it.
+ */
+test("rendered: a row that mentions the reader has no bar or wash, only the pill", () => {
+	const html = mod.renderToStaticMarkup(
+		mod.createElement(
+			mod.TeamBridgeMentionProvider,
+			{
+				conversation: viewerConversation(members),
+				people: directory,
+				selfAccountId: "acct_self",
+				sendMentions: true,
+			},
+			mod.createElement(mod.TeamBridgeMessageList, {
+				messages: [
+					{
+						...rootMessage,
+						id: "bcmsg_plain",
+						seq: 1,
+						body: "Morning, all",
+					},
+					{
+						...rootMessage,
+						id: "bcmsg_mentioned",
+						seq: 2,
+						sender: {
+							account_id: "acct_sher",
+							kind: "human",
+							display_label: "Sherman Tsui",
+						},
+						body: "@Damian Tran have a look",
+						mentions: [{ kind: "human", account_id: "acct_self" }],
+					},
+				],
+				labelFor: (s) => s.display_label,
+			}),
+		),
+	);
+	const doc = new JSDOM(html).window.document;
+	const row = (id) => doc.querySelector(`[data-message-id="${id}"]`);
+	const plain = row("bcmsg_plain");
+	const mentioned = row("bcmsg_mentioned");
+	assert.ok(plain && mentioned, "both rows render");
+	assert.equal(doc.querySelector("[data-mention-bar]"), null, "no leading bar");
+	assert.doesNotMatch(mentioned.className, ROW_MENTION_WASH);
+	// Same class string = same px/py insets and the same hover tint, so the
+	// text's x and the row's height cannot differ because of the mention.
+	assert.equal(mentioned.className, plain.className);
+	assert.equal(mentioned.children.length, plain.children.length);
+	const pill = mentioned.querySelector('[data-mention="viewer"]');
+	assert.ok(pill, "the reader's pill still renders");
+	assert.equal(pill.className, VIEWER_CLASS);
 });
 
 /* A first send changes a person draft into an open conversation. Context is
