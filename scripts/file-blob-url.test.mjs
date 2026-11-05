@@ -312,6 +312,48 @@ test("bytes come from the bridge and the blob is revoked on unmount", async () =
 	assert.equal(blobs.revoked, 1);
 });
 
+test("explicit reload reads fresh bytes despite fixed metadata and a retained stale holder", async () => {
+	reset();
+	const path = pathFor("retry.pdf");
+	const metadata = { mimeType: "application/pdf", mtimeMs: 7, sizeBytes: 3 };
+	const stale = mountFile(path, metadata);
+	settleLast(bytes());
+	await tick();
+	const staleUrl = stale.value.url;
+	const retry = mountFile(path, { ...metadata, cachePolicy: "reload" });
+	assert.equal(
+		reads.length,
+		1,
+		"Retry issues a read without an mtime/freshness change",
+	);
+	settleLast(bytes());
+	await tick();
+	assert.notEqual(
+		retry.value.url,
+		staleUrl,
+		"Retry publishes an independent fresh blob",
+	);
+	assert(
+		blobs.live.has(staleUrl),
+		"the retry does not revoke another holder's bytes",
+	);
+	const retryUrl = retry.value.url;
+	retry.unmount();
+	const again = mountFile(path, { ...metadata, cachePolicy: "reload" });
+	assert.equal(
+		reads.length,
+		1,
+		"each retry remount reads again even in the same task",
+	);
+	settleLast(bytes());
+	await tick();
+	assert.notEqual(again.value.url, retryUrl);
+	stale.unmount();
+	again.unmount();
+	await tick();
+	assert.equal(blobs.live.size, 0);
+});
+
 test("the bytes are cached: a second holder of the SAME version reads nothing", async () => {
 	reset();
 	const path = pathFor("b.png");

@@ -1,5 +1,5 @@
 /* Real app, real file IPC and PDFium. Only the daemon catalogue is synthetic.
- * Run after a build bound to http://127.0.0.1:8080:
+ * Run after a build bound to http://127.0.0.1:${PDF_FIXTURE_PORT:-8080}:
  * node scripts/pdf-canvas-proof.mjs --seed-onboarding-complete --out <scratch-dir>
  * Uses the supported driver lifecycle; no browser engine, visible window or
  * operator profile. The unknown PDF in the reported screenshot is NOT a fixture.
@@ -12,7 +12,9 @@ import {
 	cpSync,
 	mkdirSync,
 	readFileSync,
+	statSync,
 	unlinkSync,
+	utimesSync,
 	writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
@@ -23,6 +25,11 @@ import { rendererDriverApi as a } from "./renderer-driver.mjs";
 for (const name of Object.keys(process.env))
 	if (name.startsWith("CMUX_")) Reflect.deleteProperty(process.env, name);
 Reflect.deleteProperty(process.env, "XPC_FLAGS");
+const fixturePort = Number(process.env.PDF_FIXTURE_PORT ?? 8080);
+assert(
+	Number.isInteger(fixturePort) && fixturePort > 1024 && fixturePort < 65536,
+	"explicit nonprivileged fixture port",
+);
 const outIndex = process.argv.indexOf("--out");
 assert(
 	outIndex !== -1 && process.argv[outIndex + 1],
@@ -84,6 +91,7 @@ const identity = Object.fromEntries(
 		"src/preload/index.ts",
 		"src/renderer/src/features/chat/components/canvas/pdf-preview.tsx",
 		"src/renderer/src/features/chat/components/canvas/pdf-viewer-poll.ts",
+		"src/renderer/src/shared/hooks/use-file-blob-url.ts",
 		"out/main/index.js",
 		"out/preload/index.js",
 		"out/renderer/index.html",
@@ -127,6 +135,38 @@ async function settled(status) {
 async function capture(label) {
 	return a.capture(cdp, label);
 }
+/** Fixture-only paint latch, not a universal PDF validity heuristic. */
+async function painted(label) {
+	const readings = [];
+	let consecutive = 0;
+	await waitFor(
+		async () => {
+			const frame = await capture(`${label}-${readings.length}`);
+			const roi = await cdp.evaluate(
+				"(()=>{const r=document.querySelector('iframe').getBoundingClientRect(),d=devicePixelRatio;return {left:Math.round((r.x+12)*d),top:Math.round((r.y+12)*d),width:Math.round((r.width-24)*d),height:Math.round((r.height-24)*d)};})()",
+			);
+			assert(
+				roi.width >= 200 && roi.height >= 200,
+				"a meaningful PDF pane, not a narrow sliver",
+			);
+			const { data, info } = await sharp(frame.path)
+				.extract(roi)
+				.removeAlpha()
+				.raw()
+				.toBuffer({ resolveWithObject: true });
+			let white = 0;
+			for (let i = 0; i < data.length; i += info.channels)
+				if (data[i] > 240 && data[i + 1] > 240 && data[i + 2] > 240) white++;
+			const ratio = white / (info.width * info.height);
+			readings.push({ path: frame.path, roi, nearWhite: ratio });
+			consecutive = ratio > 0.65 ? consecutive + 1 : 0;
+			return consecutive >= 2;
+		},
+		`${label}: two consecutive actually painted white fixture pages`,
+		10_000,
+	);
+	return { frames: readings.slice(-2) };
+}
 async function pressRetry() {
 	await a.verb(cdp, "press", { selector: "[data-pdf-status] button" });
 }
@@ -139,7 +179,7 @@ let exit = 0;
 try {
 	fixture = await startAsksAppFixture({
 		root: join(out, "fixture"),
-		port: 8080,
+		port: fixturePort,
 		token: "synthetic-pdf-proof-token",
 	});
 	process.env.LOCAL_OPERATOR_DESKTOP_TOKEN = "synthetic-pdf-proof-token";
@@ -153,6 +193,13 @@ try {
 	await a.waitForPage(cdp);
 	await a.waitForBridge(cdp);
 	main = await a.CdpClient.attachNode(app.inspectPort);
+	// Count the real filesystem reads, not status/probe calls or watcher refreshes.
+	await main.evaluate(
+		`(()=>{const fs=process.mainModule?.require('node:fs')??globalThis.require('node:fs');const original=fs.readFileSync;globalThis.pdfReadCounts={};fs.readFileSync=function(path,...args){if(typeof path==='string'&&path.startsWith(${JSON.stringify(ctx.scratch)})&&path.endsWith('.pdf'))globalThis.pdfReadCounts[path]=(globalThis.pdfReadCounts[path]??0)+1;return Reflect.apply(original,this,[path,...args]);};return true;})()`,
+	);
+	await cdp.evaluate(
+		"(()=>{globalThis.pdfBlobUrls=[];const original=URL.createObjectURL;URL.createObjectURL=function(blob){const url=Reflect.apply(original,this,[blob]);globalThis.pdfBlobUrls.push(url);return url;};return true;})()",
+	);
 	const hello = await a.verb(cdp, "hello");
 	assert(hello.userAgent.includes(`Electron/${pin}`));
 	assert.equal(hello.apiBaseUrl, fixture.url);
@@ -172,65 +219,65 @@ try {
 	await settled("ready");
 	const parsed = await nativeStatus();
 	assert(parsed.some((s) => s.state === "success" && s.pages === 2));
-	record("generated + spaces/non-ASCII + multipage", parsed);
-	await capture("pdf-generated-ready");
-	// The hidden guest's physical-wheel path is not claimed. The viewport API
-	// can report page 2 while capturePage stays blank; keep that a BLOCKED row.
-	try {
-		await main.evaluate(
-			`(async()=>{const e=process.mainModule?.require('electron')??globalThis.require('electron');const w=e.webContents.getAllWebContents().find(w=>w.getURL().includes('/out/renderer/index.html'));const f=w.mainFrame.framesInSubtree.find(f=>f.url==='chrome-extension://mhjfbmdgcfjbbpaeojofohoefgiehjai/index.html');return f.executeJavaScript(\"document.querySelector('pdf-viewer').viewport.goToPage(1)\");})()`,
-		);
-		await waitFor(
-			async () => (await nativeStatus()).some((s) => s.page === 1),
-			"second page via native viewport API",
-		);
-		await capture("pdf-second-page-first");
-		let pageFrame = 0;
-		await waitFor(
-			async () => {
-				const frame = await capture(`pdf-second-page-settled-${pageFrame++}`);
-				const info = await cdp.evaluate(
-					"(()=>{const r=document.querySelector('iframe').getBoundingClientRect();return {left:Math.round(r.x*devicePixelRatio),top:Math.round(r.y*devicePixelRatio),width:Math.round(r.width*devicePixelRatio),height:Math.round(r.height*devicePixelRatio)};})()",
-				);
-				const pixels = await sharp(frame.path).extract(info).stats();
-				return pixels.channels
-					.slice(0, 3)
-					.every((channel) => channel.mean > 180);
-			},
-			"second PDF fixture page actually painted",
-			10_000,
-		);
-		record("second-page rendered white fixture latch", {
-			frame: pageFrame - 1,
+	const firstPaint = await painted("pdf-generated-ready");
+	record("generated + spaces/non-ASCII: first page painted, two pages parsed", {
+		parsed,
+		...firstPaint,
+	});
+	const box = await cdp.evaluate(
+		"(()=>{const r=document.querySelector('iframe').getBoundingClientRect();return {x:r.x+r.width/2,y:r.y+r.height/2};})()",
+	);
+	for (
+		let wheel = 0;
+		wheel < 10 && !(await nativeStatus()).some((status) => status.page === 1);
+		wheel++
+	) {
+		await cdp.send("Input.dispatchMouseEvent", {
+			type: "mouseWheel",
+			...box,
+			deltaX: 0,
+			deltaY: 640,
+			button: "none",
+			buttons: 0,
 		});
-	} catch (error) {
-		exit = 1;
-		matrix.push({
-			surface: "second-page actual raster",
-			result: "BLOCKED",
-			actual: String(error),
-		});
-		console.error("BLOCKED second-page actual raster:", String(error));
+		await pause(400);
 	}
+	await waitFor(
+		async () => (await nativeStatus()).some((status) => status.page === 1),
+		"second page after real wheel over visible guest",
+	);
+	const secondPaint = await painted("pdf-second-page");
+	record("page TWO after real wheel, two painted frames", {
+		native: await nativeStatus(),
+		...secondPaint,
+	});
 	await open(attached);
 	await settled("ready");
-	record(
-		"synthetic materialized attachment (not upload)",
-		await nativeStatus(),
-	);
-	await capture("pdf-attached-ready");
+	record("synthetic materialized attachment painted (not upload)", {
+		native: await nativeStatus(),
+		...(await painted("pdf-attached-ready")),
+	});
 	await open(generated);
 	await settled("ready");
-	await cdp.send("Emulation.setDeviceMetricsOverride", {
-		width: 800,
-		height: 700,
-		deviceScaleFactor: 1,
-		mobile: false,
-	});
+	await main.evaluate(
+		`(()=>{const e=process.mainModule?.require('electron')??globalThis.require('electron');const w=e.webContents.getAllWebContents().find(w=>w.getURL().includes('/out/renderer/index.html'));e.BrowserWindow.fromWebContents(w).setSize(1220,820);return true;})()`,
+	);
+	await waitFor(
+		() => cdp.evaluate("innerWidth===1220"),
+		"native resize to meaningful narrow window",
+	);
 	await settled("ready");
-	await capture("pdf-resized");
-	await cdp.send("Emulation.clearDeviceMetricsOverride");
-	record("switch/reopen/resize", await pdfState());
+	record(
+		"switch/reopen/native resize 1220x820 painted",
+		await painted("pdf-resized"),
+	);
+	await main.evaluate(
+		`(()=>{const e=process.mainModule?.require('electron')??globalThis.require('electron');const w=e.webContents.getAllWebContents().find(w=>w.getURL().includes('/out/renderer/index.html'));e.BrowserWindow.fromWebContents(w).setSize(1380,900);return true;})()`,
+	);
+	await waitFor(
+		() => cdp.evaluate("innerWidth===1380"),
+		"restore native viewport",
+	);
 	// The file is real at the probe/open boundary, then disappears before retry.
 	const missing = join(ctx.scratch, "missing after open.pdf");
 	writeFileSync(missing, makePdf("Missing"));
@@ -259,6 +306,10 @@ try {
 		await open(denied);
 		const deniedState = await settled("unavailable");
 		assert(deniedState.text.includes("This PDF could not be opened"));
+		assert(
+			!deniedState.text.includes("EACCES"),
+			"permission errors use path-only detail, not Node diagnostics",
+		);
 		record("denied file read and recovery actions", deniedState);
 		await capture("pdf-denied-error");
 	} finally {
@@ -268,18 +319,69 @@ try {
 	await settled("ready");
 	record("transient read denial retry recovers", await pdfState());
 	const invalid = join(ctx.scratch, "invalid.pdf");
-	writeFileSync(invalid, "%PDF-1.4\nnot a PDF body\n%%EOF");
+	const repaired = makePdf("Repaired PDF");
+	// Keep BOTH metadata fields fixed: the freshness watcher must not rescue Retry.
+	const fixedTime = new Date("2025-10-09T08:53:20Z");
+	writeFileSync(
+		invalid,
+		"%PDF-1.4\nnot a PDF body\n%%EOF".padEnd(repaired.length, " "),
+	);
+	utimesSync(invalid, fixedTime, fixedTime);
 	await open(invalid);
 	const invalidState = await settled("failed");
 	assert(invalidState.text.includes("This PDF could not be opened"));
 	assert(invalidState.text.includes("Retry"));
 	record("malformed parse + retry/OS fallback", invalidState);
 	await capture("pdf-invalid-error");
-	writeFileSync(invalid, makePdf("Repaired PDF"));
+	await main.evaluate(
+		`(()=>{const e=process.mainModule?.require('electron')??globalThis.require('electron');const w=e.webContents.getAllWebContents().find(w=>w.getURL().includes('/out/renderer/index.html'));e.BrowserWindow.fromWebContents(w).setSize(1220,820);return true;})()`,
+	);
+	await waitFor(() => cdp.evaluate("innerWidth===1220"), "narrow error state");
+	const controls = await cdp.evaluate(
+		"(()=>{const p=document.querySelector('[data-pdf-status]'),r=p.getBoundingClientRect();return [...p.querySelectorAll('button')].map(b=>{const q=b.getBoundingClientRect();return {text:b.innerText,inside:q.left>=r.left&&q.right<=r.right&&q.top>=r.top&&q.bottom<=r.bottom};});})()",
+	);
+	assert.equal(controls.length, 2);
+	assert(controls.every((control) => control.inside));
+	record("narrow error recovery controls stay inside pane", controls);
+	await capture("pdf-invalid-error-narrow");
+	await main.evaluate(
+		`(()=>{const e=process.mainModule?.require('electron')??globalThis.require('electron');const w=e.webContents.getAllWebContents().find(w=>w.getURL().includes('/out/renderer/index.html'));e.BrowserWindow.fromWebContents(w).setSize(1380,900);return true;})()`,
+	);
+	await waitFor(
+		() => cdp.evaluate("innerWidth===1380"),
+		"restore error viewport",
+	);
+	const readsBefore = await main.evaluate(
+		`globalThis.pdfReadCounts[${JSON.stringify(invalid)}] ?? 0`,
+	);
+	const blobsBefore = await cdp.evaluate("globalThis.pdfBlobUrls.slice()");
+	const metadataBefore = statSync(invalid);
+	writeFileSync(invalid, repaired);
+	utimesSync(invalid, fixedTime, fixedTime);
+	assert.equal(statSync(invalid).mtimeMs, metadataBefore.mtimeMs);
+	assert.equal(statSync(invalid).size, metadataBefore.size);
 	await pressRetry();
 	await settled("ready");
-	record("retry re-reads changed bytes", await nativeStatus());
-	await capture("pdf-retry-ready");
+	const readsAfter = await main.evaluate(
+		`globalThis.pdfReadCounts[${JSON.stringify(invalid)}] ?? 0`,
+	);
+	const fresh = await pdfState();
+	assert.equal(
+		readsAfter,
+		readsBefore + 1,
+		"Retry alone causes a new actual filesystem read",
+	);
+	assert(
+		!blobsBefore.includes(fresh.src.split("#")[0]),
+		"Retry publishes fresh blob identity",
+	);
+	record("Retry fresh read/blob with fixed mtime and size", {
+		readsBefore,
+		readsAfter,
+		mtimeMs: metadataBefore.mtimeMs,
+		size: metadataBefore.size,
+		...(await painted("pdf-retry-ready")),
+	});
 	// Reproduce the original guard failure as a native navigation fault, without
 	// replacing byte reads, the status handler, React or the app's authorization.
 	await main.evaluate(
@@ -322,6 +424,8 @@ try {
 	assert(log.includes(`blocked child-frame navigation to ${target}`));
 	await cdp.evaluate("document.querySelector('[data-pdf-attack]').remove()");
 	record("direct extension iframe cannot forge internal provenance", true);
+	const blockedBeforeBlob =
+		log.split(`blocked child-frame navigation to ${target}`).length - 1;
 	// Same-origin blob HTML still cannot lend the internal extension's provenance.
 	await cdp.evaluate(
 		`(()=>{const f=document.createElement('iframe');f.dataset.pdfAttack='blob';f.src=URL.createObjectURL(new Blob([${JSON.stringify(`<iframe src="${target}"></iframe>`)}],{type:'text/html'}));document.body.append(f);return true;})()`,
@@ -329,7 +433,10 @@ try {
 	await pause(400);
 	app.flush();
 	log = readFileSync(app.logPath, "utf8");
-	assert(log.split(`blocked child-frame navigation to ${target}`).length >= 3);
+	assert.equal(
+		log.split(`blocked child-frame navigation to ${target}`).length - 1,
+		blockedBeforeBlob + 1,
+	);
 	await cdp.evaluate(
 		"(()=>{const f=document.querySelector('[data-pdf-attack]');URL.revokeObjectURL(f.src);f.remove();return true;})()",
 	);

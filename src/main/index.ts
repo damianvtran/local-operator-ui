@@ -3684,6 +3684,12 @@ app
 			},
 		);
 
+		// Same sender gate as file reads; only the existing guest's status enum escapes.
+		ipcMain.handle("pdf-viewer-status", async (event, blobUrl: unknown) => {
+			authorizeLocalFileSender(event, "inspect its PDF viewer");
+			return pdfViewerStatus(event.sender, blobUrl, trustedRendererDocuments());
+		});
+
 		/*
 		 * Bytes for the in-app viewers, capped and named.
 		 *
@@ -3698,11 +3704,6 @@ app
 		 * specific enough for the viewer to say "too large to preview" and offer
 		 * the OS instead of showing a spinner that never finishes.
 		 */
-		ipcMain.handle("pdf-viewer-status", async (event, blobUrl: unknown) => {
-			authorizeLocalFileSender(event, "inspect its PDF viewer");
-			return pdfViewerStatus(event.sender, blobUrl, trustedRendererDocuments());
-		});
-
 		ipcMain.handle(
 			"read-file-bytes",
 			async (

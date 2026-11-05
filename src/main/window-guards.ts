@@ -467,6 +467,9 @@ export function frameNavigationVerdict(
 	 * iframe or preview HTML asks for. Parent AND initiator come from Electron's
 	 * WebFrameMain, never from renderer input. The opaque guest parent is the
 	 * extension index, not the outer PDF blob (verified on the shipped runtime).
+	 * This guard is installed only on the app-owned window. Unlike the status
+	 * lookup, it vets a Chromium-created internal child, not a renderer-selected
+	 * blob, so exact browser-owned parent/initiator provenance is the boundary.
 	 */
 	if (
 		url.protocol === "chrome-extension:" &&

@@ -23,12 +23,14 @@ import { watchPdfViewer } from "./pdf-viewer-poll";
 const PdfPreviewAttempt: FC<{
 	document: CanvasDocument;
 	onRetry: () => void;
-}> = ({ document, onRetry }) => {
+	reload: boolean;
+}> = ({ document, onRetry, reload }) => {
 	useI18nLocale();
 	const state = useFileBlobUrl(document.path, {
 		mtimeMs: document.lastAgentModified,
 		mimeType: mimeTypeForPath(document.path),
 		sizeBytes: document.sizeBytes,
+		cachePolicy: reload ? "reload" : "reuse",
 	});
 
 	const [viewer, setViewer] = useState<"loading" | "ready" | "failed">(
@@ -65,6 +67,7 @@ const PdfPreviewAttempt: FC<{
 
 			<div
 				className={cn("relative min-h-0 flex-1")}
+				// Driver contract: byte readiness alone does not mean PDFium parsed it.
 				data-pdf-status={state.status === "ready" ? viewer : state.status}
 			>
 				{state.status === "ready" && viewer !== "failed" ? (
@@ -72,18 +75,20 @@ const PdfPreviewAttempt: FC<{
 						<iframe
 							src={`${state.url}#toolbar=0`}
 							title={t("ui.canvas.pdf_preview.pdf", { title: document.title })}
-							className={cn(
-								"h-full w-full border-0 bg-surface",
-								viewer === "loading" && "invisible",
-							)}
+							// Never hide the guest: Chromium can parse a hidden PDF yet never
+							// start rasterizing it. The opaque sibling scrim owns loading.
+							className={cn("h-full w-full border-0 bg-surface")}
 						/>
 						{viewer === "loading" ? (
-							<output className={cn("absolute inset-0 block")}>
+							<div
+								className={cn("absolute inset-0 bg-elevated")}
+								aria-live="polite"
+							>
 								<FileViewerState
 									quiet
 									title={t("ui.canvas.pdf_preview.opening")}
 								/>
-							</output>
+							</div>
 						) : null}
 					</>
 				) : state.status === "loading" ? (
@@ -91,7 +96,7 @@ const PdfPreviewAttempt: FC<{
 				) : state.status === "unavailable" && state.code === "too-large" ? (
 					<FileViewerState
 						title={t("ui.canvas.pdf_preview.too_large_to_preview")}
-						detail={state.message}
+						detail={document.path}
 					>
 						<OpenInOsButton path={document.path} />
 					</FileViewerState>
@@ -102,11 +107,7 @@ const PdfPreviewAttempt: FC<{
 								? t("ui.canvas.pdf_preview.file_no_longer_exists")
 								: t("ui.canvas.pdf_preview.this_pdf_could_not_be_opened")
 						}
-						detail={
-							state.status === "unavailable"
-								? (state.message ?? document.path)
-								: document.path
-						}
+						detail={document.path}
 					>
 						{retry}
 						<OpenInOsButton path={document.path} />
@@ -125,6 +126,7 @@ const PdfPreviewComponent: FC<{ document: CanvasDocument }> = ({
 		<PdfPreviewAttempt
 			key={`${document.path}:${document.lastAgentModified}:${document.sizeBytes}:${attempt}`}
 			document={document}
+			reload={attempt > 0}
 			onRetry={() => setAttempt((value) => value + 1)}
 		/>
 	);
