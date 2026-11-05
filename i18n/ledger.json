@@ -13666,8 +13666,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.chat.pickers",
-			"source_sha256": "88d81780ea0cf598689a73b5b0206da020ccfe1b847631214f87f40791b684c7",
-			"target_sha256": "3ce94acfc194d594a99ddcdf4cc8bf3966a03694d64c48c4aab1c23cea8628c9",
+			"source_sha256": "ecc10fb18100d4d462f36214c83507a48c7f0f8173cb72f37bf5964a05abb58c",
+			"target_sha256": "6631ad64799c0cf67d4a1a78e606f1baa167742306a00b7110c11a938d60215b",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 7bf560d5dcc5 job f3024578bae5)",
@@ -13677,36 +13677,19 @@
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"model": "anthropic/claude-sonnet-5-5",
-					"date": "2026-11-03",
-					"result": "clean-with-findings",
-					"instance": "47a0b369196c",
-					"findings": {
-						"blocker": 0,
-						"major": 0,
-						"minor": 0,
-						"nit": 1
-					},
-					"receipt": "i18n/receipts/47a0b369196c.json",
-					"receipt_sha256": "e82186607103b1bf3d0e037d16a4b82487c9aa038bda3d1925617728832fcc56",
-					"scope": "ui.chat.pickers fr at 8afc03c6ca4",
-					"note": "PR #1625 third-audit remediation; findings carried as listed in the receipt"
-				},
-				{
-					"agent": "i18n-auditor",
-					"model": "openai/gpt-6.1-sol (fallback after anthropic/claude-sonnet-5-5 and anthropic/claude-opus-5-5 quota failures)",
-					"date": "2026-11-03",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-05",
 					"result": "clean",
-					"instance": "6cfeec091166",
+					"instance": "f94d5f6de05b-u1664m1-fr",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/6cfeec091166.json",
-					"receipt_sha256": "be0d5a810bd07316801c4436d478fa6f121b45ccd82ebdf85146d3f4238ecc00",
-					"scope": "second independent safety audit of two approval-default scope values at c6f1c9ec23d"
+					"receipt": "i18n/receipts/f94d5f6de05b-u1664m1-fr.json",
+					"receipt_sha256": "73a9a864e5b4e1dc80b146bfa0784ebd44c50da12242693acdee3908fcffff08",
+					"scope": "PR1664 merged picker delta at 625b865eff2ab4476fdff40144c1368a05878482; prior evidence retained; no render or full-CLDR clearance"
 				}
 			],
 			"status": "audited",
@@ -13874,6 +13857,46 @@
 							"receipt_sha256": "fe375d3349a3a780aec9959d2730e46c448decdf92e6de11cb65ed478e42cf69",
 							"scope": "12-key new-source delta (C1 notice + 11 slash headings); None/None keys reviewed in this namespace, carried keys keep prior approval on byte identity",
 							"note": "Served underlying model UNKNOWN; route requested radient/auto. Second independent reader receipt retained beside this one."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "88d81780ea0cf598689a73b5b0206da020ccfe1b847631214f87f40791b684c7",
+					"target_sha256": "3ce94acfc194d594a99ddcdf4cc8bf3966a03694d64c48c4aab1c23cea8628c9",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-03",
+							"result": "clean-with-findings",
+							"instance": "47a0b369196c",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/47a0b369196c.json",
+							"receipt_sha256": "e82186607103b1bf3d0e037d16a4b82487c9aa038bda3d1925617728832fcc56",
+							"scope": "ui.chat.pickers fr at 8afc03c6ca4",
+							"note": "PR #1625 third-audit remediation; findings carried as listed in the receipt"
+						},
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol (fallback after anthropic/claude-sonnet-5-5 and anthropic/claude-opus-5-5 quota failures)",
+							"date": "2026-11-03",
+							"result": "clean",
+							"instance": "6cfeec091166",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/6cfeec091166.json",
+							"receipt_sha256": "be0d5a810bd07316801c4436d478fa6f121b45ccd82ebdf85146d3f4238ecc00",
+							"scope": "second independent safety audit of two approval-default scope values at c6f1c9ec23d"
 						}
 					],
 					"status": "audited"
@@ -24381,8 +24404,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.chat.pickers",
-			"source_sha256": "88d81780ea0cf598689a73b5b0206da020ccfe1b847631214f87f40791b684c7",
-			"target_sha256": "583f9807cfc3da12f819828049586986adbfff67819d0d102663369db8e694e7",
+			"source_sha256": "ecc10fb18100d4d462f36214c83507a48c7f0f8173cb72f37bf5964a05abb58c",
+			"target_sha256": "65b277482fbcd5e2c3e13701860f20dd0600fe4d893b98838f959cdf85dd1946",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session fe3e687905c1 job 2296f594b388; remediation of the audited keys at 011c0f4f4ca, session 7a7c1f87c410 job 4e4a10a9e3cc)",
@@ -24392,36 +24415,19 @@
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"model": "anthropic/claude-sonnet-5-5",
-					"date": "2026-11-03",
-					"result": "clean-with-findings",
-					"instance": "50028e250948",
-					"findings": {
-						"blocker": 0,
-						"major": 0,
-						"minor": 1,
-						"nit": 2
-					},
-					"receipt": "i18n/receipts/50028e250948.json",
-					"receipt_sha256": "1987dc94dbc9279b5cf1b2088de8f4e330401b32f8f4a40fa772fd3cf6e826ff",
-					"scope": "ui.chat.pickers hi at 8afc03c6ca4",
-					"note": "PR #1625 third-audit remediation; findings carried as listed in the receipt"
-				},
-				{
-					"agent": "i18n-auditor",
 					"model": "openai/gpt-6.1-sol",
-					"date": "2026-11-03",
+					"date": "2026-11-05",
 					"result": "clean",
-					"instance": "9e2472367ad7",
+					"instance": "bb99e9f9ce2a-u1664m1-hi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/9e2472367ad7.json",
-					"receipt_sha256": "00ba57158f4931ed4f166cdd9c23b734498ca6b9d8870b987606f71f8a9b77d3",
-					"scope": "second independent safety audit of two approval-default scope values at c6f1c9ec23d"
+					"receipt": "i18n/receipts/bb99e9f9ce2a-u1664m1-hi.json",
+					"receipt_sha256": "ff5738b21bc259088d70923b961903723b16b57afcbbbb319e3bbfc04d680aea",
+					"scope": "PR1664 merged picker delta at 625b865eff2ab4476fdff40144c1368a05878482; prior evidence retained; no render or full-CLDR clearance"
 				}
 			],
 			"status": "audited",
@@ -24589,6 +24595,46 @@
 							"receipt_sha256": "1c74ca5d170e14f870f05156220c59e964ed3ff8f1c7e6abe8d768e78e1cc74c",
 							"scope": "12-key new-source delta (C1 notice + 11 slash headings); None/None keys reviewed in this namespace, carried keys keep prior approval on byte identity",
 							"note": "Served underlying model UNKNOWN; route requested radient/auto. Second independent reader receipt retained beside this one."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "88d81780ea0cf598689a73b5b0206da020ccfe1b847631214f87f40791b684c7",
+					"target_sha256": "583f9807cfc3da12f819828049586986adbfff67819d0d102663369db8e694e7",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-03",
+							"result": "clean-with-findings",
+							"instance": "50028e250948",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 2
+							},
+							"receipt": "i18n/receipts/50028e250948.json",
+							"receipt_sha256": "1987dc94dbc9279b5cf1b2088de8f4e330401b32f8f4a40fa772fd3cf6e826ff",
+							"scope": "ui.chat.pickers hi at 8afc03c6ca4",
+							"note": "PR #1625 third-audit remediation; findings carried as listed in the receipt"
+						},
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-03",
+							"result": "clean",
+							"instance": "9e2472367ad7",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/9e2472367ad7.json",
+							"receipt_sha256": "00ba57158f4931ed4f166cdd9c23b734498ca6b9d8870b987606f71f8a9b77d3",
+							"scope": "second independent safety audit of two approval-default scope values at c6f1c9ec23d"
 						}
 					],
 					"status": "audited"
@@ -34769,8 +34815,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.chat.pickers",
-			"source_sha256": "88d81780ea0cf598689a73b5b0206da020ccfe1b847631214f87f40791b684c7",
-			"target_sha256": "7d891a2594cf87f612ef5a189ffe6b540421891ca16c5344c7708656acbdce26",
+			"source_sha256": "ecc10fb18100d4d462f36214c83507a48c7f0f8173cb72f37bf5964a05abb58c",
+			"target_sha256": "eb49f31cd480b3c9969b7dfab6fb4adcf2c18c3624e96d73ac46462eaf72d9ce",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 74a8df6e024e job edb91c63ad6a)",
@@ -34780,36 +34826,19 @@
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"model": "anthropic/claude-sonnet-5-5",
-					"date": "2026-11-03",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-05",
 					"result": "clean-with-findings",
-					"instance": "600fc6d81235",
+					"instance": "227bd1e1af60-u1664m1-ru",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 1,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/600fc6d81235.json",
-					"receipt_sha256": "3b906d79274ebf442d343e13b2bf0e7fa495600699054d71322e5ab6f59d81b6",
-					"scope": "ui.chat.pickers ru at 8afc03c6ca4",
-					"note": "PR #1625 third-audit remediation; findings carried as listed in the receipt"
-				},
-				{
-					"agent": "i18n-auditor",
-					"model": "openai/gpt-6.1-sol",
-					"date": "2026-11-03",
-					"result": "clean",
-					"instance": "8711ef54a14d",
-					"findings": {
-						"blocker": 0,
-						"major": 0,
-						"minor": 0,
-						"nit": 0
-					},
-					"receipt": "i18n/receipts/8711ef54a14d.json",
-					"receipt_sha256": "edfc45bb9c6d20f852ec0f1ed83ffb12e91d36ad228e8bbde7da56319fb3429b",
-					"scope": "second independent safety audit of two approval-default scope values at c6f1c9ec23d"
+					"receipt": "i18n/receipts/227bd1e1af60-u1664m1-ru.json",
+					"receipt_sha256": "fcd7a520ac615f2ab37b14fa7892383694585570cf23b32de335ed1324fbb8e0",
+					"scope": "PR1664 merged picker delta at 625b865eff2ab4476fdff40144c1368a05878482; prior evidence retained; no render or full-CLDR clearance"
 				}
 			],
 			"status": "audited",
@@ -34979,6 +35008,46 @@
 							"receipt_sha256": "05844772b917d1b10db1bf45507d2a4a48520ada7afae905d792ab4893537486",
 							"scope": "12-key new-source delta (C1 notice + 11 slash headings); None/None keys reviewed in this namespace, carried keys keep prior approval on byte identity",
 							"note": "Served underlying model UNKNOWN; route requested radient/auto. Second independent reader receipt retained beside this one."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "88d81780ea0cf598689a73b5b0206da020ccfe1b847631214f87f40791b684c7",
+					"target_sha256": "7d891a2594cf87f612ef5a189ffe6b540421891ca16c5344c7708656acbdce26",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-03",
+							"result": "clean-with-findings",
+							"instance": "600fc6d81235",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/600fc6d81235.json",
+							"receipt_sha256": "3b906d79274ebf442d343e13b2bf0e7fa495600699054d71322e5ab6f59d81b6",
+							"scope": "ui.chat.pickers ru at 8afc03c6ca4",
+							"note": "PR #1625 third-audit remediation; findings carried as listed in the receipt"
+						},
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-03",
+							"result": "clean",
+							"instance": "8711ef54a14d",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/8711ef54a14d.json",
+							"receipt_sha256": "edfc45bb9c6d20f852ec0f1ed83ffb12e91d36ad228e8bbde7da56319fb3429b",
+							"scope": "second independent safety audit of two approval-default scope values at c6f1c9ec23d"
 						}
 					],
 					"status": "audited"
@@ -45149,8 +45218,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.chat.pickers",
-			"source_sha256": "88d81780ea0cf598689a73b5b0206da020ccfe1b847631214f87f40791b684c7",
-			"target_sha256": "24f8e2ed74524d4fe6aa8b26dc17c253fe8facdfe0dd9693d35282151a2538d2",
+			"source_sha256": "ecc10fb18100d4d462f36214c83507a48c7f0f8173cb72f37bf5964a05abb58c",
+			"target_sha256": "75009a4895f30a89cafb136a6448469368e3126ebb862b4566037bc4b2ecd4b7",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 3c0d98370d76 job f701c763e4bb)",
@@ -45160,36 +45229,19 @@
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"model": "anthropic/claude-sonnet-5-5",
-					"date": "2026-11-03",
-					"result": "clean",
-					"instance": "919721988d8a",
-					"findings": {
-						"blocker": 0,
-						"major": 0,
-						"minor": 0,
-						"nit": 0
-					},
-					"receipt": "i18n/receipts/919721988d8a.json",
-					"receipt_sha256": "04a8c0b19e85cfb425e0c5df15db8e6b2beeb6ae557bab64a1f94d4963fb7fbe",
-					"scope": "ui.chat.pickers ur at 8afc03c6ca4",
-					"note": "PR #1625 third-audit remediation; findings carried as listed in the receipt"
-				},
-				{
-					"agent": "i18n-auditor",
 					"model": "openai/gpt-6.1-sol",
-					"date": "2026-11-03",
+					"date": "2026-11-05",
 					"result": "clean",
-					"instance": "d890d0154160",
+					"instance": "9a864ad9f4fa-u1664m1-ur",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/d890d0154160.json",
-					"receipt_sha256": "9304cbf3b53322dc76db0d5a530d97c65650a21533853aa62d250d0693121314",
-					"scope": "second independent safety audit of two approval-default scope values at c6f1c9ec23d"
+					"receipt": "i18n/receipts/9a864ad9f4fa-u1664m1-ur.json",
+					"receipt_sha256": "94aed1b2f6222931ef9e5c237103927495931bf63a271b2fbe62683696b6ae2e",
+					"scope": "PR1664 merged picker delta at 625b865eff2ab4476fdff40144c1368a05878482; prior evidence retained; no render or full-CLDR clearance"
 				}
 			],
 			"status": "audited",
@@ -45359,6 +45411,46 @@
 							"receipt_sha256": "c64660fcf0531998a5dcd6b2d5c61ba33f4c4799648871a4ea62b5569e6d0847",
 							"scope": "12-key new-source delta (C1 notice + 11 slash headings); None/752 keys reviewed in this namespace, carried keys keep prior approval on byte identity",
 							"note": "Served underlying model UNKNOWN; route requested radient/auto. Second independent reader receipt retained beside this one."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "88d81780ea0cf598689a73b5b0206da020ccfe1b847631214f87f40791b684c7",
+					"target_sha256": "24f8e2ed74524d4fe6aa8b26dc17c253fe8facdfe0dd9693d35282151a2538d2",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-03",
+							"result": "clean",
+							"instance": "919721988d8a",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/919721988d8a.json",
+							"receipt_sha256": "04a8c0b19e85cfb425e0c5df15db8e6b2beeb6ae557bab64a1f94d4963fb7fbe",
+							"scope": "ui.chat.pickers ur at 8afc03c6ca4",
+							"note": "PR #1625 third-audit remediation; findings carried as listed in the receipt"
+						},
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-03",
+							"result": "clean",
+							"instance": "d890d0154160",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/d890d0154160.json",
+							"receipt_sha256": "9304cbf3b53322dc76db0d5a530d97c65650a21533853aa62d250d0693121314",
+							"scope": "second independent safety audit of two approval-default scope values at c6f1c9ec23d"
 						}
 					],
 					"status": "audited"
@@ -55454,8 +55546,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.chat.pickers",
-			"source_sha256": "88d81780ea0cf598689a73b5b0206da020ccfe1b847631214f87f40791b684c7",
-			"target_sha256": "96ff802c86cd9d24ad7ac5378f32c2d4c25642692277b5e1447f41de86621997",
+			"source_sha256": "ecc10fb18100d4d462f36214c83507a48c7f0f8173cb72f37bf5964a05abb58c",
+			"target_sha256": "262fe49cc21c91392e70fe2b8b2a5dfb27b1c594b92115a53353c3a78cb0a7cf",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 5baf5b219d15 job c798e751c62b)",
@@ -55465,37 +55557,19 @@
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"model": "anthropic/claude-sonnet-5-5",
-					"date": "2026-11-03",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-05",
 					"result": "clean-with-findings",
-					"instance": "c124ae957985",
+					"instance": "84f34f75ad89-u1664m1-vi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 2
+						"nit": 5
 					},
-					"receipt": "i18n/receipts/c124ae957985.json",
-					"receipt_sha256": "95a5df1fcc8209de625ea68712cb7ee73efeeab2cb1235426fd4b35d15bb738d",
-					"scope": "ui.chat.pickers vi at 3e4aeb5d1a5",
-					"note": "PR #1625 third-audit remediation; findings carried as listed in the receipt"
-				},
-				{
-					"agent": "i18n-auditor",
-					"model": "anthropic/claude-sonnet-5-5",
-					"date": "2026-11-03",
-					"result": "clean-with-findings",
-					"instance": "i18n-auditor-vi-pickers-3e4aeb5-9344cb74ab66",
-					"findings": {
-						"blocker": 0,
-						"major": 0,
-						"minor": 0,
-						"nit": 4
-					},
-					"receipt": "i18n/receipts/i18n-auditor-vi-pickers-3e4aeb5-9344cb74ab66.json",
-					"receipt_sha256": "1421e1b653ea845b68f9e7ebc11a518869d35c2c04248165f11f7a6a7962cc86",
-					"scope": "ui.chat.pickers vi at 3e4aeb5d1a5 (second auditor)",
-					"note": "PR #1625 third-audit remediation; findings carried as listed in the receipt"
+					"receipt": "i18n/receipts/84f34f75ad89-u1664m1-vi.json",
+					"receipt_sha256": "8797f6ce6b6102755f63e920951714b6e0f29428da2680364eb80792579667d5",
+					"scope": "PR1664 merged picker delta at 625b865eff2ab4476fdff40144c1368a05878482; prior evidence retained; no render or full-CLDR clearance"
 				}
 			],
 			"status": "audited",
@@ -55680,6 +55754,47 @@
 							"receipt_sha256": "b298d3fb1c116aaa10ee2fa4d90006c22bafb398815e3fb928cd8b2b146950cf",
 							"scope": "12-key new-source delta (C1 notice + 11 slash headings); None/None keys reviewed in this namespace, carried keys keep prior approval on byte identity",
 							"note": "Served underlying model UNKNOWN; route requested radient/auto. Second independent reader receipt retained beside this one."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "88d81780ea0cf598689a73b5b0206da020ccfe1b847631214f87f40791b684c7",
+					"target_sha256": "96ff802c86cd9d24ad7ac5378f32c2d4c25642692277b5e1447f41de86621997",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-03",
+							"result": "clean-with-findings",
+							"instance": "c124ae957985",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 2
+							},
+							"receipt": "i18n/receipts/c124ae957985.json",
+							"receipt_sha256": "95a5df1fcc8209de625ea68712cb7ee73efeeab2cb1235426fd4b35d15bb738d",
+							"scope": "ui.chat.pickers vi at 3e4aeb5d1a5",
+							"note": "PR #1625 third-audit remediation; findings carried as listed in the receipt"
+						},
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-03",
+							"result": "clean-with-findings",
+							"instance": "i18n-auditor-vi-pickers-3e4aeb5-9344cb74ab66",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 4
+							},
+							"receipt": "i18n/receipts/i18n-auditor-vi-pickers-3e4aeb5-9344cb74ab66.json",
+							"receipt_sha256": "1421e1b653ea845b68f9e7ebc11a518869d35c2c04248165f11f7a6a7962cc86",
+							"scope": "ui.chat.pickers vi at 3e4aeb5d1a5 (second auditor)",
+							"note": "PR #1625 third-audit remediation; findings carried as listed in the receipt"
 						}
 					],
 					"status": "audited"
@@ -66502,8 +66617,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.chat.pickers",
-			"source_sha256": "88d81780ea0cf598689a73b5b0206da020ccfe1b847631214f87f40791b684c7",
-			"target_sha256": "badd98404dd38136c143c8aa596c152b2ba88e5c7cc5ae818038437ba1b1e9e4",
+			"source_sha256": "ecc10fb18100d4d462f36214c83507a48c7f0f8173cb72f37bf5964a05abb58c",
+			"target_sha256": "9fb0a6c242291790b791f284916e2e9eba3e749424feae2a3922243d59c0421c",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 2071a6d2f218 job a1a155d78afc)",
@@ -66513,37 +66628,19 @@
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"model": "anthropic/claude-sonnet-5-5",
-					"date": "2026-11-03",
-					"result": "clean-with-findings",
-					"instance": "664a4b465807",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-05",
+					"result": "clean",
+					"instance": "68db5d33c61e-u1664m1-zh-cn",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 2
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/664a4b465807.json",
-					"receipt_sha256": "40bedb1e073b9875453f2901a6608fa7a2faeeaf399859fe6c1333667c8040ea",
-					"scope": "ui.chat.pickers zh-CN at 3e4aeb5d1a5",
-					"note": "PR #1625 third-audit remediation; findings carried as listed in the receipt"
-				},
-				{
-					"agent": "i18n-auditor",
-					"model": "anthropic/claude-sonnet-5-5",
-					"date": "2026-11-03",
-					"result": "clean-with-findings",
-					"instance": "d03bba7db03d",
-					"findings": {
-						"blocker": 0,
-						"major": 0,
-						"minor": 0,
-						"nit": 2
-					},
-					"receipt": "i18n/receipts/d03bba7db03d.json",
-					"receipt_sha256": "18975f182b1e9f7a36ef4a1a9097785ef664beab59405480358713c8e8550ee8",
-					"scope": "ui.chat.pickers zh-CN at 3e4aeb5d1a5 (second auditor)",
-					"note": "PR #1625 third-audit remediation; findings carried as listed in the receipt"
+					"receipt": "i18n/receipts/68db5d33c61e-u1664m1-zh-cn.json",
+					"receipt_sha256": "187429eb268cd96916a295409fb4b96579adca691734f69f4f5ed561979b8d04",
+					"scope": "PR1664 merged picker delta at 625b865eff2ab4476fdff40144c1368a05878482; prior evidence retained; no render or full-CLDR clearance"
 				}
 			],
 			"status": "audited",
@@ -66728,6 +66825,47 @@
 							"receipt_sha256": "4ce7b23e32e50c9132f9fa499f166b8b861166f3d87f69432d314bad013e5f96",
 							"scope": "12-key new-source delta (C1 notice + 11 slash headings); None/None keys reviewed in this namespace, carried keys keep prior approval on byte identity",
 							"note": "Served underlying model UNKNOWN; route requested radient/auto. Second independent reader receipt retained beside this one."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "88d81780ea0cf598689a73b5b0206da020ccfe1b847631214f87f40791b684c7",
+					"target_sha256": "badd98404dd38136c143c8aa596c152b2ba88e5c7cc5ae818038437ba1b1e9e4",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-03",
+							"result": "clean-with-findings",
+							"instance": "664a4b465807",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 2
+							},
+							"receipt": "i18n/receipts/664a4b465807.json",
+							"receipt_sha256": "40bedb1e073b9875453f2901a6608fa7a2faeeaf399859fe6c1333667c8040ea",
+							"scope": "ui.chat.pickers zh-CN at 3e4aeb5d1a5",
+							"note": "PR #1625 third-audit remediation; findings carried as listed in the receipt"
+						},
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-03",
+							"result": "clean-with-findings",
+							"instance": "d03bba7db03d",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 2
+							},
+							"receipt": "i18n/receipts/d03bba7db03d.json",
+							"receipt_sha256": "18975f182b1e9f7a36ef4a1a9097785ef664beab59405480358713c8e8550ee8",
+							"scope": "ui.chat.pickers zh-CN at 3e4aeb5d1a5 (second auditor)",
+							"note": "PR #1625 third-audit remediation; findings carried as listed in the receipt"
 						}
 					],
 					"status": "audited"

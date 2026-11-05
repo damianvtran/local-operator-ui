@@ -1,0 +1,140 @@
+ACTUAL EXECUTION LOG — 2026-11-05 — bb99e9f9ce2a — openai/gpt-6.1-sol
+Command 1: node --test --test-name-pattern=^\\[hi\\] scripts/i18n/locale-parity.test.mjs
+✔ [hi] ships at least one message (not an empty claim) (74.957709ms)
+✔ [hi] defines each key in at most one namespace file (43.298083ms)
+✔ [hi] carries EVERY key of each namespace file it ships (76.849875ms)
+✔ [hi] names only keys the English source defines (36.956708ms)
+✔ [hi] preserves every ICU placeholder from the English source (50.410084ms)
+✔ [hi] is not an English stub (no value identical to the source) (24.813333ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 431.004833
+Command 1 exit: 0
+Command 2: node $LOCAL_OPERATOR_SCRATCHPAD/u1664m1-hi-mechanical.mjs <worktree> <frozen-packet-dir>
+parent retention PR_parent {"added":0,"changed":2,"removed":0,"exactRetained":750}
+parent retention main_parent {"added":11,"changed":0,"removed":0,"exactRetained":741}
+{
+  "inventory": {
+    "keys": 752,
+    "pluralNodes": 31,
+    "selectNodes": 13,
+    "tagNodes": 0,
+    "backtickMessages": 0,
+    "widthHints": 0,
+    "deltaKeys": 13
+  },
+  "cldrCardinalCategories": [
+    "one",
+    "other"
+  ],
+  "issues": [
+    {
+      "key": "ui.chat.pickers.stop.confirm",
+      "kind": "icu_signature"
+    },
+    {
+      "key": "ui.chat.pickers.session_report_model.totals_meta",
+      "kind": "missing_cldr",
+      "category": "one"
+    }
+  ]
+}
+Command 2 exit: 1
+
+Command 3: refined signature allows added exact-number ICU arms; compares unique argument/type/style and named category structure
+
+Executable validator source follows (reproduction source, NOT execution output):
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import {createRequire} from 'node:module';
+import {execFileSync} from 'node:child_process';
+const root=process.argv[2]; const packet=process.argv[3];
+const require=createRequire(`${root}/package.json`);
+const {parse,TYPE}=require('@formatjs/icu-messageformat-parser');
+const p=JSON.parse(readFileSync(`${packet}/hi.json`));
+const {createHash}=require('node:crypto'); const hash=b=>createHash('sha256').update(b).digest('hex');
+assert.equal(execFileSync('git',['-C',root,'rev-parse','HEAD'],{encoding:'utf8'}).trim(),p.frozen_merge_sha);
+const data={};
+for (const role of ['source','context','target']) {const d=p[role];const b=readFileSync(`${root}/${d.repo_relative_path}`);assert.equal(hash(b),d.sha256);assert.deepEqual(b,execFileSync('git',['-C',root,'show',`${p.frozen_merge_sha}:${d.repo_relative_path}`]));data[role]=JSON.parse(b);}
+const en=data.source, hi=data.target, ctx=data.context;
+assert.deepEqual(Object.keys(hi).sort(),Object.keys(en).sort());assert.deepEqual(Object.keys(ctx).sort(),Object.keys(en).sort());
+const issues=[], inventory={keys:Object.keys(en).length,pluralNodes:0,selectNodes:0,tagNodes:0,backtickMessages:0,widthHints:0,deltaKeys:0};
+const cats=new Intl.PluralRules('hi').resolvedOptions().pluralCategories;
+function signature(nodes,locale,key) { const sig=[]; function walk(ns,path=''){for(const n of ns){if(n.type===TYPE.literal||n.type===TYPE.pound)continue;const item=[n.type,n.value];if(n.style)item.push(n.style);if(n.type===TYPE.tag){if(locale==='hi')inventory.tagNodes++;walk(n.children,path+'<'+n.value+'>');}if(n.options){const options=Object.keys(n.options).sort();item.push(options.filter(x=>!x.startsWith('=')),n.offset??0,n.pluralType??'');if(n.type===TYPE.plural&&locale==='hi'){inventory.pluralNodes++;const required=n.pluralType==='ordinal'?new Intl.PluralRules('hi',{type:'ordinal'}).resolvedOptions().pluralCategories:cats;for(const cat of required)if(!options.includes(cat))issues.push({key,kind:'missing_cldr',category:cat});}if(n.type===TYPE.select&&locale==='hi')inventory.selectNodes++;for(const [arm,opt]of Object.entries(n.options))walk(opt.value,path+'/'+n.value+':'+arm);}sig.push(JSON.stringify(item));}}walk(nodes);return [...new Set(sig)].sort();}
+const delta=[...new Set(Object.values(p.parents).flatMap(v=>[...v.delta.added,...v.delta.changed]))].sort();inventory.deltaKeys=delta.length;
+for(const key of Object.keys(en)){try{const a=signature(parse(en[key]),'en',key),b=signature(parse(hi[key]),'hi',key);if(JSON.stringify(a)!==JSON.stringify(b))issues.push({key,kind:'icu_signature'});}catch(e){issues.push({key,kind:'parse',error:e.message});}
+const codes=s=>[...s.matchAll(/`[^`]*`/g)].map(m=>m[0]).sort();if(codes(en[key]).length)inventory.backtickMessages++;if(JSON.stringify(codes(en[key]))!==JSON.stringify(codes(hi[key])))issues.push({key,kind:'backtick_literal'});
+for(const hint of ['maxChars','maxCells'])if(ctx[key][hint]!=null){inventory.widthHints++;if(hint==='maxChars'&&[...hi[key]].length>ctx[key][hint])issues.push({key,kind:'maxChars',actual:[...hi[key]].length,max:ctx[key][hint]});}
+}
+for(const [name,parent]of Object.entries(p.parents)){const prev=JSON.parse(execFileSync('git',['-C',root,'show',`${parent.commit}:${p.target.repo_relative_path}`]));const added=Object.keys(hi).filter(k=>!(k in prev)).sort(), removed=Object.keys(prev).filter(k=>!(k in hi)).sort(), changed=Object.keys(hi).filter(k=>k in prev&&hi[k]!==prev[k]).sort();assert.deepEqual({added,removed,changed},parent.delta);for(const key of parent.exact_retained_ids)assert.equal(hi[key],prev[key]);console.log('parent retention',name,JSON.stringify({added:added.length,changed:changed.length,removed:removed.length,exactRetained:parent.exact_retained_ids.length}));}
+console.log(JSON.stringify({inventory,cldrCardinalCategories:cats,issues},null,2));
+if(issues.length)process.exitCode=1;
+
+ACTUAL OUTPUT — node $LOCAL_OPERATOR_SCRATCHPAD/u1664m1-hi-mechanical.mjs <worktree> <frozen-packet-dir>
+parent retention PR_parent {"added":0,"changed":2,"removed":0,"exactRetained":750}
+parent retention main_parent {"added":11,"changed":0,"removed":0,"exactRetained":741}
+{
+  "inventory": {
+    "keys": 752,
+    "pluralNodes": 31,
+    "selectNodes": 13,
+    "tagNodes": 0,
+    "backtickMessages": 0,
+    "widthHints": 0,
+    "deltaKeys": 13
+  },
+  "cldrCardinalCategories": [
+    "one",
+    "other"
+  ],
+  "issues": [
+    {
+      "key": "ui.chat.pickers.session_report_model.totals_meta",
+      "kind": "missing_cldr",
+      "category": "one"
+    }
+  ]
+}
+Command 3 exit: 1
+
+ACTUAL EXECUTION — Command 4: Python strict duplicate-key/input/provenance/token/Devanagari inspection
+{
+  "strict_json_and_key_parity": "PASS",
+  "input_hashes": "PASS",
+  "unique_parent_receipts_verified": 9,
+  "delta_keys": 13,
+  "retained_identical_to_both_parents": 739,
+  "machine_token_mismatch_keys": [],
+  "delta_contains_native_devanagari_for_every_key": true,
+  "delta_native_digit_keys": [],
+  "delta_bidi_or_joiner_control_keys": []
+}
+Surprising supplemental result retained unchanged in both parents: ui.chat.pickers.stop.confirm True
+Surprising supplemental result retained unchanged in both parents: ui.chat.pickers.session_report_model.totals_meta True
+Command 4 completed; all assertions PASS. Token differences (if any) are observations, not suppressed assertion results.
+
+ACTUAL EXECUTION — Command 5: pure deriveReceiptAudit from scripts/i18n/ledger-rules.mjs (NOT ledger assembler)
+Executable command body:
+import {readFileSync} from 'node:fs';import {createHash} from 'node:crypto';import {deriveReceiptAudit} from './scripts/i18n/ledger-rules.mjs';const hash=p=>createHash('sha256').update(readFileSync(p)).digest('hex');const path=process.argv[1];const out=deriveReceiptAudit(readFileSync(path),{locale:'hi',namespace:'ui.chat.pickers',sourceHash:hash('src/i18n/catalogues/en/ui.chat.pickers.json'),targetHash:hash('src/i18n/catalogues/hi/ui.chat.pickers.json')});console.log(JSON.stringify(out,null,2));
+ACTUAL OUTPUT:
+{
+  "agent": "i18n-auditor",
+  "instance": "bb99e9f9ce2a-u1664m1-hi",
+  "model": "openai/gpt-6.1-sol",
+  "result": "clean",
+  "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+  },
+  "source_sha256": "ecc10fb18100d4d462f36214c83507a48c7f0f8173cb72f37bf5964a05abb58c",
+  "target_sha256": "65b277482fbcd5e2c3e13701860f20dd0600fe4d893b98838f959cdf85dd1946",
+  "receipt_sha256": "ff5738b21bc259088d70923b961903723b16b57afcbbbb319e3bbfc04d680aea"
+}
+Command 5 exit: 0

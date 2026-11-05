@@ -1,0 +1,159 @@
+ACTUAL EXECUTION OUTPUTS — 2026-11-05; auditor 227bd1e1af60-u1664m1-ru
+
+=== validator.log ===
+✔ the English source is non-empty (the guard would pass vacuously otherwise) (0.389292ms)
+✔ [ru] ships at least one message (not an empty claim) (1.482208ms)
+✔ [ru] defines each key in at most one namespace file (1.053459ms)
+✔ [ru] carries EVERY key of each namespace file it ships (2.28675ms)
+✔ [ru] names only keys the English source defines (1.10325ms)
+✔ [ru] preserves every ICU placeholder from the English source (7.270042ms)
+✔ [ru] is not an English stub (no value identical to the source) (1.556916ms)
+✔ a locale-scoped identical-value exemption does not exempt another locale (0.088209ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 83.03575
+
+
+=== mechanical-first-attempt.log ===
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: typed ICU/tag shape ui.chat.pickers.stop.confirm
++ actual - expected
+
+  [
+    '2:count:{"type":0,"tokens":[{"stem":"group-off","options":[]}],"parsedOptions":{"useGrouping":false}}',
+    '6:count:cardinal:0',
+-   'exact:=1'
+  ]
+
+    at file:///Users/damian/.local-operator/sessions/227bd1e1af60/scratchpad/ru-u1664m1-validator/mechanical.mjs:22:9
+    at ModuleJob.run (node:internal/modules/esm/module_job:561:25)
+    at async node:internal/modules/esm/loader:647:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5) {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: [
+    '2:count:{"type":0,"tokens":[{"stem":"group-off","options":[]}],"parsedOptions":{"useGrouping":false}}',
+    '6:count:cardinal:0'
+  ],
+  expected: [
+    '2:count:{"type":0,"tokens":[{"stem":"group-off","options":[]}],"parsedOptions":{"useGrouping":false}}',
+    '6:count:cardinal:0',
+    'exact:=1'
+  ],
+  operator: 'deepStrictEqual',
+  diff: 'simple'
+}
+
+Node.js v24.22.1
+
+
+=== mechanical-second-attempt.log ===
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
++ actual - expected
+
++ [
++   'ui.chat.pickers.session_report_model.totals_meta:en:missing one'
++ ]
+- []
+
+    at file:///Users/damian/.local-operator/sessions/227bd1e1af60/scratchpad/ru-u1664m1-validator/mechanical.mjs:28:8
+    at ModuleJob.run (node:internal/modules/esm/module_job:561:25)
+    at async node:internal/modules/esm/loader:647:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5) {
+  generatedMessage: true,
+  code: 'ERR_ASSERTION',
+  actual: [ 'ui.chat.pickers.session_report_model.totals_meta:en:missing one' ],
+  expected: [],
+  operator: 'deepStrictEqual',
+  diff: 'simple'
+}
+
+Node.js v24.22.1
+
+
+=== mechanical.log ===
+{
+  "status": "PASS",
+  "key_count": 752,
+  "ru_plural_nodes": 31,
+  "ru_select_nodes": 13,
+  "ru_rich_tag_nodes": 0,
+  "checks": [
+    "key/context parity",
+    "typed ICU/tag shape",
+    "CLDR categories",
+    "exact plural arms",
+    "select arms",
+    "backticks",
+    "flags",
+    "slash commands",
+    "NFC",
+    "no manual bidi controls"
+  ]
+}
+
+
+=== metadata.log ===
+PR_parent: 750 exact retained values, delta verified 0 added/2 changed/0 removed
+main_parent: 741 exact retained values, delta verified 11 added/0 changed/0 removed
+All 15 parent audit receipt bindings verified (including repeated history references).
+ui.chat.pickers.destination_pickers.default_approvals_for_all_sessions_that_follow_it_this_session_follows_i: en_chars=114, ru_chars=134, maxCells=None, maxChars=None
+ui.chat.pickers.destination_pickers.default_for_all_sessions_that_follow_it: en_chars=39, ru_chars=61, maxCells=None, maxChars=None
+ui.chat.pickers.slash.source.agent: en_chars=6, ru_chars=6, maxCells=None, maxChars=None
+ui.chat.pickers.slash.source.approvals: en_chars=9, ru_chars=9, maxCells=None, maxChars=None
+ui.chat.pickers.slash.source.effort: en_chars=6, ru_chars=6, maxCells=None, maxChars=None
+ui.chat.pickers.slash.source.mcp: en_chars=7, ru_chars=7, maxCells=None, maxChars=None
+ui.chat.pickers.slash.source.model: en_chars=6, ru_chars=6, maxCells=None, maxChars=None
+ui.chat.pickers.slash.source.provider_accounts: en_chars=8, ru_chars=14, maxCells=None, maxChars=None
+ui.chat.pickers.slash.source.providers: en_chars=9, ru_chars=10, maxCells=None, maxChars=None
+ui.chat.pickers.slash.source.session_tags: en_chars=4, ru_chars=4, maxCells=None, maxChars=None
+ui.chat.pickers.slash.source.team: en_chars=5, ru_chars=7, maxCells=None, maxChars=None
+ui.chat.pickers.slash.source.theme: en_chars=6, ru_chars=4, maxCells=None, maxChars=None
+ui.chat.pickers.slash.source.title_refresh: en_chars=7, ru_chars=9, maxCells=None, maxChars=None
+
+
+AUDIT_NOTES_NOT_EXECUTION_LOG
+Guide/public-copy/sidecar and native linguistic observations are report.md notes, not command execution logs.
+Final supplemental checker source (for reproducibility; includes local paths, not credentials):
+import fs from 'node:fs';
+import assert from 'node:assert/strict';
+import {parse, TYPE} from '@formatjs/icu-messageformat-parser';
+const r='/Users/damian/local-operator-ui/.worktrees/i18n-four-flows';
+const en=JSON.parse(fs.readFileSync(`${r}/src/i18n/catalogues/en/ui.chat.pickers.json`));
+const ru=JSON.parse(fs.readFileSync(`${r}/src/i18n/catalogues/ru/ui.chat.pickers.json`));
+const ctx=JSON.parse(fs.readFileSync(`${r}/src/i18n/catalogues/en/ui.chat.pickers.context.json`));
+assert.deepEqual(Object.keys(en).sort(),Object.keys(ru).sort());
+assert.deepEqual(Object.keys(en).sort(),Object.keys(ctx).sort());
+let plurals=0,selects=0,tags=0; const problems=[];
+function shape(nodes,locale,key){const sig=[];for(const n of nodes){
+ if([TYPE.argument,TYPE.number,TYPE.date,TYPE.time].includes(n.type))sig.push(`${n.type}:${n.value}:${JSON.stringify(n.style??null)}`);
+ if(n.type===TYPE.tag){if(locale==='ru')tags++;sig.push(`tag:${n.value}`,...shape(n.children,locale,key));}
+ if(n.type===TYPE.select||n.type===TYPE.plural){
+  sig.push(`${n.type}:${n.value}:${n.pluralType??''}:${n.offset??0}`);
+  if(n.type===TYPE.plural){if(locale==='ru')plurals++;const need=new Intl.PluralRules(locale,{type:n.pluralType}).resolvedOptions().pluralCategories;for(const arm of need)if(locale==='ru' && !n.options[arm])problems.push(`${key}:${locale}:missing ${arm}`);}
+  else {if(locale==='ru')selects++;sig.push(`selectarms:${Object.keys(n.options).sort().join(',')}`);}
+  for(const [arm,opt] of Object.entries(n.options)){if(arm.startsWith('=') && locale==='en' && !ru[key].includes(`${arm} {`))problems.push(`${key}:missing source exact arm ${arm}`);sig.push(...shape(opt.value,locale,key));}
+ }
+}return [...new Set(sig)].sort();}
+for(const k of Object.keys(en)){
+ assert.deepEqual(shape(parse(en[k]),'en',k),shape(parse(ru[k]),'ru',k),`typed ICU/tag shape ${k}`);
+ for(const re of [/`[^`]*`/g,/(?<![\w/])--[a-z][\w-]*/g,/(?<![\w/])\/[a-z][a-z0-9_-]*/g]){
+ const tok=s=>[...s.matchAll(re)].map(x=>x[0]).sort();assert.deepEqual(tok(en[k]),tok(ru[k]),`literal tokens ${k}`);}
+ assert.equal(ru[k],ru[k].normalize('NFC'),`NFC ${k}`);
+ assert.ok(!/[\u202a-\u202e\u2066-\u2069]/.test(ru[k]),`bidi ${k}`);
+}
+assert.deepEqual(problems,[]);
+console.log(JSON.stringify({status:'PASS',key_count:Object.keys(en).length,ru_plural_nodes:plurals,ru_select_nodes:selects,ru_rich_tag_nodes:tags,checks:['key/context parity','typed ICU/tag shape','CLDR categories','exact plural arms','select arms','backticks','flags','slash commands','NFC','no manual bidi controls']},null,2));
+
