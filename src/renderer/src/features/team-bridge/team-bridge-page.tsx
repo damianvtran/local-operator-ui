@@ -3363,6 +3363,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 
 	const pageBody = (
 		<div
+			data-glass-split=""
 			data-glass-region="canvas"
 			className="panel-flush @container/bridge relative flex min-h-0 flex-1 w-full overflow-hidden bg-canvas"
 		>
@@ -3412,6 +3413,9 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 			    `panel-top-pad`, and the box that pads must be the box that paints
 			    (AGENTS.md "Panels run to the window edge"). */}
 			<section
+				/* The reading column alone owns the canvas alpha. The rail/thread
+				 * own their surface alpha directly, never over a canvas backing. */
+				data-glass-region="canvas-content"
 				className={cn(
 					"panel-top-pad flex min-w-0 flex-1 flex-col bg-canvas",
 					(threadIsOpen || membersPanelShown) &&
@@ -3648,9 +3652,10 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 								}
 							/>
 						) : (
-							/* `h-12` and the pane's own `canvas`: the header is part of the
-							   reading plane, not a bar over it (visual refresh D8). */
-							<header className="flex h-12 shrink-0 items-center gap-2 bg-canvas px-5">
+							/* Static chrome continues the column's ground. A second canvas
+							 * fill would mask glass; this is outside the scroller, so no
+							 * sticky-content isolation band is needed. */
+							<header className="flex h-12 shrink-0 items-center gap-2 px-5">
 								{shown?.kind === "channel" ? (
 									<Hash
 										size={16}

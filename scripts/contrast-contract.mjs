@@ -1315,10 +1315,11 @@ for (const entry of palettes) evaluatePalette(run, entry);
  * assertions go to a discarded run instead of this one, so the sections still
  * execute - a crash in them still fails the leg - but neither their count nor
  * their verdict is reported as if it were about composed palettes. The
- * consequence is deliberate and enforced at runtime in
- * `src/renderer/src/shared/hooks/use-window-glass.ts` (`composedThemeActive`):
- * a composed appearance has NO glass floor table, so the window renders opaque
- * on one until a composed table is derived and green here.
+ * authored-table scope is deliberate: live compositions now derive their OWN
+ * table through `src/shared/glass-derivation.mjs`, shared with this tool's
+ * authored solver. `scripts/composed-glass.test.mjs` separately drives the actual
+ * renderer paint inputs against composed values, state overlays and sticky
+ * backgrounds; the authored fleet table below is not a composed-glass claim.
  */
 const authoredRun = COMPOSED ? createRun({ composed: true }) : run;
 

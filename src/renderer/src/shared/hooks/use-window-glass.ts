@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { glassFloorsForPalette } from "../../../../shared/glass-derivation.mjs";
 import {
 	type GlassScheme,
 	type GlassSettings,
@@ -6,6 +7,7 @@ import {
 	type WindowGlassState,
 	glassPaintFor,
 } from "../../../../shared/window-glass";
+import { glassPaletteFor } from "../themes/glass-palette";
 
 /**
  * The renderer's half of the window glass (translucency, on by default where the
@@ -65,31 +67,20 @@ let applied: Applied | null = null;
 export const documentScheme = (): GlassScheme =>
 	root().classList.contains("dark") ? "dark" : "light";
 
-/*
- * A COMPOSED THEME PAINTS OPAQUE (agent review round 1, m1 on #1674). The glass
- * alpha floors in `window-glass-floors.json` are derived from the AUTHORED
- * palettes, and the contrast contract asserts them on authored palettes only; a
- * composition (a contrast preset, a borrowed or custom accent) has no floor table,
- * and the architect's measurements found real glass failures at the presets. So
- * while `data-theme` names a composition - `lo-<hash>`, the only ids the engine
- * mints (`compose.mjs`; no built-in id has the `lo-` prefix) - the glass is held
- * off here, the one place that writes it. `applied` keeps main's state, so the
- * next identity paint (back to Standard with the theme's accent) restores it.
- * Lift this when a composed floor table is derived and green in the contract.
- */
-const COMPOSED_THEME_ID = /^lo-/;
-export const composedThemeActive = (): boolean =>
-	COMPOSED_THEME_ID.test(root().dataset.theme ?? "");
-
+/* Native capability and the user's opacity setting are independent of theme
+ * composition. Measure the actual palette below instead of treating lo-* IDs
+ * (including borrowed/custom accents) as a request to disable transparency. */
 function paint(next: Applied | null): void {
 	applied = next;
 	const el = root();
-	if (!next || !next.active || composedThemeActive()) {
+	if (!next || !next.active) {
 		delete el.dataset.glass;
 		for (const name of GLASS_VARS) el.style.removeProperty(name);
 		return;
 	}
+	const palette = glassPaletteFor(document);
 	const { kinds, vars } = glassPaintFor({
+		floors: palette ? glassFloorsForPalette(palette) : undefined,
 		coverage: next.settings.coverage,
 		intensity: next.settings.intensity,
 		mechanism: next.mechanism,
@@ -156,8 +147,8 @@ export function applyGlassState(state: WindowGlassState | null): void {
  */
 export function syncGlassScheme(): void {
 	if (!applied || !applied.active) return;
-	/* Also the moment a composition starts or ends: `paint` holds a composed
-	   theme opaque and restores the glass on the way back to identity. */
+	/* Composition changes inks and grounds even when the scheme is unchanged.
+	 * Re-derive in the same layout effect, before either paint can be shown. */
 	paint({ ...applied, scheme: documentScheme() });
 	void window.api?.windowGlass?.reportScheme?.(documentScheme());
 }

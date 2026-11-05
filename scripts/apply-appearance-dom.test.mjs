@@ -1,7 +1,6 @@
 /**
  * `applyAppearance`'s document writes, against a real DOM (jsdom), and the
- * window glass guard that follows a composed theme (agent review round 1, m1,
- * m3 and m4 on #1674).
+ * palette-specific window glass paint that follows a composed theme.
  *
  * WHAT IS PINNED, and why each one matters:
  *  - Identity (Standard, the theme's accent) writes NO `<style>` and sets
@@ -14,14 +13,15 @@
  *  - The write is validated by `applyAppearance` itself: a composition whose id
  *    or any value is outside the CSS grammar fails to identity (no block, the
  *    built-in id), never a partial or hostile stylesheet.
- *  - The glass hook paints opaque while `data-theme` names a composition and
- *    restores main's state on the way back to identity.
+ *  - Compositions retain native glass across contrast/accent/mode changes;
+ *    actual values derive the floor, while inactive native state stays opaque.
  *
  * The real `resolveAppearance` is used for the honest paths; the hostile cases
  * inject a composition through `applyAppearance`'s test-only resolver, because
  * the engine cannot be made to produce one (that is the point of the guard).
  */
 import assert from "node:assert/strict";
+import { createRequire } from "node:module";
 import { test } from "node:test";
 import { build } from "esbuild";
 
@@ -41,13 +41,14 @@ const bundle = await build({
 	stdin: {
 		contents: [
 			'export { applyAppearance, resolveAppearance, COMPOSED_STYLE_ID } from "./src/renderer/src/shared/themes/appearance";',
-			'export { applyGlassFacts, syncGlassScheme, composedThemeActive } from "./src/renderer/src/shared/hooks/use-window-glass";',
+			'export { applyGlassFacts, syncGlassScheme } from "./src/renderer/src/shared/hooks/use-window-glass";',
 		].join("\n"),
 		resolveDir: process.cwd(),
 		loader: "ts",
 	},
 	bundle: true,
-	format: "esm",
+	format: "cjs",
+	packages: "external",
 	platform: "node",
 	write: false,
 	define: { "import.meta.env": "{}" },
@@ -60,9 +61,13 @@ const bundle = await build({
 	tsconfig: "tsconfig.app.json",
 	logLevel: "silent",
 });
-const mod = await import(
-	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
+const module = { exports: {} };
+new Function("require", "module", "exports", bundle.outputFiles[0].text)(
+	createRequire(import.meta.url),
+	module,
+	module.exports,
 );
+const mod = module.exports;
 
 const doc = dom.window.document;
 const root = doc.documentElement;
@@ -141,22 +146,78 @@ test("applyAppearance refuses an unsafe id or value and fails to identity", () =
 	}
 });
 
-test("glass paints opaque on a composed theme and returns on identity", () => {
+test("glass follows actual composed colours across presets, continuous values, accents and restart", () => {
+	for (const themeName of ["localOperatorDark", "localOperatorLight"]) {
+		for (const contrast of [-100, -50, 0, 50, 100, -73, 31]) {
+			const appearance = {
+				...STANDARD,
+				themeName,
+				contrast: { dark: contrast, light: contrast },
+			};
+			mod.applyAppearance(appearance, doc);
+			for (const intensity of [0, 50, 100]) {
+				mod.applyGlassFacts({
+					mechanism: "vibrancy",
+					coverage: "full",
+					intensity,
+					material: "window",
+					scheme: themeName.endsWith("Dark") ? "dark" : "light",
+				});
+				mod.syncGlassScheme();
+				assert.equal(root.dataset.glass, "sidebar canvas pane");
+				for (const role of ["canvas", "surface", "elevated"]) {
+					const alpha = Number(
+						root.style.getPropertyValue(`--lo-glass-a-${role}`),
+					);
+					assert.ok(
+						alpha > 0 && alpha <= 1,
+						`${themeName}/${contrast}/${intensity}/${role}: ${alpha}`,
+					);
+				}
+			}
+		}
+		const custom = {
+			...STANDARD,
+			themeName,
+			accent: {
+				dark: { kind: "custom", hex: "#ff6644" },
+				light: { kind: "custom", hex: "#ff6644" },
+			},
+		};
+		const resolved = mod.applyAppearance(custom, doc);
+		/* A custom palette need not carry the engine's lo-* ID prefix. */
+		mod.applyAppearance(custom, doc, () => ({
+			...resolved,
+			identity: false,
+			id: "arbitrary-custom-palette",
+		}));
+		mod.syncGlassScheme();
+		assert.equal(root.dataset.glass, "sidebar canvas pane");
+		mod.applyGlassFacts(null);
+		assert.equal(
+			root.dataset.glass,
+			undefined,
+			"off remains opaque for a composition",
+		);
+		mod.applyGlassFacts({
+			mechanism: "vibrancy",
+			coverage: "full",
+			intensity: 80,
+			material: "window",
+			scheme: "dark",
+		});
+		mod.syncGlassScheme();
+		assert.equal(
+			root.dataset.glass,
+			"sidebar canvas pane",
+			"persisted launch facts restore composed glass",
+		);
+	}
 	mod.applyAppearance(STANDARD, doc);
-	mod.applyGlassFacts({
-		mechanism: "vibrancy",
-		coverage: "full",
-		intensity: 80,
-		material: "window",
-		scheme: "dark",
-	});
-	assert.equal(root.dataset.glass, "sidebar canvas pane");
-	mod.applyAppearance(HIGH, doc);
 	mod.syncGlassScheme();
-	assert.equal(mod.composedThemeActive(), true);
-	assert.equal(root.dataset.glass, undefined, "no glass on a composition");
-	assert.equal(root.style.getPropertyValue("--lo-glass-a-canvas"), "");
-	mod.applyAppearance(STANDARD, doc);
-	mod.syncGlassScheme();
-	assert.equal(root.dataset.glass, "sidebar canvas pane", "glass restored");
+	assert.equal(
+		root.dataset.glass,
+		"sidebar canvas pane",
+		"identity remains glass too",
+	);
 });
