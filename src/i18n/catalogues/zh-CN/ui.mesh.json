@@ -297,5 +297,7 @@
 	"ui.mesh.mesh_approvals.profile_revert_done": "已还原",
 	"ui.mesh.mesh_approvals.profile_revert_stale": "此还原已过期",
 	"ui.mesh.mesh_approvals.profile_revert_failed": "还原未成功",
-	"ui.mesh.mesh_approvals.profile_revert_unavailable": "此会话中无法使用还原"
+	"ui.mesh.mesh_approvals.profile_revert_unavailable": "此会话中无法使用还原",
+	"ui.mesh.mesh_approvals.profile_changes_not_in_receipt": "此回执未包含字段变更",
+	"ui.mesh.mesh_approvals.profile_revert_unconfirmed": "撤销可能未完成"
 }

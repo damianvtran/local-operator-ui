@@ -297,5 +297,7 @@
 	"ui.mesh.mesh_approvals.profile_revert_done": "Восстановлено",
 	"ui.mesh.mesh_approvals.profile_revert_stale": "Срок этого восстановления истёк",
 	"ui.mesh.mesh_approvals.profile_revert_failed": "Восстановление не выполнено",
-	"ui.mesh.mesh_approvals.profile_revert_unavailable": "Восстановление недоступно в этом сеансе"
+	"ui.mesh.mesh_approvals.profile_revert_unavailable": "Восстановление недоступно в этой сессии",
+	"ui.mesh.mesh_approvals.profile_changes_not_in_receipt": "Изменения полей не включены в эту квитанцию",
+	"ui.mesh.mesh_approvals.profile_revert_unconfirmed": "Возможно, отмена не выполнилась"
 }

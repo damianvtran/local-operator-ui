@@ -295,7 +295,9 @@
 	"ui.mesh.mesh_approvals.profile_revert": "بحال کریں",
 	"ui.mesh.mesh_approvals.profile_revert_pending": "بحالی جاری ہے…",
 	"ui.mesh.mesh_approvals.profile_revert_done": "بحال ہو گیا",
-	"ui.mesh.mesh_approvals.profile_revert_stale": "یہ بحالی ختم ہو چکی ہے",
+	"ui.mesh.mesh_approvals.profile_revert_stale": "اس بحالی کی میعاد ختم ہو چکی ہے",
 	"ui.mesh.mesh_approvals.profile_revert_failed": "بحالی مکمل نہیں ہوئی",
-	"ui.mesh.mesh_approvals.profile_revert_unavailable": "اس سیشن میں بحالی دستیاب نہیں"
+	"ui.mesh.mesh_approvals.profile_revert_unavailable": "اس سیشن میں بحالی دستیاب نہیں",
+	"ui.mesh.mesh_approvals.profile_changes_not_in_receipt": "اس رسید میں فیلڈ کی تبدیلیاں شامل نہیں ہیں",
+	"ui.mesh.mesh_approvals.profile_revert_unconfirmed": "بحالی مکمل نہیں ہوئی ہو سکتی"
 }

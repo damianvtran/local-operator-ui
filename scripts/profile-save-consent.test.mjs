@@ -34,6 +34,15 @@ const bundle = await build({
 			export * from "./src/renderer/src/features/mesh/mesh-approvals";
 			export * from "./src/renderer/src/features/mesh/mesh-profile-approval";
 			export { profileSaveCall } from "./src/renderer/src/features/chat/components/trace/profile-save-card-model";
+			export { createProfileRevertLatch } from "./src/renderer/src/features/chat/canonical/profile-revert-latch";
+			export {
+				readProfileRevertStatus,
+				profileRevertStatusCache,
+				profileRevertPressAllowed,
+				profileRevertAuthority,
+				profileRevertStatusSchema,
+				PROFILE_REVERT_STATUS_UNVERIFIABLE,
+			} from "./src/renderer/src/features/chat/canonical/profile-revert-status";
 			export { desktopRequestSchema, desktopEndpoint } from "./src/shared/desktop-contract";
 			export { setLocale } from "./src/i18n";
 		`,
@@ -603,32 +612,244 @@ test("the saved card states the profile, the scope, the operation and the diff",
 	assert.equal(call.view.revert.state, "unavailable");
 });
 
-test("the revert is offered only when the backend verified the descriptor", () => {
-	const unverified = callOf({
-		disclosure: disclosure(),
-		revert: revertDescriptor,
-	});
-	assert.ok(unverified);
-	assert.equal(unverified.descriptor, null);
-	assert.equal(unverified.view.revert.state, "unavailable");
-	assert.equal(unverified.view.revert.enabled, false);
-
-	const wrongFlag = callOf({
-		disclosure: disclosure(),
-		revert: revertDescriptor,
-		revert_verified: "yes",
-	});
-	assert.equal(wrongFlag?.descriptor, null);
-
-	const verified = callOf({
+test("a payload's revert_verified flag is evidence, never the authority to press", () => {
+	/*
+	 * R2: a persisted tool output can be replayed by a reload, a restored transcript
+	 * or an agent that wrote it. The parser therefore reports the descriptor and the
+	 * flag separately, and its own view is UNAVAILABLE — only the surface, which
+	 * knows the running backend and the gate identity, may raise it.
+	 */
+	const flagged = callOf({
 		disclosure: disclosure(),
 		state: "applied",
 		revert: revertDescriptor,
 		revert_verified: true,
 	});
-	assert.ok(verified?.descriptor);
-	assert.equal(verified.view.revert.state, "available");
-	assert.equal(verified.view.revert.enabled, true);
+	assert.ok(flagged?.descriptor, "the descriptor is still reported");
+	assert.equal(flagged.revertVerifiedByProducer, true);
+	assert.equal(flagged.view.revert.state, "unavailable");
+	assert.equal(flagged.view.revert.enabled, false);
+
+	const unflagged = callOf({
+		disclosure: disclosure(),
+		revert: revertDescriptor,
+	});
+	assert.ok(unflagged?.descriptor);
+	assert.equal(flagged.revertVerifiedByProducer !== undefined, true);
+	assert.equal(unflagged.revertVerifiedByProducer, false);
+	assert.equal(unflagged.view.revert.state, "unavailable");
+
+	// A string "yes" is not a boolean claim.
+	assert.equal(
+		callOf({
+			disclosure: disclosure(),
+			revert: revertDescriptor,
+			revert_verified: "yes",
+		})?.revertVerifiedByProducer,
+		false,
+	);
+
+	// The authority itself lives in the transcript: pinned where it is decided.
+	const transcript = source(
+		"src/renderer/src/features/chat/canonical/canonical-transcript.tsx",
+	);
+	assert.match(
+		transcript,
+		/const revertStatus = useProfileRevertStatus\(/,
+		"the live status seam is read",
+	);
+	assert.doesNotMatch(
+		transcript,
+		/revertRegistered/,
+		"no second authority survives beside the seam",
+	);
+	assert.match(transcript, /namesThisRecord/);
+	assert.match(transcript, /scope\?\.sessionId &&[\s\S]{0,40}approvalEpoch/);
+});
+
+test("an uncertain outcome is unconfirmed and never re-enables; a stale refusal is stale", () => {
+	/*
+	 * R3/Q1, reproduced against the shipped resolver: the old code painted "The
+	 * revert did not go through" and re-offered the control for a send that may
+	 * have landed.
+	 */
+	const uncertain = api.profileRevertView(revertDescriptor, {
+		outcome: { approved: false, state: "unconfirmed" },
+	});
+	assert.equal(uncertain.state, "unconfirmed");
+	assert.equal(uncertain.enabled, false);
+	assert.notEqual(uncertain.note, null);
+	assert.match(uncertain.note, /may not have gone through/i);
+
+	const stale = api.profileRevertView(revertDescriptor, {
+		outcome: { approved: false, state: "expired" },
+	});
+	assert.equal(stale.state, "stale");
+	assert.equal(stale.enabled, false);
+
+	// A genuine refusal that is NOT about the window is the failed state, and only
+	// that one re-offers the press.
+	const refused = api.profileRevertView(revertDescriptor, {
+		outcome: { approved: false },
+	});
+	assert.equal(refused.state, "failed");
+	assert.equal(refused.enabled, true);
+});
+
+test("two presses in the same batch dispatch one answer", () => {
+	/*
+	 * QA Q2: React state only guards after a re-render, so two same-batch presses
+	 * both read the pre-render value and both sent an identical answer. The latch is
+	 * written synchronously, before the request is built.
+	 */
+	const latch = api.createProfileRevertLatch();
+	assert.equal(
+		latch.claim("ra_5b81"),
+		true,
+		"the first press claims the action",
+	);
+	assert.equal(
+		latch.claim("ra_5b81"),
+		false,
+		"the second press in the same batch does not",
+	);
+	assert.equal(latch.has("ra_5b81"), true);
+	assert.equal(
+		latch.claim("ra_other"),
+		true,
+		"a different action is its own claim",
+	);
+	assert.equal(latch.claim(""), false, "an empty action id is never claimed");
+
+	const hook = source(
+		"src/renderer/src/features/chat/canonical/use-profile-revert.ts",
+	);
+	const hookAt = hook.indexOf("profileRevertLatch.claim(descriptor.action_id)");
+	const dispatchAt = hook.indexOf("void desktopResult({");
+	assert.ok(hookAt > 0, "the hook claims through the latch");
+	assert.ok(
+		dispatchAt > hookAt,
+		"the claim is taken before the request is built",
+	);
+	const authorityAt = hook.indexOf('status?.status !== "available"');
+	assert.ok(
+		authorityAt > 0 && authorityAt < hookAt,
+		"no authority sends nothing at all",
+	);
+});
+
+/* ---------------------------------------------------- the receipt's diff */
+
+test("a queued receipt WITH a diff renders the backend's lines, and never 'no changes'", () => {
+	const details = {
+		status: "queued",
+		fields: ["model", "instructions"],
+		diff: [
+			"Model: anthropic/claude-sonnet-5 → anthropic/claude-opus-5-5",
+			"Instructions: 1 line added",
+		],
+		approval_id: "ap_dem1234",
+		request_digest: requestDigest,
+		expires_at: 1_900_000_000,
+		receipt_id: "rc_71bd",
+		profile_kind: "agent",
+		profile_name: "Researcher",
+		scope: "global",
+	};
+	const call = api.profileSaveCall({
+		toolName: "profile_save",
+		output: "",
+		details,
+	});
+	assert.ok(call, "a receipt in details is a bound answer");
+	assert.deepEqual(call.view.diffLines, details.diff);
+	assert.deepEqual(call.view.changedFieldNames, ["model", "instructions"]);
+	assert.equal(call.view.changesIncluded, true);
+	assert.deepEqual(call.view.fields, []);
+	assert.equal(call.view.state, "waiting");
+
+	// The same receipt WITHOUT lines still does not claim the diff is empty.
+	const bare = api.profileSaveCall({
+		toolName: "profile_save",
+		output: "",
+		details: { ...details, fields: undefined, diff: undefined },
+	});
+	assert.ok(bare);
+	assert.equal(bare.view.changesIncluded, false);
+	assert.equal(bare.view.diffLines.length, 0);
+});
+
+test("a policy-only change is stated in the backend's own words, not re-derived here", () => {
+	/*
+	 * Parent's policy-visibility rule: effort/tools/class/delegate live inside the
+	 * `tags` image, so the readable sentence must come from the backend's `diff`
+	 * lines. The renderer must not parse tag strings to describe a permission
+	 * change, and must not reduce a policy change to a bare 'tags' row when the
+	 * backend authored lines.
+	 */
+	const diff = [
+		"Capabilities: class standard → elevated",
+		"Effort: med → hi",
+		"Tools: +web, -shell",
+		"Delegate: off → on",
+	];
+	const call = api.profileSaveCall({
+		toolName: "profile_save",
+		output: "",
+		details: {
+			status: "applied",
+			profile_kind: "agent",
+			profile_name: "Researcher",
+			scope: "global",
+			fields: ["tags"],
+			diff,
+		},
+	});
+	assert.ok(call);
+	// No before/after row is invented for a receipt, and no row re-states 'tags' as
+	// if the change were cosmetic: the backend's own lines are the body.
+	assert.deepEqual(call.view.fields, []);
+	assert.deepEqual(call.view.diffLines, diff);
+	assert.deepEqual(call.view.changedFieldNames, ["tags"]);
+	assert.equal(call.view.state, "saved");
+	// The renderer holds no second policy vocabulary: the card module never reads a
+	// tag string to describe a class/effort/tools change.
+	const card = source(
+		"src/renderer/src/features/mesh/profile-consent-card.tsx",
+	);
+	assert.doesNotMatch(card, /split\(":"\)|startsWith\("class"\)|parseTags/);
+});
+
+test("a replayed legacy descriptor never produces a revert control", () => {
+	// The old tool answer carries `revert: {action_id?...}`-less legacy shapes; the
+	// one the backend actually wrote was `{profile_revert: {schema, kind, ...}}`
+	// replaced later by `{revert_id, ...}`. Whatever a persisted output claims, a
+	// verified descriptor is what the shared strict schema demands.
+	for (const replayed of [
+		{ action_id: "ra_5b81" },
+		{ revert_id: "ra_5b81", label: "Revert" },
+		{ revert_id: "ra_5b81", label: "Revert", profile_name: "Researcher" },
+		{ action_id: "ra_5b81", label: "Revert", profile_kind: "agent" },
+		{ schema: 1, kind: "profile_revert" },
+	]) {
+		const call = api.profileSaveCall({
+			toolName: "profile_save",
+			output: "",
+			details: {
+				status: "applied",
+				profile_kind: "agent",
+				profile_name: "Researcher",
+				scope: "global",
+				fields: ["model"],
+				diff: ["Model: a → b"],
+				revert: replayed,
+			},
+		});
+		assert.ok(call, "the record still renders");
+		assert.equal(call.descriptor, null, JSON.stringify(replayed));
+		assert.equal(call.view.revert.enabled, false);
+		assert.equal(call.view.revert.descriptor, null);
+	}
 });
 
 test("a queued receipt names the profile and claims no diff", () => {
@@ -681,5 +902,92 @@ test("a verified descriptor with no gate identity is disabled with a reason", ()
 	// The arm that must never exist: a disabled control whose note is null.
 	assert.match(transcript, /const pressable = Boolean\(/);
 	assert.match(transcript, /: profileRevertUnavailable\(\)/);
-	assert.match(transcript, /pressable && profileCall\.descriptor/);
+	assert.match(transcript, /pressable && descriptor/);
+});
+
+/* ------------------------------------------- the live status seam (R2) */
+
+const identity = {
+	action_id: "ra_5b81",
+	receipt_id: "rc_71bd",
+	profile_kind: "agent",
+	profile_name: "Researcher",
+};
+
+test("the status seam answers unavailable until core ships the read", async () => {
+	const answer = await api.readProfileRevertStatus(identity);
+	assert.equal(answer.status, "unavailable");
+	assert.equal(answer.reason, api.PROFILE_REVERT_STATUS_UNVERIFIABLE);
+	// Closed on both sides: a malformed identity is refused by name, never guessed.
+	for (const bad of [
+		{ ...identity, action_id: "../other" },
+		{ ...identity, action_id: "" },
+		{ ...identity, profile_kind: "machine" },
+		{ ...identity, extra: true },
+	]) {
+		const refused = await api.readProfileRevertStatus(bad);
+		assert.equal(refused.status, "unavailable", JSON.stringify(bad));
+	}
+	// The seam invents no route: no path or op name appears in the module.
+	const seam = source(
+		"src/renderer/src/features/chat/canonical/profile-revert-status.ts",
+	);
+	assert.doesNotMatch(seam, /\/v1\/desktop|op:\s*"|fetch\(/);
+	assert.match(seam, /TODO\(profile-revert-status contract point\)/);
+});
+
+test("only a live available answer permits a press; nothing else does", () => {
+	for (const [status, state, enabled] of [
+		["available", "available", true],
+		["pending", "pending", false],
+		["succeeded", "saved", false],
+		["stale", "stale", false],
+		["failed", "failed", false],
+		["unavailable", "unavailable", false],
+	]) {
+		const resolved = api.profileRevertAuthority({ status });
+		assert.deepEqual(resolved, { state, enabled }, status);
+		assert.equal(
+			api.profileRevertPressAllowed({ status }),
+			status === "available",
+		);
+		// The payload's own flags cannot reach this decision: it takes the answer.
+		assert.equal(api.profileRevertAuthority(null).enabled, false);
+	}
+	// An uncertain activation is PENDING, never failed-and-enabled.
+	assert.deepEqual(api.profileRevertAuthority({ status: "pending" }), {
+		state: "pending",
+		enabled: false,
+	});
+});
+
+test("a cached completion makes a duplicate press write nothing", () => {
+	api.profileRevertStatusCache.clear();
+	assert.equal(api.profileRevertStatusCache.read("ra_5b81"), null);
+	api.profileRevertStatusCache.remember("ra_5b81", { status: "succeeded" });
+	const cached = api.profileRevertStatusCache.read("ra_5b81");
+	assert.equal(cached?.status, "succeeded");
+	// The press's own guard: a remembered answer stops the write before it is built.
+	assert.equal(api.profileRevertPressAllowed(cached), false);
+	const hook = source(
+		"src/renderer/src/features/chat/canonical/use-profile-revert.ts",
+	);
+	assert.match(
+		hook,
+		/if \(profileRevertStatusCache\.read\(descriptor\.action_id\)\) return;/,
+	);
+	// And an unreadable answer is not remembered as a fact.
+	api.profileRevertStatusCache.remember("ra_5b81", { status: "nonsense" });
+	assert.equal(
+		api.profileRevertStatusCache.read("ra_5b81")?.status,
+		"succeeded",
+	);
+	// The hook records an in-flight press as pending, and an uncertain failure is
+	// NOT remembered as a completion.
+	assert.match(
+		hook,
+		/profileRevertStatusCache\.remember\(descriptor\.action_id, \{\s*status: "pending"/,
+	);
+	assert.match(hook, /if \(state === "stale"\)/);
+	api.profileRevertStatusCache.clear();
 });

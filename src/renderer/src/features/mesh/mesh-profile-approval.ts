@@ -52,6 +52,27 @@ export type ProfileCardView = {
 	scope: "global" | null;
 	/** The authored columns that differ, BEFORE and AFTER, from the disclosure's own images. */
 	fields: ProfileFieldView[];
+	/**
+	 * Whether this payload CARRIED the before/after images at all.
+	 *
+	 * `fields.length === 0` has two meanings and they are not the same sentence: a
+	 * disclosure with nothing changed, and a receipt that never carried an image.
+	 * The card must not describe the second as the first (i18n audit I1).
+	 */
+	changesIncluded: boolean;
+	/**
+	 * The BACKEND'S OWN human-readable diff lines, rendered verbatim.
+	 *
+	 * Empty for a disclosure card, whose rows come from the images themselves, and
+	 * populated from a receipt's `diff` — the only place a policy change (class,
+	 * effort, tools, delegate) is stated in words, because those live inside `tags`.
+	 */
+	diffLines: string[];
+	/**
+	 * The changed column NAMES when a receipt carried no summary lines. Rendered in
+	 * the machine face, because they are the backend's own keys rather than prose.
+	 */
+	changedFieldNames: string[];
 	/** The record's lifecycle in this card's words. */
 	state: ProfileCardState;
 	/** The state's own sentence; `null` when the store's label is already the honest one. */
@@ -205,6 +226,13 @@ export function profileCardView(
 		operation: disclosure?.profile_operation ?? null,
 		scope: disclosure?.scope ?? null,
 		fields,
+		/*
+		 * A row without a parsed disclosure never carried the images, so its empty
+		 * diff is "not included", not "nothing changed".
+		 */
+		changesIncluded: disclosure !== null,
+		diffLines: [],
+		changedFieldNames: [],
 		state: state.state,
 		stateNote: state.note,
 		canApprove,
@@ -258,6 +286,8 @@ function revertNote(state: ProfileRevertState): string | null {
 			return t("ui.mesh.mesh_approvals.profile_revert_stale");
 		case "failed":
 			return t("ui.mesh.mesh_approvals.profile_revert_failed");
+		case "unconfirmed":
+			return t("ui.mesh.mesh_approvals.profile_revert_unconfirmed");
 		default:
 			return t("ui.mesh.mesh_approvals.profile_revert_unavailable");
 	}
@@ -282,8 +312,15 @@ export function profileReceiptView(
 		operation: "create",
 		scope: receipt.scope,
 		fields: [],
-		state: "waiting",
-		stateNote: t("ui.mesh.mesh_approvals.profile_waiting"),
+		changesIncluded:
+			(receipt.diff?.length ?? 0) > 0 || (receipt.fields?.length ?? 0) > 0,
+		diffLines: receipt.diff ?? [],
+		changedFieldNames: receipt.fields ?? [],
+		state: receipt.status === "applied" ? "saved" : "waiting",
+		stateNote:
+			receipt.status === "applied"
+				? null
+				: t("ui.mesh.mesh_approvals.profile_waiting"),
 		canApprove: false,
 		canDeny: false,
 		canRetryApply: false,
@@ -317,6 +354,9 @@ export function profileDisclosureView(
 		operation: disclosure.profile_operation,
 		scope: disclosure.scope,
 		fields: profileFieldRows(disclosure),
+		changesIncluded: true,
+		diffLines: [],
+		changedFieldNames: [],
 		state,
 		stateNote: stateNoteFor(state),
 		canApprove: false,

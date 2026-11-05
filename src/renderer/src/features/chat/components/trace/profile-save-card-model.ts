@@ -23,6 +23,7 @@
  * wrote.
  */
 
+import { t } from "../../../../../../i18n/messages";
 import {
 	type ProfileRevertDescriptor,
 	type ProfileSaveDisclosure,
@@ -30,11 +31,14 @@ import {
 	profileQueuedReceipt,
 	profileRevertDescriptor,
 } from "../../../../../../shared/profile-consent";
+
+/** The receipt's parsed shape, taken from the one schema that defines it. */
+type ProfileReceipt = NonNullable<ReturnType<typeof profileQueuedReceipt>>;
 import {
 	type ProfileCardState,
 	type ProfileCardView,
 	profileDisclosureView,
-	profileRevertView,
+	profileRevertUnavailable,
 } from "../../../mesh/mesh-profile-approval";
 
 /** The calls this card owns. Anything else keeps its existing rendering. */
@@ -46,10 +50,20 @@ export const PROFILE_SAVE_TOOLS: ReadonlySet<string> = new Set([
 export type ProfileSaveCall = {
 	view: ProfileCardView;
 	/**
-	 * The verified descriptor, or `null`. `null` is what makes the control
-	 * disappear: an absent action is not a disabled button with a mystery.
+	 * The descriptor this payload named, or `null`. Parsing it proves the SHAPE,
+	 * never the right to execute: see `revertVerifiedByProducer`.
 	 */
 	descriptor: ProfileRevertDescriptor | null;
+	/**
+	 * What the payload CLAIMS about its descriptor (`revert_verified: true`).
+	 *
+	 * THIS IS EVIDENCE, NOT AUTHORITY (review R2). A persisted tool output can be
+	 * replayed by a reload, a restored transcript or an agent that wrote it, so a
+	 * flag in it records only what some producer once verified. Whether THIS runtime
+	 * may answer the action is decided by the surface from the running backend's own
+	 * registration and the conversation's gate identity — never from this boolean.
+	 */
+	revertVerifiedByProducer: boolean;
 	/** The call's own lifecycle word, when the payload carried one. */
 	state: ProfileCardState;
 };
@@ -93,16 +107,16 @@ function fromDisclosure(
 	envelope: Record<string, unknown> | null,
 ): ProfileSaveCall {
 	const state = STATE_WORDS[stateWord(envelope)] ?? "waiting";
-	const verified =
-		envelope?.revert_verified === true
-			? profileRevertDescriptor(envelope.revert)
-			: null;
+	const descriptor = profileRevertDescriptor(envelope?.revert);
 	return {
 		view: profileDisclosureView(disclosure, {
 			state,
-			revert: verified ? profileRevertView(verified) : undefined,
+			// The resting view is the UNAVAILABLE shape: only the surface, which
+			// knows the running backend and the gate identity, may raise it.
+			revert: descriptor ? profileRevertUnavailable() : undefined,
 		}),
-		descriptor: verified,
+		descriptor,
+		revertVerifiedByProducer: envelope?.revert_verified === true,
 		state,
 	};
 }
@@ -129,16 +143,32 @@ function stateWord(envelope: Record<string, unknown> | null): string {
 export function profileSaveCall(record: {
 	toolName: string;
 	output: string;
+	/**
+	 * The call's own `details` block, when the harness carried one.
+	 *
+	 * THE RECEIPT LIVES HERE, not only in the result text: the backend's
+	 * `_queued_profile_receipt` puts `{status, fields, diff, …}` in `details`, and an
+	 * applied card carries `fields`/`diff` there too. Reading only `output` was how
+	 * a receipt with a real, backend-authored diff could read as "nothing changed".
+	 */
+	details?: Record<string, unknown> | null;
 }): ProfileSaveCall | null {
 	if (!PROFILE_SAVE_TOOLS.has(record.toolName)) return null;
-	const payload = parsePayload(record.output ?? "");
+	const payload = isRecord(record.details)
+		? record.details
+		: parsePayload(record.output ?? "");
 	if (!isRecord(payload)) return null;
 
 	const direct = profileDisclosure(payload);
 	if (direct) return fromDisclosure(direct, null);
 	const receipt = profileQueuedReceipt(payload);
 	if (receipt)
-		return { view: receiptView(receipt), descriptor: null, state: "waiting" };
+		return {
+			view: receiptView(receipt),
+			descriptor: null,
+			revertVerifiedByProducer: false,
+			state: "waiting",
+		};
 
 	for (const key of Object.keys(payload))
 		if (!ENVELOPE_KEYS.has(key)) return null;
@@ -147,17 +177,15 @@ export function profileSaveCall(record: {
 	const envelopeReceipt = profileQueuedReceipt(payload.receipt);
 	if (!envelopeReceipt) return null;
 	const base = receiptView(envelopeReceipt);
-	const verified =
-		payload.revert_verified === true
-			? profileRevertDescriptor(payload.revert)
-			: null;
+	const descriptor = profileRevertDescriptor(payload.revert);
 	return {
 		view: {
 			...base,
 			state: STATE_WORDS[stateWord(payload)] ?? base.state,
-			revert: verified ? profileRevertView(verified) : base.revert,
+			revert: descriptor ? profileRevertUnavailable() : base.revert,
 		},
-		descriptor: verified,
+		descriptor,
+		revertVerifiedByProducer: payload.revert_verified === true,
 		state: STATE_WORDS[stateWord(payload)] ?? base.state,
 	};
 }
@@ -167,23 +195,34 @@ export function profileSaveCall(record: {
  * receipt stands for, and no field is claimed — the receipt carries no images, and
  * a diff this card invented would be a diff nobody reviewed.
  */
-function receiptView(receipt: {
-	profile_kind: "agent" | "team";
-	profile_name: string;
-	scope: "global";
-}): ProfileCardView {
+function receiptView(receipt: ProfileReceipt): ProfileCardView {
+	/*
+	 * THE RECEIPT'S OWN LINES ARE THE CARD'S BODY when it has them. `fields` are the
+	 * changed column names and `diff` the backend's human-readable summary — the one
+	 * place a class/effort/tools/delegate change is stated in words, because those
+	 * live inside `tags`. Rendered verbatim, never re-derived.
+	 */
+	const diffLines = receipt.diff ?? [];
+	const changedFields = receipt.fields ?? [];
 	return {
 		kind: receipt.profile_kind,
 		name: receipt.profile_name,
 		operation: "create",
 		scope: receipt.scope,
+		// No before/after images: a receipt cannot fill the two-column diff.
 		fields: [],
-		state: "waiting",
-		stateNote: null,
+		changesIncluded: diffLines.length > 0 || changedFields.length > 0,
+		diffLines,
+		changedFieldNames: changedFields,
+		state: receipt.status === "applied" ? "saved" : "waiting",
+		stateNote:
+			receipt.status === "applied"
+				? null
+				: t("ui.mesh.mesh_approvals.profile_waiting"),
 		canApprove: false,
 		canDeny: false,
 		canRetryApply: false,
 		unavailableReason: null,
-		revert: profileRevertView(null),
+		revert: profileRevertUnavailable(),
 	};
 }

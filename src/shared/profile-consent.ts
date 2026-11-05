@@ -122,20 +122,37 @@ export const profileTeamImageSchema = z
 		description: shortText(16_000),
 		manager: z.string().min(1).max(128),
 		/*
-		 * A member is the existing `TeamMember` wire, which this build does not
-		 * own; the fields the card reads (`name`, `kind`) stay optional so an
-		 * unknown member shape is COUNTED rather than rejected — refusing the
-		 * whole card because the core added a member field would hide the
-		 * disclosure the operator needs to review.
+		 * THE ROSTER IS THE BACKEND'S OWN `TeamMember` (`local_operator/teams.py`),
+		 * key for key, because a roster the card cannot read is a disclosure the
+		 * operator cannot review:
+		 *   role    required, non-empty — the specialist, or the team when kind="team";
+		 *   count   1..16, default 1 (how many of this role run);
+		 *   kind    "agent" | "team", default "agent" (a nested sub-team);
+		 *   tier    "lo" | "med" | "hi" | null — the model tier for THIS slot;
+		 *   effort  a TIER_EFFORTS level or "auto" | null (a str in the model, because
+		 *           the accepted set belongs to the effort module; the renderer keeps
+		 *           the word rather than inventing a second vocabulary);
+		 *   saver   bool | null — the Saver designation, present on the model and
+		 *           tolerated here so a roster that sets it still renders.
+		 *
+		 * `count` and `kind` are OPTIONAL WITH THE MODEL'S DEFAULTS, and the diff
+		 * renders the effective value: an omitted `count` IS one, so a roster that
+		 * omits it must not read as "1 -> 1 changed" beside one that states it.
+		 * `tier`, `effort` and `saver` are absent-or-null in the same way (no
+		 * override), and the row omits them rather than printing a placeholder.
 		 */
 		members: z
 			.array(
 				z
 					.object({
-						name: z.string().max(128).optional(),
-						kind: z.string().max(64).optional(),
+						role: z.string().min(1).max(128),
+						count: z.number().int().min(1).max(16).optional(),
+						kind: z.enum(["agent", "team"]).optional(),
+						tier: z.enum(["lo", "med", "hi"]).nullable().optional(),
+						effort: z.string().max(64).nullable().optional(),
+						saver: z.boolean().nullable().optional(),
 					})
-					.passthrough(),
+					.strict(),
 			)
 			.max(64),
 		aliases: z.array(shortText(128)).max(32),
@@ -211,20 +228,45 @@ export const profileTypedApprovalSchema = z
 export type ProfileTypedApproval = z.infer<typeof profileTypedApprovalSchema>;
 
 /**
- * What the tool answered when it filed the proposal: the queued receipt the chat
- * card is built from. `status` is the only arm v1 mints; a saved/deferred answer
- * is a DIFFERENT result and is not coerced into this one.
+ * What the tool answered when it filed the proposal, or after applying it: the
+ * receipt the chat card is built from.
+ *
+ * THE RECEIPT CARRIES THE DIFF, and that is the correction the backend's own code
+ * forced (`local_operator/tools/agent_tool.py::_queued_profile_receipt`): `fields`
+ * are the changed column names and `diff` are BACKEND-AUTHORED HUMAN-READABLE
+ * lines (built by `profile_scope.profile_diff_summary`). `diff` is what makes a
+ * policy change readable — effort/tools/class/delegate live inside the `tags`
+ * image, so a permission-relevant change would otherwise surface as a bare "tags
+ * changed". THE LINES ARE RENDERED VERBATIM AND NEVER RE-DERIVED here: parsing
+ * tag strings in the renderer would be a second policy vocabulary.
+ *
+ * Both lists are OPTIONAL because an older producer may omit them; when neither
+ * is present the card says the changes are not included rather than claiming the
+ * diff is empty.
  */
+export const PROFILE_RECEIPT_STATUSES = ["queued", "applied"] as const;
 export const profileQueuedReceiptSchema = z
 	.object({
-		status: z.literal("queued"),
-		approval_id: z.string().min(1).max(64),
-		request_digest: digest,
-		expires_at: z.number().finite(),
-		receipt_id: token,
+		status: z.enum(PROFILE_RECEIPT_STATUSES),
+		approval_id: z.string().min(1).max(64).optional(),
+		request_digest: digest.optional(),
+		expires_at: z.number().finite().optional(),
+		receipt_id: token.optional(),
 		profile_kind: z.enum(PROFILE_KINDS),
 		profile_name: z.string().min(1).max(128),
 		scope: z.literal("global"),
+		/** The changed column names, as the backend named them. */
+		fields: z.array(z.string().max(64)).max(32).optional(),
+		/** The backend's own diff lines, rendered verbatim. */
+		diff: z.array(z.string().max(2000)).max(64).optional(),
+		/*
+		 * A LEGACY TEXT HINT, DELIBERATELY UNPARSED. An applied card's details hold
+		 * `revert = {op: "revert", backup_id}` — prose for a human, not the agreed
+		 * verified descriptor. It is accepted here so the record still renders, and
+		 * it can never become a control: only `profileRevertDescriptorSchema` (which
+		 * this shape is not) may do that.
+		 */
+		revert: z.unknown().optional(),
 	})
 	.strict();
 
@@ -271,6 +313,35 @@ export type ProfileFieldRow = {
 	after: { presence: ProfileFieldPresence; text: string };
 };
 
+/**
+ * One roster slot, in the words the diff compares.
+ *
+ * WHY IT SPELLS EVERY AUTHORED FIELD. The reproduced defect was a roster whose
+ * `count`/`kind`/`tier`/`effort` changed while the row did not: the old renderer
+ * read a `name` the wire never carries, so both sides were the empty string and a
+ * real change read as "no changes". This line moves when any authored field moves,
+ * and it uses the model's own defaults for the two optional fields, so an omitted
+ * `count` and an explicit `1` compare equal — the roster did not change there.
+ */
+function memberLine(entry: Record<string, unknown>): string {
+	const role = typeof entry.role === "string" ? entry.role : "";
+	if (!role) return "";
+	const count = typeof entry.count === "number" ? entry.count : 1;
+	const kind = entry.kind === "team" ? "team" : "agent";
+	const tier = typeof entry.tier === "string" ? entry.tier : "";
+	// `auto` and an absent effort mean different things (override vs inherit), so
+	// the word is kept verbatim rather than folded into the empty case.
+	const effort = typeof entry.effort === "string" ? entry.effort : "";
+	const saver = entry.saver === true ? "saver" : "";
+	const extras = [kind === "team" ? "team" : "", tier, effort, saver].filter(
+		(part) => part !== "",
+	);
+	const times = count > 1 ? ` x${count}` : "";
+	return extras.length
+		? `${role}${times} (${extras.join(", ")})`
+		: `${role}${times}`;
+}
+
 function valueText(value: unknown): string {
 	if (typeof value === "string") return value;
 	if (Array.isArray(value))
@@ -279,7 +350,7 @@ function valueText(value: unknown): string {
 				typeof entry === "string"
 					? entry
 					: typeof entry === "object" && entry !== null
-						? String((entry as { name?: unknown }).name ?? "")
+						? memberLine(entry as Record<string, unknown>)
 						: "",
 			)
 			.filter((entry) => entry !== "")
@@ -350,6 +421,14 @@ export const PROFILE_REVERT_STATES = [
 	"saved",
 	"stale",
 	"failed",
+	/*
+	 * `unconfirmed` exists because "failed" is a claim: the request may have
+	 * reached the backend and the answer may simply have been lost. QA reproduced
+	 * the old behaviour — a transport failure painted "did not go through" and
+	 * re-enabled the control — which invites a second revert of a change that may
+	 * already be undone. An unknown is its own state, and it stays latched.
+	 */
+	"unconfirmed",
 	"unavailable",
 ] as const;
 export type ProfileRevertState = (typeof PROFILE_REVERT_STATES)[number];
@@ -370,7 +449,11 @@ export type ProfileRevertInput = {
 	reconstructed?: boolean;
 	/** This descriptor's own press has been sent and is in flight. */
 	submitted?: boolean;
-	/** The answered result of the press, once one landed. */
+	/**
+	 * The answered result of the press, once one landed. `state` is the backend's
+	 * own word for the record after the answer, or this app's `unconfirmed` when
+	 * the transport produced no answer at all.
+	 */
 	outcome?: { approved: boolean; state?: string } | null;
 	/** This `action_id` is already spent — a second press answers nothing. */
 	alreadyAnswered?: boolean;
@@ -393,11 +476,19 @@ export function profileRevertState(input: ProfileRevertInput): {
 		return { state: "unavailable", enabled: false };
 	if (input.alreadyAnswered) return { state: "saved", enabled: false };
 	if (input.outcome) {
-		if (input.outcome.approved === false)
-			return { state: "failed", enabled: true };
-		const settled = input.outcome.state ?? "";
+		const settled = (input.outcome.state ?? "").toLowerCase();
+		/*
+		 * AN UNCONFIRMED SEND IS NOT A FAILED ONE, and it never re-enables: the answer
+		 * may have landed, so offering the press again would invite a duplicate revert
+		 * (QA Q1 / review R3, reproduced against this resolver).
+		 */
+		if (settled === "unconfirmed")
+			return { state: "unconfirmed", enabled: false };
+		/* A refusal the backend actually authored as stale/expired IS knowable. */
 		if (settled === "expired" || settled === "stale")
 			return { state: "stale", enabled: false };
+		if (input.outcome.approved === false)
+			return { state: "failed", enabled: true };
 		return { state: "saved", enabled: false };
 	}
 	if (input.submitted) return { state: "pending", enabled: false };

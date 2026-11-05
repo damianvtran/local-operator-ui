@@ -295,7 +295,9 @@
 	"ui.mesh.mesh_approvals.profile_revert": "वापस लें",
 	"ui.mesh.mesh_approvals.profile_revert_pending": "वापस लिया जा रहा है…",
 	"ui.mesh.mesh_approvals.profile_revert_done": "वापस लिया गया",
-	"ui.mesh.mesh_approvals.profile_revert_stale": "यह वापसी समाप्त हो गई है",
+	"ui.mesh.mesh_approvals.profile_revert_stale": "इस बदलाव को वापस लेने की समय-सीमा समाप्त हो गई है",
 	"ui.mesh.mesh_approvals.profile_revert_failed": "वापस लेना पूरा नहीं हुआ",
-	"ui.mesh.mesh_approvals.profile_revert_unavailable": "इस सत्र में वापस लेना उपलब्ध नहीं"
+	"ui.mesh.mesh_approvals.profile_revert_unavailable": "इस सत्र में वापस लेना उपलब्ध नहीं",
+	"ui.mesh.mesh_approvals.profile_changes_not_in_receipt": "इस रसीद में फ़ील्ड के बदलाव शामिल नहीं हैं",
+	"ui.mesh.mesh_approvals.profile_revert_unconfirmed": "वापस लेना शायद पूरा नहीं हुआ"
 }

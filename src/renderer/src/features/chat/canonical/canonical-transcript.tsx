@@ -317,7 +317,10 @@ import { useBridgeConversationNames } from "./use-bridge-conversation-names";
 import { useCheckpoints } from "./use-checkpoints";
 import { useCrossSessionVisibility } from "./use-cross-session-hidden";
 import { useLinkSubject } from "./use-link-subject";
-import { useProfileRevertAnswer } from "./use-profile-revert";
+import {
+	useProfileRevertAnswer,
+	useProfileRevertStatus,
+} from "./use-profile-revert";
 import { useScrollPaging } from "./use-scroll-paging";
 import {
 	type TranscriptMountAdapter,
@@ -2410,9 +2413,33 @@ const ToolRow = memo(function ToolRow({
 	 */
 	const profileCall =
 		record.phase === "done" && record.output !== null
-			? profileSaveCall({ toolName: record.toolName, output: record.output })
+			? profileSaveCall({
+					toolName: record.toolName,
+					output: record.output,
+					details:
+						typeof record.details === "object" && record.details !== null
+							? (record.details as Record<string, unknown>)
+							: null,
+				})
 			: null;
 	const revertAnswer = useProfileRevertAnswer();
+	/*
+	 * THE STATUS SEAM IS THE ONLY AUTHORITY (core's revert gate is a live
+	 * action-registration/status read; a persisted `revert_verified` is proof of
+	 * nothing). Until core ships that read, `profile-revert-status.ts` answers
+	 * `unavailable` for every action, so the control renders disabled with its
+	 * reason — never enabled off the payload's flag and never off a guessed route.
+	 */
+	const revertStatus = useProfileRevertStatus(
+		profileCall?.descriptor
+			? {
+					action_id: profileCall.descriptor.action_id,
+					receipt_id: profileCall.descriptor.receipt_id,
+					profile_kind: profileCall.descriptor.profile_kind,
+					profile_name: profileCall.descriptor.profile_name,
+				}
+			: null,
+	);
 	if (flagged !== null && record.toolName === "notify") {
 		return (
 			<MessageContainer isUser={false} isSmallView={isSmallView}>
@@ -2459,23 +2486,39 @@ const ToolRow = memo(function ToolRow({
 	 */
 	if (profileCall) {
 		/*
-		 * A DESCRIPTOR WITHOUT A GATE IDENTITY IS NOT A PRESS THIS ROW CAN SEND: an
-		 * answer needs the conversation's epoch, and one that has not arrived (or a
-		 * detached child row with no session) cannot answer anything. That arm takes
-		 * the card's own `unavailable` shape, which carries a SENTENCE — a control
-		 * that is disabled and silent is the one state the brief forbids.
+		 * WHO MAY PRESS, AND WHY A PAYLOAD FLAG IS NOT ENOUGH (review R2).
+		 *
+		 * `revert_verified` inside a tool result records what SOME producer once
+		 * verified when it wrote that text. A reload, a restored transcript or an
+		 * agent could put it there, so it proves nothing about THIS process. The
+		 * right to answer is decided here from current runtime facts only:
+		 *   - the running backend registers the kind (`profile_approvals`); without
+		 *     that there is no route family behind the action at all;
+		 *   - the card has the conversation's gate identity (session + owner epoch),
+		 *     which is what `sessions.answer` requires;
+		 *   - the descriptor names the record this card is describing, so an action
+		 *     about another profile cannot be executed from this one's button.
+		 * A descriptor that fails any of these renders `unavailable` with its
+		 * sentence — never an enabled control, and never a silent disabled one.
 		 */
+		const descriptor = profileCall.descriptor;
+		const namesThisRecord =
+			descriptor !== null &&
+			descriptor.profile_kind === profileCall.view.kind &&
+			descriptor.profile_name === profileCall.view.name;
 		const pressable = Boolean(
-			profileCall.descriptor && scope?.sessionId && approvalEpoch,
+			descriptor &&
+				namesThisRecord &&
+				scope?.sessionId &&
+				approvalEpoch &&
+				revertStatus?.status === "available",
 		);
-		const revert = profileCall.descriptor
+		const revert = descriptor
 			? pressable
-				? profileRevertView(profileCall.descriptor, {
-						submitted:
-							revertAnswer.submitted === profileCall.descriptor.action_id,
+				? profileRevertView(descriptor, {
+						submitted: revertAnswer.submitted === descriptor.action_id,
 						outcome:
-							revertAnswer.outcome?.requestId ===
-							profileCall.descriptor.action_id
+							revertAnswer.outcome?.requestId === descriptor.action_id
 								? revertAnswer.outcome
 								: null,
 					})
@@ -2486,13 +2529,13 @@ const ToolRow = memo(function ToolRow({
 				<ProfileConsentCard
 					view={revert ? { ...profileCall.view, revert } : profileCall.view}
 					onRevert={
-						pressable && profileCall.descriptor
+						pressable && descriptor
 							? () =>
 									revertAnswer.press({
-										descriptor:
-											profileCall.descriptor as ProfileRevertDescriptor,
+										descriptor: descriptor as ProfileRevertDescriptor,
 										sessionId: scope?.sessionId ?? null,
 										ownerEpoch: approvalEpoch,
+										status: revertStatus,
 									})
 							: undefined
 					}

@@ -1383,5 +1383,125 @@
 		"role": "safe fallback — typed credential request lacks backend refusal_message",
 		"tone": "Plain and actionable",
 		"note": "A typed card this app cannot safely disclose. Do not send the user to a terminal, say the app is outdated, or suggest blind approval. Deny the current request and ask for a new one."
+	},
+	"ui.mesh.mesh_approvals.profile_kind_agent": {
+		"role": "family label — profile-save consent card (inbox and transcript)",
+		"tone": "Neutral noun label; not a title case banner",
+		"note": "Names the profile family: an AGENT profile (one specialist's definition). Sits beside the operation word, so keep it a short noun phrase; it never describes the change itself."
+	},
+	"ui.mesh.mesh_approvals.profile_kind_team": {
+		"role": "family label — profile-save consent card (inbox and transcript)",
+		"tone": "Neutral noun label; not a title case banner",
+		"note": "Names the profile family: a TEAM profile (manager plus roster). Mirror profile_kind_agent's shape and length."
+	},
+	"ui.mesh.mesh_approvals.profile_operation_create": {
+		"role": "operation label — profile-save consent card",
+		"tone": "Neutral, factual; sentence case",
+		"note": "Says the proposal creates a NEW profile. Not 'saved' and not 'applied': the card may still be waiting for its decision."
+	},
+	"ui.mesh.mesh_approvals.profile_operation_update": {
+		"role": "operation label — profile-save consent card",
+		"tone": "Neutral, factual; sentence case",
+		"note": "Says the proposal changes an existing profile. It does not claim the change was written; the state line carries that."
+	},
+	"ui.mesh.mesh_approvals.profile_operation_revert": {
+		"role": "operation label — profile-save consent card",
+		"tone": "Neutral, factual; sentence case",
+		"note": "Says the proposal restores a previously saved profile image. Distinct from the Revert BUTTON label, which is the action on a saved change."
+	},
+	"ui.mesh.mesh_approvals.profile_scope_global": {
+		"role": "scope label — profile-save consent card",
+		"tone": "One word, factual",
+		"note": "The proposal's scope: this machine's global profile set (the only scope v1 mints). Do not translate it as a network or per-project scope."
+	},
+	"ui.mesh.mesh_approvals.profile_changes": {
+		"role": "section heading — profile-save consent card",
+		"tone": "Short heading; sentence case",
+		"note": "Heads the diff. What follows is either the saved-before/proposed-after table, or backend-authored summary lines, or a statement that no changes are known."
+	},
+	"ui.mesh.mesh_approvals.profile_field": {
+		"role": "table column header — profile-save consent card diff",
+		"tone": "One word header",
+		"note": "Column of authored column NAMES as the backend spells them (model, instructions, members). The names themselves are not translated."
+	},
+	"ui.mesh.mesh_approvals.profile_saved_value": {
+		"role": "table column header — profile-save consent card diff",
+		"tone": "One word header",
+		"note": "The value as it is SAVED NOW (before this proposal). Contrast with profile_new_value."
+	},
+	"ui.mesh.mesh_approvals.profile_new_value": {
+		"role": "table column header — profile-save consent card diff",
+		"tone": "Short header; present/future, not past",
+		"note": "The value the proposal WOULD save. Not 'saved': nothing is written yet."
+	},
+	"ui.mesh.mesh_approvals.profile_not_set": {
+		"role": "cell value — profile-save consent card diff",
+		"tone": "Two words, plain, no punctuation",
+		"note": "This column was absent from the payload. Distinct from profile_cleared: absent means the wire did not carry the column at all, not that someone emptied it."
+	},
+	"ui.mesh.mesh_approvals.profile_cleared": {
+		"role": "cell value — profile-save consent card diff",
+		"tone": "One word, plain",
+		"note": "The value is explicitly empty/none (a reset the author made), which is different from profile_not_set's absence."
+	},
+	"ui.mesh.mesh_approvals.profile_changes_none": {
+		"role": "empty-state sentence — profile-save consent card diff",
+		"tone": "Plain sentence, no trailing period",
+		"note": "Use ONLY when the payload carried the before/after images and they genuinely differ in no authored column. Never for a receipt that omitted its diff."
+	},
+	"ui.mesh.mesh_approvals.profile_changes_not_in_receipt": {
+		"role": "fallback sentence — profile-save consent card diff",
+		"tone": "Plain sentence, no trailing period; factual, not an error",
+		"note": "Use when neither the images nor the backend's summary lines are present: the changes are simply not included here. It must not read as 'nothing changed'."
+	},
+	"ui.mesh.mesh_approvals.profile_waiting": {
+		"role": "state sentence — profile-save consent card",
+		"tone": "Calm, factual; no urgent tone",
+		"note": "The proposal is filed and nobody has answered it. Contrast with saved (written) and denied/expired."
+	},
+	"ui.mesh.mesh_approvals.profile_unavailable": {
+		"role": "refusal sentence — profile-save consent card, capability absent",
+		"tone": "Plain explanation with the way out; no error codes",
+		"note": "This build/backend cannot sign a profile change at all (the kind is not enabled). Points at the command line as the way to review it."
+	},
+	"ui.mesh.mesh_approvals.profile_approval_unavailable": {
+		"role": "refusal sentence — profile-save consent card, server not signable",
+		"tone": "Plain, factual; shorter than profile_unavailable",
+		"note": "The kind IS enabled but this particular card cannot be signed here yet (server says not signable, or no gate identity). Distinct from the whole-surface refusal."
+	},
+	"ui.mesh.mesh_approvals.profile_revert": {
+		"role": "button label — profile-save consent card",
+		"tone": "Single verb, imperative",
+		"note": "The one-click undo of a saved profile change. A button label, not a description; the state sentence beside it explains what happened."
+	},
+	"ui.mesh.mesh_approvals.profile_revert_pending": {
+		"role": "progress text — profile-save consent card revert",
+		"tone": "Present continuous, quiet",
+		"note": "The press was sent and the answer has not arrived. The control is disabled in this state."
+	},
+	"ui.mesh.mesh_approvals.profile_revert_done": {
+		"role": "result label — profile-save consent card revert",
+		"tone": "Past participle, one word",
+		"note": "The revert was answered and the profile is back to its saved image. Do not use for a pending or failed press."
+	},
+	"ui.mesh.mesh_approvals.profile_revert_stale": {
+		"role": "state sentence — profile-save consent card revert",
+		"tone": "Plain, factual; not an error apology",
+		"note": "The action's window is over, so the stored action cannot answer anything anymore. Not a completed revert: nothing was restored."
+	},
+	"ui.mesh.mesh_approvals.profile_revert_failed": {
+		"role": "state sentence — profile-save consent card revert",
+		"tone": "Plain, factual; no blame",
+		"note": "The backend answered the press with a refusal (knowably not applied). Contrast with profile_revert_unconfirmed, where we do not know."
+	},
+	"ui.mesh.mesh_approvals.profile_revert_unconfirmed": {
+		"role": "state sentence — profile-save consent card revert",
+		"tone": "Plain, honest uncertainty; no blame",
+		"note": "The transport produced no answer: the revert may or may not have landed. Must NOT be translated as a failure, and it never re-enables the control."
+	},
+	"ui.mesh.mesh_approvals.profile_revert_unavailable": {
+		"role": "state sentence — profile-save consent card revert",
+		"tone": "Plain explanation; no error codes",
+		"note": "No verified action is available here (absent descriptor, no runtime authority, or no gate identity). The control is disabled and this is its reason."
 	}
 }
