@@ -31,7 +31,10 @@ export interface HopRequest {
 	url: URL;
 	address: string;
 	family: 4 | 6;
-	/** The remaining wall-clock budget for this hop. */
+	/** The HARD wall clock for this hop: from the request's first byte to the last
+	 * byte of the body, whatever the server does in between. An IDLE timeout is not
+	 * this - a server sending one byte more often than the idle period resets it for
+	 * ever, which is how a "4 second" preview stayed open for hours. */
 	timeoutMs: number;
 	/** The decompressed byte cap. Exceeding it truncates and marks the hop. */
 	maxBytes: number;
@@ -95,6 +98,26 @@ const REQUEST_HEADERS = {
 export const nodeHop: Hop = (request) =>
 	new Promise<HopResponse>((resolve, reject) => {
 		const transport = request.url.protocol === "https:" ? https : http;
+		/*
+		 * ONE settlement path, so the wall clock is disarmed on every outcome and no
+		 * later event can resolve or reject a promise that has already settled.
+		 */
+		let settled = false;
+		/**
+		 * The wall clock's handle, in an object because of the ORDER it is created in:
+		 * the timer can only be armed once the request exists (it destroys it), while
+		 * `settle` - which must disarm it - has to exist before the response callback
+		 * that calls it.
+		 */
+		const clock: { timer: ReturnType<typeof setTimeout> | null } = {
+			timer: null,
+		};
+		const settle = (): boolean => {
+			if (settled) return false;
+			settled = true;
+			if (clock.timer !== null) clearTimeout(clock.timer);
+			return true;
+		};
 		const options: https.RequestOptions = {
 			protocol: request.url.protocol,
 			// The NAME is used for the Host header and TLS SNI; the CONNECTION is
@@ -123,6 +146,7 @@ export const nodeHop: Hop = (request) =>
 
 				if (status >= 300 && status < 400) {
 					response.resume();
+					if (!settle()) return;
 					resolve({
 						status,
 						location,
@@ -136,7 +160,7 @@ export const nodeHop: Hop = (request) =>
 				const decoder = decoderFor(encoding);
 				if (decoder === "unsupported") {
 					response.resume();
-					reject(new Error("unsupported content-encoding"));
+					if (settle()) reject(new Error("unsupported content-encoding"));
 					return;
 				}
 
@@ -146,11 +170,9 @@ export const nodeHop: Hop = (request) =>
 				const chunks: Uint8Array[] = [];
 				let total = 0;
 				let truncated = false;
-				let settled = false;
 
 				const finish = (): void => {
-					if (settled) return;
-					settled = true;
+					if (!settle()) return;
 					const body = new Uint8Array(total);
 					let offset = 0;
 					for (const chunk of chunks) {
@@ -181,16 +203,29 @@ export const nodeHop: Hop = (request) =>
 				});
 				source.on("end", finish);
 				source.on("error", (error: Error) => {
-					if (settled) return;
-					settled = true;
-					reject(error);
+					if (settle()) reject(error);
 				});
 			},
 		);
 
-		outgoing.setTimeout(request.timeoutMs, () => {
-			outgoing.destroy(new Error("timeout"));
+		/*
+		 * THE WALL CLOCK. Armed for the whole hop - DNS is done before this point, then
+		 * connect, response headers and the body the caller consumes - and disarmed
+		 * only when the request settles, so it bounds the exchange itself rather than
+		 * the gaps between its bytes. `resolve.ts` hands it the remaining share of ONE
+		 * deadline computed before the first lookup, so per-hop clocks cannot add up to
+		 * more than the budget the contract promises.
+		 */
+		const timer = setTimeout(
+			() => {
+				outgoing.destroy(new Error("timeout"));
+			},
+			Math.max(1, request.timeoutMs),
+		);
+		timer.unref?.();
+		clock.timer = timer;
+		outgoing.on("error", (error: Error) => {
+			if (settle()) reject(error);
 		});
-		outgoing.on("error", (error: Error) => reject(error));
 		outgoing.end();
 	});

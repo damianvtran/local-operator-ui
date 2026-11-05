@@ -8,7 +8,7 @@
  * 512 KB page into gigabytes. So this walks the bytes once, at most
  * `MAX_SCAN_BYTES` of them, and recognises exactly the handful of tags it wants.
  * Nothing is executed, nothing is resolved, and the input's shape is never
- * trusted: a tag longer than `MAX_TAG_BYTES` is skipped rather than scanned.
+ * trusted: a tag longer than `MAX_TAG_CHARS` is skipped rather than scanned.
  *
  * WHAT BOUNDS THE WORK. Five constants - scan window, tag length, attribute
  * count, title length and value length - and no regular expression over the whole
@@ -16,17 +16,38 @@
  * thousand tags costs one pass and cannot backtrack.
  *
  * WHAT IT DELIBERATELY DOES NOT DO. No `<base href>` resolution, no script or
- * style reading, no `meta http-equiv="refresh"`, no charset re-decoding beyond the
- * ASCII-compatible assumption every previewable page satisfies for these tags.
- * Entities are decoded for a small named set plus numeric forms, bounded to
- * `MAX_DECODED_CHARS`, because a preview title of ten thousand characters is not
- * a title.
+ * style reading, no `meta http-equiv="refresh"`.
+ *
+ * THE CHARSET IS RESOLVED, NOT ASSUMED. The bytes are decoded to text before the
+ * scanner walks them, and the decoder is chosen the way the web chooses one: a
+ * `charset` on the `Content-Type` first, then a `<meta charset>` (or an
+ * `http-equiv="content-type"` content) near the top of the document, then UTF-8.
+ * That default is what lets a non-English page describe itself correctly:
+ * decoding UTF-8 bytes as Latin-1 turns every accented title into mojibake
+ * (`Café` as `CafÃ©`) and a CJK page into noise.
+ *
+ * The scan window stays a BYTE bound (`MAX_SCAN_BYTES`), so a page's size still
+ * caps this module's cost; the window is decoded to text once and the per-tag and
+ * per-value caps count DECODED characters. Multi-byte text does not break the
+ * scanner: every delimiter it looks for is ASCII, no byte of a multi-byte UTF-8
+ * sequence is below 0x80, so a `<` or `>` can never fall inside a character. NOR
+ * IS THE DOCUMENT LOWERCASED - `String.prototype.toLowerCase` is not
+ * length-preserving for every character (`İ` becomes two), so a lowered copy
+ * would shift the indices of a closing-tag search; the search compares slices
+ * instead. Entities are decoded for a small named set plus numeric forms, bounded
+ * to `MAX_DECODED_CHARS`, because a preview title of ten thousand characters is
+ * not a title.
  */
 
 /** How much of a page is scanned. The brief's cap: metadata lives in `<head>`. */
 export const MAX_SCAN_BYTES = 512 * 1024;
-/** A single `<...>` longer than this is not markup worth reading. */
-const MAX_TAG_BYTES = 8 * 1024;
+/** A single `<...>` longer than this, in decoded characters, is not markup worth
+ * reading. */
+const MAX_TAG_CHARS = 8 * 1024;
+/** How much of a page is inspected for a `<meta charset>` declaration. A page
+ * that declares its encoding declares it in the head, and that is inside this
+ * window; the window is a byte count because the declaration is ASCII. */
+const MAX_CHARSET_SCAN_BYTES = 1024;
 /** Attributes read from one tag; a tag with more is not real metadata. */
 const MAX_ATTRIBUTES = 24;
 const MAX_TITLE_CHARS = 300;
@@ -150,15 +171,15 @@ interface Tag {
 /**
  * Read one tag starting at `start` (which must point at `<`).
  *
- * Returns `null` when the tag is malformed, unterminated, or longer than
- * `MAX_TAG_BYTES`. Since a skipped tag still has to advance the scanner, the
- * caller uses `unterminated` to decide where to resume.
+ * Returns `unterminated` when the tag is malformed, unterminated, or longer than
+ * `MAX_TAG_CHARS`. Since a skipped tag still has to advance the scanner, the
+ * caller uses `resumeAt` to decide where to resume.
  */
 function readTag(
 	text: string,
 	start: number,
 ): { tag: Tag } | { unterminated: true; resumeAt: number } {
-	const limit = Math.min(text.length, start + MAX_TAG_BYTES);
+	const limit = Math.min(text.length, start + MAX_TAG_CHARS);
 	const close = text.indexOf(">", start + 1);
 	if (close === -1 || close >= limit) {
 		// No `>` within the tag budget: skip this whole stretch. If there is no `>`
@@ -243,6 +264,92 @@ function readTag(
 	};
 }
 
+/** A `charset=...` parameter, as it appears in a `Content-Type` header or in a
+ * `<meta http-equiv="content-type">` content value. Defined at module scope because
+ * it is matched once per candidate tag rather than once per document. */
+const CHARSET_PARAM = /charset\s*=\s*"?([^";\s]+)"?/i;
+
+/**
+ * The `charset` a `Content-Type` header declares, lowercased, or `null`.
+ *
+ * Only the label is read: whether the bytes agree is decided by the sniff
+ * (`sniff.ts`), never by this header.
+ */
+function headerCharset(declaredType: string | null): string | null {
+	if (declaredType === null) return null;
+	const match = CHARSET_PARAM.exec(declaredType);
+	return match?.[1]?.trim().toLowerCase() ?? null;
+}
+
+/** The `charset` a `<meta>` element declares, lowercased, or `null`. */
+function metaCharset(bytes: Uint8Array): string | null {
+	// The declaration is ASCII by construction (`<meta charset="...">`), so a
+	// byte-per-character decode is enough to read it - and it has to be read
+	// BEFORE the document is decoded, which is the whole point of the pass.
+	const prefix = new TextDecoder("latin1")
+		.decode(bytes.subarray(0, MAX_CHARSET_SCAN_BYTES))
+		.toLowerCase();
+	let index = 0;
+	while (index < prefix.length) {
+		const open = prefix.indexOf("<meta", index);
+		if (open === -1) return null;
+		const read = readTag(prefix, open);
+		if ("unterminated" in read) {
+			index = read.resumeAt;
+			continue;
+		}
+		index = read.tag.end;
+		const charset = read.tag.attributes.get("charset");
+		if (charset !== undefined && charset.trim() !== "") {
+			return charset.trim().toLowerCase();
+		}
+		const content = read.tag.attributes.get("content");
+		if (content !== undefined) {
+			const match = CHARSET_PARAM.exec(content);
+			if (match?.[1] !== undefined) return match[1].trim().toLowerCase();
+		}
+	}
+	return null;
+}
+
+/**
+ * The decoder for a page, from the label it declared.
+ *
+ * UTF-8 is the default and the fallback. UTF-16 is deliberately not honoured: a
+ * UTF-16 document cannot sniff as HTML (`sniff.ts` looks for ASCII `<`), so one
+ * that reaches here declaring UTF-16 is mislabelled, and decoding it as UTF-16
+ * would garble a card that would otherwise read correctly. A label this runtime
+ * has no decoder for is the same case: fall back rather than lose the card.
+ */
+function decoderForCharset(label: string | null): TextDecoder {
+	if (label !== null && !label.startsWith("utf-16") && label !== "utf-32") {
+		try {
+			return new TextDecoder(label);
+		} catch {
+			// An unknown label is not a reason to lose the card.
+		}
+	}
+	return new TextDecoder("utf-8");
+}
+
+/**
+ * The index of `</name` at or after `from`, compared case-insensitively, or -1.
+ *
+ * Deliberately not `text.toLowerCase().indexOf(...)`: lowercasing a string can
+ * change its length for some characters, which would shift every index the
+ * scanner holds. Only the few characters of the candidate tag name are folded.
+ */
+function closingTagIndex(text: string, name: string, from: number): number {
+	let at = text.indexOf("</", from);
+	while (at !== -1) {
+		if (text.slice(at + 2, at + 2 + name.length).toLowerCase() === name) {
+			return at;
+		}
+		at = text.indexOf("</", at + 2);
+	}
+	return -1;
+}
+
 /**
  * Extract the preview metadata from an HTML document's bytes.
  *
@@ -252,15 +359,16 @@ function readTag(
  * `<meta name="description">`, then `twitter:description`; the image is `og:image`
  * before `twitter:image`.
  */
-export function extractMetadata(bytes: Uint8Array): ExtractedMetadata {
+export function extractMetadata(
+	bytes: Uint8Array,
+	declaredType: string | null = null,
+): ExtractedMetadata {
 	const view = bytes.subarray(0, MAX_SCAN_BYTES);
-	// Latin-1 decoding keeps one character per byte, so the scanner's indices are
-	// byte indices and a multi-byte character cannot split a tag boundary.
-	const text = new TextDecoder("latin1").decode(view);
-	// Lowercased ONCE: the script/style skip searches for closing tags, and a
-	// per-iteration `toLowerCase()` over half a megabyte is how a bounded scan
-	// stops being bounded.
-	const lower = text.toLowerCase();
+	// The header declares first, the document's own `<meta charset>` second, UTF-8
+	// when neither says anything - the web's own precedence, and its own default.
+	const text = decoderForCharset(
+		headerCharset(declaredType) ?? metaCharset(view),
+	).decode(view);
 	let title: string | null = null;
 	let description: string | null = null;
 	let iconHref: string | null = null;
@@ -289,7 +397,7 @@ export function extractMetadata(bytes: Uint8Array): ExtractedMetadata {
 		if (tag.name === "script" || tag.name === "style") {
 			// Do not scan inside them: a JSON island or a CSS rule can hold strings
 			// that look exactly like the tags this scanner wants.
-			const close = lower.indexOf(`</${tag.name}`, index);
+			const close = closingTagIndex(text, tag.name, index);
 			if (close === -1) break;
 			index = close;
 			continue;
@@ -347,11 +455,19 @@ export function extractMetadata(bytes: Uint8Array): ExtractedMetadata {
 				case "og:image":
 				case "og:image:url":
 				case "og:image:secure_url":
-					imageHref = imageHref ?? content.slice(0, MAX_VALUE_CHARS);
+					// Attribute values are entity-decoded before use in every HTML parser,
+					// and a CMS publishes `og:image` as `...?w=1200&amp;h=630` often enough
+					// that fetching the undecoded form is a card that silently loses its
+					// picture.
+					imageHref =
+						imageHref ??
+						tidy(decodeEntities(content)).slice(0, MAX_VALUE_CHARS);
 					break;
 				case "twitter:image":
 				case "twitter:image:src":
-					twitterImage = twitterImage ?? content.slice(0, MAX_VALUE_CHARS);
+					twitterImage =
+						twitterImage ??
+						tidy(decodeEntities(content)).slice(0, MAX_VALUE_CHARS);
 					break;
 			}
 			continue;
@@ -360,7 +476,7 @@ export function extractMetadata(bytes: Uint8Array): ExtractedMetadata {
 			const rel = (tag.attributes.get("rel") ?? "").toLowerCase();
 			const href = tag.attributes.get("href");
 			if (href !== undefined && rel.split(WHITESPACE_RUN).includes("icon")) {
-				iconHref = href.slice(0, MAX_VALUE_CHARS);
+				iconHref = tidy(decodeEntities(href)).slice(0, MAX_VALUE_CHARS);
 			}
 		}
 	}

@@ -115,6 +115,27 @@ test("a JSON or PDF body is not HTML, and an empty body is nothing", () => {
 	assert.equal(mod.sniffBytes(new Uint8Array(0)), null);
 });
 
+test("a UTF-8 BOM before the doctype still sniffs as HTML", () => {
+	// The BOM is EF BB BF on the wire. Decoded one byte per character it is three
+	// characters ("ï»¿"), never U+FEFF, so a scanner that tests the string instead
+	// of the bytes rejects every BOM-prefixed page as "not a document".
+	const bom = new Uint8Array([0xef, 0xbb, 0xbf]);
+	const page = utf8(
+		"<!DOCTYPE html><html><head><title>x</title></head></html>",
+	);
+	const withBom = new Uint8Array(bom.length + page.length);
+	withBom.set(bom, 0);
+	withBom.set(page, bom.length);
+	assert.equal(mod.sniffBytes(withBom), "html");
+
+	// The BOM is a prefix, not a licence: the bytes after it must still be markup.
+	const json = utf8('{"a":1}');
+	const withBomJson = new Uint8Array(bom.length + json.length);
+	withBomJson.set(bom, 0);
+	withBomJson.set(json, bom.length);
+	assert.equal(mod.sniffBytes(withBomJson), null);
+});
+
 test("SVG is not an image this module accepts", () => {
 	assert.equal(
 		mod.sniffBytes(utf8('<svg xmlns="http://www.w3.org/2000/svg"></svg>')),
@@ -142,6 +163,80 @@ test("OpenGraph tags win, and the mime is derived from the sniff", () => {
 	assert.equal(metadata.iconHref, "/favicon.ico");
 	assert.equal(mod.mimeForKind("png"), "image/png");
 	assert.equal(mod.mimeForKind("ico"), "image/x-icon");
+});
+
+test("a non-ASCII title and description decode as UTF-8, not Latin-1", () => {
+	// The mojibake this pins: decoding UTF-8 bytes as latin-1 renders ``Café`` as
+	// ``CafÃ©``. Every accented, Cyrillic, Greek and Arabic page hit it.
+	const metadata = mod.extractMetadata(
+		utf8(`<!doctype html><html><head><title>Café — naïve</title>
+		<meta property="og:description" content="“quoted” and é">
+		<meta property="og:title" content="Café — naïve"></head></html>`),
+	);
+	assert.equal(metadata.title, "Café — naïve");
+	assert.equal(metadata.description, "“quoted” and é");
+});
+
+test("a CJK title and description survive as themselves", () => {
+	const metadata = mod.extractMetadata(
+		utf8(`<!doctype html><html><head><title>日本語のページ</title>
+		<meta property="og:description" content="これはテストです。">
+		<meta property="og:site_name" content="例えサイト"></head></html>`),
+	);
+	assert.equal(metadata.title, "日本語のページ");
+	assert.equal(metadata.description, "これはテストです。");
+	assert.equal(metadata.siteName, "例えサイト");
+});
+
+test("a declared charset is honoured, and UTF-8 is the default", () => {
+	// Latin-1 bytes for "Café" carry 0xE9, which is not valid UTF-8 - so a page
+	// that declares windows-1252 must be decoded with its own decoder.
+	const bytes = new Uint8Array([
+		...utf8('<meta charset="windows-1252"><title>Caf'),
+		0xe9,
+		...utf8("</title>"),
+	]);
+	assert.equal(mod.extractMetadata(bytes).title, "Café");
+
+	// The same bytes with no declaration at all fall back to UTF-8 and the
+	// replacement character, rather than to a byte-per-character guess.
+	const undeclared = new Uint8Array([
+		...utf8("<title>Caf"),
+		0xe9,
+		...utf8("</title>"),
+	]);
+	assert.equal(mod.extractMetadata(undeclared).title, "Caf\ufffd");
+
+	// A charset on the Content-Type wins over the document's own declaration.
+	assert.equal(
+		mod.extractMetadata(
+			new Uint8Array([
+				...utf8('<meta charset="utf-8"><title>Caf'),
+				0xe9,
+				...utf8("</title>"),
+			]),
+			"text/html; charset=windows-1252",
+		).title,
+		"Café",
+	);
+});
+
+test("og:image and an icon href are entity-decoded before they are fetched", () => {
+	const metadata = mod.extractMetadata(
+		utf8(`<html><head>
+		<meta property="og:image" content="https://cdn.example.com/x.jpg?w=1200&amp;h=630">
+		<link rel="icon" href="https://cdn.example.com/favicon.ico?a=1&amp;b=2">
+		</head></html>`),
+	);
+	// The raw value would fetch a URL with a literal `&amp;`, which every CDN 404s.
+	assert.equal(
+		metadata.imageHref,
+		"https://cdn.example.com/x.jpg?w=1200&h=630",
+	);
+	assert.equal(
+		metadata.iconHref,
+		"https://cdn.example.com/favicon.ico?a=1&b=2",
+	);
 });
 
 test("twitter:* is the fallback when OpenGraph is absent", () => {

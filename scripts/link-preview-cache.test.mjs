@@ -7,8 +7,9 @@
  *
  * The TTLs and the LRU bounds are driven with an injected clock and reduced bounds
  * so the behaviour is asserted exactly, at numbers a test can afford; the shipped
- * defaults (30 min, 6 h, 256 entries, 200 MiB) are constants in the module and are
- * not weakened by these narrower instances.
+ * defaults (6 h for a card, 30 min for a refusal, 60 s for a retryable error,
+ * 256 entries / 32 MB / 400 artifacts) are constants in the module and are not
+ * weakened by these narrower instances.
  *
  * The LAST test is the privacy invariant: a resolve of a URL with an identifying
  * host, path and query produces log lines, and not one of them may contain any part
@@ -41,10 +42,24 @@ const ready = (title) => ({
 	},
 });
 
-const absent = { kind: "absent", reason: "no-html" };
+// `not-html` is a member of `LinkPreviewAbsentReason`; this fixture is a refusal a
+// retry cannot change, which is what gives it the thirty-minute TTL.
+const absent = { kind: "absent", reason: "not-html" };
 
 /** A log line this module is allowed to write: the opaque id, then a state. */
 const IDENTIFIED = /^link-preview [0-9a-f]{32} /;
+
+/** A PNG header: the cache only needs the bytes to be a picture's bytes. */
+function pngBytes() {
+	const bytes = new Uint8Array(600);
+	bytes.set([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a], 0);
+	bytes.set([0x49, 0x48, 0x44, 0x52], 12);
+	return bytes;
+}
+
+/** Let a background file removal land. `lookup` must stay synchronous (it answers a
+ * renderer call), so the expiry path it starts finishes after it has returned. */
+const flush = () => new Promise((resolve) => setTimeout(resolve, 5));
 
 function clocked(start = 1_000_000) {
 	let at = start;
@@ -113,9 +128,10 @@ test("the byte and artifact caps hold, and eviction removes the files too", asyn
 	for (const [index, key] of ["a", "b", "c"].entries()) {
 		const id = mod.previewIdFor("image", key);
 		await cache.store(key, ready(key), [
-			{ id, mime: "image/png", bytes: png },
+			{ id, kind: "image", mime: "image/png", bytes: png },
 			{
 				id: mod.previewIdFor("favicon", `${key}-${index}`),
+				kind: "favicon",
 				mime: "image/png",
 				bytes: png,
 			},
@@ -142,19 +158,127 @@ test("an artifact survives a restart, and an unknown id is a stated 404", async 
 	const id = mod.previewIdFor("image", "https://example.com/pic");
 	const first = mod.createLinkPreviewCache({ directory });
 	await first.store("https://example.com/pic", ready("pic"), [
-		{ id, mime: "image/png", bytes: png },
+		{ id, kind: "image", mime: "image/png", bytes: png },
 	]);
 	assert.deepEqual(
-		await first.read(id).then((artifact) => artifact?.mime),
+		await first.read(id, "image").then((artifact) => artifact?.mime),
 		"image/png",
 	);
 
-	// A new process: the index is gone, the directory is not. Startup sweep adopts it.
+	// A new process: the index is gone, the directory is not. Startup sweep adopts it,
+	// and the KIND comes back from the file name - so `which` is still enforced.
 	const second = mod.createLinkPreviewCache({ directory });
 	await second.sweep();
-	const adopted = await second.read(id);
+	const adopted = await second.read(id, "image");
 	assert.equal(adopted?.mime, "image/png");
 	assert.equal(adopted?.bytes.byteLength, png.byteLength);
+	assert.equal(await second.read(id, "favicon"), null, "the kind survived too");
+});
+
+test("a retryable error expires in a minute, a refusal in thirty", async () => {
+	const clock = clocked();
+	const cache = mod.createLinkPreviewCache({
+		directory: await mkdtemp(join(tmpdir(), "link-preview-retryable-")),
+		now: clock.now,
+	});
+	const retryable = { kind: "error", retryable: true };
+	const dead = { kind: "error", retryable: false };
+	await cache.store("https://example.com/flap", retryable, []);
+	await cache.store("https://example.com/dead", dead, []);
+	await cache.store("https://example.com/absent", absent, []);
+
+	clock.advance(30 * 1000);
+	assert.ok(
+		cache.lookup("https://example.com/flap"),
+		"half a minute is still fresh for a retryable error",
+	);
+
+	clock.advance(30 * 1000 + 1);
+	assert.equal(
+		cache.lookup("https://example.com/flap"),
+		undefined,
+		"a retryable error must not outlive the retry the contract advertises",
+	);
+	assert.ok(
+		cache.lookup("https://example.com/dead"),
+		"a dead host is still refused",
+	);
+	assert.ok(
+		cache.lookup("https://example.com/absent"),
+		"and so is an absent page",
+	);
+});
+
+test("an expired entry's artifacts leave with it, so two sweeps leave none", async () => {
+	const clock = clocked();
+	const directory = await mkdtemp(join(tmpdir(), "link-preview-expiry-"));
+	const cache = mod.createLinkPreviewCache({ directory, now: clock.now });
+	const png = pngBytes();
+	const id = mod.previewIdFor("image", "https://example.com/exp");
+	await cache.store("https://example.com/exp", ready("exp"), [
+		{ id, kind: "image", mime: "image/png", bytes: png },
+	]);
+	assert.deepEqual(cache.stats(), {
+		entries: 1,
+		artifacts: 1,
+		bytes: png.byteLength,
+	});
+	assert.deepEqual(await readdir(directory), [`image-${id}.png`]);
+
+	clock.advance(6 * 60 * 60 * 1000 + 1);
+	assert.equal(cache.lookup("https://example.com/exp"), undefined);
+	await flush();
+	await cache.sweep();
+	await cache.sweep();
+	assert.deepEqual(
+		cache.stats(),
+		{ entries: 0, artifacts: 0, bytes: 0 },
+		"the expired entry's bytes left the accounting as well as the index",
+	);
+	assert.deepEqual(
+		await readdir(directory),
+		[],
+		"no readable artifact survived the entry that owned it",
+	);
+});
+
+test("re-storing a key replaces the entry, taking its artifacts with it", async () => {
+	const directory = await mkdtemp(join(tmpdir(), "link-preview-restore-"));
+	const cache = mod.createLinkPreviewCache({ directory });
+	const png = pngBytes();
+	const id = mod.previewIdFor("image", "https://example.com/x");
+	await cache.store("https://example.com/x", ready("first"), [
+		{ id, kind: "image", mime: "image/png", bytes: png },
+	]);
+
+	// The page's card came back without a picture. The old file must not stay behind,
+	// referenced by nothing and spending a bound the LRU would take out on live entries.
+	await cache.store("https://example.com/x", ready("second"), []);
+	assert.deepEqual(cache.stats(), { entries: 1, artifacts: 0, bytes: 0 });
+	assert.deepEqual(await readdir(directory), []);
+	assert.equal(await cache.read(id, "image"), null);
+});
+
+test("an artifact is served only under the kind it was stored as", async () => {
+	const cache = mod.createLinkPreviewCache({
+		directory: await mkdtemp(join(tmpdir(), "link-preview-kind-")),
+	});
+	const png = pngBytes();
+	const imageId = mod.previewIdFor("image", "https://example.com/k");
+	const faviconId = mod.previewIdFor("favicon", "https://example.com/k");
+	await cache.store("https://example.com/k", ready("k"), [
+		{ id: imageId, kind: "image", mime: "image/png", bytes: png },
+		{ id: faviconId, kind: "favicon", mime: "image/png", bytes: png },
+	]);
+	assert.equal((await cache.read(imageId, "image"))?.mime, "image/png");
+	assert.equal((await cache.read(faviconId, "favicon"))?.mime, "image/png");
+	assert.equal(await cache.read(imageId, "favicon"), null, "kind is enforced");
+	assert.equal(
+		await cache.read(faviconId, "image"),
+		null,
+		"in both directions",
+	);
+	assert.equal(await cache.read("../../../etc/passwd", "image"), null);
 });
 
 test("no log line ever contains the URL, its host, its path or its query", async () => {

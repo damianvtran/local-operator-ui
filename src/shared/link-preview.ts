@@ -31,6 +31,17 @@ export const LINK_PREVIEW_MAX_CARDS_PER_MESSAGE = 3;
 /** Which artifact of a preview an `image` request names. */
 export type LinkPreviewArtifactKind = "favicon" | "image";
 
+/**
+ * The two IPC channels, named HERE because they are the cross-lane contract.
+ *
+ * The preload invokes them, main answers them, and the renderer lane is the next
+ * consumer: a channel string written twice is a rename that can land in one place
+ * and not the other, so both sides import these two constants instead of spelling
+ * them out.
+ */
+export const LINK_PREVIEW_RESOLVE_CHANNEL = "link-preview:resolve";
+export const LINK_PREVIEW_IMAGE_CHANNEL = "link-preview:image";
+
 export interface LinkPreviewFavicon {
 	/** Opaque, 32 hex chars, sha256-derived. The only identifier that may cross
 	 * a log line or a filename - never the URL it was derived from. */

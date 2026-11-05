@@ -126,6 +126,13 @@ export function normaliseLinkUrl(raw: string): NormalisedLinkUrl {
  * The PATH is kept verbatim, including its case and its percent-encoding: a path
  * is case-sensitive on most servers and re-encoding it is a request for a
  * different resource.
+ *
+ * THE PARAMETERS ARE RE-ENCODED, NOT CONCATENATED. `URLSearchParams` hands back
+ * DECODED names and values, so joining them with `&` and `=` would let a value
+ * containing an encoded separator impersonate extra parameters: `?a=x%26b%3D1`
+ * and `?a=x&b=1` would produce one key, and the second URL would be served the
+ * first one's card. Serialising the sorted, filtered pairs re-encodes `&`, `=`
+ * and `+` inside a value, so two different queries stay two keys.
  */
 export function cacheKeyFor(url: URL): string {
 	const scheme = url.protocol.toLowerCase();
@@ -148,7 +155,7 @@ export function cacheKeyFor(url: URL): string {
 					: 1,
 		);
 	const search = params.length
-		? `?${params.map(([name, value]) => `${name}=${value}`).join("&")}`
+		? `?${new URLSearchParams(params).toString()}`
 		: "";
 	return `${scheme}//${host}${port}${path}${search}`;
 }

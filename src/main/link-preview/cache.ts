@@ -17,7 +17,16 @@
  * disk as plain text, a browsing record this feature has no business creating. The
  * ARTIFACTS are persisted, because their whole purpose is to avoid re-fetching a
  * picture, and they are named by the opaque `previewId` (a sha256 prefix), so a
- * directory listing reveals no URL.
+ * directory listing reveals no URL. The name also carries the artifact's KIND
+ * (`favicon-<id>.png`, `image-<id>.jpg`): the kind is part of what an `image`
+ * request asks for, and after a restart the directory is the only record left,
+ * so a kind that lived only in the memory index could not be checked at all.
+ *
+ * TTLs ARE PER ANSWER, not per cache. A ready card is good for six hours and a
+ * refusal (dead host, no metadata, not HTML) for thirty minutes. A RETRYABLE
+ * error gets sixty seconds: the contract tells the card that a retry can change
+ * it, so pinning that answer for the half hour a dead host gets would make the
+ * retry the contract advertises impossible to honour.
  *
  * BOUNDS. 256 entries, 32 MB, 400 artifacts, LRU by last use. An entry is the
  * eviction unit - its artifacts leave with it - and the artifact count is a second
@@ -35,7 +44,10 @@ import {
 	writeFile,
 } from "node:fs/promises";
 import { join } from "node:path";
-import type { LinkPreviewResolveResult } from "../../shared/link-preview";
+import type {
+	LinkPreviewArtifactKind,
+	LinkPreviewResolveResult,
+} from "../../shared/link-preview";
 import { extensionForKind, mimeForKind } from "./sniff";
 
 export const MAX_ENTRIES = 256;
@@ -45,6 +57,10 @@ export const MAX_ARTIFACTS = 400;
 export const POSITIVE_TTL_MS = 6 * 60 * 60 * 1000;
 /** A dead host must not be re-asked on every scroll. */
 export const NEGATIVE_TTL_MS = 30 * 60 * 1000;
+/** An answer a retry CAN change: long enough that a scrolling transcript does not
+ * re-fetch a flapping network per card, short enough that the retry the contract
+ * advertises actually reaches the network. */
+export const RETRYABLE_TTL_MS = 60 * 1000;
 /** How often the bounds are re-applied on the access path; startup always sweeps. */
 export const SWEEP_INTERVAL_MS = 5 * 60 * 1000;
 
@@ -83,6 +99,9 @@ export function previewIdFor(kind: "favicon" | "image", key: string): string {
 /** Bytes the fetcher has already sniffed, handed over for storage. */
 export interface PendingArtifact {
 	id: string;
+	/** Which artifact of the card this is. Carried so `read` can refuse an id
+	 * served under the other kind, and so the file name says it after a restart. */
+	kind: LinkPreviewArtifactKind;
 	mime: string;
 	bytes: Uint8Array;
 }
@@ -94,6 +113,7 @@ export interface CachedArtifact {
 
 interface ArtifactRecord {
 	id: string;
+	kind: LinkPreviewArtifactKind;
 	mime: string;
 	file: string;
 	bytes: number;
@@ -116,18 +136,29 @@ export interface LinkPreviewCache {
 		result: LinkPreviewResolveResult,
 		pending: readonly PendingArtifact[],
 	): Promise<LinkPreviewResolveResult>;
-	read(id: string): Promise<CachedArtifact | null>;
+	/** The bytes of one artifact OF THE KIND ASKED FOR, or `null`: an id that names
+	 * the other kind is not an artifact this request can be answered with. */
+	read(
+		id: string,
+		which: LinkPreviewArtifactKind,
+	): Promise<CachedArtifact | null>;
 	sweep(): Promise<void>;
 	stats(): { entries: number; artifacts: number; bytes: number };
 }
 
 function ttlFor(result: LinkPreviewResolveResult): number {
-	return result.kind === "ready" ? POSITIVE_TTL_MS : NEGATIVE_TTL_MS;
+	if (result.kind === "ready") return POSITIVE_TTL_MS;
+	if (result.kind === "error" && result.retryable) return RETRYABLE_TTL_MS;
+	return NEGATIVE_TTL_MS;
 }
 
 /** A card's artifact id must be 32 lowercase hex characters; anything else is not
  * one of ours and never names a file. */
 const ARTIFACT_ID = /^[0-9a-f]{32}$/;
+
+/** An artifact file's name: the KIND, the opaque id, and the extension the sniff
+ * chose. Parsed back on adoption, where the memory index no longer exists. */
+const ARTIFACT_FILE = /^(favicon|image)-([0-9a-f]{32})\.([a-z0-9]+)$/;
 
 /**
  * The bounds, in the form the cache applies them. Injectable so a test can prove
@@ -177,9 +208,14 @@ export function createLinkPreviewCache(options: {
 		}
 	}
 
-	async function dropEntry(key: string): Promise<void> {
+	async function dropEntry(key: string, expected?: Entry): Promise<void> {
 		const entry = entries.get(key);
 		if (entry === undefined) return;
+		// `evict` and `sweep` decide from a snapshot and then await; a re-store of the
+		// same key landing in that window would replace the entry, and this call must
+		// not destroy the FRESH one (and its freshly written file) on the old one's
+		// behalf. Callers that mean "whatever is there" pass no expectation.
+		if (expected !== undefined && entry !== expected) return;
 		entries.delete(key);
 		for (const record of entry.artifacts) {
 			// An artifact another entry also references is the same bytes (ids derive
@@ -204,7 +240,7 @@ export function createLinkPreviewCache(options: {
 				([, a], [, b]) => a.lastUsed - b.lastUsed,
 			)[0];
 			if (oldest !== undefined) {
-				await dropEntry(oldest[0]);
+				await dropEntry(oldest[0], oldest[1]);
 				continue;
 			}
 			const stray = [...artifacts.values()].sort(
@@ -232,15 +268,23 @@ export function createLinkPreviewCache(options: {
 			return;
 		}
 		for (const name of names) {
-			const dot = name.lastIndexOf(".");
-			if (dot <= 0) continue;
-			const id = name.slice(0, dot);
-			if (!ARTIFACT_ID.test(id)) continue;
-			const mime = EXTENSION_MIME.get(name.slice(dot + 1));
+			const parsed = ARTIFACT_FILE.exec(name);
+			if (parsed === null) continue;
+			const [, kind, id, extension] = parsed;
+			if (kind === undefined || id === undefined || extension === undefined) {
+				continue;
+			}
+			const mime = EXTENSION_MIME.get(extension);
 			if (mime === undefined || artifacts.has(id)) continue;
 			try {
 				const size = (await stat(join(directory, name))).size;
-				artifacts.set(id, { id, mime, file: name, bytes: size });
+				artifacts.set(id, {
+					id,
+					kind: kind === "favicon" ? "favicon" : "image",
+					mime,
+					file: name,
+					bytes: size,
+				});
 			} catch {
 				// A file that vanished between the listing and the stat is not adopted.
 			}
@@ -252,12 +296,17 @@ export function createLinkPreviewCache(options: {
 		result: LinkPreviewResolveResult,
 		pending: readonly PendingArtifact[],
 	): Promise<LinkPreviewResolveResult> {
+		// A re-store REPLACES the entry, so the previous one's artifacts leave with
+		// it. Dropping it before the writes is deliberate: an id is a function of the
+		// kind and the key, so a re-store of the same key writes the same file names,
+		// and dropping afterwards would unlink the bytes this call just wrote.
+		await dropEntry(key);
 		const written: ArtifactRecord[] = [];
 		for (const artifact of pending) {
 			if (!ARTIFACT_ID.test(artifact.id)) continue;
 			const extension = MIME_EXTENSION.get(artifact.mime);
 			if (extension === undefined) continue;
-			const file = `${artifact.id}.${extension}`;
+			const file = `${artifact.kind}-${artifact.id}.${extension}`;
 			try {
 				await mkdir(directory, { recursive: true });
 				await writeFile(join(directory, file), artifact.bytes);
@@ -268,6 +317,7 @@ export function createLinkPreviewCache(options: {
 			if (previous !== undefined) await dropArtifact(previous);
 			const record: ArtifactRecord = {
 				id: artifact.id,
+				kind: artifact.kind,
 				mime: artifact.mime,
 				file,
 				bytes: artifact.bytes.byteLength,
@@ -315,7 +365,7 @@ export function createLinkPreviewCache(options: {
 			lastSweep = at;
 			await adoptExistingFiles();
 			for (const [staleKey, entry] of [...entries]) {
-				if (at >= entry.expiresAt) await dropEntry(staleKey);
+				if (at >= entry.expiresAt) await dropEntry(staleKey, entry);
 			}
 		}
 		return answer;
@@ -325,7 +375,7 @@ export function createLinkPreviewCache(options: {
 		await adoptExistingFiles();
 		const at = now();
 		for (const [key, entry] of [...entries]) {
-			if (at >= entry.expiresAt) await dropEntry(key);
+			if (at >= entry.expiresAt) await dropEntry(key, entry);
 		}
 		await evict();
 	}
@@ -335,17 +385,26 @@ export function createLinkPreviewCache(options: {
 			const entry = entries.get(key);
 			if (entry === undefined) return undefined;
 			if (now() >= entry.expiresAt) {
-				entries.delete(key);
+				// Expiry goes through the SAME drop path the sweep uses, so an expired
+				// entry's files leave the directory and the byte/artifact accounting with
+				// it. A bare `entries.delete` left them on disk, referenced by nothing
+				// and reachable by nothing, permanently spending a bound that the LRU
+				// then took out on live entries.
+				void dropEntry(key, entry);
 				return undefined;
 			}
 			entry.lastUsed = now();
 			return { result: entry.result };
 		},
 		store,
-		async read(id) {
+		async read(id, which) {
 			if (!ARTIFACT_ID.test(id)) return null;
 			const record = artifacts.get(id);
 			if (record === undefined) return null;
+			// The kind is part of the question: an id that names the card's favicon must
+			// not be served for `image`, and the reverse. A renderer asking for the
+			// wrong one gets a stated `not-found` rather than the wrong picture.
+			if (record.kind !== which) return null;
 			try {
 				const bytes = await readFile(join(directory, record.file));
 				return { mime: record.mime, bytes: new Uint8Array(bytes) };

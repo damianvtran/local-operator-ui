@@ -26,7 +26,10 @@
  * SSRF primitive. So the URL is normalised (`url.ts`), the host is resolved and
  * every address classified once (`ssrf.ts`), the connection is pinned to that
  * address, EVERY redirect hop repeats the whole check, and the exchange is bounded
- * in bytes, in wall clock and in decompression.
+ * in bytes, in wall clock and in decompression. The wall clock is ONE deadline
+ * computed before the first lookup and passed down into the transport, so a slow
+ * drip cannot outlive it; and the process runs at most `MAX_CONCURRENT_FETCHES`
+ * resolves at a time, so a rendered transcript cannot multiply the sockets.
  */
 
 import { LINK_PREVIEW_MAX_CARDS_PER_MESSAGE } from "../../shared/link-preview";
@@ -59,6 +62,15 @@ const MAX_BODY_BYTES = 2 * 1024 * 1024;
 const MAX_FAVICON_BYTES = 256 * 1024;
 /** Redirects followed before the chain is refused. */
 const MAX_REDIRECTS = 3;
+/**
+ * How many resolves may be fetching at once, across the whole process.
+ *
+ * The per-message cap bounds ONE message; a rendered transcript is N messages, so
+ * without this a long scroll is N x 3 concurrent sockets, DNS lookups and 512 KB
+ * scans, all on the main thread. A resolve holds one slot for its page fetch and
+ * the artifacts that follow it, which are at most two more sockets.
+ */
+const MAX_CONCURRENT_FETCHES = 8;
 
 /**
  * Declared content types that are a file download rather than a document.
@@ -95,6 +107,17 @@ export interface LinkPreviewServiceOptions {
 	lookup: LookupAll;
 	log?: LinkPreviewLog;
 	now?: () => number;
+	/** How many resolves may fetch at once. Injectable so a test can prove the
+	 * queue at a bound it can afford; production always gets the default. */
+	maxConcurrent?: number;
+}
+
+/** A caller parked on the fetch queue, with the budget it may wait within. */
+interface WaitEntry {
+	/** Hand the slot over, or refuse because the budget ran out while waiting. */
+	settle: (granted: boolean) => void;
+	deadline: number;
+	timer: ReturnType<typeof setTimeout>;
 }
 
 /** An artifact whose bytes have already sniffed as one of the five accepted
@@ -118,6 +141,41 @@ const ARTIFACT_ID = /^[0-9a-f]{32}$/;
 
 function absent(reason: LinkPreviewAbsentReason): LinkPreviewResolveResult {
 	return { kind: "absent", reason };
+}
+
+/** The one answer a step that ran out of the resolve's wall clock gets. */
+const TIMED_OUT = Symbol("deadline");
+
+/**
+ * Await a step that can be slow or stuck (a DNS answer, a hop) but stop waiting
+ * when `remaining` ms pass.
+ *
+ * Neither a resolver nor a transport is guaranteed to answer: a transport that
+ * never settles would hold the card - and the promise behind it - past the budget
+ * the contract promises. The transport bounds itself too (a hard wall clock), and
+ * this bounds the WAIT, so the overall deadline holds whichever of them is wrong.
+ * A rejection that arrives after the race is handled here, so it cannot surface as
+ * an unhandled rejection.
+ */
+function withinDeadline<T>(
+	work: Promise<T>,
+	remaining: number,
+): Promise<T | typeof TIMED_OUT> {
+	if (remaining <= 0) return Promise.resolve(TIMED_OUT);
+	return new Promise<T | typeof TIMED_OUT>((resolve, reject) => {
+		const timer = setTimeout(() => resolve(TIMED_OUT), remaining);
+		timer.unref?.();
+		void work.then(
+			(value) => {
+				clearTimeout(timer);
+				resolve(value);
+			},
+			(error: unknown) => {
+				clearTimeout(timer);
+				reject(error);
+			},
+		);
+	});
 }
 
 export function createLinkPreviewService(
@@ -152,6 +210,64 @@ export function createLinkPreviewService(
 	};
 	const log = options.log ?? (() => {});
 	const now = options.now ?? (() => Date.now());
+	const concurrency = Math.max(
+		1,
+		options.maxConcurrent ?? MAX_CONCURRENT_FETCHES,
+	);
+	/** One fetch chain in flight; the queue below hands these out. */
+	let active = 0;
+	const waiting: WaitEntry[] = [];
+
+	/** Give a slot back and hand it to the longest-waiting caller, if any. */
+	function releaseSlot(): void {
+		active -= 1;
+		while (waiting.length > 0) {
+			const next = waiting.shift();
+			if (next === undefined) break;
+			clearTimeout(next.timer);
+			if (now() >= next.deadline) {
+				// Its budget ran out while it queued: refuse it rather than start a fetch that
+				// cannot finish, and let the next waiter have the slot.
+				next.settle(false);
+				continue;
+			}
+			active += 1;
+			next.settle(true);
+			return;
+		}
+	}
+
+	/**
+	 * Wait for a fetch slot, or give up when the caller's deadline passes.
+	 *
+	 * `false` means the QUEUE outlasted the budget: the caller answers a retryable
+	 * error with nothing fetched, which is the state a hop that timed out produces
+	 * and the honest one here - nothing is known about the host yet.
+	 */
+	function acquireSlot(deadline: number): Promise<boolean> {
+		if (now() >= deadline) return Promise.resolve(false);
+		if (active < concurrency) {
+			active += 1;
+			return Promise.resolve(true);
+		}
+		return new Promise<boolean>((resolve) => {
+			const entry: WaitEntry = {
+				settle: (granted) => resolve(granted),
+				deadline,
+				timer: setTimeout(
+					() => {
+						const index = waiting.indexOf(entry);
+						if (index !== -1) waiting.splice(index, 1);
+						resolve(false);
+					},
+					Math.max(0, deadline - now()),
+				),
+			};
+			entry.timer.unref?.();
+			waiting.push(entry);
+		});
+	}
+
 	/** One fetch per normalised URL: N cards in one window share one exchange. */
 	const inflight = new Map<string, Promise<LinkPreviewResolveResult>>();
 
@@ -177,23 +293,37 @@ export function createLinkPreviewService(
 			if (!normalised.ok)
 				return { ok: false, result: absent(normalised.reason) };
 			current = normalised.url;
-			const verified = await verifyHostAddress(
-				lookupHostFor(current.hostname),
-				lookup,
-			);
-			if (!verified.ok) return { ok: false, result: absent(verified.reason) };
 			const remaining = deadline - now();
 			if (remaining <= 0)
 				return { ok: false, result: { kind: "error", retryable: true } };
+			const verified = await withinDeadline(
+				verifyHostAddress(lookupHostFor(current.hostname), lookup),
+				remaining,
+			);
+			if (verified === TIMED_OUT)
+				return { ok: false, result: { kind: "error", retryable: true } };
+			if (!verified.ok) return { ok: false, result: absent(verified.reason) };
+			// One share of the deadline for this hop. The transport bounds ITSELF from
+			// this value (a hard wall clock, see `http-transport.ts`) and the race below
+			// bounds the WAIT for it, so a transport that never settles cannot hold the
+			// card past the budget the contract promises. A rejection that arrives after
+			// the race is already handled, so it cannot become an unhandled one.
+			const budget = Math.min(MAX_HOP_MS, deadline - now());
 			let response: Awaited<ReturnType<Hop>>;
 			try {
-				response = await hop({
-					url: current,
-					address: verified.address,
-					family: verified.family,
-					timeoutMs: Math.min(MAX_HOP_MS, deadline - now()),
-					maxBytes,
-				});
+				const answered = await withinDeadline<Awaited<ReturnType<Hop>>>(
+					hop({
+						url: current,
+						address: verified.address,
+						family: verified.family,
+						timeoutMs: budget,
+						maxBytes,
+					}),
+					budget,
+				);
+				if (answered === TIMED_OUT)
+					return { ok: false, result: { kind: "error", retryable: true } };
+				response = answered;
 			} catch {
 				// Transport failure, with no URL in the message: this is the point where
 				// a raw error would otherwise carry the host straight into a log line.
@@ -212,6 +342,13 @@ export function createLinkPreviewService(
 				try {
 					next = new URL(response.location, current);
 				} catch {
+					return { ok: false, result: { kind: "error", retryable: false } };
+				}
+				// A redirect that drops TLS is refused, for the page and for an artifact
+				// alike. Nothing secret is in the request, but following one would let a
+				// hostile https origin move the rest of the exchange onto a plaintext hop,
+				// and no legitimate preview needs that.
+				if (current.protocol === "https:" && next.protocol === "http:") {
 					return { ok: false, result: { kind: "error", retryable: false } };
 				}
 				current = next;
@@ -285,7 +422,7 @@ export function createLinkPreviewService(
 			// Invariant 1: the bytes, not the header, decided this is not a document.
 			return absent(nonHtmlReason(fetched.contentType));
 		}
-		const metadata = extractMetadata(fetched.bytes);
+		const metadata = extractMetadata(fetched.bytes, fetched.contentType);
 		if (!hasPreviewContent(metadata)) return absent("no-metadata");
 
 		const faviconHref = metadata.iconHref ?? "/favicon.ico";
@@ -298,10 +435,20 @@ export function createLinkPreviewService(
 		const imageId = image === null ? null : previewIdFor("image", key);
 		const pending: PendingArtifact[] = [];
 		if (favicon !== null && faviconId !== null) {
-			pending.push({ id: faviconId, mime: favicon.mime, bytes: favicon.bytes });
+			pending.push({
+				id: faviconId,
+				kind: "favicon",
+				mime: favicon.mime,
+				bytes: favicon.bytes,
+			});
 		}
 		if (image !== null && imageId !== null) {
-			pending.push({ id: imageId, mime: image.mime, bytes: image.bytes });
+			pending.push({
+				id: imageId,
+				kind: "image",
+				mime: image.mime,
+				bytes: image.bytes,
+			});
 		}
 		const preview: LinkPreview = {
 			url: fetched.url.toString(),
@@ -361,23 +508,39 @@ export function createLinkPreviewService(
 			}
 			const existing = inflight.get(key);
 			if (existing !== undefined) return existing;
+			// ONE deadline for the whole operation, computed BEFORE the queue: the wait
+			// for a slot, the DNS lookup, every hop and every artifact all spend from
+			// it, which is what makes the promise "4 seconds" true end to end.
 			const deadline = now() + TOTAL_BUDGET_MS;
 			const work = (async (): Promise<LinkPreviewResolveResult> => {
-				let result: LinkPreviewResolveResult;
+				if (!(await acquireSlot(deadline))) {
+					// Nothing was learned about the HOST, so this answer is not cached: pinning
+					// local congestion would keep a healthy page broken for a minute, and the
+					// short TTL is for an answer a fetch actually produced.
+					logOutcome(previewIdFor("image", key), { kind: "error" });
+					return { kind: "error", retryable: true };
+				}
 				try {
-					result = await fetchAndBuild(url, key, deadline);
-				} catch {
-					// Anything unforeseen is a state, never a rejection: the renderer's
-					// `resolve` call always resolves (the contract's first rule).
-					result = { kind: "error", retryable: true };
+					let result: LinkPreviewResolveResult;
+					try {
+						result = await fetchAndBuild(url, key, deadline);
+					} catch {
+						// Anything unforeseen is a state, never a rejection: the renderer's
+						// `resolve` call always resolves (the contract's first rule).
+						result = { kind: "error", retryable: true };
+					}
+					if (result.kind !== "ready") {
+						// Negative caching is what stops a dead host from being re-fetched on
+						// every scroll. The LENGTH is the cache's per-answer rule: thirty minutes
+						// for a refusal, sixty seconds for an error the contract says a retry can
+						// change (see `cache.ts`), so a retry is not answered from the cache.
+						await cache.store(key, result, []);
+					}
+					logOutcome(previewIdFor("image", key), result);
+					return result;
+				} finally {
+					releaseSlot();
 				}
-				if (result.kind !== "ready") {
-					// Negative caching is what stops a dead host from being re-fetched on
-					// every scroll (30 minutes, see cache.ts).
-					await cache.store(key, result, []);
-				}
-				logOutcome(previewIdFor("image", key), result);
-				return result;
 			})();
 			inflight.set(key, work);
 			try {
@@ -398,7 +561,10 @@ export function createLinkPreviewService(
 				return { kind: "error", code: "invalid-request", status: 400 };
 			}
 			try {
-				const artifact = await cache.read(request.previewId);
+				// The kind is passed through, not assumed: an id that names the card's
+				// favicon must not be served for `image`, and `cache.read` enforces that
+				// against the record it stored (see the `which` note in `shared/`).
+				const artifact = await cache.read(request.previewId, request.which);
 				if (artifact === null) {
 					return { kind: "error", code: "not-found", status: 404 };
 				}

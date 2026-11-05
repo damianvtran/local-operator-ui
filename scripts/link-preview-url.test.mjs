@@ -78,6 +78,24 @@ test("distinct URLs stay distinct", () => {
 	assert.equal(new Set(keys).size, raws.length);
 });
 
+test("a query value that contains an encoded separator does not collide", () => {
+	// `URLSearchParams` hands back DECODED values, so joining them with `&` and `=`
+	// made `?a=x%26b%3D1` (one parameter whose value is `x&b=1`) indistinguishable
+	// from `?a=x&b=1` (two parameters). The second URL would then be served the
+	// first one's card - a card pointing at a URL the reader never pasted.
+	const encoded = keyOf("https://example.com/?a=x%26b%3D1");
+	const plain = keyOf("https://example.com/?a=x&b=1");
+	assert.notEqual(encoded, plain);
+	assert.equal(encoded, "https://example.com/?a=x%26b%3D1");
+	assert.equal(plain, "https://example.com/?a=x&b=1");
+
+	// A value that merely looks like another parameter stays one parameter, and the
+	// key survives a round trip through the normaliser.
+	const once = keyOf("https://example.com/?q=a%3Db%26c%3Dd");
+	assert.equal(once, "https://example.com/?q=a%3Db%26c%3Dd");
+	assert.equal(keyOf(once), once);
+});
+
 test("non-http schemes and unusable input are unsupported-scheme", () => {
 	for (const raw of [
 		"",

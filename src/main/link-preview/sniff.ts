@@ -74,8 +74,18 @@ const HTML_LEADING_TAGS = [
 function sniffsAsHtml(bytes: Uint8Array): boolean {
 	const window = asciiAt(bytes, 0, SNIFF_WINDOW).toLowerCase();
 	let index = 0;
-	// A UTF-8 BOM, then any run of whitespace.
-	if (window.startsWith("\ufeff")) index = 1;
+	// A UTF-8 BOM, then any run of whitespace. The byte order mark is tested as
+	// BYTES: the window above is decoded one byte per character, so a UTF-8 BOM
+	// arrives as three characters ("ï»¿"), never as U+FEFF, and a
+	// `startsWith("\ufeff")` test can never fire on a real one.
+	if (
+		bytes.length >= 3 &&
+		bytes[0] === 0xef &&
+		bytes[1] === 0xbb &&
+		bytes[2] === 0xbf
+	) {
+		index = 3;
+	}
 	while (index < window.length && WHITESPACE.test(window[index] as string))
 		index += 1;
 	const head = window.slice(index);

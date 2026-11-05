@@ -45,11 +45,13 @@ import {
 } from "../shared/desktop-contract";
 import type { DesktopFeedFrame } from "../shared/desktop-session-contract";
 import { DESKTOP_STREAM_DETAIL } from "../shared/desktop-stream-notice";
-import type {
-	LinkPreviewImageRequest,
-	LinkPreviewImageResult,
-	LinkPreviewResolveRequest,
-	LinkPreviewResolveResult,
+import {
+	LINK_PREVIEW_IMAGE_CHANNEL,
+	LINK_PREVIEW_RESOLVE_CHANNEL,
+	type LinkPreviewImageRequest,
+	type LinkPreviewImageResult,
+	type LinkPreviewResolveRequest,
+	type LinkPreviewResolveResult,
 } from "../shared/link-preview";
 import {
 	MINI_VIEW_DIALOG,
@@ -125,11 +127,11 @@ const api = {
 		resolve: (
 			request: LinkPreviewResolveRequest,
 		): Promise<LinkPreviewResolveResult> =>
-			ipcRenderer.invoke("link-preview:resolve", request),
+			ipcRenderer.invoke(LINK_PREVIEW_RESOLVE_CHANNEL, request),
 		image: (
 			request: LinkPreviewImageRequest,
 		): Promise<LinkPreviewImageResult> =>
-			ipcRenderer.invoke("link-preview:image", request),
+			ipcRenderer.invoke(LINK_PREVIEW_IMAGE_CHANNEL, request),
 	},
 	desktop: {
 		request: (request: DesktopRequest) =>
