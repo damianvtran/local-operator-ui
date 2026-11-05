@@ -10,10 +10,14 @@ import { useCallback, useId, useMemo, useState } from "react";
 export const SystemPromptEditor = ({
 	value,
 	onChange,
+	onLocalDraftActiveChange,
+	sourceVersion = 0,
 	disabled = false,
 }: {
 	value: string;
 	onChange: (value: string) => void;
+	onLocalDraftActiveChange?: (active: boolean) => void;
+	sourceVersion?: number;
 	disabled?: boolean;
 }) => {
 	const id = useId();
@@ -22,6 +26,7 @@ export const SystemPromptEditor = ({
 		() =>
 			new SourcePreservingMarkdown(
 				t("ui.settings.model.system_prompt.source_edit"),
+				t("ui.canvas.wysiwyg_markdown_editor.checklist"),
 			),
 	);
 	const [generation, setGeneration] = useState(0);
@@ -45,13 +50,15 @@ export const SystemPromptEditor = ({
 	const draft = useMemo(
 		() => ({
 			onChange: richChange,
+			onLocalDraftActiveChange,
+			sourceVersion,
 			disabled,
 			label: t("ui.settings.model.system_prompt.instructions"),
 			codec,
 			sourceLabel: t("ui.settings.model.system_prompt.source_edit"),
 			sourceStaleLabel: t("ui.settings.model.system_prompt.source_stale"),
 		}),
-		[richChange, disabled, codec],
+		[richChange, disabled, codec, onLocalDraftActiveChange, sourceVersion],
 	);
 	const enterRich = () => {
 		setRichInitial(value);

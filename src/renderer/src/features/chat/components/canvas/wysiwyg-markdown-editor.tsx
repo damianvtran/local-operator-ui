@@ -175,6 +175,8 @@ type WysiwygMarkdownEditorProps = {
 	/** Explicit-save hosts own persistence; never enlist their drafts in Canvas buffers. */
 	draft?: {
 		onChange: (markdown: string) => void;
+		onLocalDraftActiveChange?: (active: boolean) => void;
+		sourceVersion?: number;
 		disabled?: boolean;
 		label: string;
 		codec?: MarkdownEditorCodec;
@@ -229,7 +231,7 @@ const editorProseClasses = cn(
 	// say nothing about where typing goes; the caret is the focus indicator, as
 	// it is in every text editor. The exception holds only because this is a
 	// full-pane editing surface - it does not extend to the fields around it.
-	"[&_[contenteditable]]:min-h-50 [&_[contenteditable]]:text-body [&_[contenteditable]]:leading-relaxed [&_[contenteditable]]:text-ink [&_[contenteditable]]:outline-none",
+	"[&_[data-wysiwyg-editor-root]]:min-h-50 [&_[data-wysiwyg-editor-root]]:text-body [&_[data-wysiwyg-editor-root]]:leading-relaxed [&_[data-wysiwyg-editor-root]]:text-ink [&_[data-wysiwyg-editor-root]]:outline-none",
 	// Find/replace, painted through the CSS Custom Highlight API. Highlight
 	// pseudo-elements inherit down the tree, so declaring them on the container
 	// covers every match inside it.
@@ -520,9 +522,41 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 		source: string;
 		expected: string;
 		codec: MarkdownEditorCodec;
+		sourceVersion: number | undefined;
+		insertionRange?: Range;
 	} | null>(null);
 	const [opaqueSource, setOpaqueSource] = useState("");
 	const [opaqueStale, setOpaqueStale] = useState(false);
+	const opaqueIsStale =
+		opaqueStale ||
+		(opaqueEdit !== null && opaqueEdit.sourceVersion !== draft?.sourceVersion);
+	const localDraftActiveChange = draft?.onLocalDraftActiveChange;
+	const openOpaqueEditor = useCallback(
+		(atom: { id: string; source: string }, insertionRange?: Range) => {
+			if (!codec) return;
+			// Ownership begins synchronously, before any refetch can remount the
+			// pristine host. Unapplied source is deliberately NOT an onChange value.
+			localDraftActiveChange?.(true);
+			setOpaqueEdit({
+				...atom,
+				expected: readCurrentMarkdown(),
+				codec,
+				sourceVersion: draft?.sourceVersion,
+				insertionRange,
+			});
+			setOpaqueSource(atom.source);
+			setOpaqueStale(false);
+		},
+		[codec, readCurrentMarkdown, localDraftActiveChange, draft?.sourceVersion],
+	);
+	const closeOpaqueEditor = useCallback(() => {
+		setOpaqueEdit(null);
+		localDraftActiveChange?.(false);
+	}, [localDraftActiveChange]);
+	useEffect(
+		() => () => localDraftActiveChange?.(false),
+		[localDraftActiveChange],
+	);
 	const originalContentRef = useRef(document.content);
 	const isInitialLoadRef = useRef(true);
 	const [canUndo, setCanUndo] = useState(false);
@@ -1298,21 +1332,23 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 			selectionRef.current = selection.getRangeAt(0).cloneRange();
 		}
 		if (codec && editorRef.current) {
-			const safe = codec.insertSource("![](<https://example.invalid/image>)");
-			const template = window.document.createElement("template");
-			template.innerHTML = safe;
-			const element = template.content.querySelector("[data-prompt-opaque]");
-			const atom = element && codec.getOpaque(element);
-			executeCommand("insertHTML", safe);
-			if (atom) {
-				setOpaqueEdit({ ...atom, expected: readCurrentMarkdown(), codec });
-				setOpaqueSource(atom.source);
-				setOpaqueStale(false);
+			const root = editorRef.current;
+			let range = selectionRef.current?.cloneRange();
+			if (!range || !root.contains(range.commonAncestorContainer)) {
+				range = window.document.createRange();
+				range.selectNodeContents(root);
+				range.collapse(false);
 			}
+			// Stage creation until Apply: Cancel/Close/Escape must not insert a
+			// placeholder, mark the host dirty, or add an undo transaction.
+			openOpaqueEditor(
+				{ id: "", source: "![](<https://example.invalid/image>)" },
+				range,
+			);
 			return;
 		}
 		setIsImageDialogOpen(true);
-	}, [codec, executeCommand, readCurrentMarkdown]);
+	}, [codec, openOpaqueEditor]);
 
 	const handleInsertImage = useCallback(
 		(url: string) => {
@@ -1443,9 +1479,7 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 				const atom = codec.getOpaque(target);
 				if (atom) {
 					event.preventDefault();
-					setOpaqueEdit({ ...atom, expected: readCurrentMarkdown(), codec });
-					setOpaqueSource(atom.source);
-					setOpaqueStale(false);
+					openOpaqueEditor(atom);
 					return;
 				}
 			}
@@ -1463,7 +1497,7 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 				handleContentChange();
 			}
 		},
-		[handleContentChange, codec, readCurrentMarkdown],
+		[handleContentChange, codec, openOpaqueEditor],
 	);
 
 	// Handle keyboard shortcuts
@@ -1477,9 +1511,7 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 				event.preventDefault();
 				const atom = codec.getOpaque(event.target as Element);
 				if (atom) {
-					setOpaqueEdit({ ...atom, expected: readCurrentMarkdown(), codec });
-					setOpaqueSource(atom.source);
-					setOpaqueStale(false);
+					openOpaqueEditor(atom);
 				}
 				return;
 			}
@@ -1750,7 +1782,7 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 			handleManualSave,
 			handleContentChange,
 			codec,
-			readCurrentMarkdown,
+			openOpaqueEditor,
 		],
 	);
 
@@ -2293,6 +2325,7 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 				>
 					<div
 						ref={editorRef}
+						data-wysiwyg-editor-root=""
 						/*
 						 * THE SCOPE MARKER. This element is what the undo manager is connected to
 						 * (`getOrCreateManager(document.id, editorRef.current, …)` below), and the
@@ -2478,23 +2511,47 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 			{codec && (
 				<BaseDialog
 					open={opaqueEdit !== null}
-					onClose={() => setOpaqueEdit(null)}
+					onClose={closeOpaqueEditor}
 					title={draft?.sourceLabel ?? draft?.label ?? ""}
 					maxWidth="md"
 					fullWidth
 					actions={
 						<>
-							<Button onClick={() => setOpaqueEdit(null)}>
+							<Button onClick={closeOpaqueEditor}>
 								{t("ui.canvas.insert_link_dialog.cancel")}
 							</Button>
 							<Button
 								variant="primary"
-								disabled={draft?.disabled || opaqueStale}
+								disabled={draft?.disabled || opaqueIsStale}
 								onClick={() => {
 									if (!opaqueEdit || !editorRef.current || draft?.disabled)
 										return;
 									if (
 										opaqueEdit.codec !== codec ||
+										opaqueIsStale ||
+										readCurrentMarkdown() !== opaqueEdit.expected
+									) {
+										setOpaqueStale(true);
+										return;
+									}
+									undoManagerRef.current?.saveCurrentState();
+									if (opaqueEdit.insertionRange) {
+										if (
+											!editorRef.current.contains(
+												opaqueEdit.insertionRange.commonAncestorContainer,
+											)
+										) {
+											setOpaqueStale(true);
+											return;
+										}
+										const selection = window.getSelection();
+										selection?.removeAllRanges();
+										selection?.addRange(opaqueEdit.insertionRange);
+										executeCommand(
+											"insertHTML",
+											codec.insertSource(opaqueSource),
+										);
+									} else if (
 										codec.replaceOpaque(
 											editorRef.current,
 											opaqueEdit.id,
@@ -2507,7 +2564,7 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 									}
 									handleContentChange();
 									undoManagerRef.current?.saveCurrentState();
-									setOpaqueEdit(null);
+									closeOpaqueEditor();
 								}}
 							>
 								{t("ui.chat.pickers.picker_host.apply")}
@@ -2515,8 +2572,10 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 						</>
 					}
 				>
-					{opaqueStale && (
-						<Alert variant="warning">{draft?.sourceStaleLabel}</Alert>
+					{opaqueIsStale && (
+						<Alert variant="warning" role="alert">
+							{draft?.sourceStaleLabel}
+						</Alert>
 					)}
 					<Textarea
 						autoFocus

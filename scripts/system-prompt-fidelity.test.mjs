@@ -10,7 +10,7 @@ globalThis.window = dom.window;
 const bundle = await build({
 	stdin: {
 		contents:
-			'export {SourcePreservingMarkdown} from "./src/renderer/src/features/chat/components/canvas/source-preserving-markdown";export {fictionalInstructionShape,extendedInstructionShape} from "./src/renderer/src/features/settings/components/system-prompt-fidelity.fixtures";export {canRichEditPrompt} from "./src/renderer/src/features/settings/components/system-prompt-markdown";',
+			'export {SourcePreservingMarkdown} from "./src/renderer/src/features/chat/components/canvas/source-preserving-markdown";export {fictionalInstructionShape,extendedInstructionShape} from "./src/renderer/src/features/settings/components/system-prompt-fidelity.fixtures";export {canRichEditPrompt} from "./src/renderer/src/features/settings/components/system-prompt-markdown";export {unified} from "unified";export {default as remarkParse} from "remark-parse";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -24,6 +24,8 @@ const {
 	fictionalInstructionShape,
 	extendedInstructionShape,
 	canRichEditPrompt,
+	unified,
+	remarkParse,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
@@ -143,9 +145,10 @@ test("unsafe HTML, handlers, image resources and link protocols never become act
 		null,
 	);
 	assert.equal(root.querySelector("[src],[onerror],[onclick],[style]"), null);
-	assert.equal(root.querySelectorAll("a").length, 1);
+	assert.equal(root.querySelector("a,[href]"), null);
+	assert.equal(root.querySelector("[data-prompt-link]").tagName, "SPAN");
 	assert.equal(
-		root.querySelector("a").getAttribute("href"),
+		root.querySelector("[data-prompt-link]").getAttribute("title"),
 		"https://example.invalid/guide",
 	);
 	assert.equal(codec.read(root), source);
@@ -173,4 +176,118 @@ test("long fictional document stays readable and leaf edits retain every unknown
 		codec.read(root),
 		source.replace("Working agreements", "Fictional revised agreements"),
 	);
+});
+
+test("R1: decoded entities and Unicode changes preserve complete source segments", () => {
+	for (const [source, original, edited, expected] of [
+		["Rule &#x1F600;.\n", "Rule 😀.", "Rule 😁.", "Rule 😁.\n"],
+		["Rule &NotEqualTilde;.\n", "Rule ≂̸.", "Rule ≂!.", "Rule ≂!.\n"],
+		["Rule 😀.\n", "Rule 😀.", "Rule 😁.", "Rule 😁.\n"],
+	]) {
+		const { codec, root } = create(source);
+		textLeaf(root, original).textContent = edited;
+		assert.equal(codec.read(root), expected);
+	}
+});
+
+test("R2: edited unclosed fences do not duplicate their final line", () => {
+	const source = "```text\nalpha\nbeta";
+	const { codec, root } = create(source);
+	root.querySelector("pre code").textContent = "ALPHA\nbeta\n";
+	const actual = codec.read(root);
+	assert.equal(actual, "```text\nALPHA\nbeta");
+	const tree = unified().use(remarkParse).parse(actual);
+	assert.equal(tree.children.length, 1);
+	assert.equal(tree.children[0].type, "code");
+	assert.equal(tree.children[0].value, "ALPHA\nbeta");
+});
+
+test("R2: inserted backtick and tilde runs remain literal inside one code node", () => {
+	for (const fence of ["```", "~~~"]) {
+		const source = `${fence}text extra-info\nkeep\n${fence}\n`;
+		const body = `keep\n${fence}\nremaining literal rule`;
+		const { codec, root } = create(source);
+		root.querySelector("pre code").textContent = `${body}\n`;
+		const actual = codec.read(root);
+		const tree = unified().use(remarkParse).parse(actual);
+		assert.equal(tree.children.length, 1);
+		assert.equal(tree.children[0].type, "code");
+		assert.equal(tree.children[0].value, body);
+		assert.equal(tree.children[0].lang, "text");
+		assert.equal(tree.children[0].meta, "extra-info");
+	}
+});
+
+test("R5: quote/list continuation prefixes and soft newlines remain exact on word edits", () => {
+	for (const source of [
+		"> Keep this\n> and this exact line.\n",
+		"-   Keep this\n    and this exact line.\n",
+		"> -   Keep this\n>     and this exact line.\n",
+	]) {
+		const { codec, root } = create(source);
+		const leaf = [...root.querySelectorAll("span[data-prompt-node]")].find(
+			(node) =>
+				!node.children.length && node.textContent.startsWith("Keep this"),
+		);
+		leaf.textContent = leaf.textContent.replace("Keep", "Retain");
+		assert.equal(codec.read(root), source.replace("Keep", "Retain"));
+	}
+});
+
+test("R4/U2: link metadata stays inert and tasks expose their actual text and checked state", () => {
+	const source =
+		'[Guide](https://example.invalid/guide "Fictional title")\n\n- [ ] Pending **fictional** check\n- [x] Completed fictional check\n';
+	const { codec, root } = create(source);
+	assert.equal(root.querySelector("a,[href],[src]"), null);
+	assert.equal(
+		root.querySelector("[data-prompt-link]").title,
+		"Fictional title",
+	);
+	for (const type of ["click", "dblclick", "auxclick"]) {
+		root.querySelector("[data-prompt-link]").dispatchEvent(
+			new window.MouseEvent(type, {
+				bubbles: true,
+				cancelable: true,
+				button: type === "auxclick" ? 1 : 0,
+			}),
+		);
+		assert.equal(root.querySelector("[href],[src]"), null);
+		assert.equal(codec.read(root), source);
+	}
+	const tasks = [...root.querySelectorAll('input[type="checkbox"]')];
+	assert.deepEqual(
+		tasks.map((task) => [task.getAttribute("aria-label"), task.checked]),
+		[
+			["Pending fictional check", false],
+			["Completed fictional check", true],
+		],
+	);
+	tasks[0].checked = true;
+	assert.equal(
+		codec.read(root),
+		source.replace("- [ ] Pending", "- [x] Pending"),
+	);
+});
+
+test("R2/R5 direct neighbors: nested and CRLF code fences retain container prefixes and gaps", () => {
+	for (const source of [
+		"> ```text\n> alpha\n> beta\n> ```\n",
+		"- ```text\n  alpha\n  beta\n  ```\n",
+		"  ```text\r\n  alpha\r\n  beta\r\n  ```\r\n",
+		"```text\nalpha\nbeta\n",
+	]) {
+		const { codec, root } = create(source);
+		root.querySelector("pre code").textContent = "ALPHA\nbeta\n";
+		const actual = codec.read(root);
+		assert.equal(actual, source.replace("alpha", "ALPHA"));
+		const collect = (node) =>
+			node.type === "code"
+				? [node.value]
+				: (node.children ?? []).flatMap(collect);
+		// remark retains source CRLFs in code values; the browser text node
+		// normalizes them. Canonical source above must keep the original style.
+		assert.deepEqual(collect(unified().use(remarkParse).parse(actual)), [
+			source.includes("\r\n") ? "ALPHA\r\nbeta" : "ALPHA\nbeta",
+		]);
+	}
 });

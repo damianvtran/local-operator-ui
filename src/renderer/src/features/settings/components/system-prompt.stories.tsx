@@ -5,7 +5,8 @@ import { t } from "@shared/i18n";
 import type { Meta, StoryObj } from "@storybook/react";
 import { expect, userEvent, waitFor, within } from "@storybook/test";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useLayoutEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { SettingsSection } from "./settings-section";
 import { SystemPrompt } from "./system-prompt";
 import {
@@ -31,9 +32,15 @@ type Props = {
 		| "save-error"
 		| "saving";
 	narrow?: boolean;
+	refetchControl?: boolean;
 };
 
-function Fixture({ before = false, kind = "normal", narrow = false }: Props) {
+function Fixture({
+	before = false,
+	kind = "normal",
+	narrow = false,
+	refetchControl = false,
+}: Props) {
 	const [client] = useState(
 		() =>
 			new QueryClient({
@@ -44,6 +51,22 @@ function Fixture({ before = false, kind = "normal", narrow = false }: Props) {
 			}),
 	);
 	const [ready, setReady] = useState(false);
+	const refetchFixture = useRef<(() => Promise<void>) | null>(null);
+	const [refetchTarget, setRefetchTarget] = useState<HTMLElement | null>(null);
+	useEffect(() => {
+		if (!refetchControl) return;
+		// The synthetic transport control belongs inside the active modal's
+		// focus/pointer scope, so a reviewer can cause a REAL query refetch using
+		// only visible UI rather than a privileged JavaScript evaluation port.
+		const update = () =>
+			setRefetchTarget(
+				window.document.querySelector<HTMLElement>('[role="dialog"]'),
+			);
+		const observer = new MutationObserver(update);
+		observer.observe(window.document.body, { childList: true, subtree: true });
+		update();
+		return () => observer.disconnect();
+	}, [refetchControl]);
 	const initial =
 		kind === "fidelity"
 			? fictionalInstructionShape
@@ -79,6 +102,7 @@ function Fixture({ before = false, kind = "normal", narrow = false }: Props) {
 			content: () => content,
 		};
 		Object.assign(window, { systemPromptFixture: fixture });
+		refetchFixture.current = fixture.externalRefetch;
 		const syntheticDesktop: typeof window.api.desktop = {
 			...previousDesktop,
 			request: async (request) => {
@@ -164,13 +188,29 @@ function Fixture({ before = false, kind = "normal", narrow = false }: Props) {
 			window.api.backend = previousBackend;
 			client.clear();
 			Reflect.deleteProperty(window, "systemPromptFixture");
+			refetchFixture.current = null;
 		};
 	}, [client, initial, kind]);
+	const refetchButton = (
+		<Button
+			variant="ghost"
+			onClick={() => {
+				void refetchFixture.current?.();
+			}}
+		>
+			External refetch (fictional)
+		</Button>
+	);
 	return (
 		<div
 			className="h-screen overflow-y-auto bg-surface p-4 text-ink"
 			style={{ maxWidth: narrow ? 390 : 920 }}
 		>
+			{ready &&
+				refetchControl &&
+				(refetchTarget
+					? createPortal(refetchButton, refetchTarget)
+					: refetchButton)}
 			{before ? (
 				<SettingsSection
 					title={t("ui.settings.model.system_prompt.system_prompt")}
@@ -577,5 +617,128 @@ export const ImmediateFlush: Story = {
 		await expect(
 			fixture.requests.filter((op) => op === "instructions.update"),
 		).toHaveLength(1);
+	},
+};
+
+/** Manual counterpart: open a node, type without Apply, then use the visible
+ * synthetic button inside that modal. It exercises the actual query refetch. */
+export const RefetchControls: Story = {
+	args: { kind: "fidelity", refetchControl: true },
+};
+
+export const PristineRefetch: Story = {
+	args: { kind: "fidelity", refetchControl: true },
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		const page = within(canvasElement.ownerDocument.body);
+		await canvas.findByRole("heading", { name: "Working agreements" });
+		await userEvent.click(
+			canvasElement.querySelector("[data-prompt-opaque]") as HTMLElement,
+		);
+		const dialog = within(await page.findByRole("dialog"));
+		const local = dialog.getByRole("textbox");
+		await userEvent.clear(local);
+		await userEvent.type(local, '<policy fictional="unapplied">');
+		await userEvent.click(
+			await dialog.findByRole("button", {
+				name: "External refetch (fictional)",
+			}),
+		);
+		await waitFor(() =>
+			expect(dialog.getByRole("button", { name: "Apply" })).toBeDisabled(),
+		);
+		await expect(local).toHaveValue('<policy fictional="unapplied">');
+		await expect(dialog.getByRole("alert")).toHaveTextContent(
+			t("ui.settings.model.system_prompt.source_stale"),
+		);
+		await expect(
+			[...canvasElement.querySelectorAll("button")].find(
+				(button) => button.textContent === "Save changes",
+			),
+		).toBeDisabled();
+		const fixture = (
+			window as unknown as {
+				systemPromptFixture: { content: () => string; requests: string[] };
+			}
+		).systemPromptFixture;
+		await expect(fixture.content()).toContain("External fictional change.");
+		await expect(
+			fixture.requests.filter((op) => op === "instructions.update"),
+		).toHaveLength(0);
+		// Keep this stable warning/local-draft frame open for independent design
+		// inspection; Cancel remains visible and safely adopts the new baseline.
+	},
+};
+
+export const ImageCancel: Story = {
+	args: { kind: "normal" },
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		const page = within(canvasElement.ownerDocument.body);
+		// A resolved heading is the loaded-document readiness control. The
+		// transient empty editor may still be replaced by initial query adoption.
+		const heading = await canvas.findByRole("heading", {
+			name: "Working together",
+		});
+		const rich = canvas.getByRole("textbox", { name: "Instructions" });
+		const text = "Fictional image cancellation.";
+		await userEvent.click(rich);
+		// Match ImmediateFlush's explicit real-DOM input instrument. userEvent's
+		// empty-contenteditable typing is a no-op in this fixture; assert the
+		// actual input and caret instead of treating that setup failure as proof.
+		rich.dispatchEvent(
+			new InputEvent("beforeinput", {
+				bubbles: true,
+				inputType: "insertText",
+				data: text,
+			}),
+		);
+		const headingLeaf = heading.querySelector(
+			"span[data-prompt-node]",
+		) as HTMLElement;
+		headingLeaf.textContent = text;
+		const leaf = headingLeaf.firstChild as Text;
+		const caret = canvasElement.ownerDocument.createRange();
+		caret.setStart(leaf, text.length);
+		caret.collapse(true);
+		window.getSelection()?.removeAllRanges();
+		window.getSelection()?.addRange(caret);
+		rich.dispatchEvent(
+			new InputEvent("input", {
+				bubbles: true,
+				inputType: "insertText",
+				data: text,
+			}),
+		);
+		await expect(heading).toHaveTextContent(text);
+		const before = rich.innerHTML;
+		await waitFor(() =>
+			expect(canvas.getByRole("button", { name: "Undo" })).toBeEnabled(),
+		);
+		await userEvent.click(
+			canvas.getByRole("button", { name: "More formatting" }),
+		);
+		await userEvent.click(
+			await page.findByRole("menuitem", { name: "Insert image" }),
+		);
+		const dialog = within(await page.findByRole("dialog"));
+		await expect(rich.innerHTML).toBe(before);
+		await userEvent.click(dialog.getByRole("button", { name: "Cancel" }));
+		await expect(rich.innerHTML).toBe(before);
+		await expect(
+			canvas.getByRole("button", { name: "Save changes" }),
+		).toBeEnabled();
+		await userEvent.click(canvas.getByRole("button", { name: "Undo" }));
+		await expect(
+			canvas.getByRole("heading", { name: "Working together" }),
+		).toBeVisible();
+		await userEvent.click(canvas.getByRole("button", { name: "Redo" }));
+		await expect(canvas.getByRole("heading", { name: text })).toBeVisible();
+		await userEvent.click(
+			canvas.getByRole("button", { name: "Markdown source" }),
+		);
+		await expect(
+			canvas.getByRole("textbox", { name: "Instructions" }),
+		).toHaveValue(fictionalPrompt.replace("Working together", text));
 	},
 };

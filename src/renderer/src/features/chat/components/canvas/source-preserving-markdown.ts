@@ -36,6 +36,7 @@ type Span = {
 	children: string[];
 	opaque: boolean;
 	block: boolean;
+	continuationPrefix: string;
 	html?: string;
 	skeleton?: string;
 };
@@ -53,6 +54,11 @@ const CHARACTER_REFERENCE = /^&(?:#[xX][\da-fA-F]+|#\d+|[a-zA-Z][a-zA-Z\d]+);/;
 const FENCE_OPENING = /^[ \t]*(`{3,}|~{3,})/;
 const ELEMENT_TAG = /^<([\w-]+)/;
 const TASK_MARKER = /^([ \t]*(?:[-+*]|\d+[.)])[ \t]+\[)([ xX])(\])/;
+const CONTAINER_PREFIX = /^[ \t]*(?:>[ \t]*)*(?:(?:[-+*]|\d+[.)])[ \t]+)?/;
+const CONTAINER_LIST_MARKER = /(?:[-+*]|\d+[.)])[ \t]+$/;
+const NEWLINE_PARTS = /(\r\n|\r|\n)/;
+const CONTINUATION_PREFIX = /^[ \t>]*/;
+const TRAILING_CR = /\r$/;
 const INLINE = new Set([
 	"text",
 	"inlineCode",
@@ -97,12 +103,23 @@ export class SourcePreservingMarkdown implements MarkdownEditorCodec {
 	private readonly spans = new Map<string, Span>();
 	private snapshot: Snapshot = { source: "", children: [], start: 0, end: 0 };
 	private readonly snapshots = new Map<string, Snapshot>();
-	constructor(private readonly editSourceLabel: string) {}
+	constructor(
+		private readonly editSourceLabel: string,
+		private readonly emptyTaskLabel = "",
+	) {}
 
 	private allocate(node: MarkdownNode, source: string, block: boolean): Span {
 		const id = `${this.prefix}${this.next++}`;
 		const start = node.position?.start.offset ?? 0;
 		const end = node.position?.end.offset ?? start;
+		const lineStart = source.lastIndexOf("\n", start - 1) + 1;
+		const prefix =
+			source.slice(lineStart, start).match(CONTAINER_PREFIX)?.[0] ?? "";
+		// The AST range starts after a list/quote marker; continuation lines
+		// still need that container prefix when an edited code owner is emitted.
+		const continuationPrefix = prefix.replace(CONTAINER_LIST_MARKER, (marker) =>
+			" ".repeat(marker.length),
+		);
 		const span: Span = {
 			id,
 			baseId: id,
@@ -113,6 +130,7 @@ export class SourcePreservingMarkdown implements MarkdownEditorCodec {
 			children: [],
 			opaque: false,
 			block,
+			continuationPrefix,
 		};
 		this.spans.set(id, span);
 		return span;
@@ -203,9 +221,17 @@ export class SourcePreservingMarkdown implements MarkdownEditorCodec {
 				result = `<${tag} ${attr}${n.ordered && n.start !== undefined ? ` start="${n.start}"` : ""}>${children()}</${tag}>`;
 				break;
 			}
-			case "listItem":
-				result = `<li ${attr}${n.checked !== null && n.checked !== undefined ? ' class="task-list-item"' : ""}>${n.checked !== null && n.checked !== undefined ? `<input type="checkbox"${n.checked ? " checked" : ""} aria-label="${escapeHtml(this.editSourceLabel)}"/> ` : ""}${children()}</li>`;
+			case "listItem": {
+				const taskText = (node: MarkdownNode): string => {
+					const value = (node as MarkdownNode & { value?: string }).value;
+					return value ?? (node.children ?? []).map(taskText).join("");
+				};
+				const taskLabel =
+					(n.children ?? []).map(taskText).join(" ").trim() ||
+					this.emptyTaskLabel;
+				result = `<li ${attr}${n.checked !== null && n.checked !== undefined ? ' class="task-list-item"' : ""}>${n.checked !== null && n.checked !== undefined ? `<input type="checkbox"${n.checked ? " checked" : ""} aria-label="${escapeHtml(taskLabel)}"/> ` : ""}${children()}</li>`;
 				break;
+			}
 			case "break":
 				result = `<br ${attr}/>`;
 				break;
@@ -217,8 +243,11 @@ export class SourcePreservingMarkdown implements MarkdownEditorCodec {
 				if (!href) {
 					span.opaque = true;
 					result = this.opaqueHtml(span);
-				} else
-					result = `<a ${attr} href="${escapeHtml(href)}"${n.title ? ` title="${escapeHtml(n.title)}"` : ""}>${children()}</a>`;
+				}
+				// Editing instructions must not expose a navigation primitive:
+				// auxclick/context-menu actions can bypass React click handlers.
+				else
+					result = `<span ${attr} data-prompt-link="true" class="text-accent underline" title="${escapeHtml(n.title ?? href)}">${children()}</span>`;
 				break;
 			}
 			case "linkReference":
@@ -373,29 +402,93 @@ export class SourcePreservingMarkdown implements MarkdownEditorCodec {
 	private patchText(span: Span, value: string): string | null {
 		const previous = span.text;
 		if (previous === undefined) return null;
+		if (previous === value) return span.raw;
+		type Segment = {
+			rawStart: number;
+			rawEnd: number;
+			decodedStart: number;
+			decodedEnd: number;
+			text: string;
+		};
+		const segments: Segment[] = [];
 		let decoded = "";
-		const offsets: number[] = [];
-		for (let index = 0; index < span.raw.length; ) {
-			const start = index;
-			let text = span.raw[index++];
-			if (text === "\\" && ESCAPABLE_MARKDOWN.test(span.raw[index] ?? ""))
-				text = span.raw[index++];
-			else if (text === "\r" && span.raw[index] === "\n") {
-				text = "\n";
-				index++;
-			} else if (text === "&") {
-				const match = span.raw.slice(start).match(CHARACTER_REFERENCE);
-				if (match) {
-					const decoder = window.document.createElement("textarea");
-					decoder.innerHTML = match[0];
-					text = decoder.value;
-					index = start + match[0].length;
+		const decodeLine = (
+			raw: string,
+			origin: number,
+		): {
+			text: string;
+			pieces: { rawStart: number; rawEnd: number; text: string }[];
+		} => {
+			const pieces: { rawStart: number; rawEnd: number; text: string }[] = [];
+			let text = "";
+			for (let index = 0; index < raw.length; ) {
+				const start = index;
+				let part = String.fromCodePoint(raw.codePointAt(index) ?? 0);
+				index += part.length;
+				if (part === "\\" && ESCAPABLE_MARKDOWN.test(raw[index] ?? ""))
+					part = raw[index++];
+				else if (part === "&") {
+					const entity = raw.slice(start).match(CHARACTER_REFERENCE);
+					if (entity) {
+						const decoder = window.document.createElement("textarea");
+						decoder.innerHTML = entity[0];
+						part = decoder.value;
+						index = start + entity[0].length;
+					}
+				}
+				pieces.push({
+					rawStart: origin + start,
+					rawEnd: origin + index,
+					text: part,
+				});
+				text += part;
+			}
+			return { text, pieces };
+		};
+		const rawLines = span.raw.split(NEWLINE_PARTS);
+		const expectedLines = previous.split("\n");
+		const prefixes: string[] = [];
+		let rawOffset = 0;
+		for (let line = 0; line < expectedLines.length; line++) {
+			const rawLine = rawLines[line * 2] ?? "";
+			const newline = rawLines[line * 2 + 1] ?? "";
+			const prefixLimit =
+				line === 0 ? 0 : (rawLine.match(CONTINUATION_PREFIX)?.[0].length ?? 0);
+			let matched: ReturnType<typeof decodeLine> | null = null;
+			let skipped = 0;
+			for (; skipped <= prefixLimit; skipped++) {
+				const candidate = decodeLine(
+					rawLine.slice(skipped),
+					rawOffset + skipped,
+				);
+				if (candidate.text === expectedLines[line]) {
+					matched = candidate;
+					break;
 				}
 			}
-			for (let part = 0; part < text.length; part++) offsets.push(start);
-			decoded += text;
+			if (!matched) return null;
+			prefixes.push(rawLine.slice(0, skipped));
+			for (const piece of matched.pieces) {
+				segments.push({
+					...piece,
+					decodedStart: decoded.length,
+					decodedEnd: decoded.length + piece.text.length,
+				});
+				decoded += piece.text;
+			}
+			rawOffset += rawLine.length;
+			if (newline) {
+				segments.push({
+					rawStart: rawOffset,
+					rawEnd: rawOffset + newline.length,
+					decodedStart: decoded.length,
+					decodedEnd: decoded.length + 1,
+					text: "\n",
+				});
+				decoded += "\n";
+				rawOffset += newline.length;
+			}
 		}
-		offsets.push(span.raw.length);
 		if (decoded !== previous) return null;
 		let before = 0;
 		let after = 0;
@@ -411,19 +504,47 @@ export class SourcePreservingMarkdown implements MarkdownEditorCodec {
 			previous[previous.length - after - 1] === value[value.length - after - 1]
 		)
 			after++;
-		const replacement = value.slice(before, value.length - after);
+		const oldEnd = previous.length - after;
+		const startPiece = segments.find(
+			(piece) => piece.decodedStart < before && before < piece.decodedEnd,
+		);
+		const endPiece = segments.find(
+			(piece) => piece.decodedStart < oldEnd && oldEnd < piece.decodedEnd,
+		);
+		// Entities may decode to several code points; astral characters occupy
+		// two UTF-16 units. Expand BOTH boundaries to their complete source
+		// segments and re-emit unchanged decoded context, never a partial entity.
+		const expandedStart = startPiece?.decodedStart ?? before;
+		const expandedEnd = endPiece?.decodedEnd ?? oldEnd;
+		const replacement = value.slice(
+			expandedStart,
+			value.length - after + expandedEnd - oldEnd,
+		);
 		const begin = `${this.prefix}BEGIN`;
 		const end = `${this.prefix}END`;
-		const escaped = htmlToMarkdown(
-			`<p>${begin}${escapeHtml(replacement)}${end}</p>`,
-		);
-		const from = escaped.indexOf(begin);
-		const to = escaped.lastIndexOf(end);
-		if (from < 0 || to < from) return null;
+		const escapeLine = (line: string): string | null => {
+			const escaped = htmlToMarkdown(
+				`<p>${begin}${escapeHtml(line)}${end}</p>`,
+			);
+			const from = escaped.indexOf(begin);
+			const to = escaped.lastIndexOf(end);
+			return from >= 0 && to >= from
+				? escaped.slice(from + begin.length, to)
+				: null;
+		};
+		const escapedLines = replacement.split("\n").map(escapeLine);
+		if (escapedLines.some((line) => line === null)) return null;
+		const newline = span.raw.includes("\r\n") ? "\r\n" : "\n";
+		const continuation =
+			prefixes.find((prefix) => prefix.length > 0) ?? span.continuationPrefix;
+		const encoded = escapedLines.join(newline + continuation);
+		const rawBoundary = (offset: number): number =>
+			segments.find((piece) => piece.decodedStart === offset)?.rawStart ??
+			span.raw.length;
 		return (
-			span.raw.slice(0, offsets[before]) +
-			escaped.slice(from + begin.length, to) +
-			span.raw.slice(offsets[previous.length - after])
+			span.raw.slice(0, rawBoundary(expandedStart)) +
+			encoded +
+			span.raw.slice(rawBoundary(expandedEnd))
 		);
 	}
 
@@ -439,17 +560,48 @@ export class SourcePreservingMarkdown implements MarkdownEditorCodec {
 			element.querySelector("code")
 		) {
 			const firstLine = span.raw.indexOf("\n");
-			const closingLine = span.raw.lastIndexOf("\n");
-			if (
-				firstLine >= 0 &&
-				closingLine > firstLine &&
-				FENCE_OPENING.test(span.raw)
-			) {
+			const opening = span.raw.slice(0, firstLine).replace(TRAILING_CR, "");
+			const match = opening.match(FENCE_OPENING);
+			if (firstLine >= 0 && match) {
+				const fence = match[1];
+				const indent = opening.slice(0, match[0].length - fence.length);
+				const info = opening.slice(match[0].length);
+				const newline = span.raw[firstLine - 1] === "\r" ? "\r\n" : "\n";
+				const lastLineStart = span.raw.lastIndexOf("\n") + 1;
+				const lastLine = span.raw.slice(lastLineStart);
+				const closing = lastLine.startsWith(span.continuationPrefix)
+					? lastLine
+							.slice(span.continuationPrefix.length)
+							.match(
+								new RegExp(`^([ \t]*)(${fence[0]}{${fence.length},})([ \t]*)$`),
+							)
+					: null;
+				const closed = lastLineStart >= firstLine + 1 && closing !== null;
 				const text = element.querySelector("code")?.textContent ?? "";
 				const body = text.endsWith("\n") ? text.slice(0, -1) : text;
-				return (
-					span.raw.slice(0, firstLine + 1) + body + span.raw.slice(closingLine)
+				// Only a matching delimiter line is a closing fence. An unclosed
+				// source's final body line must not also be appended as a suffix.
+				// Grow both fences beyond every literal run in the edited body so
+				// inserting a delimiter cannot turn later instructions into prose.
+				const runs = body.match(new RegExp(`${fence[0]}+`, "g")) ?? [];
+				const length = runs.reduce(
+					(length, run) => Math.max(length, run.length + 1),
+					fence.length,
 				);
+				const marker = fence[0].repeat(length);
+				const prefix = span.continuationPrefix + indent;
+				const encodedBody = prefix + body.split("\n").join(newline + prefix);
+				const suffix =
+					closed && closing
+						? newline +
+							span.continuationPrefix +
+							closing[1] +
+							fence[0].repeat(Math.max(length, closing[2].length)) +
+							closing[3]
+						: span.raw.endsWith("\n")
+							? newline
+							: "";
+				return indent + marker + info + newline + encodedBody + suffix;
 			}
 		}
 		if (span.type === "text") {
