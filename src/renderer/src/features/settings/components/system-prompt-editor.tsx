@@ -26,7 +26,7 @@ export const SystemPromptEditor = ({
 	const document = useMemo<CanvasDocument>(
 		() => ({
 			id: `system-prompt-draft-${id}-${generation}`,
-			title: "system-prompt.md",
+			title: "system-prompt.md", // i18n: ignore Internal synthetic document filename, not interface copy
 			path: "",
 			type: "markdown",
 			content: richInitial,
