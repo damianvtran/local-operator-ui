@@ -158,5 +158,16 @@
 	"ui.settings.appearance.editor.preview.bridge": "Team Bridge",
 	"ui.settings.appearance.editor.preview.bridge_name": "Agente de revisión",
 	"ui.settings.appearance.editor.preview.bridge_status": "Listo para revisión",
-	"ui.settings.appearance.editor.preview.code": "Código de ejemplo"
+	"ui.settings.appearance.editor.preview.code": "Código de ejemplo",
+	"ui.settings.appearance.editor.accents": "Colores de acento",
+	"ui.settings.appearance.editor.accent.primary": "Principal",
+	"ui.settings.appearance.editor.accent.primary_usage": "Interacciones y selección",
+	"ui.settings.appearance.editor.accent.secondary": "Secundario",
+	"ui.settings.appearance.editor.accent.secondary_usage": "Identidad y categorías",
+	"ui.settings.appearance.editor.accent.variants": "Variantes",
+	"ui.settings.appearance.editor.accent.secondary_help": "El fondo suavemente teñido del acento secundario sigue siendo el del tema base hasta que lo edites.",
+	"ui.settings.appearance.editor.accent.effective": "La vista previa incluye los ajustes de contraste y del acento global. El acento global sustituye a la familia de colores del acento principal; los colores secundarios siguen siendo los guardados en el tema, salvo que sea necesario ajustar el contraste.",
+	"ui.settings.appearance.editor.preview.identity": "Identidad",
+	"ui.settings.appearance.editor.preview.category": "Categoría",
+	"ui.settings.appearance.editor.preview.meta": "Contexto"
 }

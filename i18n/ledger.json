@@ -79088,8 +79088,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.settings.appearance.editor",
-			"source_sha256": "900f02d95f5db1daee3d26ede1e60df4a575325aad4511dd46d19c97a89c8317",
-			"target_sha256": "eb11747fcf2e76e29ffdcd0cd1302a4d50bc9806bab879eb262f0bd3796d7283",
+			"source_sha256": "b02c6ea9e8a0854cc3879de025f4e1dc14e940a2b44db04afb75dc42b1711661",
+			"target_sha256": "07fb00efc44e01bfc08e3d4ead5d2eceb6ca69f9e06f40d529e980ff9903f17b",
 			"translator": {
 				"agent": "task",
 				"model": "openai/gpt-6.1-sol",
@@ -79099,28 +79099,54 @@
 				{
 					"agent": "i18n-auditor",
 					"model": "openai/gpt-6.1-sol",
-					"date": "2026-11-04",
+					"date": "2026-11-05",
 					"result": "clean",
-					"instance": "aud1687-editor-fr-ba69d836a6d4",
+					"instance": "aud1692-multi-fr-ba69d836a6d4",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/aud1687-editor-fr-ba69d836a6d4.json",
-					"receipt_sha256": "5bf4af2a1ea2a2a864363da2a409814ec368d9d960129edc9a503a04c7c1a067",
-					"scope": "All 160 editor keys. Independent source audit at 946d147 retained by exact source/target/context byte compatibility on 4847bbbf4bc; I18N-C1 literal exemptions independently verified fixed.",
-					"note": "Auditor ba69d836a6d4; translator fd3ba80e8c8f; actual openai/gpt-6.1-sol quota fallback, separate agents. Evidence: i18n/audits/evidence/fr/ui.settings.appearance.editor/aud1687-editor-fr-ba69d836a6d4/record.json"
+					"receipt": "i18n/receipts/aud1692-multi-fr-ba69d836a6d4.json",
+					"receipt_sha256": "8dd4014e4e8514ef3814bbeead00a69a1e12d7763cf5294a5764d02d1ae8c48c",
+					"scope": "11 new multi-accent keys, PR #1692. Old160 retain prior C audit; values byte-identical to base1496153. Full catalogues/context/parity gate byte-identical f043579..78d84573cb6; initial delta audit retained.",
+					"note": "Independent auditor ba69d836a6d4; translator fd3ba80e8c8f; actual openai/gpt-6.1-sol separate agents. Evidence: i18n/audits/evidence/fr/ui.settings.appearance.editor/aud1692-multi-fr-ba69d836a6d4/record.json"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "900f02d95f5db1daee3d26ede1e60df4a575325aad4511dd46d19c97a89c8317",
+					"target_sha256": "eb11747fcf2e76e29ffdcd0cd1302a4d50bc9806bab879eb262f0bd3796d7283",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-04",
+							"result": "clean",
+							"instance": "aud1687-editor-fr-ba69d836a6d4",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/aud1687-editor-fr-ba69d836a6d4.json",
+							"receipt_sha256": "5bf4af2a1ea2a2a864363da2a409814ec368d9d960129edc9a503a04c7c1a067",
+							"scope": "All 160 editor keys. Independent source audit at 946d147 retained by exact source/target/context byte compatibility on 4847bbbf4bc; I18N-C1 literal exemptions independently verified fixed.",
+							"note": "Auditor ba69d836a6d4; translator fd3ba80e8c8f; actual openai/gpt-6.1-sol quota fallback, separate agents. Evidence: i18n/audits/evidence/fr/ui.settings.appearance.editor/aud1687-editor-fr-ba69d836a6d4/record.json"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "es",
 			"namespace": "ui.settings.appearance.editor",
-			"source_sha256": "900f02d95f5db1daee3d26ede1e60df4a575325aad4511dd46d19c97a89c8317",
-			"target_sha256": "926548473cb176304fee25be98675ff2cf553418aceef7907d9116fb8412b7dd",
+			"source_sha256": "b02c6ea9e8a0854cc3879de025f4e1dc14e940a2b44db04afb75dc42b1711661",
+			"target_sha256": "76f7076c423553986ddca101975f9dcb1214782147f0b997bb719c3e19057a6b",
 			"translator": {
 				"agent": "task",
 				"model": "openai/gpt-6.1-sol",
@@ -79130,28 +79156,54 @@
 				{
 					"agent": "i18n-auditor",
 					"model": "openai/gpt-6.1-sol",
-					"date": "2026-11-04",
+					"date": "2026-11-05",
 					"result": "clean",
-					"instance": "aud1687-editor-es-ba69d836a6d4",
+					"instance": "aud1692-multi-es-ba69d836a6d4",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/aud1687-editor-es-ba69d836a6d4.json",
-					"receipt_sha256": "b5e8c39d2de15ca1f6c44f7354fe94a5028d68ccc7f667b5962e9f890f2790da",
-					"scope": "All 160 editor keys. Independent source audit at 946d147 retained by exact source/target/context byte compatibility on 4847bbbf4bc; I18N-C1 literal exemptions independently verified fixed.",
-					"note": "Auditor ba69d836a6d4; translator fd3ba80e8c8f; actual openai/gpt-6.1-sol quota fallback, separate agents. Evidence: i18n/audits/evidence/es/ui.settings.appearance.editor/aud1687-editor-es-ba69d836a6d4/record.json"
+					"receipt": "i18n/receipts/aud1692-multi-es-ba69d836a6d4.json",
+					"receipt_sha256": "0ca17b156d5c7ffc153a0584c56c8d4648bdf89aeddefe9e10f551da33175383",
+					"scope": "11 new multi-accent keys, PR #1692. Old160 retain prior C audit; values byte-identical to base1496153. Full catalogues/context/parity gate byte-identical f043579..78d84573cb6; initial delta audit retained.",
+					"note": "Independent auditor ba69d836a6d4; translator fd3ba80e8c8f; actual openai/gpt-6.1-sol separate agents. Evidence: i18n/audits/evidence/es/ui.settings.appearance.editor/aud1692-multi-es-ba69d836a6d4/record.json"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "900f02d95f5db1daee3d26ede1e60df4a575325aad4511dd46d19c97a89c8317",
+					"target_sha256": "926548473cb176304fee25be98675ff2cf553418aceef7907d9116fb8412b7dd",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-04",
+							"result": "clean",
+							"instance": "aud1687-editor-es-ba69d836a6d4",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/aud1687-editor-es-ba69d836a6d4.json",
+							"receipt_sha256": "b5e8c39d2de15ca1f6c44f7354fe94a5028d68ccc7f667b5962e9f890f2790da",
+							"scope": "All 160 editor keys. Independent source audit at 946d147 retained by exact source/target/context byte compatibility on 4847bbbf4bc; I18N-C1 literal exemptions independently verified fixed.",
+							"note": "Auditor ba69d836a6d4; translator fd3ba80e8c8f; actual openai/gpt-6.1-sol quota fallback, separate agents. Evidence: i18n/audits/evidence/es/ui.settings.appearance.editor/aud1687-editor-es-ba69d836a6d4/record.json"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.settings.appearance.editor",
-			"source_sha256": "900f02d95f5db1daee3d26ede1e60df4a575325aad4511dd46d19c97a89c8317",
-			"target_sha256": "efded103ce8508cadc0292444dfe7276a297c3d11ca5e40af8fc4322ae44fba9",
+			"source_sha256": "b02c6ea9e8a0854cc3879de025f4e1dc14e940a2b44db04afb75dc42b1711661",
+			"target_sha256": "9f86c8232f1d0b0c42e781804438049cbac7ecffa339449a5c0323e4ef7c6794",
 			"translator": {
 				"agent": "task",
 				"model": "openai/gpt-6.1-sol",
@@ -79161,28 +79213,54 @@
 				{
 					"agent": "i18n-auditor",
 					"model": "openai/gpt-6.1-sol",
-					"date": "2026-11-04",
+					"date": "2026-11-05",
 					"result": "clean",
-					"instance": "aud1687-editor-zh-cn-ba69d836a6d4",
+					"instance": "aud1692-multi-zh-cn-ba69d836a6d4",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/aud1687-editor-zh-cn-ba69d836a6d4.json",
-					"receipt_sha256": "f552eebde13c07e3def0b0492502bcb9543e592745890a06d3b4e29678ac9560",
-					"scope": "All 160 editor keys. Independent source audit at 946d147 retained by exact source/target/context byte compatibility on 4847bbbf4bc; I18N-C1 literal exemptions independently verified fixed.",
-					"note": "Auditor ba69d836a6d4; translator fd3ba80e8c8f; actual openai/gpt-6.1-sol quota fallback, separate agents. Evidence: i18n/audits/evidence/zh-CN/ui.settings.appearance.editor/aud1687-editor-zh-cn-ba69d836a6d4/record.json"
+					"receipt": "i18n/receipts/aud1692-multi-zh-cn-ba69d836a6d4.json",
+					"receipt_sha256": "29f7b5fdd0c2de86497b5d1bf80e7b6cf9d20a2df0eccbc73fb6219ed97bb2f7",
+					"scope": "11 new multi-accent keys, PR #1692. Old160 retain prior C audit; values byte-identical to base1496153. Full catalogues/context/parity gate byte-identical f043579..78d84573cb6; initial delta audit retained.",
+					"note": "Independent auditor ba69d836a6d4; translator fd3ba80e8c8f; actual openai/gpt-6.1-sol separate agents. Evidence: i18n/audits/evidence/zh-CN/ui.settings.appearance.editor/aud1692-multi-zh-cn-ba69d836a6d4/record.json"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "900f02d95f5db1daee3d26ede1e60df4a575325aad4511dd46d19c97a89c8317",
+					"target_sha256": "efded103ce8508cadc0292444dfe7276a297c3d11ca5e40af8fc4322ae44fba9",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-04",
+							"result": "clean",
+							"instance": "aud1687-editor-zh-cn-ba69d836a6d4",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/aud1687-editor-zh-cn-ba69d836a6d4.json",
+							"receipt_sha256": "f552eebde13c07e3def0b0492502bcb9543e592745890a06d3b4e29678ac9560",
+							"scope": "All 160 editor keys. Independent source audit at 946d147 retained by exact source/target/context byte compatibility on 4847bbbf4bc; I18N-C1 literal exemptions independently verified fixed.",
+							"note": "Auditor ba69d836a6d4; translator fd3ba80e8c8f; actual openai/gpt-6.1-sol quota fallback, separate agents. Evidence: i18n/audits/evidence/zh-CN/ui.settings.appearance.editor/aud1687-editor-zh-cn-ba69d836a6d4/record.json"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "ru",
 			"namespace": "ui.settings.appearance.editor",
-			"source_sha256": "900f02d95f5db1daee3d26ede1e60df4a575325aad4511dd46d19c97a89c8317",
-			"target_sha256": "0796fa7726946e0d4f34ed5fcf7d22c9ef9310422a23767d553564da0e3f427c",
+			"source_sha256": "b02c6ea9e8a0854cc3879de025f4e1dc14e940a2b44db04afb75dc42b1711661",
+			"target_sha256": "5454a95db916ae120d7582085e1a814f4f412437ceef46ccf08672ddae9de86f",
 			"translator": {
 				"agent": "task",
 				"model": "openai/gpt-6.1-sol",
@@ -79192,28 +79270,54 @@
 				{
 					"agent": "i18n-auditor",
 					"model": "openai/gpt-6.1-sol",
-					"date": "2026-11-04",
+					"date": "2026-11-05",
 					"result": "clean",
-					"instance": "aud1687-editor-ru-ba69d836a6d4",
+					"instance": "aud1692-multi-ru-ba69d836a6d4",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/aud1687-editor-ru-ba69d836a6d4.json",
-					"receipt_sha256": "f744410683f69516927857bc6444ec8b124d5e4f7225ad889a1981b65f37db12",
-					"scope": "All 160 editor keys. Independent source audit at 946d147 retained by exact source/target/context byte compatibility on 4847bbbf4bc; I18N-C1 literal exemptions independently verified fixed.",
-					"note": "Auditor ba69d836a6d4; translator fd3ba80e8c8f; actual openai/gpt-6.1-sol quota fallback, separate agents. Evidence: i18n/audits/evidence/ru/ui.settings.appearance.editor/aud1687-editor-ru-ba69d836a6d4/record.json"
+					"receipt": "i18n/receipts/aud1692-multi-ru-ba69d836a6d4.json",
+					"receipt_sha256": "982fbcddd683e9e97df63b8d7b6f3a4b521911405375df88f469e1bce68eaf8a",
+					"scope": "11 new multi-accent keys, PR #1692. Old160 retain prior C audit; values byte-identical to base1496153. Full catalogues/context/parity gate byte-identical f043579..78d84573cb6; initial delta audit retained.",
+					"note": "Independent auditor ba69d836a6d4; translator fd3ba80e8c8f; actual openai/gpt-6.1-sol separate agents. Evidence: i18n/audits/evidence/ru/ui.settings.appearance.editor/aud1692-multi-ru-ba69d836a6d4/record.json"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "900f02d95f5db1daee3d26ede1e60df4a575325aad4511dd46d19c97a89c8317",
+					"target_sha256": "0796fa7726946e0d4f34ed5fcf7d22c9ef9310422a23767d553564da0e3f427c",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-04",
+							"result": "clean",
+							"instance": "aud1687-editor-ru-ba69d836a6d4",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/aud1687-editor-ru-ba69d836a6d4.json",
+							"receipt_sha256": "f744410683f69516927857bc6444ec8b124d5e4f7225ad889a1981b65f37db12",
+							"scope": "All 160 editor keys. Independent source audit at 946d147 retained by exact source/target/context byte compatibility on 4847bbbf4bc; I18N-C1 literal exemptions independently verified fixed.",
+							"note": "Auditor ba69d836a6d4; translator fd3ba80e8c8f; actual openai/gpt-6.1-sol quota fallback, separate agents. Evidence: i18n/audits/evidence/ru/ui.settings.appearance.editor/aud1687-editor-ru-ba69d836a6d4/record.json"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "vi",
 			"namespace": "ui.settings.appearance.editor",
-			"source_sha256": "900f02d95f5db1daee3d26ede1e60df4a575325aad4511dd46d19c97a89c8317",
-			"target_sha256": "47c3101adae79dc04d3b4ddf79517afb0ae22189fd01fb674b28e2fcc4ee08e9",
+			"source_sha256": "b02c6ea9e8a0854cc3879de025f4e1dc14e940a2b44db04afb75dc42b1711661",
+			"target_sha256": "f8d8045429594282367cec7d9d830f9859a02ffef14d48a45a63ae95b9be8871",
 			"translator": {
 				"agent": "task",
 				"model": "openai/gpt-6.1-sol",
@@ -79223,28 +79327,54 @@
 				{
 					"agent": "i18n-auditor",
 					"model": "openai/gpt-6.1-sol",
-					"date": "2026-11-04",
+					"date": "2026-11-05",
 					"result": "clean",
-					"instance": "aud1687-editor-vi-ba69d836a6d4",
+					"instance": "aud1692-multi-vi-ba69d836a6d4",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/aud1687-editor-vi-ba69d836a6d4.json",
-					"receipt_sha256": "55cc22f33160ec007e7eb3689049abdf5846a300e4ce036c6e56dce34e127e4f",
-					"scope": "All 160 editor keys. Independent source audit at 946d147 retained by exact source/target/context byte compatibility on 4847bbbf4bc; I18N-C1 literal exemptions independently verified fixed.",
-					"note": "Auditor ba69d836a6d4; translator fd3ba80e8c8f; actual openai/gpt-6.1-sol quota fallback, separate agents. Evidence: i18n/audits/evidence/vi/ui.settings.appearance.editor/aud1687-editor-vi-ba69d836a6d4/record.json"
+					"receipt": "i18n/receipts/aud1692-multi-vi-ba69d836a6d4.json",
+					"receipt_sha256": "2eeab8cff26a4511b54bd157faeba80fd47019e40e8a4cd6974a9496d437717f",
+					"scope": "11 new multi-accent keys, PR #1692. Old160 retain prior C audit; values byte-identical to base1496153. Full catalogues/context/parity gate byte-identical f043579..78d84573cb6; initial delta audit retained.",
+					"note": "Independent auditor ba69d836a6d4; translator fd3ba80e8c8f; actual openai/gpt-6.1-sol separate agents. Evidence: i18n/audits/evidence/vi/ui.settings.appearance.editor/aud1692-multi-vi-ba69d836a6d4/record.json"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "900f02d95f5db1daee3d26ede1e60df4a575325aad4511dd46d19c97a89c8317",
+					"target_sha256": "47c3101adae79dc04d3b4ddf79517afb0ae22189fd01fb674b28e2fcc4ee08e9",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-04",
+							"result": "clean",
+							"instance": "aud1687-editor-vi-ba69d836a6d4",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/aud1687-editor-vi-ba69d836a6d4.json",
+							"receipt_sha256": "55cc22f33160ec007e7eb3689049abdf5846a300e4ce036c6e56dce34e127e4f",
+							"scope": "All 160 editor keys. Independent source audit at 946d147 retained by exact source/target/context byte compatibility on 4847bbbf4bc; I18N-C1 literal exemptions independently verified fixed.",
+							"note": "Auditor ba69d836a6d4; translator fd3ba80e8c8f; actual openai/gpt-6.1-sol quota fallback, separate agents. Evidence: i18n/audits/evidence/vi/ui.settings.appearance.editor/aud1687-editor-vi-ba69d836a6d4/record.json"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "ur",
 			"namespace": "ui.settings.appearance.editor",
-			"source_sha256": "900f02d95f5db1daee3d26ede1e60df4a575325aad4511dd46d19c97a89c8317",
-			"target_sha256": "1c27fd1286753487898afcb844f087ccd3ab8fa50342286b84ef76f0f3bab6f7",
+			"source_sha256": "b02c6ea9e8a0854cc3879de025f4e1dc14e940a2b44db04afb75dc42b1711661",
+			"target_sha256": "b31830bc94817155a83b67e2ff05b6122c840152817836ddad2832e41487bbf2",
 			"translator": {
 				"agent": "task",
 				"model": "openai/gpt-6.1-sol",
@@ -79254,28 +79384,54 @@
 				{
 					"agent": "i18n-auditor",
 					"model": "openai/gpt-6.1-sol",
-					"date": "2026-11-04",
+					"date": "2026-11-05",
 					"result": "clean",
-					"instance": "aud1687-editor-ur-ba69d836a6d4",
+					"instance": "aud1692-multi-ur-ba69d836a6d4",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/aud1687-editor-ur-ba69d836a6d4.json",
-					"receipt_sha256": "3f6624d8fd9c5c3c1b9368953d2503feaa5e96a5d397370d6837025186a0acc7",
-					"scope": "All 160 editor keys. Independent source audit at 946d147 retained by exact source/target/context byte compatibility on 4847bbbf4bc; I18N-C1 literal exemptions independently verified fixed.",
-					"note": "Auditor ba69d836a6d4; translator fd3ba80e8c8f; actual openai/gpt-6.1-sol quota fallback, separate agents. Evidence: i18n/audits/evidence/ur/ui.settings.appearance.editor/aud1687-editor-ur-ba69d836a6d4/record.json"
+					"receipt": "i18n/receipts/aud1692-multi-ur-ba69d836a6d4.json",
+					"receipt_sha256": "09d87b614b933b4bc5148b649ebd6adf160a379fea939c249a69d20a70ad614a",
+					"scope": "11 new multi-accent keys, PR #1692. Old160 retain prior C audit; values byte-identical to base1496153. Full catalogues/context/parity gate byte-identical f043579..78d84573cb6; initial delta audit retained.",
+					"note": "Independent auditor ba69d836a6d4; translator fd3ba80e8c8f; actual openai/gpt-6.1-sol separate agents. Evidence: i18n/audits/evidence/ur/ui.settings.appearance.editor/aud1692-multi-ur-ba69d836a6d4/record.json"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "900f02d95f5db1daee3d26ede1e60df4a575325aad4511dd46d19c97a89c8317",
+					"target_sha256": "1c27fd1286753487898afcb844f087ccd3ab8fa50342286b84ef76f0f3bab6f7",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-04",
+							"result": "clean",
+							"instance": "aud1687-editor-ur-ba69d836a6d4",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/aud1687-editor-ur-ba69d836a6d4.json",
+							"receipt_sha256": "3f6624d8fd9c5c3c1b9368953d2503feaa5e96a5d397370d6837025186a0acc7",
+							"scope": "All 160 editor keys. Independent source audit at 946d147 retained by exact source/target/context byte compatibility on 4847bbbf4bc; I18N-C1 literal exemptions independently verified fixed.",
+							"note": "Auditor ba69d836a6d4; translator fd3ba80e8c8f; actual openai/gpt-6.1-sol quota fallback, separate agents. Evidence: i18n/audits/evidence/ur/ui.settings.appearance.editor/aud1687-editor-ur-ba69d836a6d4/record.json"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "hi",
 			"namespace": "ui.settings.appearance.editor",
-			"source_sha256": "900f02d95f5db1daee3d26ede1e60df4a575325aad4511dd46d19c97a89c8317",
-			"target_sha256": "f5efeeaa94e9a6caa560429c42fe85325fbc4c7b53f1478dfac52835b44312f3",
+			"source_sha256": "b02c6ea9e8a0854cc3879de025f4e1dc14e940a2b44db04afb75dc42b1711661",
+			"target_sha256": "6c68a90c7bc5920fffb4b198b49d8f10b716a96e8a14db3355a8bd4b4ce1face",
 			"translator": {
 				"agent": "task",
 				"model": "openai/gpt-6.1-sol",
@@ -79285,22 +79441,48 @@
 				{
 					"agent": "i18n-auditor",
 					"model": "openai/gpt-6.1-sol",
-					"date": "2026-11-04",
+					"date": "2026-11-05",
 					"result": "clean",
-					"instance": "aud1687-editor-hi-ba69d836a6d4",
+					"instance": "aud1692-multi-hi-ba69d836a6d4",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/aud1687-editor-hi-ba69d836a6d4.json",
-					"receipt_sha256": "770a50534787b0f2406e7c69b29c0f56f0f11cb178594b8692b5a0f289c30db4",
-					"scope": "All 160 editor keys. Independent source audit at 946d147 retained by exact source/target/context byte compatibility on 4847bbbf4bc; I18N-C1 literal exemptions independently verified fixed.",
-					"note": "Auditor ba69d836a6d4; translator fd3ba80e8c8f; actual openai/gpt-6.1-sol quota fallback, separate agents. Evidence: i18n/audits/evidence/hi/ui.settings.appearance.editor/aud1687-editor-hi-ba69d836a6d4/record.json"
+					"receipt": "i18n/receipts/aud1692-multi-hi-ba69d836a6d4.json",
+					"receipt_sha256": "8de2ca3d745c8051a8923ba6d5d0b9d1f310c1fcc4e9965cfabdb1aa6e73018f",
+					"scope": "11 new multi-accent keys, PR #1692. Old160 retain prior C audit; values byte-identical to base1496153. Full catalogues/context/parity gate byte-identical f043579..78d84573cb6; initial delta audit retained.",
+					"note": "Independent auditor ba69d836a6d4; translator fd3ba80e8c8f; actual openai/gpt-6.1-sol separate agents. Evidence: i18n/audits/evidence/hi/ui.settings.appearance.editor/aud1692-multi-hi-ba69d836a6d4/record.json"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "900f02d95f5db1daee3d26ede1e60df4a575325aad4511dd46d19c97a89c8317",
+					"target_sha256": "f5efeeaa94e9a6caa560429c42fe85325fbc4c7b53f1478dfac52835b44312f3",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-04",
+							"result": "clean",
+							"instance": "aud1687-editor-hi-ba69d836a6d4",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/aud1687-editor-hi-ba69d836a6d4.json",
+							"receipt_sha256": "770a50534787b0f2406e7c69b29c0f56f0f11cb178594b8692b5a0f289c30db4",
+							"scope": "All 160 editor keys. Independent source audit at 946d147 retained by exact source/target/context byte compatibility on 4847bbbf4bc; I18N-C1 literal exemptions independently verified fixed.",
+							"note": "Auditor ba69d836a6d4; translator fd3ba80e8c8f; actual openai/gpt-6.1-sol quota fallback, separate agents. Evidence: i18n/audits/evidence/hi/ui.settings.appearance.editor/aud1687-editor-hi-ba69d836a6d4/record.json"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		}
 	]
 }

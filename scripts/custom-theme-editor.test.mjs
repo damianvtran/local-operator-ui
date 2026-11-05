@@ -1,5 +1,9 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import {
+	ACCENT_FAMILIES,
+	isAccentFamilyRole,
+} from "../src/shared/theme-engine/accent-roles.mjs";
 import { composeTheme } from "../src/shared/theme-engine/compose.mjs";
 import {
 	ESSENTIALS,
@@ -17,6 +21,7 @@ import {
 	oklchToHex,
 	rgbToHex,
 } from "../src/shared/theme-engine/oklch.mjs";
+import { PALETTE_ROLES } from "../src/shared/theme-engine/roles.mjs";
 import { loadPalettes } from "./palette-source.mjs";
 const palettes = loadPalettes();
 const known = (id) => palettes.some((p) => p.id === id);
@@ -255,4 +260,106 @@ test("OKLCH round-trips sRGB, preserves hue at gamut edge, and validates RGB cha
 	assert.equal(rgbToHex([256, 0, 0]), null);
 	assert.equal(rgbToHex([Number.NaN, 0, 0]), null);
 	assert.equal(rgbToHex([255, 128, 0]), "#FF8000");
+});
+
+// Family roots are UI metadata, not a widened V1 seed grammar. Existing files
+// must inherit secondary exactly, and existing pins must stay independently resettable.
+test("accent families cover supported roles without inventing secondary states or seeds", () => {
+	assert.deepEqual(
+		ACCENT_FAMILIES.map((f) => f.role),
+		["accent", "accentAlt"],
+	);
+	assert.deepEqual(ACCENT_FAMILIES[1].variants, ["accentAltWash"]);
+	for (const family of ACCENT_FAMILIES) {
+		for (const role of [family.role, ...family.variants]) {
+			assert.ok(PALETTE_ROLES.includes(role));
+			assert.ok(isAccentFamilyRole(role));
+		}
+	}
+	assert.equal(isAccentFamilyRole("info"), false);
+	assert.equal(ESSENTIALS.includes("accentAlt"), false);
+	for (const id of ["localOperatorDark", "localOperatorLight"]) {
+		const original = base(id);
+		const legacy = { ...theme(id), seeds: { accent: original.accent } };
+		const loaded = parseThemeImport(exportCustomTheme(legacy), known);
+		assert.equal(
+			deriveCustomPalette(original, loaded).accentAlt,
+			original.accentAlt,
+		);
+		const pinned = {
+			...loaded,
+			overrides: {
+				accentAlt: original.accentAlt,
+				accentAltWash: original.accentAltWash,
+			},
+		};
+		const imported = parseThemeImport(exportCustomTheme(pinned), known);
+		assert.equal(
+			imported.overrides.accentAlt.toLowerCase(),
+			original.accentAlt.toLowerCase(),
+		);
+		assert.equal(
+			imported.overrides.accentAltWash.toLowerCase(),
+			original.accentAltWash.toLowerCase(),
+		);
+		assert.throws(
+			() =>
+				parseThemeImport(
+					JSON.stringify({
+						...legacy,
+						seeds: { accentAlt: original.accentAlt },
+					}),
+					known,
+				),
+			/import_roles/,
+		);
+		for (const bad of [original.info, original.accent]) {
+			const invalid = { ...legacy, overrides: { accentAlt: bad } };
+			assert.ok(
+				validateCustomPalette(deriveCustomPalette(original, invalid), id)
+					.length,
+			);
+		}
+		const reset = {
+			...pinned,
+			overrides: { accentAltWash: pinned.overrides.accentAltWash },
+		};
+		assert.equal(
+			deriveCustomPalette(original, reset).accentAlt,
+			original.accentAlt,
+		);
+		assert.equal(reset.overrides.accentAltWash, original.accentAltWash);
+	}
+});
+
+test("custom global primary layer preserves secondary or refuses; built-in swap is unchanged", () => {
+	for (const id of ["localOperatorDark", "localOperatorLight"]) {
+		const original = base(id);
+		for (const contrast of [0, -30, 30]) {
+			const contrasted = composeTheme(original, { id, contrast }).palette;
+			for (const accent of [
+				{ kind: "theme-alt" },
+				{ kind: "custom", hex: original.accent },
+				{ kind: "custom", hex: "#8654B6" },
+			]) {
+				const result = composeTheme(original, {
+					id,
+					contrast,
+					accent,
+					preserveSecondary: true,
+				});
+				assert.equal(result.palette.accentAlt, contrasted.accentAlt);
+				assert.equal(result.palette.accentAltWash, contrasted.accentAltWash);
+				assert.deepEqual(validateCustomPalette(result.palette, id), []);
+				if (accent.kind === "theme-alt")
+					assert.equal(result.accentApplied, false);
+			}
+		}
+		const builtin = composeTheme(original, {
+			id,
+			accent: { kind: "theme-alt" },
+		});
+		assert.equal(builtin.accentApplied, true);
+		assert.notEqual(builtin.palette.accentAlt, original.accentAlt);
+	}
 });

@@ -958,5 +958,71 @@
 		"tone": "Plain, concise sentence case; use the established UI colour terminology.",
 		"length": "Wrapping text in a 560px drawer; preserve meaning at narrow widths.",
 		"note": "Preserve ICU placeholders and plural arms exactly. Hex values and RGB/OKLCH are technical notation; do not translate them."
+	},
+	"ui.settings.appearance.editor.accents": {
+		"role": "Accent family label or usage guidance in custom theme editor",
+		"tone": "Concise sentence case; Primary and Secondary name colour families, not priority or button variants.",
+		"length": "Wrap naturally in the 560px drawer; never truncate explanatory help.",
+		"note": "Primary is interaction/selection; Secondary is identity/category ink plus an independently edited wash. No tertiary or secondary button states exist. Global accent can be refused if it conflicts with authored secondary; contrast is composed first."
+	},
+	"ui.settings.appearance.editor.accent.primary": {
+		"role": "Accent family label or usage guidance in custom theme editor",
+		"tone": "Concise sentence case; Primary and Secondary name colour families, not priority or button variants.",
+		"length": "Wrap naturally in the 560px drawer; never truncate explanatory help.",
+		"note": "Primary is interaction/selection; Secondary is identity/category ink plus an independently edited wash. No tertiary or secondary button states exist. Global accent can be refused if it conflicts with authored secondary; contrast is composed first."
+	},
+	"ui.settings.appearance.editor.accent.primary_usage": {
+		"role": "Accent family label or usage guidance in custom theme editor",
+		"tone": "Concise sentence case; Primary and Secondary name colour families, not priority or button variants.",
+		"length": "Wrap naturally in the 560px drawer; never truncate explanatory help.",
+		"note": "Primary is interaction/selection; Secondary is identity/category ink plus an independently edited wash. No tertiary or secondary button states exist. Global accent can be refused if it conflicts with authored secondary; contrast is composed first."
+	},
+	"ui.settings.appearance.editor.accent.secondary": {
+		"role": "Accent family label or usage guidance in custom theme editor",
+		"tone": "Concise sentence case; Primary and Secondary name colour families, not priority or button variants.",
+		"length": "Wrap naturally in the 560px drawer; never truncate explanatory help.",
+		"note": "Primary is interaction/selection; Secondary is identity/category ink plus an independently edited wash. No tertiary or secondary button states exist. Global accent can be refused if it conflicts with authored secondary; contrast is composed first."
+	},
+	"ui.settings.appearance.editor.accent.secondary_usage": {
+		"role": "Accent family label or usage guidance in custom theme editor",
+		"tone": "Concise sentence case; Primary and Secondary name colour families, not priority or button variants.",
+		"length": "Wrap naturally in the 560px drawer; never truncate explanatory help.",
+		"note": "Primary is interaction/selection; Secondary is identity/category ink plus an independently edited wash. No tertiary or secondary button states exist. Global accent can be refused if it conflicts with authored secondary; contrast is composed first."
+	},
+	"ui.settings.appearance.editor.accent.variants": {
+		"role": "Accent family label or usage guidance in custom theme editor",
+		"tone": "Concise sentence case; Primary and Secondary name colour families, not priority or button variants.",
+		"length": "Wrap naturally in the 560px drawer; never truncate explanatory help.",
+		"note": "Primary is interaction/selection; Secondary is identity/category ink plus an independently edited wash. No tertiary or secondary button states exist. Global accent can be refused if it conflicts with authored secondary; contrast is composed first."
+	},
+	"ui.settings.appearance.editor.accent.secondary_help": {
+		"role": "Accent family label or usage guidance in custom theme editor",
+		"tone": "Concise sentence case; Primary and Secondary name colour families, not priority or button variants.",
+		"length": "Wrap naturally in the 560px drawer; never truncate explanatory help.",
+		"note": "Primary is interaction/selection; Secondary is identity/category ink plus an independently edited wash. No tertiary or secondary button states exist. Global accent can be refused if it conflicts with authored secondary; contrast is composed first."
+	},
+	"ui.settings.appearance.editor.accent.effective": {
+		"role": "Accent family label or usage guidance in custom theme editor",
+		"tone": "Concise sentence case; Primary and Secondary name colour families, not priority or button variants.",
+		"length": "Wrap naturally in the 560px drawer; never truncate explanatory help.",
+		"note": "Primary is interaction/selection; Secondary is identity/category ink plus an independently edited wash. No tertiary or secondary button states exist. Global accent can be refused if it conflicts with authored secondary; contrast is composed first."
+	},
+	"ui.settings.appearance.editor.preview.identity": {
+		"role": "Inert representative preview sample, not an interactive action",
+		"tone": "Concise sentence case; Primary and Secondary name colour families, not priority or button variants.",
+		"length": "Wrap naturally in the 560px drawer; never truncate explanatory help.",
+		"note": "Primary is interaction/selection; Secondary is identity/category ink plus an independently edited wash. No tertiary or secondary button states exist. Global accent can be refused if it conflicts with authored secondary; contrast is composed first."
+	},
+	"ui.settings.appearance.editor.preview.category": {
+		"role": "Inert representative preview sample, not an interactive action",
+		"tone": "Concise sentence case; Primary and Secondary name colour families, not priority or button variants.",
+		"length": "Wrap naturally in the 560px drawer; never truncate explanatory help.",
+		"note": "Primary is interaction/selection; Secondary is identity/category ink plus an independently edited wash. No tertiary or secondary button states exist. Global accent can be refused if it conflicts with authored secondary; contrast is composed first."
+	},
+	"ui.settings.appearance.editor.preview.meta": {
+		"role": "Inert representative preview sample, not an interactive action",
+		"tone": "Concise sentence case; Primary and Secondary name colour families, not priority or button variants.",
+		"length": "Wrap naturally in the 560px drawer; never truncate explanatory help.",
+		"note": "Primary is interaction/selection; Secondary is identity/category ink plus an independently edited wash. No tertiary or secondary button states exist. Global accent can be refused if it conflicts with authored secondary; contrast is composed first."
 	}
 }

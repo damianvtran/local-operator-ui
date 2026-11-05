@@ -20,6 +20,8 @@ export declare function applyAccent(
 		authored?: PaletteRecord;
 		id?: string;
 		paletteAccent?: (id: string) => string | undefined;
+		/** Custom themes retain secondary identity roles through global accent. */
+		preserveSecondary?: boolean;
 	},
 ): {
 	palette: PaletteRecord;

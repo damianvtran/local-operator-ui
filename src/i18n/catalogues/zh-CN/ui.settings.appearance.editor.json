@@ -158,5 +158,16 @@
 	"ui.settings.appearance.editor.preview.bridge": "Team Bridge",
 	"ui.settings.appearance.editor.preview.bridge_name": "审查智能体",
 	"ui.settings.appearance.editor.preview.bridge_status": "待审查",
-	"ui.settings.appearance.editor.preview.code": "示例代码"
+	"ui.settings.appearance.editor.preview.code": "示例代码",
+	"ui.settings.appearance.editor.accents": "强调色",
+	"ui.settings.appearance.editor.accent.primary": "主要",
+	"ui.settings.appearance.editor.accent.primary_usage": "交互与选择",
+	"ui.settings.appearance.editor.accent.secondary": "次要",
+	"ui.settings.appearance.editor.accent.secondary_usage": "身份与分类",
+	"ui.settings.appearance.editor.accent.variants": "变体",
+	"ui.settings.appearance.editor.accent.secondary_help": "次要强调色的浅色背景会沿用基础主题的设置，直到手动修改。",
+	"ui.settings.appearance.editor.accent.effective": "预览包含对比度和全局强调色设置。全局强调色会替换主要强调色系；次要颜色保留主题中保存的颜色，除非需要调整对比度。",
+	"ui.settings.appearance.editor.preview.identity": "身份",
+	"ui.settings.appearance.editor.preview.category": "分类",
+	"ui.settings.appearance.editor.preview.meta": "上下文"
 }
