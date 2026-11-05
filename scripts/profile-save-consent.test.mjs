@@ -41,6 +41,9 @@ const bundle = await build({
 				runProfileRevertPress,
 				profileRevertOutcome,
 				profileRevertStatusCache,
+				statusAnswerIsBound,
+				boundStatusAnswer,
+				statusIdentityKey,
 				profileRevertPressAllowed,
 				profileRevertAuthority,
 				profileRevertStatusSchema,
@@ -1496,4 +1499,95 @@ test("only a cache entry with read provenance can skip the press", () => {
 		null,
 	);
 	api.profileRevertStatusCache.clear();
+});
+
+/* --------------------------------- round 5: an answer is bound to one identity */
+
+test("a status answer read for one record never enables another", async () => {
+	/*
+	 * QA's round-4 reproduction, at the two places it leaked: the hook returned A's
+	 * `available` after switching to B (until B's read resolved), and the consumer
+	 * tested `status.state` alone. Both are pinned here - the seam's binding, the
+	 * press's refusal, and the consumer's source - so removing either guard fails.
+	 */
+	const identityA = { ...identity };
+	const identityB = { ...identity, action_id: `prv_${"b".repeat(32)}` };
+	const answerA = { action_id: identityA.action_id, state: "available" };
+
+	assert.notEqual(
+		api.statusIdentityKey("s_9f2c", identityA),
+		api.statusIdentityKey("s_9f2c", identityB),
+		"the binding key separates the two identities",
+	);
+	assert.equal(api.statusAnswerIsBound(answerA, identityB), false);
+	assert.equal(api.boundStatusAnswer(answerA, identityB), null);
+	assert.equal(api.statusAnswerIsBound(answerA, identityA), true);
+
+	// The press refuses a status answer that names another action: no write.
+	api.profileRevertStatusCache.clear();
+	const writes = [];
+	const refused = await api.runProfileRevertPress({
+		descriptor: { ...revertDescriptor, action_id: identityB.action_id },
+		sessionId: "s_9f2c",
+		epoch: "e_1",
+		status: answerA,
+		identity: identityB,
+		write: async (request) => {
+			writes.push(request);
+			return {};
+		},
+		readStatus: async () => ({
+			action_id: identityB.action_id,
+			state: "available",
+		}),
+	});
+	assert.equal(
+		writes.length,
+		0,
+		"another action's available is not permission",
+	);
+	assert.equal(refused.state, "unavailable");
+
+	// B's OWN read resolving available does enable its press.
+	const answerB = { action_id: identityB.action_id, state: "available" };
+	const pressed = await api.runProfileRevertPress({
+		descriptor: { ...revertDescriptor, action_id: identityB.action_id },
+		sessionId: "s_9f2c",
+		epoch: "e_1",
+		status: answerB,
+		identity: identityB,
+		write: async (request) => {
+			writes.push(request);
+			return {};
+		},
+		readStatus: (() => {
+			let n = 0;
+			return async () => {
+				n += 1;
+				return {
+					action_id: identityB.action_id,
+					state: n === 1 ? "available" : "succeeded",
+				};
+			};
+		})(),
+	});
+	assert.equal(writes.length, 1, "B's own answer authorises its own press");
+	assert.equal(pressed.state, "succeeded");
+	api.profileRevertStatusCache.clear();
+
+	// The consumer's enable path requires the binding, not the word alone.
+	const transcript = source(
+		"src/renderer/src/features/chat/canonical/canonical-transcript.tsx",
+	);
+	assert.match(
+		transcript,
+		/statusAnswerIsBound\(revertStatus, revertIdentity\)/,
+	);
+	assert.match(transcript, /revertStatus\?\.state === "available"/);
+	// The hook returns an answer only for the identity that produced it.
+	const hook = source(
+		"src/renderer/src/features/chat/canonical/use-profile-revert.ts",
+	);
+	assert.match(hook, /entry\.key === identityKey/);
+	assert.match(hook, /boundStatusAnswer\(entry\.answer, identity\)/);
 });
