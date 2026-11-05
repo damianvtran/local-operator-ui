@@ -1,40 +1,32 @@
 /**
- * The profile-revert status seam: the ONE place this app may learn whether an
- * action can be pressed right now.
+ * The live profile-action status read: the SOLE authority for enabling a Revert.
  *
- * WHY A SEAM RATHER THAN A ROUTE CALL. Core's gate is a LIVE action-registration
- * and status check: a persisted `revert_verified` in a tool result must never be
- * accepted as proof, because that text can be replayed by a reload, a restored
- * transcript, or an agent that wrote it. So the control's authority is a status
- * read for one exact action — and the route that answers it does not exist yet.
- * This module is that read's home and its contract point. Nothing else in the UI
- * may claim authority: no payload flag, no capability guess, no invented path.
+ * WHY A LIVE READ AND NOT A FLAG. Core's revert gate is an action-registration and
+ * status check. A saved card's tool result may carry `revert_verified: true`, but
+ * that text can be replayed by a reload, a restored transcript, or an agent that
+ * wrote it — so it is EVIDENCE, never authority. Only a FRESH answer for this
+ * exact action, bound to the row's own tool call, can enable the control.
  *
- * WHAT THIS ADAPTER ANSWERS TODAY: `unavailable`, for every identity, with the
- * reason below. That is the honest answer — this build cannot verify an action —
- * and it is why the control renders disabled with its reason instead of enabled.
+ * THE REQUEST. One allowlisted, read-only, authenticated session-control op
+ * (`sessions.profileActionStatus` in `desktop-contract.ts`) whose body is exactly
+ * `{action_id, receipt_id, profile_kind, profile_name, tool_call_id}`. The session
+ * comes from the session-control transport, never from this body.
  *
- * TODO(profile-revert-status contract point): core must supply ONE typed read
- * that answers this closed schema for an exact opaque action identity (action id,
- * receipt id, profile kind/name) — its exact route path, request shape and status
- * vocabulary. When it lands, the ONLY change here is the body of
- * `readProfileRevertStatus`: build the request, map the answer through
- * `profileRevertStatusSchema`, and return it. Callers, states and tests already
- * exist, so the wiring is one function body and no caller changes.
+ * THE ANSWER. Exactly `{action_id, state}` with `state` in the closed vocabulary
+ * below. Anything else — an extra field, a missing id, an unknown state — is a
+ * REFUSAL, and a refusal is `unavailable` (never a guess in either direction).
  *
- * WHAT THE ANSWER MEANS HERE:
- *   available   -> the press may be offered (status says the action is live);
- *   pending     -> an activation is in flight; stay latched, never re-offer;
- *   succeeded   -> the revert landed; a later press must make NO second write;
- *   stale       -> the action's window is over; nothing may be sent;
- *   failed      -> the backend answered a refusal; the control stays disabled
- *                  (an uncertain activation must never become failed+retryable);
- *   unavailable -> this build cannot verify the action at all.
+ * NO LIVE CLAIM: core's route and the `profile_save` kind's revert registration are
+ * not committed yet, so every read below goes through the ordinary desktop
+ * transport and will be refused by this build's own validation or by a backend
+ * that does not serve it. The control therefore renders `unavailable` with its
+ * reason, and nothing here asserts a working revert.
  */
 
+import { desktopResult } from "@shared/api/local-operator/desktop-api";
 import { z } from "zod";
 
-/** The closed status vocabulary of the seam. */
+/** The closed status vocabulary. */
 export const PROFILE_REVERT_STATUSES = [
 	"available",
 	"pending",
@@ -45,11 +37,7 @@ export const PROFILE_REVERT_STATUSES = [
 ] as const;
 export type ProfileRevertStatusWord = (typeof PROFILE_REVERT_STATUSES)[number];
 
-/**
- * The exact identity a status read may be offered for: the opaque action id and
- * the record it belongs to. `receipt_id` ties it to the saved change; the kind and
- * name keep a stale id from naming another profile.
- */
+/** The exact identity a status read is offered for. */
 export const profileRevertIdentitySchema = z
 	.object({
 		action_id: z
@@ -60,100 +48,106 @@ export const profileRevertIdentitySchema = z
 		receipt_id: z.string().min(1).max(160),
 		profile_kind: z.enum(["agent", "team"]),
 		profile_name: z.string().min(1).max(128),
+		/** The call whose card asked. Bound so an answer cannot land on another row. */
+		tool_call_id: z.string().min(1).max(160),
 	})
 	.strict();
 export type ProfileRevertIdentity = z.infer<typeof profileRevertIdentitySchema>;
 
-/** The answer's closed schema (`extra: forbid` on the backend side as well). */
+/** The answer's closed schema: exactly two keys, `extra: forbid` on core's side too. */
 export const profileRevertStatusSchema = z
 	.object({
-		status: z.enum(PROFILE_REVERT_STATUSES),
-		/** An authored sentence core may send with a refusal; shown verbatim. */
-		reason: z.string().max(2000).optional(),
+		action_id: z.string().min(1).max(64),
+		state: z.enum(PROFILE_REVERT_STATUSES),
 	})
 	.strict();
 export type ProfileRevertStatusAnswer = z.infer<
 	typeof profileRevertStatusSchema
 >;
 
-/** Why the adapter answers `unavailable` until the contract point is filled. */
+/** Why a control is unavailable when no successful read stands behind it. */
 export const PROFILE_REVERT_STATUS_UNVERIFIABLE =
 	"This build cannot verify a revert action yet";
 
-/*
- * THE ADAPTER — the only authority the revert control may consult.
+/** A transport the seam reads through; injectable so the states are testable. */
+export type ProfileRevertStatusTransport = (input: {
+	sessionId: string;
+	identity: ProfileRevertIdentity;
+}) => Promise<unknown>;
+
+const desktopTransport: ProfileRevertStatusTransport = async ({
+	sessionId,
+	identity,
+}) =>
+	desktopResult({
+		op: "sessions.profileActionStatus",
+		sessionId,
+		actionId: identity.action_id,
+		receiptId: identity.receipt_id,
+		profileKind: identity.profile_kind,
+		profileName: identity.profile_name,
+		toolCallId: identity.tool_call_id,
+	});
+
+/**
+ * Read the live status for one action.
  *
- * Deliberately not a React hook: a status read is a fact about an action, not
- * about a component, and keeping it plain is what lets the states be tested
- * without a renderer. It never throws: an unreadable answer IS `unavailable`.
+ * FAIL-CLOSED, ALWAYS: a malformed identity, a transport refusal, a response that
+ * fails the closed schema (an extra field included) or an `action_id` that is not
+ * the one we asked about all resolve to `unavailable`. It never throws and never
+ * returns a state the caller could mistake for permission.
  */
 export async function readProfileRevertStatus(
-	identity: ProfileRevertIdentity,
+	sessionId: string | null,
+	identity: unknown,
+	read: (input: {
+		sessionId: string;
+		identity: ProfileRevertIdentity;
+	}) => Promise<unknown> = readProfileRevertStatusFromTransport,
 ): Promise<ProfileRevertStatusAnswer> {
 	const parsed = profileRevertIdentitySchema.safeParse(identity);
-	if (!parsed.success)
-		return {
-			status: "unavailable",
-			reason: PROFILE_REVERT_STATUS_UNVERIFIABLE,
-		};
-	/*
-	 * No route exists to answer for `parsed.data` yet — see the contract point in
-	 * this module's header. The refusal is the truthful state, not a placeholder
-	 * that happens to be safe: an action cannot be verified by this build, so it
-	 * cannot be pressed.
-	 */
-	return { status: "unavailable", reason: PROFILE_REVERT_STATUS_UNVERIFIABLE };
+	if (!parsed.success || !sessionId)
+		return { action_id: "", state: "unavailable" };
+	let payload: unknown;
+	try {
+		payload = await read({ sessionId, identity: parsed.data });
+	} catch {
+		return { action_id: parsed.data.action_id, state: "unavailable" };
+	}
+	const answer = profileRevertStatusSchema.safeParse(payload);
+	// The answer must be for THIS action, or it answers nothing.
+	if (!answer.success || answer.data.action_id !== parsed.data.action_id)
+		return { action_id: parsed.data.action_id, state: "unavailable" };
+	return answer.data;
+}
+
+/** The default read: the app's ordinary desktop transport. */
+export async function readProfileRevertStatusFromTransport(input: {
+	sessionId: string;
+	identity: ProfileRevertIdentity;
+}): Promise<unknown> {
+	return desktopTransport(input);
 }
 
 /**
- * Answers already learned about an action id, in this process.
+ * Whether a press may be sent, given the answer we hold.
  *
- * WHY A CACHE IS PART OF THE SAFETY, not an optimisation: a press that has
- * succeeded must make NO second write, and a press in flight must not be sent
- * again. Remembering the answer is what lets a second press be refused without
- * re-reading anything (and the latch covers the same-batch case the cache cannot
- * see yet).
- */
-const answers = new Map<string, ProfileRevertStatusAnswer>();
-
-export const profileRevertStatusCache = {
-	read(actionId: string): ProfileRevertStatusAnswer | null {
-		return answers.get(actionId) ?? null;
-	},
-	remember(actionId: string, answer: ProfileRevertStatusAnswer): void {
-		const parsed = profileRevertStatusSchema.safeParse(answer);
-		if (!parsed.success) return;
-		answers.set(actionId, parsed.data);
-	},
-	forget(actionId: string): void {
-		answers.delete(actionId);
-	},
-	/** Tests only: a process cache must not leak between cases. */
-	clear(): void {
-		answers.clear();
-	},
-};
-
-/**
- * Whether a press may be sent for this action, given the answer we hold.
- *
- * `false` covers BOTH "we already did this" (`succeeded`) and "one is running"
- * (`pending`) and "the window is over" (`stale`) — the three cases where a second
- * write would be wrong — as well as the unverifiable case. Only a live
- * `available` answer permits a press.
+ * Only a live `available` permits a write. `pending` (one is running), `succeeded`
+ * (already done — no second write), `stale` (window over), `failed` and
+ * `unavailable` all refuse, so a duplicate can never be a second revert.
  */
 export function profileRevertPressAllowed(
 	answer: ProfileRevertStatusAnswer | null,
 ): boolean {
-	return answer?.status === "available";
+	return answer?.state === "available";
 }
 
 /**
- * The control's state from the seam's answer.
+ * The control's own state from a status answer.
  *
- * NOTE THE ASYMMETRY, which is the point: `failed` from a status read leaves the
- * control DISABLED. A status read is not an answer to this press, so re-offering
- * the control would be an auto-retry of something we cannot prove is retryable.
+ * NOTE THE ASYMMETRY, deliberately: a status-read `failed` leaves the control
+ * DISABLED. It is not an answer to this press, so re-offering the control would be
+ * an auto-retry of something we cannot prove is retryable.
  */
 export function profileRevertAuthority(
 	answer: ProfileRevertStatusAnswer | null,
@@ -161,7 +155,7 @@ export function profileRevertAuthority(
 	state: "available" | "pending" | "saved" | "stale" | "failed" | "unavailable";
 	enabled: boolean;
 } {
-	switch (answer?.status) {
+	switch (answer?.state) {
 		case "available":
 			return { state: "available", enabled: true };
 		case "pending":
@@ -175,4 +169,94 @@ export function profileRevertAuthority(
 		default:
 			return { state: "unavailable", enabled: false };
 	}
+}
+
+/** Out-of-process cache of the last answer per action, so a press can refuse twice. */
+const answers = new Map<string, ProfileRevertStatusAnswer>();
+
+export const profileRevertStatusCache = {
+	read(actionId: string): ProfileRevertStatusAnswer | null {
+		return answers.get(actionId) ?? null;
+	},
+	remember(answer: ProfileRevertStatusAnswer): void {
+		const parsed = profileRevertStatusSchema.safeParse(answer);
+		if (!parsed.success || !parsed.data.action_id) return;
+		answers.set(parsed.data.action_id, parsed.data);
+	},
+	clear(): void {
+		answers.clear();
+	},
+};
+
+/**
+ * ONE press, end to end — the whole activation as a pure async step.
+ *
+ * WHY THIS IS A FUNCTION AND NOT ONLY A HOOK. The three properties the review and
+ * QA rounds demanded are orderings, not renderings: the write happens once, an
+ * uncertain outcome is reconciled with a FRESH status read, and a completion makes
+ * a later press write nothing. Expressing them here makes each one testable with a
+ * fake transport and a counting writer, instead of only through a renderer.
+ */
+export async function runProfileRevertPress(input: {
+	descriptor: { action_id: string };
+	sessionId: string | null;
+	epoch: string | null;
+	status: ProfileRevertStatusAnswer | null;
+	identity: ProfileRevertIdentity | null;
+	write: (request: {
+		sessionId: string;
+		epoch: string;
+		requestId: string;
+		approved: true;
+	}) => Promise<unknown>;
+	readStatus: (input: {
+		sessionId: string;
+		identity: ProfileRevertIdentity;
+	}) => Promise<unknown>;
+}): Promise<ProfileRevertStatusAnswer> {
+	const refuse = (
+		state: ProfileRevertStatusWord,
+	): ProfileRevertStatusAnswer => ({
+		action_id: input.descriptor.action_id,
+		state,
+	});
+	// No live permission, no gate identity or no bound identity: nothing is sent.
+	if (!profileRevertPressAllowed(input.status))
+		return input.status ?? refuse("unavailable");
+	if (!input.sessionId || !input.epoch || !input.status)
+		return refuse("unavailable");
+	/* A cached completion is a finished action: a second press writes nothing. */
+	if (profileRevertStatusCache.read(input.descriptor.action_id))
+		return refuse("succeeded");
+	try {
+		await input.write({
+			sessionId: input.sessionId,
+			epoch: input.epoch,
+			requestId: input.descriptor.action_id,
+			approved: true,
+		});
+	} catch {
+		/*
+		 * AN UNCERTAIN ACTIVATION STAYS PENDING and is reconciled by a FRESH read: the
+		 * request may have landed, so it is never `failed`, never re-enabled and never
+		 * retried from here.
+		 */
+		const reconciled = await readProfileRevertStatus(
+			input.sessionId,
+			input.identity,
+			input.readStatus,
+		);
+		const answer =
+			reconciled.state === "unavailable" ? refuse("pending") : reconciled;
+		profileRevertStatusCache.remember(answer);
+		return answer;
+	}
+	const after = await readProfileRevertStatus(
+		input.sessionId,
+		input.identity,
+		input.readStatus,
+	);
+	const answer = after.state === "unavailable" ? refuse("pending") : after;
+	profileRevertStatusCache.remember(answer);
+	return answer;
 }

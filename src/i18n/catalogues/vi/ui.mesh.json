@@ -284,8 +284,6 @@
 	"ui.mesh.mesh_approvals.profile_scope_global": "Toàn cục",
 	"ui.mesh.mesh_approvals.profile_changes": "Nội dung thay đổi",
 	"ui.mesh.mesh_approvals.profile_field": "Trường",
-	"ui.mesh.mesh_approvals.profile_saved_value": "Đã lưu",
-	"ui.mesh.mesh_approvals.profile_new_value": "Sẽ thành",
 	"ui.mesh.mesh_approvals.profile_not_set": "Chưa đặt",
 	"ui.mesh.mesh_approvals.profile_cleared": "Đã xóa",
 	"ui.mesh.mesh_approvals.profile_changes_none": "Không có trường nào thay đổi",
@@ -299,5 +297,16 @@
 	"ui.mesh.mesh_approvals.profile_revert_failed": "Việc khôi phục không thành công",
 	"ui.mesh.mesh_approvals.profile_revert_unavailable": "Khôi phục không khả dụng trong phiên này",
 	"ui.mesh.mesh_approvals.profile_changes_not_in_receipt": "Biên nhận này không bao gồm các thay đổi của trường",
-	"ui.mesh.mesh_approvals.profile_revert_unconfirmed": "Có thể thao tác hoàn tác chưa hoàn tất"
+	"ui.mesh.mesh_approvals.profile_revert_unconfirmed": "Có thể thao tác hoàn tác chưa hoàn tất",
+	"ui.mesh.mesh_approvals.profile_column_before": "Trước",
+	"ui.mesh.mesh_approvals.profile_column_after": "Sau",
+	"ui.mesh.mesh_approvals.profile_outcome_waiting": "Đề xuất — chưa được lưu",
+	"ui.mesh.mesh_approvals.profile_outcome_saved": "Đã lưu",
+	"ui.mesh.mesh_approvals.profile_outcome_approved_not_saved": "Đã chấp thuận — chưa được lưu",
+	"ui.mesh.mesh_approvals.profile_outcome_denied": "Đã từ chối — chưa lưu",
+	"ui.mesh.mesh_approvals.profile_outcome_expired": "Đã hết hạn — chưa lưu",
+	"ui.mesh.mesh_approvals.profile_outcome_stopped": "Đã dừng — chưa lưu",
+	"ui.mesh.mesh_approvals.profile_outcome_unknown": "Bản này không nhận diện được trạng thái",
+	"ui.mesh.mesh_approvals.profile_revert_no_handler": "Không thể hoàn tác trong chế độ xem này",
+	"ui.mesh.mesh_approvals.profile_revert_reason_unknown": "Hiện không thể hoàn tác"
 }

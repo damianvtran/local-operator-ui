@@ -1424,16 +1424,6 @@
 		"tone": "One word header",
 		"note": "Column of authored column NAMES as the backend spells them (model, instructions, members). The names themselves are not translated."
 	},
-	"ui.mesh.mesh_approvals.profile_saved_value": {
-		"role": "table column header — profile-save consent card diff",
-		"tone": "One word header",
-		"note": "The value as it is SAVED NOW (before this proposal). Contrast with profile_new_value."
-	},
-	"ui.mesh.mesh_approvals.profile_new_value": {
-		"role": "table column header — profile-save consent card diff",
-		"tone": "Short header; present/future, not past",
-		"note": "The value the proposal WOULD save. Not 'saved': nothing is written yet."
-	},
 	"ui.mesh.mesh_approvals.profile_not_set": {
 		"role": "cell value — profile-save consent card diff",
 		"tone": "Two words, plain, no punctuation",
@@ -1503,5 +1493,60 @@
 		"role": "state sentence — profile-save consent card revert",
 		"tone": "Plain explanation; no error codes",
 		"note": "No verified action is available here (absent descriptor, no runtime authority, or no gate identity). The control is disabled and this is its reason."
+	},
+	"ui.mesh.mesh_approvals.profile_column_before": {
+		"role": "table column header — profile-save consent card diff",
+		"tone": "One word header",
+		"note": "The value as it is SAVED NOW: a comparison column, not a verdict. Paired with profile_column_after; the record's outcome is stated separately so this column can be read on any lifecycle state."
+	},
+	"ui.mesh.mesh_approvals.profile_column_after": {
+		"role": "table column header — profile-save consent card diff",
+		"tone": "One word header",
+		"note": "The value the proposal WOULD write. A comparison column, never a claim that it was written: the outcome sentence carries that."
+	},
+	"ui.mesh.mesh_approvals.profile_outcome_waiting": {
+		"role": "outcome sentence — profile-save consent card",
+		"tone": "Plain, factual; em dash separates state from consequence",
+		"note": "The proposal is filed and unanswered, so NOTHING is saved yet. Must not read as pending-but-applied."
+	},
+	"ui.mesh.mesh_approvals.profile_outcome_saved": {
+		"role": "outcome sentence — profile-save consent card",
+		"tone": "One word, past tense",
+		"note": "The change IS written. The only state that may say so."
+	},
+	"ui.mesh.mesh_approvals.profile_outcome_approved_not_saved": {
+		"role": "outcome sentence — profile-save consent card",
+		"tone": "Plain, factual",
+		"note": "The decision was signed but the write has not happened: approval is not a save."
+	},
+	"ui.mesh.mesh_approvals.profile_outcome_denied": {
+		"role": "outcome sentence — profile-save consent card",
+		"tone": "Plain, factual",
+		"note": "Someone answered no; nothing was written."
+	},
+	"ui.mesh.mesh_approvals.profile_outcome_expired": {
+		"role": "outcome sentence — profile-save consent card",
+		"tone": "Plain, factual; not an error apology",
+		"note": "The window closed with no answer; nothing was written."
+	},
+	"ui.mesh.mesh_approvals.profile_outcome_stopped": {
+		"role": "outcome sentence — profile-save consent card",
+		"tone": "Plain, factual",
+		"note": "A runner stopped before applying; nothing was written."
+	},
+	"ui.mesh.mesh_approvals.profile_outcome_unknown": {
+		"role": "outcome sentence — profile-save consent card",
+		"tone": "Plain, honest uncertainty",
+		"note": "This build cannot name the record's state. Never guess 'saved'."
+	},
+	"ui.mesh.mesh_approvals.profile_revert_no_handler": {
+		"role": "disabled-control reason — profile-save consent card revert",
+		"tone": "Plain explanation",
+		"note": "The control is drawn here but this surface has no way to send the answer, so it is disabled with this reason."
+	},
+	"ui.mesh.mesh_approvals.profile_revert_reason_unknown": {
+		"role": "disabled-control reason — profile-save consent card revert",
+		"tone": "Plain explanation",
+		"note": "The control is disabled and no specific reason is known; say that rather than leaving it blank."
 	}
 }

@@ -284,8 +284,6 @@
 	"ui.mesh.mesh_approvals.profile_scope_global": "वैश्विक",
 	"ui.mesh.mesh_approvals.profile_changes": "क्या बदलेगा",
 	"ui.mesh.mesh_approvals.profile_field": "फ़ील्ड",
-	"ui.mesh.mesh_approvals.profile_saved_value": "सहेजा गया",
-	"ui.mesh.mesh_approvals.profile_new_value": "हो जाएगा",
 	"ui.mesh.mesh_approvals.profile_not_set": "सेट नहीं",
 	"ui.mesh.mesh_approvals.profile_cleared": "साफ़ किया गया",
 	"ui.mesh.mesh_approvals.profile_changes_none": "कोई फ़ील्ड नहीं बदलती",
@@ -299,5 +297,16 @@
 	"ui.mesh.mesh_approvals.profile_revert_failed": "वापस लेना पूरा नहीं हुआ",
 	"ui.mesh.mesh_approvals.profile_revert_unavailable": "इस सत्र में वापस लेना उपलब्ध नहीं",
 	"ui.mesh.mesh_approvals.profile_changes_not_in_receipt": "इस रसीद में फ़ील्ड के बदलाव शामिल नहीं हैं",
-	"ui.mesh.mesh_approvals.profile_revert_unconfirmed": "वापस लेना शायद पूरा नहीं हुआ"
+	"ui.mesh.mesh_approvals.profile_revert_unconfirmed": "वापस लेना शायद पूरा नहीं हुआ",
+	"ui.mesh.mesh_approvals.profile_column_before": "पहले",
+	"ui.mesh.mesh_approvals.profile_column_after": "बाद",
+	"ui.mesh.mesh_approvals.profile_outcome_waiting": "प्रस्ताव — अभी सहेजा नहीं गया",
+	"ui.mesh.mesh_approvals.profile_outcome_saved": "सहेजा गया",
+	"ui.mesh.mesh_approvals.profile_outcome_approved_not_saved": "स्वीकृत — अभी सहेजा नहीं गया",
+	"ui.mesh.mesh_approvals.profile_outcome_denied": "अस्वीकृत — सहेजा नहीं गया",
+	"ui.mesh.mesh_approvals.profile_outcome_expired": "समय-सीमा समाप्त — सहेजा नहीं गया",
+	"ui.mesh.mesh_approvals.profile_outcome_stopped": "रुका — सहेजा नहीं गया",
+	"ui.mesh.mesh_approvals.profile_outcome_unknown": "यह संस्करण इस स्थिति को नहीं जानता",
+	"ui.mesh.mesh_approvals.profile_revert_no_handler": "इस दृश्य में वापस लेना उपलब्ध नहीं",
+	"ui.mesh.mesh_approvals.profile_revert_reason_unknown": "वापस लेना अभी उपलब्ध नहीं"
 }

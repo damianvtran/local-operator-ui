@@ -284,8 +284,6 @@
 	"ui.mesh.mesh_approvals.profile_scope_global": "全局",
 	"ui.mesh.mesh_approvals.profile_changes": "变更内容",
 	"ui.mesh.mesh_approvals.profile_field": "字段",
-	"ui.mesh.mesh_approvals.profile_saved_value": "已保存",
-	"ui.mesh.mesh_approvals.profile_new_value": "将改为",
 	"ui.mesh.mesh_approvals.profile_not_set": "未设置",
 	"ui.mesh.mesh_approvals.profile_cleared": "已清除",
 	"ui.mesh.mesh_approvals.profile_changes_none": "没有字段变更",
@@ -299,5 +297,16 @@
 	"ui.mesh.mesh_approvals.profile_revert_failed": "还原未成功",
 	"ui.mesh.mesh_approvals.profile_revert_unavailable": "此会话中无法使用还原",
 	"ui.mesh.mesh_approvals.profile_changes_not_in_receipt": "此回执未包含字段变更",
-	"ui.mesh.mesh_approvals.profile_revert_unconfirmed": "撤销可能未完成"
+	"ui.mesh.mesh_approvals.profile_revert_unconfirmed": "撤销可能未完成",
+	"ui.mesh.mesh_approvals.profile_column_before": "之前",
+	"ui.mesh.mesh_approvals.profile_column_after": "之后",
+	"ui.mesh.mesh_approvals.profile_outcome_waiting": "提议 — 尚未保存",
+	"ui.mesh.mesh_approvals.profile_outcome_saved": "已保存",
+	"ui.mesh.mesh_approvals.profile_outcome_approved_not_saved": "已批准 — 尚未保存",
+	"ui.mesh.mesh_approvals.profile_outcome_denied": "已拒绝 — 未保存",
+	"ui.mesh.mesh_approvals.profile_outcome_expired": "已过期 — 未保存",
+	"ui.mesh.mesh_approvals.profile_outcome_stopped": "已停止 — 未保存",
+	"ui.mesh.mesh_approvals.profile_outcome_unknown": "此版本无法识别该状态",
+	"ui.mesh.mesh_approvals.profile_revert_no_handler": "此视图无法使用还原",
+	"ui.mesh.mesh_approvals.profile_revert_reason_unknown": "还原当前不可用"
 }
