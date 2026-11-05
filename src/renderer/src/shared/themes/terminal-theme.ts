@@ -1,5 +1,11 @@
 import type { ITheme } from "@xterm/xterm";
 import {
+	BACKDROP_GRAY,
+	composite,
+	ratio,
+} from "../../../../shared/glass-derivation.mjs";
+import { solveLightness } from "../../../../shared/theme-engine/contrast.mjs";
+import {
 	isSafeThemeId,
 	paletteBlock,
 } from "../../../../shared/theme-engine/css.mjs";
@@ -180,6 +186,91 @@ const terminalThemeRoles = (
 		? { ...TERMINAL_THEME_ROLES, foreground: "inkMuted" }
 		: TERMINAL_THEME_ROLES;
 
+/**
+ * Glass floors protect body inks, not the semantic hues used by ANSI. For example,
+ * Light/Gentle danger passed 4.577:1 on sunken but fell to 4.22:1 on the covered
+ * canvas. Repair only chromatic slots that already passed AA on the flat ground;
+ * black/dim/white and deliberate pre-existing low-contrast slots are not a new
+ * palette for this fix. xterm shares indexed foreground/background colours, so a
+ * repaired semantic slot also changes that indexed background; arbitrary SGR
+ * truecolour and background/foreground combinations are not rewritten.
+ *
+ * Use the published alphas, including the net pane-over-canvas composition, not
+ * an opacity preference. Material identity is not published in CSS, so retain
+ * safety over each measured native backdrop endpoint using the existing model.
+ * The shared solver changes L* only, retaining hue/chroma as gamut permits, and
+ * already-passing colours stay byte-identical. Nothing here writes global roles.
+ */
+const adaptTerminalGlassInks = (
+	theme: Record<string, string>,
+	styles: CSSStyleDeclaration,
+	root: HTMLElement,
+): void => {
+	const canvas = styles.getPropertyValue("--lo-canvas").trim();
+	const elevated = styles.getPropertyValue("--lo-elevated").trim();
+	const alpha = (name: string): number | null => {
+		const value = styles.getPropertyValue(name).trim();
+		if (!value) return null;
+		const parsed = Number(value);
+		return Number.isFinite(parsed) && parsed >= 0 && parsed <= 1
+			? parsed
+			: null;
+	};
+	const canvasAlpha = alpha("--lo-glass-a-canvas");
+	const paneAlpha = alpha("--lo-glass-a-elevated");
+	const netAlpha = alpha("--lo-glass-in-elevated");
+	if (
+		!FLAT_TERMINAL_COLOR.test(canvas) ||
+		!FLAT_TERMINAL_COLOR.test(elevated) ||
+		!FLAT_TERMINAL_COLOR.test(theme.background ?? "") ||
+		canvasAlpha === null ||
+		paneAlpha === null ||
+		netAlpha === null
+	)
+		return;
+	const mode = root.classList.contains("dark") ? "dark" : "light";
+	const grounds = Object.values(BACKDROP_GRAY).flatMap((tier) => {
+		const channel = tier[mode].toString(16).padStart(2, "0");
+		const backdrop = `#${channel.repeat(3)}`;
+		return [
+			composite(elevated, paneAlpha, backdrop),
+			composite(elevated, netAlpha, composite(canvas, canvasAlpha, backdrop)),
+		];
+	});
+	const groundRoles = grounds.map((_, index) => `ground${index}`);
+	const repair = (value: string, floor: number): string => {
+		if (
+			!FLAT_TERMINAL_COLOR.test(value ?? "") ||
+			ratio(value, theme.background) < floor ||
+			grounds.every((ground) => ratio(value, ground) >= floor)
+		)
+			return value;
+		return solveLightness(
+			{
+				mode,
+				ink: value,
+				...Object.fromEntries(groundRoles.map((role, i) => [role, grounds[i]])),
+			},
+			"ink",
+			groundRoles,
+			floor,
+		);
+	};
+	// Aliased bright/cyan/magenta slots must keep their existing shared identity.
+	for (const role of ["danger", "success", "warning", "info"]) {
+		const slots = TERMINAL_ANSI_SLOTS.filter(
+			(slot) => TERMINAL_THEME_ROLES[slot] === role,
+		);
+		const value = theme[slots[0]];
+		if (!value) continue;
+		const adapted = repair(value, 4.5);
+		for (const slot of slots) theme[slot] = adapted;
+	}
+	if (theme.cursor) theme.cursor = repair(theme.cursor, 3);
+};
+
+const FLAT_TERMINAL_COLOR = /^#[0-9a-fA-F]{6}$/;
+
 export const readTerminalTheme = (
 	root: HTMLElement = document.documentElement,
 	mode: TerminalSurfaceMode = "live",
@@ -200,8 +291,9 @@ export const readTerminalTheme = (
 		root.dataset?.glass?.split(/\s+/).includes("pane") &&
 		glassHost?.closest('[data-glass-region="pane"]')
 	) {
-		// xterm parses colours, not CSS tokens. Only the default cell ground is
-		// transparent: ANSI backgrounds, glyphs, selection and cursor stay crisp.
+		adaptTerminalGlassInks(theme, styles, root);
+		// Only the default cell ground is transparent. Explicit cell backgrounds,
+		// glyphs, selection and cursor remain opaque; capture callers never opt in.
 		theme.background = "#00000000";
 	}
 	/*

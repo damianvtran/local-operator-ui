@@ -26,6 +26,11 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { test } from "node:test";
 import { build } from "esbuild";
+import {
+	BACKDROP_GRAY,
+	composite,
+	ratio,
+} from "../src/shared/glass-derivation.mjs";
 import { contractSource } from "./contrast-contract-source.mjs";
 
 /*
@@ -58,6 +63,10 @@ const bundle = await build({
 			// whether the open request survives being written to disk.
 			'export { useUiPreferencesStore, persistedUiPreferences } from "./src/renderer/src/shared/store/ui-preferences-store";',
 			'export * from "./src/main/console/completion";',
+			'export {localOperatorDark,localOperatorLight} from "./src/renderer/src/shared/themes/palettes/local-operator";',
+			'export {applyContrast} from "./src/shared/theme-engine/contrast.mjs";',
+			'export {glassPaintFor} from "./src/shared/window-glass";',
+			'export {glassFloorsForPalette} from "./src/shared/glass-derivation.mjs";',
 			'export { consoleRevealMayNavigate } from "./src/renderer/src/features/chat/composer-field";',
 		].join("\n"),
 		resolveDir: process.cwd(),
@@ -1196,4 +1205,177 @@ test("a console open reveal from a background session does not switch while the 
 		}),
 		true,
 	);
+});
+
+// A measured regression, not an invented palette: Light/Gentle at intensity100
+// published canvas alpha .51, pane alpha .41 (net0), over window material199.
+// Its flat danger/sunken passed AA; retaining that danger on glass did not.
+test("terminal semantic ANSI keeps AA when its legible flat colour meets glass", (t) => {
+	const vars = {
+		"--color-sunken": "#E4DFD4",
+		"--color-danger": "#B0382F",
+		"--color-ink": "#211E18",
+		"--color-accent": "#06713D",
+		"--color-on-accent": "#F6FAF8",
+		"--color-surface": "#EFEEE8",
+		"--lo-canvas": "#EAE6DE",
+		"--lo-elevated": "#F6F6F3",
+		"--lo-glass-a-canvas": "0.51",
+		"--lo-glass-a-elevated": "0.41",
+		"--lo-glass-in-elevated": "0",
+	};
+	const previous = globalThis.getComputedStyle;
+	globalThis.getComputedStyle = () => ({
+		getPropertyValue: (k) => vars[k] ?? "",
+	});
+	const root = {
+		dataset: { glass: "sidebar canvas pane" },
+		classList: { contains: () => false },
+	};
+	try {
+		const flat = readTerminalTheme(root);
+		const glass = readTerminalTheme(root, "live", { closest: () => ({}) });
+		const ground = composite(vars["--lo-canvas"], 0.51, "#c7c7c7");
+		assert.ok(ratio(flat.red, flat.background) >= 4.5);
+		assert.ok(
+			ratio(flat.red, ground) < 4.5,
+			"the observed glass regression remains discriminating",
+		);
+		assert.ok(
+			ratio(glass.red, ground) >= 4.5,
+			"a previously legible semantic ANSI red must remain AA on glass",
+		);
+		t.diagnostic(
+			JSON.stringify({
+				flatRed: flat.red,
+				glassRed: glass.red,
+				flatRatio: ratio(flat.red, flat.background),
+				oldGlassRatio: ratio(flat.red, ground),
+				newGlassRatio: ratio(glass.red, ground),
+			}),
+		);
+		assert.equal(glass.magenta, glass.red);
+		assert.equal(glass.brightRed, glass.red);
+		assert.equal(glass.selectionBackground, flat.selectionBackground);
+		assert.equal(glass.selectionForeground, flat.selectionForeground);
+	} finally {
+		globalThis.getComputedStyle = previous;
+	}
+});
+
+test("terminal-only glass adaptation covers two schemes, true presets, intensity and history", () => {
+	const previous = globalThis.getComputedStyle;
+	const chromatic = [
+		"red",
+		"green",
+		"yellow",
+		"blue",
+		"magenta",
+		"cyan",
+		"brightRed",
+		"brightGreen",
+		"brightYellow",
+		"brightBlue",
+		"brightMagenta",
+		"brightCyan",
+	];
+	let measured = 0;
+	try {
+		for (const definition of [
+			module_.localOperatorDark,
+			module_.localOperatorLight,
+		]) {
+			for (const contrast of [-100, 0, 100]) {
+				const { palette } = module_.applyContrast(
+					definition.palette,
+					contrast,
+					{ id: definition.id },
+				);
+				const floors = module_.glassFloorsForPalette(palette);
+				for (const intensity of [0, 80, 100]) {
+					const { kinds, vars } = module_.glassPaintFor({
+						floors,
+						coverage: "full",
+						intensity,
+						mechanism: "vibrancy",
+						material: "window",
+						scheme: palette.mode,
+					});
+					const css = { ...vars };
+					for (const [role, value] of Object.entries(palette))
+						css[`--lo-${kebabRole(role)}`] = value;
+					globalThis.getComputedStyle = () => ({
+						getPropertyValue: (k) => css[k] ?? "",
+					});
+					const root = {
+						dataset: { glass: kinds },
+						classList: { contains: () => palette.mode === "dark" },
+					};
+					const host = { closest: () => ({}) };
+					const flat = readTerminalTheme(root);
+					for (const mode of ["live", "history"]) {
+						const glass = readTerminalTheme(root, mode, host);
+						for (const endpoint of Object.values(BACKDROP_GRAY)) {
+							const backdrop = `#${endpoint[palette.mode].toString(16).padStart(2, "0").repeat(3)}`;
+							const raw = composite(
+								palette.elevated,
+								Number(vars["--lo-glass-a-elevated"]),
+								backdrop,
+							);
+							const nested = composite(
+								palette.elevated,
+								Number(vars["--lo-glass-in-elevated"]),
+								composite(
+									palette.canvas,
+									Number(vars["--lo-glass-a-canvas"]),
+									backdrop,
+								),
+							);
+							for (const slot of chromatic) {
+								for (const ground of [raw, nested]) {
+									if (ratio(flat[slot], flat.background) >= 4.5)
+										assert.ok(
+											ratio(glass[slot], ground) >= 4.5,
+											`${definition.id} ${contrast} ${intensity} ${mode} ${slot}`,
+										);
+									else
+										assert.equal(
+											glass[slot],
+											flat[slot],
+											"pre-existing low-contrast slot is not silently recoloured",
+										);
+								}
+							}
+							if (ratio(flat.cursor, flat.background) >= 3)
+								for (const ground of [raw, nested])
+									assert.ok(ratio(glass.cursor, ground) >= 3);
+						}
+						assert.equal(glass.black, flat.black);
+						assert.equal(glass.brightBlack, flat.brightBlack);
+						assert.equal(glass.white, flat.white);
+						assert.equal(glass.selectionBackground, flat.selectionBackground);
+						assert.equal(glass.selectionForeground, flat.selectionForeground);
+						assert.ok(
+							ratio(glass.selectionForeground, glass.selectionBackground) >=
+								4.5,
+						);
+						assert.equal(glass.background, "#00000000");
+						for (const coverage of [undefined, "sidebar"]) {
+							root.dataset.glass = coverage;
+							assert.equal(readTerminalTheme(root, mode, host).red, flat.red);
+							assert.equal(
+								readTerminalTheme(root, mode, host).background,
+								flat.background,
+							);
+						}
+						root.dataset.glass = kinds;
+						measured++;
+					}
+				}
+			}
+		}
+	} finally {
+		globalThis.getComputedStyle = previous;
+	}
+	assert.equal(measured, 36);
 });
