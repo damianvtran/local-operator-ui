@@ -60,6 +60,7 @@ const bundle = await build({
 	stdin: {
 		contents: `
  export { previewGlassPaint } from './src/renderer/src/features/settings/components/appearance-preview-glass';
+ export { applyGlassState } from './src/renderer/src/shared/hooks/use-window-glass';
  export { glassPaintFor } from './src/shared/window-glass';
  export { glassFloorsForPalette } from './src/shared/glass-derivation.mjs';
  export { contrastCandidate } from './src/shared/theme-engine/contrast.mjs';
@@ -106,6 +107,7 @@ const {
 	applyCaptureTheme,
 	resolveAppearance,
 	previewGlassPaint,
+	applyGlassState,
 	glassPaintFor,
 	glassFloorsForPalette,
 	contrastCandidate,
@@ -208,6 +210,33 @@ test("preview glass reuses production palette floors, not document alphas or sav
 		frosted.vars["--lo-glass-a-canvas"],
 		expected.vars["--lo-glass-a-canvas"],
 	);
+});
+
+test("restart-pending preview matches the production hook's unapplied ON and cleared OFF", () => {
+	const palette = resolveAppearance(store.getState()).palette;
+	// A Windows-style enable pending native reconstruction cannot paint glass.
+	// Exercise the actual hook, not a second implementation of its guard.
+	applyGlassState(null);
+	const pendingOn = { ...activeGlass, restartRequired: true };
+	applyGlassState(pendingOn);
+	assert.equal(document.documentElement.hasAttribute("data-glass"), false);
+	assert.equal(previewGlassPaint(pendingOn, palette), null);
+
+	applyGlassState(activeGlass);
+	assert.equal(document.documentElement.dataset.glass, "sidebar canvas pane");
+	const pendingOff = {
+		...activeGlass,
+		active: false,
+		restartRequired: true,
+		settings: { ...activeGlass.settings, enabled: false },
+	};
+	applyGlassState(pendingOff);
+	assert.equal(document.documentElement.hasAttribute("data-glass"), false);
+	assert.equal(
+		document.documentElement.style.getPropertyValue("--lo-glass-a-canvas"),
+		"",
+	);
+	assert.equal(previewGlassPaint(pendingOff, palette), null);
 });
 
 test("active and draft preview use local production paint across schemes and coverage", async () => {
