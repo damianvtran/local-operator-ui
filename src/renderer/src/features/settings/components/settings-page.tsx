@@ -1770,7 +1770,10 @@ export const SettingsPage: FC = () => {
 								<div className="flex flex-col gap-4">
 									{/* The gallery remains the Theme layer; preview, contrast and
 									    accent controls share the same composed appearance. */}
-									<AppearanceLayers gallery={<ThemeSelector />} />
+									<AppearanceLayers
+										gallery={<ThemeSelector />}
+										glass={glass.state}
+									/>
 									{/*
 									 * The reasoning preference's only control.
 									 *

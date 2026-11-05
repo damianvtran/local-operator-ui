@@ -242,7 +242,14 @@ export const ContrastControl: FC<ContrastControlProps> = ({
 				role="radiogroup"
 				aria-labelledby={labelId}
 				onKeyDown={onChipKeyDown}
-				className="grid grid-cols-5 gap-2"
+				/* Equal columns below `lg`; ROW OF CHIPS above it. The companion sample
+				   narrows this column from 848 to 592px, which leaves 112px a chip, and
+				   an "adjusted" preset name measures 117px - so the chip that is the only
+				   cue the value sits between presets was the one that ellipsised (UX U6).
+				   Flexing lets that one chip take its content width (below) while the
+				   other four share what is left: no fixed track has to guess which preset
+				   is nearest, and nothing can overflow a translated label. */
+				className="grid grid-cols-5 gap-2 lg:flex"
 			>
 				{PRESET_ORDER.map(({ name, value: preset }) => {
 					const isChecked = checked === name;
@@ -263,7 +270,11 @@ export const ContrastControl: FC<ContrastControlProps> = ({
 								data-contrast-chip={name}
 								onClick={() => commit(preset)}
 								className={cn(
-									"relative flex h-13 min-w-0 flex-col gap-1 rounded-md p-1 text-start transition-colors duration-fast ease-out-quart max-[900px]:h-12",
+									"relative flex h-13 min-w-0 flex-1 flex-col gap-1 rounded-md p-1 text-start transition-colors duration-fast ease-out-quart max-[900px]:h-12",
+									// The adjusted chip keeps its whole label: it is the only visual cue
+									// that the value is off-preset, and `flex-none` takes its natural
+									// width while the four preset chips shrink to fit beside it.
+									isNearest && "lg:flex-none",
 									isChecked
 										? "bg-[color-mix(in_srgb,var(--color-accent)_8%,var(--color-accent-wash))]"
 										: "hover:bg-surface",

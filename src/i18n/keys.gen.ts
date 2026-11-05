@@ -9364,6 +9364,7 @@ export type MessageParams = {
 	"ui.settings.appearance.layers.preview.row_inbox": undefined;
 	"ui.settings.appearance.layers.preview.row_release": undefined;
 	"ui.settings.appearance.layers.preview.row_research": undefined;
+	"ui.settings.appearance.layers.preview.sample_backdrop": undefined;
 	"ui.settings.appearance.layers.preview.secondary": undefined;
 	"ui.settings.appearance.layers.preview.success": undefined;
 	"ui.settings.appearance.layers.preview.user_message": undefined;
