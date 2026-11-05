@@ -110,6 +110,16 @@ export function useTeamBridgeAttachments(args: {
 	// Bumped on every scope change so a completion for the previous destination
 	// cannot write its chip into this one.
 	const generation = useRef(0);
+	// Async picker/header reads may finish between render and effects. Fence
+	// the render itself, and capture its generation in every operation; an old
+	// callback must not adopt the new destination's generation on invocation.
+	const scope = JSON.stringify([scopeKey, accountId, tenantId, conversationId]);
+	const activeScope = useRef(scope);
+	if (activeScope.current !== scope) {
+		activeScope.current = scope;
+		generation.current += 1;
+	}
+	const renderedGeneration = generation.current;
 	const persist = useRef(onPersist);
 	persist.current = onPersist;
 
@@ -120,7 +130,6 @@ export function useTeamBridgeAttachments(args: {
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: the destination is the event; `persisted` is read at that moment only.
 	useEffect(() => {
-		generation.current += 1;
 		const restored = (persisted ?? []).map((row) =>
 			chipFromDraft(accountId, row),
 		);
@@ -131,7 +140,13 @@ export function useTeamBridgeAttachments(args: {
 		setNotice(null);
 	}, [scopeKey, accountId]);
 	// biome-ignore lint/correctness/useExhaustiveDependencies: unmount only.
-	useEffect(() => () => revokeAll(live.current), []);
+	useEffect(
+		() => () => {
+			generation.current += 1;
+			revokeAll(live.current);
+		},
+		[],
+	);
 
 	const write = (next: AttachmentChip[]) => {
 		live.current = next;
@@ -154,7 +169,7 @@ export function useTeamBridgeAttachments(args: {
 		key: string,
 		prepared: PreparedImage,
 		into: string,
-		started = generation.current,
+		started = renderedGeneration,
 		tenant = tenantId,
 	): Promise<DraftAttachment | null> => {
 		if (!tenant || !capturedAccount) {
@@ -192,6 +207,7 @@ export function useTeamBridgeAttachments(args: {
 	};
 
 	const add = (files: readonly Blob[]) => {
+		if (generation.current !== renderedGeneration) return;
 		if (files.length === 0) return;
 		if (!capability) {
 			setNotice("unsupported");
@@ -200,7 +216,7 @@ export function useTeamBridgeAttachments(args: {
 		const room = maxAttachments(capability) - live.current.length;
 		const accepted = files.slice(0, Math.max(0, room));
 		setNotice(accepted.length < files.length ? "limit" : null);
-		const started = generation.current;
+		const started = renderedGeneration;
 		const fresh: AttachmentChip[] = accepted.map(() => ({
 			key: crypto.randomUUID(),
 			status: "preparing",
@@ -257,6 +273,7 @@ export function useTeamBridgeAttachments(args: {
 	};
 
 	const retry = (key: string) => {
+		if (generation.current !== renderedGeneration) return;
 		const chip = live.current.find((row) => row.key === key);
 		const into = conversationId ?? chip?.attachment?.conversationId;
 		if (!chip?.prepared) return;

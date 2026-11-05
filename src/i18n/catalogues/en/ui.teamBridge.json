@@ -389,5 +389,13 @@
 	"ui.teamBridge.conversation_menu.error.not_in_general": "Your agent isn’t in {channel} yet, so there’s nothing to remove.",
 	"ui.teamBridge.conversation_menu.partial_leave.body": "You left {conversation}. Your agent is still in this conversation.",
 	"ui.teamBridge.conversation_menu.partial_leave.retry_failed": "You left {conversation}, but your agent still couldn’t be removed. Try again.",
-	"ui.teamBridge.conversation_menu.partial_leave.retry": "Remove my agent"
+	"ui.teamBridge.conversation_menu.partial_leave.retry": "Remove my agent",
+	"ui.teamBridge.files.staged": "Attached files",
+	"ui.teamBridge.files.failed": "Upload failed",
+	"ui.teamBridge.files.retry": "Retry file upload",
+	"ui.teamBridge.files.remove": "Remove file",
+	"ui.teamBridge.files.unavailable": "Files are unavailable for this account. Remove the file to send text or images.",
+	"ui.teamBridge.files.add": "Attach files",
+	"ui.teamBridge.files.no_schedule": "Files can be sent now, but cannot be scheduled.",
+	"ui.teamBridge.files.uploading": "Uploading file…"
 }

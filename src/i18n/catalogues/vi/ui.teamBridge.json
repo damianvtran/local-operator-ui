@@ -389,5 +389,13 @@
 	"ui.teamBridge.conversation_menu.error.not_in_general": "Tác nhân của bạn chưa có trong {channel}, nên không có gì để xóa.",
 	"ui.teamBridge.conversation_menu.partial_leave.body": "Bạn đã rời {conversation}. Tác nhân của bạn vẫn còn trong cuộc trò chuyện này.",
 	"ui.teamBridge.conversation_menu.partial_leave.retry_failed": "Bạn đã rời {conversation}, nhưng vẫn chưa thể xóa tác nhân của bạn. Hãy thử lại.",
-	"ui.teamBridge.conversation_menu.partial_leave.retry": "Xóa tác nhân của tôi"
+	"ui.teamBridge.conversation_menu.partial_leave.retry": "Xóa tác nhân của tôi",
+	"ui.teamBridge.files.staged": "Tệp đính kèm",
+	"ui.teamBridge.files.failed": "Tải lên thất bại",
+	"ui.teamBridge.files.retry": "Thử tải tệp lên lại",
+	"ui.teamBridge.files.remove": "Xóa tệp",
+	"ui.teamBridge.files.unavailable": "Tài khoản này chưa hỗ trợ tệp. Hãy xóa tệp để gửi văn bản hoặc hình ảnh.",
+	"ui.teamBridge.files.add": "Đính kèm tệp",
+	"ui.teamBridge.files.no_schedule": "Có thể gửi tệp ngay, nhưng không thể lên lịch.",
+	"ui.teamBridge.files.uploading": "Đang tải tệp lên…"
 }

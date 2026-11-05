@@ -10591,6 +10591,14 @@ export type MessageParams = {
 	"ui.teamBridge.events.withdrawn": { actor: string; targets: string };
 	"ui.teamBridge.fileCard.kind": { kind: string };
 	"ui.teamBridge.fileCard.list": { count: number };
+	"ui.teamBridge.files.add": undefined;
+	"ui.teamBridge.files.failed": undefined;
+	"ui.teamBridge.files.no_schedule": undefined;
+	"ui.teamBridge.files.remove": undefined;
+	"ui.teamBridge.files.retry": undefined;
+	"ui.teamBridge.files.staged": undefined;
+	"ui.teamBridge.files.unavailable": undefined;
+	"ui.teamBridge.files.uploading": undefined;
 	"ui.teamBridge.group.more": undefined;
 	"ui.teamBridge.invitations.accept": undefined;
 	"ui.teamBridge.invitations.accepted": { agent: string };

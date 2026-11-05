@@ -389,5 +389,13 @@
 	"ui.teamBridge.conversation_menu.error.not_in_general": "آپ کا ایجنٹ ابھی {channel} میں نہیں ہے، اس لیے ہٹانے کو کچھ نہیں۔",
 	"ui.teamBridge.conversation_menu.partial_leave.body": "آپ نے {conversation} چھوڑ دیا۔ آپ کا ایجنٹ ابھی بھی اس گفتگو میں ہے۔",
 	"ui.teamBridge.conversation_menu.partial_leave.retry_failed": "آپ نے {conversation} چھوڑ دیا، لیکن آپ کا ایجنٹ اب بھی ہٹایا نہیں جا سکا۔ دوبارہ کوشش کریں۔",
-	"ui.teamBridge.conversation_menu.partial_leave.retry": "میرا ایجنٹ ہٹائیں"
+	"ui.teamBridge.conversation_menu.partial_leave.retry": "میرا ایجنٹ ہٹائیں",
+	"ui.teamBridge.files.staged": "منسلک فائلیں",
+	"ui.teamBridge.files.failed": "اپ لوڈ ناکام ہو گیا",
+	"ui.teamBridge.files.retry": "فائل دوبارہ اپ لوڈ کریں",
+	"ui.teamBridge.files.remove": "فائل ہٹائیں",
+	"ui.teamBridge.files.unavailable": "اس اکاؤنٹ کے لیے فائلیں دستیاب نہیں ہیں۔ متن یا تصاویر بھیجنے کے لیے فائل ہٹائیں۔",
+	"ui.teamBridge.files.add": "فائلیں منسلک کریں",
+	"ui.teamBridge.files.no_schedule": "فائلیں ابھی بھیجی جا سکتی ہیں، لیکن ان کی ترسیل طے نہیں کی جا سکتی۔",
+	"ui.teamBridge.files.uploading": "فائل اپ لوڈ ہو رہی ہے…"
 }

@@ -389,5 +389,13 @@
 	"ui.teamBridge.conversation_menu.error.not_in_general": "Вашего агента пока нет в {channel}, удалять нечего.",
 	"ui.teamBridge.conversation_menu.partial_leave.body": "Вы покинули {conversation}. Ваш агент всё ещё в этом разговоре.",
 	"ui.teamBridge.conversation_menu.partial_leave.retry_failed": "Вы покинули {conversation}, но агента по-прежнему не удалось удалить. Попробуйте ещё раз.",
-	"ui.teamBridge.conversation_menu.partial_leave.retry": "Удалить моего агента"
+	"ui.teamBridge.conversation_menu.partial_leave.retry": "Удалить моего агента",
+	"ui.teamBridge.files.staged": "Прикреплённые файлы",
+	"ui.teamBridge.files.failed": "Не удалось загрузить",
+	"ui.teamBridge.files.retry": "Повторить загрузку файла",
+	"ui.teamBridge.files.remove": "Удалить файл",
+	"ui.teamBridge.files.unavailable": "Файлы недоступны для этой учётной записи. Удалите файл, чтобы отправить текст или изображения.",
+	"ui.teamBridge.files.add": "Прикрепить файлы",
+	"ui.teamBridge.files.no_schedule": "Файлы можно отправить сейчас, но нельзя запланировать.",
+	"ui.teamBridge.files.uploading": "Загрузка файла…"
 }

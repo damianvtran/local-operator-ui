@@ -605,6 +605,9 @@ type UseMessageInputOptions = {
 	 * its accepted send to retire its box, because it has no echo to do it.
 	 */
 	transcriptless?: boolean;
+	/** Host-owned in-memory attachments must participate in the SAME empty-send
+	 * guard, without persisting their bytes in the conversation input store. */
+	hasAdditionalContent?: boolean;
 	/**
 	 * Submits the message.
 	 *
@@ -651,6 +654,7 @@ export const useMessageInput = ({
 	 * the echo path, i.e. every chat composer, byte-identical.
 	 */
 	transcriptless = false,
+	hasAdditionalContent = false,
 }: UseMessageInputOptions) => {
 	// Store selectors
 	const getCurrentInput = useConversationInputStore((s) => s.getCurrentInput);
@@ -1043,7 +1047,9 @@ export const useMessageInput = ({
 		const staged = conversationId ? stagedPayloadOf(conversationId) : undefined;
 		if (
 			!conversationId ||
-			(!inputValue.trim() && (staged?.attachments.length ?? 0) === 0)
+			(!inputValue.trim() &&
+				(staged?.attachments.length ?? 0) === 0 &&
+				!hasAdditionalContent)
 		)
 			return;
 		/*
@@ -1358,6 +1364,7 @@ export const useMessageInput = ({
 		 * box itself (a transcriptless host has no echo to do it), so the lint gate
 		 * is right that it belongs here.
 		 */
+		hasAdditionalContent,
 		transcriptless,
 	]);
 

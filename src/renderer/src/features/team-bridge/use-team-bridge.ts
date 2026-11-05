@@ -569,6 +569,7 @@ export function useSendTeamBridgeMessage(
 		clientRef: string;
 		body: string;
 		attachmentIds?: readonly string[];
+		files?: readonly string[];
 		mentions?: readonly TeamBridgeMentionRow[];
 	}
 > {
@@ -579,6 +580,7 @@ export function useSendTeamBridgeMessage(
 		body: string;
 		/* A staged image set this message binds; omitted (never `[]`) for text. */
 		attachmentIds?: readonly string[];
+		files?: readonly string[];
 		/*
 		 * The @-mentions the caller captured at the PRESS (review MINOR-1 on #1663).
 		 * A picture send reaches this request only after its upload, and while it

@@ -54,6 +54,7 @@ import {
 	useState,
 } from "react";
 import { Link, useSearchParams } from "react-router-dom";
+import type { TeamBridgeFilesCapability } from "../../../../shared/team-bridge-contract";
 import type {
 	TeamBridgeAttachmentCapability,
 	TeamBridgeConversation,
@@ -301,6 +302,7 @@ import {
 	useWithdrawTeamBridgeAgent,
 } from "./use-team-bridge";
 import { useTeamBridgeDrafts } from "./use-team-bridge-drafts";
+import { type FileSend, filesCapability } from "./use-team-bridge-files";
 
 /**
  * Why a send was refused, in the terms the person can act on (UX round 1, U2).
@@ -865,6 +867,7 @@ export type TeamBridgePageViewProps = {
 		attachments?: {
 			/* Ids already staged in the selected conversation. */
 			ids: readonly string[];
+			files?: readonly string[];
 			/* Stage held images into a just-created conversation; throws on failure. */
 			stageHeld?: (
 				conversationId: string,
@@ -879,6 +882,7 @@ export type TeamBridgePageViewProps = {
 	 * the "not supported" note instead of a chip.
 	 */
 	attachmentCapability?: TeamBridgeAttachmentCapability | null;
+	filesCapability?: TeamBridgeFilesCapability | null;
 	/*
 	 * The speech capability for the composer's microphone, read by the OWNED
 	 * page (`useRadientCredentialProbe`). It is threaded rather than read in the
@@ -897,6 +901,7 @@ export type TeamBridgePageViewProps = {
 		onCreated: (id: string) => void,
 		attachments?: {
 			ids: readonly string[];
+			files?: readonly string[];
 			stageHeld?: (
 				conversationId: string,
 				tenantId: string,
@@ -1005,6 +1010,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	onSend,
 	onSchedule,
 	attachmentCapability: imageCapability = null,
+	filesCapability: fileCapability = null,
 	recordingProbe,
 	onNewChannel,
 	onRetry,
@@ -1067,6 +1073,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	);
 	const [scheduleOpen, setScheduleOpen] = useState(false);
 	const [scheduling, setScheduling] = useState(false);
+	const [stagedFileCount, setStagedFileCount] = useState(0);
 	const [scheduledSuccess, setScheduledSuccess] = useState(false);
 	const [scheduleFailed, setScheduleFailed] = useState(false);
 	const writing = useRef(false);
@@ -1625,24 +1632,41 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	 * arm has always had. A message that silently loses the picture the author
 	 * staged is worse than a refusal they can act on.
 	 */
-	const stagedForSend = (paths: readonly string[]) => ({
-		ids: [] as readonly string[],
-		stageHeld: async (conversationId: string, tenant: string | undefined) => {
-			const uploaded = await uploadStagedImages({
-				paths,
-				accountId: selfAccountId ?? "",
-				tenantId:
-					tenant ?? (draftTenant === TEAM_BRIDGE_ALL_SCOPE ? "" : draftTenant),
-				conversationId,
-				capability: imageCapability,
-			});
-			if (uploaded.failures.length > 0)
-				setSendRefusal({ kind: "upload", failure: uploaded.failures[0] });
-			if (uploaded.ids.length !== paths.length)
-				throw new Error("attachment staging refused");
-			return uploaded.ids;
-		},
-	});
+	const stagedForSend = (paths: readonly string[], files?: FileSend) => {
+		const staged: {
+			ids: readonly string[];
+			files?: readonly string[];
+			stageHeld: (
+				conversationId: string,
+				tenant: string | undefined,
+			) => Promise<string[]>;
+		} = {
+			ids: [],
+			stageHeld: async (conversationId, tenant) => {
+				const uploaded = await uploadStagedImages({
+					paths,
+					accountId: selfAccountId ?? "",
+					tenantId:
+						tenant ??
+						(draftTenant === TEAM_BRIDGE_ALL_SCOPE ? "" : draftTenant),
+					conversationId,
+					capability: imageCapability,
+				});
+				if (uploaded.failures.length > 0)
+					setSendRefusal({ kind: "upload", failure: uploaded.failures[0] });
+				if (uploaded.ids.length !== paths.length)
+					throw new Error("attachment staging refused");
+				// File receipts own a synchronous scope/generation fence. Await
+				// both stores BEFORE the bind; never fall back to text-only.
+				if (files?.count)
+					staged.files = await files.stageInto(conversationId, tenant);
+				if (uploaded.ids.length + (staged.files?.length ?? 0) > 10)
+					throw new Error("Too many attachments");
+				return uploaded.ids;
+			},
+		};
+		return staged;
+	};
 	// Capture the original entry and scope: navigation while a request is in
 	// flight must not clear the next target's text, even if it is identical.
 	// Opens at the newest message and follows new ones while the reader is at
@@ -2071,7 +2095,11 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	 * reader can retry them (R6b); `true` lets the box clear itself, which is the
 	 * only clear a transcriptless host gets.
 	 */
-	const submit = async (content: string, attachments: string[]) => {
+	const submit = async (
+		content: string,
+		attachments: string[],
+		files?: FileSend,
+	) => {
 		/*
 		 * A MESSAGE CAN BE THE PICTURE (UX round 1, U1). The shared composer enables and
 		 * admits an attachment-only payload, so refusing `!body` here made an enabled Send
@@ -2080,7 +2108,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 		 */
 		const body = content.trim();
 		if (
-			(!body && attachments.length === 0) ||
+			(!body && attachments.length === 0 && !files?.count) ||
 			!isDraftCurrent() ||
 			sending ||
 			scheduling ||
@@ -2194,7 +2222,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 		 * conversation that may not exist yet, and a failed upload has to hand the
 		 * FILES back to the box, which an already-cleared composer cannot do.
 		 */
-		if (attachments.length === 0 && selfSender && target) {
+		if (attachments.length === 0 && !files?.count && selfSender && target) {
 			const held = pendingEntries.find(
 				(row) =>
 					row.status === "failed" &&
@@ -2257,7 +2285,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 		// The author's own send lands in view when it arrives (F9).
 		timeline.pin();
 		try {
-			await onSend(body, clientRef, stagedForSend(attachments));
+			await onSend(body, clientRef, stagedForSend(attachments, files));
 			/*
 			 * THE BOX CLEARS ITSELF on an accepted send (`transcriptless`): it compares the
 			 * row it sent against the row it holds now, so text typed during the request
@@ -2306,7 +2334,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 				sendAttempts.set(composerKey, retryEntry);
 				if (draftState.update({ clientRef: freshRef })) {
 					try {
-						await onSend(body, freshRef, stagedForSend(attachments));
+						await onSend(body, freshRef, stagedForSend(attachments, files));
 						// Same rule as the first arm: retire by identity, rotate only if current.
 						const ownRetry = sendAttempts.get(composerKey) === retryEntry;
 						if (ownRetry) sendAttempts.delete(composerKey);
@@ -2327,6 +2355,9 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 		}
 	};
 	const schedule = async (sendAt: string) => {
+		// Core #3363 intentionally supports files on send, not scheduled rows.
+		// A schedule must never silently omit this separate in-memory queue.
+		if (stagedFileCount > 0) return;
 		if (
 			!target ||
 			!onSchedule ||
@@ -4266,6 +4297,17 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 										   fail-closed rule forbids, and a refused send names the
 										   capability instead (see `submit`). */
 										canAttach={Boolean(imageCapability)}
+										onFileCountChange={setStagedFileCount}
+										fileContext={{
+											accountId: selfAccountId,
+											tenantId:
+												selected?.tenant_id ??
+												(draftTenant === TEAM_BRIDGE_ALL_SCOPE
+													? undefined
+													: draftTenant),
+											conversationId: selected?.id ?? null,
+											capability: fileCapability,
+										}}
 										recordingProbe={recordingProbe}
 										disabled={
 											!canCompose ||
@@ -4287,9 +4329,11 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 										   the schedule control is refusing while a send is out (UX
 										   round 1, U3 + U4). It rides the bar, so it costs no row. */
 										hint={
-											sending
-												? t("ui.chat.canonical.send_failure.send_lock")
-												: undefined
+											stagedFileCount > 0
+												? t("ui.teamBridge.files.no_schedule")
+												: sending
+													? t("ui.chat.canonical.send_failure.send_lock")
+													: undefined
 										}
 										onSendMessage={submit}
 										/* HOST CHROME WITH NO BAR SLOT. Scheduling needs the target
@@ -4319,6 +4363,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 																	: undefined
 													}
 													disabled={
+														stagedFileCount > 0 ||
 														Boolean(draftState.current?.sendAt) ||
 														Boolean(draftState.current?.createUncertain) ||
 														!hasContent ||
@@ -4402,6 +4447,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 								reactionContext={reactionContext}
 								accountId={selfAccountId}
 								attachmentCapability={imageCapability}
+								filesCapability={fileCapability}
 								onClose={() => {
 									setThreadSelection(null);
 									onCloseThread?.();
@@ -5765,6 +5811,7 @@ const TeamBridgeOwnedPage: FC<{
 		clientRef: string,
 		attachments?: {
 			ids: readonly string[];
+			files?: readonly string[];
 			stageHeld?: (
 				conversationId: string,
 				tenantId: string | undefined,
@@ -5802,6 +5849,7 @@ const TeamBridgeOwnedPage: FC<{
 				),
 				/* Captured at the press (`PendingSend.mentions`), never re-read from
 				   the outbox here: see `TeamBridgeDelivery.mentions`. */
+				files: attachments?.files,
 				mentions: delivery.mentions,
 			});
 			/* Accepted: retire the staged entry as the mutation path does, so an
@@ -5839,6 +5887,7 @@ const TeamBridgeOwnedPage: FC<{
 					selected.id,
 					selected.tenant_id,
 				),
+				files: attachments?.files,
 			});
 		}
 		const recipients = draftRecipients();
@@ -5965,6 +6014,7 @@ const TeamBridgeOwnedPage: FC<{
 							id,
 							message.tenantId,
 						),
+						files: attachments?.files,
 					});
 					return posted;
 				},
@@ -6001,6 +6051,7 @@ const TeamBridgeOwnedPage: FC<{
 		onCreated: (id: string) => void,
 		attachments?: {
 			ids: readonly string[];
+			files?: readonly string[];
 			stageHeld?: (
 				conversationId: string,
 				tenantId: string,
@@ -6549,6 +6600,7 @@ const TeamBridgeOwnedPage: FC<{
 				}}
 				onSend={sendBody}
 				attachmentCapability={attachmentCapability(status.data)}
+				filesCapability={filesCapability(status.data)}
 				recordingProbe={recordingProbe}
 				onSchedule={
 					scope === TEAM_BRIDGE_ALL_SCOPE && !selected

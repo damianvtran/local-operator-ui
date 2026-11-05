@@ -23,6 +23,7 @@ import {
 	formatBreachLine,
 	formatMemoryBudgetLine,
 	killTree,
+	memoryTripDiagnostic,
 	parseFootprintBytes,
 	parseProcStat,
 	parseProcStatusRss,
@@ -418,6 +419,117 @@ test("the breach line names the leader, the measured figure and the budget", () 
 	assert.match(line, new RegExp(MEMORY_BUDGET_OVERRIDE_ENV));
 });
 
+test("memory trip diagnostic is bounded, largest-first and accounting-only", () => {
+	const members = Array.from({ length: 35 }, (_, index) => ({
+		pid: index + 1,
+		ppid: 1,
+		pgid: 1,
+		lstart: `proc:${index}`,
+		rssBytes: (index + 1) * MB,
+		argv: "must-not-log-credential-bearing-argv",
+		secret: "must-not-log-extra-fields",
+	}));
+	const reading = {
+		totalBytes: 700 * MB,
+		rssBytes: 630 * MB,
+		footprintBytes: 700 * MB,
+		members,
+	};
+	const original = structuredClone(reading);
+	const event = memoryTripDiagnostic({
+		leaderPid: 1,
+		budgetBytes: 600 * MB,
+		reading,
+	});
+	assert.equal(event.members.length, 32);
+	assert.equal(event.omitted, 3);
+	assert.equal(event.members[0].pid, 35);
+	assert.equal(event.members[31].pid, 4);
+	assert.deepEqual(event.members[0], {
+		pid: 35,
+		ppid: 1,
+		pgid: 1,
+		lstart: "proc:34",
+		rssBytes: 35 * MB,
+	});
+	assert.equal(event.totalBytes, reading.totalBytes);
+	assert.equal(event.footprintBytes, reading.footprintBytes);
+	assert.equal(JSON.stringify(event).includes("must-not-log"), false);
+	assert.ok(JSON.stringify(event).length < 8192);
+	assert.deepEqual(
+		reading,
+		original,
+		"projection must not mutate guard inputs",
+	);
+	const longIdentity = memoryTripDiagnostic({
+		leaderPid: 1,
+		budgetBytes: MB,
+		reading: {
+			...reading,
+			members: [{ ...members[0], lstart: "x".repeat(10000) }],
+		},
+	});
+	assert.equal(longIdentity.members[0].lstart.length, 128);
+	const empty = memoryTripDiagnostic({
+		leaderPid: 1,
+		budgetBytes: MB,
+		reading: { totalBytes: MB, rssBytes: MB, footprintBytes: 0, members: [] },
+	});
+	assert.deepEqual(empty.members, []);
+	assert.equal(empty.omitted, 0);
+});
+
+test("memory trip diagnostic preserves the current pre-kill sample, never a post-kill census", async () => {
+	const fresh = {
+		totalBytes: 400 * MB,
+		rssBytes: 350 * MB,
+		footprintBytes: 400 * MB,
+		members: [
+			{ pid: 42, ppid: 1, pgid: 42, lstart: "proc:123", rssBytes: 350 * MB },
+		],
+	};
+	let samples = 0;
+	let event;
+	const order = [];
+	const watchdog = createMemoryWatchdog({
+		leaderPid: 42,
+		budgetBytes: 300 * MB,
+		sample: async () =>
+			++samples === 1 ? { ...fresh, totalBytes: 100 * MB } : fresh,
+		onTrip: (reading) => {
+			assert.equal(reading, fresh);
+			order.push("trip");
+			event = memoryTripDiagnostic({
+				leaderPid: 42,
+				budgetBytes: 300 * MB,
+				reading,
+			});
+		},
+		kill: async () => {
+			order.push("kill");
+			fresh.totalBytes = 0;
+			fresh.members[0].rssBytes = 0;
+		},
+		onBreach: () => order.push("breach"),
+	});
+	assert.equal(await watchdog.tick(), "ok");
+	assert.equal(event, undefined, "below-budget negative control emits nothing");
+	assert.equal(await watchdog.tick(), "breach");
+	assert.deepEqual(order, ["trip", "kill", "breach"]);
+	assert.equal(event.totalBytes, 400 * MB);
+	assert.equal(event.members[0].rssBytes, 350 * MB);
+	assert.notDeepEqual(
+		event,
+		memoryTripDiagnostic({
+			leaderPid: 42,
+			budgetBytes: 300 * MB,
+			reading: fresh,
+		}),
+		"post-kill negative control must differ",
+	);
+	assert.equal(samples, 2, "diagnostics must not introduce another sampler");
+});
+
 /*
  * THE INTEGRATION CELL. A real test file allocates and TOUCHES 1.2 GB of
  * Buffers (so the pages are owned, not merely reserved), spawns a grandchild
@@ -469,12 +581,17 @@ function alive(pid) {
 
 test("the real runner kills a runaway group, names it, and exits non-zero", () => {
 	const started = Date.now();
+	const diagnosticFile = join(scratch, "memory-trip.jsonl");
 	const result = spawnSync(
 		process.execPath,
 		[RUNNER, "--test-concurrency=1", HOLDER],
 		{
 			encoding: "utf8",
-			env: { ...process.env, [MEMORY_BUDGET_OVERRIDE_ENV]: "300" },
+			env: {
+				...process.env,
+				[MEMORY_BUDGET_OVERRIDE_ENV]: "300",
+				DESKTOP_TEST_DIAGNOSTICS: diagnosticFile,
+			},
 			timeout: 45000,
 		},
 	);
@@ -482,6 +599,44 @@ test("the real runner kills a runaway group, names it, and exits non-zero", () =
 	assert.equal(result.status, BREACH_EXIT_CODE, result.stdout + result.stderr);
 	assert.match(result.stderr, KILLED_GROUP_LINE);
 	assert.match(result.stderr, NAMES_BUDGET);
+	const prefix = "desktop tests: diagnostic ";
+	const line = result.stderr
+		.split("\n")
+		.find(
+			(value) =>
+				value.startsWith(prefix) && value.includes('"event":"memory-trip"'),
+		);
+	assert.ok(
+		line,
+		"real guard trip must retain its pre-kill accounting on parent stderr",
+	);
+	const event = JSON.parse(line.slice(prefix.length));
+	assert.equal(event.budgetBytes, 300 * MB);
+	assert.ok(event.totalBytes >= event.budgetBytes);
+	assert.ok(event.members.length > 0 && event.members.length <= 32);
+	assert.ok(event.members.some((member) => member.rssBytes > 0));
+	assert.ok(
+		event.members.every(
+			(member) =>
+				Number.isInteger(member.pid) &&
+				Number.isInteger(member.ppid) &&
+				Number.isInteger(member.pgid) &&
+				typeof member.lstart === "string",
+		),
+	);
+	const retained = readFileSync(diagnosticFile, "utf8")
+		.trim()
+		.split("\n")
+		.map((value) => JSON.parse(value))
+		.filter((value) => value.event === "memory-trip");
+	assert.equal(retained.length, 1);
+	const { at, ...sidecar } = retained[0];
+	assert.equal(typeof at, "string");
+	assert.deepEqual(
+		sidecar,
+		event,
+		"both channels must retain the same original reading",
+	);
 	// Fast: the cadence is 2 s, so a trip is seconds, nowhere near the 60 s hold.
 	assert.ok(elapsed < 30000, `took ${elapsed} ms`);
 	// The grandchild was in the killed group; no orphan is left holding anything.
