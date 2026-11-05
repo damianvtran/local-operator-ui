@@ -1,0 +1,70 @@
+{
+ "schema": 1,
+ "receipt_kind": "locale-audit (PR delta audit, round 2)",
+ "date": "2026-11-04",
+ "auditor": "translation-auditor",
+ "agent": "translation-auditor",
+ "model": "anthropic/claude-opus-5-5",
+ "model_provenance": "Served model as announced by the harness preamble for session 0bfa9123c649 (anthropic/claude-opus-5-5); no fallback announced or observed.",
+ "model_fallback": {
+  "announced": false,
+  "observed": false
+ },
+ "status": "passed",
+ "result": "clean-with-findings",
+ "namespace": "ui.teamBridge",
+ "locale": "es",
+ "audit_id": "tb1681r2-0bfa9123c649-es",
+ "instance": "0bfa9123c649-pr1681-r2-es",
+ "session": "0bfa9123c649",
+ "integration": {
+  "pr": 1681,
+  "repo": "damianvtran/local-operator-ui",
+  "branch": "feat/team-bridge-conversation-menu",
+  "base": "7345dcbf238d334e56f102eb994b15eb5c1776f0",
+  "round": 2,
+  "scope": "fd5465dc728..129897358386",
+  "audited_head": "129897358386badeb15fcf2ddbad77ef5cbfa2bd",
+  "auditor_fix_commit": "the commit that adds this record"
+ },
+ "independence": "Independent auditor: lopdev team translation-auditor, session 0bfa9123c649. Did not translate the 2 values (they arrived in the implementer's remediation commit 129897358386 on PR #1681), wrote no English copy or code in the PR, and is a different instance from the round-1 auditor (f96f8d39d33d-pr1681). Applied only the corrections listed in findings. Same model family as the team coder (anthropic/claude-opus-5-5), separate agent instance; disclosed. No MT service used. Row written by ledger-assemble.mjs.",
+ "sha256": {
+  "es": "6730d78277bb02e4c17c0535f88201104bf62910024bba9dc45346aaaf5e4626",
+  "en": "91adbd87ec45fdb999e8dbeb6560cffb1545a7826d49fc1efada484a39608bc2"
+ },
+ "context_sha256": "2ab9c99330497a1e3e2a6345699992666d09124b8f67c4b33ad794efc8310ede",
+ "scope": {
+  "delta_kind": "Round-2 delta audit of PR #1681 (fd5465dc728..129897358386): the 2 values the round-1 remediation added (confirm.leave_body_agents for #agents; error.general_rejoin_refused, shown for both agent_not_permitted and invalid_transition/not_opted_out via generalRejoinRefused) read against en, the en context notes, the call sites (team-bridge-conversation-menu.tsx, -model.ts) and the round-1 glossary (receipts f96f8d39d33d-pr1681-*). No other value changed in the range; everything else retained from fd5465dc728.",
+  "glossary_checked": "pause → 'en pausa'/'pausa' (people.paused, reason.agents_builtin); rejoin → 'volver a'; 'its messages' → 'los mensajes de esta conversación' (round-1 ES-M1)",
+  "keys_added": [
+   "ui.teamBridge.conversation_menu.confirm.leave_body_agents",
+   "ui.teamBridge.conversation_menu.error.general_rejoin_refused"
+  ],
+  "keys_changed_by_auditor": [
+   "ui.teamBridge.conversation_menu.confirm.leave_body_agents"
+  ]
+ },
+ "findings": [
+  {
+   "id": "ES-N1",
+   "severity": "nit",
+   "keys": [
+    "ui.teamBridge.conversation_menu.confirm.leave_body_agents"
+   ],
+   "summary": "'Tu agente se queda en {channel}; pausa tu agente para sacarlo' repeats 'tu agente' in one sentence and reads translated; a clitic pronoun is what a Spanish writer uses, and 'en pausa' matches people.paused ('En pausa').",
+   "disposition": "fixed by auditor in this commit",
+   "current": "Dejarás de recibir los mensajes de esta conversación. Tu agente se queda en {channel}; pausa tu agente para sacarlo.",
+   "proposed": "Dejarás de recibir los mensajes de esta conversación. Tu agente se queda en {channel}; ponlo en pausa para sacarlo."
+  }
+ ],
+ "evidence": {
+  "record": "i18n/audits/evidence/es/ui.teamBridge/tb1681r2-0bfa9123c649-es/record.json",
+  "record_sha256": "57a504a680cc14ece5fd337a0b1df7ec69ba3ec79c15a10a876f254952180124"
+ },
+ "checks": {
+  "command": "node scripts/verify.mjs (worktree root; @formatjs/icu-messageformat-parser + intl-messageformat): whole-file key set/order and argument names equal en; delta keys composed with {channel}=isolateLtr('#agents'/'#general'), NFC, no bidi controls, {channel} exactly once, fr U+202F before ';', zh-CN no CJK/Latin space, no stray U+202F",
+  "result": "0 problem(s)",
+  "execution_log": "i18n/audits/evidence/es/ui.teamBridge/tb1681r2-0bfa9123c649-es/audit.log"
+ },
+ "terminal": true
+}

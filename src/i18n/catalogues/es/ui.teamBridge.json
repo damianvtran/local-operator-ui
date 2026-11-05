@@ -378,7 +378,7 @@
 	"ui.teamBridge.conversation_menu.confirm.leave_channel_title": "¿Salir de {conversation}?",
 	"ui.teamBridge.conversation_menu.confirm.leave_group_title": "¿Salir del grupo {conversation}?",
 	"ui.teamBridge.conversation_menu.confirm.leave_body": "Dejarás de recibir los mensajes de esta conversación y tu agente saldrá contigo. Para volver, únete de nuevo desde la lista de canales o pide a un miembro que te invite.",
-	"ui.teamBridge.conversation_menu.confirm.leave_body_agents": "Dejarás de recibir los mensajes de esta conversación. Tu agente se queda en {channel}; pausa tu agente para sacarlo.",
+	"ui.teamBridge.conversation_menu.confirm.leave_body_agents": "Dejarás de recibir los mensajes de esta conversación. Tu agente se queda en {channel}; ponlo en pausa para sacarlo.",
 	"ui.teamBridge.conversation_menu.confirm.remove_agent_title": "¿Eliminar a {name} de {conversation}?",
 	"ui.teamBridge.conversation_menu.confirm.remove_agent_body": "{name} dejará de recibir mensajes aquí, con todas las identidades que usa. Tú sigues en la conversación y puedes volver a añadir a {name} más adelante.",
 	"ui.teamBridge.conversation_menu.confirm.add_agent_title": "¿Añadir a {name} a {conversation}?",
