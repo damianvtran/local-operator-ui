@@ -416,6 +416,24 @@ export async function startModelBackend({ output }) {
 		return { status: response.status, data };
 	};
 	const performCloseOwnedCore = async () => {
+		// Persist original bounded capture state BEFORE cleanup releases senders.
+		// Attempts never include auth headers/tokens; this rig owns synthetic data.
+		mkdirSync(output, { recursive: true });
+		try {
+			writeFileSync(
+				join(output, "backend-capture-state.json"),
+				JSON.stringify(await control("state")),
+			);
+		} catch (error) {
+			writeFileSync(
+				join(output, "backend-capture-state.json"),
+				JSON.stringify({ diagnosticError: String(error) }),
+			);
+		}
+		writeFileSync(
+			join(output, "backend-diagnostic.log"),
+			logs.join("\n").slice(-64_000),
+		);
 		const receipt = { pid: child.pid, birth, root: config, clean: false };
 		try {
 			try {
@@ -640,6 +658,7 @@ function selected(capture) {
 			return {
 				...found,
 				cold: result?.cold,
+				sessionId: envelope.session_id,
 				epoch: envelope.epoch,
 				seq: envelope.seq,
 			};
@@ -660,14 +679,14 @@ export const modelUncertaintyCase = {
 			"model-before",
 			"model-unknown-1",
 			"model-unknown-2",
-			"model-stale-sse",
+			"model-b-sse-get-pending",
 			"model-settled-1",
 			"model-settled-2",
 			"model-default-saved",
 		],
 	},
 	coverage:
-		"native input/main/preload/renderer with real core; no native pre-B ModelPicker GET or cold-state coverage, historical control, or WCV compositor claim",
+		"native input/main/preload/renderer with real core; initial A consumed once, then B-SSE while picker GET pending; delayed native stale-A, pre-B ModelPicker GET, cold-state, historical control and WCV compositor NOT covered",
 	async drive(ctx) {
 		const {
 			cdp,
@@ -690,6 +709,53 @@ export const modelUncertaintyCase = {
 			assert.equal(result.armed, true, "real consumer observer is not armed");
 			assert.equal(result.fault, false, "consumer witness failed/truncated");
 			return result;
+		};
+		const consumed = async (
+			carrier,
+			capture,
+			disposition,
+			after,
+			record = true,
+		) => {
+			const authority = selected(capture);
+			assert.equal(
+				authority?.sessionId,
+				backend.sessionId,
+				"carrier is not this session",
+			);
+			assert.equal(
+				typeof authority?.epoch,
+				"string",
+				"original carrier has no epoch witness",
+			);
+			assert.equal(
+				typeof authority?.seq,
+				"number",
+				"original carrier has no seq witness",
+			);
+			let receipt;
+			await waitFor(async () => {
+				const observed = await trace();
+				receipt = observed.receipts
+					.slice(after)
+					.find(
+						(r) =>
+							r.carrier === carrier &&
+							r.sessionId === backend.sessionId &&
+							r.epoch === authority.epoch &&
+							r.seq === authority.seq &&
+							r.disposition === disposition,
+					);
+				return Boolean(receipt);
+			}, 15_000);
+			assert(
+				receipt,
+				`released ${carrier} was dropped/unconsumed; no frame substitutes for completion`,
+			);
+			// This receipt describes a transition AFTER the most recent frame,
+			// not authority already depicted by that frame.
+			if (record) stamp(`post-frame-transition:consumer-${carrier}`, receipt);
+			return receipt;
 		};
 		await trace(true);
 		// Native chat opens on SSE, not a sessions.get. Warm A through owned
@@ -726,6 +792,12 @@ export const modelUncertaintyCase = {
 			reveal?.found && reveal?.scroller,
 			`row A is not inside the sidebar scroller: ${JSON.stringify(reveal)}`,
 		);
+		await backend.control("configure", {
+			session_id: backend.sessionId,
+			hold_reads: true,
+			drop_b_ack: false,
+		});
+		const initialCursor = (await trace()).receipts.length;
 		try {
 			await press(rowA);
 		} catch (error) {
@@ -741,6 +813,22 @@ export const modelUncertaintyCase = {
 		 * (message-input.tsx; renderer-driver's own spelling), and picker rows
 		 * are `role="option"` in the picker dialog (picker-host.tsx).
 		 */
+		// Hold the ORIGINAL native subscription snapshot, then consume it once
+		// for baseline A. A no-op A->A command is not an event producer.
+		const initialA = await backend.waitCapture(
+			(c) =>
+				c.path === `/v1/desktop/sessions/${backend.sessionId}/events` &&
+				c.before_b_request &&
+				selected(c)?.model === "mock-model-a",
+		);
+		await backend.control("release", { indices: [initialA.id] });
+		const initialReceipt = await consumed(
+			"canonical-sse",
+			initialA,
+			"processed",
+			initialCursor,
+			false,
+		);
 		const input = '[data-tour-tag="chat-input-textarea"] textarea';
 		await press(input);
 		await cdp.send("Input.insertText", { text: "/model" });
@@ -794,6 +882,11 @@ export const modelUncertaintyCase = {
 		assert.equal(before.checked, "false");
 		await frame("model-before");
 		stamp("captured-before-geometry", before);
+		stamp("post-frame:initial-A-consumer", {
+			captureId: initialA.id,
+			authority: selected(initialA),
+			receipt: initialReceipt,
+		});
 		const noWrites = async () => {
 			const observed = await trace();
 			assert.equal(
@@ -809,41 +902,6 @@ export const modelUncertaintyCase = {
 				"late/early default PATCH observed",
 			);
 			assert.equal(state.commit?.durable, "mock-model-b");
-		};
-		const consumed = async (carrier, capture, disposition, after) => {
-			const authority = selected(capture);
-			assert.equal(
-				typeof authority?.epoch,
-				"string",
-				"original carrier has no epoch witness",
-			);
-			assert.equal(
-				typeof authority?.seq,
-				"number",
-				"original carrier has no seq witness",
-			);
-			let receipt;
-			await waitFor(async () => {
-				const observed = await trace();
-				receipt = observed.receipts
-					.slice(after)
-					.find(
-						(r) =>
-							r.carrier === carrier &&
-							r.sessionId === backend.sessionId &&
-							r.epoch === authority.epoch &&
-							r.seq === authority.seq &&
-							r.disposition === disposition,
-					);
-				return Boolean(receipt);
-			}, 15_000);
-			assert(
-				receipt,
-				`released ${carrier} was dropped/unconsumed; no frame substitutes for completion`,
-			);
-			// This receipt describes a transition AFTER the most recent frame,
-			// not authority already depicted by that frame.
-			stamp(`post-frame-transition:consumer-${carrier}`, receipt);
 		};
 		const fence = async (label) => {
 			await frame(label);
@@ -871,21 +929,28 @@ export const modelUncertaintyCase = {
 			hold_reads: true,
 			drop_b_ack: true,
 		});
-		assert.equal((await backend.commandA()).status, 200);
-		const stale = await backend.waitCapture(
-			(c) =>
-				c.path === `/v1/desktop/sessions/${backend.sessionId}/events` &&
-				selected(c)?.model === "mock-model-a" &&
-				c.before_b_request,
-		);
 		await press("[data-model-case-b]");
 		await wait("/could not be confirmed/i.test(document.body.innerText)");
 		await fence("model-unknown-1");
 		await fence("model-unknown-2");
-		const staleCursor = (await trace()).receipts.length;
-		await backend.control("release", { indices: [stale.id] });
-		await consumed("canonical-sse", stale, "processed", staleCursor);
-		await fence("model-stale-sse");
+		const bSse = await backend.waitCapture(
+			(c) =>
+				c.path === `/v1/desktop/sessions/${backend.sessionId}/events` &&
+				!c.before_b_request &&
+				selected(c)?.model === "mock-model-b",
+		);
+		const bAuthority = selected(bSse);
+		assert.equal(bAuthority.sessionId, backend.sessionId);
+		const commit = (await backend.state()).commit;
+		assert.equal(
+			bAuthority.epoch,
+			commit.epoch,
+			"B SSE belongs to a different session generation",
+		);
+		assert(
+			bAuthority.seq > selected(initialA).seq,
+			"B SSE must advance the baseline sequence",
+		);
 		// This is the REAL ModelPicker GET issued only AFTER unconfirmed command
 		// completion. Never replace it with a pre-B cached positive response.
 		const fresh = await backend.waitCapture(
@@ -895,6 +960,10 @@ export const modelUncertaintyCase = {
 				selected(c)?.model === "mock-model-b" &&
 				!c.before_b_request,
 		);
+		const bSseCursor = (await trace()).receipts.length;
+		await backend.control("release", { indices: [bSse.id] });
+		await consumed("canonical-sse", bSse, "processed", bSseCursor);
+		await fence("model-b-sse-get-pending");
 		await noWrites();
 		const freshCursor = (await trace()).receipts.length;
 		await backend.control("release", { indices: [fresh.id] });

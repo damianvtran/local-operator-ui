@@ -293,6 +293,7 @@ function oracleContext(mode = "happy") {
 	const receipts = [];
 	const attempts = [];
 	const payload = (model, epoch, seq) => ({
+		session_id: sid,
 		epoch,
 		seq,
 		payload: {
@@ -306,11 +307,17 @@ function oracleContext(mode = "happy") {
 		before_b_request: true,
 		body: `data: ${JSON.stringify(payload("mock-model-a", "epoch-A", 1))}`,
 	};
+	const bSse = {
+		id: 3,
+		path: `/v1/desktop/sessions/${sid}/events`,
+		before_b_request: false,
+		body: `data: ${JSON.stringify(payload("mock-model-b", "epoch-A", 2))}`,
+	};
 	const fresh = {
 		id: 2,
 		path: `/v1/desktop/sessions/${sid}`,
 		before_b_request: false,
-		body: JSON.stringify({ result: payload("mock-model-b", "epoch-B", 2) }),
+		body: JSON.stringify({ result: payload("mock-model-b", "epoch-A", 3) }),
 	};
 	let phase = "before";
 	let disabled = false;
@@ -343,8 +350,11 @@ function oracleContext(mode = "happy") {
 	const state = () => {
 		const result = {
 			attempts: attempts.map((x) => ({ ...x })),
-			commit: phase === "before" ? null : { durable: "mock-model-b" },
-			captures: [stale, ...(phase === "before" ? [] : [fresh])],
+			commit:
+				phase === "before"
+					? null
+					: { durable: "mock-model-b", epoch: "epoch-A", seq: 3 },
+			captures: [stale, ...(phase === "before" ? [] : [bSse, fresh])],
 		};
 		if (late) {
 			late = false;
@@ -539,7 +549,7 @@ function oracleContext(mode = "happy") {
 			// Host only publishes an entry after asynchronous capture completes.
 			await Promise.resolve();
 			frames.push(label);
-			if (mode === "during-stale-frame" && label === "model-stale-sse")
+			if (mode === "during-stale-frame" && label === "model-b-sse-get-pending")
 				disabled = false;
 			if (mode === "late-after-frame" && label === "model-unknown-1")
 				addPatch();
@@ -553,16 +563,26 @@ function oracleContext(mode = "happy") {
 		realBackend: {
 			sessionId: sid,
 			readTemplates: [],
-			commandA: async () => ({ status: 200 }),
+			commandA: async () => {
+				calls.push(["command-A"]);
+				assert.equal(
+					calls.filter((x) => x[0] === "command-A").length,
+					1,
+					"no-op A reselect must not be used as a fresh carrier producer",
+				);
+				return { status: 200 };
+			},
 			state: async () => state(),
 			defaultValues: async () => ({
 				hosting: "test",
 				model_name: saved ? "mock-model-b" : "mock-model",
 			}),
 			waitCapture: async (predicate) => {
-				const found = [stale, ...(phase === "before" ? [] : [fresh])].find(
-					predicate,
-				);
+				calls.push(["capture", phase]);
+				const found = [
+					stale,
+					...(phase === "before" ? [] : [bSse, fresh]),
+				].find(predicate);
 				assert(found, "actual predicate did not match a genuine fake carrier");
 				return found;
 			},
@@ -580,13 +600,28 @@ function oracleContext(mode = "happy") {
 					if (released.has(id)) continue;
 					released.add(id);
 					if (id === 1) {
+						assert.equal(
+							phase,
+							"before",
+							"initial A may be released only for baseline",
+						);
+						if (mode !== "unconsumed-initial")
+							receipts.push({
+								carrier: "canonical-sse",
+								sessionId:
+									mode === "wrong-initial-session" ? "bbbbbbbbbbbb" : sid,
+								epoch: "epoch-A",
+								seq: mode === "wrong-initial-sequence" ? 99 : 1,
+								disposition: "processed",
+							});
+					} else if (id === 3) {
 						phase = "stale";
 						if (mode !== "unconsumed-sse" && mode !== "old-receipt-only")
 							receipts.push({
 								carrier: "canonical-sse",
 								sessionId: sid,
 								epoch: "epoch-A",
-								seq: 1,
+								seq: 2,
 								disposition: "processed",
 							});
 						if (mode === "early-sse") disabled = false;
@@ -596,8 +631,8 @@ function oracleContext(mode = "happy") {
 							receipts.push({
 								carrier: "model-get",
 								sessionId: sid,
-								epoch: "epoch-B",
-								seq: 2,
+								epoch: "epoch-A",
+								seq: 3,
 								disposition: "live",
 							});
 						disabled = false;
@@ -623,6 +658,9 @@ test("actual native drive accepts only consumed SSE + real post-ACK B with expli
 	);
 });
 for (const mode of [
+	"unconsumed-initial",
+	"wrong-initial-session",
+	"wrong-initial-sequence",
 	"early-sse",
 	"during-stale-frame",
 	"unconsumed-sse",

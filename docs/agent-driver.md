@@ -847,8 +847,14 @@ discovery or bypassed in favour of the real upstream. Main/preload are unchanged
 
 Only initial cached A/B rows are seeded, with the production capture stamp and
 model serialization. Live discovery remains genuinely empty and its response is
-held. Native chat's genuine pre-B SSE is released only after B, and its real
-POST-ACK ModelPicker reconciliation GET is then released with fresh B. The model
+held. Native chat's initial live-A SSE is captured before subscription delivery,
+released ONCE, and correlated with its processed consumer receipt and DOM baseline.
+After the one B intent loses its ACK, genuine post-B SSE and the independent
+POST-ACK ModelPicker GET stay held through both unknown frames. Only B-SSE is
+released first: the default remains fenced while the picker GET is pending; that
+GET then releases live B for DOM settlement. The `model-b-sse-get-pending` frame
+replaces the former stale-A caption. **Delayed native stale-A delivery is NOT
+covered**; prior backend/component stale-projection proofs are not native pixels. The model
 picker cannot issue that GET before the awaited command: no pre-B native GET is
 invented. Cold HTTP remains separately labelled backend/component proof, **not a
 native cold-state caption or claim**. Original messages keep epoch/sequence and
