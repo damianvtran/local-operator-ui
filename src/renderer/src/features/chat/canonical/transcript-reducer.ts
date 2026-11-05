@@ -44,6 +44,7 @@ import {
 	preferBridgeFacts,
 	preferBridgeLabel,
 } from "../components/trace/bridge-row-model";
+import { profileWriteDetails } from "../components/trace/profile-save-card-model";
 import {
 	type HubReceipt,
 	type PeerSender,
@@ -6663,7 +6664,16 @@ export function applyEvent(
 				// unable-to-generate results carry it (the conflict pair included),
 				// a success result carries the last live frame's facts forward, and
 				// a budget-stripped frame keeps what the row held.
-				details: preferProgressDetails(result.details, base.details),
+				/*
+				 * A PROFILE WRITE KEEPS ITS OWN DETAILS. The progress carrier below drops
+				 * everything that is not progress-shaped, which threw away the saved/queued
+				 * receipt an `agent`/`team` result carries - and the card reads that receipt
+				 * (its `output` is prose). Narrow on purpose: the helper accepts only the
+				 * profile tools' bounded shapes, so no other row's details survive here.
+				 */
+				details:
+					profileWriteDetails(base.toolName, result.details) ??
+					preferProgressDetails(result.details, base.details),
 			});
 		}
 		case "supplement_progress": {
