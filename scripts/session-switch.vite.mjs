@@ -33,6 +33,14 @@ export default defineConfig({
 		},
 	},
 	plugins: [react(), tailwindcss()],
+	optimizeDeps: {
+		// The scripts root contains independent HTML rigs with their own aliases.
+		// Vite's default all-HTML crawl pulls those unrelated graphs into this
+		// preview and can fail before ChatPage loads. Bound only the scan ENTRY:
+		// imports reachable from the real session-switch page still resolve and
+		// fail normally; no dependency is excluded or replaced with a stub.
+		entries: [resolve(root, "scripts/session-switch.html")],
+	},
 	server: {
 		port: 5211,
 		strictPort: true,

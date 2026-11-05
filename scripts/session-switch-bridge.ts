@@ -307,6 +307,7 @@ function frontendState(
 		jobs: [],
 		todos: [],
 		wakes: [],
+		monitors: [],
 		mcp_servers: [],
 		model_catalogue: [],
 		context_tokens: 1234,

@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { test } from "node:test";
 import { build } from "esbuild";
+import { resolveConfig } from "vite";
+import previewConfig from "./session-switch.vite.mjs";
 
 // Bundle the real bridge and reducer, not a second implementation of the wire.
 const bundle = await build({
@@ -25,6 +29,27 @@ const bundle = await build({
 const m = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
+test("preview scans only its own HTML while retaining genuine dependency resolution", async () => {
+	// Resolve Vite's actual serve config without booting a server or optimizer.
+	// The exact entry is a negative control against default **/*.html scanning:
+	// no unrelated composer-alert-geometry graph should become a scan root.
+	const config = await resolveConfig(
+		{ ...previewConfig, configFile: false },
+		"serve",
+	);
+	const entry = resolve(process.cwd(), "scripts/session-switch.html");
+	assert.deepEqual(config.optimizeDeps.entries, [entry]);
+	assert.deepEqual(config.optimizeDeps.exclude ?? [], []);
+	assert.ok(readFileSync(entry, "utf8").includes('src="./session-switch.tsx"'));
+	assert.equal(
+		config.resolve.alias.find((alias) => alias.find === "@features")
+			?.replacement,
+		resolve(process.cwd(), "src/renderer/src/features"),
+	);
+	assert.equal(config.server.port, 5211);
+	assert.equal(config.server.strictPort, true);
+});
+
 const ALREADY_PERSISTED = /already persisted/;
 const short = { kind: "user", text: "Synthetic brief for attachment capture." };
 
@@ -94,6 +119,7 @@ test("owner admission coalesces the optimistic file row and retains it on histor
 	try {
 		await new Promise((resolve) => setImmediate(resolve));
 		assert.equal(frames.at(-1).type, "snapshot");
+		assert.deepEqual(frames.at(-1).payload.frontend.snapshot.monitors, []);
 		bridge.persistUser(sessionId, step, id);
 		assert.equal(frames.at(-1).payload.type, "history_delta");
 		assert.equal(state.records.length, 1);
