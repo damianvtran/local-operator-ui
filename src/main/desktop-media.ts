@@ -231,6 +231,18 @@ const mediaRequestSchema = z.discriminatedUnion("op", [
 	z
 		.object({
 			op: z.literal("team_bridge.attachment.upload"),
+			mode: z.enum(["image", "file"]).optional(),
+			fileName: z
+				.string()
+				.max(512)
+				.refine((value) => {
+					try {
+						return encodeURIComponent(value).length <= 1024;
+					} catch {
+						return false;
+					}
+				})
+				.optional(),
 			tenantId: id,
 			conversationId: id,
 			/* REQUIRED: the runtime route answers 422 without a captured-owner
@@ -474,7 +486,7 @@ function endpoint(request: DesktopMediaRequest): {
 			};
 		case "team_bridge.attachment.upload":
 			return {
-				path: `/v1/desktop/team-bridge/conversations/${request.conversationId}/attachments?${new URLSearchParams({ tenant_id: request.tenantId, expected_account_id: request.expectedAccountId })}`,
+				path: `/v1/desktop/team-bridge/conversations/${request.conversationId}/attachments?${new URLSearchParams({ tenant_id: request.tenantId, expected_account_id: request.expectedAccountId, ...(request.mode ? { mode: request.mode } : {}) })}`,
 				method: "POST",
 			};
 		case "team_bridge.owner_audit.attachment":
@@ -596,7 +608,9 @@ export async function requestDesktopMediaOutcome(
 		bytes.byteLength >
 			(request.op === "account.avatar.put"
 				? 1024 * 1024
-				: TEAM_BRIDGE_ATTACHMENT_MAX_BYTES)
+				: request.mode === "file"
+					? 25 * 1024 * 1024
+					: TEAM_BRIDGE_ATTACHMENT_MAX_BYTES)
 	) {
 		// Never sent: the hub would answer 413 for the same bytes.
 		return {
@@ -695,6 +709,13 @@ export async function requestDesktopMediaOutcome(
 						? "image/png, image/jpeg"
 						: "application/json, audio/*, image/*, application/octet-stream",
 				...(contentType ? { "Content-Type": contentType } : {}),
+				// #3363 forwards the name only in file mode; it is display content,
+				// never a filesystem path or a declared MIME/safety claim.
+				...(request.op === "team_bridge.attachment.upload" &&
+				request.mode === "file" &&
+				request.fileName
+					? { "X-Bridge-File-Name": encodeURIComponent(request.fileName) }
+					: {}),
 				Authorization: `Bearer ${token}`,
 			},
 			body,

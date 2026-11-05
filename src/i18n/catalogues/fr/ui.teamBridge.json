@@ -389,5 +389,13 @@
 	"ui.teamBridge.conversation_menu.error.not_in_general": "Votre agent n’est pas encore dans {channel} : il n’y a rien à retirer.",
 	"ui.teamBridge.conversation_menu.partial_leave.body": "Vous avez quitté {conversation}. Votre agent est toujours dans cette conversation.",
 	"ui.teamBridge.conversation_menu.partial_leave.retry_failed": "Vous avez quitté {conversation}, mais votre agent n’a toujours pas pu être retiré. Réessayez.",
-	"ui.teamBridge.conversation_menu.partial_leave.retry": "Retirer mon agent"
+	"ui.teamBridge.conversation_menu.partial_leave.retry": "Retirer mon agent",
+	"ui.teamBridge.files.staged": "Fichiers joints",
+	"ui.teamBridge.files.failed": "Échec du téléversement",
+	"ui.teamBridge.files.retry": "Réessayer le téléversement",
+	"ui.teamBridge.files.remove": "Retirer le fichier",
+	"ui.teamBridge.files.unavailable": "Les fichiers ne sont pas disponibles pour ce compte. Retirez le fichier pour envoyer du texte ou des images.",
+	"ui.teamBridge.files.add": "Joindre des fichiers",
+	"ui.teamBridge.files.no_schedule": "Les fichiers peuvent être envoyés maintenant, mais pas programmés.",
+	"ui.teamBridge.files.uploading": "Téléversement du fichier…"
 }

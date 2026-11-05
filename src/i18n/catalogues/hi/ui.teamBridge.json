@@ -389,5 +389,13 @@
 	"ui.teamBridge.conversation_menu.error.not_in_general": "आपका एजेंट अभी {channel} में नहीं है, इसलिए हटाने के लिए कुछ नहीं है।",
 	"ui.teamBridge.conversation_menu.partial_leave.body": "आपने {conversation} छोड़ दिया। आपका एजेंट अब भी इस बातचीत में है।",
 	"ui.teamBridge.conversation_menu.partial_leave.retry_failed": "आपने {conversation} छोड़ दिया, लेकिन आपका एजेंट अब भी हटाया नहीं जा सका। फिर कोशिश करें।",
-	"ui.teamBridge.conversation_menu.partial_leave.retry": "मेरा एजेंट हटाएँ"
+	"ui.teamBridge.conversation_menu.partial_leave.retry": "मेरा एजेंट हटाएँ",
+	"ui.teamBridge.files.staged": "संलग्न फ़ाइलें",
+	"ui.teamBridge.files.failed": "अपलोड विफल रहा",
+	"ui.teamBridge.files.retry": "फ़ाइल फिर से अपलोड करें",
+	"ui.teamBridge.files.remove": "फ़ाइल हटाएँ",
+	"ui.teamBridge.files.unavailable": "इस खाते के लिए फ़ाइलें उपलब्ध नहीं हैं। टेक्स्ट या चित्र भेजने के लिए फ़ाइल हटाएँ।",
+	"ui.teamBridge.files.add": "फ़ाइलें संलग्न करें",
+	"ui.teamBridge.files.no_schedule": "फ़ाइलें अभी भेजी जा सकती हैं, लेकिन शेड्यूल नहीं की जा सकतीं।",
+	"ui.teamBridge.files.uploading": "फ़ाइल अपलोड हो रही है…"
 }

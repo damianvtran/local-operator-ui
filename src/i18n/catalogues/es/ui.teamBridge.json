@@ -389,5 +389,13 @@
 	"ui.teamBridge.conversation_menu.error.not_in_general": "Tu agente todavía no está en {channel}, así que no hay nada que eliminar.",
 	"ui.teamBridge.conversation_menu.partial_leave.body": "Saliste de {conversation}. Tu agente sigue en esta conversación.",
 	"ui.teamBridge.conversation_menu.partial_leave.retry_failed": "Saliste de {conversation}, pero aún no se pudo eliminar a tu agente. Inténtalo de nuevo.",
-	"ui.teamBridge.conversation_menu.partial_leave.retry": "Eliminar a mi agente"
+	"ui.teamBridge.conversation_menu.partial_leave.retry": "Eliminar a mi agente",
+	"ui.teamBridge.files.staged": "Archivos adjuntos",
+	"ui.teamBridge.files.failed": "Error al subir",
+	"ui.teamBridge.files.retry": "Reintentar la subida",
+	"ui.teamBridge.files.remove": "Quitar archivo",
+	"ui.teamBridge.files.unavailable": "Los archivos no están disponibles para esta cuenta. Quita el archivo para enviar texto o imágenes.",
+	"ui.teamBridge.files.add": "Adjuntar archivos",
+	"ui.teamBridge.files.no_schedule": "Los archivos se pueden enviar ahora, pero no programar.",
+	"ui.teamBridge.files.uploading": "Subiendo archivo…"
 }

@@ -4001,6 +4001,12 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			/* Reply in this root message's thread; the hub validates the root. */
 			thread_root_id: id.optional(),
 			attachment_ids: teamBridgeAttachmentIds.optional(),
+			files: z
+				.array(id)
+				.min(1)
+				.max(10)
+				.refine((ids) => new Set(ids).size === ids.length, "Duplicate file")
+				.optional(),
 			mentions: teamBridgeMentionsSchema.optional(),
 		})
 		.strict(),
@@ -4913,6 +4919,20 @@ export const desktopRequestSchema = desktopRequestUnion.superRefine(
 		 * A PATCH that omits `body` keeps the stored one, so only an explicit
 		 * empty body needs a non-empty set beside it.
 		 */
+		if (request.op === "team_bridge.messages.send" && request.files) {
+			const images = request.attachment_ids ?? [];
+			if (
+				images.length + request.files.length > 10 ||
+				request.files.some((file) => images.includes(file))
+			) {
+				ctx.addIssue({
+					code: z.ZodIssueCode.custom,
+					message: "Invalid combined attachment set",
+					path: ["files"],
+				});
+			}
+		}
+
 		if (
 			request.op === "team_bridge.messages.send" ||
 			request.op === "team_bridge.scheduled.create" ||
@@ -4921,7 +4941,8 @@ export const desktopRequestSchema = desktopRequestUnion.superRefine(
 		) {
 			if (
 				request.body?.trim() === "" &&
-				(request.attachment_ids?.length ?? 0) === 0
+				(request.attachment_ids?.length ?? 0) === 0 &&
+				!(request.op === "team_bridge.messages.send" && request.files?.length)
 			) {
 				ctx.addIssue({
 					code: z.ZodIssueCode.custom,
@@ -7361,6 +7382,8 @@ export type DesktopMediaRequest =
 	 */
 	| {
 			op: "team_bridge.attachment.upload";
+			mode?: "image" | "file";
+			fileName?: string;
 			tenantId: string;
 			conversationId: string;
 			/* The captured-owner receipt the runtime now REQUIRES on these routes:
@@ -10012,6 +10035,7 @@ export function desktopEndpoint(request: DesktopRequest): {
 					...(request.attachment_ids?.length
 						? { attachment_ids: request.attachment_ids }
 						: {}),
+					...(request.files?.length ? { files: request.files } : {}),
 					// Omitted (never `[]`) when empty: the pre-mention wire, byte for byte.
 					...(request.mentions?.length ? { mentions: request.mentions } : {}),
 				},
