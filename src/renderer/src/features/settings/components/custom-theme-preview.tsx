@@ -3,6 +3,11 @@ import { AttentionBadge } from "@shared/components/ui/attention-badge";
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 
+// Keep the executable sample outside JSX so only this technical syntax is
+// exempt, never neighbouring user-facing preview labels (same rule as key examples).
+const PREVIEW_CODE_SAMPLE =
+	/* i18n: ignore JavaScript example syntax, not prose; owner appearance; keep executable sample identical across locales. */ "const x = {\n ready: true\n};";
+
 /** A compact picture of the real role/component families, not another app.
  * Inert prevents phantom tab stops. Unlike the gallery's broad preview strip,
  * this two-column composition leaves the essential colour controls in reach
@@ -77,7 +82,7 @@ export const CustomThemePreview = ({ id }: { id: string }) => {
 				</div>
 				<div className="grid min-w-0 grid-cols-2 gap-1">
 					<pre className="overflow-hidden rounded-sm bg-sunken p-1 font-mono text-meta text-token-command">
-						<code>{"const x = {\n ready: true\n};"}</code>
+						<code>{PREVIEW_CODE_SAMPLE}</code>
 					</pre>
 					<div className="min-w-0 rounded-sm bg-elevated p-1 text-meta">
 						<div className="truncate rounded-xs bg-row-hover px-1">
