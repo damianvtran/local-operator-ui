@@ -71,7 +71,12 @@ export type FixtureDocument = Required<
 };
 
 export type TranscriptStep =
-	| { kind: "user"; text: string; documents?: FixtureDocument[] }
+	| {
+			kind: "user";
+			text: string;
+			documents?: FixtureDocument[];
+			images?: Array<{ type: "image"; data: string; mime_type: string }>;
+	  }
 	| { kind: "assistant"; text: string }
 	| { kind: "tool"; name: string; output: string }
 	| {
@@ -396,6 +401,7 @@ export function historyPage(
 					content: [
 						...(step.text ? [{ type: "text", text: step.text }] : []),
 						...(step.documents ?? []),
+						...(step.images ?? []),
 					],
 				},
 			});

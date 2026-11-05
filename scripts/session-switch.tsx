@@ -25,6 +25,9 @@
  */
 
 import "./session-switch.css";
+import { resolveLanguage } from "../src/i18n/direction";
+import { setLocale } from "../src/i18n/locale";
+import { nestedUserFixture } from "./session-switch-neighbors";
 /* The app's real faces, imported by both renderer entries and by Storybook's
  * preview for the same reason: without them `font-mono` resolves to the
  * platform fallback, so a frame would be a picture of the reviewer's OS rather
@@ -123,6 +126,14 @@ function inFlightSteps(): TranscriptStep[] {
 }
 
 const SESSION_COUNT = param("sessions", 24);
+const fixtureParams = new URLSearchParams(window.location.search);
+const fixtureLocale = fixtureParams.get("locale");
+if (fixtureLocale === "fr" || fixtureLocale === "ur") {
+	setLocale(fixtureLocale);
+	const language = resolveLanguage(fixtureLocale);
+	document.documentElement.lang = language.lang;
+	document.documentElement.dir = language.dir;
+}
 /**
  * Paragraphs per user turn (`?userLines=N`); 0 keeps the one-line turn. A turn
  * past eight lines is what D2's user-message clamp exists for, so this is the
@@ -244,6 +255,13 @@ function steps(count: number): TranscriptStep[] {
 		const step = out[first];
 		if (step?.kind === "user")
 			out[first] = withCaptureAttachment(step, ATTACHMENT_MODE);
+	}
+	// Nested boundaries use the same raw user payload that the shipped reducers
+	// and ReplyPreview parse, not rendered stand-ins or injected UI handlers.
+	for (let index = 0; index < out.length; index += 1) {
+		const step = out[index];
+		if (step.kind === "user")
+			out[index] = nestedUserFixture(step, USER_EXAMPLE);
 	}
 	return out;
 }
@@ -2102,10 +2120,16 @@ const revealFixtureRows = async (): Promise<boolean> => {
  * at this point - the sidebar's list arrives from `sessions.list` a moment
  * later, and the driver waits for `ready` before timing anything.
  */
-void useCanonicalSessionsStore
-	.getState()
-	.openSession(OUTGOING)
-	.then(() => api.settle(OUTGOING))
+// Cold-admission arms leave ChatPage empty until an ACTUAL sidebar press.
+// No timer/proxy click can skip the first-row transition under observation.
+const boot =
+	fixtureParams.get("boot") === "sidebar"
+		? Promise.resolve()
+		: useCanonicalSessionsStore
+				.getState()
+				.openSession(OUTGOING)
+				.then(() => api.settle(OUTGOING));
+void boot
 	.then(() => revealFixtureRows())
 	.then((revealed) => {
 		if (revealed) api.ready = true;

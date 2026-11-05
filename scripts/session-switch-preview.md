@@ -30,7 +30,46 @@ Host selectors: `#scene` (native select), `#narrow`, `#wide`, `#reload`, `#sampl
 `#download-evidence` (actual user-click download of full sample JSON).
 The existing direct page and galleries remain available and unmodified.
 
-## Serial clock budget
+## Remaining-review closure (one serial pass, maximum 300s)
+
+Use direct host URLs, NOT the flaky native scenario select. Prefix every suffix
+below with `http://127.0.0.1:5211/session-switch-preview.html?scene=`. Retain already
+approved English/gallery/attachment observations; do not rerun them as a matrix.
+
+- **0–90s: `reopen` (U2/QA5 priority).** Fixed 90-step outgoing session, target
+  `[data-record-id="abcdef000001-e87"]` (last user row), source owner unchanged.
+  Expand its actual disclosure, record `Show less` and target ID. Use real child
+  scrolling to leave the row's render window, then return to the SAME target.
+  Evidence must show `target-not-mounted` followed by that same record ID and a
+  reconstructed expanded `Show less`, then actual collapse to cap 174 and anchor.
+  A DOM row merely offscreen is NOT remount proof. If it never unmounts under the
+  app's real scroll path, report that bounded limitation, not a fabricated pass.
+  **Do not switch sessions or reload:** canonical-transcript.tsx's viewState is
+  deliberately replaced when its session identity changes (around 4290); only a
+  row unmount under the same transcript owner can demonstrate retained state.
+- **90–145s: `cold-long`, then `cold-short`.** These boot with no session selected.
+  Through actual sidebar refs click `Workspace session 1`; pointer observation
+  re-arms before its handler. Download first-content geometry immediately. Require
+  cap174 for long and no false disclosure for short; an empty original navigation
+  run is not content evidence. The initial and first-content runs are preserved.
+- **145–205s: `fr-long`, then `ur-long`.** Real `setLocale` catalogue selection and
+  manifest-derived document lang/dir. At actual800x600 capture full focused long
+  label/disclosure collapsed and expanded; observe locale/dir in summary. Never
+  replace labels or apply an artificial RTL stylesheet.
+- **205–270s: `quote`, `seal`, `image`.** Actual reply-prefix parser, reducer-stamped
+  skill payload, and a validated tiny inline PNG through the shipped image block.
+  Use the real nested disclosure/card; capture parent cap behavior and visible
+  grouping. No file uploads, RPC image bytes or replacement attachment cards.
+- **270–300s:** download full JSON via `#download-evidence`, save unique captures,
+  read console, close owned tab, TERM exact owned Vite group and verify port closed.
+
+For every scene, use new child snapshot refs after navigation. At800x600 the parent
+iframe stays exactly sized; innerWidth/innerHeight evidence must match. Trusted
+Tab/Enter/Space use the actual child refs; never proxy or invoke handlers. Source
+and viewport are read from the host/child respectively. Full geometry is in the
+Blob download, not the compact accessibility tree. No native claims or QA waiver.
+
+## Original general-purpose serial clock budget
 
 - **0–30s**: launch once, inspect logs, open host through harness browser. Verify
   source SHA, real child 800x600 and nonblank real app. Browser console must be read.
@@ -62,7 +101,7 @@ The existing direct page and galleries remain available and unmodified.
 Sampling is armed before iframe navigation. It retains every rAF observation,
 max 180 frames / 5 seconds per run. Read-only pointer/key listeners re-arm before
 real input handlers; there is no synthetic input, focus, scroll or style change.
-The first run is retained plus five recent runs. Download full evidence before navigating
+The six-run bound protects the initial and first content-bearing runs, then retains the most recent remaining runs. Download full evidence before navigating
 or selecting a new host URL; the bounded ring is not an archival store. Full samples
 exist only in memory and a click-generated Blob download, never in the page's AX
 tree. The visible summary is capped at 2200 characters / 11 lines; it is NOT the

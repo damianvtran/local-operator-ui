@@ -5,7 +5,22 @@ const SCROLLABLE = /auto|scroll/;
 export const MAX_SAMPLES = 180;
 export const MAX_SAMPLE_MS = 5000;
 export const SIZES = { narrow: [800, 600], wide: [1280, 900] };
-export const SCENES = ["long", "short", "only", "echo", "code", "links"];
+export const SCENES = [
+	"long",
+	"short",
+	"only",
+	"echo",
+	"code",
+	"links",
+	"reopen",
+	"cold-long",
+	"cold-short",
+	"fr-long",
+	"ur-long",
+	"quote",
+	"seal",
+	"image",
+];
 
 export function sceneUrl(scene) {
 	if (!SCENES.includes(scene)) throw new Error("Unknown preview scenario");
@@ -19,7 +34,27 @@ export function sceneUrl(scene) {
 	else if (scene === "echo") query.set("attachment", "echo");
 	else query.set("attachment", "prose");
 	if (["long", "echo", "links"].includes(scene)) query.set("userLines", "24");
-	if (["code", "links"].includes(scene)) query.set("userExample", scene);
+	if (["code", "links", "quote", "seal", "image"].includes(scene))
+		query.set("userExample", scene);
+	if (
+		[
+			"reopen",
+			"cold-long",
+			"fr-long",
+			"ur-long",
+			"quote",
+			"seal",
+			"image",
+		].includes(scene)
+	)
+		query.set("userLines", "24");
+	if (scene.startsWith("cold-")) query.set("boot", "sidebar");
+	if (scene === "fr-long") query.set("locale", "fr");
+	if (scene === "ur-long") query.set("locale", "ur");
+	if (scene === "reopen") {
+		query.set("steps", "90");
+		query.set("outgoingSteps", "90");
+	}
 	return `session-switch.html?${query}`;
 }
 
@@ -29,12 +64,16 @@ function rect(element) {
 	return { x, y, width, height };
 }
 
-export function readFrame(frame, expected) {
+export function readFrame(frame, expected, targetRecord = null) {
 	const win = frame.contentWindow;
 	const doc = frame.contentDocument;
 	if (!win || !doc || !win.location.pathname.endsWith("/session-switch.html"))
 		return { state: "navigating" };
-	const row = doc.querySelector('[data-record-kind="user"]');
+	const row = doc.querySelector(
+		targetRecord
+			? `[data-record-kind="user"][data-record-id="${targetRecord}"]`
+			: '[data-record-kind="user"]',
+	);
 	const intrinsic = row?.querySelector("[data-lo-user-turn-intrinsic]");
 	const cap = intrinsic?.parentElement;
 	const control = cap?.nextElementSibling?.matches("button[aria-expanded]")
@@ -55,7 +94,14 @@ export function readFrame(frame, expected) {
 		}
 	}
 	return {
-		state: row ? "content-observed" : "no-user-row",
+		state: row
+			? "content-observed"
+			: targetRecord
+				? "target-not-mounted"
+				: "no-user-row",
+		targetRecord,
+		language: doc.documentElement?.lang,
+		direction: doc.documentElement?.dir,
 		viewport: {
 			width: win.innerWidth,
 			height: win.innerHeight,
@@ -136,7 +182,10 @@ export function startSamples(read, publish, clock) {
  * Publishing those as visible text stalls browser snapshots and hides controls.
  * The summary has fixed line/sequence bounds; download remains lossless. */
 export function evidenceSummary(source, runs) {
-	const firstRun = runs[0];
+	const firstRun =
+		runs.find((run) =>
+			run.samples?.some((sample) => sample.state === "content-observed"),
+		) ?? runs[0];
 	const initial = firstRun?.samples ?? [];
 	const firstIndex = initial.findIndex(
 		(sample) => sample.state === "content-observed",
@@ -154,14 +203,14 @@ export function evidenceSummary(source, runs) {
 	}
 	const lines = [
 		`Source: ${source}`,
-		`Runs: ${runs.length} (initial + latest five retained); latest scenario: ${latest?.scenario ?? "none"}`,
+		`Runs: ${runs.length} (initial/first-content protected; six-run bound); latest scenario: ${latest?.scenario ?? "none"}`,
 		`Viewport expected: ${JSON.stringify(latest?.expectedViewport ?? null)}; actual: ${JSON.stringify(last?.viewport ?? null)}`,
 		`First content: index=${firstIndex}, elapsed=${first?.elapsedMs ?? "none"}ms; cap height/max=${first?.cap?.height ?? "none"}/${first?.maxHeight ?? "none"}`,
 		`Initial cap sequence (first six changes): ${heights.map((height) => height.value).join(", ") || "none observed"}`,
 		`Latest: state=${last?.state ?? "pending"}; done=${latest?.done ?? false}; observed stable frames=${latest?.stableFrames ?? 0}`,
 		`Last cap: ${JSON.stringify(last?.cap ?? null)}; max=${last?.maxHeight ?? "none"}; expanded=${last?.expanded ?? "none"}`,
 		`Focus: ${JSON.stringify(last?.focused ?? null)}; selection length=${last?.selectionLength ?? 0}`,
-		`Row: ${last?.recordId ?? "none"}; session: ${last?.session ?? "none"}`,
+		`Row: ${last?.recordId ?? "none"}; target: ${last?.targetRecord ?? "first user"}; session: ${last?.session ?? "none"}; locale/dir: ${last?.language ?? "?"}/${last?.direction ?? "?"}`,
 		`Scroll (first three ancestors): ${JSON.stringify(last?.scrolls?.slice(0, 3) ?? [])}`,
 		"Geometry observations only; full samples are available via Download full sample JSON.",
 	];
@@ -196,12 +245,24 @@ if (typeof document !== "undefined") {
 		runs.push(entry);
 		// Keep the initial navigation's early samples plus the latest five runs.
 		// Resizing or focusing must not overwrite the first-content evidence.
-		if (runs.length > 6) runs.splice(1, 1);
+		if (runs.length > 6) {
+			const firstContentRun = runs.find((run) =>
+				run.samples?.some((sample) => sample.state === "content-observed"),
+			);
+			const removable = runs.findIndex(
+				(run, index) => index > 0 && run !== firstContentRun,
+			);
+			runs.splice(removable, 1);
+		}
 		cancel = startSamples(
 			() =>
 				frame.contentDocument === retiredDocument
 					? { state: "navigating" }
-					: readFrame(frame, expected),
+					: readFrame(
+							frame,
+							expected,
+							scene.value === "reopen" ? "abcdef000001-e87" : null,
+						),
 			(run) => {
 				Object.assign(entry, run);
 				document.querySelector("#evidence").textContent = evidenceSummary(
@@ -262,6 +323,10 @@ if (typeof document !== "undefined") {
 			true,
 		);
 		doc.addEventListener("keydown", () => sample("real keyboard input"), true);
+		doc.addEventListener("scroll", () => sample("real scroll"), {
+			capture: true,
+			passive: true,
+		});
 	});
 	frame.width = String(size[0]);
 	frame.height = String(size[1]);

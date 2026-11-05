@@ -12,6 +12,18 @@ import {
 	startSamples,
 } from "./session-switch-preview.mjs";
 
+test("direct missing-case URLs select real cold admission, locales and same-owner target", () => {
+	const params = (scene) =>
+		new URL(sceneUrl(scene), "http://fixture/").searchParams;
+	assert.equal(params("cold-long").get("boot"), "sidebar");
+	assert.equal(params("cold-short").get("userLines"), null);
+	assert.equal(params("ur-long").get("locale"), "ur");
+	assert.equal(params("fr-long").get("locale"), "fr");
+	assert.equal(params("reopen").get("outgoingSteps"), "90");
+	for (const example of ["quote", "seal", "image"])
+		assert.equal(params(example).get("userExample"), example);
+});
+
 const UNKNOWN = /Unknown preview scenario/;
 test("host URLs preserve real ChatPage fixture and exact browsing-context sizes", () => {
 	assert.deepEqual(SIZES.narrow, [800, 600]);
@@ -20,7 +32,10 @@ test("host URLs preserve real ChatPage fixture and exact browsing-context sizes"
 		const url = new URL(sceneUrl(scene), "http://127.0.0.1:5211/");
 		assert.equal(url.pathname, "/session-switch.html");
 		assert.equal(url.searchParams.get("sessions"), "3");
-		assert.equal(url.searchParams.get("outgoingSteps"), "1");
+		assert.equal(
+			url.searchParams.get("outgoingSteps"),
+			scene === "reopen" ? "90" : "1",
+		);
 	}
 	assert.throws(() => sceneUrl("arbitrary"), UNKNOWN);
 	assert.equal(

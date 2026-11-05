@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { test } from "node:test";
+import { crc32, inflateSync } from "node:zlib";
 import { build } from "esbuild";
 import { resolveConfig } from "vite";
 import previewConfig from "./session-switch.vite.mjs";
@@ -11,6 +12,8 @@ const bundle = await build({
 	stdin: {
 		contents: `
 			export * from "./scripts/session-switch-attachments";
+			export { nestedUserFixture, TINY_PNG } from "./scripts/session-switch-neighbors";
+			export { parseReplies } from "./src/renderer/src/features/chat/utils/reply-utils";
 			export { historyPage, installSwitchBridge } from "./scripts/session-switch-bridge";
 			export { applyEvent, appendPendingUser, EMPTY_TRANSCRIPT } from "./src/renderer/src/features/chat/canonical/transcript-reducer";
 		`,
@@ -52,6 +55,44 @@ test("preview scans only its own HTML while retaining genuine dependency resolut
 
 const ALREADY_PERSISTED = /already persisted/;
 const short = { kind: "user", text: "Synthetic brief for attachment capture." };
+
+test("nested examples use shipped reply, seal and inline-image parsing", () => {
+	const long = {
+		kind: "user",
+		text: "Synthetic long paragraph.\n\n".repeat(24),
+	};
+	const png = Buffer.from(m.TINY_PNG, "base64");
+	let position = 8;
+	while (position < png.length) {
+		const size = png.readUInt32BE(position);
+		const chunk = png.subarray(position + 4, position + 8 + size);
+		assert.equal(crc32(chunk), png.readUInt32BE(position + 8 + size));
+		if (chunk.subarray(0, 4).toString() === "IDAT")
+			assert.equal(inflateSync(chunk.subarray(4)).length, 264);
+		position += size + 12;
+	}
+	const quote = m.nestedUserFixture(long, "quote");
+	assert.equal(m.parseReplies(quote.text).replies.length, 1);
+	assert.equal(m.parseReplies(quote.text).remainingContent, long.text.trim());
+	for (const example of ["seal", "image"]) {
+		const step = m.nestedUserFixture(long, example);
+		const row = m.historyPage("abcdef000001", [step]).entries[0];
+		const state = m.applyEvent(
+			m.EMPTY_TRANSCRIPT,
+			{
+				type: "history_delta",
+				messages: [{ ...row.payload, id: row.id, ts: row.ts }],
+			},
+			1000,
+		);
+		const record = state.records[0];
+		if (example === "seal") assert.equal(record.skill?.name, "capture-demo");
+		else {
+			assert.equal(record.images.length, 1);
+			assert.equal(record.images[0].mimeType, "image/png");
+		}
+	}
+});
 
 test("attachment modes are explicit, bounded and leave the default untouched", () => {
 	for (const query of ["", "?attachment=bad", "?attachment=100000"]) {
