@@ -4,7 +4,6 @@ import { useI18nLocale } from "@shared/i18n/use-locale";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { definitionOf, themes } from "@shared/themes";
 import type { ResolvedAppearance } from "@shared/themes/appearance";
-import type { ThemePalette } from "@shared/themes/palette-contract";
 import { useAuthoredPalette } from "@shared/themes/use-authored-palette";
 import { useResolvedAppearance } from "@shared/themes/use-resolved-appearance";
 import type { FC, ReactNode } from "react";
@@ -18,7 +17,6 @@ import {
 } from "react";
 import type { AccentRef } from "../../../../../shared/theme-engine/accent.mjs";
 import type { PaletteRecord } from "../../../../../shared/theme-engine/accent.mjs";
-import { contrastCandidate } from "../../../../../shared/theme-engine/contrast.mjs";
 import {
 	ACCENT_ROLES,
 	PRESET_ORDER,
@@ -29,7 +27,6 @@ import {
 } from "../../../../../shared/theme-engine/picker.mjs";
 import type { WindowGlassState } from "../../../../../shared/window-glass";
 import { AccentRow } from "./accent-row";
-import { previewGlassPaint } from "./appearance-preview-glass";
 import { AppearancePreviewStrip } from "./appearance-preview-strip";
 import { ContrastControl } from "./contrast-control";
 
@@ -167,19 +164,6 @@ export const AppearancePreviewSection: FC<{
 }> = ({ glass }) => {
 	const resolved = useResolvedAppearance();
 	const draft = usePreviewStyle(resolved);
-	const authored = useAuthoredPalette().palette;
-	const paint = useMemo(() => {
-		// Match previewCss's candidate and committed accent overlay, not the
-		// document palette that intentionally stays verified during a drag.
-		const palette =
-			draft === null || !authored
-				? resolved.palette
-				: {
-						...(draft === 0 ? authored : contrastCandidate(authored, draft)),
-						...accentOverlay(resolved),
-					};
-		return previewGlassPaint(glass, palette as ThemePalette);
-	}, [glass, resolved, authored, draft]);
 	return (
 		<div
 			/* The section owns its divider in normal flow. Pinning this sample
@@ -187,7 +171,7 @@ export const AppearancePreviewSection: FC<{
 			className="border-hairline border-b pb-3"
 		>
 			<AppearancePreviewStrip
-				glassPaint={paint}
+				glass={glass}
 				previewTheme={draft === null ? undefined : PREVIEW_IDS.strip}
 			/>
 		</div>

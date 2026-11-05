@@ -177,50 +177,84 @@ const activeGlass = {
 	},
 };
 
+const rolesOf = (palette) => ({
+	canvas: palette.canvas,
+	surface: palette.surface,
+	elevated: palette.elevated,
+	sunken: palette.sunken,
+	ink: palette.ink,
+	inkMuted: palette.inkMuted,
+	inkDim: palette.inkDim,
+	borderControl: palette.borderControl,
+});
+
 test("preview glass reuses production palette floors, not document alphas or saved enablement", () => {
 	const palette = resolveAppearance(store.getState()).palette;
+	const roles = rolesOf(palette);
 	const expected = glassPaintFor({
 		...activeGlass.settings,
 		mechanism: "vibrancy",
 		scheme: palette.mode,
-		floors: glassFloorsForPalette(palette),
+		floors: glassFloorsForPalette(roles),
 	});
-	assert.deepEqual(previewGlassPaint(activeGlass, palette), expected);
-	assert.equal(previewGlassPaint(null, palette), null);
+	assert.deepEqual(
+		previewGlassPaint(activeGlass, roles, palette.mode),
+		expected,
+	);
+	assert.equal(previewGlassPaint(null, roles, palette.mode), null);
+	assert.equal(previewGlassPaint(activeGlass, null, palette.mode), null);
 	assert.equal(
-		previewGlassPaint({ ...activeGlass, active: false }, palette),
+		previewGlassPaint({ ...activeGlass, active: false }, roles, palette.mode),
 		null,
 	);
 	assert.equal(
 		previewGlassPaint(
 			{ ...activeGlass, capability: { supported: false, mechanism: "none" } },
-			palette,
+			roles,
+			palette.mode,
 		),
 		null,
 	);
 	assert.equal(
-		previewGlassPaint({ ...activeGlass, restartRequired: true }, palette),
+		previewGlassPaint(
+			{ ...activeGlass, restartRequired: true },
+			roles,
+			palette.mode,
+		),
 		null,
 	);
 	const frosted = previewGlassPaint(
 		{ ...activeGlass, settings: { ...activeGlass.settings, intensity: 0 } },
-		palette,
+		roles,
+		palette.mode,
 	);
 	assert.notEqual(
 		frosted.vars["--lo-glass-a-canvas"],
+		expected.vars["--lo-glass-a-canvas"],
+	);
+	// A local draft re-derives from ITS palette, so the alphas cannot be the
+	// committed composition's resent as-is.
+	const draft = previewGlassPaint(
+		activeGlass,
+		rolesOf(contrastCandidate(palette, 100)),
+		palette.mode,
+	);
+	assert.notEqual(
+		draft.vars["--lo-glass-a-canvas"],
 		expected.vars["--lo-glass-a-canvas"],
 	);
 });
 
 test("restart-pending preview matches the production hook's unapplied ON and cleared OFF", () => {
 	const palette = resolveAppearance(store.getState()).palette;
+	const roles = rolesOf(palette);
 	// A Windows-style enable pending native reconstruction cannot paint glass.
 	// Exercise the actual hook, not a second implementation of its guard.
 	applyGlassState(null);
 	const pendingOn = { ...activeGlass, restartRequired: true };
 	applyGlassState(pendingOn);
 	assert.equal(document.documentElement.hasAttribute("data-glass"), false);
-	assert.equal(previewGlassPaint(pendingOn, palette), null);
+	assert.equal(previewGlassPaint(pendingOn, roles, palette.mode), null);
 
 	applyGlassState(activeGlass);
 	assert.equal(document.documentElement.dataset.glass, "sidebar canvas pane");
@@ -236,63 +270,28 @@ test("restart-pending preview matches the production hook's unapplied ON and cle
 		document.documentElement.style.getPropertyValue("--lo-glass-a-canvas"),
 		"",
 	);
-	assert.equal(previewGlassPaint(pendingOff, palette), null);
+	assert.equal(previewGlassPaint(pendingOff, roles, palette.mode), null);
 });
 
-test("active and draft preview use local production paint across schemes and coverage", async () => {
+test("the sample paints solid when no palette role resolves in this host", async () => {
+	// jsdom resolves no custom properties, so the read-back is the helper's null
+	// branch: the same solid fallback an unsupported machine shows.
 	for (const theme of ["obsidian", "localOperatorLight"]) {
 		for (const coverage of ["full", "sidebars"]) {
-			const glass = {
+			await mount(theme, 0, {
 				...activeGlass,
 				settings: { ...activeGlass.settings, coverage },
-			};
-			await mount(theme, 0, glass);
+			});
 			const preview = document.querySelector("[data-appearance-preview]");
-			const palette = resolveAppearance(store.getState()).palette;
-			const expected = previewGlassPaint(glass, palette);
-			assert.equal(preview.dataset.previewGlass, expected.kinds);
-			for (const [name, value] of Object.entries(expected.vars))
-				assert.equal(preview.style.getPropertyValue(name), value);
-			const caption = preview.lastElementChild.textContent;
-			assert.equal(caption, "Sample backdrop");
-			const slider = document.querySelector("[data-contrast-slider]");
-			document.documentElement.style.setProperty("--lo-glass-a-canvas", ".999");
-			await fire(
-				slider,
-				new MouseEvent("pointerdown", { bubbles: true, button: 0 }),
-			);
-			await input(slider, "100");
-			await frame();
-			const draftPaint = previewGlassPaint(
-				glass,
-				contrastCandidate(palette, 100),
-			);
-			assert.equal(
-				store.getState().contrast[palette.mode],
-				0,
-				"draft is not committed",
-			);
+			assert.equal(preview.dataset.previewGlass, "");
+			assert.equal(preview.getAttribute("style"), null);
+			assert.equal(preview.lastElementChild.textContent, "Sample backdrop");
 			assert.equal(
 				preview.querySelector("[data-preview-samples]").hasAttribute("inert"),
 				true,
 			);
-			for (const [name, value] of Object.entries(draftPaint.vars))
-				assert.equal(
-					preview.style.getPropertyValue(name),
-					value,
-					`${theme} ${coverage} ${name}`,
-				);
-			assert.equal(
-				preview.lastElementChild.textContent,
-				caption,
-				"caption never toggles height with state",
-			);
-			await fire(window, new MouseEvent("pointerup", { bubbles: true }));
-			await frame();
-			await frame();
 		}
 	}
-	document.documentElement.style.removeProperty("--lo-glass-a-canvas");
 });
 
 test("preview and its separator remain in flow with intrinsic compact samples", async () => {

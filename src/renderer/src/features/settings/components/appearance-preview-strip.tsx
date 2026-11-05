@@ -1,10 +1,19 @@
 import { AttentionBadge } from "@shared/components/ui/attention-badge";
+import { documentScheme } from "@shared/hooks/use-window-glass";
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { ArrowUp, CircleAlert, CircleCheck, TriangleAlert } from "lucide-react";
 import type { CSSProperties, FC } from "react";
-import type { GlassPaint } from "../../../../../shared/window-glass";
+import { useLayoutEffect, useRef, useState } from "react";
+import type {
+	GlassPaint,
+	WindowGlassState,
+} from "../../../../../shared/window-glass";
+import {
+	previewGlassPaint,
+	readPreviewPaletteRoles,
+} from "./appearance-preview-glass";
 import "./appearance-preview-strip.css";
 
 /**
@@ -37,11 +46,35 @@ export const AppearancePreviewStrip: FC<{
 	/** A scoped `[data-theme]` id to paint instead of the document's palette. */
 	previewTheme?: string;
 	className?: string;
-	glassPaint?: GlassPaint | null;
-}> = ({ previewTheme, className, glassPaint }) => {
+	glass?: WindowGlassState | null;
+}> = ({ previewTheme, className, glass }) => {
 	useI18nLocale();
+	/* The sample's alphas follow ITS painted palette, so a drag candidate is not
+	 * described by the document's last verified composition. */
+	const ref = useRef<HTMLElement | null>(null);
+	const [glassPaint, setGlassPaint] = useState<GlassPaint | null>(null);
+	useLayoutEffect(() => {
+		/* The scoped id is the trigger, not an input: a new candidate block repaints
+		   the roles this effect reads back. */
+		void previewTheme;
+		const apply = () =>
+			setGlassPaint(
+				previewGlassPaint(
+					glass,
+					readPreviewPaletteRoles(ref.current),
+					documentScheme(),
+				),
+			);
+		apply();
+		/* `previewCss` writes the candidate block in the PARENT's layout effect, which
+		   runs after this child's; one frame later the painted values are the ones to
+		   measure. An alpha-only update, so nothing reflows. */
+		const frame = requestAnimationFrame(apply);
+		return () => cancelAnimationFrame(frame);
+	}, [glass, previewTheme]);
 	return (
 		<section
+			ref={ref}
 			aria-label={t("ui.settings.appearance.layers.preview_label")}
 			data-appearance-preview=""
 			data-theme={previewTheme}
