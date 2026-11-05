@@ -876,6 +876,24 @@ export function glassPaintFor(input: {
 			glassOverlayAlpha({ intensity: input.intensity, scheme: input.scheme }),
 		),
 		/*
+		 * THE TWO MIXES THAT CARRY A MARKED PANEL'S MOST FRAGILE INKS AND ITS OWN
+		 * BOUNDARY. Neither is an alpha: both are constants derived per scheme
+		 * (`overlayInkMix`, `overlayEdgeMix` in `derive-glass-floors.mjs`), and the rule
+		 * in `index.css` is the only place they are used. They are set here rather than
+		 * written into the stylesheet because a mix has to be RE-DERIVED when the palette
+		 * set changes, and a constant baked into CSS cannot be - the same reason
+		 * `--lo-glass-control-mix` is injected.
+		 *
+		 * THEY DO NOT MOVE WITH THE SLIDER, unlike every alpha beside them: a mix is a
+		 * colour, not an opacity. The mix derived against the clearest end also clears
+		 * its floor at the opaque end (as the ground densifies it returns toward the
+		 * ink's own pole, so contrast rises), and a travelling mix would only make a
+		 * destructive red drift lighter as the user moved a slider. One mix, held
+		 * against the worst end.
+		 */
+		"--lo-glass-overlay-ink-mix": String(floors.overlayInkMix[input.scheme]),
+		"--lo-glass-overlay-edge-mix": String(floors.overlayEdgeMix[input.scheme]),
+		/*
 		 * The LANE wash: a well behind veiled blocks cannot be an ink overlay (the
 		 * veil is already the one ink layer under the card's text), so it is a
 		 * palette role at an alpha that TRACKS the slider. The page's own alpha is

@@ -90,6 +90,31 @@ const NAMED_PANELS = {
 };
 
 /**
+ * THE PORTALLED PRIMITIVES THAT MUST **NOT** WEAR THE MARKER: the two that sit on
+ * the MODAL SCRIM.
+ *
+ * Design round 1's D1 is the reason this list exists rather than the marker simply
+ * being deleted. A floating panel's floor is derived against what a panel actually
+ * floats over - the app's own column. A dialog and a sheet composite their ground
+ * over the scrim, the one backdrop the derivation never measured, and the alpha
+ * costs the semantic inks their AA floor there: measured on the delete-conversation
+ * dialog in the light palette, `danger` reads 5.83:1 on the opaque plate, 3.73:1 at
+ * the default intensity and 3.36:1 at the slider floor, with every semantic register
+ * at or under 3.80:1. A modal already occludes the desktop it would be showing
+ * through, so the translucency buys nothing and costs legibility.
+ *
+ * REVERSED FROM THE OBVIOUS ENTRY, which is why it is asserted in BOTH directions: a
+ * modal that starts carrying the marker again fails here with the measurement
+ * attached, rather than silently regressing to the state design round 1 caught.
+ */
+const SCRIM_PANELS = {
+	"dialog.tsx":
+		"a modal sits on the scrim, so its ground is the one backdrop the overlay floor was not derived against - it keeps the opaque `elevated` role (design round 1, D1)",
+	"sheet.tsx":
+		"a sheet is a modal too, on the same scrim and the same measured loss of the semantic inks' floor (design round 1, D1)",
+};
+
+/**
  * THE SECOND DERIVATION: the floating panels that are not primitives at all.
  *
  * The portal scan above is exact but narrow - it only sees `shared/components/ui`.
@@ -307,6 +332,12 @@ test("O-1 every portalled primitive's panel carries the floating-layer marker", 
 			PORTAL_RENDERERS.includes(known),
 			`${known} renders a portal but the scan stopped seeing it`,
 		);
+	/* A scrim entry that no longer renders a portal is a stale exemption. */
+	for (const name of Object.keys(SCRIM_PANELS))
+		assert.ok(
+			PORTAL_RENDERERS.includes(name),
+			`${name} is named as a scrim surface but no longer renders a portal; drop the entry`,
+		);
 	for (const name of PORTAL_RENDERERS) {
 		const source = read(`${UI_DIR}/${name}`);
 		/*
@@ -334,6 +365,15 @@ test("O-1 every portalled primitive's panel carries the floating-layer marker", 
 			panels.length + tooltipPanel.length > 0,
 			`${name}: no panel element found by either anchor; the scan is looking in the wrong shape of file`,
 		);
+		if (SCRIM_PANELS[name]) {
+			for (const tag of [...panels, ...tooltipPanel])
+				assert.equal(
+					tag.text.includes('data-glass-overlay=""'),
+					false,
+					`${name}: this surface is a modal on the scrim and must stay OPAQUE - ${SCRIM_PANELS[name]}. Marking it again reopens the sub-AA semantic inks design round 1 measured`,
+				);
+			continue;
+		}
 		for (const tag of [...panels, ...tooltipPanel])
 			assert.ok(
 				tag.text.includes('data-glass-overlay=""'),
@@ -420,6 +460,34 @@ test("O-3 one rule paints the layer, gated on the root, with no element opacity"
 		rule[2],
 		/--color-ink-dim:\s*var\(--color-ink-muted\);/,
 		"the floating panel must remap its dim text register to the muted one: unmapped it measures 3.62:1 dark / 3.59:1 light at the panel's floor, under the 4.5 the app holds that register to",
+	);
+	/*
+	 * THE SEMANTIC REGISTERS, rebound in the same rule (design round 1, D1). Every one
+	 * of the five is text on this layer somewhere - a destructive menu item, a result
+	 * link, a changelog link - and each measures 3.03-3.66:1 (dark) / 3.23-3.33:1
+	 * (light) at the floor over the worst backdrop unrebound, under the 4.5 the flat
+	 * contract holds them to. The fill cannot pay for them: that solve needs alpha 1.00
+	 * (dark) / 0.82 (light), which is the opaque plate this layer exists to replace.
+	 */
+	for (const role of ["danger", "success", "warning", "info"])
+		assert.match(
+			rule[2],
+			new RegExp(
+				`--color-${role}:\\s*color-mix\\(\\s*in srgb,\\s*var\\(--lo-ink\\)\\s*calc\\(\\s*var\\(--lo-glass-overlay-ink-mix,\\s*0\\)\\s*\\*\\s*100%\\s*\\)\\s*,\\s*var\\(--lo-${role}\\)\\s*\\);`,
+			),
+			`the panel must step --color-${role} toward ink by the derived overlayInkMix: unrebound it is a mid-tone meaning colour on a mid-tone ground and drops under 4.5:1 at the slider's floor`,
+		);
+	/*
+	 * THE BOUNDARY IS A ROLE, not the fill's own colour (design round 1, D2). The
+	 * hairline sat on the panel's fill at 1.03:1 dark / 1.18:1 light, so the edge did
+	 * no separating and the shadow carried the layer alone; the fill step could not do
+	 * it either (-2.2 L* dark over the model's under-window grey, and `elevated` is the
+	 * darker role in the dark palettes, so no alpha lifts the panel above its column).
+	 */
+	assert.match(
+		rule[2],
+		/border-color:\s*color-mix\(\s*in srgb,\s*var\(--lo-ink\)\s*calc\(\s*var\(--lo-glass-overlay-edge-mix,\s*0\)\s*\*\s*100%\s*\)\s*,\s*var\(--lo-hairline\)\s*\);/,
+		"the panel's boundary must be its own derived role stepped off the hairline: the hairline alone measures 1.03:1 dark / 1.18:1 light against the panel's own fill and does not separate it",
 	);
 	/* The scrim is a deliberate non-member: it covers the whole window and is a role
 	 * (`bg-scrim`), not a ground that floats over the app. */

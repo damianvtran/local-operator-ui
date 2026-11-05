@@ -42,6 +42,8 @@ import {
 	GLASS_INKS,
 	GLASS_INK_FLOOR,
 	GLASS_LANE_STEP,
+	GLASS_OVERLAY_EDGE_FLOOR,
+	GLASS_OVERLAY_INKS,
 	GLASS_ROLES,
 	GLASS_STATE_ALPHA,
 	GLASS_STATE_DIM_FLOOR,
@@ -61,7 +63,9 @@ import {
 	deriveBlockVeil as sharedderiveBlockVeil,
 	deriveControlMix as sharedderiveControlMix,
 	deriveLaneWash as sharedderiveLaneWash,
+	deriveOverlayEdgeMix as sharedderiveOverlayEdgeMix,
 	deriveOverlayFloor as sharedderiveOverlayFloor,
+	deriveOverlayInkMix as sharedderiveOverlayInkMix,
 } from "../src/shared/glass-derivation.mjs";
 export {
 	BACKDROP_GRAY,
@@ -73,6 +77,8 @@ export {
 	GLASS_BLOCK_VEIL_STEP,
 	GLASS_STATE_STEP,
 	GLASS_LANE_STEP,
+	GLASS_OVERLAY_EDGE_FLOOR,
+	GLASS_OVERLAY_INKS,
 	LANE_ALPHA_CEILING,
 	LANE_ROLES,
 	GLASS_STATE_DIM_FLOOR,
@@ -93,6 +99,10 @@ export const deriveLaneWash = (floors) =>
 export const deriveBandFloor = () => sharedderiveBandFloor(loadPalettes());
 export const deriveOverlayFloor = (floors) =>
 	sharedderiveOverlayFloor(loadPalettes(), floors);
+export const deriveOverlayInkMix = (floors, overlayFloor) =>
+	sharedderiveOverlayInkMix(loadPalettes(), floors, overlayFloor);
+export const deriveOverlayEdgeMix = (floors, overlayFloor) =>
+	sharedderiveOverlayEdgeMix(loadPalettes(), floors, overlayFloor);
 export const deriveControlMix = (floors) =>
 	sharedderiveControlMix(floors, loadPalettes());
 
@@ -100,6 +110,9 @@ export const deriveControlMix = (floors) =>
  * `/tmp`) must answer the same, and `scripts/entry-point.test.mjs` enforces it. */
 if (isEntryPoint(import.meta.url)) {
 	const derived = derive();
+	/* The floating layer's floor is derived first: both mixes are measured against
+	 * the ground it produces. */
+	const overlay = deriveOverlayFloor(derived);
 	if (!process.argv.includes("--check")) {
 		console.log(
 			JSON.stringify(
@@ -109,7 +122,9 @@ if (isEntryPoint(import.meta.url)) {
 					laneWash: deriveLaneWash(derived),
 					controlMix: deriveControlMix(derived),
 					bandFloor: deriveBandFloor(),
-					overlayFloor: deriveOverlayFloor(derived),
+					overlayFloor: overlay,
+					overlayInkMix: deriveOverlayInkMix(derived, overlay),
+					overlayEdgeMix: deriveOverlayEdgeMix(derived, overlay),
 					stateAlpha: GLASS_STATE_ALPHA,
 				},
 				null,
@@ -147,7 +162,6 @@ if (isEntryPoint(import.meta.url)) {
 					`band floor ${scheme} is ${file.bandFloor?.[scheme]} but the palettes need ${band[scheme]} for the count to clear the ${GLASS_INK_FLOOR} text floor over the worst content - re-derive, never hand-lower it`,
 				);
 			}
-		const overlay = deriveOverlayFloor(derived);
 		for (const scheme of ["dark", "light"])
 			if ((file.overlayFloor?.[scheme] ?? 0) < overlay[scheme]) {
 				bad++;
@@ -155,6 +169,25 @@ if (isEntryPoint(import.meta.url)) {
 					`overlay floor ${scheme} is ${file.overlayFloor?.[scheme]} but the palettes need ${overlay[scheme]} for a panel's ink to clear the ${GLASS_INK_FLOOR} text floor over the worst content above the clearest column - re-derive, never hand-lower it`,
 				);
 			}
+		/*
+		 * THE TWO MIXES ARE ASSERTED IN BOTH DIRECTIONS, unlike the alphas. An alpha
+		 * below the derived floor is a legibility bug and an alpha above it is a
+		 * preference, but a mix BELOW the derived one is the bug and one ABOVE it is also
+		 * wrong: it would leave the semantic hue or the edge stronger than the ground
+		 * asked for, which is the drift `controlMix` is a constant to prevent. So the
+		 * committed value must EQUAL the derivation.
+		 */
+		for (const [key, mix] of [
+			["overlayInkMix", deriveOverlayInkMix(derived, overlay)],
+			["overlayEdgeMix", deriveOverlayEdgeMix(derived, overlay)],
+		])
+			for (const scheme of ["dark", "light"])
+				if (file[key]?.[scheme] !== mix[scheme]) {
+					bad++;
+					console.error(
+						`${key} ${scheme} is ${file[key]?.[scheme]} but the palettes derive ${mix[scheme]} - re-derive, and never hand-pick a mix`,
+					);
+				}
 		const lane = deriveLaneWash(committed);
 		for (const scheme of ["dark", "light"])
 			if (

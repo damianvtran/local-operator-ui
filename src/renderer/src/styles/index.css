@@ -3055,6 +3055,93 @@ html[data-glass~="canvas"] [data-glass-lane] {
  * and every panel keeps the opaque `bg-elevated` its component declares.
  */
 html[data-glass] [data-glass-overlay] {
+	/*
+	 * THE MEANING COLOURS ARE TEXT HERE TOO (design round 1, D1).
+	 *
+	 * The rebinding above fixes the third BODY ink. The palette's semantic registers
+	 * are the other half of the same problem and were left out of it: a destructive
+	 * menu item is `text-danger` (`dropdown-menu.tsx`, `context-menu.tsx`), a link in
+	 * a search result or a changelog entry is `text-accent` (`settings-search.tsx`,
+	 * `update-notification.tsx`), and the flat contract already holds every one of
+	 * them to the 4.5 ink floor. On this ground they lose it - measured from the
+	 * palettes at the slider's floor, the worst semantic register reads 3.03:1 dark /
+	 * 3.23:1 light against the panel over the extreme backdrop, and dialogs measured
+	 * 3.36-3.80:1 on real pixels before they were taken off this tier.
+	 *
+	 * WHY THE FILL IS NOT RAISED FOR THEM, the way `ink-dim`'s failure was answered
+	 * there: a meaning colour sits in the MIDDLE of the lightness range by necessity,
+	 * and the floating panel's ground does not - over the palette's own ground the
+	 * panel is dark, over the extreme backdrop it rises to mid-tone. A mid-tone ink on
+	 * a mid-tone ground is the one case opacity cannot fix from above: solving it
+	 * needs alpha 1.00 for the dark half of the table and 0.82 for the light one, i.e.
+	 * the panel stops being a material. `overlayInkMix` is the measured answer instead
+	 * - each register mixed toward `ink` by the smallest constant that holds 4.5:1 at
+	 * the floor over every palette of the scheme (0.65 dark / 0.60 light).
+	 *
+	 * THE COST, STATED: this is one constant for the whole subtree, so a destructive
+	 * item is quieter on glass than on the opaque plate even where the ground could
+	 * have carried the authored red. CSS cannot condition a rebind on what is painted
+	 * behind the panel, and quiet everywhere beats illegible somewhere.
+	 *
+	 * WHY `accent` IS NOT IN THIS SET, though it is text here too (a result link in
+	 * `settings-search.tsx`, a changelog link in the update card). The accent role is
+	 * the ONE dual-use token in the palette: it is an ink AND the primary action's
+	 * FILL (`button.tsx`: `primary: bg-accent text-on-accent`), and there are 165
+	 * `bg-accent` sites app-wide. A subtree rebind cannot tell the two apart, so
+	 * mixing accent toward ink would recolour every primary button face inside a
+	 * panel - 0.60 toward ink in the light scheme, i.e. `#644AC9` to near-black -
+	 * which is an identity regression the contrast fix has no right to buy. Closing
+	 * accent's text case needs it split into an ink token and a fill token, or the two
+	 * link sites moved to ink-with-accent-underline; both are their own change, and
+	 * the deferral is recorded on the PR rather than hidden here.
+	 */
+	--color-danger: color-mix(
+		in srgb,
+		var(--lo-ink) calc(var(--lo-glass-overlay-ink-mix, 0) * 100%),
+		var(--lo-danger)
+	);
+	--color-success: color-mix(
+		in srgb,
+		var(--lo-ink) calc(var(--lo-glass-overlay-ink-mix, 0) * 100%),
+		var(--lo-success)
+	);
+	--color-warning: color-mix(
+		in srgb,
+		var(--lo-ink) calc(var(--lo-glass-overlay-ink-mix, 0) * 100%),
+		var(--lo-warning)
+	);
+	--color-info: color-mix(
+		in srgb,
+		var(--lo-ink) calc(var(--lo-glass-overlay-ink-mix, 0) * 100%),
+		var(--lo-info)
+	);
+	/*
+	 * THE BOUNDARY IS ITS OWN ROLE (design round 1, D2).
+	 *
+	 * The fill step used to separate this panel from the column under it, and measured
+	 * over the model's under-window grey it does not: -2.2 L* in the dark scheme,
+	 * +1.4..+2.1 over white in the light one, i.e. at or under the threshold where a
+	 * fill step reads as a step - and it cannot be repaired by density, because the
+	 * `elevated` ROLE is darker than the column it floats over in the dark palettes
+	 * ((47,42,31) against (49,48,45)), so no alpha puts the panel above its own column.
+	 * What was left carrying the layer was the shadow alone, while the hairline landed
+	 * ON the panel's own fill: 1.03:1 dark / 1.18:1 light, a boundary of nothing.
+	 *
+	 * So the edge is stepped toward `ink` by the derived constant - enough to clear
+	 * 1.5:1 against the panel's own ground at both ends of the slider, which is the
+	 * band the system's strongest existing divider (`hairlineStrong` against
+	 * `elevated`, 1.34 dark / 1.87 light) occupies. Not the 3:1 structural floor: that
+	 * is a CONTROL's edge, and a panel is not a control.
+	 *
+	 * The update card is the one marked surface with no hairline to step (its class is
+	 * `bg-elevated shadow-overlay`, no border); its boundary remains the shadow, and
+	 * giving it a border is a layout decision for that surface rather than this rule.
+	 */
+	border-color: color-mix(
+		in srgb,
+		var(--lo-ink) calc(var(--lo-glass-overlay-edge-mix, 0) * 100%),
+		var(--lo-hairline)
+	);
 	/* THE ONE INK REBINDING (see "THE DIM REGISTER COLLAPSES" above). It is here, in
 	 * the same rule as the fill, so the panel's ground and the ink that has to read on
 	 * it cannot be changed apart: a later edit that repaints this surface without the

@@ -161,10 +161,14 @@ import {
 	GLASS_INKS,
 	GLASS_INK_FLOOR,
 	GLASS_LANE_STEP,
+	GLASS_OVERLAY_EDGE_FLOOR,
+	GLASS_OVERLAY_INKS,
 	GLASS_ROLES,
 	GLASS_STATE_DIM_FLOOR,
 	LANE_ALPHA_CEILING,
 	derive as deriveGlassFloors,
+	deriveOverlayEdgeMix,
+	deriveOverlayInkMix,
 	composite as glassComposite,
 	glassEdge,
 	gray as glassGray,
@@ -2529,6 +2533,103 @@ for (const row of ROW_STATE_MEASURED_SHORTFALL) {
 			}
 		}
 	}
+	const overlayAlphaAt = (floor, intensity) =>
+		Math.round(
+			(Math.max(LANE_ALPHA_CEILING, floor) -
+				(intensity / 100) * (Math.max(LANE_ALPHA_CEILING, floor) - floor)) *
+				100,
+		) / 100;
+	/*
+	 * THE SEMANTIC INKS AND THE PANEL'S OWN BOUNDARY (design round 1, D1 and D2).
+	 *
+	 * The body inks above are only half of what a marked panel carries. A destructive
+	 * menu item is `text-danger`, a result link is `text-accent`: five meaning colours
+	 * the flat contract already floors at 4.5:1 as inks, and none of which the fill can
+	 * carry on this tier (the solve needs alpha 1.00 dark / 0.82 light - the opaque
+	 * plate). So each is measured AS THE RULE PAINTS IT: the palette's role mixed
+	 * toward `ink` by the committed `overlayInkMix`, held to the text floor at both
+	 * ends of the slider, over every palette.
+	 *
+	 * The boundary is the same shape at its own floor: the hairline stepped toward ink
+	 * by `overlayEdgeMix`, held to `GLASS_OVERLAY_EDGE_FLOOR` (1.5:1) against the
+	 * panel's own ground - the band the system's strongest shipped divider occupies,
+	 * not the 3:1 a CONTROL's edge is held to.
+	 *
+	 * BOTH MIXES MUST BE THE DERIVED ONES, not merely enough: a hand-picked mix is the
+	 * drift this table exists to make impossible, so the committed value is compared to
+	 * the solver's own answer for the same palettes.
+	 *
+	 * `accent` IS MEASURED NOWHERE HERE, and that is a recorded deferral rather than an
+	 * oversight: it is the palette's one dual-use role (an ink and the primary action's
+	 * fill), so a subtree rebind cannot lift its text case without recolouring every
+	 * primary button face inside a panel. The numbers and the two ways to close it are
+	 * on the PR; nothing in this gate should read as clearing it.
+	 */
+	const derivedInkMix = deriveOverlayInkMix(
+		committed.alphaFloor,
+		committed.overlayFloor,
+	);
+	const derivedEdgeMix = deriveOverlayEdgeMix(
+		committed.alphaFloor,
+		committed.overlayFloor,
+	);
+	for (const [key, derived] of [
+		["overlayInkMix", derivedInkMix],
+		["overlayEdgeMix", derivedEdgeMix],
+	])
+		for (const scheme of ["dark", "light"])
+			if (committed[key]?.[scheme] !== derived[scheme])
+				fail(
+					`the floating overlay's ${key} for ${scheme} is ${committed[key]?.[scheme]} but the palettes derive ${derived[scheme]} - re-derive, never hand-pick a mix`,
+				);
+	const semanticMin = {};
+	for (const { id, palette } of palettes) {
+		const scheme = glassSchemeOf(palette);
+		const inkMix = committed.overlayInkMix[scheme];
+		const edgeMix = committed.overlayEdgeMix[scheme];
+		let backing = 1;
+		for (const tier of Object.keys(committed.alphaFloor))
+			backing = Math.min(
+				backing,
+				committed.alphaFloor[tier][scheme]?.canvas ?? 1,
+			);
+		const beneath = glassComposite(
+			palette.canvas,
+			backing,
+			scheme === "dark" ? "#ffffff" : "#000000",
+		);
+		for (const end of OVERLAY_ENDS) {
+			const panel = glassComposite(
+				palette.elevated,
+				overlayAlphaAt(committed.overlayFloor[scheme], end.intensity),
+				beneath,
+			);
+			for (const role of GLASS_OVERLAY_INKS) {
+				/* The rule's own `color-mix`: `ink` at `inkMix` over the palette's role. */
+				const painted = glassComposite(palette.ink, inkMix, palette[role]);
+				const r = glassRatio(painted, panel);
+				const key = `${role} ${scheme}`;
+				if (semanticMin[key] === undefined || r < semanticMin[key])
+					semanticMin[key] = r;
+				if (r < GLASS_INK_FLOOR)
+					authoredRun.fail(
+						`${id}: the floating overlay (${scheme}) ${role} on the panel ${end.label} is ${r2(r)}:1 after the derived ink mix, floor ${GLASS_INK_FLOOR}`,
+					);
+			}
+			const edge = glassComposite(palette.ink, edgeMix, palette.hairline);
+			const er = glassRatio(edge, panel);
+			const edgeKey = `edge ${scheme}`;
+			if (semanticMin[edgeKey] === undefined || er < semanticMin[edgeKey])
+				semanticMin[edgeKey] = er;
+			if (er < GLASS_OVERLAY_EDGE_FLOOR)
+				authoredRun.fail(
+					`${id}: the panel border on a marked surface (${scheme}) ${end.label} is ${r2(er)}:1 against the panel, floor ${GLASS_OVERLAY_EDGE_FLOOR} - the boundary cannot rest on the shadow alone`,
+				);
+		}
+	}
+	console.log(
+		`Window glass round 3: the floating overlay's semantic inks after the derived mix (${committed.overlayInkMix.dark} dark / ${committed.overlayInkMix.light} light) - worst ${GLASS_OVERLAY_INKS.map((role) => `${role} ${r2(Math.min(semanticMin[`${role} dark`] ?? 0, semanticMin[`${role} light`] ?? 0))}`).join(", ")}; boundary ${r2(semanticMin["edge dark"] ?? 0)} dark / ${r2(semanticMin["edge light"] ?? 0)} light at floor ${GLASS_OVERLAY_EDGE_FLOOR} (mix ${committed.overlayEdgeMix.dark} / ${committed.overlayEdgeMix.light}).`,
+	);
 	const ends = OVERLAY_ENDS.map((end) => end.label).join(" and ");
 	console.log(
 		`Window glass round 3: the floating overlay over ${overlayPalettes} palettes ${ends} - worst ink/muted dark ${r2(overlayMin["80 dark ink"] ?? 0)}/${r2(overlayMin["80 dark inkMuted"] ?? 0)} and ${r2(overlayMin["transparency dark ink"] ?? 0)}/${r2(overlayMin["transparency dark inkMuted"] ?? 0)}, light ${r2(overlayMin["80 light ink"] ?? 0)}/${r2(overlayMin["80 light inkMuted"] ?? 0)} and ${r2(overlayMin["transparency light ink"] ?? 0)}/${r2(overlayMin["transparency light inkMuted"] ?? 0)}; ${overlayMin.failures ?? 0} palette-end-register measurements under ${GLASS_INK_FLOOR}.`,

@@ -47,6 +47,9 @@ const GLASS_VARS = [
 	/* The floating layer's own alpha; see `glassOverlayAlpha` in
 	 * `src/shared/window-glass.ts` for why it is not the elevated rung. */
 	"--lo-glass-a-overlay",
+	/* The two mixes that carry the floating layer's semantic inks and its edge. */
+	"--lo-glass-overlay-ink-mix",
+	"--lo-glass-overlay-edge-mix",
 	"--lo-glass-a-lane",
 	"--lo-glass-lane-tone",
 	"--lo-glass-a-field",

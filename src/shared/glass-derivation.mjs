@@ -38,6 +38,50 @@ export const GLASS_INK_FLOOR = 4.5;
 export const GLASS_EDGE_FLOOR = 3;
 
 /**
+ * THE PANEL BOUNDARY'S OWN FLOOR, and why it is not `GLASS_EDGE_FLOOR`.
+ *
+ * The 3:1 floor is the app's STRUCTURAL edge - the sole boundary of an input or an
+ * outlined button, drawn in `borderControl`. A floating panel's hairline is not that
+ * element: the design system's own strongest divider, `hairlineStrong` against
+ * `elevated`, measures 1.34:1 on a dark palette and 1.87:1 on a light one, and its
+ * ordinary hairline 1.24 / 1.47. Holding the panel edge at 3:1 would paint every
+ * menu with a line stronger than any border this app ships - a third kind of edge,
+ * invented to settle a fill-step argument.
+ *
+ * 1.5 IS THE CONVENTION FOR TWO ADJACENT SURFACES STILL READING AS TWO (the same
+ * order as WCAG's 3:1 for a component boundary, applied one step down because this
+ * is a plate's edge and not a control's), and it lands the derived edge in the
+ * band `hairlineStrong` already occupies. That is the whole claim being made: on
+ * the states where the fill step collapsed, the boundary is a hairline as strong as
+ * the strongest one the system already ships, rather than the shadow's alone.
+ */
+export const GLASS_OVERLAY_EDGE_FLOOR = 1.5;
+
+/**
+ * THE SEMANTIC REGISTERS THE FLOATING LAYER CARRIES AS TEXT, and the reason they
+ * are not simply `GLASS_INKS`.
+ *
+ * `ink`/`inkMuted` are the panel's body inks; these five are the palette's meaning
+ * colours, and they render as text on a marked panel exactly as the body inks do:
+ * a destructive menu item is `text-danger` (`dropdown-menu.tsx`, `context-menu.tsx`),
+ * a link in a search result or a changelog entry is `text-accent`
+ * (`settings-search.tsx`, `update-notification.tsx`). The flat contract already
+ * floors every one of them at 4.5:1 as an ink (`theme-engine/contrast.mjs`), so on
+ * a floating panel they are held to the same floor rather than treated as
+ * decoration.
+ *
+ * THEY ARE NOT IN `deriveOverlayFloor`'s SOLVER, and that is deliberate: see
+ * `deriveOverlayInkMix` for the measurement that ruled the fill out.
+ *
+ * `accent` IS THE ONE THAT IS NOT HERE, although it is text on the same layer. It is
+ * the palette's only dual-use role - an ink and the primary action's fill - so a
+ * subtree rebind would recolour 165 `bg-accent` sites inside a panel, every primary
+ * button face among them. Its text case is deferred on the PR with the measurement;
+ * `scripts/contrast-contract.mjs` reports it and does not claim it.
+ */
+export const GLASS_OVERLAY_INKS = ["danger", "success", "warning", "info"];
+
+/**
  * STATES AND FIELDS ARE AN INK OVERLAY ON THE GLASS, not the palette's opaque tint.
  *
  * The palette's `rowHover` / `rowSelected` are flat tints authored to sit on an
@@ -478,13 +522,31 @@ export function deriveBandFloor(palettes) {
  * ink overlay on top of the alpha here - which is what keeps keyboard navigation
  * legible at every slider position.
  */
+/** The least opaque column the app can draw under a floating panel: the floor's own
+ * worst case, in one place so the floor, the ink mix and the edge mix cannot drift. */
+export function overlayBacking(floors, scheme) {
+	let backing = 1;
+	for (const tier of Object.keys(floors))
+		backing = Math.min(backing, floors[tier][scheme]?.canvas ?? 1);
+	return backing;
+}
+
+/** The ground a floating panel paints: `elevated` at `alpha` over the clearest
+ * column, which is itself over the scheme's extreme desktop. */
+export function overlayGround(palette, alpha, floors, scheme) {
+	const backdrop = scheme === "dark" ? "#ffffff" : "#000000";
+	return composite(
+		palette.elevated,
+		alpha,
+		composite(palette.canvas, overlayBacking(floors, scheme), backdrop),
+	);
+}
+
 export function deriveOverlayFloor(palettes, floors) {
 	const out = {};
 	for (const scheme of ["dark", "light"]) {
 		/* The least opaque column the app can draw under the portal. */
-		let backing = 1;
-		for (const tier of Object.keys(floors))
-			backing = Math.min(backing, floors[tier][scheme]?.canvas ?? 1);
+		const backing = overlayBacking(floors, scheme);
 		/* The extreme the ink contrasts against, as in `deriveBandFloor`. */
 		const backdrop = scheme === "dark" ? "#ffffff" : "#000000";
 		let need = 0;
@@ -501,6 +563,126 @@ export function deriveOverlayFloor(palettes, floors) {
 						break;
 				}
 				need = Math.max(need, Math.round(Math.min(a, 1) * 100) / 100);
+			}
+		}
+		out[scheme] = Math.round(need * 100) / 100;
+	}
+	return out;
+}
+
+/**
+ * THE SEMANTIC INKS' OWN MIX ON THE FLOATING LAYER, per scheme.
+ *
+ * THE MEASUREMENT THAT RULED OUT THE COLUMN AFFAIR. The obvious answer is the one
+ * the dim ink got: put the semantic inks in `deriveOverlayFloor`'s set and let the
+ * floor rise until they pass. It does not survive the numbers. Every meaning colour
+ * sits in the middle of the lightness range - it has to, or it would stop reading as
+ * that colour - and the floating panel's ground does not: over the palette's own
+ * dark ground the panel is dark, over the extreme backdrop (a white one behind a
+ * dark theme, a black one behind a light one) it rises to the middle of the range,
+ * and a mid-tone ink on a mid-tone ground is the one combination no opacity can fix
+ * from above. Solving it gives a floor of 1.00 for the light half of the palette
+ * table's registers and 0.82 for the light scheme, i.e. the panel stops being a
+ * material at all - the slab this section exists to remove, arrived at from the
+ * other end.
+ *
+ * SO THE TRADE IS AT THE INK AGAIN, the one `ink-dim` already makes: each meaning
+ * colour is mixed toward `ink` by the smallest constant that holds 4.5:1 on the
+ * panel at the floor, over every palette of the scheme. The hue survives; the
+ * saturation and the lightness move to whichever pole the ground can carry. That
+ * is the same move the flat system makes when it steps `borderControl` toward ink,
+ * and it is the move a translucent surface has to make: on glass the semantic
+ * register loses its vivid end, exactly as the dim register loses its step.
+ *
+ * THE COST IS STATED RATHER THAN HIDDEN: this is one constant applied to the whole
+ * panel subtree, so a destructive item is quieter on glass than on the opaque plate
+ * even where the ground would have carried the authored red (a dark panel over a
+ * dark desktop). A rebind cannot be conditioned on the backdrop - CSS has no such
+ * query - and the alternative is a sub-AA destructive label on the states that do
+ * occur. Quiet everywhere beats illegible somewhere.
+ *
+ * DERIVED AGAINST THE FLOOR, not the default: the slider's floor is where the
+ * ground is clearest and the ink is worst, and every denser position is easier.
+ */
+export function deriveOverlayInkMix(palettes, floors, overlayFloor) {
+	const out = {};
+	for (const scheme of ["dark", "light"]) {
+		let need = 0;
+		for (const { palette } of palettes) {
+			if (schemeOf(palette) !== scheme) continue;
+			const ground = overlayGround(
+				palette,
+				overlayFloor[scheme],
+				floors,
+				scheme,
+			);
+			for (const role of GLASS_OVERLAY_INKS) {
+				let m = 0;
+				/* 0.05 steps, the same granularity as `deriveControlMix`. */
+				for (; m <= 1.0001; m += 0.05)
+					if (
+						ratio(composite(palette.ink, m, palette[role]), ground) >=
+						GLASS_INK_FLOOR
+					)
+						break;
+				need = Math.max(need, Math.round(Math.min(m, 1) * 100) / 100);
+			}
+		}
+		out[scheme] = Math.round(need * 100) / 100;
+	}
+	return out;
+}
+
+/**
+ * THE PANEL'S EDGE: the hairline stepped toward `ink` until the boundary does not
+ * rest on the shadow alone (design round 1, D2).
+ *
+ * WHY THE FILL CANNOT DO THIS JOB. The floating layer's separation used to be its
+ * fill step against the column under it, and measured over the model's under-window
+ * grey that step is -2.2 L* in the dark scheme and +1.4..+2.1 over white in the
+ * light one: below the threshold where a fill step reads as a step, and inverted on
+ * a mid-tone desktop in dark. It cannot be repaired by raising the alpha either,
+ * because the step is relative to an arbitrary backdrop: a denser panel converges on
+ * the `elevated` ROLE, and in the dark palettes that role is DARKER than the column
+ * it floats over - `elevated` (47,42,31) against `surface` (49,48,45) - so no opacity
+ * puts the panel above the column it came from.
+ *
+ * WHAT ACTUALLY SEPARATES A PLATE is its edge, and the edge on a marked panel was
+ * the hairline landing on the panel's own fill: 1.03:1 dark / 1.18:1 light against
+ * it, i.e. no boundary of its own. Stepping the hairline toward `ink` by a derived
+ * constant gives every panel a 1px line that clears the 3:1 structural floor against
+ * its own ground - the same floor `controlMix` holds for a control's edge, applied
+ * to the boundary that now carries the layer instead of the fill step.
+ *
+ * DERIVED AGAINST THE TWO ENDS THE CONTRACT MEASURES - the default 80 and the
+ * floor - and not against intensity 0. At 0 the panel is 0.96 and already reads as
+ * the opaque plate whose hairline the design system ships today (1.19:1 dark /
+ * 1.44:1 light against that ground, accepted there and unchanged by this row); the
+ * edge exists to carry the states where the panel has actually become a material.
+ */
+export function deriveOverlayEdgeMix(palettes, floors, overlayFloor) {
+	const out = {};
+	for (const scheme of ["dark", "light"]) {
+		const floor = overlayFloor[scheme];
+		/* `LANE_ALPHA_CEILING` is the veil ceiling this module owns (the same 0.96
+		 * `GLASS_ALPHA_CEILING` mirrors in `window-glass.ts`); it is the alpha at
+		 * slider 0, which is where every overlay's ramp starts. */
+		const top = Math.max(LANE_ALPHA_CEILING, floor);
+		/* The default first, then maximum transparency: the rule's own arithmetic. */
+		const alphas = [Math.round((top - 0.8 * (top - floor)) * 100) / 100, floor];
+		let need = 0;
+		for (const { palette } of palettes) {
+			if (schemeOf(palette) !== scheme) continue;
+			for (const alpha of alphas) {
+				const ground = overlayGround(palette, alpha, floors, scheme);
+				let m = 0;
+				for (; m <= 1.0001; m += 0.05)
+					if (
+						ratio(composite(palette.ink, m, palette.hairline), ground) >=
+						GLASS_OVERLAY_EDGE_FLOOR
+					)
+						break;
+				need = Math.max(need, Math.round(Math.min(m, 1) * 100) / 100);
 			}
 		}
 		out[scheme] = Math.round(need * 100) / 100;
@@ -702,13 +884,19 @@ export function glassFloorsForPalette(palette) {
 	}
 	if (!laneWash)
 		throw new Error("palette roles cannot form a readable transparent lane");
+	/* AFTER the lane's canvas search, not before: raising a canvas floor moves the
+	 * least opaque column the panel composites onto, and the floating layer's floor
+	 * (and the two mixes derived from it) must answer the column the app presents. */
+	const overlayFloor = deriveOverlayFloor(palettes, alphaFloor);
 	const table = {
 		alphaFloor,
 		blockVeil,
 		laneWash,
 		controlMix: deriveControlMix(alphaFloor, palettes),
 		bandFloor: deriveBandFloor(palettes),
-		overlayFloor: deriveOverlayFloor(palettes, alphaFloor),
+		overlayFloor,
+		overlayInkMix: deriveOverlayInkMix(palettes, alphaFloor, overlayFloor),
+		overlayEdgeMix: deriveOverlayEdgeMix(palettes, alphaFloor, overlayFloor),
 		stateAlpha,
 	};
 	paletteTables.set(key, table);
