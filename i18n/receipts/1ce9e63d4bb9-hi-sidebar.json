@@ -1,0 +1,339 @@
+{
+	"instance": "1ce9e63d4bb9-hi-sidebar",
+	"auditor": "i18n-auditor",
+	"model": "radient/auto",
+	"model_provenance": "Session primary anthropic/claude-opus-5-5 failed on provider quota and fell back openai/gpt-6.1-sol -> kimi/k3.1-pro -> radient/auto; every read, check and receipt byte in this audit was produced on that final radient/auto resolution. No model performed any translation or back-translation.",
+	"locale": "hi",
+	"namespace": "ui.chat.sidebar",
+	"audit_date": "2026-11-05",
+	"task": "Independent audit of the final bytes of this contribution: ten new keys across seven locales, three of them corrected since the previous audit.",
+	"worktree": "~/local-operator-ui/.worktrees/i18n-sidebar-literals",
+	"head_reviewed": "257ad02237a1ea7b8676efea55d76f89bb145ee4",
+	"head_at_write": "2cdbf215d7bea01aff156e8dbd5bddb5343684bd",
+	"base": "65116989dc9",
+	"heads_equivalence": {
+		"all_audited_files_identical": true,
+		"files_compared": 16,
+		"note": "The branch was rebuilt while this audit ran. Every audited catalogue file is byte-identical at both heads, so these hashes describe the bytes on disk; see the manifest for the per-file comparison."
+	},
+	"independence": "This run translated none of these values and implemented none of this change. It read the English source, the en context sidecars, sibling keys in the same catalogue and the runtime's own ICU library, then judged every value itself.",
+	"keys_audited": 9,
+	"keys": [
+		"ui.chat.sidebar.row_menu.hint",
+		"ui.chat.sidebar.row_menu.hint_mac",
+		"ui.chat.sidebar.row.search_beyond",
+		"ui.chat.sidebar.row.recent",
+		"ui.chat.sidebar.row.not_sent_suffix",
+		"ui.chat.sidebar.row.unread_suffix",
+		"ui.chat.sidebar.row.silent_remedy",
+		"ui.chat.sidebar.catalogue.show_more",
+		"ui.chat.sidebar.catalogue.show_more_chats"
+	],
+	"en_path": "src/i18n/catalogues/en/ui.chat.sidebar.json",
+	"target_path": "src/i18n/catalogues/hi/ui.chat.sidebar.json",
+	"sha256": {
+		"en": "d1796cf86e2c2dde5f0dce93c8d5abceaf3ab09c2d44f9ff8ba42ac290fe3558",
+		"hi": "9572ba44f1f28b1340e2ef7507580e98612f0b01a6a320ea2118dd1f5810a833"
+	},
+	"status": "passed",
+	"result": "clean",
+	"findings": [],
+	"finding_counts": {
+		"blocker": 0,
+		"major": 0,
+		"minor": 0,
+		"nit": 0
+	},
+	"observations": [
+		{
+			"severity": "INFO",
+			"id": "hi-O1",
+			"point": "The corrected silent_remedy register and grammar",
+			"detail": "\"/stop अगर यह चुप रहे।\" — '/stop' literal (U+002F + ASCII 'stop'), danda U+0964 retained, and चुप रहे is the plain register the neighbouring remedies use (es 'si sigue en silencio', vi 'nếu vẫn im lặng') where the previous चुप्पी बनी रहे was literary. यह + रहे agrees masculine singular with the implied subject (session/agent), which is the Hindi default with no overt head noun. The inverted conditional (main clause first, अगर-clause second) is the pattern Hindi UI copy uses for terse hints; no change requested."
+		}
+	],
+	"checks": {
+		"values": {
+			"ui.chat.sidebar.row_menu.hint": "राइट-क्लिक करें या इसकी कार्रवाइयाँ देखने के लिए Shift+F10 दबाएँ।",
+			"ui.chat.sidebar.row_menu.hint_mac": "राइट-क्लिक करें या इसकी कार्रवाइयाँ देखने के लिए Shift+F10 (अधिकांश Mac कीबोर्ड पर Fn के साथ) दबाएँ।",
+			"ui.chat.sidebar.row.search_beyond": "खोज से मिला, यहाँ सूचीबद्ध चैट से परे",
+			"ui.chat.sidebar.row.recent": "हालिया",
+			"ui.chat.sidebar.row.not_sent_suffix": ", अभी नहीं भेजा गया",
+			"ui.chat.sidebar.row.unread_suffix": ", अपठित",
+			"ui.chat.sidebar.row.silent_remedy": "/stop अगर यह चुप रहे।",
+			"ui.chat.sidebar.catalogue.show_more": "{hidden, plural, one {{hidden, number, ::group-off} और दिखाएँ} other {{hidden, number, ::group-off} और दिखाएँ}}",
+			"ui.chat.sidebar.catalogue.show_more_chats": "{add, plural, one {{add, number, ::group-off} और चैट दिखाएँ} other {{add, number, ::group-off} और चैट दिखाएँ}}"
+		},
+		"icu": {
+			"show_more": {
+				"compiled": true,
+				"bracesBalanced": true,
+				"argument": "hidden",
+				"declaredCategories": [
+					"one",
+					"other"
+				],
+				"intlCategories": [
+					"one",
+					"other"
+				],
+				"categoriesEqual": true,
+				"groupOffInEveryArm": true,
+				"armCount": 2,
+				"formatted": {
+					"0": "0 और दिखाएँ",
+					"1": "1 और दिखाएँ",
+					"2": "2 और दिखाएँ",
+					"3": "3 और दिखाएँ",
+					"5": "5 और दिखाएँ",
+					"11": "11 और दिखाएँ",
+					"21": "21 और दिखाएँ",
+					"22": "22 और दिखाएँ",
+					"25": "25 और दिखाएँ",
+					"101": "101 और दिखाएँ",
+					"1000": "1000 और दिखाएँ",
+					"12345": "12345 और दिखाएँ",
+					"1000000": "1000000 और दिखाएँ"
+				}
+			},
+			"show_more_chats": {
+				"compiled": true,
+				"bracesBalanced": true,
+				"argument": "add",
+				"declaredCategories": [
+					"one",
+					"other"
+				],
+				"intlCategories": [
+					"one",
+					"other"
+				],
+				"categoriesEqual": true,
+				"groupOffInEveryArm": true,
+				"armCount": 2,
+				"formatted": {
+					"0": "0 और चैट दिखाएँ",
+					"1": "1 और चैट दिखाएँ",
+					"2": "2 और चैट दिखाएँ",
+					"3": "3 और चैट दिखाएँ",
+					"5": "5 और चैट दिखाएँ",
+					"11": "11 और चैट दिखाएँ",
+					"21": "21 और चैट दिखाएँ",
+					"22": "22 और चैट दिखाएँ",
+					"25": "25 और चैट दिखाएँ",
+					"101": "101 और चैट दिखाएँ",
+					"1000": "1000 और चैट दिखाएँ",
+					"12345": "12345 और चैट दिखाएँ",
+					"1000000": "1000000 और चैट दिखाएँ"
+				}
+			}
+		},
+		"composition": {
+			"parts": {
+				"ui.chat.sidebar.row.not_sent_suffix": {
+					"value": ", अभी नहीं भेजा गया",
+					"firstCodepoint": "U+002C",
+					"secondCodepoint": "U+0020",
+					"localeComma": true,
+					"oneSpaceAfter": true,
+					"noDoubleSpace": true,
+					"noNbsp": true
+				},
+				"ui.chat.sidebar.row.unread_suffix": {
+					"value": ", अपठित",
+					"firstCodepoint": "U+002C",
+					"secondCodepoint": "U+0020",
+					"localeComma": true,
+					"oneSpaceAfter": true,
+					"noDoubleSpace": true,
+					"noNbsp": true
+				}
+			},
+			"composed": {
+				"statusOnly": "हालिया",
+				"statusPlusNotSent": "हालिया, अभी नहीं भेजा गया",
+				"statusPlusUnread": "हालिया, अपठित",
+				"searchBeyondPlusUnread": "खोज से मिला, यहाँ सूचीबद्ध चैट से परे, अपठित",
+				"statusPlusBothPlusArchived": "हालिया, अभी नहीं भेजा गया, अपठित, संग्रहित",
+				"withSilentRemedy": "हालिया · /stop अगर यह चुप रहे।"
+			}
+		},
+		"literals": {
+			"hint": {
+				"Shift+F10": {
+					"present": true,
+					"count": 1,
+					"codepoints": [
+						83,
+						104,
+						105,
+						102,
+						116,
+						43,
+						70,
+						49,
+						48
+					]
+				},
+				"Fn": {
+					"present": false,
+					"count": 0,
+					"codepoints": null
+				},
+				"Mac": {
+					"present": false,
+					"count": 0,
+					"codepoints": null
+				}
+			},
+			"hint_mac": {
+				"Shift+F10": {
+					"present": true,
+					"count": 1,
+					"codepoints": [
+						83,
+						104,
+						105,
+						102,
+						116,
+						43,
+						70,
+						49,
+						48
+					]
+				},
+				"Fn": {
+					"present": true,
+					"count": 1,
+					"codepoints": [
+						70,
+						110
+					]
+				},
+				"Mac": {
+					"present": true,
+					"count": 1,
+					"codepoints": [
+						77,
+						97,
+						99
+					]
+				}
+			},
+			"slashStop": {
+				"atStart": true,
+				"codepoints": [
+					47,
+					115,
+					116,
+					111,
+					112
+				],
+				"finalCodepoint": "U+0964"
+			}
+		},
+		"terminology": {
+			"ui.chat.sidebar.row_menu.hint": [
+				{
+					"comparedWith": "ui.chat.sidebar.row_menu.archive",
+					"why": "the row-menu family the hint opens; names the menu's items, not the menu",
+					"value": "बातचीत संग्रहित करें",
+					"equalToAudited": false
+				},
+				{
+					"comparedWith": "ui.chat.sidebar.row_menu.pin",
+					"why": "second member of the same family",
+					"value": "बातचीत पिन करें",
+					"equalToAudited": false
+				}
+			],
+			"ui.chat.sidebar.row_menu.hint_mac": [
+				{
+					"comparedWith": "ui.chat.sidebar.row_menu.archive",
+					"why": "the row-menu family the hint opens",
+					"value": "बातचीत संग्रहित करें",
+					"equalToAudited": false
+				}
+			],
+			"ui.chat.sidebar.row.search_beyond": [
+				{
+					"comparedWith": "ui.chat.sidebar.row.matched_in_conversation",
+					"why": "the sibling why-this-row-is-here fragment for a filtered row",
+					"value": ", बातचीत में मिला",
+					"equalToAudited": false
+				}
+			],
+			"ui.chat.sidebar.row.recent": [
+				{
+					"comparedWith": "ui.command_palette.palette_search.recents",
+					"why": "the corpus's existing word for recency",
+					"value": "हाल के"
+				}
+			],
+			"ui.chat.sidebar.row.not_sent_suffix": [
+				{
+					"comparedWith": "ui.chat.sidebar.row.not_sent",
+					"why": "the row's own visible badge for the same fact",
+					"value": "अभी नहीं भेजा गया",
+					"equalToAudited": false
+				},
+				{
+					"comparedWith": "ui.chat.sidebar.row.archived_suffix",
+					"why": "the pre-existing suffix this one is shaped on",
+					"value": ", संग्रहित",
+					"equalToAudited": false
+				}
+			],
+			"ui.chat.sidebar.row.unread_suffix": [
+				{
+					"comparedWith": "ui.command_palette.palette_search.unread",
+					"why": "the corpus's existing word for unread",
+					"value": "अपठित"
+				},
+				{
+					"comparedWith": "ui.chat.sidebar.row.archived_suffix",
+					"why": "the pre-existing suffix this one is shaped on",
+					"value": ", संग्रहित",
+					"equalToAudited": false
+				}
+			],
+			"ui.chat.sidebar.row.silent_remedy": [
+				{
+					"comparedWith": "ui.chat.sidebar.row.search_beyond",
+					"why": "the neighbouring clause in the same status line (register)",
+					"value": "खोज से मिला, यहाँ सूचीबद्ध चैट से परे",
+					"equalToAudited": false
+				},
+				{
+					"comparedWith": "ui.chat.sidebar.row.in_conversation",
+					"why": "the row's other ' · '-slot clause (register)",
+					"value": "बातचीत में",
+					"equalToAudited": false
+				}
+			],
+			"ui.chat.sidebar.catalogue.show_more": [
+				{
+					"comparedWith": "ui.chat.sidebar.catalogue.total",
+					"why": "the same footer's count formatting and plural style",
+					"value": "कुल {total, number, ::group-off} चैट में से {shown, number, ::group-off} दिखाई जा रही हैं",
+					"equalToAudited": false
+				}
+			],
+			"ui.chat.sidebar.catalogue.show_more_chats": [
+				{
+					"comparedWith": "ui.chat.sidebar.catalogue.total",
+					"why": "the same namespace's word for a chat and its plural arms",
+					"value": "कुल {total, number, ::group-off} चैट में से {shown, number, ::group-off} दिखाई जा रही हैं",
+					"equalToAudited": false
+				},
+				{
+					"comparedWith": "ui.chat.sidebar.catalogue.total_search",
+					"why": "the same footer family's many-arm 'de …' form",
+					"value": "कुल {total, number, ::group-off} चैट में से {shown, number, ::group-off} मिलान {shown, plural, one {दिखाया जा रहा है} other {दिखाए जा रहे हैं}}",
+					"equalToAudited": false
+				}
+			],
+			"ui.chat.sidebar.row.archived_suffix": []
+		}
+	}
+}

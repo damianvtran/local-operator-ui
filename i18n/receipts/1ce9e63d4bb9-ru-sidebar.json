@@ -1,0 +1,340 @@
+{
+	"instance": "1ce9e63d4bb9-ru-sidebar",
+	"auditor": "i18n-auditor",
+	"model": "radient/auto",
+	"model_provenance": "Session primary anthropic/claude-opus-5-5 failed on provider quota and fell back openai/gpt-6.1-sol -> kimi/k3.1-pro -> radient/auto; every read, check and receipt byte in this audit was produced on that final radient/auto resolution. No model performed any translation or back-translation.",
+	"locale": "ru",
+	"namespace": "ui.chat.sidebar",
+	"audit_date": "2026-11-05",
+	"task": "Independent audit of the final bytes of this contribution: ten new keys across seven locales, three of them corrected since the previous audit.",
+	"worktree": "~/local-operator-ui/.worktrees/i18n-sidebar-literals",
+	"head_reviewed": "257ad02237a1ea7b8676efea55d76f89bb145ee4",
+	"head_at_write": "2cdbf215d7bea01aff156e8dbd5bddb5343684bd",
+	"base": "65116989dc9",
+	"heads_equivalence": {
+		"all_audited_files_identical": true,
+		"files_compared": 16,
+		"note": "The branch was rebuilt while this audit ran. Every audited catalogue file is byte-identical at both heads, so these hashes describe the bytes on disk; see the manifest for the per-file comparison."
+	},
+	"independence": "This run translated none of these values and implemented none of this change. It read the English source, the en context sidecars, sibling keys in the same catalogue and the runtime's own ICU library, then judged every value itself.",
+	"keys_audited": 9,
+	"keys": [
+		"ui.chat.sidebar.row_menu.hint",
+		"ui.chat.sidebar.row_menu.hint_mac",
+		"ui.chat.sidebar.row.search_beyond",
+		"ui.chat.sidebar.row.recent",
+		"ui.chat.sidebar.row.not_sent_suffix",
+		"ui.chat.sidebar.row.unread_suffix",
+		"ui.chat.sidebar.row.silent_remedy",
+		"ui.chat.sidebar.catalogue.show_more",
+		"ui.chat.sidebar.catalogue.show_more_chats"
+	],
+	"en_path": "src/i18n/catalogues/en/ui.chat.sidebar.json",
+	"target_path": "src/i18n/catalogues/ru/ui.chat.sidebar.json",
+	"sha256": {
+		"en": "d1796cf86e2c2dde5f0dce93c8d5abceaf3ab09c2d44f9ff8ba42ac290fe3558",
+		"ru": "ae955cf52177e931299129527a0bb160674103621c1223fb0b63a3a7e5b2a53f"
+	},
+	"status": "passed",
+	"result": "clean",
+	"findings": [],
+	"finding_counts": {
+		"blocker": 0,
+		"major": 0,
+		"minor": 0,
+		"nit": 0
+	},
+	"observations": [],
+	"checks": {
+		"values": {
+			"ui.chat.sidebar.row_menu.hint": "Щёлкните правой кнопкой или нажмите Shift+F10, чтобы открыть его действия.",
+			"ui.chat.sidebar.row_menu.hint_mac": "Щёлкните правой кнопкой или нажмите Shift+F10 (на большинстве клавиатур Mac — с Fn), чтобы открыть его действия.",
+			"ui.chat.sidebar.row.search_beyond": "найдено поиском, за пределами перечисленных здесь чатов",
+			"ui.chat.sidebar.row.recent": "Недавно",
+			"ui.chat.sidebar.row.not_sent_suffix": ", ещё не отправлено",
+			"ui.chat.sidebar.row.unread_suffix": ", не прочитано",
+			"ui.chat.sidebar.row.silent_remedy": "/stop, если ответа всё нет.",
+			"ui.chat.sidebar.catalogue.show_more": "Показать ещё {hidden, plural, one {{hidden, number, ::group-off}} few {{hidden, number, ::group-off}} many {{hidden, number, ::group-off}} other {{hidden, number, ::group-off}}}",
+			"ui.chat.sidebar.catalogue.show_more_chats": "Показать ещё {add, plural, one {{add, number, ::group-off} чат} few {{add, number, ::group-off} чата} many {{add, number, ::group-off} чатов} other {{add, number, ::group-off} чата}}"
+		},
+		"icu": {
+			"show_more": {
+				"compiled": true,
+				"bracesBalanced": true,
+				"argument": "hidden",
+				"declaredCategories": [
+					"few",
+					"many",
+					"one",
+					"other"
+				],
+				"intlCategories": [
+					"few",
+					"many",
+					"one",
+					"other"
+				],
+				"categoriesEqual": true,
+				"groupOffInEveryArm": true,
+				"armCount": 4,
+				"formatted": {
+					"0": "Показать ещё 0",
+					"1": "Показать ещё 1",
+					"2": "Показать ещё 2",
+					"3": "Показать ещё 3",
+					"5": "Показать ещё 5",
+					"11": "Показать ещё 11",
+					"21": "Показать ещё 21",
+					"22": "Показать ещё 22",
+					"25": "Показать ещё 25",
+					"101": "Показать ещё 101",
+					"1000": "Показать ещё 1000",
+					"12345": "Показать ещё 12345",
+					"1000000": "Показать ещё 1000000"
+				}
+			},
+			"show_more_chats": {
+				"compiled": true,
+				"bracesBalanced": true,
+				"argument": "add",
+				"declaredCategories": [
+					"few",
+					"many",
+					"one",
+					"other"
+				],
+				"intlCategories": [
+					"few",
+					"many",
+					"one",
+					"other"
+				],
+				"categoriesEqual": true,
+				"groupOffInEveryArm": true,
+				"armCount": 4,
+				"formatted": {
+					"0": "Показать ещё 0 чатов",
+					"1": "Показать ещё 1 чат",
+					"2": "Показать ещё 2 чата",
+					"3": "Показать ещё 3 чата",
+					"5": "Показать ещё 5 чатов",
+					"11": "Показать ещё 11 чатов",
+					"21": "Показать ещё 21 чат",
+					"22": "Показать ещё 22 чата",
+					"25": "Показать ещё 25 чатов",
+					"101": "Показать ещё 101 чат",
+					"1000": "Показать ещё 1000 чатов",
+					"12345": "Показать ещё 12345 чатов",
+					"1000000": "Показать ещё 1000000 чатов"
+				}
+			}
+		},
+		"composition": {
+			"parts": {
+				"ui.chat.sidebar.row.not_sent_suffix": {
+					"value": ", ещё не отправлено",
+					"firstCodepoint": "U+002C",
+					"secondCodepoint": "U+0020",
+					"localeComma": true,
+					"oneSpaceAfter": true,
+					"noDoubleSpace": true,
+					"noNbsp": true
+				},
+				"ui.chat.sidebar.row.unread_suffix": {
+					"value": ", не прочитано",
+					"firstCodepoint": "U+002C",
+					"secondCodepoint": "U+0020",
+					"localeComma": true,
+					"oneSpaceAfter": true,
+					"noDoubleSpace": true,
+					"noNbsp": true
+				}
+			},
+			"composed": {
+				"statusOnly": "Недавно",
+				"statusPlusNotSent": "Недавно, ещё не отправлено",
+				"statusPlusUnread": "Недавно, не прочитано",
+				"searchBeyondPlusUnread": "найдено поиском, за пределами перечисленных здесь чатов, не прочитано",
+				"statusPlusBothPlusArchived": "Недавно, ещё не отправлено, не прочитано, в архиве",
+				"withSilentRemedy": "Недавно · /stop, если ответа всё нет."
+			}
+		},
+		"literals": {
+			"hint": {
+				"Shift+F10": {
+					"present": true,
+					"count": 1,
+					"codepoints": [
+						83,
+						104,
+						105,
+						102,
+						116,
+						43,
+						70,
+						49,
+						48
+					]
+				},
+				"Fn": {
+					"present": false,
+					"count": 0,
+					"codepoints": null
+				},
+				"Mac": {
+					"present": false,
+					"count": 0,
+					"codepoints": null
+				}
+			},
+			"hint_mac": {
+				"Shift+F10": {
+					"present": true,
+					"count": 1,
+					"codepoints": [
+						83,
+						104,
+						105,
+						102,
+						116,
+						43,
+						70,
+						49,
+						48
+					]
+				},
+				"Fn": {
+					"present": true,
+					"count": 1,
+					"codepoints": [
+						70,
+						110
+					]
+				},
+				"Mac": {
+					"present": true,
+					"count": 1,
+					"codepoints": [
+						77,
+						97,
+						99
+					]
+				}
+			},
+			"slashStop": {
+				"atStart": true,
+				"codepoints": [
+					47,
+					115,
+					116,
+					111,
+					112
+				],
+				"finalCodepoint": "U+002E"
+			}
+		},
+		"terminology": {
+			"ui.chat.sidebar.row_menu.hint": [
+				{
+					"comparedWith": "ui.chat.sidebar.row_menu.archive",
+					"why": "the row-menu family the hint opens; names the menu's items, not the menu",
+					"value": "Архивировать разговор",
+					"equalToAudited": false
+				},
+				{
+					"comparedWith": "ui.chat.sidebar.row_menu.pin",
+					"why": "second member of the same family",
+					"value": "Закрепить разговор",
+					"equalToAudited": false
+				}
+			],
+			"ui.chat.sidebar.row_menu.hint_mac": [
+				{
+					"comparedWith": "ui.chat.sidebar.row_menu.archive",
+					"why": "the row-menu family the hint opens",
+					"value": "Архивировать разговор",
+					"equalToAudited": false
+				}
+			],
+			"ui.chat.sidebar.row.search_beyond": [
+				{
+					"comparedWith": "ui.chat.sidebar.row.matched_in_conversation",
+					"why": "the sibling why-this-row-is-here fragment for a filtered row",
+					"value": ", совпадение в разговоре",
+					"equalToAudited": false
+				}
+			],
+			"ui.chat.sidebar.row.recent": [
+				{
+					"comparedWith": "ui.command_palette.palette_search.recents",
+					"why": "the corpus's existing word for recency",
+					"value": "Недавние"
+				}
+			],
+			"ui.chat.sidebar.row.not_sent_suffix": [
+				{
+					"comparedWith": "ui.chat.sidebar.row.not_sent",
+					"why": "the row's own visible badge for the same fact",
+					"value": "Ещё не отправлено",
+					"equalToAudited": false
+				},
+				{
+					"comparedWith": "ui.chat.sidebar.row.archived_suffix",
+					"why": "the pre-existing suffix this one is shaped on",
+					"value": ", в архиве",
+					"equalToAudited": false
+				}
+			],
+			"ui.chat.sidebar.row.unread_suffix": [
+				{
+					"comparedWith": "ui.command_palette.palette_search.unread",
+					"why": "the corpus's existing word for unread",
+					"value": "Непрочитанные"
+				},
+				{
+					"comparedWith": "ui.chat.sidebar.row.archived_suffix",
+					"why": "the pre-existing suffix this one is shaped on",
+					"value": ", в архиве",
+					"equalToAudited": false
+				}
+			],
+			"ui.chat.sidebar.row.silent_remedy": [
+				{
+					"comparedWith": "ui.chat.sidebar.row.search_beyond",
+					"why": "the neighbouring clause in the same status line (register)",
+					"value": "найдено поиском, за пределами перечисленных здесь чатов",
+					"equalToAudited": false
+				},
+				{
+					"comparedWith": "ui.chat.sidebar.row.in_conversation",
+					"why": "the row's other ' · '-slot clause (register)",
+					"value": "в разговоре",
+					"equalToAudited": false
+				}
+			],
+			"ui.chat.sidebar.catalogue.show_more": [
+				{
+					"comparedWith": "ui.chat.sidebar.catalogue.total",
+					"why": "the same footer's count formatting and plural style",
+					"value": "Показано {shown, number, ::group-off} из {total, plural, one {{total, number, ::group-off} чата} few {{total, number, ::group-off} чатов} many {{total, number, ::group-off} чатов} other {{total, number, ::group-off} чата}}",
+					"equalToAudited": false
+				}
+			],
+			"ui.chat.sidebar.catalogue.show_more_chats": [
+				{
+					"comparedWith": "ui.chat.sidebar.catalogue.total",
+					"why": "the same namespace's word for a chat and its plural arms",
+					"value": "Показано {shown, number, ::group-off} из {total, plural, one {{total, number, ::group-off} чата} few {{total, number, ::group-off} чатов} many {{total, number, ::group-off} чатов} other {{total, number, ::group-off} чата}}",
+					"equalToAudited": false
+				},
+				{
+					"comparedWith": "ui.chat.sidebar.catalogue.total_search",
+					"why": "the same footer family's many-arm 'de …' form",
+					"value": "Показано {shown, number, ::group-off} {shown, plural, one {совпадение} few {совпадения} many {совпадений} other {совпадения}} из {total, plural, one {{total, number, ::group-off} чата} few {{total, number, ::group-off} чатов} many {{total, number, ::group-off} чатов} other {{total, number, ::group-off} чата}}",
+					"equalToAudited": false
+				}
+			],
+			"ui.chat.sidebar.row.archived_suffix": []
+		}
+	}
+}
