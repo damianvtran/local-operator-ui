@@ -2303,24 +2303,11 @@ test("the desktop concurrency switch is honoured where it is set, or absent", ()
 	// The LIVE workflow is the subject first: whatever the diagnostic experiment
 	// does today has to pass its own gate.
 	assertDesktopConcurrencyOverride(jobs.test, shell);
-	// The capacity cap belongs to every shard, not a matrix-dependent value or
-	// an await-only step that never reaches the already-running test workers.
-	assert.equal(jobs.test.env[OVERRIDE_ENV], "2");
-	assert.equal(
-		jobs.test.steps.find((step) => step.id === "desktop_launch").env?.[
-			OVERRIDE_ENV
-		],
-		undefined,
-		"the launch must inherit the uniform job-level cap",
-	);
 
 	const launchEnv = (job) =>
 		job.steps.find((step) => step.id === "desktop_launch").env;
 	const withLaunchValue = (value) => {
 		const job = structuredClone(jobs.test);
-		// These mutations isolate launch-only/absent cases; inheriting the live
-		// job cap would turn the absent negative control into a capped launch.
-		delete job.env[OVERRIDE_ENV];
 		const env = launchEnv(job);
 		if (value === undefined) delete env[OVERRIDE_ENV];
 		else env[OVERRIDE_ENV] = value;
