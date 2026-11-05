@@ -143,8 +143,6 @@
 	"ui.teamBridge.composer.placeholder_to": "给{name}发消息",
 	"ui.teamBridge.thread.today": "今天",
 	"ui.teamBridge.thread.yesterday": "昨天",
-	"ui.teamBridge.thread.loading_older": "正在加载更早的消息",
-	"ui.teamBridge.thread.history_start": "这是对话的开头。",
 	"ui.teamBridge.builtin.general_topic": "整个组织：所有人及其智能体。智能体会看到每条消息，并在被@提及时或在其关注的讨论串中回复。",
 	"ui.teamBridge.builtin.humans_topic": "仅限人员，没有智能体。在此发送的消息会通知每个人。",
 	"ui.teamBridge.builtin.agents_topic": "每位团队成员的首席助理。智能体会看到每条消息，并在相关或被@提及时回复。",

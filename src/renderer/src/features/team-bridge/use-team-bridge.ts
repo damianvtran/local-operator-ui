@@ -276,17 +276,35 @@ export function teamBridgeMessagesQueryOptions(
 		),
 		// Typed explicitly: a plain object returned from a factory has no
 		// `useQuery` call site to infer the context from.
-		queryFn: async ({ queryKey }: { queryKey: QueryKey }) =>
-			mergeChannelPage(
-				client.getQueryData<ChannelMessages>(queryKey),
-				await readForBridgeOwner(client, accountId, () =>
-					TeamBridgeApi.listMessages(conversationId as string, {
-						...(tenantId ? { tenantId } : {}),
-						limit: TEAM_BRIDGE_PAGE_SIZE,
-					}),
-				),
-				"newest",
-			),
+		/*
+		 * MERGED AT WRITE TIME, NOT AT FETCH TIME (agent review round 1, M1).
+		 * `getQueryData` in the argument list would be evaluated BEFORE the
+		 * round trip, so whatever landed in the entry while the request was in
+		 * flight - an older page from `loadOlder`, a thread-unread patch, the
+		 * shell watcher's own read - would be overwritten by a window built from
+		 * a stale snapshot (measured: 60 rows lost, `oldestSeq` 881 → 941). The
+		 * updater below reads the CURRENT entry at the moment the answer is
+		 * written, which is the only place the merge can see everything.
+		 */
+		queryFn: async ({ queryKey }: { queryKey: QueryKey }) => {
+			const page = await readForBridgeOwner(client, accountId, () =>
+				TeamBridgeApi.listMessages(conversationId as string, {
+					...(tenantId ? { tenantId } : {}),
+					limit: TEAM_BRIDGE_PAGE_SIZE,
+				}),
+			);
+			client.setQueryData<ChannelMessages>(queryKey, (current) =>
+				mergeChannelPage(current, page, "newest"),
+			);
+			/* Read back rather than returning the updater's result: `setQueryData`
+			 * can answer `undefined` by type, and every reader of this entry must get
+			 * one. When it is missing (an entry evicted mid-flight) the page is still
+			 * the truth, so build the window from it. */
+			return (
+				client.getQueryData<ChannelMessages>(queryKey) ??
+				mergeChannelPage(undefined, page, "newest")
+			);
+		},
 	} as const;
 }
 

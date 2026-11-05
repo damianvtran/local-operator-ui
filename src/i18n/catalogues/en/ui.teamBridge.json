@@ -143,8 +143,6 @@
 	"ui.teamBridge.composer.placeholder_to": "Message {name}",
 	"ui.teamBridge.thread.today": "Today",
 	"ui.teamBridge.thread.yesterday": "Yesterday",
-	"ui.teamBridge.thread.loading_older": "Loading earlier messages",
-	"ui.teamBridge.thread.history_start": "This is the start of the conversation.",
 	"ui.teamBridge.builtin.general_topic": "The whole organization: people and their agents. Agents see every message and reply when @-mentioned or in threads they follow.",
 	"ui.teamBridge.builtin.humans_topic": "People only, no agents. Messages here notify every person.",
 	"ui.teamBridge.builtin.agents_topic": "Every teammate's chief of staff. Agents see every message and reply when relevant or @-mentioned.",

@@ -41,7 +41,7 @@ import { withCarriedTeamBridgeEvents } from "./team-bridge-member-events-model";
  *
  * WHAT THIS MODULE IS NOT. No React, no clock, no DOM: every rule here is a pure
  * function so the merge order, the bounds and the anchor arithmetic can be
- * exercised without a renderer (`scripts/team-bridge-channel-cache.test.mjs`).
+ * exercised without a renderer (`scripts/team-bridge-channel-history.test.mjs`).
  */
 
 /* ------------------------------------------------------------------ policy */
@@ -195,14 +195,27 @@ export function approxChannelBytes(
 	return total;
 }
 
+/** The side a bound drops rows from: see `mergeChannelPage` for which read owns
+ * which direction. */
+export type ChannelTrimSide = "oldest" | "newest";
+
 /**
- * Trim a window from the OLDEST end until both bounds hold.
+ * Trim a window from ONE end until both bounds hold.
  *
- * Oldest-first is the only defensible order: the newest rows are what the reader
- * is looking at or about to, and the newest is also what a poll keeps re-reading
- * - dropping from that end would drop the rows that arrive again next tick.
- * Returns whether anything was dropped, because a drop is what re-opens
- * `hasOlder` (see `mergeChannelPage`).
+ * WHICH END IS NOT A STYLE CHOICE, IT IS THE READ'S OWN DIRECTION (agent review
+ * round 1, M2). A POLL grows the window at the newest end, so the rows to drop
+ * are the oldest: they are the ones the reader has scrolled furthest back from,
+ * and the newest rows are what the next poll re-reads. An OLDER page does the
+ * opposite - its rows ARE the oldest - so dropping from the oldest end discards
+ * exactly what was just fetched, `oldestSeq` never advances, `hasOlder` stays
+ * true, and paging dead-ends in a spinner that resolves to nothing (measured:
+ * stalls at seq 201 in a 5,000-row channel after 13 pages). Trimming the NEWEST
+ * end instead keeps the rows the reader asked for, and the window becomes "the
+ * history behind the cursor" - which is what scrolling back through a channel
+ * means.
+ *
+ * Returns whether anything was dropped, because a drop at the oldest end is what
+ * re-opens `hasOlder` (see `mergeChannelPage`).
  */
 export function boundChannelMessages(
 	messages: readonly TeamBridgeMessage[],
@@ -210,21 +223,25 @@ export function boundChannelMessages(
 		maxMessages?: number;
 		maxBytes?: number;
 	} = {},
+	side: ChannelTrimSide = "oldest",
 ): { messages: TeamBridgeMessage[]; dropped: boolean } {
 	const maxMessages = limits.maxMessages ?? TEAM_BRIDGE_MAX_RETAINED_MESSAGES;
 	const maxBytes = limits.maxBytes ?? TEAM_BRIDGE_MAX_CHANNEL_BYTES;
 	let start = 0;
+	let end = messages.length;
 	let bytes = approxChannelBytes(messages);
-	while (
-		start < messages.length &&
-		(messages.length - start > maxMessages || bytes > maxBytes)
-	) {
-		bytes -= approxMessageBytes(messages[start]);
-		start += 1;
+	while (end - start > 0 && (end - start > maxMessages || bytes > maxBytes)) {
+		if (side === "newest") {
+			end -= 1;
+			bytes -= approxMessageBytes(messages[end]);
+		} else {
+			bytes -= approxMessageBytes(messages[start]);
+			start += 1;
+		}
 	}
-	return start === 0
+	return start === 0 && end === messages.length
 		? { messages: [...messages], dropped: false }
-		: { messages: messages.slice(start), dropped: true };
+		: { messages: messages.slice(start, end), dropped: true };
 }
 
 /**
@@ -254,9 +271,16 @@ export function mergeChannelPage(
 				},
 		page,
 	);
+	/*
+	 * The trim follows the READ: a poll drops the oldest rows, an older page
+	 * drops the newest (see `boundChannelMessages`). Getting this backwards is
+	 * the dead-end that M2 measured, so the direction is passed, never inferred
+	 * from the page's contents.
+	 */
 	const bounded = boundChannelMessages(
 		mergeChannelMessages(previous?.messages ?? [], page.messages),
 		limits,
+		direction === "older" ? "newest" : "oldest",
 	);
 	const learned =
 		direction === "older"

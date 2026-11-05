@@ -339,3 +339,63 @@ test("selectChannelEvictions: an entry the view order does not know is the oldes
 		["unknown"],
 	);
 });
+
+/* ----------------------------------------------------- paging to the start */
+
+test("M2: a channel larger than the cap pages back to row 1 instead of stalling", () => {
+	/* The measured dead-end: 60-row pages against an 800-row window, paging
+	   backwards 120 times. Before the fix the window trimmed the OLDEST rows on
+	   every prepend - which are the rows the page just fetched - so `oldestSeq`
+	   froze at 201 and `hasOlder` stayed true forever. */
+	const PAGE = 60;
+	const TOTAL = 5_000;
+	const rows = Array.from({ length: TOTAL }, (_, index) => message(index + 1));
+	const newest = rows.slice(TOTAL - PAGE);
+
+	let entry = cache.mergeChannelPage(
+		undefined,
+		page(newest, { has_more: true }),
+		"newest",
+	);
+	assert.equal(entry.messages.at(-1).seq, TOTAL);
+
+	let pages = 0;
+	while (entry.hasOlder && entry.oldestSeq !== undefined && pages < 200) {
+		const before = entry.oldestSeq;
+		const older = rows.filter((row) => row.seq < before).slice(-PAGE);
+		entry = cache.mergeChannelPage(
+			entry,
+			page(older, { has_more: older.length === PAGE }),
+			"older",
+		);
+		pages += 1;
+		if (older.length === 0) break;
+	}
+	assert.equal(pages < 200, true, "paging terminated");
+	assert.equal(entry.hasOlder, false, "the start of history is reachable");
+	assert.equal(
+		entry.messages.some((row) => row.seq === 1),
+		true,
+		"row 1 is in the retained window",
+	);
+	assert.equal(
+		entry.messages.length,
+		cache.TEAM_BRIDGE_MAX_RETAINED_MESSAGES,
+		"and the window stayed at its cap while it walked there",
+	);
+});
+
+test("M2: a poll still drops the oldest rows, an older page the newest", () => {
+	const rows = Array.from({ length: 10 }, (_, index) => message(index + 1));
+	const lim = { maxMessages: 4 };
+	const polled = cache.boundChannelMessages(rows, lim, "oldest");
+	assert.deepEqual(
+		polled.messages.map((row) => row.seq),
+		[7, 8, 9, 10],
+	);
+	const prepended = cache.boundChannelMessages(rows, lim, "newest");
+	assert.deepEqual(
+		prepended.messages.map((row) => row.seq),
+		[1, 2, 3, 4],
+	);
+});

@@ -310,7 +310,9 @@ test("stickyDayAt: the next day's divider takes the label over as it arrives", (
 		true,
 		"its own divider is at the top: no second pill",
 	);
-	const passed = windowMath.stickyDayAt(entries(items), layout, 260);
+	/* 280px in: the divider's own pill (8px in, 24 tall) is behind the viewport
+	   top by then, so the floating pill takes over (n2). */
+	const passed = windowMath.stickyDayAt(entries(items), layout, 280);
 	assert.equal(passed.day.key, "d2");
 	assert.equal(passed.hidden, false);
 });
@@ -318,15 +320,16 @@ test("stickyDayAt: the next day's divider takes the label over as it arrives", (
 test("stickyDayAt: hidden while that day's own divider is still on screen", () => {
 	const items = dayItems();
 	const layout = windowMath.windowLayout(entries(items), new Map());
-	/* At the very top the divider is in flow at 0px; 8px and 20px in its pill is
-	   still visible at the top edge (it is 24px tall), so the overlay stands
-	   aside - the brief's "within ~8px of the viewport top", widened to the pill
-	   because a 24px pill is on screen for 24px of scroll. */
+	/* The divider's own pill rests 8px into its item and is 24px tall, so it is
+	   still on screen until the day's top is 32px above the viewport's - the
+	   overlay stands aside for that whole band, so the two never double up
+	   (agent review round 1, n2). */
 	assert.equal(windowMath.stickyDayAt(entries(items), layout, 0).hidden, true);
 	assert.equal(windowMath.stickyDayAt(entries(items), layout, 8).hidden, true);
 	assert.equal(windowMath.stickyDayAt(entries(items), layout, 20).hidden, true);
+	assert.equal(windowMath.stickyDayAt(entries(items), layout, 30).hidden, true);
 	assert.equal(
-		windowMath.stickyDayAt(entries(items), layout, 30).hidden,
+		windowMath.stickyDayAt(entries(items), layout, 40).hidden,
 		false,
 	);
 });

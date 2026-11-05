@@ -301,6 +301,12 @@ export function stickyDayAt(
 	scrollTop: number,
 	pillHeight: number = TEAM_BRIDGE_DAY_PILL_HEIGHT_PX,
 ): StickyDay | null {
+	/* The overlay must wait for the day's OWN pill to be gone: that pill starts
+	 * `TEAM_BRIDGE_DAY_PILL_REST_PX` into its item and is `pillHeight` tall, so it
+	 * is only fully past the top edge at -(rest + height). At -24 the reviewer
+	 * measured a 1-8px sliver of it still showing under the overlay (agent review
+	 * round 1, n2). */
+	const clearAt = -(pillHeight + TEAM_BRIDGE_DAY_PILL_REST_PX);
 	if (entries.length === 0 || layout.keys.length === 0) return null;
 	const start = Math.min(
 		firstVisibleIndex(layout, scrollTop),
@@ -312,7 +318,7 @@ export function stickyDayAt(
 		return {
 			day: entry.item,
 			key: entry.key,
-			hidden: layout.offsets[index] - scrollTop > -pillHeight,
+			hidden: layout.offsets[index] - scrollTop > clearAt,
 		};
 	}
 	return null;

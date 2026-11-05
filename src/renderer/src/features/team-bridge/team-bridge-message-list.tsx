@@ -60,10 +60,7 @@ import {
 import { TEAM_BRIDGE_THREADS_SHIPPED_IN_THIS_BUILD } from "./team-bridge-thread-gate";
 import { TeamBridgeThreadRow } from "./team-bridge-thread-row";
 import { threadSummary } from "./team-bridge-threads-model";
-import {
-	TEAM_BRIDGE_DAY_PILL_REST_PX,
-	windowEntryKey,
-} from "./team-bridge-window";
+import { windowEntryKey } from "./team-bridge-window";
 import { useTimelineWindow } from "./use-team-bridge-timeline-window";
 
 /**
@@ -395,7 +392,7 @@ export const TeamBridgeMessageList: FC<{
 		// keyed on the stored id would remount it at the moment it settles.
 		[items, present],
 	);
-	const { range, spacers, stickyDay, scrollTop } = useTimelineWindow({
+	const { range, spacers, stickyDay } = useTimelineWindow({
 		entries,
 		listRef,
 		scrollRootRef,
@@ -546,17 +543,15 @@ export const TeamBridgeMessageList: FC<{
 		   `display: table`; see their ScrollArea class names. */
 		<ol
 			ref={listRef}
-			/* `relative` is the overlay's containing block (the floating day pill); it
-			   is the scroll content, so `top` in it is a content offset. */
-			className="relative mt-auto flex w-full min-w-0 flex-col pt-4 pb-2"
+			/* NO `relative` HERE (QA round 1, Q-3): the floating day pill is
+			   `sticky`, positioned by the browser against the scroll viewport, so the
+			   list root needs no containing block - and the owner-audit render pin
+			   keeps the list byte-identical to the surface it has always drawn. */
+			className="mt-auto flex w-full min-w-0 flex-col pt-4 pb-2"
 		>
 			{eventSlot(TEAM_BRIDGE_EVENTS_LEADING)}
 			{windowed && stickyDay !== null && !stickyDay.hidden && (
-				<DayPillOverlay
-					day={stickyDay.day}
-					scrollTop={scrollTop}
-					locale={locale}
-				/>
+				<DayPillOverlay day={stickyDay.day} locale={locale} />
 			)}
 			{/* ABOVE THE LEADING SPACER on purpose: the edge of history belongs to
 			    the top of the conversation, not to whichever row is mounted first. */}
@@ -772,19 +767,24 @@ const HistoryEdge: FC<{
 				className="flex h-8 shrink-0 items-center justify-center gap-2 px-5 text-ink-dim text-meta"
 			>
 				<Spinner size="sm" />
-				<span aria-live="polite">
-					{t("ui.teamBridge.thread.loading_older")}
-				</span>
+				<span aria-live="polite">{t("ui.teamBridge.thread.loading")}</span>
 			</li>
 		);
 	if (hasOlder || !showStart) return null;
+	/*
+	 * NO COPY AT THE START OF HISTORY. The boundary is a hairline and nothing
+	 * else - Slack draws the same rule and says nothing. A sentence here would be
+	 * new user-facing copy, which this change cannot ship: the translation ledger
+	 * pins the English catalogue's hash, so a new key invalidates the audited
+	 * translations for all seven locales and needs a translator re-audit
+	 * (agent review round 1, merge gate).
+	 */
 	return (
 		<li
+			aria-hidden="true"
 			data-history-edge="start"
-			className="flex h-8 shrink-0 items-center justify-center px-5 text-ink-dim text-meta"
-		>
-			{t("ui.teamBridge.thread.history_start")}
-		</li>
+			className="mx-5 mt-2 h-px shrink-0 bg-hairline"
+		/>
 	);
 };
 
@@ -836,40 +836,36 @@ const DayHeading: FC<{
 /*
  * THE FLOATING DAY PILL, FOR THE WINDOWED STRIP.
  *
- * WHY NOT `sticky`: a sticky element sticks inside its containing block, and in a
- * windowed list the only containing block available is the whole strip (a day
- * group would exist only around the rows that happen to be mounted). A pill
- * sticking to the strip would then never hand over to the next day's divider -
- * it would sit there naming the wrong day. So the pill is drawn ONCE, below the
- * scroll viewport's top edge, and it follows the viewport rather than a day.
+ * WHY NOT `sticky` PER DAY: a sticky element sticks inside its containing block,
+ * and in a windowed list the only containing block available is the whole strip
+ * (a day group would exist only around the rows that happen to be mounted). A
+ * pill sticking to the strip would never hand over to the next day's divider - it
+ * would sit there naming the wrong day.
  *
- * The day it names is the first visible row's day (`stickyDayAt`) - exactly what
- * the sticky pill showed - and it steps aside while that day's own row is at the
- * resting place, so the two are never on screen together.
+ * So the pill is ONE element, stuck to the viewport's top edge by the BROWSER -
+ * `sticky top-2` on a zero-height row, which is the resting place the grouped
+ * list's pill had. The browser positions it per frame, so it cannot trail the
+ * content the way a React-positioned overlay does (agent review round 1, m2); the
+ * only thing React decides is WHICH day it names (`stickyDayAt`), and a label one
+ * frame late is a label nobody can see move.
  *
- * `scrollTop` is the window hook's own state, the same number the visible slice
- * is cut from, so the pill cannot lag the rows by a frame and needs no listener
- * of its own.
+ * `h-0` means it takes no space in the flow; the pill overflows the empty box
+ * downward, exactly where the sticky pill used to rest.
  */
 const DayPillOverlay: FC<{
 	day: Extract<ThreadItem, { type: "day" }>;
-	scrollTop: number;
 	locale: string;
-}> = ({ day, scrollTop, locale }) => {
+}> = ({ day, locale }) => {
 	const label = dayLabel(day, locale);
 	if (label === null) return null;
 	return (
-		<div
+		<li
 			aria-hidden="true"
 			data-day-pill-overlay=""
-			className="pointer-events-none absolute inset-x-0 z-[5] flex justify-center py-2"
-			/* The `<ol>` is the scroll CONTENT, so an offset of `scrollTop + 8`
-			   lands 8px below the viewport's top edge at every scroll position - the
-			   same resting place `sticky top-2` gave the grouped pill. */
-			style={{ top: scrollTop + TEAM_BRIDGE_DAY_PILL_REST_PX }}
+			className="pointer-events-none sticky top-2 z-[5] flex h-0 shrink-0 justify-center"
 		>
 			<DayPill label={label} />
-		</div>
+		</li>
 	);
 };
 

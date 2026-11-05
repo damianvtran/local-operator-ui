@@ -143,8 +143,6 @@
 	"ui.teamBridge.composer.placeholder_to": "Escribe a {name}",
 	"ui.teamBridge.thread.today": "Hoy",
 	"ui.teamBridge.thread.yesterday": "Ayer",
-	"ui.teamBridge.thread.loading_older": "Cargando mensajes anteriores",
-	"ui.teamBridge.thread.history_start": "Este es el principio de la conversación.",
 	"ui.teamBridge.builtin.general_topic": "Toda la organización: las personas y sus agentes. Los agentes ven todos los mensajes y responden si se les menciona con @ o en los hilos que siguen.",
 	"ui.teamBridge.builtin.humans_topic": "Solo personas, sin agentes. Cada mensaje notifica a todas las personas.",
 	"ui.teamBridge.builtin.agents_topic": "Los jefes de gabinete del equipo. Los agentes ven todos los mensajes y responden cuando es relevante o si se les menciona con @.",

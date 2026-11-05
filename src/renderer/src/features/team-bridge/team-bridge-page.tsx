@@ -277,7 +277,6 @@ import { useStickToBottom } from "./use-stick-to-bottom";
 import {
 	refreshAfterSend,
 	teamBridgeKeys,
-	teamBridgeMessagesQueryOptions,
 	useAddTeamBridgeMembers,
 	useAnswerTeamBridgeInvitation,
 	useArchiveTeamBridgeConversation,
@@ -4903,6 +4902,12 @@ type TeamBridgeMessageLink = {
  * from is worse than none.
  */
 const MESSAGE_LINK_TIMEOUT_MS = 8_000;
+/*
+ * How far a `?message=` link may page back to find its row before it is treated
+ * as unreachable: 20 pages of 60 rows covers a day of a very busy channel, and a
+ * bound is what stops one stale link from walking an entire archive.
+ */
+const MESSAGE_LINK_MAX_PAGES = 20;
 
 /** The page view's identity: one mounted view per account, tenant and target. */
 const viewKeyFor = (
@@ -6155,39 +6160,56 @@ const TeamBridgeOwnedPage: FC<{
 		messages.messages.some((message) => message.id === messageLink.messageId);
 	const awaitingLinkedMessage =
 		linkedConversation && !linkedPresent && !messageLink.fetched;
+	/*
+	 * A LINK TO OLD HISTORY IS FOUND BY PAGEING BACK TO IT (agent review round 1,
+	 * M3). The fallback used to re-read the NEWEST page, which cannot carry a
+	 * message older than one page: `linkedPresent` stayed false, the link was
+	 * dropped as "fetched", and the reader landed on the timeline with no scroll
+	 * and no highlight - silently, within the 8 s bound. The window's own cursor
+	 * is the right tool: ask for the page before the oldest retained row, repeat
+	 * while the walk is making progress, and stop when the row appears, the
+	 * history ends, or the walk has covered `MESSAGE_LINK_MAX_PAGES` pages
+	 * (1_200 rows at the shipped page size - beyond that the link is treated as
+	 * unreachable rather than walking an archive).
+	 */
+	const linkedPages = useRef(0);
+	const linkedReadFor = useRef<string | null>(null);
 	useEffect(() => {
 		if (!messageLink || messageLink.fetched || !selected || !selfAccountId)
 			return;
 		if (selected.id !== messageLink.conversationId) return;
-		if (messages.isPending || linkedPresent) return;
-		let current = true;
-		void client
-			.fetchQuery({
-				...teamBridgeMessagesQueryOptions(
-					client,
-					selected.id,
-					selected.tenant_id,
-					selfAccountId,
-				),
-				staleTime: 0,
-			})
-			.catch(() => undefined)
-			.finally(() => {
-				if (current)
-					setMessageLink((link: TeamBridgeMessageLink | null) =>
-						link ? { ...link, fetched: true } : link,
-					);
-			});
-		return () => {
-			current = false;
-		};
+		if (messages.isPending || linkedPresent) {
+			linkedReadFor.current = messageLink.messageId;
+			linkedPages.current = 0;
+			return;
+		}
+		if (linkedReadFor.current !== messageLink.messageId) {
+			linkedReadFor.current = messageLink.messageId;
+			linkedPages.current = 0;
+		}
+		if (
+			messages.hasOlder &&
+			!messages.isLoadingOlder &&
+			linkedPages.current < MESSAGE_LINK_MAX_PAGES
+		) {
+			linkedPages.current += 1;
+			messages.loadOlder();
+			return;
+		}
+		/* Nothing older to read, or the walk is spent: the link is finished. A
+		   message deleted in between must not hold a spinner forever. */
+		setMessageLink((link: TeamBridgeMessageLink | null) =>
+			link ? { ...link, fetched: true } : link,
+		);
 	}, [
 		messageLink,
 		selected,
 		selfAccountId,
 		messages.isPending,
+		messages.hasOlder,
+		messages.isLoadingOlder,
+		messages.loadOlder,
 		linkedPresent,
-		client,
 		setMessageLink,
 	]);
 	// The highlight is a moment, not a state: drop it once the fade has run.

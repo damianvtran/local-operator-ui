@@ -1,4 +1,11 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import {
+	useCallback,
+	useEffect,
+	useLayoutEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import type { RefObject } from "react";
 import type { WindowEntry } from "./team-bridge-window";
 import {
@@ -81,21 +88,29 @@ export function useTimelineWindow({
 	range: { start: number; end: number };
 	spacers: { before: number; after: number };
 	/**
-	 * The day the floating pill shows, and where the viewport's top edge is in
-	 * the strip. Both come from the scroll signal this hook already keeps, so the
-	 * pill costs no second listener - and no second listener means the pill and
-	 * the window can never disagree about what is on screen.
+	 * The day the floating pill shows, read from the scroll signal this hook
+	 * already keeps - no second listener, so the pill and the window can never
+	 * disagree about what is on screen.
 	 */
 	stickyDay: StickyDay | null;
-	scrollTop: number;
 } {
 	const active = enabled && scrollRootRef !== undefined;
 	const heights = useRef(new Map<string, number>());
-	const anchor = useRef<WindowAnchor | null>(null);
+	const anchor = useRef<(WindowAnchor & { atBottom: boolean }) | null>(null);
 	const previousLayout = useRef<WindowLayout | null>(null);
 	const [measuredVersion, setMeasuredVersion] = useState(0);
-	const [contentVersion, setContentVersion] = useState(0);
 	const [scroll, setScroll] = useState({ top: 0, height: 0 });
+	/* What is already in `scroll`, so a repeated observation of the same geometry
+	   is not a state update. Without this, every scroll frame and every resize
+	   notification re-renders the list even when nothing moved - which is the
+	   shape of a feedback loop once anything else writes the scroll position. */
+	const committed = useRef({ top: 0, height: 0 });
+	const commitScroll = useCallback((top: number, height: number) => {
+		if (committed.current.top === top && committed.current.height === height)
+			return;
+		committed.current = { top, height };
+		setScroll({ top, height });
+	}, []);
 	const viewport = useRef<HTMLElement | null>(null);
 
 	/*
@@ -129,8 +144,21 @@ export function useTimelineWindow({
 		() => windowLayout(entries, heights.current),
 		[rowSignature, measuredVersion],
 	);
+	/*
+	 * BEFORE THE VIEWPORT HAS BEEN OBSERVED, THE STRIP IS CUT AT ITS END (QA
+	 * round 1, Q-2). A channel opens at the newest message, so the first slice is
+	 * the LAST one: cutting from `scrollTop 0` instead mounts the oldest rows for
+	 * one frame, and - because the spacers that stand in for the unmounted history
+	 * are what the page's pin measures - it also made the pin land short. With the
+	 * tail mounted, `scrollHeight` already describes the whole strip and
+	 * `use-stick-to-bottom` puts the reader at the bottom in its first effect.
+	 */
 	const range = active
-		? windowRange(layout, scroll.top, scroll.height)
+		? windowRange(
+				layout,
+				scroll.height === 0 ? layout.total : scroll.top,
+				scroll.height,
+			)
 		: { start: 0, end: entries.length };
 	const spacers = active
 		? windowSpacers(layout, range)
@@ -159,7 +187,7 @@ export function useTimelineWindow({
 			scrollRootRef?.current?.querySelector<HTMLElement>(VIEWPORT) ?? null;
 		viewport.current = element;
 		if (element === null) return;
-		setScroll({ top: element.scrollTop, height: element.clientHeight });
+		commitScroll(element.scrollTop, element.clientHeight);
 		let frame = 0;
 		const onScroll = () => {
 			if (frame !== 0) return;
@@ -167,8 +195,8 @@ export function useTimelineWindow({
 				frame = 0;
 				const top = element.scrollTop;
 				const height = element.clientHeight;
-				setScroll({ top, height });
-				anchor.current = windowAnchor(layoutRef.current, top);
+				commitScroll(top, height);
+				anchor.current = paintAnchor(element, layoutRef.current, top);
 				const load = onLoadRef.current;
 				if (
 					load !== undefined &&
@@ -188,7 +216,7 @@ export function useTimelineWindow({
 			typeof ResizeObserver === "undefined"
 				? null
 				: new ResizeObserver(() =>
-						setScroll({ top: element.scrollTop, height: element.clientHeight }),
+						commitScroll(element.scrollTop, element.clientHeight),
 					);
 		observer?.observe(element);
 		return () => {
@@ -196,98 +224,169 @@ export function useTimelineWindow({
 			observer?.disconnect();
 			if (frame !== 0) cancelAnimationFrame(frame);
 		};
-	}, [active, scrollRootRef, resetKey]);
+	}, [active, commitScroll, scrollRootRef, resetKey]);
 
 	/*
-	 * THE MEASURE PASS. Runs after every commit that could have changed what is
-	 * mounted: the range, the rows, a content resize (a row's markdown finishing
-	 * layout, an image arriving, a code block reflowing) or a previous measurement.
+	 * THE MEASURE PASS. Runs after every commit, and again when the strip's own
+	 * box changes (an image arriving, a code block reflowing, a disclosure
+	 * opening). It reads a handful of rects and calls `setState` ONLY when a row's
+	 * height actually moved by a pixel or more - which is what keeps it from being
+	 * a render loop: a pass that measures what it measured last is a no-op.
 	 *
-	 * A height that moved by less than a pixel is ignored: sub-pixel reflow
-	 * between two passes would otherwise loop (measure -> spacer -> measure).
+	 * ONE MARKER PER ITEM, FIRST WINS (agent review round 1, m1). An item can
+	 * paint two elements (the unread divider and the row it precedes), and both
+	 * carry the item's key; keying the pass by `dataset.windowItem` alone let the
+	 * later one overwrite the item's height, so the divider's ~20px was missing
+	 * from `offsets` and the trailing spacer was sized from a total that no
+	 * longer matched the DOM.
+	 *
+	 * A ZERO OR NEGATIVE MEASUREMENT IS IGNORED. A mounted row is never zero
+	 * pixels tall; a zero means the browser has not laid it out yet (a hidden
+	 * pane, a document still loading styles). Believing it would collapse the
+	 * model to an empty strip and then rebuild it, which is a visible jump at
+	 * best and a loop at worst.
 	 */
-	// biome-ignore lint/correctness/useExhaustiveDependencies: the triggers are the deps; the DOM is read directly.
-	useLayoutEffect(() => {
-		if (!active) return;
+	const measure = useCallback(() => {
 		const list = listRef.current;
 		if (list === null) return;
-		const markers = [...list.querySelectorAll<HTMLElement>(ITEM)];
 		const spacer = list.querySelector<HTMLElement>(TRAILING);
-		if (markers.length === 0 || spacer === null) return;
+		if (spacer === null) return;
+		/* The FIRST element of each item, in DOM order: an item may paint more than
+		   one element (a divider and its row), and the height it contributes is the
+		   distance from that first element to the next ITEM's first element. */
+		const markers: HTMLElement[] = [];
+		for (const marker of list.querySelectorAll<HTMLElement>(ITEM)) {
+			if (markers.at(-1)?.dataset.windowItem === marker.dataset.windowItem)
+				continue;
+			markers.push(marker);
+		}
+		const spacerTop = spacer.getBoundingClientRect().top;
 		let changed = false;
 		for (let index = 0; index < markers.length; index += 1) {
 			const key = markers[index].dataset.windowItem;
-			if (key === undefined) continue;
+			if (key === undefined || key === undefined) continue;
 			const top = markers[index].getBoundingClientRect().top;
-			const next =
-				index + 1 < markers.length
-					? markers[index + 1].getBoundingClientRect().top
-					: spacer.getBoundingClientRect().top;
+			const next = markers[index + 1]?.getBoundingClientRect().top ?? spacerTop;
 			const height = Math.round(next - top);
+			/* A mounted row is never zero pixels tall: a zero means the browser has not
+			 * laid it out yet, and believing it would collapse the model. */
+			if (height <= 0) continue;
 			const current = heights.current.get(key);
 			if (current !== undefined && Math.abs(current - height) < 1) continue;
 			heights.current.set(key, height);
 			changed = true;
 		}
 		if (changed) setMeasuredVersion((version) => version + 1);
-	}, [
-		active,
-		listRef,
-		rowSignature,
-		range.start,
-		range.end,
-		measuredVersion,
-		contentVersion,
-	]);
+	}, [listRef]);
 
-	// The strip's own height is the cheapest signal that a mounted row changed
-	// size without a scroll: the strip IS the sum of every row and spacer.
+	/*
+	 * MEASURED ON THE THINGS THAT CAN CHANGE WHAT IS MOUNTED, NEVER ON THE
+	 * REVISION THIS PASS WRITES (QA round 1, Q-1). `measuredVersion` in this
+	 * dependency list was the cycle: measure -> setState -> the effect re-runs
+	 * because its own output changed -> measure again. The triggers are the rows,
+	 * the mounted range and the strip's own box (below); a pass that measures what
+	 * it measured last writes nothing, so it cannot ask itself to run.
+	 */
+	// biome-ignore lint/correctness/useExhaustiveDependencies: the triggers are the rows and the range; the pass reads the DOM directly.
+	useLayoutEffect(() => {
+		if (!active) return;
+		measure();
+	}, [active, measure, rowSignature, range.start, range.end]);
+
+	/* The strip's own box is the cheapest signal that a mounted row changed size
+	 * without a scroll. The callback measures DIRECTLY (no state of its own):
+	 * `measure` decides whether anything changed, so a resize cannot schedule a
+	 * render that schedules a resize. */
 	useEffect(() => {
 		if (!active) return;
 		const list = listRef.current;
 		if (list === null || typeof ResizeObserver === "undefined") return;
-		let frame = 0;
-		const observer = new ResizeObserver(() => {
-			if (frame !== 0) return;
-			frame = requestAnimationFrame(() => {
-				frame = 0;
-				setContentVersion((version) => version + 1);
-			});
-		});
+		const observer = new ResizeObserver(() => measure());
 		observer.observe(list);
-		return () => {
-			observer.disconnect();
-			if (frame !== 0) cancelAnimationFrame(frame);
-		};
-	}, [active, listRef]);
+		return () => observer.disconnect();
+	}, [active, listRef, measure]);
 
 	/*
 	 * THE CORRECTION. Every layout change - a measurement, a prepend, a trim -
-	 * runs this before paint. `windowAnchorDelta` answers with `null` when the
-	 * anchor is no longer in the strip (trimmed out, or the conversation
-	 * changed); the position is then left ALONE on purpose: guessing there is how
-	 * a prepend yanks a reader who had scrolled up.
+	 * runs this before paint.
+	 *
+	 * A READER AT THE BOTTOM STAYS AT THE BOTTOM (QA round 1, Q-2). Measurement is
+	 * not free of geometry: the last mounted rows' heights replace estimates, so
+	 * the strip's total shrinks or grows after the page has already pinned to the
+	 * newest message. Holding an ITEM there would move the reader a screenful off
+	 * the bottom; holding the BOTTOM is what "opens at the newest message" means.
+	 * So an anchor recorded at the bottom re-pins instead of applying a delta.
+	 *
+	 * A WRITE THAT CANNOT BE ABSORBED IS NOT MADE. If the browser would clamp
+	 * `scrollTop`, writing anyway fires a scroll event, which re-cuts the window,
+	 * which re-measures, which corrects again - a loop with the reader standing
+	 * still. Comparing against the clamped target first makes the correction
+	 * idempotent.
 	 */
 	useLayoutEffect(() => {
 		const previous = previousLayout.current;
 		previousLayout.current = layout;
 		const element = viewport.current;
 		if (!active || element === null) return;
+		/* The RANGE is a trigger as well as the layout: mounting a new slice changes
+		   the DOM's height with no layout change at all (a scroll), and a pinned
+		   reader must survive that. An empty strip has nothing to correct. */
+		if (range.end - range.start === 0) return;
 		if (previous === null || anchor.current === null) return;
-		const delta = windowAnchorDelta(anchor.current, layout);
-		if (delta === null) {
+		const max = Math.max(0, element.scrollHeight - element.clientHeight);
+		const target = anchor.current.atBottom
+			? max
+			: anchorDeltaTarget(element, layout, anchor.current, max);
+		if (target === null) {
 			anchor.current = null;
 			return;
 		}
-		if (Math.abs(delta) < 1) return;
-		element.scrollTop += delta;
-		setScroll({ top: element.scrollTop, height: element.clientHeight });
-		anchor.current = windowAnchor(layout, element.scrollTop);
-	}, [active, layout]);
+		if (target === element.scrollTop) return;
+		element.scrollTop = target;
+		commitScroll(element.scrollTop, element.clientHeight);
+		anchor.current = paintAnchor(element, layout, element.scrollTop);
+	}, [active, commitScroll, layout, range.start, range.end]);
 
 	/* The pill's day is the first visible item's day (`stickyDayAt`), read from
 	   the same `scroll` state the window is cut from. Off with the window: an
 	   unwindowed list still has per-day sticky pills of its own. */
 	const stickyDay = active ? stickyDayAt(entries, layout, scroll.top) : null;
-	return { layout, range, spacers, stickyDay, scrollTop: scroll.top };
+	return { layout, range, spacers, stickyDay };
+}
+
+/** How close to the end counts as "at the bottom": a pixel, because a fractional
+ * layout settles the last row's height a fraction at a time. */
+const AT_BOTTOM_PX = 1;
+
+/**
+ * The anchor to restore after a layout change, with the one piece of state a
+ * browser scroll position carries that an item offset cannot: whether the reader
+ * was AT THE END. Without it, rows settling above the newest message would drag
+ * a pinned reader upward row by row.
+ */
+function paintAnchor(
+	element: HTMLElement,
+	layout: WindowLayout,
+	scrollTop: number,
+): (WindowAnchor & { atBottom: boolean }) | null {
+	const anchor = windowAnchor(layout, scrollTop);
+	if (anchor === null) return null;
+	return {
+		...anchor,
+		atBottom:
+			element.scrollHeight - scrollTop - element.clientHeight <= AT_BOTTOM_PX,
+	};
+}
+
+/** The clamped scroll target for an item anchor, or null when it left the strip. */
+function anchorDeltaTarget(
+	element: HTMLElement,
+	layout: WindowLayout,
+	anchor: WindowAnchor,
+	max: number,
+): number | null {
+	const delta = windowAnchorDelta(anchor, layout);
+	if (delta === null) return null;
+	if (Math.abs(delta) < 1) return element.scrollTop;
+	return Math.min(Math.max(element.scrollTop + delta, 0), max);
 }
