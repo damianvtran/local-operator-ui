@@ -163,6 +163,8 @@ window.Element.prototype.scrollIntoView = function scrollIntoView() {};
  */
 const LINE_PX = 21.7;
 const CAP_CLASS = "max-h-[174px]";
+const USER_FADE_MASK =
+	"linear-gradient(to bottom, black calc(100% - 24px), transparent 100%)";
 let charsPerLine = 80;
 let intrinsicHeight = null;
 const reads = [];
@@ -448,6 +450,7 @@ test("expanded UserRow remount reconstructs Show less under one living owner", a
 		);
 	await renderRow(true);
 	assert.equal(store.read(record.id), false);
+	assert.equal(body().style.maskImage, USER_FADE_MASK);
 	assert.equal(
 		toggle()?.textContent,
 		"Show more",
@@ -462,6 +465,11 @@ test("expanded UserRow remount reconstructs Show less under one living owner", a
 	assert.equal(toggle()?.textContent, "Show less");
 	assert.equal(toggle()?.getAttribute("aria-expanded"), "true");
 	assert.doesNotMatch(body().className, CAP_RE);
+	assert.equal(
+		body().style.maskImage,
+		"",
+		"expanded and reconstructed-expanded rows have no fade",
+	);
 	assert.match(body().textContent, TAIL_RE);
 	const oldBody = body();
 	await renderRow(false);
@@ -492,11 +500,21 @@ test("expanded UserRow remount reconstructs Show less under one living owner", a
 	);
 	assert.equal(toggle()?.getAttribute("aria-expanded"), "true");
 	assert.doesNotMatch(body().className, CAP_RE);
+	assert.equal(
+		body().style.maskImage,
+		"",
+		"expanded and reconstructed-expanded rows have no fade",
+	);
 	assert.doesNotMatch(body().className, OVERFLOW_RE);
 	assert.match(body().textContent, TAIL_RE);
 	await press(toggle());
 	assert.equal(store.read(record.id), false);
 	assert.match(body().className, CAP_RE);
+	assert.equal(
+		body().style.maskImage,
+		USER_FADE_MASK,
+		"collapsing restores the overflow-only fade",
+	);
 	assert.match(body().className, OVERFLOW_RE);
 	assert.equal(toggle()?.textContent, "Show more");
 	assert.equal(toggle()?.getAttribute("aria-expanded"), "false");
@@ -514,6 +532,22 @@ test("a long turn carries the cap from its first commit, and offers Show more", 
 	assert.match(first.className, OVERFLOW_RE);
 	const body = mounted.body("u-long");
 	assert.match(body.className, CAP_RE, "and it is still there settled");
+	assert.equal(body.style.maskImage, USER_FADE_MASK);
+	assert.equal(
+		body.style.background,
+		"",
+		"fade must not approximate the bubble with an opaque ground",
+	);
+	assert.equal(
+		body.childElementCount,
+		1,
+		"the alpha mask needs no overlay node",
+	);
+	assert.equal(
+		body.parentElement.style.maskImage,
+		"",
+		"bubble/disclosure/attachments are not masked",
+	);
 	const toggle = mounted.toggle("u-long");
 	assert.ok(toggle, "a turn hiding text offers the control");
 	assert.equal(toggle.textContent, "Show more");
@@ -530,15 +564,49 @@ test("a long turn carries the cap from its first commit, and offers Show more", 
 	);
 });
 
+test("code prose fades without masking its document card or disclosure", async (t) => {
+	const record = {
+		...user(
+			"u-code-file",
+			`\`\`\`text\n${"synthetic trace line with a deliberately long diagnostic sentence\n".repeat(40)}\`\`\``,
+		),
+		documents: [
+			{
+				id: "synthetic-doc",
+				attachment: null,
+				filename: "synthetic-brief.pdf",
+				mimeType: "application/pdf",
+				path: null,
+				storedPath: null,
+				bytes: 256,
+			},
+		],
+	};
+	const mounted = await mount(t, [record]);
+	const body = mounted.body(record.id);
+	assert.equal(body.style.maskImage, USER_FADE_MASK);
+	assert.ok(mounted.row(record.id).textContent.includes("synthetic-brief.pdf"));
+	assert.equal(
+		body.textContent.includes("synthetic-brief.pdf"),
+		false,
+		"card stays outside masked prose",
+	);
+	assert.equal(body.contains(mounted.toggle(record.id)), false);
+	assert.equal(mounted.toggle(record.id).style.maskImage, "");
+	assert.equal(body.parentElement.style.maskImage, "");
+});
+
 test("Show more removes the cap, Show less restores it", async (t) => {
 	const mounted = await mount(t, [user("u-long", linesOf(12))]);
 	await mounted.press(mounted.toggle("u-long"));
 	const body = mounted.body("u-long");
 	assert.doesNotMatch(body.className, CAP_RE);
+	assert.equal(body.style.maskImage, "");
 	assert.equal(mounted.toggle("u-long")?.textContent, "Show less");
 	assert.equal(mounted.toggle("u-long")?.getAttribute("aria-expanded"), "true");
 	await mounted.press(mounted.toggle("u-long"));
 	assert.match(mounted.body("u-long").className, CAP_RE);
+	assert.equal(mounted.body("u-long").style.maskImage, USER_FADE_MASK);
 	assert.equal(mounted.toggle("u-long")?.textContent, "Show more");
 });
 
@@ -549,6 +617,8 @@ test("a short turn and a turn exactly at the cap get no control", async (t) => {
 		user("u-nine", linesOf(9)),
 	]);
 	assert.equal(mounted.toggle("u-short"), null, "one line reveals nothing");
+	assert.equal(mounted.body("u-short").style.maskImage, "");
+	assert.equal(mounted.body("u-eight").style.maskImage, "");
 	assert.equal(
 		mounted.toggle("u-eight"),
 		null,
@@ -563,6 +633,7 @@ test("a short turn and a turn exactly at the cap get no control", async (t) => {
 test("a turn that starts overflowing after mount gains the control from the shared observer", async (t) => {
 	const mounted = await mount(t, [user("u-six", linesOf(6))]);
 	assert.equal(mounted.toggle("u-six"), null);
+	assert.equal(mounted.body("u-six").style.maskImage, "");
 	const intrinsic = mounted
 		.row("u-six")
 		.querySelector("[data-lo-user-turn-intrinsic]");
@@ -574,6 +645,15 @@ test("a turn that starts overflowing after mount gains the control from the shar
 	assert.ok(
 		mounted.toggle("u-six"),
 		"the control follows the box across the cap",
+	);
+	assert.equal(mounted.body("u-six").style.maskImage, USER_FADE_MASK);
+	charsPerLine = 80;
+	await act(async () => deliverSizeChanges());
+	assert.equal(mounted.toggle("u-six"), null);
+	assert.equal(
+		mounted.body("u-six").style.maskImage,
+		"",
+		"widening removes the fade once prose fits",
 	);
 });
 
@@ -595,6 +675,7 @@ for (const boundary of [174, 175]) {
 		const row = mounted.row("u-intrinsic");
 		const text = body.textContent;
 		assert.equal(mounted.toggle("u-intrinsic"), null);
+		assert.equal(body.style.maskImage, "");
 		assert.equal(modeledBorderHeight(body), 174);
 		intrinsicHeight = 1200;
 		await act(async () => deliverSizeChanges());
@@ -609,6 +690,7 @@ for (const boundary of [174, 175]) {
 			"no text-prop update requested remeasurement",
 		);
 		assert.equal(mounted.toggle("u-intrinsic")?.textContent, "Show more");
+		assert.equal(body.style.maskImage, USER_FADE_MASK);
 
 		await mounted.press(mounted.toggle("u-intrinsic"));
 		assert.equal(modeledBorderHeight(body), 1200);
@@ -635,6 +717,11 @@ for (const boundary of [174, 175]) {
 			mounted.toggle("u-intrinsic"),
 			null,
 			"collapsed shrink also removes the control",
+		);
+		assert.equal(
+			body.style.maskImage,
+			"",
+			"intrinsic shrink removes the fade without a text update",
 		);
 		const intrinsic = row.querySelector("[data-lo-user-turn-intrinsic]");
 		assert.ok(

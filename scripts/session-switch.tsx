@@ -39,6 +39,7 @@ import { CommandPalette } from "@features/command-palette/components/command-pal
 import { ChatLayout } from "@shared/components/common/chat-layout";
 import { SidebarNavigation } from "@shared/components/navigation/sidebar-navigation";
 import { paintPendingSend } from "@shared/hooks/use-canonical-session";
+import { applyGlassFacts } from "@shared/hooks/use-window-glass";
 import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
@@ -52,6 +53,7 @@ import {
 	Routes,
 	useNavigate,
 } from "react-router-dom";
+import { DEFAULT_GLASS_INTENSITY } from "../src/shared/window-glass";
 import {
 	attachmentMode,
 	withCaptureAttachment,
@@ -169,6 +171,19 @@ if (fixtureTheme === "light" || fixtureTheme === "dark") {
 	useUiPreferencesStore.getState().setTheme(themeName);
 	// This fixture mounts ChatPage, not the outer app's theme-provider effect.
 	document.documentElement.dataset.theme = themeName;
+}
+// Renderer-style preview only: feed the SHIPPED glass painter explicit mock
+// native facts. This exercises real Full app/80% alpha variables and CSS, not
+// OS vibrancy/capability detection. No opaque overlay or fake backdrop is added.
+if (fixtureParams.get("glass") === "renderer") {
+	applyGlassFacts({
+		mechanism: "vibrancy",
+		coverage: "full",
+		intensity: DEFAULT_GLASS_INTENSITY,
+		material: "window",
+		scheme: fixtureTheme === "light" ? "light" : "dark",
+	});
+	document.documentElement.dataset.previewGlass = "mock-native-facts";
 }
 /** Steps in the INCOMING session's transcript: the one whose paint we time. */
 const INCOMING_STEPS = param("steps", 200);

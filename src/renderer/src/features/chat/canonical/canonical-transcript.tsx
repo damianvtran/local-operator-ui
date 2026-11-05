@@ -1331,6 +1331,19 @@ const UserRow = memo(function UserRow({
 								 */
 								!expanded && "max-h-[174px] overflow-hidden",
 							)}
+							/* Fade only genuinely hidden prose, never the disclosure or
+							 * attachments below. An alpha mask dissolves the actual ink
+							 * over any theme/window glass; an opaque ground overlay would
+							 * paint a false seam on translucent bubbles. The cap remains
+							 * unconditional on first commit; the mask changes no geometry. */
+							style={
+								!expanded && overflows
+									? {
+											maskImage:
+												"linear-gradient(to bottom, black calc(100% - 24px), transparent 100%)",
+										}
+									: undefined
+							}
 						>
 							<div
 								ref={intrinsicBodyRef}
