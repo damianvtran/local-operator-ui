@@ -102,7 +102,25 @@ import {
 	TeamBridgeComposer,
 	type TeamBridgeComposerProps,
 } from "./team-bridge-composer";
-import { TeamBridgeConversationMenu } from "./team-bridge-conversation-menu";
+import {
+	TeamBridgeConversationMenu,
+	type TeamBridgeConversationMenuHandlers,
+	TeamBridgeMenuConfirmDialog,
+	type TeamBridgeMenuConfirmError,
+	type TeamBridgeMenuConfirmSubject,
+} from "./team-bridge-conversation-menu";
+import {
+	type TeamBridgeConversationMenuItem,
+	type TeamBridgeLeaveOutcome,
+	type TeamBridgeOwnAgentRequest,
+	conversationMenuSections,
+	generalRejoinRefused,
+	isMemberNotFound,
+	landingAfterLeave,
+	leaveWithAgentCascade,
+	ownAgentRequest,
+	withdrawAlreadyDone,
+} from "./team-bridge-conversation-menu-model";
 import { TeamBridgeCreateDialog } from "./team-bridge-create-dialog";
 import { TeamBridgeDefaultOnBanner } from "./team-bridge-default-on-banner";
 import { draftTargetKey } from "./team-bridge-drafts";
@@ -153,6 +171,7 @@ import {
 	notifyFailureIsVisible,
 	organizationOptions,
 	organizationsReadState,
+	ownActiveAgent,
 	ownAgentMenuState,
 	participantLabel,
 	personDisplayLabel,
@@ -673,6 +692,53 @@ export type TeamBridgePageViewProps = {
 	/** Story/test seed only: opens the members panel on mount. */
 	initialMembersPanelOpen?: boolean;
 	/**
+	 * THE CONVERSATION MENU'S WRITES (header "…", rail row "…", right-click).
+	 * Each names the conversation it acts on: a row's menu acts on THAT row,
+	 * which is not necessarily the selection. Absent, the item is not drawn.
+	 *
+	 * `onMenuLeave` resolves with the cascade's outcome (see
+	 * `leaveWithAgentCascade`): "partial" means the reader left but the
+	 * follow-up withdraw of their agent failed, and the page says so.
+	 */
+	onMenuJoin?: (conversation: TeamBridgeConversation) => void;
+	onMenuLeave?: (
+		conversation: TeamBridgeConversation,
+	) => Promise<TeamBridgeLeaveOutcome>;
+	/**
+	 * THE TRUE STATE AFTER A PARTIAL LEAVE: the reader left, their agent did
+	 * not. Owned by the CONTAINER, not this view: leaving the selected room
+	 * moves the selection, which remounts this view and would drop any state
+	 * held here. Drawn as an alert line with Retry (the withdraw only) and
+	 * Dismiss until the reader acts on it.
+	 */
+	partialLeave?: { name: string; retrying: boolean; retryFailed: boolean };
+	onRetryPartialLeave?: () => void;
+	onDismissPartialLeave?: () => void;
+	/**
+	 * Open the members panel (or the add-members dialog) for a row that is NOT
+	 * the selection. Selecting remounts this view, so the open intent has to
+	 * outlive it: the container holds it and hands it back as
+	 * `initialMembersPanelOpen` / `initialMembersOpen` on the new mount.
+	 */
+	onOpenMembersFor?: (
+		conversation: TeamBridgeConversation,
+		surface: "panel" | "add",
+	) => void;
+	onMenuOwnAgent?: (
+		conversation: TeamBridgeConversation,
+		request: TeamBridgeOwnAgentRequest,
+	) => Promise<unknown>;
+	onMenuNotifyChange?: (
+		conversation: TeamBridgeConversation,
+		notify: TeamBridgeNotify,
+	) => void;
+	/** Story/test seed only: open the menu confirm for this conversation. */
+	initialMenuConfirm?: {
+		conversationId: string;
+		subject: TeamBridgeMenuConfirmSubject;
+	};
+
+	/**
 	 * ARCHIVE / PERMANENT DELETE. Each is optional so a mount that does not wire
 	 * them (a story, an older container) simply draws none of the controls.
 	 * `onArchive` is optimistic and fire-and-forget; `onDelete` resolves only when
@@ -883,6 +949,15 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	initialMembersOpen = false,
 	onMemberSelfAction,
 	initialMembersPanelOpen = false,
+	onMenuJoin,
+	onMenuLeave,
+	onMenuOwnAgent,
+	onMenuNotifyChange,
+	initialMenuConfirm,
+	partialLeave,
+	onRetryPartialLeave,
+	onDismissPartialLeave,
+	onOpenMembersFor,
 	onArchive,
 	onUnarchive,
 	onDelete,
@@ -954,6 +1029,21 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 		initialMembersPanelOpen,
 	);
 	const [memberActionFailed, setMemberActionFailed] = useState(false);
+	/* The conversation menu's confirm (leave / remove or add your agent), named
+	   by conversation id like `dialog`: a row's menu acts on that row. */
+	const [menuConfirm, setMenuConfirm] = useState<{
+		conversationId: string;
+		subject: TeamBridgeMenuConfirmSubject;
+		item?: Extract<
+			TeamBridgeConversationMenuItem,
+			{ id: "remove_agent" | "add_agent" }
+		>;
+	} | null>(initialMenuConfirm ?? null);
+	const [menuPending, setMenuPending] = useState(false);
+	const [menuError, setMenuError] = useState<TeamBridgeMenuConfirmError | null>(
+		null,
+	);
+
 	const [deleting, setDeleting] = useState(false);
 	const [deleteFailed, setDeleteFailed] = useState<"error" | "gone" | null>(
 		null,
@@ -2483,6 +2573,114 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 			: label;
 	};
 
+	/*
+	 * ONE MENU PER CONVERSATION, for every opener (header "…", row "…",
+	 * right-click): the sections come from `conversationMenuSections`, so the
+	 * same conversation draws the same items wherever it is opened. Only the
+	 * SELECTED conversation offers "Wake your agent for": that write is
+	 * serialised per selected conversation (`useSetTeamBridgeAgentNotify`), so
+	 * a non-selected row would race it. A read-only bridge draws no menu at all
+	 * (the header count still opens the members panel).
+	 */
+	const selfPersonFor = (tenantId: string) =>
+		selfAccountId
+			? rosterFor(tenantId).find((row) => row.account_id === selfAccountId)
+			: undefined;
+	const menuFor = (conversation: TeamBridgeConversation) => {
+		const selectedRow = isSelectedConversation(conversation);
+		const notifyWrite =
+			onMenuNotifyChange ??
+			(selectedRow && onNotifyChange
+				? (_row: TeamBridgeConversation, next: TeamBridgeNotify) =>
+						onNotifyChange(next)
+				: undefined);
+		const agentNotify =
+			selectedRow && agentNotifyCapabilityState === "enabled"
+				? ownAgentMenuState(conversation, selfAccountId)
+				: undefined;
+		const sections = readOnly
+			? []
+			: conversationMenuSections({
+					conversation,
+					selfAccountId,
+					selfPerson: selfPersonFor(conversation.tenant_id),
+					readOnly,
+					agentNotifyEnabled: agentNotify !== undefined,
+					archivable: canArchiveConversation(conversation),
+					wiring: {
+						viewMembers: true,
+						addMembers: Boolean(onAddMembers),
+						join: Boolean(onMenuJoin ?? (selectedRow && onJoin)),
+						notify: Boolean(notifyWrite),
+						agentNotify: Boolean(onAgentNotifyChange) && selectedRow,
+						ownAgent: Boolean(onMenuOwnAgent),
+						leave: Boolean(onMenuLeave),
+						archive: Boolean(onArchive),
+					},
+				});
+		const handlers: TeamBridgeConversationMenuHandlers = {
+			onNotifyChange: notifyWrite
+				? (next) => notifyWrite(conversation, next)
+				: undefined,
+			onAgentNotifyChange,
+			onViewMembers: () => {
+				if (!selectedRow) {
+					onOpenMembersFor?.(conversation, "panel");
+					return;
+				}
+				if (threadSelection) {
+					setThreadSelection(null);
+					onCloseThread?.();
+				}
+				setMembersPanelOpen(true);
+			},
+			onAddMembers: () => {
+				if (!selectedRow) {
+					onOpenMembersFor?.(conversation, "add");
+					return;
+				}
+				setMemberActionFailed(false);
+				setMembersOpen(true);
+			},
+			onJoin: () => {
+				if (onMenuJoin) onMenuJoin(conversation);
+				else onJoin?.();
+			},
+			onOwnAgent: (item) => {
+				setMenuError(null);
+				setMenuConfirm({
+					conversationId: conversation.id,
+					subject: {
+						kind: item.id,
+						agentName: item.agentName,
+						action: item.action,
+					},
+					item,
+				});
+			},
+			onLeave: () => {
+				setMenuError(null);
+				setMenuConfirm({
+					conversationId: conversation.id,
+					subject: {
+						kind: "leave",
+						conversationKind:
+							conversation.kind === "group" ? "group" : "channel",
+						agentStays: conversation.builtin === "agents",
+					},
+				});
+			},
+			onArchive: () =>
+				setDialog({ kind: "archive", conversationId: conversation.id }),
+		};
+		return {
+			sections,
+			conversation,
+			agentNotify: agentNotify?.notify ?? null,
+			handlers,
+		};
+	};
+
 	const conversationRows = (rows: TeamBridgeConversation[]) => (
 		<ul className="flex flex-col">
 			{rows.map((conversation) => (
@@ -2528,15 +2726,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 					onSelect={() =>
 						selectTarget({ type: "conversation", id: conversation.id })
 					}
-					onArchive={
-						onArchive && !readOnly && canArchiveConversation(conversation)
-							? () =>
-									setDialog({
-										kind: "archive",
-										conversationId: conversation.id,
-									})
-							: undefined
-					}
+					menu={menuFor(conversation)}
 				/>
 			))}
 		</ul>
@@ -3229,6 +3419,46 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 				)}
 			>
 				{notice}
+				{partialLeave && (
+					/* "You left. Your agent is still in this conversation." - the true
+					   state after the cascade's second write failed, never "Left". */
+					<div
+						role="alert"
+						data-partial-leave=""
+						className="mx-5 mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md bg-danger-wash px-3 py-2 text-[13px] text-ink"
+					>
+						<span className="min-w-0 flex-1">
+							{partialLeave.retryFailed
+								? t(
+										"ui.teamBridge.conversation_menu.partial_leave.retry_failed",
+										{
+											conversation: partialLeave.name,
+										},
+									)
+								: t("ui.teamBridge.conversation_menu.partial_leave.body", {
+										conversation: partialLeave.name,
+									})}
+						</span>
+						<Button
+							type="button"
+							size="sm"
+							variant="ghost"
+							disabled={partialLeave.retrying}
+							onClick={onRetryPartialLeave}
+						>
+							{t("ui.teamBridge.conversation_menu.partial_leave.retry")}
+						</Button>
+						<Button
+							type="button"
+							size="sm"
+							variant="ghost"
+							disabled={partialLeave.retrying}
+							onClick={onDismissPartialLeave}
+						>
+							{t("ui.common.actions.dismiss")}
+						</Button>
+					</div>
+				)}
 				{ownerAudit?.active ? (
 					ownerAudit.panel
 				) : quickView === "invitations" ? (
@@ -3449,15 +3679,15 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 									</span>
 								)}
 								{/*
-								 * ONE QUIET LINE OF FACTS (visual refresh D8). The header used to
-								 * stack "2 active members / 1 invited" under the name and then add
-								 * "· 4 minutes ago" - the least useful fact a header can carry, and
-								 * the rail's row tooltip already has it. Now: the name, then a 1px
-								 * `hairline` tick and one quiet fact - the built-in channel's topic
-								 * when it has one, else the active member count. The invited count
-								 * lives in the members dialog, where the action on it is. Never
-								 * infer membership from a preview's aggregate `member_count` beyond
-								 * the plain count: a preview has no rows, so `invited` is 0 there.
+								 * ONE QUIET LINE OF FACTS (visual refresh D8, with #1670's count
+								 * button). After the name come a 1px `hairline` tick, the member
+								 * count (a button that opens the members panel, below), and then the
+								 * topic: a user-set topic first, else the built-in channel's. The
+								 * relative "· 4 minutes ago" is gone; the rail row's tooltip carries
+								 * it. With invitees the count says "N active" and the invited count
+								 * lives in the members panel it opens and in its accessible name.
+								 * Never infer membership from a preview's aggregate `member_count`
+								 * beyond the plain count: a preview has no rows, so `invited` is 0.
 								 */}
 								{shown && shown.kind !== "dm" && (
 									<>
@@ -3520,6 +3750,14 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 											    count lives in the members panel this opens and in the
 											    accessible name above. Never infer the breakdown from a
 											    preview's aggregate `member_count`: a preview has no rows. */}
+											{/* A PEOPLE GLYPH BEFORE THE COUNT (design review round 3,
+											    D1 on #1670): it marks the number as a who-is-here
+											    control, not a stray statistic beside the name. */}
+											<Users
+												size={13}
+												aria-hidden="true"
+												className="me-1 inline-block align-[-2px]"
+											/>
 											{membershipCounts.invited > 0
 												? t("ui.teamBridge.member.active_count", {
 														count: membershipCounts.active,
@@ -3578,36 +3816,23 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 										</Button>
 									)}
 								<div className="ms-auto flex items-center gap-1">
-									{shown && !previewSelected && !readOnly && onNotifyChange && (
-										<TeamBridgeConversationMenu
-											conversation={shown}
-											onNotifyChange={onNotifyChange}
-											ownAgent={
-												agentNotifyCapabilityState === "enabled"
-													? ownAgentMenuState(shown, selfAccountId)
-													: undefined
-											}
-											onAgentNotifyChange={onAgentNotifyChange}
-											onAddMembers={
-												onAddMembers && canInviteMembers(shown, selfAccountId)
-													? () => {
-															setMemberActionFailed(false);
-															setMembersOpen(true);
-														}
-													: undefined
-											}
-											onArchive={
-												onArchive && canArchiveConversation(shown)
-													? () =>
-															setDialog({
-																kind: "archive",
-																conversationId: shown.id,
-															})
-													: undefined
-											}
-											defaultOpen={defaultMenuOpen}
-										/>
-									)}
+									{/* The header's "…" draws the same items as the row's
+									    (`menuFor`). A preview is offered Join here too, so the
+									    header and the row agree about a discoverable channel. */}
+									{shown &&
+										!readOnly &&
+										(() => {
+											const menu = menuFor(shown);
+											return (
+												<TeamBridgeConversationMenu
+													sections={menu.sections}
+													conversation={shown}
+													agentNotify={menu.agentNotify}
+													handlers={menu.handlers}
+													defaultOpen={defaultMenuOpen}
+												/>
+											);
+										})()}
 								</div>
 							</header>
 						)}
@@ -4251,6 +4476,86 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 					/>
 				</div>
 			)}
+			{(() => {
+				/* The conversation menu's confirm, for the conversation it was opened on
+				   (a row's menu acts on that row, not the selection). */
+				const subject = menuConfirm
+					? selectable.find((row) => row.id === menuConfirm.conversationId)
+					: undefined;
+				if (!menuConfirm || !subject) return null;
+				const name =
+					conversationTitle(subject, selfAccountId) ??
+					t("ui.teamBridge.list.untitled");
+				const wasShown =
+					target?.type === "conversation" && target.id === subject.id;
+				const close = () => {
+					setMenuConfirm(null);
+					setMenuError(null);
+				};
+				const confirm = () => {
+					if (menuPending) return;
+					const { subject: what, item } = menuConfirm;
+					let write: Promise<unknown> | undefined;
+					if (what.kind === "leave") {
+						write = onMenuLeave?.(subject).then((outcome) => {
+							/* LEFT: the room is no longer the reader's. Land on #general
+							   (the default landing) when it was the one on screen. The
+							   container shows the partial state itself when the agent
+							   withdraw failed. */
+							if (wasShown) {
+								setMembersPanelOpen(false);
+								selectTarget(
+									landingAfterLeave(sidebarRows, subject.id, organizationOrder),
+								);
+							}
+							return outcome;
+						});
+					} else if (item) {
+						const request = ownAgentRequest(
+							subject,
+							selfAccountId,
+							selfPersonFor(subject.tenant_id),
+							item,
+						);
+						write = request
+							? onMenuOwnAgent?.(subject, request)
+							: Promise.reject(
+									new Error("Team Bridge write authority changed"),
+								);
+					}
+					if (!write) return;
+					setMenuPending(true);
+					setMenuError(null);
+					write.then(
+						() => {
+							setMenuPending(false);
+							setMenuConfirm(null);
+						},
+						(failure: unknown) => {
+							setMenuPending(false);
+							setMenuError(
+								subject.builtin !== "general"
+									? "error"
+									: isMemberNotFound(failure)
+										? "not_in_general"
+										: item?.action === "accept" && generalRejoinRefused(failure)
+											? "general_rejoin_refused"
+											: "error",
+							);
+						},
+					);
+				};
+				return (
+					<TeamBridgeMenuConfirmDialog
+						subject={menuConfirm.subject}
+						conversationName={name}
+						pending={menuPending}
+						error={menuError}
+						onClose={close}
+						onConfirm={confirm}
+					/>
+				);
+			})()}
 			{(() => {
 				/* The dialogs name the conversation they were opened for. A row that left
 				   the cache (archived, or deleted by someone else) closes its own dialog. */
@@ -5291,6 +5596,21 @@ const TeamBridgeOwnedPage: FC<{
 	const leaveConversation = useLeaveTeamBridgeConversation();
 	const withdrawAgent = useWithdrawTeamBridgeAgent();
 	const answerInvitation = useAnswerTeamBridgeInvitation();
+	/* The conversation menu's partial-leave line and its members-open intent
+	   live HERE because a leave or a row's "View members" moves the selection,
+	   which remounts the view (see `TeamBridgePageView`'s props). */
+	const [partialLeave, setPartialLeave] = useState<{
+		conversationId: string;
+		tenantId: string;
+		name: string;
+		endpointId?: string;
+		retrying: boolean;
+		retryFailed: boolean;
+	} | null>(null);
+	const [membersIntent, setMembersIntent] = useState<{
+		conversationId: string;
+		surface: "panel" | "add";
+	} | null>(null);
 	const create = useCreateTeamBridgeConversation(
 		mergedView ? undefined : scope,
 		isCurrentOwner,
@@ -5897,7 +6217,7 @@ const TeamBridgeOwnedPage: FC<{
 					selected?.id ?? null,
 				)}
 				onJoin={() => {
-					if (isCurrentOwner()) join.mutate();
+					if (isCurrentOwner()) join.mutate(undefined);
 				}}
 				onArchive={(conversation) => {
 					if (!isCurrentOwner()) return;
@@ -6000,6 +6320,151 @@ const TeamBridgeOwnedPage: FC<{
 						key: `remove:${memberAccountId}`,
 					});
 				}}
+				onMenuJoin={(conversation) => {
+					if (!isCurrentOwner()) return;
+					join.mutate({
+						conversationId: conversation.id,
+						tenantId: conversation.tenant_id,
+					});
+				}}
+				onMenuNotifyChange={(conversation, next) => {
+					if (!isCurrentOwner()) return;
+					notify.mutate({
+						conversationId: conversation.id,
+						tenantId: conversation.tenant_id,
+						notify: next,
+					});
+				}}
+				onMenuLeave={(conversation) => {
+					if (!isCurrentOwner())
+						return Promise.reject(
+							new Error("Team Bridge write authority changed"),
+						);
+					const input = {
+						conversationId: conversation.id,
+						tenantId: conversation.tenant_id,
+					};
+					setPartialLeave(null);
+					/* THE AGENT CASCADE (hub owner contract, H4 slice): with
+					   `team_bridge_leave_withdraws_agent` advertised the hub withdraws the
+					   agent itself, so leave is the only call; without it the client
+					   withdraws the reader's own ACTIVE agent row (read now, before the
+					   leave changes the cache) as a second write. */
+					return leaveWithAgentCascade({
+						leave: () => leaveConversation.mutateAsync(input),
+						withdraw: (endpointId) =>
+							withdrawAgent.mutateAsync({
+								...input,
+								endpointId,
+								key: `withdraw:${endpointId ?? ""}`,
+							}),
+						serverWithdrawsAgent:
+							desktopFeatureState(
+								capabilities.data,
+								"team_bridge_leave_withdraws_agent",
+							) === "enabled",
+						ownActiveAgent: ownActiveAgent(conversation, accountId),
+						builtin: conversation.builtin,
+					}).then((outcome) => {
+						if (outcome.status === "partial")
+							setPartialLeave({
+								conversationId: conversation.id,
+								tenantId: conversation.tenant_id,
+								name:
+									conversationTitle(conversation, accountId) ??
+									t("ui.teamBridge.list.untitled"),
+								endpointId: outcome.endpointId,
+								retrying: false,
+								retryFailed: false,
+							});
+						return outcome;
+					});
+				}}
+				partialLeave={partialLeave ?? undefined}
+				onRetryPartialLeave={() => {
+					if (!partialLeave || partialLeave.retrying || !isCurrentOwner())
+						return;
+					const failed = partialLeave;
+					setPartialLeave({ ...failed, retrying: true, retryFailed: false });
+					withdrawAgent
+						.mutateAsync({
+							conversationId: failed.conversationId,
+							tenantId: failed.tenantId,
+							endpointId: failed.endpointId,
+							key: `withdraw:${failed.endpointId ?? ""}`,
+						})
+						.then(
+							() => setPartialLeave(null),
+							(error: unknown) =>
+								/* Nothing left to withdraw is the state the reader asked for. */
+								withdrawAlreadyDone(error)
+									? setPartialLeave(null)
+									: setPartialLeave({
+											...failed,
+											retrying: false,
+											retryFailed: true,
+										}),
+						);
+				}}
+				onDismissPartialLeave={() => setPartialLeave(null)}
+				onMenuOwnAgent={(conversation, request) => {
+					/* Self-scoped like the members panel's: `ownAgentRequest` has already
+					   refused any endpoint that is not the reader's own, and the hub
+					   re-checks. */
+					if (!isCurrentOwner())
+						return Promise.reject(
+							new Error("Team Bridge write authority changed"),
+						);
+					const input = {
+						conversationId: conversation.id,
+						tenantId: conversation.tenant_id,
+					};
+					switch (request.op) {
+						case "withdraw":
+							return withdrawAgent.mutateAsync({
+								...input,
+								endpointId: request.endpointId,
+								key: `withdraw:${request.endpointId ?? ""}`,
+							});
+						case "decline":
+						case "accept":
+							/* `accept` re-admits a withdrawn agent to #general (consent with
+							   consent_version); `decline` answers a pending invitation. */
+							return answerInvitation.mutateAsync({
+								...input,
+								decision: request.op,
+								endpointId: request.endpointId,
+							});
+						case "add":
+							if (!canInviteMembers(conversation, accountId))
+								return Promise.reject(
+									new Error("Team Bridge write authority changed"),
+								);
+							/* The reader's own agent joins at once on invite (the hub
+							   activates an owner's own endpoint without a consent step). */
+							return addMembers.mutateAsync({
+								...input,
+								members: [request.member],
+								key: "add",
+							});
+					}
+				}}
+				onOpenMembersFor={(conversation, surface) => {
+					/* Selecting remounts the view; the open intent rides across it. */
+					setMembersIntent({ conversationId: conversation.id, surface });
+					restoredScopes.current.add(scope);
+					setThreadLink(null);
+					setChannelFormOpen(false);
+					setTarget({ type: "conversation", id: conversation.id });
+				}}
+				initialMembersPanelOpen={
+					membersIntent?.surface === "panel" &&
+					membersIntent.conversationId === selected?.id
+				}
+				initialMembersOpen={
+					membersIntent?.surface === "add" &&
+					membersIntent.conversationId === selected?.id
+				}
 				onMemberSelfAction={(conversation, action, endpointId) => {
 					/* Self-scoped: the hub checks the row is the caller's own, so the
 					   only client fence is the captured owner. */
@@ -6037,6 +6502,8 @@ const TeamBridgeOwnedPage: FC<{
 					if (next) restoredScopes.current.add(scope);
 					setThreadLink(null);
 					setChannelFormOpen(false);
+					// A members-open intent belongs to the row it was asked for only.
+					setMembersIntent(null);
 					/* `null` is a landing with nothing left to land on: the default-landing
 					   effect above then picks #general (or #humans, or the first row) once,
 					   as at load. */

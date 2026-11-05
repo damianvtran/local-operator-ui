@@ -156,16 +156,41 @@ test("every trailing mark ends on the 16px line from the end edge", () => {
 	assert.match(rail, /<MoreHorizontal size=\{13\}/);
 	assert.equal(band + lengthOf(pe, "padding-inline-end") + (20 - 13) / 2, LINE);
 
-	// Both hover "..." menus: absolutely placed 24px boxes centring a 14px glyph.
-	const ends = [...rail.matchAll(/className="absolute (end-[^\s"]+)/g)].map(
-		(m) => m[1],
+	// The conversation trigger shares an exported class; the person-row trigger
+	// remains inline. Follow each real button, not a count of inline classNames:
+	// extracting a class must not hide that trigger from the geometry guard.
+	const conversationMenu = rail.slice(
+		rail.indexOf("const ConversationRowMenu:"),
+		rail.indexOf("const RowMenu:"),
 	);
-	assert.equal(ends.length, 2, `expected two row menus, saw ${ends}`);
-	for (const end of ends)
+	assert.match(conversationMenu, /className=\{ROW_MENU_TRIGGER\}/);
+	const conversationClass = rail.match(
+		/export const ROW_MENU_TRIGGER =\s*"([^"]+)";/,
+	)?.[1];
+	const personMenu = rail.slice(rail.indexOf("const RowMenu:"));
+	const personClass = personMenu.match(/className="([^"]+)"/)?.[1];
+	for (const [name, menu, classes] of [
+		["conversation", conversationMenu, conversationClass],
+		["person", personMenu, personClass],
+	]) {
+		assert.ok(classes, `${name} row menu has no trigger class`);
+		assert.match(classes, /\babsolute\b/);
+		assert.match(classes, /\bflex\b/);
+		assert.match(classes, /\bitems-center\b/);
+		assert.match(classes, /\bjustify-center\b/);
+		assert.match(menu, /<MoreHorizontal size=\{14\}/);
+		const end = classes.match(/\b(end-[^\s"]+)/)?.[1];
+		const size = classes.match(/\b(size-[^\s"]+)/)?.[1];
+		assert.ok(end, `${name} row menu has no end inset`);
+		assert.ok(size, `${name} row menu has no box size`);
 		assert.equal(
-			band + lengthOf(end, "inset-inline-end") + (24 - 14) / 2,
+			band +
+				lengthOf(end, "inset-inline-end") +
+				(lengthOf(size, "width") - 14) / 2,
 			LINE,
+			`${name} row menu glyph must end on the 16px line`,
 		);
+	}
 
 	// The organization "+" (Button size="icon", 32px, 16px glyph) is the
 	// header's LAST child: the refresh dot moved before it.

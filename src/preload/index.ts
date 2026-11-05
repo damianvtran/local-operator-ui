@@ -461,6 +461,9 @@ const api = {
 	 */
 	readFileBytes: (filePath: string, maxBytes?: number) =>
 		ipcRenderer.invoke("read-file-bytes", filePath, maxBytes),
+	// No script or path input: main inspects only this window's existing PDF guest.
+	pdfViewerStatus: (blobUrl: string) =>
+		ipcRenderer.invoke("pdf-viewer-status", blobUrl),
 	/**
 	 * Upload one composer attachment to the daemon's attachment store.
 	 *

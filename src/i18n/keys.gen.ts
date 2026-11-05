@@ -10491,6 +10491,51 @@ export type MessageParams = {
 	"ui.teamBridge.composer.placeholder": undefined;
 	"ui.teamBridge.composer.placeholder_to": { name: string };
 	"ui.teamBridge.composer.send": undefined;
+	"ui.teamBridge.conversation_menu.add_agent": { name: string };
+	"ui.teamBridge.conversation_menu.confirm.add_agent": undefined;
+	"ui.teamBridge.conversation_menu.confirm.add_agent_body": { name: string };
+	"ui.teamBridge.conversation_menu.confirm.add_agent_title": {
+		name: string;
+		conversation: string;
+	};
+	"ui.teamBridge.conversation_menu.confirm.leave_body": undefined;
+	"ui.teamBridge.conversation_menu.confirm.leave_body_agents": {
+		channel: string;
+	};
+	"ui.teamBridge.conversation_menu.confirm.leave_channel_title": {
+		conversation: string;
+	};
+	"ui.teamBridge.conversation_menu.confirm.leave_group_title": {
+		conversation: string;
+	};
+	"ui.teamBridge.conversation_menu.confirm.remove_agent_body": { name: string };
+	"ui.teamBridge.conversation_menu.confirm.remove_agent_title": {
+		name: string;
+		conversation: string;
+	};
+	"ui.teamBridge.conversation_menu.error.general_rejoin_refused": {
+		channel: string;
+	};
+	"ui.teamBridge.conversation_menu.error.generic": undefined;
+	"ui.teamBridge.conversation_menu.error.not_in_general": { channel: string };
+	"ui.teamBridge.conversation_menu.join": undefined;
+	"ui.teamBridge.conversation_menu.leave_channel": undefined;
+	"ui.teamBridge.conversation_menu.leave_group": undefined;
+	"ui.teamBridge.conversation_menu.partial_leave.body": {
+		conversation: string;
+	};
+	"ui.teamBridge.conversation_menu.partial_leave.retry": undefined;
+	"ui.teamBridge.conversation_menu.partial_leave.retry_failed": {
+		conversation: string;
+	};
+	"ui.teamBridge.conversation_menu.reason.agent_not_permitted": undefined;
+	"ui.teamBridge.conversation_menu.reason.agents_builtin": { channel: string };
+	"ui.teamBridge.conversation_menu.reason.general_not_member_yet": {
+		channel: string;
+	};
+	"ui.teamBridge.conversation_menu.reason.org_wide": undefined;
+	"ui.teamBridge.conversation_menu.remove_agent": { name: string };
+	"ui.teamBridge.conversation_menu.view_members": undefined;
 	"ui.teamBridge.create.cancel": undefined;
 	"ui.teamBridge.create.channel_description": undefined;
 	"ui.teamBridge.create.confirm": undefined;

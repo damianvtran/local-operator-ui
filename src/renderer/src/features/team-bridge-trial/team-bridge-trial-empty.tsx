@@ -15,6 +15,7 @@
  * unchanged.
  */
 import { useMembershipsQuery } from "@features/agent-hub/hooks/use-memberships-query";
+import { TEAM_TRIAL_START_ENABLED } from "@shared/api/local-operator/team-trial-activation";
 import { Spinner } from "@shared/components/common/spinner";
 import { Button } from "@shared/components/ui/button";
 import { t } from "@shared/i18n";
@@ -127,7 +128,14 @@ export const TeamBridgeTrialEmptyView: FC<{
  * plan-required panel); it is returned verbatim whenever the trial has nothing
  * to add, so a server or build without the trial leaves the page unchanged.
  */
-export const TeamBridgeTrialEmpty: FC<{ fallback: ReactNode }> = ({
+export const TeamBridgeTrialEmpty: FC<{ fallback: ReactNode }> = (props) => {
+	// A wrapper boundary keeps the disabled release from mounting reads or the
+	// dialog at all, without changing hook order when activation is reviewed.
+	if (!TEAM_TRIAL_START_ENABLED) return <>{props.fallback}</>;
+	return <ActivatedTeamBridgeTrialEmpty {...props} />;
+};
+
+const ActivatedTeamBridgeTrialEmpty: FC<{ fallback: ReactNode }> = ({
 	fallback,
 }) => {
 	const eligibility = useTeamTrialEligibility(true);

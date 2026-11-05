@@ -328,6 +328,14 @@ export type DesktopFeature =
 	 */
 	| "team_bridge_agent_notify"
 	/**
+	 * The hub's server-side LEAVE CASCADE (Team Bridge hub, H4 slice): a person's
+	 * `leave` also withdraws their own agent from that conversation in the same
+	 * transaction. Advertised, the conversation menu calls leave ONLY; absent, it
+	 * calls leave and then a consent `withdraw` of the reader's own active agent
+	 * row (`leaveWithAgentCascade` in `team-bridge-conversation-menu-model.ts`).
+	 */
+	| "team_bridge_leave_withdraws_agent"
+	/**
 	 * An agent's OWN published picture through core's closed endpoint relay
 	 * (local-operator #3228). Absent: agent plates keep the glyph and send no
 	 * `team_bridge.endpoint_avatar` read. Main gates the banner composite on the

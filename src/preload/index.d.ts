@@ -1,5 +1,6 @@
 import type { ElectronAPI } from "@electron-toolkit/preload";
 import type { ProgressInfo, UpdateInfo } from "electron-updater";
+import type { PdfViewerStatus } from "../main/pdf-viewer-status";
 import type { UpdateCheckVerdict } from "../main/update-check-verdict";
 import type {
 	BackendUpdateCompletion,
@@ -524,6 +525,8 @@ declare global {
 				filePath: string,
 				maxBytes?: number,
 			) => Promise<ReadFileBytesResponse>;
+			/** Parse status of this app window's already mounted native PDF guest. */
+			pdfViewerStatus: (blobUrl: string) => Promise<PdfViewerStatus>;
 			/**
 			 * Upload one composer attachment to the daemon's attachment store. Main owns
 			 * the read and the multipart POST; the renderer receives the stored record
