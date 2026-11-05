@@ -96,6 +96,7 @@ import {
 	TeamBridgeConversationMenu,
 	type TeamBridgeConversationMenuHandlers,
 	TeamBridgeMenuConfirmDialog,
+	type TeamBridgeMenuConfirmError,
 	type TeamBridgeMenuConfirmSubject,
 } from "./team-bridge-conversation-menu";
 import {
@@ -103,6 +104,7 @@ import {
 	type TeamBridgeLeaveOutcome,
 	type TeamBridgeOwnAgentRequest,
 	conversationMenuSections,
+	generalRejoinRefused,
 	isMemberNotFound,
 	landingAfterLeave,
 	leaveWithAgentCascade,
@@ -1017,7 +1019,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 		>;
 	} | null>(initialMenuConfirm ?? null);
 	const [menuPending, setMenuPending] = useState(false);
-	const [menuError, setMenuError] = useState<"error" | "not_in_general" | null>(
+	const [menuError, setMenuError] = useState<TeamBridgeMenuConfirmError | null>(
 		null,
 	);
 
@@ -2636,6 +2638,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 						kind: "leave",
 						conversationKind:
 							conversation.kind === "group" ? "group" : "channel",
+						agentStays: conversation.builtin === "agents",
 					},
 				});
 			},
@@ -4501,9 +4504,13 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 						(failure: unknown) => {
 							setMenuPending(false);
 							setMenuError(
-								isMemberNotFound(failure) && subject.builtin === "general"
-									? "not_in_general"
-									: "error",
+								subject.builtin !== "general"
+									? "error"
+									: isMemberNotFound(failure)
+										? "not_in_general"
+										: item?.action === "accept" && generalRejoinRefused(failure)
+											? "general_rejoin_refused"
+											: "error",
 							);
 						},
 					);
@@ -6315,6 +6322,7 @@ const TeamBridgeOwnedPage: FC<{
 								"team_bridge_leave_withdraws_agent",
 							) === "enabled",
 						ownActiveAgent: ownActiveAgent(conversation, accountId),
+						builtin: conversation.builtin,
 					}).then((outcome) => {
 						if (outcome.status === "partial")
 							setPartialLeave({

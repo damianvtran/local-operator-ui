@@ -171,8 +171,12 @@ export function isOwnAgentEndpoint(
 ): boolean {
 	if (!selfAccountId) return false;
 	if (endpointId === undefined) {
-		// The hub resolves the owner's own agent row when no endpoint is named,
-		// so an unnamed request can only ever address the caller's own agent.
+		// DELIBERATELY LOOSE: this accepts any own agent row in any state (or a
+		// directory agent) because it cannot pick a row without an endpoint. The
+		// guarantee is the hub's, not this check's: an unnamed consent resolves
+		// only among the CALLER's own agent rows, and two candidates answer 400
+		// `invalid_request` (`rule=ambiguous`) rather than guessing. Never widen
+		// this to a non-own row on the strength of that server check.
 		return (
 			conversation.members.some(
 				(member) =>
@@ -243,12 +247,16 @@ function ownAgentItem(
 			(member) =>
 				member.kind === "agent" &&
 				member.account_id === selfAccountId &&
-				(member.state === "left" ||
-					member.state === "removed" ||
-					member.state === "invited"),
+				(member.state === "left" || member.state === "removed"),
 		);
 		// A withdrawn agent is re-admitted by consent `accept`. With no row at all
 		// the hub has not derived one yet: withdraw would 404 member_not_found.
+		// `invited` never occurs in derived #general, so it is not matched.
+		// The hub accepts only an OWNER OPT-OUT here, but it does not serialize
+		// that flag (`owner_opted_out` is `json:"-"` in agent-server), so a row
+		// removed because its endpoint was paused looks identical. The item is
+		// therefore offered for every departed row, and the hub's refusal for the
+		// non-opt-out case is mapped to its own sentence (`generalRejoinRefused`).
 		return departed
 			? {
 					id: "add_agent",
@@ -455,11 +463,21 @@ export async function leaveWithAgentCascade(input: {
 	serverWithdrawsAgent: boolean;
 	/** The reader's own ACTIVE agent row, read BEFORE the leave. */
 	ownActiveAgent: TeamBridgeParticipant | null;
+	/** The conversation's `builtin`, when it is one. */
+	builtin?: string | null;
 }): Promise<TeamBridgeLeaveOutcome> {
 	await input.leave();
 	// H4: the hub cascades itself; a client withdraw on top would be refused.
 	if (input.serverWithdrawsAgent || !input.ownActiveAgent)
 		return { status: "left" };
+	// BUILT-INS NEVER CASCADE (review round 1, R1). Their agent membership is
+	// derived, and the hub refuses consent on every built-in but #general
+	// (409 `invalid_transition`, `rule=builtin`). Leave is refused in #general
+	// and #humans anyway, so the only built-in that reaches here is #agents,
+	// where a withdraw could never succeed and would show a permanent "partial"
+	// state. In #agents, leave means the person only: the agent stays until
+	// it is paused (the confirm says so: `confirm.leave_body_agents`).
+	if (input.builtin) return { status: "left" };
 	// Pre-H4 hub: the client performs the cascade as a second, separate write.
 	const endpointId = participantEndpoint(input.ownActiveAgent);
 	try {
@@ -476,8 +494,39 @@ export async function leaveWithAgentCascade(input: {
  * that draws one of these is success, not a second failure.
  */
 export function withdrawAlreadyDone(error: unknown): boolean {
-	const code = (error as { code?: unknown } | null)?.code;
-	return code === "not_active" || code === "member_not_found";
+	// The hub's "nothing active to withdraw" is 409 `invalid_transition` with
+	// `details.rule=not_active`; core relays the body intact and the transport
+	// keeps it as `DesktopControlError.detail` (read the same way as
+	// `invitationFailureKind` and `scheduledEditFailure`).
+	const candidate = error as {
+		code?: unknown;
+		detail?: { details?: { rule?: unknown } };
+	} | null;
+	if (candidate?.code === "member_not_found") return true;
+	return (
+		candidate?.code === "invalid_transition" &&
+		candidate.detail?.details?.rule === "not_active"
+	);
+}
+
+/**
+ * The hub's refusal of a #general `accept` for an agent that cannot rejoin:
+ * 409 `invalid_transition` `rule=not_opted_out` (the row left #general for a
+ * reason other than its owner's opt-out, e.g. the endpoint was paused) or 403
+ * `agent_not_permitted` (opted out, but the endpoint no longer qualifies).
+ * Either way a retry cannot help until the agent qualifies again, so the
+ * dialog says that instead of the generic "wasn't saved".
+ */
+export function generalRejoinRefused(error: unknown): boolean {
+	const candidate = error as {
+		code?: unknown;
+		detail?: { details?: { rule?: unknown } };
+	} | null;
+	if (candidate?.code === "agent_not_permitted") return true;
+	return (
+		candidate?.code === "invalid_transition" &&
+		candidate.detail?.details?.rule === "not_opted_out"
+	);
 }
 
 /** The hub's 404 for a #general withdraw before the agent has a row. */

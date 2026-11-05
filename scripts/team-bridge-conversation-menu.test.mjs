@@ -395,6 +395,12 @@ test("#general: Leave disabled with the org-wide reason; own agent withdraw, the
 		null,
 	);
 	assert.equal(view.isMemberNotFound({ code: "member_not_found" }), true);
+	// `invited` never occurs in derived #general: it is not a departed row.
+	const invitedOnly = {
+		...general,
+		members: [human(SELF, "Damian Tran"), { ...OWN_AGENT, state: "invited" }],
+	};
+	assert.equal(item(invitedOnly, "add_agent"), undefined);
 });
 
 test("#humans: Leave disabled, no agent item; #agents: Leave allowed, agent remove disabled", () => {
@@ -590,8 +596,95 @@ test("leave partial failure: reported as partial, never as success; a failed lea
 		/leave refused/,
 	);
 	assert.deepEqual(failedLeave.calls, [], "no withdraw after a refused leave");
-	assert.equal(view.withdrawAlreadyDone({ code: "not_active" }), true);
 	assert.equal(view.withdrawAlreadyDone(boom), false);
+});
+
+/* R2: the hub's "nothing active to withdraw" is 409 `invalid_transition` with
+   `details.rule=not_active` (agent-server consentTarget), relayed by core and
+   kept by the transport as `DesktopControlError.detail` - the same shape
+   `invitationFailureKind` reads. A bare `code: "not_active"` never arrives. */
+test("withdrawAlreadyDone matches the hub's real refusal shape", () => {
+	const refusal = (code, rule) =>
+		Object.assign(new Error("refused"), {
+			status: 409,
+			code,
+			detail: { code, details: { rule } },
+		});
+	assert.equal(
+		view.withdrawAlreadyDone(refusal("invalid_transition", "not_active")),
+		true,
+	);
+	assert.equal(
+		view.withdrawAlreadyDone({ code: "member_not_found" }),
+		true,
+		"no row at all is also nothing to withdraw",
+	);
+	// Negative controls: the old fixture shape and other rules are failures.
+	assert.equal(view.withdrawAlreadyDone({ code: "not_active" }), false);
+	assert.equal(
+		view.withdrawAlreadyDone(refusal("invalid_transition", "builtin")),
+		false,
+	);
+	assert.equal(view.withdrawAlreadyDone(refusal("rate_limited")), false);
+});
+
+/* R1: built-ins never cascade. Leave is refused in #general/#humans, so only
+   #agents reaches the cascade, and there the hub refuses consent
+   (`rule=builtin`): a client withdraw would turn every leave into a permanent
+   "partial". */
+test("leave in #agents: exactly one request, never a partial, even with an own active agent", async () => {
+	const r = recorder(
+		Object.assign(new Error("builtin"), {
+			code: "invalid_transition",
+			detail: { details: { rule: "builtin" } },
+		}),
+	);
+	const outcome = await view.leaveWithAgentCascade({
+		...r,
+		serverWithdrawsAgent: false,
+		ownActiveAgent: OWN_AGENT,
+		builtin: "agents",
+	});
+	assert.deepEqual(outcome, { status: "left" });
+	assert.deepEqual(r.calls, ["leave"]);
+	// Negative control: the same inputs on an ordinary channel DO cascade, and
+	// that same refusal is reported as partial - so the #agents pass above is
+	// the built-in check, not a recorder that never withdraws.
+	const control = recorder(
+		Object.assign(new Error("builtin"), { code: "invalid_transition" }),
+	);
+	const controlOutcome = await view.leaveWithAgentCascade({
+		...control,
+		serverWithdrawsAgent: false,
+		ownActiveAgent: OWN_AGENT,
+		builtin: null,
+	});
+	assert.equal(controlOutcome.status, "partial");
+	assert.deepEqual(control.calls, ["leave", "withdraw:bep_aida"]);
+});
+
+/* R3: the hub does not serialize `owner_opted_out`, so a #general row removed
+   for a pause looks like an opt-out; its accept refusals get their own copy. */
+test("#general re-add refusals: not_opted_out and agent_not_permitted are recognised", () => {
+	assert.equal(
+		view.generalRejoinRefused({
+			code: "invalid_transition",
+			detail: { details: { rule: "not_opted_out" } },
+		}),
+		true,
+	);
+	assert.equal(
+		view.generalRejoinRefused({ code: "agent_not_permitted" }),
+		true,
+	);
+	assert.equal(
+		view.generalRejoinRefused({
+			code: "invalid_transition",
+			detail: { details: { rule: "builtin" } },
+		}),
+		false,
+	);
+	assert.equal(view.generalRejoinRefused({ code: "rate_limited" }), false);
 });
 
 test("leaving lands on #general, not the rail neighbour", () => {
@@ -785,7 +878,9 @@ const clickItem = async (id) => {
 const confirmDialog = async () => {
 	const buttons = [
 		...document.querySelectorAll('[role="dialog"] button'),
-	].filter((node) => /^(Leave|Remove|Add)$/.test(node.textContent.trim()));
+	].filter((node) =>
+		/^(Leave|Remove|Add|Decline)$/.test(node.textContent.trim()),
+	);
 	assert.equal(buttons.length, 1, "one confirm button");
 	await act(async () => buttons[0].click());
 	await act(async () => {});
@@ -883,6 +978,126 @@ test("#general withdraw before the agent has a row: the 404 reads as 'not in #ge
 		document.querySelector('[role="dialog"] [role="alert"]').textContent,
 		/Your agent isn’t in #general yet/,
 	);
+});
+
+test("#agents leave: the confirm says the agent STAYS, never that it leaves with you", async (t) => {
+	const agents = conversation({
+		id: "bcv_agents",
+		name: "agents",
+		builtin: "agents",
+		can_administer: false,
+		members: [human(SELF, "Damian Tran"), OWN_AGENT],
+	});
+	const { container } = await mount(
+		t,
+		React.createElement(
+			view.TeamBridgePageView,
+			pageProps(agents, { conversations: [agents] }),
+		),
+	);
+	await pointerOpen(
+		container.querySelector('button[aria-label="Conversation options"]'),
+	);
+	await clickItem("leave");
+	const text = document.querySelector('[role="dialog"]').textContent;
+	assert.match(text, /Your agent stays in #agents; pause it to take it out\./);
+	assert.doesNotMatch(text, /leaves with you/);
+});
+
+test("an ordinary channel's leave confirm still says the agent leaves with you (control)", async (t) => {
+	const { container } = await mount(
+		t,
+		React.createElement(view.TeamBridgePageView, pageProps(conversation())),
+	);
+	await pointerOpen(
+		container.querySelector('button[aria-label="Conversation options"]'),
+	);
+	await clickItem("leave");
+	const text = document.querySelector('[role="dialog"]').textContent;
+	assert.match(text, /your agent leaves with you/);
+	assert.doesNotMatch(text, /stays in/);
+});
+
+test("Q1: removing an INVITED own agent is a decline, worded as the members panel words it", async (t) => {
+	const requests = [];
+	const c = conversation({
+		kind: "group",
+		visibility: "private",
+		name: "Ben Two",
+		members: [
+			human(SELF, "Damian Tran", "owner"),
+			agent(SELF, "Aida", "invited", "bep_aida"),
+		],
+	});
+	const { container } = await mount(
+		t,
+		React.createElement(
+			view.TeamBridgePageView,
+			pageProps(c, {
+				onMenuOwnAgent: async (row, request) =>
+					requests.push([row.id, request]),
+			}),
+		),
+	);
+	await pointerOpen(
+		container.querySelector('button[aria-label="Conversation options"]'),
+	);
+	await clickItem("remove_agent");
+	const text = document.querySelector('[role="dialog"]').textContent;
+	assert.match(text, /Decline the invitation for Aida\?/);
+	assert.match(text, /Aida will not join Ben Two\./);
+	assert.doesNotMatch(text, /stops receiving messages/);
+	await confirmDialog();
+	assert.equal(requests.length, 1);
+	assert.equal(requests[0][1].op, "decline");
+});
+
+test("R3: a refused #general re-add says the agent can't rejoin, not 'wasn't saved'", async (t) => {
+	const general = conversation({
+		id: "bcv_general",
+		name: "general",
+		builtin: "general",
+		can_administer: false,
+		members: [human(SELF, "Damian Tran"), { ...OWN_AGENT, state: "removed" }],
+	});
+	const refusals = [
+		{
+			code: "invalid_transition",
+			detail: { details: { rule: "not_opted_out" } },
+		},
+		{ code: "agent_not_permitted" },
+	];
+	for (const refusal of refusals) {
+		const { container } = await mount(
+			t,
+			React.createElement(
+				view.TeamBridgePageView,
+				pageProps(general, {
+					conversations: [general],
+					onMenuOwnAgent: async () => {
+						throw Object.assign(new Error("refused"), refusal);
+					},
+				}),
+			),
+		);
+		await pointerOpen(
+			container.querySelector('button[aria-label="Conversation options"]'),
+		);
+		await clickItem("add_agent");
+		await confirmDialog();
+		await act(async () => {});
+		assert.match(
+			document.querySelector('[role="dialog"] [role="alert"]').textContent,
+			/Your agent can’t rejoin #general right now\. Check it isn’t paused\./,
+			refusal.code,
+		);
+		await act(async () =>
+			[...document.querySelectorAll('[role="dialog"] button')]
+				.find((n) => n.textContent.trim() === "Cancel")
+				.click(),
+		);
+		container.remove();
+	}
 });
 
 test("the partial-leave line states the true state and offers the retry", async (t) => {

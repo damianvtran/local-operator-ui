@@ -10208,6 +10208,9 @@ export type MessageParams = {
 		conversation: string;
 	};
 	"ui.teamBridge.conversation_menu.confirm.leave_body": undefined;
+	"ui.teamBridge.conversation_menu.confirm.leave_body_agents": {
+		channel: string;
+	};
 	"ui.teamBridge.conversation_menu.confirm.leave_channel_title": {
 		conversation: string;
 	};
@@ -10218,6 +10221,9 @@ export type MessageParams = {
 	"ui.teamBridge.conversation_menu.confirm.remove_agent_title": {
 		name: string;
 		conversation: string;
+	};
+	"ui.teamBridge.conversation_menu.error.general_rejoin_refused": {
+		channel: string;
 	};
 	"ui.teamBridge.conversation_menu.error.generic": undefined;
 	"ui.teamBridge.conversation_menu.error.not_in_general": { channel: string };

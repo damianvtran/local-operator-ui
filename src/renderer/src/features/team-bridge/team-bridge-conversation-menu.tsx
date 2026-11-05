@@ -383,8 +383,23 @@ export const TeamBridgeConversationMenu: FC<{
 };
 
 /** What the menu's confirm is asking about. */
+/** Which refusal the menu's confirm states, each with its own sentence. */
+export type TeamBridgeMenuConfirmError =
+	| "error"
+	| "not_in_general"
+	| "general_rejoin_refused";
+
 export type TeamBridgeMenuConfirmSubject =
-	| { kind: "leave"; conversationKind: "channel" | "group" }
+	| {
+			kind: "leave";
+			conversationKind: "channel" | "group";
+			/*
+			 * Leaving #agents takes only the person out: the agent's seat there is
+			 * derived from enrolment and leaves only when the agent is paused, so
+			 * the ordinary "your agent leaves with you" body would be false.
+			 */
+			agentStays?: boolean;
+	  }
 	| {
 			kind: "remove_agent" | "add_agent";
 			agentName: string;
@@ -412,8 +427,12 @@ export function TeamBridgeMenuConfirmDialog({
 	subject: TeamBridgeMenuConfirmSubject | null;
 	conversationName: string;
 	pending: boolean;
-	/** `not_in_general`: the hub's 404 for a #general withdraw with no row yet. */
-	error: "error" | "not_in_general" | null;
+	/**
+	 * `not_in_general`: the hub's 404 for a #general withdraw with no row yet.
+	 * `general_rejoin_refused`: the hub refused a #general re-add because the
+	 * agent does not qualify (see `generalRejoinRefused`).
+	 */
+	error: TeamBridgeMenuConfirmError | null;
 	onClose: () => void;
 	onConfirm: () => void;
 }) {
@@ -432,34 +451,56 @@ export function TeamBridgeMenuConfirmDialog({
 									"ui.teamBridge.conversation_menu.confirm.leave_channel_title",
 									{ conversation },
 								),
-					body: t("ui.teamBridge.conversation_menu.confirm.leave_body"),
+					body: subject.agentStays
+						? t("ui.teamBridge.conversation_menu.confirm.leave_body_agents", {
+								channel: isolateLtr("#agents"),
+							})
+						: t("ui.teamBridge.conversation_menu.confirm.leave_body"),
 					confirm: t("ui.teamBridge.members_panel.confirm.leave"),
 					danger: true,
 				}
-			: subject.kind === "remove_agent"
-				? {
-						title: t(
-							"ui.teamBridge.conversation_menu.confirm.remove_agent_title",
-							{ name: subject.agentName, conversation },
-						),
-						body: t(
-							"ui.teamBridge.conversation_menu.confirm.remove_agent_body",
-							{ name: subject.agentName },
-						),
-						confirm: t("ui.teamBridge.members_panel.confirm.remove"),
-						danger: true,
-					}
-				: {
-						title: t(
-							"ui.teamBridge.conversation_menu.confirm.add_agent_title",
-							{ name: subject.agentName, conversation },
-						),
-						body: t("ui.teamBridge.conversation_menu.confirm.add_agent_body", {
+			: subject.kind === "remove_agent" && subject.action === "decline"
+				? /* An INVITED agent never received anything here, so "stops receiving
+					 messages" would be false; the members panel's decline copy states
+					 the same action the same way on both surfaces (QA round 1, Q1). */
+					{
+						title: t("ui.teamBridge.members_panel.confirm.decline_title", {
 							name: subject.agentName,
 						}),
-						confirm: t("ui.teamBridge.conversation_menu.confirm.add_agent"),
-						danger: false,
-					};
+						body: t("ui.teamBridge.members_panel.confirm.decline_body", {
+							name: subject.agentName,
+							conversation,
+						}),
+						confirm: t("ui.teamBridge.members_panel.confirm.decline"),
+						danger: true,
+					}
+				: subject.kind === "remove_agent"
+					? {
+							title: t(
+								"ui.teamBridge.conversation_menu.confirm.remove_agent_title",
+								{ name: subject.agentName, conversation },
+							),
+							body: t(
+								"ui.teamBridge.conversation_menu.confirm.remove_agent_body",
+								{ name: subject.agentName },
+							),
+							confirm: t("ui.teamBridge.members_panel.confirm.remove"),
+							danger: true,
+						}
+					: {
+							title: t(
+								"ui.teamBridge.conversation_menu.confirm.add_agent_title",
+								{ name: subject.agentName, conversation },
+							),
+							body: t(
+								"ui.teamBridge.conversation_menu.confirm.add_agent_body",
+								{
+									name: subject.agentName,
+								},
+							),
+							confirm: t("ui.teamBridge.conversation_menu.confirm.add_agent"),
+							danger: false,
+						};
 	return (
 		<Dialog
 			open={subject !== null}
@@ -478,7 +519,12 @@ export function TeamBridgeMenuConfirmDialog({
 							? t("ui.teamBridge.conversation_menu.error.not_in_general", {
 									channel: isolateLtr("#general"),
 								})
-							: t("ui.teamBridge.conversation_menu.error.generic")}
+							: error === "general_rejoin_refused"
+								? t(
+										"ui.teamBridge.conversation_menu.error.general_rejoin_refused",
+										{ channel: isolateLtr("#general") },
+									)
+								: t("ui.teamBridge.conversation_menu.error.generic")}
 					</p>
 				)}
 				<DialogFooter>

@@ -2860,6 +2860,15 @@
 		"placeholders": {},
 		"note": "Part of the Team Bridge conversation menu (sidebar row and header)."
 	},
+	"ui.teamBridge.conversation_menu.confirm.leave_body_agents": {
+		"role": "confirm dialog text",
+		"tone": "plain, direct",
+		"length": "one or two sentences",
+		"placeholders": {
+			"channel": "the built-in channel name, always #agents"
+		},
+		"note": "Leaving #agents takes only the person out. The agent's seat there comes from being enrolled, so it stays until the owner pauses the agent. Do not say the agent leaves."
+	},
 	"ui.teamBridge.conversation_menu.confirm.remove_agent_title": {
 		"role": "confirm dialog text",
 		"tone": "plain, direct",
@@ -2911,6 +2920,15 @@
 		"length": "one or two sentences",
 		"placeholders": {},
 		"note": "Part of the Team Bridge conversation menu (sidebar row and header)."
+	},
+	"ui.teamBridge.conversation_menu.error.general_rejoin_refused": {
+		"role": "inline error line",
+		"tone": "plain, direct",
+		"length": "one or two sentences",
+		"placeholders": {
+			"channel": "the built-in channel name, always #general"
+		},
+		"note": "Shown when adding the reader's own agent back to #general is refused because the agent doesn't qualify right now (most often it is paused). Trying again won't help until it is resumed."
 	},
 	"ui.teamBridge.conversation_menu.error.not_in_general": {
 		"role": "inline error line",
