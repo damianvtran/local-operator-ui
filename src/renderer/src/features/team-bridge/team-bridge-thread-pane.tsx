@@ -300,6 +300,10 @@ function TeamBridgeThreadPaneBody({
 		)
 			return;
 		const ids = images.readyIds();
+		// A drop while this send awaits its response belongs to the NEXT draft.
+		// Retire the press-time keys only, like the channel composer; clearing
+		// the live queue would discard files that this request never bound.
+		const fileKeys = files.chips.map((chip) => chip.key);
 		// The idempotency key is reused only for the SAME text AND image set: the
 		// hub's replay check compares both hashes, so a changed set needs a new key.
 		const signature = JSON.stringify([
@@ -324,7 +328,7 @@ function TeamBridgeThreadPaneBody({
 			if (ids.length + fileIds.length > 10)
 				throw new Error("Too many attachments");
 			await onSend(body, entry.clientRef, ids, fileIds);
-			files.clear();
+			for (const key of fileKeys) files.remove(key);
 			pending.current = null;
 			images.clearSent(ids);
 			setDraft((current) => (current.trim() === body ? "" : current));

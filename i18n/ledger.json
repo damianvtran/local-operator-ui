@@ -8390,8 +8390,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "91adbd87ec45fdb999e8dbeb6560cffb1545a7826d49fc1efada484a39608bc2",
-			"target_sha256": "6730d78277bb02e4c17c0535f88201104bf62910024bba9dc45346aaaf5e4626",
+			"source_sha256": "cea7787980b2d37643b0be8f8d1b0ab268dc7de71b268e18f5c2e6d65d7696a0",
+			"target_sha256": "36cb13a42e9078e48613838d75b8cef6c2da3423c691236c54c7bdbcd249c33c",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -8406,20 +8406,20 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-04",
-					"result": "clean-with-findings",
-					"instance": "0bfa9123c649-pr1681-r2-es",
+					"agent": "reviewer-cb9d33604d15",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-05",
+					"result": "clean",
+					"instance": "cb9d33604d15-pr1693-r1-es",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 1
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/0bfa9123c649-pr1681-r2-es.json",
-					"receipt_sha256": "f00bdb33dd2b4bf40db0f33200588b273fcd39f7eeb0d6e7a4c25618ffdbc863",
-					"scope": "PR #1681 round 2: fd5465dc728..129897358386 (2 keys)"
+					"receipt": "i18n/receipts/cb9d33604d15-pr1693-r1-es.json",
+					"receipt_sha256": "4f8db6504e739aba2857eec3299565d8ffa9caa86d7c04ec4e082e587ef60057",
+					"scope": "PR #1693 round 1: eight added files.* keys; 391 prior key/value pairs retained"
 				}
 			],
 			"status": "audited",
@@ -10077,6 +10077,29 @@
 							"receipt_sha256": "b582e42229734e1e1b977fc47112c99a8f1d25fd23ccc60ed86952790db93981",
 							"scope": "PR #1681 delta (7345dcb..1ec423538c46): 23 new conversation_menu keys read, composed and checked; other 366 values byte-identical to the bf2ddf2b6fb3-pr1670-r2 audited bytes except note.dm's trailing comma",
 							"note": "PR #1681 conversation-menu audit, translation-auditor f96f8d39d33d; 23 keys. Evidence: i18n/audits/evidence/es/ui.teamBridge/tb1681-f96f8d39d33d-es/record.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "91adbd87ec45fdb999e8dbeb6560cffb1545a7826d49fc1efada484a39608bc2",
+					"target_sha256": "6730d78277bb02e4c17c0535f88201104bf62910024bba9dc45346aaaf5e4626",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-04",
+							"result": "clean-with-findings",
+							"instance": "0bfa9123c649-pr1681-r2-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/0bfa9123c649-pr1681-r2-es.json",
+							"receipt_sha256": "f00bdb33dd2b4bf40db0f33200588b273fcd39f7eeb0d6e7a4c25618ffdbc863",
+							"scope": "PR #1681 round 2: fd5465dc728..129897358386 (2 keys)"
 						}
 					],
 					"status": "audited"
@@ -18992,8 +19015,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "91adbd87ec45fdb999e8dbeb6560cffb1545a7826d49fc1efada484a39608bc2",
-			"target_sha256": "c8b5cfbcf4735f7cce0b5afefc5896ffe324e8e2323862b1eaa7f1393f3846c2",
+			"source_sha256": "cea7787980b2d37643b0be8f8d1b0ab268dc7de71b268e18f5c2e6d65d7696a0",
+			"target_sha256": "702a96c3635db16bfe42484740db7a6679316a54a8b2399b3454a9a9896876ca",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -19009,20 +19032,20 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-04",
+					"agent": "reviewer-cb9d33604d15",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-05",
 					"result": "clean-with-findings",
-					"instance": "0bfa9123c649-pr1681-r2-fr",
+					"instance": "cb9d33604d15-pr1693-r1-fr",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 1
+						"minor": 1,
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/0bfa9123c649-pr1681-r2-fr.json",
-					"receipt_sha256": "a80f667bea677cb4636f9415a641808dd743362bcb2116bedc6dbe2279d282da",
-					"scope": "PR #1681 round 2: fd5465dc728..129897358386 (2 keys)"
+					"receipt": "i18n/receipts/cb9d33604d15-pr1693-r1-fr.json",
+					"receipt_sha256": "734dd19e97333e618b3c194a256f635782822d10778ad5913ed153fe31f3b5a6",
+					"scope": "PR #1693 round 1: eight added files.* keys; 391 prior key/value pairs retained"
 				}
 			],
 			"status": "audited",
@@ -20704,6 +20727,29 @@
 							"receipt_sha256": "ae6b950af9aea9d714f47b3555329661251342f4c64dfa13e35c8c60bd7a03e5",
 							"scope": "PR #1681 delta (7345dcb..1ec423538c46): 23 new conversation_menu keys read, composed and checked; other 366 values byte-identical to the bf2ddf2b6fb3-pr1670-r2 audited bytes except note.dm's trailing comma",
 							"note": "PR #1681 conversation-menu audit, translation-auditor f96f8d39d33d; 23 keys. Evidence: i18n/audits/evidence/fr/ui.teamBridge/tb1681-f96f8d39d33d-fr/record.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "91adbd87ec45fdb999e8dbeb6560cffb1545a7826d49fc1efada484a39608bc2",
+					"target_sha256": "c8b5cfbcf4735f7cce0b5afefc5896ffe324e8e2323862b1eaa7f1393f3846c2",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-04",
+							"result": "clean-with-findings",
+							"instance": "0bfa9123c649-pr1681-r2-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/0bfa9123c649-pr1681-r2-fr.json",
+							"receipt_sha256": "a80f667bea677cb4636f9415a641808dd743362bcb2116bedc6dbe2279d282da",
+							"scope": "PR #1681 round 2: fd5465dc728..129897358386 (2 keys)"
 						}
 					],
 					"status": "audited"
@@ -29474,8 +29520,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "91adbd87ec45fdb999e8dbeb6560cffb1545a7826d49fc1efada484a39608bc2",
-			"target_sha256": "a93a763e438ef69e7ce7d12fd529a8f82a6b69513e6277426275a0bfd043a0d0",
+			"source_sha256": "cea7787980b2d37643b0be8f8d1b0ab268dc7de71b268e18f5c2e6d65d7696a0",
+			"target_sha256": "f0fb7911e6a5e9030a5c2efbfd6263e0ba3d0147772db09c922d488ec63ae441",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -29490,20 +29536,20 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-04",
+					"agent": "reviewer-cb9d33604d15",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-05",
 					"result": "clean",
-					"instance": "0bfa9123c649-pr1681-r2-hi",
+					"instance": "cb9d33604d15-pr1693-r1-hi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/0bfa9123c649-pr1681-r2-hi.json",
-					"receipt_sha256": "10e7c73b18d4828f710eaf556acf3e572ffc07cf0b563ad40cad7a1f79dda5bf",
-					"scope": "PR #1681 round 2: fd5465dc728..129897358386 (2 keys)"
+					"receipt": "i18n/receipts/cb9d33604d15-pr1693-r1-hi.json",
+					"receipt_sha256": "756bd53175c63aff485ef9d71f1dda7c637df760883130c108d368204998d0e9",
+					"scope": "PR #1693 round 1: eight added files.* keys; 391 prior key/value pairs retained"
 				}
 			],
 			"status": "audited",
@@ -31067,6 +31113,29 @@
 							"receipt_sha256": "12752d1131a56f0635d38320241b3390041a7d9089b3efa7d179327da0a93a24",
 							"scope": "PR #1681 delta (7345dcb..1ec423538c46): 23 new conversation_menu keys read, composed and checked; other 366 values byte-identical to the bf2ddf2b6fb3-pr1670-r2 audited bytes except note.dm's trailing comma",
 							"note": "PR #1681 conversation-menu audit, translation-auditor f96f8d39d33d; 23 keys. Evidence: i18n/audits/evidence/hi/ui.teamBridge/tb1681-f96f8d39d33d-hi/record.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "91adbd87ec45fdb999e8dbeb6560cffb1545a7826d49fc1efada484a39608bc2",
+					"target_sha256": "a93a763e438ef69e7ce7d12fd529a8f82a6b69513e6277426275a0bfd043a0d0",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-04",
+							"result": "clean",
+							"instance": "0bfa9123c649-pr1681-r2-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/0bfa9123c649-pr1681-r2-hi.json",
+							"receipt_sha256": "10e7c73b18d4828f710eaf556acf3e572ffc07cf0b563ad40cad7a1f79dda5bf",
+							"scope": "PR #1681 round 2: fd5465dc728..129897358386 (2 keys)"
 						}
 					],
 					"status": "audited"
@@ -39609,8 +39678,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "91adbd87ec45fdb999e8dbeb6560cffb1545a7826d49fc1efada484a39608bc2",
-			"target_sha256": "7102d6b08b8e64b5cb6d1576c948c8a08a49f5ccf7d656306e9374ca6555cb3d",
+			"source_sha256": "cea7787980b2d37643b0be8f8d1b0ab268dc7de71b268e18f5c2e6d65d7696a0",
+			"target_sha256": "f9c50a9c071c6cf67af598afe4de4dc7fbf2c0da59d0eff48d30916f8eb37eac",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -39626,20 +39695,20 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-04",
+					"agent": "reviewer-cb9d33604d15",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-05",
 					"result": "clean",
-					"instance": "0bfa9123c649-pr1681-r2-ru",
+					"instance": "cb9d33604d15-pr1693-r1-ru",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/0bfa9123c649-pr1681-r2-ru.json",
-					"receipt_sha256": "b80c368fb9fe24b80721455cc48f9226a5abb6d1f00c3fe15759fbe5cb151379",
-					"scope": "PR #1681 round 2: fd5465dc728..129897358386 (2 keys)"
+					"receipt": "i18n/receipts/cb9d33604d15-pr1693-r1-ru.json",
+					"receipt_sha256": "317dba5b191251cad118e872c21f81dbe4dab2cf04147a4becc9584724fd9aff",
+					"scope": "PR #1693 round 1: eight added files.* keys; 391 prior key/value pairs retained"
 				}
 			],
 			"status": "audited",
@@ -41292,6 +41361,29 @@
 							"receipt_sha256": "b6f7f94224b20d00339ef69a126af64f114d45d215f1a6d94e1eb35bbe808447",
 							"scope": "PR #1681 delta (7345dcb..1ec423538c46): 23 new conversation_menu keys read, composed and checked; other 366 values byte-identical to the bf2ddf2b6fb3-pr1670-r2 audited bytes except note.dm's trailing comma",
 							"note": "PR #1681 conversation-menu audit, translation-auditor f96f8d39d33d; 23 keys. Evidence: i18n/audits/evidence/ru/ui.teamBridge/tb1681-f96f8d39d33d-ru/record.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "91adbd87ec45fdb999e8dbeb6560cffb1545a7826d49fc1efada484a39608bc2",
+					"target_sha256": "7102d6b08b8e64b5cb6d1576c948c8a08a49f5ccf7d656306e9374ca6555cb3d",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-04",
+							"result": "clean",
+							"instance": "0bfa9123c649-pr1681-r2-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/0bfa9123c649-pr1681-r2-ru.json",
+							"receipt_sha256": "b80c368fb9fe24b80721455cc48f9226a5abb6d1f00c3fe15759fbe5cb151379",
+							"scope": "PR #1681 round 2: fd5465dc728..129897358386 (2 keys)"
 						}
 					],
 					"status": "audited"
@@ -49873,8 +49965,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "91adbd87ec45fdb999e8dbeb6560cffb1545a7826d49fc1efada484a39608bc2",
-			"target_sha256": "41c5dbb0ef5028d2d866444ffd6b69b727c2bebc5c27a09af59e1179466f16bd",
+			"source_sha256": "cea7787980b2d37643b0be8f8d1b0ab268dc7de71b268e18f5c2e6d65d7696a0",
+			"target_sha256": "c9140d081a9e5dcdf73994e9dc0b9a0ef01008f2af6a0b463aeebc3788586c25",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -49889,20 +49981,20 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-04",
-					"result": "clean",
-					"instance": "0bfa9123c649-pr1681-r2-ur",
+					"agent": "reviewer-cb9d33604d15",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-05",
+					"result": "clean-with-findings",
+					"instance": "cb9d33604d15-pr1693-r1-ur",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
+						"minor": 1,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/0bfa9123c649-pr1681-r2-ur.json",
-					"receipt_sha256": "762e70dabcbe7a321fdf860a61e1e73547e283fc9a51f15b0b262f7aba44b230",
-					"scope": "PR #1681 round 2: fd5465dc728..129897358386 (2 keys)"
+					"receipt": "i18n/receipts/cb9d33604d15-pr1693-r1-ur.json",
+					"receipt_sha256": "e1043a8caa54958df4d7b0234c28f7692a0dfe51b744456a491b413b3c8969c7",
+					"scope": "PR #1693 round 1: eight added files.* keys; 391 prior key/value pairs retained"
 				}
 			],
 			"status": "audited",
@@ -51466,6 +51558,29 @@
 							"receipt_sha256": "324c5fbf4c2c8659d3f1af01aec3a5198ddd4e9ebf820156de84037654ea2f34",
 							"scope": "PR #1681 delta (7345dcb..1ec423538c46): 23 new conversation_menu keys read, composed and checked; other 366 values byte-identical to the bf2ddf2b6fb3-pr1670-r2 audited bytes except note.dm's trailing comma",
 							"note": "PR #1681 conversation-menu audit, translation-auditor f96f8d39d33d; 23 keys. Evidence: i18n/audits/evidence/ur/ui.teamBridge/tb1681-f96f8d39d33d-ur/record.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "91adbd87ec45fdb999e8dbeb6560cffb1545a7826d49fc1efada484a39608bc2",
+					"target_sha256": "41c5dbb0ef5028d2d866444ffd6b69b727c2bebc5c27a09af59e1179466f16bd",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-04",
+							"result": "clean",
+							"instance": "0bfa9123c649-pr1681-r2-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/0bfa9123c649-pr1681-r2-ur.json",
+							"receipt_sha256": "762e70dabcbe7a321fdf860a61e1e73547e283fc9a51f15b0b262f7aba44b230",
+							"scope": "PR #1681 round 2: fd5465dc728..129897358386 (2 keys)"
 						}
 					],
 					"status": "audited"
@@ -60511,8 +60626,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "91adbd87ec45fdb999e8dbeb6560cffb1545a7826d49fc1efada484a39608bc2",
-			"target_sha256": "632583ff735980117554a8085d669d144331677f6d7cbe9dc8d22a3141c456c9",
+			"source_sha256": "cea7787980b2d37643b0be8f8d1b0ab268dc7de71b268e18f5c2e6d65d7696a0",
+			"target_sha256": "631d3a66320ea238dba36fdbaa7ada6b247dbdbe399281e0272f7512f38c12ce",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -60527,20 +60642,20 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-04",
+					"agent": "reviewer-cb9d33604d15",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-05",
 					"result": "clean",
-					"instance": "0bfa9123c649-pr1681-r2-vi",
+					"instance": "cb9d33604d15-pr1693-r1-vi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/0bfa9123c649-pr1681-r2-vi.json",
-					"receipt_sha256": "58c86f4b019fd06f14b6decaf80112cf72040b0404d73285e432871e64f03e1b",
-					"scope": "PR #1681 round 2: fd5465dc728..129897358386 (2 keys)"
+					"receipt": "i18n/receipts/cb9d33604d15-pr1693-r1-vi.json",
+					"receipt_sha256": "ce9cc449adc681670904d567e7e3ce62ce9b9f4feade1c3efbe2d426a7b6fcc4",
+					"scope": "PR #1693 round 1: eight added files.* keys; 391 prior key/value pairs retained"
 				}
 			],
 			"status": "audited",
@@ -62183,6 +62298,29 @@
 							"receipt_sha256": "5e0fc0a7879ab359eb0fcc3d9a423c25559a8fa1318940a257241120f25929db",
 							"scope": "PR #1681 delta (7345dcb..1ec423538c46): 23 new conversation_menu keys read, composed and checked; other 366 values byte-identical to the bf2ddf2b6fb3-pr1670-r2 audited bytes except note.dm's trailing comma",
 							"note": "PR #1681 conversation-menu audit, translation-auditor f96f8d39d33d; 23 keys. Evidence: i18n/audits/evidence/vi/ui.teamBridge/tb1681-f96f8d39d33d-vi/record.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "91adbd87ec45fdb999e8dbeb6560cffb1545a7826d49fc1efada484a39608bc2",
+					"target_sha256": "632583ff735980117554a8085d669d144331677f6d7cbe9dc8d22a3141c456c9",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-04",
+							"result": "clean",
+							"instance": "0bfa9123c649-pr1681-r2-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/0bfa9123c649-pr1681-r2-vi.json",
+							"receipt_sha256": "58c86f4b019fd06f14b6decaf80112cf72040b0404d73285e432871e64f03e1b",
+							"scope": "PR #1681 round 2: fd5465dc728..129897358386 (2 keys)"
 						}
 					],
 					"status": "audited"
@@ -71780,8 +71918,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "91adbd87ec45fdb999e8dbeb6560cffb1545a7826d49fc1efada484a39608bc2",
-			"target_sha256": "f484ecf039e2b3ccd5b7b689a73a48b9214f3c9abf9393ad4a712238d3727307",
+			"source_sha256": "cea7787980b2d37643b0be8f8d1b0ab268dc7de71b268e18f5c2e6d65d7696a0",
+			"target_sha256": "f6905d3ef2230c0d7caae04172c21ecf95438c3d2925775ad22ae098682f7d5e",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -71796,20 +71934,20 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-04",
-					"result": "clean",
-					"instance": "0bfa9123c649-pr1681-r2-zh-cn",
+					"agent": "reviewer-cb9d33604d15",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-05",
+					"result": "clean-with-findings",
+					"instance": "cb9d33604d15-pr1693-r1-zh-cn",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 0
+						"nit": 2
 					},
-					"receipt": "i18n/receipts/0bfa9123c649-pr1681-r2-zh-cn.json",
-					"receipt_sha256": "df03cfd0f229f6c7128be043b3c3b75e1c320c78e523a72dcde3b467fb0ca900",
-					"scope": "PR #1681 round 2: fd5465dc728..129897358386 (2 keys)"
+					"receipt": "i18n/receipts/cb9d33604d15-pr1693-r1-zh-cn.json",
+					"receipt_sha256": "aad04c76c9feb20520ef8ba51ba59dbf01885b5fa1a8367626b5b551e92672df",
+					"scope": "PR #1693 round 1: eight added files.* keys; 391 prior key/value pairs retained"
 				}
 			],
 			"status": "audited",
@@ -73450,6 +73588,29 @@
 							"receipt_sha256": "cc7c515e0fc44eb6d2487dd9d4ac95339731af4cbb72ec06c68eabe61ae1d07d",
 							"scope": "PR #1681 delta (7345dcb..1ec423538c46): 23 new conversation_menu keys read, composed and checked; other 366 values byte-identical to the bf2ddf2b6fb3-pr1670-r2 audited bytes except note.dm's trailing comma",
 							"note": "PR #1681 conversation-menu audit, translation-auditor f96f8d39d33d; 23 keys. Evidence: i18n/audits/evidence/zh-CN/ui.teamBridge/tb1681-f96f8d39d33d-zh-cn/record.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "91adbd87ec45fdb999e8dbeb6560cffb1545a7826d49fc1efada484a39608bc2",
+					"target_sha256": "f484ecf039e2b3ccd5b7b689a73a48b9214f3c9abf9393ad4a712238d3727307",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-04",
+							"result": "clean",
+							"instance": "0bfa9123c649-pr1681-r2-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/0bfa9123c649-pr1681-r2-zh-cn.json",
+							"receipt_sha256": "df03cfd0f229f6c7128be043b3c3b75e1c320c78e523a72dcde3b467fb0ca900",
+							"scope": "PR #1681 round 2: fd5465dc728..129897358386 (2 keys)"
 						}
 					],
 					"status": "audited"

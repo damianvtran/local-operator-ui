@@ -1,12 +1,13 @@
 import { Spinner } from "@shared/components/common/spinner";
 import { Button } from "@shared/components/ui/button";
 import { t } from "@shared/i18n";
-import { FileIcon, RotateCw, X } from "lucide-react";
+import { ChevronRight, FileIcon, RotateCw, X } from "lucide-react";
 import type { TeamBridgeFilesState } from "./use-team-bridge-files";
 
-/** Filename is authorized message content, not an identifier or accessible
- * control name. Fixed positional control labels keep bidi/hostile names out of
- * the controls; the visible name is isolated and never interpreted as markup. */
+/** Filename is authorized message content, never an identifier or markup.
+ * Retry/remove keep fixed action labels, while the filename's native disclosure
+ * lets pointer and keyboard readers inspect a truncated suffix without losing
+ * bidi isolation or copying the name into an action's aria-label. */
 export function TeamBridgeFilesStrip({
 	state,
 }: { state: TeamBridgeFilesState }) {
@@ -33,9 +34,20 @@ export function TeamBridgeFilesStrip({
 							/>
 						)}
 						<div className="min-w-0 flex-1">
-							<bdi className="block truncate text-sm text-ink">
-								{chip.file.name}
-							</bdi>
+							{/* A native disclosure works with click, Enter and Space, not
+							    hover alone; expanded names wrap inside this same chip. */}
+							<details className="group/file-name">
+								<summary className="flex min-h-6 cursor-pointer list-none items-start gap-1 rounded-sm focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-1 [&::-webkit-details-marker]:hidden">
+									<ChevronRight
+										size={12}
+										aria-hidden="true"
+										className="mt-1 shrink-0 text-ink-muted group-open/file-name:rotate-90"
+									/>
+									<bdi className="block min-w-0 truncate text-sm text-ink group-open/file-name:whitespace-normal group-open/file-name:break-all">
+										{chip.file.name}
+									</bdi>
+								</summary>
+							</details>
 							<span className="text-xs text-ink-muted">
 								{t(
 									chip.status === "error"

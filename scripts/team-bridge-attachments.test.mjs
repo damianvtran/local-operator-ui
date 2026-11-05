@@ -168,6 +168,7 @@ const bundle = await build({
  export {t} from "./src/renderer/src/shared/i18n";
  export {browserDraftStorage} from "./src/renderer/src/shared/store/team-bridge-draft-account";
  export {TeamBridgeApi} from "./src/renderer/src/shared/api/local-operator/team-bridge-api";
+ export {TeamBridgeFilesStrip} from "./src/renderer/src/features/team-bridge/team-bridge-files-strip";
  export {useTeamBridgeFiles, filesCapability, splitBridgeFiles} from "./src/renderer/src/features/team-bridge/use-team-bridge-files";
  export {useConversationInputStore} from "./src/renderer/src/shared/store/conversation-input-store";`,
 		resolveDir: process.cwd(),
@@ -4023,4 +4024,162 @@ test("U2 page capability OFF blocks prose fallback and keeps file removal availa
 	await act(async () => remove.click());
 	assert.equal(sendButton(app.element).disabled, false);
 	await app.close();
+});
+
+// R1: the response may arrive after the author stages the NEXT message. Exercise
+// the real thread component beside the channel control; transport remains the
+// suite's disclosed stub, never a claim about native/core/hub delivery.
+for (const surface of ["thread", "channel"]) {
+	test(`U2 R1 ${surface}: accepted send retires only press-time file keys`, async () => {
+		let finish;
+		let sequence = 0;
+		const sent = [];
+		mediaAnswer = () => stagedFile(`batt_pending${++sequence}`);
+		let app;
+		if (surface === "thread") {
+			const element = document.createElement("div");
+			document.body.append(element);
+			const root = createRoot(element);
+			await act(async () =>
+				root.render(
+					React.createElement(m.TeamBridgeThreadPaneView, {
+						root: message({ id: "bmsg_1", body: "root" }),
+						replies: [],
+						state: "ready",
+						labelFor: (sender) => sender.display_label,
+						onClose: () => {},
+						onRetry: () => {},
+						tenantId: "tnt_1",
+						conversationId: "bcv_1",
+						accountId: "acct_a",
+						filesCapability: FILE_CAP,
+						onSend: async (_body, _ref, _images, files) => {
+							sent.push([...files]);
+							await new Promise((resolve) => {
+								finish = resolve;
+							});
+						},
+					}),
+				),
+			);
+			app = {
+				element,
+				close: async () => {
+					await act(async () => root.unmount());
+					element.remove();
+				},
+			};
+		} else {
+			app = await mountPage(
+				pageProps({
+					target: { type: "conversation", id: "bcv_dm" },
+					filesCapability: FILE_CAP,
+					onSend: async (_body, _ref, attachments) => {
+						await attachments.stageHeld("bcv_dm", "org_page");
+						sent.push([...attachments.files]);
+						await new Promise((resolve) => {
+							finish = resolve;
+						});
+					},
+				}),
+			);
+		}
+		const drop = async (name) => {
+			const file = new File(["document"], name, { type: "text/plain" });
+			const event = new window.Event("drop", {
+				bubbles: true,
+				cancelable: true,
+			});
+			event.dataTransfer = {
+				types: ["Files"],
+				items: [{ kind: "file", getAsFile: () => file }],
+				files: [file],
+			};
+			await act(async () =>
+				app.element.querySelector("textarea").dispatchEvent(event),
+			);
+			await settle();
+			await settle();
+		};
+		try {
+			await drop("first.txt");
+			await act(async () => sendButton(app.element).click());
+			await settle();
+			assert.deepEqual(
+				sent,
+				[["batt_pending1"]],
+				"the first request carries only its own file",
+			);
+			await drop("second-unsent.txt");
+			assert.equal(app.element.querySelectorAll("[data-file-chip]").length, 2);
+			await act(async () => finish());
+			await settle();
+			const remaining = app.element.querySelectorAll("[data-file-chip]");
+			assert.equal(
+				remaining.length,
+				1,
+				"a later unsent file must survive the previous response",
+			);
+			assert.equal(
+				remaining[0].querySelector("bdi").textContent,
+				"second-unsent.txt",
+			);
+			assert.deepEqual(
+				sent,
+				[["batt_pending1"]],
+				"the preserved file was never bound by the first request",
+			);
+		} finally {
+			await app.close();
+		}
+	});
+}
+
+test("U2 D1: full filename disclosure keeps bidi text and fixed mutation labels", async () => {
+	const element = document.createElement("div");
+	document.body.append(element);
+	const root = createRoot(element);
+	const name = "تقارير-very-long-name-with-two-suffixes-final-2026.csv";
+	const file = new File(["fixture"], name, { type: "text/plain" });
+	try {
+		await act(async () =>
+			root.render(
+				React.createElement(m.TeamBridgeFilesStrip, {
+					state: {
+						chips: [{ key: "local", file, status: "ready" }],
+						enabled: true,
+						remove: () => {},
+					},
+				}),
+			),
+		);
+		const disclosure = element.querySelector("details");
+		const summary = disclosure.querySelector("summary");
+		assert.equal(
+			summary.querySelector("bdi").textContent,
+			name,
+			"full authorized content stays bidi-isolated",
+		);
+		assert.equal(disclosure.open, false);
+		await act(async () => summary.click());
+		assert.equal(
+			disclosure.open,
+			true,
+			"native summary exposes the full wrapping filename",
+		);
+		assert.equal(
+			element
+				.querySelector('button[aria-label="Remove file"]')
+				.getAttribute("aria-label"),
+			"Remove file",
+		);
+		assert.equal(
+			summary.hasAttribute("aria-label"),
+			false,
+			"do not inject filenames into mutation-control metadata",
+		);
+	} finally {
+		await act(async () => root.unmount());
+		element.remove();
+	}
 });

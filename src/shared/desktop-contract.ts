@@ -4927,7 +4927,7 @@ export const desktopRequestSchema = desktopRequestUnion.superRefine(
 			) {
 				ctx.addIssue({
 					code: z.ZodIssueCode.custom,
-					message: "Invalid combined attachment set",
+					message: "Invalid combined attachment set", // i18n: ignore request-schema diagnostic, not rendered interface copy
 					path: ["files"],
 				});
 			}
