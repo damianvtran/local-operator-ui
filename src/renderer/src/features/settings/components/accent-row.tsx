@@ -1,5 +1,9 @@
 import { Button, Input } from "@shared/components/ui";
 import {
+	ColourPicker,
+	rememberColour,
+} from "@shared/components/ui/colour-picker";
+import {
 	ContextMenu,
 	ContextMenuContent,
 	ContextMenuItem,
@@ -14,8 +18,8 @@ import { Tooltip, TooltipProvider } from "@shared/components/ui/tooltip";
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
-import { Check, Pipette, Plus } from "lucide-react";
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { Check, Plus } from "lucide-react";
+import { useId, useMemo, useRef, useState } from "react";
 import type { CSSProperties, FC, KeyboardEvent, ReactNode } from "react";
 import type { AccentRef } from "../../../../../shared/theme-engine/accent.mjs";
 import { normalizeHex } from "../../../../../shared/theme-engine/accent.mjs";
@@ -26,9 +30,7 @@ import type {
 } from "../../../../../shared/theme-engine/picker.mjs";
 import {
 	CUSTOM_ACCENT_NAME_MAX,
-	hexToLch,
 	hueName,
-	lchToHex,
 	onAccentPreview,
 } from "../../../../../shared/theme-engine/picker.mjs";
 
@@ -493,18 +495,8 @@ export const AccentRow: FC<AccentRowProps> = (props) => {
 
 /* ------------------------------------------------------------ the picker */
 
-type EyeDropperCtor = new () => { open: () => Promise<{ sRGBHex: string }> };
-
-/**
- * The basic "+" picker: a live swatch with its text-on-accent readout, a hue
- * slider and a lightness slider (CIELAB LCh at the colour's own chroma), a hex
- * field, and the eyedropper where the platform has one. The full OKLCH area
- * picker belongs to the custom-theme editor (PR C).
- *
- * THE HEX FIELD COMMITS ON ENTER OR BLUR, never per keystroke: a half-typed
- * `#1a` is not a colour, and painting it would flash. While the text is invalid
- * the swatch keeps the last valid colour and the field says why (designer 6.2).
- */
+/** The same OKLCH control edits accents and per-role theme values. Keeping one
+ * picker avoids subtly different keyboard and gamut rules in two settings. */
 const ColourForm: FC<{
 	initial: string;
 	submitLabel: string;
@@ -512,177 +504,30 @@ const ColourForm: FC<{
 	onCancel: () => void;
 }> = ({ initial, submitLabel, onSubmit, onCancel }) => {
 	const [hex, setHex] = useState(normalizeHex(initial) ?? "#3B82F6");
-	const [text, setText] = useState(hex);
-	const [invalid, setInvalid] = useState(false);
-	/* The sliders hold their own LCh so a lightness move does not drift the hue
-	   through hex rounding (a grey has no hue to recover). */
-	const [lch, setLch] = useState(() => hexToLch(hex));
-	const errorId = useId();
-	const hexId = useId();
-	useEffect(() => {
-		setText(hex);
-	}, [hex]);
-	const fromLch = (next: typeof lch) => {
-		setLch(next);
-		setHex(lchToHex(next));
-		setInvalid(false);
-	};
-	const commitText = (): string | null => {
-		const parsed = normalizeHex(text);
-		if (!parsed) {
-			setInvalid(true);
-			return null;
-		}
-		setInvalid(false);
-		setHex(parsed);
-		setLch(hexToLch(parsed));
-		return parsed;
-	};
-	const readout = onAccentPreview(hex);
-	const hasEyeDropper = typeof window !== "undefined" && "EyeDropper" in window;
-	const hueGradient =
-		"linear-gradient(to right in oklch longer hue, oklch(0.7 0.15 0), oklch(0.7 0.15 360))";
-	const lightGradient = `linear-gradient(to right, #000, ${lchToHex({ ...lch, l: 50 })}, #fff)`;
-
+	const [valid, setValid] = useState(true);
 	return (
 		<form
-			className="flex flex-col gap-3"
 			onSubmit={(event) => {
 				event.preventDefault();
-				const parsed = commitText();
-				if (parsed) onSubmit(parsed);
+				if (valid) {
+					rememberColour(hex);
+					onSubmit(hex);
+				}
 			}}
+			className="flex flex-col gap-3"
 		>
-			<div
-				data-picker-swatch=""
-				style={{ backgroundColor: hex, color: readout.ink }}
-				className="flex h-12 items-end rounded-md border border-hairline px-2 py-1 text-meta"
-			>
-				{t("ui.settings.appearance.picker.text_on_accent", {
-					ratio: readout.ratio.toFixed(1),
-				})}
-			</div>
-			<ChannelSlider
-				label={t("ui.settings.appearance.picker.hue")}
-				valueText={t("ui.settings.appearance.picker.hue_value", {
-					deg: String(Math.round(lch.h)),
-					name: hueLabel(hex),
-				})}
-				min={0}
-				max={360}
-				value={Math.round(lch.h)}
-				background={hueGradient}
-				onChange={(h) => fromLch({ ...lch, h })}
-			/>
-			<ChannelSlider
-				label={t("ui.settings.appearance.picker.lightness")}
-				valueText={t("ui.settings.appearance.picker.lightness_value", {
-					value: String(Math.round(lch.l)),
-				})}
-				min={0}
-				max={100}
-				value={Math.round(lch.l)}
-				background={lightGradient}
-				onChange={(l) => fromLch({ ...lch, l })}
-			/>
-			<div className="flex items-end gap-2">
-				<label className="flex min-w-0 flex-1 flex-col gap-1" htmlFor={hexId}>
-					<span className="text-meta text-ink-muted">
-						{t("ui.settings.appearance.picker.hex")}
-					</span>
-					<Input
-						id={hexId}
-						inputSize="sm"
-						value={text}
-						spellCheck={false}
-						autoComplete="off"
-						aria-invalid={invalid || undefined}
-						aria-describedby={invalid ? errorId : undefined}
-						data-picker-hex=""
-						onChange={(event) => setText(event.target.value)}
-						onBlur={() => {
-							/* An invalid entry is discarded on blur: the value reverts
-							   and the error stays until the next valid entry. */
-							if (!commitText()) setText(hex);
-						}}
-						className="font-mono"
-					/>
-				</label>
-				{hasEyeDropper && (
-					<Tooltip content={t("ui.settings.appearance.picker.eyedropper")}>
-						<Button
-							type="button"
-							variant="ghost"
-							size="icon-sm"
-							aria-label={t("ui.settings.appearance.picker.eyedropper")}
-							onClick={() => {
-								const Ctor = (
-									window as unknown as { EyeDropper: EyeDropperCtor }
-								).EyeDropper;
-								/* Esc cancels the pick and rejects: silent by design. */
-								new Ctor()
-									.open()
-									.then(({ sRGBHex }) => {
-										const parsed = normalizeHex(sRGBHex);
-										if (parsed) {
-											setHex(parsed);
-											setLch(hexToLch(parsed));
-											setInvalid(false);
-										}
-									})
-									.catch(() => {});
-							}}
-						>
-							<Pipette />
-						</Button>
-					</Tooltip>
-				)}
-			</div>
-			{invalid && (
-				<p id={errorId} className="text-meta text-danger">
-					{t("ui.settings.appearance.picker.invalid")}
-				</p>
-			)}
+			<ColourPicker value={hex} onChange={setHex} onValidityChange={setValid} />
 			<div className="flex justify-end gap-2">
 				<Button type="button" variant="ghost" size="sm" onClick={onCancel}>
 					{t("ui.settings.appearance.picker.cancel")}
 				</Button>
-				<Button type="submit" variant="primary" size="sm">
+				<Button type="submit" variant="primary" size="sm" disabled={!valid}>
 					{submitLabel}
 				</Button>
 			</div>
 		</form>
 	);
 };
-
-const ChannelSlider: FC<{
-	label: string;
-	valueText: string;
-	min: number;
-	max: number;
-	value: number;
-	background: string;
-	onChange: (value: number) => void;
-}> = ({ label, valueText, min, max, value, background, onChange }) => (
-	<label className="flex flex-col gap-1">
-		<span className="text-meta text-ink-muted">{label}</span>
-		<input
-			type="range"
-			min={min}
-			max={max}
-			step={1}
-			value={value}
-			aria-valuetext={valueText}
-			onChange={(event) => onChange(Number(event.target.value))}
-			style={{ backgroundImage: background }}
-			className={
-				"h-3 w-full cursor-pointer appearance-none rounded-full border border-hairline " +
-				"[&::-webkit-slider-thumb]:size-3.5 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full " +
-				"[&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-ink [&::-webkit-slider-thumb]:bg-canvas"
-			}
-		/>
-	</label>
-);
 
 const RenameForm: FC<{
 	initial: string;

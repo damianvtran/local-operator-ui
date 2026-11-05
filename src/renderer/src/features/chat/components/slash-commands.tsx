@@ -1,3 +1,4 @@
+import { useCustomThemes } from "@shared/themes/custom-theme-store";
 /**
  * Slash command completion for the composer: the command-word phase AND the
  * argument phase, in one listbox.
@@ -500,7 +501,14 @@ function useArgumentRows(
 	tags: TagListState | undefined,
 	enabled: boolean,
 ): SlashArgumentListState {
-	const themeName = useUiPreferencesStore((state) => state.themeName);
+	const baseThemeName = useUiPreferencesStore((state) => state.themeName);
+	const customThemeId = useUiPreferencesStore((state) => state.customThemeId);
+	const customThemes = useCustomThemes();
+	const themeName = customThemes.themes.some(
+		(theme) => theme.id === customThemeId,
+	)
+		? customThemeId
+		: baseThemeName;
 	const appearance = useResolvedAppearance();
 	const selectedAccent = useUiPreferencesStore((state) => state.accent);
 	const layerSummary = appearanceLayerSummary(
@@ -638,12 +646,19 @@ function useArgumentRows(
 	);
 	const localThemes = useMemo(
 		() =>
-			Object.values(themes).map((theme) => ({
+			[
+				...Object.values(themes),
+				...customThemes.themes.map((theme) => ({
+					id: theme.id,
+					name: theme.name,
+					description: theme.name,
+				})),
+			].map((theme) => ({
 				value: theme.id,
 				name: theme.name,
 				description: theme.description,
 			})),
-		[],
+		[customThemes],
 	);
 
 	/*

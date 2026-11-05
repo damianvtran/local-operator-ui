@@ -899,21 +899,40 @@ const REPAIR_ROUNDS = 60;
  * Greedy and deterministic (fixed move order, ties keep the first), so the
  * popout and the main window reach the same palette.
  */
-export const repairPalette = (palette, id, authored = palette) => {
-	let out = finishOnAccent(palette, authored);
+export const repairPalette = (
+	palette,
+	id,
+	authored = palette,
+	{
+		pinned = [],
+		maxEvaluations = Number.POSITIVE_INFINITY,
+		lightnessOnly = false,
+	} = {},
+) => {
+	// Interactive custom drafts need a bounded suggestion, and may never move a
+	// pinned manual role. Existing composition callers retain the full search.
+	const pins = new Set(pinned);
+	const finish = (value) =>
+		pins.has("onAccent") ? value : finishOnAccent(value, authored);
+	let evaluations = 0;
+	let out = finish(palette);
 	let findings = composedFindings(out, id);
 	let current = score(findings);
 	for (let round = 0; round < REPAIR_ROUNDS && findings.length > 0; round++) {
 		let best = null;
 		for (const role of rolesNamed(out, findings)) {
+			if (pins.has(role)) continue;
 			const [l, a, b] = toLab(out[role]);
 			const tries = [
 				...L_MOVES.map((dl) => labAtLightness(l + dl, a, b)),
-				...C_MOVES.map((k) => labAtLightness(l, a * k, b * k)),
+				...(lightnessOnly
+					? []
+					: C_MOVES.map((k) => labAtLightness(l, a * k, b * k))),
 			];
 			for (const hex of tries) {
 				if (hex === out[role]) continue;
-				const next = finishOnAccent({ ...out, [role]: hex }, authored);
+				if (++evaluations > maxEvaluations) return { palette: out, findings };
+				const next = finish({ ...out, [role]: hex });
 				const f = composedFindings(next, id);
 				const sc = score(f);
 				if (sc < (best ? best.score : current) - 1e-9)

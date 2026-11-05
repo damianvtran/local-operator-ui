@@ -1,3 +1,8 @@
+import {
+	findCustomTheme,
+	subscribeCustomThemes,
+} from "@shared/themes/custom-theme-store";
+import { savedPaletteOf } from "@shared/themes/use-resolved-appearance";
 /**
  * The mini view's entry document (quick-send design §D.1), a fourth renderer
  * document for the console capture's own reason: a hotkey-summoned window must
@@ -27,10 +32,12 @@ import {
 import { installExternalOpenRefusalToasts } from "@shared/lib/external-open-refusal";
 import { installConversationInputSync } from "@shared/store/conversation-input-sync";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
+import type { ThemeName } from "@shared/themes";
 import {
 	appearanceKey,
 	appearanceOf,
 	applyAppearance,
+	resolveAppearance,
 } from "@shared/themes/appearance";
 import React from "react";
 import ReactDOM from "react-dom/client";
@@ -50,7 +57,24 @@ import { adoptPreferencesWrite } from "./mini-state";
  * pure and deterministic, so this document reaches the same `lo-<hash>` - and
  * the same injected block - as the main window from the same persisted fields.
  */
-applyAppearance(appearanceOf(useUiPreferencesStore.getState()));
+/*
+ * A LIBRARY EDIT IS A REPAINT TOO. A saved theme's values live in their own
+ * store, so editing the ACTIVE one changes no preference field - the mini
+ * document subscribes to the same presentation function the storage listener
+ * uses, and neither writes preferences.
+ */
+const publishAppearance = () => {
+	const state = useUiPreferencesStore.getState();
+	const saved = findCustomTheme(state.customThemeId);
+	const savedPalette = savedPaletteOf(saved);
+	const savedBase = saved?.base as ThemeName | undefined;
+	applyAppearance(appearanceOf(state), document, savedPalette, savedBase, (a) =>
+		resolveAppearance(a, savedPalette, savedBase),
+	);
+	syncGlassScheme();
+};
+publishAppearance();
+subscribeCustomThemes(publishAppearance);
 
 /*
  * THE POPOUT'S GLASS, from the same two channels the main document reads: the
@@ -98,7 +122,28 @@ window.addEventListener("storage", (event) => {
 		),
 		rehydrate: () => useUiPreferencesStore.persist?.rehydrate?.(),
 		publish: () => {
-			applyAppearance(appearanceOf(useUiPreferencesStore.getState()));
+			/*
+			 * A LIBRARY EDIT IS A REPAINT TOO. A saved theme's values live in their own
+			 * store, so editing the ACTIVE one changes no preference field - the mini
+			 * document subscribes to the same presentation function the storage listener
+			 * uses, and neither writes preferences.
+			 */
+			const publishAppearance = () => {
+				const state = useUiPreferencesStore.getState();
+				const saved = findCustomTheme(state.customThemeId);
+				const savedPalette = savedPaletteOf(saved);
+				const savedBase = saved?.base as ThemeName | undefined;
+				applyAppearance(
+					appearanceOf(state),
+					document,
+					savedPalette,
+					savedBase,
+					(a) => resolveAppearance(a, savedPalette, savedBase),
+				);
+				syncGlassScheme();
+			};
+			publishAppearance();
+			subscribeCustomThemes(publishAppearance);
 			syncGlassScheme();
 		},
 	});

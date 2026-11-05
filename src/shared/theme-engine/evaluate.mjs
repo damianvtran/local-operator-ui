@@ -114,8 +114,11 @@ import {
  * preset applied over a built-in, or a user's custom theme) rather than the
  * authored sources. See `pinMatches` for the one rule that changes.
  */
-export const createRun = ({ composed = false } = {}) => {
+export const createRun = ({ composed = false, capturePairs = false } = {}) => {
 	const run = { assertions: 0, failures: 0, composed };
+	// Opt-in numeric readings let the editor display exactly the pairs the gate
+	// evaluates. Normal CI runs do not retain thousands of extra objects.
+	const readings = [];
 	/*
 	 * PINNED EXCEPTIONS ON A COMPOSED PALETTE: "never worse than authored".
 	 * A pin records the ratio or ΔE00 an AUTHORED palette measures, and matches
@@ -247,6 +250,8 @@ export const createRun = ({ composed = false } = {}) => {
 		if (!isHex(a) || !isHex(b)) return;
 		run.assertions++;
 		const raw = ratio(a, b);
+		if (capturePairs)
+			readings.push({ foreground: fg, background: bg, value: raw, floor });
 		if (raw >= floor) return;
 		const got = r2(raw);
 		if (findException(theme, fg, bg, got)) return;
@@ -310,6 +315,7 @@ export const createRun = ({ composed = false } = {}) => {
 	 */
 	const pinClaims = new Set();
 	Object.assign(run, {
+		readings,
 		pinMatches,
 		ledgerHolds,
 		log,

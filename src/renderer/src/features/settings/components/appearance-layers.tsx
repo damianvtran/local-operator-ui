@@ -4,6 +4,7 @@ import { useI18nLocale } from "@shared/i18n/use-locale";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { definitionOf, themes } from "@shared/themes";
 import type { ResolvedAppearance } from "@shared/themes/appearance";
+import { useAuthoredPalette } from "@shared/themes/use-authored-palette";
 import { useResolvedAppearance } from "@shared/themes/use-resolved-appearance";
 import type { FC, ReactNode } from "react";
 import {
@@ -106,12 +107,9 @@ const useDraft = (): number | null => {
  * than the screen paints, and `contrastCandidate` (~1 ms) plus a style write is
  * the whole per-frame cost - no verified compose ever runs during a drag.
  */
-const usePreviewStyle = (resolved: ResolvedAppearance, themeName: string) => {
+const usePreviewStyle = (resolved: ResolvedAppearance) => {
 	const draft = useDraft();
-	const base = useMemo(
-		() => definitionOf(themeName)?.palette as PaletteRecord | undefined,
-		[themeName],
-	);
+	const base = useAuthoredPalette().palette as PaletteRecord | undefined;
 	const overlay = useMemo(() => accentOverlay(resolved), [resolved]);
 	// Preset blocks do not depend on a moving thumb; compose them once per palette.
 	const chipCss = useMemo(
@@ -162,8 +160,7 @@ const usePreviewStyle = (resolved: ResolvedAppearance, themeName: string) => {
 /** [A] The preview strip, sticky at the top of Appearance. */
 export const AppearancePreviewSection: FC = () => {
 	const resolved = useResolvedAppearance();
-	const themeName = useUiPreferencesStore((s) => s.themeName);
-	const draft = usePreviewStyle(resolved, themeName);
+	const draft = usePreviewStyle(resolved);
 	return (
 		<div
 			/*
@@ -243,7 +240,8 @@ export const AppearanceLayerControls: FC = () => {
 	const removeCustomAccent = useUiPreferencesStore((s) => s.removeCustomAccent);
 	const { commit, pending } = useContrastCommit();
 
-	const base = definitionOf(themeName)?.palette;
+	const authored = useAuthoredPalette();
+	const base = authored.palette;
 	const mode = base?.mode ?? "dark";
 	const committed = contrast[mode] ?? 0;
 	const selected: AccentRef = accent[mode] ?? { kind: "theme" };
@@ -269,7 +267,7 @@ export const AppearanceLayerControls: FC = () => {
 	const all = useMemo(() => allAccents(palettes, mode), [palettes, mode]);
 
 	if (!base) return null;
-	const themeLabel = themes[themeName]?.name ?? themeName;
+	const themeLabel = authored.name;
 	return (
 		<div className="flex flex-col gap-6">
 			<section data-appearance-layer="contrast">

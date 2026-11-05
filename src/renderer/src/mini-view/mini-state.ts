@@ -118,6 +118,7 @@ export function themeNameFromPreferencesWrite(input: {
 		const parsed = JSON.parse(input.newValue) as {
 			state?: {
 				themeName?: unknown;
+				customThemeId?: unknown;
 				contrast?: { dark?: unknown; light?: unknown };
 				accent?: { dark?: unknown; light?: unknown };
 			};
@@ -136,6 +137,7 @@ export function themeNameFromPreferencesWrite(input: {
 				state?.contrast?.light ?? 0,
 				state?.accent?.dark ?? null,
 				state?.accent?.light ?? null,
+				state?.customThemeId ?? null,
 			]);
 			return key === input.currentAppearance ? null : name;
 		}
