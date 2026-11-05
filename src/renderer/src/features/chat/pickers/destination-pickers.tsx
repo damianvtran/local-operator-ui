@@ -66,6 +66,8 @@ import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { type ThemeName, themes } from "@shared/themes";
+import { appearanceLayerSummary } from "@shared/themes/appearance-summary";
+import { useResolvedAppearance } from "@shared/themes/use-resolved-appearance";
 import {
 	showErrorToast,
 	showInfoToast,
@@ -2557,6 +2559,17 @@ export const ThemePicker: FC<PickerContext> = ({ onClose, action }) => {
 	const locale = useI18nLocale();
 	const themeName = useUiPreferencesStore((state) => state.themeName);
 	const setTheme = useUiPreferencesStore((state) => state.setTheme);
+	/*
+	 * The CURRENT row follows the painted composition, not the name alone: when
+	 * a contrast preset or the user's accent is layered over the theme, its meta
+	 * says so ("Strong contrast, your accent"), so the list never claims the
+	 * stock palette while the app paints another (see `appearanceLayerSummary`).
+	 */
+	const resolvedAppearance = useResolvedAppearance();
+	const accentRef = useUiPreferencesStore(
+		(state) => state.accent[resolvedAppearance.palette.mode],
+	);
+	const layerSummary = appearanceLayerSummary(resolvedAppearance, accentRef);
 	const [result, setResult] = useState<PickerResult | null>(null);
 	/*
 	 * The theme a fully-qualified argument NAMES, resolved at render so the FIRST
@@ -2592,11 +2605,12 @@ export const ThemePicker: FC<PickerContext> = ({ onClose, action }) => {
 			label: theme.name,
 			description: theme.description,
 			current: theme.id === themeName,
+			...(theme.id === themeName && layerSummary ? { meta: layerSummary } : {}),
 			group: theme.id.startsWith("localOperator")
 				? "Local Operator"
 				: t("ui.chat.pickers.destination_pickers.ports"),
 		}));
-	}, [themeName, locale]);
+	}, [themeName, locale, layerSummary]);
 	// A typed argument (`/theme dracula`) is a direct pick when it names a theme.
 	useEffect(() => {
 		const wanted = action.args.trim();

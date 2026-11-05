@@ -69,6 +69,7 @@ import {
 	sanitizeCustomAccents,
 	sanitizeCustomThemeId,
 } from "../../../../shared/theme-engine/appearance.mjs";
+import { sanitizeCustomAccentNames } from "../../../../shared/theme-engine/picker.mjs";
 import {
 	MEMORY_PANES,
 	type MemoryPane,
@@ -1053,6 +1054,21 @@ type UiPreferencesState = {
 	addCustomAccent: (hex: string, select?: Mode) => void;
 	/** Remove a swatch; a mode that had it selected falls back to the theme's accent. */
 	removeCustomAccent: (hex: string) => void;
+	/**
+	 * The user's names for their custom accents, keyed by normalised hex. Absent
+	 * means the swatch is named by its hex. Additive within v5: `merge` defaults
+	 * and re-sanitises it (`sanitizeCustomAccentNames`), and a name is dropped
+	 * with its swatch, so the map can never outgrow the 12-swatch list.
+	 */
+	customAccentNames: Record<string, string>;
+	/** Name (or, with an empty string, un-name) one custom accent. */
+	renameCustomAccent: (hex: string, name: string) => void;
+	/**
+	 * "Edit colour…" on a custom swatch: replace it IN PLACE (same position, its
+	 * name kept), and move every mode that had it selected onto the new colour, so
+	 * editing is not remove-then-add with the selection lost in between.
+	 */
+	replaceCustomAccent: (from: string, to: string) => void;
 
 	/**
 	 * The width of the chat sidebar in pixels
@@ -2137,6 +2153,7 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 			contrast: DEFAULT_CONTRAST,
 			accent: DEFAULT_ACCENT,
 			customAccents: [],
+			customAccentNames: {},
 			customThemeId: null,
 			setContrast: (mode, value) =>
 				set((state) => ({
@@ -2156,9 +2173,16 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 				set((state) => {
 					const customAccents = pushCustomAccent(state.customAccents, hex);
 					const added = normalizeHex(hex);
-					if (!select || !added) return { customAccents };
+					/* A 13th swatch drops the oldest (no prompt, by design); its name
+					   goes with it rather than lingering in the persisted map. */
+					const customAccentNames = sanitizeCustomAccentNames(
+						state.customAccentNames,
+						customAccents,
+					);
+					if (!select || !added) return { customAccents, customAccentNames };
 					return {
 						customAccents,
+						customAccentNames,
 						accent: {
 							...state.accent,
 							[select]: { kind: "custom", hex: added },
@@ -2174,8 +2198,50 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 						if (ref.kind === "custom" && ref.hex === target)
 							accent[mode] = THEME_ACCENT;
 					}
+					const customAccentNames = { ...state.customAccentNames };
+					if (target) delete customAccentNames[target];
 					return {
 						customAccents: state.customAccents.filter((h) => h !== target),
+						customAccentNames,
+						accent,
+					};
+				}),
+			renameCustomAccent: (hex, name) =>
+				set((state) => {
+					const target = normalizeHex(hex);
+					if (!target || !state.customAccents.includes(target)) return {};
+					return {
+						customAccentNames: sanitizeCustomAccentNames(
+							{ ...state.customAccentNames, [target]: name },
+							state.customAccents,
+						),
+					};
+				}),
+			replaceCustomAccent: (from, to) =>
+				set((state) => {
+					const source = normalizeHex(from);
+					const target = normalizeHex(to);
+					if (!source || !target || source === target) return {};
+					const index = state.customAccents.indexOf(source);
+					if (index < 0) return {};
+					/* The new colour takes the old one's slot; if it was already in
+					   the list elsewhere, that duplicate goes (sanitise de-dupes). */
+					const list = state.customAccents.filter((h) => h !== target);
+					list.splice(list.indexOf(source), 1, target);
+					const customAccents = sanitizeCustomAccents(list);
+					const names = { ...state.customAccentNames };
+					if (names[source] !== undefined && names[target] === undefined)
+						names[target] = names[source];
+					delete names[source];
+					const accent = { ...state.accent };
+					for (const mode of MODES) {
+						const ref = accent[mode];
+						if (ref.kind === "custom" && ref.hex === source)
+							accent[mode] = { kind: "custom", hex: target };
+					}
+					return {
+						customAccents,
+						customAccentNames: sanitizeCustomAccentNames(names, customAccents),
 						accent,
 					};
 				}),
@@ -3187,6 +3253,10 @@ export function mergePersistedUiPreferences(
 		contrast: sanitizeContrast(blob.contrast),
 		accent: sanitizeAccent(blob.accent, isThemeName),
 		customAccents: sanitizeCustomAccents(blob.customAccents),
+		customAccentNames: sanitizeCustomAccentNames(
+			blob.customAccentNames,
+			sanitizeCustomAccents(blob.customAccents),
+		),
 		customThemeId: sanitizeCustomThemeId(blob.customThemeId),
 	};
 }

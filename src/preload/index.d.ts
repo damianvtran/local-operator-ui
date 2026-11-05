@@ -176,6 +176,7 @@ declare global {
 					dir?: "ltr" | "rtl";
 					theme?: "light" | "dark";
 					palette?: string | null;
+					paletteVars?: Record<string, string> | null;
 				}) => Promise<unknown>;
 				closeApprovalsCard: () => Promise<unknown>;
 				setApprovalsCardContext: (input: {
@@ -183,6 +184,7 @@ declare global {
 					dir?: "ltr" | "rtl";
 					theme?: "light" | "dark";
 					palette?: string | null;
+					paletteVars?: Record<string, string> | null;
 					requesterLabels?: Readonly<Record<string, string>>;
 				}) => Promise<unknown>;
 				onChord: (

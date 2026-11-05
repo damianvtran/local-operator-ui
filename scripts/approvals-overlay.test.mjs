@@ -1566,3 +1566,88 @@ test("D1: a height growth that the child's viewport did not follow rebuilds the 
 	);
 	controller.dispose("test");
 });
+
+/*
+ * A COMPOSED PALETTE TRAVELS AS VALUES (layered appearance picker). The app
+ * names a contrast preset or custom accent `lo-<hash>`, which the card's static
+ * stylesheet has no block for and its CSP (`style-src 'self'`) forbids injecting,
+ * so the model carries the role values. They are renderer data crossing into
+ * main and on into another document: a full, known-role, grammar-valid set or
+ * nothing - never a partial palette, never free CSS.
+ */
+test("model: composed palette vars are all-or-nothing and grammar-checked", async () => {
+	const { loadPalettes } = await import("./palette-source.mjs");
+	const { mode: _mode, ...roles } = loadPalettes().find(
+		(p) => p.id === "obsidian",
+	).palette;
+	const base = {
+		seq: 1,
+		entries: [],
+		locale: "en",
+		dir: "ltr",
+		theme: "dark",
+		palette: "lo-abc123",
+	};
+	const ok = mod.approvalsCardModelFrom({ ...base, paletteVars: roles });
+	assert.equal(ok.palette, "lo-abc123");
+	assert.deepEqual(ok.paletteVars, roles, "a full valid set is carried as-is");
+
+	const extra = mod.approvalsCardModelFrom({
+		...base,
+		paletteVars: { ...roles, "background-image": "url(x)" },
+	});
+	assert.equal(
+		Object.hasOwn(extra.paletteVars, "background-image"),
+		false,
+		"an unknown key is dropped",
+	);
+	for (const [label, vars] of [
+		["css injection", { ...roles, canvas: "red; } body { display: none" }],
+		["missing role", (({ canvas: _c, ...rest }) => rest)(roles)],
+		["named colour", { ...roles, ink: "white" }],
+		["not an object", "canvas:#000"],
+	]) {
+		assert.equal(
+			mod.approvalsCardModelFrom({ ...base, paletteVars: vars }).paletteVars,
+			null,
+			`${label} refuses the whole set`,
+		);
+	}
+	assert.equal(
+		mod.sanitizeApprovalsCardModel({
+			...ok,
+			paletteVars: { canvas: "#000000" },
+		}).paletteVars,
+		null,
+		"the re-validation pass refuses a partial set too",
+	);
+});
+
+test("controller: a palette change carries its vars and a built-in clears them", async () => {
+	const controller = new mod.ApprovalsOverlayController({
+		window: {
+			contentView: {
+				children: [],
+				addChildView() {},
+				removeChildView() {},
+			},
+			isDestroyed: () => false,
+		},
+		documentUrl: "https://example.test/browser-approvals-overlay.html",
+		palette: null,
+	});
+	const { loadPalettes } = await import("./palette-source.mjs");
+	const { mode: _mode, ...roles } = loadPalettes().find(
+		(p) => p.id === "obsidian",
+	).palette;
+	controller.setModel({ entries: entries(1) });
+	controller.setContext({ palette: "lo-abc123", paletteVars: roles });
+	assert.deepEqual(controller.model.paletteVars, roles);
+	controller.setContext({ palette: "obsidian", paletteVars: null });
+	assert.equal(
+		controller.model.paletteVars,
+		null,
+		"a built-in name must not inherit the previous composition's values",
+	);
+	controller.dispose("test");
+});

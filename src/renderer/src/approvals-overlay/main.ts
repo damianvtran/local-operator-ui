@@ -84,6 +84,41 @@ if (params.get("opaque") === "1") {
 	document.documentElement.dataset.opaque = "1";
 }
 
+/*
+ * A COMPOSED PALETTE ARRIVES AS VALUES. The main window paints a contrast preset
+ * or custom accent from a runtime `<style>` block keyed `lo-<hash>`; this
+ * document's CSP is `style-src 'self'`, so it can neither receive that block nor
+ * inject one. The model therefore carries the composed role values
+ * (`paletteVars`, sanitised in main to known roles and the hex/shadow grammar)
+ * and they are set here as `--lo-*` custom properties on the root through CSSOM,
+ * which the CSP does not restrict. The base `data-theme` is the mode default,
+ * so `color-scheme` and any role a value does not cover stay coherent, and the
+ * inline properties win over it in the cascade.
+ *
+ * Every property set by an earlier composition is removed first: a later model
+ * naming a built-in (or a different composition) must not inherit stale values.
+ */
+const appliedVars = new Set<string>();
+const kebabRole = (role: string): string =>
+	role.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`);
+function applyCardPalette(next: ApprovalsCardModel): void {
+	const root = document.documentElement;
+	for (const property of appliedVars) root.style.removeProperty(property);
+	appliedVars.clear();
+	const modeName =
+		next.theme === "light" ? "localOperatorLight" : "localOperatorDark";
+	if (next.paletteVars) {
+		root.dataset.theme = modeName;
+		for (const [role, value] of Object.entries(next.paletteVars)) {
+			const property = `--lo-${kebabRole(role)}`;
+			root.style.setProperty(property, value);
+			appliedVars.add(property);
+		}
+		return;
+	}
+	root.dataset.theme = next.palette ?? modeName;
+}
+
 const card = document.getElementById("approvals-card");
 const brandNode = document.getElementById("approvals-brand");
 const titleNode = document.getElementById("approvals-title");
@@ -639,9 +674,7 @@ window.__approvalsCard = {
 		setLocale(next.locale);
 		document.documentElement.lang = next.locale;
 		document.documentElement.dir = next.dir;
-		document.documentElement.dataset.theme =
-			next.palette ??
-			(next.theme === "light" ? "localOperatorLight" : "localOperatorDark");
+		applyCardPalette(next);
 		if (brandNode) {
 			brandNode.textContent = t("ui.browser.browser_new_tab.wordmark");
 		}

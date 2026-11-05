@@ -442,5 +442,558 @@
 		"tone": "Neutral adjective.",
 		"length": "Segmented-tab label; the strip shares one row with two siblings. English is 5 characters; stay within ~1.5x.",
 		"note": "Largest picture size. Pairs with Small and Medium."
+	},
+	"ui.settings.appearance.layers.preview_label": {
+		"role": "Settings → Appearance copy",
+		"tone": "Plain, sentence case.",
+		"length": "English is 33 characters; keep it close.",
+		"note": "Accessible name of the preview strip (read by screen readers); the strip itself is decorative."
+	},
+	"ui.settings.appearance.layers.theme": {
+		"role": "Settings → Appearance copy",
+		"tone": "Plain, sentence case.",
+		"length": "English is 5 characters; keep it close.",
+		"note": "Part of the layered appearance controls: theme, then contrast, then accent colour."
+	},
+	"ui.settings.appearance.layers.preview.user_message": {
+		"role": "Sample copy in the appearance preview",
+		"tone": "Plain, product-like.",
+		"length": "Must fit a small preview element; English is 38 characters. Keep it about as short.",
+		"note": "Sample text inside the non-interactive appearance preview strip in Settings → Appearance. It only exists so the user can see colours on representative components; keep it short, plausible and neutral."
+	},
+	"ui.settings.appearance.layers.preview.agent_reply": {
+		"role": "Sample copy in the appearance preview",
+		"tone": "Plain, product-like.",
+		"length": "Must fit a small preview element; English is 58 characters. Keep it about as short.",
+		"note": "Sample text inside the non-interactive appearance preview strip in Settings → Appearance. It only exists so the user can see colours on representative components; keep it short, plausible and neutral."
+	},
+	"ui.settings.appearance.layers.preview.code": {
+		"role": "Sample copy in the appearance preview",
+		"tone": "Plain, product-like.",
+		"length": "Must fit a small preview element; English is 9 characters. Keep it about as short.",
+		"note": "Sample text inside the non-interactive appearance preview strip in Settings → Appearance. It only exists so the user can see colours on representative components; keep it short, plausible and neutral. This one is a command shown in monospace; keep it untranslated."
+	},
+	"ui.settings.appearance.layers.preview.composer_placeholder": {
+		"role": "Sample copy in the appearance preview",
+		"tone": "Plain, product-like.",
+		"length": "Must fit a small preview element; English is 17 characters. Keep it about as short.",
+		"note": "Sample text inside the non-interactive appearance preview strip in Settings → Appearance. It only exists so the user can see colours on representative components; keep it short, plausible and neutral."
+	},
+	"ui.settings.appearance.layers.preview.row_inbox": {
+		"role": "Sample copy in the appearance preview",
+		"tone": "Plain, product-like.",
+		"length": "Must fit a small preview element; English is 5 characters. Keep it about as short.",
+		"note": "Sample text inside the non-interactive appearance preview strip in Settings → Appearance. It only exists so the user can see colours on representative components; keep it short, plausible and neutral."
+	},
+	"ui.settings.appearance.layers.preview.row_research": {
+		"role": "Sample copy in the appearance preview",
+		"tone": "Plain, product-like.",
+		"length": "Must fit a small preview element; English is 8 characters. Keep it about as short.",
+		"note": "Sample text inside the non-interactive appearance preview strip in Settings → Appearance. It only exists so the user can see colours on representative components; keep it short, plausible and neutral."
+	},
+	"ui.settings.appearance.layers.preview.row_release": {
+		"role": "Sample copy in the appearance preview",
+		"tone": "Plain, product-like.",
+		"length": "Must fit a small preview element; English is 13 characters. Keep it about as short.",
+		"note": "Sample text inside the non-interactive appearance preview strip in Settings → Appearance. It only exists so the user can see colours on representative components; keep it short, plausible and neutral."
+	},
+	"ui.settings.appearance.layers.preview.primary": {
+		"role": "Sample copy in the appearance preview",
+		"tone": "Plain, product-like.",
+		"length": "Must fit a small preview element; English is 7 characters. Keep it about as short.",
+		"note": "Sample text inside the non-interactive appearance preview strip in Settings → Appearance. It only exists so the user can see colours on representative components; keep it short, plausible and neutral."
+	},
+	"ui.settings.appearance.layers.preview.secondary": {
+		"role": "Sample copy in the appearance preview",
+		"tone": "Plain, product-like.",
+		"length": "Must fit a small preview element; English is 9 characters. Keep it about as short.",
+		"note": "Sample text inside the non-interactive appearance preview strip in Settings → Appearance. It only exists so the user can see colours on representative components; keep it short, plausible and neutral."
+	},
+	"ui.settings.appearance.layers.preview.disabled": {
+		"role": "Sample copy in the appearance preview",
+		"tone": "Plain, product-like.",
+		"length": "Must fit a small preview element; English is 8 characters. Keep it about as short.",
+		"note": "Sample text inside the non-interactive appearance preview strip in Settings → Appearance. It only exists so the user can see colours on representative components; keep it short, plausible and neutral."
+	},
+	"ui.settings.appearance.layers.preview.success": {
+		"role": "Sample copy in the appearance preview",
+		"tone": "Plain, product-like.",
+		"length": "Must fit a small preview element; English is 5 characters. Keep it about as short.",
+		"note": "Sample text inside the non-interactive appearance preview strip in Settings → Appearance. It only exists so the user can see colours on representative components; keep it short, plausible and neutral."
+	},
+	"ui.settings.appearance.layers.preview.warning": {
+		"role": "Sample copy in the appearance preview",
+		"tone": "Plain, product-like.",
+		"length": "Must fit a small preview element; English is 12 characters. Keep it about as short.",
+		"note": "Sample text inside the non-interactive appearance preview strip in Settings → Appearance. It only exists so the user can see colours on representative components; keep it short, plausible and neutral."
+	},
+	"ui.settings.appearance.layers.preview.danger": {
+		"role": "Sample copy in the appearance preview",
+		"tone": "Plain, product-like.",
+		"length": "Must fit a small preview element; English is 6 characters. Keep it about as short.",
+		"note": "Sample text inside the non-interactive appearance preview strip in Settings → Appearance. It only exists so the user can see colours on representative components; keep it short, plausible and neutral."
+	},
+	"ui.settings.appearance.contrast.title": {
+		"role": "Settings → Appearance copy",
+		"tone": "Plain, sentence case.",
+		"length": "English is 8 characters; keep it close.",
+		"note": "Part of the layered appearance controls: theme, then contrast, then accent colour."
+	},
+	"ui.settings.appearance.contrast.slider": {
+		"role": "Settings → Appearance copy",
+		"tone": "Plain, sentence case.",
+		"length": "English is 14 characters; keep it close.",
+		"note": "Accessible name of the contrast slider under the preset chips."
+	},
+	"ui.settings.appearance.contrast.reset": {
+		"role": "Settings → Appearance copy",
+		"tone": "Plain, sentence case.",
+		"length": "English is 5 characters; keep it close.",
+		"note": "Text link that returns contrast to Standard; shown only when it is not Standard."
+	},
+	"ui.settings.appearance.contrast.softer": {
+		"role": "Settings → Appearance copy",
+		"tone": "Plain, sentence case.",
+		"length": "English is 6 characters; keep it close.",
+		"note": "Fixed label at the left (start) end of the contrast slider."
+	},
+	"ui.settings.appearance.contrast.deeper": {
+		"role": "Settings → Appearance copy",
+		"tone": "Plain, sentence case.",
+		"length": "English is 6 characters; keep it close.",
+		"note": "Fixed label at the right (end) end of the contrast slider."
+	},
+	"ui.settings.appearance.contrast.soft": {
+		"role": "Contrast preset chip label",
+		"tone": "Single adjective, sentence case.",
+		"length": "Fits an 88px chip (64px on narrow windows); English is 4 characters. Prefer one short word.",
+		"note": "One of five contrast presets ordered Soft, Gentle, Standard, Strong, High. Soft = grey/stone backgrounds and quieter text; High = near-black and near-white. Also spoken as the slider's value."
+	},
+	"ui.settings.appearance.contrast.gentle": {
+		"role": "Contrast preset chip label",
+		"tone": "Single adjective, sentence case.",
+		"length": "Fits an 88px chip (64px on narrow windows); English is 6 characters. Prefer one short word.",
+		"note": "One of five contrast presets ordered Soft, Gentle, Standard, Strong, High. Soft = grey/stone backgrounds and quieter text; High = near-black and near-white. Also spoken as the slider's value."
+	},
+	"ui.settings.appearance.contrast.standard": {
+		"role": "Contrast preset chip label",
+		"tone": "Single adjective, sentence case.",
+		"length": "Fits an 88px chip (64px on narrow windows); English is 8 characters. Prefer one short word.",
+		"note": "One of five contrast presets ordered Soft, Gentle, Standard, Strong, High. Soft = grey/stone backgrounds and quieter text; High = near-black and near-white. Also spoken as the slider's value."
+	},
+	"ui.settings.appearance.contrast.strong": {
+		"role": "Contrast preset chip label",
+		"tone": "Single adjective, sentence case.",
+		"length": "Fits an 88px chip (64px on narrow windows); English is 6 characters. Prefer one short word.",
+		"note": "One of five contrast presets ordered Soft, Gentle, Standard, Strong, High. Soft = grey/stone backgrounds and quieter text; High = near-black and near-white. Also spoken as the slider's value."
+	},
+	"ui.settings.appearance.contrast.high": {
+		"role": "Contrast preset chip label",
+		"tone": "Single adjective, sentence case.",
+		"length": "Fits an 88px chip (64px on narrow windows); English is 4 characters. Prefer one short word.",
+		"note": "One of five contrast presets ordered Soft, Gentle, Standard, Strong, High. Soft = grey/stone backgrounds and quieter text; High = near-black and near-white. Also spoken as the slider's value."
+	},
+	"ui.settings.appearance.contrast.soft_description": {
+		"role": "Tooltip on a contrast preset chip",
+		"tone": "Plain, descriptive.",
+		"length": "One or two short sentences in a tooltip.",
+		"note": "Explains what this contrast preset does to the app's backgrounds and text."
+	},
+	"ui.settings.appearance.contrast.gentle_description": {
+		"role": "Tooltip on a contrast preset chip",
+		"tone": "Plain, descriptive.",
+		"length": "One or two short sentences in a tooltip.",
+		"note": "Explains what this contrast preset does to the app's backgrounds and text."
+	},
+	"ui.settings.appearance.contrast.standard_description": {
+		"role": "Tooltip on a contrast preset chip",
+		"tone": "Plain, descriptive.",
+		"length": "One or two short sentences in a tooltip.",
+		"note": "Explains what this contrast preset does to the app's backgrounds and text."
+	},
+	"ui.settings.appearance.contrast.strong_description": {
+		"role": "Tooltip on a contrast preset chip",
+		"tone": "Plain, descriptive.",
+		"length": "One or two short sentences in a tooltip.",
+		"note": "Explains what this contrast preset does to the app's backgrounds and text."
+	},
+	"ui.settings.appearance.contrast.high_description": {
+		"role": "Tooltip on a contrast preset chip",
+		"tone": "Plain, descriptive.",
+		"length": "One or two short sentences in a tooltip.",
+		"note": "Explains what this contrast preset does to the app's backgrounds and text."
+	},
+	"ui.settings.appearance.contrast.adjusted": {
+		"role": "Settings → Appearance copy",
+		"tone": "Plain, sentence case.",
+		"length": "English is 19 characters; keep it close.",
+		"note": "Shown on the nearest preset chip when the slider rests between two presets.",
+		"placeholders": {
+			"preset": "A contrast preset name (Soft, Gentle, Standard, Strong, High), already translated."
+		}
+	},
+	"ui.settings.appearance.contrast.value_between": {
+		"role": "Settings → Appearance copy",
+		"tone": "Plain, sentence case.",
+		"length": "English is 32 characters; keep it close.",
+		"note": "Spoken value of the slider when between presets, e.g. 'Between Standard and Strong, +25'.",
+		"placeholders": {
+			"from": "The lower preset name, already translated.",
+			"to": "The higher preset name, already translated.",
+			"value": "The slider value with its sign, such as +25 or -35."
+		}
+	},
+	"ui.settings.appearance.contrast.applies_dark": {
+		"role": "Settings → Appearance copy",
+		"tone": "Plain, sentence case.",
+		"length": "English is 60 characters; keep it close.",
+		"note": "Hint under the slider: contrast is remembered separately for dark and light themes."
+	},
+	"ui.settings.appearance.contrast.applies_light": {
+		"role": "Settings → Appearance copy",
+		"tone": "Plain, sentence case.",
+		"length": "English is 60 characters; keep it close.",
+		"note": "Same hint as applies_dark, for when a light theme is active."
+	},
+	"ui.settings.appearance.contrast.applying": {
+		"role": "Settings → Appearance copy",
+		"tone": "Plain, sentence case.",
+		"length": "English is 18 characters; keep it close.",
+		"note": "Brief status while the app recomputes colours after the slider is released."
+	},
+	"ui.settings.appearance.contrast.capped": {
+		"role": "Settings → Appearance copy",
+		"tone": "Plain, sentence case.",
+		"length": "English is 87 characters; keep it close.",
+		"note": "Shown when a theme cannot reach the requested contrast without failing readability rules.",
+		"placeholders": {
+			"value": "The furthest contrast the theme reached, such as a preset name or '+35'."
+		}
+	},
+	"ui.settings.appearance.accent.title": {
+		"role": "Settings → Appearance copy",
+		"tone": "Plain, sentence case.",
+		"length": "English is 6 characters; keep it close.",
+		"note": "Part of the layered appearance controls: theme, then contrast, then accent colour."
+	},
+	"ui.settings.appearance.accent.row_label": {
+		"role": "Settings → Appearance copy",
+		"tone": "Plain, sentence case.",
+		"length": "English is 13 characters; keep it close.",
+		"note": "Accessible name of the row of accent colour swatches."
+	},
+	"ui.settings.appearance.accent.reset": {
+		"role": "Settings → Appearance copy",
+		"tone": "Plain, sentence case.",
+		"length": "English is 21 characters; keep it close.",
+		"note": "Text link returning the accent to the theme's own; shown only when another accent is chosen."
+	},
+	"ui.settings.appearance.accent.theme_accent": {
+		"role": "Settings → Appearance copy",
+		"tone": "Plain, sentence case.",
+		"length": "English is 14 characters; keep it close.",
+		"note": "Part of the layered appearance controls: theme, then contrast, then accent colour.",
+		"placeholders": {
+			"theme": "A theme's display name such as Dracula; not translated."
+		}
+	},
+	"ui.settings.appearance.accent.theme_second_accent": {
+		"role": "Settings → Appearance copy",
+		"tone": "Plain, sentence case.",
+		"length": "English is 21 characters; keep it close.",
+		"note": "Part of the layered appearance controls: theme, then contrast, then accent colour.",
+		"placeholders": {
+			"theme": "A theme's display name; not translated."
+		}
+	},
+	"ui.settings.appearance.accent.from_theme": {
+		"role": "Settings → Appearance copy",
+		"tone": "Plain, sentence case.",
+		"length": "English is 13 characters; keep it close.",
+		"note": "Tooltip of a swatch borrowed from another theme, e.g. 'Tokyo Night blue'.",
+		"placeholders": {
+			"theme": "A theme's display name; not translated.",
+			"hue": "A translated colour word from the hue.* keys."
+		}
+	},
+	"ui.settings.appearance.accent.show_all": {
+		"role": "Settings → Appearance copy",
+		"tone": "Plain, sentence case.",
+		"length": "English is 22 characters; keep it close.",
+		"note": "Part of the layered appearance controls: theme, then contrast, then accent colour."
+	},
+	"ui.settings.appearance.accent.show_fewer": {
+		"role": "Settings → Appearance copy",
+		"tone": "Plain, sentence case.",
+		"length": "English is 18 characters; keep it close.",
+		"note": "Part of the layered appearance controls: theme, then contrast, then accent colour."
+	},
+	"ui.settings.appearance.accent.custom_swatch": {
+		"role": "Settings → Appearance copy",
+		"tone": "Plain, sentence case.",
+		"length": "English is 18 characters; keep it close.",
+		"note": "Part of the layered appearance controls: theme, then contrast, then accent colour.",
+		"placeholders": {
+			"name": "The user's name for the colour, or its hex code like #3B82F6."
+		}
+	},
+	"ui.settings.appearance.accent.add": {
+		"role": "Settings → Appearance copy",
+		"tone": "Plain, sentence case.",
+		"length": "English is 19 characters; keep it close.",
+		"note": "Accessible name and tooltip of the + button that opens the colour picker."
+	},
+	"ui.settings.appearance.accent.edit_colour": {
+		"role": "Settings → Appearance copy",
+		"tone": "Plain, sentence case.",
+		"length": "English is 12 characters; keep it close.",
+		"note": "Context-menu item on a user accent; ellipsis because it opens a picker."
+	},
+	"ui.settings.appearance.accent.rename": {
+		"role": "Settings → Appearance copy",
+		"tone": "Plain, sentence case.",
+		"length": "English is 7 characters; keep it close.",
+		"note": "Context-menu item on a user accent; ellipsis because it opens a dialog."
+	},
+	"ui.settings.appearance.accent.remove": {
+		"role": "Settings → Appearance copy",
+		"tone": "Plain, sentence case.",
+		"length": "English is 6 characters; keep it close.",
+		"note": "Context-menu item removing a user accent."
+	},
+	"ui.settings.appearance.accent.limit": {
+		"role": "Settings → Appearance copy",
+		"tone": "Plain, sentence case.",
+		"length": "English is 70 characters; keep it close.",
+		"note": "Quiet hint shown next to the user's accents when the list is full."
+	},
+	"ui.settings.appearance.accent.adjusted": {
+		"role": "Settings → Appearance copy",
+		"tone": "Plain, sentence case.",
+		"length": "English is 37 characters; keep it close.",
+		"note": "Tooltip addition when the chosen accent's lightness was changed to keep text readable."
+	},
+	"ui.settings.appearance.accent.not_applied": {
+		"role": "Settings → Appearance copy",
+		"tone": "Plain, sentence case.",
+		"length": "English is 85 characters; keep it close.",
+		"note": "Notice when no readable version of the chosen accent exists on the current theme."
+	},
+	"ui.settings.appearance.accent.override_notice": {
+		"role": "Settings → Appearance copy",
+		"tone": "Plain, sentence case.",
+		"length": "English is 24 characters; keep it close.",
+		"note": "Reminder next to the theme heading when the user's own accent is overriding the theme's.",
+		"placeholders": {
+			"colour": "The user's name for the colour, or its hex code."
+		}
+	},
+	"ui.settings.appearance.accent.use_theme_accent": {
+		"role": "Settings → Appearance copy",
+		"tone": "Plain, sentence case.",
+		"length": "English is 16 characters; keep it close.",
+		"note": "Link next to the override notice that switches back to the theme's accent."
+	},
+	"ui.settings.appearance.picker.dialog": {
+		"role": "Settings → Appearance copy",
+		"tone": "Plain, sentence case.",
+		"length": "English is 23 characters; keep it close.",
+		"note": "Accessible title of the popover for adding an accent colour."
+	},
+	"ui.settings.appearance.picker.edit_dialog": {
+		"role": "Settings → Appearance copy",
+		"tone": "Plain, sentence case.",
+		"length": "English is 18 characters; keep it close.",
+		"note": "Accessible title of the popover for changing an existing user accent."
+	},
+	"ui.settings.appearance.picker.hex": {
+		"role": "Settings → Appearance copy",
+		"tone": "Plain, sentence case.",
+		"length": "English is 3 characters; keep it close.",
+		"note": "Label of the hex code text field; 'Hex' is a technical term, keep it short."
+	},
+	"ui.settings.appearance.picker.invalid": {
+		"role": "Settings → Appearance copy",
+		"tone": "Plain, sentence case.",
+		"length": "English is 32 characters; keep it close.",
+		"note": "Error under the hex field when the text is not a colour; keep the example code unchanged."
+	},
+	"ui.settings.appearance.picker.hue": {
+		"role": "Settings → Appearance copy",
+		"tone": "Plain, sentence case.",
+		"length": "English is 3 characters; keep it close.",
+		"note": "Part of the layered appearance controls: theme, then contrast, then accent colour."
+	},
+	"ui.settings.appearance.picker.hue_value": {
+		"role": "Settings → Appearance copy",
+		"tone": "Plain, sentence case.",
+		"length": "English is 18 characters; keep it close.",
+		"note": "Part of the layered appearance controls: theme, then contrast, then accent colour.",
+		"placeholders": {
+			"deg": "Hue angle as an integer 0-360.",
+			"name": "A translated colour word from the hue.* keys."
+		}
+	},
+	"ui.settings.appearance.picker.lightness": {
+		"role": "Settings → Appearance copy",
+		"tone": "Plain, sentence case.",
+		"length": "English is 9 characters; keep it close.",
+		"note": "Part of the layered appearance controls: theme, then contrast, then accent colour."
+	},
+	"ui.settings.appearance.picker.lightness_value": {
+		"role": "Settings → Appearance copy",
+		"tone": "Plain, sentence case.",
+		"length": "English is 18 characters; keep it close.",
+		"note": "Part of the layered appearance controls: theme, then contrast, then accent colour.",
+		"placeholders": {
+			"value": "Lightness percentage 0-100."
+		}
+	},
+	"ui.settings.appearance.picker.eyedropper": {
+		"role": "Settings → Appearance copy",
+		"tone": "Plain, sentence case.",
+		"length": "English is 29 characters; keep it close.",
+		"note": "Tooltip and accessible name of the eyedropper icon button."
+	},
+	"ui.settings.appearance.picker.text_on_accent": {
+		"role": "Settings → Appearance copy",
+		"tone": "Plain, sentence case.",
+		"length": "English is 33 characters; keep it close.",
+		"note": "Readout of how readable text on the chosen colour will be.",
+		"placeholders": {
+			"ratio": "Contrast ratio with one decimal, such as 5.2."
+		}
+	},
+	"ui.settings.appearance.picker.add": {
+		"role": "Settings → Appearance copy",
+		"tone": "Plain, sentence case.",
+		"length": "English is 3 characters; keep it close.",
+		"note": "Part of the layered appearance controls: theme, then contrast, then accent colour."
+	},
+	"ui.settings.appearance.picker.save": {
+		"role": "Settings → Appearance copy",
+		"tone": "Plain, sentence case.",
+		"length": "English is 4 characters; keep it close.",
+		"note": "Part of the layered appearance controls: theme, then contrast, then accent colour."
+	},
+	"ui.settings.appearance.picker.cancel": {
+		"role": "Settings → Appearance copy",
+		"tone": "Plain, sentence case.",
+		"length": "English is 6 characters; keep it close.",
+		"note": "Part of the layered appearance controls: theme, then contrast, then accent colour."
+	},
+	"ui.settings.appearance.picker.rename_dialog": {
+		"role": "Settings → Appearance copy",
+		"tone": "Plain, sentence case.",
+		"length": "English is 13 characters; keep it close.",
+		"note": "Title of the small rename popover."
+	},
+	"ui.settings.appearance.picker.name": {
+		"role": "Settings → Appearance copy",
+		"tone": "Plain, sentence case.",
+		"length": "English is 4 characters; keep it close.",
+		"note": "Part of the layered appearance controls: theme, then contrast, then accent colour."
+	},
+	"ui.settings.appearance.hue.red": {
+		"role": "Colour name",
+		"tone": "Plain lower-case colour word.",
+		"length": "One or two words; English is 3 characters.",
+		"note": "A colour family name used inside accent tooltips such as \"Tokyo Night {hue}\" and the hue slider's spoken value. Lower case in English because it follows a theme name; use whatever case your language uses mid-phrase."
+	},
+	"ui.settings.appearance.hue.orange": {
+		"role": "Colour name",
+		"tone": "Plain lower-case colour word.",
+		"length": "One or two words; English is 6 characters.",
+		"note": "A colour family name used inside accent tooltips such as \"Tokyo Night {hue}\" and the hue slider's spoken value. Lower case in English because it follows a theme name; use whatever case your language uses mid-phrase."
+	},
+	"ui.settings.appearance.hue.amber": {
+		"role": "Colour name",
+		"tone": "Plain lower-case colour word.",
+		"length": "One or two words; English is 5 characters.",
+		"note": "A colour family name used inside accent tooltips such as \"Tokyo Night {hue}\" and the hue slider's spoken value. Lower case in English because it follows a theme name; use whatever case your language uses mid-phrase."
+	},
+	"ui.settings.appearance.hue.yellow": {
+		"role": "Colour name",
+		"tone": "Plain lower-case colour word.",
+		"length": "One or two words; English is 6 characters.",
+		"note": "A colour family name used inside accent tooltips such as \"Tokyo Night {hue}\" and the hue slider's spoken value. Lower case in English because it follows a theme name; use whatever case your language uses mid-phrase."
+	},
+	"ui.settings.appearance.hue.lime": {
+		"role": "Colour name",
+		"tone": "Plain lower-case colour word.",
+		"length": "One or two words; English is 4 characters.",
+		"note": "A colour family name used inside accent tooltips such as \"Tokyo Night {hue}\" and the hue slider's spoken value. Lower case in English because it follows a theme name; use whatever case your language uses mid-phrase."
+	},
+	"ui.settings.appearance.hue.green": {
+		"role": "Colour name",
+		"tone": "Plain lower-case colour word.",
+		"length": "One or two words; English is 5 characters.",
+		"note": "A colour family name used inside accent tooltips such as \"Tokyo Night {hue}\" and the hue slider's spoken value. Lower case in English because it follows a theme name; use whatever case your language uses mid-phrase."
+	},
+	"ui.settings.appearance.hue.teal": {
+		"role": "Colour name",
+		"tone": "Plain lower-case colour word.",
+		"length": "One or two words; English is 4 characters.",
+		"note": "A colour family name used inside accent tooltips such as \"Tokyo Night {hue}\" and the hue slider's spoken value. Lower case in English because it follows a theme name; use whatever case your language uses mid-phrase."
+	},
+	"ui.settings.appearance.hue.cyan": {
+		"role": "Colour name",
+		"tone": "Plain lower-case colour word.",
+		"length": "One or two words; English is 4 characters.",
+		"note": "A colour family name used inside accent tooltips such as \"Tokyo Night {hue}\" and the hue slider's spoken value. Lower case in English because it follows a theme name; use whatever case your language uses mid-phrase."
+	},
+	"ui.settings.appearance.hue.blue": {
+		"role": "Colour name",
+		"tone": "Plain lower-case colour word.",
+		"length": "One or two words; English is 4 characters.",
+		"note": "A colour family name used inside accent tooltips such as \"Tokyo Night {hue}\" and the hue slider's spoken value. Lower case in English because it follows a theme name; use whatever case your language uses mid-phrase."
+	},
+	"ui.settings.appearance.hue.indigo": {
+		"role": "Colour name",
+		"tone": "Plain lower-case colour word.",
+		"length": "One or two words; English is 6 characters.",
+		"note": "A colour family name used inside accent tooltips such as \"Tokyo Night {hue}\" and the hue slider's spoken value. Lower case in English because it follows a theme name; use whatever case your language uses mid-phrase."
+	},
+	"ui.settings.appearance.hue.violet": {
+		"role": "Colour name",
+		"tone": "Plain lower-case colour word.",
+		"length": "One or two words; English is 6 characters.",
+		"note": "A colour family name used inside accent tooltips such as \"Tokyo Night {hue}\" and the hue slider's spoken value. Lower case in English because it follows a theme name; use whatever case your language uses mid-phrase."
+	},
+	"ui.settings.appearance.hue.pink": {
+		"role": "Colour name",
+		"tone": "Plain lower-case colour word.",
+		"length": "One or two words; English is 4 characters.",
+		"note": "A colour family name used inside accent tooltips such as \"Tokyo Night {hue}\" and the hue slider's spoken value. Lower case in English because it follows a theme name; use whatever case your language uses mid-phrase."
+	},
+	"ui.settings.appearance.hue.neutral": {
+		"role": "Colour name",
+		"tone": "Plain lower-case colour word.",
+		"length": "One or two words; English is 7 characters.",
+		"note": "A colour family name used inside accent tooltips such as \"Tokyo Night {hue}\" and the hue slider's spoken value. Lower case in English because it follows a theme name; use whatever case your language uses mid-phrase."
+	},
+	"ui.settings.appearance.layers.palette_meta_contrast": {
+		"role": "Secondary text on the current row of the /theme command list",
+		"tone": "Terse, sentence case.",
+		"length": "Short meta text at the end of a list row; English is 19 characters.",
+		"note": "Says that the current theme is shown with the user's contrast setting and/or their own accent colour, so the list does not claim the plain theme when the app paints it with layers.",
+		"placeholders": {
+			"contrast": "A contrast preset name (Soft, Gentle, Strong, High), already translated, or a signed value such as +25."
+		}
+	},
+	"ui.settings.appearance.layers.palette_meta_accent": {
+		"role": "Secondary text on the current row of the /theme command list",
+		"tone": "Terse, sentence case.",
+		"length": "Short meta text at the end of a list row; English is 11 characters.",
+		"note": "Says that the current theme is shown with the user's contrast setting and/or their own accent colour, so the list does not claim the plain theme when the app paints it with layers."
+	},
+	"ui.settings.appearance.layers.palette_meta_both": {
+		"role": "Secondary text on the current row of the /theme command list",
+		"tone": "Terse, sentence case.",
+		"length": "Short meta text at the end of a list row; English is 32 characters.",
+		"note": "Says that the current theme is shown with the user's contrast setting and/or their own accent colour, so the list does not claim the plain theme when the app paints it with layers.",
+		"placeholders": {
+			"contrast": "A contrast preset name (Soft, Gentle, Strong, High), already translated, or a signed value such as +25."
+		}
 	}
 }

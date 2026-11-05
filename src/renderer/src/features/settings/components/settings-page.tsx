@@ -107,6 +107,7 @@ import { ImportSettingsSection } from "./import-settings-section";
 import { GeneralLanguageSetting } from "./language-dialog";
 
 import { AgentAvatarSizeSetting } from "./agent-avatar-size-setting";
+import { AppearanceLayers } from "./appearance-layers";
 import { KeyboardShortcutsSection } from "./keyboard-shortcuts-section";
 import { McpManagementSection } from "./mcp-management-section";
 import { RadientAccountSection } from "./radient-account-section";

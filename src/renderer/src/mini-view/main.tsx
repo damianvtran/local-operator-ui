@@ -27,7 +27,11 @@ import {
 import { installExternalOpenRefusalToasts } from "@shared/lib/external-open-refusal";
 import { installConversationInputSync } from "@shared/store/conversation-input-sync";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
-import { applyThemeToDocument } from "@shared/themes";
+import {
+	appearanceKey,
+	appearanceOf,
+	applyAppearance,
+} from "@shared/themes/appearance";
 import React from "react";
 import ReactDOM from "react-dom/client";
 import "../assets/fonts/fonts.css";
@@ -41,11 +45,12 @@ import { adoptPreferencesWrite } from "./mini-state";
  * window would paint — while deferring it to an effect would paint one frame
  * with no `data-theme` and every role utility resolving to nothing.
  *
- * The NAME goes straight in; `applyThemeToDocument` resolves the theme itself
- * (it maps an unknown name to the default), so wrapping it in `getTheme` here
- * would hand the resolver a resolved option.
+ * The whole APPEARANCE goes in, not the name: a contrast preset or custom
+ * accent is a composition the name alone does not describe. `composeTheme` is
+ * pure and deterministic, so this document reaches the same `lo-<hash>` - and
+ * the same injected block - as the main window from the same persisted fields.
  */
-applyThemeToDocument(useUiPreferencesStore.getState().themeName);
+applyAppearance(appearanceOf(useUiPreferencesStore.getState()));
 
 /*
  * THE POPOUT'S GLASS, from the same two channels the main document reads: the
@@ -86,9 +91,14 @@ window.addEventListener("storage", (event) => {
 		storeKey: preferencesStoreKey,
 		newValue: event.newValue,
 		currentTheme: useUiPreferencesStore.getState().themeName,
+		/* The tuple, so a contrast or accent change in the main window repaints
+		   this document too - not only a theme switch. */
+		currentAppearance: appearanceKey(
+			appearanceOf(useUiPreferencesStore.getState()),
+		),
 		rehydrate: () => useUiPreferencesStore.persist?.rehydrate?.(),
 		publish: () => {
-			applyThemeToDocument(useUiPreferencesStore.getState().themeName);
+			applyAppearance(appearanceOf(useUiPreferencesStore.getState()));
 			syncGlassScheme();
 		},
 	});
