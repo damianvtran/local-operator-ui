@@ -113,7 +113,10 @@ import type {
 } from "../../../../../shared/desktop-session-contract";
 import type { SessionFailureNotice } from "../../../../../shared/desktop-stream-notice";
 import type { ProfileRevertDescriptor } from "../../../../../shared/profile-consent";
-import { profileRevertView } from "../../mesh/mesh-profile-approval";
+import {
+	profileRevertUnavailable,
+	profileRevertView,
+} from "../../mesh/mesh-profile-approval";
 import { ProfileConsentCard } from "../../mesh/profile-consent-card";
 import { parseAgentAvatarSize, turnMarkHeight } from "../agent-avatar-size";
 import { askResponseSummary, askTimeoutSummary } from "../ask-queue";
@@ -2516,22 +2519,35 @@ const ToolRow = memo(function ToolRow({
 	 * row exactly — `profileSaveCall` returns null rather than guessing.
 	 */
 	if (profileCall) {
+		/*
+		 * A DESCRIPTOR WITHOUT A GATE IDENTITY IS NOT A PRESS THIS ROW CAN SEND: an
+		 * answer needs the conversation's epoch, and one that has not arrived (or a
+		 * detached child row with no session) cannot answer anything. That arm takes
+		 * the card's own `unavailable` shape, which carries a SENTENCE — a control
+		 * that is disabled and silent is the one state the brief forbids.
+		 */
+		const pressable = Boolean(
+			profileCall.descriptor && scope?.sessionId && approvalEpoch,
+		);
 		const revert = profileCall.descriptor
-			? profileRevertView(profileCall.descriptor, {
-					submitted:
-						revertAnswer.submitted === profileCall.descriptor.action_id,
-					outcome:
-						revertAnswer.outcome?.requestId === profileCall.descriptor.action_id
-							? revertAnswer.outcome
-							: null,
-				})
+			? pressable
+				? profileRevertView(profileCall.descriptor, {
+						submitted:
+							revertAnswer.submitted === profileCall.descriptor.action_id,
+						outcome:
+							revertAnswer.outcome?.requestId ===
+							profileCall.descriptor.action_id
+								? revertAnswer.outcome
+								: null,
+					})
+				: profileRevertUnavailable()
 			: null;
 		return (
 			<MessageContainer isUser={false} isSmallView={isSmallView}>
 				<ProfileConsentCard
 					view={revert ? { ...profileCall.view, revert } : profileCall.view}
 					onRevert={
-						profileCall.descriptor && scope?.sessionId && approvalEpoch
+						pressable && profileCall.descriptor
 							? () =>
 									revertAnswer.press({
 										descriptor:
