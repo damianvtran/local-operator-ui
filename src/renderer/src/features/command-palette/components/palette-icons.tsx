@@ -16,6 +16,7 @@
 import { RadientMark } from "@shared/components/common/radient-mark";
 import {
 	Activity,
+	AtSign,
 	Bot,
 	CalendarDays,
 	ChartColumn,
@@ -23,6 +24,7 @@ import {
 	FolderKanban,
 	Gauge,
 	Globe,
+	Hash,
 	Info,
 	Languages,
 	type LucideIcon,
@@ -40,6 +42,7 @@ import {
 	SquarePen,
 	Store,
 	Trash2,
+	User,
 	Users,
 } from "lucide-react";
 import type { FC } from "react";
@@ -76,6 +79,13 @@ const LUCIDE: Record<Exclude<PaletteIconName, "account">, LucideIcon> = {
 	usage: Gauge,
 	session: Activity,
 	analytics: ChartColumn,
+	// Team Bridge's rail marks (`ConversationKindIcon`): `#` a channel, `@` a DM.
+	// A group is the rail's `Users`, i.e. `team` above.
+	hash: Hash,
+	"at-sign": AtSign,
+	// A person row: the rail draws their avatar, which a 16px palette glyph slot
+	// does not load; `User` is the single-person sibling of the group's `Users`.
+	person: User,
 };
 
 export const PaletteIcon: FC<{ name: PaletteIconName }> = ({ name }) => {
