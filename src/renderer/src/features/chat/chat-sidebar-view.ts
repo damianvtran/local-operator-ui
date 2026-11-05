@@ -972,8 +972,9 @@ export function entityMore(args: {
 	total: number;
 }): { label: string; aria: string } | null {
 	if (args.add <= 0) return null;
-	const label =
-		args.add === 1 ? "Show 1 more chat" : `Show ${args.add} more chats`;
+	const label = t("ui.chat.sidebar.catalogue.show_more_chats", {
+		add: args.add,
+	});
 	/*
 	 * The position appears exactly while the badge states more than the reader is
 	 * looking at, and not otherwise - so it can never contradict the badge, and a
@@ -989,7 +990,12 @@ export function entityMore(args: {
 		 * comma - the visible string is then a prefix of the name, and
 		 * `chat-sidebar.tsx` appends only the group's name (`… shown in minervadev`).
 		 */
-		aria: `${label} · ${position} shown`,
+		/*
+		 * No catalogue key exists for the old trailing " shown" word. Keeping the
+		 * keyed label as the prefix and the position as the suffix preserves WCAG
+		 * 2.5.3 without inventing untranslated copy; the position is self-describing.
+		 */
+		aria: `${label} · ${position}`,
 	};
 }
 
