@@ -40,7 +40,11 @@ import {
 } from "../../../../shared/profile-consent";
 import { profileSaveCall } from "../chat/components/trace/profile-save-card-model";
 import { approvalRows } from "./mesh-approvals";
-import { profileCardView, profileRevertView } from "./mesh-profile-approval";
+import {
+	profileCardView,
+	profileRevertUnavailable,
+	profileRevertView,
+} from "./mesh-profile-approval";
 import {
 	GOLDEN_APPROVAL_ROWS,
 	GOLDEN_QUEUED_TOOL_RESULT,
@@ -50,6 +54,7 @@ import { ProfileConsentCard } from "./profile-consent-card";
 import {
 	SCRIPTED_REVERT_DESCRIPTOR,
 	type ScriptedRevertSequence,
+	runScriptedAvailabilityRead,
 	runScriptedRevertSequence,
 } from "./profile-revert-scripted";
 
@@ -361,15 +366,49 @@ export const UnavailableRevert: Story = {
 };
 
 /**
- * The ENABLED affordance, driven by a SCRIPTED TRANSPORT (`profile-revert-scripted.ts`).
+ * The ENABLED affordance, from a SCRIPTED TRANSPORT (`profile-revert-scripted.ts`).
  *
- * The control exists only after the artifact's correlated `agent.available` ACK for
- * this exact identity, and the press settles on its `applied` frame — no descriptor
- * alone and no persisted flag enables it.
+ * THE MOUNT DOES ONE THING: it reads the status seam. The control is raised by the
+ * artifact's correlated `agent.available` ACK for this exact identity and by nothing
+ * else — no descriptor-only `enabled: true`, no persisted flag — and NO WRITE HAS
+ * OCCURRED when this story is on screen. The press and its outcome live in the
+ * separate `ScriptedTransportSettled` story so this one keeps showing the button.
  *
  * SCRIPTED TRANSPORT — NO BACKEND PROFILE WRITE.
  */
-function ScriptedTransportStory() {
+function ScriptedAvailableStory() {
+	const [view, setView] = useState(() =>
+		profileCardView(row({ state: "connected" }), { profileApprovals: true }),
+	);
+	useEffect(() => {
+		void runScriptedAvailabilityRead().then(({ authority }) => {
+			setView((base) => ({
+				...base,
+				revert: authority.enabled
+					? profileRevertView(SCRIPTED_REVERT_DESCRIPTOR)
+					: profileRevertUnavailable(),
+			}));
+		});
+	}, []);
+	return <ProfileConsentCard view={view} onRevert={() => {}} />;
+}
+
+export const ScriptedTransportAvailable: Story = {
+	args: {
+		view: profileCardView(row({ state: "connected" }), {
+			profileApprovals: true,
+		}),
+	},
+	render: () => <ScriptedAvailableStory />,
+};
+
+/**
+ * The same scripted transport after the press: the artifact's `applied` frame settles
+ * the control, which is the state the read-only story above must NOT reach.
+ *
+ * SCRIPTED TRANSPORT — NO BACKEND PROFILE WRITE.
+ */
+function ScriptedSettledStory() {
 	const [view, setView] = useState(() =>
 		profileCardView(row({ state: "connected" }), { profileApprovals: true }),
 	);
@@ -379,44 +418,24 @@ function ScriptedTransportStory() {
 	}, []);
 	useEffect(() => {
 		if (!sequence) return;
-		const enabled = sequence.authority.enabled;
 		const settled = sequence.settled.state;
 		setView((base) => ({
 			...base,
 			revert: profileRevertView(SCRIPTED_REVERT_DESCRIPTOR, {
-				// The ENABLED arm is the scripted `available`; the settled arm is the
-				// artifact's `applied` frame. Nothing here reads a persisted flag.
-				...(enabled && settled === "available"
-					? {}
-					: settled === "pending"
-						? { submitted: true }
-						: {
-								outcome: { approved: settled === "succeeded", state: settled },
-							}),
+				outcome: { approved: settled === "succeeded", state: settled },
 			}),
 		}));
 	}, [sequence]);
-	return (
-		<ProfileConsentCard
-			view={view}
-			onRevert={() => {
-				void runScriptedRevertSequence().then(setSequence);
-			}}
-		/>
-	);
+	return <ProfileConsentCard view={view} onRevert={() => {}} />;
 }
 
-export const ScriptedTransportEnabled: Story = {
+export const ScriptedTransportSettled: Story = {
 	args: {
-		/*
-		 * THE RESTING SHAPE OFFERS NOTHING: no descriptor-backed `revert` is handed in,
-		 * so nothing can be enabled before the scripted read answers.
-		 */
 		view: profileCardView(row({ state: "connected" }), {
 			profileApprovals: true,
 		}),
 	},
-	render: () => <ScriptedTransportStory />,
+	render: () => <ScriptedSettledStory />,
 };
 
 /** The descriptor's resting state: one press, offered. */
