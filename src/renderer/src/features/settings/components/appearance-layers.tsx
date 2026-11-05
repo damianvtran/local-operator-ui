@@ -223,7 +223,9 @@ const useContrastCommit = () => {
 };
 
 /** [C] Contrast and [D] Accent, under the gallery. */
-export const AppearanceLayerControls: FC = () => {
+export const AppearanceLayerControls: FC<{
+	glass?: WindowGlassState | null;
+}> = ({ glass }) => {
 	useI18nLocale();
 	const resolved = useResolvedAppearance();
 	const themeName = useUiPreferencesStore((s) => s.themeName);
@@ -269,59 +271,86 @@ export const AppearanceLayerControls: FC = () => {
 	if (!base) return null;
 	const themeLabel = authored.name;
 	return (
-		<div className="flex flex-col gap-6">
-			<section data-appearance-layer="contrast">
-				<ContrastControl
-					committed={committed}
-					effective={resolved.effectiveContrast}
-					backgroundAtCeiling={
-						mode === "light" &&
-						committed > 0 &&
-						resolved.palette.canvas.toUpperCase() === base.canvas.toUpperCase()
-					}
-					mode={mode}
-					pending={pending}
-					onDraft={publishDraft}
-					onCommit={(value) => commit(mode, value)}
-				/>
-			</section>
-			<section data-appearance-layer="accent">
-				<LayerHeading
-					title={t("ui.settings.appearance.accent.title")}
-					action={
-						selected.kind !== "theme" ? (
-							<Button
-								type="button"
-								variant="link"
-								size="sm"
-								className="min-h-6 min-w-6"
-								onClick={() => setAccent(mode, { kind: "theme" })}
-							>
-								{t("ui.settings.appearance.accent.reset")}
-							</Button>
-						) : null
-					}
-				/>
-				<AccentRow
-					themeName={themeLabel}
-					themeAccent={base.accent}
-					themeAccentAlt={base.accentAlt}
-					curated={curated}
-					all={all}
-					paletteName={(id) => themes[id as keyof typeof themes]?.name ?? id}
-					custom={customAccents}
-					customNames={customAccentNames}
-					selected={selected}
-					paintedAccent={resolved.palette.accent}
-					adjusted={resolved.accentAdjusted}
-					applied={resolved.accentApplied}
-					onSelect={(ref) => setAccent(mode, ref)}
-					onAdd={(hex) => addCustomAccent(hex, mode)}
-					onReplace={replaceCustomAccent}
-					onRename={renameCustomAccent}
-					onRemove={removeCustomAccent}
-				/>
-			</section>
+		/*
+		 * THE SAMPLE TRAVELS WITH THE TWO CONTROLS IT EXPLAINS (UX U1).
+		 *
+		 * Removing the pin from the top strip left contrast and accent changes with
+		 * no visible sample: at the shipped max-w-4xl column the full strip ends
+		 * 1262px above the Contrast heading and 1457px above the Accent row (round 1,
+		 * 1440×873, head 7b5103e3), so no scroll position showed the sample and either
+		 * control together. Reordering the section would break the designer's
+		 * Theme -> Contrast -> Accent reading order, so the answer is a compact copy of
+		 * the SAME sample as the controls' companion: beside them from `lg`, above them
+		 * (in flow) below it.
+		 *
+		 * NORMAL FLOW, NOT STICKY, on purpose: a static grid child cannot cover its
+		 * siblings at any width, so the occlusion the pin was removed for cannot come
+		 * back, and the three blocks fit one settings viewport without being pinned
+		 * (measured: the whole cluster is shorter than the 873px settings viewport at
+		 * 1440, and 414 renders as a single column with the sample in flow above the
+		 * controls).
+		 */
+		<div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_15rem]">
+			<AppearancePreviewStrip
+				glass={glass}
+				variant="compact"
+				className="lg:order-2"
+			/>
+			<div className="flex min-w-0 flex-col gap-6 lg:order-1">
+				<section data-appearance-layer="contrast">
+					<ContrastControl
+						committed={committed}
+						effective={resolved.effectiveContrast}
+						backgroundAtCeiling={
+							mode === "light" &&
+							committed > 0 &&
+							resolved.palette.canvas.toUpperCase() ===
+								base.canvas.toUpperCase()
+						}
+						mode={mode}
+						pending={pending}
+						onDraft={publishDraft}
+						onCommit={(value) => commit(mode, value)}
+					/>
+				</section>
+				<section data-appearance-layer="accent">
+					<LayerHeading
+						title={t("ui.settings.appearance.accent.title")}
+						action={
+							selected.kind !== "theme" ? (
+								<Button
+									type="button"
+									variant="link"
+									size="sm"
+									className="min-h-6 min-w-6"
+									onClick={() => setAccent(mode, { kind: "theme" })}
+								>
+									{t("ui.settings.appearance.accent.reset")}
+								</Button>
+							) : null
+						}
+					/>
+					<AccentRow
+						themeName={themeLabel}
+						themeAccent={base.accent}
+						themeAccentAlt={base.accentAlt}
+						curated={curated}
+						all={all}
+						paletteName={(id) => themes[id as keyof typeof themes]?.name ?? id}
+						custom={customAccents}
+						customNames={customAccentNames}
+						selected={selected}
+						paintedAccent={resolved.palette.accent}
+						adjusted={resolved.accentAdjusted}
+						applied={resolved.accentApplied}
+						onSelect={(ref) => setAccent(mode, ref)}
+						onAdd={(hex) => addCustomAccent(hex, mode)}
+						onReplace={replaceCustomAccent}
+						onRename={renameCustomAccent}
+						onRemove={removeCustomAccent}
+					/>
+				</section>
+			</div>
 		</div>
 	);
 };
@@ -401,6 +430,6 @@ export const AppearanceLayers: FC<{
 			<ThemeLayerHeading />
 			{gallery}
 		</div>
-		<AppearanceLayerControls />
+		<AppearanceLayerControls glass={glass} />
 	</div>
 );

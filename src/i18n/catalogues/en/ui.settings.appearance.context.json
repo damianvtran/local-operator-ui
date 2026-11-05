@@ -1021,6 +1021,6 @@
 		"role": "Small caption below the inert appearance sample",
 		"tone": "Neutral noun phrase in sentence case.",
 		"length": "Short label; wraps naturally in narrow windows.",
-		"note": "Always visible, including solid fallback. The abstract theme-role background is representative, not native desktop blur or a capture of private desktop content."
+		"note": "Shown only while the sample is actually painting the translucent backdrop. In the solid states there is no backdrop, so the caption is not painted at all. The abstract neutral ground is representative of the measured system material, not native desktop blur or a capture of private desktop content."
 	}
 }

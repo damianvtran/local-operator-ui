@@ -1,4 +1,5 @@
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
+import type { ThemeName } from "@shared/themes";
 import type { Meta, StoryObj } from "@storybook/react";
 import { expect, screen, userEvent, waitFor } from "@storybook/test";
 import { Contrast } from "lucide-react";
@@ -43,8 +44,11 @@ const LAYERS_IDENTITY = {
 	customAccentNames: {} as Record<string, string>,
 };
 
+/** The layers the stories seed; `themeName` picks the scheme a frame proves. */
+type LayerSeed = Partial<typeof LAYERS_IDENTITY> & { themeName?: ThemeName };
+
 const Seed: FC<{
-	layers: Partial<typeof LAYERS_IDENTITY>;
+	layers: LayerSeed;
 	children: React.ReactNode;
 }> = ({ layers, children }) => {
 	const [ready, setReady] = useState(false);
@@ -56,7 +60,7 @@ const Seed: FC<{
 };
 
 const Frame: FC<{
-	layers: Partial<typeof LAYERS_IDENTITY>;
+	layers: LayerSeed;
 	glass?: WindowGlassState | null;
 }> = ({ layers, glass }) => (
 	<Seed layers={layers}>
@@ -123,6 +127,16 @@ export const LayersGlassHigh: Story = {
 	args: { glass: SAMPLE_GLASS },
 	render: ({ glass }) => (
 		<Frame layers={{ contrast: { dark: 100, light: 100 } }} glass={glass} />
+	),
+};
+
+/** The light scheme: the alphas are re-derived for light floors, not reused, and
+ * the neutral backdrop travels the other way. It is also the frame that would
+ * show a sample still painting the previous palette (code R1). */
+export const LayersGlassLight: Story = {
+	...LayersGlass,
+	render: ({ glass }) => (
+		<Frame layers={{ themeName: "localOperatorLight" }} glass={glass} />
 	),
 };
 
@@ -227,6 +241,21 @@ export const AddAccentCommits: Story = {
 			expect(useUiPreferencesStore.getState().customAccents[0]).toBe("#2563EB"),
 		);
 	},
+};
+
+/** A real nested viewport at the narrow end the samples must survive: the QA and
+ * design rounds could not render one (no viewport addon on this rig), which left
+ * the narrow contract reported BLOCKED rather than seen. */
+export const LayersNarrow: Story = {
+	render: () => (
+		<iframe
+			title="Appearance layers at 414 CSS pixels"
+			src="/iframe.html?id=settings-appearance-layers--layers-standard&viewMode=story"
+			width={414}
+			height={817}
+			className="h-screen max-w-full border-0"
+		/>
+	),
 };
 
 /* ---------------------------------------------------- control-only states */

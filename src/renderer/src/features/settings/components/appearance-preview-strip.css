@@ -1,4 +1,8 @@
-/* A representative, theme-role backdrop, never a capture of the user's desktop.
+/* A NEUTRAL backdrop, never a capture of the user's desktop and never the
+ * palette being judged. The stops are the measured material tier each scheme's
+ * alphas were solved against, emitted per scheme by `previewBackdropVars`, so
+ * the ground cannot move with the accent under review and the composite stays
+ * inside the tone envelope the production floors assume (code R2, design D2).
  * The sample consumes production-derived alphas locally: html's glass scope and
  * its last committed palette must not override an uncommitted contrast draft. */
 .appearance-preview {
@@ -8,9 +12,9 @@
 .appearance-preview:not([data-preview-glass=""]) {
 	background: linear-gradient(
 		125deg,
-		var(--lo-accent) 0%,
-		var(--lo-surface) 45%,
-		var(--lo-accent-alt) 100%
+		var(--lo-preview-backdrop-a) 0%,
+		var(--lo-preview-backdrop-b) 50%,
+		var(--lo-preview-backdrop-c) 100%
 	);
 }
 
