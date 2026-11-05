@@ -43,26 +43,37 @@ import {
 	useQuery,
 	useQueryClient,
 } from "@tanstack/react-query";
-import { useCallback, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import type { AgentMessagesStatus } from "../../../../shared/agent-messages-contract";
 import type {
 	TeamBridgeConversation,
 	TeamBridgeConversationList,
 	TeamBridgeDirectory,
 	TeamBridgeDirectoryMember,
+	TeamBridgeEvent,
 	TeamBridgeMemberInput,
-	TeamBridgeMessagePage,
+	TeamBridgeMessage,
 	TeamBridgeNotify,
 	TeamBridgeReadState,
 	TeamBridgeThreadReadState,
 	TeamBridgeUnread,
 } from "../../../../shared/team-bridge-contract";
 import {
+	type ChannelMessages,
+	TEAM_BRIDGE_HISTORY_GC_MS,
+	TEAM_BRIDGE_HISTORY_STALE_MS,
+	TEAM_BRIDGE_PAGE_SIZE,
+	channelViewOrder,
+	mergeChannelPage,
+	rememberChannelView,
+	selectChannelEvictions,
+	withChannelMessages,
+} from "./team-bridge-channel-cache";
+import {
 	TEAM_BRIDGE_AGENT_PARTICIPATION_VERSION,
 	withAgentInvitationAnswer,
 	withoutAgentInvitationAnswer,
 } from "./team-bridge-invitations-model";
-import { withCarriedTeamBridgeEvents } from "./team-bridge-member-events-model";
 import {
 	TEAM_BRIDGE_ALL_SCOPE,
 	type TeamBridgeScope,
@@ -235,9 +246,21 @@ export function useLoadMoreArchivedTeamBridgeConversations(
  * API, so the page's cached page for that conversation stayed whatever it was
  * when the reader last looked. Clicking the banner then painted that stale page
  * and the message appeared seconds later, on the next poll (operator report,
- * 2026-10-30). The watcher now reads through THIS key and reader, so the page
- * it writes is exactly the page the timeline renders. Two literals for one key
+ * 2026-10-30). The watcher now reads through THIS key and reader, so the entry
+ * it writes is exactly the entry the timeline renders. Two literals for one key
  * would drift the first time either side changed, silently reopening the gap.
+ *
+ * THE READ IS ONE PAGE, ALWAYS. `limit` is the whole point: this route used to
+ * be called with no limit at all, so a busy conversation answered with its
+ * entire history on every open and every eight-second poll, and the only way
+ * back was to mount all of it. The newest page is what a reader opens on;
+ * older pages come from `loadOlder` (proximity paging), and the merge keeps
+ * whatever the reader has already paged back through
+ * (`team-bridge-channel-cache.ts`).
+ *
+ * MEMBERSHIP EVENTS RIDE THE SAME READ and keep their existing carry: dedupe by
+ * id, newest copy wins, bounded by the page that owns them. They live in the
+ * entry beside the messages, untouched by paging.
  */
 export function teamBridgeMessagesQueryOptions(
 	client: QueryClient,
@@ -251,40 +274,64 @@ export function teamBridgeMessagesQueryOptions(
 			tenantId,
 			accountId ?? "unresolved-owner",
 		),
-		/* Membership events ride the same page: carry the previous read's events
-		   forward and dedupe by id (`withCarriedTeamBridgeEvents`), so a poll
-		   whose window omits a line the reader already saw does not drop it.
-		   Messages are untouched. It lives in this shared factory so every cache
-		   writer - the timeline hook and the notification watcher's write-before-
-		   notify read alike - dedupes the same way. */
 		// Typed explicitly: a plain object returned from a factory has no
 		// `useQuery` call site to infer the context from.
 		queryFn: async ({ queryKey }: { queryKey: QueryKey }) =>
-			withCarriedTeamBridgeEvents(
-				client.getQueryData<TeamBridgeMessagePage>(queryKey),
+			mergeChannelPage(
+				client.getQueryData<ChannelMessages>(queryKey),
 				await readForBridgeOwner(client, accountId, () =>
-					TeamBridgeApi.listMessages(conversationId as string, { tenantId }),
+					TeamBridgeApi.listMessages(conversationId as string, {
+						...(tenantId ? { tenantId } : {}),
+						limit: TEAM_BRIDGE_PAGE_SIZE,
+					}),
 				),
+				"newest",
 			),
 	} as const;
 }
+
+/**
+ * What the timeline hook hands the page: the retained WINDOW, not a server page.
+ *
+ * `messages` is ascending by `seq` and deduped, so every consumer keeps reading
+ * history the way it always could; what changed is that it is bounded and that
+ * older rows arrive on demand. `items` is deliberately NOT here: `threadItems`
+ * depends on the wall clock (today/yesterday labels) and belongs to the
+ * renderer, which is why the list still derives it per render.
+ */
+export type TeamBridgeChannelRead = {
+	messages: TeamBridgeMessage[];
+	events?: readonly TeamBridgeEvent[];
+	isPending: boolean;
+	isError: boolean;
+	error: Error | null;
+	hasOlder: boolean;
+	isLoadingOlder: boolean;
+	loadOlder: () => void;
+	refetch: () => void;
+};
 
 export function useTeamBridgeMessages(
 	conversationId: string | null,
 	tenantId?: string,
 	enabled = true,
 	accountId?: string,
-): UseQueryResult<TeamBridgeMessagePage> {
+): TeamBridgeChannelRead {
 	const client = useQueryClient();
-	return useQuery({
-		...teamBridgeMessagesQueryOptions(
-			client,
-			conversationId,
-			tenantId,
-			accountId,
-		),
+	const options = teamBridgeMessagesQueryOptions(
+		client,
+		conversationId,
+		tenantId,
+		accountId,
+	);
+	const query = useQuery({
+		...options,
 		enabled: enabled && Boolean(accountId) && Boolean(conversationId),
-		staleTime: 5_000,
+		/* Paint the window we already hold, then revalidate: a conversation the
+		   reader returns to is on screen in the first frame instead of behind a
+		   spinner, and the 8 s poll keeps it live underneath. */
+		staleTime: TEAM_BRIDGE_HISTORY_STALE_MS,
+		gcTime: TEAM_BRIDGE_HISTORY_GC_MS,
 		/* `not_a_member` is a definite answer (an administrator opening an archived
 		   channel they never joined), not a blip: retrying it only delays the state
 		   that explains it, and polling it every eight seconds only repeats the refusal. */
@@ -293,11 +340,122 @@ export function useTeamBridgeMessages(
 		   never appears until the reader clicks away. Eight seconds is Slack's
 		   order of immediacy for a background tab without an events stream;
 		   `refetchIntervalInBackground` stays false so a hidden window does not
-		   poll this. */
+		   poll this. The poll reads the NEWEST PAGE only and merges it into the
+		   window, so it costs the same whether the reader has paged through one
+		   page of history or fifty. */
 		refetchInterval: (query) =>
 			isNotAMemberRefusal(query.state.error) ? false : 8_000,
 		refetchOnWindowFocus: true,
 	});
+	/*
+	 * PROXIMITY PAGING. A mutation on the same key, not an infinite query: the
+	 * entry is our own window (`ChannelMessages`), and every other writer on this
+	 * key - the notification watcher's banner read, the thread-unread patch, a
+	 * send's invalidation - writes that shape. An infinite query would put a
+	 * `{pages}` envelope around it and make each of them wrong.
+	 *
+	 * The cursor is read AT CALL TIME, from the entry, never captured in a
+	 * render: a poll that merged a newer page between render and click does not
+	 * move it, but a trim does, and asking before the window's oldest row is
+	 * exactly the cursor we want.
+	 */
+	const key = options.queryKey;
+	const older = useMutation({
+		mutationFn: async () => {
+			const current = client.getQueryData<ChannelMessages>(key);
+			const beforeSeq = current?.oldestSeq;
+			if (
+				current === undefined ||
+				!current.hasOlder ||
+				beforeSeq === undefined ||
+				conversationId === null
+			)
+				return null;
+			return readForBridgeOwner(client, accountId, () =>
+				TeamBridgeApi.listMessages(conversationId, {
+					...(tenantId ? { tenantId } : {}),
+					limit: TEAM_BRIDGE_PAGE_SIZE,
+					beforeSeq,
+				}),
+			);
+		},
+		/* One refusal is one answer: the list retries by scrolling, and a retried
+		   mutation would spend the same page again on a channel the reader may not
+		   read. */
+		retry: false,
+		onSuccess: (page) => {
+			if (page === null) return;
+			client.setQueryData<ChannelMessages>(key, (current) =>
+				current === undefined
+					? current
+					: mergeChannelPage(current, page, "older"),
+			);
+		},
+	});
+	const keyString = JSON.stringify(key);
+	const data = query.data;
+	/* The view order the eviction policy reads: opening a conversation is what
+	   "recently viewed" means, not the order its polls happened to land in. */
+	useEffect(() => {
+		if (!enabled || conversationId === null) return;
+		rememberChannelView(keyString);
+	}, [keyString, enabled, conversationId]);
+	useEffect(() => {
+		if (data === undefined) return;
+		sweepTeamBridgeChannelCache(client, keyString);
+	}, [client, data, keyString]);
+	const loadOlder = useCallback(() => {
+		/* A load already in flight is the same page: the list asks on every scroll
+		   frame it is near the top, and answering each of them would be a burst. */
+		if (older.isPending) return;
+		older.mutate();
+	}, [older]);
+	return {
+		messages: data?.messages ?? [],
+		events: data?.events,
+		isPending: query.isPending,
+		isError: query.isError,
+		error: query.error ?? null,
+		hasOlder: data?.hasOlder ?? false,
+		isLoadingOlder: older.isPending,
+		loadOlder,
+		refetch: () => void query.refetch(),
+	};
+}
+
+/**
+ * Drop whole conversations until the cache fits its bounds.
+ *
+ * Selection is the pure policy in `team-bridge-channel-cache.ts`; this is the
+ * hand that carries it out. Called when any entry's data changes, because a
+ * `hasOlder`/byte bound can only be crossed by a write.
+ */
+export function sweepTeamBridgeChannelCache(
+	client: QueryClient,
+	activeKey: string | null,
+): void {
+	const entries = client
+		.getQueryCache()
+		.findAll({ queryKey: teamBridgeKeys.messagesPrefix })
+		.flatMap((query) => {
+			const data = query.state.data as ChannelMessages | undefined;
+			if (data === undefined) return [];
+			return [
+				{ key: JSON.stringify(query.queryKey), approxBytes: data.approxBytes },
+			];
+		});
+	const victims = selectChannelEvictions(
+		entries,
+		channelViewOrder(),
+		activeKey,
+	);
+	for (const key of victims) {
+		const query = client
+			.getQueryCache()
+			.findAll({ queryKey: teamBridgeKeys.messagesPrefix })
+			.find((candidate) => JSON.stringify(candidate.queryKey) === key);
+		if (query !== undefined) client.removeQueries({ queryKey: query.queryKey });
+	}
 }
 
 /** A ready status answer must agree with the actual observed auth owner. */
@@ -1199,7 +1357,7 @@ export function setCachedThreadUnread(
 	count: number,
 	seq: number,
 ) {
-	client.setQueriesData<TeamBridgeMessagePage>(
+	client.setQueriesData<ChannelMessages>(
 		{
 			queryKey: teamBridgeKeys.messages(
 				target.conversationId,
@@ -1227,7 +1385,10 @@ export function setCachedThreadUnread(
 					),
 				};
 			});
-			return changed ? { ...page, messages } : page;
+			/* Through the window's own writer: the entry carries a byte estimate and a
+			   retention bound, and a hand-written `{...page, messages}` would leave the
+			   estimate stale until the next merge. */
+			return changed ? withChannelMessages(page, messages) : page;
 		},
 	);
 }

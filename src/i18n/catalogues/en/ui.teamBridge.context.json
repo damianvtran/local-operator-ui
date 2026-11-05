@@ -905,6 +905,20 @@
 		"placeholders": {},
 		"note": "Divider label above yesterday's messages."
 	},
+	"ui.teamBridge.thread.loading_older": {
+		"role": "history paging status",
+		"tone": "plain, sentence case",
+		"length": "Short; fits one line above the oldest visible message.",
+		"placeholders": {},
+		"note": "Shown at the top of the timeline while an older page of the conversation is loading."
+	},
+	"ui.teamBridge.thread.history_start": {
+		"role": "history boundary",
+		"tone": "plain, sentence case",
+		"length": "One sentence.",
+		"placeholders": {},
+		"note": "Marks where the conversation begins, above the oldest retained message."
+	},
 	"ui.teamBridge.builtin.general_topic": {
 		"role": "channel header topic",
 		"tone": "plain, sentence case",

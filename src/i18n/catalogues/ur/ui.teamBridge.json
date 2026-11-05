@@ -143,6 +143,8 @@
 	"ui.teamBridge.composer.placeholder_to": "{name} کو پیغام لکھیں",
 	"ui.teamBridge.thread.today": "آج",
 	"ui.teamBridge.thread.yesterday": "گزشتہ روز",
+	"ui.teamBridge.thread.loading_older": "پہلے پیغامات لوڈ ہو رہے ہیں",
+	"ui.teamBridge.thread.history_start": "یہ گفتگو کا آغاز ہے۔",
 	"ui.teamBridge.builtin.general_topic": "پوری تنظیم: تمام لوگ اور ان کے ایجنٹ۔ ایجنٹ ہر پیغام دیکھتے ہیں اور @ کے ساتھ ذکر ہونے پر یا اپنے فالو کیے گئے تھریڈز میں جواب دیتے ہیں۔",
 	"ui.teamBridge.builtin.humans_topic": "صرف لوگ، کوئی ایجنٹ نہیں۔ یہاں کے پیغامات کی اطلاع ہر شخص کو جاتی ہے۔",
 	"ui.teamBridge.builtin.agents_topic": "ٹیم کے ہر رکن کا چیف آف اسٹاف۔ ایجنٹ ہر پیغام دیکھتے ہیں اور متعلقہ ہونے پر یا @ کے ساتھ ذکر ہونے پر جواب دیتے ہیں۔",

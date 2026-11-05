@@ -629,6 +629,15 @@ export type TeamBridgePageViewProps = {
 	 */
 	target: TeamBridgeTarget | null;
 	messages: TeamBridgeMessage[];
+	/**
+	 * Older-history paging, for the timeline's windowed strip. The strip asks when
+	 * the reader nears the top; the page owns neither the trigger nor the read.
+	 */
+	olderPaging?: {
+		hasOlder: boolean;
+		loadingOlder: boolean;
+		onLoadOlder: () => void;
+	};
 	/** Membership events for the timeline only; see `TeamBridgeMessageList`. */
 	events?: readonly TeamBridgeEvent[];
 	/**
@@ -932,6 +941,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	conversations,
 	target,
 	messages,
+	olderPaging,
 	events,
 	highlightMessageId = null,
 	organizations,
@@ -3902,7 +3912,14 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 
 						<ScrollArea
 							ref={timeline.rootRef}
-							className="min-h-0 flex-1 [&_[data-radix-scroll-area-viewport]>div]:block! [&_[data-radix-scroll-area-viewport]>div]:h-full"
+							/* `[overflow-anchor:none]` IS LOAD-BEARING ONCE THE TIMELINE IS WINDOWED. Chrome's
+							   own scroll anchoring decides what to hold steady from the DOM it can see; with
+							   rows being mounted and unmounted as the window moves, it picks a different
+							   anchor than the reader's row and fights `use-bridge-timeline-window`'s
+							   correction - the reader ends up a few dozen pixels off after each page. One
+							   anchor owner, the same call this app's other hand-anchored scrollers make
+							   (`chat-sidebar.tsx`, `notifications-page.tsx`, `team-bridge-owner-audit.tsx`). */
+							className="min-h-0 flex-1 [&_[data-radix-scroll-area-viewport]>div]:block! [&_[data-radix-scroll-area-viewport]>div]:h-full [&_[data-radix-scroll-area-viewport]]:[overflow-anchor:none]"
 						>
 							{/* Intrinsic transcript height must remain scrollable when localized recovery controls claim more composer space. */}
 							<div className="flex min-h-full flex-col">
@@ -4126,6 +4143,14 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 										}
 										arrivalKey={timelineArrivalKey}
 										highlightId={highlightMessageId}
+										/* THE WINDOWED STRIP. Passing the timeline's own scroll root is what
+										   turns on the virtualized path (see `TeamBridgeMessageList`): only
+										   the visible rows plus overscan mount, and the list asks for an
+										   older page when the reader nears the top. */
+										scrollRootRef={timeline.rootRef}
+										hasOlder={olderPaging?.hasOlder ?? false}
+										loadingOlder={olderPaging?.loadingOlder ?? false}
+										onLoadOlder={olderPaging?.onLoadOlder}
 										tenantId={shown?.tenant_id}
 										accountId={selfAccountId}
 										labelFor={(sender) =>
@@ -6099,7 +6124,7 @@ const TeamBridgeOwnedPage: FC<{
 		setFirstSendFailed(false);
 	}, [selected?.id, target]);
 
-	const newest = messages.data?.messages.reduce<number | undefined>(
+	const newest = messages.messages.reduce<number | undefined>(
 		(max, message) =>
 			max === undefined || message.seq > max ? message.seq : max,
 		undefined,
@@ -6127,10 +6152,7 @@ const TeamBridgeOwnedPage: FC<{
 		messageLink !== null && selected?.id === messageLink.conversationId;
 	const linkedPresent =
 		linkedConversation &&
-		(messages.data?.messages.some(
-			(message) => message.id === messageLink.messageId,
-		) ??
-			false);
+		messages.messages.some((message) => message.id === messageLink.messageId);
 	const awaitingLinkedMessage =
 		linkedConversation && !linkedPresent && !messageLink.fetched;
 	useEffect(() => {
@@ -6285,8 +6307,15 @@ const TeamBridgeOwnedPage: FC<{
 				}
 				conversations={conversations}
 				target={target}
-				messages={messages.data?.messages ?? []}
-				events={messages.data?.events}
+				messages={messages.messages}
+				events={messages.events}
+				/* PROXIMITY PAGING: the list decides WHEN from scroll position, so the
+				   page hands it the state and the read rather than listening itself. */
+				olderPaging={{
+					hasOlder: messages.hasOlder,
+					loadingOlder: messages.isLoadingOlder,
+					onLoadOlder: messages.loadOlder,
+				}}
 				highlightMessageId={linkedPresent ? messageLink?.messageId : null}
 				organizations={organizations}
 				scope={scope}

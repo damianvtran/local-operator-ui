@@ -715,11 +715,13 @@ for (const pending of ["history"]) {
 					`pending ${pending} read`,
 				);
 				assert.equal(mounted.notifications.length, 0);
-				// The timeline's own read (no `limit`): the banner's one history read
-				// lands in the cache entry the page renders from.
+				// The timeline's own read, ONE PAGE of it (`limit` is the paged
+				// history contract; the read used to ask for the whole conversation),
+				// and it lands in the cache entry the page renders from.
 				assert.deepEqual(fixture.calls.history[0], {
 					id: "bcv_race",
 					tenantId: "tnt_race",
+					limit: 60,
 				});
 				assert.equal(fixture.calls.replies.length, 0);
 				if (disable === "setting") {
@@ -1737,7 +1739,9 @@ test("an unmounted, previously visited conversation is refreshed when latest_seq
 		);
 		assert.deepEqual(
 			fixture.calls.history.filter((call) => call.id === "bcv_u"),
-			[{ id: "bcv_u", tenantId: "tnt_u" }],
+			/* One page: the refresh reads the newest page and merges it into the
+			   retained window rather than re-walking the history. */
+			[{ id: "bcv_u", tenantId: "tnt_u", limit: 60 }],
 			"exactly the changed key, once",
 		);
 		assert.equal(mounted.notifications.length, 0, "muted: nothing bannered");
